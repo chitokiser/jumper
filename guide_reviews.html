@@ -1,0 +1,44 @@
+<!-- /guide_reviews.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>가이드 리뷰 관리 - Jovial Travel</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+
+  <script src="/assets/js/partials.js"></script>
+
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/pages/guide_reviews.js"></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="hero hero--compact">
+      <div class="hero-inner">
+        <h1 class="hero-title">가이드 리뷰 관리</h1>
+        <p class="hero-sub">내 상품에 달린 리뷰를 확인하고 답변할 수 있습니다.</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="tabs">
+          <span class="tab tab--active">리뷰</span>
+          <span class="tab-spacer"></span>
+          <button class="btn btn-ghost" id="btnReload" type="button">새로고침</button>
+        </div>
+
+        <div id="state" class="state"></div>
+        <div id="list" class="list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+</body>
+</html>

@@ -1,0 +1,258 @@
+/* /assets/css/pages/town_home.luxe.css */
+/* town_home 고급 UI: 섹션 타이틀 아이콘/버튼/슬라이더/카드/사진타일 개선 (CSS only) */
+
+:root{
+  --lux-bg: rgba(255,255,255,.70);
+  --lux-card: rgba(255,255,255,.82);
+  --lux-line: rgba(15, 23, 42, .10);
+  --lux-line2: rgba(15, 23, 42, .06);
+  --lux-shadow: 0 18px 45px rgba(2, 6, 23, .10);
+  --lux-shadow2: 0 10px 26px rgba(2, 6, 23, .10);
+  --lux-radius: 18px;
+
+  --lux-text: rgba(15, 23, 42, .92);
+  --lux-muted: rgba(15, 23, 42, .62);
+
+  --lux-brand: rgba(37, 99, 235, 1);
+  --lux-brand2: rgba(16, 185, 129, 1);
+}
+
+/* 공통 패널을 더 “유리 카드” 느낌으로 */
+.panel{
+  background: linear-gradient(180deg, var(--lux-card), rgba(255,255,255,.72));
+  border: 1px solid var(--lux-line2);
+  border-radius: var(--lux-radius);
+  box-shadow: var(--lux-shadow2);
+  backdrop-filter: blur(8px);
+}
+
+/* 섹션 헤더 정렬 안정화 + 타이틀/도구 고급화 */
+.section-h{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.section-title{
+  margin:0;
+  letter-spacing: -0.02em;
+  color: var(--lux-text);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width: 0;
+}
+
+/* 섹션별 아이콘 (CSS 마스크) */
+.section-title::before{
+  content:"";
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
+  background: linear-gradient(135deg, var(--lux-brand), var(--lux-brand2));
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  opacity:.95;
+}
+
+/* 기본 아이콘(별) */
+.section-title::before{
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 17.3l-6.18 3.73 1.64-7.03L2 9.24l7.19-.61L12 2l2.81 6.63 7.19.61-5.46 4.76 1.64 7.03z'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 17.3l-6.18 3.73 1.64-7.03L2 9.24l7.19-.61L12 2l2.81 6.63 7.19.61-5.46 4.76 1.64 7.03z'/%3E%3C/svg%3E");
+}
+
+/* 섹션별 아이콘 매핑 */
+#home-homestay-photos .section-title::before{
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 3l9 7v11a1 1 0 0 1-1 1h-6v-7H10v7H4a1 1 0 0 1-1-1V10z'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 3l9 7v11a1 1 0 0 1-1 1h-6v-7H10v7H4a1 1 0 0 1-1-1V10z'/%3E%3C/svg%3E");
+}
+
+#home-what-photos .section-title::before{
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z'/%3E%3C/svg%3E");
+}
+
+#village-map .section-title::before{
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M15 5l-6 2-6-2v16l6 2 6-2 6 2V7zM9 21V7l6-2v14z'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M15 5l-6 2-6-2v16l6 2 6-2 6 2V7zM9 21V7l6-2v14z'/%3E%3C/svg%3E");
+}
+
+.section-tools{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+@media (max-width: 640px){
+  .section-tools{
+    width:100%;
+    justify-content:flex-start;
+  }
+}
+
+/* 버튼 고급화: 음영/테두리/호버 */
+.btn{
+  border-radius: 999px;
+  border: 1px solid var(--lux-line);
+  box-shadow: 0 10px 20px rgba(2,6,23,.08);
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  will-change: transform;
+}
+
+.btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(2,6,23,.12);
+  filter: saturate(1.05);
+}
+
+.btn:active{
+  transform: translateY(0);
+  box-shadow: 0 10px 20px rgba(2,6,23,.08);
+}
+
+/* primary 버튼은 더 단단하게 */
+.btn--primary{
+  background: linear-gradient(135deg, rgba(37,99,235,1), rgba(16,185,129,1));
+  border-color: rgba(37,99,235,.15);
+}
+
+/* ghost 버튼도 “유리” 느낌 */
+.btn--ghost{
+  background: rgba(255,255,255,.68);
+  border-color: rgba(15,23,42,.10);
+}
+
+/* 패밀리 카드도 더 고급스럽게 */
+.family-placeholder .ph-card{
+  background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.70));
+  border: 1px solid var(--lux-line2);
+  border-radius: 16px;
+  box-shadow: 0 12px 26px rgba(2,6,23,.08);
+}
+
+.family-placeholder .ph-title{
+  color: var(--lux-text);
+  letter-spacing: -0.01em;
+}
+
+.family-placeholder .ph-desc{
+  color: var(--lux-muted);
+}
+
+/* 사진 타일(홈스테이/놀거리) 고급 그리드 느낌 + 같은 크기 */
+.photo-grid-panel{
+  padding: 14px;
+}
+
+.photo-grid{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1024px){
+  .photo-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px){
+  .photo-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px){
+  .photo-grid{ grid-template-columns: 1fr; }
+}
+
+.photo-tile{
+  position:relative;
+  display:block;
+  overflow:hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(15,23,42,.08);
+  box-shadow: 0 14px 34px rgba(2,6,23,.10);
+  background: rgba(255,255,255,.40);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.photo-tile::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: linear-gradient(180deg, rgba(2,6,23,0) 55%, rgba(2,6,23,.35));
+  opacity: .45;
+  pointer-events:none;
+}
+
+.photo-tile img{
+  width:100%;
+  height: 150px;
+  object-fit: cover;
+  display:block;
+  transform: scale(1.01);
+  transition: transform .25s ease;
+}
+
+@media (min-width: 1025px){
+  .photo-tile img{ height: 160px; }
+}
+@media (max-width: 420px){
+  .photo-tile img{ height: 190px; }
+}
+
+.photo-tile:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 18px 44px rgba(2,6,23,.14);
+}
+.photo-tile:hover img{
+  transform: scale(1.05);
+}
+
+/* 지도 영역: 프레임도 카드처럼 */
+.map-frame-wrapper{
+  overflow:hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(15,23,42,.08);
+  box-shadow: 0 14px 34px rgba(2,6,23,.10);
+}
+
+/* 사진관 슬라이더: 화살표 버튼을 “원형 아이콘”으로 */
+.photo-slider{
+  position:relative;
+}
+
+.ps-btn{
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(15,23,42,.12);
+  background: rgba(255,255,255,.78);
+  box-shadow: 0 12px 26px rgba(2,6,23,.10);
+  backdrop-filter: blur(8px);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.ps-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px rgba(2,6,23,.14);
+}
+
+.ps-btn:active{
+  transform: translateY(0);
+}
+
+/* 공지 리스트: 버튼처럼 보이게 */
+.notice-list .notice-head{
+  border-radius: 14px;
+  border: 1px solid rgba(15,23,42,.08);
+  background: rgba(255,255,255,.62);
+  box-shadow: 0 10px 20px rgba(2,6,23,.08);
+}
+
+.notice-list .notice-body{
+  border-left: 2px solid rgba(37,99,235,.30);
+  margin-left: 10px;
+  padding-left: 12px;
+  color: rgba(15,23,42,.70);
+}

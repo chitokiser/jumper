@@ -1,0 +1,72 @@
+/* /assets/css/pages/detail.css */
+.detail-wrap{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 980px){
+  .detail-wrap{
+    grid-template-columns: 1.3fr .7fr;
+    align-items:start;
+  }
+}
+
+.review-box{
+  border: 1px solid var(--line2);
+  background: rgba(0,0,0,.16);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.review-form{
+  display:flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.review-row{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.review-row .inp{
+  min-width: 160px;
+}
+
+.review-list{
+  margin-top: 12px;
+  display:flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rv{
+  border: 1px solid var(--line2);
+  background: rgba(255,255,255,.03);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.rv-top{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.rv-star{
+  color: var(--text);
+}
+
+.rv-text{
+  margin-top: 8px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap:anywhere;
+}

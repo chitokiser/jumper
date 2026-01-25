@@ -1,0 +1,95 @@
+<!-- /homestay.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/assets/images/jovial/favicon.png">
+  <title>홈스테이 - 우리마을 오션파크</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/homestay.css" />
+
+  <script src="/assets/js/partials.js"></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="hero-top">
+          <h1 class="hero-title">우리마을 홈스테이</h1>
+          <p class="hero-desc">오션파크 1·2·3 중심의 체류형 홈스테이를 모아봅니다.</p>
+        </div>
+
+        <div class="hero-actions">
+          <a class="btn btn--ghost" href="/index.html">우리마을 소개</a>
+          <a class="btn btn--primary" href="/family-register.html">패밀리등록</a>
+          <a class="btn" href="/homestay_new.html" data-role="guide admin" id="btnHomestayNew">홈스테이 신규생성</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 객실 사진관(썸네일 여러 장 + 넘김) -->
+    <section class="section" id="homestay-rooms">
+      <div class="section-h">
+        <h2 class="section-title">객실 사진관</h2>
+      </div>
+
+      <div class="panel room-panel">
+        <div class="room-view">
+          <button class="room-nav room-nav--prev" type="button" id="roomPrev" aria-label="이전 사진">‹</button>
+
+          <div class="room-stage">
+            <img id="roomSlideImg" class="room-img" alt="객실 사진" />
+            <div class="room-meta">
+              <span id="roomSlideIndex" class="room-index">-</span>
+            </div>
+          </div>
+
+          <button class="room-nav room-nav--next" type="button" id="roomNext" aria-label="다음 사진">›</button>
+        </div>
+
+        <!-- 썸네일 스트립 -->
+        <div class="room-thumbs-wrap" aria-label="객실 썸네일">
+          <button class="thumb-nav" type="button" id="thumbPrev" aria-label="이전 썸네일">‹</button>
+
+          <div class="room-thumbs" id="roomThumbs" tabindex="0" aria-label="객실 썸네일 목록"></div>
+
+          <button class="thumb-nav" type="button" id="thumbNext" aria-label="다음 썸네일">›</button>
+        </div>
+
+        <div class="help small" id="roomSlideHelp" style="margin-top:10px;"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">공개 홈스테이</h2>
+        <div class="section-tools">
+          <input id="qSearch" class="input" placeholder="집이름/오션파크1·2·3/패밀리 검색" />
+          <select id="qSort" class="select">
+            <option value="recent">최신</option>
+            <option value="rating">평점 높은 순</option>
+            <option value="reviews">리뷰 많은 순</option>
+          </select>
+        </div>
+      </div>
+      <div id="itemsState" class="state">로딩중...</div>
+      <div id="itemsGrid" class="grid"></div>
+      <div class="help small">홈스테이는 category=hotel(또는 homestay)로 등록된 놀거리만 표시됩니다.</div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/homestay.rooms.js"></script>
+  <script type="module" src="/assets/js/pages/homestay.js"></script>
+</body>
+</html>

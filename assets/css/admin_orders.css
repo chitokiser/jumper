@@ -1,0 +1,54 @@
+/* /assets/css/admin_orders.css */
+/* /assets/css/pages/admin_orders.css */
+.toolbar{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.grow{ flex: 1 1 260px; }
+
+.chk{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding-bottom: 6px;
+}
+.chk input{ transform: translateY(1px); }
+
+.list{ display:flex; flex-direction: column; gap: 10px; }
+
+.item{
+  border: 1px solid var(--line2);
+  background: rgba(0,0,0,.18);
+  border-radius: 16px;
+  padding: 12px;
+  display:flex;
+  gap: 12px;
+  align-items:flex-start;
+  justify-content: space-between;
+}
+
+.item-main{ min-width:0; }
+.item-title{ font-size: 14px; }
+.item-sub{ color: var(--muted); font-size: 12px; margin-top: 4px; overflow-wrap:anywhere; }
+
+.item-actions{
+  display:flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sep{ opacity: .6; margin: 0 6px; }
+
+.tag{
+  display:inline-flex;
+  align-items:center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: rgba(255,255,255,.03);
+  font-size: 12px;
+}

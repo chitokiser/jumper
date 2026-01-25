@@ -1,0 +1,197 @@
+<!-- /product_edit.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>상품 수정 | Jovial Travel</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/product_new.css" />
+
+  <!-- partials -->
+  <script src="/assets/js/partials.js" defer></script>
+
+  <!-- firebase (module) -->
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+
+  <!-- header role/menu binding -->
+  <script type="module" src="/assets/js/header-auth.js"></script>
+</head>
+
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="topline">
+          <a class="back" id="backLink" href="./my_products.html">← 목록</a>
+        </div>
+
+        <h1 class="hero-title">상품 수정</h1>
+        <p class="hero-desc">
+          수정 후에는 상태가 pending(검수중)으로 변경되며, 관리자가 재승인하면 published로 공개됩니다.
+        </p>
+
+        <section class="panel">
+          <div class="panel-body">
+            <form class="form" id="formProduct">
+              <div class="form-grid">
+                <!-- 좌측: 기본 정보 -->
+                <div class="col">
+                  <div class="group-title">기본 정보</div>
+
+                  <label class="field">
+                    <span class="label">상품명</span>
+                    <input class="input" id="pTitle" required placeholder="예: 다낭 야경 투어" />
+                  </label>
+
+                  <label class="field">
+                    <span class="label">카테고리</span>
+                    <select class="select" id="pCategory" required>
+                      <option value="">선택</option>
+                      <option value="spa">스파</option>
+                      <option value="massage">마사지</option>
+                      <option value="beauty">뷰티/에스테틱</option>
+                      <option value="ticket">티켓/입장권</option>
+                      <option value="tour">투어</option>
+                      <option value="nature">자연/액티비티</option>
+                      <option value="cruise">크루즈/요트</option>
+                      <option value="food">맛집</option>
+                      <option value="cafe">카페</option>
+                      <option value="night">나이트/클럽</option>
+                      <option value="show">공연/쇼</option>
+                      <option value="city">도시/랜드마크</option>
+                      <option value="shopping">쇼핑</option>
+                      <option value="hotel">호텔/리조트</option>
+                      <option value="transport">교통/렌트</option>
+                      <option value="etc">기타</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span class="label">지역</span>
+                    <input class="input" id="pRegion" required placeholder="예: 다낭 / 호이안" />
+                  </label>
+
+                  <label class="field">
+                    <span class="label">가격</span>
+                    <div class="row">
+                      <input class="input" id="pPrice" type="number" min="0" step="1" placeholder="예: 30000" />
+                      <select class="select" id="pCurrency">
+                        <option value="KRW">KRW</option>
+                        <option value="VND">VND</option>
+                        <option value="USD">USD</option>
+                      </select>
+                    </div>
+                  </label>
+
+                  <div class="group-title">예약 설정</div>
+
+                  <label class="field">
+                    <span class="label">예약 방식</span>
+                    <select class="select" id="pBookMode">
+                      <option value="date_single">고객이 날짜 선택 (기본)</option>
+                      <option value="fixed_weekdays">요일 고정 (고객 날짜 선택 없음)</option>
+                      <option value="date_range">기간 예약 (체크인~체크아웃)</option>
+                    </select>
+                    <div class="help">요일 고정: 월~일 중 선택한 요일에만 운영됩니다. 기간 예약: 선택한 기간 전체가 예약 처리됩니다.</div>
+                  </label>
+
+                  <div class="field" id="pWeekdaysBox" style="display:none;">
+                    <span class="label">운영 요일 선택</span>
+                    <div class="week-grid">
+                      <label class="chk"><input type="checkbox" id="pWd1" value="1" />월</label>
+                      <label class="chk"><input type="checkbox" id="pWd2" value="2" />화</label>
+                      <label class="chk"><input type="checkbox" id="pWd3" value="3" />수</label>
+                      <label class="chk"><input type="checkbox" id="pWd4" value="4" />목</label>
+                      <label class="chk"><input type="checkbox" id="pWd5" value="5" />금</label>
+                      <label class="chk"><input type="checkbox" id="pWd6" value="6" />토</label>
+                      <label class="chk"><input type="checkbox" id="pWd0" value="0" />일</label>
+                    </div>
+                    <div class="help">예: 차량 투어라면 월/수/금만 운영처럼 설정할 수 있습니다.</div>
+                  </div>
+
+                  <label class="field">
+                    <span class="label">같은 날짜에 예약 가능한 수 (정원/객실 수)</span>
+                    <input class="input" id="pCapacity" type="number" min="1" step="1" value="10" />
+                    <div class="help">0 또는 비워두면 제한 없음으로 처리됩니다. 기간 예약에서도 동일하게 적용됩니다.</div>
+                  </label>
+
+                  <label class="field">
+                    <span class="label">설명</span>
+                    <textarea class="textarea" id="pDesc" rows="8" placeholder="코스/소요시간/만나는 장소/주의사항 등을 적어주세요."></textarea>
+                    <div class="help">운영 팁: 핵심만 먼저 쓰고, 우측의 포함/불포함/준비물은 항목형으로 정리하세요.</div>
+                  </label>
+                </div>
+
+                <!-- 우측: 운영용 정보 + 이미지 -->
+                <div class="col">
+                  <div class="group-title">운영/안내 정보</div>
+
+                  <label class="field">
+                    <span class="label">포함 내역</span>
+                    <textarea class="textarea" id="pIncludes" rows="5" placeholder="- 예: 호텔 픽업&#10;- 한국어 가이드&#10;- 입장권"></textarea>
+                    <div class="help">한 줄에 한 항목씩 쓰면 상세페이지가 자동 리스트로 예쁘게 표시됩니다.</div>
+                  </label>
+
+                  <label class="field">
+                    <span class="label">불포함 내역</span>
+                    <textarea class="textarea" id="pExcludes" rows="5" placeholder="- 예: 개인 경비&#10;- 식사&#10;- 여행자 보험"></textarea>
+                  </label>
+
+                  <label class="field">
+                    <span class="label">준비물</span>
+                    <textarea class="textarea" id="pPreparations" rows="5" placeholder="- 예: 여권/신분증&#10;- 편한 신발&#10;- 선크림"></textarea>
+                  </label>
+
+                  <div class="field">
+                    <span class="label">상품 이미지 (URL 최대 20개, 선택)</span>
+                    <div class="img-grid" id="pImageGrid">
+                      <input class="input" id="pImage1" placeholder="이미지 URL #1 (대표)" />
+                      <input class="input" id="pImage2" placeholder="이미지 URL #2" />
+                      <input class="input" id="pImage3" placeholder="이미지 URL #3" />
+                      <input class="input" id="pImage4" placeholder="이미지 URL #4" />
+                      <input class="input" id="pImage5" placeholder="이미지 URL #5" />
+                      <input class="input" id="pImage6" placeholder="이미지 URL #6" />
+                      <input class="input" id="pImage7" placeholder="이미지 URL #7" />
+                      <input class="input" id="pImage8" placeholder="이미지 URL #8" />
+                      <input class="input" id="pImage9" placeholder="이미지 URL #9" />
+                      <input class="input" id="pImage10" placeholder="이미지 URL #10" />
+                      <input class="input" id="pImage11" placeholder="이미지 URL #11" />
+                      <input class="input" id="pImage12" placeholder="이미지 URL #12" />
+                      <input class="input" id="pImage13" placeholder="이미지 URL #13" />
+                      <input class="input" id="pImage14" placeholder="이미지 URL #14" />
+                      <input class="input" id="pImage15" placeholder="이미지 URL #15" />
+                      <input class="input" id="pImage16" placeholder="이미지 URL #16" />
+                      <input class="input" id="pImage17" placeholder="이미지 URL #17" />
+                      <input class="input" id="pImage18" placeholder="이미지 URL #18" />
+                      <input class="input" id="pImage19" placeholder="이미지 URL #19" />
+                      <input class="input" id="pImage20" placeholder="이미지 URL #20" />
+                    </div>
+                    <div class="help">첫 번째 이미지가 대표 이미지로 사용됩니다. URL은 중복 없이 저장됩니다.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sticky-bar">
+                <button class="btn" type="submit" id="btnSave">저장</button>
+                <span class="muted" id="saveMsg"></span>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/pages/product_edit.js"></script>
+</body>
+</html>

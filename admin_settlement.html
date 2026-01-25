@@ -1,0 +1,131 @@
+<!-- /admin_settlement.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>관리자 정산 - Jovial Travel</title>
+
+  <link rel="icon" href="/assets/images/jovial/favicon.png">
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/settlement.css" />
+
+  <script src="/assets/js/partials.js"></script>
+
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+  <script type="module" src="/assets/js/pages/admin_settlement.js"></script>
+</head>
+<body>
+  <div id="header"></div>
+
+  <main class="wrap">
+    <section class="sett-hero">
+      <div class="sett-hero__top">
+        <div>
+          <h1 class="sett-title">관리자 정산</h1>
+          <p class="sett-sub">월별 정산 확정(락)과 지급 상태 관리를 합니다.</p>
+        </div>
+
+        <div class="sett-controls">
+          <label class="field">
+            <span class="field__k">정산 월</span>
+            <input id="month" class="input" type="month" />
+          </label>
+
+          <label class="field">
+            <span class="field__k">커미션(%)</span>
+            <input id="commission" class="input" type="number" min="0" max="100" step="0.1" value="10" />
+          </label>
+
+          <button id="btnReload" class="btn">새로고침</button>
+          <button id="btnLock" class="btn btn--primary">정산 확정(락)</button>
+          <button id="btnCsv" class="btn">CSV 내보내기</button>
+        </div>
+      </div>
+
+      <div class="sett-lockbar">
+        <div class="lock-state" id="lockState">로딩중…</div>
+        <div class="lock-sub" id="lockSub"></div>
+      </div>
+
+      <div class="sett-kpi">
+        <div class="kpi">
+          <div class="kpi__k">정산 대상 주문</div>
+          <div class="kpi__v" id="kpiCount">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__k">총 매출</div>
+          <div class="kpi__v" id="kpiGross">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__k">플랫폼 수수료</div>
+          <div class="kpi__v" id="kpiFee">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__k">총 정산액</div>
+          <div class="kpi__v" id="kpiNet">-</div>
+        </div>
+      </div>
+
+      <div class="sett-state" id="state">로딩중…</div>
+    </section>
+
+    <section class="sett-section">
+      <div class="sect-top">
+        <h2 class="sect-title">가이드별 정산</h2>
+        <div class="hint">락 상태면 settlements 스냅샷을 보여줍니다.</div>
+      </div>
+
+      <div class="table table--admin">
+        <div class="thead thead--admin">
+          <div>가이드</div>
+          <div class="right">주문</div>
+          <div class="right">총 매출</div>
+          <div class="right">수수료</div>
+          <div class="right">정산액</div>
+          <div>지급</div>
+          <div class="right">처리</div>
+        </div>
+        <div id="rows" class="tbody"></div>
+      </div>
+
+      <div class="sett-help">
+        정산 확정(락)은 해당 월의 confirmed 주문을 스냅샷(settlements)으로 저장하고, 해당 월 주문을 정산완료로 처리합니다.
+      </div>
+    </section>
+  </main>
+
+  <div id="footer"></div>
+
+  <dialog id="dlgPay" class="dlg">
+    <form method="dialog" class="dlg__card">
+      <div class="dlg__title">지급 처리</div>
+
+      <input type="hidden" id="payGuideUid" />
+
+      <label class="field">
+        <span class="field__k">지급 방식</span>
+        <select id="payMethod" class="input">
+          <option value="bank">은행이체</option>
+          <option value="wallet">지갑송금</option>
+          <option value="cash">현금</option>
+          <option value="etc">기타</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field__k">참고(계좌/Tx/메모)</span>
+        <input id="payRef" class="input" placeholder="예: 123-45-6789 / 0xTxHash / 메모" />
+      </label>
+
+      <div class="dlg__actions">
+        <button class="btn" value="cancel">닫기</button>
+        <button id="btnPaySave" class="btn btn--primary" value="default">지급 완료 처리</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

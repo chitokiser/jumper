@@ -1,0 +1,120 @@
+/* /assets/css/footer.css */
+
+/*
+  목적
+  - 상품상세 등 특정 페이지에서 푸터 로고가 원본 크기로 커지는 현상 방지
+  - 모바일에서 '회원혜택/포인트/가이드랭킹' 텍스트가 글자 단위로 세로 줄바꿈 되는 현상 방지
+  - 모든 페이지에서 동일한 푸터 레이아웃/타이포 유지
+*/
+
+.site-footer{
+  margin-top: 44px;
+  border-top: 1px solid var(--line2);
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,0));
+}
+
+.ftr-inner{
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 18px var(--pad);
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, minmax(160px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.ftr-col{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 브랜드 영역 */
+.ftr-brand{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ftr-logo{
+  width: 44px;
+  height: 44px;
+  max-width: 44px;
+  max-height: 44px;
+  flex: 0 0 44px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+}
+
+.ftr-brand-text{
+  min-width: 0;
+}
+
+.ftr-brand-text strong{
+  font-size: 14px;
+  letter-spacing: .2px;
+}
+
+/* 컬럼 타이틀 */
+.ftr-title{
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .2px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* 링크 */
+.site-footer a{
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.site-footer a:hover{
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.ftr-bottom{
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 12px var(--pad) 18px;
+  border-top: 1px solid var(--line2);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/*
+  반응형
+  - 모바일에서 컬럼 폭이 너무 좁아져 글자 단위로 줄바꿈 되는 현상을 막기 위해
+    2열/1열로 전환
+*/
+@media (max-width: 860px){
+  .ftr-inner{
+    grid-template-columns: 1fr 1fr;
+  }
+  .ftr-brand{
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 460px){
+  .ftr-inner{
+    grid-template-columns: 1fr;
+  }
+  .ftr-brand{
+    grid-column: auto;
+  }
+  /* 매우 작은 화면에서 가로 스크롤이 생기지 않게 */
+  .site-footer a,
+  .ftr-title{
+    white-space: normal;
+  }
+}

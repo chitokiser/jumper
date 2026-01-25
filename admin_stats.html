@@ -1,0 +1,86 @@
+<!-- /admin_stats.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Stats - Jovial Travel</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/admin_stats.css" />
+
+  <script src="/assets/js/partials.js"></script>
+
+  <!-- firebase (module) -->
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="wrap">
+      <div class="head">
+        <h1 class="title">관리자 대시보드 통계</h1>
+        <p class="desc">items / orders 기준으로 집계합니다. (필요하면 기간 필터도 추가 가능)</p>
+      </div>
+
+      <div id="state" class="state">로딩중...</div>
+
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="k">items</div>
+          <div class="v" id="kItems">-</div>
+          <div class="s">전체</div>
+        </div>
+        <div class="kpi">
+          <div class="k">published</div>
+          <div class="v" id="kPublished">-</div>
+          <div class="s">공개</div>
+        </div>
+        <div class="kpi">
+          <div class="k">pending</div>
+          <div class="v" id="kPending">-</div>
+          <div class="s">승인 대기</div>
+        </div>
+        <div class="kpi">
+          <div class="k">orders</div>
+          <div class="v" id="kOrders">-</div>
+          <div class="s">전체 예약/구매 요청</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <h2 class="pt">카테고리 분포</h2>
+          <span class="pm" id="catHint"></span>
+        </div>
+        <div id="catList" class="list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <h2 class="pt">결제방법 분포</h2>
+          <span class="pm" id="payHint"></span>
+        </div>
+        <div id="payList" class="list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <h2 class="pt">가이드 리더보드</h2>
+          <span class="pm">공개상품/리뷰수 기반</span>
+        </div>
+        <div id="guideList" class="list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/pages/admin_stats.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+</body>
+</html>

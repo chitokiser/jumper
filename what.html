@@ -1,0 +1,117 @@
+<!-- /index.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- favicon --> 
+  <link rel="icon" href="/assets/images/jovial/favicon.png">
+
+  <title>뭐할까? - Jovial</title>
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/index.css" />
+
+  <!-- partials loader -->
+  <script src="/assets/js/partials.js"></script>
+
+  <!-- firebase (module) -->
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+
+  <!-- 중요: 헤더 메뉴 바인딩은 head에서 먼저 -->
+</head>
+
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="hero-top">
+          <h1 class="hero-title">Jovial에는 검증된 패밀리만 함께합니다</h1>
+          <p class="hero-desc">공개 놀거리(published) 기준으로 평점/리뷰/랭킹이 표시됩니다.</p>
+        </div>
+
+        <div class="hero-cards">
+          <div class="hero-card">
+            <div class="hc-k">공개 놀거리</div>
+            <div class="hc-v" id="kpiPublished">-</div>
+            <div class="hc-sub">published</div>
+          </div>
+          <div class="hero-card">
+            <div class="hc-k">리뷰 수</div>
+            <div class="hc-v" id="kpiReviews">-</div>
+            <div class="hc-sub">합계</div>
+          </div>
+          <div class="hero-card">
+            <div class="hc-k">평점 평균</div>
+            <div class="hc-v" id="kpiAvg">-</div>
+            <div class="hc-sub">가중 평균</div>
+          </div>
+          <a class="hero-card hero-card--link" href="./admin_stats.html">
+            <div class="hc-k">통계</div>
+            <div class="hc-v">열기</div>
+            <div class="hc-sub">admin_stats.html</div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">공개 놀거리</h2>
+        <div class="section-tools">
+          <input id="qSearch" class="input" placeholder="놀거리/지역/패밀리 검색" />
+          <select id="qSort" class="select">
+            <option value="recent">최신</option>
+            <option value="rating">평점 높은 순</option>
+            <option value="reviews">리뷰 많은 순</option>
+          </select>
+        </div>
+      </div>
+      <div id="itemsState" class="state">로딩중...</div>
+      <div id="itemsGrid" class="grid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">카테고리별 랭킹</h2>
+        <div class="section-tools">
+          <select id="rankCat" class="select"></select>
+          <select id="rankMetric" class="select">
+            <option value="rating">평점</option>
+            <option value="reviews">리뷰 수</option>
+          </select>
+        </div>
+      </div>
+      <div id="rankState" class="state">로딩중...</div>
+      <div id="rankList" class="rank-list"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">패밀리 평점 리더보드</h2>
+        <div class="section-tools">
+          <select id="leadMetric" class="select">
+            <option value="weighted">가중 평균(추천)</option>
+            <option value="avg">단순 평균</option>
+            <option value="reviews">리뷰 수</option>
+            <option value="items">공개 놀거리 수</option>
+          </select>
+        </div>
+      </div>
+      <div id="leadState" class="state">로딩중...</div>
+      <div id="leadList" class="lead-list"></div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <!-- 페이지 로직만 body 끝에서 -->
+  <script type="module" src="/assets/js/header-auth.js"></script>
+
+  <script type="module" src="/assets/js/pages/index.js"></script>
+</body>
+</html>

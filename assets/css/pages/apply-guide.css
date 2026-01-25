@@ -1,0 +1,109 @@
+/* /assets/css/pages/apply-guide.css */
+.form{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:12px;
+}
+
+.field{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.field span{
+  color: var(--muted);
+  font-size:13px;
+}
+
+.check{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding:10px 12px;
+  border:1px solid var(--line2);
+  background: rgba(255,255,255,.03);
+  border-radius: 12px;
+}
+
+.check input{
+  width:18px;
+  height:18px;
+  margin-top:2px;
+}
+
+.check span{
+  color: var(--muted);
+  font-size:13px;
+  line-height:1.45;
+}
+
+input, textarea{
+  border:1px solid var(--line);
+  background: rgba(0,0,0,.18);
+  color: var(--text);
+  border-radius: 12px;
+  padding:12px;
+  outline:none;
+}
+
+input:focus, textarea:focus{
+  border-color: rgba(65,138,255,.55);
+  box-shadow: 0 0 0 3px rgba(65,138,255,.14);
+}
+
+.actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:6px;
+}
+
+.hint{
+  margin-top:8px;
+  color: var(--muted);
+  font-size:13px;
+  line-height:1.5;
+}
+
+.note{
+  margin-top:14px;
+  color: var(--muted);
+  font-size:13px;
+  line-height:1.5;
+}
+
+.status-box{
+  margin-top:12px;
+  margin-bottom:12px;
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.04);
+  border-radius: 14px;
+  padding:12px;
+}
+
+.status-row{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:6px 0;
+}
+
+.status-row .k{
+  color: var(--muted);
+  font-size:13px;
+}
+
+.status-row .v{
+  color: var(--text);
+  font-size:13px;
+  text-align:right;
+  word-break: break-word;
+}
+
+.status-row .v.danger{
+  color: rgba(255,77,109,.95);
+}
+
+.hide{ display:none !important; }

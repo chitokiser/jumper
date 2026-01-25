@@ -1,0 +1,215 @@
+// /assets/js/header-auth.js
+// 헤더의 로그인/로그아웃 + 역할별 메뉴 노출 + 모바일 햄버거
+
+import {
+  handleRedirectResult,
+  login,
+  logout,
+  watchAuth,
+} from "./auth.js";
+
+function isInAppBrowser(){
+  const ua = (navigator.userAgent || "").toLowerCase();
+  return ua.includes("kakaotalk") || ua.includes("instagram") || ua.includes("fbav") || ua.includes("fban") || ua.includes("line");
+}
+
+function show(el, on){
+  if(!el) return;
+  el.style.display = on ? "" : "none";
+}
+
+function applyRoleToMenu(role){
+  const badge = document.getElementById("roleBadge");
+  if(badge){
+    const text =
+      role === "admin" ? "관리자" :
+      role === "guide" ? "패밀리" :
+      role === "user"  ? "일반" :
+      "게스트";
+    badge.textContent = text;
+    show(badge, role !== "guest");
+  }
+
+  // data-role이 있는 요소만 필터링. (a, div.nav-group 등)
+  const nodes = document.querySelectorAll("#hdrNav [data-role]");
+  nodes.forEach((node)=>{
+    const rule = (node.getAttribute("data-role") || "").trim();
+    if(!rule){
+      show(node, true);
+      return;
+    }
+    const allow = rule.split(/\s+/).includes(role);
+    show(node, allow);
+  });
+}
+
+function initNavGroups(){
+  const groups = document.querySelectorAll("#hdrNav .nav-group");
+  groups.forEach((g)=>{
+    const btn = g.querySelector(".nav-group-title");
+    if(!btn) return;
+
+    btn.addEventListener("click", (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      // 다른 그룹 닫기
+      groups.forEach((other)=>{
+        if(other !== g) other.classList.remove("open");
+      });
+      g.classList.toggle("open");
+    });
+  });
+
+  // 바깥 클릭시 닫기
+  document.addEventListener("click", (e)=>{
+    const nav = document.getElementById("hdrNav");
+    if(!nav) return;
+    if(nav.contains(e.target)) return;
+    groups.forEach((g)=>g.classList.remove("open"));
+  });
+}
+
+function applyUserBadge(profile){
+  const el = document.getElementById("userBadge");
+  if(!el) return;
+  if(!profile){
+    el.textContent = "";
+    el.title = "";
+    show(el, false);
+    return;
+  }
+  const id = profile.email || profile.displayName || profile.uid || "";
+  el.textContent = id;
+  el.title = `uid: ${profile.uid}${profile.email ? `\nemail: ${profile.email}` : ""}`;
+  show(el, true);
+}
+
+function initHamburger(){
+  if(window.__pg_burger_bound) return;
+
+  const header = document.getElementById("siteHeaderBar");
+  const btn = document.getElementById("btnBurger");
+  const nav = document.getElementById("hdrNav");
+
+  if(!header || !btn || !nav) return;
+
+  window.__pg_burger_bound = true;
+
+  function openMenu(){
+    header.classList.add("nav-open");
+    btn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeMenu(){
+    header.classList.remove("nav-open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleMenu(){
+    header.classList.contains("nav-open") ? closeMenu() : openMenu();
+  }
+
+  btn.addEventListener("click", (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    toggleMenu();
+  });
+
+  nav.addEventListener("click", (e)=>{
+    if(e.target && e.target.closest && e.target.closest("a")) closeMenu();
+  });
+
+  document.addEventListener("click", (e)=>{
+    if(!header.classList.contains("nav-open")) return;
+    if(!header.contains(e.target)) closeMenu();
+  });
+
+  document.addEventListener("keydown", (e)=>{
+    if(e.key === "Escape") closeMenu();
+  });
+
+  window.addEventListener("resize", ()=>{
+    if(window.matchMedia("(min-width: 861px)").matches){
+      closeMenu();
+    }
+  });
+}
+
+async function bindHeader(){
+  const btnLogin = document.getElementById("btnLogin");
+  const btnLogout = document.getElementById("btnLogout");
+  const nav = document.getElementById("hdrNav");
+
+  // partial이 아직 안 붙었으면 스킵 (다음 이벤트에서 재시도)
+  if(!btnLogin && !btnLogout && !nav) return;
+
+  // 중복 바인딩 방지
+  if(window.__pg_hdr_bound) return;
+  window.__pg_hdr_bound = true;
+
+  // redirect 로그인 흐름 처리(모바일/팝업차단 대비)
+  await handleRedirectResult();
+
+  if(btnLogin){
+    // 카카오톡 등 인앱브라우저에서는 Google 로그인이 차단되므로 안내 버튼으로 바꿔줌
+    if(isInAppBrowser()){
+      btnLogin.textContent = "브라우저에서 열기";
+    }
+    btnLogin.onclick = async ()=>{
+      try{
+        if(isInAppBrowser()){
+          alert(
+            "카카오톡/인스타/페이스북 같은 인앱브라우저에서는 Google 로그인이 차단될 수 있습니다.\n\n해결 방법:\n1) 우측 상단 메뉴(⋮) → '다른 브라우저로 열기'\n2) 또는 Chrome/Safari에서 jovialtravel.netlify.app 직접 접속\n\n(오류: 403 disallowed_useragent)"
+          );
+          return;
+        }
+        await login();
+      }catch(e){
+        const code = e?.code || "";
+        // 카카오/인스타/페북 등 인앱브라우저에서 Google 로그인은 차단될 수 있습니다.
+        if(code === "auth/inapp-browser" || code === "auth/operation-not-supported-in-this-environment"){
+          alert(
+            "카카오톡/인스타/페이스북 같은 인앱브라우저에서는 Google 로그인이 차단될 수 있습니다.\n\n해결 방법:\n1) 우측 상단 메뉴(⋮) → '다른 브라우저로 열기'\n2) 또는 Chrome/Safari에서 직접 jovialtravel.netlify.app 접속\n\n(오류: 403 disallowed_useragent)"
+          );
+          return;
+        }
+        console.warn(e);
+      }
+    };
+  }
+
+  if(btnLogout){
+    btnLogout.onclick = async ()=>{
+      try{ await logout(); }catch(e){ console.warn(e); }
+    };
+  }
+
+  // 햄버거 바인딩 (partials 주입 후에만 가능)
+  initHamburger();
+
+  // 드롭다운 그룹 바인딩
+  initNavGroups();
+
+  // 기본은 guest 메뉴
+  applyRoleToMenu("guest");
+  show(btnLogin, true);
+  show(btnLogout, false);
+
+  watchAuth(({ loggedIn, role, profile })=>{
+    show(btnLogin, !loggedIn);
+    show(btnLogout, loggedIn);
+    applyRoleToMenu(role || (loggedIn ? "user" : "guest"));
+    applyUserBadge(loggedIn ? profile : null);
+  });
+}
+
+// partials가 붙은 뒤에 바인딩
+window.addEventListener("partials:mounted", bindHeader);
+window.addEventListener("partials:loaded", bindHeader);
+// 혹시 이벤트를 못 받았을 때를 대비
+document.addEventListener("DOMContentLoaded", bindHeader);
+
+// 일부 페이지는 partials.js가 defer 없이 먼저 실행되어(이벤트가 이미 지나감)
+// 로그인/햄버거 바인딩이 누락될 수 있습니다. 즉시 1회 시도 + 짧은 재시도로 보강합니다.
+bindHeader();
+setTimeout(bindHeader, 250);

@@ -1,0 +1,74 @@
+<!-- /debug.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>버그체커 - Jovial</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/debug.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+
+  <!-- firebase (module) -->
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+
+  <!-- page -->
+  <script type="module" src="/assets/js/pages/debug.js"></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-h">
+        <h1 class="title">버그체커</h1>
+        <div class="desc">관리자 전용 점검 도구입니다. 규칙(권한), 데이터 이상치, 구형 데이터 보정까지 한 번에 확인합니다.</div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-h">내 로그인 상태</div>
+          <div class="card-b">
+            <div class="kv"><div class="k">UID</div><div class="v mono" id="dbgUid">-</div></div>
+            <div class="kv"><div class="k">이메일</div><div class="v mono" id="dbgEmail">-</div></div>
+            <div class="kv"><div class="k">Role</div><div class="v mono" id="dbgRole">-</div></div>
+            <div class="kv"><div class="k">관리자 문서</div><div class="v mono" id="dbgAdminDoc">-</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">빠른 점검</div>
+          <div class="card-b">
+            <div class="btns">
+              <button class="btn" id="btnRules">Rules 읽기/쓰기 점검</button>
+              <button class="btn" id="btnOrders">주문 상태 불일치 찾기</button>
+              <button class="btn" id="btnSlots">슬롯/정원 이상치 찾기</button>
+              <button class="btn btn--ghost" id="btnItems">구형 상품(booking 누락) 찾기</button>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="btns">
+              <button class="btn btn--danger" id="btnFixBooking">구형 상품 자동 보정 (booking 기본값 넣기)</button>
+              <div class="hint">주의: 관리자만 실행 가능. items 컬렉션을 업데이트합니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card log">
+        <div class="card-h">결과 로그</div>
+        <div class="card-b">
+          <pre class="mono" id="dbgLog">준비중...</pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+</body>
+</html>

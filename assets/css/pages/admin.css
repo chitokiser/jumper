@@ -1,0 +1,129 @@
+/* /assets/css/pages/admin.css */
+.toolbar{
+  display:flex;
+  justify-content:flex-end;
+  margin: 10px 0 6px;
+}
+.list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.item{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.04);
+  border-radius: 14px;
+  padding:14px;
+}
+.item-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size:12px;
+  color: var(--muted);
+  word-break: break-all;
+}
+.pill{
+  padding:6px 10px;
+  border-radius: 999px;
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  font-size:12px;
+}
+.line{
+  font-size:13px;
+  color: var(--text);
+  margin: 4px 0;
+}
+.line.small{
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+.item-actions{
+  margin-top:12px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+/* /assets/css/pages/admin.css */
+.toolbar{
+  display:flex;
+  justify-content:flex-end;
+  margin: 10px 0 6px;
+}
+
+.tabs{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin: 10px 0 8px;
+}
+.tab{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  color: var(--text);
+  padding:10px 12px;
+  border-radius: 999px;
+  cursor:pointer;
+  font-size:13px;
+}
+.tab.active{
+  border-color: rgba(65,138,255,.45);
+  background: rgba(65,138,255,.12);
+}
+
+.list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.item{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.04);
+  border-radius: 14px;
+  padding:14px;
+}
+.item-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.item-title{
+  font-size:15px;
+}
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size:12px;
+  color: var(--muted);
+  word-break: break-all;
+}
+.pill{
+  padding:6px 10px;
+  border-radius: 999px;
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  font-size:12px;
+}
+.line{
+  font-size:13px;
+  color: var(--text);
+  margin: 4px 0;
+}
+.line.small{
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+.item-actions{
+  margin-top:12px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.empty{ color: var(--muted); }

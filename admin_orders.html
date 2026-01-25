@@ -1,0 +1,43 @@
+<!-- /admin_orders.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>관리자 주문내역 - Jovial Travel</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/pages/orders.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-h">
+        <div class="panel-title">관리자 주문내역</div>
+        <div class="panel-actions">
+          <select class="input" id="selStatus" style="min-width:160px">
+            <option value="all">전체</option>
+            <option value="paid">결제확인 대기</option>
+            <option value="confirmed">결제확인 완료</option>
+            <option value="settled">정산 완료</option>
+          </select>
+          <button class="btn" id="btnReload" type="button">새로고침</button>
+        </div>
+      </div>
+
+      <div id="ordersState" class="state">로딩...</div>
+      <div id="ordersList" class="list"></div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/admin_orders.js"></script>
+</body>
+</html>

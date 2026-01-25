@@ -1,0 +1,154 @@
+/* /assets/css/pages/product_new.css */
+/* 운영용 입력 폼: 두 컬럼 + 스티키 등록바 + 큰 textarea + 모바일 반응형 */
+
+.topline{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.top-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.form{
+  display:block;
+}
+
+.form-grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items:start;
+}
+
+@media (min-width: 980px){
+  .form-grid{
+    grid-template-columns: 1.15fr .85fr;
+    gap: 16px;
+  }
+}
+
+.col{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-width:0;
+}
+
+.group-title{
+  font-size: 13px;
+  color: var(--muted);
+  margin: 4px 2px 0;
+}
+
+.field{
+  padding: 12px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+}
+
+.label{
+  display:block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.row{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+.textarea{
+  width:100%;
+  resize: vertical;
+  min-height: 88px;
+  line-height: 1.45;
+  padding: 10px 11px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.20);
+  color: var(--text);
+}
+
+.input, .select{
+  width:100%;
+}
+
+.img-grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 720px){
+  .img-grid{ grid-template-columns: 1fr 1fr; }
+}
+
+.help{
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.week-grid{
+  display:grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.chk{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  background: rgba(0,0,0,.14);
+  user-select:none;
+  font-size: 13px;
+}
+
+.chk input{
+  transform: translateY(1px);
+}
+
+@media (max-width: 520px){
+  .week-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.sticky-bar{
+  position: sticky;
+  bottom: 0;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: rgba(0,0,0,.42);
+  backdrop-filter: blur(10px);
+  display:flex;
+  align-items:center;
+  gap:12px;
+  justify-content:flex-start;
+}
+
+.sticky-bar .muted{
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 아주 작은 화면에서 버튼이 아래로 떨어지게 */
+@media (max-width: 420px){
+  .sticky-bar{
+    flex-direction:column;
+    align-items:stretch;
+  }
+}

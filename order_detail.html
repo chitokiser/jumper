@@ -1,0 +1,119 @@
+<!-- /order_detail.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>주문 상세 - Jovial Travel</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/order_detail.css" />
+
+  <script src="/assets/js/partials.js"></script>
+
+  <!-- firebase (module) -->
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+</head>
+<body>
+
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-inner">
+        <a class="back" href="./orders.html" id="backLink">← 내 주문</a>
+        <h1 class="hero-title" id="title">주문</h1>
+        <p class="hero-desc" id="sub">-</p>
+
+        <div class="grid">
+          <section class="panel">
+            <div class="panel-h">
+              <div class="dot"></div>
+              <div class="panel-title" id="leftTitle">결제 증빙 입력</div>
+            </div>
+            <div class="panel-b">
+              <div class="note" id="msg">주문을 불러오는 중...</div>
+
+              <div class="proof" id="proofCard">
+                <div class="proof-title">카드 결제 정보</div>
+                <div class="form">
+                  <label class="lbl"><span>승인번호</span><input class="inp" id="cardApprovalNo" placeholder="예: 12345678"/></label>
+                  <label class="lbl"><span>결제일시</span><input class="inp" id="cardPaidAt" placeholder="예: 2026-01-12 16:00"/></label>
+                  <label class="lbl"><span>금액</span><input class="inp" id="cardAmount" placeholder="예: 10"/></label>
+                  <label class="lbl"><span>통화</span><input class="inp" id="cardCurrency" placeholder="예: USD"/></label>
+                </div>
+              </div>
+
+              <div class="proof" id="proofFiat">
+                <div class="proof-title">법정화폐 입금 정보</div>
+                <div class="form">
+                  <label class="lbl"><span>입금자명</span><input class="inp" id="fiatDepositor" placeholder="예: 김철수"/></label>
+                  <label class="lbl"><span>은행</span><input class="inp" id="fiatBank" placeholder="예: Vietcombank"/></label>
+                  <label class="lbl"><span>계좌</span><input class="inp" id="fiatAccount" placeholder="예: 0123456789"/></label>
+                  <label class="lbl"><span>금액</span><input class="inp" id="fiatAmount" placeholder="예: 300000"/></label>
+                  <label class="lbl"><span>통화</span><input class="inp" id="fiatCurrency" placeholder="예: VND"/></label>
+                </div>
+              </div>
+
+              <div class="proof" id="proofUsdt">
+                <div class="proof-title">HEX 결제 정보</div>
+                <div class="form">
+                  <label class="lbl"><span>Tx Hash</span><input class="inp" id="usdtTxHash" placeholder="0x..."/></label>
+                  <label class="lbl"><span>From 주소</span><input class="inp" id="usdtFrom" placeholder="0x..."/></label>
+                  <label class="lbl"><span>금액</span><input class="inp" id="usdtAmount" placeholder="예: 10"/></label>
+                  <label class="lbl"><span>통화</span><input class="inp" id="usdtCurrency" placeholder="HEX"/></label>
+                </div>
+              </div>
+
+              <div class="row">
+                <button class="btn btn-primary" id="btnSave">증빙 저장</button>
+                <a class="btn" href="./index.html" id="btnGoProduct">홈으로</a>
+              </div>
+            </div>
+          </section>
+
+          <aside class="panel">
+            <div class="panel-h">
+              <div class="dot dot2"></div>
+              <div class="panel-title">주문 정보</div>
+            </div>
+            <div class="panel-b">
+              <div class="kv">
+                <div class="k">주문번호</div>
+                <div class="v mono" id="orderNo">-</div>
+                <div class="k">상품</div>
+                <div class="v" id="productTitle">-</div>
+                <div class="k">예약 날짜</div>
+                <div class="v mono" id="optDate">-</div>
+                <div class="k">성인</div>
+                <div class="v mono" id="optAdults">-</div>
+                <div class="k">어린이</div>
+                <div class="v mono" id="optChildren">-</div>
+                <div class="k">결제수단</div>
+                <div class="v" id="payMethod">-</div>
+                <div class="k">금액</div>
+                <div class="v mono" id="amount">-</div>
+                <div class="k">상태</div>
+                <div class="v" id="status">-</div>
+                <div class="k">메모</div>
+                <div class="v" id="memo">-</div>
+                <div class="k">관리자 노트</div>
+                <div class="v" id="adminNote">-</div>
+              </div>
+              <div class="mini mono" id="meta">-</div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/order_detail.js"></script>
+</body>
+</html>

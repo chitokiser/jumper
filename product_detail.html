@@ -1,0 +1,19 @@
+<!-- /product_detail.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>상품 상세 - Jovial Travel</title>
+  <meta http-equiv="refresh" content="0; url=./item.html" />
+  <script>
+    // product_detail.html -> item.html (Firestore 버전)로 통합
+    (function(){
+      var qs = location.search || "";
+      var target = "./item.html" + qs;
+      location.replace(target);
+    })();
+  </script>
+</head>
+<body></body>
+</html>

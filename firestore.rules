@@ -1,0 +1,250 @@
+// /firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 운영자 이메일(부트스트랩용)
+    function isOperatorEmail() {
+      return signedIn()
+        && (request.auth.token.email is string)
+        && (request.auth.token.email == "daguri75@gmail.com");
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          || isOperatorEmail()
+        );
+    }
+
+    // orders 단건에서만 쓰는 구매자/가이드 판정
+    function isOrderBuyer() {
+      return signedIn()
+        && (resource.data.buyerUid is string)
+        && resource.data.buyerUid == request.auth.uid;
+    }
+
+    function isOrderGuide() {
+      return signedIn()
+        && (resource.data.guideUid is string)
+        && resource.data.guideUid == request.auth.uid;
+    }
+
+    // 구매자가 수정 가능한 키를 "결제증빙 전용"으로 제한
+    function buyerPayProofUpdateOnly() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(["proof","paymentStatus","payProofUpdatedAt"]);
+    }
+
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 공지사항(notices) - 추가(통합)
+    // - 읽기: 누구나(홈 표시)
+    // - 쓰기: admin(=admins/{uid} 존재) 또는 운영자 이메일
+    match /notices/{noticeId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 가이드 신청서
+    match /guideApplications/{uid} {
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow list: if isAdmin();
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+
+    // 가이드 프로필
+    match /guides/{uid} {
+      allow get: if isAdmin()
+                || (signedIn() && request.auth.uid == uid)
+                || (resource.data.approved == true);
+      allow list: if isAdmin();
+
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow delete: if false;
+    }
+
+    // 상품(items)
+    match /items/{itemId} {
+
+      function isOwner() {
+        return signedIn() && (
+          (resource.data.ownerUid is string && resource.data.ownerUid == request.auth.uid)
+          || (resource.data.guideUid is string && resource.data.guideUid == request.auth.uid)
+        );
+      }
+
+      function isPublicItem() {
+        return (resource.data.status in ["published", "approved"]);
+      }
+
+      allow get: if isAdmin() || isOwner() || isPublicItem();
+      allow list: if true;
+
+      allow create: if signedIn()
+        && (request.resource.data.ownerUid is string)
+        && request.resource.data.ownerUid == request.auth.uid;
+
+      allow update: if isAdmin() || isOwner();
+
+      allow delete: if isAdmin()
+        || (signedIn() && (resource.data.ownerUid is string) && resource.data.ownerUid == request.auth.uid);
+
+      match /reviews/{uid} {
+        allow get, list: if isAdmin() || isPublicItem() || isOwner();
+        allow create, update: if signedIn() && request.auth.uid == uid;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // 리뷰 (SSOT)
+    match /reviews/{orderId} {
+
+      function orderExistsAndMine() {
+        return signedIn()
+          && exists(/databases/$(database)/documents/orders/$(orderId))
+          && get(/databases/$(database)/documents/orders/$(orderId)).data.buyerUid == request.auth.uid
+          && (
+            get(/databases/$(database)/documents/orders/$(orderId)).data.paymentStatus in ["confirmed","settled","completed"]
+            || get(/databases/$(database)/documents/orders/$(orderId)).data.status in ["confirmed","settled","completed"]
+          );
+      }
+
+      function isReviewAuthor() {
+        return signedIn()
+          && (resource.data.authorUid is string)
+          && resource.data.authorUid == request.auth.uid;
+      }
+
+      function isReviewGuide() {
+        return signedIn()
+          && (resource.data.guideUid is string)
+          && resource.data.guideUid == request.auth.uid;
+      }
+
+      function authorUpdateOnly() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        return changed.hasOnly(["rating","text","updatedAt"]);
+      }
+
+      function guideReplyOnly() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        return changed.hasOnly(["guideReply","updatedAt"]);
+      }
+
+      allow get, list: if true;
+
+      allow create: if orderExistsAndMine()
+        && (request.resource.data.authorUid is string)
+        && request.resource.data.authorUid == request.auth.uid
+        && (request.resource.data.orderId == orderId);
+
+      allow update: if isAdmin()
+        || (isReviewAuthor() && authorUpdateOnly())
+        || (isReviewGuide() && guideReplyOnly())
+        || (signedIn() && isAdmin() == false && false);
+
+      allow delete: if isAdmin();
+    }
+
+    // 주문(orders)
+    match /orders/{orderId} {
+      allow get: if isAdmin() || isOrderBuyer() || isOrderGuide();
+      allow list: if signedIn();
+
+      allow create: if signedIn()
+        && (request.resource.data.buyerUid is string)
+        && request.resource.data.buyerUid == request.auth.uid;
+
+      allow update: if isAdmin()
+        || (isOrderBuyer() && buyerPayProofUpdateOnly());
+
+      allow delete: if isAdmin();
+    }
+
+    // slots
+    match /slots/{slotId} {
+      allow get, list: if true;
+
+      allow create: if signedIn()
+        && (request.resource.data.itemId is string)
+        && (request.resource.data.date is string)
+        && (request.resource.data.capacity is number)
+        && (request.resource.data.booked is number)
+        && request.resource.data.booked >= 0
+        && request.resource.data.capacity >= 0;
+
+      allow update: if signedIn()
+        && (resource.data.booked is number)
+        && (request.resource.data.booked is number)
+        && request.resource.data.booked >= resource.data.booked;
+
+      allow delete: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow get, create, update: if signedIn() && request.auth.uid == uid;
+      allow list, delete: if isAdmin();
+    }
+
+    // settlements
+    match /settlements/{ym} {
+      allow get: if isAdmin() || signedIn();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+
+      match /guides/{uid} {
+        allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow list: if isAdmin();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // (레거시) settlementRuns
+    match /settlementRuns/{ym} {
+      allow get: if isAdmin() || signedIn();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+
+      match /guides/{uid} {
+        allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow list: if isAdmin();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // guideOrders
+    match /guideOrders/{guideUid} {
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == guideUid);
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+
+      match /orders/{orderId} {
+        allow get, list: if isAdmin() || (signedIn() && request.auth.uid == guideUid);
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // settings
+    match /settings/{docId} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

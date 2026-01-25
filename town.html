@@ -1,0 +1,51 @@
+<!-- /town.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/assets/images/jovial/favicon.png">
+  <title>우리마을 상세 - 준비중</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="panel">
+      <h1 class="title">우리마을 상세 페이지 (준비중)</h1>
+      <p class="desc">
+        오션파크 1/2/3별로
+        생활편의, 이동, 추천 가맹점, 커뮤니티 거점, 홈스테이/놀거리 목록을 모아서 보여주는 페이지입니다.
+      </p>
+      <div class="state" id="areaState"></div>
+
+      <div class="row" style="margin-top:14px; gap:10px; flex-wrap:wrap;">
+        <a class="btn" href="/index.html">우리마을로 돌아가기</a>
+        <a class="btn btn--ghost" href="/homestay.html">홈스테이</a>
+        <a class="btn btn--ghost" href="/what.html">뭐할까?</a>
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script>
+    (function(){
+      const p = new URLSearchParams(location.search);
+      const area = (p.get('area') || '').toLowerCase();
+      const map = { op1: '오션파크 1', op2: '오션파크 2', op3: '오션파크 3' };
+      const name = map[area] || '우리마을';
+      const el = document.getElementById('areaState');
+      if(el) el.textContent = `선택: ${name}`;
+      document.title = `${name} - 우리마을`;
+    })();
+  </script>
+</body>
+</html>

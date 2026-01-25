@@ -1,0 +1,89 @@
+<!-- /admin_notices.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>공지관리 - Jovial</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/admin_notices.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+  <script type="module" src="/assets/js/pages/admin_notices.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">공지관리</h2>
+      </div>
+
+      <div class="panel admin-notice-panel">
+        <div class="an-top">
+          <div class="an-state" id="anState">권한 확인 중…</div>
+          <div class="an-actions">
+            <a class="btn btn--ghost btn--sm" href="/index.html">홈으로</a>
+          </div>
+        </div>
+
+        <form class="an-form" id="noticeForm" autocomplete="off">
+          <div class="an-row">
+            <label class="an-label" for="ntTitle">제목</label>
+            <input class="an-input" id="ntTitle" type="text" placeholder="예: 설 연휴 운영 안내" maxlength="80" required />
+          </div>
+
+          <div class="an-row">
+            <label class="an-label" for="ntText">내용</label>
+            <textarea class="an-textarea" id="ntText" rows="6" placeholder="공지 내용을 입력하세요" required></textarea>
+          </div>
+
+          <div class="an-grid">
+            <div class="an-row">
+              <label class="an-label" for="ntPinned">고정</label>
+              <select class="an-select" id="ntPinned">
+                <option value="0">아니오</option>
+                <option value="1">예</option>
+              </select>
+            </div>
+
+            <div class="an-row">
+              <label class="an-label" for="ntVisible">공개</label>
+              <select class="an-select" id="ntVisible">
+                <option value="1">공개</option>
+                <option value="0">비공개</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="an-btns">
+            <button class="btn btn--primary" type="submit" id="btnSave">저장</button>
+            <button class="btn btn--ghost" type="button" id="btnReset">초기화</button>
+          </div>
+
+          <div class="an-help" id="anHelp"></div>
+        </form>
+
+        <div class="an-divider"></div>
+
+        <div class="an-list-head">
+          <div class="an-list-title">공지 목록</div>
+          <div class="an-list-help">최신순, 고정은 상단</div>
+        </div>
+
+        <ol class="an-list" id="noticeList"></ol>
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+</body>
+</html>

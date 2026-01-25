@@ -1,0 +1,156 @@
+/* /assets/css/pages/admin_notices.css */
+
+.admin-notice-panel{
+  padding:16px;
+}
+
+.an-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.an-state{
+  font-size:13px;
+  opacity:.85;
+}
+
+.an-form{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.an-row{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.an-label{
+  font-size:13px;
+  opacity:.85;
+}
+
+.an-input,
+.an-textarea,
+.an-select{
+  width:100%;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: inherit;
+  padding:12px 12px;
+  outline:none;
+}
+
+.an-textarea{
+  resize:vertical;
+  min-height:140px;
+}
+
+.an-input:focus,
+.an-textarea:focus,
+.an-select:focus{
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.08);
+}
+
+.an-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+
+.an-btns{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:4px;
+}
+
+.an-help{
+  font-size:13px;
+  opacity:.85;
+  min-height:18px;
+}
+
+.an-divider{
+  height:1px;
+  background: rgba(255,255,255,.10);
+  margin:16px 0;
+}
+
+.an-list-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.an-list-title{
+  font-size:14px;
+}
+
+.an-list-help{
+  font-size:12px;
+  opacity:.70;
+}
+
+.an-list{
+  margin:0;
+  padding-left:18px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.an-item{
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05);
+  padding:12px;
+}
+
+.an-item-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+}
+
+.an-item-title{
+  font-size:14px;
+  line-height:1.35;
+}
+
+.an-badges{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.an-badge{
+  font-size:12px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  opacity:.9;
+}
+
+.an-item-text{
+  margin-top:8px;
+  font-size:13px;
+  opacity:.82;
+  line-height:1.55;
+  white-space:pre-wrap;
+}
+
+@media (max-width: 720px){
+  .admin-notice-panel{ padding:12px; }
+  .an-grid{ grid-template-columns: 1fr; }
+}

@@ -1,0 +1,234 @@
+<!-- /index.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/assets/images/jovial/favicon.png">
+  <title>우리마을 - 하노이 오션파크</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/town_home.css" />
+  <link rel="stylesheet" href="/assets/css/pages/town_home.map.css" />
+  <link rel="stylesheet" href="/assets/css/pages/town_home.cards.css" />
+   <link rel="stylesheet" href="/assets/css/pages/town_home.photos.css" />
+   <link rel="stylesheet" href="/assets/css/pages/town_home.luxe.css" />
+   <link rel="stylesheet" href="/assets/css/pages/town_home.hero.css" />
+
+
+
+  <script src="/assets/js/partials.js" defer></script>
+
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+  <script type="module" src="/assets/js/pages/town_home.js" defer></script>
+  <script type="module" src="/assets/js/pages/town_home.hero.js" defer></script>
+
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+   <!-- HERO SLIDER -->
+<section class="panel town-hero hero-slider" id="heroSlider">
+  <!-- 배경 레이어(슬라이드) -->
+  <div class="hero-bg" aria-hidden="true">
+    <div class="hero-bg-track" id="heroBgTrack"></div>
+    <div class="hero-bg-vignette"></div>
+  </div>
+
+  <!-- 내용 -->
+  <div class="town-hero-inner hero-content">
+    <h1 class="town-title">하노이 오션파크에 오신 것을 환영합니다.</h1>
+    <p class="town-desc">
+      우리마을은 잠시 머무는 곳이 아니라 함께 살아보는 공간입니다.<br/>
+      체류하시는 동안 불편함 없이, 즐겁고 안전하게 지내실 수 있도록<br/>
+      저희 Jovial 패밀리들이 함께하겠습니다.
+    </p>
+
+    <div class="hero-actions">
+ 
+    </div>
+  </div>
+
+  <!-- 컨트롤 -->
+  <button class="hero-nav hero-nav--prev" type="button" id="heroPrev" aria-label="이전 배경">‹</button>
+  <button class="hero-nav hero-nav--next" type="button" id="heroNext" aria-label="다음 배경">›</button>
+
+  <div class="hero-dots" id="heroDots" aria-label="배경 선택"></div>
+</section>
+
+
+
+  <section class="section family-deck">
+  <div class="section-h family-deck-head">
+    <h2 class="section-title">우리마을 패밀리</h2>
+
+    <div class="section-tools">
+      <a class="btn btn--primary btn-family-register" href="/family-register.html">패밀리등록</a>
+    </div>
+  </div>
+
+  <div class="family-placeholder family-deck-grid">
+    <div class="ph-card family-card family-card--stay">
+      <div class="ph-title">홈스테이 패밀리</div>
+      <div class="ph-desc">여유방을 가지고 있는 이웃.</div>
+      <div class="family-chip">Stay</div>
+    </div>
+
+    <div class="ph-card family-card family-card--play">
+      <div class="ph-title">놀거리 패밀리</div>
+      <div class="ph-desc">여행·마사지·피클볼 등 체류자에게 즐거움을 제공할 수 있는 이웃</div>
+      <div class="family-chip">Play</div>
+    </div>
+
+    <div class="ph-card family-card family-card--mustgo">
+      <div class="ph-title">Must-Go 패밀리</div>
+      <div class="ph-desc">식당·카페·병원 등, 우리마을 체류자에게 혜택을 줄 수 있는 이웃</div>
+      <div class="family-chip">Must-Go</div>
+    </div>
+  </div>
+</section>
+
+
+    <!-- 우리마을 홈스테이 카드 섹션 -->
+  <section class="section" id="home-homestay-photos">
+  <div class="section-h">
+    <h2 class="section-title">우리마을 홈스테이</h2>
+  </div>
+
+  <div class="panel photo-grid-panel">
+    <div class="photo-grid">
+      <a class="photo-tile" href="/homestay.html">
+        <img src="/assets/images/homestay/1.png" alt="홈스테이">
+      </a>
+      <a class="photo-tile" href="/homestay.html">
+        <img src="/assets/images/homestay/2.png" alt="홈스테이">
+      </a>
+      <a class="photo-tile" href="/homestay.html">
+        <img src="/assets/images/homestay/3.png" alt="홈스테이">
+      </a>
+      <a class="photo-tile" href="/homestay.html">
+        <img src="/assets/images/homestay/4.png" alt="홈스테이">
+      </a>
+    </div>
+  </div>
+</section>
+
+
+    <!-- 우리마을 놀거리 카드 섹션 -->
+ <section class="section" id="home-what-photos">
+  <div class="section-h">
+    <h2 class="section-title">우리마을 놀거리</h2>
+  </div>
+
+  <div class="panel photo-grid-panel">
+    <div class="photo-grid">
+      <a class="photo-tile" href="/what.html">
+        <img src="/assets/images/what/1.png" alt="놀거리">
+      </a>
+      <a class="photo-tile" href="/what.html">
+        <img src="/assets/images/what/2.png" alt="놀거리">
+      </a>
+      <a class="photo-tile" href="/what.html">
+        <img src="/assets/images/what/3.png" alt="놀거리">
+      </a>
+      <a class="photo-tile" href="/what.html">
+        <img src="/assets/images/what/4.png" alt="놀거리">
+      </a>
+    </div>
+  </div>
+</section>
+
+
+    <section class="section" id="village-map">
+      <div class="section-h">
+        <h2 class="section-title">우리마을 지도</h2>
+      </div>
+
+      <div class="panel map-panel">
+        <div class="map-panel-inner">
+
+          <div class="map-copy">
+            <p class="map-title">우리마을 지도에 홈스테이, 식당, 병원, 놀거리를 표시합니다.</p>
+            <p class="map-desc">
+              실제로 존재하는 장소만 등록되며, Jovial은 큐레이션된 콘텐츠만 연결합니다.
+            </p>
+
+            <div class="map-actions">
+              <a class="btn btn--ghost btn--sm"
+                 href="https://www.google.com/maps/d/u/0/viewer?mid=1BLmh1cvWOhWf714Bzk3whFDg6Cc-j8Q&hl=ko"
+                 target="_blank"
+                 rel="noopener noreferrer">
+                우리마을 지도 열기
+              </a>
+
+              <a class="btn btn--ghost btn--sm"
+                 id="btnAdminPlace"
+                 href="/admin_places.html"
+                 style="display:none;">
+                장소 등록 (관리자)
+              </a>
+            </div>
+          </div>
+
+          <div class="map-box" aria-hidden="false">
+            <div class="map-frame-wrapper">
+              <iframe
+                src="https://www.google.com/maps/d/u/0/embed?mid=1BLmh1cvWOhWf714Bzk3whFDg6Cc-j8Q&ehbc=2E312F"
+                width="100%"
+                height="480"
+                style="border:0;"
+                allowfullscreen=""
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                title="우리마을 지도">
+              </iframe>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">우리마을 사진관</h2>
+      </div>
+      <div class="panel photo-panel">
+        <div class="photo-slider" id="uiSlider" aria-label="우리마을 사진관">
+          <button class="ps-btn" type="button" id="uiPrev" aria-label="이전 사진">‹</button>
+          <div class="ps-stage">
+            <img id="uiSlideImg" class="ps-img" alt="우리마을 사진" />
+            <div class="ps-meta">
+              <span id="uiSlideIndex" class="ps-index">-</span>
+            </div>
+          </div>
+          <button class="ps-btn" type="button" id="uiNext" aria-label="다음 사진">›</button>
+        </div>
+        <div class="help small" id="uiSlideHelp" style="margin-top:10px;"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">공지사항</h2>
+      </div>
+
+      <div class="panel notice-panel">
+        <ol class="notice-list" id="noticeList"></ol>
+        <div class="help small">
+          공지사항은 관리자만 작성할 수 있습니다.
+          <a href="/admin_notices.html" id="noticeAdminLink" style="display:none;">공지 관리</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+</body>
+</html>

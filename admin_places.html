@@ -1,0 +1,114 @@
+<!-- /admin_places.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>장소등록 - Jovial</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/admin_places.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="panel">
+      <h1 class="title">장소등록</h1>
+      <p class="desc">우리마을 지도에 표시할 장소(홈스테이/식당/병원/놀거리)를 관리자만 등록합니다.</p>
+
+      <div id="state" class="state">로딩...</div>
+
+      <form id="form" class="form hide">
+        <div class="grid">
+          <label class="field">
+            <span>장소 이름</span>
+            <input id="name" type="text" maxlength="80" placeholder="예: 오션파크2 커피클래스" />
+          </label>
+
+          <label class="field">
+            <span>구분</span>
+            <select id="type">
+              <option value="homestay">홈스테이</option>
+              <option value="restaurant">식당/카페</option>
+              <option value="hospital">병원/약국</option>
+              <option value="activity">놀거리</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>지역</span>
+            <select id="area">
+              <option value="op1">오션파크 1</option>
+              <option value="op2">오션파크 2</option>
+              <option value="op3">오션파크 3</option>
+              <option value="etc">기타</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>주소(텍스트)</span>
+          <input id="address" type="text" maxlength="160" placeholder="예: Vinhomes Ocean Park 2, Gia Lâm, Hà Nội" />
+        </label>
+
+        <label class="field">
+          <span>구글 지도 링크(선택)</span>
+          <input id="gmap" type="url" maxlength="260" placeholder="https://maps.google.com/..." />
+        </label>
+
+        <div class="grid">
+          <label class="field">
+            <span>연락처(선택)</span>
+            <input id="phone" type="text" maxlength="60" placeholder="예: +84 9xx xxx xxx" />
+          </label>
+
+          <label class="field">
+            <span>표시(visible)</span>
+            <select id="visible">
+              <option value="1">표시</option>
+              <option value="0">숨김</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>추천(Must-Go)</span>
+            <select id="mustGo">
+              <option value="0">일반</option>
+              <option value="1">Must-Go</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>설명(선택)</span>
+          <textarea id="note" rows="5" maxlength="1200" placeholder="체류자에게 필요한 팁을 적어주세요"></textarea>
+        </label>
+
+        <div class="actions">
+          <button class="btn primary" type="submit" id="btnSave">저장</button>
+          <button class="btn" type="button" id="btnNew">새로 입력</button>
+          <button class="btn danger" type="button" id="btnDelete" style="display:none;">삭제</button>
+        </div>
+      </form>
+
+      <div class="divider"></div>
+
+      <h2 class="subtitle">장소 목록</h2>
+      <div id="list" class="place-list"></div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/admin_places.js"></script>
+</body>
+</html>

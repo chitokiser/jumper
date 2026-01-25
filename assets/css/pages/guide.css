@@ -1,0 +1,90 @@
+/* /assets/css/pages/guide.css */
+.grid2{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:14px;
+}
+@media (min-width: 980px){
+  .grid2{ grid-template-columns: 1fr 1.2fr; align-items:start; }
+}
+
+.card-h{ margin-bottom:10px; }
+.card-title{ font-size:16px; }
+.card-sub{ color:var(--muted); font-size:13px; margin-top:6px; }
+
+.form{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.field{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.field span{
+  color:var(--muted);
+  font-size:13px;
+}
+input, textarea{
+  border:1px solid var(--line);
+  background: rgba(0,0,0,.18);
+  color: var(--text);
+  border-radius: 12px;
+  padding:12px;
+  outline:none;
+}
+input:focus, textarea:focus{
+  border-color: rgba(65,138,255,.55);
+  box-shadow: 0 0 0 3px rgba(65,138,255,.14);
+}
+.actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+.list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.item{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.04);
+  border-radius: 14px;
+  padding:14px;
+}
+.item-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:8px;
+}
+.item-title{ font-size:15px; }
+.pill{
+  padding:6px 10px;
+  border-radius: 999px;
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  font-size:12px;
+}
+.item-meta{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  color: var(--muted);
+  font-size:13px;
+}
+.item-actions{
+  margin-top:12px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.reject{
+  margin-top:10px;
+  color: rgba(255,77,109,.92);
+  font-size:13px;
+}
+.empty{
+  color: var(--muted);
+  padding:10px 0;
+}

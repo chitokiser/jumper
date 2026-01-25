@@ -1,0 +1,234 @@
+<!-- /item.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>상품 상세 - Jovial Travel</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/pages/item.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page item-page">
+    <section class="panel item-panel">
+      <div id="itemState" class="state">로딩...</div>
+
+      <div id="itemBox" class="item-box hide">
+
+        <header class="item-head">
+          <div class="item-head-top">
+            <a class="back" href="./index.html">← 목록</a>
+            <a class="btn" href="./my_products.html">내 상품</a>
+          </div>
+
+          <h1 id="itTitle" class="title"></h1>
+
+          <div class="item-head-meta">
+            <div id="itMeta" class="meta"></div>
+            <div class="head-alerts">
+              <div id="itWarn" class="warn" style="display:none;"></div>
+              <div id="itReject" class="reject" style="display:none;"></div>
+            </div>
+          </div>
+        </header>
+
+        <div class="item-grid">
+          <div class="item-main">
+
+            <section class="card">
+              <div class="card-head">
+                <div class="card-title">
+                  이미지 <span class="mono" id="itImageCount"></span>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="itImages" class="images slider"></div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <div class="card-title">상세 설명</div>
+              </div>
+              <div class="card-body">
+                <div class="desc">
+                  <div class="v" id="itDesc"></div>
+                </div>
+
+                <div id="itInfo3" class="info3" style="display:none;">
+                  <details class="ibox" open>
+                    <summary class="ibox-sum">포함 내역</summary>
+                    <div class="ibox-body" id="itIncludes"></div>
+                  </details>
+
+                  <details class="ibox">
+                    <summary class="ibox-sum">불포함 내역</summary>
+                    <div class="ibox-body" id="itExcludes"></div>
+                  </details>
+
+                  <details class="ibox">
+                    <summary class="ibox-sum">준비물</summary>
+                    <div class="ibox-body" id="itPreps"></div>
+                  </details>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <div class="card-title">리뷰 / 평가</div>
+                <div class="rating-avg" id="rvAvg"></div>
+              </div>
+              <div class="card-body">
+                <div id="rvFormWrap" class="review-form" style="display:none;">
+                  <div class="review-row">
+                    <select id="rvRating">
+                      <option value="5">5점</option>
+                      <option value="4">4점</option>
+                      <option value="3">3점</option>
+                      <option value="2">2점</option>
+                      <option value="1">1점</option>
+                    </select>
+                  </div>
+                  <div class="review-row">
+                    <textarea id="rvText" maxlength="600" placeholder="리뷰 내용을 입력하세요"></textarea>
+                  </div>
+                  <div class="review-row">
+                    <button id="btnRvSave" class="btn primary" type="button">리뷰 저장</button>
+                  </div>
+                  <div class="mono">로그인한 계정당 1개의 리뷰(수정 가능)</div>
+                </div>
+
+                <div id="rvHint" class="empty" style="display:none;"></div>
+                <div id="rvList" class="review-list"></div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <div class="card-title">예약 / 구매</div>
+                <div class="mono" id="orderMini"></div>
+              </div>
+              <div class="card-body">
+                <div id="orderHint" class="empty" style="display:none;"></div>
+
+                <div id="orderForm" class="order-form" style="display:none;">
+                  <div class="order-row" id="odRowSingle">
+                    <label class="lab">예약 날짜</label>
+                    <input id="odDate" class="in" type="date" />
+                  </div>
+
+                  <div class="order-row" id="odRowRange" style="display:none;">
+                    <label class="lab">예약 기간</label>
+                    <div class="row-inline">
+                      <input id="odStart" class="in" type="date" />
+                      <span class="sep">~</span>
+                      <input id="odEnd" class="in" type="date" />
+                    </div>
+                  </div>
+
+                  <div class="order-row" id="odRowFixed" style="display:none;">
+                    <label class="lab">예약 날짜</label>
+                    <div class="fixed-box">
+                      <div class="fixed-title" id="odFixedInfo">운영 요일 기준 자동 배정</div>
+                      <div class="mono" id="odFixedPreview"></div>
+                    </div>
+                  </div>
+
+                  <div class="order-row" id="odRowAmount">
+                    <label class="lab">결제 금액</label>
+                    <div class="paybox">
+                      <div class="pay-main" id="odPayTotal">0</div>
+                      <div class="mono" id="odPayBreak"></div>
+                    </div>
+                  </div>
+
+                  <div class="order-row">
+                    <label class="lab">인원</label>
+                    <input id="odPeople" class="in" type="number" min="1" value="1" />
+                  </div>
+
+                  <div class="order-row">
+                    <label class="lab">휴대폰 번호</label>
+                    <input id="odPhone" class="in" type="tel" placeholder="예: +82 10 1234 5678 / +84 912 345 678" />
+                  </div>
+
+                  <div class="order-row">
+                    <label class="lab">카카오 ID (선택)</label>
+                    <input id="odKakaoId" class="in" type="text" placeholder="예: jovialtravel" />
+                  </div>
+
+                  <div class="order-row">
+                    <label class="checkline">
+                      <input type="checkbox" id="odAgreeKakao" />
+                      <span>처리상태 자동 알림(카카오 알림톡/문자) 수신에 동의합니다</span>
+                    </label>
+                  </div>
+
+                  <div class="order-row">
+                    <label class="lab">결제 방법</label>
+                    <select id="odPay" class="in">
+                      <option value="card">카드</option>
+                      <option value="fiat">법정화폐</option>
+                      <option value="hex">HEX</option>
+                    </select>
+                  </div>
+
+                  <div class="order-row">
+                    <label class="lab">메모</label>
+                    <textarea id="odMemo" class="ta" maxlength="800" placeholder="요청사항(선택)"></textarea>
+                  </div>
+
+                  <div class="order-row row-actions">
+                    <button id="btnAddCart" class="btn" type="button">장바구니 담기</button>
+                    <button id="btnOrder" class="btn primary" type="button">예약 요청 저장</button>
+                  </div>
+
+                  <div class="mono">결제는 현재 기록만 저장됩니다. (카드/현금/HEX 결제 연동은 다음 단계)</div>
+                  <div id="orderState" class="state"></div>
+                </div>
+              </div>
+            </section>
+
+            <details class="card raw-card" id="itRawWrap">
+              <summary class="card-head raw-sum">전체 데이터 보기</summary>
+              <div class="card-body">
+                <pre id="itRaw" class="raw-pre"></pre>
+              </div>
+            </details>
+
+          </div>
+
+          <aside class="item-side">
+            <section class="card sticky">
+              <div class="card-head">
+                <div class="card-title">요약</div>
+              </div>
+              <div class="card-body">
+                <div class="kv"><div class="k">상태</div><div class="v" id="itStatus"></div></div>
+                <div class="kv"><div class="k">카테고리</div><div class="v" id="itCategory"></div></div>
+                <div class="kv"><div class="k">가격</div><div class="v" id="itPrice"></div></div>
+                <div class="kv"><div class="k">지역</div><div class="v" id="itLocation"></div></div>
+
+                <div class="side-note mono">이미지/설명/준비물은 좌측에서 확인</div>
+              </div>
+            </section>
+          </aside>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/item.js"></script>
+</body>
+</html>

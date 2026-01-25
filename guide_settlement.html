@@ -1,0 +1,94 @@
+<!-- /guide_settlement.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>가이드 정산 - Jovial Travel</title>
+
+  <link rel="icon" href="/assets/images/jovial/favicon.png">
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/settlement.css" />
+
+  <script src="/assets/js/partials.js"></script>
+
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+  <script type="module" src="/assets/js/pages/guide_settlement.js"></script>
+</head>
+<body>
+  <div id="header"></div>
+
+  <main class="wrap">
+    <section class="sett-hero">
+      <div class="sett-hero__top">
+        <div>
+          <h1 class="sett-title">가이드 정산</h1>
+          <p class="sett-sub">월별 정산 요약과 주문 내역을 확인합니다.</p>
+        </div>
+
+        <div class="sett-controls">
+          <label class="field">
+            <span class="field__k">정산 월</span>
+            <input id="month" class="input" type="month" />
+          </label>
+
+          <label class="field">
+            <span class="field__k">커미션(%)</span>
+            <input id="commission" class="input" type="number" min="0" max="100" step="0.1" value="10" />
+          </label>
+
+          <button id="btnReload" class="btn">새로고침</button>
+        </div>
+      </div>
+
+      <div class="sett-lockbar">
+        <div class="lock-state" id="lockState">로딩중…</div>
+        <div class="lock-sub" id="lockSub"></div>
+      </div>
+
+      <div class="sett-kpi">
+        <div class="kpi">
+          <div class="kpi__k">정산 대상 주문</div>
+          <div class="kpi__v" id="kpiCount">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__k">총 매출</div>
+          <div class="kpi__v" id="kpiGross">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__k">플랫폼 수수료</div>
+          <div class="kpi__v" id="kpiFee">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__k">가이드 정산액</div>
+          <div class="kpi__v" id="kpiNet">-</div>
+        </div>
+      </div>
+
+      <div class="sett-state" id="state">로딩중…</div>
+    </section>
+
+    <section class="sett-section">
+      <div class="sect-top">
+        <h2 class="sect-title">정산 대상 주문</h2>
+        <div class="hint">status: confirmed / completed / paid</div>
+      </div>
+
+      <div class="table">
+        <div class="thead">
+          <div>일시</div>
+          <div>상품</div>
+          <div>상태</div>
+          <div class="right">금액</div>
+        </div>
+        <div id="rows" class="tbody"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="footer"></div>
+</body>
+</html>

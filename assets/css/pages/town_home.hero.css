@@ -1,0 +1,268 @@
+/* /assets/css/pages/town_home.hero.css */
+
+/* 히어로를 슬라이드 배경으로 */
+.hero-slider{
+  position: relative;
+  overflow: hidden;
+  min-height: 220px;
+  padding: 0;
+}
+
+/* 배경 레이어 */
+.hero-bg{
+  position:absolute;
+  inset:0;
+  z-index:0;
+}
+
+.hero-bg-track{
+  position:absolute;
+  inset:0;
+}
+
+.hero-bg-slide{
+  position:absolute;
+  inset:0;
+  background-size: cover;
+  background-position: center;
+  opacity:0;
+  transform: scale(1.02);
+  transition: opacity .6s ease, transform 1.2s ease;
+  filter: saturate(1.05) contrast(1.02);
+}
+
+.hero-bg-slide.is-active{
+  opacity:1;
+  transform: scale(1.0);
+}
+
+/* 이미지 없을 때도 예쁘게 보이도록 기본 그라데이션 */
+.hero-bg-slide.is-fallback{
+  background-image:
+    radial-gradient(1200px 480px at 20% 20%, rgba(37,99,235,.35), transparent 60%),
+    radial-gradient(900px 420px at 90% 40%, rgba(16,185,129,.26), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,.80), rgba(255,255,255,.65));
+}
+
+.hero-bg-vignette{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(180deg, rgba(2,6,23,.22), rgba(2,6,23,0) 45%),
+    linear-gradient(0deg, rgba(2,6,23,.20), rgba(2,6,23,0) 40%);
+  pointer-events:none;
+}
+
+/* 내용은 위로 */
+.hero-content{
+  position:relative;
+  z-index:1;
+  padding: 22px 22px 18px 22px;
+}
+
+/* 내용 가독성(유리 카드) */
+.hero-content{
+  backdrop-filter: blur(6px);
+  background: rgba(255,255,255,.62);
+  border: 1px solid rgba(15,23,42,.06);
+  border-radius: 18px;
+  margin: 14px;
+}
+
+/* 버튼 영역 */
+.hero-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top: 12px;
+}
+
+/* 좌우 버튼 */
+.hero-nav{
+  position:absolute;
+  top:50%;
+  transform: translateY(-50%);
+  z-index:2;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(15,23,42,.12);
+  background: rgba(255,255,255,.78);
+  box-shadow: 0 12px 26px rgba(2,6,23,.10);
+  backdrop-filter: blur(8px);
+  cursor:pointer;
+  user-select:none;
+  transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+
+.hero-nav:hover{
+  transform: translateY(-50%) translateY(-1px);
+  box-shadow: 0 18px 32px rgba(2,6,23,.14);
+}
+
+.hero-nav--prev{ left: 16px; }
+.hero-nav--next{ right: 16px; }
+
+/* 도트 */
+.hero-dots{
+  position:absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 14px;
+  z-index:2;
+  display:flex;
+  gap:8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.70);
+  border: 1px solid rgba(15,23,42,.08);
+  backdrop-filter: blur(8px);
+}
+
+.hero-dot{
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  border: 1px solid rgba(15,23,42,.20);
+  background: rgba(255,255,255,.75);
+  cursor:pointer;
+  padding:0;
+}
+
+.hero-dot.is-active{
+  width: 18px;
+  background: linear-gradient(135deg, rgba(37,99,235,1), rgba(16,185,129,1));
+  border-color: rgba(37,99,235,.25);
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px){
+  .hero-slider{ min-height: 240px; }
+  .hero-content{ margin: 10px; padding: 18px 16px 14px 16px; }
+  .hero-nav--prev{ left: 10px; }
+  .hero-nav--next{ right: 10px; }
+  .hero-dots{ bottom: 10px; }
+}
+/* =========================
+   HERO TEXT – 중앙 정렬 & 배경 제거
+========================= */
+
+/* 기존 유리 카드 제거 */
+.hero-content{
+  background: transparent !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+
+  /* 중앙 정렬 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  margin: 0 auto;
+  padding: 0 16px;
+  max-width: 900px;
+  min-height: 260px;
+}
+
+/* 제목 */
+.town-title{
+  color: #ffffff;
+  font-size: clamp(22px, 4vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+
+  /* 배경 위 가독성 핵심 */
+  text-shadow:
+    0 2px 6px rgba(0,0,0,.35),
+    0 6px 24px rgba(0,0,0,.45);
+}
+
+/* 설명 문구 */
+.town-desc{
+  margin-top: 14px;
+  color: rgba(255,255,255,.92);
+  font-size: clamp(14px, 2.2vw, 18px);
+  line-height: 1.6;
+
+  text-shadow:
+    0 1px 4px rgba(0,0,0,.35),
+    0 4px 16px rgba(0,0,0,.35);
+}
+
+/* 버튼 영역 */
+.hero-actions{
+  margin-top: 22px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+/* =========================
+   HERO BACKGROUND OVERLAY
+========================= */
+
+.hero-bg-vignette{
+  background:
+    radial-gradient(
+      120% 80% at 50% 50%,
+      rgba(0,0,0,.35),
+      rgba(0,0,0,.55)
+    );
+}
+@media (max-width: 640px){
+  .hero-content{
+    min-height: 300px;
+  }
+
+  .town-desc br{
+    display: none; /* 모바일 줄바꿈 정리 */
+  }
+}
+/* =========================
+   HERO SAFE AREA (텍스트가 화살표에 안 가리게)
+========================= */
+:root{
+  --hero-nav-size: 44px;   /* .hero-nav width/height */
+  --hero-nav-gap: 16px;    /* 좌우 버튼 inset */
+  --hero-safe: calc(var(--hero-nav-size) + var(--hero-nav-gap) + 12px);
+}
+
+/* hero-content가 좌우 버튼 영역을 피하도록 패딩 확보 */
+.hero-content{
+  padding-left: var(--hero-safe) !important;
+  padding-right: var(--hero-safe) !important;
+  max-width: 980px;
+}
+
+/* 모바일에서는 더 좁으니 안전영역을 조금 줄이고,
+   화살표는 가장자리로 더 붙이거나 작게 */
+@media (max-width: 640px){
+  :root{
+    --hero-nav-size: 40px;
+    --hero-nav-gap: 8px;
+    --hero-safe: calc(var(--hero-nav-size) + var(--hero-nav-gap) + 10px);
+  }
+
+  .hero-nav{
+    width: var(--hero-nav-size);
+    height: var(--hero-nav-size);
+    opacity: .88;
+  }
+
+  .hero-nav--prev{ left: var(--hero-nav-gap); }
+  .hero-nav--next{ right: var(--hero-nav-gap); }
+}
+
+/* 아주 작은 화면에서는 화살표를 숨기고(텍스트 가독성 우선),
+   도트/스와이프로만 이동 */
+@media (max-width: 380px){
+  .hero-nav{ display:none; }
+  .hero-content{
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}

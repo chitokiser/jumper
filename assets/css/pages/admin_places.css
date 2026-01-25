@@ -1,0 +1,50 @@
+/* /assets/css/pages/admin_places.css */
+
+.place-list{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.place-card{
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.03);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.place-card:hover{
+  border-color: rgba(255,255,255,.18);
+}
+
+.pc-title{
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.pc-meta{
+  font-size: 12px;
+  color: rgba(234,241,255,.55);
+}
+
+.grid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 860px){
+  .grid{ grid-template-columns: 1fr 180px 180px; }
+}
+
+.divider{
+  height: 1px;
+  background: var(--line2);
+  margin: 16px 0;
+}
+
+.subtitle{
+  margin: 0 0 10px;
+  font-size: 16px;
+}

@@ -1,0 +1,73 @@
+<!-- /my_products.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>내 상품 | Jovial Travel</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/index.css" />
+
+  <!-- partials loader -->
+  <script src="/assets/js/partials.js"></script>
+
+  <!-- firebase (module) -->
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+
+  <!-- header role/menu binding -->
+  <script type="module" src="/assets/js/header-auth.js"></script>
+</head>
+
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="hero-top">
+          <h1 class="hero-title">내 상품</h1>
+          <p class="hero-desc">내가 등록한 상품(draft/pending/published)을 확인합니다.</p>
+        </div>
+
+        <div class="hero-cards">
+          <a class="hero-card hero-card--link" href="./product_new.html">
+            <div class="hc-k">새 상품 등록</div>
+            <div class="hc-v">+</div>
+            <div class="hc-sub">product_new.html</div>
+          </a>
+          <a class="hero-card hero-card--link" href="./guide.html">
+            <div class="hc-k">가이드 상태</div>
+            <div class="hc-v">보기</div>
+            <div class="hc-sub">guide.html</div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">목록</h2>
+        <div class="section-tools">
+          <select id="qStatus" class="select">
+            <option value="all">전체</option>
+            <option value="draft">draft</option>
+            <option value="pending">pending</option>
+            <option value="published">published</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="listState" class="state">로딩중...</div>
+      <div id="listGrid" class="grid"></div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/pages/my_products.js"></script>
+</body>
+</html>

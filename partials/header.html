@@ -1,0 +1,68 @@
+<!-- /partials/header.html -->
+<header class="top-header top-header--sleek" id="siteHeaderBar">
+  <div class="hdr-inner">
+
+    <!-- 브랜드 -->
+    <a class="brand" href="/index.html">
+      <img
+        src="/assets/images/jovial/logo2.png"
+        alt="Jovial"
+        class="brand-logo"
+        onerror="this.style.display='none';"
+      />
+    </a>
+
+    <!-- 햄버거 (모바일) -->
+    <button class="burger" id="btnBurger" type="button" aria-label="menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
+    <!-- 메뉴 -->
+    <nav class="nav" id="hdrNav">
+      <!-- 공개 메뉴 -->
+      <a id="navTown" href="/index.html">우리마을</a>
+      <a id="navHomestay" href="/homestay.html">홈스테이</a>
+      <a id="navWhat" href="/what.html">뭐할까?</a>
+      <a id="navFamily" href="/family-register.html" data-role="guest user family guide admin">패밀리등록</a>
+
+
+      <!-- 사용자 -->
+      <a id="navOrders" href="/orders.html" data-role="user guide admin">내 주문</a>
+
+      <!-- 패밀리(=guide) 센터 -->
+      <div class="nav-group" data-role="guide admin" id="navGroupFamily">
+        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false">패밀리센터 ▾</button>
+        <div class="nav-group-menu">
+          
+          <a id="navHomestayNew" href="/homestay_new.html" data-role="guide admin">홈스테이 신규생성</a>
+          <a id="navProductNew" href="/product_new.html" data-role="guide admin">놀거리 추가</a>
+          <a id="navMyProducts" href="/my_products.html" data-role="guide admin">내 놀거리</a>
+          <a id="navGuideSettlement" href="/guide_settlement.html" data-role="guide admin">정산</a>
+        </div>
+      </div>
+
+      <!-- 관리자 -->
+      <div class="nav-group" data-role="admin" id="navGroupAdmin">
+        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false">관리 ▾</button>
+        <div class="nav-group-menu">
+          
+          <a href="/debug.html" data-role="admin">버그체커</a>
+<a id="navAdmin" href="/admin.html" data-role="admin">승인/상품관리</a>
+          <a id="navAdminOrders" href="/admin_orders.html" data-role="admin">주문관리</a>
+          <a id="navAdminSettlement" href="/admin_settlement.html" data-role="admin">정산관리</a>
+          <a id="navAdminNotices" href="/admin_notices.html" data-role="admin">공지관리</a>
+          <a id="navAdminPlaces" href="/admin_places.html" data-role="admin">장소등록</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 우측 -->
+    <div class="hdr-right">
+      <span class="role-badge" id="roleBadge" style="display:none;"></span>
+      <span class="user-badge" id="userBadge" style="display:none;" title=""></span>
+
+      <button class="btn" id="btnLogin" type="button">구글 로그인</button>
+      <button class="btn" id="btnLogout" type="button" style="display:none;">로그아웃</button>
+    </div>
+  </div>
+</header>
