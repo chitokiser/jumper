@@ -258,21 +258,31 @@ async function initUISlider(){
   uiImg.alt = "우리마을 사진";
   setHelp("사진을 불러오는 중입니다…");
 
-  // 1~UI_MAX 범위에서 “실제로 존재하는 파일”만 수집
-  // - 연속으로 파일이 없으면(END_GAP) “끝”으로 판단하고 중단
-  const END_GAP = 8;
-  let gap = 0;
+  // 우선: 정적 매니페스트에서 이미지 목록을 가져옵니다.
   uiList = [];
+  try{
+    const res = await fetch(`${UI_BASE}manifest.json`);
+    if(res && res.ok){
+      const data = await res.json();
+      if(Array.isArray(data) && data.length) uiList = data.slice();
+    }
+  }catch(e){
+    console.warn("manifest fetch failed:", e);
+  }
 
-  for(let i=1;i<=UI_MAX;i++){
-    // 존재 체크(확장자 순회)
-    const src = await findFirstExisting(i);
-    if(src){
-      uiList.push(src);
-      gap = 0;
-    }else{
-      gap++;
-      if(uiList.length > 0 && gap >= END_GAP) break;
+  // 폴백: 매니페스트가 없으면 기존 방식으로 탐색(호환성 유지)
+  if(uiList.length === 0){
+    const END_GAP = 8;
+    let gap = 0;
+    for(let i=1;i<=UI_MAX;i++){
+      const src = await findFirstExisting(i);
+      if(src){
+        uiList.push(src);
+        gap = 0;
+      }else{
+        gap++;
+        if(uiList.length > 0 && gap >= END_GAP) break;
+      }
     }
   }
 
@@ -283,6 +293,8 @@ async function initUISlider(){
   }
 
   uiPos = 0;
+  // lazy 로드 속성 설정 (브라우저가 필요할 때 다운로드)
+  try{ uiImg.loading = 'lazy'; }catch(e){}
   uiImg.src = uiList[0];
   setStageBg(uiList[0]);
   setIndexLabel();
@@ -291,7 +303,7 @@ async function initUISlider(){
   if(uiPrev) uiPrev.onclick = () => showAt(uiPos - 1);
   if(uiNext) uiNext.onclick = () => showAt(uiPos + 1);
 
-  // 키보드 좌우도 지원(원하면)
+  // 키보드 좌우도 지원
   window.addEventListener("keydown", (e) => {
     if(e.key === "ArrowLeft") showAt(uiPos - 1);
     if(e.key === "ArrowRight") showAt(uiPos + 1);
