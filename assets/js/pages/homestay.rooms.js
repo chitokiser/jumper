@@ -15,30 +15,40 @@ const thumbPrev = $("thumbPrev");
 const thumbNext = $("thumbNext");
 
 const BASE = "/assets/images/homestay/";
-const MAX_TRY = 39;
 
-function buildCandidates(){
-  const arr = [];
-  for(let i=1;i<=MAX_TRY;i++) arr.push(`${BASE}${i}.png`);
-  return arr;
-}
+// Try to use a static manifest first to avoid many HTTP probes.
+async function loadValidImages(){
+  // 1) manifest.json 우선
+  try{
+    const res = await fetch(`${BASE}manifest.json`);
+    if(res && res.ok){
+      const data = await res.json();
+      if(Array.isArray(data) && data.length) return data.slice();
+    }
+  }catch(e){
+    console.warn("homestay manifest fetch failed:", e);
+  }
 
-function probe(url){
-  return new Promise((resolve) => {
+  // 2) 폴백: 병렬 프로브로 존재하는 파일만 수집(순차 probe는 느립니다)
+  const MAX_TRY = 39;
+  const candidates = Array.from({length: MAX_TRY}, (_,i) => `${BASE}${i+1}.png`);
+
+  const probe = (url) => new Promise((resolve) => {
     const im = new Image();
-    im.onload = () => resolve(true);
-    im.onerror = () => resolve(false);
+    im.onload = () => resolve({url, ok: true});
+    im.onerror = () => resolve({url, ok: false});
     im.src = url;
   });
-}
 
-async function loadValidImages(){
-  const candidates = buildCandidates();
+  // 제한된 병렬성으로 실행 (브라우저에 부담 주지 않도록 배치)
+  const BATCH = 8;
   const valid = [];
-  for(const url of candidates){
+  for(let i=0;i<candidates.length;i+=BATCH){
+    const batch = candidates.slice(i, i+BATCH).map(probe);
     // eslint-disable-next-line no-await-in-loop
-    const ok = await probe(url);
-    if(ok) valid.push(url);
+    const results = await Promise.all(batch);
+    results.forEach(r => { if(r.ok) valid.push(r.url); });
+    // 만약 연속으로 빈 결과가 길게 이어지면 조기종료 가능(옵션)
   }
   return valid;
 }
@@ -77,6 +87,7 @@ function render(){
   cur = safeIndex;
 
   imgEl.style.display = "";
+  try{ imgEl.loading = 'lazy'; }catch(e){}
   imgEl.src = list[cur];
   idxEl.textContent = `${cur + 1} / ${total}`;
   if(helpEl) helpEl.textContent = "아래 썸네일을 눌러 선택하거나 좌우 버튼으로 넘겨보세요.";
@@ -131,6 +142,7 @@ function buildThumbs(){
     btn.setAttribute("aria-label", `객실 사진 ${i + 1}`);
 
     const im = document.createElement("img");
+    im.loading = "lazy";
     im.src = url;
     im.alt = `객실 썸네일 ${i + 1}`;
 
