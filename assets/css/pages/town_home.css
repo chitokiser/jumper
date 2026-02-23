@@ -1,377 +1,249 @@
 /* /assets/css/pages/town_home.css */
+/* ============================================================
+   우리마을 홈 – 섹션 / 카드 / 지도 / 공지 스타일
+   ============================================================ */
 
-.town-hero{
-  padding: 18px;
+/* ── 히어로 기본 패딩 (hero.css에서 덮어씀) ── */
+.town-hero { padding: 0; }
+
+.town-hero-inner { max-width: 980px; }
+
+/* ── 섹션 공통 ── */
+.section {
+  margin-top: 40px;
 }
 
-.town-hero-inner{
-  max-width: 980px;
-}
-
-.town-title{
-  font-size: 22px;
-  line-height: 1.25;
-  margin: 0 0 10px;
-}
-
-.town-desc{
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.town-grid{
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-@media (min-width: 860px){
-  .town-grid{ grid-template-columns: repeat(3, 1fr); }
-}
-
-.town-card{
-  display: block;
-  padding: 14px;
-  border: 1px solid var(--line);
-  background: rgba(255,255,255,.03);
-  border-radius: 14px;
-  text-decoration: none;
-}
-
-.town-card:hover{
-  border-color: rgba(255,255,255,.18);
-  transform: translateY(-1px);
-}
-
-.tc-title{ font-size: 18px; margin: 0 0 6px; color: var(--text); }
-.tc-desc{ color: var(--muted); margin: 0 0 6px; }
-.tc-meta{ color: rgba(234,241,255,.55); font-size: 13px; }
-
-.family-placeholder{
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-@media (min-width: 860px){
-  .family-placeholder{ grid-template-columns: repeat(3, 1fr); }
-}
-
-.ph-card{
-  padding: 14px;
-  border: 1px solid var(--line);
-  background: rgba(255,255,255,.03);
-  border-radius: 14px;
-}
-
-.ph-title{ font-size: 16px; margin: 0 0 8px; }
-.ph-desc{ margin: 0; color: var(--muted); line-height: 1.45; }
-
-.map-panel .map-panel-inner{
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-@media (min-width: 980px){
-  .map-panel .map-panel-inner{ grid-template-columns: 1.2fr .8fr; align-items: stretch; }
-}
-
-.map-box{
-  border: 1px dashed rgba(255,255,255,.18);
-  border-radius: 14px;
-  background: rgba(255,255,255,.02);
-  min-height: 220px;
+.section-h {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
-.map-skeleton{
-  color: rgba(234,241,255,.55);
-  font-size: 13px;
-  padding: 10px;
-  text-align: center;
+.section-title {
+  min-width: 0;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.3px;
+  color: var(--text);
 }
 
-.map-title{ font-size: 16px; margin: 0 0 6px; }
-.map-desc{ color: var(--muted); margin: 0 0 12px; line-height: 1.45; }
-
-.map-actions{ display: flex; gap: 8px; flex-wrap: wrap; }
-
-.photo-panel{
-  padding: 14px;
+.section-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.photo-slider{
+@media (max-width: 640px) {
+  .section-h      { align-items: flex-start; }
+  .section-title  { font-size: 19px; }
+  .section-tools  { width: 100%; justify-content: flex-start; }
+}
+
+/* ── 우리마을 조합원 덱 ── */
+.family-deck { position: relative; padding-top: 4px; }
+
+.family-deck-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 860px) {
+  .family-deck-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* 기본 플레이스홀더 카드 */
+.ph-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+.ph-title { font-size: 16px; font-weight: 700; margin: 0 0 8px; color: var(--text); }
+.ph-desc  { margin: 0; color: var(--muted); line-height: 1.50; font-size: 14px; }
+
+/* ── 조합원 카드 테마 (Stay / Play / Must-Go) ── */
+.family-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  padding: 20px 20px 22px;
+  background: var(--card);
+  box-shadow: var(--shadow-md);
+  transition: transform .20s ease, box-shadow .20s ease, border-color .20s ease;
+  min-height: 110px;
+}
+.family-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 40px rgba(26,39,68,.14), 0 2px 8px rgba(26,39,68,.06);
+  border-color: rgba(37,99,235,.20);
+}
+
+/* 카드 컬러 하이라이트 (상단 바) */
+.family-card--stay::after,
+.family-card--play::after,
+.family-card--mustgo::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  border-radius: 18px 18px 0 0;
+}
+.family-card--stay::after   { background: linear-gradient(90deg, #2563eb, #06b6d4); }
+.family-card--play::after   { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+.family-card--mustgo::after { background: linear-gradient(90deg, #7c3aed, #2563eb); }
+
+.family-card .ph-title,
+.family-card .ph-desc { position: relative; z-index: 1; }
+
+.family-card .ph-title { font-size: 17px; margin-bottom: 6px; }
+.family-card .ph-desc  { font-size: 14px; max-width: 42ch; }
+
+/* 조합원 칩 */
+.family-chip {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+/* 등록 버튼 */
+.btn-family-register {
+  border-radius: 999px;
+  padding: 10px 18px;
+  box-shadow: 0 4px 14px rgba(37,99,235,.25);
+}
+
+@media (max-width: 640px) {
+  .family-card { min-height: 90px; }
+}
+
+/* ── 지도 ── */
+.map-panel-inner {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 980px) {
+  .map-panel-inner { grid-template-columns: 1.2fr .8fr; align-items: stretch; }
+}
+
+.map-box {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card2);
+  min-height: 240px;
+  overflow: hidden;
+}
+.map-frame-wrapper { width: 100%; height: 100%; min-height: 300px; }
+.map-frame-wrapper iframe { display: block; }
+
+.map-title { font-size: 17px; font-weight: 700; margin: 0 0 8px; color: var(--text); }
+.map-desc  { color: var(--muted); margin: 0 0 14px; line-height: 1.50; font-size: 14px; }
+.map-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── 사진관(슬라이더) ── */
+.photo-panel  { padding: 14px; }
+.photo-slider {
   display: grid;
   grid-template-columns: 44px 1fr 44px;
   gap: 10px;
   align-items: center;
 }
-
-.ps-stage{
+.ps-stage {
   position: relative;
   border: 1px solid var(--line);
-  background: rgba(255,255,255,.02);
-  border-radius: 14px;
+  background: var(--card2);
+  border-radius: 16px;
   overflow: hidden;
   min-height: 220px;
 }
-
-.ps-img{
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
-  background: rgba(0,120,255,.10);
+.ps-img {
+  width: 100%; height: 100%;
+  display: block; object-fit: contain;
   min-height: 220px;
 }
-
-.ps-btn{
-  width: 44px;
-  height: 44px;
+.ps-btn {
+  width: 44px; height: 44px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: rgba(0,120,255,.10);
+  background: var(--card);
   color: var(--text);
   font-size: 22px;
   line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease;
 }
-
-.ps-btn:hover{
-  background: rgba(255,255,255,.10);
-}
-
-.ps-meta{
+.ps-btn:hover { background: var(--card2); }
+.ps-meta {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
-  background: rgba(0,0,0,.55);
-  border: 1px solid rgba(255,255,255,.12);
+  right: 10px; bottom: 10px;
+  background: rgba(0,0,0,.50);
+  border: 1px solid rgba(255,255,255,.18);
   border-radius: 999px;
   padding: 6px 10px;
   font-size: 12px;
-  color: rgba(234,241,255,.85);
+  color: #fff;
 }
 
-.notice-panel{
-  padding: 14px;
+/* ── 공지사항 ── */
+.notice-panel { padding: 14px; }
+.notice-list  { margin: 0; padding-left: 18px; color: var(--text); }
+.notice-list li { margin: 8px 0; line-height: 1.55; color: var(--muted); }
+
+.notice-row { list-style: decimal; margin: 6px 0; }
+.notice-head {
+  width: 100%; text-align: left;
+  border: 0; background: transparent;
+  color: inherit; padding: 8px 10px;
+  border-radius: 12px; cursor: pointer;
+  transition: background .12s ease;
+}
+.notice-head:hover { background: var(--card2); }
+.notice-body {
+  padding: 6px 12px 10px;
+  opacity: .85; line-height: 1.55;
+  white-space: pre-wrap; color: var(--muted);
 }
 
-.notice-list{
-  margin: 0;
-  padding-left: 18px;
-  color: var(--text);
+/* ── 마을 그리드 ── */
+.town-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 860px) {
+  .town-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-.notice-list li{
-  margin: 8px 0;
-  line-height: 1.5;
-  color: var(--muted);
+.town-card {
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 16px;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+}
+.town-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(37,99,235,.18);
 }
 
-/* 공지사항 펼침/접기 */
-.notice-row{
-  list-style: decimal;
-  margin: 6px 0;
-}
-
-.notice-head{
-  width:100%;
-  text-align:left;
-  border:0;
-  background: transparent;
-  color: inherit;
-  padding: 8px 10px;
-  border-radius: 12px;
-  cursor:pointer;
-}
-
-.notice-head:hover{
-  background: rgba(255,255,255,.06);
-}
-
-.notice-body{
-  padding: 6px 12px 10px 12px;
-  opacity:.85;
-  line-height:1.5;
-  white-space: pre-wrap;
-}
-
-.section-h{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  flex-wrap:wrap; /* 좁으면 줄바꿈 */
-}
-
-.section-title{
-  min-width:0; /* 긴 제목 줄바꿈 허용 */
-  margin:0;
-}
-
-.section-tools{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  justify-content:flex-end;
-}
-
-/* 모바일에서는 버튼을 아래로 내려서 왼쪽 정렬 */
-@media (max-width: 640px){
-  .section-h{
-    align-items:flex-start;
-  }
-  .section-tools{
-    width:100%;
-    justify-content:flex-start;
-  }
-  .section-tools{
-    position:static !important;
-    float:none !important;
-  }
-}
-
-/* =========================
-   우리마을 패밀리 카드(배경 이미지 느낌)
-   적용 방법(HTML):
-   - 해당 섹션 <section class="section family-deck">
-   - 카드에 class 추가: <div class="ph-card family-card family-card--stay"> ...
-   - 버튼 class: btn-family-register
-   ========================= */
-
-.family-deck{
-  position: relative;
-  padding-top: 6px;
-}
-
-/* 섹션 전체 배경(은은한 광원) */
-.family-deck::before{
-  content:"";
-  position:absolute;
-  inset: -10px -14px 0 -14px;
-  background:
-    radial-gradient(900px 220px at 12% -10%, rgba(46,229,157,.14), transparent 60%),
-    radial-gradient(900px 220px at 88% -10%, rgba(255,209,102,.12), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,.05), transparent 55%);
-  pointer-events:none;
-  border-radius: 22px;
-  filter: saturate(1.05);
-}
-
-.family-deck .section-h{
-  position: relative;
-  z-index: 1;
-}
-
-/* 기존 .family-placeholder를 그대로 쓰되, 위 배경 위에 오도록 */
-.family-deck .family-placeholder{
-  position: relative;
-  z-index: 1;
-}
-
-/* 카드 공통(기존 ph-card를 업그레이드) */
-.family-card{
-  position: relative;
-  overflow: hidden;
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,.10); /* 기존 var(--line)보다 살짝 강조 */
-  padding: 16px 16px 18px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
-  box-shadow: 0 10px 24px rgba(0,0,0,.18);
-  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
-  min-height: 96px;
-}
-
-/* 기존 .ph-card hover 감성 유지 + 업그레이드 */
-.family-card:hover{
-  transform: translateY(-3px);
-  box-shadow: 0 16px 34px rgba(0,0,0,.26);
-  border-color: rgba(255,255,255,.18);
-}
-
-/* 카드 내부의 '배경 이미지 같은' 하이라이트(그라데이션 레이어) */
-.family-card::before{
-  content:"";
-  position:absolute;
-  inset:-2px;
-  background:
-    radial-gradient(260px 180px at 18% 25%, rgba(255,255,255,.16), transparent 60%),
-    radial-gradient(320px 220px at 82% 0%, rgba(255,255,255,.12), transparent 55%),
-    radial-gradient(2px 2px at 12% 28%, rgba(255,255,255,.22), transparent 60%),
-    radial-gradient(2px 2px at 74% 18%, rgba(255,255,255,.18), transparent 60%),
-    radial-gradient(2px 2px at 86% 72%, rgba(255,255,255,.14), transparent 60%);
-  opacity: .85;
-  pointer-events:none;
-}
-
-/* 카드별 컬러 테마(이미지 카드처럼 보이게) */
-.family-card--stay::after,
-.family-card--play::after,
-.family-card--mustgo::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  opacity: .95;
-}
-
-.family-card--stay::after{
-  background:
-    radial-gradient(700px 240px at 0% 0%, rgba(46,229,157,.26), transparent 58%),
-    radial-gradient(520px 220px at 95% 30%, rgba(0,180,255,.18), transparent 58%),
-    linear-gradient(180deg, rgba(15,20,32,.02), rgba(11,15,20,.10));
-}
-
-.family-card--play::after{
-  background:
-    radial-gradient(680px 240px at 0% 0%, rgba(255,209,102,.26), transparent 58%),
-    radial-gradient(520px 220px at 95% 30%, rgba(255,77,109,.16), transparent 58%),
-    linear-gradient(180deg, rgba(15,20,32,.02), rgba(11,15,20,.10));
-}
-
-.family-card--mustgo::after{
-  background:
-    radial-gradient(700px 240px at 0% 0%, rgba(155,136,255,.22), transparent 58%),
-    radial-gradient(520px 220px at 95% 30%, rgba(46,229,157,.14), transparent 58%),
-    linear-gradient(180deg, rgba(15,20,32,.02), rgba(11,15,20,.10));
-}
-
-/* 텍스트는 레이어 위로 */
-.family-card .ph-title,
-.family-card .ph-desc{
-  position: relative;
-  z-index: 2;
-}
-
-/* 타이틀/설명 살짝 강화 */
-.family-card .ph-title{
-  font-size: 16px;
-  letter-spacing: -.2px;
-  margin: 0 0 6px;
-}
-
-.family-card .ph-desc{
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--muted);
-  max-width: 40ch;
-}
-
-/* 등록 버튼: pill + 그림자 (기존 btn--primary 유지하면서 보조) */
-.btn-family-register{
-  border-radius: 999px;
-  padding: 10px 14px;
-  box-shadow: 0 10px 22px rgba(0,0,0,.22);
-}
-
-/* 모바일: 카드 1열은 기존 그대로 동작, 간격만 자연스럽게 */
-@media (max-width: 640px){
-  .family-card{
-    min-height: 88px;
-  }
-}
+.tc-title { font-size: 18px; font-weight: 700; margin: 0 0 6px; color: var(--text); }
+.tc-desc  { color: var(--muted); margin: 0 0 6px; font-size: 14px; }
+.tc-meta  { color: var(--muted); font-size: 13px; opacity: .75; }

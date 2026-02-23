@@ -1,0 +1,163 @@
+/* /assets/css/pages/mypage.css */
+
+.mp-section {
+  margin-bottom: 20px;
+}
+
+.mp-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.mp-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+/* 키-값 목록 */
+.mp-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mp-kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line, rgba(0,0,0,.07));
+}
+
+.mp-kv:last-child {
+  border-bottom: none;
+}
+
+.mp-kv .k {
+  font-size: 13px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.mp-kv .v {
+  font-size: 13px;
+  color: var(--text);
+  text-align: right;
+  word-break: break-all;
+}
+
+.mp-kv .v.accent {
+  color: var(--accent, #2563eb);
+  font-weight: 600;
+}
+
+/* 온체인 등록 박스 */
+.mp-action-box {
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--card2, #eef5ff);
+  border: 1px solid var(--line, rgba(0,0,0,.1));
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 충전 요청 결과 */
+.mp-result-box {
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--card2, #eef5ff);
+  border: 1px solid var(--accent, #2563eb);
+  border-radius: 14px;
+}
+
+.mp-warn {
+  color: var(--accent, #2563eb) !important;
+  font-weight: 600;
+}
+
+/* 내역 테이블 */
+.mp-table-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mp-hist-row {
+  padding: 10px 12px;
+  border: 1px solid var(--line, rgba(0,0,0,.08));
+  border-radius: 12px;
+  background: var(--card, #fff);
+}
+
+.mp-hist-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.mp-hist-code {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--muted);
+}
+
+.mp-hist-detail {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.mp-hist-detail .accent {
+  color: var(--accent, #2563eb);
+  font-weight: 600;
+}
+
+.mp-hist-detail .muted {
+  color: var(--muted);
+}
+
+.mp-hist-tx {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* 상태 배지 */
+.mp-hist-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mp-hist-badge.pending    { background: #fef3c7; color: #92400e; }
+.mp-hist-badge.processing { background: #dbeafe; color: #1e40af; }
+.mp-hist-badge.approved   { background: #dcfce7; color: #166534; }
+.mp-hist-badge.rejected   { background: #fee2e2; color: #991b1b; }
+.mp-hist-badge.buy        { background: #ede9fe; color: #5b21b6; }
+.mp-hist-badge.withdraw   { background: #e0f2fe; color: #0369a1; }
+.mp-hist-badge.credit     { background: #dcfce7; color: #166534; }
+
+/* 작은 버튼 */
+.btn--sm {
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.mono {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}

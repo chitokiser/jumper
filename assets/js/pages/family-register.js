@@ -1,12 +1,12 @@
 // /assets/js/pages/family-register.js
-// 패밀리 신청(=기존 가이드 신청)
+// 조합원 신청(=기존 가이드 신청)
 // - 관리자 승인 화면 호환: guideApplications/{uid}
 // - 사용자 프로필 유지: users/{uid}
 // - 기존 가이드(승인완료) 사용자는 재신청 요구하지 않음(approved 판정)
 // - 승인완료 사용자가 저장해도 status를 pending으로 덮어쓰지 않음
 
 import { onAuthReady } from "../auth.js";
-import { db } from "/assets/js/firebase-init.js";
+import { app, auth, db } from "/assets/js/firebase-init.js";
 
 import {
   doc,
@@ -145,9 +145,9 @@ function bindEvents(uid, email, preserveApproved) {
       setState("저장 완료");
 
       if (preserveApproved) {
-        showStatus("이미 승인된 패밀리입니다. 정보가 업데이트되었습니다.", "ok");
+        showStatus("이미 승인된 조합원입니다. 정보가 업데이트되었습니다.", "ok");
       } else {
-        showStatus("패밀리 신청이 접수되었습니다. 관리자 승인 화면에서 확인 가능합니다.", "ok");
+        showStatus("조합원 신청이 접수되었습니다. 관리자 승인 화면에서 확인 가능합니다.", "ok");
       }
     } catch (err) {
       console.error(err);
@@ -158,6 +158,96 @@ function bindEvents(uid, email, preserveApproved) {
 
   if (form) form.addEventListener("submit", onSubmit);
   if (btnSave) btnSave.addEventListener("click", onSubmit);
+}
+
+// ── 멘토 이메일 등록 (linkMentor) ─────────────────────────────────────────
+function showMentorMsg(msg, kind) {
+  const el = $("mentorLinkMsg");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = "";
+  el.style.color =
+    kind === "danger" ? "rgba(255,77,109,.95)" :
+    kind === "ok"     ? "var(--accent)"        :
+                        "var(--muted)";
+}
+
+async function initMentorLink(email) {
+  const panel = $("mentorLinkPanel");
+  if (!panel || !email) return;
+  panel.style.display = "";
+
+  // 이미 연결된 주소 조회 (mentors/{email} 은 로그인 유저 읽기 허용)
+  try {
+    const snap = await getDoc(doc(db, "mentors", email.toLowerCase()));
+    if (snap.exists()) {
+      const addr = snap.data()?.address || "";
+      const box  = $("mentorCurrentBox");
+      const addrEl = $("mentorCurrentAddr");
+      if (box)    box.style.display = "";
+      if (addrEl) addrEl.textContent = addr;
+    }
+  } catch (_) {
+    // 읽기 실패해도 무시
+  }
+
+  const btn = $("btnLinkMentor");
+  if (!btn) return;
+
+  btn.onclick = async () => {
+    if (!window.ethereum) {
+      showMentorMsg("MetaMask가 설치되어 있지 않습니다.", "danger");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "서명 중...";
+
+    try {
+      // 1) 지갑 연결
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const address  = accounts[0];
+
+      // 2) 메시지 서명 (EIP-191 / personal_sign)
+      const msg    = `Jump Platform 멘토 등록\nEmail: ${email.toLowerCase()}`;
+      const msgHex = "0x" + Array.from(new TextEncoder().encode(msg))
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+
+      const signature = await window.ethereum.request({
+        method: "personal_sign",
+        params: [msgHex, address],
+      });
+
+      // 3) Cloud Function 호출 (onRequest + cors:true → 모든 오리진 허용)
+      const idToken  = await auth.currentUser.getIdToken();
+      const region   = "us-central1";
+      const project  = app.options.projectId;
+      const fnUrl    = `https://${region}-${project}.cloudfunctions.net/linkMentor`;
+
+      const resp = await fetch(fnUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ address, signature }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "서버 오류");
+
+      // 4) 성공 표시
+      const box    = $("mentorCurrentBox");
+      const addrEl = $("mentorCurrentAddr");
+      if (box)    box.style.display = "";
+      if (addrEl) addrEl.textContent = address;
+      showMentorMsg("등록 완료! 신규 사용자가 이 이메일을 멘토로 입력할 수 있습니다.", "ok");
+      btn.textContent = "등록 완료 ✓";
+    } catch (err) {
+      showMentorMsg(err.message || "등록 실패", "danger");
+      btn.disabled = false;
+      btn.textContent = "MetaMask 서명 후 등록";
+    }
+  };
 }
 
 // 핵심: loggedIn/loggedin 호환
@@ -191,7 +281,7 @@ onAuthReady(async (ctx) => {
     if (p) fillForm(p);
 
     if (approved) {
-      showStatus("이미 승인된 패밀리입니다. 정보만 수정/저장하면 됩니다.", "ok");
+      showStatus("이미 승인된 조합원입니다. 정보만 수정/저장하면 됩니다.", "ok");
       setState("승인 완료 (정보 수정 가능)");
     } else {
       showStatus("입력 후 저장해 주세요. 저장 후 관리자 승인 상태가 됩니다.", "info");
@@ -200,6 +290,9 @@ onAuthReady(async (ctx) => {
 
     // 승인완료면 status를 pending으로 덮어쓰지 않게 preserveApproved=true
     bindEvents(user.uid, user.email, approved);
+
+    // 멘토 이메일 등록 패널
+    initMentorLink(user.email);
   } catch (e) {
     console.error(e);
     setState("오류");

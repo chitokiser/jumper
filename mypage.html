@@ -1,0 +1,151 @@
+<!-- /mypage.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>마이페이지 - Jovial</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/pages/apply-guide.css" />
+  <link rel="stylesheet" href="/assets/css/pages/mypage.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+
+    <!-- ── 로그인 필요 ── -->
+    <section class="panel" id="needLoginPanel" style="display:none;">
+      <h1 class="title">마이페이지</h1>
+      <p class="desc">로그인이 필요합니다.</p>
+      <button class="btn btn--primary" id="btnLoginPage" type="button">구글 로그인</button>
+    </section>
+
+    <!-- ── 메인 콘텐츠 ── -->
+    <div id="mainContent" style="display:none;">
+
+      <!-- 기본 정보 -->
+      <section class="panel mp-section">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">내 정보</h2>
+          <a href="/register.html" class="btn btn--sm">수정</a>
+        </div>
+        <div class="mp-kv-list" id="profileInfo">
+          <div class="mp-kv"><span class="k">이름</span><span class="v" id="infoName">-</span></div>
+          <div class="mp-kv"><span class="k">이메일</span><span class="v" id="infoEmail">-</span></div>
+          <div class="mp-kv"><span class="k">전화번호</span><span class="v" id="infoPhone">-</span></div>
+        </div>
+      </section>
+
+      <!-- 수탁 지갑 -->
+      <section class="panel mp-section">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">수탁 지갑</h2>
+          <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;">지갑 생성</button>
+        </div>
+
+        <div id="walletInfo">
+          <div class="mp-kv">
+            <span class="k">지갑 주소</span>
+            <span class="v mono" id="walletAddress">-</span>
+          </div>
+          <div class="mp-kv">
+            <span class="k">온체인 등록</span>
+            <span class="v" id="onChainStatus">조회 중...</span>
+          </div>
+          <div class="mp-kv" id="pointRow" style="display:none;">
+            <span class="k">포인트 잔액</span>
+            <span class="v accent" id="pointDisplay">-</span>
+          </div>
+          <div class="mp-kv" id="payableRow" style="display:none;">
+            <span class="k">인출 가능</span>
+            <span class="v" id="payableDisplay">-</span>
+          </div>
+          <div class="mp-kv" id="levelRow" style="display:none;">
+            <span class="k">레벨</span>
+            <span class="v" id="levelDisplay">-</span>
+          </div>
+        </div>
+
+        <div id="noWallet" style="display:none;">
+          <p class="hint">수탁 지갑이 아직 없습니다. 지갑 생성 버튼을 눌러주세요.</p>
+        </div>
+
+        <!-- 온체인 미등록 시 등록 버튼 -->
+        <div id="onChainRegBox" style="display:none;" class="mp-action-box">
+          <p class="hint">온체인 미등록 상태입니다. 멘토 이메일을 입력하고 등록하세요.</p>
+          <label class="field">
+            <span>멘토 이메일 <small>(선택)</small></span>
+            <input type="email" id="mentorEmailInput" maxlength="80" placeholder="mentor@gmail.com" />
+          </label>
+          <button class="btn btn--primary" id="btnRegisterOnChain" type="button">온체인 등록</button>
+        </div>
+      </section>
+
+      <!-- 원화 충전 -->
+      <section class="panel mp-section">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">포인트 충전 (원화)</h2>
+        </div>
+
+        <form id="depositForm" class="form" style="margin-top:0;">
+          <label class="field">
+            <span>충전 금액 (원) <em class="req">*</em></span>
+            <input type="number" id="depositAmount" min="10000" step="1000" placeholder="최소 10,000원" />
+          </label>
+          <label class="field">
+            <span>입금자명 <em class="req">*</em></span>
+            <input type="text" id="depositorName" maxlength="20" placeholder="예: 홍길동" />
+          </label>
+          <div class="actions">
+            <button class="btn btn--primary" type="submit" id="btnDeposit">충전 요청</button>
+          </div>
+        </form>
+
+        <!-- 충전 요청 결과 -->
+        <div id="depositResult" class="mp-result-box" style="display:none;">
+          <div class="mp-kv"><span class="k">참조코드</span><span class="v mono" id="drRefCode">-</span></div>
+          <div class="mp-kv"><span class="k">입금 은행</span><span class="v" id="drBank">-</span></div>
+          <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono" id="drAccount">-</span></div>
+          <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolder">-</span></div>
+          <div class="mp-kv"><span class="k">금액</span><span class="v" id="drAmount">-</span></div>
+          <div class="mp-kv"><span class="k">예상 포인트</span><span class="v accent" id="drHex">-</span></div>
+          <p class="hint mp-warn">입금자명을 정확히 입력하세요. 관리자 확인 후 포인트가 지급됩니다.</p>
+        </div>
+      </section>
+
+      <!-- 충전 내역 -->
+      <section class="panel mp-section">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">충전 내역</h2>
+          <button class="btn btn--sm" id="btnRefreshDeposits" type="button">새로고침</button>
+        </div>
+        <div id="depositHistory" class="mp-table-wrap">
+          <p class="hint">불러오는 중...</p>
+        </div>
+      </section>
+
+      <!-- 거래 내역 (온체인) -->
+      <section class="panel mp-section" id="txSection" style="display:none;">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">거래 내역 (온체인)</h2>
+        </div>
+        <div id="txHistory" class="mp-table-wrap">
+          <p class="hint">불러오는 중...</p>
+        </div>
+      </section>
+
+    </div><!-- /mainContent -->
+
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/mypage.js"></script>
+</body>
+</html>

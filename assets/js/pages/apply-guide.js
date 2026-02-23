@@ -87,10 +87,10 @@ onAuthReady(async ({ user, profile }) => {
 
   const role = profile?.role || "user";
 
-  // 이미 패밀리(role=guide)라면 신청이 불필요
+  // 이미 조합원(role=guide)라면 신청이 불필요
   // (관리자는 테스트/대행 등록을 할 수 있게 허용)
   if (role === "guide") {
-    setState("이미 패밀리로 승인된 계정입니다.");
+    setState("이미 조합원로 승인된 계정입니다.");
     form.classList.add("hide");
     return;
   }

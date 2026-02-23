@@ -47,30 +47,35 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // 공지사항(notices) - 추가(통합)
-    // - 읽기: 누구나(홈 표시)
-    // - 쓰기: admin(=admins/{uid} 존재) 또는 운영자 이메일
+    // 공지사항(notices)
     match /notices/{noticeId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // 가이드 신청서
+    // 가이드/패밀리 신청서 (guideApplications/{uid})
     match /guideApplications/{uid} {
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow list: if isAdmin();
-      allow create, update: if signedIn() && request.auth.uid == uid;
+
+      allow create: if signedIn() && request.auth.uid == uid;
+
+      // ✅ FIX: 관리자도 승인/반려 처리를 위해 update 가능해야 함
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+
       allow delete: if isAdmin();
     }
 
-    // 가이드 프로필
+    // 가이드 프로필 (guides/{uid})
     match /guides/{uid} {
       allow get: if isAdmin()
                 || (signedIn() && request.auth.uid == uid)
                 || (resource.data.approved == true);
       allow list: if isAdmin();
 
-      allow create: if signedIn() && request.auth.uid == uid;
+      // ✅ FIX: 승인 시 관리자가 guides/{uid}를 생성해야 하는 케이스가 많음
+      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
+
       allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow delete: if false;
     }
@@ -152,8 +157,7 @@ service cloud.firestore {
 
       allow update: if isAdmin()
         || (isReviewAuthor() && authorUpdateOnly())
-        || (isReviewGuide() && guideReplyOnly())
-        || (signedIn() && isAdmin() == false && false);
+        || (isReviewGuide() && guideReplyOnly());
 
       allow delete: if isAdmin();
     }
@@ -193,8 +197,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // users/{uid}
     match /users/{uid} {
-      allow get, create, update: if signedIn() && request.auth.uid == uid;
+      // ✅ FIX: 관리자 승인 시 role/profile을 넣어야 하므로 admin create/update 허용
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+
       allow list, delete: if isAdmin();
     }
 
@@ -241,6 +250,54 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // 수탁형 지갑 – 신규 컬렉션
+    // 모든 쓰기는 Cloud Functions(Admin SDK)이 처리 → 클라이언트 write 불허
+    // ──────────────────────────────────────────────────────────────
+
+    // 원화 충전 요청 (deposits/{refCode})
+    // - 유저: 자신의 요청만 읽기 가능
+    // - 관리자: 전체 읽기
+    // - 쓰기: Cloud Functions만 (클라이언트 직접 쓰기 불허)
+    match /deposits/{refCode} {
+      allow get: if isAdmin()
+        || (signedIn()
+            && resource.data.uid is string
+            && resource.data.uid == request.auth.uid);
+
+      allow list: if isAdmin()
+        || (signedIn()
+            && resource.data.uid is string
+            && resource.data.uid == request.auth.uid);
+
+      allow create, update, delete: if false; // Cloud Functions(Admin SDK) 전용
+    }
+
+    // 멘토 이메일 ↔ 지갑 주소 매핑 (mentors/{email})
+    // - 읽기: 로그인한 누구나 (가입 시 멘토 주소 조회)
+    // - 쓰기: Cloud Functions만
+    match /mentors/{email} {
+      allow get, list: if signedIn();
+      allow create, update, delete: if false; // Cloud Functions(Admin SDK) 전용
+    }
+
+    // 온체인 트랜잭션 로그 (transactions/{docId})
+    // - 유저: 자신의 거래만 읽기
+    // - 관리자: 전체 읽기
+    // - 쓰기: Cloud Functions만
+    match /transactions/{docId} {
+      allow get: if isAdmin()
+        || (signedIn()
+            && resource.data.uid is string
+            && resource.data.uid == request.auth.uid);
+
+      allow list: if isAdmin()
+        || (signedIn()
+            && resource.data.uid is string
+            && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Cloud Functions(Admin SDK) 전용
     }
 
     match /{document=**} {

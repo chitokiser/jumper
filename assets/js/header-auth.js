@@ -23,7 +23,7 @@ function applyRoleToMenu(role){
   if(badge){
     const text =
       role === "admin" ? "관리자" :
-      role === "guide" ? "패밀리" :
+      role === "guide" ? "조합원" :
       role === "user"  ? "일반" :
       "게스트";
     badge.textContent = text;

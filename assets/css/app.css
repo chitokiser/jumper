@@ -1,145 +1,181 @@
 /* /assets/css/app.css */
-:root{
-  /* 밝은 블루 톤 */
-  --bg:#eaf3ff;
-  --card:#ffffff;
-  --card2:#f3f8ff;
-  --text:#0b1b33;
-  --muted:rgba(11,27,51,.65);
-  --line:rgba(11,27,51,.14);
-  --line2:rgba(11,27,51,.08);
+/* ============================================================
+   디자인 시스템 – liveanywhere.me 스타일 (밝고 깔끔한 화이트/블루)
+   ============================================================ */
+:root {
+  /* 색상 */
+  --bg:    #f5f9ff;
+  --card:  #ffffff;
+  --card2: #eef5ff;
 
-  --ok:#1bbf7a;
-  --warn:#f0b429;
-  --danger:#e5484d;
+  --text:  #1a2744;
+  --muted: rgba(26,39,68,.58);
+  --line:  rgba(26,39,68,.09);
+  --line2: rgba(26,39,68,.05);
 
-  --radius:16px;
-  --shadow:0 18px 60px rgba(12,50,120,.18);
+  /* 포인트 */
+  --accent:  #2563eb;   /* 블루 */
+  --accent2: #7c3aed;   /* 퍼플 */
 
-  --max:1180px;
-  --pad:16px;
+  /* 상태 */
+  --ok:     #16a34a;
+  --warn:   #d97706;
+  --danger: #dc2626;
+
+  /* 레이아웃 */
+  --radius: 16px;
+  --shadow: 0 4px 20px rgba(26,39,68,.08), 0 1px 4px rgba(26,39,68,.04);
+  --shadow-md: 0 8px 32px rgba(26,39,68,.12), 0 2px 8px rgba(26,39,68,.06);
+
+  --max: 1180px;
+  --pad: 20px;
 }
 
-*{ box-sizing:border-box; }
-html,body{ height:100%; overflow-x:hidden; }
-body{
-  margin:0;
-  background:
-    radial-gradient(900px 600px at 12% 10%, rgba(0,120,255,.22), transparent 60%),
-    radial-gradient(900px 600px at 88% 15%, rgba(0,170,255,.18), transparent 60%),
-    linear-gradient(180deg, #f7fbff, #eaf3ff);
-  color:var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+/* ── 리셋 ── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; overflow-x: hidden; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial,
+               "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
 }
 
-a{ color:inherit; }
+a { color: inherit; }
+img { max-width: 100%; height: auto; }
 
-img{ max-width:100%; height:auto; }
-
-.page{
-  max-width:var(--max);
-  margin:0 auto;
-  padding:22px var(--pad) 60px;
+/* ── 페이지 래퍼 ── */
+.page {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--pad) 72px;
 }
 
-.title{
-  margin:0 0 10px;
-  font-size:26px;
-  letter-spacing:.2px;
+/* ── 텍스트 유틸 ── */
+.title {
+  margin: 0 0 10px;
+  font-size: 26px;
+  letter-spacing: -.2px;
 }
-.desc{
-  margin:0 0 18px;
-  color:var(--muted);
+.desc {
+  margin: 0 0 18px;
+  color: var(--muted);
 }
+.muted { color: var(--muted); }
+.hide  { display: none !important; }
+.state { margin: 12px 0 14px; color: var(--muted); }
 
-.card, .panel{
-  border:1px solid var(--line);
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+/* ── 카드 / 패널 ── */
+.card, .panel {
+  border: 1px solid var(--line);
+  background: var(--card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding:18px;
+  padding: 18px;
 }
 
-.btn{
-  border:1px solid var(--line);
-  background: rgba(255,255,255,.06);
+/* ── 버튼 ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: var(--card);
   color: var(--text);
-  padding:10px 12px;
+  padding: 10px 16px;
   border-radius: 12px;
-  cursor:pointer;
-  font-size:14px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+  white-space: nowrap;
 }
-.btn:hover{ background: rgba(255,255,255,.10); }
-.btn:disabled{ opacity:.55; cursor:not-allowed; }
-
-.btn.primary{
-  border-color: rgba(46,229,157,.35);
-  background: rgba(46,229,157,.12);
+.btn:hover {
+  background: var(--card2);
+  border-color: rgba(26,39,68,.16);
+  box-shadow: 0 2px 8px rgba(26,39,68,.08);
 }
-.btn.primary:hover{ background: rgba(46,229,157,.18); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
 
-.btn.danger{
-  border-color: rgba(255,77,109,.35);
-  background: rgba(255,77,109,.12);
+/* 기본 btn--primary */
+.btn--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37,99,235,.30);
 }
-.btn.danger:hover{ background: rgba(255,77,109,.18); }
+.btn--primary:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  box-shadow: 0 6px 18px rgba(37,99,235,.38);
+}
 
-/* rating UI (5 stars always visible, fill by --pct) */
-.rating-inline{
-  display:flex;
-  align-items:center;
+/* 기존 .btn.primary (하위 호환) */
+.btn.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.btn.primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+
+/* ghost */
+.btn--ghost {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--text);
+}
+.btn--ghost:hover { background: var(--card2); }
+
+/* small */
+.btn--sm { padding: 7px 12px; font-size: 13px; border-radius: 10px; }
+
+/* danger */
+.btn.danger, .btn--danger {
+  border-color: rgba(220,38,38,.30);
+  background: rgba(220,38,38,.08);
+  color: var(--danger);
+}
+.btn.danger:hover, .btn--danger:hover { background: rgba(220,38,38,.14); }
+
+/* ── 별점 UI ── */
+.rating-inline {
+  display: flex;
+  align-items: center;
   gap: 8px;
   font-size: 13px;
   line-height: 1.1;
 }
-.rating-inline .rating-num{
-  font-weight: 800;
-  letter-spacing: .1px;
-}
-.rating-inline .rating-count{
-  color: var(--muted);
-}
-.starbar{
+.rating-inline .rating-num   { font-weight: 800; letter-spacing: .1px; }
+.rating-inline .rating-count { color: var(--muted); }
+
+.starbar {
   position: relative;
   display: inline-block;
   font-size: 13px;
   letter-spacing: 1px;
   line-height: 1;
 }
-.starbar::before{
+.starbar::before { content: "★★★★★"; color: rgba(26,39,68,.15); }
+.starbar::after  {
   content: "★★★★★";
-  color: rgba(255,255,255,.25);
-}
-.starbar::after{
-  content: "★★★★★";
-  position: absolute;
-  left: 0;
-  top: 0;
+  position: absolute; left: 0; top: 0;
   width: var(--pct, 0%);
   overflow: hidden;
   color: var(--warn);
 }
 
-.muted{
-  color: var(--muted);
+/* ── 푸터 ── */
+.footer {
+  border-top: 1px solid var(--line2);
+  padding: 18px var(--pad);
 }
-
-.hide{ display:none !important; }
-
-.state{
-  margin:12px 0 14px;
+.footer-inner {
+  max-width: var(--max);
+  margin: 0 auto;
   color: var(--muted);
-}
-
-.muted{ color:var(--muted); }
-
-.footer{
-  border-top:1px solid var(--line2);
-  padding:18px var(--pad);
-}
-.footer-inner{
-  max-width:var(--max);
-  margin:0 auto;
-  color: var(--muted);
-  font-size:13px;
+  font-size: 13px;
 }

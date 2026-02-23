@@ -1,0 +1,108 @@
+<!-- /register.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>회원가입 - Jovial</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/pages/apply-guide.css" />
+  <link rel="stylesheet" href="/assets/css/pages/register.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="panel">
+      <h1 class="title">회원가입</h1>
+      <p class="desc">Google 로그인 후 기본 정보를 입력해 주세요. 수탁 지갑이 자동으로 생성됩니다.</p>
+
+      <div id="regState" class="state"></div>
+
+      <!-- 로그인 안 된 경우 -->
+      <div id="needLogin" style="display:none;" class="status-box">
+        <p>Google 로그인 후 이용할 수 있습니다.</p>
+        <button class="btn btn--primary" id="btnLoginPage" type="button" style="margin-top:12px;">구글 로그인</button>
+      </div>
+
+      <!-- 이미 가입 완료 -->
+      <div id="alreadyDone" style="display:none;" class="status-box">
+        <div class="status-row">
+          <div class="k">가입 상태</div>
+          <div class="v" style="color:var(--accent);">가입 완료 ✓</div>
+        </div>
+        <div class="status-row" id="walletRow" style="display:none;">
+          <div class="k">수탁 지갑 주소</div>
+          <div class="v mono" id="walletAddr">-</div>
+        </div>
+        <div class="status-row" id="onChainRow" style="display:none;">
+          <div class="k">온체인 등록</div>
+          <div class="v" id="onChainStatus">-</div>
+        </div>
+        <a href="/index.html" class="btn btn--primary" style="margin-top:16px;display:inline-block;">홈으로</a>
+      </div>
+
+      <!-- 가입 폼 -->
+      <form class="form" id="regForm" style="display:none;" novalidate>
+
+        <label class="field">
+          <span>이름 (실명) <em class="req">*</em></span>
+          <input type="text" id="userName" maxlength="30" placeholder="예: 홍길동" autocomplete="name" />
+        </label>
+
+        <label class="field">
+          <span>휴대폰 번호 <em class="req">*</em></span>
+          <input type="tel" id="userPhone" maxlength="30" placeholder="예: +82 10 1234 5678 / +84 912 345 678" autocomplete="tel" />
+        </label>
+
+        <label class="field">
+          <span>멘토 이메일 <small>(선택 — 추천인의 Google 계정 이메일)</small></span>
+          <input type="email" id="mentorEmail" maxlength="80" placeholder="예: mentor@gmail.com" autocomplete="off" />
+        </label>
+
+        <div class="reg-divider">이용 약관</div>
+
+        <label class="check">
+          <input type="checkbox" id="agreeTerms" />
+          <span>
+            <a href="/what.html" target="_blank">이용약관</a> 및
+            <a href="/what.html" target="_blank">개인정보처리방침</a>에 동의합니다 <em class="req">*</em>
+          </span>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="agreeWallet" />
+          <span>
+            서버 수탁 지갑(私有鍵 서버 보관) 생성 및 온체인 가입에 동의합니다 <em class="req">*</em>
+          </span>
+        </label>
+
+        <!-- 진행 상황 -->
+        <div id="stepBox" class="step-box" style="display:none;">
+          <div class="step" id="step1">① 정보 저장</div>
+          <div class="step" id="step2">② 수탁 지갑 생성</div>
+          <div class="step" id="step3">③ 온체인 등록</div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn--primary" type="submit" id="btnRegister">가입 완료</button>
+        </div>
+
+        <p class="hint">
+          가입 후 멘토 이메일이 있으면 온체인 조합원 등록까지 자동으로 진행됩니다.<br>
+          멘토 이메일이 없으면 나중에 마이페이지에서 추가할 수 있습니다.
+        </p>
+      </form>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/register.js"></script>
+</body>
+</html>

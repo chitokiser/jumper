@@ -1,89 +1,62 @@
 /* /assets/css/pages/town_home.cards.css */
-/* 우리마을 홈: 홈스테이/놀거리 카드 섹션 */
+/* 우리마을 홈: 홈스테이/놀거리 카드 그리드 */
 
-.cards-panel{
-  padding:16px;
-}
+.cards-panel { padding: 0; }
 
-.cards-grid{
-  display:grid;
+.cards-grid {
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap:12px;
+  gap: 14px;
 }
 
-.cards-card{
-  display:block;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.05);
-  padding:14px 14px 12px 14px;
-  text-decoration:none;
-  color:inherit;
-  min-height:132px;
-  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+.cards-card {
+  display: block;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  padding: 16px 16px 14px;
+  text-decoration: none;
+  color: inherit;
+  min-height: 140px;
+  box-shadow: var(--shadow);
+  transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+}
+.cards-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(37,99,235,.18);
 }
 
-.cards-card:hover{
-  transform: translateY(-1px);
-  background: rgba(255,255,255,.07);
-  border-color: rgba(255,255,255,.14);
+.cc-top {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 
-.cc-top{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-bottom:10px;
+.cc-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
 }
+.cc-chip--muted { opacity: .70; }
 
-.cc-chip{
-  display:inline-flex;
-  align-items:center;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.04);
-  font-size:12px;
-  line-height:1;
-}
-
-.cc-chip--muted{
-  opacity:.75;
-}
-
-.cc-title{
-  font-size:16px;
-  line-height:1.25;
-  margin-bottom:8px;
-}
-
-.cc-desc{
-  font-size:13px;
-  opacity:.85;
-  line-height:1.45;
-  margin-bottom:8px;
-}
-
-.cc-meta{
-  font-size:12px;
-  opacity:.70;
-}
+.cc-title { font-size: 16px; font-weight: 700; line-height: 1.28; margin-bottom: 8px; color: var(--text); }
+.cc-desc  { font-size: 13px; color: var(--muted); line-height: 1.50; margin-bottom: 8px; }
+.cc-meta  { font-size: 12px; color: var(--muted); opacity: .75; }
 
 /* 반응형 */
-@media (max-width: 980px){
-  .cards-grid{
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+@media (max-width: 980px) {
+  .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-
-@media (max-width: 520px){
-  .cards-panel{
-    padding:12px;
-  }
-  .cards-grid{
-    grid-template-columns: 1fr;
-  }
-  .cards-card{
-    min-height:auto;
-  }
+@media (max-width: 520px) {
+  .cards-grid   { grid-template-columns: 1fr; }
+  .cards-card   { min-height: auto; }
 }

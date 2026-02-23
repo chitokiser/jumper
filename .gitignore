@@ -64,6 +64,10 @@ node_modules/
 
 # dotenv environment variables file
 .env
+.env.*
+# Firebase emulator secrets (절대 커밋 금지)
+*.secret.local
+functions/.secret.local
 
 # dataconnect generated files
 .dataconnect

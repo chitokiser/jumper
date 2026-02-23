@@ -1,0 +1,76 @@
+/* /assets/css/pages/register.css */
+
+.reg-divider {
+  margin-top: 8px;
+  padding: 6px 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--muted);
+  text-transform: uppercase;
+  border-top: 1px solid var(--line, rgba(0,0,0,.1));
+}
+
+.field em.req,
+.check em.req {
+  color: var(--accent, #2563eb);
+  font-style: normal;
+  margin-left: 2px;
+}
+
+.field small {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.mono {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* 진행 단계 박스 */
+.step-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--card2, #eef5ff);
+  border: 1px solid var(--line, rgba(0,0,0,.1));
+  border-radius: 14px;
+  margin-top: 4px;
+}
+
+.step {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 4px 0;
+  transition: color .2s;
+}
+
+.step[data-status="doing"] {
+  color: var(--accent, #2563eb);
+  font-weight: 600;
+}
+
+.step[data-status="doing"]::after {
+  content: " ⏳";
+}
+
+.step[data-status="done"] {
+  color: #16a34a;
+}
+
+.step[data-status="done"]::after {
+  content: " ✓";
+  font-weight: 700;
+}
+
+.step[data-status="error"] {
+  color: #dc2626;
+}
+
+.step[data-status="error"]::after {
+  content: " ✗ (건너뜀)";
+}

@@ -2,6 +2,7 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFunctions } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
 /*
   config 로딩 우선순위
@@ -11,12 +12,12 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebas
 */
 
 const FALLBACK = {
-apiKey: "AIzaSyBETZfUgG4y0YAiYuxSVhwnhpwzVUQ59EI",
-authDomain: "experience-factory-4e167.firebaseapp.com",
-projectId: "experience-factory-4e167",
-storageBucket: "experience-factory-4e167.firebasestorage.app",
-messagingSenderId: "142042867302",
-appId: "1:142042867302:web:7689eca32aaee5d189efa7",
+  apiKey: "AIzaSyBETZfUgG4y0YAiYuxSVhwnhpwzVUQ59EI",
+  authDomain: "experience-factory-4e167.firebaseapp.com",
+  projectId: "experience-factory-4e167",
+  storageBucket: "experience-factory-4e167.firebasestorage.app",
+  messagingSenderId: "142042867302",
+  appId: "1:142042867302:web:7689eca32aaee5d189efa7",
 };
 
 async function loadConfig() {
@@ -28,7 +29,7 @@ async function loadConfig() {
   // 2) optional config module (파일 없으면 404가 나더라도 정상 진행)
   try {
     const mod = await import("/assets/js/firebase-config.js");
-    if (mod?.firebaseConfig?.projectId) return mod.firebaseConfig;
+    if (mod && mod.firebaseConfig && mod.firebaseConfig.projectId) return mod.firebaseConfig;
   } catch (e) {
     // 파일이 없거나(404) 로딩 실패해도 무시하고 FALLBACK 사용
     console.warn("[firebase-init] firebase-config.js not found, using FALLBACK.");
@@ -43,10 +44,24 @@ const firebaseConfig = await loadConfig();
 // 앱 중복 초기화 방지
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
-const auth = getAuth(app);
-const db = getFirestore(app);
+const auth      = getAuth(app);
+const db        = getFirestore(app);
+const functions = getFunctions(app); // 기본 리전: us-central1
 
-// 여기서 “반드시 export” 해줘야 auth.js가 가져올 수 있음
+// ── 에뮬레이터 연결 (Functions 로컬 테스트용) ──────────────────────
+// 사용법:
+//   1) firebase emulators:start --only functions 실행
+//   2) 브라우저 콘솔: localStorage.setItem('useEmulator','1') 후 새로고침
+//   3) 테스트 완료 후: localStorage.removeItem('useEmulator') 후 새로고침
+if (typeof window !== "undefined" && localStorage.getItem("useEmulator") === "1") {
+  const { connectFunctionsEmulator } = await import(
+    "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js"
+  );
+  connectFunctionsEmulator(functions, "127.0.0.1", 5002);
+  console.info("[firebase-init] ✅ Functions 에뮬레이터 연결됨 (127.0.0.1:5001)");
+}
+
+// 여기서 "반드시 export" 해줘야 auth.js가 가져올 수 있음
 const googleProvider = new GoogleAuthProvider();
 
-export { app, auth, db, googleProvider };
+export { app, auth, db, functions, googleProvider };

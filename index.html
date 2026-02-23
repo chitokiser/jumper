@@ -30,62 +30,61 @@
 <body>
   <div id="siteHeader"></div>
 
-  <main class="page">
-   <!-- HERO SLIDER -->
-<section class="panel town-hero hero-slider" id="heroSlider">
-  <!-- 배경 레이어(슬라이드) -->
-  <div class="hero-bg" aria-hidden="true">
-    <div class="hero-bg-track" id="heroBgTrack"></div>
-    <div class="hero-bg-vignette"></div>
-  </div>
-
-  <!-- 내용 -->
-  <div class="town-hero-inner hero-content">
-    <h1 class="town-title">하노이 오션파크에 오신 것을 환영합니다.</h1>
-    <p class="town-desc">
-      우리마을은 잠시 머무는 곳이 아니라 함께 살아보는 공간입니다.<br/>
-      체류하시는 동안 불편함 없이, 즐겁고 안전하게 지내실 수 있도록<br/>
-      저희 Jovial 패밀리들이 함께하겠습니다.
-    </p>
-
-    <div class="hero-actions">
- 
+  <!-- HERO VIDEO – 전체 너비 (page 박스 밖) -->
+  <section class="town-hero hero-video" id="heroSection">
+    <!-- 비디오 배경 -->
+    <div class="hero-bg" aria-hidden="true">
+      <video
+        class="hero-video-el"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+      >
+        <source src="/assets/images/mpeg/banner.mp4" type="video/mp4">
+      </video>
+      <div class="hero-bg-vignette"></div>
     </div>
-  </div>
 
-  <!-- 컨트롤 -->
-  <button class="hero-nav hero-nav--prev" type="button" id="heroPrev" aria-label="이전 배경">‹</button>
-  <button class="hero-nav hero-nav--next" type="button" id="heroNext" aria-label="다음 배경">›</button>
+    <!-- 내용 -->
+    <div class="town-hero-inner hero-content">
+      <h1 class="town-title">당신의 다음 한 달은 하노이입니다</h1>
+      <p class="town-desc">
+        공간의 제약을 넘어<br/>
+        새로운 일상이 시작되는 곳<br/>
+        점퍼와 함께하는 하노이 한 달 살기
+      </p>
+      <div class="hero-actions"></div>
+    </div>
+  </section>
 
-  <div class="hero-dots" id="heroDots" aria-label="배경 선택"></div>
-</section>
-
-
+  <main class="page">
 
   <section class="section family-deck">
   <div class="section-h family-deck-head">
-    <h2 class="section-title">우리마을 패밀리</h2>
+    <h2 class="section-title">우리마을 조합원</h2>
 
     <div class="section-tools">
-      <a class="btn btn--primary btn-family-register" href="/family-register.html">패밀리등록</a>
+      <a class="btn btn--primary btn-family-register" href="/family-register.html">조합원등록</a>
     </div>
   </div>
 
   <div class="family-placeholder family-deck-grid">
     <div class="ph-card family-card family-card--stay">
-      <div class="ph-title">홈스테이 패밀리</div>
+      <div class="ph-title">홈스테이 조합원</div>
       <div class="ph-desc">여유방을 가지고 있는 이웃.</div>
       <div class="family-chip">Stay</div>
     </div>
 
     <div class="ph-card family-card family-card--play">
-      <div class="ph-title">놀거리 패밀리</div>
+      <div class="ph-title">놀거리 조합원</div>
       <div class="ph-desc">여행·마사지·피클볼 등 체류자에게 즐거움을 제공할 수 있는 이웃</div>
       <div class="family-chip">Play</div>
     </div>
 
     <div class="ph-card family-card family-card--mustgo">
-      <div class="ph-title">Must-Go 패밀리</div>
+      <div class="ph-title">Must-Go 조합원</div>
       <div class="ph-desc">식당·카페·병원 등, 우리마을 체류자에게 혜택을 줄 수 있는 이웃</div>
       <div class="family-chip">Must-Go</div>
     </div>
@@ -237,6 +236,7 @@
         </div>
       </div>
     </section>
+
   </main>
 
   <div id="siteFooter"></div>
