@@ -29,6 +29,8 @@ const typeEl = $("type");
 const areaEl = $("area");
 const addressEl = $("address");
 const gmapEl = $("gmap");
+const latEl  = $("lat");
+const lngEl  = $("lng");
 const phoneEl = $("phone");
 const visibleEl = $("visible");
 const mustGoEl = $("mustGo");
@@ -51,6 +53,8 @@ function resetForm(){
   if(areaEl) areaEl.value = "op1";
   if(addressEl) addressEl.value = "";
   if(gmapEl) gmapEl.value = "";
+  if(latEl)  latEl.value  = "";
+  if(lngEl)  lngEl.value  = "";
   if(phoneEl) phoneEl.value = "";
   if(visibleEl) visibleEl.value = "1";
   if(mustGoEl) mustGoEl.value = "0";
@@ -64,6 +68,8 @@ function fillForm(d){
   if(areaEl) areaEl.value = d?.area || "op1";
   if(addressEl) addressEl.value = d?.address || "";
   if(gmapEl) gmapEl.value = d?.gmap || "";
+  if(latEl)  latEl.value  = (d?.lat  != null) ? d.lat  : "";
+  if(lngEl)  lngEl.value  = (d?.lng  != null) ? d.lng  : "";
   if(phoneEl) phoneEl.value = d?.phone || "";
   if(visibleEl) visibleEl.value = (d?.visible === false) ? "0" : "1";
   if(mustGoEl) mustGoEl.value = d?.mustGo ? "1" : "0";
@@ -137,6 +143,8 @@ async function save(){
     area: String(areaEl?.value || "op1"),
     address: String(addressEl?.value || "").trim(),
     gmap: String(gmapEl?.value || "").trim(),
+    lat: latEl?.value !== "" ? parseFloat(latEl.value) : null,
+    lng: lngEl?.value !== "" ? parseFloat(lngEl.value) : null,
     phone: String(phoneEl?.value || "").trim(),
     mustGo: mustGoEl?.value === "1",
     visible: visibleEl?.value !== "0",

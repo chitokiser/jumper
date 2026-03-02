@@ -300,6 +300,22 @@ service cloud.firestore {
       allow create, update, delete: if false; // Cloud Functions(Admin SDK) 전용
     }
 
+    // 가맹점(판매조합원) 등록 정보 (merchants/{merchantId})
+    // - 읽기: 누구나 (가맹점 리스트 공개 노출)
+    // - 쓰기: Cloud Functions만
+    match /merchants/{merchantId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // Cloud Functions(Admin SDK) 전용
+    }
+
+    // 장소 (places/{placeId})
+    // - 읽기: 누구나 (지도/홈 공개 노출)
+    // - 쓰기: 관리자만
+    match /places/{placeId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

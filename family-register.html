@@ -4,11 +4,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>판매조합원참여 - Jovial</title>
+  <title>가맹점 등록 - Jovial</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
   <link rel="stylesheet" href="/assets/css/pages/apply-guide.css" />
+  <link rel="stylesheet" href="/assets/css/pages/register.css" />
 
   <script src="/assets/js/partials.js" defer></script>
 </head>
@@ -16,86 +17,144 @@
   <div id="siteHeader"></div>
 
   <main class="page">
+
+    <!-- ── 메인 패널 ── -->
     <section class="panel">
-      <h1 class="title">판매조합원 참여</h1>
-      <p class="desc">여유방(홈스테이) 또는 놀거리(체험·여행·클래스·가맹점 등)가 있다면 조합원으로 참여할 수 있습니다.</p>
+      <h1 class="title">가맹점 등록</h1>
+      <p class="desc">
+        홈스테이·체험·여행·클래스·가맹점 등 판매 서비스가 있다면 가맹점으로 참여할 수 있습니다.<br>
+        <strong>모든 결제는 HEX 토큰으로만 받습니다.</strong>
+      </p>
 
       <div id="applyState" class="state">로딩...</div>
 
-      <div class="status-box" id="statusBox" style="display:none;">
-        <div class="status-row">
-          <div class="k">현재 상태</div>
-          <div class="v" id="statusText">-</div>
-        </div>
-        <div class="status-row" id="statusReasonRow" style="display:none;">
-          <div class="k">사유</div>
-          <div class="v danger" id="statusReason">-</div>
-        </div>
+      <!-- ① 로그인 필요 -->
+      <div id="needLoginPanel" style="display:none;" class="status-box">
+        <p>Google 로그인 후 이용할 수 있습니다.</p>
+        <button class="btn btn--primary" id="btnLogin" type="button" style="margin-top:12px;">구글 로그인</button>
       </div>
 
-      <form class="form hide" id="applyForm">
+      <!-- ② 회원가입 필요 -->
+      <div id="needRegisterPanel" style="display:none;" class="status-box">
+        <p>
+          가맹점 등록을 위해 먼저 <strong>회원가입</strong>이 필요합니다.<br>
+          <small class="muted">수탁 지갑 생성 및 온체인 조합원 등록까지 완료해야 합니다.</small>
+        </p>
+        <a href="/register.html" class="btn btn--primary" style="margin-top:12px; display:inline-block;">회원가입 하러 가기</a>
+      </div>
+
+      <!-- ③ 온체인 등록 필요 -->
+      <div id="needOnChainPanel" style="display:none;" class="status-box">
+        <p>
+          가맹점 등록을 위해 <strong>온체인 조합원 등록</strong>이 필요합니다.<br>
+          <small class="muted">마이페이지에서 수탁 지갑 생성 → 온체인 등록을 완료해 주세요.</small>
+        </p>
+        <a href="/mypage.html" class="btn btn--primary" style="margin-top:12px; display:inline-block;">마이페이지로 이동</a>
+      </div>
+
+      <!-- ④ 이미 등록된 판매자 -->
+      <div id="alreadyMerchantPanel" style="display:none;" class="status-box">
+        <p style="color:var(--accent); font-weight:600;">✓ 이미 가맹점으로 등록되어 있습니다.</p>
+        <div class="status-row">
+          <div class="k">가맹점 ID</div>
+          <div class="v" id="existingMerchantId">-</div>
+        </div>
+        <div class="status-row">
+          <div class="k">수수료율</div>
+          <div class="v" id="existingFeeBps">설정 중...</div>
+        </div>
+        <p class="hint" style="margin-top:8px;">
+          고객이 결제 시 이 가맹점 ID를 사용합니다. 수수료율은 관리자가 설정합니다.
+        </p>
+      </div>
+
+      <!-- ⑤ 판매조합원 등록 폼 -->
+      <form id="merchantForm" style="display:none;" class="form" novalidate>
+
+        <div style="background:var(--surface2,#f9f5ff); border-left:4px solid var(--accent,#7c3aed); border-radius:6px; padding:10px 14px; margin-bottom:16px; font-size:0.88em;">
+          <strong>결제 방식 안내</strong><br>
+          모든 상품 결제는 <strong>HEX 토큰</strong>으로만 받습니다.<br>
+          등록 즉시 온체인에 가맹점이 생성되며, 초기 수수료(10%)는 관리자가 설정합니다.
+        </div>
+
         <label class="field">
-          <span>한줄 소개</span>
-          <input type="text" id="intro" maxlength="80" placeholder="예: 다낭 로컬투어 5년 운영" />
+          <span>가게명 / 상호 <em class="req">*</em></span>
+          <input type="text" id="merchantName" maxlength="50" placeholder="예: 다낭 로컬 투어" autocomplete="off" />
         </label>
 
         <label class="field">
-          <span>휴대폰 번호 (알림톡 자동 안내)</span>
-          <input type="tel" id="phone" maxlength="30" placeholder="예: +82 10 1234 5678 / +84 912 345 678" />
+          <span>업종 / 카테고리 <em class="req">*</em></span>
+          <input type="text" id="merchantCareer" maxlength="80" placeholder="예: 스파, 투어, 맛집, 사진촬영" />
         </label>
 
         <label class="field">
-          <span>카카오 ID (선택)</span>
-          <input type="text" id="kakaoId" maxlength="40" placeholder="예: jovialtravel" />
-        </label>
-
-        <label class="check">
-          <input type="checkbox" id="agreeKakao" />
-          <span>처리상태 자동 알림(카카오 알림톡/문자) 수신에 동의합니다</span>
-        </label>
-
-        <label class="field">
-          <span>정산 지갑주소 (필요한 경우)</span>
-          <input type="text" id="walletAddress" maxlength="60" placeholder="0x로 시작하는 42자리 주소" />
-        </label>
-
-        <label class="field">
-          <span>활동 지역 (오션파크 1/2/3 등)</span>
-          <input type="text" id="region" maxlength="40" placeholder="예: 다낭 / 하노이" />
-        </label>
-
-        <label class="field">
-          <span>어떤 조합원인가요?</span>
-          <input type="text" id="career" maxlength="80" placeholder="예: 스파, 투어, 맛집, 사진촬영" />
+          <span>활동 지역 <em class="req">*</em></span>
+          <input type="text" id="merchantRegion" maxlength="40" placeholder="예: 다낭 / 하노이" />
         </label>
 
         <label class="field">
           <span>상세 설명</span>
-          <textarea id="detail" rows="6" maxlength="600" placeholder="어떤 놀거리/공간을 함께할지 자세히 적어주세요"></textarea>
+          <textarea id="merchantDetail" rows="5" maxlength="600" placeholder="어떤 서비스를 제공하는지 자세히 적어주세요"></textarea>
         </label>
 
-        <div class="actions">
-          <button class="btn primary" type="submit" id="btnSave">참여 저장 / 갱신</button>
-          <button class="btn danger" type="button" id="btnWithdraw">참여 철회(삭제)</button>
+        <label class="field">
+          <span>전화번호</span>
+          <input type="tel" id="merchantPhone" maxlength="30" placeholder="예: +82 10 1234 5678 / +84 912 345 678" />
+        </label>
+
+        <label class="field">
+          <span>카카오 ID <small>(선택)</small></span>
+          <input type="text" id="merchantKakaoId" maxlength="40" placeholder="예: jovialtravel" />
+        </label>
+
+        <!-- 진행 단계 -->
+        <div id="stepBox" class="step-box" style="display:none;">
+          <div class="step" id="step1">① 온체인 가맹점 등록</div>
+          <div class="step" id="step2">② 정보 저장</div>
         </div>
 
-        <div class="hint">
-          저장하면 검수중(pending) 상태로 유지됩니다. 승인되면 조합원로 활동할 수 있습니다.
+        <div class="actions">
+          <button type="submit" class="btn btn--primary" id="btnRegisterMerchant">가맹점 등록</button>
         </div>
+
+        <p class="hint">
+          등록 버튼을 누르면 수탁 지갑으로 온체인 트랜잭션이 전송됩니다.<br>
+          완료까지 수 초가 걸릴 수 있습니다.
+        </p>
       </form>
 
-      <div class="note">
-        운영 안내:
+      <!-- ⑥ 등록 완료 -->
+      <div id="merchantDonePanel" style="display:none;" class="status-box">
+        <p style="color:var(--accent); font-weight:600; margin-bottom:12px;">✓ 가맹점 등록 완료!</p>
+        <div class="status-row">
+          <div class="k">가맹점 ID</div>
+          <div class="v accent" id="newMerchantId" style="font-size:1.2em; font-weight:700;">-</div>
+        </div>
+        <div class="status-row">
+          <div class="k">수수료율</div>
+          <div class="v">0% → 관리자 승인 후 <strong>10%</strong> 적용 예정</div>
+        </div>
+        <div class="status-row">
+          <div class="k">결제 방식</div>
+          <div class="v">HEX 토큰 전용</div>
+        </div>
+        <p class="hint" style="margin-top:10px;">
+          가맹점 ID를 기록해 두세요. 고객 결제 시 이 ID로 결제가 이루어집니다.
+        </p>
+        <p class="muted" style="font-size:0.78em; margin-top:4px; word-break:break-all;">
+          txHash: <span id="doneTxHash" style="font-family:monospace;"></span>
+        </p>
       </div>
     </section>
 
     <!-- ── 멘토 이메일 등록 (linkMentor) ── -->
     <section class="panel" id="mentorLinkPanel" style="display:none; margin-top:20px;">
       <h2 style="font-size:1.1rem; margin:0 0 6px; color:var(--text);">멘토 이메일 등록</h2>
-      <p class="desc">MetaMask 지갑으로 서명하여 내 구글 이메일과 지갑 주소를 연결합니다.<br>
-        레벨 4 이상의 지갑만 등록 가능합니다.</p>
+      <p class="desc">
+        개인 지갑으로 서명하여 내 구글 이메일과 지갑 주소를 연결합니다.<br>
+        레벨 4 이상의 지갑만 등록 가능합니다.
+      </p>
 
-      <!-- 이미 연결된 경우 표시 -->
       <div id="mentorCurrentBox" class="status-box" style="display:none;">
         <div class="status-row">
           <div class="k">현재 연결된 주소</div>
@@ -104,10 +163,11 @@
       </div>
 
       <div class="actions" style="margin-top:14px;">
-        <button id="btnLinkMentor" class="btn primary" type="button">MetaMask 서명 후 등록</button>
+        <button id="btnLinkMentor" class="btn btn--primary" type="button">MetaMask 서명 후 등록</button>
       </div>
       <div id="mentorLinkMsg" class="hint" style="margin-top:8px; display:none;"></div>
     </section>
+
   </main>
 
   <div id="siteFooter"></div>

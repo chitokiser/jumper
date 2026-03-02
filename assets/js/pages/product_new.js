@@ -143,8 +143,8 @@ onAuthReady(async ({ loggedIn, role, user }) => {
     location.href = "./guide.html";
     return;
   }
-  if (!(role === "guide" || role === "admin")) {
-    alert("가이드 승인 후 상품 등록이 가능합니다. 먼저 가이드 신청을 해주세요.");
+  if (!(role === "guide" || role === "merchant" || role === "admin")) {
+    alert("가이드 또는 가맹점 승인 후 상품 등록이 가능합니다.");
     location.href = "./guide.html";
     return;
   }

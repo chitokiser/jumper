@@ -104,8 +104,8 @@ onAuthReady(async ({ loggedIn, role, user })=>{
     location.href = "./guide.html";
     return;
   }
-  if(!(role === "guide" || role === "admin")){
-    alert("가이드 승인 후 이용 가능합니다.");
+  if(!(role === "guide" || role === "merchant" || role === "admin")){
+    alert("가이드 또는 가맹점 승인 후 이용 가능합니다.");
     location.href = "./guide.html";
     return;
   }

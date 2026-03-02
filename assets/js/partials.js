@@ -42,8 +42,25 @@
     return true;
   }
 
+  function ensureFavicon(){
+    try{
+      // 이미 favicon link가 있으면 스킵
+      const existing = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+      if(existing) return;
+      const link = document.createElement("link");
+      link.rel  = "icon";
+      link.type = "image/png";
+      link.href = "/assets/images/jump/favicon.png";
+      document.head.appendChild(link);
+    }catch(e){
+      console.warn("ensureFavicon failed:", e?.message || e);
+    }
+  }
+
   async function mount(){
     try{
+      ensureFavicon();
+
       // footer.css 누락 페이지(예: item.html)에서도 푸터 스타일을 강제 적용
       ensureCss("/assets/css/footer.css");
 

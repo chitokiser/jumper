@@ -28,6 +28,24 @@
     <!-- ── 메인 콘텐츠 ── -->
     <div id="mainContent" style="display:none;">
 
+      <!-- 회원가입 미완료 안내 -->
+      <div id="noProfilePanel" style="display:none;" class="panel mp-section">
+        <h2 class="mp-section-title">회원가입이 필요합니다</h2>
+        <p class="hint" style="margin:8px 0 16px;">
+          수탁 지갑 생성 및 서비스 이용을 위해 먼저 회원가입을 완료해 주세요.
+        </p>
+        <a href="/register.html" class="btn btn--primary">회원가입 하러 가기</a>
+      </div>
+
+      <!-- 멘토 연결 안내 배너 -->
+      <div id="mentorNotice" class="panel mp-section" style="display:none; border-left:4px solid var(--accent); background:var(--surface2,#f9f5ff);">
+        <p style="margin:0; font-size:0.95em;">
+          <strong>⚠️ 멘토 연결 필요</strong> —
+          가맹점 결제 시 <b>경험치(EXP)</b>와 <b>포인트</b>를 받으려면 멘토가 연결되어 있어야 합니다.
+          <a href="#mentorRequestBox" style="color:var(--accent);">멘토 등록하기 ↓</a>
+        </p>
+      </div>
+
       <!-- 기본 정보 -->
       <section class="panel mp-section">
         <div class="mp-section-head">
@@ -45,7 +63,10 @@
       <section class="panel mp-section">
         <div class="mp-section-head">
           <h2 class="mp-section-title">수탁 지갑</h2>
-          <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;">지갑 생성</button>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;">MetaMask 연결</button>
+            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;">지갑 생성</button>
+          </div>
         </div>
 
         <div id="walletInfo">
@@ -57,27 +78,75 @@
             <span class="k">온체인 등록</span>
             <span class="v" id="onChainStatus">조회 중...</span>
           </div>
-          <div class="mp-kv" id="pointRow" style="display:none;">
-            <span class="k">포인트 잔액</span>
-            <span class="v accent" id="pointDisplay">-</span>
-          </div>
-          <div class="mp-kv" id="payableRow" style="display:none;">
-            <span class="k">인출 가능</span>
-            <span class="v" id="payableDisplay">-</span>
-          </div>
           <div class="mp-kv" id="levelRow" style="display:none;">
             <span class="k">레벨</span>
             <span class="v" id="levelDisplay">-</span>
           </div>
+          <div class="mp-kv" id="expRow" style="display:none;">
+            <span class="k">경험치 (EXP)</span>
+            <span class="v"><span id="expDisplay">-</span></span>
+          </div>
+          <div id="expBarRow" style="display:none; padding:2px 0 10px 0;">
+            <div style="background:#e5e7eb; border-radius:99px; height:8px; overflow:hidden;">
+              <div id="expBarFill" style="background:var(--accent,#7c3aed); height:100%; width:0%; border-radius:99px; transition:width .4s;"></div>
+            </div>
+            <small class="muted" id="expRequired" style="font-size:0.78em;"></small>
+          </div>
+          <div class="mp-kv" id="levelUpRow" style="display:none;">
+            <span class="k"></span>
+            <span class="v">
+              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button">레벨업 가능! →</button>
+            </span>
+          </div>
+          <div class="mp-kv" id="pointRow" style="display:none;">
+            <span class="k">포인트(hex로 변경가능)</span>
+            <span class="v accent" id="pointDisplay">-</span>
+          </div>
+          <div class="mp-kv" id="mentorAddrRow" style="display:none;">
+            <span class="k">나의 멘토</span>
+            <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
+          </div>
+          <div class="mp-kv" id="walletHexRow" style="display:none;">
+            <span class="k">보유 HEX</span>
+            <span class="v accent" id="walletHexDisplay">-</span>
+          </div>
+        </div>
+
+        <!-- 개인지갑(MetaMask)으로 잘못 등록된 경우 경고 -->
+        <div id="metamaskWarning" style="display:none; background:#fff3cd; border-left:4px solid #f59e0b; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:0.88em;">
+          <strong>⚠️ 개인 지갑이 연결되어 있습니다.</strong><br>
+          현재 MetaMask 주소가 등록되어 있어 플랫폼 결제·포인트 기능을 사용할 수 없습니다.<br>
+          아래 <strong>지갑 생성</strong> 버튼을 눌러 수탁 지갑으로 전환해 주세요.
         </div>
 
         <div id="noWallet" style="display:none;">
-          <p class="hint">수탁 지갑이 아직 없습니다. 지갑 생성 버튼을 눌러주세요.</p>
+          <p class="hint">
+            수탁 지갑이 아직 없습니다.<br>
+            <strong>지갑 생성</strong>을 눌러 서버 수탁 지갑을 만들어 주세요 (MetaMask 불필요).
+          </p>
+        </div>
+
+        <!-- 멘토 등록 요청 (온체인 등록 완료 후 멘토 없을 때) -->
+        <div id="mentorRequestBox" style="display:none;" class="mp-action-box">
+          <p class="hint">
+            <strong>멘토를 등록하세요.</strong><br>
+            멘토가 연결되어야 가맹점 결제 시 경험치(EXP)와 포인트를 받을 수 있습니다.<br>
+            <small class="muted">요청 접수 후 관리자가 확인하여 연결해 드립니다.</small>
+          </p>
+          <label class="field">
+            <span>멘토 이메일 <em class="req">*</em></span>
+            <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
+          </label>
+          <button class="btn btn--primary" id="btnMentorRequest" type="button">멘토 등록 요청</button>
+          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);">✓ 요청이 접수되었습니다. 관리자 확인 후 반영됩니다.</p>
         </div>
 
         <!-- 온체인 미등록 시 등록 버튼 -->
         <div id="onChainRegBox" style="display:none;" class="mp-action-box">
-          <p class="hint">온체인 미등록 상태입니다. 멘토 이메일을 입력하고 등록하세요.</p>
+          <p class="hint">
+            온체인 미등록 상태입니다.<br>
+            멘토 이메일을 입력하면 가맹점 결제 시 경험치(EXP)와 포인트를 받을 수 있습니다.
+          </p>
           <label class="field">
             <span>멘토 이메일 <small>(선택)</small></span>
             <input type="email" id="mentorEmailInput" maxlength="80" placeholder="mentor@gmail.com" />
@@ -89,7 +158,7 @@
       <!-- 원화 충전 -->
       <section class="panel mp-section">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">포인트 충전 (원화)</h2>
+          <h2 class="mp-section-title">HEX 충전 (원화)</h2>
         </div>
 
         <form id="depositForm" class="form" style="margin-top:0;">
@@ -113,9 +182,36 @@
           <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono" id="drAccount">-</span></div>
           <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolder">-</span></div>
           <div class="mp-kv"><span class="k">금액</span><span class="v" id="drAmount">-</span></div>
-          <div class="mp-kv"><span class="k">예상 포인트</span><span class="v accent" id="drHex">-</span></div>
-          <p class="hint mp-warn">입금자명을 정확히 입력하세요. 관리자 확인 후 포인트가 지급됩니다.</p>
+          <div class="mp-kv"><span class="k">충전 금액</span><span class="v accent" id="drHex">-</span></div>
+          <p class="hint mp-warn">입금자명을 정확히 입력하세요. 관리자 확인 후 HEX 토큰이 수탁 지갑으로 지급됩니다.</p>
         </div>
+      </section>
+
+      <!-- 가맹점 직접 결제 (오프라인) -->
+      <section class="panel mp-section" id="merchantPaySection">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">가맹점 직접 결제</h2>
+        </div>
+        <p class="hint" style="margin-bottom:12px;">
+          가맹점을 방문하여 현장에서 결제할 때 사용합니다.<br>
+          <small class="muted">결제 시 수탁 지갑의 HEX가 사용됩니다. (온체인 결제)</small>
+        </p>
+        <form id="merchantPayForm" class="form" style="margin-top:0;">
+          <label class="field">
+            <span>가맹점 선택 <em class="req">*</em></span>
+            <select id="merchantPaySelect">
+              <option value="">불러오는 중...</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>결제 금액 (원) <em class="req">*</em></span>
+            <input type="number" id="merchantPayAmount" min="1000" step="100" placeholder="예: 50000" />
+          </label>
+          <div class="actions">
+            <button class="btn btn--primary" type="submit" id="btnMerchantPay">결제</button>
+          </div>
+        </form>
+        <div id="merchantPayResult" class="mp-result-box" style="display:none;"></div>
       </section>
 
       <!-- 충전 내역 -->
@@ -125,6 +221,47 @@
           <button class="btn btn--sm" id="btnRefreshDeposits" type="button">새로고침</button>
         </div>
         <div id="depositHistory" class="mp-table-wrap">
+          <p class="hint">불러오는 중...</p>
+        </div>
+      </section>
+
+      <!-- 포인트 · 레벨 안내 -->
+      <section class="panel mp-section">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">포인트 · 레벨 안내</h2>
+        </div>
+        <dl style="margin:0; display:grid; gap:10px;">
+          <div>
+            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">멘토 등록 (필수)</dt>
+            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">온체인 등록 시 멘토 이메일을 입력해야 합니다. 멘토 없이 등록하면 기본 멘토로 연결되어 경험치·포인트 적립이 되지 않을 수 있습니다.</dd>
+          </div>
+          <div>
+            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">포인트란?</dt>
+            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">내 하위 회원이 가맹점에서 결제할 때 수수료 일부가 멘토(나)에게 포인트로 적립됩니다. 포인트는 HEX 토큰으로 전환할 수 있습니다.</dd>
+          </div>
+          <div>
+            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">경험치 (EXP)</dt>
+            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">내가 가맹점에서 결제할 때 수수료에 비례해 경험치가 쌓입니다. 경험치로 레벨업을 할 수 있습니다.</dd>
+          </div>
+          <div>
+            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">레벨 & 레벨업</dt>
+            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">
+              레벨이 높을수록 포인트 → HEX 전환 시 더 많이 받습니다.<br>
+              <strong>전환량 = 포인트 × 레벨 ÷ 10</strong><br>
+              레벨업 필요 EXP = 현재레벨² × 10,000<br>
+              <span style="font-size:0.9em;">Lv.1→2: 10,000 EXP &nbsp;·&nbsp; Lv.2→3: 40,000 EXP &nbsp;·&nbsp; Lv.3→4: 90,000 EXP</span>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- 나의 멘티 목록 -->
+      <section class="panel mp-section" id="menteeSection" style="display:none;">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">나의 멘티</h2>
+          <button class="btn btn--sm" id="btnRefreshMentees" type="button">새로고침</button>
+        </div>
+        <div id="menteeList" class="mp-table-wrap">
           <p class="hint">불러오는 중...</p>
         </div>
       </section>

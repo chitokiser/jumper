@@ -121,12 +121,26 @@ export async function getUserRole(uid, email){
     console.warn("guides read failed:", e?.code || e?.message || e);
   }
 
-  // 3) users
+  // 3) users + merchant 체크
   try{
     const uRef = doc(db, "users", uid);
     const uSnap = await getDoc(uRef);
     if(uSnap.exists()){
       const u = uSnap.data() || {};
+      // 3-a) 가맹점 체크 (등록 완료 = active !== false)
+      if(u.merchantId != null){
+        try{
+          const mRef = doc(db, "merchants", String(u.merchantId));
+          const mSnap = await getDoc(mRef);
+          if(mSnap.exists()){
+            const m = mSnap.data() || {};
+            if(m.active !== false) return "merchant";
+          }
+        }catch(me){
+          console.warn("merchant read failed:", me?.code || me?.message || me);
+        }
+      }
+      // 3-b) users.role 필드
       if(typeof u.role === "string" && u.role) return u.role;
     }
   }catch(e){

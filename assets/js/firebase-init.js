@@ -57,8 +57,8 @@ if (typeof window !== "undefined" && localStorage.getItem("useEmulator") === "1"
   const { connectFunctionsEmulator } = await import(
     "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js"
   );
-  connectFunctionsEmulator(functions, "127.0.0.1", 5002);
-  console.info("[firebase-init] ✅ Functions 에뮬레이터 연결됨 (127.0.0.1:5001)");
+  connectFunctionsEmulator(functions, "127.0.0.1", 15002);
+  console.info("[firebase-init] ✅ Functions 에뮬레이터 연결됨 (127.0.0.1:15002)");
 }
 
 // 여기서 "반드시 export" 해줘야 auth.js가 가져올 수 있음

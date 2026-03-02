@@ -20,19 +20,24 @@
     <section class="section">
       <div class="page-h">
         <h1 class="page-title">관리자 승인</h1>
-        <p class="page-desc">조합원 신청 / 놀거리 승인 처리</p>
+        <p class="page-desc">판매회원신청 / 놀거리 승인 처리</p>
       </div>
 
       <div class="panel">
         <div class="panel-h">
           <div class="toolbar">
             <div class="tabs">
-              <button class="btn btn-sm" id="btnTabGuides" type="button">조합원 신청</button>
+              <button class="btn btn-sm" id="btnTabGuides" type="button">판매회원 신청</button>
+              <button class="btn btn-sm" id="btnTabMerchants" type="button">가맹점 관리</button>
               <button class="btn btn-sm" id="btnTabItems" type="button">상품 승인</button>
+              <button class="btn btn-sm" id="btnTabDeposits" type="button">입금 승인</button>
+              <button class="btn btn-sm" id="btnTabHex" type="button">HEX 관리</button>
+              <button class="btn btn-sm" id="btnTabMembers" type="button">멤버 관리</button>
             </div>
 
             <div class="toolbar-right">
               <button class="btn btn-sm" id="btnReloadGuides" type="button">새로고침</button>
+              <button class="btn btn-sm" id="btnReloadMerchants" type="button" style="display:none;">새로고침</button>
 
               <div class="field" id="itemsFilter">
                 <label class="muted" for="selItemStatus">상태</label>
@@ -44,6 +49,7 @@
               </div>
 
               <button class="btn btn-sm" id="btnReloadItems" type="button">새로고침</button>
+              <button class="btn btn-sm" id="btnReloadDeposits" type="button" style="display:none;">새로고침</button>
             </div>
           </div>
 
@@ -58,12 +64,171 @@
             <div id="guideList" class="list"></div>
           </div>
 
+          <!-- ── 가맹점 관리 탭 ── -->
+          <div id="tabMerchants" style="display:none;">
+            <div class="list-head">
+              <div class="muted">merchants 컬렉션 (판매조합원 등록 현황)</div>
+            </div>
+            <div id="merchantList" class="list"></div>
+          </div>
+
           <div id="tabItems" style="display:none;">
             <div class="list-head">
               <div class="muted">items 승인(상태별)</div>
             </div>
             <div id="itemList" class="list"></div>
           </div>
+
+          <!-- ── 입금 승인 탭 ── -->
+          <div id="tabDeposits" style="display:none;">
+            <div class="list-head">
+              <div class="muted">대기중 입금 요청 (pending / processing)</div>
+            </div>
+            <!-- 환율 수동 지정 (선택) -->
+            <div class="field" style="display:flex; gap:8px; align-items:center; padding:8px 0 12px;">
+              <label class="muted" for="inputKrwRate" style="white-space:nowrap;">환율 수동 지정 (KRW/USD, 비워두면 자동)</label>
+              <input type="number" id="inputKrwRate" class="select" style="width:120px;" placeholder="예: 1380" min="900" max="2000" step="0.01" />
+            </div>
+            <div id="depositList" class="list"></div>
+          </div>
+
+          <!-- ── HEX 관리 탭 ── -->
+          <div id="tabHex" style="display:none;">
+
+            <!-- 컨트랙트 현황 -->
+            <div class="list-head" style="margin-top:8px;">
+              <div class="muted">jumpPlatform 컨트랙트 현황</div>
+              <button class="btn btn-sm" id="btnRefreshContractStatus" type="button">새로고침</button>
+            </div>
+            <div class="card" style="margin-top:4px;" id="contractStatusCard">
+              <div class="kv" id="contractStatusGrid">
+                <div class="k">상태</div>
+                <div class="v" id="contractStatusMsg">조회 중...</div>
+              </div>
+            </div>
+
+            <!-- 컨트랙트 HEX 충전 -->
+            <div class="list-head" style="margin-top:16px;">
+              <div class="muted">컨트랙트 HEX 충전 (관리자 지갑 → jumpPlatform)</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <p class="muted" style="font-size:12px; margin:0 0 10px;">
+                충전 승인(adminCreditHex)에 필요한 HEX를 컨트랙트 풀에 보충합니다.<br>
+                ⚠ 아래 <strong>무한 Approve</strong>가 먼저 실행되어 있어야 합니다.
+              </p>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <input type="number" id="inputOwnerDepositHex" class="select" style="flex:1; min-width:140px;"
+                  placeholder="HEX 수량 (예: 100)" min="0.0001" step="0.0001" />
+                <button class="btn btn-sm" id="btnOwnerDepositHex" type="button">컨트랙트 충전</button>
+              </div>
+            </div>
+
+            <!-- HEX Approve -->
+            <div class="list-head" style="margin-top:16px;">
+              <div class="muted">관리자 지갑 → jumpPlatform HEX 승인 (creditPoints 사전 조건)</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <div class="kv">
+                <div class="k">현재 HEX Allowance</div>
+                <div class="v" id="hexAllowanceDisplay">조회 중...</div>
+              </div>
+              <div class="row-actions" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-sm" id="btnCheckAllowance" type="button">Allowance 조회</button>
+                <button class="btn btn-sm" id="btnApproveHex" type="button">무한 Approve (MaxUint256)</button>
+              </div>
+              <p class="muted" style="font-size:12px; margin-top:8px;">
+                ⚠ 최초 1회 또는 allowance 소진 시 실행하세요.<br>
+                이 작업 없이는 <code>creditPoints</code>가 실패합니다.
+              </p>
+            </div>
+
+            <!-- P2P 수령 기록 -->
+            <div class="list-head" style="margin-top:16px;">
+              <div class="muted">P2P HEX 수령 기록 (외부→수탁 지갑 직접 전송)</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="inputP2pTxHash" class="select" style="flex:1; font-family:monospace; font-size:12px;"
+                  placeholder="0x... (HEX Transfer 트랜잭션 해시)" />
+                <button class="btn btn-sm" id="btnRecordP2p" type="button">P2P 기록</button>
+              </div>
+              <p class="muted" style="font-size:12px; margin-top:8px;">
+                외부 지갑 → 수탁 지갑으로 직접 전송된 HEX의 txHash를 입력하면<br>
+                거래 내역에 등록되고 마이페이지 잔액이 업데이트됩니다.
+              </p>
+            </div>
+          </div>
+
+          <!-- ── 멤버 관리 탭 ── -->
+          <div id="tabMembers" style="display:none;">
+
+            <!-- 관리자 셀프 온보딩 -->
+            <div class="list-head" style="margin-top:8px;">
+              <div class="muted">관리자 지갑 연결 (adminSelfOnboard)</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <p class="muted" style="font-size:12px; margin:0 0 10px;">
+                ADMIN_PRIVATE_KEY 지갑을 내 계정(Firestore users)에 연결합니다.<br>
+                멘티 목록 조회를 위해 <strong>먼저 1회 실행</strong>해야 합니다.
+              </p>
+              <button class="btn btn-sm" id="btnAdminSelfOnboard" type="button">관리자 지갑 연결 실행</button>
+              <div id="adminSelfOnboardResult" style="display:none; margin-top:10px; font-size:13px;"></div>
+            </div>
+
+            <!-- 온체인 멘토 일괄 변경 -->
+            <div class="list-head" style="margin-top:8px;">
+              <div class="muted">온체인 멘토 일괄 변경 (adminChangeMentor)</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <p class="muted" style="font-size:12px; margin:0 0 10px;">
+                온체인 등록된 유저들의 멘토 주소를 일괄 변경합니다.<br>
+                ⚠ 컨트랙트 onlyOwner 함수 호출 — 가스비가 발생합니다.
+              </p>
+              <div class="kv" style="margin-bottom:10px;">
+                <div class="k">새 멘토 주소</div>
+                <div class="v">
+                  <input type="text" id="inputNewMentorAddr" class="select"
+                    style="width:100%; font-family:monospace; font-size:12px;"
+                    placeholder="0x... (멘토 지갑 주소)" />
+                </div>
+                <div class="k">대상 UID<br><span style="font-size:10px; color:var(--muted);">(비우면 전체)</span></div>
+                <div class="v">
+                  <textarea id="inputTargetUids" class="select"
+                    style="width:100%; height:60px; font-size:12px; resize:vertical;"
+                    placeholder="uid1&#10;uid2&#10;uid3 (줄바꿈으로 구분, 비우면 전체 등록 유저 대상)"></textarea>
+                </div>
+              </div>
+              <button class="btn btn-sm" id="btnBulkChangeMentor" type="button">멘토 일괄 변경 실행</button>
+              <div id="bulkMentorResult" style="display:none; margin-top:10px; font-size:13px;"></div>
+            </div>
+
+            <!-- 유저 레벨 설정 -->
+            <div class="list-head" style="margin-top:16px;">
+              <div class="muted">유저 온체인 레벨 설정 (adminSetLevel)</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <p class="muted" style="font-size:12px; margin:0 0 10px;">
+                이메일 또는 UID로 유저를 찾아 온체인 레벨을 변경합니다.<br>
+                ⚠ 컨트랙트 onlyOwner 함수 호출 — 가스비가 발생합니다.
+              </p>
+              <div class="kv" style="margin-bottom:10px;">
+                <div class="k">이메일 또는 UID</div>
+                <div class="v">
+                  <input type="text" id="inputSetLevelUser" class="select"
+                    style="width:100%;"
+                    placeholder="user@example.com 또는 Firebase UID" />
+                </div>
+                <div class="k">레벨 (1~10)</div>
+                <div class="v">
+                  <input type="number" id="inputSetLevel" class="select"
+                    style="width:80px;" min="1" max="10" step="1" value="4" />
+                </div>
+              </div>
+              <button class="btn btn-sm" id="btnSetUserLevel" type="button">레벨 설정 실행</button>
+              <div id="setLevelResult" style="display:none; margin-top:10px; font-size:13px;"></div>
+            </div>
+          </div>
+
         </div>
       </div>
     </section>

@@ -1,6 +1,7 @@
 // /assets/js/pages/item.js
 import { onAuthReady } from "../auth.js";
-import { auth, db } from "/assets/js/firebase-init.js";
+import { auth, db, functions } from "/assets/js/firebase-init.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
 import { isAdmin } from "../roles.js";
 
@@ -925,6 +926,112 @@ function bindOrder({ itemId, itemTitle, ownerUid, status, price, user, booking }
       $("#btnOrder").disabled = false;
     }
   });
+
+  // ── HEX 즉시결제 ──────────────────────────────────────
+  const btnHexPay  = $("#btnHexPay");
+  const hexPayInfo = $("#hexPayInfo");
+
+  function getBookingParams() {
+    const mode      = String(booking?.mode || "date_single");
+    const people    = parseInt($("#odPeople")?.value || "1", 10);
+    const phone     = normalizePhone($("#odPhone")?.value || "");
+    const memo      = ($("#odMemo")?.value || "").trim();
+    const date      = mode !== "date_range" ? ($("#odDate")?.value || "").trim() : "";
+    const startDate = mode === "date_range"  ? ($("#odStart")?.value || "").trim() : "";
+    const endDate   = mode === "date_range"  ? ($("#odEnd")?.value || "").trim()   : "";
+    return { mode, people, phone, memo, date, startDate, endDate };
+  }
+
+  // 금액 미리보기 (버튼 클릭 전 안내)
+  function updateHexInfo() {
+    if (!hexPayInfo) return;
+    const { mode, startDate, endDate } = getBookingParams();
+    const u = Number(price) || 0;
+    if (mode === "date_range") {
+      const n = nightsBetween(startDate, endDate);
+      const total = n > 0 ? u * n : 0;
+      hexPayInfo.textContent = total > 0
+        ? `HEX 즉시결제 예상 금액: ${fmtMoney(total)} KRW (현재 환율로 HEX 자동 환산)`
+        : "체크인/체크아웃 날짜를 선택하세요.";
+    } else {
+      hexPayInfo.textContent = u > 0
+        ? `HEX 즉시결제 예상 금액: ${fmtMoney(u)} KRW (현재 환율로 HEX 자동 환산)`
+        : "금액 정보가 없습니다.";
+    }
+    hexPayInfo.style.display = "block";
+  }
+
+  if (btnHexPay) {
+    // 날짜 변경 시 안내 갱신
+    $("#odDate")?.addEventListener("change",  updateHexInfo);
+    $("#odStart")?.addEventListener("change", updateHexInfo);
+    $("#odEnd")?.addEventListener("change",   updateHexInfo);
+    updateHexInfo();
+
+    btnHexPay.addEventListener("click", async () => {
+      const { mode, people, phone, memo, date, startDate, endDate } = getBookingParams();
+
+      // 기본 검증
+      if (!isValidPhone(phone)) {
+        alert("휴대폰 번호를 입력하세요.");
+        return;
+      }
+      if (mode === "date_range" && (!startDate || !endDate)) {
+        alert("체크인/체크아웃 날짜를 선택하세요.");
+        return;
+      }
+      if (mode === "date_single" && !date) {
+        alert("예약 날짜를 선택하세요.");
+        return;
+      }
+
+      // 확인
+      const { mode: _m, startDate: s, endDate: e } = { mode, startDate, endDate };
+      const nights = mode === "date_range" ? nightsBetween(s, e) : 0;
+      const total  = mode === "date_range" ? (Number(price) * nights) : Number(price);
+      const confirm_msg =
+        `HEX 즉시결제를 진행합니다.\n` +
+        `금액: ${fmtMoney(total)} KRW (현재 환율로 HEX 자동 환산)\n` +
+        `수탁 지갑 HEX 잔액에서 차감됩니다.\n\n계속하시겠습니까?`;
+      if (!confirm(confirm_msg)) return;
+
+      try {
+        btnHexPay.disabled = true;
+        setOrderState("HEX 결제 처리 중... (온체인 서명, 잠시 기다려 주세요)");
+
+        const callFn = httpsCallable(functions, "payProductWithHex");
+        const result = await callFn({
+          itemId,
+          bookingMode: mode,
+          date,
+          startDate,
+          endDate,
+          people,
+          phone,
+          memo,
+        });
+
+        const data = result?.data || {};
+        setOrderState("");
+        alert(
+          `결제 완료!\n` +
+          `결제 금액: ${data.hexAmountDisplay || ""}\n` +
+          `TX: ${(data.txHash || "").slice(0, 18)}...`
+        );
+
+        if (data.orderId) {
+          location.href = `./order_detail.html?id=${encodeURIComponent(data.orderId)}`;
+        }
+      } catch (e) {
+        console.error(e);
+        const msg = e?.message || String(e);
+        setOrderState("HEX 결제 실패: " + msg);
+        alert("HEX 결제 실패:\n" + msg);
+      } finally {
+        btnHexPay.disabled = false;
+      }
+    });
+  }
 }
 
 async function main({ user, profile }) {

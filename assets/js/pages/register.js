@@ -1,9 +1,8 @@
 // /assets/js/pages/register.js
 // 회원가입: 기본 정보 저장 + 수탁 지갑 생성 + 온체인 등록
 
-import { onAuthReady } from "../auth.js";
+import { watchAuth, login } from "../auth.js";
 import { db, functions } from "/assets/js/firebase-init.js";
-import { login } from "../auth.js";
 
 import {
   doc,
@@ -176,45 +175,26 @@ function bindForm(uid, email) {
 }
 
 // ── 진입점 ────────────────────────────────────────
-onAuthReady(async (ctx) => {
-  const loggedIn = (ctx?.loggedIn ?? ctx?.loggedin) === true;
-  const user = ctx?.user;
+// onAuthReady(1회성)가 아닌 watchAuth(상시 구독)를 사용:
+// 팝업 로그인 후 페이지 새로고침 없이도 인증 상태 변화를 감지해 폼을 표시합니다.
+let _authDone = false;
 
-  if (!loggedIn || !user) {
-    setState("로그인이 필요합니다.");
-    show("needLogin", true);
-
-    const btnLogin = $("btnLoginPage");
-    if (btnLogin) {
-      btnLogin.onclick = async () => {
-        try { await login(); } catch (e) { console.warn(e); }
-      };
-    }
-    return;
-  }
-
+async function _initForUser(user) {
   try {
     setState("내 정보 확인 중...");
 
     const snap = await getDoc(doc(db, "users", user.uid));
     const data = snap.exists() ? snap.data() : null;
 
-    // 이름이 있으면 가입 완료 화면 (지갑은 나중에 생성 가능)
     if (data?.name) {
       setState("이미 가입된 계정입니다.");
       showAlreadyDone(data);
       return;
     }
 
-    // 폼 표시 + 구글 이메일 미리 채우기
     setState("");
     show("regForm", true);
 
-    // 폼에 기존 값 복원 (있는 경우)
-    if (data?.name) {
-      const el = $("userName");
-      if (el) el.value = data.name;
-    }
     if (data?.phone) {
       const el = $("userPhone");
       if (el) el.value = data.phone;
@@ -227,4 +207,33 @@ onAuthReady(async (ctx) => {
     show("regForm", true);
     bindForm(user.uid, user.email);
   }
+}
+
+function _showNeedLogin() {
+  setState("로그인이 필요합니다.");
+  show("needLogin", true);
+  const btnLogin = $("btnLoginPage");
+  if (btnLogin) {
+    btnLogin.onclick = async () => {
+      try { await login(); } catch (e) { console.warn(e); }
+      // watchAuth가 로그인 완료를 감지해서 자동으로 폼을 표시합니다.
+    };
+  }
+}
+
+// 로그인 상태 변화를 구독 — 팝업 로그인 후에도 즉시 반응
+watchAuth(async (ctx) => {
+  if (_authDone) return;
+  if (!ctx.loggedIn || !ctx.user) return; // 아직 로그인 전 → 대기
+
+  _authDone = true;
+  show("needLogin", false); // 로그인 안내가 표시됐었다면 숨기기
+  await _initForUser(ctx.user);
 });
+
+// 4초 이내에 로그인이 확인되지 않으면 미로그인 안내 표시
+setTimeout(() => {
+  if (!_authDone) {
+    _showNeedLogin();
+  }
+}, 4000);

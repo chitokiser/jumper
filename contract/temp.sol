@@ -222,6 +222,7 @@ contract JumperPlatfrom {
     uint256 lv = members[user].level;
     return (lv * lv) * 10000;
   }
+
   function requestLevelUp() external onlyMember {
     Member storage u = members[msg.sender];
     uint256 need = (uint256(u.level) * uint256(u.level)) * 10000;

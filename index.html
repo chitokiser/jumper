@@ -19,6 +19,7 @@
 
 
 
+  <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";</script>
   <script src="/assets/js/partials.js" defer></script>
 
   <script type="module" src="/assets/js/firebase-init.js"></script>
@@ -61,34 +62,26 @@
 
   <main class="page">
 
-  <section class="section family-deck">
-  <div class="section-h family-deck-head">
-    <h2 class="section-title">우리마을 조합원</h2>
+  <style>
+  .merchant-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:4px;}
+  .merchant-card{background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;}
+  .merchant-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .merchant-name{font-weight:700;font-size:1rem;color:var(--text,#111);}
+  .merchant-career{font-size:0.78rem;background:var(--accent-light,#ede9fe);color:var(--accent,#7c3aed);border-radius:99px;padding:2px 9px;}
+  .merchant-region{font-size:0.82rem;color:var(--muted,#6b7280);}
+  .merchant-desc{font-size:0.83rem;color:var(--text2,#374151);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .merchant-id{font-size:0.74rem;color:var(--muted,#9ca3af);margin-top:auto;}
+</style>
 
+<section class="section" id="merchantListSection">
+  <div class="section-h">
+    <h2 class="section-title">가맹점 리스트</h2>
     <div class="section-tools">
-      <a class="btn btn--primary btn-family-register" href="/family-register.html">조합원등록</a>
+      <a class="btn btn--primary" href="/family-register.html">가맹점 등록</a>
     </div>
   </div>
-
-  <div class="family-placeholder family-deck-grid">
-    <div class="ph-card family-card family-card--stay">
-      <div class="ph-title">홈스테이 조합원</div>
-      <div class="ph-desc">여유방을 가지고 있는 이웃.</div>
-      <div class="family-chip">Stay</div>
-    </div>
-
-    <div class="ph-card family-card family-card--play">
-      <div class="ph-title">놀거리 조합원</div>
-      <div class="ph-desc">여행·마사지·피클볼 등 체류자에게 즐거움을 제공할 수 있는 이웃</div>
-      <div class="family-chip">Play</div>
-    </div>
-
-    <div class="ph-card family-card family-card--mustgo">
-      <div class="ph-title">Must-Go 조합원</div>
-      <div class="ph-desc">식당·카페·병원 등, 우리마을 체류자에게 혜택을 줄 수 있는 이웃</div>
-      <div class="family-chip">Must-Go</div>
-    </div>
-  </div>
+  <div id="merchantListState" class="help small" style="margin:4px 0 10px;"></div>
+  <div id="merchantListGrid" class="merchant-grid"></div>
 </section>
 
 
@@ -170,13 +163,6 @@
 
             <div class="map-actions">
               <a class="btn btn--ghost btn--sm"
-                 href="https://www.google.com/maps/d/u/0/viewer?mid=1BLmh1cvWOhWf714Bzk3whFDg6Cc-j8Q&hl=ko"
-                 target="_blank"
-                 rel="noopener noreferrer">
-                우리마을 지도 열기
-              </a>
-
-              <a class="btn btn--ghost btn--sm"
                  id="btnAdminPlace"
                  href="/admin_places.html"
                  style="display:none;">
@@ -186,18 +172,7 @@
           </div>
 
           <div class="map-box" aria-hidden="false">
-            <div class="map-frame-wrapper">
-              <iframe
-                src="https://www.google.com/maps/d/u/0/embed?mid=1BLmh1cvWOhWf714Bzk3whFDg6Cc-j8Q&ehbc=2E312F"
-                width="100%"
-                height="480"
-                style="border:0;"
-                allowfullscreen=""
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade"
-                title="우리마을 지도">
-              </iframe>
-            </div>
+            <div id="villageMap" style="width:100%;height:480px;border-radius:8px;background:#f3f4f6;"></div>
           </div>
 
         </div>

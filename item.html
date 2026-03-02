@@ -188,9 +188,11 @@
                   <div class="order-row row-actions">
                     <button id="btnAddCart" class="btn" type="button">장바구니 담기</button>
                     <button id="btnOrder" class="btn primary" type="button">예약 요청 저장</button>
+                    <button id="btnHexPay" class="btn btn--accent" type="button">HEX 즉시결제</button>
                   </div>
 
-                  <div class="mono">결제는 현재 기록만 저장됩니다. (카드/현금/HEX 결제 연동은 다음 단계)</div>
+                  <div id="hexPayInfo" class="mono" style="display:none;"></div>
+                  <div class="mono">카드/현금: 예약 저장 후 결제증빙 제출 | HEX 즉시결제: 수탁지갑 잔액으로 즉시 결제 확정</div>
                   <div id="orderState" class="state"></div>
                 </div>
               </div>

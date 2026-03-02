@@ -22,9 +22,10 @@ function applyRoleToMenu(role){
   const badge = document.getElementById("roleBadge");
   if(badge){
     const text =
-      role === "admin" ? "관리자" :
-      role === "guide" ? "조합원" :
-      role === "user"  ? "일반" :
+      role === "admin"    ? "관리자" :
+      role === "guide"    ? "조합원" :
+      role === "merchant" ? "가맹점" :
+      role === "user"     ? "일반" :
       "게스트";
     badge.textContent = text;
     show(badge, role !== "guest");

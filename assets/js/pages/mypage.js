@@ -8,12 +8,14 @@ import { login } from "../auth.js";
 import {
   doc,
   getDoc,
+  setDoc,
   collection,
   query,
   where,
   orderBy,
   limit,
   getDocs,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
@@ -40,18 +42,24 @@ function renderProfile(userData, fireUser) {
 
 // ── 수탁 지갑 표시 ───────────────────────────────
 function renderWallet(userData) {
-  const addr = userData?.wallet?.address;
+  const addr       = userData?.wallet?.address;
+  const isMetaMask = userData?.wallet?.type === "metamask" || (addr && !userData?.wallet?.encryptedKey);
+
   if (!addr) {
     show("noWallet", true);
     show("walletInfo", false);
     show("btnCreateWallet", true);
+    show("btnConnectMetaMask", false);   // MetaMask 연결은 수탁 지갑 생성 전 차단
     setText("onChainStatus", "-");
     return;
   }
 
   show("noWallet", false);
   show("walletInfo", true);
-  show("btnCreateWallet", false);
+  show("btnConnectMetaMask", false);
+  show("metamaskWarning", isMetaMask);  // 개인지갑 경고 배너
+  show("btnCreateWallet", isMetaMask);  // 수탁 지갑으로 전환 버튼
+  if (!isMetaMask) show("btnCreateWallet", false);
   setText("walletAddress", addr);
 }
 
@@ -71,12 +79,77 @@ async function loadOnChainData(uid) {
       setText("onChainStatus", "등록 완료 ✓");
       $("onChainStatus").style.color = "var(--accent)";
 
-      show("pointRow",   true);
-      show("payableRow", true);
-      show("levelRow",   true);
-      setText("pointDisplay",   (d.pointDisplay   || "0") + " HEX");
-      setText("payableDisplay", (d.payableDisplay || "0") + " HEX");
-      setText("levelDisplay",   "Lv." + d.level);
+      show("levelRow", true);
+      show("pointRow", true);
+
+      // KRW / USD / VND 동시 표시
+      const fmtBalance = (krw, usd, vnd, hex) => {
+        if (krw == null) return (hex || "0") + " HEX";
+        const parts = [krw.toLocaleString() + "원"];
+        if (usd != null) parts.push("$" + usd.toFixed(2));
+        if (vnd != null) parts.push(vnd.toLocaleString() + " VND");
+        return parts.join(" / ");
+      };
+
+      setText("levelDisplay", "Lv." + d.level);
+      setText("pointDisplay", fmtBalance(d.pointKrw, d.pointUsd, d.pointVnd, d.pointDisplay));
+
+      // EXP 및 진행바
+      show("expRow",    true);
+      show("expBarRow", true);
+      const expPct = d.requiredExp > 0
+        ? Math.min(100, Math.round((d.exp / d.requiredExp) * 100))
+        : 0;
+      setText("expDisplay", `${d.exp.toLocaleString()} / ${d.requiredExp.toLocaleString()}`);
+      const barFill = $("expBarFill");
+      if (barFill) barFill.style.width = expPct + "%";
+      const expReqEl = $("expRequired");
+      if (expReqEl) {
+        const remain = Math.max(0, d.requiredExp - d.exp);
+        expReqEl.textContent = remain > 0
+          ? `다음 레벨까지 ${remain.toLocaleString()} EXP 필요`
+          : "레벨업 가능!";
+      }
+
+      // 레벨업 버튼
+      show("levelUpRow", d.exp >= d.requiredExp);
+
+      // 멘토 주소
+      const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+      const isZeroMentor = !d.mentor || d.mentor === ZERO_ADDR;
+      show("mentorAddrRow", true);
+
+      let mentorText = "미연결 (기본 멘토)";
+      if (!isZeroMentor) {
+        try {
+          const mentorSnap = await getDocs(
+            query(collection(db, "mentors"), where("address", "==", d.mentor), limit(1))
+          );
+          mentorText = !mentorSnap.empty
+            ? (mentorSnap.docs[0].data()?.email || d.mentor)
+            : d.mentor.slice(0, 6) + "…" + d.mentor.slice(-4);
+        } catch (_) {
+          mentorText = d.mentor.slice(0, 6) + "…" + d.mentor.slice(-4);
+        }
+      }
+      const mentorEl = $("mentorAddrDisplay");
+      if (mentorEl) {
+        mentorEl.textContent = mentorText;
+        const isEmail = mentorText.includes("@");
+        mentorEl.classList.toggle("mono", !isEmail);
+        mentorEl.style.fontSize = isEmail ? "0.95em" : "0.78em";
+      }
+      // 기본 멘토면 배너 + 등록 요청 폼 표시
+      show("mentorNotice", isZeroMentor);
+      show("mentorRequestBox", isZeroMentor);
+
+      // 보유 HEX (수탁 지갑 실제 잔액 — 충전 후 가맹점 결제에 사용)
+      const walletHexBig = BigInt(d.walletHexWei || "0");
+      show("walletHexRow", walletHexBig > 0n);
+      if (walletHexBig > 0n) {
+        setText("walletHexDisplay", fmtBalance(d.walletHexKrw, d.walletHexUsd, d.walletHexVnd, d.walletHexDisplay));
+      }
+
       show("onChainRegBox", false);
     } else {
       setText("onChainStatus", "미등록");
@@ -84,9 +157,23 @@ async function loadOnChainData(uid) {
       show("onChainRegBox", true);
     }
   } catch (err) {
-    setText("onChainStatus", "조회 실패 (Functions 미배포)");
-    $("onChainStatus").style.color = "var(--muted)";
-    console.warn("getMyOnChain 실패:", err.message);
+    // Functions 미배포 / 호출 실패 → Firestore 캐시 폴백
+    console.warn("getMyOnChain 실패 (Functions 미배포?):", err.message);
+    try {
+      const cached = (await getDoc(doc(db, "users", uid))).data()?.onChain;
+      if (cached?.registered) {
+        setText("onChainStatus", "등록 완료 ✓");
+        $("onChainStatus").style.color = "var(--accent)";
+        show("onChainRegBox", false);
+      } else {
+        setText("onChainStatus", "미등록");
+        $("onChainStatus").style.color = "var(--muted)";
+        show("onChainRegBox", true);
+      }
+    } catch {
+      setText("onChainStatus", "조회 실패");
+      $("onChainStatus").style.color = "var(--muted)";
+    }
   }
 }
 
@@ -113,13 +200,16 @@ async function loadDepositHistory(uid) {
     const statusLabel = { pending: "대기", processing: "처리중", approved: "완료", rejected: "반려" };
     const rows = snap.docs.map((d) => {
       const data = d.data();
-      const hexDisplay = data.hexAmountWei
-        ? parseFloat(BigInt(data.hexAmountWei).toString()) / 1e18
-        : null;
-      const hexStr = hexDisplay != null ? hexDisplay.toFixed(4) + " HEX" : "-";
       const dateStr = data.requestedAt?.toDate
         ? data.requestedAt.toDate().toLocaleDateString("ko")
         : "-";
+
+      // KRW / USD / VND 동시 표시
+      const amountParts = [(data.amountKrw || 0).toLocaleString() + "원"];
+      if (data.usdAmount != null) amountParts.push("$" + Number(data.usdAmount).toFixed(2));
+      if (data.vndAmount != null) amountParts.push(Number(data.vndAmount).toLocaleString() + " VND");
+      const amountStr = amountParts.join(" / ");
+
       return `
         <div class="mp-hist-row">
           <div class="mp-hist-main">
@@ -127,8 +217,7 @@ async function loadDepositHistory(uid) {
             <span class="mp-hist-badge ${data.status}">${statusLabel[data.status] || data.status}</span>
           </div>
           <div class="mp-hist-detail">
-            <span>${(data.amountKrw || 0).toLocaleString()}원</span>
-            <span class="accent">${hexStr}</span>
+            <span class="accent">${amountStr}</span>
             <span class="muted">${dateStr}</span>
           </div>
           ${data.txHash ? `<div class="mp-hist-tx mono">${data.txHash.slice(0, 16)}…</div>` : ""}
@@ -140,6 +229,52 @@ async function loadDepositHistory(uid) {
   } catch (err) {
     wrap.innerHTML = '<p class="hint muted">내역을 불러올 수 없습니다.</p>';
     console.warn("depositHistory 실패:", err.message);
+  }
+}
+
+// ── 나의 멘티 목록 ────────────────────────────────
+async function loadMentees() {
+  const section = $("menteeSection");
+  const wrap    = $("menteeList");
+  if (!section || !wrap) return;
+
+  try {
+    const fn  = httpsCallable(functions, "getMyMentees");
+    const res = await fn();
+    const { mentees } = res.data;
+
+    show("menteeSection", true);
+
+    if (!mentees || mentees.length === 0) {
+      wrap.innerHTML = '<p class="hint">아직 멘티가 없습니다.</p>';
+      return;
+    }
+
+    const rows = mentees.map((m) => {
+      const addrShort = m.address
+        ? m.address.slice(0, 6) + "…" + m.address.slice(-4)
+        : "-";
+      const dateStr = m.registeredAt
+        ? new Date(m.registeredAt).toLocaleDateString("ko")
+        : "-";
+      return `
+        <div class="mp-hist-row">
+          <div class="mp-hist-main">
+            <span style="font-weight:600;">${m.name}</span>
+            <span class="mono muted" style="font-size:0.82em;">${addrShort}</span>
+          </div>
+          <div class="mp-hist-detail">
+            <span class="muted" style="font-size:0.85em;">가입일: ${dateStr}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    wrap.innerHTML = `<p class="hint muted" style="margin-bottom:8px;">총 ${mentees.length}명</p>` + rows;
+  } catch (err) {
+    show("menteeSection", true);
+    wrap.innerHTML = '<p class="hint muted">멘티 목록을 불러올 수 없습니다.</p>';
+    console.warn("getMyMentees 실패:", err.message);
   }
 }
 
@@ -157,7 +292,7 @@ async function loadTxHistory(uid) {
 
     show("txSection", true);
     const wrap = $("txHistory");
-    const typeLabel = { buy: "구매", withdraw: "인출", credit: "포인트 지급" };
+    const typeLabel = { buy: "구매", withdraw: "인출", credit: "포인트 지급", p2p: "P2P 수령", p2p_merge: "P2P 합산", pay_merchant: "가맹점 결제" };
 
     const rows = snap.docs.map((d) => {
       const tx = d.data();
@@ -169,7 +304,8 @@ async function loadTxHistory(uid) {
           </div>
           <div class="mp-hist-detail">
             ${tx.priceWei  ? `<span>${formatWei(tx.priceWei)} HEX</span>` : ""}
-            ${tx.amountWei ? `<span>${formatWei(tx.amountWei)} HEX</span>` : ""}
+            ${tx.amountWei ? `<span>${tx.amountHex || formatWei(tx.amountWei)} HEX</span>` : ""}
+            ${tx.fromAddress ? `<span class="muted">from: ${tx.fromAddress.slice(0, 8)}…</span>` : ""}
             <span class="muted">${tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleDateString("ko") : "-"}</span>
           </div>
         </div>
@@ -204,12 +340,77 @@ function bindCreateWallet() {
       setText("walletAddress", res.data?.address || "생성됨");
       show("noWallet", false);
       show("walletInfo", true);
+      show("metamaskWarning", false);
       btn.style.display = "none";
       alert("수탁 지갑이 생성됐습니다.");
     } catch (err) {
       alert("지갑 생성 실패: " + err.message);
       btn.disabled = false;
       btn.textContent = "지갑 생성";
+    }
+  };
+}
+
+// ── MetaMask 직접 연결 ────────────────────────────
+function bindConnectMetaMask(uid) {
+  const btn = $("btnConnectMetaMask");
+  if (!btn) return;
+  if (!window.ethereum) { btn.style.display = "none"; return; }
+
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = "연결 중...";
+    try {
+      // 1) MetaMask 계정 요청
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const address = accounts[0];
+
+      // 2) 소유권 증명 서명
+      const msg = `Jump Platform 지갑 연결\nUID: ${uid}`;
+      const msgHex = "0x" + Array.from(new TextEncoder().encode(msg))
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+      await window.ethereum.request({ method: "personal_sign", params: [msgHex, address] });
+
+      // 3) Firestore 저장 (merge 방식으로 기존 데이터 유지)
+      await setDoc(doc(db, "users", uid), { wallet: { address, type: "metamask" } }, { merge: true });
+
+      // 4) UI 업데이트
+      setText("walletAddress", address);
+      show("noWallet", false);
+      show("walletInfo", true);
+      show("btnCreateWallet", false);
+      show("btnConnectMetaMask", false);
+      loadOnChainData(uid);
+    } catch (err) {
+      if (err.code === 4001) {
+        alert("서명을 취소했습니다.");
+      } else {
+        alert("MetaMask 연결 실패: " + err.message);
+      }
+      btn.disabled = false;
+      btn.textContent = "MetaMask 연결";
+    }
+  };
+}
+
+// ── 레벨업 버튼 ──────────────────────────────────
+function bindLevelUp(uid) {
+  const btn = $("btnLevelUp");
+  if (!btn || btn._bound) return;
+  btn._bound = true;
+  btn.onclick = async () => {
+    if (!confirm("레벨업을 진행하시겠습니까?\n레벨업에 사용된 EXP는 차감됩니다.")) return;
+    btn.disabled = true;
+    btn.textContent = "처리 중...";
+    try {
+      const fn = httpsCallable(functions, "requestLevelUp");
+      const res = await fn();
+      alert(`레벨업 완료! Lv.${res.data.newLevel} 달성!`);
+      await loadOnChainData(uid);
+    } catch (err) {
+      alert("레벨업 실패: " + err.message);
+      btn.disabled = false;
+      btn.textContent = "레벨업 가능! →";
     }
   };
 }
@@ -273,7 +474,11 @@ function bindDepositForm() {
       setText("drAccount",  d.bankInfo?.account || "-");
       setText("drHolder",   d.bankInfo?.holder  || "-");
       setText("drAmount",   (d.amountKrw || 0).toLocaleString() + "원");
-      setText("drHex",      (d.estimatedHex || "-") + " HEX");
+      // KRW / USD / VND 동시 표시
+      const drParts = [(d.amountKrw || 0).toLocaleString() + "원"];
+      if (d.estimatedUsd != null) drParts.push("$" + Number(d.estimatedUsd).toFixed(2));
+      if (d.estimatedVnd)         drParts.push(d.estimatedVnd);
+      setText("drHex", drParts.join(" / "));
 
       // 폼 초기화
       form.reset();
@@ -282,6 +487,108 @@ function bindDepositForm() {
     } finally {
       btn.disabled = false;
       btn.textContent = "충전 요청";
+    }
+  });
+}
+
+// ── 멘토 등록 요청 버튼 ───────────────────────────
+function bindMentorRequest(uid) {
+  const btn = $("btnMentorRequest");
+  if (!btn || btn._bound) return;
+  btn._bound = true;
+  btn.onclick = async () => {
+    const email = String($("mentorReqEmail")?.value || "").trim().toLowerCase();
+    if (!email) { alert("멘토 이메일을 입력해주세요."); return; }
+    btn.disabled = true;
+    btn.textContent = "요청 중...";
+    try {
+      await setDoc(doc(db, "mentorRequests", uid), {
+        uid,
+        mentorEmail: email,
+        requestedAt: serverTimestamp(),
+        status: "pending",
+      });
+      show("mentorReqDone", true);
+      show("btnMentorRequest", false);
+      const emailEl = $("mentorReqEmail");
+      if (emailEl) emailEl.disabled = true;
+    } catch (err) {
+      alert("요청 실패: " + err.message);
+      btn.disabled = false;
+      btn.textContent = "멘토 등록 요청";
+    }
+  };
+}
+
+// ── 가맹점 목록 (select 용) ────────────────────────
+async function loadMerchantsForSelect() {
+  const sel = $("merchantPaySelect");
+  if (!sel) return;
+  try {
+    const snap = await getDocs(collection(db, "merchants"));
+    const list = [];
+    snap.forEach((d) => {
+      const m = d.data() || {};
+      // 승인된(active) 가맹점만 포함
+      if (m.active !== false && (m.approvedAt || Number(m.feeBps) > 0)) {
+        list.push({ id: d.id, name: m.name || d.id });
+      }
+    });
+    if (!list.length) {
+      sel.innerHTML = '<option value="">등록된 가맹점이 없습니다</option>';
+      return;
+    }
+    sel.innerHTML =
+      '<option value="">가맹점을 선택하세요</option>' +
+      list.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
+  } catch (err) {
+    sel.innerHTML = '<option value="">가맹점 목록 로드 실패</option>';
+    console.warn("loadMerchantsForSelect:", err.message);
+  }
+}
+
+// ── 가맹점 직접 결제 폼 ────────────────────────────
+function bindMerchantPay(uid) {
+  const form = $("merchantPayForm");
+  if (!form || form._bound) return;
+  form._bound = true;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const merchantId = $("merchantPaySelect")?.value;
+    const amountKrw  = Number($("merchantPayAmount")?.value);
+    const btn        = $("btnMerchantPay");
+    const resultBox  = $("merchantPayResult");
+
+    if (!merchantId) { alert("가맹점을 선택해 주세요."); return; }
+    if (!amountKrw || amountKrw < 1000) { alert("최소 1,000원 이상 입력해 주세요."); return; }
+    if (!confirm(`${amountKrw.toLocaleString()}원을 결제하시겠습니까?`)) return;
+
+    btn.disabled     = true;
+    btn.textContent  = "결제 중...";
+    if (resultBox) resultBox.style.display = "none";
+
+    try {
+      const payFn = httpsCallable(functions, "payMerchantHex");
+      const res   = await payFn({ merchantId: Number(merchantId), amountKrw });
+      const d     = res.data;
+
+      if (resultBox) {
+        resultBox.style.display = "";
+        resultBox.innerHTML = `
+          <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d.merchantName || ""}</span></div>
+          <div class="mp-kv"><span class="k">결제 금액</span><span class="v accent">${amountKrw.toLocaleString()}원 (${d.amountHex} HEX)</span></div>
+          <div class="mp-kv"><span class="k">트랜잭션</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}…</span></div>
+          <p class="hint" style="color:var(--accent); margin-top:6px;">✓ 결제 완료</p>
+        `;
+      }
+      form.reset();
+      loadTxHistory(uid);
+      loadOnChainData(uid);
+    } catch (err) {
+      alert("결제 실패: " + err.message);
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = "결제";
     }
   });
 }
@@ -305,21 +612,39 @@ onAuthReady(async (ctx) => {
     const snap = await getDoc(doc(db, "users", user.uid));
     const data = snap.exists() ? snap.data() : {};
 
+    // 회원가입 미완료 시 → 안내 후 종료
+    if (!data.name) {
+      show("noProfilePanel", true);
+      return;
+    }
+
     renderProfile(data, user);
     renderWallet(data);
     bindCreateWallet();
+    bindConnectMetaMask(user.uid);
     bindOnChainRegister(user.uid);
+    bindLevelUp(user.uid);
+    bindMentorRequest(user.uid);
     bindDepositForm();
+    loadMerchantsForSelect();
+    bindMerchantPay(user.uid);
 
     // 비동기로 추가 데이터 로드
     loadOnChainData(user.uid);
     loadDepositHistory(user.uid);
     loadTxHistory(user.uid);
+    loadMentees();
 
     // 충전 내역 새로고침 버튼
     const btnRefresh = $("btnRefreshDeposits");
     if (btnRefresh) {
       btnRefresh.onclick = () => loadDepositHistory(user.uid);
+    }
+
+    // 멘티 새로고침 버튼
+    const btnRefreshMentees = $("btnRefreshMentees");
+    if (btnRefreshMentees) {
+      btnRefreshMentees.onclick = () => loadMentees();
     }
   } catch (err) {
     console.error("마이페이지 로드 실패:", err);

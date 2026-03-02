@@ -61,6 +61,7 @@ const PLATFORM_ABI = [
   'function setParams(uint32 div_, uint16 mentorShareBps_, uint256 taxThresholdWei_) external',
   'function adminSetLevel(address user, uint32 level_) external',
   'function adminSetBlocked(address user, bool blocked_) external',
+  'function adminChangeMentor(address user, address newMentor) external',
 
   // 가맹점 조회 (public mapping auto-getter)
   'function merchants(uint256) external view returns (address ownerAddr, uint16 feeBps, bool active, string metadataURI, bool exists)',

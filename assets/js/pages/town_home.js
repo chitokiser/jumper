@@ -311,7 +311,208 @@ async function initUISlider(){
 }
 
 /* =====================
-   4) 부팅
+   4) 가맹점 리스트
+===================== */
+function escHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderMerchantCard(mid, m) {
+  const name   = m.name        || "가맹점";
+  const career = m.career      || "";
+  const region = m.region      || "";
+  const desc   = m.description || "";
+
+  return `
+    <div class="merchant-card">
+      <div class="merchant-card-head">
+        <span class="merchant-name">${escHtml(name)}</span>
+        ${career ? `<span class="merchant-career">${escHtml(career)}</span>` : ""}
+      </div>
+      ${region ? `<div class="merchant-region">📍 ${escHtml(region)}</div>` : ""}
+      ${desc   ? `<div class="merchant-desc">${escHtml(desc)}</div>`         : ""}
+      <div class="merchant-id">가맹점 ID: ${escHtml(String(mid))}</div>
+    </div>`;
+}
+
+async function loadMerchants() {
+  const grid  = $("merchantListGrid");
+  const state = $("merchantListState");
+  if (!grid) return;
+
+  if (state) state.textContent = "불러오는 중...";
+
+  try {
+    const snap = await getDocs(collection(db, "merchants"));
+    const list = [];
+    snap.forEach((d) => {
+      const m = d.data() || {};
+      // active: true 인 가맹점만 표시 (비활성 제외)
+      if (m.active !== false) {
+        list.push({ id: d.id, ...m });
+      }
+    });
+
+    if (state) state.textContent = `총 ${list.length}개`;
+
+    if (!list.length) {
+      grid.innerHTML = `<p class="help">등록된 가맹점이 없습니다.</p>`;
+      return;
+    }
+
+    grid.innerHTML = list.map((m) => renderMerchantCard(m.id, m)).join("");
+  } catch (e) {
+    console.warn("loadMerchants failed:", e);
+    if (state) state.textContent = "가맹점 목록을 불러오지 못했습니다.";
+  }
+}
+
+/* =====================
+   5) 우리마을 지도 (Google Maps + Firestore places)
+===================== */
+const TYPE_COLOR = {
+  homestay:   "#6366f1",
+  restaurant: "#f97316",
+  food:       "#f97316",
+  cafe:       "#854d0e",
+  hospital:   "#ef4444",
+  school:     "#16a34a",
+  park:       "#22c55e",
+  shopping:   "#ec4899",
+};
+
+function getMarkerColor(type) {
+  return TYPE_COLOR[String(type).toLowerCase()] || "#6b7280";
+}
+
+function loadMapsScript() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) { resolve(); return; }
+    window.__gmapsCb = resolve;
+    const s = document.createElement("script");
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${window.__mapsKey || ""}&callback=__gmapsCb&language=ko&region=KR`;
+    s.async = true;
+    s.onerror = () => reject(new Error("Google Maps 스크립트 로드 실패"));
+    document.head.appendChild(s);
+  });
+}
+
+function parseLatLng(gmapUrl) {
+  if (!gmapUrl) return null;
+  try {
+    // @lat,lng,zoom 패턴 (구글 지도 브라우저 URL, 공유 URL)
+    const m1 = gmapUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m1) return { lat: parseFloat(m1[1]), lng: parseFloat(m1[2]) };
+    // ?q=lat,lng 패턴
+    const url = new URL(gmapUrl);
+    const q = url.searchParams.get("q");
+    if (q) {
+      const m2 = q.match(/^(-?\d+\.\d+),(-?\d+\.\d+)$/);
+      if (m2) return { lat: parseFloat(m2[1]), lng: parseFloat(m2[2]) };
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function loadPlacesMap() {
+  const mapEl = document.getElementById("villageMap");
+  if (!mapEl) return;
+
+  const key = window.__mapsKey;
+  if (!key) {
+    mapEl.innerHTML = `<div style="padding:32px;text-align:center;color:#9ca3af;">Google Maps API 키가 설정되지 않았습니다.</div>`;
+    return;
+  }
+
+  try {
+    await loadMapsScript();
+
+    // Firestore places (visible !== false)
+    const snap = await getDocs(collection(db, "places"));
+    const places = [];
+    snap.forEach((d) => {
+      const p = d.data() || {};
+      if (p.visible !== false) places.push({ id: d.id, ...p });
+    });
+
+    // 하노이 오션파크 기본 중심
+    const defaultCenter = { lat: 20.9947, lng: 105.9487 };
+    const map = new google.maps.Map(mapEl, {
+      center: defaultCenter,
+      zoom: 15,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: true,
+    });
+
+    if (!places.length) return;
+
+    const bounds = new google.maps.LatLngBounds();
+    const infoWindow = new google.maps.InfoWindow();
+    let markerCount = 0;
+
+    places.forEach((p) => {
+      // lat/lng 직접 필드 우선, 없으면 gmap URL 파싱
+      let latLng = null;
+      if (typeof p.lat === "number" && typeof p.lng === "number") {
+        latLng = { lat: p.lat, lng: p.lng };
+      } else {
+        latLng = parseLatLng(p.gmap);
+      }
+      if (!latLng) return;
+
+      markerCount++;
+      const marker = new google.maps.Marker({
+        position: latLng,
+        map,
+        title: p.name || "",
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: getMarkerColor(p.type),
+          fillOpacity: 1,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+          scale: 9,
+        },
+      });
+      bounds.extend(latLng);
+
+      const content = `
+        <div style="max-width:240px;font-size:13px;line-height:1.5;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name || "")}</div>
+          ${p.type    ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ""}
+          ${p.area    ? `<div style="color:#6b7280;">구역: ${escHtml(p.area)}</div>` : ""}
+          ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ""}
+          ${p.phone   ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
+          ${p.note    ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ""}
+          ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener"
+                           style="display:inline-block;margin-top:6px;color:#2563eb;">구글 지도에서 열기 ↗</a>` : ""}
+        </div>`;
+
+      marker.addListener("click", () => {
+        infoWindow.setContent(content);
+        infoWindow.open(map, marker);
+      });
+    });
+
+    if (markerCount > 0 && !bounds.isEmpty()) {
+      map.fitBounds(bounds);
+      google.maps.event.addListenerOnce(map, "bounds_changed", () => {
+        if (map.getZoom() > 17) map.setZoom(17);
+      });
+    }
+  } catch (e) {
+    console.warn("loadPlacesMap failed:", e);
+    mapEl.innerHTML = `<div style="padding:32px;text-align:center;color:#9ca3af;">지도를 불러오지 못했습니다.<br><small>${e.message || ""}</small></div>`;
+  }
+}
+
+/* =====================
+   6) 부팅
 ===================== */
 onAuthStateChanged(auth, async (user) => {
   const admin = await isAdmin(user?.uid);
@@ -319,4 +520,6 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 loadNotices();
+loadMerchants();
 initUISlider();
+loadPlacesMap();

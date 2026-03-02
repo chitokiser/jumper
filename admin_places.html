@@ -61,8 +61,20 @@
 
         <label class="field">
           <span>구글 지도 링크(선택)</span>
-          <input id="gmap" type="url" maxlength="260" placeholder="https://maps.google.com/..." />
+          <input id="gmap" type="url" maxlength="400" placeholder="https://maps.google.com/maps?q=..." />
+          <span class="help small">URL에 @위도,경도가 있으면 자동 파싱됩니다.</span>
         </label>
+
+        <div class="grid">
+          <label class="field">
+            <span>위도 (lat)</span>
+            <input id="lat" type="number" step="any" placeholder="예: 20.9947" />
+          </label>
+          <label class="field">
+            <span>경도 (lng)</span>
+            <input id="lng" type="number" step="any" placeholder="예: 105.9487" />
+          </label>
+        </div>
 
         <div class="grid">
           <label class="field">

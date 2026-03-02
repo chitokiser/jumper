@@ -140,9 +140,8 @@ onAuthReady(async ({ loggedIn, role, user })=>{
     location.href = "./index.html";
     return;
   }
-  if(!(role === "guide" || role === "admin")){
-    // 승인 전이라도 본인이 만든게 있을 수 있지만, 기본 정책상 접근은 제한
-    alert("가이드 승인 후 이용 가능합니다. 먼저 가이드 신청을 해주세요.");
+  if(!(role === "guide" || role === "merchant" || role === "admin")){
+    alert("가이드 또는 가맹점 등록 후 이용 가능합니다.");
     location.href = "./guide.html";
     return;
   }

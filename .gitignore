@@ -69,5 +69,12 @@ node_modules/
 *.secret.local
 functions/.secret.local
 
+# 서비스 계정 키 (절대 커밋 금지)
+functions/serviceAccount.json
+functions/service_account.json
+serviceAccount.json
+service_account.json
+*-firebase-adminsdk-*.json
+
 # dataconnect generated files
 .dataconnect
