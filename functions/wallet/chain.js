@@ -11,8 +11,10 @@ const { ethers } = require('ethers');
 const RPC_URL = process.env.OPBNB_RPC || 'https://opbnb-mainnet-rpc.bnbchain.org';
 
 const ADDRESSES = {
-  jumpToken:    '0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464',
-  jumpBank:     '0x16752f8948ff2caA02e756c7C8fF0E04887A3a0E',
+  jumpToken:    '0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464',  // HEX (플랫폼 포인트 토큰, 18 decimals)
+  jumpJump:     '0xA3C35c52446C133b7211A743c6D47470D1385601',  // JUMP 거래 토큰 (0 decimals)
+  jumpBank:     '0x16752f8948ff2caA02e756c7C8fF0E04887A3a0E',  // 거래소 컨트랙트
+  jumpTreasury: '0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312',  // 거버넌스
   jumpPlatform: '0xc609562D5dB60A83C441BeD0E29d81fbF2497DE0',
 };
 
@@ -84,6 +86,38 @@ const HEX_ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 value)',
 ];
 
+// JUMP 토큰 ABI (ERC20, 0 decimals)
+const JUMP_TOKEN_ABI = [
+  'function approve(address spender, uint256 amount) external returns (bool)',
+  'function allowance(address owner, address spender) external view returns (uint256)',
+  'function balanceOf(address account) external view returns (uint256)',
+  'function transfer(address to, uint256 amount) external returns (bool)',
+];
+
+// jumpBank ABI (거래소 + 스테이킹 + 배당)
+const JUMP_BANK_ABI = [
+  // 거래
+  'function buy(uint256 amount, uint256 maxPay) external',
+  'function sell(uint256 amount) external',
+  // 스테이킹
+  'function stake(uint256 amount) external',
+  'function withdraw() external',
+  // 배당
+  'function claimDividend() external',
+  'function pendingDividend(address who) external view returns (uint256)',
+  // 조회
+  'function price() external view returns (uint256)',
+  'function totalStaked() external view returns (uint256)',
+  'function act() external view returns (uint8)',
+  'function user(address who) external view returns (uint256 totalAllow, uint256 totalBuy, uint256 depo, uint256 stakingTime, uint256 lastClaim)',
+  // 이벤트
+  'event Bought(address indexed who, uint256 amount, uint256 payHexWei, uint256 autoStaked, uint256 received)',
+  'event Sold(address indexed who, uint256 amount, uint256 recvHexWei, uint256 feeHexWei)',
+  'event Staked(address indexed who, uint256 amount)',
+  'event Withdrawn(address indexed who, uint256 amount)',
+  'event DividendClaimed(address indexed who, uint256 payHexWei)',
+];
+
 // ────────────────────────────────────────────────
 // 팩토리 함수
 // ────────────────────────────────────────────────
@@ -98,6 +132,14 @@ function getPlatformContract(signerOrProvider) {
 
 function getHexContract(signerOrProvider) {
   return new ethers.Contract(ADDRESSES.jumpToken, HEX_ABI, signerOrProvider);
+}
+
+function getJumpTokenContract(signerOrProvider) {
+  return new ethers.Contract(ADDRESSES.jumpJump, JUMP_TOKEN_ABI, signerOrProvider);
+}
+
+function getJumpBankContract(signerOrProvider) {
+  return new ethers.Contract(ADDRESSES.jumpBank, JUMP_BANK_ABI, signerOrProvider);
 }
 
 /**
@@ -130,6 +172,8 @@ module.exports = {
   getProvider,
   getPlatformContract,
   getHexContract,
+  getJumpTokenContract,
+  getJumpBankContract,
   walletFromKey,
   getAdminWallet,
   estimateGasWithBuffer,

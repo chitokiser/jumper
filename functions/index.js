@@ -32,6 +32,7 @@ const adminKeySecret= defineSecret('ADMIN_PRIVATE_KEY');
 const onboarding             = require('./handlers/onboarding');
 const depositH               = require('./handlers/deposit');
 const txH                    = require('./handlers/transaction');
+const exchangeH              = require('./handlers/exchange');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -511,6 +512,79 @@ exports.payProductWithHex = onCall(
       walletSecret.value()
     );
     logger.info('payProductWithHex', { uid, itemId, orderId: result.orderId, txHash: result.txHash });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// JUMP 거래소
+// ════════════════════════════════════════════════════════════════════════════
+
+// jumpBank 현황 조회 (가격, 잔액, 스테이킹, 배당)
+exports.getJumpBankStatus = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await exchangeH.getJumpBankStatus(uid);
+  })
+);
+
+// JUMP 구매 (HEX → JUMP)
+exports.buyJumpToken = onCall(
+  { secrets: [walletSecret] },
+  wrapError(async (request) => {
+    const uid        = requireAuth(request);
+    const jumpAmount = request.data?.jumpAmount;
+    if (!jumpAmount) throw new HttpsError('invalid-argument', 'jumpAmount가 필요합니다');
+    const result = await exchangeH.buyJumpToken(uid, jumpAmount, walletSecret.value());
+    logger.info('buyJumpToken', { uid, jumpAmount, txHash: result.txHash });
+    return result;
+  })
+);
+
+// JUMP 판매 (JUMP → HEX)
+exports.sellJumpToken = onCall(
+  { secrets: [walletSecret] },
+  wrapError(async (request) => {
+    const uid        = requireAuth(request);
+    const jumpAmount = request.data?.jumpAmount;
+    if (!jumpAmount) throw new HttpsError('invalid-argument', 'jumpAmount가 필요합니다');
+    const result = await exchangeH.sellJumpToken(uid, jumpAmount, walletSecret.value());
+    logger.info('sellJumpToken', { uid, jumpAmount, txHash: result.txHash });
+    return result;
+  })
+);
+
+// JUMP 스테이킹
+exports.stakeJumpToken = onCall(
+  { secrets: [walletSecret] },
+  wrapError(async (request) => {
+    const uid        = requireAuth(request);
+    const jumpAmount = request.data?.jumpAmount;
+    if (!jumpAmount) throw new HttpsError('invalid-argument', 'jumpAmount가 필요합니다');
+    const result = await exchangeH.stakeJumpToken(uid, jumpAmount, walletSecret.value());
+    logger.info('stakeJumpToken', { uid, jumpAmount, txHash: result.txHash });
+    return result;
+  })
+);
+
+// JUMP 언스테이킹 (120일 락)
+exports.unstakeJumpToken = onCall(
+  { secrets: [walletSecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const result = await exchangeH.unstakeJumpToken(uid, walletSecret.value());
+    logger.info('unstakeJumpToken', { uid, txHash: result.txHash });
+    return result;
+  })
+);
+
+// 배당 청구 (HEX 수령)
+exports.claimJumpDividend = onCall(
+  { secrets: [walletSecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const result = await exchangeH.claimJumpDividend(uid, walletSecret.value());
+    logger.info('claimJumpDividend', { uid, hexAmount: result.hexAmount, txHash: result.txHash });
     return result;
   })
 );

@@ -1,0 +1,189 @@
+<!-- /exchange.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JUMP 거래소</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/mypage.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="section">
+      <div class="page-h">
+        <h1 class="page-title">JUMP 거래소</h1>
+        <p class="page-desc">JUMP 토큰 구매 · 판매 · 스테이킹 · 배당</p>
+      </div>
+
+      <!-- 로그인 안내 -->
+      <div id="exLoginNotice" style="display:none;" class="card" style="text-align:center; padding:32px;">
+        <p>거래소를 이용하려면 로그인이 필요합니다.</p>
+      </div>
+
+      <!-- 지갑 없음 안내 -->
+      <div id="exNoWallet" style="display:none;" class="card" style="padding:24px;">
+        <p class="hint">수탁 지갑이 없습니다. 마이페이지에서 지갑을 먼저 생성해주세요.</p>
+        <a class="btn btn--primary" href="/mypage.html">마이페이지로 이동</a>
+      </div>
+
+      <!-- 거래소 본체 -->
+      <div id="exMain" style="display:none;">
+
+        <!-- 탭 -->
+        <div class="panel">
+          <div class="panel-h">
+            <div class="tabs">
+              <button class="btn btn-sm" id="tabBtnStatus"   type="button">현황</button>
+              <button class="btn btn-sm" id="tabBtnBuy"      type="button">구매</button>
+              <button class="btn btn-sm" id="tabBtnSell"     type="button">판매</button>
+              <button class="btn btn-sm" id="tabBtnStaking"  type="button">스테이킹</button>
+              <button class="btn btn-sm" id="tabBtnDividend" type="button">배당</button>
+            </div>
+            <div id="exState" class="state">로딩 중...</div>
+          </div>
+
+          <div class="panel-b">
+
+            <!-- ── 현황 탭 ── -->
+            <div id="tabStatus">
+              <div class="mp-section">
+                <div class="mp-section-title">시장 현황</div>
+                <div class="kv" id="marketKv">
+                  <div class="k">JUMP 현재가</div>
+                  <div class="v" id="exPrice">-</div>
+                  <div class="k">총 스테이킹</div>
+                  <div class="v" id="exTotalStaked">-</div>
+                  <div class="k">거래 상태</div>
+                  <div class="v" id="exAct">-</div>
+                </div>
+              </div>
+              <div class="mp-section" style="margin-top:16px;">
+                <div class="mp-section-title">내 자산</div>
+                <div class="kv" id="myAssetsKv">
+                  <div class="k">HEX 잔액</div>
+                  <div class="v" id="exHexBal">-</div>
+                  <div class="k">JUMP 잔액</div>
+                  <div class="v" id="exJumpBal">-</div>
+                  <div class="k">스테이킹 중</div>
+                  <div class="v" id="exStaked">-</div>
+                  <div class="k">미청구 배당</div>
+                  <div class="v" id="exPendingDiv">-</div>
+                </div>
+              </div>
+              <div style="margin-top:12px;">
+                <button class="btn btn-sm" id="btnRefreshStatus" type="button">새로고침</button>
+              </div>
+            </div>
+
+            <!-- ── 구매 탭 ── -->
+            <div id="tabBuy" style="display:none;">
+              <div class="mp-section">
+                <div class="mp-section-title">JUMP 구매 (HEX → JUMP)</div>
+                <p class="hint">보유 HEX를 사용해 JUMP 토큰을 구매합니다.</p>
+                <div class="kv" style="margin-bottom:12px;">
+                  <div class="k">현재가</div>
+                  <div class="v" id="buyPrice">-</div>
+                  <div class="k">보유 HEX</div>
+                  <div class="v" id="buyHexBal">-</div>
+                </div>
+                <label class="field">
+                  <span>구매 수량 (JUMP)</span>
+                  <input type="number" id="inputBuyAmount" class="select" min="1" step="1" placeholder="예: 10" />
+                </label>
+                <div class="kv" style="margin:8px 0;">
+                  <div class="k">필요 HEX</div>
+                  <div class="v" id="buyHexCost">수량 입력 후 자동 계산</div>
+                </div>
+                <button class="btn btn--primary" id="btnBuy" type="button">JUMP 구매</button>
+              </div>
+            </div>
+
+            <!-- ── 판매 탭 ── -->
+            <div id="tabSell" style="display:none;">
+              <div class="mp-section">
+                <div class="mp-section-title">JUMP 판매 (JUMP → HEX)</div>
+                <p class="hint">JUMP 토큰을 판매하고 HEX를 받습니다. 판매 시 3% 수수료가 발생합니다.</p>
+                <div class="kv" style="margin-bottom:12px;">
+                  <div class="k">현재가</div>
+                  <div class="v" id="sellPrice">-</div>
+                  <div class="k">보유 JUMP</div>
+                  <div class="v" id="sellJumpBal">-</div>
+                </div>
+                <label class="field">
+                  <span>판매 수량 (JUMP)</span>
+                  <input type="number" id="inputSellAmount" class="select" min="1" step="1" placeholder="예: 10" />
+                </label>
+                <div class="kv" style="margin:8px 0;">
+                  <div class="k">예상 수령 HEX</div>
+                  <div class="v" id="sellHexOut">수량 입력 후 자동 계산</div>
+                </div>
+                <button class="btn btn--primary" id="btnSell" type="button">JUMP 판매</button>
+              </div>
+            </div>
+
+            <!-- ── 스테이킹 탭 ── -->
+            <div id="tabStaking" style="display:none;">
+              <div class="mp-section">
+                <div class="mp-section-title">JUMP 스테이킹</div>
+                <p class="hint">JUMP를 예치하면 플랫폼 수수료에서 배당(HEX)이 발생합니다.<br>
+                  ⚠ 언스테이킹은 예치 후 <strong>120일 후</strong>부터 가능합니다.</p>
+                <div class="kv" style="margin-bottom:12px;">
+                  <div class="k">보유 JUMP</div>
+                  <div class="v" id="stakeJumpBal">-</div>
+                  <div class="k">현재 스테이킹</div>
+                  <div class="v" id="stakeStaked">-</div>
+                  <div class="k">예치 시작일</div>
+                  <div class="v" id="stakeTime">-</div>
+                  <div class="k">언스테이킹 가능일</div>
+                  <div class="v" id="unstakeAvailDate">-</div>
+                </div>
+
+                <label class="field">
+                  <span>스테이킹 수량 (JUMP)</span>
+                  <input type="number" id="inputStakeAmount" class="select" min="1" step="1" placeholder="예: 100" />
+                </label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                  <button class="btn btn--primary" id="btnStake" type="button">스테이킹</button>
+                  <button class="btn" id="btnUnstake" type="button">언스테이킹</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── 배당 탭 ── -->
+            <div id="tabDividend" style="display:none;">
+              <div class="mp-section">
+                <div class="mp-section-title">배당 청구</div>
+                <p class="hint">스테이킹 수량에 비례하여 플랫폼 수수료(HEX)가 배당됩니다.<br>
+                  배당은 <strong>7일에 1회</strong> 청구 가능합니다.</p>
+                <div class="kv" style="margin-bottom:12px;">
+                  <div class="k">미청구 배당</div>
+                  <div class="v" id="divPending">-</div>
+                  <div class="k">마지막 청구일</div>
+                  <div class="v" id="divLastClaim">-</div>
+                  <div class="k">다음 청구 가능일</div>
+                  <div class="v" id="divNextClaim">-</div>
+                </div>
+                <button class="btn btn--primary" id="btnClaim" type="button">배당 청구</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/exchange.js"></script>
+</body>
+</html>
