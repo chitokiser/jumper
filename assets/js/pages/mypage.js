@@ -332,11 +332,16 @@ function bindCreateWallet() {
   const btn = $("btnCreateWallet");
   if (!btn) return;
   btn.onclick = async () => {
+    const mentorAddress = String($("createWalletMentorAddr")?.value || "").trim();
+    if (!mentorAddress || !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
+      alert("멘토 지갑 주소를 올바르게 입력하세요.\n예) 0x로 시작하는 42자리 주소");
+      return;
+    }
     btn.disabled = true;
     btn.textContent = "생성 중...";
     try {
-      const createWallet = httpsCallable(functions, "createWallet");
-      const res = await createWallet();
+      const createWalletFn = httpsCallable(functions, "createWallet");
+      const res = await createWalletFn({ mentorAddress });
       setText("walletAddress", res.data?.address || "생성됨");
       show("noWallet", false);
       show("walletInfo", true);
@@ -420,16 +425,19 @@ function bindOnChainRegister(uid) {
   const btn = $("btnRegisterOnChain");
   if (!btn) return;
   btn.onclick = async () => {
-    const mentorEmail = String($("mentorEmailInput")?.value || "").trim().toLowerCase() || null;
+    const mentorAddress = String($("mentorAddrInput")?.value || "").trim();
+    if (!mentorAddress || !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
+      alert("멘토 지갑 주소를 올바르게 입력하세요.\n예) 0x로 시작하는 42자리 주소");
+      return;
+    }
     btn.disabled = true;
     btn.textContent = "등록 중...";
     try {
       const registerMember = httpsCallable(functions, "registerMember");
-      await registerMember({ mentorEmail });
+      await registerMember({ mentorAddress });
       show("onChainRegBox", false);
       setText("onChainStatus", "등록 완료 ✓");
       $("onChainStatus").style.color = "var(--accent)";
-      // 온체인 데이터 재조회
       await loadOnChainData(uid);
     } catch (err) {
       alert("온체인 등록 실패: " + err.message);

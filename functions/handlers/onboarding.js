@@ -30,7 +30,7 @@ const db = admin.firestore();
  * @param {string} masterSecret - WALLET_MASTER_SECRET (Secret Manager에서 주입)
  * @returns {{ address: string, created: boolean }}
  */
-async function createCustodialWallet(uid, masterSecret) {
+async function createCustodialWallet(uid, masterSecret, mentorAddress) {
   const userRef = db.collection('users').doc(uid);
   const snap    = await userRef.get();
 
@@ -52,7 +52,11 @@ async function createCustodialWallet(uid, masterSecret) {
     },
   }, { merge: true });
 
-  // ── 온체인 자동 등록 (지갑 생성 직후) ────────────────────────────────
+  // ── 온체인 자동 등록 (멘토 주소가 있을 때만) ──────────────────────────
+  if (!mentorAddress || !ethers.isAddress(mentorAddress)) {
+    return { address: wallet.address, created: true, registered: false };
+  }
+
   try {
     const provider    = getProvider();
     const adminWallet = getAdminWallet();
@@ -64,27 +68,25 @@ async function createCustodialWallet(uid, masterSecret) {
     });
     await fundTx.wait();
 
-    // 2) 수탁 지갑으로 register(ZeroAddress)
+    // 2) 수탁 지갑으로 register(mentorAddress)
     const signer   = walletFromKey(wallet.privateKey, provider);
     const platform = getPlatformContract(signer);
-    const gasLimit = await estimateGasWithBuffer(platform, 'register', [ethers.ZeroAddress]);
-    const regTx    = await platform.register(ethers.ZeroAddress, { gasLimit });
+    const gasLimit = await estimateGasWithBuffer(platform, 'register', [mentorAddress]);
+    const regTx    = await platform.register(mentorAddress, { gasLimit });
     await regTx.wait();
 
     // 3) Firestore 온체인 상태 기록
     await userRef.set({
       onChain: {
-        registered:     true,
-        registeredAt:   admin.firestore.FieldValue.serverTimestamp(),
-        mentorAddress:  ethers.ZeroAddress,
-        txHash:         regTx.hash,
-        autoRegistered: true,
+        registered:    true,
+        registeredAt:  admin.firestore.FieldValue.serverTimestamp(),
+        mentorAddress,
+        txHash:        regTx.hash,
       },
     }, { merge: true });
 
     return { address: wallet.address, created: true, registered: true };
   } catch (regErr) {
-    // 온체인 등록 실패해도 지갑 생성은 성공 처리 (approveDeposit에서 재시도)
     console.warn('[createCustodialWallet] 온체인 자동 등록 실패:', regErr.message);
     return { address: wallet.address, created: true, registered: false };
   }
@@ -97,14 +99,19 @@ async function createCustodialWallet(uid, masterSecret) {
 /**
  * registerOnChain
  * 1. user의 수탁 지갑으로 jumpPlatform.register(mentorAddress) 서명 + 전송
- * 2. mentorEmail이 있으면 DB에서 주소 조회, 없으면 bootstrapMentor(0x0)
+ * 2. mentorAddress(0x...)는 필수 — 없으면 에러
  *
- * @param {string}  uid          - Firebase Auth UID
- * @param {string|null} mentorEmail - 멘토 구글 이메일 (없으면 null)
+ * @param {string}  uid           - Firebase Auth UID
+ * @param {string}  mentorAddress - 멘토 지갑 주소 (0x로 시작하는 42자리)
  * @param {string}  masterSecret  - WALLET_MASTER_SECRET
  * @returns {{ txHash, address, mentorAddress }}
  */
-async function registerOnChain(uid, mentorEmail, masterSecret) {
+async function registerOnChain(uid, mentorAddress, masterSecret) {
+  // 멘토 주소 필수 검증
+  if (!mentorAddress || !ethers.isAddress(mentorAddress)) {
+    throw new Error('멘토 지갑 주소가 올바르지 않습니다. 0x로 시작하는 42자리 주소를 입력하세요.');
+  }
+
   // 수탁 지갑 정보 조회
   const userSnap   = await db.collection('users').doc(uid).get();
   const walletData = userSnap.data()?.wallet;
@@ -123,19 +130,6 @@ async function registerOnChain(uid, mentorEmail, masterSecret) {
       { merge: true }
     );
     throw new Error('이미 온체인 가입이 완료된 계정입니다');
-  }
-
-  // 멘토 주소 결정
-  let mentorAddress = ethers.ZeroAddress; // 0x00..00 → 컨트랙트가 bootstrapMentor 사용
-  if (mentorEmail) {
-    const key = mentorEmail.toLowerCase().trim();
-    const mentorDoc = await db.collection('mentors').doc(key).get();
-    if (mentorDoc.exists) {
-      mentorAddress = mentorDoc.data().address;
-    } else {
-      // 멘토 이메일 미등록 → 기본 멘토(ZeroAddress)로 폴백
-      console.warn(`[registerOnChain] 멘토 미등록: ${key} → ZeroAddress 사용`);
-    }
   }
 
   // 수탁 지갑으로 서명

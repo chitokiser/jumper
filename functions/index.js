@@ -64,9 +64,10 @@ function wrapError(fn) {
 exports.createWallet = onCall(
   { secrets: [walletSecret, adminKeySecret] },
   wrapError(async (request) => {
-    const uid = requireAuth(request);
+    const uid           = requireAuth(request);
+    const mentorAddress = request.data?.mentorAddress ?? null;
     process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-    const result = await onboarding.createCustodialWallet(uid, walletSecret.value());
+    const result = await onboarding.createCustodialWallet(uid, walletSecret.value(), mentorAddress);
     logger.info('createWallet', { uid, address: result.address, created: result.created, registered: result.registered });
     return result;
   })
@@ -90,16 +91,16 @@ exports.adminSelfOnboard = onCall(
 
 // ════════════════════════════════════════════════════════════════════════════
 // 2. 온체인 조합원 가입
-//    클라이언트: httpsCallable(functions, 'registerMember')({ mentorEmail: 'xxx@gmail.com' })
-//    mentorEmail 없으면 bootstrapMentor 사용
+//    클라이언트: httpsCallable(functions, 'registerMember')({ mentorAddress: '0x...' })
+//    mentorAddress 필수 — 없으면 에러
 // ════════════════════════════════════════════════════════════════════════════
 exports.registerMember = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
-    const uid         = requireAuth(request);
-    const mentorEmail = request.data?.mentorEmail ?? null;
-    const result = await onboarding.registerOnChain(uid, mentorEmail, walletSecret.value());
-    logger.info('registerMember', { uid, mentorEmail, txHash: result.txHash });
+    const uid           = requireAuth(request);
+    const mentorAddress = request.data?.mentorAddress ?? null;
+    const result = await onboarding.registerOnChain(uid, mentorAddress, walletSecret.value());
+    logger.info('registerMember', { uid, mentorAddress, txHash: result.txHash });
     return result;
   })
 );

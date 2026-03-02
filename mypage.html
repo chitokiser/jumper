@@ -122,8 +122,13 @@
         <div id="noWallet" style="display:none;">
           <p class="hint">
             수탁 지갑이 아직 없습니다.<br>
-            <strong>지갑 생성</strong>을 눌러 서버 수탁 지갑을 만들어 주세요 (MetaMask 불필요).
+            멘토 지갑 주소를 입력한 후 지갑을 생성하세요.
           </p>
+          <label class="field" style="margin-top:10px;">
+            <span>멘토 지갑 주소 <em class="req">*</em></span>
+            <input type="text" id="createWalletMentorAddr" maxlength="42"
+              placeholder="0x..." style="font-family:monospace;" />
+          </label>
         </div>
 
         <!-- 멘토 등록 요청 (온체인 등록 완료 후 멘토 없을 때) -->
@@ -145,11 +150,12 @@
         <div id="onChainRegBox" style="display:none;" class="mp-action-box">
           <p class="hint">
             온체인 미등록 상태입니다.<br>
-            멘토 이메일을 입력하면 가맹점 결제 시 경험치(EXP)와 포인트를 받을 수 있습니다.
+            멘토 지갑 주소를 입력하면 경험치(EXP)와 포인트를 받을 수 있습니다.
           </p>
           <label class="field">
-            <span>멘토 이메일 <small>(선택)</small></span>
-            <input type="email" id="mentorEmailInput" maxlength="80" placeholder="mentor@gmail.com" />
+            <span>멘토 지갑 주소 <em class="req">*</em></span>
+            <input type="text" id="mentorAddrInput" maxlength="42"
+              placeholder="0x..." style="font-family:monospace;" />
           </label>
           <button class="btn btn--primary" id="btnRegisterOnChain" type="button">온체인 등록</button>
         </div>
