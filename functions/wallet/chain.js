@@ -92,6 +92,7 @@ const JUMP_TOKEN_ABI = [
   'function allowance(address owner, address spender) external view returns (uint256)',
   'function balanceOf(address account) external view returns (uint256)',
   'function transfer(address to, uint256 amount) external returns (bool)',
+  'function totalSupply() external view returns (uint256)',
 ];
 
 // jumpBank ABI (거래소 + 스테이킹 + 배당)
@@ -109,7 +110,12 @@ const JUMP_BANK_ABI = [
   'function price() external view returns (uint256)',
   'function totalStaked() external view returns (uint256)',
   'function act() external view returns (uint8)',
+  'function rate() external view returns (uint8)',
+  'function hexBalance() external view returns (uint256)',
+  'function tokenInventory() external view returns (uint256)',
+  'function circulatingSupply() external view returns (uint256)',
   'function user(address who) external view returns (uint256 totalAllow, uint256 totalBuy, uint256 depo, uint256 stakingTime, uint256 lastClaim)',
+  'function myDashboard(address who) external view returns (uint256 myActualQty, uint256 currentPriceWei, uint256 myMarketCapWei, uint256 myAvgBuyPriceWei, int256 myPnlWei, int256 myRoiBps_)',
   // 이벤트
   'event Bought(address indexed who, uint256 amount, uint256 payHexWei, uint256 autoStaked, uint256 received)',
   'event Sold(address indexed who, uint256 amount, uint256 recvHexWei, uint256 feeHexWei)',

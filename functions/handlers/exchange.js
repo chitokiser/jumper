@@ -44,27 +44,39 @@ async function getJumpBankStatus(uid) {
   const jumpToken = getJumpTokenContract(provider);
   const hexToken  = getHexContract(provider);
 
-  const [price, totalStaked, act] = await Promise.all([
+  const [price, totalStaked, act, rate, bankHexBal, bankJumpInv, circSupply, jumpTotalSupply] = await Promise.all([
     jumpBank.price(),
     jumpBank.totalStaked(),
     jumpBank.act(),
+    jumpBank.rate(),
+    jumpBank.hexBalance(),
+    jumpBank.tokenInventory(),
+    jumpBank.circulatingSupply(),
+    jumpToken.totalSupply(),
   ]);
 
-  let hexBal = 0n, jumpBal = 0n, pending = 0n, userInfo = null;
+  let hexBal = 0n, jumpBal = 0n, pending = 0n, userInfo = null, dashboard = null;
   if (address) {
-    [hexBal, jumpBal, pending, userInfo] = await Promise.all([
+    [hexBal, jumpBal, pending, userInfo, dashboard] = await Promise.all([
       hexToken.balanceOf(address),
       jumpToken.balanceOf(address),
       jumpBank.pendingDividend(address),
       jumpBank.user(address),
+      jumpBank.myDashboard(address),
     ]);
   }
 
   return {
     // 시장 정보
-    price:        price.toString(),        // HEX wei per JUMP (18 decimals HEX, 0 decimals JUMP)
-    totalStaked:  totalStaked.toString(),  // 총 스테이킹 JUMP
-    act:          Number(act),             // 0=중단 1=구매만 2=구매+배당 3=전체
+    price:        price.toString(),
+    totalStaked:  totalStaked.toString(),
+    act:          Number(act),
+    rate:         Number(rate),             // 매도 수수료율 (%)
+    // jumpBank 잔고
+    bankHexBalance:    bankHexBal.toString(),   // jumpBank HEX 준비금
+    bankJumpInventory: bankJumpInv.toString(),  // jumpBank JUMP 재고
+    circulatingSupply: circSupply.toString(),   // 유통량 (재고+스테이킹)
+    jumpTotalSupply:   jumpTotalSupply.toString(), // JUMP 총 발행량
     // 내 잔액
     hexBalance:   hexBal.toString(),
     jumpBalance:  jumpBal.toString(),
@@ -74,6 +86,12 @@ async function getJumpBankStatus(uid) {
     stakingTime:  userInfo ? userInfo.stakingTime.toString()  : '0',
     lastClaim:    userInfo ? userInfo.lastClaim.toString()    : '0',
     totalBuy:     userInfo ? userInfo.totalBuy.toString()     : '0',
+    // 내 대시보드 (손익/ROI)
+    myActualQty:       dashboard ? dashboard.myActualQty.toString()       : '0',
+    myAvgBuyPrice:     dashboard ? dashboard.myAvgBuyPriceWei.toString()  : '0',
+    myMarketCap:       dashboard ? dashboard.myMarketCapWei.toString()    : '0',
+    myPnl:             dashboard ? dashboard.myPnlWei.toString()          : '0',
+    myRoiBps:          dashboard ? dashboard.myRoiBps_.toString()         : '0',
   };
 }
 

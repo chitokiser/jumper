@@ -77,14 +77,30 @@ async function loadStatus() {
 
     const actLabel = { 0: '중단', 1: '구매만', 2: '구매+배당', 3: '전체' };
 
-    // 현황 탭
+    // 현황 탭 — 시장
     setText('exPrice',       fmtHex(_status.price) + ' HEX / JUMP');
     setText('exTotalStaked', fmtJump(_status.totalStaked) + ' JUMP');
+    setText('exCircSupply',  fmtJump(_status.circulatingSupply) + ' JUMP');
+    setText('exTotalSupply', fmtJump(_status.jumpTotalSupply) + ' JUMP');
     setText('exAct',         actLabel[_status.act] ?? String(_status.act));
+    setText('exRate',        (_status.rate ?? 3) + '%');
+    // jumpBank 잔고
+    setText('exBankHex',  fmtHex(_status.bankHexBalance) + ' HEX');
+    setText('exBankJump', fmtJump(_status.bankJumpInventory) + ' JUMP');
+    // 내 자산
     setText('exHexBal',      fmtHex(_status.hexBalance) + ' HEX');
     setText('exJumpBal',     fmtJump(_status.jumpBalance) + ' JUMP');
     setText('exStaked',      fmtJump(_status.staked) + ' JUMP');
     setText('exPendingDiv',  fmtHex(_status.pendingDividend) + ' HEX');
+    // 내 손익
+    setText('exMyQty',       fmtJump(_status.myActualQty) + ' JUMP');
+    setText('exMyAvgPrice',  fmtHex(_status.myAvgBuyPrice) + ' HEX');
+    setText('exMyMarketCap', fmtHex(_status.myMarketCap) + ' HEX');
+    const pnl = BigInt(_status.myPnl || '0');
+    const pnlSign = pnl >= 0n ? '+' : '';
+    setText('exMyPnl', pnlSign + fmtHex(pnl.toString()) + ' HEX');
+    const roiBps = Number(_status.myRoiBps || '0');
+    setText('exMyRoi', (roiBps >= 0 ? '+' : '') + (roiBps / 100).toFixed(2) + '%');
 
     // 구매 탭
     setText('buyPrice',  fmtHex(_status.price) + ' HEX / JUMP');
