@@ -9,6 +9,8 @@ const { encrypt, decrypt } = require('../wallet/crypto');
 const {
   getProvider,
   getPlatformContract,
+  getHexContract,
+  getAdminWallet,
   walletFromKey,
   estimateGasWithBuffer,
 } = require('../wallet/chain');
@@ -32,8 +34,9 @@ async function createCustodialWallet(uid, masterSecret) {
   const userRef = db.collection('users').doc(uid);
   const snap    = await userRef.get();
 
-  // 멱등: 이미 지갑 있으면 그대로 반환
-  if (snap.exists && snap.data()?.wallet?.address) {
+  // 멱등: 수탁 지갑(encryptedKey 포함)이 이미 있으면 그대로 반환
+  // MetaMask 등 개인지갑(address만 있고 encryptedKey 없음)은 재생성 허용
+  if (snap.exists && snap.data()?.wallet?.address && snap.data()?.wallet?.encryptedKey) {
     return { address: snap.data().wallet.address, created: false };
   }
 
@@ -49,7 +52,42 @@ async function createCustodialWallet(uid, masterSecret) {
     },
   }, { merge: true });
 
-  return { address: wallet.address, created: true };
+  // ── 온체인 자동 등록 (지갑 생성 직후) ────────────────────────────────
+  try {
+    const provider    = getProvider();
+    const adminWallet = getAdminWallet();
+
+    // 1) 수탁 지갑에 가스비 BNB 소량 전송
+    const fundTx = await adminWallet.sendTransaction({
+      to:    wallet.address,
+      value: ethers.parseEther('0.0001'),
+    });
+    await fundTx.wait();
+
+    // 2) 수탁 지갑으로 register(ZeroAddress)
+    const signer   = walletFromKey(wallet.privateKey, provider);
+    const platform = getPlatformContract(signer);
+    const gasLimit = await estimateGasWithBuffer(platform, 'register', [ethers.ZeroAddress]);
+    const regTx    = await platform.register(ethers.ZeroAddress, { gasLimit });
+    await regTx.wait();
+
+    // 3) Firestore 온체인 상태 기록
+    await userRef.set({
+      onChain: {
+        registered:     true,
+        registeredAt:   admin.firestore.FieldValue.serverTimestamp(),
+        mentorAddress:  ethers.ZeroAddress,
+        txHash:         regTx.hash,
+        autoRegistered: true,
+      },
+    }, { merge: true });
+
+    return { address: wallet.address, created: true, registered: true };
+  } catch (regErr) {
+    // 온체인 등록 실패해도 지갑 생성은 성공 처리 (approveDeposit에서 재시도)
+    console.warn('[createCustodialWallet] 온체인 자동 등록 실패:', regErr.message);
+    return { address: wallet.address, created: true, registered: false };
+  }
 }
 
 // ────────────────────────────────────────────────
@@ -74,8 +112,16 @@ async function registerOnChain(uid, mentorEmail, masterSecret) {
     throw new Error('수탁 지갑이 없습니다. 먼저 지갑을 생성해주세요 (createWallet 호출)');
   }
 
-  // 이미 가입했는지 확인 (Firestore 캐시)
-  if (userSnap.data()?.onChain?.registered) {
+  // 이미 가입했는지 확인 (체인이 진실 — Firestore 캐시는 무시)
+  const providerCheck  = getProvider();
+  const platformCheck  = getPlatformContract(providerCheck);
+  const [currentLevel] = await platformCheck.members(walletData.address);
+  if (Number(currentLevel) > 0) {
+    // 체인에 이미 등록 → Firestore가 stale이면 동기화
+    await db.collection('users').doc(uid).set(
+      { onChain: { registered: true } },
+      { merge: true }
+    );
     throw new Error('이미 온체인 가입이 완료된 계정입니다');
   }
 
@@ -84,10 +130,12 @@ async function registerOnChain(uid, mentorEmail, masterSecret) {
   if (mentorEmail) {
     const key = mentorEmail.toLowerCase().trim();
     const mentorDoc = await db.collection('mentors').doc(key).get();
-    if (!mentorDoc.exists) {
-      throw new Error(`등록된 멘토 이메일을 찾을 수 없습니다: ${mentorEmail}`);
+    if (mentorDoc.exists) {
+      mentorAddress = mentorDoc.data().address;
+    } else {
+      // 멘토 이메일 미등록 → 기본 멘토(ZeroAddress)로 폴백
+      console.warn(`[registerOnChain] 멘토 미등록: ${key} → ZeroAddress 사용`);
     }
-    mentorAddress = mentorDoc.data().address;
   }
 
   // 수탁 지갑으로 서명
@@ -158,7 +206,8 @@ async function registerMentor(email, address, signature) {
   // 온체인에서 level 4+ 확인
   const provider = getProvider();
   const platform = getPlatformContract(provider);
-  const [level]  = await platform.getMember(address);
+  // members() 반환: (level, mentor, exp, points, blocked)
+  const [level]  = await platform.members(address);
 
   if (Number(level) < 4) {
     throw new Error(
@@ -183,34 +232,185 @@ async function registerMentor(email, address, signature) {
 
 /**
  * getUserOnChainData
- * jumpPlatform.getMember() 조회 + 읽기 쉬운 형태로 포맷
+ * jumpPlatform.getMember() 조회 + 원화(KRW) 환산 포함
  *
  * @param {string} uid - Firebase Auth UID
  * @returns {{ address, level, mentor, pointWei, payableWei, joinAt, blocked,
- *             pointDisplay, payableDisplay }}
+ *             pointDisplay, payableDisplay, pointKrw, payableKrw, krwPerUsd }}
  */
 async function getUserOnChainData(uid) {
   const userSnap = await db.collection('users').doc(uid).get();
   const address  = userSnap.data()?.wallet?.address;
   if (!address) throw new Error('수탁 지갑이 없습니다');
 
-  const provider  = getProvider();
-  const platform  = getPlatformContract(provider);
-  const [level, mentor, pointWei, payableWei, joinAt, blocked] =
-    await platform.getMember(address);
+  const provider    = getProvider();
+  const platform    = getPlatformContract(provider);
+  const hexContract = getHexContract(provider);
+  const { fetchExchangeRates } = require('../wallet/exchange');
+
+  // 온체인 조회 + 환율 조회 + 지갑 HEX 잔액 병렬 실행
+  // members() 반환: (uint32 level, address mentor, uint256 exp, uint256 points, bool blocked)
+  const [[level, mentor, exp, points, blocked], ratesResult, walletHexBal] =
+    await Promise.all([
+      platform.members(address),
+      fetchExchangeRates().catch(() => null),
+      hexContract.balanceOf(address),
+    ]);
+
+  const krwPerUsd = ratesResult?.krwPerUsd ?? null;
+  const vndPerUsd = ratesResult?.vndPerUsd ?? null;
+
+  // HEX wei → 각 통화 환산 (환율 없으면 null)
+  const hexToKrw = (wei) => {
+    if (!krwPerUsd) return null;
+    return Math.round(parseFloat(ethers.formatEther(wei)) * krwPerUsd);
+  };
+  const hexToVnd = (wei) => {
+    if (!vndPerUsd) return null;
+    return Math.round(parseFloat(ethers.formatEther(wei)) * vndPerUsd);
+  };
+  const hexToUsd = (wei) => {
+    return Math.round(parseFloat(ethers.formatEther(wei)) * 100) / 100;
+  };
+
+  // EXP는 wei 단위가 아닌 순수 카운터 (fee / 1e16)
+  const expNum      = Number(exp);
+  const levelNum    = Number(level);
+  const requiredExp = levelNum > 0 ? levelNum * levelNum * 10000 : 10000;
 
   return {
     address,
-    level:          Number(level),
+    level:   levelNum,
     mentor,
-    pointWei:       pointWei.toString(),
-    payableWei:     payableWei.toString(),
-    joinAt:         Number(joinAt),
+    exp:     expNum,
+    requiredExp,
     blocked,
-    // 사람이 읽기 쉬운 표시 (HEX 단위, 소수 4자리)
-    pointDisplay:   parseFloat(ethers.formatEther(pointWei)).toFixed(4),
-    payableDisplay: parseFloat(ethers.formatEther(payableWei)).toFixed(4),
+    // 포인트 (HEX wei 단위)
+    pointWei:     points.toString(),
+    pointDisplay: parseFloat(ethers.formatEther(points)).toFixed(4),
+    pointKrw:     hexToKrw(points),
+    pointVnd:     hexToVnd(points),
+    pointUsd:     hexToUsd(points),
+    // 수탁 지갑 실제 HEX 잔액 (P2P 수령 포함)
+    walletHexWei:     walletHexBal.toString(),
+    walletHexDisplay: parseFloat(ethers.formatEther(walletHexBal)).toFixed(4),
+    walletHexKrw:     hexToKrw(walletHexBal),
+    walletHexUsd:     hexToUsd(walletHexBal),
+    walletHexVnd:     hexToVnd(walletHexBal),
+    krwPerUsd,
+    vndPerUsd,
   };
+}
+
+// ────────────────────────────────────────────────
+// 나의 멘티 목록 조회
+// ────────────────────────────────────────────────
+
+/**
+ * getMyMentees
+ * Firestore에서 onChain.mentorAddress == myAddress 인 유저 목록 반환
+ *
+ * @param {string} uid - Firebase Auth UID
+ * @returns {{ mentees: Array, myAddress: string|null }}
+ */
+async function getMyMentees(uid) {
+  const userSnap = await db.collection('users').doc(uid).get();
+  const userData = userSnap.data() || {};
+  const myAddress = userData?.wallet?.address;
+
+  // 멘티의 onChain.mentorAddress 는 mentors 컬렉션에 등록된 개인지갑 주소로 저장됨.
+  // 수탁 지갑 주소(wallet.address)와 다를 수 있으므로 mentors 컬렉션도 확인.
+  let queryAddress = myAddress;
+  const email = userData?.email;
+  if (email) {
+    const mentorSnap = await db.collection('mentors').doc(email.toLowerCase()).get();
+    if (mentorSnap.exists) {
+      queryAddress = mentorSnap.data()?.address || myAddress;
+    }
+  }
+
+  if (!queryAddress) return { mentees: [], myAddress: null };
+
+  // 대소문자 불일치 대비: 체크섬 주소와 소문자 주소 모두 조회 후 합산
+  const checksumAddr = ethers.getAddress(queryAddress);
+  const lowerAddr    = queryAddress.toLowerCase();
+
+  const [snapChecksum, snapLower] = await Promise.all([
+    db.collection('users').where('onChain.mentorAddress', '==', checksumAddr).get(),
+    checksumAddr !== lowerAddr
+      ? db.collection('users').where('onChain.mentorAddress', '==', lowerAddr).get()
+      : Promise.resolve({ docs: [] }),
+  ]);
+
+  // 중복 제거 (uid 기준)
+  const seen = new Set();
+  const allDocs = [...snapChecksum.docs, ...snapLower.docs].filter((d) => {
+    if (seen.has(d.id)) return false;
+    seen.add(d.id);
+    return true;
+  });
+
+  const mentees = allDocs.map((d) => {
+    const data = d.data();
+    return {
+      uid:          d.id,
+      name:         data.name || '-',
+      address:      data.wallet?.address || null,
+      registeredAt: data.onChain?.registeredAt?.toMillis?.() ?? null,
+    };
+  });
+
+  return { mentees, myAddress };
+}
+
+// ────────────────────────────────────────────────
+// 관리자 셀프 온보딩
+// ────────────────────────────────────────────────
+
+/**
+ * adminSelfOnboard
+ * 관리자 계정(daguri75 등)을 ADMIN_PRIVATE_KEY 지갑 주소로 연결
+ * - 온체인 미등록이면 register(ZeroAddress) 호출
+ * - Firestore에 wallet.address + wallet.type='admin' 저장
+ *
+ * @param {string} uid - 관리자 Firebase UID
+ * @returns {{ address, level, txHash }}
+ */
+async function adminSelfOnboard(uid) {
+  const adminWallet   = getAdminWallet();
+  const address       = adminWallet.address;
+  const provider      = getProvider();
+  const platformView  = getPlatformContract(provider);
+
+  // 온체인 등록 여부 확인
+  const [level] = await platformView.members(address);
+
+  let txHash = null;
+  if (Number(level) === 0) {
+    // 미등록이면 관리자 키로 직접 register()
+    const platformSigned = getPlatformContract(adminWallet);
+    const gasLimit = await estimateGasWithBuffer(platformSigned, 'register', [ethers.ZeroAddress]);
+    const tx = await platformSigned.register(ethers.ZeroAddress, { gasLimit });
+    const receipt = await tx.wait();
+    txHash = receipt.hash;
+  }
+
+  // Firestore 업데이트: wallet.type='admin' 으로 표시
+  await db.collection('users').doc(uid).set({
+    wallet: {
+      address,
+      type: 'admin',
+    },
+    onChain: {
+      registered:    true,
+      registeredAt:  admin.firestore.FieldValue.serverTimestamp(),
+      mentorAddress: ethers.ZeroAddress,
+      txHash:        txHash || 'already-registered',
+      autoRegistered: true,
+    },
+  }, { merge: true });
+
+  return { address, level: Number(level) || 1, txHash };
 }
 
 module.exports = {
@@ -218,4 +418,6 @@ module.exports = {
   registerOnChain,
   registerMentor,
   getUserOnChainData,
+  getMyMentees,
+  adminSelfOnboard,
 };

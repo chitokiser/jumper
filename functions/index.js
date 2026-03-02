@@ -29,9 +29,10 @@ const walletSecret  = defineSecret('WALLET_MASTER_SECRET');
 const adminKeySecret= defineSecret('ADMIN_PRIVATE_KEY');
 
 // ── 핸들러 ───────────────────────────────────────────────────────────────────
-const onboarding = require('./handlers/onboarding');
-const depositH   = require('./handlers/deposit');
-const txH        = require('./handlers/transaction');
+const onboarding             = require('./handlers/onboarding');
+const depositH               = require('./handlers/deposit');
+const txH                    = require('./handlers/transaction');
+const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
 // 유틸 함수
@@ -61,11 +62,28 @@ function wrapError(fn) {
 //    클라이언트: httpsCallable(functions, 'createWallet')()
 // ════════════════════════════════════════════════════════════════════════════
 exports.createWallet = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret, adminKeySecret] },
   wrapError(async (request) => {
-    const uid    = requireAuth(request);
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
     const result = await onboarding.createCustodialWallet(uid, walletSecret.value());
-    logger.info('createWallet', { uid, address: result.address, created: result.created });
+    logger.info('createWallet', { uid, address: result.address, created: result.created, registered: result.registered });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 1-b. 관리자 셀프 온보딩 (ADMIN_PRIVATE_KEY 지갑 → 플랫폼 연결)
+//      클라이언트: httpsCallable(functions, 'adminSelfOnboard')()
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminSelfOnboard = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await onboarding.adminSelfOnboard(uid);
+    logger.info('adminSelfOnboard', { uid, address: result.address, level: result.level });
     return result;
   })
 );
@@ -183,7 +201,7 @@ exports.getDepositHistory = onCall(
 //    overrideKrwRate: 수동 환율 지정 (null이면 자동 조회)
 // ════════════════════════════════════════════════════════════════════════════
 exports.approveDeposit = onCall(
-  { secrets: [adminKeySecret] },
+  { secrets: [adminKeySecret, walletSecret] },
   wrapError(async (request) => {
     const adminUid = requireAuth(request);
     const { refCode, overrideKrwRate } = request.data ?? {};
@@ -192,7 +210,7 @@ exports.approveDeposit = onCall(
     // Secret을 process.env에 주입 (chain.js의 getAdminWallet()이 읽음)
     process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
 
-    const result = await depositH.approveDeposit(adminUid, refCode, overrideKrwRate ?? null);
+    const result = await depositH.approveDeposit(adminUid, refCode, overrideKrwRate ?? null, walletSecret.value());
     logger.info('approveDeposit', { adminUid, refCode, txHash: result.txHash });
     return result;
   })
@@ -210,7 +228,21 @@ exports.listPendingDeposits = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 9. 상품 구매 (수탁 지갑 서명)
+// 9. 레벨업 요청 (수탁 지갑 서명)
+//    클라이언트: httpsCallable(functions, 'requestLevelUp')()
+// ════════════════════════════════════════════════════════════════════════════
+exports.requestLevelUp = onCall(
+  { secrets: [walletSecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const result = await txH.requestLevelUp(uid, walletSecret.value());
+    logger.info('requestLevelUp', { uid, newLevel: result.newLevel, txHash: result.txHash });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 11. 상품 구매 (수탁 지갑 서명)
 //    클라이언트: httpsCallable(functions, 'buyProduct')({ productId: 1 })
 // ════════════════════════════════════════════════════════════════════════════
 exports.buyProduct = onCall(
@@ -268,6 +300,217 @@ exports.adminCheckAllowance = onCall(
     requireAuth(request);
     process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
     return await txH.adminCheckAllowance();
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 13. 관리자: 컨트랙트 + 관리자 지갑 현황 조회
+//     클라이언트: httpsCallable(functions, 'adminGetContractStatus')()
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminGetContractStatus = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return await txH.adminGetContractStatus();
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 14. 관리자: P2P HEX 전송 기록 (txHash로 수동 등록)
+//     클라이언트: httpsCallable(functions, 'adminRecordP2pTransfer')({ txHash: '0x...' })
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminRecordP2pTransfer = onCall(
+  wrapError(async (request) => {
+    const adminUid = requireAuth(request);
+    const { txHash } = request.data ?? {};
+    if (!txHash) throw new HttpsError('invalid-argument', 'txHash가 필요합니다');
+    const result = await txH.adminRecordP2pTransfer(adminUid, txHash);
+    logger.info('adminRecordP2pTransfer', { adminUid, txHash, uid: result.uid });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 15. 유저: P2P 수령 HEX → pointWei 합산 (수탁 지갑 전용)
+//     수탁 지갑 HEX → 관리자 지갑 → creditPoints → pointWei 증가
+//     클라이언트: httpsCallable(functions, 'mergeWalletHexToPoints')()
+// ════════════════════════════════════════════════════════════════════════════
+exports.mergeWalletHexToPoints = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await txH.mergeWalletHexToPoints(uid, walletSecret.value());
+    logger.info('mergeWalletHexToPoints', { uid, txHash: result.txHash, amountHex: result.amountHex });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 16. 판매자조합원 온체인 등록
+//     - 수탁 지갑으로 jumpPlatform.registerMerchant(metadataURI) 호출 (onlyMember)
+//     - 초기 feeBps=0 → 관리자가 adminUpdateMerchantFee(id, 1000) 으로 10% 설정
+//     클라이언트: httpsCallable(functions, 'registerMerchant')({ name, description, phone, kakaoId, region, career })
+// ════════════════════════════════════════════════════════════════════════════
+exports.registerMerchant = onCall(
+  { secrets: [walletSecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { name, description, phone, kakaoId, region, career } = request.data ?? {};
+    if (!name) throw new HttpsError('invalid-argument', '가게명(name)이 필요합니다');
+
+    // 온체인 metadataURI: compact JSON (가스 절약)
+    const metadataURI = JSON.stringify({
+      n: name,
+      r: region  || '',
+      c: career  || '',
+      d: (description || '').slice(0, 120),
+    });
+
+    const merchantData = { name, description: description || '', phone: phone || '', kakaoId: kakaoId || '', region: region || '', career: career || '' };
+    const result = await txH.registerMerchantOnChain(uid, metadataURI, merchantData, walletSecret.value());
+    logger.info('registerMerchant', { uid, merchantId: result.merchantId, txHash: result.txHash });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 17. 관리자: 가맹점 수수료 설정 (승인)
+//     - 관리자 지갑으로 jumpPlatform.adminUpdateMerchantFee(id, feeBps) 호출
+//     클라이언트: httpsCallable(functions, 'adminSetMerchantFee')({ merchantId, feeBps })
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminSetMerchantFee = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    requireAuth(request);
+    const { merchantId, feeBps } = request.data ?? {};
+    if (merchantId == null) throw new HttpsError('invalid-argument', 'merchantId가 필요합니다');
+    const bps = feeBps != null ? Number(feeBps) : 1000;
+    if (!Number.isFinite(bps) || bps < 0 || bps > 3000)
+      throw new HttpsError('invalid-argument', 'feeBps는 0~3000(최대 30%) 사이여야 합니다');
+
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await txH.adminSetMerchantFeeOnChain(Number(merchantId), bps);
+    logger.info('adminSetMerchantFee', result);
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 17-b. 관리자: 온체인 멘토 일괄 변경
+//       클라이언트: httpsCallable(functions, 'adminBulkChangeMentor')({ mentorAddress, targetUids? })
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminBulkChangeMentor = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    const { mentorAddress, targetUids } = request.data ?? {};
+    if (!mentorAddress) throw new HttpsError('invalid-argument', 'mentorAddress가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await txH.adminBulkChangeMentor(mentorAddress, targetUids || null);
+    logger.info('adminBulkChangeMentor', { mentorAddress, ...result });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 17-c. 관리자: 유저 온체인 레벨 설정
+//       클라이언트: httpsCallable(functions, 'adminSetUserLevel')({ emailOrUid, level })
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminSetUserLevel = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    const { emailOrUid, level } = request.data ?? {};
+    if (!emailOrUid) throw new HttpsError('invalid-argument', 'emailOrUid가 필요합니다');
+    if (!Number.isInteger(Number(level)) || Number(level) < 1 || Number(level) > 10)
+      throw new HttpsError('invalid-argument', '레벨은 1~10 사이 정수여야 합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await txH.adminSetUserLevel(emailOrUid, Number(level));
+    logger.info('adminSetUserLevel', { adminUid: uid, ...result });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 18. 나의 멘티 목록 조회
+//     클라이언트: httpsCallable(functions, 'getMyMentees')()
+// ════════════════════════════════════════════════════════════════════════════
+exports.getMyMentees = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await onboarding.getMyMentees(uid);
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 19. 관리자: jumpPlatform 컨트랙트에 HEX 충전
+//     - 관리자 지갑 HEX → ownerDepositHex() → 컨트랙트 HEX 풀 증가
+//     - 사전 조건: adminApproveHex (무한 approve) 완료 상태
+//     클라이언트: httpsCallable(functions, 'adminOwnerDepositHex')({ amountWei: '1000000000000000000' })
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminOwnerDepositHex = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    requireAuth(request);
+    const { amountWei } = request.data ?? {};
+    if (!amountWei) throw new HttpsError('invalid-argument', 'amountWei가 필요합니다');
+
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await txH.adminOwnerDepositHex(String(amountWei));
+    logger.info('adminOwnerDepositHex', result);
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 20. 가맹점 오프라인 결제
+//     - 수탁 지갑 HEX → approve → jumpPlatform.payMerchantHex(merchantId, amountWei)
+//     클라이언트: httpsCallable(functions, 'payMerchantHex')({ merchantId: 1, amountKrw: 50000 })
+// ════════════════════════════════════════════════════════════════════════════
+exports.payMerchantHex = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { merchantId, amountKrw } = request.data ?? {};
+    if (merchantId == null) throw new HttpsError('invalid-argument', 'merchantId가 필요합니다');
+    if (!amountKrw || Number(amountKrw) < 1000)
+      throw new HttpsError('invalid-argument', '최소 결제 금액은 1,000원입니다');
+
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await txH.payMerchantHexOnChain(
+      uid, Number(merchantId), Number(amountKrw), walletSecret.value()
+    );
+    logger.info('payMerchantHex', { uid, merchantId, amountKrw, txHash: result.txHash });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 21. 상품 HEX 즉시결제 (유저 수탁 지갑)
+//     - 상품 가격(KRW/VND/USD) → 현재 환율로 HEX wei 환산
+//     - approve → payMerchantHex (가맹점) 또는 직접 transfer (비가맹점)
+//     - 주문 자동 confirmed 처리
+//     클라이언트: httpsCallable(functions, 'payProductWithHex')({ itemId, date, people, phone, ... })
+// ════════════════════════════════════════════════════════════════════════════
+exports.payProductWithHex = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { itemId, date, startDate, endDate, people, phone, memo, bookingMode } = request.data ?? {};
+    if (!itemId) throw new HttpsError('invalid-argument', 'itemId가 필요합니다');
+
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await txH.payProductWithHex(
+      uid,
+      { itemId, date, startDate, endDate, people, phone, memo, bookingMode },
+      walletSecret.value()
+    );
+    logger.info('payProductWithHex', { uid, itemId, orderId: result.orderId, txHash: result.txHash });
+    return result;
   })
 );
 

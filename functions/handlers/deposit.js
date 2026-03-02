@@ -12,7 +12,9 @@ const admin  = require('firebase-admin');
 const { ethers } = require('ethers');
 const {
   getAdminWallet,
+  getProvider,
   getPlatformContract,
+  walletFromKey,
   estimateGasWithBuffer,
 } = require('../wallet/chain');
 const {
@@ -22,17 +24,16 @@ const {
   krwToVnd,
   toSnapshotScaled,
 } = require('../wallet/exchange');
+const { decrypt } = require('../wallet/crypto');
+const { requireAdmin } = require('../wallet/admin');
 
 const db = admin.firestore();
 
-// 관리자 UID 화이트리스트 (Firestore users/{uid}.isAdmin=true 로도 이중 확인)
-const ADMIN_EMAIL = 'daguri75@gmail.com';
-
-// 은행 계좌 정보 (실제 계좌로 교체)
+// 은행 계좌 정보 ← 실제 계좌로 수정 필요
 const BANK_INFO = {
   bank:    '하나은행',
-  account: '123-456789-01234',    // ← 실제 계좌 입력 필요
-  holder:  '점퍼코리아',
+  account: '123-456789-01234',    // TODO: 실제 계좌번호로 변경
+  holder:  '점퍼코리아',           // TODO: 실제 예금주명으로 변경
 };
 
 const MIN_KRW = 10_000;  // 최소 충전 금액
@@ -129,12 +130,9 @@ async function requestDeposit(uid, { amountKrw, depositorName, bank }) {
  * @param {number|null} overrideKrwRate - 수동 환율 지정 (null이면 자동)
  * @returns {{ success, txHash, hexDisplay, usdAmount, vndAmount }}
  */
-async function approveDeposit(adminUid, refCode, overrideKrwRate = null) {
-  // ── 관리자 확인 ──
-  const adminSnap = await db.collection('users').doc(adminUid).get();
-  if (!adminSnap.data()?.isAdmin) {
-    throw new Error('관리자 권한이 없습니다');
-  }
+async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterSecret = null) {
+  // ── 관리자 확인 (users.isAdmin / admins 컬렉션 / 이메일 허용목록 순) ──
+  await requireAdmin(adminUid);
 
   // ── 입금 문서 조회 ──
   const depositRef  = db.collection('deposits').doc(refCode);
@@ -144,6 +142,55 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null) {
   const dep = depositSnap.data();
   if (dep.status !== 'pending') {
     throw new Error(`이미 처리된 요청입니다 (상태: ${dep.status})`);
+  }
+
+  // ── 온체인 멤버 등록 확인 + 미등록 시 자동 등록 ──────────────────────
+  const adminWallet  = getAdminWallet();
+  const platformView = getPlatformContract(getProvider());
+  const [memberLevel] = await platformView.members(dep.userAddress);
+  const alreadyMember = Number(memberLevel) > 0;
+
+  if (!alreadyMember) {
+    // MetaMask 연결 지갑은 encryptedKey가 없으므로 서버에서 대신 등록 불가
+    const userSnap   = await db.collection('users').doc(dep.uid).get();
+    const walletData = userSnap.data()?.wallet;
+
+    if (!walletData?.encryptedKey) {
+      throw new Error(
+        '온체인 미등록 상태입니다. 마이페이지 → "온체인 등록" 버튼을 먼저 눌러주세요.'
+      );
+    }
+    if (!masterSecret) {
+      throw new Error(
+        '[서버 설정 오류] masterSecret 없음. approveDeposit Cloud Function에 WALLET_MASTER_SECRET Secret을 추가하세요.'
+      );
+    }
+
+    // 1) 수탁 지갑에 가스비 BNB 소량 전송 (opBNB 가스비 충분)
+    const fundTx = await adminWallet.sendTransaction({
+      to:    dep.userAddress,
+      value: ethers.parseEther('0.0001'),
+    });
+    await fundTx.wait();
+
+    // 2) 수탁 지갑으로 register(ZeroAddress)
+    const privateKey   = decrypt(walletData.encryptedKey, masterSecret);
+    const userSigner   = walletFromKey(privateKey, getProvider());
+    const userPlatform = getPlatformContract(userSigner);
+    const regGasLimit  = await estimateGasWithBuffer(userPlatform, 'register', [ethers.ZeroAddress]);
+    const regTx        = await userPlatform.register(ethers.ZeroAddress, { gasLimit: regGasLimit });
+    await regTx.wait();
+
+    // 3) Firestore 온체인 등록 상태 기록
+    await db.collection('users').doc(dep.uid).set({
+      onChain: {
+        registered:     true,
+        registeredAt:   admin.firestore.FieldValue.serverTimestamp(),
+        mentorAddress:  ethers.ZeroAddress,
+        txHash:         regTx.hash,
+        autoRegistered: true,
+      },
+    }, { merge: true });
   }
 
   // ── 환율 조회 ──
@@ -164,25 +211,38 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null) {
   });
 
   try {
-    // ── 온체인 creditPoints 호출 ──
-    const adminWallet = getAdminWallet();
-    const platform    = getPlatformContract(adminWallet);
+    // ── Step 1: 관리자 지갑 → 컨트랙트 HEX 이체 (항상 먼저 실행) ──
+    // 사전 조건: 관리자 지갑이 HEX.approve(platform, MaxUint256) 완료 상태
+    try {
+      const platformDep = getPlatformContract(adminWallet);
+      const depGasLimit = await estimateGasWithBuffer(platformDep, 'ownerDepositHex', [hexAmountWei]);
+      const depTx       = await platformDep.ownerDepositHex(hexAmountWei, { gasLimit: depGasLimit });
+      await depTx.wait();
+    } catch (depositErr) {
+      throw new Error(`관리자→컨트랙트 HEX 이체 실패 (ownerDepositHex): ${depositErr.message}`);
+    }
 
-    const gasLimit = await estimateGasWithBuffer(platform, 'creditPoints', [
-      dep.userAddress,
-      hexAmountWei,
-      refBytes32,
-      BigInt(usdKrwScaled),
-    ]);
+    // ── 온체인 adminCreditHex 호출 ──
+    let receipt;
+    try {
+      const platform = getPlatformContract(adminWallet);
 
-    const tx      = await platform.creditPoints(
-      dep.userAddress,
-      hexAmountWei,
-      refBytes32,
-      BigInt(usdKrwScaled),
-      { gasLimit }
-    );
-    const receipt = await tx.wait();
+      const gasLimit = await estimateGasWithBuffer(platform, 'adminCreditHex', [
+        dep.userAddress,
+        hexAmountWei,
+        refBytes32,
+      ]);
+
+      const tx = await platform.adminCreditHex(
+        dep.userAddress,
+        hexAmountWei,
+        refBytes32,
+        { gasLimit }
+      );
+      receipt = await tx.wait();
+    } catch (creditErr) {
+      throw new Error(`포인트 지급 실패 (adminCreditHex): ${creditErr.message}`);
+    }
 
     // ── Firestore 완료 처리 ──
     await depositRef.update({
@@ -243,8 +303,7 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null) {
  * @returns {Array<Object>}
  */
 async function listPendingDeposits(adminUid) {
-  const adminSnap = await db.collection('users').doc(adminUid).get();
-  if (!adminSnap.data()?.isAdmin) throw new Error('관리자 권한이 없습니다');
+  await requireAdmin(adminUid);
 
   const snap = await db.collection('deposits')
     .where('status', 'in', ['pending', 'processing'])
