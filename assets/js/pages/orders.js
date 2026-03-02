@@ -107,7 +107,12 @@ async function getItem(itemId) {
 
 function renderOrderCard(o, item) {
   const title = item?.title || o.itemTitle || "(상품명 없음)";
-  const price = item?.price ?? o.price ?? "";
+  const priceRaw = item?.price ?? o.price ?? "";
+  const currency = item?.currency || o.currency || "KRW";
+  const priceNum = Number(priceRaw);
+  const price = (priceRaw !== "" && Number.isFinite(priceNum))
+    ? priceNum.toLocaleString() + " " + currency
+    : (priceRaw !== "" ? String(priceRaw) : "");
   const when = fmtTs(o.createdAt);
   // status가 최신 진실 원천(관리자 확인/정산 등). paymentStatus는 레거시 호환.
   const payStatus = String(o.status || o.paymentStatus || "").toLowerCase();

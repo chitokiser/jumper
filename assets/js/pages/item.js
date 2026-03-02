@@ -172,6 +172,7 @@ function renderItem({ id, data, viewerUid, viewerIsAdmin }) {
   const ownerUid = data.ownerUid || data.guideUid || "-";
   const category = toTextCategory(data.category);
   const price = Number.isFinite(data.price) ? data.price : (Number.isFinite(data.amount) ? data.amount : 0);
+  const currency = data.currency || "KRW";
   const location = data.location || data.region || "-";
   const desc = data.desc || data.summary || "";
 
@@ -194,7 +195,7 @@ function renderItem({ id, data, viewerUid, viewerIsAdmin }) {
   safeText("itTitle", title);
   safeText("itStatus", status);
   safeText("itCategory", category);
-  safeText("itPrice", String(price));
+  safeText("itPrice", price.toLocaleString() + " " + currency);
   safeText("itLocation", location);
   safeText("itDesc", desc || "(설명 없음)");
 

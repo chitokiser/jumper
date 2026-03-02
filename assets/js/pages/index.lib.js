@@ -137,6 +137,7 @@ export function toItemViewModel(docId, data) {
     region: d.region || d.area || "",
     category: d.category || d.cat || "",
     price: d.price ?? d.amount ?? "",
+    currency: d.currency || "KRW",
     status: d.status || "",
     images,
     thumb: pickFirstUrl(images),
@@ -164,8 +165,11 @@ export function renderItemCard(item) {
   const url = item.thumb || "";
   const thumb = renderThumb(url, item.title);
 
-  const price = item.price ? String(item.price) : "";
-  const priceText = price ? `<span class="card-price">${esc(price)}</span>` : `<span class="card-price muted">가격 -</span>`;
+  const priceNum = Number(item.price);
+  const currency = item.currency || "KRW";
+  const priceText = (item.price !== "" && Number.isFinite(priceNum))
+    ? `<span class="card-price">${priceNum.toLocaleString()} ${esc(currency)}</span>`
+    : `<span class="card-price muted">가격 -</span>`;
 
   const rating = renderRatingInline(item.ratingAvg || 0, item.ratingCount || 0);
 
