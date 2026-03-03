@@ -626,7 +626,7 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret) {
   const tx       = await platform.payMerchantHex(merchantId, hexWei, { gasLimit });
   const receipt  = await tx.wait();
 
-  // 거래 기록
+  // 거래 기록 — 구매자 측
   const hexAmount = parseFloat(ethers.formatEther(hexWei));
   await db.collection('transactions').add({
     uid,
@@ -640,6 +640,41 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret) {
     txHash:       receipt.hash,
     createdAt:    admin.firestore.FieldValue.serverTimestamp(),
   });
+
+  // 거래 기록 — 가맹점 수입
+  // ownerUid 없으면 ownerAddress로 users 컬렉션 fallback 조회
+  let merchantOwnerUid = merchant.ownerUid || null;
+  if (!merchantOwnerUid && merchant.ownerAddress) {
+    const ownerQuery = await db.collection('users')
+      .where('wallet.address', '==', merchant.ownerAddress)
+      .limit(1)
+      .get();
+    if (!ownerQuery.empty) {
+      merchantOwnerUid = ownerQuery.docs[0].id;
+      // Firestore 문서에 ownerUid 보완 저장 (이후 재조회 불필요)
+      await db.collection('merchants').doc(String(merchantId)).update({ ownerUid: merchantOwnerUid });
+    }
+  }
+
+  if (merchantOwnerUid) {
+    const feeBig = BigInt(merchant.feeBps ?? 0);
+    const feeWei = (hexWei * feeBig) / 10000n;
+    const netWei = hexWei - feeWei;
+    await db.collection('transactions').add({
+      uid:          merchantOwnerUid,
+      type:         'merchant_income',
+      merchantId:   Number(merchantId),
+      merchantName: merchant.name || '',
+      buyerUid:     uid,
+      amountWei:    hexWei.toString(),
+      netAmountWei: netWei.toString(),
+      feeWei:       feeWei.toString(),
+      feeBps:       merchant.feeBps ?? 0,
+      amountKrw,
+      txHash:       receipt.hash,
+      createdAt:    admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
 
   return {
     txHash:       receipt.hash,
