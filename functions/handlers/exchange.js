@@ -12,12 +12,32 @@ const {
   getHexContract,
   getJumpTokenContract,
   getJumpBankContract,
-  getPlatformContract,
   walletFromKey,
   estimateGasWithBuffer,
 } = require('../wallet/chain');
 
 const db = admin.firestore();
+
+// ─────────────────────────────────────────────
+// 실시간 USD/KRW 환율 (open.er-api.com, 10분 캐시)
+// ─────────────────────────────────────────────
+let _fxCache = { rate: 0, ts: 0 };
+const FX_TTL_MS = 600_000; // 10분
+
+async function fetchUsdKrwRate() {
+  if (_fxCache.rate > 0 && Date.now() - _fxCache.ts < FX_TTL_MS) {
+    return _fxCache.rate;
+  }
+  try {
+    const res  = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    const rate = data?.rates?.KRW ?? 0;
+    if (rate > 0) _fxCache = { rate, ts: Date.now() };
+    return rate;
+  } catch {
+    return _fxCache.rate || 0; // 실패 시 캐시 값 반환
+  }
+}
 
 // ─────────────────────────────────────────────
 // 헬퍼: 수탁 지갑 + signer 준비
@@ -44,29 +64,31 @@ async function getJumpBankStatus(uid) {
   const jumpBank  = getJumpBankContract(provider);
   const jumpToken = getJumpTokenContract(provider);
   const hexToken  = getHexContract(provider);
-  const platform  = getPlatformContract(provider);
 
-  // 1단계: 시장 데이터 + 차트 길이 일괄 조회
+  // 1단계: 시장 데이터 + 차트 길이 + 실시간 환율 일괄 조회
   const [
-    price, totalStaked, act, rate, autoStakeBpsVal,
-    bankHexBal, bankJumpInv, circSupply, jumpTotalSupply,
-    effStaked, divisorVal, chartLen,
-    fxKrw, fxScale,
+    [
+      price, totalStaked, act, rate, autoStakeBpsVal,
+      bankHexBal, bankJumpInv, circSupply, jumpTotalSupply,
+      effStaked, divisorVal, chartLen,
+    ],
+    usdKrwRate,
   ] = await Promise.all([
-    jumpBank.price(),
-    jumpBank.totalStaked(),
-    jumpBank.act(),
-    jumpBank.rate(),
-    jumpBank.autoStakeBps(),
-    jumpBank.hexBalance(),
-    jumpBank.tokenInventory(),
-    jumpBank.circulatingSupply(),
-    jumpToken.totalSupply(),
-    jumpBank.effectiveStaked(),
-    jumpBank.divisor(),
-    jumpBank.chartLength(),
-    platform.fxKrwPerHexScaled(),
-    platform.fxScale(),
+    Promise.all([
+      jumpBank.price(),
+      jumpBank.totalStaked(),
+      jumpBank.act(),
+      jumpBank.rate(),
+      jumpBank.autoStakeBps(),
+      jumpBank.hexBalance(),
+      jumpBank.tokenInventory(),
+      jumpBank.circulatingSupply(),
+      jumpToken.totalSupply(),
+      jumpBank.effectiveStaked(),
+      jumpBank.divisor(),
+      jumpBank.chartLength(),
+    ]),
+    fetchUsdKrwRate(),
   ]);
 
   // 2단계: 차트 데이터 + 유저 데이터 병렬 조회
@@ -100,11 +122,10 @@ async function getJumpBankStatus(uid) {
     ? bankHexBal / effStakedBig / divisorBig
     : 0n;
 
-  // KRW 가격 계산: priceKrw = price(HEX wei) × fxKrw / (1e18 × fxScale)
-  const fxScaleBig = BigInt(fxScale.toString());
-  const priceKrw   = fxScaleBig > 0n
-    ? price * BigInt(fxKrw.toString()) / (BigInt('1000000000000000000') * fxScaleBig)
-    : 0n;
+  // KRW 가격 계산: 1 HEX = 1 USDT 기준 실시간 환율 적용
+  // priceKrw = (price / 1e18) × usdKrwRate
+  const priceUsdt = Number(BigInt(price.toString())) / 1e18;
+  const priceKrw  = usdKrwRate > 0 ? Math.round(priceUsdt * usdKrwRate) : 0;
 
   return {
     // 시장 정보
@@ -120,7 +141,8 @@ async function getJumpBankStatus(uid) {
     jumpTotalSupply:   jumpTotalSupply.toString(),
     buyCap:            buyCap.toString(),
     perTokenDiv:       perTokenDiv.toString(),
-    priceKrw:          priceKrw.toString(),   // JUMP 1개 원화 가격 (정수 원)
+    priceKrw:    priceKrw,                     // JUMP 1개 원화 가격 (정수 원)
+    usdKrwRate:  Math.round(usdKrwRate),      // 사용된 USD/KRW 환율
     // 내 잔액
     hexBalance:      hexBal.toString(),
     jumpBalance:     jumpBal.toString(),

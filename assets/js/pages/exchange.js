@@ -124,8 +124,10 @@ async function loadStatus() {
     setText('exBankJump',    fmtJump(_status.bankJumpInventory));
     setText('exPriceRoi',  roiPct.toFixed(3) + ' %');
     setText('exPrice',     fmtHex(_status.price));
-    const krw = Number(_status.priceKrw || '0');
+    const krw    = Number(_status.priceKrw    || 0);
+    const usdKrw = Number(_status.usdKrwRate  || 0);
     setText('exPriceKrw', krw > 0 ? krw.toLocaleString() + ' 원' : '-');
+    setText('exUsdKrw',   usdKrw > 0 ? '환율 ₩' + usdKrw.toLocaleString() + '/USD' : '');
     setText('exStaked',    fmtJump(_status.staked));
 
     setText('exTotalStaked', fmtJump(_status.totalStaked));
