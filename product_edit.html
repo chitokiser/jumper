@@ -80,15 +80,9 @@
                   </label>
 
                   <label class="field">
-                    <span class="label">가격</span>
-                    <div class="row">
-                      <input class="input" id="pPrice" type="number" min="0" step="1" placeholder="예: 30000" />
-                      <select class="select" id="pCurrency">
-                        <option value="KRW">KRW</option>
-                        <option value="VND">VND</option>
-                        <option value="USD">USD</option>
-                      </select>
-                    </div>
+                    <span class="label">가격 (KRW 원화)</span>
+                    <input class="input" id="pPrice" type="number" min="0" step="1" placeholder="예: 30000" />
+                    <div class="help">결제는 HEX 토큰으로만 이루어지며, 원화 금액을 기준으로 자동 환산됩니다.</div>
                   </label>
 
                   <div class="group-title">예약 설정</div>

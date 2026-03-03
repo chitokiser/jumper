@@ -174,6 +174,15 @@ async function loadOnChainData(uid) {
         setText("walletHexDisplay", fmtBalance(d.walletHexKrw, d.walletHexUsd, d.walletHexVnd, d.walletHexDisplay));
       }
 
+      // 레벨 4 이상 → 개인 지갑 이체 섹션 표시
+      if (d.level >= 4) {
+        show("hexTransferSection", true);
+        const hexDisplay = d.walletHexDisplay || (Number(walletHexBig) / 1e18).toFixed(4) + " HEX";
+        setText("hexTransferBalance", hexDisplay);
+      } else {
+        show("hexTransferSection", false);
+      }
+
       show("onChainRegBox", false);
     } else {
       setText("onChainStatus", "미등록");
@@ -349,8 +358,8 @@ async function loadTxHistory(uid) {
     show("txSection", true);
     const wrap = $("txHistory");
 
-    const DEBIT  = new Set(["buy", "pay_merchant", "pay_product", "buyJump", "stakeJump"]);
-    const CREDIT = new Set(["credit", "p2p", "p2p_merge", "withdraw", "sellJump", "claimDividend", "unstakeJump"]);
+    const DEBIT  = new Set(["buy", "pay_merchant", "pay_product", "buyJump", "stakeJump", "hex_transfer"]);
+    const CREDIT = new Set(["credit", "p2p", "p2p_merge", "withdraw", "sellJump", "claimDividend", "unstakeJump", "merchant_income"]);
 
     const TYPE_LABEL = {
       buy:           "상품 구매",
@@ -362,9 +371,11 @@ async function loadTxHistory(uid) {
       pay_product:   "상품 결제",
       buyJump:       "JUMP 매수",
       sellJump:      "JUMP 매도",
-      stakeJump:     "JUMP 스테이킹",
-      unstakeJump:   "JUMP 언스테이킹",
-      claimDividend: "배당 수령",
+      stakeJump:       "JUMP 스테이킹",
+      unstakeJump:     "JUMP 언스테이킹",
+      claimDividend:   "배당 수령",
+      merchant_income: "가맹점 수입",
+      hex_transfer:    "HEX 외부이체",
     };
 
     // ── 합계 집계 ──
@@ -378,6 +389,10 @@ async function loadTxHistory(uid) {
         return gross * (1 - feeBps / 10000);
       }
       const tx  = entry.data;
+      // merchant_income: netAmountWei = 수수료 공제 후 순 수입
+      if (tx.type === "merchant_income" && tx.netAmountWei) {
+        return Number(BigInt(tx.netAmountWei)) / 1e18;
+      }
       const hex = tx.amountHex
         || (tx.amountWei ? formatWei(tx.amountWei) : null)
         || (tx.hexCost   ? formatWei(tx.hexCost)   : null)
@@ -442,6 +457,36 @@ async function loadTxHistory(uid) {
               <span style="color:#16a34a; font-weight:700; font-size:1.05em;">+${netHex} HEX</span>
               <span class="muted" style="font-size:0.79em;">
                 총 ${grossHex} HEX − 수수료 ${(feeBps / 100).toFixed(0)}%(${feeHex} HEX)
+              </span>
+              ${krwStr ? `<span class="muted" style="font-size:0.82em;">${krwStr} 결제분</span>` : ""}
+              <span class="muted">${dateStr}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // ── 가맹점 수입 (payMerchantHexOnChain 수신) ──
+      if (entry.data?.type === "merchant_income") {
+        const tx       = entry.data;
+        const grossWei = BigInt(tx.amountWei    || "0");
+        const feeWeiB  = BigInt(tx.feeWei       || "0");
+        const netWeiB  = BigInt(tx.netAmountWei || "0");
+        const netHex   = (Number(netWeiB)  / 1e18).toFixed(4);
+        const grossHex = (Number(grossWei) / 1e18).toFixed(4);
+        const feeHex   = (Number(feeWeiB)  / 1e18).toFixed(4);
+        const feePct   = tx.feeBps != null ? (tx.feeBps / 100).toFixed(0) : "?";
+        const krwStr   = tx.amountKrw ? `${tx.amountKrw.toLocaleString()}원` : "";
+        const txShort  = tx.txHash ? tx.txHash.slice(0, 16) + "…" : "-";
+        return `
+          <div class="mp-hist-row">
+            <div class="mp-hist-main">
+              <span class="mp-hist-badge" style="background:#dcfce7; color:#15803d;">가맹점 수입</span>
+              <span class="mono">${txShort}</span>
+            </div>
+            <div class="mp-hist-detail">
+              <span style="color:#16a34a; font-weight:700; font-size:1.05em;">+${netHex} HEX</span>
+              <span class="muted" style="font-size:0.79em;">
+                총 ${grossHex} HEX − 수수료 ${feePct}%(${feeHex} HEX)
               </span>
               ${krwStr ? `<span class="muted" style="font-size:0.82em;">${krwStr} 결제분</span>` : ""}
               <span class="muted">${dateStr}</span>
@@ -741,6 +786,67 @@ async function loadMerchantsForSelect() {
   }
 }
 
+// ── HEX 개인 지갑 이체 폼 (레벨 4+) ───────────────
+function bindHexTransfer(uid) {
+  const form = $("hexTransferForm");
+  if (!form || form._bound) return;
+  form._bound = true;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const toAddress = ($("hexTransferTo")?.value || "").trim();
+    const amountVal = ($("hexTransferAmount")?.value || "").trim();
+    const btn       = $("btnHexTransfer");
+    const resultBox = $("hexTransferResult");
+
+    if (!toAddress) { alert("수령 지갑 주소를 입력해 주세요."); return; }
+    if (!/^0x[0-9a-fA-F]{40}$/.test(toAddress)) {
+      alert("올바른 지갑 주소 형식이 아닙니다. (0x로 시작하는 42자리)");
+      return;
+    }
+
+    // amountWei 계산: 입력값이 있으면 HEX → wei 변환, 없으면 "all"
+    let amountWei = "all";
+    if (amountVal) {
+      const hexNum = parseFloat(amountVal);
+      if (isNaN(hexNum) || hexNum <= 0) { alert("이체 수량이 올바르지 않습니다."); return; }
+      amountWei = BigInt(Math.floor(hexNum * 1e18)).toString();
+    }
+
+    const confirmed = confirm(
+      `${toAddress.slice(0,6)}…${toAddress.slice(-4)} 주소로\n` +
+      `${amountWei === "all" ? "전액" : amountVal + " HEX"} 이체하시겠습니까?\n\n` +
+      `⚠️ 이체 후 취소 불가합니다.`
+    );
+    if (!confirmed) return;
+
+    if (btn) { btn.disabled = true; btn.textContent = "이체 중..."; }
+    if (resultBox) resultBox.style.display = "none";
+
+    try {
+      const fn = httpsCallable(functions, "transferHexToPersonal");
+      const res = await fn({ toAddress, amountWei });
+      const d = res.data;
+      if (resultBox) {
+        resultBox.style.display = "";
+        resultBox.innerHTML = `
+          <div class="mp-kv"><span class="k">상태</span><span class="v" style="color:#16a34a; font-weight:700;">✓ 이체 완료</span></div>
+          <div class="mp-kv"><span class="k">이체 금액</span><span class="v accent">${d.amountHex} HEX</span></div>
+          <div class="mp-kv"><span class="k">수령 주소</span><span class="v mono" style="font-size:0.82em; word-break:break-all;">${d.toAddress}</span></div>
+          <div class="mp-kv"><span class="k">TX Hash</span><span class="v mono" style="font-size:0.82em;">${d.txHash.slice(0, 20)}…</span></div>
+        `;
+      }
+      form.reset();
+      loadOnChainData(uid);
+      loadTxHistory(uid);
+    } catch (err) {
+      alert("이체 실패: " + (err.message || "서버 오류"));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "이체"; }
+    }
+  });
+}
+
 // ── 가맹점 직접 결제 폼 ────────────────────────────
 function bindMerchantPay(uid) {
   const form = $("merchantPayForm");
@@ -820,6 +926,7 @@ onAuthReady(async (ctx) => {
     bindLevelUp(user.uid);
     bindMentorRequest(user.uid);
     bindDepositForm();
+    bindHexTransfer(user.uid);
     loadMerchantsForSelect();
     bindMerchantPay(user.uid);
 

@@ -169,6 +169,37 @@
         </div>
       </section>
 
+      <!-- 개인 지갑 HEX 이체 (레벨 4 이상) -->
+      <section class="panel mp-section" id="hexTransferSection" style="display:none;">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">HEX 개인 지갑 이체 <span style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
+        </div>
+        <p class="hint" style="margin-bottom:12px;">
+          수탁 지갑의 HEX를 외부 개인 지갑으로 직접 전송합니다.<br>
+          <small class="muted">레벨 4 이상 회원만 사용 가능합니다. 잔액 전액 또는 원하는 수량을 이체할 수 있습니다.</small>
+        </p>
+        <form id="hexTransferForm" class="form" style="margin-top:0;">
+          <label class="field">
+            <span>수령 지갑 주소 <em class="req">*</em></span>
+            <input type="text" id="hexTransferTo" maxlength="42"
+              placeholder="0x..." style="font-family:monospace;" />
+          </label>
+          <label class="field">
+            <span>이체 수량 (HEX)</span>
+            <input type="number" id="hexTransferAmount" min="0" step="any"
+              placeholder="비우면 전액 이체" />
+          </label>
+          <div class="mp-kv" style="margin-bottom:10px;">
+            <span class="k">보유 HEX</span>
+            <span class="v accent" id="hexTransferBalance">-</span>
+          </div>
+          <div class="actions">
+            <button class="btn btn--primary" type="submit" id="btnHexTransfer">이체</button>
+          </div>
+        </form>
+        <div id="hexTransferResult" class="mp-result-box" style="display:none;"></div>
+      </section>
+
       <!-- 원화 충전 -->
       <section class="panel mp-section">
         <div class="mp-section-head">

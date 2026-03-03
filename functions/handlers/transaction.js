@@ -1056,6 +1056,83 @@ async function adminSetUserLevel(emailOrUid, level) {
   return { uid, address, level, txHash: receipt.hash };
 }
 
+// ────────────────────────────────────────────────
+// 레벨4+ HEX → 개인 지갑 이체
+// ────────────────────────────────────────────────
+
+/**
+ * transferHexToPersonal
+ * 레벨 4 이상 유저: 수탁 지갑의 HEX를 외부(개인) 지갑으로 직접 전송
+ *
+ * @param {string} uid          - Firebase Auth UID
+ * @param {string} toAddress    - 수령 지갑 주소 (0x...)
+ * @param {string} amountWeiStr - 이체 금액 wei 문자열 또는 "all"
+ * @param {string} masterSecret - WALLET_MASTER_SECRET
+ * @returns {{ txHash, amountHex, toAddress }}
+ */
+async function transferHexToPersonal(uid, toAddress, amountWeiStr, masterSecret) {
+  if (!ethers.isAddress(toAddress)) throw new Error('유효하지 않은 지갑 주소입니다');
+
+  const userSnap   = await db.collection('users').doc(uid).get();
+  const walletData = userSnap.data()?.wallet;
+  if (!walletData?.encryptedKey) throw new Error('수탁 지갑이 없습니다');
+
+  // 온체인 레벨 확인 (레벨 4 이상만 허용)
+  const provider  = getProvider();
+  const platform  = getPlatformContract(provider);
+  const [levelVal] = await platform.members(walletData.address);
+  const level = Number(levelVal);
+  if (level < 4) {
+    throw new Error(`레벨 4 이상만 개인 지갑 이체가 가능합니다. (현재 레벨: ${level})`);
+  }
+
+  // HEX 잔액 확인
+  const hexRead = getHexContract(provider);
+  const hexBal  = await hexRead.balanceOf(walletData.address);
+
+  const amount = amountWeiStr === 'all' ? hexBal : BigInt(amountWeiStr);
+  if (amount <= 0n) throw new Error('이체 금액이 0입니다');
+  if (hexBal < amount) {
+    throw new Error(
+      `HEX 잔액 부족. 보유: ${parseFloat(ethers.formatEther(hexBal)).toFixed(4)} HEX, ` +
+      `요청: ${parseFloat(ethers.formatEther(amount)).toFixed(4)} HEX`
+    );
+  }
+
+  // BNB 가스비 부족 시 소액 보충
+  const adminWallet = getAdminWallet();
+  const bnbBal = await provider.getBalance(walletData.address);
+  if (bnbBal < ethers.parseEther('0.00005')) {
+    const fundTx = await adminWallet.sendTransaction({
+      to: walletData.address, value: ethers.parseEther('0.0001'),
+    });
+    await fundTx.wait();
+  }
+
+  // HEX 전송
+  const privateKey  = decrypt(walletData.encryptedKey, masterSecret);
+  const signer      = walletFromKey(privateKey, provider);
+  const hexSigned   = getHexContract(signer);
+  const gasLimit    = await estimateGasWithBuffer(hexSigned, 'transfer', [toAddress, amount]);
+  const tx          = await hexSigned.transfer(toAddress, amount, { gasLimit });
+  const receipt     = await tx.wait();
+
+  const amountHex = parseFloat(ethers.formatEther(amount)).toFixed(4);
+
+  await db.collection('transactions').add({
+    uid,
+    userAddress: walletData.address,
+    type:        'hex_transfer',
+    toAddress,
+    amountWei:   amount.toString(),
+    amountHex,
+    txHash:      receipt.hash,
+    createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { txHash: receipt.hash, amountHex, toAddress };
+}
+
 module.exports = {
   buyProduct,
   withdrawPayable,
@@ -1072,4 +1149,5 @@ module.exports = {
   payProductWithHex,
   adminBulkChangeMentor,
   adminSetUserLevel,
+  transferHexToPersonal,
 };

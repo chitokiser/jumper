@@ -43,9 +43,6 @@ function initDefaults() {
   // 3) 정원/객실 수: 1
   setNumber("pCapacity", 1);
 
-  // 4) 가격 통화: VND 기본 (원하면 KRW로 바꿔도 됨)
-  setValue("pCurrency", "VND");
-
   tweakLabels();
 }
 

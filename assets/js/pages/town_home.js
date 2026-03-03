@@ -8,6 +8,7 @@ import {
   getDoc,
   collection,
   query,
+  where,
   orderBy,
   limit,
   getDocs,
@@ -322,10 +323,11 @@ function escHtml(s) {
 }
 
 function renderMerchantCard(mid, m) {
-  const name   = m.name        || "가맹점";
-  const career = m.career      || "";
-  const region = m.region      || "";
-  const desc   = m.description || "";
+  const name     = m.name        || "가맹점";
+  const career   = m.career      || "";
+  const region   = m.region      || "";
+  const desc     = m.description || "";
+  const ownerUid = m.ownerUid    || "";
 
   return `
     <div class="merchant-card">
@@ -336,8 +338,13 @@ function renderMerchantCard(mid, m) {
       ${region ? `<div class="merchant-region">📍 ${escHtml(region)}</div>` : ""}
       ${desc   ? `<div class="merchant-desc">${escHtml(desc)}</div>`         : ""}
       <div class="merchant-id">가맹점 ID: ${escHtml(String(mid))}</div>
+      ${ownerUid ? `<button class="btn-merchant-products" type="button"
+        data-owner-uid="${escHtml(ownerUid)}"
+        data-merchant-name="${escHtml(name)}">상품 보기</button>` : ""}
     </div>`;
 }
+
+let _merchantGridListening = false;
 
 async function loadMerchants() {
   const grid  = $("merchantListGrid");
@@ -365,6 +372,18 @@ async function loadMerchants() {
     }
 
     grid.innerHTML = list.map((m) => renderMerchantCard(m.id, m)).join("");
+
+    // 이벤트 위임 (한 번만 등록)
+    if (!_merchantGridListening) {
+      _merchantGridListening = true;
+      grid.addEventListener("click", (e) => {
+        const btn = e.target.closest(".btn-merchant-products");
+        if (!btn) return;
+        const ownerUid     = btn.dataset.ownerUid;
+        const merchantName = btn.dataset.merchantName;
+        if (ownerUid) openMerchantProductModal(ownerUid, merchantName);
+      });
+    }
   } catch (e) {
     console.warn("loadMerchants failed:", e);
     if (state) state.textContent = "가맹점 목록을 불러오지 못했습니다.";
@@ -432,11 +451,23 @@ async function loadPlacesMap() {
     await loadMapsScript();
 
     // Firestore places (visible !== false)
-    const snap = await getDocs(collection(db, "places"));
+    const [placesSnap, merchantsSnap] = await Promise.all([
+      getDocs(collection(db, "places")),
+      getDocs(collection(db, "merchants")),
+    ]);
+
     const places = [];
-    snap.forEach((d) => {
+    placesSnap.forEach((d) => {
       const p = d.data() || {};
-      if (p.visible !== false) places.push({ id: d.id, ...p });
+      if (p.visible !== false) places.push({ id: d.id, _src: "place", ...p });
+    });
+
+    // gmap 필드가 있는 활성 가맹점만 지도에 추가
+    merchantsSnap.forEach((d) => {
+      const m = d.data() || {};
+      if (m.active !== false && m.gmap) {
+        places.push({ id: d.id, _src: "merchant", name: m.name || "가맹점", type: m.career || "merchant", gmap: m.gmap, phone: m.phone || "", description: m.description || "" });
+      }
     });
 
     // 하노이 오션파크 기본 중심
@@ -465,6 +496,7 @@ async function loadPlacesMap() {
       }
       if (!latLng) return;
 
+      const isMerchant = p._src === "merchant";
       markerCount++;
       const marker = new google.maps.Marker({
         position: latLng,
@@ -472,26 +504,36 @@ async function loadPlacesMap() {
         title: p.name || "",
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          fillColor: getMarkerColor(p.type),
+          fillColor: isMerchant ? "#f59e0b" : getMarkerColor(p.type),
           fillOpacity: 1,
           strokeColor: "#fff",
-          strokeWeight: 2,
-          scale: 9,
+          strokeWeight: isMerchant ? 3 : 2,
+          scale: isMerchant ? 11 : 9,
         },
+        zIndex: isMerchant ? 10 : 1,
       });
       bounds.extend(latLng);
 
-      const content = `
-        <div style="max-width:240px;font-size:13px;line-height:1.5;">
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name || "")}</div>
-          ${p.type    ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ""}
-          ${p.area    ? `<div style="color:#6b7280;">구역: ${escHtml(p.area)}</div>` : ""}
-          ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ""}
-          ${p.phone   ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
-          ${p.note    ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ""}
-          ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener"
-                           style="display:inline-block;margin-top:6px;color:#2563eb;">구글 지도에서 열기 ↗</a>` : ""}
-        </div>`;
+      const content = isMerchant
+        ? `<div style="max-width:240px;font-size:13px;line-height:1.5;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px;">★ ${escHtml(p.name)}</div>
+            <div style="color:#f59e0b;margin-bottom:2px;font-size:12px;">가맹점</div>
+            ${p.type        ? `<div style="color:#6b7280;">${escHtml(p.type)}</div>` : ""}
+            ${p.phone       ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
+            ${p.description ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.description)}</div>` : ""}
+            <a href="${escHtml(p.gmap)}" target="_blank" rel="noopener"
+               style="display:inline-block;margin-top:6px;color:#2563eb;">구글 지도에서 열기 ↗</a>
+          </div>`
+        : `<div style="max-width:240px;font-size:13px;line-height:1.5;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name || "")}</div>
+            ${p.type    ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ""}
+            ${p.area    ? `<div style="color:#6b7280;">구역: ${escHtml(p.area)}</div>` : ""}
+            ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ""}
+            ${p.phone   ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
+            ${p.note    ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ""}
+            ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener"
+                             style="display:inline-block;margin-top:6px;color:#2563eb;">구글 지도에서 열기 ↗</a>` : ""}
+          </div>`;
 
       marker.addListener("click", () => {
         infoWindow.setContent(content);
@@ -512,7 +554,79 @@ async function loadPlacesMap() {
 }
 
 /* =====================
-   6) 부팅
+   6) 가맹점 상품 모달
+===================== */
+function renderProductCard(p) {
+  const thumb = Array.isArray(p.images) && p.images[0] ? p.images[0] : null;
+  const price = p.price ? Number(p.price).toLocaleString() + " 원" : "가격 문의";
+  return `
+    <a class="mp-product-card" href="/item.html?id=${escHtml(p.id)}" target="_blank" rel="noopener">
+      ${thumb
+        ? `<img class="mp-product-thumb" src="${escHtml(thumb)}" alt="${escHtml(p.title || "")}" loading="lazy">`
+        : `<div class="mp-product-thumb-ph">🛍️</div>`}
+      <div class="mp-product-body">
+        <div class="mp-product-title">${escHtml(p.title || "")}</div>
+        ${p.region ? `<div class="mp-product-region">📍 ${escHtml(p.region)}</div>` : ""}
+        <div class="mp-product-price">${escHtml(price)}</div>
+      </div>
+    </a>`;
+}
+
+function closeMerchantProductModal() {
+  const modal = $("merchantProductsModal");
+  if (modal) modal.style.display = "none";
+}
+
+function openMerchantProductModal(ownerUid, merchantName) {
+  const modal   = $("merchantProductsModal");
+  const title   = $("mpModalTitle");
+  const stateEl = $("mpModalState");
+  const grid    = $("mpModalGrid");
+  if (!modal || !grid) return;
+
+  if (title)   title.textContent = `${merchantName || "가맹점"} 상품 목록`;
+  if (stateEl) stateEl.textContent = "불러오는 중...";
+  if (grid)    grid.innerHTML = "";
+  modal.style.display = "flex";
+
+  // 닫기 버튼 / 배경 클릭
+  const closeBtn  = $("mpModalClose");
+  const backdrop  = $("mpModalBackdrop");
+  if (closeBtn) closeBtn.onclick  = closeMerchantProductModal;
+  if (backdrop) backdrop.onclick  = closeMerchantProductModal;
+
+  // ESC 키
+  const onKey = (e) => {
+    if (e.key === "Escape") { closeMerchantProductModal(); window.removeEventListener("keydown", onKey); }
+  };
+  window.addEventListener("keydown", onKey);
+
+  // 상품 로드
+  const q = query(
+    collection(db, "items"),
+    where("ownerUid", "==", ownerUid),
+    where("status", "in", ["published", "approved"])
+  );
+
+  getDocs(q).then((snap) => {
+    const list = [];
+    snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+
+    if (!list.length) {
+      if (stateEl) stateEl.textContent = "등록된 상품이 없습니다.";
+      return;
+    }
+
+    if (stateEl) stateEl.textContent = `총 ${list.length}개`;
+    if (grid)    grid.innerHTML = list.map(renderProductCard).join("");
+  }).catch((e) => {
+    console.warn("loadMerchantProducts failed:", e);
+    if (stateEl) stateEl.textContent = "상품 목록을 불러오지 못했습니다.";
+  });
+}
+
+/* =====================
+   7) 부팅
 ===================== */
 onAuthStateChanged(auth, async (user) => {
   const admin = await isAdmin(user?.uid);

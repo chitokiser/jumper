@@ -359,7 +359,7 @@ exports.registerMerchant = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    const { name, description, phone, kakaoId, region, career } = request.data ?? {};
+    const { name, description, phone, kakaoId, region, career, gmap } = request.data ?? {};
     if (!name) throw new HttpsError('invalid-argument', '가게명(name)이 필요합니다');
 
     // 온체인 metadataURI: compact JSON (가스 절약)
@@ -370,7 +370,7 @@ exports.registerMerchant = onCall(
       d: (description || '').slice(0, 120),
     });
 
-    const merchantData = { name, description: description || '', phone: phone || '', kakaoId: kakaoId || '', region: region || '', career: career || '' };
+    const merchantData = { name, description: description || '', phone: phone || '', kakaoId: kakaoId || '', region: region || '', career: career || '', ...(gmap ? { gmap } : {}) };
     const result = await txH.registerMerchantOnChain(uid, metadataURI, merchantData, walletSecret.value());
     logger.info('registerMerchant', { uid, merchantId: result.merchantId, txHash: result.txHash });
     return result;
@@ -585,6 +585,28 @@ exports.claimJumpDividend = onCall(
     const uid = requireAuth(request);
     const result = await exchangeH.claimJumpDividend(uid, walletSecret.value());
     logger.info('claimJumpDividend', { uid, hexAmount: result.hexAmount, txHash: result.txHash });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 레벨4+ HEX → 개인 지갑 이체
+//    클라이언트: httpsCallable(functions, 'transferHexToPersonal')({ toAddress, amountWei })
+//    amountWei: wei 단위 문자열 또는 "all" (전액)
+// ════════════════════════════════════════════════════════════════════════════
+exports.transferHexToPersonal = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { toAddress, amountWei } = request.data ?? {};
+    if (!toAddress) throw new HttpsError('invalid-argument', 'toAddress가 필요합니다');
+    if (!amountWei) throw new HttpsError('invalid-argument', 'amountWei가 필요합니다');
+
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await txH.transferHexToPersonal(
+      uid, toAddress, String(amountWei), walletSecret.value()
+    );
+    logger.info('transferHexToPersonal', { uid, toAddress, amountHex: result.amountHex, txHash: result.txHash });
     return result;
   })
 );

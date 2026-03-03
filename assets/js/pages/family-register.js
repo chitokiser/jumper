@@ -59,6 +59,7 @@ async function doRegisterMerchant() {
   const detail  = String($("merchantDetail")?.value  || "").trim();
   const phone   = String($("merchantPhone")?.value   || "").trim();
   const kakaoId = String($("merchantKakaoId")?.value || "").trim();
+  const gmap    = String($("merchantGmap")?.value    || "").trim();
 
   if (!name)   throw new Error("가게명을 입력해 주세요.");
   if (!career) throw new Error("업종/카테고리를 입력해 주세요.");
@@ -71,7 +72,7 @@ async function doRegisterMerchant() {
   let result;
   try {
     const registerFn = httpsCallable(functions, "registerMerchant");
-    result = await registerFn({ name, description: detail, phone, kakaoId, region, career });
+    result = await registerFn({ name, description: detail, phone, kakaoId, region, career, gmap });
     setStep("step1", "done");
   } catch (err) {
     setStep("step1", "error");

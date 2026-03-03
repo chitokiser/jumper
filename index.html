@@ -71,6 +71,25 @@
   .merchant-region{font-size:0.82rem;color:var(--muted,#6b7280);}
   .merchant-desc{font-size:0.83rem;color:var(--text2,#374151);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
   .merchant-id{font-size:0.74rem;color:var(--muted,#9ca3af);margin-top:auto;}
+  .btn-merchant-products{margin-top:6px;font-size:0.78rem;padding:4px 12px;border-radius:99px;border:1px solid var(--accent,#7c3aed);color:var(--accent,#7c3aed);background:transparent;cursor:pointer;align-self:flex-start;}
+  .btn-merchant-products:hover{background:var(--accent-light,#ede9fe);}
+  /* ── 가맹점 상품 모달 ── */
+  .mp-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;}
+  .mp-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);cursor:pointer;}
+  .mp-modal-box{position:relative;background:var(--surface,#fff);border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);}
+  .mp-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .mp-modal-head h3{font-size:1.1rem;font-weight:700;margin:0;}
+  .mp-modal-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted,#6b7280);padding:2px 8px;border-radius:6px;line-height:1;}
+  .mp-modal-close:hover{background:var(--surface2,#f3f4f6);}
+  .mp-product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:8px;}
+  .mp-product-card{display:flex;flex-direction:column;border:1px solid var(--border,#e5e7eb);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;transition:box-shadow .15s;}
+  .mp-product-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.12);}
+  .mp-product-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--surface2,#f3f4f6);}
+  .mp-product-thumb-ph{width:100%;aspect-ratio:4/3;background:var(--surface2,#f3f4f6);display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--muted,#9ca3af);}
+  .mp-product-body{padding:8px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1;}
+  .mp-product-title{font-weight:600;font-size:0.87rem;line-height:1.4;}
+  .mp-product-region{font-size:0.74rem;color:var(--muted,#6b7280);}
+  .mp-product-price{font-size:0.8rem;color:var(--accent,#7c3aed);font-weight:600;margin-top:auto;}
 </style>
 
 <section class="section" id="merchantListSection">
@@ -211,6 +230,19 @@
         </div>
       </div>
     </section>
+
+  <!-- 가맹점 상품 모달 -->
+  <div id="merchantProductsModal" class="mp-modal" style="display:none;" aria-modal="true" role="dialog">
+    <div class="mp-modal-backdrop" id="mpModalBackdrop"></div>
+    <div class="mp-modal-box">
+      <div class="mp-modal-head">
+        <h3 id="mpModalTitle">가맹점 상품</h3>
+        <button class="mp-modal-close" id="mpModalClose" type="button" aria-label="닫기">✕</button>
+      </div>
+      <div id="mpModalState" class="help" style="margin-bottom:8px;"></div>
+      <div id="mpModalGrid" class="mp-product-grid"></div>
+    </div>
+  </div>
 
   </main>
 
