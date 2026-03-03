@@ -19,27 +19,38 @@
 
     <!-- 메뉴 -->
     <nav class="nav" id="hdrNav">
-      <!-- 공개 메뉴 -->
-      <a id="navTown" href="/index.html">가맹점리스트</a>
-      <a id="navHomestay" href="/homestay.html">홈스테이</a>
-      <a id="navWhat" href="/what.html">놀거리</a>
+
+      <!-- 탐색 (공개) -->
+      <div class="nav-group" id="navGroupExplore">
+        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false">탐색 ▾</button>
+        <div class="nav-group-menu">
+          <a id="navTown"     href="/index.html">가맹점리스트</a>
+          <a id="navHomestay" href="/homestay.html">홈스테이</a>
+          <a id="navWhat"     href="/what.html">놀거리</a>
+        </div>
+      </div>
+
+      <!-- 회원가입 (비로그인) -->
       <a id="navRegister" href="/register.html" data-role="guest">회원가입</a>
-      <a id="navFamily" href="/family-register.html" data-role="user family guide admin">가맹점 등록</a>
 
+      <!-- 내 서비스 (로그인) -->
+      <div class="nav-group" data-role="user guide merchant admin" id="navGroupMy">
+        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false">내 서비스 ▾</button>
+        <div class="nav-group-menu">
+          <a id="navMyPage"  href="/mypage.html"   data-role="user guide merchant admin">내지갑</a>
+          <a id="navExchange" href="/exchange.html" data-role="user guide merchant admin">거래소</a>
+          <a id="navOrders"  href="/orders.html"   data-role="user guide merchant admin">내 주문</a>
+        </div>
+      </div>
 
-      <!-- 사용자 -->
-      <a id="navMyPage" href="/mypage.html" data-role="user guide merchant admin">내지갑</a>
-      <a id="navExchange" href="/exchange.html" data-role="user guide merchant admin">거래소</a>
-      <a id="navOrders" href="/orders.html" data-role="user guide merchant admin">내 주문</a>
-
-      <!-- 조합원(=guide) 센터 -->
+      <!-- 판매회원센터 (guide / merchant / admin) -->
       <div class="nav-group" data-role="guide merchant admin" id="navGroupFamily">
         <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false">판매회원센터 ▾</button>
         <div class="nav-group-menu">
-          
-          <a id="navHomestayNew" href="/homestay_new.html" data-role="guide merchant admin">홈스테이 신규생성</a>
-          <a id="navProductNew" href="/product_new.html" data-role="guide merchant admin">놀거리 추가</a>
-          <a id="navMyProducts" href="/my_products.html" data-role="guide merchant admin">내 놀거리</a>
+          <a id="navFamily"        href="/family-register.html" data-role="user guide merchant admin">가맹점 등록</a>
+          <a id="navHomestayNew"   href="/homestay_new.html"    data-role="guide merchant admin">홈스테이 신규생성</a>
+          <a id="navProductNew"    href="/product_new.html"     data-role="guide merchant admin">놀거리 추가</a>
+          <a id="navMyProducts"    href="/my_products.html"     data-role="guide merchant admin">내 놀거리</a>
           <a id="navGuideSettlement" href="/guide_settlement.html" data-role="guide merchant admin">정산</a>
         </div>
       </div>
@@ -48,15 +59,15 @@
       <div class="nav-group" data-role="admin" id="navGroupAdmin">
         <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false">관리 ▾</button>
         <div class="nav-group-menu">
-          
-          <a href="/debug.html" data-role="admin">버그체커</a>
-<a id="navAdmin" href="/admin.html" data-role="admin">승인/상품관리</a>
-          <a id="navAdminOrders" href="/admin_orders.html" data-role="admin">주문관리</a>
-          <a id="navAdminSettlement" href="/admin_settlement.html" data-role="admin">정산관리</a>
-          <a id="navAdminNotices" href="/admin_notices.html" data-role="admin">공지관리</a>
-          <a id="navAdminPlaces" href="/admin_places.html" data-role="admin">장소등록</a>
+          <a href="/debug.html"              data-role="admin">버그체커</a>
+          <a id="navAdmin"                   href="/admin.html"            data-role="admin">승인/상품관리</a>
+          <a id="navAdminOrders"             href="/admin_orders.html"     data-role="admin">주문관리</a>
+          <a id="navAdminSettlement"         href="/admin_settlement.html" data-role="admin">정산관리</a>
+          <a id="navAdminNotices"            href="/admin_notices.html"    data-role="admin">공지관리</a>
+          <a id="navAdminPlaces"             href="/admin_places.html"     data-role="admin">장소등록</a>
         </div>
       </div>
+
     </nav>
 
     <!-- 우측 -->
