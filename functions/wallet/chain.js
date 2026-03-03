@@ -116,6 +116,11 @@ const JUMP_BANK_ABI = [
   'function circulatingSupply() external view returns (uint256)',
   'function user(address who) external view returns (uint256 totalAllow, uint256 totalBuy, uint256 depo, uint256 stakingTime, uint256 lastClaim)',
   'function myDashboard(address who) external view returns (uint256 myActualQty, uint256 currentPriceWei, uint256 myMarketCapWei, uint256 myAvgBuyPriceWei, int256 myPnlWei, int256 myRoiBps_)',
+  'function autoStakeBps() external view returns (uint16)',
+  'function chartLength() external view returns (uint256)',
+  'function chartAt(uint256 idx) external view returns (uint256)',
+  'function effectiveStaked() external view returns (uint256)',
+  'function divisor() external view returns (uint256)',
   // 이벤트
   'event Bought(address indexed who, uint256 amount, uint256 payHexWei, uint256 autoStaked, uint256 received)',
   'event Sold(address indexed who, uint256 amount, uint256 recvHexWei, uint256 feeHexWei)',

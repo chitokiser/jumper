@@ -11,9 +11,11 @@
 const admin  = require('firebase-admin');
 const { ethers } = require('ethers');
 const {
+  ADDRESSES,
   getAdminWallet,
   getProvider,
   getPlatformContract,
+  getHexContract,
   walletFromKey,
   estimateGasWithBuffer,
 } = require('../wallet/chain');
@@ -211,9 +213,17 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
   });
 
   try {
-    // ── Step 1: 관리자 지갑 → 컨트랙트 HEX 이체 (항상 먼저 실행) ──
-    // 사전 조건: 관리자 지갑이 HEX.approve(platform, MaxUint256) 완료 상태
+    // ── Step 1: HEX approve (필요 시 자동) → ownerDepositHex ──
     try {
+      const hexContract = getHexContract(adminWallet);
+
+      // allowance 부족 시 MaxUint256 approve (관리자 지갑 → jumpPlatform)
+      const allowance = await hexContract.allowance(adminWallet.address, ADDRESSES.jumpPlatform);
+      if (allowance < hexAmountWei) {
+        const approveTx = await hexContract.approve(ADDRESSES.jumpPlatform, ethers.MaxUint256);
+        await approveTx.wait();
+      }
+
       const platformDep = getPlatformContract(adminWallet);
       const depGasLimit = await estimateGasWithBuffer(platformDep, 'ownerDepositHex', [hexAmountWei]);
       const depTx       = await platformDep.ownerDepositHex(hexAmountWei, { gasLimit: depGasLimit });

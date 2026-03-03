@@ -70,16 +70,19 @@ function showAlreadyDone(userData) {
 
 // ── 가입 실행 ──────────────────────────────────────
 async function doRegister(uid, email) {
-  const name        = String($("userName")?.value  || "").trim();
-  const phone       = normalizePhone($("userPhone")?.value);
-  const mentorEmail = String($("mentorEmail")?.value || "").trim().toLowerCase();
-  const agreeTerms  = Boolean($("agreeTerms")?.checked);
-  const agreeWallet = Boolean($("agreeWallet")?.checked);
+  const name          = String($("userName")?.value    || "").trim();
+  const phone         = normalizePhone($("userPhone")?.value);
+  const mentorAddress = String($("mentorAddress")?.value || "").trim();
+  const agreeTerms    = Boolean($("agreeTerms")?.checked);
+  const agreeWallet   = Boolean($("agreeWallet")?.checked);
 
   // 유효성 검사
   if (!name)          throw new Error("이름을 입력해 주세요.");
   if (!phone)         throw new Error("휴대폰 번호를 입력해 주세요.");
   if (!isValidPhone(phone)) throw new Error("올바른 전화번호를 입력해 주세요. (10자리 이상)");
+  if (!mentorAddress) throw new Error("멘토 지갑 주소를 입력해 주세요.");
+  if (!/^0x[0-9a-fA-F]{40}$/.test(mentorAddress))
+    throw new Error("올바른 지갑 주소를 입력해 주세요. (0x로 시작하는 42자리 hex)");
   if (!agreeTerms)    throw new Error("이용약관에 동의해 주세요.");
   if (!agreeWallet)   throw new Error("수탁 지갑 생성에 동의해 주세요.");
 
@@ -92,7 +95,7 @@ async function doRegister(uid, email) {
     name,
     phone,
     email: email || "",
-    mentorEmailInput: mentorEmail || null,
+    mentorAddressInput: mentorAddress,
     agreeTerms:  true,
     agreeWallet: true,
     registeredAt: serverTimestamp(),
@@ -100,34 +103,15 @@ async function doRegister(uid, email) {
   }, { merge: true });
   setStep("step1", "done");
 
-  // ── 2단계: 수탁 지갑 생성 ──
+  // ── 2단계: 수탁 지갑 생성 + 온체인 등록 (createWallet이 두 작업을 모두 처리) ──
   setStep("step2", "doing");
-  let walletAddress = null;
-  try {
-    const createWallet = httpsCallable(functions, "createWallet");
-    const walletResult = await createWallet();
-    walletAddress = walletResult.data?.address;
-    setStep("step2", "done");
-  } catch (err) {
-    // 함수 미배포 또는 오류 → 건너뜀 (배포 후 재시도 가능)
-    setStep("step2", "error");
-    console.warn("수탁 지갑 생성 실패 (배포 후 재시도):", err.message);
-  }
-
-  // ── 3단계: 온체인 등록 (멘토 이메일 있을 때만) ──
   setStep("step3", "doing");
-  if (mentorEmail) {
-    try {
-      const registerMember = httpsCallable(functions, "registerMember");
-      await registerMember({ mentorEmail });
-      setStep("step3", "done");
-    } catch (err) {
-      setStep("step3", "error");
-      console.warn("온체인 등록 실패 (나중에 재시도 가능):", err.message);
-    }
-  } else {
-    setStep("step3", "done"); // 멘토 없으면 skip
-  }
+  let walletAddress = null;
+  const createWallet = httpsCallable(functions, "createWallet");
+  const walletResult = await createWallet({ mentorAddress });
+  walletAddress = walletResult.data?.address;
+  setStep("step2", "done");
+  setStep("step3", "done");
 
   return walletAddress;
 }
@@ -155,10 +139,9 @@ function bindForm(uid, email) {
       if (addrEl) addrEl.textContent = walletAddress || "생성됨";
       show("onChainRow", true);
       const onChainEl = $("onChainStatus");
-      const mentorEmail = String($("mentorEmail")?.value || "").trim();
       if (onChainEl) {
-        onChainEl.textContent = mentorEmail ? "등록 완료 ✓" : "미등록 (나중에 진행 가능)";
-        onChainEl.style.color = mentorEmail ? "var(--accent)" : "var(--muted)";
+        onChainEl.textContent = "등록 완료 ✓";
+        onChainEl.style.color = "var(--accent)";
       }
     } catch (err) {
       console.error(err);

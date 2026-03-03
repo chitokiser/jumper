@@ -172,27 +172,17 @@
                   </div>
 
                   <div class="order-row">
-                    <label class="lab">결제 방법</label>
-                    <select id="odPay" class="in">
-                      <option value="card">카드</option>
-                      <option value="fiat">법정화폐</option>
-                      <option value="hex">HEX</option>
-                    </select>
-                  </div>
-
-                  <div class="order-row">
                     <label class="lab">메모</label>
                     <textarea id="odMemo" class="ta" maxlength="800" placeholder="요청사항(선택)"></textarea>
                   </div>
 
+                  <div id="hexPayInfo" class="mono" style="display:none;"></div>
+
                   <div class="order-row row-actions">
-                    <button id="btnAddCart" class="btn" type="button">장바구니 담기</button>
-                    <button id="btnOrder" class="btn primary" type="button">예약 요청 저장</button>
-                    <button id="btnHexPay" class="btn btn--accent" type="button">HEX 즉시결제</button>
+                    <button id="btnHexPay" class="btn btn--accent" type="button">HEX로 결제하기</button>
                   </div>
 
-                  <div id="hexPayInfo" class="mono" style="display:none;"></div>
-                  <div class="mono">카드/현금: 예약 저장 후 결제증빙 제출 | HEX 즉시결제: 수탁지갑 잔액으로 즉시 결제 확정</div>
+                  <div class="mono">수탁 지갑 HEX 잔액으로 즉시 결제됩니다. 원화 금액이 현재 환율 기준 HEX로 자동 환산됩니다.</div>
                   <div id="orderState" class="state"></div>
                 </div>
               </div>
@@ -217,6 +207,7 @@
                 <div class="kv"><div class="k">카테고리</div><div class="v" id="itCategory"></div></div>
                 <div class="kv"><div class="k">가격</div><div class="v" id="itPrice"></div></div>
                 <div class="kv"><div class="k">지역</div><div class="v" id="itLocation"></div></div>
+                <div class="kv"><div class="k">판매자</div><div class="v" id="itSellerEmail">-</div></div>
 
                 <div class="side-note mono">이미지/설명/준비물은 좌측에서 확인</div>
               </div>

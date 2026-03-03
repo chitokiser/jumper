@@ -105,7 +105,6 @@ function clearForm() {
   ].forEach((id) => { const el = $(id); if (el) el.value = ""; });
 
   const cat = $("pCategory"); if (cat) cat.value = "";
-  const cur = $("pCurrency"); if (cur) cur.value = "KRW";
 
   const bm = $("pBookMode"); if (bm) bm.value = "date_single";
   const cap = $("pCapacity"); if (cap) cap.value = "10";
@@ -173,7 +172,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
       const category = v("pCategory");
       const region = v("pRegion");
       const price = Number(v("pPrice") || "0");
-      const currency = v("pCurrency") || "KRW";
+      const currency = "KRW";
       const desc = v("pDesc");
 
       // 예약 설정

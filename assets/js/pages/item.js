@@ -166,7 +166,7 @@ function getIdFromQuery() {
   return id ? id.trim() : "";
 }
 
-function renderItem({ id, data, viewerUid, viewerIsAdmin }) {
+function renderItem({ id, data, viewerUid, viewerIsAdmin, ownerEmail }) {
   const title = data.title || "(제목 없음)";
   const status = data.status || "-";
   const ownerUid = data.ownerUid || data.guideUid || "-";
@@ -197,6 +197,7 @@ function renderItem({ id, data, viewerUid, viewerIsAdmin }) {
   safeText("itCategory", category);
   safeText("itPrice", price.toLocaleString() + " " + currency);
   safeText("itLocation", location);
+  safeText("itSellerEmail", ownerEmail || "-");
   safeText("itDesc", desc || "(설명 없음)");
 
   // 전체 데이터(운영/디버그): Firestore Timestamp 등을 보기 쉽게 변환
@@ -610,18 +611,18 @@ function updatePayUI({ booking, unitPrice }){
   if(mode === "date_range"){
     const nights = nightsBetween(startDate, endDate);
     const total = nights > 0 ? (u * nights) : 0;
-    totalEl.textContent = `${fmtMoney(total)} KRW`;
+    totalEl.textContent = `${fmtMoney(total)} 원`;
     breakEl.textContent = nights > 0
-      ? `1박당 ${fmtMoney(u)} x ${nights}박 = ${fmtMoney(total)}`
+      ? `1박당 ${fmtMoney(u)}원 × ${nights}박 = ${fmtMoney(total)}원 → HEX 자동 환산`
       : "체크인/체크아웃을 선택하세요";
     return;
   }
 
-  // 단일/요일고정: 기존 방식 유지(표시만 친절하게)
-  totalEl.textContent = `${fmtMoney(u)} KRW`;
+  // 단일/요일고정
+  totalEl.textContent = `${fmtMoney(u)} 원`;
   breakEl.textContent = (Number.isFinite(people) && people > 1)
-    ? `기본 금액 ${fmtMoney(u)} (인원 ${people}명)`
-    : "";
+    ? `기본 금액 ${fmtMoney(u)}원 (인원 ${people}명) → HEX 자동 환산`
+    : "현재 환율 기준 HEX로 자동 환산됩니다";
 }
 
 function pickNextDateByWeekdays(weekdays, startISO){
@@ -842,7 +843,7 @@ function bindOrder({ itemId, itemTitle, ownerUid, status, price, user, booking }
   const hint = $("#orderHint");
   const mini = $("#orderMini");
 
-  if (mini) mini.textContent = "결제방법: 카드/법정화폐/HEX (현재는 주문 기록 저장 단계)";
+  if (mini) mini.textContent = "HEX 토큰 결제 전용 · 원화 기준 자동 환산";
 
   if (!user) {
     if (form) form.style.display = "none";
@@ -896,39 +897,7 @@ function bindOrder({ itemId, itemTitle, ownerUid, status, price, user, booking }
     }
   }
 
-  $("#btnOrder")?.addEventListener("click", async () => {
-    try {
-      $("#btnOrder").disabled = true;
-      setOrderState("저장 중...");
-
-      const oid = await createOrder({
-        itemId,
-        itemTitle,
-        ownerUid,
-        price,
-        user,
-        booking,
-      });
-
-      // 예약 저장 후 결제/상세로 이동
-      if (oid) {
-        location.href = `./order_detail.html?id=${encodeURIComponent(oid)}`;
-        return;
-      }
-
-      setOrderState("");
-      alert("예약/구매 요청이 저장되었습니다. (상태: pending)");
-      $("#odMemo").value = "";
-    } catch (e) {
-      console.error(e);
-      setOrderState(e?.message || String(e));
-      alert(e?.message || String(e));
-    } finally {
-      $("#btnOrder").disabled = false;
-    }
-  });
-
-  // ── HEX 즉시결제 ──────────────────────────────────────
+  // ── HEX 결제 ──────────────────────────────────────
   const btnHexPay  = $("#btnHexPay");
   const hexPayInfo = $("#hexPayInfo");
 
@@ -1058,30 +1027,17 @@ async function main({ user, profile }) {
     const viewerUid = user?.uid || "";
     const viewerIsAdmin = isAdmin(profile);
 
-    const itemInfo = renderItem({ id, data, viewerUid, viewerIsAdmin });
-
-    // 장바구니 담기
-    const btnAddCart = $("btnAddCart");
-    if (btnAddCart) {
-      btnAddCart.addEventListener("click", () => {
-        try {
-          const cartItem = {
-            itemId: id,
-            title: itemInfo?.title || data.title || data.name || "",
-            price: itemInfo?.price ?? data.price ?? data.amount ?? "",
-            thumb: itemInfo?.thumb || (Array.isArray(data.images) ? (data.images[0]?.url || data.images[0]) : ""),
-            region: itemInfo?.region || data.region || data.area || "",
-            category: itemInfo?.category || data.category || data.cat || "",
-          };
-          const r = addToCart(cartItem);
-          alert(r.existed ? "이미 장바구니에 담겨 있습니다." : `장바구니에 담았습니다. (총 ${r.count}개)`);
-        } catch (e) {
-          console.error(e);
-          alert(e?.message || String(e));
-        }
-      });
+    // 판매자 이메일 조회
+    const ownerUidForEmail = data.ownerUid || data.guideUid || "";
+    let ownerEmail = "-";
+    if (ownerUidForEmail) {
+      try {
+        const ownerSnap = await getDoc(doc(db, "users", ownerUidForEmail));
+        ownerEmail = ownerSnap.data()?.email || "-";
+      } catch (_) { /* 권한 없으면 무시 */ }
     }
 
+    const itemInfo = renderItem({ id, data, viewerUid, viewerIsAdmin, ownerEmail });
 
     setState("");
     showBox(true);

@@ -60,8 +60,9 @@
         </label>
 
         <label class="field">
-          <span>멘토 이메일 <small>(선택 — 추천인의 Google 계정 이메일)</small></span>
-          <input type="email" id="mentorEmail" maxlength="80" placeholder="예: mentor@gmail.com" autocomplete="off" />
+          <span>멘토 지갑 주소 <em class="req">*</em></span>
+          <input type="text" id="mentorAddress" maxlength="42" placeholder="예: 0xAbCd...1234" autocomplete="off" spellcheck="false" />
+          <small class="help-text">추천인(멘토)의 수탁 지갑 주소 · 0x로 시작하는 42자리</small>
         </label>
 
         <div class="reg-divider">이용 약관</div>
@@ -93,8 +94,8 @@
         </div>
 
         <p class="hint">
-          가입 후 멘토 이메일이 있으면 온체인 조합원 등록까지 자동으로 진행됩니다.<br>
-          멘토 이메일이 없으면 나중에 마이페이지에서 추가할 수 있습니다.
+          멘토 지갑 주소 입력 시 수탁 지갑 생성과 온체인 조합원 등록이 자동으로 진행됩니다.<br>
+          멘토 주소를 모르면 멘토에게 마이페이지 → 내 지갑 주소를 요청하세요.
         </p>
       </form>
     </section>

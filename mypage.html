@@ -70,9 +70,17 @@
         </div>
 
         <div id="walletInfo">
-          <div class="mp-kv">
+          <div class="mp-kv" style="align-items:flex-start;">
             <span class="k">지갑 주소</span>
-            <span class="v mono" id="walletAddress">-</span>
+            <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
+              <span class="mono" id="walletAddress" style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
+              <button id="btnCopyWallet" type="button" title="주소 복사"
+                style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
+                       background:var(--surface,#fff); border:1px solid var(--border,#e5e7eb);
+                       border-radius:20px; cursor:pointer; color:var(--muted,#6b7280); white-space:nowrap;">
+                📋 복사
+              </button>
+            </span>
           </div>
           <div class="mp-kv">
             <span class="k">온체인 등록</span>

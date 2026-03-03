@@ -61,6 +61,30 @@ function renderWallet(userData) {
   show("btnCreateWallet", isMetaMask);  // 수탁 지갑으로 전환 버튼
   if (!isMetaMask) show("btnCreateWallet", false);
   setText("walletAddress", addr);
+
+  // 지갑 주소 복사 버튼
+  const btnCopy = $("btnCopyWallet");
+  if (btnCopy) {
+    btnCopy.style.display = "";
+    btnCopy.onclick = () => {
+      navigator.clipboard.writeText(addr).then(() => {
+        btnCopy.textContent = "✓ 복사됨";
+        setTimeout(() => { btnCopy.textContent = "📋 복사"; }, 2000);
+      }).catch(() => {
+        // clipboard API 미지원 fallback
+        const ta = document.createElement("textarea");
+        ta.value = addr;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        btnCopy.textContent = "✓ 복사됨";
+        setTimeout(() => { btnCopy.textContent = "📋 복사"; }, 2000);
+      });
+    };
+  }
 }
 
 // ── 온체인 데이터 조회 + 표시 ────────────────────
@@ -278,41 +302,203 @@ async function loadMentees() {
   }
 }
 
-// ── 거래 내역 (Firestore 직접 쿼리) ──────────────
+// ── 거래 내역 (Firestore 직접 쿼리 + 가맹점 수입 합산) ──
 async function loadTxHistory(uid) {
   try {
-    const q = query(
-      collection(db, "transactions"),
-      where("uid", "==", uid),
-      orderBy("createdAt", "desc"),
-      limit(20)
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return;
+    // 1) 내 발신 트랜잭션 + 2) 판매 수입(orders) + 3) 내 가맹점 수수료 조회 — 병렬
+    const userSnap = await getDoc(doc(db, "users", uid));
+    const merchantId = userSnap.data()?.merchantId ?? null;
+
+    const [txSnap, orderSnap, merchantSnap] = await Promise.all([
+      getDocs(query(
+        collection(db, "transactions"),
+        where("uid", "==", uid),
+        orderBy("createdAt", "desc"),
+        limit(30)
+      )),
+      // orderBy 제거 → 복합 인덱스 불필요, 클라이언트 정렬로 대체
+      getDocs(query(
+        collection(db, "orders"),
+        where("ownerUid", "==", uid),
+        limit(50)
+      )).catch(() => ({ docs: [] })),
+      merchantId != null
+        ? getDoc(doc(db, "merchants", String(merchantId))).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    // 가맹점 수수료율 (feeBps: 3000 = 30%)
+    const feeBps = merchantSnap?.data?.()?.feeBps ?? 0;
+
+    // 두 결과 합산
+    const entries = [];
+    txSnap.docs.forEach((d) => {
+      const tx = d.data();
+      entries.push({ kind: "tx", data: tx, date: tx.createdAt?.toDate?.() ?? null });
+    });
+    orderSnap.docs.forEach((d) => {
+      const o = d.data();
+      if (o.hexAmountWei && o.status === "confirmed") {
+        entries.push({ kind: "income", data: o, date: o.paidAt?.toDate?.() ?? o.createdAt?.toDate?.() ?? null });
+      }
+    });
+
+    if (!entries.length) return;
+    entries.sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
 
     show("txSection", true);
     const wrap = $("txHistory");
-    const typeLabel = { buy: "구매", withdraw: "인출", credit: "포인트 지급", p2p: "P2P 수령", p2p_merge: "P2P 합산", pay_merchant: "가맹점 결제" };
 
-    const rows = snap.docs.map((d) => {
-      const tx = d.data();
+    const DEBIT  = new Set(["buy", "pay_merchant", "pay_product", "buyJump", "stakeJump"]);
+    const CREDIT = new Set(["credit", "p2p", "p2p_merge", "withdraw", "sellJump", "claimDividend", "unstakeJump"]);
+
+    const TYPE_LABEL = {
+      buy:           "상품 구매",
+      withdraw:      "HEX 인출",
+      credit:        "HEX 충전",
+      p2p:           "P2P 수령",
+      p2p_merge:     "P2P 합산",
+      pay_merchant:  "가맹점 결제",
+      pay_product:   "상품 결제",
+      buyJump:       "JUMP 매수",
+      sellJump:      "JUMP 매도",
+      stakeJump:     "JUMP 스테이킹",
+      unstakeJump:   "JUMP 언스테이킹",
+      claimDividend: "배당 수령",
+    };
+
+    // ── 합계 집계 ──
+    let totalIn  = 0;
+    let totalOut = 0;
+
+    // 각 entry의 HEX 순 금액 계산 (합계용)
+    function entryNetHex(entry) {
+      if (entry.kind === "income") {
+        const gross = Number(BigInt(entry.data.hexAmountWei)) / 1e18;
+        return gross * (1 - feeBps / 10000);
+      }
+      const tx  = entry.data;
+      const hex = tx.amountHex
+        || (tx.amountWei ? formatWei(tx.amountWei) : null)
+        || (tx.hexCost   ? formatWei(tx.hexCost)   : null)
+        || (tx.hexAmount ? formatWei(tx.hexAmount)  : null)
+        || "0";
+      return parseFloat(hex) || 0;
+    }
+
+    entries.forEach((e) => {
+      const n = entryNetHex(e);
+      if (e.kind === "income" || CREDIT.has(e.data?.type)) totalIn  += n;
+      else if (DEBIT.has(e.data?.type))                    totalOut += n;
+    });
+
+    const net    = totalIn - totalOut;
+    const netColor = net >= 0 ? "#16a34a" : "#dc2626";
+    const netSign  = net >= 0 ? "+" : "";
+
+    const summaryHtml = `
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;
+                  background:var(--surface2,#f9f5ff); border-radius:10px;
+                  padding:12px 14px; margin-bottom:14px; font-size:0.88em;">
+        <div style="text-align:center;">
+          <div class="muted" style="font-size:0.82em; margin-bottom:2px;">총 수입</div>
+          <div style="color:#16a34a; font-weight:700;">+${totalIn.toFixed(4)}<br><small>HEX</small></div>
+        </div>
+        <div style="text-align:center; border-left:1px solid var(--border,#e5e7eb); border-right:1px solid var(--border,#e5e7eb);">
+          <div class="muted" style="font-size:0.82em; margin-bottom:2px;">총 지출</div>
+          <div style="color:#dc2626; font-weight:700;">−${totalOut.toFixed(4)}<br><small>HEX</small></div>
+        </div>
+        <div style="text-align:center;">
+          <div class="muted" style="font-size:0.82em; margin-bottom:2px;">순 변동</div>
+          <div style="color:${netColor}; font-weight:700;">${netSign}${net.toFixed(4)}<br><small>HEX</small></div>
+        </div>
+      </div>
+    `;
+
+    // ── 행 렌더링 ──
+    const rows = entries.map((entry) => {
+      const dateStr = entry.date
+        ? entry.date.toLocaleDateString("ko", { year: "numeric", month: "2-digit", day: "2-digit" })
+        : "-";
+
+      // ── 판매 수입 (가맹점으로 받은 결제, 수수료 공제 후 순 금액 표시) ──
+      if (entry.kind === "income") {
+        const o        = entry.data;
+        const hexWei   = BigInt(o.hexAmountWei);
+        const feeWei   = (hexWei * BigInt(feeBps)) / 10000n;
+        const netWei   = hexWei - feeWei;
+        const netHex   = (Number(netWei)  / 1e18).toFixed(4);
+        const grossHex = (Number(hexWei)  / 1e18).toFixed(4);
+        const feeHex   = (Number(feeWei)  / 1e18).toFixed(4);
+        const krwStr   = o.amount ? `${o.amount.toLocaleString()} ${o.currency || "KRW"}` : "";
+        const txShort  = o.txHash ? o.txHash.slice(0, 16) + "…" : "-";
+        return `
+          <div class="mp-hist-row">
+            <div class="mp-hist-main">
+              <span class="mp-hist-badge" style="background:#dcfce7; color:#15803d;">판매 수입</span>
+              <span class="mono">${txShort}</span>
+            </div>
+            <div class="mp-hist-detail">
+              <span style="color:#16a34a; font-weight:700; font-size:1.05em;">+${netHex} HEX</span>
+              <span class="muted" style="font-size:0.79em;">
+                총 ${grossHex} HEX − 수수료 ${(feeBps / 100).toFixed(0)}%(${feeHex} HEX)
+              </span>
+              ${krwStr ? `<span class="muted" style="font-size:0.82em;">${krwStr} 결제분</span>` : ""}
+              <span class="muted">${dateStr}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // ── 일반 트랜잭션 ──
+      const tx      = entry.data;
+      const label   = TYPE_LABEL[tx.type] || tx.type;
+      const isDebit = DEBIT.has(tx.type);
+      const isCred  = CREDIT.has(tx.type);
+
+      const hex = tx.amountHex
+        || (tx.amountWei ? formatWei(tx.amountWei) : null)
+        || (tx.priceWei  ? formatWei(tx.priceWei)  : null)
+        || (tx.hexCost   ? formatWei(tx.hexCost)   : null)   // buyJump
+        || (tx.hexAmount ? formatWei(tx.hexAmount)  : null);  // claimDividend
+
+      const amtHtml = hex
+        ? isDebit
+          ? `<span style="color:#dc2626; font-weight:700; font-size:1.05em;">−${hex} HEX</span>`
+          : isCred
+            ? `<span style="color:#16a34a; font-weight:700; font-size:1.05em;">+${hex} HEX</span>`
+            : `<span style="font-weight:600;">${hex} HEX</span>`
+        : "";
+
+      const jumpHtml = tx.jumpAmount
+        ? `<span class="muted" style="font-size:0.82em;">JUMP ${
+            tx.type === "buyJump" ? "+" : tx.type === "sellJump" ? "−" : ""
+          }${tx.jumpAmount}</span>`
+        : "";
+
+      const krwHtml = tx.amountKrw != null
+        ? `<span class="muted" style="font-size:0.82em;">${tx.amountKrw.toLocaleString()}원</span>`
+        : "";
+      const txShort = tx.txHash ? tx.txHash.slice(0, 16) + "…" : "-";
+
       return `
         <div class="mp-hist-row">
           <div class="mp-hist-main">
-            <span class="mp-hist-badge ${tx.type}">${typeLabel[tx.type] || tx.type}</span>
-            <span class="mono">${(tx.txHash || "").slice(0, 16)}…</span>
+            <span class="mp-hist-badge ${tx.type}">${label}</span>
+            <span class="mono">${txShort}</span>
           </div>
           <div class="mp-hist-detail">
-            ${tx.priceWei  ? `<span>${formatWei(tx.priceWei)} HEX</span>` : ""}
-            ${tx.amountWei ? `<span>${tx.amountHex || formatWei(tx.amountWei)} HEX</span>` : ""}
-            ${tx.fromAddress ? `<span class="muted">from: ${tx.fromAddress.slice(0, 8)}…</span>` : ""}
-            <span class="muted">${tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleDateString("ko") : "-"}</span>
+            ${amtHtml}
+            ${jumpHtml}
+            ${krwHtml}
+            ${tx.fromAddress ? `<span class="muted" style="font-size:0.82em;">from: ${tx.fromAddress.slice(0, 8)}…</span>` : ""}
+            <span class="muted">${dateStr}</span>
           </div>
         </div>
       `;
     }).join("");
 
-    wrap.innerHTML = rows;
+    wrap.innerHTML = summaryHtml + (rows || '<p class="hint">거래 내역이 없습니다.</p>');
   } catch (err) {
     console.warn("거래 내역 조회 실패:", err.message);
   }
