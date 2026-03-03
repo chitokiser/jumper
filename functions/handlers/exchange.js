@@ -12,6 +12,7 @@ const {
   getHexContract,
   getJumpTokenContract,
   getJumpBankContract,
+  getPlatformContract,
   walletFromKey,
   estimateGasWithBuffer,
 } = require('../wallet/chain');
@@ -43,55 +44,100 @@ async function getJumpBankStatus(uid) {
   const jumpBank  = getJumpBankContract(provider);
   const jumpToken = getJumpTokenContract(provider);
   const hexToken  = getHexContract(provider);
+  const platform  = getPlatformContract(provider);
 
-  const [price, totalStaked, act, rate, bankHexBal, bankJumpInv, circSupply, jumpTotalSupply] = await Promise.all([
+  // 1단계: 시장 데이터 + 차트 길이 일괄 조회
+  const [
+    price, totalStaked, act, rate, autoStakeBpsVal,
+    bankHexBal, bankJumpInv, circSupply, jumpTotalSupply,
+    effStaked, divisorVal, chartLen,
+    fxKrw, fxScale,
+  ] = await Promise.all([
     jumpBank.price(),
     jumpBank.totalStaked(),
     jumpBank.act(),
     jumpBank.rate(),
+    jumpBank.autoStakeBps(),
     jumpBank.hexBalance(),
     jumpBank.tokenInventory(),
     jumpBank.circulatingSupply(),
     jumpToken.totalSupply(),
+    jumpBank.effectiveStaked(),
+    jumpBank.divisor(),
+    jumpBank.chartLength(),
+    platform.fxKrwPerHexScaled(),
+    platform.fxScale(),
   ]);
 
-  let hexBal = 0n, jumpBal = 0n, pending = 0n, userInfo = null, dashboard = null;
-  if (address) {
-    [hexBal, jumpBal, pending, userInfo, dashboard] = await Promise.all([
-      hexToken.balanceOf(address),
-      jumpToken.balanceOf(address),
-      jumpBank.pendingDividend(address),
-      jumpBank.user(address),
-      jumpBank.myDashboard(address),
-    ]);
-  }
+  // 2단계: 차트 데이터 + 유저 데이터 병렬 조회
+  const chartLenNum = Number(chartLen);
+  const chartCount  = Math.min(chartLenNum, 50);
+  const chartStart  = chartLenNum - chartCount;
+  const chartIdxs   = Array.from({ length: chartCount }, (_, i) => chartStart + i);
+
+  const [chartPrices, userData] = await Promise.all([
+    chartCount > 0
+      ? Promise.all(chartIdxs.map(i => jumpBank.chartAt(i)))
+      : Promise.resolve([]),
+    address
+      ? Promise.all([
+          hexToken.balanceOf(address),
+          jumpToken.balanceOf(address),
+          jumpBank.pendingDividend(address),
+          jumpBank.user(address),
+          jumpBank.myDashboard(address),
+        ])
+      : Promise.resolve([0n, 0n, 0n, null, null]),
+  ]);
+
+  const [hexBal, jumpBal, pending, userInfo, dashboard] = userData;
+
+  // 파생 계산
+  const effStakedBig = BigInt(effStaked.toString());
+  const divisorBig   = BigInt(divisorVal.toString());
+  const buyCap       = effStakedBig > 0n ? effStakedBig / 10n : 0n;
+  const perTokenDiv  = effStakedBig > 0n && divisorBig > 0n
+    ? bankHexBal / effStakedBig / divisorBig
+    : 0n;
+
+  // KRW 가격 계산: priceKrw = price(HEX wei) × fxKrw / (1e18 × fxScale)
+  const fxScaleBig = BigInt(fxScale.toString());
+  const priceKrw   = fxScaleBig > 0n
+    ? price * BigInt(fxKrw.toString()) / (BigInt('1000000000000000000') * fxScaleBig)
+    : 0n;
 
   return {
     // 시장 정보
     price:        price.toString(),
     totalStaked:  totalStaked.toString(),
     act:          Number(act),
-    rate:         Number(rate),             // 매도 수수료율 (%)
+    rate:         Number(rate),
+    autoStakeBps: Number(autoStakeBpsVal),
     // jumpBank 잔고
-    bankHexBalance:    bankHexBal.toString(),   // jumpBank HEX 준비금
-    bankJumpInventory: bankJumpInv.toString(),  // jumpBank JUMP 재고
-    circulatingSupply: circSupply.toString(),   // 유통량 (재고+스테이킹)
-    jumpTotalSupply:   jumpTotalSupply.toString(), // JUMP 총 발행량
+    bankHexBalance:    bankHexBal.toString(),
+    bankJumpInventory: bankJumpInv.toString(),
+    circulatingSupply: circSupply.toString(),
+    jumpTotalSupply:   jumpTotalSupply.toString(),
+    buyCap:            buyCap.toString(),
+    perTokenDiv:       perTokenDiv.toString(),
+    priceKrw:          priceKrw.toString(),   // JUMP 1개 원화 가격 (정수 원)
     // 내 잔액
-    hexBalance:   hexBal.toString(),
-    jumpBalance:  jumpBal.toString(),
+    hexBalance:      hexBal.toString(),
+    jumpBalance:     jumpBal.toString(),
     pendingDividend: pending.toString(),
     // 스테이킹 정보
-    staked:       userInfo ? userInfo.depo.toString()         : '0',
-    stakingTime:  userInfo ? userInfo.stakingTime.toString()  : '0',
-    lastClaim:    userInfo ? userInfo.lastClaim.toString()    : '0',
-    totalBuy:     userInfo ? userInfo.totalBuy.toString()     : '0',
+    staked:      userInfo ? userInfo.depo.toString()        : '0',
+    stakingTime: userInfo ? userInfo.stakingTime.toString() : '0',
+    lastClaim:   userInfo ? userInfo.lastClaim.toString()   : '0',
+    totalBuy:    userInfo ? userInfo.totalBuy.toString()    : '0',
     // 내 대시보드 (손익/ROI)
-    myActualQty:       dashboard ? dashboard.myActualQty.toString()       : '0',
-    myAvgBuyPrice:     dashboard ? dashboard.myAvgBuyPriceWei.toString()  : '0',
-    myMarketCap:       dashboard ? dashboard.myMarketCapWei.toString()    : '0',
-    myPnl:             dashboard ? dashboard.myPnlWei.toString()          : '0',
-    myRoiBps:          dashboard ? dashboard.myRoiBps_.toString()         : '0',
+    myActualQty:   dashboard ? dashboard.myActualQty.toString()      : '0',
+    myAvgBuyPrice: dashboard ? dashboard.myAvgBuyPriceWei.toString() : '0',
+    myMarketCap:   dashboard ? dashboard.myMarketCapWei.toString()   : '0',
+    myPnl:         dashboard ? dashboard.myPnlWei.toString()         : '0',
+    myRoiBps:      dashboard ? dashboard.myRoiBps_.toString()        : '0',
+    // 가격 차트 (최근 50포인트)
+    chart: chartPrices.map(p => p.toString()),
   };
 }
 
