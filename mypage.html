@@ -12,6 +12,46 @@
   <link rel="stylesheet" href="/assets/css/pages/mypage.css" />
 
   <script src="/assets/js/partials.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+
+  <style>
+    #qrScanOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: #000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #qrScanOverlay.active { display: flex; }
+    .qr-video-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+    }
+    #qrVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .qr-frame-mask {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .qr-frame {
+      width: 62%; aspect-ratio: 1 / 1;
+      border: 3px solid #a78bfa;
+      border-radius: 14px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+    }
+    .qr-scan-line {
+      position: absolute; width: 62%; height: 2px;
+      background: linear-gradient(90deg, transparent, #7c3aed, transparent);
+      animation: qrScan 2s ease-in-out infinite;
+    }
+    @keyframes qrScan { 0%,100%{top:19%} 50%{top:81%} }
+  </style>
 </head>
 <body>
   <div id="siteHeader"></div>
@@ -236,6 +276,7 @@
       <section class="panel mp-section" id="merchantPaySection">
         <div class="mp-section-head">
           <h2 class="mp-section-title">가맹점 직접 결제</h2>
+          <button class="btn btn--sm" id="btnQrScan" type="button">📷 QR 스캔</button>
         </div>
         <p class="hint" style="margin-bottom:12px;">
           가맹점을 방문하여 현장에서 결제할 때 사용합니다.<br>
@@ -326,6 +367,27 @@
   </main>
 
   <div id="siteFooter"></div>
+
+  <!-- QR 스캔 카메라 오버레이 -->
+  <div id="qrScanOverlay" role="dialog" aria-label="QR 스캔">
+    <div class="qr-video-wrap">
+      <video id="qrVideo" autoplay playsinline muted></video>
+      <canvas id="qrCanvas" style="display:none;"></canvas>
+      <div class="qr-frame-mask">
+        <div class="qr-frame"></div>
+        <div class="qr-scan-line"></div>
+      </div>
+    </div>
+    <p id="qrScanState"
+       style="color:#fff; font-size:0.95rem; margin:16px 16px 0; text-align:center; max-width:320px;">
+      QR 코드를 사각형 안에 맞춰주세요
+    </p>
+    <button id="btnCloseQr" type="button"
+            style="margin-top:20px; padding:11px 36px; background:#7c3aed; color:#fff;
+                   border:none; border-radius:10px; font-size:1rem; cursor:pointer; font-weight:600;">
+      닫기
+    </button>
+  </div>
 
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/pages/mypage.js"></script>

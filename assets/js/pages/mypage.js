@@ -893,6 +893,93 @@ function bindMerchantPay(uid) {
   });
 }
 
+// ── QR 스캐너 ────────────────────────────────────
+function bindQrScanner() {
+  const btnOpen  = $("btnQrScan");
+  const btnClose = $("btnCloseQr");
+  const overlay  = $("qrScanOverlay");
+  const video    = $("qrVideo");
+  const canvas   = $("qrCanvas");
+  const stateEl  = $("qrScanState");
+
+  if (!btnOpen || !overlay || !video || !canvas) return;
+  if (btnOpen._qrBound) return;
+  btnOpen._qrBound = true;
+
+  let stream    = null;
+  let rafId     = null;
+  let scanning  = false;
+
+  function stopScanner() {
+    scanning = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+    overlay.classList.remove("active");
+  }
+
+  function tick() {
+    if (!scanning) return;
+    if (video.readyState < video.HAVE_ENOUGH_DATA) {
+      rafId = requestAnimationFrame(tick);
+      return;
+    }
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) { rafId = requestAnimationFrame(tick); return; }
+
+    canvas.width  = w;
+    canvas.height = h;
+    const ctx2d = canvas.getContext("2d");
+    ctx2d.drawImage(video, 0, 0, w, h);
+    const imageData = ctx2d.getImageData(0, 0, w, h);
+
+    const code = window.jsQR?.(imageData.data, w, h, { inversionAttempts: "dontInvert" });
+    if (code && code.data) {
+      const url = code.data;
+      // pay.html URL인지 확인
+      if (url.includes("/pay.html") && url.includes("merchant=") && url.includes("amount=")) {
+        if (stateEl) stateEl.textContent = "QR 인식됨! 결제 페이지로 이동합니다...";
+        stopScanner();
+        setTimeout(() => { location.href = url; }, 300);
+        return;
+      }
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  async function openScanner() {
+    if (scanning) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      alert("이 브라우저에서는 카메라를 사용할 수 없습니다.");
+      return;
+    }
+    try {
+      stream   = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      video.srcObject = stream;
+      await video.play();
+      scanning = true;
+      overlay.classList.add("active");
+      if (stateEl) stateEl.textContent = "QR 코드를 사각형 안에 맞춰주세요";
+      rafId = requestAnimationFrame(tick);
+    } catch (err) {
+      alert("카메라 접근 실패: " + (err.message || err));
+    }
+  }
+
+  btnOpen.addEventListener("click", openScanner);
+  btnClose.addEventListener("click", stopScanner);
+
+  // 오버레이 바깥 터치 시 닫기
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) stopScanner();
+  });
+
+  // ESC 키
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && scanning) stopScanner();
+  });
+}
+
 // ── 진입점 ────────────────────────────────────────
 onAuthReady(async (ctx) => {
   const loggedIn = (ctx?.loggedIn ?? ctx?.loggedin) === true;
@@ -929,6 +1016,7 @@ onAuthReady(async (ctx) => {
     bindHexTransfer(user.uid);
     loadMerchantsForSelect();
     bindMerchantPay(user.uid);
+    bindQrScanner();
 
     // 비동기로 추가 데이터 로드
     loadOnChainData(user.uid);

@@ -170,17 +170,28 @@ async function bindHeader(){
           );
           return;
         }
+        btnLogin.textContent = "로그인 중...";
+        btnLogin.disabled = true;
         await login();
       }catch(e){
         const code = e?.code || "";
-        // 카카오/인스타/페북 등 인앱브라우저에서 Google 로그인은 차단될 수 있습니다.
         if(code === "auth/inapp-browser" || code === "auth/operation-not-supported-in-this-environment"){
           alert(
             "카카오톡/인스타/페이스북 같은 인앱브라우저에서는 Google 로그인이 차단될 수 있습니다.\n\n해결 방법:\n1) 우측 상단 메뉴(⋮) → '다른 브라우저로 열기'\n2) 또는 Chrome/Safari에서 직접 jovialtravel.netlify.app 접속\n\n(오류: 403 disallowed_useragent)"
           );
-          return;
+        } else if(code === "auth/popup-blocked"){
+          alert("팝업이 차단되었습니다.\n브라우저 설정에서 이 사이트의 팝업을 허용하거나,\nChrome 주소창 오른쪽의 팝업 차단 아이콘을 클릭해 허용해 주세요.");
+        } else if(code === "auth/unauthorized-domain"){
+          alert("이 도메인에서 Google 로그인이 허용되지 않습니다.\n관리자에게 Firebase Authorized Domain 등록을 요청해 주세요.\n\n현재 도메인: " + location.hostname);
+        } else if(code === "auth/network-request-failed"){
+          alert("네트워크 오류입니다. 인터넷 연결을 확인해 주세요.");
+        } else if(code && code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request"){
+          alert("로그인 오류가 발생했습니다.\n오류코드: " + code + "\n\n" + (e?.message || ""));
         }
-        console.warn(e);
+        console.error("login error:", code, e);
+      } finally {
+        btnLogin.textContent = "구글 로그인";
+        btnLogin.disabled = false;
       }
     };
   }

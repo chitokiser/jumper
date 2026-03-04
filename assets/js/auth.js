@@ -54,10 +54,10 @@ export async function login(){
     if(code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request"){
       return;
     }
-    // 팝업이 차단된 경우(브라우저 정책) → redirect로 폴백
+    // auth/unauthorized-domain, auth/popup-blocked 은 그대로 throw해서 호출자가 처리
+    // (unauthorized-domain은 redirect도 실패하므로 폴백 불필요)
+    // web-storage-unsupported 등 완전 미지원 환경만 redirect 시도
     const redirectLike =
-      code === "auth/popup-blocked" ||
-      code === "auth/unauthorized-domain" ||
       code === "auth/operation-not-supported-in-this-environment" ||
       code === "auth/web-storage-unsupported";
     if(redirectLike){
