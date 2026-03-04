@@ -102,7 +102,10 @@ function generateQr(merchantId, merchantName, amountKrw) {
   const canvas = $("qrCanvas");
   if (!canvas) return;
 
-  const url = `${location.origin}/pay.html?merchant=${merchantId}&amount=${amountKrw}`;
+  const PROD_ORIGIN = "https://jovialtravel.netlify.app";
+  const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  const baseOrigin = isLocal ? PROD_ORIGIN : location.origin;
+  const url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amountKrw}`;
 
   // qrcode.js (CDN) API
   /* global QRCode */
