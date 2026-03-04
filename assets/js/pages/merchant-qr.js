@@ -7,6 +7,12 @@ import { db } from "/assets/js/firebase-init.js";
 import {
   doc,
   getDoc,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -134,5 +140,74 @@ function generateQr(merchantId, merchantName, amountKrw) {
 
     // 생성된 QR 영역으로 스크롤
     $("qrSection")?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    // 실시간 결제 감지 시작
+    listenPayments(merchantId, amountKrw);
   });
+}
+
+// ── 실시간 결제 감지 ───────────────────────────────────
+let _unsubscribe = null;
+
+function listenPayments(merchantId, amountKrw) {
+  // 이전 리스너 해제
+  if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
+
+  // QR 생성 시각 기준 — 이후 도착하는 결제만 감지
+  const since = Timestamp.now();
+
+  const q = query(
+    collection(db, "transactions"),
+    where("type",       "==", "merchant_income"),
+    where("merchantId", "==", Number(merchantId)),
+    where("createdAt",  ">=", since),
+    orderBy("createdAt", "desc"),
+  );
+
+  _unsubscribe = onSnapshot(q, (snap) => {
+    snap.docChanges().forEach((change) => {
+      if (change.type !== "added") return;
+      const d = change.doc.data();
+      showPaymentAlert(d, amountKrw);
+    });
+  }, (err) => {
+    console.warn("listenPayments error:", err);
+  });
+}
+
+function showPaymentAlert(data, expectedKrw) {
+  // 기존 알림 제거
+  document.getElementById("paymentAlert")?.remove();
+
+  const netHex  = data.netAmountWei
+    ? parseFloat((BigInt(data.netAmountWei) / 10n ** 14n) / 10000).toFixed(4)
+    : data.amountHex || "?";
+  const krwDisp = (data.amountKrw || expectedKrw || 0).toLocaleString();
+
+  const el = document.createElement("div");
+  el.id = "paymentAlert";
+  el.style.cssText = [
+    "position:fixed", "top:80px", "left:50%", "transform:translateX(-50%)",
+    "background:#16a34a", "color:#fff", "border-radius:12px",
+    "padding:18px 28px", "z-index:9999", "box-shadow:0 4px 24px rgba(0,0,0,.3)",
+    "text-align:center", "min-width:260px", "animation:fadeInDown .3s ease",
+  ].join(";");
+
+  el.innerHTML = `
+    <div style="font-size:2rem;margin-bottom:4px;">✅</div>
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">결제 완료!</div>
+    <div style="font-size:0.95rem;opacity:.9;">${krwDisp}원 수령</div>
+    <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">${netHex} HEX</div>
+    <button onclick="document.getElementById('paymentAlert').remove()"
+      style="margin-top:10px;background:rgba(255,255,255,.2);border:none;color:#fff;
+             border-radius:6px;padding:4px 16px;cursor:pointer;font-size:0.85rem;">닫기</button>
+  `;
+
+  document.body.appendChild(el);
+
+  // 소리 (지원 시)
+  try { new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA==").play().catch(() => {}); } catch (_) {}
+
+  // 10초 후 자동 제거
+  setTimeout(() => { document.getElementById("paymentAlert")?.remove(); }, 10000);
 }
