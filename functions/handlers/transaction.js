@@ -573,7 +573,7 @@ async function adminSetMerchantFeeOnChain(merchantId, feeBps) {
  * @param {string} masterSecret - WALLET_MASTER_SECRET
  * @returns {{ txHash, amountHex, amountKrw, merchantName }}
  */
-async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret) {
+async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, { currency = 'KRW', amountVnd } = {}) {
   // 수탁 지갑 조회
   const userSnap   = await db.collection('users').doc(uid).get();
   const walletData = userSnap.data()?.wallet;
@@ -585,10 +585,20 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret) {
   const merchant = merchantSnap.data() || {};
   if (merchant.active === false) throw new Error('비활성 가맹점입니다');
 
-  // 환율 조회 + KRW → HEX wei 변환
+  // 환율 조회 + 금액 → HEX wei 변환
   const { fetchExchangeRates, krwToHexWei } = require('../wallet/exchange');
-  const rates  = await fetchExchangeRates();
-  const hexWei = krwToHexWei(amountKrw, rates.krwPerUsd);
+  const rates = await fetchExchangeRates();
+
+  let hexWei;
+  if (currency === 'VND' && amountVnd) {
+    const vndScaled  = BigInt(Math.round(amountVnd * 10000));
+    const rateScaled = BigInt(Math.round(rates.vndPerUsd * 10000));
+    hexWei = (vndScaled * (10n ** 18n)) / rateScaled;
+    // amountKrw 역산 (기록용)
+    amountKrw = Math.round((amountVnd / rates.vndPerUsd) * rates.krwPerUsd);
+  } else {
+    hexWei = krwToHexWei(amountKrw, rates.krwPerUsd);
+  }
   if (hexWei <= 0n) throw new Error('결제 금액이 너무 작습니다');
 
   // 수탁 지갑 HEX ERC20 잔액 확인
@@ -637,6 +647,7 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret) {
     amountWei:    hexWei.toString(),
     amountHex:    hexAmount.toFixed(4),
     amountKrw,
+    ...(currency === 'VND' && amountVnd ? { amountVnd, currency: 'VND' } : { currency: 'KRW' }),
     txHash:       receipt.hash,
     createdAt:    admin.firestore.FieldValue.serverTimestamp(),
   });
@@ -671,6 +682,7 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret) {
       feeWei:       feeWei.toString(),
       feeBps:       merchant.feeBps ?? 0,
       amountKrw,
+      ...(currency === 'VND' && amountVnd ? { amountVnd, currency: 'VND' } : { currency: 'KRW' }),
       txHash:       receipt.hash,
       createdAt:    admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -680,6 +692,7 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret) {
     txHash:       receipt.hash,
     amountHex:    hexAmount.toFixed(4),
     amountKrw,
+    ...(currency === 'VND' && amountVnd ? { amountVnd, currency: 'VND' } : { currency: 'KRW' }),
     merchantName: merchant.name || '',
   };
 }

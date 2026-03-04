@@ -25,19 +25,24 @@ function setText(id, val) {
 }
 
 // ── URL 파라미터 파싱 ─────────────────────────────────
-const params = new URLSearchParams(location.search);
-const merchantIdRaw = params.get("merchant");
-const amountRaw     = params.get("amount");
+const params      = new URLSearchParams(location.search);
+const merchantId  = Number(params.get("merchant"));
+const amount      = Number(params.get("amount"));
+const currency    = (params.get("currency") || "KRW").toUpperCase();
 
-const merchantId = Number(merchantIdRaw);
-const amountKrw  = Number(amountRaw);
+const isVnd = currency === "VND";
 
 // 유효성 검증
+const amountMin = isVnd ? 10000 : 1000;
 if (!merchantId || !Number.isInteger(merchantId) || merchantId <= 0 ||
-    !amountKrw  || !Number.isFinite(amountKrw)   || amountKrw < 1000) {
+    !amount || !Number.isFinite(amount) || amount < amountMin) {
   show("invalidPanel", true);
   throw new Error("invalid pay params");
 }
+
+// 하위 호환: amountKrw 변수명 유지
+const amountKrw = isVnd ? 0 : amount;
+const amountVnd = isVnd ? amount : undefined;
 
 // ── 가맹점 정보 로드 ──────────────────────────────────
 let merchantName = "";
@@ -58,7 +63,9 @@ async function loadMerchant() {
   merchantName = data.name || "가맹점";
   document.title = `${merchantName} 결제 확인 | Jovial Travel`;
 
-  const amountStr = `${amountKrw.toLocaleString()}원`;
+  const amountStr = isVnd
+    ? `${amount.toLocaleString()}동 (VND)`
+    : `${amount.toLocaleString()}원 (KRW)`;
   ["payMerchantNameLogin", "payMerchantNameReg", "payMerchantName"].forEach((id) => setText(id, merchantName));
   ["payAmountLogin",       "payAmountReg",       "payAmountDisp"].forEach((id)   => setText(id, amountStr));
   setText("payHeroDesc", `${merchantName} — ${amountStr}`);
@@ -119,8 +126,12 @@ function bindPayButton() {
   const btn = $("btnPay");
   if (!btn) return;
 
+  const amountConfirmStr = isVnd
+    ? `${amount.toLocaleString()}동 (VND)`
+    : `${amount.toLocaleString()}원 (KRW)`;
+
   btn.onclick = async () => {
-    if (!confirm(`${merchantName}에 ${amountKrw.toLocaleString()}원을 결제하시겠습니까?\n(수탁 지갑 HEX로 결제됩니다)`)) return;
+    if (!confirm(`${merchantName}에 ${amountConfirmStr}을 결제하시겠습니까?\n(수탁 지갑 HEX로 결제됩니다)`)) return;
 
     btn.disabled = true;
     btn.textContent = "결제 중...";
@@ -128,19 +139,26 @@ function bindPayButton() {
     if (stateEl) { stateEl.textContent = "블록체인 처리 중입니다. 잠시 기다려 주세요..."; stateEl.style.display = ""; }
 
     try {
-      const payFn = httpsCallable(functions, "payMerchantHex");
-      const res   = await payFn({ merchantId: Number(merchantId), amountKrw: Number(amountKrw) });
-      const d     = res.data;
+      const payFn  = httpsCallable(functions, "payMerchantHex");
+      const payload = isVnd
+        ? { merchantId: Number(merchantId), amountVnd: Number(amountVnd), currency: "VND" }
+        : { merchantId: Number(merchantId), amountKrw: Number(amountKrw) };
+      const res = await payFn(payload);
+      const d   = res.data;
 
       // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
 
+      const paidAmountStr = isVnd
+        ? `${amount.toLocaleString()}동 (${d.amountHex || "?"} HEX)`
+        : `${amount.toLocaleString()}원 (${d.amountHex || "?"} HEX)`;
+
       const resultEl = $("payResult");
       if (resultEl) {
         resultEl.innerHTML = `
           <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d.merchantName || merchantName}</span></div>
-          <div class="mp-kv"><span class="k">결제 금액</span><span class="v">${amountKrw.toLocaleString()}원 (${d.amountHex || "?"} HEX)</span></div>
+          <div class="mp-kv"><span class="k">결제 금액</span><span class="v">${paidAmountStr}</span></div>
           <div class="mp-kv"><span class="k">TX</span><span class="v mono" style="font-size:0.78em;">${(d.txHash || "").slice(0, 22)}…</span></div>
         `;
       }

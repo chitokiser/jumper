@@ -114,8 +114,23 @@
 
           <!-- 금액 입력 -->
           <form id="qrForm">
+            <!-- 통화 선택 -->
+            <div class="field" style="margin-bottom:12px;">
+              <span class="label">결제 통화</span>
+              <div style="display:flex;gap:16px;margin-top:6px;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.95rem;">
+                  <input type="radio" name="qrCurrency" id="currKrw" value="KRW" checked />
+                  <span>🇰🇷 원화 (KRW)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.95rem;">
+                  <input type="radio" name="qrCurrency" id="currVnd" value="VND" />
+                  <span>🇻🇳 동 (VND)</span>
+                </label>
+              </div>
+            </div>
+
             <label class="field">
-              <span class="label">결제 금액 (원)</span>
+              <span class="label" id="qrAmountLabel">결제 금액 (원)</span>
               <input
                 class="input"
                 id="qrAmount"
@@ -125,7 +140,7 @@
                 placeholder="예: 30000"
                 required
               />
-              <div class="help">최소 1,000원 이상 입력해 주세요.</div>
+              <div class="help" id="qrAmountHelp">최소 1,000원 이상 입력해 주세요.</div>
             </label>
 
             <button class="btn" type="submit" id="btnGenQr" style="width:100%; margin-top:4px;">

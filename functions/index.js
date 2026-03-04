@@ -477,16 +477,24 @@ exports.payMerchantHex = onCall(
   { secrets: [walletSecret, adminKeySecret] },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    const { merchantId, amountKrw } = request.data ?? {};
+    const { merchantId, amountKrw, amountVnd, currency = 'KRW' } = request.data ?? {};
     if (merchantId == null) throw new HttpsError('invalid-argument', 'merchantId가 필요합니다');
-    if (!amountKrw || Number(amountKrw) < 1000)
-      throw new HttpsError('invalid-argument', '최소 결제 금액은 1,000원입니다');
+
+    const cur = String(currency).toUpperCase();
+    if (cur === 'VND') {
+      if (!amountVnd || Number(amountVnd) < 10000)
+        throw new HttpsError('invalid-argument', 'VND 최소 결제 금액은 10,000동입니다');
+    } else {
+      if (!amountKrw || Number(amountKrw) < 1000)
+        throw new HttpsError('invalid-argument', '최소 결제 금액은 1,000원입니다');
+    }
 
     process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
     const result = await txH.payMerchantHexOnChain(
-      uid, Number(merchantId), Number(amountKrw), walletSecret.value()
+      uid, Number(merchantId), amountKrw ? Number(amountKrw) : 0, walletSecret.value(),
+      { currency: cur, amountVnd: amountVnd ? Number(amountVnd) : undefined }
     );
-    logger.info('payMerchantHex', { uid, merchantId, amountKrw, txHash: result.txHash });
+    logger.info('payMerchantHex', { uid, merchantId, amountKrw, amountVnd, currency: cur, txHash: result.txHash });
     return result;
   })
 );

@@ -88,30 +88,50 @@ function bindQrForm(merchantId, merchantName) {
   const form = $("qrForm");
   if (!form) return;
 
+  // 통화 전환 시 레이블/플레이스홀더 업데이트
+  form.querySelectorAll("input[name='qrCurrency']").forEach((radio) => {
+    radio.addEventListener("change", () => {
+      const isVnd = radio.value === "VND" && radio.checked;
+      const labelEl  = $("qrAmountLabel");
+      const helpEl   = $("qrAmountHelp");
+      const inputEl  = $("qrAmount");
+      if (labelEl)  labelEl.textContent  = isVnd ? "결제 금액 (동, VND)" : "결제 금액 (원, KRW)";
+      if (helpEl)   helpEl.textContent   = isVnd ? "최소 10,000동 이상 입력해 주세요." : "최소 1,000원 이상 입력해 주세요.";
+      if (inputEl) {
+        inputEl.min         = isVnd ? "10000" : "1000";
+        inputEl.step        = isVnd ? "1000"  : "100";
+        inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
+        inputEl.value       = "";
+      }
+    });
+  });
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
+    const currency  = form.querySelector("input[name='qrCurrency']:checked")?.value || "KRW";
     const amountRaw = $("qrAmount")?.value || "";
-    const amount = Number(amountRaw);
+    const amount    = Number(amountRaw);
 
-    if (!amount || amount < 1000) {
-      alert("최소 1,000원 이상 입력해 주세요.");
-      return;
+    if (currency === "VND") {
+      if (!amount || amount < 10000) { alert("최소 10,000동 이상 입력해 주세요."); return; }
+    } else {
+      if (!amount || amount < 1000)  { alert("최소 1,000원 이상 입력해 주세요."); return; }
     }
 
-    generateQr(merchantId, merchantName, amount);
+    generateQr(merchantId, merchantName, amount, currency);
   });
 }
 
 // ── QR 생성 ────────────────────────────────────────────
-function generateQr(merchantId, merchantName, amountKrw) {
+function generateQr(merchantId, merchantName, amount, currency = "KRW") {
   const canvas = $("qrCanvas");
   if (!canvas) return;
 
   const PROD_ORIGIN = "https://jovialtravel.netlify.app";
   const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const baseOrigin = isLocal ? PROD_ORIGIN : location.origin;
-  const url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amountKrw}`;
+  const url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
 
   // qrcode.js (CDN) API
   /* global QRCode */
@@ -123,8 +143,11 @@ function generateQr(merchantId, merchantName, amountKrw) {
     }
 
     // 카드 정보 업데이트
+    const amountDisp = currency === "VND"
+      ? `${amount.toLocaleString()}동 (VND)`
+      : `${amount.toLocaleString()}원 (KRW)`;
     setText("qrCardMerchant", merchantName);
-    setText("qrCardAmount", `${amountKrw.toLocaleString()}원`);
+    setText("qrCardAmount", amountDisp);
     show("qrSection", true);
 
     // 다운로드 버튼
@@ -142,14 +165,14 @@ function generateQr(merchantId, merchantName, amountKrw) {
     $("qrSection")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
     // 실시간 결제 감지 시작
-    listenPayments(merchantId, amountKrw);
+    listenPayments(merchantId, amount, currency);
   });
 }
 
 // ── 실시간 결제 감지 ───────────────────────────────────
 let _unsubscribe = null;
 
-function listenPayments(merchantId, amountKrw) {
+function listenPayments(merchantId, amount, currency = "KRW") {
   // 이전 리스너 해제
   if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
 
@@ -168,21 +191,25 @@ function listenPayments(merchantId, amountKrw) {
     snap.docChanges().forEach((change) => {
       if (change.type !== "added") return;
       const d = change.doc.data();
-      showPaymentAlert(d, amountKrw);
+      showPaymentAlert(d, amount, currency);
     });
   }, (err) => {
     console.warn("listenPayments error:", err);
   });
 }
 
-function showPaymentAlert(data, expectedKrw) {
+function showPaymentAlert(data, expectedAmount, currency = "KRW") {
   // 기존 알림 제거
   document.getElementById("paymentAlert")?.remove();
 
-  const netHex  = data.netAmountWei
+  const netHex = data.netAmountWei
     ? parseFloat((BigInt(data.netAmountWei) / 10n ** 14n) / 10000).toFixed(4)
     : data.amountHex || "?";
-  const krwDisp = (data.amountKrw || expectedKrw || 0).toLocaleString();
+
+  const cur = data.currency || currency;
+  const amountDisp = cur === "VND"
+    ? `${(data.amountVnd || expectedAmount || 0).toLocaleString()}동`
+    : `${(data.amountKrw || expectedAmount || 0).toLocaleString()}원`;
 
   const el = document.createElement("div");
   el.id = "paymentAlert";
@@ -196,7 +223,7 @@ function showPaymentAlert(data, expectedKrw) {
   el.innerHTML = `
     <div style="font-size:2rem;margin-bottom:4px;">✅</div>
     <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">결제 완료!</div>
-    <div style="font-size:0.95rem;opacity:.9;">${krwDisp}원 수령</div>
+    <div style="font-size:0.95rem;opacity:.9;">${amountDisp} 수령</div>
     <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">${netHex} HEX</div>
     <button onclick="document.getElementById('paymentAlert').remove()"
       style="margin-top:10px;background:rgba(255,255,255,.2);border:none;color:#fff;
