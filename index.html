@@ -13,42 +13,75 @@
   <link rel="stylesheet" href="/assets/css/pages/town_home.css" />
   <link rel="stylesheet" href="/assets/css/pages/town_home.map.css" />
   <link rel="stylesheet" href="/assets/css/pages/town_home.cards.css" />
-   <link rel="stylesheet" href="/assets/css/pages/town_home.photos.css" />
-   <link rel="stylesheet" href="/assets/css/pages/town_home.luxe.css" />
-   <link rel="stylesheet" href="/assets/css/pages/town_home.hero.css" />
-
-
+  <link rel="stylesheet" href="/assets/css/pages/town_home.photos.css" />
+  <link rel="stylesheet" href="/assets/css/pages/town_home.hero.css" />
 
   <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";</script>
   <script src="/assets/js/partials.js" defer></script>
-
   <script type="module" src="/assets/js/firebase-init.js"></script>
   <script type="module" src="/assets/js/firestore-bridge.js"></script>
   <script type="module" src="/assets/js/pages/town_home.js" defer></script>
   <script type="module" src="/assets/js/pages/town_home.hero.js" defer></script>
 
+  <style>
+    /* 가맹점 그리드 */
+    .merchant-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:4px;}
+    .merchant-card{background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;}
+    .merchant-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+    .merchant-name{font-weight:700;font-size:1rem;color:var(--text,#111);}
+    .merchant-career{font-size:0.78rem;background:var(--accent-light,#ede9fe);color:var(--accent,#7c3aed);border-radius:99px;padding:2px 9px;}
+    .merchant-region{font-size:0.82rem;color:var(--muted,#6b7280);}
+    .merchant-desc{font-size:0.83rem;color:var(--text2,#374151);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+    .merchant-id{font-size:0.74rem;color:var(--muted,#9ca3af);margin-top:auto;}
+    .btn-merchant-products{margin-top:6px;font-size:0.78rem;padding:4px 12px;border-radius:99px;border:1px solid var(--accent,#7c3aed);color:var(--accent,#7c3aed);background:transparent;cursor:pointer;align-self:flex-start;}
+    .btn-merchant-products:hover{background:var(--accent-light,#ede9fe);}
+
+    /* 가맹점 상품 모달 */
+    .mp-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;}
+    .mp-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);cursor:pointer;}
+    .mp-modal-box{position:relative;background:var(--surface,#fff);border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);}
+    .mp-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+    .mp-modal-head h3{font-size:1.1rem;font-weight:700;margin:0;}
+    .mp-modal-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted,#6b7280);padding:2px 8px;border-radius:6px;line-height:1;}
+    .mp-modal-close:hover{background:var(--surface2,#f3f4f6);}
+    .mp-product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:8px;}
+    .mp-product-card{display:flex;flex-direction:column;border:1px solid var(--border,#e5e7eb);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;transition:box-shadow .15s;}
+    .mp-product-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.12);}
+    .mp-product-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--surface2,#f3f4f6);}
+    .mp-product-thumb-ph{width:100%;aspect-ratio:4/3;background:var(--surface2,#f3f4f6);display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--muted,#9ca3af);}
+    .mp-product-body{padding:8px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1;}
+    .mp-product-title{font-weight:600;font-size:0.87rem;line-height:1.4;}
+    .mp-product-region{font-size:0.74rem;color:var(--muted,#6b7280);}
+    .mp-product-price{font-size:0.8rem;color:var(--accent,#7c3aed);font-weight:600;margin-top:auto;}
+
+    /* 사진 그리드 (4장) */
+    .photo-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+    @media(max-width:600px){.photo-grid-4{grid-template-columns:repeat(2,1fr);}}
+    .photo-tile-4{display:block;border-radius:10px;overflow:hidden;aspect-ratio:4/3;}
+    .photo-tile-4 img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s;}
+    .photo-tile-4:hover img{transform:scale(1.04);}
+
+    /* 바로가기 카드 */
+    .shortcut-row{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:4px;}
+    @media(max-width:480px){.shortcut-row{grid-template-columns:1fr;}}
+    .shortcut-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px 16px;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;text-decoration:none;color:var(--text,#111);transition:box-shadow .15s,border-color .15s;}
+    .shortcut-card:hover{box-shadow:0 2px 16px rgba(124,58,237,.15);border-color:var(--accent,#7c3aed);}
+    .shortcut-icon{font-size:2rem;}
+    .shortcut-label{font-weight:700;font-size:1rem;}
+    .shortcut-sub{font-size:0.8rem;color:var(--muted,#6b7280);}
+  </style>
 </head>
 <body>
   <div id="siteHeader"></div>
 
-  <!-- HERO VIDEO – 전체 너비 (page 박스 밖) -->
+  <!-- HERO VIDEO -->
   <section class="town-hero hero-video" id="heroSection">
-    <!-- 비디오 배경 -->
     <div class="hero-bg" aria-hidden="true">
-      <video
-        class="hero-video-el"
-        autoplay
-        muted
-        loop
-        playsinline
-        preload="metadata"
-      >
+      <video class="hero-video-el" autoplay muted loop playsinline preload="metadata">
         <source src="/assets/images/mpeg/banner.mp4" type="video/mp4">
       </video>
       <div class="hero-bg-vignette"></div>
     </div>
-
-    <!-- 내용 -->
     <div class="town-hero-inner hero-content">
       <h1 class="town-title">당신의 다음 한 달은 하노이입니다</h1>
       <p class="town-desc">
@@ -62,166 +95,11 @@
 
   <main class="page">
 
-  <style>
-  .merchant-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:4px;}
-  .merchant-card{background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;}
-  .merchant-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .merchant-name{font-weight:700;font-size:1rem;color:var(--text,#111);}
-  .merchant-career{font-size:0.78rem;background:var(--accent-light,#ede9fe);color:var(--accent,#7c3aed);border-radius:99px;padding:2px 9px;}
-  .merchant-region{font-size:0.82rem;color:var(--muted,#6b7280);}
-  .merchant-desc{font-size:0.83rem;color:var(--text2,#374151);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-  .merchant-id{font-size:0.74rem;color:var(--muted,#9ca3af);margin-top:auto;}
-  .btn-merchant-products{margin-top:6px;font-size:0.78rem;padding:4px 12px;border-radius:99px;border:1px solid var(--accent,#7c3aed);color:var(--accent,#7c3aed);background:transparent;cursor:pointer;align-self:flex-start;}
-  .btn-merchant-products:hover{background:var(--accent-light,#ede9fe);}
-  /* ── 가맹점 상품 모달 ── */
-  .mp-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;}
-  .mp-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);cursor:pointer;}
-  .mp-modal-box{position:relative;background:var(--surface,#fff);border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);}
-  .mp-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
-  .mp-modal-head h3{font-size:1.1rem;font-weight:700;margin:0;}
-  .mp-modal-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted,#6b7280);padding:2px 8px;border-radius:6px;line-height:1;}
-  .mp-modal-close:hover{background:var(--surface2,#f3f4f6);}
-  .mp-product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:8px;}
-  .mp-product-card{display:flex;flex-direction:column;border:1px solid var(--border,#e5e7eb);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;transition:box-shadow .15s;}
-  .mp-product-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.12);}
-  .mp-product-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--surface2,#f3f4f6);}
-  .mp-product-thumb-ph{width:100%;aspect-ratio:4/3;background:var(--surface2,#f3f4f6);display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--muted,#9ca3af);}
-  .mp-product-body{padding:8px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1;}
-  .mp-product-title{font-weight:600;font-size:0.87rem;line-height:1.4;}
-  .mp-product-region{font-size:0.74rem;color:var(--muted,#6b7280);}
-  .mp-product-price{font-size:0.8rem;color:var(--accent,#7c3aed);font-weight:600;margin-top:auto;}
-</style>
-
-<section class="section" id="merchantListSection">
-  <div class="section-h">
-    <h2 class="section-title">가맹점 리스트</h2>
-    <div class="section-tools">
-      <a class="btn btn--primary" href="/family-register.html">가맹점 등록</a>
-    </div>
-  </div>
-  <div id="merchantListState" class="help small" style="margin:4px 0 10px;"></div>
-  <div id="merchantListGrid" class="merchant-grid"></div>
-</section>
-
-
-    <!-- 우리마을 홈스테이 카드 섹션 -->
-  <section class="section" id="home-homestay-photos">
-  <div class="section-h">
-    <h2 class="section-title">우리마을 홈스테이</h2>
-  </div>
-
-  <div class="panel photo-grid-panel">
-    <div class="photo-grid">
-      <a class="photo-tile" href="/homestay.html">
-        <img loading="lazy" src="/assets/images/homestay/1.png" alt="홈스테이">
-      </a>
-      <a class="photo-tile" href="/homestay.html">
-        <img loading="lazy" src="/assets/images/homestay/2.png" alt="홈스테이">
-      </a>
-      <a class="photo-tile" href="/homestay.html">
-        <img loading="lazy" src="/assets/images/homestay/3.png" alt="홈스테이">
-      </a>
-      <a class="photo-tile" href="/homestay.html">
-        <img loading="lazy" src="/assets/images/homestay/4.png" alt="홈스테이">
-      </a>
-         <a class="photo-tile" href="/homestay.html">
-        <img loading="lazy" src="/assets/images/homestay/5.png" alt="홈스테이">
-      </a>
-      <a class="photo-tile" href="/homestay.html">
-        <img loading="lazy" src="/assets/images/homestay/6.png" alt="홈스테이">
-      </a>
-      <a class="photo-tile" href="/homestay.html">
-        <img loading="lazy" src="/assets/images/homestay/7.png" alt="홈스테이">
-      </a>
-      <a class="photo-tile" href="/homestay.html">
-        <img loading="lazy" src="/assets/images/homestay/8.png" alt="홈스테이">
-      </a>
-    </div>
-  </div>
-</section>
-
-
-    <!-- 우리마을 놀거리 카드 섹션 -->
- <section class="section" id="home-what-photos">
-  <div class="section-h">
-    <h2 class="section-title">우리마을 놀거리</h2>
-  </div>
-
-  <div class="panel photo-grid-panel">
-    <div class="photo-grid">
-      <a class="photo-tile" href="/what.html">
-        <img loading="lazy" src="/assets/images/what/1.png" alt="놀거리">
-      </a>
-      <a class="photo-tile" href="/what.html">
-        <img loading="lazy" src="/assets/images/what/2.png" alt="놀거리">
-      </a>
-      <a class="photo-tile" href="/what.html">
-        <img loading="lazy" src="/assets/images/what/3.png" alt="놀거리">
-      </a>
-      <a class="photo-tile" href="/what.html">
-        <img loading="lazy" src="/assets/images/what/4.png" alt="놀거리">
-      </a>
-    </div>
-  </div>
-</section>
-
-
-    <section class="section" id="village-map">
-      <div class="section-h">
-        <h2 class="section-title">우리마을 지도</h2>
-      </div>
-
-      <div class="panel map-panel">
-        <div class="map-panel-inner">
-
-          <div class="map-copy">
-            <p class="map-title">우리마을 지도에 홈스테이, 식당, 병원, 놀거리를 표시합니다.</p>
-            <p class="map-desc">
-              실제로 존재하는 장소만 등록되며, Jovial은 큐레이션된 콘텐츠만 연결합니다.
-            </p>
-
-            <div class="map-actions">
-              <a class="btn btn--ghost btn--sm"
-                 id="btnAdminPlace"
-                 href="/admin_places.html"
-                 style="display:none;">
-                장소 등록 (관리자)
-              </a>
-            </div>
-          </div>
-
-          <div class="map-box" aria-hidden="false">
-            <div id="villageMap" style="width:100%;height:480px;border-radius:8px;background:#f3f4f6;"></div>
-          </div>
-
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-h">
-        <h2 class="section-title">우리마을 사진관</h2>
-      </div>
-      <div class="panel photo-panel">
-        <div class="photo-slider" id="uiSlider" aria-label="우리마을 사진관">
-          <button class="ps-btn" type="button" id="uiPrev" aria-label="이전 사진">‹</button>
-          <div class="ps-stage">
-            <img id="uiSlideImg" loading="lazy" class="ps-img" alt="우리마을 사진" />
-            <div class="ps-meta">
-              <span id="uiSlideIndex" class="ps-index">-</span>
-            </div>
-          </div>
-          <button class="ps-btn" type="button" id="uiNext" aria-label="다음 사진">›</button>
-        </div>
-        <div class="help small" id="uiSlideHelp" style="margin-top:10px;"></div>
-      </div>
-    </section>
-
+    <!-- 공지사항 -->
     <section class="section">
       <div class="section-h">
         <h2 class="section-title">공지사항</h2>
       </div>
-
       <div class="panel notice-panel">
         <ol class="notice-list" id="noticeList"></ol>
         <div class="help small">
@@ -230,6 +108,78 @@
         </div>
       </div>
     </section>
+
+    <!-- 가맹점 리스트 -->
+    <section class="section" id="merchantListSection">
+      <div class="section-h">
+        <h2 class="section-title">가맹점 리스트</h2>
+        <div class="section-tools">
+          <a class="btn btn--primary" href="/family-register.html">가맹점 등록</a>
+        </div>
+      </div>
+      <div id="merchantListState" class="help small" style="margin:4px 0 10px;"></div>
+      <div id="merchantListGrid" class="merchant-grid"></div>
+    </section>
+
+    <!-- 우리마을 지도 -->
+    <section class="section" id="village-map">
+      <div class="section-h">
+        <h2 class="section-title">우리마을 지도</h2>
+        <a class="btn btn--ghost btn--sm" id="btnAdminPlace" href="/admin_places.html" style="display:none;">장소 등록 (관리자)</a>
+      </div>
+      <div class="panel">
+        <p class="help small" style="margin-bottom:10px;">우리마을 지도에 홈스테이, 식당, 병원, 놀거리를 표시합니다.</p>
+        <div id="villageMap" style="width:100%;height:420px;border-radius:10px;background:#f3f4f6;"></div>
+      </div>
+    </section>
+
+    <!-- 홈스테이 & 놀거리 -->
+    <section class="section" id="home-homestay-photos">
+      <div class="section-h">
+        <h2 class="section-title">우리마을 홈스테이</h2>
+        <a class="btn btn--ghost btn--sm" href="/homestay.html">전체 보기</a>
+      </div>
+      <div class="photo-grid-4">
+        <a class="photo-tile-4" href="/homestay.html"><img loading="lazy" src="/assets/images/homestay/1.png" alt="홈스테이"></a>
+        <a class="photo-tile-4" href="/homestay.html"><img loading="lazy" src="/assets/images/homestay/3.png" alt="홈스테이"></a>
+        <a class="photo-tile-4" href="/homestay.html"><img loading="lazy" src="/assets/images/homestay/9.png" alt="홈스테이"></a>
+        <a class="photo-tile-4" href="/homestay.html"><img loading="lazy" src="/assets/images/homestay/10.png" alt="홈스테이"></a>
+      </div>
+    </section>
+
+    <section class="section" id="home-what-photos">
+      <div class="section-h">
+        <h2 class="section-title">우리마을 놀거리</h2>
+        <a class="btn btn--ghost btn--sm" href="/what.html">전체 보기</a>
+      </div>
+      <div class="photo-grid-4">
+        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/1.png" alt="놀거리"></a>
+        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/2.png" alt="놀거리"></a>
+        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/3.png" alt="놀거리"></a>
+        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/4.png" alt="놀거리"></a>
+      </div>
+    </section>
+
+    <!-- 바로가기 -->
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">바로가기</h2>
+      </div>
+      <div class="shortcut-row">
+        <a class="shortcut-card" href="/mypage.html">
+          <span class="shortcut-icon">👛</span>
+          <span class="shortcut-label">여행자 지갑</span>
+          <span class="shortcut-sub">HEX 잔고 · 결제 · QR 스캔</span>
+        </a>
+        <a class="shortcut-card" href="/exchange.html">
+          <span class="shortcut-icon">🪙</span>
+          <span class="shortcut-label">점프토큰 거래소</span>
+          <span class="shortcut-sub">JUMP 구매 · 판매 · 스테이킹</span>
+        </a>
+      </div>
+    </section>
+
+  </main>
 
   <!-- 가맹점 상품 모달 -->
   <div id="merchantProductsModal" class="mp-modal" style="display:none;" aria-modal="true" role="dialog">
@@ -243,8 +193,6 @@
       <div id="mpModalGrid" class="mp-product-grid"></div>
     </div>
   </div>
-
-  </main>
 
   <div id="siteFooter"></div>
 
