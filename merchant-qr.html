@@ -141,6 +141,11 @@
                 required
               />
               <div class="help" id="qrAmountHelp">최소 1,000원 이상 입력해 주세요.</div>
+              <!-- VND 입력 시 KRW 환산 표시 -->
+              <div id="qrAmountConvert" style="display:none; margin-top:6px; padding:6px 10px;
+                   background:var(--surface,#f9fafb); border-radius:8px; font-size:0.85rem; color:var(--muted,#6b7280);">
+                ≈ <span id="qrAmountKrw">-</span>원 (KRW)
+              </div>
             </label>
 
             <button class="btn" type="submit" id="btnGenQr" style="width:100%; margin-top:4px;">

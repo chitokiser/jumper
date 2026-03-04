@@ -44,6 +44,17 @@ if (!merchantId || !Number.isInteger(merchantId) || merchantId <= 0 ||
 const amountKrw = isVnd ? 0 : amount;
 const amountVnd = isVnd ? amount : undefined;
 
+// ── 환율 (표시 전용) ──────────────────────────────────
+async function fetchRates() {
+  try {
+    const r = await fetch("https://open.er-api.com/v6/latest/USD");
+    const d = await r.json();
+    if (d.result === "success" && d.rates?.KRW && d.rates?.VND)
+      return { krwPerUsd: d.rates.KRW, vndPerUsd: d.rates.VND };
+  } catch (_) {}
+  return { krwPerUsd: 1350, vndPerUsd: 25400 };
+}
+
 // ── 가맹점 정보 로드 ──────────────────────────────────
 let merchantName = "";
 
@@ -63,12 +74,22 @@ async function loadMerchant() {
   merchantName = data.name || "가맹점";
   document.title = `${merchantName} 결제 확인 | Jovial Travel`;
 
-  const amountStr = isVnd
+  let amountStr = isVnd
     ? `${amount.toLocaleString()}동 (VND)`
     : `${amount.toLocaleString()}원 (KRW)`;
   ["payMerchantNameLogin", "payMerchantNameReg", "payMerchantName"].forEach((id) => setText(id, merchantName));
   ["payAmountLogin",       "payAmountReg",       "payAmountDisp"].forEach((id)   => setText(id, amountStr));
   setText("payHeroDesc", `${merchantName} — ${amountStr}`);
+
+  // VND인 경우 KRW 환산 표시
+  if (isVnd) {
+    fetchRates().then((rates) => {
+      const krw = Math.round((amount / rates.vndPerUsd) * rates.krwPerUsd).toLocaleString();
+      const withKrw = `${amount.toLocaleString()}동 ≈ ${krw}원`;
+      ["payAmountLogin", "payAmountReg", "payAmountDisp"].forEach((id) => setText(id, withKrw));
+      setText("payHeroDesc", `${merchantName} — ${withKrw}`);
+    });
+  }
 }
 
 // ── 인증 처리 ─────────────────────────────────────────

@@ -22,6 +22,27 @@ function show(id, on) {
   if (el) el.style.display = on ? "" : "none";
 }
 
+// ── 환율 (표시 전용) ──────────────────────────────────
+let _rates = null; // { krwPerUsd, vndPerUsd }
+
+async function loadRates() {
+  if (_rates) return _rates;
+  try {
+    const r = await fetch("https://open.er-api.com/v6/latest/USD");
+    const d = await r.json();
+    if (d.result === "success" && d.rates?.KRW && d.rates?.VND) {
+      _rates = { krwPerUsd: d.rates.KRW, vndPerUsd: d.rates.VND };
+      return _rates;
+    }
+  } catch (_) {}
+  _rates = { krwPerUsd: 1350, vndPerUsd: 25400 }; // 기본값 fallback
+  return _rates;
+}
+
+function vndToKrw(vnd, rates) {
+  return Math.round((vnd / rates.vndPerUsd) * rates.krwPerUsd);
+}
+
 function setText(id, val) {
   const el = $(id);
   if (el) el.textContent = val != null ? String(val) : "-";
@@ -88,6 +109,25 @@ function bindQrForm(merchantId, merchantName) {
   const form = $("qrForm");
   if (!form) return;
 
+  // 환산 표시 업데이트 함수
+  async function updateConvert() {
+    const isVnd   = form.querySelector("input[name='qrCurrency']:checked")?.value === "VND";
+    const inputEl = $("qrAmount");
+    const convEl  = $("qrAmountConvert");
+    const krwEl   = $("qrAmountKrw");
+    if (!convEl || !krwEl) return;
+
+    if (!isVnd) { convEl.style.display = "none"; return; }
+
+    const val = Number(inputEl?.value);
+    if (!val || val <= 0) { convEl.style.display = "none"; return; }
+
+    convEl.style.display = "";
+    krwEl.textContent = "계산 중...";
+    const rates = await loadRates();
+    krwEl.textContent = vndToKrw(val, rates).toLocaleString();
+  }
+
   // 통화 전환 시 레이블/플레이스홀더 업데이트
   form.querySelectorAll("input[name='qrCurrency']").forEach((radio) => {
     radio.addEventListener("change", () => {
@@ -103,8 +143,12 @@ function bindQrForm(merchantId, merchantName) {
         inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
         inputEl.value       = "";
       }
+      updateConvert();
     });
   });
+
+  // 금액 입력 시 환산 표시
+  $("qrAmount")?.addEventListener("input", updateConvert);
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
