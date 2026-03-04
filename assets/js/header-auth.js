@@ -25,7 +25,7 @@ function applyRoleToMenu(role){
       role === "admin"    ? "관리자" :
       role === "guide"    ? "조합원" :
       role === "merchant" ? "가맹점" :
-      role === "user"     ? "일반" :
+      role === "user"     ? "비회원" :
       "게스트";
     badge.textContent = text;
     show(badge, role !== "guest");
@@ -201,7 +201,55 @@ async function bindHeader(){
     show(btnLogout, loggedIn);
     applyRoleToMenu(role || (loggedIn ? "user" : "guest"));
     applyUserBadge(loggedIn ? profile : null);
+
+    if(loggedIn && role === "user"){
+      showRegisterNotice();
+    }
   });
+}
+
+function showRegisterNotice(){
+  // register.html 자체에서는 표시 안 함
+  if(location.pathname.includes("register")) return;
+  // 이미 표시 중이면 중복 생성 방지
+  if(document.getElementById("registerNotice")) return;
+
+  const bar = document.createElement("div");
+  bar.id = "registerNotice";
+  bar.style.cssText = [
+    "background:#ede9fe",
+    "border-bottom:2px solid #c4b5fd",
+    "padding:10px 16px",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "gap:12px",
+    "font-size:0.88rem",
+    "position:sticky",
+    "top:0",
+    "z-index:998",
+    "flex-wrap:wrap",
+  ].join(";");
+
+  bar.innerHTML = `
+    <span style="color:#4c1d95;">구글 로그인은 됐지만 아직 <strong>회원가입</strong>이 완료되지 않았습니다.</span>
+    <a href="/register.html"
+       style="background:#7c3aed;color:#fff;border-radius:6px;padding:5px 16px;
+              text-decoration:none;font-weight:600;white-space:nowrap;font-size:0.85rem;">
+      회원가입 하기 →
+    </a>
+    <button type="button"
+            onclick="document.getElementById('registerNotice').remove()"
+            style="background:none;border:none;cursor:pointer;font-size:1.1rem;
+                   color:#7c3aed;padding:0 4px;line-height:1;" aria-label="닫기">✕</button>
+  `;
+
+  const header = document.getElementById("siteHeader");
+  if(header && header.nextSibling){
+    header.parentNode.insertBefore(bar, header.nextSibling);
+  } else {
+    document.body.prepend(bar);
+  }
 }
 
 // partials가 붙은 뒤에 바인딩

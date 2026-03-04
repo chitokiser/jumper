@@ -147,8 +147,16 @@ onAuthReady(async ({ loggedIn, role, user })=>{
   $("pCategory").value = data.category || "";
   $("pRegion").value = data.region || data.location || "";
   $("pPrice").value = (data.price ?? "") === null ? "" : String(data.price ?? "");
-  $("pCurrency").value = data.currency || "KRW";
+  if ($("pCurrency")) $("pCurrency").value = data.currency || "KRW";
   $("pDesc").value = data.desc || "";
+
+  // 관리자 전용: 상태 선택 필드 활성화
+  if (role === "admin") {
+    const statusBox = $("pStatusBox");
+    const statusSel = $("pStatus");
+    if (statusBox) statusBox.style.display = "";
+    if (statusSel) statusSel.value = data.status || "pending";
+  }
 
   // 예약 설정
   const booking = (data.booking && typeof data.booking === "object") ? data.booking : {};
@@ -200,6 +208,11 @@ onAuthReady(async ({ loggedIn, role, user })=>{
       const currency = v("pCurrency") || "KRW";
       const desc = v("pDesc");
 
+      // 관리자: 상태 직접 설정 가능
+      const newStatus = (role === "admin" && $("pStatus"))
+        ? (v("pStatus") || data.status || "pending")
+        : ((role === "admin") ? (data.status || "pending") : "pending");
+
       // 예약 설정
       const bookMode = v("pBookMode") || "date_single";
       const weekdays = readWeekdays();
@@ -250,8 +263,7 @@ onAuthReady(async ({ loggedIn, role, user })=>{
         images,
         imageUrl,
 
-        // 수정 시 재검수(가이드가 published 유지 불가)
-        status: (role === "admin") ? (data.status || "pending") : "pending",
+        status: newStatus,
 
         updatedAt: serverTimestamp(),
 
@@ -262,11 +274,13 @@ onAuthReady(async ({ loggedIn, role, user })=>{
         },
       });
 
-      setMsg("저장 완료: 검수 대기(pending)");
-      alert("저장되었습니다. (검수 대기)");
-      if(from === "admin"){
-        location.href = "/admin.html?tab=items&status=" + encodeURIComponent(String((data.status || "pending")));
-      }else{
+      if (role === "admin") {
+        setMsg(`저장 완료 (상태: ${newStatus})`);
+        alert(`저장되었습니다.\n상태: ${newStatus}`);
+        location.href = "/admin.html?tab=items&status=" + encodeURIComponent(newStatus);
+      } else {
+        setMsg("저장 완료: 검수 대기(pending)");
+        alert("저장되었습니다. (검수 대기)");
         location.href = "./my_products.html?updated=" + encodeURIComponent(id);
       }
     }catch(err){
