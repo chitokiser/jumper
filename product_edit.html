@@ -173,6 +173,18 @@
                 </div>
               </div>
 
+              <!-- 관리자 전용: 상태 직접 변경 -->
+              <div class="field" id="pStatusBox" style="display:none;">
+                <span class="label">상태 <small style="color:var(--danger,#e53e3e);">(관리자 전용)</small></span>
+                <select class="select" id="pStatus">
+                  <option value="pending">pending — 검수 대기</option>
+                  <option value="published">published — 공개</option>
+                  <option value="approved">approved — 승인</option>
+                  <option value="draft">draft — 임시저장</option>
+                  <option value="rejected">rejected — 거절</option>
+                </select>
+              </div>
+
               <div class="sticky-bar">
                 <button class="btn" type="submit" id="btnSave">저장</button>
                 <span class="muted" id="saveMsg"></span>

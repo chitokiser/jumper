@@ -1,0 +1,136 @@
+<!-- /pay.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>결제 확인 | Jovial Travel</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+
+  <style>
+    .pay-card {
+      background: var(--surface, #f9fafb);
+      border: 2px solid var(--accent, #7c3aed);
+      border-radius: 16px;
+      padding: 28px 24px;
+      max-width: 400px;
+      margin: 0 auto 20px;
+      text-align: center;
+    }
+    .pay-merchant {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .pay-amount {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent, #7c3aed);
+      margin: 8px 0 4px;
+    }
+    .pay-amount-sub {
+      font-size: 0.85rem;
+      color: var(--muted, #6b7280);
+    }
+    .btn-pay {
+      width: 100%;
+      font-size: 1.1rem;
+      padding: 14px;
+      margin-top: 20px;
+      border-radius: 12px;
+    }
+    .pay-result {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .pay-result .mp-kv {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border, #e5e7eb);
+      font-size: 0.9rem;
+    }
+    .pay-result .mp-kv:last-child { border-bottom: none; }
+    .pay-result .k { color: var(--muted, #6b7280); }
+    .pay-result .v { font-weight: 600; word-break: break-all; text-align: right; max-width: 70%; }
+  </style>
+</head>
+
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-inner">
+        <h1 class="hero-title">결제 확인</h1>
+        <p class="hero-desc" id="payHeroDesc">가맹점 QR 결제</p>
+      </div>
+    </section>
+
+    <section class="panel" style="max-width:480px; margin:0 auto;">
+      <div class="panel-body">
+
+        <!-- 잘못된 링크 -->
+        <div id="invalidPanel" style="display:none;">
+          <p class="hint" style="color:var(--danger,#e53e3e);">잘못된 결제 링크입니다.</p>
+          <a class="btn btn--ghost" href="/index.html">홈으로</a>
+        </div>
+
+        <!-- 비로그인 -->
+        <div id="needLoginPanel" style="display:none;">
+          <div class="pay-card">
+            <div class="pay-merchant" id="payMerchantNameLogin">-</div>
+            <div class="pay-amount" id="payAmountLogin">-</div>
+            <div class="pay-amount-sub">결제하려면 로그인이 필요합니다.</div>
+          </div>
+          <button class="btn btn-pay" id="btnLogin" type="button">구글 로그인 후 결제</button>
+        </div>
+
+        <!-- 미등록 회원 -->
+        <div id="needRegisterPanel" style="display:none;">
+          <div class="pay-card">
+            <div class="pay-merchant" id="payMerchantNameReg">-</div>
+            <div class="pay-amount" id="payAmountReg">-</div>
+            <div class="pay-amount-sub">결제하려면 회원가입이 필요합니다.</div>
+          </div>
+          <a class="btn btn-pay" href="/register.html">회원가입 하기 →</a>
+        </div>
+
+        <!-- 결제 패널 -->
+        <div id="payPanel" style="display:none;">
+          <div class="pay-card">
+            <div class="pay-merchant" id="payMerchantName">-</div>
+            <div class="pay-amount" id="payAmountDisp">-</div>
+            <div class="pay-amount-sub">수탁 지갑 HEX로 결제됩니다.</div>
+          </div>
+
+          <button class="btn btn-pay" id="btnPay" type="button">결제하기</button>
+
+          <!-- 처리 중 -->
+          <p class="hint" id="payState" style="text-align:center; margin-top:12px; display:none;"></p>
+        </div>
+
+        <!-- 결제 완료 -->
+        <div id="donePanel" style="display:none;">
+          <p style="text-align:center; font-size:1.5rem; margin-bottom:16px;">✅</p>
+          <p style="text-align:center; font-weight:700; font-size:1.1rem; margin-bottom:20px; color:var(--accent,#7c3aed);">결제 완료!</p>
+          <div class="pay-result" id="payResult"></div>
+          <a class="btn btn--ghost" href="/index.html" style="display:block; text-align:center; margin-top:20px;">홈으로</a>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/pages/pay.js"></script>
+</body>
+</html>

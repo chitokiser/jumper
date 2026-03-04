@@ -6,7 +6,13 @@ import {
   login,
   logout,
   watchAuth,
+  db,
 } from "./auth.js";
+
+import {
+  doc,
+  getDoc,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 function isInAppBrowser(){
   const ua = (navigator.userAgent || "").toLowerCase();
@@ -202,10 +208,28 @@ async function bindHeader(){
     applyRoleToMenu(role || (loggedIn ? "user" : "guest"));
     applyUserBadge(loggedIn ? profile : null);
 
-    if(loggedIn && role === "user"){
-      showRegisterNotice();
+    if(loggedIn && role === "user" && profile?.uid){
+      checkRegistration(profile.uid);
     }
   });
+}
+
+// users/{uid}.name 존재 여부로 회원가입 완료 여부 판정
+// 완료 → 배지 "일반" + 안내 숨김 / 미완료 → 배지 "비회원" + 안내 표시
+async function checkRegistration(uid){
+  try{
+    const snap = await getDoc(doc(db, "users", uid));
+    if(snap.exists() && snap.data()?.name){
+      // 등록 완료 회원: 배지 텍스트를 "일반"으로 교정
+      const badge = document.getElementById("roleBadge");
+      if(badge) badge.textContent = "일반";
+      return; // 회원가입 안내 불필요
+    }
+  }catch(e){
+    console.warn("checkRegistration:", e?.message || e);
+  }
+  // 미등록(name 없음) → 안내 표시
+  showRegisterNotice();
 }
 
 function showRegisterNotice(){
