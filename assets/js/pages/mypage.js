@@ -174,6 +174,21 @@ async function loadOnChainData(uid) {
         setText("walletHexDisplay", fmtBalance(d.walletHexKrw, d.walletHexUsd, d.walletHexVnd, d.walletHexDisplay));
       }
 
+      // 보유 JUMP 토큰 (getJumpBankStatus에서 jumpBalance 조회)
+      try {
+        const getJumpStatus = httpsCallable(functions, "getJumpBankStatus");
+        const jr = await getJumpStatus();
+        const jumpWei = BigInt(jr.data?.jumpBalance || "0");
+        if (jumpWei > 0n) {
+          const jumpAmt = Number(jumpWei) / 1e18;
+          const jumpDisp = jumpAmt >= 1
+            ? jumpAmt.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " JUMP"
+            : jumpAmt.toFixed(4) + " JUMP";
+          setText("walletJumpDisplay", jumpDisp);
+          show("walletJumpRow", true);
+        }
+      } catch (_) { /* JUMP 조회 실패 시 숨김 유지 */ }
+
       // 레벨 4 이상 → 개인 지갑 이체 섹션 표시
       if (d.level >= 4) {
         show("hexTransferSection", true);
