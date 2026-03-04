@@ -1,5 +1,5 @@
 // /assets/js/pages/family-register.js
-// 판매조합원 등록: 온체인 registerMerchant + Firestore 저장
+// 판매회원 등록: 온체인 registerMerchant + Firestore 저장
 
 import { watchAuth, login } from "../auth.js";
 import { app, auth, db, functions } from "/assets/js/firebase-init.js";
@@ -214,14 +214,14 @@ async function _initForUser(ctx) {
 
     // ③ 온체인 등록 미완료
     if (!userData?.onChain?.registered) {
-      setState("온체인 조합원 등록이 필요합니다.");
+      setState("온체인 회원 등록이 필요합니다.");
       show("needOnChainPanel", true);
       return;
     }
 
     // ④ 이미 판매자 등록됨
     if (userData?.merchantId != null) {
-      setState("이미 판매조합원으로 등록되어 있습니다.");
+      setState("이미 판매회원으로 등록되어 있습니다.");
       showAlreadyMerchant(userData.merchantId);
       initMentorLink(user.email);
       return;

@@ -190,6 +190,20 @@ function setStatus(id, msg, isErr = false) {
 function bindBuy() {
   const btn = $('btnBuy');
   if (!btn) return;
+
+  $('inputBuyAmount')?.addEventListener('input', () => {
+    const previewEl = $('buyPreview');
+    if (!previewEl) return;
+    const amount = parseInt($('inputBuyAmount')?.value, 10);
+    if (!amount || amount <= 0 || !_status?.price) { previewEl.style.display = 'none'; return; }
+    const hexCost = BigInt(_status.price) * BigInt(amount);
+    const krwCost = amount * Number(_status.priceKrw || 0);
+    previewEl.innerHTML =
+      `필요 HEX: <strong>${fmtHex(hexCost.toString())}</strong>` +
+      (krwCost > 0 ? `<br>≈ <strong>${krwCost.toLocaleString()}</strong> 원` : '');
+    previewEl.style.display = '';
+  });
+
   btn.onclick = async () => {
     const amount = parseInt($('inputBuyAmount')?.value, 10);
     if (!amount || amount <= 0) { alert('구매 수량을 입력하세요'); return; }

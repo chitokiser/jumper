@@ -457,13 +457,13 @@ async function requestLevelUp(uid, masterSecret) {
 }
 
 // ────────────────────────────────────────────────
-// 가맹점(판매자조합원) 온체인 등록
+// 가맹점(판매회원) 온체인 등록
 // ────────────────────────────────────────────────
 
 /**
  * registerMerchantOnChain
  * 유저의 수탁 지갑으로 jumpPlatform.registerMerchant(metadataURI) 서명 + 전송
- * - onlyMember: 온체인 조합원(level > 0) 이어야 함
+ * - onlyMember: 온체인 회원(level > 0) 이어야 함
  * - 초기 feeBps = 0 → 관리자가 이후 adminUpdateMerchantFee(id, 1000) 으로 10% 설정
  *
  * @param {string} uid           - Firebase Auth UID
@@ -481,7 +481,7 @@ async function registerMerchantOnChain(uid, metadataURI, merchantData, masterSec
   const provider = getProvider();
   const platform  = getPlatformContract(provider);
   const [level, , , , blocked] = await platform.members(walletData.address);
-  if (Number(level) === 0) throw new Error('온체인 조합원 등록이 필요합니다. 마이페이지에서 먼저 온체인 등록을 완료해 주세요.');
+  if (Number(level) === 0) throw new Error('온체인 회원 등록이 필요합니다. 마이페이지에서 먼저 온체인 등록을 완료해 주세요.');
   if (blocked) throw new Error('차단된 계정입니다. 관리자에게 문의하세요.');
 
   // 수탁 지갑으로 registerMerchant 호출

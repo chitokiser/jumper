@@ -178,14 +178,15 @@ async function loadOnChainData(uid) {
       try {
         const getJumpStatus = httpsCallable(functions, "getJumpBankStatus");
         const jr = await getJumpStatus();
-        const jumpWei = BigInt(jr.data?.jumpBalance || "0");
-        if (jumpWei > 0n) {
-          const jumpAmt = Number(jumpWei) / 1e18;
-          const jumpDisp = jumpAmt >= 1
-            ? jumpAmt.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " JUMP"
-            : jumpAmt.toFixed(4) + " JUMP";
-          setText("walletJumpDisplay", jumpDisp);
+        const jumpRaw   = BigInt(jr.data?.jumpBalance || "0");
+        const stakedRaw = BigInt(jr.data?.staked      || "0");
+        if (jumpRaw > 0n) {
+          setText("walletJumpDisplay", Number(jumpRaw).toLocaleString("ko-KR") + " JUMP");
           show("walletJumpRow", true);
+        }
+        if (stakedRaw > 0n) {
+          setText("walletJumpStakedDisplay", Number(stakedRaw).toLocaleString("ko-KR") + " JUMP");
+          show("walletJumpStakedRow", true);
         }
       } catch (_) { /* JUMP 조회 실패 시 숨김 유지 */ }
 

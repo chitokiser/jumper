@@ -33,6 +33,7 @@ const onboarding             = require('./handlers/onboarding');
 const depositH               = require('./handlers/deposit');
 const txH                    = require('./handlers/transaction');
 const exchangeH              = require('./handlers/exchange');
+const coopH                  = require('./handlers/coop');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ exports.adminSelfOnboard = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 2. 온체인 조합원 가입
+// 2. 온체인 회원 가입
 //    클라이언트: httpsCallable(functions, 'registerMember')({ mentorAddress: '0x...' })
 //    mentorAddress 필수 — 없으면 에러
 // ════════════════════════════════════════════════════════════════════════════
@@ -350,7 +351,7 @@ exports.mergeWalletHexToPoints = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 16. 판매자조합원 온체인 등록
+// 16. 판매회원 온체인 등록
 //     - 수탁 지갑으로 jumpPlatform.registerMerchant(metadataURI) 호출 (onlyMember)
 //     - 초기 feeBps=0 → 관리자가 adminUpdateMerchantFee(id, 1000) 으로 10% 설정
 //     클라이언트: httpsCallable(functions, 'registerMerchant')({ name, description, phone, kakaoId, region, career })
@@ -660,4 +661,53 @@ exports.aggregateItemReviews = onDocumentWritten(
 
     logger.info('aggregateItemReviews updated', { itemId, bRating, aRating });
   }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 조합전용몰
+// ════════════════════════════════════════════════════════════════════════════
+
+exports.listCoopProducts = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return coopH.listCoopProducts(uid);
+  })
+);
+
+exports.buyCoopProduct = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { productId } = request.data ?? {};
+    if (!productId) throw new HttpsError('invalid-argument', 'productId가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await coopH.buyCoopProduct(uid, { productId }, walletSecret.value());
+    logger.info('buyCoopProduct', { uid, productId, txHash: result.txHash });
+    return result;
+  })
+);
+
+exports.adminSetCoopConfig = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return coopH.adminSetCoopConfig(uid, request.data ?? {});
+  })
+);
+
+exports.adminSaveCoopProduct = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return coopH.adminSaveCoopProduct(uid, request.data ?? {});
+  })
+);
+
+exports.adminDeleteCoopProduct = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return coopH.adminDeleteCoopProduct(uid, request.data ?? {});
+  })
 );

@@ -44,7 +44,7 @@
   .section-tools  { width: 100%; justify-content: flex-start; }
 }
 
-/* ── 우리마을 조합원 덱 ── */
+/* ── 우리마을 회원 덱 ── */
 .family-deck { position: relative; padding-top: 4px; }
 
 .family-deck-grid {
@@ -67,7 +67,7 @@
 .ph-title { font-size: 16px; font-weight: 700; margin: 0 0 8px; color: var(--text); }
 .ph-desc  { margin: 0; color: var(--muted); line-height: 1.50; font-size: 14px; }
 
-/* ── 조합원 카드 테마 (Stay / Play / Must-Go) ── */
+/* ── 회원 카드 테마 (Stay / Play / Must-Go) ── */
 .family-card {
   position: relative;
   overflow: hidden;
@@ -105,7 +105,7 @@
 .family-card .ph-title { font-size: 17px; margin-bottom: 6px; }
 .family-card .ph-desc  { font-size: 14px; max-width: 42ch; }
 
-/* 조합원 칩 */
+/* 회원 칩 */
 .family-chip {
   display: inline-block;
   margin-top: 12px;

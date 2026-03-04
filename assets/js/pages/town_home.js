@@ -626,7 +626,50 @@ function openMerchantProductModal(ownerUid, merchantName) {
 }
 
 /* =====================
-   7) 부팅
+   7) 조합전용몰 상품 미리보기
+===================== */
+function renderCoopCard(p) {
+  const imgHtml = p.imageUrl
+    ? `<img class="mp-product-thumb" src="${escHtml(p.imageUrl)}" alt="${escHtml(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+       <div class="mp-product-thumb-ph" style="display:none;">🛍️</div>`
+    : `<div class="mp-product-thumb-ph">🛍️</div>`;
+  const typeBadge = p.type === 'voucher'
+    ? `<span style="font-size:0.7rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">바우처</span>`
+    : `<span style="font-size:0.7rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">일반상품</span>`;
+  return `
+    <a class="mp-product-card" href="/coop.html">
+      ${imgHtml}
+      <div class="mp-product-body">
+        ${typeBadge}
+        <div class="mp-product-title">${escHtml(p.name)}</div>
+        <div class="mp-product-price">${(p.price || 0).toLocaleString()} 원</div>
+      </div>
+    </a>`;
+}
+
+async function loadCoopProducts() {
+  const grid = $("coopProductsGrid");
+  if (!grid) return;
+  try {
+    const snap = await getDocs(query(collection(db, "coopProducts"), where("active", "==", true)));
+    const list = [];
+    snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+    list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    if (!list.length) {
+      const sec = $("coopProductsSection");
+      if (sec) sec.style.display = "none";
+      return;
+    }
+    grid.innerHTML = list.map(renderCoopCard).join("");
+  } catch (e) {
+    console.warn("loadCoopProducts failed:", e);
+    const sec = $("coopProductsSection");
+    if (sec) sec.style.display = "none";
+  }
+}
+
+/* =====================
+   8) 부팅
 ===================== */
 onAuthStateChanged(auth, async (user) => {
   const admin = await isAdmin(user?.uid);
@@ -635,5 +678,6 @@ onAuthStateChanged(auth, async (user) => {
 
 loadNotices();
 loadMerchants();
+loadCoopProducts();
 initUISlider();
 loadPlacesMap();

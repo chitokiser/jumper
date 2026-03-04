@@ -1,0 +1,175 @@
+<!-- /coop.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>조합전용몰</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+
+  <style>
+    /* 상품 그리드 */
+    .coop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 8px;
+    }
+    .coop-card {
+      background: var(--surface, #fff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: box-shadow .15s;
+    }
+    .coop-card:hover { box-shadow: 0 2px 16px rgba(0,0,0,.1); }
+    .coop-card-img {
+      width: 100%; aspect-ratio: 4/3; object-fit: cover;
+      background: var(--surface2, #f3f4f6);
+      display: block;
+    }
+    .coop-card-img-ph {
+      width: 100%; aspect-ratio: 4/3;
+      background: var(--surface2, #f3f4f6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.5rem; color: var(--muted, #9ca3af);
+    }
+    .coop-card-body {
+      padding: 14px 16px 16px;
+      display: flex; flex-direction: column; gap: 6px; flex: 1;
+    }
+    .coop-card-name  { font-weight: 700; font-size: 1rem; }
+    .coop-card-desc  { font-size: 0.83rem; color: var(--text2, #374151); line-height: 1.5;
+                       display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
+                       -webkit-box-orient: vertical; overflow: hidden; }
+    .coop-card-price { font-size: 1rem; font-weight: 700; color: var(--accent, #7c3aed); margin-top: auto; }
+    .coop-card-stock { font-size: 0.75rem; color: var(--muted, #9ca3af); }
+    .coop-card-stock.out { color: #e53e3e; font-weight: 600; }
+    .coop-btn-buy {
+      margin-top: 10px; width: 100%; padding: 10px;
+      background: var(--accent, #7c3aed); color: #fff; border: none;
+      border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      transition: background .15s;
+    }
+    .coop-btn-buy:hover:not(:disabled) { background: #6d28d9; }
+    .coop-btn-buy:disabled { background: #c4b5fd; cursor: not-allowed; }
+
+    /* 접근불가 패널 */
+    .coop-denied {
+      text-align: center; padding: 40px 24px;
+      background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb);
+      border-radius: 14px;
+    }
+    .coop-denied-icon { font-size: 3rem; margin-bottom: 12px; }
+    .coop-denied-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; }
+    .coop-denied-sub { font-size: 0.9rem; color: var(--muted, #6b7280); }
+    .coop-stake-bar {
+      margin: 16px auto; max-width: 280px; height: 8px;
+      background: #e5e7eb; border-radius: 99px; overflow: hidden;
+    }
+    .coop-stake-fill {
+      height: 100%; background: var(--accent, #7c3aed); border-radius: 99px;
+      transition: width .4s ease;
+    }
+
+    /* 완료 모달 */
+    .coop-modal { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .coop-modal-bd { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
+    .coop-modal-box {
+      position: relative; background: #fff; border-radius: 16px;
+      padding: 32px 28px; width: min(420px, 94vw); text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,.2);
+    }
+    .coop-modal-icon { font-size: 3rem; margin-bottom: 8px; }
+    .coop-modal-title { font-weight: 700; font-size: 1.15rem; color: var(--accent, #7c3aed); margin-bottom: 16px; }
+    .coop-modal-kv { display: flex; justify-content: space-between; padding: 6px 0;
+                     border-bottom: 1px solid #f0f0f0; font-size: 0.88rem; }
+    .coop-modal-kv:last-of-type { border-bottom: none; }
+    .coop-modal-kv .k { color: var(--muted, #6b7280); }
+    .coop-modal-kv .v { font-weight: 600; word-break: break-all; text-align: right; max-width: 65%; }
+    .coop-badge {
+      display: inline-block; font-size: 0.75rem; font-weight: 700;
+      background: #ede9fe; color: #7c3aed; border-radius: 99px; padding: 2px 10px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-inner">
+        <h1 class="hero-title">조합전용몰</h1>
+        <p class="hero-desc">JUMP 스테이킹 회원 전용 쇼핑몰</p>
+      </div>
+    </section>
+
+    <section class="section">
+
+      <!-- 로딩 -->
+      <div id="coopLoading" class="help small" style="text-align:center; padding:24px 0;">로딩 중...</div>
+
+      <!-- 비로그인 -->
+      <div id="coopNeedLogin" style="display:none;">
+        <div class="coop-denied">
+          <div class="coop-denied-icon">🔒</div>
+          <div class="coop-denied-title">로그인이 필요합니다</div>
+          <div class="coop-denied-sub">조합전용몰을 이용하려면 로그인 후 JUMP 토큰을 스테이킹하세요.</div>
+        </div>
+      </div>
+
+      <!-- 접근불가 (스테이킹 부족) -->
+      <div id="coopDenied" style="display:none;">
+        <div class="coop-denied">
+          <div class="coop-denied-icon">🏦</div>
+          <div class="coop-badge" id="coopDeniedBadge">회원 전용</div>
+          <div class="coop-denied-title">스테이킹 조건을 충족하지 못했습니다</div>
+          <div class="coop-denied-sub" id="coopDeniedSub">최소 10,000 JUMP 스테이킹 필요</div>
+          <div class="coop-stake-bar">
+            <div class="coop-stake-fill" id="coopStakeFill" style="width:0%"></div>
+          </div>
+          <div class="coop-denied-sub" id="coopDeniedProgress" style="margin-top:4px;"></div>
+          <a class="btn btn--primary" href="/exchange.html" style="display:inline-block; margin-top:20px;">JUMP 스테이킹하러 가기 →</a>
+        </div>
+      </div>
+
+      <!-- 상품 그리드 -->
+      <div id="coopMain" style="display:none;">
+        <div class="section-h" style="margin-bottom:12px;">
+          <span class="coop-badge" id="coopAccessBadge">회원 인증됨</span>
+        </div>
+        <div id="coopGrid" class="coop-grid"></div>
+        <div id="coopEmpty" class="help small" style="display:none; text-align:center; padding:32px 0;">
+          등록된 상품이 없습니다.
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- 구매 완료 모달 -->
+  <div id="coopDoneModal" class="coop-modal" style="display:none;" aria-modal="true" role="dialog">
+    <div class="coop-modal-bd" id="coopModalBd"></div>
+    <div class="coop-modal-box">
+      <div class="coop-modal-icon">✅</div>
+      <div class="coop-modal-title">구매 완료!</div>
+      <div id="coopDoneKvs"></div>
+      <button class="btn btn--primary" id="coopModalClose" type="button" style="margin-top:20px; width:100%;">확인</button>
+    </div>
+  </div>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/pages/coop.js"></script>
+</body>
+</html>

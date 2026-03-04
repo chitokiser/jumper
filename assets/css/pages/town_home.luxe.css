@@ -127,7 +127,7 @@
   border-color: rgba(15,23,42,.10);
 }
 
-/* 조합원 카드도 더 고급스럽게 */
+/* 회원 카드도 더 고급스럽게 */
 .family-placeholder .ph-card{
   background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.70));
   border: 1px solid var(--lux-line2);

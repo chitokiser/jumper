@@ -1,4 +1,4 @@
-// coop-mall.js: 조합 폐쇄몰 메인 로직 (조합원 인증, 상품목록, HEX 결제)
+// coop-mall.js: 조합 폐쇄몰 메인 로직 (회원 인증, 상품목록, HEX 결제)
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
@@ -8,7 +8,7 @@ const functions = getFunctions();
 const coopMallNotice = document.getElementById("coopMallNotice");
 const coopMallProducts = document.getElementById("coopMallProducts");
 
-// 조합원 인증 (온체인 등록 여부)
+// 회원 인증 (온체인 등록 여부)
 async function checkCoopMember() {
   const user = auth.currentUser;
   if (!user) return false;
@@ -26,7 +26,7 @@ async function loadProducts() {
   // TODO: Firestore에서 상품 불러오기 구현 필요
   // 임시 더미 데이터
   return [
-    { id: "p1", name: "조합 한정 상품1", priceHex: "10", desc: "조합원만 구매 가능" },
+    { id: "p1", name: "조합 한정 상품1", priceHex: "10", desc: "회원만 구매 가능" },
     { id: "p2", name: "조합 한정 상품2", priceHex: "25", desc: "HEX로만 결제 가능" }
   ];
 }
@@ -67,7 +67,7 @@ onAuthStateChanged(auth, async (user) => {
   const isMember = await checkCoopMember();
   if (!isMember) {
     coopMallNotice.style.display = "block";
-    coopMallNotice.textContent = "조합원만 접근 가능합니다.";
+    coopMallNotice.textContent = "회원만 접근 가능합니다.";
     coopMallProducts.innerHTML = "";
     return;
   }

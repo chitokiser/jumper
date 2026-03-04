@@ -29,7 +29,7 @@ function applyRoleToMenu(role){
   if(badge){
     const text =
       role === "admin"    ? "관리자" :
-      role === "guide"    ? "조합원" :
+      role === "guide"    ? "회원" :
       role === "merchant" ? "가맹점" :
       role === "user"     ? "비회원" :
       "게스트";
