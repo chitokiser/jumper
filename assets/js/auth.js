@@ -36,12 +36,9 @@ function isInAppBrowser(){
 }
 
 // 로그인 (팝업 우선, 실패 시 리다이렉트)
+// iOS Safari는 redirect 시 storage를 초기화해서 redirect 결과를 잃어버리는 경우가 많으므로
+// 모바일 포함 모든 환경에서 팝업을 먼저 시도하고, 팝업이 차단된 경우에만 redirect로 폴백합니다.
 export async function login(){
-  // 모바일/인앱브라우저에서는 팝업이 자주 막히거나(특히 iOS) 스토리지 제약으로 실패하는 경우가 많아서
-  // 처음부터 redirect를 쓰는 편이 안정적입니다.
-  const ua = navigator.userAgent || "";
-  const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini|Mobi/i.test(ua);
-
   // 카카오톡/인스타/페북 인앱 브라우저에서는 Google OAuth가 403(disallowed_useragent)로 차단될 수 있음
   if(isInAppBrowser()){
     const err = new Error("Google login blocked in in-app browser");
@@ -49,18 +46,17 @@ export async function login(){
     throw err;
   }
 
-  if(isMobile){
-    await signInWithRedirect(auth, googleProvider);
-    return;
-  }
   try{
     await signInWithPopup(auth, googleProvider);
   }catch(e){
     const code = e?.code || "";
+    // 사용자가 직접 팝업 창을 닫은 경우 → 재시도 안 함
+    if(code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request"){
+      return;
+    }
+    // 팝업이 차단된 경우(브라우저 정책) → redirect로 폴백
     const redirectLike =
-      code === "auth/popup-closed-by-user" ||
       code === "auth/popup-blocked" ||
-      code === "auth/cancelled-popup-request" ||
       code === "auth/unauthorized-domain" ||
       code === "auth/operation-not-supported-in-this-environment" ||
       code === "auth/web-storage-unsupported";
