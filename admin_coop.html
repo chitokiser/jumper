@@ -135,12 +135,16 @@
       <!-- 상품 목록 -->
       <section class="section">
         <div class="ac-section">
-          <div class="ac-section-title">상품 목록</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div class="ac-section-title" style="margin-bottom:0;">상품 목록</div>
+            <button class="ac-btn ac-btn-primary" id="btnCopySelected" type="button" style="display:none;font-size:0.82rem;padding:6px 14px;">선택 복사</button>
+          </div>
           <div id="productListState" class="ac-status" style="margin-bottom:8px;"></div>
           <div style="overflow-x:auto;">
             <table class="ac-table">
               <thead>
                 <tr>
+                  <th style="width:36px;text-align:center;"><input type="checkbox" id="chkAll" title="전체 선택" /></th>
                   <th>이미지</th>
                   <th>상품명</th>
                   <th>가격</th>

@@ -29,7 +29,6 @@ async function loadAndRender() {
     show('coopLoading', false);
 
     if (!hasAccess) {
-      // 접근 불가 패널
       const pct = minStake > 0 ? Math.min(100, Math.round((userStaked / minStake) * 100)) : 0;
       const subEl = $('coopDeniedSub');
       if (subEl) subEl.textContent = `최소 ${minStake.toLocaleString()} JUMP 스테이킹 필요`;
@@ -50,8 +49,8 @@ async function loadAndRender() {
       show('coopEmpty', true);
     } else {
       grid.innerHTML = products.map(p => renderCard(p)).join('');
-      grid.querySelectorAll('[data-buy]').forEach(btn => {
-        btn.addEventListener('click', () => handleBuy(btn.dataset.buy, products));
+      grid.querySelectorAll('[data-detail]').forEach(btn => {
+        btn.addEventListener('click', () => showDetailModal(btn.dataset.detail, products));
       });
     }
     show('coopMain', true);
@@ -85,8 +84,8 @@ function renderCard(p) {
         ${p.description ? `<div class="coop-card-desc">${escHtml(p.description)}</div>` : ''}
         <div class="coop-card-price">${p.price.toLocaleString()}원</div>
         ${stockTxt ? `<div class="coop-card-stock ${stockCls}">${stockTxt}</div>` : ''}
-        <button class="coop-btn-buy" data-buy="${p.id}" ${sold ? 'disabled' : ''}>
-          ${sold ? '품절' : '구매하기'}
+        <button class="coop-btn-buy" data-detail="${p.id}" ${sold ? 'disabled' : ''}>
+          ${sold ? '품절' : '상세보기'}
         </button>
       </div>
     </div>
@@ -95,6 +94,70 @@ function renderCard(p) {
 
 function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────────────────
+// 상품 상세 모달
+// ─────────────────────────────────────────────────────────
+function showDetailModal(productId, products) {
+  const p = products.find(x => x.id === productId);
+  if (!p) return;
+
+  const sold = p.stock === 0;
+
+  // 이미지
+  const imgEl = $('coopDetailImg');
+  if (imgEl) {
+    imgEl.innerHTML = p.imageUrl
+      ? `<img class="coop-detail-img" src="${escHtml(p.imageUrl)}" alt="${escHtml(p.name)}" loading="lazy" onerror="this.outerHTML='<div class=\\'coop-detail-img-ph\\'>🛍</div>'">`
+      : `<div class="coop-detail-img-ph">🛍</div>`;
+  }
+
+  // 배지
+  const badgeEl = $('coopDetailBadge');
+  if (badgeEl) {
+    badgeEl.innerHTML = p.type === 'voucher'
+      ? `<span style="font-size:0.75rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:2px 10px;display:inline-block;margin-bottom:6px;">바우처</span>`
+      : `<span style="font-size:0.75rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:2px 10px;display:inline-block;margin-bottom:6px;">일반상품</span>`;
+  }
+
+  const nameEl  = $('coopDetailName');
+  const descEl  = $('coopDetailDesc');
+  const priceEl = $('coopDetailPrice');
+  const stockEl = $('coopDetailStock');
+  const buyBtn  = $('coopDetailBuyBtn');
+
+  if (nameEl)  nameEl.textContent  = p.name || '';
+  if (descEl)  { descEl.textContent = p.description || ''; descEl.style.display = p.description ? '' : 'none'; }
+  if (priceEl) priceEl.textContent  = p.price.toLocaleString() + '원';
+
+  if (stockEl) {
+    const stockTxt = p.stock === -1 ? '' : sold ? '품절' : `재고 ${p.stock}개`;
+    stockEl.textContent = stockTxt;
+    stockEl.className = 'coop-detail-stock' + (sold ? ' out' : '');
+  }
+
+  if (buyBtn) {
+    buyBtn.disabled   = sold;
+    buyBtn.textContent = sold ? '품절' : '구매하기';
+    buyBtn.onclick    = () => handleBuy(productId, products);
+  }
+
+  // 닫기 핸들러
+  $('coopDetailBd').onclick    = closeDetailModal;
+  $('coopDetailClose').onclick = closeDetailModal;
+
+  // ESC 키
+  const onKey = (e) => {
+    if (e.key === 'Escape') { closeDetailModal(); window.removeEventListener('keydown', onKey); }
+  };
+  window.addEventListener('keydown', onKey);
+
+  show('coopDetailModal', true);
+}
+
+function closeDetailModal() {
+  show('coopDetailModal', false);
 }
 
 // ─────────────────────────────────────────────────────────
@@ -111,17 +174,17 @@ async function handleBuy(productId, products) {
     `구매하시겠습니까?`
   )) return;
 
-  const btn = document.querySelector(`[data-buy="${productId}"]`);
-  if (btn) { btn.disabled = true; btn.textContent = '처리 중...'; }
+  const buyBtn = $('coopDetailBuyBtn');
+  if (buyBtn) { buyBtn.disabled = true; buyBtn.textContent = '처리 중...'; }
 
   try {
     const fn  = httpsCallable(functions, 'buyCoopProduct');
     const res = await fn({ productId });
-    const d   = res.data;
-    showDoneModal(d);
+    closeDetailModal();
+    showDoneModal(res.data);
   } catch (err) {
     alert('구매 실패: ' + (err?.message || '서버 오류'));
-    if (btn) { btn.disabled = false; btn.textContent = '구매하기'; }
+    if (buyBtn) { buyBtn.disabled = false; buyBtn.textContent = '구매하기'; }
   }
 }
 
@@ -135,8 +198,7 @@ function showDoneModal(d) {
     `;
   }
   show('coopDoneModal', true);
-
-  $('coopModalBd').onclick  = closeModal;
+  $('coopModalBd').onclick    = closeModal;
   $('coopModalClose').onclick = closeModal;
 }
 

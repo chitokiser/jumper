@@ -1,9 +1,10 @@
 // /assets/js/pages/admin_coop.js
 // 조합전용몰 관리자 페이지
 
-import { auth, functions } from '../firebase-init.js';
+import { auth, db, functions } from '../firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable }      from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -52,18 +53,26 @@ function bindConfigSave() {
 }
 
 // ─────────────────────────────────────────────────────────
-// 상품 목록 로드
+// 상품 목록 로드 (활성/비활성 전체)
 // ─────────────────────────────────────────────────────────
 async function loadProducts() {
   setStatus('productListState', '로딩 중...');
   try {
-    const fn  = httpsCallable(functions, 'listCoopProducts');
-    const res = await fn();
-    renderProductTable(res.data.products || []);
-    setStatus('productListState', '');
+    const snap = await getDocs(collection(db, 'coopProducts'));
+    const list = [];
+    snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+    list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    renderProductTable(list);
+    setStatus('productListState', `총 ${list.length}개`);
   } catch (err) {
     setStatus('productListState', '오류: ' + (err.message || '조회 실패'), 'err');
   }
+}
+
+function updateCopyBtn() {
+  const anyChecked = document.querySelectorAll('.chk-product:checked').length > 0;
+  const btn = $('btnCopySelected');
+  if (btn) btn.style.display = anyChecked ? '' : 'none';
 }
 
 function renderProductTable(products) {
@@ -73,6 +82,7 @@ function renderProductTable(products) {
   if (products.length === 0) {
     tbody.innerHTML = '';
     show('productListEmpty', true);
+    show('btnCopySelected', false);
     return;
   }
   show('productListEmpty', false);
@@ -91,6 +101,7 @@ function renderProductTable(products) {
 
     return `
       <tr>
+        <td style="text-align:center;"><input type="checkbox" class="chk-product" data-id="${p.id}" /></td>
         <td>${imgHtml}</td>
         <td>${typeBadge} <strong>${esc(p.name)}</strong>${p.description ? `<br><span style="font-size:0.78rem;color:#888;">${esc(p.description).slice(0,40)}${p.description.length>40?'…':''}</span>` : ''}</td>
         <td>${p.price.toLocaleString()}원</td>
@@ -103,16 +114,86 @@ function renderProductTable(products) {
       </tr>`;
   }).join('');
 
+  // 개별 체크박스 → 복사 버튼 표시/숨김
+  tbody.querySelectorAll('.chk-product').forEach(chk => {
+    chk.addEventListener('change', updateCopyBtn);
+  });
+
+  // 전체 선택
+  const chkAll = $('chkAll');
+  if (chkAll) {
+    chkAll.checked = false;
+    chkAll.onchange = () => {
+      tbody.querySelectorAll('.chk-product').forEach(c => { c.checked = chkAll.checked; });
+      updateCopyBtn();
+    };
+  }
+
   tbody.querySelectorAll('[data-edit]').forEach(btn => {
     btn.addEventListener('click', () => startEdit(btn.dataset.edit, products));
   });
   tbody.querySelectorAll('[data-del]').forEach(btn => {
     btn.addEventListener('click', () => deleteProduct(btn.dataset.del));
   });
+
+  // 복사 버튼
+  const copyBtn = $('btnCopySelected');
+  if (copyBtn) {
+    copyBtn.onclick = () => copySelectedProducts(products);
+  }
+
+  updateCopyBtn();
 }
 
 function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────────────────
+// 선택 복사
+// ─────────────────────────────────────────────────────────
+async function copySelectedProducts(products) {
+  const checked = [...document.querySelectorAll('.chk-product:checked')];
+  if (checked.length === 0) return;
+
+  if (!confirm(`선택한 ${checked.length}개 상품을 복사하시겠습니까?`)) return;
+
+  const copyBtn = $('btnCopySelected');
+  if (copyBtn) { copyBtn.disabled = true; copyBtn.textContent = '복사 중...'; }
+
+  const fn = httpsCallable(functions, 'adminSaveCoopProduct');
+  let successCount = 0;
+  const errors = [];
+
+  for (const chk of checked) {
+    const p = products.find(x => x.id === chk.dataset.id);
+    if (!p) continue;
+    try {
+      await fn({
+        type:        p.type || 'general',
+        name:        p.name + ' (복사)',
+        description: p.description || '',
+        price:       p.price,
+        imageUrl:    p.imageUrl || '',
+        stock:       p.stock,
+        active:      false,   // 복사본은 기본 비활성
+      });
+      successCount++;
+    } catch (err) {
+      errors.push(p.name);
+    }
+  }
+
+  if (copyBtn) { copyBtn.disabled = false; copyBtn.textContent = '선택 복사'; }
+
+  await loadProducts();
+
+  if (errors.length === 0) {
+    setStatus('productListState', `총 ${successCount}개 복사 완료 (비활성 상태로 생성됨)`, 'ok');
+  } else {
+    setStatus('productListState', `${successCount}개 성공 / ${errors.length}개 실패`, 'err');
+    alert(`복사 실패 상품:\n${errors.join('\n')}`);
+  }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -205,7 +286,6 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  // 관리자 여부는 서버에서 판단 — 우선 UI 표시, 관리자가 아니면 API 호출 시 에러남
   show('adminContent', true);
 
   bindConfigSave();

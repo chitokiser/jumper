@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>조합전용몰</title>
+  <title>회원전용 폐쇄몰</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -81,6 +81,30 @@
       transition: width .4s ease;
     }
 
+    /* 상품 상세 모달 */
+    .coop-detail-modal { position: fixed; inset: 0; z-index: 9998; display: flex; align-items: center; justify-content: center; }
+    .coop-detail-bd { position: absolute; inset: 0; background: rgba(0,0,0,.52); cursor: pointer; }
+    .coop-detail-box {
+      position: relative; background: #fff; border-radius: 16px;
+      width: min(560px, 94vw); max-height: 88vh; overflow-y: auto;
+      box-shadow: 0 8px 36px rgba(0,0,0,.22);
+    }
+    .coop-detail-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; background: var(--surface2, #f3f4f6); border-radius: 16px 16px 0 0; }
+    .coop-detail-img-ph { width: 100%; aspect-ratio: 4/3; background: var(--surface2, #f3f4f6); display: flex; align-items: center; justify-content: center; font-size: 4rem; border-radius: 16px 16px 0 0; }
+    .coop-detail-body { padding: 20px 24px 28px; }
+    .coop-detail-name { font-weight: 700; font-size: 1.15rem; margin: 8px 0 6px; }
+    .coop-detail-desc { font-size: 0.88rem; color: var(--text2, #374151); line-height: 1.65; white-space: pre-wrap; }
+    .coop-detail-price { font-size: 1.3rem; font-weight: 700; color: var(--accent, #7c3aed); margin-top: 14px; }
+    .coop-detail-stock { font-size: 0.8rem; color: var(--muted, #9ca3af); margin-top: 4px; }
+    .coop-detail-stock.out { color: #e53e3e; font-weight: 600; }
+    .coop-detail-close {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(0,0,0,.38); color: #fff; border: none;
+      border-radius: 50%; width: 32px; height: 32px; font-size: 1rem;
+      cursor: pointer; line-height: 32px; text-align: center; z-index: 1;
+    }
+    .coop-detail-close:hover { background: rgba(0,0,0,.6); }
+
     /* 완료 모달 */
     .coop-modal { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; }
     .coop-modal-bd { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
@@ -156,6 +180,23 @@
 
     </section>
   </main>
+
+  <!-- 상품 상세 모달 -->
+  <div id="coopDetailModal" class="coop-detail-modal" style="display:none;" aria-modal="true" role="dialog">
+    <div class="coop-detail-bd" id="coopDetailBd"></div>
+    <div class="coop-detail-box">
+      <button class="coop-detail-close" id="coopDetailClose" type="button" aria-label="닫기">✕</button>
+      <div id="coopDetailImg"></div>
+      <div class="coop-detail-body">
+        <div id="coopDetailBadge"></div>
+        <div class="coop-detail-name" id="coopDetailName"></div>
+        <div class="coop-detail-desc" id="coopDetailDesc"></div>
+        <div class="coop-detail-price" id="coopDetailPrice"></div>
+        <div id="coopDetailStock"></div>
+        <button class="coop-btn-buy" id="coopDetailBuyBtn" type="button" style="margin-top:20px;">구매하기</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 구매 완료 모달 -->
   <div id="coopDoneModal" class="coop-modal" style="display:none;" aria-modal="true" role="dialog">
