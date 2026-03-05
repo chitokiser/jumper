@@ -198,21 +198,21 @@
 
 .burger span{
   display:block;
-  width: 2px;
-  height: 18px;
+  width: 18px;
+  height: 2px;
   background: var(--hdr-text);
   border-radius: 2px;
   transition: transform .18s ease, opacity .18s ease;
 }
 
 #siteHeaderBar.nav-open .burger span:nth-child(1){
-  transform: translateX(8px) rotate(45deg);
-  width: 2px;
+  transform: translateY(8px) rotate(45deg);
+  width: 18px;
 }
 #siteHeaderBar.nav-open .burger span:nth-child(2){ opacity: 0; }
 #siteHeaderBar.nav-open .burger span:nth-child(3){
-  transform: translateX(-8px) rotate(-45deg);
-  width: 2px;
+  transform: translateY(-8px) rotate(-45deg);
+  width: 18px;
 }
 
 .hdr-nav-backdrop{ display: none; }
@@ -243,11 +243,11 @@
   .burger{ display: inline-flex; }
 
   .nav{
-    position: fixed;
+    position: absolute;
     left: 10px;
     right: 10px;
-    top: calc(62px + var(--safe-top, 0px));
-    bottom: calc(10px + var(--safe-bottom, 0px));
+    top: calc(100% + 8px);
+    max-height: min(72dvh, calc(100dvh - 120px));
     display: none;
     flex-direction: column;
     align-items: stretch;
@@ -303,3 +303,4 @@
   .brand-name{ font-size: 15px; }
   .user-badge{ max-width: 170px; }
 }
+

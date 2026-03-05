@@ -58,7 +58,6 @@ body {
 
 body.nav-open {
   overflow: hidden;
-  touch-action: none;
 }
 
 a { color: inherit; }
@@ -232,3 +231,4 @@ textarea {
     font-size: 16px;
   }
 }
+

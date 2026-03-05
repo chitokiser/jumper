@@ -17,6 +17,26 @@ function isInAppBrowser(){
   return ua.includes("kakaotalk") || ua.includes("instagram") || ua.includes("fbav") || ua.includes("fban") || ua.includes("line");
 }
 
+function openExternalBrowser(){
+  const url = location.href;
+  const ua = navigator.userAgent || "";
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+  if(isAndroid){
+    const noScheme = url.replace(/^https?:\/\//i, "");
+    location.href = `intent://${noScheme}#Intent;scheme=https;package=com.android.chrome;end`;
+    return;
+  }
+
+  if(isIOS){
+    const noScheme = url.replace(/^https?:\/\//i, "");
+    location.href = `x-safari-https://${noScheme}`;
+    return;
+  }
+
+  window.open(url, "_blank", "noopener,noreferrer");
+}
 function show(el, on){
   if(!el) return;
   el.style.display = on ? "" : "none";
@@ -182,13 +202,7 @@ async function bindHeader(){
     btnLogin.onclick = async ()=>{
       try{
         if(isInAppBrowser()){
-          alert(
-            "인앱 브라우저에서는 Google 로그인이 차단될 수 있습니다.\n\n" +
-            "해결 방법:\n" +
-            "1) 우측 상단 메뉴에서 '다른 브라우저로 열기'\n" +
-            "2) Chrome/Safari에서 사이트 직접 접속\n\n" +
-            "(오류: 403 disallowed_useragent)"
-          );
+          openExternalBrowser();
           return;
         }
         btnLogin.textContent = "로그인 중...";
@@ -302,3 +316,4 @@ document.addEventListener("DOMContentLoaded", bindHeader);
 
 bindHeader();
 setTimeout(bindHeader, 250);
+
