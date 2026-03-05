@@ -1,31 +1,92 @@
-// /assets/js/partials.js
-// header/footer partial을 fetch로 주입합니다.
-// Netlify/배포/로컬 모두 안전하게: 항상 "사이트 루트" 기준(/partials/...)으로 로드합니다.
-// (페이지가 / 하위 경로여도 깨지지 않게)
-
+﻿// /assets/js/partials.js
 (() => {
-  function abs(urlPath){
-    // urlPath: "/partials/header.html" 같은 루트 경로
+  function abs(urlPath) {
     return new URL(urlPath, window.location.origin).toString();
   }
 
-  function ensureCss(urlPath){
-    // 모든 페이지에서 footer.css를 확실히 적용 (특정 페이지에서 로고 확대/텍스트 세로쪼개짐 방지)
-    try{
+  function ensureCss(urlPath) {
+    try {
       const url = abs(urlPath);
       const links = [...document.querySelectorAll('link[rel="stylesheet"]')];
-      const already = links.some((l) => {
-        const h = String(l.href || "").split("?")[0];
-        return h === String(url).split("?")[0];
-      });
+      const already = links.some((l) => String(l.href || "").split("?")[0] === String(url).split("?")[0]);
       if (already) return;
 
       const link = document.createElement("link");
       link.rel = "stylesheet";
-      link.href = urlPath; // 루트 경로 유지
+      link.href = urlPath;
       document.head.appendChild(link);
-    }catch(e){
+    } catch (e) {
       console.warn("ensureCss failed:", e?.message || e);
+    }
+  }
+
+  function ensureFavicon() {
+    try {
+      const existing = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+      if (existing) return;
+
+      const link = document.createElement("link");
+      link.rel = "icon";
+      link.type = "image/png";
+      link.href = "/assets/images/jump/favicon.png";
+      document.head.appendChild(link);
+    } catch (e) {
+      console.warn("ensureFavicon failed:", e?.message || e);
+    }
+  }
+
+  function ensurePwaMeta() {
+    try {
+      if (!document.querySelector('link[rel="manifest"]')) {
+        const m = document.createElement("link");
+        m.rel = "manifest";
+        m.href = "/manifest.webmanifest";
+        document.head.appendChild(m);
+      }
+
+      if (!document.querySelector('meta[name="theme-color"]')) {
+        const t = document.createElement("meta");
+        t.name = "theme-color";
+        t.content = "#2563eb";
+        document.head.appendChild(t);
+      }
+
+      if (!document.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
+        const c = document.createElement("meta");
+        c.name = "apple-mobile-web-app-capable";
+        c.content = "yes";
+        document.head.appendChild(c);
+      }
+
+      if (!document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')) {
+        const s = document.createElement("meta");
+        s.name = "apple-mobile-web-app-status-bar-style";
+        s.content = "default";
+        document.head.appendChild(s);
+      }
+
+      if (!document.querySelector('link[rel="apple-touch-icon"]')) {
+        const a = document.createElement("link");
+        a.rel = "apple-touch-icon";
+        a.href = "/assets/images/jump/favicon.png";
+        document.head.appendChild(a);
+      }
+    } catch (e) {
+      console.warn("ensurePwaMeta failed:", e?.message || e);
+    }
+  }
+
+  function ensurePwaScript() {
+    try {
+      if (document.querySelector('script[data-pwa-install="1"]')) return;
+
+      const s = document.createElement("script");
+      s.src = "/assets/js/pwa-install.js";
+      s.defer = true;
+      s.dataset.pwaInstall = "1";
+      document.head.appendChild(s);
+    } catch (e) {
+      console.warn("ensurePwaScript failed:", e?.message || e);
     }
   }
 
@@ -42,35 +103,19 @@
     return true;
   }
 
-  function ensureFavicon(){
-    try{
-      // 이미 favicon link가 있으면 스킵
-      const existing = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
-      if(existing) return;
-      const link = document.createElement("link");
-      link.rel  = "icon";
-      link.type = "image/png";
-      link.href = "/assets/images/jump/favicon.png";
-      document.head.appendChild(link);
-    }catch(e){
-      console.warn("ensureFavicon failed:", e?.message || e);
-    }
-  }
-
-  async function mount(){
-    try{
+  async function mount() {
+    try {
       ensureFavicon();
-
-      // footer.css 누락 페이지(예: item.html)에서도 푸터 스타일을 강제 적용
       ensureCss("/assets/css/footer.css");
+      ensurePwaMeta();
+      ensurePwaScript();
 
-      // 루트 기준으로 고정
       await loadInto("siteHeader", "/partials/header.html");
       await loadInto("siteFooter", "/partials/footer.html");
 
       window.dispatchEvent(new CustomEvent("partials:loaded"));
       window.dispatchEvent(new CustomEvent("partials:mounted"));
-    }catch(e){
+    } catch (e) {
       console.warn("partials mount failed:", e?.message || e);
       window.dispatchEvent(new CustomEvent("partials:error", { detail: e }));
     }

@@ -1,10 +1,10 @@
-/* /assets/css/footer.css */
+﻿/* /assets/css/footer.css */
 
 /*
-  목적
-  - 상품상세 등 특정 페이지에서 푸터 로고가 원본 크기로 커지는 현상 방지
-  - 모바일에서 '회원혜택/포인트/가이드랭킹' 텍스트가 글자 단위로 세로 줄바꿈 되는 현상 방지
-  - 모든 페이지에서 동일한 푸터 레이아웃/타이포 유지
+  紐⑹쟻
+  - ?곹뭹?곸꽭 ???뱀젙 ?섏씠吏?먯꽌 ?명꽣 濡쒓퀬媛 ?먮낯 ?ш린濡?而ㅼ????꾩긽 諛⑹?
+  - 紐⑤컮?쇱뿉??'?뚯썝?쒗깮/?ъ씤??媛?대뱶??궧' ?띿뒪?멸? 湲???⑥쐞濡??몃줈 以꾨컮轅??섎뒗 ?꾩긽 諛⑹?
+  - 紐⑤뱺 ?섏씠吏?먯꽌 ?숈씪???명꽣 ?덉씠?꾩썐/??댄룷 ?좎?
 */
 
 .site-footer{
@@ -30,7 +30,7 @@
   min-width: 0;
 }
 
-/* 브랜드 영역 */
+/* 釉뚮옖???곸뿭 */
 .ftr-brand{
   display: flex;
   align-items: center;
@@ -57,7 +57,7 @@
   letter-spacing: .2px;
 }
 
-/* 컬럼 타이틀 */
+/* 而щ읆 ??댄? */
 .ftr-title{
   font-size: 14px;
   font-weight: 800;
@@ -67,7 +67,7 @@
   word-break: keep-all;
 }
 
-/* 링크 */
+/* 留곹겕 */
 .site-footer a{
   color: var(--muted);
   text-decoration: none;
@@ -82,6 +82,20 @@
   text-decoration: underline;
 }
 
+.ftr-exchange-link{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ftr-exchange-logo{
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex: 0 0 16px;
+}
+
 .ftr-bottom{
   max-width: var(--max);
   margin: 0 auto;
@@ -92,9 +106,8 @@
 }
 
 /*
-  반응형
-  - 모바일에서 컬럼 폭이 너무 좁아져 글자 단위로 줄바꿈 되는 현상을 막기 위해
-    2열/1열로 전환
+  諛섏쓳??  - 紐⑤컮?쇱뿉??而щ읆 ??씠 ?덈Т 醫곸븘??湲???⑥쐞濡?以꾨컮轅??섎뒗 ?꾩긽??留됯린 ?꾪빐
+    2??1?대줈 ?꾪솚
 */
 @media (max-width: 860px){
   .ftr-inner{
@@ -112,9 +125,24 @@
   .ftr-brand{
     grid-column: auto;
   }
-  /* 매우 작은 화면에서 가로 스크롤이 생기지 않게 */
+  /* 留ㅼ슦 ?묒? ?붾㈃?먯꽌 媛濡??ㅽ겕濡ㅼ씠 ?앷린吏 ?딄쾶 */
   .site-footer a,
   .ftr-title{
     white-space: normal;
   }
 }
+
+
+
+.site-footer{
+  padding-bottom: var(--safe-bottom, 0px);
+}
+
+@media (max-width: 860px){
+  .site-footer a{
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+

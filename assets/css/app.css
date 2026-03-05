@@ -1,9 +1,6 @@
-/* /assets/css/app.css */
-/* ============================================================
-   디자인 시스템 – liveanywhere.me 스타일 (밝고 깔끔한 화이트/블루)
-   ============================================================ */
+﻿/* /assets/css/app.css */
+
 :root {
-  /* 색상 */
   --bg:    #f5f9ff;
   --card:  #ffffff;
   --card2: #eef5ff;
@@ -13,48 +10,73 @@
   --line:  rgba(26,39,68,.09);
   --line2: rgba(26,39,68,.05);
 
-  /* 포인트 */
-  --accent:  #2563eb;   /* 블루 */
-  --accent2: #7c3aed;   /* 퍼플 */
+  --accent:  #2563eb;
+  --accent2: #7c3aed;
 
-  /* 상태 */
   --ok:     #16a34a;
   --warn:   #d97706;
   --danger: #dc2626;
 
-  /* 레이아웃 */
   --radius: 16px;
   --shadow: 0 4px 20px rgba(26,39,68,.08), 0 1px 4px rgba(26,39,68,.04);
   --shadow-md: 0 8px 32px rgba(26,39,68,.12), 0 2px 8px rgba(26,39,68,.06);
 
   --max: 1180px;
   --pad: 20px;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
 
-/* ── 리셋 ── */
 *, *::before, *::after { box-sizing: border-box; }
-html, body { height: 100%; overflow-x: hidden; }
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 body {
   margin: 0;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial,
                "Apple Color Emoji", "Segoe UI Emoji";
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+body.nav-open {
+  overflow: hidden;
+  touch-action: none;
 }
 
 a { color: inherit; }
 img { max-width: 100%; height: auto; }
 
-/* ── 페이지 래퍼 ── */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 .page {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 0 var(--pad) 72px;
+  padding: 0 var(--pad) calc(72px + var(--safe-bottom));
 }
 
-/* ── 텍스트 유틸 ── */
 .title {
   margin: 0 0 10px;
   font-size: 26px;
@@ -68,7 +90,6 @@ img { max-width: 100%; height: auto; }
 .hide  { display: none !important; }
 .state { margin: 12px 0 14px; color: var(--muted); }
 
-/* ── 카드 / 패널 ── */
 .card, .panel {
   border: 1px solid var(--line);
   background: var(--card);
@@ -77,11 +98,12 @@ img { max-width: 100%; height: auto; }
   padding: 18px;
 }
 
-/* ── 버튼 ── */
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-height: 42px;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--text);
@@ -101,7 +123,6 @@ img { max-width: 100%; height: auto; }
 }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 
-/* 기본 btn--primary */
 .btn--primary {
   border-color: var(--accent);
   background: var(--accent);
@@ -114,7 +135,6 @@ img { max-width: 100%; height: auto; }
   box-shadow: 0 6px 18px rgba(37,99,235,.38);
 }
 
-/* 기존 .btn.primary (하위 호환) */
 .btn.primary {
   border-color: var(--accent);
   background: var(--accent);
@@ -122,7 +142,6 @@ img { max-width: 100%; height: auto; }
 }
 .btn.primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
 
-/* ghost */
 .btn--ghost {
   border-color: var(--line);
   background: transparent;
@@ -130,10 +149,8 @@ img { max-width: 100%; height: auto; }
 }
 .btn--ghost:hover { background: var(--card2); }
 
-/* small */
 .btn--sm { padding: 7px 12px; font-size: 13px; border-radius: 10px; }
 
-/* danger */
 .btn.danger, .btn--danger {
   border-color: rgba(220,38,38,.30);
   background: rgba(220,38,38,.08);
@@ -141,7 +158,6 @@ img { max-width: 100%; height: auto; }
 }
 .btn.danger:hover, .btn--danger:hover { background: rgba(220,38,38,.14); }
 
-/* ── 별점 UI ── */
 .rating-inline {
   display: flex;
   align-items: center;
@@ -168,7 +184,6 @@ img { max-width: 100%; height: auto; }
   color: var(--warn);
 }
 
-/* ── 푸터 ── */
 .footer {
   border-top: 1px solid var(--line2);
   padding: 18px var(--pad);
@@ -178,4 +193,42 @@ img { max-width: 100%; height: auto; }
   margin: 0 auto;
   color: var(--muted);
   font-size: 13px;
+}
+
+@media (max-width: 860px){
+  :root { --pad: 14px; }
+
+  .page {
+    padding: 0 var(--pad) calc(60px + var(--safe-bottom));
+  }
+
+  .title {
+    font-size: 22px;
+    line-height: 1.28;
+  }
+
+  .desc {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .card,
+  .panel {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .btn,
+  button,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

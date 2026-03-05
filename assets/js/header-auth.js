@@ -1,6 +1,4 @@
-// /assets/js/header-auth.js
-// 헤더의 로그인/로그아웃 + 역할별 메뉴 노출 + 모바일 햄버거
-
+﻿// /assets/js/header-auth.js
 import {
   handleRedirectResult,
   login,
@@ -28,16 +26,15 @@ function applyRoleToMenu(role){
   const badge = document.getElementById("roleBadge");
   if(badge){
     const text =
-      role === "admin"    ? "관리자" :
-      role === "guide"    ? "회원" :
+      role === "admin" ? "관리자" :
+      role === "guide" ? "판매자" :
       role === "merchant" ? "가맹점" :
-      role === "user"     ? "비회원" :
+      role === "user" ? "일반" :
       "게스트";
     badge.textContent = text;
     show(badge, role !== "guest");
   }
 
-  // data-role이 있는 요소만 필터링. (a, div.nav-group 등)
   const nodes = document.querySelectorAll("#hdrNav [data-role]");
   nodes.forEach((node)=>{
     const rule = (node.getAttribute("data-role") || "").trim();
@@ -52,6 +49,13 @@ function applyRoleToMenu(role){
 
 function initNavGroups(){
   const groups = document.querySelectorAll("#hdrNav .nav-group");
+
+  function setOpen(group, on){
+    const btn = group.querySelector(".nav-group-title");
+    group.classList.toggle("open", on);
+    if(btn) btn.setAttribute("aria-expanded", on ? "true" : "false");
+  }
+
   groups.forEach((g)=>{
     const btn = g.querySelector(".nav-group-title");
     if(!btn) return;
@@ -59,20 +63,17 @@ function initNavGroups(){
     btn.addEventListener("click", (e)=>{
       e.preventDefault();
       e.stopPropagation();
-      // 다른 그룹 닫기
-      groups.forEach((other)=>{
-        if(other !== g) other.classList.remove("open");
-      });
-      g.classList.toggle("open");
+      const willOpen = !g.classList.contains("open");
+      groups.forEach((other)=> setOpen(other, false));
+      setOpen(g, willOpen);
     });
   });
 
-  // 바깥 클릭시 닫기
   document.addEventListener("click", (e)=>{
     const nav = document.getElementById("hdrNav");
     if(!nav) return;
     if(nav.contains(e.target)) return;
-    groups.forEach((g)=>g.classList.remove("open"));
+    groups.forEach((g)=> setOpen(g, false));
   });
 }
 
@@ -97,19 +98,35 @@ function initHamburger(){
   const header = document.getElementById("siteHeaderBar");
   const btn = document.getElementById("btnBurger");
   const nav = document.getElementById("hdrNav");
+  const backdrop = document.getElementById("hdrNavBackdrop");
 
   if(!header || !btn || !nav) return;
 
   window.__pg_burger_bound = true;
 
+  function setBodyLock(on){
+    document.body.classList.toggle("nav-open", on);
+  }
+
   function openMenu(){
     header.classList.add("nav-open");
     btn.setAttribute("aria-expanded", "true");
+    if(backdrop) backdrop.hidden = false;
+    setBodyLock(true);
   }
 
   function closeMenu(){
     header.classList.remove("nav-open");
     btn.setAttribute("aria-expanded", "false");
+    if(backdrop) backdrop.hidden = true;
+    setBodyLock(false);
+
+    const groups = document.querySelectorAll("#hdrNav .nav-group");
+    groups.forEach((g)=>{
+      g.classList.remove("open");
+      const title = g.querySelector(".nav-group-title");
+      if(title) title.setAttribute("aria-expanded", "false");
+    });
   }
 
   function toggleMenu(){
@@ -121,6 +138,10 @@ function initHamburger(){
     e.stopPropagation();
     toggleMenu();
   });
+
+  if(backdrop){
+    backdrop.addEventListener("click", closeMenu);
+  }
 
   nav.addEventListener("click", (e)=>{
     if(e.target && e.target.closest && e.target.closest("a")) closeMenu();
@@ -147,26 +168,26 @@ async function bindHeader(){
   const btnLogout = document.getElementById("btnLogout");
   const nav = document.getElementById("hdrNav");
 
-  // partial이 아직 안 붙었으면 스킵 (다음 이벤트에서 재시도)
   if(!btnLogin && !btnLogout && !nav) return;
-
-  // 중복 바인딩 방지
   if(window.__pg_hdr_bound) return;
   window.__pg_hdr_bound = true;
 
-  // redirect 로그인 흐름 처리(모바일/팝업차단 대비)
   await handleRedirectResult();
 
   if(btnLogin){
-    // 카카오톡 등 인앱브라우저에서는 Google 로그인이 차단되므로 안내 버튼으로 바꿔줌
     if(isInAppBrowser()){
       btnLogin.textContent = "브라우저에서 열기";
     }
+
     btnLogin.onclick = async ()=>{
       try{
         if(isInAppBrowser()){
           alert(
-            "카카오톡/인스타/페이스북 같은 인앱브라우저에서는 Google 로그인이 차단될 수 있습니다.\n\n해결 방법:\n1) 우측 상단 메뉴(⋮) → '다른 브라우저로 열기'\n2) 또는 Chrome/Safari에서 jovialtravel.netlify.app 직접 접속\n\n(오류: 403 disallowed_useragent)"
+            "인앱 브라우저에서는 Google 로그인이 차단될 수 있습니다.\n\n" +
+            "해결 방법:\n" +
+            "1) 우측 상단 메뉴에서 '다른 브라우저로 열기'\n" +
+            "2) Chrome/Safari에서 사이트 직접 접속\n\n" +
+            "(오류: 403 disallowed_useragent)"
           );
           return;
         }
@@ -176,17 +197,15 @@ async function bindHeader(){
       }catch(e){
         const code = e?.code || "";
         if(code === "auth/inapp-browser" || code === "auth/operation-not-supported-in-this-environment"){
-          alert(
-            "카카오톡/인스타/페이스북 같은 인앱브라우저에서는 Google 로그인이 차단될 수 있습니다.\n\n해결 방법:\n1) 우측 상단 메뉴(⋮) → '다른 브라우저로 열기'\n2) 또는 Chrome/Safari에서 직접 jovialtravel.netlify.app 접속\n\n(오류: 403 disallowed_useragent)"
-          );
+          alert("인앱 브라우저에서는 로그인이 제한될 수 있습니다. 외부 브라우저에서 다시 시도해 주세요.");
         } else if(code === "auth/popup-blocked"){
-          alert("팝업이 차단되었습니다.\n브라우저 설정에서 이 사이트의 팝업을 허용하거나,\nChrome 주소창 오른쪽의 팝업 차단 아이콘을 클릭해 허용해 주세요.");
+          alert("팝업이 차단되었습니다. 브라우저 설정에서 팝업 허용 후 다시 시도해 주세요.");
         } else if(code === "auth/unauthorized-domain"){
-          alert("이 도메인에서 Google 로그인이 허용되지 않습니다.\n관리자에게 Firebase Authorized Domain 등록을 요청해 주세요.\n\n현재 도메인: " + location.hostname);
+          alert("허용되지 않은 도메인입니다. 관리자에게 Firebase Authorized Domain 등록을 요청해 주세요.");
         } else if(code === "auth/network-request-failed"){
-          alert("네트워크 오류입니다. 인터넷 연결을 확인해 주세요.");
+          alert("네트워크 오류가 발생했습니다. 인터넷 연결을 확인해 주세요.");
         } else if(code && code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request"){
-          alert("로그인 오류가 발생했습니다.\n오류코드: " + code + "\n\n" + (e?.message || ""));
+          alert(`로그인 오류가 발생했습니다.\n오류 코드: ${code}`);
         }
         console.error("login error:", code, e);
       } finally {
@@ -202,13 +221,9 @@ async function bindHeader(){
     };
   }
 
-  // 햄버거 바인딩 (partials 주입 후에만 가능)
   initHamburger();
-
-  // 드롭다운 그룹 바인딩
   initNavGroups();
 
-  // 기본은 guest 메뉴
   applyRoleToMenu("guest");
   show(btnLogin, true);
   show(btnLogout, false);
@@ -225,28 +240,22 @@ async function bindHeader(){
   });
 }
 
-// users/{uid}.name 존재 여부로 회원가입 완료 여부 판정
-// 완료 → 배지 "일반" + 안내 숨김 / 미완료 → 배지 "비회원" + 안내 표시
 async function checkRegistration(uid){
   try{
     const snap = await getDoc(doc(db, "users", uid));
     if(snap.exists() && snap.data()?.name){
-      // 등록 완료 회원: 배지 텍스트를 "일반"으로 교정
       const badge = document.getElementById("roleBadge");
       if(badge) badge.textContent = "일반";
-      return; // 회원가입 안내 불필요
+      return;
     }
   }catch(e){
     console.warn("checkRegistration:", e?.message || e);
   }
-  // 미등록(name 없음) → 안내 표시
   showRegisterNotice();
 }
 
 function showRegisterNotice(){
-  // register.html 자체에서는 표시 안 함
   if(location.pathname.includes("register")) return;
-  // 이미 표시 중이면 중복 생성 방지
   if(document.getElementById("registerNotice")) return;
 
   const bar = document.createElement("div");
@@ -267,16 +276,16 @@ function showRegisterNotice(){
   ].join(";");
 
   bar.innerHTML = `
-    <span style="color:#4c1d95;">구글 로그인은 됐지만 아직 <strong>회원가입</strong>이 완료되지 않았습니다.</span>
+    <span style="color:#4c1d95;">구글 로그인은 완료되었지만 아직 <strong>회원가입</strong>이 완료되지 않았습니다.</span>
     <a href="/register.html"
        style="background:#7c3aed;color:#fff;border-radius:6px;padding:5px 16px;
               text-decoration:none;font-weight:600;white-space:nowrap;font-size:0.85rem;">
-      회원가입 하기 →
+      회원가입 하러가기
     </a>
     <button type="button"
             onclick="document.getElementById('registerNotice').remove()"
             style="background:none;border:none;cursor:pointer;font-size:1.1rem;
-                   color:#7c3aed;padding:0 4px;line-height:1;" aria-label="닫기">✕</button>
+                   color:#7c3aed;padding:0 4px;line-height:1;" aria-label="닫기">×</button>
   `;
 
   const header = document.getElementById("siteHeader");
@@ -287,13 +296,9 @@ function showRegisterNotice(){
   }
 }
 
-// partials가 붙은 뒤에 바인딩
 window.addEventListener("partials:mounted", bindHeader);
 window.addEventListener("partials:loaded", bindHeader);
-// 혹시 이벤트를 못 받았을 때를 대비
 document.addEventListener("DOMContentLoaded", bindHeader);
 
-// 일부 페이지는 partials.js가 defer 없이 먼저 실행되어(이벤트가 이미 지나감)
-// 로그인/햄버거 바인딩이 누락될 수 있습니다. 즉시 1회 시도 + 짧은 재시도로 보강합니다.
 bindHeader();
 setTimeout(bindHeader, 250);

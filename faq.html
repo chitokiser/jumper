@@ -1,0 +1,144 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JumpDAO FAQ</title>
+
+  <link rel="icon" href="/assets/images/jump/favicon.png">
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+
+  <style>
+    .hero { padding: 28px 0 12px; }
+    .hero .title { margin-bottom: 8px; }
+
+    .faq-wrap {
+      display: grid;
+      gap: 12px;
+      margin-top: 8px;
+      margin-bottom: 30px;
+    }
+
+    .faq-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .faq-item summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 14px 16px;
+      font-weight: 700;
+    }
+
+    .faq-item summary::-webkit-details-marker { display: none; }
+
+    .faq-a {
+      padding: 0 16px 16px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .faq-a ul { margin: 8px 0 0; padding-left: 18px; }
+
+    .notice {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="hero">
+      <h1 class="title">자주 묻는 질문 (FAQ)</h1>
+      <p class="desc">JumpDAO 소개 문서와 Whitepaper v1.0 기준으로 정리된 안내입니다.</p>
+    </section>
+
+    <section class="faq-wrap">
+      <details class="faq-item" open>
+        <summary>1. JumpDAO는 어떤 프로젝트인가요?</summary>
+        <div class="faq-a">
+          JumpDAO는 해외 교민 사업자, 여행자, 투자자를 하나의 디지털 생태계로 연결하는 블록체인 기반 공유 경제 플랫폼입니다.
+          핵심은 교민 비즈니스 네트워크 + 블록체인 결제 + DAO 거버넌스입니다.
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>2. JumpDAO의 주요 목적은 무엇인가요?</summary>
+        <div class="faq-a">
+          <ul>
+            <li>교민 사업자 상생 네트워크 구축</li>
+            <li>여행자에게 숙박/식사/투어/교통/환전 등 통합 편의 제공</li>
+            <li>데이터 공유를 통한 사업 효율화와 확장</li>
+            <li>참여자 중심의 탈중앙화 의사결정 운영</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>3. 수익은 어떻게 발생하고 분배되나요?</summary>
+        <div class="faq-a">
+          플랫폼에서 발생한 수익(예약 수수료, 결제 수수료, 광고, 환전/금융 수수료 등)은 JUMP Bank에 축적되고,
+          JUMP 토큰 스테이킹 비율에 따라 배당됩니다. 분배는 스마트컨트랙트 기반으로 진행됩니다.
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>4. HEX 토큰은 어떤 용도인가요?</summary>
+        <div class="faq-a">
+          HEX는 결제용 스테이블 토큰으로 1 HEX = 1 USDT에 연동됩니다.
+          KRW/VND/USDT 충전 후 플랫폼 내 결제에 사용하며, 결제 시 환율이 자동 적용됩니다.
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>5. JUMP 토큰은 어떤 용도인가요?</summary>
+        <div class="faq-a">
+          JUMP는 거버넌스/멤버십 토큰입니다.
+          스테이킹을 통해 DAO 투표권, 수익 배당, 멤버십 혜택(전용몰, 할인, 행사 초대 등)을 받을 수 있습니다.
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>6. DAO 투표권은 어떻게 계산되나요?</summary>
+        <div class="faq-a">
+          투표권은 JumpBank에 스테이킹된 사용자 지분(depo)에 비례합니다.
+          기본 정족수는 totalStaked x quorumBps이며, 기본 quorumBps는 50%로 안내되어 있습니다.
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>7. 초기 운영 지역은 어디인가요?</summary>
+        <div class="faq-a">
+          초기 적용 지역은 베트남 하노이 오션파크입니다.
+          이후 하노이 전역, 다낭, 호치민, 동남아 교민 지역으로 단계적으로 확장합니다.
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>8. 레벨 4 이상 사용자 혜택은 무엇인가요?</summary>
+        <div class="faq-a">
+          HEX 외부 전송 후 USDT 교환, 멘티 모집, 상품 등록/판매 등 추가 권한이 제공됩니다.
+          멘티 이용 활동에 따른 포인트는 공식(포인트 x 사용자레벨 / 10)으로 HEX 전환이 가능합니다.
+        </div>
+      </details>
+    </section>
+
+    <p class="notice">세부 정책은 향후 DAO 의결 및 운영 정책에 따라 업데이트될 수 있습니다.</p>
+  </main>
+
+  <div id="siteFooter"></div>
+</body>
+</html>
