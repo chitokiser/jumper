@@ -6,7 +6,6 @@ function $(id){ return document.getElementById(id); }
 
 function esc(s){ return String(s||"").replace(/[&<>"']/g,(m)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m])); }
 
-
 const CATEGORY_LABEL = {
   spa: "스파",
   massage: "마사지",
@@ -14,21 +13,24 @@ const CATEGORY_LABEL = {
   ticket: "티켓/입장권",
   tour: "투어",
   nature: "자연/액티비티",
-  cruise: "크루즈/요트",
-  food: "맛집",
+  cruise: "크루즈/보트",
+  food: "먹거리",
   cafe: "카페",
   night: "나이트/클럽",
   show: "공연/쇼",
   city: "도시/랜드마크",
   shopping: "쇼핑",
   hotel: "호텔/리조트",
-  transport: "교통/렌트",
+  transport: "교통/이동",
+  general: "살거리",
   etc: "기타",
 };
+
 function catLabel(code){
   const k = String(code || "").trim();
   return CATEGORY_LABEL[k] || k || "기타";
 }
+
 function thumbUrl(d){
   if(Array.isArray(d.images) && d.images.length) return String(d.images[0]||"").trim();
   if(d.imageUrl) return String(d.imageUrl).trim();
@@ -77,8 +79,6 @@ function cardHTML(id, it){
     </div>
   </article>`;
 }
-
-
 
 function toMs(v){
   if(!v) return 0;
@@ -141,7 +141,7 @@ onAuthReady(async ({ loggedIn, role, user })=>{
     return;
   }
   if(!(role === "guide" || role === "merchant" || role === "admin")){
-    alert("가이드 또는 가맹점 등록 후 이용 가능합니다.");
+    alert("가이드 또는 가맹점 등록자만 이용 가능합니다.");
     location.href = "./guide.html";
     return;
   }

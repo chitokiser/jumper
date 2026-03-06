@@ -1,4 +1,4 @@
-﻿import dotenv from "dotenv";
+import dotenv from "dotenv";
 import { z } from "zod";
 
 dotenv.config();
@@ -6,7 +6,10 @@ dotenv.config();
 const schema = z.object({
   NODE_ENV: z.string().default("development"),
   PORT: z.coerce.number().default(8787),
-  DATABASE_URL: z.string().min(1),
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
+  FIREBASE_STORAGE_BUCKET: z.string().optional(),
   CHAIN_ID: z.coerce.number(),
   RPC_URL: z.string().url(),
   PAYMENT_CONTRACT_ADDRESS: z.string().min(42),
@@ -45,7 +48,12 @@ const parseBool = (v) => String(v).toLowerCase() === "true";
 export const config = {
   nodeEnv: env.NODE_ENV,
   port: env.PORT,
-  databaseUrl: env.DATABASE_URL,
+  firebase: {
+    projectId: env.FIREBASE_PROJECT_ID || "",
+    clientEmail: env.FIREBASE_CLIENT_EMAIL || "",
+    privateKey: (env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+    storageBucket: env.FIREBASE_STORAGE_BUCKET || "",
+  },
   chainId: env.CHAIN_ID,
   rpcUrl: env.RPC_URL,
   paymentContractAddress: env.PAYMENT_CONTRACT_ADDRESS,

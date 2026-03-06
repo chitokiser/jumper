@@ -1,10 +1,10 @@
-{
+﻿{
   "indexes": [
     {
       "collectionGroup": "deposits",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "uid",         "order": "ASCENDING" },
+        { "fieldPath": "uid", "order": "ASCENDING" },
         { "fieldPath": "requestedAt", "order": "DESCENDING" }
       ]
     },
@@ -12,7 +12,7 @@
       "collectionGroup": "deposits",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "requestedAt", "order": "DESCENDING" }
       ]
     },
@@ -20,7 +20,7 @@
       "collectionGroup": "transactions",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "uid",       "order": "ASCENDING" },
+        { "fieldPath": "uid", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -28,7 +28,7 @@
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "buyerUid",  "order": "ASCENDING" },
+        { "fieldPath": "buyerUid", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -36,8 +36,32 @@
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "guideUid",  "order": "ASCENDING" },
+        { "fieldPath": "guideUid", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payment_rate_limits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userAddress", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "jackpot_rounds",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userAddress", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "jackpot_claims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "approvedAt", "order": "DESCENDING" }
       ]
     }
   ],

@@ -21,6 +21,121 @@ function escHtml(s) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+function formatHexForUi(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "-";
+  return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })} HEX`;
+}
+
+function formatCount(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "-";
+  return `${n.toLocaleString("ko-KR")}명`;
+}
+
+function getFxRates() {
+  const src = window.__jackpotFx || {};
+  const krw = Number(src.krw);
+  const vnd = Number(src.vnd);
+  return {
+    krw: Number.isFinite(krw) && krw > 0 ? krw : 1380,
+    vnd: Number.isFinite(vnd) && vnd > 0 ? vnd : 25000,
+  };
+}
+
+function formatFiatLine(hexValue) {
+  const n = Number(hexValue);
+  if (!Number.isFinite(n)) return "약 - KRW / - VND";
+
+  const fx = getFxRates();
+  const krw = n * fx.krw;
+  const vnd = n * fx.vnd;
+  return `약 ${Math.round(krw).toLocaleString("ko-KR")} KRW / ${Math.round(vnd).toLocaleString("ko-KR")} VND`;
+}
+
+function jackpotEndpoints(path) {
+  const base = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
+  if (base) return [`${base}${path}`];
+
+  const host = (location.hostname || "").trim().toLowerCase();
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  const isApiOrigin = location.port === "8787";
+
+  if (isApiOrigin) return [`${location.origin}${path}`];
+  if (isLocal) return [`http://${host || "127.0.0.1"}:8787${path}`, path];
+  return [path];
+}
+
+async function fetchJackpotJson(path) {
+  let lastError = null;
+  for (const url of jackpotEndpoints(path)) {
+    try {
+      const res = await fetch(url, { method: "GET", cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP_${res.status}`);
+      return await res.json();
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error("JACKPOT_FETCH_FAILED");
+}
+
+function setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, highestWinText }) {
+  const valueEl = $("jackpotDisplayValue");
+  const fiatEl = $("jackpotFiatValue");
+  const updatedEl = $("jackpotUpdated");
+  const winnerEl = $("jackpotWinnerCount");
+  const highestEl = $("jackpotHighestWin");
+
+  if (valueEl) valueEl.textContent = valueText;
+  if (fiatEl) fiatEl.textContent = fiatText;
+  if (updatedEl) updatedEl.innerHTML = `<span class="jackpot-dot"></span>${escHtml(updatedText)}`;
+  if (winnerEl) winnerEl.textContent = winnerCountText;
+  if (highestEl) highestEl.textContent = highestWinText;
+}
+
+async function loadJackpotCurrent() {
+  try {
+    const currentJson = await fetchJackpotJson("/jackpot/current");
+    const current = currentJson?.data || {};
+    const now = new Date();
+
+    let winnerCountText = "-";
+    let highestWinText = "- HEX";
+
+    try {
+      const statsJson = await fetchJackpotJson("/jackpot/public-stats");
+      const stats = statsJson?.data || {};
+      winnerCountText = formatCount(stats.winnerCount);
+      highestWinText = formatHexForUi(stats.highestWinHex);
+    } catch (e) {
+      console.warn("loadJackpot stats failed:", e);
+    }
+
+    setJackpotUi({
+      valueText: formatHexForUi(current.jackpotDisplayHex),
+      fiatText: formatFiatLine(current.jackpotDisplayHex),
+      updatedText: `${now.toLocaleTimeString("ko-KR", { hour12: false })} 기준 조회`,
+      winnerCountText,
+      highestWinText,
+    });
+  } catch (e) {
+    console.warn("loadJackpotCurrent failed:", e);
+    setJackpotUi({
+      valueText: "연결 대기중",
+      fiatText: "약 - KRW / - VND",
+      updatedText: "window.__jackpotApiBase 또는 API 서버 상태를 확인해주세요",
+      winnerCountText: "-",
+      highestWinText: "- HEX",
+    });
+  }
+}
+
+function initJackpotTicker() {
+  if (!$("jackpotSection")) return;
+  loadJackpotCurrent();
+  setInterval(loadJackpotCurrent, 15000);
+}
 
 async function isAdmin(uid) {
   if (!uid) return false;
@@ -572,14 +687,11 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 loadNotices();
+initJackpotTicker();
 loadUsedMarketPreview();
 loadMerchants();
 loadCoopProducts();
 initSponsorRotator().catch((e) => console.warn("sponsor init failed:", e));
 initUISlider();
 loadPlacesMap();
-
-
-
-
 

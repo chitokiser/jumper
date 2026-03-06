@@ -1,25 +1,9 @@
-﻿version: "3.9"
+version: "3.9"
 services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: jumper_jackpot
-    ports:
-      - "5432:5432"
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-
   jackpot-api:
     build: .
     env_file:
       - .env
-    depends_on:
-      - db
     ports:
       - "8787:8787"
-    command: sh -c "npm run migrate && npm start"
-
-volumes:
-  pg_data:
+    command: sh -c "npm run bootstrap && npm start"

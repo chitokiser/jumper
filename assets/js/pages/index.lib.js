@@ -12,15 +12,23 @@ export function esc(s) {
 }
 
 const CAT_LABEL = {
+  spa: "스파",
+  massage: "마사지",
   beauty: "뷰티/에스테틱",
   ticket: "티켓/입장권",
-  nature: "자연/투어",
+  tour: "투어",
+  nature: "자연/액티비티",
+  cruise: "크루즈/보트",
+  food: "먹거리",
+  cafe: "카페",
   night: "나이트/클럽",
   show: "공연/쇼",
   city: "도시/랜드마크",
-  cafe: "카페/디저트",
+  shopping: "쇼핑",
   hotel: "호텔/리조트",
   transport: "교통/이동",
+  general: "살거리",
+  etc: "기타",
 };
 
 export function catLabel(v) {
@@ -75,7 +83,7 @@ export function normalizeImages(d) {
   if (d && typeof d === "object") {
     if (Array.isArray(d.images)) pushMany(d.images);
     else if (typeof d.images === "string") {
-      // 콤마/줄바꿈 분리 지원 (여기가 깨져서 전체 로딩이 멈췄던 부분)
+      // 콤마/줄바꿈 분리 지원(값이 섞여 있어도 전체 로딩이 멈추지 않게)
       const parts = d.images.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
       pushMany(parts);
     }

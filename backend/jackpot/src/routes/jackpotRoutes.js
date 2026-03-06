@@ -1,4 +1,4 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import {
   getCurrentJackpot,
   getJackpotPublicStats,
@@ -64,8 +64,8 @@ jackpotRouter.post("/withdraw", validate(withdrawSchema), async (req, res, next)
 
 jackpotRouter.post("/claims/:id/approve", requireAdmin, async (req, res, next) => {
   try {
-    const claimId = Number(req.params.id);
-    if (!Number.isInteger(claimId) || claimId <= 0) throw new Error("VALIDATION_ERROR");
+    const claimId = String(req.params.id || "").trim();
+    if (!claimId) throw new Error("VALIDATION_ERROR");
     const data = await adminApproveWithdraw({ claimId });
     res.json({ ok: true, data });
   } catch (err) {
@@ -75,8 +75,8 @@ jackpotRouter.post("/claims/:id/approve", requireAdmin, async (req, res, next) =
 
 jackpotRouter.post("/claims/:id/reject", requireAdmin, async (req, res, next) => {
   try {
-    const claimId = Number(req.params.id);
-    if (!Number.isInteger(claimId) || claimId <= 0) throw new Error("VALIDATION_ERROR");
+    const claimId = String(req.params.id || "").trim();
+    if (!claimId) throw new Error("VALIDATION_ERROR");
     const data = await adminRejectWithdraw({ claimId });
     res.json({ ok: true, data });
   } catch (err) {

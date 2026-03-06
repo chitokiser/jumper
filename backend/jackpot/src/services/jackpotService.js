@@ -1,4 +1,4 @@
-﻿import { ethers } from "ethers";
+import { ethers } from "ethers";
 import { config } from "../config.js";
 import { getContractHexBalance, transferHex } from "../chain/client.js";
 import {
@@ -61,7 +61,7 @@ export async function requestWithdraw({ wallet, amountHex }) {
     return {
       claimId: claim.id,
       status: claim.status,
-      requestedAt: claim.requested_at,
+      requestedAt: claim.requestedAt,
       txHash: null,
     };
   }
@@ -74,7 +74,7 @@ export async function requestWithdraw({ wallet, amountHex }) {
   return {
     claimId: claim.id,
     status: "paid",
-    requestedAt: claim.requested_at,
+    requestedAt: claim.requestedAt,
     txHash,
   };
 }
@@ -84,10 +84,10 @@ export async function adminApproveWithdraw({ claimId }) {
   if (!claim) throw new Error("CLAIM_NOT_FOUND");
   if (claim.status !== "requested") throw new Error("INVALID_CLAIM_STATUS");
 
-  const approvedWei = BigInt(claim.requested_wei);
+  const approvedWei = BigInt(claim.requestedWei);
   await validateDailyPayoutLimit(approvedWei);
 
-  const txHash = await transferHex({ to: claim.user_address, amountWei: approvedWei });
+  const txHash = await transferHex({ to: claim.userAddress, amountWei: approvedWei });
   await markClaimPaid({ claimId, txHash, approvedWei });
 
   return { claimId, status: "paid", txHash };

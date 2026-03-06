@@ -17,6 +17,8 @@
   <link rel="stylesheet" href="/assets/css/pages/town_home.hero.css" />
 
   <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";</script>
+  <script>window.__jackpotApiBase = ""; // e.g. https://jumper-jackpot-api-xxxx.a.run.app</script>
+  <script>window.__jackpotFx = { krw: 1380, vnd: 25000 };</script>
   <script src="/assets/js/partials.js" defer></script>
   <script type="module" src="/assets/js/firebase-init.js"></script>
   <script type="module" src="/assets/js/firestore-bridge.js"></script>
@@ -73,6 +75,48 @@
     .used-meta{margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
     .used-price{font-size:0.82rem;font-weight:700;color:#2563eb;}
     .used-state{font-size:0.72rem;color:#64748b;}
+    .jackpot-panel{
+      position:relative;
+      overflow:hidden;
+      border-radius:18px;
+      padding:18px;
+      border:1px solid rgba(250,204,21,.35);
+      background:
+        radial-gradient(circle at 20% 20%, rgba(250,204,21,.28), transparent 45%),
+        radial-gradient(circle at 80% 80%, rgba(234,179,8,.18), transparent 45%),
+        linear-gradient(135deg, #1f2937 0%, #0f172a 55%, #1e293b 100%);
+      color:#f8fafc;
+      box-shadow:0 8px 24px rgba(15,23,42,.25);
+    }
+    .jackpot-panel::after{
+      content:"";
+      position:absolute;
+      inset:-30% auto auto -20%;
+      width:140%;
+      height:140%;
+      background:conic-gradient(from 180deg, transparent 0deg, rgba(255,255,255,.08) 120deg, transparent 220deg);
+      animation: jackpotSweep 6s linear infinite;
+      pointer-events:none;
+    }
+    @keyframes jackpotSweep{
+      from{transform:rotate(0deg);} to{transform:rotate(360deg);}
+    }
+    .jackpot-inner{position:relative;z-index:1;display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;}
+    .jackpot-kicker{font-size:12px;letter-spacing:.08em;color:#fde68a;font-weight:700;}
+    .jackpot-title{font-size:18px;font-weight:800;line-height:1.25;margin-top:4px;}
+    .jackpot-value{font-size:clamp(28px,6vw,44px);font-weight:900;letter-spacing:.02em;color:#fef08a;text-shadow:0 4px 20px rgba(250,204,21,.35);}
+    .jackpot-fiat{font-size:12px;color:#cbd5e1;margin-top:-2px;}
+    .jackpot-meta{font-size:12px;color:#cbd5e1;margin-top:6px;}
+    .jackpot-dot{display:inline-block;width:8px;height:8px;border-radius:999px;background:#22c55e;box-shadow:0 0 10px rgba(34,197,94,.9);margin-right:6px;vertical-align:middle;}
+    .jackpot-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+    .jackpot-stats{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:8px;width:min(420px,100%);}
+    .jackpot-stat{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:8px 10px;backdrop-filter:blur(2px);}
+    .jackpot-stat .k{display:block;font-size:11px;color:#cbd5e1;}
+    .jackpot-stat strong{display:block;margin-top:3px;font-size:14px;color:#fef9c3;}
+    @media(max-width:720px){
+      .jackpot-side{align-items:flex-start;width:100%;}
+      .jackpot-stats{grid-template-columns:1fr 1fr;width:100%;}
+    }
   </style>
 </head>
 <body>
@@ -110,6 +154,31 @@
       </div>
     </section>
 
+    <section class="section" id="jackpotSection">
+      <div class="jackpot-panel">
+        <div class="jackpot-inner">
+          <div>
+            <div class="jackpot-kicker">MERCHANT PAY JACKPOT</div>
+            <div class="jackpot-title">가맹점 결제 즉석 잭팟</div>
+            <div class="jackpot-meta" id="jackpotUpdated"><span class="jackpot-dot"></span>실시간 조회 대기중</div>
+          </div>
+          <div class="jackpot-side">
+            <div class="jackpot-value" id="jackpotDisplayValue">- HEX</div>
+            <div class="jackpot-fiat" id="jackpotFiatValue">약 - KRW / - VND</div>
+            <div class="jackpot-stats">
+              <div class="jackpot-stat">
+                <span class="k">총 당첨자 수</span>
+                <strong id="jackpotWinnerCount">-</strong>
+              </div>
+              <div class="jackpot-stat">
+                <span class="k">최근 최고 당첨금</span>
+                <strong id="jackpotHighestWin">- HEX</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
     <section class="section" id="sponsorSection">
       <div class="section-h">
         <h2 class="section-title">스폰서 배너</h2>

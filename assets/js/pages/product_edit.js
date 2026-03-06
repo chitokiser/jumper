@@ -29,6 +29,16 @@ function deriveItemType(category){
 }
 const $ = (id) => document.getElementById(id);
 
+function normalizeCategoryOptionLabels(){
+  const select = $("pCategory");
+  if (!select) return;
+  const foodOpt = select.querySelector('option[value="food"]');
+  if (foodOpt) foodOpt.textContent = "먹거리";
+  const generalOpt = select.querySelector('option[value="general"]');
+  if (generalOpt) generalOpt.textContent = "살거리";
+}
+
+
 function setMsg(t){
   const el = $("saveMsg");
   if(el) el.textContent = t || "";
@@ -120,6 +130,8 @@ onAuthReady(async ({ loggedIn, role, user })=>{
 
   const form = $("formProduct");
   if(!form) return;
+
+  normalizeCategoryOptionLabels();
 
   const ref = doc(db, "items", id);
   const snap = await getDoc(ref);

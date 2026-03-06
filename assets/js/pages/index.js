@@ -23,10 +23,11 @@ function isHomestayCategory(cat){
   if (!c) return false;
 
   // 영문 코드(권장)
-  if (c === "hotel" || c === "homestay" || c === "guesthouse") return true;
+  if (c === "hotel" || c === "homestay" || c === "guesthouse" || c === "stay") return true;
+  if (c.startsWith("stay_")) return true;
 
   // 한글(운영 중 혼재 가능)
-  if (raw.includes("홈스테이") || raw.includes("숙박") || raw.includes("게스트하우스") || raw.includes("호텔") || raw.includes("민박")) {
+  if (raw.includes("홈스테이") || raw.includes("숙박") || raw.includes("게스트하우스") || raw.includes("호텔") || raw.includes("민박") || raw.includes("잠자리")) {
     return true;
   }
 
@@ -35,6 +36,39 @@ function isHomestayCategory(cat){
 
   return false;
 }
+
+function isFoodCategory(cat) {
+  const raw = String(cat || "").trim();
+  const c = raw.toLowerCase();
+  if (!c) return false;
+
+  if (c === "food" || c === "cafe") return true;
+  if (c.startsWith("food_")) return true;
+  if (raw.includes("먹거리") || raw.includes("맛집") || raw.includes("카페")) return true;
+
+  return false;
+}
+
+function isShopCategory(cat) {
+  const raw = String(cat || "").trim();
+  const c = raw.toLowerCase();
+  if (!c) return false;
+
+  if (c === "general" || c === "shopping" || c === "shop") return true;
+  if (c.startsWith("shop_") || c.startsWith("general_")) return true;
+  if (raw.includes("살거리") || raw.includes("일반상품") || raw.includes("쇼핑")) return true;
+
+  return false;
+}
+
+function classifySection(item) {
+  const cat = item?.category || "";
+  if (isHomestayCategory(cat)) return "stay";
+  if (isFoodCategory(cat)) return "food";
+  if (isShopCategory(cat)) return "shop";
+  return "play";
+}
+
 const $ = (id) => document.getElementById(id);
 
 function n(v, d = 0) {
@@ -179,11 +213,24 @@ function renderItemsGrid(items) {
   const filtered = items.filter((it) => matchSearch(it, q));
   const sorted = sortItems(filtered, sortMode);
 
-  const state = $("itemsState");
-  if (state) state.textContent = `총 ${sorted.length}개 (published)`;
+  const grouped = { play: [], food: [], stay: [], shop: [] };
+  for (const it of sorted) grouped[classifySection(it)].push(it);
 
-  const grid = $("itemsGrid");
-  if (grid) grid.innerHTML = sorted.map(renderItemCard).join("");
+  const bindSection = (key, stateId, gridId, menuCountId, emptyText) => {
+    const rows = grouped[key] || [];
+    const state = $(stateId);
+    const grid = $(gridId);
+    const countEl = $(menuCountId);
+
+    if (countEl) countEl.textContent = String(rows.length);
+    if (state) state.textContent = rows.length ? `총 ${rows.length}개` : emptyText;
+    if (grid) grid.innerHTML = rows.map(renderItemCard).join("");
+  };
+
+  bindSection("play", "itemsStatePlay", "itemsGridPlay", "menuPlayCount", "등록된 놀거리가 없습니다.");
+  bindSection("food", "itemsStateFood", "itemsGridFood", "menuFoodCount", "등록된 먹거리가 없습니다.");
+  bindSection("stay", "itemsStateStay", "itemsGridStay", "menuStayCount", "등록된 잠자리가 없습니다.");
+  bindSection("shop", "itemsStateShop", "itemsGridShop", "menuShopCount", "등록된 살거리가 없습니다.");
 }
 
 function renderCategoryRanking(items) {
@@ -335,14 +382,6 @@ async function loadPublishedItems() {
     vm.guideUid = data.guideUid || data.ownerUid || "";
     vm.guideName = data.guideName || data.ownerName || "";
 
-    const t = String((data.type || "")).toLowerCase();
-    if (t) {
-      if (t !== "experience") return; // 놀거리만
-    } else {
-      // 레거시( type 없음 )은 category로 홈스테이 제외
-      if (isHomestayCategory(vm.category)) return;
-    }
-
     items.push(vm);
   });
 
@@ -370,6 +409,14 @@ async function loadPublishedItems() {
   return items;
 }
 
+(function bindSectionMenu() {
+  const jump = (id) => $(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  $("menuPlay")?.addEventListener("click", () => jump("sectionPlay"));
+  $("menuFood")?.addEventListener("click", () => jump("sectionFood"));
+  $("menuStay")?.addEventListener("click", () => jump("sectionStay"));
+  $("menuShop")?.addEventListener("click", () => jump("sectionShop"));
+})();
+
 (async function init() {
   try {
     const items = await loadPublishedItems();
@@ -391,7 +438,10 @@ async function loadPublishedItems() {
     $("leadMetric")?.addEventListener("change", () => renderGuideLeaderboard(items));
   } catch (e) {
     console.error(e);
-    const state = $("itemsState");
-    if (state) state.textContent = "권한 또는 네트워크 문제로 불러오지 못했습니다.";
+    const states = ["itemsStatePlay", "itemsStateFood", "itemsStateStay", "itemsStateShop"];
+    for (const id of states) {
+      const el = $(id);
+      if (el) el.textContent = "권한 또는 네트워크 문제로 불러오지 못했습니다.";
+    }
   }
 })();
