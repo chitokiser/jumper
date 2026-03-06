@@ -60,6 +60,16 @@
     .pay-result .mp-kv:last-child { border-bottom: none; }
     .pay-result .k { color: var(--muted, #6b7280); }
     .pay-result .v { font-weight: 600; word-break: break-all; text-align: right; max-width: 70%; }
+    .jp-box { margin-top: 20px; border-radius: 14px; overflow: hidden; }
+    .jp-waiting { text-align: center; padding: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; font-size: 0.88rem; color: #64748b; }
+    .jp-win { text-align: center; padding: 22px 16px; background: linear-gradient(135deg, #1e1b4b, #312e81); border-radius: 14px; color: #fff; }
+    .jp-win-emoji { font-size: 2.4rem; margin-bottom: 6px; }
+    .jp-win-title { font-size: 1rem; font-weight: 800; color: #fde68a; letter-spacing: .06em; margin-bottom: 6px; }
+    .jp-win-amount { font-size: 2rem; font-weight: 900; color: #fef08a; text-shadow: 0 2px 16px rgba(250,204,21,.4); }
+    .jp-win-hint { font-size: 0.75rem; color: #cbd5e1; margin-top: 8px; }
+    .jp-nowin { text-align: center; padding: 14px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; }
+    .jp-nowin-title { font-size: 0.88rem; color: #475569; }
+    .jp-nowin-rand { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
   </style>
 </head>
 
@@ -122,6 +132,22 @@
           <p style="text-align:center; font-size:1.5rem; margin-bottom:16px;">✅</p>
           <p style="text-align:center; font-weight:700; font-size:1.1rem; margin-bottom:20px; color:var(--accent,#7c3aed);">결제 완료!</p>
           <div class="pay-result" id="payResult"></div>
+
+          <!-- 잭팟 결과 -->
+          <div id="jackpotResultBox" class="jp-box" style="display:none;">
+            <div id="jpWaiting" class="jp-waiting">🎰 잭팟 결과 확인 중...</div>
+            <div id="jpWin" class="jp-win" style="display:none;">
+              <div class="jp-win-emoji">🎉</div>
+              <div class="jp-win-title">잭팟 당첨!</div>
+              <div id="jpWinAmount" class="jp-win-amount">0 HEX</div>
+              <div class="jp-win-hint">마이페이지에서 출금 신청하세요</div>
+            </div>
+            <div id="jpNoWin" class="jp-nowin" style="display:none;">
+              <div class="jp-nowin-title">🎰 잭팟에 참여했습니다 — 이번엔 아쉽네요!</div>
+              <div id="jpNoWinRand" class="jp-nowin-rand"></div>
+            </div>
+          </div>
+
           <a class="btn btn--ghost" href="/index.html" style="display:block; text-align:center; margin-top:20px;">홈으로</a>
         </div>
 

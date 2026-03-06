@@ -75,6 +75,8 @@
     .used-meta{margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
     .used-price{font-size:0.82rem;font-weight:700;color:#2563eb;}
     .used-state{font-size:0.72rem;color:#64748b;}
+    .more-btn{display:block;width:100%;margin-top:8px;padding:8px;background:none;border:1px solid #e2e8f0;border-radius:8px;font-size:0.85rem;color:#475569;cursor:pointer;text-align:center;}
+    .more-btn:hover{background:#f8fafc;}
     .jackpot-panel{
       position:relative;
       overflow:hidden;
@@ -147,6 +149,7 @@
       </div>
       <div class="panel notice-panel">
         <ol class="notice-list" id="noticeList"></ol>
+        <button id="noticeMoreBtn" class="more-btn" style="display:none;">더보기</button>
         <div class="help small">
           공지사항은 관리자만 작성할 수 있습니다.
           <a href="/admin_notices.html" id="noticeAdminLink" style="display:none;">공지 관리</a>
@@ -177,6 +180,24 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">바로가기</h2>
+      </div>
+      <div class="shortcut-row">
+        <a class="shortcut-card" href="/mypage.html">
+          <span class="shortcut-icon">💳</span>
+          <span class="shortcut-label">내 지갑</span>
+          <span class="shortcut-sub">HEX 잔고 · 결제 · QR 스캔</span>
+        </a>
+        <a class="shortcut-card" href="/exchange.html">
+          <span class="shortcut-icon">🪙</span>
+          <span class="shortcut-label">토큰 거래소</span>
+          <span class="shortcut-sub">JUMP 매수 · 매도 · 스테이킹</span>
+        </a>
       </div>
     </section>
     <section class="section" id="sponsorSection">
@@ -276,23 +297,6 @@
       </div>
     </section>
 
-    <section class="section">
-      <div class="section-h">
-        <h2 class="section-title">바로가기</h2>
-      </div>
-      <div class="shortcut-row">
-        <a class="shortcut-card" href="/mypage.html">
-          <span class="shortcut-icon">💳</span>
-          <span class="shortcut-label">내 지갑</span>
-          <span class="shortcut-sub">HEX 잔고 · 결제 · QR 스캔</span>
-        </a>
-        <a class="shortcut-card" href="/exchange.html">
-          <span class="shortcut-icon">🪙</span>
-          <span class="shortcut-label">토큰 거래소</span>
-          <span class="shortcut-sub">JUMP 매수 · 매도 · 스테이킹</span>
-        </a>
-      </div>
-    </section>
   </main>
 
   <div id="merchantProductsModal" class="mp-modal" style="display:none;" aria-modal="true" role="dialog">

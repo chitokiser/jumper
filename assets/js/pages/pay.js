@@ -7,6 +7,7 @@ import { db, functions } from "/assets/js/firebase-init.js";
 import {
   doc,
   getDoc,
+  onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import {
   httpsCallable,
@@ -170,6 +171,7 @@ function bindPayButton() {
       // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
+      watchJackpotResult(d.txHash);
 
       const paidAmountStr = isVnd
         ? `${amount.toLocaleString()}동 (${d.amountHex || "?"} HEX)`
@@ -190,6 +192,53 @@ function bindPayButton() {
       btn.textContent = "결제하기";
     }
   };
+}
+
+// ── 잭팟 결과 감시 ────────────────────────────────────
+function weiToHex(weiStr, decimals = 18) {
+  const wei = BigInt(weiStr || "0");
+  const d = BigInt(decimals);
+  const whole = wei / 10n ** d;
+  const frac = (wei % 10n ** d).toString().padStart(decimals, "0").slice(0, 4).replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : `${whole}`;
+}
+
+function watchJackpotResult(txHash) {
+  const box = $("jackpotResultBox");
+  if (!box || !txHash) return;
+  box.style.display = "";
+
+  let unsub = null;
+  let timer = null;
+
+  const cleanup = () => {
+    if (unsub) { unsub(); unsub = null; }
+    if (timer) { clearTimeout(timer); timer = null; }
+  };
+
+  const reveal = (data) => {
+    cleanup();
+    show("jpWaiting", false);
+    if (data.isWinner && BigInt(data.finalWinWei || "0") > 0n) {
+      setText("jpWinAmount", `${weiToHex(data.finalWinWei)} HEX`);
+      show("jpWin", true);
+    } else {
+      const rand = data.randomValue != null ? `랜덤 번호: ${data.randomValue} / 9999` : "";
+      const el = $("jpNoWinRand");
+      if (el) el.textContent = rand;
+      show("jpNoWin", true);
+    }
+  };
+
+  timer = setTimeout(() => {
+    cleanup();
+    const waiting = $("jpWaiting");
+    if (waiting) waiting.textContent = "잭팟 결과는 마이페이지에서 확인하세요";
+  }, 120000);
+
+  unsub = onSnapshot(doc(db, "jackpot_rounds", txHash), (snap) => {
+    if (snap.exists()) reveal(snap.data());
+  });
 }
 
 // ── 시작 ─────────────────────────────────────────────

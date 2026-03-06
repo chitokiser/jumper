@@ -449,7 +449,7 @@ async function loadTxHistory(uid) {
     // ── 행 렌더링 ──
     const rows = entries.map((entry) => {
       const dateStr = entry.date
-        ? entry.date.toLocaleDateString("ko", { year: "numeric", month: "2-digit", day: "2-digit" })
+        ? entry.date.toLocaleString("ko", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
         : "-";
 
       // ── 판매 수입 (가맹점으로 받은 결제, 수수료 공제 후 순 금액 표시) ──

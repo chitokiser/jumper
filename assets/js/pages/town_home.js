@@ -232,13 +232,13 @@ async function loadNotices() {
 
   try {
     const snap = await getDocs(
-      query(collection(db, "notices"), orderBy("createdAt", "desc"), limit(8))
+      query(collection(db, "notices"), orderBy("createdAt", "desc"), limit(30))
     );
 
     const docs = [];
     snap.forEach((d) => docs.push(d.data() || {}));
 
-    docs
+    const visible = docs
       .filter((v) => v.visible !== false)
       .sort((a, b) => {
         const ap = a.pinned ? 1 : 0;
@@ -247,13 +247,31 @@ async function loadNotices() {
         const am = typeof a.createdAt?.toMillis === "function" ? a.createdAt.toMillis() : 0;
         const bm = typeof b.createdAt?.toMillis === "function" ? b.createdAt.toMillis() : 0;
         return bm - am;
-      })
-      .forEach((v) => list.appendChild(makeNoticeRow(v)));
+      });
+
+    visible.forEach((v, i) => {
+      const row = makeNoticeRow(v);
+      if (i >= 5) row.style.display = "none";
+      list.appendChild(row);
+    });
 
     if (!list.children.length) {
       const li = document.createElement("li");
       li.textContent = "표시할 공지사항이 없습니다.";
       list.appendChild(li);
+    }
+
+    const moreBtn = $("noticeMoreBtn");
+    if (moreBtn) {
+      if (visible.length > 5) {
+        moreBtn.style.display = "";
+        moreBtn.onclick = () => {
+          list.querySelectorAll("li[style*='display: none'], li[style*='display:none']").forEach((el) => (el.style.display = ""));
+          moreBtn.style.display = "none";
+        };
+      } else {
+        moreBtn.style.display = "none";
+      }
     }
   } catch (e) {
     console.warn("loadNotices failed:", e);
