@@ -328,6 +328,12 @@ service cloud.firestore {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
+
+    // jackpot rounds (공개 통계 조회용)
+    match /jackpot_rounds/{roundId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
 // used market posts
     match /usedMarketPosts/{postId} {
       allow get, list: if true;

@@ -10,6 +10,7 @@ import {
   orderBy,
   limit,
   getDocs,
+  getCountFromServer,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -121,14 +122,61 @@ async function loadJackpotCurrent() {
     });
   } catch (e) {
     console.warn("loadJackpotCurrent failed:", e);
-    setJackpotUi({
-      valueText: "연결 대기중",
-      fiatText: "약 - KRW / - VND",
-      updatedText: "window.__jackpotApiBase 또는 API 서버 상태를 확인해주세요",
-      winnerCountText: "-",
-      highestWinText: "- HEX",
-    });
+    try {
+      await loadJackpotFirestoreFallback();
+    } catch (fe) {
+      console.warn("loadJackpotFirestoreFallback failed:", fe);
+      setJackpotUi({
+        valueText: "연결 대기중",
+        fiatText: "약 - KRW / - VND",
+        updatedText: "잭팟 서버에 연결할 수 없습니다",
+        winnerCountText: "-",
+        highestWinText: "- HEX",
+      });
+    }
   }
+}
+
+async function loadJackpotFirestoreFallback() {
+  let winnerCountText = "-";
+  let highestWinText = "- HEX";
+  let valueText = "연결 대기중";
+  let fiatText = "약 - KRW / - VND";
+  let updatedText = "잭팟 서버에 연결할 수 없습니다";
+
+  try {
+    const cntSnap = await getCountFromServer(
+      query(collection(db, "jackpot_rounds"), where("isWinner", "==", true))
+    );
+    winnerCountText = formatCount(cntSnap.data().count);
+  } catch {}
+
+  try {
+    const highSnap = await getDocs(
+      query(collection(db, "jackpot_rounds"), orderBy("finalWinSort", "desc"), limit(1))
+    );
+    if (!highSnap.empty) {
+      const wei = highSnap.docs[0].data().finalWinWei || "0";
+      highestWinText = formatHexForUi(Number(BigInt(wei)) / 1e18);
+    }
+  } catch {}
+
+  try {
+    const latestSnap = await getDocs(
+      query(collection(db, "jackpot_rounds"), orderBy("createdAt", "desc"), limit(1))
+    );
+    if (!latestSnap.empty) {
+      const wei = latestSnap.docs[0].data().jackpotDisplayWei || "0";
+      const hexVal = Number(BigInt(wei)) / 1e18;
+      if (hexVal > 0) {
+        valueText = formatHexForUi(hexVal);
+        fiatText = formatFiatLine(hexVal);
+        updatedText = "최근 결제 기준 (실시간 아님)";
+      }
+    }
+  } catch {}
+
+  setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, highestWinText });
 }
 
 function initJackpotTicker() {
