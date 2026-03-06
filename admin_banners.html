@@ -1,0 +1,93 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>배너관리 - Jumper</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/admin_banners.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+  <script type="module" src="/assets/js/pages/admin_banners.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="section">
+      <div class="section-h">
+        <h2 class="section-title">배너관리</h2>
+      </div>
+
+      <div class="panel ab-panel">
+        <div class="ab-top">
+          <div class="ab-state" id="abState">권한 확인 중...</div>
+          <div class="ab-actions">
+            <a class="btn btn--ghost btn--sm" href="/index.html">홈으로</a>
+          </div>
+        </div>
+
+        <form id="bannerForm" class="ab-form" autocomplete="off">
+          <div class="ab-row">
+            <label class="ab-label" for="bnTitle">제목</label>
+            <input class="ab-input" id="bnTitle" type="text" maxlength="80" required placeholder="예: HEX DAO 거래소" />
+          </div>
+
+          <div class="ab-row">
+            <label class="ab-label" for="bnSubtitle">부제목</label>
+            <input class="ab-input" id="bnSubtitle" type="text" maxlength="120" placeholder="예: 우리들의 토큰거래소 바로가기" />
+          </div>
+
+          <div class="ab-row">
+            <label class="ab-label" for="bnImageUrl">이미지 URL</label>
+            <input class="ab-input" id="bnImageUrl" type="url" required placeholder="https://..." />
+          </div>
+
+          <div class="ab-row">
+            <label class="ab-label" for="bnLinkUrl">링크 URL</label>
+            <input class="ab-input" id="bnLinkUrl" type="text" required placeholder="/used-market.html 또는 https://..." />
+          </div>
+
+          <div class="ab-grid">
+            <div class="ab-row">
+              <label class="ab-label" for="bnSort">정렬순서</label>
+              <input class="ab-input" id="bnSort" type="number" min="0" step="1" value="0" />
+            </div>
+            <div class="ab-row">
+              <label class="ab-label" for="bnActive">노출</label>
+              <select class="ab-select" id="bnActive">
+                <option value="1">노출</option>
+                <option value="0">숨김</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="ab-btns">
+            <button class="btn btn--primary" type="submit" id="btnBnSave">저장</button>
+            <button class="btn btn--ghost" type="button" id="btnBnReset">초기화</button>
+          </div>
+
+          <div class="ab-help" id="abHelp"></div>
+        </form>
+
+        <div class="ab-divider"></div>
+
+        <div class="ab-list-head">
+          <div class="ab-list-title">배너 목록</div>
+          <div class="ab-list-help">노출 ON + 정렬순서 기준으로 홈에 표시됩니다.</div>
+        </div>
+
+        <ol class="ab-list" id="bannerList"></ol>
+      </div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+</body>
+</html>

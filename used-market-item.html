@@ -1,0 +1,81 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>중고거래 상세 - Jumper</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/used_market.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/used_market_item.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="panel" style="margin-top:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <a class="btn" href="/used-market.html">목록으로</a>
+        <div id="umOwnerTools" style="display:none;gap:8px;flex-wrap:wrap;">
+          <button class="btn" id="btnEditToggle" type="button">내용 수정</button>
+          <button class="btn" id="btnReserved" type="button">예약중 전환</button>
+          <button class="btn" id="btnSold" type="button">판매완료 전환</button>
+          <button class="btn" id="btnOnSale" type="button">판매중 전환</button>
+        </div>
+      </div>
+
+      <div id="umDetailState" class="state">불러오는 중...</div>
+
+      <article id="umDetail" class="um-detail" style="display:none;">
+        <img id="dImage" class="um-main-img" alt="상품 이미지" />
+        <div id="dThumbs" class="um-thumbs" style="display:none;"></div>
+        <h1 id="dTitle" class="title" style="margin:0;"></h1>
+        <div id="dBadge"></div>
+        <div id="dPrice" class="um-price"></div>
+
+        <section class="um-kv">
+          <div class="um-kv-row"><div class="k">지역</div><div id="dRegion" class="v">-</div></div>
+          <div class="um-kv-row"><div class="k">판매자</div><div id="dSeller" class="v">-</div></div>
+          <div class="um-kv-row"><div class="k">연락처</div><div id="dContact" class="v">-</div></div>
+          <div class="um-kv-row"><div class="k">등록일</div><div id="dDate" class="v">-</div></div>
+        </section>
+
+        <section id="dDesc" class="um-desc"></section>
+
+        <section id="umEditPanel" class="panel um-edit-panel" style="display:none;">
+          <h3 style="margin:0 0 8px;">게시글 수정</h3>
+          <form id="umEditForm" style="display:grid;gap:10px;">
+            <label><div class="muted">제목</div><input id="eTitle" class="input" maxlength="80" required /></label>
+            <label><div class="muted">가격 (원)</div><input id="ePrice" class="input" type="number" min="0" step="1000" required /></label>
+            <label><div class="muted">지역</div><input id="eRegion" class="input" maxlength="40" required /></label>
+            <label><div class="muted">연락처</div><input id="eContact" class="input" maxlength="80" required /></label>
+            <div>
+              <div class="muted" style="margin-bottom:6px;">이미지 URL (최대 4장)</div>
+              <div style="display:grid;gap:8px;">
+                <input id="eImage1" class="input" placeholder="https://..." />
+                <input id="eImage2" class="input" placeholder="https://..." />
+                <input id="eImage3" class="input" placeholder="https://..." />
+                <input id="eImage4" class="input" placeholder="https://..." />
+              </div>
+            </div>
+            <label><div class="muted">설명</div><textarea id="eDesc" class="textarea" rows="8" maxlength="2000" required></textarea></label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <button class="btn btn--primary" id="btnEditSave" type="submit">수정 저장</button>
+              <button class="btn" id="btnEditCancel" type="button">취소</button>
+              <span id="eMsg" class="muted"></span>
+            </div>
+          </form>
+        </section>
+      </article>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+</body>
+</html>

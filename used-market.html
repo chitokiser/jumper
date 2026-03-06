@@ -1,0 +1,48 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>중고거래 - Jumper</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/used_market.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/used_market.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="um-head">
+      <div>
+        <h1 class="title" style="margin-bottom:4px;">회원간 중고거래</h1>
+        <p class="desc" style="margin-bottom:0;">당근처럼 지역 기반으로 물건을 사고팔 수 있어요.</p>
+      </div>
+      <a class="btn btn--primary" href="/used-market-new.html">판매글 등록</a>
+    </section>
+
+    <section class="panel" style="margin-top:12px;">
+      <div class="um-tools">
+        <input id="umSearch" class="input" placeholder="검색어 (제목/설명/지역)" />
+        <select id="umStatus" class="select">
+          <option value="all">전체 상태</option>
+          <option value="on_sale">판매중</option>
+          <option value="reserved">예약중</option>
+          <option value="sold">판매완료</option>
+        </select>
+      </div>
+
+      <div id="umState" class="state">불러오는 중...</div>
+      <div id="umGrid" class="um-grid"></div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+</body>
+</html>

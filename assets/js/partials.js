@@ -90,15 +90,32 @@
     }
   }
 
+  function ensureInAppGuardScript() {
+    try {
+      if (document.querySelector('script[data-inapp-guard="1"]')) return;
+      const s = document.createElement("script");
+      s.src = "/assets/js/inapp-guard.js";
+      s.defer = true;
+      s.dataset.inappGuard = "1";
+      document.head.appendChild(s);
+    } catch (e) {
+      console.warn("ensureInAppGuardScript failed:", e?.message || e);
+    }
+  }
+
   async function loadInto(id, urlPath) {
     const el = document.getElementById(id);
     if (!el) return false;
 
     const url = abs(urlPath);
-    const res = await fetch(url, { cache: "no-store" });
+    const reqUrl = url + (url.includes("?") ? "&" : "?") + "_pv=" + Date.now();
+    const res = await fetch(reqUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`partial load failed: ${urlPath} (${res.status})`);
 
-    const html = await res.text();
+    // Force UTF-8 decoding to prevent mojibake when hosting sends wrong charset.
+    const buf = await res.arrayBuffer();
+    let html = new TextDecoder("utf-8").decode(buf);
+    html = html.replace(/^\uFEFF/, "");
     el.innerHTML = html;
     return true;
   }
@@ -109,6 +126,7 @@
       ensureCss("/assets/css/footer.css");
       ensurePwaMeta();
       ensurePwaScript();
+      ensureInAppGuardScript();
 
       await loadInto("siteHeader", "/partials/header.html");
       await loadInto("siteFooter", "/partials/footer.html");
@@ -127,3 +145,5 @@
     mount();
   }
 })();
+
+

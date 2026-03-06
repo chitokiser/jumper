@@ -7,7 +7,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // 운영자 이메일(부트스트랩용)
+    // ??곸겫????李???봔?紐꾨뮞?紐껋삫??
     function isOperatorEmail() {
       return signedIn()
         && (request.auth.token.email is string)
@@ -22,7 +22,7 @@ service cloud.firestore {
         );
     }
 
-    // orders 단건에서만 쓰는 구매자/가이드 판정
+    // orders ??ｊ탷?癒?퐣筌??怨뺣뮉 ?닌됤꼻??揶쎛??諭??癒?젟
     function isOrderBuyer() {
       return signedIn()
         && (resource.data.buyerUid is string)
@@ -35,7 +35,7 @@ service cloud.firestore {
         && resource.data.guideUid == request.auth.uid;
     }
 
-    // 구매자가 수정 가능한 키를 "결제증빙 전용"으로 제한
+    // ?닌됤꼻?癒? ??륁젟 揶쎛?館釉???? "野껉퀣?ｏ쭩?명뒅 ?袁⑹뒠"??곗쨮 ??쀫립
     function buyerPayProofUpdateOnly() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return changed.hasOnly(["proof","paymentStatus","payProofUpdatedAt"]);
@@ -47,40 +47,38 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // 공지사항(notices)
+    // ?⑤벊???鍮?notices)
     match /notices/{noticeId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // 가이드/패밀리 신청서 (guideApplications/{uid})
+    // 揶쎛??諭???????醫롪퍕??(guideApplications/{uid})
     match /guideApplications/{uid} {
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow list: if isAdmin();
 
       allow create: if signedIn() && request.auth.uid == uid;
 
-      // ✅ FIX: 관리자도 승인/반려 처리를 위해 update 가능해야 함
-      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      // ??FIX: ?온?귐딆쁽???諭??獄쏆꼶??筌ｌ꼶?곭몴??袁る퉸 update 揶쎛?館鍮????      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
 
       allow delete: if isAdmin();
     }
 
-    // 가이드 프로필 (guides/{uid})
+    // 揶쎛??諭??袁⑥쨮??(guides/{uid})
     match /guides/{uid} {
       allow get: if isAdmin()
                 || (signedIn() && request.auth.uid == uid)
                 || (resource.data.approved == true);
       allow list: if isAdmin();
 
-      // ✅ FIX: 승인 시 관리자가 guides/{uid}를 생성해야 하는 케이스가 많음
-      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      // ??FIX: ?諭?????온?귐딆쁽揶쎛 guides/{uid}????밴쉐??곷튊 ??롫뮉 ?냈??곷뮞揶쎛 筌띾‘??      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
 
       allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow delete: if false;
     }
 
-    // 상품(items)
+    // ?怨밸?(items)
     match /items/{itemId} {
 
       function isOwner() {
@@ -113,7 +111,7 @@ service cloud.firestore {
       }
     }
 
-    // 리뷰 (SSOT)
+    // ?귐됰윮 (SSOT)
     match /reviews/{orderId} {
 
       function orderExistsAndMine() {
@@ -162,7 +160,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 주문(orders)
+    // 雅뚯눖揆(orders)
     match /orders/{orderId} {
       allow get: if isAdmin() || isOrderBuyer() || isOrderGuide();
       allow list: if signedIn();
@@ -199,7 +197,7 @@ service cloud.firestore {
 
     // users/{uid}
     match /users/{uid} {
-      // ✅ FIX: 관리자 승인 시 role/profile을 넣어야 하므로 admin create/update 허용
+      // ??FIX: ?온?귐딆쁽 ?諭????role/profile???節뚮선?????嚥?admin create/update ??됱뒠
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
@@ -220,7 +218,7 @@ service cloud.firestore {
       }
     }
 
-    // (레거시) settlementRuns
+    // (??뉕탢?? settlementRuns
     match /settlementRuns/{ym} {
       allow get: if isAdmin() || signedIn();
       allow list: if isAdmin();
@@ -252,15 +250,13 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // 수탁형 지갑 – 신규 컬렉션
-    // 모든 쓰기는 Cloud Functions(Admin SDK)이 처리 → 클라이언트 write 불허
-    // ──────────────────────────────────────────────────────────────
+    // ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+    // ??묎맒??筌왖揶????醫됲뇣 ?뚎됱젂??    // 筌뤴뫀諭??怨뚮┛??Cloud Functions(Admin SDK)??筌ｌ꼶?????????곷섧??write ?븍뜇肉
+    // ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
-    // 원화 충전 요청 (deposits/{refCode})
-    // - 유저: 자신의 요청만 읽기 가능
-    // - 관리자: 전체 읽기
-    // - 쓰기: Cloud Functions만 (클라이언트 직접 쓰기 불허)
+    // ?癒곗넅 ?겸뫗???遺욧퍕 (deposits/{refCode})
+    // - ?醫?: ?癒?뻿???遺욧퍕筌???꾨┛ 揶쎛??    // - ?온?귐딆쁽: ?袁⑷퍥 ??꾨┛
+    // - ?怨뚮┛: Cloud Functions筌?(?????곷섧??筌욊낯???怨뚮┛ ?븍뜇肉)
     match /deposits/{refCode} {
       allow get: if isAdmin()
         || (signedIn()
@@ -272,21 +268,16 @@ service cloud.firestore {
             && resource.data.uid is string
             && resource.data.uid == request.auth.uid);
 
-      allow create, update, delete: if false; // Cloud Functions(Admin SDK) 전용
+      allow create, update, delete: if false; // Cloud Functions(Admin SDK) ?袁⑹뒠
     }
 
-    // 멘토 이메일 ↔ 지갑 주소 매핑 (mentors/{email})
-    // - 읽기: 로그인한 누구나 (가입 시 멘토 주소 조회)
-    // - 쓰기: Cloud Functions만
+        // mentors (mentors/{email})
     match /mentors/{email} {
       allow get, list: if signedIn();
-      allow create, update, delete: if false; // Cloud Functions(Admin SDK) 전용
+      allow create, update, delete: if false; // Cloud Functions only
     }
 
-    // 온체인 트랜잭션 로그 (transactions/{docId})
-    // - 유저: 자신의 거래만 읽기
-    // - 관리자: 전체 읽기
-    // - 쓰기: Cloud Functions만
+    // transactions (transactions/{docId})
     match /transactions/{docId} {
       allow get: if isAdmin()
         || (signedIn()
@@ -297,41 +288,34 @@ service cloud.firestore {
         || (signedIn()
             && resource.data.uid is string
             && resource.data.uid == request.auth.uid);
-      allow create, update, delete: if false; // Cloud Functions(Admin SDK) 전용
+      allow create, update, delete: if false; // Cloud Functions only
     }
 
-    // 가맹점(판매회원) 등록 정보 (merchants/{merchantId})
-    // - 읽기: 누구나 (가맹점 리스트 공개 노출)
-    // - 쓰기: Cloud Functions만
+    // merchants (merchants/{merchantId})
     match /merchants/{merchantId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // Cloud Functions(Admin SDK) 전용
+      allow create, update, delete: if false; // Cloud Functions only
     }
 
-    // 장소 (places/{placeId})
-    // - 읽기: 누구나 (지도/홈 공개 노출)
-    // - 쓰기: 관리자만
+    // places (places/{placeId})
     match /places/{placeId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // 조합전용몰 설정 (coopConfig/main)
+    // coop config
     match /coopConfig/{docId} {
       allow get, list: if signedIn();
       allow create, update, delete: if isAdmin();
     }
 
-    // 조합전용몰 상품 (coopProducts/{id})
-    // - 읽기: 누구나 (메인 페이지 공개 노출)
-    // - 쓰기: 관리자만
+    // coop products
     match /coopProducts/{productId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // 조합전용몰 주문 (coopOrders/{id})
-    // - 쓰기: Cloud Functions만
+    // coop orders
     match /coopOrders/{orderId} {
       allow get: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid);
@@ -339,9 +323,28 @@ service cloud.firestore {
         || (signedIn() && resource.data.uid == request.auth.uid);
       allow create, update, delete: if false;
     }
+    // sponsor banners
+    match /sponsorBanners/{bannerId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+// used market posts
+    match /usedMarketPosts/{postId} {
+      allow get, list: if true;
+      allow create: if signedIn()
+        && request.resource.data.sellerUid is string
+        && request.resource.data.sellerUid == request.auth.uid;
+      allow update, delete: if isAdmin()
+        || (signedIn()
+            && resource.data.sellerUid is string
+            && resource.data.sellerUid == request.auth.uid);
+    }
 
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
+
+
+

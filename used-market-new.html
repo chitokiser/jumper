@@ -1,0 +1,71 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>중고거래 등록 - Jumper</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/used_market.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/used_market_new.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="panel" style="margin-top:14px;max-width:760px;">
+      <h1 class="title">중고거래 판매글 등록</h1>
+      <p class="desc">사진은 장치에서 최대 4장까지 선택할 수 있습니다.</p>
+
+      <form id="umForm" class="form" style="display:grid;gap:10px;">
+        <label>
+          <div class="muted">제목</div>
+          <input id="fTitle" class="input" required maxlength="80" placeholder="예: 아이폰 14 128GB" />
+        </label>
+
+        <label>
+          <div class="muted">가격 (원)</div>
+          <input id="fPrice" class="input" type="number" min="0" step="1000" required placeholder="예: 450000" />
+        </label>
+
+        <label>
+          <div class="muted">지역</div>
+          <input id="fRegion" class="input" maxlength="40" required placeholder="예: 하노이 오션파크" />
+        </label>
+
+        <label>
+          <div class="muted">연락처</div>
+          <input id="fContact" class="input" maxlength="80" required placeholder="예: 카카오ID / 전화번호" />
+        </label>
+
+        <label>
+          <div class="muted">사진 업로드 (최대 4장)</div>
+          <input id="fImages" class="input" type="file" accept="image/*" multiple />
+          <div class="muted" style="margin-top:6px;font-size:12px;">jpg/png/webp 권장, 파일당 10MB 이하</div>
+        </label>
+
+        <div id="fImagePreview" class="um-upload-preview" style="display:none;"></div>
+
+        <label>
+          <div class="muted">설명</div>
+          <textarea id="fDesc" class="textarea" rows="8" maxlength="2000" required placeholder="상태, 사용기간, 거래 방식 등을 적어주세요."></textarea>
+        </label>
+
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn--primary" id="fSubmit" type="submit">등록하기</button>
+          <a class="btn" href="/used-market.html">목록으로</a>
+          <span id="fMsg" class="muted"></span>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+</body>
+</html>

@@ -1,29 +1,32 @@
-{
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "disallowLegacyRuntimeConfig": true,
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log"
-      ]
-    }
-  ],
-  "emulators": {
-    "functions": {
-      "host": "127.0.0.1",
-      "port": 5002
-    },
-    "ui": {
-      "enabled": false
-    },
-    "singleProjectMode": true
-  }
+﻿{
+    "firestore":  {
+                      "rules":  "firestore.rules",
+                      "indexes":  "firestore.indexes.json"
+                  },
+    "functions":  [
+                      {
+                          "source":  "functions",
+                          "codebase":  "default",
+                          "disallowLegacyRuntimeConfig":  true,
+                          "ignore":  [
+                                         "node_modules",
+                                         ".git",
+                                         "firebase-debug.log",
+                                         "firebase-debug.*.log"
+                                     ]
+                      }
+                  ],
+    "emulators":  {
+                      "functions":  {
+                                        "host":  "127.0.0.1",
+                                        "port":  5002
+                                    },
+                      "ui":  {
+                                 "enabled":  false
+                             },
+                      "singleProjectMode":  true
+                  },
+    "storage":  {
+                    "rules":  "storage.rules"
+                }
 }

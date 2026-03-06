@@ -1,4 +1,4 @@
-<!-- /index.html -->
+﻿<!-- /index.html -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -24,7 +24,6 @@
   <script type="module" src="/assets/js/pages/town_home.hero.js" defer></script>
 
   <style>
-    /* 가맹점 그리드 */
     .merchant-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:4px;}
     .merchant-card{background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;}
     .merchant-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
@@ -36,7 +35,6 @@
     .btn-merchant-products{margin-top:6px;font-size:0.78rem;padding:4px 12px;border-radius:99px;border:1px solid var(--accent,#7c3aed);color:var(--accent,#7c3aed);background:transparent;cursor:pointer;align-self:flex-start;}
     .btn-merchant-products:hover{background:var(--accent-light,#ede9fe);}
 
-    /* 가맹점 상품 모달 */
     .mp-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;}
     .mp-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);cursor:pointer;}
     .mp-modal-box{position:relative;background:var(--surface,#fff);border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);}
@@ -54,14 +52,12 @@
     .mp-product-region{font-size:0.74rem;color:var(--muted,#6b7280);}
     .mp-product-price{font-size:0.8rem;color:var(--accent,#7c3aed);font-weight:600;margin-top:auto;}
 
-    /* 사진 그리드 (4장) */
     .photo-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
     @media(max-width:600px){.photo-grid-4{grid-template-columns:repeat(2,1fr);}}
     .photo-tile-4{display:block;border-radius:10px;overflow:hidden;aspect-ratio:4/3;}
     .photo-tile-4 img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s;}
     .photo-tile-4:hover img{transform:scale(1.04);}
 
-    /* 바로가기 카드 */
     .shortcut-row{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:4px;}
     @media(max-width:480px){.shortcut-row{grid-template-columns:1fr;}}
     .shortcut-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px 16px;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;text-decoration:none;color:var(--text,#111);transition:box-shadow .15s,border-color .15s;}
@@ -69,12 +65,19 @@
     .shortcut-icon{font-size:2rem;}
     .shortcut-label{font-weight:700;font-size:1rem;}
     .shortcut-sub{font-size:0.8rem;color:var(--muted,#6b7280);}
+    .used-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:4px;}
+    .used-card{display:block;border:1px solid var(--border,#e5e7eb);border-radius:12px;overflow:hidden;background:#fff;text-decoration:none;color:inherit;box-shadow:var(--shadow);}
+    .used-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#f1f5f9;}
+    .used-body{padding:10px;}
+    .used-title{font-size:0.88rem;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .used-meta{margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+    .used-price{font-size:0.82rem;font-weight:700;color:#2563eb;}
+    .used-state{font-size:0.72rem;color:#64748b;}
   </style>
 </head>
 <body>
   <div id="siteHeader"></div>
 
-  <!-- HERO VIDEO -->
   <section class="town-hero hero-video" id="heroSection">
     <div class="hero-bg" aria-hidden="true">
       <video class="hero-video-el" autoplay muted loop playsinline preload="metadata">
@@ -83,19 +86,17 @@
       <div class="hero-bg-vignette"></div>
     </div>
     <div class="town-hero-inner hero-content">
-      <h1 class="town-title">당신의 다음 한 달은 하노이입니다</h1>
+      <h1 class="town-title">하노이 오션파크 한인 연대</h1>
       <p class="town-desc">
-        공간의 제약을 넘어<br/>
-        새로운 일상이 시작되는 곳<br/>
-        점퍼와 함께하는 하노이 한 달 살기
+        지역 사업자와<br/>
+        지역 여행객이<br/>
+        함께 연결되는 경제네트워크
       </p>
       <div class="hero-actions"></div>
     </div>
   </section>
 
   <main class="page">
-
-    <!-- 공지사항 -->
     <section class="section">
       <div class="section-h">
         <h2 class="section-title">공지사항</h2>
@@ -109,7 +110,47 @@
       </div>
     </section>
 
-    <!-- 가맹점 리스트 -->
+    <section class="section" id="sponsorSection">
+      <div class="section-h">
+        <h2 class="section-title">스폰서 배너</h2>
+      </div>
+      <div class="panel sponsor-panel">
+        <div class="sponsor-rotator" id="sponsorRotator" aria-label="스폰서 배너">
+          <a class="sponsor-slide is-active" data-idx="0" href="https://hexdao.netlify.app" target="_blank" rel="noopener">
+            <img class="sponsor-slide-logo" src="/assets/images/jump/hex.png" alt="HEX DAO" />
+            <div class="sponsor-slide-copy">
+              <strong>HEX DAO 거래소</strong>
+              <span>우리들의 토큰거래소 바로가기</span>
+            </div>
+          </a>
+          <a class="sponsor-slide" data-idx="1" href="/coop.html">
+            <img class="sponsor-slide-logo" src="/assets/images/jump/logo2.png" alt="JumpDAO" />
+            <div class="sponsor-slide-copy">
+              <strong>JumpDAO 회원전용몰</strong>
+              <span>교민 네트워크 전용 혜택을 확인해보세요</span>
+            </div>
+          </a>
+          <a class="sponsor-slide" data-idx="2" href="/used-market.html">
+            <img class="sponsor-slide-logo" src="/assets/images/jump/BI.png" alt="중고거래" />
+            <div class="sponsor-slide-copy">
+              <strong>회원간 중고거래 오픈</strong>
+              <span>당근처럼 쉽고 빠르게 사고팔기</span>
+            </div>
+          </a>
+        </div>
+        <div class="sponsor-dots" id="sponsorDots" aria-label="배너 페이지"></div>
+      </div>
+    </section>
+
+        <section class="section" id="usedMarketPreviewSection">
+      <div class="section-h">
+        <h2 class="section-title">회원 중고물품</h2>
+        <a class="btn btn--ghost btn--sm" href="/used-market.html">전체 보기</a>
+      </div>
+      <div id="usedMarketPreviewState" class="help small" style="margin:4px 0 10px;"></div>
+      <div id="usedMarketPreviewGrid" class="used-grid"></div>
+    </section>
+
     <section class="section" id="merchantListSection">
       <div class="section-h">
         <h2 class="section-title">가맹점 리스트</h2>
@@ -121,7 +162,6 @@
       <div id="merchantListGrid" class="merchant-grid"></div>
     </section>
 
-    <!-- 조합전용몰 상품 -->
     <section class="section" id="coopProductsSection">
       <div class="section-h">
         <h2 class="section-title">회원 전용몰</h2>
@@ -130,19 +170,17 @@
       <div id="coopProductsGrid" class="mp-product-grid"></div>
     </section>
 
-    <!-- 우리마을 지도 -->
     <section class="section" id="village-map">
       <div class="section-h">
         <h2 class="section-title">우리마을 지도</h2>
         <a class="btn btn--ghost btn--sm" id="btnAdminPlace" href="/admin_places.html" style="display:none;">장소 등록 (관리자)</a>
       </div>
       <div class="panel">
-        <p class="help small" style="margin-bottom:10px;">우리마을 지도에 홈스테이, 식당, 병원, 놀거리를 표시합니다.</p>
+        <p class="help small" style="margin-bottom:10px;">우리마을 지도에 홈스테이, 식당, 병원, 볼거리 정보를 표시합니다.</p>
         <div id="villageMap" style="width:100%;height:420px;border-radius:10px;background:#f3f4f6;"></div>
       </div>
     </section>
 
-    <!-- 홈스테이 & 놀거리 -->
     <section class="section" id="home-homestay-photos">
       <div class="section-h">
         <h2 class="section-title">우리마을 홈스테이</h2>
@@ -158,45 +196,42 @@
 
     <section class="section" id="home-what-photos">
       <div class="section-h">
-        <h2 class="section-title">우리마을 놀거리</h2>
+        <h2 class="section-title">우리마을 볼거리</h2>
         <a class="btn btn--ghost btn--sm" href="/what.html">전체 보기</a>
       </div>
       <div class="photo-grid-4">
-        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/1.png" alt="놀거리"></a>
-        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/2.png" alt="놀거리"></a>
-        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/3.png" alt="놀거리"></a>
-        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/4.png" alt="놀거리"></a>
+        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/1.png" alt="볼거리"></a>
+        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/2.png" alt="볼거리"></a>
+        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/3.png" alt="볼거리"></a>
+        <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/4.png" alt="볼거리"></a>
       </div>
     </section>
 
-    <!-- 바로가기 -->
     <section class="section">
       <div class="section-h">
         <h2 class="section-title">바로가기</h2>
       </div>
       <div class="shortcut-row">
         <a class="shortcut-card" href="/mypage.html">
-          <span class="shortcut-icon">👛</span>
-          <span class="shortcut-label">수탁지갑</span>
+          <span class="shortcut-icon">💳</span>
+          <span class="shortcut-label">내 지갑</span>
           <span class="shortcut-sub">HEX 잔고 · 결제 · QR 스캔</span>
         </a>
         <a class="shortcut-card" href="/exchange.html">
           <span class="shortcut-icon">🪙</span>
-          <span class="shortcut-label">점프토큰 거래소</span>
-          <span class="shortcut-sub">JUMP 구매 · 판매 · 스테이킹</span>
+          <span class="shortcut-label">토큰 거래소</span>
+          <span class="shortcut-sub">JUMP 매수 · 매도 · 스테이킹</span>
         </a>
       </div>
     </section>
-
   </main>
 
-  <!-- 가맹점 상품 모달 -->
   <div id="merchantProductsModal" class="mp-modal" style="display:none;" aria-modal="true" role="dialog">
     <div class="mp-modal-backdrop" id="mpModalBackdrop"></div>
     <div class="mp-modal-box">
       <div class="mp-modal-head">
         <h3 id="mpModalTitle">가맹점 상품</h3>
-        <button class="mp-modal-close" id="mpModalClose" type="button" aria-label="닫기">✕</button>
+        <button class="mp-modal-close" id="mpModalClose" type="button" aria-label="닫기">×</button>
       </div>
       <div id="mpModalState" class="help" style="margin-bottom:8px;"></div>
       <div id="mpModalGrid" class="mp-product-grid"></div>
@@ -208,3 +243,4 @@
   <script type="module" src="/assets/js/header-auth.js"></script>
 </body>
 </html>
+
