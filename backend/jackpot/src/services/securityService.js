@@ -1,6 +1,5 @@
 ﻿import { config } from "../config.js";
 import {
-  isWhitelistedMerchant,
   getMerchantWallet,
   checkRepeatLimit,
   getDailyPayoutWei,
@@ -25,11 +24,6 @@ export async function validatePaymentForJackpot({
 
   if (config.adminExcludedAddresses.includes(lower(userAddress))) {
     throw new Error("ADMIN_ADDRESS_EXCLUDED");
-  }
-
-  const whitelistOk = await isWhitelistedMerchant(merchantId);
-  if (!whitelistOk) {
-    throw new Error("MERCHANT_NOT_WHITELISTED");
   }
 
   if (config.selfPaymentBlock) {

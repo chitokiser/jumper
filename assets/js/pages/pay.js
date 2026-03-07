@@ -4,6 +4,7 @@
 import { onAuthReady } from "../auth.js";
 import { login } from "../auth.js";
 import { db, functions } from "/assets/js/firebase-init.js";
+import { initSlot } from "/assets/js/jackpot-anim.js";
 import {
   doc,
   getDoc,
@@ -208,9 +209,13 @@ function watchJackpotResult(txHash) {
   if (!box || !txHash) return;
   box.style.display = "";
 
+  // 슬롯머신 시작
+  const slot = initSlot($("jpWaiting"));
+
   let unsub = null;
   let retryTimer = null;
   let giveupTimer = null;
+  let revealed = false;
 
   const cleanup = () => {
     if (unsub) { unsub(); unsub = null; }
@@ -219,46 +224,44 @@ function watchJackpotResult(txHash) {
   };
 
   const reveal = (data) => {
+    if (revealed) return;
+    revealed = true;
     cleanup();
-    show("jpWaiting", false);
-    if (data.isWinner && BigInt(data.finalWinWei || "0") > 0n) {
-      setText("jpWinAmount", `${weiToHex(data.finalWinWei)} HEX`);
-      show("jpWin", true);
-    } else {
-      const rand = data.randomValue != null ? `랜덤 번호: ${data.randomValue} / 9999` : "";
-      const el = $("jpNoWinRand");
-      if (el) el.textContent = rand;
-      show("jpNoWin", true);
-    }
+    const isWin = data.isWinner && BigInt(data.finalWinWei || "0") > 0n;
+    slot.stop(data.randomValue ?? 0, isWin, () => {
+      show("jpWaiting", false);
+      if (isWin) {
+        setText("jpWinAmount", `${weiToHex(data.finalWinWei)} HEX`);
+        show("jpWin", true);
+      } else {
+        const el = $("jpNoWinRand");
+        if (el) el.textContent = `랜덤 번호: ${data.randomValue ?? 0} / 9999`;
+        show("jpNoWin", true);
+      }
+    });
   };
 
-  const setWaiting = (msg) => {
-    const el = $("jpWaiting");
-    if (el) el.innerHTML = msg;
-  };
-
-  // 30초 후: 수동 재확인 버튼 표시
+  // 30초 후: 수동 재확인 버튼
   retryTimer = setTimeout(async () => {
     retryTimer = null;
     const snap = await getDoc(doc(db, "jackpot_rounds", txHash));
     if (snap.exists()) { reveal(snap.data()); return; }
-    setWaiting(
-      `🎰 잭팟 서버 처리 중입니다<br>
-       <span style="font-size:0.78rem;color:#94a3b8;">${txHash.slice(0, 16)}…</span><br>
-       <button onclick="window.__jpRetry && window.__jpRetry()" style="margin-top:8px;padding:5px 14px;border:1px solid #c4b5fd;border-radius:8px;background:#f5f3ff;color:#7c3aed;font-size:0.82rem;cursor:pointer;">결과 다시 확인</button>`
+    const waitEl = $("jpWaiting");
+    if (waitEl) waitEl.insertAdjacentHTML("beforeend",
+      `<br><button onclick="window.__jpRetry&&window.__jpRetry()" style="margin-top:8px;padding:5px 14px;border:1px solid #c4b5fd;border-radius:8px;background:#f5f3ff;color:#7c3aed;font-size:0.82rem;cursor:pointer;">결과 다시 확인</button>`
     );
     window.__jpRetry = async () => {
-      setWaiting("🎰 확인 중...");
       const s = await getDoc(doc(db, "jackpot_rounds", txHash));
-      if (s.exists()) { reveal(s.data()); }
-      else setWaiting("🎰 아직 처리 중입니다. 잠시 후 마이페이지에서 확인하세요.");
+      if (s.exists()) reveal(s.data());
     };
   }, 30000);
 
   // 120초 후: 최종 안내
   giveupTimer = setTimeout(() => {
+    if (revealed) return;
     cleanup();
-    setWaiting("잭팟 결과는 마이페이지에서 확인하세요");
+    const waitEl = $("jpWaiting");
+    if (waitEl) waitEl.innerHTML = `<div style="padding:12px;color:#94a3b8;font-size:0.82rem;">잭팟 결과는 마이페이지에서 확인하세요</div>`;
   }, 120000);
 
   unsub = onSnapshot(
@@ -266,8 +269,7 @@ function watchJackpotResult(txHash) {
     (snap) => { if (snap.exists()) reveal(snap.data()); },
     (err) => {
       cleanup();
-      console.warn("jackpot onSnapshot error:", err.code, err.message);
-      setWaiting("잭팟 결과는 마이페이지에서 확인하세요");
+      console.warn("jackpot onSnapshot error:", err.code);
     }
   );
 }

@@ -4,6 +4,7 @@
 import { onAuthReady } from "../auth.js";
 import { db, functions } from "/assets/js/firebase-init.js";
 import { login } from "../auth.js";
+import { initSlot } from "/assets/js/jackpot-anim.js";
 
 import {
   doc,
@@ -24,6 +25,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
 const $ = (id) => document.getElementById(id);
+let _walletAddress = null; // 잭팟 히스토리 갱신용
 
 function show(id, on) {
   const el = $(id);
@@ -886,8 +888,8 @@ async function loadJackpotHistory(walletAddress) {
     const rounds = snap.docs
       .map((d) => d.data())
       .sort((a, b) => {
-        const ta = a.paidAt ? new Date(a.paidAt).getTime() : 0;
-        const tb = b.paidAt ? new Date(b.paidAt).getTime() : 0;
+        const ta = a.createdAt?.toDate?.()?.getTime() ?? 0;
+        const tb = b.createdAt?.toDate?.()?.getTime() ?? 0;
         return tb - ta;
       });
 
@@ -900,8 +902,9 @@ async function loadJackpotHistory(walletAddress) {
       const payHex = weiToHexStr(r.paymentAmountWei);
       const winHex = isWin ? weiToHexStr(r.finalWinWei) : null;
       const rand = r.randomValue ?? "-";
-      const dateStr = r.paidAt
-        ? new Date(r.paidAt).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+      const createdDate = r.createdAt?.toDate?.() ?? null;
+      const dateStr = createdDate
+        ? createdDate.toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
         : "-";
       return `
         <div class="jp-hist-row${isWin ? " jp-hist-win" : ""}">
@@ -937,9 +940,13 @@ function watchJackpotInPage(txHash, containerId) {
   if (!box || !txHash) return;
   box.style.display = "";
 
+  // 슬롯머신 시작
+  const slot = initSlot(box.querySelector(".jp-waiting"));
+
   let unsub = null;
   let retryTimer = null;
   let giveupTimer = null;
+  let revealed = false;
 
   const cleanup = () => {
     if (unsub) { unsub(); unsub = null; }
@@ -947,35 +954,29 @@ function watchJackpotInPage(txHash, containerId) {
     if (giveupTimer) { clearTimeout(giveupTimer); giveupTimer = null; }
   };
 
-  const setWaitingHtml = (html) => {
-    const el = box.querySelector(".jp-waiting");
-    if (el) { el.style.display = ""; el.innerHTML = html; }
-  };
-
   const reveal = (data) => {
+    if (revealed) return;
+    revealed = true;
     cleanup();
-    const waiting = box.querySelector(".jp-waiting");
-    if (waiting) waiting.style.display = "none";
-
-    if (data.isWinner && BigInt(data.finalWinWei || "0") > 0n) {
-      const hex = weiToHexStr(data.finalWinWei);
-      const winEl = box.querySelector(".jp-win");
-      if (winEl) winEl.style.display = "";
-      const amtEl = box.querySelector(".jp-win-amount");
-      if (amtEl) amtEl.textContent = `${hex} HEX`;
-    } else {
-      const nowinEl = box.querySelector(".jp-nowin");
-      if (nowinEl) nowinEl.style.display = "";
-      const randEl = box.querySelector(".jp-nowin-rand");
-      if (randEl && data.randomValue != null) randEl.textContent = `랜덤 번호: ${data.randomValue} / 9999`;
-    }
-  };
-
-  const doRetry = async () => {
-    setWaitingHtml("🎰 확인 중...");
-    const s = await getDoc(doc(db, "jackpot_rounds", txHash));
-    if (s.exists()) { reveal(s.data()); }
-    else setWaitingHtml("🎰 아직 처리 중입니다. 잠시 후 다시 확인하세요.");
+    const isWin = data.isWinner && BigInt(data.finalWinWei || "0") > 0n;
+    slot.stop(data.randomValue ?? 0, isWin, () => {
+      const waiting = box.querySelector(".jp-waiting");
+      if (waiting) waiting.style.display = "none";
+      if (isWin) {
+        const hex = weiToHexStr(data.finalWinWei);
+        const winEl = box.querySelector(".jp-win");
+        if (winEl) winEl.style.display = "";
+        const amtEl = box.querySelector(".jp-win-amount");
+        if (amtEl) amtEl.textContent = `${hex} HEX`;
+      } else {
+        const nowinEl = box.querySelector(".jp-nowin");
+        if (nowinEl) nowinEl.style.display = "";
+        const randEl = box.querySelector(".jp-nowin-rand");
+        if (randEl) randEl.textContent = `랜덤 번호: ${data.randomValue ?? 0} / 9999`;
+      }
+      // 잭팟 내역 자동 갱신
+      if (_walletAddress) loadJackpotHistory(_walletAddress);
+    });
   };
 
   // 30초 후 수동 확인 버튼
@@ -983,19 +984,23 @@ function watchJackpotInPage(txHash, containerId) {
     retryTimer = null;
     const snap = await getDoc(doc(db, "jackpot_rounds", txHash));
     if (snap.exists()) { reveal(snap.data()); return; }
-    setWaitingHtml(
-      `🎰 잭팟 서버 처리 중입니다<br>
-       <span style="font-size:0.75rem;color:#94a3b8;">${txHash.slice(0, 16)}…</span><br>
-       <button id="jpRetryBtn_${containerId}" style="margin-top:8px;padding:5px 14px;border:1px solid #c4b5fd;border-radius:8px;background:#f5f3ff;color:#7c3aed;font-size:0.8rem;cursor:pointer;">결과 다시 확인</button>`
+    const waitEl = box.querySelector(".jp-waiting");
+    if (waitEl) waitEl.insertAdjacentHTML("beforeend",
+      `<br><button id="jpRetryBtn_${containerId}" style="margin-top:8px;padding:5px 14px;border:1px solid #c4b5fd;border-radius:8px;background:rgba(255,255,255,.1);color:#c4b5fd;font-size:0.8rem;cursor:pointer;">결과 다시 확인</button>`
     );
     const btn = document.getElementById(`jpRetryBtn_${containerId}`);
-    if (btn) btn.onclick = doRetry;
+    if (btn) btn.onclick = async () => {
+      const s = await getDoc(doc(db, "jackpot_rounds", txHash));
+      if (s.exists()) reveal(s.data());
+    };
   }, 30000);
 
   // 120초 후 최종 안내
   giveupTimer = setTimeout(() => {
+    if (revealed) return;
     cleanup();
-    setWaitingHtml("잭팟 결과는 잠시 후 마이페이지에서 확인하세요");
+    const waitEl = box.querySelector(".jp-waiting");
+    if (waitEl) waitEl.innerHTML = `<div style="padding:12px;color:#94a3b8;font-size:0.82rem;text-align:center;">잭팟 결과는 마이페이지 잭팟 내역에서 확인하세요</div>`;
   }, 120000);
 
   unsub = onSnapshot(
@@ -1004,7 +1009,6 @@ function watchJackpotInPage(txHash, containerId) {
     (err) => {
       cleanup();
       console.warn("jackpot onSnapshot error:", err.code);
-      setWaitingHtml("잭팟 결과 조회 오류 — 잠시 후 마이페이지에서 확인하세요");
     }
   );
 }
@@ -1231,7 +1235,8 @@ onAuthReady(async (ctx) => {
     loadDepositHistory(user.uid);
     loadTxHistory(user.uid);
     loadMentees();
-    loadJackpotHistory(data.wallet?.address);
+    _walletAddress = data.wallet?.address || null;
+    loadJackpotHistory(_walletAddress);
 
     // 충전 내역 새로고침 버튼
     const btnRefresh = $("btnRefreshDeposits");
