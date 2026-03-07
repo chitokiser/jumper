@@ -48,9 +48,16 @@ function isValidPhone(p) {
 }
 
 // ── 이미 가입한 경우 표시 ──────────────────────────
-function showAlreadyDone(userData) {
+function showAlreadyDone(userData, uid) {
   show("alreadyDone", true);
   show("regForm", false);
+
+  // 전화번호 표시 + 수정 바인딩
+  const phone = userData?.phone;
+  show("phoneRow", true);
+  const phoneEl = $("phoneDisplay");
+  if (phoneEl) phoneEl.textContent = phone || "(미등록)";
+  bindPhoneEdit(uid, phone || "");
 
   const wallet = userData?.wallet?.address;
   if (wallet) {
@@ -66,6 +73,54 @@ function showAlreadyDone(userData) {
     statusEl.textContent = registered ? "등록 완료 ✓" : "미등록 (나중에 진행 가능)";
     statusEl.style.color = registered ? "var(--accent)" : "var(--muted)";
   }
+}
+
+function bindPhoneEdit(uid, currentPhone) {
+  const btnEdit   = $("btnEditPhone");
+  const input     = $("phoneEditInput");
+  const btnSave   = $("btnSavePhone");
+  const btnCancel = $("btnCancelPhone");
+  const msg       = $("phoneSaveMsg");
+
+  if (btnEdit) btnEdit.onclick = () => {
+    if (input) input.value = currentPhone;
+    show("phoneEditBox", true);
+    show("btnEditPhone", false);
+    if (input) input.focus();
+  };
+
+  if (btnCancel) btnCancel.onclick = () => {
+    show("phoneEditBox", false);
+    show("btnEditPhone", true);
+    if (msg) msg.textContent = "";
+  };
+
+  if (btnSave) btnSave.onclick = async () => {
+    const newPhone = normalizePhone(input?.value);
+    if (!isValidPhone(newPhone)) {
+      if (msg) { msg.textContent = "올바른 전화번호를 입력해 주세요 (10자리 이상)."; msg.style.color = "var(--danger, #e53e3e)"; }
+      return;
+    }
+    btnSave.disabled = true;
+    btnSave.textContent = "저장 중...";
+    try {
+      await setDoc(doc(db, "users", uid), { phone: newPhone, updatedAt: serverTimestamp() }, { merge: true });
+      const phoneEl = $("phoneDisplay");
+      if (phoneEl) phoneEl.textContent = newPhone;
+      currentPhone = newPhone;
+      if (msg) { msg.textContent = "저장되었습니다 ✓"; msg.style.color = "var(--accent)"; }
+      setTimeout(() => {
+        show("phoneEditBox", false);
+        show("btnEditPhone", true);
+        if (msg) msg.textContent = "";
+      }, 1200);
+    } catch (err) {
+      if (msg) { msg.textContent = "저장 실패: " + err.message; msg.style.color = "var(--danger, #e53e3e)"; }
+    } finally {
+      btnSave.disabled = false;
+      btnSave.textContent = "저장";
+    }
+  };
 }
 
 // ── 가입 실행 ──────────────────────────────────────
@@ -171,7 +226,7 @@ async function _initForUser(user) {
 
     if (data?.name) {
       setState("이미 가입된 계정입니다.");
-      showAlreadyDone(data);
+      showAlreadyDone(data, user.uid);
       return;
     }
 

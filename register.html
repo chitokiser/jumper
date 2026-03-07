@@ -35,6 +35,22 @@
           <div class="k">가입 상태</div>
           <div class="v" style="color:var(--accent);">가입 완료 ✓</div>
         </div>
+        <div class="status-row" id="phoneRow" style="display:none;">
+          <div class="k">휴대폰 번호</div>
+          <div class="v" style="display:flex;align-items:center;gap:8px;">
+            <span id="phoneDisplay">-</span>
+            <button class="btn btn--sm" id="btnEditPhone" type="button">수정</button>
+          </div>
+        </div>
+        <div id="phoneEditBox" style="display:none;margin:8px 0 4px;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="tel" id="phoneEditInput" maxlength="30" placeholder="예: +82 10 1234 5678"
+              style="flex:1;min-width:160px;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.9rem;" />
+            <button class="btn btn--primary btn--sm" id="btnSavePhone" type="button">저장</button>
+            <button class="btn btn--sm" id="btnCancelPhone" type="button">취소</button>
+          </div>
+          <div id="phoneSaveMsg" style="font-size:0.82em;margin-top:4px;"></div>
+        </div>
         <div class="status-row" id="walletRow" style="display:none;">
           <div class="k">수탁 지갑 주소</div>
           <div class="v mono" id="walletAddr">-</div>
