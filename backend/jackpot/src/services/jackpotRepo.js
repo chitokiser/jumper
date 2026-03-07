@@ -39,6 +39,15 @@ export async function getConfig() {
   };
 }
 
+export async function setConfig(fields) {
+  const update = {};
+  if (fields.payoutScale !== undefined) update.payoutScale = String(BigInt(fields.payoutScale));
+  if (fields.maxWinPercent !== undefined) update.maxWinPercent = Number(fields.maxWinPercent);
+  if (fields.enabled !== undefined) update.enabled = Boolean(fields.enabled);
+  if (Object.keys(update).length === 0) throw new Error("NO_FIELDS");
+  await db.collection("jackpot_config").doc("default").set(update, { merge: true });
+}
+
 export async function txExists(txHash) {
   const snap = await coll.payments.doc(txHash).get();
   return snap.exists;

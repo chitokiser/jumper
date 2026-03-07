@@ -891,16 +891,16 @@ async function loadJackpotWallet(walletAddress) {
     const totalWon  = parseFloat(data.totalWonHex   || "0");
     const claimed   = parseFloat(data.totalClaimedHex || "0");
 
-    if (totalWon <= 0) return;
-
     show("jackpotWalletSection", true);
     setText("jpClaimableHex",    claimable.toFixed(4) + " HEX");
     setText("jpTotalWonHex",     totalWon.toFixed(4)  + " HEX");
     setText("jpTotalClaimedHex", claimed.toFixed(4)   + " HEX");
 
-    if (claimable > 0) show("jpWithdrawBox", true);
+    show("jpWithdrawBox", true);
   } catch (err) {
     console.warn("loadJackpotWallet:", err.message);
+    show("jackpotWalletSection", true);
+    show("jpWithdrawBox", true);
   }
 }
 

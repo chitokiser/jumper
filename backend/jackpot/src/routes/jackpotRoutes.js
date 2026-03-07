@@ -10,6 +10,7 @@ import {
 } from "../services/jackpotService.js";
 import { validate, walletQuerySchema, withdrawSchema } from "../middleware/validate.js";
 import { requireAdmin } from "../middleware/adminAuth.js";
+import { setConfig } from "../services/jackpotRepo.js";
 
 export const jackpotRouter = Router();
 
@@ -79,6 +80,15 @@ jackpotRouter.post("/claims/:id/reject", requireAdmin, async (req, res, next) =>
     if (!claimId) throw new Error("VALIDATION_ERROR");
     const data = await adminRejectWithdraw({ claimId });
     res.json({ ok: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+jackpotRouter.post("/admin/config", requireAdmin, async (req, res, next) => {
+  try {
+    await setConfig(req.body);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
