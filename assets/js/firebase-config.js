@@ -11,7 +11,7 @@ export const firebaseConfig = {
   measurementId: "G-0EGPWQ3JP0"
 };
 
-/*  jovial firebaseConfig.js
+/*  jump firebaseConfig.js
 export const firebaseConfig = {
 apiKey: "AIzaSyBETZfUgG4y0YAiYuxSVhwnhpwzVUQ59EI",
 authDomain: "experience-factory-4e167.firebaseapp.com",

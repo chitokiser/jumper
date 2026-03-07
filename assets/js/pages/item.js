@@ -82,7 +82,7 @@ function setRatingInline(id, avg, count){
 }
 
 
-const CART_KEY = "jovial_cart_v1";
+const CART_KEY = "jump_cart_v1";
 
 function loadCart(){
   try{

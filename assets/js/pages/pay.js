@@ -74,7 +74,7 @@ async function loadMerchant() {
     throw new Error("merchant inactive");
   }
   merchantName = data.name || "가맹점";
-  document.title = `${merchantName} 결제 확인 | Jovial Travel`;
+  document.title = `${merchantName} 결제 확인 | Jump`;
 
   let amountStr = isVnd
     ? `${amount.toLocaleString()}동 (VND)`

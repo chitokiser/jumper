@@ -12,7 +12,7 @@ import {
 
 function $(id){ return document.getElementById(id); }
 
-const KEY = "jovial_cart_v1";
+const KEY = "jump_cart_v1";
 
 function loadCart(){
   try{

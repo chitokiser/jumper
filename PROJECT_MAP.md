@@ -1,6 +1,6 @@
 <!-- /PROJECT_MAP.md -->
 
-# Jovial Travel / Jovial Travel - 구조 고정본
+# Jump / Jump - 구조 고정본
 
 이 폴더는 “Google 로그인 기반 역할(관리자/가이드/일반/게스트) + Firestore”로 동작하는 버전입니다.
 
