@@ -879,6 +879,28 @@ function bindHexTransfer(uid) {
 // ── 잭팟 잔액 로드 & 인출 ────────────────────────────────
 const JACKPOT_API = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
 
+let _jpRates = null;
+async function _loadJpRates() {
+  if (_jpRates) return _jpRates;
+  try {
+    const r = await fetch("https://open.er-api.com/v6/latest/USD");
+    const d = await r.json();
+    if (d.result === "success" && d.rates?.KRW && d.rates?.VND) {
+      _jpRates = { krwPerUsd: d.rates.KRW, vndPerUsd: d.rates.VND };
+      return _jpRates;
+    }
+  } catch (_) {}
+  _jpRates = { krwPerUsd: 1370, vndPerUsd: 25400 };
+  return _jpRates;
+}
+
+// 1 HEX = 1 USD 기준 환산 (표시용)
+function _fmtHexRates(hex, rates) {
+  const krw = Math.round(hex * rates.krwPerUsd).toLocaleString();
+  const vnd = Math.round(hex * rates.vndPerUsd).toLocaleString();
+  return `≈ ${krw}원 / ${vnd} VND`;
+}
+
 async function loadJackpotWallet(walletAddress) {
   if (!walletAddress || !JACKPOT_API) return;
   try {
@@ -895,8 +917,18 @@ async function loadJackpotWallet(walletAddress) {
     setText("jpClaimableHex",    claimable.toFixed(4) + " HEX");
     setText("jpTotalWonHex",     totalWon.toFixed(4)  + " HEX");
     setText("jpTotalClaimedHex", claimed.toFixed(4)   + " HEX");
-
     show("jpWithdrawBox", true);
+
+    // 환율 변환 표시
+    const rates = await _loadJpRates();
+    if (claimable > 0) {
+      setText("jpClaimableRate", _fmtHexRates(claimable, rates));
+      show("jpClaimableRateRow", true);
+    }
+    if (totalWon > 0) {
+      setText("jpTotalWonRate", _fmtHexRates(totalWon, rates));
+      show("jpTotalWonRateRow", true);
+    }
   } catch (err) {
     console.warn("loadJackpotWallet:", err.message);
     show("jackpotWalletSection", true);
