@@ -1,6 +1,8 @@
 ﻿// /assets/js/pages/town_home.js
 import { auth, db } from "/assets/js/auth.js";
+import { functions } from "/assets/js/firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 import {
   doc,
   getDoc,
@@ -183,6 +185,195 @@ function initJackpotTicker() {
   if (!$("jackpotSection")) return;
   loadJackpotCurrent();
   setInterval(loadJackpotCurrent, 15000);
+}
+
+// ── 당첨자 목록 & 공유 카드 ──────────────────────────────
+let _userLevel = 0;
+let _userWalletAddr = "";
+let _jackpotWinners = [];
+
+async function loadJackpotWinners() {
+  const wrap = $("jackpotWinnersList");
+  if (!wrap) return;
+
+  try {
+    // 가맹점 이름 맵
+    const merchantSnap = await getDocs(collection(db, "merchants"));
+    const merchantMap = new Map();
+    merchantSnap.forEach((d) => {
+      const m = d.data() || {};
+      merchantMap.set(String(d.id), m.name || `가맹점 #${d.id}`);
+    });
+
+    // 최근 당첨 라운드 조회 (isWinner==true, 최신순)
+    let snap;
+    try {
+      snap = await getDocs(
+        query(
+          collection(db, "jackpot_rounds"),
+          where("isWinner", "==", true),
+          orderBy("createdAt", "desc"),
+          limit(8)
+        )
+      );
+    } catch {
+      // 복합 인덱스 없을 경우 finalWinSort 내림차순으로 폴백
+      snap = await getDocs(
+        query(
+          collection(db, "jackpot_rounds"),
+          orderBy("finalWinSort", "desc"),
+          limit(20)
+        )
+      );
+    }
+
+    const winners = [];
+    snap.forEach((d) => {
+      const r = d.data();
+      if (!r.isWinner && Number(r.finalWinSort || 0) <= 0) return;
+      const hexVal = Number(BigInt(r.finalWinWei || "0")) / 1e18;
+      if (hexVal <= 0) return;
+      const fx = getFxRates();
+      const krwStr = Math.round(hexVal * fx.krw).toLocaleString("ko-KR");
+      const vndStr = Math.round(hexVal * fx.vnd).toLocaleString("ko-KR");
+      const addr = String(r.userAddress || "");
+      const addrShort = addr.length > 8 ? addr.slice(0, 6) + "..." + addr.slice(-4) : addr || "-";
+      const merchantId = String(r.merchantId ?? "");
+      const merchantName = merchantMap.get(merchantId) || (merchantId ? `가맹점 #${merchantId}` : "-");
+      const createdAt = r.createdAt?.toDate ? r.createdAt.toDate() : null;
+      const dateStr = createdAt
+        ? createdAt.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) +
+          " " +
+          createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
+        : "-";
+      winners.push({ hexVal, krwStr, vndStr, addrShort, merchantName, dateStr });
+    });
+
+    _jackpotWinners = winners;
+
+    if (!winners.length) {
+      wrap.innerHTML = '<p class="jp-winners-empty">아직 당첨자가 없습니다.</p>';
+      return;
+    }
+
+    const INITIAL_SHOW = 5;
+    const makeRow = (w, i) => `
+      <div class="jp-winner-row">
+        <div class="jp-winner-info">
+          <div class="jp-winner-amount">${w.hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX</div>
+          <div class="jp-winner-fiat">&#x2248; ${w.krwStr} KRW / ${w.vndStr} VND</div>
+          <div class="jp-winner-meta">
+            <span class="jp-winner-tag">&#x1F464; ${escHtml(w.addrShort)}</span>
+            <span class="jp-winner-tag">&#x1F3EA; ${escHtml(w.merchantName)}</span>
+            <span class="jp-winner-tag">&#x1F4C5; ${escHtml(w.dateStr)}</span>
+          </div>
+        </div>
+        <button class="jp-share-btn" data-win-idx="${i}" type="button">&#x1F4E4; 공유</button>
+      </div>`;
+
+    const visibleRows = winners.slice(0, INITIAL_SHOW).map(makeRow).join("");
+    const hiddenRows = winners.length > INITIAL_SHOW
+      ? `<div id="jpWinnersHidden" style="display:none;">${winners.slice(INITIAL_SHOW).map(makeRow).join("")}</div>
+         <button class="jp-winners-more-btn" id="jpWinnersMoreBtn" type="button">&#x25BC; 더 보기 (${winners.length - INITIAL_SHOW}건 더)</button>`
+      : "";
+
+    wrap.innerHTML = visibleRows + hiddenRows;
+
+    const moreBtn = $("jpWinnersMoreBtn");
+    if (moreBtn) {
+      moreBtn.onclick = () => {
+        $("jpWinnersHidden").style.display = "";
+        moreBtn.style.display = "none";
+      };
+    }
+
+    // 공유 버튼 이벤트
+    wrap.addEventListener("click", (e) => {
+      const btn = e.target.closest(".jp-share-btn");
+      if (!btn) return;
+      const idx = parseInt(btn.dataset.winIdx, 10);
+      if (Number.isFinite(idx) && _jackpotWinners[idx]) {
+        openShareModal(_jackpotWinners[idx]);
+      }
+    });
+  } catch (err) {
+    console.warn("loadJackpotWinners failed:", err);
+    wrap.innerHTML = '<p class="jp-winners-empty">당첨자 정보를 불러오지 못했습니다.</p>';
+  }
+}
+
+function buildShareCardHTML(winner) {
+  const hasRef = _userLevel >= 4 && _userWalletAddr;
+  const registerUrl = hasRef
+    ? `/register.html?mentor=${encodeURIComponent(_userWalletAddr)}`
+    : `/register.html`;
+
+  const refBlock = hasRef
+    ? `<hr class="jp-sc-divider">
+       <a class="jp-sc-reg-btn" href="${escHtml(registerUrl)}" target="_blank" rel="noopener">
+         &#x2728; JUMP 지금 가입하기 &#x2192;
+       </a>
+       <p class="jp-sc-ref-note">&#x1F517; 내 레퍼럴 코드가 자동으로 포함됩니다</p>`
+    : `<hr class="jp-sc-divider">
+       <a class="jp-sc-reg-btn" href="/register.html" target="_blank" rel="noopener">
+         &#x2728; JUMP 회원가입 &#x2192;
+       </a>`;
+
+  return `
+    <div class="jp-share-card">
+      <button class="jp-sc-x" id="jpShareClose" aria-label="닫기">&#x00D7;</button>
+      <div class="jp-share-inner">
+        <div class="jp-sc-badge">&#x1F3B0; JUMP MERCHANT PAY JACKPOT</div>
+        <div class="jp-sc-trophy">&#x1F3C6;</div>
+        <div class="jp-sc-headline">잭팟 당첨!</div>
+        <div class="jp-sc-amount">${winner.hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX</div>
+        <div class="jp-sc-fiat">&#x2248; ${winner.krwStr} KRW / ${winner.vndStr} VND</div>
+        <hr class="jp-sc-divider">
+        <div class="jp-sc-kv">
+          <span class="k">&#x1F464; 당첨자</span>
+          <span class="v" style="font-family:monospace;font-size:12px;">${escHtml(winner.addrShort)}</span>
+        </div>
+        <div class="jp-sc-kv">
+          <span class="k">&#x1F3EA; 결제 가맹점</span>
+          <span class="v">${escHtml(winner.merchantName)}</span>
+        </div>
+        <div class="jp-sc-kv">
+          <span class="k">&#x1F4C5; 당첨 일시</span>
+          <span class="v">${escHtml(winner.dateStr)}</span>
+        </div>
+        ${refBlock}
+        <div class="jp-sc-actions">
+          <button class="jp-sc-copy-btn" id="jpShareCopy" type="button">&#x1F517; 링크 복사</button>
+          <button class="jp-sc-close-btn" id="jpShareCloseBtn" type="button">닫기</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function openShareModal(winner) {
+  const modal = $("jackpotShareModal");
+  if (!modal) return;
+
+  modal.innerHTML = buildShareCardHTML(winner);
+  modal.style.display = "flex";
+
+  const close = () => { modal.style.display = "none"; };
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); }, { once: true });
+  $("jpShareClose").onclick = close;
+  $("jpShareCloseBtn").onclick = close;
+
+  const hasRef = _userLevel >= 4 && _userWalletAddr;
+  const copyUrl = hasRef
+    ? `${location.origin}/register.html?mentor=${encodeURIComponent(_userWalletAddr)}`
+    : `${location.origin}/register.html`;
+
+  $("jpShareCopy").onclick = () => {
+    const btn = $("jpShareCopy");
+    navigator.clipboard?.writeText(copyUrl).then(() => {
+      btn.textContent = "&#x2705; 복사됨!";
+      setTimeout(() => { btn.innerHTML = "&#x1F517; 링크 복사"; }, 2000);
+    }).catch(() => { btn.textContent = "복사 실패"; });
+  };
 }
 
 async function isAdmin(uid) {
@@ -750,10 +941,32 @@ function initUISlider() {
 onAuthStateChanged(auth, async (user) => {
   const admin = await isAdmin(user?.uid);
   setupAdminUI(admin);
+
+  // 레벨·지갑 주소 로드 (공유카드 레퍼럴 기능용)
+  if (user?.uid) {
+    try {
+      const snap = await getDoc(doc(db, "users", user.uid));
+      const data = snap.data() || {};
+      _userWalletAddr = String(data.wallet?.address || "");
+      // onChain 레벨은 Cloud Function으로 조회
+      if (_userWalletAddr) {
+        try {
+          const fn = httpsCallable(functions, "getMyOnChain");
+          const res = await fn();
+          _userLevel = Number(res.data?.level || 0);
+        } catch {
+          // 레벨 조회 실패 시 0 유지
+        }
+      }
+    } catch {
+      // 유저 정보 조회 실패 시 무시
+    }
+  }
 });
 
 loadNotices();
 initJackpotTicker();
+loadJackpotWinners();
 loadUsedMarketPreview();
 loadMerchants();
 loadCoopProducts();
