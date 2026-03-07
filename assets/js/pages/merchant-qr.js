@@ -128,22 +128,38 @@ function bindQrForm(merchantId, merchantName) {
     krwEl.textContent = vndToKrw(val, rates).toLocaleString();
   }
 
-  // 통화 전환 시 레이블/플레이스홀더 업데이트
+  // 통화 UI 적용 함수
+  function applyCurrency(currency) {
+    const isVnd   = currency === "VND";
+    const labelEl = $("qrAmountLabel");
+    const helpEl  = $("qrAmountHelp");
+    const inputEl = $("qrAmount");
+    if (labelEl)  labelEl.textContent  = isVnd ? "결제 금액 (동, VND)" : "결제 금액 (원, KRW)";
+    if (helpEl)   helpEl.textContent   = isVnd ? "최소 10,000동 이상 입력해 주세요." : "최소 1,000원 이상 입력해 주세요.";
+    if (inputEl) {
+      inputEl.min         = isVnd ? "10000" : "1000";
+      inputEl.step        = isVnd ? "1000"  : "100";
+      inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
+      inputEl.value       = "";
+    }
+    form.querySelectorAll("input[name='qrCurrency']").forEach((r) => {
+      r.checked = r.value === currency;
+    });
+    updateConvert();
+  }
+
+  // 저장된 통화 복원
+  const savedCurrency = localStorage.getItem(`merchant_currency_${merchantId}`);
+  if (savedCurrency === "VND" || savedCurrency === "KRW") {
+    applyCurrency(savedCurrency);
+  }
+
+  // 통화 전환 시 레이블/플레이스홀더 업데이트 + 저장
   form.querySelectorAll("input[name='qrCurrency']").forEach((radio) => {
     radio.addEventListener("change", () => {
-      const isVnd = radio.value === "VND" && radio.checked;
-      const labelEl  = $("qrAmountLabel");
-      const helpEl   = $("qrAmountHelp");
-      const inputEl  = $("qrAmount");
-      if (labelEl)  labelEl.textContent  = isVnd ? "결제 금액 (동, VND)" : "결제 금액 (원, KRW)";
-      if (helpEl)   helpEl.textContent   = isVnd ? "최소 10,000동 이상 입력해 주세요." : "최소 1,000원 이상 입력해 주세요.";
-      if (inputEl) {
-        inputEl.min         = isVnd ? "10000" : "1000";
-        inputEl.step        = isVnd ? "1000"  : "100";
-        inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
-        inputEl.value       = "";
-      }
-      updateConvert();
+      if (!radio.checked) return;
+      localStorage.setItem(`merchant_currency_${merchantId}`, radio.value);
+      applyCurrency(radio.value);
     });
   });
 
