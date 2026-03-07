@@ -172,7 +172,7 @@ function generateQr(merchantId, merchantName, amount, currency = "KRW") {
   const canvas = $("qrCanvas");
   if (!canvas) return;
 
-  const PROD_ORIGIN = "https://jovialtravel.netlify.app";
+  const PROD_ORIGIN = "https://jump22.netlify.app";
   const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const baseOrigin = isLocal ? PROD_ORIGIN : location.origin;
   const url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
@@ -199,7 +199,7 @@ function generateQr(merchantId, merchantName, amount, currency = "KRW") {
     if (btnDl) {
       btnDl.onclick = () => {
         const link = document.createElement("a");
-        link.download = `qr-${merchantId}-${amountKrw}원.png`;
+        link.download = `qr-${merchantId}-${amount}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
       };
