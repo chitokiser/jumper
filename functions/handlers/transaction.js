@@ -1146,6 +1146,69 @@ async function transferHexToPersonal(uid, toAddress, amountWeiStr, masterSecret)
   return { txHash: receipt.hash, amountHex, toAddress };
 }
 
+/**
+ * redeemPoints
+ * 멘토 포인트(pointWei) → HEX로 전환 (mentorWithdrawPoints 호출)
+ * 최소 전환: 100,000 VND 상당 (≈ 4 HEX)
+ *
+ * @param {string} uid          - Firebase Auth UID
+ * @param {string} masterSecret - WALLET_MASTER_SECRET
+ * @returns {{ txHash, amountHex, amountVnd }}
+ */
+async function redeemPoints(uid, masterSecret) {
+  const userSnap   = await db.collection('users').doc(uid).get();
+  const walletData = userSnap.data()?.wallet;
+  if (!walletData?.encryptedKey) throw new Error('수탁 지갑이 없습니다');
+
+  const provider = getProvider();
+  const platform = getPlatformContract(provider);
+
+  // 포인트 잔액 조회
+  const [, , , points] = await platform.members(walletData.address);
+  if (points === 0n) throw new Error('전환할 포인트가 없습니다');
+
+  // 최소 전환 금액 체크 (100,000 VND 상당 ≈ 4 HEX)
+  const MIN_HEX_WEI = ethers.parseEther('4');
+  if (points < MIN_HEX_WEI) {
+    throw new Error(
+      `최소 전환 금액은 4 HEX(≈ 100,000 VND)입니다. 현재: ${parseFloat(ethers.formatEther(points)).toFixed(4)} HEX`
+    );
+  }
+
+  // BNB 가스비 부족 시 보충
+  const adminWallet = getAdminWallet();
+  const bnbBal = await provider.getBalance(walletData.address);
+  if (bnbBal < ethers.parseEther('0.00005')) {
+    const fundTx = await adminWallet.sendTransaction({
+      to: walletData.address, value: ethers.parseEther('0.0001'),
+    });
+    await fundTx.wait();
+  }
+
+  // 수탁 지갑 서명으로 mentorWithdrawPoints 호출
+  const privateKey    = decrypt(walletData.encryptedKey, masterSecret);
+  const userSigner    = walletFromKey(privateKey, provider);
+  const platformUser  = getPlatformContract(userSigner);
+  const gasLimit      = await estimateGasWithBuffer(platformUser, 'mentorWithdrawPoints', [points]);
+  const tx            = await platformUser.mentorWithdrawPoints(points, { gasLimit });
+  const receipt       = await tx.wait();
+
+  const amountHex = parseFloat(ethers.formatEther(points)).toFixed(4);
+
+  // Firestore 기록
+  await db.collection('transactions').add({
+    uid,
+    userAddress: walletData.address,
+    type:        'redeem_points',
+    amountWei:   points.toString(),
+    amountHex,
+    txHash:      receipt.hash,
+    createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { success: true, txHash: receipt.hash, amountHex };
+}
+
 module.exports = {
   buyProduct,
   withdrawPayable,
@@ -1163,4 +1226,5 @@ module.exports = {
   adminBulkChangeMentor,
   adminSetUserLevel,
   transferHexToPersonal,
+  redeemPoints,
 };

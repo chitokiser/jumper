@@ -351,6 +351,21 @@ exports.mergeWalletHexToPoints = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
+// 16-A. 유저: 멘토 포인트 → HEX 전환 (최소 100,000 VND 상당 ≈ 4 HEX)
+//       클라이언트: httpsCallable(functions, 'redeemPoints')()
+// ════════════════════════════════════════════════════════════════════════════
+exports.redeemPoints = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await txH.redeemPoints(uid, walletSecret.value());
+    logger.info('redeemPoints', { uid, txHash: result.txHash, amountHex: result.amountHex });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
 // 16. 판매회원 온체인 등록
 //     - 수탁 지갑으로 jumpPlatform.registerMerchant(metadataURI) 호출 (onlyMember)
 //     - 초기 feeBps=0 → 관리자가 adminUpdateMerchantFee(id, 1000) 으로 10% 설정

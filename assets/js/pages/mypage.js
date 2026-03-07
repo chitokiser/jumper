@@ -876,7 +876,43 @@ function bindHexTransfer(uid) {
   });
 }
 
-// ── 잭팟 잔액 로드 & 인출 ────────────────────────────────
+// ── 포인트 → HEX 전환 ────────────────────────────────────
+function bindRedeemPoints() {
+  const btn       = $("btnRedeemPoints");
+  const resultBox = $("redeemPointsResult");
+  if (!btn) return;
+
+  btn.onclick = async () => {
+    if (!confirm("포인트를 모두 HEX로 전환하시겠습니까?\n(최소 4 HEX 이상 필요)")) return;
+    btn.disabled = true;
+    btn.textContent = "처리 중...";
+    if (resultBox) { resultBox.style.display = "none"; resultBox.textContent = ""; }
+
+    try {
+      const redeemPointsFn = httpsCallable(functions, "redeemPoints");
+      const res = await redeemPointsFn();
+      const d = res.data;
+      if (resultBox) {
+        resultBox.textContent = `전환 완료 ✓  ${d.amountHex} HEX  (tx: ${(d.txHash || "").slice(0, 16)}…)`;
+        resultBox.style.display = "";
+        resultBox.style.color = "var(--accent)";
+      }
+      // 잔액 새로고침
+      setText("pointDisplay", "0.0000");
+    } catch (err) {
+      if (resultBox) {
+        resultBox.textContent = "실패: " + (err?.message || String(err));
+        resultBox.style.display = "";
+        resultBox.style.color = "var(--danger, #e53e3e)";
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "HEX로 전환";
+    }
+  };
+}
+
+// ── 잭팟 잔액 로드 & 인출 ────────────────────────────────────
 const JACKPOT_API = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
 
 let _jpRates = null;
@@ -1361,6 +1397,7 @@ onAuthReady(async (ctx) => {
     loadTxHistory(user.uid);
     loadMentees();
     _walletAddress = data.wallet?.address || null;
+    bindRedeemPoints();
     loadJackpotWallet(_walletAddress);
     bindJackpotWithdraw(_walletAddress);
     loadJackpotHistory(_walletAddress);

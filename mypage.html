@@ -189,8 +189,12 @@
           </div>
           <div class="mp-kv" id="pointRow" style="display:none;">
             <span class="k">포인트(hex로 변경가능)</span>
-            <span class="v accent" id="pointDisplay">-</span>
+            <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span id="pointDisplay">-</span>
+              <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button">HEX로 전환</button>
+            </span>
           </div>
+          <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
           <div class="mp-kv" id="mentorAddrRow" style="display:none;">
             <span class="k">나의 멘토</span>
             <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
@@ -276,7 +280,7 @@
           <label class="field">
             <span>이체 수량 (HEX)</span>
             <input type="number" id="hexTransferAmount" min="0" step="any"
-              placeholder="비우면 전액 이체" />
+              placeholder="비워 놓으면 전액 이체됨" />
           </label>
           <div class="mp-kv" style="margin-bottom:10px;">
             <span class="k">보유 HEX</span>
@@ -415,7 +419,7 @@
         </div>
         <div id="jpWithdrawBox" style="display:none; margin-top:14px;">
           <label class="field">
-            <span>인출 수량 (HEX) <small class="muted">— 비우면 전액</small></span>
+            <span>인출 수량 (HEX) <small class="muted">— 비워 놓으면 전액 이체됨</small></span>
             <input type="number" id="jpWithdrawAmount" min="0" step="any" placeholder="예: 5.0" />
           </label>
           <div class="actions">
