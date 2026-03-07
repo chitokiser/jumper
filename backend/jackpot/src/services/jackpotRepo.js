@@ -2,6 +2,23 @@ import { db, Timestamp } from "../db/firestore.js";
 import { config } from "../config.js";
 import { fromWei, toWei, lower } from "../utils/units.js";
 
+// ── 인메모리 캐시 ──────────────────────────────────────
+const _cache = new Map();
+function cacheGet(key) {
+  const entry = _cache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { _cache.delete(key); return null; }
+  return entry.value;
+}
+function cacheSet(key, value, ttlMs) {
+  _cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+}
+function cacheInvalidate(key) { _cache.delete(key); }
+
+// listener block은 메모리에 유지 + 주기적으로 Firestore에만 flush
+let _listenerBlockMem = null;
+let _listenerBlockDirty = false;
+
 function asDateIso(ts) {
   if (!ts) return new Date().toISOString();
   if (typeof ts.toDate === "function") return ts.toDate().toISOString();
@@ -26,10 +43,13 @@ const coll = {
 };
 
 export async function getConfig() {
+  const cached = cacheGet("config");
+  if (cached) return cached;
+
   const snap = await coll.config.doc("default").get();
   const row = snap.exists ? snap.data() : {};
 
-  return {
+  const result = {
     enabled: row.enabled ?? config.defaults.enabled,
     payoutScale: asBigInt(row.payoutScale, config.defaults.payoutScale),
     maxWinPercent: Number(row.maxWinPercent ?? config.defaults.maxWinPercent),
@@ -37,6 +57,8 @@ export async function getConfig() {
     minClaimWei: asBigInt(row.minClaimWei, toWei(config.defaults.minClaimHex)),
     dailyMaxPayoutWei: asBigInt(row.dailyMaxPayoutWei, toWei(config.defaults.dailyMaxPayoutHex)),
   };
+  cacheSet("config", result, 60_000); // 60초 캐시
+  return result;
 }
 
 export async function setConfig(fields) {
@@ -46,6 +68,7 @@ export async function setConfig(fields) {
   if (fields.enabled !== undefined) update.enabled = Boolean(fields.enabled);
   if (Object.keys(update).length === 0) throw new Error("NO_FIELDS");
   await db.collection("jackpot_config").doc("default").set(update, { merge: true });
+  cacheInvalidate("config"); // 변경 즉시 캐시 무효화
 }
 
 export async function txExists(txHash) {
@@ -54,16 +77,25 @@ export async function txExists(txHash) {
 }
 
 export async function isWhitelistedMerchant(merchantId) {
+  const key = `whitelist:${merchantId}`;
+  const cached = cacheGet(key);
+  if (cached !== null) return cached.active;
+
   const snap = await coll.whitelist.doc(String(merchantId)).get();
-  if (!snap.exists) return false;
-  return Boolean(snap.data()?.active);
+  const result = { active: snap.exists && Boolean(snap.data()?.active), wallet: snap.exists ? (snap.data()?.merchantWallet || null) : null };
+  cacheSet(key, result, 300_000); // 5분 캐시
+  return result.active;
 }
 
 export async function getMerchantWallet(merchantId) {
+  const key = `whitelist:${merchantId}`;
+  const cached = cacheGet(key);
+  if (cached !== null) return cached.wallet ? lower(cached.wallet) : null;
+
   const snap = await coll.whitelist.doc(String(merchantId)).get();
-  if (!snap.exists) return null;
-  const wallet = snap.data()?.merchantWallet;
-  return wallet ? lower(wallet) : null;
+  const result = { active: snap.exists && Boolean(snap.data()?.active), wallet: snap.exists ? (snap.data()?.merchantWallet || null) : null };
+  cacheSet(key, result, 300_000); // 5분 캐시
+  return result.wallet ? lower(result.wallet) : null;
 }
 
 export async function checkRepeatLimit({ userAddress, limitCount }) {
@@ -308,20 +340,28 @@ export async function markClaimPaid({ claimId, txHash, approvedWei }) {
   });
 }
 
+let _listenerFlushCount = 0;
+const LISTENER_FLUSH_EVERY = 5; // 5번에 1번만 Firestore 쓰기
+
 export async function setListenerBlock(blockNumber) {
-  await coll.listener.doc("main").set(
-    {
-      lastScannedBlock: Number(blockNumber),
-      updatedAt: Timestamp.now(),
-    },
-    { merge: true },
-  );
+  _listenerBlockMem = Number(blockNumber);
+  _listenerBlockDirty = true;
+  _listenerFlushCount++;
+  if (_listenerFlushCount >= LISTENER_FLUSH_EVERY) {
+    _listenerFlushCount = 0;
+    await coll.listener.doc("main").set(
+      { lastScannedBlock: _listenerBlockMem, updatedAt: Timestamp.now() },
+      { merge: true },
+    );
+    _listenerBlockDirty = false;
+  }
 }
 
 export async function getListenerBlock() {
+  if (_listenerBlockMem !== null) return _listenerBlockMem;
   const snap = await coll.listener.doc("main").get();
-  if (!snap.exists) return 0;
-  return Number(snap.data()?.lastScannedBlock || 0);
+  _listenerBlockMem = snap.exists ? Number(snap.data()?.lastScannedBlock || 0) : 0;
+  return _listenerBlockMem;
 }
 
 export async function getClaimById(claimId) {
