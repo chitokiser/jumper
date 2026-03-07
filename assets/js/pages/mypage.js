@@ -734,10 +734,13 @@ function bindDepositForm() {
 
       // 결과 표시
       show("depositResult", true);
-      setText("drRefCode",  d.refCode);
-      setText("drBank",     d.bankInfo?.bank    || "-");
-      setText("drAccount",  d.bankInfo?.account || "-");
-      setText("drHolder",   d.bankInfo?.holder  || "-");
+      setText("drRefCode",    d.refCode);
+      setText("drBank",       d.bankInfo?.bank    || "-");
+      setText("drAccount",    d.bankInfo?.account || "-");
+      setText("drHolder",     d.bankInfo?.holder  || "-");
+      setText("drBankVnd",    d.bankInfoVnd?.bank    || "-");
+      setText("drAccountVnd", d.bankInfoVnd?.account || "-");
+      setText("drHolderVnd",  d.bankInfoVnd?.holder  || "-");
       setText("drAmount",   (d.amountKrw || 0).toLocaleString() + "원");
       // KRW / USD / VND 동시 표시
       const drParts = [(d.amountKrw || 0).toLocaleString() + "원"];

@@ -31,11 +31,17 @@ const { requireAdmin } = require('../wallet/admin');
 
 const db = admin.firestore();
 
-// 은행 계좌 정보 ← 실제 계좌로 수정 필요
+// 은행 계좌 정보
 const BANK_INFO = {
-  bank:    '하나은행',
-  account: '123-456789-01234',    // TODO: 실제 계좌번호로 변경
-  holder:  '점퍼코리아',           // TODO: 실제 예금주명으로 변경
+  bank:    'IM뱅크',
+  account: '253-08-000869-7',
+  holder:  '신헌철',
+};
+
+const BANK_INFO_VND = {
+  bank:    'TECHCOM BANK',
+  account: '19037852768012',
+  holder:  'SHIN HEON CHEOL',
 };
 
 const MIN_KRW = 10_000;  // 최소 충전 금액
@@ -106,6 +112,7 @@ async function requestDeposit(uid, { amountKrw, depositorName, bank }) {
     refCode,
     amountKrw:     amount,
     bankInfo:      BANK_INFO,
+    bankInfoVnd:   BANK_INFO_VND,
     instruction:   `입금자명을 "${depositorName.trim()}"으로 정확히 입력하세요. 참조코드: ${refCode}`,
     estimatedHex,
     estimatedUsd,
