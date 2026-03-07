@@ -29,7 +29,7 @@ function setText(id, val) {
 const params      = new URLSearchParams(location.search);
 const merchantId  = Number(params.get("merchant"));
 const amount      = Number(params.get("amount"));
-const currency    = (params.get("currency") || "KRW").toUpperCase();
+const currency    = (params.get("currency") || "VND").toUpperCase();
 
 const isVnd = currency === "VND";
 
@@ -209,11 +209,13 @@ function watchJackpotResult(txHash) {
   box.style.display = "";
 
   let unsub = null;
-  let timer = null;
+  let retryTimer = null;
+  let giveupTimer = null;
 
   const cleanup = () => {
     if (unsub) { unsub(); unsub = null; }
-    if (timer) { clearTimeout(timer); timer = null; }
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+    if (giveupTimer) { clearTimeout(giveupTimer); giveupTimer = null; }
   };
 
   const reveal = (data) => {
@@ -230,15 +232,44 @@ function watchJackpotResult(txHash) {
     }
   };
 
-  timer = setTimeout(() => {
+  const setWaiting = (msg) => {
+    const el = $("jpWaiting");
+    if (el) el.innerHTML = msg;
+  };
+
+  // 30초 후: 수동 재확인 버튼 표시
+  retryTimer = setTimeout(async () => {
+    retryTimer = null;
+    const snap = await getDoc(doc(db, "jackpot_rounds", txHash));
+    if (snap.exists()) { reveal(snap.data()); return; }
+    setWaiting(
+      `🎰 잭팟 서버 처리 중입니다<br>
+       <span style="font-size:0.78rem;color:#94a3b8;">${txHash.slice(0, 16)}…</span><br>
+       <button onclick="window.__jpRetry && window.__jpRetry()" style="margin-top:8px;padding:5px 14px;border:1px solid #c4b5fd;border-radius:8px;background:#f5f3ff;color:#7c3aed;font-size:0.82rem;cursor:pointer;">결과 다시 확인</button>`
+    );
+    window.__jpRetry = async () => {
+      setWaiting("🎰 확인 중...");
+      const s = await getDoc(doc(db, "jackpot_rounds", txHash));
+      if (s.exists()) { reveal(s.data()); }
+      else setWaiting("🎰 아직 처리 중입니다. 잠시 후 마이페이지에서 확인하세요.");
+    };
+  }, 30000);
+
+  // 120초 후: 최종 안내
+  giveupTimer = setTimeout(() => {
     cleanup();
-    const waiting = $("jpWaiting");
-    if (waiting) waiting.textContent = "잭팟 결과는 마이페이지에서 확인하세요";
+    setWaiting("잭팟 결과는 마이페이지에서 확인하세요");
   }, 120000);
 
-  unsub = onSnapshot(doc(db, "jackpot_rounds", txHash), (snap) => {
-    if (snap.exists()) reveal(snap.data());
-  });
+  unsub = onSnapshot(
+    doc(db, "jackpot_rounds", txHash),
+    (snap) => { if (snap.exists()) reveal(snap.data()); },
+    (err) => {
+      cleanup();
+      console.warn("jackpot onSnapshot error:", err.code, err.message);
+      setWaiting("잭팟 결과는 마이페이지에서 확인하세요");
+    }
+  );
 }
 
 // ── 시작 ─────────────────────────────────────────────

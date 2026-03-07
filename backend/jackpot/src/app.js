@@ -6,6 +6,7 @@ import pinoHttp from "pino-http";
 import { jackpotRouter } from "./routes/jackpotRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { logger } from "./utils/logger.js";
+import { db } from "./db/firestore.js";
 
 export function createApp() {
   const app = express();
@@ -24,8 +25,16 @@ export function createApp() {
     jackpotRouter,
   );
 
-  app.get("/health", (_req, res) => {
-    res.json({ ok: true });
+  app.get("/health", async (_req, res) => {
+    let firestoreOk = false;
+    let firestoreError = null;
+    try {
+      await db.collection("jackpot_config").doc("default").get();
+      firestoreOk = true;
+    } catch (e) {
+      firestoreError = e.message || String(e);
+    }
+    res.json({ ok: firestoreOk, firestore: firestoreOk ? "ok" : "error", firestoreError });
   });
 
   app.use(errorHandler);

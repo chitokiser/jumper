@@ -4,8 +4,7 @@
   "function decimals() view returns (uint8)",
 ];
 
-// NOTE: Replace with actual payment event signature from your existing contract.
-// Must keep contract untouched, only read events.
+// jumpPlatform.sol의 실제 이벤트: payMerchantHex() 호출 시 emit PaidHex(...)
 export const PAYMENT_EVENT_ABI = [
-  "event PaymentSettled(bytes32 indexed merchantId, address indexed user, uint256 paymentAmount, uint256 feeAmount)",
+  "event PaidHex(address indexed buyer, uint256 indexed merchantId, uint256 amountWei, uint256 feeWei, uint256 expGain)",
 ];

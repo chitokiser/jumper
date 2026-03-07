@@ -33,12 +33,18 @@ function setStep(id, status) {
 }
 
 // ── 이미 등록된 가맹점 표시 ──────────────────────
-function showAlreadyMerchant(merchantId) {
+function showAlreadyMerchant(merchantId, feeBps) {
   show("alreadyMerchantPanel", true);
   const idEl  = $("existingMerchantId");
   const feeEl = $("existingFeeBps");
   if (idEl)  idEl.textContent  = String(merchantId);
-  if (feeEl) feeEl.textContent = "관리자 설정 중 (기본 10% 예정)";
+  if (feeEl) {
+    if (feeBps != null) {
+      feeEl.textContent = `${(Number(feeBps) / 100).toFixed(1)}%`;
+    } else {
+      feeEl.textContent = "관리자 설정 중 (기본 10% 예정)";
+    }
+  }
 }
 
 // ── 등록 완료 표시 ───────────────────────────────
@@ -222,7 +228,12 @@ async function _initForUser(ctx) {
     // ④ 이미 판매자 등록됨
     if (userData?.merchantId != null) {
       setState("이미 판매회원으로 등록되어 있습니다.");
-      showAlreadyMerchant(userData.merchantId);
+      let feeBps = null;
+      try {
+        const mSnap = await getDoc(doc(db, "merchants", String(userData.merchantId)));
+        if (mSnap.exists()) feeBps = mSnap.data()?.feeBps ?? null;
+      } catch (_) {}
+      showAlreadyMerchant(userData.merchantId, feeBps);
       initMentorLink(user.email);
       return;
     }

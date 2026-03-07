@@ -51,6 +51,30 @@
       animation: qrScan 2s ease-in-out infinite;
     }
     @keyframes qrScan { 0%,100%{top:19%} 50%{top:81%} }
+    .jp-box{margin-top:14px;border-radius:12px;}
+    .jp-waiting{text-align:center;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;font-size:0.85rem;color:#64748b;}
+    .jp-win{display:none;text-align:center;padding:18px 14px;background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:12px;color:#fff;}
+    .jp-win-emoji{font-size:2rem;margin-bottom:4px;}
+    .jp-win-title{font-size:0.95rem;font-weight:800;color:#fde68a;letter-spacing:.06em;margin-bottom:4px;}
+    .jp-win-amount{font-size:1.6rem;font-weight:900;color:#fef08a;text-shadow:0 2px 12px rgba(250,204,21,.4);}
+    .jp-win-hint{font-size:0.72rem;color:#cbd5e1;margin-top:6px;}
+    .jp-nowin{display:none;text-align:center;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;}
+    .jp-nowin-title{font-size:0.85rem;color:#475569;}
+    .jp-nowin-rand{font-size:0.72rem;color:#94a3b8;margin-top:3px;}
+    .curr-seg{display:flex;gap:6px;margin-bottom:4px;}
+    .curr-seg label{flex:1;display:flex;align-items:center;justify-content:center;padding:7px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:600;color:#475569;transition:all .15s;}
+    .curr-seg input[type=radio]{display:none;}
+    .curr-seg input[type=radio]:checked+span{color:var(--accent,#7c3aed);}
+    .curr-seg label:has(input:checked){border-color:var(--accent,#7c3aed);background:#f5f3ff;}
+    .jp-hist-row{padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;background:#f8fafc;}
+    .jp-hist-win{background:linear-gradient(135deg,#fef9c3,#fef3c7);border-color:#fcd34d;}
+    .jp-hist-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+    .jp-hist-status{font-weight:700;font-size:0.85rem;}
+    .jp-hist-date{font-size:0.75rem;color:#94a3b8;}
+    .jp-hist-body{font-size:0.85rem;color:#475569;display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+    .jp-hist-win-amt{color:#d97706;font-weight:700;}
+    .jp-hist-rand{color:#94a3b8;}
+    .jp-hist-tx{font-size:0.72rem;color:#cbd5e1;font-family:monospace;margin-top:3px;}
   </style>
 </head>
 <body>
@@ -297,15 +321,36 @@
               <option value="">불러오는 중...</option>
             </select>
           </label>
+          <div class="field">
+            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;">통화 선택</span>
+            <div class="curr-seg">
+              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyVND" value="VND" checked /><span>🇻🇳 VND (동)</span></label>
+              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyKRW" value="KRW" /><span>🇰🇷 KRW (원)</span></label>
+            </div>
+            <input type="hidden" id="merchantPayCurrency" value="VND" />
+          </div>
           <label class="field">
-            <span>결제 금액 (원) <em class="req">*</em></span>
-            <input type="number" id="merchantPayAmount" min="1000" step="100" placeholder="예: 50000" />
+            <span id="merchantPayAmountLabel">결제 금액 (동 VND) <em class="req">*</em></span>
+            <input type="number" id="merchantPayAmount" min="10000" step="1000" placeholder="예: 200000" />
           </label>
           <div class="actions">
             <button class="btn btn--primary" type="submit" id="btnMerchantPay">결제</button>
           </div>
         </form>
         <div id="merchantPayResult" class="mp-result-box" style="display:none;"></div>
+        <div id="merchantPayJackpot" class="jp-box" style="display:none;">
+          <div class="jp-waiting">🎰 잭팟 결과 확인 중...</div>
+          <div class="jp-win">
+            <div class="jp-win-emoji">🎉</div>
+            <div class="jp-win-title">잭팟 당첨!</div>
+            <div class="jp-win-amount">0 HEX</div>
+            <div class="jp-win-hint">마이페이지에서 출금 신청하세요</div>
+          </div>
+          <div class="jp-nowin">
+            <div class="jp-nowin-title">🎰 잭팟에 참여했습니다 — 이번엔 아쉽네요!</div>
+            <div class="jp-nowin-rand"></div>
+          </div>
+        </div>
       </section>
 
       <!-- 충전 내역 -->
@@ -366,6 +411,16 @@
           <h2 class="mp-section-title">거래 내역 (온체인)</h2>
         </div>
         <div id="txHistory" class="mp-table-wrap">
+          <p class="hint">불러오는 중...</p>
+        </div>
+      </section>
+
+      <!-- 잭팟 내역 -->
+      <section class="panel mp-section" id="jackpotHistorySection" style="display:none;">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">🎰 잭팟 내역</h2>
+        </div>
+        <div id="jackpotHistoryList" class="mp-table-wrap">
           <p class="hint">불러오는 중...</p>
         </div>
       </section>

@@ -27,9 +27,9 @@ function mapEventLog(log) {
     txHash: log.transactionHash,
     blockNumber: Number(log.blockNumber),
     merchantId: toMerchantId(log.args?.merchantId),
-    userAddress: String(log.args?.user ?? ""),
-    paymentAmountWei: BigInt(log.args?.paymentAmount ?? 0n),
-    feeAmountWei: BigInt(log.args?.feeAmount ?? 0n),
+    userAddress: String(log.args?.buyer ?? ""),
+    paymentAmountWei: BigInt(log.args?.amountWei ?? 0n),
+    feeAmountWei: BigInt(log.args?.feeWei ?? 0n),
   };
 }
 
@@ -115,7 +115,7 @@ async function processEvent(ev) {
 function paymentFilter() {
   const named = paymentContract.filters?.[config.paymentEventName];
   if (typeof named === "function") return named();
-  return paymentContract.filters.PaymentSettled();
+  return paymentContract.filters.PaidHex();
 }
 
 export async function runListenerOnce() {

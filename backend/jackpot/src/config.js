@@ -14,7 +14,7 @@ const schema = z.object({
   RPC_URL: z.string().url(),
   PAYMENT_CONTRACT_ADDRESS: z.string().min(42),
   HEX_TOKEN_ADDRESS: z.string().min(42),
-  PAYMENT_EVENT_NAME: z.string().default("PaymentSettled"),
+  PAYMENT_EVENT_NAME: z.string().default("PaidHex"),
   HEX_DECIMALS: z.coerce.number().default(18),
   CONFIRMATIONS: z.coerce.number().default(1),
   START_BLOCK: z.coerce.number().default(0),
