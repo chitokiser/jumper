@@ -41,7 +41,7 @@ const BANK_INFO = {
 const BANK_INFO_VND = {
   bank:    'TECHCOM BANK',
   account: '19037852768012',
-  holder:  'SHIN HEON CHEOL',
+  holder:  '신헌철 (SHIN HEON CHEOL)',
 };
 
 const MIN_KRW = 10_000;  // 최소 충전 금액
