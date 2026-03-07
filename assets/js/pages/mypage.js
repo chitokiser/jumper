@@ -873,6 +873,96 @@ function bindHexTransfer(uid) {
   });
 }
 
+// ── 잭팟 잔액 로드 & 인출 ────────────────────────────────
+const JACKPOT_API = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
+
+async function loadJackpotWallet(walletAddress) {
+  if (!walletAddress || !JACKPOT_API) return;
+  try {
+    const res = await fetch(`${JACKPOT_API}/api/jackpot/balance?wallet=${encodeURIComponent(walletAddress)}`);
+    if (!res.ok) return;
+    const { data } = await res.json();
+    if (!data) return;
+
+    const claimable = parseFloat(data.claimableHex || "0");
+    const totalWon  = parseFloat(data.totalWonHex   || "0");
+    const claimed   = parseFloat(data.totalClaimedHex || "0");
+
+    if (totalWon <= 0) return;
+
+    show("jackpotWalletSection", true);
+    setText("jpClaimableHex",    claimable.toFixed(4) + " HEX");
+    setText("jpTotalWonHex",     totalWon.toFixed(4)  + " HEX");
+    setText("jpTotalClaimedHex", claimed.toFixed(4)   + " HEX");
+
+    if (claimable > 0) show("jpWithdrawBox", true);
+  } catch (err) {
+    console.warn("loadJackpotWallet:", err.message);
+  }
+}
+
+function bindJackpotWithdraw(walletAddress) {
+  const btn        = $("btnJackpotWithdraw");
+  const resultBox  = $("jpWithdrawResult");
+  const refreshBtn = $("btnRefreshJackpotWallet");
+
+  if (refreshBtn) refreshBtn.onclick = () => loadJackpotWallet(walletAddress);
+
+  if (!btn || btn._bound) return;
+  btn._bound = true;
+
+  btn.onclick = async () => {
+    if (!walletAddress || !JACKPOT_API) return;
+    const amountVal = ($("jpWithdrawAmount")?.value || "").trim();
+    let amountHex;
+
+    if (amountVal) {
+      const n = parseFloat(amountVal);
+      if (isNaN(n) || n <= 0) { alert("인출 수량이 올바르지 않습니다."); return; }
+      amountHex = n;
+    } else {
+      const raw = ($("jpClaimableHex")?.textContent || "").replace(/[^\d.]/g, "");
+      amountHex = parseFloat(raw) || 0;
+      if (amountHex <= 0) { alert("인출 가능 잔액이 없습니다."); return; }
+    }
+
+    if (!confirm(`${amountHex} HEX 인출을 신청하시겠습니까?\n관리자 확인 후 지급됩니다.`)) return;
+
+    btn.disabled = true;
+    btn.textContent = "신청 중...";
+    if (resultBox) resultBox.style.display = "none";
+
+    try {
+      const res = await fetch(`${JACKPOT_API}/api/jackpot/withdraw`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: walletAddress, amountHex }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "서버 오류");
+
+      const d = json.data;
+      if (resultBox) {
+        resultBox.style.display = "";
+        const statusMsg = d.status === "paid"
+          ? '<span style="color:#16a34a; font-weight:700;">✓ 즉시 지급 완료</span>'
+          : '<span style="color:#d97706; font-weight:700;">⏳ 신청 완료 — 관리자 확인 후 지급</span>';
+        resultBox.innerHTML = `
+          <div class="mp-kv"><span class="k">상태</span><span class="v">${statusMsg}</span></div>
+          <div class="mp-kv"><span class="k">신청 ID</span><span class="v mono" style="font-size:0.82em;">${d.claimId || "-"}</span></div>
+          ${d.txHash ? `<div class="mp-kv"><span class="k">TX Hash</span><span class="v mono" style="font-size:0.82em;">${d.txHash.slice(0, 20)}…</span></div>` : ""}
+        `;
+      }
+      loadJackpotWallet(walletAddress);
+    } catch (err) {
+      alert("인출 신청 실패: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "인출 신청";
+    }
+  };
+}
+
 // ── 잭팟 내역 로드 ────────────────────────────────────
 async function loadJackpotHistory(walletAddress) {
   if (!walletAddress) return;
@@ -1236,6 +1326,8 @@ onAuthReady(async (ctx) => {
     loadTxHistory(user.uid);
     loadMentees();
     _walletAddress = data.wallet?.address || null;
+    loadJackpotWallet(_walletAddress);
+    bindJackpotWithdraw(_walletAddress);
     loadJackpotHistory(_walletAddress);
 
     // 충전 내역 새로고침 버튼

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/assets/css/pages/apply-guide.css" />
   <link rel="stylesheet" href="/assets/css/pages/mypage.css" />
 
+  <script>window.__jackpotApiBase = "https://jumper-jackpot-production.up.railway.app";</script>
   <script src="/assets/js/partials.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 
@@ -366,6 +367,36 @@
             <div class="jp-nowin-title">🎰 잭팟에 참여했습니다 — 이번엔 아쉽네요!</div>
             <div class="jp-nowin-rand"></div>
           </div>
+        </div>
+      </section>
+
+      <!-- 잭팟 잔액 & 인출 -->
+      <section class="panel mp-section" id="jackpotWalletSection" style="display:none;">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">🎰 잭팟 잔액</h2>
+          <button class="btn btn--sm" id="btnRefreshJackpotWallet" type="button">새로고침</button>
+        </div>
+        <div class="mp-kv">
+          <span class="k">인출 가능 잔액</span>
+          <span class="v accent" id="jpClaimableHex">-</span>
+        </div>
+        <div class="mp-kv">
+          <span class="k">총 당첨 누계</span>
+          <span class="v" id="jpTotalWonHex">-</span>
+        </div>
+        <div class="mp-kv">
+          <span class="k">총 인출 누계</span>
+          <span class="v" id="jpTotalClaimedHex">-</span>
+        </div>
+        <div id="jpWithdrawBox" style="display:none; margin-top:14px;">
+          <label class="field">
+            <span>인출 수량 (HEX) <small class="muted">— 비우면 전액</small></span>
+            <input type="number" id="jpWithdrawAmount" min="0" step="any" placeholder="예: 5.0" />
+          </label>
+          <div class="actions">
+            <button class="btn btn--primary" id="btnJackpotWithdraw" type="button">인출 신청</button>
+          </div>
+          <div id="jpWithdrawResult" class="mp-result-box" style="display:none;"></div>
         </div>
       </section>
 
