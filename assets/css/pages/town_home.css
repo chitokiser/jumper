@@ -320,3 +320,57 @@
   .sponsor-slide-copy strong { font-size: 14px; }
   .sponsor-slide-copy span { font-size: 12px; }
 }
+
+/* index mobile compact actions */
+@media (max-width: 760px) {
+  .shortcut-row {
+    gap: 6px;
+  }
+
+  .shortcut-card {
+    padding: 8px 8px !important;
+    gap: 2px !important;
+    border-radius: 9px !important;
+    box-shadow: none !important;
+  }
+
+  .shortcut-icon {
+    font-size: 0.9rem !important;
+    line-height: 1;
+  }
+
+  .shortcut-label {
+    font-size: 0.74rem !important;
+    line-height: 1.1;
+  }
+
+  .shortcut-sub {
+    font-size: 0.6rem !important;
+    line-height: 1.2;
+  }
+
+  .section-h > .btn,
+  .section-h .section-tools .btn {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  .section-h > .btn.btn--ghost,
+  .section-h .section-tools .btn.btn--ghost {
+    background: #f8fafc;
+    border-color: #dbe2ea;
+    color: #475569;
+  }
+
+  .section-h > .btn.btn--primary,
+  .section-h .section-tools .btn.btn--primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.18);
+  }
+}

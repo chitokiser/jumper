@@ -1,10 +1,9 @@
 // /assets/js/pages/mypage.js
-// 마이페이지: 기본 정보 / 수탁 지갑 / 포인트 충전 / 내역 조회
+// MyPage: profile / wallet / on-chain status / deposit & payment history
 
 import { onAuthReady } from "../auth.js";
 import { db, functions } from "/assets/js/firebase-init.js";
 import { login } from "../auth.js";
-import { initSlot } from "/assets/js/jackpot-anim.js";
 
 import {
   doc,
@@ -17,42 +16,37 @@ import {
   limit,
   getDocs,
   serverTimestamp,
-  onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-import {
-  httpsCallable,
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
 const $ = (id) => document.getElementById(id);
-let _walletAddress = null; // 잭팟 히스토리 갱신용
 
 function show(id, on) {
   const el = $(id);
   if (el) el.style.display = on ? "" : "none";
 }
+
 function setText(id, val) {
   const el = $(id);
   if (el) el.textContent = val != null ? String(val) : "-";
 }
 
-// ── 기본 정보 표시 ────────────────────────────────
 function renderProfile(userData, fireUser) {
-  setText("infoName",  userData?.name  || "-");
+  setText("infoName", userData?.name || "-");
   setText("infoEmail", fireUser?.email || userData?.email || "-");
   setText("infoPhone", userData?.phone || "-");
 }
 
-// ── 수탁 지갑 표시 ───────────────────────────────
 function renderWallet(userData) {
-  const addr       = userData?.wallet?.address;
+  const addr = userData?.wallet?.address;
   const isMetaMask = userData?.wallet?.type === "metamask" || (addr && !userData?.wallet?.encryptedKey);
 
   if (!addr) {
     show("noWallet", true);
     show("walletInfo", false);
     show("btnCreateWallet", true);
-    show("btnConnectMetaMask", false);   // MetaMask 연결은 수탁 지갑 생성 전 차단
+    show("btnConnectMetaMask", false);
     setText("onChainStatus", "-");
     return;
   }
@@ -60,42 +54,17 @@ function renderWallet(userData) {
   show("noWallet", false);
   show("walletInfo", true);
   show("btnConnectMetaMask", false);
-  show("metamaskWarning", isMetaMask);  // 개인지갑 경고 배너
-  show("btnCreateWallet", isMetaMask);  // 수탁 지갑으로 전환 버튼
+  show("metamaskWarning", isMetaMask);
+  show("btnCreateWallet", isMetaMask);
   if (!isMetaMask) show("btnCreateWallet", false);
   setText("walletAddress", addr);
-
-  // 지갑 주소 복사 버튼
-  const btnCopy = $("btnCopyWallet");
-  if (btnCopy) {
-    btnCopy.style.display = "";
-    btnCopy.onclick = () => {
-      navigator.clipboard.writeText(addr).then(() => {
-        btnCopy.textContent = "✓ 복사됨";
-        setTimeout(() => { btnCopy.textContent = "📋 복사"; }, 2000);
-      }).catch(() => {
-        // clipboard API 미지원 fallback
-        const ta = document.createElement("textarea");
-        ta.value = addr;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-        btnCopy.textContent = "✓ 복사됨";
-        setTimeout(() => { btnCopy.textContent = "📋 복사"; }, 2000);
-      });
-    };
-  }
 }
 
-// ── 온체인 데이터 조회 + 표시 ────────────────────
 async function loadOnChainData(uid) {
   const addr = (await getDoc(doc(db, "users", uid))).data()?.wallet?.address;
   if (!addr) return;
 
-  setText("onChainStatus", "조회 중...");
+  setText("onChainStatus", "\uC870\uD68C \uC911...");
 
   try {
     const getMyOnChain = httpsCallable(functions, "getMyOnChain");
@@ -103,50 +72,50 @@ async function loadOnChainData(uid) {
     const d = res.data;
 
     if (d.level > 0) {
-      setText("onChainStatus", "등록 완료 ✓");
+      setText("onChainStatus", "\uB4F1\uB85D \uC644\uB8CC \u2713");
       $("onChainStatus").style.color = "var(--accent)";
 
       show("levelRow", true);
       show("pointRow", true);
 
-      // KRW / USD / VND 동시 표시
       const fmtBalance = (krw, usd, vnd, hex) => {
         if (krw == null) return (hex || "0") + " HEX";
-        const parts = [krw.toLocaleString() + "원"];
-        if (usd != null) parts.push("$" + usd.toFixed(2));
-        if (vnd != null) parts.push(vnd.toLocaleString() + " VND");
+        const parts = [Number(krw).toLocaleString() + "\uC6D0"];
+        if (usd != null) parts.push("$" + Number(usd).toFixed(2));
+        if (vnd != null) parts.push(Number(vnd).toLocaleString() + " VND");
         return parts.join(" / ");
       };
 
       setText("levelDisplay", "Lv." + d.level);
       setText("pointDisplay", fmtBalance(d.pointKrw, d.pointUsd, d.pointVnd, d.pointDisplay));
 
-      // EXP 및 진행바
-      show("expRow",    true);
+      show("expRow", true);
       show("expBarRow", true);
+
       const expPct = d.requiredExp > 0
         ? Math.min(100, Math.round((d.exp / d.requiredExp) * 100))
         : 0;
+
       setText("expDisplay", `${d.exp.toLocaleString()} / ${d.requiredExp.toLocaleString()}`);
+
       const barFill = $("expBarFill");
       if (barFill) barFill.style.width = expPct + "%";
+
       const expReqEl = $("expRequired");
       if (expReqEl) {
         const remain = Math.max(0, d.requiredExp - d.exp);
         expReqEl.textContent = remain > 0
-          ? `다음 레벨까지 ${remain.toLocaleString()} EXP 필요`
-          : "레벨업 가능!";
+          ? `\uB2E4\uC74C \uB808\uBCA8\uAE4C\uC9C0 ${remain.toLocaleString()} EXP \uD544\uC694`
+          : "\uB808\uBCA8\uC5C5 \uAC00\uB2A5";
       }
 
-      // 레벨업 버튼
       show("levelUpRow", d.exp >= d.requiredExp);
 
-      // 멘토 주소
       const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
       const isZeroMentor = !d.mentor || d.mentor === ZERO_ADDR;
       show("mentorAddrRow", true);
 
-      let mentorText = "미연결 (기본 멘토)";
+      let mentorText = "\uBBF8\uC5F0\uACB0 (\uAE30\uBCF8 \uBA58\uD1A0)";
       if (!isZeroMentor) {
         try {
           const mentorSnap = await getDocs(
@@ -154,11 +123,12 @@ async function loadOnChainData(uid) {
           );
           mentorText = !mentorSnap.empty
             ? (mentorSnap.docs[0].data()?.email || d.mentor)
-            : d.mentor.slice(0, 6) + "…" + d.mentor.slice(-4);
-        } catch (_) {
-          mentorText = d.mentor.slice(0, 6) + "…" + d.mentor.slice(-4);
+            : d.mentor.slice(0, 6) + "..." + d.mentor.slice(-4);
+        } catch {
+          mentorText = d.mentor.slice(0, 6) + "..." + d.mentor.slice(-4);
         }
       }
+
       const mentorEl = $("mentorAddrDisplay");
       if (mentorEl) {
         mentorEl.textContent = mentorText;
@@ -166,76 +136,47 @@ async function loadOnChainData(uid) {
         mentorEl.classList.toggle("mono", !isEmail);
         mentorEl.style.fontSize = isEmail ? "0.95em" : "0.78em";
       }
-      // 기본 멘토면 배너 + 등록 요청 폼 표시
+
       show("mentorNotice", isZeroMentor);
       show("mentorRequestBox", isZeroMentor);
 
-      // 보유 HEX (수탁 지갑 실제 잔액 — 충전 후 가맹점 결제에 사용)
       const walletHexBig = BigInt(d.walletHexWei || "0");
       show("walletHexRow", walletHexBig > 0n);
       if (walletHexBig > 0n) {
         setText("walletHexDisplay", fmtBalance(d.walletHexKrw, d.walletHexUsd, d.walletHexVnd, d.walletHexDisplay));
       }
 
-      // 보유 JUMP 토큰 (getJumpBankStatus에서 jumpBalance 조회)
-      try {
-        const getJumpStatus = httpsCallable(functions, "getJumpBankStatus");
-        const jr = await getJumpStatus();
-        const jumpRaw   = BigInt(jr.data?.jumpBalance || "0");
-        const stakedRaw = BigInt(jr.data?.staked      || "0");
-        if (jumpRaw > 0n) {
-          setText("walletJumpDisplay", Number(jumpRaw).toLocaleString("ko-KR") + " JUMP");
-          show("walletJumpRow", true);
-        }
-        if (stakedRaw > 0n) {
-          setText("walletJumpStakedDisplay", Number(stakedRaw).toLocaleString("ko-KR") + " JUMP");
-          show("walletJumpStakedRow", true);
-        }
-      } catch (_) { /* JUMP 조회 실패 시 숨김 유지 */ }
-
-      // 레벨 4 이상 → 개인 지갑 이체 섹션 표시
-      if (d.level >= 4) {
-        show("hexTransferSection", true);
-        const hexDisplay = d.walletHexDisplay || (Number(walletHexBig) / 1e18).toFixed(4) + " HEX";
-        setText("hexTransferBalance", hexDisplay);
-      } else {
-        show("hexTransferSection", false);
-      }
-
       show("onChainRegBox", false);
     } else {
-      setText("onChainStatus", "미등록");
+      setText("onChainStatus", "\uBBF8\uB4F1\uB85D");
       $("onChainStatus").style.color = "var(--muted)";
       show("onChainRegBox", true);
     }
   } catch (err) {
-    // Functions 미배포 / 호출 실패 → Firestore 캐시 폴백
-    console.warn("getMyOnChain 실패 (Functions 미배포?):", err.message);
+    console.warn("getMyOnChain failed:", err.message);
     try {
       const cached = (await getDoc(doc(db, "users", uid))).data()?.onChain;
       if (cached?.registered) {
-        setText("onChainStatus", "등록 완료 ✓");
+        setText("onChainStatus", "\uB4F1\uB85D \uC644\uB8CC \u2713");
         $("onChainStatus").style.color = "var(--accent)";
         show("onChainRegBox", false);
       } else {
-        setText("onChainStatus", "미등록");
+        setText("onChainStatus", "\uBBF8\uB4F1\uB85D");
         $("onChainStatus").style.color = "var(--muted)";
         show("onChainRegBox", true);
       }
     } catch {
-      setText("onChainStatus", "조회 실패");
+      setText("onChainStatus", "\uC870\uD68C \uC2E4\uD328");
       $("onChainStatus").style.color = "var(--muted)";
     }
   }
 }
 
-// ── 충전 내역 ─────────────────────────────────────
 async function loadDepositHistory(uid) {
   const wrap = $("depositHistory");
   if (!wrap) return;
 
   try {
-    // Cloud Function 대신 Firestore 직접 조회 (CORS 우회)
     const q = query(
       collection(db, "deposits"),
       where("uid", "==", uid),
@@ -245,19 +186,24 @@ async function loadDepositHistory(uid) {
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      wrap.innerHTML = '<p class="hint">충전 내역이 없습니다.</p>';
+      wrap.innerHTML = '<p class="hint">\uCDA9\uC804 \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
       return;
     }
 
-    const statusLabel = { pending: "대기", processing: "처리중", approved: "완료", rejected: "반려" };
+    const statusLabel = {
+      pending: "\uB300\uAE30",
+      processing: "\uCC98\uB9AC\uC911",
+      approved: "\uC644\uB8CC",
+      rejected: "\uBC18\uB824",
+    };
+
     const rows = snap.docs.map((d) => {
       const data = d.data();
       const dateStr = data.requestedAt?.toDate
         ? data.requestedAt.toDate().toLocaleDateString("ko")
         : "-";
 
-      // KRW / USD / VND 동시 표시
-      const amountParts = [(data.amountKrw || 0).toLocaleString() + "원"];
+      const amountParts = [(data.amountKrw || 0).toLocaleString() + "\uC6D0"];
       if (data.usdAmount != null) amountParts.push("$" + Number(data.usdAmount).toFixed(2));
       if (data.vndAmount != null) amountParts.push(Number(data.vndAmount).toLocaleString() + " VND");
       const amountStr = amountParts.join(" / ");
@@ -272,43 +218,38 @@ async function loadDepositHistory(uid) {
             <span class="accent">${amountStr}</span>
             <span class="muted">${dateStr}</span>
           </div>
-          ${data.txHash ? `<div class="mp-hist-tx mono">${data.txHash.slice(0, 16)}…</div>` : ""}
+          ${data.txHash ? `<div class="mp-hist-tx mono">${data.txHash.slice(0, 16)}...</div>` : ""}
         </div>
       `;
     }).join("");
 
     wrap.innerHTML = rows;
   } catch (err) {
-    wrap.innerHTML = '<p class="hint muted">내역을 불러올 수 없습니다.</p>';
-    console.warn("depositHistory 실패:", err.message);
+    wrap.innerHTML = '<p class="hint muted">\uCDA9\uC804 \uB0B4\uC5ED \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.</p>';
+    console.warn("depositHistory failed", err.message);
   }
 }
 
-// ── 나의 멘티 목록 ────────────────────────────────
 async function loadMentees() {
   const section = $("menteeSection");
-  const wrap    = $("menteeList");
+  const wrap = $("menteeList");
   if (!section || !wrap) return;
 
   try {
-    const fn  = httpsCallable(functions, "getMyMentees");
+    const fn = httpsCallable(functions, "getMyMentees");
     const res = await fn();
     const { mentees } = res.data;
 
     show("menteeSection", true);
 
     if (!mentees || mentees.length === 0) {
-      wrap.innerHTML = '<p class="hint">아직 멘티가 없습니다.</p>';
+      wrap.innerHTML = '<p class="hint">\uB4F1\uB85D\uB41C \uBA58\uD2F0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
       return;
     }
 
     const rows = mentees.map((m) => {
-      const addrShort = m.address
-        ? m.address.slice(0, 6) + "…" + m.address.slice(-4)
-        : "-";
-      const dateStr = m.registeredAt
-        ? new Date(m.registeredAt).toLocaleDateString("ko")
-        : "-";
+      const addrShort = m.address ? m.address.slice(0, 6) + "..." + m.address.slice(-4) : "-";
+      const dateStr = m.registeredAt ? new Date(m.registeredAt).toLocaleDateString("ko") : "-";
       return `
         <div class="mp-hist-row">
           <div class="mp-hist-main">
@@ -316,262 +257,63 @@ async function loadMentees() {
             <span class="mono muted" style="font-size:0.82em;">${addrShort}</span>
           </div>
           <div class="mp-hist-detail">
-            <span class="muted" style="font-size:0.85em;">가입일: ${dateStr}</span>
+            <span class="muted" style="font-size:0.85em;">\uAC00\uC785\uC77C: ${dateStr}</span>
           </div>
         </div>
       `;
     }).join("");
 
-    wrap.innerHTML = `<p class="hint muted" style="margin-bottom:8px;">총 ${mentees.length}명</p>` + rows;
+    wrap.innerHTML = `<p class="hint muted" style="margin-bottom:8px;">\uCD1D ${mentees.length}\uBA85</p>` + rows;
   } catch (err) {
     show("menteeSection", true);
-    wrap.innerHTML = '<p class="hint muted">멘티 목록을 불러올 수 없습니다.</p>';
-    console.warn("getMyMentees 실패:", err.message);
+    wrap.innerHTML = '<p class="hint muted">\uBA58\uD2F0 \uBAA9\uB85D \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.</p>';
+    console.warn("getMyMentees failed", err.message);
   }
 }
 
-// ── 거래 내역 (Firestore 직접 쿼리 + 가맹점 수입 합산) ──
 async function loadTxHistory(uid) {
   try {
-    // 1) 내 발신 트랜잭션 + 2) 판매 수입(orders) + 3) 내 가맹점 수수료 조회 — 병렬
-    const userSnap = await getDoc(doc(db, "users", uid));
-    const merchantId = userSnap.data()?.merchantId ?? null;
-
-    const [txSnap, orderSnap, merchantSnap] = await Promise.all([
-      getDocs(query(
-        collection(db, "transactions"),
-        where("uid", "==", uid),
-        orderBy("createdAt", "desc"),
-        limit(30)
-      )),
-      // orderBy 제거 → 복합 인덱스 불필요, 클라이언트 정렬로 대체
-      getDocs(query(
-        collection(db, "orders"),
-        where("ownerUid", "==", uid),
-        limit(50)
-      )).catch(() => ({ docs: [] })),
-      merchantId != null
-        ? getDoc(doc(db, "merchants", String(merchantId))).catch(() => null)
-        : Promise.resolve(null),
-    ]);
-
-    // 가맹점 수수료율 (feeBps: 3000 = 30%)
-    const feeBps = merchantSnap?.data?.()?.feeBps ?? 0;
-
-    // 두 결과 합산
-    const entries = [];
-    txSnap.docs.forEach((d) => {
-      const tx = d.data();
-      entries.push({ kind: "tx", data: tx, date: tx.createdAt?.toDate?.() ?? null });
-    });
-    orderSnap.docs.forEach((d) => {
-      const o = d.data();
-      if (o.hexAmountWei && o.status === "confirmed") {
-        entries.push({ kind: "income", data: o, date: o.paidAt?.toDate?.() ?? o.createdAt?.toDate?.() ?? null });
-      }
-    });
-
-    if (!entries.length) return;
-    entries.sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
+    const q = query(
+      collection(db, "transactions"),
+      where("uid", "==", uid),
+      orderBy("createdAt", "desc"),
+      limit(20)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return;
 
     show("txSection", true);
     const wrap = $("txHistory");
-
-    const DEBIT  = new Set(["buy", "pay_merchant", "pay_product", "buyJump", "stakeJump", "hex_transfer"]);
-    const CREDIT = new Set(["credit", "p2p", "p2p_merge", "withdraw", "sellJump", "claimDividend", "unstakeJump", "merchant_income"]);
-
-    const TYPE_LABEL = {
-      buy:           "상품 구매",
-      withdraw:      "HEX 인출",
-      credit:        "HEX 충전",
-      p2p:           "P2P 수령",
-      p2p_merge:     "P2P 합산",
-      pay_merchant:  "가맹점 결제",
-      pay_product:   "상품 결제",
-      buyJump:       "JUMP 매수",
-      sellJump:      "JUMP 매도",
-      stakeJump:       "JUMP 스테이킹",
-      unstakeJump:     "JUMP 언스테이킹",
-      claimDividend:   "배당 수령",
-      merchant_income: "가맹점 수입",
-      hex_transfer:    "HEX 외부이체",
+    const typeLabel = {
+      buy: "\uAD6C\uB9E4",
+      withdraw: "\uC778\uCD9C",
+      credit: "\uD3EC\uC778\uD2B8 \uC9C0\uAE09",
+      p2p: "P2P \uC218\uB839",
+      p2p_merge: "P2P \uD569\uC0B0",
+      pay_merchant: "\uAC00\uB9F9\uC810 \uACB0\uC81C",
     };
 
-    // ── 합계 집계 ──
-    let totalIn  = 0;
-    let totalOut = 0;
-
-    // 각 entry의 HEX 순 금액 계산 (합계용)
-    function entryNetHex(entry) {
-      if (entry.kind === "income") {
-        const gross = Number(BigInt(entry.data.hexAmountWei)) / 1e18;
-        return gross * (1 - feeBps / 10000);
-      }
-      const tx  = entry.data;
-      // merchant_income: netAmountWei = 수수료 공제 후 순 수입
-      if (tx.type === "merchant_income" && tx.netAmountWei) {
-        return Number(BigInt(tx.netAmountWei)) / 1e18;
-      }
-      const hex = tx.amountHex
-        || (tx.amountWei ? formatWei(tx.amountWei) : null)
-        || (tx.hexCost   ? formatWei(tx.hexCost)   : null)
-        || (tx.hexAmount ? formatWei(tx.hexAmount)  : null)
-        || "0";
-      return parseFloat(hex) || 0;
-    }
-
-    entries.forEach((e) => {
-      const n = entryNetHex(e);
-      if (e.kind === "income" || CREDIT.has(e.data?.type)) totalIn  += n;
-      else if (DEBIT.has(e.data?.type))                    totalOut += n;
-    });
-
-    const net    = totalIn - totalOut;
-    const netColor = net >= 0 ? "#16a34a" : "#dc2626";
-    const netSign  = net >= 0 ? "+" : "";
-
-    const summaryHtml = `
-      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;
-                  background:var(--surface2,#f9f5ff); border-radius:10px;
-                  padding:12px 14px; margin-bottom:14px; font-size:0.88em;">
-        <div style="text-align:center;">
-          <div class="muted" style="font-size:0.82em; margin-bottom:2px;">총 수입</div>
-          <div style="color:#16a34a; font-weight:700;">+${totalIn.toFixed(4)}<br><small>HEX</small></div>
-        </div>
-        <div style="text-align:center; border-left:1px solid var(--border,#e5e7eb); border-right:1px solid var(--border,#e5e7eb);">
-          <div class="muted" style="font-size:0.82em; margin-bottom:2px;">총 지출</div>
-          <div style="color:#dc2626; font-weight:700;">−${totalOut.toFixed(4)}<br><small>HEX</small></div>
-        </div>
-        <div style="text-align:center;">
-          <div class="muted" style="font-size:0.82em; margin-bottom:2px;">순 변동</div>
-          <div style="color:${netColor}; font-weight:700;">${netSign}${net.toFixed(4)}<br><small>HEX</small></div>
-        </div>
-      </div>
-    `;
-
-    // ── 행 렌더링 ──
-    const rows = entries.map((entry) => {
-      const dateStr = entry.date
-        ? entry.date.toLocaleString("ko", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
-        : "-";
-
-      // ── 판매 수입 (가맹점으로 받은 결제, 수수료 공제 후 순 금액 표시) ──
-      if (entry.kind === "income") {
-        const o        = entry.data;
-        const hexWei   = BigInt(o.hexAmountWei);
-        const feeWei   = (hexWei * BigInt(feeBps)) / 10000n;
-        const netWei   = hexWei - feeWei;
-        const netHex   = (Number(netWei)  / 1e18).toFixed(4);
-        const grossHex = (Number(hexWei)  / 1e18).toFixed(4);
-        const feeHex   = (Number(feeWei)  / 1e18).toFixed(4);
-        const krwStr   = o.amount ? `${o.amount.toLocaleString()} ${o.currency || "KRW"}` : "";
-        const txShort  = o.txHash ? o.txHash.slice(0, 16) + "…" : "-";
-        return `
-          <div class="mp-hist-row">
-            <div class="mp-hist-main">
-              <span class="mp-hist-badge" style="background:#dcfce7; color:#15803d;">판매 수입</span>
-              <span class="mono">${txShort}</span>
-            </div>
-            <div class="mp-hist-detail">
-              <span style="color:#16a34a; font-weight:700; font-size:1.05em;">+${netHex} HEX</span>
-              <span class="muted" style="font-size:0.79em;">
-                총 ${grossHex} HEX − 수수료 ${(feeBps / 100).toFixed(0)}%(${feeHex} HEX)
-              </span>
-              ${krwStr ? `<span class="muted" style="font-size:0.82em;">${krwStr} 결제분</span>` : ""}
-              <span class="muted">${dateStr}</span>
-            </div>
-          </div>
-        `;
-      }
-
-      // ── 가맹점 수입 (payMerchantHexOnChain 수신) ──
-      if (entry.data?.type === "merchant_income") {
-        const tx       = entry.data;
-        const grossWei = BigInt(tx.amountWei    || "0");
-        const feeWeiB  = BigInt(tx.feeWei       || "0");
-        const netWeiB  = BigInt(tx.netAmountWei || "0");
-        const netHex   = (Number(netWeiB)  / 1e18).toFixed(4);
-        const grossHex = (Number(grossWei) / 1e18).toFixed(4);
-        const feeHex   = (Number(feeWeiB)  / 1e18).toFixed(4);
-        const feePct   = tx.feeBps != null ? (tx.feeBps / 100).toFixed(0) : "?";
-        const fiatParts = [
-          tx.amountVnd != null ? `${Number(tx.amountVnd).toLocaleString()}동 (VND)` : null,
-          tx.amountKrw != null ? `${Number(tx.amountKrw).toLocaleString()}원 (KRW)` : null,
-        ].filter(Boolean).join(" / ");
-        const txShort  = tx.txHash ? tx.txHash.slice(0, 16) + "…" : "-";
-        return `
-          <div class="mp-hist-row">
-            <div class="mp-hist-main">
-              <span class="mp-hist-badge" style="background:#dcfce7; color:#15803d;">가맹점 수입</span>
-              <span class="mono">${txShort}</span>
-            </div>
-            <div class="mp-hist-detail">
-              <span style="color:#16a34a; font-weight:700; font-size:1.05em;">+${netHex} HEX</span>
-              <span class="muted" style="font-size:0.79em;">
-                총 ${grossHex} HEX − 수수료 ${feePct}%(${feeHex} HEX)
-              </span>
-              ${fiatParts ? `<span class="muted" style="font-size:0.82em;">${fiatParts} 결제분</span>` : ""}
-              <span class="muted">${dateStr}</span>
-            </div>
-          </div>
-        `;
-      }
-
-      // ── 일반 트랜잭션 ──
-      const tx      = entry.data;
-      const label   = TYPE_LABEL[tx.type] || tx.type;
-      const isDebit = DEBIT.has(tx.type);
-      const isCred  = CREDIT.has(tx.type);
-
-      const hex = tx.amountHex
-        || (tx.amountWei ? formatWei(tx.amountWei) : null)
-        || (tx.priceWei  ? formatWei(tx.priceWei)  : null)
-        || (tx.hexCost   ? formatWei(tx.hexCost)   : null)   // buyJump
-        || (tx.hexAmount ? formatWei(tx.hexAmount)  : null);  // claimDividend
-
-      const amtHtml = hex
-        ? isDebit
-          ? `<span style="color:#dc2626; font-weight:700; font-size:1.05em;">−${hex} HEX</span>`
-          : isCred
-            ? `<span style="color:#16a34a; font-weight:700; font-size:1.05em;">+${hex} HEX</span>`
-            : `<span style="font-weight:600;">${hex} HEX</span>`
-        : "";
-
-      const jumpHtml = tx.jumpAmount
-        ? `<span class="muted" style="font-size:0.82em;">JUMP ${
-            tx.type === "buyJump" ? "+" : tx.type === "sellJump" ? "−" : ""
-          }${tx.jumpAmount}</span>`
-        : "";
-
-      const fiatParts = [
-        tx.amountVnd != null ? `${Number(tx.amountVnd).toLocaleString()}동 (VND)` : null,
-        tx.amountKrw != null ? `${Number(tx.amountKrw).toLocaleString()}원 (KRW)` : null,
-      ].filter(Boolean).join(" / ");
-      const krwHtml = fiatParts
-        ? `<span class="muted" style="font-size:0.82em;">${fiatParts}</span>`
-        : "";
-      const txShort = tx.txHash ? tx.txHash.slice(0, 16) + "…" : "-";
-
+    const rows = snap.docs.map((d) => {
+      const tx = d.data();
       return `
         <div class="mp-hist-row">
           <div class="mp-hist-main">
-            <span class="mp-hist-badge ${tx.type}">${label}</span>
-            <span class="mono">${txShort}</span>
+            <span class="mp-hist-badge ${tx.type}">${typeLabel[tx.type] || tx.type}</span>
+            <span class="mono">${(tx.txHash || "").slice(0, 16)}...</span>
           </div>
           <div class="mp-hist-detail">
-            ${amtHtml}
-            ${jumpHtml}
-            ${krwHtml}
-            ${tx.fromAddress ? `<span class="muted" style="font-size:0.82em;">from: ${tx.fromAddress.slice(0, 8)}…</span>` : ""}
-            <span class="muted">${dateStr}</span>
+            ${tx.priceWei ? `<span>${formatWei(tx.priceWei)} HEX</span>` : ""}
+            ${tx.amountWei ? `<span>${tx.amountHex || formatWei(tx.amountWei)} HEX</span>` : ""}
+            ${tx.fromAddress ? `<span class="muted">from: ${tx.fromAddress.slice(0, 8)}...</span>` : ""}
+            <span class="muted">${tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleDateString("ko") : "-"}</span>
           </div>
         </div>
       `;
     }).join("");
 
-    wrap.innerHTML = summaryHtml + (rows || '<p class="hint">거래 내역이 없습니다.</p>');
+    wrap.innerHTML = rows;
   } catch (err) {
-    console.warn("거래 내역 조회 실패:", err.message);
+    console.warn("\uAC70\uB798 \uB0B4\uC5ED \uC870\uD68C \uC2E4\uD328", err.message);
   }
 }
 
@@ -584,59 +326,58 @@ function formatWei(weiStr) {
   }
 }
 
-// ── 지갑 생성 버튼 ────────────────────────────────
 function bindCreateWallet() {
   const btn = $("btnCreateWallet");
   if (!btn) return;
+
   btn.onclick = async () => {
     const mentorAddress = String($("createWalletMentorAddr")?.value || "").trim();
     if (!mentorAddress || !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
-      alert("멘토 지갑 주소를 올바르게 입력하세요.\n예) 0x로 시작하는 42자리 주소");
+      alert("\uBA58\uD1A0 \uC9C0\uAC11 \uC8FC\uC18C\uB97C \uC62C\uBC14\uB974\uAC8C \uC785\uB825\uD558\uC138\uC694.\n\uC608: 0x\uB85C \uC2DC\uC791\uD558\uB294 42\uC790\uB9AC \uC8FC\uC18C");
       return;
     }
+
     btn.disabled = true;
-    btn.textContent = "생성 중...";
+    btn.textContent = "\uC0DD\uC131 \uC911...";
     try {
       const createWalletFn = httpsCallable(functions, "createWallet");
       const res = await createWalletFn({ mentorAddress });
-      setText("walletAddress", res.data?.address || "생성됨");
+      setText("walletAddress", res.data?.address || "\uC0DD\uC131\uB428");
       show("noWallet", false);
       show("walletInfo", true);
       show("metamaskWarning", false);
       btn.style.display = "none";
-      alert("수탁 지갑이 생성됐습니다.");
+      alert("\uC218\uD0C1 \uC9C0\uAC11\uC774 \uC0DD\uC131\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
     } catch (err) {
-      alert("지갑 생성 실패: " + err.message);
+      alert("\uC9C0\uAC11 \uC0DD\uC131 \uC2E4\uD328: " + err.message);
       btn.disabled = false;
-      btn.textContent = "지갑 생성";
+      btn.textContent = "\uC9C0\uAC11 \uC0DD\uC131";
     }
   };
 }
 
-// ── MetaMask 직접 연결 ────────────────────────────
 function bindConnectMetaMask(uid) {
   const btn = $("btnConnectMetaMask");
   if (!btn) return;
-  if (!window.ethereum) { btn.style.display = "none"; return; }
+  if (!window.ethereum) {
+    btn.style.display = "none";
+    return;
+  }
 
   btn.onclick = async () => {
     btn.disabled = true;
-    btn.textContent = "연결 중...";
+    btn.textContent = "\uC5F0\uACB0 \uC911...";
     try {
-      // 1) MetaMask 계정 요청
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       const address = accounts[0];
 
-      // 2) 소유권 증명 서명
-      const msg = `Jump Platform 지갑 연결\nUID: ${uid}`;
+      const msg = `Jump Platform \uC9C0\uAC11 \uC5F0\uACB0 \uD655\uC778\nUID: ${uid}`;
       const msgHex = "0x" + Array.from(new TextEncoder().encode(msg))
         .map((b) => b.toString(16).padStart(2, "0")).join("");
       await window.ethereum.request({ method: "personal_sign", params: [msgHex, address] });
 
-      // 3) Firestore 저장 (merge 방식으로 기존 데이터 유지)
       await setDoc(doc(db, "users", uid), { wallet: { address, type: "metamask" } }, { merge: true });
 
-      // 4) UI 업데이트
       setText("walletAddress", address);
       show("noWallet", false);
       show("walletInfo", true);
@@ -645,130 +386,130 @@ function bindConnectMetaMask(uid) {
       loadOnChainData(uid);
     } catch (err) {
       if (err.code === 4001) {
-        alert("서명을 취소했습니다.");
+        alert("\uC11C\uBA85\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
       } else {
-        alert("MetaMask 연결 실패: " + err.message);
+        alert("MetaMask \uC5F0\uACB0 \uC2E4\uD328: " + err.message);
       }
       btn.disabled = false;
-      btn.textContent = "MetaMask 연결";
+      btn.textContent = "MetaMask \uC5F0\uACB0";
     }
   };
 }
 
-// ── 레벨업 버튼 ──────────────────────────────────
 function bindLevelUp(uid) {
   const btn = $("btnLevelUp");
   if (!btn || btn._bound) return;
   btn._bound = true;
+
   btn.onclick = async () => {
-    if (!confirm("레벨업을 진행하시겠습니까?\n레벨업에 사용된 EXP는 차감됩니다.")) return;
+    if (!confirm("\uB808\uBCA8\uC5C5\uC744 \uC9C4\uD589\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?\n\uC870\uAC74 \uCDA9\uC871 \uC2DC \uB808\uBCA8\uC774 \uC0C1\uC2B9\uD569\uB2C8\uB2E4.")) return;
+
     btn.disabled = true;
-    btn.textContent = "처리 중...";
+    btn.textContent = "\uCC98\uB9AC \uC911...";
     try {
       const fn = httpsCallable(functions, "requestLevelUp");
       const res = await fn();
-      alert(`레벨업 완료! Lv.${res.data.newLevel} 달성!`);
+      alert(`\uB808\uBCA8\uC5C5 \uC644\uB8CC! Lv.${res.data.newLevel}`);
       await loadOnChainData(uid);
     } catch (err) {
-      alert("레벨업 실패: " + err.message);
+      alert("\uB808\uBCA8\uC5C5 \uC2E4\uD328: " + err.message);
       btn.disabled = false;
-      btn.textContent = "레벨업 가능! →";
+      btn.textContent = "Level Up";
     }
   };
 }
 
-// ── 온체인 등록 버튼 ──────────────────────────────
 function bindOnChainRegister(uid) {
   const btn = $("btnRegisterOnChain");
   if (!btn) return;
+
   btn.onclick = async () => {
     const mentorAddress = String($("mentorAddrInput")?.value || "").trim();
     if (!mentorAddress || !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
-      alert("멘토 지갑 주소를 올바르게 입력하세요.\n예) 0x로 시작하는 42자리 주소");
+      alert("\uBA58\uD1A0 \uC9C0\uAC11 \uC8FC\uC18C\uB97C \uC62C\uBC14\uB974\uAC8C \uC785\uB825\uD558\uC138\uC694.\n\uC608: 0x\uB85C \uC2DC\uC791\uD558\uB294 42\uC790\uB9AC \uC8FC\uC18C");
       return;
     }
+
     btn.disabled = true;
-    btn.textContent = "등록 중...";
+    btn.textContent = "\uB4F1\uB85D \uC911...";
     try {
       const registerMember = httpsCallable(functions, "registerMember");
       await registerMember({ mentorAddress });
       show("onChainRegBox", false);
-      setText("onChainStatus", "등록 완료 ✓");
+      setText("onChainStatus", "\uB4F1\uB85D \uC644\uB8CC \u2713");
       $("onChainStatus").style.color = "var(--accent)";
       await loadOnChainData(uid);
     } catch (err) {
-      alert("온체인 등록 실패: " + err.message);
+      alert("\uC628\uCCB4\uC778 \uB4F1\uB85D \uC2E4\uD328: " + err.message);
       btn.disabled = false;
-      btn.textContent = "온체인 등록";
+      btn.textContent = "\uB4F1\uB85D";
     }
   };
 }
 
-// ── 충전 요청 폼 ──────────────────────────────────
 function bindDepositForm() {
   const form = $("depositForm");
   if (!form) return;
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const amountKrw    = Number($("depositAmount")?.value);
+    const amountKrw = Number($("depositAmount")?.value);
     const depositorName = String($("depositorName")?.value || "").trim();
     const btn = $("btnDeposit");
 
     if (!amountKrw || amountKrw < 10000) {
-      alert("최소 10,000원 이상 입력해 주세요.");
+      alert("\uC785\uAE08 \uAE08\uC561\uC740 10,000\uC6D0 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.");
       return;
     }
     if (!depositorName) {
-      alert("입금자명을 입력해 주세요.");
+      alert("\uC785\uAE08\uC790\uBA85\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694.");
       return;
     }
 
     btn.disabled = true;
-    btn.textContent = "요청 중...";
+    btn.textContent = "\uC694\uCCAD \uC911...";
 
     try {
       const requestDeposit = httpsCallable(functions, "requestDeposit");
       const res = await requestDeposit({ amountKrw, depositorName });
       const d = res.data;
 
-      // 결과 표시
       show("depositResult", true);
-      setText("drRefCode",    d.refCode);
-      setText("drBank",       d.bankInfo?.bank    || "-");
-      setText("drAccount",    d.bankInfo?.account || "-");
-      setText("drHolder",     d.bankInfo?.holder  || "-");
-      setText("drBankVnd",    d.bankInfoVnd?.bank    || "-");
-      setText("drAccountVnd", d.bankInfoVnd?.account || "-");
-      setText("drHolderVnd",  d.bankInfoVnd?.holder  || "-");
-      setText("drAmount",   (d.amountKrw || 0).toLocaleString() + "원");
-      // KRW / USD / VND 동시 표시
-      const drParts = [(d.amountKrw || 0).toLocaleString() + "원"];
+      setText("drRefCode", d.refCode);
+      setText("drBank", d.bankInfo?.bank || "-");
+      setText("drAccount", d.bankInfo?.account || "-");
+      setText("drHolder", d.bankInfo?.holder || "-");
+      setText("drAmount", (d.amountKrw || 0).toLocaleString() + "\uC6D0");
+
+      const drParts = [(d.amountKrw || 0).toLocaleString() + "\uC6D0"];
       if (d.estimatedUsd != null) drParts.push("$" + Number(d.estimatedUsd).toFixed(2));
-      if (d.estimatedVnd)         drParts.push(d.estimatedVnd);
+      if (d.estimatedVnd) drParts.push(d.estimatedVnd);
       setText("drHex", drParts.join(" / "));
 
-      // 폼 초기화
       form.reset();
     } catch (err) {
-      alert("충전 요청 실패: " + err.message);
+      alert("\uCDA9\uC804 \uC694\uCCAD \uC2E4\uD328: " + err.message);
     } finally {
       btn.disabled = false;
-      btn.textContent = "충전 요청";
+      btn.textContent = "\uC785\uAE08 \uC694\uCCAD";
     }
   });
 }
 
-// ── 멘토 등록 요청 버튼 ───────────────────────────
 function bindMentorRequest(uid) {
   const btn = $("btnMentorRequest");
   if (!btn || btn._bound) return;
   btn._bound = true;
+
   btn.onclick = async () => {
     const email = String($("mentorReqEmail")?.value || "").trim().toLowerCase();
-    if (!email) { alert("멘토 이메일을 입력해주세요."); return; }
+    if (!email) {
+      alert("\uBA58\uD1A0 \uC774\uBA54\uC77C\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694.");
+      return;
+    }
+
     btn.disabled = true;
-    btn.textContent = "요청 중...";
+    btn.textContent = "\uC694\uCCAD \uC911...";
     try {
       await setDoc(doc(db, "mentorRequests", uid), {
         uid,
@@ -781,598 +522,435 @@ function bindMentorRequest(uid) {
       const emailEl = $("mentorReqEmail");
       if (emailEl) emailEl.disabled = true;
     } catch (err) {
-      alert("요청 실패: " + err.message);
+      alert("\uBA58\uD1A0 \uC694\uCCAD \uC2E4\uD328: " + err.message);
       btn.disabled = false;
-      btn.textContent = "멘토 등록 요청";
+      btn.textContent = "\uBA58\uD1A0 \uC694\uCCAD";
     }
   };
 }
 
-// ── 가맹점 목록 (select 용) ────────────────────────
 async function loadMerchantsForSelect() {
   const sel = $("merchantPaySelect");
   if (!sel) return;
+
   try {
     const snap = await getDocs(collection(db, "merchants"));
     const list = [];
+
     snap.forEach((d) => {
       const m = d.data() || {};
-      // 승인된(active) 가맹점만 포함
       if (m.active !== false && (m.approvedAt || Number(m.feeBps) > 0)) {
         list.push({ id: d.id, name: m.name || d.id });
       }
     });
+
     if (!list.length) {
-      sel.innerHTML = '<option value="">등록된 가맹점이 없습니다</option>';
+      sel.innerHTML = '<option value="">\uACB0\uC81C \uAC00\uB2A5\uD55C \uAC00\uB9F9\uC810\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</option>';
       return;
     }
+
     sel.innerHTML =
-      '<option value="">가맹점을 선택하세요</option>' +
+      '<option value="">\uAC00\uB9F9\uC810\uC744 \uC120\uD0DD\uD558\uC138\uC694</option>' +
       list.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
   } catch (err) {
-    sel.innerHTML = '<option value="">가맹점 목록 로드 실패</option>';
+    sel.innerHTML = '<option value="">\uAC00\uB9F9\uC810 \uBAA9\uB85D \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4</option>';
     console.warn("loadMerchantsForSelect:", err.message);
   }
 }
 
-// ── HEX 개인 지갑 이체 폼 (레벨 4+) ───────────────
-function bindHexTransfer(uid) {
-  const form = $("hexTransferForm");
-  if (!form || form._bound) return;
-  form._bound = true;
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const toAddress = ($("hexTransferTo")?.value || "").trim();
-    const amountVal = ($("hexTransferAmount")?.value || "").trim();
-    const btn       = $("btnHexTransfer");
-    const resultBox = $("hexTransferResult");
-
-    if (!toAddress) { alert("수령 지갑 주소를 입력해 주세요."); return; }
-    if (!/^0x[0-9a-fA-F]{40}$/.test(toAddress)) {
-      alert("올바른 지갑 주소 형식이 아닙니다. (0x로 시작하는 42자리)");
-      return;
-    }
-
-    // amountWei 계산: 입력값이 있으면 HEX → wei 변환, 없으면 "all"
-    let amountWei = "all";
-    if (amountVal) {
-      const hexNum = parseFloat(amountVal);
-      if (isNaN(hexNum) || hexNum <= 0) { alert("이체 수량이 올바르지 않습니다."); return; }
-      amountWei = BigInt(Math.floor(hexNum * 1e18)).toString();
-    }
-
-    const confirmed = confirm(
-      `${toAddress.slice(0,6)}…${toAddress.slice(-4)} 주소로\n` +
-      `${amountWei === "all" ? "전액" : amountVal + " HEX"} 이체하시겠습니까?\n\n` +
-      `⚠️ 이체 후 취소 불가합니다.`
-    );
-    if (!confirmed) return;
-
-    if (btn) { btn.disabled = true; btn.textContent = "이체 중..."; }
-    if (resultBox) resultBox.style.display = "none";
-
-    try {
-      const fn = httpsCallable(functions, "transferHexToPersonal");
-      const res = await fn({ toAddress, amountWei });
-      const d = res.data;
-      if (resultBox) {
-        resultBox.style.display = "";
-        resultBox.innerHTML = `
-          <div class="mp-kv"><span class="k">상태</span><span class="v" style="color:#16a34a; font-weight:700;">✓ 이체 완료</span></div>
-          <div class="mp-kv"><span class="k">이체 금액</span><span class="v accent">${d.amountHex} HEX</span></div>
-          <div class="mp-kv"><span class="k">수령 주소</span><span class="v mono" style="font-size:0.82em; word-break:break-all;">${d.toAddress}</span></div>
-          <div class="mp-kv"><span class="k">TX Hash</span><span class="v mono" style="font-size:0.82em;">${d.txHash.slice(0, 20)}…</span></div>
-        `;
-      }
-      form.reset();
-      loadOnChainData(uid);
-      loadTxHistory(uid);
-    } catch (err) {
-      alert("이체 실패: " + (err.message || "서버 오류"));
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "이체"; }
-    }
-  });
-}
-
-// ── 포인트 → HEX 전환 ────────────────────────────────────
-function bindRedeemPoints() {
-  const btn       = $("btnRedeemPoints");
-  const resultBox = $("redeemPointsResult");
-  if (!btn) return;
-
-  btn.onclick = async () => {
-    if (!confirm("포인트를 모두 HEX로 전환하시겠습니까?\n(최소 4 HEX 이상 필요)")) return;
-    btn.disabled = true;
-    btn.textContent = "처리 중...";
-    if (resultBox) { resultBox.style.display = "none"; resultBox.textContent = ""; }
-
-    try {
-      const redeemPointsFn = httpsCallable(functions, "redeemPoints");
-      const res = await redeemPointsFn();
-      const d = res.data;
-      if (resultBox) {
-        resultBox.textContent = `전환 완료 ✓  ${d.amountHex} HEX  (tx: ${(d.txHash || "").slice(0, 16)}…)`;
-        resultBox.style.display = "";
-        resultBox.style.color = "var(--accent)";
-      }
-      // 잔액 새로고침
-      setText("pointDisplay", "0.0000");
-    } catch (err) {
-      if (resultBox) {
-        resultBox.textContent = "실패: " + (err?.message || String(err));
-        resultBox.style.display = "";
-        resultBox.style.color = "var(--danger, #e53e3e)";
-      }
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "HEX로 전환";
-    }
-  };
-}
-
-// ── 잭팟 잔액 로드 & 인출 ────────────────────────────────────
-const JACKPOT_API = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
-
-let _jpRates = null;
-async function _loadJpRates() {
-  if (_jpRates) return _jpRates;
-  try {
-    const r = await fetch("https://open.er-api.com/v6/latest/USD");
-    const d = await r.json();
-    if (d.result === "success" && d.rates?.KRW && d.rates?.VND) {
-      _jpRates = { krwPerUsd: d.rates.KRW, vndPerUsd: d.rates.VND };
-      return _jpRates;
-    }
-  } catch (_) {}
-  _jpRates = { krwPerUsd: 1370, vndPerUsd: 25400 };
-  return _jpRates;
-}
-
-// 1 HEX = 1 USD 기준 환산 (표시용)
-function _fmtHexRates(hex, rates) {
-  const krw = Math.round(hex * rates.krwPerUsd).toLocaleString();
-  const vnd = Math.round(hex * rates.vndPerUsd).toLocaleString();
-  return `≈ ${krw}원 / ${vnd} VND`;
-}
-
-async function loadJackpotWallet(walletAddress) {
-  if (!walletAddress || !JACKPOT_API) return;
-  try {
-    const res = await fetch(`${JACKPOT_API}/api/jackpot/balance?wallet=${encodeURIComponent(walletAddress)}`);
-    if (!res.ok) return;
-    const { data } = await res.json();
-    if (!data) return;
-
-    const claimable = parseFloat(data.claimableHex || "0");
-    const totalWon  = parseFloat(data.totalWonHex   || "0");
-    const claimed   = parseFloat(data.totalClaimedHex || "0");
-
-    show("jackpotWalletSection", true);
-    setText("jpClaimableHex",    claimable.toFixed(4) + " HEX");
-    setText("jpTotalWonHex",     totalWon.toFixed(4)  + " HEX");
-    setText("jpTotalClaimedHex", claimed.toFixed(4)   + " HEX");
-    show("jpWithdrawBox", true);
-
-    // 환율 변환 표시
-    const rates = await _loadJpRates();
-    if (claimable > 0) {
-      setText("jpClaimableRate", _fmtHexRates(claimable, rates));
-      show("jpClaimableRateRow", true);
-    }
-    if (totalWon > 0) {
-      setText("jpTotalWonRate", _fmtHexRates(totalWon, rates));
-      show("jpTotalWonRateRow", true);
-    }
-  } catch (err) {
-    console.warn("loadJackpotWallet:", err.message);
-    show("jackpotWalletSection", true);
-    show("jpWithdrawBox", true);
-  }
-}
-
-function bindJackpotWithdraw(walletAddress) {
-  const btn        = $("btnJackpotWithdraw");
-  const resultBox  = $("jpWithdrawResult");
-  const refreshBtn = $("btnRefreshJackpotWallet");
-
-  if (refreshBtn) refreshBtn.onclick = () => loadJackpotWallet(walletAddress);
-
-  if (!btn || btn._bound) return;
-  btn._bound = true;
-
-  btn.onclick = async () => {
-    if (!walletAddress || !JACKPOT_API) return;
-    const amountVal = ($("jpWithdrawAmount")?.value || "").trim();
-    let amountHex;
-
-    if (amountVal) {
-      const n = parseFloat(amountVal);
-      if (isNaN(n) || n <= 0) { alert("인출 수량이 올바르지 않습니다."); return; }
-      amountHex = n;
-    } else {
-      const raw = ($("jpClaimableHex")?.textContent || "").replace(/[^\d.]/g, "");
-      amountHex = parseFloat(raw) || 0;
-      if (amountHex <= 0) { alert("인출 가능 잔액이 없습니다."); return; }
-    }
-
-    if (!confirm(`${amountHex} HEX 인출을 신청하시겠습니까?\n관리자 확인 후 지급됩니다.`)) return;
-
-    btn.disabled = true;
-    btn.textContent = "신청 중...";
-    if (resultBox) resultBox.style.display = "none";
-
-    try {
-      const res = await fetch(`${JACKPOT_API}/api/jackpot/withdraw`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: walletAddress, amountHex }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "서버 오류");
-
-      const d = json.data;
-      if (resultBox) {
-        resultBox.style.display = "";
-        const statusMsg = d.status === "paid"
-          ? '<span style="color:#16a34a; font-weight:700;">✓ 즉시 지급 완료</span>'
-          : '<span style="color:#d97706; font-weight:700;">⏳ 신청 완료 — 관리자 확인 후 지급</span>';
-        resultBox.innerHTML = `
-          <div class="mp-kv"><span class="k">상태</span><span class="v">${statusMsg}</span></div>
-          <div class="mp-kv"><span class="k">신청 ID</span><span class="v mono" style="font-size:0.82em;">${d.claimId || "-"}</span></div>
-          ${d.txHash ? `<div class="mp-kv"><span class="k">TX Hash</span><span class="v mono" style="font-size:0.82em;">${d.txHash.slice(0, 20)}…</span></div>` : ""}
-        `;
-      }
-      loadJackpotWallet(walletAddress);
-    } catch (err) {
-      alert("인출 신청 실패: " + err.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "인출 신청";
-    }
-  };
-}
-
-// ── 잭팟 내역 로드 ────────────────────────────────────
-async function loadJackpotHistory(walletAddress) {
-  if (!walletAddress) return;
-  const addr = walletAddress.toLowerCase();
-  try {
-    const snap = await getDocs(query(
-      collection(db, "jackpot_rounds"),
-      where("userAddress", "==", addr),
-      limit(30)
-    ));
-    if (snap.empty) return;
-
-    const rounds = snap.docs
-      .map((d) => d.data())
-      .sort((a, b) => {
-        const ta = a.createdAt?.toDate?.()?.getTime() ?? 0;
-        const tb = b.createdAt?.toDate?.()?.getTime() ?? 0;
-        return tb - ta;
-      });
-
-    show("jackpotHistorySection", true);
-    const wrap = $("jackpotHistoryList");
-    if (!wrap) return;
-
-    wrap.innerHTML = rounds.map((r) => {
-      const isWin = r.isWinner && BigInt(r.finalWinWei || "0") > 0n;
-      const payHex = weiToHexStr(r.paymentAmountWei);
-      const winHex = isWin ? weiToHexStr(r.finalWinWei) : null;
-      const rand = r.randomValue ?? "-";
-      const createdDate = r.createdAt?.toDate?.() ?? null;
-      const dateStr = createdDate
-        ? createdDate.toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
-        : "-";
-      return `
-        <div class="jp-hist-row${isWin ? " jp-hist-win" : ""}">
-          <div class="jp-hist-head">
-            <span class="jp-hist-status">${isWin ? "🏆 당첨" : "🎰 참여"}</span>
-            <span class="jp-hist-date">${dateStr}</span>
-          </div>
-          <div class="jp-hist-body">
-            <span>결제: ${payHex} HEX</span>
-            ${isWin
-              ? `<span class="jp-hist-win-amt">+${winHex} HEX 당첨!</span>`
-              : `<span class="jp-hist-rand">랜덤: ${rand} / 9999</span>`}
-          </div>
-          <div class="jp-hist-tx">${(r.txHash || "").slice(0, 20)}…</div>
-        </div>`;
-    }).join("");
-  } catch (err) {
-    console.warn("jackpot history load error:", err);
-  }
-}
-
-// ── 잭팟 결과 감시 (마이페이지용) ─────────────────────
-function weiToHexStr(weiStr, decimals = 18) {
-  const wei = BigInt(weiStr || "0");
-  const div = 10n ** BigInt(decimals);
-  const whole = wei / div;
-  const frac = (wei % div).toString().padStart(decimals, "0").slice(0, 4).replace(/0+$/, "");
-  return frac ? `${whole}.${frac}` : `${whole}`;
-}
-
-function watchJackpotInPage(txHash, containerId) {
-  const box = $(containerId);
-  if (!box || !txHash) return;
-  box.style.display = "";
-
-  // 슬롯머신 시작
-  const slot = initSlot(box.querySelector(".jp-waiting"));
-
-  let unsub = null;
-  let retryTimer = null;
-  let giveupTimer = null;
-  let revealed = false;
-
-  const cleanup = () => {
-    if (unsub) { unsub(); unsub = null; }
-    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-    if (giveupTimer) { clearTimeout(giveupTimer); giveupTimer = null; }
-  };
-
-  const reveal = (data) => {
-    if (revealed) return;
-    revealed = true;
-    cleanup();
-    const isWin = data.isWinner && BigInt(data.finalWinWei || "0") > 0n;
-    slot.stop(data.randomValue ?? 0, isWin, () => {
-      const waiting = box.querySelector(".jp-waiting");
-      if (waiting) waiting.style.display = "none";
-      if (isWin) {
-        const hex = weiToHexStr(data.finalWinWei);
-        const winEl = box.querySelector(".jp-win");
-        if (winEl) winEl.style.display = "";
-        const amtEl = box.querySelector(".jp-win-amount");
-        if (amtEl) amtEl.textContent = `${hex} HEX`;
-      } else {
-        const nowinEl = box.querySelector(".jp-nowin");
-        if (nowinEl) nowinEl.style.display = "";
-        const randEl = box.querySelector(".jp-nowin-rand");
-        if (randEl) randEl.textContent = `랜덤 번호: ${data.randomValue ?? 0} / 9999`;
-      }
-      // 잭팟 내역 자동 갱신
-      if (_walletAddress) loadJackpotHistory(_walletAddress);
-    });
-  };
-
-  // 30초 후 수동 확인 버튼
-  retryTimer = setTimeout(async () => {
-    retryTimer = null;
-    const snap = await getDoc(doc(db, "jackpot_rounds", txHash));
-    if (snap.exists()) { reveal(snap.data()); return; }
-    const waitEl = box.querySelector(".jp-waiting");
-    if (waitEl) waitEl.insertAdjacentHTML("beforeend",
-      `<br><button id="jpRetryBtn_${containerId}" style="margin-top:8px;padding:5px 14px;border:1px solid #c4b5fd;border-radius:8px;background:rgba(255,255,255,.1);color:#c4b5fd;font-size:0.8rem;cursor:pointer;">결과 다시 확인</button>`
-    );
-    const btn = document.getElementById(`jpRetryBtn_${containerId}`);
-    if (btn) btn.onclick = async () => {
-      const s = await getDoc(doc(db, "jackpot_rounds", txHash));
-      if (s.exists()) reveal(s.data());
-    };
-  }, 30000);
-
-  // 120초 후 최종 안내
-  giveupTimer = setTimeout(() => {
-    if (revealed) return;
-    cleanup();
-    const waitEl = box.querySelector(".jp-waiting");
-    if (waitEl) waitEl.innerHTML = `<div style="padding:12px;color:#94a3b8;font-size:0.82rem;text-align:center;">잭팟 결과는 마이페이지 잭팟 내역에서 확인하세요</div>`;
-  }, 120000);
-
-  unsub = onSnapshot(
-    doc(db, "jackpot_rounds", txHash),
-    (snap) => { if (snap.exists()) reveal(snap.data()); },
-    (err) => {
-      cleanup();
-      console.warn("jackpot onSnapshot error:", err.code);
-    }
-  );
-}
-
-// ── 가맹점 직접 결제 폼 ────────────────────────────
 function bindMerchantPay(uid) {
   const form = $("merchantPayForm");
   if (!form || form._bound) return;
   form._bound = true;
 
-  // 라디오 버튼 → hidden input 동기화 + UI 업데이트
-  const currHidden = $("merchantPayCurrency");
-  const amtInput = $("merchantPayAmount");
-  const amtLabel = $("merchantPayAmountLabel");
-  function updateCurrencyUI() {
-    const isVnd = currHidden?.value === "VND";
-    if (amtLabel) amtLabel.textContent = `결제 금액 (${isVnd ? "동 VND" : "원 KRW"}) *`;
-    if (amtInput) {
-      amtInput.min = isVnd ? "10000" : "1000";
-      amtInput.step = isVnd ? "1000" : "100";
-      amtInput.placeholder = isVnd ? "예: 200000" : "예: 50000";
-    }
-  }
-  form.querySelectorAll("input[name='merchantPayCurrencyRadio']").forEach((radio) => {
-    radio.addEventListener("change", () => {
-      if (currHidden) currHidden.value = radio.value;
-      updateCurrencyUI();
-    });
-  });
-  updateCurrencyUI();
-  const currSel = currHidden; // alias for rest of function
-
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const merchantId = $("merchantPaySelect")?.value;
-    const amount     = Number($("merchantPayAmount")?.value);
-    const currency   = $("merchantPayCurrency")?.value || "VND";
-    const isVnd      = currency === "VND";
-    const btn        = $("btnMerchantPay");
-    const resultBox  = $("merchantPayResult");
-    const jackpotBox = $("merchantPayJackpot");
+    const amountKrw = Number($("merchantPayAmount")?.value);
+    const btn = $("btnMerchantPay");
+    const resultBox = $("merchantPayResult");
 
-    if (!merchantId) { alert("가맹점을 선택해 주세요."); return; }
-    const minAmount = isVnd ? 10000 : 1000;
-    if (!amount || amount < minAmount) {
-      alert(`최소 ${minAmount.toLocaleString()}${isVnd ? "동" : "원"} 이상 입력해 주세요.`);
+    if (!merchantId) {
+      alert("\uAC00\uB9F9\uC810\uC744 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.");
       return;
     }
-    const confirmStr = `${amount.toLocaleString()}${isVnd ? "동 (VND)" : "원 (KRW)"}`;
-    if (!confirm(`${confirmStr}을 결제하시겠습니까?`)) return;
+
+    if (!amountKrw || amountKrw < 1000) {
+      alert("\uACB0\uC81C \uAE08\uC561\uC740 1,000\uC6D0 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.");
+      return;
+    }
+
+    if (!confirm(`${amountKrw.toLocaleString()}\uC6D0\uC744 \uACB0\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?`)) return;
 
     btn.disabled = true;
-    btn.textContent = "결제 중...";
+    btn.textContent = "\uACB0\uC81C \uC911...";
     if (resultBox) resultBox.style.display = "none";
-    if (jackpotBox) jackpotBox.style.display = "none";
 
     try {
       const payFn = httpsCallable(functions, "payMerchantHex");
-      const payload = isVnd
-        ? { merchantId: Number(merchantId), amountVnd: amount, currency: "VND" }
-        : { merchantId: Number(merchantId), amountKrw: amount };
-      const res = await payFn(payload);
-      const d   = res.data;
-
-      const amountDisplay = isVnd
-        ? `${amount.toLocaleString()}동 (${d.amountHex} HEX)`
-        : `${amount.toLocaleString()}원 (${d.amountHex} HEX)`;
+      const res = await payFn({ merchantId: Number(merchantId), amountKrw });
+      const d = res.data;
 
       if (resultBox) {
         resultBox.style.display = "";
         resultBox.innerHTML = `
-          <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d.merchantName || ""}</span></div>
-          <div class="mp-kv"><span class="k">결제 금액</span><span class="v accent">${amountDisplay}</span></div>
-          <div class="mp-kv"><span class="k">트랜잭션</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}…</span></div>
-          <p class="hint" style="color:var(--accent); margin-top:6px;">✓ 결제 완료</p>
+          <div class="mp-kv"><span class="k">\uAC00\uB9F9\uC810</span><span class="v">${d.merchantName || ""}</span></div>
+          <div class="mp-kv"><span class="k">\uACB0\uC81C \uAE08\uC561</span><span class="v accent">${amountKrw.toLocaleString()}\uC6D0 (${d.amountHex} HEX)</span></div>
+          <div class="mp-kv"><span class="k">\uD2B8\uB79C\uC7AD\uC158</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
+          <p class="hint" style="color:var(--accent); margin-top:6px;">\uACB0\uC81C\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.</p>
         `;
       }
 
-      watchJackpotInPage(d.txHash, "merchantPayJackpot");
-
       form.reset();
-      if (currHidden) currHidden.value = "VND";
-      const vndRadio = $("merchantPayCurrencyVND");
-      if (vndRadio) vndRadio.checked = true;
-      updateCurrencyUI();
       loadTxHistory(uid);
       loadOnChainData(uid);
     } catch (err) {
-      alert("결제 실패: " + err.message);
+      alert("\uACB0\uC81C \uC2E4\uD328: " + err.message);
     } finally {
-      btn.disabled    = false;
-      btn.textContent = "결제";
+      btn.disabled = false;
+      btn.textContent = "\uACB0\uC81C";
     }
   });
 }
 
-// ── QR 스캐너 ────────────────────────────────────
-function bindQrScanner() {
-  const btnOpen  = $("btnQrScan");
-  const btnClose = $("btnCloseQr");
-  const overlay  = $("qrScanOverlay");
-  const video    = $("qrVideo");
-  const canvas   = $("qrCanvas");
-  const stateEl  = $("qrScanState");
 
-  if (!btnOpen || !overlay || !video || !canvas) return;
-  if (btnOpen._qrBound) return;
-  btnOpen._qrBound = true;
+let __qrStream = null;
+let __qrRaf = 0;
 
-  let stream    = null;
-  let rafId     = null;
-  let scanning  = false;
+function stopQrScan() {
+  if (__qrRaf) cancelAnimationFrame(__qrRaf);
+  __qrRaf = 0;
+  if (__qrStream) {
+    __qrStream.getTracks().forEach((t) => t.stop());
+    __qrStream = null;
+  }
+  const overlay = $("qrScanOverlay");
+  if (overlay) overlay.classList.remove("active");
+}
 
-  function stopScanner() {
-    scanning = false;
-    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-    if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
-    overlay.classList.remove("active");
+function parseQrPayload(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+
+  try {
+    const j = JSON.parse(text);
+    return {
+      merchantId: String(j.merchantId || j.merchant_id || j.id || "").trim(),
+      amount: Number(j.amount || j.krw || j.vnd || 0) || null,
+      currency: String(j.currency || "").toUpperCase() || null,
+    };
+  } catch {}
+
+  try {
+    const u = new URL(text);
+    return {
+      merchantId: String(u.searchParams.get("merchantId") || u.searchParams.get("id") || "").trim(),
+      amount: Number(u.searchParams.get("amount") || 0) || null,
+      currency: String(u.searchParams.get("currency") || "").toUpperCase() || null,
+    };
+  } catch {}
+
+  const mId =
+    /merchantId\s*[:=]\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1] ||
+    /id\s*[:=]\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1] ||
+    "";
+  const amount = Number(/amount\s*[:=]\s*([0-9.]+)/i.exec(text)?.[1] || 0) || null;
+  const currency = (/(currency|cur)\s*[:=]\s*([A-Za-z]{3})/i.exec(text)?.[2] || "").toUpperCase() || null;
+  if (!mId && !amount && !currency) return null;
+  return { merchantId: mId, amount, currency };
+}
+
+function applyQrResult(payload) {
+  if (!payload) return false;
+  const sel = $("merchantPaySelect");
+  const amountInput = $("merchantPayAmount");
+  const state = $("qrScanState");
+  const currencyHidden = $("merchantPayCurrency");
+  const radioVnd = $("merchantPayCurrencyVND");
+  const radioKrw = $("merchantPayCurrencyKRW");
+
+  if (payload.merchantId && sel) {
+    const option = Array.from(sel.options || []).find((o) => String(o.value) === String(payload.merchantId));
+    if (option) sel.value = option.value;
   }
 
-  function tick() {
-    if (!scanning) return;
-    if (video.readyState < video.HAVE_ENOUGH_DATA) {
-      rafId = requestAnimationFrame(tick);
-      return;
+  if (payload.amount && amountInput) {
+    amountInput.value = String(Math.round(payload.amount));
+  }
+
+  if (payload.currency && currencyHidden) {
+    const cur = payload.currency === "KRW" ? "KRW" : "VND";
+    currencyHidden.value = cur;
+    if (cur === "KRW" && radioKrw) radioKrw.checked = true;
+    if (cur === "VND" && radioVnd) radioVnd.checked = true;
+  }
+
+  if (state) state.textContent = "\uC2A4\uCE94 \uC644\uB8CC: \uACB0\uC81C \uD3FC\uC5D0 \uBC18\uC601\uD588\uC2B5\uB2C8\uB2E4.";
+  return true;
+}
+
+function bindQrScan() {
+  const btnOpen = $("btnQrScan");
+  const btnClose = $("btnCloseQr");
+  const overlay = $("qrScanOverlay");
+  const video = $("qrVideo");
+  const canvas = $("qrCanvas");
+  const state = $("qrScanState");
+  if (!btnOpen || !btnClose || !overlay || !video || !canvas) return;
+
+  btnClose.onclick = () => stopQrScan();
+
+  btnOpen.onclick = async () => {
+    try {
+      if (state) state.textContent = "\uCE74\uBA54\uB77C \uC2DC\uC791 \uC911...";
+      overlay.classList.add("active");
+
+      __qrStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false,
+      });
+      video.srcObject = __qrStream;
+      await video.play();
+
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const tick = () => {
+        if (!video.videoWidth || !video.videoHeight) {
+          __qrRaf = requestAnimationFrame(tick);
+          return;
+        }
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const qr = window.jsQR ? window.jsQR(imageData.data, imageData.width, imageData.height) : null;
+
+        if (qr?.data) {
+          const payload = parseQrPayload(qr.data);
+          if (applyQrResult(payload)) {
+            stopQrScan();
+            return;
+          }
+          if (state) state.textContent = "\uC54C \uC218 \uC5C6\uB294 QR \uD615\uC2DD\uC785\uB2C8\uB2E4.";
+        }
+        __qrRaf = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (err) {
+      if (state) state.textContent = "\uCE74\uBA54\uB77C \uC0AC\uC6A9 \uC2E4\uD328";
+      stopQrScan();
+      alert("\uCE74\uBA54\uB77C \uC811\uADFC \uC2E4\uD328: " + (err?.message || err));
     }
-    const w = video.videoWidth;
-    const h = video.videoHeight;
-    if (!w || !h) { rafId = requestAnimationFrame(tick); return; }
+  };
+}
 
-    canvas.width  = w;
-    canvas.height = h;
-    const ctx2d = canvas.getContext("2d");
-    ctx2d.drawImage(video, 0, 0, w, h);
-    const imageData = ctx2d.getImageData(0, 0, w, h);
+let __jpClaimableHex = 0;
 
-    const code = window.jsQR?.(imageData.data, w, h, { inversionAttempts: "dontInvert" });
-    if (code && code.data) {
-      const url = code.data;
-      // pay.html URL인지 확인
-      if (url.includes("/pay.html") && url.includes("merchant=") && url.includes("amount=")) {
-        if (stateEl) stateEl.textContent = "QR 인식됨! 결제 페이지로 이동합니다...";
-        stopScanner();
-        setTimeout(() => { location.href = url; }, 300);
+function jackpotEndpoints(path) {
+  const base = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
+  if (base) return [`${base}${path}`];
+  const host = (location.hostname || "").toLowerCase();
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  if (isLocal) return [`http://${host || "127.0.0.1"}:8787${path}`, path];
+  return [path];
+}
+
+async function fetchJackpotJson(path, options = {}) {
+  let lastErr = null;
+  for (const url of jackpotEndpoints(path)) {
+    try {
+      const res = await fetch(url, {
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        ...options,
+      });
+      const text = await res.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch {}
+      if (!res.ok) {
+        const msg = json?.message || json?.error || `HTTP_${res.status}`;
+        throw new Error(msg);
+      }
+      if (!json) throw new Error("INVALID_JSON_RESPONSE");
+      return json;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("JACKPOT_FETCH_FAILED");
+}
+
+function fmtHex(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "0 HEX";
+  return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX`;
+}
+
+function fmtFiat(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "-";
+  const fx = window.__jackpotFx || {};
+  const krw = Number(fx.krw) > 0 ? Number(fx.krw) : 1480;
+  const vnd = Number(fx.vnd) > 0 ? Number(fx.vnd) : 26000;
+  const krwVal = Math.round(n * krw).toLocaleString("ko-KR");
+  const vndVal = Math.round(n * vnd).toLocaleString("ko-KR");
+  return `\uC57D ${krwVal}\uC6D0 / ${vndVal} VND`;
+}
+
+function renderJackpotHistory(items) {
+  const wrap = $("jackpotHistoryList");
+  if (!wrap) return;
+  if (!Array.isArray(items) || items.length === 0) {
+    wrap.innerHTML = '<p class="hint">\uC7AD\uD31F \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
+    return;
+  }
+  wrap.innerHTML = items.map((it) => {
+    const win = Number(it.finalWinHex || 0);
+    const created = it.createdAt ? new Date(it.createdAt) : null;
+    const dateText = created && !Number.isNaN(created.getTime()) ? created.toLocaleString("ko-KR") : "-";
+    return `
+      <div class="jp-hist-row ${win > 0 ? "jp-hist-win" : ""}">
+        <div class="jp-hist-head">
+          <span class="jp-hist-status">${win > 0 ? "\uD83C\uDFC6 \uB2F9\uCCA8" : "\uCC38\uC5EC"}</span>
+          <span class="jp-hist-date">${dateText}</span>
+        </div>
+        <div class="jp-hist-body">
+          <span>\uACB0\uC81C: ${Number(it.paymentHex || 0).toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX</span>
+          <span class="jp-hist-win-amt">${win > 0 ? `+${win.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX \uB2F9\uCCA8!` : "\uBBF8\uB2F9\uCCA8"}</span>
+          <span class="jp-hist-rand">RND ${it.randomValue ?? "-"}</span>
+        </div>
+        <div class="jp-hist-tx">${String(it.txHash || "").slice(0, 18)}...</div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadJackpotWallet(wallet) {
+  if (!wallet) return;
+  show("jackpotWalletSection", true);
+  show("jackpotHistorySection", true);
+  try {
+    const b = await fetchJackpotJson(`/jackpot/balance?wallet=${encodeURIComponent(wallet)}`);
+    const d = b?.data || {};
+    const claimable = Number(d.claimableHex || 0);
+    const totalWon = Number(d.totalWonHex || 0);
+    const totalClaimed = Number(d.totalClaimedHex || 0);
+    __jpClaimableHex = claimable;
+
+    setText("jpClaimableHex", fmtHex(claimable));
+    setText("jpClaimableRate", fmtFiat(claimable));
+    setText("jpTotalWonHex", fmtHex(totalWon));
+    setText("jpTotalWonRate", fmtFiat(totalWon));
+    setText("jpTotalClaimedHex", fmtHex(totalClaimed));
+    show("jpClaimableRateRow", true);
+    show("jpTotalWonRateRow", true);
+    show("jpWithdrawBox", true);
+  } catch (e) {
+    setText("jpClaimableHex", "\uC870\uD68C \uC2E4\uD328");
+    console.warn("loadJackpotWallet failed:", e.message);
+  }
+}
+
+async function loadJackpotHistory(wallet) {
+  if (!wallet) return;
+  show("jackpotHistorySection", true);
+  try {
+    const h = await fetchJackpotJson(`/jackpot/history?wallet=${encodeURIComponent(wallet)}&limit=50`);
+    const items = Array.isArray(h?.data) ? h.data : [];
+    renderJackpotHistory(items);
+    const total = items.reduce((s, it) => s + (Number(it.finalWinHex || 0) || 0), 0);
+    setText("jpHistoryTotalHex", fmtHex(total));
+    setText("jpHistoryTotalRate", fmtFiat(total));
+    show("jpHistorySummary", true);
+  } catch (e) {
+    const wrap = $("jackpotHistoryList");
+    if (wrap) wrap.innerHTML = `<p class="hint muted">\uC7AD\uD31F \uB0B4\uC5ED \uC870\uD68C \uC2E4\uD328: ${e.message}</p>`;
+  }
+}
+
+async function requestJackpotWithdraw(wallet, amountHex) {
+  const result = $("jpWithdrawResult");
+  if (result) {
+    result.style.display = "";
+    result.innerHTML = "<p class='hint'>\uC778\uCD9C \uC694\uCCAD \uCC98\uB9AC \uC911...</p>";
+  }
+  const j = await fetchJackpotJson("/jackpot/withdraw", {
+    method: "POST",
+    body: JSON.stringify({ wallet, amountHex: String(amountHex) }),
+  });
+  if (result) {
+    const tx = j?.data?.txHash ? String(j.data.txHash).slice(0, 18) + "..." : "-";
+    result.innerHTML = `<p class=\"hint\" style=\"color:var(--accent)\">\uC778\uCD9C \uC694\uCCAD \uC644\uB8CC (\uC0C1\uD0DC: ${j?.data?.status || "-"}, TX: ${tx})</p>`;
+  }
+  await loadJackpotWallet(wallet);
+  await loadJackpotHistory(wallet);
+}
+
+function bindJackpotActions(wallet) {
+  const btnRefresh = $("btnRefreshJackpotWallet");
+  if (btnRefresh) btnRefresh.onclick = () => loadJackpotWallet(wallet);
+
+  const btnWithdraw = $("btnJackpotWithdraw");
+  if (btnWithdraw) {
+    btnWithdraw.onclick = async () => {
+      const val = String($("jpWithdrawAmount")?.value || "").trim();
+      const amount = val ? Number(val) : __jpClaimableHex;
+      if (!amount || amount <= 0) {
+        alert("\uC778\uCD9C \uAC00\uB2A5 \uC794\uC561\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
         return;
       }
-    }
-    rafId = requestAnimationFrame(tick);
+      try {
+        await requestJackpotWithdraw(wallet, amount);
+      } catch (e) {
+        const result = $("jpWithdrawResult");
+        if (result) {
+          result.style.display = "";
+          result.innerHTML = `<p class=\"hint muted\">\uC778\uCD9C \uC2E0\uCCAD \uC2E4\uD328: ${e.message}</p>`;
+        }
+      }
+    };
   }
 
-  async function openScanner() {
-    if (scanning) return;
-    if (!navigator.mediaDevices?.getUserMedia) {
-      alert("이 브라우저에서는 카메라를 사용할 수 없습니다.");
-      return;
-    }
-    try {
-      stream   = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      video.srcObject = stream;
-      await video.play();
-      scanning = true;
-      overlay.classList.add("active");
-      if (stateEl) stateEl.textContent = "QR 코드를 사각형 안에 맞춰주세요";
-      rafId = requestAnimationFrame(tick);
-    } catch (err) {
-      alert("카메라 접근 실패: " + (err.message || err));
-    }
+  const btnConvert = $("btnJackpotConvertInHistory");
+  if (btnConvert) {
+    btnConvert.onclick = async () => {
+      if (!__jpClaimableHex || __jpClaimableHex <= 0) {
+        alert("\uC778\uCD9C \uAC00\uB2A5 \uC794\uC561\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      try {
+        await requestJackpotWithdraw(wallet, __jpClaimableHex);
+      } catch (e) {
+        alert("HEX \uC804\uD658 \uC2E4\uD328: " + e.message);
+      }
+    };
   }
-
-  btnOpen.addEventListener("click", openScanner);
-  btnClose.addEventListener("click", stopScanner);
-
-  // 오버레이 바깥 터치 시 닫기
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) stopScanner();
-  });
-
-  // ESC 키
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && scanning) stopScanner();
-  });
 }
-
-// ── 진입점 ────────────────────────────────────────
 onAuthReady(async (ctx) => {
   const loggedIn = (ctx?.loggedIn ?? ctx?.loggedin) === true;
-  const user     = ctx?.user;
+  const user = ctx?.user;
 
   if (!loggedIn || !user) {
     show("needLoginPanel", true);
     const btn = $("btnLoginPage");
-    if (btn) btn.onclick = async () => { try { await login(); } catch (e) { console.warn(e); } };
+    if (btn) {
+      btn.onclick = async () => {
+        try {
+          await login();
+        } catch (e) {
+          console.warn(e);
+        }
+      };
+    }
     return;
   }
 
   show("mainContent", true);
 
   try {
-    // Firestore 기본 데이터 로드
     const snap = await getDoc(doc(db, "users", user.uid));
     const data = snap.exists() ? snap.data() : {};
 
-    // 회원가입 미완료 시 → 안내 후 종료
     if (!data.name) {
       show("noProfilePanel", true);
       return;
@@ -1386,34 +964,28 @@ onAuthReady(async (ctx) => {
     bindLevelUp(user.uid);
     bindMentorRequest(user.uid);
     bindDepositForm();
-    bindHexTransfer(user.uid);
     loadMerchantsForSelect();
     bindMerchantPay(user.uid);
-    bindQrScanner();
+    bindQrScan();
 
-    // 비동기로 추가 데이터 로드
     loadOnChainData(user.uid);
     loadDepositHistory(user.uid);
     loadTxHistory(user.uid);
     loadMentees();
-    _walletAddress = data.wallet?.address || null;
-    bindRedeemPoints();
-    loadJackpotWallet(_walletAddress);
-    bindJackpotWithdraw(_walletAddress);
-    loadJackpotHistory(_walletAddress);
 
-    // 충전 내역 새로고침 버튼
+    const walletAddress = data?.wallet?.address ? String(data.wallet.address) : '';
+    if (walletAddress) {
+      bindJackpotActions(walletAddress);
+      loadJackpotWallet(walletAddress);
+      loadJackpotHistory(walletAddress);
+    }
+
     const btnRefresh = $("btnRefreshDeposits");
-    if (btnRefresh) {
-      btnRefresh.onclick = () => loadDepositHistory(user.uid);
-    }
+    if (btnRefresh) btnRefresh.onclick = () => loadDepositHistory(user.uid);
 
-    // 멘티 새로고침 버튼
     const btnRefreshMentees = $("btnRefreshMentees");
-    if (btnRefreshMentees) {
-      btnRefreshMentees.onclick = () => loadMentees();
-    }
+    if (btnRefreshMentees) btnRefreshMentees.onclick = () => loadMentees();
   } catch (err) {
-    console.error("마이페이지 로드 실패:", err);
+    console.error("\uB9C8\uC774\uD398\uC774\uC9C0 \uCD08\uAE30\uD654 \uC2E4\uD328", err);
   }
 });

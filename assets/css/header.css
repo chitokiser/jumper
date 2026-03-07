@@ -1,4 +1,4 @@
-﻿/* /assets/css/header.css */
+/* /assets/css/header.css */
 
 :root{
   --hdr-text:#2b2f36;
@@ -111,8 +111,9 @@
 .nav{
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .nav-group{
@@ -132,6 +133,7 @@
   cursor: pointer;
   font: inherit;
   font-weight: 800;
+  white-space: nowrap;
   transition: background .18s ease, border-color .18s ease, color .18s ease;
 }
 
@@ -149,7 +151,7 @@
   display: none;
   flex-direction: column;
   padding: 10px;
-  gap: 6px;
+  gap: 5px;
   border-radius: 16px;
   background: rgba(255,255,255,.96);
   border: 1px solid rgba(0,0,0,.10);
@@ -163,6 +165,7 @@
   text-decoration: none;
   padding: 10px 12px;
   min-height: 44px;
+  white-space: nowrap;
   border-radius: 12px;
   border: 1px solid transparent;
   transition: background .18s ease, border-color .18s ease, color .18s ease;
@@ -184,8 +187,10 @@
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
   padding: 0;
+  overflow: hidden;
   transition: background .18s ease, border-color .18s ease, transform .18s ease;
 }
 
@@ -198,22 +203,18 @@
 
 .burger span{
   display:block;
-  width: 18px;
-  height: 2px;
-  background: var(--hdr-text);
-  border-radius: 2px;
-  transition: transform .18s ease, opacity .18s ease;
+  width: 16px;
+  height: 8px;
+  flex: 0 0 auto;
+  background:
+    linear-gradient(45deg, transparent 44%, var(--hdr-text) 45% 55%, transparent 56%) left bottom / 50% 100% no-repeat,
+    linear-gradient(-45deg, transparent 44%, var(--hdr-text) 45% 55%, transparent 56%) right bottom / 50% 100% no-repeat;
+  transition: opacity .18s ease, filter .18s ease;
 }
 
-#siteHeaderBar.nav-open .burger span:nth-child(1){
-  transform: translateY(8px) rotate(45deg);
-  width: 18px;
-}
+#siteHeaderBar.nav-open .burger span:nth-child(1){ filter: brightness(0.85); }
 #siteHeaderBar.nav-open .burger span:nth-child(2){ opacity: 0; }
-#siteHeaderBar.nav-open .burger span:nth-child(3){
-  transform: translateY(-8px) rotate(-45deg);
-  width: 18px;
-}
+#siteHeaderBar.nav-open .burger span:nth-child(3){ filter: brightness(0.85); }
 
 .hdr-nav-backdrop{ display: none; }
 
@@ -227,7 +228,7 @@
     object-fit: contain;
   }
 
-  .hdr-right{ min-width: 0; gap: 6px; }
+  .hdr-right{ min-width: 0; gap: 5px; }
   .user-badge,
   .role-badge{ display:none !important; }
 
@@ -278,6 +279,7 @@
     min-width: auto;
     padding: 6px;
     display: none;
+    flex-direction: column;
     border-radius: 14px;
     background: rgba(37,99,235,.06);
     border: 1px solid rgba(37,99,235,.14);
@@ -303,4 +305,3 @@
   .brand-name{ font-size: 15px; }
   .user-badge{ max-width: 170px; }
 }
-

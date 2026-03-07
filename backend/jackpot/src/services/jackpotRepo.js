@@ -1,8 +1,7 @@
 import { db, Timestamp } from "../db/firestore.js";
 import { config } from "../config.js";
 import { fromWei, toWei, lower } from "../utils/units.js";
-
-// ── 인메모리 캐시 ──────────────────────────────────────
+// in-memory cache
 const _cache = new Map();
 function cacheGet(key) {
   const entry = _cache.get(key);
@@ -15,7 +14,7 @@ function cacheSet(key, value, ttlMs) {
 }
 function cacheInvalidate(key) { _cache.delete(key); }
 
-// listener block은 메모리에 유지 + 주기적으로 Firestore에만 flush
+// listener block kept in memory and periodically flushed to Firestore
 let _listenerBlockMem = null;
 let _listenerBlockDirty = false;
 
@@ -57,7 +56,7 @@ export async function getConfig() {
     minClaimWei: asBigInt(row.minClaimWei, toWei(config.defaults.minClaimHex)),
     dailyMaxPayoutWei: asBigInt(row.dailyMaxPayoutWei, toWei(config.defaults.dailyMaxPayoutHex)),
   };
-  cacheSet("config", result, 60_000); // 60초 캐시
+  cacheSet("config", result, 60_000); // 60s cache
   return result;
 }
 
@@ -68,7 +67,7 @@ export async function setConfig(fields) {
   if (fields.enabled !== undefined) update.enabled = Boolean(fields.enabled);
   if (Object.keys(update).length === 0) throw new Error("NO_FIELDS");
   await db.collection("jackpot_config").doc("default").set(update, { merge: true });
-  cacheInvalidate("config"); // 변경 즉시 캐시 무효화
+  cacheInvalidate("config"); // invalidate cache on config update
 }
 
 export async function txExists(txHash) {
@@ -83,7 +82,7 @@ export async function isWhitelistedMerchant(merchantId) {
 
   const snap = await coll.whitelist.doc(String(merchantId)).get();
   const result = { active: snap.exists && Boolean(snap.data()?.active), wallet: snap.exists ? (snap.data()?.merchantWallet || null) : null };
-  cacheSet(key, result, 300_000); // 5분 캐시
+  cacheSet(key, result, 300_000); // 5m cache
   return result.active;
 }
 
@@ -94,7 +93,7 @@ export async function getMerchantWallet(merchantId) {
 
   const snap = await coll.whitelist.doc(String(merchantId)).get();
   const result = { active: snap.exists && Boolean(snap.data()?.active), wallet: snap.exists ? (snap.data()?.merchantWallet || null) : null };
-  cacheSet(key, result, 300_000); // 5분 캐시
+  cacheSet(key, result, 300_000); // 5m cache
   return result.wallet ? lower(result.wallet) : null;
 }
 
@@ -205,6 +204,50 @@ export async function recordRound(payload) {
   });
 }
 
+async function rebuildWalletFromLedger(userAddress) {
+  const key = lower(userAddress);
+
+  const roundsSnap = await coll.rounds
+    .where("userAddress", "==", key)
+    .get();
+  let totalWonWei = 0n;
+  roundsSnap.forEach((doc) => {
+    totalWonWei += asBigInt(doc.data()?.finalWinWei, 0n);
+  });
+
+  const paidClaimsSnap = await coll.claims
+    .where("userAddress", "==", key)
+    .where("status", "==", "paid")
+    .get();
+  let totalClaimedWei = 0n;
+  paidClaimsSnap.forEach((doc) => {
+    totalClaimedWei += asBigInt(doc.data()?.approvedWei, 0n);
+  });
+
+  const claimableWei = totalWonWei > totalClaimedWei
+    ? totalWonWei - totalClaimedWei
+    : 0n;
+
+  await coll.wallets.doc(key).set(
+    {
+      userAddress: key,
+      totalWonWei: totalWonWei.toString(),
+      totalClaimedWei: totalClaimedWei.toString(),
+      claimableWei: claimableWei.toString(),
+      updatedAt: Timestamp.now(),
+    },
+    { merge: true },
+  );
+
+  return {
+    userAddress: key,
+    totalWonWei,
+    totalClaimedWei,
+    claimableWei,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export async function getWallet(userAddress) {
   const key = lower(userAddress);
   const snap = await coll.wallets.doc(key).get();
@@ -218,19 +261,39 @@ export async function getWallet(userAddress) {
         updatedAt: Timestamp.now(),
       };
 
-  const totalWonWei = asBigInt(row.totalWonWei, 0n);
-  const totalClaimedWei = asBigInt(row.totalClaimedWei, 0n);
-  const claimableWei = asBigInt(row.claimableWei, 0n);
+  const rowWonWei = asBigInt(row.totalWonWei, 0n);
+  const rowClaimedWei = asBigInt(row.totalClaimedWei, 0n);
+  const rowClaimableWei = asBigInt(row.claimableWei, 0n);
+
+  let needsRebuild = !snap.exists;
+  if (!needsRebuild) {
+    if (rowClaimedWei > rowWonWei) needsRebuild = true;
+    if (rowWonWei !== rowClaimedWei + rowClaimableWei) needsRebuild = true;
+    if (!needsRebuild && rowWonWei === 0n) {
+      const anyRound = await coll.rounds.where("userAddress", "==", key).limit(1).get();
+      if (!anyRound.empty) needsRebuild = true;
+    }
+  }
+
+  const current = needsRebuild
+    ? await rebuildWalletFromLedger(key)
+    : {
+        userAddress: row.userAddress || key,
+        totalWonWei: rowWonWei,
+        totalClaimedWei: rowClaimedWei,
+        claimableWei: rowClaimableWei,
+        updatedAt: asDateIso(row.updatedAt),
+      };
 
   return {
-    userAddress: row.userAddress || key,
-    totalWonWei,
-    totalClaimedWei,
-    claimableWei,
-    totalWonHex: fromWei(totalWonWei),
-    totalClaimedHex: fromWei(totalClaimedWei),
-    claimableHex: fromWei(claimableWei),
-    updatedAt: asDateIso(row.updatedAt),
+    userAddress: current.userAddress,
+    totalWonWei: current.totalWonWei,
+    totalClaimedWei: current.totalClaimedWei,
+    claimableWei: current.claimableWei,
+    totalWonHex: fromWei(current.totalWonWei),
+    totalClaimedHex: fromWei(current.totalClaimedWei),
+    claimableHex: fromWei(current.claimableWei),
+    updatedAt: current.updatedAt,
   };
 }
 
@@ -262,6 +325,7 @@ export async function getHistory(userAddress, limit = 50) {
 export async function createWithdrawRequest({ userAddress, requestedWei }) {
   const walletKey = lower(userAddress);
   const claimRef = coll.claims.doc();
+  await getWallet(walletKey); // stale wallet values are rebuilt from ledger before validation
 
   await db.runTransaction(async (tx) => {
     const walletRef = coll.wallets.doc(walletKey);
@@ -341,8 +405,7 @@ export async function markClaimPaid({ claimId, txHash, approvedWei }) {
 }
 
 let _listenerFlushCount = 0;
-const LISTENER_FLUSH_EVERY = 5; // 5번에 1번만 Firestore 쓰기
-
+const LISTENER_FLUSH_EVERY = 5; // 5?癲??????⑤베??1?癲?????嶺?Firestore ?????怨뺤른??
 export async function setListenerBlock(blockNumber) {
   _listenerBlockMem = Number(blockNumber);
   _listenerBlockDirty = true;

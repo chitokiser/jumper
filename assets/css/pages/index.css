@@ -378,3 +378,34 @@
 .menu-btn:hover{
   background: rgba(255,255,255,.08);
 }
+@media (max-width: 760px){
+  .section-h{
+    margin-bottom: 8px;
+  }
+
+  .section-h > .btn,
+  .section-h .section-tools .btn{
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+    box-shadow: none;
+  }
+
+  .section-h > .btn.btn--ghost,
+  .section-h .section-tools .btn.btn--ghost{
+    background: #f8fafc;
+    border-color: #dbe2ea;
+    color: #475569;
+  }
+
+  .section-h > .btn.btn--primary,
+  .section-h .section-tools .btn.btn--primary{
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37,99,235,.20);
+  }
+}
