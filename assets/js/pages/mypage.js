@@ -628,6 +628,8 @@ function bindMentorRequest(uid) {
   };
 }
 
+let _pendingQrPayload = null;
+
 async function loadMerchantsForSelect() {
   const sel = $("merchantPaySelect");
   if (!sel) return;
@@ -638,7 +640,7 @@ async function loadMerchantsForSelect() {
 
     snap.forEach((d) => {
       const m = d.data() || {};
-      if (m.active !== false && (m.approvedAt || Number(m.feeBps) > 0)) {
+      if (m.active !== false) {
         list.push({ id: d.id, name: m.name || d.id });
       }
     });
@@ -651,6 +653,13 @@ async function loadMerchantsForSelect() {
     sel.innerHTML =
       '<option value="">\uAC00\uB9F9\uC810\uC744 \uC120\uD0DD\uD558\uC138\uC694</option>' +
       list.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
+
+    // QR 스캔이 가맹점 로드 전에 먼저 발생했을 경우 재시도
+    if (_pendingQrPayload) {
+      const p = _pendingQrPayload;
+      _pendingQrPayload = null;
+      if (applyQrResult(p)) stopQrScan();
+    }
   } catch (err) {
     sel.innerHTML = '<option value="">\uAC00\uB9F9\uC810 \uBAA9\uB85D \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4</option>';
     console.warn("loadMerchantsForSelect:", err.message);
@@ -774,6 +783,13 @@ function applyQrResult(payload) {
 
   if ((payload.merchantId || payload.merchantName) && sel) {
     const options = Array.from(sel.options || []).filter((o) => o.value);
+
+    // 가맹점 목록이 아직 로딩 중이면 대기 큐에 저장
+    if (options.length === 0) {
+      _pendingQrPayload = payload;
+      if (state) state.textContent = "\uAC00\uB9F9\uC810 \uBAA9\uB85D \uB85C\uB529 \uD6C4 \uC790\uB3D9 \uC801\uC6A9 \uC608\uC815...";
+      return false;
+    }
     // 1. 정확한 value 일치
     let found = payload.merchantId
       ? options.find((o) => String(o.value) === String(payload.merchantId))
