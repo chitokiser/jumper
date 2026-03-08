@@ -84,12 +84,8 @@
   </main>
 
   <script type="module">
-    import { db } from "/assets/js/firebase-init.js";
     import { auth } from "/assets/js/auth.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import {
-      collection, query, where, orderBy, limit, getDocs,
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
     const $ = (id) => document.getElementById(id);
 
@@ -141,14 +137,14 @@
     }
     function fmtDate(ts) {
       if (!ts) return "-";
-      const d = typeof ts.toDate === "function" ? ts.toDate() : new Date(ts);
+      const d = new Date(ts);
       return d.toLocaleString("ko-KR");
     }
     function weiToHex(wei) {
       try { return Number(BigInt(wei || "0")) / 1e18; } catch { return 0; }
     }
 
-    // ── 클레임 목록 로드 (Firestore 직접 조회) ──
+    // ── 클레임 목록 로드 (잭팟 백엔드 API 조회) ──
     async function loadClaims() {
       if (!_adminKey) { $("claimsWrap").innerHTML = '<p class="claims-empty">Admin Key를 입력하세요.</p>'; return; }
 
@@ -157,14 +153,19 @@
 
       try {
         const statusVal = $("statusFilter").value;
-        const coll = collection(db, "jackpot_claims");
-        const constraints = [orderBy("createdAt", "desc"), limit(100)];
-        if (statusVal) constraints.unshift(where("status", "==", statusVal));
+        const base = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
+        const url = statusVal
+          ? `${base}/jackpot/claims?status=${encodeURIComponent(statusVal)}&limit=100`
+          : `${base}/jackpot/claims?limit=100`;
 
-        const snap = await getDocs(query(coll, ...constraints));
-        const claims = [];
-        snap.forEach((d) => claims.push({ id: d.id, ...d.data() }));
+        const res = await fetch(url, {
+          headers: { "x-admin-key": _adminKey },
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.message || json.error || `HTTP_${res.status}`);
 
+        const claims = json.data || [];
         $("claimsState").textContent = `총 ${claims.length}건`;
 
         if (!claims.length) {
