@@ -15,8 +15,11 @@ import {
   orderBy,
   limit,
   getDocs,
+  onSnapshot,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+import { initSlot } from "/assets/js/jackpot-anim.js";
 
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
@@ -628,8 +631,6 @@ function bindMentorRequest(uid) {
   };
 }
 
-let _pendingQrPayload = null;
-
 async function loadMerchantsForSelect() {
   const sel = $("merchantPaySelect");
   if (!sel) return;
@@ -653,63 +654,177 @@ async function loadMerchantsForSelect() {
     sel.innerHTML =
       '<option value="">\uAC00\uB9F9\uC810\uC744 \uC120\uD0DD\uD558\uC138\uC694</option>' +
       list.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
-
-    // QR 스캔이 가맹점 로드 전에 먼저 발생했을 경우 재시도
-    if (_pendingQrPayload) {
-      const p = _pendingQrPayload;
-      _pendingQrPayload = null;
-      if (applyQrResult(p)) stopQrScan();
-    }
   } catch (err) {
     sel.innerHTML = '<option value="">\uAC00\uB9F9\uC810 \uBAA9\uB85D \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4</option>';
     console.warn("loadMerchantsForSelect:", err.message);
   }
 }
 
-function bindMerchantPay(uid) {
+function watchJackpotResult(txHash, walletAddress) {
+  const box = $("merchantPayJackpot");
+  if (!box || !txHash) return;
+
+  box.style.display = "";
+  const waitEl  = box.querySelector(".jp-waiting");
+  const winEl   = box.querySelector(".jp-win");
+  const noWinEl = box.querySelector(".jp-nowin");
+  if (waitEl)  waitEl.style.display  = "";
+  if (winEl)   winEl.style.display   = "none";
+  if (noWinEl) noWinEl.style.display = "none";
+
+  const slot = initSlot(waitEl);
+
+  let revealed = false;
+  let pollId = null, historyPollId = null, timeoutTimer = null, unsub = null;
+
+  function cleanup() {
+    if (unsub)          { unsub(); unsub = null; }
+    if (pollId)         { clearInterval(pollId);        pollId        = null; }
+    if (historyPollId)  { clearInterval(historyPollId); historyPollId = null; }
+    if (timeoutTimer)   { clearTimeout(timeoutTimer);   timeoutTimer  = null; }
+  }
+
+  function weiToHex(weiStr) {
+    try { return (Number(BigInt(weiStr || "0")) / 1e18).toFixed(4); } catch { return "0"; }
+  }
+
+  function reveal(data) {
+    if (revealed) return;
+    revealed = true;
+    cleanup();
+    const isWin = data.isWinner && (
+      BigInt(data.finalWinWei || "0") > 0n ||
+      Number(data.finalWinHex || 0) > 0
+    );
+    const hexDisplay = data.finalWinHex || weiToHex(data.finalWinWei);
+    slot.stop(data.randomValue ?? 0, isWin, () => {
+      if (waitEl) waitEl.style.display = "none";
+      if (isWin) {
+        const amtEl = box.querySelector(".jp-win-amount");
+        if (amtEl) amtEl.textContent = `${hexDisplay} HEX`;
+        if (winEl) winEl.style.display = "block";
+      } else {
+        const randEl = box.querySelector(".jp-nowin-rand");
+        if (randEl) randEl.textContent = `랜덤 번호: ${data.randomValue ?? 0} / 9999`;
+        if (noWinEl) noWinEl.style.display = "block";
+      }
+    });
+  }
+
+  // Firestore onSnapshot (1차: 실시간 감지)
+  unsub = onSnapshot(
+    doc(db, "jackpot_rounds", txHash),
+    (snap) => { if (snap.exists()) reveal(snap.data()); },
+    (err)  => { console.warn("jackpot onSnapshot:", err.code); }
+  );
+
+  // Firestore 폴링 (2차: 5초마다 직접 조회)
+  pollId = setInterval(async () => {
+    if (revealed) { clearInterval(pollId); pollId = null; return; }
+    try {
+      const snap = await getDoc(doc(db, "jackpot_rounds", txHash));
+      if (snap.exists()) reveal(snap.data());
+    } catch {}
+  }, 5000);
+
+  // Railway API 폴링 (3차: 10초마다 history API 조회)
+  if (walletAddress) {
+    historyPollId = setInterval(async () => {
+      if (revealed) { clearInterval(historyPollId); historyPollId = null; return; }
+      try {
+        const j = await fetchJackpotJson(`/jackpot/history?wallet=${encodeURIComponent(walletAddress)}&limit=10`);
+        const rounds = Array.isArray(j?.data) ? j.data : [];
+        const match = rounds.find((r) => (r.txHash || "").toLowerCase() === txHash.toLowerCase());
+        if (match) reveal(match);
+      } catch {}
+    }, 10000);
+  }
+
+  // 2분 타임아웃
+  timeoutTimer = setTimeout(() => {
+    cleanup();
+    if (!revealed && waitEl) waitEl.textContent = "결과 대기 시간 초과. 잭팟 잔액 섹션을 확인하세요.";
+  }, 120000);
+}
+
+function bindMerchantPay(uid, walletAddress) {
   const form = $("merchantPayForm");
   if (!form || form._bound) return;
   form._bound = true;
 
+  // 통화 변경 시 레이블/min/placeholder 업데이트
+  form.querySelectorAll("input[name='merchantPayCurrencyRadio']").forEach((r) => {
+    r.addEventListener("change", () => {
+      if (!r.checked) return;
+      const isVnd = r.value === "VND";
+      const labelEl = $("merchantPayAmountLabel");
+      const inputEl = $("merchantPayAmount");
+      const hidden  = $("merchantPayCurrency");
+      if (labelEl) labelEl.textContent = isVnd ? "결제 금액 (동 VND) *" : "결제 금액 (원 KRW) *";
+      if (inputEl) {
+        inputEl.min         = isVnd ? "10000" : "1000";
+        inputEl.step        = isVnd ? "1000"  : "100";
+        inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
+        inputEl.value       = "";
+      }
+      if (hidden) hidden.value = r.value;
+    });
+  });
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const merchantId = $("merchantPaySelect")?.value;
-    const amountKrw = Number($("merchantPayAmount")?.value);
-    const btn = $("btnMerchantPay");
-    const resultBox = $("merchantPayResult");
+    const amount     = Number($("merchantPayAmount")?.value);
+    const currency   = $("merchantPayCurrency")?.value || "VND";
+    const isVnd      = currency === "VND";
+    const btn        = $("btnMerchantPay");
+    const resultBox  = $("merchantPayResult");
 
     if (!merchantId) {
-      alert("\uAC00\uB9F9\uC810\uC744 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.");
+      alert("가맹점을 선택해 주세요.");
       return;
     }
 
-    if (!amountKrw || amountKrw < 1000) {
-      alert("\uACB0\uC81C \uAE08\uC561\uC740 1,000\uC6D0 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.");
-      return;
+    if (isVnd) {
+      if (!amount || amount < 10000) { alert("VND 최소 결제 금액은 10,000동입니다."); return; }
+    } else {
+      if (!amount || amount < 1000)  { alert("KRW 최소 결제 금액은 1,000원입니다."); return; }
     }
 
-    if (!confirm(`${amountKrw.toLocaleString()}\uC6D0\uC744 \uACB0\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?`)) return;
+    const confirmMsg = isVnd
+      ? `${amount.toLocaleString()}동 (VND)을 결제하시겠습니까?`
+      : `${amount.toLocaleString()}원 (KRW)을 결제하시겠습니까?`;
+    if (!confirm(confirmMsg)) return;
 
     btn.disabled = true;
-    btn.textContent = "\uACB0\uC81C \uC911...";
+    btn.textContent = "결제 중...";
     if (resultBox) resultBox.style.display = "none";
+
+    const payload = isVnd
+      ? { merchantId: Number(merchantId), amountVnd: amount, currency: "VND" }
+      : { merchantId: Number(merchantId), amountKrw: amount, currency: "KRW" };
 
     try {
       const payFn = httpsCallable(functions, "payMerchantHex");
-      const res = await payFn({ merchantId: Number(merchantId), amountKrw });
+      const res = await payFn(payload);
       const d = res.data;
+
+      const amountDisp = isVnd
+        ? `${amount.toLocaleString()}동 (${d.amountHex} HEX)`
+        : `${amount.toLocaleString()}원 (${d.amountHex} HEX)`;
 
       if (resultBox) {
         resultBox.style.display = "";
         resultBox.innerHTML = `
-          <div class="mp-kv"><span class="k">\uAC00\uB9F9\uC810</span><span class="v">${d.merchantName || ""}</span></div>
-          <div class="mp-kv"><span class="k">\uACB0\uC81C \uAE08\uC561</span><span class="v accent">${amountKrw.toLocaleString()}\uC6D0 (${d.amountHex} HEX)</span></div>
-          <div class="mp-kv"><span class="k">\uD2B8\uB79C\uC7AD\uC158</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
-          <p class="hint" style="color:var(--accent); margin-top:6px;">\uACB0\uC81C\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.</p>
+          <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d.merchantName || ""}</span></div>
+          <div class="mp-kv"><span class="k">결제 금액</span><span class="v accent">${amountDisp}</span></div>
+          <div class="mp-kv"><span class="k">트랜잭션</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
+          <p class="hint" style="color:var(--accent); margin-top:6px;">결제가 완료되었습니다.</p>
         `;
       }
 
       form.reset();
+      watchJackpotResult(d.txHash, walletAddress);
       loadTxHistory(uid);
       loadOnChainData(uid);
     } catch (err) {
@@ -770,71 +885,79 @@ function parseQrPayload(raw) {
   return { merchantId: mId, merchantName: "", amount, currency };
 }
 
-function applyQrResult(payload) {
+async function applyQrResult(payload) {
   if (!payload) return false;
-  const sel = $("merchantPaySelect");
-  const amountInput = $("merchantPayAmount");
-  const state = $("qrScanState");
+  const sel          = $("merchantPaySelect");
+  const amountInput  = $("merchantPayAmount");
+  const state        = $("qrScanState");
   const currencyHidden = $("merchantPayCurrency");
-  const radioVnd = $("merchantPayCurrencyVND");
-  const radioKrw = $("merchantPayCurrencyKRW");
+  const radioVnd     = $("merchantPayCurrencyVND");
+  const radioKrw     = $("merchantPayCurrencyKRW");
 
-  let merchantMatched = !(payload.merchantId || payload.merchantName);
-
-  if ((payload.merchantId || payload.merchantName) && sel) {
-    const options = Array.from(sel.options || []).filter((o) => o.value);
-
-    // 가맹점 목록이 아직 로딩 중이면 대기 큐에 저장
-    if (options.length === 0) {
-      _pendingQrPayload = payload;
-      if (state) state.textContent = "\uAC00\uB9F9\uC810 \uBAA9\uB85D \uB85C\uB529 \uD6C4 \uC790\uB3D9 \uC801\uC6A9 \uC608\uC815...";
-      return false;
-    }
-    // 1. 정확한 value 일치
-    let found = payload.merchantId
-      ? options.find((o) => String(o.value) === String(payload.merchantId))
-      : null;
-    // 2. 이름으로 매칭 (대소문자 무시)
-    if (!found && payload.merchantName) {
-      const nm = payload.merchantName.toLowerCase();
-      found = options.find((o) => o.textContent.trim().toLowerCase() === nm);
-    }
-    // 3. merchantId를 이름으로 간주해서 매칭
-    if (!found && payload.merchantId) {
-      const mid = String(payload.merchantId).toLowerCase();
-      found = options.find((o) => o.textContent.trim().toLowerCase() === mid);
-    }
-    // 4. 숫자 변환 후 매칭 (예: "2" vs 2)
-    if (!found && payload.merchantId) {
-      found = options.find((o) => Number(o.value) === Number(payload.merchantId));
-    }
-
-    if (found) {
-      sel.value = found.value;
-      merchantMatched = true;
-    } else {
-      const hint = payload.merchantName || payload.merchantId;
-      if (state) state.textContent = `가맹점을 찾을 수 없음: "${hint}" — 직접 선택해 주세요.`;
-    }
-  }
-
+  // ── 금액 즉시 반영 ──
   if (payload.amount && amountInput) {
     amountInput.value = String(Math.round(payload.amount));
   }
 
-  if (payload.currency && currencyHidden) {
+  // ── 통화 즉시 반영 ──
+  if (payload.currency) {
     const cur = payload.currency === "KRW" ? "KRW" : "VND";
-    currencyHidden.value = cur;
+    if (currencyHidden) currencyHidden.value = cur;
     if (cur === "KRW" && radioKrw) radioKrw.checked = true;
     if (cur === "VND" && radioVnd) radioVnd.checked = true;
+    // 레이블/min 업데이트 (bindMerchantPay 라디오 핸들러와 동일 로직)
+    const labelEl = $("merchantPayAmountLabel");
+    const inputEl = amountInput;
+    const isVnd = cur === "VND";
+    if (labelEl) labelEl.textContent = isVnd ? "결제 금액 (동 VND) *" : "결제 금액 (원 KRW) *";
+    if (inputEl) {
+      inputEl.min         = isVnd ? "10000" : "1000";
+      inputEl.step        = isVnd ? "1000"  : "100";
+      inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
+    }
   }
 
-  if (merchantMatched) {
+  // ── 가맹점 매칭 ──
+  const mid = String(payload.merchantId || "").trim();
+  if (!mid || !sel) {
+    if (state) state.textContent = "스캔 완료: 금액이 반영됐습니다.";
+    return true;
+  }
+
+  // 1) 이미 select에 있으면 바로 선택
+  const existing = Array.from(sel.options).find(
+    (o) => o.value && (String(o.value) === mid || Number(o.value) === Number(mid))
+  );
+  if (existing) {
+    sel.value = existing.value;
     if (state) state.textContent = "스캔 완료: 결제 폼에 반영됐습니다.";
     return true;
   }
-  // 금액은 채워졌지만 가맹점 미매칭 — 스캐너는 닫되 경고 유지
-  return !!(payload.amount || payload.currency);
+
+  // 2) Firestore에서 직접 조회 (셀렉트에 없어도 처리 가능)
+  if (state) state.textContent = "가맹점 정보 조회 중...";
+  try {
+    const mSnap = await getDoc(doc(db, "merchants", mid));
+    if (mSnap.exists()) {
+      const mName = mSnap.data()?.name || mid;
+      // 셀렉트에 옵션 추가 (없을 경우)
+      let opt = Array.from(sel.options).find((o) => String(o.value) === mid);
+      if (!opt) {
+        opt = document.createElement("option");
+        opt.value = mid;
+        opt.textContent = mName;
+        sel.appendChild(opt);
+      }
+      sel.value = mid;
+      if (state) state.textContent = "스캔 완료: 결제 폼에 반영됐습니다.";
+      return true;
+    }
+  } catch (e) {
+    console.warn("QR merchant fetch failed:", e.message);
+  }
+
+  if (state) state.textContent = `가맹점(ID: ${mid})을 찾을 수 없습니다 — 직접 선택해 주세요.`;
+  return false;
 }
 
 function bindQrScan() {
@@ -875,8 +998,9 @@ function bindQrScan() {
 
         if (qr?.data) {
           const payload = parseQrPayload(qr.data);
-          if (applyQrResult(payload)) {
+          if (payload && (payload.merchantId || payload.amount)) {
             stopQrScan();
+            applyQrResult(payload); // async, runs in background
             return;
           }
           if (state) state.textContent = "\uC54C \uC218 \uC5C6\uB294 QR \uD615\uC2DD\uC785\uB2C8\uB2E4.";
@@ -945,38 +1069,10 @@ function fmtFiat(v) {
   return `\uC57D ${krwVal}\uC6D0 / ${vndVal} VND`;
 }
 
-function renderJackpotHistory(items) {
-  const wrap = $("jackpotHistoryList");
-  if (!wrap) return;
-  if (!Array.isArray(items) || items.length === 0) {
-    wrap.innerHTML = '<p class="hint">\uC7AD\uD31F \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
-    return;
-  }
-  wrap.innerHTML = items.map((it) => {
-    const win = Number(it.finalWinHex || 0);
-    const created = it.createdAt ? new Date(it.createdAt) : null;
-    const dateText = created && !Number.isNaN(created.getTime()) ? created.toLocaleString("ko-KR") : "-";
-    return `
-      <div class="jp-hist-row ${win > 0 ? "jp-hist-win" : ""}">
-        <div class="jp-hist-head">
-          <span class="jp-hist-status">${win > 0 ? "\uD83C\uDFC6 \uB2F9\uCCA8" : "\uCC38\uC5EC"}</span>
-          <span class="jp-hist-date">${dateText}</span>
-        </div>
-        <div class="jp-hist-body">
-          <span>\uACB0\uC81C: ${Number(it.paymentHex || 0).toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX</span>
-          <span class="jp-hist-win-amt">${win > 0 ? `+${win.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX \uB2F9\uCCA8!` : "\uBBF8\uB2F9\uCCA8"}</span>
-          <span class="jp-hist-rand">RND ${it.randomValue ?? "-"}</span>
-        </div>
-        <div class="jp-hist-tx">${String(it.txHash || "").slice(0, 18)}...</div>
-      </div>
-    `;
-  }).join("");
-}
 
 async function loadJackpotWallet(wallet) {
   if (!wallet) return;
   show("jackpotWalletSection", true);
-  show("jackpotHistorySection", true);
   try {
     const b = await fetchJackpotJson(`/jackpot/balance?wallet=${encodeURIComponent(wallet)}`);
     const d = b?.data || {};
@@ -999,22 +1095,6 @@ async function loadJackpotWallet(wallet) {
   }
 }
 
-async function loadJackpotHistory(wallet) {
-  if (!wallet) return;
-  show("jackpotHistorySection", true);
-  try {
-    const h = await fetchJackpotJson(`/jackpot/history?wallet=${encodeURIComponent(wallet)}&limit=50`);
-    const items = Array.isArray(h?.data) ? h.data : [];
-    renderJackpotHistory(items);
-    const total = items.reduce((s, it) => s + (Number(it.finalWinHex || 0) || 0), 0);
-    setText("jpHistoryTotalHex", fmtHex(total));
-    setText("jpHistoryTotalRate", fmtFiat(total));
-    show("jpHistorySummary", true);
-  } catch (e) {
-    const wrap = $("jackpotHistoryList");
-    if (wrap) wrap.innerHTML = `<p class="hint muted">\uC7AD\uD31F \uB0B4\uC5ED \uC870\uD68C \uC2E4\uD328: ${e.message}</p>`;
-  }
-}
 
 async function requestJackpotWithdraw(wallet, amountHex) {
   const result = $("jpWithdrawResult");
@@ -1031,7 +1111,6 @@ async function requestJackpotWithdraw(wallet, amountHex) {
     result.innerHTML = `<p class=\"hint\" style=\"color:var(--accent)\">\uC778\uCD9C \uC694\uCCAD \uC644\uB8CC (\uC0C1\uD0DC: ${j?.data?.status || "-"}, TX: ${tx})</p>`;
   }
   await loadJackpotWallet(wallet);
-  await loadJackpotHistory(wallet);
 }
 
 function bindJackpotActions(wallet) {
@@ -1104,6 +1183,8 @@ onAuthReady(async (ctx) => {
       return;
     }
 
+    const walletAddress = data?.wallet?.address ? String(data.wallet.address) : '';
+
     renderProfile(data, user);
     renderWallet(data);
     bindCreateWallet();
@@ -1113,20 +1194,18 @@ onAuthReady(async (ctx) => {
     bindMentorRequest(user.uid);
     bindDepositForm();
     loadMerchantsForSelect();
-    bindMerchantPay(user.uid);
+    bindMerchantPay(user.uid, walletAddress);
     bindQrScan();
 
     loadOnChainData(user.uid);
     loadDepositHistory(user.uid);
     loadMentees();
 
-    const walletAddress = data?.wallet?.address ? String(data.wallet.address) : '';
     loadTxHistory(user.uid, walletAddress);
 
     if (walletAddress) {
       bindJackpotActions(walletAddress);
       loadJackpotWallet(walletAddress);
-      loadJackpotHistory(walletAddress);
     }
 
     const btnRefresh = $("btnRefreshDeposits");
