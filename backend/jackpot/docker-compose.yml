@@ -1,9 +1,0 @@
-version: "3.9"
-services:
-  jackpot-api:
-    build: .
-    env_file:
-      - .env
-    ports:
-      - "8787:8787"
-    command: sh -c "npm run bootstrap && npm start"

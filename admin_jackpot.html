@@ -1,0 +1,292 @@
+<!-- /admin_jackpot.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>잭팟 인출 관리 - Admin</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/pages/admin_orders.css" />
+
+  <script>window.__jackpotApiBase = "https://jumper-jackpot-production.up.railway.app";</script>
+  <script src="/assets/js/partials.js" defer></script>
+
+  <style>
+    .jp-admin-key-bar{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+    .jp-admin-key-bar input{flex:1;min-width:220px;padding:8px 12px;border:1px solid var(--border,#e2e8f0);border-radius:8px;font-size:13px;font-family:monospace;}
+    .jp-admin-key-bar input.ok{border-color:#22c55e;background:#f0fdf4;}
+    .claims-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .claims-table th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--border,#e2e8f0);color:var(--muted,#64748b);font-weight:600;white-space:nowrap;}
+    .claims-table td{padding:9px 10px;border-bottom:1px solid var(--border,#e2e8f0);vertical-align:middle;}
+    .claims-table tr:last-child td{border-bottom:none;}
+    .claims-table tr:hover td{background:var(--surface,#f8fafc);}
+    .badge{display:inline-block;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:700;}
+    .badge.requested{background:#fef3c7;color:#92400e;}
+    .badge.paid{background:#dcfce7;color:#15803d;}
+    .badge.rejected{background:#fee2e2;color:#b91c1c;}
+    .badge.approved{background:#dbeafe;color:#1d4ed8;}
+    .mono{font-family:monospace;font-size:12px;}
+    .act-btns{display:flex;gap:6px;}
+    .btn-approve{padding:5px 12px;background:#22c55e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;}
+    .btn-approve:hover{background:#16a34a;}
+    .btn-reject{padding:5px 12px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;}
+    .btn-reject:hover{background:#b91c1c;}
+    .btn-approve:disabled,.btn-reject:disabled{opacity:.5;cursor:not-allowed;}
+    .filter-row{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+    .filter-row select{padding:6px 10px;border:1px solid var(--border,#e2e8f0);border-radius:8px;font-size:13px;}
+    .claims-empty{padding:32px;text-align:center;color:var(--muted,#64748b);}
+    .amount-hex{font-weight:700;color:#6366f1;}
+    .fiat-small{font-size:11px;color:var(--muted,#64748b);}
+    .tx-link{color:#2563eb;text-decoration:none;font-family:monospace;font-size:11px;}
+    .tx-link:hover{text-decoration:underline;}
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="section">
+      <div class="page-h">
+        <h1 class="page-title">🎰 잭팟 인출 관리</h1>
+        <p class="page-desc">잭팟 당첨금 인출 신청 승인 / 거절</p>
+      </div>
+
+      <div class="panel">
+        <!-- Admin Key 입력 -->
+        <div class="jp-admin-key-bar">
+          <label style="font-size:13px;font-weight:600;white-space:nowrap;">Admin Key</label>
+          <input type="password" id="adminKeyInput" placeholder="x-admin-key 입력" autocomplete="off" />
+          <button class="btn btn--primary btn--sm" id="btnSetKey" type="button">저장 &amp; 로드</button>
+          <span id="keyStatus" style="font-size:12px;color:var(--muted,#64748b);"></span>
+        </div>
+
+        <!-- 필터 -->
+        <div class="filter-row">
+          <label style="font-size:13px;font-weight:600;">상태 필터</label>
+          <select id="statusFilter">
+            <option value="requested">requested (대기)</option>
+            <option value="paid">paid (완료)</option>
+            <option value="rejected">rejected (거절)</option>
+            <option value="">전체</option>
+          </select>
+          <button class="btn btn--sm" id="btnReload" type="button">새로고침</button>
+          <span id="claimsState" style="font-size:13px;color:var(--muted,#64748b);margin-left:4px;"></span>
+        </div>
+
+        <!-- 테이블 -->
+        <div id="claimsWrap" style="overflow-x:auto;">
+          <p class="claims-empty">Admin Key를 입력하고 로드하세요.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { db } from "/assets/js/firebase-init.js";
+    import { auth } from "/assets/js/auth.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      collection, query, where, orderBy, limit, getDocs,
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const $ = (id) => document.getElementById(id);
+
+    // ── 관리자 인증 체크 ──
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        alert("로그인이 필요합니다.");
+        location.href = "/index.html";
+      }
+    });
+
+    // ── Admin Key 관리 ──
+    const STORAGE_KEY = "jp_admin_key";
+    let _adminKey = sessionStorage.getItem(STORAGE_KEY) || "";
+
+    if (_adminKey) {
+      $("adminKeyInput").value = _adminKey;
+      $("adminKeyInput").classList.add("ok");
+      $("keyStatus").textContent = "✅ 키 저장됨";
+      loadClaims();
+    }
+
+    $("btnSetKey").onclick = () => {
+      const val = $("adminKeyInput").value.trim();
+      if (!val) { alert("Admin Key를 입력하세요."); return; }
+      _adminKey = val;
+      sessionStorage.setItem(STORAGE_KEY, val);
+      $("adminKeyInput").classList.add("ok");
+      $("keyStatus").textContent = "✅ 키 저장됨";
+      loadClaims();
+    };
+
+    $("btnReload").onclick = loadClaims;
+    $("statusFilter").onchange = loadClaims;
+
+    // ── 환율 ──
+    const FX = window.__jackpotFx || { krw: 1480, vnd: 26000 };
+    function fmtHex(hex) {
+      const n = Number(hex);
+      if (!Number.isFinite(n)) return "-";
+      return n.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) + " HEX";
+    }
+    function fmtFiat(hex) {
+      const n = Number(hex);
+      if (!Number.isFinite(n) || n <= 0) return "";
+      const krw = Math.round(n * Number(FX.krw)).toLocaleString("ko-KR");
+      const vnd = Math.round(n * Number(FX.vnd)).toLocaleString("ko-KR");
+      return `약 ${krw}원 / ${vnd} VND`;
+    }
+    function fmtDate(ts) {
+      if (!ts) return "-";
+      const d = typeof ts.toDate === "function" ? ts.toDate() : new Date(ts);
+      return d.toLocaleString("ko-KR");
+    }
+    function weiToHex(wei) {
+      try { return Number(BigInt(wei || "0")) / 1e18; } catch { return 0; }
+    }
+
+    // ── 클레임 목록 로드 (Firestore 직접 조회) ──
+    async function loadClaims() {
+      if (!_adminKey) { $("claimsWrap").innerHTML = '<p class="claims-empty">Admin Key를 입력하세요.</p>'; return; }
+
+      $("claimsState").textContent = "불러오는 중...";
+      $("claimsWrap").innerHTML = '<p class="claims-empty">불러오는 중...</p>';
+
+      try {
+        const statusVal = $("statusFilter").value;
+        const coll = collection(db, "jackpot_claims");
+        const constraints = [orderBy("createdAt", "desc"), limit(100)];
+        if (statusVal) constraints.unshift(where("status", "==", statusVal));
+
+        const snap = await getDocs(query(coll, ...constraints));
+        const claims = [];
+        snap.forEach((d) => claims.push({ id: d.id, ...d.data() }));
+
+        $("claimsState").textContent = `총 ${claims.length}건`;
+
+        if (!claims.length) {
+          $("claimsWrap").innerHTML = '<p class="claims-empty">해당 상태의 인출 신청이 없습니다.</p>';
+          return;
+        }
+
+        const rows = claims.map((c) => {
+          const hexVal = weiToHex(c.requestedWei);
+          const approvedHex = weiToHex(c.approvedWei);
+          const isPending = c.status === "requested";
+          const txDisplay = c.txHash
+            ? `<a class="tx-link" href="https://etherscan.io/tx/${c.txHash}" target="_blank" rel="noopener">${c.txHash.slice(0, 10)}...</a>`
+            : "-";
+
+          return `
+            <tr>
+              <td class="mono" style="font-size:11px;max-width:120px;word-break:break-all;">${c.id}</td>
+              <td class="mono" style="font-size:11px;max-width:140px;word-break:break-all;">${c.userAddress || "-"}</td>
+              <td>
+                <div class="amount-hex">${fmtHex(hexVal)}</div>
+                <div class="fiat-small">${fmtFiat(hexVal)}</div>
+              </td>
+              <td>
+                ${approvedHex > 0 ? `<div class="amount-hex" style="color:#22c55e;">${fmtHex(approvedHex)}</div>` : "-"}
+              </td>
+              <td><span class="badge ${c.status}">${c.status}</span></td>
+              <td style="font-size:12px;">${fmtDate(c.requestedAt)}</td>
+              <td>${txDisplay}</td>
+              <td>
+                ${isPending ? `
+                  <div class="act-btns">
+                    <button class="btn-approve" data-id="${c.id}" type="button">승인</button>
+                    <button class="btn-reject" data-id="${c.id}" type="button">거절</button>
+                  </div>` : "-"}
+              </td>
+            </tr>`;
+        }).join("");
+
+        $("claimsWrap").innerHTML = `
+          <table class="claims-table">
+            <thead>
+              <tr>
+                <th>Claim ID</th>
+                <th>지갑 주소</th>
+                <th>신청 금액</th>
+                <th>승인 금액</th>
+                <th>상태</th>
+                <th>신청일시</th>
+                <th>TX Hash</th>
+                <th>처리</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+
+        // 이벤트 바인딩
+        $("claimsWrap").addEventListener("click", onActionClick);
+      } catch (err) {
+        console.error("loadClaims failed:", err);
+        $("claimsState").textContent = "오류";
+        $("claimsWrap").innerHTML = `<p class="claims-empty">로드 실패: ${err.message}</p>`;
+      }
+    }
+
+    // ── 승인 / 거절 처리 ──
+    function jackpotApi(path, method = "POST", body = null) {
+      const base = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
+      return fetch(`${base}${path}`, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": _adminKey,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        cache: "no-store",
+      });
+    }
+
+    let _actionLock = false;
+    async function onActionClick(e) {
+      if (_actionLock) return;
+      const approveBtn = e.target.closest(".btn-approve");
+      const rejectBtn = e.target.closest(".btn-reject");
+      if (!approveBtn && !rejectBtn) return;
+
+      const isApprove = !!approveBtn;
+      const claimId = (approveBtn || rejectBtn).dataset.id;
+      const label = isApprove ? "승인" : "거절";
+
+      if (!confirm(`Claim ID: ${claimId}\n정말 ${label} 처리하시겠습니까?`)) return;
+
+      _actionLock = true;
+      const btn = approveBtn || rejectBtn;
+      const siblingBtn = btn.parentElement.querySelector(isApprove ? ".btn-reject" : ".btn-approve");
+      btn.disabled = true;
+      if (siblingBtn) siblingBtn.disabled = true;
+      btn.textContent = "처리 중...";
+
+      try {
+        const endpoint = isApprove
+          ? `/jackpot/claims/${claimId}/approve`
+          : `/jackpot/claims/${claimId}/reject`;
+
+        const res = await jackpotApi(endpoint);
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(json.message || json.error || `HTTP_${res.status}`);
+        }
+
+        alert(`✅ ${label} 완료!\n${isApprove && json.data?.txHash ? "TX: " + json.data.txHash : ""}`);
+        loadClaims();
+      } catch (err) {
+        alert(`❌ ${label} 실패: ${err.message}`);
+        btn.disabled = false;
+        if (siblingBtn) siblingBtn.disabled = false;
+        btn.textContent = isApprove ? "승인" : "거절";
+      } finally {
+        _actionLock = false;
+      }
+    }
+  </script>
+</body>
+</html>
