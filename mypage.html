@@ -548,13 +548,13 @@
 
   <div id="siteFooter"></div>
 
-  <!-- 앱 캐시 초기화 -->
-  <div style="text-align:center;padding:16px 0 24px;border-top:1px solid var(--border,#e5e7eb);margin-top:8px;">
+  <!-- 앱 캐시 초기화 (화면 우하단 고정) -->
+  <div style="position:fixed;bottom:16px;right:16px;z-index:9999;text-align:right;">
     <button id="btnClearCache" type="button"
-            style="background:none;border:1px solid #d1d5db;border-radius:8px;padding:8px 18px;font-size:0.82rem;color:#6b7280;cursor:pointer;">
-      🔄 앱 캐시 초기화 (문제 발생 시)
+            style="background:#fff;border:1px solid #d1d5db;border-radius:20px;padding:8px 14px;font-size:0.78rem;color:#6b7280;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+      🔄 캐시 초기화
     </button>
-    <p id="clearCacheMsg" style="display:none;font-size:0.78rem;color:#6b7280;margin-top:6px;"></p>
+    <p id="clearCacheMsg" style="display:none;font-size:0.74rem;color:#6b7280;margin:4px 0 0;background:#fff;padding:4px 8px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.1);"></p>
   </div>
 
   <!-- QR 스캔 카메라 오버레이 -->
