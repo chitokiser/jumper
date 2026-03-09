@@ -238,6 +238,14 @@ async function _initForUser(user) {
       if (el) el.value = data.phone;
     }
 
+    // 멘토 주소 자동 설정: URL 파라미터 > 기본값
+    const DEFAULT_MENTOR = "0xc662c3B58bE7345DE30dd8188B2Acc977943186A";
+    const mentorEl = $("mentorAddress");
+    if (mentorEl && !mentorEl.value) {
+      const urlMentor = new URLSearchParams(location.search).get("mentor") || "";
+      mentorEl.value = /^0x[0-9a-fA-F]{40}$/.test(urlMentor) ? urlMentor : DEFAULT_MENTOR;
+    }
+
     bindForm(user.uid, user.email);
   } catch (err) {
     console.error(err);
