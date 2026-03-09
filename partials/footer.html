@@ -50,3 +50,31 @@
   </div>
 </footer>
 
+<div style="position:fixed;bottom:16px;right:16px;z-index:9999;text-align:right;">
+  <button id="btnClearCache" type="button"
+          style="background:#fff;border:1px solid #d1d5db;border-radius:20px;padding:8px 14px;font-size:0.78rem;color:#6b7280;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+    🔄 캐시 초기화
+  </button>
+  <p id="clearCacheMsg" style="display:none;font-size:0.74rem;color:#6b7280;margin-top:4px;"></p>
+</div>
+<script>
+(function(){
+  var btn=document.getElementById("btnClearCache");
+  var msg=document.getElementById("clearCacheMsg");
+  if(!btn)return;
+  btn.onclick=async function(){
+    btn.disabled=true;btn.textContent="초기화 중...";
+    try{
+      if("caches"in window){var keys=await caches.keys();await Promise.all(keys.map(function(k){return caches.delete(k);}));}
+      if("serviceWorker"in navigator){var regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(function(r){return r.unregister();}));}
+      localStorage.clear();sessionStorage.clear();
+      if(msg){msg.style.display="";msg.textContent="캐시 삭제됨. 3초 후 새로고침...";}
+      setTimeout(function(){location.href=location.pathname+"?v="+Date.now();},3000);
+    }catch(e){
+      btn.disabled=false;btn.textContent="🔄 캐시 초기화";
+      if(msg){msg.style.display="";msg.textContent="실패: "+e.message;}
+    }
+  };
+})();
+</script>
+
