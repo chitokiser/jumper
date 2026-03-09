@@ -34,8 +34,7 @@
     .kakao-btn{width:100%;margin-top:14px;padding:12px;background:#FEE500;border:none;border-radius:12px;color:#191919;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
     .kakao-btn:hover{opacity:.88;}
   </style>
-  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
-  <script>if(window.Kakao && !Kakao.isInitialized()) Kakao.init("6ebeb0c3ffc4ee1a81de4ad215af963f");</script>
+
 </head>
 <body>
   <div class="card">
@@ -80,22 +79,26 @@
       `;
 
       const shareUrl = location.href;
-      const absRegUrl = "https://jump22.netlify.app" + regUrl;
-      document.getElementById("kakaoShareBtn").onclick = function() {
-        if (typeof window.Kakao === "undefined" || !Kakao.isInitialized()) return;
-        Kakao.Share.sendDefault({
-          objectType: "feed",
-          content: {
-            title: "🏆 잭팟 당첨! " + hex + " HEX",
-            description: "≈ " + krw + " KRW / " + vnd + " VND\n🏪 " + merchant + " · 📅 " + date,
-            imageUrl: "https://jump22.netlify.app/assets/images/jump/mlogo.png",
-            link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
-          },
-          buttons: [
-            { title: "당첨 확인하기", link: { mobileWebUrl: shareUrl, webUrl: shareUrl } },
-            { title: "JUMP 가입하기", link: { mobileWebUrl: absRegUrl, webUrl: absRegUrl } },
-          ],
-        });
+      document.getElementById("kakaoShareBtn").onclick = async function() {
+        const btn = document.getElementById("kakaoShareBtn");
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: "🏆 잭팟 당첨! " + hex + " HEX",
+              text: "≈ " + krw + " KRW / " + vnd + " VND · " + merchant,
+              url: shareUrl,
+            });
+          } catch (err) {
+            if (err.name !== "AbortError") console.warn("share failed:", err);
+          }
+        } else {
+          navigator.clipboard?.writeText(shareUrl).then(function() {
+            btn.textContent = "✅ 링크 복사됨! 카카오톡에 붙여넣기";
+            setTimeout(function() {
+              btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><ellipse cx="9" cy="8.4" rx="8" ry="6.6" fill="#191919"/><path d="M5.1 11.2l1-3.1.9 2.1 1-.4.9 1.4-1.1-3.3 1.2-1.3H7.6l-.5-1.2-.6 1.2H5.3l1.1 1.3-1.3 3.3z" fill="#FEE500"/></svg> 카카오톡으로 공유';
+            }, 2500);
+          });
+        }
       };
     })();
   </script>
