@@ -246,8 +246,19 @@ async function loadJackpotWinners() {
           " " +
           createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
         : "-";
-      winners.push({ hexVal, krwStr, vndStr, addrShort, merchantName, dateStr });
+      winners.push({ hexVal, krwStr, vndStr, addrShort, merchantName, dateStr, _ts: createdAt ? createdAt.getTime() : 0 });
     });
+
+    // 맨 위: 최고금액 당첨자 1개 / 나머지: 최신순
+    if (winners.length > 1) {
+      let topIdx = 0;
+      for (let i = 1; i < winners.length; i++) {
+        if (winners[i].hexVal > winners[topIdx].hexVal) topIdx = i;
+      }
+      const [topWinner] = winners.splice(topIdx, 1);
+      winners.sort((a, b) => b._ts - a._ts);
+      winners.unshift(topWinner);
+    }
 
     _jackpotWinners = winners;
 
@@ -258,9 +269,9 @@ async function loadJackpotWinners() {
 
     const INITIAL_SHOW = 5;
     const makeRow = (w, i) => `
-      <div class="jp-winner-row">
+      <div class="jp-winner-row${i === 0 ? " jp-winner-top" : ""}">
         <div class="jp-winner-info">
-          <div class="jp-winner-amount">${w.hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX</div>
+          <div class="jp-winner-amount">${i === 0 ? "&#x1F3C6; " : ""}${w.hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX</div>
           <div class="jp-winner-fiat">&#x2248; ${w.krwStr} KRW / ${w.vndStr} VND</div>
           <div class="jp-winner-meta">
             <span class="jp-winner-tag">&#x1F464; ${escHtml(w.addrShort)}</span>
