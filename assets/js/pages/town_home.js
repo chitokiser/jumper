@@ -353,6 +353,10 @@ function buildShareCardHTML(winner) {
           <span class="v">${escHtml(winner.dateStr)}</span>
         </div>
         ${refBlock}
+        <button class="jp-sc-kakao-btn" id="jpShareKakao" type="button">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><ellipse cx="9" cy="8.4" rx="8" ry="6.6" fill="#191919"/><path d="M5.1 11.2l1-3.1.9 2.1 1-.4.9 1.4-1.1-3.3 1.2-1.3H7.6l-.5-1.2-.6 1.2H5.3l1.1 1.3-1.3 3.3z" fill="#FEE500"/></svg>
+          카카오톡으로 공유
+        </button>
         <div class="jp-sc-actions">
           <button class="jp-sc-img-btn" id="jpShareImg" type="button">&#x1F4F7; 이미지 복사</button>
           <button class="jp-sc-copy-btn" id="jpShareCopy" type="button">&#x1F517; 링크 복사</button>
@@ -435,6 +439,29 @@ function openShareModal(winner) {
       btn.textContent = "캡처 실패";
       console.warn("html2canvas error:", err);
     }
+  };
+
+  $("jpShareKakao").onclick = () => {
+    if (typeof window.Kakao === "undefined" || !Kakao.isInitialized()) {
+      alert("카카오 SDK를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+    const regUrl = hasRef
+      ? `https://jump22.netlify.app/register.html?mentor=${encodeURIComponent(_userWalletAddr)}`
+      : `https://jump22.netlify.app/register.html`;
+    Kakao.Share.sendDefault({
+      objectType: "feed",
+      content: {
+        title: `🏆 잭팟 당첨! ${winner.hexVal.toFixed(4)} HEX`,
+        description: `≈ ${winner.krwStr} KRW / ${winner.vndStr} VND\n🏪 ${winner.merchantName} · 📅 ${winner.dateStr}`,
+        imageUrl: "https://jump22.netlify.app/assets/images/jump/mlogo.png",
+        link: { mobileWebUrl: copyUrl, webUrl: copyUrl },
+      },
+      buttons: [
+        { title: "당첨 확인하기", link: { mobileWebUrl: copyUrl, webUrl: copyUrl } },
+        { title: "JUMP 가입하기", link: { mobileWebUrl: regUrl, webUrl: regUrl } },
+      ],
+    });
   };
 }
 

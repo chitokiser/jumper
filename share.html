@@ -31,7 +31,11 @@
     .home-link{display:block;text-align:center;margin-top:12px;font-size:12px;color:#475569;text-decoration:none;}
     .home-link:hover{color:#94a3b8;}
     .loading{text-align:center;color:#64748b;padding:40px 0;}
+    .kakao-btn{width:100%;margin-top:14px;padding:12px;background:#FEE500;border:none;border-radius:12px;color:#191919;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .kakao-btn:hover{opacity:.88;}
   </style>
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
+  <script>if(window.Kakao && !Kakao.isInitialized()) Kakao.init("929e1e7f20d00d5cf49b5b9c7047c997");</script>
 </head>
 <body>
   <div class="card">
@@ -68,8 +72,31 @@
         <div class="kv"><span class="k">📅 당첨 일시</span><span class="v">${date}</span></div>
         <hr>
         <a class="reg-btn" href="${regUrl}">✨ JUMP 지금 가입하기 →</a>
+        <button class="kakao-btn" id="kakaoShareBtn">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><ellipse cx="9" cy="8.4" rx="8" ry="6.6" fill="#191919"/><path d="M5.1 11.2l1-3.1.9 2.1 1-.4.9 1.4-1.1-3.3 1.2-1.3H7.6l-.5-1.2-.6 1.2H5.3l1.1 1.3-1.3 3.3z" fill="#FEE500"/></svg>
+          카카오톡으로 공유
+        </button>
         <a class="home-link" href="/">← 홈으로 돌아가기</a>
       `;
+
+      const shareUrl = location.href;
+      const absRegUrl = "https://jump22.netlify.app" + regUrl;
+      document.getElementById("kakaoShareBtn").onclick = function() {
+        if (typeof window.Kakao === "undefined" || !Kakao.isInitialized()) return;
+        Kakao.Share.sendDefault({
+          objectType: "feed",
+          content: {
+            title: "🏆 잭팟 당첨! " + hex + " HEX",
+            description: "≈ " + krw + " KRW / " + vnd + " VND\n🏪 " + merchant + " · 📅 " + date,
+            imageUrl: "https://jump22.netlify.app/assets/images/jump/mlogo.png",
+            link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+          },
+          buttons: [
+            { title: "당첨 확인하기", link: { mobileWebUrl: shareUrl, webUrl: shareUrl } },
+            { title: "JUMP 가입하기", link: { mobileWebUrl: absRegUrl, webUrl: absRegUrl } },
+          ],
+        });
+      };
     })();
   </script>
 </body>
