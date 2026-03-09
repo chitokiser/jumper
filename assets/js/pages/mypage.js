@@ -1233,8 +1233,11 @@ onAuthReady(async (ctx) => {
       const amt = Number(p.get("amount") || 0) || null;
       const cur = (p.get("currency") || "").toUpperCase() || null;
       if (mid || amt) {
+        const sel = $("merchantPaySelect");
+        const optCount = sel ? sel.options.length : -1;
+        showQrResult(`[진단] URL params: merchant="${mid||"없음"}" 금액=${amt||"-"} select옵션수=${optCount}`, false);
         await applyQrResult({ merchantId: mid, merchantName: "", amount: amt, currency: cur });
-        $("merchantPayForm")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        $("qrResultState")?.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     })();
 
