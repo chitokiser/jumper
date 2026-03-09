@@ -973,12 +973,83 @@ async function applyQrResult(payload) {
 
 function bindQrScan() {
   const btnOpen = $("btnQrScan");
+  if (!btnOpen) return;
+
+  const fileInput = $("qrFileInput");
+
+  // ── 모바일: 네이티브 카메라 촬영 → jsQR 디코딩 ──
+  if (fileInput) {
+    btnOpen.onclick = () => {
+      fileInput.value = "";
+      fileInput.click();
+    };
+
+    fileInput.onchange = async () => {
+      const file = fileInput.files?.[0];
+      fileInput.value = "";
+      if (!file) return;
+
+      showQrResult("QR 코드 분석 중...", false);
+
+      try {
+        // BarcodeDetector로 이미지 직접 디코딩 (지원 시)
+        if ("BarcodeDetector" in window) {
+          const bd = new BarcodeDetector({ formats: ["qr_code"] });
+          const img = await createImageBitmap(file);
+          const codes = await bd.detect(img);
+          if (codes.length > 0) {
+            const raw = codes[0].rawValue;
+            console.log("[QR-file] BarcodeDetector raw:", raw);
+            const payload = parseQrPayload(raw);
+            if (payload && (payload.merchantId || payload.amount)) {
+              await applyQrResult(payload);
+            } else {
+              showQrResult(`QR 파싱 실패 — 원본: ${raw.slice(0, 100)}`, true);
+            }
+            return;
+          }
+        }
+
+        // jsQR 폴백
+        if (!window.jsQR) {
+          showQrResult("jsQR 라이브러리 로드 실패 — 페이지를 새로고침 해주세요.", true);
+          return;
+        }
+        const img = await createImageBitmap(file);
+        const offscreen = document.createElement("canvas");
+        offscreen.width = img.width;
+        offscreen.height = img.height;
+        const ctx = offscreen.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, offscreen.width, offscreen.height);
+        const qr = window.jsQR(imageData.data, imageData.width, imageData.height);
+        if (qr?.data) {
+          const raw = qr.data;
+          console.log("[QR-file] jsQR raw:", raw);
+          const payload = parseQrPayload(raw);
+          if (payload && (payload.merchantId || payload.amount)) {
+            await applyQrResult(payload);
+          } else {
+            showQrResult(`QR 파싱 실패 — 원본: ${raw.slice(0, 100)}`, true);
+          }
+        } else {
+          showQrResult("QR 코드를 인식하지 못했습니다. 사진을 더 가까이서 찍어 주세요.", true);
+        }
+      } catch (err) {
+        console.warn("[QR-file] error:", err);
+        showQrResult("QR 분석 실패: " + (err?.message || err), true);
+      }
+    };
+    return;
+  }
+
+  // ── 데스크탑 폴백: 비디오 스트림 오버레이 ──
   const btnClose = $("btnCloseQr");
   const overlay = $("qrScanOverlay");
   const video = $("qrVideo");
   const canvas = $("qrCanvas");
   const state = $("qrScanState");
-  if (!btnOpen || !btnClose || !overlay || !video || !canvas) return;
+  if (!btnClose || !overlay || !video || !canvas) return;
 
   btnClose.onclick = () => stopQrScan();
 
@@ -986,7 +1057,6 @@ function bindQrScan() {
     try {
       if (state) state.textContent = "카메라 시작 중...";
       overlay.classList.add("active");
-
       __qrStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
@@ -997,8 +1067,6 @@ function bindQrScan() {
       const onDetected = async (raw) => {
         if (__qrRaf) { cancelAnimationFrame(__qrRaf); __qrRaf = 0; }
         const payload = parseQrPayload(raw);
-        console.log("[QR] raw:", raw, "parsed:", JSON.stringify(payload));
-        if (state) state.textContent = `인식: ${raw.slice(0, 60)} | ID: ${payload?.merchantId || "없음"}`;
         if (payload && (payload.merchantId || payload.amount)) {
           await applyQrResult(payload);
         } else {
@@ -1007,21 +1075,17 @@ function bindQrScan() {
         setTimeout(() => stopQrScan(), 800);
       };
 
-      // ── BarcodeDetector (Android Chrome 83+ / 하드웨어 가속) ──
       if ("BarcodeDetector" in window) {
         if (state) state.textContent = "QR 코드를 사각형 안에 맞춰주세요";
         const bd = new BarcodeDetector({ formats: ["qr_code"] });
         let detecting = false;
         const detectTick = async () => {
           if (detecting) { __qrRaf = requestAnimationFrame(detectTick); return; }
-          if (!video.videoWidth || !video.videoHeight) { __qrRaf = requestAnimationFrame(detectTick); return; }
+          if (!video.videoWidth) { __qrRaf = requestAnimationFrame(detectTick); return; }
           detecting = true;
           try {
             const codes = await bd.detect(video);
-            if (codes.length > 0) {
-              await onDetected(codes[0].rawValue);
-              return;
-            }
+            if (codes.length > 0) { await onDetected(codes[0].rawValue); return; }
           } catch {}
           detecting = false;
           __qrRaf = requestAnimationFrame(detectTick);
@@ -1030,33 +1094,22 @@ function bindQrScan() {
         return;
       }
 
-      // ── jsQR 폴백 ──
       if (!window.jsQR) {
-        if (state) state.textContent = "jsQR 라이브러리 로드 실패 — 페이지를 새로고침 해주세요.";
+        if (state) state.textContent = "jsQR 로드 실패";
         return;
       }
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      let frameCount = 0;
       const tick = () => {
-        if (!video.videoWidth || !video.videoHeight) { __qrRaf = requestAnimationFrame(tick); return; }
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        if (!video.videoWidth) { __qrRaf = requestAnimationFrame(tick); return; }
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const qr = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
-        if (qr?.data) {
-          onDetected(qr.data);
-          return;
-        }
-        frameCount++;
-        if (frameCount % 20 === 0 && state) {
-          state.textContent = `스캔 중... (${Math.floor(frameCount / 20)}) QR 코드를 사각형 안에 맞춰주세요`;
-        }
+        const qr = window.jsQR(imageData.data, imageData.width, imageData.height);
+        if (qr?.data) { onDetected(qr.data); return; }
         __qrRaf = requestAnimationFrame(tick);
       };
       tick();
     } catch (err) {
-      if (state) state.textContent = "카메라 사용 실패";
       stopQrScan();
       alert("카메라 접근 실패: " + (err?.message || err));
     }
