@@ -27,6 +27,7 @@ const db = admin.firestore();
 // ── Firebase Secret Manager ──────────────────────────────────────────────────
 const walletSecret  = defineSecret('WALLET_MASTER_SECRET');
 const adminKeySecret= defineSecret('ADMIN_PRIVATE_KEY');
+const extApiSecret  = defineSecret('PARTNER_API_KEY');
 
 // ── 핸들러 ───────────────────────────────────────────────────────────────────
 const onboarding             = require('./handlers/onboarding');
@@ -725,4 +726,149 @@ exports.adminDeleteCoopProduct = onCall(
     const uid = requireAuth(request);
     return coopH.adminDeleteCoopProduct(uid, request.data ?? {});
   })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 외부 Web3 개발자용 파트너 API
+//
+// 인증: Header  X-Api-Key: {EXT_API_KEY}
+//       또는 Query ?api_key={EXT_API_KEY}
+//
+// [엔드포인트]
+//
+// 1. 지갑 주소 조회 (이메일로)
+//    GET /externalApi/wallet?email=user@example.com
+//    Response: { ok, data: { walletAddress, level, mentor, createdAt } }
+//
+// 2. 지갑 주소 조회 (지갑 주소로 → Jump 회원 여부 확인)
+//    GET /externalApi/wallet?address=0x...
+//    Response: { ok, data: { walletAddress, level, mentor, createdAt } }
+//
+// 3. 배치 조회 (이메일 목록 → 지갑 주소 매핑)
+//    POST /externalApi/wallets
+//    Body: { emails: ['a@b.com', 'c@d.com'] }  (최대 50개)
+//    Response: { ok, data: [ { email, walletAddress, level } ... ] }
+//
+// [API 키 발급]
+//   firebase functions:secrets:set EXT_API_KEY
+// ════════════════════════════════════════════════════════════════════════════
+exports.externalApi = onRequest(
+  { cors: true, secrets: [extApiSecret] },
+  async (req, res) => {
+    // ── API 키 검증 ──
+    const providedKey =
+      (req.headers['x-api-key'] || '') ||
+      (req.query.api_key || '');
+
+    if (!providedKey || providedKey !== extApiSecret.value()) {
+      res.status(401).json({ ok: false, error: 'Invalid API key' });
+      return;
+    }
+
+    const path = req.path.replace(/^\//, '');
+
+    try {
+      // ── 1 & 2: 단건 조회 GET /wallet ──────────────────────────────
+      if (req.method === 'GET' && path === 'wallet') {
+        const { email, address } = req.query;
+
+        if (!email && !address) {
+          res.status(400).json({ ok: false, error: 'email 또는 address 파라미터가 필요합니다' });
+          return;
+        }
+
+        let uid = null;
+
+        if (email) {
+          // 이메일로 Firebase Auth UID 조회
+          try {
+            const userRecord = await admin.auth().getUserByEmail(String(email).trim().toLowerCase());
+            uid = userRecord.uid;
+          } catch (_) {
+            res.status(404).json({ ok: false, error: '해당 이메일로 가입된 회원을 찾을 수 없습니다' });
+            return;
+          }
+        } else {
+          // 지갑 주소로 Firestore 조회
+          const addr = String(address).trim().toLowerCase();
+          const snap = await db.collection('users')
+            .where('wallet.address', '==', addr)
+            .limit(1)
+            .get();
+          if (snap.empty) {
+            res.status(404).json({ ok: false, error: '해당 주소로 가입된 회원을 찾을 수 없습니다' });
+            return;
+          }
+          uid = snap.docs[0].id;
+        }
+
+        const userSnap = await db.collection('users').doc(uid).get();
+        if (!userSnap.exists) {
+          res.status(404).json({ ok: false, error: '회원 정보를 찾을 수 없습니다' });
+          return;
+        }
+
+        const data = userSnap.data();
+        const walletAddress = data?.wallet?.address || null;
+
+        if (!walletAddress) {
+          res.status(404).json({ ok: false, error: '수탁 지갑이 아직 생성되지 않았습니다' });
+          return;
+        }
+
+        res.json({
+          ok: true,
+          data: {
+            walletAddress,
+            level:     data?.onChain?.level     ?? null,
+            mentor:    data?.onChain?.mentor     ?? null,
+            createdAt: data?.createdAt?.toDate?.()?.toISOString?.() ?? null,
+          },
+        });
+        return;
+      }
+
+      // ── 3: 배치 조회 POST /wallets ─────────────────────────────────
+      if (req.method === 'POST' && path === 'wallets') {
+        const emails = req.body?.emails;
+        if (!Array.isArray(emails) || emails.length === 0) {
+          res.status(400).json({ ok: false, error: 'emails 배열이 필요합니다' });
+          return;
+        }
+        if (emails.length > 50) {
+          res.status(400).json({ ok: false, error: '한 번에 최대 50개까지 조회할 수 있습니다' });
+          return;
+        }
+
+        const results = await Promise.all(
+          emails.map(async (em) => {
+            const emailStr = String(em).trim().toLowerCase();
+            try {
+              const userRecord = await admin.auth().getUserByEmail(emailStr);
+              const userSnap = await db.collection('users').doc(userRecord.uid).get();
+              const data = userSnap.exists ? userSnap.data() : null;
+              const walletAddress = data?.wallet?.address || null;
+              return {
+                email: emailStr,
+                walletAddress,
+                level:  data?.onChain?.level  ?? null,
+                mentor: data?.onChain?.mentor ?? null,
+                found:  !!walletAddress,
+              };
+            } catch (_) {
+              return { email: emailStr, walletAddress: null, level: null, mentor: null, found: false };
+            }
+          })
+        );
+
+        res.json({ ok: true, data: results });
+        return;
+      }
+
+      res.status(404).json({ ok: false, error: '지원하지 않는 엔드포인트입니다' });
+    } catch (err) {
+      logger.error('[externalApi Error]', err);
+      res.status(500).json({ ok: false, error: err.message || '서버 오류' });
+    }
+  }
 );
