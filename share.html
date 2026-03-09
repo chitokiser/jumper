@@ -9,7 +9,7 @@
   <meta property="og:url" content="https://jump22.netlify.app/share.html" />
   <meta property="og:title" content="🏆 JUMP 잭팟 당첨!" />
   <meta property="og:description" content="하노이 오션파크 JUMP 가맹점에서 잭팟이 터졌습니다! 결제할 때마다 잭팟 기회!" />
-  <meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/mlogo.png" />
+  <meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -18,7 +18,7 @@
     .card::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 25% 15%,rgba(250,204,21,.18),transparent 55%),radial-gradient(ellipse at 80% 85%,rgba(99,102,241,.14),transparent 50%);pointer-events:none;}
     .inner{position:relative;z-index:1;}
     .badge{font-size:10px;font-weight:700;letter-spacing:.12em;color:#fde68a;text-transform:uppercase;margin-bottom:8px;}
-    .trophy{font-size:56px;text-align:center;margin:8px 0;filter:drop-shadow(0 4px 12px rgba(250,204,21,.45));}
+    .logo{display:block;width:100%;max-width:260px;height:auto;margin:8px auto 12px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(250,204,21,.35));}
     .headline{font-size:22px;font-weight:900;text-align:center;color:#fef08a;margin-bottom:4px;}
     .amount{font-size:34px;font-weight:900;text-align:center;color:#fef08a;letter-spacing:.02em;}
     .fiat{font-size:13px;text-align:center;color:#94a3b8;margin-top:4px;margin-bottom:18px;}
@@ -61,7 +61,7 @@
 
       document.getElementById("cardInner").innerHTML = `
         <div class="badge">🎰 JUMP MERCHANT PAY JACKPOT</div>
-        <div class="trophy">🏆</div>
+        <img class="logo" src="/assets/images/jump/logo2.png" alt="JUMP" />
         <div class="headline">잭팟 당첨!</div>
         <div class="amount">${hex} HEX</div>
         <div class="fiat">≈ ${krw} KRW / ${vnd} VND</div>

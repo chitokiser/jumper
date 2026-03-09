@@ -335,7 +335,7 @@ function buildShareCardHTML(winner) {
       <button class="jp-sc-x" id="jpShareClose" aria-label="닫기">&#x00D7;</button>
       <div class="jp-share-inner">
         <div class="jp-sc-badge">&#x1F3B0; JUMP MERCHANT PAY JACKPOT</div>
-        <div class="jp-sc-trophy">&#x1F3C6;</div>
+        <img class="jp-sc-logo" src="/assets/images/jump/logo2.png" alt="JUMP" />
         <div class="jp-sc-headline">잭팟 당첨!</div>
         <div class="jp-sc-amount">${winner.hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX</div>
         <div class="jp-sc-fiat">&#x2248; ${winner.krwStr} KRW / ${winner.vndStr} VND</div>
