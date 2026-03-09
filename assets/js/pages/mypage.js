@@ -1335,3 +1335,47 @@ onAuthReady(async (ctx) => {
     console.error("\uB9C8\uC774\uD398\uC774\uC9C0 \uCD08\uAE30\uD654 \uC2E4\uD328", err);
   }
 });
+
+// ── 앱 캐시 초기화 ──
+(function bindClearCache() {
+  const btn = $("btnClearCache");
+  const msg = $("clearCacheMsg");
+  if (!btn) return;
+
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = "초기화 중...";
+
+    try {
+      // 1) Service Worker 캐시 전체 삭제
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+
+      // 2) Service Worker 등록 해제
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+
+      // 3) localStorage / sessionStorage 초기화
+      localStorage.clear();
+      sessionStorage.clear();
+
+      if (msg) {
+        msg.style.display = "";
+        msg.textContent = "캐시가 삭제되었습니다. 3초 후 새로고침...";
+      }
+
+      setTimeout(() => {
+        // 강제 새로고침 (캐시 무시)
+        location.href = location.pathname + "?v=" + Date.now();
+      }, 3000);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = "🔄 앱 캐시 초기화 (문제 발생 시)";
+      if (msg) { msg.style.display = ""; msg.textContent = "초기화 실패: " + err.message; }
+    }
+  };
+})();

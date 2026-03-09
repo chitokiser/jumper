@@ -548,6 +548,15 @@
 
   <div id="siteFooter"></div>
 
+  <!-- 앱 캐시 초기화 -->
+  <div style="text-align:center;padding:16px 0 24px;border-top:1px solid var(--border,#e5e7eb);margin-top:8px;">
+    <button id="btnClearCache" type="button"
+            style="background:none;border:1px solid #d1d5db;border-radius:8px;padding:8px 18px;font-size:0.82rem;color:#6b7280;cursor:pointer;">
+      🔄 앱 캐시 초기화 (문제 발생 시)
+    </button>
+    <p id="clearCacheMsg" style="display:none;font-size:0.78rem;color:#6b7280;margin-top:6px;"></p>
+  </div>
+
   <!-- QR 스캔 카메라 오버레이 -->
   <div id="qrScanOverlay" role="dialog" aria-label="QR 스캔">
     <div class="qr-video-wrap">
