@@ -191,7 +191,7 @@ function generateQr(merchantId, merchantName, amount, currency = "KRW") {
   const PROD_ORIGIN = "https://jump22.netlify.app";
   const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const baseOrigin = isLocal ? PROD_ORIGIN : location.origin;
-  const url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
+  const url = `${baseOrigin}/mypage.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
 
   // qrcode.js (CDN) API
   /* global QRCode */

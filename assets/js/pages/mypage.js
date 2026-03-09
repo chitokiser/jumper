@@ -895,9 +895,6 @@ function showQrResult(msg, isError) {
 
 async function applyQrResult(payload) {
   if (!payload) return false;
-  // 진단: 받은 payload 즉시 표시
-  alert(`[QR진단] ID="${payload.merchantId || "없음"}" 금액=${payload.amount || "-"} 통화=${payload.currency || "-"}`);
-  showQrResult(`[진단] ID="${payload.merchantId || "없음"}" 금액=${payload.amount || "-"} 통화=${payload.currency || "-"}`, false);
   const sel          = $("merchantPaySelect");
   const amountInput  = $("merchantPayAmount");
   const currencyHidden = $("merchantPayCurrency");
