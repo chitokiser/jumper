@@ -1019,16 +1019,17 @@ function bindQrScan() {
           const raw = qr.data;
           const payload = parseQrPayload(raw);
           console.log("[QR] raw:", raw, "parsed:", JSON.stringify(payload));
+          // 원본 + 파싱 결과를 오버레이에 2초 표시 후 닫음
+          if (state) state.textContent = `원본: ${raw.slice(0, 80)} | ID: ${payload?.merchantId || "없음"}, 금액: ${payload?.amount || "-"}`;
+          cancelAnimationFrame(__qrRaf);
+          __qrRaf = 0;
           if (payload && (payload.merchantId || payload.amount)) {
-            // 오버레이 닫기 전에 결과를 1.5초 보여줌
-            if (state) state.textContent = `✅ QR 인식: ID=${payload.merchantId || "-"}, 금액=${payload.amount?.toLocaleString() || "-"}, 통화=${payload.currency || "-"}`;
-            cancelAnimationFrame(__qrRaf);
-            __qrRaf = 0;
-            applyQrResult(payload); // async, runs in background
-            setTimeout(() => stopQrScan(), 1500);
-            return;
+            applyQrResult(payload);
+          } else {
+            showQrResult(`QR 파싱 실패 — 원본: ${raw.slice(0, 100)}`, true);
           }
-          if (state) state.textContent = `인식 불가 (원본: ${raw.slice(0, 60)})`;
+          setTimeout(() => stopQrScan(), 2500);
+          return;
         } else {
           frameCount++;
           if (frameCount % 20 === 0) {
