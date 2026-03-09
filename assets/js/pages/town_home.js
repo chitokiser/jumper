@@ -354,9 +354,10 @@ function buildShareCardHTML(winner) {
         </div>
         ${refBlock}
         <div class="jp-sc-actions">
+          <button class="jp-sc-img-btn" id="jpShareImg" type="button">&#x1F4F7; 이미지 복사</button>
           <button class="jp-sc-copy-btn" id="jpShareCopy" type="button">&#x1F517; 링크 복사</button>
-          <button class="jp-sc-close-btn" id="jpShareCloseBtn" type="button">닫기</button>
         </div>
+        <button class="jp-sc-close-btn" id="jpShareCloseBtn" type="button" style="width:100%;margin-top:6px;">닫기</button>
       </div>
     </div>`;
 }
@@ -374,16 +375,66 @@ function openShareModal(winner) {
   $("jpShareCloseBtn").onclick = close;
 
   const hasRef = _userLevel >= 4 && _userWalletAddr;
-  const copyUrl = hasRef
-    ? `${location.origin}/register.html?mentor=${encodeURIComponent(_userWalletAddr)}`
-    : `${location.origin}/register.html`;
+  const shareParams = new URLSearchParams({
+    hex: winner.hexVal.toFixed(4),
+    krw: winner.krwStr,
+    vnd: winner.vndStr,
+    addr: winner.addrShort,
+    merchant: winner.merchantName,
+    date: winner.dateStr,
+    ...(hasRef ? { mentor: _userWalletAddr } : {}),
+  });
+  const copyUrl = `${location.origin}/share.html?${shareParams}`;
 
   $("jpShareCopy").onclick = () => {
     const btn = $("jpShareCopy");
     navigator.clipboard?.writeText(copyUrl).then(() => {
-      btn.textContent = "&#x2705; 복사됨!";
-      setTimeout(() => { btn.innerHTML = "&#x1F517; 링크 복사"; }, 2000);
+      btn.innerHTML = "&#x2705; 복사됨!";
+      setTimeout(() => { btn.innerHTML = "&#x1F517; 링크 복사"; }, 2500);
     }).catch(() => { btn.textContent = "복사 실패"; });
+  };
+
+  $("jpShareImg").onclick = async () => {
+    const btn = $("jpShareImg");
+    const card = document.querySelector(".jp-share-card");
+    if (!card || typeof window.html2canvas === "undefined") {
+      btn.textContent = "미지원 브라우저";
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "캡처 중...";
+    try {
+      const canvas = await window.html2canvas(card, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+        ignoreElements: (el) => el.id === "jpShareImg" || el.id === "jpShareClose",
+      });
+      canvas.toBlob(async (blob) => {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          btn.innerHTML = "&#x2705; 복사됨! 카톡에 붙여넣기";
+          btn.disabled = false;
+          setTimeout(() => { btn.innerHTML = "&#x1F4F7; 이미지 복사"; }, 3000);
+        } catch {
+          // 클립보드 미지원 시 다운로드로 폴백
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "jump-jackpot.png";
+          a.click();
+          URL.revokeObjectURL(url);
+          btn.innerHTML = "&#x2705; 이미지 저장됨";
+          btn.disabled = false;
+          setTimeout(() => { btn.innerHTML = "&#x1F4F7; 이미지 복사"; }, 3000);
+        }
+      }, "image/png");
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = "캡처 실패";
+      console.warn("html2canvas error:", err);
+    }
   };
 }
 

@@ -1,0 +1,76 @@
+<!-- /share.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🏆 JUMP 잭팟 당첨!</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://jump22.netlify.app/share.html" />
+  <meta property="og:title" content="🏆 JUMP 잭팟 당첨!" />
+  <meta property="og:description" content="하노이 오션파크 JUMP 가맹점에서 잭팟이 터졌습니다! 결제할 때마다 잭팟 기회!" />
+  <meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/mlogo.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{min-height:100vh;background:linear-gradient(145deg,#1f2937 0%,#0f172a 55%,#1e293b 100%);display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+    .card{width:min(400px,100%);border-radius:22px;padding:32px 24px 28px;background:linear-gradient(145deg,#1f2937,#0f172a,#1e293b);border:1px solid rgba(250,204,21,.4);color:#f8fafc;box-shadow:0 24px 72px rgba(0,0,0,.55);position:relative;overflow:hidden;}
+    .card::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 25% 15%,rgba(250,204,21,.18),transparent 55%),radial-gradient(ellipse at 80% 85%,rgba(99,102,241,.14),transparent 50%);pointer-events:none;}
+    .inner{position:relative;z-index:1;}
+    .badge{font-size:10px;font-weight:700;letter-spacing:.12em;color:#fde68a;text-transform:uppercase;margin-bottom:8px;}
+    .trophy{font-size:56px;text-align:center;margin:8px 0;filter:drop-shadow(0 4px 12px rgba(250,204,21,.45));}
+    .headline{font-size:22px;font-weight:900;text-align:center;color:#fef08a;margin-bottom:4px;}
+    .amount{font-size:34px;font-weight:900;text-align:center;color:#fef08a;letter-spacing:.02em;}
+    .fiat{font-size:13px;text-align:center;color:#94a3b8;margin-top:4px;margin-bottom:18px;}
+    hr{border:none;border-top:1px solid rgba(255,255,255,.1);margin:14px 0;}
+    .kv{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;}
+    .kv .k{color:#94a3b8;}
+    .kv .v{color:#e2e8f0;font-weight:600;text-align:right;word-break:break-all;}
+    .reg-btn{display:block;width:100%;margin-top:18px;padding:13px 16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;box-shadow:0 4px 14px rgba(99,102,241,.4);}
+    .reg-btn:hover{opacity:.88;}
+    .home-link{display:block;text-align:center;margin-top:12px;font-size:12px;color:#475569;text-decoration:none;}
+    .home-link:hover{color:#94a3b8;}
+    .loading{text-align:center;color:#64748b;padding:40px 0;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="inner" id="cardInner">
+      <div class="loading">불러오는 중...</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const p = new URLSearchParams(location.search);
+      const hex = p.get("hex") || "-";
+      const krw = p.get("krw") || "-";
+      const vnd = p.get("vnd") || "-";
+      const addr = p.get("addr") || "-";
+      const merchant = p.get("merchant") || "-";
+      const date = p.get("date") || "-";
+      const mentor = p.get("mentor") || "";
+
+      const regUrl = mentor
+        ? "/register.html?mentor=" + encodeURIComponent(mentor)
+        : "/register.html";
+
+      document.title = "🏆 JUMP 잭팟 " + hex + " HEX 당첨!";
+
+      document.getElementById("cardInner").innerHTML = `
+        <div class="badge">🎰 JUMP MERCHANT PAY JACKPOT</div>
+        <div class="trophy">🏆</div>
+        <div class="headline">잭팟 당첨!</div>
+        <div class="amount">${hex} HEX</div>
+        <div class="fiat">≈ ${krw} KRW / ${vnd} VND</div>
+        <hr>
+        <div class="kv"><span class="k">👤 당첨자</span><span class="v" style="font-family:monospace;font-size:12px;">${addr}</span></div>
+        <div class="kv"><span class="k">🏪 결제 가맹점</span><span class="v">${merchant}</span></div>
+        <div class="kv"><span class="k">📅 당첨 일시</span><span class="v">${date}</span></div>
+        <hr>
+        <a class="reg-btn" href="${regUrl}">✨ JUMP 지금 가입하기 →</a>
+        <a class="home-link" href="/">← 홈으로 돌아가기</a>
+      `;
+    })();
+  </script>
+</body>
+</html>

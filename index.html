@@ -6,6 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/assets/images/jump/favicon.png">
   <title>우리마을 - 하노이 오션파크</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://jump22.netlify.app/" />
+  <meta property="og:title" content="🏆 JUMP 잭팟 - 결제하고 잭팟 당첨!" />
+  <meta property="og:description" content="하노이 오션파크 JUMP 가맹점에서 결제할 때마다 잭팟 기회! 지금 바로 참여하세요." />
+  <meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/mlogo.png" />
+  <meta name="twitter:card" content="summary_large_image" />
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -22,6 +28,7 @@
   <script src="/assets/js/partials.js" defer></script>
   <script type="module" src="/assets/js/firebase-init.js"></script>
   <script type="module" src="/assets/js/firestore-bridge.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script type="module" src="/assets/js/pages/town_home.js" defer></script>
   <script type="module" src="/assets/js/pages/town_home.hero.js" defer></script>
 
@@ -171,6 +178,8 @@
     .jp-sc-reg-btn:hover{opacity:.88;}
     .jp-sc-ref-note{text-align:center;font-size:10px;color:#475569;margin-top:5px;}
     .jp-sc-actions{display:flex;gap:8px;margin-top:10px;}
+    .jp-sc-img-btn{flex:1;padding:9px;background:linear-gradient(135deg,rgba(250,204,21,.18),rgba(251,146,60,.14));border:1px solid rgba(250,204,21,.4);border-radius:10px;color:#fde68a;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
+    .jp-sc-img-btn:hover{background:linear-gradient(135deg,rgba(250,204,21,.32),rgba(251,146,60,.24));color:#fff;}
     .jp-sc-copy-btn,.jp-sc-close-btn{flex:1;padding:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:10px;color:#cbd5e1;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s;}
     .jp-sc-copy-btn:hover,.jp-sc-close-btn:hover{background:rgba(255,255,255,.14);}
     .jp-sc-x{position:absolute;top:12px;right:14px;background:none;border:none;color:#64748b;font-size:22px;cursor:pointer;line-height:1;z-index:2;padding:2px 6px;}
