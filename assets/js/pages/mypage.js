@@ -889,14 +889,14 @@ function showQrResult(msg, isError) {
   const box = $("qrResultState");
   if (!box) return;
   box.textContent = msg;
-  box.style.display = "";
-  box.style.background = isError ? "#fef2f2" : "#f0fdf4";
-  box.style.borderColor = isError ? "#fca5a5" : "#86efac";
-  box.style.color       = isError ? "#991b1b" : "#166534";
+  box.style.cssText = `display:block!important;margin:8px 0;padding:10px 14px;border-radius:8px;border:1px solid;font-size:0.88rem;${isError ? "background:#fef2f2;border-color:#fca5a5;color:#991b1b;" : "background:#f0fdf4;border-color:#86efac;color:#166534;"}`;
+  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 async function applyQrResult(payload) {
   if (!payload) return false;
+  // 진단: 받은 payload 즉시 표시
+  showQrResult(`[진단] ID="${payload.merchantId || "없음"}" 금액=${payload.amount || "-"} 통화=${payload.currency || "-"}`, false);
   const sel          = $("merchantPaySelect");
   const amountInput  = $("merchantPayAmount");
   const currencyHidden = $("merchantPayCurrency");
