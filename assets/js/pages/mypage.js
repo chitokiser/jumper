@@ -885,11 +885,20 @@ function parseQrPayload(raw) {
   return { merchantId: mId, merchantName: "", amount, currency };
 }
 
+function showQrResult(msg, isError) {
+  const box = $("qrResultState");
+  if (!box) return;
+  box.textContent = msg;
+  box.style.display = "";
+  box.style.background = isError ? "#fef2f2" : "#f0fdf4";
+  box.style.borderColor = isError ? "#fca5a5" : "#86efac";
+  box.style.color       = isError ? "#991b1b" : "#166534";
+}
+
 async function applyQrResult(payload) {
   if (!payload) return false;
   const sel          = $("merchantPaySelect");
   const amountInput  = $("merchantPayAmount");
-  const state        = $("qrScanState");
   const currencyHidden = $("merchantPayCurrency");
   const radioVnd     = $("merchantPayCurrencyVND");
   const radioKrw     = $("merchantPayCurrencyKRW");
@@ -905,7 +914,6 @@ async function applyQrResult(payload) {
     if (currencyHidden) currencyHidden.value = cur;
     if (cur === "KRW" && radioKrw) radioKrw.checked = true;
     if (cur === "VND" && radioVnd) radioVnd.checked = true;
-    // 레이블/min 업데이트 (bindMerchantPay 라디오 핸들러와 동일 로직)
     const labelEl = $("merchantPayAmountLabel");
     const inputEl = amountInput;
     const isVnd = cur === "VND";
@@ -920,7 +928,8 @@ async function applyQrResult(payload) {
   // ── 가맹점 매칭 ──
   const mid = String(payload.merchantId || "").trim();
   if (!mid || !sel) {
-    if (state) state.textContent = "스캔 완료: 금액이 반영됐습니다.";
+    showQrResult(`✅ 금액 ${payload.amount ? payload.amount.toLocaleString() : "-"} 반영 완료. 가맹점을 직접 선택해 주세요.`, false);
+    sel?.focus();
     return true;
   }
 
@@ -930,12 +939,13 @@ async function applyQrResult(payload) {
   );
   if (existing) {
     sel.value = existing.value;
-    if (state) state.textContent = "스캔 완료: 결제 폼에 반영됐습니다.";
+    showQrResult(`✅ QR 스캔 완료 — 가맹점: ${existing.textContent}, 금액: ${payload.amount?.toLocaleString() || "-"}`, false);
+    sel.scrollIntoView({ behavior: "smooth", block: "nearest" });
     return true;
   }
 
-  // 2) Firestore에서 직접 조회 (셀렉트에 없어도 처리 가능)
-  if (state) state.textContent = "가맹점 정보 조회 중...";
+  // 2) Firestore에서 직접 조회
+  showQrResult("가맹점 정보 조회 중...", false);
   try {
     const mSnap = await getDoc(doc(db, "merchants", mid));
     if (mSnap.exists()) {
@@ -949,14 +959,17 @@ async function applyQrResult(payload) {
         sel.appendChild(opt);
       }
       sel.value = mid;
-      if (state) state.textContent = "스캔 완료: 결제 폼에 반영됐습니다.";
+      showQrResult(`✅ QR 스캔 완료 — 가맹점: ${mName}, 금액: ${payload.amount?.toLocaleString() || "-"}`, false);
+      sel.scrollIntoView({ behavior: "smooth", block: "nearest" });
       return true;
     }
   } catch (e) {
     console.warn("QR merchant fetch failed:", e.message);
+    showQrResult("가맹점 조회 실패 — 직접 선택해 주세요.", true);
+    return false;
   }
 
-  if (state) state.textContent = `가맹점(ID: ${mid})을 찾을 수 없습니다 — 직접 선택해 주세요.`;
+  showQrResult(`가맹점(ID: ${mid})을 찾을 수 없습니다 — 직접 선택해 주세요.`, true);
   return false;
 }
 
@@ -983,7 +996,13 @@ function bindQrScan() {
       video.srcObject = __qrStream;
       await video.play();
 
+      if (!window.jsQR) {
+        if (state) state.textContent = "jsQR 라이브러리 로드 실패 — 페이지를 새로고침 해주세요.";
+        return;
+      }
+
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      let frameCount = 0;
       const tick = () => {
         if (!video.videoWidth || !video.videoHeight) {
           __qrRaf = requestAnimationFrame(tick);
@@ -994,16 +1013,27 @@ function bindQrScan() {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const qr = window.jsQR ? window.jsQR(imageData.data, imageData.width, imageData.height) : null;
+        const qr = window.jsQR(imageData.data, imageData.width, imageData.height);
 
         if (qr?.data) {
-          const payload = parseQrPayload(qr.data);
+          const raw = qr.data;
+          const payload = parseQrPayload(raw);
+          console.log("[QR] raw:", raw, "parsed:", JSON.stringify(payload));
           if (payload && (payload.merchantId || payload.amount)) {
-            stopQrScan();
+            // 오버레이 닫기 전에 결과를 1.5초 보여줌
+            if (state) state.textContent = `✅ QR 인식: ID=${payload.merchantId || "-"}, 금액=${payload.amount?.toLocaleString() || "-"}, 통화=${payload.currency || "-"}`;
+            cancelAnimationFrame(__qrRaf);
+            __qrRaf = 0;
             applyQrResult(payload); // async, runs in background
+            setTimeout(() => stopQrScan(), 1500);
             return;
           }
-          if (state) state.textContent = "\uC54C \uC218 \uC5C6\uB294 QR \uD615\uC2DD\uC785\uB2C8\uB2E4.";
+          if (state) state.textContent = `인식 불가 (원본: ${raw.slice(0, 60)})`;
+        } else {
+          frameCount++;
+          if (frameCount % 20 === 0) {
+            if (state) state.textContent = `스캔 중... (${Math.floor(frameCount / 20)}) QR 코드를 사각형 안에 맞춰주세요`;
+          }
         }
         __qrRaf = requestAnimationFrame(tick);
       };
@@ -1193,9 +1223,21 @@ onAuthReady(async (ctx) => {
     bindLevelUp(user.uid);
     bindMentorRequest(user.uid);
     bindDepositForm();
-    loadMerchantsForSelect();
+    await loadMerchantsForSelect();
     bindMerchantPay(user.uid, walletAddress);
     bindQrScan();
+
+    // URL 파라미터 처리 (앱 네이티브 카메라로 QR 스캔 시 merchant=?&amount=?&currency=? 진입)
+    (async () => {
+      const p = new URLSearchParams(location.search);
+      const mid = (p.get("merchant") || p.get("merchantId") || p.get("id") || "").trim();
+      const amt = Number(p.get("amount") || 0) || null;
+      const cur = (p.get("currency") || "").toUpperCase() || null;
+      if (mid || amt) {
+        await applyQrResult({ merchantId: mid, merchantName: "", amount: amt, currency: cur });
+        $("merchantPayForm")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    })();
 
     loadOnChainData(user.uid);
     loadDepositHistory(user.uid);
