@@ -213,7 +213,7 @@ async function loadJackpotWinners() {
           collection(db, "jackpot_rounds"),
           where("isWinner", "==", true),
           orderBy("createdAt", "desc"),
-          limit(8)
+          limit(50)
         )
       );
     } catch {

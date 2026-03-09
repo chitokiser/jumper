@@ -57,6 +57,14 @@
       ]
     },
     {
+      "collectionGroup": "jackpot_rounds",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isWinner", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "jackpot_claims",
       "queryScope": "COLLECTION",
       "fields": [
