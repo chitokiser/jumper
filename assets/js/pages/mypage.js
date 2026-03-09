@@ -984,63 +984,81 @@ function bindQrScan() {
 
   btnOpen.onclick = async () => {
     try {
-      if (state) state.textContent = "\uCE74\uBA54\uB77C \uC2DC\uC791 \uC911...";
+      if (state) state.textContent = "카메라 시작 중...";
       overlay.classList.add("active");
 
       __qrStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       video.srcObject = __qrStream;
       await video.play();
 
+      const onDetected = async (raw) => {
+        if (__qrRaf) { cancelAnimationFrame(__qrRaf); __qrRaf = 0; }
+        const payload = parseQrPayload(raw);
+        console.log("[QR] raw:", raw, "parsed:", JSON.stringify(payload));
+        if (state) state.textContent = `인식: ${raw.slice(0, 60)} | ID: ${payload?.merchantId || "없음"}`;
+        if (payload && (payload.merchantId || payload.amount)) {
+          await applyQrResult(payload);
+        } else {
+          showQrResult(`QR 파싱 실패 — 원본: ${raw.slice(0, 100)}`, true);
+        }
+        setTimeout(() => stopQrScan(), 800);
+      };
+
+      // ── BarcodeDetector (Android Chrome 83+ / 하드웨어 가속) ──
+      if ("BarcodeDetector" in window) {
+        if (state) state.textContent = "QR 코드를 사각형 안에 맞춰주세요";
+        const bd = new BarcodeDetector({ formats: ["qr_code"] });
+        let detecting = false;
+        const detectTick = async () => {
+          if (detecting) { __qrRaf = requestAnimationFrame(detectTick); return; }
+          if (!video.videoWidth || !video.videoHeight) { __qrRaf = requestAnimationFrame(detectTick); return; }
+          detecting = true;
+          try {
+            const codes = await bd.detect(video);
+            if (codes.length > 0) {
+              await onDetected(codes[0].rawValue);
+              return;
+            }
+          } catch {}
+          detecting = false;
+          __qrRaf = requestAnimationFrame(detectTick);
+        };
+        __qrRaf = requestAnimationFrame(detectTick);
+        return;
+      }
+
+      // ── jsQR 폴백 ──
       if (!window.jsQR) {
         if (state) state.textContent = "jsQR 라이브러리 로드 실패 — 페이지를 새로고침 해주세요.";
         return;
       }
-
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       let frameCount = 0;
       const tick = () => {
-        if (!video.videoWidth || !video.videoHeight) {
-          __qrRaf = requestAnimationFrame(tick);
-          return;
-        }
-
+        if (!video.videoWidth || !video.videoHeight) { __qrRaf = requestAnimationFrame(tick); return; }
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const qr = window.jsQR(imageData.data, imageData.width, imageData.height);
-
+        const qr = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
         if (qr?.data) {
-          const raw = qr.data;
-          const payload = parseQrPayload(raw);
-          console.log("[QR] raw:", raw, "parsed:", JSON.stringify(payload));
-          // 원본 + 파싱 결과를 오버레이에 2초 표시 후 닫음
-          if (state) state.textContent = `원본: ${raw.slice(0, 80)} | ID: ${payload?.merchantId || "없음"}, 금액: ${payload?.amount || "-"}`;
-          cancelAnimationFrame(__qrRaf);
-          __qrRaf = 0;
-          if (payload && (payload.merchantId || payload.amount)) {
-            applyQrResult(payload);
-          } else {
-            showQrResult(`QR 파싱 실패 — 원본: ${raw.slice(0, 100)}`, true);
-          }
-          setTimeout(() => stopQrScan(), 2500);
+          onDetected(qr.data);
           return;
-        } else {
-          frameCount++;
-          if (frameCount % 20 === 0) {
-            if (state) state.textContent = `스캔 중... (${Math.floor(frameCount / 20)}) QR 코드를 사각형 안에 맞춰주세요`;
-          }
+        }
+        frameCount++;
+        if (frameCount % 20 === 0 && state) {
+          state.textContent = `스캔 중... (${Math.floor(frameCount / 20)}) QR 코드를 사각형 안에 맞춰주세요`;
         }
         __qrRaf = requestAnimationFrame(tick);
       };
       tick();
     } catch (err) {
-      if (state) state.textContent = "\uCE74\uBA54\uB77C \uC0AC\uC6A9 \uC2E4\uD328";
+      if (state) state.textContent = "카메라 사용 실패";
       stopQrScan();
-      alert("\uCE74\uBA54\uB77C \uC811\uADFC \uC2E4\uD328: " + (err?.message || err));
+      alert("카메라 접근 실패: " + (err?.message || err));
     }
   };
 }
