@@ -1010,22 +1010,25 @@ function bindQrScan() {
           }
         }
 
-        // jsQR 폴백
+        // jsQR 폴백 (이미지 리사이즈 후 처리)
         if (!window.jsQR) {
           showQrResult("jsQR 라이브러리 로드 실패 — 페이지를 새로고침 해주세요.", true);
           return;
         }
         const img = await createImageBitmap(file);
+        const MAX = 1024;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
         const offscreen = document.createElement("canvas");
-        offscreen.width = img.width;
-        offscreen.height = img.height;
+        offscreen.width = w;
+        offscreen.height = h;
         const ctx = offscreen.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        const imageData = ctx.getImageData(0, 0, offscreen.width, offscreen.height);
-        const qr = window.jsQR(imageData.data, imageData.width, imageData.height);
+        ctx.drawImage(img, 0, 0, w, h);
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const qr = window.jsQR(imageData.data, w, h);
         if (qr?.data) {
           const raw = qr.data;
-          console.log("[QR-file] jsQR raw:", raw);
           const payload = parseQrPayload(raw);
           if (payload && (payload.merchantId || payload.amount)) {
             await applyQrResult(payload);
@@ -1033,7 +1036,7 @@ function bindQrScan() {
             showQrResult(`QR 파싱 실패 — 원본: ${raw.slice(0, 100)}`, true);
           }
         } else {
-          showQrResult("QR 코드를 인식하지 못했습니다. 사진을 더 가까이서 찍어 주세요.", true);
+          showQrResult("QR 코드를 인식하지 못했습니다. QR 코드를 화면 가득 찍어 주세요.", true);
         }
       } catch (err) {
         console.warn("[QR-file] error:", err);
