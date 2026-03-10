@@ -35,6 +35,7 @@ const depositH               = require('./handlers/deposit');
 const txH                    = require('./handlers/transaction');
 const exchangeH              = require('./handlers/exchange');
 const coopH                  = require('./handlers/coop');
+const daoH                   = require('./handlers/dao');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -753,19 +754,46 @@ exports.adminDeleteCoopProduct = onCall(
 //   firebase functions:secrets:set EXT_API_KEY
 // ════════════════════════════════════════════════════════════════════════════
 exports.externalApi = onRequest(
-  { cors: true, secrets: [extApiSecret] },
+  { cors: false, secrets: [extApiSecret, walletSecret] },
   async (req, res) => {
-    // ── API 키 검증 ──
-    const providedKey =
-      (req.headers['x-api-key'] || '') ||
-      (req.query.api_key || '');
+    // ── CORS 헤더 직접 설정 (커스텀 헤더 X-Api-Key 허용) ──
+    const origin = req.headers.origin || '*';
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, X-Api-Key, X-User-Token, Authorization');
+    res.set('Access-Control-Max-Age', '3600');
 
-    if (!providedKey || providedKey !== extApiSecret.value()) {
-      res.status(401).json({ ok: false, error: 'Invalid API key' });
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
       return;
     }
 
     const path = req.path.replace(/^\//, '');
+
+    // ── API 키 검증 (verifyUser / signMessage는 사용자 토큰 기반이라 제외) ──
+    const publicPaths = ['verifyUser', 'signMessage']; // signTransaction은 내부에서 별도 API 키 검증
+    if (!publicPaths.includes(path)) {
+      const providedKey =
+        req.headers['x-api-key'] ||
+        req.body?.apiKey ||
+        req.query.api_key ||
+        '';
+
+      logger.info('[externalApi] auth debug', {
+        path,
+        hasHeaderKey: !!req.headers['x-api-key'],
+        hasBodyKey: !!req.body?.apiKey,
+        bodyKeys: Object.keys(req.body || {}),
+        providedKeyLen: providedKey.length,
+        secretKeyLen: extApiSecret.value().length,
+        match: providedKey === extApiSecret.value(),
+      });
+
+      if (!providedKey || providedKey !== extApiSecret.value()) {
+        res.status(401).json({ ok: false, error: 'Invalid API key' });
+        return;
+      }
+    }
 
     try {
       // ── 1 & 2: 단건 조회 GET /wallet ──────────────────────────────
@@ -865,10 +893,281 @@ exports.externalApi = onRequest(
         return;
       }
 
+      // ── 4: 유저 토큰으로 지갑 주소 확인 POST /verifyUser ──────────
+      // 파트너 API 키 불필요. 유저가 직접 자신의 Firebase ID Token을 보냄.
+      // 파트너 사이트: 유저 Google 로그인 → ID Token → 이 엔드포인트 호출
+      if (req.method === 'POST' && path === 'verifyUser') {
+        const userToken = (req.headers['x-user-token'] || req.body?.userToken || req.body?.idToken || '');
+        if (!userToken) {
+          res.status(400).json({ ok: false, error: 'idToken(또는 userToken) 필드가 필요합니다' });
+          return;
+        }
+        let decoded;
+        try {
+          decoded = await admin.auth().verifyIdToken(userToken);
+        } catch (_) {
+          res.status(401).json({ ok: false, error: '유효하지 않은 사용자 토큰입니다' });
+          return;
+        }
+        const userSnap = await db.collection('users').doc(decoded.uid).get();
+        if (!userSnap.exists) {
+          res.status(404).json({ ok: false, error: 'Jump 미가입 회원입니다' });
+          return;
+        }
+        const data = userSnap.data();
+        const walletAddress = data?.wallet?.address || null;
+        if (!walletAddress) {
+          res.status(404).json({ ok: false, error: '수탁 지갑이 아직 생성되지 않았습니다' });
+          return;
+        }
+        res.json({
+          ok: true,
+          data: {
+            walletAddress,
+            level:     data?.onChain?.level  ?? null,
+            mentor:    data?.onChain?.mentor ?? null,
+            createdAt: data?.createdAt?.toDate?.()?.toISOString?.() ?? null,
+          },
+        });
+        return;
+      }
+
+      // ── 5: 메시지 서명 위임 POST /signMessage ──────────────────────
+      // 파트너 API 키 + 유저 토큰 모두 필요.
+      // 파트너가 특정 메시지를 수탁 지갑으로 서명 요청 (EIP-191 개인 서명).
+      // 보안: 서명 가능 메시지는 100자 이내 평문만 허용 (임의 트랜잭션 불가).
+      if (req.method === 'POST' && path === 'signMessage') {
+        const userToken = (req.headers['x-user-token'] || req.body?.userToken || req.body?.idToken || '');
+        const message   = String(req.body?.message || '').trim();
+
+        if (!userToken) {
+          res.status(400).json({ ok: false, error: 'idToken(또는 userToken) 필드가 필요합니다' });
+          return;
+        }
+        if (!message || message.length > 200) {
+          res.status(400).json({ ok: false, error: 'message는 1~200자 평문이어야 합니다' });
+          return;
+        }
+
+        let decoded;
+        try {
+          decoded = await admin.auth().verifyIdToken(userToken);
+        } catch (_) {
+          res.status(401).json({ ok: false, error: '유효하지 않은 사용자 토큰입니다' });
+          return;
+        }
+
+        const userSnap = await db.collection('users').doc(decoded.uid).get();
+        if (!userSnap.exists) {
+          res.status(404).json({ ok: false, error: 'Jump 미가입 회원입니다' });
+          return;
+        }
+        const data = userSnap.data();
+        const encryptedKey = data?.wallet?.encryptedKey;
+        const walletAddress = data?.wallet?.address;
+        if (!encryptedKey || !walletAddress) {
+          res.status(404).json({ ok: false, error: '수탁 지갑이 없습니다' });
+          return;
+        }
+
+        // 수탁 지갑 복호화 후 서명
+        const { ethers } = require('ethers');
+        const { decrypt } = require('./wallet/crypto');
+        const privateKey = decrypt(encryptedKey, walletSecret.value());
+        const signer = new ethers.Wallet(privateKey);
+        const signature = await signer.signMessage(message);
+
+        logger.info('signMessage', { uid: decoded.uid, walletAddress, messageLen: message.length });
+        res.json({
+          ok: true,
+          data: { walletAddress, signature, message },
+        });
+        return;
+      }
+
+      // ── 6: 트랜잭션 서명 + 브로드캐스트 POST /signTransaction ──────
+      // 파트너 API 키 + 유저 idToken 모두 필요.
+      // opBNB Mainnet에서 사용자 수탁 지갑으로 실제 트랜잭션을 전송한다.
+      //
+      // tx.type 별 Body 예시:
+      //   ETH 전송:    { type:"eth",      to:"0x...", value:"1000000000000000000" }
+      //   ERC-20:      { type:"erc20",    tokenAddress:"0x...", to:"0x...", amount:"1000000000000000000" }
+      //   컨트랙트 호출: { type:"contract", to:"0x...", abi:[...], method:"fn", args:[...], value:"0" }
+      if (req.method === 'POST' && path === 'signTransaction') {
+        // ① API 키 재확인 (publicPaths에 포함되어 위에서 건너뛰었으므로 여기서 직접 검증)
+        const apiKey = req.headers['x-api-key'] || req.body?.apiKey || req.query.api_key || '';
+        if (!apiKey || apiKey !== extApiSecret.value()) {
+          res.status(401).json({ ok: false, error: 'Invalid API key' });
+          return;
+        }
+
+        // ② 유저 토큰 검증
+        const userToken = (req.headers['x-user-token'] || req.body?.idToken || req.body?.userToken || '');
+        if (!userToken) {
+          res.status(400).json({ ok: false, error: 'idToken 필드가 필요합니다' });
+          return;
+        }
+        let decoded;
+        try {
+          decoded = await admin.auth().verifyIdToken(userToken);
+        } catch (_) {
+          res.status(401).json({ ok: false, error: '유효하지 않은 사용자 토큰입니다' });
+          return;
+        }
+
+        // ③ 수탁 지갑 조회
+        const userSnap = await db.collection('users').doc(decoded.uid).get();
+        if (!userSnap.exists) {
+          res.status(404).json({ ok: false, error: 'Jump 미가입 회원입니다' });
+          return;
+        }
+        const data = userSnap.data();
+        const encryptedKey = data?.wallet?.encryptedKey;
+        const walletAddress = data?.wallet?.address;
+        if (!encryptedKey || !walletAddress) {
+          res.status(404).json({ ok: false, error: '수탁 지갑이 없습니다' });
+          return;
+        }
+
+        // ④ 트랜잭션 파라미터 검증
+        const tx = req.body?.tx;
+        if (!tx || !tx.type) {
+          res.status(400).json({ ok: false, error: 'tx.type이 필요합니다 (eth | erc20 | contract)' });
+          return;
+        }
+        if (!['eth', 'erc20', 'contract'].includes(tx.type)) {
+          res.status(400).json({ ok: false, error: 'tx.type은 eth, erc20, contract 중 하나여야 합니다' });
+          return;
+        }
+
+        // ⑤ 지갑 복호화 + provider 연결
+        const { ethers } = require('ethers');
+        const { decrypt } = require('./wallet/crypto');
+        const { getProvider } = require('./wallet/chain');
+        const privateKey = decrypt(encryptedKey, walletSecret.value());
+        const signer = new ethers.Wallet(privateKey, getProvider());
+
+        let txResponse;
+
+        if (tx.type === 'eth') {
+          // ETH 전송
+          if (!tx.to || !tx.value) {
+            res.status(400).json({ ok: false, error: 'tx.to, tx.value가 필요합니다' });
+            return;
+          }
+          txResponse = await signer.sendTransaction({
+            to: tx.to,
+            value: BigInt(tx.value),
+            ...(tx.gasLimit ? { gasLimit: BigInt(tx.gasLimit) } : {}),
+          });
+
+        } else if (tx.type === 'erc20') {
+          // ERC-20 전송
+          if (!tx.tokenAddress || !tx.to || !tx.amount) {
+            res.status(400).json({ ok: false, error: 'tx.tokenAddress, tx.to, tx.amount가 필요합니다' });
+            return;
+          }
+          const erc20 = new ethers.Contract(
+            tx.tokenAddress,
+            ['function transfer(address to, uint256 amount) returns (bool)'],
+            signer
+          );
+          txResponse = await erc20.transfer(tx.to, BigInt(tx.amount),
+            tx.gasLimit ? { gasLimit: BigInt(tx.gasLimit) } : {}
+          );
+
+        } else {
+          // 컨트랙트 호출
+          if (!tx.to || !tx.abi || !tx.method) {
+            res.status(400).json({ ok: false, error: 'tx.to, tx.abi, tx.method가 필요합니다' });
+            return;
+          }
+          const contract = new ethers.Contract(tx.to, tx.abi, signer);
+          const args = Array.isArray(tx.args) ? tx.args : [];
+          const overrides = {};
+          if (tx.value)    overrides.value    = BigInt(tx.value);
+          if (tx.gasLimit) overrides.gasLimit = BigInt(tx.gasLimit);
+          txResponse = await contract[tx.method](...args, ...(Object.keys(overrides).length ? [overrides] : []));
+        }
+
+        // ⑥ Firestore 감사 로그
+        await db.collection('partner_tx_logs').add({
+          uid:         decoded.uid,
+          walletAddress,
+          txType:      tx.type,
+          txHash:      txResponse.hash,
+          to:          tx.to || null,
+          createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        logger.info('signTransaction', { uid: decoded.uid, walletAddress, txType: tx.type, txHash: txResponse.hash });
+        res.json({
+          ok: true,
+          data: {
+            txHash:  txResponse.hash,
+            from:    walletAddress,
+            txType:  tx.type,
+          },
+        });
+        return;
+      }
+
       res.status(404).json({ ok: false, error: '지원하지 않는 엔드포인트입니다' });
     } catch (err) {
       logger.error('[externalApi Error]', err);
       res.status(500).json({ ok: false, error: err.message || '서버 오류' });
     }
   }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// DAO 의결 시스템
+// ════════════════════════════════════════════════════════════════════════════
+
+// 안건 심의 등록 (JUMP 1만개 이상 스테이킹 필요)
+exports.daoCreateProposal = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return daoH.createProposal(uid, request.data);
+  })
+);
+
+// 관리자 승인
+exports.daoAdminApproveProposal = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return daoH.adminApproveProposal(uid, request.data);
+  })
+);
+
+// 관리자 반려
+exports.daoAdminRejectProposal = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return daoH.adminRejectProposal(uid, request.data);
+  })
+);
+
+// 안건 지지 (누적 25만 달성 시 의결 전환)
+exports.daoSupportProposal = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return daoH.supportProposal(uid, request.data);
+  })
+);
+
+// 투표 (찬성/반대, 과반 달성 시 즉시 의결)
+exports.daoVoteProposal = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return daoH.voteProposal(uid, request.data);
+  })
+);
+
+// 댓글 (JUMP 1만개 이상 스테이킹 필요)
+exports.daoCommentProposal = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return daoH.commentProposal(uid, request.data);
+  })
 );

@@ -1,0 +1,315 @@
+/* /assets/css/pages/dao.css */
+/* ============================================================
+   JUMP DAO 의결 페이지
+   ============================================================ */
+
+.dao-page { max-width: 860px; margin: 0 auto; padding: 0 var(--pad) 60px; }
+
+/* ── 헤더 ── */
+.dao-header {
+  padding: 28px 0 20px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+}
+.dao-header h1 { margin: 0 0 6px; font-size: 24px; font-weight: 800; }
+.dao-header p  { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+/* ── 탭 ── */
+.dao-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.dao-tab {
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.dao-tab:hover  { border-color: var(--accent); color: var(--accent); }
+.dao-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── 도구모음 ── */
+.dao-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dao-count { color: var(--muted); font-size: 0.85rem; }
+
+/* ── 목록 ── */
+.dao-list { display: flex; flex-direction: column; gap: 12px; }
+
+.dao-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: box-shadow .15s, border-color .15s;
+}
+.dao-card:hover { box-shadow: var(--shadow); border-color: rgba(37,99,235,.2); }
+
+.dao-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.dao-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+}
+.dao-badge {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.badge-pending  { background: #fef3c7; color: #92400e; }
+.badge-review   { background: #dbeafe; color: #1e40af; }
+.badge-voting   { background: #ede9fe; color: #5b21b6; }
+.badge-passed   { background: #dcfce7; color: #14532d; }
+.badge-rejected { background: #fee2e2; color: #7f1d1d; }
+
+.dao-card-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.dao-card-meta span { display: flex; align-items: center; gap: 4px; }
+
+/* ── 상세 패널 ── */
+.dao-detail { display: none; }
+.dao-detail.open { display: block; }
+
+.dao-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.dao-detail-back {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+.dao-detail-back:hover { color: var(--text); border-color: var(--text); }
+
+.dao-detail-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.dao-detail-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+.dao-detail-meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.dao-detail-body {
+  font-size: 0.95rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── 진행 상태 바 ── */
+.dao-progress-wrap {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.dao-progress-title { font-size: 0.85rem; font-weight: 700; color: var(--muted); margin-bottom: 12px; }
+.dao-progress-bar-wrap {
+  background: #fee2e2;
+  border-radius: 99px;
+  height: 12px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.dao-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #7c3aed);
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+.dao-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.dao-progress-yes { color: var(--accent); font-weight: 700; }
+.dao-progress-no  { color: var(--danger); font-weight: 700; }
+
+/* 지지 진행 */
+.dao-support-bar-wrap {
+  background: #e5e7eb;
+  border-radius: 99px;
+  height: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.dao-support-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #059669, #10b981);
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+
+/* ── 액션 버튼 영역 ── */
+.dao-actions {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.dao-actions .hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* ── 댓글 ── */
+.dao-comments {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+}
+.dao-comments-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 16px; }
+.dao-comment-form { display: flex; gap: 8px; margin-bottom: 20px; }
+.dao-comment-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  resize: none;
+  min-height: 60px;
+  font-family: inherit;
+}
+.dao-comment-input:focus { outline: none; border-color: var(--accent); }
+
+.dao-comment-list { display: flex; flex-direction: column; gap: 12px; }
+.dao-comment-item {
+  padding: 12px 14px;
+  background: var(--bg);
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+.dao-comment-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+  display: flex;
+  gap: 8px;
+}
+.dao-comment-body { line-height: 1.6; word-break: break-word; }
+
+/* ── 폼 모달 ── */
+.dao-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 900;
+  align-items: flex-end;
+  justify-content: center;
+}
+.dao-modal-overlay.open { display: flex; }
+
+@media (min-width: 600px) {
+  .dao-modal-overlay { align-items: center; }
+}
+
+.dao-modal {
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 32px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+@media (min-width: 600px) {
+  .dao-modal { border-radius: 20px; }
+}
+
+.dao-modal-title { font-size: 1.1rem; font-weight: 800; margin: 0 0 20px; }
+
+.dao-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.dao-field label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.dao-field input,
+.dao-field textarea {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+.dao-field input:focus,
+.dao-field textarea:focus { outline: none; border-color: var(--accent); }
+.dao-field textarea { min-height: 140px; resize: vertical; }
+
+.dao-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+
+/* ── 빈 상태 ── */
+.dao-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.dao-empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.dao-empty-text { font-size: 0.95rem; }
+
+/* ── 반응형 ── */
+@media (max-width: 480px) {
+  .dao-card     { padding: 14px 16px; }
+  .dao-detail-card { padding: 16px; }
+  .dao-actions  { flex-direction: column; align-items: stretch; }
+  .dao-modal    { padding: 20px 16px 28px; }
+}

@@ -1,0 +1,142 @@
+<!-- /dao.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JUMP DAO 의결 - Jump</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/pages/dao.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="dao-page">
+
+    <!-- 목록 뷰 -->
+    <div id="daoListView">
+      <div class="dao-header">
+        <h1>JUMP DAO 의결</h1>
+        <p>JUMP 토큰 스테이킹 보유자가 참여하는 분산 자율 조직(DAO) 의결 시스템입니다.</p>
+      </div>
+
+      <!-- 탭 -->
+      <div class="dao-tabs" id="daoTabs">
+        <button class="dao-tab active" data-status="all">전체</button>
+        <button class="dao-tab" data-status="pending_admin">승인 대기</button>
+        <button class="dao-tab" data-status="review">심의 중</button>
+        <button class="dao-tab" data-status="voting">의결 중</button>
+        <button class="dao-tab" data-status="passed">통과</button>
+        <button class="dao-tab" data-status="rejected">부결/반려</button>
+      </div>
+
+      <!-- 도구 모음 -->
+      <div class="dao-toolbar">
+        <span class="dao-count" id="daoCount"></span>
+        <button class="btn btn--primary btn--sm" id="btnCreateProposal" style="display:none;">+ 안건 등록</button>
+      </div>
+
+      <!-- 목록 -->
+      <div class="dao-list" id="daoList">
+        <div class="dao-empty">
+          <div class="dao-empty-icon">⏳</div>
+          <div class="dao-empty-text">불러오는 중...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상세 뷰 -->
+    <div id="daoDetailView" class="dao-detail">
+      <div class="dao-detail-header">
+        <button class="dao-detail-back" id="btnDaoBack">← 목록</button>
+        <span class="dao-badge" id="detailBadge"></span>
+      </div>
+
+      <div class="dao-detail-card">
+        <h2 class="dao-detail-title" id="detailTitle"></h2>
+        <div class="dao-detail-meta" id="detailMeta"></div>
+        <div class="dao-detail-body" id="detailBody"></div>
+      </div>
+
+      <!-- 지지 현황 (review 상태) -->
+      <div class="dao-progress-wrap" id="supportProgress" style="display:none;">
+        <div class="dao-progress-title">📋 안건 지지 현황 (목표: 250,000 JUMP)</div>
+        <div class="dao-support-bar-wrap">
+          <div class="dao-support-bar" id="supportBar" style="width:0%"></div>
+        </div>
+        <div class="dao-progress-labels">
+          <span id="supportYes" class="dao-progress-yes">0 JUMP</span>
+          <span id="supportTarget">목표 250,000 JUMP</span>
+        </div>
+      </div>
+
+      <!-- 투표 현황 (voting/passed/rejected 상태) -->
+      <div class="dao-progress-wrap" id="voteProgress" style="display:none;">
+        <div class="dao-progress-title">🗳️ 투표 현황</div>
+        <div class="dao-progress-bar-wrap">
+          <div class="dao-progress-bar" id="voteBar" style="width:0%"></div>
+        </div>
+        <div class="dao-progress-labels">
+          <span id="voteYesLabel" class="dao-progress-yes">찬성 0표 (0 JUMP)</span>
+          <span id="voteNoLabel"  class="dao-progress-no">반대 0표 (0 JUMP)</span>
+        </div>
+        <div style="margin-top:8px;font-size:0.8rem;color:var(--muted);" id="voteQuorum"></div>
+      </div>
+
+      <!-- 액션 버튼 -->
+      <div class="dao-actions" id="daoActions" style="display:none;"></div>
+
+      <!-- 관리자 패널 -->
+      <div class="dao-actions" id="adminActions" style="display:none;">
+        <strong style="width:100%;font-size:0.85rem;">🔑 관리자</strong>
+        <button class="btn btn--primary btn--sm" id="btnAdminApprove">승인 → 심의</button>
+        <button class="btn btn--sm" id="btnAdminReject" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">반려</button>
+      </div>
+
+      <!-- 댓글 -->
+      <div class="dao-comments" id="commentsSection" style="display:none;">
+        <div class="dao-comments-title">💬 댓글 <span id="commentCount" style="color:var(--muted);font-weight:400;"></span></div>
+        <div id="commentFormWrap">
+          <div class="dao-comment-form">
+            <textarea class="dao-comment-input" id="commentInput" placeholder="댓글을 입력하세요 (JUMP 10,000개 이상 스테이킹 필요)" maxlength="500" rows="2"></textarea>
+            <button class="btn btn--primary btn--sm" id="btnComment" style="align-self:flex-end;">등록</button>
+          </div>
+          <div id="commentMsg" style="font-size:0.8rem;color:var(--muted);margin-top:4px;"></div>
+        </div>
+        <div class="dao-comment-list" id="commentList"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <!-- 안건 등록 모달 -->
+  <div class="dao-modal-overlay" id="createModal">
+    <div class="dao-modal">
+      <div class="dao-modal-title">✍️ 안건 심의 등록</div>
+      <p style="font-size:0.82rem;color:var(--muted);margin:0 0 16px;">JUMP 10,000개 이상 스테이킹 + 관리자 승인 후 심의가 시작됩니다.</p>
+      <div class="dao-field">
+        <label>제목 <em style="color:var(--danger)">*</em></label>
+        <input type="text" id="proposalTitle" maxlength="100" placeholder="안건 제목을 입력하세요" />
+      </div>
+      <div class="dao-field">
+        <label>내용 <em style="color:var(--danger)">*</em></label>
+        <textarea id="proposalContent" maxlength="5000" placeholder="안건 내용을 상세히 작성해주세요 (최대 5,000자)"></textarea>
+      </div>
+      <div id="createMsg" style="font-size:0.82rem;color:var(--danger);min-height:20px;"></div>
+      <div class="dao-modal-actions">
+        <button class="btn btn--sm" id="btnCreateCancel">취소</button>
+        <button class="btn btn--primary" id="btnCreateSubmit">등록하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/dao.js"></script>
+</body>
+</html>

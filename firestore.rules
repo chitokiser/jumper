@@ -346,6 +346,29 @@ service cloud.firestore {
             && resource.data.sellerUid == request.auth.uid);
     }
 
+    // ── DAO 의결 시스템 ────────────────────────────────────────────
+    // 안건 목록·상세: 누구나 읽기 가능
+    // 등록·지지·투표·댓글: Cloud Function 서버 사이드 처리 (직접 쓰기 불가)
+    match /dao_proposals/{proposalId} {
+      allow get, list: if true;
+      allow write: if false; // Cloud Function만 쓰기 가능
+
+      match /supporters/{uid} {
+        allow get: if signedIn() && request.auth.uid == uid;
+        allow list: if isAdmin();
+        allow write: if false;
+      }
+      match /votes/{uid} {
+        allow get: if signedIn() && request.auth.uid == uid;
+        allow list: if isAdmin();
+        allow write: if false;
+      }
+      match /comments/{commentId} {
+        allow get, list: if true;
+        allow write: if false;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
