@@ -71,6 +71,34 @@
       from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
       to   { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+    .receipt-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface, #f9fafb);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      animation: fadeIn .3s ease;
+    }
+    .receipt-item.new-item {
+      border-color: #16a34a;
+      background: #f0fdf4;
+    }
+    .receipt-item .ri-icon { font-size: 1.3rem; flex-shrink:0; }
+    .receipt-item .ri-body { flex: 1; }
+    .receipt-item .ri-hex  { font-weight: 700; color: var(--accent,#7c3aed); font-size:0.95rem; }
+    .receipt-item .ri-fiat { color: var(--muted,#6b7280); font-size:0.8rem; }
+    .receipt-item .ri-time { font-size:0.75rem; color: var(--muted,#6b7280); flex-shrink:0; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 
@@ -166,6 +194,22 @@
                 QR 이미지 저장
               </button>
             </div>
+          </div>
+
+          <!-- 입금 확인 패널 -->
+          <div id="receiptSection" style="display:none; margin-top:28px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+              <h3 style="margin:0; font-size:1rem; font-weight:700;">오늘 입금 내역</h3>
+              <span style="display:flex; align-items:center; gap:6px;">
+                <span id="receiptListeningDot" style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block;animation:pulse 1.4s infinite;"></span>
+                <span id="receiptTotal" style="font-size:0.9rem; color:var(--accent,#7c3aed); font-weight:600;">합계: 0 HEX</span>
+              </span>
+            </div>
+            <div id="receiptWaiting" style="text-align:center; padding:24px 0; color:var(--muted,#6b7280); font-size:0.9rem;">
+              <div style="font-size:1.8rem; margin-bottom:6px;">⏳</div>
+              결제 대기 중...
+            </div>
+            <div id="receiptList" style="display:flex; flex-direction:column; gap:8px;"></div>
           </div>
         </div>
 

@@ -183,6 +183,74 @@ function bindQrForm(merchantId, merchantName) {
   });
 }
 
+// ── HEX 변환 ──────────────────────────────────────────
+function weiToHex(weiStr) {
+  if (!weiStr) return null;
+  try {
+    const n = BigInt(weiStr);
+    const whole = n / 10n ** 18n;
+    const frac  = n % 10n ** 18n;
+    return Number(whole) + Number(frac) / 1e18;
+  } catch (_) { return null; }
+}
+
+// ── 입금 내역 상태 ─────────────────────────────────────
+let _receiptTotalHex = 0;
+let _receiptCount    = 0;
+
+function resetReceipts() {
+  _receiptTotalHex = 0;
+  _receiptCount    = 0;
+  const list = $("receiptList");
+  if (list) list.innerHTML = "";
+  show("receiptWaiting", true);
+  setText("receiptTotal", "합계: 0 HEX");
+}
+
+function addReceiptItem(data, isNew = false) {
+  const hexVal = weiToHex(data.netAmountWei) ?? weiToHex(data.amountWei) ?? Number(data.amountHex || 0);
+  if (!hexVal) return;
+
+  _receiptTotalHex += hexVal;
+  _receiptCount    += 1;
+
+  // 대기 안내 숨기기
+  show("receiptWaiting", false);
+
+  // 합계 갱신
+  setText("receiptTotal", `합계: ${_receiptTotalHex.toFixed(4)} HEX`);
+
+  // 시각 포맷
+  const ts   = data.createdAt?.toDate?.() ?? new Date();
+  const time = ts.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+  // 법정화폐 표시
+  const cur       = data.currency || "KRW";
+  const fiatAmt   = cur === "VND" ? data.amountVnd : data.amountKrw;
+  const fiatDisp  = fiatAmt
+    ? (cur === "VND" ? `${Number(fiatAmt).toLocaleString()}동` : `${Number(fiatAmt).toLocaleString()}원`)
+    : "";
+
+  // 카드 생성
+  const item = document.createElement("div");
+  item.className = `receipt-item${isNew ? " new-item" : ""}`;
+  item.innerHTML = `
+    <div class="ri-icon">${isNew ? "✅" : "💳"}</div>
+    <div class="ri-body">
+      <div class="ri-hex">+${hexVal.toFixed(4)} HEX</div>
+      ${fiatDisp ? `<div class="ri-fiat">${fiatDisp}</div>` : ""}
+    </div>
+    <div class="ri-time">${time}</div>
+  `;
+
+  // 최신 항목이 맨 위
+  const list = $("receiptList");
+  if (list) list.prepend(item);
+
+  // new 스타일은 5초 후 해제
+  if (isNew) setTimeout(() => item.classList.remove("new-item"), 5000);
+}
+
 // ── QR 생성 ────────────────────────────────────────────
 function generateQr(merchantId, merchantName, amount, currency = "KRW") {
   const canvas = $("qrCanvas");
@@ -220,6 +288,10 @@ function generateQr(merchantId, merchantName, amount, currency = "KRW") {
         link.click();
       };
     }
+
+    // 입금 확인 패널 표시 (리셋 후)
+    resetReceipts();
+    show("receiptSection", true);
 
     // 생성된 QR 영역으로 스크롤
     $("qrSection")?.scrollIntoView({ behavior: "smooth", block: "center" });
