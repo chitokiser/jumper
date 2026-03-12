@@ -1,0 +1,122 @@
+<!-- /merchants.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>가맹점 지도 - Jump</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+
+  <style>
+    .mc-wrap { max-width: 1100px; margin: 0 auto; padding: 0 12px 48px; }
+    .mc-hd { padding: 18px 0 12px; }
+    .mc-hd h1 { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+    .mc-hd p  { font-size: 13px; color: #888; margin: 0; }
+
+    /* 지도 */
+    .mc-map-wrap {
+      position: relative; height: 420px;
+      border-radius: 10px; overflow: hidden;
+      border: 1px solid #e0e0e0;
+      margin-bottom: 16px;
+      background: #f3f4f6;
+    }
+    @media (max-width: 600px) { .mc-map-wrap { height: 300px; } }
+    #merchantMap { width: 100%; height: 100%; }
+
+    /* 범례 */
+    .mc-legend {
+      display: flex; gap: 14px; flex-wrap: wrap;
+      font-size: 12px; color: #555; margin-bottom: 12px;
+    }
+    .mc-legend-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      display: inline-block; vertical-align: middle;
+      margin-right: 4px; border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+    }
+
+    /* 카드 그리드 */
+    .mc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .mc-card {
+      background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+      padding: 14px 16px; cursor: pointer;
+      transition: box-shadow .15s, border-color .15s;
+    }
+    .mc-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,.1); border-color: #f59e0b; }
+    .mc-card-name { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+    .mc-card-career { font-size: 12px; color: #f59e0b; margin-bottom: 4px; }
+    .mc-card-region { font-size: 12px; color: #888; }
+    .mc-card-desc   { font-size: 12px; color: #555; margin-top: 6px; }
+    .mc-card-no-map { font-size: 11px; color: #bbb; margin-top: 4px; }
+    .mc-card-phone  { font-size: 12px; color: #374151; margin-top: 4px; }
+    .mc-card-gmap   { display: inline-block; margin-top: 8px; font-size: 12px; color: #2563eb; text-decoration: none; }
+    .mc-card-gmap:hover { text-decoration: underline; }
+    .mc-badge-map {
+      display: inline-block; font-size: 10px; padding: 1px 6px;
+      border-radius: 4px; background: #fef3c7; color: #92400e;
+      margin-left: 6px; vertical-align: middle;
+    }
+
+    .mc-state { color: #888; font-size: 13px; padding: 20px 0; }
+    .mc-filter { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+    .mc-filter input {
+      border: 1px solid #ccc; border-radius: 6px; padding: 6px 10px;
+      font-size: 13px; outline: none; flex: 1; min-width: 160px;
+    }
+    .mc-filter input:focus { border-color: #f59e0b; }
+    .mc-count { font-size: 12px; color: #888; }
+  </style>
+
+  <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";</script>
+  <script src="/assets/js/partials.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <div class="mc-wrap">
+
+      <div class="mc-hd">
+        <h1>🗺️ 가맹점 지도</h1>
+        <p>Jump 네트워크에 등록된 가맹점을 지도에서 확인하세요.</p>
+      </div>
+
+      <!-- 지도 -->
+      <div class="mc-map-wrap">
+        <div id="merchantMap"></div>
+      </div>
+
+      <!-- 범례 -->
+      <div class="mc-legend">
+        <span><span class="mc-legend-dot" style="background:#f59e0b;"></span>가맹점 (지도 등록)</span>
+        <span><span class="mc-legend-dot" style="background:#d1d5db;"></span>지도 미등록</span>
+      </div>
+
+      <!-- 필터 -->
+      <div class="mc-filter">
+        <input type="text" id="mcSearch" placeholder="가맹점명, 업종, 지역 검색…" />
+        <span class="mc-count" id="mcCount"></span>
+      </div>
+
+      <!-- 카드 목록 -->
+      <div class="mc-grid" id="mcGrid">
+        <p class="mc-state">불러오는 중...</p>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/merchants.js"></script>
+</body>
+</html>

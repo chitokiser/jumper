@@ -275,21 +275,24 @@ async function loadMentees() {
 }
 
 const TX_CONFIG = {
-  buy:          { label: "충전",        dir: "income",  icon: "💰" },
-  credit:       { label: "포인트 지급", dir: "income",  icon: "⭐" },
-  p2p:          { label: "P2P 수령",    dir: "income",  icon: "📥" },
-  p2p_merge:    { label: "P2P 합산",    dir: "income",  icon: "📥" },
-  withdraw:     { label: "인출",        dir: "expense", icon: "📤" },
-  pay_merchant: { label: "가맹점 결제", dir: "expense", icon: "🛒" },
-  jackpot_paid: { label: "🎰 잭팟 당첨금", dir: "income",  icon: "🏆" },
-  jackpot_requested: { label: "잭팟 인출 신청", dir: "pending", icon: "⏳" },
+  buy:             { label: "충전",          dir: "income",  icon: "💰" },
+  credit:          { label: "포인트 지급",   dir: "income",  icon: "⭐" },
+  p2p:             { label: "P2P 수령",      dir: "income",  icon: "📥" },
+  p2p_merge:       { label: "P2P 합산",      dir: "income",  icon: "📥" },
+  withdraw:        { label: "인출",          dir: "expense", icon: "📤" },
+  pay_merchant:    { label: "가맹점 결제",   dir: "expense", icon: "🛒" },
+  merchant_income: { label: "가맹점 수익",   dir: "income",  icon: "🏪" },
+  jackpot_paid:    { label: "🎰 잭팟 당첨금", dir: "income",  icon: "🏆" },
+  jackpot_requested: { label: "잭팟 인출 신청", dir: "pending",  icon: "⏳" },
   jackpot_rejected:  { label: "잭팟 인출 거절", dir: "rejected", icon: "✕" },
 };
 
 function txAmountHex(tx) {
-  if (tx.amountHex) return Number(tx.amountHex);
-  if (tx.amountWei) return Number(formatWei(tx.amountWei));
-  if (tx.priceWei)  return Number(formatWei(tx.priceWei));
+  if (tx.amountHex)    return Number(tx.amountHex);
+  // merchant_income 은 순수익(netAmountWei) 우선 표시
+  if (tx.netAmountWei) return Number(formatWei(tx.netAmountWei));
+  if (tx.amountWei)    return Number(formatWei(tx.amountWei));
+  if (tx.priceWei)     return Number(formatWei(tx.priceWei));
   return 0;
 }
 
@@ -339,9 +342,20 @@ async function loadTxHistory(uid, walletAddress) {
     snap.forEach((d) => {
       const tx = d.data();
       const cfg = TX_CONFIG[tx.type] || { label: tx.type, dir: "expense", icon: "📋" };
+
+      // merchant_income: 가맹점명 + 수수료 정보를 label에 포함
+      let label = cfg.label;
+      if (tx.type === "merchant_income" && tx.merchantName) {
+        const feePct = tx.feeBps != null ? ` (수수료 ${(tx.feeBps / 100).toFixed(0)}%)` : "";
+        label = `🏪 ${tx.merchantName}${feePct}`;
+      }
+      if (tx.type === "pay_merchant" && tx.merchantName) {
+        label = `🛒 ${tx.merchantName}`;
+      }
+
       unified.push({
         sortTs: tx.createdAt?.toDate ? tx.createdAt.toDate().getTime() : 0,
-        label: cfg.label,
+        label,
         icon: cfg.icon,
         dir: cfg.dir,
         amountHex: txAmountHex(tx),
@@ -1170,7 +1184,11 @@ function bindJackpotActions(wallet) {
       const val = String($("jpWithdrawAmount")?.value || "").trim();
       const amount = val ? Number(val) : __jpClaimableHex;
       if (!amount || amount <= 0) {
-        alert("\uC778\uCD9C \uAC00\uB2A5 \uC794\uC561\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        alert("인출 가능 잔액이 없습니다.");
+        return;
+      }
+      if (amount < 10) {
+        alert("잭팟 인출은 최소 10 HEX 이상부터 가능합니다.\n현재 잔액: " + amount.toFixed(4) + " HEX");
         return;
       }
       try {
@@ -1189,7 +1207,11 @@ function bindJackpotActions(wallet) {
   if (btnConvert) {
     btnConvert.onclick = async () => {
       if (!__jpClaimableHex || __jpClaimableHex <= 0) {
-        alert("\uC778\uCD9C \uAC00\uB2A5 \uC794\uC561\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        alert("인출 가능 잔액이 없습니다.");
+        return;
+      }
+      if (__jpClaimableHex < 10) {
+        alert("잭팟 인출은 최소 10 HEX 이상부터 가능합니다.\n현재 잔액: " + __jpClaimableHex.toFixed(4) + " HEX");
         return;
       }
       try {

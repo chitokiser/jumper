@@ -1164,6 +1164,22 @@ exports.daoVoteProposal = onCall(
   })
 );
 
+// 안건 삭제 (pending_admin, 작성자/관리자)
+exports.daoDeleteProposal = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return daoH.deleteProposal(uid, request.data);
+  })
+);
+
+// 안건 수정 (pending_admin, 작성자/관리자)
+exports.daoUpdateProposal = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return daoH.updateProposal(uid, request.data);
+  })
+);
+
 // 댓글 (JUMP 1만개 이상 스테이킹 필요)
 exports.daoCommentProposal = onCall(
   wrapError(async (request) => {

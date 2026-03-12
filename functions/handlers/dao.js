@@ -31,9 +31,19 @@ async function getStaked(walletAddress) {
   return Number(info[2]); // depo (staked JUMP, 0 decimals)
 }
 
+const ADMIN_EMAILS = ['daguri75@gmail.com'];
+
 async function requireAdmin(uid) {
+  // Firestore admins 컬렉션 체크
   const snap = await db.collection('admins').doc(uid).get();
-  if (!snap.exists) throw new Error('관리자 권한이 없습니다');
+  if (snap.exists) return;
+
+  // 이메일 allowlist 체크
+  const userSnap = await db.collection('users').doc(uid).get();
+  const email = userSnap.data()?.email || '';
+  if (ADMIN_EMAILS.includes(email.toLowerCase())) return;
+
+  throw new Error('관리자 권한이 없습니다');
 }
 
 // ── 1. 안건 심의 등록 ─────────────────────────────────────────────
@@ -231,7 +241,54 @@ async function checkVotingResult(proposalRef) {
   }
 }
 
-// ── 6. 댓글 ──────────────────────────────────────────────────────
+// ── 6. 안건 수정 (pending_admin 상태, 작성자 또는 관리자만) ──────────
+async function updateProposal(uid, { proposalId, title, content }) {
+  if (!title?.trim()) throw new Error('제목을 입력해주세요');
+  if (!content?.trim()) throw new Error('내용을 입력해주세요');
+  if (title.trim().length > 100) throw new Error('제목은 100자 이내로 입력해주세요');
+  if (content.trim().length > 5000) throw new Error('내용은 5000자 이내로 입력해주세요');
+
+  const ref  = db.collection('dao_proposals').doc(proposalId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error('안건을 찾을 수 없습니다');
+
+  const d = snap.data();
+  if (d.status !== 'pending_admin') throw new Error('승인 대기 상태인 안건만 수정할 수 있습니다');
+
+  // 작성자 또는 관리자만 수정 가능
+  const adminSnap = await db.collection('admins').doc(uid).get();
+  const isAdmin   = adminSnap.exists;
+  if (d.authorUid !== uid && !isAdmin) throw new Error('수정 권한이 없습니다 (작성자 또는 관리자만 가능)');
+
+  await ref.update({
+    title:     title.trim(),
+    content:   content.trim(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedBy: uid,
+  });
+
+  logger.info('dao.updateProposal', { uid, proposalId, isAdmin });
+  return { ok: true };
+}
+
+// ── 7. 안건 삭제 (pending_admin 상태, 작성자 또는 관리자만) ──────────
+async function deleteProposal(uid, { proposalId }) {
+  const ref  = db.collection('dao_proposals').doc(proposalId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error('안건을 찾을 수 없습니다');
+
+  const d = snap.data();
+  if (d.status !== 'pending_admin') throw new Error('승인 대기 상태인 안건만 삭제할 수 있습니다');
+
+  const adminSnap = await db.collection('admins').doc(uid).get();
+  if (d.authorUid !== uid && !adminSnap.exists) throw new Error('삭제 권한이 없습니다');
+
+  await ref.delete();
+  logger.info('dao.deleteProposal', { uid, proposalId });
+  return { ok: true };
+}
+
+// ── 8. 댓글 ──────────────────────────────────────────────────────
 // 조건: JUMP 1만개 이상 스테이킹
 async function commentProposal(uid, { proposalId, content }) {
   if (!content?.trim()) throw new Error('댓글 내용을 입력해주세요');
@@ -266,5 +323,7 @@ module.exports = {
   adminRejectProposal,
   supportProposal,
   voteProposal,
+  updateProposal,
+  deleteProposal,
   commentProposal,
 };

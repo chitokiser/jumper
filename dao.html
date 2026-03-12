@@ -90,6 +90,12 @@
       <!-- 액션 버튼 -->
       <div class="dao-actions" id="daoActions" style="display:none;"></div>
 
+      <!-- 수정/삭제 버튼 (pending_admin + 작성자/관리자) -->
+      <div id="editBtnWrap" style="display:none;margin-bottom:8px;gap:8px;">
+        <button class="btn btn--sm" id="btnEditProposal" style="background:#fef9c3;color:#854d0e;border-color:#fde047;">✏️ 안건 수정</button>
+        <button class="btn btn--sm" id="btnDeleteProposal" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">🗑️ 안건 삭제</button>
+      </div>
+
       <!-- 관리자 패널 -->
       <div class="dao-actions" id="adminActions" style="display:none;">
         <strong style="width:100%;font-size:0.85rem;">🔑 관리자</strong>
@@ -114,6 +120,27 @@
   </main>
 
   <div id="siteFooter"></div>
+
+  <!-- 안건 수정 모달 -->
+  <div class="dao-modal-overlay" id="editModal">
+    <div class="dao-modal">
+      <div class="dao-modal-title">✏️ 안건 수정</div>
+      <p style="font-size:0.82rem;color:var(--muted);margin:0 0 16px;">승인 대기 중인 안건의 제목과 내용을 수정할 수 있습니다.</p>
+      <div class="dao-field">
+        <label>제목 <em style="color:var(--danger)">*</em></label>
+        <input type="text" id="editTitle" maxlength="100" placeholder="안건 제목을 입력하세요" />
+      </div>
+      <div class="dao-field">
+        <label>내용 <em style="color:var(--danger)">*</em></label>
+        <textarea id="editContent" maxlength="5000" placeholder="안건 내용을 상세히 작성해주세요 (최대 5,000자)"></textarea>
+      </div>
+      <div id="editMsg" style="font-size:0.82rem;color:var(--danger);min-height:20px;"></div>
+      <div class="dao-modal-actions">
+        <button class="btn btn--sm" id="btnEditCancel">취소</button>
+        <button class="btn btn--primary" id="btnEditSubmit">저장하기</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 안건 등록 모달 -->
   <div class="dao-modal-overlay" id="createModal">

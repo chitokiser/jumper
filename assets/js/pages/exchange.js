@@ -41,53 +41,173 @@ function fmtTimeLeft(ts, addDays = 0) {
 }
 
 // ─────────────────────────────────────────────────
-// 가격 차트 (Chart.js)
+// 캔들차트 (chartjs-chart-financial)
 // ─────────────────────────────────────────────────
-let _chart = null;
+let _chart     = null;
+let _allOhlc   = [];   // 전체 캔들 캐시
+let _tfLimit   = 0;    // 0 = 전체, N = 최근 N개
 
-function renderChart(prices) {
-  const canvas = $('priceChart');
-  if (!canvas || !prices || prices.length === 0) return;
+/** 가격 배열 → OHLC 캔들 배열 변환 */
+function buildOHLC(prices) {
+  if (!prices || prices.length < 2) return [];
 
-  const data   = prices.map(p => Number(BigInt(p)) / 1e18);
-  const labels = data.map((_, i) => i + 1);
+  const TARGET  = 80;
+  const bucket  = Math.max(1, Math.ceil((prices.length - 1) / TARGET));
+  const now     = Date.now();
+  const candles = [];
+  const total   = Math.ceil((prices.length - 1) / bucket);
 
-  if (_chart) {
-    _chart.data.labels            = labels;
-    _chart.data.datasets[0].data  = data;
-    _chart.update('none');
-    return;
+  for (let i = 1; i < prices.length; i += bucket) {
+    const slice = prices.slice(i - 1, i + bucket);
+    const o = slice[0];
+    const c = slice[slice.length - 1];
+    const hi = Math.max(...slice);
+    const lo = Math.min(...slice);
+    const mid = (hi + lo) / 2 || 1;
+    const minWick = mid * 0.003;
+
+    candles.push({
+      x: now - (total - candles.length) * 3_600_000,
+      o,
+      h: hi + minWick,
+      l: Math.max(0, lo - minWick),
+      c,
+    });
   }
+  return candles;
+}
+
+/** 티커 헤더 현재가 + 등락율 업데이트 */
+function updateChartHeader(prices) {
+  const priceEl  = $('chartCurrentPrice');
+  const changeEl = $('chartPriceChange');
+  if (!priceEl || prices.length === 0) return;
+
+  const last  = prices[prices.length - 1];
+  const first = prices[0];
+  priceEl.textContent = last.toFixed(6) + ' HEX';
+  priceEl.className   = 'ex-ticker-price';   // 기본 색
+
+  if (changeEl && first > 0) {
+    const pct  = ((last - first) / first) * 100;
+    const sign = pct >= 0 ? '+' : '';
+    changeEl.textContent = `${sign}${pct.toFixed(2)}%`;
+    changeEl.className   = 'ex-ticker-change ' + (pct >= 0 ? 'pos' : 'neg');
+    priceEl.classList.add(pct >= 0 ? 'up' : 'dn');
+  }
+}
+
+/** OHLC 인라인 바 업데이트 */
+function updateOhlcBar(d) {
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v.toFixed(6); };
+  set('ohlcO', d.o); set('ohlcH', d.h); set('ohlcL', d.l); set('ohlcC', d.c);
+}
+
+/** 차트 데이터셋만 교체 (재생성 없이) */
+function applyTfFilter() {
+  if (!_chart || !_allOhlc.length) return;
+  const data = _tfLimit > 0 ? _allOhlc.slice(-_tfLimit) : _allOhlc;
+  _chart.data.datasets[0].data = data;
+  _chart.update('none');
+  if (data.length) updateOhlcBar(data[data.length - 1]);
+}
+
+/** TF 변경 핸들러 (HTML에서 호출) */
+window.__exchangeSetTf = (limit) => {
+  _tfLimit = limit;
+  applyTfFilter();
+};
+
+function renderChart(pricesRaw) {
+  const canvas = $('priceChart');
+  if (!canvas || !pricesRaw || pricesRaw.length === 0) return;
+
+  const prices = pricesRaw.map(p => Number(BigInt(p)) / 1e18);
+  _allOhlc     = buildOHLC(prices);
+  if (_allOhlc.length === 0) return;
+
+  updateChartHeader(prices);
+
+  const visData = _tfLimit > 0 ? _allOhlc.slice(-_tfLimit) : _allOhlc;
+  if (visData.length) updateOhlcBar(visData[visData.length - 1]);
+
+  if (_chart) { _chart.destroy(); _chart = null; }
 
   _chart = new Chart(canvas, {
-    type: 'line',
+    type: 'candlestick',
     data: {
-      labels,
       datasets: [{
-        label:           'JUMP 가격(HEX)',
-        data,
-        borderColor:     '#06b6d4',
-        backgroundColor: 'rgba(6,182,212,0.07)',
-        borderWidth:     2,
-        pointRadius:     data.length > 20 ? 0 : 3,
-        tension:         0.25,
-        fill:            true,
+        label: 'JUMP/HEX',
+        data:  visData,
+        color: {
+          up:        'rgba(38,166,154,0.9)',
+          down:      'rgba(239,83,80,0.9)',
+          unchanged: 'rgba(120,123,134,0.9)',
+        },
+        borderColor: {
+          up:        '#26a69a',
+          down:      '#ef5350',
+          unchanged: '#787b86',
+        },
       }],
     },
     options: {
-      responsive: true,
-      animation:  false,
+      responsive:          true,
+      maintainAspectRatio: false,
+      animation:           false,
+      layout: { padding: { left: 4, right: 4, top: 8, bottom: 4 } },
       plugins: {
         legend: { display: false },
         tooltip: {
-          callbacks: { label: (ctx) => `${ctx.parsed.y.toFixed(6)} HEX` },
+          mode:            'index',
+          intersect:       false,
+          backgroundColor: '#1e222d',
+          titleColor:      '#9598a1',
+          bodyColor:       '#d1d4dc',
+          borderColor:     '#363a45',
+          borderWidth:     1,
+          padding:         10,
+          callbacks: {
+            title: (items) => {
+              const d = new Date(items[0].raw.x);
+              return d.toLocaleString('ko-KR');
+            },
+            label: (ctx) => {
+              const d = ctx.raw;
+              updateOhlcBar(d);
+              return [
+                ` O  ${d.o.toFixed(6)}`,
+                ` H  ${d.h.toFixed(6)}`,
+                ` L  ${d.l.toFixed(6)}`,
+                ` C  ${d.c.toFixed(6)}`,
+              ];
+            },
+          },
         },
       },
       scales: {
-        x: { display: false },
+        x: {
+          type: 'time',
+          time: { unit: 'hour', displayFormats: { hour: 'MM/dd HH시' } },
+          ticks: {
+            maxTicksLimit: 10,
+            color: '#555',
+            font: { size: 10 },
+            maxRotation: 0,
+          },
+          grid: { color: '#1a1e2a', drawBorder: false },
+          border: { color: '#2a2e39' },
+        },
         y: {
-          ticks: { callback: (v) => v.toFixed(4) },
-          grid:  { color: '#f0f0f0' },
+          position: 'right',
+          ticks: {
+            callback: (v) => v.toFixed(5),
+            color: '#555',
+            font:  { size: 10 },
+            maxTicksLimit: 8,
+          },
+          grid:   { color: '#1a1e2a', drawBorder: false },
+          border: { color: '#2a2e39' },
         },
       },
     },
@@ -152,7 +272,7 @@ async function loadStatus() {
     const roiEl  = $('exMyRoi');
     if (roiEl) {
       roiEl.textContent = (roiBps >= 0 ? '+' : '') + (roiBps / 100).toFixed(2) + ' %';
-      roiEl.className   = 'ex-box-value' + (roiBps > 0 ? ' pos' : roiBps < 0 ? ' neg' : '');
+      roiEl.className   = 'ex-info-val' + (roiBps > 0 ? ' pos' : roiBps < 0 ? ' neg' : '');
     }
 
     const aBps = _status.autoStakeBps ?? 1000;
@@ -160,6 +280,28 @@ async function loadStatus() {
     setText('exRate',      (_status.rate ?? 3) + ' %');
     setText('exAct',       actLabel[_status.act] ?? String(_status.act));
     setText('exHexBal',    fmtHex(_status.hexBalance));
+
+    // 티커 헤더 보조 정보
+    setText('tickerRoi',      roiPct.toFixed(3) + ' %');
+    setText('tickerKrw',      krw > 0 ? krw.toLocaleString() + '원' : '-');
+    setText('tickerBankHex',  fmtHex(_status.bankHexBalance));
+    setText('tickerBankJump', fmtJump(_status.bankJumpInventory));
+    setText('tickerAct',      actLabel[_status.act] ?? String(_status.act));
+
+    // 사이드바 포지션 패널
+    setText('sideJumpBal',   fmtJump(_status.jumpBalance));
+    setText('sideStaked',    fmtJump(_status.staked));
+    setText('sideHexBal',    fmtHex(_status.hexBalance));
+    setText('sideAvgPrice',  fmtHex(_status.myAvgBuyPrice));
+    setText('sideMarketCap', fmtHex(myMarketCapWei.toString()));
+    setText('sidePendingDiv',fmtHex(_status.pendingDividend));
+    setText('sideClaimLeft', fmtTimeLeft(_status.lastClaim, 7));
+    setText('sideUnstakeLeft', fmtTimeLeft(_status.stakingTime, 120));
+    const sideRoiEl = $('sideRoi');
+    if (sideRoiEl) {
+      sideRoiEl.textContent = (roiBps >= 0 ? '+' : '') + (roiBps / 100).toFixed(2) + ' %';
+      sideRoiEl.style.color = roiBps > 0 ? '#26a69a' : roiBps < 0 ? '#ef5350' : '#9598a1';
+    }
 
     // 가격 차트 업데이트
     if (_status.chart && _status.chart.length > 0) {

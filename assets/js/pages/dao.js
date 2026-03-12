@@ -21,6 +21,8 @@ const fns  = getFunctions(app);
 const fnCreate        = httpsCallable(fns, 'daoCreateProposal');
 const fnAdminApprove  = httpsCallable(fns, 'daoAdminApproveProposal');
 const fnAdminReject   = httpsCallable(fns, 'daoAdminRejectProposal');
+const fnUpdate        = httpsCallable(fns, 'daoUpdateProposal');
+const fnDelete        = httpsCallable(fns, 'daoDeleteProposal');
 const fnSupport       = httpsCallable(fns, 'daoSupportProposal');
 const fnVote          = httpsCallable(fns, 'daoVoteProposal');
 const fnComment       = httpsCallable(fns, 'daoCommentProposal');
@@ -140,13 +142,21 @@ async function loadProposals() {
   list.innerHTML = '<div class="dao-empty"><div class="dao-empty-icon">⏳</div><div class="dao-empty-text">불러오는 중...</div></div>';
 
   try {
-    let q = query(collection(db, 'dao_proposals'), orderBy('createdAt', 'desc'), limit(100));
-    if (currentFilter !== 'all') {
-      q = query(collection(db, 'dao_proposals'), where('status', '==', currentFilter), orderBy('createdAt', 'desc'), limit(100));
+    let q;
+    if (currentFilter === 'all') {
+      q = query(collection(db, 'dao_proposals'), orderBy('createdAt', 'desc'), limit(100));
+    } else {
+      q = query(collection(db, 'dao_proposals'), where('status', '==', currentFilter), limit(100));
     }
 
     const snap = await getDocs(q);
-    const docs = snap.docs;
+    const docs = currentFilter === 'all'
+      ? snap.docs
+      : snap.docs.sort((a, b) => {
+          const ta = a.data().createdAt?.seconds ?? 0;
+          const tb = b.data().createdAt?.seconds ?? 0;
+          return tb - ta;
+        });
 
     $('daoCount').textContent = `총 ${docs.length}건`;
 
@@ -237,6 +247,21 @@ async function openDetail(id, data) {
 
   // 액션 버튼
   renderActions(id, data);
+
+  // 수정/삭제 버튼 (pending_admin + 작성자 또는 관리자)
+  const sameWallet = myWallet && data.authorWallet &&
+    data.authorWallet.toLowerCase() === myWallet.toLowerCase();
+  const sameUid = currentUser && data.authorUid === currentUser.uid;
+  const canEdit = data.status === 'pending_admin' &&
+    currentUser && (sameWallet || sameUid || isAdmin);
+  const editBtnWrap = $('editBtnWrap');
+  if (editBtnWrap) {
+    editBtnWrap.style.display = canEdit ? 'flex' : 'none';
+    if (canEdit) {
+      $('btnEditProposal').onclick   = () => openEditModal(id, data);
+      $('btnDeleteProposal').onclick = () => doDeleteProposal(id);
+    }
+  }
 
   // 관리자 패널
   const adminEl = $('adminActions');
@@ -333,6 +358,61 @@ async function doVote(proposalId, vote) {
   }
 }
 
+// ── 안건 수정 ────────────────────────────────────────────────────
+function openEditModal(proposalId, data) {
+  $('editTitle').value   = data.title   || '';
+  $('editContent').value = data.content || '';
+  $('editMsg').textContent = '';
+  $('editModal').classList.add('open');
+
+  $('btnEditSubmit').onclick = async () => {
+    const title   = $('editTitle').value.trim();
+    const content = $('editContent').value.trim();
+    const btn     = $('btnEditSubmit');
+
+    if (!title)   { $('editMsg').textContent = '제목을 입력해주세요'; return; }
+    if (!content) { $('editMsg').textContent = '내용을 입력해주세요'; return; }
+
+    btn.disabled = true;
+    btn.textContent = '저장 중...';
+    $('editMsg').textContent = '';
+
+    try {
+      await fnUpdate({ proposalId, title, content });
+      $('editModal').classList.remove('open');
+      // 상세 뷰 갱신
+      const snap = await getDoc(doc(db, 'dao_proposals', proposalId));
+      openDetail(proposalId, snap.data());
+    } catch (err) {
+      $('editMsg').textContent = err.message || '수정 실패';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '저장하기';
+    }
+  };
+}
+
+async function doDeleteProposal(proposalId) {
+  if (!confirm('이 안건을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
+  try {
+    await fnDelete({ proposalId });
+    alert('안건이 삭제되었습니다.');
+    // 목록으로 돌아가기
+    if (unsubComments) { unsubComments(); unsubComments = null; }
+    $('daoDetailView').classList.remove('open');
+    $('daoListView').style.display = '';
+    currentProposal = null;
+    loadProposals();
+  } catch (err) {
+    alert(err.message || '삭제 실패');
+  }
+}
+
+$('btnEditCancel').addEventListener('click', () => $('editModal').classList.remove('open'));
+$('editModal').addEventListener('click', e => {
+  if (e.target === $('editModal')) $('editModal').classList.remove('open');
+});
+
 // ── 관리자 액션 ─────────────────────────────────────────────────
 async function adminAction(proposalId, action) {
   if (action === 'approve') {
@@ -346,8 +426,8 @@ async function adminAction(proposalId, action) {
       alert(err.message || '승인 실패');
     }
   } else {
-    const reason = prompt('반려 사유를 입력하세요:');
-    if (reason === null) return;
+    if (!confirm('이 안건을 반려하시겠습니까?')) return;
+    const reason = prompt('반려 사유를 입력하세요 (선택, 빈 칸도 가능):') ?? '';
     try {
       await fnAdminReject({ proposalId, reason });
       alert('반려 처리되었습니다');

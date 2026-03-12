@@ -294,7 +294,8 @@ service cloud.firestore {
     // merchants (merchants/{merchantId})
     match /merchants/{merchantId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // Cloud Functions only
+      allow create, delete: if false; // Cloud Functions only
+      allow update: if isAdmin();     // 관리자 직접 수정 허용 (gmap 등)
     }
 
     // places (places/{placeId})

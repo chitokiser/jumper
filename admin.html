@@ -33,6 +33,7 @@
               <button class="btn btn-sm" id="btnTabDeposits" type="button">입금 승인</button>
               <button class="btn btn-sm" id="btnTabHex" type="button">HEX 관리</button>
               <button class="btn btn-sm" id="btnTabMembers" type="button">멤버 관리</button>
+              <button class="btn btn-sm" id="btnTabDao" type="button">DAO 승인</button>
             </div>
 
             <div class="toolbar-right">
@@ -227,6 +228,15 @@
               <button class="btn btn-sm" id="btnSetUserLevel" type="button">레벨 설정 실행</button>
               <div id="setLevelResult" style="display:none; margin-top:10px; font-size:13px;"></div>
             </div>
+          </div>
+
+          <!-- ── DAO 승인 탭 ── -->
+          <div id="tabDao" style="display:none;">
+            <div class="list-head">
+              <div class="muted">승인 대기 DAO 안건 (status: pending_admin)</div>
+              <button class="btn btn-sm" id="btnReloadDao" type="button">새로고침</button>
+            </div>
+            <div id="daoApproveList" class="list"></div>
           </div>
 
         </div>

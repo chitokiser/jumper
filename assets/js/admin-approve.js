@@ -39,12 +39,16 @@ const btnTabItems      = $("btnTabItems");
 const btnTabDeposits   = $("btnTabDeposits");
 const btnTabHex        = $("btnTabHex");
 const btnTabMembers    = $("btnTabMembers");
+const btnTabDao        = $("btnTabDao");
 const tabGuides        = $("tabGuides");
 const tabMerchants     = $("tabMerchants");
 const tabItems         = $("tabItems");
 const tabDeposits      = $("tabDeposits");
 const tabHex           = $("tabHex");
 const tabMembers       = $("tabMembers");
+const tabDao           = $("tabDao");
+const daoApproveList   = $("daoApproveList");
+const btnReloadDao     = $("btnReloadDao");
 const itemsFilter      = $("itemsFilter");
 const merchantList     = $("merchantList");
 const btnReloadMerchants = $("btnReloadMerchants");
@@ -382,9 +386,10 @@ async function loadMerchants() {
           <div class="sum-right">
             ${feeBadge}
             <button class="btn btn-sm" type="button" data-act="viewMerchant" data-mid="${esc(mid)}">상세(JSON)</button>
-            ${isAdminUser
-              ? `<button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>`
-              : ""}
+            ${isAdminUser ? `
+              <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
+              <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:${v.gmap ? '#fef3c7' : '#f3f4f6'};color:${v.gmap ? '#92400e' : '#6b7280'};">🗺️ ${v.gmap ? "지도수정" : "지도등록"}</button>
+            ` : ""}
           </div>
         </summary>
         <div class="expander-body">
@@ -407,6 +412,7 @@ async function loadMerchants() {
           ${isAdminUser ? `
           <div class="row-actions">
             <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
+            <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:#fef3c7;color:#92400e;">🗺️ 지도 URL 설정</button>
           </div>` : ""}
         </div>
       </details>
@@ -445,6 +451,84 @@ async function approveMerchant(mid, currentFeeBps) {
     setState("수수료 설정 실패");
     console.error("approveMerchant:", err);
     alert("수수료 설정 실패: " + (err.message || String(err)));
+  }
+}
+
+function parseGmapLatLng(url) {
+  if (!url) return null;
+  try {
+    // @lat,lng 패턴 (구글지도 주소창 URL)
+    const m1 = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m1) return { lat: parseFloat(m1[1]), lng: parseFloat(m1[2]) };
+    // q=lat,lng 파라미터
+    const u = new URL(url);
+    const q = u.searchParams.get("q");
+    if (q) {
+      const m2 = q.match(/^(-?\d+\.\d+),\s*(-?\d+\.\d+)$/);
+      if (m2) return { lat: parseFloat(m2[1]), lng: parseFloat(m2[2]) };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+async function setMerchantGmap(mid, currentGmap) {
+  if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+
+  const input = prompt(
+    `[가맹점 ID: ${mid}] 구글 지도 URL 또는 위도,경도를 입력하세요.\n비우면 지도에서 제거됩니다.\n\n방법 1 — 구글지도 주소창 URL 복사 붙여넣기\n  (maps.app.goo.gl 단축 URL은 불가)\n\n방법 2 — 위도,경도 직접 입력\n  예: 21.0285,105.8542\n  (구글지도에서 원하는 위치를 오른쪽 클릭 → 좌표 복사)`,
+    currentGmap || ""
+  );
+  if (input === null) return;
+
+  const val = input.trim();
+
+  // 비우면 삭제
+  if (!val) {
+    setState("지도 정보 삭제 중…");
+    try {
+      await updateDoc(doc(db, "merchants", mid), { gmap: null, lat: null, lng: null, updatedAt: serverTimestamp() });
+      alert("지도 정보가 삭제되었습니다.");
+      await loadMerchants();
+      setState("지도 정보 삭제 완료");
+    } catch (err) {
+      alert("삭제 실패: " + (err.message || String(err)));
+    }
+    return;
+  }
+
+  let lat = null, lng = null, gmap = val;
+
+  // URL에서 좌표 파싱 시도
+  const parsed = parseGmapLatLng(val);
+  if (parsed) {
+    lat = parsed.lat;
+    lng = parsed.lng;
+  } else if (/^-?\d+\.?\d*,\s*-?\d+\.?\d*$/.test(val)) {
+    // "위도,경도" 직접 입력
+    const parts = val.split(",");
+    lat = parseFloat(parts[0].trim());
+    lng = parseFloat(parts[1].trim());
+    gmap = `https://www.google.com/maps?q=${lat},${lng}`;
+  } else {
+    alert(
+      "⚠️ 좌표를 파싱할 수 없습니다.\n\n" +
+      "단축 URL(maps.app.goo.gl)은 지원하지 않습니다.\n\n" +
+      "구글지도 주소창 전체 URL을 붙여넣거나,\n" +
+      "위도,경도를 직접 입력하세요.\n예: 21.0285,105.8542"
+    );
+    return;
+  }
+
+  setState("지도 정보 저장 중…");
+  try {
+    await updateDoc(doc(db, "merchants", mid), { gmap, lat, lng, updatedAt: serverTimestamp() });
+    alert(`저장 완료! 위도: ${lat}, 경도: ${lng}\n가맹점 지도에서 마커를 확인하세요.`);
+    await loadMerchants();
+    setState("지도 정보 저장 완료");
+  } catch (err) {
+    setState("지도 정보 저장 실패");
+    console.error("setMerchantGmap:", err);
+    alert("저장 실패: " + (err.message || String(err)));
   }
 }
 
@@ -635,6 +719,141 @@ async function execApproveHex() {
   }
 }
 
+// ── DAO 승인 탭 ───────────────────────────────────────────────────────────
+
+async function loadDaoProposals() {
+  if (!daoApproveList) return;
+  daoApproveList.innerHTML = "";
+  setState("DAO 승인 대기 목록 로딩중…");
+
+  try {
+    const q = query(
+      collection(db, "dao_proposals"),
+      where("status", "==", "pending_admin"),
+      limit(100)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      setState("승인 대기 DAO 안건 없음");
+      daoApproveList.innerHTML = '<p class="muted" style="padding:12px 0;">승인 대기 중인 안건이 없습니다.</p>';
+      return;
+    }
+
+    setState(`DAO 승인 대기 ${snap.size}건`);
+    const docs = snap.docs.sort((a, b) => {
+      const ta = a.data().createdAt?.seconds ?? 0;
+      const tb = b.data().createdAt?.seconds ?? 0;
+      return tb - ta;
+    });
+    docs.forEach((d) => {
+      const v  = d.data();
+      const id = d.id;
+      const dateStr = v.createdAt?.seconds
+        ? new Date(v.createdAt.seconds * 1000).toLocaleString("ko")
+        : "-";
+      const shortWallet = v.authorWallet
+        ? v.authorWallet.slice(0, 8) + "…" + v.authorWallet.slice(-4)
+        : "-";
+
+      const el = cardWrap(`
+        <details class="expander" data-dao="${esc(id)}">
+          <summary>
+            <div class="sum-left">
+              <div class="sum-title">${esc(v.title || "(제목없음)")}</div>
+              <div class="sum-sub">${esc(shortWallet)} · ${esc(dateStr)}</div>
+            </div>
+            <div class="sum-right">
+              <span class="badge">pending_admin</span>
+              <button class="btn btn-sm" type="button" data-act="viewDao" data-id="${esc(id)}">상세(JSON)</button>
+              <button class="btn btn-sm" type="button" data-act="approveDao" data-id="${esc(id)}">승인 (심의)</button>
+              <button class="btn btn-sm" type="button" data-act="rejectDao" data-id="${esc(id)}">반려</button>
+            </div>
+          </summary>
+          <div class="expander-body">
+            <div class="kv">
+              <div class="k">제목</div><div class="v">${esc(v.title || "-")}</div>
+              <div class="k">내용</div><div class="v" style="white-space:pre-wrap;">${esc(v.content || "-")}</div>
+              <div class="k">작성자 지갑</div><div class="v" style="font-family:monospace;font-size:12px;word-break:break-all;">${esc(v.authorWallet || "-")}</div>
+              <div class="k">등록 시 스테이킹</div><div class="v">${esc(String(v.authorStaked || 0))} JUMP</div>
+              <div class="k">등록일</div><div class="v">${esc(dateStr)}</div>
+            </div>
+            <div class="row-actions">
+              <button class="btn btn-sm" type="button" data-act="approveDao" data-id="${esc(id)}">승인 (심의 단계로)</button>
+              <button class="btn btn-sm" type="button" data-act="rejectDao" data-id="${esc(id)}">반려</button>
+            </div>
+          </div>
+        </details>
+      `);
+      daoApproveList.appendChild(el);
+    });
+  } catch (err) {
+    setState("로딩 실패: " + err.message);
+    daoApproveList.innerHTML = `<p class="muted">오류: ${esc(err.message)}</p>`;
+    console.error("loadDaoProposals:", err);
+  }
+}
+
+async function approveDaoProposal(id) {
+  if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+  if (!confirm("이 안건을 승인하여 심의(review) 단계로 전환하시겠습니까?")) return;
+
+  setState("DAO 안건 승인 중…");
+  try {
+    const fn  = httpsCallable(functions, "daoAdminApproveProposal");
+    await fn({ proposalId: id });
+    alert("승인 완료. 심의 단계로 전환되었습니다.");
+    await loadDaoProposals();
+    setState("DAO 승인 완료");
+  } catch (err) {
+    setState("DAO 승인 실패");
+    console.error("approveDaoProposal:", err);
+    alert("승인 실패: " + (err.message || String(err)));
+  }
+}
+
+async function rejectDaoProposal(id) {
+  if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+  if (!confirm("이 안건을 반려하시겠습니까?")) return;
+  const reason = prompt("반려 사유를 입력하세요 (선택, 빈 칸도 가능):") ?? '';
+
+  setState("DAO 안건 반려 중…");
+  try {
+    const fn  = httpsCallable(functions, "daoAdminRejectProposal");
+    await fn({ proposalId: id, reason });
+    alert("반려 처리되었습니다.");
+    await loadDaoProposals();
+    setState("DAO 반려 완료");
+  } catch (err) {
+    setState("DAO 반려 실패");
+    console.error("rejectDaoProposal:", err);
+    alert("반려 실패: " + (err.message || String(err)));
+  }
+}
+
+daoApproveList?.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const act = btn.dataset.act;
+  const id  = btn.dataset.id;
+  try {
+    if (act === "approveDao") {
+      await approveDaoProposal(id);
+    } else if (act === "rejectDao") {
+      await rejectDaoProposal(id);
+    } else if (act === "viewDao") {
+      const snap = await getDoc(doc(db, "dao_proposals", id));
+      if (!snap.exists()) return alert("안건을 찾을 수 없습니다.");
+      openDialog("DAO 안건 상세(JSON)", { id, ...snap.data() });
+    }
+  } catch (err) {
+    console.error(err);
+    alert(String(err?.message || err));
+  }
+});
+
+btnReloadDao?.addEventListener("click", () => loadDaoProposals());
+
 // ── 탭 전환 ──────────────────────────────────────────────────────────────
 
 function showTab(which) {
@@ -644,6 +863,7 @@ function showTab(which) {
   if (tabDeposits)  tabDeposits.style.display  = which === "deposits"  ? "" : "none";
   if (tabHex)       tabHex.style.display       = which === "hex"       ? "" : "none";
   if (tabMembers)   tabMembers.style.display   = which === "members"   ? "" : "none";
+  if (tabDao)       tabDao.style.display       = which === "dao"       ? "" : "none";
 
   // 툴바 부속 요소 가시성
   if (itemsFilter)       itemsFilter.style.display       = which === "items"     ? "" : "none";
@@ -657,6 +877,7 @@ function showTab(which) {
   btnTabItems?.classList.toggle("is-active",     which === "items");
   btnTabDeposits?.classList.toggle("is-active",  which === "deposits");
   btnTabHex?.classList.toggle("is-active",       which === "hex");
+  btnTabDao?.classList.toggle("is-active",       which === "dao");
 }
 
 async function checkAdmin(user) {
@@ -690,7 +911,7 @@ async function bootAdmin(user) {
     if (ok) selItemStatus.value = status;
   }
 
-  const validTab = ["guides", "merchants", "items", "deposits", "hex", "members"].includes(tab) ? tab : "guides";
+  const validTab = ["guides", "merchants", "items", "deposits", "hex", "members", "dao"].includes(tab) ? tab : "guides";
   showTab(validTab);
 
   if (validTab === "merchants") {
@@ -701,6 +922,8 @@ async function bootAdmin(user) {
     await loadDeposits();
   } else if (validTab === "hex") {
     await Promise.all([loadContractStatus(), checkHexAllowance()]);
+  } else if (validTab === "dao") {
+    await loadDaoProposals();
   } else {
     await loadGuideApplications();
   }
@@ -766,6 +989,7 @@ btnTabItems?.addEventListener("click", () => { showTab("items"); loadItemsByStat
 btnTabDeposits?.addEventListener("click", () => { showTab("deposits"); loadDeposits(); });
 btnTabHex?.addEventListener("click", () => { showTab("hex"); loadContractStatus(); checkHexAllowance(); });
 btnTabMembers?.addEventListener("click", () => { showTab("members"); });
+btnTabDao?.addEventListener("click", () => { showTab("dao"); loadDaoProposals(); });
 
 // ── 관리자 셀프 온보딩 ──
 $("btnAdminSelfOnboard")?.addEventListener("click", async () => {
@@ -889,6 +1113,8 @@ merchantList?.addEventListener("click", async (e) => {
   try {
     if (act === "approveMerchant") {
       await approveMerchant(mid, Number(btn.dataset.feebps) || 0);
+    } else if (act === "setMerchantGmap") {
+      await setMerchantGmap(mid, btn.dataset.gmap || "");
     } else if (act === "viewMerchant") {
       const snap = await getDoc(doc(db, "merchants", mid));
       if (!snap.exists()) return alert("가맹점을 찾을 수 없습니다.");

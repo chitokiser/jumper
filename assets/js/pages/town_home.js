@@ -689,13 +689,16 @@ async function loadPlacesMap() {
 
     merchantsSnap.forEach((d) => {
       const m = d.data() || {};
-      if (m.active !== false && m.gmap) {
+      const hasCoords = (typeof m.lat === "number" && typeof m.lng === "number") || m.gmap;
+      if (m.active !== false && hasCoords) {
         places.push({
           id: d.id,
           _src: "merchant",
           name: m.name || "가맹점",
           type: m.career || "merchant",
-          gmap: m.gmap,
+          gmap: m.gmap || "",
+          lat: m.lat,
+          lng: m.lng,
           phone: m.phone || "",
           description: m.description || "",
         });
@@ -728,14 +731,20 @@ async function loadPlacesMap() {
         position: latLng,
         map,
         title: p.name || "",
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          fillColor: isMerchant ? "#f59e0b" : getMarkerColor(p.type),
-          fillOpacity: 1,
-          strokeColor: "#fff",
-          strokeWeight: isMerchant ? 3 : 2,
-          scale: isMerchant ? 11 : 9,
-        },
+        icon: isMerchant
+          ? {
+              url: '/assets/images/jump/favicon.png',
+              scaledSize: new google.maps.Size(18, 18),
+              anchor: new google.maps.Point(9, 9),
+            }
+          : {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: getMarkerColor(p.type),
+              fillOpacity: 1,
+              strokeColor: "#fff",
+              strokeWeight: 2,
+              scale: 9,
+            },
         zIndex: isMerchant ? 10 : 1,
       });
       bounds.extend(latLng);
