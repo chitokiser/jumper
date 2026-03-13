@@ -306,7 +306,30 @@ async function tryCollect(box) {
   }
 }
 
+// ── 수집 사운드 (Web Audio API) ───────────────────────────────────────────────
+function playCollectSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      osc.start(t);
+      osc.stop(t + 0.25);
+    });
+  } catch (_) { /* 사운드 실패는 무시 */ }
+}
+
 function showCollectToast(itemName, itemImage) {
+  playCollectSound();
   const el = $('collectToast');
   const img = itemImage
     ? `<img src="/assets/images/items/${escHtml(itemImage)}" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;margin-right:8px;" onerror="this.style.display='none'">`
