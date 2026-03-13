@@ -347,6 +347,76 @@ service cloud.firestore {
             && resource.data.sellerUid == request.auth.uid);
     }
 
+    // ohlc (HEX/KRW 캔들 차트 데이터) — 공개 읽기
+    match /ohlc/{docId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    // ── ZaloPay 포인트 시스템 ──────────────────────────────────────
+    // zalo_requests: HEX → 포인트 전환 신청
+    match /zalo_requests/{docId} {
+      allow get: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isAdmin()
+        || (signedIn()
+            && resource.data.uid is string
+            && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Cloud Functions only
+    }
+
+    // zalo_usage: 포인트 사용 내역
+    match /zalo_usage/{docId} {
+      allow get: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isAdmin()
+        || (signedIn()
+            && resource.data.uid is string
+            && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Cloud Functions only
+    }
+
+    // zalo_transactions: 포인트 입출금 로그
+    match /zalo_transactions/{docId} {
+      allow get: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isAdmin()
+        || (signedIn()
+            && resource.data.uid is string
+            && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Cloud Functions only
+    }
+
+    // ── 보물찾기 시스템 ────────────────────────────────────────────
+    match /treasure_items/{docId} {
+      allow get, list: if true;           // 아이템 정보 공개
+      allow write: if false;              // Cloud Function only
+    }
+    match /treasure_boxes/{docId} {
+      allow get, list: if true;           // 박스 위치 공개 (지도 표시)
+      allow write: if false;
+    }
+    match /treasure_inventory/{docId} {
+      allow get, list: if signedIn()
+        && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+    match /treasure_logs/{docId} {
+      allow get: if signedIn()
+        && resource.data.uid == request.auth.uid;
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+    match /treasure_vouchers/{docId} {
+      allow get, list: if true;
+      allow write: if false;
+    }
+    match /treasure_voucher_logs/{docId} {
+      allow get, list: if signedIn()
+        && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
     // ── DAO 의결 시스템 ────────────────────────────────────────────
     // 안건 목록·상세: 누구나 읽기 가능
     // 등록·지지·투표·댓글: Cloud Function 서버 사이드 처리 (직접 쓰기 불가)

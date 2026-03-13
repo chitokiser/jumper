@@ -36,6 +36,8 @@ const txH                    = require('./handlers/transaction');
 const exchangeH              = require('./handlers/exchange');
 const coopH                  = require('./handlers/coop');
 const daoH                   = require('./handlers/dao');
+const zaloH                  = require('./handlers/zalopay');
+const treasureH              = require('./handlers/treasure');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -730,6 +732,36 @@ exports.adminDeleteCoopProduct = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
+// ZaloPay 포인트 시스템
+// ════════════════════════════════════════════════════════════════════════════
+
+// 유저: HEX → Zalo포인트 즉시 전환 (2% 수수료 자동 처리, secrets 필요)
+exports.requestZaloConvert = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return await zaloH.requestZaloConvert(uid, request.data ?? {}, walletSecret.value());
+  })
+);
+
+// 유저: Zalo포인트 사용
+exports.useZaloBalance = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await zaloH.useZaloBalance(uid, request.data ?? {});
+  })
+);
+
+// 관리자: 사용 내역 정산 완료 처리
+exports.settleZaloUsage = onCall(
+  wrapError(async (request) => {
+    const adminUid = requireAuth(request);
+    return await zaloH.settleZaloUsage(adminUid, request.data ?? {});
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
 // 외부 Web3 개발자용 파트너 API
 //
 // 인증: Header  X-Api-Key: {EXT_API_KEY}
@@ -1187,3 +1219,31 @@ exports.daoCommentProposal = onCall(
     return daoH.commentProposal(uid, request.data);
   })
 );
+
+// ════════════════════════════════════════════════════════════════════════════
+// 보물찾기 시스템
+// ════════════════════════════════════════════════════════════════════════════
+
+exports.collectTreasure = onCall(wrapError(async (req) => {
+  return treasureH.collectTreasure(requireAuth(req), req.data ?? {});
+}));
+
+exports.craftVoucher = onCall(wrapError(async (req) => {
+  return treasureH.craftVoucher(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminSaveTreasureItem = onCall(wrapError(async (req) => {
+  return treasureH.adminSaveTreasureItem(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminSaveTreasureBox = onCall(wrapError(async (req) => {
+  return treasureH.adminSaveTreasureBox(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminDeleteTreasureBox = onCall(wrapError(async (req) => {
+  return treasureH.adminDeleteTreasureBox(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminSaveVoucher = onCall(wrapError(async (req) => {
+  return treasureH.adminSaveVoucher(requireAuth(req), req.data ?? {});
+}));

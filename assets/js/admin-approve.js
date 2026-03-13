@@ -40,6 +40,8 @@ const btnTabDeposits   = $("btnTabDeposits");
 const btnTabHex        = $("btnTabHex");
 const btnTabMembers    = $("btnTabMembers");
 const btnTabDao        = $("btnTabDao");
+const btnTabZalo       = $("btnTabZalo");
+const btnTabTreasure   = $("btnTabTreasure");
 const tabGuides        = $("tabGuides");
 const tabMerchants     = $("tabMerchants");
 const tabItems         = $("tabItems");
@@ -47,8 +49,12 @@ const tabDeposits      = $("tabDeposits");
 const tabHex           = $("tabHex");
 const tabMembers       = $("tabMembers");
 const tabDao           = $("tabDao");
+const tabZalo          = $("tabZalo");
+const tabTreasure      = $("tabTreasure");
 const daoApproveList   = $("daoApproveList");
 const btnReloadDao     = $("btnReloadDao");
+const btnReloadZaloReq = $("btnReloadZaloReq");
+const btnReloadZaloUsage = $("btnReloadZaloUsage");
 const itemsFilter      = $("itemsFilter");
 const merchantList     = $("merchantList");
 const btnReloadMerchants = $("btnReloadMerchants");
@@ -864,6 +870,8 @@ function showTab(which) {
   if (tabHex)       tabHex.style.display       = which === "hex"       ? "" : "none";
   if (tabMembers)   tabMembers.style.display   = which === "members"   ? "" : "none";
   if (tabDao)       tabDao.style.display       = which === "dao"       ? "" : "none";
+  if (tabZalo)      tabZalo.style.display      = which === "zalo"      ? "" : "none";
+  if (tabTreasure)  tabTreasure.style.display  = which === "treasure"  ? "" : "none";
 
   // 툴바 부속 요소 가시성
   if (itemsFilter)       itemsFilter.style.display       = which === "items"     ? "" : "none";
@@ -878,6 +886,8 @@ function showTab(which) {
   btnTabDeposits?.classList.toggle("is-active",  which === "deposits");
   btnTabHex?.classList.toggle("is-active",       which === "hex");
   btnTabDao?.classList.toggle("is-active",       which === "dao");
+  btnTabZalo?.classList.toggle("is-active",      which === "zalo");
+  btnTabTreasure?.classList.toggle("is-active",  which === "treasure");
 }
 
 async function checkAdmin(user) {
@@ -990,6 +1000,9 @@ btnTabDeposits?.addEventListener("click", () => { showTab("deposits"); loadDepos
 btnTabHex?.addEventListener("click", () => { showTab("hex"); loadContractStatus(); checkHexAllowance(); });
 btnTabMembers?.addEventListener("click", () => { showTab("members"); });
 btnTabDao?.addEventListener("click", () => { showTab("dao"); loadDaoProposals(); });
+btnTabZalo?.addEventListener("click", () => { showTab("zalo"); loadZaloRequests(); loadZaloUsage(); });
+btnReloadZaloReq?.addEventListener("click", () => loadZaloRequests());
+btnReloadZaloUsage?.addEventListener("click", () => loadZaloUsage());
 
 // ── 관리자 셀프 온보딩 ──
 $("btnAdminSelfOnboard")?.addEventListener("click", async () => {
@@ -1221,6 +1234,395 @@ $("btnOwnerDepositHex")?.addEventListener("click", () => execOwnerDepositHex());
 $("btnCheckAllowance")?.addEventListener("click", () => checkHexAllowance());
 $("btnApproveHex")?.addEventListener("click", () => execApproveHex());
 $("btnRecordP2p")?.addEventListener("click", () => recordP2pTransferAction());
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ZaloPay 관리자 기능
+// ═══════════════════════════════════════════════════════════════════════════
+
+function fmtVnd(n) {
+  return Number(n || 0).toLocaleString() + "동";
+}
+
+function zaloBadge(status) {
+  const map = {
+    pending:   ["대기",    "#fef3c7", "#92400e"],
+    approved:  ["승인",    "#d1fae5", "#065f46"],
+    rejected:  ["거절",    "#fee2e2", "#991b1b"],
+    cancelled: ["취소",    "#f3f4f6", "#6b7280"],
+    settled:   ["정산완료", "#e0e7ff", "#3730a3"],
+  };
+  const [label, bg, color] = map[status] || ["?", "#f3f4f6", "#6b7280"];
+  return `<span style="display:inline-block;padding:2px 9px;border-radius:99px;font-size:0.75rem;font-weight:600;background:${bg};color:${color};">${label}</span>`;
+}
+
+// ── HEX → 포인트 전환 신청 목록 ──────────────────────────────────────────
+async function loadZaloRequests() {
+  const list = $("zaloRequestList");
+  if (!list) return;
+  list.innerHTML = `<div class="muted" style="padding:12px;">불러오는 중...</div>`;
+
+  const snap = await getDocs(
+    query(
+      collection(db, "zalo_requests"),
+      where("status", "==", "pending"),
+      orderBy("createdAt", "asc"),
+      limit(50)
+    )
+  );
+
+  if (snap.empty) {
+    list.innerHTML = `<div class="muted" style="padding:12px;">대기 중인 전환 신청이 없습니다.</div>`;
+    return;
+  }
+
+  list.innerHTML = "";
+  snap.forEach((d) => {
+    const r   = d.data();
+    const ts  = r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleString("ko-KR") : "-";
+
+    const el = cardWrap(`
+      <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;">
+          <div style="font-weight:700;margin-bottom:4px;">
+            🔵 ${esc(r.displayName || r.email || r.uid)}
+            ${zaloBadge(r.status)}
+          </div>
+          <div class="muted" style="font-size:0.82rem;">${esc(r.email || "")} · ${ts}</div>
+          <div style="margin-top:6px;font-size:0.9rem;">
+            전환 요청: <strong>${r.hexAmount} HEX</strong>
+            ${r.vndAmount ? ` → 희망 ${fmtVnd(r.vndAmount)}` : ""}
+          </div>
+          ${r.note ? `<div style="font-size:0.82rem;color:var(--muted);margin-top:3px;">메모: ${esc(r.note)}</div>` : ""}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="number" placeholder="지급 VND 입력"
+              style="width:140px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;"
+              id="zaloVnd_${esc(d.id)}"
+              value="${r.vndAmount || ""}"
+              min="1" step="1000" />
+            <button class="btn btn-sm" style="background:#0068FF;color:#fff;border:none;"
+              data-act="approveZalo" data-id="${esc(d.id)}">승인</button>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <input type="text" placeholder="거절 사유 (선택)"
+              style="width:140px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;"
+              id="zaloNote_${esc(d.id)}" />
+            <button class="btn btn-sm" style="background:#e53e3e;color:#fff;border:none;"
+              data-act="rejectZalo" data-id="${esc(d.id)}">거절</button>
+          </div>
+        </div>
+      </div>
+    `);
+    list.appendChild(el);
+  });
+
+  // 이벤트 위임
+  list.onclick = async (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const act = btn.dataset.act;
+    const id  = btn.dataset.id;
+    if (!id) return;
+
+    if (act === "approveZalo") {
+      const vndInput = $(`zaloVnd_${id}`);
+      const vndAmount = parseFloat(vndInput?.value || 0);
+      if (!vndAmount || vndAmount <= 0) { alert("지급할 VND 금액을 입력해 주세요."); return; }
+      if (!confirm(`${vndAmount.toLocaleString()}동을 지급 승인합니다. 계속하시겠습니까?`)) return;
+      btn.disabled = true; btn.textContent = "처리 중...";
+      try {
+        await httpsCallable(functions, "approveZaloRequest")({ requestId: id, vndAmount });
+        setState("ZaloPay 전환 승인 완료");
+        await loadZaloRequests();
+      } catch (err) {
+        alert("승인 실패: " + err.message);
+        btn.disabled = false; btn.textContent = "승인";
+      }
+    }
+
+    if (act === "rejectZalo") {
+      const noteInput = $(`zaloNote_${id}`);
+      const adminNote = noteInput?.value?.trim() || "";
+      if (!confirm("이 신청을 거절합니다. 계속하시겠습니까?")) return;
+      btn.disabled = true; btn.textContent = "처리 중...";
+      try {
+        await httpsCallable(functions, "rejectZaloRequest")({ requestId: id, adminNote });
+        setState("ZaloPay 전환 거절 완료");
+        await loadZaloRequests();
+      } catch (err) {
+        alert("거절 실패: " + err.message);
+        btn.disabled = false; btn.textContent = "거절";
+      }
+    }
+  };
+}
+
+// ── 포인트 사용 정산 목록 ─────────────────────────────────────────────────
+async function loadZaloUsage() {
+  const list = $("zaloUsageList");
+  if (!list) return;
+  list.innerHTML = `<div class="muted" style="padding:12px;">불러오는 중...</div>`;
+
+  const snap = await getDocs(
+    query(
+      collection(db, "zalo_usage"),
+      where("status", "==", "pending"),
+      orderBy("createdAt", "asc"),
+      limit(50)
+    )
+  );
+
+  if (snap.empty) {
+    list.innerHTML = `<div class="muted" style="padding:12px;">정산 대기 중인 사용 내역이 없습니다.</div>`;
+    return;
+  }
+
+  list.innerHTML = "";
+  snap.forEach((d) => {
+    const r  = d.data();
+    const ts = r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleString("ko-KR") : "-";
+
+    const el = cardWrap(`
+      <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;">
+          <div style="font-weight:700;margin-bottom:4px;">
+            💸 ${esc(r.displayName || r.email || r.uid)}
+            ${zaloBadge(r.status)}
+          </div>
+          <div class="muted" style="font-size:0.82rem;">${esc(r.email || "")} · ${ts}</div>
+          <div style="margin-top:6px;font-size:0.9rem;">
+            사용 금액: <strong>${fmtVnd(r.vndAmount)}</strong>
+          </div>
+          <div style="font-size:0.85rem;margin-top:3px;">목적: ${esc(r.purpose || "-")}</div>
+          ${r.recipientInfo ? `<div style="font-size:0.82rem;color:var(--muted);">수취인: ${esc(r.recipientInfo)}</div>` : ""}
+        </div>
+        <div style="flex-shrink:0;">
+          <button class="btn btn-sm" style="background:#0068FF;color:#fff;border:none;"
+            data-act="settleZalo" data-id="${esc(d.id)}">정산 완료</button>
+        </div>
+      </div>
+    `);
+    list.appendChild(el);
+  });
+
+  // 이벤트 위임
+  list.onclick = async (e) => {
+    const btn = e.target.closest("[data-act='settleZalo']");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!confirm("이 사용 내역을 정산 완료 처리합니다. 계속하시겠습니까?")) return;
+    btn.disabled = true; btn.textContent = "처리 중...";
+    try {
+      await httpsCallable(functions, "settleZaloUsage")({ usageId: id });
+      setState("ZaloPay 정산 완료 처리됨");
+      await loadZaloUsage();
+    } catch (err) {
+      alert("정산 실패: " + err.message);
+      btn.disabled = false; btn.textContent = "정산 완료";
+    }
+  };
+}
+
+// ── 보물찾기 관리 ──────────────────────────────────────────────────────────
+
+async function loadTreasureItemsList() {
+  const el = $("treasureItemList");
+  if (!el) return;
+  el.innerHTML = "<div class='muted'>불러오는 중...</div>";
+  const snap = await getDocs(collection(db, "treasure_items"));
+  if (snap.empty) { el.innerHTML = "<div class='muted'>등록된 아이템 없음</div>"; return; }
+  el.innerHTML = snap.docs.map(d => {
+    const r = d.data();
+    return `<div class="card" style="display:flex;gap:12px;align-items:center;">
+      <div style="flex:1;">
+        <strong>#${esc(d.id)}</strong> ${esc(r.name)}
+        <span class="muted" style="font-size:12px;margin-left:6px;">(${esc(r.image || "")})</span>
+        ${r.description ? `<div class="muted" style="font-size:12px;">${esc(r.description)}</div>` : ""}
+      </div>
+      <button class="btn btn-sm" data-act="editItem"
+        data-id="${esc(d.id)}" data-name="${esc(r.name)}"
+        data-image="${esc(r.image||"")}" data-desc="${esc(r.description||"")}">수정</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-act='editItem']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      $("tItemId").value   = btn.dataset.id;
+      $("tItemName").value = btn.dataset.name;
+      $("tItemImage").value = btn.dataset.image;
+      $("tItemDesc").value = btn.dataset.desc;
+    });
+  });
+}
+
+async function loadTreasureBoxesList() {
+  const el = $("treasureBoxList");
+  if (!el) return;
+  el.innerHTML = "<div class='muted'>불러오는 중...</div>";
+  const snap = await getDocs(collection(db, "treasure_boxes"));
+  if (snap.empty) { el.innerHTML = "<div class='muted'>등록된 박스 없음</div>"; return; }
+  el.innerHTML = snap.docs.map(d => {
+    const r = d.data();
+    const active = r.active !== false;
+    return `<div class="card" style="display:flex;gap:12px;align-items:center;">
+      <div style="flex:1;">
+        <strong>${esc(r.name || "(이름없음)")}</strong>
+        <span class="muted" style="font-size:12px;margin-left:6px;">${active ? "✅ 활성" : "❌ 비활성"} · ${(r.lat||0).toFixed(5)}, ${(r.lng||0).toFixed(5)} · ${r.startHour ?? 0}:00~${r.endHour ?? 24}:00</span>
+        <div class="muted" style="font-size:11px;font-family:monospace;">${esc(d.id)}</div>
+      </div>
+      <button class="btn btn-sm" data-act="editBox" data-id="${esc(d.id)}">수정</button>
+      <button class="btn btn-sm" data-act="deleteBox" data-id="${esc(d.id)}" style="color:var(--danger,#e53e3e);">비활성화</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-act='editBox']").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const s = await getDoc(doc(db, "treasure_boxes", btn.dataset.id));
+      if (!s.exists()) return;
+      const r = s.data();
+      $("tBoxId").value        = btn.dataset.id;
+      $("tBoxName").value      = r.name || "";
+      $("tBoxCoords").value    = r.lat && r.lng ? `${r.lat}, ${r.lng}` : "";
+      const prev = $("tBoxCoordsPreview");
+      if (prev) { prev.textContent = r.lat ? `위도 ${Number(r.lat).toFixed(6)}, 경도 ${Number(r.lng).toFixed(6)}` : ""; prev.style.color = "#16a34a"; }
+      $("tBoxStartHour").value = r.startHour ?? 0;
+      $("tBoxEndHour").value   = r.endHour   ?? 24;
+      $("tBoxItemPool").value  = JSON.stringify(r.itemPool || [], null, 2);
+      $("tBoxActive").value    = String(r.active !== false);
+    });
+  });
+  el.querySelectorAll("[data-act='deleteBox']").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("이 박스를 비활성화하시겠습니까?")) return;
+      try {
+        await httpsCallable(functions, "adminDeleteTreasureBox")({ boxId: btn.dataset.id });
+        await loadTreasureBoxesList();
+      } catch (err) { alert("오류: " + (err.message || err)); }
+    });
+  });
+}
+
+async function loadVouchersList() {
+  const el = $("voucherMgmtList");
+  if (!el) return;
+  el.innerHTML = "<div class='muted'>불러오는 중...</div>";
+  const snap = await getDocs(collection(db, "treasure_vouchers"));
+  if (snap.empty) { el.innerHTML = "<div class='muted'>등록된 바우처 없음</div>"; return; }
+  el.innerHTML = snap.docs.map(d => {
+    const r = d.data();
+    return `<div class="card" style="display:flex;gap:12px;align-items:center;">
+      <div style="flex:1;">
+        <strong>${esc(r.name)}</strong> ${r.active !== false ? "✅" : "❌"}
+        <div class="muted" style="font-size:12px;">${esc(r.reward || "")}${r.image ? ` · 🖼 ${esc(r.image)}` : ""}</div>
+        <div class="muted" style="font-size:11px;font-family:monospace;">${esc(d.id)}</div>
+      </div>
+      <button class="btn btn-sm" data-act="editVoucher" data-id="${esc(d.id)}">수정</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-act='editVoucher']").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const s = await getDoc(doc(db, "treasure_vouchers", btn.dataset.id));
+      if (!s.exists()) return;
+      const r = s.data();
+      $("tVoucherId").value     = btn.dataset.id;
+      $("tVoucherName").value   = r.name   || "";
+      $("tVoucherReqs").value   = JSON.stringify(r.requirements || [], null, 2);
+      $("tVoucherReward").value = r.reward || "";
+      $("tVoucherImage").value  = r.image  || "";
+      $("tVoucherActive").value = String(r.active !== false);
+    });
+  });
+}
+
+$("btnSaveTreasureItem")?.addEventListener("click", async () => {
+  const itemId = $("tItemId")?.value.trim();
+  const name   = $("tItemName")?.value.trim();
+  if (!itemId || !name) return alert("아이템 ID와 이름은 필수입니다.");
+  try {
+    await httpsCallable(functions, "adminSaveTreasureItem")({
+      itemId: Number(itemId),
+      name,
+      image:       $("tItemImage")?.value.trim() || `${itemId}.png`,
+      description: $("tItemDesc")?.value.trim()  || "",
+    });
+    alert("아이템 저장 완료!");
+    ["tItemId","tItemName","tItemImage","tItemDesc"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    await loadTreasureItemsList();
+  } catch (err) { alert("오류: " + (err.message || err)); }
+});
+
+function parseCoords(str) {
+  // "20.948991, 105.974279" 또는 "20.948991 105.974279" 등 허용
+  const m = String(str || "").trim().match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+  if (!m) return null;
+  return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+}
+
+// 좌표 입력 시 실시간 미리보기
+$("tBoxCoords")?.addEventListener("input", () => {
+  const preview = $("tBoxCoordsPreview");
+  if (!preview) return;
+  const c = parseCoords($("tBoxCoords")?.value);
+  preview.textContent = c ? `위도 ${c.lat.toFixed(6)}, 경도 ${c.lng.toFixed(6)}` : "좌표 형식 오류";
+  preview.style.color = c ? "#16a34a" : "#dc2626";
+});
+
+$("btnSaveTreasureBox")?.addEventListener("click", async () => {
+  const coords = parseCoords($("tBoxCoords")?.value);
+  if (!coords) return alert("좌표를 입력해 주세요.\n예: 20.948991, 105.974279");
+  let itemPool = [];
+  try   { itemPool = JSON.parse($("tBoxItemPool")?.value || "[]"); }
+  catch { return alert('아이템 풀 JSON 오류\n예: [{"itemId":"1","weight":10}]'); }
+  try {
+    const res = await httpsCallable(functions, "adminSaveTreasureBox")({
+      boxId:     $("tBoxId")?.value.trim() || undefined,
+      name:      $("tBoxName")?.value.trim() || "",
+      lat: coords.lat, lng: coords.lng,
+      startHour: Number($("tBoxStartHour")?.value) || 0,
+      endHour:   Number($("tBoxEndHour")?.value)   || 24,
+      itemPool,
+      active: $("tBoxActive")?.value === "true",
+    });
+    alert(`박스 저장 완료!\nboxId: ${res.data.boxId}`);
+    ["tBoxId","tBoxName","tBoxCoords","tBoxItemPool"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    const prev = $("tBoxCoordsPreview"); if (prev) prev.textContent = "";
+    if ($("tBoxStartHour")) $("tBoxStartHour").value = "0";
+    if ($("tBoxEndHour"))   $("tBoxEndHour").value   = "24";
+    if ($("tBoxActive"))    $("tBoxActive").value    = "true";
+    await loadTreasureBoxesList();
+  } catch (err) { alert("오류: " + (err.message || err)); }
+});
+
+$("btnSaveVoucher")?.addEventListener("click", async () => {
+  const name = $("tVoucherName")?.value.trim();
+  if (!name) return alert("바우처 이름은 필수입니다.");
+  let requirements = [];
+  try   { requirements = JSON.parse($("tVoucherReqs")?.value || "[]"); }
+  catch { return alert('재료 JSON 오류\n예: [{"itemId":"1","count":3}]'); }
+  try {
+    const res = await httpsCallable(functions, "adminSaveVoucher")({
+      voucherId:    $("tVoucherId")?.value.trim() || undefined,
+      name,
+      requirements,
+      reward: $("tVoucherReward")?.value.trim() || "",
+      image:  $("tVoucherImage")?.value.trim()  || "",
+      active: $("tVoucherActive")?.value === "true",
+    });
+    alert(`바우처 저장 완료!\nvoucherId: ${res.data.voucherId}`);
+    ["tVoucherId","tVoucherName","tVoucherReqs","tVoucherReward","tVoucherImage"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    if ($("tVoucherActive")) $("tVoucherActive").value = "true";
+    await loadVouchersList();
+  } catch (err) { alert("오류: " + (err.message || err)); }
+});
+
+$("btnReloadTItems")?.addEventListener("click",    () => loadTreasureItemsList());
+$("btnReloadTBoxes")?.addEventListener("click",    () => loadTreasureBoxesList());
+$("btnReloadTVouchers")?.addEventListener("click", () => loadVouchersList());
+btnTabTreasure?.addEventListener("click", () => {
+  showTab("treasure");
+  loadTreasureItemsList();
+  loadTreasureBoxesList();
+  loadVouchersList();
+});
 
 onAuthReady(async ({ loggedIn, user }) => {
   if (!loggedIn || !user) {

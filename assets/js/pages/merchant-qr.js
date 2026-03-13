@@ -50,6 +50,7 @@ function setText(id, val) {
 
 // ── 진입점 ────────────────────────────────────────────
 let _authDone = false;
+let _currentUid = null;
 
 onAuthReady(async ({ loggedIn, role, user }) => {
   if (_authDone) return;
@@ -68,6 +69,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
   }
 
   _authDone = true;
+  _currentUid = user.uid;
   await initPage(user.uid);
 });
 
@@ -297,24 +299,25 @@ function generateQr(merchantId, merchantName, amount, currency = "KRW") {
     $("qrSection")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
     // 실시간 결제 감지 시작
-    listenPayments(merchantId, amount, currency);
+    listenPayments(amount, currency);
   });
 }
 
 // ── 실시간 결제 감지 ───────────────────────────────────
 let _unsubscribe = null;
 
-function listenPayments(merchantId, amount, currency = "KRW") {
+function listenPayments(amount, currency = "KRW") {
   // 이전 리스너 해제
   if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
 
   // QR 생성 시각 기준 — 이후 도착하는 결제만 감지
   const since = Timestamp.now();
 
+  // uid 필터를 포함해야 Firestore 보안 규칙(resource.data.uid == request.auth.uid) 통과
   const q = query(
     collection(db, "transactions"),
+    where("uid",        "==", _currentUid),
     where("type",       "==", "merchant_income"),
-    where("merchantId", "==", Number(merchantId)),
     where("createdAt",  ">=", since),
     orderBy("createdAt", "desc"),
   );
