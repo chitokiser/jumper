@@ -1,0 +1,1 @@
+/assets/images/monsters/10.png

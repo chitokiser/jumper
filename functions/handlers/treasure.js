@@ -61,18 +61,20 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   if (dist > 30)
     throw new HttpsError('failed-precondition', `너무 멀리 있습니다 (${Math.round(dist)}m)`);
 
-  // 계정당 1회 수집 방지 (영구)
-  const logKey = `${uid}_${boxId}`;
-  const logRef = db.collection('treasure_logs').doc(logKey);
+  // 하루 1회 수집 제한 (날짜 기준)
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  const logKey   = `${uid}_${boxId}_${today}`;         // 날짜 포함 → 익일 자동 해제
+  const invBoxKey = `${uid}_${boxId}`;                 // 인벤토리는 박스 단위 (날짜 무관)
+  const logRef  = db.collection('treasure_logs').doc(logKey);
   const logSnap = await logRef.get();
   if (logSnap.exists)
-    throw new HttpsError('already-exists', '이미 수집한 보물박스입니다');
+    throw new HttpsError('already-exists', '이 보물은 오늘 이미 획득했습니다');
 
   const itemPool = box.itemPool || [];
   if (!itemPool.length) throw new HttpsError('failed-precondition', '아이템 풀이 비어 있습니다');
 
   // 트랜잭션: 미개봉 박스 인벤토리 저장 + 수집 로그 기록
-  const invBoxRef = db.collection('treasure_inventory_boxes').doc(logKey);
+  const invBoxRef = db.collection('treasure_inventory_boxes').doc(invBoxKey);
   await db.runTransaction(async (tx) => {
     tx.set(invBoxRef, {
       uid, boxId,
@@ -81,7 +83,7 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     tx.set(logRef, {
-      uid, boxId,
+      uid, boxId, claimedDate: today,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   });

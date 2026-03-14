@@ -402,16 +402,22 @@ function updateMyLocation(lat, lng, accuracy, heading) {
       // 속도 계산 (km/h)
       const now = Date.now();
       if (_lastSpeedPos) {
-        const dt = (now - _lastSpeedPos.time) / 1000; // 초
+        const dt = (now - _lastSpeedPos.time) / 1000;
         if (dt > 0) _currentSpeed = Math.min((d / dt) * 3.6, 200);
       }
 
-      // HP 회복: 속도 17km/h 이하 + 10m마다 HP+10
-      if (_currentSpeed <= 17) {
-        _healAccum += d;
-        while (_healAccum >= 10) {
-          _healAccum -= 10;
-          healHp(10);
+      if (_isDead) {
+        // 사망 상태: 부활 거리 누적 (속도 무관)
+        _reviveWalkDist += d;
+        updateCombatHud();
+      } else {
+        // 생존 상태: HP 회복 (속도 17km/h 이하 + 10m마다 HP+10)
+        if (_currentSpeed <= 17) {
+          _healAccum += d;
+          while (_healAccum >= 10) {
+            _healAccum -= 10;
+            healHp(10);
+          }
         }
       }
     }
@@ -919,7 +925,7 @@ async function init() {
 // ════════════════════════════════════════════════════════════════════════════
 
 // ── 전투 상태 변수 ────────────────────────────────────────────────────────────
-let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0 };
+let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0 };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active}]
 let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
 let _monsterMarkers  = {};     // { id: Marker }
@@ -930,10 +936,130 @@ let _battleLoopId    = null;
 let _attackCd        = false;  // 유저 공격 쿨다운 (1.5초)
 let _towerCd         = {};     // { towerId: bool }
 let _healAccum       = 0;      // HP 회복용 추가 누적거리(m)
+let _reviveWalkDist  = 0;      // 사망 후 부활용 누적거리(m)
 let _currentSpeed    = 0;      // km/h
 let _isDead          = false;
+let _goldDrops       = [];     // [{id, lat, lng, amount, marker}]
 let _adminPlaceMode  = null;   // 'monster' | 'tower' | null
 let _adminMapListener = null;
+
+// ── 사운드 시스템 (Web Audio API) ────────────────────────────────────────────
+let _audioCtx = null;
+function getAC() {
+  if (!_audioCtx || _audioCtx.state === 'closed')
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+function playSound(type) {
+  try {
+    const ac = getAC();
+    const osc = (freq, type2='sine') => { const o = ac.createOscillator(); o.type = type2; o.frequency.value = freq; return o; };
+    const gain = (vol) => { const g = ac.createGain(); g.gain.value = vol; g.connect(ac.destination); return g; };
+    const ramp = (node, from, to, dur) => { node.setValueAtTime(from, ac.currentTime); node.exponentialRampToValueAtTime(to, ac.currentTime + dur); };
+    const noise = (dur, vol=0.4) => {
+      const buf = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * (1 - i/d.length);
+      const s = ac.createBufferSource(); s.buffer = buf;
+      const g = gain(vol); s.connect(g); s.start(); return s;
+    };
+    const tone = (freq, vol, dur, t=0, type2='sine') => {
+      const o = osc(freq, type2), g = gain(0);
+      o.connect(g); ramp(g.gain, vol, 0.001, dur); o.start(ac.currentTime+t); o.stop(ac.currentTime+t+dur);
+    };
+    switch (type) {
+      case 'arrow_shot':  tone(700,0.25,0.12); tone(300,0.15,0.1,0.05,'sawtooth'); break;
+      case 'tower_shot':  tone(500,0.3,0.15,'sawtooth'); tone(200,0.2,0.12,0.05); break;
+      case 'arrow_hit':   noise(0.08,0.5); tone(220,0.3,0.1,0,'square'); break;
+      case 'player_hit':  tone(120,0.4,0.25,'sawtooth'); noise(0.1,0.3); break;
+      case 'monster_die': [440,330,220,165].forEach((f,i)=>tone(f,0.28,0.14,i*0.09)); break;
+      case 'player_die':  tone(300,0.5,0.9,'triangle'); tone(80,0.3,0.7,0.1); break;
+      case 'heal':        [523,659,784].forEach((f,i)=>tone(f,0.18,0.1,i*0.07)); break;
+      case 'revive':      [261,329,392,523,659,784].forEach((f,i)=>tone(f,0.3,0.15,i*0.09)); break;
+      case 'gold_drop':   [1047,1319,1568].forEach((f,i)=>tone(f,0.35,0.18,i*0.07,'triangle')); break;
+      case 'gold_pickup': [523,784,1047,1319].forEach((f,i)=>tone(f,0.3,0.1,i*0.05)); break;
+      case 'error_locked':[200,180].forEach((f,i)=>tone(f,0.25,0.12,i*0.14,'square')); break;
+    }
+  } catch { /* 오디오 미지원 무시 */ }
+}
+
+// ── 화살 발사 애니메이션 ──────────────────────────────────────────────────────
+function animateArrow(fromLat, fromLng, toLat, toLng, color, onHit) {
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) { onHit?.(); return; }
+  const sp = latLngToPixel(fromLat, fromLng);
+  const ep = latLngToPixel(toLat,   toLng);
+  if (!sp || !ep) { onHit?.(); return; }
+
+  const angle = Math.atan2(ep.y - sp.y, ep.x - sp.x) * 180 / Math.PI;
+  const el = document.createElement('div');
+  el.className = 'arrow-proj';
+  el.style.cssText = `left:${sp.x}px;top:${sp.y}px;background:${color};
+    box-shadow:0 0 5px ${color};transform:translate(-50%,-50%) rotate(${angle}deg)`;
+  overlay.appendChild(el);
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.left = ep.x + 'px';
+    el.style.top  = ep.y + 'px';
+  }));
+
+  setTimeout(() => {
+    el.remove();
+    // 타격 이펙트
+    const hit = document.createElement('div');
+    hit.className = 'hit-flash';
+    hit.style.cssText = `left:${ep.x}px;top:${ep.y}px;background:radial-gradient(circle,${color},transparent)`;
+    overlay.appendChild(hit);
+    setTimeout(() => hit.remove(), 320);
+    onHit?.();
+  }, 300);
+}
+
+// ── 황금토큰 드랍 ─────────────────────────────────────────────────────────────
+function dropGoldTokens(mob) {
+  if (!window.google?.maps || !map) return;
+  const maxDrop = Math.min(Math.floor(mob.maxHp / 20), 10);
+  const amount  = Math.max(1, Math.floor(Math.random() * maxDrop) + 1);
+  // 몬스터 위치에서 ±1~2m 오프셋
+  const lat = mob.lat + (Math.random() - 0.5) * 0.00003;
+  const lng = mob.lng + (Math.random() - 0.5) * 0.00003;
+  const id  = `gold_${Date.now()}_${Math.random()}`;
+
+  const marker = new google.maps.Marker({
+    position: { lat, lng }, map,
+    title: `💰 황금토큰 ×${amount}`,
+    icon: { url: '/assets/images/item/0.png',
+            scaledSize: new google.maps.Size(22, 22),
+            anchor: new google.maps.Point(11, 11) },
+    zIndex: 25,
+  });
+  const drop = { id, lat, lng, amount, marker };
+  _goldDrops.push(drop);
+  showFloat(`💰×${amount}`, '#fbbf24', lat, lng);
+  playSound('gold_drop');
+  // 5분 후 자동 제거
+  setTimeout(() => {
+    drop.marker?.setMap(null);
+    _goldDrops = _goldDrops.filter(d => d.id !== id);
+  }, 300000);
+}
+
+function checkGoldPickup() {
+  if (_isDead || !myLocationMarker || !_goldDrops.length) return;
+  const pos = myLocationMarker.getPosition();
+  const myLat = pos.lat(), myLng = pos.lng();
+  for (const drop of [..._goldDrops]) {
+    if (haversine(myLat, myLng, drop.lat, drop.lng) <= 3) {
+      drop.marker?.setMap(null);
+      _goldDrops = _goldDrops.filter(d => d.id !== drop.id);
+      _player.gold = (_player.gold || 0) + drop.amount;
+      showFloat(`💰+${drop.amount}`, '#fbbf24', myLat, myLng);
+      playSound('gold_pickup');
+      savePlayerState();
+    }
+  }
+}
 
 // ── 좌표 → 픽셀 변환 ─────────────────────────────────────────────────────────
 function latLngToPixel(lat, lng) {
@@ -973,11 +1099,19 @@ function updateCombatHud() {
   if (hpBar) { hpBar.style.width = hpPct + '%'; hpBar.classList.toggle('low', hpPct < 25); }
   if (mpBar)  mpBar.style.width = mpPct + '%';
 
-  const lv = document.getElementById('cLv');    if (lv)  lv.textContent  = `LV.${p.level}`;
+  const lv = document.getElementById('cLv');    if (lv)  lv.textContent  = `LV.${p.level}  💰${p.gold||0}`;
   const hv = document.getElementById('cHpVal'); if (hv)  hv.textContent  = `${p.hp} / ${p.maxHp}`;
   const mv = document.getElementById('cMpVal'); if (mv)  mv.textContent  = `${p.mp} / ${p.maxMp}`;
   const sp = document.getElementById('cSpd');   if (sp)  sp.textContent  = `SPD ${_currentSpeed.toFixed(1)} km/h`;
-  const dead = document.getElementById('cDead'); if (dead) dead.style.display = _isDead ? '' : 'none';
+  const dead = document.getElementById('cDead');
+  if (dead) {
+    if (_isDead) {
+      dead.style.display = '';
+      dead.textContent = `💀 사망 — 부활까지 ${Math.max(0, Math.round(50 - _reviveWalkDist))}m 남음`;
+    } else {
+      dead.style.display = 'none';
+    }
+  }
 }
 
 // ── 플레이어 상태 저장/로드 ───────────────────────────────────────────────────
@@ -1036,6 +1170,7 @@ function savePlayerState() {
 }
 
 // ── 플레이어 HP/MP 변경 ────────────────────────────────────────────────────────
+let _lastHealFloat = 0;
 function takeDamage(amount, sourceLat, sourceLng) {
   if (_isDead) return;
   _player.hp = Math.max(0, _player.hp - amount);
@@ -1045,7 +1180,11 @@ function takeDamage(amount, sourceLat, sourceLng) {
   if (_player.hp <= 0) {
     _isDead = true;
     _player.hp = 0;
-    showFloat('💀 사망', '#fbbf24', lat, lng);
+    _reviveWalkDist = 0;
+    playSound('player_die');
+    if (lat && lng) showFloat('💀 사망했습니다', '#fbbf24', lat, lng);
+  } else {
+    playSound('player_hit');
   }
   updateCombatHud();
   savePlayerState();
@@ -1056,9 +1195,10 @@ function healHp(amount) {
   const prev = _player.hp;
   _player.hp = Math.min(_player.maxHp, _player.hp + amount);
   const gain = _player.hp - prev;
-  if (gain > 0 && myLocationMarker) {
-    const pos = myLocationMarker.getPosition();
-    showFloat(`+${gain}`, '#4ade80', pos.lat(), pos.lng());
+  if (gain > 0) {
+    // 힐 사운드는 30초에 1번만 (너무 자주 울리지 않도록)
+    const now = Date.now();
+    if (now - _lastHealFloat > 30000) { playSound('heal'); _lastHealFloat = now; }
   }
   updateCombatHud();
   savePlayerState();
@@ -1186,18 +1326,21 @@ function startBattleLoop() {
 function battleTick() {
   checkTowerAttacks();
   checkPlayerAutoAttack();
-  // 사망 상태에서 1m 이상 이동하면 부활 (10% HP)
-  if (_isDead && myLocationMarker) {
-    // _healAccum이 쌓이면 부활
-    if (_healAccum >= 10) {
+  checkGoldPickup();
+  // 사망 후 50m 이동 시 자동 부활
+  if (_isDead) {
+    if (_reviveWalkDist >= 50) {
       _isDead = false;
-      _player.hp = Math.round(_player.maxHp * 0.1);
-      _healAccum = 0;
+      _reviveWalkDist = 0;
+      _player.hp = Math.round(_player.maxHp * 0.3);
+      _player.mp = Math.round(_player.maxMp * 0.2);
+      playSound('revive');
       if (myLocationMarker) {
         const pos = myLocationMarker.getPosition();
-        showFloat('부활!', '#fbbf24', pos.lat(), pos.lng());
+        showFloat('✨ 부활!', '#fbbf24', pos.lat(), pos.lng());
       }
       updateCombatHud();
+      savePlayerState();
     }
   }
 }
@@ -1205,12 +1348,16 @@ function battleTick() {
 function checkTowerAttacks() {
   if (_isDead || !myLocationMarker) return;
   const myPos = myLocationMarker.getPosition();
+  const myLat = myPos.lat(), myLng = myPos.lng();
   for (const tower of _towers) {
     if (!tower.lat || !tower.lng) continue;
     if (_towerCd[tower.id]) continue;
-    const dist = haversine(myPos.lat(), myPos.lng(), tower.lat, tower.lng);
+    const dist = haversine(myLat, myLng, tower.lat, tower.lng);
     if (dist <= (tower.radius || 30)) {
-      takeDamage(tower.atk || 50, myPos.lat(), myPos.lng());
+      playSound('tower_shot');
+      animateArrow(tower.lat, tower.lng, myLat, myLng, '#a855f7', () => {
+        takeDamage(tower.atk || 50, myLat, myLng);
+      });
       _towerCd[tower.id] = true;
       setTimeout(() => { delete _towerCd[tower.id]; }, 2000);
     }
@@ -1242,9 +1389,11 @@ function checkPlayerAutoAttack() {
   _attackCd = true;
   setTimeout(() => { _attackCd = false; }, 1500);
 
-  // 화살 애니메이션 (간단히 플로팅 텍스트)
-  showFloat('🏹 -5', '#fbbf24', target.lat, target.lng);
-  hitMonster(target.id, 5);
+  playSound('arrow_shot');
+  animateArrow(myLat, myLng, target.lat, target.lng, '#fbbf24', () => {
+    playSound('arrow_hit');
+    hitMonster(target.id, 5);
+  });
 }
 
 function calcBearing(lat1, lng1, lat2, lng2) {
@@ -1271,9 +1420,10 @@ async function hitMonster(monsterId, damage) {
   if (marker) marker.setTitle(`${mob.name||'몬스터'} HP:${mob.hp}`);
 
   if (mob.hp <= 0) {
-    // 처치
+    playSound('monster_die');
     showFloat('💀 처치!', '#fbbf24', mob.lat, mob.lng);
     gainXp(mob.dropExp || 20);
+    dropGoldTokens(mob);
 
     // 드랍 아이템 (treasure_inventory에 추가) — 옵션
     if (mob.dropItems?.length && _uid) {
