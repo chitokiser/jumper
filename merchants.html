@@ -27,11 +27,7 @@
     @media (max-width: 600px) { .mc-map-wrap { height: 300px; } }
     #merchantMap { width: 100%; height: 100%; }
 
-    /* 지도 위 HUD 버튼 */
-    .map-hud {
-      position: absolute; bottom: 16px; right: 12px; z-index: 10;
-      display: flex; flex-direction: column; gap: 8px;
-    }
+    /* 지도 위 HUD 버튼 (Google Maps Custom Control로 등록) */
     .map-hud-btn {
       background: #fff; border: none; border-radius: 50%;
       width: 42px; height: 42px;
@@ -268,15 +264,13 @@
       </div>
 
       <!-- 지도 -->
-      <div style="position:relative;">
-        <div class="mc-map-wrap">
-          <div id="merchantMap"></div>
-        </div>
-        <!-- HUD 버튼: overflow:hidden 밖에 배치 -->
-        <div class="map-hud">
-          <button id="btnInventory" class="map-hud-btn" title="인벤토리">🎒</button>
-          <button id="btnMyLocation" class="map-hud-btn" title="내 위치">📍</button>
-        </div>
+      <div class="mc-map-wrap">
+        <div id="merchantMap"></div>
+      </div>
+      <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 -->
+      <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;">
+        <button id="btnInventory" class="map-hud-btn" title="인벤토리">🎒</button>
+        <button id="btnMyLocation" class="map-hud-btn" title="내 위치">📍</button>
       </div>
 
       <!-- 범례 -->

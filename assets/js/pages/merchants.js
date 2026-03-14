@@ -1,19 +1,13 @@
 // /assets/js/pages/merchants.js
 // 가맹점 지도 + 보물찾기 시스템
 
-import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, getDocs, doc, getDoc, query, where, orderBy, limit }
-                          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getAuth, onAuthStateChanged }
-                          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFunctions, httpsCallable }
-                          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
-import { firebaseConfig } from '/assets/js/firebase-config.js';
-
-const app       = initializeApp(firebaseConfig);
-const db        = getFirestore(app);
-const auth      = getAuth(app);
-const functions = getFunctions(app, 'us-central1');
+import { auth, db, functions } from '/assets/js/firebase-init.js';
+import { collection, getDocs, doc, getDoc, query, where, orderBy, limit }
+                          from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { onAuthStateChanged }
+                          from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { httpsCallable }
+                          from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
 const $ = id => document.getElementById(id);
 
@@ -28,7 +22,10 @@ let treasureBoxes   = [];     // [{id, lat, lng, startHour, endHour, itemPool, a
 let boxMarkers      = [];
 let myLocationMarker    = null;
 let myLocationAccCircle = null;
+let _locationWatchId    = null;  // watchPosition ID (실시간 추적)
+let _lastPos            = null;  // 마지막 GPS 위치 캐시
 let _uid            = null;   // 로그인 유저 UID
+let _userEmail      = null;   // 로그인 유저 이메일
 let _isAdmin        = false;  // 관리자 여부
 let _inventory      = {};     // {itemId: count}
 let _boxInventory   = [];     // [{boxId, boxName, collectedAt}]  미개봉 박스
@@ -102,6 +99,12 @@ function initMap() {
     ],
   });
   infoWindow = new google.maps.InfoWindow();
+
+  // HUD 버튼을 Google Maps Custom Control로 등록 (전체화면·확대 시에도 유지)
+  const existingHud = $('mapHud');
+  if (existingHud) {
+    map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(existingHud);
+  }
 }
 
 // ── 공유 bounds (가맹점 + 보물박스 합산) ─────────────────────────────────────
@@ -238,7 +241,9 @@ function renderBoxMarkers() {
     const h = `${String(box.startHour ?? 0).padStart(2,'0')}:00~${String(box.endHour ?? 24).padStart(2,'0')}:00`;
     marker.addListener('click', () => {
       const alreadyCollected = _collectedBoxes.has(box.id);
-      const adminBtn = _isAdmin && !alreadyCollected
+      // auth.currentUser로 즉시 확인 (async 딜레이 없음)
+      const isAdminNow = _isAdmin || (_userEmail === 'daguri75@gmail.com');
+      const adminBtn = isAdminNow && !alreadyCollected
         ? `<button onclick="window.__adminCollect('${box.id}')" style="
             margin-top:8px; background:#5c3a1e; color:#ffd700; border:1px solid #7a5c3a;
             padding:4px 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
@@ -250,7 +255,7 @@ function renderBoxMarkers() {
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🎁 ${escHtml(box.name||'보물박스')}</div>
           <div style="color:#888;">등장 시간: ${h}</div>
           <div style="color:${active?'#16a34a':'#dc2626'};font-weight:600;">${active?'✅ 지금 열려있음':'⏰ 현재 비활성'}</div>
-          ${active && !_isAdmin ? '<div style="margin-top:6px;color:#555;font-size:12px;">30m 이내로 접근하면 자동 수집!</div>' : ''}
+          ${active && !isAdminNow ? '<div style="margin-top:6px;color:#555;font-size:12px;">30m 이내로 접근하면 자동 수집!</div>' : ''}
           ${adminBtn}
         </div>`);
       infoWindow.open(map, marker);
@@ -302,40 +307,87 @@ $('mcSearch').addEventListener('input', () => {
   renderMarkers(filtered);
 });
 
-// ── 내 위치 표시 ─────────────────────────────────────────────────────────────
+// ── 내 위치 마커 아이콘 생성 (방향 화살표 포함) ──────────────────────────────
+function makeLocationIcon(heading) {
+  const hasHeading = heading != null && !isNaN(heading) && isFinite(heading);
+  const arrow = hasHeading
+    ? `<polygon points="20,3 14,17 20,13 26,17" fill="#1a73e8" stroke="white" stroke-width="1.5" transform="rotate(${Math.round(heading)},20,20)"/>`
+    : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="13" fill="#4285F4" fill-opacity="0.18"/>
+    ${arrow}
+    <circle cx="20" cy="20" r="8" fill="#4285F4" stroke="white" stroke-width="2.5"/>
+    <circle cx="20" cy="20" r="3" fill="white"/>
+  </svg>`;
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(40, 40),
+    anchor: new google.maps.Point(20, 20),
+  };
+}
+
+// ── 내 위치 마커 업데이트 (실시간) ───────────────────────────────────────────
+function updateMyLocation(lat, lng, accuracy, heading) {
+  const latLng = { lat, lng };
+  const icon = makeLocationIcon(heading);
+  if (myLocationMarker) {
+    myLocationMarker.setPosition(latLng);
+    myLocationMarker.setIcon(icon);
+  } else {
+    myLocationMarker = new google.maps.Marker({
+      position: latLng, map, title: '내 위치', icon, zIndex: 100,
+    });
+  }
+  const radius = (accuracy && accuracy > 0) ? accuracy : 10;
+  if (myLocationAccCircle) {
+    myLocationAccCircle.setCenter(latLng);
+    myLocationAccCircle.setRadius(radius);
+  } else {
+    myLocationAccCircle = new google.maps.Circle({
+      map, center: latLng, radius,
+      fillColor: '#4285F4', fillOpacity: 0.08,
+      strokeColor: '#4285F4', strokeOpacity: 0.3, strokeWeight: 1,
+    });
+  }
+}
+
+// ── 내 위치 버튼: 실시간 추적 시작 + 지도 이동 ───────────────────────────────
 function showMyLocation() {
   const btn = $('btnMyLocation');
   if (!navigator.geolocation) { alert('이 브라우저는 위치 서비스를 지원하지 않습니다.'); return; }
   if (btn) btn.textContent = '⏳';
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      if (myLocationMarker)    { myLocationMarker.setMap(null);    myLocationMarker = null; }
-      if (myLocationAccCircle) { myLocationAccCircle.setMap(null); myLocationAccCircle = null; }
+  // 백그라운드 watch가 이미 실행 중 → 마커 표시 + 현재 위치로 이동
+  if (_locationWatchId != null) {
+    if (_lastPos) {
+      updateMyLocation(_lastPos.lat, _lastPos.lng, _lastPos.accuracy, _lastPos.heading);
+      map.panTo({ lat: _lastPos.lat, lng: _lastPos.lng });
+      map.setZoom(16);
+    }
+    if (btn) btn.textContent = '📍';
+    return;
+  }
 
-      myLocationMarker = new google.maps.Marker({
-        position: latLng, map, title: '내 위치',
-        icon: { path: google.maps.SymbolPath.CIRCLE,
-          fillColor: '#4285F4', fillOpacity: 1,
-          strokeColor: '#fff', strokeWeight: 2, scale: 9 },
-        zIndex: 100,
-      });
-      if (pos.coords.accuracy) {
-        myLocationAccCircle = new google.maps.Circle({
-          map, center: latLng, radius: pos.coords.accuracy,
-          fillColor: '#4285F4', fillOpacity: 0.08,
-          strokeColor: '#4285F4', strokeOpacity: 0.3, strokeWeight: 1,
-        });
+  let firstFix = true;
+  _locationWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
+      _lastPos = { lat, lng, accuracy, heading };
+      updateMyLocation(lat, lng, accuracy, heading);
+      checkProximity(lat, lng);
+      if (firstFix) {
+        map.panTo({ lat, lng });
+        map.setZoom(16);
+        firstFix = false;
+        if (btn) btn.textContent = '📍';
       }
-      map.panTo(latLng); map.setZoom(15);
-      if (btn) btn.textContent = '📍';
     },
     (err) => {
       if (btn) btn.textContent = '📍';
+      _locationWatchId = null;
       alert({ 1:'위치 권한이 거부되었습니다.', 2:'위치를 가져올 수 없습니다.', 3:'위치 요청 시간 초과.' }[err.code] || '위치 오류');
     },
-    { enableHighAccuracy: true, timeout: 10000 }
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
   );
 }
 
@@ -488,7 +540,7 @@ async function openBox(boxId, slotEl) {
 function showItemReveal(itemName, itemImage) {
   const img = $('itemRevealImg');
   const name = $('itemRevealName');
-  if (img)  { img.src = `/assets/images/items/${escHtml(itemImage || '')}`; img.style.display = ''; }
+  if (img)  { img.src = `/assets/images/item/${escHtml(itemImage || '')}`; img.style.display = ''; }
   if (name) name.textContent = itemName || '아이템';
   $('itemReveal')?.classList.add('open');
 }
@@ -517,13 +569,19 @@ function renderBoxInventory() {
   el.appendChild(grid);
 }
 
-// ── 위치 추적 시작 ───────────────────────────────────────────────────────────
+// ── 백그라운드 근접 감지 (위치 버튼 누르기 전에도 보물 자동 수집) ──────────────
 function startWatchPosition() {
   if (!navigator.geolocation) return;
-  navigator.geolocation.watchPosition(
-    pos => checkProximity(pos.coords.latitude, pos.coords.longitude),
+  if (_locationWatchId != null) return;
+  _locationWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
+      _lastPos = { lat, lng, accuracy, heading };
+      if (myLocationMarker) updateMyLocation(lat, lng, accuracy, heading);
+      checkProximity(lat, lng);
+    },
     null,
-    { enableHighAccuracy: true, maximumAge: 5000 }
+    { enableHighAccuracy: true, maximumAge: 3000 }
   );
 }
 
@@ -544,11 +602,11 @@ function renderInventory() {
     slot.className = 'inv-slot';
     if (i < filled.length) {
       const [itemId, count] = filled[i];
-      const meta = _items[itemId] || {};
+      const meta = _items[String(itemId)] || {};
       slot.classList.add('has-item');
       slot.innerHTML = `
-        <img src="/assets/images/items/${escHtml(meta.image || itemId + '.png')}"
-             onerror="this.src='/assets/images/items/placeholder.png'"
+        <img src="/assets/images/item/${escHtml(meta.image || itemId + '.png')}"
+             onerror="this.onerror=null;this.src='/assets/images/item/0.png'"
              alt="${escHtml(meta.name || itemId)}" />
         <span class="slot-name">${escHtml(meta.name || '#'+itemId)}</span>
         <span class="slot-count">${count}</span>`;
@@ -631,32 +689,41 @@ async function loadInventory() {
     renderBoxInventory(); renderInventory(); renderVouchers(); renderMyVouchers([]);
     return;
   }
-  const [invSnap, boxInvSnap, myVSnap] = await Promise.all([
-    getDocs(query(collection(db, 'treasure_inventory'), where('uid', '==', _uid))),
-    getDocs(query(collection(db, 'treasure_inventory_boxes'), where('uid', '==', _uid))),
-    getDocs(query(
+
+  // 각 쿼리를 독립적으로 실행 — 하나 실패해도 나머지는 정상 표시
+  const settle = p => p.then(v => ({ ok: true, v })).catch(e => { console.warn('loadInventory query error:', e.message); return { ok: false }; });
+
+  const [invRes, boxRes, vRes] = await Promise.all([
+    settle(getDocs(query(collection(db, 'treasure_inventory'), where('uid', '==', _uid)))),
+    settle(getDocs(query(collection(db, 'treasure_inventory_boxes'), where('uid', '==', _uid)))),
+    settle(getDocs(query(
       collection(db, 'treasure_voucher_logs'),
       where('uid', '==', _uid),
       orderBy('craftedAt', 'desc'),
       limit(50)
-    )),
+    ))),
   ]);
+
+  // items 메타데이터가 아직 안 로드됐으면 여기서 로드
+  if (!Object.keys(_items).length) await loadItems();
+
   _inventory = {};
-  invSnap.forEach(d => {
+  if (invRes.ok) invRes.v.forEach(d => {
     const r = d.data();
-    if (r.count > 0) _inventory[r.itemId] = r.count;
+    if (r.count > 0) _inventory[String(r.itemId)] = r.count;  // 키를 문자열로 통일
   });
+
   _boxInventory = [];
-  boxInvSnap.forEach(d => {
+  if (boxRes.ok) boxRes.v.forEach(d => {
     const r = d.data();
     _boxInventory.push({ boxId: r.boxId, boxName: r.boxName });
-    // 이미 서버에 저장된 박스는 재수집 방지 세트에도 추가
     _collectedBoxes.add(r.boxId);
   });
+
   renderBoxInventory();
   renderInventory();
   renderVouchers();
-  renderMyVouchers(myVSnap.docs.map(d => d.data()));
+  renderMyVouchers(vRes.ok ? vRes.v.docs.map(d => d.data()) : []);
 }
 
 function renderMyVouchers(logs) {
@@ -689,29 +756,30 @@ function closeInventory() { $('invModal').classList.remove('open'); }
 
 // ── 메인 ────────────────────────────────────────────────────────────────────
 async function init() {
-  // Firebase Auth + 관리자 여부 확인
+  // Auth 리스너 (비동기 — 블로킹 없음)
   onAuthStateChanged(auth, async user => {
-    _uid = user?.uid || null;
+    _uid       = user?.uid   || null;
+    _userEmail = user?.email || null;
     if (_uid) {
       const snap = await getDoc(doc(db, 'admins', _uid));
-      _isAdmin = snap.exists();
+      _isAdmin = snap.exists() || (_userEmail === 'daguri75@gmail.com');
     } else {
       _isAdmin = false;
     }
   });
 
-  // 병렬 데이터 로드
-  const [merchantSnap] = await Promise.all([
-    getDocs(collection(db, 'merchants')),
-    loadPlaces(),
-    loadTreasureBoxes(),
-    loadItems(),
-    loadVouchers(),
+  // ── Phase 1: 지도 표시에 필요한 것만 병렬 로드 ──────────────────────────────
+  // Maps 스크립트 + 핵심 Firestore 데이터 동시에 시작
+  const settle1 = p => p.catch(() => null);
+  const [, merchantSnap] = await Promise.all([
+    settle1(loadMapsScript()),
+    settle1(getDocs(collection(db, 'merchants'))),
+    settle1(loadTreasureBoxes()),
   ]);
 
-  // 가맹점 데이터
+  // 가맹점 데이터 파싱
   allMerchants = [];
-  merchantSnap.forEach(d => {
+  merchantSnap?.forEach(d => {
     const m = d.data();
     if (m.active === false) return;
     const latLng = (m.lat && m.lng) ? { lat: m.lat, lng: m.lng } : parseLatLng(m.gmap);
@@ -719,22 +787,14 @@ async function init() {
   });
   allMerchants.sort((a, b) => (b._latLng ? 1 : 0) - (a._latLng ? 1 : 0));
 
-  // 지도
-  try {
-    await loadMapsScript();
+  // 지도 + 카드 즉시 표시
+  if (window.google?.maps) {
     initMap();
-    renderPlaceMarkers();
     renderMarkers(allMerchants);
     renderBoxMarkers();
     fitMapToAllMarkers();
-  } catch {
-    $('merchantMap').innerHTML = '<p style="padding:20px;color:#888;">지도를 불러오지 못했습니다.</p>';
   }
-
   renderCards(allMerchants);
-  renderBoxInventory();
-  renderInventory();
-  renderVouchers();
 
   // 버튼 이벤트
   $('btnMyLocation')?.addEventListener('click', showMyLocation);
@@ -744,8 +804,21 @@ async function init() {
   $('btnRevealClose')?.addEventListener('click', () => $('itemReveal')?.classList.remove('open'));
   $('itemReveal')?.addEventListener('click', e => { if (e.target === $('itemReveal')) $('itemReveal').classList.remove('open'); });
 
-  // 보물 근접 감지 시작
+  // 보물 근접 감지 즉시 시작
   startWatchPosition();
+
+  // ── Phase 2: 백그라운드에서 나머지 로드 (UI 블로킹 없음) ─────────────────────
+  Promise.all([loadPlaces(), loadItems(), loadVouchers()]).then(() => {
+    // 장소 마커 추가
+    if (window.google?.maps) {
+      renderPlaceMarkers();
+      fitMapToAllMarkers();
+    }
+    // 인벤토리 초기 렌더
+    renderBoxInventory();
+    renderInventory();
+    renderVouchers();
+  });
 }
 
 init();
