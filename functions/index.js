@@ -1232,6 +1232,10 @@ exports.openTreasureBox = onCall(wrapError(async (req) => {
   return treasureH.openTreasureBox(requireAuth(req), req.data ?? {});
 }));
 
+exports.adminCollectTreasureBox = onCall(wrapError(async (req) => {
+  return treasureH.adminCollectTreasureBox(requireAuth(req), req.data ?? {});
+}));
+
 exports.craftVoucher = onCall(wrapError(async (req) => {
   return treasureH.craftVoucher(requireAuth(req), req.data ?? {});
 }));

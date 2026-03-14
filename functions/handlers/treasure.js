@@ -89,6 +89,41 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   return { ok: true, boxName: box.name || '보물박스' };
 }
 
+// ── 관리자: GPS 없이 박스 수집 (테스트/PC용) ─────────────────────────────────
+async function adminCollectTreasureBox(adminUid, { boxId } = {}) {
+  await requireAdmin(adminUid);
+  if (!boxId) throw new HttpsError('invalid-argument', 'boxId가 필요합니다');
+
+  const boxSnap = await db.collection('treasure_boxes').doc(boxId).get();
+  if (!boxSnap.exists) throw new HttpsError('not-found', '보물박스를 찾을 수 없습니다');
+  const box = boxSnap.data();
+  if (!box.active) throw new HttpsError('failed-precondition', '비활성 보물박스입니다');
+
+  const itemPool = box.itemPool || [];
+  if (!itemPool.length) throw new HttpsError('failed-precondition', '아이템 풀이 비어 있습니다');
+
+  const logKey = `${adminUid}_${boxId}`;
+  const logRef = db.collection('treasure_logs').doc(logKey);
+  const logSnap = await logRef.get();
+  if (logSnap.exists) throw new HttpsError('already-exists', '이미 수집한 보물박스입니다');
+
+  const invBoxRef = db.collection('treasure_inventory_boxes').doc(logKey);
+  await db.runTransaction(async (tx) => {
+    tx.set(invBoxRef, {
+      uid: adminUid, boxId,
+      boxName: box.name || '',
+      itemPool,
+      collectedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    tx.set(logRef, {
+      uid: adminUid, boxId,
+      collectedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { ok: true, boxName: box.name || '보물박스' };
+}
+
 // ── 유저: 보물박스 오픈 (인벤토리의 미개봉 박스 → 랜덤 아이템 획득) ──────────
 async function openTreasureBox(uid, { boxId } = {}) {
   if (!boxId) throw new HttpsError('invalid-argument', 'boxId가 필요합니다');
@@ -243,6 +278,7 @@ async function adminSaveVoucher(adminUid, data = {}) {
 module.exports = {
   collectTreasureBox,
   openTreasureBox,
+  adminCollectTreasureBox,
   craftVoucher,
   adminSaveTreasureItem,
   adminSaveTreasureBox,

@@ -2,7 +2,7 @@
 // 가맹점 지도 + 보물찾기 시스템
 
 import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, getDocs, query, where, orderBy, limit }
+import { getFirestore, collection, getDocs, doc, getDoc, query, where, orderBy, limit }
                           from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, onAuthStateChanged }
                           from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -27,6 +27,7 @@ let boxMarkers      = [];
 let myLocationMarker    = null;
 let myLocationAccCircle = null;
 let _uid            = null;   // 로그인 유저 UID
+let _isAdmin        = false;  // 관리자 여부
 let _inventory      = {};     // {itemId: count}
 let _boxInventory   = [];     // [{boxId, boxName, collectedAt}]  미개봉 박스
 let _items          = {};     // {itemId: {name, image, description}}
@@ -178,12 +179,21 @@ function renderBoxMarkers() {
 
     const h = `${String(box.startHour ?? 0).padStart(2,'0')}:00~${String(box.endHour ?? 24).padStart(2,'0')}:00`;
     marker.addListener('click', () => {
+      const alreadyCollected = _collectedBoxes.has(box.id);
+      const adminBtn = _isAdmin && !alreadyCollected
+        ? `<button onclick="window.__adminCollect('${box.id}')" style="
+            margin-top:8px; background:#5c3a1e; color:#ffd700; border:1px solid #7a5c3a;
+            padding:4px 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
+            🔑 관리자 수집 (PC)
+          </button>`
+        : (alreadyCollected ? '<div style="margin-top:6px;font-size:11px;color:#aaa;">✓ 이미 수집됨</div>' : '');
       infoWindow.setContent(`
         <div style="font-size:13px;line-height:1.7;">
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🎁 ${escHtml(box.name||'보물박스')}</div>
           <div style="color:#888;">등장 시간: ${h}</div>
           <div style="color:${active?'#16a34a':'#dc2626'};font-weight:600;">${active?'✅ 지금 열려있음':'⏰ 현재 비활성'}</div>
-          ${active ? '<div style="margin-top:6px;color:#555;font-size:12px;">5m 이내로 접근하면 자동 수집!</div>' : ''}
+          ${active && !_isAdmin ? '<div style="margin-top:6px;color:#555;font-size:12px;">30m 이내로 접근하면 자동 수집!</div>' : ''}
+          ${adminBtn}
         </div>`);
       infoWindow.open(map, marker);
     });
@@ -372,6 +382,28 @@ function playOpenBoxSound() {
     });
   } catch (_) { /* 무시 */ }
 }
+
+// ── 관리자: PC에서 GPS 없이 박스 수집 ────────────────────────────────────────
+async function adminCollectBox(boxId) {
+  if (_collectedBoxes.has(boxId)) { alert('이미 수집한 보물박스입니다.'); return; }
+  _collectedBoxes.add(boxId);
+  infoWindow.close();
+  try {
+    const result = await httpsCallable(functions, 'adminCollectTreasureBox')({ boxId });
+    const d = result.data;
+    showCollectToast(d.boxName);
+    if (!_boxInventory.find(b => b.boxId === boxId)) {
+      _boxInventory.push({ boxId, boxName: d.boxName });
+    }
+    renderBoxInventory();
+  } catch (err) {
+    _collectedBoxes.delete(boxId);
+    alert('수집 실패: ' + (err.message || err));
+  }
+}
+
+// infoWindow 버튼용 전역 핸들러
+window.__adminCollect = (boxId) => adminCollectBox(boxId);
 
 // ── 박스 오픈 (인벤토리 박스 클릭) ────────────────────────────────────────────
 async function openBox(boxId, slotEl) {
@@ -593,8 +625,16 @@ function closeInventory() { $('invModal').classList.remove('open'); }
 
 // ── 메인 ────────────────────────────────────────────────────────────────────
 async function init() {
-  // Firebase Auth
-  onAuthStateChanged(auth, user => { _uid = user?.uid || null; });
+  // Firebase Auth + 관리자 여부 확인
+  onAuthStateChanged(auth, async user => {
+    _uid = user?.uid || null;
+    if (_uid) {
+      const snap = await getDoc(doc(db, 'admins', _uid));
+      _isAdmin = snap.exists();
+    } else {
+      _isAdmin = false;
+    }
+  });
 
   // 병렬 데이터 로드
   const [merchantSnap] = await Promise.all([
