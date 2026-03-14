@@ -422,6 +422,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── 위치 기반 전투 시스템 ─────────────────────────────────────
+    match /battle_monsters/{docId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+    match /battle_towers/{docId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+    match /battle_players/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if isAdmin();
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+
     // ── DAO 의결 시스템 ────────────────────────────────────────────
     // 안건 목록·상세: 누구나 읽기 가능
     // 등록·지지·투표·댓글: Cloud Function 서버 사이드 처리 (직접 쓰기 불가)

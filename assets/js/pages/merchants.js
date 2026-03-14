@@ -2,7 +2,8 @@
 // 가맹점 지도 + 보물찾기 시스템
 
 import { auth, db, functions } from '/assets/js/firebase-init.js';
-import { collection, getDocs, doc, getDoc, query, where, orderBy, limit }
+import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
+         addDoc, deleteDoc, setDoc, serverTimestamp }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -23,6 +24,10 @@ let boxMarkers      = [];
 let myLocationMarker    = null;
 let myLocationAccCircle = null;
 let _locationWatchId    = null;  // watchPosition ID (실시간 추적)
+let _totalDist          = 0;     // 누적 이동거리 (미터)
+let _lastDistPos        = null;  // 직전 GPS 좌표 {lat, lng}
+let _lastHeading        = null;  // 진행 방향 (degrees, 0=북)
+let _lastSpeedPos       = null;  // 속도 계산용 {lat, lng, time}
 let _lastPos            = null;  // 마지막 GPS 위치 캐시
 let _uid            = null;   // 로그인 유저 UID
 let _userEmail      = null;   // 로그인 유저 이메일
@@ -102,9 +107,30 @@ function initMap() {
 
   // HUD 버튼을 Google Maps Custom Control로 등록 (전체화면·확대 시에도 유지)
   const existingHud = $('mapHud');
-  if (existingHud) {
-    map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(existingHud);
-  }
+  if (existingHud) map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(existingHud);
+
+  // 전투 HUD (LEFT_BOTTOM)
+  const combatHud = $('combatHud');
+  if (combatHud) map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(combatHud);
+
+  // 관리자 전투 패널 (LEFT_BOTTOM, combatHud 위)
+  const adminBattlePanel = $('adminBattlePanel');
+  if (adminBattlePanel) map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(adminBattlePanel);
+
+  // 전체화면 진입/종료 시 모달을 fullscreen 요소 안으로 이동 (fixed 포지션 유지)
+  const MODALS = ['invModal', 'itemReveal'];
+  document.addEventListener('fullscreenchange', () => {
+    const fs = document.fullscreenElement;
+    MODALS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (fs) {
+        fs.appendChild(el);   // 전체화면 요소 안으로
+      } else {
+        document.body.appendChild(el);  // 전체화면 종료 → body로 복귀
+      }
+    });
+  });
 }
 
 // ── 공유 bounds (가맹점 + 보물박스 합산) ─────────────────────────────────────
@@ -254,8 +280,8 @@ function renderBoxMarkers() {
         <div style="font-size:13px;line-height:1.7;">
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🎁 ${escHtml(box.name||'보물박스')}</div>
           <div style="color:#888;">등장 시간: ${h}</div>
-          <div style="color:${active?'#16a34a':'#dc2626'};font-weight:600;">${active?'✅ 지금 열려있음':'⏰ 현재 비활성'}</div>
-          ${active && !isAdminNow ? '<div style="margin-top:6px;color:#555;font-size:12px;">30m 이내로 접근하면 자동 수집!</div>' : ''}
+          <div style="color:${active?'#16a34a':'#dc2626'};font-weight:600;">${active?'✅ 지금 획득가능':'⏰ 현재 비활성'}</div>
+          ${active && !isAdminNow ? '<div style="margin-top:6px;color:#555;font-size:12px;">5m 이내로 접근하면 자동 수집!</div>' : ''}
           ${adminBtn}
         </div>`);
       infoWindow.open(map, marker);
@@ -326,6 +352,17 @@ function makeLocationIcon(heading) {
   };
 }
 
+// ── 이동거리 표시 업데이트 ────────────────────────────────────────────────────
+function updateDistDisplay() {
+  const panel = $('distPanel');
+  const el = $('distValue');
+  if (!el) return;
+  if (panel && !panel.classList.contains('active')) panel.classList.add('active');
+  el.textContent = _totalDist >= 1000
+    ? (_totalDist / 1000).toFixed(2) + ' km'
+    : Math.round(_totalDist) + ' m';
+}
+
 // ── 내 위치 마커 업데이트 (실시간) ───────────────────────────────────────────
 function updateMyLocation(lat, lng, accuracy, heading) {
   const latLng = { lat, lng };
@@ -349,6 +386,39 @@ function updateMyLocation(lat, lng, accuracy, heading) {
       strokeColor: '#4285F4', strokeOpacity: 0.3, strokeWeight: 1,
     });
   }
+
+  // 방향 업데이트
+  if (heading != null && !isNaN(heading)) _lastHeading = heading;
+
+  // 정확도 불량이면 거리/속도 계산 스킵
+  if (accuracy && accuracy > 30) { _lastDistPos = { lat, lng }; _lastSpeedPos = { lat, lng, time: Date.now() }; return; }
+
+  if (_lastDistPos) {
+    const d = haversine(lat, lng, _lastDistPos.lat, _lastDistPos.lng);
+    if (d > 1 && d < 500) {
+      _totalDist += d;
+      updateDistDisplay();
+
+      // 속도 계산 (km/h)
+      const now = Date.now();
+      if (_lastSpeedPos) {
+        const dt = (now - _lastSpeedPos.time) / 1000; // 초
+        if (dt > 0) _currentSpeed = Math.min((d / dt) * 3.6, 200);
+      }
+
+      // HP 회복: 속도 17km/h 이하 + 10m마다 HP+10
+      if (_currentSpeed <= 17) {
+        _healAccum += d;
+        while (_healAccum >= 10) {
+          _healAccum -= 10;
+          healHp(10);
+        }
+      }
+    }
+  }
+  _lastDistPos  = { lat, lng };
+  _lastSpeedPos = { lat, lng, time: Date.now() };
+  updateCombatHud();
 }
 
 // ── 내 위치 버튼: 실시간 추적 시작 + 지도 이동 ───────────────────────────────
@@ -399,7 +469,7 @@ async function checkProximity(lat, lng) {
     if (!isBoxActive(box)) continue;
     if (_collectedBoxes.has(box.id)) continue;
     const dist = haversine(lat, lng, box.lat, box.lng);
-    if (dist <= 30) {  // 서버 허용(10m) + GPS 오차 여유
+    if (dist <= 5) {  // 5m 이내 자동 수집
       await tryCollect(box);
     }
   }
@@ -530,17 +600,23 @@ async function openBox(boxId, slotEl) {
     renderInventory();
     // 오픈 사운드 + 아이템 획득 오버레이
     playOpenBoxSound();
-    showItemReveal(d.itemName, d.itemImage);
+    showItemReveal(d.itemName, d.itemImage, d.itemId);
   } catch (err) {
     if (slotEl) slotEl.classList.remove('opening');
     alert('박스 오픈 실패: ' + (err.message || err));
   }
 }
 
-function showItemReveal(itemName, itemImage) {
+function showItemReveal(itemName, itemImage, itemId) {
   const img = $('itemRevealImg');
   const name = $('itemRevealName');
-  if (img)  { img.src = `/assets/images/item/${escHtml(itemImage || '')}`; img.style.display = ''; }
+  if (img) {
+    const fallback = itemId ? `/assets/images/item/${escHtml(String(itemId))}.png` : '/assets/images/item/0.png';
+    const src = itemImage ? `/assets/images/item/${escHtml(itemImage)}` : fallback;
+    img.src = src;
+    img.onerror = () => { img.onerror = null; img.src = fallback; };
+    img.style.display = '';
+  }
   if (name) name.textContent = itemName || '아이템';
   $('itemReveal')?.classList.add('open');
 }
@@ -604,11 +680,13 @@ function renderInventory() {
       const [itemId, count] = filled[i];
       const meta = _items[String(itemId)] || {};
       slot.classList.add('has-item');
+      const imgFile = meta.image || (itemId + '.png');
+      const fallbackImg = `/assets/images/item/${escHtml(String(itemId))}.png`;
       slot.innerHTML = `
-        <img src="/assets/images/item/${escHtml(meta.image || itemId + '.png')}"
-             onerror="this.onerror=null;this.src='/assets/images/item/0.png'"
+        <img src="/assets/images/item/${escHtml(imgFile)}"
+             onerror="this.onerror=null;this.src='${fallbackImg}'"
              alt="${escHtml(meta.name || itemId)}" />
-        <span class="slot-name">${escHtml(meta.name || '#'+itemId)}</span>
+        <span class="slot-name">${escHtml(meta.name || ('#' + itemId))}</span>
         <span class="slot-count">${count}</span>`;
     } else {
       slot.innerHTML = '<span class="slot-placeholder">□</span>';
@@ -763,9 +841,14 @@ async function init() {
     if (_uid) {
       const snap = await getDoc(doc(db, 'admins', _uid));
       _isAdmin = snap.exists() || (_userEmail === 'daguri75@gmail.com');
+      // 전투 시스템: 플레이어 상태 로드
+      loadPlayerState();
     } else {
       _isAdmin = false;
     }
+    // 관리자 패널 표시
+    const abp = $('adminBattlePanel');
+    if (abp) abp.classList.toggle('open', !!_isAdmin);
   });
 
   // ── Phase 1: 지도 표시에 필요한 것만 병렬 로드 ──────────────────────────────
@@ -799,16 +882,26 @@ async function init() {
   // 버튼 이벤트
   $('btnMyLocation')?.addEventListener('click', showMyLocation);
   $('btnInventory')?.addEventListener('click', openInventory);
+  $('btnResetDist')?.addEventListener('click', () => {
+    _totalDist = 0; _lastDistPos = null; updateDistDisplay();
+  });
   $('btnCloseInv')?.addEventListener('click', closeInventory);
   $('invModal')?.addEventListener('click', e => { if (e.target === $('invModal')) closeInventory(); });
   $('btnRevealClose')?.addEventListener('click', () => $('itemReveal')?.classList.remove('open'));
   $('itemReveal')?.addEventListener('click', e => { if (e.target === $('itemReveal')) $('itemReveal').classList.remove('open'); });
 
-  // 보물 근접 감지 즉시 시작
+  // 관리자 전투 배치 패널 버튼
+  $('btnPlaceMonster')?.addEventListener('click', () => enterAdminPlaceMode('monster'));
+  $('btnPlaceTower')?.addEventListener('click',   () => enterAdminPlaceMode('tower'));
+  $('btnCancelPlace')?.addEventListener('click',  exitAdminPlaceMode);
+  $('btnToggleTowerRange')?.addEventListener('click', toggleTowerRanges);
+
+  // 보물 근접 감지 + 전투 루프 시작
   startWatchPosition();
+  startBattleLoop();
 
   // ── Phase 2: 백그라운드에서 나머지 로드 (UI 블로킹 없음) ─────────────────────
-  Promise.all([loadPlaces(), loadItems(), loadVouchers()]).then(() => {
+  Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadBattleData()]).then(() => {
     // 장소 마커 추가
     if (window.google?.maps) {
       renderPlaceMarkers();
@@ -819,6 +912,488 @@ async function init() {
     renderInventory();
     renderVouchers();
   });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ── 위치 기반 전투 시스템 ──────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── 전투 상태 변수 ────────────────────────────────────────────────────────────
+let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0 };
+let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active}]
+let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
+let _monsterMarkers  = {};     // { id: Marker }
+let _towerMarkers    = {};     // { id: Marker }
+let _towerRanges     = {};     // { id: Circle }
+let _showTowerRange  = false;
+let _battleLoopId    = null;
+let _attackCd        = false;  // 유저 공격 쿨다운 (1.5초)
+let _towerCd         = {};     // { towerId: bool }
+let _healAccum       = 0;      // HP 회복용 추가 누적거리(m)
+let _currentSpeed    = 0;      // km/h
+let _isDead          = false;
+let _adminPlaceMode  = null;   // 'monster' | 'tower' | null
+let _adminMapListener = null;
+
+// ── 좌표 → 픽셀 변환 ─────────────────────────────────────────────────────────
+function latLngToPixel(lat, lng) {
+  if (!map || !map.getProjection || !map.getProjection() || !map.getBounds()) return null;
+  const proj   = map.getProjection();
+  const bounds = map.getBounds();
+  const scale  = Math.pow(2, map.getZoom());
+  const nw = proj.fromLatLngToPoint(
+    new google.maps.LatLng(bounds.getNorthEast().lat(), bounds.getSouthWest().lng()));
+  const pt = proj.fromLatLngToPoint(new google.maps.LatLng(lat, lng));
+  return { x: (pt.x - nw.x) * scale, y: (pt.y - nw.y) * scale };
+}
+
+// ── 데미지/힐 숫자 플로팅 ──────────────────────────────────────────────────────
+function showFloat(text, color, lat, lng) {
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) return;
+  const px = latLngToPixel(lat, lng);
+  const x = px ? px.x : overlay.offsetWidth  * 0.5;
+  const y = px ? px.y : overlay.offsetHeight * 0.4;
+  const el = document.createElement('div');
+  el.className = 'dmg-float';
+  el.style.cssText = `left:${x}px;top:${y}px;color:${color}`;
+  el.textContent = text;
+  overlay.appendChild(el);
+  setTimeout(() => el.remove(), 1200);
+}
+
+// ── 전투 HUD 업데이트 ─────────────────────────────────────────────────────────
+function updateCombatHud() {
+  const p = _player;
+  const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100));
+  const mpPct = Math.max(0, Math.min(100, (p.mp / p.maxMp) * 100));
+
+  const hpBar = document.getElementById('cHpBar');
+  const mpBar = document.getElementById('cMpBar');
+  if (hpBar) { hpBar.style.width = hpPct + '%'; hpBar.classList.toggle('low', hpPct < 25); }
+  if (mpBar)  mpBar.style.width = mpPct + '%';
+
+  const lv = document.getElementById('cLv');    if (lv)  lv.textContent  = `LV.${p.level}`;
+  const hv = document.getElementById('cHpVal'); if (hv)  hv.textContent  = `${p.hp} / ${p.maxHp}`;
+  const mv = document.getElementById('cMpVal'); if (mv)  mv.textContent  = `${p.mp} / ${p.maxMp}`;
+  const sp = document.getElementById('cSpd');   if (sp)  sp.textContent  = `SPD ${_currentSpeed.toFixed(1)} km/h`;
+  const dead = document.getElementById('cDead'); if (dead) dead.style.display = _isDead ? '' : 'none';
+}
+
+// ── 플레이어 상태 저장/로드 ───────────────────────────────────────────────────
+async function loadPlayerState() {
+  if (!_uid) return;
+
+  // 1) 온체인 레벨 동기화 (mypage.html과 동일한 Cloud Function)
+  try {
+    const res = await httpsCallable(functions, 'getMyOnChain')();
+    const onChain = res.data;
+    if (onChain?.level > 0) {
+      _player.level = onChain.level;
+      _player.xp    = onChain.exp    || 0;
+    }
+  } catch { /* 온체인 조회 실패 시 battle_players fallback */ }
+
+  // 2) HP/MP는 battle_players에서 로드 (레벨 기반 maxHp/Mp 재계산)
+  try {
+    const snap = await getDoc(doc(db, 'battle_players', _uid));
+    _player.maxHp = _player.level * 1000;
+    _player.maxMp = _player.level * 1000;
+    if (snap.exists()) {
+      const d = snap.data();
+      // 저장된 레벨과 현재 온체인 레벨이 같을 때만 HP 복원
+      if ((d.level || 1) === _player.level) {
+        _player.hp = Math.min(d.hp || _player.maxHp, _player.maxHp);
+        _player.mp = Math.min(d.mp || _player.maxMp, _player.maxMp);
+      } else {
+        // 레벨 변경됨 → 풀 HP로 시작
+        _player.hp = _player.maxHp;
+        _player.mp = _player.maxMp;
+      }
+    } else {
+      _player.hp = _player.maxHp;
+      _player.mp = _player.maxMp;
+    }
+  } catch { /* 무시 */ }
+
+  updateCombatHud();
+}
+
+let _saveTimer = null;
+function savePlayerState() {
+  if (!_uid) return;
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
+    try {
+      await setDoc(doc(db, 'battle_players', _uid), {
+        uid: _uid, level: _player.level, xp: _player.xp,
+        hp: _player.hp, mp: _player.mp,
+        maxHp: _player.maxHp, maxMp: _player.maxMp,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch { /* 무시 */ }
+  }, 3000);
+}
+
+// ── 플레이어 HP/MP 변경 ────────────────────────────────────────────────────────
+function takeDamage(amount, sourceLat, sourceLng) {
+  if (_isDead) return;
+  _player.hp = Math.max(0, _player.hp - amount);
+  const lat = sourceLat || (myLocationMarker ? myLocationMarker.getPosition().lat() : null);
+  const lng = sourceLng || (myLocationMarker ? myLocationMarker.getPosition().lng() : null);
+  if (lat && lng) showFloat(`-${amount}`, '#f87171', lat, lng);
+  if (_player.hp <= 0) {
+    _isDead = true;
+    _player.hp = 0;
+    showFloat('💀 사망', '#fbbf24', lat, lng);
+  }
+  updateCombatHud();
+  savePlayerState();
+}
+
+function healHp(amount) {
+  if (_isDead) return;
+  const prev = _player.hp;
+  _player.hp = Math.min(_player.maxHp, _player.hp + amount);
+  const gain = _player.hp - prev;
+  if (gain > 0 && myLocationMarker) {
+    const pos = myLocationMarker.getPosition();
+    showFloat(`+${gain}`, '#4ade80', pos.lat(), pos.lng());
+  }
+  updateCombatHud();
+  savePlayerState();
+}
+
+function gainXp(amount) {
+  _player.xp += amount;
+  // 전투 XP 저장 (레벨업은 mypage.html 온체인에서 처리)
+  if (myLocationMarker) {
+    const pos = myLocationMarker.getPosition();
+    showFloat(`+${amount} XP`, '#a78bfa', pos.lat(), pos.lng());
+  }
+  updateCombatHud();
+  savePlayerState();
+}
+
+// ── 배틀 데이터 로드 ──────────────────────────────────────────────────────────
+async function loadBattleData() {
+  try {
+    const [mSnap, tSnap] = await Promise.all([
+      getDocs(query(collection(db, 'battle_monsters'), where('active', '==', true))),
+      getDocs(query(collection(db, 'battle_towers'),   where('active', '==', true))),
+    ]);
+    _monsters = mSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _towers   = tSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (window.google?.maps) {
+      renderMonsterMarkers();
+      renderTowerMarkers();
+    }
+  } catch (e) { console.warn('loadBattleData:', e.message); }
+}
+
+// ── 몬스터 마커 ───────────────────────────────────────────────────────────────
+function getMonsterIcon(image) {
+  const emoji = image || '🐉';
+  const isEmoji = !image || image.length <= 4;
+  if (isEmoji) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+      <circle cx="18" cy="18" r="17" fill="rgba(220,38,38,0.85)" stroke="#fff" stroke-width="2"/>
+      <text x="18" y="24" font-size="18" text-anchor="middle">${emoji}</text></svg>`;
+    return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+             scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+  }
+  return { url: `/assets/images/monsters/${image}`,
+           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+}
+
+function getTowerIcon() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
+    <circle cx="19" cy="19" r="18" fill="rgba(124,58,237,0.88)" stroke="#fff" stroke-width="2"/>
+    <text x="19" y="26" font-size="20" text-anchor="middle">🏰</text></svg>`;
+  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+           scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
+}
+
+function renderMonsterMarkers() {
+  Object.values(_monsterMarkers).forEach(m => m.setMap(null));
+  _monsterMarkers = {};
+  for (const mob of _monsters) {
+    if (!mob.lat || !mob.lng) continue;
+    const marker = new google.maps.Marker({
+      position: { lat: mob.lat, lng: mob.lng }, map,
+      title: mob.name || '몬스터',
+      icon: getMonsterIcon(mob.image),
+      zIndex: 50,
+    });
+    // HP 바 infoWindow
+    marker.addListener('click', () => {
+      const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
+      infoWindow.setContent(`
+        <div style="font-size:13px;min-width:140px">
+          <b>${escHtml(mob.name||'몬스터')}</b>
+          <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
+          <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
+          ${_isAdmin ? `<button onclick="window.__deleteBattleObj('monster','${mob.id}')"
+            style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
+        </div>`);
+      infoWindow.open(map, marker);
+    });
+    _monsterMarkers[mob.id] = marker;
+  }
+}
+
+function renderTowerMarkers() {
+  Object.values(_towerMarkers).forEach(m => m.setMap(null));
+  Object.values(_towerRanges).forEach(c => c.setMap(null));
+  _towerMarkers = {}; _towerRanges = {};
+  for (const tower of _towers) {
+    if (!tower.lat || !tower.lng) continue;
+    const marker = new google.maps.Marker({
+      position: { lat: tower.lat, lng: tower.lng }, map,
+      title: tower.name || '방어탑',
+      icon: getTowerIcon(), zIndex: 55,
+    });
+    marker.addListener('click', () => {
+      infoWindow.setContent(`
+        <div style="font-size:13px">
+          <b>🏰 ${escHtml(tower.name||'방어탑')}</b>
+          <div style="font-size:11px;color:#888;margin-top:4px">반경 ${tower.radius||30}m · 데미지 ${tower.atk||50}</div>
+          ${_isAdmin ? `<button onclick="window.__deleteBattleObj('tower','${tower.id}')"
+            style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
+        </div>`);
+      infoWindow.open(map, marker);
+    });
+    _towerMarkers[tower.id] = marker;
+
+    const circle = new google.maps.Circle({
+      map: _showTowerRange ? map : null,
+      center: { lat: tower.lat, lng: tower.lng },
+      radius: tower.radius || 30,
+      fillColor: '#7c3aed', fillOpacity: 0.08,
+      strokeColor: '#7c3aed', strokeOpacity: 0.4, strokeWeight: 1,
+    });
+    _towerRanges[tower.id] = circle;
+  }
+}
+
+// ── 배틀 루프 ─────────────────────────────────────────────────────────────────
+function startBattleLoop() {
+  if (_battleLoopId) return;
+  _battleLoopId = setInterval(battleTick, 1000);
+}
+
+function battleTick() {
+  checkTowerAttacks();
+  checkPlayerAutoAttack();
+  // 사망 상태에서 1m 이상 이동하면 부활 (10% HP)
+  if (_isDead && myLocationMarker) {
+    // _healAccum이 쌓이면 부활
+    if (_healAccum >= 10) {
+      _isDead = false;
+      _player.hp = Math.round(_player.maxHp * 0.1);
+      _healAccum = 0;
+      if (myLocationMarker) {
+        const pos = myLocationMarker.getPosition();
+        showFloat('부활!', '#fbbf24', pos.lat(), pos.lng());
+      }
+      updateCombatHud();
+    }
+  }
+}
+
+function checkTowerAttacks() {
+  if (_isDead || !myLocationMarker) return;
+  const myPos = myLocationMarker.getPosition();
+  for (const tower of _towers) {
+    if (!tower.lat || !tower.lng) continue;
+    if (_towerCd[tower.id]) continue;
+    const dist = haversine(myPos.lat(), myPos.lng(), tower.lat, tower.lng);
+    if (dist <= (tower.radius || 30)) {
+      takeDamage(tower.atk || 50, myPos.lat(), myPos.lng());
+      _towerCd[tower.id] = true;
+      setTimeout(() => { delete _towerCd[tower.id]; }, 2000);
+    }
+  }
+}
+
+function checkPlayerAutoAttack() {
+  if (_isDead || !myLocationMarker || _attackCd) return;
+  if (_currentSpeed < 0.3) return; // 정지 상태면 자동공격 없음
+  const myPos = myLocationMarker.getPosition();
+  const myLat = myPos.lat(), myLng = myPos.lng();
+
+  // 전방 25m 이내 + 진행 방향 ±45° 범위 몬스터 탐지
+  let target = null, minDist = Infinity;
+  for (const mob of _monsters) {
+    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
+    const dist = haversine(myLat, myLng, mob.lat, mob.lng);
+    if (dist > 25) continue;
+    // heading이 있으면 방향 판정
+    if (_lastHeading != null) {
+      const bearing = calcBearing(myLat, myLng, mob.lat, mob.lng);
+      const diff = Math.abs(((bearing - _lastHeading) + 540) % 360 - 180);
+      if (diff > 60) continue; // 전방 120° 범위
+    }
+    if (dist < minDist) { minDist = dist; target = mob; }
+  }
+
+  if (!target) return;
+  _attackCd = true;
+  setTimeout(() => { _attackCd = false; }, 1500);
+
+  // 화살 애니메이션 (간단히 플로팅 텍스트)
+  showFloat('🏹 -5', '#fbbf24', target.lat, target.lng);
+  hitMonster(target.id, 5);
+}
+
+function calcBearing(lat1, lng1, lat2, lng2) {
+  const toRad = d => d * Math.PI / 180;
+  const dLng = toRad(lng2 - lng1);
+  const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2))
+          - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+async function hitMonster(monsterId, damage) {
+  const mob = _monsters.find(m => m.id === monsterId);
+  if (!mob || mob.hp <= 0) return;
+  mob.hp = Math.max(0, mob.hp - damage);
+
+  // Firestore 업데이트
+  try {
+    await setDoc(doc(db, 'battle_monsters', monsterId), { hp: mob.hp }, { merge: true });
+  } catch { /* 무시 */ }
+
+  // 마커 infoWindow 갱신 (열려 있을 때)
+  const marker = _monsterMarkers[monsterId];
+  if (marker) marker.setTitle(`${mob.name||'몬스터'} HP:${mob.hp}`);
+
+  if (mob.hp <= 0) {
+    // 처치
+    showFloat('💀 처치!', '#fbbf24', mob.lat, mob.lng);
+    gainXp(mob.dropExp || 20);
+
+    // 드랍 아이템 (treasure_inventory에 추가) — 옵션
+    if (mob.dropItems?.length && _uid) {
+      const drop = mob.dropItems[Math.floor(Math.random() * mob.dropItems.length)];
+      if (drop?.itemId) {
+        try {
+          const invRef = doc(db, 'treasure_inventory', `${_uid}_${drop.itemId}`);
+          const invSnap = await getDoc(invRef);
+          const cur = invSnap.exists() ? (invSnap.data().count || 0) : 0;
+          await setDoc(invRef, { uid: _uid, itemId: String(drop.itemId), count: cur + 1,
+            updatedAt: serverTimestamp() }, { merge: true });
+          showFloat(`📦 ${drop.itemId}`, '#86efac', mob.lat, mob.lng);
+        } catch { /* 무시 */ }
+      }
+    }
+
+    // 리스폰 (기본 60초)
+    const respawnMs = (mob.respawnMinutes || 1) * 60000;
+    if (_monsterMarkers[monsterId]) {
+      _monsterMarkers[monsterId].setMap(null);
+      delete _monsterMarkers[monsterId];
+    }
+    setTimeout(async () => {
+      // Firestore에서 maxHp로 복구
+      try {
+        await setDoc(doc(db, 'battle_monsters', monsterId),
+          { hp: mob.maxHp, active: true }, { merge: true });
+        mob.hp = mob.maxHp;
+        if (window.google?.maps) {
+          const m = new google.maps.Marker({
+            position: { lat: mob.lat, lng: mob.lng }, map,
+            title: mob.name, icon: getMonsterIcon(mob.image), zIndex: 50,
+          });
+          _monsterMarkers[monsterId] = m;
+        }
+      } catch { /* 무시 */ }
+    }, respawnMs);
+  }
+}
+
+// ── 관리자 배치 모드 ──────────────────────────────────────────────────────────
+function enterAdminPlaceMode(type) {
+  _adminPlaceMode = type;
+  document.getElementById('btnPlaceMonster')?.classList.toggle('placing', type === 'monster');
+  document.getElementById('btnPlaceTower')?.classList.toggle('placing', type === 'tower');
+  document.getElementById('btnCancelPlace').style.display = '';
+  if (map) map.setOptions({ draggableCursor: 'crosshair' });
+
+  _adminMapListener = map.addListener('click', async (e) => {
+    const lat = e.latLng.lat(), lng = e.latLng.lng();
+    if (_adminPlaceMode === 'monster') {
+      const name   = prompt('몬스터 이름:', '슬라임') || '슬라임';
+      const maxHp  = parseInt(prompt('최대 HP:', '30') || '30');
+      const atk    = parseInt(prompt('공격력:', '5') || '5');
+      const radius = parseInt(prompt('탐지 반경(m):', '20') || '20');
+      const image  = prompt('이미지 (이모지 또는 파일명)', '🐉') || '🐉';
+      try {
+        const ref = await addDoc(collection(db, 'battle_monsters'), {
+          name, lat, lng, hp: maxHp, maxHp, atk,
+          detectRadius: radius, image, active: true,
+          dropExp: 20, respawnMinutes: 1,
+          createdAt: serverTimestamp(),
+        });
+        _monsters.push({ id: ref.id, name, lat, lng, hp: maxHp, maxHp, atk,
+          detectRadius: radius, image, active: true, dropExp: 20, respawnMinutes: 1 });
+        renderMonsterMarkers();
+        alert(`✅ 몬스터 "${name}" 배치 완료`);
+      } catch (err) { alert('오류: ' + err.message); }
+
+    } else if (_adminPlaceMode === 'tower') {
+      const name   = prompt('방어탑 이름:', '아처 타워') || '아처 타워';
+      const atk    = parseInt(prompt('데미지:', '50') || '50');
+      const radius = parseInt(prompt('공격 반경(m):', '30') || '30');
+      try {
+        const ref = await addDoc(collection(db, 'battle_towers'), {
+          name, lat, lng, atk, radius, active: true,
+          createdAt: serverTimestamp(),
+        });
+        _towers.push({ id: ref.id, name, lat, lng, atk, radius, active: true });
+        renderTowerMarkers();
+        alert(`✅ 방어탑 "${name}" 설치 완료`);
+      } catch (err) { alert('오류: ' + err.message); }
+    }
+    exitAdminPlaceMode();
+  });
+}
+
+function exitAdminPlaceMode() {
+  _adminPlaceMode = null;
+  if (_adminMapListener) { google.maps.event.removeListener(_adminMapListener); _adminMapListener = null; }
+  if (map) map.setOptions({ draggableCursor: null });
+  document.getElementById('btnPlaceMonster')?.classList.remove('placing');
+  document.getElementById('btnPlaceTower')?.classList.remove('placing');
+  document.getElementById('btnCancelPlace').style.display = 'none';
+}
+
+window.__deleteBattleObj = async (type, id) => {
+  if (!confirm('삭제하시겠습니까?')) return;
+  try {
+    await deleteDoc(doc(db, type === 'monster' ? 'battle_monsters' : 'battle_towers', id));
+    if (type === 'monster') {
+      _monsters = _monsters.filter(m => m.id !== id);
+      if (_monsterMarkers[id]) { _monsterMarkers[id].setMap(null); delete _monsterMarkers[id]; }
+    } else {
+      _towers = _towers.filter(t => t.id !== id);
+      if (_towerMarkers[id])  { _towerMarkers[id].setMap(null);  delete _towerMarkers[id]; }
+      if (_towerRanges[id])   { _towerRanges[id].setMap(null);   delete _towerRanges[id]; }
+    }
+    infoWindow.close();
+  } catch (err) { alert('삭제 실패: ' + err.message); }
+};
+
+// ── 방어탑 범위 토글 ──────────────────────────────────────────────────────────
+function toggleTowerRanges() {
+  _showTowerRange = !_showTowerRange;
+  Object.values(_towerRanges).forEach(circle => {
+    circle.setMap(_showTowerRange ? map : null);
+  });
+  document.getElementById('btnToggleTowerRange').textContent =
+    _showTowerRange ? '🙈 범위 숨기기' : '👁 범위 표시';
 }
 
 init();
