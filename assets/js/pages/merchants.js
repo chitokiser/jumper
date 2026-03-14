@@ -19,9 +19,11 @@ const $ = id => document.getElementById(id);
 
 // ── 상태 ────────────────────────────────────────────────────────────────────
 let allMerchants    = [];
+let allPlaces       = [];     // places 컬렉션
 let map             = null;
 let infoWindow      = null;
 let markers         = [];
+let placeMarkers    = [];
 let treasureBoxes   = [];     // [{id, lat, lng, startHour, endHour, itemPool, active, name}]
 let boxMarkers      = [];
 let myLocationMarker    = null;
@@ -114,6 +116,62 @@ function fitMapToAllMarkers() {
   } else {
     map.fitBounds(_sharedBounds);
   }
+}
+
+// ── 장소 마커 색상 (index.html 동기화) ───────────────────────────────────────
+const PLACE_TYPE_COLOR = {
+  hospital: '#ef4444', school: '#16a34a', park: '#22c55e',
+  shopping: '#ec4899', restaurant: '#f97316', cafe: '#a16207',
+};
+function placeColor(type) {
+  return PLACE_TYPE_COLOR[String(type).toLowerCase()] || '#6b7280';
+}
+
+// ── 장소 마커 렌더링 ──────────────────────────────────────────────────────────
+function renderPlaceMarkers() {
+  placeMarkers.forEach(m => m.setMap(null));
+  placeMarkers = [];
+  if (!map) return;
+  if (!_sharedBounds) _sharedBounds = new google.maps.LatLngBounds();
+
+  allPlaces.forEach(p => {
+    let latLng = null;
+    if (typeof p.lat === 'number' && typeof p.lng === 'number') latLng = { lat: p.lat, lng: p.lng };
+    else latLng = parseLatLng(p.gmap);
+    if (!latLng) return;
+
+    const marker = new google.maps.Marker({
+      position: latLng, map,
+      title: p.name || '',
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        fillColor: placeColor(p.type),
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 2,
+        scale: 9,
+      },
+      zIndex: 1,
+    });
+
+    marker.addListener('click', () => {
+      infoWindow.setContent(`
+        <div style="max-width:240px;font-size:13px;line-height:1.5;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name||'')}</div>
+          ${p.type    ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ''}
+          ${p.area    ? `<div style="color:#6b7280;">구역: ${escHtml(p.area)}</div>` : ''}
+          ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ''}
+          ${p.phone   ? `<div style="color:#374151;">📞 ${escHtml(p.phone)}</div>` : ''}
+          ${p.note    ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ''}
+          ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener"
+             style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">구글 지도에서 보기 →</a>` : ''}
+        </div>`);
+      infoWindow.open(map, marker);
+    });
+
+    placeMarkers.push(marker);
+    _sharedBounds.extend(latLng);
+  });
 }
 
 // ── 가맹점 마커 렌더링 ───────────────────────────────────────────────────────
@@ -543,6 +601,12 @@ function renderVouchers() {
 }
 
 // ── 데이터 로드 ──────────────────────────────────────────────────────────────
+async function loadPlaces() {
+  const snap = await getDocs(collection(db, 'places'));
+  allPlaces = [];
+  snap.forEach(d => { if (d.data().visible !== false) allPlaces.push({ id: d.id, ...d.data() }); });
+}
+
 async function loadTreasureBoxes() {
   const snap = await getDocs(collection(db, 'treasure_boxes'));
   treasureBoxes = [];
@@ -639,6 +703,7 @@ async function init() {
   // 병렬 데이터 로드
   const [merchantSnap] = await Promise.all([
     getDocs(collection(db, 'merchants')),
+    loadPlaces(),
     loadTreasureBoxes(),
     loadItems(),
     loadVouchers(),
@@ -658,6 +723,7 @@ async function init() {
   try {
     await loadMapsScript();
     initMap();
+    renderPlaceMarkers();
     renderMarkers(allMerchants);
     renderBoxMarkers();
     fitMapToAllMarkers();
