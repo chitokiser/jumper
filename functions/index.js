@@ -1224,8 +1224,12 @@ exports.daoCommentProposal = onCall(
 // 보물찾기 시스템
 // ════════════════════════════════════════════════════════════════════════════
 
-exports.collectTreasure = onCall(wrapError(async (req) => {
-  return treasureH.collectTreasure(requireAuth(req), req.data ?? {});
+exports.collectTreasureBox = onCall(wrapError(async (req) => {
+  return treasureH.collectTreasureBox(requireAuth(req), req.data ?? {});
+}));
+
+exports.openTreasureBox = onCall(wrapError(async (req) => {
+  return treasureH.openTreasureBox(requireAuth(req), req.data ?? {});
 }));
 
 exports.craftVoucher = onCall(wrapError(async (req) => {

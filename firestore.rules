@@ -416,6 +416,11 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
       allow write: if false;
     }
+    match /treasure_inventory_boxes/{docId} {
+      allow get, list: if signedIn()
+        && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
 
     // ── DAO 의결 시스템 ────────────────────────────────────────────
     // 안건 목록·상세: 누구나 읽기 가능

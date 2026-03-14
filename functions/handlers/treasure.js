@@ -40,8 +40,8 @@ function isInTimeRange(startHour, endHour) {
   return h >= startHour || h < endHour; // 야간 범위 (ex: 22~06)
 }
 
-// ── 유저: 보물 수집 ────────────────────────────────────────────────────────────
-async function collectTreasure(uid, { boxId, userLat, userLng } = {}) {
+// ── 유저: 보물박스 수집 (GPS 근접 → 박스를 인벤토리에 저장, 미개봉) ──────────
+async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   if (!boxId)        throw new HttpsError('invalid-argument', 'boxId가 필요합니다');
   if (userLat == null || userLng == null)
     throw new HttpsError('invalid-argument', '위치 정보가 필요합니다');
@@ -56,9 +56,9 @@ async function collectTreasure(uid, { boxId, userLat, userLng } = {}) {
   if (!isInTimeRange(box.startHour ?? 0, box.endHour ?? 24))
     throw new HttpsError('failed-precondition', '보물박스가 현재 시간에 열려있지 않습니다');
 
-  // 서버측 거리 확인 (10m 허용 — GPS 오차 고려)
+  // 서버측 거리 확인 (30m 허용 — GPS 오차 고려)
   const dist = haversine(userLat, userLng, box.lat, box.lng);
-  if (dist > 10)
+  if (dist > 30)
     throw new HttpsError('failed-precondition', `너무 멀리 있습니다 (${Math.round(dist)}m)`);
 
   // 계정당 1회 수집 방지 (영구)
@@ -68,29 +68,59 @@ async function collectTreasure(uid, { boxId, userLat, userLng } = {}) {
   if (logSnap.exists)
     throw new HttpsError('already-exists', '이미 수집한 보물박스입니다');
 
-  // 랜덤 아이템 선택
   const itemPool = box.itemPool || [];
   if (!itemPool.length) throw new HttpsError('failed-precondition', '아이템 풀이 비어 있습니다');
+
+  // 트랜잭션: 미개봉 박스 인벤토리 저장 + 수집 로그 기록
+  const invBoxRef = db.collection('treasure_inventory_boxes').doc(logKey);
+  await db.runTransaction(async (tx) => {
+    tx.set(invBoxRef, {
+      uid, boxId,
+      boxName: box.name || '',
+      itemPool,
+      collectedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    tx.set(logRef, {
+      uid, boxId,
+      collectedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { ok: true, boxName: box.name || '보물박스' };
+}
+
+// ── 유저: 보물박스 오픈 (인벤토리의 미개봉 박스 → 랜덤 아이템 획득) ──────────
+async function openTreasureBox(uid, { boxId } = {}) {
+  if (!boxId) throw new HttpsError('invalid-argument', 'boxId가 필요합니다');
+
+  const invBoxRef = db.collection('treasure_inventory_boxes').doc(`${uid}_${boxId}`);
+  const invBoxSnap = await invBoxRef.get();
+  if (!invBoxSnap.exists)
+    throw new HttpsError('not-found', '인벤토리에 해당 보물박스가 없습니다');
+
+  const invBox = invBoxSnap.data();
+  const itemPool = invBox.itemPool || [];
+  if (!itemPool.length) throw new HttpsError('failed-precondition', '아이템 풀이 비어 있습니다');
+
+  // 랜덤 아이템 선택
   const itemId = pickWeightedItem(itemPool);
 
   // 아이템 정보 조회
   const itemSnap = await db.collection('treasure_items').doc(String(itemId)).get();
   const itemData = itemSnap.exists ? itemSnap.data() : { name: `아이템 #${itemId}`, image: `${itemId}.png` };
 
-  // 트랜잭션: 인벤토리 적립 + 로그 기록
+  // 트랜잭션: 미개봉 박스 삭제 + 아이템 인벤토리 적립
   await db.runTransaction(async (tx) => {
     const invRef = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
     const invSnap = await tx.get(invRef);
     const current = invSnap.exists ? (invSnap.data().count || 0) : 0;
 
-    tx.set(invRef, { uid, itemId: String(itemId), count: current + 1,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    tx.set(invRef, {
+      uid, itemId: String(itemId), count: current + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
 
-    tx.set(logRef, {
-      uid, boxId, itemId: String(itemId),
-      itemName: itemData.name || '',
-      collectedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    tx.delete(invBoxRef);
   });
 
   return { ok: true, itemId: String(itemId), itemName: itemData.name, itemImage: itemData.image };
@@ -211,7 +241,8 @@ async function adminSaveVoucher(adminUid, data = {}) {
 }
 
 module.exports = {
-  collectTreasure,
+  collectTreasureBox,
+  openTreasureBox,
   craftVoucher,
   adminSaveTreasureItem,
   adminSaveTreasureBox,

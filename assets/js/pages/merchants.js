@@ -28,6 +28,7 @@ let myLocationMarker    = null;
 let myLocationAccCircle = null;
 let _uid            = null;   // 로그인 유저 UID
 let _inventory      = {};     // {itemId: count}
+let _boxInventory   = [];     // [{boxId, boxName, collectedAt}]  미개봉 박스
 let _items          = {};     // {itemId: {name, image, description}}
 let _vouchers       = [];
 let _collectedBoxes = new Set(); // 이 세션에서 이미 수집한 box ID
@@ -278,31 +279,40 @@ async function checkProximity(lat, lng) {
     if (!isBoxActive(box)) continue;
     if (_collectedBoxes.has(box.id)) continue;
     const dist = haversine(lat, lng, box.lat, box.lng);
-    if (dist <= 5) {
-      _collectedBoxes.add(box.id); // 중복 방지 (먼저 추가)
+    if (dist <= 30) {  // 서버 허용(10m) + GPS 오차 여유
       await tryCollect(box);
     }
   }
 }
 
 async function tryCollect(box) {
+  if (_collectedBoxes.has(box.id)) return;
+  _collectedBoxes.add(box.id); // 동시 중복 호출 방지
   try {
     const pos = await new Promise((res, rej) =>
-      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 }));
-    const result = await httpsCallable(functions, 'collectTreasure')({
+      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000 }));
+    const result = await httpsCallable(functions, 'collectTreasureBox')({
       boxId: box.id,
       userLat: pos.coords.latitude,
       userLng: pos.coords.longitude,
     });
     const d = result.data;
-    showCollectToast(d.itemName, d.itemImage);
-    // 인벤토리 갱신
-    const iid = String(d.itemId);
-    _inventory[iid] = (_inventory[iid] || 0) + 1;
-    renderInventory();
+    showCollectToast(d.boxName);
+    // 미개봉 박스 인벤토리에 추가
+    if (!_boxInventory.find(b => b.boxId === box.id)) {
+      _boxInventory.push({ boxId: box.id, boxName: d.boxName });
+    }
+    renderBoxInventory();
   } catch (err) {
-    // already-exists → 이미 수집 (정상), 그 외만 로그
-    if (!err.message?.includes('이미')) console.warn('collect:', err.message);
+    const msg = err.message || '';
+    if (msg.includes('이미')) {
+      // 영구 수집 완료 → 세션 중 재시도 불필요
+    } else if (msg.includes('너무 멀리')) {
+      _collectedBoxes.delete(box.id);
+    } else {
+      _collectedBoxes.delete(box.id);
+      console.warn('collect:', msg);
+    }
   }
 }
 
@@ -328,16 +338,93 @@ function playCollectSound() {
   } catch (_) { /* 사운드 실패는 무시 */ }
 }
 
-function showCollectToast(itemName, itemImage) {
+function showCollectToast(boxName) {
   playCollectSound();
   const el = $('collectToast');
-  const img = itemImage
-    ? `<img src="/assets/images/items/${escHtml(itemImage)}" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;margin-right:8px;" onerror="this.style.display='none'">`
-    : '';
-  el.innerHTML = `🎁 보물 획득!\n${img}<strong>${escHtml(itemName)}</strong>`;
+  el.innerHTML = `📦 보물박스 획득!\n<strong>${escHtml(boxName || '보물박스')}</strong>\n인벤토리에서 열어보세요!`;
   el.style.display = 'block';
   clearTimeout(el._t);
   el._t = setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+// ── 박스 오픈 사운드 (Web Audio API) ──────────────────────────────────────────
+function playOpenBoxSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // 둔탁한 오픈 효과: 낮은 타격음 + 반짝 상승음
+    const hits = [
+      { freq: 120, type: 'triangle', t: 0,    dur: 0.18, vol: 0.5 },
+      { freq: 200, type: 'sine',     t: 0.05, dur: 0.12, vol: 0.3 },
+      { freq: 880, type: 'sine',     t: 0.20, dur: 0.15, vol: 0.3 },
+      { freq: 1320,type: 'sine',     t: 0.32, dur: 0.18, vol: 0.25 },
+      { freq: 1760,type: 'sine',     t: 0.44, dur: 0.22, vol: 0.2 },
+    ];
+    hits.forEach(({ freq, type, t, dur, vol }) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = type; osc.frequency.value = freq;
+      const st = ctx.currentTime + t;
+      gain.gain.setValueAtTime(0, st);
+      gain.gain.linearRampToValueAtTime(vol, st + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + dur);
+      osc.start(st); osc.stop(st + dur);
+    });
+  } catch (_) { /* 무시 */ }
+}
+
+// ── 박스 오픈 (인벤토리 박스 클릭) ────────────────────────────────────────────
+async function openBox(boxId, slotEl) {
+  if (slotEl) slotEl.classList.add('opening');
+  try {
+    const result = await httpsCallable(functions, 'openTreasureBox')({ boxId });
+    const d = result.data;
+    // 미개봉 박스 인벤토리에서 제거
+    _boxInventory = _boxInventory.filter(b => b.boxId !== boxId);
+    renderBoxInventory();
+    // 아이템 인벤토리 업데이트
+    const iid = String(d.itemId);
+    _inventory[iid] = (_inventory[iid] || 0) + 1;
+    renderInventory();
+    // 오픈 사운드 + 아이템 획득 오버레이
+    playOpenBoxSound();
+    showItemReveal(d.itemName, d.itemImage);
+  } catch (err) {
+    if (slotEl) slotEl.classList.remove('opening');
+    alert('박스 오픈 실패: ' + (err.message || err));
+  }
+}
+
+function showItemReveal(itemName, itemImage) {
+  const img = $('itemRevealImg');
+  const name = $('itemRevealName');
+  if (img)  { img.src = `/assets/images/items/${escHtml(itemImage || '')}`; img.style.display = ''; }
+  if (name) name.textContent = itemName || '아이템';
+  $('itemReveal')?.classList.add('open');
+}
+
+// ── 미개봉 보물박스 렌더링 ────────────────────────────────────────────────────
+function renderBoxInventory() {
+  const el = $('boxInvList');
+  if (!el) return;
+  if (!_boxInventory.length) {
+    el.innerHTML = '<div class="voucher-empty">미개봉 보물박스가 없습니다.</div>';
+    return;
+  }
+  const grid = document.createElement('div');
+  grid.className = 'box-inv-grid';
+  _boxInventory.forEach(({ boxId, boxName }) => {
+    const slot = document.createElement('div');
+    slot.className = 'box-inv-slot';
+    slot.title = `${boxName || '보물박스'} — 클릭하여 열기`;
+    slot.innerHTML = `
+      <img src="/assets/images/item/box.png" alt="box" onerror="this.style.display='none'">
+      <span class="box-slot-name">${escHtml(boxName || '보물박스')}</span>`;
+    slot.addEventListener('click', () => openBox(boxId, slot));
+    grid.appendChild(slot);
+  });
+  el.innerHTML = '';
+  el.appendChild(grid);
 }
 
 // ── 위치 추적 시작 ───────────────────────────────────────────────────────────
@@ -443,9 +530,14 @@ async function loadVouchers() {
 }
 
 async function loadInventory() {
-  if (!_uid) { _inventory = {}; renderInventory(); renderVouchers(); renderMyVouchers([]); return; }
-  const [invSnap, myVSnap] = await Promise.all([
+  if (!_uid) {
+    _inventory = {}; _boxInventory = [];
+    renderBoxInventory(); renderInventory(); renderVouchers(); renderMyVouchers([]);
+    return;
+  }
+  const [invSnap, boxInvSnap, myVSnap] = await Promise.all([
     getDocs(query(collection(db, 'treasure_inventory'), where('uid', '==', _uid))),
+    getDocs(query(collection(db, 'treasure_inventory_boxes'), where('uid', '==', _uid))),
     getDocs(query(
       collection(db, 'treasure_voucher_logs'),
       where('uid', '==', _uid),
@@ -458,6 +550,14 @@ async function loadInventory() {
     const r = d.data();
     if (r.count > 0) _inventory[r.itemId] = r.count;
   });
+  _boxInventory = [];
+  boxInvSnap.forEach(d => {
+    const r = d.data();
+    _boxInventory.push({ boxId: r.boxId, boxName: r.boxName });
+    // 이미 서버에 저장된 박스는 재수집 방지 세트에도 추가
+    _collectedBoxes.add(r.boxId);
+  });
+  renderBoxInventory();
   renderInventory();
   renderVouchers();
   renderMyVouchers(myVSnap.docs.map(d => d.data()));
@@ -526,6 +626,7 @@ async function init() {
   }
 
   renderCards(allMerchants);
+  renderBoxInventory();
   renderInventory();
   renderVouchers();
 
@@ -534,6 +635,8 @@ async function init() {
   $('btnInventory')?.addEventListener('click', openInventory);
   $('btnCloseInv')?.addEventListener('click', closeInventory);
   $('invModal')?.addEventListener('click', e => { if (e.target === $('invModal')) closeInventory(); });
+  $('btnRevealClose')?.addEventListener('click', () => $('itemReveal')?.classList.remove('open'));
+  $('itemReveal')?.addEventListener('click', e => { if (e.target === $('itemReveal')) $('itemReveal').classList.remove('open'); });
 
   // 보물 근접 감지 시작
   startWatchPosition();

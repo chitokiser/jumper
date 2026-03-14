@@ -192,6 +192,65 @@
     .btn-craft:hover:not(:disabled) { background: #9a7c5a; }
     .btn-craft:disabled { opacity: .4; cursor: not-allowed; }
     .voucher-empty { color: #888; font-size: 12px; padding: 8px 0; }
+
+    /* ── 미개봉 보물박스 슬롯 ── */
+    .box-inv-grid {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-bottom: 4px;
+    }
+    .box-inv-slot {
+      width: 56px; height: 56px;
+      background: #1a0e06;
+      border: 2px solid #7a5c3a;
+      border-radius: 10px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      cursor: pointer; position: relative;
+      transition: border-color .15s, transform .1s;
+    }
+    .box-inv-slot:hover { border-color: #ffd700; transform: scale(1.07); }
+    .box-inv-slot img { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+    .box-inv-slot .box-slot-name {
+      font-size: 7px; color: #c9a870; text-align: center;
+      position: absolute; bottom: 3px; left: 0; right: 0;
+      padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .box-inv-slot.opening { animation: boxShake .4s ease; border-color: #ffd700; }
+    @keyframes boxShake {
+      0%,100%{ transform: rotate(0); }
+      20%    { transform: rotate(-8deg) scale(1.1); }
+      40%    { transform: rotate(8deg) scale(1.15); }
+      60%    { transform: rotate(-5deg) scale(1.1); }
+      80%    { transform: rotate(5deg) scale(1.05); }
+    }
+
+    /* ── 아이템 획득 오버레이 ── */
+    #itemReveal {
+      display: none;
+      position: fixed; inset: 0; z-index: 9000;
+      background: rgba(0,0,0,.8);
+      align-items: center; justify-content: center;
+    }
+    #itemReveal.open { display: flex; }
+    .item-reveal-panel {
+      background: #2c1a0e; border: 3px solid #ffd700;
+      border-radius: 20px; padding: 32px 28px;
+      text-align: center; animation: revealPop .4s cubic-bezier(.34,1.56,.64,1);
+      min-width: 220px;
+    }
+    @keyframes revealPop {
+      from { transform: scale(.5); opacity: 0; }
+      to   { transform: scale(1);  opacity: 1; }
+    }
+    .item-reveal-title { color: #ffd700; font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+    .item-reveal-img { width: 80px; height: 80px; object-fit: contain; image-rendering: pixelated; margin-bottom: 12px; }
+    .item-reveal-name { color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+    .btn-reveal-close {
+      background: #7a5c3a; color: #ffd700; border: none;
+      padding: 8px 24px; border-radius: 8px; font-size: 14px;
+      font-weight: 700; cursor: pointer;
+    }
+    .btn-reveal-close:hover { background: #9a7c5a; }
   </style>
 
   <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";</script>
@@ -247,6 +306,16 @@
   <!-- 보물 수집 토스트 -->
   <div id="collectToast"></div>
 
+  <!-- 아이템 획득 오버레이 -->
+  <div id="itemReveal">
+    <div class="item-reveal-panel">
+      <div class="item-reveal-title">✨ 아이템 획득!</div>
+      <img id="itemRevealImg" class="item-reveal-img" src="" alt="" onerror="this.style.display='none'">
+      <div class="item-reveal-name" id="itemRevealName"></div>
+      <button class="btn-reveal-close" id="btnRevealClose">확인</button>
+    </div>
+  </div>
+
   <!-- 인벤토리 모달 -->
   <div id="invModal">
     <div class="inv-panel">
@@ -255,7 +324,12 @@
         <button class="inv-close" id="btnCloseInv">✕</button>
       </div>
       <div class="inv-body">
+        <!-- 미개봉 보물박스 -->
+        <div class="inv-craft-title" style="padding-top:0;border-top:none;">📦 미개봉 보물박스</div>
+        <div id="boxInvList"><div class="voucher-empty">불러오는 중...</div></div>
+
         <!-- 4×5 슬롯 -->
+        <div class="inv-craft-title">🎒 수집한 아이템</div>
         <div class="inv-grid" id="invGrid"></div>
 
         <!-- 바우처 조합 -->
