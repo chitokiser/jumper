@@ -545,6 +545,104 @@
       #combatHud { padding: 6px 10px; min-width: unset; font-size: 10px; }
       .c-val { min-width: 46px; }
     }
+
+    /* ── 상품교환권 섹션 ── */
+    .exc-section {
+      margin-top: 40px;
+      padding-top: 32px;
+      border-top: 2px solid var(--border, #e5e7eb);
+    }
+    .exc-header { margin-bottom: 20px; }
+    .exc-title {
+      font-size: 1.35rem; font-weight: 800;
+      margin: 0 0 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .exc-desc { font-size: 0.88rem; color: var(--muted, #6b7280); margin: 0; }
+    .exc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .exc-loading { color: var(--muted, #6b7280); font-size: 0.9rem; padding: 12px 0; }
+    .exc-empty   { color: var(--muted, #6b7280); font-size: 0.9rem; padding: 12px 0; }
+
+    /* 카드 */
+    .exc-card {
+      background: var(--surface, #fff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: box-shadow .18s, transform .18s;
+    }
+    .exc-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-2px); }
+
+    /* 카드 상단 배너 */
+    .exc-card-banner {
+      padding: 20px 18px 14px;
+      background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+      color: #fff;
+      position: relative;
+    }
+    .exc-card-icon {
+      font-size: 2.4rem; line-height: 1;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .exc-card-reward {
+      font-size: 1.1rem; font-weight: 800;
+      letter-spacing: -.3px;
+    }
+    .exc-card-name {
+      font-size: 0.8rem; opacity: .85; margin-top: 2px;
+    }
+
+    /* 카드 바디 */
+    .exc-card-body { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+    .exc-req-label { font-size: 0.78rem; font-weight: 700; color: var(--muted, #6b7280); text-transform: uppercase; letter-spacing: .5px; }
+    .exc-req-list  { display: flex; flex-wrap: wrap; gap: 8px; }
+    .exc-req-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;
+      border: 1.5px solid;
+    }
+    .exc-req-chip.ok   { background: #f0fdf4; border-color: #86efac; color: #166534; }
+    .exc-req-chip.lack { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+    .exc-req-chip.no-data { background: var(--surface,#f9fafb); border-color: var(--border,#e5e7eb); color: var(--text,#111); }
+    .exc-req-chip img  { width: 18px; height: 18px; object-fit: contain; image-rendering: pixelated; }
+
+    .exc-progress-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .exc-progress-bar {
+      height: 6px; border-radius: 3px; background: var(--border,#e5e7eb); overflow: hidden;
+    }
+    .exc-progress-fill {
+      height: 100%; border-radius: 3px;
+      background: linear-gradient(90deg, #7c3aed, #a78bfa);
+      transition: width .4s ease;
+    }
+    .exc-progress-text { font-size: 0.75rem; color: var(--muted,#6b7280); text-align: right; }
+
+    .btn-exc {
+      margin-top: auto;
+      padding: 10px 0; border-radius: 10px; font-size: 0.92rem; font-weight: 700;
+      border: none; cursor: pointer; transition: background .15s, opacity .15s;
+      width: 100%;
+    }
+    .btn-exc:not(:disabled) {
+      background: linear-gradient(135deg, #7c3aed, #a78bfa);
+      color: #fff;
+    }
+    .btn-exc:not(:disabled):hover { opacity: .88; }
+    .btn-exc:disabled {
+      background: var(--surface,#f3f4f6); color: var(--muted,#9ca3af); cursor: not-allowed;
+    }
+    .exc-login-hint { font-size: 0.8rem; color: var(--muted,#9ca3af); text-align: center; }
+
+    @media (max-width: 640px) {
+      .exc-grid { grid-template-columns: 1fr; }
+    }
   </style>
 
   <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";</script>
@@ -664,6 +762,17 @@
       <!-- 카드 목록 -->
       <div class="mc-grid" id="mcGrid">
         <p class="mc-state">불러오는 중...</p>
+      </div>
+
+      <!-- ── 상품교환권 섹션 ── -->
+      <div class="exc-section">
+        <div class="exc-header">
+          <h2 class="exc-title">🎟 상품교환권</h2>
+          <p class="exc-desc">아이템을 모아 교환하면 실제 상품권을 받을 수 있어요!</p>
+        </div>
+        <div class="exc-grid" id="excGrid">
+          <div class="exc-loading">불러오는 중...</div>
+        </div>
       </div>
 
     </div>

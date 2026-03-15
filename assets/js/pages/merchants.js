@@ -1079,6 +1079,7 @@ async function loadInventory() {
   renderInventory();
   renderVouchers();
   renderMyVouchers(vRes.ok ? vRes.v.docs.map(d => d.data()) : []);
+  renderExchangeSection();
 }
 
 function renderMyVouchers(logs) {
@@ -1100,6 +1101,91 @@ function renderMyVouchers(logs) {
         </div>
       </div>`;
   }).join('');
+}
+
+// ── 상품교환권 섹션 (메인 페이지 노출) ───────────────────────────────────────
+function renderExchangeSection() {
+  const grid = $('excGrid');
+  if (!grid) return;
+  if (!_vouchers.length) {
+    grid.innerHTML = '<div class="exc-empty">등록된 교환권이 없습니다.</div>';
+    return;
+  }
+
+  grid.innerHTML = _vouchers.map(v => {
+    const reqs = v.requirements || [];
+
+    // 진행률: 요건 중 가장 낮은 충족 비율
+    let minRatio = 1;
+    const chips = reqs.map(r => {
+      const isGold = r.type === 'gold' || r.itemId === 'coin';
+      const have   = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
+      const need   = r.count || 1;
+      const ratio  = Math.min(1, have / need);
+      if (ratio < minRatio) minRatio = ratio;
+
+      const meta   = isGold ? null : _items[String(r.itemId)];
+      const label  = isGold ? '💰 코인' : escHtml(meta?.name || ('#' + r.itemId));
+      const imgSrc = (!isGold && meta?.image) ? `/assets/images/item/${escHtml(meta.image)}` : '';
+      const cls    = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
+      const haveStr = _uid ? ` <small>(${have}/${need})</small>` : '';
+
+      const imgTag = imgSrc
+        ? `<img src="${imgSrc}" alt="" onerror="this.style.display='none'">`
+        : '';
+      return `<span class="exc-req-chip ${cls}">${imgTag}${label}×${need}${haveStr}</span>`;
+    }).join('');
+
+    const pct    = Math.round(minRatio * 100);
+    const canDo  = _uid && reqs.every(r => {
+      const isGold = r.type === 'gold' || r.itemId === 'coin';
+      return isGold ? getPlayerGold() >= r.count : (_inventory[String(r.itemId)] || 0) >= r.count;
+    });
+
+    // 아이콘: image 필드 있으면 이미지, 없으면 이모지
+    const bannerIcon = v.image
+      ? `<img src="/assets/images/vouchers/${escHtml(v.image)}" class="exc-card-icon" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;" onerror="this.textContent='🎟';this.style.cssText='font-size:2.4rem';" alt="">`
+      : `<span class="exc-card-icon">🎟</span>`;
+
+    const btnLabel = !_uid ? '로그인 필요' : canDo ? '🎟 지금 교환하기' : '재료 부족';
+
+    return `
+      <div class="exc-card">
+        <div class="exc-card-banner">
+          ${bannerIcon}
+          <div class="exc-card-reward">${escHtml(v.reward || '상품교환권')}</div>
+          <div class="exc-card-name">${escHtml(v.name)}</div>
+        </div>
+        <div class="exc-card-body">
+          <div>
+            <div class="exc-req-label">필요 아이템</div>
+            <div class="exc-req-list" style="margin-top:6px;">${chips || '<span style="color:var(--muted,#9ca3af);font-size:.82rem;">조건 없음</span>'}</div>
+          </div>
+          ${_uid ? `
+          <div class="exc-progress-wrap">
+            <div class="exc-progress-bar"><div class="exc-progress-fill" style="width:${pct}%"></div></div>
+            <div class="exc-progress-text">진행도 ${pct}%</div>
+          </div>` : `<div class="exc-login-hint">로그인 후 보유량을 확인하세요</div>`}
+          <button class="btn-exc" data-vid="${escHtml(v.id)}" ${canDo ? '' : 'disabled'}>${btnLabel}</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.btn-exc:not(:disabled)').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const vid = btn.dataset.vid;
+      btn.disabled = true; btn.textContent = '처리 중...';
+      try {
+        const res = await httpsCallable(functions, 'craftVoucher')({ voucherId: vid });
+        alert(`✅ 교환 성공!\n${res.data.voucherName}\n보상: ${res.data.reward}`);
+        await loadInventory();
+        renderExchangeSection();
+      } catch (err) {
+        alert('교환 실패: ' + (err.message || err));
+        btn.disabled = false; btn.textContent = '🎟 지금 교환하기';
+      }
+    });
+  });
 }
 
 // ── 인벤토리 모달 ────────────────────────────────────────────────────────────
@@ -1227,6 +1313,7 @@ async function init() {
     renderBoxInventory();
     renderInventory();
     renderVouchers();
+    renderExchangeSection();
   });
 }
 
