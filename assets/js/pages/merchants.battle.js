@@ -590,6 +590,7 @@ function healMp(amount) {
 function useMp(amount) {
   if (_player.mp < amount) return false;
   _player.mp -= amount;
+  _player.maxMp += 100; // 스킬 사용마다 최대 MP +100
   updateCombatHud();
   updateSkillBar();
   savePlayerState();

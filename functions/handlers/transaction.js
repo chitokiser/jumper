@@ -688,8 +688,11 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
-  // 빨간약 지급: 1 HEX당 1병 (소수점 버림)
-  const potionCount = Math.floor(hexAmount);
+  // 빨간약 지급: 1 HEX당 1/10 확률로 1병
+  let potionCount = 0;
+  for (let i = 0; i < Math.floor(hexAmount); i++) {
+    if (Math.random() < 0.1) potionCount++;
+  }
   if (potionCount > 0) {
     const invRef = db.collection('treasure_inventory').doc(`${uid}_potion_red`);
     await db.runTransaction(async (tx) => {
