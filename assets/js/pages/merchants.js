@@ -946,6 +946,17 @@ async function init() {
   $('btnPlaceArcherTower')?.addEventListener('click', () => enterAdminPlaceMode('archer_tower'));
   $('btnPlaceCannonTower')?.addEventListener('click', () => enterAdminPlaceMode('cannon_tower'));
   $('btnPlaceDeco')?.addEventListener('click',    () => enterAdminPlaceMode('deco'));
+  $('btnGivePotion')?.addEventListener('click', async () => {
+    const targetUid = prompt('빨간약 지급할 UID (비우면 본인):', _uid || '') || _uid;
+    if (!targetUid) return;
+    const count = parseInt(prompt('지급 수량:', '5') || '5');
+    if (!count || count < 1) return;
+    try {
+      const res = await httpsCallable(functions, 'adminGivePotion')({ targetUid, count });
+      alert(`✅ ${targetUid.slice(0,8)}… 에게 빨간약 ${res.data.given}병 지급 완료`);
+      if (targetUid === _uid) await loadInventory();
+    } catch (err) { alert('실패: ' + err.message); }
+  });
   $('btnCancelPlace')?.addEventListener('click',  exitAdminPlaceMode);
   $('btnToggleTowerRange')?.addEventListener('click', toggleTowerRanges);
 

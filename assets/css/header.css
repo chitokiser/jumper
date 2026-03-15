@@ -49,7 +49,7 @@
 }
 
 .brand-logo{
-  height: clamp(26px, 2.4vw, 36px);
+  height: clamp(62px, 3.12vw, 114px);
   width: auto;
   display: block;
   flex: 0 0 auto;

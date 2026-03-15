@@ -1255,3 +1255,23 @@ exports.adminDeleteTreasureBox = onCall(wrapError(async (req) => {
 exports.adminSaveVoucher = onCall(wrapError(async (req) => {
   return treasureH.adminSaveVoucher(requireAuth(req), req.data ?? {});
 }));
+
+// 관리자: 빨간약 직접 지급
+exports.adminGivePotion = onCall(wrapError(async (req) => {
+  const adminUid = requireAuth(req);
+  await requireAdmin(adminUid);
+  const { targetUid, count = 1 } = req.data ?? {};
+  if (!targetUid) throw new HttpsError('invalid-argument', 'targetUid가 필요합니다');
+  const n = Math.max(1, Math.floor(Number(count)));
+  const db = admin.firestore();
+  const invRef = db.collection('treasure_inventory').doc(`${targetUid}_potion_red`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(invRef);
+    const current = snap.exists ? (snap.data().count || 0) : 0;
+    tx.set(invRef, {
+      uid: targetUid, itemId: 'potion_red', count: current + n,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+  return { ok: true, given: n };
+}));

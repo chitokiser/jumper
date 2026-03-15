@@ -664,6 +664,14 @@ function parseLatLng(gmapUrl) {
   return null;
 }
 
+function makeSvgIcon(emoji, fillColor, size = 36) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="${fillColor}" stroke="#fff" stroke-width="2"/>
+    <text x="${size/2}" y="${size*0.68}" font-size="${size*0.5}" text-anchor="middle">${emoji}</text></svg>`;
+  return { url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+           scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size/2, size/2) };
+}
+
 async function loadPlacesMap() {
   const mapEl = $("villageMap");
   if (!mapEl) return;
@@ -676,34 +684,15 @@ async function loadPlacesMap() {
   try {
     await loadMapsScript();
 
-    const [placesSnap, merchantsSnap] = await Promise.all([
-      getDocs(collection(db, "places")),
-      getDocs(collection(db, "merchants")),
+    const settle = p => p.then(v => ({ ok: true, v })).catch(() => ({ ok: false }));
+    const [placesRes, merchantsRes, boxesRes, monstersRes, towersRes, decosRes] = await Promise.all([
+      settle(getDocs(collection(db, "places"))),
+      settle(getDocs(collection(db, "merchants"))),
+      settle(getDocs(query(collection(db, "treasure_boxes")))),
+      settle(getDocs(query(collection(db, "battle_monsters"), where("active", "==", true)))),
+      settle(getDocs(query(collection(db, "battle_towers"),   where("active", "==", true)))),
+      settle(getDocs(query(collection(db, "map_decorations"), where("active", "==", true)))),
     ]);
-
-    const places = [];
-    placesSnap.forEach((d) => {
-      const p = d.data() || {};
-      if (p.visible !== false) places.push({ id: d.id, _src: "place", ...p });
-    });
-
-    merchantsSnap.forEach((d) => {
-      const m = d.data() || {};
-      const hasCoords = (typeof m.lat === "number" && typeof m.lng === "number") || m.gmap;
-      if (m.active !== false && hasCoords) {
-        places.push({
-          id: d.id,
-          _src: "merchant",
-          name: m.name || "가맹점",
-          type: m.career || "merchant",
-          gmap: m.gmap || "",
-          lat: m.lat,
-          lng: m.lng,
-          phone: m.phone || "",
-          description: m.description || "",
-        });
-      }
-    });
 
     const map = new google.maps.Map(mapEl, {
       center: { lat: 20.9947, lng: 105.9487 },
@@ -713,65 +702,113 @@ async function loadPlacesMap() {
       fullscreenControl: true,
     });
 
-    if (!places.length) return;
-
     const bounds = new google.maps.LatLngBounds();
     const infoWindow = new google.maps.InfoWindow();
     let markerCount = 0;
 
-    places.forEach((p) => {
-      let latLng = null;
-      if (typeof p.lat === "number" && typeof p.lng === "number") latLng = { lat: p.lat, lng: p.lng };
-      else latLng = parseLatLng(p.gmap);
-      if (!latLng) return;
-
-      const isMerchant = p._src === "merchant";
-      markerCount += 1;
-      const marker = new google.maps.Marker({
-        position: latLng,
-        map,
-        title: p.name || "",
-        icon: isMerchant
-          ? {
-              url: '/assets/images/jump/favicon.png',
-              scaledSize: new google.maps.Size(18, 18),
-              anchor: new google.maps.Point(9, 9),
-            }
-          : {
-              path: google.maps.SymbolPath.CIRCLE,
-              fillColor: getMarkerColor(p.type),
-              fillOpacity: 1,
-              strokeColor: "#fff",
-              strokeWeight: 2,
-              scale: 9,
-            },
-        zIndex: isMerchant ? 10 : 1,
-      });
+    function addMarker(latLng, icon, content, zIndex = 1) {
+      const marker = new google.maps.Marker({ position: latLng, map, icon, zIndex });
       bounds.extend(latLng);
+      markerCount++;
+      marker.addListener("click", () => { infoWindow.setContent(content); infoWindow.open(map, marker); });
+    }
 
-      const content = isMerchant
-        ? `<div style="max-width:240px;font-size:13px;line-height:1.5;">
-             <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(p.name)}</div>
-             <div style="color:#f59e0b;margin-bottom:2px;font-size:12px;">가맹점</div>
-             ${p.type ? `<div style="color:#6b7280;">${escHtml(p.type)}</div>` : ""}
-             ${p.phone ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
-             ${p.description ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.description)}</div>` : ""}
-             <a href="${escHtml(p.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;">구글 지도에서 보기</a>
-           </div>`
-        : `<div style="max-width:240px;font-size:13px;line-height:1.5;">
-             <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name || "")}</div>
-             ${p.type ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ""}
-             ${p.area ? `<div style="color:#6b7280;">구역: ${escHtml(p.area)}</div>` : ""}
-             ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ""}
-             ${p.phone ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
-             ${p.note ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ""}
-             ${p.gmap ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;">구글 지도에서 보기</a>` : ""}
-           </div>`;
+    // ── 장소 마커
+    if (placesRes.ok) placesRes.v.forEach((d) => {
+      const p = d.data() || {};
+      if (p.visible === false) return;
+      const latLng = (typeof p.lat === "number" && typeof p.lng === "number") ? { lat: p.lat, lng: p.lng } : parseLatLng(p.gmap);
+      if (!latLng) return;
+      addMarker(latLng,
+        { path: google.maps.SymbolPath.CIRCLE, fillColor: getMarkerColor(p.type), fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2, scale: 9 },
+        `<div style="max-width:240px;font-size:13px;line-height:1.5;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name || "")}</div>
+          ${p.type ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ""}
+          ${p.area    ? `<div style="color:#6b7280;">구역: ${escHtml(p.area)}</div>` : ""}
+          ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ""}
+          ${p.phone   ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
+          ${p.note    ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ""}
+          ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;">구글 지도에서 보기</a>` : ""}
+        </div>`);
+    });
 
-      marker.addListener("click", () => {
-        infoWindow.setContent(content);
-        infoWindow.open(map, marker);
-      });
+    // ── 가맹점 마커 (imageUrl 반영)
+    if (merchantsRes.ok) merchantsRes.v.forEach((d) => {
+      const m = d.data() || {};
+      const hasCoords = (typeof m.lat === "number" && typeof m.lng === "number") || m.gmap;
+      if (m.active === false || !hasCoords) return;
+      const latLng = (typeof m.lat === "number" && typeof m.lng === "number") ? { lat: m.lat, lng: m.lng } : parseLatLng(m.gmap);
+      if (!latLng) return;
+      const icon = m.imageUrl
+        ? { url: m.imageUrl, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) }
+        : { url: "/assets/images/jump/favicon.png", scaledSize: new google.maps.Size(18, 18), anchor: new google.maps.Point(9, 9) };
+      addMarker(latLng, icon,
+        `<div style="max-width:240px;font-size:13px;line-height:1.5;">
+          ${m.imageUrl ? `<img src="${escHtml(m.imageUrl)}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;">` : ""}
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(m.name || "가맹점")}</div>
+          ${m.career      ? `<div style="color:#f59e0b;font-size:12px;">${escHtml(m.career)}</div>` : ""}
+          ${m.region      ? `<div style="color:#6b7280;">📍 ${escHtml(m.region)}</div>` : ""}
+          ${m.phone       ? `<div style="color:#374151;">📞 ${escHtml(m.phone)}</div>` : ""}
+          ${m.description ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(m.description)}</div>` : ""}
+          ${m.gmap        ? `<a href="${escHtml(m.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">구글 지도에서 보기 →</a>` : ""}
+        </div>`, 10);
+    });
+
+    // ── 보물박스 마커
+    if (boxesRes.ok) boxesRes.v.forEach((d) => {
+      const b = d.data() || {};
+      if (typeof b.lat !== "number" || typeof b.lng !== "number") return;
+      const active = b.active !== false;
+      addMarker({ lat: b.lat, lng: b.lng },
+        makeSvgIcon("🎁", active ? "rgba(234,179,8,0.85)" : "rgba(156,163,175,0.75)", 32),
+        `<div style="font-size:13px;"><b>${escHtml(b.name || "보물박스")}</b>
+          <div style="font-size:11px;color:#888;margin-top:4px;">${active ? "✅ 활성" : "❌ 비활성"} · ${b.startHour ?? 0}:00~${b.endHour ?? 24}:00</div>
+        </div>`, 5);
+    });
+
+    // ── 몬스터 마커
+    if (monstersRes.ok) monstersRes.v.forEach((d) => {
+      const m = d.data() || {};
+      if (typeof m.lat !== "number" || typeof m.lng !== "number") return;
+      const isPath = m.image && m.image.startsWith("/");
+      const icon = isPath
+        ? { url: m.image, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) }
+        : makeSvgIcon(m.image || "🐉", "rgba(220,38,38,0.85)", 36);
+      const hpPct = Math.round(((m.hp ?? m.maxHp ?? 0) / (m.maxHp || 1)) * 100);
+      addMarker({ lat: m.lat, lng: m.lng }, icon,
+        `<div style="font-size:13px;min-width:140px"><b>${escHtml(m.name || "몬스터")}</b>
+          <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${m.hp ?? "?"} / ${m.maxHp ?? "?"}</div>
+          <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
+        </div>`, 50);
+    });
+
+    // ── 타워 마커
+    if (towersRes.ok) towersRes.v.forEach((d) => {
+      const t = d.data() || {};
+      if (typeof t.lat !== "number" || typeof t.lng !== "number") return;
+      const isCannon = t.type === "cannon";
+      const isPath = t.image && t.image.startsWith("/");
+      const icon = isPath
+        ? { url: t.image, scaledSize: new google.maps.Size(38, 38), anchor: new google.maps.Point(19, 19) }
+        : makeSvgIcon(t.image || (isCannon ? "💣" : "🏹"), isCannon ? "rgba(180,60,0,0.88)" : "rgba(124,58,237,0.88)", 38);
+      addMarker({ lat: t.lat, lng: t.lng }, icon,
+        `<div style="font-size:13px"><b>${escHtml(t.name || "방어탑")}</b>
+          <div style="font-size:11px;color:#888;margin-top:4px">${isCannon ? "💣 대포" : "🏹 아처"} · 반경 ${t.radius || 30}m · 데미지 ${t.atk || 0}</div>
+        </div>`, 55);
+    });
+
+    // ── 데코 마커
+    if (decosRes.ok) decosRes.v.forEach((d) => {
+      const dc = d.data() || {};
+      if (typeof dc.lat !== "number" || typeof dc.lng !== "number" || !dc.imageUrl) return;
+      const sz = dc.size || 48;
+      addMarker({ lat: dc.lat, lng: dc.lng },
+        { url: dc.imageUrl, scaledSize: new google.maps.Size(sz, sz), anchor: new google.maps.Point(sz/2, sz/2) },
+        `<div style="font-size:13px;text-align:center;">
+          <img src="${escHtml(dc.imageUrl)}" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 6px;">
+          <b>${escHtml(dc.name || "데코")}</b>
+        </div>`, 5);
     });
 
     if (markerCount > 0 && !bounds.isEmpty()) {
