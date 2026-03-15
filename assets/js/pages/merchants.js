@@ -3,7 +3,7 @@
 
 import { auth, db, functions } from '/assets/js/firebase-init.js';
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
-         setDoc, deleteDoc, serverTimestamp, onSnapshot }
+         setDoc, deleteDoc, serverTimestamp }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -1142,10 +1142,14 @@ function renderExchangeSection() {
       return isGold ? getPlayerGold() >= r.count : (_inventory[String(r.itemId)] || 0) >= r.count;
     });
 
-    // 이미지: http로 시작하면 직접 URL, 아니면 로컬 경로
-    const imgUrl = v.image
-      ? (v.image.startsWith('http') ? v.image : `/assets/images/vouchers/${v.image}`)
-      : '';
+    // 이미지 경로 정규화
+    const imgUrl = (() => {
+      const img = v.image;
+      if (!img) return '';
+      if (img.startsWith('http') || img.startsWith('/')) return img;
+      if (img.includes('/')) return '/' + img;            // "assets/images/..." 형태
+      return `/assets/images/vouchers/${img}`;            // 파일명만 있는 경우
+    })();
 
     const btnLabel = !_uid ? '로그인 필요' : canDo ? '🎟 지금 교환하기' : '재료 부족';
 
