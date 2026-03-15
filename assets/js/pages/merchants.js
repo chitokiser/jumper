@@ -3,14 +3,14 @@
 
 import { auth, db, functions } from '/assets/js/firebase-init.js';
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
-         setDoc, deleteDoc, serverTimestamp }
+         setDoc, deleteDoc, serverTimestamp, onSnapshot }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
-         startBattleLoop, startWatchPosition,
+         startBattleLoop, startWatchPosition, startSharedSync,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
          healHp, healMp, playSound,
          castLightning, castIceFreeze, castFireStorm,
@@ -340,6 +340,13 @@ function attackBox(box, marker) {
   st.current = Math.max(0, st.current - dmg);
   playSound(isCrit ? 'critical_hit' : 'box_hit');
 
+  // Firestore 공유 상태 기록 (다른 유저들이 HP 동기화)
+  setDoc(doc(db, 'battle_hp', `box_${box.id}`), {
+    hp: st.current, maxHp: st.max, type: 'box',
+    isDead: st.current <= 0,
+    ...(st.current <= 0 ? { deadAt: serverTimestamp() } : {}),
+  }, { merge: true }).catch(() => {});
+
   if (st.current <= 0) {
     // 박스 파괴!
     marker.setIcon({ url:'/assets/images/item/box.png',
@@ -629,6 +636,11 @@ function showMyLocation() {
   startWatchPosition();   // GPS 백그라운드 추적 시작
   startBattleLoop();      // 전투 루프 시작
   startNearbyPlayers();   // 주변 유저 실시간 표시
+  // 몬스터/타워/박스 HP 공유 동기화
+  startSharedSync((boxId, data) => {
+    if (!_boxHpState[boxId]) return;
+    _boxHpState[boxId].current = data.isDead ? 0 : (data.hp ?? _boxHpState[boxId].current);
+  });
   _gameStarted = true;
 
   if (btn) {

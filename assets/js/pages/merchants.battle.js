@@ -3,7 +3,7 @@
 // ctx 객체를 통해 core와 공유 상태를 교환한다.
 
 import { collection, getDocs, doc, getDoc, query, where,
-         addDoc, deleteDoc, setDoc, serverTimestamp }
+         addDoc, deleteDoc, setDoc, serverTimestamp, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -39,6 +39,8 @@ let _adminMapListener = null;
 let _decoMarkers     = [];
 let _frozenUntil     = {};     // { monsterId: expiryTimestamp } 동결 만료
 let _skillCd         = {};     // { lightning|ice|fire: expiryTimestamp }
+let _battleHpUnsub       = null;    // battle_hp onSnapshot 구독
+let _monsterRespawnTimers = {};      // { monsterId: timeoutId }
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST  = 100;
@@ -842,12 +844,48 @@ function gainXp(amount) {
 // ── 배틀 데이터 로드 ──────────────────────────────────────────────────────────
 export async function loadBattleData() {
   try {
-    const [mSnap, tSnap] = await Promise.all([
+    const [mSnap, tSnap, hpSnap] = await Promise.all([
       getDocs(query(collection(_ctx.db, 'battle_monsters'), where('active', '==', true))),
       getDocs(query(collection(_ctx.db, 'battle_towers'),   where('active', '==', true))),
+      getDocs(collection(_ctx.db, 'battle_hp')),
     ]);
     _monsters = mSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     _towers   = tSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // battle_hp 에서 현재 공유 상태 적용
+    hpSnap.docs.forEach(d => {
+      const data = d.data();
+      const idx  = d.id.indexOf('_');
+      if (idx < 0) return;
+      const type     = d.id.slice(0, idx);
+      const entityId = d.id.slice(idx + 1);
+      if (type === 'monster') {
+        const mob = _monsters.find(m => m.id === entityId);
+        if (!mob) return;
+        if (data.isDead) {
+          mob.hp = 0;
+          _scheduleMonsterRespawn(mob, data.deadAt?.toMillis?.() || Date.now());
+        } else {
+          mob.hp = data.hp ?? mob.hp;
+        }
+      } else if (type === 'tower') {
+        const tower = _towers.find(t => t.id === entityId);
+        if (!tower) return;
+        const max = data.maxHp || tower.hp || 1000;
+        if (data.isDead) {
+          _towerHpState[entityId] = { current: 0, max };
+          const deadAtMs  = data.deadAt?.toMillis?.() || Date.now();
+          const elapsed   = Date.now() - deadAtMs;
+          const remaining = Math.max(0, 10 * 60 * 1000 - elapsed);
+          if (!_towerRespawn[entityId]) {
+            _towerRespawn[entityId] = setTimeout(() => _respawnTower(tower), remaining);
+          }
+        } else {
+          _towerHpState[entityId] = { current: data.hp ?? max, max };
+        }
+      }
+    });
+
     if (window.google?.maps) {
       renderMonsterMarkers();
       renderTowerMarkers();
@@ -932,54 +970,58 @@ function getTowerIcon(image, type) {
            scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
 }
 
-function renderMonsterMarkers() {
+function _spawnMonsterMarker(mob) {
   const map = _ctx?.map;
   const infoWindow = _ctx?.infoWindow;
+  if (!map || !mob.lat || !mob.lng) return;
+  const marker = new google.maps.Marker({
+    position: { lat: mob.lat, lng: mob.lng }, map,
+    title: mob.name || '몬스터',
+    icon: getMonsterIcon(mob.image),
+    zIndex: 50,
+  });
+  marker.addListener('click', () => {
+    if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
+      const myPos = _ctx.myLocationMarker.getPosition();
+      const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
+      if (dist <= (mob.detectRadius || 20)) {
+        const roll   = Math.floor(Math.random() * 10) + 1;
+        const isCrit = roll >= 6;
+        const dmg    = _player.level * roll;
+        _clickAtkCd[mob.id] = true;
+        setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
+        playSound(isCrit ? 'critical_hit' : 'arrow_hit');
+        animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
+          isCrit ? '#ff6600' : '#fbbf24', () => {
+            hitMonster(mob.id, dmg);
+            showFloat(isCrit ? `💥${dmg}` : `-${dmg}`,
+              isCrit ? '#ff6600' : '#fbbf24', mob.lat, mob.lng);
+            if (isCrit) showCriticalToast();
+          });
+        return;
+      }
+    }
+    const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
+    infoWindow?.setContent(`
+      <div style="font-size:13px;min-width:140px">
+        <b>${escHtml(mob.name||'몬스터')}</b>
+        <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
+        <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
+        ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('monster','${mob.id}')"
+          style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
+      </div>`);
+    infoWindow?.open(map, marker);
+  });
+  _monsterMarkers[mob.id] = marker;
+}
+
+function renderMonsterMarkers() {
   Object.values(_monsterMarkers).forEach(m => m.setMap(null));
   _monsterMarkers = {};
   for (const mob of _monsters) {
-    if (!mob.lat || !mob.lng) continue;
-    const marker = new google.maps.Marker({
-      position: { lat: mob.lat, lng: mob.lng }, map,
-      title: mob.name || '몬스터',
-      icon: getMonsterIcon(mob.image),
-      zIndex: 50,
-    });
-    marker.addListener('click', () => {
-      if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
-        const myPos = _ctx.myLocationMarker.getPosition();
-        const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-        if (dist <= (mob.detectRadius || 20)) {
-          const roll   = Math.floor(Math.random() * 10) + 1;
-          const isCrit = roll >= 6;
-          const dmg    = _player.level * roll;
-          _clickAtkCd[mob.id] = true;
-          setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
-
-          playSound(isCrit ? 'critical_hit' : 'arrow_hit');
-          animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
-            isCrit ? '#ff6600' : '#fbbf24', () => {
-              hitMonster(mob.id, dmg);
-              showFloat(isCrit ? `💥${dmg}` : `-${dmg}`,
-                isCrit ? '#ff6600' : '#fbbf24', mob.lat, mob.lng);
-              if (isCrit) showCriticalToast();
-            });
-          return;
-        }
-      }
-      const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
-      infoWindow?.setContent(`
-        <div style="font-size:13px;min-width:140px">
-          <b>${escHtml(mob.name||'몬스터')}</b>
-          <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
-          <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
-            <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
-          ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('monster','${mob.id}')"
-            style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
-        </div>`);
-      infoWindow?.open(map, marker);
-    });
-    _monsterMarkers[mob.id] = marker;
+    if (!mob.lat || !mob.lng || mob.hp <= 0) continue; // 죽은 몬스터 스킵
+    _spawnMonsterMarker(mob);
   }
 }
 
@@ -1017,20 +1059,20 @@ function attackTower(tower, marker) {
   if (st.current <= 0) {
     // 타워 파괴
     marker.setMap(null);
+    delete _towerMarkers[tower.id];
     infoWindow?.close();
     showFloat('🏚 타워 파괴!', '#f97316', pos.lat(), pos.lng());
     playSound('gold_drop');
-
+    // 공유 상태 기록
+    setDoc(doc(_ctx.db, 'battle_hp', `tower_${tower.id}`),
+      { hp: 0, maxHp: st.max, isDead: true, deadAt: serverTimestamp(), type: 'tower' }, { merge: true }).catch(() => {});
     // 10분 후 리스폰
-    _towerRespawn[tower.id] = setTimeout(() => {
-      delete _towerHpState[tower.id]; // HP 리셋
-      delete _towerRespawn[tower.id];
-      const respawnedMarker = createTowerMarker(tower, map, infoWindow);
-      _towerMarkers[tower.id] = respawnedMarker;
-      showFloat('🏰 타워 부활!', '#a78bfa', tower.lat, tower.lng);
-    }, 10 * 60 * 1000);
+    _towerRespawn[tower.id] = setTimeout(() => _respawnTower(tower), 10 * 60 * 1000);
     return;
   }
+  // HP 변경 공유
+  setDoc(doc(_ctx.db, 'battle_hp', `tower_${tower.id}`),
+    { hp: st.current, maxHp: st.max, isDead: false, type: 'tower' }, { merge: true }).catch(() => {});
 
   const hpPct = (st.current / st.max) * 100;
   const hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#f59e0b' : '#ef4444';
@@ -1283,20 +1325,39 @@ function calcBearing(lat1, lng1, lat2, lng2) {
   return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
+function _scheduleMonsterRespawn(mob, deadAtMs) {
+  if (_monsterRespawnTimers[mob.id]) return; // 이미 예약됨
+  deadAtMs = deadAtMs ?? Date.now();
+  const respawnMs = (mob.respawnMinutes || 1) * 60000;
+  const elapsed   = Date.now() - deadAtMs;
+  const remaining = Math.max(0, respawnMs - elapsed);
+  _monsterRespawnTimers[mob.id] = setTimeout(async () => {
+    delete _monsterRespawnTimers[mob.id];
+    mob.hp = mob.maxHp;
+    try {
+      await setDoc(doc(_ctx.db, 'battle_hp', `monster_${mob.id}`),
+        { hp: mob.maxHp, maxHp: mob.maxHp, isDead: false, deadAt: null, type: 'monster' }, { merge: true });
+    } catch {}
+    if (_ctx?.map) _spawnMonsterMarker(mob);
+  }, remaining);
+}
+
 async function hitMonster(monsterId, damage) {
   const mob = _monsters.find(m => m.id === monsterId);
   if (!mob || mob.hp <= 0) return;
   mob.hp = Math.max(0, mob.hp - damage);
 
-  try {
-    await setDoc(doc(_ctx.db, 'battle_monsters', monsterId), { hp: mob.hp }, { merge: true });
-  } catch { /* 무시 */ }
+  const isDead = mob.hp <= 0;
+  // battle_hp 에 공유 상태 기록 (다른 유저들이 onSnapshot 으로 수신)
+  setDoc(doc(_ctx.db, 'battle_hp', `monster_${monsterId}`), {
+    hp: mob.hp, maxHp: mob.maxHp, isDead, type: 'monster',
+    ...(isDead ? { deadAt: serverTimestamp() } : {}),
+  }, { merge: true }).catch(() => {});
 
   const marker = _monsterMarkers[monsterId];
   if (marker) marker.setTitle(`${mob.name||'몬스터'} HP:${mob.hp}`);
 
-  if (mob.hp <= 0) {
-    const map = _ctx?.map;
+  if (isDead) {
     playSound('monster_die');
     showFloat('💀 처치!', '#fbbf24', mob.lat, mob.lng);
     gainXp(mob.dropExp || 20);
@@ -1312,30 +1373,88 @@ async function hitMonster(monsterId, damage) {
           await setDoc(invRef, { uid: _ctx.uid, itemId: String(drop.itemId), count: cur + 1,
             updatedAt: serverTimestamp() }, { merge: true });
           showFloat(`📦 ${drop.itemId}`, '#86efac', mob.lat, mob.lng);
-        } catch { /* 무시 */ }
+        } catch {}
       }
     }
 
-    const respawnMs = (mob.respawnMinutes || 1) * 60000;
-    if (_monsterMarkers[monsterId]) {
-      _monsterMarkers[monsterId].setMap(null);
-      delete _monsterMarkers[monsterId];
-    }
-    setTimeout(async () => {
-      try {
-        await setDoc(doc(_ctx.db, 'battle_monsters', monsterId),
-          { hp: mob.maxHp, active: true }, { merge: true });
-        mob.hp = mob.maxHp;
-        if (window.google?.maps && map) {
-          const m = new google.maps.Marker({
-            position: { lat: mob.lat, lng: mob.lng }, map,
-            title: mob.name, icon: getMonsterIcon(mob.image), zIndex: 50,
-          });
-          _monsterMarkers[monsterId] = m;
-        }
-      } catch { /* 무시 */ }
-    }, respawnMs);
+    if (marker) { marker.setMap(null); delete _monsterMarkers[monsterId]; }
+    _scheduleMonsterRespawn(mob, Date.now());
   }
+}
+
+// ── 공유 전투 상태 동기화 ─────────────────────────────────────────────────────
+function _respawnTower(tower) {
+  const tid = tower.id;
+  delete _towerRespawn[tid];
+  delete _towerHpState[tid];
+  const map = _ctx?.map, infoWindow = _ctx?.infoWindow;
+  if (!map) return;
+  setDoc(doc(_ctx.db, 'battle_hp', `tower_${tid}`),
+    { hp: 1000, maxHp: 1000, isDead: false, deadAt: null, type: 'tower' }, { merge: true }).catch(() => {});
+  _towerMarkers[tid] = createTowerMarker(tower, map, infoWindow);
+  showFloat('🏰 타워 부활!', '#a78bfa', tower.lat, tower.lng);
+}
+
+function _onMonsterHpChange(monsterId, data) {
+  const mob = _monsters.find(m => m.id === monsterId);
+  if (!mob) return;
+  if (data.isDead && mob.hp > 0) {
+    // 다른 유저가 처치
+    mob.hp = 0;
+    if (_monsterMarkers[monsterId]) { _monsterMarkers[monsterId].setMap(null); delete _monsterMarkers[monsterId]; }
+    _scheduleMonsterRespawn(mob, data.deadAt?.toMillis?.() || Date.now());
+  } else if (!data.isDead && data.hp > 0) {
+    if (mob.hp <= 0 && !_monsterMarkers[monsterId]) {
+      // 리스폰 이벤트
+      mob.hp = data.hp;
+      if (_ctx?.map) _spawnMonsterMarker(mob);
+    } else if (mob.hp > 0) {
+      mob.hp = data.hp;
+      if (_monsterMarkers[monsterId]) _monsterMarkers[monsterId].setTitle(`${mob.name||'몬스터'} HP:${mob.hp}`);
+    }
+  }
+}
+
+function _onTowerHpChange(towerId, data) {
+  const tower = _towers.find(t => t.id === towerId);
+  if (!tower) return;
+  if (data.isDead) {
+    if (_towerMarkers[towerId]) { _towerMarkers[towerId].setMap(null); delete _towerMarkers[towerId]; }
+    delete _towerHpState[towerId];
+    if (!_towerRespawn[towerId]) {
+      const elapsed   = Date.now() - (data.deadAt?.toMillis?.() || Date.now());
+      const remaining = Math.max(0, 10 * 60 * 1000 - elapsed);
+      _towerRespawn[towerId] = setTimeout(() => _respawnTower(tower), remaining);
+    }
+  } else if (data.hp !== undefined && !_towerRespawn[towerId]) {
+    if (_towerHpState[towerId]) { _towerHpState[towerId].current = data.hp; }
+    else { _towerHpState[towerId] = { current: data.hp, max: data.maxHp || 1000 }; }
+  }
+}
+
+// battle_hp 컬렉션 실시간 구독 — 다른 유저 공격/처치 동기화
+export function startSharedSync(onBoxHpChange) {
+  if (!_ctx?.db || _battleHpUnsub) return;
+  _battleHpUnsub = onSnapshot(
+    collection(_ctx.db, 'battle_hp'),
+    { includeMetadataChanges: true },
+    (snap) => {
+      snap.docChanges({ includeMetadataChanges: true }).forEach(change => {
+        if (change.doc.metadata.hasPendingWrites) return; // 내 쓰기 제외
+        if (change.type === 'removed') return;
+        const docId = change.doc.id;
+        const data  = change.doc.data();
+        const idx   = docId.indexOf('_');
+        if (idx < 0) return;
+        const type     = docId.slice(0, idx);
+        const entityId = docId.slice(idx + 1);
+        if (type === 'monster')      _onMonsterHpChange(entityId, data);
+        else if (type === 'tower')   _onTowerHpChange(entityId, data);
+        else if (type === 'box' && onBoxHpChange) onBoxHpChange(entityId, data);
+      });
+    },
+    () => {}
+  );
 }
 
 // ── 관리자 배치 모드 ──────────────────────────────────────────────────────────

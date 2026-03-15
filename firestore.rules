@@ -471,6 +471,12 @@ service cloud.firestore {
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
+    // ── 공유 전투 HP 상태 (클라이언트 쓰기 허용) ───────────────────────────────
+    match /battle_hp/{docId} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
