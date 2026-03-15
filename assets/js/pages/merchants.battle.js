@@ -24,6 +24,9 @@ let _battleLoopId    = null;
 let _attackCd        = false;  // 유저 공격 쿨다운 (1.5초)
 let _clickAtkCd      = {};     // { monsterId: bool }
 let _towerCd         = {};     // { towerId: bool }
+let _towerHpState    = {};     // { towerId: {current, max} }
+let _towerAtkCd      = {};     // { towerId: bool } 유저→타워 공격 쿨다운
+let _towerRespawn    = {};     // { towerId: timeoutId }
 let _monsterCd       = {};     // { monsterId: bool }
 let _healAccum       = 0;      // HP 회복용 누적거리(m)
 let _mpHealAccum     = 0;      // MP 회복용 누적거리(m)
@@ -963,6 +966,112 @@ function renderMonsterMarkers() {
   }
 }
 
+// ── 타워 HP 상태 ──────────────────────────────────────────────────────────────
+function getTowerHpState(tower) {
+  if (!_towerHpState[tower.id]) {
+    const max = Math.max(1, tower.hp || 1000);
+    _towerHpState[tower.id] = { current: max, max };
+  }
+  return _towerHpState[tower.id];
+}
+
+// ── 타워 공격 (클릭) ──────────────────────────────────────────────────────────
+function attackTower(tower, marker) {
+  if (_towerAtkCd[tower.id]) return;
+  _towerAtkCd[tower.id] = true;
+  setTimeout(() => delete _towerAtkCd[tower.id], 800);
+
+  const st = getTowerHpState(tower);
+  if (st.current <= 0) return;
+
+  const isCrit = Math.random() < 0.1;
+  const base = 30 + Math.floor(Math.random() * 21); // 30-50
+  const dmg  = isCrit ? base * 2 : base;
+  st.current = Math.max(0, st.current - dmg);
+
+  // 데미지 플로팅
+  const pos = marker.getPosition();
+  showFloat(isCrit ? `💥 CRIT! -${dmg}` : `-${dmg}`, isCrit ? '#f97316' : '#ef4444', pos.lat(), pos.lng());
+  playSound(isCrit ? 'critical' : 'arrow_shot');
+
+  const map = _ctx?.map;
+  const infoWindow = _ctx?.infoWindow;
+
+  if (st.current <= 0) {
+    // 타워 파괴
+    marker.setMap(null);
+    infoWindow?.close();
+    showFloat('🏚 타워 파괴!', '#f97316', pos.lat(), pos.lng());
+    playSound('gold_drop');
+
+    // 10분 후 리스폰
+    _towerRespawn[tower.id] = setTimeout(() => {
+      delete _towerHpState[tower.id]; // HP 리셋
+      delete _towerRespawn[tower.id];
+      const respawnedMarker = createTowerMarker(tower, map, infoWindow);
+      _towerMarkers[tower.id] = respawnedMarker;
+      showFloat('🏰 타워 부활!', '#a78bfa', tower.lat, tower.lng);
+    }, 10 * 60 * 1000);
+    return;
+  }
+
+  const hpPct = (st.current / st.max) * 100;
+  const hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#f59e0b' : '#ef4444';
+  infoWindow?.setContent(`
+    <div style="font-size:13px;line-height:1.6;min-width:190px;">
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏰 ${escHtml(tower.name||'방어탑')}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span style="font-size:11px;color:#888;min-width:20px;">HP</span>
+        <div style="flex:1;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;">
+          <div style="height:100%;width:${hpPct}%;background:${hpColor};border-radius:5px;transition:width .3s;"></div>
+        </div>
+        <span style="font-size:11px;color:#374151;min-width:65px;text-align:right;">${st.current}/${st.max}</span>
+      </div>
+      <div style="color:${isCrit?'#f97316':'#ef4444'};font-weight:700;">${isCrit?'💥 CRITICAL! ':'💥 '}-${dmg}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px;">계속 클릭하여 공격!</div>
+    </div>`);
+  infoWindow?.open(map, marker);
+}
+
+// ── 타워 마커 단일 생성 (리스폰에서도 재사용) ────────────────────────────────
+function createTowerMarker(tower, map, infoWindow) {
+  getTowerHpState(tower); // 초기화
+  const marker = new google.maps.Marker({
+    position: { lat: tower.lat, lng: tower.lng }, map,
+    title: `${tower.name||'방어탑'} HP ${st.current}/${st.max}`,
+    icon: getTowerIcon(tower.image, tower.type), zIndex: 55,
+  });
+  marker.addListener('click', () => {
+    const myMark = _ctx?.myLocationMarker;
+    const inRange = myMark
+      ? haversine(myMark.getPosition().lat(), myMark.getPosition().lng(), tower.lat, tower.lng) <= (tower.radius || 30) * 3
+      : false;
+    if (inRange && !_isDead) {
+      attackTower(tower, marker);
+    } else {
+      const hpPct2 = (getTowerHpState(tower).current / getTowerHpState(tower).max) * 100;
+      const hpColor2 = hpPct2 > 50 ? '#22c55e' : hpPct2 > 25 ? '#f59e0b' : '#ef4444';
+      infoWindow?.setContent(`
+        <div style="font-size:13px;line-height:1.7;min-width:190px;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏰 ${escHtml(tower.name||'방어탑')}</div>
+          <div style="font-size:11px;color:#888;">반경 ${tower.radius||30}m · 데미지 ${tower.atk||50}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+            <span style="font-size:11px;color:#888;min-width:20px;">HP</span>
+            <div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:${hpPct2}%;background:${hpColor2};border-radius:4px;transition:width .3s;"></div>
+            </div>
+            <span style="font-size:11px;color:#374151;">${getTowerHpState(tower).current}/${getTowerHpState(tower).max}</span>
+          </div>
+          <div style="font-size:11px;color:#555;margin-top:4px;">공격 범위 안으로 접근 후 클릭하여 공격!</div>
+          ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('tower','${tower.id}')"
+            style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
+        </div>`);
+      infoWindow?.open(map, marker);
+    }
+  });
+  return marker;
+}
+
 function renderTowerMarkers() {
   const map = _ctx?.map;
   const infoWindow = _ctx?.infoWindow;
@@ -971,22 +1080,10 @@ function renderTowerMarkers() {
   _towerMarkers = {}; _towerRanges = {};
   for (const tower of _towers) {
     if (!tower.lat || !tower.lng) continue;
-    const marker = new google.maps.Marker({
-      position: { lat: tower.lat, lng: tower.lng }, map,
-      title: tower.name || '방어탑',
-      icon: getTowerIcon(tower.image, tower.type), zIndex: 55,
-    });
-    marker.addListener('click', () => {
-      infoWindow?.setContent(`
-        <div style="font-size:13px">
-          <b>🏰 ${escHtml(tower.name||'방어탑')}</b>
-          <div style="font-size:11px;color:#888;margin-top:4px">반경 ${tower.radius||30}m · 데미지 ${tower.atk||50}</div>
-          ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('tower','${tower.id}')"
-            style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
-        </div>`);
-      infoWindow?.open(map, marker);
-    });
-    _towerMarkers[tower.id] = marker;
+    // 리스폰 대기 중(파괴됨)이면 마커 생략
+    if (_towerRespawn[tower.id]) continue;
+
+    _towerMarkers[tower.id] = createTowerMarker(tower, map, infoWindow);
 
     const circle = new google.maps.Circle({
       map: _showTowerRange ? map : null,
@@ -1107,6 +1204,8 @@ function checkTowerAttacks() {
   for (const tower of _towers) {
     if (!tower.lat || !tower.lng) continue;
     if (_towerCd[tower.id]) continue;
+    if (_towerRespawn[tower.id]) continue; // 파괴된 타워는 공격 안 함
+    if (_towerHpState[tower.id]?.current <= 0) continue;
     const dist = haversine(myLat, myLng, tower.lat, tower.lng);
     if (dist <= (tower.radius || 30)) {
       const isCannon = tower.type === 'cannon';
@@ -1266,10 +1365,10 @@ export function enterAdminPlaceMode(type) {
       const image  = prompt('이미지 (이모지 or 경로, 예: /assets/images/shops/arms.png)', defEmoji) || defEmoji;
       try {
         const ref = await addDoc(collection(_ctx.db, 'battle_towers'), {
-          name, lat, lng, atk, radius, image, type: towerType, active: true,
+          name, lat, lng, atk, radius, image, type: towerType, hp: 1000, active: true,
           createdAt: serverTimestamp(),
         });
-        _towers.push({ id: ref.id, name, lat, lng, atk, radius, image, type: towerType, active: true });
+        _towers.push({ id: ref.id, name, lat, lng, atk, radius, image, type: towerType, hp: 1000, active: true });
         renderTowerMarkers();
         alert(`✅ ${name} 설치 완료`);
       } catch (err) { alert('오류: ' + err.message); }
