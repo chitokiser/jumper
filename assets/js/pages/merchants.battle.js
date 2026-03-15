@@ -972,6 +972,7 @@ export async function loadBattleData() {
           }
         } else {
           mob.hp = data.hp ?? mob.hp;
+          if (data.aggroUid) _monsterAggro[entityId] = data.aggroUid;
         }
       } else if (type === 'tower') {
         const tower = _towers.find(t => t.id === entityId);
@@ -1094,7 +1095,8 @@ function _spawnMonsterMarker(mob) {
     if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
       const myPos = _ctx.myLocationMarker.getPosition();
       const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-      if (dist <= (mob.detectRadius || 20)) {
+      const clickRange = Math.max(60, (mob.detectRadius || 20) * 3);
+      if (dist <= clickRange) {
         const roll   = Math.floor(Math.random() * 10) + 1;
         const isCrit = roll >= 6;
         const dmg    = _player.level * roll;
@@ -1357,16 +1359,14 @@ function checkMonsterAttacks() {
     if (_frozenUntil[mob.id] && now < _frozenUntil[mob.id]) continue;
     const dist = haversine(myLat, myLng, mob.lat, mob.lng);
     if (dist <= (mob.detectRadius || 20)) {
-      // 어그로 클레임: 처음 탐지 시 내가 먼저면 기록
+      // 어그로 클레임: 처음 탐지 시 항상 내가 클레임 (잔존 aggroUid 덮어쓰기)
       if (myUid && !_aggroClaimed.has(mob.id)) {
         _aggroClaimed.add(mob.id);
-        if (!_monsterAggro[mob.id]) {
-          _monsterAggro[mob.id] = myUid; // 낙관적 로컬 설정
-          setDoc(doc(_ctx.db, 'battle_hp', `monster_${mob.id}`),
-            { aggroUid: myUid }, { merge: true }).catch(() => {});
-        }
+        _monsterAggro[mob.id] = myUid;
+        setDoc(doc(_ctx.db, 'battle_hp', `monster_${mob.id}`),
+          { aggroUid: myUid }, { merge: true }).catch(() => {});
       }
-      // 내가 어그로 대상이 아니면 공격 무시
+      // 내가 어그로 대상이 아니면 공격 무시 (다른 유저가 먼저 클레임한 경우)
       const aggro = _monsterAggro[mob.id];
       if (aggro && aggro !== myUid) continue;
 
@@ -1523,8 +1523,8 @@ function _onMonsterHpChange(monsterId, data) {
   const mob = _monsters.find(m => m.id === monsterId);
   if (!mob) return;
 
-  // 어그로 동기화 (다른 유저가 먼저 클레임한 경우 반영)
-  if (data.aggroUid !== undefined) {
+  // 어그로 동기화: 내가 이미 클레임한 mob은 다른 유저의 write 무시
+  if (data.aggroUid !== undefined && !_aggroClaimed.has(monsterId)) {
     if (data.aggroUid) _monsterAggro[monsterId] = data.aggroUid;
     else               delete _monsterAggro[monsterId];
   }
