@@ -12,8 +12,14 @@ import {
   orderBy,
   limit,
   getDocs,
-  getCountFromServer,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+// ── 가맹점 캐시 (세션 내 1회만 fetch) ────────────────────────────────────────
+let _merchantsCache = null;
+async function fetchMerchantsOnce() {
+  if (!_merchantsCache) _merchantsCache = await getDocs(collection(db, "merchants"));
+  return _merchantsCache;
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -146,23 +152,19 @@ async function loadJackpotFirestoreFallback() {
   let fiatText = "약 - KRW / - VND";
   let updatedText = "잭팟 서버에 연결할 수 없습니다";
 
-  try {
-    const cntSnap = await getCountFromServer(
-      query(collection(db, "jackpot_rounds"), where("isWinner", "==", true))
-    );
-    winnerCountText = formatCount(cntSnap.data().count);
-  } catch {}
-
+  // Query 1: 최고 당첨금 + 당첨자 수 (클라이언트 카운트)
   try {
     const highSnap = await getDocs(
-      query(collection(db, "jackpot_rounds"), orderBy("finalWinSort", "desc"), limit(1))
+      query(collection(db, "jackpot_rounds"), orderBy("finalWinSort", "desc"), limit(5))
     );
     if (!highSnap.empty) {
       const wei = highSnap.docs[0].data().finalWinWei || "0";
       highestWinText = formatHexForUi(Number(BigInt(wei)) / 1e18);
+      winnerCountText = formatCount(highSnap.size);
     }
   } catch {}
 
+  // Query 2: 최신 라운드 잭팟 표시값
   try {
     const latestSnap = await getDocs(
       query(collection(db, "jackpot_rounds"), orderBy("createdAt", "desc"), limit(1))
@@ -198,7 +200,7 @@ async function loadJackpotWinners() {
 
   try {
     // 가맹점 이름 맵
-    const merchantSnap = await getDocs(collection(db, "merchants"));
+    const merchantSnap = await fetchMerchantsOnce();
     const merchantMap = new Map();
     merchantSnap.forEach((d) => {
       const m = d.data() || {};
@@ -590,7 +592,7 @@ async function loadMerchants() {
   if (state) state.textContent = "불러오는 중...";
 
   try {
-    const snap = await getDocs(collection(db, "merchants"));
+    const snap = await fetchMerchantsOnce();
     const list = [];
     snap.forEach((d) => {
       const m = d.data() || {};
@@ -685,13 +687,9 @@ async function loadPlacesMap() {
     await loadMapsScript();
 
     const settle = p => p.then(v => ({ ok: true, v })).catch(() => ({ ok: false }));
-    const [placesRes, merchantsRes, boxesRes, monstersRes, towersRes, decosRes] = await Promise.all([
+    const [placesRes, merchantsRes] = await Promise.all([
       settle(getDocs(collection(db, "places"))),
-      settle(getDocs(collection(db, "merchants"))),
-      settle(getDocs(query(collection(db, "treasure_boxes")))),
-      settle(getDocs(query(collection(db, "battle_monsters"), where("active", "==", true)))),
-      settle(getDocs(query(collection(db, "battle_towers"),   where("active", "==", true)))),
-      settle(getDocs(query(collection(db, "map_decorations"), where("active", "==", true)))),
+      settle(fetchMerchantsOnce()),
     ]);
 
     const map = new google.maps.Map(mapEl, {
@@ -754,62 +752,6 @@ async function loadPlacesMap() {
         </div>`, 10);
     });
 
-    // ── 보물박스 마커
-    if (boxesRes.ok) boxesRes.v.forEach((d) => {
-      const b = d.data() || {};
-      if (typeof b.lat !== "number" || typeof b.lng !== "number") return;
-      const active = b.active !== false;
-      addMarker({ lat: b.lat, lng: b.lng },
-        makeSvgIcon("🎁", active ? "rgba(234,179,8,0.85)" : "rgba(156,163,175,0.75)", 32),
-        `<div style="font-size:13px;"><b>${escHtml(b.name || "보물박스")}</b>
-          <div style="font-size:11px;color:#888;margin-top:4px;">${active ? "✅ 활성" : "❌ 비활성"} · ${b.startHour ?? 0}:00~${b.endHour ?? 24}:00</div>
-        </div>`, 5);
-    });
-
-    // ── 몬스터 마커
-    if (monstersRes.ok) monstersRes.v.forEach((d) => {
-      const m = d.data() || {};
-      if (typeof m.lat !== "number" || typeof m.lng !== "number") return;
-      const isPath = m.image && m.image.startsWith("/");
-      const icon = isPath
-        ? { url: m.image, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) }
-        : makeSvgIcon(m.image || "🐉", "rgba(220,38,38,0.85)", 36);
-      const hpPct = Math.round(((m.hp ?? m.maxHp ?? 0) / (m.maxHp || 1)) * 100);
-      addMarker({ lat: m.lat, lng: m.lng }, icon,
-        `<div style="font-size:13px;min-width:140px"><b>${escHtml(m.name || "몬스터")}</b>
-          <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${m.hp ?? "?"} / ${m.maxHp ?? "?"}</div>
-          <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
-            <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
-        </div>`, 50);
-    });
-
-    // ── 타워 마커
-    if (towersRes.ok) towersRes.v.forEach((d) => {
-      const t = d.data() || {};
-      if (typeof t.lat !== "number" || typeof t.lng !== "number") return;
-      const isCannon = t.type === "cannon";
-      const isPath = t.image && t.image.startsWith("/");
-      const icon = isPath
-        ? { url: t.image, scaledSize: new google.maps.Size(38, 38), anchor: new google.maps.Point(19, 19) }
-        : makeSvgIcon(t.image || (isCannon ? "💣" : "🏹"), isCannon ? "rgba(180,60,0,0.88)" : "rgba(124,58,237,0.88)", 38);
-      addMarker({ lat: t.lat, lng: t.lng }, icon,
-        `<div style="font-size:13px"><b>${escHtml(t.name || "방어탑")}</b>
-          <div style="font-size:11px;color:#888;margin-top:4px">${isCannon ? "💣 대포" : "🏹 아처"} · 반경 ${t.radius || 30}m · 데미지 ${t.atk || 0}</div>
-        </div>`, 55);
-    });
-
-    // ── 데코 마커
-    if (decosRes.ok) decosRes.v.forEach((d) => {
-      const dc = d.data() || {};
-      if (typeof dc.lat !== "number" || typeof dc.lng !== "number" || !dc.imageUrl) return;
-      const sz = dc.size || 48;
-      addMarker({ lat: dc.lat, lng: dc.lng },
-        { url: dc.imageUrl, scaledSize: new google.maps.Size(sz, sz), anchor: new google.maps.Point(sz/2, sz/2) },
-        `<div style="font-size:13px;text-align:center;">
-          <img src="${escHtml(dc.imageUrl)}" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 6px;">
-          <b>${escHtml(dc.name || "데코")}</b>
-        </div>`, 5);
-    });
 
     if (markerCount > 0 && !bounds.isEmpty()) {
       map.fitBounds(bounds);

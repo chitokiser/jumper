@@ -223,8 +223,8 @@
 
   .brand{ min-width: 0; }
   .brand-logo{
-    max-width: 96px;
-    height: 24px;
+    max-width: 140px;
+    height: 40px;
     object-fit: contain;
   }
 

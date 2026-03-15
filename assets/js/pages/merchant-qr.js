@@ -326,6 +326,7 @@ function listenPayments(amount, currency = "KRW") {
     snap.docChanges().forEach((change) => {
       if (change.type !== "added") return;
       const d = change.doc.data();
+      addReceiptItem(d, true);
       showPaymentAlert(d, amount, currency);
     });
   }, (err) => {
@@ -355,11 +356,13 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
     "text-align:center", "min-width:260px", "animation:fadeInDown .3s ease",
   ].join(";");
 
+  const potions = Math.floor(parseFloat(netHex) || 0);
   el.innerHTML = `
     <div style="font-size:2rem;margin-bottom:4px;">✅</div>
     <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">결제 완료!</div>
     <div style="font-size:0.95rem;opacity:.9;">${amountDisp} 수령</div>
     <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">${netHex} HEX</div>
+    ${potions > 0 ? `<div style="font-size:0.9rem;margin-top:8px;background:rgba(255,255,255,.18);border-radius:8px;padding:6px 12px;">💊 빨간약 <b>${potions}개</b> 인벤토리에 추가됨!</div>` : ""}
     <button onclick="document.getElementById('paymentAlert').remove()"
       style="margin-top:10px;background:rgba(255,255,255,.2);border:none;color:#fff;
              border-radius:6px;padding:4px 16px;cursor:pointer;font-size:0.85rem;">닫기</button>
