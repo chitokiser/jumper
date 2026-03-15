@@ -3,7 +3,7 @@
 
 import { auth, db, functions } from '/assets/js/firebase-init.js';
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
-         setDoc, deleteDoc, onSnapshot, serverTimestamp }
+         setDoc, deleteDoc, serverTimestamp }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -39,7 +39,7 @@ let _collectedBoxes = new Set(); // 이 세션에서 이미 수집한 box ID
 let _boxHpState     = {};        // {boxId: {current, max}} 클라이언트 HP 추적
 let _boxAtkCd       = {};        // {boxId: true} 공격 쿨다운
 let _nearbyMarkers  = {};        // {uid: Marker} 주변 유저 마커
-let _nearbyUnsub    = null;      // Firestore onSnapshot 구독 해제
+let _nearbyTimer    = null;      // setInterval handle (10초 폴링)
 let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
@@ -475,9 +475,43 @@ function updateDistDisplay() {
 }
 
 // ── 주변 유저 실시간 표시 (100m 이내) ────────────────────────────────────────
-const NEARBY_RADIUS_M = 100;
-const LOC_WRITE_INTERVAL = 5000;  // 5초마다 위치 업데이트
-const LOC_STALE_MS       = 30000; // 30초 이상 미업데이트 시 마커 제거
+const NEARBY_RADIUS_M    = 100;
+const LOC_WRITE_INTERVAL = 5000;   // 5초마다 위치 쓰기
+const LOC_STALE_MS       = 30000;  // 30초 이상 미업데이트 시 마커 제거
+const LOC_POLL_INTERVAL  = 10000;  // 10초마다 근처 유저 폴링
+
+// ── Geohash 인라인 구현 (CDN 불필요) ─────────────────────────────────────────
+const _GH32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+
+function _ghEncode(lat, lng, precision) {
+  let hash = '', v = 0, bits = 0, even = true;
+  let mnLat = -90, mxLat = 90, mnLng = -180, mxLng = 180;
+  while (hash.length < precision) {
+    const mid = even ? (mnLng + mxLng) / 2 : (mnLat + mxLat) / 2;
+    if (even) { if (lng >= mid) { v = v * 2 + 1; mnLng = mid; } else { v *= 2; mxLng = mid; } }
+    else       { if (lat >= mid) { v = v * 2 + 1; mnLat = mid; } else { v *= 2; mxLat = mid; } }
+    even = !even;
+    if (++bits === 5) { hash += _GH32[v]; v = 0; bits = 0; }
+  }
+  return hash;
+}
+
+// precision=7 → 셀 약 150m×120m, 9셀이 450m×360m 커버 → 100m 반경 완전 포함
+function _ghCells(lat, lng, precision = 7) {
+  const latBits = Math.floor(precision * 5 / 2);
+  const lngBits = Math.ceil(precision * 5 / 2);
+  const dLat = 180 / Math.pow(2, latBits);   // 셀 높이
+  const dLng = 360 / Math.pow(2, lngBits);   // 셀 너비
+  const cells = new Set();
+  for (const r of [-dLat, 0, dLat]) {
+    for (const c of [-dLng, 0, dLng]) {
+      const nLat = Math.max(-90, Math.min(90, lat + r));
+      const nLng = ((lng + c + 180) % 360) - 180;
+      cells.add(_ghEncode(nLat, nLng, precision));
+    }
+  }
+  return [...cells]; // 최대 9개
+}
 
 function getNearbyPlayerIcon(name) {
   const initials = (name || '?').slice(0, 2).toUpperCase();
@@ -499,6 +533,7 @@ async function broadcastMyLocation(lat, lng) {
   try {
     await setDoc(doc(db, 'user_locations', _uid), {
       uid: _uid, lat, lng, name,
+      geohash7: _ghEncode(lat, lng, 7),
       updatedAt: serverTimestamp(),
     });
   } catch { /* 무시 */ }
@@ -556,14 +591,24 @@ function updateNearbyMarkers(snap) {
   });
 }
 
+// geohash7 기반 근처 유저 폴링 (onSnapshot 전체 컬렉션 → O(n²) 방지)
+async function _pollNearbyPlayers() {
+  const myPos = _ctx?.lastPos;
+  if (!myPos || !map || !_uid) return;
+  const cells = _ghCells(myPos.lat, myPos.lng, 7);
+  try {
+    const snap = await getDocs(query(
+      collection(db, 'user_locations'),
+      where('geohash7', 'in', cells)
+    ));
+    updateNearbyMarkers(snap);
+  } catch { /* 무시 */ }
+}
+
 function startNearbyPlayers() {
-  if (_nearbyUnsub) return;
-  _nearbyUnsub = onSnapshot(
-    collection(db, 'user_locations'),
-    snap => updateNearbyMarkers(snap),
-    () => { /* 오류 무시 */ }
-  );
-  // 페이지 종료 시 내 위치 삭제
+  if (_nearbyTimer) return;
+  _pollNearbyPlayers();                                       // 즉시 1회
+  _nearbyTimer = setInterval(_pollNearbyPlayers, LOC_POLL_INTERVAL);
   window.addEventListener('beforeunload', cleanupMyLocation);
 }
 
