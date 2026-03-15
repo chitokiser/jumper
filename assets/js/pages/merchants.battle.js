@@ -26,6 +26,7 @@ let _clickAtkCd      = {};     // { monsterId: bool }
 let _towerCd         = {};     // { towerId: bool }
 let _monsterCd       = {};     // { monsterId: bool }
 let _healAccum       = 0;      // HP 회복용 누적거리(m)
+let _mpHealAccum     = 0;      // MP 회복용 누적거리(m)
 let _reviveWalkDist  = 0;      // 사망 후 부활용 누적거리(m)
 let _currentSpeed    = 0;      // km/h
 let _isDead          = false;
@@ -33,6 +34,14 @@ let _goldDrops       = [];     // [{id, lat, lng, amount, marker}]
 let _adminPlaceMode  = null;   // 'monster' | 'tower' | 'deco' | null
 let _adminMapListener = null;
 let _decoMarkers     = [];
+let _frozenUntil     = {};     // { monsterId: expiryTimestamp } 동결 만료
+let _skillCd         = {};     // { lightning|ice|fire: expiryTimestamp }
+
+// ── 스킬 상수 ────────────────────────────────────────────────────────────────
+const SKILL_MP_COST  = 100;
+const SKILL_RANGE_M  = 30;
+const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
+const SKILL_FREEZE_MS = 20000;
 
 // ── 유틸 (core에서 받지 않고 직접 구현) ────────────────────────────────────────
 function escHtml(s) {
@@ -173,6 +182,30 @@ export function playSound(type) {
       case 'gold_drop':   [1047,1319,1568].forEach((f,i)=>tone(f,0.35,0.18,i*0.07,'triangle')); break;
       case 'gold_pickup': [523,784,1047,1319].forEach((f,i)=>tone(f,0.3,0.1,i*0.05)); break;
       case 'error_locked':[200,180].forEach((f,i)=>tone(f,0.25,0.12,i*0.14,'square')); break;
+      // 스킬 사운드
+      case 'skill_lightning': {
+        // 벼락: 크랙 + 천둥 저음
+        noise(0.25, 0.12);
+        tone(80, 0.6, 0.5, 0.05);
+        tone(140, 0.4, 0.3, 0);
+        [1800,1200,900].forEach((f,i)=>tone(f,0.3,0.06,i*0.03,'square'));
+        break;
+      }
+      case 'skill_ice': {
+        // 얼음: 고음 크리스탈 + 서리 노이즈
+        [1047,1319,1568,2093].forEach((f,i)=>tone(f,0.2,0.4,i*0.06,'triangle'));
+        noise(0.06, 0.7);
+        break;
+      }
+      case 'skill_fire': {
+        // 화염: 로우 붐 + 파직 노이즈
+        tone(60, 0.7, 0.8, 0);
+        tone(120, 0.5, 0.5, 0.05);
+        noise(0.3, 0.4);
+        noise(0.15, 0.9);
+        break;
+      }
+      case 'skill_no_mp': [260,220].forEach((f,i)=>tone(f,0.3,0.15,i*0.1,'sawtooth')); break;
     }
   } catch { /* 오디오 미지원 무시 */ }
 }
@@ -361,6 +394,31 @@ function showFloat(text, color, lat, lng) {
   setTimeout(() => el.remove(), 1200);
 }
 
+// ── 스킬바 UI 업데이트 ───────────────────────────────────────────────────────
+export function updateSkillBar() {
+  const now = Date.now();
+  ['lightning','ice','fire'].forEach((s, i) => {
+    const btn  = document.getElementById(`skillBtn${i}`);
+    const cdEl = document.getElementById(`skillCd${i}`);
+    if (!btn) return;
+    const cdExp = _skillCd[s] || 0;
+    const inCd  = now < cdExp;
+    const noMp  = _player.mp < SKILL_MP_COST;
+    btn.disabled = inCd || noMp || _isDead;
+    btn.classList.toggle('skill-cd',    inCd);
+    btn.classList.toggle('skill-no-mp', noMp && !inCd);
+    if (cdEl) {
+      if (inCd) {
+        const rem = Math.ceil((cdExp - now) / 1000);
+        cdEl.textContent = rem + 's';
+        cdEl.style.display = '';
+      } else {
+        cdEl.style.display = 'none';
+      }
+    }
+  });
+}
+
 // ── 전투 HUD 업데이트 ─────────────────────────────────────────────────────────
 function updateCombatHud() {
   const p = _player;
@@ -371,6 +429,12 @@ function updateCombatHud() {
   const mpBar = document.getElementById('cMpBar');
   if (hpBar) { hpBar.style.width = hpPct + '%'; hpBar.classList.toggle('low', hpPct < 25); }
   if (mpBar)  mpBar.style.width = mpPct + '%';
+
+  // compact 미니바 동기화
+  const mhp = document.getElementById('cMiniHpBar');
+  const mmp = document.getElementById('cMiniMpBar');
+  if (mhp) mhp.style.width = hpPct + '%';
+  if (mmp) mmp.style.width = mpPct + '%';
 
   const lv = document.getElementById('cLv');    if (lv)  lv.textContent  = `LV.${p.level}  💰${p.gold||0}`;
   const hv = document.getElementById('cHpVal'); if (hv)  hv.textContent  = `${p.hp} / ${p.maxHp}`;
@@ -479,6 +543,242 @@ export function healHp(amount) {
   }
   updateCombatHud();
   savePlayerState();
+}
+
+function healMp(amount) {
+  if (_isDead) return;
+  _player.mp = Math.min(_player.maxMp, _player.mp + amount);
+  updateCombatHud();
+  updateSkillBar();
+}
+
+function useMp(amount) {
+  if (_player.mp < amount) return false;
+  _player.mp -= amount;
+  updateCombatHud();
+  updateSkillBar();
+  savePlayerState();
+  return true;
+}
+
+// ── 스킬 애니메이션 ───────────────────────────────────────────────────────────
+function getSkillOverlay() {
+  let ov = document.getElementById('skillOverlay');
+  if (!ov) {
+    const wrap = document.querySelector('.mc-map-wrap');
+    ov = document.createElement('div');
+    ov.id = 'skillOverlay';
+    // 지도 안쪽 하단 영역 — 스킬바 위만 덮음, 배경 없음
+    ov.style.cssText = 'position:absolute;left:0;right:0;bottom:60px;top:20%;pointer-events:none;z-index:450;overflow:hidden;';
+    (wrap || document.body).appendChild(ov);
+  }
+  return ov;
+}
+
+// 스킬 슬롯 인덱스 → 오버레이 안에서의 x 중심(%) — 4개 슬롯 균등 배치
+const SKILL_X = [18, 38, 62, 82]; // lightning, ice, fire, potion
+
+function animateLightning() {
+  const ov = getSkillOverlay();
+  // 번개 줄기 여러 개
+  for (let i = 0; i < 5; i++) {
+    const bolt = document.createElement('div');
+    const x = 10 + Math.random() * 80;
+    bolt.style.cssText = `position:absolute;left:${x}%;top:0;width:3px;height:0;
+      background:linear-gradient(180deg,#fff,#facc15,#a78bfa);
+      box-shadow:0 0 12px #facc15,0 0 24px #a78bfa;
+      border-radius:2px;animation:boltFall 0.35s ${i*0.07}s ease-in forwards;`;
+    ov.appendChild(bolt);
+    setTimeout(() => bolt.remove(), 700 + i*80);
+  }
+  // 바닥 크랙
+  const crack = document.createElement('div');
+  crack.className = 'skill-anim-lightning-crack';
+  ov.appendChild(crack);
+  setTimeout(() => crack.remove(), 900);
+}
+
+function animateIceFreeze() {
+  const ov = getSkillOverlay();
+  const circle = document.createElement('div');
+  circle.className = 'skill-anim-ice-circle';
+  ov.appendChild(circle);
+  setTimeout(() => circle.remove(), 1200);
+  // 파티클
+  for (let i = 0; i < 12; i++) {
+    const p = document.createElement('div');
+    const angle = (i/12)*360;
+    p.style.cssText = `position:absolute;left:50%;top:50%;width:8px;height:8px;
+      background:#bfdbfe;border-radius:50%;box-shadow:0 0 8px #93c5fd;
+      transform:translate(-50%,-50%) rotate(${angle}deg) translateY(-120px);
+      animation:icePart 0.8s ${i*0.04}s ease-out both;`;
+    ov.appendChild(p);
+    setTimeout(() => p.remove(), 900 + i*40);
+  }
+}
+
+function animateFireStorm() {
+  const ov = getSkillOverlay();
+  for (let i = 0; i < 6; i++) {
+    const ball = document.createElement('div');
+    const x = 15 + Math.random() * 70;
+    ball.style.cssText = `position:absolute;left:${x}%;top:-40px;width:32px;height:32px;
+      border-radius:50%;background:radial-gradient(circle,#fef08a,#f97316,#991b1b);
+      box-shadow:0 0 20px #f97316,0 0 40px #dc2626;
+      animation:fireFall 0.6s ${i*0.09}s ease-in forwards;`;
+    ov.appendChild(ball);
+    setTimeout(() => {
+      ball.remove();
+      // 폭발
+      const exp = document.createElement('div');
+      exp.style.cssText = `position:absolute;left:${x}%;bottom:20%;width:60px;height:60px;
+        border-radius:50%;background:radial-gradient(circle,#fef08a,#f97316,transparent);
+        transform:translateX(-50%);animation:fireExp 0.5s ease-out both;`;
+      ov.appendChild(exp);
+      setTimeout(() => exp.remove(), 500);
+    }, 600 + i*90 + 100);
+  }
+}
+
+// ── 마법 스킬 ────────────────────────────────────────────────────────────────
+export function castLightning() {
+  if (_isDead) return;
+  const now = Date.now();
+  if (_skillCd.lightning && now < _skillCd.lightning) return;
+  const myMark = _ctx?.myLocationMarker;
+  if (!myMark) return;
+  if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('⚡ MP 부족!'); return; }
+
+  const pos = myMark.getPosition();
+  const myLat = pos.lat(), myLng = pos.lng();
+
+  let hitCount = 0;
+  for (const mob of _monsters) {
+    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
+    if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
+      hitMonster(mob.id, 100 * _player.level);
+      showFloat(`⚡-${100 * _player.level}`, '#facc15', mob.lat, mob.lng);
+      hitCount++;
+    }
+  }
+
+  animateLightning();
+  playSound('skill_lightning');
+  showFloat(`⚡ 벼락! (${hitCount}마리)`, '#facc15', myLat, myLng);
+  _skillCd.lightning = now + SKILL_CD_MS.lightning;
+  updateSkillBar();
+  setTimeout(() => updateSkillBar(), SKILL_CD_MS.lightning);
+}
+
+export function castIceFreeze() {
+  if (_isDead) return;
+  const now = Date.now();
+  if (_skillCd.ice && now < _skillCd.ice) return;
+  const myMark = _ctx?.myLocationMarker;
+  if (!myMark) return;
+  if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('❄ MP 부족!'); return; }
+
+  const pos = myMark.getPosition();
+  const myLat = pos.lat(), myLng = pos.lng();
+
+  let hitCount = 0;
+  for (const mob of _monsters) {
+    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
+    if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
+      _frozenUntil[mob.id] = now + SKILL_FREEZE_MS;
+      // 얼음 마커 표시
+      const marker = _monsterMarkers[mob.id];
+      if (marker) {
+        marker.setIcon(getMonsterFrozenIcon(mob.image));
+        setTimeout(() => {
+          if (_monsterMarkers[mob.id]) _monsterMarkers[mob.id].setIcon(getMonsterIcon(mob.image));
+        }, SKILL_FREEZE_MS);
+      }
+      showFloat('❄ 동결!', '#93c5fd', mob.lat, mob.lng);
+      hitCount++;
+    }
+  }
+
+  animateIceFreeze();
+  playSound('skill_ice');
+  showFloat(`❄ 동결! (${hitCount}마리 / ${SKILL_FREEZE_MS/1000}초)`, '#93c5fd', myLat, myLng);
+  _skillCd.ice = now + SKILL_CD_MS.ice;
+  updateSkillBar();
+  setTimeout(() => updateSkillBar(), SKILL_CD_MS.ice);
+}
+
+export function castFireStorm() {
+  if (_isDead) return;
+  const now = Date.now();
+  if (_skillCd.fire && now < _skillCd.fire) return;
+  const myMark = _ctx?.myLocationMarker;
+  if (!myMark) return;
+  if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('🔥 MP 부족!'); return; }
+
+  const pos = myMark.getPosition();
+  const myLat = pos.lat(), myLng = pos.lng();
+
+  let hitCount = 0;
+  for (const mob of _monsters) {
+    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
+    if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
+      hitMonster(mob.id, 100 * _player.level);
+      showFloat(`🔥-${100 * _player.level}`, '#f97316', mob.lat, mob.lng);
+      hitCount++;
+    }
+  }
+
+  animateFireStorm();
+  playSound('skill_fire');
+  showFloat(`🔥 화염! (${hitCount}마리)`, '#f97316', myLat, myLng);
+  _skillCd.fire = now + SKILL_CD_MS.fire;
+  updateSkillBar();
+  setTimeout(() => updateSkillBar(), SKILL_CD_MS.fire);
+}
+
+function showSkillError(msg) {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(0,0,0,.75);color:#f87171;font-size:16px;font-weight:700;
+    padding:10px 20px;border-radius:8px;z-index:9999;pointer-events:none;
+    animation:fadeInDown .2s ease`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
+function getMonsterFrozenIcon(image) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+    <circle cx="18" cy="18" r="17" fill="rgba(147,197,253,0.9)" stroke="#bfdbfe" stroke-width="2"/>
+    <text x="18" y="24" font-size="18" text-anchor="middle">❄</text></svg>`;
+  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+}
+
+// ── 부활 아이템 ───────────────────────────────────────────────────────────────
+export async function useReviveTicket() {
+  if (!_isDead) { showSkillError('사망 상태가 아닙니다'); return; }
+  const uid = _ctx?.uid;
+  if (!uid) return;
+  try {
+    const invRef = doc(_ctx.db, 'treasure_inventory', `${uid}_revive_ticket`);
+    const snap   = await getDoc(invRef);
+    const count  = snap.exists() ? (snap.data().count || 0) : 0;
+    if (count <= 0) { showSkillError('부활 아이템이 없습니다'); return; }
+    await setDoc(invRef, { count: count - 1 }, { merge: true });
+
+    _isDead = false;
+    _reviveWalkDist = 0;
+    _player.hp = Math.round(_player.maxHp * 0.5);
+    _player.mp = Math.round(_player.maxMp * 0.5);
+    playSound('revive');
+    const myMark = _ctx?.myLocationMarker;
+    if (myMark) showFloat('✨ 부활! HP·MP 50%', '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
+    updateCombatHud();
+    savePlayerState();
+    _ctx?._onLoadInventory();
+    updateSkillBar();
+  } catch (e) { showSkillError('오류: ' + e.message); }
 }
 
 function gainXp(amount) {
@@ -691,8 +991,10 @@ function battleTick() {
     if (_reviveWalkDist >= 50) {
       _isDead = false;
       _reviveWalkDist = 0;
-      _player.hp = Math.round(_player.maxHp * 0.3);
-      _player.mp = Math.round(_player.maxMp * 0.2);
+      _player.hp = _player.maxHp;
+      _player.mp = _player.maxMp;
+      _healAccum   = 0;
+      _mpHealAccum = 0;
       playSound('revive');
       const myMark = _ctx?.myLocationMarker;
       if (myMark) {
@@ -754,9 +1056,11 @@ function checkMonsterAttacks() {
   if (_isDead || !_ctx?.myLocationMarker) return;
   const myPos = _ctx.myLocationMarker.getPosition();
   const myLat = myPos.lat(), myLng = myPos.lng();
+  const now = Date.now();
   for (const mob of _monsters) {
     if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
     if (_monsterCd[mob.id]) continue;
+    if (_frozenUntil[mob.id] && now < _frozenUntil[mob.id]) continue; // 동결 중 공격 불가
     const dist = haversine(myLat, myLng, mob.lat, mob.lng);
     if (dist <= (mob.detectRadius || 20)) {
       playSound('monster_atk');
@@ -1072,11 +1376,11 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
         updateCombatHud();
       } else {
         if (_currentSpeed <= 17) {
-          _healAccum += d;
-          while (_healAccum >= 10) {
-            _healAccum -= 10;
-            healHp(10);
-          }
+          // 1m 이동 = HP+1, MP+1
+          _healAccum   += d;
+          _mpHealAccum += d;
+          while (_healAccum   >= 1) { _healAccum   -= 1; healHp(1); }
+          while (_mpHealAccum >= 1) { _mpHealAccum -= 1; healMp(1); }
         }
       }
     }

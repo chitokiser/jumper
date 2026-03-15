@@ -24,7 +24,7 @@
       margin-bottom: 16px;
       background: #f3f4f6;
     }
-    @media (max-width: 600px) { .mc-map-wrap { height: 300px; } }
+    @media (max-width: 600px) { .mc-map-wrap { height: 340px; } }
     #merchantMap { width: 100%; height: 100%; }
 
     /* 지도 위 HUD 버튼 (Google Maps Custom Control로 등록) */
@@ -271,9 +271,11 @@
 
     /* ── 전투 HUD ─────────────────────────────────────────────────── */
     #combatHud {
+      position: absolute; top: 8px; left: 8px; z-index: 500;
       background: rgba(10,10,20,0.82); border-radius: 12px;
       padding: 10px 14px; color: #fff; font-size: 11px;
-      min-width: 188px; margin: 0 0 8px 8px; user-select: none;
+      min-width: 188px; user-select: none;
+      pointer-events: auto;
     }
     .c-lv { font-weight:700; font-size:13px; color:#fbbf24; margin-bottom:6px; text-align:center; }
     .c-row { display:flex; align-items:center; gap:6px; margin:4px 0; }
@@ -425,6 +427,130 @@
       80%  { transform:translateX(-50%) scale(1.0); opacity:1; }
       100% { transform:translateX(-50%) scale(0.8); opacity:0; }
     }
+
+    /* ── 스킬바 ── */
+    #skillBar {
+      position: absolute;
+      bottom: 12px;
+      left: 50%; transform: translateX(-50%);
+      display: flex; gap: 10px; z-index: 500;
+      background: rgba(10,10,20,.78);
+      border-radius: 16px; padding: 8px 14px;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.1);
+      user-select: none;
+      pointer-events: auto;
+    }
+    .skill-slot {
+      position: relative; display: flex; flex-direction: column;
+      align-items: center; gap: 2px;
+    }
+    .skill-btn {
+      width: 52px; height: 52px; border-radius: 12px;
+      border: 2px solid rgba(255,255,255,.25);
+      background: rgba(30,30,50,.85);
+      font-size: 24px; cursor: pointer;
+      transition: border-color .15s, transform .1s, opacity .15s;
+      position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .skill-btn:active:not(:disabled) { transform: scale(.92); }
+    .skill-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .skill-btn.skill-cd { border-color: rgba(255,255,255,.12); }
+    .skill-btn.skill-no-mp { border-color: rgba(239,68,68,.5); }
+    .skill-cd-overlay {
+      position: absolute; inset: 0; background: rgba(0,0,0,.55);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #fff; border-radius: 10px;
+    }
+    .skill-key {
+      font-size: 10px; color: rgba(255,255,255,.5); font-weight: 600; line-height: 1;
+    }
+    .skill-name {
+      font-size: 9px; color: rgba(255,255,255,.7); line-height: 1;
+    }
+    /* 번개 애니메이션 */
+    @keyframes boltFall {
+      0%   { height: 0; opacity: 1; }
+      80%  { height: 100vh; opacity: 1; }
+      100% { height: 100vh; opacity: 0; }
+    }
+    .skill-anim-lightning-crack {
+      position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%);
+      width: 200px; height: 200px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(250,204,21,.6), rgba(167,139,250,.3), transparent 70%);
+      animation: crackPulse .6s ease-out both;
+    }
+    @keyframes crackPulse {
+      0%   { transform: translateX(-50%) scale(0); opacity: 1; }
+      100% { transform: translateX(-50%) scale(2.5); opacity: 0; }
+    }
+    /* 얼음 애니메이션 */
+    .skill-anim-ice-circle {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 280px; height: 280px; border-radius: 50%;
+      border: 3px solid rgba(147,197,253,.8);
+      background: rgba(219,234,254,.12);
+      animation: iceExpand .8s ease-out both;
+      box-shadow: 0 0 30px rgba(147,197,253,.5);
+    }
+    @keyframes iceExpand {
+      0%   { transform: translate(-50%,-50%) scale(0); opacity: 1; }
+      100% { transform: translate(-50%,-50%) scale(1); opacity: 0; }
+    }
+    @keyframes icePart {
+      0%   { opacity: 1; transform: translate(-50%,-50%) rotate(var(--a,0deg)) translateY(-60px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%,-50%) rotate(var(--a,0deg)) translateY(-180px) scale(0); }
+    }
+    /* 화염 애니메이션 */
+    @keyframes fireFall {
+      0%   { top: -40px; opacity: 1; }
+      100% { top: 80%; opacity: .8; }
+    }
+    @keyframes fireExp {
+      0%   { transform: translateX(-50%) scale(0); opacity: 1; }
+      100% { transform: translateX(-50%) scale(3); opacity: 0; }
+    }
+    @keyframes fadeInDown {
+      from { opacity:0; transform: translate(-50%,-60%); }
+      to   { opacity:1; transform: translate(-50%,-50%); }
+    }
+    /* 스킬 뱃지 (약 개수) */
+    .skill-badge {
+      position: absolute; top: -4px; right: -4px;
+      background: #ef4444; color: #fff;
+      font-size: 9px; font-weight: 700;
+      min-width: 16px; height: 16px;
+      border-radius: 8px; padding: 0 3px;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10; pointer-events: none;
+      border: 1px solid rgba(0,0,0,.4);
+    }
+    .skill-badge:empty { display: none; }
+
+    /* HUD 접기 / 펼치기 */
+    #combatHud { cursor: pointer; }
+    #combatHud.compact { padding: 5px 10px; min-width: unset; }
+    #combatHud.compact .c-row,
+    #combatHud.compact .c-spd { display: none; }
+    #combatHud.compact .c-dead { display: none !important; }
+    .c-compact-bars { display: none; gap: 4px; margin-top: 3px; }
+    #combatHud.compact .c-compact-bars { display: flex; }
+    .c-mini-bar {
+      height: 4px; width: 54px; border-radius: 2px;
+      background: rgba(255,255,255,.15); overflow: hidden;
+    }
+    .c-mini-fill-hp { height: 100%; background: #ef4444; transition: width .3s; }
+    .c-mini-fill-mp { height: 100%; background: #3b82f6; transition: width .3s; }
+
+    /* 모바일 */
+    @media (max-width: 640px) {
+      #skillBar { gap: 6px; padding: 6px 10px; bottom: 8px; }
+      .skill-btn { width: 42px; height: 42px; font-size: 19px; border-radius: 10px; }
+      .skill-key { display: none; }
+      #combatHud { padding: 6px 10px; min-width: unset; font-size: 10px; }
+      .c-val { min-width: 46px; }
+    }
   </style>
 
   <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";</script>
@@ -432,6 +558,7 @@
 </head>
 <body>
   <div id="criticalToast">💥 CRITICAL!</div>
+
   <div id="siteHeader"></div>
 
   <main class="page">
@@ -446,6 +573,54 @@
       <div class="mc-map-wrap" style="position:relative;">
         <div id="merchantMap"></div>
         <div id="battleOverlay"></div>
+        <!-- 전투 HUD (지도 위 좌상단 절대 위치) -->
+        <div id="combatHud">
+          <div class="c-lv" id="cLv">LV.1</div>
+          <div class="c-row">
+            <span class="c-lbl c-hp-lbl">HP</span>
+            <div class="c-bar"><div class="c-fill c-fill-hp" id="cHpBar" style="width:100%"></div></div>
+            <span class="c-val" id="cHpVal">1000 / 1000</span>
+          </div>
+          <div class="c-row">
+            <span class="c-lbl c-mp-lbl">MP</span>
+            <div class="c-bar"><div class="c-fill c-fill-mp" id="cMpBar" style="width:100%"></div></div>
+            <span class="c-val" id="cMpVal">1000 / 1000</span>
+          </div>
+          <div class="c-spd" id="cSpd">SPD — km/h</div>
+          <div class="c-dead" id="cDead" style="display:none;">💀 사망 — 이동하여 부활</div>
+          <!-- compact 모드: 미니 HP/MP 바 -->
+          <div class="c-compact-bars">
+            <div class="c-mini-bar"><div class="c-mini-fill-hp" id="cMiniHpBar" style="width:100%"></div></div>
+            <div class="c-mini-bar"><div class="c-mini-fill-mp" id="cMiniMpBar" style="width:100%"></div></div>
+          </div>
+        </div>
+        <!-- 마법 스킬바 (지도 위 하단 중앙 절대 위치) -->
+        <div id="skillBar">
+          <div class="skill-slot">
+            <button class="skill-btn" id="skillBtn0" title="벼락소환 (1) — MP 100">⚡</button>
+            <div class="skill-cd-overlay" id="skillCd0" style="display:none;"></div>
+            <span class="skill-key">1</span>
+            <span class="skill-name">벼락</span>
+          </div>
+          <div class="skill-slot">
+            <button class="skill-btn" id="skillBtn1" title="얼음소환 (2) — MP 100">❄️</button>
+            <div class="skill-cd-overlay" id="skillCd1" style="display:none;"></div>
+            <span class="skill-key">2</span>
+            <span class="skill-name">얼음</span>
+          </div>
+          <div class="skill-slot">
+            <button class="skill-btn" id="skillBtn2" title="화염소환 (3) — MP 100">🔥</button>
+            <div class="skill-cd-overlay" id="skillCd2" style="display:none;"></div>
+            <span class="skill-key">3</span>
+            <span class="skill-name">화염</span>
+          </div>
+          <div class="skill-slot" style="position:relative;">
+            <button class="skill-btn" id="skillBtnPotion" title="빨간약 사용 (4) — HP +100"><img src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="빨간약"></button>
+            <span class="skill-badge" id="skillPotionBadge"></span>
+            <span class="skill-key">4</span>
+            <span class="skill-name">빨간약</span>
+          </div>
+        </div>
       </div>
       <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 -->
       <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;align-items:center;">
@@ -456,23 +631,6 @@
           <span class="dist-value" id="distValue">0m</span>
           <button id="btnResetDist" title="초기화">↺ 초기화</button>
         </div>
-      </div>
-
-      <!-- 전투 HUD (LEFT_BOTTOM 커스텀 컨트롤) -->
-      <div id="combatHud">
-        <div class="c-lv" id="cLv">LV.1</div>
-        <div class="c-row">
-          <span class="c-lbl c-hp-lbl">HP</span>
-          <div class="c-bar"><div class="c-fill c-fill-hp" id="cHpBar" style="width:100%"></div></div>
-          <span class="c-val" id="cHpVal">1000 / 1000</span>
-        </div>
-        <div class="c-row">
-          <span class="c-lbl c-mp-lbl">MP</span>
-          <div class="c-bar"><div class="c-fill c-fill-mp" id="cMpBar" style="width:100%"></div></div>
-          <span class="c-val" id="cMpVal">1000 / 1000</span>
-        </div>
-        <div class="c-spd" id="cSpd">SPD — km/h</div>
-        <div class="c-dead" id="cDead" style="display:none;">💀 사망 — 이동하여 부활</div>
       </div>
 
       <!-- 관리자 전투 배치 패널 (LEFT_BOTTOM 커스텀 컨트롤) -->

@@ -12,7 +12,9 @@ import { httpsCallable }
 import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          startBattleLoop, startWatchPosition,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
-         updateMyLocation, healHp, playSound }
+         updateMyLocation, healHp, playSound,
+         castLightning, castIceFreeze, castFireStorm,
+         useReviveTicket, updateSkillBar }
   from './merchants.battle.js';
 
 const $ = id => document.getElementById(id);
@@ -128,11 +130,7 @@ function initMap() {
   const existingHud = $('mapHud');
   if (existingHud) map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(existingHud);
 
-  // 전투 HUD (LEFT_BOTTOM)
-  const combatHud = $('combatHud');
-  if (combatHud) map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(combatHud);
-
-  // 관리자 전투 패널 (LEFT_BOTTOM, combatHud 위)
+  // 관리자 전투 패널 (LEFT_BOTTOM)
   const adminBattlePanel = $('adminBattlePanel');
   if (adminBattlePanel) map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(adminBattlePanel);
 
@@ -451,7 +449,8 @@ async function tryCollect(box) {
 // ── 수집 사운드 (Web Audio API) ───────────────────────────────────────────────
 function playCollectSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const AC = window.AudioContext || /** @type {any} */(window).webkitAudioContext;
+    const ctx = new AC();
     const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
     notes.forEach((freq, i) => {
       const osc  = ctx.createOscillator();
@@ -482,7 +481,8 @@ function showCollectToast(boxName) {
 // ── 박스 오픈 사운드 (Web Audio API) ──────────────────────────────────────────
 function playOpenBoxSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const AC = window.AudioContext || /** @type {any} */(window).webkitAudioContext;
+    const ctx = new AC();
     const hits = [
       { freq: 120, type: 'triangle', t: 0,    dur: 0.18, vol: 0.5 },
       { freq: 200, type: 'sine',     t: 0.05, dur: 0.12, vol: 0.3 },
@@ -592,14 +592,22 @@ function renderInventory() {
   if (!grid) return;
   const SLOTS = 20;
 
-  // potion_red 맨 앞, 나머지 숫자 정렬
+  // 정렬: potion_red 1순위, revive_ticket 2순위, 나머지 숫자 정렬
+  const ITEM_PRIORITY = { potion_red: 0, revive_ticket: 1 };
   const filled = Object.entries(_inventory)
     .filter(([, c]) => c > 0)
     .sort((a, b) => {
-      if (a[0] === 'potion_red') return -1;
-      if (b[0] === 'potion_red') return 1;
+      const pa = ITEM_PRIORITY[a[0]] ?? 99;
+      const pb = ITEM_PRIORITY[b[0]] ?? 99;
+      if (pa !== pb) return pa - pb;
       return Number(a[0]) - Number(b[0]);
     });
+
+  // 스킬바 빨간약 뱃지 업데이트
+  const potBadge = $('skillPotionBadge');
+  const potBtn   = $('skillBtnPotion');
+  if (potBadge) potBadge.textContent = (_inventory['potion_red'] || 0) > 0 ? String(_inventory['potion_red']) : '';
+  if (potBtn)   potBtn.disabled = (_inventory['potion_red'] || 0) <= 0;
 
   grid.innerHTML = '';
   for (let i = 0; i < SLOTS; i++) {
@@ -619,6 +627,16 @@ function renderInventory() {
           <span class="slot-name">빨간약</span>
           <span class="slot-count">${count}</span>`;
         slot.addEventListener('click', usePotion);
+      } else if (itemId === 'revive_ticket') {
+        slot.title = '부활 아이템 — 사망 시 클릭하여 즉시 부활 (HP·MP 50%)';
+        slot.style.cursor = 'pointer';
+        slot.innerHTML = `
+          <img src="/assets/images/item/revive_ticket.png"
+               onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2218%22 fill=%22%238b5cf6%22/><text x=%2220%22 y=%2226%22 font-size=%2220%22 text-anchor=%22middle%22>✨</text></svg>'"
+               alt="부활 아이템" />
+          <span class="slot-name">부활권</span>
+          <span class="slot-count">${count}</span>`;
+        slot.addEventListener('click', () => useReviveTicket());
       } else {
         const meta = _items[String(itemId)] || {};
         const imgFile = meta.image || (itemId + '.png');
@@ -890,9 +908,29 @@ async function init() {
   $('btnCancelPlace')?.addEventListener('click',  exitAdminPlaceMode);
   $('btnToggleTowerRange')?.addEventListener('click', toggleTowerRanges);
 
+  // 스킬 버튼
+  $('skillBtn0')?.addEventListener('click', castLightning);
+  $('skillBtn1')?.addEventListener('click', castIceFreeze);
+  $('skillBtn2')?.addEventListener('click', castFireStorm);
+  $('skillBtnPotion')?.addEventListener('click', usePotion);
+
+  // 키보드 단축키 1/2/3/4
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === '1') castLightning();
+    else if (e.key === '2') castIceFreeze();
+    else if (e.key === '3') castFireStorm();
+    else if (e.key === '4') usePotion();
+  });
+
+  // 전투 HUD 클릭 → 접기/펼치기 (모바일: 기본 접힘)
+  $('combatHud')?.addEventListener('click', () => $('combatHud')?.classList.toggle('compact'));
+  if (window.innerWidth <= 640) $('combatHud')?.classList.add('compact');
+
   // 보물 근접 감지 + 전투 루프 시작
   startWatchPosition();
   startBattleLoop();
+  updateSkillBar();
 
   // ── Phase 2: 백그라운드에서 나머지 로드 (UI 블로킹 없음) ─────────────────────
   Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadBattleData(), loadDecorations()]).then(() => {

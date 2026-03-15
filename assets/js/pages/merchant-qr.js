@@ -330,7 +330,26 @@ function listenPayments(amount, currency = "KRW") {
       showPaymentAlert(d, amount, currency);
     });
   }, (err) => {
-    console.warn("listenPayments error:", err);
+    console.error("listenPayments error:", err);
+    // 인덱스 미생성 시 fallback — type 필터 없이 재시도
+    if (err?.code === "failed-precondition" || err?.message?.includes("index")) {
+      console.warn("인덱스 미준비 — type 필터 없이 fallback 리스닝");
+      const q2 = query(
+        collection(db, "transactions"),
+        where("uid", "==", _currentUid),
+        where("createdAt", ">=", since),
+        orderBy("createdAt", "desc"),
+      );
+      _unsubscribe = onSnapshot(q2, (snap) => {
+        snap.docChanges().forEach((change) => {
+          if (change.type !== "added") return;
+          const d = change.doc.data();
+          if (d.type !== "merchant_income") return;
+          addReceiptItem(d, true);
+          showPaymentAlert(d, amount, currency);
+        });
+      }, (err2) => console.error("listenPayments fallback error:", err2));
+    }
   });
 }
 

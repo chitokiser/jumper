@@ -702,6 +702,23 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
+  // 부활 아이템 지급: 1 HEX당 20% 확률 (5분의 1)
+  let reviveAdded = 0;
+  for (let i = 0; i < Math.floor(hexAmount); i++) {
+    if (Math.random() < 0.2) reviveAdded++;
+  }
+  if (reviveAdded > 0) {
+    const revRef = db.collection('treasure_inventory').doc(`${uid}_revive_ticket`);
+    await db.runTransaction(async (tx) => {
+      const snap    = await tx.get(revRef);
+      const current = snap.exists ? (snap.data().count || 0) : 0;
+      tx.set(revRef, {
+        uid, itemId: 'revive_ticket', count: current + reviveAdded,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+  }
+
   return {
     txHash:       receipt.hash,
     amountHex:    hexAmount.toFixed(4),
@@ -709,6 +726,7 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     ...(currency === 'VND' && amountVnd ? { amountVnd, currency: 'VND' } : { currency: 'KRW' }),
     merchantName: merchant.name || '',
     potionsAdded: potionCount,
+    reviveAdded,
   };
 }
 
