@@ -962,7 +962,7 @@ export async function loadBattleData() {
         if (!mob) return;
         if (data.isDead) {
           const deadAtMs  = data.deadAt?.toMillis?.() || Date.now();
-          const respawnMs = (mob.respawnMinutes || 1) * 60000;
+          const respawnMs = (mob.respawnMinutes || 5) * 60000;
           if (Date.now() - deadAtMs >= respawnMs) {
             // 리스폰 시간이 이미 지남 → 살아있는 상태로 처리
             mob.hp = mob.maxHp;
@@ -1452,7 +1452,7 @@ function calcBearing(lat1, lng1, lat2, lng2) {
 function _scheduleMonsterRespawn(mob, deadAtMs) {
   if (_monsterRespawnTimers[mob.id]) return; // 이미 예약됨
   deadAtMs = deadAtMs ?? Date.now();
-  const respawnMs = (mob.respawnMinutes || 1) * 60000;
+  const respawnMs = (mob.respawnMinutes || 5) * 60000;
   const elapsed   = Date.now() - deadAtMs;
   const remaining = Math.max(0, respawnMs - elapsed);
   _monsterRespawnTimers[mob.id] = setTimeout(() => {
@@ -1611,7 +1611,7 @@ export function enterAdminPlaceMode(type) {
         const ref = await addDoc(collection(_ctx.db, 'battle_monsters'), {
           name, lat, lng, hp: maxHp, maxHp, atk,
           detectRadius: radius, image, active: true,
-          dropExp: 20, respawnMinutes: 1,
+          dropExp: 20, respawnMinutes: 5,
           createdAt: serverTimestamp(),
         });
         _monsters.push({ id: ref.id, name, lat, lng, hp: maxHp, maxHp, atk,
