@@ -1260,6 +1260,10 @@ exports.usePotion = onCall(wrapError(async (req) => {
   return treasureH.usePotion(requireAuth(req));
 }));
 
+exports.useMpPotion = onCall(wrapError(async (req) => {
+  return treasureH.useMpPotion(requireAuth(req));
+}));
+
 exports.useReviveTicket = onCall(wrapError(async (req) => {
   return treasureH.useReviveTicket(requireAuth(req));
 }));

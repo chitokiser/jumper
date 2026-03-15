@@ -317,6 +317,23 @@ async function useReviveTicket(uid) {
   });
 }
 
+// ── 유저: 마법약 사용 (MP 전체 회복) ─────────────────────────────────────────
+async function useMpPotion(uid) {
+  const invRef = db.collection('treasure_inventory').doc(`${uid}_potion_mp`);
+  return await db.runTransaction(async (tx) => {
+    const snap = await tx.get(invRef);
+    const current = snap.exists ? (snap.data().count || 0) : 0;
+    if (current <= 0) throw new HttpsError('failed-precondition', '마법약이 없습니다');
+    const newCount = current - 1;
+    if (newCount <= 0) {
+      tx.delete(invRef);
+    } else {
+      tx.update(invRef, { count: newCount, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    }
+    return { ok: true, remaining: newCount };
+  });
+}
+
 // ── 유저: 빨간약 사용 (HP +100) ───────────────────────────────────────────────
 async function usePotion(uid) {
   const invRef = db.collection('treasure_inventory').doc(`${uid}_potion_red`);
@@ -340,6 +357,7 @@ module.exports = {
   adminCollectTreasureBox,
   craftVoucher,
   usePotion,
+  useMpPotion,
   useReviveTicket,
   adminSaveTreasureItem,
   adminSaveTreasureBox,

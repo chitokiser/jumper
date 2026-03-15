@@ -674,6 +674,23 @@ async function loadMerchantsForSelect() {
   }
 }
 
+function buildMypageDropHtml(d) {
+  const items = [];
+  if (d.potionsAdded   > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:26px;height:26px;vertical-align:middle;"> 빨간약 <b>+${d.potionsAdded}</b>`);
+  if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png" style="width:26px;height:26px;vertical-align:middle;"> 마법약 <b>+${d.mpPotionsAdded}</b>`);
+  if (d.reviveAdded    > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:26px;height:26px;vertical-align:middle;"> 부활권 <b>+${d.reviveAdded}</b>`);
+  if (!items.length) return '';
+  const jackpotBanner = d.isJackpot
+    ? `<div style="text-align:center;font-size:1.1em;font-weight:800;color:#f59e0b;margin-bottom:6px;letter-spacing:2px;">🎰 JACKPOT!! 🎰</div>`
+    : '';
+  return `
+    <div style="margin-top:10px;background:rgba(251,191,36,.12);border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;">
+      ${jackpotBanner}
+      <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px;">🎁 득템!</div>
+      ${items.map(i=>`<div style="font-size:14px;margin:3px 0;">${i}</div>`).join('')}
+    </div>`;
+}
+
 function watchJackpotResult(txHash, walletAddress) {
   const box = $("merchantPayJackpot");
   if (!box || !txHash) return;
@@ -834,6 +851,7 @@ function bindMerchantPay(uid, walletAddress) {
           <div class="mp-kv"><span class="k">결제 금액</span><span class="v accent">${amountDisp}</span></div>
           <div class="mp-kv"><span class="k">트랜잭션</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
           <p class="hint" style="color:var(--accent); margin-top:6px;">결제가 완료되었습니다.</p>
+          ${buildMypageDropHtml(d)}
         `;
       }
 

@@ -705,6 +705,23 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
+  // 마법약 지급: 1 HEX당 15% 확률
+  let mpPotionCount = 0;
+  for (let i = 0; i < Math.floor(hexAmount); i++) {
+    if (Math.random() < 0.15) mpPotionCount++;
+  }
+  if (mpPotionCount > 0) {
+    const mpRef = db.collection('treasure_inventory').doc(`${uid}_potion_mp`);
+    await db.runTransaction(async (tx) => {
+      const snap    = await tx.get(mpRef);
+      const current = snap.exists ? (snap.data().count || 0) : 0;
+      tx.set(mpRef, {
+        uid, itemId: 'potion_mp', count: current + mpPotionCount,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+  }
+
   // 부활 아이템 지급: 1 HEX당 20% 확률 (5분의 1)
   let reviveAdded = 0;
   for (let i = 0; i < Math.floor(hexAmount); i++) {
@@ -722,14 +739,34 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
+  // 잭팟: 전체 결제에서 1% 확률 — 빨간약 5병 + 마법약 3병 + 부활 2개 보너스
+  let isJackpot = false;
+  if (Math.random() < 0.01) {
+    isJackpot = true;
+    const jpPotion = db.collection('treasure_inventory').doc(`${uid}_potion_red`);
+    const jpMp     = db.collection('treasure_inventory').doc(`${uid}_potion_mp`);
+    const jpRevive = db.collection('treasure_inventory').doc(`${uid}_revive_ticket`);
+    await db.runTransaction(async (tx) => {
+      const [ps, ms, rs] = await Promise.all([tx.get(jpPotion), tx.get(jpMp), tx.get(jpRevive)]);
+      tx.set(jpPotion, { uid, itemId:'potion_red',     count: (ps.exists?ps.data().count||0:0)+5,  updatedAt:admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
+      tx.set(jpMp,     { uid, itemId:'potion_mp',      count: (ms.exists?ms.data().count||0:0)+3,  updatedAt:admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
+      tx.set(jpRevive, { uid, itemId:'revive_ticket',  count: (rs.exists?rs.data().count||0:0)+2,  updatedAt:admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    });
+    potionCount   += 5;
+    mpPotionCount += 3;
+    reviveAdded   += 2;
+  }
+
   return {
     txHash:       receipt.hash,
     amountHex:    hexAmount.toFixed(4),
     amountKrw,
     ...(currency === 'VND' && amountVnd ? { amountVnd, currency: 'VND' } : { currency: 'KRW' }),
-    merchantName: merchant.name || '',
-    potionsAdded: potionCount,
+    merchantName:  merchant.name || '',
+    potionsAdded:  potionCount,
+    mpPotionsAdded: mpPotionCount,
     reviveAdded,
+    isJackpot,
   };
 }
 

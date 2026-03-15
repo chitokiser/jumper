@@ -184,6 +184,7 @@ function bindPayButton() {
           <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d.merchantName || merchantName}</span></div>
           <div class="mp-kv"><span class="k">결제 금액</span><span class="v">${paidAmountStr}</span></div>
           <div class="mp-kv"><span class="k">TX</span><span class="v mono" style="font-size:0.78em;">${(d.txHash || "").slice(0, 22)}…</span></div>
+          ${buildDropHtml(d)}
         `;
       }
     } catch (err) {
@@ -193,6 +194,24 @@ function bindPayButton() {
       btn.textContent = "결제하기";
     }
   };
+}
+
+// ── 결제 아이템 드롭 표시 ──────────────────────────────
+function buildDropHtml(d) {
+  const items = [];
+  if (d.potionsAdded   > 0) items.push(`<img src="/assets/images/item/hp.png"   style="width:28px;height:28px;vertical-align:middle;"> 빨간약 <b>+${d.potionsAdded}</b>`);
+  if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png"   style="width:28px;height:28px;vertical-align:middle;"> 마법약 <b>+${d.mpPotionsAdded}</b>`);
+  if (d.reviveAdded    > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:28px;height:28px;vertical-align:middle;"> 부활권 <b>+${d.reviveAdded}</b>`);
+  if (!items.length) return '';
+  const jackpotBanner = d.isJackpot
+    ? `<div style="text-align:center;font-size:1.2em;font-weight:800;color:#f59e0b;margin-bottom:6px;letter-spacing:2px;">🎰 JACKPOT!! 🎰</div>`
+    : '';
+  return `
+    <div style="margin-top:10px;background:rgba(251,191,36,.12);border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;">
+      ${jackpotBanner}
+      <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px;">🎁 득템!</div>
+      ${items.map(i=>`<div style="font-size:14px;margin:3px 0;">${i}</div>`).join('')}
+    </div>`;
 }
 
 // ── 잭팟 결과 감시 ────────────────────────────────────

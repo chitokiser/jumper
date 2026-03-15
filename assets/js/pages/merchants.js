@@ -11,7 +11,7 @@ import { httpsCallable }
 import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          startBattleLoop, startWatchPosition,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
-         healHp, playSound,
+         healHp, healMp, playSound,
          castLightning, castIceFreeze, castFireStorm,
          useReviveTicket, updateSkillBar, getPlayerGold, isPlayerDead }
   from './merchants.battle.js';
@@ -702,7 +702,7 @@ function renderInventory() {
   const SLOTS = 20;
 
   // 정렬: potion_red 1순위, revive_ticket 2순위, 나머지 숫자 정렬
-  const ITEM_PRIORITY = { potion_red: 0, revive_ticket: 1 };
+  const ITEM_PRIORITY = { potion_red: 0, potion_mp: 1, revive_ticket: 2 };
   const filled = Object.entries(_inventory)
     .filter(([, c]) => c > 0)
     .sort((a, b) => {
@@ -736,6 +736,16 @@ function renderInventory() {
           <span class="slot-name">빨간약</span>
           <span class="slot-count">${count}</span>`;
         slot.addEventListener('click', usePotion);
+      } else if (itemId === 'potion_mp') {
+        slot.title = '마법약 — 클릭하여 사용 (MP 전체 회복)';
+        slot.style.cursor = 'pointer';
+        slot.innerHTML = `
+          <img src="/assets/images/item/mp.png"
+               onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2218%22 fill=%22%233b82f6%22/><text x=%2220%22 y=%2226%22 font-size=%2220%22 text-anchor=%22middle%22>🔮</text></svg>'"
+               alt="마법약" />
+          <span class="slot-name">마법약</span>
+          <span class="slot-count">${count}</span>`;
+        slot.addEventListener('click', useMpPotion);
       } else if (itemId === 'revive_ticket') {
         slot.title = '부활 아이템 — 사망 시 클릭하여 즉시 부활 (HP·MP 50%)';
         slot.style.cursor = 'pointer';
@@ -761,6 +771,23 @@ function renderInventory() {
       slot.innerHTML = '<span class="slot-placeholder">□</span>';
     }
     grid.appendChild(slot);
+  }
+}
+
+async function useMpPotion() {
+  if (!_uid) return;
+  if ((_inventory['potion_mp'] || 0) <= 0) { alert('마법약이 없습니다.'); return; }
+  try {
+    const fn = httpsCallable(functions, 'useMpPotion');
+    const res = await fn();
+    _inventory['potion_mp'] = res.data.remaining;
+    // MP 전체 회복은 battle 모듈의 healMp 또는 직접 최대치 설정
+    healMp(0); // 0 = 최대치로 전체 회복
+    showInfoToast('🔮 마법약 사용! MP 전체 회복');
+    playSound('heal');
+    renderInventory();
+  } catch (err) {
+    alert('사용 실패: ' + err.message);
   }
 }
 

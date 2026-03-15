@@ -567,6 +567,13 @@ function takeDamage(amount, sourceLat, sourceLng) {
   savePlayerState();
 }
 
+export function healMp(amount) {
+  _player.mp = amount > 0 ? Math.min(_player.maxMp, _player.mp + amount) : _player.maxMp;
+  updateCombatHud();
+  updateSkillBar();
+  savePlayerState();
+}
+
 export function healHp(amount) {
   if (_isDead) return;
   const prev = _player.hp;
