@@ -215,13 +215,14 @@ function renderMarkers(list) {
     const marker = new google.maps.Marker({
       position: m._latLng, map,
       title: m.name || '',
-      icon: { url: '/assets/images/jump/favicon.png',
-        scaledSize: new google.maps.Size(18, 18), anchor: new google.maps.Point(9, 9) },
+      icon: { url: m.imageUrl || '/assets/images/jump/favicon.png',
+        scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) },
       zIndex: 10,
     });
     marker.addListener('click', () => {
       infoWindow.setContent(`
         <div style="max-width:240px;font-size:13px;line-height:1.6;">
+          ${m.imageUrl ? `<img src="${escHtml(m.imageUrl)}" alt="" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px;">` : ''}
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(m.name)}</div>
           ${m.career ? `<div style="color:#f59e0b;font-size:12px;">${escHtml(m.career)}</div>` : ''}
           ${m.region ? `<div style="color:#6b7280;">📍 ${escHtml(m.region)}</div>` : ''}
@@ -898,7 +899,9 @@ async function init() {
 
   // 관리자 전투 배치 패널 버튼
   $('btnPlaceMonster')?.addEventListener('click', () => enterAdminPlaceMode('monster'));
-  $('btnPlaceTower')?.addEventListener('click',   () => enterAdminPlaceMode('tower'));
+  $('btnPlaceArcherTower')?.addEventListener('click', () => enterAdminPlaceMode('archer_tower'));
+  $('btnPlaceCannonTower')?.addEventListener('click', () => enterAdminPlaceMode('cannon_tower'));
+  $('btnPlaceDeco')?.addEventListener('click',    () => enterAdminPlaceMode('deco'));
   $('btnCancelPlace')?.addEventListener('click',  exitAdminPlaceMode);
   $('btnToggleTowerRange')?.addEventListener('click', toggleTowerRanges);
 
@@ -907,7 +910,7 @@ async function init() {
   startBattleLoop();
 
   // ── Phase 2: 백그라운드에서 나머지 로드 (UI 블로킹 없음) ─────────────────────
-  Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadBattleData()]).then(() => {
+  Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadBattleData(), loadDecorations()]).then(() => {
     // 장소 마커 추가
     if (window.google?.maps) {
       renderPlaceMarkers();
@@ -935,13 +938,15 @@ let _showTowerRange  = false;
 let _battleLoopId    = null;
 let _attackCd        = false;  // 유저 공격 쿨다운 (1.5초)
 let _towerCd         = {};     // { towerId: bool }
+let _monsterCd       = {};     // { monsterId: bool }
 let _healAccum       = 0;      // HP 회복용 추가 누적거리(m)
 let _reviveWalkDist  = 0;      // 사망 후 부활용 누적거리(m)
 let _currentSpeed    = 0;      // km/h
 let _isDead          = false;
 let _goldDrops       = [];     // [{id, lat, lng, amount, marker}]
-let _adminPlaceMode  = null;   // 'monster' | 'tower' | null
+let _adminPlaceMode  = null;   // 'monster' | 'tower' | 'deco' | null
 let _adminMapListener = null;
+let _decoMarkers     = [];     // 데코 마커 목록
 
 // ── 사운드 시스템 (Web Audio API) ────────────────────────────────────────────
 let _audioCtx = null;
@@ -970,7 +975,81 @@ function playSound(type) {
     };
     switch (type) {
       case 'arrow_shot':  tone(700,0.25,0.12); tone(300,0.15,0.1,0.05,'sawtooth'); break;
-      case 'tower_shot':  tone(500,0.3,0.15,'sawtooth'); tone(200,0.2,0.12,0.05); break;
+      case 'tower_shot':
+        tone(900,0.35,0.04,0,'square');      // 시위 틱
+        tone(600,0.2,0.07,0.02,'sawtooth');  // 발사 긁힘
+        noise(0.2,0.18);                     // 화살 바람
+        tone(180,0.18,0.18,0.05);            // 중저음
+        break;
+      case 'cannon_shot': {
+        // ① 발사 크랙 (매우 짧은 전음)
+        const cbuf = ac.createBuffer(1, Math.floor(ac.sampleRate*0.018), ac.sampleRate);
+        const cd = cbuf.getChannelData(0);
+        for (let i=0;i<cd.length;i++) cd[i]=(Math.random()*2-1)*Math.pow(1-i/cd.length,2);
+        const cs=ac.createBufferSource(); cs.buffer=cbuf;
+        const cg=ac.createGain(); cg.gain.value=1.4; cs.connect(cg); cg.connect(ac.destination); cs.start();
+
+        // ② 핵심 붐 — 90→22Hz 급속 피치 다운, 빠른 어택 + 느린 감쇠
+        const boom=ac.createOscillator(); boom.type='sine';
+        boom.frequency.setValueAtTime(90,ac.currentTime);
+        boom.frequency.exponentialRampToValueAtTime(22,ac.currentTime+0.28);
+        const bg=ac.createGain();
+        bg.gain.setValueAtTime(0,ac.currentTime);
+        bg.gain.linearRampToValueAtTime(1.8,ac.currentTime+0.006);
+        bg.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+1.0);
+        boom.connect(bg); bg.connect(ac.destination); boom.start(); boom.stop(ac.currentTime+1.0);
+
+        // ③ 중저음 바디 — 폭발 질감
+        const mb=ac.createOscillator(); mb.type='sawtooth';
+        mb.frequency.setValueAtTime(130,ac.currentTime);
+        mb.frequency.exponentialRampToValueAtTime(38,ac.currentTime+0.22);
+        const mg=ac.createGain();
+        mg.gain.setValueAtTime(0.9,ac.currentTime);
+        mg.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.28);
+        mb.connect(mg); mg.connect(ac.destination); mb.start(); mb.stop(ac.currentTime+0.28);
+
+        // ④ 밴드패스 노이즈 — 폭발 크랙 텍스처
+        const nbuf=ac.createBuffer(1,Math.floor(ac.sampleRate*0.45),ac.sampleRate);
+        const nd=nbuf.getChannelData(0);
+        for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.07));
+        const ns=ac.createBufferSource(); ns.buffer=nbuf;
+        const bpf=ac.createBiquadFilter(); bpf.type='bandpass'; bpf.frequency.value=220; bpf.Q.value=0.6;
+        const ng=ac.createGain(); ng.gain.value=1.1;
+        ns.connect(bpf); bpf.connect(ng); ng.connect(ac.destination); ns.start();
+
+        // ⑤ 로우패스 럼블 — 긴 저음 여운
+        const rbuf=ac.createBuffer(1,Math.floor(ac.sampleRate*1.3),ac.sampleRate);
+        const rd=rbuf.getChannelData(0);
+        for(let i=0;i<rd.length;i++) rd[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.38));
+        const rs=ac.createBufferSource(); rs.buffer=rbuf;
+        const lpf=ac.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=75;
+        const rg=ac.createGain(); rg.gain.value=0.75;
+        rs.connect(lpf); lpf.connect(rg); rg.connect(ac.destination); rs.start();
+        break;
+      }
+      case 'cannon_hit': {
+        // 폭발 임팩트 — 작은 대포소리
+        const ibuf=ac.createBuffer(1,Math.floor(ac.sampleRate*0.55),ac.sampleRate);
+        const id2=ibuf.getChannelData(0);
+        for(let i=0;i<id2.length;i++) id2[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.09));
+        const is=ac.createBufferSource(); is.buffer=ibuf;
+        const ibpf=ac.createBiquadFilter(); ibpf.type='bandpass'; ibpf.frequency.value=180; ibpf.Q.value=0.5;
+        const ig=ac.createGain(); ig.gain.value=1.3;
+        is.connect(ibpf); ibpf.connect(ig); ig.connect(ac.destination); is.start();
+        const ib=ac.createOscillator(); ib.type='sine';
+        ib.frequency.setValueAtTime(75,ac.currentTime);
+        ib.frequency.exponentialRampToValueAtTime(20,ac.currentTime+0.3);
+        const ibg=ac.createGain();
+        ibg.gain.setValueAtTime(1.2,ac.currentTime);
+        ibg.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.35);
+        ib.connect(ibg); ibg.connect(ac.destination); ib.start(); ib.stop(ac.currentTime+0.35);
+        break;
+      }
+      case 'monster_atk':
+        noise(0.07,0.55);                     // 휘두르는 바람
+        tone(160,0.45,0.07,0,'sawtooth');     // 타격 충격
+        tone(85,0.3,0.14,0.04);               // 둔탁한 여운
+        break;
       case 'arrow_hit':   noise(0.08,0.5); tone(220,0.3,0.1,0,'square'); break;
       case 'player_hit':  tone(120,0.4,0.25,'sawtooth'); noise(0.1,0.3); break;
       case 'monster_die': [440,330,220,165].forEach((f,i)=>tone(f,0.28,0.14,i*0.09)); break;
@@ -1014,6 +1093,84 @@ function animateArrow(fromLat, fromLng, toLat, toLng, color, onHit) {
     setTimeout(() => hit.remove(), 320);
     onHit?.();
   }, 300);
+}
+
+// ── 타워 투사체 애니메이션 ────────────────────────────────────────────────────
+function animateTowerShot(fromLat, fromLng, toLat, toLng, onHit) {
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) { onHit?.(); return; }
+  const sp = latLngToPixel(fromLat, fromLng);
+  const ep = latLngToPixel(toLat,   toLng);
+  if (!sp || !ep) { onHit?.(); return; }
+
+  const angle = Math.atan2(ep.y - sp.y, ep.x - sp.x) * 180 / Math.PI;
+
+  // 발사 링 이펙트 (타워 위치)
+  const ring = document.createElement('div');
+  ring.className = 'tower-launch-ring';
+  ring.style.cssText = `left:${sp.x}px;top:${sp.y}px;`;
+  overlay.appendChild(ring);
+  setTimeout(() => ring.remove(), 400);
+
+  // 투사체
+  const proj = document.createElement('div');
+  proj.className = 'tower-proj';
+  proj.style.cssText = `left:${sp.x}px;top:${sp.y}px;transform:translate(-50%,-50%) rotate(${angle}deg)`;
+  overlay.appendChild(proj);
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    proj.style.left = ep.x + 'px';
+    proj.style.top  = ep.y + 'px';
+  }));
+
+  setTimeout(() => {
+    proj.remove();
+    // 임팩트 이펙트
+    const impact = document.createElement('div');
+    impact.className = 'tower-impact';
+    impact.style.cssText = `left:${ep.x}px;top:${ep.y}px;`;
+    overlay.appendChild(impact);
+    setTimeout(() => impact.remove(), 420);
+    onHit?.();
+  }, 340);
+}
+
+// ── 대포 투사체 애니메이션 ────────────────────────────────────────────────────
+function animateCannonShot(fromLat, fromLng, toLat, toLng, onHit) {
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) { onHit?.(); return; }
+  const sp = latLngToPixel(fromLat, fromLng);
+  const ep = latLngToPixel(toLat,   toLng);
+  if (!sp || !ep) { onHit?.(); return; }
+
+  // 포구 화염
+  const muzzle = document.createElement('div');
+  muzzle.className = 'cannon-muzzle';
+  muzzle.style.cssText = `left:${sp.x}px;top:${sp.y}px;`;
+  overlay.appendChild(muzzle);
+  setTimeout(() => muzzle.remove(), 280);
+
+  // 포탄
+  const proj = document.createElement('div');
+  proj.className = 'cannon-proj';
+  proj.style.cssText = `left:${sp.x}px;top:${sp.y}px;`;
+  overlay.appendChild(proj);
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    proj.style.left = ep.x + 'px';
+    proj.style.top  = ep.y + 'px';
+  }));
+
+  setTimeout(() => {
+    proj.remove();
+    // 폭발
+    const blast = document.createElement('div');
+    blast.className = 'cannon-blast';
+    blast.style.cssText = `left:${ep.x}px;top:${ep.y}px;`;
+    overlay.appendChild(blast);
+    setTimeout(() => blast.remove(), 480);
+    onHit?.();
+  }, 580);
 }
 
 // ── 황금토큰 드랍 ─────────────────────────────────────────────────────────────
@@ -1231,8 +1388,54 @@ async function loadBattleData() {
   } catch (e) { console.warn('loadBattleData:', e.message); }
 }
 
+// ── 데코 마커 로드/렌더/삭제 ──────────────────────────────────────────────────
+async function loadDecorations() {
+  try {
+    const snap = await getDocs(query(collection(db, 'map_decorations'), where('active', '==', true)));
+    _decoMarkers.forEach(m => m.marker?.setMap(null));
+    _decoMarkers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderDecoMarkers();
+  } catch (e) { console.warn('loadDecorations:', e.message); }
+}
+
+function renderDecoMarkers() {
+  _decoMarkers.forEach(d => {
+    if (d.marker) d.marker.setMap(null);
+    const size = d.size || 48;
+    const marker = new google.maps.Marker({
+      position: { lat: d.lat, lng: d.lng }, map,
+      title: d.name || '',
+      icon: { url: d.imageUrl, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size/2, size/2) },
+      zIndex: 5,
+    });
+    marker.addListener('click', () => {
+      infoWindow.setContent(`
+        <div style="font-size:13px;line-height:1.6;">
+          <img src="${escHtml(d.imageUrl)}" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 6px;">
+          <div style="font-weight:700;text-align:center;">${escHtml(d.name||'데코')}</div>
+          ${_isAdmin ? `<button onclick="window.__deleteDeco('${d.id}')" style="margin-top:6px;width:100%;padding:4px;background:#fee2e2;color:#b91c1c;border:none;border-radius:4px;cursor:pointer;">🗑️ 삭제</button>` : ''}
+        </div>`);
+      infoWindow.open(map, marker);
+    });
+    d.marker = marker;
+  });
+}
+
+window.__deleteDeco = async (id) => {
+  if (!confirm('이 데코를 삭제하시겠습니까?')) return;
+  try {
+    await deleteDoc(doc(db, 'map_decorations', id));
+    _decoMarkers.filter(d => d.id === id).forEach(d => d.marker?.setMap(null));
+    _decoMarkers = _decoMarkers.filter(d => d.id !== id);
+    infoWindow.close();
+  } catch (e) { alert('삭제 실패: ' + e.message); }
+};
+
 // ── 몬스터 마커 ───────────────────────────────────────────────────────────────
 function getMonsterIcon(image) {
+  if (image && image.startsWith('/')) {
+    return { url: image, scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+  }
   const emoji = image || '🐉';
   const isEmoji = !image || image.length <= 4;
   if (isEmoji) {
@@ -1246,10 +1449,16 @@ function getMonsterIcon(image) {
            scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
 }
 
-function getTowerIcon() {
+function getTowerIcon(image, type) {
+  if (image && image.startsWith('/')) {
+    return { url: image, scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
+  }
+  const isCannon = type === 'cannon';
+  const emoji = image || (isCannon ? '💣' : '🏹');
+  const fill  = isCannon ? 'rgba(180,60,0,0.88)' : 'rgba(124,58,237,0.88)';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
-    <circle cx="19" cy="19" r="18" fill="rgba(124,58,237,0.88)" stroke="#fff" stroke-width="2"/>
-    <text x="19" y="26" font-size="20" text-anchor="middle">🏰</text></svg>`;
+    <circle cx="19" cy="19" r="18" fill="${fill}" stroke="#fff" stroke-width="2"/>
+    <text x="19" y="26" font-size="20" text-anchor="middle">${emoji}</text></svg>`;
   return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
            scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
 }
@@ -1292,7 +1501,7 @@ function renderTowerMarkers() {
     const marker = new google.maps.Marker({
       position: { lat: tower.lat, lng: tower.lng }, map,
       title: tower.name || '방어탑',
-      icon: getTowerIcon(), zIndex: 55,
+      icon: getTowerIcon(tower.image, tower.type), zIndex: 55,
     });
     marker.addListener('click', () => {
       infoWindow.setContent(`
@@ -1324,6 +1533,7 @@ function startBattleLoop() {
 }
 
 function battleTick() {
+  checkMonsterAttacks();
   checkTowerAttacks();
   checkPlayerAutoAttack();
   checkGoldPickup();
@@ -1345,6 +1555,72 @@ function battleTick() {
   }
 }
 
+// ── 몬스터 돌진 애니메이션 ────────────────────────────────────────────────────
+function animateMonsterCharge(mob, myLat, myLng, onHit) {
+  const marker = _monsterMarkers[mob.id];
+  if (!marker) { onHit?.(); return; }
+
+  const origLat = mob.lat, origLng = mob.lng;
+  const midLat  = origLat + (myLat - origLat) * 0.62;
+  const midLng  = origLng + (myLng - origLng) * 0.62;
+
+  const CHARGE = 280, RETURN = 420;
+  let chargeStart = null;
+
+  function chargeStep(ts) {
+    if (!chargeStart) chargeStart = ts;
+    const p = Math.min((ts - chargeStart) / CHARGE, 1);
+    const e = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    marker.setPosition({ lat: origLat + (midLat - origLat) * e,
+                         lng: origLng + (midLng - origLng) * e });
+    if (p < 1) { requestAnimationFrame(chargeStep); return; }
+
+    // 타격 이펙트 (플레이어 위치)
+    const overlay = document.getElementById('battleOverlay');
+    const ep = overlay && latLngToPixel(myLat, myLng);
+    if (ep) {
+      const hit = document.createElement('div');
+      hit.className = 'hit-flash';
+      hit.style.cssText = `left:${ep.x}px;top:${ep.y}px;background:radial-gradient(circle,#ef4444,transparent)`;
+      overlay.appendChild(hit);
+      setTimeout(() => hit.remove(), 320);
+    }
+    onHit?.();
+
+    // 복귀
+    let retStart = null;
+    function returnStep(ts2) {
+      if (!retStart) retStart = ts2;
+      const p2 = Math.min((ts2 - retStart) / RETURN, 1);
+      const e2 = p2 < 0.5 ? 2*p2*p2 : 1 - Math.pow(-2*p2+2, 2)/2; // ease-in-out
+      marker.setPosition({ lat: midLat + (origLat - midLat) * e2,
+                           lng: midLng + (origLng - midLng) * e2 });
+      if (p2 < 1) requestAnimationFrame(returnStep);
+    }
+    requestAnimationFrame(returnStep);
+  }
+  requestAnimationFrame(chargeStep);
+}
+
+function checkMonsterAttacks() {
+  if (_isDead || !myLocationMarker) return;
+  const myPos = myLocationMarker.getPosition();
+  const myLat = myPos.lat(), myLng = myPos.lng();
+  for (const mob of _monsters) {
+    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
+    if (_monsterCd[mob.id]) continue;
+    const dist = haversine(myLat, myLng, mob.lat, mob.lng);
+    if (dist <= (mob.detectRadius || 20)) {
+      playSound('monster_atk');
+      animateMonsterCharge(mob, myLat, myLng, () => {
+        takeDamage(mob.atk || 10, myLat, myLng);
+      });
+      _monsterCd[mob.id] = true;
+      setTimeout(() => { delete _monsterCd[mob.id]; }, 2500);
+    }
+  }
+}
+
 function checkTowerAttacks() {
   if (_isDead || !myLocationMarker) return;
   const myPos = myLocationMarker.getPosition();
@@ -1354,12 +1630,21 @@ function checkTowerAttacks() {
     if (_towerCd[tower.id]) continue;
     const dist = haversine(myLat, myLng, tower.lat, tower.lng);
     if (dist <= (tower.radius || 30)) {
-      playSound('tower_shot');
-      animateArrow(tower.lat, tower.lng, myLat, myLng, '#a855f7', () => {
-        takeDamage(tower.atk || 50, myLat, myLng);
-      });
+      const isCannon = tower.type === 'cannon';
+      if (isCannon) {
+        playSound('cannon_shot');
+        animateCannonShot(tower.lat, tower.lng, myLat, myLng, () => {
+          playSound('cannon_hit');
+          takeDamage(tower.atk || 80, myLat, myLng);
+        });
+      } else {
+        playSound('tower_shot');
+        animateTowerShot(tower.lat, tower.lng, myLat, myLng, () => {
+          takeDamage(tower.atk || 20, myLat, myLng);
+        });
+      }
       _towerCd[tower.id] = true;
-      setTimeout(() => { delete _towerCd[tower.id]; }, 2000);
+      setTimeout(() => { delete _towerCd[tower.id]; }, isCannon ? 4000 : 2000);
     }
   }
 }
@@ -1468,7 +1753,9 @@ async function hitMonster(monsterId, damage) {
 function enterAdminPlaceMode(type) {
   _adminPlaceMode = type;
   document.getElementById('btnPlaceMonster')?.classList.toggle('placing', type === 'monster');
-  document.getElementById('btnPlaceTower')?.classList.toggle('placing', type === 'tower');
+  document.getElementById('btnPlaceArcherTower')?.classList.toggle('placing', type === 'archer_tower');
+  document.getElementById('btnPlaceCannonTower')?.classList.toggle('placing', type === 'cannon_tower');
+  document.getElementById('btnPlaceDeco')?.classList.toggle('placing', type === 'deco');
   document.getElementById('btnCancelPlace').style.display = '';
   if (map) map.setOptions({ draggableCursor: 'crosshair' });
 
@@ -1479,7 +1766,7 @@ function enterAdminPlaceMode(type) {
       const maxHp  = parseInt(prompt('최대 HP:', '30') || '30');
       const atk    = parseInt(prompt('공격력:', '5') || '5');
       const radius = parseInt(prompt('탐지 반경(m):', '20') || '20');
-      const image  = prompt('이미지 (이모지 또는 파일명)', '🐉') || '🐉';
+      const image  = prompt('이미지 (이모지 or 경로, 예: /assets/images/monsters/10.png)', '🐉') || '🐉';
       try {
         const ref = await addDoc(collection(db, 'battle_monsters'), {
           name, lat, lng, hp: maxHp, maxHp, atk,
@@ -1493,18 +1780,40 @@ function enterAdminPlaceMode(type) {
         alert(`✅ 몬스터 "${name}" 배치 완료`);
       } catch (err) { alert('오류: ' + err.message); }
 
-    } else if (_adminPlaceMode === 'tower') {
-      const name   = prompt('방어탑 이름:', '아처 타워') || '아처 타워';
-      const atk    = parseInt(prompt('데미지:', '50') || '50');
-      const radius = parseInt(prompt('공격 반경(m):', '30') || '30');
+    } else if (_adminPlaceMode === 'archer_tower' || _adminPlaceMode === 'cannon_tower') {
+      const towerType = _adminPlaceMode === 'cannon_tower' ? 'cannon' : 'archer';
+      const defName   = towerType === 'cannon' ? '대포 타워' : '아처 타워';
+      const defAtk    = towerType === 'cannon' ? '80' : '20';
+      const defRadius = towerType === 'cannon' ? '20' : '30';
+      const defEmoji  = towerType === 'cannon' ? '💣' : '🏹';
+      const name   = prompt('타워 이름:', defName) || defName;
+      const atk    = parseInt(prompt('데미지:', defAtk) || defAtk);
+      const radius = parseInt(prompt('공격 반경(m):', defRadius) || defRadius);
+      const image  = prompt('이미지 (이모지 or 경로, 예: /assets/images/shops/arms.png)', defEmoji) || defEmoji;
       try {
         const ref = await addDoc(collection(db, 'battle_towers'), {
-          name, lat, lng, atk, radius, active: true,
+          name, lat, lng, atk, radius, image, type: towerType, active: true,
           createdAt: serverTimestamp(),
         });
-        _towers.push({ id: ref.id, name, lat, lng, atk, radius, active: true });
+        _towers.push({ id: ref.id, name, lat, lng, atk, radius, image, type: towerType, active: true });
         renderTowerMarkers();
-        alert(`✅ 방어탑 "${name}" 설치 완료`);
+        alert(`✅ ${name} 설치 완료`);
+      } catch (err) { alert('오류: ' + err.message); }
+
+    } else if (_adminPlaceMode === 'deco') {
+      const name     = prompt('데코 이름:', '해적선') || '해적선';
+      const imageUrl = prompt('이미지 경로 (예: /assets/images/monsters/10.png):', '') || '';
+      if (!imageUrl) { exitAdminPlaceMode(); return; }
+      const size = parseInt(prompt('크기 (픽셀, 기본 48):', '48') || '48');
+      try {
+        const ref = await addDoc(collection(db, 'map_decorations'), {
+          name, lat, lng, imageUrl, size, active: true,
+          createdAt: serverTimestamp(),
+        });
+        const newDeco = { id: ref.id, name, lat, lng, imageUrl, size, active: true };
+        _decoMarkers.push(newDeco);
+        renderDecoMarkers();
+        alert(`✅ 데코 "${name}" 배치 완료`);
       } catch (err) { alert('오류: ' + err.message); }
     }
     exitAdminPlaceMode();
@@ -1516,7 +1825,9 @@ function exitAdminPlaceMode() {
   if (_adminMapListener) { google.maps.event.removeListener(_adminMapListener); _adminMapListener = null; }
   if (map) map.setOptions({ draggableCursor: null });
   document.getElementById('btnPlaceMonster')?.classList.remove('placing');
-  document.getElementById('btnPlaceTower')?.classList.remove('placing');
+  document.getElementById('btnPlaceArcherTower')?.classList.remove('placing');
+  document.getElementById('btnPlaceCannonTower')?.classList.remove('placing');
+  document.getElementById('btnPlaceDeco')?.classList.remove('placing');
   document.getElementById('btnCancelPlace').style.display = 'none';
 }
 

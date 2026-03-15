@@ -395,6 +395,7 @@ async function loadMerchants() {
             ${isAdminUser ? `
               <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
               <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:${v.gmap ? '#fef3c7' : '#f3f4f6'};color:${v.gmap ? '#92400e' : '#6b7280'};">🗺️ ${v.gmap ? "지도수정" : "지도등록"}</button>
+              <button class="btn btn-sm" type="button" data-act="setMerchantImage" data-mid="${esc(mid)}" data-imageurl="${esc(v.imageUrl || '')}" style="background:${v.imageUrl ? '#ede9fe' : '#f3f4f6'};color:${v.imageUrl ? '#5b21b6' : '#6b7280'};">🖼️ ${v.imageUrl ? "이미지수정" : "이미지등록"}</button>
             ` : ""}
           </div>
         </summary>
@@ -419,6 +420,7 @@ async function loadMerchants() {
           <div class="row-actions">
             <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
             <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:#fef3c7;color:#92400e;">🗺️ 지도 URL 설정</button>
+            <button class="btn btn-sm" type="button" data-act="setMerchantImage" data-mid="${esc(mid)}" data-imageurl="${esc(v.imageUrl || '')}" style="background:#ede9fe;color:#5b21b6;">🖼️ 이미지 URL 설정</button>
           </div>` : ""}
         </div>
       </details>
@@ -534,6 +536,25 @@ async function setMerchantGmap(mid, currentGmap) {
   } catch (err) {
     setState("지도 정보 저장 실패");
     console.error("setMerchantGmap:", err);
+    alert("저장 실패: " + (err.message || String(err)));
+  }
+}
+
+async function setMerchantImage(mid, currentUrl) {
+  if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+
+  const val = prompt("이미지 URL을 입력하세요 (비우면 삭제):", currentUrl || "");
+  if (val === null) return;
+
+  try {
+    await updateDoc(doc(db, "merchants", mid), {
+      imageUrl: val.trim() || null,
+      updatedAt: serverTimestamp(),
+    });
+    alert(val.trim() ? "이미지 URL이 저장되었습니다." : "이미지 URL이 삭제되었습니다.");
+    await loadMerchants();
+  } catch (err) {
+    console.error("setMerchantImage:", err);
     alert("저장 실패: " + (err.message || String(err)));
   }
 }
@@ -1128,6 +1149,8 @@ merchantList?.addEventListener("click", async (e) => {
       await approveMerchant(mid, Number(btn.dataset.feebps) || 0);
     } else if (act === "setMerchantGmap") {
       await setMerchantGmap(mid, btn.dataset.gmap || "");
+    } else if (act === "setMerchantImage") {
+      await setMerchantImage(mid, btn.dataset.imageurl || "");
     } else if (act === "viewMerchant") {
       const snap = await getDoc(doc(db, "merchants", mid));
       if (!snap.exists()) return alert("가맹점을 찾을 수 없습니다.");
