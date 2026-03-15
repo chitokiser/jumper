@@ -11,7 +11,7 @@ import { httpsCallable }
 import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          startBattleLoop, startWatchPosition,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
-         updateMyLocation, healHp, playSound,
+         healHp, playSound,
          castLightning, castIceFreeze, castFireStorm,
          useReviveTicket, updateSkillBar, getPlayerGold, isPlayerDead }
   from './merchants.battle.js';
@@ -470,45 +470,23 @@ function updateDistDisplay() {
     : Math.round(_ctx.totalDist) + ' m';
 }
 
-// ── 내 위치 버튼: 지도 이동 (백그라운드 추적은 battle 모듈이 담당) ─────────────
+// ── 내 위치 버튼: 첫 클릭 = 게임 시작, 이후 반응 없음 ────────────────────────
+let _gameStarted = false;
 function showMyLocation() {
-  const btn = $('btnMyLocation');
+  if (_gameStarted) return; // 이미 시작됨 → 무반응
   if (!navigator.geolocation) { alert('이 브라우저는 위치 서비스를 지원하지 않습니다.'); return; }
+
+  const btn = $('btnMyLocation');
   if (btn) btn.textContent = '⏳';
 
-  // 백그라운드 watch가 이미 실행 중 → 마커 표시 + 현재 위치로 이동
-  if (_ctx.locationWatchId != null) {
-    if (_ctx.lastPos) {
-      updateMyLocation(_ctx.lastPos.lat, _ctx.lastPos.lng, _ctx.lastPos.accuracy, _ctx.lastPos.heading);
-      map.panTo({ lat: _ctx.lastPos.lat, lng: _ctx.lastPos.lng });
-      map.setZoom(16);
-    }
-    if (btn) btn.textContent = '📍';
-    return;
-  }
+  startWatchPosition();   // GPS 백그라운드 추적 시작
+  startBattleLoop();      // 전투 루프 시작
+  _gameStarted = true;
 
-  let firstFix = true;
-  const watchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
-      _ctx.lastPos = { lat, lng, accuracy, heading };
-      updateMyLocation(lat, lng, accuracy, heading);
-      checkProximity(lat, lng);
-      if (firstFix) {
-        map.panTo({ lat, lng });
-        map.setZoom(16);
-        firstFix = false;
-        if (btn) btn.textContent = '📍';
-      }
-    },
-    (err) => {
-      if (btn) btn.textContent = '📍';
-      _ctx.locationWatchId = null;
-      alert({ 1:'위치 권한이 거부되었습니다.', 2:'위치를 가져올 수 없습니다.', 3:'위치 요청 시간 초과.' }[err.code] || '위치 오류');
-    },
-    { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
-  );
-  _ctx.locationWatchId = watchId;
+  if (btn) {
+    btn.textContent = '📍';
+    btn.title = '게임 진행 중';
+  }
 }
 
 // ── 보물박스 근접 감지 — 범위 내 마커 강조, HP 있으면 공격해야 수집 ──────────
@@ -1049,9 +1027,6 @@ async function init() {
   $('combatHud')?.addEventListener('click', () => $('combatHud')?.classList.toggle('compact'));
   if (window.innerWidth <= 640) $('combatHud')?.classList.add('compact');
 
-  // 보물 근접 감지 + 전투 루프 시작
-  startWatchPosition();
-  startBattleLoop();
   updateSkillBar();
 
   // ── Phase 2: 백그라운드에서 나머지 로드 (UI 블로킹 없음) ─────────────────────

@@ -1052,7 +1052,7 @@ function attackTower(tower, marker) {
 
 // ── 타워 마커 단일 생성 (리스폰에서도 재사용) ────────────────────────────────
 function createTowerMarker(tower, map, infoWindow) {
-  getTowerHpState(tower); // 초기화
+  const st = getTowerHpState(tower);
   const marker = new google.maps.Marker({
     position: { lat: tower.lat, lng: tower.lng }, map,
     title: `${tower.name||'방어탑'} HP ${st.current}/${st.max}`,
