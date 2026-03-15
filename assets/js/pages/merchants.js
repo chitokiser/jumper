@@ -1142,17 +1142,25 @@ function renderExchangeSection() {
       return isGold ? getPlayerGold() >= r.count : (_inventory[String(r.itemId)] || 0) >= r.count;
     });
 
-    // 아이콘: image 필드 있으면 이미지, 없으면 이모지
-    const bannerIcon = v.image
-      ? `<img src="/assets/images/vouchers/${escHtml(v.image)}" class="exc-card-icon" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;" onerror="this.textContent='🎟';this.style.cssText='font-size:2.4rem';" alt="">`
-      : `<span class="exc-card-icon">🎟</span>`;
+    // 이미지: http로 시작하면 직접 URL, 아니면 로컬 경로
+    const imgUrl = v.image
+      ? (v.image.startsWith('http') ? v.image : `/assets/images/vouchers/${v.image}`)
+      : '';
 
     const btnLabel = !_uid ? '로그인 필요' : canDo ? '🎟 지금 교환하기' : '재료 부족';
 
     return `
       <div class="exc-card">
+        ${imgUrl
+          ? `<div class="exc-card-img-wrap">
+               <img src="${escHtml(imgUrl)}" alt="${escHtml(v.name)}"
+                 onerror="this.parentNode.innerHTML='<span class=exc-card-img-fallback>🎟</span>'">
+             </div>`
+          : `<div class="exc-card-img-wrap">
+               <span class="exc-card-img-fallback">🎟</span>
+             </div>`
+        }
         <div class="exc-card-banner">
-          ${bannerIcon}
           <div class="exc-card-reward">${escHtml(v.reward || '상품교환권')}</div>
           <div class="exc-card-name">${escHtml(v.name)}</div>
         </div>
@@ -1215,6 +1223,8 @@ async function init() {
       _ctx.isAdmin = _isAdmin;
       // 전투 시스템: 플레이어 상태 로드
       loadPlayerState();
+      // 인벤토리 + 교환권 섹션 갱신
+      loadInventory();
     } else {
       _isAdmin = false;
       _ctx.isAdmin = false;

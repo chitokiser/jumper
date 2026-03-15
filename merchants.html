@@ -578,17 +578,26 @@
     }
     .exc-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-2px); }
 
-    /* 카드 상단 배너 */
+    /* 카드 상단 이미지 영역 */
+    .exc-card-img-wrap {
+      width: 100%; aspect-ratio: 16/9;
+      background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+      overflow: hidden; position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .exc-card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .exc-card-img-wrap .exc-card-img-fallback {
+      font-size: 3.5rem;
+    }
+
+    /* 카드 배너 (이미지 없을 때) */
     .exc-card-banner {
       padding: 20px 18px 14px;
       background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
       color: #fff;
       position: relative;
-    }
-    .exc-card-icon {
-      font-size: 2.4rem; line-height: 1;
-      margin-bottom: 8px;
-      display: block;
     }
     .exc-card-reward {
       font-size: 1.1rem; font-weight: 800;
