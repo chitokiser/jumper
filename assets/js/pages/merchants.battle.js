@@ -587,13 +587,6 @@ export function healHp(amount) {
   savePlayerState();
 }
 
-function healMp(amount) {
-  if (_isDead) return;
-  _player.mp = Math.min(_player.maxMp, _player.mp + amount);
-  updateCombatHud();
-  updateSkillBar();
-}
-
 function useMp(amount) {
   if (_player.mp < amount) return false;
   _player.mp -= amount;
