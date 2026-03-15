@@ -465,6 +465,12 @@ service cloud.firestore {
       }
     }
 
+    // ── 실시간 유저 위치 (100m 반경 표시용) ──────────────────────────
+    match /user_locations/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

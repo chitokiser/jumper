@@ -2,7 +2,8 @@
 // 가맹점 지도 + 보물찾기 시스템
 
 import { auth, db, functions } from '/assets/js/firebase-init.js';
-import { collection, getDocs, doc, getDoc, query, where, orderBy, limit }
+import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
+         setDoc, deleteDoc, onSnapshot, serverTimestamp }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -37,6 +38,9 @@ let _vouchers       = [];
 let _collectedBoxes = new Set(); // 이 세션에서 이미 수집한 box ID
 let _boxHpState     = {};        // {boxId: {current, max}} 클라이언트 HP 추적
 let _boxAtkCd       = {};        // {boxId: true} 공격 쿨다운
+let _nearbyMarkers  = {};        // {uid: Marker} 주변 유저 마커
+let _nearbyUnsub    = null;      // Firestore onSnapshot 구독 해제
+let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
 const _ctx = {
@@ -470,6 +474,104 @@ function updateDistDisplay() {
     : Math.round(_ctx.totalDist) + ' m';
 }
 
+// ── 주변 유저 실시간 표시 (100m 이내) ────────────────────────────────────────
+const NEARBY_RADIUS_M = 100;
+const LOC_WRITE_INTERVAL = 5000;  // 5초마다 위치 업데이트
+const LOC_STALE_MS       = 30000; // 30초 이상 미업데이트 시 마커 제거
+
+function getNearbyPlayerIcon(name) {
+  const initials = (name || '?').slice(0, 2).toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+    <circle cx="18" cy="18" r="17" fill="rgba(59,130,246,0.9)" stroke="#fff" stroke-width="2"/>
+    <text x="18" y="23" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">${initials}</text>
+  </svg>`;
+  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+}
+
+// GPS 업데이트 시 호출 — 5초 rate-limit
+async function broadcastMyLocation(lat, lng) {
+  if (!_uid) return;
+  const now = Date.now();
+  if (now - _locWriteTs < LOC_WRITE_INTERVAL) return;
+  _locWriteTs = now;
+  const name = (_userEmail || '').split('@')[0] || '플레이어';
+  try {
+    await setDoc(doc(db, 'user_locations', _uid), {
+      uid: _uid, lat, lng, name,
+      updatedAt: serverTimestamp(),
+    });
+  } catch { /* 무시 */ }
+}
+
+// 주변 유저 마커 갱신
+function updateNearbyMarkers(snap) {
+  const myPos = _ctx.lastPos;
+  if (!myPos || !map) return;
+  const now = Date.now();
+
+  // 기존 마커 중 스냅에 없는 것 제거
+  const activeUids = new Set();
+  snap.forEach(d => activeUids.add(d.id));
+  Object.keys(_nearbyMarkers).forEach(uid => {
+    if (!activeUids.has(uid)) { _nearbyMarkers[uid].setMap(null); delete _nearbyMarkers[uid]; }
+  });
+
+  snap.forEach(d => {
+    const data = d.data();
+    if (d.id === _uid) return; // 내 자신 제외
+    // 30초 이상 업데이트 없으면 제거
+    const ts = data.updatedAt?.toMillis?.() || 0;
+    if (now - ts > LOC_STALE_MS) {
+      if (_nearbyMarkers[d.id]) { _nearbyMarkers[d.id].setMap(null); delete _nearbyMarkers[d.id]; }
+      return;
+    }
+    const dist = haversine(myPos.lat, myPos.lng, data.lat, data.lng);
+    if (dist > NEARBY_RADIUS_M) {
+      if (_nearbyMarkers[d.id]) { _nearbyMarkers[d.id].setMap(null); delete _nearbyMarkers[d.id]; }
+      return;
+    }
+    // 마커 생성 or 이동
+    if (_nearbyMarkers[d.id]) {
+      _nearbyMarkers[d.id].setPosition({ lat: data.lat, lng: data.lng });
+      _nearbyMarkers[d.id].setTitle(`👤 ${data.name} (${Math.round(dist)}m)`);
+    } else {
+      const marker = new google.maps.Marker({
+        position: { lat: data.lat, lng: data.lng },
+        map,
+        title: `👤 ${data.name} (${Math.round(dist)}m)`,
+        icon: getNearbyPlayerIcon(data.name),
+        zIndex: 80,
+      });
+      marker.addListener('click', () => {
+        infoWindow?.setContent(`
+          <div style="font-size:13px;line-height:1.7;">
+            <b>👤 ${escHtml(data.name)}</b>
+            <div style="font-size:11px;color:#888;margin-top:2px;">거리 ${Math.round(dist)}m</div>
+          </div>`);
+        infoWindow?.open(map, marker);
+      });
+      _nearbyMarkers[d.id] = marker;
+    }
+  });
+}
+
+function startNearbyPlayers() {
+  if (_nearbyUnsub) return;
+  _nearbyUnsub = onSnapshot(
+    collection(db, 'user_locations'),
+    snap => updateNearbyMarkers(snap),
+    () => { /* 오류 무시 */ }
+  );
+  // 페이지 종료 시 내 위치 삭제
+  window.addEventListener('beforeunload', cleanupMyLocation);
+}
+
+async function cleanupMyLocation() {
+  if (!_uid) return;
+  try { await deleteDoc(doc(db, 'user_locations', _uid)); } catch { /* 무시 */ }
+}
+
 // ── 내 위치 버튼: 첫 클릭 = 게임 시작, 이후 반응 없음 ────────────────────────
 let _gameStarted = false;
 function showMyLocation() {
@@ -481,6 +583,7 @@ function showMyLocation() {
 
   startWatchPosition();   // GPS 백그라운드 추적 시작
   startBattleLoop();      // 전투 루프 시작
+  startNearbyPlayers();   // 주변 유저 실시간 표시
   _gameStarted = true;
 
   if (btn) {
@@ -492,6 +595,7 @@ function showMyLocation() {
 // ── 보물박스 근접 감지 — 범위 내 마커 강조, HP 있으면 공격해야 수집 ──────────
 async function checkProximity(lat, lng) {
   if (!_uid) return;
+  broadcastMyLocation(lat, lng); // 내 위치 Firestore에 방송
   for (const box of treasureBoxes) {
     if (!box.lat || !box.lng) continue;
     if (!isBoxActive(box)) continue;
