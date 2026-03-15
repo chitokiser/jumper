@@ -2,8 +2,7 @@
 // 가맹점 지도 + 보물찾기 시스템
 
 import { auth, db, functions } from '/assets/js/firebase-init.js';
-import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
-         deleteDoc, updateDoc, serverTimestamp }
+import { collection, getDocs, doc, getDoc, query, where, orderBy, limit }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -778,25 +777,12 @@ async function usePotion() {
   const current = _inventory['potion_red'] || 0;
   if (current <= 0) { alert('빨간약이 없습니다.'); return; }
 
-  // _ctx.myLocationMarker 통해 현재 HP 접근 (healHp는 battle 모듈 함수)
-  // player.hp/maxHp는 battle 모듈 내부 상태이므로 healHp 호출 전 guard는 생략
-  // (healHp 내부에서 maxHp 체크함)
-
   try {
-    const invRef = doc(db, 'treasure_inventory', `${_uid}_potion_red`);
-    const newCount = current - 1;
-    if (newCount <= 0) {
-      await deleteDoc(invRef);
-    } else {
-      await updateDoc(invRef, { count: newCount, updatedAt: serverTimestamp() });
-    }
-    _inventory['potion_red'] = newCount;
+    const fn = httpsCallable(functions, 'usePotion');
+    const res = await fn();
+    _inventory['potion_red'] = res.data.remaining;
     healHp(100);
-    const myMark = _ctx.myLocationMarker;
-    if (myMark) {
-      // showFloat는 battle 모듈 내부 함수. 여기서는 간단한 토스트로 대체
-      showCollectToast('💊 빨간약 사용! HP +100');
-    }
+    showCollectToast('💊 빨간약 사용! HP +100');
     playSound('heal');
     renderInventory();
   } catch (err) {

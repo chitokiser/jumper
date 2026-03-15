@@ -1256,6 +1256,10 @@ exports.adminSaveVoucher = onCall(wrapError(async (req) => {
   return treasureH.adminSaveVoucher(requireAuth(req), req.data ?? {});
 }));
 
+exports.usePotion = onCall(wrapError(async (req) => {
+  return treasureH.usePotion(requireAuth(req));
+}));
+
 // 관리자: 빨간약 직접 지급
 exports.adminGivePotion = onCall(wrapError(async (req) => {
   const adminUid = requireAuth(req);
