@@ -1260,6 +1260,10 @@ exports.usePotion = onCall(wrapError(async (req) => {
   return treasureH.usePotion(requireAuth(req));
 }));
 
+exports.useReviveTicket = onCall(wrapError(async (req) => {
+  return treasureH.useReviveTicket(requireAuth(req));
+}));
+
 // 관리자: 빨간약 직접 지급
 exports.adminGivePotion = onCall(wrapError(async (req) => {
   const adminUid = requireAuth(req);

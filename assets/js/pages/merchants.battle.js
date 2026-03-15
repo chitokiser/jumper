@@ -791,11 +791,8 @@ export async function useReviveTicket() {
   const uid = _ctx?.uid;
   if (!uid) return;
   try {
-    const invRef = doc(_ctx.db, 'treasure_inventory', `${uid}_revive_ticket`);
-    const snap   = await getDoc(invRef);
-    const count  = snap.exists() ? (snap.data().count || 0) : 0;
-    if (count <= 0) { showSkillError('부활 아이템이 없습니다'); return; }
-    await setDoc(invRef, { count: count - 1 }, { merge: true });
+    const fn = httpsCallable(_ctx.functions, 'useReviveTicket');
+    await fn();
 
     _isDead = false;
     _reviveWalkDist = 0;
