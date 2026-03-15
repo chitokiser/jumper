@@ -46,7 +46,7 @@ let _aggroClaimed        = new Set(); // 이미 어그로 클레임한 몬스터
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST  = 100;
-const SKILL_RANGE_M  = 30;
+const SKILL_RANGE_M  = 100;
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
 const SKILL_FREEZE_MS = 20000;
 
@@ -702,7 +702,7 @@ export function castLightning() {
   playSound('skill_lightning');
 
   const myMark = _ctx?.myLocationMarker;
-  if (!myMark) return;
+  if (!myMark) { showSkillError('📍 위치 확인 중...'); return; }
   const pos = myMark.getPosition();
   const myLat = pos.lat(), myLng = pos.lng();
 
@@ -743,7 +743,7 @@ export function castIceFreeze() {
   playSound('skill_ice');
 
   const myMark = _ctx?.myLocationMarker;
-  if (!myMark) return;
+  if (!myMark) { showSkillError('📍 위치 확인 중...'); return; }
   const pos = myMark.getPosition();
   const myLat = pos.lat(), myLng = pos.lng();
 
@@ -790,7 +790,7 @@ export function castFireStorm() {
   playSound('skill_fire');
 
   const myMark = _ctx?.myLocationMarker;
-  if (!myMark) return;
+  if (!myMark) { showSkillError('📍 위치 확인 중...'); return; }
   const pos = myMark.getPosition();
   const myLat = pos.lat(), myLng = pos.lng();
 
