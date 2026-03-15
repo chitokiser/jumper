@@ -173,24 +173,46 @@ async function craftVoucher(uid, { voucherId } = {}) {
   if (!voucher.active) throw new HttpsError('failed-precondition', '비활성 바우처입니다');
 
   const reqs = voucher.requirements || [];
+  const goldReqs = reqs.filter(r => r.type === 'gold' || r.itemId === 'coin');
+  const itemReqs = reqs.filter(r => r.type !== 'gold' && r.itemId !== 'coin');
+  const goldNeeded = goldReqs.reduce((s, r) => s + (r.count || 0), 0);
 
   return await db.runTransaction(async (tx) => {
-    // 필요 아이템 잔액 확인
-    const invRefs = reqs.map(r => db.collection('treasure_inventory').doc(`${uid}_${r.itemId}`));
+    // 코인(gold) 잔액 확인
+    let playerRef, currentGold = 0;
+    if (goldNeeded > 0) {
+      playerRef = db.collection('battle_players').doc(uid);
+      const pSnap = await tx.get(playerRef);
+      currentGold = pSnap.exists ? (pSnap.data().gold || 0) : 0;
+      if (currentGold < goldNeeded)
+        throw new HttpsError('failed-precondition',
+          `코인 부족 (보유 ${currentGold}, 필요 ${goldNeeded})`);
+    }
+
+    // 아이템 잔액 확인
+    const invRefs  = itemReqs.map(r => db.collection('treasure_inventory').doc(`${uid}_${r.itemId}`));
     const invSnaps = await Promise.all(invRefs.map(ref => tx.get(ref)));
 
-    for (let i = 0; i < reqs.length; i++) {
+    for (let i = 0; i < itemReqs.length; i++) {
       const have = invSnaps[i].exists ? (invSnaps[i].data().count || 0) : 0;
-      if (have < reqs[i].count)
+      if (have < itemReqs[i].count)
         throw new HttpsError('failed-precondition',
-          `아이템 부족: ${reqs[i].itemId} (보유 ${have}개, 필요 ${reqs[i].count}개)`);
+          `아이템 부족: ${itemReqs[i].itemId} (보유 ${have}개, 필요 ${itemReqs[i].count}개)`);
+    }
+
+    // 코인 차감
+    if (goldNeeded > 0) {
+      tx.update(playerRef, {
+        gold: currentGold - goldNeeded,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
     }
 
     // 아이템 차감
-    for (let i = 0; i < reqs.length; i++) {
+    for (let i = 0; i < itemReqs.length; i++) {
       const have = invSnaps[i].data().count;
       tx.update(invRefs[i], {
-        count: have - reqs[i].count,
+        count: have - itemReqs[i].count,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
@@ -226,7 +248,7 @@ async function adminSaveTreasureItem(adminUid, { itemId, name, image, descriptio
 // ── 관리자: 보물박스 저장 ─────────────────────────────────────────────────────
 async function adminSaveTreasureBox(adminUid, data = {}) {
   await requireAdmin(adminUid);
-  const { boxId, name, lat, lng, startHour, endHour, itemPool, active } = data;
+  const { boxId, name, lat, lng, startHour, endHour, itemPool, active, hp } = data;
   if (!lat || !lng) throw new HttpsError('invalid-argument', 'lat/lng가 필요합니다');
 
   const ref = boxId
@@ -240,6 +262,7 @@ async function adminSaveTreasureBox(adminUid, data = {}) {
     startHour: Number(startHour ?? 0),
     endHour:   Number(endHour ?? 24),
     itemPool:  itemPool || [],
+    hp:        Number(hp ?? 300),   // 타격 필요 HP (0이면 자동수집)
     active:    active !== false,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });

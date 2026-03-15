@@ -75,7 +75,7 @@ export function initBattle(ctx, callbacks) {
 let _audioCtx = null;
 function getAC() {
   if (!_audioCtx || _audioCtx.state === 'closed')
-    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    _audioCtx = new (window.AudioContext || /** @type {any} */(window).webkitAudioContext)();
   if (_audioCtx.state === 'suspended') _audioCtx.resume();
   return _audioCtx;
 }
@@ -325,16 +325,31 @@ function dropGoldTokens(mob) {
 
   const marker = new google.maps.Marker({
     position: { lat, lng }, map,
-    title: `💰 황금토큰 ×${amount}`,
-    icon: { url: '/assets/images/item/0.png',
-            scaledSize: new google.maps.Size(22, 22),
-            anchor: new google.maps.Point(11, 11) },
+    title: `💰 코인 ×${amount} — 클릭하여 획득`,
+    icon: { url: '/assets/images/item/coins.png',
+            scaledSize: new google.maps.Size(28, 28),
+            anchor: new google.maps.Point(14, 14) },
     zIndex: 25,
   });
   const drop = { id, lat, lng, amount, marker };
   _goldDrops.push(drop);
   showFloat(`💰×${amount}`, '#fbbf24', lat, lng);
   playSound('gold_drop');
+
+  // 클릭으로도 바로 획득 가능
+  marker.addListener('click', () => {
+    if (!_goldDrops.find(d => d.id === id)) return; // 이미 획득됨
+    drop.marker?.setMap(null);
+    _goldDrops = _goldDrops.filter(d => d.id !== id);
+    _player.gold = (_player.gold || 0) + amount;
+    const myLat = _ctx?.lastPos?.lat || lat;
+    const myLng = _ctx?.lastPos?.lng || lng;
+    showFloat(`💰+${amount}`, '#fbbf24', myLat, myLng);
+    playSound('gold_pickup');
+    updateCombatHud();
+    savePlayerState();
+  });
+
   setTimeout(() => {
     drop.marker?.setMap(null);
     _goldDrops = _goldDrops.filter(d => d.id !== id);
@@ -471,6 +486,7 @@ export async function loadPlayerState() {
     _player.maxMp = _player.level * 1000;
     if (snap.exists()) {
       const d = snap.data();
+      _player.gold = d.gold || 0;
       if ((d.level || 1) === _player.level) {
         _player.hp = Math.min(d.hp ?? _player.maxHp, _player.maxHp);
         _player.mp = Math.min(d.mp ?? _player.maxMp, _player.maxMp);
@@ -492,6 +508,8 @@ export async function loadPlayerState() {
 }
 
 let _saveTimer = null;
+export function getPlayerGold() { return _player.gold || 0; }
+
 export function savePlayerState() {
   const uid = _ctx?.uid;
   if (!uid) return;
@@ -502,6 +520,7 @@ export function savePlayerState() {
         uid, level: _player.level, xp: _player.xp,
         hp: _player.hp, mp: _player.mp,
         maxHp: _player.maxHp, maxMp: _player.maxMp,
+        gold: _player.gold || 0,
         isDead: _isDead,
         reviveWalkDist: _reviveWalkDist,
         updatedAt: serverTimestamp(),
@@ -565,12 +584,21 @@ function useMp(amount) {
 function getSkillOverlay() {
   let ov = document.getElementById('skillOverlay');
   if (!ov) {
-    const wrap = document.querySelector('.mc-map-wrap');
     ov = document.createElement('div');
     ov.id = 'skillOverlay';
-    // 지도 안쪽 하단 영역 — 스킬바 위만 덮음, 배경 없음
-    ov.style.cssText = 'position:absolute;left:0;right:0;bottom:60px;top:20%;pointer-events:none;z-index:450;overflow:hidden;';
-    (wrap || document.body).appendChild(ov);
+    // 스킬바 바로 위에 고정 — 배경 없음, 전체화면 핸들러가 이동시켜줌
+    ov.style.cssText = [
+      'position:fixed',
+      'bottom:calc(72px + env(safe-area-inset-bottom,0px))',
+      'left:50%',
+      'transform:translateX(-50%)',
+      'width:300px',
+      'height:180px',
+      'pointer-events:none',
+      'z-index:4000',
+      'overflow:hidden',
+    ].join(';');
+    document.body.appendChild(ov);
   }
   return ov;
 }
@@ -580,37 +608,38 @@ const SKILL_X = [18, 38, 62, 82]; // lightning, ice, fire, potion
 
 function animateLightning() {
   const ov = getSkillOverlay();
-  // 번개 줄기 여러 개
-  for (let i = 0; i < 5; i++) {
+  const cx = SKILL_X[0]; // 벼락 버튼 위 중심
+  for (let i = 0; i < 4; i++) {
     const bolt = document.createElement('div');
-    const x = 10 + Math.random() * 80;
-    bolt.style.cssText = `position:absolute;left:${x}%;top:0;width:3px;height:0;
+    const x = cx - 8 + Math.random() * 16;
+    bolt.style.cssText = `position:absolute;left:${x}%;top:0;width:2px;height:0;
       background:linear-gradient(180deg,#fff,#facc15,#a78bfa);
-      box-shadow:0 0 12px #facc15,0 0 24px #a78bfa;
+      box-shadow:0 0 8px #facc15,0 0 16px #a78bfa;
       border-radius:2px;animation:boltFall 0.35s ${i*0.07}s ease-in forwards;`;
     ov.appendChild(bolt);
     setTimeout(() => bolt.remove(), 700 + i*80);
   }
-  // 바닥 크랙
   const crack = document.createElement('div');
   crack.className = 'skill-anim-lightning-crack';
+  crack.style.cssText += `left:${cx}%`;
   ov.appendChild(crack);
   setTimeout(() => crack.remove(), 900);
 }
 
 function animateIceFreeze() {
   const ov = getSkillOverlay();
+  const cx = SKILL_X[1]; // 얼음 버튼 위 중심
   const circle = document.createElement('div');
   circle.className = 'skill-anim-ice-circle';
+  circle.style.cssText += `left:${cx}%;top:auto;bottom:10%;transform:translate(-50%,0);`;
   ov.appendChild(circle);
   setTimeout(() => circle.remove(), 1200);
-  // 파티클
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 10; i++) {
     const p = document.createElement('div');
-    const angle = (i/12)*360;
-    p.style.cssText = `position:absolute;left:50%;top:50%;width:8px;height:8px;
-      background:#bfdbfe;border-radius:50%;box-shadow:0 0 8px #93c5fd;
-      transform:translate(-50%,-50%) rotate(${angle}deg) translateY(-120px);
+    const angle = (i/10)*360;
+    p.style.cssText = `position:absolute;left:${cx}%;top:60%;width:6px;height:6px;
+      background:#bfdbfe;border-radius:50%;box-shadow:0 0 6px #93c5fd;
+      transform:translate(-50%,-50%) rotate(${angle}deg) translateY(-70px);
       animation:icePart 0.8s ${i*0.04}s ease-out both;`;
     ov.appendChild(p);
     setTimeout(() => p.remove(), 900 + i*40);
@@ -619,19 +648,20 @@ function animateIceFreeze() {
 
 function animateFireStorm() {
   const ov = getSkillOverlay();
-  for (let i = 0; i < 6; i++) {
+  const cx = SKILL_X[2]; // 화염 버튼 위 중심
+  for (let i = 0; i < 5; i++) {
     const ball = document.createElement('div');
-    const x = 15 + Math.random() * 70;
-    ball.style.cssText = `position:absolute;left:${x}%;top:-40px;width:32px;height:32px;
+    const x = cx - 10 + Math.random() * 20;
+    ball.style.cssText = `position:absolute;left:${x}%;top:-28px;width:22px;height:22px;
       border-radius:50%;background:radial-gradient(circle,#fef08a,#f97316,#991b1b);
-      box-shadow:0 0 20px #f97316,0 0 40px #dc2626;
+      box-shadow:0 0 14px #f97316,0 0 28px #dc2626;
       animation:fireFall 0.6s ${i*0.09}s ease-in forwards;`;
     ov.appendChild(ball);
     setTimeout(() => {
       ball.remove();
       // 폭발
       const exp = document.createElement('div');
-      exp.style.cssText = `position:absolute;left:${x}%;bottom:20%;width:60px;height:60px;
+      exp.style.cssText = `position:absolute;left:${x}%;bottom:10%;width:40px;height:40px;
         border-radius:50%;background:radial-gradient(circle,#fef08a,#f97316,transparent);
         transform:translateX(-50%);animation:fireExp 0.5s ease-out both;`;
       ov.appendChild(exp);
@@ -689,7 +719,7 @@ export function castIceFreeze() {
       // 얼음 마커 표시
       const marker = _monsterMarkers[mob.id];
       if (marker) {
-        marker.setIcon(getMonsterFrozenIcon(mob.image));
+        marker.setIcon(getMonsterFrozenIcon());
         setTimeout(() => {
           if (_monsterMarkers[mob.id]) _monsterMarkers[mob.id].setIcon(getMonsterIcon(mob.image));
         }, SKILL_FREEZE_MS);
@@ -747,7 +777,7 @@ function showSkillError(msg) {
   setTimeout(() => el.remove(), 1500);
 }
 
-function getMonsterFrozenIcon(image) {
+function getMonsterFrozenIcon() {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
     <circle cx="18" cy="18" r="17" fill="rgba(147,197,253,0.9)" stroke="#bfdbfe" stroke-width="2"/>
     <text x="18" y="24" font-size="18" text-anchor="middle">❄</text></svg>`;
