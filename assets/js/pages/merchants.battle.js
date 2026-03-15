@@ -1791,7 +1791,7 @@ export function startWatchPosition() {
     (pos) => {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
       _ctx.lastPos = { lat, lng, accuracy, heading };
-      if (_ctx.myLocationMarker) updateMyLocation(lat, lng, accuracy, heading);
+      updateMyLocation(lat, lng, accuracy, heading);
       _ctx._onCheckProximity(lat, lng);
     },
     null,
