@@ -602,93 +602,45 @@ function useMp(amount) {
 }
 
 // ── 스킬 애니메이션 ───────────────────────────────────────────────────────────
-function getSkillOverlay() {
-  let ov = document.getElementById('skillOverlay');
-  if (!ov) {
-    ov = document.createElement('div');
-    ov.id = 'skillOverlay';
-    // 스킬바 바로 위에 고정 — 배경 없음, 전체화면 핸들러가 이동시켜줌
-    ov.style.cssText = [
-      'position:fixed',
-      'bottom:calc(72px + env(safe-area-inset-bottom,0px))',
-      'left:50%',
-      'transform:translateX(-50%)',
-      'width:300px',
-      'height:180px',
-      'pointer-events:none',
-      'z-index:4000',
-      'overflow:hidden',
-    ].join(';');
-    (document.fullscreenElement || document.body).appendChild(ov);
+
+
+function _skillFlash(color, emoji) {
+  // battleOverlay 전체에 섬광 + 이모지 — 전체화면에서도 확실히 보임
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) return;
+  if (!document.getElementById('_sfStyle')) {
+    const s = document.createElement('style'); s.id = '_sfStyle';
+    s.textContent = `@keyframes sfFlash{0%{opacity:.7}100%{opacity:0}}
+      @keyframes sfPop{0%{opacity:1;transform:translate(-50%,-50%) scale(.4)}
+        40%{opacity:1;transform:translate(-50%,-50%) scale(1.3)}
+        100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}`;
+    document.head.appendChild(s);
   }
-  return ov;
+  const flash = document.createElement('div');
+  flash.style.cssText = `position:absolute;inset:0;background:${color};pointer-events:none;
+    z-index:3800;animation:sfFlash .35s ease-out forwards;`;
+  overlay.appendChild(flash);
+  setTimeout(() => flash.remove(), 400);
+
+  const icon = document.createElement('div');
+  icon.style.cssText = `position:absolute;top:40%;left:50%;font-size:72px;
+    pointer-events:none;z-index:3900;filter:drop-shadow(0 0 18px ${color});
+    animation:sfPop .7s ease-out forwards;`;
+  icon.textContent = emoji;
+  overlay.appendChild(icon);
+  setTimeout(() => icon.remove(), 750);
 }
 
-// 스킬 슬롯 인덱스 → 오버레이 안에서의 x 중심(%) — 4개 슬롯 균등 배치
-const SKILL_X = [18, 38, 62, 82]; // lightning, ice, fire, potion
-
 function animateLightning() {
-  const ov = getSkillOverlay();
-  const cx = SKILL_X[0]; // 벼락 버튼 위 중심
-  for (let i = 0; i < 4; i++) {
-    const bolt = document.createElement('div');
-    const x = cx - 8 + Math.random() * 16;
-    bolt.style.cssText = `position:absolute;left:${x}%;top:0;width:2px;height:0;
-      background:linear-gradient(180deg,#fff,#facc15,#a78bfa);
-      box-shadow:0 0 8px #facc15,0 0 16px #a78bfa;
-      border-radius:2px;animation:boltFall 0.35s ${i*0.07}s ease-in forwards;`;
-    ov.appendChild(bolt);
-    setTimeout(() => bolt.remove(), 700 + i*80);
-  }
-  const crack = document.createElement('div');
-  crack.className = 'skill-anim-lightning-crack';
-  crack.style.cssText += `left:${cx}%`;
-  ov.appendChild(crack);
-  setTimeout(() => crack.remove(), 900);
+  _skillFlash('rgba(250,204,21,0.35)', '⚡');
 }
 
 function animateIceFreeze() {
-  const ov = getSkillOverlay();
-  const cx = SKILL_X[1]; // 얼음 버튼 위 중심
-  const circle = document.createElement('div');
-  circle.className = 'skill-anim-ice-circle';
-  circle.style.cssText += `left:${cx}%;top:auto;bottom:10%;transform:translate(-50%,0);`;
-  ov.appendChild(circle);
-  setTimeout(() => circle.remove(), 1200);
-  for (let i = 0; i < 10; i++) {
-    const p = document.createElement('div');
-    const angle = (i/10)*360;
-    p.style.cssText = `position:absolute;left:${cx}%;top:60%;width:6px;height:6px;
-      background:#bfdbfe;border-radius:50%;box-shadow:0 0 6px #93c5fd;
-      transform:translate(-50%,-50%) rotate(${angle}deg) translateY(-70px);
-      animation:icePart 0.8s ${i*0.04}s ease-out both;`;
-    ov.appendChild(p);
-    setTimeout(() => p.remove(), 900 + i*40);
-  }
+  _skillFlash('rgba(147,197,253,0.35)', '❄️');
 }
 
 function animateFireStorm() {
-  const ov = getSkillOverlay();
-  const cx = SKILL_X[2]; // 화염 버튼 위 중심
-  for (let i = 0; i < 5; i++) {
-    const ball = document.createElement('div');
-    const x = cx - 10 + Math.random() * 20;
-    ball.style.cssText = `position:absolute;left:${x}%;top:-28px;width:22px;height:22px;
-      border-radius:50%;background:radial-gradient(circle,#fef08a,#f97316,#991b1b);
-      box-shadow:0 0 14px #f97316,0 0 28px #dc2626;
-      animation:fireFall 0.6s ${i*0.09}s ease-in forwards;`;
-    ov.appendChild(ball);
-    setTimeout(() => {
-      ball.remove();
-      // 폭발
-      const exp = document.createElement('div');
-      exp.style.cssText = `position:absolute;left:${x}%;bottom:10%;width:40px;height:40px;
-        border-radius:50%;background:radial-gradient(circle,#fef08a,#f97316,transparent);
-        transform:translateX(-50%);animation:fireExp 0.5s ease-out both;`;
-      ov.appendChild(exp);
-      setTimeout(() => exp.remove(), 500);
-    }, 600 + i*90 + 100);
-  }
+  _skillFlash('rgba(249,115,22,0.35)', '🔥');
 }
 
 // ── 마법 스킬 ────────────────────────────────────────────────────────────────

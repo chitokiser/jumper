@@ -149,7 +149,7 @@ function initMap() {
 
   // 전체화면 진입/종료 시 position:fixed 모달들을 fullscreen 요소 안으로 이동
   // (HUD·스킬바는 Google Maps Control이므로 자동으로 fullscreen에 포함됨)
-  const FS_MODALS = ['invModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillOverlay', 'skillTargetModal'];
+  const FS_MODALS = ['invModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal'];
   document.addEventListener('fullscreenchange', () => {
     const fs = document.fullscreenElement;
     const dest = fs || document.body;
@@ -157,6 +157,12 @@ function initMap() {
       const el = document.getElementById(id);
       if (el) dest.appendChild(el);
     });
+    // battleOverlay: 전체화면 시 merchantMap 안으로, 종료 시 mc-map-wrap 안으로 복귀
+    const bo = document.getElementById('battleOverlay');
+    if (bo) {
+      if (fs) fs.appendChild(bo);
+      else document.querySelector('.mc-map-wrap')?.appendChild(bo);
+    }
   });
 }
 
