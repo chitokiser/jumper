@@ -688,12 +688,27 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
+  // 빨간약 지급: 1 HEX당 1병 (소수점 버림)
+  const potionCount = Math.floor(hexAmount);
+  if (potionCount > 0) {
+    const invRef = db.collection('treasure_inventory').doc(`${uid}_potion_red`);
+    await db.runTransaction(async (tx) => {
+      const snap    = await tx.get(invRef);
+      const current = snap.exists ? (snap.data().count || 0) : 0;
+      tx.set(invRef, {
+        uid, itemId: 'potion_red', count: current + potionCount,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+  }
+
   return {
     txHash:       receipt.hash,
     amountHex:    hexAmount.toFixed(4),
     amountKrw,
     ...(currency === 'VND' && amountVnd ? { amountVnd, currency: 'VND' } : { currency: 'KRW' }),
     merchantName: merchant.name || '',
+    potionsAdded: potionCount,
   };
 }
 

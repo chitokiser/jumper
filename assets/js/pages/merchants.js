@@ -674,10 +674,14 @@ function renderInventory() {
   if (!grid) return;
   const SLOTS = 20;
 
-  // 아이템 있는 것 먼저 정렬
+  // potion_red 맨 앞, 나머지 숫자 정렬
   const filled = Object.entries(_inventory)
     .filter(([, c]) => c > 0)
-    .sort((a, b) => Number(a[0]) - Number(b[0]));
+    .sort((a, b) => {
+      if (a[0] === 'potion_red') return -1;
+      if (b[0] === 'potion_red') return 1;
+      return Number(a[0]) - Number(b[0]);
+    });
 
   grid.innerHTML = '';
   for (let i = 0; i < SLOTS; i++) {
@@ -685,20 +689,60 @@ function renderInventory() {
     slot.className = 'inv-slot';
     if (i < filled.length) {
       const [itemId, count] = filled[i];
-      const meta = _items[String(itemId)] || {};
       slot.classList.add('has-item');
-      const imgFile = meta.image || (itemId + '.png');
-      const fallbackImg = `/assets/images/item/${escHtml(String(itemId))}.png`;
-      slot.innerHTML = `
-        <img src="/assets/images/item/${escHtml(imgFile)}"
-             onerror="this.onerror=null;this.src='${fallbackImg}'"
-             alt="${escHtml(meta.name || itemId)}" />
-        <span class="slot-name">${escHtml(meta.name || ('#' + itemId))}</span>
-        <span class="slot-count">${count}</span>`;
+      slot.dataset.itemid = itemId;
+      if (itemId === 'potion_red') {
+        slot.title = '빨간약 — 클릭하여 사용 (HP +100)';
+        slot.style.cursor = 'pointer';
+        slot.innerHTML = `
+          <img src="/assets/images/item/potion_red.png"
+               onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2218%22 fill=%22%23ef4444%22/><text x=%2220%22 y=%2226%22 font-size=%2220%22 text-anchor=%22middle%22>💊</text></svg>'"
+               alt="빨간약" />
+          <span class="slot-name">빨간약</span>
+          <span class="slot-count">${count}</span>`;
+        slot.addEventListener('click', usePotion);
+      } else {
+        const meta = _items[String(itemId)] || {};
+        const imgFile = meta.image || (itemId + '.png');
+        const fallbackImg = `/assets/images/item/${escHtml(String(itemId))}.png`;
+        slot.innerHTML = `
+          <img src="/assets/images/item/${escHtml(imgFile)}"
+               onerror="this.onerror=null;this.src='${fallbackImg}'"
+               alt="${escHtml(meta.name || itemId)}" />
+          <span class="slot-name">${escHtml(meta.name || ('#' + itemId))}</span>
+          <span class="slot-count">${count}</span>`;
+      }
     } else {
       slot.innerHTML = '<span class="slot-placeholder">□</span>';
     }
     grid.appendChild(slot);
+  }
+}
+
+async function usePotion() {
+  if (!_uid) return;
+  const current = _inventory['potion_red'] || 0;
+  if (current <= 0) { alert('빨간약이 없습니다.'); return; }
+  if (_player.hp >= _player.maxHp) { alert('HP가 이미 최대입니다.'); return; }
+
+  try {
+    const invRef = doc(db, 'treasure_inventory', `${_uid}_potion_red`);
+    const newCount = current - 1;
+    if (newCount <= 0) {
+      await deleteDoc(invRef);
+    } else {
+      await updateDoc(invRef, { count: newCount, updatedAt: serverTimestamp() });
+    }
+    _inventory['potion_red'] = newCount;
+    healHp(100);
+    if (myLocationMarker) {
+      const p = myLocationMarker.getPosition();
+      showFloat('💊 +100', '#f87171', p.lat(), p.lng());
+    }
+    playSound('heal');
+    renderInventory();
+  } catch (err) {
+    alert('사용 실패: ' + err.message);
   }
 }
 
@@ -937,6 +981,7 @@ let _towerRanges     = {};     // { id: Circle }
 let _showTowerRange  = false;
 let _battleLoopId    = null;
 let _attackCd        = false;  // 유저 공격 쿨다운 (1.5초)
+let _clickAtkCd      = {};     // { monsterId: bool } 클릭 공격 쿨다운
 let _towerCd         = {};     // { towerId: bool }
 let _monsterCd       = {};     // { monsterId: bool }
 let _healAccum       = 0;      // HP 회복용 추가 누적거리(m)
@@ -1049,6 +1094,12 @@ function playSound(type) {
         noise(0.07,0.55);                     // 휘두르는 바람
         tone(160,0.45,0.07,0,'sawtooth');     // 타격 충격
         tone(85,0.3,0.14,0.04);               // 둔탁한 여운
+        break;
+      case 'critical_hit':
+        tone(880,0.5,0.05,0,'square');
+        tone(1100,0.4,0.08,0.04,'square');
+        noise(0.06,0.6);
+        tone(660,0.35,0.12,0.07);
         break;
       case 'arrow_hit':   noise(0.08,0.5); tone(220,0.3,0.1,0,'square'); break;
       case 'player_hit':  tone(120,0.4,0.25,'sawtooth'); noise(0.1,0.3); break;
@@ -1230,6 +1281,15 @@ function latLngToPixel(lat, lng) {
   return { x: (pt.x - nw.x) * scale, y: (pt.y - nw.y) * scale };
 }
 
+// ── 크리티컬 토스트 ───────────────────────────────────────────────────────────
+function showCriticalToast() {
+  const el = document.getElementById('criticalToast');
+  if (!el) return;
+  el.style.animation = 'none';
+  el.offsetWidth; // reflow
+  el.style.animation = 'critPop 0.9s ease-out forwards';
+}
+
 // ── 데미지/힐 숫자 플로팅 ──────────────────────────────────────────────────────
 function showFloat(text, color, lat, lng) {
   const overlay = document.getElementById('battleOverlay');
@@ -1294,12 +1354,16 @@ async function loadPlayerState() {
       const d = snap.data();
       // 저장된 레벨과 현재 온체인 레벨이 같을 때만 HP 복원
       if ((d.level || 1) === _player.level) {
-        _player.hp = Math.min(d.hp || _player.maxHp, _player.maxHp);
-        _player.mp = Math.min(d.mp || _player.maxMp, _player.maxMp);
+        _player.hp = Math.min(d.hp ?? _player.maxHp, _player.maxHp);
+        _player.mp = Math.min(d.mp ?? _player.maxMp, _player.maxMp);
+        _isDead         = d.isDead         === true;
+        _reviveWalkDist = d.reviveWalkDist || 0;
       } else {
-        // 레벨 변경됨 → 풀 HP로 시작
-        _player.hp = _player.maxHp;
-        _player.mp = _player.maxMp;
+        // 레벨 변경됨 → 풀 HP, 부활 상태 해제
+        _player.hp      = _player.maxHp;
+        _player.mp      = _player.maxMp;
+        _isDead         = false;
+        _reviveWalkDist = 0;
       }
     } else {
       _player.hp = _player.maxHp;
@@ -1320,6 +1384,8 @@ function savePlayerState() {
         uid: _uid, level: _player.level, xp: _player.xp,
         hp: _player.hp, mp: _player.mp,
         maxHp: _player.maxHp, maxMp: _player.maxMp,
+        isDead: _isDead,
+        reviveWalkDist: _reviveWalkDist,
         updatedAt: serverTimestamp(),
       }, { merge: true });
     } catch { /* 무시 */ }
@@ -1474,8 +1540,30 @@ function renderMonsterMarkers() {
       icon: getMonsterIcon(mob.image),
       zIndex: 50,
     });
-    // HP 바 infoWindow
     marker.addListener('click', () => {
+      // 사정거리 내 클릭 공격
+      if (!_isDead && myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
+        const myPos = myLocationMarker.getPosition();
+        const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
+        if (dist <= (mob.detectRadius || 20)) {
+          const roll   = Math.floor(Math.random() * 10) + 1; // 1~10
+          const isCrit = roll >= 6;
+          const dmg    = _player.level * roll;
+          _clickAtkCd[mob.id] = true;
+          setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
+
+          playSound(isCrit ? 'critical_hit' : 'arrow_hit');
+          animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
+            isCrit ? '#ff6600' : '#fbbf24', () => {
+              hitMonster(mob.id, dmg);
+              showFloat(isCrit ? `💥${dmg}` : `-${dmg}`,
+                isCrit ? '#ff6600' : '#fbbf24', mob.lat, mob.lng);
+              if (isCrit) showCriticalToast();
+            });
+          return; // infoWindow 열지 않음
+        }
+      }
+      // 사정거리 밖 or 조건 미충족 → HP 정보창
       const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
       infoWindow.setContent(`
         <div style="font-size:13px;min-width:140px">
