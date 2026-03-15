@@ -149,21 +149,14 @@ function initMap() {
 
   // 전체화면 진입/종료 시 position:fixed 모달들을 fullscreen 요소 안으로 이동
   // (HUD·스킬바는 Google Maps Control이므로 자동으로 fullscreen에 포함됨)
-  const FS_MODALS = ['invModal', 'itemReveal', 'collectToast', 'criticalToast'];
+  const FS_MODALS = ['invModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillOverlay', 'skillTargetModal'];
   document.addEventListener('fullscreenchange', () => {
     const fs = document.fullscreenElement;
+    const dest = fs || document.body;
     FS_MODALS.forEach(id => {
       const el = document.getElementById(id);
-      if (!el) return;
-      if (fs) fs.appendChild(el);
-      else document.body.appendChild(el);
+      if (el) dest.appendChild(el);
     });
-    // 스킬 애니메이션 오버레이도 이동 (존재할 경우)
-    const so = document.getElementById('skillOverlay');
-    if (so) {
-      if (fs) fs.appendChild(so);
-      else document.body.appendChild(so);
-    }
   });
 }
 

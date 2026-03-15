@@ -619,7 +619,7 @@ function getSkillOverlay() {
       'z-index:4000',
       'overflow:hidden',
     ].join(';');
-    document.body.appendChild(ov);
+    (document.fullscreenElement || document.body).appendChild(ov);
   }
   return ov;
 }
@@ -847,7 +847,7 @@ function showSkillTargetModal(skillKey, targets, onSelect) {
     <div id="_skillTargetCancel" style="cursor:pointer;padding:6px;margin-top:8px;
       color:#6b7280;font-size:12px;text-align:center;">취소</div>
   `;
-  document.body.appendChild(modal);
+  (document.fullscreenElement || document.body).appendChild(modal);
   modal.querySelectorAll('[data-mob]').forEach(el => {
     el.addEventListener('click', () => {
       const mob = targets.find(m => m.id === el.dataset.mob);
@@ -893,7 +893,7 @@ function showSkillError(msg) {
     padding:10px 20px;border-radius:8px;z-index:9999;pointer-events:none;
     animation:fadeInDown .2s ease`;
   el.textContent = msg;
-  document.body.appendChild(el);
+  (document.fullscreenElement || document.body).appendChild(el);
   setTimeout(() => el.remove(), 1500);
 }
 
