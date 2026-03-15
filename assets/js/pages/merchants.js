@@ -13,7 +13,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
          updateMyLocation, healHp, playSound,
          castLightning, castIceFreeze, castFireStorm,
-         useReviveTicket, updateSkillBar, getPlayerGold }
+         useReviveTicket, updateSkillBar, getPlayerGold, isPlayerDead }
   from './merchants.battle.js';
 
 const $ = id => document.getElementById(id);
@@ -322,6 +322,7 @@ function showBoxInfo(box, marker, dist) {
 
 // ── 보물박스 공격 ─────────────────────────────────────────────────────────────
 function attackBox(box, marker) {
+  if (isPlayerDead()) return; // 사망 시 공격 불가
   if (_boxAtkCd[box.id]) return;
   _boxAtkCd[box.id] = true;
   setTimeout(() => delete _boxAtkCd[box.id], 800);
@@ -329,9 +330,11 @@ function attackBox(box, marker) {
   const st = getBoxHpState(box);
   if (st.current <= 0) { tryCollect(box); return; }
 
-  const dmg = 30 + Math.floor(Math.random() * 21); // 30-50
+  const isCrit = Math.random() < 0.1;
+  const base = 30 + Math.floor(Math.random() * 21); // 30-50
+  const dmg = isCrit ? base * 2 : base;
   st.current = Math.max(0, st.current - dmg);
-  playSound('arrow_shot');
+  playSound(isCrit ? 'critical_hit' : 'box_hit');
 
   if (st.current <= 0) {
     // 박스 파괴!
@@ -355,7 +358,7 @@ function attackBox(box, marker) {
         </div>
         <span style="font-size:11px;color:#374151;min-width:60px;text-align:right;">${st.current}/${st.max}</span>
       </div>
-      <div style="color:#ef4444;font-weight:700;font-size:13px;">💥 -${dmg}</div>
+      <div style="color:${isCrit?'#f97316':'#ef4444'};font-weight:700;font-size:13px;">${isCrit?'💥 CRITICAL! ':'💥 '}-${dmg}</div>
       <div style="font-size:11px;color:#555;margin-top:4px;">계속 클릭하여 공격!</div>
     </div>`);
   infoWindow.open(map, marker);
@@ -586,6 +589,17 @@ function playCollectSound() {
   } catch (_) { /* 사운드 실패는 무시 */ }
 }
 
+function showInfoToast(msg) {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(0,0,0,.82);color:#fff;font-size:15px;font-weight:700;
+    padding:12px 22px;border-radius:10px;z-index:9999;pointer-events:none;
+    text-align:center;white-space:nowrap;`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
 function showCollectToast(boxName) {
   playCollectSound();
   const el = $('collectToast');
@@ -782,7 +796,7 @@ async function usePotion() {
     const res = await fn();
     _inventory['potion_red'] = res.data.remaining;
     healHp(100);
-    showCollectToast('💊 빨간약 사용! HP +100');
+    showInfoToast('💊 빨간약 사용! HP +100');
     playSound('heal');
     renderInventory();
   } catch (err) {

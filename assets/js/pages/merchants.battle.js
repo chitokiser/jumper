@@ -100,6 +100,18 @@ export function playSound(type) {
       o.connect(g); ramp(g.gain, vol, 0.001, dur); o.start(ac.currentTime+t); o.stop(ac.currentTime+t+dur);
     };
     switch (type) {
+      case 'box_hit': {
+        // 쫀득한 나무 타격음 — 둔탁한 저음 + 짧은 공명
+        const bh = ac.createBuffer(1, Math.floor(ac.sampleRate*0.08), ac.sampleRate);
+        const bhd = bh.getChannelData(0);
+        for (let i=0; i<bhd.length; i++) bhd[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.012));
+        const bhs=ac.createBufferSource(); bhs.buffer=bh;
+        const bhf=ac.createBiquadFilter(); bhf.type='lowpass'; bhf.frequency.value=420; bhf.Q.value=5.5;
+        const bhg=ac.createGain(); bhg.gain.value=1.8;
+        bhs.connect(bhf); bhf.connect(bhg); bhg.connect(ac.destination); bhs.start();
+        tone(120,0.6,0.07,0,'sine'); tone(80,0.35,0.12,0.01,'sine'); tone(200,0.15,0.04,0,'triangle');
+        break;
+      }
       case 'arrow_shot':  tone(700,0.25,0.12); tone(300,0.15,0.1,0.05,'sawtooth'); break;
       case 'tower_shot':
         tone(900,0.35,0.04,0,'square');
@@ -512,6 +524,7 @@ export async function loadPlayerState() {
 
 let _saveTimer = null;
 export function getPlayerGold() { return _player.gold || 0; }
+export function isPlayerDead() { return _isDead; }
 
 export function savePlayerState() {
   const uid = _ctx?.uid;
@@ -678,26 +691,28 @@ export function castLightning() {
   if (_isDead) return;
   const now = Date.now();
   if (_skillCd.lightning && now < _skillCd.lightning) return;
-  const myMark = _ctx?.myLocationMarker;
-  if (!myMark) return;
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('⚡ MP 부족!'); return; }
 
-  const pos = myMark.getPosition();
-  const myLat = pos.lat(), myLng = pos.lng();
-
-  let hitCount = 0;
-  for (const mob of _monsters) {
-    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-    if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
-      hitMonster(mob.id, 100 * _player.level);
-      showFloat(`⚡-${100 * _player.level}`, '#facc15', mob.lat, mob.lng);
-      hitCount++;
-    }
-  }
-
+  // 사운드·애니메이션은 위치 무관하게 항상 실행
   animateLightning();
   playSound('skill_lightning');
-  showFloat(`⚡ 벼락! (${hitCount}마리)`, '#facc15', myLat, myLng);
+
+  const myMark = _ctx?.myLocationMarker;
+  if (myMark) {
+    const pos = myMark.getPosition();
+    const myLat = pos.lat(), myLng = pos.lng();
+    let hitCount = 0;
+    for (const mob of _monsters) {
+      if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
+      if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
+        hitMonster(mob.id, 100 * _player.level);
+        showFloat(`⚡-${100 * _player.level}`, '#facc15', mob.lat, mob.lng);
+        hitCount++;
+      }
+    }
+    showFloat(`⚡ 벼락! (${hitCount}마리)`, '#facc15', myLat, myLng);
+  }
+
   _skillCd.lightning = now + SKILL_CD_MS.lightning;
   updateSkillBar();
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.lightning);
@@ -707,34 +722,34 @@ export function castIceFreeze() {
   if (_isDead) return;
   const now = Date.now();
   if (_skillCd.ice && now < _skillCd.ice) return;
-  const myMark = _ctx?.myLocationMarker;
-  if (!myMark) return;
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('❄ MP 부족!'); return; }
-
-  const pos = myMark.getPosition();
-  const myLat = pos.lat(), myLng = pos.lng();
-
-  let hitCount = 0;
-  for (const mob of _monsters) {
-    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-    if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
-      _frozenUntil[mob.id] = now + SKILL_FREEZE_MS;
-      // 얼음 마커 표시
-      const marker = _monsterMarkers[mob.id];
-      if (marker) {
-        marker.setIcon(getMonsterFrozenIcon());
-        setTimeout(() => {
-          if (_monsterMarkers[mob.id]) _monsterMarkers[mob.id].setIcon(getMonsterIcon(mob.image));
-        }, SKILL_FREEZE_MS);
-      }
-      showFloat('❄ 동결!', '#93c5fd', mob.lat, mob.lng);
-      hitCount++;
-    }
-  }
 
   animateIceFreeze();
   playSound('skill_ice');
-  showFloat(`❄ 동결! (${hitCount}마리 / ${SKILL_FREEZE_MS/1000}초)`, '#93c5fd', myLat, myLng);
+
+  const myMark = _ctx?.myLocationMarker;
+  if (myMark) {
+    const pos = myMark.getPosition();
+    const myLat = pos.lat(), myLng = pos.lng();
+    let hitCount = 0;
+    for (const mob of _monsters) {
+      if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
+      if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
+        _frozenUntil[mob.id] = now + SKILL_FREEZE_MS;
+        const marker = _monsterMarkers[mob.id];
+        if (marker) {
+          marker.setIcon(getMonsterFrozenIcon());
+          setTimeout(() => {
+            if (_monsterMarkers[mob.id]) _monsterMarkers[mob.id].setIcon(getMonsterIcon(mob.image));
+          }, SKILL_FREEZE_MS);
+        }
+        showFloat('❄ 동결!', '#93c5fd', mob.lat, mob.lng);
+        hitCount++;
+      }
+    }
+    showFloat(`❄ 동결! (${hitCount}마리 / ${SKILL_FREEZE_MS/1000}초)`, '#93c5fd', myLat, myLng);
+  }
+
   _skillCd.ice = now + SKILL_CD_MS.ice;
   updateSkillBar();
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.ice);
@@ -744,26 +759,27 @@ export function castFireStorm() {
   if (_isDead) return;
   const now = Date.now();
   if (_skillCd.fire && now < _skillCd.fire) return;
-  const myMark = _ctx?.myLocationMarker;
-  if (!myMark) return;
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('🔥 MP 부족!'); return; }
-
-  const pos = myMark.getPosition();
-  const myLat = pos.lat(), myLng = pos.lng();
-
-  let hitCount = 0;
-  for (const mob of _monsters) {
-    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-    if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
-      hitMonster(mob.id, 100 * _player.level);
-      showFloat(`🔥-${100 * _player.level}`, '#f97316', mob.lat, mob.lng);
-      hitCount++;
-    }
-  }
 
   animateFireStorm();
   playSound('skill_fire');
-  showFloat(`🔥 화염! (${hitCount}마리)`, '#f97316', myLat, myLng);
+
+  const myMark = _ctx?.myLocationMarker;
+  if (myMark) {
+    const pos = myMark.getPosition();
+    const myLat = pos.lat(), myLng = pos.lng();
+    let hitCount = 0;
+    for (const mob of _monsters) {
+      if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
+      if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
+        hitMonster(mob.id, 100 * _player.level);
+        showFloat(`🔥-${100 * _player.level}`, '#f97316', mob.lat, mob.lng);
+        hitCount++;
+      }
+    }
+    showFloat(`🔥 화염! (${hitCount}마리)`, '#f97316', myLat, myLng);
+  }
+
   _skillCd.fire = now + SKILL_CD_MS.fire;
   updateSkillBar();
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.fire);
