@@ -14,8 +14,16 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
          healHp, healMp, playSound,
          castLightning, castIceFreeze, castFireStorm,
-         useReviveTicket, updateSkillBar, getPlayerGold, isPlayerDead }
+         useReviveTicket, updateSkillBar, getPlayerGold, getPlayerLevel, isPlayerDead,
+         syncHpFromServer, syncDeathFromServer, syncReviveFromServer }
   from './merchants.battle.js';
+import { initGameServer, connectToGameServer, disconnectFromGameServer,
+         isGameServerConnected, sendPlayerLocation,
+         sendPlayerAttack, sendPlayerRevive,
+         gsAdminDeleteSpawn, gsAdminKillMonster }
+  from './merchants.gameserver.js';
+import { hasSpriteConfig, createMonsterSpriteOverlay }
+  from './merchants.monster-sprite.js';
 
 const $ = id => document.getElementById(id);
 
@@ -34,13 +42,17 @@ let _isAdmin        = false;  // 관리자 여부
 let _inventory      = {};     // {itemId: count}
 let _boxInventory   = [];     // [{boxId, boxName, collectedAt}]  미개봉 박스
 let _items          = {};     // {itemId: {name, image, description}}
-let _vouchers       = [];
+let _vouchers          = [];
+let _purchasedVouchers = new Set(); // 이미 구매 완료된 voucherId
 let _collectedBoxes = new Set(); // 이 세션에서 이미 수집한 box ID
 let _boxHpState     = {};        // {boxId: {current, max}} 클라이언트 HP 추적
 let _boxAtkCd       = {};        // {boxId: true} 공격 쿨다운
 let _nearbyMarkers  = {};        // {uid: Marker} 주변 유저 마커
 let _nearbyTimer    = null;      // setInterval handle (10초 폴링)
 let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
+let _gsMonsters     = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
+let _gsMarkers      = {};        // {monsterId: Marker} 게임 서버 몬스터 마커 (비-스프라이트)
+let _gsOverlays     = {};        // {monsterId: MonsterSpriteOverlay} 스프라이트 오버레이 (dragon 등)
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
 const _ctx = {
@@ -611,6 +623,163 @@ async function _pollNearbyPlayers() {
   } catch { /* 무시 */ }
 }
 
+// ── 게임 서버 몬스터 마커 ─────────────────────────────────────────────────────
+const GS_MONSTER_ATTACK_RANGE_M = 30;
+
+// ── 게임 서버 몬스터 — SVG 마커 아이콘 (비-스프라이트 타입용) ─────────────────
+function _gsMonsterIcon(state, hpPct) {
+  const dead  = state === 'dead' || state === 'respawning';
+  const color = dead ? '#6b7280' : hpPct > 0.5 ? '#ef4444' : hpPct > 0.2 ? '#f97316' : '#dc2626';
+  const emoji = dead ? '💀' : '👾';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+    <circle cx="18" cy="18" r="17" fill="${color}" stroke="#fff" stroke-width="2" opacity="${dead ? 0.4 : 0.9}"/>
+    <text x="18" y="24" font-size="16" text-anchor="middle">${emoji}</text>
+  </svg>`;
+  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+           scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) };
+}
+
+// ── 게임 서버 몬스터 렌더링 ────────────────────────────────────────────────────
+// dragon 등 스프라이트 타입 → MonsterSpriteOverlay
+// goblin/orc 등 기타 → SVG Marker
+
+function _renderGsMonster(monster) {
+  if (!map) return;
+  const { monsterId, type, state, hp, maxHp } = monster;
+  // currentLat/Lng (MonsterInstance 필드명)
+  const lat = monster.currentLat ?? monster.lat ?? 0;
+  const lng = monster.currentLng ?? monster.lng ?? 0;
+  _gsMonsters[monsterId] = monster;
+
+  // ── 스프라이트 타입 (dragon 등) ─────────────────────────────────────────────
+  if (hasSpriteConfig(type)) {
+    if (_gsOverlays[monsterId]) {
+      _gsOverlays[monsterId].updateMonster(monster);
+    } else {
+      _gsOverlays[monsterId] = createMonsterSpriteOverlay(
+        map, monster,
+        () => {   // 클릭 핸들러
+          const m = _gsMonsters[monsterId];
+          if (!m) return;
+          if (_isAdmin) {
+            _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type);
+            return;
+          }
+          if (isPlayerDead()) return;
+          const myPos = _ctx.lastPos;
+          if (!myPos) return;
+          const mLat = m.currentLat ?? m.lat ?? 0;
+          const mLng = m.currentLng ?? m.lng ?? 0;
+          const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
+          if (dist > GS_MONSTER_ATTACK_RANGE_M) return;
+          sendPlayerAttack(monsterId);
+        },
+        () => {   // 오버레이 제거 완료 콜백
+          delete _gsOverlays[monsterId];
+          delete _gsMonsters[monsterId];
+        },
+      );
+    }
+    return;
+  }
+
+  // ── SVG 마커 타입 (goblin, orc 등) ─────────────────────────────────────────
+  const hpPct = maxHp > 0 ? hp / maxHp : 1;
+  const pos   = { lat, lng };
+  const label = `👾 ${type} HP:${hp}/${maxHp}`;
+
+  if (_gsMarkers[monsterId]) {
+    _gsMarkers[monsterId].setPosition(pos);
+    _gsMarkers[monsterId].setIcon(_gsMonsterIcon(state, hpPct));
+    _gsMarkers[monsterId].setTitle(label);
+    return;
+  }
+
+  const marker = new google.maps.Marker({
+    position: pos, map, title: label,
+    icon: _gsMonsterIcon(state, hpPct),
+    zIndex: 90,
+  });
+  marker.addListener('click', () => {
+    const m = _gsMonsters[monsterId];
+    if (_isAdmin) {
+      _showGsMonsterAdminMenu(monsterId, m?.spawnId, type, marker);
+      return;
+    }
+    if (isPlayerDead()) return;
+    const myPos = _ctx.lastPos;
+    if (!myPos) return;
+    const mLat = m?.currentLat ?? m?.lat ?? lat;
+    const mLng = m?.currentLng ?? m?.lng ?? lng;
+    const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
+    if (dist > GS_MONSTER_ATTACK_RANGE_M) {
+      infoWindow?.setContent(`<div style="font-size:13px;padding:4px;">👾 ${escHtml(type)}<br><span style="color:#888;font-size:11px;">거리 ${Math.round(dist)}m — ${GS_MONSTER_ATTACK_RANGE_M}m 이내 접근 후 공격</span></div>`);
+      infoWindow?.open(map, marker);
+      return;
+    }
+    sendPlayerAttack(monsterId);
+    infoWindow?.close();
+  });
+  _gsMarkers[monsterId] = marker;
+}
+
+// 어드민 전용 — GS 몬스터 클릭 시 infoWindow로 관리 메뉴 표시
+function _showGsMonsterAdminMenu(monsterId, spawnId, type, anchor) {
+  const shortMid = monsterId.slice(0, 8);
+  const shortSid = spawnId ? spawnId.replace('spawn-admin-', '').slice(0, 8) : '?';
+  const html = `
+    <div style="font-size:12px;padding:4px 2px;min-width:160px">
+      <b>🗡 ${escHtml(type)}</b>
+      <span style="color:#888;font-size:10px"> #${shortMid}</span><br>
+      <span style="color:#9ca3af;font-size:10px">spawn: ${shortSid}</span>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button onclick="window.__gsAdminKill('${monsterId}')"
+          style="flex:1;padding:3px 0;background:#f97316;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
+          💀 강제사망
+        </button>
+        <button onclick="window.__gsAdminDelSpawn('${spawnId}')"
+          style="flex:1;padding:3px 0;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
+          🗑 스폰삭제
+        </button>
+      </div>
+    </div>`;
+  infoWindow?.setContent(html);
+  if (anchor) infoWindow?.open(map, anchor);
+  else        infoWindow?.open(map);
+}
+
+window.__gsAdminKill = async (monsterId) => {
+  try {
+    await gsAdminKillMonster(monsterId);
+    infoWindow?.close();
+  } catch (e) { alert('강제사망 오류: ' + e.message); }
+};
+
+window.__gsAdminDelSpawn = async (spawnId) => {
+  if (!spawnId || spawnId === 'undefined') { alert('spawnId 없음'); return; }
+  if (!confirm(`스폰 [${spawnId}] 삭제?\n해당 스폰의 모든 몬스터가 즉시 제거됩니다.`)) return;
+  try {
+    const r = await gsAdminDeleteSpawn(spawnId);
+    alert(`✅ 삭제 완료 (인스턴스 ${r.instancesRemoved}개 제거)`);
+    infoWindow?.close();
+  } catch (e) { alert('삭제 오류: ' + e.message); }
+};
+
+function _removeGsMonster(monsterId) {
+  // 스프라이트 오버레이 (dragon 등) — death 애니메이션 후 자체 제거
+  if (_gsOverlays[monsterId]) {
+    _gsOverlays[monsterId].playDeathAndRemove();
+    // _gsOverlays 및 _gsMonsters 정리는 onRemoved 콜백에서 수행
+    return;
+  }
+  // SVG 마커
+  if (_gsMarkers[monsterId]) {
+    _gsMarkers[monsterId].setMap(null);
+    delete _gsMarkers[monsterId];
+  }
+  delete _gsMonsters[monsterId];
+}
+
 function startNearbyPlayers() {
   if (_nearbyTimer) return;
   _pollNearbyPlayers();                                       // 즉시 1회
@@ -652,6 +821,7 @@ function showMyLocation() {
 async function checkProximity(lat, lng) {
   if (!_uid) return;
   broadcastMyLocation(lat, lng); // 내 위치 Firestore에 방송
+  sendPlayerLocation(lat, lng, _ctx.lastPos?.accuracy ?? 50); // 게임 서버로 전송
   for (const box of treasureBoxes) {
     if (!box.lat || !box.lng) continue;
     if (!isBoxActive(box)) continue;
@@ -915,7 +1085,7 @@ function renderInventory() {
                alt="부활 아이템" />
           <span class="slot-name">부활권</span>
           <span class="slot-count">${count}</span>`;
-        slot.addEventListener('click', () => useReviveTicket());
+        slot.addEventListener('click', () => { useReviveTicket(); sendPlayerRevive(); });
       } else {
         const meta = _items[String(itemId)] || {};
         const imgFile = meta.image || (itemId + '.png');
@@ -1048,7 +1218,7 @@ async function loadInventory() {
 
   const settle = p => p.then(v => ({ ok: true, v })).catch(e => { console.warn('loadInventory query error:', e.message); return { ok: false }; });
 
-  const [invRes, boxRes, vRes] = await Promise.all([
+  const [invRes, boxRes, vRes, purchaseRes] = await Promise.all([
     settle(getDocs(query(collection(db, 'treasure_inventory'), where('uid', '==', _uid)))),
     settle(getDocs(query(collection(db, 'treasure_inventory_boxes'), where('uid', '==', _uid)))),
     settle(getDocs(query(
@@ -1057,6 +1227,7 @@ async function loadInventory() {
       orderBy('craftedAt', 'desc'),
       limit(50)
     ))),
+    settle(getDocs(query(collection(db, 'treasure_voucher_purchases'), where('uid', '==', _uid)))),
   ]);
 
   // items 메타데이터가 아직 안 로드됐으면 여기서 로드
@@ -1074,6 +1245,9 @@ async function loadInventory() {
     _boxInventory.push({ boxId: r.boxId, boxName: r.boxName });
     _collectedBoxes.add(r.boxId);
   });
+
+  _purchasedVouchers = new Set();
+  if (purchaseRes.ok) purchaseRes.v.forEach(d => _purchasedVouchers.add(d.data().voucherId));
 
   renderBoxInventory();
   renderInventory();
@@ -1136,11 +1310,38 @@ function renderExchangeSection() {
       return `<span class="exc-req-chip ${cls}">${imgTag}${label}×${need}${haveStr}</span>`;
     }).join('');
 
+    // 코인 조건 칩
+    const coinChip = (() => {
+      if (!v.minCoins) return '';
+      const have  = getPlayerGold();
+      const ratio = Math.min(1, have / v.minCoins);
+      if (ratio < minRatio) minRatio = ratio;
+      const cls   = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
+      const haveStr = _uid ? ` <small>(${have}/${v.minCoins})</small>` : '';
+      return `<span class="exc-req-chip ${cls}">💰 코인×${v.minCoins}${haveStr}</span>`;
+    })();
+
+    // 레벨 조건 칩
+    const levelChip = (() => {
+      if (!v.minLevel) return '';
+      const have  = getPlayerLevel();
+      const ok    = have >= v.minLevel;
+      if (!ok && minRatio > 0) minRatio = 0;
+      const cls   = !_uid ? 'no-data' : ok ? 'ok' : 'lack';
+      const haveStr = _uid ? ` <small>(LV.${have})</small>` : '';
+      return `<span class="exc-req-chip ${cls}">⭐ LV.${v.minLevel} 이상${haveStr}</span>`;
+    })();
+
+    const allChips = chips + coinChip + levelChip;
+
     const pct    = Math.round(minRatio * 100);
-    const canDo  = _uid && reqs.every(r => {
-      const isGold = r.type === 'gold' || r.itemId === 'coin';
-      return isGold ? getPlayerGold() >= r.count : (_inventory[String(r.itemId)] || 0) >= r.count;
-    });
+    const canDo  = _uid
+      && reqs.every(r => {
+           const isGold = r.type === 'gold' || r.itemId === 'coin';
+           return isGold ? getPlayerGold() >= r.count : (_inventory[String(r.itemId)] || 0) >= r.count;
+         })
+      && (!v.minCoins || getPlayerGold()  >= v.minCoins)
+      && (!v.minLevel || getPlayerLevel() >= v.minLevel);
 
     // 이미지 경로 정규화
     const imgUrl = (() => {
@@ -1151,7 +1352,8 @@ function renderExchangeSection() {
       return `/assets/images/vouchers/${img}`;            // 파일명만 있는 경우
     })();
 
-    const btnLabel = !_uid ? '로그인 필요' : canDo ? '🎟 지금 교환하기' : '재료 부족';
+    const alreadyBought = _uid && _purchasedVouchers.has(v.id);
+    const btnLabel = !_uid ? '로그인 필요' : alreadyBought ? '✅ 구매 완료' : canDo ? '🎟 지금 교환하기' : '재료 부족';
 
     return `
       <div class="exc-card">
@@ -1171,14 +1373,14 @@ function renderExchangeSection() {
         <div class="exc-card-body">
           <div>
             <div class="exc-req-label">필요 아이템</div>
-            <div class="exc-req-list" style="margin-top:6px;">${chips || '<span style="color:var(--muted,#9ca3af);font-size:.82rem;">조건 없음</span>'}</div>
+            <div class="exc-req-list" style="margin-top:6px;">${allChips || '<span style="color:var(--muted,#9ca3af);font-size:.82rem;">조건 없음</span>'}</div>
           </div>
           ${_uid ? `
           <div class="exc-progress-wrap">
             <div class="exc-progress-bar"><div class="exc-progress-fill" style="width:${pct}%"></div></div>
             <div class="exc-progress-text">진행도 ${pct}%</div>
           </div>` : `<div class="exc-login-hint">로그인 후 보유량을 확인하세요</div>`}
-          <button class="btn-exc" data-vid="${escHtml(v.id)}" ${canDo ? '' : 'disabled'}>${btnLabel}</button>
+          <button class="btn-exc" data-vid="${escHtml(v.id)}" ${(canDo && !alreadyBought) ? '' : 'disabled'}>${btnLabel}</button>
         </div>
       </div>`;
   }).join('');
@@ -1278,6 +1480,7 @@ async function init() {
 
   // 관리자 전투 배치 패널 버튼
   $('btnPlaceMonster')?.addEventListener('click', () => enterAdminPlaceMode('monster'));
+  $('btnPlaceDragon')?.addEventListener('click',  () => enterAdminPlaceMode('dragon'));
   $('btnPlaceArcherTower')?.addEventListener('click', () => enterAdminPlaceMode('archer_tower'));
   $('btnPlaceCannonTower')?.addEventListener('click', () => enterAdminPlaceMode('cannon_tower'));
   $('btnPlaceDeco')?.addEventListener('click',    () => enterAdminPlaceMode('deco'));
@@ -1315,6 +1518,67 @@ async function init() {
   if (window.innerWidth <= 640) $('combatHud')?.classList.add('compact');
 
   updateSkillBar();
+
+  // ── 게임 서버 초기화 ─────────────────────────────────────────────────────────
+  // _ctx.playerLevel을 동적으로 battle 모듈에서 읽도록 getter 추가
+  Object.defineProperty(_ctx, 'playerLevel', { get: () => getPlayerLevel(), configurable: true });
+
+  initGameServer(_ctx, {
+    onStateChange: (state) => {
+      const btn   = $('btnGameToggle');
+      const badge = $('gsStatusBadge');
+      if (!btn) return;
+      btn.classList.remove('gs-connecting', 'gs-connected', 'gs-error');
+      if (state === 'connecting') {
+        btn.classList.add('gs-connecting');
+        btn.textContent = '⏳';
+        btn.title = '연결 중...';
+        if (badge) badge.textContent = '연결 중';
+      } else if (state === 'connected') {
+        btn.classList.add('gs-connected');
+        btn.textContent = '■';
+        btn.title = '게임 서버 접속 중 — 클릭하여 종료';
+        if (badge) badge.textContent = '접속 중';
+      } else if (state === 'error') {
+        btn.classList.add('gs-error');
+        btn.textContent = '▶';
+        btn.title = '연결 오류 — 클릭하여 재시도';
+        if (badge) badge.textContent = '오류';
+      } else {
+        btn.textContent = '▶';
+        btn.title = '게임 서버 연결';
+        if (badge) badge.textContent = '';
+      }
+    },
+    onError:           (msg) => console.warn('[GS]', msg),
+    onZoneSnapshot:    (data) => {
+      // 기존 마커/오버레이 전체 제거
+      Object.keys(_gsMarkers).forEach(id => { _gsMarkers[id].setMap(null); delete _gsMarkers[id]; });
+      Object.keys(_gsOverlays).forEach(id => { _gsOverlays[id]?.setMap(null); delete _gsOverlays[id]; });
+      _gsMonsters = {};
+      data.monsters?.forEach(m => _renderGsMonster(m));
+    },
+    onMonsterUpdate:    (m) => _renderGsMonster(m),
+    onMonsterDied:      (d) => _removeGsMonster(d.monsterId),
+    onMonsterRespawned: (m) => _renderGsMonster(m),
+    onDropSpawned:      () => {},
+    onPlayerHit:    (data) => syncHpFromServer(data.remainHp, data.damage),
+    onPlayerDied:   ()     => syncDeathFromServer(),
+    onPlayerRevived:(data) => syncReviveFromServer(data.hp),
+  });
+
+  $('btnGameToggle')?.addEventListener('click', () => {
+    if (isGameServerConnected()) {
+      disconnectFromGameServer();
+    } else {
+      // GPS 없는 PC 테스트: 지도 중심 좌표를 존 결정 기준으로 사용
+      if (!_ctx.lastPos && map) {
+        const c = map.getCenter();
+        if (c) _ctx.lastPos = { lat: c.lat(), lng: c.lng(), accuracy: 50 };
+      }
+      connectToGameServer();
+    }
+  });
 
   // ── Phase 2: 백그라운드에서 나머지 로드 (UI 블로킹 없음) ─────────────────────
   Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadBattleData(), loadDecorations()]).then(() => {

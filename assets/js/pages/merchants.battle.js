@@ -7,6 +7,10 @@ import { collection, getDocs, doc, getDoc, query, where,
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { hasSpriteConfig, createMonsterSpriteOverlay }
+  from './merchants.monster-sprite.js';
+import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster }
+  from './merchants.gameserver.js';
 
 // ── 공유 컨텍스트 참조 ─────────────────────────────────────────────────────────
 // initBattle(ctx, callbacks) 호출 후 설정됨
@@ -14,9 +18,10 @@ let _ctx = null;
 
 // ── 내부 배틀 상태 ────────────────────────────────────────────────────────────
 let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0 };
-let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active}]
+let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
 let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
-let _monsterMarkers  = {};     // { id: Marker }
+let _monsterMarkers  = {};     // { id: Marker }  — 비-스프라이트 몬스터
+let _monsterOverlays = {};     // { id: MonsterSpriteOverlay } — 스프라이트 몬스터 (dragon 등)
 let _towerMarkers    = {};     // { id: Marker }
 let _towerRanges     = {};     // { id: Circle }
 let _showTowerRange  = false;
@@ -76,6 +81,11 @@ export function initBattle(ctx, callbacks) {
   _ctx._onCheckProximity    = callbacks.onCheckProximity    || (() => {});
   _ctx._onLoadInventory     = callbacks.onLoadInventory     || (() => {});
   _ctx._onUpdateDistDisplay = callbacks.onUpdateDistDisplay || (() => {});
+
+  // GS 스폰 목록 새로고침 버튼
+  document.getElementById('btnRefreshGsSpawns')?.addEventListener('click', () => refreshGsSpawnList());
+  // Firestore 몬스터 목록 새로고침 버튼
+  document.getElementById('btnRefreshFsMonsters')?.addEventListener('click', () => refreshFirestoreMonsterList());
 }
 
 // ── 사운드 시스템 (Web Audio API) ────────────────────────────────────────────
@@ -527,7 +537,8 @@ export async function loadPlayerState() {
 }
 
 let _saveTimer = null;
-export function getPlayerGold() { return _player.gold || 0; }
+export function getPlayerGold()  { return _player.gold  || 0; }
+export function getPlayerLevel() { return _player.level || 1; }
 export function isPlayerDead() { return _isDead; }
 
 export function savePlayerState() {
@@ -953,6 +964,8 @@ export async function loadBattleData() {
       renderMonsterMarkers();
       renderTowerMarkers();
     }
+    // 관리자 패널 Firestore 몬스터 목록 자동 갱신
+    if (_ctx?.isAdmin) refreshFirestoreMonsterList();
   } catch (e) { console.warn('loadBattleData:', e.message); }
 }
 
@@ -1037,6 +1050,61 @@ function _spawnMonsterMarker(mob) {
   const map = _ctx?.map;
   const infoWindow = _ctx?.infoWindow;
   if (!map || !mob.lat || !mob.lng) return;
+
+  // ── 스프라이트 타입 (dragon 등) ─────────────────────────────────────────────
+  if (hasSpriteConfig(mob.monsterType)) {
+    const gsLike = {
+      ...mob,
+      type:       mob.monsterType,
+      currentLat: mob.lat,
+      currentLng: mob.lng,
+      state:      mob.hp > 0 ? 'idle' : 'dead',
+      monsterId:  mob.id,
+    };
+    const overlay = createMonsterSpriteOverlay(
+      map, gsLike,
+      () => {
+        if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
+          const myPos = _ctx.myLocationMarker.getPosition();
+          const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
+          const clickRange = 25;
+          if (dist <= clickRange) {
+            const roll = Math.floor(Math.random() * 10) + 1;
+            const isCrit = roll >= 6;
+            const dmg  = _player.level * roll;
+            _clickAtkCd[mob.id] = true;
+            setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
+            playSound(isCrit ? 'critical_hit' : 'arrow_hit');
+            animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
+              isCrit ? '#ff6600' : '#fbbf24', () => {
+                hitMonster(mob.id, dmg);
+                showFloat(isCrit ? `💥${dmg}` : `-${dmg}`,
+                  isCrit ? '#ff6600' : '#fbbf24', mob.lat, mob.lng);
+                if (isCrit) showCriticalToast();
+              });
+            return;
+          }
+        }
+        const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
+        infoWindow?.setContent(`
+          <div style="font-size:13px;min-width:140px">
+            <b>🐉 ${escHtml(mob.name||'드래곤')}</b>
+            <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
+            <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
+              <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
+            ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('monster','${mob.id}')"
+              style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
+          </div>`);
+        infoWindow?.setPosition({ lat: mob.lat, lng: mob.lng });
+        infoWindow?.open(map);
+      },
+      () => { delete _monsterOverlays[mob.id]; },
+    );
+    if (overlay) _monsterOverlays[mob.id] = overlay;
+    return;
+  }
+
+  // ── 일반 SVG 마커 ────────────────────────────────────────────────────────────
   const marker = new google.maps.Marker({
     position: { lat: mob.lat, lng: mob.lng }, map,
     title: mob.name || '몬스터',
@@ -1047,7 +1115,7 @@ function _spawnMonsterMarker(mob) {
     if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
       const myPos = _ctx.myLocationMarker.getPosition();
       const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-      const clickRange = Math.max(60, (mob.detectRadius || 20) * 3);
+      const clickRange = 25;
       if (dist <= clickRange) {
         const roll   = Math.floor(Math.random() * 10) + 1;
         const isCrit = roll >= 6;
@@ -1083,8 +1151,10 @@ function _spawnMonsterMarker(mob) {
 function renderMonsterMarkers() {
   Object.values(_monsterMarkers).forEach(m => m.setMap(null));
   _monsterMarkers = {};
+  Object.values(_monsterOverlays).forEach(o => o?.setMap(null));
+  _monsterOverlays = {};
   for (const mob of _monsters) {
-    if (!mob.lat || !mob.lng || mob.hp <= 0) continue; // 죽은 몬스터 스킵
+    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
     _spawnMonsterMarker(mob);
   }
 }
@@ -1545,6 +1615,7 @@ export function enterAdminPlaceMode(type) {
   const map = _ctx?.map;
   _adminPlaceMode = type;
   document.getElementById('btnPlaceMonster')?.classList.toggle('placing', type === 'monster');
+  document.getElementById('btnPlaceDragon')?.classList.toggle('placing',  type === 'dragon');
   document.getElementById('btnPlaceArcherTower')?.classList.toggle('placing', type === 'archer_tower');
   document.getElementById('btnPlaceCannonTower')?.classList.toggle('placing', type === 'cannon_tower');
   document.getElementById('btnPlaceDeco')?.classList.toggle('placing', type === 'deco');
@@ -1553,24 +1624,44 @@ export function enterAdminPlaceMode(type) {
 
   _adminMapListener = map.addListener('click', async (e) => {
     const lat = e.latLng.lat(), lng = e.latLng.lng();
-    if (_adminPlaceMode === 'monster') {
-      const name   = prompt('몬스터 이름:', '슬라임') || '슬라임';
-      const maxHp  = parseInt(prompt('최대 HP:', '30') || '30');
-      const atk    = parseInt(prompt('공격력:', '5') || '5');
-      const radius = parseInt(prompt('탐지 반경(m):', '20') || '20');
-      const image  = prompt('이미지 (이모지 or 경로, 예: /assets/images/monsters/10.png)', '🐉') || '🐉';
+    if (_adminPlaceMode === 'monster' || _adminPlaceMode === 'dragon') {
+      // ── 게임서버(GS) 스폰 포인트 생성 ────────────────────────────────────────
+      const isDragon = _adminPlaceMode === 'dragon';
+
+      // 몬스터 타입 결정 (dragon은 고정, monster는 선택)
+      let monsterType = isDragon ? 'dragon' : null;
+      if (!monsterType) {
+        monsterType = prompt('몬스터 타입 (goblin / orc / dragon):', 'goblin') || 'goblin';
+      }
+
+      // 타입별 기본값 프리셋
+      const PRESETS = {
+        dragon: { maxHp:2000, attackPower:150, aggroRangeM:25, attackRangeM:20, moveSpeed:0.8, attackCooldownMs:1800, respawnSeconds:120 },
+        orc:    { maxHp:2000, attackPower:200, aggroRangeM:80, attackRangeM:25, moveSpeed:0.8, attackCooldownMs:3000, respawnSeconds:600  },
+        goblin: { maxHp:500,  attackPower:80,  aggroRangeM:50, attackRangeM:20, moveSpeed:1.2, attackCooldownMs:2000, respawnSeconds:300  },
+      };
+      const p = PRESETS[monsterType] || PRESETS.goblin;
+
+      const maxHp          = parseInt(prompt(`최대 HP:`,          p.maxHp)          || p.maxHp);
+      const attackPower    = parseInt(prompt(`공격력:`,            p.attackPower)    || p.attackPower);
+      const aggroRangeM    = parseInt(prompt(`탐지 반경(m):`,      p.aggroRangeM)    || p.aggroRangeM);
+      const respawnSeconds = parseInt(prompt(`리스폰 시간(초):`,    p.respawnSeconds) || p.respawnSeconds);
+
       try {
-        const ref = await addDoc(collection(_ctx.db, 'battle_monsters'), {
-          name, lat, lng, hp: maxHp, maxHp, atk,
-          detectRadius: radius, image, active: true,
-          dropExp: 20, respawnMinutes: 5,
-          createdAt: serverTimestamp(),
+        const result = await gsAdminAddSpawn({
+          monsterType, lat, lng, maxHp,
+          attackPower,
+          aggroRangeM,
+          attackRangeM:      p.attackRangeM,
+          moveSpeed:         p.moveSpeed,
+          attackCooldownMs:  p.attackCooldownMs,
+          respawnSeconds,
+          maxCount: 1,
         });
-        _monsters.push({ id: ref.id, name, lat, lng, hp: maxHp, maxHp, atk,
-          detectRadius: radius, image, active: true, dropExp: 20, respawnMinutes: 1 });
-        renderMonsterMarkers();
-        alert(`✅ 몬스터 "${name}" 배치 완료`);
-      } catch (err) { alert('오류: ' + err.message); }
+        alert(`✅ ${monsterType} 배치 완료 (zone: ${result.zoneId}, instances: ${result.instancesCreated})\n게임서버가 몬스터를 즉시 스폰합니다.`);
+        // 스폰 목록 자동 갱신
+        await refreshGsSpawnList();
+      } catch (err) { alert('GS 배치 오류: ' + err.message); }
 
     } else if (_adminPlaceMode === 'archer_tower' || _adminPlaceMode === 'cannon_tower') {
       const towerType = _adminPlaceMode === 'cannon_tower' ? 'cannon' : 'archer';
@@ -1621,8 +1712,100 @@ export function exitAdminPlaceMode() {
   document.getElementById('btnPlaceArcherTower')?.classList.remove('placing');
   document.getElementById('btnPlaceCannonTower')?.classList.remove('placing');
   document.getElementById('btnPlaceDeco')?.classList.remove('placing');
+  document.getElementById('btnPlaceDragon')?.classList.remove('placing');
   document.getElementById('btnCancelPlace').style.display = 'none';
 }
+
+// ── Firestore 몬스터 목록 패널 (기존 battle_monsters 관리) ─────────────────────
+
+export function refreshFirestoreMonsterList() {
+  const el = document.getElementById('firestoreMonsterList');
+  if (!el) return;
+
+  const list = _monsters.filter(m => m.active !== false);
+  if (list.length === 0) { el.textContent = '없음'; return; }
+
+  el.innerHTML = list.map(m => {
+    const emoji = m.monsterType ? (TYPE_EMOJI[m.monsterType] || '👾') : (m.image || '👾');
+    const name  = escHtml(m.name || m.monsterType || '몬스터');
+    const hp    = `HP ${m.hp ?? m.maxHp}/${m.maxHp}`;
+    const lat   = m.lat?.toFixed(4) ?? '?';
+    const lng   = m.lng?.toFixed(4) ?? '?';
+    return `<div class="gs-spawn-row">
+      <span class="gs-spawn-emoji">${emoji}</span>
+      <span class="gs-spawn-info">
+        <b>${name}</b><br>
+        <span style="color:#9ca3af;font-size:9px">${lat},${lng}</span><br>
+        <span style="color:#f97316">${hp}</span>
+      </span>
+      <span class="gs-spawn-actions">
+        <button class="gs-spawn-del" onclick="window.__deleteBattleObj('monster','${m.id}')" title="삭제">🗑</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+// ── GS 스폰 목록 패널 ─────────────────────────────────────────────────────────
+
+const TYPE_EMOJI = { dragon: '🐉', orc: '👹', goblin: '👾' };
+
+export async function refreshGsSpawnList() {
+  const el = document.getElementById('gsSpawnList');
+  if (!el) return;
+  el.textContent = '로딩 중…';
+  try {
+    const data   = await gsAdminGetSpawns();
+    const spawns = data.spawns || [];
+    if (spawns.length === 0) { el.textContent = '스폰 없음'; return; }
+
+    el.innerHTML = spawns.map(s => {
+      const emoji    = TYPE_EMOJI[s.monsterType] || '👾';
+      const alive    = s.liveCount || 0;
+      const total    = s.maxCount  || 1;
+      const hpColor  = alive > 0 ? '#22c55e' : '#ef4444';
+      const shortId  = s.spawnId.replace('spawn-admin-', '').slice(0, 8);
+      const zoneName = s.zoneId?.replace('oceanpark-', 'OP-').replace('ecopark-', 'ECO-') || s.zoneId;
+
+      // kill 버튼: 각 살아있는 인스턴스마다
+      const killBtns = (s.instances || [])
+        .filter(m => m.state !== 'dead' && m.state !== 'respawning')
+        .map(m =>
+          `<button class="gs-spawn-kill" onclick="window.__killGsMonster('${m.monsterId}')" title="강제 사망">💀</button>`
+        ).join('');
+
+      return `<div class="gs-spawn-row">
+        <span class="gs-spawn-emoji">${emoji}</span>
+        <span class="gs-spawn-info">
+          <b>${s.monsterType}</b> <span style="color:#9ca3af;font-size:9px">${zoneName} #${shortId}</span><br>
+          <span style="color:${hpColor}">${alive}/${total} alive</span>
+          · HP${s.maxHp} · ⚔${s.attackPower}
+        </span>
+        <span class="gs-spawn-actions">
+          ${killBtns}
+          <button class="gs-spawn-del" onclick="window.__deleteGsSpawn('${s.spawnId}')" title="스폰 삭제">🗑</button>
+        </span>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    el.textContent = '오류: ' + err.message;
+  }
+}
+
+window.__deleteGsSpawn = async (spawnId) => {
+  if (!confirm(`스폰 [${spawnId}] 을 삭제하시겠습니까?\n해당 스폰의 몬스터가 즉시 제거됩니다.`)) return;
+  try {
+    const r = await gsAdminDeleteSpawn(spawnId);
+    alert(`✅ 삭제 완료 (인스턴스 ${r.instancesRemoved}개 제거)`);
+    await refreshGsSpawnList();
+  } catch (err) { alert('삭제 오류: ' + err.message); }
+};
+
+window.__killGsMonster = async (monsterId) => {
+  try {
+    await gsAdminKillMonster(monsterId);
+    await refreshGsSpawnList();
+  } catch (err) { alert('kill 오류: ' + err.message); }
+};
 
 window.__deleteBattleObj = async (type, id) => {
   if (!confirm('삭제하시겠습니까?')) return;
@@ -1630,7 +1813,10 @@ window.__deleteBattleObj = async (type, id) => {
     await deleteDoc(doc(_ctx.db, type === 'monster' ? 'battle_monsters' : 'battle_towers', id));
     if (type === 'monster') {
       _monsters = _monsters.filter(m => m.id !== id);
-      if (_monsterMarkers[id]) { _monsterMarkers[id].setMap(null); delete _monsterMarkers[id]; }
+      if (_monsterMarkers[id])  { _monsterMarkers[id].setMap(null);  delete _monsterMarkers[id]; }
+      // 스프라이트 오버레이도 함께 제거
+      if (_monsterOverlays[id]) { _monsterOverlays[id].setMap(null); delete _monsterOverlays[id]; }
+      refreshFirestoreMonsterList();
     } else {
       _towers = _towers.filter(t => t.id !== id);
       if (_towerMarkers[id])  { _towerMarkers[id].setMap(null);  delete _towerMarkers[id]; }
@@ -1697,13 +1883,6 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
 
   if (heading != null && !isNaN(heading)) _ctx.lastHeading = heading;
 
-  if (accuracy && accuracy > 30) {
-    _ctx.lastDistPos  = { lat, lng };
-    _ctx.lastSpeedPos = { lat, lng, time: Date.now() };
-    updateCombatHud();
-    return;
-  }
-
   if (_ctx.lastDistPos) {
     const d = haversine(lat, lng, _ctx.lastDistPos.lat, _ctx.lastDistPos.lng);
     if (d > 1 && d < 500) {
@@ -1750,4 +1929,55 @@ export function startWatchPosition() {
     { enableHighAccuracy: true, maximumAge: 3000 }
   );
   _ctx.locationWatchId = watchId;
+}
+
+// ── 게임 서버 HP 동기화 ───────────────────────────────────────────────────────
+// 서버가 확정한 HP 상태를 로컬 전투 시스템에 반영한다.
+// 직접 HP를 조작하므로 서버 값이 항상 우선.
+
+/**
+ * 서버 → 클라이언트 피격 확정 반영
+ * @param {number} remainHp - 서버 기준 남은 HP
+ * @param {number} damage   - 받은 데미지 (플로팅 숫자용)
+ */
+export function syncHpFromServer(remainHp, damage) {
+  if (_isDead) return;
+  _player.hp = Math.max(0, remainHp);
+  const myMark = _ctx?.myLocationMarker;
+  const pos    = myMark?.getPosition();
+  if (pos && damage > 0) showFloat(`-${damage}`, '#f87171', pos.lat(), pos.lng());
+  playSound('player_hit');
+  updateCombatHud();
+}
+
+/**
+ * 서버 → 클라이언트 사망 확정 반영
+ */
+export function syncDeathFromServer() {
+  if (_isDead) return;
+  _isDead         = true;
+  _player.hp      = 0;
+  _reviveWalkDist = 0;
+  playSound('player_die');
+  const myMark = _ctx?.myLocationMarker;
+  const pos    = myMark?.getPosition();
+  if (pos) showFloat('💀 사망', '#fbbf24', pos.lat(), pos.lng());
+  updateCombatHud();
+  savePlayerState();
+}
+
+/**
+ * 서버 → 클라이언트 부활 확정 반영
+ * @param {number} hp - 서버 기준 부활 후 HP
+ */
+export function syncReviveFromServer(hp) {
+  _isDead         = false;
+  _player.hp      = hp;
+  _reviveWalkDist = 0;
+  playSound('revive');
+  const myMark = _ctx?.myLocationMarker;
+  const pos    = myMark?.getPosition();
+  if (pos) showFloat('✨ 부활!', '#fbbf24', pos.lat(), pos.lng());
+  updateCombatHud();
+  savePlayerState();
 }

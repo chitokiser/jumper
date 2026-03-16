@@ -1,0 +1,64 @@
+{
+  "_comment": "Dragon 몬스터 스프라이트 설정 — 현재 생성된 1536x1024, 6x4 시트 기준",
+  "monsterType": "dragon",
+  "spritePath": "/assets/images/monsters/dragon/dragon_sprite.png",
+
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "sheetWidth": 1536,
+  "sheetHeight": 1024,
+  "sheetCols": 6,
+  "sheetRows": 4,
+
+  "displaySize": 80,
+  "anchorBottomCenter": true,
+
+  "animations": {
+    "idle": {
+      "row": 0,
+      "frames": 6,
+      "fps": 4,
+      "loop": true,
+      "_note": "1행 전체를 idle로 사용"
+    },
+    "walk": {
+      "row": 1,
+      "frames": 3,
+      "fps": 6,
+      "loop": true,
+      "_note": "2행은 실제로 attack 성격 프레임이 섞여 있어 앞 3프레임만 walk 임시 사용 권장"
+    },
+    "attack": {
+      "row": 2,
+      "frames": 3,
+      "fps": 10,
+      "loop": false,
+      "_note": "3행 앞 3프레임만 공격 모션으로 사용 권장"
+    },
+    "hit": {
+      "row": 2,
+      "startFrame": 0,
+      "frames": 2,
+      "fps": 12,
+      "loop": false,
+      "_note": "attack row 앞 2프레임 재사용"
+    },
+    "death": {
+      "row": 3,
+      "startFrame": 2,
+      "frames": 4,
+      "fps": 6,
+      "loop": false,
+      "_note": "4행 뒤 4프레임을 death로 사용 권장"
+    },
+    "respawn": {
+      "row": 3,
+      "startFrame": 5,
+      "frames": 4,
+      "fps": 6,
+      "loop": false,
+      "reverse": true,
+      "_note": "death 구간 역재생으로 임시 respawn 처리"
+    }
+  }
+}
