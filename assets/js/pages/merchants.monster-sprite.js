@@ -110,8 +110,8 @@ function _injectStyles() {
 
     const blendMode = cfg.facingLeft ? `
   mix-blend-mode: screen;` : '';
-    const defaultFlip = cfg.facingLeft ? `
-  transform: scaleX(-1);` : '';
+    // transform은 CSS에 넣지 않고 JS(_updateDirection)에서만 관리
+    // CSS default flip이 있으면 inline style ''로 지워도 CSS가 다시 적용되어 방향 전환 불가
 
     css += `
 /* ── ${type} sprite ── */
@@ -121,7 +121,7 @@ function _injectStyles() {
   background-size: ${bgW}px ${bgH}px;
   background-repeat: no-repeat;
   image-rendering: pixelated;
-  image-rendering: crisp-edges;${blendMode}${defaultFlip}
+  image-rendering: crisp-edges;${blendMode}
 }
 `;
 
@@ -319,11 +319,14 @@ function _getOverlayClass() {
     _updateDirection() {
       if (!this._frame) return;
       const facingLeft = this._cfg.facingLeft;
+      // CSS에 default transform 없음 → 명시적으로 scaleX(1) or scaleX(-1) 설정
+      // movingWest = true  → 서쪽(왼쪽)으로 이동
+      // facingLeft = true  → 스프라이트 자연 방향이 왼쪽 → 서쪽이동 시 flip 없음
       const movingWest = this._lastMoveLng < this._lng;
       if (facingLeft) {
-        this._frame.style.transform = movingWest ? '' : 'scaleX(-1)';
+        this._frame.style.transform = movingWest ? 'scaleX(1)' : 'scaleX(-1)';
       } else {
-        this._frame.style.transform = movingWest ? 'scaleX(-1)' : '';
+        this._frame.style.transform = movingWest ? 'scaleX(-1)' : 'scaleX(1)';
       }
     }
 

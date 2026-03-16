@@ -9,7 +9,8 @@ import { httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { hasSpriteConfig, createMonsterSpriteOverlay }
   from './merchants.monster-sprite.js';
-import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster }
+import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster,
+         isGameServerConnected, connectToGameServer, disconnectFromGameServer }
   from './merchants.gameserver.js';
 
 // ── 공유 컨텍스트 참조 ─────────────────────────────────────────────────────────
@@ -1636,9 +1637,9 @@ export function enterAdminPlaceMode(type) {
 
       // 타입별 기본값 프리셋
       const PRESETS = {
-        dragon: { maxHp:2000, attackPower:150, aggroRangeM:25, attackRangeM:20, moveSpeed:0.8, attackCooldownMs:1800, respawnSeconds:120 },
-        orc:    { maxHp:2000, attackPower:200, aggroRangeM:80, attackRangeM:25, moveSpeed:0.8, attackCooldownMs:3000, respawnSeconds:600  },
-        goblin: { maxHp:500,  attackPower:80,  aggroRangeM:50, attackRangeM:20, moveSpeed:1.2, attackCooldownMs:2000, respawnSeconds:300  },
+        dragon: { maxHp:2000, attackPower:150, aggroRangeM:300, attackRangeM:100, moveSpeed:0.8, attackCooldownMs:1800, respawnSeconds:120 },
+        orc:    { maxHp:2000, attackPower:200, aggroRangeM:200, attackRangeM:25,  moveSpeed:0.8, attackCooldownMs:3000, respawnSeconds:600  },
+        goblin: { maxHp:500,  attackPower:80,  aggroRangeM:100, attackRangeM:20,  moveSpeed:1.2, attackCooldownMs:2000, respawnSeconds:300  },
       };
       const p = PRESETS[monsterType] || PRESETS.goblin;
 
@@ -1658,8 +1659,13 @@ export function enterAdminPlaceMode(type) {
           respawnSeconds,
           maxCount: 1,
         });
-        alert(`✅ ${monsterType} 배치 완료 (zone: ${result.zoneId}, instances: ${result.instancesCreated})\n게임서버가 몬스터를 즉시 스폰합니다.`);
-        // 스폰 목록 자동 갱신
+        // 배치 성공 → 해당 좌표로 플레이어 위치 설정 후 GS 재접속 (다른 존일 경우 자동 전환)
+        _ctx.lastPos = { lat, lng, accuracy: 10 };
+        if (isGameServerConnected()) {
+          disconnectFromGameServer();
+          setTimeout(() => connectToGameServer(), 800);
+        }
+        alert(`✅ ${monsterType} 배치 완료 (zone: ${result.zoneId})\n몬스터가 즉시 스폰됩니다.`);
         await refreshGsSpawnList();
       } catch (err) { alert('GS 배치 오류: ' + err.message); }
 
