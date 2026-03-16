@@ -1287,3 +1287,22 @@ exports.adminGivePotion = onCall(wrapError(async (req) => {
   });
   return { ok: true, given: n };
 }));
+
+exports.adminGiveRevive = onCall(wrapError(async (req) => {
+  const adminUid = requireAuth(req);
+  await requireAdmin(adminUid);
+  const { targetUid, count = 1 } = req.data ?? {};
+  if (!targetUid) throw new HttpsError('invalid-argument', 'targetUid가 필요합니다');
+  const n = Math.max(1, Math.floor(Number(count)));
+  const db = admin.firestore();
+  const invRef = db.collection('treasure_inventory').doc(`${targetUid}_revive_ticket`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(invRef);
+    const current = snap.exists ? (snap.data().count || 0) : 0;
+    tx.set(invRef, {
+      uid: targetUid, itemId: 'revive_ticket', count: current + n,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+  return { ok: true, given: n };
+}));

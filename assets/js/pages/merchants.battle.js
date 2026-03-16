@@ -9,8 +9,7 @@ import { httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { hasSpriteConfig, createMonsterSpriteOverlay }
   from './merchants.monster-sprite.js';
-import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster,
-         isGameServerConnected, connectToGameServer, disconnectFromGameServer }
+import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster }
   from './merchants.gameserver.js';
 
 // ── 공유 컨텍스트 참조 ─────────────────────────────────────────────────────────
@@ -1617,6 +1616,8 @@ export function enterAdminPlaceMode(type) {
   _adminPlaceMode = type;
   document.getElementById('btnPlaceMonster')?.classList.toggle('placing', type === 'monster');
   document.getElementById('btnPlaceDragon')?.classList.toggle('placing',  type === 'dragon');
+  document.getElementById('btnPlaceOrc')?.classList.toggle('placing',     type === 'orc');
+  document.getElementById('btnPlaceOrc2')?.classList.toggle('placing',    type === 'orc2');
   document.getElementById('btnPlaceArcherTower')?.classList.toggle('placing', type === 'archer_tower');
   document.getElementById('btnPlaceCannonTower')?.classList.toggle('placing', type === 'cannon_tower');
   document.getElementById('btnPlaceDeco')?.classList.toggle('placing', type === 'deco');
@@ -1625,25 +1626,41 @@ export function enterAdminPlaceMode(type) {
 
   _adminMapListener = map.addListener('click', async (e) => {
     const lat = e.latLng.lat(), lng = e.latLng.lng();
-    if (_adminPlaceMode === 'monster' || _adminPlaceMode === 'dragon') {
-      // ── 게임서버(GS) 스폰 포인트 생성 ────────────────────────────────────────
-      const isDragon = _adminPlaceMode === 'dragon';
-
-      // 몬스터 타입 결정 (dragon은 고정, monster는 선택)
-      let monsterType = isDragon ? 'dragon' : null;
-      if (!monsterType) {
-        monsterType = prompt('몬스터 타입 (goblin / orc / dragon):', 'goblin') || 'goblin';
-      }
-
-      // 타입별 기본값 프리셋
-      // maxHp = 레벨 × 100 × 30 → 30히트로 처치 (데미지 = 레벨 × 100)
+    if (_adminPlaceMode === 'monster') {
+      // ── Firebase battle_monsters 추가 (서버 오프라인에도 유지) ──────────────
       const lv = _ctx?.playerLevel ?? 1;
-      const PRESETS = {
-        dragon: { maxHp: lv * 100 * 30, attackPower:150, aggroRangeM:300, attackRangeM:100, moveSpeed:0.8, attackCooldownMs:1800, respawnSeconds:120 },
-        orc:    { maxHp: lv * 100 * 15, attackPower:200, aggroRangeM:200, attackRangeM:25,  moveSpeed:0.8, attackCooldownMs:3000, respawnSeconds:600  },
-        goblin: { maxHp: lv * 100 *  8, attackPower:80,  aggroRangeM:100, attackRangeM:20,  moveSpeed:1.2, attackCooldownMs:2000, respawnSeconds:300  },
+      const monsterType = prompt('몬스터 타입 (goblin / orc):', 'goblin') || 'goblin';
+      const PRESETS_FB = {
+        orc:    { name:'오크',   image:'👹', maxHp: lv*100*15, atk:200, detectRadius:200, respawnMinutes:10 },
+        goblin: { name:'고블린', image:'👾', maxHp: lv*100*8,  atk:80,  detectRadius:100, respawnMinutes:5  },
       };
-      const p = PRESETS[monsterType] || PRESETS.goblin;
+      const p = PRESETS_FB[monsterType] || PRESETS_FB.goblin;
+
+      const name           = prompt(`몬스터 이름:`,       p.name)            || p.name;
+      const image          = prompt(`이미지 (이모지 or 경로):`, p.image)      || p.image;
+      const maxHp          = parseInt(prompt(`최대 HP:`,   p.maxHp)           || p.maxHp);
+      const atk            = parseInt(prompt(`공격력:`,    p.atk)             || p.atk);
+      const detectRadius   = parseInt(prompt(`탐지 반경(m):`, p.detectRadius) || p.detectRadius);
+      const respawnMinutes = parseInt(prompt(`리스폰 시간(분):`, p.respawnMinutes) || p.respawnMinutes);
+
+      try {
+        const ref = await addDoc(collection(_ctx.db, 'battle_monsters'), {
+          name, image, monsterType, lat, lng,
+          maxHp, hp: maxHp, atk,
+          detectRadius, respawnMinutes,
+          active: true, createdAt: serverTimestamp(),
+        });
+        _monsters.push({ id: ref.id, name, image, monsterType, lat, lng, maxHp, hp: maxHp, atk, detectRadius, respawnMinutes, active: true });
+        renderMonsterMarkers();
+        refreshFirestoreMonsterList();
+        alert(`✅ ${name} 배치 완료 (Firebase)\n서버가 꺼져도 유지됩니다.`);
+      } catch (err) { alert('Firebase 배치 오류: ' + err.message); }
+
+    } else if (_adminPlaceMode === 'dragon') {
+      // ── 게임서버(GS) 드래곤 스폰 ────────────────────────────────────────────
+      const lv = _ctx?.playerLevel ?? 1;
+      const monsterType = 'dragon';
+      const p = { maxHp: lv*100*30, attackPower:150, aggroRangeM:300, attackRangeM:20, moveSpeed:0.8, attackCooldownMs:1800, respawnSeconds:120 };
 
       const maxHp          = parseInt(prompt(`최대 HP:`,          p.maxHp)          || p.maxHp);
       const attackPower    = parseInt(prompt(`공격력:`,            p.attackPower)    || p.attackPower);
@@ -1658,6 +1675,32 @@ export function enterAdminPlaceMode(type) {
           attackRangeM:      p.attackRangeM,
           moveSpeed:         p.moveSpeed,
           attackCooldownMs:  p.attackCooldownMs,
+          respawnSeconds,
+          maxCount: 1,
+        });
+        alert(`✅ dragon 배치 완료 (zone: ${result.zoneId})\n몬스터가 즉시 스폰됩니다.`);
+        await refreshGsSpawnList();
+      } catch (err) { alert('GS 배치 오류: ' + err.message); }
+
+    } else if (_adminPlaceMode === 'orc' || _adminPlaceMode === 'orc2') {
+      // ── 게임서버(GS) 오크 스폰 ──────────────────────────────────────────────
+      const lv = _ctx?.playerLevel ?? 1;
+      const monsterType = _adminPlaceMode;
+      const p = { maxHp: lv*100*15, attackPower:200, aggroRangeM:200, attackRangeM:20, moveSpeed:0.8, attackCooldownMs:3000, respawnSeconds:600 };
+
+      const maxHp          = parseInt(prompt(`최대 HP:`,       p.maxHp)          || p.maxHp);
+      const attackPower    = parseInt(prompt(`공격력:`,         p.attackPower)    || p.attackPower);
+      const aggroRangeM    = parseInt(prompt(`탐지 반경(m):`,   p.aggroRangeM)    || p.aggroRangeM);
+      const respawnSeconds = parseInt(prompt(`리스폰 시간(초):`, p.respawnSeconds) || p.respawnSeconds);
+
+      try {
+        const result = await gsAdminAddSpawn({
+          monsterType, lat, lng, maxHp,
+          attackPower,
+          aggroRangeM,
+          attackRangeM:     p.attackRangeM,
+          moveSpeed:        p.moveSpeed,
+          attackCooldownMs: p.attackCooldownMs,
           respawnSeconds,
           maxCount: 1,
         });

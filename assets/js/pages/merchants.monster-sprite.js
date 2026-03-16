@@ -15,31 +15,74 @@
 
 // ─── 스프라이트 설정 레지스트리 ────────────────────────────────────────────────
 //
+// [sprite sheet 방식 - 단일 시트]
 // sheetWidth/sheetHeight : sprite sheet 전체 픽셀
 // frameWidth/frameHeight : 1 프레임 픽셀
-// displaySize            : 지도 위 표시 크기 (px)
 // animations.*.row       : sprite sheet 행 번호 (0-based)
-// animations.*.frames    : 해당 행의 사용 프레임 수
+//
+// [strips 방식 - dragon 등]
+// stripsMode: true       : 애니메이션별 수평 스트립 PNG 파일 방식
+// basePath               : 이미지 폴더 경로
+// frameWidth/frameHeight : 1 프레임 픽셀
+// animations.*.file      : 스트립 파일명 (예: 'Walk.png')
+//
+// [개별 프레임 방식 - orc 등]
+// framesMode: true       : 개별 PNG 파일 방식 (JS setInterval)
+// basePath               : 이미지 폴더 경로
+// animations.*.prefix    : 파일명 접두사 (예: 'ORK_01_IDLE_')
+//
+// [공통]
+// displaySize            : 지도 위 표시 크기 (px)
+// animations.*.frames    : 프레임 수
 // animations.*.fps       : 재생 속도
 // animations.*.loop      : true=반복, false=one-shot
 
 export const SPRITE_CONFIGS = {
   dragon: {
     monsterType:  'dragon',
-    spritePath:   '/assets/images/monsters/dragon/dragon_sprite.png',
-    frameWidth:   256,
-    frameHeight:  256,
-    sheetWidth:   1536,
-    sheetHeight:  1024,
-    displaySize:  80,   // 지도 위 px (36px 기본 대비 ~2.2x)
-    facingLeft: true,  // 스프라이트가 왼쪽을 향함 → 기본 반전 적용
+    stripsMode:   true,                              // 애니메이션별 수평 스트립 PNG 방식
+    basePath:     '/assets/images/monsters/dragon/',
+    frameWidth:   128,
+    frameHeight:  128,
+    displaySize:  80,
+    facingLeft:   false,
     animations: {
-      idle:    { row: 1, frames: 6, fps: 4,  loop: true  },  // Row1=IDLE 라벨
-      walk:    { row: 0, frames: 6, fps: 8,  loop: true  },  // Row0=unlabeled walk
-      attack:  { row: 2, frames: 5, fps: 10, loop: false },  // Row2=ATTACK, 6번째 빈프레임 제외
-      hit:     { row: 2, frames: 2, fps: 12, loop: false },  // attack 앞 2프레임 재사용
-      death:   { row: 3, frames: 6, fps: 6,  loop: false },  // Row3=DEATH
-      respawn: { row: 3, frames: 6, fps: 6,  loop: false },
+      idle:    { file: 'Idle.png',     frames: 6, fps: 6,  loop: true  },
+      walk:    { file: 'Walk.png',     frames: 8, fps: 10, loop: true  },
+      attack:  { file: 'Attack_1.png', frames: 6, fps: 10, loop: false },
+      hit:     { file: 'Hurt.png',     frames: 3, fps: 12, loop: false },
+      death:   { file: 'Dead.png',     frames: 6, fps: 6,  loop: false },
+      respawn: { file: 'Idle.png',     frames: 6, fps: 6,  loop: false },
+    },
+  },
+  orc: {
+    monsterType: 'orc',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/orc/',
+    displaySize: 80,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'ORK_01_IDLE_',   frames: 10, fps: 8,  loop: true  },
+      walk:    { prefix: 'ORK_01_WALK_',   frames: 10, fps: 10, loop: true  },
+      attack:  { prefix: 'ORK_01_ATTAK_',  frames: 10, fps: 12, loop: false },
+      hit:     { prefix: 'ORK_01_HURT_',   frames: 10, fps: 12, loop: false },
+      death:   { prefix: 'ORK_01_DIE_',    frames: 10, fps: 8,  loop: false },
+      respawn: { prefix: 'ORK_01_IDLE_',   frames: 10, fps: 6,  loop: false },
+    },
+  },
+  orc2: {
+    monsterType: 'orc2',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/orc2/',
+    displaySize: 80,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'ORK_02_IDLE_',   frames: 10, fps: 8,  loop: true  },
+      walk:    { prefix: 'ORK_02_WALK_',   frames: 10, fps: 10, loop: true  },
+      attack:  { prefix: 'ORK_02_ATTAK_',  frames: 10, fps: 12, loop: false },
+      hit:     { prefix: 'ORK_02_HURT_',   frames: 10, fps: 12, loop: false },
+      death:   { prefix: 'ORK_02_DIE_',    frames: 10, fps: 8,  loop: false },
+      respawn: { prefix: 'ORK_02_IDLE_',   frames: 10, fps: 6,  loop: false },
     },
   },
 };
@@ -101,7 +144,61 @@ function _injectStyles() {
 
   // 타입별 sprite CSS 생성
   for (const [type, cfg] of Object.entries(SPRITE_CONFIGS)) {
-    const { spritePath, frameWidth, frameHeight, sheetWidth, sheetHeight, displaySize } = cfg;
+    const { displaySize } = cfg;
+
+    if (cfg.framesMode) {
+      // 개별 프레임 방식 — <img> 태그 크기만 지정
+      css += `
+/* ── ${type} frames ── */
+.ms-${type} {
+  width: ${displaySize}px; height: ${displaySize}px;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+`;
+      continue;
+    }
+
+    if (cfg.stripsMode) {
+      // 애니메이션별 수평 스트립 방식 — 애니메이션마다 별도 PNG, CSS background-position
+      const { basePath, frameWidth, frameHeight } = cfg;
+      const scale = displaySize / frameWidth;
+      const dW    = Math.round(frameWidth  * scale);  // = displaySize
+      const dH    = Math.round(frameHeight * scale);
+
+      css += `
+/* ── ${type} strips ── */
+.ms-${type} {
+  width: ${dW}px; height: ${dH}px;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+`;
+      for (const [animName, anim] of Object.entries(cfg.animations)) {
+        const stripW   = Math.round(anim.frames * dW);
+        const duration = (anim.frames / anim.fps).toFixed(3);
+        const iteration = anim.loop ? 'infinite' : '1';
+        const fill      = anim.loop ? 'none' : 'forwards';
+        const kfName    = `ms-${type}-${animName}`;
+
+        css += `
+@keyframes ${kfName} {
+  from { background-position: 0 0; }
+  to   { background-position: -${stripW}px 0; }
+}
+.ms-${type}[data-anim="${animName}"] {
+  background-image: url('${basePath}${anim.file}');
+  background-size: ${stripW}px ${dH}px;
+  animation: ${kfName} ${duration}s steps(${anim.frames}) ${iteration} ${fill};
+}
+`;
+      }
+      continue;
+    }
+
+    const { spritePath, frameWidth, frameHeight, sheetWidth, sheetHeight } = cfg;
     const scale     = displaySize / frameWidth;
     const bgW       = Math.round(sheetWidth  * scale);
     const bgH       = Math.round(sheetHeight * scale);
@@ -110,8 +207,6 @@ function _injectStyles() {
 
     const blendMode = cfg.facingLeft ? `
   mix-blend-mode: screen;` : '';
-    // transform은 CSS에 넣지 않고 JS(_updateDirection)에서만 관리
-    // CSS default flip이 있으면 inline style ''로 지워도 CSS가 다시 적용되어 방향 전환 불가
 
     css += `
 /* ── ${type} sprite ── */
@@ -185,6 +280,9 @@ function _getOverlayClass() {
       this._logicState = monster.state;
       this._oneShot   = false;   // one-shot 진행 중 여부
 
+      // framesMode 전용
+      this._frameTimer = null;
+
       // 이동 보간
       this._targetLat  = this._lat;
       this._targetLng  = this._lng;
@@ -210,9 +308,17 @@ function _getOverlayClass() {
       div.style.cssText = `width:${size}px;height:${size}px;`;
 
       // 스프라이트 프레임
-      const frame = document.createElement('div');
-      frame.className = `ms-${this._type}`;
-      frame.dataset.anim = 'idle';
+      let frame;
+      if (cfg.framesMode) {
+        frame = document.createElement('img');
+        frame.className = `ms-${this._type}`;
+        frame.draggable = false;
+        frame.alt = '';
+      } else {
+        frame = document.createElement('div');
+        frame.className = `ms-${this._type}`;
+        frame.dataset.anim = 'idle';
+      }
       this._frame = frame;
 
       // HP 바
@@ -255,6 +361,7 @@ function _getOverlayClass() {
       if (this._div?.parentNode) this._div.parentNode.removeChild(this._div);
       this._div = null;
       if (this._lerpRaf) cancelAnimationFrame(this._lerpRaf);
+      if (this._frameTimer) { clearInterval(this._frameTimer); this._frameTimer = null; }
       this._onRemoved();
     }
 
@@ -299,13 +406,19 @@ function _getOverlayClass() {
     /** monster:died 수신 시 — death 애니메이션 후 오버레이 자체 제거 */
     playDeathAndRemove() {
       this._oneShot = true;
+      if (this._cfg.framesMode) {
+        this._applyFrameAnim('death', () => {
+          this._oneShot = false;
+          this._hide();
+        });
+        return;
+      }
       this._applyAnim('death');
       if (!this._frame) { this.setMap(null); return; }
 
       const onEnd = () => {
         this._frame.removeEventListener('animationend', onEnd);
         this._hide();
-        // DOM은 유지 (respawn 이벤트 대기), 단 respawnAt 도달 시 서버가 respawned 전송
         this._oneShot = false;
       };
       this._frame.addEventListener('animationend', onEnd);
@@ -333,11 +446,11 @@ function _getOverlayClass() {
 
     _applyAnim(animName) {
       if (!this._frame) return;
+      if (this._cfg.framesMode) { this._applyFrameAnim(animName); return; }
       const animCfg = this._cfg.animations[animName];
       // loop=true  (idle/walk): 같은 상태면 재시작 금지 — 루프 끊김 방지
       // loop=false (attack/hit/death): 매 호출마다 재시작 — 서버 tick에 맞춰 재생
       if (this._animState === animName && animCfg?.loop !== false) return;
-      // animation 강제 재시작: data-anim 리셋 후 재설정
       this._frame.dataset.anim = '';
       void this._frame.offsetWidth; // reflow trigger
       this._frame.dataset.anim = animName;
@@ -345,9 +458,52 @@ function _getOverlayClass() {
       this._updateDirection();
     }
 
+    /** framesMode 전용 — 개별 PNG를 setInterval로 교체 */
+    _applyFrameAnim(animName, oneShotCb = null) {
+      if (!this._frame) return;
+      const animCfg = this._cfg.animations[animName];
+      if (!animCfg) return;
+      // loop 애니메이션은 같은 상태 재진입 시 그냥 유지 (단 oneShotCb 있으면 강제 재시작)
+      if (this._animState === animName && animCfg.loop && !oneShotCb) return;
+
+      if (this._frameTimer) { clearInterval(this._frameTimer); this._frameTimer = null; }
+      this._animState = animName;
+
+      let frameIdx = 0;
+      const setFrame = (idx) => {
+        const padded = String(idx).padStart(3, '0');
+        this._frame.src = `${this._cfg.basePath}${animCfg.prefix}${padded}.png`;
+      };
+      setFrame(0);
+      this._updateDirection();
+
+      this._frameTimer = setInterval(() => {
+        frameIdx++;
+        if (frameIdx >= animCfg.frames) {
+          if (animCfg.loop && !oneShotCb) {
+            frameIdx = 0;
+          } else {
+            frameIdx = animCfg.frames - 1; // 마지막 프레임 고정
+            clearInterval(this._frameTimer);
+            this._frameTimer = null;
+            if (oneShotCb) { this._oneShot = false; oneShotCb(); }
+            return;
+          }
+        }
+        setFrame(frameIdx);
+      }, 1000 / animCfg.fps);
+    }
+
     _playOneShot(animName, onComplete) {
       if (!this._frame) return;
       this._oneShot = true;
+      if (this._cfg.framesMode) {
+        this._applyFrameAnim(animName, () => {
+          this._oneShot = false;
+          onComplete?.();
+        });
+        return;
+      }
       this._applyAnim(animName);
 
       const onEnd = () => {
@@ -410,6 +566,34 @@ function _getOverlayClass() {
 
 // ─── 공개 API ──────────────────────────────────────────────────────────────────
 
+/** 모든 스프라이트 이미지 사전 로드 (몬스터 등장 전 호출) */
+export function preloadSpriteImages() {
+  for (const cfg of Object.values(SPRITE_CONFIGS)) {
+    if (cfg.stripsMode) {
+      // 애니메이션별 스트립 PNG 프리로드
+      const seen = new Set();
+      for (const anim of Object.values(cfg.animations)) {
+        if (seen.has(anim.file)) continue;
+        seen.add(anim.file);
+        const img = new Image();
+        img.src = cfg.basePath + anim.file;
+      }
+    } else if (cfg.framesMode) {
+      // 개별 프레임 PNG 프리로드
+      for (const anim of Object.values(cfg.animations)) {
+        for (let i = 0; i < anim.frames; i++) {
+          const img = new Image();
+          img.src = cfg.basePath + anim.prefix + String(i).padStart(3, '0') + '.png';
+        }
+      }
+    } else if (cfg.spritePath) {
+      // 단일 스프라이트 시트 프리로드
+      const img = new Image();
+      img.src = cfg.spritePath;
+    }
+  }
+}
+
 /** 해당 타입에 스프라이트 설정이 있는지 확인 */
 export function hasSpriteConfig(monsterType) {
   return monsterType in SPRITE_CONFIGS;
@@ -417,7 +601,7 @@ export function hasSpriteConfig(monsterType) {
 
 /**
  * 스프라이트 오버레이 생성 후 map에 즉시 추가
- * @returns {MonsterSpriteOverlay}
+ * @returns {object}
  */
 export function createMonsterSpriteOverlay(map, monster, onClick, onRemoved) {
   const Cls = _getOverlayClass();

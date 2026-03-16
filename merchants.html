@@ -761,6 +761,7 @@
       </div>
       <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 -->
       <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;align-items:center;">
+        <button id="btnFullscreen" class="map-hud-btn" title="전체화면">⛶</button>
         <button id="btnGameToggle" class="map-hud-btn" title="게임 서버 연결">▶</button>
         <div id="gsStatusBadge"></div>
         <button id="btnInventory" class="map-hud-btn" title="인벤토리">🎒</button>
@@ -777,12 +778,15 @@
         <div class="ab-title">⚔️ 전투 배치</div>
         <button class="ab-btn" id="btnPlaceMonster">👾 몬스터 추가</button>
         <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 드래곤 배치</button>
+        <button class="ab-btn" id="btnPlaceOrc"    style="color:#16a34a;font-weight:700;">🐗 오크 배치</button>
+        <button class="ab-btn" id="btnPlaceOrc2"   style="color:#15803d;font-weight:700;">🗡️ 오크2 배치</button>
         <button class="ab-btn" id="btnPlaceArcherTower">🏹 아처타워</button>
         <button class="ab-btn" id="btnPlaceCannonTower">💣 대포타워</button>
         <button class="ab-btn" id="btnPlaceDeco">🎨 데코 배치</button>
         <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ 배치 취소</button>
         <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 범위 표시</button>
         <button class="ab-btn" id="btnGivePotion" style="margin-top:4px;color:#fca5a5;">💊 빨간약 지급</button>
+        <button class="ab-btn" id="btnGiveRevive" style="color:#a78bfa;">🪄 부활권 지급</button>
 
         <!-- Firestore 몬스터 목록 (기존 battle_monsters) -->
         <div id="firestoreMonsterListWrap" style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;">

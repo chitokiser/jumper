@@ -22,8 +22,11 @@ import { initGameServer, connectToGameServer, disconnectFromGameServer,
          sendPlayerAttack, sendPlayerRevive,
          gsAdminDeleteSpawn, gsAdminKillMonster }
   from './merchants.gameserver.js';
-import { hasSpriteConfig, createMonsterSpriteOverlay }
+import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
   from './merchants.monster-sprite.js';
+
+// 스프라이트 이미지 즉시 프리로드 (몬스터 등장 전 브라우저 캐시 확보)
+preloadSpriteImages();
 
 const $ = id => document.getElementById(id);
 
@@ -131,7 +134,7 @@ function initMap() {
     zoom: 13,
     mapTypeControl: false,
     streetViewControl: false,
-    fullscreenControl: true,
+    fullscreenControl: false,
     styles: [
       { featureType: 'poi',   elementType: 'all', stylers: [{ visibility: 'off' }] },
       { featureType: 'transit', elementType: 'all', stylers: [{ visibility: 'off' }] },
@@ -1475,6 +1478,20 @@ async function init() {
   // 버튼 이벤트
   $('btnMyLocation')?.addEventListener('click', showMyLocation);
   $('btnInventory')?.addEventListener('click', openInventory);
+  $('btnFullscreen')?.addEventListener('click', () => {
+    const el = $('merchantMap')?.parentElement ?? $('merchantMap');
+    if (!document.fullscreenElement) {
+      el?.requestFullscreen?.();
+      $('btnFullscreen').textContent = '✕';
+    } else {
+      document.exitFullscreen?.();
+      $('btnFullscreen').textContent = '⛶';
+    }
+  });
+  document.addEventListener('fullscreenchange', () => {
+    const btn = $('btnFullscreen');
+    if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶';
+  });
   $('btnResetDist')?.addEventListener('click', () => {
     _ctx.totalDist = 0; _ctx.lastDistPos = null; updateDistDisplay();
   });
@@ -1486,9 +1503,23 @@ async function init() {
   // 관리자 전투 배치 패널 버튼
   $('btnPlaceMonster')?.addEventListener('click', () => enterAdminPlaceMode('monster'));
   $('btnPlaceDragon')?.addEventListener('click',  () => enterAdminPlaceMode('dragon'));
+  $('btnPlaceOrc')?.addEventListener('click',     () => enterAdminPlaceMode('orc'));
+  $('btnPlaceOrc2')?.addEventListener('click',    () => enterAdminPlaceMode('orc2'));
   $('btnPlaceArcherTower')?.addEventListener('click', () => enterAdminPlaceMode('archer_tower'));
   $('btnPlaceCannonTower')?.addEventListener('click', () => enterAdminPlaceMode('cannon_tower'));
   $('btnPlaceDeco')?.addEventListener('click',    () => enterAdminPlaceMode('deco'));
+  $('btnGiveRevive')?.addEventListener('click', async () => {
+    const targetUid = prompt('부활권 지급할 UID (비우면 본인):', _uid || '') || _uid;
+    if (!targetUid) return;
+    const count = parseInt(prompt('지급 수량:', '10000') || '10000');
+    if (!count || count < 1) return;
+    try {
+      const res = await httpsCallable(functions, 'adminGiveRevive')({ targetUid, count });
+      alert(`✅ 부활권 ${res.data.given}장 지급 완료`);
+      if (targetUid === _uid) await loadInventory();
+    } catch (err) { alert('실패: ' + err.message); }
+  });
+
   $('btnGivePotion')?.addEventListener('click', async () => {
     const targetUid = prompt('빨간약 지급할 UID (비우면 본인):', _uid || '') || _uid;
     if (!targetUid) return;
