@@ -666,12 +666,6 @@ function _renderGsMonster(monster) {
             return;
           }
           if (isPlayerDead()) return;
-          const myPos = _ctx.lastPos;
-          if (!myPos) return;
-          const mLat = m.currentLat ?? m.lat ?? 0;
-          const mLng = m.currentLng ?? m.lng ?? 0;
-          const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
-          if (dist > GS_MONSTER_ATTACK_RANGE_M) return;
           sendPlayerAttack(monsterId);
         },
         () => {   // 오버레이 제거 완료 콜백
@@ -1579,6 +1573,19 @@ async function init() {
       connectToGameServer();
     }
   });
+
+  // PC 모드: 맵 패닝 시 플레이어 위치를 맵 중심으로 자동 갱신
+  // (accuracy === 10 이면 PC fallback 사용 중으로 판단)
+  if (map) {
+    map.addListener('idle', () => {
+      if (!isGameServerConnected()) return;
+      if (!_ctx.lastPos || _ctx.lastPos.accuracy > 5) {
+        // 실제 GPS 없는 경우 → 맵 중심으로 업데이트
+        const c = map.getCenter();
+        if (c) _ctx.lastPos = { lat: c.lat(), lng: c.lng(), accuracy: 10 };
+      }
+    });
+  }
 
   // ── Phase 2: 백그라운드에서 나머지 로드 (UI 블로킹 없음) ─────────────────────
   Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadBattleData(), loadDecorations()]).then(() => {
