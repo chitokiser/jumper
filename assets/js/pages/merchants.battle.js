@@ -1661,12 +1661,6 @@ export function enterAdminPlaceMode(type) {
           respawnSeconds,
           maxCount: 1,
         });
-        // 배치 성공 → 해당 좌표로 플레이어 위치 설정 후 GS 재접속 (다른 존일 경우 자동 전환)
-        _ctx.lastPos = { lat, lng, accuracy: 10 };
-        if (isGameServerConnected()) {
-          disconnectFromGameServer();
-          setTimeout(() => connectToGameServer(), 800);
-        }
         alert(`✅ ${monsterType} 배치 완료 (zone: ${result.zoneId})\n몬스터가 즉시 스폰됩니다.`);
         await refreshGsSpawnList();
       } catch (err) { alert('GS 배치 오류: ' + err.message); }

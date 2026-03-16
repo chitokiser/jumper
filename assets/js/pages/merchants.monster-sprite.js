@@ -333,9 +333,10 @@ function _getOverlayClass() {
 
     _applyAnim(animName) {
       if (!this._frame) return;
-      // 같은 애니메이션이 이미 재생 중이면 재시작하지 않는다
-      // (서버 tick마다 호출돼도 idle/walk 루프가 끊기지 않음)
-      if (this._animState === animName) return;
+      const animCfg = this._cfg.animations[animName];
+      // loop=true  (idle/walk): 같은 상태면 재시작 금지 — 루프 끊김 방지
+      // loop=false (attack/hit/death): 매 호출마다 재시작 — 서버 tick에 맞춰 재생
+      if (this._animState === animName && animCfg?.loop !== false) return;
       // animation 강제 재시작: data-anim 리셋 후 재설정
       this._frame.dataset.anim = '';
       void this._frame.offsetWidth; // reflow trigger
