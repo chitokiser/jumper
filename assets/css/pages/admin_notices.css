@@ -150,6 +150,33 @@
   white-space:pre-wrap;
 }
 
+.an-item--editing{
+  border-color: #fbbf24;
+  background: rgba(251,191,36,.08);
+}
+
+.an-item-actions{
+  display:flex;
+  gap:6px;
+  margin-top:10px;
+  justify-content:flex-end;
+}
+
+.btn--xs{
+  font-size:12px;
+  padding:4px 10px;
+  border-radius:6px;
+}
+
+.btn--danger{
+  background: rgba(239,68,68,.15);
+  color: #ef4444;
+  border:1px solid rgba(239,68,68,.3);
+}
+.btn--danger:hover{
+  background: rgba(239,68,68,.28);
+}
+
 @media (max-width: 720px){
   .admin-notice-panel{ padding:12px; }
   .an-grid{ grid-template-columns: 1fr; }

@@ -72,19 +72,39 @@ const $ = id => document.getElementById(id);
 // ── 초기화 ──────────────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
   currentUser = user;
+
+  // currentUser 확정 즉시 상세 뷰 액션 갱신 (await 전에 실행)
+  if (currentProposal && $('daoDetailView').classList.contains('open')) {
+    renderActions(currentProposal.id, currentProposal);
+  }
+
   if (user) {
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    myWallet = snap.data()?.wallet?.address || null;
-    if (myWallet) myStaked = await getMyStaked(myWallet);
-
-    // 관리자 확인
-    const adminSnap = await getDoc(doc(db, 'admins', user.uid));
-    isAdmin = adminSnap.exists();
-
+    // await 전에 먼저 버튼 표시 — Firestore 에러와 무관하게 즉시 활성화
     $('btnCreateProposal').style.display = 'inline-flex';
+
+    try {
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      myWallet = snap.data()?.wallet?.address || null;
+    } catch { myWallet = null; }
+
+    if (myWallet) {
+      try { myStaked = await getMyStaked(myWallet); } catch { myStaked = 0; }
+    }
+
+    try {
+      const adminSnap = await getDoc(doc(db, 'admins', user.uid));
+      isAdmin = adminSnap.exists();
+    } catch { isAdmin = false; }
   } else {
+    myWallet = null; myStaked = 0; isAdmin = false;
     $('btnCreateProposal').style.display = 'none';
   }
+
+  // staking/admin 정보 로드 후 상세 뷰 재갱신 (스테이킹 수량 반영)
+  if (currentProposal && $('daoDetailView').classList.contains('open')) {
+    renderActions(currentProposal.id, currentProposal);
+  }
+
   loadProposals();
 });
 
@@ -117,7 +137,8 @@ $('btnCreateSubmit').addEventListener('click', async () => {
 
   if (!title)   { $('createMsg').textContent = '제목을 입력해주세요'; return; }
   if (!content) { $('createMsg').textContent = '내용을 입력해주세요'; return; }
-  if (!currentUser) { $('createMsg').textContent = '로그인이 필요합니다'; return; }
+  if (!currentUser && !auth.currentUser) { $('createMsg').textContent = '로그인이 필요합니다'; return; }
+  if (!currentUser) currentUser = auth.currentUser;
 
   btn.disabled = true;
   btn.textContent = '등록 중...';
@@ -248,12 +269,14 @@ async function openDetail(id, data) {
   // 액션 버튼
   renderActions(id, data);
 
-  // 수정/삭제 버튼 (pending_admin + 작성자 또는 관리자)
+  // 수정/삭제 버튼
+  // - 관리자: 모든 상태에서 가능
+  // - 작성자: pending_admin 상태만 가능
   const sameWallet = myWallet && data.authorWallet &&
     data.authorWallet.toLowerCase() === myWallet.toLowerCase();
   const sameUid = currentUser && data.authorUid === currentUser.uid;
-  const canEdit = data.status === 'pending_admin' &&
-    currentUser && (sameWallet || sameUid || isAdmin);
+  const isAuthor = currentUser && (sameWallet || sameUid);
+  const canEdit = currentUser && (isAdmin || (isAuthor && data.status === 'pending_admin'));
   const editBtnWrap = $('editBtnWrap');
   if (editBtnWrap) {
     editBtnWrap.style.display = canEdit ? 'flex' : 'none';
@@ -286,7 +309,10 @@ function renderActions(id, data) {
 
   if (!currentUser) {
     el.style.display = '';
-    el.innerHTML = '<span class="hint">로그인 후 참여할 수 있습니다</span>';
+    const hint = document.createElement('span');
+    hint.className = 'hint';
+    hint.textContent = '로그인 후 참여할 수 있습니다';
+    el.appendChild(hint);
     return;
   }
 
@@ -295,7 +321,10 @@ function renderActions(id, data) {
     const btn = mkBtn('👍 지지하기', 'btn--primary');
     btn.onclick = () => doSupport(id);
     el.appendChild(btn);
-    el.innerHTML += `<span class="hint">내 스테이킹: ${num(myStaked)} JUMP · 지지하면 내 스테이킹 수량이 누적됩니다</span>`;
+    const hint = document.createElement('span');
+    hint.className = 'hint';
+    hint.textContent = `내 스테이킹: ${num(myStaked)} JUMP · 지지하면 내 스테이킹 수량이 누적됩니다`;
+    el.appendChild(hint);
     return;
   }
 
@@ -308,7 +337,10 @@ function renderActions(id, data) {
     no.onclick  = () => doVote(id, 'no');
     el.appendChild(yes);
     el.appendChild(no);
-    el.innerHTML += `<span class="hint">내 스테이킹: ${num(myStaked)} JUMP (1개 이상 필요) · 중복 투표 불가</span>`;
+    const hint = document.createElement('span');
+    hint.className = 'hint';
+    hint.textContent = `내 스테이킹: ${num(myStaked)} JUMP (1개 이상 필요) · 중복 투표 불가`;
+    el.appendChild(hint);
     return;
   }
 
@@ -363,6 +395,12 @@ function openEditModal(proposalId, data) {
   $('editTitle').value   = data.title   || '';
   $('editContent').value = data.content || '';
   $('editMsg').textContent = '';
+  const desc = $('editModalDesc');
+  if (desc) {
+    desc.textContent = isAdmin && data.status !== 'pending_admin'
+      ? `관리자 모드: [${statusLabel(data.status)}] 상태 안건을 수정합니다.`
+      : '승인 대기 중인 안건의 제목과 내용을 수정할 수 있습니다.';
+  }
   $('editModal').classList.add('open');
 
   $('btnEditSubmit').onclick = async () => {

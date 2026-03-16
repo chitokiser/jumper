@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(firebase functions:log --only registerMember)"
+      "Bash(firebase functions:log --only registerMember)",
+      "Bash(curl -s \"https://jumper-game-server-production.up.railway.app/health\")"
     ]
   }
 }

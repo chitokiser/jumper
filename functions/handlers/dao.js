@@ -253,12 +253,14 @@ async function updateProposal(uid, { proposalId, title, content }) {
   if (!snap.exists) throw new Error('안건을 찾을 수 없습니다');
 
   const d = snap.data();
-  if (d.status !== 'pending_admin') throw new Error('승인 대기 상태인 안건만 수정할 수 있습니다');
 
   // 작성자 또는 관리자만 수정 가능
   const adminSnap = await db.collection('admins').doc(uid).get();
   const isAdmin   = adminSnap.exists;
   if (d.authorUid !== uid && !isAdmin) throw new Error('수정 권한이 없습니다 (작성자 또는 관리자만 가능)');
+
+  // 관리자는 모든 상태에서 수정 가능, 일반 작성자는 pending_admin만 가능
+  if (!isAdmin && d.status !== 'pending_admin') throw new Error('승인 대기 상태인 안건만 수정할 수 있습니다');
 
   await ref.update({
     title:     title.trim(),
@@ -278,10 +280,13 @@ async function deleteProposal(uid, { proposalId }) {
   if (!snap.exists) throw new Error('안건을 찾을 수 없습니다');
 
   const d = snap.data();
-  if (d.status !== 'pending_admin') throw new Error('승인 대기 상태인 안건만 삭제할 수 있습니다');
 
   const adminSnap = await db.collection('admins').doc(uid).get();
-  if (d.authorUid !== uid && !adminSnap.exists) throw new Error('삭제 권한이 없습니다');
+  const isAdminDel = adminSnap.exists;
+  if (d.authorUid !== uid && !isAdminDel) throw new Error('삭제 권한이 없습니다');
+
+  // 관리자는 모든 상태에서 삭제 가능, 일반 작성자는 pending_admin만 가능
+  if (!isAdminDel && d.status !== 'pending_admin') throw new Error('승인 대기 상태인 안건만 삭제할 수 있습니다');
 
   await ref.delete();
   logger.info('dao.deleteProposal', { uid, proposalId });

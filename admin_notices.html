@@ -34,6 +34,16 @@
           </div>
         </div>
 
+        <!-- 수정 모드 표시 바 -->
+        <div id="editModeBar" style="display:none; align-items:center; gap:10px;
+             background:#fef3c7; border:1px solid #fbbf24; border-radius:8px;
+             padding:8px 14px; margin-bottom:12px; font-size:0.88rem;">
+          <span style="font-size:1.1rem;">✏️</span>
+          <span class="edit-mode-label" style="flex:1; font-weight:600; color:#92400e;"></span>
+          <button class="btn btn--ghost btn--sm" type="button"
+                  onclick="document.getElementById('btnReset').click()">취소</button>
+        </div>
+
         <form class="an-form" id="noticeForm" autocomplete="off">
           <div class="an-row">
             <label class="an-label" for="ntTitle">제목</label>

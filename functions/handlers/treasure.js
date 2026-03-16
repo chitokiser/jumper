@@ -175,9 +175,17 @@ async function craftVoucher(uid, { voucherId } = {}) {
   const reqs = voucher.requirements || [];
   const goldReqs = reqs.filter(r => r.type === 'gold' || r.itemId === 'coin');
   const itemReqs = reqs.filter(r => r.type !== 'gold' && r.itemId !== 'coin');
-  const goldNeeded = goldReqs.reduce((s, r) => s + (r.count || 0), 0);
+  const goldNeeded = goldReqs.reduce((s, r) => s + (r.count || 0), 0)
+                   + (voucher.minCoins || 0);
 
   return await db.runTransaction(async (tx) => {
+    // 중복 구매 방지: uid+voucherId 조합 문서로 확인
+    const purchaseRef = db.collection('treasure_voucher_purchases').doc(`${uid}_${voucherId}`);
+    const purchaseSnap = await tx.get(purchaseRef);
+    if (purchaseSnap.exists) {
+      throw new HttpsError('already-exists', '이미 구매한 바우처입니다');
+    }
+
     // 코인(gold) 잔액 확인
     let playerRef, currentGold = 0;
     if (goldNeeded > 0) {
@@ -224,6 +232,12 @@ async function craftVoucher(uid, { voucherId } = {}) {
       reward:      voucher.reward || '',
       image:       voucher.image  || '',
       craftedAt:   admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // 중복 구매 방지 마커
+    tx.set(purchaseRef, {
+      uid, voucherId,
+      purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     return { ok: true, voucherName: voucher.name, reward: voucher.reward };
@@ -281,7 +295,7 @@ async function adminDeleteTreasureBox(adminUid, { boxId } = {}) {
 // ── 관리자: 바우처 저장 ────────────────────────────────────────────────────────
 async function adminSaveVoucher(adminUid, data = {}) {
   await requireAdmin(adminUid);
-  const { voucherId, name, requirements, reward, image, active } = data;
+  const { voucherId, name, requirements, reward, image, active, minCoins, minLevel } = data;
   if (!name) throw new HttpsError('invalid-argument', 'name이 필요합니다');
 
   const ref = voucherId
@@ -293,6 +307,8 @@ async function adminSaveVoucher(adminUid, data = {}) {
     requirements: requirements || [],
     reward:       reward || '',
     image:        image  || '',
+    minCoins:     Number(minCoins) || 0,
+    minLevel:     Number(minLevel) || 0,
     active:       active !== false,
     updatedAt:    admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });

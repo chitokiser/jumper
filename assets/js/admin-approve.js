@@ -1535,7 +1535,7 @@ async function loadVouchersList() {
     return `<div class="card" style="display:flex;gap:12px;align-items:center;">
       <div style="flex:1;">
         <strong>${esc(r.name)}</strong> ${r.active !== false ? "✅" : "❌"}
-        <div class="muted" style="font-size:12px;">${esc(r.reward || "")}${r.image ? ` · 🖼 ${esc(r.image)}` : ""}</div>
+        <div class="muted" style="font-size:12px;">${esc(r.reward || "")}${r.image ? ` · 🖼 ${esc(r.image)}` : ""}${r.minCoins ? ` · 💰≥${r.minCoins}` : ""}${r.minLevel ? ` · LV≥${r.minLevel}` : ""}</div>
         <div class="muted" style="font-size:11px;font-family:monospace;">${esc(d.id)}</div>
       </div>
       <button class="btn btn-sm" data-act="editVoucher" data-id="${esc(d.id)}">수정</button>
@@ -1546,12 +1546,14 @@ async function loadVouchersList() {
       const s = await getDoc(doc(db, "treasure_vouchers", btn.dataset.id));
       if (!s.exists()) return;
       const r = s.data();
-      $("tVoucherId").value     = btn.dataset.id;
-      $("tVoucherName").value   = r.name   || "";
-      $("tVoucherReqs").value   = JSON.stringify(r.requirements || [], null, 2);
-      $("tVoucherReward").value = r.reward || "";
-      $("tVoucherImage").value  = r.image  || "";
-      $("tVoucherActive").value = String(r.active !== false);
+      $("tVoucherId").value        = btn.dataset.id;
+      $("tVoucherName").value      = r.name   || "";
+      $("tVoucherReqs").value      = JSON.stringify(r.requirements || [], null, 2);
+      $("tVoucherReward").value    = r.reward || "";
+      $("tVoucherImage").value     = r.image  || "";
+      $("tVoucherMinCoins").value  = r.minCoins || 0;
+      $("tVoucherMinLevel").value  = r.minLevel || 0;
+      $("tVoucherActive").value    = String(r.active !== false);
     });
   });
 }
@@ -1621,17 +1623,21 @@ $("btnSaveVoucher")?.addEventListener("click", async () => {
   let requirements = [];
   try   { requirements = JSON.parse($("tVoucherReqs")?.value || "[]"); }
   catch { return alert('재료 JSON 오류\n예: [{"itemId":"1","count":3}]'); }
+  const minCoins = parseInt($("tVoucherMinCoins")?.value || "0", 10) || 0;
+  const minLevel = parseInt($("tVoucherMinLevel")?.value || "0", 10) || 0;
   try {
     const res = await httpsCallable(functions, "adminSaveVoucher")({
       voucherId:    $("tVoucherId")?.value.trim() || undefined,
       name,
       requirements,
-      reward: $("tVoucherReward")?.value.trim() || "",
-      image:  $("tVoucherImage")?.value.trim()  || "",
+      reward:    $("tVoucherReward")?.value.trim() || "",
+      image:     $("tVoucherImage")?.value.trim()  || "",
+      minCoins,
+      minLevel,
       active: $("tVoucherActive")?.value === "true",
     });
     alert(`바우처 저장 완료!\nvoucherId: ${res.data.voucherId}`);
-    ["tVoucherId","tVoucherName","tVoucherReqs","tVoucherReward","tVoucherImage"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    ["tVoucherId","tVoucherName","tVoucherReqs","tVoucherReward","tVoucherImage","tVoucherMinCoins","tVoucherMinLevel"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
     if ($("tVoucherActive")) $("tVoucherActive").value = "true";
     await loadVouchersList();
   } catch (err) { alert("오류: " + (err.message || err)); }

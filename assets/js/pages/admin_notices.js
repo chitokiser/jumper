@@ -1,6 +1,5 @@
 // /assets/js/pages/admin_notices.js
-// 공지관리: 관리자만 작성 가능
-// 관리자 기준: admins/{uid} 존재 또는 운영자 이메일(daguri75@gmail.com)
+// 공지관리: 관리자만 작성/수정/삭제 가능
 
 import { auth, db } from "/assets/js/auth.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
@@ -13,12 +12,18 @@ import {
   orderBy,
   getDocs,
   addDoc,
+  updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
 
 const OPERATOR_EMAILS = new Set(["daguri75@gmail.com"]);
+
+let _isAdmin = false;
+let _currentUser = null;
+let _editId = null; // 수정 중인 공지 ID
 
 try{
   console.log("[admin_notices] firebase projectId =", db?.app?.options?.projectId);
@@ -79,16 +84,49 @@ function toMillis(ts){
   return 0;
 }
 
+// ── 수정 모드 진입 ─────────────────────────────────────────────────────────────
+function enterEditMode(id, data){
+  _editId = id;
+  if($("ntTitle"))   $("ntTitle").value   = data.title || "";
+  if($("ntText"))    $("ntText").value    = data.text  || "";
+  if($("ntPinned"))  $("ntPinned").value  = data.pinned  ? "1" : "0";
+  if($("ntVisible")) $("ntVisible").value = data.visible === false ? "0" : "1";
+
+  const btn = $("btnSave");
+  if(btn) btn.textContent = "수정 저장";
+
+  const editBar = $("editModeBar");
+  if(editBar){
+    editBar.style.display = "flex";
+    editBar.querySelector(".edit-mode-label").textContent = `수정 중: ${data.title || id}`;
+  }
+
+  $("ntTitle")?.focus();
+  setHelp("수정할 내용을 변경한 뒤 [수정 저장]을 눌러주세요.");
+}
+
+// ── 수정 모드 해제 ─────────────────────────────────────────────────────────────
+function exitEditMode(){
+  _editId = null;
+  $("noticeForm")?.reset();
+
+  const btn = $("btnSave");
+  if(btn) btn.textContent = "저장";
+
+  const editBar = $("editModeBar");
+  if(editBar) editBar.style.display = "none";
+
+  setHelp("");
+}
+
+// ── 목록 로드 ──────────────────────────────────────────────────────────────────
 async function loadList(){
   const list = $("noticeList");
   if(!list) return;
   list.innerHTML = "";
 
   try{
-    const q = query(
-      collection(db, "notices"),
-      orderBy("createdAt", "desc")
-    );
+    const q = query(collection(db, "notices"), orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
 
     if(snap.empty){
@@ -101,7 +139,6 @@ async function loadList(){
     const docs = [];
     snap.forEach((d) => docs.push({ id: d.id, ...d.data() }));
 
-    // pinned 상단 정렬(클라)
     docs.sort((a, b) => {
       const ap = a.pinned ? 1 : 0;
       const bp = b.pinned ? 1 : 0;
@@ -112,6 +149,7 @@ async function loadList(){
     docs.forEach((v) => {
       const li = document.createElement("li");
       li.className = "an-item";
+      if(_editId === v.id) li.classList.add("an-item--editing");
 
       const top = document.createElement("div");
       top.className = "an-item-top";
@@ -134,6 +172,38 @@ async function loadList(){
 
       li.appendChild(top);
       li.appendChild(text);
+
+      // 관리자 액션 버튼
+      if(_isAdmin){
+        const actions = document.createElement("div");
+        actions.className = "an-item-actions";
+
+        const btnEdit = document.createElement("button");
+        btnEdit.className = "btn btn--ghost btn--xs";
+        btnEdit.textContent = "수정";
+        btnEdit.type = "button";
+        btnEdit.onclick = () => enterEditMode(v.id, v);
+
+        const btnDel = document.createElement("button");
+        btnDel.className = "btn btn--danger btn--xs";
+        btnDel.textContent = "삭제";
+        btnDel.type = "button";
+        btnDel.onclick = async () => {
+          if(!confirm(`"${v.title}" 공지를 삭제하시겠습니까?`)) return;
+          try{
+            await deleteDoc(doc(db, "notices", v.id));
+            if(_editId === v.id) exitEditMode();
+            await loadList();
+          }catch(e){
+            alert("삭제 실패: " + (e.message || e));
+          }
+        };
+
+        actions.appendChild(btnEdit);
+        actions.appendChild(btnDel);
+        li.appendChild(actions);
+      }
+
       list.appendChild(li);
     });
   }catch(e){
@@ -144,14 +214,14 @@ async function loadList(){
   }
 }
 
+// ── 폼 바인딩 ──────────────────────────────────────────────────────────────────
 function bindForm(user){
-  const form = $("noticeForm");
+  const form     = $("noticeForm");
   const btnReset = $("btnReset");
 
   if(btnReset){
     btnReset.onclick = () => {
-      form?.reset();
-      setHelp("");
+      exitEditMode();
     };
   }
 
@@ -162,9 +232,9 @@ function bindForm(user){
     setHelp("저장 중…");
 
     try{
-      const title = sanitize($("ntTitle")?.value);
-      const text  = sanitize($("ntText")?.value);
-      const pinned = $("ntPinned")?.value === "1";
+      const title   = sanitize($("ntTitle")?.value);
+      const text    = sanitize($("ntText")?.value);
+      const pinned  = $("ntPinned")?.value === "1";
       const visible = $("ntVisible")?.value === "1";
 
       if(!title || !text){
@@ -172,19 +242,34 @@ function bindForm(user){
         return;
       }
 
-      await addDoc(collection(db, "notices"), {
-        title,
-        text,
-        pinned,
-        visible,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        authorUid: user?.uid || "",
-        authorEmail: user?.email || "",
-      });
+      if(_editId){
+        // ── 수정 ──
+        await updateDoc(doc(db, "notices", _editId), {
+          title,
+          text,
+          pinned,
+          visible,
+          updatedAt:    serverTimestamp(),
+          updatedByUid: user?.uid   || "",
+        });
+        exitEditMode();
+        setHelp("수정 완료");
+      } else {
+        // ── 신규 등록 ──
+        await addDoc(collection(db, "notices"), {
+          title,
+          text,
+          pinned,
+          visible,
+          createdAt:   serverTimestamp(),
+          updatedAt:   serverTimestamp(),
+          authorUid:   user?.uid   || "",
+          authorEmail: user?.email || "",
+        });
+        form.reset();
+        setHelp("저장 완료");
+      }
 
-      form.reset();
-      setHelp("저장 완료");
       await loadList();
     }catch(e){
       console.warn("save notice failed:", e);
@@ -198,17 +283,21 @@ function bindForm(user){
   };
 }
 
+// ── 인증 상태 감지 ─────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
+  _currentUser = user;
+
   if(!user){
     setState("로그인이 필요합니다.");
+    _isAdmin = false;
     setFormEnabled(false);
     await loadList();
     return;
   }
 
-  const admin = await isAdmin(user.uid, user.email);
+  _isAdmin = await isAdmin(user.uid, user.email);
 
-  if(!admin){
+  if(!_isAdmin){
     setState("관리자 권한이 없습니다.");
     setFormEnabled(false);
     await loadList();
