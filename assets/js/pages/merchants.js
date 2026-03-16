@@ -821,7 +821,7 @@ function showMyLocation() {
 async function checkProximity(lat, lng) {
   if (!_uid) return;
   broadcastMyLocation(lat, lng); // 내 위치 Firestore에 방송
-  sendPlayerLocation(lat, lng, _ctx.lastPos?.accuracy ?? 50); // 게임 서버로 전송
+  sendPlayerLocation(lat, lng, _ctx.lastPos?.accuracy ?? 10); // 게임 서버로 전송
   for (const box of treasureBoxes) {
     if (!box.lat || !box.lng) continue;
     if (!isBoxActive(box)) continue;
@@ -1574,7 +1574,7 @@ async function init() {
       // GPS 없는 PC 테스트: 지도 중심 좌표를 존 결정 기준으로 사용
       if (!_ctx.lastPos && map) {
         const c = map.getCenter();
-        if (c) _ctx.lastPos = { lat: c.lat(), lng: c.lng(), accuracy: 50 };
+        if (c) _ctx.lastPos = { lat: c.lat(), lng: c.lng(), accuracy: 10 };
       }
       connectToGameServer();
     }

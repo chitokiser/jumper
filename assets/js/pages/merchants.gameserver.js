@@ -33,10 +33,15 @@ function _nearestZone(lat, lng) {
   return best.zoneId;
 }
 
+// GPS 없는 환경(PC)에서 사용할 fallback accuracy (m)
+// isTrustworthy ≤100, isTargetable ≤30 모두 통과하도록 30 미만 사용
+const PC_FALLBACK_ACCURACY = 10;
+
 // ── 상태 ──────────────────────────────────────────────────────────────────────
-let _socket   = null;
-let _ctx      = null;
-let _handlers = null;
+let _socket        = null;
+let _ctx           = null;
+let _handlers      = null;
+let _keepAliveTimer = null;
 /** 'idle' | 'connecting' | 'connected' | 'error' */
 let _state = 'idle';
 
@@ -92,14 +97,26 @@ export function connectToGameServer() {
     const zoneId = (lat && lng) ? _nearestZone(lat, lng) : ZONE_CONFIGS[0].zoneId;
     const level  = _ctx?.playerLevel ?? 1;
 
+    const accuracy = pos?.accuracy != null && pos.accuracy < 999
+      ? pos.accuracy
+      : PC_FALLBACK_ACCURACY;
+
     _socket.emit('player:join', {
-      userId:   _ctx?.uid ?? 'anonymous',
-      zoneId,
-      lat, lng,
-      accuracy: pos?.accuracy ?? 999,
-      level,
+      userId: _ctx?.uid ?? 'anonymous',
+      zoneId, lat, lng, accuracy, level,
     });
-    console.log(`[GS] connected → zone:${zoneId} level:${level}`);
+
+    // keep-alive: GPS 없는 PC에서 isStale(10s) 방지 — 5초마다 위치 재전송
+    _keepAliveTimer = setInterval(() => {
+      if (_state !== 'connected' || !_socket) return;
+      const p = _ctx?.lastPos;
+      const klat = p?.lat ?? lat;
+      const klng = p?.lng ?? lng;
+      const kacc = (p?.accuracy != null && p.accuracy < 999) ? p.accuracy : PC_FALLBACK_ACCURACY;
+      _socket.emit('player:location', { lat: klat, lng: klng, accuracy: kacc });
+    }, 5000);
+
+    console.log(`[GS] connected → zone:${zoneId} level:${level} accuracy:${accuracy}`);
   });
 
   _socket.on('disconnect', reason => {
@@ -131,6 +148,7 @@ export function connectToGameServer() {
 
 // ── 연결 해제 ──────────────────────────────────────────────────────────────────
 export function disconnectFromGameServer() {
+  if (_keepAliveTimer) { clearInterval(_keepAliveTimer); _keepAliveTimer = null; }
   if (!_socket) return;
   try {
     _socket.emit('player:leave');
