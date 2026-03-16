@@ -70,6 +70,21 @@ export const SPRITE_CONFIGS = {
       respawn: { prefix: 'ORK_01_IDLE_',   frames: 10, fps: 6,  loop: false },
     },
   },
+  pirate: {
+    monsterType: 'pirate',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/pirate/',
+    displaySize: 80,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: '1_entity_000_IDLE_',   frames: 7, fps: 7,  loop: true  },
+      walk:    { prefix: '1_entity_000_WALK_',   frames: 7, fps: 8,  loop: true  },
+      attack:  { prefix: '1_entity_000_ATTACK_', frames: 7, fps: 12, loop: false },
+      hit:     { prefix: '1_entity_000_HURT_',   frames: 7, fps: 12, loop: false },
+      death:   { prefix: '1_entity_000_DIE_',    frames: 7, fps: 8,  loop: false },
+      respawn: { prefix: '1_entity_000_IDLE_',   frames: 7, fps: 6,  loop: false },
+    },
+  },
   orc2: {
     monsterType: 'orc2',
     framesMode:  true,

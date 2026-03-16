@@ -9,7 +9,8 @@ import { httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { hasSpriteConfig, createMonsterSpriteOverlay }
   from './merchants.monster-sprite.js';
-import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster }
+import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster,
+         isGameServerConnected, connectToGameServer }
   from './merchants.gameserver.js';
 
 // ── 공유 컨텍스트 참조 ─────────────────────────────────────────────────────────
@@ -1618,6 +1619,7 @@ export function enterAdminPlaceMode(type) {
   document.getElementById('btnPlaceDragon')?.classList.toggle('placing',  type === 'dragon');
   document.getElementById('btnPlaceOrc')?.classList.toggle('placing',     type === 'orc');
   document.getElementById('btnPlaceOrc2')?.classList.toggle('placing',    type === 'orc2');
+  document.getElementById('btnPlacePirate')?.classList.toggle('placing',  type === 'pirate');
   document.getElementById('btnPlaceArcherTower')?.classList.toggle('placing', type === 'archer_tower');
   document.getElementById('btnPlaceCannonTower')?.classList.toggle('placing', type === 'cannon_tower');
   document.getElementById('btnPlaceDeco')?.classList.toggle('placing', type === 'deco');
@@ -1658,6 +1660,11 @@ export function enterAdminPlaceMode(type) {
 
     } else if (_adminPlaceMode === 'dragon') {
       // ── 게임서버(GS) 드래곤 스폰 ────────────────────────────────────────────
+      if (!isGameServerConnected()) {
+        connectToGameServer();
+        alert('⚠️ 게임서버에 연결 중입니다.\n연결 후(■ 표시) 다시 배치해주세요.');
+        return;
+      }
       const lv = _ctx?.playerLevel ?? 1;
       const monsterType = 'dragon';
       const p = { maxHp: lv*100*30, attackPower:150, aggroRangeM:300, attackRangeM:20, moveSpeed:0.8, attackCooldownMs:1800, respawnSeconds:120 };
@@ -1682,8 +1689,13 @@ export function enterAdminPlaceMode(type) {
         await refreshGsSpawnList();
       } catch (err) { alert('GS 배치 오류: ' + err.message); }
 
-    } else if (_adminPlaceMode === 'orc' || _adminPlaceMode === 'orc2') {
-      // ── 게임서버(GS) 오크 스폰 ──────────────────────────────────────────────
+    } else if (_adminPlaceMode === 'orc' || _adminPlaceMode === 'orc2' || _adminPlaceMode === 'pirate') {
+      // ── 게임서버(GS) 오크/해적 스폰 ─────────────────────────────────────────
+      if (!isGameServerConnected()) {
+        connectToGameServer();
+        alert('⚠️ 게임서버에 연결 중입니다.\n연결 후(■ 표시) 다시 배치해주세요.');
+        return;
+      }
       const lv = _ctx?.playerLevel ?? 1;
       const monsterType = _adminPlaceMode;
       const p = { maxHp: lv*100*15, attackPower:200, aggroRangeM:200, attackRangeM:20, moveSpeed:0.8, attackCooldownMs:3000, respawnSeconds:600 };
@@ -1801,6 +1813,24 @@ export async function refreshGsSpawnList() {
   try {
     const data   = await gsAdminGetSpawns();
     const spawns = data.spawns || [];
+
+    // 살아있는 인스턴스를 monster:update 이벤트로 강제 렌더링 (WS를 못 받은 경우 보완)
+    for (const spawn of spawns) {
+      for (const inst of (spawn.instances || [])) {
+        if (inst.state === 'dead' || inst.state === 'respawning') continue;
+        window.dispatchEvent(new CustomEvent('gs:forceRenderMonster', { detail: {
+          monsterId:  inst.monsterId,
+          type:       spawn.monsterType,
+          state:      inst.state,
+          hp:         inst.hp,
+          maxHp:      inst.maxHp,
+          currentLat: inst.currentLat,
+          currentLng: inst.currentLng,
+          zoneId:     spawn.zoneId,
+          spawnId:    spawn.spawnId,
+        }}));
+      }
+    }
     if (spawns.length === 0) { el.textContent = '스폰 없음'; return; }
 
     el.innerHTML = spawns.map(s => {

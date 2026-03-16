@@ -627,7 +627,7 @@ async function _pollNearbyPlayers() {
 }
 
 // ── 게임 서버 몬스터 마커 ─────────────────────────────────────────────────────
-const GS_MONSTER_ATTACK_RANGE_M = 30;
+const GS_MONSTER_ATTACK_RANGE_M = 20;
 
 // ── 게임 서버 몬스터 — SVG 마커 아이콘 (비-스프라이트 타입용) ─────────────────
 function _gsMonsterIcon(state, hpPct) {
@@ -1505,6 +1505,7 @@ async function init() {
   $('btnPlaceDragon')?.addEventListener('click',  () => enterAdminPlaceMode('dragon'));
   $('btnPlaceOrc')?.addEventListener('click',     () => enterAdminPlaceMode('orc'));
   $('btnPlaceOrc2')?.addEventListener('click',    () => enterAdminPlaceMode('orc2'));
+  $('btnPlacePirate')?.addEventListener('click',  () => enterAdminPlaceMode('pirate'));
   $('btnPlaceArcherTower')?.addEventListener('click', () => enterAdminPlaceMode('archer_tower'));
   $('btnPlaceCannonTower')?.addEventListener('click', () => enterAdminPlaceMode('cannon_tower'));
   $('btnPlaceDeco')?.addEventListener('click',    () => enterAdminPlaceMode('deco'));
@@ -1602,6 +1603,9 @@ async function init() {
     onPlayerDied:   ()     => syncDeathFromServer(),
     onPlayerRevived:(data) => syncReviveFromServer(data.hp),
   });
+
+  // WS 이벤트를 못 받은 경우 관리자 스폰 후 강제 렌더링
+  window.addEventListener('gs:forceRenderMonster', (e) => _renderGsMonster(e.detail));
 
   $('btnGameToggle')?.addEventListener('click', () => {
     if (isGameServerConnected()) {
