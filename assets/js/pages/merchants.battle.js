@@ -1636,10 +1636,12 @@ export function enterAdminPlaceMode(type) {
       }
 
       // 타입별 기본값 프리셋
+      // maxHp = 레벨 × 100 × 30 → 30히트로 처치 (데미지 = 레벨 × 100)
+      const lv = _ctx?.playerLevel ?? 1;
       const PRESETS = {
-        dragon: { maxHp:2000, attackPower:150, aggroRangeM:300, attackRangeM:100, moveSpeed:0.8, attackCooldownMs:1800, respawnSeconds:120 },
-        orc:    { maxHp:2000, attackPower:200, aggroRangeM:200, attackRangeM:25,  moveSpeed:0.8, attackCooldownMs:3000, respawnSeconds:600  },
-        goblin: { maxHp:500,  attackPower:80,  aggroRangeM:100, attackRangeM:20,  moveSpeed:1.2, attackCooldownMs:2000, respawnSeconds:300  },
+        dragon: { maxHp: lv * 100 * 30, attackPower:150, aggroRangeM:300, attackRangeM:100, moveSpeed:0.8, attackCooldownMs:1800, respawnSeconds:120 },
+        orc:    { maxHp: lv * 100 * 15, attackPower:200, aggroRangeM:200, attackRangeM:25,  moveSpeed:0.8, attackCooldownMs:3000, respawnSeconds:600  },
+        goblin: { maxHp: lv * 100 *  8, attackPower:80,  aggroRangeM:100, attackRangeM:20,  moveSpeed:1.2, attackCooldownMs:2000, respawnSeconds:300  },
       };
       const p = PRESETS[monsterType] || PRESETS.goblin;
 

@@ -658,12 +658,16 @@ function _renderGsMonster(monster) {
     } else {
       _gsOverlays[monsterId] = createMonsterSpriteOverlay(
         map, monster,
-        () => {   // 클릭 핸들러 — 어드민/일반 유저 모두 공격 가능
+        () => {   // 클릭 핸들러
           const m = _gsMonsters[monsterId];
           if (!m) return;
+          if (_isAdmin) {
+            _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type);
+            return;
+          }
           if (isPlayerDead()) return;
           sendPlayerAttack(monsterId);
-          console.log('[GS Attack] sent player:attack →', monsterId.slice(0,8), 'pos:', _ctx.lastPos?.lat?.toFixed(5), _ctx.lastPos?.lng?.toFixed(5));
+          console.log('[GS Attack] sent player:attack →', monsterId.slice(0,8));
         },
         () => {   // 오버레이 제거 완료 콜백
           delete _gsOverlays[monsterId];
@@ -723,13 +727,17 @@ function _showGsMonsterAdminMenu(monsterId, spawnId, type, anchor) {
       <b>🗡 ${escHtml(type)}</b>
       <span style="color:#888;font-size:10px"> #${shortMid}</span><br>
       <span style="color:#9ca3af;font-size:10px">spawn: ${shortSid}</span>
-      <div style="display:flex;gap:6px;margin-top:6px">
+      <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+        <button onclick="window.__gsAdminAttackTest('${monsterId}')"
+          style="flex:1;min-width:60px;padding:3px 0;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
+          ⚔ 테스트공격
+        </button>
         <button onclick="window.__gsAdminKill('${monsterId}')"
-          style="flex:1;padding:3px 0;background:#f97316;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
+          style="flex:1;min-width:60px;padding:3px 0;background:#f97316;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
           💀 강제사망
         </button>
         <button onclick="window.__gsAdminDelSpawn('${spawnId}')"
-          style="flex:1;padding:3px 0;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
+          style="flex:1;min-width:60px;padding:3px 0;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
           🗑 스폰삭제
         </button>
       </div>
@@ -738,6 +746,12 @@ function _showGsMonsterAdminMenu(monsterId, spawnId, type, anchor) {
   if (anchor) infoWindow?.open(map, anchor);
   else        infoWindow?.open(map);
 }
+
+window.__gsAdminAttackTest = (monsterId) => {
+  infoWindow?.close();
+  sendPlayerAttack(monsterId);
+  console.log('[GS AdminTest] attack →', monsterId.slice(0,8));
+};
 
 window.__gsAdminKill = async (monsterId) => {
   try {
