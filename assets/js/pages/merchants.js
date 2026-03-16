@@ -658,15 +658,12 @@ function _renderGsMonster(monster) {
     } else {
       _gsOverlays[monsterId] = createMonsterSpriteOverlay(
         map, monster,
-        () => {   // 클릭 핸들러
+        () => {   // 클릭 핸들러 — 어드민/일반 유저 모두 공격 가능
           const m = _gsMonsters[monsterId];
           if (!m) return;
-          if (_isAdmin) {
-            _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type);
-            return;
-          }
           if (isPlayerDead()) return;
           sendPlayerAttack(monsterId);
+          console.log('[GS Attack] sent player:attack →', monsterId.slice(0,8), 'pos:', _ctx.lastPos?.lat?.toFixed(5), _ctx.lastPos?.lng?.toFixed(5));
         },
         () => {   // 오버레이 제거 완료 콜백
           delete _gsOverlays[monsterId];
