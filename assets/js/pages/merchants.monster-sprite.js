@@ -277,13 +277,14 @@ function _getOverlayClass() {
         this._updateDirection();
       }
 
+      // logicState는 항상 먼저 갱신 — onComplete 클로저가 최신 상태를 참조하도록
+      this._logicState = monster.state;
+
       // 피격 감지 (HP 감소)
       if (monster.hp < prevHp && !this._oneShot) {
-        this._playOneShot('hit', () => this._syncAnim(monster.state));
+        this._playOneShot('hit', () => this._syncAnim(this._logicState));
         return;
       }
-
-      this._logicState = monster.state;
 
       // respawning → 표시 복귀
       if (monster.state === 'respawning' && this._hidden) {
