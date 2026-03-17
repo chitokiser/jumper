@@ -653,6 +653,10 @@ function _renderGsMonster(monster) {
   // currentLat/Lng (MonsterInstance 필드명)
   const lat = monster.currentLat ?? monster.lat ?? 0;
   const lng = monster.currentLng ?? monster.lng ?? 0;
+  // HP 감소 감지 → 피격음
+  const prev = _gsMonsters[monsterId];
+  if (prev && monster.hp < prev.hp) playSound('arrow_hit');
+
   _gsMonsters[monsterId] = monster;
 
   // ── 스프라이트 타입 (dragon 등) ─────────────────────────────────────────────
@@ -670,6 +674,7 @@ function _renderGsMonster(monster) {
             return;
           }
           if (isPlayerDead()) return;
+          playSound('arrow_shot');
           sendPlayerAttack(monsterId);
           console.log('[GS Attack] sent player:attack →', monsterId.slice(0,8));
         },
@@ -716,6 +721,7 @@ function _renderGsMonster(monster) {
       infoWindow?.open(map, marker);
       return;
     }
+    playSound('arrow_shot');
     sendPlayerAttack(monsterId);
     infoWindow?.close();
   });
@@ -775,6 +781,7 @@ window.__gsAdminDelSpawn = async (spawnId) => {
 };
 
 function _removeGsMonster(monsterId) {
+  playSound('monster_die');
   // 스프라이트 오버레이 (dragon 등) — death 애니메이션 후 자체 제거
   if (_gsOverlays[monsterId]) {
     _gsOverlays[monsterId].playDeathAndRemove();
