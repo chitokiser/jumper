@@ -100,6 +100,51 @@ export const SPRITE_CONFIGS = {
       respawn: { prefix: 'ORK_02_IDLE_',   frames: 10, fps: 6,  loop: false },
     },
   },
+  orc3: {
+    monsterType: 'orc3',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/orc3/',
+    displaySize: 80,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'ORK_03_IDLE_',   frames: 10, fps: 8,  loop: true  },
+      walk:    { prefix: 'ORK_03_WALK_',   frames: 10, fps: 10, loop: true  },
+      attack:  { prefix: 'ORK_03_ATTAK_',  frames: 10, fps: 12, loop: false },
+      hit:     { prefix: 'ORK_03_HURT_',   frames: 10, fps: 12, loop: false },
+      death:   { prefix: 'ORK_03_DIE_',    frames: 10, fps: 8,  loop: false },
+      respawn: { prefix: 'ORK_03_IDLE_',   frames: 10, fps: 6,  loop: false },
+    },
+  },
+  pirate2: {
+    monsterType: 'pirate2',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/pirate2/',
+    displaySize: 80,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: '2_entity_000_IDLE_',   frames: 7, fps: 7,  loop: true  },
+      walk:    { prefix: '2_entity_000_WALK_',   frames: 7, fps: 8,  loop: true  },
+      attack:  { prefix: '2_entity_000_ATTACK_', frames: 7, fps: 12, loop: false },
+      hit:     { prefix: '2_entity_000_HURT_',   frames: 7, fps: 12, loop: false },
+      death:   { prefix: '2_entity_000_DIE_',    frames: 7, fps: 8,  loop: false },
+      respawn: { prefix: '2_entity_000_IDLE_',   frames: 7, fps: 6,  loop: false },
+    },
+  },
+  pirate3: {
+    monsterType: 'pirate3',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/pirate3/',
+    displaySize: 80,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: '3_3-PIRATE_IDLE_',   frames: 7, fps: 7,  loop: true  },
+      walk:    { prefix: '3_3-PIRATE_WALK_',   frames: 7, fps: 8,  loop: true  },
+      attack:  { prefix: '3_3-PIRATE_ATTACK_', frames: 7, fps: 12, loop: false },
+      hit:     { prefix: '3_3-PIRATE_HURT_',   frames: 7, fps: 12, loop: false },
+      death:   { prefix: '3_3-PIRATE_DIE_',    frames: 7, fps: 8,  loop: false },
+      respawn: { prefix: '3_3-PIRATE_IDLE_',   frames: 7, fps: 6,  loop: false },
+    },
+  },
 };
 
 // 서버 상태 → 애니메이션 이름 매핑

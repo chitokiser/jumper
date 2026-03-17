@@ -1619,7 +1619,10 @@ export function enterAdminPlaceMode(type) {
   document.getElementById('btnPlaceDragon')?.classList.toggle('placing',  type === 'dragon');
   document.getElementById('btnPlaceOrc')?.classList.toggle('placing',     type === 'orc');
   document.getElementById('btnPlaceOrc2')?.classList.toggle('placing',    type === 'orc2');
+  document.getElementById('btnPlaceOrc3')?.classList.toggle('placing',    type === 'orc3');
   document.getElementById('btnPlacePirate')?.classList.toggle('placing',  type === 'pirate');
+  document.getElementById('btnPlacePirate2')?.classList.toggle('placing', type === 'pirate2');
+  document.getElementById('btnPlacePirate3')?.classList.toggle('placing', type === 'pirate3');
   document.getElementById('btnPlaceArcherTower')?.classList.toggle('placing', type === 'archer_tower');
   document.getElementById('btnPlaceCannonTower')?.classList.toggle('placing', type === 'cannon_tower');
   document.getElementById('btnPlaceDeco')?.classList.toggle('placing', type === 'deco');
@@ -1689,7 +1692,7 @@ export function enterAdminPlaceMode(type) {
         await refreshGsSpawnList();
       } catch (err) { alert('GS 배치 오류: ' + err.message); }
 
-    } else if (_adminPlaceMode === 'orc' || _adminPlaceMode === 'orc2' || _adminPlaceMode === 'pirate') {
+    } else if (['orc','orc2','orc3','pirate','pirate2','pirate3'].includes(_adminPlaceMode)) {
       // ── 게임서버(GS) 오크/해적 스폰 ─────────────────────────────────────────
       if (!isGameServerConnected()) {
         connectToGameServer();

@@ -1505,7 +1505,10 @@ async function init() {
   $('btnPlaceDragon')?.addEventListener('click',  () => enterAdminPlaceMode('dragon'));
   $('btnPlaceOrc')?.addEventListener('click',     () => enterAdminPlaceMode('orc'));
   $('btnPlaceOrc2')?.addEventListener('click',    () => enterAdminPlaceMode('orc2'));
+  $('btnPlaceOrc3')?.addEventListener('click',    () => enterAdminPlaceMode('orc3'));
   $('btnPlacePirate')?.addEventListener('click',  () => enterAdminPlaceMode('pirate'));
+  $('btnPlacePirate2')?.addEventListener('click', () => enterAdminPlaceMode('pirate2'));
+  $('btnPlacePirate3')?.addEventListener('click', () => enterAdminPlaceMode('pirate3'));
   $('btnPlaceArcherTower')?.addEventListener('click', () => enterAdminPlaceMode('archer_tower'));
   $('btnPlaceCannonTower')?.addEventListener('click', () => enterAdminPlaceMode('cannon_tower'));
   $('btnPlaceDeco')?.addEventListener('click',    () => enterAdminPlaceMode('deco'));
