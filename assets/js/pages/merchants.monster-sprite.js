@@ -74,7 +74,7 @@ export const SPRITE_CONFIGS = {
     monsterType: 'pirate',
     framesMode:  true,
     basePath:    '/assets/images/monsters/pirate/',
-    displaySize: 80,
+    displaySize: 40,
     facingLeft:  false,
     animations: {
       idle:    { prefix: '1_entity_000_IDLE_',   frames: 7, fps: 7,  loop: true  },
@@ -119,7 +119,7 @@ export const SPRITE_CONFIGS = {
     monsterType: 'pirate2',
     framesMode:  true,
     basePath:    '/assets/images/monsters/pirate2/',
-    displaySize: 80,
+    displaySize: 40,
     facingLeft:  false,
     animations: {
       idle:    { prefix: '2_entity_000_IDLE_',   frames: 7, fps: 7,  loop: true  },
@@ -134,7 +134,7 @@ export const SPRITE_CONFIGS = {
     monsterType: 'pirate3',
     framesMode:  true,
     basePath:    '/assets/images/monsters/pirate3/',
-    displaySize: 80,
+    displaySize: 40,
     facingLeft:  false,
     animations: {
       idle:    { prefix: '3_3-PIRATE_IDLE_',   frames: 7, fps: 7,  loop: true  },
