@@ -698,6 +698,7 @@ async function loadPlacesMap() {
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: true,
+      gestureHandling: 'greedy',
     });
 
     const bounds = new google.maps.LatLngBounds();

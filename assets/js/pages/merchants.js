@@ -135,6 +135,7 @@ function initMap() {
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: false,
+    gestureHandling: 'greedy',
     styles: [
       { featureType: 'poi',   elementType: 'all', stylers: [{ visibility: 'off' }] },
       { featureType: 'transit', elementType: 'all', stylers: [{ visibility: 'off' }] },
