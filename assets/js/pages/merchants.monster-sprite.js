@@ -532,7 +532,14 @@ function _getOverlayClass() {
       let frameIdx = 0;
       const setFrame = (idx) => {
         const padded = String(idx).padStart(3, '0');
-        this._frame.src = `${this._cfg.basePath}${animCfg.prefix}${padded}.png`;
+        const url = `${this._cfg.basePath}${animCfg.prefix}${padded}.png`;
+        // 캐시된 Image가 완전히 로드된 경우 src를 직접 복사해 즉시 표시
+        const cached = _preloadCache.get(url);
+        if (cached?.complete && cached.naturalWidth > 0) {
+          this._frame.src = cached.src;
+        } else {
+          this._frame.src = url;
+        }
       };
       setFrame(0);
       this._updateDirection();
@@ -626,6 +633,9 @@ function _getOverlayClass() {
 
 // ─── 공개 API ──────────────────────────────────────────────────────────────────
 
+// 프리로드된 Image 객체를 GC되지 않도록 모듈 레벨에서 보관
+const _preloadCache = new Map(); // url → HTMLImageElement
+
 /** 모든 스프라이트 이미지 사전 로드 (몬스터 등장 전 호출) */
 export function preloadSpriteImages() {
   for (const cfg of Object.values(SPRITE_CONFIGS)) {
@@ -635,21 +645,33 @@ export function preloadSpriteImages() {
       for (const anim of Object.values(cfg.animations)) {
         if (seen.has(anim.file)) continue;
         seen.add(anim.file);
-        const img = new Image();
-        img.src = cfg.basePath + anim.file;
+        const url = cfg.basePath + anim.file;
+        if (!_preloadCache.has(url)) {
+          const img = new Image();
+          img.src = url;
+          _preloadCache.set(url, img);
+        }
       }
     } else if (cfg.framesMode) {
-      // 개별 프레임 PNG 프리로드
+      // 개별 프레임 PNG 프리로드 — Image 객체를 Map에 보관해 GC 방지
       for (const anim of Object.values(cfg.animations)) {
         for (let i = 0; i < anim.frames; i++) {
-          const img = new Image();
-          img.src = cfg.basePath + anim.prefix + String(i).padStart(3, '0') + '.png';
+          const url = cfg.basePath + anim.prefix + String(i).padStart(3, '0') + '.png';
+          if (!_preloadCache.has(url)) {
+            const img = new Image();
+            img.src = url;
+            _preloadCache.set(url, img);
+          }
         }
       }
     } else if (cfg.spritePath) {
       // 단일 스프라이트 시트 프리로드
-      const img = new Image();
-      img.src = cfg.spritePath;
+      const url = cfg.spritePath;
+      if (!_preloadCache.has(url)) {
+        const img = new Image();
+        img.src = url;
+        _preloadCache.set(url, img);
+      }
     }
   }
 }
