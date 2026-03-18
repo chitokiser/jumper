@@ -133,6 +133,14 @@ export function playSound(type) {
         break;
       }
       case 'arrow_shot':  tone(700,0.25,0.12); tone(300,0.15,0.1,0.05,'sawtooth'); break;
+      case 'melee_hit': {
+        // 칼 타격음 — 쇳소리 순간 + 둔탁한 충격
+        noise(0.035, 0.9);
+        tone(480, 0.55, 0.04, 0, 'sawtooth');
+        tone(240, 0.4, 0.09, 0.02, 'square');
+        tone(140, 0.25, 0.18, 0.03);
+        break;
+      }
       case 'tower_shot':
         tone(900,0.35,0.04,0,'square');
         tone(600,0.2,0.07,0.02,'sawtooth');
@@ -430,7 +438,7 @@ function showCriticalToast() {
 }
 
 // ── 데미지/힐 숫자 플로팅 ──────────────────────────────────────────────────────
-function showFloat(text, color, lat, lng) {
+export function showFloat(text, color, lat, lng) {
   const overlay = document.getElementById('battleOverlay');
   if (!overlay) return;
   const px = latLngToPixel(lat, lng);
@@ -678,8 +686,6 @@ export function castLightning() {
   const targets = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
     haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
 
-  if (targets.length === 0) { showSkillError('⚡ 범위 내 몬스터 없음'); return; }
-
   const fire = (target) => {
     if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('⚡ MP 부족!'); return; }
     showSkillMapEffect(target.lat, target.lng, 'lightning');
@@ -699,6 +705,12 @@ export function castLightning() {
     setTimeout(() => updateSkillBar(), SKILL_CD_MS.lightning);
   };
 
+  if (targets.length === 0) {
+    // Firestore 몬스터 없음 — GS 몬스터 전용 발동 (플레이어 위치 중심)
+    if (_gsSkillCallback) { fire({ lat: myLat, lng: myLng }); }
+    else showSkillError('⚡ 범위 내 몬스터 없음');
+    return;
+  }
   if (targets.length === 1) fire(targets[0]);
   else showSkillTargetModal('lightning', targets, fire);
 }
@@ -719,8 +731,6 @@ export function castIceFreeze() {
 
   const targets = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
     haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
-
-  if (targets.length === 0) { showSkillError('❄ 범위 내 몬스터 없음'); return; }
 
   const fire = (target) => {
     if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('❄ MP 부족!'); return; }
@@ -747,6 +757,11 @@ export function castIceFreeze() {
     setTimeout(() => updateSkillBar(), SKILL_CD_MS.ice);
   };
 
+  if (targets.length === 0) {
+    if (_gsSkillCallback) { fire({ lat: myLat, lng: myLng }); }
+    else showSkillError('❄ 범위 내 몬스터 없음');
+    return;
+  }
   if (targets.length === 1) fire(targets[0]);
   else showSkillTargetModal('ice', targets, fire);
 }
@@ -768,8 +783,6 @@ export function castFireStorm() {
   const targets = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
     haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
 
-  if (targets.length === 0) { showSkillError('🔥 범위 내 몬스터 없음'); return; }
-
   const fire = (target) => {
     if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('🔥 MP 부족!'); return; }
     showSkillMapEffect(target.lat, target.lng, 'fire');
@@ -789,6 +802,11 @@ export function castFireStorm() {
     setTimeout(() => updateSkillBar(), SKILL_CD_MS.fire);
   };
 
+  if (targets.length === 0) {
+    if (_gsSkillCallback) { fire({ lat: myLat, lng: myLng }); }
+    else showSkillError('🔥 범위 내 몬스터 없음');
+    return;
+  }
   if (targets.length === 1) fire(targets[0]);
   else showSkillTargetModal('fire', targets, fire);
 }
@@ -1026,7 +1044,7 @@ window.__deleteDeco = async (id) => {
 
 // ── 몬스터 마커 ───────────────────────────────────────────────────────────────
 function getMonsterIcon(image) {
-  if (image && image.startsWith('/')) {
+  if (image && (image.startsWith('/') || image.startsWith('http'))) {
     return { url: image, scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
   }
   const emoji = image || '🐉';
@@ -1038,7 +1056,9 @@ function getMonsterIcon(image) {
     return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
              scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
   }
-  return { url: `/assets/images/monsters/${image}`,
+  // 이미 경로가 포함된 경우(assets/... 형태) 그대로 사용
+  const imgPath = image.includes('/') ? `/${image}` : `/assets/images/monsters/${image}`;
+  return { url: imgPath,
            scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
 }
 
@@ -1671,65 +1691,34 @@ export function enterAdminPlaceMode(type) {
         alert(`✅ ${name} 배치 완료 (Firebase)\n서버가 꺼져도 유지됩니다.`);
       } catch (err) { alert('Firebase 배치 오류: ' + err.message); }
 
-    } else if (_adminPlaceMode === 'dragon') {
-      // ── 게임서버(GS) 드래곤 스폰 ────────────────────────────────────────────
+    } else if (['dragon','orc','orc2','orc3','pirate','pirate2','pirate3'].includes(_adminPlaceMode)) {
+      // ── 게임서버(GS) 몬스터 스폰 — 타입별 사전 설정값으로 즉시 배치 ────────────
       if (!isGameServerConnected()) {
         connectToGameServer();
         alert('⚠️ 게임서버에 연결 중입니다.\n연결 후(■ 표시) 다시 배치해주세요.');
         return;
       }
-      const lv = _ctx?.playerLevel ?? 1;
-      const monsterType = 'dragon';
-      const p = { maxHp: lv*100*30, attackPower:150, aggroRangeM:300, attackRangeM:20, moveSpeed:0.8, attackCooldownMs:1800, respawnSeconds:120 };
-
-      const maxHp          = parseInt(prompt(`최대 HP:`,          p.maxHp)          || p.maxHp);
-      const attackPower    = parseInt(prompt(`공격력:`,            p.attackPower)    || p.attackPower);
-      const aggroRangeM    = parseInt(prompt(`탐지 반경(m):`,      p.aggroRangeM)    || p.aggroRangeM);
-      const respawnSeconds = parseInt(prompt(`리스폰 시간(초):`,    p.respawnSeconds) || p.respawnSeconds);
-
-      try {
-        const result = await gsAdminAddSpawn({
-          monsterType, lat, lng, maxHp,
-          attackPower,
-          aggroRangeM,
-          attackRangeM:      p.attackRangeM,
-          moveSpeed:         p.moveSpeed,
-          attackCooldownMs:  p.attackCooldownMs,
-          respawnSeconds,
-          maxCount: 1,
-        });
-        alert(`✅ dragon 배치 완료 (zone: ${result.zoneId})\n몬스터가 즉시 스폰됩니다.`);
-        await refreshGsSpawnList();
-      } catch (err) { alert('GS 배치 오류: ' + err.message); }
-
-    } else if (['orc','orc2','orc3','pirate','pirate2','pirate3'].includes(_adminPlaceMode)) {
-      // ── 게임서버(GS) 오크/해적 스폰 ─────────────────────────────────────────
-      if (!isGameServerConnected()) {
-        connectToGameServer();
-        alert('⚠️ 게임서버에 연결 중입니다.\n연결 후(■ 표시) 다시 배치해주세요.');
-        return;
-      }
-      const lv = _ctx?.playerLevel ?? 1;
       const monsterType = _adminPlaceMode;
-      const p = { maxHp: lv*100*15, attackPower:200, aggroRangeM:200, attackRangeM:20, moveSpeed:0.8, attackCooldownMs:3000, respawnSeconds:600 };
-
-      const maxHp          = parseInt(prompt(`최대 HP:`,       p.maxHp)          || p.maxHp);
-      const attackPower    = parseInt(prompt(`공격력:`,         p.attackPower)    || p.attackPower);
-      const aggroRangeM    = parseInt(prompt(`탐지 반경(m):`,   p.aggroRangeM)    || p.aggroRangeM);
-      const respawnSeconds = parseInt(prompt(`리스폰 시간(초):`, p.respawnSeconds) || p.respawnSeconds);
+      // 서버 MONSTER_TYPE_DEFAULTS와 동일한 값
+      const GS_DEFAULTS = {
+        pirate:  { maxHp:  300, attackPower:  30, attackRangeM: 20, aggroRangeM:  40, moveSpeed: 1.5, attackCooldownMs: 1500, respawnSeconds:  90 },
+        pirate2: { maxHp:  500, attackPower:  55, attackRangeM: 22, aggroRangeM:  45, moveSpeed: 1.4, attackCooldownMs: 2000, respawnSeconds: 120 },
+        pirate3: { maxHp:  800, attackPower:  85, attackRangeM: 25, aggroRangeM:  50, moveSpeed: 1.3, attackCooldownMs: 2000, respawnSeconds: 180 },
+        orc:     { maxHp:  600, attackPower:  60, attackRangeM: 23, aggroRangeM:  50, moveSpeed: 1.2, attackCooldownMs: 2000, respawnSeconds: 150 },
+        orc2:    { maxHp: 1000, attackPower:  95, attackRangeM: 27, aggroRangeM:  55, moveSpeed: 1.1, attackCooldownMs: 2200, respawnSeconds: 200 },
+        orc3:    { maxHp: 1500, attackPower: 130, attackRangeM: 30, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
+        dragon:  { maxHp: 3000, attackPower: 160, attackRangeM: 35, aggroRangeM: 100, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
+      };
+      const p = GS_DEFAULTS[monsterType];
+      if (!confirm(
+        `[${monsterType}] 배치 확인\n` +
+        `HP: ${p.maxHp}  ATK: ${p.attackPower}  공격범위: ${p.attackRangeM}m\n` +
+        `탐지: ${p.aggroRangeM}m  리스폰: ${p.respawnSeconds}초`
+      )) return;
 
       try {
-        const result = await gsAdminAddSpawn({
-          monsterType, lat, lng, maxHp,
-          attackPower,
-          aggroRangeM,
-          attackRangeM:     p.attackRangeM,
-          moveSpeed:        p.moveSpeed,
-          attackCooldownMs: p.attackCooldownMs,
-          respawnSeconds,
-          maxCount: 1,
-        });
-        alert(`✅ ${monsterType} 배치 완료 (zone: ${result.zoneId})\n몬스터가 즉시 스폰됩니다.`);
+        const result = await gsAdminAddSpawn({ monsterType, lat, lng, maxCount: 1, ...p });
+        alert(`✅ ${monsterType} 배치 완료 (zone: ${result.zoneId})`);
         await refreshGsSpawnList();
       } catch (err) { alert('GS 배치 오류: ' + err.message); }
 

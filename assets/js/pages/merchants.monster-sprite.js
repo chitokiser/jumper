@@ -215,7 +215,6 @@ function _injectStyles() {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  background: rgba(0,0,0,0.15);
 }
 `;
       continue;
@@ -451,6 +450,12 @@ function _getOverlayClass() {
       // 피격 감지 (HP 감소)
       if (monster.hp < prevHp && !this._oneShot) {
         this._playOneShot('hit', () => this._syncAnim(this._logicState));
+        return;
+      }
+
+      // dead → 숨기기 (zone:snapshot 등에서 updateMonster로 dead가 오는 경우 방어)
+      if (monster.state === 'dead' && !this._hidden && !this._oneShot) {
+        this._applyFrameAnim('death', () => this._hide());
         return;
       }
 

@@ -12,7 +12,7 @@ import { httpsCallable }
 import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          startBattleLoop, startWatchPosition, startSharedSync,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
-         healHp, healMp, playSound,
+         healHp, healMp, playSound, showFloat,
          castLightning, castIceFreeze, castFireStorm,
          setGsSkillCallback,
          useReviveTicket, updateSkillBar, getPlayerGold, getPlayerLevel, isPlayerDead,
@@ -668,6 +668,15 @@ function _gsMonsterIcon(state, hpPct) {
 function _renderGsMonster(monster) {
   if (!map) return;
   const { monsterId, type, state, hp, maxHp } = monster;
+
+  // dead 상태 → 렌더링 생략, 기존 오버레이/마커 정리
+  if (state === 'dead') {
+    if (_gsOverlays[monsterId]) { _gsOverlays[monsterId].setMap(null); delete _gsOverlays[monsterId]; }
+    if (_gsMarkers[monsterId])  { _gsMarkers[monsterId].setMap(null);  delete _gsMarkers[monsterId];  }
+    delete _gsMonsters[monsterId];
+    return;
+  }
+
   // currentLat/Lng (MonsterInstance 필드명)
   const lat = monster.currentLat ?? monster.lat ?? 0;
   const lng = monster.currentLng ?? monster.lng ?? 0;
@@ -684,16 +693,24 @@ function _renderGsMonster(monster) {
     } else {
       _gsOverlays[monsterId] = createMonsterSpriteOverlay(
         map, monster,
-        () => {   // 클릭 핸들러
-          console.log('[GS Click] type:', type, 'isAdmin:', _isAdmin, 'isDead:', isPlayerDead(), 'connected:', isGameServerConnected());
+        () => {   // 클릭 핸들러 (근접전투)
           const m = _gsMonsters[monsterId];
-          if (!m) { console.log('[GS Click] BLOCKED: monster not in _gsMonsters'); return; }
-          if (isPlayerDead()) { console.log('[GS Click] BLOCKED: player dead'); return; }
-          if (!isGameServerConnected()) { console.log('[GS Click] BLOCKED: GS not connected'); return; }
-          playSound('arrow_shot');
+          if (!m) return;
+          if (isPlayerDead()) return;
+          if (!isGameServerConnected()) return;
+          // 거리 체크 — GS_MONSTER_ATTACK_RANGE_M 이내에서만 공격
+          const myPos = _ctx.lastPos;
+          if (!myPos) return;
+          const mLat = m.currentLat ?? m.lat ?? lat;
+          const mLng = m.currentLng ?? m.lng ?? lng;
+          const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
+          if (dist > GS_MONSTER_ATTACK_RANGE_M) {
+            showFloat(`${Math.round(dist)}m — 접근!`, '#facc15', mLat, mLng);
+            return;
+          }
+          playSound('melee_hit');
           sendPlayerAttack(monsterId);
-          console.log('[GS Attack] sent player:attack →', monsterId.slice(0,8));
-          // 어드민이면 공격 후 관리 메뉴도 표시
+          showFloat('⚔️', '#f87171', mLat, mLng);
           if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type);
         },
         () => {   // 오버레이 제거 완료 콜백
@@ -735,8 +752,9 @@ function _renderGsMonster(monster) {
       infoWindow?.open(map, marker);
       return;
     }
-    playSound('arrow_shot');
+    playSound('melee_hit');
     sendPlayerAttack(monsterId);
+    showFloat('⚔️', '#f87171', mLat, mLng);
     infoWindow?.close();
     if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m?.spawnId, type, marker);
   });
