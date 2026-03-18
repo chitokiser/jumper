@@ -1647,7 +1647,7 @@ export function enterAdminPlaceMode(type) {
       const monsterType = prompt('몬스터 타입 (goblin / orc):', 'goblin') || 'goblin';
       const PRESETS_FB = {
         orc:    { name:'오크',   image:'👹', maxHp: lv*100*15, atk:200, detectRadius:200, respawnMinutes:10 },
-        goblin: { name:'고블린', image:'👾', maxHp: lv*100*8,  atk:80,  detectRadius:100, respawnMinutes:5  },
+        goblin: { name:'고블린', image:'22.png', maxHp: lv*100*8,  atk:80,  detectRadius:100, respawnMinutes:5  },
       };
       const p = PRESETS_FB[monsterType] || PRESETS_FB.goblin;
 
