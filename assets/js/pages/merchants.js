@@ -667,16 +667,16 @@ function _renderGsMonster(monster) {
       _gsOverlays[monsterId] = createMonsterSpriteOverlay(
         map, monster,
         () => {   // 클릭 핸들러
+          console.log('[GS Click] type:', type, 'isAdmin:', _isAdmin, 'isDead:', isPlayerDead(), 'connected:', isGameServerConnected());
           const m = _gsMonsters[monsterId];
-          if (!m) return;
-          if (_isAdmin) {
-            _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type);
-            return;
-          }
-          if (isPlayerDead()) return;
+          if (!m) { console.log('[GS Click] BLOCKED: monster not in _gsMonsters'); return; }
+          if (isPlayerDead()) { console.log('[GS Click] BLOCKED: player dead'); return; }
+          if (!isGameServerConnected()) { console.log('[GS Click] BLOCKED: GS not connected'); return; }
           playSound('arrow_shot');
           sendPlayerAttack(monsterId);
           console.log('[GS Attack] sent player:attack →', monsterId.slice(0,8));
+          // 어드민이면 공격 후 관리 메뉴도 표시
+          if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type);
         },
         () => {   // 오버레이 제거 완료 콜백
           delete _gsOverlays[monsterId];
@@ -706,10 +706,6 @@ function _renderGsMonster(monster) {
   });
   marker.addListener('click', () => {
     const m = _gsMonsters[monsterId];
-    if (_isAdmin) {
-      _showGsMonsterAdminMenu(monsterId, m?.spawnId, type, marker);
-      return;
-    }
     if (isPlayerDead()) return;
     const myPos = _ctx.lastPos;
     if (!myPos) return;
@@ -724,6 +720,7 @@ function _renderGsMonster(monster) {
     playSound('arrow_shot');
     sendPlayerAttack(monsterId);
     infoWindow?.close();
+    if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m?.spawnId, type, marker);
   });
   _gsMarkers[monsterId] = marker;
 }
