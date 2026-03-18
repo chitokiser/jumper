@@ -42,8 +42,8 @@ export const SPRITE_CONFIGS = {
     monsterType:  'dragon',
     stripsMode:   true,                              // 애니메이션별 수평 스트립 PNG 방식
     basePath:     '/assets/images/monsters/dragon/',
-    frameWidth:   128,
-    frameHeight:  128,
+    frameWidth:   80,
+    frameHeight:  80,
     displaySize:  80,
     facingLeft:   false,
     animations: {
