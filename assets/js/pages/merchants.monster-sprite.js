@@ -215,6 +215,7 @@ function _injectStyles() {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  background: rgba(0,0,0,0.15);
 }
 `;
       continue;
@@ -636,11 +637,17 @@ function _getOverlayClass() {
 // 프리로드된 Image 객체를 GC되지 않도록 모듈 레벨에서 보관
 const _preloadCache = new Map(); // url → HTMLImageElement
 
-/** 모든 스프라이트 이미지 사전 로드 (몬스터 등장 전 호출) */
+/**
+ * 스프라이트 이미지 사전 로드
+ * 우선순위: idle[0] → idle 전체 → 나머지
+ * (브라우저 동시접속 제한으로 idle이 뒤로 밀리지 않도록)
+ */
 export function preloadSpriteImages() {
+  const later = []; // 2단계: idle 나머지 + 다른 애니
+
   for (const cfg of Object.values(SPRITE_CONFIGS)) {
     if (cfg.stripsMode) {
-      // 애니메이션별 스트립 PNG 프리로드
+      // strips: 파일 수가 적어 순서 무관
       const seen = new Set();
       for (const anim of Object.values(cfg.animations)) {
         if (seen.has(anim.file)) continue;
@@ -653,19 +660,25 @@ export function preloadSpriteImages() {
         }
       }
     } else if (cfg.framesMode) {
-      // 개별 프레임 PNG 프리로드 — Image 객체를 Map에 보관해 GC 방지
-      for (const anim of Object.values(cfg.animations)) {
-        for (let i = 0; i < anim.frames; i++) {
+      // 1단계: idle 첫 프레임만 즉시 로드 (몬스터가 화면에 가장 먼저 보이는 이미지)
+      const idleAnim = cfg.animations.idle;
+      if (idleAnim) {
+        const url0 = cfg.basePath + idleAnim.prefix + '000.png';
+        if (!_preloadCache.has(url0)) {
+          const img = new Image();
+          img.src = url0;
+          _preloadCache.set(url0, img);
+        }
+      }
+      // 2단계: 나머지 프레임은 나중에
+      for (const [animName, anim] of Object.entries(cfg.animations)) {
+        const start = (animName === 'idle') ? 1 : 0; // idle[0]은 이미 로드
+        for (let i = start; i < anim.frames; i++) {
           const url = cfg.basePath + anim.prefix + String(i).padStart(3, '0') + '.png';
-          if (!_preloadCache.has(url)) {
-            const img = new Image();
-            img.src = url;
-            _preloadCache.set(url, img);
-          }
+          if (!_preloadCache.has(url)) later.push(url);
         }
       }
     } else if (cfg.spritePath) {
-      // 단일 스프라이트 시트 프리로드
       const url = cfg.spritePath;
       if (!_preloadCache.has(url)) {
         const img = new Image();
@@ -674,6 +687,17 @@ export function preloadSpriteImages() {
       }
     }
   }
+
+  // 2단계 로드: 짧은 딜레이 후 나머지 이미지 로드 (idle[0] 로드 완료 후)
+  setTimeout(() => {
+    for (const url of later) {
+      if (!_preloadCache.has(url)) {
+        const img = new Image();
+        img.src = url;
+        _preloadCache.set(url, img);
+      }
+    }
+  }, 500);
 }
 
 /** 해당 타입에 스프라이트 설정이 있는지 확인 */
