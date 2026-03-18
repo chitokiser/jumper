@@ -14,12 +14,13 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
          healHp, healMp, playSound,
          castLightning, castIceFreeze, castFireStorm,
+         setGsSkillCallback,
          useReviveTicket, updateSkillBar, getPlayerGold, getPlayerLevel, isPlayerDead,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
-         sendPlayerAttack, sendPlayerRevive,
+         sendPlayerAttack, sendPlayerRevive, sendPlayerSkill,
          gsAdminDeleteSpawn, gsAdminKillMonster }
   from './merchants.gameserver.js';
 import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
@@ -27,6 +28,22 @@ import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
 
 // 스프라이트 이미지 즉시 프리로드 (몬스터 등장 전 브라우저 캐시 확보)
 preloadSpriteImages();
+
+// GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
+setGsSkillCallback((skillId, centerLat, centerLng, rangeM) => {
+  if (!isGameServerConnected()) return;
+  for (const [monsterId, m] of Object.entries(_gsMonsters)) {
+    if (!m || m.state === 'dead' || m.state === 'respawning') continue;
+    const lat = m.currentLat ?? m.lat;
+    const lng = m.currentLng ?? m.lng;
+    if (!lat || !lng) continue;
+    const dist = Math.sqrt(
+      Math.pow((lat - centerLat) * 111320, 2) +
+      Math.pow((lng - centerLng) * 111320 * Math.cos(centerLat * Math.PI / 180), 2)
+    );
+    if (dist <= rangeM) sendPlayerSkill(skillId, monsterId);
+  }
+});
 
 const $ = id => document.getElementById(id);
 

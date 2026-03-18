@@ -174,6 +174,11 @@ export function sendPlayerRevive() {
   _socket.emit('player:revive');
 }
 
+export function sendPlayerSkill(skillId, monsterId) {
+  if (_state !== 'connected' || !_socket) return;
+  _socket.emit('player:skill', { skillId, monsterId });
+}
+
 // ── 관리자 REST API ─────────────────────────────────────────────────────────────
 // window.GS_ADMIN_SECRET 이 설정되어 있어야 한다 (merchants.html에서 주입)
 

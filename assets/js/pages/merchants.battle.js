@@ -17,6 +17,11 @@ import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonst
 // initBattle(ctx, callbacks) 호출 후 설정됨
 let _ctx = null;
 
+// ── GS 스킬 콜백 (merchants.js가 setGsSkillCallback으로 주입) ──────────────────
+// fn(skillId, centerLat, centerLng, rangeM) — GS 몬스터 범위 피해 처리
+let _gsSkillCallback = null;
+export function setGsSkillCallback(fn) { _gsSkillCallback = fn; }
+
 // ── 내부 배틀 상태 ────────────────────────────────────────────────────────────
 let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0 };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
@@ -687,6 +692,7 @@ export function castLightning() {
         hitCount++;
       }
     }
+    _gsSkillCallback?.('lightning', target.lat, target.lng, SKILL_RANGE_M);
     showFloat(`⚡ 벼락! (${hitCount}마리)`, '#facc15', target.lat, target.lng);
     _skillCd.lightning = Date.now() + SKILL_CD_MS.lightning;
     updateSkillBar();
@@ -734,6 +740,7 @@ export function castIceFreeze() {
         hitCount++;
       }
     }
+    _gsSkillCallback?.('ice', target.lat, target.lng, SKILL_RANGE_M);
     showFloat(`❄ 동결! (${hitCount}마리 / ${SKILL_FREEZE_MS/1000}초)`, '#93c5fd', target.lat, target.lng);
     _skillCd.ice = Date.now() + SKILL_CD_MS.ice;
     updateSkillBar();
@@ -775,6 +782,7 @@ export function castFireStorm() {
         hitCount++;
       }
     }
+    _gsSkillCallback?.('fire', target.lat, target.lng, SKILL_RANGE_M);
     showFloat(`🔥 화염! (${hitCount}마리)`, '#f97316', target.lat, target.lng);
     _skillCd.fire = Date.now() + SKILL_CD_MS.fire;
     updateSkillBar();
