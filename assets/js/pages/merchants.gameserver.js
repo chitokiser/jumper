@@ -144,6 +144,8 @@ export function connectToGameServer() {
   _socket.on('player:died',       () => _handlers?.onPlayerDied?.());
   _socket.on('player:revived',    d => _handlers?.onPlayerRevived?.(d));
   _socket.on('drop:spawned',      d => _handlers?.onDropSpawned?.(d));
+  _socket.on('drop:removed',      d => _handlers?.onDropRemoved?.(d));
+  _socket.on('drop:collected',    d => _handlers?.onDropCollected?.(d));
 }
 
 // ── 연결 해제 ──────────────────────────────────────────────────────────────────
@@ -177,6 +179,11 @@ export function sendPlayerRevive() {
 export function sendPlayerSkill(skillId, monsterId) {
   if (_state !== 'connected' || !_socket) return;
   _socket.emit('player:skill', { skillId, monsterId });
+}
+
+export function sendDropCollect(dropId) {
+  if (_state !== 'connected' || !_socket) return;
+  _socket.emit('drop:collect', { dropId });
 }
 
 // ── 관리자 REST API ─────────────────────────────────────────────────────────────

@@ -2069,3 +2069,43 @@ export function syncReviveFromServer(hp) {
   updateCombatHud();
   savePlayerState();
 }
+
+// GS 드랍 마커 관리 — {dropId: {marker, lat, lng, gold}}
+const _gsDrops = {};
+
+export function spawnGsDrop(dropId, lat, lng, gold, onClaim) {
+  if (!window.google?.maps || !_ctx?.map) return;
+  const map = _ctx.map;
+  const marker = new google.maps.Marker({
+    position: { lat, lng }, map,
+    title: `💰 코인 ×${gold} — 클릭 획득`,
+    icon: { url: '/assets/images/item/coins.png',
+            scaledSize: new google.maps.Size(32, 32),
+            anchor: new google.maps.Point(16, 16) },
+    zIndex: 26,
+  });
+  _gsDrops[dropId] = { marker, lat, lng, gold };
+  showFloat(`💰×${gold}`, '#fbbf24', lat, lng);
+  playSound('gold_drop');
+
+  marker.addListener('click', () => {
+    if (!_gsDrops[dropId]) return;
+    removeGsDrop(dropId);
+    _player.gold = (_player.gold || 0) + gold;
+    showFloat(`💰+${gold}`, '#fbbf24', lat, lng);
+    playSound('gold_pickup');
+    updateCombatHud();
+    savePlayerState();
+    onClaim?.();
+  });
+
+  // 5분 자동 소멸
+  setTimeout(() => removeGsDrop(dropId), 300000);
+}
+
+export function removeGsDrop(dropId) {
+  const d = _gsDrops[dropId];
+  if (!d) return;
+  d.marker?.setMap(null);
+  delete _gsDrops[dropId];
+}

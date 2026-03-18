@@ -16,11 +16,12 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          castLightning, castIceFreeze, castFireStorm,
          setGsSkillCallback,
          useReviveTicket, updateSkillBar, getPlayerGold, getPlayerLevel, isPlayerDead,
-         syncHpFromServer, syncDeathFromServer, syncReviveFromServer }
+         syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
+         spawnGsDrop, removeGsDrop }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
-         sendPlayerAttack, sendPlayerRevive, sendPlayerSkill,
+         sendPlayerAttack, sendPlayerRevive, sendPlayerSkill, sendDropCollect,
          gsAdminDeleteSpawn, gsAdminKillMonster }
   from './merchants.gameserver.js';
 import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
@@ -1623,7 +1624,9 @@ async function init() {
     onMonsterUpdate:    (m) => _renderGsMonster(m),
     onMonsterDied:      (d) => _removeGsMonster(d.monsterId),
     onMonsterRespawned: (m) => _renderGsMonster(m),
-    onDropSpawned:      () => {},
+    onDropSpawned:   (d)    => spawnGsDrop(d.dropId, d.lat, d.lng, d.gold ?? d.count, () => sendDropCollect(d.dropId)),
+    onDropRemoved:   (d)   => removeGsDrop(d.dropId),
+    onDropCollected: (d)   => { /* gold already added in spawnGsDrop click handler */ },
     onPlayerHit:    (data) => syncHpFromServer(data.remainHp, data.damage),
     onPlayerDied:   ()     => syncDeathFromServer(),
     onPlayerRevived:(data) => syncReviveFromServer(data.hp),
