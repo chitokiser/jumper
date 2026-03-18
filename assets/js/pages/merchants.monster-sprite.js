@@ -39,20 +39,18 @@
 
 export const SPRITE_CONFIGS = {
   dragon: {
-    monsterType:  'dragon',
-    stripsMode:   true,                              // 애니메이션별 수평 스트립 PNG 방식
-    basePath:     '/assets/images/monsters/dragon/',
-    frameWidth:   80,
-    frameHeight:  80,
-    displaySize:  80,
-    facingLeft:   false,
+    monsterType: 'dragon',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/dragon/',
+    displaySize: 67,
+    facingLeft:  false,
     animations: {
-      idle:    { file: 'Idle.png',     frames: 6, fps: 6,  loop: true  },
-      walk:    { file: 'Walk.png',     frames: 8, fps: 10, loop: true  },
-      attack:  { file: 'Attack_1.png', frames: 6, fps: 10, loop: false },
-      hit:     { file: 'Hurt.png',     frames: 3, fps: 12, loop: false },
-      death:   { file: 'Dead.png',     frames: 6, fps: 6,  loop: false },
-      respawn: { file: 'Idle.png',     frames: 6, fps: 6,  loop: false },
+      idle:    { prefix: 'idle',  frames: 6, fps: 6,  loop: true  },
+      walk:    { prefix: 'fly',   frames: 6, fps: 10, loop: true  },
+      attack:  { prefix: 'attak', frames: 6, fps: 10, loop: false },
+      hit:     { prefix: 'attak', frames: 3, fps: 12, loop: false },
+      death:   { prefix: 'idle',  frames: 6, fps: 4,  loop: false },
+      respawn: { prefix: 'idle',  frames: 6, fps: 6,  loop: false },
     },
   },
   orc: {
@@ -175,6 +173,9 @@ function _injectStyles() {
   pointer-events: auto;
   cursor: pointer;
   user-select: none;
+  outline: none;
+  border: none;
+  background: transparent;
 }
 .ms-overlay .ms-name {
   position: absolute;
@@ -215,6 +216,9 @@ function _injectStyles() {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  outline: none;
+  border: none;
+  background: transparent;
 }
 `;
       continue;
@@ -365,7 +369,7 @@ function _getOverlayClass() {
 
       const div = document.createElement('div');
       div.className = 'ms-overlay';
-      div.style.cssText = `width:${size}px;height:${size}px;`;
+      div.style.cssText = `width:${size}px;height:${size}px;outline:none;border:none;background:transparent;`;
 
       // 스프라이트 프레임
       let frame;
