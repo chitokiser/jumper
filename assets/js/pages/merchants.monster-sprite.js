@@ -101,18 +101,21 @@ export const SPRITE_CONFIGS = {
     },
   },
   orc3: {
-    monsterType: 'orc3',
-    framesMode:  true,
-    basePath:    '/assets/images/monsters/orc3/',
-    displaySize: 80,
-    facingLeft:  false,
+    monsterType:  'orc3',
+    spritePath:   '/assets/images/monsters/orc3/orc3.png',
+    sheetWidth:   1030,
+    sheetHeight:  752,
+    frameWidth:   128.75,   // 1030 / 8
+    frameHeight:  94,       // 752  / 8
+    displaySize:  80,
+    facingLeft:   false,
     animations: {
-      idle:    { prefix: 'ORK_03_IDLE_',   frames: 10, fps: 8,  loop: true  },
-      walk:    { prefix: 'ORK_03_WALK_',   frames: 10, fps: 10, loop: true  },
-      attack:  { prefix: 'ORK_03_ATTAK_',  frames: 10, fps: 12, loop: false },
-      hit:     { prefix: 'ORK_03_HURT_',   frames: 10, fps: 12, loop: false },
-      death:   { prefix: 'ORK_03_DIE_',    frames: 10, fps: 8,  loop: false },
-      respawn: { prefix: 'ORK_03_IDLE_',   frames: 10, fps: 6,  loop: false },
+      idle:    { row: 3, frames: 8, fps: 8,  loop: true  },
+      walk:    { row: 6, frames: 8, fps: 10, loop: true  },  // run row
+      attack:  { row: 0, frames: 8, fps: 12, loop: false },
+      hit:     { row: 2, frames: 8, fps: 12, loop: false },
+      death:   { row: 1, frames: 8, fps: 8,  loop: false },
+      respawn: { row: 3, frames: 8, fps: 6,  loop: false },
     },
   },
   pirate2: {
