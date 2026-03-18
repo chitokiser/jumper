@@ -10,7 +10,7 @@ import { httpsCallable }
 import { hasSpriteConfig, createMonsterSpriteOverlay }
   from './merchants.monster-sprite.js';
 import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster,
-         isGameServerConnected, connectToGameServer }
+         isGameServerConnected, connectToGameServer, sendPlayerRevive }
   from './merchants.gameserver.js';
 
 // ── 공유 컨텍스트 참조 ─────────────────────────────────────────────────────────
@@ -882,6 +882,7 @@ export async function useReviveTicket() {
     _reviveWalkDist = 0;
     _player.hp = Math.round(_player.maxHp * 0.5);
     _player.mp = Math.round(_player.maxMp * 0.5);
+    sendPlayerRevive();  // GS 서버에 부활 동기화
     playSound('revive');
     const myMark = _ctx?.myLocationMarker;
     if (myMark) showFloat('✨ 부활! HP·MP 50%', '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
@@ -1313,6 +1314,7 @@ function battleTick() {
       _player.mp = _player.maxMp;
       _healAccum   = 0;
       _mpHealAccum = 0;
+      sendPlayerRevive();  // GS 서버에 부활 동기화 (state='dead' 해제)
       playSound('revive');
       const myMark = _ctx?.myLocationMarker;
       if (myMark) {
