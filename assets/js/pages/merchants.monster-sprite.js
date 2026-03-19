@@ -173,9 +173,27 @@ function _injectStyles() {
   pointer-events: auto;
   cursor: pointer;
   user-select: none;
-  outline: none;
-  border: none;
-  background: transparent;
+  outline: none !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+.ms-overlay:focus,
+.ms-overlay:focus-visible,
+.ms-overlay *:focus,
+.ms-overlay *:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.ms-overlay img {
+  max-width: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  display: block !important;
 }
 .ms-overlay .ms-name {
   position: absolute;
@@ -212,13 +230,16 @@ function _injectStyles() {
       css += `
 /* ── ${type} frames ── */
 .ms-${type} {
-  width: ${displaySize}px; height: ${displaySize}px;
-  display: block;
+  width: ${displaySize}px !important;
+  height: ${displaySize}px !important;
+  display: block !important;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  outline: none;
-  border: none;
-  background: transparent;
+  outline: none !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  max-width: none !important;
 }
 `;
       continue;
@@ -369,7 +390,8 @@ function _getOverlayClass() {
 
       const div = document.createElement('div');
       div.className = 'ms-overlay';
-      div.style.cssText = `width:${size}px;height:${size}px;outline:none;border:none;background:transparent;`;
+      div.tabIndex = -1;   // 클릭 시 포커스 링(사각형) 방지
+      div.style.cssText = `width:${size}px;height:${size}px;outline:none;border:none;background:transparent;box-shadow:none;`;
 
       // 스프라이트 프레임
       let frame;
@@ -377,6 +399,7 @@ function _getOverlayClass() {
         frame = document.createElement('img');
         frame.className = `ms-${this._type}`;
         frame.draggable = false;
+        frame.tabIndex = -1;
         frame.alt = '';
       } else {
         frame = document.createElement('div');
@@ -401,7 +424,7 @@ function _getOverlayClass() {
       div.appendChild(nameEl);
       div.appendChild(frame);
       div.appendChild(hpWrap);
-      div.addEventListener('click', () => this._onClick());
+      div.addEventListener('click', (e) => { e.stopPropagation(); this._onClick(); });
 
       this._div = div;
       this._updateHpBar();

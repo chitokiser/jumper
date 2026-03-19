@@ -711,7 +711,7 @@ function _renderGsMonster(monster) {
           playSound('melee_hit');
           sendPlayerAttack(monsterId);
           showFloat('⚔️', '#f87171', mLat, mLng);
-          if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type);
+          if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type, null, { lat: mLat, lng: mLng });
         },
         () => {   // 오버레이 제거 완료 콜백
           delete _gsOverlays[monsterId];
@@ -762,7 +762,7 @@ function _renderGsMonster(monster) {
 }
 
 // 어드민 전용 — GS 몬스터 클릭 시 infoWindow로 관리 메뉴 표시
-function _showGsMonsterAdminMenu(monsterId, spawnId, type, anchor) {
+function _showGsMonsterAdminMenu(monsterId, spawnId, type, anchor, pos) {
   const shortMid = monsterId.slice(0, 8);
   const shortSid = spawnId ? spawnId.replace('spawn-admin-', '').slice(0, 8) : '?';
   const html = `
@@ -786,8 +786,14 @@ function _showGsMonsterAdminMenu(monsterId, spawnId, type, anchor) {
       </div>
     </div>`;
   infoWindow?.setContent(html);
-  if (anchor) infoWindow?.open(map, anchor);
-  else        infoWindow?.open(map);
+  if (anchor) {
+    infoWindow?.open(map, anchor);
+  } else if (pos) {
+    infoWindow?.setPosition(pos);
+    infoWindow?.open(map);
+  } else {
+    infoWindow?.open(map);
+  }
 }
 
 window.__gsAdminAttackTest = (monsterId) => {
