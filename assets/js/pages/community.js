@@ -1,16 +1,19 @@
 // /assets/js/pages/community.js
 // 소셜 커뮤니티 – 행사 목록 / 상세 / 평점 / 댓글
 
+import { initializeApp }        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, doc,
-  addDoc, getDoc, getDocs, updateDoc, deleteDoc,
+  addDoc, getDoc, getDocs, updateDoc,
   query, orderBy, where, limit, startAfter,
   serverTimestamp, increment }
-  from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js';
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, onAuthStateChanged }
-  from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js';
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { firebaseConfig }       from '/assets/js/firebase-config.js';
 
-const db   = getFirestore();
-const auth = getAuth();
+const app  = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
 
 const PAGE_SIZE = 12;
 
