@@ -1320,7 +1320,7 @@ function createTowerMarker(tower, map, infoWindow) {
   marker.addListener('click', () => {
     const myMark = _ctx?.myLocationMarker;
     const inRange = myMark
-      ? haversine(myMark.getPosition().lat(), myMark.getPosition().lng(), tower.lat, tower.lng) <= (tower.radius || 30) * 3
+      ? haversine(myMark.getPosition().lat(), myMark.getPosition().lng(), tower.lat, tower.lng) <= 20
       : false;
     if (inRange && !_isDead) {
       attackTower(tower, marker);
