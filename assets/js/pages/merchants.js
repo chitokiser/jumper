@@ -415,6 +415,7 @@ function renderBoxMarkers() {
   boxMarkers.forEach(m => m.setMap(null));
   boxMarkers = [];
   if (!map) return;
+  if (!isGameServerConnected()) return; // 서버 연결 시에만 보물박스 표시
   if (!_sharedBounds) _sharedBounds = new google.maps.LatLngBounds();
 
   treasureBoxes.forEach(box => {
@@ -1696,6 +1697,7 @@ async function init() {
         btn.textContent = '■';
         btn.title = '게임 서버 접속 중 — 클릭하여 종료';
         if (badge) badge.textContent = '접속 중';
+        renderBoxMarkers(); // 연결 시 보물박스 표시
       } else if (state === 'error') {
         btn.classList.add('gs-error');
         btn.textContent = '▶';
@@ -1705,6 +1707,7 @@ async function init() {
         btn.textContent = '▶';
         btn.title = '게임 서버 연결';
         if (badge) badge.textContent = '';
+        renderBoxMarkers(); // 연결 해제 시 보물박스 숨김
       }
     },
     onError:           (msg) => console.warn('[GS]', msg),
