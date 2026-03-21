@@ -449,12 +449,13 @@ service cloud.firestore {
       allow update, delete: if isAdmin()
         || (signedIn() && resource.data.authorUid == request.auth.uid);
 
-      // 평점(후기) 서브컬렉션
+      // 평점(후기) 서브컬렉션 — 문서 ID = uid (1인 1후기)
       match /reviews/{reviewId} {
         allow get, list: if true;
-        allow create: if signedIn();
-        allow update, delete: if isAdmin()
-          || (signedIn() && resource.data.uid == request.auth.uid);
+        allow create: if signedIn()
+          && reviewId == request.auth.uid      // 본인 uid로만 생성 가능
+          && !exists(/databases/$(database)/documents/community_events/$(eventId)/reviews/$(request.auth.uid));
+        allow update, delete: if isAdmin();    // 수정·삭제는 관리자만
       }
 
       // 댓글 서브컬렉션

@@ -3,8 +3,8 @@
 
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFirestore, collection, doc,
-  addDoc, getDoc, getDocs, updateDoc, deleteDoc,
-  query, orderBy, where, limit, startAfter,
+  addDoc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
+  runTransaction, query, orderBy, where, limit, startAfter,
   serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable }
@@ -385,7 +385,7 @@ async function loadReviews(eventId) {
   const snap = await getDocs(query(collection(db, 'community_events', eventId, 'reviews'), orderBy('createdAt', 'desc'), limit(20)));
   const cont = $('commReviews');
   cont.innerHTML = '';
-  if (snap.empty) { cont.innerHTML = '<p style="font-size:0.85rem;color:var(--muted);margin:0 24px;">아직 후기가 없습니다.</p>'; return; }
+  if (snap.empty) { cont.innerHTML = '<p style="font-size:0.85rem;color:var(--muted);margin:0 24px;">아직 후기가 없습니다.</p>'; }
   snap.docs.forEach(d => {
     const r = d.data();
     const item = el('div', 'comm-review-item');
@@ -399,6 +399,14 @@ async function loadReviews(eventId) {
     `;
     cont.appendChild(item);
   });
+
+  // 이미 후기를 남긴 경우 폼 숨김
+  if (_user) {
+    const myReview = snap.docs.find(d => d.id === _user.uid);
+    if (myReview) {
+      $('myRatingArea').style.display = 'none';
+    }
+  }
 }
 
 // 댓글 로드
@@ -449,19 +457,26 @@ $('btnSubmitReview').addEventListener('click', async () => {
   const btn = $('btnSubmitReview');
   btn.disabled = true; btn.textContent = '등록 중...';
   try {
-    const eventRef = doc(db, 'community_events', _currentEvent.id);
-    await addDoc(collection(db, 'community_events', _currentEvent.id, 'reviews'), {
-      uid: _user.uid,
-      displayName: _user.displayName || '익명',
-      rating,
-      text,
-      createdAt: serverTimestamp(),
+    const eventRef  = doc(db, 'community_events', _currentEvent.id);
+    // 문서 ID = uid → 1인 1후기 보장
+    const reviewRef = doc(db, 'community_events', _currentEvent.id, 'reviews', _user.uid);
+
+    await runTransaction(db, async (tx) => {
+      const existing = await tx.get(reviewRef);
+      if (existing.exists()) throw new Error('이미 후기를 작성하셨습니다.');
+      tx.set(reviewRef, {
+        uid:         _user.uid,
+        displayName: _user.displayName || '익명',
+        rating,
+        text,
+        createdAt:   serverTimestamp(),
+      });
+      tx.update(eventRef, {
+        ratingSum:   increment(rating),
+        ratingCount: increment(1),
+      });
     });
-    // 평균 갱신
-    await updateDoc(eventRef, {
-      ratingSum:   increment(rating),
-      ratingCount: increment(1),
-    });
+
     $('myRatingArea').style.display = 'none';
     const updSnap = await getDoc(eventRef);
     _currentEvent = { id: _currentEvent.id, ...updSnap.data() };
