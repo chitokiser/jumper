@@ -1624,21 +1624,7 @@ async function hitMonster(monsterId, damage) {
     showFloat('💀 처치!', '#fbbf24', mob.lat, mob.lng);
     gainXp(mob.dropExp || 20);
     dropGoldTokens(mob);
-
-    // 처치자만 아이템 획득 (killedBy === myUid 확인 후 지급)
-    if (mob.dropItems?.length && myUid) {
-      const drop = mob.dropItems[Math.floor(Math.random() * mob.dropItems.length)];
-      if (drop?.itemId) {
-        try {
-          const invRef = doc(_ctx.db, 'treasure_inventory', `${myUid}_${drop.itemId}`);
-          const invSnap = await getDoc(invRef);
-          const cur = invSnap.exists() ? (invSnap.data().count || 0) : 0;
-          await setDoc(invRef, { uid: myUid, itemId: String(drop.itemId), count: cur + 1,
-            updatedAt: serverTimestamp() }, { merge: true });
-          showFloat(`📦 ${drop.itemId}`, '#86efac', mob.lat, mob.lng);
-        } catch {}
-      }
-    }
+    // FS 몬스터(goblin/orc)는 아이템 드랍 없음 — 아이템은 GS 서버 몬스터 전용
 
     _monsterGrid.remove(monsterId);
     if (marker) { marker.setMap(null); delete _monsterMarkers[monsterId]; }
@@ -1753,8 +1739,8 @@ export function enterAdminPlaceMode(type) {
       const lv = _ctx?.playerLevel ?? 1;
       const monsterType = prompt('몬스터 타입 (goblin / orc):', 'goblin') || 'goblin';
       const PRESETS_FB = {
-        orc:    { name:'오크',   image:'👹', maxHp: lv*100*15, atk:200, detectRadius:200, respawnMinutes:10 },
-        goblin: { name:'고블린', image:'22.png', maxHp: lv*100*8,  atk:80,  detectRadius:100, respawnMinutes:5  },
+        orc:    { name:'오크',   image:'23.png', maxHp: Math.round(lv*100*1.5), atk:20, detectRadius:20, respawnMinutes:10 },
+        goblin: { name:'고블린', image:'22.png', maxHp: lv*100*8,               atk:80, detectRadius:100, respawnMinutes:5  },
       };
       const p = PRESETS_FB[monsterType] || PRESETS_FB.goblin;
 
