@@ -170,7 +170,11 @@
     const btnClose = document.getElementById('btnDriverInstallDismiss');
     const subText  = document.getElementById('driverInstallSub');
 
-    if (localStorage.getItem(DRIVER_DISMISS) === '1') return;
+    // Service Worker는 무조건 등록 (PWA 설치 조건)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
     if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
     if (!(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent))) return;
 
@@ -178,40 +182,46 @@
                   /WebKit/.test(navigator.userAgent) &&
                   !(/CriOS|FxiOS/.test(navigator.userAgent));
 
-    if (isIos) {
-      subText.textContent = '공유(□↑) → 홈 화면에 추가를 눌러주세요';
-      btnAdd.textContent  = '확인';
-      banner.style.display = 'block';
-      btnAdd.addEventListener('click', () => {
-        localStorage.setItem(DRIVER_DISMISS, '1');
-        banner.style.display = 'none';
-      });
-    } else {
-      let _prompt = null;
+    // Android: beforeinstallprompt 를 미리 캡처 (로그인 전에 이벤트가 발생하므로)
+    if (!isIos) {
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
-        _prompt = e;
-        banner.style.display = 'block';
-      });
-      btnAdd.addEventListener('click', async () => {
-        if (!_prompt) return;
-        _prompt.prompt();
-        const { outcome } = await _prompt.userChoice;
-        if (outcome === 'accepted') banner.style.display = 'none';
-        _prompt = null;
+        window.__pwaInstallPrompt = e;
       });
       window.addEventListener('appinstalled', () => { banner.style.display = 'none'; });
     }
+
+    // 버튼 이벤트
+    btnAdd.addEventListener('click', async () => {
+      if (isIos) {
+        localStorage.setItem(DRIVER_DISMISS, '1');
+        banner.style.display = 'none';
+      } else {
+        if (!window.__pwaInstallPrompt) return;
+        window.__pwaInstallPrompt.prompt();
+        const { outcome } = await window.__pwaInstallPrompt.userChoice;
+        if (outcome === 'accepted') banner.style.display = 'none';
+        window.__pwaInstallPrompt = null;
+      }
+    });
 
     btnClose.addEventListener('click', () => {
       localStorage.setItem(DRIVER_DISMISS, '1');
       banner.style.display = 'none';
     });
 
-    // Service Worker 등록
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
+    // 로그인 후 buggy-driver.js 에서 호출
+    window.showDriverInstallBanner = function () {
+      if (localStorage.getItem(DRIVER_DISMISS) === '1') return;
+      if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
+      if (isIos) {
+        subText.textContent = '공유(□↑) → 홈 화면에 추가를 눌러주세요';
+        btnAdd.textContent  = '확인';
+        banner.style.display = 'block';
+      } else if (window.__pwaInstallPrompt) {
+        banner.style.display = 'block';
+      }
+    };
   })();
   </script>
 

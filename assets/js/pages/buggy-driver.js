@@ -396,6 +396,9 @@ onAuthStateChanged(auth, async (user) => {
     startLocationBroadcast();
   }
 
+  // 로그인 & 등록 확인 후 홈화면 추가 배너 표시
+  if (window.showDriverInstallBanner) window.showDriverInstallBanner();
+
   // 진행 중 라이드 복구
   const q = query(
     collection(db, 'buggy_rides'),
