@@ -178,15 +178,21 @@ async function craftVoucher(uid, { voucherId } = {}) {
   const goldNeeded = goldReqs.reduce((s, r) => s + (r.count || 0), 0)
                    + (voucher.minCoins || 0);
 
+  // 보상 아이템 ID 미리 결정 (트랜잭션 밖에서 계산)
+  const rewardItemId = (voucher.reward || '').trim();
+  const isItemReward = /^(weapon_|armo_|potion_|revive_ticket)/.test(rewardItemId);
+
   return await db.runTransaction(async (tx) => {
-    // 중복 구매 방지: uid+voucherId 조합 문서로 확인
+    // ── 모든 읽기를 쓰기 전에 완료 (Firestore 트랜잭션 규칙) ──────────────────
+
+    // 1) 중복 구매 방지
     const purchaseRef = db.collection('treasure_voucher_purchases').doc(`${uid}_${voucherId}`);
     const purchaseSnap = await tx.get(purchaseRef);
     if (purchaseSnap.exists) {
       throw new HttpsError('already-exists', '이미 구매한 바우처입니다');
     }
 
-    // 코인(gold) 잔액 확인
+    // 2) 코인(gold) 잔액
     let playerRef, currentGold = 0;
     if (goldNeeded > 0) {
       playerRef = db.collection('battle_players').doc(uid);
@@ -197,16 +203,25 @@ async function craftVoucher(uid, { voucherId } = {}) {
           `코인 부족 (보유 ${currentGold}, 필요 ${goldNeeded})`);
     }
 
-    // 아이템 잔액 확인
+    // 3) 재료 아이템 잔액
     const invRefs  = itemReqs.map(r => db.collection('treasure_inventory').doc(`${uid}_${r.itemId}`));
     const invSnaps = await Promise.all(invRefs.map(ref => tx.get(ref)));
-
     for (let i = 0; i < itemReqs.length; i++) {
       const have = invSnaps[i].exists ? (invSnaps[i].data().count || 0) : 0;
       if (have < itemReqs[i].count)
         throw new HttpsError('failed-precondition',
           `아이템 부족: ${itemReqs[i].itemId} (보유 ${have}개, 필요 ${itemReqs[i].count}개)`);
     }
+
+    // 4) 보상 아이템 현재 수량 (쓰기 전에 미리 읽기)
+    let rewardInvRef, rewardCurrentCount = 0;
+    if (isItemReward) {
+      rewardInvRef = db.collection('treasure_inventory').doc(`${uid}_${rewardItemId}`);
+      const rewardSnap = await tx.get(rewardInvRef);
+      rewardCurrentCount = rewardSnap.exists ? (rewardSnap.data().count || 0) : 0;
+    }
+
+    // ── 이하 쓰기만 ──────────────────────────────────────────────────────────
 
     // 코인 차감
     if (goldNeeded > 0) {
@@ -216,9 +231,9 @@ async function craftVoucher(uid, { voucherId } = {}) {
       });
     }
 
-    // 아이템 차감
+    // 재료 아이템 차감
     for (let i = 0; i < itemReqs.length; i++) {
-      const have = invSnaps[i].data().count;
+      const have = invSnaps[i].exists ? (invSnaps[i].data().count || 0) : 0;
       tx.update(invRefs[i], {
         count: have - itemReqs[i].count,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -240,17 +255,11 @@ async function craftVoucher(uid, { voucherId } = {}) {
       purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // reward 값이 아이템 ID 형식이면 인벤토리에 직접 지급
-    // 예: "weapon_100", "armo_10", "potion_red", "revive_ticket"
-    const rewardItemId = (voucher.reward || '').trim();
-    const isItemReward = /^(weapon_|armo_|potion_|revive_ticket)/.test(rewardItemId);
+    // 보상 아이템 지급
     if (isItemReward) {
-      const invRef = db.collection('treasure_inventory').doc(`${uid}_${rewardItemId}`);
-      const invSnap = await tx.get(invRef);
-      const currentCount = invSnap.exists ? (invSnap.data().count || 0) : 0;
-      tx.set(invRef, {
+      tx.set(rewardInvRef, {
         uid, itemId: rewardItemId,
-        count: currentCount + 1,
+        count: rewardCurrentCount + 1,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
     }
