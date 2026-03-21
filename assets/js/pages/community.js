@@ -128,6 +128,7 @@ function buildCard(id, d) {
 
   // 칩
   const chips = el('div', 'comm-card-chips');
+  if (d.location)          chips.appendChild(el('span', 'comm-chip comm-chip--location', `📍 ${escHtml(d.location)}`));
   if (d.stakeRequired > 0) chips.appendChild(el('span', 'comm-chip comm-chip--stake', `🪙 JUMP ${d.stakeRequired.toLocaleString()} 이상`));
   if (d.fee > 0)           chips.appendChild(el('span', 'comm-chip comm-chip--fee', `💵 ${d.fee.toLocaleString()} VND`));
   else                     chips.appendChild(el('span', 'comm-chip comm-chip--free', '🎟 무료'));
@@ -195,6 +196,7 @@ function renderDetail(d) {
   infoRow.innerHTML = '';
   const infos = [
     { icon:'📅', label:'행사 날짜', val: fmtDate(d.eventDate) },
+    { icon:'📍', label:'행사 장소', val: d.location || '-' },
     { icon:'🪙', label:'스테이킹 조건', val: d.stakeRequired > 0 ? `JUMP ${d.stakeRequired.toLocaleString()} 이상` : '제한 없음' },
     { icon:'💵', label:'참석 회비', val: d.fee > 0 ? `${d.fee.toLocaleString()} VND` : '무료' },
   ];
@@ -377,7 +379,8 @@ function openEventModal(editData = null) {
   $('commModalSubmit').textContent = editData ? '수정' : '등록';
   $('fldEventName').value    = editData?.name    || '';
   $('fldStakeReq').value     = editData?.stakeRequired ?? '';
-  $('fldFee').value          = editData?.fee     ?? '';
+  $('fldFee').value          = editData?.fee      ?? '';
+  $('fldEventLocation').value = editData?.location || '';
   $('fldPhotoUrl').value     = editData?.photoUrl || '';
   $('fldEventContent').value = editData?.content || '';
   if (editData?.eventDate) {
@@ -407,14 +410,16 @@ function updatePhotoPreview() {
 
 // 등록 제출
 $('commModalSubmit').addEventListener('click', async () => {
-  const name    = $('fldEventName').value.trim();
-  const dateVal = $('fldEventDate').value;
-  const content = $('fldEventContent').value.trim();
-  const errEl   = $('commModalError');
+  const name     = $('fldEventName').value.trim();
+  const dateVal  = $('fldEventDate').value;
+  const location = $('fldEventLocation').value.trim();
+  const content  = $('fldEventContent').value.trim();
+  const errEl    = $('commModalError');
 
-  if (!name)    { errEl.textContent = '행사명을 입력해 주세요.';  errEl.style.display=''; return; }
-  if (!dateVal) { errEl.textContent = '행사 날짜를 선택해 주세요.'; errEl.style.display=''; return; }
-  if (!content) { errEl.textContent = '행사 내용을 입력해 주세요.'; errEl.style.display=''; return; }
+  if (!name)     { errEl.textContent = '행사명을 입력해 주세요.';   errEl.style.display=''; return; }
+  if (!dateVal)  { errEl.textContent = '행사 날짜를 선택해 주세요.'; errEl.style.display=''; return; }
+  if (!location) { errEl.textContent = '행사 장소를 입력해 주세요.'; errEl.style.display=''; return; }
+  if (!content)  { errEl.textContent = '행사 내용을 입력해 주세요.'; errEl.style.display=''; return; }
 
   errEl.style.display = 'none';
   const btn = $('commModalSubmit');
@@ -424,6 +429,7 @@ $('commModalSubmit').addEventListener('click', async () => {
     const data = {
       name,
       eventDate:     new Date(dateVal),
+      location,
       stakeRequired: parseInt($('fldStakeReq').value) || 0,
       fee:           parseInt($('fldFee').value) || 0,
       photoUrl:      $('fldPhotoUrl').value.trim(),

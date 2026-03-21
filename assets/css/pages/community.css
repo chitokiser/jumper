@@ -143,6 +143,11 @@
   border-radius: 99px;
   border: 1px solid transparent;
 }
+.comm-chip--location {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
 .comm-chip--stake {
   background: #ede9fe;
   color: #6d28d9;
