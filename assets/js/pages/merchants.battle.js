@@ -1133,7 +1133,9 @@ function _spawnMonsterMarker(mob) {
   if (!map || !mob.lat || !mob.lng) return;
 
   // ── 스프라이트 타입 (dragon 등) ─────────────────────────────────────────────
-  if (hasSpriteConfig(mob.monsterType)) {
+  // image 필드가 단순 PNG 파일명(예: 23.png, 22.png)이면 스프라이트 무시 → 일반 마커
+  const hasSimpleImage = mob.image && /^\d+\.png$/i.test(String(mob.image));
+  if (!hasSimpleImage && hasSpriteConfig(mob.monsterType)) {
     const gsLike = {
       ...mob,
       type:       mob.monsterType,
