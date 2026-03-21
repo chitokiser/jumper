@@ -1083,22 +1083,24 @@ function renderBoxInventory() {
 }
 
 // ── 인벤토리 렌더링 (4×5 = 20 슬롯) ────────────────────────────────────────
+function _updateEquipStats() {
+  const statsEl = $('invEquipStats');
+  if (!statsEl) return;
+  const wNum = getEquippedWeapon().replace('weapon_', '');
+  statsEl.innerHTML =
+    `<span>⚔️ 기본공격력: <b>100</b></span>` +
+    `<span>⚔️ 장착무기: <b>+${wNum}</b></span>` +
+    `<span>⚔️ 총공격력: <b>${getTotalAtk()}</b></span>` +
+    `<span>🛡 방어력: <b>${getDefense()}</b></span>`;
+}
+
 function renderInventory() {
+  // 장비 능력치는 grid 유무와 무관하게 항상 업데이트
+  _updateEquipStats();
+
   const grid = $('invGrid');
   if (!grid) return;
   const SLOTS = 20;
-
-  // 장비 능력치 패널 업데이트
-  const statsEl = $('invEquipStats');
-  if (statsEl) {
-    const wNum = getEquippedWeapon().replace('weapon_', '');
-    const aNum = (getEquippedArmor().match(/(\d+)$/) || ['','?'])[1];
-    statsEl.innerHTML = `
-      <span>⚔️ 기본공격력: <b>100</b></span>
-      <span>⚔️ 장착무기: <b>+${wNum}</b></span>
-      <span>⚔️ 총공격력: <b>${getTotalAtk()}</b></span>
-      <span>🛡 방어력: <b>${getDefense()}</b></span>`;
-  }
 
   // 정렬: potion_red 1순위, revive_ticket 2순위, 나머지 숫자 정렬
   const ITEM_PRIORITY = { potion_red: 0, potion_mp: 1, revive_ticket: 2 };
@@ -1518,7 +1520,8 @@ function renderExchangeSection() {
 // ── 인벤토리 모달 ────────────────────────────────────────────────────────────
 function openInventory() {
   $('invModal').classList.add('open');
-  loadInventory(); // 최신 데이터로 갱신
+  _updateEquipStats(); // 능력치 즉시 표시 (async 대기 없이)
+  loadInventory();     // 최신 데이터로 갱신
 }
 function closeInventory() { $('invModal').classList.remove('open'); }
 

@@ -26,7 +26,7 @@ export function setGsSkillCallback(fn) { _gsSkillCallback = fn; }
 
 // ── 내부 배틀 상태 ────────────────────────────────────────────────────────────
 let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0,
-                      weaponBonus:100, defense:10,
+                      weaponBonus:1000, defense:100,
                       equippedWeapon:'weapon_100', equippedArmor:'armo_10' };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
 let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
@@ -577,7 +577,7 @@ export function isPlayerDead() { return _isDead; }
 /** 파일명 숫자 추출: 'weapon_100' → 100, 'armo_10' → 10 */
 function _equipNumFromId(itemId) {
   const m = String(itemId).match(/(\d+)$/);
-  return m ? parseInt(m[1]) : 0;
+  return m ? parseInt(m[1]) * 10 : 0;
 }
 export function getTotalAtk()  { return 100 + (_player.weaponBonus || 0); }
 export function getDefense()   { return _player.defense || 0; }
