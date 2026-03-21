@@ -14,6 +14,8 @@ const {
   estimateGasWithBuffer,
 } = require('../wallet/chain');
 
+const { requireAdmin } = require('../wallet/admin');
+
 const db        = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
 
@@ -204,7 +206,8 @@ async function cancelRide(uid, { rideId, reason }) {
 
   const isUser   = ride.userId   === uid;
   const isDriver = ride.driverId === uid;
-  const isAdmin  = await db.collection('admins').doc(uid).get().then(s => s.exists);
+  let isAdmin = false;
+  try { await requireAdmin(uid); isAdmin = true; } catch (_) {}
 
   if (!isUser && !isDriver && !isAdmin) throw new Error('권한이 없습니다');
   if (['completed','cancelled_by_user','cancelled_by_driver','failed','payment_failed'].includes(ride.status)) {
@@ -400,8 +403,7 @@ async function setDriverOnline(driverUid, { isOnline }) {
 
 // ── 관리자: 기사 등록 ─────────────────────────────────────────
 async function adminCreateDriver(adminUid, { uid, name, vehicleNumber, vehicleModel }) {
-  const aSnap = await db.collection('admins').doc(adminUid).get();
-  if (!aSnap.exists) throw new Error('관리자 권한 없음');
+  await requireAdmin(adminUid);
   await db.collection('buggy_drivers').doc(uid).set({
     uid, name: name || '', vehicleNumber: vehicleNumber || '',
     vehicleModel: vehicleModel || '',
@@ -414,8 +416,7 @@ async function adminCreateDriver(adminUid, { uid, name, vehicleNumber, vehicleMo
 
 // ── 관리자: 강제 종료 ─────────────────────────────────────────
 async function adminForceEnd(adminUid, { rideId, reason }) {
-  const aSnap = await db.collection('admins').doc(adminUid).get();
-  if (!aSnap.exists) throw new Error('관리자 권한 없음');
+  await requireAdmin(adminUid);
 
   const rideRef = db.collection('buggy_rides').doc(rideId);
   const snap    = await rideRef.get();
@@ -442,8 +443,7 @@ async function adminForceEnd(adminUid, { rideId, reason }) {
 
 // ── 관리자: 설정 저장 ─────────────────────────────────────────
 async function adminSaveConfig(adminUid, cfg) {
-  const aSnap = await db.collection('admins').doc(adminUid).get();
-  if (!aSnap.exists) throw new Error('관리자 권한 없음');
+  await requireAdmin(adminUid);
   await db.collection('buggy_config').doc('default').set({
     ...DEFAULT_CONFIG, ...cfg,
     updatedAt: FieldValue.serverTimestamp(),
