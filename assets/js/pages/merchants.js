@@ -17,7 +17,9 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          setGsSkillCallback,
          useReviveTicket, updateSkillBar, getPlayerGold, getPlayerLevel, isPlayerDead,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
-         spawnGsDrop, removeGsDrop }
+         spawnGsDrop, removeGsDrop,
+         equipWeapon, equipArmor, getTotalAtk, getDefense,
+         getEquippedWeapon, getEquippedArmor }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
@@ -1086,6 +1088,18 @@ function renderInventory() {
   if (!grid) return;
   const SLOTS = 20;
 
+  // 장비 능력치 패널 업데이트
+  const statsEl = $('invEquipStats');
+  if (statsEl) {
+    const wNum = getEquippedWeapon().replace('weapon_', '');
+    const aNum = (getEquippedArmor().match(/(\d+)$/) || ['','?'])[1];
+    statsEl.innerHTML = `
+      <span>⚔️ 기본공격력: <b>100</b></span>
+      <span>⚔️ 장착무기: <b>+${wNum}</b></span>
+      <span>⚔️ 총공격력: <b>${getTotalAtk()}</b></span>
+      <span>🛡 방어력: <b>${getDefense()}</b></span>`;
+  }
+
   // 정렬: potion_red 1순위, revive_ticket 2순위, 나머지 숫자 정렬
   const ITEM_PRIORITY = { potion_red: 0, potion_mp: 1, revive_ticket: 2 };
   const filled = Object.entries(_inventory)
@@ -1141,6 +1155,44 @@ function renderInventory() {
           <span class="slot-name">부활권</span>
           <span class="slot-count">${count}</span>`;
         slot.addEventListener('click', () => { useReviveTicket(); sendPlayerRevive(); });
+      } else if (String(itemId).startsWith('weapon_')) {
+        // ── 무기 ────────────────────────────────────────────────────────────
+        const num = String(itemId).replace('weapon_', '');
+        const isEquipped = getEquippedWeapon() === itemId;
+        slot.title = `무기 +${num} — 클릭하여 장착`;
+        slot.style.cursor = 'pointer';
+        if (isEquipped) slot.classList.add('equipped');
+        slot.innerHTML = `
+          <img src="/assets/images/weapon/${escHtml(num)}.png"
+               onerror="this.onerror=null;this.src='/assets/images/item/0.png'"
+               alt="무기 +${escHtml(num)}" />
+          <span class="slot-name">무기 +${escHtml(num)}</span>
+          ${isEquipped ? '<span class="slot-equipped">장착</span>' : `<span class="slot-count">${count}</span>`}`;
+        slot.addEventListener('click', () => {
+          equipWeapon(itemId);
+          renderInventory();
+          showInfoToast(`⚔️ 무기 +${num} 장착! 총공격력 ${getTotalAtk()}`);
+        });
+      } else if (String(itemId).startsWith('armo_')) {
+        // ── 방어구 ───────────────────────────────────────────────────────────
+        const num = String(itemId).replace(/^armo_\d+_?/, '');
+        const defVal = String(itemId).match(/(\d+)$/)?.[1] || num;
+        const isEquipped = getEquippedArmor() === itemId;
+        const folder = Math.floor(parseInt(defVal) / 10);
+        slot.title = `방어구 DEF ${defVal} — 클릭하여 장착`;
+        slot.style.cursor = 'pointer';
+        if (isEquipped) slot.classList.add('equipped');
+        slot.innerHTML = `
+          <img src="/assets/images/armo/${escHtml(String(folder))}/${escHtml(defVal)}.png"
+               onerror="this.onerror=null;this.src='/assets/images/item/0.png'"
+               alt="방어구 DEF ${escHtml(defVal)}" />
+          <span class="slot-name">방어 ${escHtml(defVal)}</span>
+          ${isEquipped ? '<span class="slot-equipped">장착</span>' : `<span class="slot-count">${count}</span>`}`;
+        slot.addEventListener('click', () => {
+          equipArmor(itemId);
+          renderInventory();
+          showInfoToast(`🛡 방어구 DEF ${defVal} 장착!`);
+        });
       } else {
         const meta = _items[String(itemId)] || {};
         const imgFile = meta.image || (itemId + '.png');
@@ -1293,6 +1345,12 @@ async function loadInventory() {
     const r = d.data();
     if (r.count > 0) _inventory[String(r.itemId)] = r.count;
   });
+
+  // 무기/방어구가 하나도 없으면 기본 장비 표시 (클라이언트 전용 — DB 미저장)
+  const hasWeapon = Object.keys(_inventory).some(k => k.startsWith('weapon_'));
+  const hasArmor  = Object.keys(_inventory).some(k => k.startsWith('armo_'));
+  if (!hasWeapon) _inventory['weapon_100'] = (_inventory['weapon_100'] || 0) + 1;
+  if (!hasArmor)  _inventory['armo_10']    = (_inventory['armo_10']    || 0) + 1;
 
   _boxInventory = [];
   if (boxRes.ok) boxRes.v.forEach(d => {

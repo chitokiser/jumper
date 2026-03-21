@@ -1653,6 +1653,102 @@ btnTabTreasure?.addEventListener("click", () => {
   loadVouchersList();
 });
 
+// ── 무기 등록 ──────────────────────────────────────────────────────────────────
+function updateWeaponPreview() {
+  const bonus = $("wBonusSelect")?.value;
+  const img   = $("wPreview");
+  if (!img || !bonus) return;
+  img.src = `/assets/images/weapon/${bonus}.png`;
+  img.style.display = "";
+  img.onerror = () => { img.style.display = "none"; };
+}
+$("wBonusSelect")?.addEventListener("change", updateWeaponPreview);
+updateWeaponPreview();
+
+$("btnSaveWeapon")?.addEventListener("click", async () => {
+  const bonus  = $("wBonusSelect")?.value;
+  const name   = $("wName")?.value.trim();
+  const result = $("wSaveResult");
+  if (!name) { alert("무기 이름을 입력하세요."); return; }
+  try {
+    if (result) { result.textContent = "저장 중..."; result.style.color = ""; }
+    await httpsCallable(functions, "adminSaveTreasureItem")({
+      itemId:      `weapon_${bonus}`,
+      name,
+      image:       `${bonus}.png`,
+      description: `추가공격력 +${bonus} (총공격력 ${100 + parseInt(bonus)})`,
+      category:    "weapon",
+    });
+    if (result) { result.textContent = `✅ weapon_${bonus} 저장 완료`; result.style.color = "#16a34a"; }
+    if ($("wName")) $("wName").value = "";
+    await loadTreasureItemsList();
+  } catch (err) {
+    if (result) { result.textContent = "❌ " + (err.message || err); result.style.color = "#dc2626"; }
+  }
+});
+
+// ── 방어구 등록 ────────────────────────────────────────────────────────────────
+function updateArmorPreview() {
+  const def    = $("aBonusSelect")?.value;
+  const img    = $("aPreview");
+  if (!img || !def) return;
+  const folder = Math.floor(parseInt(def) / 10);
+  img.src = `/assets/images/armo/${folder}/${def}.png`;
+  img.style.display = "";
+  img.onerror = () => { img.style.display = "none"; };
+}
+$("aBonusSelect")?.addEventListener("change", updateArmorPreview);
+updateArmorPreview();
+
+$("btnSaveArmor")?.addEventListener("click", async () => {
+  const def    = $("aBonusSelect")?.value;
+  const name   = $("aName")?.value.trim();
+  const result = $("aSaveResult");
+  const folder = Math.floor(parseInt(def) / 10);
+  if (!name) { alert("방어구 이름을 입력하세요."); return; }
+  try {
+    if (result) { result.textContent = "저장 중..."; result.style.color = ""; }
+    await httpsCallable(functions, "adminSaveTreasureItem")({
+      itemId:      `armo_${def}`,
+      name,
+      image:       `armo_${def}.png`,
+      description: `방어력 ${def} (몬스터 피해 -${def})`,
+      category:    "armor",
+      armoFolder:  folder,
+    });
+    if (result) { result.textContent = `✅ armo_${def} 저장 완료`; result.style.color = "#16a34a"; }
+    if ($("aName")) $("aName").value = "";
+    await loadTreasureItemsList();
+  } catch (err) {
+    if (result) { result.textContent = "❌ " + (err.message || err); result.style.color = "#dc2626"; }
+  }
+});
+
+// ── 유저 직접 지급 ─────────────────────────────────────────────────────────────
+$("btnGrantItem")?.addEventListener("click", async () => {
+  const target  = $("grantTarget")?.value.trim();
+  const itemId  = $("grantItemId")?.value.trim();
+  const count   = parseInt($("grantCount")?.value) || 1;
+  const result  = $("grantResult");
+  if (!target) { alert("유저 이메일 또는 UID를 입력하세요."); return; }
+  if (!itemId) { alert("아이템 ID를 입력하세요."); return; }
+  if (!confirm(`${target} 에게\n${itemId} × ${count}개\n지급하시겠습니까?`)) return;
+  try {
+    if (result) { result.textContent = "처리 중..."; result.style.color = ""; }
+    const isUid   = !target.includes("@");
+    const payload = isUid
+      ? { targetUid: target,   itemId, count }
+      : { targetEmail: target, itemId, count };
+    const res = await httpsCallable(functions, "adminGrantItem")(payload);
+    if (result) {
+      result.textContent = `✅ ${res.data.uid} 에게 ${itemId} × ${count}개 지급 완료`;
+      result.style.color = "#16a34a";
+    }
+  } catch (err) {
+    if (result) { result.textContent = "❌ " + (err.message || err); result.style.color = "#dc2626"; }
+  }
+});
+
 onAuthReady(async ({ loggedIn, user }) => {
   if (!loggedIn || !user) {
     setState("로그인 필요");

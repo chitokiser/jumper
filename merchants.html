@@ -200,6 +200,21 @@
       padding: 0 2px; line-height: 1.2;
       position: absolute; bottom: 14px; left: 0; right: 0;
     }
+    .inv-slot.equipped { border-color: #ffd700; box-shadow: 0 0 8px rgba(255,215,0,.5); }
+    .inv-slot .slot-equipped {
+      position: absolute; bottom: 2px; right: 3px;
+      font-size: 9px; font-weight: 700; color: #ffd700;
+      text-shadow: 0 1px 2px #000;
+    }
+    /* 장비 능력치 패널 */
+    .inv-equip-stats {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      background: #1a0e06; border: 1px solid #5c3a1e;
+      border-radius: 8px; padding: 8px 12px;
+      margin-bottom: 12px; font-size: 12px;
+    }
+    .inv-equip-stats span { color: #c9a870; }
+    .inv-equip-stats b { color: #ffd700; }
 
     /* 조합 섹션 */
     .inv-craft-title {
@@ -300,6 +315,9 @@
     .c-spd { margin-top:4px; font-size:10px; color:#6ee7b7; text-align:center; }
     .c-dead { color:#ef4444; font-weight:700; font-size:12px; text-align:center; margin-top:4px; animation:cPulse 1s infinite; }
     @keyframes cPulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .c-stat-row { display:flex; justify-content:center; gap:10px; margin:3px 0 1px; }
+    .c-stat-atk { font-size:11px; font-weight:700; color:#fbbf24; }
+    .c-stat-def { font-size:11px; font-weight:700; color:#6ee7b7; }
 
     /* ── 관리자 전투 배치 패널 ─────────────────────────────────────── */
     #adminBattlePanel {
@@ -707,6 +725,10 @@
       <div class="c-bar"><div class="c-fill c-fill-mp" id="cMpBar" style="width:100%"></div></div>
       <span class="c-val" id="cMpVal">1000 / 1000</span>
     </div>
+    <div class="c-stat-row">
+      <span id="cAtk" class="c-stat-atk">⚔200</span>
+      <span id="cDef" class="c-stat-def">🛡10</span>
+    </div>
     <div class="c-spd" id="cSpd">SPD — km/h</div>
     <div class="c-dead" id="cDead" style="display:none;">💀 사망 — 이동하여 부활</div>
     <div class="c-compact-bars">
@@ -876,8 +898,11 @@
         <div class="inv-craft-title" style="padding-top:0;border-top:none;">📦 미개봉 보물박스</div>
         <div id="boxInvList"><div class="voucher-empty">불러오는 중...</div></div>
 
+        <!-- 장비 능력치 -->
+        <div class="inv-equip-stats" id="invEquipStats"></div>
+
         <!-- 4×5 슬롯 -->
-        <div class="inv-craft-title">🎒 수집한 아이템</div>
+        <div class="inv-craft-title">🎒 수집한 아이템 (무기/방어구 클릭 = 장착)</div>
         <div class="inv-grid" id="invGrid"></div>
 
         <!-- 바우처 조합 -->

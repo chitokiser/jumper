@@ -9,6 +9,8 @@ import { httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { hasSpriteConfig, createMonsterSpriteOverlay }
   from './merchants.monster-sprite.js';
+import { MonsterGrid }
+  from './merchants.monster-grid.js';
 import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster,
          isGameServerConnected, connectToGameServer, sendPlayerRevive }
   from './merchants.gameserver.js';
@@ -23,7 +25,9 @@ let _gsSkillCallback = null;
 export function setGsSkillCallback(fn) { _gsSkillCallback = fn; }
 
 // ── 내부 배틀 상태 ────────────────────────────────────────────────────────────
-let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0 };
+let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0,
+                      weaponBonus:100, defense:10,
+                      equippedWeapon:'weapon_100', equippedArmor:'armo_10' };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
 let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
 let _monsterMarkers  = {};     // { id: Marker }  — 비-스프라이트 몬스터
@@ -38,7 +42,10 @@ let _towerCd         = {};     // { towerId: bool }
 let _towerHpState    = {};     // { towerId: {current, max} }
 let _towerAtkCd      = {};     // { towerId: bool } 유저→타워 공격 쿨다운
 let _towerRespawn    = {};     // { towerId: timeoutId }
-let _monsterCd       = {};     // { monsterId: bool }
+let _monsterAtkTs    = {};     // { monsterId: timestamp } 타임스탬프 기반 쿨다운
+const _monsterGrid   = new MonsterGrid();
+let _lastProximityPos = null;  // GPS 스캔 쓰로틀용 마지막 위치
+let _dbgNearby = 0, _dbgAiCount = 0, _dbgFpsTick = 0, _dbgFpsLast = Date.now(), _dbgFps = 0;
 let _healAccum       = 0;      // HP 회복용 누적거리(m)
 let _mpHealAccum     = 0;      // MP 회복용 누적거리(m)
 let _reviveWalkDist  = 0;      // 사망 후 부활용 누적거리(m)
@@ -498,6 +505,8 @@ function updateCombatHud() {
   const hv = document.getElementById('cHpVal'); if (hv)  hv.textContent  = `${p.hp} / ${p.maxHp}`;
   const mv = document.getElementById('cMpVal'); if (mv)  mv.textContent  = `${p.mp} / ${p.maxMp}`;
   const sp = document.getElementById('cSpd');   if (sp)  sp.textContent  = `SPD ${_currentSpeed.toFixed(1)} km/h`;
+  const atkEl = document.getElementById('cAtk'); if (atkEl) atkEl.textContent = `⚔${getTotalAtk()}`;
+  const defEl = document.getElementById('cDef'); if (defEl) defEl.textContent = `🛡${p.defense||0}`;
   const dead = document.getElementById('cDead');
   if (dead) {
     if (_isDead) {
@@ -541,6 +550,15 @@ export async function loadPlayerState() {
         _isDead         = false;
         _reviveWalkDist = 0;
       }
+      // 장비 로드 (없으면 기본값 유지)
+      if (d.equippedWeapon) {
+        _player.equippedWeapon = d.equippedWeapon;
+        _player.weaponBonus    = _equipNumFromId(d.equippedWeapon);
+      }
+      if (d.equippedArmor) {
+        _player.equippedArmor = d.equippedArmor;
+        _player.defense       = _equipNumFromId(d.equippedArmor);
+      }
     } else {
       _player.hp = _player.maxHp;
       _player.mp = _player.maxMp;
@@ -555,6 +573,32 @@ export function getPlayerGold()  { return _player.gold  || 0; }
 export function getPlayerLevel() { return _player.level || 1; }
 export function isPlayerDead() { return _isDead; }
 
+// ── 장비 시스템 ────────────────────────────────────────────────────────────────
+/** 파일명 숫자 추출: 'weapon_100' → 100, 'armo_10' → 10 */
+function _equipNumFromId(itemId) {
+  const m = String(itemId).match(/(\d+)$/);
+  return m ? parseInt(m[1]) : 0;
+}
+export function getTotalAtk()  { return 100 + (_player.weaponBonus || 0); }
+export function getDefense()   { return _player.defense || 0; }
+export function getEquippedWeapon() { return _player.equippedWeapon || 'weapon_100'; }
+export function getEquippedArmor()  { return _player.equippedArmor  || 'armo_10'; }
+
+export function equipWeapon(itemId) {
+  const bonus = _equipNumFromId(itemId);
+  _player.weaponBonus    = bonus;
+  _player.equippedWeapon = itemId;
+  updateCombatHud();
+  savePlayerState();
+}
+export function equipArmor(itemId) {
+  const def = _equipNumFromId(itemId);
+  _player.defense       = def;
+  _player.equippedArmor = itemId;
+  updateCombatHud();
+  savePlayerState();
+}
+
 export function savePlayerState() {
   const uid = _ctx?.uid;
   if (!uid) return;
@@ -568,6 +612,8 @@ export function savePlayerState() {
         gold: _player.gold || 0,
         isDead: _isDead,
         reviveWalkDist: _reviveWalkDist,
+        equippedWeapon: _player.equippedWeapon || 'weapon_100',
+        equippedArmor:  _player.equippedArmor  || 'armo_10',
         updatedAt: serverTimestamp(),
       }, { merge: true });
     } catch { /* 무시 */ }
@@ -576,13 +622,15 @@ export function savePlayerState() {
 
 // ── 플레이어 HP/MP 변경 ────────────────────────────────────────────────────────
 let _lastHealFloat = 0;
-function takeDamage(amount, sourceLat, sourceLng) {
+function takeDamage(rawAmount, sourceLat, sourceLng) {
   if (_isDead) return;
-  _player.hp = Math.max(0, _player.hp - amount);
+  const actual = Math.max(0, rawAmount - (_player.defense || 0));
   const myMark = _ctx?.myLocationMarker;
   const lat = sourceLat || (myMark ? myMark.getPosition().lat() : null);
   const lng = sourceLng || (myMark ? myMark.getPosition().lng() : null);
-  if (lat && lng) showFloat(`-${amount}`, '#f87171', lat, lng);
+  if (actual === 0) { if (lat && lng) showFloat('🛡0', '#6ee7b7', lat, lng); return; }
+  _player.hp = Math.max(0, _player.hp - actual);
+  if (lat && lng) showFloat(`-${actual}`, '#f87171', lat, lng);
   if (_player.hp <= 0) {
     _isDead = true;
     _player.hp = 0;
@@ -693,8 +741,8 @@ export function castLightning() {
     for (const mob of _monsters) {
       if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
       if (haversine(target.lat, target.lng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
-        hitMonster(mob.id, 100 * _player.level);
-        showFloat(`⚡-${100 * _player.level}`, '#facc15', mob.lat, mob.lng);
+        hitMonster(mob.id, getTotalAtk() * _player.level);
+        showFloat(`⚡-${getTotalAtk() * _player.level}`, '#facc15', mob.lat, mob.lng);
         hitCount++;
       }
     }
@@ -790,8 +838,8 @@ export function castFireStorm() {
     for (const mob of _monsters) {
       if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
       if (haversine(target.lat, target.lng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
-        hitMonster(mob.id, 100 * _player.level);
-        showFloat(`🔥-${100 * _player.level}`, '#f97316', mob.lat, mob.lng);
+        hitMonster(mob.id, getTotalAtk() * _player.level);
+        showFloat(`🔥-${getTotalAtk() * _player.level}`, '#f97316', mob.lat, mob.lng);
         hitCount++;
       }
     }
@@ -988,6 +1036,9 @@ export async function loadBattleData() {
       }
     });
 
+    // 그리드 재구축 (hp>0인 몬스터만)
+    _monsterGrid.rebuild(_monsters.filter(m => m.hp > 0));
+
     if (window.google?.maps) {
       renderMonsterMarkers();
       renderTowerMarkers();
@@ -1101,7 +1152,7 @@ function _spawnMonsterMarker(mob) {
           if (dist <= clickRange) {
             const roll = Math.floor(Math.random() * 10) + 1;
             const isCrit = roll >= 6;
-            const dmg  = _player.level * roll;
+            const dmg  = Math.floor(getTotalAtk() * roll / 5);
             _clickAtkCd[mob.id] = true;
             setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
             playSound(isCrit ? 'critical_hit' : 'arrow_hit');
@@ -1149,7 +1200,7 @@ function _spawnMonsterMarker(mob) {
       if (dist <= clickRange) {
         const roll   = Math.floor(Math.random() * 10) + 1;
         const isCrit = roll >= 6;
-        const dmg    = _player.level * roll;
+        const dmg    = Math.floor(getTotalAtk() * roll / 5);
         _clickAtkCd[mob.id] = true;
         setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
         playSound(isCrit ? 'critical_hit' : 'arrow_hit');
@@ -1319,6 +1370,35 @@ function renderTowerMarkers() {
   }
 }
 
+// ── 디버그 패널 ───────────────────────────────────────────────────────────────
+function _updateDebugPanel() {
+  if (!_ctx?.isAdmin) return;
+  // FPS (1초 배틀틱 기준 — battleTick 호출 횟수/초)
+  _dbgFpsTick++;
+  const now = Date.now();
+  if (now - _dbgFpsLast >= 5000) {
+    _dbgFps = Math.round(_dbgFpsTick / ((now - _dbgFpsLast) / 1000));
+    _dbgFpsTick = 0;
+    _dbgFpsLast = now;
+  }
+  let panel = document.getElementById('_monsterDebugPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = '_monsterDebugPanel';
+    panel.style.cssText = 'position:fixed;bottom:80px;left:8px;z-index:9999;background:rgba(0,0,0,.72);'
+      + 'color:#4ade80;font-size:10px;font-family:monospace;padding:5px 8px;border-radius:6px;'
+      + 'pointer-events:none;line-height:1.6;';
+    (document.fullscreenElement || document.body).appendChild(panel);
+  }
+  const total  = _monsters.length;
+  const active = _monsterGrid.size;
+  const cells  = _monsterGrid.cellCount;
+  panel.innerHTML =
+    `FS몬스터: ${total} | 그리드: ${active}<br>` +
+    `셀: ${cells} | 주변: ${_dbgNearby}<br>` +
+    `AI처리: ${_dbgAiCount} | 틱FPS: ${_dbgFps}`;
+}
+
 // ── 배틀 루프 ─────────────────────────────────────────────────────────────────
 export function startBattleLoop() {
   if (_battleLoopId) return;
@@ -1334,6 +1414,7 @@ function battleTick() {
   checkTowerAttacks();
   checkPlayerAutoAttack();
   checkGoldPickup();
+  _updateDebugPanel();
   if (_isDead) {
     if (_reviveWalkDist >= 50) {
       _isDead = false;
@@ -1406,20 +1487,23 @@ function checkMonsterAttacks() {
   const myLat = myPos.lat(), myLng = myPos.lng();
   const myUid = _ctx?.uid;
   const now = Date.now();
-  for (const mob of _monsters) {
-    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-    if (_monsterCd[mob.id]) continue;
+  const ATK_CD_MS = 2500;
+
+  const nearby = _monsterGrid.nearby(myLat, myLng, 1);
+  _dbgNearby = nearby.length;
+  let aiCount = 0;
+  for (const mob of nearby) {
     if (_frozenUntil[mob.id] && now < _frozenUntil[mob.id]) continue;
-    const dist = haversine(myLat, myLng, mob.lat, mob.lng);
-    if (dist <= (mob.detectRadius || 20)) {
-      // 어그로 클레임: 처음 탐지 시 항상 내가 클레임 (잔존 aggroUid 덮어쓰기)
+    if (now - (_monsterAtkTs[mob.id] || 0) < ATK_CD_MS) continue;
+    const r = mob.detectRadius || 20;
+    if (MonsterGrid.distSq(myLat, myLng, mob.lat, mob.lng) <= r * r) {
+      aiCount++;
       if (myUid && !_aggroClaimed.has(mob.id)) {
         _aggroClaimed.add(mob.id);
         _monsterAggro[mob.id] = myUid;
         setDoc(doc(_ctx.db, 'battle_hp', `monster_${mob.id}`),
           { aggroUid: myUid }, { merge: true }).catch(() => {});
       }
-      // 내가 어그로 대상이 아니면 공격 무시 (다른 유저가 먼저 클레임한 경우)
       const aggro = _monsterAggro[mob.id];
       if (aggro && aggro !== myUid) continue;
 
@@ -1427,10 +1511,10 @@ function checkMonsterAttacks() {
       animateMonsterCharge(mob, myLat, myLng, () => {
         takeDamage(mob.atk || 10, myLat, myLng);
       });
-      _monsterCd[mob.id] = true;
-      setTimeout(() => { delete _monsterCd[mob.id]; }, 2500);
+      _monsterAtkTs[mob.id] = now;
     }
   }
+  _dbgAiCount = aiCount;
 }
 
 function checkTowerAttacks() {
@@ -1469,17 +1553,16 @@ function checkPlayerAutoAttack() {
   const myPos = _ctx.myLocationMarker.getPosition();
   const myLat = myPos.lat(), myLng = myPos.lng();
 
-  let target = null, minDist = Infinity;
-  for (const mob of _monsters) {
-    if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-    const dist = haversine(myLat, myLng, mob.lat, mob.lng);
-    if (dist > 25) continue;
+  let target = null, minDistSq = Infinity;
+  for (const mob of _monsterGrid.nearby(myLat, myLng, 1)) {
+    const dSq = MonsterGrid.distSq(myLat, myLng, mob.lat, mob.lng);
+    if (dSq > 25 * 25) continue;
     if (_ctx.lastHeading != null) {
       const bearing = calcBearing(myLat, myLng, mob.lat, mob.lng);
       const diff = Math.abs(((bearing - _ctx.lastHeading) + 540) % 360 - 180);
       if (diff > 60) continue;
     }
-    if (dist < minDist) { minDist = dist; target = mob; }
+    if (dSq < minDistSq) { minDistSq = dSq; target = mob; }
   }
 
   if (!target) return;
@@ -1489,7 +1572,7 @@ function checkPlayerAutoAttack() {
   playSound('arrow_shot');
   animateArrow(myLat, myLng, target.lat, target.lng, '#fbbf24', () => {
     playSound('arrow_hit');
-    hitMonster(target.id, 5);
+    hitMonster(target.id, Math.floor(getTotalAtk() / 8));
   });
 }
 
@@ -1511,6 +1594,7 @@ function _scheduleMonsterRespawn(mob, deadAtMs) {
   _monsterRespawnTimers[mob.id] = setTimeout(() => {
     delete _monsterRespawnTimers[mob.id];
     mob.hp = mob.maxHp;
+    _monsterGrid.register(mob);
     if (_ctx?.map) _spawnMonsterMarker(mob);
   }, remaining);
 }
@@ -1556,6 +1640,7 @@ async function hitMonster(monsterId, damage) {
       }
     }
 
+    _monsterGrid.remove(monsterId);
     if (marker) { marker.setMap(null); delete _monsterMarkers[monsterId]; }
     _scheduleMonsterRespawn(mob, Date.now());
   }
@@ -1584,6 +1669,7 @@ function _onMonsterHpChange(monsterId, data) {
 
   if (data.isDead && mob.hp > 0) {
     mob.hp = 0;
+    _monsterGrid.remove(monsterId);
     if (_monsterMarkers[monsterId]) { _monsterMarkers[monsterId].setMap(null); delete _monsterMarkers[monsterId]; }
     delete _monsterAggro[monsterId];
     _aggroClaimed.delete(monsterId);
@@ -1591,6 +1677,7 @@ function _onMonsterHpChange(monsterId, data) {
   } else if (!data.isDead && data.hp > 0) {
     if (mob.hp <= 0 && !_monsterMarkers[monsterId]) {
       mob.hp = data.hp;
+      _monsterGrid.register(mob);
       if (_ctx?.map) _spawnMonsterMarker(mob);
     } else if (mob.hp > 0) {
       mob.hp = data.hp;
@@ -1685,7 +1772,9 @@ export function enterAdminPlaceMode(type) {
           detectRadius, respawnMinutes,
           active: true, createdAt: serverTimestamp(),
         });
-        _monsters.push({ id: ref.id, name, image, monsterType, lat, lng, maxHp, hp: maxHp, atk, detectRadius, respawnMinutes, active: true });
+        const newMob = { id: ref.id, name, image, monsterType, lat, lng, maxHp, hp: maxHp, atk, detectRadius, respawnMinutes, active: true };
+        _monsters.push(newMob);
+        _monsterGrid.register(newMob);
         renderMonsterMarkers();
         refreshFirestoreMonsterList();
         alert(`✅ ${name} 배치 완료 (Firebase)\n서버가 꺼져도 유지됩니다.`);
@@ -2000,7 +2089,12 @@ export function startWatchPosition() {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
       _ctx.lastPos = { lat, lng, accuracy, heading };
       updateMyLocation(lat, lng, accuracy, heading);
-      _ctx._onCheckProximity(lat, lng);
+      // GPS 쓰로틀: 5m 이상 이동 시만 근접 GS 존 재조회
+      const prox = _lastProximityPos;
+      if (!prox || MonsterGrid.distSq(lat, lng, prox.lat, prox.lng) >= 25) {
+        _lastProximityPos = { lat, lng };
+        _ctx._onCheckProximity(lat, lng);
+      }
     },
     null,
     { enableHighAccuracy: true, maximumAge: 3000 }

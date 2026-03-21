@@ -244,9 +244,94 @@
           <!-- ── 보물찾기 관리 탭 ── -->
           <div id="tabTreasure" style="display:none;">
 
-            <!-- 아이템 등록 -->
+            <!-- ⚔️ 무기 등록 -->
             <div class="list-head" style="margin-top:8px;">
-              <div class="muted">🧩 아이템 등록/수정 (treasure_items)</div>
+              <div class="muted">⚔️ 무기 등록 (weapon_N → treasure_items)</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <p class="muted" style="font-size:12px;margin:0 0 10px;">
+                파일: <code>assets/images/weapon/{공격력}.png</code> 이 존재해야 합니다.<br>
+                아이템 ID는 자동으로 <code>weapon_{공격력}</code> 으로 설정됩니다.
+              </p>
+              <div class="kv" style="margin-bottom:8px;">
+                <div class="k">추가 공격력 (숫자)</div>
+                <div class="v">
+                  <select id="wBonusSelect" class="select" style="width:120px;">
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                    <option value="100" selected>100</option>
+                    <option value="125">125</option>
+                    <option value="150">150</option>
+                  </select>
+                  <span class="muted" style="font-size:12px;margin-left:8px;">총공격력 = 100 + 선택값</span>
+                </div>
+                <div class="k">무기 이름</div>
+                <div class="v"><input type="text" id="wName" class="select" style="width:100%;" placeholder="예: 강철검, 마법지팡이"></div>
+                <div class="k">미리보기</div>
+                <div class="v"><img id="wPreview" src="" alt="" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;background:#1a0e06;border-radius:6px;display:none;"></div>
+              </div>
+              <button class="btn btn-sm" id="btnSaveWeapon" type="button">⚔️ 무기 저장</button>
+              <span id="wSaveResult" style="font-size:13px;margin-left:10px;"></span>
+            </div>
+
+            <!-- 🛡 방어구 등록 -->
+            <div class="list-head" style="margin-top:16px;">
+              <div class="muted">🛡 방어구 등록 (armo_N → treasure_items)</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <p class="muted" style="font-size:12px;margin:0 0 10px;">
+                파일: <code>assets/images/armo/{폴더}/{방어력}.png</code> 이 존재해야 합니다.<br>
+                아이템 ID는 자동으로 <code>armo_{방어력}</code> 으로 설정됩니다.
+              </p>
+              <div class="kv" style="margin-bottom:8px;">
+                <div class="k">방어력 (숫자)</div>
+                <div class="v">
+                  <select id="aBonusSelect" class="select" style="width:120px;">
+                    <option value="10" selected>10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                    <option value="13">13</option>
+                    <option value="14">14</option>
+                    <option value="20">20</option>
+                    <option value="21">21</option>
+                    <option value="22">22</option>
+                    <option value="23">23</option>
+                    <option value="24">24</option>
+                  </select>
+                  <span class="muted" style="font-size:12px;margin-left:8px;">몬스터 피해 감소량</span>
+                </div>
+                <div class="k">방어구 이름</div>
+                <div class="v"><input type="text" id="aName" class="select" style="width:100%;" placeholder="예: 가죽 헬멧, 철갑옷"></div>
+                <div class="k">미리보기</div>
+                <div class="v"><img id="aPreview" src="" alt="" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;background:#1a0e06;border-radius:6px;display:none;"></div>
+              </div>
+              <button class="btn btn-sm" id="btnSaveArmor" type="button">🛡 방어구 저장</button>
+              <span id="aSaveResult" style="font-size:13px;margin-left:10px;"></span>
+            </div>
+
+            <!-- 🎁 유저 직접 지급 -->
+            <div class="list-head" style="margin-top:16px;">
+              <div class="muted">🎁 유저에게 아이템 직접 지급 (adminGrantItem)</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <div class="kv" style="margin-bottom:8px;">
+                <div class="k">유저 이메일 또는 UID</div>
+                <div class="v"><input type="text" id="grantTarget" class="select" style="width:100%;" placeholder="user@example.com 또는 Firebase UID"></div>
+                <div class="k">아이템 ID</div>
+                <div class="v">
+                  <input type="text" id="grantItemId" class="select" style="width:100%;" placeholder="예: weapon_100, armo_10, potion_red">
+                  <div class="muted" style="font-size:11px;margin-top:3px;">weapon_50, weapon_75, weapon_100, weapon_125, weapon_150 / armo_10~14, armo_20~24</div>
+                </div>
+                <div class="k">수량</div>
+                <div class="v"><input type="number" id="grantCount" class="select" style="width:80px;" value="1" min="1" step="1"></div>
+              </div>
+              <button class="btn btn-sm" id="btnGrantItem" type="button">🎁 지급 실행</button>
+              <span id="grantResult" style="font-size:13px;margin-left:10px;"></span>
+            </div>
+
+            <!-- 아이템 등록 -->
+            <div class="list-head" style="margin-top:16px;">
+              <div class="muted">🧩 기타 아이템 등록/수정 (treasure_items)</div>
               <button class="btn btn-sm" id="btnReloadTItems" type="button">새로고침</button>
             </div>
             <div class="card" style="margin-top:4px;">
