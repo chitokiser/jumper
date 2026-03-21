@@ -1283,7 +1283,16 @@ function renderVouchers() {
       btn.disabled = true; btn.textContent = '처리 중...';
       try {
         const res = await httpsCallable(functions, 'craftVoucher')({ voucherId: vid });
-        alert(`✅ 조합 성공!\n${res.data.voucherName}\n보상: ${res.data.reward}`);
+        const reward = res.data.reward || '';
+        // 보상이 무기/방어구면 자동 장착
+        if (reward.startsWith('weapon_')) {
+          equipWeapon(reward);
+          showInfoToast(`⚔️ ${reward} 장착! 총공격력 ${getTotalAtk()}`);
+        } else if (reward.startsWith('armo_')) {
+          equipArmor(reward);
+          showInfoToast(`🛡 ${reward} 장착! 방어력 ${getDefense()}`);
+        }
+        alert(`✅ 조합 성공!\n${res.data.voucherName}\n보상: ${reward}`);
         await loadInventory();
       } catch (err) {
         alert('조합 실패: ' + (err.message || err));
