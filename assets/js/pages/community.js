@@ -451,8 +451,7 @@ onAuthStateChanged(auth, async user => {
   _user = user;
   // 관리자만 행사 등록 버튼 노출
   if (user) {
-    const adminSnap = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
-      .then(({ getDoc, doc }) => getDoc(doc(db, 'admins', user.uid)));
+    const adminSnap = await getDoc(doc(db, 'admins', user.uid));
     const isAdmin = adminSnap.exists() || user.email === 'daguri75@gmail.com';
     $('btnCreateEvent').style.display = isAdmin ? '' : 'none';
   } else {
