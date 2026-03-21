@@ -14,9 +14,10 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 const fns = getFunctions(app);
 
-const fnRequest  = httpsCallable(fns, 'buggyRequestRide');
-const fnCancel   = httpsCallable(fns, 'buggyCancelRide');
-const fnGetConfig= httpsCallable(fns, 'buggyGetConfig');
+const fnRequest     = httpsCallable(fns, 'buggyRequestRide');
+const fnCancel      = httpsCallable(fns, 'buggyCancelRide');
+const fnGetConfig   = httpsCallable(fns, 'buggyGetConfig');
+const fnGetOnChain  = httpsCallable(fns, 'getMyOnChain');
 
 // ── 상태 ────────────────────────────────────────────────────────────────────
 let _user     = null;
@@ -136,20 +137,37 @@ function loadMaps() {
   document.head.appendChild(s);
 }
 
-// ── 사용자 HEX 지갑 상태 로드 ────────────────────────────────────────────
+// ── 사용자 HEX 잔액 로드 ─────────────────────────────────────────────────
 async function loadBalance() {
   if (!_user) return;
-  const snap    = await getDoc(doc(db, 'users', _user.uid));
-  const wallet  = snap.data()?.wallet;
-  const balBox  = document.getElementById('balanceBox');
-  if (wallet?.address) {
-    balAmount.textContent = `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`;
-    balBox.title = wallet.address;
-    document.querySelector('.bal-label').textContent = 'HEX 지갑 연동됨';
-  } else {
-    balAmount.textContent = '지갑 없음';
-    document.querySelector('.bal-label').textContent = '수탁 지갑 필요';
-    balBox.style.borderColor = '#dc2626';
+  const balBox = document.getElementById('balanceBox');
+  try {
+    const res = await fnGetOnChain();
+    const d   = res.data;
+    if (d?.walletHexWei && BigInt(d.walletHexWei) > 0n) {
+      // ex) "229,402원 / $152.82 / 3,992,988 VND"
+      const parts = [];
+      if (d.walletHexKrw != null) parts.push(Number(d.walletHexKrw).toLocaleString() + '원');
+      if (d.walletHexUsd != null) parts.push('$' + Number(d.walletHexUsd).toFixed(2));
+      if (d.walletHexVnd != null) parts.push(Number(d.walletHexVnd).toLocaleString() + ' VND');
+      balAmount.textContent = parts.length ? parts.join(' / ') : (d.walletHexDisplay || '-');
+      balAmount.style.fontSize = '0.78rem';
+    } else {
+      balAmount.textContent = '0 HEX';
+    }
+    document.querySelector('.bal-label').textContent = '보유 HEX';
+  } catch (_) {
+    // 지갑 없음 fallback
+    const snap   = await getDoc(doc(db, 'users', _user.uid));
+    const wallet = snap.data()?.wallet;
+    if (wallet?.address) {
+      balAmount.textContent = `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`;
+      document.querySelector('.bal-label').textContent = 'HEX 지갑 연동됨';
+    } else {
+      balAmount.textContent = '지갑 없음';
+      document.querySelector('.bal-label').textContent = '수탁 지갑 필요';
+      balBox.style.borderColor = '#dc2626';
+    }
   }
 }
 
