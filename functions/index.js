@@ -18,6 +18,7 @@
 const admin = require('firebase-admin');
 const { onDocumentWritten }  = require('firebase-functions/v2/firestore');
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { onSchedule }         = require('firebase-functions/v2/scheduler');
 const { defineSecret }       = require('firebase-functions/params');
 const { logger }             = require('firebase-functions');
 
@@ -1219,6 +1220,11 @@ exports.daoCommentProposal = onCall(
     return daoH.commentProposal(uid, request.data);
   })
 );
+
+// DAO 10일 만료 자동 부결 — 매일 오전 9시 (UTC+7 기준 02:00 UTC)
+exports.daoAutoRejectExpired = onSchedule('every 24 hours', async () => {
+  await daoH.autoRejectExpiredProposals();
+});
 
 // ════════════════════════════════════════════════════════════════════════════
 // 보물찾기 시스템

@@ -322,6 +322,40 @@ async function commentProposal(uid, { proposalId, content }) {
   return { commentId: ref.id };
 }
 
+// ── 자동 부결: 생성 후 10일 이상 미결 안건 일괄 처리 ──────────────────────────
+async function autoRejectExpiredProposals() {
+  const EXPIRE_MS  = 10 * 24 * 60 * 60 * 1000; // 10일
+  const cutoff     = admin.firestore.Timestamp.fromDate(new Date(Date.now() - EXPIRE_MS));
+  const ACTIVE     = ['pending_admin', 'review', 'voting'];
+
+  // Firestore 'in' 쿼리는 OR 조건 — 각 상태별로 조회 후 합산
+  const snaps = await Promise.all(
+    ACTIVE.map(s =>
+      db.collection('dao_proposals')
+        .where('status', '==', s)
+        .where('createdAt', '<=', cutoff)
+        .get()
+    )
+  );
+
+  const batch = db.batch();
+  let count = 0;
+  snaps.forEach(snap =>
+    snap.docs.forEach(docSnap => {
+      batch.update(docSnap.ref, {
+        status:          'rejected',
+        closedAt:        admin.firestore.FieldValue.serverTimestamp(),
+        rejectionReason: '10일 이내 처리되지 않아 자동 부결',
+      });
+      count++;
+    })
+  );
+
+  if (count > 0) await batch.commit();
+  logger.info('dao.autoRejectExpired', { rejected: count });
+  return { rejected: count };
+}
+
 module.exports = {
   createProposal,
   adminApproveProposal,
@@ -331,4 +365,5 @@ module.exports = {
   updateProposal,
   deleteProposal,
   commentProposal,
+  autoRejectExpiredProposals,
 };
