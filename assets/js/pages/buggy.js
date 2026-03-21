@@ -3,7 +3,7 @@
 
 import { getApps, initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, doc, onSnapshot, collection, query, where, limit, getDoc, orderBy }
+import { getFirestore, doc, onSnapshot, collection, query, where, limit, getDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -136,12 +136,21 @@ function loadMaps() {
   document.head.appendChild(s);
 }
 
-// ── 사용자 잔액 로드 ─────────────────────────────────────────────────────
+// ── 사용자 HEX 지갑 상태 로드 ────────────────────────────────────────────
 async function loadBalance() {
   if (!_user) return;
-  const snap = await getDoc(doc(db, 'users', _user.uid));
-  const bal = snap.data()?.buggyVndBalance || 0;
-  balAmount.textContent = fmtVnd(bal);
+  const snap    = await getDoc(doc(db, 'users', _user.uid));
+  const wallet  = snap.data()?.wallet;
+  const balBox  = document.getElementById('balanceBox');
+  if (wallet?.address) {
+    balAmount.textContent = `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`;
+    balBox.title = wallet.address;
+    document.querySelector('.bal-label').textContent = 'HEX 지갑 연동됨';
+  } else {
+    balAmount.textContent = '지갑 없음';
+    document.querySelector('.bal-label').textContent = '수탁 지갑 필요';
+    balBox.style.borderColor = '#dc2626';
+  }
 }
 
 // ── 진행 중 라이드 복구 ──────────────────────────────────────────────────

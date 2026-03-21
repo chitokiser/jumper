@@ -1,10 +1,20 @@
 // functions/handlers/buggy.js
-// 오션파크 버기카 호출 서비스
+// 오션파크 버기카 호출 서비스 — HEX 토큰 자동 결제
 
 'use strict';
 
 const admin = require('firebase-admin');
-const db    = admin.firestore();
+const { ethers } = require('ethers');
+const { decrypt } = require('../wallet/crypto');
+const {
+  getProvider,
+  getHexContract,
+  walletFromKey,
+  getAdminWallet,
+  estimateGasWithBuffer,
+} = require('../wallet/chain');
+
+const db        = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
 
 // ── 기본 설정 ─────────────────────────────────────────────────
@@ -12,9 +22,9 @@ const DEFAULT_CONFIG = {
   baseFare:              50000,   // VND
   intervalMinutes:       10,      // 10분마다
   intervalFare:          50000,   // 추가 요금
-  minBalance:            50000,   // 최소 보유 잔액
-  searchRadiusKm:        10,      // 기사 탐색 반경
-  driverTimeoutSeconds:  120,     // 기사 응답 제한시간
+  minHexUsd:             0.002,   // 최소 HEX 보유 (USD 기준) — 약 50,000 VND
+  searchRadiusKm:        10,
+  driverTimeoutSeconds:  120,
 };
 
 async function getConfig() {
@@ -33,29 +43,113 @@ function calcFare(startMs, endMs, cfg) {
   return { minutes: Math.ceil(minutes), fare: intervals * cfg.intervalFare };
 }
 
-// ── 거리 계산 (km) ────────────────────────────────────────────
-function distKm(lat1, lng1, lat2, lng2) {
-  const R    = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a    = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+// ── 환율 캐시 ─────────────────────────────────────────────────
+let _fxCache = { usdVnd: 0, ts: 0 };
+const FX_TTL = 600_000;
+
+async function fetchRates() {
+  if (_fxCache.usdVnd > 0 && Date.now() - _fxCache.ts < FX_TTL) return _fxCache;
+  try {
+    const res  = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    _fxCache = { usdVnd: data?.rates?.VND ?? 25000, ts: Date.now() };
+  } catch {
+    _fxCache = { usdVnd: _fxCache.usdVnd || 25000, ts: Date.now() };
+  }
+  return _fxCache;
+}
+
+// ── VND → HEX wei (18 decimals, 1 HEX ≒ 1 USD) ─────────────
+function vndToHexWei(vndAmount, usdVnd) {
+  const usdAmt = vndAmount / usdVnd;               // USD
+  const weiBig = BigInt(Math.round(usdAmt * 1e12)) * BigInt(1_000_000);
+  return weiBig;
+}
+
+// ── 사용자 지갑 조회 ──────────────────────────────────────────
+async function getUserWallet(uid) {
+  const snap = await db.collection('users').doc(uid).get();
+  const wallet = snap.data()?.wallet;
+  if (!wallet?.address || !wallet?.encryptedKey) {
+    throw new Error('수탁 지갑이 없습니다. 지갑을 먼저 생성해주세요.');
+  }
+  return wallet;
+}
+
+// ── HEX 잔액 확인 ─────────────────────────────────────────────
+async function checkHexBalance(address, requiredVnd, usdVnd) {
+  const provider  = getProvider();
+  const hexRead   = getHexContract(provider);
+  const hexBal    = await hexRead.balanceOf(address);
+  const reqWei    = vndToHexWei(requiredVnd, usdVnd);
+  if (hexBal < reqWei) {
+    const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
+    const need = parseFloat(ethers.formatEther(reqWei)).toFixed(4);
+    throw new Error(
+      `HEX 잔액 부족. 최소 ${need} HEX 필요 (현재 ${have} HEX, 약 ₫${requiredVnd.toLocaleString()})`
+    );
+  }
+  return hexBal;
+}
+
+// ── HEX 온체인 결제 ───────────────────────────────────────────
+async function payWithHex(wallet, fareVnd, usdVnd, masterSecret) {
+  const hexWei     = vndToHexWei(fareVnd, usdVnd);
+  const provider   = getProvider();
+  const adminWallet= getAdminWallet();
+  const hexRead    = getHexContract(provider);
+
+  // 잔액 최종 확인
+  const hexBal = await hexRead.balanceOf(wallet.address);
+  if (hexBal < hexWei) {
+    // 잔액 부족 — 있는 만큼 전송 (부분 결제)
+    const partialWei = hexBal;
+    if (partialWei === 0n) return { hexWei, actualHexWei: 0n, txHash: null, partial: true };
+    // BNB 가스비 보충
+    const bnbBal = await provider.getBalance(wallet.address);
+    if (bnbBal < ethers.parseEther('0.00005')) {
+      const fundTx = await adminWallet.sendTransaction({
+        to: wallet.address, value: ethers.parseEther('0.0001'),
+      });
+      await fundTx.wait();
+    }
+    const privateKey  = decrypt(wallet.encryptedKey, masterSecret);
+    const signer      = walletFromKey(privateKey, provider);
+    const hexSigned   = getHexContract(signer);
+    const gasLimit    = await estimateGasWithBuffer(hexSigned, 'transfer', [adminWallet.address, partialWei]);
+    const tx          = await hexSigned.transfer(adminWallet.address, partialWei, { gasLimit });
+    const receipt     = await tx.wait();
+    return { hexWei, actualHexWei: partialWei, txHash: receipt.hash, partial: true };
+  }
+
+  // BNB 가스비 보충
+  const bnbBal = await provider.getBalance(wallet.address);
+  if (bnbBal < ethers.parseEther('0.00005')) {
+    const fundTx = await adminWallet.sendTransaction({
+      to: wallet.address, value: ethers.parseEther('0.0001'),
+    });
+    await fundTx.wait();
+  }
+
+  const privateKey = decrypt(wallet.encryptedKey, masterSecret);
+  const signer     = walletFromKey(privateKey, provider);
+  const hexSigned  = getHexContract(signer);
+  const gasLimit   = await estimateGasWithBuffer(hexSigned, 'transfer', [adminWallet.address, hexWei]);
+  const tx         = await hexSigned.transfer(adminWallet.address, hexWei, { gasLimit });
+  const receipt    = await tx.wait();
+  return { hexWei, actualHexWei: hexWei, txHash: receipt.hash, partial: false };
 }
 
 // ── 탑승 요청 ─────────────────────────────────────────────────
 async function requestRide(uid, { pickupLat, pickupLng, pickupAddress, destLat, destLng, destAddress }) {
   if (!pickupLat || !pickupLng) throw new Error('탑승 위치가 필요합니다');
 
-  const cfg = await getConfig();
+  const cfg  = await getConfig();
+  const rates = await fetchRates();
 
-  // 잔액 확인
-  const userSnap = await db.collection('users').doc(uid).get();
-  const balance  = userSnap.data()?.buggyVndBalance || 0;
-  if (balance < cfg.minBalance) {
-    throw new Error(`잔액 부족. 최소 ${cfg.minBalance.toLocaleString()}동 필요 (현재 ${balance.toLocaleString()}동)`);
-  }
+  // 수탁 지갑 확인 + HEX 잔액 확인
+  const wallet = await getUserWallet(uid);
+  await checkHexBalance(wallet.address, cfg.intervalFare, rates.usdVnd); // 최소 1구간 요금
 
   // 진행 중 호출 중복 확인
   const active = await db.collection('buggy_rides')
@@ -64,10 +158,13 @@ async function requestRide(uid, { pickupLat, pickupLng, pickupAddress, destLat, 
     .limit(1).get();
   if (!active.empty) throw new Error('이미 진행 중인 호출이 있습니다');
 
+  const userSnap = await db.collection('users').doc(uid).get();
+
   const rideRef = db.collection('buggy_rides').doc();
   await rideRef.set({
     userId:          uid,
     userDisplayName: userSnap.data()?.displayName || '회원',
+    userWallet:      wallet.address,
     driverId:        null,
     driverName:      null,
     vehicleNumber:   null,
@@ -86,8 +183,9 @@ async function requestRide(uid, { pickupLat, pickupLng, pickupAddress, destLat, 
     endedAt:         null,
     durationMinutes: null,
     feeVnd:          null,
+    feeHex:          null,
+    txHash:          null,
     paymentStatus:   'pending',
-    paymentTxId:     null,
     cancelReason:    null,
     createdAt:       FieldValue.serverTimestamp(),
     updatedAt:       FieldValue.serverTimestamp(),
@@ -106,7 +204,6 @@ async function cancelRide(uid, { rideId, reason }) {
 
   const isUser   = ride.userId   === uid;
   const isDriver = ride.driverId === uid;
-  // 관리자 확인
   const isAdmin  = await db.collection('admins').doc(uid).get().then(s => s.exists);
 
   if (!isUser && !isDriver && !isAdmin) throw new Error('권한이 없습니다');
@@ -178,11 +275,11 @@ async function startRide(driverUid, { rideId }) {
   if (!['accepted', 'arriving'].includes(snap.data().status)) throw new Error('잘못된 상태입니다');
   const ride = snap.data();
 
-  // 잔액 재확인
-  const cfg      = await getConfig();
-  const userSnap = await db.collection('users').doc(ride.userId).get();
-  const balance  = userSnap.data()?.buggyVndBalance || 0;
-  if (balance < cfg.minBalance) throw new Error('승객 잔액 부족으로 탑승을 시작할 수 없습니다');
+  // HEX 잔액 재확인
+  const cfg    = await getConfig();
+  const rates  = await fetchRates();
+  const wallet = await getUserWallet(ride.userId);
+  await checkHexBalance(wallet.address, cfg.intervalFare, rates.usdVnd);
 
   await rideRef.update({
     status:    'riding',
@@ -192,8 +289,8 @@ async function startRide(driverUid, { rideId }) {
   return { success: true };
 }
 
-// ── 탑승 종료 + 자동 정산 ─────────────────────────────────────
-async function endRide(driverUid, { rideId }) {
+// ── 탑승 종료 + HEX 자동 결제 ────────────────────────────────
+async function endRide(driverUid, { rideId }, masterSecret) {
   const rideRef = db.collection('buggy_rides').doc(rideId);
   const snap    = await rideRef.get();
   if (!snap.exists || snap.data().driverId !== driverUid) throw new Error('권한 없음');
@@ -204,56 +301,87 @@ async function endRide(driverUid, { rideId }) {
   const startMs = ride.startedAt?.toMillis() || Date.now();
   const { minutes, fare } = calcFare(startMs, Date.now(), cfg);
 
-  const userRef  = db.collection('users').doc(ride.userId);
-  const userSnap = await userRef.get();
-  const balance  = userSnap.data()?.buggyVndBalance || 0;
-  const batch    = db.batch();
-  const txRef    = db.collection('buggy_transactions').doc();
+  const rates  = await fetchRates();
+  const wallet = await getUserWallet(ride.userId);
 
-  if (balance < fare) {
-    // 잔액 부족 — 있는 만큼 차감, payment_failed
+  // 온체인 HEX 결제
+  const { hexWei, actualHexWei, txHash, partial } = await payWithHex(
+    wallet, fare, rates.usdVnd, masterSecret
+  );
+
+  const hexAmount    = parseFloat(ethers.formatEther(hexWei)).toFixed(6);
+  const actualAmount = parseFloat(ethers.formatEther(actualHexWei)).toFixed(6);
+
+  const batch  = db.batch();
+  const txRef  = db.collection('buggy_transactions').doc();
+
+  if (partial) {
     batch.set(txRef, {
-      userId: ride.userId, rideId,
-      type: 'ride_charge', amount: -balance,
-      balanceBefore: balance, balanceAfter: 0,
-      status: 'partial',
-      description: `버기카 ${minutes}분 — 잔액 부족 (부족분 ${(fare - balance).toLocaleString()}동)`,
-      createdAt: FieldValue.serverTimestamp(),
+      userId:      ride.userId,
+      rideId,
+      type:        'ride_charge',
+      feeVnd:      fare,
+      hexRequired: hexAmount,
+      hexCharged:  actualAmount,
+      txHash:      txHash || null,
+      status:      'partial',
+      description: `버기카 ${minutes}분 — HEX 잔액 부족 (필요: ${hexAmount} HEX, 차감: ${actualAmount} HEX)`,
+      createdAt:   FieldValue.serverTimestamp(),
     });
-    if (balance > 0) batch.update(userRef, { buggyVndBalance: 0 });
     batch.update(rideRef, {
-      status: 'payment_failed', endedAt: FieldValue.serverTimestamp(),
-      durationMinutes: minutes, feeVnd: fare,
-      paymentStatus: 'failed', updatedAt: FieldValue.serverTimestamp(),
+      status:          'payment_failed',
+      endedAt:         FieldValue.serverTimestamp(),
+      durationMinutes: minutes,
+      feeVnd:          fare,
+      feeHex:          hexAmount,
+      txHash:          txHash || null,
+      paymentStatus:   'partial',
+      updatedAt:       FieldValue.serverTimestamp(),
     });
   } else {
     batch.set(txRef, {
-      userId: ride.userId, rideId,
-      type: 'ride_charge', amount: -fare,
-      balanceBefore: balance, balanceAfter: balance - fare,
-      status: 'completed',
-      description: `버기카 ${minutes}분 이용료`,
-      createdAt: FieldValue.serverTimestamp(),
+      userId:      ride.userId,
+      rideId,
+      type:        'ride_charge',
+      feeVnd:      fare,
+      hexRequired: hexAmount,
+      hexCharged:  hexAmount,
+      txHash,
+      status:      'completed',
+      description: `버기카 ${minutes}분 이용료 (${hexAmount} HEX)`,
+      createdAt:   FieldValue.serverTimestamp(),
     });
-    batch.update(userRef, { buggyVndBalance: FieldValue.increment(-fare) });
     batch.update(rideRef, {
-      status: 'completed', endedAt: FieldValue.serverTimestamp(),
-      durationMinutes: minutes, feeVnd: fare,
-      paymentStatus: 'paid', paymentTxId: txRef.id,
-      updatedAt: FieldValue.serverTimestamp(),
+      status:          'completed',
+      endedAt:         FieldValue.serverTimestamp(),
+      durationMinutes: minutes,
+      feeVnd:          fare,
+      feeHex:          hexAmount,
+      txHash,
+      paymentStatus:   'paid',
+      paymentTxId:     txRef.id,
+      updatedAt:       FieldValue.serverTimestamp(),
     });
   }
 
   await batch.commit();
-  return { success: true, minutes, fare, paymentStatus: balance >= fare ? 'paid' : 'failed' };
+
+  return {
+    success:       true,
+    minutes,
+    fare,
+    hexAmount,
+    txHash:        txHash || null,
+    paymentStatus: partial ? 'partial' : 'paid',
+  };
 }
 
 // ── 기사 위치 전송 ────────────────────────────────────────────
 async function updateDriverLocation(driverUid, { lat, lng, heading, speed }) {
   await db.collection('buggy_driver_locations').doc(driverUid).set({
     driverId: driverUid,
-    lat:      parseFloat(lat)  || 0,
-    lng:      parseFloat(lng)  || 0,
+    lat:      parseFloat(lat)     || 0,
+    lng:      parseFloat(lng)     || 0,
     heading:  parseFloat(heading) || 0,
     speed:    parseFloat(speed)   || 0,
     updatedAt: FieldValue.serverTimestamp(),
@@ -301,37 +429,15 @@ async function adminForceEnd(adminUid, { rideId, reason }) {
   }
 
   await rideRef.update({
-    status: 'completed', endedAt: FieldValue.serverTimestamp(),
-    durationMinutes: minutes, feeVnd: fare,
-    paymentStatus: 'pending',
-    cancelReason:  reason || '관리자 강제 종료',
-    updatedAt: FieldValue.serverTimestamp(),
+    status:          'completed',
+    endedAt:         FieldValue.serverTimestamp(),
+    durationMinutes: minutes,
+    feeVnd:          fare,
+    paymentStatus:   'pending',
+    cancelReason:    reason || '관리자 강제 종료',
+    updatedAt:       FieldValue.serverTimestamp(),
   });
   return { success: true, minutes, fare };
-}
-
-// ── 관리자: 잔액 충전 ─────────────────────────────────────────
-async function adminTopUpBalance(adminUid, { userId, amount }) {
-  const aSnap = await db.collection('admins').doc(adminUid).get();
-  if (!aSnap.exists) throw new Error('관리자 권한 없음');
-  const amt   = parseInt(amount);
-  if (!amt || amt <= 0) throw new Error('충전 금액을 확인하세요');
-
-  const batch  = db.batch();
-  const txRef  = db.collection('buggy_transactions').doc();
-  const userRef = db.collection('users').doc(userId);
-  const before = (await userRef.get()).data()?.buggyVndBalance || 0;
-
-  batch.update(userRef, { buggyVndBalance: FieldValue.increment(amt) });
-  batch.set(txRef, {
-    userId, rideId: null, type: 'top_up',
-    amount: amt, balanceBefore: before, balanceAfter: before + amt,
-    status: 'completed',
-    description: `버기카 잔액 충전 (관리자: ${adminUid})`,
-    createdAt: FieldValue.serverTimestamp(),
-  });
-  await batch.commit();
-  return { success: true, newBalance: before + amt };
 }
 
 // ── 관리자: 설정 저장 ─────────────────────────────────────────
@@ -349,6 +455,6 @@ module.exports = {
   requestRide, cancelRide,
   acceptRide, driverArrive, startRide, endRide,
   updateDriverLocation, setDriverOnline,
-  adminCreateDriver, adminForceEnd, adminTopUpBalance, adminSaveConfig,
+  adminCreateDriver, adminForceEnd, adminSaveConfig,
   getConfig,
 };

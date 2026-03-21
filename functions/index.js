@@ -1352,10 +1352,15 @@ exports.confirmVoucher = onCall(wrapError(async (req) => {
 // ════════════════════════════════════════════════════════════════════════════
 // 버기카 호출 서비스 (오션파크)
 // ════════════════════════════════════════════════════════════════════════════
-exports.buggyRequestRide = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.requestRide(uid, req.data ?? {});
-}));
+// requestRide: HEX 잔액 온체인 조회 필요 (adminKeySecret → getProvider 내부)
+exports.buggyRequestRide = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return buggyH.requestRide(uid, req.data ?? {});
+  })
+);
 exports.buggyCancelRide = onCall(wrapError(async (req) => {
   const uid = requireAuth(req);
   return buggyH.cancelRide(uid, req.data ?? {});
@@ -1368,14 +1373,24 @@ exports.buggyDriverArrive = onCall(wrapError(async (req) => {
   const uid = requireAuth(req);
   return buggyH.driverArrive(uid, req.data ?? {});
 }));
-exports.buggyStartRide = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.startRide(uid, req.data ?? {});
-}));
-exports.buggyEndRide = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.endRide(uid, req.data ?? {});
-}));
+// startRide: 탑승 시작 전 HEX 잔액 재확인
+exports.buggyStartRide = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return buggyH.startRide(uid, req.data ?? {});
+  })
+);
+// endRide: HEX 온체인 결제 실행
+exports.buggyEndRide = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return buggyH.endRide(uid, req.data ?? {}, walletSecret.value());
+  })
+);
 exports.buggyUpdateDriverLocation = onCall(wrapError(async (req) => {
   const uid = requireAuth(req);
   return buggyH.updateDriverLocation(uid, req.data ?? {});
@@ -1391,10 +1406,6 @@ exports.buggyAdminCreateDriver = onCall(wrapError(async (req) => {
 exports.buggyAdminForceEnd = onCall(wrapError(async (req) => {
   const uid = requireAuth(req);
   return buggyH.adminForceEnd(uid, req.data ?? {});
-}));
-exports.buggyAdminTopUpBalance = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.adminTopUpBalance(uid, req.data ?? {});
 }));
 exports.buggyAdminSaveConfig = onCall(wrapError(async (req) => {
   const uid = requireAuth(req);
