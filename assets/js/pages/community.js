@@ -9,11 +9,17 @@ import { getFirestore, collection, doc,
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFunctions, httpsCallable }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 import { firebaseConfig }       from '/assets/js/firebase-config.js';
 
 const app  = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db   = getFirestore(app);
 const auth = getAuth(app);
+const fns  = getFunctions(app);
+
+const fnCheckEligibility = httpsCallable(fns, 'checkEventEligibility');
+const fnBuyVoucher       = httpsCallable(fns, 'buyEventVoucher');
 
 const PAGE_SIZE = 12;
 
@@ -225,11 +231,83 @@ function renderDetail(d) {
     }
   }
 
+  // 바우처 섹션
+  if (d.voucherPrice > 0) {
+    $('detailVoucherSection').style.display = '';
+    renderVoucherBox(d);
+  } else {
+    $('detailVoucherSection').style.display = 'none';
+  }
+
   // 댓글폼
   if (_user) $('commCommentForm').style.display = '';
   else $('commCommentForm').style.display = 'none';
 
   loadComments(d.id);
+}
+
+// ── 바우처 박스 렌더 ──────────────────────────────────────────
+async function renderVoucherBox(d) {
+  const box = $('voucherBox');
+  box.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">확인 중...</p>';
+
+  if (!_user) {
+    box.innerHTML = `
+      <div class="comm-voucher-price">₫${(d.voucherPrice||0).toLocaleString()} VND</div>
+      <div class="comm-voucher-no-access">🔒 로그인 후 구매 가능합니다.</div>`;
+    return;
+  }
+
+  try {
+    const { data } = await fnCheckEligibility({ eventId: d.id });
+
+    const qtyText  = data.voucherQty > 0
+      ? `잔여 ${data.remainingQty}/${data.voucherQty}장`
+      : '수량 무제한';
+
+    let html = `
+      <div class="comm-voucher-price">₫${(d.voucherPrice||0).toLocaleString()} VND</div>
+      <div class="comm-voucher-meta">
+        <span>🎟 ${qtyText}</span>
+        <span>🪙 조건: JUMP ${(data.required||0).toLocaleString()}개 이상</span>
+        <span>내 스테이킹: <b>${(data.staked||0).toLocaleString()}개</b></span>
+      </div>`;
+
+    if (data.soldOut) {
+      html += `<div class="comm-voucher-no-access">🚫 매진되었습니다.</div>`;
+    } else if (data.alreadyBought) {
+      html += `<div class="comm-voucher-owned">✅ 바우처 구매 완료</div>`;
+    } else if (!data.eligible) {
+      html += `<div class="comm-voucher-no-access">
+        🪙 스테이킹 부족 (필요: ${data.required.toLocaleString()}개 / 보유: ${data.staked.toLocaleString()}개)<br>
+        <a href="/exchange.html" style="color:#c2410c;font-weight:700;">→ 거래소에서 스테이킹하기</a>
+      </div>`;
+    } else {
+      html += `<button class="btn--voucher" id="btnBuyVoucher">🎟 바우처 구매</button>`;
+    }
+
+    box.innerHTML = html;
+
+    const buyBtn = $('btnBuyVoucher');
+    if (buyBtn) {
+      buyBtn.addEventListener('click', async () => {
+        if (!confirm(`바우처를 구매하시겠습니까?\n가격: ₫${(d.voucherPrice||0).toLocaleString()} VND`)) return;
+        buyBtn.disabled = true;
+        buyBtn.textContent = '처리 중...';
+        try {
+          const res = await fnBuyVoucher({ eventId: d.id });
+          alert(`✅ 구매 완료!\n${res.data.amountHex} HEX 결제\nTxHash: ${res.data.txHash}`);
+          renderVoucherBox(d);
+        } catch (err) {
+          alert('구매 오류: ' + (err.message || err));
+          buyBtn.disabled = false;
+          buyBtn.textContent = '🎟 바우처 구매';
+        }
+      });
+    }
+  } catch (err) {
+    box.innerHTML = `<div class="comm-voucher-no-access">조회 오류: ${escHtml(err.message)}</div>`;
+  }
 }
 
 function renderAvgRating(d) {
@@ -383,8 +461,10 @@ function openEventModal(editData = null) {
   $('commModalSubmit').textContent = editData ? '수정' : '등록';
   $('fldEventName').value    = editData?.name    || '';
   $('fldStakeReq').value     = editData?.stakeRequired ?? '';
-  $('fldFee').value          = editData?.fee      ?? '';
-  $('fldEventLocation').value = editData?.location || '';
+  $('fldFee').value           = editData?.fee           ?? '';
+  $('fldVoucherPrice').value  = editData?.voucherPrice  ?? '';
+  $('fldVoucherQty').value    = editData?.voucherQty    ?? '';
+  $('fldEventLocation').value = editData?.location      || '';
   $('fldPhotoUrl').value     = editData?.photoUrl || '';
   $('fldEventContent').value = editData?.content || '';
   if (editData?.eventDate) {
@@ -436,7 +516,9 @@ $('commModalSubmit').addEventListener('click', async () => {
       eventDate:     new Date(dateVal),
       location,
       stakeRequired: parseInt($('fldStakeReq').value) || 0,
-      fee:           parseInt($('fldFee').value) || 0,
+      fee:           parseInt($('fldFee').value)          || 0,
+      voucherPrice:  parseInt($('fldVoucherPrice').value) || 0,
+      voucherQty:    parseInt($('fldVoucherQty').value)   || 0,
       photoUrl:      $('fldPhotoUrl').value.trim(),
       content,
       updatedAt:     serverTimestamp(),

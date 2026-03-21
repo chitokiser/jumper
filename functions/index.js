@@ -39,6 +39,7 @@ const coopH                  = require('./handlers/coop');
 const daoH                   = require('./handlers/dao');
 const zaloH                  = require('./handlers/zalopay');
 const treasureH              = require('./handlers/treasure');
+const communityH             = require('./handlers/community');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1316,3 +1317,28 @@ exports.adminGiveRevive = onCall(wrapError(async (req) => {
   });
   return { ok: true, given: n };
 }));
+
+// ════════════════════════════════════════════════════════════════════════════
+// 소셜 커뮤니티 – 행사 바우처
+// ════════════════════════════════════════════════════════════════════════════
+
+exports.checkEventEligibility = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return communityH.checkEventEligibility(uid, req.data ?? {});
+}));
+
+exports.getMyEventVoucher = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return communityH.getMyEventVoucher(uid, req.data ?? {});
+}));
+
+exports.buyEventVoucher = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await communityH.buyEventVoucher(uid, req.data ?? {}, walletSecret.value());
+    logger.info('buyEventVoucher', { uid, eventId: req.data?.eventId, txHash: result.txHash });
+    return result;
+  })
+);

@@ -466,6 +466,14 @@ service cloud.firestore {
       }
     }
 
+    // 커뮤니티 행사 바우처 (community_event_vouchers/{uid_eventId})
+    match /community_event_vouchers/{docId} {
+      allow get: if signedIn()
+        && resource.data.uid == request.auth.uid;
+      allow list: if isAdmin();
+      allow write: if false; // Cloud Function only
+    }
+
     // ── DAO 의결 시스템 ────────────────────────────────────────────
     // 안건 목록·상세: 누구나 읽기 가능
     // 등록·지지·투표·댓글: Cloud Function 서버 사이드 처리 (직접 쓰기 불가)

@@ -83,6 +83,12 @@
         <!-- 본문 -->
         <div class="comm-detail-content" id="detailContent"></div>
 
+        <!-- 바우처 구매 -->
+        <div class="comm-voucher-section" id="detailVoucherSection" style="display:none;">
+          <h3 class="comm-section-title">행사 바우처</h3>
+          <div class="comm-voucher-box" id="voucherBox"></div>
+        </div>
+
         <!-- 평점 -->
         <div class="comm-rating-section" id="detailRatingSection" style="display:none;">
           <h3 class="comm-section-title">참석 후기 / 평점</h3>
@@ -138,6 +144,12 @@
         <label class="comm-label">참고 사진 URL</label>
         <input class="comm-input" id="fldPhotoUrl" type="url" placeholder="https://..." />
         <div id="fldPhotoPreview" class="comm-photo-preview"></div>
+
+        <label class="comm-label">바우처 가격 (VND)</label>
+        <input class="comm-input" id="fldVoucherPrice" type="number" placeholder="0 = 바우처 없음" min="0" />
+
+        <label class="comm-label">바우처 총 수량 (0 = 무제한)</label>
+        <input class="comm-input" id="fldVoucherQty" type="number" placeholder="0 = 무제한" min="0" />
 
         <label class="comm-label">행사 내용 <span class="req">*</span></label>
         <textarea class="comm-input comm-textarea" id="fldEventContent" placeholder="행사 내용을 작성하세요..." rows="5" maxlength="3000"></textarea>
