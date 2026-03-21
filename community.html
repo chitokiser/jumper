@@ -175,6 +175,10 @@
         <label class="comm-label">바우처 총 수량 (0 = 무제한)</label>
         <input class="comm-input" id="fldVoucherQty" type="number" placeholder="0 = 무제한" min="0" />
 
+        <label class="comm-label">사용 가능 판매자 (비우면 제한 없음)</label>
+        <textarea class="comm-input comm-textarea" id="fldAllowedSellers" placeholder="판매자명을 한 줄에 하나씩 입력&#10;예) 오션파크 카페&#10;    하노이 레스토랑" rows="3" style="font-size:0.82rem;"></textarea>
+        <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-top:2px;">📍 지정 시 해당 판매자에서만 바우처 사용 가능</div>
+
         <label class="comm-label">행사 내용 <span class="req">*</span></label>
         <textarea class="comm-input comm-textarea" id="fldEventContent" placeholder="행사 내용을 작성하세요..." rows="5" maxlength="3000"></textarea>
 

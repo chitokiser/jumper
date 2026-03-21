@@ -38,7 +38,7 @@ async function fetchRates() {
 }
 
 // VND → HEX wei (18 decimals)
-function vndToHexWei(vndAmount, usdVnd, hexPriceWei) {
+function vndToHexWei(vndAmount, usdVnd) {
   // VND → USD → HEX
   // hexPriceWei: 1 JUMP 가격 (wei), 여기서는 1 HEX = 1 USD 기준 스케일 사용
   // 실제로는 HEX 자체가 USD 연동 토큰이므로: VND / usdVnd = USD 환산
@@ -98,7 +98,7 @@ async function buyEventVoucher(uid, { eventId }, masterSecret) {
 
   // 5. VND → HEX wei 환산
   const rates  = await fetchRates();
-  const hexWei = vndToHexWei(event.voucherPrice, rates.usdVnd || 25000, null);
+  const hexWei = vndToHexWei(event.voucherPrice, rates.usdVnd || 25000);
 
   // 6. HEX 잔액 확인
   const provider = getProvider();
@@ -181,12 +181,13 @@ async function checkEventEligibility(uid, { eventId }) {
   return {
     staked,
     required,
-    eligible:        staked >= required,
-    alreadyBought:   voucherSnap.exists,
-    remainingQty:    totalQty > 0 ? Math.max(0, totalQty - soldQty) : null,
-    voucherPrice:    event.voucherPrice || 0,
-    voucherQty:      totalQty,
-    soldOut:         totalQty > 0 && soldQty >= totalQty,
+    eligible:       staked >= required,
+    alreadyBought:  voucherSnap.exists,
+    remainingQty:   totalQty > 0 ? Math.max(0, totalQty - soldQty) : null,
+    voucherPrice:   event.voucherPrice || 0,
+    voucherQty:     totalQty,
+    soldOut:        totalQty > 0 && soldQty >= totalQty,
+    allowedSellers: event.allowedSellers || [],
   };
 }
 

@@ -299,18 +299,27 @@ async function renderVoucherBox(d) {
       ? `잔여 ${data.remainingQty}/${data.voucherQty}장`
       : '수량 무제한';
 
+    // 사용 가능 판매자 표시
+    const sellersHtml = (data.allowedSellers || []).length > 0
+      ? `<div class="comm-voucher-sellers">
+           📍 사용 가능 판매자:
+           <ul>${(data.allowedSellers).map(s => `<li>${escHtml(s)}</li>`).join('')}</ul>
+         </div>`
+      : '';
+
     let html = `
       <div class="comm-voucher-price">₫${(d.voucherPrice||0).toLocaleString()} VND</div>
       <div class="comm-voucher-meta">
         <span>🎟 ${qtyText}</span>
         <span>🪙 조건: JUMP ${(data.required||0).toLocaleString()}개 이상</span>
         <span>내 스테이킹: <b>${(data.staked||0).toLocaleString()}개</b></span>
-      </div>`;
+      </div>
+      ${sellersHtml}`;
 
     if (data.soldOut) {
       html += `<div class="comm-voucher-no-access">🚫 매진되었습니다.</div>`;
     } else if (data.alreadyBought) {
-      html += `<div class="comm-voucher-owned">✅ 바우처 구매 완료</div>`;
+      html += `<div class="comm-voucher-owned">✅ 바우처 구매 완료 — 위 지정 판매자에서 제시하세요</div>`;
     } else if (!data.eligible) {
       html += `<div class="comm-voucher-no-access">
         🪙 스테이킹 부족 (필요: ${data.required.toLocaleString()}개 / 보유: ${data.staked.toLocaleString()}개)<br>
@@ -504,6 +513,7 @@ function openEventModal(editData = null) {
   $('fldStakeReq').value      = editData?.stakeRequired ?? '';
   $('fldVoucherPrice').value  = editData?.voucherPrice  ?? '';
   $('fldVoucherQty').value    = editData?.voucherQty    ?? '';
+  $('fldAllowedSellers').value = (editData?.allowedSellers || []).join('\n');
   $('fldEventLocation').value = editData?.location      || '';
   $('fldPhotoUrl').value      = editData?.photoUrl      || '';
   $('fldEventContent').value  = editData?.content       || '';
@@ -601,6 +611,8 @@ $('commModalSubmit').addEventListener('click', async () => {
       stakeRequired: parseInt($('fldStakeReq').value) || 0,
       voucherPrice:  parseInt($('fldVoucherPrice').value) || 0,
       voucherQty:    parseInt($('fldVoucherQty').value)   || 0,
+      allowedSellers: $('fldAllowedSellers').value
+        .split('\n').map(s => s.trim()).filter(Boolean),
       photoUrl:      $('fldPhotoUrl').value.trim(),
       content,
       updatedAt:     serverTimestamp(),
