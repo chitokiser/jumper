@@ -1,0 +1,134 @@
+<!-- /voucher-verify.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>바우처 확인 - Jump</title>
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <script src="/assets/js/partials.js" defer></script>
+  <style>
+    .verify-wrap {
+      max-width: 480px;
+      margin: 40px auto;
+      padding: 0 16px 60px;
+    }
+    .verify-card {
+      background: var(--card, #fff);
+      border: 1px solid var(--line, #e5e7eb);
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+    }
+    .verify-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      border-radius: 99px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .verify-status-badge--active   { background:#dcfce7; color:#15803d; }
+    .verify-status-badge--used     { background:#f3f4f6; color:#6b7280; }
+    .verify-status-badge--loading  { background:#e0e7ff; color:#4338ca; }
+    .verify-event-name { font-size: 1.2rem; font-weight: 800; margin: 0 0 16px; }
+    .verify-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line, #f3f4f6);
+      font-size: 0.88rem;
+      gap: 12px;
+    }
+    .verify-row:last-of-type { border-bottom: none; }
+    .verify-row .k { color: var(--muted, #6b7280); white-space: nowrap; }
+    .verify-row .v { font-weight: 600; text-align: right; word-break: break-all; }
+    .verify-sellers {
+      margin: 16px 0 0;
+      padding: 12px 14px;
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 10px;
+      font-size: 0.83rem;
+      color: #0369a1;
+    }
+    .verify-sellers ul { margin: 6px 0 0; padding-left: 18px; }
+    .btn-confirm {
+      display: block;
+      width: 100%;
+      margin-top: 24px;
+      padding: 14px;
+      background: var(--accent, #7c3aed);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn-confirm:hover { opacity: .88; }
+    .btn-confirm:disabled { opacity: .5; cursor: not-allowed; }
+    .verify-used-box {
+      margin-top: 20px;
+      padding: 16px;
+      background: #f3f4f6;
+      border-radius: 10px;
+      text-align: center;
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+    .verify-confirm-done {
+      margin-top: 20px;
+      padding: 16px;
+      background: #dcfce7;
+      border: 1px solid #86efac;
+      border-radius: 10px;
+      text-align: center;
+      color: #15803d;
+      font-weight: 700;
+    }
+    .verify-settle {
+      margin-top: 12px;
+      font-size: 0.88rem;
+      color: #166534;
+    }
+    .verify-error {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted, #6b7280);
+    }
+    .verify-login-prompt {
+      margin-top: 20px;
+      padding: 14px;
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      color: #92400e;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <div class="verify-wrap">
+    <div id="verifyRoot">
+      <div class="verify-card">
+        <span class="verify-status-badge verify-status-badge--loading">⏳ 불러오는 중...</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/pages/voucher-verify.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+</body>
+</html>

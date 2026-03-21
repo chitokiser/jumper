@@ -3,7 +3,7 @@
 
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFirestore, collection, doc,
-  addDoc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
+  addDoc, getDoc, getDocs, updateDoc, deleteDoc,
   runTransaction, query, orderBy, where, limit, startAfter,
   serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
@@ -18,6 +18,7 @@ const fns = getFunctions(app);
 
 const fnCheckEligibility = httpsCallable(fns, 'checkEventEligibility');
 const fnBuyVoucher       = httpsCallable(fns, 'buyEventVoucher');
+const fnConfirmVoucher   = httpsCallable(fns, 'confirmVoucher');
 
 const PAGE_SIZE = 12;
 
@@ -319,7 +320,14 @@ async function renderVoucherBox(d) {
     if (data.soldOut) {
       html += `<div class="comm-voucher-no-access">🚫 매진되었습니다.</div>`;
     } else if (data.alreadyBought) {
-      html += `<div class="comm-voucher-owned">✅ 바우처 구매 완료 — 위 지정 판매자에서 제시하세요</div>`;
+      const verifyUrl = `${location.origin}/voucher-verify.html?v=${encodeURIComponent(_user.uid + '_' + d.id)}`;
+      html += `
+        <div class="comm-voucher-owned">
+          ✅ 바우처 구매 완료
+          <div style="font-size:0.8rem;margin-top:6px;color:#15803d;">판매자에게 아래 QR코드를 제시하세요</div>
+          <div id="voucherQr" style="margin:10px auto;width:fit-content;"></div>
+          <div style="font-size:0.72rem;color:#4ade80;word-break:break-all;">${verifyUrl}</div>
+        </div>`;
     } else if (!data.eligible) {
       html += `<div class="comm-voucher-no-access">
         🪙 스테이킹 부족 (필요: ${data.required.toLocaleString()}개 / 보유: ${data.staked.toLocaleString()}개)<br>
@@ -330,6 +338,20 @@ async function renderVoucherBox(d) {
     }
 
     box.innerHTML = html;
+
+    // QR 코드 생성 (구매 완료 상태)
+    const qrWrap = document.getElementById('voucherQr');
+    if (qrWrap && _user) {
+      const verifyUrl = `${location.origin}/voucher-verify.html?v=${encodeURIComponent(_user.uid + '_' + d.id)}`;
+      try {
+        const QRCode = await import('https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm');
+        const canvas = document.createElement('canvas');
+        await QRCode.default.toCanvas(canvas, verifyUrl, { width: 160, margin: 1 });
+        qrWrap.appendChild(canvas);
+      } catch (_) {
+        qrWrap.innerHTML = `<a href="${verifyUrl}" style="font-size:0.78rem;">확인 링크 열기</a>`;
+      }
+    }
 
     const buyBtn = $('btnBuyVoucher');
     if (buyBtn) {
@@ -512,6 +534,33 @@ $('btnSubmitComment').addEventListener('click', async () => {
   }
 });
 
+// ── 가맹점 목록 로드 (모달용) ──────────────────────────────────
+let _merchantCache = null;
+async function loadMerchantsForModal(selectedIds = []) {
+  const wrap    = $('fldSellersWrap');
+  const loading = $('fldSellersLoading');
+  if (!_merchantCache) {
+    try {
+      const snap = await getDocs(query(collection(db, 'merchants'), orderBy('name', 'asc')));
+      _merchantCache = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id }));
+    } catch (_) { _merchantCache = []; }
+  }
+  loading.style.display = 'none';
+  wrap.style.display = '';
+  wrap.innerHTML = '';
+  if (_merchantCache.length === 0) {
+    wrap.innerHTML = '<span style="color:var(--muted);font-size:0.82rem;">등록된 가맹점이 없습니다.</span>';
+    return;
+  }
+  _merchantCache.forEach(m => {
+    const lbl = document.createElement('label');
+    lbl.className = 'comm-seller-opt';
+    lbl.innerHTML = `<input type="checkbox" name="sellerCheck" value="${escHtml(m.id)}" data-name="${escHtml(m.name)}"> ${escHtml(m.name)}`;
+    if (selectedIds.includes(m.id)) lbl.querySelector('input').checked = true;
+    wrap.appendChild(lbl);
+  });
+}
+
 // ── 날짜 유형 UI 전환 ─────────────────────────────────────────
 function updateDateTypeUI(type) {
   $('fldDateOnceWrap').style.display  = type === 'once'   ? '' : 'none';
@@ -528,7 +577,9 @@ function openEventModal(editData = null) {
   $('fldStakeReq').value      = editData?.stakeRequired ?? '';
   $('fldVoucherPrice').value  = editData?.voucherPrice  ?? '';
   $('fldVoucherQty').value    = editData?.voucherQty    ?? '';
-  $('fldAllowedSellers').value = (editData?.allowedSellers || []).join('\n');
+  $('fldSettlementAmount').value = editData?.settlementAmount ?? '';
+  const selectedIds = (editData?.allowedSellers || []).map(s => s.id || s);
+  loadMerchantsForModal(selectedIds);
   $('fldEventLocation').value = editData?.location      || '';
   $('fldPhotoUrl').value      = editData?.photoUrl      || '';
   $('fldEventContent').value  = editData?.content       || '';
@@ -626,8 +677,9 @@ $('commModalSubmit').addEventListener('click', async () => {
       stakeRequired: parseInt($('fldStakeReq').value) || 0,
       voucherPrice:  parseInt($('fldVoucherPrice').value) || 0,
       voucherQty:    parseInt($('fldVoucherQty').value)   || 0,
-      allowedSellers: $('fldAllowedSellers').value
-        .split('\n').map(s => s.trim()).filter(Boolean),
+      allowedSellers: [...document.querySelectorAll('input[name="sellerCheck"]:checked')]
+        .map(cb => ({ id: cb.value, name: cb.dataset.name || cb.value })),
+      settlementAmount: parseInt($('fldSettlementAmount').value) || 0,
       photoUrl:      $('fldPhotoUrl').value.trim(),
       content,
       updatedAt:     serverTimestamp(),

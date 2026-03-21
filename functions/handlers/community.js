@@ -191,8 +191,75 @@ async function checkEventEligibility(uid, { eventId }) {
   };
 }
 
+// ── 바우처 사용 확인 (판매자 호출) ───────────────────────────
+async function confirmVoucher(uid, { voucherId }) {
+  if (!voucherId) throw new Error('voucherId가 필요합니다');
+
+  const vRef  = db.collection('community_event_vouchers').doc(voucherId);
+  const vSnap = await vRef.get();
+  if (!vSnap.exists) throw new Error('바우처를 찾을 수 없습니다');
+  const voucher = vSnap.data();
+
+  if (voucher.status === 'used') throw new Error('이미 사용된 바우처입니다');
+
+  // 행사 정보
+  const eSnap  = await db.collection('community_events').doc(voucher.eventId).get();
+  const event  = eSnap.exists ? eSnap.data() : {};
+  const sellers = event.allowedSellers || [];
+
+  // 확인자 권한 검증: 관리자 또는 허용된 가맹점 소유자
+  const isAdmin = await db.collection('admins').doc(uid).get().then(s => s.exists);
+  if (!isAdmin && sellers.length > 0) {
+    const userSnap = await db.collection('users').doc(uid).get();
+    const merchantId = userSnap.data()?.merchantId;
+    const allowed = sellers.some(s => (s.id || s) === merchantId);
+    if (!allowed) throw new Error('사용 확인 권한이 없습니다');
+  }
+
+  // 확인자 정보
+  const confirmerSnap = await db.collection('users').doc(uid).get();
+  const merchantId    = confirmerSnap.data()?.merchantId || null;
+  const confirmerName = confirmerSnap.data()?.displayName || uid;
+  const settlementAmount = event.settlementAmount || 0;
+
+  const batch = db.batch();
+
+  // 바우처 상태 업데이트
+  batch.update(vRef, {
+    status:            'used',
+    usedAt:            admin.firestore.FieldValue.serverTimestamp(),
+    usedByUid:         uid,
+    usedBySellerName:  confirmerName,
+    usedByMerchantId:  merchantId,
+    settlementStatus:  settlementAmount > 0 ? 'pending' : 'none',
+    settlementAmount,
+  });
+
+  // 정산 레코드 생성
+  if (settlementAmount > 0) {
+    const settleRef = db.collection('community_voucher_settlements').doc();
+    batch.set(settleRef, {
+      voucherId,
+      eventId:          voucher.eventId,
+      eventName:        event.name || '',
+      buyerUid:         voucher.uid,
+      sellerUid:        uid,
+      sellerName:       confirmerName,
+      merchantId,
+      settlementAmount,
+      settlementStatus: 'pending',
+      createdAt:        admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  await batch.commit();
+
+  return { success: true, settlementAmount, confirmerName };
+}
+
 module.exports = {
   buyEventVoucher,
   getMyEventVoucher,
   checkEventEligibility,
+  confirmVoucher,
 };

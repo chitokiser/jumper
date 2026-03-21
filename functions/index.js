@@ -1342,3 +1342,8 @@ exports.buyEventVoucher = onCall(
     return result;
   })
 );
+
+exports.confirmVoucher = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return communityH.confirmVoucher(uid, req.data ?? {});
+}));

@@ -613,6 +613,37 @@
   margin-top: 6px;
 }
 
+/* ── 가맹점 선택 체크박스 ── */
+.comm-sellers-check-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--surface2, #f9fafb);
+}
+.comm-seller-opt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 20px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  background: #fff;
+  transition: all .15s;
+}
+.comm-seller-opt:has(input:checked) {
+  background: var(--accent, #7c3aed);
+  border-color: var(--accent, #7c3aed);
+  color: #fff;
+}
+.comm-seller-opt input[type="checkbox"] { display: none; }
+
 /* ── 날짜 유형 선택 ── */
 .comm-date-type-row {
   display: flex;
