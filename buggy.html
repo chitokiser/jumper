@@ -38,8 +38,17 @@
 
     <!-- ── 섹션 A: 호출 전 (탑승 위치 선택) ── -->
     <div class="buggy-section active" id="secIdle">
-      <div id="buggyMap"></div>
-      <p class="buggy-map-hint">📍 지도를 탭하여 탑승 위치를 선택하세요</p>
+      <div style="position:relative;">
+        <div id="buggyMap"></div>
+        <button id="btnMyLocation" title="현재 위치" style="
+          position:absolute;bottom:12px;right:12px;z-index:10;
+          background:#fff;border:none;border-radius:50%;
+          width:40px;height:40px;font-size:1.2rem;cursor:pointer;
+          box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;">
+          📡
+        </button>
+      </div>
+      <p class="buggy-map-hint">📍 지도를 탭하거나 📡 버튼으로 탑승 위치를 선택하세요</p>
 
       <div class="buggy-card">
         <div class="buggy-card-title">탑승 위치</div>
@@ -52,8 +61,26 @@
         </div>
 
         <div class="buggy-field">
-          <label class="buggy-input-label">도착지 (선택)</label>
-          <input type="text" class="buggy-input" id="destInput" placeholder="목적지 주소 입력 (선택사항)" />
+          <label class="buggy-input-label">도착지 (선택) — 키워드로 검색</label>
+          <div style="position:relative;">
+            <input type="text" class="buggy-input" id="destInput"
+              placeholder="예: 빈원더스, 오션파크, 호텔명..."
+              autocomplete="off" />
+            <div id="destSuggestions" style="
+              display:none;position:absolute;left:0;right:0;top:100%;z-index:100;
+              background:#fff;border:1.5px solid var(--buggy-border);border-top:none;
+              border-radius:0 0 10px 10px;max-height:200px;overflow-y:auto;
+              box-shadow:0 4px 12px rgba(0,0,0,.12);"></div>
+          </div>
+        </div>
+
+        <div class="buggy-location-box" id="destBox" style="display:none;">
+          <span class="loc-icon">🏁</span>
+          <div class="loc-text">
+            <div class="loc-label">도착지</div>
+            <div id="destAddrText">-</div>
+          </div>
+          <button id="btnClearDest" style="background:none;border:none;cursor:pointer;font-size:1rem;color:#78716c;">✕</button>
         </div>
       </div>
 

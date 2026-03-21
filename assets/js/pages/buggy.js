@@ -32,6 +32,10 @@ let _driverLocSub = null;
 
 let _pickupLat = null;
 let _pickupLng = null;
+let _destLat   = null;
+let _destLng   = null;
+let _destMarker = null;
+let _autocomplete = null;
 
 // ── DOM ─────────────────────────────────────────────────────────────────────
 const balAmount   = document.getElementById('balAmount');
@@ -80,29 +84,123 @@ function startTimer(startMs) {
 // ── Google Maps 초기화 ────────────────────────────────────────────────────
 function initMap() {
   if (!window.google?.maps) return;
-  const defaultPos = { lat: 10.8231, lng: 106.6297 }; // 호치민 기본
+  const defaultPos = { lat: 10.8231, lng: 106.6297 };
   _map = new google.maps.Map(document.getElementById('buggyMap'), {
     center: defaultPos, zoom: 15,
     disableDefaultUI: true,
     gestureHandling: 'greedy',
   });
-  _marker = new google.maps.Marker({ map: _map, draggable: true, title: '탑승 위치' });
+  _marker = new google.maps.Marker({ map: _map, draggable: true, title: '탑승 위치',
+    icon: { url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' },
+  });
 
-  // 지도 클릭 → 탑승 위치
   _map.addListener('click', (e) => setPickup(e.latLng.lat(), e.latLng.lng()));
   _marker.addListener('dragend', (e) => setPickup(e.latLng.lat(), e.latLng.lng()));
 
-  // 현재 위치 시도
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        _map.setCenter(ll);
-        setPickup(ll.lat, ll.lng);
-      },
-      () => {}
-    );
+  // 도착지 Places Autocomplete
+  initPlacesSearch();
+
+  // 현재 위치 버튼
+  document.getElementById('btnMyLocation').addEventListener('click', goToMyLocation);
+
+  // 초기 현재 위치
+  goToMyLocation(true);
+}
+
+function goToMyLocation(silent) {
+  if (!navigator.geolocation) { if (!silent) toast('위치 서비스를 지원하지 않는 브라우저입니다'); return; }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      _map.setCenter(ll);
+      _map.setZoom(16);
+      setPickup(ll.lat, ll.lng);
+    },
+    () => { if (!silent) toast('현재 위치를 가져올 수 없습니다'); }
+  );
+}
+
+// ── Places 키워드 검색 (도착지) ──────────────────────────────────────────
+function initPlacesSearch() {
+  const input      = document.getElementById('destInput');
+  const suggestBox = document.getElementById('destSuggestions');
+  const service    = new google.maps.places.AutocompleteService();
+  const geocoder   = new google.maps.Geocoder();
+  let _debounce    = null;
+
+  input.addEventListener('input', () => {
+    clearTimeout(_debounce);
+    const val = input.value.trim();
+    if (!val) { suggestBox.style.display = 'none'; return; }
+    _debounce = setTimeout(() => {
+      service.getPlacePredictions(
+        { input: val, language: 'ko', region: 'VN' },
+        (predictions, status) => {
+          suggestBox.innerHTML = '';
+          if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions?.length) {
+            suggestBox.style.display = 'none';
+            return;
+          }
+          predictions.slice(0, 5).forEach((p) => {
+            const item = document.createElement('div');
+            item.style.cssText = 'padding:10px 14px;cursor:pointer;font-size:0.88rem;border-bottom:1px solid #f3f4f6;';
+            item.textContent   = p.description;
+            item.addEventListener('mousedown', (e) => {
+              e.preventDefault();
+              input.value = p.description;
+              suggestBox.style.display = 'none';
+              // place_id → 좌표
+              geocoder.geocode({ placeId: p.place_id }, (res, st) => {
+                if (st !== 'OK' || !res[0]) { toast('좌표를 가져올 수 없습니다'); return; }
+                const loc = res[0].geometry.location;
+                setDest(loc.lat(), loc.lng(), p.description);
+              });
+            });
+            suggestBox.appendChild(item);
+          });
+          suggestBox.style.display = 'block';
+        }
+      );
+    }, 300);
+  });
+
+  // 포커스 아웃 시 닫기
+  input.addEventListener('blur', () => setTimeout(() => { suggestBox.style.display = 'none'; }, 150));
+}
+
+function setDest(lat, lng, address) {
+  _destLat = lat;
+  _destLng = lng;
+
+  // 도착지 마커
+  if (!_destMarker) {
+    _destMarker = new google.maps.Marker({
+      map: _map, title: '도착지',
+      icon: { url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' },
+    });
   }
+  _destMarker.setPosition({ lat, lng });
+
+  // UI 업데이트
+  document.getElementById('destAddrText').textContent = address;
+  document.getElementById('destBox').style.display    = 'flex';
+
+  // 탑승/도착 둘 다 보이도록 지도 fit
+  if (_pickupLat && _pickupLng) {
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend({ lat: _pickupLat, lng: _pickupLng });
+    bounds.extend({ lat, lng });
+    _map.fitBounds(bounds, { top: 40, bottom: 40, left: 20, right: 20 });
+  }
+}
+
+function clearDest() {
+  _destLat = null;
+  _destLng = null;
+  if (_destMarker) { _destMarker.setMap(null); _destMarker = null; }
+  document.getElementById('destInput').value          = '';
+  document.getElementById('destBox').style.display    = 'none';
+  document.getElementById('destAddrText').textContent = '-';
 }
 
 async function setPickup(lat, lng) {
@@ -301,7 +399,11 @@ btnRequest.addEventListener('click', async () => {
       pickupLat:     _pickupLat,
       pickupLng:     _pickupLng,
       pickupAddress: pickupAddrText.textContent,
-      destAddress:   destInput.value.trim() || '',
+      destLat:       _destLat   || null,
+      destLng:       _destLng   || null,
+      destAddress:   document.getElementById('destAddrText').textContent !== '-'
+                       ? document.getElementById('destAddrText').textContent
+                       : (destInput.value.trim() || ''),
     });
     _rideId = res.data.rideId;
     subscribeRide(_rideId);
@@ -334,6 +436,8 @@ btnCancelAccepted.addEventListener('click', async () => {
   await doCancel();
   btnCancelAccepted.disabled = false;
 });
+
+document.getElementById('btnClearDest').addEventListener('click', clearDest);
 
 btnNewRide.addEventListener('click', () => {
   btnRequest.disabled = !(_user && _pickupLat);
