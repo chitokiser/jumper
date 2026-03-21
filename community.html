@@ -129,14 +129,38 @@
         <label class="comm-label">행사명 <span class="req">*</span></label>
         <input class="comm-input" id="fldEventName" type="text" placeholder="행사명을 입력하세요" maxlength="80" />
 
-        <label class="comm-label">행사 날짜 <span class="req">*</span></label>
-        <input class="comm-input" id="fldEventDate" type="datetime-local" />
+        <label class="comm-label">행사 날짜 유형 <span class="req">*</span></label>
+        <div class="comm-date-type-row" id="dateTypeGroup">
+          <label class="comm-date-type-opt"><input type="radio" name="fldDateType" value="once" checked> 특정 날짜</label>
+          <label class="comm-date-type-opt"><input type="radio" name="fldDateType" value="daily"> 매일</label>
+          <label class="comm-date-type-opt"><input type="radio" name="fldDateType" value="weekly"> 특정 요일</label>
+        </div>
+
+        <div id="fldDateOnceWrap">
+          <label class="comm-label">행사 날짜 <span class="req">*</span></label>
+          <input class="comm-input" id="fldEventDate" type="datetime-local" />
+        </div>
+
+        <div id="fldRecurTimeWrap" style="display:none;">
+          <label class="comm-label">시간 <span class="req">*</span></label>
+          <input class="comm-input" id="fldScheduleTime" type="time" />
+        </div>
+
+        <div id="fldDaysWrap" style="display:none;">
+          <label class="comm-label">요일 선택 <span class="req">*</span></label>
+          <div class="comm-days-row">
+            <label class="comm-day-opt"><input type="checkbox" name="schedDay" value="0">일</label>
+            <label class="comm-day-opt"><input type="checkbox" name="schedDay" value="1">월</label>
+            <label class="comm-day-opt"><input type="checkbox" name="schedDay" value="2">화</label>
+            <label class="comm-day-opt"><input type="checkbox" name="schedDay" value="3">수</label>
+            <label class="comm-day-opt"><input type="checkbox" name="schedDay" value="4">목</label>
+            <label class="comm-day-opt"><input type="checkbox" name="schedDay" value="5">금</label>
+            <label class="comm-day-opt"><input type="checkbox" name="schedDay" value="6">토</label>
+          </div>
+        </div>
 
         <label class="comm-label">점프 토큰 스테이킹 조건 (JUMP)</label>
         <input class="comm-input" id="fldStakeReq" type="number" placeholder="0 = 제한 없음" min="0" />
-
-        <label class="comm-label">참석 회비 (VND)</label>
-        <input class="comm-input" id="fldFee" type="number" placeholder="0 = 무료" min="0" />
 
         <label class="comm-label">행사 장소 <span class="req">*</span></label>
         <input class="comm-input" id="fldEventLocation" type="text" placeholder="행사 장소를 입력하세요" maxlength="120" />

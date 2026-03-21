@@ -596,6 +596,49 @@
   margin-top: 6px;
 }
 
+/* ── 날짜 유형 선택 ── */
+.comm-date-type-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.comm-date-type-opt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text, #111);
+}
+.comm-date-type-opt input[type="radio"] { cursor: pointer; accent-color: var(--accent, #7c3aed); }
+
+.comm-days-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.comm-day-opt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 20px;
+  font-size: 0.83rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+}
+.comm-day-opt:has(input:checked) {
+  background: var(--accent, #7c3aed);
+  border-color: var(--accent, #7c3aed);
+  color: #fff;
+}
+.comm-day-opt input[type="checkbox"] { display: none; }
+
 .comm-modal-foot {
   display: flex;
   justify-content: flex-end;

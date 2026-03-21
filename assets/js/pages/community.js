@@ -1,14 +1,14 @@
 // /assets/js/pages/community.js
 // 소셜 커뮤니티 – 행사 목록 / 상세 / 평점 / 댓글
 
-import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFirestore, collection, doc,
   addDoc, getDoc, getDocs, updateDoc, deleteDoc,
   query, orderBy, where, limit, startAfter,
   serverTimestamp, increment }
-  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable }
-  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
+  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { firebaseConfig }       from '/assets/js/firebase-config.js';
 import { watchAuth }            from '/assets/js/auth.js';
 
@@ -61,12 +61,42 @@ function starsHtml(n) {
   return '★'.repeat(full) + '☆'.repeat(5 - full);
 }
 
+// ── 반복 일정 헬퍼 ─────────────────────────────────────────────
+const DAY_KO = ['일','월','화','수','목','금','토'];
+
+function fmtSchedule(d) {
+  if (!d.scheduleType || d.scheduleType === 'once') return fmtDate(d.eventDate);
+  const time = d.scheduleTime || '';
+  if (d.scheduleType === 'daily') return `매일 ${time}`;
+  if (d.scheduleType === 'weekly') {
+    const days = (d.scheduleDays || []).slice().sort((a,b)=>a-b).map(n => DAY_KO[n]).join('·');
+    return `매주 ${days} ${time}`;
+  }
+  return fmtDate(d.eventDate);
+}
+
+function getEventStatus(d) {
+  if (d.scheduleType === 'daily' || d.scheduleType === 'weekly') return 'ongoing';
+  return eventStatus(d.eventDate);
+}
+
 // ── 목록 로드 ─────────────────────────────────────────────────
 async function loadEvents(reset = false) {
   if (reset) { _lastDoc = null; _hasMore = false; }
 
   const grid = $('commGrid');
   if (reset) grid.innerHTML = '<div class="comm-empty"><div class="comm-empty-icon">⏳</div><div class="comm-empty-text">불러오는 중...</div></div>';
+
+  // ── 반복 행사(매일·특정요일) - reset 시에만 탭 상관없이 상단 표시 ──
+  let recurCards = [];
+  if (reset) {
+    try {
+      const rSnap = await getDocs(
+        query(collection(db, 'community_events'), where('scheduleType', 'in', ['daily', 'weekly']))
+      );
+      rSnap.docs.forEach(d => recurCards.push({ id: d.id, data: d.data() }));
+    } catch (_) { /* index 없으면 조용히 무시 */ }
+  }
 
   let q = query(collection(db, 'community_events'), orderBy('eventDate', 'asc'), limit(PAGE_SIZE));
 
@@ -86,7 +116,11 @@ async function loadEvents(reset = false) {
   const snap = await getDocs(q);
 
   if (reset) grid.innerHTML = '';
-  if (snap.empty && reset) {
+
+  // 반복 행사 카드 먼저 표시
+  recurCards.forEach(({ id, data }) => grid.appendChild(buildCard(id, data)));
+
+  if (snap.empty && reset && recurCards.length === 0) {
     grid.innerHTML = '<div class="comm-empty"><div class="comm-empty-icon">📭</div><div class="comm-empty-text">등록된 행사가 없습니다.</div></div>';
     $('commCount').textContent = '';
     $('btnCommMore').style.display = 'none';
@@ -99,12 +133,14 @@ async function loadEvents(reset = false) {
   _hasMore = snap.docs.length === PAGE_SIZE;
   $('btnCommMore').style.display = _hasMore ? '' : 'none';
 
-  const total = reset ? snap.docs.length : (parseInt($('commCount').textContent) || 0) + snap.docs.length;
+  const total = reset
+    ? snap.docs.length + recurCards.length
+    : (parseInt($('commCount').textContent) || 0) + snap.docs.length;
   $('commCount').textContent = `총 ${total}개의 행사`;
 }
 
 function buildCard(id, d) {
-  const status = eventStatus(d.eventDate);
+  const status = getEventStatus(d);
   const card = el('div', 'comm-card');
   card.dataset.id = id;
 
@@ -126,7 +162,7 @@ function buildCard(id, d) {
 
   const top = el('div', 'comm-card-top');
   const badge = el('span', statusClass(status), statusLabel(status));
-  const dateEl = el('span', 'comm-card-date', fmtDate(d.eventDate));
+  const dateEl = el('span', 'comm-card-date', fmtSchedule(d));
   top.append(badge, dateEl);
 
   const title = el('div', 'comm-card-title', escHtml(d.name || ''));
@@ -135,7 +171,7 @@ function buildCard(id, d) {
   const chips = el('div', 'comm-card-chips');
   if (d.location)          chips.appendChild(el('span', 'comm-chip comm-chip--location', `📍 ${escHtml(d.location)}`));
   if (d.stakeRequired > 0) chips.appendChild(el('span', 'comm-chip comm-chip--stake', `🪙 JUMP ${d.stakeRequired.toLocaleString()} 이상`));
-  if (d.fee > 0)           chips.appendChild(el('span', 'comm-chip comm-chip--fee', `💵 ${d.fee.toLocaleString()} VND`));
+  if (d.voucherPrice > 0)  chips.appendChild(el('span', 'comm-chip comm-chip--fee', `🎟 ₫${d.voucherPrice.toLocaleString()} VND`));
   else                     chips.appendChild(el('span', 'comm-chip comm-chip--free', '🎟 무료'));
 
   const excerpt = el('div', 'comm-card-excerpt', escHtml(d.content || ''));
@@ -174,7 +210,7 @@ async function openDetail(id) {
 }
 
 function renderDetail(d) {
-  const status = eventStatus(d.eventDate);
+  const status = getEventStatus(d);
 
   // 이미지
   const wrap = $('detailImgWrap');
@@ -203,10 +239,10 @@ function renderDetail(d) {
   const infoRow = $('detailInfoRow');
   infoRow.innerHTML = '';
   const infos = [
-    { icon:'📅', label:'행사 날짜', val: fmtDate(d.eventDate) },
+    { icon:'📅', label:'행사 날짜', val: fmtSchedule(d) },
     { icon:'📍', label:'행사 장소', val: d.location || '-' },
     { icon:'🪙', label:'스테이킹 조건', val: d.stakeRequired > 0 ? `JUMP ${d.stakeRequired.toLocaleString()} 이상` : '제한 없음' },
-    { icon:'💵', label:'참석 회비', val: d.fee > 0 ? `${d.fee.toLocaleString()} VND` : '무료' },
+    { icon:'🎟', label:'바우처 가격', val: d.voucherPrice > 0 ? `₫${d.voucherPrice.toLocaleString()} VND` : '바우처 없음' },
   ];
   infos.forEach(({ icon, label, val }) => {
     infoRow.appendChild(el('div', 'comm-info-item', `<span class="icon">${icon}</span><span>${label}: <strong>${escHtml(val)}</strong></span>`));
@@ -452,25 +488,48 @@ $('btnSubmitComment').addEventListener('click', async () => {
   }
 });
 
+// ── 날짜 유형 UI 전환 ─────────────────────────────────────────
+function updateDateTypeUI(type) {
+  $('fldDateOnceWrap').style.display  = type === 'once'   ? '' : 'none';
+  $('fldRecurTimeWrap').style.display = type !== 'once'   ? '' : 'none';
+  $('fldDaysWrap').style.display      = type === 'weekly' ? '' : 'none';
+}
+
 // ── 행사 등록 모달 ────────────────────────────────────────────
 function openEventModal(editData = null) {
   $('commEventModal').style.display = '';
   $('commModalTitle').textContent = editData ? '행사 수정' : '행사 등록';
   $('commModalSubmit').textContent = editData ? '수정' : '등록';
-  $('fldEventName').value    = editData?.name    || '';
-  $('fldStakeReq').value     = editData?.stakeRequired ?? '';
-  $('fldFee').value           = editData?.fee           ?? '';
+  $('fldEventName').value     = editData?.name        || '';
+  $('fldStakeReq').value      = editData?.stakeRequired ?? '';
   $('fldVoucherPrice').value  = editData?.voucherPrice  ?? '';
   $('fldVoucherQty').value    = editData?.voucherQty    ?? '';
   $('fldEventLocation').value = editData?.location      || '';
-  $('fldPhotoUrl').value     = editData?.photoUrl || '';
-  $('fldEventContent').value = editData?.content || '';
-  if (editData?.eventDate) {
-    const d = editData.eventDate.toDate ? editData.eventDate.toDate() : new Date(editData.eventDate);
-    $('fldEventDate').value = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  $('fldPhotoUrl').value      = editData?.photoUrl      || '';
+  $('fldEventContent').value  = editData?.content       || '';
+
+  // 날짜 유형
+  const type = editData?.scheduleType || 'once';
+  document.querySelectorAll('input[name="fldDateType"]').forEach(r => { r.checked = r.value === type; });
+  updateDateTypeUI(type);
+
+  if (type === 'once') {
+    if (editData?.eventDate) {
+      const d = editData.eventDate.toDate ? editData.eventDate.toDate() : new Date(editData.eventDate);
+      $('fldEventDate').value = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+    } else {
+      $('fldEventDate').value = '';
+    }
   } else {
-    $('fldEventDate').value = '';
+    $('fldScheduleTime').value = editData?.scheduleTime || '';
+    if (type === 'weekly') {
+      const days = editData?.scheduleDays || [];
+      document.querySelectorAll('input[name="schedDay"]').forEach(cb => {
+        cb.checked = days.includes(parseInt(cb.value));
+      });
+    }
   }
+
   updatePhotoPreview();
   $('commModalError').style.display = 'none';
 }
@@ -482,6 +541,12 @@ $('commModalClose').addEventListener('click', closeEventModal);
 $('commModalCancel').addEventListener('click', closeEventModal);
 $('commModalBackdrop').addEventListener('click', closeEventModal);
 
+// 날짜 유형 전환
+$('dateTypeGroup').addEventListener('change', e => {
+  const r = e.target.closest('input[name="fldDateType"]');
+  if (r) updateDateTypeUI(r.value);
+});
+
 // 사진 미리보기
 $('fldPhotoUrl').addEventListener('input', updatePhotoPreview);
 function updatePhotoPreview() {
@@ -492,17 +557,34 @@ function updatePhotoPreview() {
 
 // 등록/수정 제출
 $('commModalSubmit').addEventListener('click', async () => {
-  const name     = $('fldEventName').value.trim();
-  const dateVal  = $('fldEventDate').value;
-  const location = $('fldEventLocation').value.trim();
-  const content  = $('fldEventContent').value.trim();
-  const errEl    = $('commModalError');
-  const isEdit   = $('commModalSubmit').textContent === '수정';
+  const name      = $('fldEventName').value.trim();
+  const location  = $('fldEventLocation').value.trim();
+  const content   = $('fldEventContent').value.trim();
+  const errEl     = $('commModalError');
+  const isEdit    = $('commModalSubmit').textContent === '수정';
+  const schedType = document.querySelector('input[name="fldDateType"]:checked')?.value || 'once';
 
   if (!name)     { errEl.textContent = '행사명을 입력해 주세요.';   errEl.style.display=''; return; }
-  if (!dateVal)  { errEl.textContent = '행사 날짜를 선택해 주세요.'; errEl.style.display=''; return; }
   if (!location) { errEl.textContent = '행사 장소를 입력해 주세요.'; errEl.style.display=''; return; }
   if (!content)  { errEl.textContent = '행사 내용을 입력해 주세요.'; errEl.style.display=''; return; }
+
+  // 날짜 유형별 검증
+  let eventDate = null;
+  let scheduleTime = null;
+  let scheduleDays = null;
+
+  if (schedType === 'once') {
+    const dateVal = $('fldEventDate').value;
+    if (!dateVal) { errEl.textContent = '행사 날짜를 선택해 주세요.'; errEl.style.display=''; return; }
+    eventDate = new Date(dateVal);
+  } else {
+    scheduleTime = $('fldScheduleTime').value;
+    if (!scheduleTime) { errEl.textContent = '시간을 입력해 주세요.'; errEl.style.display=''; return; }
+    if (schedType === 'weekly') {
+      scheduleDays = [...document.querySelectorAll('input[name="schedDay"]:checked')].map(cb => parseInt(cb.value));
+      if (scheduleDays.length === 0) { errEl.textContent = '요일을 하나 이상 선택해 주세요.'; errEl.style.display=''; return; }
+    }
+  }
 
   errEl.style.display = 'none';
   const btn = $('commModalSubmit');
@@ -511,10 +593,12 @@ $('commModalSubmit').addEventListener('click', async () => {
   try {
     const data = {
       name,
-      eventDate:     new Date(dateVal),
+      scheduleType:  schedType,
+      eventDate,
+      scheduleTime,
+      scheduleDays,
       location,
       stakeRequired: parseInt($('fldStakeReq').value) || 0,
-      fee:           parseInt($('fldFee').value)          || 0,
       voucherPrice:  parseInt($('fldVoucherPrice').value) || 0,
       voucherQty:    parseInt($('fldVoucherQty').value)   || 0,
       photoUrl:      $('fldPhotoUrl').value.trim(),
@@ -575,7 +659,7 @@ watchAuth(({ loggedIn, role, profile }) => {
 
   // 댓글/후기 폼
   if (_currentEvent) {
-    const isPast = ['past','ongoing'].includes(eventStatus(_currentEvent.eventDate));
+    const isPast = ['past','ongoing'].includes(getEventStatus(_currentEvent));
     if (isPast) $('myRatingArea').style.display = loggedIn ? '' : 'none';
     $('commCommentForm').style.display = loggedIn ? '' : 'none';
   }
