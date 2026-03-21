@@ -93,6 +93,23 @@
     .used-state{font-size:0.72rem;color:#64748b;}
     .more-btn{display:block;width:100%;margin-top:8px;padding:8px;background:none;border:1px solid #e2e8f0;border-radius:8px;font-size:0.85rem;color:#475569;cursor:pointer;text-align:center;}
     .more-btn:hover{background:#f8fafc;}
+
+    /* ── 커뮤니티 미리보기 카드 ── */
+    .comm-preview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px;}
+    @media(max-width:700px){.comm-preview-grid{grid-template-columns:repeat(2,1fr);}}
+    .comm-preview-card{display:flex;flex-direction:column;border:1px solid var(--border,#e5e7eb);border-radius:12px;overflow:hidden;background:var(--surface,#fff);text-decoration:none;color:inherit;transition:box-shadow .15s,border-color .15s;cursor:pointer;}
+    .comm-preview-card:hover{box-shadow:0 2px 16px rgba(124,58,237,.15);border-color:var(--accent,#7c3aed);}
+    .comm-preview-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;}
+    .comm-preview-thumb-ph{width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,#ede9fe,#ddd6fe);display:flex;align-items:center;justify-content:center;font-size:2rem;}
+    .comm-preview-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1;}
+    .comm-preview-badge{font-size:0.7rem;font-weight:700;border-radius:99px;padding:2px 8px;align-self:flex-start;}
+    .comm-preview-badge--upcoming{background:#ede9fe;color:#7c3aed;}
+    .comm-preview-badge--ongoing{background:#dcfce7;color:#16a34a;}
+    .comm-preview-badge--past{background:#f3f4f6;color:#6b7280;}
+    .comm-preview-title{font-size:0.88rem;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .comm-preview-date{font-size:0.75rem;color:var(--muted,#6b7280);}
+    .comm-preview-loc{font-size:0.75rem;color:var(--muted,#6b7280);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .comm-preview-empty{grid-column:1/-1;text-align:center;color:var(--muted,#6b7280);font-size:0.85rem;padding:24px 0;}
     .jackpot-panel{
       position:relative;
       overflow:hidden;
@@ -315,6 +332,17 @@
       </div>
     </section>
 
+    <!-- ── 소셜 커뮤니티 미리보기 ── -->
+    <section class="section" id="communityPreviewSection">
+      <div class="section-h">
+        <h2 class="section-title">소셜 커뮤니티</h2>
+        <a class="btn btn--ghost btn--sm" href="/community.html">전체 보기</a>
+      </div>
+      <div id="communityPreviewGrid" class="comm-preview-grid">
+        <div class="comm-preview-empty">불러오는 중...</div>
+      </div>
+    </section>
+
     <section class="section" id="village-map">
       <div class="section-h">
         <h2 class="section-title">🗺️지도</h2>
@@ -400,6 +428,7 @@
 
   <div id="siteFooter"></div>
 
+  <script type="module" src="/assets/js/pages/community-preview.js"></script>
   <script type="module" src="/assets/js/header-auth.js"></script>
 </body>
 </html>
