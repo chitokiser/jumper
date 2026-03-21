@@ -442,6 +442,30 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── 소셜 커뮤니티 (community_events) ─────────────────────────────
+    match /community_events/{eventId} {
+      allow get, list: if true;                        // 누구나 읽기
+      allow create: if signedIn();                     // 로그인 유저 등록
+      allow update, delete: if isAdmin()
+        || (signedIn() && resource.data.authorUid == request.auth.uid);
+
+      // 평점(후기) 서브컬렉션
+      match /reviews/{reviewId} {
+        allow get, list: if true;
+        allow create: if signedIn();
+        allow update, delete: if isAdmin()
+          || (signedIn() && resource.data.uid == request.auth.uid);
+      }
+
+      // 댓글 서브컬렉션
+      match /comments/{commentId} {
+        allow get, list: if true;
+        allow create: if signedIn();
+        allow update, delete: if isAdmin()
+          || (signedIn() && resource.data.uid == request.auth.uid);
+      }
+    }
+
     // ── DAO 의결 시스템 ────────────────────────────────────────────
     // 안건 목록·상세: 누구나 읽기 가능
     // 등록·지지·투표·댓글: Cloud Function 서버 사이드 처리 (직접 쓰기 불가)

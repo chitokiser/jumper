@@ -1,0 +1,154 @@
+<!-- /community.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>소셜 커뮤니티 - Jump</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/community.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="comm-page">
+
+    <!-- ── 헤더 ── -->
+    <div class="comm-header">
+      <h1>소셜 커뮤니티</h1>
+      <p>교민 모임 · 행사 · 소셜 이벤트를 공유하고 함께 참여하세요.</p>
+    </div>
+
+    <!-- ── 목록 뷰 ── -->
+    <div id="commListView">
+
+      <!-- 탭 -->
+      <div class="comm-tabs" id="commTabs">
+        <button class="comm-tab active" data-filter="upcoming">예정 행사</button>
+        <button class="comm-tab" data-filter="ongoing">진행 중</button>
+        <button class="comm-tab" data-filter="past">지난 행사</button>
+        <button class="comm-tab" data-filter="all">전체</button>
+      </div>
+
+      <!-- 도구 모음 -->
+      <div class="comm-toolbar">
+        <span class="comm-count" id="commCount"></span>
+        <button class="btn btn--primary btn--sm" id="btnCreateEvent" style="display:none;">+ 행사 등록</button>
+      </div>
+
+      <!-- 카드 그리드 -->
+      <div class="comm-grid" id="commGrid">
+        <div class="comm-empty">
+          <div class="comm-empty-icon">⏳</div>
+          <div class="comm-empty-text">불러오는 중...</div>
+        </div>
+      </div>
+
+      <!-- 더보기 -->
+      <div style="text-align:center;margin-top:24px;">
+        <button class="btn btn--ghost" id="btnCommMore" style="display:none;">더보기</button>
+      </div>
+    </div>
+
+    <!-- ── 상세 뷰 ── -->
+    <div id="commDetailView" style="display:none;">
+      <div class="comm-detail-header">
+        <button class="comm-back-btn" id="btnCommBack">← 목록</button>
+      </div>
+
+      <div class="comm-detail-card">
+        <!-- 대표 이미지 -->
+        <div class="comm-detail-img-wrap" id="detailImgWrap"></div>
+
+        <!-- 배지 / 날짜 -->
+        <div class="comm-detail-meta-top">
+          <span class="comm-status-badge" id="detailStatusBadge"></span>
+          <span class="comm-detail-date" id="detailDate"></span>
+        </div>
+
+        <h2 class="comm-detail-title" id="detailTitle"></h2>
+
+        <!-- 정보 행 -->
+        <div class="comm-info-row" id="detailInfoRow"></div>
+
+        <!-- 본문 -->
+        <div class="comm-detail-content" id="detailContent"></div>
+
+        <!-- 평점 -->
+        <div class="comm-rating-section" id="detailRatingSection" style="display:none;">
+          <h3 class="comm-section-title">참석 후기 / 평점</h3>
+          <div class="comm-my-rating" id="myRatingArea" style="display:none;">
+            <div class="comm-star-row" id="myStars" data-val="0"></div>
+            <textarea class="comm-review-input" id="myReviewInput" placeholder="후기를 작성해 주세요 (선택)..." rows="3"></textarea>
+            <button class="btn btn--primary btn--sm" id="btnSubmitReview">후기 등록</button>
+          </div>
+          <div class="comm-avg-row" id="avgRatingRow"></div>
+          <div class="comm-reviews" id="commReviews"></div>
+        </div>
+
+        <!-- 댓글 -->
+        <div class="comm-comment-section" id="detailCommentSection">
+          <h3 class="comm-section-title">댓글</h3>
+          <div class="comm-comment-form" id="commCommentForm" style="display:none;">
+            <textarea class="comm-comment-input" id="commCommentInput" placeholder="댓글을 입력하세요..." rows="2"></textarea>
+            <button class="btn btn--primary btn--sm" id="btnSubmitComment">등록</button>
+          </div>
+          <div class="comm-comments" id="commComments">
+            <p class="comm-empty-text" style="font-size:0.85rem;">댓글이 없습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── 행사 등록/수정 모달 ── -->
+  <div id="commEventModal" class="comm-modal" style="display:none;" aria-modal="true" role="dialog">
+    <div class="comm-modal-backdrop" id="commModalBackdrop"></div>
+    <div class="comm-modal-box">
+      <div class="comm-modal-head">
+        <h3 id="commModalTitle">행사 등록</h3>
+        <button class="comm-modal-close" id="commModalClose" type="button" aria-label="닫기">×</button>
+      </div>
+      <div class="comm-modal-body">
+        <label class="comm-label">행사명 <span class="req">*</span></label>
+        <input class="comm-input" id="fldEventName" type="text" placeholder="행사명을 입력하세요" maxlength="80" />
+
+        <label class="comm-label">행사 날짜 <span class="req">*</span></label>
+        <input class="comm-input" id="fldEventDate" type="datetime-local" />
+
+        <label class="comm-label">점프 토큰 스테이킹 조건 (JUMP)</label>
+        <input class="comm-input" id="fldStakeReq" type="number" placeholder="0 = 제한 없음" min="0" />
+
+        <label class="comm-label">참석 회비 (VND)</label>
+        <input class="comm-input" id="fldFee" type="number" placeholder="0 = 무료" min="0" />
+
+        <label class="comm-label">참고 사진 URL</label>
+        <input class="comm-input" id="fldPhotoUrl" type="url" placeholder="https://..." />
+        <div id="fldPhotoPreview" class="comm-photo-preview"></div>
+
+        <label class="comm-label">행사 내용 <span class="req">*</span></label>
+        <textarea class="comm-input comm-textarea" id="fldEventContent" placeholder="행사 내용을 작성하세요..." rows="5" maxlength="3000"></textarea>
+
+        <div id="commModalError" class="comm-error" style="display:none;"></div>
+      </div>
+      <div class="comm-modal-foot">
+        <button class="btn btn--ghost" id="commModalCancel" type="button">취소</button>
+        <button class="btn btn--primary" id="commModalSubmit" type="button">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/pages/community.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+</body>
+</html>
