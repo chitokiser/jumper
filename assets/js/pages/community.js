@@ -1,7 +1,7 @@
 // /assets/js/pages/community.js
 // 소셜 커뮤니티 – 행사 목록 / 상세 / 평점 / 댓글
 
-import { initializeApp }        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, doc,
   addDoc, getDoc, getDocs, updateDoc,
   query, orderBy, where, limit, startAfter,
@@ -11,7 +11,7 @@ import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { firebaseConfig }       from '/assets/js/firebase-config.js';
 
-const app  = initializeApp(firebaseConfig);
+const app  = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db   = getFirestore(app);
 const auth = getAuth(app);
 
