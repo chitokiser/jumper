@@ -9,8 +9,10 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
-import { getAuth, onAuthStateChanged }
-  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import {
+  getAuth, onAuthStateChanged,
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { firebaseConfig } from '/assets/js/firebase-config.js';
 
 const app  = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
@@ -341,18 +343,46 @@ function setOnlineUI(isOnline) {
 }
 
 // ── 인증 ─────────────────────────────────────────────────────────────
+const loginScreen = document.getElementById('drvLoginScreen');
+const drvMain     = document.getElementById('drvMain');
+const loginErrEl  = document.getElementById('drvLoginError');
+
+async function doGoogleLogin() {
+  const provider = new GoogleAuthProvider();
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
+      await signInWithRedirect(auth, provider);
+    } else if (e.code !== 'auth/popup-closed-by-user') {
+      loginErrEl.textContent = '로그인 오류: ' + (e.message || e.code);
+      loginErrEl.style.display = 'block';
+    }
+  }
+}
+
+document.getElementById('btnDrvGoogleLogin').addEventListener('click', doGoogleLogin);
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    window.location.href = '/login.html';
+    loginScreen.style.display = 'flex';
+    drvMain.style.display     = 'none';
     return;
   }
+  loginScreen.style.display = 'none';
+  drvMain.style.display     = 'block';
   _uid = user.uid;
 
   // 기사 정보 로드
   const dSnap = await getDoc(doc(db, 'buggy_drivers', _uid));
   if (!dSnap.exists()) {
-    document.querySelector('.buggy-wrap').innerHTML =
-      '<div class="buggy-empty"><div class="buggy-empty-icon">🚫</div><div>기사 등록 정보가 없습니다.<br>관리자에게 문의하세요.</div></div>';
+    drvMain.innerHTML =
+      '<div class="buggy-empty" style="padding:48px 24px;text-align:center;">' +
+      '<div style="font-size:3rem;margin-bottom:12px;">🚫</div>' +
+      '<div style="font-weight:700;margin-bottom:8px;">기사 등록 정보가 없습니다</div>' +
+      '<div style="font-size:0.85rem;color:#78716c;">관리자에게 UID를 전달하여 등록 요청하세요</div>' +
+      '<div style="margin-top:12px;padding:8px 12px;background:#f3f4f6;border-radius:8px;font-size:0.78rem;word-break:break-all;color:#374151;">' +
+      'UID: ' + _uid + '</div></div>';
     return;
   }
   _driver = dSnap.data();

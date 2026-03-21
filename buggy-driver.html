@@ -22,7 +22,27 @@
   <script src="/assets/js/pwa-install.js" defer></script>
 </head>
 <body>
-  <main class="buggy-wrap">
+  <!-- 로그인 화면 (비로그인 시 표시) -->
+  <div id="drvLoginScreen" style="
+    display:none;min-height:100dvh;background:#fffbeb;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:32px 24px;text-align:center;">
+    <div style="font-size:4rem;margin-bottom:12px;">🚗</div>
+    <h1 style="font-size:1.4rem;font-weight:800;color:#92400e;margin:0 0 8px;">버기카 기사 앱</h1>
+    <p style="color:#78716c;font-size:0.9rem;margin:0 0 32px;">오션파크 버기카 기사 전용</p>
+    <button id="btnDrvGoogleLogin" style="
+      display:flex;align-items:center;gap:10px;
+      background:#fff;border:2px solid #f59e0b;border-radius:12px;
+      padding:14px 24px;font-size:1rem;font-weight:700;cursor:pointer;
+      color:#92400e;box-shadow:0 2px 8px rgba(245,158,11,.2);">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+           width="22" height="22" alt="Google" />
+      Google 로그인
+    </button>
+    <p id="drvLoginError" style="color:#dc2626;font-size:0.85rem;margin-top:16px;display:none;"></p>
+  </div>
+
+  <main class="buggy-wrap" id="drvMain" style="display:none;">
 
     <div class="buggy-header">
       <span class="buggy-icon">🧑‍✈️</span>
@@ -114,7 +134,7 @@
       <button class="buggy-btn buggy-btn--primary" id="btnBackToIdle">다음 호출 대기</button>
     </div>
 
-  </main>
+  </main><!-- #drvMain -->
 
   <div class="buggy-toast" id="drvToast"></div>
 
