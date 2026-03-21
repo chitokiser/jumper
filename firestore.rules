@@ -484,6 +484,36 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
 
+    // ── 버기카 호출 서비스 ────────────────────────────────────────────
+    match /buggy_config/{docId} {
+      allow get, list: if true;
+      allow write: if false; // Cloud Function only
+    }
+    match /buggy_rides/{rideId} {
+      allow get: if isAdmin()
+        || (signedIn() && (resource.data.userId == request.auth.uid || resource.data.driverId == request.auth.uid));
+      allow list: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid)
+        || (signedIn() && resource.data.driverId == request.auth.uid);
+      allow write: if false; // Cloud Function only
+    }
+    match /buggy_drivers/{driverUid} {
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == driverUid);
+      allow list: if isAdmin();
+      allow write: if false; // Cloud Function only
+    }
+    match /buggy_driver_locations/{driverUid} {
+      allow get, list: if signedIn(); // 탑승자도 실시간 위치 조회 가능
+      allow write: if false;          // Cloud Function only
+    }
+    match /buggy_transactions/{docId} {
+      allow get: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false; // Cloud Function only
+    }
+
     // ── DAO 의결 시스템 ────────────────────────────────────────────
     // 안건 목록·상세: 누구나 읽기 가능
     // 등록·지지·투표·댓글: Cloud Function 서버 사이드 처리 (직접 쓰기 불가)

@@ -1,0 +1,420 @@
+/* assets/css/pages/buggy.css — 버기카 서비스 공통 스타일 */
+
+:root {
+  --buggy-primary: #f59e0b;
+  --buggy-dark:    #92400e;
+  --buggy-bg:      #fffbeb;
+  --buggy-card:    #fff;
+  --buggy-border:  #fde68a;
+  --buggy-text:    #1c1917;
+  --buggy-muted:   #78716c;
+  --buggy-green:   #16a34a;
+  --buggy-red:     #dc2626;
+  --buggy-blue:    #2563eb;
+}
+
+/* ── 공통 레이아웃 ────────────────────────────────── */
+.buggy-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--buggy-bg);
+  min-height: 100dvh;
+}
+
+.buggy-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 16px;
+}
+.buggy-header h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--buggy-text);
+  margin: 0;
+}
+.buggy-header .buggy-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+/* ── 지도 ─────────────────────────────────────────── */
+#buggyMap {
+  width: 100%;
+  height: 320px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid var(--buggy-border);
+  margin-bottom: 14px;
+}
+
+.buggy-map-hint {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--buggy-muted);
+  margin: -10px 0 12px;
+}
+
+/* ── 정보 카드 ────────────────────────────────────── */
+.buggy-card {
+  background: var(--buggy-card);
+  border: 1px solid var(--buggy-border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.buggy-card-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--buggy-dark);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 10px;
+}
+
+.buggy-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 0.9rem;
+}
+.buggy-row .k { color: var(--buggy-muted); }
+.buggy-row .v { font-weight: 600; color: var(--buggy-text); }
+
+/* ── 상태 배지 ───────────────────────────────────── */
+.buggy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.buggy-badge--searching { background: #fef3c7; color: #92400e; }
+.buggy-badge--accepted  { background: #dbeafe; color: #1e40af; }
+.buggy-badge--arriving  { background: #ede9fe; color: #5b21b6; }
+.buggy-badge--riding    { background: #dcfce7; color: #14532d; }
+.buggy-badge--completed { background: #f0fdf4; color: #15803d; }
+.buggy-badge--cancelled, .buggy-badge--cancelled_by_user, .buggy-badge--cancelled_by_driver { background: #fee2e2; color: #991b1b; }
+.buggy-badge--payment_failed { background: #fef2f2; color: var(--buggy-red); }
+.buggy-badge--online  { background: #dcfce7; color: #14532d; }
+.buggy-badge--offline { background: #f3f4f6; color: #6b7280; }
+
+/* ── 입력 필드 ───────────────────────────────────── */
+.buggy-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--buggy-border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  outline: none;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color .2s;
+}
+.buggy-input:focus { border-color: var(--buggy-primary); }
+
+.buggy-input-label {
+  font-size: 0.82rem;
+  color: var(--buggy-muted);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.buggy-field { margin-bottom: 10px; }
+
+/* ── 버튼 ────────────────────────────────────────── */
+.buggy-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+  margin-bottom: 8px;
+}
+.buggy-btn:active { transform: scale(.98); }
+.buggy-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.buggy-btn--primary  { background: var(--buggy-primary); color: #fff; }
+.buggy-btn--danger   { background: var(--buggy-red);     color: #fff; }
+.buggy-btn--success  { background: var(--buggy-green);   color: #fff; }
+.buggy-btn--info     { background: var(--buggy-blue);    color: #fff; }
+.buggy-btn--ghost    { background: #f3f4f6; color: var(--buggy-text); }
+
+/* ── 탑승 위치 표시 ──────────────────────────────── */
+.buggy-location-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fffbeb;
+  border: 1.5px solid var(--buggy-border);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  font-size: 0.88rem;
+}
+.buggy-location-box .loc-icon { font-size: 1.2rem; margin-top: 1px; }
+.buggy-location-box .loc-text { flex: 1; line-height: 1.4; }
+.buggy-location-box .loc-label { font-size: 0.75rem; color: var(--buggy-muted); }
+
+/* ── 잔액 박스 ───────────────────────────────────── */
+.buggy-balance-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1.5px solid var(--buggy-border);
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+.buggy-balance-box .bal-label { font-size: 0.82rem; color: var(--buggy-muted); }
+.buggy-balance-box .bal-amount { font-size: 1.1rem; font-weight: 800; color: var(--buggy-dark); }
+
+/* ── 타이머 ──────────────────────────────────────── */
+.buggy-timer {
+  text-align: center;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--buggy-dark);
+  letter-spacing: .05em;
+  padding: 8px 0;
+}
+.buggy-timer-label {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--buggy-muted);
+  margin-top: -6px;
+  margin-bottom: 8px;
+}
+
+/* ── 요금 미리보기 ───────────────────────────────── */
+.buggy-fare-preview {
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--buggy-green);
+  padding: 6px 0 10px;
+}
+
+/* ── 기사 정보 ───────────────────────────────────── */
+.buggy-driver-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #fff;
+  border: 1.5px solid var(--buggy-border);
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+.buggy-driver-info .drv-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--buggy-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+.buggy-driver-info .drv-name  { font-weight: 700; font-size: 0.95rem; }
+.buggy-driver-info .drv-plate {
+  font-size: 0.82rem; color: var(--buggy-muted);
+  background: #f3f4f6; padding: 1px 6px; border-radius: 4px;
+  display: inline-block; margin-top: 2px;
+}
+
+/* ── 로딩 스피너 ─────────────────────────────────── */
+.buggy-loading {
+  text-align: center;
+  padding: 24px;
+  color: var(--buggy-muted);
+  font-size: 0.9rem;
+}
+.buggy-spinner {
+  display: inline-block;
+  width: 32px; height: 32px;
+  border: 3px solid var(--buggy-border);
+  border-top-color: var(--buggy-primary);
+  border-radius: 50%;
+  animation: buggy-spin .8s linear infinite;
+  margin-bottom: 8px;
+}
+@keyframes buggy-spin { to { transform: rotate(360deg); } }
+
+/* ── 빈 상태 ─────────────────────────────────────── */
+.buggy-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--buggy-muted);
+  font-size: 0.9rem;
+}
+.buggy-empty-icon { font-size: 2.5rem; margin-bottom: 8px; }
+
+/* ── 알림 토스트 ─────────────────────────────────── */
+.buggy-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1c1917;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 99px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  z-index: 9999;
+  transition: transform .3s ease;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.buggy-toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── 관리자 테이블 ───────────────────────────────── */
+.buggy-table-wrap { overflow-x: auto; margin-bottom: 16px; }
+.buggy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.buggy-table th {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 700;
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--buggy-border);
+}
+.buggy-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+.buggy-table tr:hover td { background: #fffbeb; }
+
+/* ── 탭 ──────────────────────────────────────────── */
+.buggy-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  background: #f3f4f6;
+  border-radius: 10px;
+  padding: 4px;
+}
+.buggy-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--buggy-muted);
+  transition: background .2s, color .2s;
+}
+.buggy-tab.active {
+  background: #fff;
+  color: var(--buggy-dark);
+  box-shadow: 0 1px 3px rgba(0,0,0,.1);
+}
+
+/* ── 통계 그리드 ─────────────────────────────────── */
+.buggy-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.buggy-stat-card {
+  background: #fff;
+  border: 1px solid var(--buggy-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.buggy-stat-card .stat-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--buggy-dark);
+}
+.buggy-stat-card .stat-label {
+  font-size: 0.75rem;
+  color: var(--buggy-muted);
+  margin-top: 2px;
+}
+
+/* ── 기사 앱 전용 ─────────────────────────────────── */
+.buggy-driver-ride-card {
+  background: #fff;
+  border: 2px solid var(--buggy-primary);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.buggy-driver-ride-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: var(--buggy-dark);
+}
+
+/* ── 검색 중 애니메이션 ──────────────────────────── */
+.buggy-searching {
+  text-align: center;
+  padding: 24px 16px;
+}
+.buggy-searching-pulse {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--buggy-primary);
+  margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem;
+  animation: buggy-pulse 1.5s ease-in-out infinite;
+}
+@keyframes buggy-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.12); opacity: .8; }
+}
+.buggy-searching p { font-size: 0.9rem; color: var(--buggy-muted); margin: 0; }
+.buggy-searching strong { display: block; font-size: 1.05rem; color: var(--buggy-text); margin-bottom: 4px; }
+
+/* ── 전환 ────────────────────────────────────────── */
+.buggy-section { display: none; }
+.buggy-section.active { display: block; }
+
+/* 모달 오버레이 */
+.buggy-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 1000;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+.buggy-modal-overlay.open { display: flex; }
+.buggy-modal {
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 32px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80dvh;
+  overflow-y: auto;
+}
+.buggy-modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 16px;
+  color: var(--buggy-text);
+}

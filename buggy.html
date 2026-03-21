@@ -1,0 +1,146 @@
+<!-- /buggy.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>버기카 호출 - Jump</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/buggy.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="buggy-wrap">
+
+    <div class="buggy-header">
+      <span class="buggy-icon">🚗</span>
+      <h1>오션파크 버기카</h1>
+    </div>
+
+    <!-- 잔액 표시 -->
+    <div class="buggy-balance-box" id="balanceBox">
+      <div>
+        <div class="bal-label">내 잔액</div>
+        <div class="bal-amount" id="balAmount">₫0</div>
+      </div>
+      <button class="buggy-btn buggy-btn--ghost" style="width:auto;padding:8px 14px;font-size:0.82rem;" id="btnShowHistory">
+        내역
+      </button>
+    </div>
+
+    <!-- ── 섹션 A: 호출 전 (탑승 위치 선택) ── -->
+    <div class="buggy-section active" id="secIdle">
+      <div id="buggyMap"></div>
+      <p class="buggy-map-hint">📍 지도를 탭하여 탑승 위치를 선택하세요</p>
+
+      <div class="buggy-card">
+        <div class="buggy-card-title">탑승 위치</div>
+        <div class="buggy-location-box" id="pickupBox">
+          <span class="loc-icon">📍</span>
+          <div class="loc-text">
+            <div class="loc-label">선택된 위치</div>
+            <div id="pickupAddrText">지도에서 위치를 선택하세요</div>
+          </div>
+        </div>
+
+        <div class="buggy-field">
+          <label class="buggy-input-label">도착지 (선택)</label>
+          <input type="text" class="buggy-input" id="destInput" placeholder="목적지 주소 입력 (선택사항)" />
+        </div>
+      </div>
+
+      <button class="buggy-btn buggy-btn--primary" id="btnRequest" disabled>
+        🚗 버기카 호출하기
+      </button>
+      <p style="text-align:center;font-size:0.78rem;color:#78716c;margin:0;">
+        기본요금 ₫50,000 · 이후 10분당 ₫50,000
+      </p>
+    </div>
+
+    <!-- ── 섹션 B: 기사 찾는 중 ── -->
+    <div class="buggy-section" id="secSearching">
+      <div class="buggy-searching">
+        <div class="buggy-searching-pulse">🚗</div>
+        <strong>기사를 찾고 있습니다...</strong>
+        <p>잠시만 기다려주세요. 근처 버기카 기사에게 요청 중입니다.</p>
+      </div>
+      <div class="buggy-card" id="rideInfoCard" style="display:none;"></div>
+      <button class="buggy-btn buggy-btn--ghost" id="btnCancelSearch">
+        호출 취소
+      </button>
+    </div>
+
+    <!-- ── 섹션 C: 수락됨 / 도착 중 ── -->
+    <div class="buggy-section" id="secAccepted">
+      <div id="buggyMapAccepted" style="width:100%;height:260px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);margin-bottom:14px;"></div>
+      <div class="buggy-driver-info" id="driverInfoBox">
+        <div class="drv-avatar">🧑</div>
+        <div>
+          <div class="drv-name" id="drvName">기사</div>
+          <div class="drv-plate" id="drvPlate">-</div>
+        </div>
+        <span class="buggy-badge buggy-badge--accepted" id="rideStatusBadge">수락됨</span>
+      </div>
+      <div class="buggy-card">
+        <div class="buggy-row"><span class="k">탑승 위치</span><span class="v" id="accPickupAddr">-</span></div>
+        <div class="buggy-row"><span class="k">요금 기준</span><span class="v">₫50,000 + 10분당 ₫50,000</span></div>
+      </div>
+      <button class="buggy-btn buggy-btn--ghost" id="btnCancelAccepted">
+        호출 취소
+      </button>
+    </div>
+
+    <!-- ── 섹션 D: 탑승 중 ── -->
+    <div class="buggy-section" id="secRiding">
+      <div id="buggyMapRiding" style="width:100%;height:240px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);margin-bottom:14px;"></div>
+      <div class="buggy-card">
+        <div class="buggy-card-title">운행 중</div>
+        <div class="buggy-timer" id="rideTimer">00:00</div>
+        <div class="buggy-timer-label">탑승 경과 시간</div>
+        <div class="buggy-fare-preview" id="farePrev">₫50,000</div>
+        <div style="text-align:center;font-size:0.75rem;color:#78716c;">예상 요금 (하차 시 자동 결제)</div>
+      </div>
+      <div class="buggy-driver-info" id="ridingDriverBox">
+        <div class="drv-avatar">🧑</div>
+        <div>
+          <div class="drv-name" id="ridingDrvName">기사</div>
+          <div class="drv-plate" id="ridingDrvPlate">-</div>
+        </div>
+        <span class="buggy-badge buggy-badge--riding">운행 중</span>
+      </div>
+    </div>
+
+    <!-- ── 섹션 E: 완료 ── -->
+    <div class="buggy-section" id="secDone">
+      <div class="buggy-card" style="text-align:center;padding:28px 16px;">
+        <div style="font-size:3rem;margin-bottom:8px;">✅</div>
+        <div style="font-size:1.15rem;font-weight:800;margin-bottom:4px;">운행 완료!</div>
+        <div class="buggy-row" style="justify-content:center;gap:4px;">
+          <span class="k">이용 시간:</span><span class="v" id="doneMinutes">-</span>
+        </div>
+        <div class="buggy-row" style="justify-content:center;gap:4px;">
+          <span class="k">결제 금액:</span><span class="v" id="doneFare">-</span>
+        </div>
+        <div id="donePayStatus" style="margin-top:8px;font-size:0.85rem;"></div>
+      </div>
+      <button class="buggy-btn buggy-btn--primary" id="btnNewRide">
+        다시 호출하기
+      </button>
+    </div>
+
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <!-- 토스트 -->
+  <div class="buggy-toast" id="buggyToast"></div>
+
+  <script type="module" src="/assets/js/pages/buggy.js"></script>
+</body>
+</html>

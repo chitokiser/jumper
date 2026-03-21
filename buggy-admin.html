@@ -1,0 +1,169 @@
+<!-- /buggy-admin.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>버기카 관리 - Jump</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/buggy.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="buggy-wrap" style="max-width:900px;">
+
+    <div class="buggy-header">
+      <span class="buggy-icon">⚙️</span>
+      <h1>버기카 관리 대시보드</h1>
+    </div>
+
+    <!-- 통계 -->
+    <div class="buggy-stats" id="statsGrid">
+      <div class="buggy-stat-card"><div class="stat-val" id="statActive">-</div><div class="stat-label">진행 중 호출</div></div>
+      <div class="buggy-stat-card"><div class="stat-val" id="statToday">-</div><div class="stat-label">오늘 완료</div></div>
+      <div class="buggy-stat-card"><div class="stat-val" id="statRevenue">-</div><div class="stat-label">오늘 매출</div></div>
+      <div class="buggy-stat-card"><div class="stat-val" id="statDrivers">-</div><div class="stat-label">온라인 기사</div></div>
+    </div>
+
+    <!-- 탭 -->
+    <div class="buggy-tabs" id="adminTabs">
+      <button class="buggy-tab active" data-tab="rides">호출 목록</button>
+      <button class="buggy-tab" data-tab="drivers">기사 관리</button>
+      <button class="buggy-tab" data-tab="balance">잔액 충전</button>
+      <button class="buggy-tab" data-tab="config">설정</button>
+    </div>
+
+    <!-- ── 탭: 호출 목록 ── -->
+    <div id="tabRides" class="buggy-section active">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <select class="buggy-input" id="rideStatusFilter" style="max-width:160px;">
+          <option value="">전체 상태</option>
+          <option value="searching">탐색 중</option>
+          <option value="accepted">수락됨</option>
+          <option value="arriving">도착 중</option>
+          <option value="riding">탑승 중</option>
+          <option value="completed">완료</option>
+          <option value="payment_failed">결제 실패</option>
+          <option value="cancelled_by_user">사용자 취소</option>
+          <option value="cancelled_by_driver">기사 취소</option>
+        </select>
+        <button class="buggy-btn buggy-btn--ghost" id="btnLoadRides" style="width:auto;padding:8px 14px;">
+          조회
+        </button>
+      </div>
+      <div id="ridesTableWrap" class="buggy-table-wrap">
+        <div class="buggy-loading"><div class="buggy-spinner"></div><br>로딩 중...</div>
+      </div>
+    </div>
+
+    <!-- ── 탭: 기사 관리 ── -->
+    <div id="tabDrivers" class="buggy-section">
+      <div class="buggy-card" style="margin-bottom:14px;">
+        <div class="buggy-card-title">기사 등록</div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">Firebase UID</label>
+          <input type="text" class="buggy-input" id="drvUid" placeholder="기사 Firebase UID" />
+        </div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">이름</label>
+          <input type="text" class="buggy-input" id="drvName" placeholder="기사 이름" />
+        </div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">차량 번호</label>
+          <input type="text" class="buggy-input" id="drvVehicleNum" placeholder="예: 51A-12345" />
+        </div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">차종</label>
+          <input type="text" class="buggy-input" id="drvVehicleModel" placeholder="예: 버기카 A형" />
+        </div>
+        <button class="buggy-btn buggy-btn--primary" id="btnCreateDriver">기사 등록</button>
+      </div>
+      <div id="driversTableWrap" class="buggy-table-wrap">
+        <div class="buggy-loading"><div class="buggy-spinner"></div><br>로딩 중...</div>
+      </div>
+    </div>
+
+    <!-- ── 탭: 잔액 충전 ── -->
+    <div id="tabBalance" class="buggy-section">
+      <div class="buggy-card">
+        <div class="buggy-card-title">사용자 잔액 충전 (VND)</div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">사용자 Firebase UID</label>
+          <input type="text" class="buggy-input" id="topUpUid" placeholder="사용자 UID" />
+        </div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">충전 금액 (VND)</label>
+          <input type="number" class="buggy-input" id="topUpAmount" placeholder="예: 500000" min="1" />
+        </div>
+        <button class="buggy-btn buggy-btn--success" id="btnTopUp">충전</button>
+        <div id="topUpResult" style="margin-top:10px;font-size:0.9rem;"></div>
+      </div>
+
+      <div class="buggy-card" style="margin-top:14px;">
+        <div class="buggy-card-title">거래 내역 조회</div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">사용자 UID (선택)</label>
+          <input type="text" class="buggy-input" id="txUid" placeholder="빈칸: 전체 (최근 50건)" />
+        </div>
+        <button class="buggy-btn buggy-btn--ghost" id="btnLoadTx" style="">거래 내역 조회</button>
+        <div id="txTableWrap" class="buggy-table-wrap" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- ── 탭: 설정 ── -->
+    <div id="tabConfig" class="buggy-section">
+      <div class="buggy-card">
+        <div class="buggy-card-title">요금 설정</div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">기본 요금 (VND)</label>
+          <input type="number" class="buggy-input" id="cfgBaseFare" value="50000" />
+        </div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">추가 요금 간격 (분)</label>
+          <input type="number" class="buggy-input" id="cfgInterval" value="10" />
+        </div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">추가 요금 (VND/간격)</label>
+          <input type="number" class="buggy-input" id="cfgIntervalFare" value="50000" />
+        </div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">최소 보유 잔액 (VND)</label>
+          <input type="number" class="buggy-input" id="cfgMinBalance" value="50000" />
+        </div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">기사 응답 제한 시간 (초)</label>
+          <input type="number" class="buggy-input" id="cfgTimeout" value="120" />
+        </div>
+        <button class="buggy-btn buggy-btn--primary" id="btnSaveConfig">저장</button>
+        <div id="configResult" style="margin-top:10px;font-size:0.9rem;"></div>
+      </div>
+    </div>
+
+    <!-- ── 강제 종료 모달 ── -->
+    <div class="buggy-modal-overlay" id="forceEndModal">
+      <div class="buggy-modal">
+        <div class="buggy-modal-title">⚠️ 강제 종료</div>
+        <p style="font-size:0.88rem;color:#78716c;margin:0 0 12px;">진행 중 호출을 관리자 권한으로 종료합니다.</p>
+        <div class="buggy-field">
+          <label class="buggy-input-label">종료 사유</label>
+          <input type="text" class="buggy-input" id="forceEndReason" placeholder="사유 입력" />
+        </div>
+        <button class="buggy-btn buggy-btn--danger" id="btnConfirmForceEnd">강제 종료</button>
+        <button class="buggy-btn buggy-btn--ghost"  id="btnCloseForceEnd">취소</button>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="siteFooter"></div>
+  <div class="buggy-toast" id="adminToast"></div>
+
+  <script type="module" src="/assets/js/pages/buggy-admin.js"></script>
+</body>
+</html>

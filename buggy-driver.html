@@ -1,0 +1,111 @@
+<!-- /buggy-driver.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>버기카 기사 앱 - Jump</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/pages/buggy.css" />
+</head>
+<body>
+  <main class="buggy-wrap">
+
+    <div class="buggy-header">
+      <span class="buggy-icon">🧑‍✈️</span>
+      <div>
+        <h1>기사 앱</h1>
+        <div style="font-size:0.8rem;color:#78716c;" id="driverNameLabel">로그인 중...</div>
+      </div>
+      <span id="onlineBadge" class="buggy-badge buggy-badge--offline" style="margin-left:auto;">오프라인</span>
+    </div>
+
+    <!-- 온/오프라인 토글 -->
+    <div class="buggy-card" style="margin-bottom:14px;">
+      <div class="buggy-row">
+        <span class="k">운행 상태</span>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="chkOnline" style="width:40px;height:22px;cursor:pointer;" />
+          <span id="onlineLabel" style="font-weight:700;">오프라인</span>
+        </label>
+      </div>
+      <div class="buggy-row">
+        <span class="k">차량번호</span>
+        <span class="v" id="driverPlate">-</span>
+      </div>
+    </div>
+
+    <!-- ── 섹션 A: 대기 중 ── -->
+    <div class="buggy-section active" id="drvSecIdle">
+      <div class="buggy-empty">
+        <div class="buggy-empty-icon">📡</div>
+        <div>새로운 호출을 기다리는 중입니다.</div>
+        <div style="font-size:0.78rem;margin-top:4px;color:#a8a29e;">온라인 상태를 켜두세요.</div>
+      </div>
+    </div>
+
+    <!-- ── 섹션 B: 호출 수신 ── -->
+    <div class="buggy-section" id="drvSecRequest">
+      <div class="buggy-driver-ride-card" id="incomingCard">
+        <h3>📨 새 호출 요청</h3>
+        <div class="buggy-row"><span class="k">탑승 위치</span><span class="v" id="reqPickupAddr">-</span></div>
+        <div class="buggy-row"><span class="k">도착지</span><span class="v" id="reqDestAddr">-</span></div>
+        <div class="buggy-row"><span class="k">요청자</span><span class="v" id="reqUserName">-</span></div>
+        <div style="margin-top:6px;font-size:0.8rem;color:#78716c;" id="reqCountdown">⏳ 120초 내 응답해주세요</div>
+      </div>
+      <button class="buggy-btn buggy-btn--success" id="btnAccept">✅ 수락</button>
+      <button class="buggy-btn buggy-btn--ghost"   id="btnDecline">거절 (다음 기사)</button>
+    </div>
+
+    <!-- ── 섹션 C: 이동 중 (탑승 전) ── -->
+    <div class="buggy-section" id="drvSecGoing">
+      <div id="drvMap" style="width:100%;height:280px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);margin-bottom:14px;"></div>
+      <div class="buggy-driver-ride-card">
+        <h3>🚗 이동 중 — 탑승 위치로</h3>
+        <div class="buggy-row"><span class="k">탑승 위치</span><span class="v" id="goPickupAddr">-</span></div>
+        <div class="buggy-row"><span class="k">요청자</span><span class="v" id="goUserName">-</span></div>
+        <div class="buggy-row"><span class="k">상태</span><span class="v" id="goStatusBadge">-</span></div>
+      </div>
+      <button class="buggy-btn buggy-btn--info"    id="btnArrive">📍 탑승 위치 도착</button>
+      <button class="buggy-btn buggy-btn--ghost"   id="btnCancelGoing">호출 취소</button>
+    </div>
+
+    <!-- ── 섹션 D: 탑승 중 ── -->
+    <div class="buggy-section" id="drvSecRiding">
+      <div class="buggy-driver-ride-card">
+        <h3>✅ 운행 중</h3>
+        <div class="buggy-timer" id="drvTimer">00:00</div>
+        <div class="buggy-timer-label">경과 시간</div>
+        <div class="buggy-fare-preview" id="drvFarePrev">₫50,000</div>
+        <div style="text-align:center;font-size:0.75rem;color:#78716c;margin-bottom:10px;">예상 요금</div>
+        <div class="buggy-row"><span class="k">탑승자</span><span class="v" id="rideUserName">-</span></div>
+        <div class="buggy-row"><span class="k">탑승 시작</span><span class="v" id="rideStartedAt">-</span></div>
+      </div>
+      <button class="buggy-btn buggy-btn--primary" id="btnStart" style="display:none;">▶️ 탑승 시작</button>
+      <button class="buggy-btn buggy-btn--danger"  id="btnEnd">🔴 운행 종료</button>
+    </div>
+
+    <!-- ── 섹션 E: 완료 ── -->
+    <div class="buggy-section" id="drvSecDone">
+      <div class="buggy-card" style="text-align:center;padding:28px 16px;">
+        <div style="font-size:3rem;margin-bottom:8px;">✅</div>
+        <div style="font-size:1.15rem;font-weight:800;margin-bottom:4px;">운행 완료</div>
+        <div class="buggy-row" style="justify-content:center;gap:4px;">
+          <span class="k">운행 시간:</span><span class="v" id="drvDoneMinutes">-</span>
+        </div>
+        <div class="buggy-row" style="justify-content:center;gap:4px;">
+          <span class="k">요금:</span><span class="v" id="drvDoneFare">-</span>
+        </div>
+        <div id="drvDonePayStatus" style="margin-top:8px;font-size:0.85rem;"></div>
+      </div>
+      <button class="buggy-btn buggy-btn--primary" id="btnBackToIdle">다음 호출 대기</button>
+    </div>
+
+  </main>
+
+  <div class="buggy-toast" id="drvToast"></div>
+
+  <script type="module" src="/assets/js/pages/buggy-driver.js"></script>
+</body>
+</html>
