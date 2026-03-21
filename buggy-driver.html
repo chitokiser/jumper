@@ -3,11 +3,23 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>버기카 기사 앱 - Jump</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>버기카 기사 앱</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest-driver.webmanifest" />
+  <meta name="theme-color" content="#f59e0b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="기사앱" />
+  <link rel="apple-touch-icon" href="/assets/images/jump/mlogo.png" />
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/pages/buggy.css" />
+
+  <!-- PWA 설치 안내 (Android beforeinstallprompt + iOS Safari 가이드) -->
+  <script src="/assets/js/pwa-install.js" defer></script>
 </head>
 <body>
   <main class="buggy-wrap">
@@ -105,6 +117,83 @@
   </main>
 
   <div class="buggy-toast" id="drvToast"></div>
+
+  <!-- 기사앱 홈화면 추가 안내 배너 -->
+  <div id="driverInstallBanner" style="
+    display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
+    background:#f59e0b;color:#fff;padding:14px 16px 18px;
+    box-shadow:0 -4px 16px rgba(0,0,0,.15);">
+    <div style="display:flex;align-items:center;gap:10px;max-width:480px;margin:0 auto;">
+      <span style="font-size:1.6rem;">🚗</span>
+      <div style="flex:1;">
+        <div style="font-weight:800;font-size:0.95rem;">기사앱을 홈 화면에 추가하세요</div>
+        <div style="font-size:0.78rem;opacity:.9;margin-top:2px;" id="driverInstallSub">
+          앱처럼 바로 실행할 수 있습니다
+        </div>
+      </div>
+      <button id="btnDriverInstall" style="
+        background:#fff;color:#92400e;border:none;border-radius:8px;
+        padding:8px 14px;font-weight:800;font-size:0.88rem;cursor:pointer;flex-shrink:0;">
+        추가
+      </button>
+      <button id="btnDriverInstallDismiss" style="
+        background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;
+        padding:4px 8px;opacity:.8;">✕</button>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    const DRIVER_DISMISS = 'buggy_driver_install_dismissed_v1';
+    const banner   = document.getElementById('driverInstallBanner');
+    const btnAdd   = document.getElementById('btnDriverInstall');
+    const btnClose = document.getElementById('btnDriverInstallDismiss');
+    const subText  = document.getElementById('driverInstallSub');
+
+    if (localStorage.getItem(DRIVER_DISMISS) === '1') return;
+    if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
+    if (!(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent))) return;
+
+    const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) &&
+                  /WebKit/.test(navigator.userAgent) &&
+                  !(/CriOS|FxiOS/.test(navigator.userAgent));
+
+    if (isIos) {
+      subText.textContent = '공유(□↑) → 홈 화면에 추가를 눌러주세요';
+      btnAdd.textContent  = '확인';
+      banner.style.display = 'block';
+      btnAdd.addEventListener('click', () => {
+        localStorage.setItem(DRIVER_DISMISS, '1');
+        banner.style.display = 'none';
+      });
+    } else {
+      let _prompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        _prompt = e;
+        banner.style.display = 'block';
+      });
+      btnAdd.addEventListener('click', async () => {
+        if (!_prompt) return;
+        _prompt.prompt();
+        const { outcome } = await _prompt.userChoice;
+        if (outcome === 'accepted') banner.style.display = 'none';
+        _prompt = null;
+      });
+      window.addEventListener('appinstalled', () => { banner.style.display = 'none'; });
+    }
+
+    btnClose.addEventListener('click', () => {
+      localStorage.setItem(DRIVER_DISMISS, '1');
+      banner.style.display = 'none';
+    });
+
+    // Service Worker 등록
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  })();
+  </script>
 
   <script type="module" src="/assets/js/pages/buggy-driver.js"></script>
 </body>
