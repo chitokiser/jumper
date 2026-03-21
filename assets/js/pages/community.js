@@ -7,16 +7,14 @@ import { getFirestore, collection, doc,
   query, orderBy, where, limit, startAfter,
   serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getAuth, onAuthStateChanged }
-  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFunctions, httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 import { firebaseConfig }       from '/assets/js/firebase-config.js';
+import { watchAuth }            from '/assets/js/auth.js';
 
-const app  = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const db   = getFirestore(app);
-const auth = getAuth(app);
-const fns  = getFunctions(app);
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const fns = getFunctions(app);
 
 const fnCheckEligibility = httpsCallable(fns, 'checkEventEligibility');
 const fnBuyVoucher       = httpsCallable(fns, 'buyEventVoucher');
@@ -567,22 +565,19 @@ $('btnDeleteEvent').addEventListener('click', async () => {
 });
 
 // ── 인증 상태 감시 ────────────────────────────────────────────
-onAuthStateChanged(auth, async user => {
-  _user = user;
-  if (user) {
-    const adminSnap = await getDoc(doc(db, 'admins', user.uid));
-    _isAdmin = adminSnap.exists() || user.email === 'daguri75@gmail.com';
-  } else {
-    _isAdmin = false;
-  }
-  // 관리자 전용 버튼 표시
-  $('btnCreateEvent').style.display      = _isAdmin ? '' : 'none';
-  $('detailAdminBtns').style.display     = (_isAdmin && _currentEvent) ? '' : 'none';
+watchAuth(({ loggedIn, role, profile }) => {
+  _user    = loggedIn ? profile : null;
+  _isAdmin = loggedIn && role === 'admin';
+
+  // 관리자 전용 버튼
+  $('btnCreateEvent').style.display  = _isAdmin ? '' : 'none';
+  $('detailAdminBtns').style.display = (_isAdmin && _currentEvent) ? '' : 'none';
+
   // 댓글/후기 폼
   if (_currentEvent) {
     const isPast = ['past','ongoing'].includes(eventStatus(_currentEvent.eventDate));
-    if (isPast) $('myRatingArea').style.display = user ? '' : 'none';
-    $('commCommentForm').style.display = user ? '' : 'none';
+    if (isPast) $('myRatingArea').style.display = loggedIn ? '' : 'none';
+    $('commCommentForm').style.display = loggedIn ? '' : 'none';
   }
 });
 
