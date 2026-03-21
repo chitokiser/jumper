@@ -447,10 +447,17 @@ $('commModalSubmit').addEventListener('click', async () => {
 });
 
 // ── 인증 상태 감시 ────────────────────────────────────────────
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
   _user = user;
-  // 관리자/로그인 유저는 행사 등록 버튼 노출 (간단히 로그인=등록가능 처리)
-  $('btnCreateEvent').style.display = user ? '' : 'none';
+  // 관리자만 행사 등록 버튼 노출
+  if (user) {
+    const adminSnap = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
+      .then(({ getDoc, doc }) => getDoc(doc(db, 'admins', user.uid)));
+    const isAdmin = adminSnap.exists() || user.email === 'daguri75@gmail.com';
+    $('btnCreateEvent').style.display = isAdmin ? '' : 'none';
+  } else {
+    $('btnCreateEvent').style.display = 'none';
+  }
   if (_currentEvent) {
     const isPast = ['past','ongoing'].includes(eventStatus(_currentEvent.eventDate));
     if (isPast) $('myRatingArea').style.display = user ? '' : 'none';

@@ -445,7 +445,7 @@ service cloud.firestore {
     // ── 소셜 커뮤니티 (community_events) ─────────────────────────────
     match /community_events/{eventId} {
       allow get, list: if true;                        // 누구나 읽기
-      allow create: if signedIn();                     // 로그인 유저 등록
+      allow create: if isAdmin();                      // 관리자만 등록
       allow update, delete: if isAdmin()
         || (signedIn() && resource.data.authorUid == request.auth.uid);
 
