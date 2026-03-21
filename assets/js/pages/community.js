@@ -3,7 +3,7 @@
 
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, doc,
-  addDoc, getDoc, getDocs, updateDoc,
+  addDoc, getDoc, getDocs, updateDoc, deleteDoc,
   query, orderBy, where, limit, startAfter,
   serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -19,6 +19,7 @@ const PAGE_SIZE = 12;
 
 // ── 상태 ─────────────────────────────────────────────────────
 let _user         = null;
+let _isAdmin      = false;
 let _filter       = 'upcoming';
 let _lastDoc      = null;
 let _hasMore      = false;
@@ -183,6 +184,9 @@ function renderDetail(d) {
   } else {
     wrap.innerHTML = '<div class="comm-detail-img-wrap-ph">🎉</div>';
   }
+
+  // 관리자 수정/삭제 버튼
+  $('detailAdminBtns').style.display = _isAdmin ? '' : 'none';
 
   // 배지 / 날짜
   const badge = $('detailStatusBadge');
@@ -408,13 +412,14 @@ function updatePhotoPreview() {
   prev.innerHTML = url ? `<img src="${escHtml(url)}" alt="미리보기" onerror="this.style.display='none'" />` : '';
 }
 
-// 등록 제출
+// 등록/수정 제출
 $('commModalSubmit').addEventListener('click', async () => {
   const name     = $('fldEventName').value.trim();
   const dateVal  = $('fldEventDate').value;
   const location = $('fldEventLocation').value.trim();
   const content  = $('fldEventContent').value.trim();
   const errEl    = $('commModalError');
+  const isEdit   = $('commModalSubmit').textContent === '수정';
 
   if (!name)     { errEl.textContent = '행사명을 입력해 주세요.';   errEl.style.display=''; return; }
   if (!dateVal)  { errEl.textContent = '행사 날짜를 선택해 주세요.'; errEl.style.display=''; return; }
@@ -434,35 +439,64 @@ $('commModalSubmit').addEventListener('click', async () => {
       fee:           parseInt($('fldFee').value) || 0,
       photoUrl:      $('fldPhotoUrl').value.trim(),
       content,
-      authorUid:     _user.uid,
-      authorName:    _user.displayName || '익명',
-      ratingSum:     0,
-      ratingCount:   0,
       updatedAt:     serverTimestamp(),
     };
 
-    await addDoc(collection(db, 'community_events'), { ...data, createdAt: serverTimestamp() });
-    closeEventModal();
-    loadEvents(true);
+    if (isEdit && _currentEvent) {
+      await updateDoc(doc(db, 'community_events', _currentEvent.id), data);
+      closeEventModal();
+      await openDetail(_currentEvent.id); // 상세 새로고침
+    } else {
+      await addDoc(collection(db, 'community_events'), {
+        ...data,
+        authorUid:   _user.uid,
+        authorName:  _user.displayName || '익명',
+        ratingSum:   0,
+        ratingCount: 0,
+        createdAt:   serverTimestamp(),
+      });
+      closeEventModal();
+      loadEvents(true);
+    }
   } catch (err) {
     errEl.textContent = '오류: ' + err.message;
     errEl.style.display = '';
   } finally {
-    btn.disabled = false; btn.textContent = '등록';
+    btn.disabled = false;
+    btn.textContent = isEdit ? '수정' : '등록';
+  }
+});
+
+// 수정 버튼
+$('btnEditEvent').addEventListener('click', () => openEventModal(_currentEvent));
+
+// 삭제 버튼
+$('btnDeleteEvent').addEventListener('click', async () => {
+  if (!_currentEvent) return;
+  if (!confirm(`"${_currentEvent.name}" 행사를 삭제하시겠습니까?`)) return;
+  try {
+    await deleteDoc(doc(db, 'community_events', _currentEvent.id));
+    $('commDetailView').style.display = 'none';
+    $('commListView').style.display   = '';
+    loadEvents(true);
+  } catch (err) {
+    alert('삭제 오류: ' + err.message);
   }
 });
 
 // ── 인증 상태 감시 ────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
   _user = user;
-  // 관리자만 행사 등록 버튼 노출
   if (user) {
     const adminSnap = await getDoc(doc(db, 'admins', user.uid));
-    const isAdmin = adminSnap.exists() || user.email === 'daguri75@gmail.com';
-    $('btnCreateEvent').style.display = isAdmin ? '' : 'none';
+    _isAdmin = adminSnap.exists() || user.email === 'daguri75@gmail.com';
   } else {
-    $('btnCreateEvent').style.display = 'none';
+    _isAdmin = false;
   }
+  // 관리자 전용 버튼 표시
+  $('btnCreateEvent').style.display      = _isAdmin ? '' : 'none';
+  $('detailAdminBtns').style.display     = (_isAdmin && _currentEvent) ? '' : 'none';
+  // 댓글/후기 폼
   if (_currentEvent) {
     const isPast = ['past','ongoing'].includes(eventStatus(_currentEvent.eventDate));
     if (isPast) $('myRatingArea').style.display = user ? '' : 'none';

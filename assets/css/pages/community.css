@@ -218,8 +218,26 @@
   padding: 20px 0 12px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
+.comm-detail-admin-btns {
+  display: flex;
+  gap: 8px;
+}
+.btn--danger {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn--danger:hover { background: #fee2e2; }
 .comm-back-btn {
   background: none;
   border: 1px solid var(--line, #e5e7eb);
