@@ -1256,6 +1256,10 @@ exports.adminSaveVoucher = onCall(wrapError(async (req) => {
   return treasureH.adminSaveVoucher(requireAuth(req), req.data ?? {});
 }));
 
+exports.adminGrantItem = onCall(wrapError(async (req) => {
+  return treasureH.adminGrantItem(requireAuth(req), req.data ?? {});
+}));
+
 exports.usePotion = onCall(wrapError(async (req) => {
   return treasureH.usePotion(requireAuth(req));
 }));

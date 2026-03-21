@@ -240,21 +240,70 @@ async function craftVoucher(uid, { voucherId } = {}) {
       purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    // reward 값이 아이템 ID 형식이면 인벤토리에 직접 지급
+    // 예: "weapon_100", "armo_10", "potion_red", "revive_ticket"
+    const rewardItemId = (voucher.reward || '').trim();
+    const isItemReward = /^(weapon_|armo_|potion_|revive_ticket)/.test(rewardItemId);
+    if (isItemReward) {
+      const invRef = db.collection('treasure_inventory').doc(`${uid}_${rewardItemId}`);
+      const invSnap = await tx.get(invRef);
+      const currentCount = invSnap.exists ? (invSnap.data().count || 0) : 0;
+      tx.set(invRef, {
+        uid, itemId: rewardItemId,
+        count: currentCount + 1,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+
     return { ok: true, voucherName: voucher.name, reward: voucher.reward };
   });
 }
 
+// ── 관리자: 유저에게 아이템 직접 지급 ──────────────────────────────────────────
+async function adminGrantItem(adminUid, { targetUid, targetEmail, itemId, count } = {}) {
+  await requireAdmin(adminUid);
+  if (!itemId) throw new HttpsError('invalid-argument', 'itemId가 필요합니다');
+  count = parseInt(count) || 1;
+  if (count < 1) throw new HttpsError('invalid-argument', 'count는 1 이상이어야 합니다');
+
+  // targetEmail로 uid 조회
+  let uid = targetUid;
+  if (!uid && targetEmail) {
+    const snap = await db.collection('users').where('email', '==', targetEmail).limit(1).get();
+    if (snap.empty) throw new HttpsError('not-found', `이메일 ${targetEmail} 유저를 찾을 수 없습니다`);
+    uid = snap.docs[0].id;
+  }
+  if (!uid) throw new HttpsError('invalid-argument', 'targetUid 또는 targetEmail이 필요합니다');
+
+  const invRef = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(invRef);
+    const current = snap.exists ? (snap.data().count || 0) : 0;
+    tx.set(invRef, {
+      uid, itemId: String(itemId),
+      count: current + count,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+
+  return { ok: true, uid, itemId, count };
+}
+
 // ── 관리자: 아이템 저장 ────────────────────────────────────────────────────────
-async function adminSaveTreasureItem(adminUid, { itemId, name, image, description } = {}) {
+async function adminSaveTreasureItem(adminUid, { itemId, name, image, description, category, armoFolder } = {}) {
   await requireAdmin(adminUid);
   if (itemId == null) throw new HttpsError('invalid-argument', 'itemId가 필요합니다');
 
-  await db.collection('treasure_items').doc(String(itemId)).set({
+  const docData = {
     name: name || '',
     image: image || `${itemId}.png`,
     description: description || '',
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
+  };
+  if (category) docData.category = category;
+  if (armoFolder != null) docData.armoFolder = armoFolder;
+
+  await db.collection('treasure_items').doc(String(itemId)).set(docData, { merge: true });
 
   return { ok: true };
 }
@@ -379,4 +428,5 @@ module.exports = {
   adminSaveTreasureBox,
   adminDeleteTreasureBox,
   adminSaveVoucher,
+  adminGrantItem,
 };
