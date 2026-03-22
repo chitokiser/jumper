@@ -4,8 +4,8 @@
 import { getApps, initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {
-  getFirestore, doc, getDoc, onSnapshot,
-  collection, query, where, limit, getDocs,
+  getFirestore, doc, getDoc, setDoc, onSnapshot,
+  collection, query, where, limit, getDocs, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -119,7 +119,7 @@ async function autoStartRide() {
   }
 }
 
-// ── 위치 전송 ─────────────────────────────────────────────────────────
+// ── 위치 전송 (Firestore 직접 write → 탑승자 앱에 즉시 반영) ────────────
 function startLocationBroadcast() {
   if (_locInt) return;
   _locInt = setInterval(() => {
@@ -127,7 +127,13 @@ function startLocationBroadcast() {
     navigator.geolocation.getCurrentPosition((pos) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
-      fnUpdateLoc({ lat, lng, heading: pos.coords.heading || 0, speed: pos.coords.speed || 0 }).catch(() => {});
+
+      // Firestore 직접 write (Cloud Function 경유 없이 ~100ms 반영)
+      setDoc(
+        doc(db, 'buggy_driver_locations', _uid),
+        { lat, lng, heading: pos.coords.heading || 0, speed: pos.coords.speed || 0, updatedAt: serverTimestamp() },
+        { merge: true }
+      ).catch(() => {});
 
       // 도착 후(arriving) 5m 이내 → 자동 탑승
       if (_rideStatus === 'arriving' && _pickupLat && _pickupLng && !_startingRide) {
@@ -142,7 +148,7 @@ function startLocationBroadcast() {
         if (dist <= 5) autoStartRide();
       }
 
-      // 운행 중 → 지도에 내 위치 업데이트
+      // 운행 중 → 기사앱 지도에 내 위치 업데이트
       if (_rideStatus === 'riding') {
         if (!_mapRiding) initRidingMap(lat, lng);
         else updateRidingMap(lat, lng);

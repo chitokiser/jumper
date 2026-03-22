@@ -27,11 +27,13 @@ let _rideSub  = null;         // onSnapshot 해제 함수
 let _timerInt = null;
 let _map           = null;
 let _marker        = null;
-let _mapAccepted   = null;   // 수락됨 섹션 지도
-let _mapRiding     = null;   // 운행 중 섹션 지도
-let _driverMarkerA = null;   // 수락됨 섹션 드라이버 마커
-let _driverMarkerR = null;   // 운행 중 섹션 드라이버 마커
+let _mapAccepted   = null;
+let _mapRiding     = null;
+let _driverMarkerA = null;
+let _driverMarkerR = null;
+let _pickupMarkerA = null;   // 수락됨 지도의 탑승위치 마커
 let _driverLocSub  = null;
+let _lastRide      = null;   // Maps 로드 전 도착한 라이드 데이터 캐시
 
 let _pickupLat = null;
 let _pickupLng = null;
@@ -230,12 +232,26 @@ async function setPickup(lat, lng) {
 
 // ── Google Maps 로드 ─────────────────────────────────────────────────────
 function loadMaps() {
-  if (window.google?.maps) { initMap(); return; }
+  if (window.google?.maps) { onMapsLoaded(); return; }
   const key = window.__mapsKey || '';
   const s = document.createElement('script');
   s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
-  s.onload = initMap;
+  s.onload = onMapsLoaded;
   document.head.appendChild(s);
+}
+
+function onMapsLoaded() {
+  initMap();
+  // Maps 로드 전에 라이드 상태가 이미 도착한 경우 지도 재초기화
+  if (_lastRide) {
+    const r = _lastRide;
+    if ((r.status === 'accepted' || r.status === 'arriving') && r.pickupLat) {
+      ensureAcceptedMap(r.pickupLat, r.pickupLng, r);
+    }
+    if (r.status === 'riding' && r.pickupLat) {
+      ensureRidingMap(r.pickupLat, r.pickupLng);
+    }
+  }
 }
 
 // ── 사용자 HEX 잔액 로드 ─────────────────────────────────────────────────
@@ -300,6 +316,8 @@ function subscribeRide(rideId) {
 }
 
 function handleRideUpdate(ride) {
+  _lastRide = ride; // Maps 로드 전 도착 시 onMapsLoaded에서 재초기화용
+
   switch (ride.status) {
     case 'searching':
       showSection('secSearching');
@@ -315,7 +333,7 @@ function handleRideUpdate(ride) {
         ride.status === 'arriving' ? '🚗 도착 중' : '✅ 수락됨';
       document.getElementById('rideStatusBadge').className =
         `buggy-badge buggy-badge--${ride.status}`;
-      if (ride.pickupLat) ensureAcceptedMap(ride.pickupLat, ride.pickupLng);
+      if (ride.pickupLat) ensureAcceptedMap(ride.pickupLat, ride.pickupLng, ride);
       subscribeDriverLocation(ride.driverId);
       break;
 
@@ -366,15 +384,18 @@ function handleRideUpdate(ride) {
 }
 
 // ── 기사 실시간 위치 ─────────────────────────────────────────────────────
-const CAB_ICON = () => ({
-  url: 'https://maps.google.com/mapfiles/ms/icons/cabs/cab.png',
-  scaledSize: new google.maps.Size(40, 40),
-});
+const CAB_ICON_URL    = 'https://maps.google.com/mapfiles/ms/icons/cabs/cab.png';
+const PICKUP_ICON_URL = 'https://maps.google.com/mapfiles/ms/icons/red-dot.png';
+
+function makeCabMarker(map, pos) {
+  return new google.maps.Marker({
+    position: pos, map, title: '기사',
+    icon: { url: CAB_ICON_URL, scaledSize: new google.maps.Size(40, 40) },
+  });
+}
 
 function placeOrMoveMarker(markerRef, map, pos) {
-  if (!markerRef) {
-    return new google.maps.Marker({ position: pos, map, icon: CAB_ICON(), title: '기사' });
-  }
+  if (!markerRef) return makeCabMarker(map, pos);
   markerRef.setPosition(pos);
   map.panTo(pos);
   return markerRef;
@@ -395,12 +416,22 @@ function subscribeDriverLocation(driverId) {
   );
 }
 
-function ensureAcceptedMap(lat, lng) {
-  if (_mapAccepted || !window.google?.maps) return;
-  _mapAccepted = new google.maps.Map(document.getElementById('buggyMapAccepted'), {
-    center: { lat, lng }, zoom: 15,
-    disableDefaultUI: true, gestureHandling: 'greedy',
-  });
+function ensureAcceptedMap(lat, lng, ride) {
+  if (!window.google?.maps) return;
+  if (!_mapAccepted) {
+    _mapAccepted = new google.maps.Map(document.getElementById('buggyMapAccepted'), {
+      center: { lat, lng }, zoom: 15,
+      disableDefaultUI: true, gestureHandling: 'greedy',
+    });
+  }
+  // 탑승 위치 마커 (내 픽업 위치)
+  if (!_pickupMarkerA && ride?.pickupLat) {
+    _pickupMarkerA = new google.maps.Marker({
+      position: { lat: ride.pickupLat, lng: ride.pickupLng },
+      map: _mapAccepted, title: '탑승 위치',
+      icon: { url: PICKUP_ICON_URL },
+    });
+  }
 }
 
 function ensureRidingMap(lat, lng) {

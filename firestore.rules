@@ -512,8 +512,8 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
     match /buggy_driver_locations/{driverUid} {
-      allow get, list: if signedIn(); // 탑승자도 실시간 위치 조회 가능
-      allow write: if false;          // Cloud Function only
+      allow get, list: if signedIn();                              // 탑승자도 실시간 위치 조회
+      allow write: if signedIn() && request.auth.uid == driverUid; // 기사 본인 직접 write
     }
     match /buggy_transactions/{docId} {
       allow get: if isAdmin()
