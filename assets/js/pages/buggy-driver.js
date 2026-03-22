@@ -581,3 +581,83 @@ loadMaps();
 
 // ── 설정 로드 ─────────────────────────────────────────────────────────
 fnGetConfig({}).then(res => Object.assign(_config, res.data)).catch(() => {});
+
+// ── 매출장부 ──────────────────────────────────────────────────
+const fnGetEarnings = httpsCallable(fns, 'buggyGetDriverEarnings');
+let _currentEarnPeriod = 'today';
+
+async function loadEarnings(period = _currentEarnPeriod) {
+  _currentEarnPeriod = period;
+  const earnList  = document.getElementById('earnList');
+  const earnEmpty = document.getElementById('earnEmpty');
+  const earnRides = document.getElementById('earnTotalRides');
+  const earnShare = document.getElementById('earnTotalShare');
+  if (!earnList) return;
+  earnList.innerHTML = '<div style="text-align:center;padding:20px;color:#a8a29e;">불러오는 중...</div>';
+
+  try {
+    const res  = await fnGetEarnings({ period });
+    const data = res.data;
+    earnRides.textContent = `${data.totalRides}건`;
+    earnShare.textContent = `₫${Number(data.totalShare).toLocaleString()}`;
+
+    if (!data.earnings?.length) {
+      earnList.innerHTML = '';
+      earnEmpty.style.display = 'block';
+      return;
+    }
+    earnEmpty.style.display = 'none';
+    earnList.innerHTML = data.earnings.map(e => {
+      const date   = e.endedAt ? new Date(e.endedAt).toLocaleDateString('ko-KR') : '-';
+      const time   = e.endedAt ? new Date(e.endedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '-';
+      const status = e.payoutStatus === 'payment_failed' ? 'failed' : 'paid';
+      const statusLabel = status === 'paid' ? '정산대기' : '결제실패';
+      return `
+        <div class="earn-item">
+          <div class="earn-item-header">
+            <span style="font-size:0.82rem;color:#57534e;">${date} ${time}</span>
+            <span class="earn-item-status ${status}">${statusLabel}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:700;font-size:0.95rem;">₫${Number(e.grossFare||0).toLocaleString()}</div>
+              <div style="font-size:0.75rem;color:#78716c;">${e.minutesDriven||0}분 · ${e.pickupAddress||'-'}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:0.82rem;color:#f59e0b;font-weight:700;">내 수익 ₫${Number(e.driverShare||0).toLocaleString()}</div>
+              <div style="font-size:0.72rem;color:#a8a29e;">수수료 ₫${Number(e.platformFee||0).toLocaleString()}</div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    earnList.innerHTML = `<div style="text-align:center;color:#dc2626;padding:20px;">오류: ${err.message}</div>`;
+  }
+}
+
+// 탭 네비게이션
+document.querySelectorAll('.drv-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.drv-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (btn.dataset.tab === 'earnings') {
+      // Hide active ride section, show earnings
+      document.querySelectorAll('.buggy-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('drvSecEarnings').classList.add('active');
+      loadEarnings();
+    } else {
+      // Restore home - show idle or current ride section
+      document.querySelectorAll('.buggy-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('drvSecIdle').classList.add('active');
+    }
+  });
+});
+
+// 기간 필터 버튼
+document.querySelectorAll('.earn-period-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.earn-period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadEarnings(btn.dataset.period);
+  });
+});

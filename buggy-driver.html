@@ -18,6 +18,21 @@
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/pages/buggy.css" />
 
+  <style>
+.earn-period-btn { flex:1; padding:8px; border:1.5px solid #e7e5e4; border-radius:8px; background:#fff; font-size:0.82rem; cursor:pointer; font-weight:600; color:#57534e; }
+.earn-period-btn.active { border-color:#f59e0b; background:#fffbeb; color:#92400e; }
+.earn-stat-card { background:#fafaf9; border-radius:10px; padding:12px; text-align:center; border:1px solid #e7e5e4; }
+.earn-stat-val { font-size:1.1rem; font-weight:800; color:#1c1917; margin-bottom:2px; }
+.earn-stat-label { font-size:0.72rem; color:#78716c; }
+.earn-item { background:#fff; border:1px solid #e7e5e4; border-radius:12px; padding:12px 14px; }
+.earn-item-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.earn-item-status { font-size:0.72rem; padding:2px 8px; border-radius:20px; font-weight:700; }
+.earn-item-status.paid { background:#dcfce7; color:#15803d; }
+.earn-item-status.failed { background:#fee2e2; color:#dc2626; }
+.earn-item-status.partial { background:#fef9c3; color:#a16207; }
+.drv-tab.active span, .drv-tab.active { color:#f59e0b !important; }
+  </style>
+
   <!-- PWA 설치 안내 (Android beforeinstallprompt + iOS Safari 가이드) -->
   <script src="/assets/js/pwa-install.js" defer></script>
 </head>
@@ -42,7 +57,7 @@
     <p id="drvLoginError" style="color:#dc2626;font-size:0.85rem;margin-top:16px;display:none;"></p>
   </div>
 
-  <main class="buggy-wrap" id="drvMain" style="display:none;">
+  <main class="buggy-wrap" id="drvMain" style="display:none;padding-bottom:70px;">
 
     <div class="buggy-header">
       <span class="buggy-icon">🧑‍✈️</span>
@@ -139,6 +154,45 @@
       </div>
       <button class="buggy-btn buggy-btn--primary" id="btnBackToIdle">다음 호출 대기</button>
     </div>
+
+    <!-- ── 섹션 E: 매출장부 ── -->
+    <div class="buggy-section" id="drvSecEarnings" style="padding-bottom:80px;">
+      <div class="buggy-card" style="margin-bottom:12px;">
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="earn-period-btn active" data-period="today">오늘</button>
+          <button class="earn-period-btn" data-period="week">이번주</button>
+          <button class="earn-period-btn" data-period="month">이번달</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="earn-stat-card">
+            <div class="earn-stat-val" id="earnTotalRides">-</div>
+            <div class="earn-stat-label">운행 건수</div>
+          </div>
+          <div class="earn-stat-card">
+            <div class="earn-stat-val" id="earnTotalShare">-</div>
+            <div class="earn-stat-label">내 수익 (20% 차감 후)</div>
+          </div>
+        </div>
+      </div>
+      <div id="earnList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div id="earnEmpty" style="display:none;" class="buggy-empty">
+        <div class="buggy-empty-icon">💰</div>
+        <div>이 기간 운행 내역이 없습니다</div>
+      </div>
+    </div>
+
+    <!-- ── 하단 탭 네비게이션 ── -->
+    <nav id="drvBottomNav" style="
+      position:fixed;bottom:0;left:0;right:0;z-index:100;
+      background:#fff;border-top:1px solid #e7e5e4;
+      display:flex;height:60px;max-width:480px;margin:0 auto;">
+      <button class="drv-tab active" id="tabHome" data-tab="home" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:0.7rem;color:#f59e0b;cursor:pointer;">
+        <span style="font-size:1.3rem;">🏠</span>홈
+      </button>
+      <button class="drv-tab" id="tabEarnings" data-tab="earnings" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:0.7rem;color:#a8a29e;cursor:pointer;">
+        <span style="font-size:1.3rem;">💰</span>매출장부
+      </button>
+    </nav>
 
   </main><!-- #drvMain -->
 

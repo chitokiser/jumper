@@ -522,6 +522,19 @@ service cloud.firestore {
         || (signedIn() && resource.data.userId == request.auth.uid);
       allow write: if false; // Cloud Function only
     }
+    match /ride_audit_logs/{docId} {
+      allow get, list: if isAdmin();
+      allow write: if false;
+    }
+    match /payment_attempt_logs/{docId} {
+      allow get, list: if isAdmin();
+      allow write: if false;
+    }
+    match /buggy_driver_earnings/{docId} {
+      allow get: if isAdmin() || (signedIn() && resource.data.driverId == request.auth.uid);
+      allow list: if isAdmin() || (signedIn() && resource.data.driverId == request.auth.uid);
+      allow write: if false;
+    }
 
     // ── DAO 의결 시스템 ────────────────────────────────────────────
     // 안건 목록·상세: 누구나 읽기 가능

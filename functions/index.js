@@ -1403,13 +1403,21 @@ exports.buggyAdminCreateDriver = onCall(wrapError(async (req) => {
   const uid = requireAuth(req);
   return buggyH.adminCreateDriver(uid, req.data ?? {});
 }));
-exports.buggyAdminForceEnd = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.adminForceEnd(uid, req.data ?? {});
-}));
+exports.buggyAdminForceEnd = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return buggyH.adminForceEnd(uid, req.data ?? {}, walletSecret.value());
+  })
+);
 exports.buggyAdminSaveConfig = onCall(wrapError(async (req) => {
   const uid = requireAuth(req);
   return buggyH.adminSaveConfig(uid, req.data ?? {});
+}));
+exports.buggyGetDriverEarnings = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return buggyH.getDriverEarnings(uid, req.data ?? {});
 }));
 exports.buggyGetConfig = onCall(wrapError(async (_req) => {
   return buggyH.getConfig();
