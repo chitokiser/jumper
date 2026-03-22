@@ -40,10 +40,12 @@ let _pickupLng = null;
 let _destLat   = null;
 let _destLng   = null;
 let _destMarker   = null;
-let _myLocMarker  = null;   // 파란 GPS 내 위치 점
-let _dirService   = null;   // DirectionsService
-let _dirRendererA = null;   // DirectionsRenderer (accepted)
-let _dirRendererR = null;   // DirectionsRenderer (riding)
+let _myLocMarker   = null;   // 파란 GPS 내 위치 점
+let _dirService    = null;   // DirectionsService
+let _dirRendererA  = null;   // DirectionsRenderer (accepted — 기사→탑승위치)
+let _dirRendererR  = null;   // DirectionsRenderer (riding  — 기사→목적지)
+let _dirRendererA2 = null;   // 탑승위치→목적지 미리보기 (accepted)
+let _dirRendererR2 = null;   // 탑승위치→목적지 정적선 (riding)
 
 // ── DOM ─────────────────────────────────────────────────────────────────────
 const balAmount   = document.getElementById('balAmount');
@@ -594,6 +596,23 @@ function ensureAcceptedMap(lat, lng, ride) {
       icon: { url: PICKUP_ICON_URL },
     });
   }
+  // 탑승위치→목적지 미리보기선 (연한 파란선)
+  const dLat = _destLat || ride?.destLat;
+  const dLng = _destLng || ride?.destLng;
+  if (!_dirRendererA2 && dLat && dLng && _pickupLat && _pickupLng && _dirService) {
+    _dirRendererA2 = new google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: '#93c5fd', strokeWeight: 4, strokeOpacity: 0.55 },
+    });
+    _dirRendererA2.setMap(_mapAccepted);
+    _dirService.route({
+      origin:      { lat: _pickupLat, lng: _pickupLng },
+      destination: { lat: dLat, lng: dLng },
+      travelMode:  google.maps.TravelMode.DRIVING,
+    }, (result, status) => {
+      if (status === 'OK' && _dirRendererA2) _dirRendererA2.setDirections(result);
+    });
+  }
 }
 
 function ensureRidingMap(lat, lng) {
@@ -607,6 +626,23 @@ function ensureRidingMap(lat, lng) {
     polylineOptions: { strokeColor: '#2563eb', strokeWeight: 5, strokeOpacity: 0.85 },
   });
   _dirRendererR.setMap(_mapRiding);
+  // 탑승위치→목적지 정적선 (연한 파란선)
+  const dLat = _destLat || _lastRide?.destLat;
+  const dLng = _destLng || _lastRide?.destLng;
+  if (dLat && dLng && _pickupLat && _pickupLng && _dirService) {
+    _dirRendererR2 = new google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: '#bfdbfe', strokeWeight: 4, strokeOpacity: 0.5 },
+    });
+    _dirRendererR2.setMap(_mapRiding);
+    _dirService.route({
+      origin:      { lat: _pickupLat, lng: _pickupLng },
+      destination: { lat: dLat, lng: dLng },
+      travelMode:  google.maps.TravelMode.DRIVING,
+    }, (result, status) => {
+      if (status === 'OK' && _dirRendererR2) _dirRendererR2.setDirections(result);
+    });
+  }
   setTimeout(() => google.maps.event.trigger(_mapRiding, 'resize'), 80);
 }
 
@@ -666,6 +702,20 @@ btnNewRide.addEventListener('click', () => {
   btnRequest.disabled = !(_user && _pickupLat);
   btnRequest.textContent = '🚗 버기카 호출하기';
   showSection('secIdle');
+});
+
+// ── 지도 확대 FAB ────────────────────────────────────────────────────
+document.getElementById('btnMapFull').addEventListener('click', () => {
+  const app = document.getElementById('buggyApp');
+  const btn = document.getElementById('btnMapFull');
+  const isExpanded = app.classList.toggle('map-expanded');
+  btn.textContent = isExpanded ? '✕' : '⛶';
+  btn.title       = isExpanded ? '지도 축소' : '지도 전체 보기';
+  setTimeout(() => {
+    if (_map)        google.maps.event.trigger(_map,        'resize');
+    if (_mapAccepted) google.maps.event.trigger(_mapAccepted, 'resize');
+    if (_mapRiding)   google.maps.event.trigger(_mapRiding,   'resize');
+  }, 320);
 });
 
 // ── 드로어 메뉴 ──────────────────────────────────────────────────────────────────

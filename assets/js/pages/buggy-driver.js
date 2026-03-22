@@ -46,7 +46,9 @@ let _pickMarker       = null;
 let _driverSelfMarker = null;  // going 지도 — 기사 자체 위치 (파란점)
 let _dirService       = null;
 let _dirRendererGoing = null;  // going 지도 경로선 (기사→탑승위치)
-let _dirRendererRiding = null; // riding 지도 경로선 (탑승위치→목적지)
+let _dirRendererRiding = null; // riding 지도 경로선 (기사→목적지, 실시간)
+let _dirRendererRoute  = null; // going 지도 미리보기선 (탑승위치→목적지)
+let _dirRendererRoute2 = null; // riding 지도 정적선 (탑승위치→목적지)
 let _mapRiding        = null;  // 운행 중 지도
 let _myMarker         = null;  // 운행 중 내 위치 마커
 let _rideDestLat      = null;  // 목적지 좌표
@@ -181,16 +183,30 @@ function startLocationBroadcast() {
       if (_rideStatus === 'riding') {
         if (!_mapRiding) initRidingMap(lat, lng);
         else updateRidingMap(lat, lng);
-        if (_rideDestLat && _rideDestLng && _dirService && _dirRendererRiding
-            && Date.now() - _lastDirRideTime > 10000) {
-          _lastDirRideTime = Date.now();
-          _dirService.route({
-            origin: driverPos,
-            destination: { lat: _rideDestLat, lng: _rideDestLng },
-            travelMode: google.maps.TravelMode.DRIVING,
-          }, (result, status) => {
-            if (status === 'OK') _dirRendererRiding.setDirections(result);
-          });
+
+        if (_rideDestLat && _rideDestLng) {
+          // 목적지까지 남은 거리 (텍스트)
+          const distToDestRow = document.getElementById('drvDistToDestRow');
+          const distToDestEl  = document.getElementById('drvDistToDest');
+          if (distToDestRow && distToDestEl) {
+            distToDestRow.style.display = '';
+            const dist = distanceM(lat, lng, _rideDestLat, _rideDestLng);
+            distToDestEl.textContent = dist < 1000
+              ? `${Math.round(dist)}m`
+              : `${(dist / 1000).toFixed(1)}km`;
+          }
+
+          // 기사→목적지 실시간 경로선 갱신 (10초 throttle)
+          if (_dirService && _dirRendererRiding && Date.now() - _lastDirRideTime > 10000) {
+            _lastDirRideTime = Date.now();
+            _dirService.route({
+              origin: driverPos,
+              destination: { lat: _rideDestLat, lng: _rideDestLng },
+              travelMode: google.maps.TravelMode.DRIVING,
+            }, (result, status) => {
+              if (status === 'OK') _dirRendererRiding.setDirections(result);
+            });
+          }
         }
       }
     }, () => {});
@@ -241,6 +257,22 @@ function initMap(lat, lng) {
   });
   _dirRendererGoing.setMap(_map);
 
+  // 탑승위치→목적지 미리보기 경로 (연한 파란선)
+  if (_pickupLat && _pickupLng && _rideDestLat && _rideDestLng) {
+    _dirRendererRoute = new google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: '#93c5fd', strokeWeight: 4, strokeOpacity: 0.55 },
+    });
+    _dirRendererRoute.setMap(_map);
+    _dirService.route({
+      origin:      { lat: _pickupLat, lng: _pickupLng },
+      destination: { lat: _rideDestLat, lng: _rideDestLng },
+      travelMode:  google.maps.TravelMode.DRIVING,
+    }, (result, status) => {
+      if (status === 'OK' && _dirRendererRoute) _dirRendererRoute.setDirections(result);
+    });
+  }
+
   setTimeout(() => google.maps.event.trigger(_map, 'resize'), 100);
 }
 
@@ -268,15 +300,15 @@ function initRidingMap(lat, lng) {
     },
   });
 
-  // 경로선 (기사 현재위치 → 목적지)
+  // 경로선 (기사 현재위치 → 목적지, 실시간)
   if (!_dirService) _dirService = new google.maps.DirectionsService();
   _dirRendererRiding = new google.maps.DirectionsRenderer({
-    suppressMarkers: false,
+    suppressMarkers: true,
     polylineOptions: { strokeColor: '#2563eb', strokeWeight: 5, strokeOpacity: 0.8 },
   });
   _dirRendererRiding.setMap(_mapRiding);
 
-  // 목적지가 있으면 즉시 경로 표시
+  // 목적지가 있으면 즉시 기사→목적지 경로 표시
   if (_rideDestLat && _rideDestLng) {
     _dirService.route({
       origin: { lat, lng },
@@ -286,6 +318,22 @@ function initRidingMap(lat, lng) {
       if (status === 'OK') _dirRendererRiding.setDirections(result);
     });
     _lastDirRideTime = Date.now();
+  }
+
+  // 탑승위치→목적지 정적 경로 (연한 파란선 — 전체 루트 미리보기)
+  if (_pickupLat && _pickupLng && _rideDestLat && _rideDestLng) {
+    _dirRendererRoute2 = new google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: '#bfdbfe', strokeWeight: 4, strokeOpacity: 0.5 },
+    });
+    _dirRendererRoute2.setMap(_mapRiding);
+    _dirService.route({
+      origin:      { lat: _pickupLat, lng: _pickupLng },
+      destination: { lat: _rideDestLat, lng: _rideDestLng },
+      travelMode:  google.maps.TravelMode.DRIVING,
+    }, (result, status) => {
+      if (status === 'OK' && _dirRendererRoute2) _dirRendererRoute2.setDirections(result);
+    });
   }
 
   setTimeout(() => google.maps.event.trigger(_mapRiding, 'resize'), 60);
@@ -689,6 +737,25 @@ onAuthStateChanged(auth, async (user) => {
     startLocationBroadcast();
   }
 });
+
+// ── 지도 확대/축소 버튼 ────────────────────────────────────────────────
+function initMapExpandBtns() {
+  ['btnExpandGoing', 'btnExpandRiding'].forEach((btnId) => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const wrap = btn.closest('.map-wrap');
+      const isExpanded = wrap.classList.toggle('map-fullscreen');
+      btn.textContent = isExpanded ? '✕' : '⛶';
+      btn.title       = isExpanded ? '지도 축소' : '지도 확대';
+      setTimeout(() => {
+        if (_map)       google.maps.event.trigger(_map,       'resize');
+        if (_mapRiding) google.maps.event.trigger(_mapRiding, 'resize');
+      }, 50);
+    });
+  });
+}
+initMapExpandBtns();
 
 // ── 지도 로드 ─────────────────────────────────────────────────────────
 loadMaps();

@@ -16,6 +16,7 @@ const FieldValue = admin.firestore.FieldValue;
 const DEFAULT_CONFIG = {
   baseFare: 50000, intervalMinutes: 10, intervalFare: 50000,
   minHexUsd: 0.002, searchRadiusKm: 10, driverTimeoutSeconds: 120,
+  driverSharePct: 80,
 };
 
 async function getConfig() {
@@ -241,10 +242,11 @@ async function processRideEnd(rideId, endedBy, endedByActorId, masterSecret) {
 
   batch.update(rideRef, rideUpdate);
 
-  // 기사 매출 기록 (수수료 20%)
+  // 기사 매출 기록 (수수료 설정에 따라 차감)
   if (ride.driverId && fare > 0) {
-    const platformFee  = Math.round(fare * 0.2);
-    const driverShare  = fare - platformFee;
+    const sharePct     = (cfg.driverSharePct ?? 80) / 100;
+    const driverShare  = Math.round(fare * sharePct);
+    const platformFee  = fare - driverShare;
     const earningRef   = db.collection('buggy_driver_earnings').doc();
     batch.set(earningRef, {
       driverId:     ride.driverId,

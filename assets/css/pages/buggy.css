@@ -906,3 +906,65 @@
   font-weight: 600;
   margin-bottom: 14px;
 }
+
+/* ── 지도 확대 버튼 (기사앱) ──────────────────────── */
+.map-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+.map-wrap > [id^="drv"] {
+  margin-bottom: 0;
+}
+.map-expand-btn {
+  position: absolute;
+  top: 10px; right: 10px; z-index: 10;
+  width: 36px; height: 36px;
+  border: none; border-radius: 8px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 1px 6px rgba(0,0,0,.22);
+  cursor: pointer; font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .1s;
+}
+.map-expand-btn:active { transform: scale(.93); }
+.map-wrap.map-fullscreen {
+  position: fixed; inset: 0; z-index: 500;
+  margin: 0; border-radius: 0;
+}
+.map-wrap.map-fullscreen > [id] {
+  height: 100% !important;
+  border-radius: 0 !important;
+  margin-bottom: 0 !important;
+}
+.map-wrap.map-fullscreen .map-expand-btn {
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: 14px;
+}
+
+/* ── 사용자앱 지도 확대 FAB ─────────────────────── */
+.fab-map-expand {
+  position: absolute;
+  right: 16px;
+  bottom: calc(var(--bs-h, 280px) + 70px);
+  z-index: 80;
+  width: 42px; height: 42px;
+  border: none; border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(0,0,0,.22);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: #374151;
+  transition: transform .1s;
+}
+.fab-map-expand:active { transform: scale(.93); }
+
+/* ── 바텀시트 슬라이드 트랜지션 ─────────────────── */
+#bottomSheet {
+  transition: transform .3s cubic-bezier(.4, 0, .2, 1);
+}
+#buggyApp.map-expanded #bottomSheet {
+  transform: translateY(calc(100% - 56px));
+}
+#buggyApp.map-expanded .fab-map-expand {
+  bottom: 70px;
+}

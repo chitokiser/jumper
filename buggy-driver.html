@@ -107,7 +107,10 @@
 
     <!-- ── 섹션 C: 이동 중 (탑승 전) ── -->
     <div class="buggy-section" id="drvSecGoing">
-      <div id="drvMap" style="width:100%;height:280px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);margin-bottom:14px;"></div>
+      <div class="map-wrap" id="drvMapWrap">
+        <div id="drvMap" style="width:100%;height:280px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);"></div>
+        <button class="map-expand-btn" id="btnExpandGoing" title="지도 확대">⛶</button>
+      </div>
       <div class="buggy-driver-ride-card">
         <h3 id="goSectionTitle">🚗 이동 중 — 탑승 위치로</h3>
         <div class="buggy-row"><span class="k">탑승 위치</span><span class="v" id="goPickupAddr">-</span></div>
@@ -125,7 +128,10 @@
 
     <!-- ── 섹션 D: 탑승 중 ── -->
     <div class="buggy-section" id="drvSecRiding">
-      <div id="drvMapRiding" style="width:100%;height:240px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);margin-bottom:14px;"></div>
+      <div class="map-wrap" id="drvMapRidingWrap">
+        <div id="drvMapRiding" style="width:100%;height:240px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);"></div>
+        <button class="map-expand-btn" id="btnExpandRiding" title="지도 확대">⛶</button>
+      </div>
       <div class="buggy-driver-ride-card">
         <h3>✅ 운행 중</h3>
         <div class="buggy-timer" id="drvTimer">00:00</div>
@@ -134,6 +140,10 @@
         <div style="text-align:center;font-size:0.75rem;color:#78716c;margin-bottom:10px;">예상 요금</div>
         <div class="buggy-row"><span class="k">탑승자</span><span class="v" id="rideUserName">-</span></div>
         <div class="buggy-row"><span class="k">탑승 시작</span><span class="v" id="rideStartedAt">-</span></div>
+        <div class="buggy-row" id="drvDistToDestRow" style="display:none;">
+          <span class="k">목적지까지</span>
+          <span class="v" id="drvDistToDest" style="font-weight:700;color:#2563eb;">-</span>
+        </div>
       </div>
       <button class="buggy-btn buggy-btn--primary" id="btnStart" style="display:none;">▶️ 탑승 시작</button>
       <button class="buggy-btn buggy-btn--danger"  id="btnEnd">🔴 운행 종료</button>

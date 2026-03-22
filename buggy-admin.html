@@ -141,6 +141,10 @@
           <label class="buggy-input-label">기사 응답 제한 시간 (초)</label>
           <input type="number" class="buggy-input" id="cfgTimeout" value="120" />
         </div>
+        <div class="buggy-field">
+          <label class="buggy-input-label">기사 수익 비율 (%) — 플랫폼 수수료 = 100% - 이 값</label>
+          <input type="number" class="buggy-input" id="cfgDriverShare" value="80" min="0" max="100" />
+        </div>
         <button class="buggy-btn buggy-btn--primary" id="btnSaveConfig">저장</button>
         <div id="configResult" style="margin-top:10px;font-size:0.9rem;"></div>
       </div>

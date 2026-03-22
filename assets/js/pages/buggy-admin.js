@@ -289,6 +289,7 @@ async function loadConfig() {
     document.getElementById('cfgIntervalFare').value = cfg.intervalFare  ?? 50000;
     document.getElementById('cfgMinBalance').value   = cfg.minBalance    ?? 50000;
     document.getElementById('cfgTimeout').value      = cfg.driverTimeoutSeconds ?? 120;
+    document.getElementById('cfgDriverShare').value  = cfg.driverSharePct ?? 80;
   } catch (_) {}
 }
 
@@ -299,6 +300,7 @@ document.getElementById('btnSaveConfig').addEventListener('click', async () => {
     intervalFare:         parseInt(document.getElementById('cfgIntervalFare').value) || 50000,
     minBalance:           parseInt(document.getElementById('cfgMinBalance').value)   || 50000,
     driverTimeoutSeconds: parseInt(document.getElementById('cfgTimeout').value)      || 120,
+    driverSharePct:       parseInt(document.getElementById('cfgDriverShare').value)  || 80,
   };
   document.getElementById('btnSaveConfig').disabled = true;
   const resultEl = document.getElementById('configResult');
