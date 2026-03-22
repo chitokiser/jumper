@@ -704,15 +704,35 @@ btnNewRide.addEventListener('click', () => {
   showSection('secIdle');
 });
 
+// ── 바텀시트 높이 → CSS --bs-h 동기화 ────────────────────────────────
+const _appEl = document.getElementById('buggyApp');
+const _bsEl  = document.getElementById('bottomSheet');
+if (_bsEl && window.ResizeObserver) {
+  new ResizeObserver(([entry]) => {
+    _appEl.style.setProperty('--bs-h', `${Math.round(entry.contentRect.height)}px`);
+  }).observe(_bsEl);
+}
+
+// ── 바텀시트 핸들 스와이프 → 지도 확대/축소 ─────────────────────────
+const _bsHandle = document.querySelector('.bs-handle');
+if (_bsHandle) {
+  let _swipeY = 0;
+  _bsHandle.addEventListener('touchstart', e => { _swipeY = e.touches[0].clientY; }, { passive: true });
+  _bsHandle.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - _swipeY;
+    if      (dy >  50) _appEl.classList.add('map-expanded');
+    else if (dy < -50) _appEl.classList.remove('map-expanded');
+  }, { passive: true });
+}
+
 // ── 지도 확대 FAB ────────────────────────────────────────────────────
-document.getElementById('btnMapFull').addEventListener('click', () => {
-  const app = document.getElementById('buggyApp');
-  const btn = document.getElementById('btnMapFull');
-  const isExpanded = app.classList.toggle('map-expanded');
-  btn.textContent = isExpanded ? '✕' : '⛶';
-  btn.title       = isExpanded ? '지도 축소' : '지도 전체 보기';
+const _btnMapFull = document.getElementById('btnMapFull');
+_btnMapFull.addEventListener('click', () => {
+  const isExpanded = _appEl.classList.toggle('map-expanded');
+  _btnMapFull.textContent = isExpanded ? '✕' : '⛶';
+  _btnMapFull.title       = isExpanded ? '지도 축소' : '지도 전체 보기';
   setTimeout(() => {
-    if (_map)        google.maps.event.trigger(_map,        'resize');
+    if (_map)         google.maps.event.trigger(_map,         'resize');
     if (_mapAccepted) google.maps.event.trigger(_mapAccepted, 'resize');
     if (_mapRiding)   google.maps.event.trigger(_mapRiding,   'resize');
   }, 320);

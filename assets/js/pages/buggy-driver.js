@@ -163,6 +163,11 @@ function startLocationBroadcast() {
             row.style.display = '';
             label.textContent = dist < 1000 ? `${dist}m` : `${(dist / 1000).toFixed(1)}km`;
             label.style.color = dist <= 10 ? '#16a34a' : '#f59e0b';
+            // 전체화면 info bar 실시간 갱신
+            const fsSub = document.getElementById('mapFsSub');
+            if (fsSub && document.getElementById('mapFsBar')?.classList.contains('visible')) {
+              fsSub.textContent = `탑승자까지 ${label.textContent}`;
+            }
           }
           if (dist <= 5) autoStartRide();
         }
@@ -194,6 +199,11 @@ function startLocationBroadcast() {
             distToDestEl.textContent = dist < 1000
               ? `${Math.round(dist)}m`
               : `${(dist / 1000).toFixed(1)}km`;
+            // 전체화면 info bar 실시간 갱신
+            const fsSub = document.getElementById('mapFsSub');
+            if (fsSub && document.getElementById('mapFsBar')?.classList.contains('visible')) {
+              fsSub.textContent = `목적지까지 ${distToDestEl.textContent}`;
+            }
           }
 
           // 기사→목적지 실시간 경로선 갱신 (10초 throttle)
@@ -740,20 +750,50 @@ onAuthStateChanged(auth, async (user) => {
 
 // ── 지도 확대/축소 버튼 ────────────────────────────────────────────────
 function initMapExpandBtns() {
+  const fsClose = document.getElementById('mapFsClose');
+  const fsBar   = document.getElementById('mapFsBar');
+  const fsTitle = document.getElementById('mapFsTitle');
+  const fsSub   = document.getElementById('mapFsSub');
+
+  function triggerResize() {
+    setTimeout(() => {
+      if (_map)       google.maps.event.trigger(_map,       'resize');
+      if (_mapRiding) google.maps.event.trigger(_mapRiding, 'resize');
+    }, 60);
+  }
+
+  function closeFs() {
+    document.querySelectorAll('.map-wrap.map-fullscreen').forEach(w => {
+      w.classList.remove('map-fullscreen');
+    });
+    if (fsClose) fsClose.classList.remove('visible');
+    if (fsBar)   fsBar.classList.remove('visible');
+    triggerResize();
+  }
+
   ['btnExpandGoing', 'btnExpandRiding'].forEach((btnId) => {
     const btn = document.getElementById(btnId);
     if (!btn) return;
     btn.addEventListener('click', () => {
       const wrap = btn.closest('.map-wrap');
       const isExpanded = wrap.classList.toggle('map-fullscreen');
-      btn.textContent = isExpanded ? '✕' : '⛶';
-      btn.title       = isExpanded ? '지도 축소' : '지도 확대';
-      setTimeout(() => {
-        if (_map)       google.maps.event.trigger(_map,       'resize');
-        if (_mapRiding) google.maps.event.trigger(_mapRiding, 'resize');
-      }, 50);
+
+      if (fsClose) fsClose.classList.toggle('visible', isExpanded);
+      if (fsBar)   fsBar.classList.toggle('visible',   isExpanded);
+
+      if (isExpanded) {
+        if (fsTitle) fsTitle.textContent = btnId === 'btnExpandGoing' ? '탑승 위치로 이동 중' : '운행 중';
+        if (fsSub) {
+          const distId = btnId === 'btnExpandGoing' ? 'goDistanceLabel' : 'drvDistToDest';
+          fsSub.textContent = document.getElementById(distId)?.textContent || '거리 계산 중...';
+        }
+      }
+      triggerResize();
     });
   });
+
+  if (fsClose) fsClose.addEventListener('click', closeFs);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFs(); });
 }
 initMapExpandBtns();
 

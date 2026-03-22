@@ -963,8 +963,79 @@
   transition: transform .3s cubic-bezier(.4, 0, .2, 1);
 }
 #buggyApp.map-expanded #bottomSheet {
-  transform: translateY(calc(100% - 56px));
+  transform: translateY(calc(100% - 60px));
 }
 #buggyApp.map-expanded .fab-map-expand {
-  bottom: 70px;
+  bottom: 74px;
+}
+#buggyApp.map-expanded .fab-location {
+  bottom: 128px;
+}
+
+/* ── 바텀시트 핸들 — 터치 영역 넓게 ─────────────── */
+.bs-handle {
+  cursor: ns-resize;
+  touch-action: none;
+  padding: 6px 0 2px;
+}
+
+/* ── 기사앱 반응형 지도 ────────────────────────────── */
+.drv-map-el {
+  width: 100%;
+  height: clamp(220px, 42vh, 400px);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid var(--buggy-border);
+  background: #e5e7eb;  /* 로딩 전 placeholder */
+}
+
+/* ── 기사앱 전체화면 지도 오버레이 UI ──────────────── */
+#mapFsClose {
+  position: fixed;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  right: 16px;
+  z-index: 502;
+  width: 46px; height: 46px;
+  border: none; border-radius: 50%;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 2px 16px rgba(0,0,0,.28);
+  cursor: pointer;
+  align-items: center; justify-content: center;
+  font-size: 1.3rem; color: #1c1917;
+  transition: transform .1s;
+  display: none;
+}
+#mapFsClose.visible { display: flex; }
+#mapFsClose:active { transform: scale(.9); }
+
+#mapFsBar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 501;
+  padding: 0 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255,255,255,.97);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -4px 28px rgba(0,0,0,.15);
+  display: none;
+}
+#mapFsBar.visible { display: block; }
+.map-fs-handle {
+  width: 42px; height: 4px;
+  background: #d1d5db; border-radius: 99px;
+  margin: 14px auto 12px;
+}
+.map-fs-title {
+  font-size: 1rem; font-weight: 800; color: #1c1917;
+  margin-bottom: 4px;
+}
+.map-fs-sub {
+  font-size: 0.85rem; color: #78716c;
+  margin-bottom: 12px;
+}
+
+/* ── 전체화면 상태 확대버튼 숨김 ───────────────────── */
+.map-wrap.map-fullscreen .map-expand-btn {
+  display: none;
 }

@@ -108,7 +108,7 @@
     <!-- ── 섹션 C: 이동 중 (탑승 전) ── -->
     <div class="buggy-section" id="drvSecGoing">
       <div class="map-wrap" id="drvMapWrap">
-        <div id="drvMap" style="width:100%;height:280px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);"></div>
+        <div id="drvMap" class="drv-map-el"></div>
         <button class="map-expand-btn" id="btnExpandGoing" title="지도 확대">⛶</button>
       </div>
       <div class="buggy-driver-ride-card">
@@ -129,7 +129,7 @@
     <!-- ── 섹션 D: 탑승 중 ── -->
     <div class="buggy-section" id="drvSecRiding">
       <div class="map-wrap" id="drvMapRidingWrap">
-        <div id="drvMapRiding" style="width:100%;height:240px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);"></div>
+        <div id="drvMapRiding" class="drv-map-el"></div>
         <button class="map-expand-btn" id="btnExpandRiding" title="지도 확대">⛶</button>
       </div>
       <div class="buggy-driver-ride-card">
@@ -207,6 +207,14 @@
   </main><!-- #drvMain -->
 
   <div class="buggy-toast" id="drvToast"></div>
+
+  <!-- 지도 전체화면 오버레이 (JS로 표시 제어) -->
+  <button id="mapFsClose" aria-label="지도 축소">✕</button>
+  <div id="mapFsBar">
+    <div class="map-fs-handle"></div>
+    <div class="map-fs-title" id="mapFsTitle">이동 중</div>
+    <div class="map-fs-sub"   id="mapFsSub">위치 확인 중...</div>
+  </div>
 
   <!-- 기사앱 홈화면 추가 안내 배너 -->
   <div id="driverInstallBanner" style="
