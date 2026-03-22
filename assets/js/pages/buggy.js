@@ -67,6 +67,14 @@ function showSection(id) {
   document.querySelectorAll('.buggy-section').forEach(s => s.classList.remove('active'));
   const el = document.getElementById(id);
   if (el) el.classList.add('active');
+
+  // map layer management
+  const mMain = document.getElementById('buggyMap');
+  const mAcc  = document.getElementById('buggyMapAccepted');
+  const mRide = document.getElementById('buggyMapRiding');
+  if (mMain) mMain.style.display     = (id === 'secAccepted' || id === 'secRiding') ? 'none' : '';
+  if (mAcc)  mAcc.style.display      = (id === 'secAccepted') ? '' : 'none';
+  if (mRide) mRide.style.display     = (id === 'secRiding')   ? '' : 'none';
 }
 
 function calcFareLive(startMs) {
@@ -189,6 +197,8 @@ function setDest(lat, lng, address) {
   // UI 업데이트
   document.getElementById('destAddrText').textContent = address;
   document.getElementById('destBox').style.display    = 'flex';
+  const clearBtn = document.getElementById('btnClearDest');
+  if (clearBtn) clearBtn.style.display = 'block';
 
   // 탑승/도착 둘 다 보이도록 지도 fit
   if (_pickupLat && _pickupLng) {
@@ -206,6 +216,8 @@ function clearDest() {
   document.getElementById('destInput').value          = '';
   document.getElementById('destBox').style.display    = 'none';
   document.getElementById('destAddrText').textContent = '-';
+  const clearBtn = document.getElementById('btnClearDest');
+  if (clearBtn) clearBtn.style.display = 'none';
 }
 
 async function setPickup(lat, lng) {
@@ -261,29 +273,41 @@ async function loadBalance() {
   try {
     const res = await fnGetOnChain();
     const d   = res.data;
+    let shortText = '...';
     if (d?.walletHexWei && BigInt(d.walletHexWei) > 0n) {
-      // ex) "229,402원 / $152.82 / 3,992,988 VND"
       const parts = [];
       if (d.walletHexKrw != null) parts.push(Number(d.walletHexKrw).toLocaleString() + '원');
       if (d.walletHexUsd != null) parts.push('$' + Number(d.walletHexUsd).toFixed(2));
       if (d.walletHexVnd != null) parts.push(Number(d.walletHexVnd).toLocaleString() + ' VND');
-      balAmount.textContent = parts.length ? parts.join(' / ') : (d.walletHexDisplay || '-');
-      balAmount.style.fontSize = '0.78rem';
+      const fullText = parts.length ? parts.join(' / ') : (d.walletHexDisplay || '0 HEX');
+      if (balAmount) { balAmount.textContent = fullText; balAmount.style.fontSize = '0.78rem'; }
+      shortText = d.walletHexVnd != null
+        ? Number(d.walletHexVnd).toLocaleString() + ' VND'
+        : (parts[0] || '0 HEX');
     } else {
-      balAmount.textContent = '0 HEX';
+      if (balAmount) balAmount.textContent = '0 HEX';
+      shortText = '0 HEX';
     }
-    document.querySelector('.bal-label').textContent = '보유 HEX';
+    const tbBal = document.getElementById('topBarBalance');
+    if (tbBal) tbBal.textContent = shortText;
+    const lbl = document.querySelector('.bal-label');
+    if (lbl) lbl.textContent = '보유 HEX';
   } catch (_) {
-    // 지갑 없음 fallback
     const snap   = await getDoc(doc(db, 'users', _user.uid));
     const wallet = snap.data()?.wallet;
+    const tbBal  = document.getElementById('topBarBalance');
     if (wallet?.address) {
-      balAmount.textContent = `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`;
-      document.querySelector('.bal-label').textContent = 'HEX 지갑 연동됨';
+      const short = `${wallet.address.slice(0,6)}...${wallet.address.slice(-4)}`;
+      if (balAmount) balAmount.textContent = short;
+      if (tbBal) tbBal.textContent = '지갑 연동됨';
+      const lbl = document.querySelector('.bal-label');
+      if (lbl) lbl.textContent = 'HEX 지갑 연동됨';
     } else {
-      balAmount.textContent = '지갑 없음';
-      document.querySelector('.bal-label').textContent = '수탁 지갑 필요';
-      balBox.style.borderColor = '#dc2626';
+      if (balAmount) balAmount.textContent = '지갑 없음';
+      if (tbBal) tbBal.textContent = '지갑 없음';
+      const lbl = document.querySelector('.bal-label');
+      if (lbl) lbl.textContent = '수탁 지갑 필요';
+      if (balBox) balBox.style.borderColor = '#dc2626';
     }
   }
 }
@@ -500,10 +524,27 @@ btnNewRide.addEventListener('click', () => {
   showSection('secIdle');
 });
 
+// ── 드로어 메뉴 ──────────────────────────────────────────────────────────────────
+function openDrawer() {
+  document.getElementById('drawerOverlay').classList.add('open');
+  document.getElementById('drawerMenu').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.getElementById('drawerMenu').classList.remove('open');
+}
+document.getElementById('btnMenu').addEventListener('click', openDrawer);
+document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+document.getElementById('topBarBalance').addEventListener('click', openDrawer);
+
 // ── 인증 감시 ────────────────────────────────────────────────────────────
 watchAuth(async ({ loggedIn, profile }) => {
   _user = loggedIn ? profile : null;
   btnRequest.disabled = !(_user && _pickupLat);
+  const nameEl  = document.getElementById('drawerUserName');
+  const emailEl = document.getElementById('drawerUserEmail');
+  if (nameEl)  nameEl.textContent  = loggedIn ? (profile.displayName || profile.email || '사용자') : '로그인이 필요합니다';
+  if (emailEl) emailEl.textContent = loggedIn ? (profile.email || '') : '';
   if (loggedIn) {
     await loadBalance();
     await checkActiveRide();

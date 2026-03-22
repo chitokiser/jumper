@@ -418,3 +418,474 @@
   margin: 0 0 16px;
   color: var(--buggy-text);
 }
+
+/* ══════════════════════════════════════════════════════
+   사용자 앱 Uber/KakaoTaxi 스타일 전체 레이아웃
+   ══════════════════════════════════════════════════════ */
+
+/* Full-screen app shell */
+#buggyApp {
+  position: fixed;
+  inset: 0;
+  background: #d6d3cc;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Map layers */
+.map-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* ── 플로팅 상단 바 ──────────────────────────────────── */
+#topBar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 10px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  background: linear-gradient(to bottom, rgba(255,255,255,0.96) 70%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.topbar-icon-btn {
+  width: 42px; height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #1c1917;
+  flex-shrink: 0;
+  transition: transform .1s;
+}
+.topbar-icon-btn:active { transform: scale(.93); }
+
+.topbar-title {
+  flex: 1;
+  font-size: 0.97rem;
+  font-weight: 800;
+  color: #1c1917;
+  white-space: nowrap;
+}
+
+.topbar-balance {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 5px 11px;
+  border-radius: 99px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* ── 내 위치 FAB ───────────────────────────────────── */
+.fab-location {
+  position: absolute;
+  right: 16px;
+  bottom: calc(var(--bs-h, 280px) + 16px);
+  z-index: 80;
+  width: 46px; height: 46px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(0,0,0,.22);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #374151;
+  transition: transform .1s;
+}
+.fab-location:active { transform: scale(.93); }
+
+/* ── 사이드 드로어 ────────────────────────────────── */
+#drawerOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+#drawerOverlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+#drawerMenu {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 280px;
+  z-index: 210;
+  background: #fff;
+  transform: translateX(-100%);
+  transition: transform .3s cubic-bezier(.4, 0, .2, 1);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+#drawerMenu.open {
+  transform: translateX(0);
+}
+
+.drawer-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 20px 18px;
+  background: var(--buggy-bg);
+  border-bottom: 1px solid var(--buggy-border);
+}
+.drawer-avatar {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  background: var(--buggy-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+.drawer-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1c1917;
+  line-height: 1.3;
+}
+.drawer-email {
+  font-size: 0.78rem;
+  color: #78716c;
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.drawer-balance {
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid #f3f4f6;
+}
+.drawer-balance .bal-label {
+  font-size: 0.74rem;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+.drawer-balance .bal-amount {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #92400e;
+  line-height: 1.4;
+}
+
+.drawer-nav { padding: 8px 0; flex: 1; }
+.drawer-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 20px;
+  font-size: 0.93rem;
+  font-weight: 500;
+  color: #1c1917;
+  text-decoration: none;
+  transition: background .15s;
+}
+.drawer-link:active { background: #f3f4f6; }
+.drawer-link-icon { font-size: 1.15rem; }
+.drawer-divider { height: 1px; background: #f3f4f6; margin: 6px 0; }
+
+/* ── 바텀 시트 ─────────────────────────────────────── */
+#bottomSheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 50;
+  background: #fff;
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -6px 32px rgba(0,0,0,.14);
+  padding: 0 20px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.bs-handle {
+  width: 44px; height: 4px;
+  background: #d1d5db;
+  border-radius: 99px;
+  margin: 14px auto 18px;
+}
+
+/* Section display */
+#bottomSheet .buggy-section { display: none; }
+#bottomSheet .buggy-section.active { display: block; }
+
+/* ── 섹션 공통 ─────────────────────────────────────── */
+.bs-section-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1c1917;
+  margin: 0 0 14px;
+}
+.bs-subtitle {
+  font-size: 0.84rem;
+  color: #9ca3af;
+  text-align: center;
+  margin: 0 0 14px;
+}
+.bs-fare-note {
+  font-size: 0.74rem;
+  color: #9ca3af;
+  text-align: center;
+  margin: 0 0 14px;
+}
+
+/* ── 위치 입력 카드 ────────────────────────────────── */
+.location-input-card {
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 4px 16px;
+  margin-bottom: 14px;
+  position: relative;
+}
+.loc-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+}
+.loc-dot {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-pickup {
+  background: var(--buggy-primary);
+  box-shadow: 0 0 0 3px rgba(245,158,11,.2);
+}
+.dot-dest {
+  background: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.2);
+}
+.loc-content { flex: 1; min-width: 0; }
+.loc-hint { font-size: 0.7rem; color: #9ca3af; margin-bottom: 2px; }
+.loc-value {
+  font-size: 0.88rem;
+  color: #374151;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dest-inline-input {
+  width: 100%;
+  border: none; outline: none;
+  background: transparent;
+  font-size: 0.88rem;
+  color: #374151;
+  font-weight: 500;
+  padding: 0;
+  font-family: inherit;
+}
+.dest-inline-input::placeholder { color: #9ca3af; font-weight: 400; }
+.loc-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin-left: 25px;
+}
+.loc-clear-btn {
+  background: none; border: none;
+  font-size: 0.88rem; color: #9ca3af;
+  cursor: pointer; padding: 4px;
+  flex-shrink: 0;
+}
+
+/* Destination suggestions dropdown */
+.dest-suggestions-dropdown {
+  display: none;
+  position: absolute;
+  left: 0; right: 0;
+  top: 100%;
+  z-index: 300;
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+
+/* ── 바텀 시트 버튼 ────────────────────────────────── */
+.bs-btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+  margin-bottom: 8px;
+  font-family: inherit;
+}
+.bs-btn:active { transform: scale(.98); }
+.bs-btn:disabled { opacity: .5; cursor: not-allowed; }
+.bs-btn--primary { background: var(--buggy-primary); color: #fff; }
+.bs-btn--ghost   { background: #f3f4f6; color: #374151; }
+.bs-btn--sm      { padding: 11px; font-size: 0.88rem; }
+
+/* ── 기사 찾는 중 애니메이션 ──────────────────────── */
+.searching-animation {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 14px;
+}
+.searching-pulse {
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  background: var(--buggy-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.3rem;
+  animation: uber-pulse 1.5s ease-in-out infinite;
+}
+@keyframes uber-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(245,158,11,.55); transform: scale(1); }
+  50%  { box-shadow: 0 0 0 22px rgba(245,158,11,0);  transform: scale(1.06); }
+  100% { box-shadow: 0 0 0 0   rgba(245,158,11,0);  transform: scale(1); }
+}
+
+/* ── 기사 카드 ──────────────────────────────────────── */
+.driver-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  margin-bottom: 12px;
+}
+.driver-card--compact { padding: 11px 14px; }
+
+.drv-avatar {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  background: var(--buggy-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+.drv-avatar--sm { width: 38px; height: 38px; font-size: 1.1rem; }
+
+.drv-meta { flex: 1; min-width: 0; }
+.drv-name  { font-weight: 700; font-size: 0.95rem; color: #1c1917; }
+.drv-plate {
+  font-size: 0.78rem; color: #78716c;
+  background: #e5e7eb;
+  padding: 2px 7px;
+  border-radius: 5px;
+  display: inline-block;
+  margin-top: 3px;
+}
+
+/* ── 상태 필 (새 버전) ────────────────────────────── */
+.status-pill {
+  padding: 4px 11px;
+  border-radius: 99px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* JS sets buggy-badge-- classes on rideStatusBadge */
+.status-pill.buggy-badge--accepted { background: #dbeafe; color: #1e40af; }
+.status-pill.buggy-badge--arriving { background: #ede9fe; color: #5b21b6; }
+.status-pill.buggy-badge--riding   { background: #dcfce7; color: #14532d; }
+.status-pill--riding               { background: #dcfce7; color: #14532d; }
+
+/* ── 정보 리스트 ─────────────────────────────────── */
+.info-list { margin-bottom: 12px; }
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 0;
+  font-size: 0.88rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+.info-item:last-child { border-bottom: none; }
+.info-k { color: #9ca3af; flex-shrink: 0; }
+.info-v { font-weight: 600; color: #1c1917; text-align: right; }
+
+/* ── 탑승 중 ─────────────────────────────────────── */
+.riding-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.riding-half {
+  flex: 1;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+}
+.riding-half--fare { border-color: #bbf7d0; background: #f0fdf4; }
+.riding-timer {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #1c1917;
+  letter-spacing: .04em;
+}
+.riding-fare {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #16a34a;
+}
+.riding-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-top: 3px;
+}
+
+/* ── 완료 섹션 ───────────────────────────────────── */
+.done-icon {
+  text-align: center;
+  font-size: 3.5rem;
+  padding-top: 4px;
+  margin-bottom: 8px;
+}
+.done-summary {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 4px 16px;
+  margin-bottom: 14px;
+}
+.done-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+.done-row:last-child { border-bottom: none; }
+.done-k { color: #6b7280; }
+.done-v { font-weight: 700; color: #1c1917; }
+.done-pay-status {
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
