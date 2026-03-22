@@ -142,8 +142,12 @@ function startSearching() {
     const rideDoc = snap.docs[0];
     showIncomingRequest(rideDoc.id, rideDoc.data());
   }, (err) => {
-    console.error('[buggy-driver] startSearching onSnapshot error:', err);
-    toast('호출 수신 오류: ' + (err.message || err.code));
+    console.error('[buggy-driver] startSearching error:', err.code, err.message);
+    _searchSub = null; // 막힌 구독 해제 → 재시도 가능하게
+    // 5초 후 자동 재시도 (rules 배포 후 자동 복구)
+    setTimeout(() => {
+      if (!_rideId && chkOnline.checked) startSearching();
+    }, 5000);
   });
 }
 
