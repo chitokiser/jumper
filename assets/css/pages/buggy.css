@@ -440,6 +440,15 @@
   z-index: 1;
 }
 
+/* #buggyMap 등 기존 border/radius 규칙 무력화 (full-screen 레이아웃) */
+#buggyApp .map-layer {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 /* ── 플로팅 상단 바 ──────────────────────────────────── */
 #topBar {
   position: absolute;
