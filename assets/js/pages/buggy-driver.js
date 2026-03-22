@@ -30,16 +30,20 @@ const fnUpdateLoc = httpsCallable(fns, 'buggyUpdateDriverLocation');
 const fnGetConfig = httpsCallable(fns, 'buggyGetConfig');
 
 // ── 상태 ─────────────────────────────────────────────────────────────────
-let _uid      = null;
-let _driver   = null;
-let _config   = { intervalMinutes: 10, intervalFare: 50000 };
-let _rideId   = null;
-let _rideSub  = null;
-let _searchSub = null;
-let _timerInt = null;
-let _locInt   = null;
-let _map      = null;
+let _uid        = null;
+let _driver     = null;
+let _config     = { intervalMinutes: 10, intervalFare: 50000 };
+let _rideId     = null;
+let _rideStatus = null;   // 현재 ride 상태
+let _pickupLat  = null;   // 탑승 위치 좌표
+let _pickupLng  = null;
+let _rideSub    = null;
+let _searchSub  = null;
+let _timerInt   = null;
+let _locInt     = null;
+let _map        = null;
 let _pickMarker = null;
+let _startingRide = false; // 중복 탑승 시작 방지
 
 // ── DOM ──────────────────────────────────────────────────────────────────
 const toastEl = document.getElementById('drvToast');
@@ -87,20 +91,56 @@ function startTimer(startMs) {
   }, 1000);
 }
 
+// ── Haversine 거리 (미터) ───────────────────────────────────────────
+function distanceM(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ── 자동 탑승 처리 ──────────────────────────────────────────────────
+async function autoStartRide() {
+  if (_startingRide || !_rideId) return;
+  _startingRide = true;
+  toast('📍 탑승자 근접! 탑승 처리 중...', 4000);
+  document.getElementById('btnStartManual').disabled = true;
+  try {
+    await fnStart({ rideId: _rideId });
+  } catch (err) {
+    toast('탑승 오류: ' + (err.message || err));
+    _startingRide = false;
+    document.getElementById('btnStartManual').disabled = false;
+  }
+}
+
 // ── 위치 전송 ─────────────────────────────────────────────────────────
 function startLocationBroadcast() {
   if (_locInt) return;
   _locInt = setInterval(() => {
     if (!navigator.geolocation || !_uid) return;
     navigator.geolocation.getCurrentPosition((pos) => {
-      fnUpdateLoc({
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        heading: pos.coords.heading || 0,
-        speed:   pos.coords.speed   || 0,
-      }).catch(() => {});
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      fnUpdateLoc({ lat, lng, heading: pos.coords.heading || 0, speed: pos.coords.speed || 0 }).catch(() => {});
+
+      // 도착 후(arriving) 5m 이내 → 자동 탑승
+      if (_rideStatus === 'arriving' && _pickupLat && _pickupLng && !_startingRide) {
+        const dist = Math.round(distanceM(lat, lng, _pickupLat, _pickupLng));
+        const label = document.getElementById('goDistanceLabel');
+        const row   = document.getElementById('goDistanceRow');
+        if (label && row) {
+          row.style.display = '';
+          label.textContent = dist < 1000 ? `${dist}m` : `${(dist / 1000).toFixed(1)}km`;
+          label.style.color = dist <= 10 ? '#16a34a' : '#f59e0b';
+        }
+        if (dist <= 5) autoStartRide();
+      }
     }, () => {});
-  }, 5000);
+  }, 3000);
 }
 
 function stopLocationBroadcast() {
@@ -208,12 +248,25 @@ function subscribeRide(rideId) {
 function handleRideUpdate(rideId, ride) {
   switch (ride.status) {
     case 'accepted':
-    case 'arriving':
+    case 'arriving': {
+      _rideStatus = ride.status;
+      _pickupLat  = ride.pickupLat || null;
+      _pickupLng  = ride.pickupLng || null;
+
       showSection('drvSecGoing');
       document.getElementById('goPickupAddr').textContent = ride.pickupAddress || '-';
       document.getElementById('goUserName').textContent   = ride.userDisplayName || '회원';
+
+      const isArriving = ride.status === 'arriving';
+      document.getElementById('goSectionTitle').textContent =
+        isArriving ? '📍 탑승 위치 도착 — 탑승자 확인' : '🚗 이동 중 — 탑승 위치로';
       document.getElementById('goStatusBadge').textContent =
-        ride.status === 'arriving' ? '📍 탑승 위치 도착' : '🚗 이동 중';
+        isArriving ? '📍 도착 완료' : '🚗 이동 중';
+
+      // arriving 상태: 수동 탑승 버튼 표시, 탑승자까지 거리 표시 시작
+      document.getElementById('btnArrive').style.display     = isArriving ? 'none'  : 'block';
+      document.getElementById('btnStartManual').style.display = isArriving ? 'block' : 'none';
+      document.getElementById('goDistanceRow').style.display  = isArriving ? ''     : 'none';
 
       // 지도에 탑승 위치 표시
       if (ride.pickupLat && ride.pickupLng) {
@@ -225,12 +278,12 @@ function handleRideUpdate(rideId, ride) {
           if (_pickMarker) _pickMarker.setPosition({ lat, lng });
         }
       }
-
-      document.getElementById('btnArrive').style.display =
-        ride.status === 'arriving' ? 'none' : 'block';
       break;
+    }
 
     case 'riding':
+      _rideStatus   = 'riding';
+      _startingRide = false;
       showSection('drvSecRiding');
       document.getElementById('rideUserName').textContent  = ride.userDisplayName || '회원';
       document.getElementById('rideStartedAt').textContent = fmtTime(ride.startedAt);
@@ -279,6 +332,9 @@ document.getElementById('btnArrive').addEventListener('click', async () => {
   try { await fnArrive({ rideId: _rideId }); }
   catch (err) { toast('오류: ' + (err.message || err)); }
 });
+
+// 수동 탑승 시작 (섹션 C — arriving 상태)
+document.getElementById('btnStartManual').addEventListener('click', () => autoStartRide());
 
 document.getElementById('btnStart').addEventListener('click', async () => {
   if (!_rideId) return;

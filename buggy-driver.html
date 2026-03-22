@@ -94,12 +94,17 @@
     <div class="buggy-section" id="drvSecGoing">
       <div id="drvMap" style="width:100%;height:280px;border-radius:14px;overflow:hidden;border:2px solid var(--buggy-border);margin-bottom:14px;"></div>
       <div class="buggy-driver-ride-card">
-        <h3>🚗 이동 중 — 탑승 위치로</h3>
+        <h3 id="goSectionTitle">🚗 이동 중 — 탑승 위치로</h3>
         <div class="buggy-row"><span class="k">탑승 위치</span><span class="v" id="goPickupAddr">-</span></div>
         <div class="buggy-row"><span class="k">요청자</span><span class="v" id="goUserName">-</span></div>
         <div class="buggy-row"><span class="k">상태</span><span class="v" id="goStatusBadge">-</span></div>
+        <div class="buggy-row" id="goDistanceRow" style="display:none;">
+          <span class="k">탑승자까지</span>
+          <span class="v" id="goDistanceLabel" style="font-weight:700;color:#f59e0b;">-</span>
+        </div>
       </div>
       <button class="buggy-btn buggy-btn--info"    id="btnArrive">📍 탑승 위치 도착</button>
+      <button class="buggy-btn buggy-btn--success" id="btnStartManual" style="display:none;">▶️ 탑승 시작</button>
       <button class="buggy-btn buggy-btn--ghost"   id="btnCancelGoing">호출 취소</button>
     </div>
 
