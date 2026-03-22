@@ -178,6 +178,7 @@ function initRidingMap(lat, lng) {
   if (!window.google?.maps) return;
   if (_mapRiding) {
     _mapRiding.setCenter({ lat, lng });
+    setTimeout(() => google.maps.event.trigger(_mapRiding, 'resize'), 60);
     return;
   }
   _mapRiding = new google.maps.Map(document.getElementById('drvMapRiding'), {
@@ -189,8 +190,16 @@ function initRidingMap(lat, lng) {
     map: _mapRiding,
     position: { lat, lng },
     title: '내 위치',
-    icon: { url: 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png' },
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: '#f59e0b',
+      fillOpacity: 1,
+      strokeColor: '#fff',
+      strokeWeight: 2.5,
+    },
   });
+  setTimeout(() => google.maps.event.trigger(_mapRiding, 'resize'), 60);
 }
 
 function updateRidingMap(lat, lng) {

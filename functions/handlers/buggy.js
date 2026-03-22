@@ -417,22 +417,37 @@ async function setDriverOnline(driverUid, { isOnline }) {
 
 // ── 기사 매출 조회 ────────────────────────────────────────────
 async function getDriverEarnings(driverUid, { period }) {
-  let startDate = new Date();
-  startDate.setHours(0, 0, 0, 0);
-  if (period === 'week')  startDate.setDate(startDate.getDate() - 7);
-  if (period === 'month') startDate.setDate(1);
+  // 기간 계산
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let startMs;
+  if (period === 'week') {
+    startMs = today.getTime() - 6 * 86400000;
+  } else if (period === 'month') {
+    const m = new Date(today); m.setDate(1);
+    startMs = m.getTime();
+  } else {
+    startMs = today.getTime(); // 'today' 기본값
+  }
 
+  // 단일 필드 인덱스만 사용 (복합 인덱스 불필요)
+  // orderBy/range filter 제거 → JS에서 필터/정렬
   const snap = await db.collection('buggy_driver_earnings')
     .where('driverId', '==', driverUid)
-    .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(startDate))
-    .orderBy('createdAt', 'desc')
-    .limit(100)
     .get();
 
-  const earnings = snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toMillis() || 0, endedAt: d.data().endedAt?.toMillis() || 0 }));
-  const totalGross   = earnings.reduce((s, e) => s + (e.grossFare   || 0), 0);
-  const totalShare   = earnings.reduce((s, e) => s + (e.driverShare || 0), 0);
-  const totalRides   = earnings.length;
+  const all = snap.docs
+    .map(d => ({
+      id: d.id, ...d.data(),
+      createdAt: d.data().createdAt?.toMillis() || 0,
+      endedAt:   d.data().endedAt?.toMillis()   || 0,
+    }))
+    .sort((a, b) => b.createdAt - a.createdAt);
+
+  const earnings   = all.filter(e => e.createdAt >= startMs);
+  const totalGross = earnings.reduce((s, e) => s + (e.grossFare   || 0), 0);
+  const totalShare = earnings.reduce((s, e) => s + (e.driverShare || 0), 0);
+  const totalRides = earnings.length;
   return { earnings, totalGross, totalShare, totalRides };
 }
 
