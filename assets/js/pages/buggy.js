@@ -41,13 +41,9 @@ let _destLat   = null;
 let _destLng   = null;
 let _destMarker   = null;
 let _myLocMarker  = null;   // 파란 GPS 내 위치 점
-let _geoWatch     = null;   // watchPosition ID
-let _polylineA    = null;   // accepted 지도 경로선
-let _polylineR    = null;   // riding 지도 경로선
 let _dirService   = null;   // DirectionsService
 let _dirRendererA = null;   // DirectionsRenderer (accepted)
 let _dirRendererR = null;   // DirectionsRenderer (riding)
-let _autocomplete = null;
 
 // ── DOM ─────────────────────────────────────────────────────────────────────
 const balAmount   = document.getElementById('balAmount');
@@ -109,6 +105,37 @@ function startTimer(startMs) {
   }, 1000);
 }
 
+// ── Nominatim (OpenStreetMap) 지오코딩 — API키 불필요 ───────────────────
+const NOMINATIM = 'https://nominatim.openstreetmap.org';
+
+async function nominatimReverse(lat, lng) {
+  try {
+    const res  = await fetch(
+      `${NOMINATIM}/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko,vi,en`,
+      { headers: { 'User-Agent': 'BuggyApp/1.0' } }
+    );
+    const data = await res.json();
+    if (data?.display_name) {
+      // 짧게 표시: road, suburb, city 순서
+      const a = data.address || {};
+      const parts = [a.road || a.amenity, a.suburb || a.neighbourhood, a.city || a.town || a.county].filter(Boolean);
+      return parts.length ? parts.join(', ') : data.display_name;
+    }
+  } catch (_) {}
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+async function nominatimSearch(query) {
+  try {
+    const url = `${NOMINATIM}/search?` + new URLSearchParams({
+      q: query, format: 'json', limit: '6',
+      'accept-language': 'ko,vi,en', countrycodes: 'vn',
+    });
+    const res  = await fetch(url, { headers: { 'User-Agent': 'BuggyApp/1.0' } });
+    return await res.json();
+  } catch (_) { return []; }
+}
+
 // ── Google Maps 초기화 ────────────────────────────────────────────────────
 function initMap() {
   if (!window.google?.maps) return;
@@ -126,8 +153,11 @@ function initMap() {
   _map.addListener('click', (e) => setPickup(e.latLng.lat(), e.latLng.lng()));
   _marker.addListener('dragend', (e) => setPickup(e.latLng.lat(), e.latLng.lng()));
 
-  initPlacesSearch();
+  initDestSearch();
   document.getElementById('btnMyLocation').addEventListener('click', () => goToMyLocation(false));
+
+  // 지도 완전 렌더링 보장
+  setTimeout(() => google.maps.event.trigger(_map, 'resize'), 200);
 
   // 내 위치 파란점 — 실시간 감시
   if (navigator.geolocation) {
@@ -140,7 +170,7 @@ function initMap() {
       },
       () => {}
     );
-    _geoWatch = navigator.geolocation.watchPosition(
+    navigator.geolocation.watchPosition(
       (pos) => updateMyLocMarker(pos.coords.latitude, pos.coords.longitude),
       () => {},
       { enableHighAccuracy: true, maximumAge: 5000 }
@@ -185,51 +215,42 @@ function goToMyLocation(silent) {
   );
 }
 
-// ── Places 키워드 검색 (도착지) ──────────────────────────────────────────
-function initPlacesSearch() {
+// ── 도착지 검색 (Nominatim, 무료) ───────────────────────────────────────
+function initDestSearch() {
   const input      = document.getElementById('destInput');
   const suggestBox = document.getElementById('destSuggestions');
-  const service    = new google.maps.places.AutocompleteService();
-  const geocoder   = new google.maps.Geocoder();
   let _debounce    = null;
 
   input.addEventListener('input', () => {
     clearTimeout(_debounce);
     const val = input.value.trim();
     if (!val) { suggestBox.style.display = 'none'; return; }
-    _debounce = setTimeout(() => {
-      service.getPlacePredictions(
-        { input: val, language: 'ko', region: 'VN' },
-        (predictions, status) => {
-          suggestBox.innerHTML = '';
-          if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions?.length) {
-            suggestBox.style.display = 'none';
-            return;
-          }
-          predictions.slice(0, 5).forEach((p) => {
-            const item = document.createElement('div');
-            item.style.cssText = 'padding:10px 14px;cursor:pointer;font-size:0.88rem;border-bottom:1px solid #f3f4f6;';
-            item.textContent   = p.description;
-            item.addEventListener('mousedown', (e) => {
-              e.preventDefault();
-              input.value = p.description;
-              suggestBox.style.display = 'none';
-              // place_id → 좌표
-              geocoder.geocode({ placeId: p.place_id }, (res, st) => {
-                if (st !== 'OK' || !res[0]) { toast('좌표를 가져올 수 없습니다'); return; }
-                const loc = res[0].geometry.location;
-                setDest(loc.lat(), loc.lng(), p.description);
-              });
-            });
-            suggestBox.appendChild(item);
-          });
-          suggestBox.style.display = 'block';
-        }
-      );
-    }, 300);
+    _debounce = setTimeout(async () => {
+      const results = await nominatimSearch(val);
+      suggestBox.innerHTML = '';
+      if (!results.length) { suggestBox.style.display = 'none'; return; }
+      results.forEach((r) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:10px 14px;cursor:pointer;font-size:0.88rem;border-bottom:1px solid #f3f4f6;line-height:1.4;';
+        // 짧은 이름 표시
+        const a = r.address || {};
+        const name = r.namedetails?.name || r.name || '';
+        const sub  = [a.road || a.amenity, a.suburb, a.city || a.town].filter(Boolean).join(', ');
+        item.innerHTML = `<div style="font-weight:600;color:#111;">${name || r.display_name.split(',')[0]}</div>`
+                       + `<div style="font-size:0.78rem;color:#9ca3af;">${sub || r.display_name}</div>`;
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          const displayName = name || r.display_name.split(',')[0];
+          input.value = displayName;
+          suggestBox.style.display = 'none';
+          setDest(parseFloat(r.lat), parseFloat(r.lon), displayName);
+        });
+        suggestBox.appendChild(item);
+      });
+      suggestBox.style.display = 'block';
+    }, 350);
   });
 
-  // 포커스 아웃 시 닫기
   input.addEventListener('blur', () => setTimeout(() => { suggestBox.style.display = 'none'; }, 150));
 }
 
@@ -279,19 +300,11 @@ async function setPickup(lat, lng) {
   _map.panTo({ lat, lng });
   btnRequest.disabled = !_user;
 
-  // Reverse geocode
-  try {
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng } }, (res, status) => {
-      if (status === 'OK' && res[0]) {
-        pickupAddrText.textContent = res[0].formatted_address;
-      } else {
-        pickupAddrText.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      }
-    });
-  } catch (_) {
-    pickupAddrText.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  }
+  // Nominatim 역지오코딩 (Google Geocoding API 불필요)
+  pickupAddrText.textContent = '위치 확인 중...';
+  nominatimReverse(lat, lng).then(addr => {
+    pickupAddrText.textContent = addr;
+  });
 }
 
 // ── Google Maps 로드 ─────────────────────────────────────────────────────
@@ -299,7 +312,7 @@ function loadMaps() {
   if (window.google?.maps) { onMapsLoaded(); return; }
   const key = window.__mapsKey || '';
   const s = document.createElement('script');
-  s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
   s.onload = onMapsLoaded;
   document.head.appendChild(s);
 }

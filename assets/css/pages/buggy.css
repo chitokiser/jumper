@@ -1,5 +1,8 @@
 /* assets/css/pages/buggy.css — 버기카 서비스 공통 스타일 */
 
+/* 사용자 앱 전용 CSS 리셋 (buggy.html은 app.css 미사용) */
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+
 :root {
   --buggy-primary: #f59e0b;
   --buggy-dark:    #92400e;
