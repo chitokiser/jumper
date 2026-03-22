@@ -41,10 +41,18 @@ let _rideSub    = null;
 let _searchSub  = null;
 let _timerInt   = null;
 let _locInt     = null;
-let _map         = null;
-let _pickMarker  = null;
-let _mapRiding   = null;   // 운행 중 지도
-let _myMarker    = null;   // 운행 중 내 위치 마커
+let _map              = null;
+let _pickMarker       = null;
+let _driverSelfMarker = null;  // going 지도 — 기사 자체 위치 (파란점)
+let _dirService       = null;
+let _dirRendererGoing = null;  // going 지도 경로선 (기사→탑승위치)
+let _dirRendererRiding = null; // riding 지도 경로선 (탑승위치→목적지)
+let _mapRiding        = null;  // 운행 중 지도
+let _myMarker         = null;  // 운행 중 내 위치 마커
+let _rideDestLat      = null;  // 목적지 좌표
+let _rideDestLng      = null;
+let _lastDirGoTime    = 0;
+let _lastDirRideTime  = 0;
 let _startingRide = false;
 
 // ── DOM ──────────────────────────────────────────────────────────────────
@@ -127,6 +135,7 @@ function startLocationBroadcast() {
     navigator.geolocation.getCurrentPosition((pos) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
+      const driverPos = { lat, lng };
 
       // Firestore 직접 write (Cloud Function 경유 없이 ~100ms 반영)
       setDoc(
@@ -135,23 +144,54 @@ function startLocationBroadcast() {
         { merge: true }
       ).catch(() => {});
 
-      // 도착 후(arriving) 5m 이내 → 자동 탑승
-      if (_rideStatus === 'arriving' && _pickupLat && _pickupLng && !_startingRide) {
-        const dist = Math.round(distanceM(lat, lng, _pickupLat, _pickupLng));
-        const label = document.getElementById('goDistanceLabel');
-        const row   = document.getElementById('goDistanceRow');
-        if (label && row) {
-          row.style.display = '';
-          label.textContent = dist < 1000 ? `${dist}m` : `${(dist / 1000).toFixed(1)}km`;
-          label.style.color = dist <= 10 ? '#16a34a' : '#f59e0b';
+      // going 지도 — 기사 자체 위치 마커 업데이트
+      if (_map && window.google?.maps) {
+        if (_driverSelfMarker) {
+          _driverSelfMarker.setPosition(driverPos);
         }
-        if (dist <= 5) autoStartRide();
       }
 
-      // 운행 중 → 기사앱 지도에 내 위치 업데이트
+      // 수락/도착 중 → 탑승위치까지 경로 갱신 (10초 throttle)
+      if ((_rideStatus === 'accepted' || _rideStatus === 'arriving') && _pickupLat && _pickupLng) {
+        if (_rideStatus === 'arriving' && !_startingRide) {
+          const dist = Math.round(distanceM(lat, lng, _pickupLat, _pickupLng));
+          const label = document.getElementById('goDistanceLabel');
+          const row   = document.getElementById('goDistanceRow');
+          if (label && row) {
+            row.style.display = '';
+            label.textContent = dist < 1000 ? `${dist}m` : `${(dist / 1000).toFixed(1)}km`;
+            label.style.color = dist <= 10 ? '#16a34a' : '#f59e0b';
+          }
+          if (dist <= 5) autoStartRide();
+        }
+        // 경로선: 기사 → 탑승위치
+        if (Date.now() - _lastDirGoTime > 10000 && _map && _dirService && _dirRendererGoing) {
+          _lastDirGoTime = Date.now();
+          _dirService.route({
+            origin: driverPos,
+            destination: { lat: _pickupLat, lng: _pickupLng },
+            travelMode: google.maps.TravelMode.DRIVING,
+          }, (result, status) => {
+            if (status === 'OK') _dirRendererGoing.setDirections(result);
+          });
+        }
+      }
+
+      // 운행 중 → 기사앱 지도에 내 위치 업데이트 + 목적지 경로 갱신
       if (_rideStatus === 'riding') {
         if (!_mapRiding) initRidingMap(lat, lng);
         else updateRidingMap(lat, lng);
+        if (_rideDestLat && _rideDestLng && _dirService && _dirRendererRiding
+            && Date.now() - _lastDirRideTime > 10000) {
+          _lastDirRideTime = Date.now();
+          _dirService.route({
+            origin: driverPos,
+            destination: { lat: _rideDestLat, lng: _rideDestLng },
+            travelMode: google.maps.TravelMode.DRIVING,
+          }, (result, status) => {
+            if (status === 'OK') _dirRendererRiding.setDirections(result);
+          });
+        }
       }
     }, () => {});
   }, 3000);
@@ -165,13 +205,43 @@ function stopLocationBroadcast() {
 // ── 지도 ────────────────────────────────────────────────────────────────
 function initMap(lat, lng) {
   if (!window.google?.maps) return;
-  if (_map) return;
+  if (_map) {
+    _map.setCenter({ lat, lng });
+    setTimeout(() => google.maps.event.trigger(_map, 'resize'), 80);
+    return;
+  }
   _map = new google.maps.Map(document.getElementById('drvMap'), {
     center: { lat, lng }, zoom: 15,
     disableDefaultUI: true,
     gestureHandling: 'greedy',
   });
-  _pickMarker = new google.maps.Marker({ map: _map, title: '탑승 위치' });
+
+  // 탑승 위치 마커 (빨간 핀)
+  _pickMarker = new google.maps.Marker({
+    map: _map, title: '탑승 위치',
+    icon: { url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' },
+  });
+
+  // 기사 자체 위치 마커 (파란 원)
+  _driverSelfMarker = new google.maps.Marker({
+    map: _map, position: { lat, lng }, title: '내 위치', zIndex: 5,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: '#4285F4', fillOpacity: 1,
+      strokeColor: '#fff', strokeWeight: 2.5,
+    },
+  });
+
+  // 경로선 (기사 → 탑승위치)
+  if (!_dirService) _dirService = new google.maps.DirectionsService();
+  _dirRendererGoing = new google.maps.DirectionsRenderer({
+    suppressMarkers: true,
+    polylineOptions: { strokeColor: '#2563eb', strokeWeight: 5, strokeOpacity: 0.8 },
+  });
+  _dirRendererGoing.setMap(_map);
+
+  setTimeout(() => google.maps.event.trigger(_map, 'resize'), 100);
 }
 
 function initRidingMap(lat, lng) {
@@ -186,19 +256,38 @@ function initRidingMap(lat, lng) {
     disableDefaultUI: true,
     gestureHandling: 'greedy',
   });
+
+  // 기사 위치 마커 (주황 원)
   _myMarker = new google.maps.Marker({
-    map: _mapRiding,
-    position: { lat, lng },
-    title: '내 위치',
+    map: _mapRiding, position: { lat, lng }, title: '내 위치',
     icon: {
       path: google.maps.SymbolPath.CIRCLE,
       scale: 10,
-      fillColor: '#f59e0b',
-      fillOpacity: 1,
-      strokeColor: '#fff',
-      strokeWeight: 2.5,
+      fillColor: '#f59e0b', fillOpacity: 1,
+      strokeColor: '#fff', strokeWeight: 2.5,
     },
   });
+
+  // 경로선 (기사 현재위치 → 목적지)
+  if (!_dirService) _dirService = new google.maps.DirectionsService();
+  _dirRendererRiding = new google.maps.DirectionsRenderer({
+    suppressMarkers: false,
+    polylineOptions: { strokeColor: '#2563eb', strokeWeight: 5, strokeOpacity: 0.8 },
+  });
+  _dirRendererRiding.setMap(_mapRiding);
+
+  // 목적지가 있으면 즉시 경로 표시
+  if (_rideDestLat && _rideDestLng) {
+    _dirService.route({
+      origin: { lat, lng },
+      destination: { lat: _rideDestLat, lng: _rideDestLng },
+      travelMode: google.maps.TravelMode.DRIVING,
+    }, (result, status) => {
+      if (status === 'OK') _dirRendererRiding.setDirections(result);
+    });
+    _lastDirRideTime = Date.now();
+  }
+
   setTimeout(() => google.maps.event.trigger(_mapRiding, 'resize'), 60);
 }
 
@@ -298,9 +387,11 @@ function handleRideUpdate(rideId, ride) {
   switch (ride.status) {
     case 'accepted':
     case 'arriving': {
-      _rideStatus = ride.status;
-      _pickupLat  = ride.pickupLat || null;
-      _pickupLng  = ride.pickupLng || null;
+      _rideStatus  = ride.status;
+      _pickupLat   = ride.pickupLat || null;
+      _pickupLng   = ride.pickupLng || null;
+      _rideDestLat = ride.destLat   || null;
+      _rideDestLng = ride.destLng   || null;
 
       showSection('drvSecGoing');
       document.getElementById('goPickupAddr').textContent = ride.pickupAddress || '-';
@@ -312,27 +403,41 @@ function handleRideUpdate(rideId, ride) {
       document.getElementById('goStatusBadge').textContent =
         isArriving ? '📍 도착 완료' : '🚗 이동 중';
 
-      // arriving 상태: 수동 탑승 버튼 표시, 탑승자까지 거리 표시 시작
-      document.getElementById('btnArrive').style.display     = isArriving ? 'none'  : 'block';
+      document.getElementById('btnArrive').style.display      = isArriving ? 'none'  : 'block';
       document.getElementById('btnStartManual').style.display = isArriving ? 'block' : 'none';
       document.getElementById('goDistanceRow').style.display  = isArriving ? ''     : 'none';
 
-      // 지도에 탑승 위치 표시
+      // 지도에 탑승 위치 표시 + 기사 자체 위치 마커
       if (ride.pickupLat && ride.pickupLng) {
         const lat = ride.pickupLat, lng = ride.pickupLng;
         if (!_map) {
-          setTimeout(() => { initMap(lat, lng); if (_pickMarker) _pickMarker.setPosition({ lat, lng }); }, 500);
+          // GPS로 기사 현재 위치 가져와서 지도 초기화
+          navigator.geolocation?.getCurrentPosition(
+            (pos) => {
+              const dLat = pos.coords.latitude, dLng = pos.coords.longitude;
+              initMap(dLat, dLng);
+              if (_pickMarker) _pickMarker.setPosition({ lat, lng });
+              _map.fitBounds(new google.maps.LatLngBounds(
+                { lat: Math.min(dLat, lat) - 0.002, lng: Math.min(dLng, lng) - 0.002 },
+                { lat: Math.max(dLat, lat) + 0.002, lng: Math.max(dLng, lng) + 0.002 }
+              ));
+            },
+            () => { setTimeout(() => { initMap(lat, lng); if (_pickMarker) _pickMarker.setPosition({ lat, lng }); }, 500); }
+          );
         } else {
-          _map.setCenter({ lat, lng });
           if (_pickMarker) _pickMarker.setPosition({ lat, lng });
+          setTimeout(() => google.maps.event.trigger(_map, 'resize'), 80);
         }
       }
+      startLocationBroadcast(); // 위치 전송 시작 (이미 실행 중이면 무시)
       break;
     }
 
     case 'riding':
       _rideStatus   = 'riding';
       _startingRide = false;
+      _rideDestLat  = ride.destLat || _rideDestLat;
+      _rideDestLng  = ride.destLng || _rideDestLng;
       showSection('drvSecRiding');
       document.getElementById('rideUserName').textContent  = ride.userDisplayName || '회원';
       document.getElementById('rideStartedAt').textContent = fmtTime(ride.startedAt);
