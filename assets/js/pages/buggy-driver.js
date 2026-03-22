@@ -5,7 +5,7 @@ import { getApps, initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {
   getFirestore, doc, getDoc, onSnapshot,
-  collection, query, where, orderBy, limit, getDocs,
+  collection, query, where, limit, getDocs,
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -134,7 +134,6 @@ function startSearching() {
   const q = query(
     collection(db, 'buggy_rides'),
     where('status', '==', 'searching'),
-    orderBy('requestedAt'),
     limit(1)
   );
   _searchSub = onSnapshot(q, (snap) => {
