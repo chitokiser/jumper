@@ -342,6 +342,54 @@ function setOnlineUI(isOnline) {
   }
 }
 
+// ── 인앱브라우저 감지 ────────────────────────────────────────────────
+(function checkInAppBrowser() {
+  const ua = navigator.userAgent;
+  const inApp = /KAKAOTALK|KAKAO|Line\/|Instagram|FBAN|FBAV|NaverApp|DaumApps|MicroMessenger/i.test(ua)
+    || (/iPhone|iPad/.test(ua) && /WebKit/.test(ua) && !/Safari/.test(ua) && !/CriOS|FxiOS/.test(ua));
+  if (!inApp) return;
+
+  const pageUrl = location.href;
+  const isAndroid = /Android/i.test(ua);
+
+  const screen = document.getElementById('drvLoginScreen');
+  screen.innerHTML = `
+    <div style="font-size:3.5rem;margin-bottom:16px;">⚠️</div>
+    <h2 style="font-size:1.15rem;font-weight:800;color:#92400e;margin:0 0 10px;">외부 브라우저에서 열어주세요</h2>
+    <p style="color:#78716c;font-size:0.88rem;margin:0 0 28px;line-height:1.7;">
+      카카오톡 등 인앱브라우저에서는<br>Google 로그인이 지원되지 않습니다.
+    </p>
+    ${isAndroid ? `
+      <a href="intent://${location.hostname}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end"
+         style="display:block;background:#f59e0b;color:#fff;border-radius:12px;
+                padding:14px 24px;font-size:1rem;font-weight:700;text-decoration:none;
+                margin-bottom:14px;text-align:center;box-shadow:0 2px 8px rgba(245,158,11,.3);">
+        Chrome으로 열기
+      </a>` : `
+      <p style="font-size:0.84rem;color:#57534e;background:#fef3c7;border-radius:10px;
+                padding:12px 16px;margin-bottom:16px;line-height:1.7;text-align:left;">
+        하단 <strong>공유 버튼(□↑)</strong> 탭 →<br><strong>"Safari로 열기"</strong> 를 선택하세요
+      </p>`
+    }
+    <button id="_btnCopyLink"
+      style="background:#fff;border:1.5px solid #d6d3d1;color:#57534e;border-radius:10px;
+             padding:11px 22px;font-size:0.88rem;cursor:pointer;width:100%;max-width:280px;">
+      🔗 링크 복사
+    </button>
+  `;
+  screen.style.display = 'flex';
+
+  document.getElementById('_btnCopyLink').addEventListener('click', () => {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(pageUrl)
+        .then(() => alert('링크가 복사되었습니다.\n브라우저 주소창에 붙여넣으세요.'))
+        .catch(() => prompt('아래 링크를 복사하세요:', pageUrl));
+    } else {
+      prompt('아래 링크를 복사하세요:', pageUrl);
+    }
+  });
+})();
+
 // ── 인증 ─────────────────────────────────────────────────────────────
 const loginScreen = document.getElementById('drvLoginScreen');
 const drvMain     = document.getElementById('drvMain');
@@ -355,13 +403,15 @@ async function doGoogleLogin() {
     if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
       await signInWithRedirect(auth, provider);
     } else if (e.code !== 'auth/popup-closed-by-user') {
-      loginErrEl.textContent = '로그인 오류: ' + (e.message || e.code);
-      loginErrEl.style.display = 'block';
+      if (loginErrEl) {
+        loginErrEl.textContent = '로그인 오류: ' + (e.message || e.code);
+        loginErrEl.style.display = 'block';
+      }
     }
   }
 }
 
-document.getElementById('btnDrvGoogleLogin').addEventListener('click', doGoogleLogin);
+document.getElementById('btnDrvGoogleLogin')?.addEventListener('click', doGoogleLogin);
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
