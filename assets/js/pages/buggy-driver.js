@@ -142,6 +142,9 @@ function startSearching() {
     if (snap.empty) { showSection('drvSecIdle'); return; }
     const rideDoc = snap.docs[0];
     showIncomingRequest(rideDoc.id, rideDoc.data());
+  }, (err) => {
+    console.error('[buggy-driver] startSearching onSnapshot error:', err);
+    toast('호출 수신 오류: ' + (err.message || err.code));
   });
 }
 
