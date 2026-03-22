@@ -485,14 +485,23 @@ service cloud.firestore {
     }
 
     // ── 버기카 호출 서비스 ────────────────────────────────────────────
+    // 등록된 기사 여부 확인
+    function isRegisteredDriver() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/buggy_drivers/$(request.auth.uid));
+    }
+
     match /buggy_config/{docId} {
       allow get, list: if true;
       allow write: if false; // Cloud Function only
     }
     match /buggy_rides/{rideId} {
+      // 본인 호출, 배정된 기사, 등록 기사(searching 수신용), 관리자
       allow get: if isAdmin()
+        || isRegisteredDriver()
         || (signedIn() && (resource.data.userId == request.auth.uid || resource.data.driverId == request.auth.uid));
       allow list: if isAdmin()
+        || isRegisteredDriver()
         || (signedIn() && resource.data.userId == request.auth.uid)
         || (signedIn() && resource.data.driverId == request.auth.uid);
       allow write: if false; // Cloud Function only
