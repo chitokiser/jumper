@@ -25,10 +25,13 @@ let _config   = { baseFare: 50000, intervalMinutes: 10, intervalFare: 50000 };
 let _rideId   = null;
 let _rideSub  = null;         // onSnapshot 해제 함수
 let _timerInt = null;
-let _map      = null;
-let _marker   = null;
-let _driverMarker = null;
-let _driverLocSub = null;
+let _map           = null;
+let _marker        = null;
+let _mapAccepted   = null;   // 수락됨 섹션 지도
+let _mapRiding     = null;   // 운행 중 섹션 지도
+let _driverMarkerA = null;   // 수락됨 섹션 드라이버 마커
+let _driverMarkerR = null;   // 운행 중 섹션 드라이버 마커
+let _driverLocSub  = null;
 
 let _pickupLat = null;
 let _pickupLng = null;
@@ -312,6 +315,7 @@ function handleRideUpdate(ride) {
         ride.status === 'arriving' ? '🚗 도착 중' : '✅ 수락됨';
       document.getElementById('rideStatusBadge').className =
         `buggy-badge buggy-badge--${ride.status}`;
+      if (ride.pickupLat) ensureAcceptedMap(ride.pickupLat, ride.pickupLng);
       subscribeDriverLocation(ride.driverId);
       break;
 
@@ -319,9 +323,8 @@ function handleRideUpdate(ride) {
       showSection('secRiding');
       document.getElementById('ridingDrvName').textContent  = ride.driverName  || '기사';
       document.getElementById('ridingDrvPlate').textContent = ride.vehicleNumber || '-';
-      if (ride.startedAt) {
-        startTimer(ride.startedAt.toMillis());
-      }
+      if (ride.startedAt) startTimer(ride.startedAt.toMillis());
+      if (ride.pickupLat) ensureRidingMap(ride.pickupLat, ride.pickupLng);
       subscribeDriverLocation(ride.driverId);
       break;
 
@@ -363,6 +366,20 @@ function handleRideUpdate(ride) {
 }
 
 // ── 기사 실시간 위치 ─────────────────────────────────────────────────────
+const CAB_ICON = () => ({
+  url: 'https://maps.google.com/mapfiles/ms/icons/cabs/cab.png',
+  scaledSize: new google.maps.Size(40, 40),
+});
+
+function placeOrMoveMarker(markerRef, map, pos) {
+  if (!markerRef) {
+    return new google.maps.Marker({ position: pos, map, icon: CAB_ICON(), title: '기사' });
+  }
+  markerRef.setPosition(pos);
+  map.panTo(pos);
+  return markerRef;
+}
+
 function subscribeDriverLocation(driverId) {
   if (!driverId) return;
   if (_driverLocSub) _driverLocSub();
@@ -372,19 +389,26 @@ function subscribeDriverLocation(driverId) {
       if (!snap.exists() || !window.google?.maps) return;
       const { lat, lng } = snap.data();
       const pos = { lat, lng };
-      if (!_driverMarker) {
-        _driverMarker = new google.maps.Marker({
-          position: pos,
-          icon: { url: 'https://maps.google.com/mapfiles/ms/icons/cabs/cab.png', scaledSize: new google.maps.Size(40, 40) },
-          title: '기사',
-        });
-        // 기사 마커를 현재 활성 지도에 표시
-        const activeMap = _map;
-        if (activeMap) _driverMarker.setMap(activeMap);
-      }
-      _driverMarker.setPosition(pos);
+      if (_mapAccepted) _driverMarkerA = placeOrMoveMarker(_driverMarkerA, _mapAccepted, pos);
+      if (_mapRiding)   _driverMarkerR = placeOrMoveMarker(_driverMarkerR, _mapRiding,   pos);
     }
   );
+}
+
+function ensureAcceptedMap(lat, lng) {
+  if (_mapAccepted || !window.google?.maps) return;
+  _mapAccepted = new google.maps.Map(document.getElementById('buggyMapAccepted'), {
+    center: { lat, lng }, zoom: 15,
+    disableDefaultUI: true, gestureHandling: 'greedy',
+  });
+}
+
+function ensureRidingMap(lat, lng) {
+  if (_mapRiding || !window.google?.maps) return;
+  _mapRiding = new google.maps.Map(document.getElementById('buggyMapRiding'), {
+    center: { lat, lng }, zoom: 15,
+    disableDefaultUI: true, gestureHandling: 'greedy',
+  });
 }
 
 // ── 이벤트 ──────────────────────────────────────────────────────────────

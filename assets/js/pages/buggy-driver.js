@@ -41,9 +41,11 @@ let _rideSub    = null;
 let _searchSub  = null;
 let _timerInt   = null;
 let _locInt     = null;
-let _map        = null;
-let _pickMarker = null;
-let _startingRide = false; // 중복 탑승 시작 방지
+let _map         = null;
+let _pickMarker  = null;
+let _mapRiding   = null;   // 운행 중 지도
+let _myMarker    = null;   // 운행 중 내 위치 마커
+let _startingRide = false;
 
 // ── DOM ──────────────────────────────────────────────────────────────────
 const toastEl = document.getElementById('drvToast');
@@ -139,6 +141,12 @@ function startLocationBroadcast() {
         }
         if (dist <= 5) autoStartRide();
       }
+
+      // 운행 중 → 지도에 내 위치 업데이트
+      if (_rideStatus === 'riding') {
+        if (!_mapRiding) initRidingMap(lat, lng);
+        else updateRidingMap(lat, lng);
+      }
     }, () => {});
   }, 3000);
 }
@@ -158,6 +166,32 @@ function initMap(lat, lng) {
     gestureHandling: 'greedy',
   });
   _pickMarker = new google.maps.Marker({ map: _map, title: '탑승 위치' });
+}
+
+function initRidingMap(lat, lng) {
+  if (!window.google?.maps) return;
+  if (_mapRiding) {
+    _mapRiding.setCenter({ lat, lng });
+    return;
+  }
+  _mapRiding = new google.maps.Map(document.getElementById('drvMapRiding'), {
+    center: { lat, lng }, zoom: 16,
+    disableDefaultUI: true,
+    gestureHandling: 'greedy',
+  });
+  _myMarker = new google.maps.Marker({
+    map: _mapRiding,
+    position: { lat, lng },
+    title: '내 위치',
+    icon: { url: 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png' },
+  });
+}
+
+function updateRidingMap(lat, lng) {
+  if (!_mapRiding || !_myMarker) return;
+  const pos = { lat, lng };
+  _myMarker.setPosition(pos);
+  _mapRiding.panTo(pos);
 }
 
 function loadMaps() {
@@ -289,6 +323,15 @@ function handleRideUpdate(rideId, ride) {
       document.getElementById('rideStartedAt').textContent = fmtTime(ride.startedAt);
       document.getElementById('btnStart').style.display = 'none';
       if (ride.startedAt) startTimer(ride.startedAt.toMillis());
+      // 현재 GPS로 운행 지도 초기화 (없으면 탑승 위치 기준)
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => initRidingMap(pos.coords.latitude, pos.coords.longitude),
+          ()    => { if (ride.pickupLat) initRidingMap(ride.pickupLat, ride.pickupLng); }
+        );
+      } else if (ride.pickupLat) {
+        initRidingMap(ride.pickupLat, ride.pickupLng);
+      }
       break;
 
     case 'completed':
