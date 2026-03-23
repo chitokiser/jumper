@@ -3,7 +3,7 @@
 
 import { getApps, initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, doc, onSnapshot, collection, query, where, limit, getDoc }
+import { getFirestore, doc, onSnapshot, collection, query, where, orderBy, limit, getDoc, getDocs }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -388,8 +388,7 @@ async function checkActiveRide() {
     where('status', 'in', ['searching', 'accepted', 'arriving', 'riding']),
     limit(1)
   );
-  const snap = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js')
-    .then(({ getDocs }) => getDocs(q));
+  const snap = await getDocs(q);
   if (!snap.empty) {
     const rideDoc = snap.docs[0];
     _rideId = rideDoc.id;
@@ -737,6 +736,104 @@ _btnMapFull.addEventListener('click', () => {
     if (_mapRiding)   google.maps.event.trigger(_mapRiding,   'resize');
   }, 320);
 });
+
+// ── 이용내역 모달 ────────────────────────────────────────────────────────────
+document.getElementById('btnShowHistory').addEventListener('click', async (e) => {
+  e.preventDefault();
+  closeDrawer();
+  if (!_user) { toast('로그인이 필요합니다'); return; }
+
+  // 모달이 이미 열려 있으면 닫기
+  const existing = document.getElementById('historyModal');
+  if (existing) { existing.remove(); return; }
+
+  // 모달 생성
+  const modal = document.createElement('div');
+  modal.id = 'historyModal';
+  modal.style.cssText = [
+    'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45)',
+    'display:flex;flex-direction:column;justify-content:flex-end',
+  ].join(';');
+
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:20px 20px 0 0;max-height:80dvh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0;">
+        <strong style="font-size:1rem;font-weight:800;">📋 이용내역</strong>
+        <button id="btnHistoryClose" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#78716c;line-height:1;">✕</button>
+      </div>
+      <div id="historyList" style="overflow-y:auto;padding:12px 16px 24px;flex:1;">
+        <p style="color:#a8a29e;text-align:center;padding:20px 0;">불러오는 중...</p>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.getElementById('btnHistoryClose').addEventListener('click', () => modal.remove());
+
+  // Firestore 이용내역 조회
+  const listEl = document.getElementById('historyList');
+  try {
+    const q = query(
+      collection(db, 'buggy_rides'),
+      where('userId', '==', _user.uid),
+      where('status', '==', 'completed'),
+      orderBy('completedAt', 'desc'),
+      limit(20)
+    );
+    const snap = await getDocs(q);
+    _renderHistoryList(listEl, snap.docs.map(d => d.data()));
+  } catch (_e) {
+    // 인덱스 없을 때 폴백: createdAt 정렬
+    try {
+      const q2 = query(
+        collection(db, 'buggy_rides'),
+        where('userId', '==', _user.uid),
+        where('status', '==', 'completed'),
+        orderBy('createdAt', 'desc'),
+        limit(20)
+      );
+      const snap2 = await getDocs(q2);
+      _renderHistoryList(listEl, snap2.docs.map(d => d.data()));
+    } catch (_e2) {
+      listEl.innerHTML = '<p style="color:#dc2626;text-align:center;">내역을 불러올 수 없습니다.</p>';
+    }
+  }
+});
+
+function _renderHistoryList(el, rides) {
+  if (!rides.length) {
+    el.innerHTML = '<p style="color:#a8a29e;text-align:center;padding:20px 0;">이용내역이 없습니다.</p>';
+    return;
+  }
+  const PAY = {
+    paid:    ['#dcfce7','#15803d','결제 완료'],
+    partial: ['#fef9c3','#a16207','부분 결제'],
+    failed:  ['#fee2e2','#dc2626','결제 실패'],
+  };
+  const rows = rides.map(r => {
+    const [bg, color, label] = PAY[r.paymentStatus] || ['#f3f4f6','#6b7280','미결제'];
+    const ts = r.completedAt || r.createdAt;
+    const date = ts?.toDate
+      ? ts.toDate().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '-';
+    const pickup = r.pickupAddress || '위치 정보 없음';
+    const duration = r.durationMinutes != null ? `${r.durationMinutes}분` : '-';
+    const fare = r.feeVnd != null ? fmtVnd(r.feeVnd) : '-';
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:12px 0;border-bottom:1px solid #f3f4f6;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.72rem;color:#a8a29e;margin-bottom:2px;">${date}</div>
+          <div style="font-size:0.84rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pickup}</div>
+          <div style="font-size:0.75rem;color:#78716c;margin-top:2px;">탑승 ${duration}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:10px;">
+          <div style="font-size:0.92rem;font-weight:800;">${fare}</div>
+          <span style="display:inline-block;margin-top:4px;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:20px;background:${bg};color:${color};">${label}</span>
+        </div>
+      </div>`;
+  }).join('');
+  el.innerHTML = rows;
+}
 
 // ── 드로어 메뉴 ──────────────────────────────────────────────────────────────────
 function openDrawer() {
