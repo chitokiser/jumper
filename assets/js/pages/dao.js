@@ -1,18 +1,18 @@
 // /assets/js/pages/dao.js
 // JUMP DAO 의결 페이지 프론트엔드
 
-import { initializeApp }       from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getAuth, onAuthStateChanged }
-                                from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+                                from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { getFirestore, collection, query, orderBy, where, getDocs,
          doc, getDoc, onSnapshot, limit }
-                                from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+                                from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable }
-                                from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
+                                from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { firebaseConfig }       from '/assets/js/firebase-config.js';
 import { ethers }               from 'https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js';
 
-const app  = initializeApp(firebaseConfig);
+const app  = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 const fns  = getFunctions(app);
