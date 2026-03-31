@@ -475,19 +475,38 @@ function bindCreateWallet() {
 function bindConnectMetaMask(uid) {
   const btn = $("btnConnectMetaMask");
   if (!btn) return;
+
+  // window.ethereum 없음 → 모바일/데스크톱 분기
   if (!window.ethereum) {
-    btn.style.display = "none";
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      // 모바일: MetaMask 앱 인앱 브라우저로 딥링크 유도
+      const deepLink = "https://metamask.app.link/dapp/" +
+        location.host + location.pathname + location.search;
+      btn.style.display = "";
+      btn.textContent = "MetaMask 앱으로 열기";
+      btn.onclick = () => { location.href = deepLink; };
+    } else {
+      // 데스크톱: MetaMask 미설치
+      btn.style.display = "";
+      btn.textContent = "MetaMask 설치 필요";
+      btn.onclick = () => {
+        window.open("https://metamask.io/download/", "_blank");
+      };
+    }
     return;
   }
 
+  // window.ethereum 있음 (MetaMask 인앱 브라우저 or 확장 프로그램)
+  btn.style.display = "";
   btn.onclick = async () => {
     btn.disabled = true;
-    btn.textContent = "\uC5F0\uACB0 \uC911...";
+    btn.textContent = "연결 중...";
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       const address = accounts[0];
 
-      const msg = `Jump Platform \uC9C0\uAC11 \uC5F0\uACB0 \uD655\uC778\nUID: ${uid}`;
+      const msg = `Jump Platform 지갑 연결 확인\nUID: ${uid}`;
       const msgHex = "0x" + Array.from(new TextEncoder().encode(msg))
         .map((b) => b.toString(16).padStart(2, "0")).join("");
       await window.ethereum.request({ method: "personal_sign", params: [msgHex, address] });
@@ -502,12 +521,12 @@ function bindConnectMetaMask(uid) {
       loadOnChainData(uid);
     } catch (err) {
       if (err.code === 4001) {
-        alert("\uC11C\uBA85\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+        alert("서명이 취소되었습니다.");
       } else {
-        alert("MetaMask \uC5F0\uACB0 \uC2E4\uD328: " + err.message);
+        alert("MetaMask 연결 실패: " + err.message);
       }
       btn.disabled = false;
-      btn.textContent = "MetaMask \uC5F0\uACB0";
+      btn.textContent = "MetaMask 연결";
     }
   };
 }

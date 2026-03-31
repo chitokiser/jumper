@@ -154,7 +154,22 @@ async function initMentorLink(email) {
 
   btn.onclick = async () => {
     if (!window.ethereum) {
-      showMentorMsg("MetaMask가 설치되어 있지 않습니다.", "danger");
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        const deepLink = "https://metamask.app.link/dapp/" +
+          location.host + location.pathname + location.search;
+        showMentorMsg(
+          `모바일에서는 MetaMask 앱 내 브라우저를 사용해야 합니다. ` +
+          `<a href="${deepLink}" style="color:#7c3aed;font-weight:700;">MetaMask 앱으로 열기 →</a>`,
+          "warning"
+        );
+      } else {
+        showMentorMsg(
+          'MetaMask가 설치되어 있지 않습니다. ' +
+          '<a href="https://metamask.io/download/" target="_blank" style="color:#7c3aed;">설치하기 →</a>',
+          "danger"
+        );
+      }
       return;
     }
     btn.disabled = true;
