@@ -2,7 +2,7 @@
 // MyPage: profile / wallet / on-chain status / deposit & payment history
 
 import { onAuthReady } from "../auth.js";
-import { db, functions } from "/assets/js/firebase-init.js";
+import { db, functions, auth } from "/assets/js/firebase-init.js";
 import { login } from "../auth.js";
 
 import {
@@ -202,34 +202,39 @@ async function loadDepositHistory(uid) {
     }
 
     const statusLabel = {
-      pending: "\uB300\uAE30",
-      processing: "\uCC98\uB9AC\uC911",
-      approved: "\uC644\uB8CC",
-      rejected: "\uBC18\uB824",
+      pending:    { text: "대기중",  color: "#f59e0b" },
+      processing: { text: "처리중",  color: "#3b82f6" },
+      approved:   { text: "완료 ✓", color: "#10b981" },
+      rejected:   { text: "반려",    color: "#ef4444" },
     };
 
     const rows = snap.docs.map((d) => {
       const data = d.data();
       const dateStr = data.requestedAt?.toDate
-        ? data.requestedAt.toDate().toLocaleDateString("ko")
+        ? data.requestedAt.toDate().toLocaleString("ko")
         : "-";
 
-      const amountParts = [(data.amountKrw || 0).toLocaleString() + "\uC6D0"];
-      if (data.usdAmount != null) amountParts.push("$" + Number(data.usdAmount).toFixed(2));
-      if (data.vndAmount != null) amountParts.push(Number(data.vndAmount).toLocaleString() + " VND");
+      const amountParts = [];
+      if (data.amountKrw) amountParts.push((data.amountKrw || 0).toLocaleString() + "원");
+      if (data.vndAmount) amountParts.push(Number(data.vndAmount).toLocaleString() + " VND");
+      if (!amountParts.length) amountParts.push("-");
       const amountStr = amountParts.join(" / ");
 
+      const st = statusLabel[data.status] || { text: data.status, color: "#6b7280" };
+      const depositorStr = data.depositorName ? ` · ${data.depositorName}` : "";
+
       return `
-        <div class="mp-hist-row">
-          <div class="mp-hist-main">
-            <span class="mp-hist-code">${data.refCode || "-"}</span>
-            <span class="mp-hist-badge ${data.status}">${statusLabel[data.status] || data.status}</span>
+        <div class="mp-hist-row" style="border-left:3px solid ${st.color}; padding-left:10px; margin-bottom:10px;">
+          <div class="mp-hist-main" style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="mp-hist-code" style="font-size:0.78em; color:var(--muted);">${data.refCode || "-"}${depositorStr}</span>
+            <span style="font-weight:700; color:${st.color}; font-size:0.88em;">${st.text}</span>
           </div>
-          <div class="mp-hist-detail">
-            <span class="accent">${amountStr}</span>
-            <span class="muted">${dateStr}</span>
+          <div class="mp-hist-detail" style="display:flex; justify-content:space-between; margin-top:4px;">
+            <span style="font-weight:600; color:var(--accent);">${amountStr}</span>
+            <span style="font-size:0.78em; color:var(--muted);">${dateStr}</span>
           </div>
-          ${data.txHash ? `<div class="mp-hist-tx mono">${data.txHash.slice(0, 16)}...</div>` : ""}
+          ${data.txHash ? `<div style="font-size:0.72em; color:var(--muted); margin-top:2px;" class="mono">TX: ${data.txHash.slice(0, 20)}...</div>` : ""}
+          ${data.status === "rejected" && data.rejectReason ? `<div style="font-size:0.8em; color:#ef4444; margin-top:4px;">사유: ${data.rejectReason}</div>` : ""}
         </div>
       `;
     }).join("");
@@ -630,6 +635,12 @@ function bindDepositForm() {
       setText("drHex", drParts.join(" / "));
 
       form.reset();
+
+      // 충전 내역 자동 새로고침 + 스크롤
+      const currentUid = auth.currentUser?.uid;
+      if (currentUid) await loadDepositHistory(currentUid);
+      const histEl = $("depositHistory");
+      if (histEl) histEl.closest("section")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       alert("\uCDA9\uC804 \uC694\uCCAD \uC2E4\uD328: " + err.message);
     } finally {
