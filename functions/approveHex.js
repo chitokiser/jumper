@@ -10,7 +10,7 @@ const { ethers } = require('ethers');
 
 const RPC_URL      = 'https://opbnb-mainnet-rpc.bnbchain.org';
 const HEX_ADDRESS  = '0xA3C35c52446C133b7211A743c6D47470D1385601';
-const PLATFORM_ADDR= '0xc609562D5dB60A83C441BeD0E29d81fbF2497DE0';
+const PLATFORM_ADDR= '0x4d83A7764428fd1c116062aBb60c329E0E29f490';
 
 const HEX_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',

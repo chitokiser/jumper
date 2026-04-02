@@ -33,11 +33,13 @@ function setStep(id, status) {
 }
 
 // ── 이미 등록된 가맹점 표시 ──────────────────────
-function showAlreadyMerchant(merchantId, feeBps) {
+function showAlreadyMerchant(merchantId, feeBps, merchantName) {
   show("alreadyMerchantPanel", true);
-  const idEl  = $("existingMerchantId");
-  const feeEl = $("existingFeeBps");
-  if (idEl)  idEl.textContent  = String(merchantId);
+  const idEl   = $("existingMerchantId");
+  const feeEl  = $("existingFeeBps");
+  const nameEl = $("existingMerchantName");
+  if (idEl)   idEl.textContent  = String(merchantId);
+  if (nameEl) nameEl.textContent = merchantName || "-";
   if (feeEl) {
     if (feeBps != null) {
       feeEl.textContent = `${(Number(feeBps) / 100).toFixed(1)}%`;
@@ -233,23 +235,27 @@ async function _initForUser(ctx) {
       return;
     }
 
-    // ③ 온체인 등록 미완료
-    if (!userData?.onChain?.registered) {
-      setState("온체인 회원 등록이 필요합니다.");
-      show("needOnChainPanel", true);
-      return;
-    }
-
-    // ④ 이미 판매자 등록됨
+    // ③ 이미 판매자 등록됨 (온체인 등록 여부보다 먼저 체크)
     if (userData?.merchantId != null) {
       setState("이미 판매회원으로 등록되어 있습니다.");
       let feeBps = null;
+      let merchantName = null;
       try {
         const mSnap = await getDoc(doc(db, "merchants", String(userData.merchantId)));
-        if (mSnap.exists()) feeBps = mSnap.data()?.feeBps ?? null;
+        if (mSnap.exists()) {
+          feeBps = mSnap.data()?.feeBps ?? null;
+          merchantName = mSnap.data()?.name ?? null;
+        }
       } catch (_) {}
-      showAlreadyMerchant(userData.merchantId, feeBps);
+      showAlreadyMerchant(userData.merchantId, feeBps, merchantName);
       initMentorLink(user.email);
+      return;
+    }
+
+    // ④ 온체인 등록 미완료
+    if (!userData?.onChain?.registered) {
+      setState("온체인 회원 등록이 필요합니다.");
+      show("needOnChainPanel", true);
       return;
     }
 

@@ -15,7 +15,7 @@ const ADDRESSES = {
   jumpJump:     '0xA3C35c52446C133b7211A743c6D47470D1385601',  // JUMP 거래 토큰 (0 decimals)
   jumpBank:     '0x16752f8948ff2caA02e756c7C8fF0E04887A3a0E',  // 거래소 컨트랙트
   jumpTreasury: '0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312',  // 거버넌스
-  jumpPlatform: '0xc609562D5dB60A83C441BeD0E29d81fbF2497DE0',
+  jumpPlatform: '0x4d83A7764428fd1c116062aBb60c329E0E29f490',
 };
 
 // ────────────────────────────────────────────────
@@ -44,8 +44,15 @@ const PLATFORM_ABI = [
   'function fxVndPerHexScaled() external view returns (uint256)',
   'function fxScale() external view returns (uint32)',
   'function taxAccWei() external view returns (uint256)',
+  'function jackpotAccWei() external view returns (uint256)',
+  'function uplineReserveWei() external view returns (uint256)',
   'function mentorShareBps() external view returns (uint16)',
+  'function jackpotShareBps() external view returns (uint16)',
+  'function uplineReserveBps() external view returns (uint16)',
   'function taxThresholdWei() external view returns (uint256)',
+  'function owner() external view returns (address)',
+  'function pendingOwner() external view returns (address)',
+  'function solvencyReserve() external view returns (uint256 tax, uint256 jackpot, uint256 uplineReserve, uint256 reserved, uint256 contractBal, bool solvent)',
 
   // 유저 액션
   'function convertPointsToHex(uint256 pointsWei) external',
@@ -60,10 +67,13 @@ const PLATFORM_ABI = [
   'function manualFlushTax(uint256 maxAmountWei) external',
   'function setFx(uint256 krwPerHexScaled, uint256 usdPerHexScaled, uint256 vndPerHexScaled, uint32 scale) external',
   'function adminUpdateMerchantFee(uint256 merchantId, uint16 feeBps) external',
-  'function setParams(uint32 div_, uint16 mentorShareBps_, uint256 taxThresholdWei_) external',
+  'function setParams(uint32 div_, uint16 mentorShareBps_, uint16 jackpotShareBps_, uint16 uplineReserveBps_, uint256 taxThresholdWei_) external',
   'function adminSetLevel(address user, uint32 level_) external',
   'function adminSetBlocked(address user, bool blocked_) external',
   'function adminChangeMentor(address user, address newMentor) external',
+  'function setJumpBank(address jb, bool callHook) external',
+  'function transferOwnership(address newOwner) external',
+  'function acceptOwnership() external',
 
   // 가맹점 조회 (public mapping auto-getter)
   'function merchants(uint256) external view returns (address ownerAddr, uint16 feeBps, bool active, string metadataURI, bool exists)',
@@ -76,6 +86,9 @@ const PLATFORM_ABI = [
   'event PointsConverted(address indexed user, uint256 pointsWei, uint256 hexWei)',
   'event TaxFlush(address indexed to, uint256 amountWei, bool ok)',
   'event FxUpdated(uint256 krwPerHexScaled, uint256 usdPerHexScaled, uint256 vndPerHexScaled, uint32 fxScale)',
+  'event JackpotPointsAwarded(address indexed user, uint256 pointsWei, uint256 rand)',
+  'event OwnershipTransferStarted(address indexed from, address indexed to)',
+  'event OwnershipTransferred(address indexed from, address indexed to)',
 ];
 
 const HEX_ABI = [

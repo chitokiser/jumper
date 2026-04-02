@@ -154,6 +154,14 @@ async function loadOnChainData(uid) {
       setText("onChainStatus", "\uBBF8\uB4F1\uB85D");
       $("onChainStatus").style.color = "var(--muted)";
       show("onChainRegBox", true);
+      // 기존 멘토 주소 자동 입력 (이전 컨트랙트에서 가져옴)
+      try {
+        const prevMentor = (await getDoc(doc(db, "users", uid))).data()?.onChain?.mentorAddress;
+        const inputEl = $("mentorAddrInput");
+        if (prevMentor && inputEl && !inputEl.value) {
+          inputEl.value = prevMentor;
+        }
+      } catch (_) {}
     }
   } catch (err) {
     console.warn("getMyOnChain failed:", err.message);

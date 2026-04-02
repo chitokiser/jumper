@@ -688,11 +688,19 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
-  // 빨간약 지급: 1 HEX당 1/10 확률로 1병
-  let potionCount = 0;
-  for (let i = 0; i < Math.floor(hexAmount); i++) {
-    if (Math.random() < 0.1) potionCount++;
+  // 아이템 지급: 결제당 고정 확률 (금액 무관)
+  // 빨간약 30%, 마법약 40%, 부활 20%
+  let potionCount   = Math.random() < 0.30 ? 1 : 0;
+  let mpPotionCount = Math.random() < 0.40 ? 1 : 0;
+  let reviveAdded   = Math.random() < 0.20 ? 1 : 0;
+
+  // 1 HEX 이상이면 추가 아이템 (금액 비례 보너스)
+  for (let i = 1; i < Math.floor(hexAmount); i++) {
+    if (Math.random() < 0.20) potionCount++;
+    if (Math.random() < 0.25) mpPotionCount++;
+    if (Math.random() < 0.15) reviveAdded++;
   }
+
   if (potionCount > 0) {
     const invRef = db.collection('treasure_inventory').doc(`${uid}_potion_red`);
     await db.runTransaction(async (tx) => {
@@ -705,11 +713,6 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
-  // 마법약 지급: 1 HEX당 15% 확률
-  let mpPotionCount = 0;
-  for (let i = 0; i < Math.floor(hexAmount); i++) {
-    if (Math.random() < 0.15) mpPotionCount++;
-  }
   if (mpPotionCount > 0) {
     const mpRef = db.collection('treasure_inventory').doc(`${uid}_potion_mp`);
     await db.runTransaction(async (tx) => {
@@ -722,11 +725,6 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
-  // 부활 아이템 지급: 1 HEX당 20% 확률 (5분의 1)
-  let reviveAdded = 0;
-  for (let i = 0; i < Math.floor(hexAmount); i++) {
-    if (Math.random() < 0.2) reviveAdded++;
-  }
   if (reviveAdded > 0) {
     const revRef = db.collection('treasure_inventory').doc(`${uid}_revive_ticket`);
     await db.runTransaction(async (tx) => {
@@ -739,9 +737,9 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
-  // 잭팟: 전체 결제에서 1% 확률 — 빨간약 5병 + 마법약 3병 + 부활 2개 보너스
+  // 잭팟: 결제당 5% 확률 — 빨간약 5병 + 마법약 3병 + 부활 2개 보너스
   let isJackpot = false;
-  if (Math.random() < 0.01) {
+  if (Math.random() < 0.05) {
     isJackpot = true;
     const jpPotion = db.collection('treasure_inventory').doc(`${uid}_potion_red`);
     const jpMp     = db.collection('treasure_inventory').doc(`${uid}_potion_mp`);
