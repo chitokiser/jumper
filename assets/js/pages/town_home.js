@@ -77,43 +77,66 @@ function setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, rewar
   if (highestEl) highestEl.textContent = rewardText  || "아이템 잭팟";
 }
 
+// 컨트랙트에서 직접 jackpotAccWei 조회 (eth_call, 라이브러리 불필요)
+const JACKPOT_CONTRACT = "0x4d83A7764428fd1c116062aBb60c329E0E29f490";
+const JACKPOT_RPC      = "https://opbnb-mainnet-rpc.bnbchain.org";
+const JACKPOT_ACC_SEL  = "0x84eba628"; // keccak256("jackpotAccWei()")[:4]
+
+async function fetchJackpotAccWeiOnChain() {
+  const res = await fetch(JACKPOT_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: 1,
+      method: "eth_call",
+      params: [{ to: JACKPOT_CONTRACT, data: JACKPOT_ACC_SEL }, "latest"],
+    }),
+  });
+  const json = await res.json();
+  if (!json.result || json.result === "0x") return 0n;
+  return BigInt(json.result);
+}
+
 async function loadJackpotStats() {
   try {
-    const [configSnap, winsSnap] = await Promise.all([
+    const [configSnap, winsSnap, onChainWei] = await Promise.all([
       getDoc(doc(db, "jackpot_config", "current")),
       getDocs(query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(100))),
+      fetchJackpotAccWeiOnChain().catch(() => null),
     ]);
 
-    // 누적 잭팟 금액 + FX 환율
-    const cfg    = configSnap.exists() ? configSnap.data() : {};
-    const weiStr = cfg.jackpotAccWei || "0";
-    const hexVal = Number(BigInt(weiStr)) / 1e18;
-    // FX: jackpot_config에 캐시된 값 우선, 없으면 폴백
+    // FX 환율: jackpot_config 캐시 우선, 없으면 폴백
+    const cfg = configSnap.exists() ? configSnap.data() : {};
     const fx = {
       krw: Number(cfg.krwPerHex) > 0 ? Number(cfg.krwPerHex) : 1380,
       vnd: Number(cfg.vndPerHex) > 0 ? Number(cfg.vndPerHex) : 25000,
     };
-    _fxCache = fx; // 공유 캐시 업데이트
-    const krwStr = Math.round(hexVal * fx.krw).toLocaleString("ko-KR");
-    const vndStr = Math.round(hexVal * fx.vnd).toLocaleString("ko-KR");
+    _fxCache = fx;
+
+    // 누적 잭팟 금액: 온체인 직접 조회 우선, 캐시 폴백
+    const weiStr  = cfg.jackpotAccWei || "0";
+    const weiVal  = onChainWei !== null ? onChainWei : BigInt(weiStr);
+    const hexVal  = Number(weiVal) / 1e18;
+    const krwStr  = Math.round(hexVal * fx.krw).toLocaleString("ko-KR");
+    const vndStr  = Math.round(hexVal * fx.vnd).toLocaleString("ko-KR");
 
     const count = winsSnap.size;
     const now = new Date();
     setJackpotUi({
-      valueText:      hexVal > 0 ? fmtJackpotHex(hexVal) : "누적 대기중",
-      fiatText:       hexVal > 0 ? `약 ${krwStr} KRW / ${vndStr} VND` : "결제마다 5% 확률 — 아이템 잭팟",
-      updatedText:    `${now.toLocaleTimeString("ko-KR", { hour12: false })} 기준`,
+      valueText:       hexVal > 0 ? fmtJackpotHex(hexVal) : "0 HEX",
+      fiatText:        hexVal > 0 ? `약 ${krwStr} KRW / ${vndStr} VND` : "결제마다 5% 확률 — 아이템 잭팟",
+      updatedText:     `${now.toLocaleTimeString("ko-KR", { hour12: false })} 기준`,
       winnerCountText: count > 0 ? `${count.toLocaleString("ko-KR")}명` : "-",
-      rewardText:     "아이템 잭팟",
+      rewardText:      "아이템 잭팟",
     });
   } catch (e) {
     console.warn("loadJackpotStats failed:", e);
     setJackpotUi({
-      valueText:      "-",
-      fiatText:       "",
-      updatedText:    "잭팟 정보 조회 실패",
+      valueText:       "-",
+      fiatText:        "",
+      updatedText:     "잭팟 정보 조회 실패",
       winnerCountText: "-",
-      rewardText:     "아이템 잭팟",
+      rewardText:      "아이템 잭팟",
     });
   }
 }
