@@ -19,8 +19,6 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-import { initSlot } from "/assets/js/jackpot-anim.js";
-
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
 const $ = (id) => document.getElementById(id);
@@ -295,9 +293,6 @@ const TX_CONFIG = {
   withdraw:        { label: "인출",          dir: "expense", icon: "📤" },
   pay_merchant:    { label: "가맹점 결제",   dir: "expense", icon: "🛒" },
   merchant_income: { label: "가맹점 수익",   dir: "income",  icon: "🏪" },
-  jackpot_paid:    { label: "🎰 잭팟 당첨금", dir: "income",  icon: "🏆" },
-  jackpot_requested: { label: "잭팟 인출 신청", dir: "pending",  icon: "⏳" },
-  jackpot_rejected:  { label: "잭팟 인출 거절", dir: "rejected", icon: "✕" },
 };
 
 function txAmountHex(tx) {
@@ -379,39 +374,6 @@ async function loadTxHistory(uid, walletAddress) {
     });
   } catch (err) {
     console.warn("loadTxHistory Firestore:", err.message);
-  }
-
-  // ── 잭팟 인출 내역 ──
-  if (walletAddress) {
-    try {
-      const j = await fetchJackpotJson(`/jackpot/my-claims?wallet=${encodeURIComponent(walletAddress)}&limit=50`);
-      const claims = Array.isArray(j?.data) ? j.data : [];
-      claims.forEach((c) => {
-        const isPaid = c.status === "paid";
-        const isRejected = c.status === "rejected";
-        const typeKey = isPaid ? "jackpot_paid" : isRejected ? "jackpot_rejected" : "jackpot_requested";
-        const cfg = TX_CONFIG[typeKey];
-        const dateTs = isPaid && c.approvedAt ? new Date(c.approvedAt).getTime() : new Date(c.createdAt).getTime();
-        const dateStr = (isPaid && c.approvedAt ? new Date(c.approvedAt) : new Date(c.createdAt)).toLocaleString("ko-KR");
-        const weiStr = isPaid ? c.approvedWei : c.requestedWei;
-        const hex = weiStr ? Number(BigInt(weiStr || "0")) / 1e18 : 0;
-        const badge = isPaid ? { cls: "paid", text: "완료" }
-          : isRejected ? { cls: "rejected", text: "거절" }
-          : { cls: "requested", text: "대기중" };
-        unified.push({
-          sortTs: dateTs || 0,
-          label: cfg.label,
-          icon: cfg.icon,
-          dir: cfg.dir,
-          amountHex: hex,
-          dateStr,
-          txHash: c.txHash || null,
-          statusBadge: badge,
-        });
-      });
-    } catch (err) {
-      console.warn("loadTxHistory jackpot claims:", err.message);
-    }
   }
 
   if (unified.length === 0) {
@@ -729,93 +691,6 @@ function buildMypageDropHtml(d) {
     </div>`;
 }
 
-function watchJackpotResult(txHash, walletAddress) {
-  const box = $("merchantPayJackpot");
-  if (!box || !txHash) return;
-
-  box.style.display = "";
-  const waitEl  = box.querySelector(".jp-waiting");
-  const winEl   = box.querySelector(".jp-win");
-  const noWinEl = box.querySelector(".jp-nowin");
-  if (waitEl)  waitEl.style.display  = "";
-  if (winEl)   winEl.style.display   = "none";
-  if (noWinEl) noWinEl.style.display = "none";
-
-  const slot = initSlot(waitEl);
-
-  let revealed = false;
-  let pollId = null, historyPollId = null, timeoutTimer = null, unsub = null;
-
-  function cleanup() {
-    if (unsub)          { unsub(); unsub = null; }
-    if (pollId)         { clearInterval(pollId);        pollId        = null; }
-    if (historyPollId)  { clearInterval(historyPollId); historyPollId = null; }
-    if (timeoutTimer)   { clearTimeout(timeoutTimer);   timeoutTimer  = null; }
-  }
-
-  function weiToHex(weiStr) {
-    try { return (Number(BigInt(weiStr || "0")) / 1e18).toFixed(4); } catch { return "0"; }
-  }
-
-  function reveal(data) {
-    if (revealed) return;
-    revealed = true;
-    cleanup();
-    const isWin = data.isWinner && (
-      BigInt(data.finalWinWei || "0") > 0n ||
-      Number(data.finalWinHex || 0) > 0
-    );
-    const hexDisplay = data.finalWinHex || weiToHex(data.finalWinWei);
-    slot.stop(data.randomValue ?? 0, isWin, () => {
-      if (waitEl) waitEl.style.display = "none";
-      if (isWin) {
-        const amtEl = box.querySelector(".jp-win-amount");
-        if (amtEl) amtEl.textContent = `${hexDisplay} HEX`;
-        if (winEl) winEl.style.display = "block";
-      } else {
-        const randEl = box.querySelector(".jp-nowin-rand");
-        if (randEl) randEl.textContent = `랜덤 번호: ${data.randomValue ?? 0} / 9999`;
-        if (noWinEl) noWinEl.style.display = "block";
-      }
-    });
-  }
-
-  // Firestore onSnapshot (1차: 실시간 감지)
-  unsub = onSnapshot(
-    doc(db, "jackpot_rounds", txHash),
-    (snap) => { if (snap.exists()) reveal(snap.data()); },
-    (err)  => { console.warn("jackpot onSnapshot:", err.code); }
-  );
-
-  // Firestore 폴링 (2차: 5초마다 직접 조회)
-  pollId = setInterval(async () => {
-    if (revealed) { clearInterval(pollId); pollId = null; return; }
-    try {
-      const snap = await getDoc(doc(db, "jackpot_rounds", txHash));
-      if (snap.exists()) reveal(snap.data());
-    } catch {}
-  }, 5000);
-
-  // Railway API 폴링 (3차: 10초마다 history API 조회)
-  if (walletAddress) {
-    historyPollId = setInterval(async () => {
-      if (revealed) { clearInterval(historyPollId); historyPollId = null; return; }
-      try {
-        const j = await fetchJackpotJson(`/jackpot/history?wallet=${encodeURIComponent(walletAddress)}&limit=10`);
-        const rounds = Array.isArray(j?.data) ? j.data : [];
-        const match = rounds.find((r) => (r.txHash || "").toLowerCase() === txHash.toLowerCase());
-        if (match) reveal(match);
-      } catch {}
-    }, 10000);
-  }
-
-  // 2분 타임아웃
-  timeoutTimer = setTimeout(() => {
-    cleanup();
-    if (!revealed && waitEl) waitEl.textContent = "결과 대기 시간 초과. 잭팟 잔액 섹션을 확인하세요.";
-  }, 120000);
-}
-
 function bindMerchantPay(uid, walletAddress) {
   const form = $("merchantPayForm");
   if (!form || form._bound) return;
@@ -894,7 +769,6 @@ function bindMerchantPay(uid, walletAddress) {
       }
 
       form.reset();
-      watchJackpotResult(d.txHash, walletAddress);
       loadTxHistory(uid);
       loadOnChainData(uid);
     } catch (err) {
@@ -1133,151 +1007,6 @@ function bindQrScan() {
   };
 }
 
-let __jpClaimableHex = 0;
-
-function jackpotEndpoints(path) {
-  const base = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
-  if (base) return [`${base}${path}`];
-  const host = (location.hostname || "").toLowerCase();
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-  if (isLocal) return [`http://${host || "127.0.0.1"}:8787${path}`, path];
-  return [path];
-}
-
-async function fetchJackpotJson(path, options = {}) {
-  let lastErr = null;
-  for (const url of jackpotEndpoints(path)) {
-    try {
-      const res = await fetch(url, {
-        cache: "no-store",
-        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-        ...options,
-      });
-      const text = await res.text();
-      let json = null;
-      try { json = text ? JSON.parse(text) : null; } catch {}
-      if (!res.ok) {
-        const msg = json?.message || json?.error || `HTTP_${res.status}`;
-        throw new Error(msg);
-      }
-      if (!json) throw new Error("INVALID_JSON_RESPONSE");
-      return json;
-    } catch (e) {
-      lastErr = e;
-    }
-  }
-  throw lastErr || new Error("JACKPOT_FETCH_FAILED");
-}
-
-function fmtHex(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "0 HEX";
-  return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX`;
-}
-
-function fmtFiat(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "-";
-  const fx = window.__jackpotFx || {};
-  const krw = Number(fx.krw) > 0 ? Number(fx.krw) : 1480;
-  const vnd = Number(fx.vnd) > 0 ? Number(fx.vnd) : 26000;
-  const krwVal = Math.round(n * krw).toLocaleString("ko-KR");
-  const vndVal = Math.round(n * vnd).toLocaleString("ko-KR");
-  return `\uC57D ${krwVal}\uC6D0 / ${vndVal} VND`;
-}
-
-
-async function loadJackpotWallet(wallet) {
-  if (!wallet) return;
-  show("jackpotWalletSection", true);
-  try {
-    const b = await fetchJackpotJson(`/jackpot/balance?wallet=${encodeURIComponent(wallet)}`);
-    const d = b?.data || {};
-    const claimable = Number(d.claimableHex || 0);
-    const totalWon = Number(d.totalWonHex || 0);
-    const totalClaimed = Number(d.totalClaimedHex || 0);
-    __jpClaimableHex = claimable;
-
-    setText("jpClaimableHex", fmtHex(claimable));
-    setText("jpClaimableRate", fmtFiat(claimable));
-    setText("jpTotalWonHex", fmtHex(totalWon));
-    setText("jpTotalWonRate", fmtFiat(totalWon));
-    setText("jpTotalClaimedHex", fmtHex(totalClaimed));
-    show("jpClaimableRateRow", true);
-    show("jpTotalWonRateRow", true);
-    show("jpWithdrawBox", true);
-  } catch (e) {
-    setText("jpClaimableHex", "\uC870\uD68C \uC2E4\uD328");
-    console.warn("loadJackpotWallet failed:", e.message);
-  }
-}
-
-
-async function requestJackpotWithdraw(wallet, amountHex) {
-  const result = $("jpWithdrawResult");
-  if (result) {
-    result.style.display = "";
-    result.innerHTML = "<p class='hint'>\uC778\uCD9C \uC694\uCCAD \uCC98\uB9AC \uC911...</p>";
-  }
-  const j = await fetchJackpotJson("/jackpot/withdraw", {
-    method: "POST",
-    body: JSON.stringify({ wallet, amountHex: String(amountHex) }),
-  });
-  if (result) {
-    const tx = j?.data?.txHash ? String(j.data.txHash).slice(0, 18) + "..." : "-";
-    result.innerHTML = `<p class=\"hint\" style=\"color:var(--accent)\">\uC778\uCD9C \uC694\uCCAD \uC644\uB8CC (\uC0C1\uD0DC: ${j?.data?.status || "-"}, TX: ${tx})</p>`;
-  }
-  await loadJackpotWallet(wallet);
-}
-
-function bindJackpotActions(wallet) {
-  const btnRefresh = $("btnRefreshJackpotWallet");
-  if (btnRefresh) btnRefresh.onclick = () => loadJackpotWallet(wallet);
-
-  const btnWithdraw = $("btnJackpotWithdraw");
-  if (btnWithdraw) {
-    btnWithdraw.onclick = async () => {
-      const val = String($("jpWithdrawAmount")?.value || "").trim();
-      const amount = val ? Number(val) : __jpClaimableHex;
-      if (!amount || amount <= 0) {
-        alert("인출 가능 잔액이 없습니다.");
-        return;
-      }
-      if (amount < 10) {
-        alert("잭팟 인출은 최소 10 HEX 이상부터 가능합니다.\n현재 잔액: " + amount.toFixed(4) + " HEX");
-        return;
-      }
-      try {
-        await requestJackpotWithdraw(wallet, amount);
-      } catch (e) {
-        const result = $("jpWithdrawResult");
-        if (result) {
-          result.style.display = "";
-          result.innerHTML = `<p class=\"hint muted\">\uC778\uCD9C \uC2E0\uCCAD \uC2E4\uD328: ${e.message}</p>`;
-        }
-      }
-    };
-  }
-
-  const btnConvert = $("btnJackpotConvertInHistory");
-  if (btnConvert) {
-    btnConvert.onclick = async () => {
-      if (!__jpClaimableHex || __jpClaimableHex <= 0) {
-        alert("인출 가능 잔액이 없습니다.");
-        return;
-      }
-      if (__jpClaimableHex < 10) {
-        alert("잭팟 인출은 최소 10 HEX 이상부터 가능합니다.\n현재 잔액: " + __jpClaimableHex.toFixed(4) + " HEX");
-        return;
-      }
-      try {
-        await requestJackpotWithdraw(wallet, __jpClaimableHex);
-      } catch (e) {
-        alert("HEX \uC804\uD658 \uC2E4\uD328: " + e.message);
-      }
-    };
-  }
-}
 onAuthReady(async (ctx) => {
   const loggedIn = (ctx?.loggedIn ?? ctx?.loggedin) === true;
   const user = ctx?.user;
@@ -1339,11 +1068,6 @@ onAuthReady(async (ctx) => {
     loadMentees();
 
     loadTxHistory(user.uid, walletAddress);
-
-    if (walletAddress) {
-      bindJackpotActions(walletAddress);
-      loadJackpotWallet(walletAddress);
-    }
 
     const btnRefresh = $("btnRefreshDeposits");
     if (btnRefresh) btnRefresh.onclick = () => loadDepositHistory(user.uid);
