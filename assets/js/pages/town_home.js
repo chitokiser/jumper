@@ -42,151 +42,46 @@ function formatCount(v) {
   return `${n.toLocaleString("ko-KR")}명`;
 }
 
-function getFxRates() {
-  const src = window.__jackpotFx || {};
-  const krw = Number(src.krw);
-  const vnd = Number(src.vnd);
-  return {
-    krw: Number.isFinite(krw) && krw > 0 ? krw : 1380,
-    vnd: Number.isFinite(vnd) && vnd > 0 ? vnd : 25000,
-  };
-}
-
-function formatFiatLine(hexValue) {
-  const n = Number(hexValue);
-  if (!Number.isFinite(n)) return "약 - KRW / - VND";
-
-  const fx = getFxRates();
-  const krw = n * fx.krw;
-  const vnd = n * fx.vnd;
-  return `약 ${Math.round(krw).toLocaleString("ko-KR")} KRW / ${Math.round(vnd).toLocaleString("ko-KR")} VND`;
-}
-
-function jackpotEndpoints(path) {
-  const base = String(window.__jackpotApiBase || "").trim().replace(/\/$/, "");
-  if (base) return [`${base}${path}`];
-
-  const host = (location.hostname || "").trim().toLowerCase();
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-  const isApiOrigin = location.port === "8787";
-
-  if (isApiOrigin) return [`${location.origin}${path}`];
-  if (isLocal) return [`http://${host || "127.0.0.1"}:8787${path}`, path];
-  return [path];
-}
-
-async function fetchJackpotJson(path) {
-  let lastError = null;
-  for (const url of jackpotEndpoints(path)) {
-    try {
-      const res = await fetch(url, { method: "GET", cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP_${res.status}`);
-      return await res.json();
-    } catch (e) {
-      lastError = e;
-    }
-  }
-  throw lastError || new Error("JACKPOT_FETCH_FAILED");
-}
-
-function setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, highestWinText }) {
-  const valueEl = $("jackpotDisplayValue");
-  const fiatEl = $("jackpotFiatValue");
+function setJackpotUi({ updatedText, winnerCountText, rewardText }) {
   const updatedEl = $("jackpotUpdated");
-  const winnerEl = $("jackpotWinnerCount");
+  const winnerEl  = $("jackpotWinnerCount");
   const highestEl = $("jackpotHighestWin");
 
-  if (valueEl) valueEl.textContent = valueText;
-  if (fiatEl) fiatEl.textContent = fiatText;
   if (updatedEl) updatedEl.innerHTML = `<span class="jackpot-dot"></span>${escHtml(updatedText)}`;
-  if (winnerEl) winnerEl.textContent = winnerCountText;
-  if (highestEl) highestEl.textContent = highestWinText;
+  if (winnerEl)  winnerEl.textContent  = winnerCountText;
+  if (highestEl) highestEl.textContent = rewardText;
 }
 
-async function loadJackpotCurrent() {
+async function loadJackpotStats() {
   try {
-    const currentJson = await fetchJackpotJson("/jackpot/current");
-    const current = currentJson?.data || {};
+    const snap = await getDocs(
+      query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(100))
+    );
+    const count = snap.size;
     const now = new Date();
-
-    let winnerCountText = "-";
-    let highestWinText = "- HEX";
-
-    try {
-      const statsJson = await fetchJackpotJson("/jackpot/public-stats");
-      const stats = statsJson?.data || {};
-      winnerCountText = formatCount(stats.winnerCount);
-      highestWinText = formatHexForUi(stats.highestWinHex);
-    } catch (e) {
-      console.warn("loadJackpot stats failed:", e);
-    }
-
     setJackpotUi({
-      valueText: formatHexForUi(current.jackpotDisplayHex),
-      fiatText: formatFiatLine(current.jackpotDisplayHex),
-      updatedText: `${now.toLocaleTimeString("ko-KR", { hour12: false })} 기준 조회`,
-      winnerCountText,
-      highestWinText,
+      updatedText: `${now.toLocaleTimeString("ko-KR", { hour12: false })} 기준`,
+      winnerCountText: count > 0 ? `${count.toLocaleString("ko-KR")}명` : "-",
+      rewardText: "아이템 잭팟",
     });
   } catch (e) {
-    console.warn("loadJackpotCurrent failed:", e);
-    try {
-      await loadJackpotFirestoreFallback();
-    } catch (fe) {
-      console.warn("loadJackpotFirestoreFallback failed:", fe);
-      setJackpotUi({
-        valueText: "연결 대기중",
-        fiatText: "약 - KRW / - VND",
-        updatedText: "잭팟 서버에 연결할 수 없습니다",
-        winnerCountText: "-",
-        highestWinText: "- HEX",
-      });
-    }
+    console.warn("loadJackpotStats failed:", e);
+    setJackpotUi({
+      updatedText: "잭팟 정보 조회 실패",
+      winnerCountText: "-",
+      rewardText: "아이템 잭팟",
+    });
   }
-}
-
-async function loadJackpotFirestoreFallback() {
-  let winnerCountText = "-";
-  let highestWinText = "- HEX";
-  let valueText = "연결 대기중";
-  let fiatText = "약 - KRW / - VND";
-  let updatedText = "잭팟 서버에 연결할 수 없습니다";
-
-  // Query 1: 최고 당첨금 + 당첨자 수 (클라이언트 카운트)
-  try {
-    const highSnap = await getDocs(
-      query(collection(db, "jackpot_rounds"), orderBy("finalWinSort", "desc"), limit(5))
-    );
-    if (!highSnap.empty) {
-      const wei = highSnap.docs[0].data().finalWinWei || "0";
-      highestWinText = formatHexForUi(Number(BigInt(wei)) / 1e18);
-      winnerCountText = formatCount(highSnap.size);
-    }
-  } catch {}
-
-  // Query 2: 최신 라운드 잭팟 표시값
-  try {
-    const latestSnap = await getDocs(
-      query(collection(db, "jackpot_rounds"), orderBy("createdAt", "desc"), limit(1))
-    );
-    if (!latestSnap.empty) {
-      const wei = latestSnap.docs[0].data().jackpotDisplayWei || "0";
-      const hexVal = Number(BigInt(wei)) / 1e18;
-      if (hexVal > 0) {
-        valueText = formatHexForUi(hexVal);
-        fiatText = formatFiatLine(hexVal);
-        updatedText = "최근 결제 기준 (실시간 아님)";
-      }
-    }
-  } catch {}
-
-  setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, highestWinText });
 }
 
 function initJackpotTicker() {
   if (!$("jackpotSection")) return;
-  loadJackpotCurrent();
-  setInterval(loadJackpotCurrent, 15000);
+  // 잭팟 타입 표시 (아이템 잭팟)
+  const valueEl = $("jackpotDisplayValue");
+  const fiatEl  = $("jackpotFiatValue");
+  if (valueEl) { valueEl.textContent = "🎁 아이템 잭팟"; valueEl.style.fontSize = "1.3rem"; }
+  if (fiatEl)  fiatEl.textContent = "결제마다 5% 확률 — 빨간약·마법약·부활권";
+  loadJackpotStats();
 }
 
 // ── 당첨자 목록 & 공유 카드 ──────────────────────────────
@@ -199,68 +94,33 @@ async function loadJackpotWinners() {
   if (!wrap) return;
 
   try {
-    // 가맹점 이름 맵
-    const merchantSnap = await fetchMerchantsOnce();
-    const merchantMap = new Map();
-    merchantSnap.forEach((d) => {
-      const m = d.data() || {};
-      merchantMap.set(String(d.id), m.name || `가맹점 #${d.id}`);
-    });
-
-    // 최근 당첨 라운드 조회 (isWinner==true, 최신순)
-    let snap;
-    try {
-      snap = await getDocs(
-        query(
-          collection(db, "jackpot_rounds"),
-          where("isWinner", "==", true),
-          orderBy("createdAt", "desc"),
-          limit(50)
-        )
-      );
-    } catch {
-      // 복합 인덱스 없을 경우 finalWinSort 내림차순으로 폴백
-      snap = await getDocs(
-        query(
-          collection(db, "jackpot_rounds"),
-          orderBy("finalWinSort", "desc"),
-          limit(20)
-        )
-      );
-    }
+    const snap = await getDocs(
+      query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(50))
+    );
 
     const winners = [];
     snap.forEach((d) => {
       const r = d.data();
-      if (!r.isWinner && Number(r.finalWinSort || 0) <= 0) return;
-      const hexVal = Number(BigInt(r.finalWinWei || "0")) / 1e18;
-      if (hexVal <= 0) return;
-      const fx = getFxRates();
-      const krwStr = Math.round(hexVal * fx.krw).toLocaleString("ko-KR");
-      const vndStr = Math.round(hexVal * fx.vnd).toLocaleString("ko-KR");
       const addr = String(r.userAddress || "");
       const addrShort = addr.length > 8 ? addr.slice(0, 6) + "..." + addr.slice(-4) : addr || "-";
-      const merchantId = String(r.merchantId ?? "");
-      const merchantName = merchantMap.get(merchantId) || (merchantId ? `가맹점 #${merchantId}` : "-");
       const createdAt = r.createdAt?.toDate ? r.createdAt.toDate() : null;
       const dateStr = createdAt
         ? createdAt.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) +
           " " +
           createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
         : "-";
-      winners.push({ hexVal, krwStr, vndStr, addrShort, merchantName, dateStr, _ts: createdAt ? createdAt.getTime() : 0 });
+      const items = [];
+      if ((r.potionCount   || 0) > 0) items.push(`빨간약 +${r.potionCount}`);
+      if ((r.mpPotionCount || 0) > 0) items.push(`마법약 +${r.mpPotionCount}`);
+      if ((r.reviveAdded   || 0) > 0) items.push(`부활권 +${r.reviveAdded}`);
+      winners.push({
+        addrShort,
+        merchantName: r.merchantName || `가맹점 #${r.merchantId ?? ""}`,
+        dateStr,
+        itemsStr: items.join(" / ") || "아이템",
+        _ts: createdAt ? createdAt.getTime() : 0,
+      });
     });
-
-    // 맨 위: 최고금액 당첨자 1개 / 나머지: 최신순
-    if (winners.length > 1) {
-      let topIdx = 0;
-      for (let i = 1; i < winners.length; i++) {
-        if (winners[i].hexVal > winners[topIdx].hexVal) topIdx = i;
-      }
-      const [topWinner] = winners.splice(topIdx, 1);
-      winners.sort((a, b) => b._ts - a._ts);
-      winners.unshift(topWinner);
-    }
 
     _jackpotWinners = winners;
 
@@ -273,8 +133,7 @@ async function loadJackpotWinners() {
     const makeRow = (w, i) => `
       <div class="jp-winner-row${i === 0 ? " jp-winner-top" : ""}">
         <div class="jp-winner-info">
-          <div class="jp-winner-amount">${i === 0 ? "&#x1F3C6; " : ""}${w.hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX</div>
-          <div class="jp-winner-fiat">&#x2248; ${w.krwStr} KRW / ${w.vndStr} VND</div>
+          <div class="jp-winner-amount">${i === 0 ? "&#x1F3C6; " : "&#x1F381; "}${escHtml(w.itemsStr)}</div>
           <div class="jp-winner-meta">
             <span class="jp-winner-tag">&#x1F464; ${escHtml(w.addrShort)}</span>
             <span class="jp-winner-tag">&#x1F3EA; ${escHtml(w.merchantName)}</span>
@@ -300,7 +159,6 @@ async function loadJackpotWinners() {
       };
     }
 
-    // 공유 버튼 이벤트
     wrap.addEventListener("click", (e) => {
       const btn = e.target.closest(".jp-share-btn");
       if (!btn) return;

@@ -638,7 +638,7 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
 
   // 거래 기록 — 구매자 측
   const hexAmount = parseFloat(ethers.formatEther(hexWei));
-  await db.collection('transactions').add({
+  const txRecord = {
     uid,
     userAddress:  walletData.address,
     type:         'pay_merchant',
@@ -650,7 +650,8 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     ...(currency === 'VND' && amountVnd ? { amountVnd, currency: 'VND' } : { currency: 'KRW' }),
     txHash:       receipt.hash,
     createdAt:    admin.firestore.FieldValue.serverTimestamp(),
-  });
+  };
+  await db.collection('transactions').add(txRecord);
 
   // 거래 기록 — 가맹점 수입
   // ownerUid 없으면 ownerAddress로 users 컬렉션 fallback 조회
@@ -753,6 +754,19 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     potionCount   += 5;
     mpPotionCount += 3;
     reviveAdded   += 2;
+
+    // 잭팟 당첨 기록 (town_home 당첨자 목록 표시용)
+    await db.collection('jackpot_wins').add({
+      uid,
+      userAddress:  walletData.address,
+      merchantId:   Number(merchantId),
+      merchantName: merchant.name || '',
+      txHash:       receipt.hash,
+      potionCount,
+      mpPotionCount,
+      reviveAdded,
+      createdAt:    admin.firestore.FieldValue.serverTimestamp(),
+    });
   }
 
   return {
