@@ -676,19 +676,55 @@ async function loadMerchantsForSelect() {
 
 function buildMypageDropHtml(d) {
   const items = [];
-  if (d.potionsAdded   > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:26px;height:26px;vertical-align:middle;"> 빨간약 <b>+${d.potionsAdded}</b>`);
-  if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png" style="width:26px;height:26px;vertical-align:middle;"> 마법약 <b>+${d.mpPotionsAdded}</b>`);
-  if (d.reviveAdded    > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:26px;height:26px;vertical-align:middle;"> 부활권 <b>+${d.reviveAdded}</b>`);
+  if (d.potionsAdded   > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:24px;height:24px;vertical-align:middle;"> 빨간약 <b>+${d.potionsAdded}</b>`);
+  if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png" style="width:24px;height:24px;vertical-align:middle;"> 마법약 <b>+${d.mpPotionsAdded}</b>`);
+  if (d.reviveAdded    > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:24px;height:24px;vertical-align:middle;"> 부활권 <b>+${d.reviveAdded}</b>`);
   if (!items.length) return '';
-  const jackpotBanner = d.isJackpot
-    ? `<div style="text-align:center;font-size:1.1em;font-weight:800;color:#f59e0b;margin-bottom:6px;letter-spacing:2px;">🎰 JACKPOT!! 🎰</div>`
-    : '';
   return `
-    <div style="margin-top:10px;background:rgba(251,191,36,.12);border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;">
-      ${jackpotBanner}
-      <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px;">🎁 득템!</div>
-      ${items.map(i=>`<div style="font-size:14px;margin:3px 0;">${i}</div>`).join('')}
+    <div class="drop-box">
+      <div class="drop-box-title">🎁 득템!</div>
+      ${items.map(i=>`<div class="drop-item">${i}</div>`).join('')}
     </div>`;
+}
+
+function showJackpotResult(d) {
+  const modal   = $("jackpotModal");
+  if (!modal) return;
+
+  const hasItems = (d.potionsAdded > 0) || (d.mpPotionsAdded > 0) || (d.reviveAdded > 0);
+  if (!d.isJackpot && !hasItems) return;
+
+  const emojiEl = $("jmEmoji");
+  const titleEl = $("jmTitle");
+  const descEl  = $("jmDesc");
+  const itemsEl = $("jmItems");
+  const closeBtn = $("jmCloseBtn");
+
+  if (d.isJackpot) {
+    if (emojiEl) emojiEl.textContent = "🎉";
+    if (titleEl) titleEl.textContent = "JACKPOT!! 🎰";
+    if (descEl)  descEl.textContent  = "잭팟 당첨! 아이템을 획득했습니다.";
+  } else {
+    if (emojiEl) emojiEl.textContent = "🎁";
+    if (titleEl) { titleEl.textContent = "아이템 획득!"; titleEl.style.color = "#fef08a"; }
+    if (descEl)  descEl.textContent  = "결제 보상으로 아이템을 받았습니다.";
+  }
+
+  if (itemsEl) {
+    const lines = [];
+    if (d.potionsAdded   > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> 빨간약 <b>+${d.potionsAdded}</b></div>`);
+    if (d.mpPotionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/mp.png" style="width:22px;height:22px;"> 마법약 <b>+${d.mpPotionsAdded}</b></div>`);
+    if (d.reviveAdded    > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:22px;height:22px;"> 부활권 <b>+${d.reviveAdded}</b></div>`);
+    itemsEl.innerHTML = lines.join('');
+    itemsEl.style.display = lines.length ? '' : 'none';
+  }
+
+  modal.classList.add("active");
+
+  if (closeBtn) {
+    closeBtn.onclick = () => modal.classList.remove("active");
+  }
+  modal.onclick = (e) => { if (e.target === modal) modal.classList.remove("active"); };
 }
 
 function bindMerchantPay(uid, walletAddress) {
@@ -769,6 +805,7 @@ function bindMerchantPay(uid, walletAddress) {
       }
 
       form.reset();
+      showJackpotResult(d);
       loadTxHistory(uid);
       loadOnChainData(uid);
     } catch (err) {
