@@ -42,46 +42,86 @@ function formatCount(v) {
   return `${n.toLocaleString("ko-KR")}명`;
 }
 
-function setJackpotUi({ updatedText, winnerCountText, rewardText }) {
+// ── FX 환율 (jackpot_config/current 캐시, 결제마다 업데이트) ─────────
+let _fxCache = null;
+async function getFxRates() {
+  if (_fxCache) return _fxCache;
+  try {
+    const snap = await getDoc(doc(db, "jackpot_config", "current"));
+    const d = snap.exists() ? snap.data() : {};
+    _fxCache = {
+      krw: Number(d.krwPerHex) > 0 ? Number(d.krwPerHex) : 1380,
+      vnd: Number(d.vndPerHex) > 0 ? Number(d.vndPerHex) : 25000,
+    };
+  } catch {
+    _fxCache = { krw: 1380, vnd: 25000 };
+  }
+  return _fxCache;
+}
+
+function fmtJackpotHex(hexVal) {
+  return `${hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX`;
+}
+
+function setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, rewardText }) {
+  const valueEl   = $("jackpotDisplayValue");
+  const fiatEl    = $("jackpotFiatValue");
   const updatedEl = $("jackpotUpdated");
   const winnerEl  = $("jackpotWinnerCount");
   const highestEl = $("jackpotHighestWin");
 
-  if (updatedEl) updatedEl.innerHTML = `<span class="jackpot-dot"></span>${escHtml(updatedText)}`;
-  if (winnerEl)  winnerEl.textContent  = winnerCountText;
-  if (highestEl) highestEl.textContent = rewardText;
+  if (valueEl)   valueEl.textContent   = valueText   || "-";
+  if (fiatEl)    fiatEl.textContent    = fiatText    || "";
+  if (updatedEl) updatedEl.innerHTML   = `<span class="jackpot-dot"></span>${escHtml(updatedText || "")}`;
+  if (winnerEl)  winnerEl.textContent  = winnerCountText || "-";
+  if (highestEl) highestEl.textContent = rewardText  || "아이템 잭팟";
 }
 
 async function loadJackpotStats() {
   try {
-    const snap = await getDocs(
-      query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(100))
-    );
-    const count = snap.size;
+    const [configSnap, winsSnap] = await Promise.all([
+      getDoc(doc(db, "jackpot_config", "current")),
+      getDocs(query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(100))),
+    ]);
+
+    // 누적 잭팟 금액 + FX 환율
+    const cfg    = configSnap.exists() ? configSnap.data() : {};
+    const weiStr = cfg.jackpotAccWei || "0";
+    const hexVal = Number(BigInt(weiStr)) / 1e18;
+    // FX: jackpot_config에 캐시된 값 우선, 없으면 폴백
+    const fx = {
+      krw: Number(cfg.krwPerHex) > 0 ? Number(cfg.krwPerHex) : 1380,
+      vnd: Number(cfg.vndPerHex) > 0 ? Number(cfg.vndPerHex) : 25000,
+    };
+    _fxCache = fx; // 공유 캐시 업데이트
+    const krwStr = Math.round(hexVal * fx.krw).toLocaleString("ko-KR");
+    const vndStr = Math.round(hexVal * fx.vnd).toLocaleString("ko-KR");
+
+    const count = winsSnap.size;
     const now = new Date();
     setJackpotUi({
-      updatedText: `${now.toLocaleTimeString("ko-KR", { hour12: false })} 기준`,
+      valueText:      hexVal > 0 ? fmtJackpotHex(hexVal) : "누적 대기중",
+      fiatText:       hexVal > 0 ? `약 ${krwStr} KRW / ${vndStr} VND` : "결제마다 5% 확률 — 아이템 잭팟",
+      updatedText:    `${now.toLocaleTimeString("ko-KR", { hour12: false })} 기준`,
       winnerCountText: count > 0 ? `${count.toLocaleString("ko-KR")}명` : "-",
-      rewardText: "아이템 잭팟",
+      rewardText:     "아이템 잭팟",
     });
   } catch (e) {
     console.warn("loadJackpotStats failed:", e);
     setJackpotUi({
-      updatedText: "잭팟 정보 조회 실패",
+      valueText:      "-",
+      fiatText:       "",
+      updatedText:    "잭팟 정보 조회 실패",
       winnerCountText: "-",
-      rewardText: "아이템 잭팟",
+      rewardText:     "아이템 잭팟",
     });
   }
 }
 
 function initJackpotTicker() {
   if (!$("jackpotSection")) return;
-  // 잭팟 타입 표시 (아이템 잭팟)
-  const valueEl = $("jackpotDisplayValue");
-  const fiatEl  = $("jackpotFiatValue");
-  if (valueEl) { valueEl.textContent = "🎁 아이템 잭팟"; valueEl.style.fontSize = "1.3rem"; }
-  if (fiatEl)  fiatEl.textContent = "결제마다 5% 확률 — 빨간약·마법약·부활권";
   loadJackpotStats();
+  setInterval(loadJackpotStats, 30000); // 30초마다 갱신
 }
 
 // ── 당첨자 목록 & 공유 카드 ──────────────────────────────

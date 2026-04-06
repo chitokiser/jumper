@@ -341,6 +341,12 @@ service cloud.firestore {
       allow get, list: if true;
       allow create, update, delete: if false; // Cloud Functions only
     }
+
+    // jackpot config — 잭팟 누적금액 캐시 (공개 읽기)
+    match /jackpot_config/{docId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // Cloud Functions only
+    }
 // used market posts
     match /usedMarketPosts/{postId} {
       allow get, list: if true;

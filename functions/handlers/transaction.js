@@ -769,6 +769,24 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     });
   }
 
+  // 잭팟 누적금액 캐시 업데이트 (town_home 표시용, 실패해도 결제는 완료)
+  try {
+    const provider = getProvider();
+    const platformView = getPlatformContract(provider);
+    const jackpotWei = await platformView.jackpotAccWei();
+    // 1 HEX ≈ 1 USD 기준: krwPerHex = krwPerUsd, vndPerHex = vndPerUsd
+    const krwPerHex = rates?.krwPerUsd ? Math.round(rates.krwPerUsd) : null;
+    const vndPerHex = rates?.vndPerUsd ? Math.round(rates.vndPerUsd) : null;
+    await db.collection('jackpot_config').doc('current').set({
+      jackpotAccWei: jackpotWei.toString(),
+      ...(krwPerHex ? { krwPerHex } : {}),
+      ...(vndPerHex ? { vndPerHex } : {}),
+      updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  } catch (e) {
+    console.warn('jackpotAccWei cache update failed:', e.message);
+  }
+
   return {
     txHash:       receipt.hash,
     amountHex:    hexAmount.toFixed(4),
