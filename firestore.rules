@@ -335,6 +335,12 @@ service cloud.firestore {
       allow get, list: if true;
       allow create, update, delete: if false;
     }
+
+    // jackpot wins — 아이템 잭팟 당첨 기록 (공개 읽기)
+    match /jackpot_wins/{docId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // Cloud Functions only
+    }
 // used market posts
     match /usedMarketPosts/{postId} {
       allow get, list: if true;
