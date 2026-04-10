@@ -636,6 +636,19 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
   const tx       = await platform.payMerchantHex(merchantId, hexWei, { gasLimit });
   const receipt  = await tx.wait();
 
+  // JackpotPointsAwarded(address indexed user, uint256 pointsWei, uint256 rand) 이벤트 파싱
+  // topic0 = keccak256('JackpotPointsAwarded(address,uint256,uint256)')
+  const JACKPOT_TOPIC = '0xaa0230492416abd101e998f7330ac068034ca1dc45005a19e30a373528288b09';
+  let onchainJackpotPointsWei = 0n;
+  for (const log of receipt.logs) {
+    if (log.topics[0] === JACKPOT_TOPIC) {
+      // data = abi.encode(pointsWei, rand) — 각 32바이트
+      const pointsHex = log.data.slice(0, 66); // '0x' + 64 chars
+      onchainJackpotPointsWei = BigInt(pointsHex);
+      break;
+    }
+  }
+
   // 거래 기록 — 구매자 측
   const hexAmount = parseFloat(ethers.formatEther(hexWei));
   const txRecord = {
@@ -758,14 +771,31 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     // 잭팟 당첨 기록 (town_home 당첨자 목록 표시용)
     await db.collection('jackpot_wins').add({
       uid,
-      userAddress:  walletData.address,
-      merchantId:   Number(merchantId),
-      merchantName: merchant.name || '',
-      txHash:       receipt.hash,
+      userAddress:             walletData.address,
+      merchantId:              Number(merchantId),
+      merchantName:            merchant.name || '',
+      txHash:                  receipt.hash,
       potionCount,
       mpPotionCount,
       reviveAdded,
-      createdAt:    admin.firestore.FieldValue.serverTimestamp(),
+      onchainJackpotPointsWei: onchainJackpotPointsWei.toString(),
+      createdAt:               admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  // 온체인 잭팟 포인트 당첨 기록 (isJackpot과 별개)
+  if (onchainJackpotPointsWei > 0n) {
+    await db.collection('jackpot_wins').add({
+      uid,
+      userAddress:              walletData.address,
+      merchantId:               Number(merchantId),
+      merchantName:             merchant.name || '',
+      txHash:                   receipt.hash,
+      onchainJackpotPointsWei:  onchainJackpotPointsWei.toString(),
+      potionCount:              0,
+      mpPotionCount:            0,
+      reviveAdded:              0,
+      createdAt:                admin.firestore.FieldValue.serverTimestamp(),
     });
   }
 
@@ -797,6 +827,7 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     mpPotionsAdded: mpPotionCount,
     reviveAdded,
     isJackpot,
+    onchainJackpotPointsWei: onchainJackpotPointsWei.toString(),
   };
 }
 

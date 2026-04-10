@@ -461,6 +461,62 @@ exports.adminSetUserLevel = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
+// 17-c2. 관리자: 유저 정보 조회 (블랙리스트 상태 포함)
+//        클라이언트: httpsCallable(functions, 'adminGetUserInfo')({ emailOrUid })
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminGetUserInfo = onCall(
+  wrapError(async (request) => {
+    const callerId = requireAuth(request);
+    await requireAdmin(callerId);
+    const { emailOrUid } = request.data ?? {};
+    if (!emailOrUid) throw new HttpsError('invalid-argument', 'emailOrUid가 필요합니다');
+
+    const isEmail = emailOrUid.includes('@');
+    let authUser;
+    try {
+      authUser = isEmail
+        ? await admin.auth().getUserByEmail(emailOrUid)
+        : await admin.auth().getUser(emailOrUid);
+    } catch {
+      throw new HttpsError('not-found', `유저를 찾을 수 없습니다: ${emailOrUid}`);
+    }
+    const uid = authUser.uid;
+    const fsSnap = await db.collection('users').doc(uid).get();
+    const fsData = fsSnap.exists ? fsSnap.data() : {};
+    return {
+      uid,
+      email:         authUser.email || null,
+      name:          fsData.name    || null,
+      walletAddress: fsData.wallet?.address || null,
+      blacklisted:   !!fsData.blacklisted,
+      authDisabled:  !!authUser.disabled,
+    };
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 17-d. 관리자: 유저 블랙리스트 등록/해제
+//       - 온체인 adminSetBlocked(address, bool) 호출
+//       - Firebase Auth disabled 설정 (로그인 차단)
+//       - Firestore users.blacklisted 필드 기록
+//       클라이언트: httpsCallable(functions, 'adminSetBlacklist')({ emailOrUid, blocked })
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminSetBlacklist = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const callerId = requireAuth(request);
+    await requireAdmin(callerId);
+    const { emailOrUid, blocked } = request.data ?? {};
+    if (!emailOrUid) throw new HttpsError('invalid-argument', 'emailOrUid가 필요합니다');
+    if (typeof blocked !== 'boolean') throw new HttpsError('invalid-argument', 'blocked는 boolean이어야 합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await onboarding.adminSetBlacklist(emailOrUid, blocked);
+    logger.info('adminSetBlacklist', { adminUid: callerId, ...result });
+    return result;
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
 // 18. 나의 멘티 목록 조회
 //     클라이언트: httpsCallable(functions, 'getMyMentees')()
 // ════════════════════════════════════════════════════════════════════════════
@@ -468,6 +524,17 @@ exports.getMyMentees = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
     return await onboarding.getMyMentees(uid);
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 19-0. 나의 멘티 수익 집계 (Admin SDK로 transactions 조회)
+//     클라이언트: httpsCallable(functions, 'getMenteeIncome')()
+// ════════════════════════════════════════════════════════════════════════════
+exports.getMenteeIncome = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await onboarding.getMenteeIncome(uid);
   })
 );
 
@@ -1421,4 +1488,56 @@ exports.buggyGetDriverEarnings = onCall(wrapError(async (req) => {
 }));
 exports.buggyGetConfig = onCall(wrapError(async (_req) => {
   return buggyH.getConfig();
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
+// 관리자: 회원 비활성화 / 재활성화
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminDisableUser = onCall(wrapError(async (req) => {
+  const adminUid = requireAuth(req);
+  await requireAdmin(adminUid);
+  const { targetUid } = req.data ?? {};
+  if (!targetUid) throw new HttpsError('invalid-argument', 'targetUid가 필요합니다');
+  const db = admin.firestore();
+  await admin.auth().updateUser(targetUid, { disabled: true });
+  await db.collection('users').doc(targetUid).set(
+    { disabled: true, disabledAt: admin.firestore.FieldValue.serverTimestamp(), disabledBy: adminUid },
+    { merge: true }
+  );
+  logger.info('adminDisableUser', { adminUid, targetUid });
+  return { ok: true };
+}));
+
+exports.adminEnableUser = onCall(wrapError(async (req) => {
+  const adminUid = requireAuth(req);
+  await requireAdmin(adminUid);
+  const { targetUid } = req.data ?? {};
+  if (!targetUid) throw new HttpsError('invalid-argument', 'targetUid가 필요합니다');
+  const db = admin.firestore();
+  await admin.auth().updateUser(targetUid, { disabled: false });
+  await db.collection('users').doc(targetUid).set(
+    { disabled: false, enabledAt: admin.firestore.FieldValue.serverTimestamp(), enabledBy: adminUid },
+    { merge: true }
+  );
+  logger.info('adminEnableUser', { adminUid, targetUid });
+  return { ok: true };
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
+// 관리자: 가맹점 활성/비활성 토글
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminToggleMerchant = onCall(wrapError(async (req) => {
+  const adminUid = requireAuth(req);
+  await requireAdmin(adminUid);
+  const { merchantId, active } = req.data ?? {};
+  if (merchantId === undefined || merchantId === null) throw new HttpsError('invalid-argument', 'merchantId가 필요합니다');
+  if (typeof active !== 'boolean') throw new HttpsError('invalid-argument', 'active(boolean)가 필요합니다');
+  const db = admin.firestore();
+  await db.collection('merchants').doc(String(merchantId)).update({
+    active,
+    [`${active ? 'activated' : 'deactivated'}At`]: admin.firestore.FieldValue.serverTimestamp(),
+    [`${active ? 'activated' : 'deactivated'}By`]: adminUid,
+  });
+  logger.info('adminToggleMerchant', { adminUid, merchantId, active });
+  return { ok: true, merchantId, active };
 }));
