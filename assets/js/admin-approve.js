@@ -1749,6 +1749,100 @@ $("btnGrantItem")?.addEventListener("click", async () => {
   }
 });
 
+// ── 블랙리스트 관리 ──────────────────────────────────────────────────────────
+{
+  let _blacklistTargetUid = null;
+
+  const inputEl    = $("inputBlacklistUser");
+  const infoBox    = $("blacklistUserInfo");
+  const resultBox  = $("blacklistResult");
+  const btnSearch  = $("btnBlacklistSearch");
+  const btnAdd     = $("btnBlacklistAdd");
+  const btnRemove  = $("btnBlacklistRemove");
+
+  function showBlacklistInfo(data) {
+    if (!infoBox) return;
+    const isBlocked = !!data.blacklisted || !!data.authDisabled;
+    infoBox.style.display = "";
+    infoBox.innerHTML = `
+      <div><strong>${esc(data.name || "-")}</strong> &nbsp;
+        <span style="font-size:12px; color:#64748b;">${esc(data.email || "-")}</span>
+        ${isBlocked
+          ? '<span style="margin-left:8px;padding:2px 8px;border-radius:99px;background:#fee2e2;color:#dc2626;font-size:11px;font-weight:700;">블랙리스트</span>'
+          : '<span style="margin-left:8px;padding:2px 8px;border-radius:99px;background:#dcfce7;color:#16a34a;font-size:11px;font-weight:700;">정상</span>'}
+      </div>
+      <div style="margin-top:4px; font-size:12px; color:#94a3b8;">
+        UID: ${esc(data.uid || "-")}<br>
+        지갑: <span style="font-family:monospace;">${esc(data.walletAddress || "없음")}</span>
+      </div>`;
+    if (btnAdd)    btnAdd.style.display    = isBlocked ? "none" : "";
+    if (btnRemove) btnRemove.style.display = isBlocked ? ""     : "none";
+  }
+
+  btnSearch?.addEventListener("click", async () => {
+    if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+    const emailOrUid = (inputEl?.value || "").trim();
+    if (!emailOrUid) { alert("이메일 또는 UID를 입력하세요."); return; }
+
+    btnSearch.disabled = true;
+    btnSearch.textContent = "조회 중...";
+    if (infoBox)   infoBox.style.display = "none";
+    if (resultBox) resultBox.style.display = "none";
+    if (btnAdd)    btnAdd.style.display = "none";
+    if (btnRemove) btnRemove.style.display = "none";
+    _blacklistTargetUid = null;
+
+    try {
+      const fn  = httpsCallable(functions, "adminGetUserInfo");
+      const res = await fn({ emailOrUid });
+      const d   = res.data;
+      _blacklistTargetUid = d.uid;
+      showBlacklistInfo(d);
+    } catch (err) {
+      alert("조회 실패: " + (err.message || err));
+    } finally {
+      btnSearch.disabled = false;
+      btnSearch.textContent = "조회";
+    }
+  });
+
+  async function doBlacklist(blocked) {
+    if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+    if (!_blacklistTargetUid) { alert("먼저 유저를 조회하세요."); return; }
+    const label = blocked ? "블랙리스트 등록" : "블랙리스트 해제";
+    if (!confirm(`[${_blacklistTargetUid}]\n${label} 하시겠습니까?`)) return;
+
+    const btn = blocked ? btnAdd : btnRemove;
+    if (btn) { btn.disabled = true; btn.textContent = "처리 중..."; }
+    if (resultBox) resultBox.style.display = "none";
+
+    try {
+      const fn  = httpsCallable(functions, "adminSetBlacklist");
+      const res = await fn({ emailOrUid: _blacklistTargetUid, blocked });
+      const d   = res.data;
+      if (resultBox) {
+        resultBox.style.display = "";
+        resultBox.innerHTML = `
+          <div style="color:${blocked ? "#dc2626" : "#16a34a"};font-weight:700;">
+            ✓ ${blocked ? "블랙리스트 등록 완료" : "블랙리스트 해제 완료"}
+          </div>
+          <div>이름: ${esc(d.name || "-")} &nbsp; 이메일: ${esc(d.email || "-")}</div>
+          ${d.txHash ? `<div>txHash: <span style="font-family:monospace;font-size:11px;">${esc(d.txHash.slice(0, 30))}…</span></div>` : ""}`;
+      }
+      // 버튼 전환
+      showBlacklistInfo({ ...d, blacklisted: blocked, authDisabled: blocked });
+      setState(`${label} 완료 — ${d.uid}`);
+    } catch (err) {
+      alert("실패: " + (err.message || err));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = label; }
+    }
+  }
+
+  btnAdd?.addEventListener("click",    () => doBlacklist(true));
+  btnRemove?.addEventListener("click", () => doBlacklist(false));
+}
+
 onAuthReady(async ({ loggedIn, user }) => {
   if (!loggedIn || !user) {
     setState("로그인 필요");

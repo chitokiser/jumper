@@ -105,6 +105,39 @@
     .tx-status-badge.rejected{background:#f1f5f9;color:#64748b;}
     .tx-status-badge.approved{background:#dbeafe;color:#1d4ed8;}
     .tx-empty{text-align:center;padding:32px 16px;color:#94a3b8;font-size:0.88rem;}
+
+    /* ── 멘티 수익 분석 ── */
+    .mi-summary-card{flex:1;min-width:120px;padding:14px 16px;border-radius:14px;text-align:center;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;}
+    .mi-summary-label{font-size:0.7rem;color:#64748b;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px;}
+    .mi-summary-val{font-size:1.05rem;font-weight:900;color:#15803d;}
+    .mi-summary-sub{font-size:0.7rem;color:#94a3b8;margin-top:3px;}
+    .mi-mentee-card{border:1.5px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;background:#fff;transition:box-shadow .15s;}
+    .mi-mentee-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.07);}
+    .mi-mentee-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;}
+    .mi-mentee-name{font-size:0.92rem;font-weight:700;color:#1e293b;}
+    .mi-mentee-addr{font-size:0.72rem;color:#94a3b8;font-family:monospace;margin-top:2px;}
+    .mi-mentee-total{text-align:right;}
+    .mi-mentee-total-val{font-size:1rem;font-weight:800;color:#7c3aed;}
+    .mi-mentee-total-label{font-size:0.68rem;color:#a78bfa;margin-top:1px;}
+    .mi-stat-row{display:flex;gap:8px;flex-wrap:wrap;}
+    .mi-stat{flex:1;min-width:80px;padding:8px 10px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;text-align:center;}
+    .mi-stat-val{font-size:0.88rem;font-weight:700;color:#334155;}
+    .mi-stat-label{font-size:0.65rem;color:#94a3b8;margin-top:2px;}
+    .mi-tx-row{font-size:0.78rem;color:#64748b;padding:5px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:8px;}
+    .mi-tx-row:last-child{border-bottom:none;}
+    .mi-tx-amt{font-weight:700;color:#7c3aed;white-space:nowrap;}
+    .mi-empty{text-align:center;padding:28px 16px;color:#94a3b8;font-size:0.88rem;}
+
+    /* ── 잭팟 당첨 내역 ── */
+    .jp-hist-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;border:1.5px solid #e9d5ff;background:linear-gradient(135deg,#faf5ff,#f3e8ff);margin-bottom:8px;}
+    .jp-hist-icon{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+    .jp-hist-body{flex:1;min-width:0;}
+    .jp-hist-title{font-size:0.88rem;font-weight:700;color:#3b0764;margin-bottom:2px;}
+    .jp-hist-sub{font-size:0.75rem;color:#7c3aed;margin-bottom:3px;}
+    .jp-hist-date{font-size:0.7rem;color:#a78bfa;}
+    .jp-hist-pts{font-size:0.95rem;font-weight:800;color:#6d28d9;text-align:right;white-space:nowrap;}
+    .jp-hist-empty{text-align:center;padding:32px 16px;color:#a78bfa;font-size:0.88rem;}
+    .jp-onchain-badge{display:inline-block;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:99px;background:#ede9fe;color:#5b21b6;margin-left:4px;vertical-align:middle;}
   </style>
 </head>
 <body>
@@ -152,7 +185,7 @@
       </div>
 
       <!-- 기본 정보 -->
-      <section class="panel mp-section">
+      <section class="panel mp-section collapsible">
         <div class="mp-section-head">
           <h2 class="mp-section-title">내 정보</h2>
           <a href="/register.html" class="btn btn--sm">수정</a>
@@ -165,7 +198,7 @@
       </section>
 
       <!-- 수탁 지갑 -->
-      <section class="panel mp-section">
+      <section class="panel mp-section collapsible">
         <div class="mp-section-head">
           <h2 class="mp-section-title">수탁 지갑</h2>
           <div style="display:flex; gap:6px;">
@@ -287,7 +320,7 @@
       </section>
 
       <!-- 개인 지갑 HEX 이체 (레벨 4 이상) -->
-      <section class="panel mp-section" id="hexTransferSection" style="display:none;">
+      <section class="panel mp-section collapsible is-collapsed" id="hexTransferSection" style="display:none;">
         <div class="mp-section-head">
           <h2 class="mp-section-title">HEX 개인 지갑 이체 <span style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
         </div>
@@ -318,7 +351,7 @@
       </section>
 
       <!-- 원화 충전 -->
-      <section class="panel mp-section">
+      <section class="panel mp-section collapsible is-collapsed">
         <div class="mp-section-head">
           <h2 class="mp-section-title">HEX 충전 (원화)</h2>
         </div>
@@ -367,7 +400,7 @@
       </section>
 
       <!-- 가맹점 직접 결제 (오프라인) -->
-      <section class="panel mp-section" id="merchantPaySection">
+      <section class="panel mp-section collapsible is-collapsed" id="merchantPaySection">
         <div class="mp-section-head">
           <h2 class="mp-section-title">가맹점 직접 결제</h2>
           <button class="btn btn--sm" id="btnQrScan" type="button">📷 QR 스캔</button>
@@ -404,7 +437,7 @@
       </section>
 
       <!-- 충전 내역 -->
-      <section class="panel mp-section">
+      <section class="panel mp-section collapsible is-collapsed">
         <div class="mp-section-head">
           <h2 class="mp-section-title">충전 내역</h2>
           <button class="btn btn--sm" id="btnRefreshDeposits" type="button">새로고침</button>
@@ -415,7 +448,7 @@
       </section>
 
       <!-- 포인트 · 레벨 안내 -->
-      <section class="panel mp-section">
+      <section class="panel mp-section collapsible is-collapsed">
         <div class="mp-section-head">
           <h2 class="mp-section-title">포인트 · 레벨 안내</h2>
         </div>
@@ -445,7 +478,7 @@
       </section>
 
       <!-- 나의 멘티 목록 -->
-      <section class="panel mp-section" id="menteeSection" style="display:none;">
+      <section class="panel mp-section collapsible is-collapsed" id="menteeSection" style="display:none;">
         <div class="mp-section-head">
           <h2 class="mp-section-title">나의 멘티</h2>
           <button class="btn btn--sm" id="btnRefreshMentees" type="button">새로고침</button>
@@ -455,8 +488,33 @@
         </div>
       </section>
 
+      <!-- 멘티 수익 분석 -->
+      <section class="panel mp-section collapsible is-collapsed" id="menteeIncomeSection" style="display:none;">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">💰 멘티 수익 분석</h2>
+          <button class="btn btn--sm" id="btnRefreshMenteeIncome" type="button">새로고침</button>
+        </div>
+        <!-- 요약 카드 -->
+        <div id="menteeIncomeSummary" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;"></div>
+        <!-- 멘티별 상세 -->
+        <div id="menteeIncomeList" class="mp-table-wrap">
+          <p class="hint">불러오는 중...</p>
+        </div>
+      </section>
+
+      <!-- 잭팟 당첨 내역 -->
+      <section class="panel mp-section collapsible is-collapsed" id="jackpotHistSection" style="display:none;">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">🎰 잭팟 당첨 내역</h2>
+          <button class="btn btn--sm" id="btnRefreshJackpotHist" type="button">새로고침</button>
+        </div>
+        <div id="jackpotHistList" class="mp-table-wrap">
+          <p class="hint">불러오는 중...</p>
+        </div>
+      </section>
+
       <!-- 거래 내역 (온체인) -->
-      <section class="panel mp-section" id="txSection" style="display:none;">
+      <section class="panel mp-section collapsible is-collapsed" id="txSection" style="display:none;">
         <div class="mp-section-head">
           <h2 class="mp-section-title">거래 내역</h2>
           <button class="btn btn--sm" id="btnRefreshTx" type="button">새로고침</button>

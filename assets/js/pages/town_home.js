@@ -173,14 +173,19 @@ async function loadJackpotWinners() {
           createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
         : "-";
       const items = [];
+      const ptsWei = BigInt(r.onchainJackpotPointsWei || "0");
+      if (ptsWei > 0n) items.push(`🪙 ${(Number(ptsWei) / 1e18).toFixed(6)} HEX 포인트`);
       if ((r.potionCount   || 0) > 0) items.push(`빨간약 +${r.potionCount}`);
       if ((r.mpPotionCount || 0) > 0) items.push(`마법약 +${r.mpPotionCount}`);
       if ((r.reviveAdded   || 0) > 0) items.push(`부활권 +${r.reviveAdded}`);
+      const ptsWeiForVal = BigInt(r.onchainJackpotPointsWei || "0");
+      const hexVal = Number(ptsWeiForVal) / 1e18;
       winners.push({
         addrShort,
         merchantName: r.merchantName || `가맹점 #${r.merchantId ?? ""}`,
         dateStr,
         itemsStr: items.join(" / ") || "아이템",
+        hexVal,
         _ts: createdAt ? createdAt.getTime() : 0,
       });
     });
@@ -253,6 +258,10 @@ function buildShareCardHTML(winner) {
          &#x2728; JUMP 회원가입 &#x2192;
        </a>`;
 
+  const rewardLine = winner.hexVal > 0
+    ? `<div class="jp-sc-amount">🪙 ${winner.hexVal.toFixed(6)} HEX 포인트</div>`
+    : `<div class="jp-sc-amount">🎁 ${escHtml(winner.itemsStr)}</div>`;
+
   return `
     <div class="jp-share-card">
       <button class="jp-sc-x" id="jpShareClose" aria-label="닫기">&#x00D7;</button>
@@ -260,8 +269,8 @@ function buildShareCardHTML(winner) {
         <div class="jp-sc-badge">&#x1F3B0; JUMP MERCHANT PAY JACKPOT</div>
         <img class="jp-sc-logo" src="/assets/images/jump/logo2.png" alt="JUMP" />
         <div class="jp-sc-headline">잭팟 당첨!</div>
-        <div class="jp-sc-amount">${winner.hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX</div>
-        <div class="jp-sc-fiat">&#x2248; ${winner.krwStr} KRW / ${winner.vndStr} VND</div>
+        ${rewardLine}
+        <div class="jp-sc-fiat">${escHtml(winner.itemsStr)}</div>
         <hr class="jp-sc-divider">
         <div class="jp-sc-kv">
           <span class="k">&#x1F464; 당첨자</span>
@@ -280,8 +289,22 @@ function buildShareCardHTML(winner) {
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><ellipse cx="9" cy="8.4" rx="8" ry="6.6" fill="#191919"/><path d="M5.1 11.2l1-3.1.9 2.1 1-.4.9 1.4-1.1-3.3 1.2-1.3H7.6l-.5-1.2-.6 1.2H5.3l1.1 1.3-1.3 3.3z" fill="#FEE500"/></svg>
           카카오톡으로 공유
         </button>
+        <div class="jp-sc-sns-row">
+          <button class="jp-sc-sns-btn jp-sc-sns-x" id="jpShareX" type="button">
+            <span class="sns-icon">𝕏</span>X(트위터)
+          </button>
+          <button class="jp-sc-sns-btn jp-sc-sns-fb" id="jpShareFb" type="button">
+            <span class="sns-icon">f</span>페이스북
+          </button>
+          <button class="jp-sc-sns-btn jp-sc-sns-tg" id="jpShareTg" type="button">
+            <span class="sns-icon">✈</span>텔레그램
+          </button>
+          <button class="jp-sc-sns-btn jp-sc-sns-line" id="jpShareLine" type="button">
+            <span class="sns-icon">💬</span>LINE
+          </button>
+        </div>
         <div class="jp-sc-actions">
-          <button class="jp-sc-img-btn" id="jpShareImg" type="button">&#x1F4F7; 이미지 복사</button>
+          <button class="jp-sc-img-btn" id="jpShareImg" type="button">&#x1F4F7; 이미지 저장</button>
           <button class="jp-sc-copy-btn" id="jpShareCopy" type="button">&#x1F517; 링크 복사</button>
         </div>
         <button class="jp-sc-close-btn" id="jpShareCloseBtn" type="button" style="width:100%;margin-top:6px;">닫기</button>
@@ -303,16 +326,63 @@ function openShareModal(winner) {
 
   const hasRef = _userLevel >= 4 && _userWalletAddr;
   const shareParams = new URLSearchParams({
-    hex: winner.hexVal.toFixed(4),
-    krw: winner.krwStr,
-    vnd: winner.vndStr,
     addr: winner.addrShort,
     merchant: winner.merchantName,
     date: winner.dateStr,
+    items: winner.itemsStr,
+    ...(winner.hexVal > 0 ? { hex: winner.hexVal.toFixed(6) } : {}),
     ...(hasRef ? { mentor: _userWalletAddr } : {}),
   });
-  const copyUrl = `${location.origin}/share.html?${shareParams}`;
+  const copyUrl = `${location.origin}/index.html`;
+  const shareTitle = `🎰 잭팟 당첨! JUMP 가맹점 결제 잭팟`;
+  const shareText = winner.hexVal > 0
+    ? `🪙 ${winner.hexVal.toFixed(6)} HEX 포인트 · ${winner.itemsStr}\n📍 ${winner.merchantName} · ${winner.dateStr}\n👇 JUMP 지금 참여하기`
+    : `🎁 ${winner.itemsStr}\n📍 ${winner.merchantName} · ${winner.dateStr}\n👇 JUMP 지금 참여하기`;
 
+  function openSnsUrl(url) { window.open(url, "_blank", "noopener,width=600,height=500"); }
+
+  // 카카오톡: Web Share API (모바일) / 링크 복사 (PC)
+  $("jpShareKakao").onclick = async () => {
+    const btn = $("jpShareKakao");
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: shareTitle, text: shareText, url: copyUrl });
+      } catch (err) {
+        if (err.name !== "AbortError") console.warn("share failed:", err);
+      }
+    } else {
+      const kakaoText = `${shareTitle}\n${shareText}\n${copyUrl}`;
+      navigator.clipboard?.writeText(kakaoText).then(() => {
+        btn.textContent = "✅ 복사됨! 카카오톡에 붙여넣기";
+        setTimeout(() => {
+          btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><ellipse cx="9" cy="8.4" rx="8" ry="6.6" fill="#191919"/><path d="M5.1 11.2l1-3.1.9 2.1 1-.4.9 1.4-1.1-3.3 1.2-1.3H7.6l-.5-1.2-.6 1.2H5.3l1.1 1.3-1.3 3.3z" fill="#FEE500"/></svg> 카카오톡으로 공유`;
+        }, 2500);
+      }).catch(() => { btn.textContent = "복사 실패"; });
+    }
+  };
+
+  // X (트위터)
+  $("jpShareX").onclick = () => {
+    const tweetText = encodeURIComponent(`${shareTitle}\n${shareText}`);
+    openSnsUrl(`https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(copyUrl)}`);
+  };
+
+  // 페이스북
+  $("jpShareFb").onclick = () => {
+    openSnsUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(copyUrl)}&quote=${encodeURIComponent(shareText)}`);
+  };
+
+  // 텔레그램
+  $("jpShareTg").onclick = () => {
+    openSnsUrl(`https://t.me/share/url?url=${encodeURIComponent(copyUrl)}&text=${encodeURIComponent(`${shareTitle}\n${shareText}`)}`);
+  };
+
+  // LINE
+  $("jpShareLine").onclick = () => {
+    openSnsUrl(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(copyUrl)}&text=${encodeURIComponent(`${shareTitle}\n${shareText}`)}`);
+  };
+
+  // 링크 복사
   $("jpShareCopy").onclick = () => {
     const btn = $("jpShareCopy");
     navigator.clipboard?.writeText(copyUrl).then(() => {
@@ -321,6 +391,7 @@ function openShareModal(winner) {
     }).catch(() => { btn.textContent = "복사 실패"; });
   };
 
+  // 이미지 저장
   $("jpShareImg").onclick = async () => {
     const btn = $("jpShareImg");
     const card = document.querySelector(".jp-share-card");
@@ -329,60 +400,28 @@ function openShareModal(winner) {
       return;
     }
     btn.disabled = true;
-    btn.textContent = "캡처 중...";
+    btn.textContent = "저장 중...";
     try {
       const canvas = await window.html2canvas(card, {
         scale: 2,
         useCORS: true,
         backgroundColor: null,
         logging: false,
-        ignoreElements: (el) => el.id === "jpShareImg" || el.id === "jpShareClose",
+        ignoreElements: (el) => ["jpShareImg","jpShareClose","jpShareKakao","jpShareX","jpShareFb","jpShareTg","jpShareLine","jpShareCopy","jpShareCloseBtn"].includes(el.id),
       });
-      canvas.toBlob(async (blob) => {
-        try {
-          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-          btn.innerHTML = "&#x2705; 복사됨! 카톡에 붙여넣기";
-          btn.disabled = false;
-          setTimeout(() => { btn.innerHTML = "&#x1F4F7; 이미지 복사"; }, 3000);
-        } catch {
-          // 클립보드 미지원 시 다운로드로 폴백
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "jump-jackpot.png";
-          a.click();
-          URL.revokeObjectURL(url);
-          btn.innerHTML = "&#x2705; 이미지 저장됨";
-          btn.disabled = false;
-          setTimeout(() => { btn.innerHTML = "&#x1F4F7; 이미지 복사"; }, 3000);
-        }
-      }, "image/png");
+      const url = URL.createObjectURL(await new Promise(r => canvas.toBlob(r, "image/png")));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "jump-jackpot.png";
+      a.click();
+      URL.revokeObjectURL(url);
+      btn.innerHTML = "&#x2705; 저장됨!";
+      btn.disabled = false;
+      setTimeout(() => { btn.innerHTML = "&#x1F4F7; 이미지 저장"; }, 3000);
     } catch (err) {
       btn.disabled = false;
       btn.textContent = "캡처 실패";
       console.warn("html2canvas error:", err);
-    }
-  };
-
-  $("jpShareKakao").onclick = async () => {
-    const btn = $("jpShareKakao");
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `🏆 잭팟 당첨! ${winner.hexVal.toFixed(4)} HEX`,
-          text: `≈ ${winner.krwStr} KRW / ${winner.vndStr} VND · ${winner.merchantName}`,
-          url: copyUrl,
-        });
-      } catch (err) {
-        if (err.name !== "AbortError") console.warn("share failed:", err);
-      }
-    } else {
-      navigator.clipboard?.writeText(copyUrl).then(() => {
-        btn.textContent = "✅ 링크 복사됨! 카카오톡에 붙여넣기";
-        setTimeout(() => {
-          btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><ellipse cx="9" cy="8.4" rx="8" ry="6.6" fill="#191919"/><path d="M5.1 11.2l1-3.1.9 2.1 1-.4.9 1.4-1.1-3.3 1.2-1.3H7.6l-.5-1.2-.6 1.2H5.3l1.1 1.3-1.3 3.3z" fill="#FEE500"/></svg> 카카오톡으로 공유`;
-        }, 2500);
-      }).catch(() => { btn.textContent = "복사 실패"; });
     }
   };
 }

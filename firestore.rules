@@ -277,6 +277,14 @@ service cloud.firestore {
       allow create, update, delete: if false; // Cloud Functions only
     }
 
+    // mentorRequests — 멘토 연결 요청
+    match /mentorRequests/{uid} {
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow list: if isAdmin();
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+
     // transactions (transactions/{docId})
     match /transactions/{docId} {
       allow get: if isAdmin()

@@ -37,6 +37,8 @@
       <button class="buggy-tab active" data-tab="rides">호출 목록</button>
       <button class="buggy-tab" data-tab="drivers">기사 관리</button>
       <button class="buggy-tab" data-tab="balance">잔액 충전</button>
+      <button class="buggy-tab" data-tab="merchants">가맹점 관리</button>
+      <button class="buggy-tab" data-tab="members">회원 관리</button>
       <button class="buggy-tab" data-tab="config">설정</button>
     </div>
 
@@ -114,6 +116,28 @@
         </div>
         <button class="buggy-btn buggy-btn--ghost" id="btnLoadTx" style="">거래 내역 조회</button>
         <div id="txTableWrap" class="buggy-table-wrap" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- ── 탭: 가맹점 관리 ── -->
+    <div id="tabMerchants" class="buggy-section">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="buggy-btn buggy-btn--ghost" id="btnLoadMerchants" style="width:auto;padding:8px 14px;">새로고침</button>
+      </div>
+      <div id="merchantsTableWrap" class="buggy-table-wrap">
+        <div class="buggy-loading"><div class="buggy-spinner"></div><br>로딩 중...</div>
+      </div>
+    </div>
+
+    <!-- ── 탭: 회원 관리 ── -->
+    <div id="tabMembers" class="buggy-section">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <input type="text" class="buggy-input" id="memberSearchEmail" placeholder="이메일 또는 UID 검색" style="max-width:240px;" />
+        <button class="buggy-btn buggy-btn--ghost" id="btnSearchMember" style="width:auto;padding:8px 14px;">검색</button>
+        <button class="buggy-btn buggy-btn--ghost" id="btnLoadMembers" style="width:auto;padding:8px 14px;">전체 (최근 50명)</button>
+      </div>
+      <div id="membersTableWrap" class="buggy-table-wrap">
+        <div class="buggy-loading"><div class="buggy-spinner"></div><br>로딩 중...</div>
       </div>
     </div>
 

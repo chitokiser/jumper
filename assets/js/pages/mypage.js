@@ -25,7 +25,12 @@ const $ = (id) => document.getElementById(id);
 
 function show(id, on) {
   const el = $(id);
-  if (el) el.style.display = on ? "" : "none";
+  if (!el) return;
+  el.style.display = on ? "" : "none";
+  // 아코디언 섹션이 처음 표시될 때 자동 펼치기
+  if (on && el.classList.contains('collapsible')) {
+    el.classList.remove('is-collapsed');
+  }
 }
 
 function setText(id, val) {
@@ -329,6 +334,284 @@ function renderTxItem({ label, icon, dir, amountHex, dateStr, txHash, statusBadg
         ${badgeHtml}
       </div>
     </div>`;
+}
+
+// ── 멘티 수익 분석 ─────────────────────────────────────────────────────────
+const JACKPOT_CONTRACT = "0x4d83A7764428fd1c116062aBb60c329E0E29f490";
+const OPBNB_RPC        = "https://opbnb-mainnet-rpc.bnbchain.org";
+
+async function fetchMemberPoints(address) {
+  try {
+    // members(address) public mapping getter
+    // selector = keccak256('members(address)')[0:4]
+    // 미리 계산: 0x08ae4b0c
+    const padded = "0x" + address.slice(2).toLowerCase().padStart(64, "0");
+    const res = await fetch(OPBNB_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1, method: "eth_call",
+        params: [{ to: JACKPOT_CONTRACT, data: "0x08ae4b0c" + padded.slice(2) }, "latest"],
+      }),
+    });
+    const json = await res.json();
+    if (!json.result || json.result === "0x") return 0n;
+    // members struct: level(uint32) mentor(address) exp(uint256) points(uint256) blocked(bool)
+    // ABI-encoded: [0]level 32B [1]mentor 32B [2]exp 32B [3]points 32B [4]blocked 32B
+    const data = json.result.slice(2);
+    const pointsHex = data.slice(3 * 64, 4 * 64);
+    return BigInt("0x" + pointsHex);
+  } catch { return 0n; }
+}
+
+async function loadMenteeIncome(uid) {
+  const section  = $("menteeIncomeSection");
+  const summaryEl = $("menteeIncomeSummary");
+  const listEl   = $("menteeIncomeList");
+  if (!listEl) return;
+
+  listEl.innerHTML = '<p class="hint">불러오는 중...</p>';
+  if (summaryEl) summaryEl.innerHTML = "";
+
+  try {
+    // Cloud Function으로 멘티 수익 집계 (Admin SDK → Firestore 권한 제한 없음)
+    const fn = httpsCallable(functions, "getMenteeIncome");
+    const res = await fn();
+    const { mentees, myAddress } = res.data;
+
+    if (!mentees || mentees.length === 0) {
+      listEl.innerHTML = '<div class="mi-empty">등록된 멘티가 없습니다.</div>';
+      if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
+      return;
+    }
+
+    // 내 온체인 포인트 잔액
+    let myPointsWei = 0n;
+    if (myAddress) myPointsWei = await fetchMemberPoints(myAddress);
+    const myPointsHex = Number(myPointsWei) / 1e18;
+
+    // menteeMap 형태로 변환 (렌더링용)
+    const menteeMap = {};
+    mentees.forEach((m) => { menteeMap[m.uid] = m; });
+
+    // 5. 요약 카드
+    const totalMentees = mentees.length;
+    const totalEarning = Object.values(menteeMap).reduce((s, m) => s + m.myEstimatedEarningHex, 0);
+    const totalTxCount = Object.values(menteeMap).reduce((s, m) => s + m.txCount, 0);
+
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div class="mi-summary-card">
+          <div class="mi-summary-label">멘티 수</div>
+          <div class="mi-summary-val">${totalMentees}명</div>
+        </div>
+        <div class="mi-summary-card">
+          <div class="mi-summary-label">총 결제 건수</div>
+          <div class="mi-summary-val">${totalTxCount}건</div>
+        </div>
+        <div class="mi-summary-card" style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border-color:#d8b4fe;">
+          <div class="mi-summary-label">누적 수익 (추정)</div>
+          <div class="mi-summary-val" style="color:#7c3aed;">${totalEarning.toFixed(4)} HEX</div>
+          <div class="mi-summary-sub">fee × 30% 합산</div>
+        </div>
+        <div class="mi-summary-card" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#93c5fd;">
+          <div class="mi-summary-label">현재 포인트 잔액</div>
+          <div class="mi-summary-val" style="color:#1d4ed8;">${myPointsHex.toFixed(6)} HEX</div>
+          <div class="mi-summary-sub">온체인 실시간</div>
+        </div>
+      `;
+    }
+
+    // 6. 멘티별 카드 렌더링 (수익 높은 순 정렬)
+    const sortedMentees = Object.values(menteeMap).sort(
+      (a, b) => b.myEstimatedEarningHex - a.myEstimatedEarningHex
+    );
+
+    const frag = document.createDocumentFragment();
+    sortedMentees.forEach((m) => {
+      const addrShort = m.address
+        ? m.address.slice(0, 6) + "..." + m.address.slice(-4)
+        : "-";
+      const regDate = m.registeredAt
+        ? new Date(m.registeredAt).toLocaleDateString("ko-KR")
+        : "-";
+
+      const recentRows = (m.recentTxs || []).map((t) => {
+        const dateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString("ko-KR") : "-";
+        const earning = t.myEst ?? t.myEarning ?? 0;
+        return `
+          <div class="mi-tx-row">
+            <span>${dateStr}</span>
+            <span class="mi-tx-amt">결제 ${(t.amountHex || 0).toFixed(4)} HEX → 내 수익 ${earning > 0 ? earning.toFixed(6) : "?"} HEX</span>
+          </div>`;
+      }).join("") || '<div class="mi-tx-row"><span>결제 내역 없음</span></div>';
+
+      const card = document.createElement("div");
+      card.className = "mi-mentee-card";
+      card.innerHTML = `
+        <div class="mi-mentee-head">
+          <div>
+            <div class="mi-mentee-name">${m.name}</div>
+            <div class="mi-mentee-addr">${addrShort} · 가입 ${regDate}</div>
+          </div>
+          <div class="mi-mentee-total">
+            <div class="mi-mentee-total-val">${m.myEstimatedEarningHex > 0 ? m.myEstimatedEarningHex.toFixed(6) + " HEX" : "-"}</div>
+            <div class="mi-mentee-total-label">누적 수익 (추정)</div>
+          </div>
+        </div>
+        <div class="mi-stat-row">
+          <div class="mi-stat">
+            <div class="mi-stat-val">${m.txCount}건</div>
+            <div class="mi-stat-label">결제 횟수</div>
+          </div>
+          <div class="mi-stat">
+            <div class="mi-stat-val">${(m.totalAmountHex || 0).toFixed(4)}</div>
+            <div class="mi-stat-label">총 결제액 HEX</div>
+          </div>
+          <div class="mi-stat">
+            <div class="mi-stat-val">${m.myEstimatedEarningHex > 0 ? m.myEstimatedEarningHex.toFixed(6) : "-"}</div>
+            <div class="mi-stat-label">내 멘토 수익</div>
+          </div>
+        </div>
+        ${m.recentTxs.length > 0 ? `
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;">
+            <div style="font-size:0.72rem;color:#94a3b8;font-weight:700;margin-bottom:4px;">최근 결제 내역</div>
+            ${recentRows}
+          </div>
+        ` : ""}
+      `;
+      frag.appendChild(card);
+    });
+
+    listEl.innerHTML = "";
+    listEl.appendChild(frag);
+    if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
+
+  } catch (err) {
+    listEl.innerHTML = `<div class="mi-empty">오류: ${err.message}</div>`;
+    if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
+    console.warn("loadMenteeIncome failed:", err);
+  }
+}
+
+async function loadJackpotHistory(uid) {
+  const wrap    = $("jackpotHistList");
+  const section = $("jackpotHistSection");
+  if (!wrap) return;
+
+  wrap.innerHTML = '<p class="hint">불러오는 중...</p>';
+
+  try {
+    const q = query(
+      collection(db, "jackpot_wins"),
+      where("uid", "==", uid),
+      orderBy("createdAt", "desc"),
+      limit(30)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      wrap.innerHTML = '<div class="jp-hist-empty">아직 잭팟 당첨 내역이 없습니다.</div>';
+      if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    snap.docs.forEach((d) => {
+      const v = d.data();
+      const ts = v.createdAt?.toDate ? v.createdAt.toDate() : (v.createdAt ? new Date(v.createdAt) : null);
+      const dateStr = ts ? ts.toLocaleString("ko-KR") : "-";
+
+      const items = [];
+      if ((v.potionCount    || 0) > 0) items.push(`빨간약 +${v.potionCount}`);
+      if ((v.mpPotionCount  || 0) > 0) items.push(`마법약 +${v.mpPotionCount}`);
+      if ((v.reviveAdded    || 0) > 0) items.push(`부활권 +${v.reviveAdded}`);
+
+      const onchainPtsWei = BigInt(v.onchainJackpotPointsWei || '0');
+      let ptsLine = '';
+      if (onchainPtsWei > 0n) {
+        const ptsHex = (Number(onchainPtsWei) / 1e18).toFixed(6);
+        ptsLine = `<span class="jp-onchain-badge">온체인</span> ${ptsHex} HEX 포인트`;
+      }
+
+      const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || '아이템 보상';
+
+      const el = document.createElement('div');
+      el.className = 'jp-hist-item';
+      el.innerHTML = `
+        <div class="jp-hist-icon">🎰</div>
+        <div class="jp-hist-body">
+          <div class="jp-hist-title">잭팟 당첨 · ${v.merchantName || '가맹점'}</div>
+          <div class="jp-hist-sub">${subText}</div>
+          <div class="jp-hist-date">${dateStr}</div>
+        </div>
+      `;
+      frag.appendChild(el);
+    });
+    wrap.innerHTML = '';
+    wrap.appendChild(frag);
+    if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
+  } catch (err) {
+    // 인덱스 빌드 중인 경우 fallback: uid 필터만 사용하고 클라이언트 정렬
+    if (err.message && err.message.includes('index') && err.message.includes('building')) {
+      try {
+        const q2 = query(
+          collection(db, "jackpot_wins"),
+          where("uid", "==", uid),
+          limit(30)
+        );
+        const snap2 = await getDocs(q2);
+        if (snap2.empty) {
+          wrap.innerHTML = '<div class="jp-hist-empty">아직 잭팟 당첨 내역이 없습니다.<br><small style="color:#c4b5fd;">인덱스 빌드 중 (1~5분 소요)</small></div>';
+        } else {
+          const docs = snap2.docs.slice().sort((a, b) => {
+            const ta = a.data().createdAt?.seconds || 0;
+            const tb = b.data().createdAt?.seconds || 0;
+            return tb - ta;
+          });
+          const fakeSnap = { docs, empty: false };
+          // re-render
+          const frag2 = document.createDocumentFragment();
+          fakeSnap.docs.forEach((d) => {
+            const v = d.data();
+            const ts = v.createdAt?.toDate ? v.createdAt.toDate() : null;
+            const dateStr = ts ? ts.toLocaleString("ko-KR") : "-";
+            const items = [];
+            if ((v.potionCount   || 0) > 0) items.push(`빨간약 +${v.potionCount}`);
+            if ((v.mpPotionCount || 0) > 0) items.push(`마법약 +${v.mpPotionCount}`);
+            if ((v.reviveAdded   || 0) > 0) items.push(`부활권 +${v.reviveAdded}`);
+            const onchainPtsWei = BigInt(v.onchainJackpotPointsWei || '0');
+            let ptsLine = '';
+            if (onchainPtsWei > 0n) {
+              const ptsHex = (Number(onchainPtsWei) / 1e18).toFixed(6);
+              ptsLine = `<span class="jp-onchain-badge">온체인</span> ${ptsHex} HEX 포인트`;
+            }
+            const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || '아이템 보상';
+            const el = document.createElement('div');
+            el.className = 'jp-hist-item';
+            el.innerHTML = `
+              <div class="jp-hist-icon">🎰</div>
+              <div class="jp-hist-body">
+                <div class="jp-hist-title">잭팟 당첨 · ${v.merchantName || '가맹점'}</div>
+                <div class="jp-hist-sub">${subText}</div>
+                <div class="jp-hist-date">${dateStr}</div>
+              </div>
+            `;
+            frag2.appendChild(el);
+          });
+          wrap.innerHTML = '';
+          wrap.appendChild(frag2);
+        }
+        if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
+      } catch (e2) {
+        wrap.innerHTML = `<div class="jp-hist-empty">인덱스 빌드 중입니다. 잠시 후 새로고침 해주세요.</div>`;
+        if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
+      }
+    } else {
+      wrap.innerHTML = `<div class="jp-hist-empty">오류: ${err.message}</div>`;
+      if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
+    }
+  }
 }
 
 async function loadTxHistory(uid, walletAddress) {
@@ -692,7 +975,9 @@ function showJackpotResult(d) {
   if (!modal) return;
 
   const hasItems = (d.potionsAdded > 0) || (d.mpPotionsAdded > 0) || (d.reviveAdded > 0);
-  if (!d.isJackpot && !hasItems) return;
+  const jackpotPtsWei = BigInt(d.onchainJackpotPointsWei || '0');
+  const hasOnchainJackpot = jackpotPtsWei > 0n;
+  if (!d.isJackpot && !hasItems && !hasOnchainJackpot) return;
 
   const emojiEl = $("jmEmoji");
   const titleEl = $("jmTitle");
@@ -704,6 +989,11 @@ function showJackpotResult(d) {
     if (emojiEl) emojiEl.textContent = "🎉";
     if (titleEl) titleEl.textContent = "JACKPOT!! 🎰";
     if (descEl)  descEl.textContent  = "잭팟 당첨! 아이템을 획득했습니다.";
+  } else if (hasOnchainJackpot) {
+    if (emojiEl) emojiEl.textContent = "🪙";
+    if (titleEl) { titleEl.textContent = "잭팟 포인트 당첨!"; titleEl.style.color = "#fde68a"; }
+    const ptsHex = (Number(jackpotPtsWei) / 1e18).toFixed(6);
+    if (descEl)  descEl.textContent  = `온체인 복권 당첨! ${ptsHex} HEX 포인트 적립`;
   } else {
     if (emojiEl) emojiEl.textContent = "🎁";
     if (titleEl) { titleEl.textContent = "아이템 획득!"; titleEl.style.color = "#fef08a"; }
@@ -712,6 +1002,10 @@ function showJackpotResult(d) {
 
   if (itemsEl) {
     const lines = [];
+    if (hasOnchainJackpot) {
+      const ptsHex = (Number(jackpotPtsWei) / 1e18).toFixed(6);
+      lines.push(`<div class="jm-item">🪙 잭팟 포인트 <b>+${ptsHex} HEX</b><br><small style="color:#a3a3a3;font-size:0.75rem;">마이페이지 → 포인트 전환에서 HEX로 교환 가능</small></div>`);
+    }
     if (d.potionsAdded   > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> 빨간약 <b>+${d.potionsAdded}</b></div>`);
     if (d.mpPotionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/mp.png" style="width:22px;height:22px;"> 마법약 <b>+${d.mpPotionsAdded}</b></div>`);
     if (d.reviveAdded    > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:22px;height:22px;"> 부활권 <b>+${d.reviveAdded}</b></div>`);
@@ -794,10 +1088,16 @@ function bindMerchantPay(uid, walletAddress) {
         : `${amount.toLocaleString()}원 (${d.amountHex} HEX)`;
 
       if (resultBox) {
+        const jackpotPtsWei = BigInt(d.onchainJackpotPointsWei || '0');
+        const jackpotLine = jackpotPtsWei > 0n
+          ? `<div class="mp-kv"><span class="k">잭팟 포인트</span><span class="v" style="color:#7c3aed;font-weight:700;">🪙 +${(Number(jackpotPtsWei) / 1e18).toFixed(6)} HEX</span></div>`
+          : '';
+
         resultBox.style.display = "";
         resultBox.innerHTML = `
           <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d.merchantName || ""}</span></div>
           <div class="mp-kv"><span class="k">결제 금액</span><span class="v accent">${amountDisp}</span></div>
+          ${jackpotLine}
           <div class="mp-kv"><span class="k">트랜잭션</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
           <p class="hint" style="color:var(--accent); margin-top:6px;">결제가 완료되었습니다.</p>
           ${buildMypageDropHtml(d)}
@@ -807,6 +1107,7 @@ function bindMerchantPay(uid, walletAddress) {
       form.reset();
       showJackpotResult(d);
       loadTxHistory(uid);
+      loadJackpotHistory(uid);
       loadOnChainData(uid);
     } catch (err) {
       alert("\uACB0\uC81C \uC2E4\uD328: " + err.message);
@@ -1044,6 +1345,37 @@ function bindQrScan() {
   };
 }
 
+// ── 아코디언 초기화 ──────────────────────────────────────────────────────────
+function initAccordion() {
+  document.querySelectorAll('.mp-section.collapsible').forEach((section) => {
+    const head = section.querySelector('.mp-section-head');
+    if (!head) return;
+
+    // 제목에 chevron 추가
+    const title = head.querySelector('.mp-section-title');
+    if (title && !title.querySelector('.mp-chevron')) {
+      const chevron = document.createElement('span');
+      chevron.className = 'mp-chevron';
+      chevron.textContent = '▾';
+      title.appendChild(chevron);
+    }
+
+    // 헤더 이후 모든 자식을 .mp-body로 감싸기
+    if (!section.querySelector('.mp-body')) {
+      const body = document.createElement('div');
+      body.className = 'mp-body';
+      [...section.children].filter((c) => c !== head).forEach((c) => body.appendChild(c));
+      section.appendChild(body);
+    }
+
+    // 토글 핸들러 (버튼/링크 클릭 시 전파 방지)
+    head.addEventListener('click', (e) => {
+      if (e.target.closest('button, a')) return;
+      section.classList.toggle('is-collapsed');
+    });
+  });
+}
+
 onAuthReady(async (ctx) => {
   const loggedIn = (ctx?.loggedIn ?? ctx?.loggedin) === true;
   const user = ctx?.user;
@@ -1064,6 +1396,7 @@ onAuthReady(async (ctx) => {
   }
 
   show("mainContent", true);
+  initAccordion();
 
   try {
     const snap = await getDoc(doc(db, "users", user.uid));
@@ -1105,6 +1438,7 @@ onAuthReady(async (ctx) => {
     loadMentees();
 
     loadTxHistory(user.uid, walletAddress);
+    loadJackpotHistory(user.uid);
 
     const btnRefresh = $("btnRefreshDeposits");
     if (btnRefresh) btnRefresh.onclick = () => loadDepositHistory(user.uid);
@@ -1112,8 +1446,15 @@ onAuthReady(async (ctx) => {
     const btnRefreshTx = $("btnRefreshTx");
     if (btnRefreshTx) btnRefreshTx.onclick = () => loadTxHistory(user.uid, walletAddress);
 
+    const btnRefreshJackpotHist = $("btnRefreshJackpotHist");
+    if (btnRefreshJackpotHist) btnRefreshJackpotHist.onclick = () => loadJackpotHistory(user.uid);
+
     const btnRefreshMentees = $("btnRefreshMentees");
     if (btnRefreshMentees) btnRefreshMentees.onclick = () => loadMentees();
+
+    loadMenteeIncome(user.uid);
+    const btnRefreshMenteeIncome = $("btnRefreshMenteeIncome");
+    if (btnRefreshMenteeIncome) btnRefreshMenteeIncome.onclick = () => loadMenteeIncome(user.uid);
   } catch (err) {
     console.error("\uB9C8\uC774\uD398\uC774\uC9C0 \uCD08\uAE30\uD654 \uC2E4\uD328", err);
   }

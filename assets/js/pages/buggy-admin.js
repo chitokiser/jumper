@@ -5,7 +5,7 @@ import { getApps, initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {
   getFirestore, collection, query, where, orderBy, limit,
-  getDocs, onSnapshot, doc,
+  getDocs, onSnapshot, doc, getDoc,
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -16,11 +16,14 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 const fns = getFunctions(app);
 
-const fnForceEnd      = httpsCallable(fns, 'buggyAdminForceEnd');
-const fnTopUp         = httpsCallable(fns, 'buggyAdminTopUpBalance');
-const fnCreateDriver  = httpsCallable(fns, 'buggyAdminCreateDriver');
-const fnSaveConfig    = httpsCallable(fns, 'buggyAdminSaveConfig');
-const fnGetConfig     = httpsCallable(fns, 'buggyGetConfig');
+const fnForceEnd        = httpsCallable(fns, 'buggyAdminForceEnd');
+const fnTopUp           = httpsCallable(fns, 'buggyAdminTopUpBalance');
+const fnCreateDriver    = httpsCallable(fns, 'buggyAdminCreateDriver');
+const fnSaveConfig      = httpsCallable(fns, 'buggyAdminSaveConfig');
+const fnGetConfig       = httpsCallable(fns, 'buggyGetConfig');
+const fnToggleMerchant  = httpsCallable(fns, 'adminToggleMerchant');
+const fnDisableUser     = httpsCallable(fns, 'adminDisableUser');
+const fnEnableUser      = httpsCallable(fns, 'adminEnableUser');
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────
 const toastEl = document.getElementById('adminToast');
@@ -51,9 +54,11 @@ document.getElementById('adminTabs').addEventListener('click', (e) => {
   const tab = btn.dataset.tab;
   document.querySelectorAll('[id^="tab"]').forEach(el => el.classList.remove('active'));
   document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
-  if (tab === 'rides')   loadRides();
-  if (tab === 'drivers') loadDrivers();
-  if (tab === 'config')  loadConfig();
+  if (tab === 'rides')     loadRides();
+  if (tab === 'drivers')   loadDrivers();
+  if (tab === 'merchants') loadMerchants();
+  if (tab === 'members')   loadMembers();
+  if (tab === 'config')    loadConfig();
 });
 
 // ── 통계 실시간 ──────────────────────────────────────────────────────────
@@ -277,6 +282,178 @@ document.getElementById('btnLoadTx').addEventListener('click', async () => {
   } catch (err) {
     wrap.innerHTML = `<div class="buggy-empty">오류: ${escHtml(err.message)}</div>`;
   }
+});
+
+// ── 가맹점 관리 ──────────────────────────────────────────────────────────
+async function loadMerchants() {
+  const wrap = document.getElementById('merchantsTableWrap');
+  wrap.innerHTML = '<div class="buggy-loading"><div class="buggy-spinner"></div><br>로딩 중...</div>';
+  try {
+    const snap = await getDocs(query(collection(db, 'merchants'), orderBy('createdAt', 'desc')));
+    if (snap.empty) {
+      wrap.innerHTML = '<div class="buggy-empty"><div class="buggy-empty-icon">🏪</div>등록된 가맹점 없음</div>';
+      return;
+    }
+
+    let html = `<table class="buggy-table">
+      <thead><tr>
+        <th>ID</th><th>상호명</th><th>수수료</th><th>상태</th><th>등록일</th><th>액션</th>
+      </tr></thead><tbody>`;
+
+    snap.docs.forEach((d) => {
+      const m = d.data();
+      const isActive = m.active !== false;
+      const feePct   = m.feeBps != null ? (m.feeBps / 100).toFixed(1) + '%' : '-';
+      const badge    = isActive
+        ? '<span class="buggy-badge buggy-badge--online">활성</span>'
+        : '<span class="buggy-badge buggy-badge--offline">비활성</span>';
+      const actionBtn = isActive
+        ? `<button class="buggy-btn buggy-btn--danger" style="width:auto;padding:4px 10px;font-size:0.78rem;"
+              data-merchant-id="${escHtml(String(m.merchantId))}" data-action="deactivate">비활성화</button>`
+        : `<button class="buggy-btn buggy-btn--success" style="width:auto;padding:4px 10px;font-size:0.78rem;"
+              data-merchant-id="${escHtml(String(m.merchantId))}" data-action="activate">활성화</button>`;
+
+      html += `<tr>
+        <td>${escHtml(String(m.merchantId ?? d.id))}</td>
+        <td>${escHtml(m.businessName || m.name || '-')}</td>
+        <td>${feePct}</td>
+        <td>${badge}</td>
+        <td>${fmtDate(m.createdAt)}</td>
+        <td>${actionBtn}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll('[data-merchant-id]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const merchantId = Number(btn.dataset.merchantId);
+        const active     = btn.dataset.action === 'activate';
+        const label      = active ? '활성화' : '비활성화';
+        if (!confirm(`가맹점 #${merchantId}을(를) ${label}하시겠습니까?`)) return;
+        btn.disabled = true;
+        try {
+          await fnToggleMerchant({ merchantId, active });
+          toast(`가맹점 #${merchantId} ${label} 완료`);
+          loadMerchants();
+        } catch (err) {
+          toast('오류: ' + (err.message || err));
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch (err) {
+    wrap.innerHTML = `<div class="buggy-empty">오류: ${escHtml(err.message)}</div>`;
+  }
+}
+
+document.getElementById('btnLoadMerchants').addEventListener('click', loadMerchants);
+
+// ── 회원 관리 ────────────────────────────────────────────────────────────
+async function renderMembersTable(snap, wrap) {
+  if (snap.empty) {
+    wrap.innerHTML = '<div class="buggy-empty"><div class="buggy-empty-icon">👤</div>회원 없음</div>';
+    return;
+  }
+
+  let html = `<table class="buggy-table">
+    <thead><tr>
+      <th>UID</th><th>이름</th><th>이메일</th><th>지갑</th><th>상태</th><th>가입일</th><th>액션</th>
+    </tr></thead><tbody>`;
+
+  snap.docs.forEach((d) => {
+    const u = d.data();
+    const uid = d.id;
+    const isDisabled = u.disabled === true;
+    const badge = isDisabled
+      ? '<span class="buggy-badge buggy-badge--offline">비활성</span>'
+      : '<span class="buggy-badge buggy-badge--online">정상</span>';
+    const wallet = u.walletAddress
+      ? `<span title="${escHtml(u.walletAddress)}">${escHtml(u.walletAddress.slice(0,8))}…</span>`
+      : '-';
+    const actionBtn = isDisabled
+      ? `<button class="buggy-btn buggy-btn--success" style="width:auto;padding:4px 10px;font-size:0.78rem;"
+            data-user-uid="${escHtml(uid)}" data-action="enable">복원</button>`
+      : `<button class="buggy-btn buggy-btn--danger" style="width:auto;padding:4px 10px;font-size:0.78rem;"
+            data-user-uid="${escHtml(uid)}" data-action="disable">탈퇴처리</button>`;
+
+    html += `<tr>
+      <td style="font-size:0.75rem;">${escHtml(uid.slice(0,12))}…</td>
+      <td>${escHtml(u.displayName || u.name || '-')}</td>
+      <td style="font-size:0.8rem;">${escHtml(u.email || '-')}</td>
+      <td>${wallet}</td>
+      <td>${badge}</td>
+      <td>${fmtDate(u.createdAt)}</td>
+      <td>${actionBtn}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll('[data-user-uid]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const targetUid = btn.dataset.userUid;
+      const disable   = btn.dataset.action === 'disable';
+      const label     = disable ? '탈퇴 처리(비활성화)' : '계정 복원';
+      if (!confirm(`${targetUid}\n위 회원을 ${label}하시겠습니까?\n${disable ? 'Firebase 로그인이 차단됩니다.' : ''}`)) return;
+      btn.disabled = true;
+      try {
+        if (disable) {
+          await fnDisableUser({ targetUid });
+          toast('탈퇴 처리 완료 — 로그인 차단됨');
+        } else {
+          await fnEnableUser({ targetUid });
+          toast('계정 복원 완료');
+        }
+        loadMembers();
+      } catch (err) {
+        toast('오류: ' + (err.message || err));
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+async function loadMembers() {
+  const wrap = document.getElementById('membersTableWrap');
+  wrap.innerHTML = '<div class="buggy-loading"><div class="buggy-spinner"></div><br>로딩 중...</div>';
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(50))
+    );
+    await renderMembersTable(snap, wrap);
+  } catch (err) {
+    wrap.innerHTML = `<div class="buggy-empty">오류: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function searchMember() {
+  const keyword = document.getElementById('memberSearchEmail').value.trim();
+  if (!keyword) { loadMembers(); return; }
+  const wrap = document.getElementById('membersTableWrap');
+  wrap.innerHTML = '<div class="buggy-loading"><div class="buggy-spinner"></div><br>검색 중...</div>';
+  try {
+    // uid 직접 조회 시도
+    const byUid = await getDoc(doc(db, 'users', keyword));
+    if (byUid.exists()) {
+      const fakeSnap = { empty: false, docs: [byUid] };
+      await renderMembersTable(fakeSnap, wrap);
+      return;
+    }
+    // 이메일로 검색
+    const snap = await getDocs(
+      query(collection(db, 'users'), where('email', '==', keyword), limit(20))
+    );
+    await renderMembersTable(snap, wrap);
+  } catch (err) {
+    wrap.innerHTML = `<div class="buggy-empty">오류: ${escHtml(err.message)}</div>`;
+  }
+}
+
+document.getElementById('btnLoadMembers').addEventListener('click', loadMembers);
+document.getElementById('btnSearchMember').addEventListener('click', searchMember);
+document.getElementById('memberSearchEmail').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') searchMember();
 });
 
 // ── 설정 ─────────────────────────────────────────────────────────────────

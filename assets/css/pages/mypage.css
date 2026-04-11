@@ -161,3 +161,33 @@
   font-size: 12px;
   word-break: break-all;
 }
+
+/* ── 아코디언 ── */
+.mp-section.collapsible > .mp-section-head {
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+}
+.mp-section.collapsible:not(.is-collapsed) > .mp-section-head {
+  margin-bottom: 14px;
+}
+.mp-section.collapsible > .mp-section-head:hover .mp-section-title {
+  color: var(--accent, #7c3aed);
+}
+.mp-chevron {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--muted, #9ca3af);
+  transition: transform 0.2s ease;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.mp-section.collapsible.is-collapsed .mp-chevron {
+  transform: rotate(-90deg);
+}
+.mp-body {
+  overflow: hidden;
+}
+.mp-section.collapsible.is-collapsed > .mp-body {
+  display: none;
+}

@@ -205,6 +205,36 @@
               <div id="bulkMentorResult" style="display:none; margin-top:10px; font-size:13px;"></div>
             </div>
 
+            <!-- 블랙리스트 관리 -->
+            <div class="list-head" style="margin-top:16px;">
+              <div class="muted">블랙리스트 등록 / 해제</div>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <p class="muted" style="font-size:12px; margin:0 0 10px;">
+                이메일 또는 UID로 유저를 검색한 후 블랙리스트 등록 또는 해제합니다.<br>
+                등록 시 Firebase 로그인 즉시 차단 + 온체인 결제 차단.<br>
+                해제 시 로그인 및 결제 즉시 복원됩니다.
+              </p>
+              <div class="kv" style="margin-bottom:10px;">
+                <div class="k">이메일 또는 UID</div>
+                <div class="v" style="display:flex;gap:6px;">
+                  <input type="text" id="inputBlacklistUser" class="select"
+                    style="flex:1;" placeholder="user@example.com 또는 Firebase UID" />
+                  <button class="btn btn-sm" id="btnBlacklistSearch" type="button">조회</button>
+                </div>
+              </div>
+              <!-- 조회 결과 -->
+              <div id="blacklistUserInfo" style="display:none; margin-bottom:12px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; font-size:13px;">
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-sm" id="btnBlacklistAdd" type="button"
+                  style="display:none; background:#dc2626; color:#fff; border-color:#dc2626;">블랙리스트 등록</button>
+                <button class="btn btn-sm" id="btnBlacklistRemove" type="button"
+                  style="display:none; background:#16a34a; color:#fff; border-color:#16a34a;">블랙리스트 해제</button>
+              </div>
+              <div id="blacklistResult" style="display:none; margin-top:10px; font-size:13px;"></div>
+            </div>
+
             <!-- 유저 레벨 설정 -->
             <div class="list-head" style="margin-top:16px;">
               <div class="muted">유저 온체인 레벨 설정 (adminSetLevel)</div>
