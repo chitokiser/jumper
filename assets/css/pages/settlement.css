@@ -222,7 +222,7 @@
 /* 관리자 테이블 레이아웃 */
 .table--admin .thead--admin,
 .table--admin .tr{
-  grid-template-columns: 1fr 90px 140px 140px 140px 120px 120px;
+  grid-template-columns: 1fr 90px 140px 140px 140px;
 }
 
 .pay-pill{

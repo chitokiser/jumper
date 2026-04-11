@@ -9,10 +9,7 @@ import { auth, db } from "/assets/js/firebase-init.js";
 import {
   collection,
   query,
-  where,
   getDocs,
-  doc,
-  getDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 function $(id){ return document.getElementById(id); }
@@ -68,24 +65,6 @@ function renderRows(rows){
   }).join("");
 }
 
-async function loadLocked(ym, uid){
-  const runRef = doc(db, "settlements", ym);
-  const runSnap = await getDoc(runRef);
-  const run = runSnap.exists() ? (runSnap.data() || {}) : null;
-  if (!run || run.locked !== true) return null;
-
-  $("lockState").textContent = "락됨: 정산 확정 완료";
-  $("lockSub").textContent = `확정일 ${toYMDHMS(run.lockedAt)} / 커미션 ${Number(run.commissionPct||0)}%`;
-
-  $("commission").value = String(Number(run.commissionPct || 0));
-  $("commission").disabled = true;
-
-  const gref = doc(db, "settlements", ym, "guides", uid);
-  const gs = await getDoc(gref);
-  if (!gs.exists()) return { run, guide: null };
-  return { run, guide: (gs.data() || {}) };
-}
-
 async function loadPreview(){
   const state = $("state");
   const user = auth.currentUser;
@@ -94,50 +73,10 @@ async function loadPreview(){
     state.textContent = "로그인 후 이용 가능합니다.";
     renderRows([]);
     ["kpiCount","kpiGross","kpiFee","kpiNet"].forEach(id=>$(id).textContent="-");
-    $("lockState").textContent = "-";
-    $("lockSub").textContent = "";
     return;
   }
 
   const ym = $("month").value;
-
-  // 락 우선
-  $("commission").disabled = false;
-  const locked = await loadLocked(ym, user.uid);
-  if (locked){
-    if (!locked.guide){
-      state.textContent = "해당 월 정산 대상 주문이 없습니다.";
-      renderRows([]);
-      ["kpiCount","kpiGross","kpiFee","kpiNet"].forEach(id=>$(id).textContent="0");
-      return;
-    }
-
-    const paid = String(locked.guide.paidStatus || "unpaid");
-    const paidAt = locked.guide.paidAt ? toYMDHMS(locked.guide.paidAt) : "";
-    const paidText = (paid === "paid") ? `지급완료${paidAt ? ` (${paidAt})` : ""}` : "지급대기";
-
-    state.textContent = `정산 확정본 표시중 / ${paidText}`;
-
-    $("kpiCount").textContent = String(locked.guide.orders || 0);
-    $("kpiGross").textContent = money(locked.guide.gross || 0);
-    $("kpiFee").textContent = money(locked.guide.fee || 0);
-    $("kpiNet").textContent = money(locked.guide.net || 0);
-
-    const lines = Array.isArray(locked.guide.orderLines) ? locked.guide.orderLines : [];
-    const rows = lines.map(l=>({
-      date: "-",
-      title: l.title || "(상품)",
-      status: l.status || "-",
-      total: l.total || 0,
-    }));
-    renderRows(rows);
-    return;
-  }
-
-  // 미락 미리보기
-  $("lockState").textContent = "미락: 아직 정산 확정되지 않음";
-  $("lockSub").textContent = "관리자가 정산 확정(락)하면 이 화면은 확정 정산 스냅샷으로 고정됩니다.";
-
   const commissionPct = Math.max(0, Math.min(100, Number($("commission").value || 0)));
   const commissionRate = commissionPct / 100;
 
@@ -184,7 +123,7 @@ async function loadPreview(){
     $("kpiNet").textContent = money(net);
 
     renderRows(rows);
-    state.textContent = "정상 (미락 미리보기)";
+    state.textContent = rows.length ? "정산 데이터 로드 완료" : "해당 월 정산 대상 주문이 없습니다.";
 
   }catch(err){
     console.error(err);
