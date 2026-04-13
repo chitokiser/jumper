@@ -15,29 +15,10 @@ const {
   walletFromKey,
   estimateGasWithBuffer,
 } = require('../wallet/chain');
+const { fetchExchangeRates } = require('../wallet/exchange');
 
 const db = admin.firestore();
 
-// ─────────────────────────────────────────────
-// 실시간 USD/KRW 환율 (open.er-api.com, 10분 캐시)
-// ─────────────────────────────────────────────
-let _fxCache = { rate: 0, ts: 0 };
-const FX_TTL_MS = 600_000; // 10분
-
-async function fetchUsdKrwRate() {
-  if (_fxCache.rate > 0 && Date.now() - _fxCache.ts < FX_TTL_MS) {
-    return _fxCache.rate;
-  }
-  try {
-    const res  = await fetch('https://open.er-api.com/v6/latest/USD');
-    const data = await res.json();
-    const rate = data?.rates?.KRW ?? 0;
-    if (rate > 0) _fxCache = { rate, ts: Date.now() };
-    return rate;
-  } catch {
-    return _fxCache.rate || 0; // 실패 시 캐시 값 반환
-  }
-}
 
 // ─────────────────────────────────────────────
 // 헬퍼: 수탁 지갑 + signer 준비
@@ -72,7 +53,7 @@ async function getJumpBankStatus(uid) {
       bankHexBal, bankJumpInv, circSupply, jumpTotalSupply,
       effStaked, divisorVal, chartLen,
     ],
-    usdKrwRate,
+    fxRates,
   ] = await Promise.all([
     Promise.all([
       jumpBank.price(),
@@ -88,8 +69,10 @@ async function getJumpBankStatus(uid) {
       jumpBank.divisor(),
       jumpBank.chartLength(),
     ]),
-    fetchUsdKrwRate(),
+    fetchExchangeRates().catch(() => ({ krwPerUsd: 0, vndPerUsd: 0 })),
   ]);
+  const usdKrwRate = fxRates.krwPerUsd || 0;
+  const usdVndRate = fxRates.vndPerUsd || 0;
 
   // 2단계: 차트 데이터 + 유저 데이터 병렬 조회
   const chartLenNum = Number(chartLen);
@@ -122,10 +105,10 @@ async function getJumpBankStatus(uid) {
     ? bankHexBal / effStakedBig / divisorBig
     : 0n;
 
-  // KRW 가격 계산: 1 HEX = 1 USDT 기준 실시간 환율 적용
-  // priceKrw = (price / 1e18) × usdKrwRate
+  // KRW/VND 가격 계산: 1 HEX = 1 USDT 기준 실시간 환율 적용
   const priceUsdt = Number(BigInt(price.toString())) / 1e18;
   const priceKrw  = usdKrwRate > 0 ? Math.round(priceUsdt * usdKrwRate) : 0;
+  const priceVnd  = usdVndRate > 0 ? Math.round(priceUsdt * usdVndRate) : 0;
 
   return {
     // 시장 정보
@@ -141,7 +124,8 @@ async function getJumpBankStatus(uid) {
     jumpTotalSupply:   jumpTotalSupply.toString(),
     buyCap:            buyCap.toString(),
     perTokenDiv:       perTokenDiv.toString(),
-    priceKrw:    priceKrw,                     // JUMP 1개 원화 가격 (정수 원)
+    priceKrw:    priceKrw,                    // JUMP 1개 원화 가격 (정수 원)
+    priceVnd:    priceVnd,                    // JUMP 1개 동화 가격 (정수 동)
     usdKrwRate:  Math.round(usdKrwRate),      // 사용된 USD/KRW 환율
     // 내 잔액
     hexBalance:      hexBal.toString(),

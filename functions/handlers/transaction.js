@@ -817,11 +817,16 @@ async function payMerchantHexOnChain(uid, merchantId, amountKrw, masterSecret, {
     console.warn('jackpotAccWei cache update failed:', e.message);
   }
 
+  const returnAmountVnd = (currency === 'VND' && amountVnd)
+    ? amountVnd
+    : Math.round((amountKrw / rates.krwPerUsd) * rates.vndPerUsd);
+
   return {
     txHash:       receipt.hash,
     amountHex:    hexAmount.toFixed(4),
     amountKrw,
-    ...(currency === 'VND' && amountVnd ? { amountVnd, currency: 'VND' } : { currency: 'KRW' }),
+    amountVnd:    returnAmountVnd,
+    currency:     currency === 'VND' ? 'VND' : 'KRW',
     merchantName:  merchant.name || '',
     potionsAdded:  potionCount,
     mpPotionsAdded: mpPotionCount,

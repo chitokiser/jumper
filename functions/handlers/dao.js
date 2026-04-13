@@ -241,7 +241,27 @@ async function checkVotingResult(proposalRef) {
   }
 }
 
-// ── 6. 안건 수정 (pending_admin 상태, 작성자 또는 관리자만) ──────────
+// ── 6. 관리자 가결/부결 (voting 상태, 과반 달성 시 수동 처리) ──────────
+async function adminFinalizeVote(uid, { proposalId, result }) {
+  await requireAdmin(uid);
+  if (!['passed', 'rejected'].includes(result)) throw new Error('결과는 passed 또는 rejected만 가능합니다');
+
+  const ref  = db.collection('dao_proposals').doc(proposalId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error('안건을 찾을 수 없습니다');
+  if (snap.data().status !== 'voting') throw new Error('의결 중인 안건만 가결/부결 처리할 수 있습니다');
+
+  await ref.update({
+    status:      result,
+    closedAt:    admin.firestore.FieldValue.serverTimestamp(),
+    finalizedBy: uid,
+  });
+
+  logger.info('dao.adminFinalizeVote', { uid, proposalId, result });
+  return { ok: true };
+}
+
+// ── 7. 안건 수정 (pending_admin 상태, 작성자 또는 관리자만) ──────────
 async function updateProposal(uid, { proposalId, title, content }) {
   if (!title?.trim()) throw new Error('제목을 입력해주세요');
   if (!content?.trim()) throw new Error('내용을 입력해주세요');
@@ -255,8 +275,8 @@ async function updateProposal(uid, { proposalId, title, content }) {
   const d = snap.data();
 
   // 작성자 또는 관리자만 수정 가능
-  const adminSnap = await db.collection('admins').doc(uid).get();
-  const isAdmin   = adminSnap.exists;
+  let isAdmin = false;
+  try { await requireAdmin(uid); isAdmin = true; } catch {}
   if (d.authorUid !== uid && !isAdmin) throw new Error('수정 권한이 없습니다 (작성자 또는 관리자만 가능)');
 
   // 관리자는 모든 상태에서 수정 가능, 일반 작성자는 pending_admin만 가능
@@ -281,8 +301,8 @@ async function deleteProposal(uid, { proposalId }) {
 
   const d = snap.data();
 
-  const adminSnap = await db.collection('admins').doc(uid).get();
-  const isAdminDel = adminSnap.exists;
+  let isAdminDel = false;
+  try { await requireAdmin(uid); isAdminDel = true; } catch {}
   if (d.authorUid !== uid && !isAdminDel) throw new Error('삭제 권한이 없습니다');
 
   // 관리자는 모든 상태에서 삭제 가능, 일반 작성자는 pending_admin만 가능
@@ -360,6 +380,7 @@ module.exports = {
   createProposal,
   adminApproveProposal,
   adminRejectProposal,
+  adminFinalizeVote,
   supportProposal,
   voteProposal,
   updateProposal,

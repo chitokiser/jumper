@@ -142,6 +142,56 @@ const JUMP_BANK_ABI = [
   'event DividendClaimed(address indexed who, uint256 payHexWei)',
 ];
 
+// CoopMall 컨트랙트 (폐쇄 전용몰)
+const COOP_MALL_ADDRESS = '0x421Bb7Ba86c8cafA181F85C9907B864B85bEF49A';
+
+const COOP_MALL_ABI = [
+  // 상태 조회
+  'function getUserInfo(address addr) external view returns (bool eligible, bool member, address mentor, uint256 points)',
+  'function membershipFeeHex() external view returns (uint256)',
+  'function mentorRewardBps() external view returns (uint16)',
+  'function contractHexBalance() external view returns (uint256)',
+  'function contractJumpBalance() external view returns (uint256)',
+  'function jumpPrice() external view returns (uint256)',
+  'function withdrawableHex() external view returns (uint256)',
+  'function totalPoints() external view returns (uint256)',
+  // 유저 액션
+  'function joinMall() external',
+  'function pay(uint256 hexAmount) external',
+  'function convertPoints(uint256 pts) external',
+  // 관리자 액션
+  'function grantEligibility(address user, address mentor) external',
+  'function setMembershipFee(uint256 feeWei) external',
+  'function setMentorRewardBps(uint16 bps) external',
+  'function withdrawHex(uint256 amount) external',
+  'function withdrawJump(uint256 amount) external',
+  // 바우처 — 관리자 액션
+  'function createVoucherTemplate(uint256 hexPrice, uint16 burnFeeBps, string calldata description, string calldata usagePlace, string calldata imageURI) external returns (uint256)',
+  'function setVoucherBurnFee(uint256 templateId, uint16 burnFeeBps) external',
+  'function setVoucherTemplateActive(uint256 templateId, bool active) external',
+  // 바우처 — 유저 액션
+  'function buyVoucher(uint256 templateId) external returns (uint256)',
+  'function transferVoucher(uint256 voucherId, address to) external',
+  'function burnVoucher(uint256 voucherId) external',
+  // 바우처 — 조회
+  'function voucherTemplateCount() external view returns (uint256)',
+  'function voucherCount() external view returns (uint256)',
+  'function totalVoucherReserve() external view returns (uint256)',
+  'function voucherTemplates(uint256) external view returns (uint256 hexPrice, uint16 burnFeeBps, bool active, string memory description, string memory usagePlace, string memory imageURI)',
+  'function vouchers(uint256) external view returns (uint256 templateId, address owner, bool burned)',
+  'function getVouchersByOwner(address owner_) external view returns (uint256[] memory)',
+  'function getVoucherInfo(uint256 voucherId) external view returns (uint256 templateId, address vOwner, bool burned, uint256 hexPrice, uint16 burnFeeBps, bool templateActive, string memory description, string memory usagePlace, string memory imageURI)',
+  // 이벤트
+  'event EligibilityGranted(address indexed user, address indexed mentor)',
+  'event MemberJoined(address indexed user, uint256 feeHex, uint256 jumpGiven)',
+  'event Paid(address indexed buyer, uint256 hexAmount, uint256 mentorPoints)',
+  'event PointsConverted(address indexed user, uint256 pts, uint256 upperBonus)',
+  'event VoucherTemplateCreated(uint256 indexed templateId, uint256 hexPrice, uint16 burnFeeBps)',
+  'event VoucherBought(uint256 indexed voucherId, uint256 indexed templateId, address indexed buyer)',
+  'event VoucherTransferred(uint256 indexed voucherId, address indexed from, address indexed to)',
+  'event VoucherBurned(uint256 indexed voucherId, address indexed owner, uint256 hexReturned, uint256 feeKept)',
+];
+
 // ────────────────────────────────────────────────
 // 팩토리 함수
 // ────────────────────────────────────────────────
@@ -164,6 +214,10 @@ function getJumpTokenContract(signerOrProvider) {
 
 function getJumpBankContract(signerOrProvider) {
   return new ethers.Contract(ADDRESSES.jumpBank, JUMP_BANK_ABI, signerOrProvider);
+}
+
+function getCoopMallContract(signerOrProvider) {
+  return new ethers.Contract(COOP_MALL_ADDRESS, COOP_MALL_ABI, signerOrProvider);
 }
 
 /**
@@ -193,11 +247,13 @@ async function estimateGasWithBuffer(contract, method, args) {
 
 module.exports = {
   ADDRESSES,
+  COOP_MALL_ADDRESS,
   getProvider,
   getPlatformContract,
   getHexContract,
   getJumpTokenContract,
   getJumpBankContract,
+  getCoopMallContract,
   walletFromKey,
   getAdminWallet,
   estimateGasWithBuffer,

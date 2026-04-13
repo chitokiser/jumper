@@ -801,6 +801,184 @@ exports.adminDeleteCoopProduct = onCall(
   })
 );
 
+exports.coopGetMembership = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return coopH.coopGetMembership(uid);
+  })
+);
+
+exports.coopJoinMall = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await coopH.coopJoinMall(uid, walletSecret.value());
+    logger.info('coopJoinMall', { uid, txHash: result.txHash });
+    return result;
+  })
+);
+
+exports.coopBuyOnChain = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { productId } = request.data ?? {};
+    if (!productId) throw new HttpsError('invalid-argument', 'productId가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await coopH.coopBuyOnChain(uid, { productId }, walletSecret.value());
+    logger.info('coopBuyOnChain', { uid, productId, txHash: result.txHash });
+    return result;
+  })
+);
+
+exports.coopConvertPoints = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { ptsWei } = request.data ?? {};
+    if (!ptsWei) throw new HttpsError('invalid-argument', 'ptsWei가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await coopH.coopConvertPoints(uid, { ptsWei }, walletSecret.value());
+    logger.info('coopConvertPoints', { uid, ptsWei, txHash: result.txHash });
+    return result;
+  })
+);
+
+exports.coopAdminGrantEligibility = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return coopH.coopAdminGrantEligibility(uid, request.data ?? {});
+  })
+);
+
+exports.coopAdminGetStats = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return coopH.coopAdminGetStats(uid);
+  })
+);
+
+exports.coopAdminWithdrawHex = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { amountWei } = request.data ?? {};
+    if (!amountWei) throw new HttpsError('invalid-argument', 'amountWei가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return coopH.coopAdminWithdrawHex(uid, { amountWei });
+  })
+);
+
+exports.coopAdminWithdrawJump = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { amount } = request.data ?? {};
+    if (!amount) throw new HttpsError('invalid-argument', 'amount가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return coopH.coopAdminWithdrawJump(uid, { amount });
+  })
+);
+
+exports.coopAdminSetFee = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return coopH.coopAdminSetFee(uid, request.data ?? {});
+  })
+);
+
+exports.coopAdminUpdateOrder = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return coopH.coopAdminUpdateOrder(uid, request.data ?? {});
+  })
+);
+
+// ── CoopMall 바우처 ──────────────────────────────────────────────────────────
+
+exports.coopAdminCreateVoucher = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return coopH.coopAdminCreateVoucher(uid, request.data ?? {});
+  })
+);
+
+exports.coopAdminUpdateVoucher = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return coopH.coopAdminUpdateVoucher(uid, request.data ?? {});
+  })
+);
+
+exports.coopAdminListVouchers = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return coopH.coopAdminListVouchers(uid);
+  })
+);
+
+exports.coopBuyVoucher = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { templateId } = request.data ?? {};
+    if (templateId === undefined) throw new HttpsError('invalid-argument', 'templateId가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await coopH.coopBuyVoucher(uid, { templateId }, walletSecret.value());
+    logger.info('coopBuyVoucher', { uid, templateId, voucherId: result.voucherId });
+    return result;
+  })
+);
+
+exports.coopTransferVoucher = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { docId, voucherId, toAddress } = request.data ?? {};
+    if (!toAddress) throw new HttpsError('invalid-argument', 'toAddress가 필요합니다');
+    if (docId == null && voucherId == null) throw new HttpsError('invalid-argument', 'docId 또는 voucherId가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await coopH.coopTransferVoucher(uid, { docId, voucherId, toAddress }, walletSecret.value());
+    logger.info('coopTransferVoucher', { uid, docId, voucherId, toAddress });
+    return result;
+  })
+);
+
+exports.coopBurnVoucher = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { docId, voucherId } = request.data ?? {};
+    if (docId == null && voucherId == null) throw new HttpsError('invalid-argument', 'docId 또는 voucherId가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await coopH.coopBurnVoucher(uid, { docId, voucherId }, walletSecret.value());
+    logger.info('coopBurnVoucher', { uid, docId, voucherId, txHash: result.txHash });
+    return result;
+  })
+);
+
+exports.coopGetMyVouchers = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return coopH.coopGetMyVouchers(uid);
+  })
+);
+
 // ════════════════════════════════════════════════════════════════════════════
 // ZaloPay 포인트 시스템
 // ════════════════════════════════════════════════════════════════════════════
@@ -1247,6 +1425,14 @@ exports.daoAdminRejectProposal = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
     return daoH.adminRejectProposal(uid, request.data);
+  })
+);
+
+// 관리자 가결/부결 (voting → passed/rejected)
+exports.daoAdminFinalizeVote = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return daoH.adminFinalizeVote(uid, request.data);
   })
 );
 
