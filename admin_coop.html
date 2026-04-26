@@ -41,6 +41,16 @@
     .ac-badge-on  { background: #d1fae5; color: #065f46; border-radius: 99px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; }
     .ac-badge-off { background: #fee2e2; color: #991b1b; border-radius: 99px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; }
 
+    /* 잔고 카드 */
+    .ac-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .ac-stat-card { background: var(--surface2,#f9fafb); border: 1px solid var(--border,#e5e7eb); border-radius: 10px; padding: 14px 16px; }
+    .ac-stat-label { font-size: 0.78rem; color: var(--muted,#6b7280); margin-bottom: 4px; }
+    .ac-stat-value { font-size: 1.05rem; font-weight: 700; color: var(--text,#111); word-break: break-all; }
+    .ac-stat-sub   { font-size: 0.75rem; color: var(--muted,#6b7280); margin-top: 2px; }
+    .ac-withdraw-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+    .ac-withdraw-row input { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.88rem; flex: 1; min-width: 120px; max-width: 220px; }
+    .ac-withdraw-row input:focus { outline: none; border-color: var(--accent,#7c3aed); }
+
     /* 폼 */
     .ac-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 560px) { .ac-form-grid { grid-template-columns: 1fr; } }
@@ -51,6 +61,42 @@
     .ac-form-field textarea { resize: vertical; min-height: 72px; }
     .ac-form-full { grid-column: 1 / -1; }
     .ac-form-actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 4px; }
+
+    /* HEX 가격 미리보기 */
+    .ac-price-preview { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; font-size: 0.83rem; color: #065f46; display: none; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+    .ac-price-preview.active { display: flex; }
+    .ac-price-preview span { white-space: nowrap; }
+    .ac-price-preview strong { font-weight: 700; }
+
+    /* 주문 테이블 */
+    .ac-order-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .ac-tab { padding: 5px 14px; border-radius: 99px; border: 1px solid var(--border,#e5e7eb); background: transparent; font-size: 0.83rem; cursor: pointer; font-weight: 500; }
+    .ac-tab.active { background: var(--accent,#7c3aed); color: #fff; border-color: var(--accent,#7c3aed); }
+    .ac-order-status { display: inline-block; border-radius: 99px; padding: 2px 9px; font-size: 0.72rem; font-weight: 600; }
+    .os-confirmed  { background: #dbeafe; color: #1e40af; }
+    .os-processing { background: #fef9c3; color: #854d0e; }
+    .os-shipped    { background: #e0e7ff; color: #3730a3; }
+    .os-delivered  { background: #d1fae5; color: #065f46; }
+    .os-cancelled  { background: #fee2e2; color: #991b1b; }
+    .ac-order-note { font-size: 0.75rem; color: #6b7280; margin-top: 3px; }
+
+    /* 바우처 */
+    .ac-voucher-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-top: 14px; }
+    .ac-voucher-card { border: 1px solid var(--border,#e5e7eb); border-radius: 10px; overflow: hidden; background: var(--surface,#fff); }
+    .ac-voucher-card img { width: 100%; height: 120px; object-fit: cover; background: #f3f4f6; display: block; }
+    .ac-voucher-card-body { padding: 10px 12px; }
+    .ac-voucher-card-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 4px; }
+    .ac-voucher-card-meta { font-size: 0.78rem; color: var(--muted,#6b7280); margin-bottom: 8px; }
+    .ac-voucher-card-actions { display: flex; gap: 6px; }
+    .ac-voucher-badge-active  { background: #d1fae5; color: #065f46; border-radius: 99px; padding: 2px 8px; font-size: 0.72rem; font-weight: 600; }
+    .ac-voucher-badge-inactive { background: #fee2e2; color: #991b1b; border-radius: 99px; padding: 2px 8px; font-size: 0.72rem; font-weight: 600; }
+    .ac-voucher-issued-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 12px; }
+    .ac-voucher-issued-table th { text-align: left; padding: 7px 10px; border-bottom: 2px solid var(--border,#e5e7eb); color: var(--muted,#6b7280); font-weight: 600; }
+    .ac-voucher-issued-table td { padding: 8px 10px; border-bottom: 1px solid var(--border,#e5e7eb); vertical-align: middle; }
+    .ac-voucher-issued-table tr:last-child td { border-bottom: none; }
+    .vs-active    { background: #dbeafe; color: #1e40af; border-radius: 99px; padding: 2px 8px; font-size: 0.72rem; font-weight: 600; }
+    .vs-burned    { background: #f3f4f6; color: #6b7280; border-radius: 99px; padding: 2px 8px; font-size: 0.72rem; font-weight: 600; }
+    .vs-transferred { background: #e0e7ff; color: #3730a3; border-radius: 99px; padding: 2px 8px; font-size: 0.72rem; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -65,17 +111,85 @@
 
     <div id="adminContent" style="display:none;">
 
-      <!-- 설정 -->
+      <!-- 컨트랙트 잔고 대시보드 -->
       <section class="section">
         <div class="ac-section">
-          <div class="ac-section-title">입장 기준 설정</div>
-          <div class="ac-row">
-            <span class="ac-label">최소 스테이킹</span>
-            <input type="number" id="inputMinStake" class="ac-input" min="0" step="1000" placeholder="예: 10000" style="max-width:160px;" />
-            <span class="ac-label" style="font-size:0.8rem; color:#888;">JUMP</span>
-            <button class="ac-btn ac-btn-primary" id="btnSaveConfig" type="button">저장</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="ac-section-title" style="margin-bottom:0;">컨트랙트 잔고</div>
+            <button class="ac-btn ac-btn-ghost" id="btnRefreshStats" type="button" style="font-size:0.82rem;padding:5px 14px;">새로고침</button>
           </div>
-          <div class="ac-status" id="configStatus"></div>
+          <div class="ac-stats-grid">
+            <div class="ac-stat-card">
+              <div class="ac-stat-label">HEX 잔고</div>
+              <div class="ac-stat-value" id="statHexBal">—</div>
+            </div>
+            <div class="ac-stat-card">
+              <div class="ac-stat-label">인출 가능 HEX</div>
+              <div class="ac-stat-value" id="statWithdrawable">—</div>
+              <div class="ac-stat-sub">(총 적립 − 총 포인트 준비금)</div>
+            </div>
+            <div class="ac-stat-card">
+              <div class="ac-stat-label">JUMP 잔고</div>
+              <div class="ac-stat-value" id="statJumpBal">—</div>
+            </div>
+            <div class="ac-stat-card">
+              <div class="ac-stat-label">총 포인트 (준비금)</div>
+              <div class="ac-stat-value" id="statTotalPts">—</div>
+            </div>
+            <div class="ac-stat-card">
+              <div class="ac-stat-label">회비</div>
+              <div class="ac-stat-value" id="statFee">—</div>
+            </div>
+            <div class="ac-stat-card">
+              <div class="ac-stat-label">멘토 수당</div>
+              <div class="ac-stat-value" id="statMentorBps">—</div>
+            </div>
+          </div>
+          <div class="ac-status" id="statsStatus"></div>
+        </div>
+      </section>
+
+      <!-- HEX 인출 -->
+      <section class="section">
+        <div class="ac-section">
+          <div class="ac-section-title">HEX 인출 (관리자 지갑으로)</div>
+          <div class="ac-withdraw-row">
+            <input type="number" id="inputWithdrawHex" placeholder="HEX 수량 (예: 1.5)" step="0.0001" min="0" />
+            <button class="ac-btn ac-btn-primary" id="btnWithdrawHex" type="button">인출</button>
+            <button class="ac-btn ac-btn-ghost" id="btnWithdrawHexMax" type="button">최대</button>
+          </div>
+          <div class="ac-status" id="withdrawHexStatus"></div>
+        </div>
+      </section>
+
+      <!-- JUMP 인출 -->
+      <section class="section">
+        <div class="ac-section">
+          <div class="ac-section-title">JUMP 인출 (관리자 지갑으로)</div>
+          <div class="ac-withdraw-row">
+            <input type="number" id="inputWithdrawJump" placeholder="JUMP 수량 (정수)" step="1" min="0" />
+            <button class="ac-btn ac-btn-primary" id="btnWithdrawJump" type="button">인출</button>
+            <button class="ac-btn ac-btn-ghost" id="btnWithdrawJumpMax" type="button">최대</button>
+          </div>
+          <div class="ac-status" id="withdrawJumpStatus"></div>
+        </div>
+      </section>
+
+      <!-- 컨트랙트 설정 -->
+      <section class="section">
+        <div class="ac-section">
+          <div class="ac-section-title">컨트랙트 설정 (온체인)</div>
+          <div class="ac-row">
+            <span class="ac-label">회비 (HEX)</span>
+            <input type="number" id="inputSetFee" class="ac-input" min="0" step="0.0001" placeholder="예: 10" style="max-width:140px;" />
+            <button class="ac-btn ac-btn-primary" id="btnSetFee" type="button">변경</button>
+          </div>
+          <div class="ac-row" style="margin-top:6px;">
+            <span class="ac-label">멘토 수당</span>
+            <input type="number" id="inputSetMentorBps" class="ac-input" min="0" max="10000" step="1" placeholder="BPS (예: 500=5%)" style="max-width:140px;" />
+            <button class="ac-btn ac-btn-primary" id="btnSetMentorBps" type="button">변경</button>
+          </div>
+          <div class="ac-status" id="setFeeStatus"></div>
         </div>
       </section>
 
@@ -104,6 +218,17 @@
               <label>KRW 가격 *</label>
               <input type="number" id="inputPrice" placeholder="예: 50000" min="1" step="1000" />
             </div>
+            <div class="ac-form-field">
+              <label>HEX 입력 → 자동 환산</label>
+              <input type="number" id="inputHexPrice" placeholder="HEX 수량 입력 (예: 1.5)" step="0.0001" min="0" />
+            </div>
+            <div class="ac-form-full">
+              <div class="ac-price-preview" id="pricePreview">
+                <span>KRW: <strong id="prevKrw">—</strong></span>
+                <span>VND: <strong id="prevVnd">—</strong></span>
+                <span>HEX: <strong id="prevHex">—</strong></span>
+              </div>
+            </div>
             <div class="ac-form-field ac-form-full">
               <label>설명</label>
               <textarea id="inputDesc" placeholder="상품 설명 (선택)"></textarea>
@@ -111,6 +236,10 @@
             <div class="ac-form-field ac-form-full">
               <label>이미지 URL (선택)</label>
               <input type="url" id="inputImageUrl" placeholder="https://..." />
+            </div>
+            <div class="ac-form-field ac-form-full" id="burnFeeBpsRow" style="display:none;">
+              <label>소각 수수료 (BPS) <span style="font-size:0.8rem;color:#6b7280;">예: 500 = 5%</span></label>
+              <input type="number" id="inputBurnFeeBps" placeholder="예: 500" min="0" max="10000" step="1" value="0" style="max-width:200px;" />
             </div>
             <div class="ac-form-field">
               <label>재고 (-1 = 무제한)</label>
@@ -159,6 +288,118 @@
           <div id="productListEmpty" class="ac-status" style="display:none; text-align:center; padding:16px 0;">
             등록된 상품이 없습니다.
           </div>
+        </div>
+      </section>
+
+      <!-- 주문 내역 (일반상품) -->
+      <section class="section">
+        <div class="ac-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="ac-section-title" style="margin-bottom:0;">주문 내역 (일반상품)</div>
+            <button class="ac-btn ac-btn-ghost" id="btnRefreshOrders" type="button" style="font-size:0.82rem;padding:5px 14px;">새로고침</button>
+          </div>
+          <div class="ac-order-tabs" id="orderTabs">
+            <button class="ac-tab active" data-status="">전체</button>
+            <button class="ac-tab" data-status="confirmed">결제완료</button>
+            <button class="ac-tab" data-status="processing">처리중</button>
+            <button class="ac-tab" data-status="shipped">발송완료</button>
+            <button class="ac-tab" data-status="delivered">수령완료</button>
+            <button class="ac-tab" data-status="cancelled">취소</button>
+          </div>
+          <div id="orderListState" class="ac-status" style="margin-bottom:8px;"></div>
+          <div style="overflow-x:auto;">
+            <table class="ac-table" id="orderTable" style="min-width:700px;">
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>상품명</th>
+                  <th>구매자</th>
+                  <th>KRW</th>
+                  <th>HEX</th>
+                  <th>상태</th>
+                  <th>상태 변경</th>
+                </tr>
+              </thead>
+              <tbody id="orderTbody"></tbody>
+            </table>
+          </div>
+          <div id="orderListEmpty" class="ac-status" style="display:none;text-align:center;padding:16px 0;">
+            주문 내역이 없습니다.
+          </div>
+        </div>
+      </section>
+
+      <!-- ───────────────────────────────────────────────────────────────────
+           바우처 관리
+           ─────────────────────────────────────────────────────────────────── -->
+      <section class="section">
+        <div class="ac-section">
+          <div class="ac-section-title">바우처 템플릿 등록</div>
+
+          <!-- 등록 폼 -->
+          <form id="voucherForm" autocomplete="off">
+            <div class="ac-form-grid">
+              <div class="ac-form-field">
+                <label for="voucherHexPrice">HEX 가격 (wei)</label>
+                <input type="text" id="voucherHexPrice" class="ac-input" placeholder="예: 1000000000000000000" />
+              </div>
+              <div class="ac-form-field">
+                <label for="voucherBurnFee">소각 수수료 (BPS, 0–10000)</label>
+                <input type="number" id="voucherBurnFee" class="ac-input" placeholder="예: 500 = 5%" min="0" max="10000" />
+              </div>
+              <div class="ac-form-field ac-form-full">
+                <label for="voucherDescription">바우처 내용</label>
+                <textarea id="voucherDescription" class="ac-input" rows="2" placeholder="예: 10,000원 할인 쿠폰"></textarea>
+              </div>
+              <div class="ac-form-field">
+                <label for="voucherUsagePlace">사용처</label>
+                <input type="text" id="voucherUsagePlace" class="ac-input" placeholder="예: 점프 스토어 전체 매장" />
+              </div>
+              <div class="ac-form-field">
+                <label for="voucherImageUrl">이미지 URL</label>
+                <input type="text" id="voucherImageUrl" class="ac-input" placeholder="https://..." />
+              </div>
+              <div class="ac-form-actions">
+                <button type="submit" class="ac-btn ac-btn-primary" id="btnCreateVoucher">바우처 등록</button>
+                <button type="button" class="ac-btn ac-btn-ghost" id="btnCancelVoucher">초기화</button>
+              </div>
+            </div>
+          </form>
+          <div id="voucherFormStatus" class="ac-status"></div>
+        </div>
+      </section>
+
+      <!-- 바우처 템플릿 목록 -->
+      <section class="section">
+        <div class="ac-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="ac-section-title" style="margin-bottom:0;">바우처 템플릿 목록</div>
+            <button class="ac-btn ac-btn-ghost" id="btnRefreshVouchers" type="button" style="font-size:0.82rem;padding:5px 14px;">새로고침</button>
+          </div>
+          <div id="voucherTemplateGrid" class="ac-voucher-grid"></div>
+          <div id="voucherTemplateEmpty" class="ac-status" style="display:none;text-align:center;padding:16px 0;">등록된 바우처 템플릿이 없습니다.</div>
+        </div>
+      </section>
+
+      <!-- 발행된 바우처 목록 -->
+      <section class="section">
+        <div class="ac-section">
+          <div class="ac-section-title">발행된 바우처 현황</div>
+          <div style="overflow-x:auto;">
+            <table class="ac-voucher-issued-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>템플릿</th>
+                  <th>소유자 UID</th>
+                  <th>상태</th>
+                  <th>구매일</th>
+                </tr>
+              </thead>
+              <tbody id="voucherIssuedTbody"></tbody>
+            </table>
+          </div>
+          <div id="voucherIssuedEmpty" class="ac-status" style="display:none;text-align:center;padding:16px 0;">발행된 바우처가 없습니다.</div>
         </div>
       </section>
 

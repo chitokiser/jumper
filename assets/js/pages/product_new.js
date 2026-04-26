@@ -36,6 +36,42 @@ function deriveItemType(category){
 }
 const $ = (id) => document.getElementById(id);
 
+const COUNTRY_REGIONS = {
+  VN: ["하노이","호치민","다낭","나트랑","호이안","푸꾸옥","하롱","달랏","무이네","후에","기타"],
+  KR: ["서울","부산","제주","경주","강릉","인천","대구","광주","기타"],
+  TH: ["방콕","푸켓","치앙마이","파타야","사무이","끄라비","기타"],
+  JP: ["도쿄","오사카","교토","후쿠오카","삿포로","나고야","오키나와","기타"],
+  PH: ["마닐라","세부","보라카이","팔라완","다바오","기타"],
+  SG: ["싱가포르","기타"],
+  MY: ["쿠알라룸푸르","페낭","코타키나발루","랑카위","기타"],
+  ID: ["발리","자카르타","롬복","족자카르타","기타"],
+  OTHER: ["기타"],
+};
+
+function bindCountryRegion() {
+  const countrySel = $("pCountry");
+  const regionSel  = $("pRegionSelect");
+  if (!countrySel || !regionSel) return;
+
+  function updateRegions() {
+    const country = countrySel.value;
+    const regions = COUNTRY_REGIONS[country] || [];
+    regionSel.innerHTML =
+      `<option value="">지역 선택</option>` +
+      regions.map(r => `<option value="${r}">${r}</option>`).join("");
+    // 선택 시 상세 입력란에 자동 채우기 (비어있을 때만)
+    regionSel.onchange = () => {
+      const detail = $("pRegion");
+      if (detail && !detail.value.trim() && regionSel.value) {
+        detail.value = regionSel.value;
+      }
+    };
+  }
+
+  updateRegions();
+  countrySel.addEventListener("change", updateRegions);
+}
+
 function normalizeCategoryOptionLabels(){
   const select = $("pCategory");
   if (!select) return;
@@ -115,6 +151,7 @@ function clearForm() {
   ].forEach((id) => { const el = $(id); if (el) el.value = ""; });
 
   const cat = $("pCategory"); if (cat) cat.value = "";
+  const cty = $("pCountry"); if (cty) { cty.value = ""; bindCountryRegion(); }
 
   const bm = $("pBookMode"); if (bm) bm.value = "date_single";
   const cap = $("pCapacity"); if (cap) cap.value = "10";
@@ -162,6 +199,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
   if (!form) return;
 
   normalizeCategoryOptionLabels();
+  bindCountryRegion();
 
   $("btnFillTemplate")?.addEventListener("click", fillTemplate);
   $("btnClearForm")?.addEventListener("click", () => {
@@ -180,10 +218,13 @@ onAuthReady(async ({ loggedIn, role, user }) => {
     if (btn) btn.disabled = true;
 
     try {
-      const title = v("pTitle");
+      const title    = v("pTitle");
       const category = v("pCategory");
-      const region = v("pRegion");
-      const price = Number(v("pPrice") || "0");
+      const country  = v("pCountry");
+      const regionDetail = v("pRegion");
+      const regionSelect = v("pRegionSelect");
+      const region   = regionDetail || regionSelect;
+      const price    = Number(v("pPrice") || "0");
       const currency = "KRW";
       const desc = v("pDesc");
 
@@ -205,8 +246,8 @@ onAuthReady(async ({ loggedIn, role, user }) => {
       const images = [...new Set(imagesRaw)];
       const imageUrl = images[0] || "";
 
-      if (!title || !category || !region) {
-        alert("상품명/카테고리/지역은 필수입니다.");
+      if (!title || !category || !country || !region) {
+        alert("상품명/카테고리/국가/지역은 필수입니다.");
         return;
       }
       if (!Number.isFinite(price) || price <= 0) {
@@ -230,6 +271,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
         title,
         category,
         type: deriveItemType(category),
+        country,
         region,
         location: region,          // item.js가 location을 쓰는 화면 호환
         price,

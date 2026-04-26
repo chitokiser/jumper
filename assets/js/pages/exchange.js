@@ -245,8 +245,9 @@ async function loadStatus() {
     setText('exPriceRoi',  roiPct.toFixed(3) + ' %');
     setText('exPrice',     fmtHex(_status.price));
     const krw    = Number(_status.priceKrw    || 0);
+    const vnd    = Number(_status.priceVnd    || 0);
     const usdKrw = Number(_status.usdKrwRate  || 0);
-    setText('exPriceKrw', krw > 0 ? krw.toLocaleString() + '원' : '-');
+    setText('exPriceKrw', krw > 0 ? krw.toLocaleString() + '원' + (vnd > 0 ? ' / ' + vnd.toLocaleString() + '동' : '') : '-');
     setText('exUsdKrw',   usdKrw > 0 ? '환율 ' + usdKrw.toLocaleString() + '/USD' : '');
     setText('exStaked',    fmtJump(_status.staked));
 
@@ -283,7 +284,7 @@ async function loadStatus() {
 
     // 티커 헤더 보조 정보
     setText('tickerRoi',      roiPct.toFixed(3) + ' %');
-    setText('tickerKrw',      krw > 0 ? krw.toLocaleString() + '원' : '-');
+    setText('tickerKrw',      krw > 0 ? krw.toLocaleString() + '원' + (vnd > 0 ? ' / ' + vnd.toLocaleString() + '동' : '') : '-');
     setText('tickerBankHex',  fmtHex(_status.bankHexBalance));
     setText('tickerBankJump', fmtJump(_status.bankJumpInventory));
     setText('tickerAct',      actLabel[_status.act] ?? String(_status.act));
@@ -345,9 +346,10 @@ function bindBuy() {
     if (!amount || amount <= 0 || !_status?.price) { previewEl.style.display = 'none'; return; }
     const hexCost = BigInt(_status.price) * BigInt(amount);
     const krwCost = amount * Number(_status.priceKrw || 0);
+    const vndCost = amount * Number(_status.priceVnd || 0);
     previewEl.innerHTML =
       `필요 HEX: <strong>${fmtHex(hexCost.toString())}</strong>` +
-      (krwCost > 0 ? `<br>약 <strong>${krwCost.toLocaleString()}</strong>원` : '');
+      (krwCost > 0 ? `<br>약 <strong>${krwCost.toLocaleString()}</strong>원` + (vndCost > 0 ? ` / <strong>${vndCost.toLocaleString()}</strong>동` : '') : '');
     previewEl.style.display = '';
   });
 

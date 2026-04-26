@@ -99,8 +99,14 @@
       <!-- 관리자 패널 -->
       <div class="dao-actions" id="adminActions" style="display:none;">
         <strong style="width:100%;font-size:0.85rem;">🔑 관리자</strong>
+        <!-- pending_admin 용 -->
         <button class="btn btn--primary btn--sm" id="btnAdminApprove">승인 → 심의</button>
         <button class="btn btn--sm" id="btnAdminReject" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">반려</button>
+        <!-- voting 용 -->
+        <div id="adminFinalizeWrap" style="display:none;gap:8px;width:100%;">
+          <button class="btn btn--primary btn--sm" id="btnAdminPass">✅ 가결</button>
+          <button class="btn btn--sm" id="btnAdminReject2" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">❌ 부결</button>
+        </div>
       </div>
 
       <!-- 댓글 -->

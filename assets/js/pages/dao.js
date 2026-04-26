@@ -18,14 +18,15 @@ const db   = getFirestore(app);
 const fns  = getFunctions(app);
 
 // ── Firebase callable ───────────────────────────────────────────
-const fnCreate        = httpsCallable(fns, 'daoCreateProposal');
-const fnAdminApprove  = httpsCallable(fns, 'daoAdminApproveProposal');
-const fnAdminReject   = httpsCallable(fns, 'daoAdminRejectProposal');
-const fnUpdate        = httpsCallable(fns, 'daoUpdateProposal');
-const fnDelete        = httpsCallable(fns, 'daoDeleteProposal');
-const fnSupport       = httpsCallable(fns, 'daoSupportProposal');
-const fnVote          = httpsCallable(fns, 'daoVoteProposal');
-const fnComment       = httpsCallable(fns, 'daoCommentProposal');
+const fnCreate          = httpsCallable(fns, 'daoCreateProposal');
+const fnAdminApprove    = httpsCallable(fns, 'daoAdminApproveProposal');
+const fnAdminReject     = httpsCallable(fns, 'daoAdminRejectProposal');
+const fnAdminFinalize   = httpsCallable(fns, 'daoAdminFinalizeVote');
+const fnUpdate          = httpsCallable(fns, 'daoUpdateProposal');
+const fnDelete          = httpsCallable(fns, 'daoDeleteProposal');
+const fnSupport         = httpsCallable(fns, 'daoSupportProposal');
+const fnVote            = httpsCallable(fns, 'daoVoteProposal');
+const fnComment         = httpsCallable(fns, 'daoCommentProposal');
 
 // ── 온체인 스테이킹 조회 ─────────────────────────────────────────
 const OPBNB_RPC     = 'https://opbnb-mainnet-rpc.bnbchain.org';
@@ -93,8 +94,8 @@ onAuthStateChanged(auth, async user => {
 
     try {
       const adminSnap = await getDoc(doc(db, 'admins', user.uid));
-      isAdmin = adminSnap.exists();
-    } catch { isAdmin = false; }
+      isAdmin = adminSnap.exists() || user.email === 'daguri75@gmail.com';
+    } catch { isAdmin = user.email === 'daguri75@gmail.com'; }
   } else {
     myWallet = null; myStaked = 0; isAdmin = false;
     $('btnCreateProposal').style.display = 'none';
@@ -290,8 +291,22 @@ async function openDetail(id, data) {
   const adminEl = $('adminActions');
   if (isAdmin && data.status === 'pending_admin') {
     adminEl.style.display = '';
+    $('btnAdminApprove').style.display = '';
+    $('btnAdminReject').style.display  = '';
+    const finalizeWrap = $('adminFinalizeWrap');
+    if (finalizeWrap) finalizeWrap.style.display = 'none';
     $('btnAdminApprove').onclick = () => adminAction(id, 'approve');
     $('btnAdminReject').onclick  = () => adminAction(id, 'reject');
+  } else if (isAdmin && data.status === 'voting') {
+    adminEl.style.display = '';
+    $('btnAdminApprove').style.display = 'none';
+    $('btnAdminReject').style.display  = 'none';
+    const finalizeWrap = $('adminFinalizeWrap');
+    if (finalizeWrap) {
+      finalizeWrap.style.display = 'flex';
+      $('btnAdminPass').onclick    = () => adminFinalize(id, 'passed');
+      $('btnAdminReject2').onclick = () => adminFinalize(id, 'rejected');
+    }
   } else {
     adminEl.style.display = 'none';
   }
@@ -474,6 +489,20 @@ async function adminAction(proposalId, action) {
     } catch (err) {
       alert(err.message || '반려 실패');
     }
+  }
+}
+
+// ── 관리자 가결/부결 ─────────────────────────────────────────────
+async function adminFinalize(proposalId, result) {
+  const label = result === 'passed' ? '가결' : '부결';
+  if (!confirm(`이 안건을 "${label}" 처리하시겠습니까?`)) return;
+  try {
+    await fnAdminFinalize({ proposalId, result });
+    alert(`${label} 처리되었습니다`);
+    const snap = await getDoc(doc(db, 'dao_proposals', proposalId));
+    openDetail(proposalId, snap.data());
+  } catch (err) {
+    alert(err.message || `${label} 처리 실패`);
   }
 }
 

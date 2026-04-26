@@ -82,8 +82,28 @@
                   </label>
 
                   <label class="field">
+                    <span class="label">국가</span>
+                    <select class="select" id="pCountry" required>
+                      <option value="">선택</option>
+                      <option value="VN">🇻🇳 베트남</option>
+                      <option value="KR">🇰🇷 한국</option>
+                      <option value="TH">🇹🇭 태국</option>
+                      <option value="JP">🇯🇵 일본</option>
+                      <option value="PH">🇵🇭 필리핀</option>
+                      <option value="SG">🇸🇬 싱가포르</option>
+                      <option value="MY">🇲🇾 말레이시아</option>
+                      <option value="ID">🇮🇩 인도네시아</option>
+                      <option value="OTHER">기타</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
                     <span class="label">지역</span>
-                    <input class="input" id="pRegion" required placeholder="예: 다낭 / 호이안" />
+                    <select class="select" id="pRegionSelect">
+                      <option value="">선택 (국가를 먼저 고르세요)</option>
+                    </select>
+                    <input class="input" id="pRegion" placeholder="상세 지역 직접 입력 (예: 다낭 미케비치)" style="margin-top:6px;" />
+                    <div class="help">위 목록에서 대표 지역 선택 후 상세 주소/지역명을 입력하세요.</div>
                   </label>
 
                   <label class="field">

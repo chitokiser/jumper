@@ -378,9 +378,16 @@ async function loadMerchants() {
     const mid = d.id;
 
     const feeBps = Number(v.feeBps) || 0;
+    const isDormant = v.dormant === true;
     const feeBadge = feeBps > 0
       ? `<span class="badge" style="background:var(--accent, #22c55e);">수수료 ${feeBps / 100}%</span>`
       : '<span class="badge" style="background:#f59e0b;">미승인 (feeBps=0)</span>';
+    const dormantBadge = isDormant
+      ? '<span class="badge" style="background:#6b7280;color:#fff;">😴 휴면</span>'
+      : '';
+    const dormantBtn = isDormant
+      ? `<button class="btn btn-sm" type="button" data-act="toggleDormant" data-mid="${esc(mid)}" data-dormant="1" style="background:#16a34a;color:#fff;border-color:#16a34a;">▶ 활성화</button>`
+      : `<button class="btn btn-sm" type="button" data-act="toggleDormant" data-mid="${esc(mid)}" data-dormant="0" style="background:#64748b;color:#fff;border-color:#64748b;">😴 휴면 처리</button>`;
 
     const el = cardWrap(`
       <details class="expander" data-mid="${esc(mid)}">
@@ -390,9 +397,12 @@ async function loadMerchants() {
             <div class="sum-sub">${esc([v.career, v.region, "owner:" + (v.ownerUid || "-")].filter(Boolean).join(" · "))}</div>
           </div>
           <div class="sum-right">
+            ${dormantBadge}
             ${feeBadge}
             <button class="btn btn-sm" type="button" data-act="viewMerchant" data-mid="${esc(mid)}">상세(JSON)</button>
             ${isAdminUser ? `
+              <button class="btn btn-sm" type="button" data-act="renameMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || '')}">✏️ 이름변경</button>
+              ${dormantBtn}
               <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
               <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:${v.gmap ? '#fef3c7' : '#f3f4f6'};color:${v.gmap ? '#92400e' : '#6b7280'};">🗺️ ${v.gmap ? "지도수정" : "지도등록"}</button>
               <button class="btn btn-sm" type="button" data-act="setMerchantImage" data-mid="${esc(mid)}" data-imageurl="${esc(v.imageUrl || '')}" style="background:${v.imageUrl ? '#ede9fe' : '#f3f4f6'};color:${v.imageUrl ? '#5b21b6' : '#6b7280'};">🖼️ ${v.imageUrl ? "이미지수정" : "이미지등록"}</button>
@@ -408,7 +418,7 @@ async function loadMerchants() {
             <div class="k">소개/상세</div><div class="v">${esc(fmt(v.description))}</div>
             <div class="k">전화</div><div class="v">${esc(fmt(v.phone))}</div>
             <div class="k">카카오ID</div><div class="v">${esc(fmt(v.kakaoId))}</div>
-            <div class="k">활성 여부</div><div class="v">${v.active === false ? "비활성" : "활성"}</div>
+            <div class="k">활성 여부</div><div class="v">${isDormant ? "😴 휴면" : v.active === false ? "비활성" : "활성"}</div>
             <div class="k">수수료 (feeBps)</div><div class="v">${esc(fmt(feeBps))} bps = ${feeBps / 100}%</div>
             <div class="k">ownerUid</div><div class="v" style="word-break:break-all;">${esc(fmt(v.ownerUid))}</div>
             <div class="k">ownerAddress</div><div class="v" style="font-family:monospace;font-size:12px;word-break:break-all;">${esc(fmt(v.ownerAddress))}</div>
@@ -418,6 +428,8 @@ async function loadMerchants() {
           </div>
           ${isAdminUser ? `
           <div class="row-actions">
+            <button class="btn btn-sm" type="button" data-act="renameMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || '')}">✏️ 이름변경</button>
+            ${dormantBtn}
             <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
             <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:#fef3c7;color:#92400e;">🗺️ 지도 URL 설정</button>
             <button class="btn btn-sm" type="button" data-act="setMerchantImage" data-mid="${esc(mid)}" data-imageurl="${esc(v.imageUrl || '')}" style="background:#ede9fe;color:#5b21b6;">🖼️ 이미지 URL 설정</button>
@@ -555,6 +567,45 @@ async function setMerchantImage(mid, currentUrl) {
     await loadMerchants();
   } catch (err) {
     console.error("setMerchantImage:", err);
+    alert("저장 실패: " + (err.message || String(err)));
+  }
+}
+
+async function renameMerchant(mid, currentName) {
+  if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+
+  const val = prompt("새 가게명을 입력하세요:", currentName || "");
+  if (val === null) return;
+  const name = val.trim();
+  if (!name) { alert("가게명은 비울 수 없습니다."); return; }
+  if (name === currentName) return;
+
+  try {
+    await updateDoc(doc(db, "merchants", mid), { name, updatedAt: serverTimestamp() });
+    alert(`가게명이 "${name}"으로 변경되었습니다.`);
+    await loadMerchants();
+  } catch (err) {
+    console.error("renameMerchant:", err);
+    alert("저장 실패: " + (err.message || String(err)));
+  }
+}
+
+async function toggleMerchantDormant(mid, isDormant) {
+  if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+
+  const action = isDormant ? "활성화" : "휴면 처리";
+  if (!confirm(`가맹점 ID ${mid}를 ${action}하시겠습니까?`)) return;
+
+  try {
+    await updateDoc(doc(db, "merchants", mid), {
+      dormant: !isDormant,
+      active: isDormant,   // 휴면→active:false, 활성화→active:true
+      updatedAt: serverTimestamp(),
+    });
+    alert(`${action} 완료되었습니다.`);
+    await loadMerchants();
+  } catch (err) {
+    console.error("toggleMerchantDormant:", err);
     alert("저장 실패: " + (err.message || String(err)));
   }
 }
@@ -1145,7 +1196,11 @@ merchantList?.addEventListener("click", async (e) => {
   const act = btn.dataset.act;
   const mid = btn.dataset.mid;
   try {
-    if (act === "approveMerchant") {
+    if (act === "renameMerchant") {
+      await renameMerchant(mid, btn.dataset.name || "");
+    } else if (act === "toggleDormant") {
+      await toggleMerchantDormant(mid, btn.dataset.dormant === "1");
+    } else if (act === "approveMerchant") {
       await approveMerchant(mid, Number(btn.dataset.feebps) || 0);
     } else if (act === "setMerchantGmap") {
       await setMerchantGmap(mid, btn.dataset.gmap || "");

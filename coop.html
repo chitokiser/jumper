@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>회원전용 몰</title>
+  <title>조합 전용몰</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -125,6 +125,31 @@
       background: #ede9fe; color: #7c3aed; border-radius: 99px; padding: 2px 10px;
       margin-bottom: 8px;
     }
+
+    /* 입장 자격 없음 패널 */
+    .coop-join-panel {
+      background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb);
+      border-radius: 14px; padding: 32px 24px; text-align: center;
+    }
+    .coop-join-panel .icon { font-size: 3rem; margin-bottom: 12px; }
+    .coop-join-panel .title { font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; }
+    .coop-join-panel .sub { font-size: 0.9rem; color: var(--muted, #6b7280); margin-bottom: 20px; }
+    .coop-join-fee { font-size: 1.1rem; font-weight: 700; color: var(--accent, #7c3aed);
+                     margin: 12px 0 4px; }
+    .coop-join-fee-sub { font-size: 0.8rem; color: var(--muted); margin-bottom: 20px; }
+
+    /* 포인트 패널 */
+    .coop-points-panel {
+      background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+      border: 1px solid #c4b5fd; border-radius: 14px;
+      padding: 20px 24px; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    .coop-points-info { display: flex; flex-direction: column; gap: 4px; }
+    .coop-points-label { font-size: 0.8rem; color: #6d28d9; font-weight: 600; }
+    .coop-points-amount { font-size: 1.5rem; font-weight: 800; color: #4c1d95; }
+    .coop-points-sub { font-size: 0.75rem; color: #7c3aed; }
+    .coop-points-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -134,7 +159,7 @@
     <section class="hero">
       <div class="hero-inner">
         <h1 class="hero-title">회원 전용몰</h1>
-        <p class="hero-desc">JUMP 스테이킹 회원 전용 쇼핑몰</p>
+        <p class="hero-desc">JUMP전용몰 쇼핑몰</p>
       </div>
     </section>
 
@@ -143,34 +168,44 @@
       <!-- 로딩 -->
       <div id="coopLoading" class="help small" style="text-align:center; padding:24px 0;">로딩 중...</div>
 
-      <!-- 비로그인 -->
+      <!-- 비로그인 / 지갑 없음 -->
       <div id="coopNeedLogin" style="display:none;">
         <div class="coop-denied">
           <div class="coop-denied-icon">🔒</div>
-          <div class="coop-denied-title">로그인이 필요합니다</div>
-          <div class="coop-denied-sub">조합전용몰을 이용하려면 로그인 후 JUMP 토큰을 스테이킹하세요.</div>
+          <div class="coop-denied-title" id="coopNeedLoginTitle">로그인이 필요합니다</div>
+          <div class="coop-denied-sub" id="coopNeedLoginSub">조합전용몰을 이용하려면 로그인 후 수탁 지갑을 생성하세요.</div>
         </div>
       </div>
 
-      <!-- 접근불가 (스테이킹 부족) -->
-      <div id="coopDenied" style="display:none;">
-        <div class="coop-denied">
-          <div class="coop-denied-icon">🏦</div>
-          <div class="coop-badge" id="coopDeniedBadge">회원 전용</div>
-          <div class="coop-denied-title">스테이킹 조건을 충족하지 못했습니다</div>
-          <div class="coop-denied-sub" id="coopDeniedSub">최소 10,000 JUMP 스테이킹 필요</div>
-          <div class="coop-stake-bar">
-            <div class="coop-stake-fill" id="coopStakeFill" style="width:0%"></div>
-          </div>
-          <div class="coop-denied-sub" id="coopDeniedProgress" style="margin-top:4px;"></div>
-          <a class="btn btn--primary" href="/exchange.html" style="display:inline-block; margin-top:20px;">JUMP 스테이킹하러 가기 →</a>
+      <!-- 미가입 (회비 납부) -->
+      <div id="coopJoinPanel" style="display:none;">
+        <div class="coop-join-panel">
+          <div class="icon">🏪</div>
+          <div class="title">조합 전용몰 회원 가입</div>
+          <div class="sub">아래 회비를 납부하면 전용몰 회원이 됩니다.<br>회비 상당의 JUMP 토큰이 지급됩니다.</div>
+          <div class="coop-join-fee" id="coopJoinFeeDisplay">-- HEX</div>
+          <div class="coop-join-fee-sub" id="coopJoinFeeNote">회비의 50%가 멘토에게 포인트로 적립됩니다</div>
+          <button class="btn btn--primary" id="coopJoinBtn" type="button">회원 가입하기</button>
+          <div id="coopJoinMsg" style="font-size:0.82rem;color:var(--danger,#ef4444);margin-top:10px;min-height:18px;"></div>
         </div>
       </div>
 
-      <!-- 상품 그리드 -->
+      <!-- 회원 메인 -->
       <div id="coopMain" style="display:none;">
+        <!-- 포인트 패널 -->
+        <div class="coop-points-panel" id="coopPointsPanel">
+          <div class="coop-points-info">
+            <div class="coop-points-label">내 적립 포인트</div>
+            <div class="coop-points-amount" id="coopPointsAmount">0.0000 HEX</div>
+            <div class="coop-points-sub">구매 시 멘토 포인트가 적립됩니다 · HEX로 전환 가능</div>
+          </div>
+          <div class="coop-points-actions">
+            <button class="btn btn--sm btn--primary" id="coopConvertBtn" type="button" disabled>포인트 전환</button>
+          </div>
+        </div>
+
         <div class="section-h" style="margin-bottom:12px;">
-          <span class="coop-badge" id="coopAccessBadge">회원 인증됨</span>
+          <span class="coop-badge" id="coopAccessBadge">전용몰 회원</span>
         </div>
         <div id="coopGrid" class="coop-grid"></div>
         <div id="coopEmpty" class="help small" style="display:none; text-align:center; padding:32px 0;">
@@ -210,6 +245,29 @@
   </div>
 
   <div id="siteFooter"></div>
+
+  <!-- 포인트 전환 모달 -->
+  <div id="coopConvertModal" class="coop-modal" style="display:none;" aria-modal="true" role="dialog">
+    <div class="coop-modal-bd" id="coopConvertBd"></div>
+    <div class="coop-modal-box">
+      <div class="coop-modal-icon">💎</div>
+      <div class="coop-modal-title">포인트 → HEX 전환</div>
+      <p style="font-size:0.85rem;color:var(--muted);margin:0 0 16px;">
+        보유 포인트: <strong id="coopConvertAvail">0.0000 HEX</strong>
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input type="number" id="coopConvertInput" step="0.0001" min="0"
+          placeholder="전환할 금액 (HEX)" style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;" />
+        <button class="btn btn--sm" id="coopConvertAll" type="button">전액</button>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);margin:0 0 16px;">전환 시 금액의 1/2이 상위 멘토에게 포인트로 적립됩니다.</p>
+      <div id="coopConvertMsg" style="font-size:0.82rem;color:var(--danger,#ef4444);min-height:18px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn--sm" id="coopConvertCancel" type="button" style="flex:1;">취소</button>
+        <button class="btn btn--primary" id="coopConvertSubmit" type="button" style="flex:2;">전환하기</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="/assets/js/pages/coop.js"></script>
 </body>

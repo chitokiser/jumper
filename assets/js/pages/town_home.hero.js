@@ -1,30 +1,29 @@
 // /assets/js/pages/town_home.hero.js
-// 비디오 히어로 – IntersectionObserver로 뷰포트에 들어왔을 때만 재생 (성능 최적화)
+// 이미지 슬라이드쇼 히어로 – IntersectionObserver로 뷰포트 밖에서는 정지 (성능 최적화)
 
 (function () {
   const section = document.getElementById('heroSection');
-  const video   = section && section.querySelector('.hero-video-el');
+  const slides  = section && section.querySelectorAll('.hero-slide');
 
-  if (!video) return;
+  if (!slides || slides.length === 0) return;
 
-  // prefersReducedMotion 설정 시 비디오 정지
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (prefersReduced) {
-    video.pause();
-    return;
+  let current = 0;
+  let timer   = null;
+
+  function next() {
+    slides[current].classList.remove('is-active');
+    current = (current + 1) % slides.length;
+    slides[current].classList.add('is-active');
   }
 
-  // 뷰포트 진입 시 재생, 벗어나면 정지 → 백그라운드 탭 CPU 절약
+  function start() { if (!timer) timer = setInterval(next, 4500); }
+  function stop()  { clearInterval(timer); timer = null; }
+
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) return;
+
   const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          video.play().catch(() => { /* autoplay 정책으로 차단될 경우 조용히 처리 */ });
-        } else {
-          video.pause();
-        }
-      });
-    },
+    (entries) => { entries[0].isIntersecting ? start() : stop(); },
     { threshold: 0.1 }
   );
 

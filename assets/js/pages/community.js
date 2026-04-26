@@ -542,7 +542,9 @@ async function loadMerchantsForModal(selectedIds = []) {
   if (!_merchantCache) {
     try {
       const snap = await getDocs(query(collection(db, 'merchants'), orderBy('name', 'asc')));
-      _merchantCache = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id }));
+      _merchantCache = snap.docs
+        .filter(d => d.data().dormant !== true && d.data().active !== false)
+        .map(d => ({ id: d.id, name: d.data().name || d.id }));
     } catch (_) { _merchantCache = []; }
   }
   loading.style.display = 'none';

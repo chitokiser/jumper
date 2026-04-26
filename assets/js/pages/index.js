@@ -165,10 +165,30 @@ function computeKpi(items) {
   if ($("kpiAvg")) $("kpiAvg").textContent = sumReviews > 0 ? fmt1(weightedAvg) : "-";
 }
 
+let _activeCountry = "";
+
+function bindCountryFilter(items, render) {
+  const container = document.getElementById("countryFilter");
+  if (!container) return;
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest(".country-btn");
+    if (!btn) return;
+    container.querySelectorAll(".country-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    _activeCountry = btn.dataset.country || "";
+    render();
+  });
+}
+
+function matchCountry(it) {
+  if (!_activeCountry) return true;
+  return (it.country || "") === _activeCountry;
+}
+
 function matchSearch(it, q) {
   if (!q) return true;
   const s = q.toLowerCase();
-  const hay = [it.title, it.region, it.category, it.guideName]
+  const hay = [it.title, it.region, it.country, it.category, it.guideName]
     .map((x) => String(x || "").toLowerCase())
     .join(" ");
   return hay.includes(s);
@@ -210,7 +230,7 @@ function renderItemsGrid(items) {
   const q = ($("qSearch")?.value || "").trim();
   const sortMode = $("qSort")?.value || "recent";
 
-  const filtered = items.filter((it) => matchSearch(it, q));
+  const filtered = items.filter((it) => matchSearch(it, q) && matchCountry(it));
   const sorted = sortItems(filtered, sortMode);
 
   const grouped = { play: [], food: [], stay: [], shop: [] };
@@ -427,6 +447,7 @@ async function loadPublishedItems() {
     computeKpi(items);
     fillCategoryOptions(items);
 
+    bindCountryFilter(items, () => renderItemsGrid(items));
     renderItemsGrid(items);
     renderCategoryRanking(items);
     renderGuideLeaderboard(items);

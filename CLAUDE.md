@@ -1,242 +1,161 @@
 # 코딩 원칙 — Jumper v10
 
-이 파일은 Claude Code가 이 프로젝트에서 작업할 때 **반드시 준수해야 할 원칙**을 정의합니다.
-새 파일 작성, 기존 파일 수정, 기능 추가 등 모든 작업에 적용됩니다.
-
-"파일을 읽기 전에 항상 qmd로 먼저 검색하라."
-
-## 1. 파일 역할 분리 원칙
-
-각 파일은 **단 하나의 책임**만 가진다. 한 파일에 모든 기능을 몰아넣지 않는다.
-
-| 파일 | 역할 | 포함해야 할 것 | 포함하면 안 되는 것 |
-|------|------|----------------|---------------------|
-| `config.js` | 상수, 경로, 설정값 | API 키, URL, 기본값, 타임아웃 | 로직, DOM 조작 |
-| `state.js` | 전역 상태 관리 | 앱 상태 변수, 상태 변경 함수 | UI 갱신, 이벤트 |
-| `dom.js` | DOM 참조 캐싱 | `const el = document.getElementById(...)` | 이벤트 바인딩, 로직 |
-| `api.js` | 서버 통신 | Firebase 호출, fetch, httpsCallable | DOM 조작, 상태 변경 |
-| `utils.js` | 공통 유틸 함수 | 포맷터, 계산, 변환 함수 | 전역 상태, DOM |
-| `events.js` | 이벤트 등록 | addEventListener 호출 | 실제 동작 로직 |
-| `render.js` | 화면 갱신 함수 | DOM 갱신, 섹션 전환, 마커 업데이트 | 서버 통신, 상태 직접 변경 |
-| `performance.js` | 성능 유틸 | throttle, debounce, cache, profiler | 비즈니스 로직 |
-| `main.js` | 초기 실행 진입점 | 초기화 호출, 인증 감시 시작 | 실제 로직 구현 |
-
-> **기존 단일 파일 구조 (buggy.js 등)를 신규 기능 추가 시 분리 시작한다.**
-> 단, 소규모 수정은 기존 파일을 유지하되 아래 원칙은 파일 내부에서도 적용한다.
+Claude Code가 이 프로젝트에서 작업할 때 **반드시 준수해야 할 원칙**입니다.
 
 ---
 
-## 2. DOM 최적화 원칙
+## 0. 필수 규칙
 
-### 2-1. DOM 캐싱 필수
-```js
-// BAD — 매번 조회
-function update() {
-  document.getElementById('status').textContent = 'OK';
-  document.getElementById('status').style.color = 'green';
-}
-
-// GOOD — 초기에 캐싱, 재사용
-const statusEl = document.getElementById('status');
-function update() {
-  statusEl.textContent = 'OK';
-  statusEl.style.color = 'green';
-}
-```
-
-### 2-2. 일괄 렌더링 (DocumentFragment / 문자열 누적 후 1회 삽입)
-```js
-// BAD — 반복 append
-items.forEach(item => {
-  const div = document.createElement('div');
-  div.textContent = item.name;
-  list.appendChild(div);       // 매번 리플로우 발생
-});
-
-// GOOD — Fragment 또는 문자열 누적 후 1회 삽입
-const frag = document.createDocumentFragment();
-items.forEach(item => {
-  const div = document.createElement('div');
-  div.textContent = item.name;
-  frag.appendChild(div);
-});
-list.appendChild(frag);        // 1회만 DOM 변경
-```
-
-### 2-3. 스타일 변경은 class 토글 우선
-```js
-// BAD
-el.style.display = 'none';
-el.style.opacity = '0';
-el.style.pointerEvents = 'none';
-
-// GOOD
-el.classList.add('hidden');    // CSS에서 통합 처리
-```
-
-### 2-4. 변경된 항목만 갱신 (전체 재생성 금지)
-- 목록 데이터가 업데이트될 때 전체 innerHTML을 교체하지 않는다.
-- 변경된 항목의 DOM만 찾아서 갱신하거나, 키 기반 diff를 적용한다.
-- 단, 최초 렌더링 또는 전체 데이터 교체 시는 예외.
+- **파일을 수정하기 전에 반드시 Read로 전체 내용을 먼저 읽는다.**
+- **가격·금액을 표시할 때는 KRW / VND / HEX 세 가지를 모두 표시한다.**
+- **Source Control pending changes가 10개 이상이면 자동으로 GitHub에 push한다.**
+- **배포: `firebase deploy --only functions` (단일 함수 배포 금지 — timeout 오류).**
 
 ---
 
-## 3. 이벤트 최적화 원칙
+## 1. 프로젝트 구조
 
-### 3-1. 고빈도 이벤트에 throttle 필수
+### 주요 페이지 (HTML ↔ `assets/js/pages/` 1:1 대응)
 
-| 이벤트 | throttle 간격 |
-|--------|--------------|
-| `scroll`, `resize` | 100ms |
-| `mousemove`, `touchmove` | 50ms |
-| GPS 위치 업데이트 (setInterval) | 3,000ms (현행 유지) |
-| 지도 경로 갱신 (DirectionsService) | 8,000–10,000ms (현행 유지) |
+| 파일 | 설명 |
+|------|------|
+| `index.html` | 메인 (town_home) |
+| `mypage.html` | 마이페이지 (지갑, 바우처, 거래내역) |
+| `coop.html` | 협동조합 몰 — 상품 목록/구매 |
+| `coop-mall.html` | CoopMall 회원/포인트/바우처 관리 |
+| `dao.html` | DAO 거버넌스 |
+| `wallet.html` | 수탁 지갑 (HEX 입출금) |
+| `exchange.html` | HEX ↔ JUMP 거래소 |
+| `buggy.html` / `buggy-driver.html` / `buggy-admin.html` | 탈것 앱 |
+| `admin_coop.html` / `admin_jackpot.html` | 어드민 |
+| `merchants.html` | 가맹점 (게임 포함) |
+| `zalopay.html` | ZaloPay KRW→HEX 충전 |
 
-```js
-// GOOD — throttle 적용 예시
-window.addEventListener('scroll', throttle(onScroll, 100), { passive: true });
-```
+복잡한 페이지는 `.lib.js`, `.render.js`, `.hero.js` 서브모듈로 분리.
 
-### 3-2. 검색 입력에 debounce 필수
-```js
-input.addEventListener('input', debounce(onSearch, 350));
-```
+### Cloud Functions (`functions/`)
 
-### 3-3. 중복 addEventListener 방지
-- 동일 핸들러를 여러 번 등록하지 않는다.
-- `onSnapshot`, `setInterval`, `watchPosition` 등은 기존 인스턴스를 **반드시 해제** 후 재등록.
+| 경로 | 역할 |
+|------|------|
+| `functions/index.js` | 모든 함수 진입점 |
+| `functions/handlers/coop.js` | 협동조합 몰 |
+| `functions/handlers/dao.js` | DAO |
+| `functions/handlers/buggy.js` | 탈것 |
+| `functions/handlers/exchange.js` | HEX ↔ JUMP 거래소 |
+| `functions/handlers/deposit.js` | HEX 입금 |
+| `functions/handlers/transaction.js` | 거래 내역 |
+| `functions/handlers/zalopay.js` | ZaloPay |
+| `functions/handlers/treasure.js` | 잭팟/보물상자 |
+| `functions/handlers/onboarding.js` | 가입/지갑 생성 |
+| `functions/wallet/chain.js` | ethers.js v6 — opBNB RPC, 컨트랙트 헬퍼 |
+| `functions/wallet/crypto.js` | 지갑 암호화/복호화 |
 
-```js
-// GOOD
-if (_rideSub) _rideSub();           // 기존 구독 해제
-_rideSub = onSnapshot(...);         // 새 구독 등록
-```
-
-### 3-4. passive listener 적용
-- `scroll`, `touchstart`, `touchmove`, `wheel` 이벤트는 `{ passive: true }` 옵션 추가.
-
-### 3-5. 화면 제거 시 이벤트 해제
-- 섹션이 숨겨지거나 컴포넌트가 파괴될 때 이벤트 리스너와 타이머를 정리한다.
-
----
-
-## 4. 렌더링 최적화 원칙
-
-### 4-1. 실시간 UI는 requestAnimationFrame 사용
-```js
-// BAD — 직접 갱신
-setInterval(() => { timerEl.textContent = getTime(); }, 1000);
-
-// GOOD — rAF 또는 1초 setInterval (1초 이상 간격은 setInterval 허용)
-function tick() {
-  timerEl.textContent = getTime();
-  requestAnimationFrame(tick);   // 60fps 이하 작업에만 적용
-}
-requestAnimationFrame(tick);
-```
-
-### 4-2. 레이아웃 스래싱 방지
-- 읽기(getBoundingClientRect, offsetHeight 등)와 쓰기(style 변경)를 교차하지 않는다.
-- 읽기를 먼저 모아서 처리한 후, 쓰기를 일괄 처리한다.
-
-### 4-3. Google Maps resize 트리거
-- `display:none` → `display:block` 전환 후 반드시 resize 이벤트 트리거.
-- 지연은 60–200ms (현행 유지).
-
-```js
-setTimeout(() => google.maps.event.trigger(map, 'resize'), 80);
-```
+### 스마트 컨트랙트 (`contract/`)
+`CoopMall.sol` (`pay`, `burnVoucher`, `convertPoints`) · `jumpPlatform.sol` · `jumpBank.sol` · `jumpTresury.sol`
 
 ---
 
-## 5. 성능 유틸 구현 기준
+## 2. 블록체인 / 결제
 
-### throttle
-```js
-function throttle(fn, ms) {
-  let last = 0;
-  return (...args) => {
-    const now = Date.now();
-    if (now - last < ms) return;
-    last = now;
-    fn(...args);
-  };
-}
-```
+- **체인**: opBNB Mainnet (L2), RPC: `https://opbnb-mainnet-rpc.bnbchain.org`, ethers.js v6
+- **토큰**: HEX (ERC-20, 18 dec) — 플랫폼 포인트 / JUMP (ERC-20, 0 dec) — 거래 / BNB — 가스
 
-### debounce
-```js
-function debounce(fn, ms) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
-  };
-}
+### 컨트랙트 주소
 ```
+jumpPlatform : 0x4d83A7764428fd1c116062aBb60c329E0E29f490
+jumpToken    : 0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464  (HEX)
+jumpJump     : 0xA3C35c52446C133b7211A743c6D47470D1385601  (JUMP)
+jumpBank     : 0x16752f8948ff2caA02e756c7C8fF0E04887A3a0E
+jumpTreasury : 0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312
+```
+`CoopMall`: Firestore `coopConfig/main.contractAddress`에서 조회.
 
-### 간단 캐시 (TTL)
-```js
-function createCache(ttlMs) {
-  const store = new Map();
-  return {
-    get: (key) => {
-      const entry = store.get(key);
-      if (!entry || Date.now() - entry.ts > ttlMs) return null;
-      return entry.value;
-    },
-    set: (key, value) => store.set(key, { value, ts: Date.now() }),
-  };
-}
-```
+### 수탁 지갑
+- EOA 지갑 → Firestore `users/{uid}.wallet`, 개인키는 `WALLET_MASTER_SECRET`으로 AES 암호화
+- 관리자: `ADMIN_PRIVATE_KEY` Secret
+
+### 결제 경로 (CoopMall)
+| 경로 | 설명 |
+|------|------|
+| **수탁** | `hexToken.transfer(adminWallet, hexWei)` — 멘토 포인트 없음 |
+| **온체인** | `coopMall.pay(hexWei)` — 멘토 포인트 자동 적립 |
+
+### BPS · FX
+- BPS: 10000=100%, `burnFeeBps` (`coopProducts`/`coopVouchers`), `mentorRewardBps` 기본 1000
+- FX: `fetchExchangeRates()` → `{ krwPerUsd, vndPerUsd }` (`functions/wallet/exchange.js`)
+- 온체인 FX: `platform.fxKrwPerHexScaled()`, `platform.fxVndPerHexScaled()`, `platform.fxScale()`
 
 ---
 
-## 6. 코드 작성 금지 사항
+## 3. Firestore 주요 컬렉션
+
+| 컬렉션 | 설명 |
+|--------|------|
+| `users/{uid}` | 프로필 + 수탁 지갑(`wallet`) |
+| `coopProducts` | 상품 (`type: 'general'|'voucher'`, `burnFeeBps`) |
+| `coopOrders` | 주문 (`status: confirmed|burned`) |
+| `coopVouchers` | 바우처 (`status: active|burned`, `burnFeeBps`) |
+| `coopConfig/main` | 컨트랙트 주소, minStake 등 |
+| `admins/{uid}` | 관리자 목록 |
+| `guides/{uid}` | 가이드 (`.approved === true`) |
+| `buggy_config/default` | 탈것 설정 (`driverSharePct` 기본 80%) |
+| `jackpot_config` | 잭팟 설정 |
+| `town_home` | 메인 화면 데이터 |
+
+---
+
+## 4. 역할(Role) 판정
+
+`assets/js/auth.js`의 `getUserRole(uid)` 만 사용:
+1. `admins/{uid}` 존재 → `admin`
+2. `guides/{uid}.approved === true` → `guide`
+3. `users/{uid}.role` → 해당 값
+4. 로그인 → `user` / 비로그인 → `guest`
+
+---
+
+## 5. Firebase Cloud Functions 규칙
+
+- 배포: `firebase deploy --only functions` (단일 함수 배포 절대 금지)
+- 모든 `onCall`은 `WALLET_MASTER_SECRET`, `ADMIN_PRIVATE_KEY` secret 사용
+- `wrapError()` → `HttpsError` 래핑 / `requireAuth(request)` → uid / `requireAdmin(uid)` → admins 확인
+
+---
+
+## 6. DOM · 이벤트 최적화
+
+- **DOM 캐싱**: 셀렉터는 초기화 시 1회 캐싱, 함수 내 반복 조회 금지
+- **일괄 렌더링**: 루프 내 `innerHTML` 반복 금지 — 문자열 누적 후 1회 삽입
+- **스타일**: `style.display` 직접 조작 금지 — `classList.add/remove('hidden')` 사용
+- **부분 갱신**: 변경된 노드만 갱신 (전체 재렌더 금지, 최초·전체교체 제외)
+- **이벤트 인터벌**: scroll/resize throttle 100ms, mousemove 50ms, 검색 debounce 350ms
+- **passive**: `scroll`, `touchstart`, `touchmove`, `wheel` → `{ passive: true }`
+- **cleanup 필수**: `onSnapshot`, `setInterval`, `watchPosition` — 재등록 전 해제, 섹션 파괴 시 정리
+
+---
+
+## 7. 금지 사항
 
 | 금지 | 대안 |
 |------|------|
-| `document.querySelector` 반복 호출 | 초기 캐싱 후 변수 사용 |
-| `innerHTML` 반복 갱신 | Fragment / 누적 문자열 1회 삽입 |
-| 이벤트 핸들러 내부에서 직접 DOM 쿼리 | 외부에서 캐싱된 참조 사용 |
-| `console.log` 프로덕션 코드에 남기기 | 제거하거나 `// TODO` 표시 |
-| 하드코딩된 수수료율, 요금, 타임아웃 값 | `config.js` 또는 Firestore 설정값 참조 |
-| 전체 목록 재렌더링으로 단일 항목 업데이트 | 해당 DOM 노드만 찾아 갱신 |
-| `async` 함수 내 `await` 없는 `try/catch` | 불필요한 `try/catch` 제거 |
-| 해제하지 않는 `setInterval` / `onSnapshot` | 반드시 cleanup 변수 유지 |
+| `querySelector` 반복 호출 | 초기 캐싱 |
+| `innerHTML` 루프 내 반복 갱신 | 문자열 누적 후 1회 삽입 |
+| `console.log` 프로덕션 | 제거 또는 `// TODO` |
+| 수수료율·요금 하드코딩 | Firestore 또는 컨트랙트 조회 |
+| `setInterval`/`onSnapshot` 미해제 | cleanup 변수 유지 |
+| `firebase deploy --only functions:fnName` | `firebase deploy --only functions` |
 
 ---
 
-## 7. 파일 크기 기준
+## 8. 파일 크기 기준
 
-| 파일 유형 | 권장 최대 줄 수 |
-|-----------|----------------|
-| 단일 기능 JS 파일 | 300줄 |
-| 페이지별 JS (기존 통합 파일) | 700줄 (초과 시 분리 검토) |
-| CSS 파일 | 600줄 (초과 시 컴포넌트별 분리) |
-
-> 현재 `buggy.js`, `buggy-driver.js` 등은 통합 파일로 유지하되,
-> 신규 기능 추가 시 위 원칙을 파일 내부에 적용하고 함수를 역할별로 그룹화한다.
+단일 기능 JS 300줄 / 페이지 JS 700줄 (초과 시 `.lib.js` 분리) / Cloud Functions 핸들러 1,200줄 / CSS 600줄
 
 ---
 
-## 8. 커밋 메시지 규칙
+## 9. 커밋 · 기타
 
-```
-type: 짧은 요약 (한/영 혼용 가능)
-
-- type: feat | fix | refactor | perf | style | docs | chore
-- 본문: 변경 이유 + 변경 내용 bullet
-```
-
----
-
-## 9. 프로젝트 구조 메모
-
-- `buggy.html` — 사용자 앱 (Uber 스타일 전체화면)
-- `buggy-driver.html` — 기사 앱 (PWA, jump_cart.png 아이콘)
-- `buggy-admin.html` — 관리자 대시보드
-- `functions/handlers/buggy.js` — Cloud Functions v2 (수수료, 결제, 라이드 처리)
-- Geocoding: **Nominatim** (Google Geocoding API 사용 안 함 — 비활성화 상태)
-- HEX 결제: BSC 체인, 수탁 지갑, VND→USD→HEX wei 변환
-- 수수료율: Firestore `buggy_config/default.driverSharePct` (기본 80%, 관리자 설정 가능)
+- 커밋: `type: 요약` — type: `feat|fix|refactor|perf|style|docs|chore`
+- Geocoding: **Nominatim** 사용 (Google Geocoding API 금지)
+- 공통 헤더/푸터: `partials.js` 주입 (`#siteHeader`, `#siteFooter` div 필수)
+- Firebase 초기화: `assets/js/firebase-init.js` + `assets/js/firestore-bridge.js`

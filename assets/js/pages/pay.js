@@ -174,9 +174,10 @@ function bindPayButton() {
       show("donePanel", true);
       watchJackpotResult(d.txHash);
 
-      const paidAmountStr = isVnd
-        ? `${amount.toLocaleString()}동 (${d.amountHex || "?"} HEX)`
-        : `${amount.toLocaleString()}원 (${d.amountHex || "?"} HEX)`;
+      const krwStr = `${(d.amountKrw || 0).toLocaleString()}원`;
+      const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}동` : '';
+      const hexStr = `${d.amountHex || '?'} HEX`;
+      const paidAmountStr = [krwStr, vndStr, hexStr].filter(Boolean).join(' / ');
 
       const resultEl = $("payResult");
       if (resultEl) {

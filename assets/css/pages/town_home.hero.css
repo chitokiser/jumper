@@ -27,17 +27,26 @@
   z-index: 0;
 }
 
-/* ── 비디오 엘리먼트 ── */
-.hero-video-el {
+/* ── 슬라이드쇼 컨테이너 ── */
+.hero-slides {
+  position: absolute;
+  inset: 0;
+}
+
+/* ── 슬라이드 이미지 ── */
+.hero-slide {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-  /* GPU 가속 */
-  will-change: transform;
-  transform: translateZ(0);
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+  will-change: opacity;
+}
+
+.hero-slide.is-active {
+  opacity: 1;
 }
 
 /* ── 비네트(어둠 그라데이션) ── */

@@ -150,6 +150,12 @@
   border:1px solid var(--line2);
   background: rgba(255,255,255,.02);
 }
+.badge--country{
+  background:rgba(124,58,237,.08);
+  border-color:rgba(124,58,237,.25);
+  color:var(--accent,#7c3aed);
+  font-size:0.78rem;
+}
 /* legacy card-rating removed: now using .rating-inline (app.css) */
 .card-actions{
   padding: 14px;
@@ -377,6 +383,38 @@
 }
 .menu-btn:hover{
   background: rgba(255,255,255,.08);
+}
+
+.country-filter{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--line,#e5e7eb);
+}
+.country-btn{
+  height:32px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid var(--line,#e5e7eb);
+  background:transparent;
+  color:var(--muted,#6b7280);
+  font-size:0.82rem;
+  cursor:pointer;
+  transition:background .12s,color .12s,border-color .12s;
+  white-space:nowrap;
+}
+.country-btn:hover{
+  background:var(--accent-light,#ede9fe);
+  border-color:var(--accent,#7c3aed);
+  color:var(--accent,#7c3aed);
+}
+.country-btn.active{
+  background:var(--accent,#7c3aed);
+  border-color:var(--accent,#7c3aed);
+  color:#fff;
 }
 @media (max-width: 760px){
   .section-h{

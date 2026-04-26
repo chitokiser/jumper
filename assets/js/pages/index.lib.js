@@ -36,6 +36,26 @@ export function catLabel(v) {
   return CAT_LABEL[k] || (k ? k : "기타");
 }
 
+const COUNTRY_META = {
+  VN: { label: "베트남", flag: "🇻🇳" },
+  KR: { label: "한국",   flag: "🇰🇷" },
+  TH: { label: "태국",   flag: "🇹🇭" },
+  JP: { label: "일본",   flag: "🇯🇵" },
+  PH: { label: "필리핀", flag: "🇵🇭" },
+  SG: { label: "싱가포르", flag: "🇸🇬" },
+  MY: { label: "말레이시아", flag: "🇲🇾" },
+  ID: { label: "인도네시아", flag: "🇮🇩" },
+  OTHER: { label: "기타", flag: "🌏" },
+};
+
+export function countryLabel(code) {
+  return COUNTRY_META[code]?.label || code || "";
+}
+
+export function countryFlag(code) {
+  return COUNTRY_META[code]?.flag ? COUNTRY_META[code].flag + " " : "";
+}
+
 function isUrl(x) {
   return typeof x === "string" && /^https?:\/\//i.test(x.trim());
 }
@@ -142,6 +162,7 @@ export function toItemViewModel(docId, data) {
   return {
     id: docId,
     title: d.title || d.name || "",
+    country: d.country || "",
     region: d.region || d.area || "",
     category: d.category || d.cat || "",
     price: d.price ?? d.amount ?? "",
@@ -194,6 +215,7 @@ export function renderItemCard(item) {
           </div>
           <div class="card-meta">
             <span class="badge">${esc(catLabel(item.category))}</span>
+            ${item.country ? `<span class="badge badge--country">${countryFlag(item.country)}${esc(countryLabel(item.country))}</span>` : ""}
             ${item.region ? `<span class="badge">${esc(item.region)}</span>` : ""}
           </div>
           <div class="card-actions">
