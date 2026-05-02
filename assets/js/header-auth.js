@@ -17,6 +17,47 @@ function isInAppBrowser(){
   return ua.includes("kakaotalk") || ua.includes("instagram") || ua.includes("fbav") || ua.includes("fban") || ua.includes("line");
 }
 
+// ── Jump 원클릭 SSO: 팝업으로 열린 경우 로그인 완료 후 opener에 전달 ──
+const _SSO_ALLOWED = [
+  'https://zenyentu.netlify.app',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'http://localhost:3000',
+];
+let _ssoNotified = false;
+
+async function notifyOpenerIfPopup(firebaseUser, role, profile) {
+  if (_ssoNotified) return;
+  if (!window.opener || window.opener.closed) return;
+
+  let openerOrigin;
+  try { openerOrigin = window.opener.origin; } catch { return; }
+  if (!_SSO_ALLOWED.includes(openerOrigin)) return;
+
+  _ssoNotified = true;
+  try {
+    const token = await firebaseUser.getIdToken();
+    window.opener.postMessage(
+      {
+        type: 'jump_auth',
+        user: {
+          id:      profile.uid,
+          loginId: profile.email || profile.uid,
+          name:    profile.displayName || '',
+          email:   profile.email || '',
+          avatar:  profile.photoURL  || null,
+          role,
+        },
+        token,
+      },
+      openerOrigin
+    );
+    setTimeout(() => window.close(), 300);
+  } catch(e) {
+    console.warn('SSO notify failed:', e);
+  }
+}
+
 function openExternalBrowser(){
   const url = location.href;
   const ua = navigator.userAgent || "";
@@ -242,11 +283,15 @@ async function bindHeader(){
   show(btnLogin, true);
   show(btnLogout, false);
 
-  watchAuth(({ loggedIn, role, profile })=>{
+  watchAuth(({ loggedIn, role, profile, user })=>{
     show(btnLogin, !loggedIn);
     show(btnLogout, loggedIn);
     applyRoleToMenu(role || (loggedIn ? "user" : "guest"));
     applyUserBadge(loggedIn ? profile : null);
+
+    if(loggedIn && user) {
+      notifyOpenerIfPopup(user, role, profile);
+    }
 
     if(loggedIn && role === "user" && profile?.uid){
       checkRegistration(profile.uid);
