@@ -283,6 +283,12 @@ async function bindHeader(){
   show(btnLogin, true);
   show(btnLogout, false);
 
+  // 팝업 모드 감지: opener가 허용된 origin이면 팝업 SSO 모드
+  const isPopupMode = (() => {
+    if (!window.opener || window.opener.closed) return false;
+    try { return _SSO_ALLOWED.includes(window.opener.origin); } catch { return false; }
+  })();
+
   watchAuth(({ loggedIn, role, profile, user })=>{
     show(btnLogin, !loggedIn);
     show(btnLogout, loggedIn);
@@ -291,6 +297,21 @@ async function bindHeader(){
 
     if(loggedIn && user) {
       notifyOpenerIfPopup(user, role, profile);
+      return;
+    }
+
+    // 팝업 모드이고 로그인이 안 된 상태 → 자동으로 Google 로그인 시작
+    if(isPopupMode && !loggedIn) {
+      setTimeout(async () => {
+        try {
+          await login();
+        } catch(e) {
+          const code = e?.code || '';
+          if(code === 'auth/popup-blocked') {
+            if(btnLogin) btnLogin.click();
+          }
+        }
+      }, 300);
     }
 
     if(loggedIn && role === "user" && profile?.uid){
