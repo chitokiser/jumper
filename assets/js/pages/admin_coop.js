@@ -196,7 +196,7 @@ function renderProductTable(products) {
         <td style="text-align:center;"><input type="checkbox" class="chk-product" data-id="${p.id}" /></td>
         <td>${imgHtml}</td>
         <td>${typeBadge} <strong>${esc(p.name)}</strong>${p.description ? `<br><span style="font-size:0.78rem;color:#888;">${esc(p.description).slice(0,40)}${p.description.length>40?'…':''}</span>` : ''}</td>
-        <td>${(p.priceVnd || 0).toLocaleString()} ₫<br><span style="font-size:0.75rem;color:#6b7280;">${p.price.toLocaleString()}원 &nbsp;·&nbsp; ${krwToHex(p.price)}</span></td>
+        <td>${p.priceVnd ? p.priceVnd.toLocaleString() + ' ₫' : krwToVnd(p.price)}<br><span style="font-size:0.75rem;color:#6b7280;">${p.price.toLocaleString()}원 &nbsp;·&nbsp; ${krwToHex(p.price)}</span></td>
         <td>${stockTxt}</td>
         <td>${badge}</td>
         <td style="white-space:nowrap;">
@@ -310,6 +310,7 @@ function bindProductForm() {
 
     if (!name) { setStatus('productFormStatus', '상품명을 입력하세요', 'err'); return; }
     if (!priceVnd || priceVnd <= 0) { setStatus('productFormStatus', '올바른 VND 가격을 입력하세요', 'err'); return; }
+    if (!price || price <= 0) { setStatus('productFormStatus', '환율 정보가 아직 로드되지 않았습니다. 페이지 새로고침 후 다시 시도하세요.', 'err'); return; }
 
     btn.disabled = true;
     setStatus('productFormStatus', '저장 중...');

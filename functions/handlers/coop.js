@@ -214,20 +214,22 @@ async function adminSetCoopConfig(uid, { minStake }) {
 // ─────────────────────────────────────────────
 async function adminSaveCoopProduct(uid, data) {
   await requireAdmin(uid);
-  const { id, type, name, description, price, imageUrl, stock, active, burnFeeBps } = data;
+  const { id, type, name, description, price, priceVnd, imageUrl, stock, active, burnFeeBps } = data;
   if (!name || !String(name).trim()) throw new Error('상품명이 필요합니다');
   const priceNum = Number(price);
-  if (!Number.isFinite(priceNum) || priceNum <= 0) throw new Error('유효하지 않은 가격');
+  if (!Number.isFinite(priceNum) || priceNum <= 0) throw new Error('유효하지 않은 가격 (KRW 환산 실패 — 환율 로드 후 재시도)');
   const stockNum = Number(stock);
   if (!Number.isFinite(stockNum) || stockNum < -1) throw new Error('유효하지 않은 재고 (-1=무제한)');
   const typeVal  = type === 'voucher' ? 'voucher' : 'general';
   const burnFeeNum = typeVal === 'voucher' ? Math.min(10000, Math.max(0, Math.round(Number(burnFeeBps) || 0))) : 0;
+  const priceVndNum = Number(priceVnd) || 0;
 
   const docData = {
     type:        typeVal,
     name:        String(name).trim(),
     description: description ? String(description).trim() : '',
     price:       Math.round(priceNum),
+    priceVnd:    Math.round(priceVndNum),
     imageUrl:    imageUrl    ? String(imageUrl).trim()    : '',
     stock:       Math.round(stockNum),
     active:      active !== false,
