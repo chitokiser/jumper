@@ -462,6 +462,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Zen Spark 커뮤니티 게시판 ────────────────────────────────────
+    // 인증은 앱(Jump ID) 레벨에서 처리 — Firestore는 필드 존재/구조만 검증
+    match /community_posts/{postId} {
+      allow read: if true;
+      allow create: if request.resource.data.authorId is string
+        && request.resource.data.authorId.size() > 0;
+      allow update: if true;
+      allow delete: if true;
+    }
+
     // ── 소셜 커뮤니티 (community_events) ─────────────────────────────
     match /community_events/{eventId} {
       allow get, list: if true;                        // 누구나 읽기
