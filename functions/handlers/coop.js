@@ -840,7 +840,7 @@ async function coopBuyVoucher(uid, { templateId }, masterSecret) {
 // ─────────────────────────────────────────────
 // 19. 유저: 바우처 이체 (온체인 NFT 또는 상품 바우처 Firestore-only)
 // ─────────────────────────────────────────────
-async function coopTransferVoucher(uid, { docId, voucherId, toAddress }, masterSecret) {
+async function coopTransferVoucher(uid, { docId, voucherId, toAddress, sourceCollection }, masterSecret) {
   if (!toAddress) throw new Error('toAddress가 필요합니다');
 
   const userSnap   = await db.collection('users').doc(uid).get();
@@ -850,6 +850,38 @@ async function coopTransferVoucher(uid, { docId, voucherId, toAddress }, masterS
   // 수신자 UID 조회
   const recipientSnap = await db.collection('users').where('wallet.address', '==', toAddress).limit(1).get();
   const recipientUid  = recipientSnap.empty ? null : recipientSnap.docs[0].id;
+
+  // ── 게임 바우처 (treasure_voucher_logs) Firestore-only 이체 ────────
+  if (sourceCollection === 'treasure_voucher_logs' && docId) {
+    const ref  = db.collection('treasure_voucher_logs').doc(docId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('게임 바우처가 존재하지 않습니다');
+    const data = snap.data();
+    if (data.uid !== uid) throw new Error('바우처 소유자가 아닙니다');
+    const s = data.status;
+    if (s && s !== 'active') throw new Error('이미 사용된 바우처입니다');
+
+    const batch = db.batch();
+    batch.update(ref, {
+      status:    'transferred',
+      toAddress,
+      toUid:     recipientUid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    batch.set(db.collection('treasure_voucher_logs').doc(), {
+      uid:         recipientUid || toAddress,
+      voucherId:   data.voucherId   || '',
+      voucherName: data.voucherName || '',
+      reward:      data.reward      || '',
+      image:       data.image       || '',
+      status:      'active',
+      fromUid:     uid,
+      fromAddress: walletData.address,
+      craftedAt:   admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    return { docId, toAddress, txHash: null };
+  }
 
   // ── 상품 바우처: Firestore-only 이체 ───────────────────────────────
   if (!voucherId && docId) {
@@ -970,13 +1002,29 @@ async function coopTransferVoucher(uid, { docId, voucherId, toAddress }, masterS
 //     - 온체인 NFT 바우처: burnVoucher() 호출 (컨트랙트가 HEX 반환)
 //     - 상품 바우처: admin 지갑에서 직접 HEX 전송
 // ─────────────────────────────────────────────
-async function coopBurnVoucher(uid, { docId, voucherId }, masterSecret) {
+async function coopBurnVoucher(uid, { docId, voucherId, sourceCollection }, masterSecret) {
   const userSnap   = await db.collection('users').doc(uid).get();
   const walletData = userSnap.data()?.wallet;
   if (!walletData?.address) throw new Error('수탁 지갑이 없습니다');
 
   const provider    = getProvider();
   const adminWallet = getAdminWallet();
+
+  // ── 게임 바우처 (treasure_voucher_logs): HEX 환급 없이 소각 ───────
+  if (sourceCollection === 'treasure_voucher_logs' && docId) {
+    const ref  = db.collection('treasure_voucher_logs').doc(docId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('게임 바우처가 존재하지 않습니다');
+    const data = snap.data();
+    if (data.uid !== uid) throw new Error('바우처 소유자가 아닙니다');
+    const s = data.status;
+    if (s && s !== 'active') throw new Error('이미 소각된 바우처입니다');
+    await ref.update({
+      status:    'burned',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { docId, txHash: null, hexRefund: '0' };
+  }
 
   // ── 상품 바우처: admin 지갑 → 유저 지갑 HEX 직접 전송 ────────────
   if (!voucherId && docId) {
@@ -1170,15 +1218,47 @@ async function coopGetMyVouchers(uid) {
     });
 
   // coopVouchers 문서에 burnFeeBps=0이면 coopProducts에서 재조회 (구매 전 생성된 레거시 문서 대응)
-  const vBpsLookups = await Promise.all(
-    vSnap.docs.map(d => {
-      const data = d.data();
-      if ((data.burnFeeBps === 0 || data.burnFeeBps == null) && data.productId) {
-        return db.collection('coopProducts').doc(data.productId).get();
-      }
-      return null;
+  const [vBpsLookups, gameVoucherSnap] = await Promise.all([
+    Promise.all(
+      vSnap.docs.map(d => {
+        const data = d.data();
+        if ((data.burnFeeBps === 0 || data.burnFeeBps == null) && data.productId) {
+          return db.collection('coopProducts').doc(data.productId).get();
+        }
+        return null;
+      })
+    ),
+    db.collection('treasure_voucher_logs')
+      .where('uid', '==', uid)
+      .orderBy('craftedAt', 'desc')
+      .limit(50)
+      .get(),
+  ]);
+
+  const gameVouchers = gameVoucherSnap.docs
+    .filter(d => {
+      const s = d.data().status;
+      return !s || s === 'active';
     })
-  );
+    .map(d => {
+      const v = d.data();
+      const img = v.image || '';
+      const imageUrl = img.startsWith('http') || img.startsWith('/')
+        ? img
+        : img ? `/assets/images/vouchers/${img}` : '';
+      return {
+        id:          d.id,
+        source:      'game',
+        ownerUid:    uid,
+        hexPrice:    '0',
+        burnFeeBps:  0,
+        description: v.voucherName || '게임 바우처',
+        usagePlace:  v.reward     || '',
+        imageUrl,
+        status:      'active',
+        createdAt:   v.craftedAt,
+      };
+    });
 
   return {
     vouchers: [
@@ -1191,6 +1271,7 @@ async function coopGetMyVouchers(uid) {
         return data;
       }),
       ...orderVouchers,
+      ...gameVouchers,
     ],
     fxKrwPerHexScaled: fxKrw.toString(),
     fxVndPerHexScaled: fxVnd.toString(),

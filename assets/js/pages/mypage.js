@@ -1579,8 +1579,9 @@ onAuthReady(async (ctx) => {
 
   if (!grid) return;  // 섹션이 없으면 건너뜀
 
-  let _pendingVoucherId = null;
-  let _pendingDocId     = null;
+  let _pendingVoucherId  = null;
+  let _pendingDocId      = null;
+  let _pendingCollection = null;
 
   // ── 내 지갑 QR 렌더 ─────────────────────────────────────────────────────
   let _myWalletAddress = null;
@@ -1771,47 +1772,55 @@ onAuthReady(async (ctx) => {
       const imgTag = imgSrc
         ? `<img src="${imgSrc}" alt="바우처" style="width:100%;height:110px;object-fit:cover;display:block;background:#f3f4f6;" onerror="this.style.display='none'">`
         : `<div style="width:100%;height:60px;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.4rem;">🎫</div>`;
+      const isGameVoucher    = v.source === 'game';
       const isProductVoucher = v.source === 'product';
-      // 온체인 바우처는 voucherId(숫자), 상품 바우처는 docId(Firestore 문서 ID) 사용
-      const vid   = isProductVoucher ? null : v.voucherId;
-      const docId = v.id;  // 항상 Firestore 문서 ID
-      const hp = v.hexPrice ?? '0';
-      const refundWei = hp !== '0'
+      // 온체인 바우처는 voucherId(숫자), 상품/게임 바우처는 docId(Firestore 문서 ID) 사용
+      const vid   = (isProductVoucher || isGameVoucher) ? null : v.voucherId;
+      const docId = v.id;
+      const col   = isGameVoucher ? 'treasure_voucher_logs' : 'coop';
+      const hp    = v.hexPrice ?? '0';
+      const refundWei = (!isGameVoucher && hp !== '0')
         ? String(BigInt(hp) - BigInt(hp) * BigInt(v.burnFeeBps ?? 0) / BigInt(10000))
         : '0';
 
-      // 가격 다중 통화
-      const krwStr = hexWeiToKrwStr(hp);
-      const vndStr = hexWeiToVndStr(hp);
-      const fxLine = (krwStr || vndStr)
-        ? `<span style="color:#9ca3af;">${[krwStr, vndStr].filter(Boolean).join(' / ')}</span>`
-        : '';
+      // 소스 배지
+      const sourceBadge = isGameVoucher
+        ? `<span style="font-size:0.7rem;background:#d1fae5;color:#065f46;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">🎮 게임</span>`
+        : `<span style="font-size:0.7rem;background:#ede9fe;color:#5b21b6;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">🛍 쇼핑몰</span>`;
 
-      // 이체/소각 버튼: 온체인·상품 모두 표시
+      // 가격 영역
+      let priceHtml;
+      if (isGameVoucher) {
+        priceHtml = `<div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:6px;">게임에서 획득한 바우처</div>`;
+      } else {
+        const krwStr = hexWeiToKrwStr(hp);
+        const vndStr = hexWeiToVndStr(hp);
+        const fxLine = (krwStr || vndStr)
+          ? `<span style="color:#9ca3af;">${[krwStr, vndStr].filter(Boolean).join(' / ')}</span>`
+          : '';
+        const refundLine = refundWei !== '0' ? `<br>소각 환급: ${fmtHexShort(refundWei)} HEX` : '';
+        priceHtml = `<div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:6px;">가격: ${fmtHexShort(hp)} HEX${refundLine}<br>${fxLine}</div>`;
+      }
+
+      // 이체/소각 버튼
       const actionHtml = `<div style="display:flex;gap:6px;">
-           <button data-docid="${docId}" data-vid="${vid ?? ''}" data-action="transfer"
+           <button data-docid="${docId}" data-vid="${vid ?? ''}" data-collection="${col}" data-action="transfer"
              style="flex:1;padding:6px 0;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">
              이체
            </button>
-           <button data-docid="${docId}" data-vid="${vid ?? ''}" data-hex-price="${hp}" data-burn-fee-bps="${v.burnFeeBps ?? 0}" data-action="burn"
+           <button data-docid="${docId}" data-vid="${vid ?? ''}" data-collection="${col}" data-hex-price="${hp}" data-burn-fee-bps="${v.burnFeeBps ?? 0}" data-action="burn"
              style="flex:1;padding:6px 0;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">
              소각
            </button>
          </div>`;
 
-      const refundLine = refundWei !== '0'
-        ? `<br>소각 환급: ${fmtHexShort(refundWei)} HEX`
-        : '';
-      const priceInfo = `가격: ${fmtHexShort(hp)} HEX${refundLine}`;
-
       card.innerHTML = `
         ${imgTag}
         <div style="padding:10px 12px;">
+          ${sourceBadge}
           <div style="font-weight:700;font-size:0.92rem;margin-bottom:3px;">${v.description || '바우처'}</div>
-          <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:2px;">사용처: ${v.usagePlace || '—'}</div>
-          <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:6px;">
-            ${priceInfo}<br>${fxLine}
-          </div>
+          <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:2px;">보상: ${v.usagePlace || '—'}</div>
+          ${priceHtml}
           ${actionHtml}
         </div>`;
       frag.appendChild(card);
@@ -1822,8 +1831,9 @@ onAuthReady(async (ctx) => {
     // 이체 버튼
     grid.querySelectorAll('[data-action="transfer"]').forEach(btn => {
       btn.addEventListener('click', () => {
-        _pendingDocId     = btn.dataset.docid || null;
-        _pendingVoucherId = btn.dataset.vid ? Number(btn.dataset.vid) : null;
+        _pendingDocId      = btn.dataset.docid || null;
+        _pendingVoucherId  = btn.dataset.vid ? Number(btn.dataset.vid) : null;
+        _pendingCollection = btn.dataset.collection || null;
         const label = _pendingVoucherId ? `#${_pendingVoucherId}` : (_pendingDocId ? _pendingDocId.slice(0, 8) + '…' : '?');
         if ($('vtVoucherId')) $('vtVoucherId').textContent = label;
         if ($('vtToAddress')) $('vtToAddress').value = '';
@@ -1837,23 +1847,29 @@ onAuthReady(async (ctx) => {
     // 소각 버튼
     grid.querySelectorAll('[data-action="burn"]').forEach(btn => {
       btn.addEventListener('click', () => {
-        _pendingDocId     = btn.dataset.docid || null;
-        _pendingVoucherId = btn.dataset.vid ? Number(btn.dataset.vid) : null;
+        _pendingDocId      = btn.dataset.docid || null;
+        _pendingVoucherId  = btn.dataset.vid ? Number(btn.dataset.vid) : null;
+        _pendingCollection = btn.dataset.collection || null;
         const hp  = btn.dataset.hexPrice ?? '0';
         const bps = Number(btn.dataset.burnFeeBps ?? 0);
-        const fee    = BigInt(hp) * BigInt(bps) / BigInt(10000);
-        const refund = BigInt(hp) - fee;
-        const refundKrw = hexWeiToKrwStr(String(refund));
-        const refundVnd = hexWeiToVndStr(String(refund));
-        const fxNote = (refundKrw || refundVnd)
-          ? ` <span style="font-size:0.8em;color:#9ca3af;">(${[refundKrw, refundVnd].filter(Boolean).join(' / ')})</span>`
-          : '';
+        const isGame = _pendingCollection === 'treasure_voucher_logs';
         const label = _pendingVoucherId ? `#${_pendingVoucherId}` : '선택된 바우처';
         if ($('vbInfo')) {
-          $('vbInfo').innerHTML =
-            `${label}을(를) 소각하면 ` +
-            `<strong>${fmtHexShort(String(refund))} HEX</strong>${fxNote}를 환급받고 ` +
-            `<strong>${fmtHexShort(String(fee))} HEX</strong>는 수수료로 차감됩니다.`;
+          if (isGame) {
+            $('vbInfo').innerHTML = `<strong>${label}</strong>을(를) 소각합니다.<br><span style="color:#9ca3af;font-size:0.85em;">게임 바우처는 HEX 환급이 없습니다.</span>`;
+          } else {
+            const fee    = BigInt(hp) * BigInt(bps) / BigInt(10000);
+            const refund = BigInt(hp) - fee;
+            const refundKrw = hexWeiToKrwStr(String(refund));
+            const refundVnd = hexWeiToVndStr(String(refund));
+            const fxNote = (refundKrw || refundVnd)
+              ? ` <span style="font-size:0.8em;color:#9ca3af;">(${[refundKrw, refundVnd].filter(Boolean).join(' / ')})</span>`
+              : '';
+            $('vbInfo').innerHTML =
+              `${label}을(를) 소각하면 ` +
+              `<strong>${fmtHexShort(String(refund))} HEX</strong>${fxNote}를 환급받고 ` +
+              `<strong>${fmtHexShort(String(fee))} HEX</strong>는 수수료로 차감됩니다.`;
+          }
         }
         setVbStatus('');
         burnPanel.style.display = '';
@@ -1895,14 +1911,16 @@ onAuthReady(async (ctx) => {
     try {
       const fn = httpsCallable(functions, 'coopTransferVoucher');
       await fn({
-        docId:     _pendingDocId     || undefined,
-        voucherId: _pendingVoucherId ?? undefined,
+        docId:            _pendingDocId     || undefined,
+        voucherId:        _pendingVoucherId ?? undefined,
         toAddress,
+        sourceCollection: _pendingCollection || undefined,
       });
       setVtStatus('이체 완료!', true);
       transferPanel.style.display = 'none';
-      _pendingVoucherId = null;
-      _pendingDocId     = null;
+      _pendingVoucherId  = null;
+      _pendingDocId      = null;
+      _pendingCollection = null;
       await loadMyVouchers();
     } catch (err) {
       setVtStatus('이체 실패: ' + (err.message || '서버 오류'), false);
@@ -1913,8 +1931,9 @@ onAuthReady(async (ctx) => {
 
   $('btnVtCancel')?.addEventListener('click', () => {
     transferPanel.style.display = 'none';
-    _pendingVoucherId = null;
-    _pendingDocId     = null;
+    _pendingVoucherId  = null;
+    _pendingDocId      = null;
+    _pendingCollection = null;
   });
 
   // 소각 확인
@@ -1960,8 +1979,9 @@ onAuthReady(async (ctx) => {
       }, 4000);
 
       await fn({
-        docId:     _pendingDocId     || undefined,
-        voucherId: _pendingVoucherId ?? undefined,
+        docId:            _pendingDocId     || undefined,
+        voucherId:        _pendingVoucherId ?? undefined,
+        sourceCollection: _pendingCollection || undefined,
       });
 
       clearInterval(progressTimer);
@@ -1972,12 +1992,14 @@ onAuthReady(async (ctx) => {
       await new Promise(r => setTimeout(r, 400));
       stepState(4, 'done');
 
-      setVbStatus('✅ 소각 완료! HEX가 지갑으로 전송되었습니다.', true);
+      const isGameBurn = _pendingCollection === 'treasure_voucher_logs';
+      setVbStatus(isGameBurn ? '✅ 소각 완료! 바우처가 삭제되었습니다.' : '✅ 소각 완료! HEX가 지갑으로 전송되었습니다.', true);
       setTimeout(async () => {
         burnPanel.style.display = 'none';
         if (stepsEl) stepsEl.style.display = 'none';
-        _pendingVoucherId = null;
-        _pendingDocId     = null;
+        _pendingVoucherId  = null;
+        _pendingDocId      = null;
+        _pendingCollection = null;
         await loadMyVouchers();
       }, 1800);
     } catch (err) {
@@ -1996,8 +2018,9 @@ onAuthReady(async (ctx) => {
 
   $('btnVbCancel')?.addEventListener('click', () => {
     burnPanel.style.display = 'none';
-    _pendingVoucherId = null;
-    _pendingDocId     = null;
+    _pendingVoucherId  = null;
+    _pendingDocId      = null;
+    _pendingCollection = null;
   });
 
   // 섹션 열릴 때 첫 로드
