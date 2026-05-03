@@ -246,7 +246,7 @@ function renderCard(p) {
       <div class="coop-card-body">
         ${typeBadge}
         <div class="coop-card-name">${escHtml(p.name)}</div>
-        ${p.description ? `<div class="coop-card-desc">${escHtml(p.description)}</div>` : ''}
+        ${p.description ? `<div class="coop-card-desc">${p.description}</div>` : ''}
         <div class="coop-card-price">${priceKrw.toLocaleString()}원</div>
         <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-top:2px;line-height:1.6;">
           ${priceVnd} &nbsp;·&nbsp; ${priceHex}
@@ -278,7 +278,7 @@ function showDetailModal(productId) {
     : `<span style="font-size:0.75rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:2px 10px;display:inline-block;margin-bottom:6px;">일반상품</span>`;
 
   el.detailName.textContent  = p.name || '';
-  el.detailDesc.textContent  = p.description || '';
+  el.detailDesc.innerHTML    = p.description || '';
   el.detailDesc.style.display = p.description ? '' : 'none';
 
   const priceKrw = p.price || 0;
