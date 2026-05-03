@@ -196,7 +196,7 @@ function renderProductTable(products) {
         <td style="text-align:center;"><input type="checkbox" class="chk-product" data-id="${p.id}" /></td>
         <td>${imgHtml}</td>
         <td>${typeBadge} <strong>${esc(p.name)}</strong>${p.description ? `<br><span style="font-size:0.78rem;color:#888;">${esc(p.description).slice(0,40)}${p.description.length>40?'…':''}</span>` : ''}</td>
-        <td>${p.price.toLocaleString()}원<br><span style="font-size:0.75rem;color:#6b7280;">${krwToVnd(p.price)} &nbsp;·&nbsp; ${krwToHex(p.price)}</span></td>
+        <td>${(p.priceVnd || 0).toLocaleString()} ₫<br><span style="font-size:0.75rem;color:#6b7280;">${p.price.toLocaleString()}원 &nbsp;·&nbsp; ${krwToHex(p.price)}</span></td>
         <td>${stockTxt}</td>
         <td>${badge}</td>
         <td style="white-space:nowrap;">
@@ -266,6 +266,7 @@ async function copySelectedProducts(products) {
         name:        p.name + ' (복사)',
         description: p.description || '',
         price:       p.price,
+        priceVnd:    p.priceVnd || 0,
         imageUrl:    p.imageUrl || '',
         stock:       p.stock,
         active:      false,   // 복사본은 기본 비활성
@@ -299,7 +300,8 @@ function bindProductForm() {
     const id          = $('editProductId')?.value || '';
     const type        = document.querySelector('input[name="productType"]:checked')?.value || 'general';
     const name        = $('inputName')?.value.trim();
-    const price       = parseInt($('inputPrice')?.value, 10);
+    const priceVnd    = parseInt($('inputPrice')?.value, 10);
+    const price       = vndToKrw(priceVnd);
     const desc        = $('inputDesc')?.value.trim();
     const imageUrl    = $('inputImageUrl')?.value.trim();
     const stock       = parseInt($('inputStock')?.value, 10);
@@ -307,13 +309,13 @@ function bindProductForm() {
     const burnFeeBps  = type === 'voucher' ? parseInt($('inputBurnFeeBps')?.value || '0', 10) : 0;
 
     if (!name) { setStatus('productFormStatus', '상품명을 입력하세요', 'err'); return; }
-    if (!price || price <= 0) { setStatus('productFormStatus', '올바른 가격을 입력하세요', 'err'); return; }
+    if (!priceVnd || priceVnd <= 0) { setStatus('productFormStatus', '올바른 VND 가격을 입력하세요', 'err'); return; }
 
     btn.disabled = true;
     setStatus('productFormStatus', '저장 중...');
     try {
       const fn = httpsCallable(functions, 'adminSaveCoopProduct');
-      await fn({ id: id || undefined, type, name, price, description: desc, imageUrl, stock: isNaN(stock) ? -1 : stock, active, burnFeeBps });
+      await fn({ id: id || undefined, type, name, price, priceVnd, description: desc, imageUrl, stock: isNaN(stock) ? -1 : stock, active, burnFeeBps });
       setStatus('productFormStatus', id ? '수정 완료!' : '등록 완료!', 'ok');
       resetForm();
       await loadProducts();
@@ -353,13 +355,13 @@ function bindProductForm() {
     $('prevHex').textContent = hexVal.toFixed(4) + ' HEX';
     preview?.classList.add('active');
 
-    // KRW 가격 필드 자동 입력
+    // VND 가격 필드 자동 입력
     if ($('inputPrice') && !$('inputPrice').dataset.manualOverride) {
-      $('inputPrice').value = krw;
+      $('inputPrice').value = vnd;
     }
   });
 
-  // 사용자가 KRW 필드를 직접 수정하면 자동 입력 중단
+  // 사용자가 VND 필드를 직접 수정하면 자동 입력 중단
   $('inputPrice')?.addEventListener('input', () => {
     if ($('inputHexPrice')?.value) {
       $('inputPrice').dataset.manualOverride = '1';
@@ -377,7 +379,7 @@ function startEdit(id, products) {
   if (burnFeeRow) burnFeeRow.style.display = typeVal === 'voucher' ? '' : 'none';
   if ($('inputBurnFeeBps')) $('inputBurnFeeBps').value = p.burnFeeBps ?? 0;
   $('inputName').value      = p.name || '';
-  $('inputPrice').value     = p.price || '';
+  $('inputPrice').value     = p.priceVnd || (p.price && _vndPerHex() && _krwPerHex() ? Math.round(p.price * _vndPerHex() / _krwPerHex()) : '');
   $('inputDesc').value      = p.description || '';
   $('inputImageUrl').value  = p.imageUrl || '';
   $('inputStock').value     = p.stock ?? -1;
@@ -498,7 +500,7 @@ function renderOrderTable(orders) {
         <td style="white-space:nowrap;font-size:0.8rem;">${date}</td>
         <td><strong>${esc(o.productName || '—')}</strong>${noteHtml}</td>
         <td style="font-size:0.75rem;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(o.uid || '')}">${esc((o.uid || '').slice(0, 12))}…</td>
-        <td style="white-space:nowrap;">${(o.priceKrw || 0).toLocaleString()}원</td>
+        <td style="white-space:nowrap;">${o.priceVnd ? o.priceVnd.toLocaleString() + ' ₫' : (o.priceKrw ? krwToVnd(o.priceKrw) : '—')}</td>
         <td style="white-space:nowrap;font-size:0.8rem;">${hexAmt}</td>
         <td><span class="ac-order-status ${statusClass}">${statusLabel}</span></td>
         <td style="white-space:nowrap;">${actionBtns}</td>
@@ -564,6 +566,11 @@ function krwToVnd(krw) {
 function krwToHex(krw) {
   const r = _krwPerHex(); if (!r) return '—';
   return (krw / r).toFixed(4) + ' HEX';
+}
+function vndToKrw(vnd) {
+  const kr = _krwPerHex(), vr = _vndPerHex();
+  if (!kr || !vr) return 0;
+  return Math.round(vnd * kr / vr);
 }
 
 async function loadVouchers() {
