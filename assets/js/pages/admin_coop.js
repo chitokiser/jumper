@@ -44,6 +44,11 @@ async function loadStats() {
     $('statFee').textContent          = fmtHex(_stats.membershipFeeHex);
     $('statMentorBps').textContent    = (_stats.mentorRewardBps / 100).toFixed(1) + '%';
 
+    const krwRate = _krwPerHex();
+    const vndRate = _vndPerHex();
+    if ($('statFxKrw')) $('statFxKrw').textContent = krwRate ? Math.round(krwRate).toLocaleString() + ' ₩' : '미설정';
+    if ($('statFxVnd')) $('statFxVnd').textContent = vndRate ? Math.round(vndRate).toLocaleString() + ' ₫' : '미설정';
+
     setStatus('statsStatus', '');
     // 환율 로드 완료 → HEX 필드에 값이 있으면 VND 재계산
     const hexInput = $('inputHexPrice');
@@ -352,8 +357,9 @@ function bindProductForm() {
       return;
     }
     if (!krwRate || !vndRate) {
-      if ($('prevVnd')) $('prevVnd').textContent = '환율 로딩 중...';
-      if ($('prevKrw')) $('prevKrw').textContent = '환율 로딩 중...';
+      const msg = _stats !== null ? '온체인 환율 없음' : '환율 로딩 중...';
+      if ($('prevVnd')) $('prevVnd').textContent = msg;
+      if ($('prevKrw')) $('prevKrw').textContent = msg;
       if ($('prevHex')) $('prevHex').textContent = hexVal.toFixed(4) + ' HEX';
       preview?.classList.add('active');
       return;
