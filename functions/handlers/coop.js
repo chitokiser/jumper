@@ -107,9 +107,8 @@ async function buyCoopProduct(uid, { productId }, masterSecret) {
   const product = productSnap.data();
   if (!product.active)    throw new Error('판매 중인 상품이 아닙니다');
   if (product.stock === 0) throw new Error('품절된 상품입니다');
-
-  const usdKrwRate = await fetchUsdKrwRate();
-  const hexWei     = krwToHexWei(product.price, usdKrwRate || 1370);
+  if (!product.hexPrice) throw new Error('상품 가격 정보가 없습니다 (hexPrice 미설정)');
+  const hexWei = BigInt(product.hexPrice);
 
   const userSnap   = await db.collection('users').doc(uid).get();
   const walletData = userSnap.data()?.wallet;
@@ -149,7 +148,7 @@ async function buyCoopProduct(uid, { productId }, masterSecret) {
     uid,
     productId,
     productName: product.name,
-    priceKrw:    product.price,
+    hexPrice:    product.hexPrice,
     hexWei:      hexWei.toString(),
     txHash,
     status:      'confirmed',
@@ -188,7 +187,7 @@ async function buyCoopProduct(uid, { productId }, masterSecret) {
   return {
     txHash,
     productName: product.name,
-    priceKrw:    product.price,
+    hexPrice:    product.hexPrice,
     hexWei:      hexWei.toString(),
     amountHex:   parseFloat(ethers.formatEther(hexWei)).toFixed(4),
   };
@@ -214,22 +213,22 @@ async function adminSetCoopConfig(uid, { minStake }) {
 // ─────────────────────────────────────────────
 async function adminSaveCoopProduct(uid, data) {
   await requireAdmin(uid);
-  const { id, type, name, description, price, priceVnd, imageUrl, stock, active, burnFeeBps } = data;
+  const { id, type, name, description, hexPrice, imageUrl, stock, active, burnFeeBps } = data;
   if (!name || !String(name).trim()) throw new Error('상품명이 필요합니다');
-  const priceNum = Number(price);
-  if (!Number.isFinite(priceNum) || priceNum <= 0) throw new Error('유효하지 않은 가격 (KRW 환산 실패 — 환율 로드 후 재시도)');
+  if (!hexPrice) throw new Error('HEX 가격이 필요합니다');
+  let hexPriceBig;
+  try { hexPriceBig = BigInt(hexPrice); } catch { throw new Error('유효하지 않은 HEX 가격 (wei 문자열)'); }
+  if (hexPriceBig <= 0n) throw new Error('HEX 가격은 0보다 커야 합니다');
   const stockNum = Number(stock);
   if (!Number.isFinite(stockNum) || stockNum < -1) throw new Error('유효하지 않은 재고 (-1=무제한)');
-  const typeVal  = type === 'voucher' ? 'voucher' : 'general';
+  const typeVal    = type === 'voucher' ? 'voucher' : 'general';
   const burnFeeNum = typeVal === 'voucher' ? Math.min(10000, Math.max(0, Math.round(Number(burnFeeBps) || 0))) : 0;
-  const priceVndNum = Number(priceVnd) || 0;
 
   const docData = {
     type:        typeVal,
     name:        String(name).trim(),
     description: description ? String(description).trim() : '',
-    price:       Math.round(priceNum),
-    priceVnd:    Math.round(priceVndNum),
+    hexPrice:    hexPriceBig.toString(),
     imageUrl:    imageUrl    ? String(imageUrl).trim()    : '',
     stock:       Math.round(stockNum),
     active:      active !== false,
@@ -386,9 +385,8 @@ async function coopBuyOnChain(uid, { productId }, masterSecret) {
   const product = productSnap.data();
   if (!product.active) throw new Error('판매 중인 상품이 아닙니다');
   if (product.stock === 0) throw new Error('품절된 상품입니다');
-
-  const usdKrwRate = await fetchUsdKrwRate();
-  const hexWei = krwToHexWei(product.price, usdKrwRate || 1370);
+  if (!product.hexPrice) throw new Error('상품 가격 정보가 없습니다 (hexPrice 미설정)');
+  const hexWei = BigInt(product.hexPrice);
 
   const hexRead = getHexContract(provider);
   const hexBal = await hexRead.balanceOf(walletData.address);
@@ -428,12 +426,12 @@ async function coopBuyOnChain(uid, { productId }, masterSecret) {
     uid,
     productId,
     productName: product.name,
-    type: product.type || 'general',
-    priceKrw: product.price,
-    hexWei: hexWei.toString(),
+    type:        product.type || 'general',
+    hexPrice:    product.hexPrice,
+    hexWei:      hexWei.toString(),
     txHash,
-    status: 'confirmed',
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    status:      'confirmed',
+    createdAt:   admin.firestore.FieldValue.serverTimestamp(),
   });
   if (product.stock > 0) {
     batch.update(db.collection('coopProducts').doc(productId), {
@@ -463,8 +461,8 @@ async function coopBuyOnChain(uid, { productId }, masterSecret) {
   return {
     txHash,
     productName: product.name,
-    priceKrw: product.price,
-    hexWei: hexWei.toString(),
+    hexPrice:  product.hexPrice,
+    hexWei:    hexWei.toString(),
     amountHex: parseFloat(ethers.formatEther(hexWei)).toFixed(4),
   };
 }

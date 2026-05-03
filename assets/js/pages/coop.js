@@ -257,9 +257,9 @@ function renderCard(p) {
     ? `<span style="font-size:0.72rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 8px;display:inline-block;margin-bottom:4px;">바우처</span>`
     : `<span style="font-size:0.72rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 8px;display:inline-block;margin-bottom:4px;">일반상품</span>`;
 
-  const priceKrw = p.price || 0;
-  const priceVnd = krwToVndDisplay(priceKrw);
-  const priceHex = krwToHexDisplay(priceKrw);
+  const hexAmt   = p.hexPrice ? (Number(p.hexPrice) / 1e18).toFixed(4) : '—';
+  const priceKrw = hexWeiToKrw(p.hexPrice || '0');
+  const priceVnd = hexWeiToVnd(p.hexPrice || '0');
 
   return `
     <div class="coop-card">
@@ -268,9 +268,9 @@ function renderCard(p) {
         ${typeBadge}
         <div class="coop-card-name">${escHtml(p.name)}</div>
         ${p.description ? `<div class="coop-card-desc">${p.description}</div>` : ''}
-        <div class="coop-card-price">${priceKrw.toLocaleString()}원</div>
+        <div class="coop-card-price">${hexAmt} HEX</div>
         <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-top:2px;line-height:1.6;">
-          ${priceVnd} &nbsp;·&nbsp; ${priceHex}
+          ${priceKrw} &nbsp;·&nbsp; ${priceVnd}
         </div>
         ${stockTxt ? `<div class="coop-card-stock ${sold ? 'out' : ''}">${stockTxt}</div>` : ''}
         <button class="coop-btn-buy" data-detail="${escHtml(p.id)}" ${sold ? 'disabled' : ''}>
@@ -302,11 +302,11 @@ function showDetailModal(productId) {
   el.detailDesc.innerHTML    = p.description || '';
   el.detailDesc.style.display = p.description ? '' : 'none';
 
-  const priceKrw = p.price || 0;
+  const hexAmtDet = p.hexPrice ? (Number(p.hexPrice) / 1e18).toFixed(4) : '—';
   el.detailPrice.innerHTML =
-    `${priceKrw.toLocaleString()}원` +
+    `${hexAmtDet} HEX` +
     `<br><span style="font-size:0.82rem;color:var(--muted,#6b7280);font-weight:400;">` +
-    `${krwToVndDisplay(priceKrw)} &nbsp;·&nbsp; ${krwToHexDisplay(priceKrw)}` +
+    `${hexWeiToKrw(p.hexPrice||'0')} &nbsp;·&nbsp; ${hexWeiToVnd(p.hexPrice||'0')}` +
     `</span>`;
 
   const stockTxt = p.stock === -1 ? '' : sold ? '품절' : `재고 ${p.stock}개`;
@@ -364,11 +364,11 @@ async function handleBuy(productId) {
   const product = _products.find(p => p.id === productId);
   if (!product) return;
 
-  const confirmKrw = product.price || 0;
+  const confirmHex = product.hexPrice ? (Number(product.hexPrice) / 1e18).toFixed(4) : '?';
   if (!confirm(
     `${product.name}\n` +
-    `가격: ${confirmKrw.toLocaleString()}원\n` +
-    `      ${krwToVndDisplay(confirmKrw)} / ${krwToHexDisplay(confirmKrw)}\n` +
+    `가격: ${confirmHex} HEX\n` +
+    `      ${hexWeiToKrw(product.hexPrice||'0')} / ${hexWeiToVnd(product.hexPrice||'0')}\n` +
     `(수탁 지갑 HEX로 결제됩니다)\n\n구매하시겠습니까?`
   )) return;
 
@@ -401,7 +401,7 @@ function showDoneModal(d, isVoucher = false) {
     : '';
   el.doneKvs.innerHTML = `
     <div class="coop-modal-kv"><span class="k">상품명</span><span class="v">${escHtml(d.productName)}</span></div>
-    <div class="coop-modal-kv"><span class="k">결제금액</span><span class="v">${(d.priceKrw||0).toLocaleString()}원<br><small style="font-size:0.82rem;color:var(--muted,#6b7280);">${krwToVndDisplay(d.priceKrw||0)} / ${d.amountHex||'?'} HEX</small></span></div>
+    <div class="coop-modal-kv"><span class="k">결제금액</span><span class="v">${d.amountHex||'?'} HEX<br><small style="font-size:0.82rem;color:var(--muted,#6b7280);">${hexWeiToKrw(d.hexWei||'0')} / ${hexWeiToVnd(d.hexWei||'0')}</small></span></div>
     <div class="coop-modal-kv"><span class="k">TxHash</span><span class="v" style="font-size:0.75em;">${(d.txHash||'').slice(0,22)}…</span></div>
     ${voucherNote}
   `;

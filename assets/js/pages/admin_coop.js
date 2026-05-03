@@ -205,7 +205,7 @@ function renderProductTable(products) {
         <td style="text-align:center;"><input type="checkbox" class="chk-product" data-id="${p.id}" /></td>
         <td>${imgHtml}</td>
         <td>${typeBadge} <strong>${esc(p.name)}</strong>${p.description ? `<br><span style="font-size:0.78rem;color:#888;">${esc(stripTags(p.description)).slice(0,40)}${stripTags(p.description).length>40?'…':''}</span>` : ''}</td>
-        <td>${p.priceVnd ? p.priceVnd.toLocaleString() + ' ₫' : krwToVnd(p.price)}<br><span style="font-size:0.75rem;color:#6b7280;">${p.price.toLocaleString()}원 &nbsp;·&nbsp; ${krwToHex(p.price)}</span></td>
+        <td>${fmtHexShort(p.hexPrice||'0')} HEX<br><span style="font-size:0.75rem;color:#6b7280;">${hexWeiToKrw(p.hexPrice||'0')} &nbsp;·&nbsp; ${hexWeiToVnd(p.hexPrice||'0')}</span></td>
         <td>${stockTxt}</td>
         <td>${badge}</td>
         <td style="white-space:nowrap;">
@@ -277,8 +277,7 @@ async function copySelectedProducts(products) {
         type:        p.type || 'general',
         name:        p.name + ' (복사)',
         description: p.description || '',
-        price:       p.price,
-        priceVnd:    p.priceVnd || 0,
+        hexPrice:    p.hexPrice || '0',
         imageUrl:    p.imageUrl || '',
         stock:       p.stock,
         active:      false,   // 복사본은 기본 비활성
@@ -312,8 +311,7 @@ function bindProductForm() {
     const id          = $('editProductId')?.value || '';
     const type        = document.querySelector('input[name="productType"]:checked')?.value || 'general';
     const name        = $('inputName')?.value.trim();
-    const priceVnd    = parseInt($('inputPrice')?.value, 10);
-    const price       = vndToKrw(priceVnd);
+    const hexFloat    = parseFloat($('inputHexPrice')?.value);
     const desc        = $('inputDesc')?.value.trim();
     const imageUrl    = $('inputImageUrl')?.value.trim();
     const stock       = parseInt($('inputStock')?.value, 10);
@@ -321,14 +319,14 @@ function bindProductForm() {
     const burnFeeBps  = type === 'voucher' ? parseInt($('inputBurnFeeBps')?.value || '0', 10) : 0;
 
     if (!name) { setStatus('productFormStatus', '상품명을 입력하세요', 'err'); return; }
-    if (!priceVnd || priceVnd <= 0) { setStatus('productFormStatus', '올바른 VND 가격을 입력하세요', 'err'); return; }
-    if (!price || price <= 0) { setStatus('productFormStatus', '환율 정보가 아직 로드되지 않았습니다. 페이지 새로고침 후 다시 시도하세요.', 'err'); return; }
+    if (!hexFloat || hexFloat <= 0) { setStatus('productFormStatus', 'HEX 가격을 입력하세요', 'err'); return; }
+    const hexPrice = BigInt(Math.round(hexFloat * 1e14)) * 10000n;  // float → wei (1e18)
 
     btn.disabled = true;
     setStatus('productFormStatus', '저장 중...');
     try {
       const fn = httpsCallable(functions, 'adminSaveCoopProduct');
-      await fn({ id: id || undefined, type, name, price, priceVnd, description: desc, imageUrl, stock: isNaN(stock) ? -1 : stock, active, burnFeeBps });
+      await fn({ id: id || undefined, type, name, hexPrice: hexPrice.toString(), description: desc, imageUrl, stock: isNaN(stock) ? -1 : stock, active, burnFeeBps });
       setStatus('productFormStatus', id ? '수정 완료!' : '등록 완료!', 'ok');
       resetForm();
       await loadProducts();
@@ -350,43 +348,23 @@ function bindProductForm() {
     });
   });
 
-  // HEX 입력 → KRW/VND/HEX 미리보기 + KRW 자동 입력
+  // HEX 입력 → KRW/VND 미리보기
   $('inputHexPrice')?.addEventListener('input', () => {
     const hexVal = parseFloat($('inputHexPrice').value);
     const preview = $('pricePreview');
     const krwRate = _krwPerHex();
     const vndRate = _vndPerHex();
-    if (!hexVal || hexVal <= 0) {
-      preview?.classList.remove('active');
-      return;
-    }
+    if (!hexVal || hexVal <= 0) { preview?.classList.remove('active'); return; }
+    if ($('prevHex')) $('prevHex').textContent = hexVal.toFixed(4) + ' HEX';
     if (!krwRate || !vndRate) {
-      const msg = _stats !== null ? '온체인 환율 없음' : '환율 로딩 중...';
-      if ($('prevVnd')) $('prevVnd').textContent = msg;
+      const msg = _stats !== null ? '환율 미설정' : '환율 로딩 중...';
       if ($('prevKrw')) $('prevKrw').textContent = msg;
-      if ($('prevHex')) $('prevHex').textContent = hexVal.toFixed(4) + ' HEX';
-      preview?.classList.add('active');
-      return;
+      if ($('prevVnd')) $('prevVnd').textContent = msg;
+    } else {
+      if ($('prevKrw')) $('prevKrw').textContent = Math.round(hexVal * krwRate).toLocaleString() + ' ₩';
+      if ($('prevVnd')) $('prevVnd').textContent = Math.round(hexVal * vndRate).toLocaleString() + ' ₫';
     }
-    const krw = Math.round(hexVal * krwRate);
-    const vnd = Math.round(hexVal * vndRate);
-
-    $('prevKrw').textContent = krw.toLocaleString() + ' ₩';
-    $('prevVnd').textContent = vnd.toLocaleString() + ' ₫';
-    $('prevHex').textContent = hexVal.toFixed(4) + ' HEX';
     preview?.classList.add('active');
-
-    // VND 가격 필드 자동 입력
-    if ($('inputPrice') && !$('inputPrice').dataset.manualOverride) {
-      $('inputPrice').value = vnd;
-    }
-  });
-
-  // 사용자가 VND 필드를 직접 수정하면 자동 입력 중단
-  $('inputPrice')?.addEventListener('input', () => {
-    if ($('inputHexPrice')?.value) {
-      $('inputPrice').dataset.manualOverride = '1';
-    }
   });
 }
 
@@ -400,7 +378,7 @@ function startEdit(id, products) {
   if (burnFeeRow) burnFeeRow.style.display = typeVal === 'voucher' ? '' : 'none';
   if ($('inputBurnFeeBps')) $('inputBurnFeeBps').value = p.burnFeeBps ?? 0;
   $('inputName').value      = p.name || '';
-  $('inputPrice').value     = p.priceVnd || (p.price && _vndPerHex() && _krwPerHex() ? Math.round(p.price * _vndPerHex() / _krwPerHex()) : '');
+  $('inputHexPrice').value  = p.hexPrice ? (Number(p.hexPrice) / 1e18).toFixed(4) : '';
   $('inputDesc').value      = p.description || '';
   $('inputImageUrl').value  = p.imageUrl || '';
   $('inputStock').value     = p.stock ?? -1;
@@ -414,17 +392,15 @@ function startEdit(id, products) {
 function resetForm() {
   $('editProductId').value  = '';
   $('inputName').value      = '';
-  $('inputPrice').value     = '';
+  $('inputHexPrice').value  = '';
   $('inputDesc').value      = '';
   $('inputImageUrl').value  = '';
   $('inputStock').value     = '-1';
   $('inputActive').checked  = true;
-  $('inputHexPrice').value  = '';
   if ($('inputBurnFeeBps')) $('inputBurnFeeBps').value = '0';
   const burnFeeRow = $('burnFeeBpsRow');
   if (burnFeeRow) burnFeeRow.style.display = 'none';
   document.querySelectorAll('input[name="productType"]').forEach(r => { r.checked = r.value === 'general'; });
-  delete $('inputPrice').dataset.manualOverride;
   $('pricePreview')?.classList.remove('active');
   $('formTitle').textContent = '상품 등록';
   $('btnSaveProduct').textContent = '등록';
@@ -521,7 +497,7 @@ function renderOrderTable(orders) {
         <td style="white-space:nowrap;font-size:0.8rem;">${date}</td>
         <td><strong>${esc(o.productName || '—')}</strong>${noteHtml}</td>
         <td style="font-size:0.75rem;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(o.uid || '')}">${esc((o.uid || '').slice(0, 12))}…</td>
-        <td style="white-space:nowrap;">${o.priceVnd ? o.priceVnd.toLocaleString() + ' ₫' : (o.priceKrw ? krwToVnd(o.priceKrw) : '—')}</td>
+        <td style="white-space:nowrap;">${o.hexWei ? fmtHexShort(o.hexWei) + ' HEX<br><span style="font-size:0.75rem;color:#6b7280;">' + hexWeiToVnd(o.hexWei) + '</span>' : '—'}</td>
         <td style="white-space:nowrap;font-size:0.8rem;">${hexAmt}</td>
         <td><span class="ac-order-status ${statusClass}">${statusLabel}</span></td>
         <td style="white-space:nowrap;">${actionBtns}</td>
