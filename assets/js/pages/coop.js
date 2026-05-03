@@ -12,9 +12,8 @@ const $ = (id) => document.getElementById(id);
 
 const el = {
   loading:         $('coopLoading'),
-  needLogin:       $('coopNeedLogin'),
-  needLoginTitle:  $('coopNeedLoginTitle'),
-  needLoginSub:    $('coopNeedLoginSub'),
+  noticeBanner:    $('coopNoticeBanner'),
+  noticeText:      $('coopNoticeText'),
   joinPanel:       $('coopJoinPanel'),
   joinFee:         $('coopJoinFeeDisplay'),
   joinFeeNote:     $('coopJoinFeeNote'),
@@ -22,6 +21,7 @@ const el = {
   joinMsg:         $('coopJoinMsg'),
   main:            $('coopMain'),
   accessBadge:     $('coopAccessBadge'),
+  pointsPanel:     $('coopPointsPanel'),
   pointsAmount:    $('coopPointsAmount'),
   convertBtn:      $('coopConvertBtn'),
   grid:            $('coopGrid'),
@@ -57,9 +57,10 @@ const el = {
 // 상태
 // ─────────────────────────────────────────────────────────
 let _products = [];
-let _pointsWei = 0n;    // 온체인 포인트 (HEX wei)
+let _pointsWei = 0n;
 let _membershipFeeWei = 0n;
 let _fx = null;         // { fxKrwPerHexScaled, fxVndPerHexScaled, fxScale }
+let _memberStatus = 'loading'; // 'guest' | 'no-wallet' | 'not-member' | 'member'
 
 // ─────────────────────────────────────────────────────────
 // 유틸
@@ -109,8 +110,6 @@ function hexWeiToVnd(weiStr) {
 
 function hideAll() {
   show(el.loading, false);
-  show(el.needLogin, false);
-  show(el.joinPanel, false);
   show(el.main, false);
 }
 
@@ -128,31 +127,47 @@ const cf = {
 // ─────────────────────────────────────────────────────────
 // 초기화 흐름
 // ─────────────────────────────────────────────────────────
-async function init() {
+async function init(user) {
   show(el.loading, true);
+
+  // 항상 상품 목록 먼저 로드 (비로그인도 열람 가능)
+  await loadProducts();
+
+  if (!user) {
+    _memberStatus = 'guest';
+    el.noticeText.innerHTML =
+      '로그인 후 구매할 수 있습니다. &nbsp;<a href="#" id="coopLoginLink" style="color:#7c3aed;font-weight:600;">로그인하기 →</a>';
+    show(el.noticeBanner, true);
+    show(el.loading, false);
+    show(el.main, true);
+    document.getElementById('coopLoginLink')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('btnLogin')?.click();
+    });
+    return;
+  }
 
   let membership;
   try {
     const res = await cf.getMembership();
     membership = res.data;
   } catch (err) {
-    hideAll();
-    el.loading.textContent = '오류: ' + (err?.message || '서버 오류');
-    show(el.loading, true);
+    show(el.loading, false);
+    show(el.main, true);
     return;
   }
 
-  hideAll();
-
   if (!membership.hasWallet) {
-    el.needLoginTitle.textContent = '수탁 지갑이 없습니다';
-    el.needLoginSub.textContent = '마이페이지에서 지갑을 먼저 생성하세요.';
-    show(el.needLogin, true);
+    _memberStatus = 'no-wallet';
+    el.noticeText.innerHTML =
+      '수탁 지갑이 없습니다. &nbsp;<a href="/mypage.html" style="color:#7c3aed;font-weight:600;">마이페이지에서 지갑 생성 →</a>';
+    show(el.noticeBanner, true);
+    show(el.loading, false);
+    show(el.main, true);
     return;
   }
 
   _membershipFeeWei = BigInt(membership.membershipFeeHex || '0');
-
   if (membership.fxKrwPerHexScaled) {
     _fx = {
       fxKrwPerHexScaled: membership.fxKrwPerHexScaled,
@@ -162,19 +177,25 @@ async function init() {
   }
 
   if (!membership.member) {
+    _memberStatus = 'not-member';
     el.joinFee.innerHTML =
       `${fmtHex(_membershipFeeWei)}<br>` +
       `<small style="font-size:0.82rem;color:var(--muted,#6b7280);">` +
       `${hexWeiToKrw(_membershipFeeWei)} / ${hexWeiToVnd(_membershipFeeWei)}` +
       `</small>`;
     show(el.joinPanel, true);
+    show(el.loading, false);
+    show(el.main, true);
     return;
   }
 
-  // 회원 → 메인 화면
+  // 정회원
+  _memberStatus = 'member';
   _pointsWei = BigInt(membership.pointsWei || '0');
   renderPointsPanel();
-  await loadProducts();
+  show(el.pointsPanel, true);
+  show(el.accessBadge, true);
+  show(el.loading, false);
   show(el.main, true);
 }
 
@@ -292,9 +313,34 @@ function showDetailModal(productId) {
   el.detailStock.textContent = stockTxt;
   el.detailStock.className   = 'coop-detail-stock' + (sold ? ' out' : '');
 
-  el.detailBuyBtn.disabled   = sold;
-  el.detailBuyBtn.textContent = sold ? '품절' : '구매하기';
-  el.detailBuyBtn.onclick     = () => handleBuy(productId);
+  if (sold) {
+    el.detailBuyBtn.disabled    = true;
+    el.detailBuyBtn.textContent = '품절';
+    el.detailBuyBtn.onclick     = null;
+  } else if (_memberStatus === 'guest') {
+    el.detailBuyBtn.disabled    = false;
+    el.detailBuyBtn.textContent = '로그인 후 구매 가능';
+    el.detailBuyBtn.onclick     = (e) => {
+      e.preventDefault();
+      closeDetailModal();
+      document.getElementById('btnLogin')?.click();
+    };
+  } else if (_memberStatus === 'no-wallet') {
+    el.detailBuyBtn.disabled    = false;
+    el.detailBuyBtn.textContent = '지갑 생성 후 구매 가능';
+    el.detailBuyBtn.onclick     = () => { location.href = '/mypage.html'; };
+  } else if (_memberStatus === 'not-member') {
+    el.detailBuyBtn.disabled    = false;
+    el.detailBuyBtn.textContent = '정회원 전용 상품';
+    el.detailBuyBtn.onclick     = () => {
+      closeDetailModal();
+      el.joinPanel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+  } else {
+    el.detailBuyBtn.disabled    = false;
+    el.detailBuyBtn.textContent = '구매하기';
+    el.detailBuyBtn.onclick     = () => handleBuy(productId);
+  }
 
   el.detailBd.onclick    = closeDetailModal;
   el.detailClose.onclick = closeDetailModal;
@@ -462,12 +508,5 @@ function closeConvertModal() {
 // 인증 감시 → 초기화
 // ─────────────────────────────────────────────────────────
 onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    hideAll();
-    el.needLoginTitle.textContent = '로그인이 필요합니다';
-    el.needLoginSub.textContent   = '조합 전용몰을 이용하려면 로그인하세요.';
-    show(el.needLogin, true);
-    return;
-  }
-  init();
+  init(user);
 });
