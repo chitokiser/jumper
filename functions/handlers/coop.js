@@ -536,19 +536,23 @@ async function coopAdminGetStats(uid) {
   const provider = getProvider();
   const coopMall   = getCoopMallContract(provider);
   const platform   = getPlatformContract(provider);
+  const { fetchExchangeRates } = require('../wallet/exchange');
 
-  const [hexBal, jumpBal, withdrawable, totalPts, feeWei, mentorBps, jumpPriceWei,
-         fxKrw, fxVnd, fxScale] = await Promise.all([
-    coopMall.contractHexBalance(),
-    coopMall.contractJumpBalance(),
-    coopMall.withdrawableHex(),
-    coopMall.totalPoints(),
-    coopMall.membershipFeeHex(),
-    coopMall.mentorRewardBps(),
-    coopMall.jumpPrice(),
-    platform.fxKrwPerHexScaled(),
-    platform.fxVndPerHexScaled(),
-    platform.fxScale(),
+  const [[hexBal, jumpBal, withdrawable, totalPts, feeWei, mentorBps, jumpPriceWei,
+          fxKrw, fxVnd, fxScale], fxRates] = await Promise.all([
+    Promise.all([
+      coopMall.contractHexBalance(),
+      coopMall.contractJumpBalance(),
+      coopMall.withdrawableHex(),
+      coopMall.totalPoints(),
+      coopMall.membershipFeeHex(),
+      coopMall.mentorRewardBps(),
+      coopMall.jumpPrice(),
+      platform.fxKrwPerHexScaled(),
+      platform.fxVndPerHexScaled(),
+      platform.fxScale(),
+    ]),
+    fetchExchangeRates().catch(() => null),
   ]);
 
   return {
@@ -562,6 +566,9 @@ async function coopAdminGetStats(uid) {
     fxKrwPerHexScaled: fxKrw.toString(),
     fxVndPerHexScaled: fxVnd.toString(),
     fxScale:           Number(fxScale),
+    // 1 HEX = 1 USD 가정 — 온체인 환율 미설정 시 fallback
+    fxKrwPerHexFallback: fxRates?.krwPerUsd || 0,
+    fxVndPerHexFallback: fxRates?.vndPerUsd || 0,
   };
 }
 

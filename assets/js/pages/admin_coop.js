@@ -46,7 +46,8 @@ async function loadStats() {
 
     const krwRate = _krwPerHex();
     const vndRate = _vndPerHex();
-    if ($('statFxKrw')) $('statFxKrw').textContent = krwRate ? Math.round(krwRate).toLocaleString() + ' ₩' : '미설정';
+    const fxSrc = (_stats?.fxKrwPerHexScaled && Number(_stats.fxKrwPerHexScaled) > 0) ? '온체인' : 'USD환율';
+    if ($('statFxKrw')) $('statFxKrw').textContent = krwRate ? Math.round(krwRate).toLocaleString() + ' ₩ (' + fxSrc + ')' : '미설정';
     if ($('statFxVnd')) $('statFxVnd').textContent = vndRate ? Math.round(vndRate).toLocaleString() + ' ₫' : '미설정';
 
     setStatus('statsStatus', '');
@@ -561,12 +562,18 @@ function fmtHexShort(weiStr) {
 }
 
 function _krwPerHex() {
-  if (!_stats?.fxKrwPerHexScaled) return 0;
-  return Number(_stats.fxKrwPerHexScaled) / _stats.fxScale;
+  if (_stats?.fxKrwPerHexScaled && _stats?.fxScale) {
+    const v = Number(_stats.fxKrwPerHexScaled) / _stats.fxScale;
+    if (v > 0) return v;
+  }
+  return _stats?.fxKrwPerHexFallback || 0;
 }
 function _vndPerHex() {
-  if (!_stats?.fxVndPerHexScaled) return 0;
-  return Number(_stats.fxVndPerHexScaled) / _stats.fxScale;
+  if (_stats?.fxVndPerHexScaled && _stats?.fxScale) {
+    const v = Number(_stats.fxVndPerHexScaled) / _stats.fxScale;
+    if (v > 0) return v;
+  }
+  return _stats?.fxVndPerHexFallback || 0;
 }
 function hexWeiToKrw(weiStr) {
   const r = _krwPerHex(); if (!r) return '—';
