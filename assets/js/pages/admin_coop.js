@@ -45,6 +45,9 @@ async function loadStats() {
     $('statMentorBps').textContent    = (_stats.mentorRewardBps / 100).toFixed(1) + '%';
 
     setStatus('statsStatus', '');
+    // 환율 로드 완료 → HEX 필드에 값이 있으면 VND 재계산
+    const hexInput = $('inputHexPrice');
+    if (hexInput?.value) hexInput.dispatchEvent(new Event('input'));
   } catch (err) {
     setStatus('statsStatus', '조회 실패: ' + (err.message || '서버 오류'), 'err');
   }
@@ -344,8 +347,15 @@ function bindProductForm() {
     const preview = $('pricePreview');
     const krwRate = _krwPerHex();
     const vndRate = _vndPerHex();
-    if (!hexVal || hexVal <= 0 || !krwRate) {
+    if (!hexVal || hexVal <= 0) {
       preview?.classList.remove('active');
+      return;
+    }
+    if (!krwRate || !vndRate) {
+      if ($('prevVnd')) $('prevVnd').textContent = '환율 로딩 중...';
+      if ($('prevKrw')) $('prevKrw').textContent = '환율 로딩 중...';
+      if ($('prevHex')) $('prevHex').textContent = hexVal.toFixed(4) + ' HEX';
+      preview?.classList.add('active');
       return;
     }
     const krw = Math.round(hexVal * krwRate);
