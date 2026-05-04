@@ -962,11 +962,11 @@ exports.coopBurnVoucher = onCall(
   { secrets: [walletSecret, adminKeySecret] },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    const { docId, voucherId } = request.data ?? {};
+    const { docId, voucherId, sourceCollection } = request.data ?? {};
     if (docId == null && voucherId == null) throw new HttpsError('invalid-argument', 'docId 또는 voucherId가 필요합니다');
     process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-    const result = await coopH.coopBurnVoucher(uid, { docId, voucherId }, walletSecret.value());
-    logger.info('coopBurnVoucher', { uid, docId, voucherId, txHash: result.txHash });
+    const result = await coopH.coopBurnVoucher(uid, { docId, voucherId, sourceCollection }, walletSecret.value());
+    logger.info('coopBurnVoucher', { uid, docId, voucherId, sourceCollection, txHash: result.txHash });
     return result;
   })
 );
