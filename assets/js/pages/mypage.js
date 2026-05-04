@@ -1871,6 +1871,16 @@ onAuthReady(async (ctx) => {
               `<strong>${fmtHexShort(String(fee))} HEX</strong>는 수수료로 차감됩니다.`;
           }
         }
+        // 게임 바우처는 단계 레이블 교체
+        if (isGame) {
+          if ($('vbStep2Label')) $('vbStep2Label').textContent = '바우처 기록 삭제 중';
+          if ($('vbStep3Label')) $('vbStep3Label').textContent = '삭제 확인 중';
+          if ($('vbStep2')) $('vbStep2').style.display = '';
+          if ($('vbStep3')) $('vbStep3').style.display = '';
+        } else {
+          if ($('vbStep2Label')) $('vbStep2Label').textContent = '스마트 컨트랙트 실행 중';
+          if ($('vbStep3Label')) $('vbStep3Label').textContent = 'HEX 환급 처리 중';
+        }
         setVbStatus('');
         burnPanel.style.display = '';
         transferPanel.style.display = 'none';
@@ -1964,20 +1974,22 @@ onAuthReady(async (ctx) => {
     setVbStatus('');
     [1, 2, 3, 4].forEach(n => stepState(n, 'wait'));
 
+    const isGameBurnFlow = _pendingCollection === 'treasure_voucher_logs';
     let progressTimer = null;
     try {
-      // 1단계: 요청 전송
       stepState(1, 'active');
       const fn = httpsCallable(functions, 'coopBurnVoucher', { timeout: 120000 });
 
-      // 2단계 이후는 실제 응답 오기 전까지 타이머로 시각적으로 전진
-      let step = 1;
-      progressTimer = setInterval(() => {
-        if (step >= 3) return;
-        stepState(step, 'done');
-        step++;
-        stepState(step, 'active');
-      }, 4000);
+      if (!isGameBurnFlow) {
+        // 상품 바우처: 타이머로 단계 시각적 전진
+        let step = 1;
+        progressTimer = setInterval(() => {
+          if (step >= 3) return;
+          stepState(step, 'done');
+          step++;
+          stepState(step, 'active');
+        }, 4000);
+      }
 
       await fn({
         docId:            _pendingDocId     || undefined,
@@ -1993,8 +2005,7 @@ onAuthReady(async (ctx) => {
       await new Promise(r => setTimeout(r, 400));
       stepState(4, 'done');
 
-      const isGameBurn = _pendingCollection === 'treasure_voucher_logs';
-      setVbStatus(isGameBurn ? '✅ 소각 완료! 바우처가 삭제되었습니다.' : '✅ 소각 완료! HEX가 지갑으로 전송되었습니다.', true);
+      setVbStatus(isGameBurnFlow ? '✅ 소각 완료! 바우처가 삭제되었습니다.' : '✅ 소각 완료! HEX가 지갑으로 전송되었습니다.', true);
       setTimeout(async () => {
         burnPanel.style.display = 'none';
         if (stepsEl) stepsEl.style.display = 'none';
