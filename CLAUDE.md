@@ -159,3 +159,4 @@ jumpTreasury : 0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312
 - Geocoding: **Nominatim** 사용 (Google Geocoding API 금지)
 - 공통 헤더/푸터: `partials.js` 주입 (`#siteHeader`, `#siteFooter` div 필수)
 - Firebase 초기화: `assets/js/firebase-init.js` + `assets/js/firestore-bridge.js`
+=모든 상품가격을 hex를 기준으로 입력하게 해야하고  환율에 따라 krw/vnd 동시에 표시해야 한다.
