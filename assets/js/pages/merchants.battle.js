@@ -635,6 +635,7 @@ function takeDamage(rawAmount, sourceLat, sourceLng) {
     _isDead = true;
     _player.hp = 0;
     _reviveWalkDist = 0;
+    refreshMyMarkerIcon();
     playSound('player_die');
     if (lat && lng) showFloat('💀 사망했습니다', '#fbbf24', lat, lng);
   } else {
@@ -954,6 +955,7 @@ export async function useReviveTicket() {
 
     _isDead = false;
     _reviveWalkDist = 0;
+    refreshMyMarkerIcon();
     _player.hp = Math.round(_player.maxHp * 0.5);
     _player.mp = Math.round(_player.maxMp * 0.5);
     sendPlayerRevive();  // GS 서버에 부활 동기화
@@ -1421,6 +1423,7 @@ function battleTick() {
     if (_reviveWalkDist >= 50) {
       _isDead = false;
       _reviveWalkDist = 0;
+      refreshMyMarkerIcon();
       _player.hp = _player.maxHp;
       _player.mp = _player.maxMp;
       _healAccum   = 0;
@@ -1992,16 +1995,19 @@ export function toggleTowerRanges() {
 }
 
 // ── 내 위치 마커 아이콘 생성 (방향 화살표 포함) ──────────────────────────────
-function makeLocationIcon(heading) {
-  const hasHeading = heading != null && !isNaN(heading) && isFinite(heading);
+function makeLocationIcon(heading, isDead) {
+  const hasHeading = !isDead && heading != null && !isNaN(heading) && isFinite(heading);
   const arrow = hasHeading
     ? `<polygon points="22,3 15,16 22,12 29,16" fill="#ff6b00" stroke="white" stroke-width="1.5" transform="rotate(${Math.round(heading)},22,22)"/>`
     : '';
+  const label = isDead ? '사망' : '나';
+  const fontSize = isDead ? '10' : '12';
+  const fillColor = isDead ? '#555555' : '#ff3300';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
     <circle cx="24" cy="24" r="22" fill="none" stroke="#ff6b00" stroke-width="2" stroke-opacity="0.5"/>
-    <circle cx="24" cy="24" r="16" fill="#ff3300" fill-opacity="0.92" stroke="#ffcc00" stroke-width="3"/>
+    <circle cx="24" cy="24" r="16" fill="${fillColor}" fill-opacity="0.92" stroke="#ffcc00" stroke-width="3"/>
     ${arrow}
-    <text x="24" y="29" font-size="12" font-weight="900" fill="white" text-anchor="middle" font-family="sans-serif">나</text>
+    <text x="24" y="29" font-size="${fontSize}" font-weight="900" fill="white" text-anchor="middle" font-family="sans-serif">${label}</text>
   </svg>`;
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
@@ -2010,11 +2016,16 @@ function makeLocationIcon(heading) {
   };
 }
 
+function refreshMyMarkerIcon() {
+  const marker = _ctx?.myLocationMarker;
+  if (marker) marker.setIcon(makeLocationIcon(null, _isDead));
+}
+
 // ── 내 위치 마커 업데이트 (실시간 GPS → ctx에 기록) ──────────────────────────
 export function updateMyLocation(lat, lng, accuracy, heading) {
   const map = _ctx?.map;
   const latLng = { lat, lng };
-  const icon = makeLocationIcon(heading);
+  const icon = makeLocationIcon(heading, _isDead);
   if (_ctx.myLocationMarker) {
     _ctx.myLocationMarker.setPosition(latLng);
     _ctx.myLocationMarker.setIcon(icon);
@@ -2117,6 +2128,7 @@ export function syncDeathFromServer() {
   _isDead         = true;
   _player.hp      = 0;
   _reviveWalkDist = 0;
+  refreshMyMarkerIcon();
   playSound('player_die');
   const myMark = _ctx?.myLocationMarker;
   const pos    = myMark?.getPosition();
@@ -2133,6 +2145,7 @@ export function syncReviveFromServer(hp) {
   _isDead         = false;
   _player.hp      = hp;
   _reviveWalkDist = 0;
+  refreshMyMarkerIcon();
   playSound('revive');
   const myMark = _ctx?.myLocationMarker;
   const pos    = myMark?.getPosition();
