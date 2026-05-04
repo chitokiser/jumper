@@ -1964,6 +1964,7 @@ onAuthReady(async (ctx) => {
     setVbStatus('');
     [1, 2, 3, 4].forEach(n => stepState(n, 'wait'));
 
+    let progressTimer = null;
     try {
       // 1단계: 요청 전송
       stepState(1, 'active');
@@ -1971,7 +1972,7 @@ onAuthReady(async (ctx) => {
 
       // 2단계 이후는 실제 응답 오기 전까지 타이머로 시각적으로 전진
       let step = 1;
-      const progressTimer = setInterval(() => {
+      progressTimer = setInterval(() => {
         if (step >= 3) return;
         stepState(step, 'done');
         step++;

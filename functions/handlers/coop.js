@@ -1001,13 +1001,6 @@ async function coopTransferVoucher(uid, { docId, voucherId, toAddress, sourceCol
 //     - 상품 바우처: admin 지갑에서 직접 HEX 전송
 // ─────────────────────────────────────────────
 async function coopBurnVoucher(uid, { docId, voucherId, sourceCollection }, masterSecret) {
-  const userSnap   = await db.collection('users').doc(uid).get();
-  const walletData = userSnap.data()?.wallet;
-  if (!walletData?.address) throw new Error('수탁 지갑이 없습니다');
-
-  const provider    = getProvider();
-  const adminWallet = getAdminWallet();
-
   // ── 게임 바우처 (treasure_voucher_logs): HEX 환급 없이 소각 ───────
   if (sourceCollection === 'treasure_voucher_logs' && docId) {
     const ref  = db.collection('treasure_voucher_logs').doc(docId);
@@ -1023,6 +1016,13 @@ async function coopBurnVoucher(uid, { docId, voucherId, sourceCollection }, mast
     });
     return { docId, txHash: null, hexRefund: '0' };
   }
+
+  const userSnap   = await db.collection('users').doc(uid).get();
+  const walletData = userSnap.data()?.wallet;
+  if (!walletData?.address) throw new Error('수탁 지갑이 없습니다');
+
+  const provider    = getProvider();
+  const adminWallet = getAdminWallet();
 
   // ── 상품 바우처: admin 지갑 → 유저 지갑 HEX 직접 전송 ────────────
   if (!voucherId && docId) {
