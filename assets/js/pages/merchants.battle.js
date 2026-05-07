@@ -24,9 +24,17 @@ let _ctx = null;
 let _gsSkillCallback = null;
 export function setGsSkillCallback(fn) { _gsSkillCallback = fn; }
 
+// ── GS 몬스터 자동공격 지원 (merchants.js가 주입) ─────────────────────────────
+// getter: () => { monsterId: MonsterInstance } 현재 살아있는 GS 몬스터 맵 반환
+// attackCb: (monsterId) => void  — GS 몬스터 공격 전송
+let _gsMobsGetter       = null;
+let _gsAutoAttackCb     = null;
+export function setGsMobsGetter(fn)       { _gsMobsGetter    = fn; }
+export function setGsAutoAttackCallback(fn) { _gsAutoAttackCb = fn; }
+
 // ── 내부 배틀 상태 ────────────────────────────────────────────────────────────
-let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0,
-                      weaponBonus:1000, defense:100,
+let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0, token:30,
+                      weaponBonus:100, defense:10,
                       equippedWeapon:'weapon_100', equippedArmor:'armo_10' };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
 let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
@@ -63,8 +71,9 @@ let _monsterAggro        = {};      // { monsterId: uid } 어그로 캐시
 let _aggroClaimed        = new Set(); // 이미 어그로 클레임한 몬스터 ID
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
-const SKILL_MP_COST  = 100;
-const SKILL_RANGE_M  = 100;
+const SKILL_MP_COST    = 100;
+const SKILL_TOKEN_COST = 5;
+const SKILL_RANGE_M    = 100;
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
 const SKILL_FREEZE_MS = 20000;
 
@@ -261,14 +270,30 @@ export function playSound(type) {
 }
 
 // ── 화살 발사 애니메이션 ──────────────────────────────────────────────────────
-function animateArrow(fromLat, fromLng, toLat, toLng, color, onHit) {
+export function animateArrow(fromLat, fromLng, toLat, toLng, color, onHit) {
   const overlay = document.getElementById('battleOverlay');
   if (!overlay) { onHit?.(); return; }
-  const sp = latLngToPixel(fromLat, fromLng);
-  const ep = latLngToPixel(toLat,   toLng);
-  if (!sp || !ep) { onHit?.(); return; }
 
-  const angle = Math.atan2(ep.y - sp.y, ep.x - sp.x) * 180 / Math.PI;
+  // 픽셀 좌표 계산. null이면 오버레이 중심 기준 폴백
+  const ow = overlay.offsetWidth  || 300;
+  const oh = overlay.offsetHeight || 300;
+  const sp = latLngToPixel(fromLat, fromLng) || { x: ow * 0.5, y: oh * 0.5 };
+  const ep = latLngToPixel(toLat,   toLng)   || { x: ow * 0.5, y: oh * 0.45 };
+
+  const dx = ep.x - sp.x;
+  const dy = ep.y - sp.y;
+  const rawDist = Math.sqrt(dx * dx + dy * dy);
+  const angle   = rawDist > 0 ? Math.atan2(dy, dx) * 180 / Math.PI : -90;
+
+  // 줌이 낮을 때 픽셀 거리가 너무 짧아 보이지 않으므로 최소 80px 보장
+  const MIN_PX = 80;
+  let tx = ep.x, ty = ep.y;
+  if (rawDist < MIN_PX) {
+    const scale = MIN_PX / (rawDist || 1);
+    tx = sp.x + dx * scale;
+    ty = sp.y + dy * scale;
+  }
+
   const el = document.createElement('div');
   el.className = 'arrow-proj';
   el.style.cssText = `left:${sp.x}px;top:${sp.y}px;background:${color};
@@ -276,8 +301,8 @@ function animateArrow(fromLat, fromLng, toLat, toLng, color, onHit) {
   overlay.appendChild(el);
 
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    el.style.left = ep.x + 'px';
-    el.style.top  = ep.y + 'px';
+    el.style.left = tx + 'px';
+    el.style.top  = ty + 'px';
   }));
 
   setTimeout(() => {
@@ -466,12 +491,13 @@ export function updateSkillBar() {
     const btn  = document.getElementById(`skillBtn${i}`);
     const cdEl = document.getElementById(`skillCd${i}`);
     if (!btn) return;
-    const cdExp = _skillCd[s] || 0;
-    const inCd  = now < cdExp;
-    const noMp  = _player.mp < SKILL_MP_COST;
-    btn.disabled = inCd || noMp || _isDead;
+    const cdExp   = _skillCd[s] || 0;
+    const inCd    = now < cdExp;
+    const noMp    = _player.mp    < SKILL_MP_COST;
+    const noToken = _player.token < SKILL_TOKEN_COST;
+    btn.disabled = inCd || noMp || noToken || _isDead;
     btn.classList.toggle('skill-cd',    inCd);
-    btn.classList.toggle('skill-no-mp', noMp && !inCd);
+    btn.classList.toggle('skill-no-mp', (noMp || noToken) && !inCd);
     if (cdEl) {
       if (inCd) {
         const rem = Math.ceil((cdExp - now) / 1000);
@@ -501,7 +527,7 @@ function updateCombatHud() {
   if (mhp) mhp.style.width = hpPct + '%';
   if (mmp) mmp.style.width = mpPct + '%';
 
-  const lv = document.getElementById('cLv');    if (lv)  lv.textContent  = `LV.${p.level}  💰${p.gold||0}`;
+  const lv = document.getElementById('cLv');    if (lv)  lv.textContent  = `LV.${p.level}  💰${p.gold||0}  💎마정석${p.token??0}`;
   const hv = document.getElementById('cHpVal'); if (hv)  hv.textContent  = `${p.hp} / ${p.maxHp}`;
   const mv = document.getElementById('cMpVal'); if (mv)  mv.textContent  = `${p.mp} / ${p.maxMp}`;
   const sp = document.getElementById('cSpd');   if (sp)  sp.textContent  = `SPD ${_currentSpeed.toFixed(1)} km/h`;
@@ -538,7 +564,8 @@ export async function loadPlayerState() {
     _player.maxMp = _player.level * 1000;
     if (snap.exists()) {
       const d = snap.data();
-      _player.gold = d.gold || 0;
+      _player.gold  = d.gold  || 0;
+      _player.token = d.token ?? 30;
       if ((d.level || 1) === _player.level) {
         _player.hp = Math.min(d.hp ?? _player.maxHp, _player.maxHp);
         _player.mp = Math.min(d.mp ?? _player.maxMp, _player.maxMp);
@@ -570,19 +597,20 @@ export async function loadPlayerState() {
 
 let _saveTimer = null;
 export function getPlayerGold()  { return _player.gold  || 0; }
+export function getPlayerToken() { return _player.token ?? 0; }
 export function getPlayerLevel() { return _player.level || 1; }
 export function isPlayerDead() { return _isDead; }
 
 // ── 장비 시스템 ────────────────────────────────────────────────────────────────
-/** 파일명 숫자 추출: 'weapon_100' → 100, 'armo_10' → 10 */
+/** 아이템 ID 끝 숫자가 직접 수치: 'weapon_50' → 50, 'armo_10' → 10 */
 function _equipNumFromId(itemId) {
   const m = String(itemId).match(/(\d+)$/);
-  return m ? parseInt(m[1]) * 10 : 0;
+  return m ? parseInt(m[1]) : 0;
 }
 export function getTotalAtk()  { return 100 + (_player.weaponBonus || 0); }
 export function getDefense()   { return _player.defense || 0; }
-export function getEquippedWeapon() { return _player.equippedWeapon || 'weapon_100'; }
-export function getEquippedArmor()  { return _player.equippedArmor  || 'armo_10'; }
+export function getEquippedWeapon() { return _player.equippedWeapon || null; }
+export function getEquippedArmor()  { return _player.equippedArmor  || null; }
 
 export function equipWeapon(itemId) {
   const bonus = _equipNumFromId(itemId);
@@ -598,6 +626,18 @@ export function equipArmor(itemId) {
   updateCombatHud();
   savePlayerState();
 }
+export function unequipWeapon() {
+  _player.weaponBonus    = 0;
+  _player.equippedWeapon = null;
+  updateCombatHud();
+  savePlayerState();
+}
+export function unequipArmor() {
+  _player.defense       = 0;
+  _player.equippedArmor = null;
+  updateCombatHud();
+  savePlayerState();
+}
 
 export function savePlayerState() {
   const uid = _ctx?.uid;
@@ -609,7 +649,8 @@ export function savePlayerState() {
         uid, level: _player.level, xp: _player.xp,
         hp: _player.hp, mp: _player.mp,
         maxHp: _player.maxHp, maxMp: _player.maxMp,
-        gold: _player.gold || 0,
+        gold:  _player.gold  || 0,
+        token: _player.token ?? 30,
         isDead: _isDead,
         reviveWalkDist: _reviveWalkDist,
         equippedWeapon: _player.equippedWeapon || 'weapon_100',
@@ -736,7 +777,9 @@ export function castLightning() {
     haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
 
   const fire = (target) => {
+    if (_player.token < SKILL_TOKEN_COST) { showSkillError('💎 마정석이 부족합니다!'); return; }
     if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('⚡ MP 부족!'); return; }
+    _player.token -= SKILL_TOKEN_COST;
     showSkillMapEffect(target.lat, target.lng, 'lightning');
     let hitCount = 0;
     for (const mob of _monsters) {
@@ -747,7 +790,7 @@ export function castLightning() {
         hitCount++;
       }
     }
-    _gsSkillCallback?.('lightning', target.lat, target.lng, SKILL_RANGE_M);
+    _gsSkillCallback?.('lightning', myLat, myLng, SKILL_RANGE_M);
     showFloat(`⚡ 벼락! (${hitCount}마리)`, '#facc15', target.lat, target.lng);
     _skillCd.lightning = Date.now() + SKILL_CD_MS.lightning;
     updateSkillBar();
@@ -782,7 +825,9 @@ export function castIceFreeze() {
     haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
 
   const fire = (target) => {
+    if (_player.token < SKILL_TOKEN_COST) { showSkillError('💎 마정석이 부족합니다!'); return; }
     if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('❄ MP 부족!'); return; }
+    _player.token -= SKILL_TOKEN_COST;
     showSkillMapEffect(target.lat, target.lng, 'ice');
     const freezeNow = Date.now();
     let hitCount = 0;
@@ -799,7 +844,7 @@ export function castIceFreeze() {
         hitCount++;
       }
     }
-    _gsSkillCallback?.('ice', target.lat, target.lng, SKILL_RANGE_M);
+    _gsSkillCallback?.('ice', myLat, myLng, SKILL_RANGE_M);
     showFloat(`❄ 동결! (${hitCount}마리 / ${SKILL_FREEZE_MS/1000}초)`, '#93c5fd', target.lat, target.lng);
     _skillCd.ice = Date.now() + SKILL_CD_MS.ice;
     updateSkillBar();
@@ -833,7 +878,9 @@ export function castFireStorm() {
     haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
 
   const fire = (target) => {
+    if (_player.token < SKILL_TOKEN_COST) { showSkillError('💎 마정석이 부족합니다!'); return; }
     if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('🔥 MP 부족!'); return; }
+    _player.token -= SKILL_TOKEN_COST;
     showSkillMapEffect(target.lat, target.lng, 'fire');
     let hitCount = 0;
     for (const mob of _monsters) {
@@ -844,7 +891,7 @@ export function castFireStorm() {
         hitCount++;
       }
     }
-    _gsSkillCallback?.('fire', target.lat, target.lng, SKILL_RANGE_M);
+    _gsSkillCallback?.('fire', myLat, myLng, SKILL_RANGE_M);
     showFloat(`🔥 화염! (${hitCount}마리)`, '#f97316', target.lat, target.lng);
     _skillCd.fire = Date.now() + SKILL_CD_MS.fire;
     updateSkillBar();
@@ -1152,7 +1199,7 @@ function _spawnMonsterMarker(mob) {
         if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
           const myPos = _ctx.myLocationMarker.getPosition();
           const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-          const clickRange = 25;
+          const clickRange = 20;
           if (dist <= clickRange) {
             const roll = Math.floor(Math.random() * 10) + 1;
             const isCrit = roll >= 6;
@@ -1200,7 +1247,7 @@ function _spawnMonsterMarker(mob) {
     if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
       const myPos = _ctx.myLocationMarker.getPosition();
       const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-      const clickRange = 25;
+      const clickRange = 20;
       if (dist <= clickRange) {
         const roll   = Math.floor(Math.random() * 10) + 1;
         const isCrit = roll >= 6;
@@ -1332,7 +1379,7 @@ function createTowerMarker(tower, map, infoWindow) {
       infoWindow?.setContent(`
         <div style="font-size:13px;line-height:1.7;min-width:190px;">
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏰 ${escHtml(tower.name||'방어탑')}</div>
-          <div style="font-size:11px;color:#888;">반경 ${tower.radius||30}m · 데미지 ${tower.atk||50}</div>
+          <div style="font-size:11px;color:#888;">반경 30m · 데미지 ${tower.atk||50}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
             <span style="font-size:11px;color:#888;min-width:20px;">HP</span>
             <div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
@@ -1366,7 +1413,7 @@ function renderTowerMarkers() {
     const circle = new google.maps.Circle({
       map: _showTowerRange ? map : null,
       center: { lat: tower.lat, lng: tower.lng },
-      radius: tower.radius || 30,
+      radius: 30,
       fillColor: '#7c3aed', fillOpacity: 0.08,
       strokeColor: '#7c3aed', strokeOpacity: 0.4, strokeWeight: 1,
     });
@@ -1532,7 +1579,7 @@ function checkTowerAttacks() {
     if (_towerRespawn[tower.id]) continue; // 파괴된 타워는 공격 안 함
     if (_towerHpState[tower.id]?.current <= 0) continue;
     const dist = haversine(myLat, myLng, tower.lat, tower.lng);
-    if (dist <= (tower.radius || 30)) {
+    if (dist <= 30) {
       const isCannon = tower.type === 'cannon';
       if (isCannon) {
         playSound('cannon_shot');
@@ -1554,11 +1601,12 @@ function checkTowerAttacks() {
 
 function checkPlayerAutoAttack() {
   if (_isDead || !_ctx?.myLocationMarker || _attackCd) return;
-  if (_currentSpeed < 0.3) return;
   const myPos = _ctx.myLocationMarker.getPosition();
   const myLat = myPos.lat(), myLng = myPos.lng();
 
   let target = null, minDistSq = Infinity;
+
+  // ── FS 몬스터 스캔 ──
   for (const mob of _monsterGrid.nearby(myLat, myLng, 1)) {
     const dSq = MonsterGrid.distSq(myLat, myLng, mob.lat, mob.lng);
     if (dSq > 25 * 25) continue;
@@ -1567,7 +1615,40 @@ function checkPlayerAutoAttack() {
       const diff = Math.abs(((bearing - _ctx.lastHeading) + 540) % 360 - 180);
       if (diff > 60) continue;
     }
-    if (dSq < minDistSq) { minDistSq = dSq; target = mob; }
+    if (dSq < minDistSq) { minDistSq = dSq; target = { id: mob.id, lat: mob.lat, lng: mob.lng, kind: 'fs' }; }
+  }
+
+  // ── GS 몬스터 스캔 ──
+  if (_gsMobsGetter) {
+    for (const [mid, m] of Object.entries(_gsMobsGetter())) {
+      if (!m || m.state === 'dead' || m.state === 'respawning') continue;
+      const mLat = m.currentLat ?? m.lat;
+      const mLng = m.currentLng ?? m.lng;
+      if (!mLat || !mLng) continue;
+      const dSq = MonsterGrid.distSq(myLat, myLng, mLat, mLng);
+      if (dSq > 25 * 25) continue;
+      if (_ctx.lastHeading != null) {
+        const bearing = calcBearing(myLat, myLng, mLat, mLng);
+        const diff = Math.abs(((bearing - _ctx.lastHeading) + 540) % 360 - 180);
+        if (diff > 60) continue;
+      }
+      if (dSq < minDistSq) { minDistSq = dSq; target = { id: mid, lat: mLat, lng: mLng, kind: 'gs' }; }
+    }
+  }
+
+  // ── 타워 스캔 (살아있고 쿨다운 없는 것만) ──
+  for (const tower of _towers) {
+    if (_towerAtkCd[tower.id]) continue;
+    const st = getTowerHpState(tower);
+    if (st.current <= 0) continue;
+    const dSq = MonsterGrid.distSq(myLat, myLng, tower.lat, tower.lng);
+    if (dSq > 25 * 25) continue;
+    if (_ctx.lastHeading != null) {
+      const bearing = calcBearing(myLat, myLng, tower.lat, tower.lng);
+      const diff = Math.abs(((bearing - _ctx.lastHeading) + 540) % 360 - 180);
+      if (diff > 60) continue;
+    }
+    if (dSq < minDistSq) { minDistSq = dSq; target = { id: tower.id, lat: tower.lat, lng: tower.lng, kind: 'tower', tower }; }
   }
 
   if (!target) return;
@@ -1575,10 +1656,21 @@ function checkPlayerAutoAttack() {
   setTimeout(() => { _attackCd = false; }, 1500);
 
   playSound('arrow_shot');
-  animateArrow(myLat, myLng, target.lat, target.lng, '#fbbf24', () => {
-    playSound('arrow_hit');
-    hitMonster(target.id, Math.floor(getTotalAtk() / 8));
-  });
+  if (target.kind === 'tower') {
+    animateArrow(myLat, myLng, target.lat, target.lng, '#a78bfa', () => {
+      attackTower(target.tower, _towerMarkers[target.id]);
+    });
+  } else if (target.kind === 'gs') {
+    animateArrow(myLat, myLng, target.lat, target.lng, '#f87171', () => {
+      playSound('arrow_hit');
+      _gsAutoAttackCb?.(target.id);
+    });
+  } else {
+    animateArrow(myLat, myLng, target.lat, target.lng, '#fbbf24', () => {
+      playSound('arrow_hit');
+      hitMonster(target.id, Math.floor(getTotalAtk() / 8));
+    });
+  }
 }
 
 function calcBearing(lat1, lng1, lat2, lng2) {
@@ -1629,6 +1721,14 @@ async function hitMonster(monsterId, damage) {
     showFloat('💀 처치!', '#fbbf24', mob.lat, mob.lng);
     gainXp(mob.dropExp || 20);
     dropGoldTokens(mob);
+    // 마정석 랜덤 드랍 (30% 확률, 1~3개)
+    if (Math.random() < 0.3) {
+      const stones = Math.floor(Math.random() * 3) + 1;
+      _player.token = (_player.token ?? 0) + stones;
+      showFloat(`💎+${stones} 마정석!`, '#a78bfa', mob.lat, mob.lng);
+      updateSkillBar();
+      savePlayerState();
+    }
     // FS 몬스터(goblin/orc)는 아이템 드랍 없음 — 아이템은 GS 서버 몬스터 전용
 
     _monsterGrid.remove(monsterId);
@@ -1782,12 +1882,12 @@ export function enterAdminPlaceMode(type) {
       // 서버 MONSTER_TYPE_DEFAULTS와 동일한 값
       const GS_DEFAULTS = {
         pirate:  { maxHp:  300, attackPower:  30, attackRangeM: 20, aggroRangeM:  40, moveSpeed: 1.5, attackCooldownMs: 1500, respawnSeconds:  90 },
-        pirate2: { maxHp:  500, attackPower:  55, attackRangeM: 22, aggroRangeM:  45, moveSpeed: 1.4, attackCooldownMs: 2000, respawnSeconds: 120 },
-        pirate3: { maxHp:  800, attackPower:  85, attackRangeM: 25, aggroRangeM:  50, moveSpeed: 1.3, attackCooldownMs: 2000, respawnSeconds: 180 },
-        orc:     { maxHp:  600, attackPower:  60, attackRangeM: 23, aggroRangeM:  50, moveSpeed: 1.2, attackCooldownMs: 2000, respawnSeconds: 150 },
-        orc2:    { maxHp: 1000, attackPower:  95, attackRangeM: 27, aggroRangeM:  55, moveSpeed: 1.1, attackCooldownMs: 2200, respawnSeconds: 200 },
-        orc3:    { maxHp: 1500, attackPower: 130, attackRangeM: 30, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
-        dragon:  { maxHp: 3000, attackPower: 160, attackRangeM: 35, aggroRangeM: 100, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
+        pirate2: { maxHp:  500, attackPower:  55, attackRangeM: 20, aggroRangeM:  45, moveSpeed: 1.4, attackCooldownMs: 2000, respawnSeconds: 120 },
+        pirate3: { maxHp:  800, attackPower:  85, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.3, attackCooldownMs: 2000, respawnSeconds: 180 },
+        orc:     { maxHp:  600, attackPower:  60, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.2, attackCooldownMs: 2000, respawnSeconds: 150 },
+        orc2:    { maxHp: 1000, attackPower:  95, attackRangeM: 20, aggroRangeM:  55, moveSpeed: 1.1, attackCooldownMs: 2200, respawnSeconds: 200 },
+        orc3:    { maxHp: 1500, attackPower: 130, attackRangeM: 20, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
+        dragon:  { maxHp: 3000, attackPower: 160, attackRangeM: 20, aggroRangeM: 100, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
       };
       const p = GS_DEFAULTS[monsterType];
       if (!confirm(
@@ -1806,7 +1906,7 @@ export function enterAdminPlaceMode(type) {
       const towerType = _adminPlaceMode === 'cannon_tower' ? 'cannon' : 'archer';
       const defName   = towerType === 'cannon' ? '대포 타워' : '아처 타워';
       const defAtk    = towerType === 'cannon' ? '80' : '20';
-      const defRadius = towerType === 'cannon' ? '20' : '30';
+      const defRadius = '30';
       const defEmoji  = towerType === 'cannon' ? '💣' : '🏹';
       const name   = prompt('타워 이름:', defName) || defName;
       const atk    = parseInt(prompt('데미지:', defAtk) || defAtk);
