@@ -5,6 +5,7 @@
 const admin = require('firebase-admin');
 const { HttpsError } = require('firebase-functions/v2/https');
 const { requireAdmin } = require('../wallet/admin');
+const { getProvider, getCoopMallContract } = require('../wallet/chain');
 
 const db = admin.firestore();
 
@@ -69,6 +70,17 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   const logSnap = await logRef.get();
   if (logSnap.exists)
     throw new HttpsError('already-exists', '이 보물은 오늘 이미 획득했습니다');
+
+  // 정회원 전용 박스: CoopMall 멤버십 확인
+  if (box.memberOnly) {
+    const userSnap = await db.collection('users').doc(uid).get();
+    const walletAddress = userSnap.data()?.wallet?.address;
+    if (!walletAddress) throw new HttpsError('failed-precondition', '수탁 지갑이 없습니다');
+    const provider = getProvider();
+    const coopMall = getCoopMallContract(provider);
+    const info = await coopMall.getUserInfo(walletAddress);
+    if (!info.member) throw new HttpsError('permission-denied', '정회원 전용 보물박스입니다. CoopMall 정회원 가입 후 이용하세요.');
+  }
 
   const itemPool = box.itemPool || [];
   if (!itemPool.length) throw new HttpsError('failed-precondition', '아이템 풀이 비어 있습니다');
@@ -320,7 +332,7 @@ async function adminSaveTreasureItem(adminUid, { itemId, name, image, descriptio
 // ── 관리자: 보물박스 저장 ─────────────────────────────────────────────────────
 async function adminSaveTreasureBox(adminUid, data = {}) {
   await requireAdmin(adminUid);
-  const { boxId, name, lat, lng, startHour, endHour, itemPool, active, hp } = data;
+  const { boxId, name, lat, lng, startHour, endHour, itemPool, active, hp, memberOnly } = data;
   if (!lat || !lng) throw new HttpsError('invalid-argument', 'lat/lng가 필요합니다');
 
   const ref = boxId
@@ -328,15 +340,16 @@ async function adminSaveTreasureBox(adminUid, data = {}) {
     : db.collection('treasure_boxes').doc();
 
   await ref.set({
-    name:      name || '',
-    lat:       Number(lat),
-    lng:       Number(lng),
-    startHour: Number(startHour ?? 0),
-    endHour:   Number(endHour ?? 24),
-    itemPool:  itemPool || [],
-    hp:        Number(hp ?? 300),   // 타격 필요 HP (0이면 자동수집)
-    active:    active !== false,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    name:       name || '',
+    lat:        Number(lat),
+    lng:        Number(lng),
+    startHour:  Number(startHour ?? 0),
+    endHour:    Number(endHour ?? 24),
+    itemPool:   itemPool || [],
+    hp:         Number(hp ?? 300),   // 타격 필요 HP (0이면 자동수집)
+    active:     active !== false,
+    memberOnly: memberOnly === true,
+    updatedAt:  admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
   return { ok: true, boxId: ref.id };

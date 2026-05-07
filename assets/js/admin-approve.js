@@ -1564,8 +1564,9 @@ async function loadTreasureBoxesList() {
       if (prev) { prev.textContent = r.lat ? `위도 ${Number(r.lat).toFixed(6)}, 경도 ${Number(r.lng).toFixed(6)}` : ""; prev.style.color = "#16a34a"; }
       $("tBoxStartHour").value = r.startHour ?? 0;
       $("tBoxEndHour").value   = r.endHour   ?? 24;
-      $("tBoxItemPool").value  = JSON.stringify(r.itemPool || [], null, 2);
-      $("tBoxActive").value    = String(r.active !== false);
+      $("tBoxItemPool").value    = JSON.stringify(r.itemPool || [], null, 2);
+      $("tBoxActive").value      = String(r.active !== false);
+      $("tBoxMemberOnly").value  = String(r.memberOnly === true);
     });
   });
   el.querySelectorAll("[data-act='deleteBox']").forEach(btn => {
@@ -1660,14 +1661,16 @@ $("btnSaveTreasureBox")?.addEventListener("click", async () => {
       startHour: Number($("tBoxStartHour")?.value) || 0,
       endHour:   Number($("tBoxEndHour")?.value)   || 24,
       itemPool,
-      active: $("tBoxActive")?.value === "true",
+      active:     $("tBoxActive")?.value === "true",
+      memberOnly: $("tBoxMemberOnly")?.value === "true",
     });
     alert(`박스 저장 완료!\nboxId: ${res.data.boxId}`);
     ["tBoxId","tBoxName","tBoxCoords","tBoxItemPool"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
     const prev = $("tBoxCoordsPreview"); if (prev) prev.textContent = "";
-    if ($("tBoxStartHour")) $("tBoxStartHour").value = "0";
-    if ($("tBoxEndHour"))   $("tBoxEndHour").value   = "24";
-    if ($("tBoxActive"))    $("tBoxActive").value    = "true";
+    if ($("tBoxStartHour"))  $("tBoxStartHour").value  = "0";
+    if ($("tBoxEndHour"))    $("tBoxEndHour").value    = "24";
+    if ($("tBoxActive"))     $("tBoxActive").value     = "true";
+    if ($("tBoxMemberOnly")) $("tBoxMemberOnly").value = "false";
     await loadTreasureBoxesList();
   } catch (err) { alert("오류: " + (err.message || err)); }
 });

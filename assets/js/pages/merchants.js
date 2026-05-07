@@ -337,9 +337,13 @@ function showBoxInfo(box, marker, dist) {
         🔑 관리자 수집
       </button>` : '';
 
+  const memberBadge = box.memberOnly
+    ? '<span style="display:inline-block;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:5px;">👑 정회원 전용</span>'
+    : '';
+
   infoWindow.setContent(`
     <div style="font-size:13px;line-height:1.7;min-width:190px;">
-      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🎁 ${escHtml(box.name||'보물박스')}</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🎁 ${escHtml(box.name||'보물박스')}${memberBadge}</div>
       <div style="color:#888;font-size:12px;">등장: ${h}</div>
       <div style="color:${active?'#16a34a':'#dc2626'};font-weight:600;">${active?'✅ 활성':'⏰ 비활성'}</div>
       ${active && !alreadyCollected ? `
@@ -427,12 +431,13 @@ function renderBoxMarkers() {
 
     const marker = new google.maps.Marker({
       position: { lat, lng }, map,
-      title: box.name || '보물박스',
+      title: (box.memberOnly ? '[정회원] ' : '') + (box.name || '보물박스'),
       icon: {
         url: '/assets/images/item/box.png',
         scaledSize: new google.maps.Size(20, 20),
         anchor: new google.maps.Point(10, 10),
       },
+      label: box.memberOnly ? { text: '👑', fontSize: '12px', className: 'box-member-label' } : undefined,
       opacity: active ? 1 : 0.35,
       zIndex: 20,
     });
@@ -925,6 +930,13 @@ async function tryCollect(box) {
       // 영구 수집 완료 → 세션 중 재시도 불필요
     } else if (msg.includes('너무 멀리')) {
       _collectedBoxes.delete(box.id);
+    } else if (msg.includes('정회원')) {
+      _collectedBoxes.delete(box.id);
+      infoWindow.setContent(`<div style="font-size:13px;padding:8px;min-width:200px;">
+        <div style="font-weight:700;margin-bottom:4px;">👑 정회원 전용 보물박스</div>
+        <div style="color:#555;font-size:12px;">coop.html에서 10 HEX를 지불하고<br>CoopMall 정회원에 가입하세요.</div>
+      </div>`);
+      if (box._marker) infoWindow.open(map, box._marker);
     } else {
       _collectedBoxes.delete(box.id);
       console.warn('collect:', msg);
