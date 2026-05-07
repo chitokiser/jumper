@@ -360,6 +360,13 @@ async function coopJoinMall(uid, masterSecret) {
   const tx = await coopSigned.joinMall({ gasLimit });
   const receipt = await tx.wait();
 
+  const memberUntil = new Date();
+  memberUntil.setFullYear(memberUntil.getFullYear() + 1);
+  await db.collection('users').doc(uid).update({
+    coopMemberSince: admin.firestore.FieldValue.serverTimestamp(),
+    coopMemberUntil: admin.firestore.Timestamp.fromDate(memberUntil),
+  });
+
   return {
     txHash: receipt.hash,
     feeHex: parseFloat(ethers.formatEther(fee)).toFixed(4),

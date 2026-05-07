@@ -138,6 +138,23 @@ function initNavGroups(){
   });
 }
 
+function applyMemberBadge(isMember) {
+  const el = document.getElementById("memberBadge");
+  if (!el) return;
+  show(el, !!isMember);
+}
+
+async function checkMembership(uid) {
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) { applyMemberBadge(false); return; }
+    const until = snap.data()?.coopMemberUntil;
+    applyMemberBadge(!!until && until.toDate() > new Date());
+  } catch(e) {
+    applyMemberBadge(false);
+  }
+}
+
 function applyUserBadge(profile){
   const el = document.getElementById("userBadge");
   if(!el) return;
@@ -294,6 +311,9 @@ async function bindHeader(){
     show(btnLogout, loggedIn);
     applyRoleToMenu(role || (loggedIn ? "user" : "guest"));
     applyUserBadge(loggedIn ? profile : null);
+
+    if (!loggedIn) { applyMemberBadge(false); }
+    if (loggedIn && profile?.uid) { checkMembership(profile.uid); }
 
     if(loggedIn && user) {
       notifyOpenerIfPopup(user, role, profile);
