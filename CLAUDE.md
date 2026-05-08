@@ -160,3 +160,6 @@ jumpTreasury : 0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312
 - 공통 헤더/푸터: `partials.js` 주입 (`#siteHeader`, `#siteFooter` div 필수)
 - Firebase 초기화: `assets/js/firebase-init.js` + `assets/js/firestore-bridge.js`
 =모든 상품가격을 hex를 기준으로 입력하게 해야하고  환율에 따라 krw/vnd 동시에 표시해야 한다.
+-정회원 개요:coop.html에서 10hex를 지불하면 정회원 됩니다. merchants.html에서 정회원만 획득 가능한 보물박스를 발행할 수 있습니다.
+정회원 기간은 가입 후 12개월 입니다.
+12개월 지난 후 다시 가입 해야 합니다.

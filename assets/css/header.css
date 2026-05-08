@@ -86,6 +86,22 @@
   white-space: nowrap;
 }
 
+.member-join-link{
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid #7c3aed;
+  background: transparent;
+  color: #7c3aed;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background .18s ease, color .18s ease;
+}
+.member-join-link:hover{ background: #ede9fe; color: #5b21b6; }
+
 .user-badge{
   display:inline-flex;
   align-items:center;
@@ -244,7 +260,8 @@
   .hdr-right{ min-width: 0; gap: 5px; }
   .user-badge,
   .role-badge,
-  .member-badge{ display:none !important; }
+  .member-badge,
+  .member-join-link{ display:none !important; }
 
   .hdr-right .btn{
     min-height: 36px;

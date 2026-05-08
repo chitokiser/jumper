@@ -112,6 +112,27 @@
     .mc-filter input:focus { border-color: #f59e0b; }
     .mc-count { font-size: 12px; color: #888; }
 
+    /* 회원등급 뱃지 */
+    #mcMemberStatus {
+      display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+    }
+    .mc-badge-member {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 999px;
+      background: #ede9fe; color: #5b21b6;
+      border: 1px solid #7c3aed; font-weight: 700; font-size: 12px;
+    }
+    .mc-badge-general {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 999px;
+      background: #f3f4f6; color: #374151;
+      border: 1px solid #d1d5db; font-size: 12px;
+    }
+    .mc-link-join {
+      font-size: 12px; color: #7c3aed; font-weight: 600; text-decoration: none;
+    }
+    .mc-link-join:hover { text-decoration: underline; }
+
     /* ── 보물 수집 토스트 ── */
     #collectToast {
       display: none;
@@ -773,7 +794,7 @@
       <div class="mc-hd">
         <h1>🗺️보물지도</h1>
         <p>몬스터들을 물리치고 아이템을 획득하세요<br>전투에 필요한 각종물약은 가맹점 결제와 동시에 획득할 수 있어요</p>
-        
+        <div id="mcMemberStatus" style="display:none;"></div>
       </div>
 
       <!-- 지도 -->
@@ -895,6 +916,12 @@
         <button class="inv-close" id="btnCloseInv">✕</button>
       </div>
       <div class="inv-body">
+        <!-- 코인/토큰 현황 -->
+        <div class="inv-wallet" id="invWallet" style="display:flex;gap:18px;align-items:center;padding:8px 12px;background:#1a0e06;border:1px solid #5c3a1e;border-radius:10px;margin-bottom:10px;font-size:0.92rem;font-weight:600;">
+          <span style="color:#c9a870;">💰 코인: <span id="invGold" style="color:#ffd700;">0</span></span>
+          <span style="color:#c9a870;">💎 마정석: <span id="invToken" style="color:#a78bfa;">0</span></span>
+        </div>
+
         <!-- 미개봉 보물박스 -->
         <div class="inv-craft-title" style="padding-top:0;border-top:none;">📦 미개봉 보물박스</div>
         <div id="boxInvList"><div class="voucher-empty">불러오는 중...</div></div>

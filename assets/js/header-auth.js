@@ -144,14 +144,23 @@ function applyMemberBadge(isMember) {
   show(el, !!isMember);
 }
 
+function applyMemberJoinLink(visible) {
+  const el = document.getElementById("memberJoinLink");
+  if (!el) return;
+  show(el, !!visible);
+}
+
 async function checkMembership(uid) {
   try {
     const snap = await getDoc(doc(db, "users", uid));
-    if (!snap.exists()) { applyMemberBadge(false); return; }
+    if (!snap.exists()) { applyMemberBadge(false); applyMemberJoinLink(true); return; }
     const until = snap.data()?.coopMemberUntil;
-    applyMemberBadge(!!until && until.toDate() > new Date());
+    const isMember = !!until && until.toDate() > new Date();
+    applyMemberBadge(isMember);
+    applyMemberJoinLink(!isMember);
   } catch(e) {
     applyMemberBadge(false);
+    applyMemberJoinLink(false);
   }
 }
 
@@ -312,7 +321,7 @@ async function bindHeader(){
     applyRoleToMenu(role || (loggedIn ? "user" : "guest"));
     applyUserBadge(loggedIn ? profile : null);
 
-    if (!loggedIn) { applyMemberBadge(false); }
+    if (!loggedIn) { applyMemberBadge(false); applyMemberJoinLink(false); }
     if (loggedIn && profile?.uid) { checkMembership(profile.uid); }
 
     if(loggedIn && user) {

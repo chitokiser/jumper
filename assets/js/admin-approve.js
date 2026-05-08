@@ -1521,14 +1521,26 @@ async function loadTreasureItemsList() {
       <button class="btn btn-sm" data-act="editItem"
         data-id="${esc(d.id)}" data-name="${esc(r.name)}"
         data-image="${esc(r.image||"")}" data-desc="${esc(r.description||"")}">수정</button>
+      <button class="btn btn-sm" data-act="deleteItem"
+        data-id="${esc(d.id)}" data-name="${esc(r.name)}"
+        style="background:#ef4444;color:#fff;">삭제</button>
     </div>`;
   }).join("");
   el.querySelectorAll("[data-act='editItem']").forEach(btn => {
     btn.addEventListener("click", () => {
-      $("tItemId").value   = btn.dataset.id;
-      $("tItemName").value = btn.dataset.name;
+      $("tItemId").value    = btn.dataset.id;
+      $("tItemName").value  = btn.dataset.name;
       $("tItemImage").value = btn.dataset.image;
-      $("tItemDesc").value = btn.dataset.desc;
+      $("tItemDesc").value  = btn.dataset.desc;
+    });
+  });
+  el.querySelectorAll("[data-act='deleteItem']").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(`"${btn.dataset.name}" (${btn.dataset.id}) 을(를) 삭제하시겠습니까?`)) return;
+      try {
+        await deleteDoc(doc(db, "treasure_items", btn.dataset.id));
+        await loadTreasureItemsList();
+      } catch (err) { alert("삭제 오류: " + (err.message || err)); }
     });
   });
 }
@@ -1620,7 +1632,7 @@ $("btnSaveTreasureItem")?.addEventListener("click", async () => {
   if (!itemId || !name) return alert("아이템 ID와 이름은 필수입니다.");
   try {
     await httpsCallable(functions, "adminSaveTreasureItem")({
-      itemId: Number(itemId),
+      itemId,
       name,
       image:       $("tItemImage")?.value.trim() || `${itemId}.png`,
       description: $("tItemDesc")?.value.trim()  || "",

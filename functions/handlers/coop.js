@@ -387,6 +387,11 @@ async function coopBuyOnChain(uid, { productId }, masterSecret) {
   const info = await coopMall.getUserInfo(walletData.address);
   if (!info.member) throw new Error('전용몰 회원이 아닙니다');
 
+  const coopUntil = userSnap.data()?.coopMemberUntil;
+  if (coopUntil && coopUntil.toDate() < new Date()) {
+    throw new Error('정회원 기간이 만료되었습니다. 다시 가입해 주세요.');
+  }
+
   const productSnap = await db.collection('coopProducts').doc(productId).get();
   if (!productSnap.exists) throw new Error('상품이 존재하지 않습니다');
   const product = productSnap.data();

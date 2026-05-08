@@ -12,13 +12,13 @@ import { httpsCallable }
 import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          startBattleLoop, startWatchPosition, startSharedSync,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
-         healHp, healMp, playSound, showFloat,
+         healHp, healMp, playSound, showFloat, animateArrow,
          castLightning, castIceFreeze, castFireStorm,
-         setGsSkillCallback,
-         useReviveTicket, updateSkillBar, getPlayerGold, getPlayerLevel, isPlayerDead,
+         setGsSkillCallback, setGsMobsGetter, setGsAutoAttackCallback,
+         useReviveTicket, updateSkillBar, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
          spawnGsDrop, removeGsDrop,
-         equipWeapon, equipArmor, getTotalAtk, getDefense,
+         equipWeapon, equipArmor, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
          getEquippedWeapon, getEquippedArmor }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
@@ -46,6 +46,13 @@ setGsSkillCallback((skillId, centerLat, centerLng, rangeM) => {
     );
     if (dist <= rangeM) sendPlayerSkill(skillId, monsterId);
   }
+});
+
+// GS 몬스터 자동공격 지원 — battle.js 자동공격 루프에서 호출됨
+setGsMobsGetter(() => _gsMonsters);
+setGsAutoAttackCallback((monsterId) => {
+  if (!isGameServerConnected()) return;
+  sendPlayerAttack(monsterId);
 });
 
 const $ = id => document.getElementById(id);
@@ -132,6 +139,26 @@ function isBoxActive(box) {
   const h = nowVietnamHour();
   const s = box.startHour ?? 0, e = box.endHour ?? 24;
   return s <= e ? (h >= s && h < e) : (h >= s || h < e);
+}
+
+// ── 회원등급 표시 ─────────────────────────────────────────────────────────────
+async function _renderMemberStatus(uid) {
+  const el = $('mcMemberStatus');
+  if (!el) return;
+  if (!uid) { el.style.display = 'none'; return; }
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    const until = snap.data()?.coopMemberUntil;
+    const isMember = !!until && until.toDate() > new Date();
+    if (isMember) {
+      el.innerHTML = `<span class="mc-badge-member">👑 정회원</span>`;
+    } else {
+      el.innerHTML = `<span class="mc-badge-general">일반회원</span><a href="/coop.html" class="mc-link-join">정회원 가입하기 →</a>`;
+    }
+    el.style.display = 'flex';
+  } catch {
+    el.style.display = 'none';
+  }
 }
 
 // ── Google Maps 로드 ─────────────────────────────────────────────────────────
@@ -378,6 +405,7 @@ function attackBox(box, marker) {
   const dmg = isCrit ? base * 2 : base;
   st.current = Math.max(0, st.current - dmg);
   playSound(isCrit ? 'critical_hit' : 'box_hit');
+  if (_ctx.lastPos) animateArrow(_ctx.lastPos.lat, _ctx.lastPos.lng, box.lat, box.lng, isCrit ? '#f97316' : '#facc15');
 
   // Firestore 공유 상태 기록 (다른 유저들이 HP 동기화)
   setDoc(doc(db, 'battle_hp', `box_${box.id}`), {
@@ -717,8 +745,10 @@ function _renderGsMonster(monster) {
             return;
           }
           playSound('melee_hit');
-          sendPlayerAttack(monsterId);
-          showFloat('⚔️', '#f87171', mLat, mLng);
+          animateArrow(myPos.lat, myPos.lng, mLat, mLng, '#f87171', () => {
+            sendPlayerAttack(monsterId);
+            showFloat('⚔️', '#f87171', mLat, mLng);
+          });
           if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type, null, { lat: mLat, lng: mLng });
         },
         () => {   // 오버레이 제거 완료 콜백
@@ -761,8 +791,10 @@ function _renderGsMonster(monster) {
       return;
     }
     playSound('melee_hit');
-    sendPlayerAttack(monsterId);
-    showFloat('⚔️', '#f87171', mLat, mLng);
+    animateArrow(myPos.lat, myPos.lng, mLat, mLng, '#f87171', () => {
+      sendPlayerAttack(monsterId);
+      showFloat('⚔️', '#f87171', mLat, mLng);
+    });
     infoWindow?.close();
     if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m?.spawnId, type, marker);
   });
@@ -1099,12 +1131,57 @@ function renderBoxInventory() {
 function _updateEquipStats() {
   const statsEl = $('invEquipStats');
   if (!statsEl) return;
-  const wNum = getEquippedWeapon().replace('weapon_', '');
-  statsEl.innerHTML =
-    `<span>⚔️ 기본공격력: <b>100</b></span>` +
-    `<span>⚔️ 장착무기: <b>+${wNum}</b></span>` +
-    `<span>⚔️ 총공격력: <b>${getTotalAtk()}</b></span>` +
-    `<span>🛡 방어력: <b>${getDefense()}</b></span>`;
+  const wId  = getEquippedWeapon();
+  const aId  = getEquippedArmor();
+  const wNum = wId ? wId.replace('weapon_', '') : null;
+  const aNum = aId ? aId.replace('armo_', '')   : null;
+
+  const weaponCard = wNum
+    ? `<div data-unequip="weapon" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #ffd700;border-radius:8px;padding:5px 10px;min-width:100px;cursor:pointer;position:relative;" title="클릭하여 해제">
+        <img src="/assets/images/weapon/${escHtml(wNum)}.png"
+             onerror="this.onerror=null;this.style.display='none'"
+             style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="무기">
+        <div>
+          <div style="font-size:9px;color:#c9a870;">장착 무기</div>
+          <div style="font-size:12px;color:#ffd700;font-weight:700;">무기 +${escHtml(wNum)}</div>
+        </div>
+        <span style="position:absolute;top:2px;right:4px;font-size:9px;color:#f87171;">해제</span>
+      </div>`
+    : `<div style="background:#1a0e06;border:2px dashed #5c3a1e;border-radius:8px;padding:5px 10px;min-width:100px;color:#5c3a1e;font-size:11px;text-align:center;">무기 없음</div>`;
+
+  const armorCard = aNum
+    ? `<div data-unequip="armor" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #60a5fa;border-radius:8px;padding:5px 10px;min-width:100px;cursor:pointer;position:relative;" title="클릭하여 해제">
+        <img src="/assets/images/armor/${escHtml(aNum)}.png"
+             onerror="this.onerror=null;this.style.display='none'"
+             style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="방어구">
+        <div>
+          <div style="font-size:9px;color:#c9a870;">장착 방어구</div>
+          <div style="font-size:12px;color:#60a5fa;font-weight:700;">방어구 +${escHtml(aNum)}</div>
+        </div>
+        <span style="position:absolute;top:2px;right:4px;font-size:9px;color:#f87171;">해제</span>
+      </div>`
+    : `<div style="background:#1a0e06;border:2px dashed #5c3a1e;border-radius:8px;padding:5px 10px;min-width:100px;color:#5c3a1e;font-size:11px;text-align:center;">방어구 없음</div>`;
+
+  statsEl.innerHTML = `
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
+      ${weaponCard}
+      ${armorCard}
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#c9a870;">
+        <span>⚔️ 총공격력: <b style="color:#ffd700;">${getTotalAtk()}</b></span>
+        <span>🛡 방어력: <b style="color:#60a5fa;">${getDefense()}</b></span>
+      </div>
+    </div>`;
+
+  statsEl.querySelector('[data-unequip="weapon"]')?.addEventListener('click', () => {
+    unequipWeapon();
+    _updateEquipStats();
+    renderInventory();
+  });
+  statsEl.querySelector('[data-unequip="armor"]')?.addEventListener('click', () => {
+    unequipArmor();
+    _updateEquipStats();
+    renderInventory();
+  });
 }
 
 function renderInventory() {
@@ -1542,8 +1619,12 @@ function renderExchangeSection() {
 // ── 인벤토리 모달 ────────────────────────────────────────────────────────────
 function openInventory() {
   $('invModal').classList.add('open');
-  _updateEquipStats(); // 능력치 즉시 표시 (async 대기 없이)
-  loadInventory();     // 최신 데이터로 갱신
+  _updateEquipStats();
+  loadInventory();
+  const goldEl  = document.getElementById('invGold');
+  const tokenEl = document.getElementById('invToken');
+  if (goldEl)  goldEl.textContent  = getPlayerGold();
+  if (tokenEl) tokenEl.textContent = getPlayerToken();
 }
 function closeInventory() { $('invModal').classList.remove('open'); }
 
@@ -1569,9 +1650,12 @@ async function init() {
       loadPlayerState();
       // 인벤토리 + 교환권 섹션 갱신
       loadInventory();
+      // 회원등급 표시
+      _renderMemberStatus(_uid);
     } else {
       _isAdmin = false;
       _ctx.isAdmin = false;
+      _renderMemberStatus(null);
     }
     // 관리자 패널 표시
     const abp = $('adminBattlePanel');

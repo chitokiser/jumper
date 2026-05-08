@@ -336,10 +336,18 @@ function showDetailModal(productId) {
       closeDetailModal();
       el.joinPanel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
-  } else {
+  } else if (_memberStatus === 'loading') {
+    el.detailBuyBtn.disabled    = true;
+    el.detailBuyBtn.textContent = '회원 확인 중...';
+    el.detailBuyBtn.onclick     = null;
+  } else if (_memberStatus === 'member') {
     el.detailBuyBtn.disabled    = false;
     el.detailBuyBtn.textContent = '구매하기';
     el.detailBuyBtn.onclick     = () => handleBuy(productId);
+  } else {
+    el.detailBuyBtn.disabled    = true;
+    el.detailBuyBtn.textContent = '구매 불가';
+    el.detailBuyBtn.onclick     = null;
   }
 
   el.detailBd.onclick    = closeDetailModal;
