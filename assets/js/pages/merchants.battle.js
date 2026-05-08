@@ -72,7 +72,6 @@ let _aggroClaimed        = new Set(); // 이미 어그로 클레임한 몬스터
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST    = 100;
-const SKILL_TOKEN_COST = 5;
 const SKILL_RANGE_M    = 100;
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
 const SKILL_FREEZE_MS = 20000;
@@ -494,10 +493,9 @@ export function updateSkillBar() {
     const cdExp   = _skillCd[s] || 0;
     const inCd    = now < cdExp;
     const noMp    = _player.mp    < SKILL_MP_COST;
-    const noToken = _player.token < SKILL_TOKEN_COST;
-    btn.disabled = inCd || noMp || noToken || _isDead;
+    btn.disabled = inCd || noMp || _isDead;
     btn.classList.toggle('skill-cd',    inCd);
-    btn.classList.toggle('skill-no-mp', (noMp || noToken) && !inCd);
+    btn.classList.toggle('skill-no-mp', noMp && !inCd);
     if (cdEl) {
       if (inCd) {
         const rem = Math.ceil((cdExp - now) / 1000);
@@ -758,6 +756,23 @@ function animateFireStorm() {
   _skillFlash('rgba(249,115,22,0.35)', '🔥');
 }
 
+// ── 스킬 범위 내 GS 몬스터 수집 ──────────────────────────────────────────────
+function getGsTargetsInRange(myLat, myLng) {
+  const mobs = _gsMobsGetter?.() ?? {};
+  const result = [];
+  for (const [id, m] of Object.entries(mobs)) {
+    if (!m || m.state === 'dead' || m.state === 'respawning') continue;
+    const lat = m.currentLat ?? m.lat;
+    const lng = m.currentLng ?? m.lng;
+    if (!lat || !lng) continue;
+    if (haversine(myLat, myLng, lat, lng) <= SKILL_RANGE_M) {
+      result.push({ id, name: m.type || '서버몬스터', lat, lng,
+                    hp: m.hp ?? 1, maxHp: m.maxHp ?? 1, image: '👾', _isGs: true });
+    }
+  }
+  return result;
+}
+
 // ── 마법 스킬 ────────────────────────────────────────────────────────────────
 export function castLightning() {
   if (_isDead) return;
@@ -773,18 +788,19 @@ export function castLightning() {
   const pos = myMark.getPosition();
   const myLat = pos.lat(), myLng = pos.lng();
 
-  const targets = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+  const targets = [
+    ..._monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
+      haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M),
+    ...getGsTargetsInRange(myLat, myLng),
+  ];
 
   const fire = (target) => {
-    if (_player.token < SKILL_TOKEN_COST) { showSkillError('💎 마정석이 부족합니다!'); return; }
     if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('⚡ MP 부족!'); return; }
-    _player.token -= SKILL_TOKEN_COST;
     showSkillMapEffect(target.lat, target.lng, 'lightning');
     let hitCount = 0;
     for (const mob of _monsters) {
       if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-      if (haversine(target.lat, target.lng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
+      if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
         hitMonster(mob.id, getTotalAtk() * _player.level);
         showFloat(`⚡-${getTotalAtk() * _player.level}`, '#facc15', mob.lat, mob.lng);
         hitCount++;
@@ -797,12 +813,7 @@ export function castLightning() {
     setTimeout(() => updateSkillBar(), SKILL_CD_MS.lightning);
   };
 
-  if (targets.length === 0) {
-    // Firestore 몬스터 없음 — GS 몬스터 전용 발동 (플레이어 위치 중심)
-    if (_gsSkillCallback) { fire({ lat: myLat, lng: myLng }); }
-    else showSkillError('⚡ 범위 내 몬스터 없음');
-    return;
-  }
+  if (targets.length === 0) { showSkillError('⚡ 범위 내 몬스터 없음'); return; }
   if (targets.length === 1) fire(targets[0]);
   else showSkillTargetModal('lightning', targets, fire);
 }
@@ -821,19 +832,20 @@ export function castIceFreeze() {
   const pos = myMark.getPosition();
   const myLat = pos.lat(), myLng = pos.lng();
 
-  const targets = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+  const targets = [
+    ..._monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
+      haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M),
+    ...getGsTargetsInRange(myLat, myLng),
+  ];
 
   const fire = (target) => {
-    if (_player.token < SKILL_TOKEN_COST) { showSkillError('💎 마정석이 부족합니다!'); return; }
     if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('❄ MP 부족!'); return; }
-    _player.token -= SKILL_TOKEN_COST;
     showSkillMapEffect(target.lat, target.lng, 'ice');
     const freezeNow = Date.now();
     let hitCount = 0;
     for (const mob of _monsters) {
       if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-      if (haversine(target.lat, target.lng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
+      if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
         _frozenUntil[mob.id] = freezeNow + SKILL_FREEZE_MS;
         const marker = _monsterMarkers[mob.id];
         if (marker) {
@@ -851,11 +863,7 @@ export function castIceFreeze() {
     setTimeout(() => updateSkillBar(), SKILL_CD_MS.ice);
   };
 
-  if (targets.length === 0) {
-    if (_gsSkillCallback) { fire({ lat: myLat, lng: myLng }); }
-    else showSkillError('❄ 범위 내 몬스터 없음');
-    return;
-  }
+  if (targets.length === 0) { showSkillError('❄ 범위 내 몬스터 없음'); return; }
   if (targets.length === 1) fire(targets[0]);
   else showSkillTargetModal('ice', targets, fire);
 }
@@ -874,18 +882,19 @@ export function castFireStorm() {
   const pos = myMark.getPosition();
   const myLat = pos.lat(), myLng = pos.lng();
 
-  const targets = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+  const targets = [
+    ..._monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
+      haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M),
+    ...getGsTargetsInRange(myLat, myLng),
+  ];
 
   const fire = (target) => {
-    if (_player.token < SKILL_TOKEN_COST) { showSkillError('💎 마정석이 부족합니다!'); return; }
     if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('🔥 MP 부족!'); return; }
-    _player.token -= SKILL_TOKEN_COST;
     showSkillMapEffect(target.lat, target.lng, 'fire');
     let hitCount = 0;
     for (const mob of _monsters) {
       if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-      if (haversine(target.lat, target.lng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
+      if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
         hitMonster(mob.id, getTotalAtk() * _player.level);
         showFloat(`🔥-${getTotalAtk() * _player.level}`, '#f97316', mob.lat, mob.lng);
         hitCount++;
@@ -898,11 +907,7 @@ export function castFireStorm() {
     setTimeout(() => updateSkillBar(), SKILL_CD_MS.fire);
   };
 
-  if (targets.length === 0) {
-    if (_gsSkillCallback) { fire({ lat: myLat, lng: myLng }); }
-    else showSkillError('🔥 범위 내 몬스터 없음');
-    return;
-  }
+  if (targets.length === 0) { showSkillError('🔥 범위 내 몬스터 없음'); return; }
   if (targets.length === 1) fire(targets[0]);
   else showSkillTargetModal('fire', targets, fire);
 }
