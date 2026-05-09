@@ -41,6 +41,29 @@ function isInTimeRange(startHour, endHour) {
   return h >= startHour || h < endHour; // 야간 범위 (ex: 22~06)
 }
 
+// ── 유저: 몬스터 열쇠 드랍 수령 ──────────────────────────────────────────────
+async function earnKey(uid, { keyId } = {}) {
+  if (!keyId) throw new HttpsError('invalid-argument', 'keyId가 필요합니다');
+
+  const keySnap = await db.collection('treasure_keys').doc(String(keyId)).get();
+  if (!keySnap.exists) throw new HttpsError('not-found', '열쇠 정의를 찾을 수 없습니다');
+  const keyDef = keySnap.data();
+  if (!keyDef.active) throw new HttpsError('failed-precondition', '비활성 열쇠입니다');
+
+  const itemId = `key_${keyId}`;
+  const invRef = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(invRef);
+    const current = snap.exists ? (snap.data().count || 0) : 0;
+    tx.set(invRef, {
+      uid, itemId, count: current + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+
+  return { ok: true, keyId: String(keyId), keyName: keyDef.name || `열쇠 #${keyId}` };
+}
+
 // ── 유저: 보물박스 수집 (GPS 근접 → 박스를 인벤토리에 저장, 미개봉) ──────────
 async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   if (!boxId)        throw new HttpsError('invalid-argument', 'boxId가 필요합니다');
@@ -90,8 +113,10 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   await db.runTransaction(async (tx) => {
     tx.set(invBoxRef, {
       uid, boxId,
-      boxName: box.name || '',
+      boxName:   box.name      || '',
       itemPool,
+      hiddenBox: box.hiddenBox === true,
+      keyId:     box.keyId     || null,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     tx.set(logRef, {
@@ -125,8 +150,10 @@ async function adminCollectTreasureBox(adminUid, { boxId } = {}) {
   await db.runTransaction(async (tx) => {
     tx.set(invBoxRef, {
       uid: adminUid, boxId,
-      boxName: box.name || '',
+      boxName:   box.name      || '',
       itemPool,
+      hiddenBox: box.hiddenBox === true,
+      keyId:     box.keyId     || null,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     tx.set(logRef, {
@@ -151,6 +178,23 @@ async function openTreasureBox(uid, { boxId } = {}) {
   const itemPool = invBox.itemPool || [];
   if (!itemPool.length) throw new HttpsError('failed-precondition', '아이템 풀이 비어 있습니다');
 
+  // 숨김 보물박스만 열쇠 확인 (앞 3자리 prefix 매칭)
+  const needKey = invBox.hiddenBox === true && invBox.keyId;
+  let keyInvRef = null;
+  if (needKey) {
+    const prefix = String(invBox.keyId).slice(0, 3);
+    const keyQuery = await db.collection('treasure_inventory')
+      .where('uid', '==', uid)
+      .where('itemId', '>=', `key_${prefix}`)
+      .where('itemId', '<',  `key_${prefix}￿`)
+      .get();
+    const matchDoc = keyQuery.docs.find(d => (d.data().count || 0) > 0);
+    if (!matchDoc)
+      throw new HttpsError('failed-precondition',
+        `열쇠가 없습니다. Key ID 앞 3자리 ${prefix}에 해당하는 열쇠를 몬스터 처치로 획득하세요.`);
+    keyInvRef = matchDoc.ref;
+  }
+
   // 랜덤 아이템 선택
   const itemId = pickWeightedItem(itemPool);
 
@@ -158,12 +202,23 @@ async function openTreasureBox(uid, { boxId } = {}) {
   const itemSnap = await db.collection('treasure_items').doc(String(itemId)).get();
   const itemData = itemSnap.exists ? itemSnap.data() : { name: `아이템 #${itemId}`, image: `${itemId}.png` };
 
-  // 트랜잭션: 미개봉 박스 삭제 + 아이템 인벤토리 적립
+  // 트랜잭션: 열쇠 소비(해당 시) + 미개봉 박스 삭제 + 아이템 인벤토리 적립
   await db.runTransaction(async (tx) => {
+    if (keyInvRef) {
+      const keySnap2 = await tx.get(keyInvRef);
+      const currentKey = keySnap2.exists ? (keySnap2.data().count || 0) : 0;
+      if (currentKey <= 0)
+        throw new HttpsError('failed-precondition', '열쇠가 없습니다 (동시 처리 중 소진)');
+      if (currentKey - 1 <= 0) {
+        tx.delete(keyInvRef);
+      } else {
+        tx.update(keyInvRef, { count: currentKey - 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+    }
+
     const invRef = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
     const invSnap = await tx.get(invRef);
     const current = invSnap.exists ? (invSnap.data().count || 0) : 0;
-
     tx.set(invRef, {
       uid, itemId: String(itemId), count: current + 1,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -172,7 +227,13 @@ async function openTreasureBox(uid, { boxId } = {}) {
     tx.delete(invBoxRef);
   });
 
-  return { ok: true, itemId: String(itemId), itemName: itemData.name, itemImage: itemData.image };
+  return {
+    ok: true,
+    itemId:    String(itemId),
+    itemName:  itemData.name,
+    itemImage: itemData.image,
+    keyId:     needKey ? String(invBox.keyId) : null,
+  };
 }
 
 // ── 유저: 아이템 조합 → 바우처 획득 ──────────────────────────────────────────
@@ -332,7 +393,7 @@ async function adminSaveTreasureItem(adminUid, { itemId, name, image, descriptio
 // ── 관리자: 보물박스 저장 ─────────────────────────────────────────────────────
 async function adminSaveTreasureBox(adminUid, data = {}) {
   await requireAdmin(adminUid);
-  const { boxId, name, lat, lng, startHour, endHour, itemPool, active, hp, memberOnly } = data;
+  const { boxId, name, lat, lng, startHour, endHour, itemPool, active, hp, memberOnly, hiddenBox, keyId } = data;
   if (!lat || !lng) throw new HttpsError('invalid-argument', 'lat/lng가 필요합니다');
 
   const ref = boxId
@@ -346,13 +407,39 @@ async function adminSaveTreasureBox(adminUid, data = {}) {
     startHour:  Number(startHour ?? 0),
     endHour:    Number(endHour ?? 24),
     itemPool:   itemPool || [],
-    hp:         Number(hp ?? 300),   // 타격 필요 HP (0이면 자동수집)
+    hp:         Number(hp ?? 300),
     active:     active !== false,
     memberOnly: memberOnly === true,
+    hiddenBox:  hiddenBox === true,
+    keyId:      (hiddenBox === true && keyId) ? String(keyId) : null,
     updatedAt:  admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
   return { ok: true, boxId: ref.id };
+}
+
+// ── 관리자: 열쇠 저장 ─────────────────────────────────────────────────────────
+async function adminSaveTreasureKey(adminUid, data = {}) {
+  await requireAdmin(adminUid);
+  const { keyId, name, dropRate, active } = data;
+  if (!keyId) throw new HttpsError('invalid-argument', 'keyId가 필요합니다');
+
+  await db.collection('treasure_keys').doc(String(keyId)).set({
+    name:     name || `열쇠 #${keyId}`,
+    dropRate: Number(dropRate ?? 0.1),
+    active:   active !== false,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return { ok: true };
+}
+
+// ── 관리자: 열쇠 비활성화 ─────────────────────────────────────────────────────
+async function adminDeleteTreasureKey(adminUid, { keyId } = {}) {
+  await requireAdmin(adminUid);
+  if (!keyId) throw new HttpsError('invalid-argument', 'keyId가 필요합니다');
+  await db.collection('treasure_keys').doc(String(keyId)).update({ active: false });
+  return { ok: true };
 }
 
 // ── 관리자: 보물박스 삭제 ─────────────────────────────────────────────────────
@@ -451,4 +538,7 @@ module.exports = {
   adminDeleteTreasureBox,
   adminSaveVoucher,
   adminGrantItem,
+  earnKey,
+  adminSaveTreasureKey,
+  adminDeleteTreasureKey,
 };

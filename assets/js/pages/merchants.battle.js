@@ -26,13 +26,9 @@ let _ctx = null;
 let _gsSkillCallback = null;
 export function setGsSkillCallback(fn) { _gsSkillCallback = fn; }
 
-// ── GS 몬스터 자동공격 지원 (merchants.js가 주입) ─────────────────────────────
-// getter: () => { monsterId: MonsterInstance } 현재 살아있는 GS 몬스터 맵 반환
-// attackCb: (monsterId) => void  — GS 몬스터 공격 전송
-let _gsMobsGetter       = null;
-let _gsAutoAttackCb     = null;
-export function setGsMobsGetter(fn)       { _gsMobsGetter    = fn; }
-export function setGsAutoAttackCallback(fn) { _gsAutoAttackCb = fn; }
+// ── GS 몬스터 getter (merchants.js가 주입) ────────────────────────────────────
+let _gsMobsGetter = null;
+export function setGsMobsGetter(fn) { _gsMobsGetter = fn; }
 
 // ── 내부 배틀 상태 ────────────────────────────────────────────────────────────
 let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0, token:30,
@@ -67,6 +63,7 @@ let _adminMapListener = null;
 let _decoMarkers     = [];
 let _frozenUntil     = {};     // { monsterId: expiryTimestamp } 동결 만료
 let _skillCd         = {};     // { lightning|ice|fire: expiryTimestamp }
+let _keyDefs         = [];     // [{ id, name, dropRate, image, active }] — treasure_keys
 let _battleHpUnsub       = null;    // battle_hp onSnapshot 구독
 let _monsterRespawnTimers = {};      // { monsterId: timeoutId }
 let _monsterAggro        = {};      // { monsterId: uid } 어그로 캐시
@@ -760,16 +757,32 @@ function animateFireStorm() {
   _skillFlash('rgba(249,115,22,0.35)', '🔥');
 }
 
+// ── 플레이어 위치 조회 (마커 우선, 없으면 lastPos 폴백) ─────────────────────
+function getMyPos() {
+  const myMark = _ctx?.myLocationMarker;
+  if (myMark) {
+    const p = myMark.getPosition();
+    return { lat: p.lat(), lng: p.lng() };
+  }
+  if (_ctx?.lastPos) return { lat: _ctx.lastPos.lat, lng: _ctx.lastPos.lng };
+  return null;
+}
+
 // ── 스킬 범위 내 GS 몬스터 수집 ──────────────────────────────────────────────
-function getGsTargetsInRange(myLat, myLng) {
+// GS 존 위치 기준: _ctx.lastPos (GS 서버 접속 시 전송한 좌표) 사용
+// — 실제 GPS 마커 위치가 GS 존(베트남)과 달라도 올바르게 범위 탐색
+function getGsTargetsInRange() {
   const mobs = _gsMobsGetter?.() ?? {};
   const result = [];
+  const gsLat = _ctx?.lastPos?.lat;
+  const gsLng = _ctx?.lastPos?.lng;
+  if (!gsLat || !gsLng) return result;
   for (const [id, m] of Object.entries(mobs)) {
     if (!m || m.state === 'dead' || m.state === 'respawning') continue;
     const lat = m.currentLat ?? m.lat;
     const lng = m.currentLng ?? m.lng;
     if (!lat || !lng) continue;
-    if (haversine(myLat, myLng, lat, lng) <= SKILL_RANGE_M) {
+    if (haversine(gsLat, gsLng, lat, lng) <= SKILL_RANGE_M) {
       result.push({ id, name: m.type || '서버몬스터', lat, lng,
                     hp: m.hp ?? 1, maxHp: m.maxHp ?? 1, image: '👾', _isGs: true });
     }
@@ -784,18 +797,17 @@ export function castLightning() {
   const now = Date.now();
   if (_skillCd.lightning && now < _skillCd.lightning) return;
 
+  const myPos = getMyPos();
+  if (!myPos) { showSkillError('📍 위치 확인 중...'); return; }
+  const { lat: myLat, lng: myLng } = myPos;
+
   animateLightning();
   playSound('skill_lightning');
-
-  const myMark = _ctx?.myLocationMarker;
-  if (!myMark) { showSkillError('📍 위치 확인 중...'); return; }
-  const pos = myMark.getPosition();
-  const myLat = pos.lat(), myLng = pos.lng();
 
   const targets = [
     ..._monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
       haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M),
-    ...getGsTargetsInRange(myLat, myLng),
+    ...getGsTargetsInRange(),
   ];
 
   const fire = (target) => {
@@ -828,18 +840,17 @@ export function castIceFreeze() {
   const now = Date.now();
   if (_skillCd.ice && now < _skillCd.ice) return;
 
+  const myPos = getMyPos();
+  if (!myPos) { showSkillError('📍 위치 확인 중...'); return; }
+  const { lat: myLat, lng: myLng } = myPos;
+
   animateIceFreeze();
   playSound('skill_ice');
-
-  const myMark = _ctx?.myLocationMarker;
-  if (!myMark) { showSkillError('📍 위치 확인 중...'); return; }
-  const pos = myMark.getPosition();
-  const myLat = pos.lat(), myLng = pos.lng();
 
   const targets = [
     ..._monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
       haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M),
-    ...getGsTargetsInRange(myLat, myLng),
+    ...getGsTargetsInRange(),
   ];
 
   const fire = (target) => {
@@ -878,18 +889,17 @@ export function castFireStorm() {
   const now = Date.now();
   if (_skillCd.fire && now < _skillCd.fire) return;
 
+  const myPos = getMyPos();
+  if (!myPos) { showSkillError('📍 위치 확인 중...'); return; }
+  const { lat: myLat, lng: myLng } = myPos;
+
   animateFireStorm();
   playSound('skill_fire');
-
-  const myMark = _ctx?.myLocationMarker;
-  if (!myMark) { showSkillError('📍 위치 확인 중...'); return; }
-  const pos = myMark.getPosition();
-  const myLat = pos.lat(), myLng = pos.lng();
 
   const targets = [
     ..._monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
       haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M),
-    ...getGsTargetsInRange(myLat, myLng),
+    ...getGsTargetsInRange(),
   ];
 
   const fire = (target) => {
@@ -1041,13 +1051,15 @@ function gainXp(amount) {
 // ── 배틀 데이터 로드 ──────────────────────────────────────────────────────────
 export async function loadBattleData() {
   try {
-    const [mSnap, tSnap, hpSnap] = await Promise.all([
+    const [mSnap, tSnap, hpSnap, kSnap] = await Promise.all([
       getDocs(query(collection(_ctx.db, 'battle_monsters'), where('active', '==', true))),
       getDocs(query(collection(_ctx.db, 'battle_towers'),   where('active', '==', true))),
       getDocs(collection(_ctx.db, 'battle_hp')),
+      getDocs(query(collection(_ctx.db, 'treasure_keys'),   where('active', '==', true))),
     ]);
     _monsters = mSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     _towers   = tSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _keyDefs  = kSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
     // battle_hp 에서 현재 공유 상태 적용
     hpSnap.docs.forEach(d => {
@@ -1187,10 +1199,30 @@ function getTowerIcon(image, type) {
            scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
 }
 
+// ── 마커 가시 범위 갱신 (GPS 이동 시 호출) ───────────────────────────────────
+function _refreshBattleVisibility(myLat, myLng) {
+  const map = _ctx?.map;
+  if (!map) return;
+  for (const mob of _monsters) {
+    if (!mob.lat || !mob.lng) continue;
+    const near = haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M;
+    _monsterMarkers[mob.id]?.setMap(near ? map : null);
+    _monsterOverlays[mob.id]?.setMap?.(near ? map : null);
+  }
+  for (const tower of _towers) {
+    if (!tower.lat || !tower.lng) continue;
+    const near = haversine(myLat, myLng, tower.lat, tower.lng) <= SKILL_RANGE_M;
+    _towerMarkers[tower.id]?.setMap(near ? map : null);
+  }
+}
+
 function _spawnMonsterMarker(mob) {
   const map = _ctx?.map;
   const infoWindow = _ctx?.infoWindow;
   if (!map || !mob.lat || !mob.lng) return;
+  // 플레이어 위치 기준 100m 밖이면 마커 숨김
+  const myPos = _ctx?.lastPos;
+  const startVisible = !myPos || haversine(myPos.lat, myPos.lng, mob.lat, mob.lng) <= SKILL_RANGE_M;
 
   // ── 스프라이트 타입 (dragon 등) ─────────────────────────────────────────────
   // image 필드가 단순 PNG 파일명(예: 23.png, 22.png)이면 스프라이트 무시 → 일반 마커
@@ -1205,7 +1237,7 @@ function _spawnMonsterMarker(mob) {
       monsterId:  mob.id,
     };
     const overlay = createMonsterSpriteOverlay(
-      map, gsLike,
+      startVisible ? map : null, gsLike,
       () => {
         if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
           const myPos = _ctx.myLocationMarker.getPosition();
@@ -1217,6 +1249,9 @@ function _spawnMonsterMarker(mob) {
             const dmg  = Math.floor(getTotalAtk() * roll / 5);
             _clickAtkCd[mob.id] = true;
             setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
+            const _spr1 = _ctx?.myLocationMarker;
+            if (_spr1 && typeof _spr1.setFacing === 'function') _spr1.setFacing(calcBearing(myPos.lat(), myPos.lng(), mob.lat, mob.lng));
+            if (_spr1 && typeof _spr1.setState === 'function') _spr1.setState('attack');
             playSound(isCrit ? 'critical_hit' : 'arrow_hit');
             animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
               isCrit ? '#ff6600' : '#fbbf24', () => {
@@ -1249,7 +1284,7 @@ function _spawnMonsterMarker(mob) {
 
   // ── 일반 SVG 마커 ────────────────────────────────────────────────────────────
   const marker = new google.maps.Marker({
-    position: { lat: mob.lat, lng: mob.lng }, map,
+    position: { lat: mob.lat, lng: mob.lng }, map: startVisible ? map : null,
     title: mob.name || '몬스터',
     icon: getMonsterIcon(mob.image),
     zIndex: 50,
@@ -1265,6 +1300,9 @@ function _spawnMonsterMarker(mob) {
         const dmg    = Math.floor(getTotalAtk() * roll / 5);
         _clickAtkCd[mob.id] = true;
         setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
+        const _spr2 = _ctx?.myLocationMarker;
+        if (_spr2 && typeof _spr2.setFacing === 'function') _spr2.setFacing(calcBearing(myPos.lat(), myPos.lng(), mob.lat, mob.lng));
+        if (_spr2 && typeof _spr2.setState === 'function') _spr2.setState('attack');
         playSound(isCrit ? 'critical_hit' : 'arrow_hit');
         animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
           isCrit ? '#ff6600' : '#fbbf24', () => {
@@ -1328,6 +1366,12 @@ function attackTower(tower, marker) {
   // 데미지 플로팅
   const pos = marker.getPosition();
   showFloat(isCrit ? `💥 CRIT! -${dmg}` : `-${dmg}`, isCrit ? '#f97316' : '#ef4444', pos.lat(), pos.lng());
+  const _sprT = _ctx?.myLocationMarker;
+  if (_sprT) {
+    const myPosT = _sprT.getPosition?.();
+    if (myPosT && typeof _sprT.setFacing === 'function') _sprT.setFacing(calcBearing(myPosT.lat(), myPosT.lng(), pos.lat(), pos.lng()));
+    if (typeof _sprT.setState === 'function') _sprT.setState('attack');
+  }
   playSound(isCrit ? 'critical' : 'arrow_shot');
 
   const map = _ctx?.map;
@@ -1414,12 +1458,14 @@ function renderTowerMarkers() {
   Object.values(_towerMarkers).forEach(m => m.setMap(null));
   Object.values(_towerRanges).forEach(c => c.setMap(null));
   _towerMarkers = {}; _towerRanges = {};
+  const myPos = _ctx?.lastPos;
   for (const tower of _towers) {
     if (!tower.lat || !tower.lng) continue;
     // 리스폰 대기 중(파괴됨)이면 마커 생략
     if (_towerRespawn[tower.id]) continue;
-
-    _towerMarkers[tower.id] = createTowerMarker(tower, map, infoWindow);
+    const towerVisible = !myPos || haversine(myPos.lat, myPos.lng, tower.lat, tower.lng) <= SKILL_RANGE_M;
+    const towerMap = towerVisible ? map : null;
+    _towerMarkers[tower.id] = createTowerMarker(tower, towerMap, infoWindow);
 
     const circle = new google.maps.Circle({
       map: _showTowerRange ? map : null,
@@ -1474,7 +1520,6 @@ export function stopBattleLoop() {
 function battleTick() {
   checkMonsterAttacks();
   checkTowerAttacks();
-  checkPlayerAutoAttack();
   checkGoldPickup();
   _updateDebugPanel();
   if (_isDead) {
@@ -1610,83 +1655,6 @@ function checkTowerAttacks() {
   }
 }
 
-function checkPlayerAutoAttack() {
-  if (_isDead || !_ctx?.myLocationMarker || _attackCd) return;
-  const myPos = _ctx.myLocationMarker.getPosition();
-  const myLat = myPos.lat(), myLng = myPos.lng();
-
-  let target = null, minDistSq = Infinity;
-
-  // ── FS 몬스터 스캔 ──
-  for (const mob of _monsterGrid.nearby(myLat, myLng, 1)) {
-    const dSq = MonsterGrid.distSq(myLat, myLng, mob.lat, mob.lng);
-    if (dSq > 25 * 25) continue;
-    if (_ctx.lastHeading != null) {
-      const bearing = calcBearing(myLat, myLng, mob.lat, mob.lng);
-      const diff = Math.abs(((bearing - _ctx.lastHeading) + 540) % 360 - 180);
-      if (diff > 60) continue;
-    }
-    if (dSq < minDistSq) { minDistSq = dSq; target = { id: mob.id, lat: mob.lat, lng: mob.lng, kind: 'fs' }; }
-  }
-
-  // ── GS 몬스터 스캔 ──
-  if (_gsMobsGetter) {
-    for (const [mid, m] of Object.entries(_gsMobsGetter())) {
-      if (!m || m.state === 'dead' || m.state === 'respawning') continue;
-      const mLat = m.currentLat ?? m.lat;
-      const mLng = m.currentLng ?? m.lng;
-      if (!mLat || !mLng) continue;
-      const dSq = MonsterGrid.distSq(myLat, myLng, mLat, mLng);
-      if (dSq > 25 * 25) continue;
-      if (_ctx.lastHeading != null) {
-        const bearing = calcBearing(myLat, myLng, mLat, mLng);
-        const diff = Math.abs(((bearing - _ctx.lastHeading) + 540) % 360 - 180);
-        if (diff > 60) continue;
-      }
-      if (dSq < minDistSq) { minDistSq = dSq; target = { id: mid, lat: mLat, lng: mLng, kind: 'gs' }; }
-    }
-  }
-
-  // ── 타워 스캔 (살아있고 쿨다운 없는 것만) ──
-  for (const tower of _towers) {
-    if (_towerAtkCd[tower.id]) continue;
-    if (_towerRespawn[tower.id]) continue;
-    const st = getTowerHpState(tower);
-    if (st.current <= 0) continue;
-    const dSq = MonsterGrid.distSq(myLat, myLng, tower.lat, tower.lng);
-    if (dSq > 25 * 25) continue;
-    if (_ctx.lastHeading != null) {
-      const bearing = calcBearing(myLat, myLng, tower.lat, tower.lng);
-      const diff = Math.abs(((bearing - _ctx.lastHeading) + 540) % 360 - 180);
-      if (diff > 60) continue;
-    }
-    if (dSq < minDistSq) { minDistSq = dSq; target = { id: tower.id, lat: tower.lat, lng: tower.lng, kind: 'tower', tower }; }
-  }
-
-  if (!target) return;
-  _attackCd = true;
-  setTimeout(() => { _attackCd = false; }, 1500);
-
-  const _spr = _ctx?.myLocationMarker;
-  if (_spr && typeof _spr.setState === 'function') _spr.setState('attack');
-
-  playSound('arrow_shot');
-  if (target.kind === 'tower') {
-    animateArrow(myLat, myLng, target.lat, target.lng, '#a78bfa', () => {
-      attackTower(target.tower, _towerMarkers[target.id]);
-    });
-  } else if (target.kind === 'gs') {
-    animateArrow(myLat, myLng, target.lat, target.lng, '#f87171', () => {
-      playSound('arrow_hit');
-      _gsAutoAttackCb?.(target.id);
-    });
-  } else {
-    animateArrow(myLat, myLng, target.lat, target.lng, '#fbbf24', () => {
-      playSound('arrow_hit');
-      hitMonster(target.id, Math.floor(getTotalAtk() / 8));
-    });
-  }
-}
 
 function calcBearing(lat1, lng1, lat2, lng2) {
   const toRad = d => d * Math.PI / 180;
@@ -1743,6 +1711,22 @@ async function hitMonster(monsterId, damage) {
       showFloat(`💎+${stones} 마정석!`, '#a78bfa', mob.lat, mob.lng);
       updateSkillBar();
       savePlayerState();
+    }
+    // 열쇠 랜덤 드랍 (active 열쇠 정의별 dropRate 확률)
+    if (_keyDefs.length) {
+      const myUid = _ctx?.auth?.currentUser?.uid;
+      if (myUid) {
+        for (const keyDef of _keyDefs) {
+          if (Math.random() < (keyDef.dropRate || 0)) {
+            httpsCallable(_ctx.functions, 'earnKey')({ keyId: keyDef.id })
+              .then(res => {
+                showFloat(`🔑 열쇠 드랍! ${res.data?.keyName || `Key #${keyDef.id}`}`, '#fcd34d', mob.lat, mob.lng);
+                _ctx._onLoadInventory?.();
+              })
+              .catch(() => {});
+          }
+        }
+      }
     }
     // FS 몬스터(goblin/orc)는 아이템 드랍 없음 — 아이템은 GS 서버 몬스터 전용
 
@@ -2226,6 +2210,7 @@ export function startWatchPosition() {
       if (!prox || MonsterGrid.distSq(lat, lng, prox.lat, prox.lng) >= 25) {
         _lastProximityPos = { lat, lng };
         _ctx._onCheckProximity(lat, lng);
+        _refreshBattleVisibility(lat, lng);
       }
     },
     null,

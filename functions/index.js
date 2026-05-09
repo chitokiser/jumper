@@ -1533,6 +1533,18 @@ exports.useReviveTicket = onCall(wrapError(async (req) => {
   return treasureH.useReviveTicket(requireAuth(req));
 }));
 
+exports.earnKey = onCall(wrapError(async (req) => {
+  return treasureH.earnKey(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminSaveTreasureKey = onCall(wrapError(async (req) => {
+  return treasureH.adminSaveTreasureKey(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminDeleteTreasureKey = onCall(wrapError(async (req) => {
+  return treasureH.adminDeleteTreasureKey(requireAuth(req), req.data ?? {});
+}));
+
 // 관리자: 빨간약 직접 지급
 exports.adminGivePotion = onCall(wrapError(async (req) => {
   const adminUid = requireAuth(req);

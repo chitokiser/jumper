@@ -14,7 +14,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
          healHp, healMp, playSound, showFloat, animateArrow,
          castLightning, castIceFreeze, castFireStorm,
-         setGsSkillCallback, setGsMobsGetter, setGsAutoAttackCallback,
+         setGsSkillCallback, setGsMobsGetter,
          useReviveTicket, updateSkillBar, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
          spawnGsDrop, removeGsDrop,
@@ -34,27 +34,26 @@ import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
 preloadSpriteImages();
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
+// _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
 setGsSkillCallback((skillId, centerLat, centerLng, rangeM) => {
   if (!isGameServerConnected()) return;
+  const refLat = _ctx.lastPos?.lat ?? centerLat;
+  const refLng = _ctx.lastPos?.lng ?? centerLng;
+  if (!refLat || !refLng) return;
   for (const [monsterId, m] of Object.entries(_gsMonsters)) {
     if (!m || m.state === 'dead' || m.state === 'respawning') continue;
     const lat = m.currentLat ?? m.lat;
     const lng = m.currentLng ?? m.lng;
     if (!lat || !lng) continue;
     const dist = Math.sqrt(
-      Math.pow((lat - centerLat) * 111320, 2) +
-      Math.pow((lng - centerLng) * 111320 * Math.cos(centerLat * Math.PI / 180), 2)
+      Math.pow((lat - refLat) * 111320, 2) +
+      Math.pow((lng - refLng) * 111320 * Math.cos(refLat * Math.PI / 180), 2)
     );
     if (dist <= rangeM) sendPlayerSkill(skillId, monsterId);
   }
 });
 
-// GS 몬스터 자동공격 지원 — battle.js 자동공격 루프에서 호출됨
 setGsMobsGetter(() => _gsMonsters);
-setGsAutoAttackCallback((monsterId) => {
-  if (!isGameServerConnected()) return;
-  sendPlayerAttack(monsterId);
-});
 
 const $ = id => document.getElementById(id);
 
@@ -71,8 +70,9 @@ let _uid            = null;   // 로그인 유저 UID
 let _userEmail      = null;   // 로그인 유저 이메일
 let _isAdmin        = false;  // 관리자 여부
 let _inventory      = {};     // {itemId: count}
-let _boxInventory   = [];     // [{boxId, boxName, collectedAt}]  미개봉 박스
+let _boxInventory   = [];     // [{boxId, boxName, hiddenBox, keyId}]  미개봉 박스
 let _items          = {};     // {itemId: {name, image, description}}
+let _keyDefs        = {};     // {keyId: {name, image, dropRate}} — treasure_keys
 let _vouchers          = [];
 let _purchasedVouchers = new Set(); // 이미 구매 완료된 voucherId
 let _collectedBoxes = new Set(); // 이 세션에서 이미 수집한 box ID
@@ -383,7 +383,7 @@ function showBoxInfo(box, marker, dist) {
           <span style="font-size:11px;color:#374151;">${st.current}/${st.max}</span>
         </div>
         <div style="font-size:11px;color:#555;">
-          ${dist !== undefined ? `거리 ${Math.round(dist)}m — ` : ''}20m 이내 접근 후 클릭하여 공격!
+          ${dist !== undefined ? `거리 ${Math.round(dist)}m — ` : ''}${box.hiddenBox ? '5m' : '20m'} 이내 접근 후 클릭하여 공격!
         </div>` : ''}
       ${alreadyCollected ? '<div style="font-size:11px;color:#aaa;margin-top:4px;">✓ 이미 수집됨</div>' : ''}
       ${adminBtn}
@@ -444,6 +444,84 @@ function attackBox(box, marker) {
 }
 
 // ── 보물박스 마커 렌더링 ──────────────────────────────────────────────────────
+function _makeBoxMarker(box, lat, lng, size, animate) {
+  const active = isBoxActive(box);
+  const marker = new google.maps.Marker({
+    position: { lat, lng }, map,
+    title: (box.memberOnly ? '[정회원] ' : '') + (box.name || '보물박스'),
+    icon: {
+      url: '/assets/images/item/box.png',
+      scaledSize: new google.maps.Size(size, size),
+      anchor: new google.maps.Point(size / 2, size / 2),
+    },
+    label: box.memberOnly ? { text: '👑', fontSize: '12px', className: 'box-member-label' } : undefined,
+    opacity: active ? 1 : 0.35,
+    animation: animate ? google.maps.Animation.BOUNCE : null,
+    zIndex: box.hiddenBox ? 30 : 20,
+  });
+  if (animate) setTimeout(() => marker.setAnimation(null), 2200);
+
+  const range = box.hiddenBox ? 5 : 20;
+  marker.addListener('click', () => {
+    if (_collectedBoxes.has(box.id)) {
+      infoWindow.setContent('<div style="font-size:13px;color:#888;padding:4px;">✓ 이미 수집한 보물박스입니다.</div>');
+      infoWindow.open(map, marker);
+      return;
+    }
+    if (!isBoxActive(box)) { showBoxInfo(box, marker); return; }
+    if (!_uid) {
+      infoWindow.setContent('<div style="font-size:13px;padding:4px;">로그인이 필요합니다.</div>');
+      infoWindow.open(map, marker);
+      return;
+    }
+    const myLat = _ctx.lastPos?.lat;
+    const myLng = _ctx.lastPos?.lng;
+    if (!myLat || !myLng) { showBoxInfo(box, marker); return; }
+
+    const dist = haversine(myLat, myLng, lat, lng);
+    if (dist > range) { showBoxInfo(box, marker, dist); return; }
+
+    attackBox(box, marker);
+  });
+  return marker;
+}
+
+function _playFoundSound() {
+  try {
+    const AC = window.AudioContext || /** @type {any} */(window).webkitAudioContext;
+    const ctx = new AC();
+    const tone = (freq, vol, t, dur, type = 'sine') => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, ctx.currentTime + t);
+      g.gain.linearRampToValueAtTime(vol, ctx.currentTime + t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + dur);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + dur);
+    };
+    [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.3, i * 0.1, 0.2, 'triangle'));
+  } catch (_) { /* 무시 */ }
+}
+
+function _revealHiddenBox(box) {
+  if (box._marker) return;
+  const lat = Number(box.lat), lng = Number(box.lng);
+  _playFoundSound();
+
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(124,58,237,0.92);color:#fff;font-size:16px;font-weight:700;
+    padding:14px 28px;border-radius:12px;z-index:9999;pointer-events:none;
+    text-align:center;box-shadow:0 0 32px rgba(124,58,237,0.7);`;
+  el.textContent = '✨ 숨겨진 보물 발견!';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+
+  const marker = _makeBoxMarker(box, lat, lng, 38, true);
+  box._marker = marker;
+  boxMarkers.push(marker);
+}
+
 function renderBoxMarkers() {
   boxMarkers.forEach(m => m.setMap(null));
   boxMarkers = [];
@@ -454,46 +532,12 @@ function renderBoxMarkers() {
   treasureBoxes.forEach(box => {
     const lat = Number(box.lat), lng = Number(box.lng);
     if (!lat || !lng) return;
-    const active = isBoxActive(box);
-    // HP 상태 미리 초기화
     getBoxHpState(box);
 
-    const marker = new google.maps.Marker({
-      position: { lat, lng }, map,
-      title: (box.memberOnly ? '[정회원] ' : '') + (box.name || '보물박스'),
-      icon: {
-        url: '/assets/images/item/box.png',
-        scaledSize: new google.maps.Size(20, 20),
-        anchor: new google.maps.Point(10, 10),
-      },
-      label: box.memberOnly ? { text: '👑', fontSize: '12px', className: 'box-member-label' } : undefined,
-      opacity: active ? 1 : 0.35,
-      zIndex: 20,
-    });
+    // 숨김 보물: 초기 마커 생성 안 함 — checkProximity에서 5m 내 진입 시 출현
+    if (box.hiddenBox) { box._marker = null; return; }
 
-    marker.addListener('click', () => {
-      if (_collectedBoxes.has(box.id)) {
-        infoWindow.setContent('<div style="font-size:13px;color:#888;padding:4px;">✓ 이미 수집한 보물박스입니다.</div>');
-        infoWindow.open(map, marker);
-        return;
-      }
-      if (!isBoxActive(box)) { showBoxInfo(box, marker); return; }
-      if (!_uid) {
-        infoWindow.setContent('<div style="font-size:13px;padding:4px;">로그인이 필요합니다.</div>');
-        infoWindow.open(map, marker);
-        return;
-      }
-      const myLat = _ctx.lastPos?.lat;
-      const myLng = _ctx.lastPos?.lng;
-      if (!myLat || !myLng) { showBoxInfo(box, marker); return; }
-
-      const dist = haversine(myLat, myLng, lat, lng);
-      if (dist > 20) { showBoxInfo(box, marker, dist); return; }
-
-      // 20m 이내 → 공격!
-      attackBox(box, marker);
-    });
-
+    const marker = _makeBoxMarker(box, lat, lng, 20, false);
     boxMarkers.push(marker);
     box._marker = marker;
     _sharedBounds.extend({ lat, lng });
@@ -901,8 +945,10 @@ function showMyLocation() {
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
+      _ctx.lastPos = { lat, lng, accuracy, heading: heading ?? null };
       updateMyLocation(lat, lng, accuracy, heading ?? null);
       if (_ctx.map) _ctx.map.panTo({ lat, lng });
+      broadcastMyLocation(lat, lng);  // Firestore에 즉시 기록 → 상대방이 내 위치 볼 수 있도록
     },
     null,
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
@@ -936,17 +982,33 @@ async function checkProximity(lat, lng) {
     const dist = haversine(lat, lng, Number(box.lat), Number(box.lng));
     const maxHp = box.hp || 300;
 
+    // ── 숨김 보물: 5m 내 진입 시 출현, 이탈 시 소멸 ──
+    if (box.hiddenBox) {
+      if (dist <= 5) {
+        if (!box._marker) _revealHiddenBox(box);
+        else box._marker.setTitle(`✨ ${box.name||'숨겨진 보물'} — 클릭하여 공격! (HP ${getBoxHpState(box).current}/${maxHp})`);
+      } else if (box._marker) {
+        box._marker.setMap(null);
+        boxMarkers = boxMarkers.filter(m => m !== box._marker);
+        box._marker = null;
+      }
+      continue;
+    }
+
     if (box._marker) {
+      const visible = dist <= 100;
       const inRange = dist <= 20;
-      // 범위 내: 마커 강조 (크게 + 타이틀 변경)
-      box._marker.setIcon({
-        url: '/assets/images/item/box.png',
-        scaledSize: new google.maps.Size(inRange ? 30 : 20, inRange ? 30 : 20),
-        anchor: new google.maps.Point(inRange ? 15 : 10, inRange ? 15 : 10),
-      });
-      box._marker.setTitle(inRange
-        ? `⚔️ ${box.name||'보물박스'} — 클릭하여 공격! (HP ${getBoxHpState(box).current}/${maxHp})`
-        : box.name || '보물박스');
+      box._marker.setMap(visible ? map : null);
+      if (visible) {
+        box._marker.setIcon({
+          url: '/assets/images/item/box.png',
+          scaledSize: new google.maps.Size(inRange ? 30 : 20, inRange ? 30 : 20),
+          anchor: new google.maps.Point(inRange ? 15 : 10, inRange ? 15 : 10),
+        });
+        box._marker.setTitle(inRange
+          ? `⚔️ ${box.name||'보물박스'} — 클릭하여 공격! (HP ${getBoxHpState(box).current}/${maxHp})`
+          : box.name || '보물박스');
+      }
     }
   }
 }
@@ -965,7 +1027,7 @@ async function tryCollect(box) {
     const d = result.data;
     showCollectToast(d.boxName);
     if (!_boxInventory.find(b => b.boxId === box.id)) {
-      _boxInventory.push({ boxId: box.id, boxName: d.boxName });
+      _boxInventory.push({ boxId: box.id, boxName: d.boxName, hiddenBox: box.hiddenBox || false, keyId: box.keyId || null });
     }
     renderBoxInventory();
   } catch (err) {
@@ -1082,12 +1144,24 @@ window.__adminCollect = (boxId) => adminCollectBox(boxId);
 // ── 박스 오픈 (인벤토리 박스 클릭) ────────────────────────────────────────────
 async function openBox(boxId, slotEl) {
   if (slotEl) slotEl.classList.add('opening');
+  const boxMeta = _boxInventory.find(b => b.boxId === boxId);
   try {
     const result = await httpsCallable(functions, 'openTreasureBox')({ boxId });
     const d = result.data;
     // 미개봉 박스 인벤토리에서 제거
     _boxInventory = _boxInventory.filter(b => b.boxId !== boxId);
     renderBoxInventory();
+    // 열쇠 소모 — 앞 3자리 prefix 매칭으로 찾아서 차감
+    if (boxMeta?.hiddenBox && boxMeta?.keyId) {
+      const prefix = String(boxMeta.keyId).slice(0, 3);
+      const kKey = Object.keys(_inventory).find(k =>
+        k.startsWith(`key_${prefix}`) && _inventory[k] > 0);
+      if (kKey) {
+        const remaining = Math.max(0, (_inventory[kKey] || 0) - 1);
+        if (remaining <= 0) delete _inventory[kKey];
+        else _inventory[kKey] = remaining;
+      }
+    }
     // 아이템 인벤토리 업데이트
     const iid = String(d.itemId);
     _inventory[iid] = (_inventory[iid] || 0) + 1;
@@ -1125,14 +1199,29 @@ function renderBoxInventory() {
   }
   const grid = document.createElement('div');
   grid.className = 'box-inv-grid';
-  _boxInventory.forEach(({ boxId, boxName }) => {
+  _boxInventory.forEach(item => {
+    const { boxId, boxName, hiddenBox, keyId } = item;
+    const needsKey = hiddenBox && keyId;
+    const prefix   = needsKey ? String(keyId).slice(0, 3) : null;
+    const hasKey   = needsKey && Object.keys(_inventory).some(k =>
+      k.startsWith(`key_${prefix}`) && _inventory[k] > 0);
+    const locked   = needsKey && !hasKey;
     const slot = document.createElement('div');
-    slot.className = 'box-inv-slot';
-    slot.title = `${boxName || '보물박스'} — 클릭하여 열기`;
+    slot.className = 'box-inv-slot' + (locked ? ' locked' : '');
+    slot.title = locked
+      ? `${boxName || '보물박스'} — 🔑 앞 3자리 ${prefix} 열쇠 필요`
+      : `${boxName || '보물박스'} — 클릭하여 열기`;
     slot.innerHTML = `
       <img src="/assets/images/item/box.png" alt="box" onerror="this.style.display='none'">
-      <span class="box-slot-name">${escHtml(boxName || '보물박스')}</span>`;
-    slot.addEventListener('click', () => openBox(boxId, slot));
+      <span class="box-slot-name">${escHtml(boxName || '보물박스')}</span>
+      ${needsKey ? `<span class="box-slot-key" title="Key prefix ${escHtml(prefix)}">${locked ? '🔒' : '🔑'}</span>` : ''}`;
+    slot.addEventListener('click', () => {
+      if (locked) {
+        showInfoToast(`🔑 앞 3자리가 "${prefix}"인 열쇠가 필요합니다.\n몬스터를 처치하여 열쇠를 획득하세요!`);
+        return;
+      }
+      openBox(boxId, slot);
+    });
     grid.appendChild(slot);
   });
   el.innerHTML = '';
@@ -1297,6 +1386,22 @@ function renderInventory() {
           renderInventory();
           showInfoToast(`🛡 방어구 DEF ${defVal} 장착!`);
         });
+      } else if (String(itemId).startsWith('key_')) {
+        const kid = itemId.replace('key_', '');
+        const keyDef = _keyDefs[kid] || {};
+        const keyName = keyDef.name || `열쇠 #${kid}`;
+        slot.title = `${keyName} (Key ID: ${kid}) — 보물박스 열쇠`;
+        slot.innerHTML = `
+          <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+            <img src="/assets/images/item/frame.png"
+                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;"
+                 alt="" />
+            <span style="position:relative;z-index:1;font-size:10px;font-weight:700;color:#3b1a00;
+                         text-align:center;line-height:1.2;padding:2px 4px;
+                         text-shadow:0 1px 2px rgba(255,220,150,0.8);
+                         word-break:break-all;">${escHtml(keyName)}</span>
+          </div>
+          <span class="slot-count">${count}</span>`;
       } else {
         const meta = _items[String(itemId)] || {};
         const imgFile = meta.image || (itemId + '.png');
@@ -1423,6 +1528,12 @@ async function loadItems() {
   snap.forEach(d => { _items[d.id] = d.data(); });
 }
 
+async function loadKeyDefs() {
+  const snap = await getDocs(query(collection(db, 'treasure_keys'), where('active', '==', true)));
+  _keyDefs = {};
+  snap.forEach(d => { _keyDefs[d.id] = d.data(); });
+}
+
 async function loadVouchers() {
   const snap = await getDocs(collection(db, 'treasure_vouchers'));
   _vouchers = [];
@@ -1450,8 +1561,9 @@ async function loadInventory() {
     settle(getDocs(query(collection(db, 'treasure_voucher_purchases'), where('uid', '==', _uid)))),
   ]);
 
-  // items 메타데이터가 아직 안 로드됐으면 여기서 로드
+  // items/key 메타데이터가 아직 안 로드됐으면 여기서 로드
   if (!Object.keys(_items).length) await loadItems();
+  if (!Object.keys(_keyDefs).length) await loadKeyDefs();
 
   _inventory = {};
   if (invRes.ok) invRes.v.forEach(d => {
@@ -1468,7 +1580,7 @@ async function loadInventory() {
   _boxInventory = [];
   if (boxRes.ok) boxRes.v.forEach(d => {
     const r = d.data();
-    _boxInventory.push({ boxId: r.boxId, boxName: r.boxName });
+    _boxInventory.push({ boxId: r.boxId, boxName: r.boxName, hiddenBox: r.hiddenBox || false, keyId: r.keyId || null });
     _collectedBoxes.add(r.boxId);
   });
 
@@ -1515,36 +1627,41 @@ function renderExchangeSection() {
   grid.innerHTML = _vouchers.map(v => {
     const reqs = v.requirements || [];
 
-    // 진행률: 요건 중 가장 낮은 충족 비율
+    // 서버와 동일: gold 요건 합계 + minCoins = 실제 필요 코인
+    const goldInReqs    = reqs.filter(r => r.type === 'gold' || r.itemId === 'coin')
+                              .reduce((s, r) => s + (r.count || 0), 0);
+    const totalGoldNeed = goldInReqs + (v.minCoins || 0);
+    const itemReqs      = reqs.filter(r => r.type !== 'gold' && r.itemId !== 'coin');
+
     let minRatio = 1;
-    const chips = reqs.map(r => {
-      const isGold = r.type === 'gold' || r.itemId === 'coin';
-      const have   = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
-      const need   = r.count || 1;
-      const ratio  = Math.min(1, have / need);
+
+    // 아이템 요건 칩 (비코인)
+    const chips = itemReqs.map(r => {
+      const have  = _inventory[String(r.itemId)] || 0;
+      const need  = r.count || 1;
+      const ratio = Math.min(1, have / need);
       if (ratio < minRatio) minRatio = ratio;
 
-      const meta   = isGold ? null : _items[String(r.itemId)];
-      const label  = isGold ? '💰 코인' : escHtml(meta?.name || ('#' + r.itemId));
-      const imgSrc = (!isGold && meta?.image) ? `/assets/images/item/${escHtml(meta.image)}` : '';
+      const meta   = _items[String(r.itemId)];
+      const label  = escHtml(meta?.name || ('#' + r.itemId));
+      const imgSrc = meta?.image ? `/assets/images/item/${escHtml(meta.image)}` : '';
       const cls    = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(${have}/${need})</small>` : '';
-
       const imgTag = imgSrc
         ? `<img src="${imgSrc}" alt="" onerror="this.style.display='none'">`
         : '';
       return `<span class="exc-req-chip ${cls}">${imgTag}${label}×${need}${haveStr}</span>`;
     }).join('');
 
-    // 코인 조건 칩
+    // 코인 합계 칩 (goldReqs + minCoins를 합산해 1개로 표시 — 서버 로직과 일치)
     const coinChip = (() => {
-      if (!v.minCoins) return '';
+      if (!totalGoldNeed) return '';
       const have  = getPlayerGold();
-      const ratio = Math.min(1, have / v.minCoins);
+      const ratio = Math.min(1, have / totalGoldNeed);
       if (ratio < minRatio) minRatio = ratio;
       const cls   = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
-      const haveStr = _uid ? ` <small>(${have}/${v.minCoins})</small>` : '';
-      return `<span class="exc-req-chip ${cls}">💰 코인×${v.minCoins}${haveStr}</span>`;
+      const haveStr = _uid ? ` <small>(${have}/${totalGoldNeed})</small>` : '';
+      return `<span class="exc-req-chip ${cls}">💰 코인×${totalGoldNeed}${haveStr}</span>`;
     })();
 
     // 레벨 조건 칩
@@ -1562,11 +1679,8 @@ function renderExchangeSection() {
 
     const pct    = Math.round(minRatio * 100);
     const canDo  = _uid
-      && reqs.every(r => {
-           const isGold = r.type === 'gold' || r.itemId === 'coin';
-           return isGold ? getPlayerGold() >= r.count : (_inventory[String(r.itemId)] || 0) >= r.count;
-         })
-      && (!v.minCoins || getPlayerGold()  >= v.minCoins)
+      && (totalGoldNeed === 0 || getPlayerGold() >= totalGoldNeed)
+      && itemReqs.every(r => (_inventory[String(r.itemId)] || 0) >= r.count)
       && (!v.minLevel || getPlayerLevel() >= v.minLevel);
 
     // 이미지 경로 정규화
@@ -1658,8 +1772,8 @@ async function init() {
       const snap = await getDoc(doc(db, 'admins', _uid));
       _isAdmin = snap.exists() || (_userEmail === 'daguri75@gmail.com');
       _ctx.isAdmin = _isAdmin;
-      // 전투 시스템: 플레이어 상태 로드
-      loadPlayerState();
+      // 전투 시스템: 플레이어 상태 로드 → 완료 후 교환권 재렌더 (gold 반영)
+      loadPlayerState().then(() => renderExchangeSection());
       // 인벤토리 + 교환권 섹션 갱신
       loadInventory();
       // 회원등급 표시

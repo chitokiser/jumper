@@ -419,10 +419,51 @@
                     <option value="true">정회원 전용</option>
                   </select>
                 </div>
+                <div class="k">숨김 보물</div>
+                <div class="v">
+                  <select id="tBoxHiddenBox" class="select">
+                    <option value="false">일반 (항상 표시)</option>
+                    <option value="true">숨김 (5m 접근 시 출현)</option>
+                  </select>
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">숨김 설정 시 지도에 마커가 표시되지 않다가 플레이어가 5m 이내로 접근할 때만 나타납니다.</div>
+                </div>
+                <div class="k" id="tBoxKeyIdRow" style="display:none;">열쇠 Key ID</div>
+                <div class="v" id="tBoxKeyIdVal" style="display:none;">
+                  <input type="text" id="tBoxKeyId" class="select" style="width:100%;" placeholder="예: 1001 (비우면 열쇠 불필요)">
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">숨김 보물박스를 열 때 필요한 열쇠 ID. 몬스터 처치 시 랜덤 드랍됩니다.</div>
+                </div>
               </div>
               <button class="btn btn-sm" id="btnSaveTreasureBox" type="button">박스 저장</button>
             </div>
             <div id="treasureBoxList" class="list" style="margin-top:8px;"></div>
+
+            <!-- 열쇠 등록 -->
+            <div class="list-head" style="margin-top:16px;">
+              <div class="muted">🔑 열쇠 등록/수정 (treasure_keys)</div>
+              <button class="btn btn-sm" id="btnReloadTKeys" type="button">새로고침</button>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <p class="muted" style="font-size:12px; margin:0 0 10px;">
+                몬스터 처치 시 랜덤 확률로 드랍되는 열쇠를 관리합니다. 숨김 보물박스와 Key ID를 맞추세요.
+              </p>
+              <div class="kv" style="margin-bottom:8px;">
+                <div class="k">Key ID</div>
+                <div class="v"><input type="text" id="tKeyId" class="select" style="width:100%;" placeholder="예: 1001"></div>
+                <div class="k">열쇠 이름</div>
+                <div class="v"><input type="text" id="tKeyName" class="select" style="width:100%;" placeholder="예: 황금 열쇠"></div>
+                <div class="k">드랍 확률 (0~1)</div>
+                <div class="v"><input type="number" id="tKeyDropRate" class="select" style="width:100%;" min="0" max="1" step="0.01" value="0.1" placeholder="예: 0.1 = 10%"></div>
+                <div class="k">활성화</div>
+                <div class="v">
+                  <select id="tKeyActive" class="select">
+                    <option value="true">활성</option>
+                    <option value="false">비활성</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn btn-sm" id="btnSaveTreasureKey" type="button">열쇠 저장</button>
+            </div>
+            <div id="treasureKeyList" class="list" style="margin-top:8px;"></div>
 
             <!-- 바우처 등록 -->
             <div class="list-head" style="margin-top:16px;">

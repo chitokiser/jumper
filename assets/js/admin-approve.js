@@ -1557,7 +1557,7 @@ async function loadTreasureBoxesList() {
     return `<div class="card" style="display:flex;gap:12px;align-items:center;">
       <div style="flex:1;">
         <strong>${esc(r.name || "(이름없음)")}</strong>
-        <span class="muted" style="font-size:12px;margin-left:6px;">${active ? "✅ 활성" : "❌ 비활성"} · ${(r.lat||0).toFixed(5)}, ${(r.lng||0).toFixed(5)} · ${r.startHour ?? 0}:00~${r.endHour ?? 24}:00</span>
+        <span class="muted" style="font-size:12px;margin-left:6px;">${active ? "✅ 활성" : "❌ 비활성"}${r.memberOnly ? " · 👑 정회원" : ""}${r.hiddenBox ? " · 🔮 숨김" : ""}${r.keyId ? ` · 🔑 Key ${esc(String(r.keyId))}` : ""} · ${(r.lat||0).toFixed(5)}, ${(r.lng||0).toFixed(5)} · ${r.startHour ?? 0}:00~${r.endHour ?? 24}:00</span>
         <div class="muted" style="font-size:11px;font-family:monospace;">${esc(d.id)}</div>
       </div>
       <button class="btn btn-sm" data-act="editBox" data-id="${esc(d.id)}">수정</button>
@@ -1579,6 +1579,10 @@ async function loadTreasureBoxesList() {
       $("tBoxItemPool").value    = JSON.stringify(r.itemPool || [], null, 2);
       $("tBoxActive").value      = String(r.active !== false);
       $("tBoxMemberOnly").value  = String(r.memberOnly === true);
+      $("tBoxHiddenBox").value   = String(r.hiddenBox === true);
+      if ($("tBoxKeyId")) $("tBoxKeyId").value = r.keyId || "";
+      const kRow = $("tBoxKeyIdRow"), kVal = $("tBoxKeyIdVal");
+      if (kRow && kVal) { const show = r.hiddenBox === true; kRow.style.display = show ? "" : "none"; kVal.style.display = show ? "" : "none"; }
     });
   });
   el.querySelectorAll("[data-act='deleteBox']").forEach(btn => {
@@ -1675,14 +1679,19 @@ $("btnSaveTreasureBox")?.addEventListener("click", async () => {
       itemPool,
       active:     $("tBoxActive")?.value === "true",
       memberOnly: $("tBoxMemberOnly")?.value === "true",
+      hiddenBox:  $("tBoxHiddenBox")?.value === "true",
+      keyId:      $("tBoxKeyId")?.value.trim() || null,
     });
     alert(`박스 저장 완료!\nboxId: ${res.data.boxId}`);
-    ["tBoxId","tBoxName","tBoxCoords","tBoxItemPool"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    ["tBoxId","tBoxName","tBoxCoords","tBoxItemPool","tBoxKeyId"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
     const prev = $("tBoxCoordsPreview"); if (prev) prev.textContent = "";
     if ($("tBoxStartHour"))  $("tBoxStartHour").value  = "0";
     if ($("tBoxEndHour"))    $("tBoxEndHour").value    = "24";
     if ($("tBoxActive"))     $("tBoxActive").value     = "true";
     if ($("tBoxMemberOnly")) $("tBoxMemberOnly").value = "false";
+    if ($("tBoxHiddenBox"))  $("tBoxHiddenBox").value  = "false";
+    const kRow = $("tBoxKeyIdRow"), kVal = $("tBoxKeyIdVal");
+    if (kRow) kRow.style.display = "none"; if (kVal) kVal.style.display = "none";
     await loadTreasureBoxesList();
   } catch (err) { alert("오류: " + (err.message || err)); }
 });
@@ -1713,14 +1722,84 @@ $("btnSaveVoucher")?.addEventListener("click", async () => {
   } catch (err) { alert("오류: " + (err.message || err)); }
 });
 
+async function loadTreasureKeysList() {
+  const el = $("treasureKeyList");
+  if (!el) return;
+  el.innerHTML = "<div class='muted'>불러오는 중...</div>";
+  const snap = await getDocs(collection(db, "treasure_keys"));
+  if (snap.empty) { el.innerHTML = "<div class='muted'>등록된 열쇠 없음</div>"; return; }
+  el.innerHTML = snap.docs.map(d => {
+    const r = d.data();
+    return `<div class="card" style="display:flex;gap:12px;align-items:center;">
+      <div style="flex:1;">
+        <strong>🔑 ${esc(r.name || "(이름없음)")}</strong>
+        <span class="muted" style="font-size:12px;margin-left:6px;">Key ID: ${esc(d.id)} · 드랍율: ${((r.dropRate||0)*100).toFixed(1)}% · ${r.active !== false ? "✅ 활성" : "❌ 비활성"}</span>
+      </div>
+      <button class="btn btn-sm" data-act="editKey" data-id="${esc(d.id)}">수정</button>
+      <button class="btn btn-sm" data-act="deleteKey" data-id="${esc(d.id)}" style="color:var(--danger,#e53e3e);">비활성화</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-act='editKey']").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const s = await getDoc(doc(db, "treasure_keys", btn.dataset.id));
+      if (!s.exists()) return;
+      const r = s.data();
+      if ($("tKeyId"))       $("tKeyId").value       = btn.dataset.id;
+      if ($("tKeyName"))     $("tKeyName").value     = r.name  || "";
+      if ($("tKeyDropRate")) $("tKeyDropRate").value = r.dropRate ?? 0.1;
+      if ($("tKeyActive"))   $("tKeyActive").value   = String(r.active !== false);
+    });
+  });
+  el.querySelectorAll("[data-act='deleteKey']").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(`Key ID ${btn.dataset.id} 열쇠를 비활성화하시겠습니까?`)) return;
+      try {
+        await httpsCallable(functions, "adminDeleteTreasureKey")({ keyId: btn.dataset.id });
+        await loadTreasureKeysList();
+      } catch (err) { alert("오류: " + (err.message || err)); }
+    });
+  });
+}
+
+$("btnSaveTreasureKey")?.addEventListener("click", async () => {
+  const keyId = $("tKeyId")?.value.trim();
+  if (!keyId) return alert("Key ID는 필수입니다.");
+  const dropRate = parseFloat($("tKeyDropRate")?.value || "0.1");
+  if (isNaN(dropRate) || dropRate < 0 || dropRate > 1) return alert("드랍 확률은 0~1 사이 숫자를 입력하세요.");
+  try {
+    await httpsCallable(functions, "adminSaveTreasureKey")({
+      keyId,
+      name:     $("tKeyName")?.value.trim()  || "",
+      dropRate,
+      active:   $("tKeyActive")?.value !== "false",
+    });
+    alert("열쇠 저장 완료!");
+    ["tKeyId","tKeyName"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    if ($("tKeyDropRate")) $("tKeyDropRate").value = "0.1";
+    if ($("tKeyActive"))   $("tKeyActive").value   = "true";
+    await loadTreasureKeysList();
+  } catch (err) { alert("오류: " + (err.message || err)); }
+});
+
+// 숨김 보물박스 선택 시 열쇠 Key ID 입력 필드 표시/숨김
+$("tBoxHiddenBox")?.addEventListener("change", () => {
+  const isHidden = $("tBoxHiddenBox")?.value === "true";
+  const kRow = $("tBoxKeyIdRow"), kVal = $("tBoxKeyIdVal");
+  if (kRow) kRow.style.display = isHidden ? "" : "none";
+  if (kVal) kVal.style.display = isHidden ? "" : "none";
+  if (!isHidden && $("tBoxKeyId")) $("tBoxKeyId").value = "";
+});
+
 $("btnReloadTItems")?.addEventListener("click",    () => loadTreasureItemsList());
 $("btnReloadTBoxes")?.addEventListener("click",    () => loadTreasureBoxesList());
 $("btnReloadTVouchers")?.addEventListener("click", () => loadVouchersList());
+$("btnReloadTKeys")?.addEventListener("click",     () => loadTreasureKeysList());
 btnTabTreasure?.addEventListener("click", () => {
   showTab("treasure");
   loadTreasureItemsList();
   loadTreasureBoxesList();
   loadVouchersList();
+  loadTreasureKeysList();
 });
 
 // ── 무기 등록 ──────────────────────────────────────────────────────────────────

@@ -75,6 +75,10 @@ function escHtml(str) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function stripHtml(str) {
+  return String(str || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 function fmtHex(wei) {
   return (Number(wei) / 1e18).toFixed(4) + ' HEX';
 }
@@ -267,7 +271,7 @@ function renderCard(p) {
       <div class="coop-card-body">
         ${typeBadge}
         <div class="coop-card-name">${escHtml(p.name)}</div>
-        ${p.description ? `<div class="coop-card-desc">${p.description}</div>` : ''}
+        ${p.description ? `<div class="coop-card-desc">${escHtml(stripHtml(p.description))}</div>` : ''}
         <div class="coop-card-price">${hexAmt} HEX</div>
         <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-top:2px;line-height:1.6;">
           ${priceKrw} &nbsp;·&nbsp; ${priceVnd}
@@ -299,7 +303,7 @@ function showDetailModal(productId) {
     : `<span style="font-size:0.75rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:2px 10px;display:inline-block;margin-bottom:6px;">일반상품</span>`;
 
   el.detailName.textContent  = p.name || '';
-  el.detailDesc.innerHTML    = p.description || '';
+  el.detailDesc.innerHTML     = p.description || '';
   el.detailDesc.style.display = p.description ? '' : 'none';
 
   const hexAmtDet = p.hexPrice ? (Number(p.hexPrice) / 1e18).toFixed(4) : '—';
