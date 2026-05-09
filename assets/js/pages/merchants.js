@@ -19,7 +19,8 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
          spawnGsDrop, removeGsDrop,
          equipWeapon, equipArmor, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
-         getEquippedWeapon, getEquippedArmor }
+         getEquippedWeapon, getEquippedArmor,
+         updateMyLocation }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
@@ -895,6 +896,17 @@ function showMyLocation() {
 
   const btn = $('btnMyLocation');
   if (btn) btn.textContent = '⏳';
+
+  // 플레이 버튼 누름과 동시에 현재 위치를 즉시 획득 → 캐릭터 바로 표시
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
+      updateMyLocation(lat, lng, accuracy, heading ?? null);
+      if (_ctx.map) _ctx.map.panTo({ lat, lng });
+    },
+    null,
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
+  );
 
   startWatchPosition();   // GPS 백그라운드 추적 시작
   startBattleLoop();      // 전투 루프 시작

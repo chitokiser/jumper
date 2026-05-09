@@ -3,11 +3,11 @@
 
 const SCML_URL = '/assets/images/monsters/1/1.scml';
 const IMG_BASE = '/assets/images/monsters/1/';
-const SCALE    = 0.077;  // Spriter units → canvas pixels (tuned to ~80px height = orc size)
-const CW       = 100;    // canvas width  px
-const CH       = 100;    // canvas height px
-const OX       = 50;     // canvas origin X (horizontal center)
-const OY       = 85;     // canvas origin Y (world y=0 / feet level)
+const SCALE    = 0.038;  // ~39px height — map-appropriate size
+const CW       = 55;     // canvas width  px
+const CH       = 55;     // canvas height px
+const OX       = 27;     // canvas origin X (horizontal center)
+const OY       = 46;     // canvas origin Y (world y=0 / feet level)
 
 const STATE_ANIM = {
   idle:   '_IDLE',
