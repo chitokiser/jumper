@@ -163,3 +163,28 @@ jumpTreasury : 0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312
 -정회원 개요:coop.html에서 10hex를 지불하면 정회원 됩니다. merchants.html에서 정회원만 획득 가능한 보물박스를 발행할 수 있습니다.
 정회원 기간은 가입 후 12개월 입니다.
 12개월 지난 후 다시 가입 해야 합니다.
+
+---
+
+## 10. 게임 다중언어 유지 규칙 (ko / en / vi)
+
+게임 UI에 유저 안내문(알림, 오류, 상태 메시지)을 **추가·변경할 때마다** 아래 규칙을 반드시 함께 적용한다.
+
+### 서버 측 (`game-server/`)
+- 모든 서버→클라이언트 알림은 `S2C.NOTIFY` 이벤트 + `sendNotify(socketId, msg)` 패턴 사용
+- 메시지 문자열은 반드시 `game-server/src/lib/i18n.ts`의 `MESSAGES` 테이블에 등록
+- **ko / en / vi 세 언어를 동시에 추가** — 하나라도 누락 금지
+- 메시지 키 형식: `snake_case` (예: `zone_joined`, `err_cooldown`)
+- 플레이어 언어는 `player:join` 페이로드의 `lang` 필드로 전달 → `parseLang()` 처리
+- 언어 조회: `getLangBySocket(socketId)` 사용
+
+### 클라이언트 측 (`assets/js/pages/merchants.battle.js` 등)
+- 클라이언트가 직접 표시하는 안내문(스킬 오류, 전투 결과 등)도 ko/en/vi 지원 고려
+- 클라이언트는 `socket.on('notify', ({ msg }) => showToast(msg))` 로 서버 알림 수신
+- `player:join` 이벤트 전송 시 반드시 `lang` 필드 포함
+
+### 체크리스트 (게임 UI 수정 시 매번 확인)
+- [ ] 새 메시지 키를 `i18n.ts` MESSAGES 테이블에 ko/en/vi 모두 추가했는가?
+- [ ] `t(lang, 'new_key', ...args)` 호출 코드를 서버에 추가했는가?
+- [ ] 클라이언트가 `notify` 이벤트를 수신해 표시하는가?
+- [ ] `tsc --noEmit`으로 타입 오류 없음을 확인했는가?

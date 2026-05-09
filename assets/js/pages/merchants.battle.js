@@ -9,6 +9,8 @@ import { httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { hasSpriteConfig, createMonsterSpriteOverlay }
   from './merchants.monster-sprite.js';
+import { createPlayerSpriteOverlay }
+  from './merchants.player-sprite.js';
 import { MonsterGrid }
   from './merchants.monster-grid.js';
 import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster,
@@ -679,6 +681,8 @@ function takeDamage(rawAmount, sourceLat, sourceLng) {
     if (lat && lng) showFloat('💀 사망했습니다', '#fbbf24', lat, lng);
   } else {
     playSound('player_hit');
+    const spr = _ctx?.myLocationMarker;
+    if (spr && typeof spr.setState === 'function') spr.setState('hurt');
   }
   updateCombatHud();
   savePlayerState();
@@ -1007,7 +1011,9 @@ export async function useReviveTicket() {
 
     _isDead = false;
     _reviveWalkDist = 0;
-    refreshMyMarkerIcon();
+    const _rspr = _ctx?.myLocationMarker;
+    if (_rspr && typeof _rspr.revive === 'function') _rspr.revive();
+    else refreshMyMarkerIcon();
     _player.hp = Math.round(_player.maxHp * 0.5);
     _player.mp = Math.round(_player.maxMp * 0.5);
     sendPlayerRevive();  // GS 서버에 부활 동기화
@@ -1644,6 +1650,7 @@ function checkPlayerAutoAttack() {
   // ── 타워 스캔 (살아있고 쿨다운 없는 것만) ──
   for (const tower of _towers) {
     if (_towerAtkCd[tower.id]) continue;
+    if (_towerRespawn[tower.id]) continue;
     const st = getTowerHpState(tower);
     if (st.current <= 0) continue;
     const dSq = MonsterGrid.distSq(myLat, myLng, tower.lat, tower.lng);
@@ -1659,6 +1666,9 @@ function checkPlayerAutoAttack() {
   if (!target) return;
   _attackCd = true;
   setTimeout(() => { _attackCd = false; }, 1500);
+
+  const _spr = _ctx?.myLocationMarker;
+  if (_spr && typeof _spr.setState === 'function') _spr.setState('attack');
 
   playSound('arrow_shot');
   if (target.kind === 'tower') {
@@ -2123,21 +2133,27 @@ function makeLocationIcon(heading, isDead) {
 
 function refreshMyMarkerIcon() {
   const marker = _ctx?.myLocationMarker;
-  if (marker) marker.setIcon(makeLocationIcon(null, _isDead));
+  if (!marker) return;
+  if (typeof marker.setState === 'function') {
+    if (_isDead) marker.setState('die');
+    else         marker.setState('idle');
+  } else {
+    marker.setIcon(makeLocationIcon(null, _isDead));
+  }
 }
 
 // ── 내 위치 마커 업데이트 (실시간 GPS → ctx에 기록) ──────────────────────────
 export function updateMyLocation(lat, lng, accuracy, heading) {
-  const map = _ctx?.map;
+  const map    = _ctx?.map;
   const latLng = { lat, lng };
-  const icon = makeLocationIcon(heading, _isDead);
+
   if (_ctx.myLocationMarker) {
     _ctx.myLocationMarker.setPosition(latLng);
-    _ctx.myLocationMarker.setIcon(icon);
+    if (typeof _ctx.myLocationMarker.setFacing === 'function' && heading != null) {
+      _ctx.myLocationMarker.setFacing(heading);
+    }
   } else {
-    _ctx.myLocationMarker = new google.maps.Marker({
-      position: latLng, map, title: '내 위치', icon, zIndex: 100,
-    });
+    _ctx.myLocationMarker = createPlayerSpriteOverlay(latLng, map);
   }
   const radius = (accuracy && accuracy > 0) ? accuracy : 10;
   if (_ctx.myLocationAccCircle) {
@@ -2181,6 +2197,18 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
   }
   _ctx.lastDistPos  = { lat, lng };
   _ctx.lastSpeedPos = { lat, lng, time: Date.now() };
+
+  // Update sprite animation state based on speed / alive status
+  const spr = _ctx.myLocationMarker;
+  if (spr && typeof spr.setState === 'function' && !_isDead) {
+    const cur = spr._state;
+    if (cur !== 'attack' && cur !== 'hurt') {
+      if (_currentSpeed >= 8)        spr.setState('run');
+      else if (_currentSpeed >= 0.5) spr.setState('walk');
+      else                           spr.setState('idle');
+    }
+  }
+
   updateCombatHud();
 }
 
