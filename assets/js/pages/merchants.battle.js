@@ -64,6 +64,9 @@ let _decoMarkers     = [];
 let _frozenUntil     = {};     // { monsterId: expiryTimestamp } 동결 만료
 let _skillCd         = {};     // { lightning|ice|fire: expiryTimestamp }
 let _keyDefs         = [];     // [{ id, name, dropRate, image, active }] — treasure_keys
+let _deathLat        = null;   // 사망 위치 (재접속 시 마커 표시용)
+let _deathLng        = null;
+let _deathMarker     = null;   // google.maps.Marker — 사망 지점 해골 마커
 let _battleHpUnsub       = null;    // battle_hp onSnapshot 구독
 let _monsterRespawnTimers = {};      // { monsterId: timeoutId }
 let _monsterAggro        = {};      // { monsterId: uid } 어그로 캐시
@@ -568,6 +571,8 @@ export async function loadPlayerState() {
         _player.mp = Math.min(d.mp ?? _player.maxMp, _player.maxMp);
         _isDead         = d.isDead         === true;
         _reviveWalkDist = d.reviveWalkDist || 0;
+        _deathLat       = d.deathLat       || null;
+        _deathLng       = d.deathLng       || null;
       } else {
         _player.hp      = _player.maxHp;
         _player.mp      = _player.maxMp;
@@ -590,6 +595,8 @@ export async function loadPlayerState() {
   } catch { /* 무시 */ }
 
   updateCombatHud();
+  // 사망 상태로 재접속 → 맵이 준비됐으면 즉시, 아니면 showDeathMarkerIfDead()로 지연 표시
+  if (_isDead && _deathLat && _deathLng) _showDeathMarker();
 }
 
 let _saveTimer = null;
@@ -650,6 +657,8 @@ export function savePlayerState() {
         token: _player.token ?? 30,
         isDead: _isDead,
         reviveWalkDist: _reviveWalkDist,
+        deathLat: _deathLat ?? null,
+        deathLng: _deathLng ?? null,
         equippedWeapon: _player.equippedWeapon || 'weapon_100',
         equippedArmor:  _player.equippedArmor  || 'armo_10',
         updatedAt: serverTimestamp(),
@@ -673,6 +682,15 @@ function takeDamage(rawAmount, sourceLat, sourceLng) {
     _isDead = true;
     _player.hp = 0;
     _reviveWalkDist = 0;
+    const myMark2 = _ctx?.myLocationMarker;
+    if (myMark2) {
+      _deathLat = myMark2.getPosition().lat();
+      _deathLng = myMark2.getPosition().lng();
+    } else if (lat && lng) {
+      _deathLat = lat;
+      _deathLng = lng;
+    }
+    _showDeathMarker();
     refreshMyMarkerIcon();
     playSound('player_die');
     if (lat && lng) showFloat('💀 사망했습니다', '#fbbf24', lat, lng);
@@ -1021,6 +1039,7 @@ export async function useReviveTicket() {
 
     _isDead = false;
     _reviveWalkDist = 0;
+    _clearDeathMarker();
     const _rspr = _ctx?.myLocationMarker;
     if (_rspr && typeof _rspr.revive === 'function') _rspr.revive();
     else refreshMyMarkerIcon();
@@ -1526,6 +1545,7 @@ function battleTick() {
     if (_reviveWalkDist >= 50) {
       _isDead = false;
       _reviveWalkDist = 0;
+      _clearDeathMarker();
       refreshMyMarkerIcon();
       _player.hp = _player.maxHp;
       _player.mp = _player.maxMp;
@@ -2093,6 +2113,53 @@ export function toggleTowerRanges() {
     _showTowerRange ? '🙈 범위 숨기기' : '👁 범위 표시';
 }
 
+// ── 사망 마커 ─────────────────────────────────────────────────────────────────
+function _makeDeathMarkerIcon() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+    <circle cx="22" cy="22" r="20" fill="rgba(30,10,10,0.85)" stroke="#ff3333" stroke-width="2"/>
+    <text x="22" y="32" font-size="24" text-anchor="middle">💀</text>
+  </svg>`;
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(44, 44),
+    anchor:     new google.maps.Point(22, 22),
+  };
+}
+
+function _showDeathMarker() {
+  const map = _ctx?.map;
+  if (!map || !_deathLat || !_deathLng) return;
+  if (_deathMarker) { _deathMarker.setMap(null); _deathMarker = null; }
+  _deathMarker = new google.maps.Marker({
+    position: { lat: _deathLat, lng: _deathLng },
+    map,
+    title:    '사망 지점',
+    zIndex:   90,
+    icon:     _makeDeathMarkerIcon(),
+  });
+  // 인포윈도우
+  const iw = _ctx?.infoWindow;
+  _deathMarker.addListener('click', () => {
+    if (!iw) return;
+    iw.setContent(`<div style="font-size:13px;padding:4px 6px;">
+      💀 <strong>사망 지점</strong><br>
+      <span style="color:#888;font-size:11px;">부활하면 마커가 사라집니다</span>
+    </div>`);
+    iw.open(map, _deathMarker);
+  });
+}
+
+function _clearDeathMarker() {
+  if (_deathMarker) { _deathMarker.setMap(null); _deathMarker = null; }
+  _deathLat = null;
+  _deathLng = null;
+}
+
+/** 재접속 후 맵 초기화 완료 시 merchants.js에서 호출 */
+export function showDeathMarkerIfDead() {
+  if (_isDead && _deathLat && _deathLng) _showDeathMarker();
+}
+
 // ── 내 위치 마커 아이콘 생성 (방향 화살표 포함) ──────────────────────────────
 function makeLocationIcon(heading, isDead) {
   const hasHeading = !isDead && heading != null && !isNaN(heading) && isFinite(heading);
@@ -2246,10 +2313,15 @@ export function syncDeathFromServer() {
   _isDead         = true;
   _player.hp      = 0;
   _reviveWalkDist = 0;
-  refreshMyMarkerIcon();
-  playSound('player_die');
   const myMark = _ctx?.myLocationMarker;
   const pos    = myMark?.getPosition();
+  if (pos) {
+    _deathLat = pos.lat();
+    _deathLng = pos.lng();
+  }
+  _showDeathMarker();
+  refreshMyMarkerIcon();
+  playSound('player_die');
   if (pos) showFloat('💀 사망', '#fbbf24', pos.lat(), pos.lng());
   updateCombatHud();
   savePlayerState();
@@ -2263,6 +2335,7 @@ export function syncReviveFromServer(hp) {
   _isDead         = false;
   _player.hp      = hp;
   _reviveWalkDist = 0;
+  _clearDeathMarker();
   refreshMyMarkerIcon();
   playSound('revive');
   const myMark = _ctx?.myLocationMarker;

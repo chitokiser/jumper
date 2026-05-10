@@ -20,7 +20,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          spawnGsDrop, removeGsDrop,
          equipWeapon, equipArmor, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
          getEquippedWeapon, getEquippedArmor,
-         updateMyLocation }
+         updateMyLocation, showDeathMarkerIfDead }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
@@ -936,6 +936,7 @@ async function cleanupMyLocation() {
 let _gameStarted = false;
 function showMyLocation() {
   if (_gameStarted) return; // 이미 시작됨 → 무반응
+  if (!_uid) return; // 비로그인 차단
   if (!navigator.geolocation) { alert('이 브라우저는 위치 서비스를 지원하지 않습니다.'); return; }
 
   const btn = $('btnMyLocation');
@@ -1768,17 +1769,31 @@ async function init() {
     _uid       = user?.uid   || null;
     _userEmail = user?.email || null;
     _ctx.uid   = _uid;
+
+    const loginOverlay = $('gameLoginOverlay');
+    const gameToggle   = $('btnGameToggle');
+
     if (_uid) {
+      // 로그인됨 → 오버레이 숨김, 게임 버튼 활성화
+      if (loginOverlay) loginOverlay.style.display = 'none';
+      if (gameToggle)   gameToggle.disabled = false;
+
       const snap = await getDoc(doc(db, 'admins', _uid));
       _isAdmin = snap.exists() || (_userEmail === 'daguri75@gmail.com');
       _ctx.isAdmin = _isAdmin;
       // 전투 시스템: 플레이어 상태 로드 → 완료 후 교환권 재렌더 (gold 반영)
-      loadPlayerState().then(() => renderExchangeSection());
+      loadPlayerState().then(() => {
+        renderExchangeSection();
+        showDeathMarkerIfDead(); // playerState 로드 후 맵이 이미 준비된 경우 마커 표시
+      });
       // 인벤토리 + 교환권 섹션 갱신
       loadInventory();
       // 회원등급 표시
       _renderMemberStatus(_uid);
     } else {
+      // 비로그인 → 오버레이 표시, 게임 버튼 비활성화, 게임 서버 연결 차단
+      if (loginOverlay) loginOverlay.style.display = 'flex';
+      if (gameToggle)   gameToggle.disabled = true;
       _isAdmin = false;
       _ctx.isAdmin = false;
       _renderMemberStatus(null);
@@ -1809,6 +1824,7 @@ async function init() {
   // 지도 + 카드 즉시 표시
   if (window.google?.maps) {
     initMap();
+    showDeathMarkerIfDead(); // 사망 상태 재접속 시 해골 마커 표시
     renderMarkers(allMerchants);
     renderBoxMarkers();
     fitMapToAllMarkers();
@@ -1955,6 +1971,7 @@ async function init() {
   window.addEventListener('gs:forceRenderMonster', (e) => _renderGsMonster(e.detail));
 
   $('btnGameToggle')?.addEventListener('click', () => {
+    if (!_uid) return; // 비로그인 차단 (disabled이지만 방어코드 유지)
     if (isGameServerConnected()) {
       disconnectFromGameServer();
     } else {
