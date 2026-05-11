@@ -234,9 +234,41 @@ export function playSound(type) {
         tone(660,0.35,0.12,0.07);
         break;
       case 'arrow_hit':   noise(0.08,0.5); tone(220,0.3,0.1,0,'square'); break;
-      case 'player_hit':  tone(120,0.4,0.25,'sawtooth'); noise(0.1,0.3); break;
+      case 'player_hit': {
+        // 짧은 피격 비명 — 보이스 피치 다운스윕 + 임팩트
+        const phDur = 0.28;
+        const phOsc = ac.createOscillator(); phOsc.type = 'sawtooth';
+        phOsc.frequency.setValueAtTime(580, ac.currentTime);
+        phOsc.frequency.exponentialRampToValueAtTime(190, ac.currentTime + phDur);
+        const phBpf = ac.createBiquadFilter(); phBpf.type = 'bandpass'; phBpf.frequency.value = 1200; phBpf.Q.value = 3.5;
+        const phG = ac.createGain();
+        phG.gain.setValueAtTime(0.001, ac.currentTime);
+        phG.gain.linearRampToValueAtTime(0.55, ac.currentTime + 0.015);
+        phG.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + phDur);
+        phG.connect(ac.destination);
+        phOsc.connect(phBpf); phBpf.connect(phG);
+        phOsc.start(); phOsc.stop(ac.currentTime + phDur);
+        noise(0.04, 0.45);
+        break;
+      }
       case 'monster_die': [440,330,220,165].forEach((f,i)=>tone(f,0.28,0.14,i*0.09)); break;
-      case 'player_die':  tone(300,0.5,0.9,'triangle'); tone(80,0.3,0.7,0.1); break;
+      case 'player_die': {
+        // 사망 비명 — 길고 처절한 피치 다운스윕
+        const pdDur = 0.85;
+        const pdOsc = ac.createOscillator(); pdOsc.type = 'sawtooth';
+        pdOsc.frequency.setValueAtTime(500, ac.currentTime);
+        pdOsc.frequency.exponentialRampToValueAtTime(70, ac.currentTime + pdDur);
+        const pdBpf = ac.createBiquadFilter(); pdBpf.type = 'bandpass'; pdBpf.frequency.value = 950; pdBpf.Q.value = 2.5;
+        const pdG = ac.createGain();
+        pdG.gain.setValueAtTime(0.001, ac.currentTime);
+        pdG.gain.linearRampToValueAtTime(0.65, ac.currentTime + 0.02);
+        pdG.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + pdDur);
+        pdG.connect(ac.destination);
+        pdOsc.connect(pdBpf); pdBpf.connect(pdG);
+        pdOsc.start(); pdOsc.stop(ac.currentTime + pdDur);
+        tone(80, 0.3, 0.7, 0.1);
+        break;
+      }
       case 'heal':        [523,659,784].forEach((f,i)=>tone(f,0.18,0.1,i*0.07)); break;
       case 'revive':      [261,329,392,523,659,784].forEach((f,i)=>tone(f,0.3,0.15,i*0.09)); break;
       case 'gold_drop':   [1047,1319,1568].forEach((f,i)=>tone(f,0.35,0.18,i*0.07,'triangle')); break;
