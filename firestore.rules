@@ -373,43 +373,14 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
-    // ── ZaloPay 포인트 시스템 ──────────────────────────────────────
-    // zalo_requests: HEX → 포인트 전환 신청
-    match /zalo_requests/{docId} {
-      allow get: if isAdmin()
-        || (signedIn() && resource.data.uid == request.auth.uid);
-      allow list: if isAdmin()
-        || (signedIn()
-            && resource.data.uid is string
-            && resource.data.uid == request.auth.uid);
-      allow create, update, delete: if false; // Cloud Functions only
-    }
-
-    // zalo_usage: 포인트 사용 내역
-    match /zalo_usage/{docId} {
-      allow get: if isAdmin()
-        || (signedIn() && resource.data.uid == request.auth.uid);
-      allow list: if isAdmin()
-        || (signedIn()
-            && resource.data.uid is string
-            && resource.data.uid == request.auth.uid);
-      allow create, update, delete: if false; // Cloud Functions only
-    }
-
-    // zalo_transactions: 포인트 입출금 로그
-    match /zalo_transactions/{docId} {
-      allow get: if isAdmin()
-        || (signedIn() && resource.data.uid == request.auth.uid);
-      allow list: if isAdmin()
-        || (signedIn()
-            && resource.data.uid is string
-            && resource.data.uid == request.auth.uid);
-      allow create, update, delete: if false; // Cloud Functions only
-    }
 
     // ── 보물찾기 시스템 ────────────────────────────────────────────
     match /treasure_items/{docId} {
       allow get, list: if true;           // 아이템 정보 공개
+      allow write: if false;              // Cloud Function only
+    }
+    match /treasure_keys/{docId} {
+      allow get, list: if true;           // 열쇠 정의 공개 (클라이언트 드랍률 표시용)
       allow write: if false;              // Cloud Function only
     }
     match /treasure_boxes/{docId} {

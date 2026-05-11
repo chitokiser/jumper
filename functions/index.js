@@ -37,7 +37,6 @@ const txH                    = require('./handlers/transaction');
 const exchangeH              = require('./handlers/exchange');
 const coopH                  = require('./handlers/coop');
 const daoH                   = require('./handlers/dao');
-const zaloH                  = require('./handlers/zalopay');
 const treasureH              = require('./handlers/treasure');
 const communityH             = require('./handlers/community');
 const buggyH                 = require('./handlers/buggy');
@@ -979,35 +978,6 @@ exports.coopGetMyVouchers = onCall(
   })
 );
 
-// ════════════════════════════════════════════════════════════════════════════
-// ZaloPay 포인트 시스템
-// ════════════════════════════════════════════════════════════════════════════
-
-// 유저: HEX → Zalo포인트 즉시 전환 (2% 수수료 자동 처리, secrets 필요)
-exports.requestZaloConvert = onCall(
-  { secrets: [walletSecret, adminKeySecret] },
-  wrapError(async (request) => {
-    const uid = requireAuth(request);
-    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-    return await zaloH.requestZaloConvert(uid, request.data ?? {}, walletSecret.value());
-  })
-);
-
-// 유저: Zalo포인트 사용
-exports.useZaloBalance = onCall(
-  wrapError(async (request) => {
-    const uid = requireAuth(request);
-    return await zaloH.useZaloBalance(uid, request.data ?? {});
-  })
-);
-
-// 관리자: 사용 내역 정산 완료 처리
-exports.settleZaloUsage = onCall(
-  wrapError(async (request) => {
-    const adminUid = requireAuth(request);
-    return await zaloH.settleZaloUsage(adminUid, request.data ?? {});
-  })
-);
 
 // ════════════════════════════════════════════════════════════════════════════
 // 외부 Web3 개발자용 파트너 API

@@ -29,7 +29,6 @@ Claude Code가 이 프로젝트에서 작업할 때 **반드시 준수해야 할
 | `buggy.html` / `buggy-driver.html` / `buggy-admin.html` | 탈것 앱 |
 | `admin_coop.html` / `admin_jackpot.html` | 어드민 |
 | `merchants.html` | 가맹점 (게임 포함) |
-| `zalopay.html` | ZaloPay KRW→HEX 충전 |
 
 복잡한 페이지는 `.lib.js`, `.render.js`, `.hero.js` 서브모듈로 분리.
 
@@ -44,7 +43,6 @@ Claude Code가 이 프로젝트에서 작업할 때 **반드시 준수해야 할
 | `functions/handlers/exchange.js` | HEX ↔ JUMP 거래소 |
 | `functions/handlers/deposit.js` | HEX 입금 |
 | `functions/handlers/transaction.js` | 거래 내역 |
-| `functions/handlers/zalopay.js` | ZaloPay |
 | `functions/handlers/treasure.js` | 잭팟/보물상자 |
 | `functions/handlers/onboarding.js` | 가입/지갑 생성 |
 | `functions/wallet/chain.js` | ethers.js v6 — opBNB RPC, 컨트랙트 헬퍼 |

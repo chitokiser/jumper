@@ -40,7 +40,6 @@ const btnTabDeposits   = $("btnTabDeposits");
 const btnTabHex        = $("btnTabHex");
 const btnTabMembers    = $("btnTabMembers");
 const btnTabDao        = $("btnTabDao");
-const btnTabZalo       = $("btnTabZalo");
 const btnTabTreasure   = $("btnTabTreasure");
 const tabGuides        = $("tabGuides");
 const tabMerchants     = $("tabMerchants");
@@ -49,12 +48,9 @@ const tabDeposits      = $("tabDeposits");
 const tabHex           = $("tabHex");
 const tabMembers       = $("tabMembers");
 const tabDao           = $("tabDao");
-const tabZalo          = $("tabZalo");
 const tabTreasure      = $("tabTreasure");
 const daoApproveList   = $("daoApproveList");
 const btnReloadDao     = $("btnReloadDao");
-const btnReloadZaloReq = $("btnReloadZaloReq");
-const btnReloadZaloUsage = $("btnReloadZaloUsage");
 const itemsFilter      = $("itemsFilter");
 const merchantList     = $("merchantList");
 const btnReloadMerchants = $("btnReloadMerchants");
@@ -942,7 +938,6 @@ function showTab(which) {
   if (tabHex)       tabHex.style.display       = which === "hex"       ? "" : "none";
   if (tabMembers)   tabMembers.style.display   = which === "members"   ? "" : "none";
   if (tabDao)       tabDao.style.display       = which === "dao"       ? "" : "none";
-  if (tabZalo)      tabZalo.style.display      = which === "zalo"      ? "" : "none";
   if (tabTreasure)  tabTreasure.style.display  = which === "treasure"  ? "" : "none";
 
   // 툴바 부속 요소 가시성
@@ -958,7 +953,6 @@ function showTab(which) {
   btnTabDeposits?.classList.toggle("is-active",  which === "deposits");
   btnTabHex?.classList.toggle("is-active",       which === "hex");
   btnTabDao?.classList.toggle("is-active",       which === "dao");
-  btnTabZalo?.classList.toggle("is-active",      which === "zalo");
   btnTabTreasure?.classList.toggle("is-active",  which === "treasure");
 }
 
@@ -1072,9 +1066,6 @@ btnTabDeposits?.addEventListener("click", () => { showTab("deposits"); loadDepos
 btnTabHex?.addEventListener("click", () => { showTab("hex"); loadContractStatus(); checkHexAllowance(); });
 btnTabMembers?.addEventListener("click", () => { showTab("members"); });
 btnTabDao?.addEventListener("click", () => { showTab("dao"); loadDaoProposals(); });
-btnTabZalo?.addEventListener("click", () => { showTab("zalo"); loadZaloRequests(); loadZaloUsage(); });
-btnReloadZaloReq?.addEventListener("click", () => loadZaloRequests());
-btnReloadZaloUsage?.addEventListener("click", () => loadZaloUsage());
 
 // ── 관리자 셀프 온보딩 ──
 $("btnAdminSelfOnboard")?.addEventListener("click", async () => {
@@ -1312,195 +1303,6 @@ $("btnOwnerDepositHex")?.addEventListener("click", () => execOwnerDepositHex());
 $("btnCheckAllowance")?.addEventListener("click", () => checkHexAllowance());
 $("btnApproveHex")?.addEventListener("click", () => execApproveHex());
 $("btnRecordP2p")?.addEventListener("click", () => recordP2pTransferAction());
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ZaloPay 관리자 기능
-// ═══════════════════════════════════════════════════════════════════════════
-
-function fmtVnd(n) {
-  return Number(n || 0).toLocaleString() + "동";
-}
-
-function zaloBadge(status) {
-  const map = {
-    pending:   ["대기",    "#fef3c7", "#92400e"],
-    approved:  ["승인",    "#d1fae5", "#065f46"],
-    rejected:  ["거절",    "#fee2e2", "#991b1b"],
-    cancelled: ["취소",    "#f3f4f6", "#6b7280"],
-    settled:   ["정산완료", "#e0e7ff", "#3730a3"],
-  };
-  const [label, bg, color] = map[status] || ["?", "#f3f4f6", "#6b7280"];
-  return `<span style="display:inline-block;padding:2px 9px;border-radius:99px;font-size:0.75rem;font-weight:600;background:${bg};color:${color};">${label}</span>`;
-}
-
-// ── HEX → 포인트 전환 신청 목록 ──────────────────────────────────────────
-async function loadZaloRequests() {
-  const list = $("zaloRequestList");
-  if (!list) return;
-  list.innerHTML = `<div class="muted" style="padding:12px;">불러오는 중...</div>`;
-
-  const snap = await getDocs(
-    query(
-      collection(db, "zalo_requests"),
-      where("status", "==", "pending"),
-      orderBy("createdAt", "asc"),
-      limit(50)
-    )
-  );
-
-  if (snap.empty) {
-    list.innerHTML = `<div class="muted" style="padding:12px;">대기 중인 전환 신청이 없습니다.</div>`;
-    return;
-  }
-
-  list.innerHTML = "";
-  snap.forEach((d) => {
-    const r   = d.data();
-    const ts  = r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleString("ko-KR") : "-";
-
-    const el = cardWrap(`
-      <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:180px;">
-          <div style="font-weight:700;margin-bottom:4px;">
-            🔵 ${esc(r.displayName || r.email || r.uid)}
-            ${zaloBadge(r.status)}
-          </div>
-          <div class="muted" style="font-size:0.82rem;">${esc(r.email || "")} · ${ts}</div>
-          <div style="margin-top:6px;font-size:0.9rem;">
-            전환 요청: <strong>${r.hexAmount} HEX</strong>
-            ${r.vndAmount ? ` → 희망 ${fmtVnd(r.vndAmount)}` : ""}
-          </div>
-          ${r.note ? `<div style="font-size:0.82rem;color:var(--muted);margin-top:3px;">메모: ${esc(r.note)}</div>` : ""}
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;">
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="number" placeholder="지급 VND 입력"
-              style="width:140px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;"
-              id="zaloVnd_${esc(d.id)}"
-              value="${r.vndAmount || ""}"
-              min="1" step="1000" />
-            <button class="btn btn-sm" style="background:#0068FF;color:#fff;border:none;"
-              data-act="approveZalo" data-id="${esc(d.id)}">승인</button>
-          </div>
-          <div style="display:flex;gap:6px;">
-            <input type="text" placeholder="거절 사유 (선택)"
-              style="width:140px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;"
-              id="zaloNote_${esc(d.id)}" />
-            <button class="btn btn-sm" style="background:#e53e3e;color:#fff;border:none;"
-              data-act="rejectZalo" data-id="${esc(d.id)}">거절</button>
-          </div>
-        </div>
-      </div>
-    `);
-    list.appendChild(el);
-  });
-
-  // 이벤트 위임
-  list.onclick = async (e) => {
-    const btn = e.target.closest("[data-act]");
-    if (!btn) return;
-    const act = btn.dataset.act;
-    const id  = btn.dataset.id;
-    if (!id) return;
-
-    if (act === "approveZalo") {
-      const vndInput = $(`zaloVnd_${id}`);
-      const vndAmount = parseFloat(vndInput?.value || 0);
-      if (!vndAmount || vndAmount <= 0) { alert("지급할 VND 금액을 입력해 주세요."); return; }
-      if (!confirm(`${vndAmount.toLocaleString()}동을 지급 승인합니다. 계속하시겠습니까?`)) return;
-      btn.disabled = true; btn.textContent = "처리 중...";
-      try {
-        await httpsCallable(functions, "approveZaloRequest")({ requestId: id, vndAmount });
-        setState("ZaloPay 전환 승인 완료");
-        await loadZaloRequests();
-      } catch (err) {
-        alert("승인 실패: " + err.message);
-        btn.disabled = false; btn.textContent = "승인";
-      }
-    }
-
-    if (act === "rejectZalo") {
-      const noteInput = $(`zaloNote_${id}`);
-      const adminNote = noteInput?.value?.trim() || "";
-      if (!confirm("이 신청을 거절합니다. 계속하시겠습니까?")) return;
-      btn.disabled = true; btn.textContent = "처리 중...";
-      try {
-        await httpsCallable(functions, "rejectZaloRequest")({ requestId: id, adminNote });
-        setState("ZaloPay 전환 거절 완료");
-        await loadZaloRequests();
-      } catch (err) {
-        alert("거절 실패: " + err.message);
-        btn.disabled = false; btn.textContent = "거절";
-      }
-    }
-  };
-}
-
-// ── 포인트 사용 정산 목록 ─────────────────────────────────────────────────
-async function loadZaloUsage() {
-  const list = $("zaloUsageList");
-  if (!list) return;
-  list.innerHTML = `<div class="muted" style="padding:12px;">불러오는 중...</div>`;
-
-  const snap = await getDocs(
-    query(
-      collection(db, "zalo_usage"),
-      where("status", "==", "pending"),
-      orderBy("createdAt", "asc"),
-      limit(50)
-    )
-  );
-
-  if (snap.empty) {
-    list.innerHTML = `<div class="muted" style="padding:12px;">정산 대기 중인 사용 내역이 없습니다.</div>`;
-    return;
-  }
-
-  list.innerHTML = "";
-  snap.forEach((d) => {
-    const r  = d.data();
-    const ts = r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleString("ko-KR") : "-";
-
-    const el = cardWrap(`
-      <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:180px;">
-          <div style="font-weight:700;margin-bottom:4px;">
-            💸 ${esc(r.displayName || r.email || r.uid)}
-            ${zaloBadge(r.status)}
-          </div>
-          <div class="muted" style="font-size:0.82rem;">${esc(r.email || "")} · ${ts}</div>
-          <div style="margin-top:6px;font-size:0.9rem;">
-            사용 금액: <strong>${fmtVnd(r.vndAmount)}</strong>
-          </div>
-          <div style="font-size:0.85rem;margin-top:3px;">목적: ${esc(r.purpose || "-")}</div>
-          ${r.recipientInfo ? `<div style="font-size:0.82rem;color:var(--muted);">수취인: ${esc(r.recipientInfo)}</div>` : ""}
-        </div>
-        <div style="flex-shrink:0;">
-          <button class="btn btn-sm" style="background:#0068FF;color:#fff;border:none;"
-            data-act="settleZalo" data-id="${esc(d.id)}">정산 완료</button>
-        </div>
-      </div>
-    `);
-    list.appendChild(el);
-  });
-
-  // 이벤트 위임
-  list.onclick = async (e) => {
-    const btn = e.target.closest("[data-act='settleZalo']");
-    if (!btn) return;
-    const id = btn.dataset.id;
-    if (!confirm("이 사용 내역을 정산 완료 처리합니다. 계속하시겠습니까?")) return;
-    btn.disabled = true; btn.textContent = "처리 중...";
-    try {
-      await httpsCallable(functions, "settleZaloUsage")({ usageId: id });
-      setState("ZaloPay 정산 완료 처리됨");
-      await loadZaloUsage();
-    } catch (err) {
-      alert("정산 실패: " + err.message);
-      btn.disabled = false; btn.textContent = "정산 완료";
-    }
-  };
-}
 
 // ── 보물찾기 관리 ──────────────────────────────────────────────────────────
 
