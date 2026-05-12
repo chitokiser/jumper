@@ -41,6 +41,7 @@
       <div class="ftr-title">고객 문의</div>
       <a href="/faq.html">자주 묻는 질문</a>
       <a href="/family-register.html">제휴/입점 문의</a>
+      <button id="btnSupportChat" class="ftr-chat-btn" type="button">💬 1:1 채팅 문의</button>
     </div>
 
   </div>
@@ -49,5 +50,19 @@
     © jumper · <span>Experience Marketplace</span>
   </div>
 </footer>
+
+<!-- 플로팅 1:1 채팅 위젯 -->
+<div id="supportChatWidget" class="sc-widget hidden" role="dialog" aria-label="1:1 채팅 문의">
+  <div class="sc-hdr">
+    <span class="sc-title">💬 1:1 채팅 문의</span>
+    <span id="scAdminStatus" class="sc-status">🔴 오프라인</span>
+    <button class="sc-close" id="scBtnClose" type="button" aria-label="닫기">✕</button>
+  </div>
+  <div class="sc-msgs" id="scMessages"></div>
+  <form class="sc-form" id="scForm">
+    <input class="sc-input" id="scInput" type="text" placeholder="메시지를 입력하세요..." autocomplete="off" maxlength="500" />
+    <button class="sc-send" type="submit">전송</button>
+  </form>
+</div>
 
 

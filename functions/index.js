@@ -16,7 +16,7 @@
 'use strict';
 
 const admin = require('firebase-admin');
-const { onDocumentWritten }  = require('firebase-functions/v2/firestore');
+const { onDocumentWritten, onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule }         = require('firebase-functions/v2/scheduler');
 const { defineSecret }       = require('firebase-functions/params');
@@ -29,6 +29,7 @@ const db = admin.firestore();
 const walletSecret  = defineSecret('WALLET_MASTER_SECRET');
 const adminKeySecret= defineSecret('ADMIN_PRIVATE_KEY');
 const extApiSecret  = defineSecret('PARTNER_API_KEY');
+const geminiSecret  = defineSecret('GEMINI_API_KEY');
 
 // ── 핸들러 ───────────────────────────────────────────────────────────────────
 const onboarding             = require('./handlers/onboarding');
@@ -40,6 +41,7 @@ const daoH                   = require('./handlers/dao');
 const treasureH              = require('./handlers/treasure');
 const communityH             = require('./handlers/community');
 const buggyH                 = require('./handlers/buggy');
+const supportChatH           = require('./handlers/supportChat');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1709,3 +1711,16 @@ exports.adminToggleMerchant = onCall(wrapError(async (req) => {
   logger.info('adminToggleMerchant', { adminUid, merchantId, active });
   return { ok: true, merchantId, active };
 }));
+
+// ════════════════════════════════════════════════════════════════════════════
+// 1:1 채팅 AI 자동 응답 (관리자 오프라인 시 Gemini가 대신 답변)
+// ════════════════════════════════════════════════════════════════════════════
+exports.onSupportChatMessage = onDocumentCreated(
+  {
+    document: 'support_chats/{uid}/messages/{msgId}',
+    secrets: [geminiSecret],
+  },
+  async (event) => {
+    await supportChatH.onNewSupportMessage(event, geminiSecret.value());
+  }
+);

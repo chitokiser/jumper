@@ -75,6 +75,7 @@ let _aggroClaimed        = new Set(); // 이미 어그로 클레임한 몬스터
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST    = 100;
 const SKILL_RANGE_M    = 100;
+const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오브제 표시
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
 const SKILL_FREEZE_MS = 20000;
 
@@ -104,6 +105,12 @@ export function initBattle(ctx, callbacks) {
   _ctx._onCheckProximity    = callbacks.onCheckProximity    || (() => {});
   _ctx._onLoadInventory     = callbacks.onLoadInventory     || (() => {});
   _ctx._onUpdateDistDisplay = callbacks.onUpdateDistDisplay || (() => {});
+
+  // 줌 변경 시 가시성 갱신 (OVERVIEW_ZOOM 이하면 전체 표시)
+  ctx.map?.addListener('zoom_changed', () => {
+    const pos = _ctx?.lastPos;
+    _refreshBattleVisibility(pos?.lat, pos?.lng);
+  });
 
   // GS 스폰 목록 새로고침 버튼
   document.getElementById('btnRefreshGsSpawns')?.addEventListener('click', () => refreshGsSpawnList());
@@ -1184,11 +1191,14 @@ export async function loadDecorations() {
 function renderDecoMarkers() {
   const map = _ctx?.map;
   const infoWindow = _ctx?.infoWindow;
+  const overview = _ctx?.isAdmin || (map?.getZoom() ?? 18) <= OVERVIEW_ZOOM;
+  const myPos = _ctx?.lastPos;
   _decoMarkers.forEach(d => {
     if (d.marker) d.marker.setMap(null);
     const size = d.size || 48;
+    const visible = overview || !myPos || haversine(myPos.lat, myPos.lng, d.lat, d.lng) <= SKILL_RANGE_M;
     const marker = new google.maps.Marker({
-      position: { lat: d.lat, lng: d.lng }, map,
+      position: { lat: d.lat, lng: d.lng }, map: visible ? map : null,
       title: d.name || '',
       icon: { url: d.imageUrl, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size/2, size/2) },
       zIndex: 5,
@@ -1250,20 +1260,30 @@ function getTowerIcon(image, type) {
            scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
 }
 
-// ── 마커 가시 범위 갱신 (GPS 이동 시 호출) ───────────────────────────────────
+// ── 마커 가시 범위 갱신 (GPS 이동 또는 줌 변경 시 호출) ──────────────────────
 function _refreshBattleVisibility(myLat, myLng) {
   const map = _ctx?.map;
   if (!map) return;
+  const overview = _ctx?.isAdmin || (map.getZoom() ?? 18) <= OVERVIEW_ZOOM;
+  const hasPos = myLat != null && myLng != null;
+
+  function show(lat, lng) {
+    return overview || !hasPos || haversine(myLat, myLng, lat, lng) <= SKILL_RANGE_M;
+  }
+
   for (const mob of _monsters) {
     if (!mob.lat || !mob.lng) continue;
-    const near = haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M;
-    _monsterMarkers[mob.id]?.setMap(near ? map : null);
-    _monsterOverlays[mob.id]?.setMap?.(near ? map : null);
+    const vis = show(mob.lat, mob.lng);
+    _monsterMarkers[mob.id]?.setMap(vis ? map : null);
+    _monsterOverlays[mob.id]?.setMap?.(vis ? map : null);
   }
   for (const tower of _towers) {
     if (!tower.lat || !tower.lng) continue;
-    const near = haversine(myLat, myLng, tower.lat, tower.lng) <= SKILL_RANGE_M;
-    _towerMarkers[tower.id]?.setMap(near ? map : null);
+    _towerMarkers[tower.id]?.setMap(show(tower.lat, tower.lng) ? map : null);
+  }
+  for (const d of _decoMarkers) {
+    if (!d.lat || !d.lng || !d.marker) continue;
+    d.marker.setMap(show(d.lat, d.lng) ? map : null);
   }
 }
 
@@ -1273,7 +1293,8 @@ function _spawnMonsterMarker(mob) {
   if (!map || !mob.lat || !mob.lng) return;
   // 플레이어 위치 기준 100m 밖이면 마커 숨김
   const myPos = _ctx?.lastPos;
-  const startVisible = !myPos || haversine(myPos.lat, myPos.lng, mob.lat, mob.lng) <= SKILL_RANGE_M;
+  const overview = _ctx?.isAdmin || (_ctx?.map?.getZoom() ?? 18) <= OVERVIEW_ZOOM;
+  const startVisible = overview || !myPos || haversine(myPos.lat, myPos.lng, mob.lat, mob.lng) <= SKILL_RANGE_M;
 
   // ── 스프라이트 타입 (dragon 등) ─────────────────────────────────────────────
   // image 필드가 단순 PNG 파일명(예: 23.png, 22.png)이면 스프라이트 무시 → 일반 마커
@@ -1514,7 +1535,8 @@ function renderTowerMarkers() {
     if (!tower.lat || !tower.lng) continue;
     // 리스폰 대기 중(파괴됨)이면 마커 생략
     if (_towerRespawn[tower.id]) continue;
-    const towerVisible = !myPos || haversine(myPos.lat, myPos.lng, tower.lat, tower.lng) <= SKILL_RANGE_M;
+    const overview2 = _ctx?.isAdmin || (map?.getZoom() ?? 18) <= OVERVIEW_ZOOM;
+    const towerVisible = overview2 || !myPos || haversine(myPos.lat, myPos.lng, tower.lat, tower.lng) <= SKILL_RANGE_M;
     const towerMap = towerVisible ? map : null;
     _towerMarkers[tower.id] = createTowerMarker(tower, towerMap, infoWindow);
 

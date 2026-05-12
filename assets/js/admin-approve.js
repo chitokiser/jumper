@@ -41,6 +41,7 @@ const btnTabHex        = $("btnTabHex");
 const btnTabMembers    = $("btnTabMembers");
 const btnTabDao        = $("btnTabDao");
 const btnTabTreasure   = $("btnTabTreasure");
+const btnTabChat       = $("btnTabChat");
 const tabGuides        = $("tabGuides");
 const tabMerchants     = $("tabMerchants");
 const tabItems         = $("tabItems");
@@ -49,6 +50,7 @@ const tabHex           = $("tabHex");
 const tabMembers       = $("tabMembers");
 const tabDao           = $("tabDao");
 const tabTreasure      = $("tabTreasure");
+const tabChat          = $("tabChat");
 const daoApproveList   = $("daoApproveList");
 const btnReloadDao     = $("btnReloadDao");
 const itemsFilter      = $("itemsFilter");
@@ -939,6 +941,7 @@ function showTab(which) {
   if (tabMembers)   tabMembers.style.display   = which === "members"   ? "" : "none";
   if (tabDao)       tabDao.style.display       = which === "dao"       ? "" : "none";
   if (tabTreasure)  tabTreasure.style.display  = which === "treasure"  ? "" : "none";
+  if (tabChat)      tabChat.style.display      = which === "chat"      ? "" : "none";
 
   // 툴바 부속 요소 가시성
   if (itemsFilter)       itemsFilter.style.display       = which === "items"     ? "" : "none";
@@ -954,6 +957,7 @@ function showTab(which) {
   btnTabHex?.classList.toggle("is-active",       which === "hex");
   btnTabDao?.classList.toggle("is-active",       which === "dao");
   btnTabTreasure?.classList.toggle("is-active",  which === "treasure");
+  btnTabChat?.classList.toggle("is-active",      which === "chat");
 }
 
 async function checkAdmin(user) {
@@ -987,7 +991,7 @@ async function bootAdmin(user) {
     if (ok) selItemStatus.value = status;
   }
 
-  const validTab = ["guides", "merchants", "items", "deposits", "hex", "members", "dao"].includes(tab) ? tab : "guides";
+  const validTab = ["guides", "merchants", "items", "deposits", "hex", "members", "dao", "chat"].includes(tab) ? tab : "guides";
   showTab(validTab);
 
   if (validTab === "merchants") {
@@ -1603,6 +1607,7 @@ btnTabTreasure?.addEventListener("click", () => {
   loadVouchersList();
   loadTreasureKeysList();
 });
+btnTabChat?.addEventListener("click", () => showTab("chat"));
 
 // ── 무기 등록 ──────────────────────────────────────────────────────────────────
 function updateWeaponPreview() {

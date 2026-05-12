@@ -572,6 +572,28 @@ service cloud.firestore {
       allow write: if signedIn();
     }
 
+    // ── 1:1 고객 채팅 ────────────────────────────────────────────
+    match /admin_status/{docId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /support_chats/{uid} {
+      allow get, list: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow delete: if false;
+
+      match /messages/{msgId} {
+        allow get, list: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow update: if isAdmin()
+          || (signedIn() && request.auth.uid == uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["readByUser"]));
+        allow delete: if false;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

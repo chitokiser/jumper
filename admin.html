@@ -35,6 +35,7 @@
               <button class="btn btn-sm" id="btnTabMembers" type="button">멤버 관리</button>
               <button class="btn btn-sm" id="btnTabDao" type="button">DAO 승인</button>
               <button class="btn btn-sm" id="btnTabTreasure" type="button">🎁 보물찾기</button>
+              <button class="btn btn-sm" id="btnTabChat" type="button">💬 채팅</button>
             </div>
 
             <div class="toolbar-right">
@@ -502,6 +503,27 @@
 
           </div>
 
+          <!-- ── 1:1 채팅 관리 탭 ── -->
+          <div id="tabChat" style="display:none;">
+            <div class="list-head" style="align-items:center;">
+              <div class="muted">1:1 고객 채팅</div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span id="adminOnlineLabel">🔴 오프라인</span>
+                <button class="btn btn-sm" id="btnToggleAdminOnline" type="button">온라인 전환</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:8px;">
+              <div id="chatSessionList" style="width:200px;min-width:160px;border-right:1px solid #e2e8f0;padding-right:12px;max-height:500px;overflow-y:auto;"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+                <div id="adminChatMessages" style="height:350px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:8px;"></div>
+                <form id="adminChatForm" style="display:flex;gap:8px;">
+                  <input type="text" id="adminChatInput" class="select" style="flex:1;" placeholder="답장 메시지 입력..." autocomplete="off" maxlength="500" />
+                  <button class="btn btn-sm" type="submit">전송</button>
+                </form>
+                <div id="adminChatTarget" class="muted" style="font-size:12px;"></div>
+              </div>
+            </div>
+          </div>
 
         </div>
       </div>
@@ -522,5 +544,6 @@
 
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/admin-approve.js"></script>
+  <script type="module" src="/assets/js/admin-support-chat.js"></script>
 </body>
 </html>

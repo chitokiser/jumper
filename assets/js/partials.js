@@ -103,6 +103,19 @@
     }
   }
 
+  function ensureSupportChatScript() {
+    try {
+      if (document.querySelector('script[data-support-chat="1"]')) return;
+      const s = document.createElement("script");
+      s.type = "module";
+      s.src = "/assets/js/support-chat.js";
+      s.dataset.supportChat = "1";
+      document.head.appendChild(s);
+    } catch (e) {
+      console.warn("ensureSupportChatScript failed:", e?.message || e);
+    }
+  }
+
   async function loadInto(id, urlPath) {
     const el = document.getElementById(id);
     if (!el) return false;
@@ -130,6 +143,7 @@
 
       await loadInto("siteHeader", "/partials/header.html");
       await loadInto("siteFooter", "/partials/footer.html");
+      ensureSupportChatScript();
 
       window.dispatchEvent(new CustomEvent("partials:loaded"));
       window.dispatchEvent(new CustomEvent("partials:mounted"));
