@@ -442,7 +442,60 @@ exports.adminBulkChangeMentor = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 17-c. 관리자: 유저 온체인 레벨 설정
+// 17-c. 관리자: 멘토 일괄변경 대상 주소 조회 (Rabby 서명용 — 온체인 tx 없음)
+//       클라이언트: httpsCallable(functions, 'adminGetMentorTargets')({ targetUids? })
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminGetMentorTargets = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    const { targetUids } = request.data ?? {};
+    const db = admin.firestore();
+    let snapshotDocs;
+    if (targetUids && targetUids.length > 0) {
+      const docs = await Promise.all(targetUids.map(u => db.collection('users').doc(u).get()));
+      snapshotDocs = docs;
+    } else {
+      const snap = await db.collection('users').where('onChain.registered', '==', true).get();
+      snapshotDocs = snap.docs;
+    }
+    const targets = snapshotDocs
+      .filter(d => d.exists && d.data()?.wallet?.address && d.data()?.onChain?.registered)
+      .map(d => ({ uid: d.id, address: d.data().wallet.address }));
+    return { targets };
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 17-c1. 관리자: uid/이메일 → 지갑 주소 조회 (Rabby 서명용 — 온체인 tx 없음)
+//        클라이언트: httpsCallable(functions, 'adminLookupUserAddress')({ emailOrUid })
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminLookupUserAddress = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    const { emailOrUid } = request.data ?? {};
+    if (!emailOrUid) throw new HttpsError('invalid-argument', 'emailOrUid가 필요합니다');
+    const db = admin.firestore();
+    let userUid, address;
+    if (emailOrUid.includes('@')) {
+      const snap = await db.collection('users').where('email', '==', emailOrUid.toLowerCase().trim()).limit(1).get();
+      if (snap.empty) throw new HttpsError('not-found', `유저를 찾을 수 없습니다: ${emailOrUid}`);
+      userUid = snap.docs[0].id;
+      address = snap.docs[0].data()?.wallet?.address;
+    } else {
+      const snap = await db.collection('users').doc(emailOrUid).get();
+      if (!snap.exists) throw new HttpsError('not-found', `유저를 찾을 수 없습니다: ${emailOrUid}`);
+      userUid = snap.id;
+      address = snap.data()?.wallet?.address;
+    }
+    if (!address) throw new HttpsError('failed-precondition', '해당 유저에게 지갑이 없습니다');
+    return { uid: userUid, address };
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 17-c2. 관리자: 유저 온체인 레벨 설정 (레거시 — 수탁지갑용, Rabby 방식 권장)
 //       클라이언트: httpsCallable(functions, 'adminSetUserLevel')({ emailOrUid, level })
 // ════════════════════════════════════════════════════════════════════════════
 exports.adminSetUserLevel = onCall(
@@ -980,6 +1033,23 @@ exports.coopGetMyVouchers = onCall(
   })
 );
 
+// ════════════════════════════════════════════════════════════════════════════
+// FX 환율 조회 (온체인) — 로그인 유저 누구나 호출 가능
+//    클라이언트: httpsCallable(functions, 'getExchangeRates')()
+//    반환: { krwPerHex, vndPerHex }
+// ════════════════════════════════════════════════════════════════════════════
+exports.getExchangeRates = onCall(
+  {},
+  wrapError(async (_request) => {
+    const { fetchExchangeRates } = require('./wallet/exchange');
+    const rates = await fetchExchangeRates();
+    // 1 HEX = 1 USD peg
+    const krwPerHex = rates.krwPerUsd;
+    const vndPerHex = rates.vndPerUsd;
+    logger.info('[getExchangeRates]', { krwPerHex, vndPerHex, source: rates.source });
+    return { krwPerHex, vndPerHex };
+  })
+);
 
 // ════════════════════════════════════════════════════════════════════════════
 // 외부 Web3 개발자용 파트너 API

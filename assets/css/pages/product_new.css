@@ -140,6 +140,14 @@
   justify-content:flex-start;
 }
 
+.price-preview{
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.price-preview.hidden{ display:none; }
+
 .sticky-bar .muted{
   color: var(--muted);
   font-size: 12px;

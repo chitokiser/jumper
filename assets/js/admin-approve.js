@@ -16,8 +16,18 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
+import { BrowserProvider, Contract } from 'https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.min.js';
 
 import { db, functions } from "/assets/js/firebase-init.js";
+
+// jumpPlatform — onlyOwner 함수만 포함
+const PLATFORM_ADDRESS = '0x4d83A7764428fd1c116062aBb60c329E0E29f490';
+const PLATFORM_OWNER_ABI = [
+  'function adminSetLevel(address user, uint32 level_) external',
+  'function adminChangeMentor(address user, address newMentor) external',
+];
+
+let _ownerSigner = null;  // Rabby/MetaMask 연결 후 저장
 
 
 function $(id) {
@@ -1103,9 +1113,26 @@ $("btnAdminSelfOnboard")?.addEventListener("click", async () => {
   }
 });
 
-// ── 멘토 일괄 변경 ──
+// ── 온체인 지갑 연결 ──
+$("btnConnectOwnerWallet")?.addEventListener("click", async () => {
+  if (!window.ethereum) { alert("Rabby 또는 MetaMask가 설치되어 있지 않습니다."); return; }
+  try {
+    const provider = new BrowserProvider(window.ethereum, { chainId: 204, name: 'opBNB' });
+    await provider.send('eth_requestAccounts', []);
+    _ownerSigner = await provider.getSigner();
+    const addr = await _ownerSigner.getAddress();
+    const label = $("ownerWalletLabel");
+    if (label) label.textContent = `연결됨: ${addr.slice(0,6)}…${addr.slice(-4)}`;
+    $("btnConnectOwnerWallet").textContent = "✅ 연결됨";
+  } catch (err) {
+    alert("지갑 연결 실패: " + (err.message || ""));
+  }
+});
+
+// ── 멘토 일괄 변경 (Rabby 서명) ──
 $("btnBulkChangeMentor")?.addEventListener("click", async () => {
   if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+  if (!_ownerSigner) { alert("먼저 지갑을 연결하세요."); return; }
 
   const mentorAddress = ($("inputNewMentorAddr")?.value || "").trim();
   if (!mentorAddress.startsWith("0x")) { alert("유효한 지갑 주소를 입력하세요."); return; }
@@ -1121,20 +1148,41 @@ $("btnBulkChangeMentor")?.addEventListener("click", async () => {
   const btn = $("btnBulkChangeMentor");
   const resultBox = $("bulkMentorResult");
   btn.disabled = true;
-  btn.textContent = "처리 중...";
+  btn.textContent = "주소 조회 중...";
   resultBox.style.display = "none";
 
   try {
-    const fn  = httpsCallable(functions, "adminBulkChangeMentor");
-    const res = await fn({ mentorAddress, targetUids });
-    const d   = res.data;
+    // Cloud Function으로 Firestore에서 대상 주소 목록만 조회
+    const fn  = httpsCallable(functions, "adminGetMentorTargets");
+    const res = await fn({ targetUids });
+    const targets = res.data.targets;  // [{ uid, address }]
+
+    const platform = new Contract(PLATFORM_ADDRESS, PLATFORM_OWNER_ABI, _ownerSigner);
+    let updated = 0, skipped = 0, failed = 0;
+    const failDetails = [];
+
+    btn.textContent = `서명 중... (0/${targets.length})`;
+    for (let i = 0; i < targets.length; i++) {
+      const { uid, address } = targets[i];
+      btn.textContent = `서명 중... (${i + 1}/${targets.length})`;
+      try {
+        const tx = await platform.adminChangeMentor(address, mentorAddress);
+        await tx.wait();
+        updated++;
+      } catch (err) {
+        if (err.code === 4001) throw err;  // 사용자 거절 → 전체 중단
+        failed++;
+        failDetails.push({ uid, error: err.reason || err.message });
+      }
+    }
+
     resultBox.style.display = "";
     resultBox.innerHTML = `
       <div style="color:var(--accent); font-weight:600;">✓ 완료</div>
-      <div>변경됨: <strong>${d.updated}</strong>명 / 스킵: ${d.skipped}명 / 실패: ${d.failed}명</div>
-      ${d.details?.failed?.length ? `<div style="color:#ef4444; margin-top:6px;">실패: ${JSON.stringify(d.details.failed)}</div>` : ""}
+      <div>변경됨: <strong>${updated}</strong>명 / 스킵: ${skipped}명 / 실패: ${failed}명</div>
+      ${failDetails.length ? `<div style="color:#ef4444; margin-top:6px;">실패: ${JSON.stringify(failDetails)}</div>` : ""}
     `;
-    setState(`멘토 일괄 변경 완료 — ${d.updated}명 업데이트`);
+    setState(`멘토 일괄 변경 완료 — ${updated}명 업데이트`);
   } catch (err) {
     alert("실패: " + (err.message || String(err)));
     setState("멘토 일괄 변경 실패");
@@ -1144,9 +1192,10 @@ $("btnBulkChangeMentor")?.addEventListener("click", async () => {
   }
 });
 
-// ── 유저 레벨 설정 ──
+// ── 유저 레벨 설정 (Rabby 서명) ──
 $("btnSetUserLevel")?.addEventListener("click", async () => {
   if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+  if (!_ownerSigner) { alert("먼저 지갑을 연결하세요."); return; }
 
   const emailOrUid = ($("inputSetLevelUser")?.value || "").trim();
   if (!emailOrUid) { alert("이메일 또는 UID를 입력하세요."); return; }
@@ -1154,29 +1203,41 @@ $("btnSetUserLevel")?.addEventListener("click", async () => {
   const level = parseInt($("inputSetLevel")?.value || "0", 10);
   if (!level || level < 1 || level > 10) { alert("레벨은 1~10 사이 정수여야 합니다."); return; }
 
-  if (!confirm(`[${emailOrUid}]\n온체인 레벨을 ${level}로 설정합니다.\n계속하시겠습니까?`)) return;
-
   const btn = $("btnSetUserLevel");
   const resultBox = $("setLevelResult");
   btn.disabled = true;
-  btn.textContent = "처리 중...";
+  btn.textContent = "주소 조회 중...";
   resultBox.style.display = "none";
 
   try {
-    const fn  = httpsCallable(functions, "adminSetUserLevel");
-    const res = await fn({ emailOrUid, level });
-    const d   = res.data;
+    // Cloud Function으로 uid/이메일 → 지갑 주소 조회
+    const fn  = httpsCallable(functions, "adminLookupUserAddress");
+    const res = await fn({ emailOrUid });
+    const { uid, address } = res.data;
+
+    if (!confirm(`[${uid}]\n주소: ${address.slice(0,10)}…\n온체인 레벨을 ${level}로 설정합니다.\n계속하시겠습니까?`)) {
+      btn.disabled = false;
+      btn.textContent = "레벨 설정 실행";
+      return;
+    }
+
+    btn.textContent = "서명 요청 중...";
+    const platform = new Contract(PLATFORM_ADDRESS, PLATFORM_OWNER_ABI, _ownerSigner);
+    const tx = await platform.adminSetLevel(address, level);
+    btn.textContent = "Tx 확인 중...";
+    const receipt = await tx.wait();
+
     resultBox.style.display = "";
     resultBox.innerHTML = `
       <div style="color:var(--accent); font-weight:600;">✓ 완료</div>
-      <div>UID: ${esc(d.uid)}</div>
-      <div>주소: <span style="font-family:monospace;font-size:12px;">${esc(d.address)}</span></div>
-      <div>레벨: <strong>${esc(String(d.level))}</strong></div>
-      <div>txHash: <span style="font-family:monospace;font-size:12px;">${esc((d.txHash || "").slice(0, 30))}…</span></div>
+      <div>UID: ${esc(uid)}</div>
+      <div>주소: <span style="font-family:monospace;font-size:12px;">${esc(address)}</span></div>
+      <div>레벨: <strong>${level}</strong></div>
+      <div>txHash: <span style="font-family:monospace;font-size:12px;">${esc(receipt.hash.slice(0, 30))}…</span></div>
     `;
-    setState(`레벨 설정 완료 — ${d.uid} → Lv.${d.level}`);
+    setState(`레벨 설정 완료 — ${uid} → Lv.${level}`);
   } catch (err) {
-    alert("실패: " + (err.message || String(err)));
+    alert("실패: " + (err.reason || err.message || String(err)));
     setState("레벨 설정 실패");
   } finally {
     btn.disabled = false;

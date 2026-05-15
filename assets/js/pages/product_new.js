@@ -10,6 +10,44 @@
 
 import { onAuthReady, db } from "../auth.js";
 import { doc, getDoc, collection, addDoc, serverTimestamp } from "../firestore-bridge.js";
+import { functions } from "../firebase-init.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
+
+let _fx = null; // { krwPerHex, vndPerHex }
+
+let _fxError = null;
+
+async function loadFxRates() {
+  try {
+    const fn = httpsCallable(functions, 'getExchangeRates');
+    const { data } = await fn();
+    if (data?.krwPerHex > 0) {
+      _fx = { krwPerHex: data.krwPerHex, vndPerHex: data.vndPerHex };
+      _fxError = null;
+    } else {
+      _fxError = '환율 데이터 없음';
+    }
+  } catch (err) {
+    _fxError = err?.code || err?.message || '환율 조회 실패';
+    console.error('[loadFxRates]', err);
+  }
+  updatePricePreview();
+}
+
+function updatePricePreview() {
+  const hexVal = parseFloat($('pPrice')?.value);
+  const preview = $('pricePreview');
+  if (!preview) return;
+  if (!hexVal || hexVal <= 0) { preview.classList.add('hidden'); return; }
+  preview.classList.remove('hidden');
+  if (!_fx) {
+    $('prevKrw').textContent = _fxError ? `환율 오류: ${_fxError}` : '환율 로딩 중...';
+    $('prevVnd').textContent = '';
+    return;
+  }
+  $('prevKrw').textContent = Math.round(hexVal * _fx.krwPerHex).toLocaleString() + ' ₩';
+  $('prevVnd').textContent = Math.round(hexVal * _fx.vndPerHex).toLocaleString() + ' ₫';
+}
 
 function isHomestayCategory(cat){
   // 모바일/데스크탑/관리자 입력값이 섞여도 안전하게 판정
@@ -149,6 +187,7 @@ function clearForm() {
     "pCapacity",
     ...Array.from({ length: 20 }, (_, i) => `pImage${i + 1}`),
   ].forEach((id) => { const el = $(id); if (el) el.value = ""; });
+  $('pricePreview')?.classList.add('hidden');
 
   const cat = $("pCategory"); if (cat) cat.value = "";
   const cty = $("pCountry"); if (cty) { cty.value = ""; bindCountryRegion(); }
@@ -200,12 +239,15 @@ onAuthReady(async ({ loggedIn, role, user }) => {
 
   normalizeCategoryOptionLabels();
   bindCountryRegion();
+  loadFxRates();
 
   $("btnFillTemplate")?.addEventListener("click", fillTemplate);
   $("btnClearForm")?.addEventListener("click", () => {
     if (!confirm("입력값을 모두 지울까요?")) return;
     clearForm();
   });
+
+  $("pPrice")?.addEventListener("input", updatePricePreview);
 
   $("pBookMode")?.addEventListener("change", bindBookingUI);
   bindBookingUI();
@@ -224,8 +266,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
       const regionDetail = v("pRegion");
       const regionSelect = v("pRegionSelect");
       const region   = regionDetail || regionSelect;
-      const price    = Number(v("pPrice") || "0");
-      const currency = "KRW";
+      const hexFloat = Number(v("pPrice") || "0");
       const desc = v("pDesc");
 
       // 예약 설정
@@ -250,10 +291,13 @@ onAuthReady(async ({ loggedIn, role, user }) => {
         alert("상품명/카테고리/국가/지역은 필수입니다.");
         return;
       }
-      if (!Number.isFinite(price) || price <= 0) {
-        alert("가격을 올바르게 입력해 주세요.");
+      if (!Number.isFinite(hexFloat) || hexFloat <= 0) {
+        alert("HEX 가격을 올바르게 입력해 주세요.");
         return;
       }
+      const hexPriceWei = BigInt(Math.round(hexFloat * 1e14)) * 10000n;
+      const priceKrw = _fx ? Math.round(hexFloat * _fx.krwPerHex) : 0;
+      const priceVnd = _fx ? Math.round(hexFloat * _fx.vndPerHex) : 0;
 
       if (bookMode === "fixed_weekdays" && !weekdays.length){
         alert("요일 고정 상품은 운영 요일을 1개 이상 선택해 주세요.");
@@ -273,9 +317,13 @@ onAuthReady(async ({ loggedIn, role, user }) => {
         type: deriveItemType(category),
         country,
         region,
-        location: region,          // item.js가 location을 쓰는 화면 호환
-        price,
-        currency,
+        location: region,
+        hexPrice: hexPriceWei.toString(),
+        priceHex: hexFloat,
+        priceKrw,
+        priceVnd,
+        price: priceKrw,           // 기존 코드 호환
+        currency: "HEX",
         desc,
 
         includes,

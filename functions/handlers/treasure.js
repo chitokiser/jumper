@@ -85,14 +85,12 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   if (dist > 30)
     throw new HttpsError('failed-precondition', `너무 멀리 있습니다 (${Math.round(dist)}m)`);
 
-  // 하루 1회 수집 제한 (날짜 기준)
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-  const logKey   = `${uid}_${boxId}_${today}`;         // 날짜 포함 → 익일 자동 해제
-  const invBoxKey = `${uid}_${boxId}`;                 // 인벤토리는 박스 단위 (날짜 무관)
-  const logRef  = db.collection('treasure_logs').doc(logKey);
+  // 평생 1회 수집 제한
+  const invBoxKey = `${uid}_${boxId}`;
+  const logRef  = db.collection('treasure_logs').doc(invBoxKey);
   const logSnap = await logRef.get();
   if (logSnap.exists)
-    throw new HttpsError('already-exists', '이 보물은 오늘 이미 획득했습니다');
+    throw new HttpsError('already-exists', '이미 획득한 보물박스입니다');
 
   // 정회원 전용 박스: CoopMall 멤버십 확인
   if (box.memberOnly) {
@@ -120,7 +118,7 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     tx.set(logRef, {
-      uid, boxId, claimedDate: today,
+      uid, boxId,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   });

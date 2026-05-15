@@ -5,6 +5,16 @@ import { auth, db, functions } from '../firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable }      from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { collection, getDocs, query, orderBy, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { BrowserProvider, Contract } from 'https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.min.js';
+
+// CoopMall 컨트랙트 (onlyOwner 함수만 포함)
+const COOP_MALL_ADDRESS = '0x421Bb7Ba86c8cafA181F85C9907B864B85bEF49A';
+const COOP_MALL_OWNER_ABI = [
+  'function setMembershipFee(uint256 feeWei) external',
+  'function setMentorRewardBps(uint16 bps) external',
+];
+
+let _browserSigner = null;  // Rabby/MetaMask 연결 후 저장
 
 const $ = (id) => document.getElementById(id);
 
@@ -113,40 +123,71 @@ function bindStats() {
     }
   };
 
-  // 회비 변경
+  // 지갑 연결 (Rabby / MetaMask)
+  $('btnConnectWallet').onclick = async () => {
+    if (!window.ethereum) {
+      setStatus('setFeeStatus', 'Rabby 또는 MetaMask가 설치되어 있지 않습니다', 'err');
+      return;
+    }
+    try {
+      const provider = new BrowserProvider(window.ethereum, {
+        chainId: 204,  // opBNB Mainnet
+        name: 'opBNB',
+      });
+      await provider.send('eth_requestAccounts', []);
+      _browserSigner = await provider.getSigner();
+      const addr = await _browserSigner.getAddress();
+      const label = $('connectedWalletLabel');
+      if (label) label.textContent = `연결됨: ${addr.slice(0,6)}…${addr.slice(-4)}`;
+      $('btnConnectWallet').textContent = '✅ 연결됨';
+      setStatus('setFeeStatus', '지갑 연결 완료', 'ok');
+    } catch (err) {
+      setStatus('setFeeStatus', '지갑 연결 실패: ' + (err.message || ''), 'err');
+    }
+  };
+
+  // 회비 변경 (onlyOwner — Rabby 직접 서명)
   $('btnSetFee').onclick = async () => {
+    if (!_browserSigner) { setStatus('setFeeStatus', '먼저 지갑을 연결하세요', 'err'); return; }
     const hexVal = parseFloat($('inputSetFee')?.value);
     if (!hexVal || hexVal <= 0) { setStatus('setFeeStatus', '회비 수량을 입력하세요', 'err'); return; }
-    const feeWei = BigInt(Math.floor(hexVal * 1e18)).toString();
+    const feeWei = BigInt(Math.floor(hexVal * 1e18));
     const btn = $('btnSetFee');
     btn.disabled = true;
-    setStatus('setFeeStatus', '처리 중...');
+    setStatus('setFeeStatus', '서명 요청 중...');
     try {
-      const fn = httpsCallable(functions, 'coopAdminSetFee');
-      await fn({ feeWei });
+      const coopMall = new Contract(COOP_MALL_ADDRESS, COOP_MALL_OWNER_ABI, _browserSigner);
+      const tx = await coopMall.setMembershipFee(feeWei);
+      setStatus('setFeeStatus', `Tx 전송됨: ${tx.hash.slice(0,18)}… 확인 대기 중`);
+      await tx.wait();
       setStatus('setFeeStatus', `회비 변경 완료 → ${hexVal.toFixed(4)} HEX`, 'ok');
+      $('inputSetFee').value = '';
       await loadStats();
     } catch (err) {
-      setStatus('setFeeStatus', '실패: ' + (err.message || '서버 오류'), 'err');
+      setStatus('setFeeStatus', '실패: ' + (err.reason || err.message || '오류'), 'err');
     } finally {
       btn.disabled = false;
     }
   };
 
-  // 멘토 수당 변경
+  // 멘토 수당 변경 (onlyOwner — Rabby 직접 서명)
   $('btnSetMentorBps').onclick = async () => {
+    if (!_browserSigner) { setStatus('setFeeStatus', '먼저 지갑을 연결하세요', 'err'); return; }
     const bps = parseInt($('inputSetMentorBps')?.value, 10);
-    if (isNaN(bps) || bps < 0 || bps > 10000) { setStatus('setFeeStatus', 'BPS는 0~10000 범위로 입력하세요', 'err'); return; }
+    if (isNaN(bps) || bps < 100 || bps > 3000) { setStatus('setFeeStatus', 'BPS는 100~3000 범위로 입력하세요 (1%~30%)', 'err'); return; }
     const btn = $('btnSetMentorBps');
     btn.disabled = true;
-    setStatus('setFeeStatus', '처리 중...');
+    setStatus('setFeeStatus', '서명 요청 중...');
     try {
-      const fn = httpsCallable(functions, 'coopAdminSetFee');
-      await fn({ mentorBps: bps });
+      const coopMall = new Contract(COOP_MALL_ADDRESS, COOP_MALL_OWNER_ABI, _browserSigner);
+      const tx = await coopMall.setMentorRewardBps(bps);
+      setStatus('setFeeStatus', `Tx 전송됨: ${tx.hash.slice(0,18)}… 확인 대기 중`);
+      await tx.wait();
       setStatus('setFeeStatus', `멘토 수당 변경 완료 → ${(bps/100).toFixed(1)}%`, 'ok');
+      $('inputSetMentorBps').value = '';
       await loadStats();
     } catch (err) {
-      setStatus('setFeeStatus', '실패: ' + (err.message || '서버 오류'), 'err');
+      setStatus('setFeeStatus', '실패: ' + (err.reason || err.message || '오류'), 'err');
     } finally {
       btn.disabled = false;
     }

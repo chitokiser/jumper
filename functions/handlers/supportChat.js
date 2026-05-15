@@ -1,6 +1,5 @@
 'use strict';
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const admin = require('firebase-admin');
 const { FieldValue } = require('firebase-admin/firestore');
 const { logger } = require('firebase-functions');
@@ -71,18 +70,31 @@ async function onNewSupportMessage(event, geminiApiKey) {
     conversationContext += `${role}: ${t}\n`;
   }
 
-  // Gemini API 호출
+  // Gemini API 호출 (v1 REST — SDK의 v1beta 우회)
   let responseText = '';
   try {
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
     const prompt = conversationContext
       ? `${SYSTEM_PROMPT}\n\n[이전 대화]\n${conversationContext}\n사용자: ${data.text}`
       : `${SYSTEM_PROMPT}\n\n사용자: ${data.text}`;
 
-    const result = await model.generateContent(prompt);
-    responseText = result.response.text().trim();
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 512, temperature: 0.7 },
+        }),
+      }
+    );
+    if (!res.ok) {
+      const errText = await res.text();
+      logger.error('[supportChat] Gemini HTTP error:', res.status, errText);
+      return;
+    }
+    const json = await res.json();
+    responseText = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
   } catch (err) {
     logger.error('[supportChat] Gemini API error:', err);
     return;
