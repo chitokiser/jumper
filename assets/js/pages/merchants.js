@@ -29,6 +29,7 @@ import { initGameServer, connectToGameServer, disconnectFromGameServer,
   from './merchants.gameserver.js';
 import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
   from './merchants.monster-sprite.js';
+import { _t } from './merchants.i18n.js';
 
 // 스프라이트 이미지 즉시 프리로드 (몬스터 등장 전 브라우저 캐시 확보)
 preloadSpriteImages();
@@ -152,9 +153,9 @@ async function _renderMemberStatus(uid) {
     const until = snap.data()?.coopMemberUntil;
     const isMember = !!until && until.toDate() > new Date();
     if (isMember) {
-      el.innerHTML = `<span class="mc-badge-member">👑 정회원</span>`;
+      el.innerHTML = `<span class="mc-badge-member">${_t('badge_member')}</span>`;
     } else {
-      el.innerHTML = `<span class="mc-badge-general">일반회원</span><a href="/coop.html" class="mc-link-join">정회원 가입하기 →</a>`;
+      el.innerHTML = `<span class="mc-badge-general">${_t('badge_general')}</span><a href="/coop.html" class="mc-link-join">${_t('badge_join_link')}</a>`;
     }
     el.style.display = 'flex';
   } catch {
@@ -285,12 +286,12 @@ function renderPlaceMarkers() {
         <div style="max-width:240px;font-size:13px;line-height:1.5;">
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name||'')}</div>
           ${p.type    ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ''}
-          ${p.area    ? `<div style="color:#6b7280;">구역: ${escHtml(p.area)}</div>` : ''}
+          ${p.area    ? `<div style="color:#6b7280;">${_t('place_area')}: ${escHtml(p.area)}</div>` : ''}
           ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ''}
           ${p.phone   ? `<div style="color:#374151;">📞 ${escHtml(p.phone)}</div>` : ''}
           ${p.note    ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ''}
           ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener"
-             style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">구글 지도에서 보기 →</a>` : ''}
+             style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">${_t('gmap_link')}</a>` : ''}
         </div>`);
       infoWindow.open(map, marker);
     });
@@ -326,7 +327,7 @@ function renderMarkers(list) {
           ${m.phone  ? `<div style="color:#374151;">📞 ${escHtml(m.phone)}</div>` : ''}
           ${m.description ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(m.description)}</div>` : ''}
           ${m.gmap ? `<a href="${escHtml(m.gmap)}" target="_blank" rel="noopener"
-             style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">구글 지도에서 보기 →</a>` : ''}
+             style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">${_t('gmap_link')}</a>` : ''}
         </div>`);
       infoWindow.open(map, marker);
       document.querySelectorAll('.mc-card').forEach(el => el.style.borderColor = '');
@@ -362,18 +363,21 @@ function showBoxInfo(box, marker, dist) {
     ? `<button onclick="window.__adminCollect('${box.id}')" style="
         margin-top:8px;background:#5c3a1e;color:#ffd700;border:1px solid #7a5c3a;
         padding:4px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">
-        🔑 관리자 수집
+        ${_t('box_admin_collect')}
       </button>` : '';
 
   const memberBadge = box.memberOnly
-    ? '<span style="display:inline-block;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:5px;">👑 정회원 전용</span>'
+    ? `<span style="display:inline-block;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:5px;">${_t('box_member_only')}</span>`
     : '';
+
+  const distPrefix = dist !== undefined ? _t('box_dist_prefix', Math.round(dist)) : '';
+  const rangeM = box.hiddenBox ? '5' : '20';
 
   infoWindow.setContent(`
     <div style="font-size:13px;line-height:1.7;min-width:190px;">
-      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🎁 ${escHtml(box.name||'보물박스')}${memberBadge}</div>
-      <div style="color:#888;font-size:12px;">등장: ${h}</div>
-      <div style="color:${active?'#16a34a':'#dc2626'};font-weight:600;">${active?'✅ 활성':'⏰ 비활성'}</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🎁 ${escHtml(box.name||_t('box_default_name'))}${memberBadge}</div>
+      <div style="color:#888;font-size:12px;">${_t('box_appears')}: ${h}</div>
+      <div style="color:${active?'#16a34a':'#dc2626'};font-weight:600;">${active?_t('box_active'):_t('box_inactive')}</div>
       ${active && !alreadyCollected ? `
         <div style="margin:6px 0 3px;display:flex;align-items:center;gap:6px;">
           <span style="font-size:11px;color:#888;min-width:20px;">HP</span>
@@ -382,10 +386,8 @@ function showBoxInfo(box, marker, dist) {
           </div>
           <span style="font-size:11px;color:#374151;">${st.current}/${st.max}</span>
         </div>
-        <div style="font-size:11px;color:#555;">
-          ${dist !== undefined ? `거리 ${Math.round(dist)}m — ` : ''}${box.hiddenBox ? '5m' : '20m'} 이내 접근 후 클릭하여 공격!
-        </div>` : ''}
-      ${alreadyCollected ? '<div style="font-size:11px;color:#aaa;margin-top:4px;">✓ 이미 수집됨</div>' : ''}
+        <div style="font-size:11px;color:#555;">${distPrefix}${_t('box_approach', rangeM)}</div>` : ''}
+      ${alreadyCollected ? `<div style="font-size:11px;color:#aaa;margin-top:4px;">${_t('box_already_collected')}</div>` : ''}
       ${adminBtn}
     </div>`);
   infoWindow.open(map, marker);

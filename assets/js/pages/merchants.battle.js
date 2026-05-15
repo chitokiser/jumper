@@ -16,6 +16,7 @@ import { MonsterGrid }
 import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster,
          isGameServerConnected, connectToGameServer, sendPlayerRevive }
   from './merchants.gameserver.js';
+import { _t } from './merchants.i18n.js';
 
 // ── 공유 컨텍스트 참조 ─────────────────────────────────────────────────────────
 // initBattle(ctx, callbacks) 호출 후 설정됨
@@ -566,7 +567,7 @@ function updateCombatHud() {
   if (mhp) mhp.style.width = hpPct + '%';
   if (mmp) mmp.style.width = mpPct + '%';
 
-  const lv = document.getElementById('cLv');    if (lv)  lv.textContent  = `LV.${p.level}  💰${p.gold||0}  💎마정석${p.token??0}`;
+  const lv = document.getElementById('cLv');    if (lv)  lv.textContent  = _t('hud_lv', p.level, p.gold||0, p.token??0);
   const hv = document.getElementById('cHpVal'); if (hv)  hv.textContent  = `${p.hp} / ${p.maxHp}`;
   const mv = document.getElementById('cMpVal'); if (mv)  mv.textContent  = `${p.mp} / ${p.maxMp}`;
   const sp = document.getElementById('cSpd');   if (sp)  sp.textContent  = `SPD ${_currentSpeed.toFixed(1)} km/h`;
@@ -576,7 +577,7 @@ function updateCombatHud() {
   if (dead) {
     if (_isDead) {
       dead.style.display = '';
-      dead.textContent = `💀 사망 — 부활까지 ${Math.max(0, Math.round(50 - _reviveWalkDist))}m 남음`;
+      dead.textContent = _t('hud_dead', Math.max(0, Math.round(50 - _reviveWalkDist)));
     } else {
       dead.style.display = 'none';
     }
@@ -732,7 +733,7 @@ function takeDamage(rawAmount, sourceLat, sourceLng) {
     _showDeathMarker();
     refreshMyMarkerIcon();
     playSound('player_die');
-    if (lat && lng) showFloat('💀 사망했습니다', '#fbbf24', lat, lng);
+    if (lat && lng) showFloat(_t('float_player_dead'), '#fbbf24', lat, lng);
   } else {
     playSound('player_hit');
     const spr = _ctx?.myLocationMarker;
@@ -855,7 +856,7 @@ export function castLightning() {
   if (_skillCd.lightning && now < _skillCd.lightning) return;
 
   const myPos = getMyPos();
-  if (!myPos) { showSkillError('📍 위치 확인 중...'); return; }
+  if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
   animateLightning();
@@ -868,7 +869,7 @@ export function castLightning() {
   ];
 
   const fire = (target) => {
-    if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('⚡ MP 부족!'); return; }
+    if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_lightning')); return; }
     showSkillMapEffect(target.lat, target.lng, 'lightning');
     let hitCount = 0;
     for (const mob of _monsters) {
@@ -880,13 +881,13 @@ export function castLightning() {
       }
     }
     _gsSkillCallback?.('lightning', myLat, myLng, SKILL_RANGE_M);
-    showFloat(`⚡ 벼락! (${hitCount}마리)`, '#facc15', target.lat, target.lng);
+    showFloat(_t('skill_lightning_hit', hitCount), '#facc15', target.lat, target.lng);
     _skillCd.lightning = Date.now() + SKILL_CD_MS.lightning;
     updateSkillBar();
     setTimeout(() => updateSkillBar(), SKILL_CD_MS.lightning);
   };
 
-  if (targets.length === 0) { showSkillError('⚡ 범위 내 몬스터 없음'); return; }
+  if (targets.length === 0) { showSkillError(_t('skill_no_target_lightning')); return; }
   if (targets.length === 1) fire(targets[0]);
   else showSkillTargetModal('lightning', targets, fire);
 }
@@ -898,7 +899,7 @@ export function castIceFreeze() {
   if (_skillCd.ice && now < _skillCd.ice) return;
 
   const myPos = getMyPos();
-  if (!myPos) { showSkillError('📍 위치 확인 중...'); return; }
+  if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
   animateIceFreeze();
@@ -911,7 +912,7 @@ export function castIceFreeze() {
   ];
 
   const fire = (target) => {
-    if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('❄ MP 부족!'); return; }
+    if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_ice')); return; }
     showSkillMapEffect(target.lat, target.lng, 'ice');
     const freezeNow = Date.now();
     let hitCount = 0;
@@ -924,18 +925,18 @@ export function castIceFreeze() {
           marker.setIcon(getMonsterFrozenIcon());
           setTimeout(() => { if (_monsterMarkers[mob.id]) _monsterMarkers[mob.id].setIcon(getMonsterIcon(mob.image)); }, SKILL_FREEZE_MS);
         }
-        showFloat('❄ 동결!', '#93c5fd', mob.lat, mob.lng);
+        showFloat(_t('skill_freeze_single'), '#93c5fd', mob.lat, mob.lng);
         hitCount++;
       }
     }
     _gsSkillCallback?.('ice', myLat, myLng, SKILL_RANGE_M);
-    showFloat(`❄ 동결! (${hitCount}마리 / ${SKILL_FREEZE_MS/1000}초)`, '#93c5fd', target.lat, target.lng);
+    showFloat(_t('skill_freeze_multi', hitCount, SKILL_FREEZE_MS/1000), '#93c5fd', target.lat, target.lng);
     _skillCd.ice = Date.now() + SKILL_CD_MS.ice;
     updateSkillBar();
     setTimeout(() => updateSkillBar(), SKILL_CD_MS.ice);
   };
 
-  if (targets.length === 0) { showSkillError('❄ 범위 내 몬스터 없음'); return; }
+  if (targets.length === 0) { showSkillError(_t('skill_no_target_ice')); return; }
   if (targets.length === 1) fire(targets[0]);
   else showSkillTargetModal('ice', targets, fire);
 }
@@ -947,7 +948,7 @@ export function castFireStorm() {
   if (_skillCd.fire && now < _skillCd.fire) return;
 
   const myPos = getMyPos();
-  if (!myPos) { showSkillError('📍 위치 확인 중...'); return; }
+  if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
   animateFireStorm();
@@ -960,7 +961,7 @@ export function castFireStorm() {
   ];
 
   const fire = (target) => {
-    if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError('🔥 MP 부족!'); return; }
+    if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_fire')); return; }
     showSkillMapEffect(target.lat, target.lng, 'fire');
     let hitCount = 0;
     for (const mob of _monsters) {
@@ -972,13 +973,13 @@ export function castFireStorm() {
       }
     }
     _gsSkillCallback?.('fire', myLat, myLng, SKILL_RANGE_M);
-    showFloat(`🔥 화염! (${hitCount}마리)`, '#f97316', target.lat, target.lng);
+    showFloat(_t('skill_fire_hit', hitCount), '#f97316', target.lat, target.lng);
     _skillCd.fire = Date.now() + SKILL_CD_MS.fire;
     updateSkillBar();
     setTimeout(() => updateSkillBar(), SKILL_CD_MS.fire);
   };
 
-  if (targets.length === 0) { showSkillError('🔥 범위 내 몬스터 없음'); return; }
+  if (targets.length === 0) { showSkillError(_t('skill_no_target_fire')); return; }
   if (targets.length === 1) fire(targets[0]);
   else showSkillTargetModal('fire', targets, fire);
 }
@@ -986,7 +987,11 @@ export function castFireStorm() {
 // ── 스킬 대상 선택 모달 ───────────────────────────────────────────────────────
 function showSkillTargetModal(skillKey, targets, onSelect) {
   document.getElementById('skillTargetModal')?.remove();
-  const labels = { lightning: '⚡ 벼락', ice: '❄ 빙결', fire: '🔥 화염' };
+  const labels = {
+    lightning: _t('skill_label_lightning'),
+    ice:       _t('skill_label_ice'),
+    fire:      _t('skill_label_fire'),
+  };
   const modal = document.createElement('div');
   modal.id = 'skillTargetModal';
   modal.style.cssText = `position:fixed;bottom:130px;left:50%;transform:translateX(-50%);
@@ -995,19 +1000,19 @@ function showSkillTargetModal(skillKey, targets, onSelect) {
     box-shadow:0 8px 32px rgba(0,0,0,0.65);`;
   modal.innerHTML = `
     <div style="color:#e5e7eb;font-weight:700;font-size:13px;margin-bottom:10px;text-align:center;">
-      ${labels[skillKey]||'스킬'} — 공격 대상 선택
+      ${_t('skill_modal_title', labels[skillKey]||_t('skill_label_default'))}
     </div>
     ${targets.map(mob => `
       <div data-mob="${mob.id}" style="cursor:pointer;padding:9px 12px;margin:4px 0;
         background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);
         border-radius:9px;color:#fff;font-size:13px;display:flex;align-items:center;gap:8px;">
         <span style="font-size:17px;">${mob.image?.startsWith('/')?'👾':(mob.image||'👾')}</span>
-        <span>${escHtml(mob.name||'몬스터')}</span>
+        <span>${escHtml(mob.name||_t('monster_default'))}</span>
         <span style="margin-left:auto;font-size:11px;color:#9ca3af;">HP ${mob.hp}/${mob.maxHp}</span>
       </div>
     `).join('')}
     <div id="_skillTargetCancel" style="cursor:pointer;padding:6px;margin-top:8px;
-      color:#6b7280;font-size:12px;text-align:center;">취소</div>
+      color:#6b7280;font-size:12px;text-align:center;">${_t('skill_modal_cancel')}</div>
   `;
   (document.fullscreenElement || document.body).appendChild(modal);
   modal.querySelectorAll('[data-mob]').forEach(el => {
@@ -1069,7 +1074,7 @@ function getMonsterFrozenIcon() {
 
 // ── 부활 아이템 ───────────────────────────────────────────────────────────────
 export async function useReviveTicket() {
-  if (!_isDead) { showSkillError('사망 상태가 아닙니다'); return; }
+  if (!_isDead) { showSkillError(_t('revive_not_dead')); return; }
   const uid = _ctx?.uid;
   if (!uid) return;
   try {
@@ -1087,12 +1092,12 @@ export async function useReviveTicket() {
     sendPlayerRevive();  // GS 서버에 부활 동기화
     playSound('revive');
     const myMark = _ctx?.myLocationMarker;
-    if (myMark) showFloat('✨ 부활! HP·MP 50%', '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
+    if (myMark) showFloat(_t('revive_success'), '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
     updateCombatHud();
     savePlayerState();
     _ctx?._onLoadInventory();
     updateSkillBar();
-  } catch (e) { showSkillError('오류: ' + e.message); }
+  } catch (e) { showSkillError(_t('revive_error', e.message)); }
 }
 
 function gainXp(amount) {
@@ -1338,12 +1343,12 @@ function _spawnMonsterMarker(mob) {
         const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
         infoWindow?.setContent(`
           <div style="font-size:13px;min-width:140px">
-            <b>🐉 ${escHtml(mob.name||'드래곤')}</b>
+            <b>🐉 ${escHtml(mob.name||_t('dragon_default'))}</b>
             <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
             <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
               <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
             ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('monster','${mob.id}')"
-              style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
+              style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>` : ''}
           </div>`);
         infoWindow?.setPosition({ lat: mob.lat, lng: mob.lng });
         infoWindow?.open(map);
@@ -1357,7 +1362,7 @@ function _spawnMonsterMarker(mob) {
   // ── 일반 SVG 마커 ────────────────────────────────────────────────────────────
   const marker = new google.maps.Marker({
     position: { lat: mob.lat, lng: mob.lng }, map: startVisible ? map : null,
-    title: mob.name || '몬스터',
+    title: mob.name || _t('monster_default'),
     icon: getMonsterIcon(mob.image),
     zIndex: 50,
   });
@@ -1389,12 +1394,12 @@ function _spawnMonsterMarker(mob) {
     const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
     infoWindow?.setContent(`
       <div style="font-size:13px;min-width:140px">
-        <b>${escHtml(mob.name||'몬스터')}</b>
+        <b>${escHtml(mob.name||_t('monster_default'))}</b>
         <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
         <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
           <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
         ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('monster','${mob.id}')"
-          style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
+          style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>` : ''}
       </div>`);
     infoWindow?.open(map, marker);
   });
@@ -1454,7 +1459,7 @@ function attackTower(tower, marker) {
     marker.setMap(null);
     delete _towerMarkers[tower.id];
     infoWindow?.close();
-    showFloat('🏚 타워 파괴!', '#f97316', pos.lat(), pos.lng());
+    showFloat(_t('tower_destroyed'), '#f97316', pos.lat(), pos.lng());
     playSound('gold_drop');
     // 공유 상태 기록
     setDoc(doc(_ctx.db, 'battle_hp', `tower_${tower.id}`),
@@ -1471,7 +1476,7 @@ function attackTower(tower, marker) {
   const hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#f59e0b' : '#ef4444';
   infoWindow?.setContent(`
     <div style="font-size:13px;line-height:1.6;min-width:190px;">
-      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏰 ${escHtml(tower.name||'방어탑')}</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏰 ${escHtml(tower.name||_t('tower_default'))}</div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
         <span style="font-size:11px;color:#888;min-width:20px;">HP</span>
         <div style="flex:1;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;">
@@ -1480,7 +1485,7 @@ function attackTower(tower, marker) {
         <span style="font-size:11px;color:#374151;min-width:65px;text-align:right;">${st.current}/${st.max}</span>
       </div>
       <div style="color:${isCrit?'#f97316':'#ef4444'};font-weight:700;">${isCrit?'💥 CRITICAL! ':'💥 '}-${dmg}</div>
-      <div style="font-size:11px;color:#555;margin-top:2px;">계속 클릭하여 공격!</div>
+      <div style="font-size:11px;color:#555;margin-top:2px;">${_t('tower_click_to_attack')}</div>
     </div>`);
   infoWindow?.open(map, marker);
 }
@@ -1490,7 +1495,7 @@ function createTowerMarker(tower, map, infoWindow) {
   const st = getTowerHpState(tower);
   const marker = new google.maps.Marker({
     position: { lat: tower.lat, lng: tower.lng }, map,
-    title: `${tower.name||'방어탑'} HP ${st.current}/${st.max}`,
+    title: `${tower.name||_t('tower_default')} HP ${st.current}/${st.max}`,
     icon: getTowerIcon(tower.image, tower.type), zIndex: 55,
   });
   marker.addListener('click', () => {
@@ -1505,8 +1510,8 @@ function createTowerMarker(tower, map, infoWindow) {
       const hpColor2 = hpPct2 > 50 ? '#22c55e' : hpPct2 > 25 ? '#f59e0b' : '#ef4444';
       infoWindow?.setContent(`
         <div style="font-size:13px;line-height:1.7;min-width:190px;">
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏰 ${escHtml(tower.name||'방어탑')}</div>
-          <div style="font-size:11px;color:#888;">반경 30m · 데미지 ${tower.atk||50}</div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏰 ${escHtml(tower.name||_t('tower_default'))}</div>
+          <div style="font-size:11px;color:#888;">${_t('tower_radius_dmg', 30, tower.atk||50)}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
             <span style="font-size:11px;color:#888;min-width:20px;">HP</span>
             <div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
@@ -1514,9 +1519,9 @@ function createTowerMarker(tower, map, infoWindow) {
             </div>
             <span style="font-size:11px;color:#374151;">${getTowerHpState(tower).current}/${getTowerHpState(tower).max}</span>
           </div>
-          <div style="font-size:11px;color:#555;margin-top:4px;">공격 범위 안으로 접근 후 클릭하여 공격!</div>
+          <div style="font-size:11px;color:#555;margin-top:4px;">${_t('tower_approach')}</div>
           ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('tower','${tower.id}')"
-            style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑 삭제</button>` : ''}
+            style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>` : ''}
         </div>`);
       infoWindow?.open(map, marker);
     }
@@ -1767,7 +1772,7 @@ async function hitMonster(monsterId, damage) {
   }, { merge: true }).catch(() => {});
 
   const marker = _monsterMarkers[monsterId];
-  if (marker) marker.setTitle(`${mob.name||'몬스터'} HP:${mob.hp}`);
+  if (marker) marker.setTitle(`${mob.name||_t('monster_default')} HP:${mob.hp}`);
 
   if (isDead) {
     // 어그로 초기화 (내가 처치)
@@ -1775,14 +1780,14 @@ async function hitMonster(monsterId, damage) {
     _aggroClaimed.delete(monsterId);
 
     playSound('monster_die');
-    showFloat('💀 처치!', '#fbbf24', mob.lat, mob.lng);
+    showFloat(_t('float_kill'), '#fbbf24', mob.lat, mob.lng);
     gainXp(mob.dropExp || 20);
     dropGoldTokens(mob);
     // 마정석 랜덤 드랍 (30% 확률, 1~3개)
     if (Math.random() < 0.3) {
       const stones = Math.floor(Math.random() * 3) + 1;
       _player.token = (_player.token ?? 0) + stones;
-      showFloat(`💎+${stones} 마정석!`, '#a78bfa', mob.lat, mob.lng);
+      showFloat(_t('float_magic_stone', stones), '#a78bfa', mob.lat, mob.lng);
       updateSkillBar();
       savePlayerState();
     }
@@ -1794,7 +1799,7 @@ async function hitMonster(monsterId, damage) {
           if (Math.random() < (keyDef.dropRate || 0)) {
             httpsCallable(_ctx.functions, 'earnKey')({ keyId: keyDef.id })
               .then(res => {
-                showFloat(`🔑 열쇠 드랍! ${res.data?.keyName || `Key #${keyDef.id}`}`, '#fcd34d', mob.lat, mob.lng);
+                showFloat(_t('float_key_drop', res.data?.keyName || `Key #${keyDef.id}`), '#fcd34d', mob.lat, mob.lng);
                 _ctx._onLoadInventory?.();
               })
               .catch(() => {});
@@ -1818,7 +1823,7 @@ function _respawnTower(tower) {
   const map = _ctx?.map, infoWindow = _ctx?.infoWindow;
   if (!map) return;
   _towerMarkers[tid] = createTowerMarker(tower, map, infoWindow);
-  showFloat('🏰 타워 부활!', '#a78bfa', tower.lat, tower.lng);
+  showFloat(_t('tower_respawn'), '#a78bfa', tower.lat, tower.lng);
 }
 
 function _onMonsterHpChange(monsterId, data) {
@@ -2187,7 +2192,7 @@ function _showDeathMarker() {
   _deathMarker = new google.maps.Marker({
     position: { lat: _deathLat, lng: _deathLng },
     map,
-    title:    '사망 지점',
+    title:    _t('death_marker_title'),
     zIndex:   90,
     icon:     _makeDeathMarkerIcon(),
   });
@@ -2196,8 +2201,8 @@ function _showDeathMarker() {
   _deathMarker.addListener('click', () => {
     if (!iw) return;
     iw.setContent(`<div style="font-size:13px;padding:4px 6px;">
-      💀 <strong>사망 지점</strong><br>
-      <span style="color:#888;font-size:11px;">부활하면 마커가 사라집니다</span>
+      <strong>${_t('death_marker_label')}</strong><br>
+      <span style="color:#888;font-size:11px;">${_t('death_marker_hint')}</span>
     </div>`);
     iw.open(map, _deathMarker);
   });
@@ -2220,7 +2225,7 @@ function makeLocationIcon(heading, isDead) {
   const arrow = hasHeading
     ? `<polygon points="22,3 15,16 22,12 29,16" fill="#ff6b00" stroke="white" stroke-width="1.5" transform="rotate(${Math.round(heading)},22,22)"/>`
     : '';
-  const label = isDead ? '사망' : '나';
+  const label = isDead ? _t('player_label_dead') : _t('player_label_alive');
   const fontSize = isDead ? '10' : '12';
   const fillColor = isDead ? '#555555' : '#ff3300';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
