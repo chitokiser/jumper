@@ -1209,17 +1209,69 @@ function renderDecoMarkers() {
       zIndex: 5,
     });
     marker.addListener('click', () => {
-      infoWindow?.setContent(`
-        <div style="font-size:13px;line-height:1.6;">
-          <img src="${escHtml(d.imageUrl)}" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 6px;">
-          <div style="font-weight:700;text-align:center;">${escHtml(d.name||'데코')}</div>
-          ${_ctx?.isAdmin ? `<button onclick="window.__deleteDeco('${d.id}')" style="margin-top:6px;width:100%;padding:4px;background:#fee2e2;color:#b91c1c;border:none;border-radius:4px;cursor:pointer;">🗑️ 삭제</button>` : ''}
-        </div>`);
+      infoWindow?.setContent(_decoInfoContent(d));
       infoWindow?.open(map, marker);
     });
     d.marker = marker;
   });
 }
+
+function _decoInfoContent(d) {
+  return `<div style="font-size:13px;line-height:1.7;min-width:180px;">
+    <img src="${escHtml(d.imageUrl)}" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 6px;">
+    <div style="font-weight:700;text-align:center;margin-bottom:4px;">${escHtml(d.name||'데코')}</div>
+    ${_ctx?.isAdmin ? `
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button onclick="window.__editDecoForm('${d.id}')" style="flex:1;padding:4px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;cursor:pointer;">✏️ 수정</button>
+        <button onclick="window.__deleteDeco('${d.id}')" style="flex:1;padding:4px;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:4px;cursor:pointer;">🗑️ 삭제</button>
+      </div>` : ''}
+  </div>`;
+}
+
+window.__editDecoForm = (id) => {
+  const d = _decoMarkers.find(x => x.id === id);
+  if (!d) return;
+  const iw = _ctx?.infoWindow;
+  if (!iw) return;
+  iw.setContent(`<div style="font-size:13px;line-height:1.8;min-width:200px;">
+    <div style="font-weight:700;margin-bottom:8px;">✏️ 데코 수정</div>
+    <label style="display:block;margin-bottom:4px;">이름
+      <input id="decoEditName" value="${escHtml(d.name||'')}" style="width:100%;box-sizing:border-box;padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;">
+    </label>
+    <label style="display:block;margin-bottom:4px;">이미지 경로
+      <input id="decoEditImg" value="${escHtml(d.imageUrl||'')}" style="width:100%;box-sizing:border-box;padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;">
+    </label>
+    <label style="display:block;margin-bottom:8px;">크기(px)
+      <input id="decoEditSize" type="number" value="${d.size||48}" min="16" max="256" style="width:100%;box-sizing:border-box;padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;">
+    </label>
+    <div style="display:flex;gap:6px;">
+      <button onclick="window.__saveDecoEdit('${id}')" style="flex:1;padding:5px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:4px;cursor:pointer;">💾 저장</button>
+      <button onclick="window.__cancelDecoEdit('${id}')" style="flex:1;padding:5px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">취소</button>
+    </div>
+  </div>`);
+};
+
+window.__saveDecoEdit = async (id) => {
+  const d = _decoMarkers.find(x => x.id === id);
+  if (!d) return;
+  const name     = document.getElementById('decoEditName')?.value.trim() || d.name;
+  const imageUrl = document.getElementById('decoEditImg')?.value.trim()  || d.imageUrl;
+  const size     = parseInt(document.getElementById('decoEditSize')?.value || d.size);
+  try {
+    await setDoc(doc(_ctx.db, 'map_decorations', id), { name, imageUrl, size }, { merge: true });
+    Object.assign(d, { name, imageUrl, size });
+    renderDecoMarkers();
+    const marker = _decoMarkers.find(x => x.id === id)?.marker;
+    _ctx?.infoWindow?.setContent(_decoInfoContent(d));
+    if (marker) _ctx?.infoWindow?.open(_ctx.map, marker);
+  } catch (e) { alert('저장 실패: ' + e.message); }
+};
+
+window.__cancelDecoEdit = (id) => {
+  const d = _decoMarkers.find(x => x.id === id);
+  if (!d) return;
+  _ctx?.infoWindow?.setContent(_decoInfoContent(d));
+};
 
 window.__deleteDeco = async (id) => {
   if (!confirm('이 데코를 삭제하시겠습니까?')) return;
@@ -1252,17 +1304,10 @@ function getMonsterIcon(image) {
 }
 
 function getTowerIcon(image, type) {
-  if (image && image.startsWith('/')) {
-    return { url: image, scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
-  }
   const isCannon = type === 'cannon';
-  const emoji = image || (isCannon ? '💣' : '🏹');
-  const fill  = isCannon ? 'rgba(180,60,0,0.88)' : 'rgba(124,58,237,0.88)';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
-    <circle cx="19" cy="19" r="18" fill="${fill}" stroke="#fff" stroke-width="2"/>
-    <text x="19" y="26" font-size="20" text-anchor="middle">${emoji}</text></svg>`;
-  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-           scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
+  const defaultImg = isCannon ? '/assets/images/shops/tower2.png' : '/assets/images/shops/tower.png';
+  const src = (image && image.startsWith('/')) ? image : defaultImg;
+  return { url: src, scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
 }
 
 // ── 마커 가시 범위 갱신 (GPS 이동 또는 줌 변경 시 호출) ──────────────────────
@@ -1793,7 +1838,7 @@ async function hitMonster(monsterId, damage) {
     }
     // 열쇠 랜덤 드랍 (active 열쇠 정의별 dropRate 확률)
     if (_keyDefs.length) {
-      const myUid = _ctx?.auth?.currentUser?.uid;
+      const myUid = _ctx?.uid;
       if (myUid) {
         for (const keyDef of _keyDefs) {
           if (Math.random() < (keyDef.dropRate || 0)) {
@@ -1802,7 +1847,7 @@ async function hitMonster(monsterId, damage) {
                 showFloat(_t('float_key_drop', res.data?.keyName || `Key #${keyDef.id}`), '#fcd34d', mob.lat, mob.lng);
                 _ctx._onLoadInventory?.();
               })
-              .catch(() => {});
+              .catch(err => console.warn('[earnKey]', err.message));
           }
         }
       }
@@ -1920,12 +1965,12 @@ export function enterAdminPlaceMode(type) {
     if (_adminPlaceMode === 'monster') {
       // ── Firebase battle_monsters 추가 (서버 오프라인에도 유지) ──────────────
       const lv = _ctx?.playerLevel ?? 1;
-      const monsterType = prompt('몬스터 타입 (goblin / orc):', 'goblin') || 'goblin';
+      const monsterType = prompt('몬스터 타입 (Monster eyes / cabi):', 'Monster eyes') || 'Monster eyes';
       const PRESETS_FB = {
-        orc:    { name:'오크',   image:'23.png', maxHp: Math.round(lv*100*1.5), atk:20, detectRadius:20, respawnMinutes:10 },
-        goblin: { name:'고블린', image:'22.png', maxHp: lv*100*8,               atk:80, detectRadius:100, respawnMinutes:5  },
+        'cabi':          { name:'cabi',          image:'23.png', maxHp: Math.round(lv*100*1.5), atk:20, detectRadius:20, respawnMinutes:10 },
+        'Monster eyes':  { name:'Monster eyes',  image:'22.png', maxHp: lv*100*8,               atk:80, detectRadius:100, respawnMinutes:5  },
       };
-      const p = PRESETS_FB[monsterType] || PRESETS_FB.goblin;
+      const p = PRESETS_FB[monsterType] || PRESETS_FB['Monster eyes'];
 
       const name           = prompt(`몬스터 이름:`,       p.name)            || p.name;
       const image          = prompt(`이미지 (이모지 or 경로):`, p.image)      || p.image;
@@ -1989,7 +2034,8 @@ export function enterAdminPlaceMode(type) {
       const name   = prompt('타워 이름:', defName) || defName;
       const atk    = parseInt(prompt('데미지:', defAtk) || defAtk);
       const radius = parseInt(prompt('공격 반경(m):', defRadius) || defRadius);
-      const image  = prompt('이미지 (이모지 or 경로, 예: /assets/images/shops/arms.png)', defEmoji) || defEmoji;
+      const defImg = towerType === 'cannon' ? '/assets/images/shops/tower2.png' : '/assets/images/shops/tower.png';
+      const image  = prompt('이미지 (이모지 or 경로)', defImg) || defImg;
       try {
         const ref = await addDoc(collection(_ctx.db, 'battle_towers'), {
           name, lat, lng, atk, radius, image, type: towerType, hp: 1000, active: true,

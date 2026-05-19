@@ -12,6 +12,15 @@ const MESSAGES = {
   // ── 장소 인포윈도우 ───────────────────────────────────────────────────────────
   place_area:            { ko: '구역',             vi: 'Khu vực' },
   gmap_link:             { ko: '구글 지도에서 보기 →', vi: 'Xem trên Google Maps →' },
+  no_map_label:          { ko: '지도 미등록',       vi: 'Chưa có bản đồ' },
+  no_name_label:         { ko: '(이름없음)',         vi: '(Không tên)' },
+  no_geolocation:        { ko: '이 브라우저는 위치 서비스를 지원하지 않습니다.',
+                           vi: 'Trình duyệt này không hỗ trợ dịch vụ vị trí.' },
+  // {0}=name, {1}=curHp, {2}=maxHp
+  box_attack_title:      { ko: '⚔️ {0} — 클릭하여 공격! (HP {1}/{2})', vi: '⚔️ {0} — Nhấn để tấn công! (HP {1}/{2})' },
+  hidden_box_title:      { ko: '✨ {0} — 클릭하여 공격! (HP {1}/{2})', vi: '✨ {0} — Nhấn để tấn công! (HP {1}/{2})' },
+  hidden_box_name:       { ko: '숨겨진 보물',                           vi: 'Kho báu ẩn' },
+  box_attack_hint:       { ko: '계속 클릭하여 공격!',                   vi: 'Nhấn tiếp để tấn công!' },
 
   // ── 보물박스 인포윈도우 ───────────────────────────────────────────────────────
   box_default_name:      { ko: '보물박스',          vi: 'Hộp kho báu' },
@@ -95,6 +104,127 @@ const MESSAGES = {
   // ── 플레이어 위치 마커 라벨 ───────────────────────────────────────────────────
   player_label_dead:     { ko: '사망',                 vi: 'Chết' },
   player_label_alive:    { ko: '나',                   vi: 'Tôi' },
+
+  // ── 가맹점 카드 / 범례 ────────────────────────────────────────────────────────
+  need_login:            { ko: '로그인이 필요합니다.',  vi: 'Cần đăng nhập.' },
+  no_merchants:          { ko: '등록된 가맹점이 없습니다.', vi: 'Không có đại lý nào.' },
+  // {0} = count
+  merchant_count:        { ko: '{0}개',                vi: '{0} đại lý' },
+
+  // ── 보물박스 수집 / 오픈 ─────────────────────────────────────────────────────
+  // {0} = boxName
+  collect_toast_title:   { ko: '📦 보물박스 획득!',          vi: '📦 Nhận được hộp kho báu!' },
+  collect_toast_hint:    { ko: '인벤토리에서 열어보세요!',    vi: 'Hãy mở trong túi đồ!' },
+  already_collected:     { ko: '이미 수집한 보물박스입니다.', vi: 'Hộp kho báu đã được thu thập.' },
+  collect_failed:        { ko: '수집 실패: {0}',              vi: 'Thu thập thất bại: {0}' },
+  open_box_failed:       { ko: '박스 오픈 실패: {0}',         vi: 'Mở hộp thất bại: {0}' },
+  default_item_name:     { ko: '아이템',                      vi: 'Vật phẩm' },
+
+  // ── 보물박스 인벤토리 ─────────────────────────────────────────────────────────
+  no_boxes:              { ko: '미개봉 보물박스가 없습니다.', vi: 'Không có hộp kho báu nào.' },
+  box_default_name2:     { ko: '보물박스',              vi: 'Hộp kho báu' },
+  box_open_hint:         { ko: '{0} — 클릭하여 열기',   vi: '{0} — Nhấn để mở' },
+  // {0} = prefix, {1} = name
+  box_locked_hint:       { ko: '{1} — 🔑 앞 3자리 {0} 열쇠 필요', vi: '{1} — 🔑 Cần chìa khóa 3 ký tự đầu {0}' },
+  // {0} = prefix
+  box_key_toast:         { ko: '🔑 앞 3자리가 "{0}"인 열쇠가 필요합니다.\n몬스터를 처치하여 열쇠를 획득하세요!',
+                           vi: '🔑 Cần chìa khóa 3 ký tự đầu "{0}".\nHãy tiêu diệt quái vật để lấy chìa khóa!' },
+
+  // ── 장비 능력치 패널 ──────────────────────────────────────────────────────────
+  equip_weapon_label:    { ko: '장착 무기',             vi: 'Vũ khí đang dùng' },
+  equip_armor_label:     { ko: '장착 방어구',           vi: 'Giáp đang dùng' },
+  no_weapon:             { ko: '무기 없음',             vi: 'Không có vũ khí' },
+  no_armor:              { ko: '방어구 없음',           vi: 'Không có giáp' },
+  unequip_hint:          { ko: '클릭하여 해제',         vi: 'Nhấn để tháo' },
+  unequip_btn:           { ko: '해제',                  vi: 'Tháo' },
+
+  // ── 인벤토리 슬롯 ─────────────────────────────────────────────────────────────
+  hp_potion_name:        { ko: '빨간약',                vi: 'Thuốc đỏ' },
+  hp_potion_title:       { ko: '빨간약 — 클릭하여 사용 (HP +100)', vi: 'Thuốc đỏ — Nhấn để dùng (HP +100)' },
+  mp_potion_name:        { ko: '마법약',                vi: 'Thuốc phép' },
+  mp_potion_title:       { ko: '마법약 — 클릭하여 사용 (MP 전체 회복)', vi: 'Thuốc phép — Nhấn để dùng (Phục hồi toàn bộ MP)' },
+  revive_item_name:      { ko: '부활권',                vi: 'Thẻ hồi sinh' },
+  revive_item_title:     { ko: '부활 아이템 — 사망 시 클릭하여 즉시 부활 (HP·MP 50%)',
+                           vi: 'Vật phẩm hồi sinh — Nhấn khi chết để hồi sinh (HP·MP 50%)' },
+  // {0} = num
+  weapon_slot_title:     { ko: '무기 +{0} — 클릭하여 장착',     vi: 'Vũ khí +{0} — Nhấn để trang bị' },
+  // {0} = weapon name/num
+  weapon_slot_name:      { ko: '무기 +{0}',            vi: 'Vũ khí +{0}' },
+  // {0} = defVal
+  armor_slot_title:      { ko: '방어구 DEF {0} — 클릭하여 장착', vi: 'Giáp DEF {0} — Nhấn để trang bị' },
+  armor_slot_name:       { ko: '방어 {0}',             vi: 'Giáp {0}' },
+  equipped_label:        { ko: '장착',                  vi: 'Đang dùng' },
+  // {0} = num, {1} = totalAtk
+  equip_weapon_toast:    { ko: '⚔️ 무기 +{0} 장착! 총공격력 {1}', vi: '⚔️ Trang bị vũ khí +{0}! Tổng sát thương {1}' },
+  // {0} = defVal
+  equip_armor_toast:     { ko: '🛡 방어구 DEF {0} 장착!', vi: '🛡 Trang bị giáp DEF {0}!' },
+  // {0} = keyName, {1} = kid
+  key_slot_title:        { ko: '{0} (Key ID: {1}) — 보물박스 열쇠', vi: '{0} (Key ID: {1}) — Chìa khóa hộp' },
+
+  // ── 물약 사용 ─────────────────────────────────────────────────────────────────
+  no_mp_potion:          { ko: '마법약이 없습니다.',    vi: 'Không có thuốc phép.' },
+  use_mp_potion_toast:   { ko: '🔮 마법약 사용! MP 전체 회복', vi: '🔮 Dùng thuốc phép! MP phục hồi hoàn toàn' },
+  no_hp_potion:          { ko: '빨간약이 없습니다.',    vi: 'Không có thuốc đỏ.' },
+  use_hp_potion_toast:   { ko: '💊 빨간약 사용! HP +100', vi: '💊 Dùng thuốc đỏ! HP +100' },
+  use_failed:            { ko: '사용 실패: {0}',        vi: 'Sử dụng thất bại: {0}' },
+
+  // ── 바우처 조합 ───────────────────────────────────────────────────────────────
+  no_craft_recipes:      { ko: '등록된 조합 레시피가 없습니다.', vi: 'Không có công thức tổng hợp.' },
+  craft_reward_label:    { ko: '보상: {0}',             vi: 'Phần thưởng: {0}' },
+  craft_btn:             { ko: '조합하기',              vi: 'Tổng hợp' },
+  craft_insufficient:    { ko: '재료 부족',             vi: 'Thiếu nguyên liệu' },
+  craft_processing:      { ko: '처리 중...',            vi: 'Đang xử lý...' },
+  // {0}=voucherName, {1}=reward
+  craft_success:         { ko: '✅ 조합 성공!\n{0}\n보상: {1}', vi: '✅ Tổng hợp thành công!\n{0}\nPhần thưởng: {1}' },
+  craft_failed:          { ko: '조합 실패: {0}',        vi: 'Tổng hợp thất bại: {0}' },
+  // {0}=rewardId, {1}=totalAtk
+  weapon_equip_craft:    { ko: '⚔️ {0} 장착! 총공격력 {1}', vi: '⚔️ Trang bị {0}! Tổng sát thương {1}' },
+  // {0}=rewardId, {1}=defense
+  armor_equip_craft:     { ko: '🛡 {0} 장착! 방어력 {1}',    vi: '🛡 Trang bị {0}! Phòng thủ {1}' },
+  no_vouchers:           { ko: '보유 바우처가 없습니다.',  vi: 'Không có phiếu nào.' },
+  coin_label:            { ko: '💰 코인',               vi: '💰 Xu' },
+  // {0}=have
+  have_label:            { ko: '보유:{0}',              vi: 'Có:{0}' },
+  default_voucher_reward:{ ko: '바우처 지급',            vi: 'Cấp phiếu' },
+
+  // ── 상품교환권 ────────────────────────────────────────────────────────────────
+  no_exchange:           { ko: '등록된 교환권이 없습니다.', vi: 'Không có phiếu đổi nào.' },
+  exchange_req_label:    { ko: '필요 아이템',            vi: 'Vật phẩm cần' },
+  exchange_no_req:       { ko: '조건 없음',              vi: 'Không có điều kiện' },
+  // {0}=pct
+  exchange_progress:     { ko: '진행도 {0}%',           vi: 'Tiến độ {0}%' },
+  exchange_login_hint:   { ko: '로그인 후 보유량을 확인하세요', vi: 'Đăng nhập để xem số lượng' },
+  exchange_btn_login:    { ko: '로그인 필요',            vi: 'Cần đăng nhập' },
+  exchange_btn_done:     { ko: '✅ 구매 완료',           vi: '✅ Đã mua' },
+  exchange_btn_go:       { ko: '🎟 지금 교환하기',       vi: '🎟 Đổi ngay' },
+  exchange_btn_lack:     { ko: '재료 부족',              vi: 'Thiếu nguyên liệu' },
+  exchange_processing:   { ko: '처리 중...',             vi: 'Đang xử lý...' },
+  // {0}=voucherName, {1}=reward
+  exchange_success:      { ko: '✅ 교환 성공!\n{0}\n보상: {1}', vi: '✅ Đổi thành công!\n{0}\nPhần thưởng: {1}' },
+  default_reward_label:  { ko: '상품교환권',             vi: 'Phiếu đổi hàng' },
+  // {0}=count  {1}=need
+  coin_chip:             { ko: '💰 코인×{0}',            vi: '💰 Xu×{0}' },
+  // {0}=minLevel
+  level_chip:            { ko: '⭐ LV.{0} 이상',        vi: '⭐ LV.{0} trở lên' },
+
+  // ── 플레이어 / 게임 상태 ──────────────────────────────────────────────────────
+  player_default_name:   { ko: '플레이어',               vi: 'Người chơi' },
+  game_in_progress:      { ko: '게임 진행 중',            vi: 'Đang trong trò chơi' },
+  voucher_label:         { ko: '바우처',                  vi: 'Phiếu' },
+
+  // ── 정회원 전용 박스 안내 ───────────────────────────────────────────────────────
+  member_only_box_title: { ko: '👑 정회원 전용 보물박스', vi: '👑 Hộp kho báu dành riêng hội viên' },
+  member_only_box_desc:  { ko: 'coop.html에서 10 HEX를 지불하고<br>CoopMall 정회원에 가입하세요.',
+                           vi: 'Vào coop.html, trả 10 HEX để<br>trở thành hội viên CoopMall.' },
+
+  // ── 게임 서버 연결 상태 ───────────────────────────────────────────────────────
+  gs_connecting:         { ko: '연결 중...',              vi: 'Đang kết nối...' },
+  gs_connecting_badge:   { ko: '연결 중',                 vi: 'Kết nối' },
+  gs_connected:          { ko: '게임 서버 접속 중 — 클릭하여 종료', vi: 'Đang kết nối máy chủ — Nhấn để ngắt' },
+  gs_connected_badge:    { ko: '접속 중',                 vi: 'Đã kết nối' },
+  gs_error:              { ko: '연결 오류 — 클릭하여 재시도', vi: 'Lỗi kết nối — Nhấn để thử lại' },
+  gs_error_badge:        { ko: '오류',                    vi: 'Lỗi' },
+  gs_idle:               { ko: '게임 서버 연결',           vi: 'Kết nối máy chủ' },
 };
 
 /**

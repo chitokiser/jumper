@@ -1,10 +1,10 @@
 <!-- /merchants.html -->
 <!doctype html>
-<html lang="ko">
+<html lang="vi">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>가맹점 지도 - Jump</title>
+  <title>Bản đồ đại lý - Jump</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -723,9 +723,29 @@
     @media (max-width: 640px) {
       .exc-grid { grid-template-columns: 1fr; }
     }
+
+    /* ── 라이트박스 ── */
+    #lb-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,.85); align-items: center; justify-content: center;
+      cursor: zoom-out;
+    }
+    #lb-overlay.lb-open { display: flex; }
+    #lb-overlay img {
+      max-width: min(90vw, 900px); max-height: 88vh;
+      object-fit: contain; border-radius: 8px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.6);
+      cursor: default;
+    }
+    #lb-close {
+      position: fixed; top: 14px; right: 18px;
+      font-size: 32px; color: #fff; cursor: pointer;
+      line-height: 1; user-select: none; z-index: 10000;
+    }
+    .lb-trigger { cursor: zoom-in !important; }
   </style>
 
-  <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";</script>
+  <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM"; window.LANG = 'vi';</script>
   <script src="/assets/js/partials.js" defer></script>
 </head>
 <body>
@@ -751,7 +771,7 @@
       <span id="cDef" class="c-stat-def">🛡10</span>
     </div>
     <div class="c-spd" id="cSpd">SPD — km/h</div>
-    <div class="c-dead" id="cDead" style="display:none;">💀 사망 — 이동하여 부활</div>
+    <div class="c-dead" id="cDead" style="display:none;">💀 Đã chết — Di chuyển để hồi sinh</div>
     <div class="c-compact-bars">
       <div class="c-mini-bar"><div class="c-mini-fill-hp" id="cMiniHpBar" style="width:100%"></div></div>
       <div class="c-mini-bar"><div class="c-mini-fill-mp" id="cMiniMpBar" style="width:100%"></div></div>
@@ -761,30 +781,30 @@
   <!-- 스킬바 — initMap()에서 BOTTOM_CENTER Custom Control로 등록 -->
   <div id="skillBar">
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn0" title="벼락소환 (1) — MP 100">⚡</button>
+      <button class="skill-btn" id="skillBtn0" title="Triệu sét (1) — MP 100">⚡</button>
       <div class="skill-cd-overlay" id="skillCd0" style="display:none;"></div>
       <span class="skill-key">1</span>
-      <span class="skill-name">벼락</span>
+      <span class="skill-name">Sét</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn1" title="얼음소환 (2) — MP 100">❄️</button>
+      <button class="skill-btn" id="skillBtn1" title="Triệu băng (2) — MP 100">❄️</button>
       <div class="skill-cd-overlay" id="skillCd1" style="display:none;"></div>
       <span class="skill-key">2</span>
-      <span class="skill-name">얼음</span>
+      <span class="skill-name">Băng</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn2" title="화염소환 (3) — MP 100">🔥</button>
+      <button class="skill-btn" id="skillBtn2" title="Triệu lửa (3) — MP 100">🔥</button>
       <div class="skill-cd-overlay" id="skillCd2" style="display:none;"></div>
       <span class="skill-key">3</span>
-      <span class="skill-name">화염</span>
+      <span class="skill-name">Lửa</span>
     </div>
     <div class="skill-slot" style="position:relative;">
-      <button class="skill-btn" id="skillBtnPotion" title="빨간약 사용 (4) — HP +100">
-        <img src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="빨간약">
+      <button class="skill-btn" id="skillBtnPotion" title="Dùng thuốc đỏ (4) — HP +100">
+        <img src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="Thuốc đỏ">
       </button>
       <span class="skill-badge" id="skillPotionBadge"></span>
       <span class="skill-key">4</span>
-      <span class="skill-name">빨간약</span>
+      <span class="skill-name">Thuốc đỏ</span>
     </div>
   </div>
 
@@ -792,8 +812,8 @@
     <div class="mc-wrap">
 
       <div class="mc-hd">
-        <h1>🗺️보물지도</h1>
-        <p>몬스터들을 물리치고 아이템을 획득하세요<br>전투에 필요한 각종물약은 가맹점 결제와 동시에 획득할 수 있어요</p>
+        <h1>🗺️ Bản đồ kho báu</h1>
+        <p>Đánh bại quái vật và thu thập vật phẩm<br>Các loại thuốc cần cho chiến đấu có thể nhận được khi thanh toán tại đại lý</p>
         <div id="mcMemberStatus" style="display:none;"></div>
       </div>
 
@@ -810,103 +830,103 @@
           backdrop-filter:blur(3px);
         ">
           <div style="font-size:52px;line-height:1;">🔐</div>
-          <div style="color:#fff;font-size:17px;font-weight:700;letter-spacing:-.3px;">로그인이 필요합니다</div>
+          <div style="color:#fff;font-size:17px;font-weight:700;letter-spacing:-.3px;">Cần đăng nhập</div>
           <div style="color:#94a3b8;font-size:13px;text-align:center;line-height:1.5;">
-            게임을 플레이하려면<br>먼저 로그인해주세요
+            Vui lòng đăng nhập<br>để chơi game
           </div>
           <a href="/index.html" style="
             background:#ff6b00;color:#fff;
             padding:10px 28px;border-radius:8px;
             font-weight:700;text-decoration:none;font-size:14px;
             box-shadow:0 2px 8px rgba(255,107,0,.4);
-          ">로그인하러 가기 →</a>
+          ">Đăng nhập →</a>
         </div>
       </div>
       <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 -->
       <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;align-items:center;">
-        <button id="btnFullscreen" class="map-hud-btn" title="전체화면">⛶</button>
-        <button id="btnGameToggle" class="map-hud-btn" title="게임 서버 연결">▶</button>
+        <button id="btnFullscreen" class="map-hud-btn" title="Toàn màn hình">⛶</button>
+        <button id="btnGameToggle" class="map-hud-btn" title="Kết nối máy chủ">▶</button>
         <div id="gsStatusBadge"></div>
-        <button id="btnInventory" class="map-hud-btn" title="인벤토리">🎒</button>
-        <button id="btnMyLocation" class="map-hud-btn" title="내 위치">📍</button>
+        <button id="btnInventory" class="map-hud-btn" title="Túi đồ">🎒</button>
+        <button id="btnMyLocation" class="map-hud-btn" title="Vị trí của tôi">📍</button>
         <div id="distPanel">
-          <span class="dist-label">이동거리</span>
+          <span class="dist-label">Khoảng cách</span>
           <span class="dist-value" id="distValue">0m</span>
-          <button id="btnResetDist" title="초기화">↺ 초기화</button>
+          <button id="btnResetDist" title="Đặt lại">↺ Đặt lại</button>
         </div>
       </div>
 
       <!-- 관리자 전투 배치 패널 (LEFT_BOTTOM 커스텀 컨트롤) -->
       <div id="adminBattlePanel">
-        <div class="ab-title">⚔️ 전투 배치</div>
-        <button class="ab-btn" id="btnPlaceMonster">👾 몬스터 추가</button>
-        <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 드래곤 배치</button>
-        <button class="ab-btn" id="btnPlaceOrc"    style="color:#16a34a;font-weight:700;">🐗 오크 배치</button>
-        <button class="ab-btn" id="btnPlaceOrc2"    style="color:#15803d;font-weight:700;">🗡️ 오크2 배치</button>
-        <button class="ab-btn" id="btnPlaceOrc3"    style="color:#065f46;font-weight:700;">⚔️ 오크3 배치</button>
-        <button class="ab-btn" id="btnPlacePirate"  style="color:#b45309;font-weight:700;">🏴‍☠️ 해적 배치</button>
-        <button class="ab-btn" id="btnPlacePirate2" style="color:#92400e;font-weight:700;">🗡 해적2 배치</button>
-        <button class="ab-btn" id="btnPlacePirate3" style="color:#78350f;font-weight:700;">💀 해적3 배치</button>
-        <button class="ab-btn" id="btnPlaceArcherTower">🏹 아처타워</button>
-        <button class="ab-btn" id="btnPlaceCannonTower">💣 대포타워</button>
-        <button class="ab-btn" id="btnPlaceDeco">🎨 데코 배치</button>
-        <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ 배치 취소</button>
-        <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 범위 표시</button>
-        <button class="ab-btn" id="btnGivePotion" style="margin-top:4px;color:#fca5a5;">💊 빨간약 지급</button>
-        <button class="ab-btn" id="btnGiveRevive" style="color:#a78bfa;">🪄 부활권 지급</button>
+        <div class="ab-title">⚔️ Bố trí chiến đấu</div>
+        <button class="ab-btn" id="btnPlaceMonster">👾 Thêm quái vật</button>
+        <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 Đặt rồng</button>
+        <button class="ab-btn" id="btnPlaceOrc"    style="color:#16a34a;font-weight:700;">🐗 Đặt orc</button>
+        <button class="ab-btn" id="btnPlaceOrc2"    style="color:#15803d;font-weight:700;">🗡️ Đặt orc2</button>
+        <button class="ab-btn" id="btnPlaceOrc3"    style="color:#065f46;font-weight:700;">⚔️ Đặt orc3</button>
+        <button class="ab-btn" id="btnPlacePirate"  style="color:#b45309;font-weight:700;">🏴‍☠️ Đặt cướp biển</button>
+        <button class="ab-btn" id="btnPlacePirate2" style="color:#92400e;font-weight:700;">🗡 Đặt cướp biển2</button>
+        <button class="ab-btn" id="btnPlacePirate3" style="color:#78350f;font-weight:700;">💀 Đặt cướp biển3</button>
+        <button class="ab-btn" id="btnPlaceArcherTower">🏹 Tháp cung thủ</button>
+        <button class="ab-btn" id="btnPlaceCannonTower">💣 Tháp đại bác</button>
+        <button class="ab-btn" id="btnPlaceDeco">🎨 Đặt trang trí</button>
+        <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ Hủy bố trí</button>
+        <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 Hiện phạm vi</button>
+        <button class="ab-btn" id="btnGivePotion" style="margin-top:4px;color:#fca5a5;">💊 Cấp thuốc đỏ</button>
+        <button class="ab-btn" id="btnGiveRevive" style="color:#a78bfa;">🪄 Cấp thẻ hồi sinh</button>
 
         <!-- Firestore 몬스터 목록 (기존 battle_monsters) -->
         <div id="firestoreMonsterListWrap" style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <span class="ab-title" style="border:none;margin:0;padding:0">📦 Firestore 몬스터</span>
+            <span class="ab-title" style="border:none;margin:0;padding:0">📦 Quái Firestore</span>
             <button id="btnRefreshFsMonsters" style="background:none;border:none;color:#fbbf24;cursor:pointer;font-size:11px;padding:0;">↺</button>
           </div>
-          <div id="firestoreMonsterList" style="color:#6b7280;font-size:10px;max-height:140px;overflow-y:auto;">로딩 중…</div>
+          <div id="firestoreMonsterList" style="color:#6b7280;font-size:10px;max-height:140px;overflow-y:auto;">Đang tải…</div>
         </div>
 
-        <!-- GS 스폰 목록 (게임서버 실시간) -->
+        <!-- GS Spawn list (game server realtime) -->
         <div id="gsSpawnListWrap" style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <span class="ab-title" style="border:none;margin:0;padding:0">🗡 GS 스폰 목록</span>
+            <span class="ab-title" style="border:none;margin:0;padding:0">🗡 Danh sách GS Spawn</span>
             <button id="btnRefreshGsSpawns" style="background:none;border:none;color:#6ee7b7;cursor:pointer;font-size:11px;padding:0;">↺</button>
           </div>
-          <div id="gsSpawnList" style="color:#6b7280;font-size:10px;">게임서버 연결 후 ↺ 클릭</div>
+          <div id="gsSpawnList" style="color:#6b7280;font-size:10px;">Kết nối máy chủ rồi nhấn ↺</div>
         </div>
       </div>
 
       <!-- 범례 -->
       <div class="mc-legend">
-        <span><span class="mc-legend-dot" style="background:#f59e0b;"></span>가맹점</span>
-        <span><span class="mc-legend-dot" style="background:#ffd700; border-color:#7a5c3a;"></span>보물박스 (활성)</span>
-        <span><span class="mc-legend-dot" style="background:#888;"></span>보물박스 (비활성)</span>
-        <span><span style="font-size:12px;">👑</span> 정회원 전용 박스</span>
-        <span><span class="mc-legend-dot" style="background:#ef4444;"></span>병원</span>
-        <span><span class="mc-legend-dot" style="background:#16a34a;"></span>학교</span>
-        <span><span class="mc-legend-dot" style="background:#22c55e;"></span>공원</span>
-        <span><span class="mc-legend-dot" style="background:#ec4899;"></span>쇼핑</span>
-        <span><span class="mc-legend-dot" style="background:#6b7280;"></span>기타장소</span>
-        <span><span class="mc-legend-dot" style="background:#4285F4;"></span>내 위치</span>
+        <span><span class="mc-legend-dot" style="background:#f59e0b;"></span>Đại lý</span>
+        <span><span class="mc-legend-dot" style="background:#ffd700; border-color:#7a5c3a;"></span>Hộp kho báu (hoạt động)</span>
+        <span><span class="mc-legend-dot" style="background:#888;"></span>Hộp kho báu (không hoạt động)</span>
+        <span><span style="font-size:12px;">👑</span> Hộp chỉ hội viên</span>
+        <span><span class="mc-legend-dot" style="background:#ef4444;"></span>Bệnh viện</span>
+        <span><span class="mc-legend-dot" style="background:#16a34a;"></span>Trường học</span>
+        <span><span class="mc-legend-dot" style="background:#22c55e;"></span>Công viên</span>
+        <span><span class="mc-legend-dot" style="background:#ec4899;"></span>Mua sắm</span>
+        <span><span class="mc-legend-dot" style="background:#6b7280;"></span>Địa điểm khác</span>
+        <span><span class="mc-legend-dot" style="background:#4285F4;"></span>Vị trí của tôi</span>
       </div>
 
       <!-- 필터 -->
       <div class="mc-filter">
-        <input type="text" id="mcSearch" placeholder="가맹점명, 업종, 지역 검색…" />
+        <input type="text" id="mcSearch" placeholder="Tìm kiếm tên đại lý, ngành nghề, khu vực…" />
         <span class="mc-count" id="mcCount"></span>
       </div>
 
       <!-- 카드 목록 -->
       <div class="mc-grid" id="mcGrid">
-        <p class="mc-state">불러오는 중...</p>
+        <p class="mc-state">Đang tải...</p>
       </div>
 
       <!-- ── 상품교환권 섹션 ── -->
       <div class="exc-section">
         <div class="exc-header">
-          <h2 class="exc-title">🎟 상품교환권</h2>
-          <p class="exc-desc">아이템을 모아 교환하면 실제 상품권을 받을 수 있어요!</p>
+          <h2 class="exc-title">🎟 Phiếu đổi hàng</h2>
+          <p class="exc-desc">Thu thập vật phẩm để đổi lấy phiếu mua hàng thực tế!</p>
         </div>
         <div class="exc-grid" id="excGrid">
-          <div class="exc-loading">불러오는 중...</div>
+          <div class="exc-loading">Đang tải...</div>
         </div>
       </div>
 
@@ -921,10 +941,10 @@
   <!-- 아이템 획득 오버레이 -->
   <div id="itemReveal">
     <div class="item-reveal-panel">
-      <div class="item-reveal-title">✨ 아이템 획득!</div>
-      <img id="itemRevealImg" class="item-reveal-img" src="" alt="" onerror="this.style.display='none'">
+      <div class="item-reveal-title">✨ Nhận vật phẩm!</div>
+      <img id="itemRevealImg" class="item-reveal-img lb-trigger" src="" alt="" onclick="if(this.src)openLightbox(this.src,this.alt)" onerror="this.style.display='none'">
       <div class="item-reveal-name" id="itemRevealName"></div>
-      <button class="btn-reveal-close" id="btnRevealClose">확인</button>
+      <button class="btn-reveal-close" id="btnRevealClose">Xác nhận</button>
     </div>
   </div>
 
@@ -932,36 +952,42 @@
   <div id="invModal">
     <div class="inv-panel">
       <div class="inv-header">
-        🎒 인벤토리
+        🎒 Túi đồ
         <button class="inv-close" id="btnCloseInv">✕</button>
       </div>
       <div class="inv-body">
-        <!-- 코인/토큰 현황 -->
+        <!-- Xu / Đá phép -->
         <div class="inv-wallet" id="invWallet" style="display:flex;gap:18px;align-items:center;padding:8px 12px;background:#1a0e06;border:1px solid #5c3a1e;border-radius:10px;margin-bottom:10px;font-size:0.92rem;font-weight:600;">
-          <span style="color:#c9a870;">💰 코인: <span id="invGold" style="color:#ffd700;">0</span></span>
-          <span style="color:#c9a870;">💎 마정석: <span id="invToken" style="color:#a78bfa;">0</span></span>
+          <span style="color:#c9a870;">💰 Xu: <span id="invGold" style="color:#ffd700;">0</span></span>
+          <span style="color:#c9a870;">💎 Đá phép: <span id="invToken" style="color:#a78bfa;">0</span></span>
         </div>
 
-        <!-- 미개봉 보물박스 -->
-        <div class="inv-craft-title" style="padding-top:0;border-top:none;">📦 미개봉 보물박스</div>
-        <div id="boxInvList"><div class="voucher-empty">불러오는 중...</div></div>
+        <!-- Hộp kho báu chưa mở -->
+        <div class="inv-craft-title" style="padding-top:0;border-top:none;">📦 Hộp kho báu chưa mở</div>
+        <div id="boxInvList"><div class="voucher-empty">Đang tải...</div></div>
 
-        <!-- 장비 능력치 -->
+        <!-- Chỉ số trang bị -->
         <div class="inv-equip-stats" id="invEquipStats"></div>
 
-        <!-- 4×5 슬롯 -->
-        <div class="inv-craft-title">🎒 수집한 아이템 (무기/방어구 클릭 = 장착)</div>
+        <!-- 4×5 slots -->
+        <div class="inv-craft-title">🎒 Vật phẩm đã thu thập (nhấn vũ khí/giáp để trang bị)</div>
         <div class="inv-grid" id="invGrid"></div>
 
-        <!-- 바우처 조합 -->
-        <div class="inv-craft-title">⚗️ 아이템 조합</div>
-        <div id="voucherList"><div class="voucher-empty">조합 레시피 불러오는 중...</div></div>
+        <!-- Tổng hợp phiếu -->
+        <div class="inv-craft-title">⚗️ Tổng hợp vật phẩm</div>
+        <div id="voucherList"><div class="voucher-empty">Đang tải công thức...</div></div>
 
-        <!-- 보유 바우처 -->
-        <div class="inv-craft-title">🎟 보유 바우처</div>
-        <div id="myVoucherList"><div class="voucher-empty">불러오는 중...</div></div>
+        <!-- Phiếu đang có -->
+        <div class="inv-craft-title">🎟 Phiếu đang có</div>
+        <div id="myVoucherList"><div class="voucher-empty">Đang tải...</div></div>
       </div>
     </div>
+  </div>
+
+  <!-- 라이트박스 -->
+  <div id="lb-overlay" role="dialog" aria-modal="true" aria-label="이미지 확대">
+    <span id="lb-close" aria-label="닫기">×</span>
+    <img id="lb-img" src="" alt="">
   </div>
 
   <!-- 게임서버 관리자 인증키 (Railway 환경변수 ADMIN_SECRET 과 동일하게 유지) -->

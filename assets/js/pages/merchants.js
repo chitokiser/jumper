@@ -104,6 +104,30 @@ const _ctx = {
   lastPos:             null,
 };
 
+// ── 라이트박스 ───────────────────────────────────────────────────────────────
+(function initLightbox() {
+  const overlay = document.getElementById('lb-overlay');
+  const img     = document.getElementById('lb-img');
+  const closeBtn = document.getElementById('lb-close');
+  if (!overlay) return;
+
+  window.openLightbox = function(src, alt) {
+    img.src = src;
+    img.alt = alt || '';
+    overlay.classList.add('lb-open');
+  };
+
+  function closeLb() {
+    overlay.classList.remove('lb-open');
+    img.src = '';
+  }
+
+  overlay.addEventListener('click', closeLb);
+  img.addEventListener('click', e => e.stopPropagation());
+  closeBtn.addEventListener('click', closeLb);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+})();
+
 // ── 유틸 ────────────────────────────────────────────────────────────────────
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -229,6 +253,13 @@ function initMap() {
       else document.querySelector('.mc-map-wrap')?.appendChild(bo);
     }
   });
+
+  // 관리자: 지도 클릭 시 근처 숨김 보물박스 표시
+  map.addListener('click', e => {
+    if (!_isAdmin) return;
+    const lat = e.latLng.lat(), lng = e.latLng.lng();
+    _adminRevealNearbyHiddenBoxes(lat, lng);
+  });
 }
 
 // ── 공유 bounds (가맹점 + 보물박스 합산) ─────────────────────────────────────
@@ -320,7 +351,7 @@ function renderMarkers(list) {
     marker.addListener('click', () => {
       infoWindow.setContent(`
         <div style="max-width:240px;font-size:13px;line-height:1.6;">
-          ${m.imageUrl ? `<img src="${escHtml(m.imageUrl)}" alt="" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px;">` : ''}
+          ${m.imageUrl ? `<img src="${escHtml(m.imageUrl)}" alt="${escHtml(m.name)}" class="lb-trigger" onclick="openLightbox(this.src,this.alt)" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px;cursor:zoom-in;">` : ''}
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(m.name)}</div>
           ${m.career ? `<div style="color:#f59e0b;font-size:12px;">${escHtml(m.career)}</div>` : ''}
           ${m.region ? `<div style="color:#6b7280;">📍 ${escHtml(m.region)}</div>` : ''}
@@ -431,7 +462,7 @@ function attackBox(box, marker) {
   const hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#f59e0b' : '#ef4444';
   infoWindow.setContent(`
     <div style="font-size:13px;line-height:1.6;min-width:190px;">
-      <div style="font-weight:700;font-size:14px;margin-bottom:6px;">🎁 ${escHtml(box.name||'보물박스')}</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px;">🎁 ${escHtml(box.name || _t('box_default_name'))}</div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
         <span style="font-size:11px;color:#888;min-width:20px;">HP</span>
         <div style="flex:1;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;">
@@ -440,7 +471,7 @@ function attackBox(box, marker) {
         <span style="font-size:11px;color:#374151;min-width:60px;text-align:right;">${st.current}/${st.max}</span>
       </div>
       <div style="color:${isCrit?'#f97316':'#ef4444'};font-weight:700;font-size:13px;">${isCrit?'💥 CRITICAL! ':'💥 '}-${dmg}</div>
-      <div style="font-size:11px;color:#555;margin-top:4px;">계속 클릭하여 공격!</div>
+      <div style="font-size:11px;color:#555;margin-top:4px;">${_t('box_attack_hint')}</div>
     </div>`);
   infoWindow.open(map, marker);
 }
@@ -450,7 +481,7 @@ function _makeBoxMarker(box, lat, lng, size, animate) {
   const active = isBoxActive(box);
   const marker = new google.maps.Marker({
     position: { lat, lng }, map,
-    title: (box.memberOnly ? '[정회원] ' : '') + (box.name || '보물박스'),
+    title: (box.memberOnly ? `[${_t('badge_member')}] ` : '') + (box.name || _t('box_default_name')),
     icon: {
       url: '/assets/images/item/box.png',
       scaledSize: new google.maps.Size(size, size),
@@ -466,13 +497,13 @@ function _makeBoxMarker(box, lat, lng, size, animate) {
   const range = box.hiddenBox ? 5 : 20;
   marker.addListener('click', () => {
     if (_collectedBoxes.has(box.id)) {
-      infoWindow.setContent('<div style="font-size:13px;color:#888;padding:4px;">✓ 이미 수집한 보물박스입니다.</div>');
+      infoWindow.setContent(`<div style="font-size:13px;color:#888;padding:4px;">${_t('box_already_collected')}</div>`);
       infoWindow.open(map, marker);
       return;
     }
     if (!isBoxActive(box)) { showBoxInfo(box, marker); return; }
     if (!_uid) {
-      infoWindow.setContent('<div style="font-size:13px;padding:4px;">로그인이 필요합니다.</div>');
+      infoWindow.setContent(`<div style="font-size:13px;padding:4px;">${_t('need_login')}</div>`);
       infoWindow.open(map, marker);
       return;
     }
@@ -504,6 +535,78 @@ function _playFoundSound() {
     [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.3, i * 0.1, 0.2, 'triangle'));
   } catch (_) { /* 무시 */ }
 }
+
+// 관리자 전용: 클릭 지점 100m 내 숨김 박스를 반투명 마커로 표시
+const _adminGhostMarkers = {};  // { boxId: google.maps.Marker }
+
+function _adminRevealNearbyHiddenBoxes(clickLat, clickLng) {
+  const ADMIN_REVEAL_M = 100;
+  let found = false;
+  for (const box of treasureBoxes) {
+    if (!box.hiddenBox || !box.lat || !box.lng) continue;
+    const dist = haversine(clickLat, clickLng, Number(box.lat), Number(box.lng));
+    if (dist > ADMIN_REVEAL_M) continue;
+    found = true;
+
+    // 이미 마커가 있으면 인포윈도우만 재표시
+    if (_adminGhostMarkers[box.id]) {
+      _adminShowHiddenBoxInfo(box, _adminGhostMarkers[box.id]);
+      continue;
+    }
+
+    // 반투명 고스트 마커 생성
+    const lat = Number(box.lat), lng = Number(box.lng);
+    const ghost = new google.maps.Marker({
+      position: { lat, lng }, map,
+      title: `[관리자] 숨김: ${box.name || '보물박스'}`,
+      icon: {
+        url: '/assets/images/item/box.png',
+        scaledSize: new google.maps.Size(32, 32),
+        anchor: new google.maps.Point(16, 16),
+      },
+      opacity: 0.45,
+      zIndex: 200,
+    });
+    _adminGhostMarkers[box.id] = ghost;
+    ghost.addListener('click', () => _adminShowHiddenBoxInfo(box, ghost));
+    _adminShowHiddenBoxInfo(box, ghost);
+  }
+  if (!found) {
+    infoWindow.setContent('<div style="font-size:12px;color:#888;padding:4px;">100m 내 숨겨진 보물박스 없음</div>');
+    infoWindow.setPosition({ lat: clickLat, lng: clickLng });
+    infoWindow.open(map);
+  }
+}
+
+function _adminShowHiddenBoxInfo(box, marker) {
+  const keyName = box.keyId ? (_keyDefs[box.keyId]?.name || box.keyId) : '없음';
+  const active  = isBoxActive(box);
+  const st      = getBoxHpState(box);
+  infoWindow.setContent(`
+    <div style="font-size:12px;line-height:1.8;min-width:200px;">
+      <div style="font-weight:700;font-size:13px;color:#7c3aed;margin-bottom:4px;">🕵️ [숨김] ${escHtml(box.name||'보물박스')}</div>
+      <div>위치: ${Number(box.lat).toFixed(6)}, ${Number(box.lng).toFixed(6)}</div>
+      <div>필요 열쇠: <b>${escHtml(keyName)}</b></div>
+      <div>정회원 전용: ${box.memberOnly ? '✅' : '❌'}</div>
+      <div>활성: ${active ? '✅' : `❌ (${box.startHour||'?'}~${box.endHour||'?'}시)`}</div>
+      <div>HP: ${st.current} / ${box.hp || 300}</div>
+      <button onclick="window.__adminHiddenBoxDelete('${box.id}')"
+        style="margin-top:6px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑️ 삭제</button>
+    </div>`);
+  infoWindow.open(map, marker);
+}
+
+window.__adminHiddenBoxDelete = async (boxId) => {
+  if (!_isAdmin) return;
+  if (!confirm('이 숨김 보물박스를 삭제하시겠습니까?')) return;
+  try {
+    await deleteDoc(doc(db, 'treasure_boxes', boxId));
+    treasureBoxes = treasureBoxes.filter(b => b.id !== boxId);
+    if (_adminGhostMarkers[boxId]) { _adminGhostMarkers[boxId].setMap(null); delete _adminGhostMarkers[boxId]; }
+    infoWindow.close();
+    alert('삭제 완료');
+  } catch (err) { alert('삭제 오류: ' + err.message); }
+};
 
 function _revealHiddenBox(box) {
   if (box._marker) return;
@@ -549,22 +652,22 @@ function renderBoxMarkers() {
 // ── 카드 렌더링 ──────────────────────────────────────────────────────────────
 function renderCards(list) {
   const grid = $('mcGrid');
-  if (!list.length) { grid.innerHTML = '<p class="mc-state">등록된 가맹점이 없습니다.</p>'; $('mcCount').textContent = ''; return; }
-  $('mcCount').textContent = `${list.length}개`;
+  if (!list.length) { grid.innerHTML = `<p class="mc-state">${_t('no_merchants')}</p>`; $('mcCount').textContent = ''; return; }
+  $('mcCount').textContent = _t('merchant_count', list.length);
   grid.innerHTML = '';
   list.forEach(m => {
     const el = document.createElement('div');
     el.className = 'mc-card';
     el.dataset.id = m.id;
     el.innerHTML = `
-      <div class="mc-card-name">${escHtml(m.name||'(이름없음)')}${m._latLng?'<span class="mc-badge-map">지도</span>':''}</div>
+      <div class="mc-card-name">${escHtml(m.name || _t('no_name_label'))}${m._latLng ? '<span class="mc-badge-map">지도</span>' : ''}</div>
       ${m.career  ? `<div class="mc-card-career">${escHtml(m.career)}</div>` : ''}
       ${m.region  ? `<div class="mc-card-region">📍 ${escHtml(m.region)}</div>` : ''}
       ${m.phone   ? `<div class="mc-card-phone">📞 ${escHtml(m.phone)}</div>` : ''}
       ${m.description ? `<div class="mc-card-desc">${escHtml(m.description)}</div>` : ''}
       ${m._latLng
-        ? `<a class="mc-card-gmap" href="${escHtml(m.gmap||'')}" target="_blank" rel="noopener">구글 지도에서 보기 →</a>`
-        : '<div class="mc-card-no-map">지도 미등록</div>'}`;
+        ? `<a class="mc-card-gmap" href="${escHtml(m.gmap||'')}" target="_blank" rel="noopener">${_t('gmap_link')}</a>`
+        : `<div class="mc-card-no-map">${_t('no_map_label')}</div>`}`;
     if (m._latLng) {
       el.addEventListener('click', e => {
         if (e.target.tagName === 'A') return;
@@ -652,7 +755,7 @@ async function broadcastMyLocation(lat, lng) {
   const now = Date.now();
   if (now - _locWriteTs < LOC_WRITE_INTERVAL) return;
   _locWriteTs = now;
-  const name = (_userEmail || '').split('@')[0] || '플레이어';
+  const name = (_userEmail || '').split('@')[0] || _t('player_default_name');
   try {
     await setDoc(doc(db, 'user_locations', _uid), {
       uid: _uid, lat, lng, name,
@@ -906,7 +1009,28 @@ window.__gsAdminDelSpawn = async (spawnId) => {
   } catch (e) { alert('삭제 오류: ' + e.message); }
 };
 
+async function _gsKeyDrop(monsterId) {
+  const mob   = _gsMonsters[monsterId];
+  const myUid = _uid;
+  if (!myUid || !mob) return;
+  if (!Object.keys(_keyDefs).length) await loadKeyDefs();
+  if (!Object.keys(_keyDefs).length) return;
+  const lat = mob.currentLat ?? mob.lat ?? 0;
+  const lng = mob.currentLng ?? mob.lng ?? 0;
+  for (const [keyId, keyDef] of Object.entries(_keyDefs)) {
+    if (Math.random() < (keyDef.dropRate || 0)) {
+      httpsCallable(functions, 'earnKey')({ keyId })
+        .then(res => {
+          showFloat(_t('float_key_drop', res.data?.keyName || keyDef.name || `Key #${keyId}`), '#fcd34d', lat, lng);
+          loadInventory();
+        })
+        .catch(err => console.warn('[earnKey GS]', err.message));
+    }
+  }
+}
+
 function _removeGsMonster(monsterId) {
+  _gsKeyDrop(monsterId);
   playSound('monster_die');
   // 스프라이트 오버레이 (dragon 등) — death 애니메이션 후 자체 제거
   if (_gsOverlays[monsterId]) {
@@ -939,7 +1063,7 @@ let _gameStarted = false;
 function showMyLocation() {
   if (_gameStarted) return; // 이미 시작됨 → 무반응
   if (!_uid) return; // 비로그인 차단
-  if (!navigator.geolocation) { alert('이 브라우저는 위치 서비스를 지원하지 않습니다.'); return; }
+  if (!navigator.geolocation) { alert(_t('no_geolocation')); return; }
 
   const btn = $('btnMyLocation');
   if (btn) btn.textContent = '⏳';
@@ -969,7 +1093,7 @@ function showMyLocation() {
 
   if (btn) {
     btn.textContent = '📍';
-    btn.title = '게임 진행 중';
+    btn.title = _t('game_in_progress');
   }
 }
 
@@ -989,7 +1113,7 @@ async function checkProximity(lat, lng) {
     if (box.hiddenBox) {
       if (dist <= 5) {
         if (!box._marker) _revealHiddenBox(box);
-        else box._marker.setTitle(`✨ ${box.name||'숨겨진 보물'} — 클릭하여 공격! (HP ${getBoxHpState(box).current}/${maxHp})`);
+        else box._marker.setTitle(_t('hidden_box_title', box.name || _t('hidden_box_name'), getBoxHpState(box).current, maxHp));
       } else if (box._marker) {
         box._marker.setMap(null);
         boxMarkers = boxMarkers.filter(m => m !== box._marker);
@@ -1009,8 +1133,8 @@ async function checkProximity(lat, lng) {
           anchor: new google.maps.Point(inRange ? 15 : 10, inRange ? 15 : 10),
         });
         box._marker.setTitle(inRange
-          ? `⚔️ ${box.name||'보물박스'} — 클릭하여 공격! (HP ${getBoxHpState(box).current}/${maxHp})`
-          : box.name || '보물박스');
+          ? _t('box_attack_title', box.name || _t('box_default_name'), getBoxHpState(box).current, maxHp)
+          : box.name || _t('box_default_name'));
       }
     }
   }
@@ -1042,8 +1166,8 @@ async function tryCollect(box) {
     } else if (msg.includes('정회원')) {
       _collectedBoxes.delete(box.id);
       infoWindow.setContent(`<div style="font-size:13px;padding:8px;min-width:200px;">
-        <div style="font-weight:700;margin-bottom:4px;">👑 정회원 전용 보물박스</div>
-        <div style="color:#555;font-size:12px;">coop.html에서 10 HEX를 지불하고<br>CoopMall 정회원에 가입하세요.</div>
+        <div style="font-weight:700;margin-bottom:4px;">${_t('member_only_box_title')}</div>
+        <div style="color:#555;font-size:12px;">${_t('member_only_box_desc')}</div>
       </div>`);
       if (box._marker) infoWindow.open(map, box._marker);
     } else {
@@ -1090,7 +1214,7 @@ function showInfoToast(msg) {
 function showCollectToast(boxName) {
   playCollectSound();
   const el = $('collectToast');
-  el.innerHTML = `📦 보물박스 획득!\n<strong>${escHtml(boxName || '보물박스')}</strong>\n인벤토리에서 열어보세요!`;
+  el.innerHTML = `${_t('collect_toast_title')}\n<strong>${escHtml(boxName || _t('box_default_name'))}</strong>\n${_t('collect_toast_hint')}`;
   el.style.display = 'block';
   clearTimeout(el._t);
   el._t = setTimeout(() => { el.style.display = 'none'; }, 4000);
@@ -1124,7 +1248,7 @@ function playOpenBoxSound() {
 
 // ── 관리자: PC에서 GPS 없이 박스 수집 ────────────────────────────────────────
 async function adminCollectBox(boxId) {
-  if (_collectedBoxes.has(boxId)) { alert('이미 수집한 보물박스입니다.'); return; }
+  if (_collectedBoxes.has(boxId)) { alert(_t('already_collected')); return; }
   _collectedBoxes.add(boxId);
   infoWindow.close();
   try {
@@ -1137,7 +1261,7 @@ async function adminCollectBox(boxId) {
     renderBoxInventory();
   } catch (err) {
     _collectedBoxes.delete(boxId);
-    alert('수집 실패: ' + (err.message || err));
+    alert(_t('collect_failed', err.message || err));
   }
 }
 
@@ -1174,7 +1298,7 @@ async function openBox(boxId, slotEl) {
     showItemReveal(d.itemName, d.itemImage, d.itemId);
   } catch (err) {
     if (slotEl) slotEl.classList.remove('opening');
-    alert('박스 오픈 실패: ' + (err.message || err));
+    alert(_t('open_box_failed', err.message || err));
   }
 }
 
@@ -1188,7 +1312,7 @@ function showItemReveal(itemName, itemImage, itemId) {
     img.onerror = () => { img.onerror = null; img.src = fallback; };
     img.style.display = '';
   }
-  if (name) name.textContent = itemName || '아이템';
+  if (name) name.textContent = itemName || _t('default_item_name');
   $('itemReveal')?.classList.add('open');
 }
 
@@ -1197,7 +1321,7 @@ function renderBoxInventory() {
   const el = $('boxInvList');
   if (!el) return;
   if (!_boxInventory.length) {
-    el.innerHTML = '<div class="voucher-empty">미개봉 보물박스가 없습니다.</div>';
+    el.innerHTML = `<div class="voucher-empty">${_t('no_boxes')}</div>`;
     return;
   }
   const grid = document.createElement('div');
@@ -1211,16 +1335,17 @@ function renderBoxInventory() {
     const locked   = needsKey && !hasKey;
     const slot = document.createElement('div');
     slot.className = 'box-inv-slot' + (locked ? ' locked' : '');
+    const _bName = boxName || _t('box_default_name2');
     slot.title = locked
-      ? `${boxName || '보물박스'} — 🔑 앞 3자리 ${prefix} 열쇠 필요`
-      : `${boxName || '보물박스'} — 클릭하여 열기`;
+      ? _t('box_locked_hint', prefix, _bName)
+      : _t('box_open_hint', _bName);
     slot.innerHTML = `
       <img src="/assets/images/item/box.png" alt="box" onerror="this.style.display='none'">
-      <span class="box-slot-name">${escHtml(boxName || '보물박스')}</span>
+      <span class="box-slot-name">${escHtml(boxName || _t('box_default_name2'))}</span>
       ${needsKey ? `<span class="box-slot-key" title="Key prefix ${escHtml(prefix)}">${locked ? '🔒' : '🔑'}</span>` : ''}`;
     slot.addEventListener('click', () => {
       if (locked) {
-        showInfoToast(`🔑 앞 3자리가 "${prefix}"인 열쇠가 필요합니다.\n몬스터를 처치하여 열쇠를 획득하세요!`);
+        showInfoToast(_t('box_key_toast', prefix));
         return;
       }
       openBox(boxId, slot);
@@ -1241,30 +1366,30 @@ function _updateEquipStats() {
   const aNum = aId ? aId.replace('armo_', '')   : null;
 
   const weaponCard = wNum
-    ? `<div data-unequip="weapon" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #ffd700;border-radius:8px;padding:5px 10px;min-width:100px;cursor:pointer;position:relative;" title="클릭하여 해제">
+    ? `<div data-unequip="weapon" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #ffd700;border-radius:8px;padding:5px 10px;min-width:100px;cursor:pointer;position:relative;" title="${_t('unequip_hint')}">
         <img src="/assets/images/weapon/${escHtml(wNum)}.png"
              onerror="this.onerror=null;this.style.display='none'"
-             style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="무기">
+             style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="${_t('weapon_slot_name', wNum)}">
         <div>
-          <div style="font-size:9px;color:#c9a870;">장착 무기</div>
-          <div style="font-size:12px;color:#ffd700;font-weight:700;">무기 +${escHtml(wNum)}</div>
+          <div style="font-size:9px;color:#c9a870;">${_t('equip_weapon_label')}</div>
+          <div style="font-size:12px;color:#ffd700;font-weight:700;">${_t('weapon_slot_name', wNum)}</div>
         </div>
-        <span style="position:absolute;top:2px;right:4px;font-size:9px;color:#f87171;">해제</span>
+        <span style="position:absolute;top:2px;right:4px;font-size:9px;color:#f87171;">${_t('unequip_btn')}</span>
       </div>`
-    : `<div style="background:#1a0e06;border:2px dashed #5c3a1e;border-radius:8px;padding:5px 10px;min-width:100px;color:#5c3a1e;font-size:11px;text-align:center;">무기 없음</div>`;
+    : `<div style="background:#1a0e06;border:2px dashed #5c3a1e;border-radius:8px;padding:5px 10px;min-width:100px;color:#5c3a1e;font-size:11px;text-align:center;">${_t('no_weapon')}</div>`;
 
   const armorCard = aNum
-    ? `<div data-unequip="armor" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #60a5fa;border-radius:8px;padding:5px 10px;min-width:100px;cursor:pointer;position:relative;" title="클릭하여 해제">
+    ? `<div data-unequip="armor" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #60a5fa;border-radius:8px;padding:5px 10px;min-width:100px;cursor:pointer;position:relative;" title="${_t('unequip_hint')}">
         <img src="/assets/images/armor/${escHtml(aNum)}.png"
              onerror="this.onerror=null;this.style.display='none'"
-             style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="방어구">
+             style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="${_t('armor_slot_name', aNum)}">
         <div>
-          <div style="font-size:9px;color:#c9a870;">장착 방어구</div>
-          <div style="font-size:12px;color:#60a5fa;font-weight:700;">방어구 +${escHtml(aNum)}</div>
+          <div style="font-size:9px;color:#c9a870;">${_t('equip_armor_label')}</div>
+          <div style="font-size:12px;color:#60a5fa;font-weight:700;">${_t('armor_slot_name', aNum)}</div>
         </div>
-        <span style="position:absolute;top:2px;right:4px;font-size:9px;color:#f87171;">해제</span>
+        <span style="position:absolute;top:2px;right:4px;font-size:9px;color:#f87171;">${_t('unequip_btn')}</span>
       </div>`
-    : `<div style="background:#1a0e06;border:2px dashed #5c3a1e;border-radius:8px;padding:5px 10px;min-width:100px;color:#5c3a1e;font-size:11px;text-align:center;">방어구 없음</div>`;
+    : `<div style="background:#1a0e06;border:2px dashed #5c3a1e;border-radius:8px;padding:5px 10px;min-width:100px;color:#5c3a1e;font-size:11px;text-align:center;">${_t('no_armor')}</div>`;
 
   statsEl.innerHTML = `
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
@@ -1322,52 +1447,52 @@ function renderInventory() {
       slot.classList.add('has-item');
       slot.dataset.itemid = itemId;
       if (itemId === 'potion_red') {
-        slot.title = '빨간약 — 클릭하여 사용 (HP +100)';
+        slot.title = _t('hp_potion_title');
         slot.style.cursor = 'pointer';
         slot.innerHTML = `
           <img src="/assets/images/item/hp.png"
                onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2218%22 fill=%22%23ef4444%22/><text x=%2220%22 y=%2226%22 font-size=%2220%22 text-anchor=%22middle%22>💊</text></svg>'"
-               alt="빨간약" />
-          <span class="slot-name">빨간약</span>
+               alt="${_t('hp_potion_name')}" />
+          <span class="slot-name">${_t('hp_potion_name')}</span>
           <span class="slot-count">${count}</span>`;
         slot.addEventListener('click', usePotion);
       } else if (itemId === 'potion_mp') {
-        slot.title = '마법약 — 클릭하여 사용 (MP 전체 회복)';
+        slot.title = _t('mp_potion_title');
         slot.style.cursor = 'pointer';
         slot.innerHTML = `
           <img src="/assets/images/item/mp.png"
                onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2218%22 fill=%22%233b82f6%22/><text x=%2220%22 y=%2226%22 font-size=%2220%22 text-anchor=%22middle%22>🔮</text></svg>'"
-               alt="마법약" />
-          <span class="slot-name">마법약</span>
+               alt="${_t('mp_potion_name')}" />
+          <span class="slot-name">${_t('mp_potion_name')}</span>
           <span class="slot-count">${count}</span>`;
         slot.addEventListener('click', useMpPotion);
       } else if (itemId === 'revive_ticket') {
-        slot.title = '부활 아이템 — 사망 시 클릭하여 즉시 부활 (HP·MP 50%)';
+        slot.title = _t('revive_item_title');
         slot.style.cursor = 'pointer';
         slot.innerHTML = `
           <img src="/assets/images/item/revive_ticket.png"
                onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2218%22 fill=%22%238b5cf6%22/><text x=%2220%22 y=%2226%22 font-size=%2220%22 text-anchor=%22middle%22>✨</text></svg>'"
-               alt="부활 아이템" />
-          <span class="slot-name">부활권</span>
+               alt="${_t('revive_item_name')}" />
+          <span class="slot-name">${_t('revive_item_name')}</span>
           <span class="slot-count">${count}</span>`;
         slot.addEventListener('click', () => { useReviveTicket(); sendPlayerRevive(); });
       } else if (String(itemId).startsWith('weapon_')) {
         // ── 무기 ────────────────────────────────────────────────────────────
         const num = String(itemId).replace('weapon_', '');
         const isEquipped = getEquippedWeapon() === itemId;
-        slot.title = `무기 +${num} — 클릭하여 장착`;
+        slot.title = _t('weapon_slot_title', num);
         slot.style.cursor = 'pointer';
         if (isEquipped) slot.classList.add('equipped');
         slot.innerHTML = `
           <img src="/assets/images/weapon/${escHtml(num)}.png"
                onerror="this.onerror=null;this.src='/assets/images/item/0.png'"
-               alt="무기 +${escHtml(num)}" />
-          <span class="slot-name">무기 +${escHtml(num)}</span>
-          ${isEquipped ? '<span class="slot-equipped">장착</span>' : `<span class="slot-count">${count}</span>`}`;
+               alt="${_t('weapon_slot_name', num)}" />
+          <span class="slot-name">${_t('weapon_slot_name', num)}</span>
+          ${isEquipped ? `<span class="slot-equipped">${_t('equipped_label')}</span>` : `<span class="slot-count">${count}</span>`}`;
         slot.addEventListener('click', () => {
           equipWeapon(itemId);
           renderInventory();
-          showInfoToast(`⚔️ 무기 +${num} 장착! 총공격력 ${getTotalAtk()}`);
+          showInfoToast(_t('equip_weapon_toast', num, getTotalAtk()));
         });
       } else if (String(itemId).startsWith('armo_')) {
         // ── 방어구 ───────────────────────────────────────────────────────────
@@ -1375,25 +1500,25 @@ function renderInventory() {
         const defVal = String(itemId).match(/(\d+)$/)?.[1] || num;
         const isEquipped = getEquippedArmor() === itemId;
         const folder = Math.floor(parseInt(defVal) / 10);
-        slot.title = `방어구 DEF ${defVal} — 클릭하여 장착`;
+        slot.title = _t('armor_slot_title', defVal);
         slot.style.cursor = 'pointer';
         if (isEquipped) slot.classList.add('equipped');
         slot.innerHTML = `
           <img src="/assets/images/armo/${escHtml(String(folder))}/${escHtml(defVal)}.png"
                onerror="this.onerror=null;this.src='/assets/images/item/0.png'"
-               alt="방어구 DEF ${escHtml(defVal)}" />
-          <span class="slot-name">방어 ${escHtml(defVal)}</span>
-          ${isEquipped ? '<span class="slot-equipped">장착</span>' : `<span class="slot-count">${count}</span>`}`;
+               alt="${_t('armor_slot_name', defVal)}" />
+          <span class="slot-name">${_t('armor_slot_name', defVal)}</span>
+          ${isEquipped ? `<span class="slot-equipped">${_t('equipped_label')}</span>` : `<span class="slot-count">${count}</span>`}`;
         slot.addEventListener('click', () => {
           equipArmor(itemId);
           renderInventory();
-          showInfoToast(`🛡 방어구 DEF ${defVal} 장착!`);
+          showInfoToast(_t('equip_armor_toast', defVal));
         });
       } else if (String(itemId).startsWith('key_')) {
         const kid = itemId.replace('key_', '');
         const keyDef = _keyDefs[kid] || {};
-        const keyName = keyDef.name || `열쇠 #${kid}`;
-        slot.title = `${keyName} (Key ID: ${kid}) — 보물박스 열쇠`;
+        const keyName = keyDef.name || `Key #${kid}`;
+        slot.title = _t('key_slot_title', keyName, kid);
         slot.innerHTML = `
           <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
             <img src="/assets/images/item/frame.png"
@@ -1425,36 +1550,35 @@ function renderInventory() {
 
 async function useMpPotion() {
   if (!_uid) return;
-  if ((_inventory['potion_mp'] || 0) <= 0) { alert('마법약이 없습니다.'); return; }
+  if ((_inventory['potion_mp'] || 0) <= 0) { alert(_t('no_mp_potion')); return; }
   try {
     const fn = httpsCallable(functions, 'useMpPotion');
     const res = await fn();
     _inventory['potion_mp'] = res.data.remaining;
-    // MP 전체 회복은 battle 모듈의 healMp 또는 직접 최대치 설정
-    healMp(0); // 0 = 최대치로 전체 회복
-    showInfoToast('🔮 마법약 사용! MP 전체 회복');
+    healMp(0);
+    showInfoToast(_t('use_mp_potion_toast'));
     playSound('heal');
     renderInventory();
   } catch (err) {
-    alert('사용 실패: ' + err.message);
+    alert(_t('use_failed', err.message));
   }
 }
 
 async function usePotion() {
   if (!_uid) return;
   const current = _inventory['potion_red'] || 0;
-  if (current <= 0) { alert('빨간약이 없습니다.'); return; }
+  if (current <= 0) { alert(_t('no_hp_potion')); return; }
 
   try {
     const fn = httpsCallable(functions, 'usePotion');
     const res = await fn();
     _inventory['potion_red'] = res.data.remaining;
     healHp(100);
-    showInfoToast('💊 빨간약 사용! HP +100');
+    showInfoToast(_t('use_hp_potion_toast'));
     playSound('heal');
     renderInventory();
   } catch (err) {
-    alert('사용 실패: ' + err.message);
+    alert(_t('use_failed', err.message));
   }
 }
 
@@ -1462,15 +1586,15 @@ async function usePotion() {
 function renderVouchers() {
   const el = $('voucherList');
   if (!el) return;
-  if (!_vouchers.length) { el.innerHTML = '<div class="voucher-empty">등록된 조합 레시피가 없습니다.</div>'; return; }
+  if (!_vouchers.length) { el.innerHTML = `<div class="voucher-empty">${_t('no_craft_recipes')}</div>`; return; }
 
   el.innerHTML = _vouchers.map(v => {
     const reqs = (v.requirements || []).map(r => {
       const isGold = r.type === 'gold' || r.itemId === 'coin';
       const have   = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
-      const label  = isGold ? '💰 코인' : escHtml(_items[String(r.itemId)]?.name || '#' + r.itemId);
+      const label  = isGold ? _t('coin_label') : escHtml(_items[String(r.itemId)]?.name || '#' + r.itemId);
       const ok     = have >= r.count;
-      return `<span style="color:${ok?'#86efac':'#fca5a5'}">${label} ×${r.count} (보유:${have})</span>`;
+      return `<span style="color:${ok?'#86efac':'#fca5a5'}">${label} ×${r.count} (${_t('have_label', have)})</span>`;
     }).join(' + ');
     const canCraft = (v.requirements||[]).every(r => {
       const isGold = r.type === 'gold' || r.itemId === 'coin';
@@ -1480,9 +1604,9 @@ function renderVouchers() {
       <div class="voucher-row">
         <div class="voucher-name">🎟 ${escHtml(v.name)}</div>
         <div class="voucher-reqs">${reqs}</div>
-        <div class="voucher-reward">보상: ${escHtml(v.reward||'바우처 지급')}</div>
+        <div class="voucher-reward">${_t('craft_reward_label', escHtml(v.reward || _t('default_voucher_reward')))}</div>
         <button class="btn-craft" data-voucher="${escHtml(v.id)}" ${canCraft?'':'disabled'}>
-          ${canCraft?'조합하기':'재료 부족'}
+          ${canCraft ? _t('craft_btn') : _t('craft_insufficient')}
         </button>
       </div>`;
   }).join('');
@@ -1490,23 +1614,22 @@ function renderVouchers() {
   el.querySelectorAll('.btn-craft:not(:disabled)').forEach(btn => {
     btn.addEventListener('click', async () => {
       const vid = btn.dataset.voucher;
-      btn.disabled = true; btn.textContent = '처리 중...';
+      btn.disabled = true; btn.textContent = _t('craft_processing');
       try {
         const res = await httpsCallable(functions, 'craftVoucher')({ voucherId: vid });
         const reward = res.data.reward || '';
-        // 보상이 무기/방어구면 자동 장착
         if (reward.startsWith('weapon_')) {
           equipWeapon(reward);
-          showInfoToast(`⚔️ ${reward} 장착! 총공격력 ${getTotalAtk()}`);
+          showInfoToast(_t('weapon_equip_craft', reward, getTotalAtk()));
         } else if (reward.startsWith('armo_')) {
           equipArmor(reward);
-          showInfoToast(`🛡 ${reward} 장착! 방어력 ${getDefense()}`);
+          showInfoToast(_t('armor_equip_craft', reward, getDefense()));
         }
-        alert(`✅ 조합 성공!\n${res.data.voucherName}\n보상: ${reward}`);
+        alert(_t('craft_success', res.data.voucherName, reward));
         await loadInventory();
       } catch (err) {
-        alert('조합 실패: ' + (err.message || err));
-        btn.disabled = false; btn.textContent = '조합하기';
+        alert(_t('craft_failed', err.message || err));
+        btn.disabled = false; btn.textContent = _t('craft_btn');
       }
     });
   });
@@ -1600,7 +1723,7 @@ async function loadInventory() {
 function renderMyVouchers(logs) {
   const el = $('myVoucherList');
   if (!el) return;
-  if (!logs.length) { el.innerHTML = '<div class="voucher-empty">보유 바우처가 없습니다.</div>'; return; }
+  if (!logs.length) { el.innerHTML = `<div class="voucher-empty">${_t('no_vouchers')}</div>`; return; }
 
   el.innerHTML = logs.map(r => {
     const ts = r.craftedAt?.toDate?.();
@@ -1608,9 +1731,9 @@ function renderMyVouchers(logs) {
     const imgSrc = r.image ? `/assets/images/vouchers/${escHtml(r.image)}` : '';
     return `
       <div class="voucher-row" style="display:flex;gap:10px;align-items:center;">
-        ${imgSrc ? `<img src="${imgSrc}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;background:#1a0e06;" onerror="this.style.display='none'">` : '<div style="width:44px;height:44px;background:#1a0e06;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;">🎟</div>'}
+        ${imgSrc ? `<img src="${imgSrc}" class="lb-trigger" onclick="openLightbox(this.src,this.alt)" alt="${escHtml(r.voucherName || '')}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;background:#1a0e06;" onerror="this.style.display='none'">` : '<div style="width:44px;height:44px;background:#1a0e06;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;">🎟</div>'}
         <div style="flex:1;">
-          <div class="voucher-name">${escHtml(r.voucherName || '바우처')}</div>
+          <div class="voucher-name">${escHtml(r.voucherName || _t('voucher_label'))}</div>
           <div class="voucher-reward">${escHtml(r.reward || '')}</div>
           ${dateStr ? `<div style="font-size:10px;color:#888;">${dateStr}</div>` : ''}
         </div>
@@ -1623,7 +1746,7 @@ function renderExchangeSection() {
   const grid = $('excGrid');
   if (!grid) return;
   if (!_vouchers.length) {
-    grid.innerHTML = '<div class="exc-empty">등록된 교환권이 없습니다.</div>';
+    grid.innerHTML = `<div class="exc-empty">${_t('no_exchange')}</div>`;
     return;
   }
 
@@ -1664,7 +1787,7 @@ function renderExchangeSection() {
       if (ratio < minRatio) minRatio = ratio;
       const cls   = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(${have}/${totalGoldNeed})</small>` : '';
-      return `<span class="exc-req-chip ${cls}">💰 코인×${totalGoldNeed}${haveStr}</span>`;
+      return `<span class="exc-req-chip ${cls}">${_t('coin_chip', totalGoldNeed)}${haveStr}</span>`;
     })();
 
     // 레벨 조건 칩
@@ -1675,7 +1798,7 @@ function renderExchangeSection() {
       if (!ok && minRatio > 0) minRatio = 0;
       const cls   = !_uid ? 'no-data' : ok ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(LV.${have})</small>` : '';
-      return `<span class="exc-req-chip ${cls}">⭐ LV.${v.minLevel} 이상${haveStr}</span>`;
+      return `<span class="exc-req-chip ${cls}">${_t('level_chip', v.minLevel)}${haveStr}</span>`;
     })();
 
     const allChips = chips + coinChip + levelChip;
@@ -1696,13 +1819,14 @@ function renderExchangeSection() {
     })();
 
     const alreadyBought = _uid && _purchasedVouchers.has(v.id);
-    const btnLabel = !_uid ? '로그인 필요' : alreadyBought ? '✅ 구매 완료' : canDo ? '🎟 지금 교환하기' : '재료 부족';
+    const btnLabel = !_uid ? _t('exchange_btn_login') : alreadyBought ? _t('exchange_btn_done') : canDo ? _t('exchange_btn_go') : _t('exchange_btn_lack');
 
     return `
       <div class="exc-card">
         ${imgUrl
           ? `<div class="exc-card-img-wrap">
-               <img src="${escHtml(imgUrl)}" alt="${escHtml(v.name)}"
+               <img src="${escHtml(imgUrl)}" alt="${escHtml(v.name)}" class="lb-trigger"
+                 onclick="openLightbox(this.src,this.alt)"
                  onerror="this.parentNode.innerHTML='<span class=exc-card-img-fallback>🎟</span>'">
              </div>`
           : `<div class="exc-card-img-wrap">
@@ -1710,19 +1834,19 @@ function renderExchangeSection() {
              </div>`
         }
         <div class="exc-card-banner">
-          <div class="exc-card-reward">${escHtml(v.reward || '상품교환권')}</div>
+          <div class="exc-card-reward">${escHtml(v.reward || _t('default_reward_label'))}</div>
           <div class="exc-card-name">${escHtml(v.name)}</div>
         </div>
         <div class="exc-card-body">
           <div>
-            <div class="exc-req-label">필요 아이템</div>
-            <div class="exc-req-list" style="margin-top:6px;">${allChips || '<span style="color:var(--muted,#9ca3af);font-size:.82rem;">조건 없음</span>'}</div>
+            <div class="exc-req-label">${_t('exchange_req_label')}</div>
+            <div class="exc-req-list" style="margin-top:6px;">${allChips || `<span style="color:var(--muted,#9ca3af);font-size:.82rem;">${_t('exchange_no_req')}</span>`}</div>
           </div>
           ${_uid ? `
           <div class="exc-progress-wrap">
             <div class="exc-progress-bar"><div class="exc-progress-fill" style="width:${pct}%"></div></div>
-            <div class="exc-progress-text">진행도 ${pct}%</div>
-          </div>` : `<div class="exc-login-hint">로그인 후 보유량을 확인하세요</div>`}
+            <div class="exc-progress-text">${_t('exchange_progress', pct)}</div>
+          </div>` : `<div class="exc-login-hint">${_t('exchange_login_hint')}</div>`}
           <button class="btn-exc" data-vid="${escHtml(v.id)}" ${(canDo && !alreadyBought) ? '' : 'disabled'}>${btnLabel}</button>
         </div>
       </div>`;
@@ -1731,15 +1855,15 @@ function renderExchangeSection() {
   grid.querySelectorAll('.btn-exc:not(:disabled)').forEach(btn => {
     btn.addEventListener('click', async () => {
       const vid = btn.dataset.vid;
-      btn.disabled = true; btn.textContent = '처리 중...';
+      btn.disabled = true; btn.textContent = _t('exchange_processing');
       try {
         const res = await httpsCallable(functions, 'craftVoucher')({ voucherId: vid });
-        alert(`✅ 교환 성공!\n${res.data.voucherName}\n보상: ${res.data.reward}`);
+        alert(_t('exchange_success', res.data.voucherName, res.data.reward));
         await loadInventory();
         renderExchangeSection();
       } catch (err) {
-        alert('교환 실패: ' + (err.message || err));
-        btn.disabled = false; btn.textContent = '🎟 지금 교환하기';
+        alert(_t('craft_failed', err.message || err));
+        btn.disabled = false; btn.textContent = _t('exchange_btn_go');
       }
     });
   });
@@ -1930,22 +2054,22 @@ async function init() {
       if (state === 'connecting') {
         btn.classList.add('gs-connecting');
         btn.textContent = '⏳';
-        btn.title = '연결 중...';
-        if (badge) badge.textContent = '연결 중';
+        btn.title = _t('gs_connecting');
+        if (badge) badge.textContent = _t('gs_connecting_badge');
       } else if (state === 'connected') {
         btn.classList.add('gs-connected');
         btn.textContent = '■';
-        btn.title = '게임 서버 접속 중 — 클릭하여 종료';
-        if (badge) badge.textContent = '접속 중';
+        btn.title = _t('gs_connected');
+        if (badge) badge.textContent = _t('gs_connected_badge');
         renderBoxMarkers(); // 연결 시 보물박스 표시
       } else if (state === 'error') {
         btn.classList.add('gs-error');
         btn.textContent = '▶';
-        btn.title = '연결 오류 — 클릭하여 재시도';
-        if (badge) badge.textContent = '오류';
+        btn.title = _t('gs_error');
+        if (badge) badge.textContent = _t('gs_error_badge');
       } else {
         btn.textContent = '▶';
-        btn.title = '게임 서버 연결';
+        btn.title = _t('gs_idle');
         if (badge) badge.textContent = '';
         renderBoxMarkers(); // 연결 해제 시 보물박스 숨김
       }
@@ -2000,7 +2124,7 @@ async function init() {
   }
 
   // ── Phase 2: 백그라운드에서 나머지 로드 (UI 블로킹 없음) ─────────────────────
-  Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadBattleData(), loadDecorations()]).then(() => {
+  Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadKeyDefs(), loadBattleData(), loadDecorations()]).then(() => {
     // 장소 마커 추가
     if (window.google?.maps) {
       renderPlaceMarkers();
