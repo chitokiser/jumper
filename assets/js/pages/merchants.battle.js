@@ -2489,3 +2489,14 @@ export function removeGsDrop(dropId) {
   d.marker?.setMap(null);
   delete _gsDrops[dropId];
 }
+
+export function hideMyMarker() {
+  if (_ctx?.myLocationMarker) {
+    _ctx.myLocationMarker.setMap(null);
+    _ctx.myLocationMarker = null;
+  }
+  if (_ctx?.myLocationAccCircle) {
+    _ctx.myLocationAccCircle.setMap(null);
+    _ctx.myLocationAccCircle = null;
+  }
+}

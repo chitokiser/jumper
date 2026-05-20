@@ -636,28 +636,63 @@ async function toggleMerchantDormant(mid, isDormant) {
 async function editMerchantInfo(mid, career, region, description) {
   if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
 
-  const newCareer = prompt("업종/카테고리:", career);
-  if (newCareer === null) return;
+  const dlgEdit   = $("dlgMerchantEdit");
+  const inCareer  = $("meCareer");
+  const inRegion  = $("meRegion");
+  const inDesc    = $("meDesc");
+  const btnClose  = $("dlgMerchantEditClose");
+  const btnCancel = $("dlgMerchantEditCancel");
+  const form      = $("frmMerchantEdit");
+  if (!dlgEdit || !inCareer || !inRegion || !inDesc || !form) return;
 
-  const newRegion = prompt("활동 지역:", region);
-  if (newRegion === null) return;
+  inCareer.value = career;
+  inRegion.value = region;
+  inDesc.value   = description;
 
-  const newDesc = prompt("소개/상세:", description);
-  if (newDesc === null) return;
+  dlgEdit.showModal();
+  inCareer.focus();
 
-  const c = newCareer.trim(), r = newRegion.trim(), d = newDesc.trim();
-  if (c === career && r === region && d === description) return;
+  await new Promise((resolve) => {
+    function cleanup() {
+      form.removeEventListener("submit", onSave);
+      btnClose.removeEventListener("click", onCancel);
+      btnCancel.removeEventListener("click", onCancel);
+    }
 
-  try {
-    await updateDoc(doc(db, "merchants", mid), {
-      career: c, region: r, description: d, updatedAt: serverTimestamp(),
-    });
-    alert("정보가 수정되었습니다.");
-    await loadMerchants();
-  } catch (err) {
-    console.error("editMerchantInfo:", err);
-    alert("수정 실패: " + (err.message || String(err)));
-  }
+    async function onSave(e) {
+      e.preventDefault();
+      const c = inCareer.value.trim();
+      const r = inRegion.value.trim();
+      const d = inDesc.value.trim();
+      cleanup();
+      dlgEdit.close();
+      if (c === career && r === region && d === description) { resolve(); return; }
+      try {
+        setState("가맹점 정보 수정 중…");
+        await updateDoc(doc(db, "merchants", mid), {
+          career: c, region: r, description: d, updatedAt: serverTimestamp(),
+        });
+        alert("정보가 수정되었습니다.");
+        await loadMerchants();
+        setState("");
+      } catch (err) {
+        console.error("editMerchantInfo:", err);
+        alert("수정 실패: " + (err.message || String(err)));
+        setState("수정 실패");
+      }
+      resolve();
+    }
+
+    function onCancel() {
+      cleanup();
+      dlgEdit.close();
+      resolve();
+    }
+
+    form.addEventListener("submit", onSave);
+    btnClose.addEventListener("click", onCancel);
+    btnCancel.addEventListener("click", onCancel);
+  });
 }
 
 // ── 입금 승인 탭 ──────────────────────────────────────────────────────────

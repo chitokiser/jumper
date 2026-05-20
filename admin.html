@@ -551,6 +551,33 @@
     </div>
   </dialog>
 
+  <dialog id="dlgMerchantEdit" class="dlg">
+    <div class="dlg-box" style="min-width:340px;max-width:480px;">
+      <div class="dlg-h">
+        <div class="dlg-title">가맹점 정보 수정</div>
+        <button class="btn btn-sm" id="dlgMerchantEditClose" type="button">닫기</button>
+      </div>
+      <form id="frmMerchantEdit" style="display:flex;flex-direction:column;gap:14px;padding:16px 0 4px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:13px;font-weight:600;color:#374151;">업종/카테고리</label>
+          <input id="meCareer" type="text" class="input" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;" placeholder="예: 식음료, IT서비스 …">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:13px;font-weight:600;color:#374151;">활동 지역</label>
+          <input id="meRegion" type="text" class="input" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;" placeholder="예: 서울 강남, 하노이 …">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:13px;font-weight:600;color:#374151;">소개/상세</label>
+          <textarea id="meDesc" rows="4" class="input" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;resize:vertical;" placeholder="가맹점 소개 문구를 입력하세요."></textarea>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+          <button type="button" id="dlgMerchantEditCancel" class="btn btn-sm" style="background:#f3f4f6;color:#374151;border-color:#d1d5db;">취소</button>
+          <button type="submit" id="dlgMerchantEditSave" class="btn btn-sm" style="background:var(--accent,#2563eb);color:#fff;border-color:var(--accent,#2563eb);">저장</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/admin-approve.js"></script>
   <script type="module" src="/assets/js/admin-support-chat.js"></script>

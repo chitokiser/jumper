@@ -1,11 +1,11 @@
 // /assets/js/pages/merchants.js
 // 가맹점 지도 + 보물찾기 시스템
 
-import { auth, db, functions } from '/assets/js/firebase-init.js';
+import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js';
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
          setDoc, deleteDoc, serverTimestamp }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { onAuthStateChanged }
+import { onAuthStateChanged, signInWithPopup }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -20,7 +20,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          spawnGsDrop, removeGsDrop,
          equipWeapon, equipArmor, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
          getEquippedWeapon, getEquippedArmor,
-         updateMyLocation, showDeathMarkerIfDead }
+         updateMyLocation, showDeathMarkerIfDead, hideMyMarker }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
@@ -1069,6 +1069,7 @@ function stopGame() {
   stopWatchPosition();
   stopNearbyPlayers();
   cleanupMyLocation();
+  hideMyMarker();
   _gameStarted = false;
   const btn = $('btnMyLocation');
   if (btn) { btn.textContent = '📍'; btn.title = ''; }
@@ -2091,6 +2092,21 @@ async function init() {
     fitMapToAllMarkers();
   }
   renderCards(allMerchants);
+
+  // 로그인 오버레이 버튼 — 현재 페이지를 유지한 채 Google 팝업 로그인
+  $('btnOverlayLogin')?.addEventListener('click', async () => {
+    const btn = $('btnOverlayLogin');
+    if (btn) { btn.textContent = '로그인 중…'; btn.disabled = true; }
+    try { await signInWithPopup(auth, googleProvider); }
+    catch (e) {
+      const code = e?.code || '';
+      if (code && code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        alert('로그인 오류: ' + code);
+      }
+    } finally {
+      if (btn) { btn.textContent = 'Đăng nhập →'; btn.disabled = false; }
+    }
+  });
 
   // 버튼 이벤트
   $('btnMyLocation')?.addEventListener('click', showMyLocation);
