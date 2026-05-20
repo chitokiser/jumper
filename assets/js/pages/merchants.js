@@ -10,7 +10,7 @@ import { onAuthStateChanged }
 import { httpsCallable }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
-         startBattleLoop, startWatchPosition, startSharedSync,
+         startBattleLoop, stopBattleLoop, startWatchPosition, startSharedSync,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
          healHp, healMp, playSound, showFloat, animateArrow,
          castLightning, castIceFreeze, castFireStorm,
@@ -1053,29 +1053,80 @@ function startNearbyPlayers() {
   window.addEventListener('beforeunload', cleanupMyLocation);
 }
 
+function stopNearbyPlayers() {
+  if (_nearbyTimer) { clearInterval(_nearbyTimer); _nearbyTimer = null; }
+}
+
+function stopWatchPosition() {
+  if (_ctx.locationWatchId != null) {
+    navigator.geolocation.clearWatch(_ctx.locationWatchId);
+    _ctx.locationWatchId = null;
+  }
+}
+
+function stopGame() {
+  stopBattleLoop();
+  stopWatchPosition();
+  stopNearbyPlayers();
+  cleanupMyLocation();
+  _gameStarted = false;
+  const btn = $('btnMyLocation');
+  if (btn) { btn.textContent = '📍'; btn.title = ''; }
+}
+
 async function cleanupMyLocation() {
   if (!_uid) return;
   try { await deleteDoc(doc(db, 'user_locations', _uid)); } catch { /* 무시 */ }
 }
 
-// ── 내 위치 버튼: 첫 클릭 = 게임 시작, 이후 반응 없음 ────────────────────────
+// ── 내 위치 버튼: 첫 클릭 = 게임 시작, 이후 클릭 = 내 위치로 확대 이동 ────────
 let _gameStarted = false;
-function showMyLocation() {
-  if (_gameStarted) return; // 이미 시작됨 → 무반응
-  if (!_uid) return; // 비로그인 차단
-  if (!navigator.geolocation) { alert(_t('no_geolocation')); return; }
 
+function _panToMyLocation() {
+  if (!navigator.geolocation) return;
   const btn = $('btnMyLocation');
   if (btn) btn.textContent = '⏳';
-
-  // 플레이 버튼 누름과 동시에 현재 위치를 즉시 획득 → 캐릭터 바로 표시
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
       _ctx.lastPos = { lat, lng, accuracy, heading: heading ?? null };
       updateMyLocation(lat, lng, accuracy, heading ?? null);
-      if (_ctx.map) _ctx.map.panTo({ lat, lng });
-      broadcastMyLocation(lat, lng);  // Firestore에 즉시 기록 → 상대방이 내 위치 볼 수 있도록
+      if (_ctx.map) {
+        _ctx.map.panTo({ lat, lng });
+        _ctx.map.setZoom(17);
+      }
+      if (btn) btn.textContent = '📍';
+    },
+    () => { if (btn) btn.textContent = '📍'; },
+    { enableHighAccuracy: true, maximumAge: 3000, timeout: 6000 }
+  );
+}
+
+function showMyLocation() {
+  if (!_uid) return; // 비로그인 차단
+  if (!navigator.geolocation) { alert(_t('no_geolocation')); return; }
+
+  // 이미 시작됨 → 내 위치로 확대 이동만
+  if (_gameStarted) {
+    _panToMyLocation();
+    return;
+  }
+
+  const btn = $('btnMyLocation');
+  if (btn) btn.textContent = '⏳';
+
+  // 첫 클릭: 게임 시작 + 현재 위치로 즉시 이동
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
+      _ctx.lastPos = { lat, lng, accuracy, heading: heading ?? null };
+      updateMyLocation(lat, lng, accuracy, heading ?? null);
+      if (_ctx.map) {
+        _ctx.map.panTo({ lat, lng });
+        _ctx.map.setZoom(17);
+      }
+      broadcastMyLocation(lat, lng);
+      if (btn) btn.textContent = '📍';
     },
     null,
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
@@ -1091,10 +1142,7 @@ function showMyLocation() {
   });
   _gameStarted = true;
 
-  if (btn) {
-    btn.textContent = '📍';
-    btn.title = _t('game_in_progress');
-  }
+  if (btn) btn.title = _t('game_in_progress');
 }
 
 // ── 보물박스 근접 감지 — 범위 내 마커 강조, HP 있으면 공격해야 수집 ──────────
@@ -1333,8 +1381,9 @@ function renderBoxInventory() {
     const hasKey   = needsKey && Object.keys(_inventory).some(k =>
       k.startsWith(`key_${prefix}`) && _inventory[k] > 0);
     const locked   = needsKey && !hasKey;
+    const keyName  = needsKey ? (_keyDefs[keyId]?.name || `Key #${keyId}`) : null;
     const slot = document.createElement('div');
-    slot.className = 'box-inv-slot' + (locked ? ' locked' : '');
+    slot.className = 'box-inv-slot' + (locked ? ' locked' : (hasKey ? ' has-key' : ''));
     const _bName = boxName || _t('box_default_name2');
     slot.title = locked
       ? _t('box_locked_hint', prefix, _bName)
@@ -1345,7 +1394,7 @@ function renderBoxInventory() {
       ${needsKey ? `<span class="box-slot-key" title="Key prefix ${escHtml(prefix)}">${locked ? '🔒' : '🔑'}</span>` : ''}`;
     slot.addEventListener('click', () => {
       if (locked) {
-        showInfoToast(_t('box_key_toast', prefix));
+        showInfoToast(_t('box_key_toast', prefix, keyName || prefix));
         return;
       }
       openBox(boxId, slot);
@@ -1881,6 +1930,92 @@ function openInventory() {
 }
 function closeInventory() { $('invModal').classList.remove('open'); }
 
+// ── 튜토리얼 ────────────────────────────────────────────────────────────────
+const TUT_KEY = 'jmp_tut_v1';
+
+const TUT_STEPS = [
+  { icon: '📍', titleKey: 'tut_step1_title', bodyKey: 'tut_step1_body' },
+  { icon: '👾', titleKey: 'tut_step2_title', bodyKey: 'tut_step2_body' },
+  { icon: '📦', titleKey: 'tut_step3_title', bodyKey: 'tut_step3_body' },
+];
+
+function initTutorial() {
+  const modal    = $('tutModal');
+  const header   = $('tutHeader');
+  const icon     = $('tutIcon');
+  const stepTitle = $('tutStepTitle');
+  const stepBody  = $('tutStepBody');
+  const dotsWrap  = $('tutDots');
+  const prevBtn   = $('tutPrev');
+  const nextBtn   = $('tutNext');
+  const closeBtn  = $('tutClose');
+  if (!modal) return;
+
+  let currentStep = 0;
+
+  function renderStep(idx) {
+    const step = TUT_STEPS[idx];
+    const total = TUT_STEPS.length;
+    if (header)    header.textContent   = `${_t('tut_title')} (${idx + 1}/${total})`;
+    if (icon)      icon.textContent     = step.icon;
+    if (stepTitle) stepTitle.textContent = _t(step.titleKey);
+    if (stepBody)  stepBody.textContent  = _t(step.bodyKey);
+
+    if (dotsWrap) {
+      dotsWrap.innerHTML = '';
+      TUT_STEPS.forEach((_, i) => {
+        const dot = document.createElement('span');
+        dot.className = 'tut-dot' + (i === idx ? ' active' : '');
+        dot.addEventListener('click', () => { currentStep = i; renderStep(i); });
+        dotsWrap.appendChild(dot);
+      });
+    }
+
+    if (prevBtn) {
+      prevBtn.textContent = _t('tut_prev');
+      prevBtn.disabled    = idx === 0;
+    }
+    if (nextBtn) {
+      const isLast = idx === total - 1;
+      nextBtn.textContent = isLast ? _t('tut_done') : _t('tut_next');
+    }
+  }
+
+  function openTutorial() {
+    currentStep = 0;
+    renderStep(0);
+    modal.classList.remove('hidden');
+  }
+
+  function closeTutorial() {
+    modal.classList.add('hidden');
+    try { localStorage.setItem(TUT_KEY, '1'); } catch (_) {}
+  }
+
+  prevBtn?.addEventListener('click', () => {
+    if (currentStep > 0) { currentStep--; renderStep(currentStep); }
+  });
+
+  nextBtn?.addEventListener('click', () => {
+    if (currentStep < TUT_STEPS.length - 1) {
+      currentStep++;
+      renderStep(currentStep);
+    } else {
+      closeTutorial();
+    }
+  });
+
+  closeBtn?.addEventListener('click', closeTutorial);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeTutorial(); });
+
+  $('btnTutHelp')?.addEventListener('click', openTutorial);
+
+  // 첫 방문 시 자동 표시
+  try {
+    if (!localStorage.getItem(TUT_KEY)) openTutorial();
+  } catch (_) {}
+}
+
 // ── 메인 ────────────────────────────────────────────────────────────────────
 async function init() {
   // battle 모듈 초기화 (ctx와 callbacks 연결)
@@ -1960,20 +2095,29 @@ async function init() {
   // 버튼 이벤트
   $('btnMyLocation')?.addEventListener('click', showMyLocation);
   $('btnInventory')?.addEventListener('click', openInventory);
+  initTutorial();
   $('btnFullscreen')?.addEventListener('click', () => {
     const el = $('merchantMap')?.parentElement ?? $('merchantMap');
-    if (!document.fullscreenElement) {
-      el?.requestFullscreen?.();
-      $('btnFullscreen').textContent = '✕';
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      (el?.requestFullscreen ?? el?.webkitRequestFullscreen)?.call(el);
     } else {
-      document.exitFullscreen?.();
-      $('btnFullscreen').textContent = '⛶';
+      (document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document);
     }
   });
-  document.addEventListener('fullscreenchange', () => {
+
+  function _onFullscreenChange() {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
     const btn = $('btnFullscreen');
-    if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶';
-  });
+    if (btn) btn.textContent = isFs ? '✕' : '⛶';
+    if (!isFs && _ctx.map) {
+      setTimeout(() => {
+        google.maps.event.trigger(_ctx.map, 'resize');
+        if (_ctx.lastPos) _ctx.map.panTo({ lat: _ctx.lastPos.lat, lng: _ctx.lastPos.lng });
+      }, 150);
+    }
+  }
+  document.addEventListener('fullscreenchange', _onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', _onFullscreenChange);
   $('btnResetDist')?.addEventListener('click', () => {
     _ctx.totalDist = 0; _ctx.lastDistPos = null; updateDistDisplay();
   });
@@ -2072,6 +2216,7 @@ async function init() {
         btn.title = _t('gs_idle');
         if (badge) badge.textContent = '';
         renderBoxMarkers(); // 연결 해제 시 보물박스 숨김
+        stopGame();         // GPS·전투루프·주변유저 정지 및 재접속 허용
       }
     },
     onError:           (msg) => console.warn('[GS]', msg),

@@ -14,14 +14,14 @@
     </div>
 
     <div class="ftr-col">
-      <div class="ftr-title">소개</div>
-      <a href="/about.html">JumpDAO 소개</a>
+      <div class="ftr-title" data-ftr-i18n="ftr_about_title">소개</div>
+      <a href="/about.html" data-ftr-i18n="ftr_about_link">JumpDAO 소개</a>
     </div>
 
     <div class="ftr-col">
-      <div class="ftr-title">멤버 안내</div>
-      <a href="/guide.html">회원 등록</a>
-      <a href="/exchange.html">토큰 거래</a>
+      <div class="ftr-title" data-ftr-i18n="ftr_member_title">멤버 안내</div>
+      <a href="/guide.html" data-ftr-i18n="ftr_register">회원 등록</a>
+      <a href="/exchange.html" data-ftr-i18n="ftr_token_trade">토큰 거래</a>
       <a
         href="https://hexdao.netlify.app"
         target="_blank"
@@ -33,15 +33,15 @@
           alt="HEX"
           class="ftr-exchange-logo"
         />
-        우리들의 토큰거래소
+        <span data-ftr-i18n="ftr_exchange_link">우리들의 토큰거래소</span>
       </a>
     </div>
 
     <div class="ftr-col">
-      <div class="ftr-title">고객 문의</div>
-      <a href="/faq.html">자주 묻는 질문</a>
-      <a href="/family-register.html">제휴/입점 문의</a>
-      <button id="btnSupportChat" class="ftr-chat-btn" type="button">💬 1:1 채팅 문의</button>
+      <div class="ftr-title" data-ftr-i18n="ftr_support_title">고객 문의</div>
+      <a href="/faq.html" data-ftr-i18n="ftr_faq">자주 묻는 질문</a>
+      <a href="/family-register.html" data-ftr-i18n="ftr_partner">제휴/입점 문의</a>
+      <button id="btnSupportChat" class="ftr-chat-btn" type="button" data-ftr-i18n="ftr_chat_btn">💬 1:1 채팅 문의</button>
     </div>
 
   </div>
@@ -54,14 +54,14 @@
 <!-- 플로팅 1:1 채팅 위젯 -->
 <div id="supportChatWidget" class="sc-widget hidden" role="dialog" aria-label="1:1 채팅 문의">
   <div class="sc-hdr">
-    <span class="sc-title">💬 1:1 채팅 문의</span>
+    <span class="sc-title" data-ftr-i18n="ftr_chat_title">💬 1:1 채팅 문의</span>
     <span id="scAdminStatus" class="sc-status">🔴 오프라인</span>
     <button class="sc-close" id="scBtnClose" type="button" aria-label="닫기">✕</button>
   </div>
   <div class="sc-msgs" id="scMessages"></div>
   <form class="sc-form" id="scForm">
-    <input class="sc-input" id="scInput" type="text" placeholder="메시지를 입력하세요..." autocomplete="off" maxlength="500" />
-    <button class="sc-send" type="submit">전송</button>
+    <input class="sc-input" id="scInput" type="text" placeholder="메시지를 입력하세요..." data-ftr-i18n-ph="ftr_chat_placeholder" autocomplete="off" maxlength="500" />
+    <button class="sc-send" type="submit" data-ftr-i18n="ftr_chat_send">전송</button>
   </form>
 </div>
 

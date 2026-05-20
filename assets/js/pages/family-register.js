@@ -7,6 +7,8 @@ import { app, auth, db, functions } from "/assets/js/firebase-init.js";
 import {
   doc,
   getDoc,
+  updateDoc,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
@@ -14,6 +16,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
 const $ = (id) => document.getElementById(id);
+
+let _merchantDocId = null;
 
 // ── 유틸 ──────────────────────────────────────────
 function show(id, on) {
@@ -33,7 +37,7 @@ function setStep(id, status) {
 }
 
 // ── 이미 등록된 가맹점 표시 ──────────────────────
-function showAlreadyMerchant(merchantId, feeBps, merchantName) {
+function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
   show("alreadyMerchantPanel", true);
   const idEl   = $("existingMerchantId");
   const feeEl  = $("existingFeeBps");
@@ -47,6 +51,81 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName) {
       feeEl.textContent = "관리자 설정 중 (기본 10% 예정)";
     }
   }
+
+  if (!merchantData) return;
+
+  _merchantDocId = merchantData.merchantDocId;
+  const careerEl = $("existingMerchantCareer");
+  const regionEl = $("existingMerchantRegion");
+  const descEl   = $("existingMerchantDesc");
+  if (careerEl) careerEl.textContent = merchantData.career || "-";
+  if (regionEl) regionEl.textContent = merchantData.region || "-";
+  if (descEl)   descEl.textContent   = merchantData.description || "-";
+
+  const editForm   = $("merchantEditForm");
+  const editMsg    = $("editMerchantMsg");
+  const btnToggle  = $("btnToggleMerchantEdit");
+  const btnSave    = $("btnSaveMerchantEdit");
+  const btnCancel  = $("btnCancelMerchantEdit");
+  const inputCareer = $("editMerchantCareer");
+  const inputRegion = $("editMerchantRegion");
+  const inputDesc   = $("editMerchantDesc");
+
+  btnToggle?.addEventListener("click", () => {
+    if (inputCareer) inputCareer.value = merchantData.career || "";
+    if (inputRegion) inputRegion.value = merchantData.region || "";
+    if (inputDesc)   inputDesc.value   = merchantData.description || "";
+    if (editForm)    editForm.style.display = "";
+    if (btnToggle)   btnToggle.style.display = "none";
+  });
+
+  btnCancel?.addEventListener("click", () => {
+    if (editForm)  editForm.style.display = "none";
+    if (btnToggle) btnToggle.style.display = "";
+    if (editMsg)   editMsg.textContent = "";
+  });
+
+  btnSave?.addEventListener("click", async () => {
+    if (!_merchantDocId) return;
+    const career = (inputCareer?.value || "").trim();
+    const region = (inputRegion?.value || "").trim();
+    const desc   = (inputDesc?.value   || "").trim();
+
+    if (!career) {
+      if (editMsg) { editMsg.textContent = "업종/카테고리를 입력해 주세요."; editMsg.style.color = "var(--danger, #e53e3e)"; }
+      return;
+    }
+    if (!region) {
+      if (editMsg) { editMsg.textContent = "활동 지역을 입력해 주세요."; editMsg.style.color = "var(--danger, #e53e3e)"; }
+      return;
+    }
+
+    if (btnSave) { btnSave.disabled = true; btnSave.textContent = "저장 중..."; }
+    if (editMsg) editMsg.textContent = "";
+
+    try {
+      await updateDoc(doc(db, "merchants", _merchantDocId), {
+        career, region, description: desc, updatedAt: serverTimestamp(),
+      });
+      merchantData.career = career;
+      merchantData.region = region;
+      merchantData.description = desc;
+      if (careerEl) careerEl.textContent = career || "-";
+      if (regionEl) regionEl.textContent = region || "-";
+      if (descEl)   descEl.textContent   = desc   || "-";
+      if (editMsg) { editMsg.textContent = "저장되었습니다."; editMsg.style.color = "var(--accent)"; }
+      setTimeout(() => {
+        if (editForm)  editForm.style.display = "none";
+        if (btnToggle) btnToggle.style.display = "";
+        if (editMsg)   editMsg.textContent = "";
+      }, 1200);
+    } catch (err) {
+      console.error("editMerchantInfo:", err);
+      if (editMsg) { editMsg.textContent = "저장 실패: " + (err.message || "오류"); editMsg.style.color = "var(--danger, #e53e3e)"; }
+    } finally {
+      if (btnSave) { btnSave.disabled = false; btnSave.textContent = "저장"; }
+    }
+  });
 }
 
 // ── 등록 완료 표시 ───────────────────────────────
@@ -240,14 +319,22 @@ async function _initForUser(ctx) {
       setState("이미 판매회원으로 등록되어 있습니다.");
       let feeBps = null;
       let merchantName = null;
+      let merchantData = null;
       try {
         const mSnap = await getDoc(doc(db, "merchants", String(userData.merchantId)));
         if (mSnap.exists()) {
-          feeBps = mSnap.data()?.feeBps ?? null;
-          merchantName = mSnap.data()?.name ?? null;
+          const mData = mSnap.data();
+          feeBps = mData?.feeBps ?? null;
+          merchantName = mData?.name ?? null;
+          merchantData = {
+            merchantDocId: String(userData.merchantId),
+            career: mData?.career || "",
+            region: mData?.region || "",
+            description: mData?.description || "",
+          };
         }
       } catch (_) {}
-      showAlreadyMerchant(userData.merchantId, feeBps, merchantName);
+      showAlreadyMerchant(userData.merchantId, feeBps, merchantName, merchantData);
       initMentorLink(user.email);
       return;
     }

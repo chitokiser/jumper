@@ -380,11 +380,23 @@ async function loadMerchants() {
     return;
   }
 
-  setState(`가맹점 ${snap.size}건`);
-  snap.forEach((d) => {
-    const v   = d.data();
-    const mid = d.id;
+  // ownerUid → email 맵을 일괄 조회
+  const docs = [];
+  snap.forEach(d => docs.push({ id: d.id, data: d.data() }));
 
+  const ownerUids = [...new Set(docs.map(d => d.data.ownerUid).filter(Boolean))];
+  const emailMap = {};
+  await Promise.all(ownerUids.map(async uid => {
+    try {
+      const userSnap = await getDoc(doc(db, "users", uid));
+      if (userSnap.exists()) emailMap[uid] = userSnap.data().email || "";
+    } catch (_) {}
+  }));
+
+  setState(`가맹점 ${snap.size}건`);
+
+  docs.forEach(({ id: mid, data: v }) => {
+    const ownerEmail = emailMap[v.ownerUid] || "";
     const feeBps = Number(v.feeBps) || 0;
     const isDormant = v.dormant === true;
     const feeBadge = feeBps > 0
@@ -402,7 +414,7 @@ async function loadMerchants() {
         <summary>
           <div class="sum-left">
             <div class="sum-title">${esc(v.name || "(이름없음)")} · ID: ${esc(mid)}</div>
-            <div class="sum-sub">${esc([v.career, v.region, "owner:" + (v.ownerUid || "-")].filter(Boolean).join(" · "))}</div>
+            <div class="sum-sub">${esc([v.career, v.region, ownerEmail || ("uid:" + (v.ownerUid || "-"))].filter(Boolean).join(" · "))}</div>
           </div>
           <div class="sum-right">
             ${dormantBadge}
@@ -410,6 +422,7 @@ async function loadMerchants() {
             <button class="btn btn-sm" type="button" data-act="viewMerchant" data-mid="${esc(mid)}">상세(JSON)</button>
             ${isAdminUser ? `
               <button class="btn btn-sm" type="button" data-act="renameMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || '')}">✏️ 이름변경</button>
+              <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career||'')}" data-region="${esc(v.region||'')}" data-desc="${esc(v.description||'')}">📝 정보수정</button>
               ${dormantBtn}
               <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
               <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:${v.gmap ? '#fef3c7' : '#f3f4f6'};color:${v.gmap ? '#92400e' : '#6b7280'};">🗺️ ${v.gmap ? "지도수정" : "지도등록"}</button>
@@ -421,6 +434,7 @@ async function loadMerchants() {
           <div class="kv">
             <div class="k">merchantId</div><div class="v">${esc(mid)}</div>
             <div class="k">가게명</div><div class="v">${esc(fmt(v.name))}</div>
+            <div class="k">구글 계정 (이메일)</div><div class="v" style="font-weight:600;color:var(--accent,#2563eb);">${esc(ownerEmail || "-")}</div>
             <div class="k">업종/카테고리</div><div class="v">${esc(fmt(v.career))}</div>
             <div class="k">활동지역</div><div class="v">${esc(fmt(v.region))}</div>
             <div class="k">소개/상세</div><div class="v">${esc(fmt(v.description))}</div>
@@ -437,6 +451,7 @@ async function loadMerchants() {
           ${isAdminUser ? `
           <div class="row-actions">
             <button class="btn btn-sm" type="button" data-act="renameMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || '')}">✏️ 이름변경</button>
+            <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career||'')}" data-region="${esc(v.region||'')}" data-desc="${esc(v.description||'')}">📝 정보수정</button>
             ${dormantBtn}
             <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
             <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:#fef3c7;color:#92400e;">🗺️ 지도 URL 설정</button>
@@ -615,6 +630,33 @@ async function toggleMerchantDormant(mid, isDormant) {
   } catch (err) {
     console.error("toggleMerchantDormant:", err);
     alert("저장 실패: " + (err.message || String(err)));
+  }
+}
+
+async function editMerchantInfo(mid, career, region, description) {
+  if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+
+  const newCareer = prompt("업종/카테고리:", career);
+  if (newCareer === null) return;
+
+  const newRegion = prompt("활동 지역:", region);
+  if (newRegion === null) return;
+
+  const newDesc = prompt("소개/상세:", description);
+  if (newDesc === null) return;
+
+  const c = newCareer.trim(), r = newRegion.trim(), d = newDesc.trim();
+  if (c === career && r === region && d === description) return;
+
+  try {
+    await updateDoc(doc(db, "merchants", mid), {
+      career: c, region: r, description: d, updatedAt: serverTimestamp(),
+    });
+    alert("정보가 수정되었습니다.");
+    await loadMerchants();
+  } catch (err) {
+    console.error("editMerchantInfo:", err);
+    alert("수정 실패: " + (err.message || String(err)));
   }
 }
 
@@ -1254,6 +1296,8 @@ merchantList?.addEventListener("click", async (e) => {
   try {
     if (act === "renameMerchant") {
       await renameMerchant(mid, btn.dataset.name || "");
+    } else if (act === "editMerchantInfo") {
+      await editMerchantInfo(mid, btn.dataset.career || "", btn.dataset.region || "", btn.dataset.desc || "");
     } else if (act === "toggleDormant") {
       await toggleMerchantDormant(mid, btn.dataset.dormant === "1");
     } else if (act === "approveMerchant") {

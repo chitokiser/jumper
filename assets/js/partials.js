@@ -67,6 +67,72 @@ function applyHeaderI18n() {
 window.applyHeaderI18n = applyHeaderI18n;
 window.addEventListener('lang:change', applyHeaderI18n);
 
+const _FTR_T = {
+  vi: {
+    ftr_about_title:    'Giới thiệu',
+    ftr_about_link:     'Giới thiệu JumpDAO',
+    ftr_member_title:   'Hướng dẫn hội viên',
+    ftr_register:       'Đăng ký hội viên',
+    ftr_token_trade:    'Giao dịch token',
+    ftr_exchange_link:  'Sàn giao dịch của chúng ta',
+    ftr_support_title:  'Hỗ trợ khách hàng',
+    ftr_faq:            'Câu hỏi thường gặp',
+    ftr_partner:        'Liên hệ đối tác / nhập điểm',
+    ftr_chat_btn:       '💬 Hỏi đáp 1:1',
+    ftr_chat_title:     '💬 Hỏi đáp 1:1',
+    ftr_chat_placeholder: 'Nhập tin nhắn...',
+    ftr_chat_send:      'Gửi',
+  },
+  en: {
+    ftr_about_title:    'About',
+    ftr_about_link:     'About JumpDAO',
+    ftr_member_title:   'Member Guide',
+    ftr_register:       'Register',
+    ftr_token_trade:    'Token Trade',
+    ftr_exchange_link:  'Our Token Exchange',
+    ftr_support_title:  'Support',
+    ftr_faq:            'FAQ',
+    ftr_partner:        'Partner / Listing Inquiry',
+    ftr_chat_btn:       '💬 1:1 Chat',
+    ftr_chat_title:     '💬 1:1 Chat',
+    ftr_chat_placeholder: 'Enter message...',
+    ftr_chat_send:      'Send',
+  },
+  ko: {
+    ftr_about_title:    '소개',
+    ftr_about_link:     'JumpDAO 소개',
+    ftr_member_title:   '멤버 안내',
+    ftr_register:       '회원 등록',
+    ftr_token_trade:    '토큰 거래',
+    ftr_exchange_link:  '우리들의 토큰거래소',
+    ftr_support_title:  '고객 문의',
+    ftr_faq:            '자주 묻는 질문',
+    ftr_partner:        '제휴/입점 문의',
+    ftr_chat_btn:       '💬 1:1 채팅 문의',
+    ftr_chat_title:     '💬 1:1 채팅 문의',
+    ftr_chat_placeholder: '메시지를 입력하세요...',
+    ftr_chat_send:      '전송',
+  },
+};
+
+function applyFooterI18n() {
+  try {
+    const saved = localStorage.getItem('town_lang');
+    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'vi';
+    const tbl = _FTR_T[lang] || _FTR_T.vi;
+    document.querySelectorAll('[data-ftr-i18n]').forEach(function (el) {
+      const key = el.dataset.ftrI18n;
+      el.textContent = (tbl && tbl[key]) || (_FTR_T.vi[key]) || key;
+    });
+    document.querySelectorAll('[data-ftr-i18n-ph]').forEach(function (el) {
+      const key = el.dataset.ftrI18nPh;
+      el.placeholder = (tbl && tbl[key]) || (_FTR_T.vi[key]) || key;
+    });
+  } catch (e) {}
+}
+window.applyFooterI18n = applyFooterI18n;
+window.addEventListener('lang:change', applyFooterI18n);
+
 (() => {
   function abs(urlPath) {
     return new URL(urlPath, window.location.origin).toString();
@@ -212,6 +278,7 @@ window.addEventListener('lang:change', applyHeaderI18n);
       await loadInto("siteHeader", "/partials/header.html");
       applyHeaderI18n();
       await loadInto("siteFooter", "/partials/footer.html");
+      applyFooterI18n();
       ensureSupportChatScript();
 
       window.dispatchEvent(new CustomEvent("partials:loaded"));

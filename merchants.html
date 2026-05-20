@@ -66,17 +66,6 @@
     }
     #btnResetDist:hover { color: #e53e3e; }
 
-    /* 범례 */
-    .mc-legend {
-      display: flex; gap: 14px; flex-wrap: wrap;
-      font-size: 12px; color: #555; margin-bottom: 12px;
-    }
-    .mc-legend-dot {
-      width: 12px; height: 12px; border-radius: 50%;
-      display: inline-block; vertical-align: middle;
-      margin-right: 4px; border: 2px solid #fff;
-      box-shadow: 0 0 0 1px rgba(0,0,0,.15);
-    }
 
     /* 카드 그리드 */
     .mc-grid {
@@ -287,6 +276,15 @@
       40%    { transform: rotate(8deg) scale(1.15); }
       60%    { transform: rotate(-5deg) scale(1.1); }
       80%    { transform: rotate(5deg) scale(1.05); }
+    }
+    .box-inv-slot.locked { opacity: 0.5; filter: grayscale(0.7); }
+    .box-inv-slot.has-key {
+      border-color: #ffd700;
+      animation: keySparkle 1.4s ease-in-out infinite;
+    }
+    @keyframes keySparkle {
+      0%,100% { box-shadow: 0 0 4px #ffd700; border-color: #ffd700; }
+      50%     { box-shadow: 0 0 18px #ffd700, 0 0 36px #ffa500; border-color: #ffa500; transform: scale(1.06); }
     }
 
     /* ── 아이템 획득 오버레이 ── */
@@ -743,9 +741,73 @@
       line-height: 1; user-select: none; z-index: 10000;
     }
     .lb-trigger { cursor: zoom-in !important; }
+
+    /* ── 튜토리얼 모달 ── */
+    #tutModal {
+      position: fixed; inset: 0; z-index: 8500;
+      background: rgba(0,0,0,.65);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    #tutModal.hidden { display: none; }
+    .tut-card {
+      background: #fff; border-radius: 16px; max-width: 360px; width: 100%;
+      padding: 24px 20px 20px; position: relative;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35); text-align: center;
+    }
+    .tut-close {
+      position: absolute; top: 10px; right: 14px;
+      background: none; border: none; cursor: pointer;
+      font-size: 20px; color: #9ca3af; line-height: 1;
+    }
+    .tut-header { font-size: 0.75em; color: #9ca3af; margin-bottom: 10px; }
+    .tut-step-icon { font-size: 2.6em; margin-bottom: 8px; }
+    .tut-step-title { font-size: 1.05em; font-weight: 700; margin-bottom: 10px; color: #1f2937; }
+    .tut-step-body {
+      font-size: 0.87em; color: #4b5563; white-space: pre-wrap;
+      text-align: left; line-height: 1.65;
+      background: #f9fafb; border-radius: 8px; padding: 10px 12px;
+    }
+    .tut-dots { display: flex; gap: 8px; justify-content: center; margin: 16px 0 14px; }
+    .tut-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #d1d5db; transition: background .2s; cursor: pointer;
+    }
+    .tut-dot.active { background: #7c3aed; transform: scale(1.3); }
+    .tut-nav { display: flex; gap: 8px; }
+    .tut-btn {
+      flex: 1; padding: 10px 0; border-radius: 8px;
+      border: none; cursor: pointer; font-size: 0.9em; font-weight: 600;
+      transition: opacity .15s;
+    }
+    .tut-btn-prev { background: #f3f4f6; color: #374151; }
+    .tut-btn-prev:disabled { opacity: .35; cursor: default; }
+    .tut-btn-next { background: #7c3aed; color: #fff; }
+    #btnTutHelp { background: rgba(255,255,255,.9); color: #374151; font-size: 14px; }
+
+    /* ── 언어 전환 ── */
+    .lang-switcher {
+      position: fixed; bottom: 80px; right: 16px;
+      z-index: 8888; display: flex; flex-direction: column; gap: 4px;
+    }
+    .lang-btn {
+      padding: 6px 10px; border: 1px solid rgba(124,58,237,.35);
+      border-radius: 8px; background: rgba(255,255,255,.92);
+      color: #6b7280; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; transition: all .15s; backdrop-filter: blur(4px);
+    }
+    .lang-btn:hover { background: #ede9fe; color: #7c3aed; border-color: #7c3aed; }
+    .lang-btn.is-active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
   </style>
 
-  <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM"; window.LANG = 'vi';</script>
+  <script>
+    window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";
+    window.LANG = (localStorage.getItem('town_lang') || 'vi');
+    function setMerchantsLang(lang) {
+      localStorage.setItem('town_lang', lang);
+      location.reload();
+    }
+  </script>
   <script src="/assets/js/partials.js" defer></script>
 </head>
 <body>
@@ -849,6 +911,7 @@
         <div id="gsStatusBadge"></div>
         <button id="btnInventory" class="map-hud-btn" title="Túi đồ">🎒</button>
         <button id="btnMyLocation" class="map-hud-btn" title="Vị trí của tôi">📍</button>
+        <button id="btnTutHelp" class="map-hud-btn" title="Hướng dẫn / 도움말">❓</button>
         <div id="distPanel">
           <span class="dist-label">Khoảng cách</span>
           <span class="dist-value" id="distValue">0m</span>
@@ -892,20 +955,6 @@
           </div>
           <div id="gsSpawnList" style="color:#6b7280;font-size:10px;">Kết nối máy chủ rồi nhấn ↺</div>
         </div>
-      </div>
-
-      <!-- 범례 -->
-      <div class="mc-legend">
-        <span><span class="mc-legend-dot" style="background:#f59e0b;"></span>Đại lý</span>
-        <span><span class="mc-legend-dot" style="background:#ffd700; border-color:#7a5c3a;"></span>Hộp kho báu (hoạt động)</span>
-        <span><span class="mc-legend-dot" style="background:#888;"></span>Hộp kho báu (không hoạt động)</span>
-        <span><span style="font-size:12px;">👑</span> Hộp chỉ hội viên</span>
-        <span><span class="mc-legend-dot" style="background:#ef4444;"></span>Bệnh viện</span>
-        <span><span class="mc-legend-dot" style="background:#16a34a;"></span>Trường học</span>
-        <span><span class="mc-legend-dot" style="background:#22c55e;"></span>Công viên</span>
-        <span><span class="mc-legend-dot" style="background:#ec4899;"></span>Mua sắm</span>
-        <span><span class="mc-legend-dot" style="background:#6b7280;"></span>Địa điểm khác</span>
-        <span><span class="mc-legend-dot" style="background:#4285F4;"></span>Vị trí của tôi</span>
       </div>
 
       <!-- 필터 -->
@@ -980,6 +1029,34 @@
         <!-- Phiếu đang có -->
         <div class="inv-craft-title">🎟 Phiếu đang có</div>
         <div id="myVoucherList"><div class="voucher-empty">Đang tải...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 언어 전환 -->
+  <div class="lang-switcher" id="langSwitcher">
+    <button class="lang-btn" data-lang-btn="vi" onclick="setMerchantsLang('vi')">VI</button>
+    <button class="lang-btn" data-lang-btn="en" onclick="setMerchantsLang('en')">EN</button>
+    <button class="lang-btn" data-lang-btn="ko" onclick="setMerchantsLang('ko')">KO</button>
+  </div>
+  <script>
+    document.querySelectorAll('[data-lang-btn]').forEach(function(btn) {
+      btn.classList.toggle('is-active', btn.dataset.langBtn === window.LANG);
+    });
+  </script>
+
+  <!-- 튜토리얼 모달 -->
+  <div id="tutModal" class="hidden" role="dialog" aria-modal="true" aria-label="게임 가이드">
+    <div class="tut-card">
+      <button class="tut-close" id="tutClose" aria-label="닫기">✕</button>
+      <div class="tut-header" id="tutHeader"></div>
+      <div class="tut-step-icon" id="tutIcon"></div>
+      <div class="tut-step-title" id="tutStepTitle"></div>
+      <div class="tut-step-body" id="tutStepBody"></div>
+      <div class="tut-dots" id="tutDots"></div>
+      <div class="tut-nav">
+        <button class="tut-btn tut-btn-prev" id="tutPrev"></button>
+        <button class="tut-btn tut-btn-next" id="tutNext"></button>
       </div>
     </div>
   </div>

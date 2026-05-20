@@ -126,9 +126,9 @@ const MESSAGES = {
   box_open_hint:         { ko: '{0} — 클릭하여 열기',   vi: '{0} — Nhấn để mở' },
   // {0} = prefix, {1} = name
   box_locked_hint:       { ko: '{1} — 🔑 앞 3자리 {0} 열쇠 필요', vi: '{1} — 🔑 Cần chìa khóa 3 ký tự đầu {0}' },
-  // {0} = prefix
-  box_key_toast:         { ko: '🔑 앞 3자리가 "{0}"인 열쇠가 필요합니다.\n몬스터를 처치하여 열쇠를 획득하세요!',
-                           vi: '🔑 Cần chìa khóa 3 ký tự đầu "{0}".\nHãy tiêu diệt quái vật để lấy chìa khóa!' },
+  // {0} = prefix, {1} = key name
+  box_key_toast:         { ko: '🔑 "{1}" 열쇠가 필요합니다.\n몬스터를 처치하여 열쇠를 획득하세요!',
+                           vi: '🔑 Cần chìa khóa "{1}".\nHãy tiêu diệt quái vật để lấy chìa khóa!' },
 
   // ── 장비 능력치 패널 ──────────────────────────────────────────────────────────
   equip_weapon_label:    { ko: '장착 무기',             vi: 'Vũ khí đang dùng' },
@@ -225,6 +225,21 @@ const MESSAGES = {
   gs_error:              { ko: '연결 오류 — 클릭하여 재시도', vi: 'Lỗi kết nối — Nhấn để thử lại' },
   gs_error_badge:        { ko: '오류',                    vi: 'Lỗi' },
   gs_idle:               { ko: '게임 서버 연결',           vi: 'Kết nối máy chủ' },
+
+  // ── 튜토리얼 ────────────────────────────────────────────────────────────────
+  tut_title:             { ko: '게임 가이드',              vi: 'Hướng dẫn chơi' },
+  tut_step1_title:       { ko: '📍 내 위치 확인',          vi: '📍 Xem vị trí của tôi' },
+  tut_step1_body:        { ko: '📍 버튼을 누르면 지도가 내 위치로 이동합니다.\n파란 점 = 나의 현재 위치\n\n위치 권한을 허용해야 정확한 위치가 표시됩니다.',
+                           vi: 'Nhấn nút 📍 để bản đồ di chuyển đến vị trí của bạn.\nChấm xanh = Vị trí hiện tại của bạn\n\nHãy cho phép quyền truy cập vị trí.' },
+  tut_step2_title:       { ko: '👾 서버 몬스터 켜기',       vi: '👾 Bật quái vật máy chủ' },
+  tut_step2_body:        { ko: '▶ 버튼을 눌러 게임 서버에 접속하세요.\n접속하면 지도에 몬스터가 나타납니다.\n몬스터를 탭하여 공격하세요!',
+                           vi: 'Nhấn ▶ để kết nối máy chủ game.\nSau khi kết nối, quái vật sẽ xuất hiện trên bản đồ.\nNhấn vào quái vật để tấn công!' },
+  tut_step3_title:       { ko: '📦 보물 찾기',              vi: '📦 Tìm kho báu' },
+  tut_step3_body:        { ko: '게임 서버 접속 후 금색 📦 아이콘을 찾으세요.\n가까이 접근 → 탭하여 공격 → HP 0이 되면 획득!\n획득한 박스는 🎒 인벤토리에서 열어보세요.',
+                           vi: 'Sau khi kết nối, tìm biểu tượng 📦 màu vàng.\nĐến gần → Nhấn tấn công → Khi HP = 0 thì nhận được!\nMở hộp trong 🎒 Túi đồ.' },
+  tut_prev:              { ko: '◀ 이전',                   vi: '◀ Trước' },
+  tut_next:              { ko: '다음 ▶',                   vi: 'Tiếp ▶' },
+  tut_done:              { ko: '시작하기 ✓',                vi: 'Bắt đầu ✓' },
 };
 
 /**
