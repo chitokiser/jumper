@@ -1,4 +1,5 @@
 ﻿// /assets/js/pages/town_home.js
+import { _t, initLang } from "./town_home.i18n.js";
 import { auth, db } from "/assets/js/auth.js";
 import { functions } from "/assets/js/firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
@@ -74,7 +75,7 @@ function setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, rewar
   if (fiatEl)    fiatEl.textContent    = fiatText    || "";
   if (updatedEl) updatedEl.innerHTML   = `<span class="jackpot-dot"></span>${escHtml(updatedText || "")}`;
   if (winnerEl)  winnerEl.textContent  = winnerCountText || "-";
-  if (highestEl) highestEl.textContent = rewardText  || "아이템 잭팟";
+  if (highestEl) highestEl.textContent = rewardText  || _t('item_jackpot');
 }
 
 // 컨트랙트에서 직접 jackpotAccWei 조회 (eth_call, 라이브러리 불필요)
@@ -124,19 +125,19 @@ async function loadJackpotStats() {
     const now = new Date();
     setJackpotUi({
       valueText:       hexVal > 0 ? fmtJackpotHex(hexVal) : "0 HEX",
-      fiatText:        hexVal > 0 ? `약 ${krwStr} KRW / ${vndStr} VND` : "결제마다 5% 확률 — 아이템 잭팟",
-      updatedText:     `${now.toLocaleTimeString("ko-KR", { hour12: false })} 기준`,
-      winnerCountText: count > 0 ? `${count.toLocaleString("ko-KR")}명` : "-",
-      rewardText:      "아이템 잭팟",
+      fiatText:        hexVal > 0 ? _t('fiat_approx', krwStr, vndStr) : _t('fiat_no_jackpot'),
+      updatedText:     _t('time_basis', now.toLocaleTimeString([], { hour12: false })),
+      winnerCountText: count > 0 ? `${count.toLocaleString()}명` : "-",
+      rewardText:      _t('item_jackpot'),
     });
   } catch (e) {
     console.warn("loadJackpotStats failed:", e);
     setJackpotUi({
       valueText:       "-",
       fiatText:        "",
-      updatedText:     "잭팟 정보 조회 실패",
+      updatedText:     _t('jackpot_error'),
       winnerCountText: "-",
-      rewardText:      "아이템 잭팟",
+      rewardText:      _t('item_jackpot'),
     });
   }
 }
@@ -174,17 +175,17 @@ async function loadJackpotWinners() {
         : "-";
       const items = [];
       const ptsWei = BigInt(r.onchainJackpotPointsWei || "0");
-      if (ptsWei > 0n) items.push(`🪙 ${(Number(ptsWei) / 1e18).toFixed(6)} HEX 포인트`);
-      if ((r.potionCount   || 0) > 0) items.push(`빨간약 +${r.potionCount}`);
-      if ((r.mpPotionCount || 0) > 0) items.push(`마법약 +${r.mpPotionCount}`);
-      if ((r.reviveAdded   || 0) > 0) items.push(`부활권 +${r.reviveAdded}`);
+      if (ptsWei > 0n) items.push(`🪙 ${(Number(ptsWei) / 1e18).toFixed(6)} ${_t('hex_points')}`);
+      if ((r.potionCount   || 0) > 0) items.push(_t('red_potion', r.potionCount));
+      if ((r.mpPotionCount || 0) > 0) items.push(_t('mp_potion', r.mpPotionCount));
+      if ((r.reviveAdded   || 0) > 0) items.push(_t('revive', r.reviveAdded));
       const ptsWeiForVal = BigInt(r.onchainJackpotPointsWei || "0");
       const hexVal = Number(ptsWeiForVal) / 1e18;
       winners.push({
         addrShort,
         merchantName: r.merchantName || `가맹점 #${r.merchantId ?? ""}`,
         dateStr,
-        itemsStr: items.join(" / ") || "아이템",
+        itemsStr: items.join(" / ") || _t('item'),
         hexVal,
         _ts: createdAt ? createdAt.getTime() : 0,
       });
@@ -193,7 +194,7 @@ async function loadJackpotWinners() {
     _jackpotWinners = winners;
 
     if (!winners.length) {
-      wrap.innerHTML = '<p class="jp-winners-empty">아직 당첨자가 없습니다.</p>';
+      wrap.innerHTML = `<p class="jp-winners-empty">${_t('no_winners')}</p>`;
       return;
     }
 
@@ -208,13 +209,13 @@ async function loadJackpotWinners() {
             <span class="jp-winner-tag">&#x1F4C5; ${escHtml(w.dateStr)}</span>
           </div>
         </div>
-        <button class="jp-share-btn" data-win-idx="${i}" type="button">&#x1F4E4; 공유</button>
+        <button class="jp-share-btn" data-win-idx="${i}" type="button">${_t('share')}</button>
       </div>`;
 
     const visibleRows = winners.slice(0, INITIAL_SHOW).map(makeRow).join("");
     const hiddenRows = winners.length > INITIAL_SHOW
       ? `<div id="jpWinnersHidden" style="display:none;">${winners.slice(INITIAL_SHOW).map(makeRow).join("")}</div>
-         <button class="jp-winners-more-btn" id="jpWinnersMoreBtn" type="button">&#x25BC; 더 보기 (${winners.length - INITIAL_SHOW}건 더)</button>`
+         <button class="jp-winners-more-btn" id="jpWinnersMoreBtn" type="button">${_t('more_winners', winners.length - INITIAL_SHOW)}</button>`
       : "";
 
     wrap.innerHTML = visibleRows + hiddenRows;
@@ -237,7 +238,7 @@ async function loadJackpotWinners() {
     });
   } catch (err) {
     console.warn("loadJackpotWinners failed:", err);
-    wrap.innerHTML = '<p class="jp-winners-empty">당첨자 정보를 불러오지 못했습니다.</p>';
+    wrap.innerHTML = `<p class="jp-winners-empty">${_t('winners_load_error')}</p>`;
   }
 }
 
@@ -250,16 +251,16 @@ function buildShareCardHTML(winner) {
   const refBlock = hasRef
     ? `<hr class="jp-sc-divider">
        <a class="jp-sc-reg-btn" href="${escHtml(registerUrl)}" target="_blank" rel="noopener">
-         &#x2728; JUMP 지금 가입하기 &#x2192;
+         ${_t('join_now')}
        </a>
-       <p class="jp-sc-ref-note">&#x1F517; 내 레퍼럴 코드가 자동으로 포함됩니다</p>`
+       <p class="jp-sc-ref-note">${_t('my_referral')}</p>`
     : `<hr class="jp-sc-divider">
        <a class="jp-sc-reg-btn" href="/register.html" target="_blank" rel="noopener">
-         &#x2728; JUMP 회원가입 &#x2192;
+         ${_t('join_basic')}
        </a>`;
 
   const rewardLine = winner.hexVal > 0
-    ? `<div class="jp-sc-amount">🪙 ${winner.hexVal.toFixed(6)} HEX 포인트</div>`
+    ? `<div class="jp-sc-amount">🪙 ${winner.hexVal.toFixed(6)} ${_t('hex_points')}</div>`
     : `<div class="jp-sc-amount">🎁 ${escHtml(winner.itemsStr)}</div>`;
 
   return `
@@ -268,46 +269,46 @@ function buildShareCardHTML(winner) {
       <div class="jp-share-inner">
         <div class="jp-sc-badge">&#x1F3B0; JUMP MERCHANT PAY JACKPOT</div>
         <img class="jp-sc-logo" src="/assets/images/jump/logo2.png" alt="JUMP" />
-        <div class="jp-sc-headline">잭팟 당첨!</div>
+        <div class="jp-sc-headline">${_t('jackpot_won')}</div>
         ${rewardLine}
         <div class="jp-sc-fiat">${escHtml(winner.itemsStr)}</div>
         <hr class="jp-sc-divider">
         <div class="jp-sc-kv">
-          <span class="k">&#x1F464; 당첨자</span>
+          <span class="k">&#x1F464; ${_t('winner_label')}</span>
           <span class="v" style="font-family:monospace;font-size:12px;">${escHtml(winner.addrShort)}</span>
         </div>
         <div class="jp-sc-kv">
-          <span class="k">&#x1F3EA; 결제 가맹점</span>
+          <span class="k">&#x1F3EA; ${_t('merchant_pay_label')}</span>
           <span class="v">${escHtml(winner.merchantName)}</span>
         </div>
         <div class="jp-sc-kv">
-          <span class="k">&#x1F4C5; 당첨 일시</span>
+          <span class="k">&#x1F4C5; ${_t('win_date_label')}</span>
           <span class="v">${escHtml(winner.dateStr)}</span>
         </div>
         ${refBlock}
         <button class="jp-sc-kakao-btn" id="jpShareKakao" type="button">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><ellipse cx="9" cy="8.4" rx="8" ry="6.6" fill="#191919"/><path d="M5.1 11.2l1-3.1.9 2.1 1-.4.9 1.4-1.1-3.3 1.2-1.3H7.6l-.5-1.2-.6 1.2H5.3l1.1 1.3-1.3 3.3z" fill="#FEE500"/></svg>
-          카카오톡으로 공유
+          ${_t('kakao_share')}
         </button>
         <div class="jp-sc-sns-row">
           <button class="jp-sc-sns-btn jp-sc-sns-x" id="jpShareX" type="button">
-            <span class="sns-icon">𝕏</span>X(트위터)
+            <span class="sns-icon">𝕏</span>${_t('share_x')}
           </button>
           <button class="jp-sc-sns-btn jp-sc-sns-fb" id="jpShareFb" type="button">
-            <span class="sns-icon">f</span>페이스북
+            <span class="sns-icon">f</span>${_t('share_fb')}
           </button>
           <button class="jp-sc-sns-btn jp-sc-sns-tg" id="jpShareTg" type="button">
-            <span class="sns-icon">✈</span>텔레그램
+            <span class="sns-icon">✈</span>${_t('share_tg')}
           </button>
           <button class="jp-sc-sns-btn jp-sc-sns-line" id="jpShareLine" type="button">
             <span class="sns-icon">💬</span>LINE
           </button>
         </div>
         <div class="jp-sc-actions">
-          <button class="jp-sc-img-btn" id="jpShareImg" type="button">&#x1F4F7; 이미지 저장</button>
-          <button class="jp-sc-copy-btn" id="jpShareCopy" type="button">&#x1F517; 링크 복사</button>
+          <button class="jp-sc-img-btn" id="jpShareImg" type="button">${_t('save_image')}</button>
+          <button class="jp-sc-copy-btn" id="jpShareCopy" type="button">${_t('copy_link')}</button>
         </div>
-        <button class="jp-sc-close-btn" id="jpShareCloseBtn" type="button" style="width:100%;margin-top:6px;">닫기</button>
+        <button class="jp-sc-close-btn" id="jpShareCloseBtn" type="button" style="width:100%;margin-top:6px;">${_t('close')}</button>
       </div>
     </div>`;
 }
@@ -334,10 +335,10 @@ function openShareModal(winner) {
     ...(hasRef ? { mentor: _userWalletAddr } : {}),
   });
   const copyUrl = `${location.origin}/index.html`;
-  const shareTitle = `🎰 잭팟 당첨! JUMP 가맹점 결제 잭팟`;
+  const shareTitle = _t('share_title_text');
   const shareText = winner.hexVal > 0
-    ? `🪙 ${winner.hexVal.toFixed(6)} HEX 포인트 · ${winner.itemsStr}\n📍 ${winner.merchantName} · ${winner.dateStr}\n👇 JUMP 지금 참여하기`
-    : `🎁 ${winner.itemsStr}\n📍 ${winner.merchantName} · ${winner.dateStr}\n👇 JUMP 지금 참여하기`;
+    ? `🪙 ${winner.hexVal.toFixed(6)} ${_t('hex_points')} · ${winner.itemsStr}\n📍 ${winner.merchantName} · ${winner.dateStr}\n${_t('participate_now')}`
+    : `🎁 ${winner.itemsStr}\n📍 ${winner.merchantName} · ${winner.dateStr}\n${_t('participate_now')}`;
 
   function openSnsUrl(url) { window.open(url, "_blank", "noopener,width=600,height=500"); }
 
@@ -353,9 +354,9 @@ function openShareModal(winner) {
     } else {
       const kakaoText = `${shareTitle}\n${shareText}\n${copyUrl}`;
       navigator.clipboard?.writeText(kakaoText).then(() => {
-        btn.textContent = "✅ 복사됨! 카카오톡에 붙여넣기";
+        btn.textContent = _t('kakao_copied');
         setTimeout(() => {
-          btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><ellipse cx="9" cy="8.4" rx="8" ry="6.6" fill="#191919"/><path d="M5.1 11.2l1-3.1.9 2.1 1-.4.9 1.4-1.1-3.3 1.2-1.3H7.6l-.5-1.2-.6 1.2H5.3l1.1 1.3-1.3 3.3z" fill="#FEE500"/></svg> 카카오톡으로 공유`;
+          btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><ellipse cx="9" cy="8.4" rx="8" ry="6.6" fill="#191919"/><path d="M5.1 11.2l1-3.1.9 2.1 1-.4.9 1.4-1.1-3.3 1.2-1.3H7.6l-.5-1.2-.6 1.2H5.3l1.1 1.3-1.3 3.3z" fill="#FEE500"/></svg> ${_t('kakao_share')}`;
         }, 2500);
       }).catch(() => { btn.textContent = "복사 실패"; });
     }
@@ -386,9 +387,9 @@ function openShareModal(winner) {
   $("jpShareCopy").onclick = () => {
     const btn = $("jpShareCopy");
     navigator.clipboard?.writeText(copyUrl).then(() => {
-      btn.innerHTML = "&#x2705; 복사됨!";
-      setTimeout(() => { btn.innerHTML = "&#x1F517; 링크 복사"; }, 2500);
-    }).catch(() => { btn.textContent = "복사 실패"; });
+      btn.innerHTML = _t('copied');
+      setTimeout(() => { btn.innerHTML = _t('copy_link'); }, 2500);
+    }).catch(() => { btn.textContent = _t('copy_failed'); });
   };
 
   // 이미지 저장
@@ -396,11 +397,11 @@ function openShareModal(winner) {
     const btn = $("jpShareImg");
     const card = document.querySelector(".jp-share-card");
     if (!card || typeof window.html2canvas === "undefined") {
-      btn.textContent = "미지원 브라우저";
+      btn.textContent = _t('unsupported_browser');
       return;
     }
     btn.disabled = true;
-    btn.textContent = "저장 중...";
+    btn.textContent = _t('saving');
     try {
       const canvas = await window.html2canvas(card, {
         scale: 2,
@@ -415,12 +416,12 @@ function openShareModal(winner) {
       a.download = "jump-jackpot.png";
       a.click();
       URL.revokeObjectURL(url);
-      btn.innerHTML = "&#x2705; 저장됨!";
+      btn.innerHTML = _t('saved');
       btn.disabled = false;
-      setTimeout(() => { btn.innerHTML = "&#x1F4F7; 이미지 저장"; }, 3000);
+      setTimeout(() => { btn.innerHTML = _t('save_image'); }, 3000);
     } catch (err) {
       btn.disabled = false;
-      btn.textContent = "캡처 실패";
+      btn.textContent = _t('capture_error');
       console.warn("html2canvas error:", err);
     }
   };
@@ -450,7 +451,7 @@ function makeNoticeRow(v) {
   const head = document.createElement("button");
   head.type = "button";
   head.className = "notice-head";
-  head.textContent = v.title || v.text || "(제목 없음)";
+  head.textContent = v.title || v.text || _t('no_notice_title');
 
   const body = document.createElement("div");
   body.className = "notice-body";
@@ -498,7 +499,7 @@ async function loadNotices() {
 
     if (!list.children.length) {
       const li = document.createElement("li");
-      li.textContent = "표시할 공지사항이 없습니다.";
+      li.textContent = _t('no_notices');
       list.appendChild(li);
     }
 
@@ -517,13 +518,13 @@ async function loadNotices() {
   } catch (e) {
     console.warn("loadNotices failed:", e);
     const li = document.createElement("li");
-    li.textContent = "공지사항을 불러오지 못했습니다.";
+    li.textContent = _t('notice_error');
     list.appendChild(li);
   }
 }
 
 function renderMerchantCard(mid, m) {
-  const name = m.name || "가맹점";
+  const name = m.name || _t('merchant_name_fallback');
   const career = m.career || "";
   const region = m.region || "";
   const desc = m.description || "";
@@ -537,8 +538,8 @@ function renderMerchantCard(mid, m) {
       </div>
       ${region ? `<div class="merchant-region">📍 ${escHtml(region)}</div>` : ""}
       ${desc ? `<div class="merchant-desc">${escHtml(desc)}</div>` : ""}
-      <div class="merchant-id">가맹점 ID: ${escHtml(String(mid))}</div>
-      ${ownerUid ? `<button class="btn-merchant-products" type="button" data-owner-uid="${escHtml(ownerUid)}" data-merchant-name="${escHtml(name)}">상품 보기</button>` : ""}
+      <div class="merchant-id">${_t('merchant_id_prefix')} ${escHtml(String(mid))}</div>
+      ${ownerUid ? `<button class="btn-merchant-products" type="button" data-owner-uid="${escHtml(ownerUid)}" data-merchant-name="${escHtml(name)}">${_t('view_products')}</button>` : ""}
     </div>`;
 }
 
@@ -549,7 +550,7 @@ async function loadMerchants() {
   const state = $("merchantListState");
   if (!grid) return;
 
-  if (state) state.textContent = "불러오는 중...";
+  if (state) state.textContent = _t('merchants_loading');
 
   try {
     const snap = await fetchMerchantsOnce();
@@ -559,10 +560,10 @@ async function loadMerchants() {
       if (m.active !== false) list.push({ id: d.id, ...m });
     });
 
-    if (state) state.textContent = `총 ${list.length}개`;
+    if (state) state.textContent = _t('merchants_count', list.length);
 
     if (!list.length) {
-      grid.innerHTML = '<p class="help">등록된 가맹점이 없습니다.</p>';
+      grid.innerHTML = `<p class="help">${_t('merchants_none')}</p>`;
       return;
     }
 
@@ -580,7 +581,7 @@ async function loadMerchants() {
     }
   } catch (e) {
     console.warn("loadMerchants failed:", e);
-    if (state) state.textContent = "가맹점 목록을 불러오지 못했습니다.";
+    if (state) state.textContent = _t('merchants_error');
   }
 }
 
@@ -606,7 +607,7 @@ function loadMapsScript() {
     const s = document.createElement("script");
     s.src = `https://maps.googleapis.com/maps/api/js?key=${window.__mapsKey || ""}&callback=__gmapsCb&language=ko&region=KR`;
     s.async = true;
-    s.onerror = () => reject(new Error("Google Maps 로드 실패"));
+    s.onerror = () => reject(new Error(_t('maps_load_error')));
     document.head.appendChild(s);
   });
 }
@@ -639,7 +640,7 @@ async function loadPlacesMap() {
   if (!mapEl) return;
 
   if (!window.__mapsKey) {
-    mapEl.innerHTML = '<div style="padding:32px;text-align:center;color:#9ca3af;">Google Maps API 키가 없습니다.</div>';
+    mapEl.innerHTML = `<div style="padding:32px;text-align:center;color:#9ca3af;">${_t('maps_no_key')}</div>`;
     return;
   }
 
@@ -683,11 +684,11 @@ async function loadPlacesMap() {
         `<div style="max-width:240px;font-size:13px;line-height:1.5;">
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name || "")}</div>
           ${p.type ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ""}
-          ${p.area    ? `<div style="color:#6b7280;">구역: ${escHtml(p.area)}</div>` : ""}
+          ${p.area    ? `<div style="color:#6b7280;">${_t('area_label')} ${escHtml(p.area)}</div>` : ""}
           ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ""}
           ${p.phone   ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
           ${p.note    ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ""}
-          ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;">구글 지도에서 보기</a>` : ""}
+          ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;">${_t('view_map')}</a>` : ""}
         </div>`);
     });
 
@@ -704,12 +705,12 @@ async function loadPlacesMap() {
       addMarker(latLng, icon,
         `<div style="max-width:240px;font-size:13px;line-height:1.5;">
           ${m.imageUrl ? `<img src="${escHtml(m.imageUrl)}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;">` : ""}
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(m.name || "가맹점")}</div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(m.name || _t('merchant_name_fallback'))}</div>
           ${m.career      ? `<div style="color:#f59e0b;font-size:12px;">${escHtml(m.career)}</div>` : ""}
           ${m.region      ? `<div style="color:#6b7280;">📍 ${escHtml(m.region)}</div>` : ""}
           ${m.phone       ? `<div style="color:#374151;">📞 ${escHtml(m.phone)}</div>` : ""}
           ${m.description ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(m.description)}</div>` : ""}
-          ${m.gmap        ? `<a href="${escHtml(m.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">구글 지도에서 보기 →</a>` : ""}
+          ${m.gmap        ? `<a href="${escHtml(m.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">${_t('view_map')} →</a>` : ""}
         </div>`, 10);
     });
 
@@ -722,13 +723,13 @@ async function loadPlacesMap() {
     }
   } catch (e) {
     console.warn("loadPlacesMap failed:", e);
-    mapEl.innerHTML = `<div style="padding:32px;text-align:center;color:#9ca3af;">지도를 불러오지 못했습니다.<br><small>${e.message || ""}</small></div>`;
+    mapEl.innerHTML = `<div style="padding:32px;text-align:center;color:#9ca3af;">${_t('maps_error')}<br><small>${e.message || ""}</small></div>`;
   }
 }
 
 function renderProductCard(p) {
   const thumb = Array.isArray(p.images) && p.images[0] ? p.images[0] : null;
-  const price = p.price ? `${Number(p.price).toLocaleString()}원` : "가격 문의";
+  const price = p.price ? `${Number(p.price).toLocaleString()}원` : _t('price_inquiry');
   return `
     <a class="mp-product-card" href="/item.html?id=${escHtml(p.id)}" target="_blank" rel="noopener">
       ${thumb ? `<img class="mp-product-thumb" src="${escHtml(thumb)}" alt="${escHtml(p.title || "")}" loading="lazy">` : `<div class="mp-product-thumb-ph">📦</div>`}
@@ -752,8 +753,8 @@ function openMerchantProductModal(ownerUid, merchantName) {
   const grid = $("mpModalGrid");
   if (!modal || !grid) return;
 
-  if (title) title.textContent = `${merchantName || "가맹점"} 상품 목록`;
-  if (stateEl) stateEl.textContent = "불러오는 중...";
+  if (title) title.textContent = _t('modal_products_title', merchantName || _t('merchant_name_fallback'));
+  if (stateEl) stateEl.textContent = _t('loading');
   grid.innerHTML = "";
   modal.style.display = "flex";
 
@@ -782,16 +783,16 @@ function openMerchantProductModal(ownerUid, merchantName) {
       snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
 
       if (!list.length) {
-        if (stateEl) stateEl.textContent = "등록된 상품이 없습니다.";
+        if (stateEl) stateEl.textContent = _t('no_products');
         return;
       }
 
-      if (stateEl) stateEl.textContent = `총 ${list.length}개`;
+      if (stateEl) stateEl.textContent = _t('products_count', list.length);
       grid.innerHTML = list.map(renderProductCard).join("");
     })
     .catch((e) => {
       console.warn("loadMerchantProducts failed:", e);
-      if (stateEl) stateEl.textContent = "상품 목록을 불러오지 못했습니다.";
+      if (stateEl) stateEl.textContent = _t('products_error');
     });
 }
 
@@ -801,8 +802,8 @@ function renderCoopCard(p) {
     : `<div class="mp-product-thumb-ph">📦</div>`;
 
   const typeBadge = p.type === "voucher"
-    ? `<span style="font-size:0.7rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">바우처</span>`
-    : `<span style="font-size:0.7rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">일반상품</span>`;
+    ? `<span style="font-size:0.7rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">${_t('voucher_badge')}</span>`
+    : `<span style="font-size:0.7rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">${_t('general_badge')}</span>`;
 
   return `
     <a class="mp-product-card" href="/coop.html">
@@ -840,7 +841,7 @@ async function loadCoopProducts() {
 }
 
 function usedStateText(s) {
-  return s === "sold" ? "판매완료" : s === "reserved" ? "예약중" : "판매중";
+  return s === "sold" ? _t('sold') : s === "reserved" ? _t('reserved') : _t('for_sale');
 }
 
 function usedThumb(post) {
@@ -868,23 +869,23 @@ async function loadUsedMarketPreview() {
   const state = $("usedMarketPreviewState");
   if (!grid) return;
 
-  if (state) state.textContent = "불러오는 중...";
+  if (state) state.textContent = _t('loading');
   try {
     const snap = await getDocs(query(collection(db, "usedMarketPosts"), orderBy("createdAt", "desc"), limit(8)));
     const list = [];
     snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
 
     if (!list.length) {
-      if (state) state.textContent = "등록된 중고물품이 없습니다.";
+      if (state) state.textContent = _t('no_used');
       grid.innerHTML = "";
       return;
     }
 
-    if (state) state.textContent = `최신 ${list.length}개`;
+    if (state) state.textContent = _t('used_count', list.length);
     grid.innerHTML = list.map(renderUsedCard).join("");
   } catch (e) {
     console.warn("loadUsedMarketPreview failed:", e);
-    if (state) state.textContent = "중고물품을 불러오지 못했습니다.";
+    if (state) state.textContent = _t('used_error');
   }
 }
 async function loadSponsorBannersFromDb() {
@@ -935,7 +936,7 @@ async function initSponsorRotator() {
 
   function renderDots() {
     dotsWrap.innerHTML = slides
-      .map((_, i) => `<button type="button" class="sponsor-dot ${i === idx ? "is-active" : ""}" data-idx="${i}" aria-label="배너 ${i + 1}"></button>`)
+      .map((_, i) => `<button type="button" class="sponsor-dot ${i === idx ? "is-active" : ""}" data-idx="${i}" aria-label="${_t('sponsor_dot', i + 1)}"></button>`)
       .join("");
   }
 
@@ -1001,6 +1002,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+initLang();
 loadNotices();
 initJackpotTicker();
 loadJackpotWinners();

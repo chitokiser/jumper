@@ -1,4 +1,72 @@
 ﻿// /assets/js/partials.js
+const _HDR_T = {
+  vi: {
+    hdr_explore: 'Khám phá', hdr_treasure: 'Tìm kho báu', hdr_stay: 'Chỗ nghỉ',
+    hdr_sights: 'Điểm tham quan', hdr_food: 'Ẩm thực', hdr_shopping: 'Mua sắm',
+    hdr_benefits: 'Quyền lợi Jump', hdr_limousine: 'Jump Limousine', hdr_dao: 'Biểu quyết DAO',
+    hdr_signup: 'Đăng ký', hdr_my_services: 'Dịch vụ của tôi', hdr_wallet: 'Ví của tôi',
+    hdr_exchange: 'Sàn giao dịch Jump', hdr_used: 'Chợ đồ cũ', hdr_mall: 'Cửa hàng hội viên',
+    hdr_orders: 'Đơn hàng của tôi', hdr_sales: 'Trung tâm bán hàng',
+    hdr_merchant_reg: 'Đăng ký cửa hàng', hdr_homestay_new: 'Tạo homestay mới',
+    hdr_product_add: 'Thêm sản phẩm', hdr_my_products: 'Quản lý sản phẩm',
+    hdr_qr_pay: 'Thanh toán QR', hdr_admin: 'Quản trị', hdr_debug: 'Kiểm tra debug',
+    hdr_coop_admin: 'Quản lý hợp tác xã', hdr_approval: 'Duyệt/Quản lý SP',
+    hdr_order_admin: 'Quản lý đơn hàng', hdr_settlement: 'Quản lý thanh toán',
+    hdr_notice_admin: 'Quản lý thông báo', hdr_places: 'Đăng ký địa điểm',
+    hdr_banners: 'Quản lý banner', hdr_jackpot: 'Quản lý rút jackpot',
+    hdr_buggy: 'Quản lý xe buggy', hdr_member_badge: '👑 Hội viên chính',
+    hdr_member_join: 'Đăng ký hội viên', hdr_login: 'Đăng nhập Google', hdr_logout: 'Đăng xuất',
+  },
+  en: {
+    hdr_explore: 'Explore', hdr_treasure: 'Treasure Hunt', hdr_stay: 'Stay',
+    hdr_sights: 'Sights', hdr_food: 'Food', hdr_shopping: 'Shopping',
+    hdr_benefits: 'Jump Benefits', hdr_limousine: 'Jump Limousine', hdr_dao: 'DAO Vote',
+    hdr_signup: 'Sign Up', hdr_my_services: 'My Services', hdr_wallet: 'My Wallet',
+    hdr_exchange: 'Jump Exchange', hdr_used: 'Used Market', hdr_mall: 'Member Mall',
+    hdr_orders: 'My Orders', hdr_sales: 'Sales Center',
+    hdr_merchant_reg: 'Register Merchant', hdr_homestay_new: 'New Homestay',
+    hdr_product_add: 'Add Product', hdr_my_products: 'My Products',
+    hdr_qr_pay: 'QR Pay', hdr_admin: 'Admin', hdr_debug: 'Debug Check',
+    hdr_coop_admin: 'Coop Management', hdr_approval: 'Approval/Products',
+    hdr_order_admin: 'Order Management', hdr_settlement: 'Settlement',
+    hdr_notice_admin: 'Notices', hdr_places: 'Add Place',
+    hdr_banners: 'Banners', hdr_jackpot: 'Jackpot Withdrawal',
+    hdr_buggy: 'Buggy Management', hdr_member_badge: '👑 Member',
+    hdr_member_join: 'Join Member', hdr_login: 'Google Login', hdr_logout: 'Logout',
+  },
+  ko: {
+    hdr_explore: '탐색', hdr_treasure: '보물찾기', hdr_stay: '잠자리',
+    hdr_sights: '볼거리', hdr_food: '먹거리', hdr_shopping: '살거리',
+    hdr_benefits: 'Jump혜택', hdr_limousine: '점프리무진', hdr_dao: 'DAO 의결',
+    hdr_signup: '회원가입', hdr_my_services: '내 서비스', hdr_wallet: '내지갑',
+    hdr_exchange: 'Jump 토큰거래소', hdr_used: '중고거래', hdr_mall: '회원전용몰',
+    hdr_orders: '내 주문', hdr_sales: '판매센터',
+    hdr_merchant_reg: '가맹점 등록', hdr_homestay_new: '홈스테이 신규생성',
+    hdr_product_add: '상품 추가', hdr_my_products: '내 상품관리',
+    hdr_qr_pay: 'QR 결제', hdr_admin: '관리자', hdr_debug: '디버그체크',
+    hdr_coop_admin: '조합관리', hdr_approval: '승인/상품관리',
+    hdr_order_admin: '주문관리', hdr_settlement: '정산관리',
+    hdr_notice_admin: '공지관리', hdr_places: '장소등록',
+    hdr_banners: '배너관리', hdr_jackpot: '잭팟 인출관리',
+    hdr_buggy: '버기카 관리', hdr_member_badge: '👑 정회원',
+    hdr_member_join: '정회원 가입', hdr_login: '구글 로그인', hdr_logout: '로그아웃',
+  },
+};
+
+function applyHeaderI18n() {
+  try {
+    const saved = localStorage.getItem('town_lang');
+    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'vi';
+    const tbl = _HDR_T[lang] || _HDR_T.vi;
+    document.querySelectorAll('[data-hdr-i18n]').forEach(function (el) {
+      const key = el.dataset.hdrI18n;
+      el.textContent = (tbl && tbl[key]) || (_HDR_T.vi[key]) || key;
+    });
+  } catch (e) {}
+}
+window.applyHeaderI18n = applyHeaderI18n;
+window.addEventListener('lang:change', applyHeaderI18n);
+
 (() => {
   function abs(urlPath) {
     return new URL(urlPath, window.location.origin).toString();
@@ -142,6 +210,7 @@
       ensureInAppGuardScript();
 
       await loadInto("siteHeader", "/partials/header.html");
+      applyHeaderI18n();
       await loadInto("siteFooter", "/partials/footer.html");
       ensureSupportChatScript();
 
