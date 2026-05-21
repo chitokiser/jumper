@@ -1113,8 +1113,22 @@ function showMyLocation() {
     return;
   }
 
-  const btn = $('btnMyLocation');
-  if (btn) btn.textContent = '⏳';
+  const btn        = $('btnMyLocation');
+  const toggleBtn  = $('btnGameToggle');
+
+  if (btn)       btn.textContent = '⏳';
+  if (toggleBtn && !isGameServerConnected()) {
+    toggleBtn.textContent = '⏳';
+    toggleBtn.classList.add('gs-connecting');
+  }
+
+  // 전체화면 전환 (모바일 게임 몰입)
+  const mapWrap = document.querySelector('.mc-map-wrap') || document.documentElement;
+  mapWrap.requestFullscreen?.().catch(() => {});
+
+  const _onGpsReady = () => {
+    if (!isGameServerConnected()) connectToGameServer();
+  };
 
   // 첫 클릭: 게임 시작 + 현재 위치로 즉시 이동
   navigator.geolocation.getCurrentPosition(
@@ -1124,12 +1138,21 @@ function showMyLocation() {
       updateMyLocation(lat, lng, accuracy, heading ?? null);
       if (_ctx.map) {
         _ctx.map.panTo({ lat, lng });
-        _ctx.map.setZoom(17);
+        _ctx.map.setZoom(18);
       }
       broadcastMyLocation(lat, lng);
       if (btn) btn.textContent = '📍';
+      _onGpsReady();
     },
-    null,
+    () => {
+      // GPS 실패 시 지도 중심 좌표로 대체
+      if (!_ctx.lastPos && _ctx.map) {
+        const c = _ctx.map.getCenter();
+        if (c) _ctx.lastPos = { lat: c.lat(), lng: c.lng(), accuracy: 10 };
+      }
+      if (btn) btn.textContent = '📍';
+      _onGpsReady();
+    },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
   );
 
@@ -2259,12 +2282,8 @@ async function init() {
     if (isGameServerConnected()) {
       disconnectFromGameServer();
     } else {
-      // GPS 없는 PC 테스트: 지도 중심 좌표를 존 결정 기준으로 사용
-      if (!_ctx.lastPos && map) {
-        const c = map.getCenter();
-        if (c) _ctx.lastPos = { lat: c.lat(), lng: c.lng(), accuracy: 10 };
-      }
-      connectToGameServer();
+      // GPS + 지도 확대 + 캐릭터 + 전체화면 + 서버 연결 한 번에
+      showMyLocation();
     }
   });
 

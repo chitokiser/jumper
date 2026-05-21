@@ -366,16 +366,19 @@ function _getOverlayCls() {
       this._facing = (h <= 90 || h >= 270) ? 1 : -1;
     }
 
-    // 활/손 끝 픽셀 위치 반환 (battleOverlay 좌표계와 동일한 기준)
+    // 활/손 끝 픽셀 위치 반환 — #battleOverlay 좌표계 기준
+    // getBoundingClientRect 기반으로 canvas 실제 화면 위치를 읽어
+    // battleOverlay 좌표로 변환하므로 맵 패닝·줌에 정확히 동기화됨
     getBowPixel() {
-      const proj = this.getProjection?.();
-      if (!proj) return null;
-      const pt = proj.fromLatLngToDivPixel(this._latLng);
-      if (!pt) return null;
-      // 발 기준(pt): 위로 30px(활 높이), facing 방향으로 10px 앞
+      if (!this._canvas) return null;
+      const overlayEl = document.getElementById('battleOverlay');
+      if (!overlayEl) return null;
+      const cr = this._canvas.getBoundingClientRect();
+      const or = overlayEl.getBoundingClientRect();
+      // 캔버스 내 활(손 끝) 위치: 발(OX, OY) 기준으로 위로 25px, 정면 방향으로 5px
       return {
-        x: Math.round(pt.x + this._facing * 10),
-        y: Math.round(pt.y - 30),
+        x: Math.round(cr.left - or.left + OX + this._facing * 5),
+        y: Math.round(cr.top  - or.top  + OY - 25),
       };
     }
 
