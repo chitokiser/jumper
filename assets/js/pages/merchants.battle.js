@@ -2717,17 +2717,10 @@ export function hideMyMarker() {
 
 // ── 상점 시스템 ───────────────────────────────────────────────────────────────
 
-function _makeShopIcon(type) {
-  const emoji = SHOP_ICONS[type] || '🏪';
-  const bg = type === 'weapon_armor' ? '#1e3a5f'
-           : type === 'potion'       ? '#1a3a1a'
-           : '#3a2a0a';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-    <circle cx="22" cy="22" r="20" fill="${bg}" stroke="#fbbf24" stroke-width="2.5"/>
-    <text x="22" y="30" font-size="20" text-anchor="middle">${emoji}</text>
-  </svg>`;
+function _makeShopIcon(type, imageUrl) {
+  const url = imageUrl || 'assets/images/shops/arms.png';
   return {
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    url,
     scaledSize: new google.maps.Size(44, 44),
     anchor:     new google.maps.Point(22, 22),
   };
@@ -2742,7 +2735,7 @@ function _renderShopMarker(shop) {
     position: { lat: shop.lat, lng: shop.lng },
     map,
     title:  shop.name,
-    icon:   _makeShopIcon(shop.type),
+    icon:   _makeShopIcon(shop.type, shop.image),
     zIndex: 50,
   });
 
