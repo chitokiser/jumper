@@ -72,6 +72,9 @@ let _battleHpUnsub       = null;    // battle_hp onSnapshot 구독
 let _monsterRespawnTimers = {};      // { monsterId: timeoutId }
 let _monsterAggro        = {};      // { monsterId: uid } 어그로 캐시
 let _aggroClaimed        = new Set(); // 이미 어그로 클레임한 몬스터 ID
+let _nearbyPlayerMarkers  = {};      // { uid: google.maps.Marker } 근처 플레이어 마커
+let _nearbyPlayersUnsub   = null;    // battle_players onSnapshot 구독
+let _lastPosWriteAt       = 0;      // 위치 Firestore 저장 쓰로틀
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST    = 100;
@@ -79,6 +82,8 @@ const SKILL_RANGE_M    = 100;
 const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오브제 표시
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
 const SKILL_FREEZE_MS = 20000;
+// 서버와 동일한 배율 (클라이언트 float 표시용)
+const GS_SKILL_MULT  = { lightning: 3.0, ice: 1.5, fire: 2.5 };
 
 // ── 유틸 (core에서 받지 않고 직접 구현) ────────────────────────────────────────
 function escHtml(s) {
@@ -117,6 +122,8 @@ export function initBattle(ctx, callbacks) {
   document.getElementById('btnRefreshGsSpawns')?.addEventListener('click', () => refreshGsSpawnList());
   // Firestore 몬스터 목록 새로고침 버튼
   document.getElementById('btnRefreshFsMonsters')?.addEventListener('click', () => refreshFirestoreMonsterList());
+
+  startNearbyPlayersWatch();
 }
 
 // ── 사운드 시스템 (Web Audio API) ────────────────────────────────────────────
@@ -889,6 +896,12 @@ export function castLightning() {
         hitCount++;
       }
     }
+    // GS 몬스터: 서버에 스킬 전송 + 클라이언트 float 즉시 표시
+    const gsDmg = Math.round(_player.level * 100 * GS_SKILL_MULT.lightning);
+    for (const gsMob of getGsTargetsInRange()) {
+      showFloat(`⚡-${gsDmg}`, '#facc15', gsMob.lat, gsMob.lng);
+      hitCount++;
+    }
     _gsSkillCallback?.('lightning', myLat, myLng, SKILL_RANGE_M);
     showFloat(_t('skill_lightning_hit', hitCount), '#facc15', target.lat, target.lng);
     _skillCd.lightning = Date.now() + SKILL_CD_MS.lightning;
@@ -938,6 +951,11 @@ export function castIceFreeze() {
         hitCount++;
       }
     }
+    const gsDmgIce = Math.round(_player.level * 100 * GS_SKILL_MULT.ice);
+    for (const gsMob of getGsTargetsInRange()) {
+      showFloat(`❄-${gsDmgIce}`, '#93c5fd', gsMob.lat, gsMob.lng);
+      hitCount++;
+    }
     _gsSkillCallback?.('ice', myLat, myLng, SKILL_RANGE_M);
     showFloat(_t('skill_freeze_multi', hitCount, SKILL_FREEZE_MS/1000), '#93c5fd', target.lat, target.lng);
     _skillCd.ice = Date.now() + SKILL_CD_MS.ice;
@@ -980,6 +998,11 @@ export function castFireStorm() {
         showFloat(`🔥-${getTotalAtk() * _player.level}`, '#f97316', mob.lat, mob.lng);
         hitCount++;
       }
+    }
+    const gsDmgFire = Math.round(_player.level * 100 * GS_SKILL_MULT.fire);
+    for (const gsMob of getGsTargetsInRange()) {
+      showFloat(`🔥-${gsDmgFire}`, '#f97316', gsMob.lat, gsMob.lng);
+      hitCount++;
     }
     _gsSkillCallback?.('fire', myLat, myLng, SKILL_RANGE_M);
     showFloat(_t('skill_fire_hit', hitCount), '#f97316', target.lat, target.lng);
@@ -1975,6 +1998,74 @@ export function startSharedSync(onBoxHpChange) {
   );
 }
 
+// ── 근처 100m 이내 플레이어 마커 ──────────────────────────────────────────────
+export function startNearbyPlayersWatch() {
+  if (!_ctx?.db || _nearbyPlayersUnsub) return;
+  const NEARBY_M = 100;
+  const STALE_MS = 120000; // 2분 미갱신 시 무시
+
+  _nearbyPlayersUnsub = onSnapshot(
+    collection(_ctx.db, 'battle_players'),
+    (snap) => {
+      const map   = _ctx?.map;
+      const myId  = _ctx?.uid;
+      const myPos = _ctx?.lastPos;
+      if (!map || !myId || !myPos) return;
+
+      const cutoff  = Date.now() - STALE_MS;
+      const seenIds = new Set();
+
+      snap.docs.forEach(d => {
+        const uid = d.id;
+        if (uid === myId) return;
+        const data = d.data();
+        if (!data.lat || !data.lng) return;
+        const updMs = data.updatedAt?.toMillis?.() ?? 0;
+        if (updMs < cutoff) return;
+
+        const dist = haversine(myPos.lat, myPos.lng, data.lat, data.lng);
+        if (dist > NEARBY_M) {
+          if (_nearbyPlayerMarkers[uid]) { _nearbyPlayerMarkers[uid].setMap(null); delete _nearbyPlayerMarkers[uid]; }
+          return;
+        }
+        seenIds.add(uid);
+
+        if (_nearbyPlayerMarkers[uid]) {
+          _nearbyPlayerMarkers[uid].setPosition({ lat: data.lat, lng: data.lng });
+        } else {
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="19" fill="#3b82f6" stroke="white" stroke-width="3"/>
+            <text x="22" y="28" text-anchor="middle" font-size="18" fill="white">👤</text>
+          </svg>`;
+          _nearbyPlayerMarkers[uid] = new google.maps.Marker({
+            position: { lat: data.lat, lng: data.lng },
+            map,
+            title:  _t('nearby_player_label') + ' (' + Math.round(dist) + 'm)',
+            zIndex: 85,
+            icon: {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+              scaledSize: new google.maps.Size(32, 32),
+              anchor:     new google.maps.Point(16, 16),
+            },
+          });
+        }
+      });
+
+      // 범위 밖으로 나간 마커 정리
+      Object.keys(_nearbyPlayerMarkers).forEach(uid => {
+        if (!seenIds.has(uid)) { _nearbyPlayerMarkers[uid].setMap(null); delete _nearbyPlayerMarkers[uid]; }
+      });
+    },
+    () => {}
+  );
+}
+
+export function stopNearbyPlayersWatch() {
+  if (_nearbyPlayersUnsub) { _nearbyPlayersUnsub(); _nearbyPlayersUnsub = null; }
+  Object.values(_nearbyPlayerMarkers).forEach(m => m.setMap(null));
+  _nearbyPlayerMarkers = {};
+}
+
 // ── 관리자 배치 모드 ──────────────────────────────────────────────────────────
 export function enterAdminPlaceMode(type) {
   const map = _ctx?.map;
@@ -2399,6 +2490,13 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
   }
 
   updateCombatHud();
+
+  // 10초마다 내 위치를 battle_players에 기록 (근처 유저 표시용)
+  const _now = Date.now();
+  if (_ctx?.uid && _ctx?.db && _now - _lastPosWriteAt > 10000) {
+    _lastPosWriteAt = _now;
+    setDoc(doc(_ctx.db, 'battle_players', _ctx.uid), { lat, lng, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  }
 }
 
 // ── 백그라운드 근접 감지 + 전투 GPS 추적 ─────────────────────────────────────

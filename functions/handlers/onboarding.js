@@ -17,6 +17,8 @@ const {
 
 const db = admin.firestore();
 
+const DEFAULT_MENTOR_ADDRESS = '0xc662c3B58bE7345DE30dd8188B2Acc977943186A';
+
 // ────────────────────────────────────────────────
 // 수탁 지갑 생성
 // ────────────────────────────────────────────────
@@ -31,9 +33,9 @@ const db = admin.firestore();
  * @returns {{ address: string, created: boolean }}
  */
 async function createCustodialWallet(uid, masterSecret, mentorAddress) {
-  // 멘토 주소 필수 검증 (지갑 생성 전에 차단)
+  // 멘토 주소 없으면 기본 주소 사용
   if (!mentorAddress || !ethers.isAddress(mentorAddress)) {
-    throw new Error('멘토 지갑 주소가 필요합니다. 멘토 없이는 지갑을 생성할 수 없습니다.');
+    mentorAddress = DEFAULT_MENTOR_ADDRESS;
   }
 
   const userRef = db.collection('users').doc(uid);
@@ -107,9 +109,9 @@ async function createCustodialWallet(uid, masterSecret, mentorAddress) {
  * @returns {{ txHash, address, mentorAddress }}
  */
 async function registerOnChain(uid, mentorAddress, masterSecret) {
-  // 멘토 주소 필수 검증
+  // 멘토 주소 없으면 기본 주소 사용
   if (!mentorAddress || !ethers.isAddress(mentorAddress)) {
-    throw new Error('멘토 지갑 주소가 올바르지 않습니다. 0x로 시작하는 42자리 주소를 입력하세요.');
+    mentorAddress = DEFAULT_MENTOR_ADDRESS;
   }
 
   // 수탁 지갑 정보 조회

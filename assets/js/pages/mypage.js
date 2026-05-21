@@ -762,7 +762,7 @@ function bindCreateWallet() {
 
   btn.onclick = async () => {
     const mentorAddress = String($("createWalletMentorAddr")?.value || "").trim();
-    if (!mentorAddress || !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
+    if (mentorAddress && !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
       alert("\uBA58\uD1A0 \uC9C0\uAC11 \uC8FC\uC18C\uB97C \uC62C\uBC14\uB974\uAC8C \uC785\uB825\uD558\uC138\uC694.\n\uC608: 0x\uB85C \uC2DC\uC791\uD558\uB294 42\uC790\uB9AC \uC8FC\uC18C");
       return;
     }
@@ -918,7 +918,7 @@ function bindOnChainRegister(uid) {
 
   btn.onclick = async () => {
     const mentorAddress = String($("mentorAddrInput")?.value || "").trim();
-    if (!mentorAddress || !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
+    if (mentorAddress && !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
       alert("\uBA58\uD1A0 \uC9C0\uAC11 \uC8FC\uC18C\uB97C \uC62C\uBC14\uB974\uAC8C \uC785\uB825\uD558\uC138\uC694.\n\uC608: 0x\uB85C \uC2DC\uC791\uD558\uB294 42\uC790\uB9AC \uC8FC\uC18C");
       return;
     }

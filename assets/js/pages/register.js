@@ -135,8 +135,7 @@ async function doRegister(uid, email) {
   if (!name)          throw new Error("이름을 입력해 주세요.");
   if (!phone)         throw new Error("휴대폰 번호를 입력해 주세요.");
   if (!isValidPhone(phone)) throw new Error("올바른 전화번호를 입력해 주세요. (10자리 이상)");
-  if (!mentorAddress) throw new Error("멘토 지갑 주소를 입력해 주세요.");
-  if (!/^0x[0-9a-fA-F]{40}$/.test(mentorAddress))
+  if (mentorAddress && !/^0x[0-9a-fA-F]{40}$/.test(mentorAddress))
     throw new Error("올바른 지갑 주소를 입력해 주세요. (0x로 시작하는 42자리 hex)");
   if (!agreeTerms)    throw new Error("이용약관에 동의해 주세요.");
   if (!agreeWallet)   throw new Error("수탁 지갑 생성에 동의해 주세요.");

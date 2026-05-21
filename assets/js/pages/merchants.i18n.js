@@ -104,6 +104,7 @@ const MESSAGES = {
   // ── 플레이어 위치 마커 라벨 ───────────────────────────────────────────────────
   player_label_dead:     { ko: '사망',                 vi: 'Chết' },
   player_label_alive:    { ko: '나',                   vi: 'Tôi' },
+  nearby_player_label:   { ko: '근처 플레이어',         vi: 'Người chơi gần đây' },
 
   // ── 가맹점 카드 / 범례 ────────────────────────────────────────────────────────
   need_login:            { ko: '로그인이 필요합니다.',  vi: 'Cần đăng nhập.' },
