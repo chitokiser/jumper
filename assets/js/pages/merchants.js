@@ -36,21 +36,11 @@ preloadSpriteImages();
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
-setGsSkillCallback((skillId, centerLat, centerLng, rangeM) => {
+setGsSkillCallback((skillId) => {
   if (!isGameServerConnected()) return;
-  const refLat = _ctx.lastPos?.lat ?? centerLat;
-  const refLng = _ctx.lastPos?.lng ?? centerLng;
-  if (!refLat || !refLng) return;
   for (const [monsterId, m] of Object.entries(_gsMonsters)) {
     if (!m || m.state === 'dead' || m.state === 'respawning') continue;
-    const lat = m.currentLat ?? m.lat;
-    const lng = m.currentLng ?? m.lng;
-    if (!lat || !lng) continue;
-    const dist = Math.sqrt(
-      Math.pow((lat - refLat) * 111320, 2) +
-      Math.pow((lng - refLng) * 111320 * Math.cos(refLat * Math.PI / 180), 2)
-    );
-    if (dist <= rangeM) sendPlayerSkill(skillId, monsterId);
+    sendPlayerSkill(skillId, monsterId);
   }
 });
 
@@ -2269,7 +2259,15 @@ async function init() {
     onDropSpawned:   (d)    => spawnGsDrop(d.dropId, d.lat, d.lng, d.gold ?? d.count, () => sendDropCollect(d.dropId)),
     onDropRemoved:   (d)   => removeGsDrop(d.dropId),
     onDropCollected: (d)   => { /* gold already added in spawnGsDrop click handler */ },
-    onPlayerHit:    (data) => syncHpFromServer(data.remainHp, data.damage),
+    onPlayerHit:    (data) => {
+      const _gsKind = String(_gsMonsters[data.monsterId]?.type || '').replace(/\d+$/, '');
+      const _gsAtk  = (_gsKind === 'dragon') ? 'monster_atk_dragon'
+                    : (_gsKind === 'orc')    ? 'monster_atk_orc'
+                    : (_gsKind === 'pirate') ? 'monster_atk_pirate'
+                    : 'monster_atk';
+      playSound(_gsAtk);
+      syncHpFromServer(data.remainHp, data.damage);
+    },
     onPlayerDied:   ()     => syncDeathFromServer(),
     onPlayerRevived:(data) => syncReviveFromServer(data.hp),
   });

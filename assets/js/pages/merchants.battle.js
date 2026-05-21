@@ -243,10 +243,52 @@ export function playSound(type) {
         break;
       }
       case 'monster_atk':
-        noise(0.07,0.55);
-        tone(160,0.45,0.07,0,'sawtooth');
-        tone(85,0.3,0.14,0.04);
+        noise(0.12, 0.6);
+        tone(160, 0.5, 0.09, 0, 'sawtooth');
+        tone(85,  0.35, 0.18, 0.04);
+        tone(220, 0.25, 0.06, 0, 'square');
         break;
+      case 'monster_atk_dragon': {
+        // 드래곤 포효 — 저음 스윕 + 공기 진동
+        const drOsc = ac.createOscillator(); drOsc.type = 'sawtooth';
+        drOsc.frequency.setValueAtTime(130, ac.currentTime);
+        drOsc.frequency.exponentialRampToValueAtTime(22, ac.currentTime + 1.0);
+        const drG = ac.createGain();
+        drG.gain.setValueAtTime(0, ac.currentTime);
+        drG.gain.linearRampToValueAtTime(1.3, ac.currentTime + 0.06);
+        drG.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 1.0);
+        drOsc.connect(drG); drG.connect(ac.destination); drOsc.start(); drOsc.stop(ac.currentTime + 1.0);
+        const dr2 = ac.createOscillator(); dr2.type = 'sine';
+        dr2.frequency.setValueAtTime(65, ac.currentTime);
+        dr2.frequency.exponentialRampToValueAtTime(18, ac.currentTime + 1.1);
+        const dr2G = ac.createGain(); dr2G.gain.setValueAtTime(0.9, ac.currentTime);
+        dr2G.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 1.1);
+        dr2.connect(dr2G); dr2G.connect(ac.destination); dr2.start(); dr2.stop(ac.currentTime + 1.1);
+        noise(0.18, 0.75);
+        break;
+      }
+      case 'monster_atk_orc': {
+        // 오크 으르렁 — 중음 진동 + 타격 임팩트
+        const orOsc = ac.createOscillator(); orOsc.type = 'square';
+        orOsc.frequency.setValueAtTime(190, ac.currentTime);
+        orOsc.frequency.exponentialRampToValueAtTime(75, ac.currentTime + 0.38);
+        const orG = ac.createGain();
+        orG.gain.setValueAtTime(0, ac.currentTime);
+        orG.gain.linearRampToValueAtTime(1.0, ac.currentTime + 0.025);
+        orG.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.38);
+        orOsc.connect(orG); orG.connect(ac.destination); orOsc.start(); orOsc.stop(ac.currentTime + 0.38);
+        noise(0.09, 0.7);
+        tone(95, 0.5, 0.2, 0.02, 'sine');
+        break;
+      }
+      case 'monster_atk_pirate': {
+        // 해적 칼 휘두르기 — 금속 쉭 + 충격
+        tone(1300, 0.55, 0.05, 0, 'sawtooth');
+        tone(850,  0.4,  0.08, 0.01, 'sawtooth');
+        noise(0.07, 0.65);
+        tone(140, 0.45, 0.16, 0.05, 'sine');
+        break;
+      }
       case 'critical_hit':
         tone(880,0.5,0.05,0,'square');
         tone(1100,0.4,0.08,0.04,'square');
@@ -842,24 +884,19 @@ function getMyPos() {
   return null;
 }
 
-// ── 스킬 범위 내 GS 몬스터 수집 ──────────────────────────────────────────────
-// GS 존 위치 기준: _ctx.lastPos (GS 서버 접속 시 전송한 좌표) 사용
-// — 실제 GPS 마커 위치가 GS 존(베트남)과 달라도 올바르게 범위 탐색
+// ── GS 몬스터 수집 (생존한 전체) ──────────────────────────────────────────────
+// 거리 체크 없이 살아있는 GS 몬스터 전부 반환.
+// 실제 범위/존 검증은 서버(resolvePlayerSkill)가 담당.
 function getGsTargetsInRange() {
   const mobs = _gsMobsGetter?.() ?? {};
   const result = [];
-  const gsLat = _ctx?.lastPos?.lat;
-  const gsLng = _ctx?.lastPos?.lng;
-  if (!gsLat || !gsLng) return result;
   for (const [id, m] of Object.entries(mobs)) {
     if (!m || m.state === 'dead' || m.state === 'respawning') continue;
     const lat = m.currentLat ?? m.lat;
     const lng = m.currentLng ?? m.lng;
     if (!lat || !lng) continue;
-    if (haversine(gsLat, gsLng, lat, lng) <= SKILL_RANGE_M) {
-      result.push({ id, name: m.type || '서버몬스터', lat, lng,
-                    hp: m.hp ?? 1, maxHp: m.maxHp ?? 1, image: '👾', _isGs: true });
-    }
+    result.push({ id, name: m.type || '서버몬스터', lat, lng,
+                  hp: m.hp ?? 1, maxHp: m.maxHp ?? 1, image: '👾', _isGs: true });
   }
   return result;
 }
@@ -902,7 +939,7 @@ export function castLightning() {
       showFloat(`⚡-${gsDmg}`, '#facc15', gsMob.lat, gsMob.lng);
       hitCount++;
     }
-    _gsSkillCallback?.('lightning', myLat, myLng, SKILL_RANGE_M);
+    _gsSkillCallback?.('lightning');
     showFloat(_t('skill_lightning_hit', hitCount), '#facc15', target.lat, target.lng);
     _skillCd.lightning = Date.now() + SKILL_CD_MS.lightning;
     updateSkillBar();
@@ -956,7 +993,7 @@ export function castIceFreeze() {
       showFloat(`❄-${gsDmgIce}`, '#93c5fd', gsMob.lat, gsMob.lng);
       hitCount++;
     }
-    _gsSkillCallback?.('ice', myLat, myLng, SKILL_RANGE_M);
+    _gsSkillCallback?.('ice');
     showFloat(_t('skill_freeze_multi', hitCount, SKILL_FREEZE_MS/1000), '#93c5fd', target.lat, target.lng);
     _skillCd.ice = Date.now() + SKILL_CD_MS.ice;
     updateSkillBar();
@@ -1004,7 +1041,7 @@ export function castFireStorm() {
       showFloat(`🔥-${gsDmgFire}`, '#f97316', gsMob.lat, gsMob.lng);
       hitCount++;
     }
-    _gsSkillCallback?.('fire', myLat, myLng, SKILL_RANGE_M);
+    _gsSkillCallback?.('fire');
     showFloat(_t('skill_fire_hit', hitCount), '#f97316', target.lat, target.lng);
     _skillCd.fire = Date.now() + SKILL_CD_MS.fire;
     updateSkillBar();
@@ -1774,7 +1811,7 @@ function checkMonsterAttacks() {
   for (const mob of nearby) {
     if (_frozenUntil[mob.id] && now < _frozenUntil[mob.id]) continue;
     if (now - (_monsterAtkTs[mob.id] || 0) < ATK_CD_MS) continue;
-    const r = mob.detectRadius || 20;
+    const r = mob.detectRadius || 30;
     if (MonsterGrid.distSq(myLat, myLng, mob.lat, mob.lng) <= r * r) {
       aiCount++;
       if (myUid && !_aggroClaimed.has(mob.id)) {
@@ -1786,7 +1823,12 @@ function checkMonsterAttacks() {
       const aggro = _monsterAggro[mob.id];
       if (aggro && aggro !== myUid) continue;
 
-      playSound('monster_atk');
+      const _mobKind = String(mob.type || '').replace(/\d+$/, '');
+      const _atkSound = (_mobKind === 'dragon') ? 'monster_atk_dragon'
+                      : (_mobKind === 'orc')    ? 'monster_atk_orc'
+                      : (_mobKind === 'pirate') ? 'monster_atk_pirate'
+                      : 'monster_atk';
+      playSound(_atkSound);
       animateMonsterCharge(mob, myLat, myLng, () => {
         takeDamage(mob.atk || 10, myLat, myLng);
       });
@@ -1883,8 +1925,9 @@ async function hitMonster(monsterId, damage) {
       updateSkillBar();
       savePlayerState();
     }
-    // 열쇠 랜덤 드랍 (active 열쇠 정의별 dropRate 확률)
-    if (_keyDefs.length) {
+    // 열쇠 랜덤 드랍 (cabi/Monster eyes 제외, active 열쇠 정의별 dropRate 확률)
+    const _noKeyTypes = ['cabi', 'Monster eyes'];
+    if (_keyDefs.length && !_noKeyTypes.includes(mob.monsterType)) {
       const myUid = _ctx?.uid;
       if (myUid) {
         for (const keyDef of _keyDefs) {
@@ -2091,8 +2134,8 @@ export function enterAdminPlaceMode(type) {
       const lv = _ctx?.playerLevel ?? 1;
       const monsterType = prompt('몬스터 타입 (Monster eyes / cabi):', 'Monster eyes') || 'Monster eyes';
       const PRESETS_FB = {
-        'cabi':          { name:'cabi',          image:'23.png', maxHp: Math.round(lv*100*1.5), atk:20, detectRadius:20, respawnMinutes:10 },
-        'Monster eyes':  { name:'Monster eyes',  image:'22.png', maxHp: lv*100*8,               atk:80, detectRadius:100, respawnMinutes:5  },
+        'cabi':          { name:'cabi',          image:'23.png', maxHp: 500,     atk:20, detectRadius:30, respawnMinutes:2 },
+        'Monster eyes':  { name:'Monster eyes',  image:'22.png', maxHp: lv*100*8, atk:80, detectRadius:30, respawnMinutes:2 },
       };
       const p = PRESETS_FB[monsterType] || PRESETS_FB['Monster eyes'];
 
