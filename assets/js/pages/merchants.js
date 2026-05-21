@@ -1327,11 +1327,10 @@ async function openBox(boxId, slotEl) {
     // 미개봉 박스 인벤토리에서 제거
     _boxInventory = _boxInventory.filter(b => b.boxId !== boxId);
     renderBoxInventory();
-    // 열쇠 소모 — 앞 3자리 prefix 매칭으로 찾아서 차감
+    // 열쇠 소모 — 정확한 keyId 매칭으로 찾아서 차감
     if (boxMeta?.hiddenBox && boxMeta?.keyId) {
-      const prefix = String(boxMeta.keyId).slice(0, 3);
       const kKey = Object.keys(_inventory).find(k =>
-        k.startsWith(`key_${prefix}`) && _inventory[k] > 0);
+        k === `key_${boxMeta.keyId}` && _inventory[k] > 0);
       if (kKey) {
         const remaining = Math.max(0, (_inventory[kKey] || 0) - 1);
         if (remaining <= 0) delete _inventory[kKey];
@@ -1378,24 +1377,22 @@ function renderBoxInventory() {
   _boxInventory.forEach(item => {
     const { boxId, boxName, hiddenBox, keyId } = item;
     const needsKey = hiddenBox && keyId;
-    const prefix   = needsKey ? String(keyId).slice(0, 3) : null;
-    const hasKey   = needsKey && Object.keys(_inventory).some(k =>
-      k.startsWith(`key_${prefix}`) && _inventory[k] > 0);
+    const hasKey   = needsKey && (_inventory[`key_${keyId}`] || 0) > 0;
     const locked   = needsKey && !hasKey;
     const keyName  = needsKey ? (_keyDefs[keyId]?.name || `Key #${keyId}`) : null;
     const slot = document.createElement('div');
     slot.className = 'box-inv-slot' + (locked ? ' locked' : (hasKey ? ' has-key' : ''));
     const _bName = boxName || _t('box_default_name2');
     slot.title = locked
-      ? _t('box_locked_hint', prefix, _bName)
+      ? _t('box_locked_hint', keyId, _bName)
       : _t('box_open_hint', _bName);
     slot.innerHTML = `
       <img src="/assets/images/item/box.png" alt="box" onerror="this.style.display='none'">
       <span class="box-slot-name">${escHtml(boxName || _t('box_default_name2'))}</span>
-      ${needsKey ? `<span class="box-slot-key" title="Key prefix ${escHtml(prefix)}">${locked ? '🔒' : '🔑'}</span>` : ''}`;
+      ${needsKey ? `<span class="box-slot-key" title="Key #${escHtml(String(keyId))}">${locked ? '🔒' : '🔑'}</span>` : ''}`;
     slot.addEventListener('click', () => {
       if (locked) {
-        showInfoToast(_t('box_key_toast', prefix, keyName || prefix));
+        showInfoToast(_t('box_key_toast', keyId, keyName || `Key #${keyId}`));
         return;
       }
       openBox(boxId, slot);

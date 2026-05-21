@@ -1852,6 +1852,15 @@ async function hitMonster(monsterId, damage) {
         }
       }
     }
+    // 드래곤 처치 시 10% 확률로 부활권 드랍
+    if (mob.monsterType === 'dragon' && Math.random() < 0.10) {
+      httpsCallable(_ctx.functions, 'earnReviveTicket')()
+        .then(() => {
+          showFloat('🔮 부활권 드랍!', '#a78bfa', mob.lat, mob.lng);
+          _ctx._onLoadInventory?.();
+        })
+        .catch(err => console.warn('[earnReviveTicket]', err.message));
+    }
     // FS 몬스터(goblin/orc)는 아이템 드랍 없음 — 아이템은 GS 서버 몬스터 전용
 
     _monsterGrid.remove(monsterId);
@@ -2048,7 +2057,7 @@ export function enterAdminPlaceMode(type) {
 
     } else if (_adminPlaceMode === 'deco') {
       const name     = prompt('데코 이름:', '해적선') || '해적선';
-      const imageUrl = prompt('이미지 경로 (예: /assets/images/monsters/10.png):', '') || '';
+      const imageUrl = prompt('이미지 경로:', '/assets/images/npc/npc1.png') || '/assets/images/npc/npc1.png';
       if (!imageUrl) { exitAdminPlaceMode(); return; }
       const size = parseInt(prompt('크기 (픽셀, 기본 48):', '48') || '48');
       try {

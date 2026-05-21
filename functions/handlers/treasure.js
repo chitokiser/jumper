@@ -176,21 +176,17 @@ async function openTreasureBox(uid, { boxId } = {}) {
   const itemPool = invBox.itemPool || [];
   if (!itemPool.length) throw new HttpsError('failed-precondition', '아이템 풀이 비어 있습니다');
 
-  // 숨김 보물박스만 열쇠 확인 (앞 3자리 prefix 매칭)
+  // 숨김 보물박스만 열쇠 확인 (정확한 keyId 매칭)
   const needKey = invBox.hiddenBox === true && invBox.keyId;
   let keyInvRef = null;
   if (needKey) {
-    const prefix = String(invBox.keyId).slice(0, 3);
-    const keyQuery = await db.collection('treasure_inventory')
-      .where('uid', '==', uid)
-      .where('itemId', '>=', `key_${prefix}`)
-      .where('itemId', '<',  `key_${prefix}￿`)
-      .get();
-    const matchDoc = keyQuery.docs.find(d => (d.data().count || 0) > 0);
-    if (!matchDoc)
+    const keyDocId = `${uid}_key_${invBox.keyId}`;
+    const keyDocRef = db.collection('treasure_inventory').doc(keyDocId);
+    const keyDocSnap = await keyDocRef.get();
+    if (!keyDocSnap.exists || (keyDocSnap.data().count || 0) <= 0)
       throw new HttpsError('failed-precondition',
-        `열쇠가 없습니다. Key ID 앞 3자리 ${prefix}에 해당하는 열쇠를 몬스터 처치로 획득하세요.`);
-    keyInvRef = matchDoc.ref;
+        `열쇠가 없습니다. Key #${invBox.keyId} 을(를) 몬스터 처치로 획득하세요.`);
+    keyInvRef = keyDocRef;
   }
 
   // 랜덤 아이템 선택

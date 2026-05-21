@@ -1626,6 +1626,21 @@ exports.adminGiveRevive = onCall(wrapError(async (req) => {
   return { ok: true, given: n };
 }));
 
+exports.earnReviveTicket = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  const db = admin.firestore();
+  const invRef = db.collection('treasure_inventory').doc(`${uid}_revive_ticket`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(invRef);
+    const current = snap.exists ? (snap.data().count || 0) : 0;
+    tx.set(invRef, {
+      uid, itemId: 'revive_ticket', count: current + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+  return { ok: true };
+}));
+
 // ════════════════════════════════════════════════════════════════════════════
 // 소셜 커뮤니티 – 행사 바우처
 // ════════════════════════════════════════════════════════════════════════════
