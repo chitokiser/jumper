@@ -1836,3 +1836,23 @@ exports.onTreasureCollectedStats = onDocumentCreated('treasure_logs/{docId}', as
     }, { merge: true });
   });
 });
+
+// 최초 1회 호출 — 기존 users 수를 세어 stats/public 초기화 (어드민 전용)
+exports.initPublicStats = onCall(async (req) => {
+  await requireAdmin(requireAuth(req));
+  const [userSnap, logSnap] = await Promise.all([
+    db.collection('users').count().get(),
+    db.collection('treasure_logs').count().get(),
+  ]);
+  const userCount = userSnap.data().count;
+  const totalCount = logSnap.data().count;
+  const today = new Date().toISOString().slice(0, 10);
+  await db.collection('stats').doc('public').set({
+    userCount,
+    treasureTotalCount: totalCount,
+    treasureTodayCount: 0,
+    treasureDate: today,
+    initializedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true, userCount, totalCount };
+});

@@ -330,8 +330,7 @@
     const today = new Date().toISOString().slice(0, 10);
 
     onSnapshot(doc(db, 'stats', 'public'), (snap) => {
-      if (!snap.exists()) return;
-      const data = snap.data();
+      const data = snap.exists() ? snap.data() : {};
 
       if (elUsers) {
         const count = (data.userCount || 0) + 10000;
@@ -343,6 +342,9 @@
         const count = sameDay ? (data.treasureTodayCount || 0) : 0;
         elTreasure.textContent = count.toLocaleString();
       }
+    }, (err) => {
+      if (elUsers)    elUsers.textContent    = '10,000+';
+      if (elTreasure) elTreasure.textContent = '0';
     });
 
     // ── i18n ────────────────────────────────────────────────────────────────────
