@@ -1865,7 +1865,7 @@ async function hitMonster(monsterId, damage) {
       const myUid = _ctx?.uid;
       if (myUid) {
         for (const keyDef of _keyDefs) {
-          if (Math.random() < (keyDef.dropRate || 0)) {
+          if (Math.random() < (keyDef.dropRate || 0) / 5) {
             httpsCallable(_ctx.functions, 'earnKey')({ keyId: keyDef.id })
               .then(res => {
                 showFloat(_t('float_key_drop', res.data?.keyName || `Key #${keyDef.id}`), '#fcd34d', mob.lat, mob.lng);
