@@ -42,6 +42,7 @@ const treasureH              = require('./handlers/treasure');
 const communityH             = require('./handlers/community');
 const buggyH                 = require('./handlers/buggy');
 const supportChatH           = require('./handlers/supportChat');
+const shopH                  = require('./handlers/shop');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1836,6 +1837,19 @@ exports.onTreasureCollectedStats = onDocumentCreated('treasure_logs/{docId}', as
     }, { merge: true });
   });
 });
+
+// ── 상점 관리 ────────────────────────────────────────────────────────────────
+exports.adminSaveShop = onCall(wrapError(async (req) => {
+  return shopH.adminSaveShop(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminDeleteShop = onCall(wrapError(async (req) => {
+  return shopH.adminDeleteShop(requireAuth(req), req.data ?? {});
+}));
+
+exports.buyShopItem = onCall(wrapError(async (req) => {
+  return shopH.buyShopItem(requireAuth(req), req.data ?? {});
+}));
 
 // 최초 1회 호출 — 기존 users 수를 세어 stats/public 초기화 (어드민 전용)
 exports.initPublicStats = onCall(async (req) => {

@@ -20,7 +20,8 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          spawnGsDrop, removeGsDrop,
          equipWeapon, equipArmor, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
          getEquippedWeapon, getEquippedArmor,
-         updateMyLocation, showDeathMarkerIfDead, hideMyMarker }
+         updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
+         loadShops, getShops, deleteShop, checkShopProximity }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
@@ -1209,6 +1210,7 @@ async function checkProximity(lat, lng) {
       }
     }
   }
+  checkShopProximity(lat, lng);
 }
 
 async function tryCollect(box) {
@@ -2058,6 +2060,10 @@ async function init() {
     onUpdateDistDisplay: updateDistDisplay,
   });
 
+  // 상점 콜백 등록
+  _ctx._onShopNear  = (shop) => openShopModal(shop);
+  _ctx._onShopClick = (shop) => _isAdmin ? openShopAdminModal(shop) : openShopModal(shop);
+
   // Auth 리스너 (비동기 — 블로킹 없음)
   onAuthStateChanged(auth, async user => {
     _uid       = user?.uid   || null;
@@ -2186,6 +2192,9 @@ async function init() {
   $('btnPlaceArcherTower')?.addEventListener('click', () => enterAdminPlaceMode('archer_tower'));
   $('btnPlaceCannonTower')?.addEventListener('click', () => enterAdminPlaceMode('cannon_tower'));
   $('btnPlaceDeco')?.addEventListener('click',    () => enterAdminPlaceMode('deco'));
+  $('btnPlaceShopWeapon')?.addEventListener('click', () => enterAdminPlaceMode('shop_weapon_armor'));
+  $('btnPlaceShopPotion')?.addEventListener('click', () => enterAdminPlaceMode('shop_potion'));
+  $('btnPlaceShopMisc')?.addEventListener('click',   () => enterAdminPlaceMode('shop_misc'));
   $('btnGiveRevive')?.addEventListener('click', async () => {
     const targetUid = prompt('부활권 지급할 UID (비우면 본인):', _uid || '') || _uid;
     if (!targetUid) return;
@@ -2323,7 +2332,7 @@ async function init() {
   }
 
   // ── Phase 2: 백그라운드에서 나머지 로드 (UI 블로킹 없음) ─────────────────────
-  Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadKeyDefs(), loadBattleData(), loadDecorations()]).then(() => {
+  Promise.all([loadPlaces(), loadItems(), loadVouchers(), loadKeyDefs(), loadBattleData(), loadDecorations(), loadShops()]).then(() => {
     // 장소 마커 추가
     if (window.google?.maps) {
       renderPlaceMarkers();
@@ -2335,6 +2344,186 @@ async function init() {
     renderVouchers();
     renderExchangeSection();
   });
+}
+
+// ── 상점 모달 (유저용) ────────────────────────────────────────────────────────
+let _activeShopId = null;
+
+function openShopModal(shop) {
+  _activeShopId = shop.id;
+  const modal = $('shopModal');
+  if (!modal) return;
+
+  const typeLabelMap = { weapon_armor: '⚔️ 무기/방어구', potion: '🧪 약물', misc: '🛍️ 잡템' };
+  const typeLabel = typeLabelMap[shop.type] || shop.type;
+  const playerGold = getPlayerGold();
+
+  let rows = '';
+  const items = shop.items || [];
+  if (!items.length) {
+    rows = `<p style="color:#9ca3af;text-align:center;padding:12px">판매 중인 아이템이 없습니다</p>`;
+  } else {
+    rows = items.map(it => {
+      const soldOut = it.stock === 0;
+      const canBuy  = !soldOut && playerGold >= it.price;
+      return `<div class="shop-item-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #2d2d2d">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">${escHtml(it.name)}</div>
+          <div style="color:#fbbf24;font-size:12px">💰 ${it.price.toLocaleString()} ${_t('shop_gold_label')}
+            ${it.stock === -1 ? '' : `<span style="color:#9ca3af;margin-left:6px">(재고: ${it.stock})</span>`}
+          </div>
+        </div>
+        ${soldOut
+          ? `<span style="color:#ef4444;font-size:12px">${_t('shop_out_of_stock')}</span>`
+          : `<button class="btn-small" onclick="window.__shopBuy('${escHtml(shop.id)}','${escHtml(it.itemId)}','${escHtml(it.name)}',${it.price})"
+               style="${canBuy ? '' : 'opacity:.5;cursor:not-allowed'}"
+               ${canBuy ? '' : 'disabled'}>구매</button>`
+        }
+      </div>`;
+    }).join('');
+  }
+
+  const goldBar = `<div style="text-align:right;color:#fbbf24;font-size:13px;margin-bottom:8px">💰 보유 골드: ${playerGold.toLocaleString()}</div>`;
+
+  $('shopModalTitle').textContent = `${shop.name} (${typeLabel})`;
+  $('shopModalBody').innerHTML = goldBar + rows;
+
+  if (_isAdmin) {
+    const adminBtn = $('shopModalAdminBtn');
+    if (adminBtn) { adminBtn.style.display = ''; adminBtn.onclick = () => { closeShopModal(); openShopAdminModal(shop); }; }
+  } else {
+    const adminBtn = $('shopModalAdminBtn');
+    if (adminBtn) adminBtn.style.display = 'none';
+  }
+
+  modal.classList.add('open');
+}
+
+function closeShopModal() {
+  $('shopModal')?.classList.remove('open');
+  _activeShopId = null;
+}
+
+window.__shopBuy = async (shopId, itemId, itemName, price) => {
+  const qty = 1;
+  if (!confirm(_t('shop_buy_confirm', qty, (price * qty).toLocaleString()))) return;
+  try {
+    await httpsCallable(functions, 'buyShopItem')({ shopId, itemId, quantity: qty });
+    closeShopModal();
+    // 현재 상점 데이터 갱신 후 재오픈
+    await loadShops();
+    const updatedShop = getShops().find(s => s.id === shopId);
+    if (updatedShop) openShopModal(updatedShop);
+    await loadInventory();
+    showToast(_t('shop_buy_ok', itemName), 'success');
+  } catch (err) {
+    showToast(_t('shop_buy_fail', err.message), 'error');
+  }
+};
+
+// ── 상점 관리자 모달 ──────────────────────────────────────────────────────────
+function openShopAdminModal(shop) {
+  const modal = $('shopAdminModal');
+  if (!modal) return;
+
+  $('shopAdminModalTitle').textContent = `${_t('shop_admin_title')}: ${shop.name}`;
+  $('shopAdminShopId').value   = shop.id;
+  $('shopAdminShopName').value = shop.name;
+  $('shopAdminShopType').value = shop.type;
+
+  _renderShopAdminItems(shop.items || []);
+  modal.classList.add('open');
+}
+
+function _renderShopAdminItems(items) {
+  const container = $('shopAdminItemList');
+  if (!container) return;
+
+  const rows = items.map((it, i) => `
+    <div class="shop-admin-item-row" data-idx="${i}" style="display:grid;grid-template-columns:1fr 1fr 80px 80px 32px;gap:4px;margin-bottom:6px;align-items:center">
+      <input type="text"   class="sad-itemid"   value="${escHtml(it.itemId)}"  placeholder="${_t('shop_admin_item_id')}"   style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px">
+      <input type="text"   class="sad-name"     value="${escHtml(it.name)}"    placeholder="${_t('shop_admin_item_name')}" style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px">
+      <input type="number" class="sad-price"    value="${it.price}"            placeholder="${_t('shop_admin_price')}"     style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px" min="0">
+      <input type="number" class="sad-stock"    value="${it.stock ?? -1}"      placeholder="${_t('shop_admin_stock')}"     style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px" min="-1">
+      <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer">✕</button>
+    </div>`).join('');
+
+  container.innerHTML = rows;
+}
+
+function _collectShopAdminItems() {
+  const rows = $('shopAdminItemList')?.querySelectorAll('.shop-admin-item-row') || [];
+  const items = [];
+  for (const row of rows) {
+    const itemId = row.querySelector('.sad-itemid')?.value?.trim();
+    const name   = row.querySelector('.sad-name')?.value?.trim();
+    const price  = Number(row.querySelector('.sad-price')?.value);
+    const stock  = Number(row.querySelector('.sad-stock')?.value ?? -1);
+    if (!itemId || !name || isNaN(price)) continue;
+    items.push({ itemId, name, price, stock });
+  }
+  return items;
+}
+
+$('btnShopAdminAddItem')?.addEventListener?.('click', () => {
+  const container = $('shopAdminItemList');
+  if (!container) return;
+  const idx = container.querySelectorAll('.shop-admin-item-row').length;
+  const div = document.createElement('div');
+  div.className = 'shop-admin-item-row';
+  div.dataset.idx = idx;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 80px 80px 32px;gap:4px;margin-bottom:6px;align-items:center';
+  div.innerHTML = `
+    <input type="text"   class="sad-itemid" placeholder="${_t('shop_admin_item_id')}"   style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px">
+    <input type="text"   class="sad-name"   placeholder="${_t('shop_admin_item_name')}" style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px">
+    <input type="number" class="sad-price"  value="100" placeholder="${_t('shop_admin_price')}"     style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px" min="0">
+    <input type="number" class="sad-stock"  value="-1"  placeholder="${_t('shop_admin_stock')}"     style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px" min="-1">
+    <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer">✕</button>`;
+  container.appendChild(div);
+});
+
+$('btnShopAdminSave')?.addEventListener?.('click', async () => {
+  const shopId   = $('shopAdminShopId')?.value;
+  const name     = $('shopAdminShopName')?.value?.trim();
+  const type     = $('shopAdminShopType')?.value;
+  const items    = _collectShopAdminItems();
+  if (!name) { alert('상점 이름을 입력하세요'); return; }
+  try {
+    await httpsCallable(functions, 'adminSaveShop')({ shopId, name, type, items,
+      lat: getShops().find(s => s.id === shopId)?.lat,
+      lng: getShops().find(s => s.id === shopId)?.lng });
+    await loadShops();
+    $('shopAdminModal')?.classList.remove('open');
+    showToast(_t('shop_admin_saved'), 'success');
+  } catch (err) { alert('저장 실패: ' + err.message); }
+});
+
+$('btnShopAdminDelete')?.addEventListener?.('click', async () => {
+  const shopId = $('shopAdminShopId')?.value;
+  if (!shopId) return;
+  if (!confirm('상점을 삭제하시겠습니까?')) return;
+  try {
+    await deleteShop(shopId);
+    $('shopAdminModal')?.classList.remove('open');
+    showToast(_t('shop_admin_deleted'), 'success');
+  } catch (err) { alert('삭제 실패: ' + err.message); }
+});
+
+$('btnCloseShopModal')?.addEventListener?.('click', closeShopModal);
+$('shopModal')?.addEventListener?.('click', e => { if (e.target === $('shopModal')) closeShopModal(); });
+$('btnCloseShopAdminModal')?.addEventListener?.('click', () => $('shopAdminModal')?.classList.remove('open'));
+$('shopAdminModal')?.addEventListener?.('click', e => { if (e.target === $('shopAdminModal')) $('shopAdminModal').classList.remove('open'); });
+
+function showToast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'game-toast';
+  el.textContent = msg;
+  el.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;
+    background:${type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : '#1e40af'};color:white;
+    box-shadow:0 4px 12px rgba(0,0,0,.4);pointer-events:none;`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
 }
 
 init();

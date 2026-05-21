@@ -186,3 +186,5 @@ jumpTreasury : 0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312
 - [ ] `t(lang, 'new_key', ...args)` 호출 코드를 서버에 추가했는가?
 - [ ] 클라이언트가 `notify` 이벤트를 수신해 표시하는가?
 - [ ] `tsc --noEmit`으로 타입 오류 없음을 확인했는가?
+
+- 변경사항이 20개 이상 넘으면 자동으로 git에 배포해줘

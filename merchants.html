@@ -140,6 +140,9 @@
       to   { transform: translateX(-50%) scale(1);  opacity: 1; }
     }
 
+    /* ── 상점 모달 ── */
+    #shopModal.open, #shopAdminModal.open { display: flex !important; }
+
     /* ── 인벤토리 모달 ── */
     #invModal {
       display: none;
@@ -939,6 +942,11 @@
         <button class="ab-btn" id="btnPlaceArcherTower">🏹 Tháp cung thủ</button>
         <button class="ab-btn" id="btnPlaceCannonTower">💣 Tháp đại bác</button>
         <button class="ab-btn" id="btnPlaceDeco">🎨 Đặt trang trí</button>
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
+        <div style="color:#9ca3af;font-size:10px;text-align:center;margin-bottom:2px">🏪 Cửa hàng</div>
+        <button class="ab-btn" id="btnPlaceShopWeapon" style="color:#fbbf24;">⚔️ Đặt c/hàng vũ khí</button>
+        <button class="ab-btn" id="btnPlaceShopPotion" style="color:#86efac;">🧪 Đặt c/hàng thuốc</button>
+        <button class="ab-btn" id="btnPlaceShopMisc"   style="color:#c4b5fd;">🛍️ Đặt c/hàng linh tinh</button>
         <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ Hủy bố trí</button>
         <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 Hiện phạm vi</button>
         <button class="ab-btn" id="btnGivePotion" style="margin-top:4px;color:#fca5a5;">💊 Cấp thuốc đỏ</button>
@@ -1035,6 +1043,56 @@
         <!-- Phiếu đang có -->
         <div class="inv-craft-title">🎟 Phiếu đang có</div>
         <div id="myVoucherList"><div class="voucher-empty">Đang tải...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 상점 모달 (유저용) -->
+  <div id="shopModal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+    <div style="background:#111827;border:1px solid #374151;border-radius:16px;width:min(420px,95vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1f2937">
+        <h3 id="shopModalTitle" style="margin:0;font-size:16px;color:#f3f4f6">상점</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="shopModalAdminBtn" style="display:none;background:#1e40af;color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">⚙️ 설정</button>
+          <button id="btnCloseShopModal" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;line-height:1">✕</button>
+        </div>
+      </div>
+      <div id="shopModalBody" style="flex:1;overflow-y:auto;padding:12px 16px"></div>
+    </div>
+  </div>
+
+  <!-- 상점 관리자 설정 모달 -->
+  <div id="shopAdminModal" style="display:none;position:fixed;inset:0;z-index:8100;background:rgba(0,0,0,.8);align-items:center;justify-content:center;">
+    <div style="background:#0f172a;border:1px solid #1e40af;border-radius:16px;width:min(540px,97vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e3a5f">
+        <h3 id="shopAdminModalTitle" style="margin:0;font-size:15px;color:#93c5fd">상점 설정</h3>
+        <button id="btnCloseShopAdminModal" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;line-height:1">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 16px">
+        <input type="hidden" id="shopAdminShopId">
+        <div style="margin-bottom:10px">
+          <label style="display:block;color:#9ca3af;font-size:12px;margin-bottom:4px">상점 이름</label>
+          <input type="text" id="shopAdminShopName" style="width:100%;background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:8px 10px;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;color:#9ca3af;font-size:12px;margin-bottom:4px">상점 타입</label>
+          <select id="shopAdminShopType" style="width:100%;background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:8px 10px;box-sizing:border-box">
+            <option value="weapon_armor">⚔️ 무기/방어구</option>
+            <option value="potion">🧪 약물</option>
+            <option value="misc">🛍️ 잡템</option>
+          </select>
+        </div>
+        <div style="margin-bottom:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="color:#9ca3af;font-size:12px">판매 아이템 <span style="color:#6b7280">(itemId / 이름 / 가격골드 / 재고)</span></span>
+            <button id="btnShopAdminAddItem" style="background:#1e40af;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">+ 추가</button>
+          </div>
+          <div id="shopAdminItemList"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid #1e3a5f">
+        <button id="btnShopAdminSave" style="flex:1;background:#16a34a;color:white;border:none;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;font-weight:600">💾 저장</button>
+        <button id="btnShopAdminDelete" style="background:#dc2626;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:14px;cursor:pointer">🗑️ 삭제</button>
       </div>
     </div>
   </div>

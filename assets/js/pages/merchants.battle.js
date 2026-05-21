@@ -76,6 +76,12 @@ let _nearbyPlayerMarkers  = {};      // { uid: google.maps.Marker } 근처 플�
 let _nearbyPlayersUnsub   = null;    // battle_players onSnapshot 구독
 let _lastPosWriteAt       = 0;      // 위치 Firestore 저장 쓰로틀
 
+// ── 상점 상태 ─────────────────────────────────────────────────────────────────
+let _shops        = [];   // [{id, name, type, lat, lng, items, active}]
+let _shopMarkers  = {};   // { shopId: google.maps.Marker }
+const SHOP_RANGE_M = 20;  // 상점 접근 가능 반경(m)
+const SHOP_ICONS  = { weapon_armor: '⚔️', potion: '🧪', misc: '🛍️' };
+
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST    = 100;
 const SKILL_RANGE_M    = 30;
@@ -2133,6 +2139,9 @@ export function enterAdminPlaceMode(type) {
   document.getElementById('btnPlaceArcherTower')?.classList.toggle('placing', type === 'archer_tower');
   document.getElementById('btnPlaceCannonTower')?.classList.toggle('placing', type === 'cannon_tower');
   document.getElementById('btnPlaceDeco')?.classList.toggle('placing', type === 'deco');
+  document.getElementById('btnPlaceShopWeapon')?.classList.toggle('placing', type === 'shop_weapon_armor');
+  document.getElementById('btnPlaceShopPotion')?.classList.toggle('placing', type === 'shop_potion');
+  document.getElementById('btnPlaceShopMisc')?.classList.toggle('placing', type === 'shop_misc');
   document.getElementById('btnCancelPlace').style.display = '';
   if (map) map.setOptions({ draggableCursor: 'crosshair' });
 
@@ -2237,6 +2246,23 @@ export function enterAdminPlaceMode(type) {
         renderDecoMarkers();
         alert(`✅ 데코 "${name}" 배치 완료`);
       } catch (err) { alert('오류: ' + err.message); }
+
+    } else if (['shop_weapon_armor','shop_potion','shop_misc'].includes(_adminPlaceMode)) {
+      const typeMap = { shop_weapon_armor: 'weapon_armor', shop_potion: 'potion', shop_misc: 'misc' };
+      const shopType = typeMap[_adminPlaceMode];
+      const defaultNames = { weapon_armor: '무기/방어구 상점', potion: '약물 상점', misc: '잡템 상점' };
+      const name = prompt('상점 이름:', defaultNames[shopType]);
+      if (!name) { exitAdminPlaceMode(); return; }
+      try {
+        const ref = await addDoc(collection(_ctx.db, 'game_shops'), {
+          name: name.trim(), type: shopType, lat, lng,
+          items: [], active: true, createdAt: serverTimestamp(),
+        });
+        const newShop = { id: ref.id, name: name.trim(), type: shopType, lat, lng, items: [], active: true };
+        _shops.push(newShop);
+        _renderShopMarker(newShop);
+        alert(`✅ 상점 "${name}" 배치 완료\n마커를 클릭하여 아이템을 설정하세요.`);
+      } catch (err) { alert('상점 배치 오류: ' + err.message); }
     }
     exitAdminPlaceMode();
   });
@@ -2252,6 +2278,9 @@ export function exitAdminPlaceMode() {
   document.getElementById('btnPlaceCannonTower')?.classList.remove('placing');
   document.getElementById('btnPlaceDeco')?.classList.remove('placing');
   document.getElementById('btnPlaceDragon')?.classList.remove('placing');
+  document.getElementById('btnPlaceShopWeapon')?.classList.remove('placing');
+  document.getElementById('btnPlaceShopPotion')?.classList.remove('placing');
+  document.getElementById('btnPlaceShopMisc')?.classList.remove('placing');
   document.getElementById('btnCancelPlace').style.display = 'none';
 }
 
@@ -2684,4 +2713,87 @@ export function hideMyMarker() {
     _ctx.myLocationAccCircle.setMap(null);
     _ctx.myLocationAccCircle = null;
   }
+}
+
+// ── 상점 시스템 ───────────────────────────────────────────────────────────────
+
+function _makeShopIcon(type) {
+  const emoji = SHOP_ICONS[type] || '🏪';
+  const bg = type === 'weapon_armor' ? '#1e3a5f'
+           : type === 'potion'       ? '#1a3a1a'
+           : '#3a2a0a';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+    <circle cx="22" cy="22" r="20" fill="${bg}" stroke="#fbbf24" stroke-width="2.5"/>
+    <text x="22" y="30" font-size="20" text-anchor="middle">${emoji}</text>
+  </svg>`;
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(44, 44),
+    anchor:     new google.maps.Point(22, 22),
+  };
+}
+
+function _renderShopMarker(shop) {
+  const map = _ctx?.map;
+  if (!map || !shop.active) return;
+  if (_shopMarkers[shop.id]) { _shopMarkers[shop.id].setMap(null); }
+
+  const marker = new google.maps.Marker({
+    position: { lat: shop.lat, lng: shop.lng },
+    map,
+    title:  shop.name,
+    icon:   _makeShopIcon(shop.type),
+    zIndex: 50,
+  });
+
+  marker.addListener('click', () => {
+    const iw = _ctx?.infoWindow;
+    if (!iw) return;
+    const typeLabel = { weapon_armor: '⚔️ 무기/방어구', potion: '🧪 약물', misc: '🛍️ 잡템' }[shop.type] || shop.type;
+    iw.setContent(`<div style="font-size:13px;padding:4px 8px;min-width:120px">
+      <strong>${escHtml(shop.name)}</strong><br>
+      <span style="color:#888;font-size:11px">${typeLabel}</span>
+    </div>`);
+    iw.open(map, marker);
+    const freshShop = _shops.find(s => s.id === shop.id) || shop;
+    _ctx._onShopClick?.(freshShop);
+  });
+
+  _shopMarkers[shop.id] = marker;
+}
+
+export async function loadShops() {
+  if (!_ctx?.db) return;
+  try {
+    const snap = await getDocs(collection(_ctx.db, 'game_shops'));
+    _shops = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    Object.values(_shopMarkers).forEach(m => m.setMap(null));
+    _shopMarkers = {};
+    _shops.forEach(s => { if (s.active) _renderShopMarker(s); });
+  } catch (err) {
+    // 상점 로드 실패는 비치명적
+  }
+}
+
+export function getShops() { return _shops; }
+
+export async function deleteShop(shopId) {
+  if (!_ctx?.db) return;
+  await deleteDoc(doc(_ctx.db, 'game_shops', shopId));
+  _shops = _shops.filter(s => s.id !== shopId);
+  if (_shopMarkers[shopId]) { _shopMarkers[shopId].setMap(null); delete _shopMarkers[shopId]; }
+}
+
+export function checkShopProximity(lat, lng) {
+  let nearest = null;
+  let nearestDist = Infinity;
+  for (const shop of _shops) {
+    if (!shop.active) continue;
+    const dist = haversine(lat, lng, shop.lat, shop.lng);
+    if (dist <= SHOP_RANGE_M && dist < nearestDist) {
+      nearestDist = dist;
+      nearest = shop;
+    }
+  }
+  if (nearest) _ctx?._onShopNear?.(nearest);
 }
