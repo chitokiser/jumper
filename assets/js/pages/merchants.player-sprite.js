@@ -366,6 +366,19 @@ function _getOverlayCls() {
       this._facing = (h <= 90 || h >= 270) ? 1 : -1;
     }
 
+    // 활/손 끝 픽셀 위치 반환 (battleOverlay 좌표계와 동일한 기준)
+    getBowPixel() {
+      const proj = this.getProjection?.();
+      if (!proj) return null;
+      const pt = proj.fromLatLngToDivPixel(this._latLng);
+      if (!pt) return null;
+      // 발 기준(pt): 위로 30px(활 높이), facing 방향으로 10px 앞
+      return {
+        x: Math.round(pt.x + this._facing * 10),
+        y: Math.round(pt.y - 30),
+      };
+    }
+
     // ── Render loop ────────────────────────────────────────────────────────
     _startLoop() {
       const tick = () => {

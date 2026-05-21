@@ -68,6 +68,7 @@ const merchantList     = $("merchantList");
 const btnReloadMerchants = $("btnReloadMerchants");
 const depositList      = $("depositList");
 const hexAllowanceDisplay = $("hexAllowanceDisplay");
+const userList         = $("userList");
 
 const dlg = $("dlgDetail");
 const dlgTitle = $("dlgTitle");
@@ -1017,6 +1018,133 @@ daoApproveList?.addEventListener("click", async (e) => {
 
 btnReloadDao?.addEventListener("click", () => loadDaoProposals());
 
+// ── 회원 목록 ─────────────────────────────────────────────────────────────
+
+let _allUsers    = [];
+let _userSearch  = "";
+let _userFilter  = "all";
+let _userSearchTimer = null;
+
+async function loadUsersList() {
+  if (!userList) return;
+  userList.innerHTML = "<div class='muted'>불러오는 중...</div>";
+  setState("회원 목록 로딩중…");
+
+  try {
+    const q = query(
+      collection(db, "users"),
+      limit(500)
+    );
+    const snap = await getDocs(q);
+    _allUsers = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    setState(`전체 ${_allUsers.length}명`);
+    renderUsersList();
+  } catch (err) {
+    setState("회원 목록 로딩 실패");
+    userList.innerHTML = `<p class="muted">오류: ${esc(err.message)}</p>`;
+    console.error("loadUsersList:", err);
+  }
+}
+
+function renderUsersList() {
+  if (!userList) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const srch  = _userSearch.toLowerCase();
+
+  const filtered = _allUsers.filter(u => {
+    if (srch) {
+      const hit = (u.name || "").toLowerCase().includes(srch) ||
+                  (u.displayName || "").toLowerCase().includes(srch) ||
+                  (u.email || "").toLowerCase().includes(srch);
+      if (!hit) return false;
+    }
+    if (_userFilter === "member")      return !!(u.coopMemberUntil && u.coopMemberUntil > today);
+    if (_userFilter === "blacklisted") return !!u.blacklisted;
+    return true;
+  });
+
+  if (!filtered.length) {
+    userList.innerHTML = '<p class="muted" style="padding:12px 0;">조건에 맞는 회원이 없습니다.</p>';
+    return;
+  }
+
+  const html = filtered.map(u => {
+    const uid      = u._id;
+    const name     = esc(u.name || u.displayName || "(이름없음)");
+    const email    = esc(u.email || "-");
+    const wallet   = u.wallet?.address
+      ? esc(u.wallet.address.slice(0, 6) + "…" + u.wallet.address.slice(-4))
+      : "-";
+    const role     = u.role || "user";
+    const isMember = !!(u.coopMemberUntil && u.coopMemberUntil > today);
+    const isBlack  = !!u.blacklisted;
+
+    const dateVal  = u.createdAt?.seconds ?? u.registeredAt?.seconds ?? null;
+    const dateStr  = dateVal
+      ? new Date(dateVal * 1000).toLocaleDateString("ko")
+      : "-";
+
+    const roleBadge = role === "admin"
+      ? '<span class="badge" style="background:#7c3aed;color:#fff;">관리자</span>'
+      : role === "guide"
+        ? '<span class="badge" style="background:#0284c7;color:#fff;">판매회원</span>'
+        : '';
+
+    const memberBadge = isMember
+      ? `<span class="badge" style="background:#16a34a;color:#fff;">👑 정회원</span>`
+      : '';
+    const blackBadge  = isBlack
+      ? '<span class="badge" style="background:#dc2626;color:#fff;">⛔ 차단</span>'
+      : '';
+    const memberExp   = isMember
+      ? `<div class="muted" style="font-size:11px;">정회원 만료: ${esc(u.coopMemberUntil)}</div>`
+      : '';
+
+    return `<div class="card" style="display:flex;gap:12px;align-items:center;padding:10px 14px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:14px;">${name} ${roleBadge}${memberBadge}${blackBadge}</div>
+        <div class="muted" style="font-size:12px;margin-top:2px;">${email} · 가입: ${esc(dateStr)}</div>
+        <div class="muted" style="font-size:11px;font-family:monospace;">UID: ${esc(uid)} · 지갑: ${wallet}</div>
+        ${memberExp}
+      </div>
+      <button class="btn btn-sm" data-act="viewUser" data-uid="${esc(uid)}" style="font-size:12px;flex-shrink:0;">상세</button>
+    </div>`;
+  }).join("");
+
+  userList.innerHTML = html;
+
+  userList.querySelectorAll("[data-act='viewUser']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const uid = btn.dataset.uid;
+      const u   = _allUsers.find(x => x._id === uid);
+      if (!u) return;
+      const { _id, ...data } = u;
+      openDialog(`회원 상세 — ${u.name || u.email || uid}`, { uid: _id, ...data });
+    });
+  });
+}
+
+{
+  const inputSearch = $("inputUserSearch");
+  const selFilter   = $("selUserFilter");
+  const btnReload   = $("btnReloadUsers");
+
+  inputSearch?.addEventListener("input", () => {
+    clearTimeout(_userSearchTimer);
+    _userSearchTimer = setTimeout(() => {
+      _userSearch = (inputSearch.value || "").trim();
+      renderUsersList();
+    }, 350);
+  });
+
+  selFilter?.addEventListener("change", () => {
+    _userFilter = selFilter.value;
+    renderUsersList();
+  });
+
+  btnReload?.addEventListener("click", () => loadUsersList());
+}
+
 // ── 탭 전환 ──────────────────────────────────────────────────────────────
 
 function showTab(which) {
@@ -1042,6 +1170,7 @@ function showTab(which) {
   btnTabItems?.classList.toggle("is-active",     which === "items");
   btnTabDeposits?.classList.toggle("is-active",  which === "deposits");
   btnTabHex?.classList.toggle("is-active",       which === "hex");
+  btnTabMembers?.classList.toggle("is-active",   which === "members");
   btnTabDao?.classList.toggle("is-active",       which === "dao");
   btnTabTreasure?.classList.toggle("is-active",  which === "treasure");
   btnTabChat?.classList.toggle("is-active",      which === "chat");
@@ -1091,6 +1220,8 @@ async function bootAdmin(user) {
     await Promise.all([loadContractStatus(), checkHexAllowance()]);
   } else if (validTab === "dao") {
     await loadDaoProposals();
+  } else if (validTab === "members") {
+    await loadUsersList();
   } else {
     await loadGuideApplications();
   }
@@ -1155,7 +1286,7 @@ btnTabMerchants?.addEventListener("click", () => { showTab("merchants"); loadMer
 btnTabItems?.addEventListener("click", () => { showTab("items"); loadItemsByStatus(selItemStatus?.value || "pending"); });
 btnTabDeposits?.addEventListener("click", () => { showTab("deposits"); loadDeposits(); });
 btnTabHex?.addEventListener("click", () => { showTab("hex"); loadContractStatus(); checkHexAllowance(); });
-btnTabMembers?.addEventListener("click", () => { showTab("members"); });
+btnTabMembers?.addEventListener("click", () => { showTab("members"); loadUsersList(); });
 btnTabDao?.addEventListener("click", () => { showTab("dao"); loadDaoProposals(); });
 
 // ── 관리자 셀프 온보딩 ──

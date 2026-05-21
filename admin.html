@@ -165,6 +165,22 @@
           <!-- ── 멤버 관리 탭 ── -->
           <div id="tabMembers" style="display:none;">
 
+            <!-- 회원 목록 -->
+            <div class="list-head" style="margin-top:8px;">
+              <div class="muted">가입 회원 목록</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="inputUserSearch" class="select" style="width:160px;" placeholder="이름·이메일 검색">
+                <select id="selUserFilter" class="select">
+                  <option value="all">전체</option>
+                  <option value="member">정회원</option>
+                  <option value="blacklisted">블랙리스트</option>
+                </select>
+                <button class="btn btn-sm" id="btnReloadUsers" type="button">새로고침</button>
+              </div>
+            </div>
+            <div id="userList" class="list" style="margin-top:8px;"></div>
+            <hr style="margin:20px 0;border:none;border-top:1px solid var(--border,#e2e8f0);">
+
             <!-- 관리자 셀프 온보딩 -->
             <div class="list-head" style="margin-top:8px;">
               <div class="muted">관리자 지갑 연결 (adminSelfOnboard)</div>

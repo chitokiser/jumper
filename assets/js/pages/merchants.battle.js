@@ -157,7 +157,12 @@ export function playSound(type) {
         tone(120,0.6,0.07,0,'sine'); tone(80,0.35,0.12,0.01,'sine'); tone(200,0.15,0.04,0,'triangle');
         break;
       }
-      case 'arrow_shot':  tone(700,0.25,0.12); tone(300,0.15,0.1,0.05,'sawtooth'); break;
+      case 'arrow_shot':
+        noise(0.05, 0.3);
+        tone(680, 0.55, 0.07, 0, 'sawtooth');
+        tone(380, 0.35, 0.11, 0.02, 'sawtooth');
+        tone(200, 0.2,  0.09, 0.04, 'sine');
+        break;
       case 'melee_hit': {
         // 칼 타격음 — 쇳소리 순간 + 둔탁한 충격
         noise(0.035, 0.9);
@@ -241,7 +246,11 @@ export function playSound(type) {
         noise(0.06,0.6);
         tone(660,0.35,0.12,0.07);
         break;
-      case 'arrow_hit':   noise(0.08,0.5); tone(220,0.3,0.1,0,'square'); break;
+      case 'arrow_hit':
+        noise(0.14, 1.0);
+        tone(180, 0.6, 0.09, 0, 'square');
+        tone(110, 0.4, 0.15, 0.03, 'sine');
+        break;
       case 'player_hit': {
         // 짧은 피격 비명 — 보이스 피치 다운스윕 + 임팩트
         const phDur = 0.28;
@@ -311,14 +320,14 @@ export function playSound(type) {
 }
 
 // ── 화살 발사 애니메이션 ──────────────────────────────────────────────────────
-export function animateArrow(fromLat, fromLng, toLat, toLng, color, onHit) {
+export function animateArrow(fromLat, fromLng, toLat, toLng, color, onHit, startPx) {
   const overlay = document.getElementById('battleOverlay');
   if (!overlay) { onHit?.(); return; }
 
-  // 픽셀 좌표 계산. null이면 오버레이 중심 기준 폴백
+  // 픽셀 좌표 계산. startPx가 있으면 그것을 우선 사용 (활 끝 위치)
   const ow = overlay.offsetWidth  || 300;
   const oh = overlay.offsetHeight || 300;
-  const sp = latLngToPixel(fromLat, fromLng) || { x: ow * 0.5, y: oh * 0.5 };
+  const sp = startPx || latLngToPixel(fromLat, fromLng) || { x: ow * 0.5, y: oh * 0.5 };
   const ep = latLngToPixel(toLat,   toLng)   || { x: ow * 0.5, y: oh * 0.45 };
 
   const dx = ep.x - sp.x;
@@ -1381,7 +1390,7 @@ function _spawnMonsterMarker(mob) {
                 showFloat(isCrit ? `💥${dmg}` : `-${dmg}`,
                   isCrit ? '#ff6600' : '#fbbf24', mob.lat, mob.lng);
                 if (isCrit) showCriticalToast();
-              });
+              }, _spr1?.getBowPixel?.());
             return;
           }
         }
@@ -1432,7 +1441,7 @@ function _spawnMonsterMarker(mob) {
             showFloat(isCrit ? `💥${dmg}` : `-${dmg}`,
               isCrit ? '#ff6600' : '#fbbf24', mob.lat, mob.lng);
             if (isCrit) showCriticalToast();
-          });
+          }, _spr2?.getBowPixel?.());
         return;
       }
     }
@@ -1494,7 +1503,20 @@ function attackTower(tower, marker) {
     if (myPosT && typeof _sprT.setFacing === 'function') _sprT.setFacing(calcBearing(myPosT.lat(), myPosT.lng(), pos.lat(), pos.lng()));
     if (typeof _sprT.setState === 'function') _sprT.setState('attack');
   }
-  playSound(isCrit ? 'critical' : 'arrow_shot');
+  playSound(isCrit ? 'critical_hit' : 'arrow_shot');
+
+  // ── 화살 날아가는 애니메이션 ──
+  const myMarkT = _ctx?.myLocationMarker;
+  const myPosT  = myMarkT?.getPosition?.();
+  if (myPosT) {
+    animateArrow(
+      myPosT.lat(), myPosT.lng(),
+      pos.lat(), pos.lng(),
+      isCrit ? '#f97316' : '#fbbf24',
+      () => { playSound('arrow_hit'); },
+      myMarkT?.getBowPixel?.()
+    );
+  }
 
   const map = _ctx?.map;
   const infoWindow = _ctx?.infoWindow;
