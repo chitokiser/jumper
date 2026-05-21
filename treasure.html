@@ -175,12 +175,12 @@
     <!-- Stats bar -->
     <div class="relative z-10 flex flex-wrap justify-center gap-8 mb-10 fade-in" style="transition-delay:.4s">
       <div class="text-center">
-        <div class="stat-num text-gold">10,000+</div>
+        <div id="stat-users" class="stat-num text-gold">—</div>
         <div class="text-amber-200/50 text-xs font-cinzel tracking-wider" data-i18n="stat1"></div>
       </div>
       <div class="w-px bg-yellow-500/20 self-stretch"></div>
       <div class="text-center">
-        <div class="stat-num text-gold">247</div>
+        <div id="stat-treasure" class="stat-num text-gold">—</div>
         <div class="text-amber-200/50 text-xs font-cinzel tracking-wider" data-i18n="stat2"></div>
       </div>
       <div class="w-px bg-yellow-500/20 self-stretch"></div>
@@ -348,7 +348,42 @@
   </footer>
 
 
-  <script>
+  <script type="module">
+    // ── Firebase 실시간 통계 ──────────────────────────────────────────────────────
+    import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+    import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+    const FB_CONFIG = {
+      apiKey: 'AIzaSyBETZfUgG4y0YAiYuxSVhwnhpwzVUQ59EI',
+      authDomain: 'experience-factory-4e167.firebaseapp.com',
+      projectId: 'experience-factory-4e167',
+      storageBucket: 'experience-factory-4e167.firebasestorage.app',
+      messagingSenderId: '142042867302',
+      appId: '1:142042867302:web:7689eca32aaee5d189efa7',
+    };
+    const app = getApps().length ? getApps()[0] : initializeApp(FB_CONFIG);
+    const db  = getFirestore(app);
+
+    const elUsers    = document.getElementById('stat-users');
+    const elTreasure = document.getElementById('stat-treasure');
+    const today = new Date().toISOString().slice(0, 10);
+
+    onSnapshot(doc(db, 'stats', 'public'), (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+
+      if (elUsers) {
+        const count = (data.userCount || 0) + 10000;
+        elUsers.textContent = count.toLocaleString() + '+';
+      }
+
+      if (elTreasure) {
+        const sameDay = data.treasureDate === today;
+        const count = sameDay ? (data.treasureTodayCount || 0) : 0;
+        elTreasure.textContent = count.toLocaleString();
+      }
+    });
+
     // ── i18n ────────────────────────────────────────────────────────────────────
     const MESSAGES = {
       // Hero

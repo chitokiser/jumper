@@ -1809,3 +1809,30 @@ exports.onSupportChatMessage = onDocumentCreated(
     await supportChatH.onNewSupportMessage(event, geminiSecret.value());
   }
 );
+
+// ════════════════════════════════════════════════════════════════════════════
+// 공개 통계 집계 — stats/public (랜딩 페이지 실시간 표시용)
+// ════════════════════════════════════════════════════════════════════════════
+exports.onUserCreatedStats = onDocumentCreated('users/{uid}', async () => {
+  const statsRef = db.collection('stats').doc('public');
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(statsRef);
+    const prev = snap.exists ? (snap.data().userCount || 0) : 0;
+    tx.set(statsRef, { userCount: prev + 1 }, { merge: true });
+  });
+});
+
+exports.onTreasureCollectedStats = onDocumentCreated('treasure_logs/{docId}', async () => {
+  const statsRef = db.collection('stats').doc('public');
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(statsRef);
+    const data = snap.exists ? snap.data() : {};
+    const sameDay = data.treasureDate === today;
+    tx.set(statsRef, {
+      treasureDate: today,
+      treasureTodayCount: sameDay ? (data.treasureTodayCount || 0) + 1 : 1,
+      treasureTotalCount: (data.treasureTotalCount || 0) + 1,
+    }, { merge: true });
+  });
+});

@@ -402,6 +402,10 @@ service cloud.firestore {
       allow get, list: if true;
       allow write: if false;
     }
+    match /stats/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
     match /treasure_voucher_logs/{docId} {
       allow get, list: if signedIn()
         && resource.data.uid == request.auth.uid;
