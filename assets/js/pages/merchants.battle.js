@@ -606,6 +606,31 @@ export function updateSkillBar() {
       }
     }
   });
+
+  // 마정석 버튼 상태
+  const magicBtn   = document.getElementById('skillBtnMagicStone');
+  const magicBadge = document.getElementById('skillMagicStoneBadge');
+  const tokenCount = _player.token ?? 0;
+  if (magicBtn)   magicBtn.disabled = tokenCount <= 0 || _isDead;
+  if (magicBadge) magicBadge.textContent = tokenCount > 0 ? String(tokenCount) : '';
+}
+
+// ── 마정석 사용 (HP +100) ──────────────────────────────────────────────────────
+export function useMagicStone() {
+  if (_isDead) return;
+  if ((_player.token ?? 0) <= 0) { showSkillError(_t('magic_stone_none')); return; }
+  _player.token = (_player.token ?? 0) - 1;
+  const prev = _player.hp;
+  _player.hp = Math.min(_player.maxHp, _player.hp + 100);
+  const gain = _player.hp - prev;
+  const myMark = _ctx?.myLocationMarker;
+  if (myMark && gain > 0) {
+    showFloat(`💎+${gain}HP`, '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
+    playSound('heal');
+  }
+  updateCombatHud();
+  updateSkillBar();
+  savePlayerState();
 }
 
 // ── 전투 HUD 업데이트 ─────────────────────────────────────────────────────────

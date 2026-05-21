@@ -15,7 +15,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          healHp, healMp, playSound, showFloat, animateArrow,
          castLightning, castIceFreeze, castFireStorm,
          setGsSkillCallback, setGsMobsGetter,
-         useReviveTicket, updateSkillBar, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
+         useReviveTicket, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
          spawnGsDrop, removeGsDrop,
          equipWeapon, equipArmor, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
@@ -2217,14 +2217,16 @@ async function init() {
   $('skillBtn1')?.addEventListener('click', castIceFreeze);
   $('skillBtn2')?.addEventListener('click', castFireStorm);
   $('skillBtnPotion')?.addEventListener('click', usePotion);
+  $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
 
-  // 키보드 단축키 1/2/3/4
+  // 키보드 단축키 1/2/3/4/5
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.key === '1') castLightning();
     else if (e.key === '2') castIceFreeze();
     else if (e.key === '3') castFireStorm();
     else if (e.key === '4') usePotion();
+    else if (e.key === '5') useMagicStone();
   });
 
   // 전투 HUD 클릭 → 접기/펼치기 (모바일: 기본 접힘)

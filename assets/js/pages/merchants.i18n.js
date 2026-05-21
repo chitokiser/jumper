@@ -209,6 +209,7 @@ const MESSAGES = {
   coin_chip:             { ko: '💰 코인×{0}',            vi: '💰 Xu×{0}' },
   // {0}=cost
   magic_stone_chip:      { ko: '💎 마정석×{0}',          vi: '💎 Đá phép×{0}' },
+  magic_stone_none:      { ko: '마정석이 없습니다',        vi: 'Không có đá phép' },
   // {0}=minLevel
   level_chip:            { ko: '⭐ LV.{0} 이상',        vi: '⭐ LV.{0} trở lên' },
 
