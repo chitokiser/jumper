@@ -2439,13 +2439,14 @@ function _renderShopAdminItems(items) {
   const container = $('shopAdminItemList');
   if (!container) return;
 
+  const inputStyle = 'background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px;width:100%;box-sizing:border-box';
   const rows = items.map((it, i) => `
-    <div class="shop-admin-item-row" data-idx="${i}" style="display:grid;grid-template-columns:1fr 1fr 80px 80px 32px;gap:4px;margin-bottom:6px;align-items:center">
-      <input type="text"   class="sad-itemid"   value="${escHtml(it.itemId)}"  placeholder="${_t('shop_admin_item_id')}"   style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px">
-      <input type="text"   class="sad-name"     value="${escHtml(it.name)}"    placeholder="${_t('shop_admin_item_name')}" style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px">
-      <input type="number" class="sad-price"    value="${it.price}"            placeholder="${_t('shop_admin_price')}"     style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px" min="0">
-      <input type="number" class="sad-stock"    value="${it.stock ?? -1}"      placeholder="${_t('shop_admin_stock')}"     style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px" min="-1">
-      <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer">✕</button>
+    <div class="shop-admin-item-row" data-idx="${i}" style="display:grid;grid-template-columns:1fr 1fr 72px 68px 32px;gap:4px;margin-bottom:6px;align-items:center">
+      <input type="text"   class="sad-itemid"   value="${escHtml(it.itemId)}"  placeholder="예) sword_01"  style="${inputStyle}">
+      <input type="text"   class="sad-name"     value="${escHtml(it.name)}"    placeholder="예) 철제 검"   style="${inputStyle}">
+      <input type="number" class="sad-price"    value="${it.price}"            placeholder="100"            style="${inputStyle}" min="0">
+      <input type="number" class="sad-stock"    value="${it.stock ?? -1}"      placeholder="-1=무한"        style="${inputStyle}" min="-1">
+      <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:13px">✕</button>
     </div>`).join('');
 
   container.innerHTML = rows;
@@ -2472,13 +2473,14 @@ $('btnShopAdminAddItem')?.addEventListener?.('click', () => {
   const div = document.createElement('div');
   div.className = 'shop-admin-item-row';
   div.dataset.idx = idx;
-  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 80px 80px 32px;gap:4px;margin-bottom:6px;align-items:center';
+  const s = 'background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px;width:100%;box-sizing:border-box';
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 72px 68px 32px;gap:4px;margin-bottom:6px;align-items:center';
   div.innerHTML = `
-    <input type="text"   class="sad-itemid" placeholder="${_t('shop_admin_item_id')}"   style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px">
-    <input type="text"   class="sad-name"   placeholder="${_t('shop_admin_item_name')}" style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px">
-    <input type="number" class="sad-price"  value="100" placeholder="${_t('shop_admin_price')}"     style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px" min="0">
-    <input type="number" class="sad-stock"  value="-1"  placeholder="${_t('shop_admin_stock')}"     style="background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px" min="-1">
-    <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer">✕</button>`;
+    <input type="text"   class="sad-itemid" placeholder="예) sword_01"  style="${s}">
+    <input type="text"   class="sad-name"   placeholder="예) 철제 검"   style="${s}">
+    <input type="number" class="sad-price"  value="100" placeholder="100"       style="${s}" min="0">
+    <input type="number" class="sad-stock"  value="-1"  placeholder="-1=무한"  style="${s}" min="-1">
+    <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:13px">✕</button>`;
   container.appendChild(div);
 });
 

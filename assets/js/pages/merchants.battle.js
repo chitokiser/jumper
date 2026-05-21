@@ -2741,13 +2741,14 @@ function _renderShopMarker(shop) {
 
   marker.addListener('click', () => {
     const iw = _ctx?.infoWindow;
-    if (!iw) return;
-    const typeLabel = { weapon_armor: '⚔️ 무기/방어구', potion: '🧪 약물', misc: '🛍️ 잡템' }[shop.type] || shop.type;
-    iw.setContent(`<div style="font-size:13px;padding:4px 8px;min-width:120px">
-      <strong>${escHtml(shop.name)}</strong><br>
-      <span style="color:#888;font-size:11px">${typeLabel}</span>
-    </div>`);
-    iw.open(map, marker);
+    if (iw) {
+      const typeLabel = { weapon_armor: '⚔️ 무기/방어구', potion: '🧪 약물', misc: '🛍️ 잡템' }[shop.type] || shop.type;
+      iw.setContent(`<div style="font-size:13px;padding:4px 8px;min-width:120px">
+        <strong>${escHtml(shop.name)}</strong><br>
+        <span style="color:#888;font-size:11px">${typeLabel}</span>
+      </div>`);
+      iw.open(map, marker);
+    }
     const freshShop = _shops.find(s => s.id === shop.id) || shop;
     _ctx._onShopClick?.(freshShop);
   });

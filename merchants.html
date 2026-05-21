@@ -1083,9 +1083,17 @@
           </select>
         </div>
         <div style="margin-bottom:8px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <span style="color:#9ca3af;font-size:12px">판매 아이템 <span style="color:#6b7280">(itemId / 이름 / 가격골드 / 재고)</span></span>
-            <button id="btnShopAdminAddItem" style="background:#1e40af;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">+ 추가</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <span style="color:#9ca3af;font-size:12px">📦 판매 아이템</span>
+            <button id="btnShopAdminAddItem" style="background:#1e40af;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">+ 아이템 추가</button>
+          </div>
+          <p style="color:#6b7280;font-size:11px;margin:0 0 6px">아이템코드(고유 영문ID) · 표시이름 · 가격(골드) · 재고(-1=무한)</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr 72px 68px 32px;gap:4px;margin-bottom:4px;padding:0 2px">
+            <span style="color:#6b7280;font-size:10px">아이템코드</span>
+            <span style="color:#6b7280;font-size:10px">표시이름</span>
+            <span style="color:#6b7280;font-size:10px;text-align:center">가격(골드)</span>
+            <span style="color:#6b7280;font-size:10px;text-align:center">재고</span>
+            <span></span>
           </div>
           <div id="shopAdminItemList"></div>
         </div>
