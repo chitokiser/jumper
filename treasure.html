@@ -352,16 +352,9 @@
     // ── Firebase 실시간 통계 ──────────────────────────────────────────────────────
     import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
     import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+    import { firebaseConfig } from '/assets/js/firebase-config.js';
 
-    const FB_CONFIG = {
-      apiKey: 'AIzaSyBETZfUgG4y0YAiYuxSVhwnhpwzVUQ59EI',
-      authDomain: 'experience-factory-4e167.firebaseapp.com',
-      projectId: 'experience-factory-4e167',
-      storageBucket: 'experience-factory-4e167.firebasestorage.app',
-      messagingSenderId: '142042867302',
-      appId: '1:142042867302:web:7689eca32aaee5d189efa7',
-    };
-    const app = getApps().length ? getApps()[0] : initializeApp(FB_CONFIG);
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
     const elUsers    = document.getElementById('stat-users');
