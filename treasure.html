@@ -339,12 +339,12 @@
 
       if (elTreasure) {
         const sameDay = data.treasureDate === today;
-        const count = sameDay ? (data.treasureTodayCount || 0) : 0;
+        const count = 247 + (sameDay ? (data.treasureTodayCount || 0) : 0);
         elTreasure.textContent = count.toLocaleString();
       }
     }, (err) => {
       if (elUsers)    elUsers.textContent    = '10,000+';
-      if (elTreasure) elTreasure.textContent = '0';
+      if (elTreasure) elTreasure.textContent = '247';
     });
 
     // ── i18n ────────────────────────────────────────────────────────────────────
