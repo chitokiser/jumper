@@ -564,6 +564,12 @@ service cloud.firestore {
       }
     }
 
+    // ── 게임 상점 (game_shops) ───────────────────────────────────────
+    match /game_shops/{shopId} {
+      allow get, list: if true;                        // 지도 표시용 공개 읽기
+      allow create, update, delete: if isAdmin();      // 관리자만 배치/수정/삭제
+    }
+
     // ── 실시간 유저 위치 (100m 반경 표시용) ──────────────────────────
     match /user_locations/{uid} {
       allow read: if signedIn();
