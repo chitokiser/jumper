@@ -265,15 +265,20 @@ async function craftVoucher(uid, { voucherId } = {}) {
       throw new HttpsError('already-exists', '이미 구매한 바우처입니다');
     }
 
-    // 2) 코인(gold) 잔액
-    let playerRef, currentGold = 0;
-    if (goldNeeded > 0) {
+    // 2) 코인(gold) + 마정석(token) 잔액
+    const magicStoneCost = parseInt(voucher.magicStoneCost || 0);
+    let playerRef, currentGold = 0, currentToken = 0;
+    if (goldNeeded > 0 || magicStoneCost > 0) {
       playerRef = db.collection('battle_players').doc(uid);
       const pSnap = await tx.get(playerRef);
-      currentGold = pSnap.exists ? (pSnap.data().gold || 0) : 0;
+      currentGold  = pSnap.exists ? (pSnap.data().gold  || 0) : 0;
+      currentToken = pSnap.exists ? (pSnap.data().token || 0) : 0;
       if (currentGold < goldNeeded)
         throw new HttpsError('failed-precondition',
           `코인 부족 (보유 ${currentGold}, 필요 ${goldNeeded})`);
+      if (currentToken < magicStoneCost)
+        throw new HttpsError('failed-precondition',
+          `마정석 부족 (보유 ${currentToken}, 필요 ${magicStoneCost})`);
     }
 
     // 3) 재료 아이템 잔액
@@ -296,12 +301,12 @@ async function craftVoucher(uid, { voucherId } = {}) {
 
     // ── 이하 쓰기만 ──────────────────────────────────────────────────────────
 
-    // 코인 차감
-    if (goldNeeded > 0) {
-      tx.update(playerRef, {
-        gold: currentGold - goldNeeded,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    // 코인 + 마정석 차감
+    if (goldNeeded > 0 || magicStoneCost > 0) {
+      const upd = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+      if (goldNeeded > 0)      upd.gold  = currentGold  - goldNeeded;
+      if (magicStoneCost > 0)  upd.token = currentToken - magicStoneCost;
+      tx.update(playerRef, upd);
     }
 
     // 재료 아이템 차감

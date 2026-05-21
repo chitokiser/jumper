@@ -303,6 +303,15 @@ function renderPlaceMarkers() {
     });
 
     marker.addListener('click', () => {
+      const myPos = _ctx.lastPos;
+      if (myPos) {
+        const dist = haversine(myPos.lat, myPos.lng, latLng.lat, latLng.lng);
+        if (dist > 20) {
+          infoWindow.setContent(`<div style="font-size:13px;padding:6px;">${_t('npc_too_far', Math.round(dist))}</div>`);
+          infoWindow.open(map, marker);
+          return;
+        }
+      }
       infoWindow.setContent(`
         <div style="max-width:240px;font-size:13px;line-height:1.5;">
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name||'')}</div>
@@ -1861,12 +1870,25 @@ function renderExchangeSection() {
       return `<span class="exc-req-chip ${cls}">${_t('level_chip', v.minLevel)}${haveStr}</span>`;
     })();
 
-    const allChips = chips + coinChip + levelChip;
+    // 마정석 조건 칩
+    const stoneChip = (() => {
+      const cost = v.magicStoneCost || 0;
+      if (!cost) return '';
+      const have  = getPlayerToken();
+      const ok    = have >= cost;
+      if (!ok && minRatio > 0) minRatio = 0;
+      const cls   = !_uid ? 'no-data' : ok ? 'ok' : 'lack';
+      const haveStr = _uid ? ` <small>(${have}/${cost})</small>` : '';
+      return `<span class="exc-req-chip ${cls}">${_t('magic_stone_chip', cost)}${haveStr}</span>`;
+    })();
+
+    const allChips = chips + coinChip + stoneChip + levelChip;
 
     const pct    = Math.round(minRatio * 100);
     const canDo  = _uid
       && (totalGoldNeed === 0 || getPlayerGold() >= totalGoldNeed)
       && itemReqs.every(r => (_inventory[String(r.itemId)] || 0) >= r.count)
+      && (!(v.magicStoneCost || 0) || getPlayerToken() >= v.magicStoneCost)
       && (!v.minLevel || getPlayerLevel() >= v.minLevel);
 
     // 이미지 경로 정규화

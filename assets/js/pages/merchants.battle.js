@@ -83,7 +83,7 @@ const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오�
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
 const SKILL_FREEZE_MS = 20000;
 // 서버와 동일한 배율 (클라이언트 float 표시용)
-const GS_SKILL_MULT  = { lightning: 3.0, ice: 1.5, fire: 2.5 };
+const GS_SKILL_MULT  = { lightning: 2.0, ice: 1.5, fire: 2.0 };
 
 // ── 유틸 (core에서 받지 않고 직접 구현) ────────────────────────────────────────
 function escHtml(s) {

@@ -12,6 +12,8 @@ const MESSAGES = {
   // ── 장소 인포윈도우 ───────────────────────────────────────────────────────────
   place_area:            { ko: '구역',             vi: 'Khu vực' },
   gmap_link:             { ko: '구글 지도에서 보기 →', vi: 'Xem trên Google Maps →' },
+  // {0} = dist m
+  npc_too_far:           { ko: '💬 NPC에게 20m 이내로 접근하세요 (현재 {0}m)', vi: '💬 Tiến đến trong 20m của NPC (hiện tại {0}m)' },
   no_map_label:          { ko: '지도 미등록',       vi: 'Chưa có bản đồ' },
   no_name_label:         { ko: '(이름없음)',         vi: '(Không tên)' },
   no_geolocation:        { ko: '이 브라우저는 위치 서비스를 지원하지 않습니다.',
@@ -205,6 +207,8 @@ const MESSAGES = {
   default_reward_label:  { ko: '상품교환권',             vi: 'Phiếu đổi hàng' },
   // {0}=count  {1}=need
   coin_chip:             { ko: '💰 코인×{0}',            vi: '💰 Xu×{0}' },
+  // {0}=cost
+  magic_stone_chip:      { ko: '💎 마정석×{0}',          vi: '💎 Đá phép×{0}' },
   // {0}=minLevel
   level_chip:            { ko: '⭐ LV.{0} 이상',        vi: '⭐ LV.{0} trở lên' },
 
