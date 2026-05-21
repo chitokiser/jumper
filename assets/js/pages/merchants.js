@@ -1488,7 +1488,7 @@ function renderInventory() {
 
   const grid = $('invGrid');
   if (!grid) return;
-  const SLOTS = 20;
+  const SLOTS = 50;
 
   // 정렬: potion_red 1순위, revive_ticket 2순위, 나머지 숫자 정렬
   const ITEM_PRIORITY = { potion_red: 0, potion_mp: 1, revive_ticket: 2 };
