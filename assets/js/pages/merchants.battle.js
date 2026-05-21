@@ -1672,7 +1672,9 @@ function battleTick() {
       _isDead = false;
       _reviveWalkDist = 0;
       _clearDeathMarker();
-      refreshMyMarkerIcon();
+      { const _rm = _ctx?.myLocationMarker;
+        if (_rm && typeof _rm.revive === 'function') _rm.revive();
+        else refreshMyMarkerIcon(); }
       _player.hp = _player.maxHp;
       _player.mp = _player.maxMp;
       _healAccum   = 0;
@@ -2472,7 +2474,9 @@ export function syncReviveFromServer(hp) {
   _player.hp      = hp;
   _reviveWalkDist = 0;
   _clearDeathMarker();
-  refreshMyMarkerIcon();
+  { const _rm = _ctx?.myLocationMarker;
+    if (_rm && typeof _rm.revive === 'function') _rm.revive();
+    else refreshMyMarkerIcon(); }
   playSound('revive');
   const myMark = _ctx?.myLocationMarker;
   const pos    = myMark?.getPosition();
