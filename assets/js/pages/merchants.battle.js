@@ -78,7 +78,7 @@ let _lastPosWriteAt       = 0;      // 위치 Firestore 저장 쓰로틀
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST    = 100;
-const SKILL_RANGE_M    = 100;
+const SKILL_RANGE_M    = 30;
 const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오브제 표시
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
 const SKILL_FREEZE_MS = 20000;
@@ -929,7 +929,6 @@ function getGsTargetsInRange() {
 // ── 마법 스킬 ────────────────────────────────────────────────────────────────
 export function castLightning() {
   if (_isDead) return;
-  if (document.getElementById('skillTargetModal')) return;
   const now = Date.now();
   if (_skillCd.lightning && now < _skillCd.lightning) return;
 
@@ -937,48 +936,42 @@ export function castLightning() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
+  const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
+    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+  const gsTargets = getGsTargetsInRange().filter(m =>
+    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+
+  if (inRangeMobs.length === 0 && gsTargets.length === 0) {
+    showSkillError(_t('skill_no_target_lightning')); return;
+  }
+  if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_lightning')); return; }
+
   animateLightning();
   playSound('skill_lightning');
 
-  const targets = [
-    ..._monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-      haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M),
-    ...getGsTargetsInRange(),
-  ];
+  const anchor = inRangeMobs[0] ?? gsTargets[0];
+  showSkillMapEffect(anchor.lat, anchor.lng, 'lightning');
 
-  const fire = (target) => {
-    if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_lightning')); return; }
-    showSkillMapEffect(target.lat, target.lng, 'lightning');
-    let hitCount = 0;
-    for (const mob of _monsters) {
-      if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-      if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
-        hitMonster(mob.id, getTotalAtk() * _player.level);
-        showFloat(`⚡-${getTotalAtk() * _player.level}`, '#facc15', mob.lat, mob.lng);
-        hitCount++;
-      }
-    }
-    // GS 몬스터: 서버에 스킬 전송 + 클라이언트 float 즉시 표시
-    const gsDmg = Math.round(_player.level * 100 * GS_SKILL_MULT.lightning);
-    for (const gsMob of getGsTargetsInRange()) {
-      showFloat(`⚡-${gsDmg}`, '#facc15', gsMob.lat, gsMob.lng);
-      hitCount++;
-    }
-    _gsSkillCallback?.('lightning');
-    showFloat(_t('skill_lightning_hit', hitCount), '#facc15', target.lat, target.lng);
-    _skillCd.lightning = Date.now() + SKILL_CD_MS.lightning;
-    updateSkillBar();
-    setTimeout(() => updateSkillBar(), SKILL_CD_MS.lightning);
-  };
-
-  if (targets.length === 0) { showSkillError(_t('skill_no_target_lightning')); return; }
-  if (targets.length === 1) fire(targets[0]);
-  else showSkillTargetModal('lightning', targets, fire);
+  let hitCount = 0;
+  for (const mob of inRangeMobs) {
+    hitMonster(mob.id, getTotalAtk() * _player.level);
+    showFloat(`⚡-${getTotalAtk() * _player.level}`, '#facc15', mob.lat, mob.lng);
+    hitCount++;
+  }
+  const gsDmg = Math.round(_player.level * 100 * GS_SKILL_MULT.lightning);
+  for (const gsMob of gsTargets) {
+    showFloat(`⚡-${gsDmg}`, '#facc15', gsMob.lat, gsMob.lng);
+    hitCount++;
+  }
+  _gsSkillCallback?.('lightning');
+  showFloat(_t('skill_lightning_hit', hitCount), '#facc15', anchor.lat, anchor.lng);
+  _skillCd.lightning = Date.now() + SKILL_CD_MS.lightning;
+  updateSkillBar();
+  setTimeout(() => updateSkillBar(), SKILL_CD_MS.lightning);
 }
 
 export function castIceFreeze() {
   if (_isDead) return;
-  if (document.getElementById('skillTargetModal')) return;
   const now = Date.now();
   if (_skillCd.ice && now < _skillCd.ice) return;
 
@@ -986,53 +979,48 @@ export function castIceFreeze() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
+  const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
+    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+  const gsTargets = getGsTargetsInRange().filter(m =>
+    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+
+  if (inRangeMobs.length === 0 && gsTargets.length === 0) {
+    showSkillError(_t('skill_no_target_ice')); return;
+  }
+  if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_ice')); return; }
+
   animateIceFreeze();
   playSound('skill_ice');
 
-  const targets = [
-    ..._monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-      haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M),
-    ...getGsTargetsInRange(),
-  ];
+  const anchor = inRangeMobs[0] ?? gsTargets[0];
+  showSkillMapEffect(anchor.lat, anchor.lng, 'ice');
 
-  const fire = (target) => {
-    if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_ice')); return; }
-    showSkillMapEffect(target.lat, target.lng, 'ice');
-    const freezeNow = Date.now();
-    let hitCount = 0;
-    for (const mob of _monsters) {
-      if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-      if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
-        _frozenUntil[mob.id] = freezeNow + SKILL_FREEZE_MS;
-        const marker = _monsterMarkers[mob.id];
-        if (marker) {
-          marker.setIcon(getMonsterFrozenIcon());
-          setTimeout(() => { if (_monsterMarkers[mob.id]) _monsterMarkers[mob.id].setIcon(getMonsterIcon(mob.image)); }, SKILL_FREEZE_MS);
-        }
-        showFloat(_t('skill_freeze_single'), '#93c5fd', mob.lat, mob.lng);
-        hitCount++;
-      }
+  const freezeNow = Date.now();
+  let hitCount = 0;
+  for (const mob of inRangeMobs) {
+    _frozenUntil[mob.id] = freezeNow + SKILL_FREEZE_MS;
+    const marker = _monsterMarkers[mob.id];
+    if (marker) {
+      marker.setIcon(getMonsterFrozenIcon());
+      setTimeout(() => { if (_monsterMarkers[mob.id]) _monsterMarkers[mob.id].setIcon(getMonsterIcon(mob.image)); }, SKILL_FREEZE_MS);
     }
-    const gsDmgIce = Math.round(_player.level * 100 * GS_SKILL_MULT.ice);
-    for (const gsMob of getGsTargetsInRange()) {
-      showFloat(`❄-${gsDmgIce}`, '#93c5fd', gsMob.lat, gsMob.lng);
-      hitCount++;
-    }
-    _gsSkillCallback?.('ice');
-    showFloat(_t('skill_freeze_multi', hitCount, SKILL_FREEZE_MS/1000), '#93c5fd', target.lat, target.lng);
-    _skillCd.ice = Date.now() + SKILL_CD_MS.ice;
-    updateSkillBar();
-    setTimeout(() => updateSkillBar(), SKILL_CD_MS.ice);
-  };
-
-  if (targets.length === 0) { showSkillError(_t('skill_no_target_ice')); return; }
-  if (targets.length === 1) fire(targets[0]);
-  else showSkillTargetModal('ice', targets, fire);
+    showFloat(_t('skill_freeze_single'), '#93c5fd', mob.lat, mob.lng);
+    hitCount++;
+  }
+  const gsDmgIce = Math.round(_player.level * 100 * GS_SKILL_MULT.ice);
+  for (const gsMob of gsTargets) {
+    showFloat(`❄-${gsDmgIce}`, '#93c5fd', gsMob.lat, gsMob.lng);
+    hitCount++;
+  }
+  _gsSkillCallback?.('ice');
+  showFloat(_t('skill_freeze_multi', hitCount, SKILL_FREEZE_MS/1000), '#93c5fd', anchor.lat, anchor.lng);
+  _skillCd.ice = Date.now() + SKILL_CD_MS.ice;
+  updateSkillBar();
+  setTimeout(() => updateSkillBar(), SKILL_CD_MS.ice);
 }
 
 export function castFireStorm() {
   if (_isDead) return;
-  if (document.getElementById('skillTargetModal')) return;
   const now = Date.now();
   if (_skillCd.fire && now < _skillCd.fire) return;
 
@@ -1040,42 +1028,38 @@ export function castFireStorm() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
+  const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
+    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+  const gsTargets = getGsTargetsInRange().filter(m =>
+    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+
+  if (inRangeMobs.length === 0 && gsTargets.length === 0) {
+    showSkillError(_t('skill_no_target_fire')); return;
+  }
+  if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_fire')); return; }
+
   animateFireStorm();
   playSound('skill_fire');
 
-  const targets = [
-    ..._monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-      haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M),
-    ...getGsTargetsInRange(),
-  ];
+  const anchor = inRangeMobs[0] ?? gsTargets[0];
+  showSkillMapEffect(anchor.lat, anchor.lng, 'fire');
 
-  const fire = (target) => {
-    if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_fire')); return; }
-    showSkillMapEffect(target.lat, target.lng, 'fire');
-    let hitCount = 0;
-    for (const mob of _monsters) {
-      if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
-      if (haversine(myLat, myLng, mob.lat, mob.lng) <= SKILL_RANGE_M) {
-        hitMonster(mob.id, getTotalAtk() * _player.level);
-        showFloat(`🔥-${getTotalAtk() * _player.level}`, '#f97316', mob.lat, mob.lng);
-        hitCount++;
-      }
-    }
-    const gsDmgFire = Math.round(_player.level * 100 * GS_SKILL_MULT.fire);
-    for (const gsMob of getGsTargetsInRange()) {
-      showFloat(`🔥-${gsDmgFire}`, '#f97316', gsMob.lat, gsMob.lng);
-      hitCount++;
-    }
-    _gsSkillCallback?.('fire');
-    showFloat(_t('skill_fire_hit', hitCount), '#f97316', target.lat, target.lng);
-    _skillCd.fire = Date.now() + SKILL_CD_MS.fire;
-    updateSkillBar();
-    setTimeout(() => updateSkillBar(), SKILL_CD_MS.fire);
-  };
-
-  if (targets.length === 0) { showSkillError(_t('skill_no_target_fire')); return; }
-  if (targets.length === 1) fire(targets[0]);
-  else showSkillTargetModal('fire', targets, fire);
+  let hitCount = 0;
+  for (const mob of inRangeMobs) {
+    hitMonster(mob.id, getTotalAtk() * _player.level);
+    showFloat(`🔥-${getTotalAtk() * _player.level}`, '#f97316', mob.lat, mob.lng);
+    hitCount++;
+  }
+  const gsDmgFire = Math.round(_player.level * 100 * GS_SKILL_MULT.fire);
+  for (const gsMob of gsTargets) {
+    showFloat(`🔥-${gsDmgFire}`, '#f97316', gsMob.lat, gsMob.lng);
+    hitCount++;
+  }
+  _gsSkillCallback?.('fire');
+  showFloat(_t('skill_fire_hit', hitCount), '#f97316', anchor.lat, anchor.lng);
+  _skillCd.fire = Date.now() + SKILL_CD_MS.fire;
+  updateSkillBar();
+  setTimeout(() => updateSkillBar(), SKILL_CD_MS.fire);
 }
 
 // ── 스킬 대상 선택 모달 ───────────────────────────────────────────────────────
