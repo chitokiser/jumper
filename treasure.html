@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/png" href="/assets/images/jump/favicon.png" />
   <title>보물찾기 — Find the Hidden Treasure</title>
-  <meta name="description" content="JUMP 가맹점에서 HEX로 결제하고 잭팟·바우처·희귀 아이템을 획득하세요. The adventure is calling. The treasure is real." />
+  <meta name="description" content="NPC 힌트를 따라 숨겨진 보물을 찾고 몬스터를 처치하여 열쇠를 획득하세요. The adventure is calling. The treasure is real." />
   <meta property="og:image" content="https://jump22.netlify.app/assets/images/ui/map.png" />
 
   <!-- TailwindCSS CDN -->
@@ -210,29 +210,28 @@
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-      <!-- Step 1 -->
+      <!-- Step 1: NPC 힌트 -->
       <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-7 text-center backdrop-blur-sm">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
-        <div class="text-5xl mb-5">🗺️</div>
+        <div class="text-5xl mb-5">🧙</div>
         <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step1_label"></div>
         <h3 class="font-bold text-white text-base mb-2" data-i18n="step1_title"></h3>
         <p class="text-amber-200/55 text-sm leading-relaxed" data-i18n="step1_desc"></p>
       </div>
-      <!-- Step 2 -->
+      <!-- Step 2: 반경 5m 접근 후 타격 -->
       <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-7 text-center backdrop-blur-sm" style="transition-delay:.1s">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
-        <!-- Connector arrow (desktop) -->
         <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
-        <div class="text-5xl mb-5">💳</div>
+        <div class="text-5xl mb-5">⚔️</div>
         <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step2_label"></div>
         <h3 class="font-bold text-white text-base mb-2" data-i18n="step2_title"></h3>
         <p class="text-amber-200/55 text-sm leading-relaxed" data-i18n="step2_desc"></p>
       </div>
-      <!-- Step 3 -->
+      <!-- Step 3: 몬스터 처치 → 열쇠 → 보물 개방 -->
       <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-7 text-center backdrop-blur-sm" style="transition-delay:.2s">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
         <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
-        <div class="text-5xl mb-5">🎁</div>
+        <div class="text-5xl mb-5">🗝️</div>
         <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step3_label"></div>
         <h3 class="font-bold text-white text-base mb-2" data-i18n="step3_title"></h3>
         <p class="text-amber-200/55 text-sm leading-relaxed" data-i18n="step3_desc"></p>
@@ -311,10 +310,6 @@
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-3 justify-center">
-        <a href="/mypage.html#wallet" class="btn-gold py-4 px-8 rounded-xl text-sm shadow-xl hover:scale-105 transition-transform" data-i18n="btn_wallet"></a>
-        <a href="/register.html" class="py-4 px-8 rounded-xl font-bold font-cinzel text-yellow-400 text-sm border border-yellow-500/50 bg-yellow-500/5 hover:bg-yellow-500/15 hover:scale-105 transition-all" data-i18n="btn_register"></a>
-      </div>
     </div>
   </section>
 
@@ -332,9 +327,10 @@
       <h2 class="font-fantasy text-gold text-3xl sm:text-4xl md:text-5xl mb-4" data-i18n="cta_title"></h2>
       <p class="text-amber-200/60 text-sm sm:text-base mb-10 max-w-md mx-auto" data-i18n="cta_desc"></p>
 
-      <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-sm mx-auto">
-        <a href="/merchants.html" class="btn-gold py-4 px-10 rounded-xl text-sm shadow-2xl hover:scale-105 transition-transform" data-i18n="btn_explore"></a>
-        <a href="/register.html" class="py-4 px-10 rounded-xl font-bold font-cinzel text-yellow-400 text-sm border border-yellow-500/50 bg-yellow-500/5 hover:bg-yellow-500/15 hover:scale-105 transition-all" data-i18n="btn_register"></a>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-lg mx-auto">
+        <a href="/merchants.html" class="btn-gold py-4 px-8 rounded-xl text-sm shadow-2xl hover:scale-105 transition-transform" data-i18n="btn_explore"></a>
+        <a href="/mypage.html#wallet" class="py-4 px-8 rounded-xl font-bold font-cinzel text-yellow-400 text-sm border border-yellow-500/50 bg-yellow-500/5 hover:bg-yellow-500/15 hover:scale-105 transition-all" data-i18n="btn_wallet"></a>
+        <a href="/register.html" class="py-4 px-8 rounded-xl font-bold font-cinzel text-amber-200/70 text-sm border border-white/15 bg-white/[.03] hover:bg-white/[.07] hover:scale-105 transition-all" data-i18n="btn_register"></a>
       </div>
     </div>
   </section>
@@ -359,7 +355,7 @@
       hero_eyebrow:    { ko: 'FIND THE', en: 'FIND THE', vi: 'TÌM' },
       hero_sub:        { ko: '전설의 모험이 시작된다', en: 'The legendary adventure begins', vi: 'Cuộc phiêu lưu huyền thoại bắt đầu' },
       hero_title:      { ko: 'HIDDEN TREASURE', en: 'HIDDEN TREASURE', vi: 'KHO BÁU ẨN GIẤU' },
-      hero_desc:       { ko: '모험이 당신을 부르고 있습니다. 보물은 진짜입니다.\nJUMP 가맹점에서 결제할 때마다 전설적인 보상이 쏟아집니다.', en: 'The adventure is calling. The treasure is real.\nEvery JUMP merchant payment brings legendary rewards.', vi: 'Cuộc phiêu lưu đang gọi bạn. Kho báu là thật.\nMỗi lần thanh toán tại cửa hàng JUMP, phần thưởng huyền thoại đang chờ.' },
+      hero_desc:       { ko: '모험이 당신을 부르고 있습니다. 보물은 진짜입니다.\nNPC의 단서를 쫓아 숨겨진 보물을 찾아내고 전설적인 보상을 손에 넣으세요.', en: 'The adventure is calling. The treasure is real.\nFollow the NPC clues, hunt down hidden treasure, and claim legendary rewards.', vi: 'Cuộc phiêu lưu đang gọi bạn. Kho báu là thật.\nTheo dấu gợi ý NPC, săn tìm kho báu ẩn và giành phần thưởng huyền thoại.' },
 
       // Stats
       stat1:           { ko: '탐험가 참여', en: 'EXPLORERS JOINED', vi: 'THÁM HIỂM VIÊN' },
@@ -374,21 +370,21 @@
       // How to play
       how_eyebrow:     { ko: 'QUEST GUIDE', en: 'QUEST GUIDE', vi: 'HƯỚNG DẪN' },
       how_title:       { ko: '보물 찾는 법', en: 'How to Find Treasure', vi: 'Cách tìm kho báu' },
-      how_sub:         { ko: '3단계로 전설적인 보상을 손에 넣으세요', en: 'Claim legendary rewards in 3 simple steps', vi: '3 bước để nhận phần thưởng huyền thoại' },
+      how_sub:         { ko: 'NPC의 단서를 쫓아 보물을 손에 넣으세요', en: 'Follow the NPC clues and claim the treasure', vi: 'Theo dấu gợi ý của NPC để chiếm kho báu' },
       step1_label:     { ko: 'STEP 01', en: 'STEP 01', vi: 'BƯỚC 01' },
-      step1_title:     { ko: '가맹점 방문', en: 'Visit a Merchant', vi: 'Ghé cửa hàng đối tác' },
-      step1_desc:      { ko: '지도에 표시된 JUMP 가맹점을 방문하세요. 숨겨진 보물이 기다리고 있습니다.', en: 'Visit any JUMP partner merchant on the map. Hidden treasure awaits you.', vi: 'Ghé thăm cửa hàng đối tác JUMP trên bản đồ. Kho báu ẩn đang chờ bạn.' },
+      step1_title:     { ko: 'NPC 힌트 수집', en: 'Gather NPC Hints', vi: 'Thu thập gợi ý NPC' },
+      step1_desc:      { ko: '지도 곳곳에 숨어 있는 NPC를 찾아 힌트를 얻으세요. 보물의 위치는 오직 NPC만이 알고 있습니다.', en: 'Find hidden NPCs across the map and collect their clues. Only they know where the treasure lies.', vi: 'Tìm các NPC ẩn trên bản đồ và thu thập gợi ý. Chỉ họ mới biết kho báu nằm ở đâu.' },
       step2_label:     { ko: 'STEP 02', en: 'STEP 02', vi: 'BƯỚC 02' },
-      step2_title:     { ko: 'HEX로 결제', en: 'Pay with HEX', vi: 'Thanh toán bằng HEX' },
-      step2_desc:      { ko: 'HEX 토큰으로 결제할 때마다 잭팟 추첨 기회와 포인트가 자동 적립됩니다.', en: 'Every HEX payment earns jackpot chances and accumulates points automatically.', vi: 'Mỗi lần thanh toán HEX là một lần quay xổ số jackpot và tích điểm tự động.' },
+      step2_title:     { ko: '접근 후 타격', en: 'Approach & Strike', vi: 'Tiếp cận & Tấn công' },
+      step2_desc:      { ko: '힌트를 바탕으로 보물 위치에 반경 5m 이내로 접근한 뒤 타격하면 보물을 획득할 수 있습니다.', en: 'Use the hints to locate the treasure, approach within 5 m, then strike to obtain it.', vi: 'Dùng gợi ý để định vị kho báu, tiếp cận trong vòng 5 m rồi tấn công để giành lấy.' },
       step3_label:     { ko: 'STEP 03', en: 'STEP 03', vi: 'BƯỚC 03' },
-      step3_title:     { ko: '보물 수령', en: 'Claim Your Treasure', vi: 'Nhận kho báu' },
-      step3_desc:      { ko: '잭팟, 바우처, 희귀 아이템을 내 지갑에서 확인하고 즉시 사용하세요.', en: 'Check jackpots, vouchers, and rare items in your wallet and use them instantly.', vi: 'Kiểm tra jackpot, voucher và vật phẩm hiếm trong ví rồi sử dụng ngay.' },
+      step3_title:     { ko: '열쇠로 보물 개방', en: 'Unlock with the Key', vi: 'Mở kho báu bằng chìa khóa' },
+      step3_desc:      { ko: '보물을 열려면 열쇠가 필요합니다. 주변 몬스터를 처치하면 열쇠를 드롭합니다. 열쇠를 획득한 뒤 보물상자를 여세요!', en: 'You need a key to open the treasure. Defeat nearby monsters to drop a key, then unlock the chest!', vi: 'Bạn cần chìa khóa để mở kho báu. Tiêu diệt quái vật xung quanh để nhận chìa khóa rồi mở rương!' },
 
       // Rewards
       rewards_eyebrow: { ko: 'LEGENDARY LOOT', en: 'LEGENDARY LOOT', vi: 'CHIẾN LỢI PHẨM' },
       rewards_title:   { ko: '전설적 보상', en: 'Legendary Rewards', vi: 'Phần thưởng huyền thoại' },
-      rewards_sub:     { ko: '결제할 때마다 이 보물들을 획득할 기회가 생깁니다', en: 'Every payment is a chance to win these treasures', vi: 'Mỗi lần thanh toán là cơ hội nhận những phần thưởng này' },
+      rewards_sub:     { ko: '전설의 모험가만이 이 보물들을 손에 넣을 수 있습니다', en: 'Only legendary adventurers can claim these treasures', vi: 'Chỉ những nhà thám hiểm huyền thoại mới có thể giành được những phần thưởng này' },
       badge_rare:      { ko: 'RARE', en: 'RARE', vi: 'HIẾM' },
       badge_jackpot:   { ko: 'JACKPOT', en: 'JACKPOT', vi: 'JACKPOT' },
       reward1_name:    { ko: 'VIP 바우처', en: 'VIP Vouchers', vi: 'Voucher VIP' },
