@@ -1,6 +1,7 @@
 // /assets/js/pages/mypage.js
 // MyPage: profile / wallet / on-chain status / deposit & payment history
 
+import { _t, initLang, renderLangSwitcher } from './mypage.i18n.js';
 import { onAuthReady } from "../auth.js";
 import { db, functions, auth } from "/assets/js/firebase-init.js";
 import { login } from "../auth.js";
@@ -71,7 +72,7 @@ async function loadOnChainData(uid) {
   const addr = (await getDoc(doc(db, "users", uid))).data()?.wallet?.address;
   if (!addr) return;
 
-  setText("onChainStatus", "\uC870\uD68C \uC911...");
+  setText("onChainStatus", _t('status_loading'));
 
   try {
     const getMyOnChain = httpsCallable(functions, "getMyOnChain");
@@ -79,7 +80,7 @@ async function loadOnChainData(uid) {
     const d = res.data;
 
     if (d.level > 0) {
-      setText("onChainStatus", "\uB4F1\uB85D \uC644\uB8CC \u2713");
+      setText("onChainStatus", _t('status_registered'));
       $("onChainStatus").style.color = "var(--accent)";
 
       show("levelRow", true);
@@ -113,8 +114,8 @@ async function loadOnChainData(uid) {
       if (expReqEl) {
         const remain = Math.max(0, d.requiredExp - d.exp);
         expReqEl.textContent = remain > 0
-          ? `\uB2E4\uC74C \uB808\uBCA8\uAE4C\uC9C0 ${remain.toLocaleString()} EXP \uD544\uC694`
-          : "\uB808\uBCA8\uC5C5 \uAC00\uB2A5";
+          ? _t('exp_remain', remain.toLocaleString())
+          : _t('exp_can_levelup');
       }
 
       show("levelUpRow", d.exp >= d.requiredExp);
@@ -123,7 +124,7 @@ async function loadOnChainData(uid) {
       const isZeroMentor = !d.mentor || d.mentor === ZERO_ADDR;
       show("mentorAddrRow", true);
 
-      let mentorText = "\uBBF8\uC5F0\uACB0 (\uAE30\uBCF8 \uBA58\uD1A0)";
+      let mentorText = _t('mentor_not_linked');
       if (!isZeroMentor) {
         try {
           const mentorSnap = await getDocs(
@@ -171,7 +172,7 @@ async function loadOnChainData(uid) {
 
       show("onChainRegBox", false);
     } else {
-      setText("onChainStatus", "\uBBF8\uB4F1\uB85D");
+      setText("onChainStatus", _t('status_not_registered'));
       $("onChainStatus").style.color = "var(--muted)";
       show("onChainRegBox", true);
       // 기존 멘토 주소 자동 입력 (이전 컨트랙트에서 가져옴)
@@ -192,12 +193,12 @@ async function loadOnChainData(uid) {
         $("onChainStatus").style.color = "var(--accent)";
         show("onChainRegBox", false);
       } else {
-        setText("onChainStatus", "\uBBF8\uB4F1\uB85D");
+        setText("onChainStatus", _t('status_not_registered'));
         $("onChainStatus").style.color = "var(--muted)";
         show("onChainRegBox", true);
       }
     } catch {
-      setText("onChainStatus", "\uC870\uD68C \uC2E4\uD328");
+      setText("onChainStatus", _t('status_error'));
       $("onChainStatus").style.color = "var(--muted)";
     }
   }
@@ -217,15 +218,15 @@ async function loadDepositHistory(uid) {
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      wrap.innerHTML = '<p class="hint">\uCDA9\uC804 \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
+      wrap.innerHTML = `<p class="hint">${_t('deposit_empty')}</p>`;
       return;
     }
 
     const statusLabel = {
-      pending:    { text: "대기중",  color: "#f59e0b" },
-      processing: { text: "처리중",  color: "#3b82f6" },
-      approved:   { text: "완료 ✓", color: "#10b981" },
-      rejected:   { text: "반려",    color: "#ef4444" },
+      pending:    { text: _t('status_pending'),  color: "#f59e0b" },
+      processing: { text: _t('status_processing'),  color: "#3b82f6" },
+      approved:   { text: _t('status_approved'), color: "#10b981" },
+      rejected:   { text: _t('status_rejected'),  color: "#ef4444" },
     };
 
     const rows = snap.docs.map((d) => {
@@ -235,7 +236,7 @@ async function loadDepositHistory(uid) {
         : "-";
 
       const amountParts = [];
-      if (data.amountKrw) amountParts.push((data.amountKrw || 0).toLocaleString() + "원");
+      if (data.amountKrw) amountParts.push((data.amountKrw || 0).toLocaleString() + _t('krw_unit'));
       if (data.vndAmount) amountParts.push(Number(data.vndAmount).toLocaleString() + " VND");
       if (!amountParts.length) amountParts.push("-");
       const amountStr = amountParts.join(" / ");
@@ -254,14 +255,14 @@ async function loadDepositHistory(uid) {
             <span style="font-size:0.78em; color:var(--muted);">${dateStr}</span>
           </div>
           ${data.txHash ? `<div style="font-size:0.72em; color:var(--muted); margin-top:2px;" class="mono">TX: ${data.txHash.slice(0, 20)}...</div>` : ""}
-          ${data.status === "rejected" && data.rejectReason ? `<div style="font-size:0.8em; color:#ef4444; margin-top:4px;">사유: ${data.rejectReason}</div>` : ""}
+          ${data.status === "rejected" && data.rejectReason ? `<div style="font-size:0.8em; color:#ef4444; margin-top:4px;">${_t('reject_reason')} ${data.rejectReason}</div>` : ""}
         </div>
       `;
     }).join("");
 
     wrap.innerHTML = rows;
   } catch (err) {
-    wrap.innerHTML = '<p class="hint muted">\uCDA9\uC804 \uB0B4\uC5ED \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.</p>';
+    wrap.innerHTML = `<p class="hint muted">${_t('deposit_hist_error')}</p>`;
     console.warn("depositHistory failed", err.message);
   }
 }
@@ -279,7 +280,7 @@ async function loadMentees() {
     show("menteeSection", true);
 
     if (!mentees || mentees.length === 0) {
-      wrap.innerHTML = '<p class="hint">\uB4F1\uB85D\uB41C \uBA58\uD2F0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</p>';
+      wrap.innerHTML = `<p class="hint">${_t('mentee_empty')}</p>`;
       return;
     }
 
@@ -293,28 +294,28 @@ async function loadMentees() {
             <span class="mono muted" style="font-size:0.82em;">${addrShort}</span>
           </div>
           <div class="mp-hist-detail">
-            <span class="muted" style="font-size:0.85em;">\uAC00\uC785\uC77C: ${dateStr}</span>
+            <span class="muted" style="font-size:0.85em;">${_t('mentee_join_date')} ${dateStr}</span>
           </div>
         </div>
       `;
     }).join("");
 
-    wrap.innerHTML = `<p class="hint muted" style="margin-bottom:8px;">\uCD1D ${mentees.length}\uBA85</p>` + rows;
+    wrap.innerHTML = `<p class="hint muted" style="margin-bottom:8px;">${_t('mentee_count', mentees.length)}</p>` + rows;
   } catch (err) {
     show("menteeSection", true);
-    wrap.innerHTML = '<p class="hint muted">\uBA58\uD2F0 \uBAA9\uB85D \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.</p>';
+    wrap.innerHTML = `<p class="hint muted">${_t('mentee_error')}</p>`;
     console.warn("getMyMentees failed", err.message);
   }
 }
 
 const TX_CONFIG = {
-  buy:             { label: "충전",          dir: "income",  icon: "💰" },
-  credit:          { label: "포인트 지급",   dir: "income",  icon: "⭐" },
-  p2p:             { label: "P2P 수령",      dir: "income",  icon: "📥" },
-  p2p_merge:       { label: "P2P 합산",      dir: "income",  icon: "📥" },
-  withdraw:        { label: "인출",          dir: "expense", icon: "📤" },
-  pay_merchant:    { label: "가맹점 결제",   dir: "expense", icon: "🛒" },
-  merchant_income: { label: "가맹점 수익",   dir: "income",  icon: "🏪" },
+  buy:             { labelKey: 'tx_buy',            dir: "income",  icon: "💰" },
+  credit:          { labelKey: 'tx_credit',          dir: "income",  icon: "⭐" },
+  p2p:             { labelKey: 'tx_p2p',             dir: "income",  icon: "📥" },
+  p2p_merge:       { labelKey: 'tx_p2p_merge',       dir: "income",  icon: "📥" },
+  withdraw:        { labelKey: 'tx_withdraw',        dir: "expense", icon: "📤" },
+  pay_merchant:    { labelKey: 'tx_pay_merchant',    dir: "expense", icon: "🛒" },
+  merchant_income: { labelKey: 'tx_merchant_income', dir: "income",  icon: "🏪" },
 };
 
 function txAmountHex(tx) {
@@ -387,7 +388,7 @@ async function loadMenteeIncome(_uid) {
   const listEl   = $("menteeIncomeList");
   if (!listEl) return;
 
-  listEl.innerHTML = '<p class="hint">불러오는 중...</p>';
+  listEl.innerHTML = `<p class="hint">${_t('mi_loading')}</p>`;
   if (summaryEl) summaryEl.innerHTML = "";
 
   try {
@@ -397,7 +398,7 @@ async function loadMenteeIncome(_uid) {
     const { mentees, myAddress } = res.data;
 
     if (!mentees || mentees.length === 0) {
-      listEl.innerHTML = '<div class="mi-empty">등록된 멘티가 없습니다.</div>';
+      listEl.innerHTML = `<div class="mi-empty">${_t('mi_empty')}</div>`;
       if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
       return;
     }
@@ -419,22 +420,22 @@ async function loadMenteeIncome(_uid) {
     if (summaryEl) {
       summaryEl.innerHTML = `
         <div class="mi-summary-card">
-          <div class="mi-summary-label">멘티 수</div>
-          <div class="mi-summary-val">${totalMentees}명</div>
+          <div class="mi-summary-label">${_t('mi_mentee_count')}</div>
+          <div class="mi-summary-val">${totalMentees}${_t('mi_mentees_label')}</div>
         </div>
         <div class="mi-summary-card">
-          <div class="mi-summary-label">총 결제 건수</div>
-          <div class="mi-summary-val">${totalTxCount}건</div>
+          <div class="mi-summary-label">${_t('mi_tx_count')}</div>
+          <div class="mi-summary-val">${totalTxCount}${_t('mi_payments_label')}</div>
         </div>
         <div class="mi-summary-card" style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border-color:#d8b4fe;">
-          <div class="mi-summary-label">누적 수익 (추정)</div>
+          <div class="mi-summary-label">${_t('mi_total_earning')}</div>
           <div class="mi-summary-val" style="color:#7c3aed;">${totalEarning.toFixed(4)} HEX</div>
-          <div class="mi-summary-sub">fee × 30% 합산</div>
+          <div class="mi-summary-sub">${_t('mi_fee_note')}</div>
         </div>
         <div class="mi-summary-card" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#93c5fd;">
-          <div class="mi-summary-label">현재 포인트 잔액</div>
+          <div class="mi-summary-label">${_t('mi_points_balance')}</div>
           <div class="mi-summary-val" style="color:#1d4ed8;">${myPointsHex.toFixed(6)} HEX</div>
-          <div class="mi-summary-sub">온체인 실시간</div>
+          <div class="mi-summary-sub">${_t('mi_onchain_realtime')}</div>
         </div>
       `;
     }
@@ -459,9 +460,9 @@ async function loadMenteeIncome(_uid) {
         return `
           <div class="mi-tx-row">
             <span>${dateStr}</span>
-            <span class="mi-tx-amt">결제 ${(t.amountHex || 0).toFixed(4)} HEX → 내 수익 ${earning > 0 ? earning.toFixed(6) : "?"} HEX</span>
+            <span class="mi-tx-amt">${_t('mi_tx_row', (t.amountHex||0).toFixed(4), earning>0?earning.toFixed(6):"?")}</span>
           </div>`;
-      }).join("") || '<div class="mi-tx-row"><span>결제 내역 없음</span></div>';
+      }).join("") || `<div class="mi-tx-row"><span>${_t('mi_tx_no_data')}</span></div>`;
 
       const card = document.createElement("div");
       card.className = "mi-mentee-card";
@@ -469,30 +470,30 @@ async function loadMenteeIncome(_uid) {
         <div class="mi-mentee-head">
           <div>
             <div class="mi-mentee-name">${m.name}</div>
-            <div class="mi-mentee-addr">${addrShort} · 가입 ${regDate}</div>
+            <div class="mi-mentee-addr">${addrShort} · ${_t('mi_join_short', regDate)}</div>
           </div>
           <div class="mi-mentee-total">
             <div class="mi-mentee-total-val">${m.myEstimatedEarningHex > 0 ? m.myEstimatedEarningHex.toFixed(6) + " HEX" : "-"}</div>
-            <div class="mi-mentee-total-label">누적 수익 (추정)</div>
+            <div class="mi-mentee-total-label">${_t('mi_cumulative_earn')}</div>
           </div>
         </div>
         <div class="mi-stat-row">
           <div class="mi-stat">
-            <div class="mi-stat-val">${m.txCount}건</div>
-            <div class="mi-stat-label">결제 횟수</div>
+            <div class="mi-stat-val">${m.txCount}${_t('mi_payments_label')}</div>
+            <div class="mi-stat-label">${_t('mi_stat_tx_count')}</div>
           </div>
           <div class="mi-stat">
             <div class="mi-stat-val">${(m.totalAmountHex || 0).toFixed(4)}</div>
-            <div class="mi-stat-label">총 결제액 HEX</div>
+            <div class="mi-stat-label">${_t('mi_stat_total_hex')}</div>
           </div>
           <div class="mi-stat">
             <div class="mi-stat-val">${m.myEstimatedEarningHex > 0 ? m.myEstimatedEarningHex.toFixed(6) : "-"}</div>
-            <div class="mi-stat-label">내 멘토 수익</div>
+            <div class="mi-stat-label">${_t('mi_stat_mentor_earn')}</div>
           </div>
         </div>
         ${m.recentTxs.length > 0 ? `
           <div style="margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;">
-            <div style="font-size:0.72rem;color:#94a3b8;font-weight:700;margin-bottom:4px;">최근 결제 내역</div>
+            <div style="font-size:0.72rem;color:#94a3b8;font-weight:700;margin-bottom:4px;">${_t('mi_recent_tx')}</div>
             ${recentRows}
           </div>
         ` : ""}
@@ -505,7 +506,7 @@ async function loadMenteeIncome(_uid) {
     if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
 
   } catch (err) {
-    listEl.innerHTML = `<div class="mi-empty">오류: ${err.message}</div>`;
+    listEl.innerHTML = `<div class="mi-empty">${_t('mi_error', err.message)}</div>`;
     if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
     console.warn("loadMenteeIncome failed:", err);
   }
@@ -516,7 +517,7 @@ async function loadJackpotHistory(uid) {
   const section = $("jackpotHistSection");
   if (!wrap) return;
 
-  wrap.innerHTML = '<p class="hint">불러오는 중...</p>';
+  wrap.innerHTML = `<p class="hint">${_t('jackpot_loading')}</p>`;
 
   try {
     const q = query(
@@ -528,7 +529,7 @@ async function loadJackpotHistory(uid) {
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      wrap.innerHTML = '<div class="jp-hist-empty">아직 잭팟 당첨 내역이 없습니다.</div>';
+      wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_empty')}</div>`;
       if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
       const statRow = $("jackpotStatRow");
       if (statRow) statRow.style.display = "none";
@@ -550,7 +551,7 @@ async function loadJackpotHistory(uid) {
 
     if (statRow) statRow.style.display = "";
     if (totalHexEl) totalHexEl.textContent = totalHex + " HEX";
-    if (totalCountEl) totalCountEl.textContent = "총 " + totalCount + "회 당첨";
+    if (totalCountEl) totalCountEl.textContent = _t('jackpot_total_count', totalCount);
     if (redeemableEl) {
       redeemableEl.textContent = _pointHexAmount.toFixed(4) + " HEX";
       redeemableEl.style.color = _pointHexAmount >= 10 ? "#a78bfa" : "var(--muted)";
@@ -563,25 +564,25 @@ async function loadJackpotHistory(uid) {
       const dateStr = ts ? ts.toLocaleString("ko-KR") : "-";
 
       const items = [];
-      if ((v.potionCount    || 0) > 0) items.push(`빨간약 +${v.potionCount}`);
-      if ((v.mpPotionCount  || 0) > 0) items.push(`마법약 +${v.mpPotionCount}`);
-      if ((v.reviveAdded    || 0) > 0) items.push(`부활권 +${v.reviveAdded}`);
+      if ((v.potionCount    || 0) > 0) items.push(`${_t('item_potion')} +${v.potionCount}`);
+      if ((v.mpPotionCount  || 0) > 0) items.push(`${_t('item_mp_potion')} +${v.mpPotionCount}`);
+      if ((v.reviveAdded    || 0) > 0) items.push(`${_t('item_revive')} +${v.reviveAdded}`);
 
       const onchainPtsWei = BigInt(v.onchainJackpotPointsWei || '0');
       let ptsLine = '';
       if (onchainPtsWei > 0n) {
         const ptsHex = (Number(onchainPtsWei) / 1e18).toFixed(6);
-        ptsLine = `<span class="jp-onchain-badge">온체인</span> ${ptsHex} HEX 포인트`;
+        ptsLine = `<span class="jp-onchain-badge">${_t('jp_onchain_badge')}</span> ${ptsHex} HEX ${_t('jp_pts_label')}`;
       }
 
-      const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || '아이템 보상';
+      const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || _t('jackpot_item_reward');
 
       const el = document.createElement('div');
       el.className = 'jp-hist-item';
       el.innerHTML = `
         <div class="jp-hist-icon">🎰</div>
         <div class="jp-hist-body">
-          <div class="jp-hist-title">잭팟 당첨 · ${v.merchantName || '가맹점'}</div>
+          <div class="jp-hist-title">${_t('jackpot_hist_title', v.merchantName || _t('jackpot_merchant_default'))}</div>
           <div class="jp-hist-sub">${subText}</div>
           <div class="jp-hist-date">${dateStr}</div>
         </div>
@@ -602,7 +603,7 @@ async function loadJackpotHistory(uid) {
         );
         const snap2 = await getDocs(q2);
         if (snap2.empty) {
-          wrap.innerHTML = '<div class="jp-hist-empty">아직 잭팟 당첨 내역이 없습니다.<br><small style="color:#c4b5fd;">인덱스 빌드 중 (1~5분 소요)</small></div>';
+          wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_empty')}<br><small style="color:#c4b5fd;">${_t('jackpot_building')}</small></div>`;
         } else {
           const docs = snap2.docs.slice().sort((a, b) => {
             const ta = a.data().createdAt?.seconds || 0;
@@ -617,22 +618,22 @@ async function loadJackpotHistory(uid) {
             const ts = v.createdAt?.toDate ? v.createdAt.toDate() : null;
             const dateStr = ts ? ts.toLocaleString("ko-KR") : "-";
             const items = [];
-            if ((v.potionCount   || 0) > 0) items.push(`빨간약 +${v.potionCount}`);
-            if ((v.mpPotionCount || 0) > 0) items.push(`마법약 +${v.mpPotionCount}`);
-            if ((v.reviveAdded   || 0) > 0) items.push(`부활권 +${v.reviveAdded}`);
+            if ((v.potionCount   || 0) > 0) items.push(`${_t('item_potion')} +${v.potionCount}`);
+            if ((v.mpPotionCount || 0) > 0) items.push(`${_t('item_mp_potion')} +${v.mpPotionCount}`);
+            if ((v.reviveAdded   || 0) > 0) items.push(`${_t('item_revive')} +${v.reviveAdded}`);
             const onchainPtsWei = BigInt(v.onchainJackpotPointsWei || '0');
             let ptsLine = '';
             if (onchainPtsWei > 0n) {
               const ptsHex = (Number(onchainPtsWei) / 1e18).toFixed(6);
-              ptsLine = `<span class="jp-onchain-badge">온체인</span> ${ptsHex} HEX 포인트`;
+              ptsLine = `<span class="jp-onchain-badge">${_t('jp_onchain_badge')}</span> ${ptsHex} HEX ${_t('jp_pts_label')}`;
             }
-            const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || '아이템 보상';
+            const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || _t('jackpot_item_reward');
             const el = document.createElement('div');
             el.className = 'jp-hist-item';
             el.innerHTML = `
               <div class="jp-hist-icon">🎰</div>
               <div class="jp-hist-body">
-                <div class="jp-hist-title">잭팟 당첨 · ${v.merchantName || '가맹점'}</div>
+                <div class="jp-hist-title">${_t('jackpot_hist_title', v.merchantName || _t('jackpot_merchant_default'))}</div>
                 <div class="jp-hist-sub">${subText}</div>
                 <div class="jp-hist-date">${dateStr}</div>
               </div>
@@ -651,7 +652,7 @@ async function loadJackpotHistory(uid) {
           const redeemableEl2 = $("jackpotRedeemable");
           if (statRow2) statRow2.style.display = "";
           if (totalHexEl2) totalHexEl2.textContent = (Number(totalWei2) / 1e18).toFixed(4) + " HEX";
-          if (totalCountEl2) totalCountEl2.textContent = "총 " + docs.length + "회 당첨";
+          if (totalCountEl2) totalCountEl2.textContent = _t('jackpot_total_count', docs.length);
           if (redeemableEl2) {
             redeemableEl2.textContent = _pointHexAmount.toFixed(4) + " HEX";
             redeemableEl2.style.color = _pointHexAmount >= 10 ? "#a78bfa" : "var(--muted)";
@@ -659,11 +660,11 @@ async function loadJackpotHistory(uid) {
         }
         if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
       } catch (e2) {
-        wrap.innerHTML = `<div class="jp-hist-empty">인덱스 빌드 중입니다. 잠시 후 새로고침 해주세요.</div>`;
+        wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_retry_msg')}</div>`;
         if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
       }
     } else {
-      wrap.innerHTML = `<div class="jp-hist-empty">오류: ${err.message}</div>`;
+      wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_err', err.message)}</div>`;
       if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
     }
   }
@@ -687,12 +688,12 @@ async function loadTxHistory(uid, _walletAddress) {
     const snap = await getDocs(q);
     snap.forEach((d) => {
       const tx = d.data();
-      const cfg = TX_CONFIG[tx.type] || { label: tx.type, dir: "expense", icon: "📋" };
+      const cfg = TX_CONFIG[tx.type] || { labelKey: null, label: tx.type, dir: "expense", icon: "📋" };
 
       // merchant_income: 가맹점명 + 수수료 정보를 label에 포함
-      let label = cfg.label;
+      let label = cfg.labelKey ? _t(cfg.labelKey) : cfg.label;
       if (tx.type === "merchant_income" && tx.merchantName) {
-        const feePct = tx.feeBps != null ? ` (수수료 ${(tx.feeBps / 100).toFixed(0)}%)` : "";
+        const feePct = tx.feeBps != null ? ` (${_t('fee_pct', (tx.feeBps / 100).toFixed(0))})` : "";
         label = `🏪 ${tx.merchantName}${feePct}`;
       }
       if (tx.type === "pay_merchant" && tx.merchantName) {
@@ -739,8 +740,8 @@ async function loadTxHistory(uid, _walletAddress) {
     const el = (id) => document.getElementById(id);
     if (el("txTotalIncome")) el("txTotalIncome").textContent = "+" + fmtSum(totalIncome);
     if (el("txTotalExpense")) el("txTotalExpense").textContent = "−" + fmtSum(totalExpense);
-    if (el("txTotalIncomeCount")) el("txTotalIncomeCount").textContent = incomeCount + "건";
-    if (el("txTotalExpenseCount")) el("txTotalExpenseCount").textContent = expenseCount + "건";
+    if (el("txTotalIncomeCount")) el("txTotalIncomeCount").textContent = incomeCount + _t('mi_payments_label');
+    if (el("txTotalExpenseCount")) el("txTotalExpenseCount").textContent = expenseCount + _t('mi_payments_label');
   }
 
   wrap.innerHTML = unified.map(renderTxItem).join("");
@@ -771,12 +772,12 @@ function bindCreateWallet() {
     try {
       const createWalletFn = httpsCallable(functions, "createWallet");
       const res = await createWalletFn({ mentorAddress });
-      setText("walletAddress", res.data?.address || "\uC0DD\uC131\uB428");
+      setText("walletAddress", res.data?.address || "…");
       show("noWallet", false);
       show("walletInfo", true);
       show("metamaskWarning", false);
       btn.style.display = "none";
-      alert("\uC218\uD0C1 \uC9C0\uAC11\uC774 \uC0DD\uC131\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+      alert(_t('alert_wallet_created'));
     } catch (err) {
       alert("\uC9C0\uAC11 \uC0DD\uC131 \uC2E4\uD328: " + err.message);
       btn.disabled = false;
@@ -797,12 +798,12 @@ function bindConnectMetaMask(uid) {
       const deepLink = "https://metamask.app.link/dapp/" +
         location.host + location.pathname + location.search;
       btn.style.display = "";
-      btn.textContent = "MetaMask 앱으로 열기";
+      btn.textContent = _t('mm_open_app');
       btn.onclick = () => { location.href = deepLink; };
     } else {
       // 데스크톱: MetaMask 미설치
       btn.style.display = "";
-      btn.textContent = "MetaMask 설치 필요";
+      btn.textContent = _t('mm_install');
       btn.onclick = () => {
         window.open("https://metamask.io/download/", "_blank");
       };
@@ -814,7 +815,7 @@ function bindConnectMetaMask(uid) {
   btn.style.display = "";
   btn.onclick = async () => {
     btn.disabled = true;
-    btn.textContent = "연결 중...";
+    btn.textContent = _t('mm_connecting');
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       const address = accounts[0];
@@ -834,12 +835,12 @@ function bindConnectMetaMask(uid) {
       loadOnChainData(uid);
     } catch (err) {
       if (err.code === 4001) {
-        alert("서명이 취소되었습니다.");
+        alert(_t('mm_cancel'));
       } else {
-        alert("MetaMask 연결 실패: " + err.message);
+        alert(_t('mm_error', err.message));
       }
       btn.disabled = false;
-      btn.textContent = "MetaMask 연결";
+      btn.textContent = _t('btn_metamask');
     }
   };
 }
@@ -850,17 +851,17 @@ function bindLevelUp(uid) {
   btn._bound = true;
 
   btn.onclick = async () => {
-    if (!confirm("\uB808\uBCA8\uC5C5\uC744 \uC9C4\uD589\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?\n\uC870\uAC74 \uCDA9\uC871 \uC2DC \uB808\uBCA8\uC774 \uC0C1\uC2B9\uD569\uB2C8\uB2E4.")) return;
+    if (!confirm(_t('alert_levelup_confirm'))) return;
 
     btn.disabled = true;
     btn.textContent = "\uCC98\uB9AC \uC911...";
     try {
       const fn = httpsCallable(functions, "requestLevelUp");
       const res = await fn();
-      alert(`\uB808\uBCA8\uC5C5 \uC644\uB8CC! Lv.${res.data.newLevel}`);
+      alert(_t('alert_levelup_done', res.data.newLevel));
       await loadOnChainData(uid);
     } catch (err) {
-      alert("\uB808\uBCA8\uC5C5 \uC2E4\uD328: " + err.message);
+      alert(_t('alert_levelup_error', err.message));
       btn.disabled = false;
       btn.textContent = "Level Up";
     }
@@ -878,15 +879,15 @@ function bindRedeemPoints(uid) {
     if (_pointHexAmount < 10) {
       if (resultBox) {
         resultBox.style.display = "";
-        resultBox.innerHTML = `<p style="margin:0;font-size:0.85rem;color:var(--muted);">포인트가 부족합니다. <b style="color:var(--text);">10 HEX 이상</b> 적립 후 전환할 수 있습니다.<br><span style="font-size:0.78rem;">현재: ${_pointHexAmount.toFixed(4)} HEX</span></p>`;
+        resultBox.innerHTML = `<p style="margin:0;font-size:0.85rem;color:var(--muted);">${_t('redeem_not_enough', _pointHexAmount.toFixed(4))}</p>`;
       }
       return;
     }
 
-    if (!confirm("포인트를 HEX로 전환하시겠습니까?")) return;
+    if (!confirm(_t('redeem_confirm'))) return;
 
     btn.disabled = true;
-    btn.textContent = "전환 중...";
+    btn.textContent = _t('redeem_loading');
     if (resultBox) resultBox.style.display = "none";
 
     try {
@@ -896,17 +897,17 @@ function bindRedeemPoints(uid) {
       if (resultBox) {
         resultBox.style.display = "";
         resultBox.innerHTML = `
-          <div class="mp-kv"><span class="k">전환 금액</span><span class="v accent">${d.amountHex} HEX</span></div>
-          <div class="mp-kv"><span class="k">트랜잭션</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
-          <p class="hint" style="color:var(--accent);margin-top:6px;">HEX 전환이 완료되었습니다.</p>
+          <div class="mp-kv"><span class="k">${_t('redeem_result_amount')}</span><span class="v accent">${d.amountHex} HEX</span></div>
+          <div class="mp-kv"><span class="k">${_t('pay_result_tx')}</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
+          <p class="hint" style="color:var(--accent);margin-top:6px;">${_t('redeem_done')}</p>
         `;
       }
       loadOnChainData(uid);
     } catch (err) {
-      alert("전환 실패: " + err.message);
+      alert(_t('redeem_error', err.message));
     } finally {
       btn.disabled = false;
-      btn.textContent = "HEX로 전환";
+      btn.textContent = _t('redeem_btn');
     }
   };
 }
@@ -928,7 +929,7 @@ function bindOnChainRegister(uid) {
       const registerMember = httpsCallable(functions, "registerMember");
       await registerMember({ mentorAddress });
       show("onChainRegBox", false);
-      setText("onChainStatus", "\uB4F1\uB85D \uC644\uB8CC \u2713");
+      setText("onChainStatus", _t('status_registered'));
       $("onChainStatus").style.color = "var(--accent)";
       await loadOnChainData(uid);
     } catch (err) {
@@ -950,16 +951,16 @@ function bindDepositForm() {
     const btn = $("btnDeposit");
 
     if (!amountKrw || amountKrw < 10000) {
-      alert("\uC785\uAE08 \uAE08\uC561\uC740 10,000\uC6D0 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.");
+      alert(_t('deposit_min_error'));
       return;
     }
     if (!depositorName) {
-      alert("\uC785\uAE08\uC790\uBA85\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694.");
+      alert(_t('deposit_name_error'));
       return;
     }
 
     btn.disabled = true;
-    btn.textContent = "\uC694\uCCAD \uC911...";
+    btn.textContent = _t('deposit_loading');
 
     try {
       const requestDeposit = httpsCallable(functions, "requestDeposit");
@@ -986,10 +987,10 @@ function bindDepositForm() {
       const histEl = $("depositHistory");
       if (histEl) histEl.closest("section")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
-      alert("\uCDA9\uC804 \uC694\uCCAD \uC2E4\uD328: " + err.message);
+      alert(_t('deposit_error_alert', err.message));
     } finally {
       btn.disabled = false;
-      btn.textContent = "\uC785\uAE08 \uC694\uCCAD";
+      btn.textContent = _t('deposit_btn_after');
     }
   });
 }
@@ -1002,12 +1003,12 @@ function bindMentorRequest(uid) {
   btn.onclick = async () => {
     const email = String($("mentorReqEmail")?.value || "").trim().toLowerCase();
     if (!email) {
-      alert("\uBA58\uD1A0 \uC774\uBA54\uC77C\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694.");
+      alert(_t('mentor_email_error'));
       return;
     }
 
     btn.disabled = true;
-    btn.textContent = "\uC694\uCCAD \uC911...";
+    btn.textContent = _t('alert_requesting');
     try {
       await setDoc(doc(db, "mentorRequests", uid), {
         uid,
@@ -1020,9 +1021,9 @@ function bindMentorRequest(uid) {
       const emailEl = $("mentorReqEmail");
       if (emailEl) emailEl.disabled = true;
     } catch (err) {
-      alert("\uBA58\uD1A0 \uC694\uCCAD \uC2E4\uD328: " + err.message);
+      alert(_t('mentor_req_error', err.message));
       btn.disabled = false;
-      btn.textContent = "\uBA58\uD1A0 \uC694\uCCAD";
+      btn.textContent = _t('mentor_req_btn_label');
     }
   };
 }
@@ -1043,28 +1044,28 @@ async function loadMerchantsForSelect() {
     });
 
     if (!list.length) {
-      sel.innerHTML = '<option value="">\uACB0\uC81C \uAC00\uB2A5\uD55C \uAC00\uB9F9\uC810\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</option>';
+      sel.innerHTML = `<option value="">${_t('merchant_empty_list')}</option>`;
       return;
     }
 
     sel.innerHTML =
-      '<option value="">\uAC00\uB9F9\uC810\uC744 \uC120\uD0DD\uD558\uC138\uC694</option>' +
+`<option value="">${_t('merchant_select_placeholder')}</option>` +
       list.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
   } catch (err) {
-    sel.innerHTML = '<option value="">\uAC00\uB9F9\uC810 \uBAA9\uB85D \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4</option>';
+    sel.innerHTML = `<option value="">${_t('merchant_load_error')}</option>`;
     console.warn("loadMerchantsForSelect:", err.message);
   }
 }
 
 function buildMypageDropHtml(d) {
   const items = [];
-  if (d.potionsAdded   > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:24px;height:24px;vertical-align:middle;"> 빨간약 <b>+${d.potionsAdded}</b>`);
-  if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png" style="width:24px;height:24px;vertical-align:middle;"> 마법약 <b>+${d.mpPotionsAdded}</b>`);
-  if (d.reviveAdded    > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:24px;height:24px;vertical-align:middle;"> 부활권 <b>+${d.reviveAdded}</b>`);
+  if (d.potionsAdded   > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b>`);
+  if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_mp_potion')} <b>+${d.mpPotionsAdded}</b>`);
+  if (d.reviveAdded    > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_revive')} <b>+${d.reviveAdded}</b>`);
   if (!items.length) return '';
   return `
     <div class="drop-box">
-      <div class="drop-box-title">🎁 득템!</div>
+      <div class="drop-box-title">${_t('item_drop_title')}</div>
       ${items.map(i=>`<div class="drop-item">${i}</div>`).join('')}
     </div>`;
 }
@@ -1087,27 +1088,27 @@ function showJackpotResult(d) {
   if (d.isJackpot) {
     if (emojiEl) emojiEl.textContent = "🎉";
     if (titleEl) titleEl.textContent = "JACKPOT!! 🎰";
-    if (descEl)  descEl.textContent  = "잭팟 당첨! 아이템을 획득했습니다.";
+    if (descEl)  descEl.textContent  = _t('jm_jackpot_desc');
   } else if (hasOnchainJackpot) {
     if (emojiEl) emojiEl.textContent = "🪙";
-    if (titleEl) { titleEl.textContent = "잭팟 포인트 당첨!"; titleEl.style.color = "#fde68a"; }
+    if (titleEl) { titleEl.textContent = _t('jm_onchain_title'); titleEl.style.color = "#fde68a"; }
     const ptsHex = (Number(jackpotPtsWei) / 1e18).toFixed(6);
-    if (descEl)  descEl.textContent  = `온체인 복권 당첨! ${ptsHex} HEX 포인트 적립`;
+    if (descEl)  descEl.textContent  = _t('jm_onchain_desc', ptsHex);
   } else {
     if (emojiEl) emojiEl.textContent = "🎁";
-    if (titleEl) { titleEl.textContent = "아이템 획득!"; titleEl.style.color = "#fef08a"; }
-    if (descEl)  descEl.textContent  = "결제 보상으로 아이템을 받았습니다.";
+    if (titleEl) { titleEl.textContent = _t('jm_item_title'); titleEl.style.color = "#fef08a"; }
+    if (descEl)  descEl.textContent  = _t('jm_item_desc');
   }
 
   if (itemsEl) {
     const lines = [];
     if (hasOnchainJackpot) {
       const ptsHex = (Number(jackpotPtsWei) / 1e18).toFixed(6);
-      lines.push(`<div class="jm-item">🪙 잭팟 포인트 <b>+${ptsHex} HEX</b></div>`);
+      lines.push(`<div class="jm-item">🪙 ${_t('jm_jackpot_pts')} <b>+${ptsHex} HEX</b></div>`);
     }
-    if (d.potionsAdded   > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> 빨간약 <b>+${d.potionsAdded}</b></div>`);
-    if (d.mpPotionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/mp.png" style="width:22px;height:22px;"> 마법약 <b>+${d.mpPotionsAdded}</b></div>`);
-    if (d.reviveAdded    > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:22px;height:22px;"> 부활권 <b>+${d.reviveAdded}</b></div>`);
+    if (d.potionsAdded   > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b></div>`);
+    if (d.mpPotionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/mp.png" style="width:22px;height:22px;"> ${_t('item_mp_potion')} <b>+${d.mpPotionsAdded}</b></div>`);
+    if (d.reviveAdded    > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:22px;height:22px;"> ${_t('item_revive')} <b>+${d.reviveAdded}</b></div>`);
     itemsEl.innerHTML = lines.join('');
     itemsEl.style.display = lines.length ? '' : 'none';
   }
@@ -1133,11 +1134,11 @@ function bindMerchantPay(uid, _walletAddress) {
       const labelEl = $("merchantPayAmountLabel");
       const inputEl = $("merchantPayAmount");
       const hidden  = $("merchantPayCurrency");
-      if (labelEl) labelEl.textContent = isVnd ? "결제 금액 (동 VND) *" : "결제 금액 (원 KRW) *";
+      if (labelEl) labelEl.textContent = isVnd ? _t('label_pay_amount_vnd') : _t('label_pay_amount_krw');
       if (inputEl) {
         inputEl.min         = isVnd ? "10000" : "1000";
         inputEl.step        = isVnd ? "1000"  : "100";
-        inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
+        inputEl.placeholder = isVnd ? _t('placeholder_vnd_amount') : _t('placeholder_krw_amount');
         inputEl.value       = "";
       }
       if (hidden) hidden.value = r.value;
@@ -1154,23 +1155,23 @@ function bindMerchantPay(uid, _walletAddress) {
     const resultBox  = $("merchantPayResult");
 
     if (!merchantId) {
-      alert("가맹점을 선택해 주세요.");
+      alert(_t('merchant_select_error'));
       return;
     }
 
     if (isVnd) {
-      if (!amount || amount < 10000) { alert("VND 최소 결제 금액은 10,000동입니다."); return; }
+      if (!amount || amount < 10000) { alert(_t('pay_vnd_min_error')); return; }
     } else {
-      if (!amount || amount < 1000)  { alert("KRW 최소 결제 금액은 1,000원입니다."); return; }
+      if (!amount || amount < 1000)  { alert(_t('pay_krw_min_error')); return; }
     }
 
     const confirmMsg = isVnd
-      ? `${amount.toLocaleString()}동 (VND)을 결제하시겠습니까?`
-      : `${amount.toLocaleString()}원 (KRW)을 결제하시겠습니까?`;
+      ? _t('pay_confirm_vnd', amount.toLocaleString())
+      : _t('pay_confirm_krw', amount.toLocaleString());
     if (!confirm(confirmMsg)) return;
 
     btn.disabled = true;
-    btn.textContent = "결제 중...";
+    btn.textContent = _t('pay_loading');
     if (resultBox) resultBox.style.display = "none";
 
     const payload = isVnd
@@ -1182,24 +1183,24 @@ function bindMerchantPay(uid, _walletAddress) {
       const res = await payFn(payload);
       const d = res.data;
 
-      const krwStr = `${(d.amountKrw || 0).toLocaleString()}원`;
-      const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}동` : '';
+      const krwStr = `${(d.amountKrw || 0).toLocaleString()}${_t('krw_unit')}`;
+      const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}${_t('vnd_unit')}` : '';
       const hexStr = `${d.amountHex} HEX`;
       const amountDisp = [krwStr, vndStr, hexStr].filter(Boolean).join(' / ');
 
       if (resultBox) {
         const jackpotPtsWei = BigInt(d.onchainJackpotPointsWei || '0');
         const jackpotLine = jackpotPtsWei > 0n
-          ? `<div class="mp-kv mp-kv--jackpot"><span class="k">🪙 잭팟</span><span class="v" style="color:#7c3aed;font-size:12px;white-space:nowrap;">+${(Number(jackpotPtsWei) / 1e18).toFixed(4)} HEX</span></div>`
+          ? `<div class="mp-kv mp-kv--jackpot"><span class="k">🪙 ${_t('jackpot_inline')}</span><span class="v" style="color:#7c3aed;font-size:12px;white-space:nowrap;">+${(Number(jackpotPtsWei) / 1e18).toFixed(4)} HEX</span></div>`
           : '';
 
         resultBox.style.display = "";
         resultBox.innerHTML = `
-          <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d.merchantName || ""}</span></div>
-          <div class="mp-kv"><span class="k">결제 금액</span><span class="v accent">${amountDisp}</span></div>
+          <div class="mp-kv"><span class="k">${_t('pay_result_merchant')}</span><span class="v">${d.merchantName || ""}</span></div>
+          <div class="mp-kv"><span class="k">${_t('pay_result_amount')}</span><span class="v accent">${amountDisp}</span></div>
           ${jackpotLine}
-          <div class="mp-kv"><span class="k">트랜잭션</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
-          <p class="hint" style="color:var(--accent); margin-top:6px;">결제가 완료되었습니다.</p>
+          <div class="mp-kv"><span class="k">${_t('pay_result_tx')}</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
+          <p class="hint" style="color:var(--accent); margin-top:6px;">${_t('pay_done')}</p>
           ${buildMypageDropHtml(d)}
         `;
       }
@@ -1210,10 +1211,10 @@ function bindMerchantPay(uid, _walletAddress) {
       loadJackpotHistory(uid);
       loadOnChainData(uid);
     } catch (err) {
-      alert("\uACB0\uC81C \uC2E4\uD328: " + err.message);
+      alert(_t('pay_error', err.message));
     } finally {
       btn.disabled = false;
-      btn.textContent = "\uACB0\uC81C";
+      btn.textContent = _t('pay_btn_label');
     }
   });
 }
@@ -1297,18 +1298,18 @@ async function applyQrResult(payload) {
     const labelEl = $("merchantPayAmountLabel");
     const inputEl = amountInput;
     const isVnd = cur === "VND";
-    if (labelEl) labelEl.textContent = isVnd ? "결제 금액 (동 VND) *" : "결제 금액 (원 KRW) *";
+    if (labelEl) labelEl.textContent = isVnd ? _t('label_pay_amount_vnd') : _t('label_pay_amount_krw');
     if (inputEl) {
       inputEl.min         = isVnd ? "10000" : "1000";
       inputEl.step        = isVnd ? "1000"  : "100";
-      inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
+      inputEl.placeholder = isVnd ? _t('placeholder_vnd_amount') : _t('placeholder_krw_amount');
     }
   }
 
   // ── 가맹점 매칭 ──
   const mid = String(payload.merchantId || "").trim();
   if (!mid || !sel) {
-    showQrResult(`✅ 금액 ${payload.amount ? payload.amount.toLocaleString() : "-"} 반영 완료. 가맹점을 직접 선택해 주세요.`, false);
+    showQrResult(_t('qr_amount_only', payload.amount ? payload.amount.toLocaleString() : "-"), false);
     sel?.focus();
     return true;
   }
@@ -1319,13 +1320,13 @@ async function applyQrResult(payload) {
   );
   if (existing) {
     sel.value = existing.value;
-    showQrResult(`✅ QR 스캔 완료 — 가맹점: ${existing.textContent}, 금액: ${payload.amount?.toLocaleString() || "-"}`, false);
+    showQrResult(_t('qr_success', existing.textContent, payload.amount?.toLocaleString() || "-"), false);
     sel.scrollIntoView({ behavior: "smooth", block: "nearest" });
     return true;
   }
 
   // 2) Firestore에서 직접 조회
-  showQrResult("가맹점 정보 조회 중...", false);
+  showQrResult(_t('qr_loading_merchant'), false);
   try {
     const mSnap = await getDoc(doc(db, "merchants", mid));
     if (mSnap.exists()) {
@@ -1339,17 +1340,17 @@ async function applyQrResult(payload) {
         sel.appendChild(opt);
       }
       sel.value = mid;
-      showQrResult(`✅ QR 스캔 완료 — 가맹점: ${mName}, 금액: ${payload.amount?.toLocaleString() || "-"}`, false);
+      showQrResult(_t('qr_success', mName, payload.amount?.toLocaleString() || "-"), false);
       sel.scrollIntoView({ behavior: "smooth", block: "nearest" });
       return true;
     }
   } catch (e) {
     console.warn("QR merchant fetch failed:", e.message);
-    showQrResult("가맹점 조회 실패 — 직접 선택해 주세요.", true);
+    showQrResult(_t('qr_merchant_fail'), true);
     return false;
   }
 
-  showQrResult(`가맹점(ID: ${mid})을 찾을 수 없습니다 — 직접 선택해 주세요.`, true);
+  showQrResult(_t('qr_merchant_not_found', mid), true);
   return false;
 }
 
@@ -1366,7 +1367,7 @@ function bindQrScan() {
 
   btnOpen.onclick = async () => {
     try {
-      if (state) state.textContent = "카메라 시작 중...";
+      if (state) state.textContent = _t('qr_start');
       overlay.classList.add("active");
 
       __qrStream = await navigator.mediaDevices.getUserMedia({
@@ -1380,18 +1381,18 @@ function bindQrScan() {
         if (__qrRaf) { cancelAnimationFrame(__qrRaf); __qrRaf = 0; }
         const payload = parseQrPayload(raw);
         console.log("[QR] raw:", raw, "parsed:", JSON.stringify(payload));
-        if (state) state.textContent = `인식: ${raw.slice(0, 60)} | ID: ${payload?.merchantId || "없음"}`;
+        if (state) state.textContent = _t('qr_recognized', raw.slice(0, 60), payload?.merchantId || "");
         if (payload && (payload.merchantId || payload.amount)) {
           await applyQrResult(payload);
         } else {
-          showQrResult(`QR 파싱 실패 — 원본: ${raw.slice(0, 100)}`, true);
+          showQrResult(_t('qr_parse_fail', raw.slice(0, 100)), true);
         }
         setTimeout(() => stopQrScan(), 800);
       };
 
       // ── BarcodeDetector (Android Chrome 83+ / 하드웨어 가속) ──
       if ("BarcodeDetector" in window) {
-        if (state) state.textContent = "QR 코드를 사각형 안에 맞춰주세요";
+        if (state) state.textContent = _t('qr_hint');
         const bd = new BarcodeDetector({ formats: ["qr_code"] });
         let detecting = false;
         const detectTick = async () => {
@@ -1414,7 +1415,7 @@ function bindQrScan() {
 
       // ── jsQR 폴백 ──
       if (!window.jsQR) {
-        if (state) state.textContent = "jsQR 라이브러리 로드 실패 — 페이지를 새로고침 해주세요.";
+        if (state) state.textContent = _t('qr_jsqr_fail');
         return;
       }
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -1432,15 +1433,15 @@ function bindQrScan() {
         }
         frameCount++;
         if (frameCount % 20 === 0 && state) {
-          state.textContent = `스캔 중... (${Math.floor(frameCount / 20)}) QR 코드를 사각형 안에 맞춰주세요`;
+          state.textContent = _t('qr_scan_progress', Math.floor(frameCount / 20));
         }
         __qrRaf = requestAnimationFrame(tick);
       };
       tick();
     } catch (err) {
-      if (state) state.textContent = "카메라 사용 실패";
+      if (state) state.textContent = _t('qr_camera_fail');
       stopQrScan();
-      alert("카메라 접근 실패: " + (err?.message || err));
+      alert(_t('qr_camera_error_alert', err?.message || err));
     }
   };
 }
@@ -1477,6 +1478,9 @@ function initAccordion() {
 }
 
 onAuthReady(async (ctx) => {
+  initLang();
+  renderLangSwitcher('mpLangSwitcher');
+
   const loggedIn = (ctx?.loggedIn ?? ctx?.loggedin) === true;
   const user = ctx?.user;
 
@@ -1610,20 +1614,20 @@ onAuthReady(async (ctx) => {
       // 이미 캐시된 주소 있으면 바로 표시
       if (_myWalletAddress) { drawQrPanel(_myWalletAddress); return; }
       // 없으면 Firestore에서 직접 조회
-      btnVwShowQr.textContent = '불러오는 중...';
+      btnVwShowQr.textContent = _t('voucher_wallet_loading');
       btnVwShowQr.disabled = true;
       try {
         const uid = auth.currentUser?.uid;
-        if (!uid) throw new Error('로그인이 필요합니다');
+        if (!uid) throw new Error(_t('voucher_no_login'));
         const snap = await getDoc(doc(db, 'users', uid));
         const addr = snap.data()?.wallet?.address;
-        if (!addr) throw new Error('수탁 지갑이 없습니다. 먼저 지갑을 생성해 주세요.');
+        if (!addr) throw new Error(_t('voucher_no_wallet'));
         _myWalletAddress = addr;
         drawQrPanel(addr);
       } catch (err) {
-        btnVwShowQr.textContent = '📲 내 수탁 지갑 주소 QR 보기';
+        btnVwShowQr.textContent = _t('voucher_wallet_btn_label');
         btnVwShowQr.disabled = false;
-        alert(err.message || '주소 조회 실패');
+        alert(err.message || _t('addr_lookup_fail'));
       }
     });
   }
@@ -1632,7 +1636,7 @@ onAuthReady(async (ctx) => {
     btnVwHideQr.addEventListener('click', () => {
       if (vwMyQrPanel) vwMyQrPanel.style.display = 'none';
       if (btnVwShowQr) {
-        btnVwShowQr.textContent = '📲 내 수탁 지갑 주소 QR 보기';
+        btnVwShowQr.textContent = _t('voucher_wallet_btn_label');
         btnVwShowQr.disabled = false;
         btnVwShowQr.style.display = '';
       }
@@ -1645,7 +1649,7 @@ onAuthReady(async (ctx) => {
       if (!addr) return;
       navigator.clipboard.writeText(addr).then(() => {
         const orig = btnVwCopyAddr.textContent;
-        btnVwCopyAddr.textContent = '복사됨!';
+        btnVwCopyAddr.textContent = _t('btn_copy_done');
         setTimeout(() => { btnVwCopyAddr.textContent = orig; }, 1500);
       });
     });
@@ -1665,7 +1669,7 @@ onAuthReady(async (ctx) => {
       stopQrScan();
 
       try {
-        if (state) state.textContent = '카메라 시작 중...';
+        if (state) state.textContent = _t('qr_start');
         overlay.classList.add('active');
 
         __qrStream = await navigator.mediaDevices.getUserMedia({
@@ -1679,12 +1683,12 @@ onAuthReady(async (ctx) => {
           const addr = raw.trim();
           const toInput = $('vtToAddress');
           if (toInput) toInput.value = addr;
-          if (state) state.textContent = `인식: ${addr.slice(0, 20)}…`;
+          if (state) state.textContent = _t('qr_recognized_short', addr.slice(0, 20));
           setTimeout(() => stopQrScan(), 400);
         };
 
         if ('BarcodeDetector' in window) {
-          if (state) state.textContent = 'QR 코드를 사각형 안에 맞춰주세요';
+          if (state) state.textContent = _t('qr_hint');
           const bd = new BarcodeDetector({ formats: ['qr_code'] });
           let detecting = false;
           const detectTick = async () => {
@@ -1702,7 +1706,7 @@ onAuthReady(async (ctx) => {
           return;
         }
 
-        if (!window.jsQR) { if (state) state.textContent = 'jsQR 라이브러리 로드 실패'; return; }
+        if (!window.jsQR) { if (state) state.textContent = _t('qr_jsqr_fail'); return; }
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         let frameCount = 0;
         const tick = () => {
@@ -1713,12 +1717,12 @@ onAuthReady(async (ctx) => {
           const qr = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
           if (qr?.data) { onWalletDetected(qr.data); return; }
           frameCount++;
-          if (frameCount % 20 === 0 && state) state.textContent = `스캔 중... QR 코드를 사각형 안에 맞춰주세요`;
+          if (frameCount % 20 === 0 && state) state.textContent = _t('qr_scan_progress2');
           __qrRaf = requestAnimationFrame(tick);
         };
         tick();
       } catch (err) {
-        if (state) state.textContent = '카메라 사용 실패';
+        if (state) state.textContent = _t('qr_camera_fail');
         stopQrScan();
       }
     });
@@ -1770,7 +1774,7 @@ onAuthReady(async (ctx) => {
       card.style.cssText = 'border:1px solid var(--border,#e5e7eb);border-radius:10px;overflow:hidden;background:var(--surface,#fff);';
       const imgSrc = v.imageUrl || '';
       const imgTag = imgSrc
-        ? `<img src="${imgSrc}" alt="바우처" style="width:100%;height:110px;object-fit:cover;display:block;background:#f3f4f6;" onerror="this.style.display='none'">`
+        ? `<img src="${imgSrc}" alt="${_t('voucher_default_name')}" style="width:100%;height:110px;object-fit:cover;display:block;background:#f3f4f6;" onerror="this.style.display='none'">`
         : `<div style="width:100%;height:60px;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.4rem;">🎫</div>`;
       const isGameVoucher    = v.source === 'game';
       const isProductVoucher = v.source === 'product';
@@ -1785,32 +1789,32 @@ onAuthReady(async (ctx) => {
 
       // 소스 배지
       const sourceBadge = isGameVoucher
-        ? `<span style="font-size:0.7rem;background:#d1fae5;color:#065f46;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">🎮 게임</span>`
-        : `<span style="font-size:0.7rem;background:#ede9fe;color:#5b21b6;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">🛍 쇼핑몰</span>`;
+        ? `<span style="font-size:0.7rem;background:#d1fae5;color:#065f46;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">${_t('voucher_game_badge')}</span>`
+        : `<span style="font-size:0.7rem;background:#ede9fe;color:#5b21b6;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">${_t('voucher_shop_badge')}</span>`;
 
       // 가격 영역
       let priceHtml;
       if (isGameVoucher) {
-        priceHtml = `<div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:6px;">게임에서 획득한 바우처</div>`;
+        priceHtml = `<div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:6px;">${_t('voucher_game_src')}</div>`;
       } else {
         const krwStr = hexWeiToKrwStr(hp);
         const vndStr = hexWeiToVndStr(hp);
         const fxLine = (krwStr || vndStr)
           ? `<span style="color:#9ca3af;">${[krwStr, vndStr].filter(Boolean).join(' / ')}</span>`
           : '';
-        const refundLine = refundWei !== '0' ? `<br>소각 환급: ${fmtHexShort(refundWei)} HEX` : '';
-        priceHtml = `<div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:6px;">가격: ${fmtHexShort(hp)} HEX${refundLine}<br>${fxLine}</div>`;
+        const refundLine = refundWei !== '0' ? `<br>${_t('voucher_refund', fmtHexShort(refundWei))}` : '';
+        priceHtml = `<div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:6px;">${_t('voucher_price', fmtHexShort(hp))}${refundLine}<br>${fxLine}</div>`;
       }
 
       // 이체/소각 버튼
       const actionHtml = `<div style="display:flex;gap:6px;">
            <button data-docid="${docId}" data-vid="${vid ?? ''}" data-collection="${col}" data-action="transfer"
              style="flex:1;padding:6px 0;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">
-             이체
+             ${_t('btn_voucher_transfer')}
            </button>
            <button data-docid="${docId}" data-vid="${vid ?? ''}" data-collection="${col}" data-hex-price="${hp}" data-burn-fee-bps="${v.burnFeeBps ?? 0}" data-action="burn"
              style="flex:1;padding:6px 0;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">
-             소각
+             ${_t('btn_voucher_burn')}
            </button>
          </div>`;
 
@@ -1818,8 +1822,8 @@ onAuthReady(async (ctx) => {
         ${imgTag}
         <div style="padding:10px 12px;">
           ${sourceBadge}
-          <div style="font-weight:700;font-size:0.92rem;margin-bottom:3px;">${v.description || '바우처'}</div>
-          <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:2px;">보상: ${v.usagePlace || '—'}</div>
+          <div style="font-weight:700;font-size:0.92rem;margin-bottom:3px;">${v.description || _t('voucher_default_name')}</div>
+          <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:2px;">${_t('voucher_usage_label')} ${v.usagePlace || '—'}</div>
           ${priceHtml}
           ${actionHtml}
         </div>`;
@@ -1853,10 +1857,10 @@ onAuthReady(async (ctx) => {
         const hp  = btn.dataset.hexPrice ?? '0';
         const bps = Number(btn.dataset.burnFeeBps ?? 0);
         const isGame = _pendingCollection === 'treasure_voucher_logs';
-        const label = _pendingVoucherId ? `#${_pendingVoucherId}` : '선택된 바우처';
+        const label = _pendingVoucherId ? `#${_pendingVoucherId}` : _t('burn_selected_voucher');
         if ($('vbInfo')) {
           if (isGame) {
-            $('vbInfo').innerHTML = `<strong>${label}</strong>을(를) 소각합니다.<br><span style="color:#9ca3af;font-size:0.85em;">게임 바우처는 HEX 환급이 없습니다.</span>`;
+            $('vbInfo').innerHTML = _t('burn_game_info', label);
           } else {
             const fee    = BigInt(hp) * BigInt(bps) / BigInt(10000);
             const refund = BigInt(hp) - fee;
@@ -1865,21 +1869,18 @@ onAuthReady(async (ctx) => {
             const fxNote = (refundKrw || refundVnd)
               ? ` <span style="font-size:0.8em;color:#9ca3af;">(${[refundKrw, refundVnd].filter(Boolean).join(' / ')})</span>`
               : '';
-            $('vbInfo').innerHTML =
-              `${label}을(를) 소각하면 ` +
-              `<strong>${fmtHexShort(String(refund))} HEX</strong>${fxNote}를 환급받고 ` +
-              `<strong>${fmtHexShort(String(fee))} HEX</strong>는 수수료로 차감됩니다.`;
+            $('vbInfo').innerHTML = _t('burn_info', label, fmtHexShort(String(refund)), fxNote, fmtHexShort(String(fee)));
           }
         }
         // 게임 바우처는 단계 레이블 교체
         if (isGame) {
-          if ($('vbStep2Label')) $('vbStep2Label').textContent = '바우처 기록 삭제 중';
-          if ($('vbStep3Label')) $('vbStep3Label').textContent = '삭제 확인 중';
+          if ($('vbStep2Label')) $('vbStep2Label').textContent = _t('burn_step2_game');
+          if ($('vbStep3Label')) $('vbStep3Label').textContent = _t('burn_step3_game');
           if ($('vbStep2')) $('vbStep2').style.display = '';
           if ($('vbStep3')) $('vbStep3').style.display = '';
         } else {
-          if ($('vbStep2Label')) $('vbStep2Label').textContent = '스마트 컨트랙트 실행 중';
-          if ($('vbStep3Label')) $('vbStep3Label').textContent = 'HEX 환급 처리 중';
+          if ($('vbStep2Label')) $('vbStep2Label').textContent = _t('burn_step2_onchain');
+          if ($('vbStep3Label')) $('vbStep3Label').textContent = _t('burn_step3_onchain');
         }
         setVbStatus('');
         burnPanel.style.display = '';
@@ -1906,18 +1907,18 @@ onAuthReady(async (ctx) => {
       if (d.walletAddress) renderWalletQr(d.walletAddress);
       renderVoucherCards(d.vouchers ?? []);
     } catch (err) {
-      if (loadingEl) { loadingEl.textContent = '바우처 조회 실패: ' + (err.message || '서버 오류'); }
+      if (loadingEl) { loadingEl.textContent = _t('voucher_load_error', err.message || _t('server_error')); }
     }
   }
 
   // 이체 확인
   $('btnVtConfirm')?.addEventListener('click', async () => {
     const toAddress = ($('vtToAddress')?.value ?? '').trim();
-    if (!toAddress) { setVtStatus('지갑 주소를 입력하세요.', false); return; }
+    if (!toAddress) { setVtStatus(_t('transfer_no_addr'), false); return; }
     if (!_pendingDocId && _pendingVoucherId === null) return;
     const btn = $('btnVtConfirm');
     btn.disabled = true;
-    setVtStatus('이체 중...');
+    setVtStatus(_t('transfer_pending'));
     try {
       const fn = httpsCallable(functions, 'coopTransferVoucher');
       await fn({
@@ -1926,14 +1927,14 @@ onAuthReady(async (ctx) => {
         toAddress,
         sourceCollection: _pendingCollection || undefined,
       });
-      setVtStatus('이체 완료!', true);
+      setVtStatus(_t('transfer_done'), true);
       transferPanel.style.display = 'none';
       _pendingVoucherId  = null;
       _pendingDocId      = null;
       _pendingCollection = null;
       await loadMyVouchers();
     } catch (err) {
-      setVtStatus('이체 실패: ' + (err.message || '서버 오류'), false);
+      setVtStatus(_t('transfer_error', err.message || _t('server_error')), false);
     } finally {
       btn.disabled = false;
     }
@@ -2005,7 +2006,7 @@ onAuthReady(async (ctx) => {
       await new Promise(r => setTimeout(r, 400));
       stepState(4, 'done');
 
-      setVbStatus(isGameBurnFlow ? '✅ 소각 완료! 바우처가 삭제되었습니다.' : '✅ 소각 완료! HEX가 지갑으로 전송되었습니다.', true);
+      setVbStatus(isGameBurnFlow ? _t('burn_done_game') : _t('burn_done_onchain'), true);
       setTimeout(async () => {
         burnPanel.style.display = 'none';
         if (stepsEl) stepsEl.style.display = 'none';
@@ -2021,7 +2022,7 @@ onAuthReady(async (ctx) => {
         const icon = $(`vbStep${n}Icon`);
         if (icon?.textContent === '🔄') stepState(n, 'error');
       });
-      setVbStatus('❌ 소각 실패: ' + (err.message || '서버 오류'), false);
+      setVbStatus(_t('burn_error', err.message || _t('server_error')), false);
       btn.disabled = false;
       if (cancelBtn) cancelBtn.disabled = false;
       if (buttonsEl) buttonsEl.style.opacity = '';
@@ -2053,7 +2054,7 @@ onAuthReady(async (ctx) => {
 
   btn.onclick = async () => {
     btn.disabled = true;
-    btn.textContent = "초기화 중...";
+    btn.textContent = _t('cache_loading');
 
     try {
       // 1) Service Worker 캐시 전체 삭제
@@ -2074,7 +2075,7 @@ onAuthReady(async (ctx) => {
 
       if (msg) {
         msg.style.display = "";
-        msg.textContent = "캐시가 삭제되었습니다. 3초 후 새로고침...";
+        msg.textContent = _t('cache_done');
       }
 
       setTimeout(() => {
@@ -2083,8 +2084,8 @@ onAuthReady(async (ctx) => {
       }, 3000);
     } catch (err) {
       btn.disabled = false;
-      btn.textContent = "🔄 앱 캐시 초기화 (문제 발생 시)";
-      if (msg) { msg.style.display = ""; msg.textContent = "초기화 실패: " + err.message; }
+      btn.textContent = _t('btn_cache_reset');
+      if (msg) { msg.style.display = ""; msg.textContent = _t('cache_error', err.message); }
     }
   };
 })();

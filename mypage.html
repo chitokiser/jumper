@@ -138,6 +138,11 @@
     .jp-hist-pts{font-size:0.95rem;font-weight:800;color:#6d28d9;text-align:right;white-space:nowrap;}
     .jp-hist-empty{text-align:center;padding:32px 16px;color:#a78bfa;font-size:0.88rem;}
     .jp-onchain-badge{display:inline-block;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:99px;background:#ede9fe;color:#5b21b6;margin-left:4px;vertical-align:middle;}
+
+    /* ── 언어 전환 ── */
+    .mp-lang-switcher{display:flex;gap:6px;justify-content:flex-end;padding:8px 16px 0;}
+    .mp-lang-btn{padding:4px 12px;border:1px solid var(--border,#e5e7eb);border-radius:20px;background:transparent;font-size:0.78rem;font-weight:600;cursor:pointer;color:var(--muted,#6b7280);transition:all .15s;}
+    .mp-lang-btn.active{background:var(--accent,#7c3aed);color:#fff;border-color:var(--accent,#7c3aed);}
   </style>
 </head>
 <body>
@@ -150,17 +155,19 @@
       <div class="jm-title" id="jmTitle">JACKPOT!!</div>
       <div class="jm-desc" id="jmDesc"></div>
       <div class="jm-items" id="jmItems"></div>
-      <button class="jm-close" id="jmCloseBtn">확인</button>
+      <button class="jm-close" id="jmCloseBtn" data-i18n="jm_confirm">확인</button>
     </div>
   </div>
+
+  <div id="mpLangSwitcher" class="mp-lang-switcher"></div>
 
   <main class="page">
 
     <!-- ── 로그인 필요 ── -->
     <section class="panel" id="needLoginPanel" style="display:none;">
-      <h1 class="title">마이페이지</h1>
-      <p class="desc">로그인이 필요합니다.</p>
-      <button class="btn btn--primary" id="btnLoginPage" type="button">구글 로그인</button>
+      <h1 class="title" data-i18n="page_title">마이페이지</h1>
+      <p class="desc" data-i18n="need_login_desc">로그인이 필요합니다.</p>
+      <button class="btn btn--primary" id="btnLoginPage" type="button" data-i18n="btn_login">구글 로그인</button>
     </section>
 
     <!-- ── 메인 콘텐츠 ── -->
@@ -168,11 +175,11 @@
 
       <!-- 회원가입 미완료 안내 -->
       <div id="noProfilePanel" style="display:none;" class="panel mp-section">
-        <h2 class="mp-section-title">회원가입이 필요합니다</h2>
+        <h2 class="mp-section-title" data-i18n="no_profile_title">회원가입이 필요합니다</h2>
         <p class="hint" style="margin:8px 0 16px;">
           수탁 지갑 생성 및 서비스 이용을 위해 먼저 회원가입을 완료해 주세요.
         </p>
-        <a href="/register.html" class="btn btn--primary">회원가입 하러 가기</a>
+        <a href="/register.html" class="btn btn--primary" data-i18n="btn_register">회원가입 하러 가기</a>
       </div>
 
       <!-- 멘토 연결 안내 배너 -->
@@ -187,49 +194,49 @@
       <!-- 기본 정보 -->
       <section class="panel mp-section collapsible">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">내 정보</h2>
-          <a href="/register.html" class="btn btn--sm">수정</a>
+          <h2 class="mp-section-title" data-i18n="section_profile">내 정보</h2>
+          <a href="/register.html" class="btn btn--sm" data-i18n="btn_edit">수정</a>
         </div>
         <div class="mp-kv-list" id="profileInfo">
-          <div class="mp-kv"><span class="k">이름</span><span class="v" id="infoName">-</span></div>
-          <div class="mp-kv"><span class="k">이메일</span><span class="v" id="infoEmail">-</span></div>
-          <div class="mp-kv"><span class="k">전화번호</span><span class="v" id="infoPhone">-</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_name">이름</span><span class="v" id="infoName">-</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_email">이메일</span><span class="v" id="infoEmail">-</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_phone">전화번호</span><span class="v" id="infoPhone">-</span></div>
         </div>
       </section>
 
       <!-- 수탁 지갑 -->
       <section class="panel mp-section collapsible">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">수탁 지갑</h2>
+          <h2 class="mp-section-title" data-i18n="section_wallet">수탁 지갑</h2>
           <div style="display:flex; gap:6px;">
-            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;">MetaMask 연결</button>
-            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;">지갑 생성</button>
+            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;" data-i18n="btn_metamask">MetaMask 연결</button>
+            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;" data-i18n="btn_create_wallet">지갑 생성</button>
           </div>
         </div>
 
         <div id="walletInfo">
           <div class="mp-kv" style="align-items:flex-start;">
-            <span class="k">지갑 주소</span>
+            <span class="k" data-i18n="label_wallet_addr">지갑 주소</span>
             <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
               <span class="mono" id="walletAddress" style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
               <button id="btnCopyWallet" type="button" title="주소 복사"
                 style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
                        background:var(--surface,#fff); border:1px solid var(--border,#e5e7eb);
                        border-radius:20px; cursor:pointer; color:var(--muted,#6b7280); white-space:nowrap;">
-                📋 복사
+                <span data-i18n="btn_copy">📋 복사</span>
               </button>
             </span>
           </div>
           <div class="mp-kv">
-            <span class="k">온체인 등록</span>
+            <span class="k" data-i18n="label_onchain">온체인 등록</span>
             <span class="v" id="onChainStatus">조회 중...</span>
           </div>
           <div class="mp-kv" id="levelRow" style="display:none;">
-            <span class="k">레벨</span>
+            <span class="k" data-i18n="label_level">레벨</span>
             <span class="v" id="levelDisplay">-</span>
           </div>
           <div class="mp-kv" id="expRow" style="display:none;">
-            <span class="k">경험치 (EXP)</span>
+            <span class="k" data-i18n="label_exp">경험치 (EXP)</span>
             <span class="v"><span id="expDisplay">-</span></span>
           </div>
           <div id="expBarRow" style="display:none; padding:2px 0 10px 0;">
@@ -241,31 +248,31 @@
           <div class="mp-kv" id="levelUpRow" style="display:none;">
             <span class="k"></span>
             <span class="v">
-              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button">레벨업 가능! →</button>
+              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">레벨업 가능! →</button>
             </span>
           </div>
           <div class="mp-kv" id="pointRow" style="display:none;">
-            <span class="k">포인트(hex로 변경가능)</span>
+            <span class="k" data-i18n="label_point">포인트(hex로 변경가능)</span>
             <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <span id="pointDisplay">-</span>
-              <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button">HEX로 전환</button>
+              <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">HEX로 전환</button>
             </span>
           </div>
           <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
           <div class="mp-kv" id="mentorAddrRow" style="display:none;">
-            <span class="k">나의 멘토</span>
+            <span class="k" data-i18n="label_my_mentor">나의 멘토</span>
             <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
           </div>
           <div class="mp-kv" id="walletHexRow" style="display:none;">
-            <span class="k">보유 HEX</span>
+            <span class="k" data-i18n="label_hex_balance">보유 HEX</span>
             <span class="v accent" id="walletHexDisplay">-</span>
           </div>
           <div class="mp-kv" id="walletJumpRow" style="display:none;">
-            <span class="k">보유 JUMP</span>
+            <span class="k" data-i18n="label_jump_balance">보유 JUMP</span>
             <span class="v accent" id="walletJumpDisplay">-</span>
           </div>
           <div class="mp-kv" id="walletJumpStakedRow" style="display:none;">
-            <span class="k">스테이킹 JUMP</span>
+            <span class="k" data-i18n="label_jump_staked">스테이킹 JUMP</span>
             <span class="v accent" id="walletJumpStakedDisplay">-</span>
           </div>
         </div>
@@ -283,7 +290,7 @@
             멘토 지갑 주소를 입력한 후 지갑을 생성하세요.
           </p>
           <label class="field" style="margin-top:10px;">
-            <span>멘토 지갑 주소 <em class="req">*</em></span>
+            <span><span data-i18n="label_mentor_addr_field">멘토 지갑 주소</span> <em class="req">*</em></span>
             <input type="text" id="createWalletMentorAddr" maxlength="42"
               placeholder="0x..." style="font-family:monospace;" />
           </label>
@@ -297,11 +304,11 @@
             <small class="muted">요청 접수 후 관리자가 확인하여 연결해 드립니다.</small>
           </p>
           <label class="field">
-            <span>멘토 이메일 <em class="req">*</em></span>
+            <span><span data-i18n="label_mentor_email">멘토 이메일</span> <em class="req">*</em></span>
             <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
           </label>
-          <button class="btn btn--primary" id="btnMentorRequest" type="button">멘토 등록 요청</button>
-          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);">✓ 요청이 접수되었습니다. 관리자 확인 후 반영됩니다.</p>
+          <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">멘토 등록 요청</button>
+          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);" data-i18n="mentor_req_done">✓ 요청이 접수되었습니다. 관리자 확인 후 반영됩니다.</p>
         </div>
 
         <!-- 온체인 미등록 시 등록 버튼 -->
@@ -311,18 +318,18 @@
             멘토 지갑 주소를 입력하면 경험치(EXP)와 포인트를 받을 수 있습니다.
           </p>
           <label class="field">
-            <span>멘토 지갑 주소 <em class="req">*</em></span>
+            <span><span data-i18n="label_mentor_addr_field">멘토 지갑 주소</span> <em class="req">*</em></span>
             <input type="text" id="mentorAddrInput" maxlength="42"
               placeholder="0x..." style="font-family:monospace;" />
           </label>
-          <button class="btn btn--primary" id="btnRegisterOnChain" type="button">온체인 등록</button>
+          <button class="btn btn--primary" id="btnRegisterOnChain" type="button" data-i18n="btn_register_onchain">온체인 등록</button>
         </div>
       </section>
 
       <!-- 개인 지갑 HEX 이체 (레벨 4 이상) -->
       <section class="panel mp-section collapsible is-collapsed" id="hexTransferSection" style="display:none;">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">HEX 개인 지갑 이체 <span style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
+          <h2 class="mp-section-title" data-i18n="section_hex_transfer">HEX 개인 지갑 이체 <span style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
         </div>
         <p class="hint" style="margin-bottom:12px;">
           수탁 지갑의 HEX를 외부 개인 지갑으로 직접 전송합니다.<br>
@@ -330,12 +337,12 @@
         </p>
         <form id="hexTransferForm" class="form" style="margin-top:0;">
           <label class="field">
-            <span>수령 지갑 주소 <em class="req">*</em></span>
+            <span><span data-i18n="label_to_wallet">수령 지갑 주소</span> <em class="req">*</em></span>
             <input type="text" id="hexTransferTo" maxlength="42"
               placeholder="0x..." style="font-family:monospace;" />
           </label>
           <label class="field">
-            <span>이체 수량 (HEX)</span>
+            <span data-i18n="label_transfer_amt">이체 수량 (HEX)</span>
             <input type="number" id="hexTransferAmount" min="0" step="any"
               placeholder="비워 놓으면 전액 이체됨" />
           </label>
@@ -344,7 +351,7 @@
             <span class="v accent" id="hexTransferBalance">-</span>
           </div>
           <div class="actions">
-            <button class="btn btn--primary" type="submit" id="btnHexTransfer">이체</button>
+            <button class="btn btn--primary" type="submit" id="btnHexTransfer" data-i18n="btn_transfer_hex">이체</button>
           </div>
         </form>
         <div id="hexTransferResult" class="mp-result-box" style="display:none;"></div>
@@ -353,38 +360,38 @@
       <!-- 원화 충전 -->
       <section class="panel mp-section collapsible is-collapsed">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">HEX 충전 (원화)</h2>
+          <h2 class="mp-section-title" data-i18n="section_deposit">HEX 충전 (원화)</h2>
         </div>
 
         <!-- 입금 계좌 안내 (항상 표시) -->
         <div class="mp-result-box" style="margin-bottom:14px;">
-          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:var(--accent);">🇰🇷 한국 계좌 (KRW 입금)</div>
-          <div class="mp-kv"><span class="k">은행</span><span class="v">하나은행</span></div>
-          <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono">381. 19. 03076. 2</span></div>
-          <div class="mp-kv"><span class="k">예금주</span><span class="v">오용진</span></div>
-          <div style="margin:10px 0 8px; font-size:0.82em; font-weight:700; color:#0ea5e9;">🇻🇳 베트남 계좌 (VND 입금)</div>
-          <div class="mp-kv"><span class="k">은행</span><span class="v">TECHCOM BANK</span></div>
-          <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono">19037852768012</span></div>
-          <div class="mp-kv"><span class="k">예금주</span><span class="v">신헌철 (SHIN HEON CHEOL)</span></div>
+          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:var(--accent);" data-i18n="label_kr_account">🇰🇷 한국 계좌 (KRW 입금)</div>
+          <div class="mp-kv"><span class="k" data-i18n="label_bank">은행</span><span class="v">하나은행</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span class="v mono">381. 19. 03076. 2</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">예금주</span><span class="v">오용진</span></div>
+          <div style="margin:10px 0 8px; font-size:0.82em; font-weight:700; color:#0ea5e9;" data-i18n="label_vn_account">🇻🇳 베트남 계좌 (VND 입금)</div>
+          <div class="mp-kv"><span class="k" data-i18n="label_bank">은행</span><span class="v">TECHCOM BANK</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span class="v mono">19037852768012</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">예금주</span><span class="v">신헌철 (SHIN HEON CHEOL)</span></div>
         </div>
 
         <form id="depositForm" class="form" style="margin-top:0;">
           <label class="field">
-            <span>충전 금액 (원) <em class="req">*</em></span>
+            <span><span data-i18n="label_deposit_amt">충전 금액 (원)</span> <em class="req">*</em></span>
             <input type="number" id="depositAmount" min="10000" step="1000" placeholder="최소 10,000원" />
           </label>
           <label class="field">
-            <span>입금자명 <em class="req">*</em></span>
+            <span><span data-i18n="label_depositor">입금자명</span> <em class="req">*</em></span>
             <input type="text" id="depositorName" maxlength="20" placeholder="예: 홍길동" />
           </label>
           <div class="actions">
-            <button class="btn btn--primary" type="submit" id="btnDeposit">충전 요청</button>
+            <button class="btn btn--primary" type="submit" id="btnDeposit" data-i18n="btn_deposit">충전 요청</button>
           </div>
         </form>
 
         <!-- 충전 요청 결과 -->
         <div id="depositResult" class="mp-result-box" style="display:none;">
-          <div class="mp-kv"><span class="k">참조코드</span><span class="v mono" id="drRefCode">-</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_ref_code">참조코드</span><span class="v mono" id="drRefCode">-</span></div>
           <div style="margin:10px 0 6px; font-size:0.82em; font-weight:700; color:var(--accent);">🇰🇷 한국 계좌 (KRW 입금)</div>
           <div class="mp-kv"><span class="k">입금 은행</span><span class="v" id="drBank">-</span></div>
           <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono" id="drAccount">-</span></div>
@@ -395,15 +402,15 @@
           <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolderVnd">-</span></div>
           <div class="mp-kv"><span class="k">금액</span><span class="v" id="drAmount">-</span></div>
           <div class="mp-kv"><span class="k">충전 금액</span><span class="v accent" id="drHex">-</span></div>
-          <p class="hint mp-warn">입금자명을 정확히 입력하세요. 관리자 확인 후 HEX 토큰이 수탁 지갑으로 지급됩니다.</p>
+          <p class="hint mp-warn" data-i18n="deposit_warn">입금자명을 정확히 입력하세요. 관리자 확인 후 HEX 토큰이 수탁 지갑으로 지급됩니다.</p>
         </div>
       </section>
 
       <!-- 가맹점 직접 결제 (오프라인) -->
       <section class="panel mp-section collapsible is-collapsed" id="merchantPaySection">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">가맹점 직접 결제</h2>
-          <button class="btn btn--sm" id="btnQrScan" type="button">📷 QR 스캔</button>
+          <h2 class="mp-section-title" data-i18n="section_merchant_pay">가맹점 직접 결제</h2>
+          <button class="btn btn--sm" id="btnQrScan" type="button" data-i18n="btn_qr_scan">📷 QR 스캔</button>
         </div>
         <p class="hint" style="margin-bottom:12px;">
           가맹점을 방문하여 현장에서 결제할 때 사용합니다.<br>
@@ -411,13 +418,13 @@
         </p>
         <form id="merchantPayForm" class="form" style="margin-top:0;">
           <label class="field">
-            <span>가맹점 선택 <em class="req">*</em></span>
+            <span><span data-i18n="label_select_merchant">가맹점 선택</span> <em class="req">*</em></span>
             <select id="merchantPaySelect">
               <option value="">불러오는 중...</option>
             </select>
           </label>
           <div class="field">
-            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;">통화 선택</span>
+            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;" data-i18n="label_currency">통화 선택</span>
             <div class="curr-seg">
               <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyVND" value="VND" checked /><span>🇻🇳 VND (동)</span></label>
               <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyKRW" value="KRW" /><span>🇰🇷 KRW (원)</span></label>
@@ -425,11 +432,11 @@
             <input type="hidden" id="merchantPayCurrency" value="VND" />
           </div>
           <label class="field">
-            <span id="merchantPayAmountLabel">결제 금액 (동 VND) <em class="req">*</em></span>
+            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_vnd">결제 금액 (동 VND) <em class="req">*</em></span>
             <input type="number" id="merchantPayAmount" min="10000" step="1000" placeholder="예: 200000" />
           </label>
           <div class="actions">
-            <button class="btn btn--primary" type="submit" id="btnMerchantPay">결제</button>
+            <button class="btn btn--primary" type="submit" id="btnMerchantPay" data-i18n="btn_pay">결제</button>
           </div>
         </form>
         <div id="qrResultState" style="display:none;margin:8px 0;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;font-size:0.88rem;color:#166534;"></div>
@@ -439,18 +446,18 @@
       <!-- 충전 내역 -->
       <section class="panel mp-section collapsible is-collapsed">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">충전 내역</h2>
-          <button class="btn btn--sm" id="btnRefreshDeposits" type="button">새로고침</button>
+          <h2 class="mp-section-title" data-i18n="section_deposit_hist">충전 내역</h2>
+          <button class="btn btn--sm" id="btnRefreshDeposits" type="button" data-i18n="btn_refresh">새로고침</button>
         </div>
         <div id="depositHistory" class="mp-table-wrap">
-          <p class="hint">불러오는 중...</p>
+          <p class="hint" data-i18n="mentee_loading">불러오는 중...</p>
         </div>
       </section>
 
       <!-- 포인트 · 레벨 안내 -->
       <section class="panel mp-section collapsible is-collapsed">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">포인트 · 레벨 안내</h2>
+          <h2 class="mp-section-title" data-i18n="section_guide">포인트 · 레벨 안내</h2>
         </div>
         <dl style="margin:0; display:grid; gap:10px;">
           <div>
@@ -480,73 +487,73 @@
       <!-- 나의 멘티 목록 -->
       <section class="panel mp-section collapsible is-collapsed" id="menteeSection" style="display:none;">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">나의 멘티</h2>
-          <button class="btn btn--sm" id="btnRefreshMentees" type="button">새로고침</button>
+          <h2 class="mp-section-title" data-i18n="section_mentee">나의 멘티</h2>
+          <button class="btn btn--sm" id="btnRefreshMentees" type="button" data-i18n="btn_refresh">새로고침</button>
         </div>
         <div id="menteeList" class="mp-table-wrap">
-          <p class="hint">불러오는 중...</p>
+          <p class="hint" data-i18n="mentee_loading">불러오는 중...</p>
         </div>
       </section>
 
       <!-- 멘티 수익 분석 -->
       <section class="panel mp-section collapsible is-collapsed" id="menteeIncomeSection" style="display:none;">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">💰 멘티 수익 분석</h2>
-          <button class="btn btn--sm" id="btnRefreshMenteeIncome" type="button">새로고침</button>
+          <h2 class="mp-section-title" data-i18n="section_mentee_income">💰 멘티 수익 분석</h2>
+          <button class="btn btn--sm" id="btnRefreshMenteeIncome" type="button" data-i18n="btn_refresh">새로고침</button>
         </div>
         <!-- 요약 카드 -->
         <div id="menteeIncomeSummary" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;"></div>
         <!-- 멘티별 상세 -->
         <div id="menteeIncomeList" class="mp-table-wrap">
-          <p class="hint">불러오는 중...</p>
+          <p class="hint" data-i18n="mi_loading">불러오는 중...</p>
         </div>
       </section>
 
       <!-- 잭팟 당첨 내역 -->
       <section class="panel mp-section collapsible is-collapsed" id="jackpotHistSection" style="display:none;">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">🎰 잭팟 당첨 내역</h2>
-          <button class="btn btn--sm" id="btnRefreshJackpotHist" type="button">새로고침</button>
+          <h2 class="mp-section-title" data-i18n="section_jackpot">🎰 잭팟 당첨 내역</h2>
+          <button class="btn btn--sm" id="btnRefreshJackpotHist" type="button" data-i18n="btn_refresh">새로고침</button>
         </div>
         <!-- 잭팟 통계 카드 -->
         <div id="jackpotStatRow" class="mp-kv-grid" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
           <div class="mp-stat-card">
-            <div class="mp-stat-label">누적 잭팟 당첨</div>
+            <div class="mp-stat-label" data-i18n="jackpot_stat_total">누적 잭팟 당첨</div>
             <div class="mp-stat-value" id="jackpotTotalHex">-</div>
             <div class="mp-stat-sub" id="jackpotTotalCount"></div>
           </div>
           <div class="mp-stat-card" style="border-color:rgba(124,58,237,.35);background:rgba(124,58,237,.08);">
-            <div class="mp-stat-label">HEX 전환 가능 포인트</div>
+            <div class="mp-stat-label" data-i18n="jackpot_stat_redeemable">HEX 전환 가능 포인트</div>
             <div class="mp-stat-value" id="jackpotRedeemable" style="color:#a78bfa;">-</div>
-            <div class="mp-stat-sub">10 HEX 이상 시 전환 가능</div>
+            <div class="mp-stat-sub" data-i18n="jackpot_stat_min">10 HEX 이상 시 전환 가능</div>
           </div>
         </div>
         <div id="jackpotHistList" class="mp-table-wrap">
-          <p class="hint">불러오는 중...</p>
+          <p class="hint" data-i18n="jackpot_loading">불러오는 중...</p>
         </div>
       </section>
 
       <!-- 거래 내역 (온체인) -->
       <section class="panel mp-section collapsible is-collapsed" id="txSection" style="display:none;">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">거래 내역</h2>
-          <button class="btn btn--sm" id="btnRefreshTx" type="button">새로고침</button>
+          <h2 class="mp-section-title" data-i18n="section_tx">거래 내역</h2>
+          <button class="btn btn--sm" id="btnRefreshTx" type="button" data-i18n="btn_refresh">새로고침</button>
         </div>
         <!-- 수입 / 지출 요약 -->
         <div id="txSummary" class="tx-summary" style="display:none;">
           <div class="tx-summary-card income">
-            <div class="tx-summary-label">총 수입</div>
+            <div class="tx-summary-label" data-i18n="tx_total_income">총 수입</div>
             <div class="tx-summary-amount income" id="txTotalIncome">-</div>
             <div class="tx-summary-sub" id="txTotalIncomeCount"></div>
           </div>
           <div class="tx-summary-card expense">
-            <div class="tx-summary-label">총 지출</div>
+            <div class="tx-summary-label" data-i18n="tx_total_expense">총 지출</div>
             <div class="tx-summary-amount expense" id="txTotalExpense">-</div>
             <div class="tx-summary-sub" id="txTotalExpenseCount"></div>
           </div>
         </div>
         <div id="txHistory" class="mp-table-wrap">
-          <p class="hint">불러오는 중...</p>
+          <p class="hint" data-i18n="status_loading">불러오는 중...</p>
         </div>
       </section>
 
@@ -556,7 +563,7 @@
            ───────────────────────────────────────────────────────────────── -->
       <section class="panel mp-section collapsible is-collapsed" id="voucherWalletSection">
         <div class="mp-section-head">
-          <h2 class="mp-section-title">내 바우처 지갑</h2>
+          <h2 class="mp-section-title" data-i18n="section_voucher">내 바우처 지갑</h2>
           <span class="mp-section-arrow">▾</span>
         </div>
         <div class="mp-section-body">
@@ -564,44 +571,44 @@
           <!-- 내 주소 QR 버튼 + 패널 -->
           <div style="margin-bottom:12px;">
             <button id="btnVwShowQr" type="button" style="width:100%;padding:11px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.92rem;font-weight:600;cursor:pointer;">
-              📲 내 수탁 지갑 주소 QR 보기
+              <span data-i18n="btn_show_qr">📲 내 수탁 지갑 주소 QR 보기</span>
             </button>
           </div>
           <div id="vwMyQrPanel" style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-bottom:14px;text-align:center;">
-            <div style="font-weight:700;font-size:0.9rem;margin-bottom:10px;">내 수탁 지갑 주소 (상대방에게 보여주세요)</div>
+            <div style="font-weight:700;font-size:0.9rem;margin-bottom:10px;" data-i18n="voucher_wallet_title">내 수탁 지갑 주소 (상대방에게 보여주세요)</div>
             <canvas id="vwQrCanvas" style="display:block;margin:0 auto 10px;border-radius:8px;"></canvas>
             <div id="vwWalletAddr" style="font-size:0.72rem;color:var(--muted,#6b7280);word-break:break-all;margin-bottom:10px;font-family:monospace;"></div>
             <div style="display:flex;gap:8px;justify-content:center;">
-              <button id="btnVwCopyAddr" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;">주소 복사</button>
-              <button id="btnVwHideQr" type="button" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;">닫기</button>
+              <button id="btnVwCopyAddr" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;" data-i18n="btn_copy_addr">주소 복사</button>
+              <button id="btnVwHideQr" type="button" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;" data-i18n="btn_hide_qr">닫기</button>
             </div>
           </div>
 
           <!-- 바우처 카드 그리드 -->
           <div id="voucherCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:4px;"></div>
-          <p id="voucherCardEmpty" class="hint" style="display:none;text-align:center;padding:16px 0;">보유한 바우처가 없습니다.</p>
-          <p id="voucherCardLoading" class="hint" style="text-align:center;padding:12px 0;">불러오는 중...</p>
+          <p id="voucherCardEmpty" class="hint" style="display:none;text-align:center;padding:16px 0;" data-i18n="voucher_empty">보유한 바우처가 없습니다.</p>
+          <p id="voucherCardLoading" class="hint" style="text-align:center;padding:12px 0;" data-i18n="voucher_loading">불러오는 중...</p>
 
           <!-- 이체 모달 (inline) -->
           <div id="voucherTransferPanel" style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-top:14px;">
-            <div style="font-weight:700;margin-bottom:10px;">바우처 이체</div>
+            <div style="font-weight:700;margin-bottom:10px;" data-i18n="transfer_title">바우처 이체</div>
             <div style="font-size:0.83rem;color:var(--muted,#6b7280);margin-bottom:8px;">
               바우처 <strong id="vtVoucherId"></strong>을(를) 이체할 지갑 주소를 입력하세요.
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;">
               <input type="text" id="vtToAddress" placeholder="0x..." style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.88rem;" />
-              <button id="btnVwQrScan" type="button" style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:0.82rem;cursor:pointer;white-space:nowrap;">📷 스캔</button>
+              <button id="btnVwQrScan" type="button" style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:0.82rem;cursor:pointer;white-space:nowrap;" data-i18n="btn_qr_scan_addr">📷 스캔</button>
             </div>
             <div style="display:flex;gap:8px;">
-              <button id="btnVtConfirm" style="flex:1;padding:9px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">이체 확인</button>
-              <button id="btnVtCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;">취소</button>
+              <button id="btnVtConfirm" style="flex:1;padding:9px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;" data-i18n="btn_transfer_confirm">이체 확인</button>
+              <button id="btnVtCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;" data-i18n="btn_cancel">취소</button>
             </div>
             <div id="vtStatus" style="font-size:0.82rem;margin-top:6px;min-height:18px;color:var(--muted,#6b7280);"></div>
           </div>
 
           <!-- 소각 확인 패널 (inline) -->
           <div id="voucherBurnPanel" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin-top:14px;">
-            <div style="font-weight:700;margin-bottom:8px;">🔥 바우처 소각</div>
+            <div style="font-weight:700;margin-bottom:8px;" data-i18n="burn_title">🔥 바우처 소각</div>
             <div style="font-size:0.83rem;color:#92400e;margin-bottom:12px;" id="vbInfo"></div>
 
             <!-- 진행 단계 (소각 중에만 표시) -->
@@ -609,23 +616,23 @@
               <div style="font-size:0.8rem;color:#78350f;margin-bottom:8px;font-weight:600;">처리 진행 중...</div>
               <div style="display:flex;flex-direction:column;gap:6px;">
                 <div id="vbStep1" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
-                  <span id="vbStep1Icon" style="font-size:1rem;">⏳</span> <span id="vbStep1Label">소각 요청 전송 중</span>
+                  <span id="vbStep1Icon" style="font-size:1rem;">⏳</span> <span id="vbStep1Label" data-i18n="burn_step1">소각 요청 전송 중</span>
                 </div>
                 <div id="vbStep2" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
-                  <span id="vbStep2Icon" style="font-size:1rem;">⏳</span> <span id="vbStep2Label">스마트 컨트랙트 실행 중</span>
+                  <span id="vbStep2Icon" style="font-size:1rem;">⏳</span> <span id="vbStep2Label" data-i18n="burn_step2_onchain">스마트 컨트랙트 실행 중</span>
                 </div>
                 <div id="vbStep3" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
-                  <span id="vbStep3Icon" style="font-size:1rem;">⏳</span> <span id="vbStep3Label">HEX 환급 처리 중</span>
+                  <span id="vbStep3Icon" style="font-size:1rem;">⏳</span> <span id="vbStep3Label" data-i18n="burn_step3_onchain">HEX 환급 처리 중</span>
                 </div>
                 <div id="vbStep4" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
-                  <span id="vbStep4Icon" style="font-size:1rem;">⏳</span> <span id="vbStep4Label">완료 확인</span>
+                  <span id="vbStep4Icon" style="font-size:1rem;">⏳</span> <span id="vbStep4Label" data-i18n="burn_step4">완료 확인</span>
                 </div>
               </div>
             </div>
 
             <div id="vbButtons" style="display:flex;gap:8px;">
-              <button id="btnVbConfirm" style="flex:1;padding:9px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">소각 확인</button>
-              <button id="btnVbCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;">취소</button>
+              <button id="btnVbConfirm" style="flex:1;padding:9px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;" data-i18n="burn_confirm_btn">소각 확인</button>
+              <button id="btnVbCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;" data-i18n="btn_cancel">취소</button>
             </div>
             <div id="vbStatus" style="font-size:0.84rem;margin-top:10px;min-height:20px;font-weight:500;text-align:center;"></div>
           </div>
@@ -651,12 +658,12 @@
     </div>
     <p id="qrScanState"
        style="color:#fff; font-size:0.95rem; margin:16px 16px 0; text-align:center; max-width:320px;">
-      QR 코드를 사각형 안에 맞춰주세요
+      <span data-i18n="qr_hint">QR 코드를 사각형 안에 맞춰주세요</span>
     </p>
     <button id="btnCloseQr" type="button"
             style="margin-top:20px; padding:11px 36px; background:#7c3aed; color:#fff;
                    border:none; border-radius:10px; font-size:1rem; cursor:pointer; font-weight:600;">
-      닫기
+      <span data-i18n="btn_hide_qr">닫기</span>
     </button>
   </div>
 
