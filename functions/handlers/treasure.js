@@ -196,28 +196,34 @@ async function openTreasureBox(uid, { boxId } = {}) {
   const itemSnap = await db.collection('treasure_items').doc(String(itemId)).get();
   const itemData = itemSnap.exists ? itemSnap.data() : { name: `아이템 #${itemId}`, image: `${itemId}.png` };
 
-  // 트랜잭션: 열쇠 소비(해당 시) + 미개봉 박스 삭제 + 아이템 인벤토리 적립
+  // 트랜잭션: 모든 읽기 → 검증 → 모든 쓰기 순서 엄수 (Firestore 규칙)
   await db.runTransaction(async (tx) => {
-    if (keyInvRef) {
-      const keySnap2 = await tx.get(keyInvRef);
-      const currentKey = keySnap2.exists ? (keySnap2.data().count || 0) : 0;
+    // ── 모든 읽기 ──────────────────────────────────────────────────────────────
+    const keySnap2 = keyInvRef ? await tx.get(keyInvRef) : null;
+    const invRef   = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
+    const invSnap  = await tx.get(invRef);
+
+    // ── 검증 ──────────────────────────────────────────────────────────────────
+    let currentKey = 0;
+    if (keySnap2 !== null) {
+      currentKey = keySnap2.exists ? (keySnap2.data().count || 0) : 0;
       if (currentKey <= 0)
         throw new HttpsError('failed-precondition', '열쇠가 없습니다 (동시 처리 중 소진)');
+    }
+    const current = invSnap.exists ? (invSnap.data().count || 0) : 0;
+
+    // ── 모든 쓰기 ─────────────────────────────────────────────────────────────
+    if (keyInvRef) {
       if (currentKey - 1 <= 0) {
         tx.delete(keyInvRef);
       } else {
         tx.update(keyInvRef, { count: currentKey - 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
       }
     }
-
-    const invRef = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
-    const invSnap = await tx.get(invRef);
-    const current = invSnap.exists ? (invSnap.data().count || 0) : 0;
     tx.set(invRef, {
       uid, itemId: String(itemId), count: current + 1,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
-
     tx.delete(invBoxRef);
   });
 
