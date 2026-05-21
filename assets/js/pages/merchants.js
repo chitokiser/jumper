@@ -72,6 +72,9 @@ let _boxHpState     = {};        // {boxId: {current, max}} 클라이언트 HP �
 let _boxAtkCd       = {};        // {boxId: true} 공격 쿨다운
 let _nearbyMarkers  = {};        // {uid: Marker} 주변 유저 마커
 let _nearbyTimer    = null;      // setInterval handle (10초 폴링)
+let _detectorActive       = false;  // 보물 탐지기 ON/OFF
+let _detectorBeepTimer    = null;   // setTimeout handle
+let _detectorNextInterval = 0;      // 다음 beep 간격(ms), 0=범위 밖
 let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
 let _gsMonsters     = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
 let _gsMarkers      = {};        // {monsterId: Marker} 게임 서버 몬스터 마커 (비-스프라이트)
@@ -1169,6 +1172,63 @@ function showMyLocation() {
   if (btn) btn.title = _t('game_in_progress');
 }
 
+// ── 보물 탐지기 (금속탐지기 방식) ────────────────────────────────────────────
+function _detectorBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+    setTimeout(() => ctx.close(), 500);
+  } catch(e) {}
+}
+
+function _scheduleNextBeep() {
+  _detectorBeepTimer = null;
+  if (!_detectorActive || _detectorNextInterval === 0) return;
+  _detectorBeep();
+  _detectorBeepTimer = setTimeout(_scheduleNextBeep, _detectorNextInterval);
+}
+
+function _updateDetector(lat, lng) {
+  if (!_detectorActive) return;
+  let minDist = Infinity;
+  for (const box of treasureBoxes) {
+    if (!box.hiddenBox || !box.lat || !box.lng) continue;
+    if (!isBoxActive(box)) continue;
+    if (_collectedBoxes.has(box.id)) continue;
+    const d = haversine(lat, lng, Number(box.lat), Number(box.lng));
+    if (d < minDist) minDist = d;
+  }
+  if (minDist > 30) {
+    _detectorNextInterval = 0; // 범위 밖 — 루프 자연 종료
+    return;
+  }
+  // 30m → 2000ms / 0m → 150ms 선형 보간
+  _detectorNextInterval = Math.round(Math.max(150, 150 + (minDist / 30) * 1850));
+  if (!_detectorBeepTimer) {
+    // 아직 루프가 없으면 즉시 beep 시작
+    _detectorBeep();
+    _detectorBeepTimer = setTimeout(_scheduleNextBeep, _detectorNextInterval);
+  }
+}
+
+function _stopDetector() {
+  _detectorActive = false;
+  _detectorNextInterval = 0;
+  clearTimeout(_detectorBeepTimer);
+  _detectorBeepTimer = null;
+  const btn = $('btnDetector');
+  if (btn) { btn.style.background = ''; btn.style.boxShadow = ''; btn.title = '보물 탐지기 ON/OFF'; }
+}
+
 // ── 보물박스 근접 감지 — 범위 내 마커 강조, HP 있으면 공격해야 수집 ──────────
 async function checkProximity(lat, lng) {
   if (!_uid) return;
@@ -1211,6 +1271,7 @@ async function checkProximity(lat, lng) {
     }
   }
   checkShopProximity(lat, lng);
+  _updateDetector(lat, lng);
 }
 
 async function tryCollect(box) {
@@ -2149,6 +2210,22 @@ async function init() {
   // 버튼 이벤트
   $('btnMyLocation')?.addEventListener('click', showMyLocation);
   $('btnInventory')?.addEventListener('click', openInventory);
+  $('btnDetector')?.addEventListener('click', () => {
+    const btn = $('btnDetector');
+    if (_detectorActive) {
+      _stopDetector();
+      if (btn) btn.title = '보물 탐지기 OFF — 클릭해서 켜기';
+    } else {
+      _detectorActive = true;
+      if (btn) {
+        btn.style.background = '#7c3aed';
+        btn.style.boxShadow = '0 0 10px #7c3aed88';
+        btn.title = '보물 탐지기 ON — 클릭해서 끄기';
+      }
+      // 현재 위치 기준으로 즉시 업데이트
+      if (_ctx.lastPos) _updateDetector(_ctx.lastPos.lat, _ctx.lastPos.lng);
+    }
+  });
   initTutorial();
   $('btnFullscreen')?.addEventListener('click', () => {
     const el = $('merchantMap')?.parentElement ?? $('merchantMap');
