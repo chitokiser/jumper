@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="/assets/images/jump/favicon.png" />
+  <title>보물찾기 — Find the Hidden Treasure</title>
+  <meta name="description" content="JUMP 가맹점에서 HEX로 결제하고 잭팟·바우처·희귀 아이템을 획득하세요. The adventure is calling. The treasure is real." />
+  <meta property="og:image" content="https://jump22.netlify.app/assets/images/ui/map.png" />
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Cinzel Decorative (fantasy headings) + Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Base ──────────────────────────────────────────────────────────── */
+    body { font-family: 'Noto Sans KR', sans-serif; background: #080614; color: #fff; }
+    .font-fantasy  { font-family: 'Cinzel Decorative', serif; }
+    .font-cinzel   { font-family: 'Cinzel', serif; }
+
+    /* ── Gold gradient text ──────────────────────────────────────────── */
+    .text-gold {
+      background: linear-gradient(135deg, #c8922a 0%, #fde68a 40%, #f59e0b 70%, #b45309 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Shimmer button ──────────────────────────────────────────────── */
+    .btn-gold {
+      background: linear-gradient(90deg, #92400e, #f59e0b, #fde68a, #f59e0b, #92400e);
+      background-size: 250% 100%;
+      animation: shimmer 3s linear infinite;
+      color: #1c0f00;
+      font-weight: 700;
+      font-family: 'Cinzel', serif;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 0% 0; }
+      100% { background-position: 250% 0; }
+    }
+
+    /* ── Floating animation ──────────────────────────────────────────── */
+    .float-anim { animation: float 5s ease-in-out infinite; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-14px); }
+    }
+
+    /* ── Glow pulse ──────────────────────────────────────────────────── */
+    .glow-gold { animation: glow 3s ease-in-out infinite; }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 24px rgba(245,158,11,.35), 0 0 60px rgba(245,158,11,.12); }
+      50%       { box-shadow: 0 0 48px rgba(245,158,11,.65), 0 0 120px rgba(245,158,11,.25); }
+    }
+
+    /* ── Sparkle dots ────────────────────────────────────────────────── */
+    .sparkle { position: absolute; border-radius: 50%; background: #fde68a; animation: spark 4s ease-in-out infinite; pointer-events: none; }
+    @keyframes spark {
+      0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+      50%       { opacity: .9; transform: scale(1) rotate(180deg); }
+    }
+
+    /* ── Star twinkle ────────────────────────────────────────────────── */
+    .star { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; animation: twinkle 3s ease-in-out infinite; }
+    @keyframes twinkle {
+      0%, 100% { opacity: .1; } 50% { opacity: .8; }
+    }
+
+    /* ── Scroll fade-in ──────────────────────────────────────────────── */
+    .fade-in { opacity: 0; transform: translateY(28px); transition: opacity .7s ease, transform .7s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Card hover ──────────────────────────────────────────────────── */
+    .card-hover { transition: transform .3s ease, box-shadow .3s ease; }
+    .card-hover:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(245,158,11,.22); }
+
+    /* ── Divider ─────────────────────────────────────────────────────── */
+    .divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, rgba(245,158,11,.5), transparent); margin: 0 40px; }
+
+    /* ── Lang switcher ───────────────────────────────────────────────── */
+    .lang-btn { border: 1px solid rgba(245,158,11,.4); color: rgba(253,230,138,.7); font-family: 'Cinzel', serif; font-size: .7rem; letter-spacing: .05em; transition: all .2s; }
+    .lang-btn:hover, .lang-btn.active { background: #f59e0b; color: #1c0f00; border-color: #f59e0b; font-weight: 700; }
+
+    /* ── Hero BG ─────────────────────────────────────────────────────── */
+    .hero-bg {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245,158,11,.18) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(120,40,0,.25) 0%, transparent 60%),
+        linear-gradient(180deg, #080614 0%, #12082a 50%, #080614 100%);
+    }
+
+    /* ── Stats ───────────────────────────────────────────────────────── */
+    .stat-num { font-family: 'Cinzel', serif; font-size: 1.6rem; font-weight: 700; }
+
+    /* ── Reward badge ────────────────────────────────────────────────── */
+    .reward-badge {
+      position: absolute; top: -10px; right: -10px;
+      background: linear-gradient(135deg, #7c3aed, #4c1d95);
+      font-size: .6rem; font-family: 'Cinzel', serif;
+      padding: 3px 8px; border-radius: 999px; letter-spacing: .08em;
+    }
+
+    /* ── Parchment texture on map ────────────────────────────────────── */
+    .map-frame {
+      border: 2px solid rgba(245,158,11,.4);
+      border-radius: 16px;
+      box-shadow: inset 0 0 60px rgba(0,0,0,.5), 0 0 0 1px rgba(245,158,11,.15);
+    }
+  </style>
+</head>
+
+<body class="hero-bg min-h-screen">
+
+  <!-- ── Fixed: Lang Switcher ──────────────────────────────────────────── -->
+  <div class="fixed top-4 right-4 z-50 flex gap-1.5">
+    <button class="lang-btn px-3 py-1.5 rounded-full" data-lang="ko">한국어</button>
+    <button class="lang-btn px-3 py-1.5 rounded-full" data-lang="en">EN</button>
+    <button class="lang-btn px-3 py-1.5 rounded-full" data-lang="vi">VI</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 1 — HERO
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="relative min-h-screen flex flex-col items-center justify-center px-4 pt-20 pb-12 overflow-hidden">
+
+    <!-- Background stars -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div class="star" style="top:8%;left:12%;animation-delay:.2s"></div>
+      <div class="star" style="top:15%;left:73%;animation-delay:.9s"></div>
+      <div class="star" style="top:25%;left:42%;animation-delay:1.7s"></div>
+      <div class="star" style="top:35%;left:88%;animation-delay:.5s"></div>
+      <div class="star" style="top:55%;left:5%;animation-delay:2.1s"></div>
+      <div class="star" style="top:70%;left:60%;animation-delay:1.3s"></div>
+      <div class="star" style="top:80%;left:25%;animation-delay:.7s"></div>
+      <div class="star" style="top:90%;left:82%;animation-delay:2.4s"></div>
+      <div class="sparkle" style="width:7px;height:7px;top:18%;left:8%;animation-delay:0s"></div>
+      <div class="sparkle" style="width:5px;height:5px;top:45%;left:92%;animation-delay:1.2s"></div>
+      <div class="sparkle" style="width:8px;height:8px;top:72%;left:14%;animation-delay:2.3s"></div>
+      <div class="sparkle" style="width:6px;height:6px;top:30%;left:78%;animation-delay:.6s"></div>
+    </div>
+
+    <!-- Badge -->
+    <div class="relative z-10 mb-5 flex items-center gap-2 fade-in" style="transition-delay:.1s">
+      <span class="text-yellow-500/60 text-base">⚔️</span>
+      <p class="font-cinzel text-yellow-400/80 text-xs tracking-[.25em] uppercase" data-i18n="hero_sub"></p>
+      <span class="text-yellow-500/60 text-base">⚔️</span>
+    </div>
+
+    <!-- Title -->
+    <div class="relative z-10 text-center mb-4 fade-in" style="transition-delay:.2s">
+      <div class="font-cinzel text-yellow-400/50 text-sm sm:text-base tracking-[.35em] uppercase mb-1" data-i18n="hero_eyebrow"></div>
+      <h1 class="font-fantasy text-gold text-5xl sm:text-6xl md:text-7xl leading-none tracking-wide" data-i18n="hero_title"></h1>
+    </div>
+
+    <!-- Description -->
+    <p class="relative z-10 text-center text-amber-200/70 text-sm sm:text-base max-w-md mx-auto mb-8 leading-relaxed fade-in" style="transition-delay:.3s" data-i18n="hero_desc"></p>
+
+    <!-- MAP IMAGE -->
+    <div class="relative z-10 w-full max-w-xl mx-auto mb-10 float-anim fade-in" style="transition-delay:.35s">
+      <div class="map-frame glow-gold overflow-hidden">
+        <img src="/assets/images/ui/map.png" alt="Treasure Map" class="w-full h-auto object-cover block" loading="eager" />
+      </div>
+      <!-- Corner emojis -->
+      <span class="absolute -top-4 -left-4 text-3xl select-none" aria-hidden="true">✨</span>
+      <span class="absolute -top-4 -right-4 text-3xl select-none" aria-hidden="true">✨</span>
+      <span class="absolute -bottom-4 -left-4 text-2xl select-none" aria-hidden="true">🪙</span>
+      <span class="absolute -bottom-4 -right-4 text-2xl select-none" aria-hidden="true">🪙</span>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="relative z-10 flex flex-wrap justify-center gap-8 mb-10 fade-in" style="transition-delay:.4s">
+      <div class="text-center">
+        <div class="stat-num text-gold">10,000+</div>
+        <div class="text-amber-200/50 text-xs font-cinzel tracking-wider" data-i18n="stat1"></div>
+      </div>
+      <div class="w-px bg-yellow-500/20 self-stretch"></div>
+      <div class="text-center">
+        <div class="stat-num text-gold">247</div>
+        <div class="text-amber-200/50 text-xs font-cinzel tracking-wider" data-i18n="stat2"></div>
+      </div>
+      <div class="w-px bg-yellow-500/20 self-stretch"></div>
+      <div class="text-center">
+        <div class="stat-num text-gold">∞</div>
+        <div class="text-amber-200/50 text-xs font-cinzel tracking-wider" data-i18n="stat3"></div>
+      </div>
+    </div>
+
+    <!-- CTA Buttons -->
+    <div class="relative z-10 flex flex-col sm:flex-row gap-3 w-full max-w-sm mx-auto fade-in" style="transition-delay:.45s">
+      <a href="/merchants.html" class="btn-gold flex-1 text-center py-4 px-6 rounded-xl text-sm shadow-xl hover:scale-105 transition-transform" data-i18n="btn_explore"></a>
+      <a href="/register.html" class="flex-1 text-center py-4 px-6 rounded-xl font-bold font-cinzel text-yellow-400 text-sm border border-yellow-500/60 bg-yellow-500/5 hover:bg-yellow-500/15 hover:scale-105 transition-all" data-i18n="btn_register"></a>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 2 — HOW TO PLAY
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="py-20 px-4 max-w-4xl mx-auto">
+    <div class="text-center mb-12 fade-in">
+      <div class="font-cinzel text-yellow-500/50 text-xs tracking-[.3em] uppercase mb-3" data-i18n="how_eyebrow"></div>
+      <h2 class="font-fantasy text-gold text-3xl sm:text-4xl" data-i18n="how_title"></h2>
+      <p class="text-amber-200/50 text-sm mt-3" data-i18n="how_sub"></p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <!-- Step 1 -->
+      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-7 text-center backdrop-blur-sm">
+        <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
+        <div class="text-5xl mb-5">🗺️</div>
+        <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step1_label"></div>
+        <h3 class="font-bold text-white text-base mb-2" data-i18n="step1_title"></h3>
+        <p class="text-amber-200/55 text-sm leading-relaxed" data-i18n="step1_desc"></p>
+      </div>
+      <!-- Step 2 -->
+      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-7 text-center backdrop-blur-sm" style="transition-delay:.1s">
+        <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
+        <!-- Connector arrow (desktop) -->
+        <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
+        <div class="text-5xl mb-5">💳</div>
+        <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step2_label"></div>
+        <h3 class="font-bold text-white text-base mb-2" data-i18n="step2_title"></h3>
+        <p class="text-amber-200/55 text-sm leading-relaxed" data-i18n="step2_desc"></p>
+      </div>
+      <!-- Step 3 -->
+      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-7 text-center backdrop-blur-sm" style="transition-delay:.2s">
+        <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
+        <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
+        <div class="text-5xl mb-5">🎁</div>
+        <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step3_label"></div>
+        <h3 class="font-bold text-white text-base mb-2" data-i18n="step3_title"></h3>
+        <p class="text-amber-200/55 text-sm leading-relaxed" data-i18n="step3_desc"></p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 3 — LEGENDARY REWARDS
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="py-20 px-4 max-w-4xl mx-auto">
+    <div class="text-center mb-12 fade-in">
+      <div class="font-cinzel text-yellow-500/50 text-xs tracking-[.3em] uppercase mb-3" data-i18n="rewards_eyebrow"></div>
+      <h2 class="font-fantasy text-gold text-3xl sm:text-4xl" data-i18n="rewards_title"></h2>
+      <p class="text-amber-200/50 text-sm mt-3" data-i18n="rewards_sub"></p>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
+      <!-- VIP Voucher -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-yellow-500/10 via-yellow-500/5 to-transparent border border-yellow-500/25 rounded-2xl p-5 sm:p-6 text-center">
+        <div class="text-4xl sm:text-5xl mb-4">🏆</div>
+        <div class="font-bold text-white text-sm mb-1" data-i18n="reward1_name"></div>
+        <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward1_desc"></div>
+      </div>
+      <!-- Mystery Box -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/25 rounded-2xl p-5 sm:p-6 text-center" style="transition-delay:.08s">
+        <span class="reward-badge text-purple-200" data-i18n="badge_rare"></span>
+        <div class="text-4xl sm:text-5xl mb-4">🎲</div>
+        <div class="font-bold text-white text-sm mb-1" data-i18n="reward2_name"></div>
+        <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward2_desc"></div>
+      </div>
+      <!-- Rare Items -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-blue-500/10 via-blue-500/5 to-transparent border border-blue-500/25 rounded-2xl p-5 sm:p-6 text-center" style="transition-delay:.16s">
+        <div class="text-4xl sm:text-5xl mb-4">💎</div>
+        <div class="font-bold text-white text-sm mb-1" data-i18n="reward3_name"></div>
+        <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward3_desc"></div>
+      </div>
+      <!-- Jackpot -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/25 rounded-2xl p-5 sm:p-6 text-center" style="transition-delay:.24s">
+        <span class="reward-badge text-emerald-200" data-i18n="badge_jackpot"></span>
+        <div class="text-4xl sm:text-5xl mb-4">🌟</div>
+        <div class="font-bold text-white text-sm mb-1" data-i18n="reward4_name"></div>
+        <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward4_desc"></div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 4 — PREMIUM MEMBER
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="py-20 px-4">
+    <div class="max-w-2xl mx-auto text-center fade-in">
+      <!-- Crown icon with glow -->
+      <div class="text-6xl mb-5 inline-block" style="filter:drop-shadow(0 0 18px rgba(245,158,11,.6))">👑</div>
+
+      <div class="font-cinzel text-yellow-500/50 text-xs tracking-[.3em] uppercase mb-3" data-i18n="member_eyebrow"></div>
+      <h2 class="font-fantasy text-gold text-2xl sm:text-3xl mb-4" data-i18n="member_title"></h2>
+
+      <!-- Info card -->
+      <div class="bg-white/[.04] border border-yellow-500/20 rounded-2xl p-6 sm:p-8 mb-8 text-left space-y-3">
+        <div class="flex items-start gap-3">
+          <span class="text-yellow-400 text-lg mt-.5">✦</span>
+          <p class="text-amber-200/75 text-sm leading-relaxed" data-i18n="member_benefit1"></p>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-yellow-400 text-lg mt-.5">✦</span>
+          <p class="text-amber-200/75 text-sm leading-relaxed" data-i18n="member_benefit2"></p>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-yellow-400 text-lg mt-.5">✦</span>
+          <p class="text-amber-200/75 text-sm leading-relaxed" data-i18n="member_benefit3"></p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="/mypage.html#wallet" class="btn-gold py-4 px-8 rounded-xl text-sm shadow-xl hover:scale-105 transition-transform" data-i18n="btn_wallet"></a>
+        <a href="/register.html" class="py-4 px-8 rounded-xl font-bold font-cinzel text-yellow-400 text-sm border border-yellow-500/50 bg-yellow-500/5 hover:bg-yellow-500/15 hover:scale-105 transition-all" data-i18n="btn_register"></a>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 5 — FINAL CTA
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="py-24 px-4 text-center relative overflow-hidden fade-in">
+    <div class="absolute inset-0 pointer-events-none" aria-hidden="true"
+      style="background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(245,158,11,.12) 0%, transparent 70%)"></div>
+
+    <div class="relative z-10">
+      <div class="text-5xl mb-5">🏴‍☠️</div>
+      <h2 class="font-fantasy text-gold text-3xl sm:text-4xl md:text-5xl mb-4" data-i18n="cta_title"></h2>
+      <p class="text-amber-200/60 text-sm sm:text-base mb-10 max-w-md mx-auto" data-i18n="cta_desc"></p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-sm mx-auto">
+        <a href="/merchants.html" class="btn-gold py-4 px-10 rounded-xl text-sm shadow-2xl hover:scale-105 transition-transform" data-i18n="btn_explore"></a>
+        <a href="/register.html" class="py-4 px-10 rounded-xl font-bold font-cinzel text-yellow-400 text-sm border border-yellow-500/50 bg-yellow-500/5 hover:bg-yellow-500/15 hover:scale-105 transition-all" data-i18n="btn_register"></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────── -->
+  <footer class="py-8 text-center border-t border-yellow-500/10">
+    <div class="flex flex-wrap justify-center gap-4 text-xs text-amber-200/30 mb-2">
+      <a href="/merchants.html" class="hover:text-yellow-400 transition-colors font-cinzel" data-i18n="nav_merchants"></a>
+      <span>·</span>
+      <a href="/register.html" class="hover:text-yellow-400 transition-colors font-cinzel" data-i18n="nav_register"></a>
+      <span>·</span>
+      <a href="/mypage.html#wallet" class="hover:text-yellow-400 transition-colors font-cinzel" data-i18n="nav_wallet"></a>
+    </div>
+    <p class="text-amber-200/20 text-xs">© 2025 JUMP Platform</p>
+  </footer>
+
+
+  <script>
+    // ── i18n ────────────────────────────────────────────────────────────────────
+    const MESSAGES = {
+      // Hero
+      hero_eyebrow:    { ko: 'FIND THE', en: 'FIND THE', vi: 'TÌM' },
+      hero_sub:        { ko: '전설의 모험이 시작된다', en: 'The legendary adventure begins', vi: 'Cuộc phiêu lưu huyền thoại bắt đầu' },
+      hero_title:      { ko: 'HIDDEN TREASURE', en: 'HIDDEN TREASURE', vi: 'KHO BÁU ẨN GIẤU' },
+      hero_desc:       { ko: '모험이 당신을 부르고 있습니다. 보물은 진짜입니다.\nJUMP 가맹점에서 결제할 때마다 전설적인 보상이 쏟아집니다.', en: 'The adventure is calling. The treasure is real.\nEvery JUMP merchant payment brings legendary rewards.', vi: 'Cuộc phiêu lưu đang gọi bạn. Kho báu là thật.\nMỗi lần thanh toán tại cửa hàng JUMP, phần thưởng huyền thoại đang chờ.' },
+
+      // Stats
+      stat1:           { ko: '탐험가 참여', en: 'EXPLORERS JOINED', vi: 'THÁM HIỂM VIÊN' },
+      stat2:           { ko: '오늘 발견된 보물', en: 'TREASURES TODAY', vi: 'KHO BÁU HÔM NAY' },
+      stat3:           { ko: '전설적 보상', en: 'LEGENDARY REWARDS', vi: 'PHẦN THƯỞNG' },
+
+      // Buttons
+      btn_explore:     { ko: '🗺️ 탐험 시작하기', en: '🗺️ Start Exploring', vi: '🗺️ Bắt đầu khám phá' },
+      btn_register:    { ko: '⚔️ 모험가 등록', en: '⚔️ Register Now', vi: '⚔️ Đăng ký ngay' },
+      btn_wallet:      { ko: '💰 내 지갑 보기', en: '💰 View My Wallet', vi: '💰 Xem ví của tôi' },
+
+      // How to play
+      how_eyebrow:     { ko: 'QUEST GUIDE', en: 'QUEST GUIDE', vi: 'HƯỚNG DẪN' },
+      how_title:       { ko: '보물 찾는 법', en: 'How to Find Treasure', vi: 'Cách tìm kho báu' },
+      how_sub:         { ko: '3단계로 전설적인 보상을 손에 넣으세요', en: 'Claim legendary rewards in 3 simple steps', vi: '3 bước để nhận phần thưởng huyền thoại' },
+      step1_label:     { ko: 'STEP 01', en: 'STEP 01', vi: 'BƯỚC 01' },
+      step1_title:     { ko: '가맹점 방문', en: 'Visit a Merchant', vi: 'Ghé cửa hàng đối tác' },
+      step1_desc:      { ko: '지도에 표시된 JUMP 가맹점을 방문하세요. 숨겨진 보물이 기다리고 있습니다.', en: 'Visit any JUMP partner merchant on the map. Hidden treasure awaits you.', vi: 'Ghé thăm cửa hàng đối tác JUMP trên bản đồ. Kho báu ẩn đang chờ bạn.' },
+      step2_label:     { ko: 'STEP 02', en: 'STEP 02', vi: 'BƯỚC 02' },
+      step2_title:     { ko: 'HEX로 결제', en: 'Pay with HEX', vi: 'Thanh toán bằng HEX' },
+      step2_desc:      { ko: 'HEX 토큰으로 결제할 때마다 잭팟 추첨 기회와 포인트가 자동 적립됩니다.', en: 'Every HEX payment earns jackpot chances and accumulates points automatically.', vi: 'Mỗi lần thanh toán HEX là một lần quay xổ số jackpot và tích điểm tự động.' },
+      step3_label:     { ko: 'STEP 03', en: 'STEP 03', vi: 'BƯỚC 03' },
+      step3_title:     { ko: '보물 수령', en: 'Claim Your Treasure', vi: 'Nhận kho báu' },
+      step3_desc:      { ko: '잭팟, 바우처, 희귀 아이템을 내 지갑에서 확인하고 즉시 사용하세요.', en: 'Check jackpots, vouchers, and rare items in your wallet and use them instantly.', vi: 'Kiểm tra jackpot, voucher và vật phẩm hiếm trong ví rồi sử dụng ngay.' },
+
+      // Rewards
+      rewards_eyebrow: { ko: 'LEGENDARY LOOT', en: 'LEGENDARY LOOT', vi: 'CHIẾN LỢI PHẨM' },
+      rewards_title:   { ko: '전설적 보상', en: 'Legendary Rewards', vi: 'Phần thưởng huyền thoại' },
+      rewards_sub:     { ko: '결제할 때마다 이 보물들을 획득할 기회가 생깁니다', en: 'Every payment is a chance to win these treasures', vi: 'Mỗi lần thanh toán là cơ hội nhận những phần thưởng này' },
+      badge_rare:      { ko: 'RARE', en: 'RARE', vi: 'HIẾM' },
+      badge_jackpot:   { ko: 'JACKPOT', en: 'JACKPOT', vi: 'JACKPOT' },
+      reward1_name:    { ko: 'VIP 바우처', en: 'VIP Vouchers', vi: 'Voucher VIP' },
+      reward1_desc:    { ko: '독점 할인 & 특별 혜택', en: 'Exclusive discounts & perks', vi: 'Giảm giá độc quyền & ưu đãi' },
+      reward2_name:    { ko: '미스터리 박스', en: 'Mystery Boxes', vi: 'Hộp bí ẩn' },
+      reward2_desc:    { ko: '희귀 아이템 & HEX 포인트', en: 'Rare items & HEX points', vi: 'Vật phẩm hiếm & điểm HEX' },
+      reward3_name:    { ko: '희귀 아이템', en: 'Rare Items', vi: 'Vật phẩm hiếm' },
+      reward3_desc:    { ko: '게임 강화 & 부활권', en: 'Game boosts & revive tickets', vi: 'Tăng cường game & vé hồi sinh' },
+      reward4_name:    { ko: '잭팟 HEX', en: 'Jackpot HEX', vi: 'Jackpot HEX' },
+      reward4_desc:    { ko: '대형 HEX 온체인 잭팟', en: 'Massive on-chain HEX jackpots', vi: 'Jackpot HEX on-chain khổng lồ' },
+
+      // Premium member
+      member_eyebrow:  { ko: 'PREMIUM', en: 'PREMIUM', vi: 'CAO CẤP' },
+      member_title:    { ko: '정회원의 특권', en: 'Premium Member Benefits', vi: 'Đặc quyền thành viên chính thức' },
+      member_benefit1: { ko: '10 HEX를 납부하면 정회원이 됩니다. 가입 후 12개월간 정회원 혜택이 유지됩니다.', en: 'Pay 10 HEX to become a premium member. Benefits last for 12 months after joining.', vi: 'Đóng 10 HEX để trở thành thành viên chính thức. Quyền lợi duy trì 12 tháng sau khi gia nhập.' },
+      member_benefit2: { ko: '정회원만 가맹점에서 독점 보물 박스를 발행하고 관리할 수 있습니다.', en: 'Only premium members can issue and manage exclusive treasure boxes at merchants.', vi: 'Chỉ thành viên chính thức mới có thể phát hành và quản lý hộp kho báu độc quyền tại cửa hàng.' },
+      member_benefit3: { ko: '12개월 만료 후에는 재가입을 통해 혜택을 연장할 수 있습니다.', en: 'After 12 months, renew your membership to continue enjoying the benefits.', vi: 'Sau 12 tháng, gia hạn thành viên để tiếp tục hưởng quyền lợi.' },
+
+      // Final CTA
+      cta_title:       { ko: '모험을 시작할\n준비가 됐나요?', en: 'Ready for the\nAdventure?', vi: 'Sẵn sàng cho\ncuộc phiêu lưu?' },
+      cta_desc:        { ko: '지금 탐험가로 등록하고 전설적인 보물을 찾아보세요. 한정 기간 이벤트 진행 중!', en: 'Register as an explorer now and hunt for legendary treasures. Limited time event!', vi: 'Đăng ký thám hiểm ngay và săn kho báu huyền thoại. Sự kiện có thời hạn!' },
+
+      // Footer nav
+      nav_merchants:   { ko: '가맹점', en: 'Merchants', vi: 'Cửa hàng' },
+      nav_register:    { ko: '회원가입', en: 'Register', vi: 'Đăng ký' },
+      nav_wallet:      { ko: '내 지갑', en: 'My Wallet', vi: 'Ví của tôi' },
+    };
+
+    const LANGS = ['ko', 'en', 'vi'];
+    let lang = localStorage.getItem('trs_lang') || 'ko';
+
+    function _t(key) {
+      const e = MESSAGES[key];
+      if (!e) return key;
+      return e[lang] ?? e['ko'] ?? key;
+    }
+
+    function applyLang() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = _t(el.dataset.i18n);
+      });
+      document.documentElement.lang = lang;
+      document.querySelectorAll('.lang-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.lang === lang);
+      });
+    }
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        lang = btn.dataset.lang;
+        localStorage.setItem('trs_lang', lang);
+        applyLang();
+      });
+    });
+
+    // ── Scroll fade-in ────────────────────────────────────────────────────────
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.fade-in').forEach(el => io.observe(el));
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    applyLang();
+  </script>
+</body>
+</html>
