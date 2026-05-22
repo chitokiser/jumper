@@ -666,7 +666,7 @@ function updateCombatHud() {
   if (dead) {
     if (_isDead) {
       dead.style.display = '';
-      dead.textContent = _t('hud_dead', Math.max(0, Math.round(50 - _reviveWalkDist)));
+      dead.textContent = _t('hud_dead', Math.max(0, Math.round(10 - _reviveWalkDist)));
     } else {
       dead.style.display = 'none';
     }
@@ -1743,7 +1743,7 @@ function battleTick() {
   checkGoldPickup();
   _updateDebugPanel();
   if (_isDead) {
-    if (_reviveWalkDist >= 50) {
+    if (_reviveWalkDist >= 10) {
       _isDead = false;
       _reviveWalkDist = 0;
       _clearDeathMarker();
