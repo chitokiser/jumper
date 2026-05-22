@@ -253,6 +253,7 @@ function initHamburger(){
 async function bindHeader(){
   const btnLogin = document.getElementById("btnLogin");
   const btnLogout = document.getElementById("btnLogout");
+  const btnPhoneLogin = document.getElementById("btnPhoneLogin");
   const nav = document.getElementById("hdrNav");
 
   if(!btnLogin && !btnLogout && !nav) return;
@@ -306,6 +307,7 @@ async function bindHeader(){
   initNavGroups();
 
   applyRoleToMenu("guest");
+  show(btnPhoneLogin, true);
   show(btnLogin, true);
   show(btnLogout, false);
 
@@ -316,6 +318,7 @@ async function bindHeader(){
   })();
 
   watchAuth(({ loggedIn, role, profile, user })=>{
+    show(btnPhoneLogin, !loggedIn);
     show(btnLogin, !loggedIn);
     show(btnLogout, loggedIn);
     applyRoleToMenu(role || (loggedIn ? "user" : "guest"));
