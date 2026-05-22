@@ -901,16 +901,27 @@
           backdrop-filter:blur(3px);
         ">
           <div style="font-size:52px;line-height:1;">🔐</div>
-          <div style="color:#fff;font-size:17px;font-weight:700;letter-spacing:-.3px;">Cần đăng nhập</div>
+          <div style="color:#fff;font-size:17px;font-weight:700;letter-spacing:-.3px;">로그인이 필요합니다</div>
           <div style="color:#94a3b8;font-size:13px;text-align:center;line-height:1.5;">
-            Vui lòng đăng nhập<br>để chơi game
+            로그인 후 게임을 즐기세요
           </div>
           <button id="btnOverlayLogin" type="button" style="
             background:#ff6b00;color:#fff;
             padding:10px 28px;border-radius:8px;
             font-weight:700;font-size:14px;cursor:pointer;
             border:none;box-shadow:0 2px 8px rgba(255,107,0,.4);
-          ">Đăng nhập →</button>
+          ">🔑 Google 로그인</button>
+          <div style="color:#4b5563;font-size:11px;">─── 또는 ───</div>
+          <button id="btnOverlayAnon" type="button" style="
+            background:#1f2937;color:#d1d5db;
+            padding:10px 28px;border-radius:8px;
+            font-weight:600;font-size:13px;cursor:pointer;
+            border:1px solid #374151;
+          ">👤 익명으로 게임하기</button>
+          <div id="anonLoginMsg" style="color:#f59e0b;font-size:11px;text-align:center;line-height:1.5;display:none;max-width:240px;"></div>
+          <div style="color:#6b7280;font-size:10px;text-align:center;line-height:1.6;max-width:230px;">
+            익명: 1기기 1계정 · 구글 계정으로 업그레이드 가능<br>기기 초기화 시 데이터 복구 불가
+          </div>
         </div>
       </div>
       <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 -->

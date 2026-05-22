@@ -5,7 +5,7 @@ import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
          setDoc, deleteDoc, serverTimestamp }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { onAuthStateChanged, signInWithPopup }
+import { onAuthStateChanged, signInWithPopup, signInAnonymously, signOut, linkWithPopup }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -61,6 +61,7 @@ let boxMarkers      = [];
 let _uid            = null;   // 로그인 유저 UID
 let _userEmail      = null;   // 로그인 유저 이메일
 let _isAdmin        = false;  // 관리자 여부
+let _isAnonymous    = false;  // 익명 계정 여부
 let _inventory      = {};     // {itemId: count}
 let _boxInventory   = [];     // [{boxId, boxName, hiddenBox, keyId}]  미개봉 박스
 let _items          = {};     // {itemId: {name, image, description}}
@@ -1172,6 +1173,80 @@ function showMyLocation() {
   if (btn) btn.title = _t('game_in_progress');
 }
 
+// ── 익명 로그인 (1기기 1계정) ───────────────────────────────────────────────
+function _getDeviceId() {
+  let id = localStorage.getItem('_jumper_did');
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+    localStorage.setItem('_jumper_did', id);
+  }
+  return id;
+}
+
+async function _signInAnonymous() {
+  const btn = $('btnOverlayAnon');
+  const msgEl = $('anonLoginMsg');
+  if (btn) { btn.textContent = '연결 중…'; btn.disabled = true; }
+  if (msgEl) msgEl.style.display = 'none';
+
+  const deviceId = _getDeviceId();
+  try {
+    const cred = await signInAnonymously(auth);
+    const uid  = cred.user.uid;
+
+    // 이 기기의 계정 등록 확인
+    const devRef  = doc(db, 'device_accounts', deviceId);
+    const devSnap = await getDoc(devRef);
+
+    if (devSnap.exists()) {
+      const registered = devSnap.data().uid;
+      if (registered !== uid) {
+        // 같은 기기에서 다른 계정 시도 → 차단
+        await signOut(auth);
+        if (msgEl) {
+          msgEl.textContent = '이 기기에 이미 다른 계정이 등록되어 있습니다. 1기기 1계정만 허용됩니다.';
+          msgEl.style.display = 'block';
+        }
+        return;
+      }
+      // 기존 계정 재접속 → OK
+    } else {
+      // 신규 기기 → 기기 등록 + 사용자 프로필 생성
+      const guestNum = Math.floor(Math.random() * 90000) + 10000;
+      const userRef  = doc(db, 'users', uid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          displayName: `게스트#${guestNum}`,
+          isAnonymous: true,
+          createdAt: serverTimestamp(),
+          role: 'user',
+        });
+      }
+      await setDoc(devRef, { uid, createdAt: serverTimestamp() });
+    }
+  } catch (e) {
+    if (msgEl) {
+      msgEl.textContent = '오류: ' + (e.message || e.code || String(e));
+      msgEl.style.display = 'block';
+    }
+  } finally {
+    if (btn) { btn.textContent = '👤 익명으로 게임하기'; btn.disabled = false; }
+  }
+}
+
+async function _linkGoogleAccount() {
+  if (!auth.currentUser?.isAnonymous) return;
+  try {
+    await linkWithPopup(auth.currentUser, googleProvider);
+    alert('✅ Google 계정 연동 완료! 앞으로 Google 로그인으로 접속하세요.');
+  } catch (e) {
+    if (e.code !== 'auth/popup-closed-by-user') {
+      alert('연동 오류: ' + (e.message || e.code));
+    }
+  }
+}
+
 // ── 보물 탐지기 (금속탐지기 방식) ────────────────────────────────────────────
 function _detectorBeep() {
   try {
@@ -2127,36 +2202,43 @@ async function init() {
 
   // Auth 리스너 (비동기 — 블로킹 없음)
   onAuthStateChanged(auth, async user => {
-    _uid       = user?.uid   || null;
-    _userEmail = user?.email || null;
-    _ctx.uid   = _uid;
+    _uid         = user?.uid         || null;
+    _userEmail   = user?.email       || null;
+    _isAnonymous = user?.isAnonymous || false;
+    _ctx.uid     = _uid;
 
     const loginOverlay = $('gameLoginOverlay');
     const gameToggle   = $('btnGameToggle');
 
     if (_uid) {
-      // 로그인됨 → 오버레이 숨김, 게임 버튼 활성화
+      // 로그인됨 (일반 또는 익명) → 오버레이 숨김
       if (loginOverlay) loginOverlay.style.display = 'none';
       if (gameToggle)   gameToggle.disabled = false;
 
-      const snap = await getDoc(doc(db, 'admins', _uid));
-      _isAdmin = snap.exists() || (_userEmail === 'daguri75@gmail.com');
-      _ctx.isAdmin = _isAdmin;
-      // 전투 시스템: 플레이어 상태 로드 → 완료 후 교환권 재렌더 (gold 반영)
+      _isAdmin = false;
+      _ctx.isAdmin = false;
+      if (!_isAnonymous) {
+        const snap = await getDoc(doc(db, 'admins', _uid));
+        _isAdmin = snap.exists() || (_userEmail === 'daguri75@gmail.com');
+        _ctx.isAdmin = _isAdmin;
+      }
+
+      // 익명 유저 배지 표시
+      _renderAnonBadge(_isAnonymous);
+
       loadPlayerState().then(() => {
         renderExchangeSection();
-        showDeathMarkerIfDead(); // playerState 로드 후 맵이 이미 준비된 경우 마커 표시
+        showDeathMarkerIfDead();
       });
-      // 인벤토리 + 교환권 섹션 갱신
       loadInventory();
-      // 회원등급 표시
       _renderMemberStatus(_uid);
     } else {
-      // 비로그인 → 오버레이 표시, 게임 버튼 비활성화, 게임 서버 연결 차단
+      // 비로그인 → 오버레이 표시
       if (loginOverlay) loginOverlay.style.display = 'flex';
       if (gameToggle)   gameToggle.disabled = true;
       _isAdmin = false;
       _ctx.isAdmin = false;
+      _renderAnonBadge(false);
       _renderMemberStatus(null);
     }
     // 관리자 패널 표시
@@ -2192,7 +2274,29 @@ async function init() {
   }
   renderCards(allMerchants);
 
-  // 로그인 오버레이 버튼 — 현재 페이지를 유지한 채 Google 팝업 로그인
+  // 익명 배지 렌더
+  function _renderAnonBadge(isAnon) {
+    let badge = $('anonBadge');
+    if (isAnon) {
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'anonBadge';
+        badge.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:900;' +
+          'background:#1f2937;border:1px solid #374151;border-radius:20px;padding:4px 14px;' +
+          'display:flex;align-items:center;gap:8px;font-size:12px;color:#9ca3af;';
+        badge.innerHTML = '<span>👤 게스트 모드</span>' +
+          '<button id="btnLinkGoogle" style="background:#ff6b00;color:#fff;border:none;border-radius:12px;' +
+          'padding:2px 10px;font-size:11px;cursor:pointer;font-weight:600;">Google 연동</button>';
+        document.body.appendChild(badge);
+        $('btnLinkGoogle')?.addEventListener('click', _linkGoogleAccount);
+      }
+      badge.style.display = 'flex';
+    } else if (badge) {
+      badge.style.display = 'none';
+    }
+  }
+
+  // 로그인 오버레이 버튼 — Google 팝업 로그인
   $('btnOverlayLogin')?.addEventListener('click', async () => {
     const btn = $('btnOverlayLogin');
     if (btn) { btn.textContent = '로그인 중…'; btn.disabled = true; }
@@ -2203,9 +2307,12 @@ async function init() {
         alert('로그인 오류: ' + code);
       }
     } finally {
-      if (btn) { btn.textContent = 'Đăng nhập →'; btn.disabled = false; }
+      if (btn) { btn.textContent = '🔑 Google 로그인'; btn.disabled = false; }
     }
   });
+
+  // 익명 로그인
+  $('btnOverlayAnon')?.addEventListener('click', _signInAnonymous);
 
   // 버튼 이벤트
   $('btnMyLocation')?.addEventListener('click', showMyLocation);

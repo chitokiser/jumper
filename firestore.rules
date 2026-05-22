@@ -604,6 +604,15 @@ service cloud.firestore {
       }
     }
 
+    // ── 기기 1계정 매핑 (익명 로그인용) ──────────────────────────────────────
+    match /device_accounts/{deviceId} {
+      // deviceId는 클라이언트 생성 랜덤 UUID — 추측 불가이므로 공개 읽기 허용
+      allow get: if true;
+      // 자신의 uid로만 생성 가능, 수정/삭제 불가
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
