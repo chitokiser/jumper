@@ -15,8 +15,7 @@ const _HDR_T = {
     hdr_notice_admin: 'Quản lý thông báo', hdr_places: 'Đăng ký địa điểm',
     hdr_banners: 'Quản lý banner', hdr_jackpot: 'Quản lý rút jackpot',
     hdr_buggy: 'Quản lý xe buggy', hdr_member_badge: '👑 Hội viên chính',
-    hdr_member_join: 'Đăng ký hội viên', hdr_login: 'Đăng nhập Google', hdr_logout: 'Đăng xuất',
-    hdr_phone_login: '📱 Đăng nhập SĐT',
+    hdr_member_join: 'Đăng ký hội viên', hdr_login: 'Đăng nhập', hdr_logout: 'Đăng xuất',
   },
   en: {
     hdr_explore: 'Explore', hdr_treasure: 'Treasure Hunt', hdr_stay: 'Stay',
@@ -33,8 +32,7 @@ const _HDR_T = {
     hdr_notice_admin: 'Notices', hdr_places: 'Add Place',
     hdr_banners: 'Banners', hdr_jackpot: 'Jackpot Withdrawal',
     hdr_buggy: 'Buggy Management', hdr_member_badge: '👑 Member',
-    hdr_member_join: 'Join Member', hdr_login: 'Google Login', hdr_logout: 'Logout',
-    hdr_phone_login: '📱 Phone Login',
+    hdr_member_join: 'Join Member', hdr_login: 'Login', hdr_logout: 'Logout',
   },
   ko: {
     hdr_explore: '탐색', hdr_treasure: '보물찾기', hdr_stay: '잠자리',
@@ -51,8 +49,7 @@ const _HDR_T = {
     hdr_notice_admin: '공지관리', hdr_places: '장소등록',
     hdr_banners: '배너관리', hdr_jackpot: '잭팟 인출관리',
     hdr_buggy: '버기카 관리', hdr_member_badge: '👑 정회원',
-    hdr_member_join: '정회원 가입', hdr_login: '구글 로그인', hdr_logout: '로그아웃',
-    hdr_phone_login: '📱 전화번호 로그인',
+    hdr_member_join: '정회원 가입', hdr_login: '로그인', hdr_logout: '로그아웃',
   },
 };
 

@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>회원가입 / 로그인 - Jump</title>
+  <title>로그인 / 회원가입 - Jump</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -18,48 +18,28 @@
 
   <main class="page">
     <section class="panel">
-      <h1 class="title">회원가입 / 로그인</h1>
-      <p class="desc">전화번호로 인증 후 수탁 지갑이 자동으로 생성됩니다.</p>
+      <h1 class="title">로그인 / 회원가입</h1>
+      <p class="desc">소셜 계정으로 간편하게 시작하세요.</p>
 
       <div id="regState" class="state"></div>
 
-      <!-- ── 인증 섹션 (로그인 전) ── -->
+      <!-- ── 소셜 로그인 섹션 (로그인 전) ── -->
       <div id="authSection">
-        <div class="auth-tabs">
-          <button class="auth-tab auth-tab--active" id="tabPhone" type="button">📱 전화번호</button>
-          <button class="auth-tab" id="tabGoogle" type="button">🔑 Google</button>
+        <div class="social-login-list">
+          <button class="btn-social btn-social--google" id="btnGoogleLogin" type="button">
+            <span class="social-icon social-icon--google">G</span>
+            Google로 계속하기
+          </button>
+          <button class="btn-social btn-social--facebook" id="btnFacebookLogin" type="button">
+            <span class="social-icon social-icon--facebook">f</span>
+            Facebook으로 계속하기
+          </button>
+          <button class="btn-social btn-social--apple" id="btnAppleLogin" type="button">
+            <span class="social-icon social-icon--apple">&#63743;</span>
+            Apple로 계속하기
+          </button>
         </div>
-
-        <!-- 전화번호 인증 패널 -->
-        <div id="panelPhone" style="padding-top:4px;">
-          <div class="field">
-            <span>전화번호 <em class="req">*</em></span>
-            <div class="phone-row">
-              <input type="tel" id="inputPhone" maxlength="20"
-                placeholder="+84 912 345 678  /  +82 10 1234 5678"
-                autocomplete="tel" />
-              <button class="btn btn--primary btn--sm" id="btnSendOtp" type="button">인증번호 받기</button>
-            </div>
-          </div>
-          <div id="otpSection" class="field" style="display:none;">
-            <span>인증번호 6자리 <em class="req">*</em></span>
-            <div class="phone-row">
-              <input type="text" id="inputOtp" maxlength="6" placeholder="123456"
-                inputmode="numeric" class="otp-input" autocomplete="one-time-code" />
-              <button class="btn btn--primary btn--sm" id="btnVerifyOtp" type="button">확인</button>
-            </div>
-            <small>문자가 오지 않으면 위에서 다시 시도해 주세요.</small>
-          </div>
-          <div id="authMsg" class="auth-msg"></div>
-          <div id="recaptchaWrapper"></div>
-        </div>
-
-        <!-- Google 인증 패널 -->
-        <div id="panelGoogle" style="display:none;padding-top:12px;">
-          <p style="font-size:13px;color:var(--muted);margin:0 0 14px;">Google 계정으로 바로 로그인합니다.</p>
-          <button class="btn btn--primary" id="btnGoogleLogin" type="button">🔑 Google 로그인</button>
-          <div id="googleMsg" class="auth-msg" style="margin-top:8px;"></div>
-        </div>
+        <div id="socialMsg" class="auth-msg"></div>
       </div>
 
       <!-- ── 이미 가입 완료 ── -->
@@ -67,22 +47,6 @@
         <div class="status-row">
           <div class="k">가입 상태</div>
           <div class="v" style="color:var(--accent);">가입 완료 ✓</div>
-        </div>
-        <div class="status-row" id="phoneRow" style="display:none;">
-          <div class="k">휴대폰 번호</div>
-          <div class="v" style="display:flex;align-items:center;gap:8px;">
-            <span id="phoneDisplay">-</span>
-            <button class="btn btn--sm" id="btnEditPhone" type="button">수정</button>
-          </div>
-        </div>
-        <div id="phoneEditBox" style="display:none;margin:8px 0 4px;">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input type="tel" id="phoneEditInput" maxlength="30" placeholder="예: +82 10 1234 5678"
-              style="flex:1;min-width:160px;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.9rem;" />
-            <button class="btn btn--primary btn--sm" id="btnSavePhone" type="button">저장</button>
-            <button class="btn btn--sm" id="btnCancelPhone" type="button">취소</button>
-          </div>
-          <div id="phoneSaveMsg" style="font-size:0.82em;margin-top:4px;"></div>
         </div>
         <div class="status-row" id="walletRow" style="display:none;">
           <div class="k">수탁 지갑 주소</div>

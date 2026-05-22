@@ -2619,21 +2619,83 @@ function openShopAdminModal(shop) {
   modal.classList.add('open');
 }
 
+// 코드에 하드코딩된 아이템 (treasure_items 컬렉션에 없을 수 있는 것들)
+const KNOWN_ITEMS = {
+  potion_red:    { name: '빨간 약 (HP +100)', type: 'potion' },
+  potion_mp:     { name: '마나 물약 (MP 전체회복)', type: 'potion' },
+  revive_ticket: { name: '부활 티켓', type: 'misc' },
+};
+
+function _getShopAdminType() {
+  return $('shopAdminShopType')?.value || 'misc';
+}
+
+function _buildItemCatalog() {
+  const catalog = {};
+  // treasure_items 컬렉션에서 로드된 아이템
+  for (const [id, data] of Object.entries(_items)) {
+    catalog[id] = { name: data.name || id, type: data.type || 'misc' };
+  }
+  // 코드 하드코딩 아이템 (없으면 추가)
+  for (const [id, data] of Object.entries(KNOWN_ITEMS)) {
+    if (!catalog[id]) catalog[id] = data;
+  }
+  return catalog;
+}
+
+function _buildItemSelectOptions(currentItemId, shopType) {
+  const catalog = _buildItemCatalog();
+  const PREFIX_MAP = { potion: ['potion_', 'revive_'], weapon_armor: ['weapon_', 'armo_', 'sword_', 'bow_', 'shield_', 'armor_'], misc: [] };
+  const prefixes = PREFIX_MAP[shopType] || [];
+
+  const filtered = Object.entries(catalog).filter(([id]) => {
+    if (!prefixes.length) return true;
+    return prefixes.some(p => id.startsWith(p));
+  });
+
+  const options = filtered.map(([id, data]) => {
+    const sel = id === currentItemId ? ' selected' : '';
+    return `<option value="${escHtml(id)}"${sel}>${escHtml(data.name)} (${escHtml(id)})</option>`;
+  });
+
+  const noSel = currentItemId ? '' : ' selected';
+  return `<option value=""${noSel}>-- 아이템 선택 --</option>` + options.join('');
+}
+
+function _makeItemRow(it, idx) {
+  const shopType = _getShopAdminType();
+  const s = 'background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px;width:100%;box-sizing:border-box';
+  const div = document.createElement('div');
+  div.className = 'shop-admin-item-row';
+  div.dataset.idx = idx;
+  div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 72px 68px 32px;gap:4px;margin-bottom:6px;align-items:center';
+  div.innerHTML = `
+    <select class="sad-itemid" style="${s}">
+      ${_buildItemSelectOptions(it?.itemId || '', shopType)}
+    </select>
+    <input type="text"   class="sad-name"  value="${escHtml(it?.name || '')}"  placeholder="표시 이름" style="${s}">
+    <input type="number" class="sad-price" value="${it?.price ?? 100}"         placeholder="100"        style="${s}" min="0">
+    <input type="number" class="sad-stock" value="${it?.stock ?? -1}"          placeholder="-1=무한"    style="${s}" min="-1">
+    <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:13px">✕</button>`;
+
+  const sel  = div.querySelector('.sad-itemid');
+  const nameInput = div.querySelector('.sad-name');
+  sel.addEventListener('change', () => {
+    const id = sel.value;
+    if (!id) return;
+    const catalog = _buildItemCatalog();
+    if (catalog[id] && !nameInput.value) nameInput.value = catalog[id].name;
+    else if (catalog[id] && nameInput.value === nameInput.dataset.prev) nameInput.value = catalog[id].name;
+    nameInput.dataset.prev = nameInput.value;
+  });
+  return div;
+}
+
 function _renderShopAdminItems(items) {
   const container = $('shopAdminItemList');
   if (!container) return;
-
-  const inputStyle = 'background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px;width:100%;box-sizing:border-box';
-  const rows = items.map((it, i) => `
-    <div class="shop-admin-item-row" data-idx="${i}" style="display:grid;grid-template-columns:1fr 1fr 72px 68px 32px;gap:4px;margin-bottom:6px;align-items:center">
-      <input type="text"   class="sad-itemid"   value="${escHtml(it.itemId)}"  placeholder="예) sword_01"  style="${inputStyle}">
-      <input type="text"   class="sad-name"     value="${escHtml(it.name)}"    placeholder="예) 철제 검"   style="${inputStyle}">
-      <input type="number" class="sad-price"    value="${it.price}"            placeholder="100"            style="${inputStyle}" min="0">
-      <input type="number" class="sad-stock"    value="${it.stock ?? -1}"      placeholder="-1=무한"        style="${inputStyle}" min="-1">
-      <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:13px">✕</button>
-    </div>`).join('');
-
-  container.innerHTML = rows;
+  container.innerHTML = '';
+  items.forEach((it, i) => container.appendChild(_makeItemRow(it, i)));
 }
 
 function _collectShopAdminItems() {
@@ -2654,18 +2716,7 @@ $('btnShopAdminAddItem')?.addEventListener?.('click', () => {
   const container = $('shopAdminItemList');
   if (!container) return;
   const idx = container.querySelectorAll('.shop-admin-item-row').length;
-  const div = document.createElement('div');
-  div.className = 'shop-admin-item-row';
-  div.dataset.idx = idx;
-  const s = 'background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;font-size:12px;width:100%;box-sizing:border-box';
-  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 72px 68px 32px;gap:4px;margin-bottom:6px;align-items:center';
-  div.innerHTML = `
-    <input type="text"   class="sad-itemid" placeholder="예) sword_01"  style="${s}">
-    <input type="text"   class="sad-name"   placeholder="예) 철제 검"   style="${s}">
-    <input type="number" class="sad-price"  value="100" placeholder="100"       style="${s}" min="0">
-    <input type="number" class="sad-stock"  value="-1"  placeholder="-1=무한"  style="${s}" min="-1">
-    <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:13px">✕</button>`;
-  container.appendChild(div);
+  container.appendChild(_makeItemRow(null, idx));
 });
 
 $('btnShopAdminSave')?.addEventListener?.('click', async () => {
@@ -2699,6 +2750,14 @@ $('btnCloseShopModal')?.addEventListener?.('click', closeShopModal);
 $('shopModal')?.addEventListener?.('click', e => { if (e.target === $('shopModal')) closeShopModal(); });
 $('btnCloseShopAdminModal')?.addEventListener?.('click', () => $('shopAdminModal')?.classList.remove('open'));
 $('shopAdminModal')?.addEventListener?.('click', e => { if (e.target === $('shopAdminModal')) $('shopAdminModal').classList.remove('open'); });
+$('shopAdminShopType')?.addEventListener?.('change', () => {
+  const container = $('shopAdminItemList');
+  if (!container) return;
+  container.querySelectorAll('.shop-admin-item-row .sad-itemid').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = _buildItemSelectOptions(cur, _getShopAdminType());
+  });
+});
 
 function showToast(msg, type = 'info') {
   const el = document.createElement('div');

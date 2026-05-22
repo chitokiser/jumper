@@ -1,6 +1,6 @@
 // /assets/js/firebase-init.js
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { getFunctions } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
@@ -64,4 +64,10 @@ if (typeof window !== "undefined" && localStorage.getItem("useEmulator") === "1"
 // 여기서 "반드시 export" 해줘야 auth.js가 가져올 수 있음
 const googleProvider = new GoogleAuthProvider();
 
-export { app, auth, db, functions, googleProvider };
+const facebookProvider = new FacebookAuthProvider();
+
+const appleProvider = new OAuthProvider('apple.com');
+appleProvider.addScope('email');
+appleProvider.addScope('name');
+
+export { app, auth, db, functions, googleProvider, facebookProvider, appleProvider };

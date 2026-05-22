@@ -1,7 +1,6 @@
 ﻿// /assets/js/header-auth.js
 import {
   handleRedirectResult,
-  login,
   logout,
   watchAuth,
   db,
@@ -251,9 +250,8 @@ function initHamburger(){
 }
 
 async function bindHeader(){
-  const btnLogin = document.getElementById("btnLogin");
+  const btnLogin  = document.getElementById("btnLogin");
   const btnLogout = document.getElementById("btnLogout");
-  const btnPhoneLogin = document.getElementById("btnPhoneLogin");
   const nav = document.getElementById("hdrNav");
 
   if(!btnLogin && !btnLogout && !nav) return;
@@ -261,41 +259,6 @@ async function bindHeader(){
   window.__pg_hdr_bound = true;
 
   await handleRedirectResult();
-
-  if(btnLogin){
-    if(isInAppBrowser()){
-      btnLogin.textContent = "브라우저에서 열기";
-    }
-
-    btnLogin.onclick = async ()=>{
-      try{
-        if(isInAppBrowser()){
-          openExternalBrowser();
-          return;
-        }
-        btnLogin.textContent = "로그인 중...";
-        btnLogin.disabled = true;
-        await login();
-      }catch(e){
-        const code = e?.code || "";
-        if(code === "auth/inapp-browser" || code === "auth/operation-not-supported-in-this-environment"){
-          alert("인앱 브라우저에서는 로그인이 제한될 수 있습니다. 외부 브라우저에서 다시 시도해 주세요.");
-        } else if(code === "auth/popup-blocked"){
-          alert("팝업이 차단되었습니다. 브라우저 설정에서 팝업 허용 후 다시 시도해 주세요.");
-        } else if(code === "auth/unauthorized-domain"){
-          alert("허용되지 않은 도메인입니다. 관리자에게 Firebase Authorized Domain 등록을 요청해 주세요.");
-        } else if(code === "auth/network-request-failed"){
-          alert("네트워크 오류가 발생했습니다. 인터넷 연결을 확인해 주세요.");
-        } else if(code && code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request"){
-          alert(`로그인 오류가 발생했습니다.\n오류 코드: ${code}`);
-        }
-        console.error("login error:", code, e);
-      } finally {
-        btnLogin.textContent = "구글 로그인";
-        btnLogin.disabled = false;
-      }
-    };
-  }
 
   if(btnLogout){
     btnLogout.onclick = async ()=>{
@@ -307,18 +270,10 @@ async function bindHeader(){
   initNavGroups();
 
   applyRoleToMenu("guest");
-  show(btnPhoneLogin, true);
   show(btnLogin, true);
   show(btnLogout, false);
 
-  // 팝업 모드 감지: opener가 허용된 origin이면 팝업 SSO 모드
-  const isPopupMode = (() => {
-    if (!window.opener || window.opener.closed) return false;
-    try { return _SSO_ALLOWED.includes(window.opener.origin); } catch { return false; }
-  })();
-
   watchAuth(({ loggedIn, role, profile, user })=>{
-    show(btnPhoneLogin, !loggedIn);
     show(btnLogin, !loggedIn);
     show(btnLogout, loggedIn);
     applyRoleToMenu(role || (loggedIn ? "user" : "guest"));
@@ -330,20 +285,6 @@ async function bindHeader(){
     if(loggedIn && user) {
       notifyOpenerIfPopup(user, role, profile);
       return;
-    }
-
-    // 팝업 모드이고 로그인이 안 된 상태 → 자동으로 Google 로그인 시작
-    if(isPopupMode && !loggedIn) {
-      setTimeout(async () => {
-        try {
-          await login();
-        } catch(e) {
-          const code = e?.code || '';
-          if(code === 'auth/popup-blocked') {
-            if(btnLogin) btnLogin.click();
-          }
-        }
-      }, 300);
     }
 
     if(loggedIn && role === "user" && profile?.uid){

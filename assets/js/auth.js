@@ -1,7 +1,7 @@
 // /assets/js/auth.js
 // Firebase Auth + 역할(role) 판정 + 공통 헬퍼
 
-import { auth, googleProvider, db } from "/assets/js/firebase-init.js";
+import { auth, googleProvider, facebookProvider, appleProvider, db } from "/assets/js/firebase-init.js";
 
 import {
   onAuthStateChanged,
@@ -18,7 +18,7 @@ import {
   getDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-export { auth, googleProvider, db };
+export { auth, googleProvider, facebookProvider, appleProvider, db };
 export { onAuthStateChanged, signOut };
 
 // 로그인 유지(persistence) 설정: 페이지 이동/새로고침에서도 로그인 상태가 유지되도록
@@ -66,6 +66,36 @@ export async function login(){
     }
     throw e;
   }
+}
+
+async function _signInWithProvider(provider){
+  if(isInAppBrowser()){
+    const err = new Error("Social login blocked in in-app browser");
+    err.code = "auth/inapp-browser";
+    throw err;
+  }
+  try{
+    await signInWithPopup(auth, provider);
+  }catch(e){
+    const code = e?.code || "";
+    if(code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+    const redirectLike =
+      code === "auth/operation-not-supported-in-this-environment" ||
+      code === "auth/web-storage-unsupported";
+    if(redirectLike){
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+    throw e;
+  }
+}
+
+export async function loginWithFacebook(){
+  return _signInWithProvider(facebookProvider);
+}
+
+export async function loginWithApple(){
+  return _signInWithProvider(appleProvider);
 }
 
 export async function handleRedirectResult(){

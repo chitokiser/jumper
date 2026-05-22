@@ -1,13 +1,8 @@
 // /assets/js/pages/register.js
-// 회원가입: 전화번호 OTP 인증 → 정보 저장 → 수탁 지갑 생성 → 온체인 등록
+// 회원가입: 소셜 로그인(Google/Facebook/Apple) → 정보 저장 → 수탁 지갑 생성 → 온체인 등록
 
-import { watchAuth, login } from "../auth.js";
-import { auth, db, functions } from "/assets/js/firebase-init.js";
-
-import {
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { watchAuth, login, loginWithFacebook, loginWithApple } from "../auth.js";
+import { db, functions } from "/assets/js/firebase-init.js";
 
 import {
   doc,
@@ -22,7 +17,6 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
-// ── 유틸 ──────────────────────────────────────────
 function show(id, on) {
   const el = $(id);
   if (el) el.style.display = on ? "" : "none";
@@ -39,8 +33,8 @@ function setStep(id, status) {
   el.dataset.status = status;
 }
 
-function setAuthMsg(msg, type) {
-  const el = $("authMsg");
+function setSocialMsg(msg, type) {
+  const el = $("socialMsg");
   if (!el) return;
   el.textContent = msg || "";
   el.style.color = type === "ok" ? "#16a34a" : type === "error" ? "#dc2626" : "#888";
@@ -50,7 +44,6 @@ function normalizePhone(raw) {
   const s = String(raw || "").trim();
   if (!s) return "";
   const digits = s.replace(/[^0-9]/g, "");
-  // E.164 형식 보장: + 없으면 그대로, + 있으면 유지
   return s.startsWith("+") ? "+" + digits : digits;
 }
 
@@ -58,157 +51,41 @@ function isValidPhone(p) {
   return String(p || "").replace(/[^0-9]/g, "").length >= 9;
 }
 
-// ── 전화번호 인증 ──────────────────────────────────
-let _confirmationResult = null;
-let _recaptchaVerifier  = null;
-let _recaptchaEl        = null; // 매번 새로 생성되는 DOM 노드
-let _authDone           = false;
-
-function _clearRecaptcha() {
-  try { _recaptchaVerifier?.clear(); } catch (_) {}
-  _recaptchaVerifier = null;
-  // 이전 컨테이너 노드를 DOM에서 완전히 제거 → 내부 레지스트리 충돌 방지
-  if (_recaptchaEl) { try { _recaptchaEl.remove(); } catch (_) {} }
-  _recaptchaEl = null;
-}
-
-async function initRecaptcha() {
-  _clearRecaptcha();
-  // 부모 wrapper에 새 div를 매번 주입 — 동일 ID 재사용으로 인한 argument-error 방지
-  const wrapper = $("recaptchaWrapper");
-  _recaptchaEl = document.createElement("div");
-  if (wrapper) wrapper.appendChild(_recaptchaEl);
-
-  _recaptchaVerifier = new RecaptchaVerifier(auth, _recaptchaEl, {
-    size: "normal",
-    callback: () => {},
-    "expired-callback": () => {},
-  });
-  await _recaptchaVerifier.render();
-}
-
-async function sendOtp() {
-  const raw = ($("inputPhone")?.value || "").trim();
-  if (!raw) { setAuthMsg("전화번호를 입력해 주세요.", "error"); return; }
-  if (!raw.startsWith("+")) {
-    setAuthMsg("국가코드(+84, +82 등)를 포함해서 입력해 주세요. 예: +84 912 345 678", "error");
-    return;
-  }
-  const phone = "+" + raw.replace(/[^0-9]/g, "");
-  if (!isValidPhone(phone)) {
-    setAuthMsg("올바른 전화번호를 입력해 주세요. (예: +84 912 345 678)", "error");
-    return;
-  }
-
-  const btn = $("btnSendOtp");
-  btn.disabled = true;
-  btn.textContent = "전송 중...";
-  setAuthMsg("reCAPTCHA 로딩 중...");
-
-  try {
-    await initRecaptcha();
-    setAuthMsg("전화번호 인증 요청 중...");
-    _confirmationResult = await signInWithPhoneNumber(auth, phone, _recaptchaVerifier);
-    setAuthMsg("인증번호를 전송했습니다. 문자를 확인해 주세요. ✓", "ok");
-    show("otpSection", true);
-    $("inputOtp")?.focus();
-  } catch (err) {
-    const code = err?.code || "";
-    const rawMsg = err?.message || String(err);
-    let msg = "전송 실패: " + rawMsg;
-    if (code === "auth/invalid-phone-number")  msg = "전화번호 형식이 올바르지 않습니다. (예: +84 912 345 678)";
-    if (code === "auth/too-many-requests")      msg = "SMS 발송 횟수를 초과했습니다. 약 10분 후 다시 시도해 주세요.";
-    if (code === "auth/captcha-check-failed")   msg = "보안 인증 실패. 페이지를 새로고침 후 다시 시도해 주세요.";
-    if (code === "auth/invalid-app-credential") msg = "앱 인증 오류. Firebase Console → Authentication → 승인된 도메인에 현재 도메인을 추가해 주세요.";
-    if (code === "auth/argument-error")         msg = "reCAPTCHA 초기화 실패. 페이지를 새로고침 후 다시 시도해 주세요.";
-    if (rawMsg.includes("error-code:-39"))      msg = "도메인 인증 오류(-39). Firebase Console → Authentication → Settings → 승인된 도메인에 현재 도메인 추가 필요.";
-    if (rawMsg.includes("503") || code === "auth/network-request-failed") msg = "네트워크 오류(503). 인터넷 연결 또는 Google 서비스 접근을 확인해 주세요.";
-    setAuthMsg(msg, "error");
-    // Firebase 내부 reCAPTCHA 콜백이 완료된 후 정리 (즉시 remove 시 null.style 에러 발생)
-    setTimeout(_clearRecaptcha, 500);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "인증번호 받기";
-  }
-}
-
-async function verifyOtp() {
-  const otp = ($("inputOtp")?.value || "").trim();
-  if (otp.length < 6) { setAuthMsg("6자리 인증번호를 입력해 주세요.", "error"); return; }
-  if (!_confirmationResult) { setAuthMsg("먼저 인증번호를 요청해 주세요.", "error"); return; }
-
-  const btn = $("btnVerifyOtp");
-  btn.disabled = true;
-  btn.textContent = "확인 중...";
-  setAuthMsg("");
-
-  try {
-    await _confirmationResult.confirm(otp);
-    setAuthMsg("인증 완료! 잠시 기다려 주세요...", "ok");
-    // watchAuth가 로그인 상태를 감지해서 자동으로 다음 단계 진행
-  } catch (err) {
-    const code = err?.code || "";
-    const status = err?.customData?.serverResponse?.error?.code || "";
-    let msg = "인증 실패 (" + (code || "unknown") + "): 코드를 다시 확인해 주세요.";
-    if (code === "auth/code-expired")              msg = "인증번호가 만료되었습니다. '인증번호 받기'를 다시 눌러 주세요.";
-    if (code === "auth/invalid-verification-code") msg = "인증번호가 올바르지 않습니다. (400: INVALID_CODE)";
-    if (code === "auth/missing-verification-code") msg = "인증번호를 입력해 주세요.";
-    if (code === "auth/session-expired")           msg = "세션이 만료되었습니다. 인증번호를 다시 요청해 주세요.";
-    setAuthMsg(msg, "error");
-    btn.disabled = false;
-    btn.textContent = "확인";
-  }
-}
-
-// ── 탭 전환 ────────────────────────────────────────
-function initTabs() {
-  const tabPhone  = $("tabPhone");
-  const tabGoogle = $("tabGoogle");
-
-  if (tabPhone) tabPhone.onclick = () => {
-    tabPhone.classList.add("auth-tab--active");
-    tabGoogle?.classList.remove("auth-tab--active");
-    show("panelPhone",  true);
-    show("panelGoogle", false);
-  };
-
-  if (tabGoogle) tabGoogle.onclick = () => {
-    tabGoogle.classList.add("auth-tab--active");
-    tabPhone?.classList.remove("auth-tab--active");
-    show("panelGoogle", true);
-    show("panelPhone",  false);
-  };
-
-  $("btnSendOtp")?.addEventListener("click", sendOtp);
-  $("btnVerifyOtp")?.addEventListener("click", verifyOtp);
-  $("inputPhone")?.addEventListener("keydown", (e) => { if (e.key === "Enter") sendOtp(); });
-  $("inputOtp")?.addEventListener("keydown",   (e) => { if (e.key === "Enter") verifyOtp(); });
-
-  $("btnGoogleLogin")?.addEventListener("click", async () => {
-    const msgEl = $("googleMsg");
+// ── 소셜 로그인 버튼 바인딩 ──────────────────────────
+function initSocialButtons() {
+  async function handleLogin(loginFn, btnId) {
+    const btn = $(btnId);
+    if (!btn) return;
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = "로그인 중...";
+    setSocialMsg("");
     try {
-      if (msgEl) { msgEl.textContent = "로그인 중..."; msgEl.style.color = "#888"; }
-      await login();
+      await loginFn();
     } catch (err) {
       const code = err?.code || "";
-      let msg = "로그인 실패: " + err.message;
-      if (code === "auth/inapp-browser") msg = "인앱 브라우저에서는 Google 로그인이 차단됩니다. 기본 브라우저로 열어 주세요.";
-      if (msgEl) { msgEl.textContent = msg; msgEl.style.color = "#dc2626"; }
+      let msg = "로그인 실패: " + (err?.message || code);
+      if (code === "auth/inapp-browser")                           msg = "인앱 브라우저에서는 소셜 로그인이 차단됩니다. 기본 브라우저로 열어 주세요.";
+      if (code === "auth/popup-blocked")                           msg = "팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도해 주세요.";
+      if (code === "auth/unauthorized-domain")                     msg = "허용되지 않은 도메인입니다. 관리자에게 Firebase 도메인 등록을 요청해 주세요.";
+      if (code === "auth/network-request-failed")                  msg = "네트워크 오류가 발생했습니다. 인터넷 연결을 확인해 주세요.";
+      if (code === "auth/account-exists-with-different-credential") msg = "이미 다른 방식으로 가입된 계정입니다. 처음 가입한 방법으로 로그인해 주세요.";
+      setSocialMsg(msg, "error");
+      btn.disabled = false;
+      btn.innerHTML = original;
     }
-  });
+  }
+
+  $("btnGoogleLogin")?.addEventListener("click", () => handleLogin(login, "btnGoogleLogin"));
+  $("btnFacebookLogin")?.addEventListener("click", () => handleLogin(loginWithFacebook, "btnFacebookLogin"));
+  $("btnAppleLogin")?.addEventListener("click", () => handleLogin(loginWithApple, "btnAppleLogin"));
 }
 
 // ── 이미 가입한 경우 표시 ──────────────────────────
-function showAlreadyDone(userData, uid) {
+function showAlreadyDone(userData) {
   show("authSection", false);
   show("alreadyDone", true);
   show("regForm",     false);
-
-  const phone = userData?.phone;
-  show("phoneRow", true);
-  const phoneEl = $("phoneDisplay");
-  if (phoneEl) phoneEl.textContent = phone || "(미등록)";
-  bindPhoneEdit(uid, phone || "");
 
   const wallet = userData?.wallet?.address;
   if (wallet) {
@@ -224,54 +101,6 @@ function showAlreadyDone(userData, uid) {
     statusEl.textContent = registered ? "등록 완료 ✓" : "미등록 (나중에 진행 가능)";
     statusEl.style.color  = registered ? "var(--accent)" : "var(--muted)";
   }
-}
-
-function bindPhoneEdit(uid, currentPhone) {
-  const btnEdit   = $("btnEditPhone");
-  const input     = $("phoneEditInput");
-  const btnSave   = $("btnSavePhone");
-  const btnCancel = $("btnCancelPhone");
-  const msg       = $("phoneSaveMsg");
-
-  if (btnEdit) btnEdit.onclick = () => {
-    if (input) input.value = currentPhone;
-    show("phoneEditBox", true);
-    show("btnEditPhone", false);
-    if (input) input.focus();
-  };
-
-  if (btnCancel) btnCancel.onclick = () => {
-    show("phoneEditBox", false);
-    show("btnEditPhone", true);
-    if (msg) msg.textContent = "";
-  };
-
-  if (btnSave) btnSave.onclick = async () => {
-    const newPhone = normalizePhone(input?.value);
-    if (!isValidPhone(newPhone)) {
-      if (msg) { msg.textContent = "올바른 전화번호를 입력해 주세요 (10자리 이상)."; msg.style.color = "var(--danger, #e53e3e)"; }
-      return;
-    }
-    btnSave.disabled = true;
-    btnSave.textContent = "저장 중...";
-    try {
-      await setDoc(doc(db, "users", uid), { phone: newPhone, updatedAt: serverTimestamp() }, { merge: true });
-      const phoneEl = $("phoneDisplay");
-      if (phoneEl) phoneEl.textContent = newPhone;
-      currentPhone = newPhone;
-      if (msg) { msg.textContent = "저장되었습니다 ✓"; msg.style.color = "var(--accent)"; }
-      setTimeout(() => {
-        show("phoneEditBox", false);
-        show("btnEditPhone", true);
-        if (msg) msg.textContent = "";
-      }, 1200);
-    } catch (err) {
-      if (msg) { msg.textContent = "저장 실패: " + err.message; msg.style.color = "var(--danger, #e53e3e)"; }
-    } finally {
-      btnSave.disabled = false;
-      btnSave.textContent = "저장";
-    }
-  };
 }
 
 // ── 가입 실행 ──────────────────────────────────────
@@ -291,7 +120,6 @@ async function doRegister(uid, user) {
 
   show("stepBox", true);
 
-  // ① Firestore 저장
   setStep("step1", "doing");
   await setDoc(doc(db, "users", uid), {
     name,
@@ -305,7 +133,6 @@ async function doRegister(uid, user) {
   }, { merge: true });
   setStep("step1", "done");
 
-  // ② 수탁 지갑 생성 + ③ 온체인 등록 (createWallet이 두 작업 처리)
   setStep("step2", "doing");
   setStep("step3", "doing");
   const createWallet = httpsCallable(functions, "createWallet");
@@ -354,6 +181,8 @@ function bindForm(uid, user) {
 }
 
 // ── 로그인 후 사용자 초기화 ────────────────────────
+let _authDone = false;
+
 async function _initForUser(user) {
   try {
     setState("내 정보 확인 중...");
@@ -361,29 +190,15 @@ async function _initForUser(user) {
     const data = snap.exists() ? snap.data() : null;
 
     if (data?.name) {
-      // 이미 가입 완료
       setState("이미 가입된 계정입니다.");
-      showAlreadyDone(data, user.uid);
+      showAlreadyDone(data);
       return;
     }
 
-    // 신규 사용자 → 폼 표시
     setState("");
     show("authSection", false);
     show("regForm", true);
 
-    // 전화번호 인증 사용자: 번호 자동 채우기 + 읽기전용
-    const phoneEl = $("userPhone");
-    if (phoneEl) {
-      phoneEl.value = user.phoneNumber || data?.phone || "";
-      if (user.phoneNumber) {
-        phoneEl.readOnly = true;
-        phoneEl.style.background = "rgba(0,0,0,.08)";
-        phoneEl.style.color = "var(--muted)";
-      }
-    }
-
-    // 멘토 주소: URL 파라미터 > 기본값
     const DEFAULT_MENTOR = "0xc662c3B58bE7345DE30dd8188B2Acc977943186A";
     const mentorEl = $("mentorAddress");
     if (mentorEl && !mentorEl.value) {
@@ -401,12 +216,12 @@ async function _initForUser(user) {
 }
 
 // ── 진입점 ────────────────────────────────────────
-initTabs();
+initSocialButtons();
 
 watchAuth(async (ctx) => {
   if (_authDone) return;
   if (!ctx.loggedIn || !ctx.user) return;
-  if (ctx.user.isAnonymous) return; // 익명 사용자는 전화/구글 인증 유도
+  if (ctx.user.isAnonymous) return;
 
   _authDone = true;
   show("authSection", false);
