@@ -13,7 +13,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          startBattleLoop, stopBattleLoop, startWatchPosition, startSharedSync,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
          healHp, healMp, playSound, showFloat, animateArrow,
-         castLightning, castIceFreeze, castFireStorm,
+         castLightning, castIceFreeze, castFireStorm, castWhirlwind,
          setGsSkillCallback, setGsMobsGetter,
          useReviveTicket, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
@@ -2423,17 +2423,19 @@ async function init() {
   $('skillBtn0')?.addEventListener('click', castLightning);
   $('skillBtn1')?.addEventListener('click', castIceFreeze);
   $('skillBtn2')?.addEventListener('click', castFireStorm);
+  $('skillBtn3')?.addEventListener('click', castWhirlwind);
   $('skillBtnPotion')?.addEventListener('click', usePotion);
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
 
-  // 키보드 단축키 1/2/3/4/5
+  // 키보드 단축키 1/2/3/4/5/6
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.key === '1') castLightning();
     else if (e.key === '2') castIceFreeze();
     else if (e.key === '3') castFireStorm();
-    else if (e.key === '4') usePotion();
-    else if (e.key === '5') useMagicStone();
+    else if (e.key === '4') castWhirlwind();
+    else if (e.key === '5') usePotion();
+    else if (e.key === '6') useMagicStone();
   });
 
   // 전투 HUD 클릭 → 접기/펼치기 (모바일: 기본 접힘)

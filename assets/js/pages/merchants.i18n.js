@@ -48,9 +48,11 @@ const MESSAGES = {
   skill_mp_low_lightning:{ ko: '⚡ MP 부족!',        vi: '⚡ MP không đủ!' },
   skill_mp_low_ice:      { ko: '❄ MP 부족!',         vi: '❄ MP không đủ!' },
   skill_mp_low_fire:     { ko: '🔥 MP 부족!',        vi: '🔥 MP không đủ!' },
+  skill_mp_low_wind:     { ko: '🌪️ MP 부족!',       vi: '🌪️ MP không đủ!' },
   skill_no_target_lightning: { ko: '⚡ 범위 내 몬스터 없음', vi: '⚡ Không có quái trong tầm' },
   skill_no_target_ice:   { ko: '❄ 범위 내 몬스터 없음', vi: '❄ Không có quái trong tầm' },
   skill_no_target_fire:  { ko: '🔥 범위 내 몬스터 없음', vi: '🔥 Không có quái trong tầm' },
+  skill_no_target_wind:  { ko: '🌪️ 30m 내 몬스터 없음', vi: '🌪️ Không có quái trong 30m' },
 
   // ── 스킬 플로팅 텍스트 ────────────────────────────────────────────────────────
   // {0} = count
@@ -60,11 +62,14 @@ const MESSAGES = {
   skill_freeze_multi:    { ko: '❄ 동결! ({0}마리 / {1}초)', vi: '❄ Đóng băng! ({0} quái / {1}s)' },
   // {0} = count
   skill_fire_hit:        { ko: '🔥 화염! ({0}마리)',   vi: '🔥 Bão lửa! ({0} quái)' },
+  // {0} = count
+  skill_wind_hit:        { ko: '🌪️ 회오리! ({0}마리)', vi: '🌪️ Lốc xoáy! ({0} quái)' },
 
   // ── 스킬 대상 선택 모달 ───────────────────────────────────────────────────────
   skill_label_lightning: { ko: '⚡ 벼락',             vi: '⚡ Sét' },
   skill_label_ice:       { ko: '❄ 빙결',              vi: '❄ Đóng băng' },
   skill_label_fire:      { ko: '🔥 화염',             vi: '🔥 Lửa' },
+  skill_label_wind:      { ko: '🌪️ 회오리바람',       vi: '🌪️ Lốc xoáy' },
   skill_label_default:   { ko: '스킬',                vi: 'Kỹ năng' },
   // {0} = skill label
   skill_modal_title:     { ko: '{0} — 공격 대상 선택', vi: '{0} — Chọn mục tiêu' },

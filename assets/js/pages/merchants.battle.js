@@ -86,11 +86,12 @@ const SHOP_ICONS  = { weapon_armor: '⚔️', potion: '🧪', misc: '🛍️' };
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST    = 100;
 const SKILL_RANGE_M    = 40;
+const WIND_RANGE_M     = 30;   // 회오리 바람 전용 범위
 const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오브제 표시
-const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
+const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000, wind: 20000 };
 const SKILL_FREEZE_MS = 20000;
 // 서버와 동일한 배율 (클라이언트 float 표시용)
-const GS_SKILL_MULT  = { lightning: 2.0, ice: 1.5, fire: 2.0 };
+const GS_SKILL_MULT  = { lightning: 2.0, ice: 1.5, fire: 2.0, wind: 2.5 };
 
 // ── 유틸 (core에서 받지 않고 직접 구현) ────────────────────────────────────────
 function escHtml(s) {
@@ -593,7 +594,7 @@ export function showFloat(text, color, lat, lng) {
 // ── 스킬바 UI 업데이트 ───────────────────────────────────────────────────────
 export function updateSkillBar() {
   const now = Date.now();
-  ['lightning','ice','fire'].forEach((s, i) => {
+  ['lightning','ice','fire','wind'].forEach((s, i) => {
     const btn  = document.getElementById(`skillBtn${i}`);
     const cdEl = document.getElementById(`skillCd${i}`);
     if (!btn) return;
@@ -906,6 +907,10 @@ function animateFireStorm() {
   _skillFlash('rgba(249,115,22,0.35)', '🔥');
 }
 
+function animateWhirlwind() {
+  _skillFlash('rgba(167,243,208,0.35)', '🌪️');
+}
+
 // ── 플레이어 위치 조회 (마커 우선, 없으면 lastPos 폴백) ─────────────────────
 function getMyPos() {
   const myMark = _ctx?.myLocationMarker;
@@ -1070,6 +1075,49 @@ export function castFireStorm() {
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.fire);
 }
 
+export function castWhirlwind() {
+  if (_isDead) return;
+  const now = Date.now();
+  if (_skillCd.wind && now < _skillCd.wind) return;
+
+  const myPos = getMyPos();
+  if (!myPos) { showSkillError(_t('skill_locating')); return; }
+  const { lat: myLat, lng: myLng } = myPos;
+
+  const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
+    haversine(myLat, myLng, m.lat, m.lng) <= WIND_RANGE_M);
+  const gsTargets = getGsTargetsInRange().filter(m =>
+    haversine(myLat, myLng, m.lat, m.lng) <= WIND_RANGE_M);
+
+  if (inRangeMobs.length === 0 && gsTargets.length === 0) {
+    showSkillError(_t('skill_no_target_wind')); return;
+  }
+  if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_wind')); return; }
+
+  animateWhirlwind();
+  playSound('skill_lightning');
+
+  const anchor = inRangeMobs[0] ?? gsTargets[0];
+  showSkillMapEffect(anchor.lat, anchor.lng, 'wind');
+
+  let hitCount = 0;
+  for (const mob of inRangeMobs) {
+    hitMonster(mob.id, getTotalAtk() * _player.level);
+    showFloat(`🌪️-${getTotalAtk() * _player.level}`, '#6ee7b7', mob.lat, mob.lng);
+    hitCount++;
+  }
+  const gsDmgWind = Math.round(_player.level * 100 * GS_SKILL_MULT.wind);
+  for (const gsMob of gsTargets) {
+    showFloat(`🌪️-${gsDmgWind}`, '#6ee7b7', gsMob.lat, gsMob.lng);
+    hitCount++;
+  }
+  _gsSkillCallback?.('wind');
+  showFloat(_t('skill_wind_hit', hitCount), '#6ee7b7', anchor.lat, anchor.lng);
+  _skillCd.wind = Date.now() + SKILL_CD_MS.wind;
+  updateSkillBar();
+  setTimeout(() => updateSkillBar(), SKILL_CD_MS.wind);
+}
+
 // ── 스킬 대상 선택 모달 ───────────────────────────────────────────────────────
 function showSkillTargetModal(skillKey, targets, onSelect) {
   document.getElementById('skillTargetModal')?.remove();
@@ -1077,6 +1125,7 @@ function showSkillTargetModal(skillKey, targets, onSelect) {
     lightning: _t('skill_label_lightning'),
     ice:       _t('skill_label_ice'),
     fire:      _t('skill_label_fire'),
+    wind:      _t('skill_label_wind'),
   };
   const modal = document.createElement('div');
   modal.id = 'skillTargetModal';
@@ -1123,7 +1172,7 @@ function showSkillMapEffect(lat, lng, type) {
   if (!overlay) return;
   const px = latLngToPixel(lat, lng);
   if (!px) return;
-  const cfg = { lightning:['⚡','#facc15'], ice:['❄','#93c5fd'], fire:['🔥','#f97316'] }[type]||['✨','#fff'];
+  const cfg = { lightning:['⚡','#facc15'], ice:['❄','#93c5fd'], fire:['🔥','#f97316'], wind:['🌪️','#6ee7b7'] }[type]||['✨','#fff'];
   const el = document.createElement('div');
   el.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;font-size:56px;
     transform:translate(-50%,-50%);pointer-events:none;z-index:3500;
