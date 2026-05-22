@@ -63,18 +63,18 @@ let _confirmationResult = null;
 let _recaptchaVerifier  = null;
 let _authDone           = false;
 
-function initRecaptcha() {
+async function initRecaptcha() {
   try { _recaptchaVerifier?.clear(); } catch (_) {}
   _recaptchaVerifier = new RecaptchaVerifier(auth, "recaptchaContainer", {
-    size: "invisible",
+    size: "normal",
     callback: () => {},
-    "expired-callback": () => { initRecaptcha(); },
+    "expired-callback": () => {},
   });
+  try { await _recaptchaVerifier.render(); } catch (_) {}
 }
 
 async function sendOtp() {
   const raw = ($("inputPhone")?.value || "").trim();
-  // E.164: + 없으면 앞에 붙이기 시도 (사용자가 국가코드 없이 입력한 경우 안내)
   if (!raw) { setAuthMsg("전화번호를 입력해 주세요.", "error"); return; }
   if (!raw.startsWith("+")) {
     setAuthMsg("국가코드(+84, +82 등)를 포함해서 입력해 주세요. 예: +84 912 345 678", "error");
@@ -92,19 +92,23 @@ async function sendOtp() {
   setAuthMsg("");
 
   try {
-    initRecaptcha();
+    if (!_recaptchaVerifier) await initRecaptcha();
     _confirmationResult = await signInWithPhoneNumber(auth, phone, _recaptchaVerifier);
     setAuthMsg("인증번호를 전송했습니다. 문자를 확인해 주세요. ✓", "ok");
     show("otpSection", true);
     $("inputOtp")?.focus();
   } catch (err) {
     const code = err?.code || "";
-    let msg = "전송 실패: " + (err?.message || err);
-    if (code === "auth/invalid-phone-number") msg = "전화번호 형식이 올바르지 않습니다. (예: +84 912 345 678)";
-    if (code === "auth/too-many-requests")    msg = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
-    if (code === "auth/captcha-check-failed") msg = "보안 인증에 실패했습니다. 페이지를 새로고침 후 다시 시도해 주세요.";
+    const rawMsg = err?.message || String(err);
+    let msg = "전송 실패: " + rawMsg;
+    if (code === "auth/invalid-phone-number")    msg = "전화번호 형식이 올바르지 않습니다. (예: +84 912 345 678)";
+    if (code === "auth/too-many-requests")        msg = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+    if (code === "auth/captcha-check-failed")     msg = "보안 인증 실패. 페이지를 새로고침 후 다시 시도해 주세요.";
+    if (code === "auth/invalid-app-credential")   msg = "앱 인증 오류입니다. Firebase Console → Authentication → 승인된 도메인에 현재 도메인을 추가해 주세요.";
+    if (rawMsg.includes("error-code:-39"))        msg = "도메인 인증 오류 (error-code:-39). Firebase Console → Authentication → Settings → 승인된 도메인에 현재 도메인을 추가해 주세요.";
     setAuthMsg(msg, "error");
-    initRecaptcha();
+    _recaptchaVerifier = null;
+    await initRecaptcha();
   } finally {
     btn.disabled = false;
     btn.textContent = "인증번호 받기";
@@ -379,6 +383,7 @@ async function _initForUser(user) {
 
 // ── 진입점 ────────────────────────────────────────
 initTabs();
+initRecaptcha();
 
 watchAuth(async (ctx) => {
   if (_authDone) return;
