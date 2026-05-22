@@ -9,6 +9,7 @@ import { onAuthReady } from "/assets/js/auth.js";
 let _selectedUid = null;
 let _unsubSessions = null;
 let _unsubMsgs = null;
+let _unsubAdminStatus = null;
 let _isOnline = false;
 
 function g(id) { return document.getElementById(id); }
@@ -27,7 +28,8 @@ function setupAdminChat() {
 
   if (!btnToggle) return;
 
-  onSnapshot(doc(db, "admin_status", "main"), (snap) => {
+  _unsubAdminStatus?.();
+  _unsubAdminStatus = onSnapshot(doc(db, "admin_status", "main"), (snap) => {
     _isOnline = snap.exists() && snap.data().online === true;
     if (statusLabel) statusLabel.textContent = _isOnline ? "🟢 온라인" : "🔴 오프라인";
     if (btnToggle)   btnToggle.textContent   = _isOnline ? "오프라인 전환" : "온라인 전환";
@@ -86,9 +88,12 @@ function openSession(uid, sessionList, msgList, targetLabel) {
   if (!msgList) return;
   msgList.innerHTML = `<div class="muted" style="font-size:13px;padding:12px;">불러오는 중…</div>`;
 
+  // 세션 열 때 1회만 hasUnread 초기화 (onSnapshot 콜백 안에서 매번 쓰지 않음)
+  updateDoc(doc(db, "support_chats", uid), { hasUnread: false }).catch(() => {});
+
   _unsubMsgs = onSnapshot(
     query(collection(db, "support_chats", uid, "messages"), orderBy("createdAt", "asc")),
-    async (snap) => {
+    (snap) => {
       let html = "";
       for (const d of snap.docs) {
         const { text, sender, createdAt } = d.data();
@@ -101,9 +106,6 @@ function openSession(uid, sessionList, msgList, targetLabel) {
       }
       msgList.innerHTML = html || `<div class="muted" style="font-size:13px;text-align:center;padding:24px;">메시지 없음</div>`;
       msgList.scrollTop = msgList.scrollHeight;
-
-      // Reset unread flag on chat doc when admin opens session
-      await updateDoc(doc(db, "support_chats", uid), { hasUnread: false }).catch(() => {});
     }
   );
 }

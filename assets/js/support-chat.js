@@ -7,6 +7,7 @@ import {
 import { db } from "/assets/js/firebase-init.js";
 
 let _unsubMsgs = null;
+let _unsubAdminStatus = null;
 let _uid = null;
 let _isOpen = false;
 let _unreadRefs = [];
@@ -27,7 +28,8 @@ function setup() {
 
   if (!btnOpen || !widget) return;
 
-  onSnapshot(doc(db, "admin_status", "main"), (snap) => {
+  _unsubAdminStatus?.();
+  _unsubAdminStatus = onSnapshot(doc(db, "admin_status", "main"), (snap) => {
     const on = snap.exists() && snap.data().online === true;
     if (statusEl) statusEl.textContent = on ? "🟢 온라인" : "🔴 오프라인";
   });
