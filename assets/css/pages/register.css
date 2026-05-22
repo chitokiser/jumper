@@ -1,5 +1,63 @@
 /* /assets/css/pages/register.css */
 
+/* ── 인증 탭 ── */
+.auth-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--line, rgba(0,0,0,.15));
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.auth-tab:hover {
+  background: var(--card2, #eef5ff);
+  color: var(--fg);
+}
+
+.auth-tab--active {
+  background: var(--accent, #2563eb);
+  color: #fff;
+  border-color: var(--accent, #2563eb);
+}
+
+/* ── 전화번호 입력 행 ── */
+.phone-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.phone-row input {
+  flex: 1;
+}
+
+/* ── OTP 입력 ── */
+.otp-input {
+  letter-spacing: .3em;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ── 인증 메시지 ── */
+.auth-msg {
+  font-size: 13px;
+  min-height: 18px;
+  margin-top: 6px;
+  color: var(--muted);
+}
+
 .reg-divider {
   margin-top: 8px;
   padding: 6px 0 2px;

@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>회원가입 - Jump</title>
+  <title>회원가입 / 로그인 - Jump</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -18,18 +18,51 @@
 
   <main class="page">
     <section class="panel">
-      <h1 class="title">회원가입</h1>
-      <p class="desc">Google 로그인 후 기본 정보를 입력해 주세요. 수탁 지갑이 자동으로 생성됩니다.</p>
+      <h1 class="title">회원가입 / 로그인</h1>
+      <p class="desc">전화번호로 인증 후 수탁 지갑이 자동으로 생성됩니다.</p>
 
       <div id="regState" class="state"></div>
 
-      <!-- 로그인 안 된 경우 -->
-      <div id="needLogin" style="display:none;" class="status-box">
-        <p>Google 로그인 후 이용할 수 있습니다.</p>
-        <button class="btn btn--primary" id="btnLoginPage" type="button" style="margin-top:12px;">구글 로그인</button>
+      <!-- ── 인증 섹션 (로그인 전) ── -->
+      <div id="authSection">
+        <div class="auth-tabs">
+          <button class="auth-tab auth-tab--active" id="tabPhone" type="button">📱 전화번호</button>
+          <button class="auth-tab" id="tabGoogle" type="button">🔑 Google</button>
+        </div>
+
+        <!-- 전화번호 인증 패널 -->
+        <div id="panelPhone" style="padding-top:4px;">
+          <div class="field">
+            <span>전화번호 <em class="req">*</em></span>
+            <div class="phone-row">
+              <input type="tel" id="inputPhone" maxlength="20"
+                placeholder="+84 912 345 678  /  +82 10 1234 5678"
+                autocomplete="tel" />
+              <button class="btn btn--primary btn--sm" id="btnSendOtp" type="button">인증번호 받기</button>
+            </div>
+          </div>
+          <div id="otpSection" class="field" style="display:none;">
+            <span>인증번호 6자리 <em class="req">*</em></span>
+            <div class="phone-row">
+              <input type="text" id="inputOtp" maxlength="6" placeholder="123456"
+                inputmode="numeric" class="otp-input" autocomplete="one-time-code" />
+              <button class="btn btn--primary btn--sm" id="btnVerifyOtp" type="button">확인</button>
+            </div>
+            <small>문자가 오지 않으면 위에서 다시 시도해 주세요.</small>
+          </div>
+          <div id="authMsg" class="auth-msg"></div>
+          <div id="recaptchaContainer"></div>
+        </div>
+
+        <!-- Google 인증 패널 -->
+        <div id="panelGoogle" style="display:none;padding-top:12px;">
+          <p style="font-size:13px;color:var(--muted);margin:0 0 14px;">Google 계정으로 바로 로그인합니다.</p>
+          <button class="btn btn--primary" id="btnGoogleLogin" type="button">🔑 Google 로그인</button>
+          <div id="googleMsg" class="auth-msg" style="margin-top:8px;"></div>
+        </div>
       </div>
 
-      <!-- 이미 가입 완료 -->
+      <!-- ── 이미 가입 완료 ── -->
       <div id="alreadyDone" style="display:none;" class="status-box">
         <div class="status-row">
           <div class="k">가입 상태</div>
@@ -62,7 +95,7 @@
         <a href="/index.html" class="btn btn--primary" style="margin-top:16px;display:inline-block;">홈으로</a>
       </div>
 
-      <!-- 가입 폼 -->
+      <!-- ── 가입 폼 (신규 사용자) ── -->
       <form class="form" id="regForm" style="display:none;" novalidate>
 
         <label class="field">
@@ -76,9 +109,9 @@
         </label>
 
         <label class="field">
-          <span>멘토 지갑 주소 <em class="req">*</em></span>
+          <span>멘토 지갑 주소</span>
           <input type="text" id="mentorAddress" maxlength="42" placeholder="예: 0xAbCd...1234" autocomplete="off" spellcheck="false" />
-          <small class="help-text">추천인(멘토)의 수탁 지갑 주소 · 0x로 시작하는 42자리 · 멘토가 없으면 기본 주소가 자동 입력됩니다</small>
+          <small class="help-text">추천인(멘토)의 수탁 지갑 주소 · 없으면 기본값이 자동 입력됩니다</small>
         </label>
 
         <div class="reg-divider">이용 약관</div>
@@ -110,7 +143,7 @@
         </div>
 
         <p class="hint">
-          멘토 지갑 주소 입력 시 수탁 지갑 생성과 온체인 회원 등록이 자동으로 진행됩니다.<br>
+          수탁 지갑 생성과 온체인 회원 등록이 자동으로 진행됩니다.<br>
           멘토 주소를 모르거나 없으면 기본 멘토 주소가 자동으로 입력됩니다.
         </p>
       </form>
