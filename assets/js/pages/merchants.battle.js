@@ -79,12 +79,13 @@ let _lastPosWriteAt       = 0;      // 위치 Firestore 저장 쓰로틀
 // ── 상점 상태 ─────────────────────────────────────────────────────────────────
 let _shops        = [];   // [{id, name, type, lat, lng, items, active}]
 let _shopMarkers  = {};   // { shopId: google.maps.Marker }
-const SHOP_RANGE_M = 20;  // 상점 접근 가능 반경(m)
+const SHOP_RANGE_M = 20;  // 상점 진입 반경(m)
+const SHOP_EXIT_M  = 30;  // 상점 이탈 판정 반경(m) — GPS 노이즈로 인한 오발동 방지 히스테리시스
 const SHOP_ICONS  = { weapon_armor: '⚔️', potion: '🧪', misc: '🛍️' };
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST    = 100;
-const SKILL_RANGE_M    = 30;
+const SKILL_RANGE_M    = 40;
 const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오브제 표시
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000 };
 const SKILL_FREEZE_MS = 20000;
@@ -621,17 +622,17 @@ export function updateSkillBar() {
   if (magicBadge) magicBadge.textContent = tokenCount > 0 ? String(tokenCount) : '';
 }
 
-// ── 마정석 사용 (HP +100) ──────────────────────────────────────────────────────
+// ── 마정석 사용 (MP +100) ──────────────────────────────────────────────────────
 export function useMagicStone() {
   if (_isDead) return;
   if ((_player.token ?? 0) <= 0) { showSkillError(_t('magic_stone_none')); return; }
   _player.token = (_player.token ?? 0) - 1;
-  const prev = _player.hp;
-  _player.hp = Math.min(_player.maxHp, _player.hp + 100);
-  const gain = _player.hp - prev;
+  const prev = _player.mp;
+  _player.mp = Math.min(_player.maxMp, _player.mp + 100);
+  const gain = _player.mp - prev;
   const myMark = _ctx?.myLocationMarker;
   if (myMark && gain > 0) {
-    showFloat(`💎+${gain}HP`, '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
+    showFloat(`💎+${gain}MP`, '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
     playSound('heal');
   }
   updateCombatHud();
@@ -2793,7 +2794,9 @@ export function checkShopProximity(lat, lng) {
   for (const shop of _shops) {
     if (!shop.active) continue;
     const dist = haversine(lat, lng, shop.lat, shop.lng);
-    if (dist <= SHOP_RANGE_M && dist < nearestDist) {
+    // 현재 머물던 상점은 넓은 이탈 임계값 사용 (GPS 노이즈로 인한 경계 진동 방지)
+    const threshold = shop.id === _lastNearShopId ? SHOP_EXIT_M : SHOP_RANGE_M;
+    if (dist <= threshold && dist < nearestDist) {
       nearestDist = dist;
       nearest = shop;
     }

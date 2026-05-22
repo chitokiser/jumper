@@ -406,7 +406,7 @@ function showBoxInfo(box, marker, dist) {
     : '';
 
   const distPrefix = dist !== undefined ? _t('box_dist_prefix', Math.round(dist)) : '';
-  const rangeM = box.hiddenBox ? '5' : '20';
+  const rangeM = box.hiddenBox ? '20' : '20';
 
   infoWindow.setContent(`
     <div style="font-size:13px;line-height:1.7;min-width:190px;">
@@ -498,7 +498,7 @@ function _makeBoxMarker(box, lat, lng, size, animate) {
   });
   if (animate) setTimeout(() => marker.setAnimation(null), 2200);
 
-  const range = box.hiddenBox ? 5 : 20;
+  const range = 20;
   marker.addListener('click', () => {
     if (_collectedBoxes.has(box.id)) {
       infoWindow.setContent(`<div style="font-size:13px;color:#888;padding:4px;">${_t('box_already_collected')}</div>`);
@@ -643,7 +643,7 @@ function renderBoxMarkers() {
     if (!lat || !lng) return;
     getBoxHpState(box);
 
-    // 숨김 보물: 초기 마커 생성 안 함 — checkProximity에서 5m 내 진입 시 출현
+    // 숨김 보물: 초기 마커 생성 안 함 — checkProximity에서 20m 내 진입 시 출현
     if (box.hiddenBox) { box._marker = null; return; }
 
     const marker = _makeBoxMarker(box, lat, lng, 20, false);
@@ -836,7 +836,7 @@ async function _pollNearbyPlayers() {
 }
 
 // ── 게임 서버 몬스터 마커 ─────────────────────────────────────────────────────
-const GS_MONSTER_ATTACK_RANGE_M = 20;
+const GS_MONSTER_ATTACK_RANGE_M = 40;
 
 // ── 게임 서버 몬스터 — SVG 마커 아이콘 (비-스프라이트 타입용) ─────────────────
 function _gsMonsterIcon(state, hpPct) {
@@ -1316,12 +1316,12 @@ async function checkProximity(lat, lng) {
     const dist = haversine(lat, lng, Number(box.lat), Number(box.lng));
     const maxHp = box.hp || 300;
 
-    // ── 숨김 보물: 5m 내 진입 시 출현, 이탈 시 소멸 ──
+    // ── 숨김 보물: 20m 내 진입 시 출현, 25m 밖 이탈 시 소멸 (히스테리시스) ──
     if (box.hiddenBox) {
-      if (dist <= 5) {
+      if (dist <= 20) {
         if (!box._marker) _revealHiddenBox(box);
         else box._marker.setTitle(_t('hidden_box_title', box.name || _t('hidden_box_name'), getBoxHpState(box).current, maxHp));
-      } else if (box._marker) {
+      } else if (dist > 25 && box._marker) {
         box._marker.setMap(null);
         boxMarkers = boxMarkers.filter(m => m !== box._marker);
         box._marker = null;
@@ -1880,7 +1880,7 @@ async function loadInventory() {
     return;
   }
 
-  const settle = p => p.then(v => ({ ok: true, v })).catch(e => { console.warn('loadInventory query error:', e.message); return { ok: false }; });
+  const settle = p => p.then(v => ({ ok: true, v })).catch(e => { console.error('loadInventory query error:', e.message); showToast(`인벤토리 로드 오류: ${e.message}`, 'error'); return { ok: false }; });
 
   const [invRes, boxRes, vRes, purchaseRes] = await Promise.all([
     settle(getDocs(query(collection(db, 'treasure_inventory'), where('uid', '==', _uid)))),
@@ -2709,10 +2709,7 @@ async function _execShopBuy(shopId, itemId, itemName, price, qty) {
   try {
     await httpsCallable(functions, 'buyShopItem')({ shopId, itemId, quantity: qty });
     closeShopModal();
-    await loadShops();
-    const updatedShop = getShops().find(s => s.id === shopId);
-    if (updatedShop) openShopModal(updatedShop);
-    await Promise.all([loadInventory(), loadPlayerState()]);
+    await Promise.all([loadInventory(), loadPlayerState(), loadShops()]);
     showToast(_t('shop_buy_ok', itemName), 'success');
   } catch (err) {
     showToast(_t('shop_buy_fail', err.message), 'error');
