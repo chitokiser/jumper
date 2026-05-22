@@ -119,6 +119,21 @@
   justify-content: center;
 }
 
+/* ── 히어로 CTA 버튼 ── */
+.hero-cta-btn {
+  padding: 14px 32px;
+  font-size: clamp(15px, 2.2vw, 18px);
+  font-weight: 800;
+  border-radius: 12px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 24px rgba(124,58,237,.45), 0 2px 8px rgba(0,0,0,.35);
+  transition: transform .15s, box-shadow .15s;
+}
+.hero-cta-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(124,58,237,.55), 0 4px 12px rgba(0,0,0,.35);
+}
+
 /* ── 모바일 ── */
 @media (max-width: 768px) {
   .hero-video    { min-height: 420px; }

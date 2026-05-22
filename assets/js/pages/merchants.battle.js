@@ -2785,6 +2785,8 @@ export async function deleteShop(shopId) {
   if (_shopMarkers[shopId]) { _shopMarkers[shopId].setMap(null); delete _shopMarkers[shopId]; }
 }
 
+let _lastNearShopId = null;
+
 export function checkShopProximity(lat, lng) {
   let nearest = null;
   let nearestDist = Infinity;
@@ -2796,5 +2798,9 @@ export function checkShopProximity(lat, lng) {
       nearest = shop;
     }
   }
-  if (nearest) _ctx?._onShopNear?.(nearest);
+  const nearId = nearest?.id ?? null;
+  if (nearId !== _lastNearShopId) {
+    _lastNearShopId = nearId;
+    if (nearest) _ctx?._onShopNear?.(nearest);
+  }
 }
