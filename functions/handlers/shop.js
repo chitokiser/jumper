@@ -103,16 +103,17 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1 } = {}) {
   await db.runTransaction(async (tx) => {
     const [pSnap, invSnap] = await Promise.all([tx.get(playerRef), tx.get(invRef)]);
 
-    if (!pSnap.exists) throw new HttpsError('not-found', '플레이어 정보를 찾을 수 없습니다');
-    const currentGold = pSnap.data().gold ?? 0;
+    const currentGold = pSnap.exists ? (pSnap.data().gold ?? 0) : 0;
     if (currentGold < totalCost)
       throw new HttpsError('failed-precondition',
         `골드가 부족합니다 (보유: ${currentGold}, 필요: ${totalCost})`);
 
-    tx.update(playerRef, {
-      gold: currentGold - totalCost,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    const playerWrite = { gold: currentGold - totalCost, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    if (pSnap.exists) {
+      tx.update(playerRef, playerWrite);
+    } else {
+      tx.set(playerRef, { uid, token: 30, hp: 1000, mp: 1000, level: 1, ...playerWrite });
+    }
 
     const currentCount = invSnap.exists ? (invSnap.data().count ?? 0) : 0;
     tx.set(invRef, {
@@ -134,4 +135,80 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1 } = {}) {
   return { ok: true, itemId, quantity: qty, totalCost };
 }
 
-module.exports = { adminSaveShop, adminDeleteShop, buyShopItem };
+// ── 스타터 팩 정의 ─────────────────────────────────────────────────────────────
+const STARTER_PACK = {
+  equippedWeapon: 'weapon_50',
+  equippedArmor:  'armo_10',
+  token:          30,   // 마정석
+  gold:           0,
+  hp:             1000,
+  mp:             1000,
+  level:          1,
+};
+const STARTER_INV = [
+  { itemId: 'weapon_50',    count: 1  },
+  { itemId: 'armo_10',      count: 1  },
+  { itemId: 'revive_ticket',count: 30 },
+  { itemId: 'potion_red',   count: 30 },
+];
+
+async function _applyStarterToPlayer(uid, existingSnap) {
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const batch = db.batch();
+
+  const playerRef = db.collection('battle_players').doc(uid);
+  if (!existingSnap || !existingSnap.exists) {
+    batch.set(playerRef, { uid, ...STARTER_PACK, updatedAt: now });
+  } else {
+    // 기존 유저: 스타터 장비/마정석만 최솟값 보장
+    const d = existingSnap.data();
+    const update = {};
+    if ((d.token ?? 0) < STARTER_PACK.token) update.token = STARTER_PACK.token;
+    if (!d.equippedWeapon || d.equippedWeapon === 'weapon_100')
+      update.equippedWeapon = STARTER_PACK.equippedWeapon;
+    if (!d.equippedArmor) update.equippedArmor = STARTER_PACK.equippedArmor;
+    if (Object.keys(update).length) { update.updatedAt = now; batch.update(playerRef, update); }
+  }
+
+  for (const { itemId, count } of STARTER_INV) {
+    const invRef = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
+    const invSnap = await invRef.get();
+    const current = invSnap.exists ? (invSnap.data().count ?? 0) : 0;
+    if (current < count) {
+      batch.set(invRef, { uid, itemId, count, updatedAt: now }, { merge: true });
+    }
+  }
+
+  await batch.commit();
+}
+
+// ── 플레이어 초기화 (자기 자신, 게임 첫 접속 시) ──────────────────────────────
+async function initBattlePlayer(uid) {
+  const playerRef = db.collection('battle_players').doc(uid);
+  const snap = await playerRef.get();
+  if (snap.exists) return { ok: true, created: false };
+  await _applyStarterToPlayer(uid, snap);
+  return { ok: true, created: true };
+}
+
+// ── 관리자: 모든 유저 스타터 초기화 ──────────────────────────────────────────
+async function adminInitAllPlayers(uid) {
+  await requireAdmin(uid);
+  const usersSnap = await db.collection('users').get();
+  let processed = 0;
+  const CHUNK = 20;
+  const uids = usersSnap.docs.map(d => d.id);
+
+  for (let i = 0; i < uids.length; i += CHUNK) {
+    const chunk = uids.slice(i, i + CHUNK);
+    await Promise.all(chunk.map(async (u) => {
+      const snap = await db.collection('battle_players').doc(u).get();
+      await _applyStarterToPlayer(u, snap);
+    }));
+    processed += chunk.length;
+  }
+
+  return { ok: true, processed };
+}
+
+module.exports = { adminSaveShop, adminDeleteShop, buyShopItem, initBattlePlayer, adminInitAllPlayers };

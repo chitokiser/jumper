@@ -1851,6 +1851,14 @@ exports.buyShopItem = onCall(wrapError(async (req) => {
   return shopH.buyShopItem(requireAuth(req), req.data ?? {});
 }));
 
+exports.initBattlePlayer = onCall(wrapError(async (req) => {
+  return shopH.initBattlePlayer(requireAuth(req));
+}));
+
+exports.adminInitAllPlayers = onCall(wrapError(async (req) => {
+  return shopH.adminInitAllPlayers(requireAuth(req));
+}));
+
 // 최초 1회 호출 — 기존 users 수를 세어 stats/public 초기화 (어드민 전용)
 exports.initPublicStats = onCall(async (req) => {
   await requireAdmin(requireAuth(req));

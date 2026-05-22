@@ -233,7 +233,7 @@ function initMap() {
 
   // 전체화면 진입/종료 시 position:fixed 모달들을 fullscreen 요소 안으로 이동
   // (HUD·스킬바는 Google Maps Control이므로 자동으로 fullscreen에 포함됨)
-  const FS_MODALS = ['invModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal'];
+  const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal'];
   document.addEventListener('fullscreenchange', () => {
     const fs = document.fullscreenElement;
     const dest = fs || document.body;
@@ -2226,7 +2226,14 @@ async function init() {
       // 익명 유저 배지 표시
       _renderAnonBadge(_isAnonymous);
 
-      loadPlayerState().then(() => {
+      loadPlayerState().then(async (status) => {
+        if (status === 'new' && !_isAnonymous) {
+          try {
+            await httpsCallable(functions, 'initBattlePlayer')();
+            await loadPlayerState(); // 스타터 아이템 포함 재로드
+            await loadInventory();
+          } catch (e) { /* ignore */ }
+        }
         renderExchangeSection();
         showDeathMarkerIfDead();
       });
@@ -2402,6 +2409,13 @@ async function init() {
       if (targetUid === _uid) await loadInventory();
     } catch (err) { alert('실패: ' + err.message); }
   });
+  $('btnAdminInitAllPlayers')?.addEventListener('click', async () => {
+    if (!confirm('모든 유저에게 스타터 팩을 초기화하시겠습니까?\n(이미 더 많이 가진 유저는 영향 없음)')) return;
+    try {
+      const res = await httpsCallable(functions, 'adminInitAllPlayers')();
+      alert(`✅ ${res.data.processed}명 초기화 완료`);
+    } catch (err) { alert('실패: ' + err.message); }
+  });
   $('btnCancelPlace')?.addEventListener('click',  exitAdminPlaceMode);
   $('btnToggleTowerRange')?.addEventListener('click', toggleTowerRanges);
 
@@ -2531,79 +2545,179 @@ async function init() {
 }
 
 // ── 상점 모달 (유저용) ────────────────────────────────────────────────────────
-let _activeShopId = null;
+let _activeShopId    = null;
+let _shopCurrentData = null;
+let _shopSelectedItem = null;
+let _shopQty         = 1;
 
 function openShopModal(shop) {
-  _activeShopId = shop.id;
+  _activeShopId     = shop.id;
+  _shopCurrentData  = shop;
+  _shopSelectedItem = null;
+  _shopQty          = 1;
   const modal = $('shopModal');
   if (!modal) return;
 
   const typeLabelMap = { weapon_armor: '⚔️ 무기/방어구', potion: '🧪 약물', misc: '🛍️ 잡템' };
-  const typeLabel = typeLabelMap[shop.type] || shop.type;
-  const playerGold = getPlayerGold();
+  $('shopModalTitle').textContent = `${shop.name} (${typeLabelMap[shop.type] || shop.type})`;
 
-  let rows = '';
-  const items = shop.items || [];
+  const adminBtn = $('shopModalAdminBtn');
+  if (adminBtn) {
+    if (_isAdmin) {
+      adminBtn.style.display = '';
+      adminBtn.onclick = () => { closeShopModal(); openShopAdminModal(shop); };
+    } else {
+      adminBtn.style.display = 'none';
+    }
+  }
+
+  _renderShopModalBody();
+  modal.classList.add('open');
+}
+
+function _renderShopModalBody() {
+  const body = $('shopModalBody');
+  if (!body || !_shopCurrentData) return;
+
+  const shop      = _shopCurrentData;
+  const items     = shop.items || [];
+  const playerGold = getPlayerGold();
+  const sel       = _shopSelectedItem;
+  const maxQty    = sel ? (sel.stock === -1 ? 99 : sel.stock) : 1;
+  const total     = sel ? sel.price * _shopQty : 0;
+  const canBuy    = !!sel && playerGold >= total;
+
+  // 보유 골드
+  let html = `<div style="display:flex;justify-content:flex-end;align-items:center;
+    padding-bottom:10px;border-bottom:1px solid #1f2937;margin-bottom:10px">
+    <span style="color:#9ca3af;font-size:12px;margin-right:6px">보유 골드</span>
+    <span style="color:#fbbf24;font-weight:700;font-size:14px">💰 ${playerGold.toLocaleString()}</span>
+  </div>`;
+
+  // 아이템 목록
   if (!items.length) {
-    rows = `<p style="color:#9ca3af;text-align:center;padding:12px">판매 중인 아이템이 없습니다</p>`;
+    html += `<p style="color:#9ca3af;text-align:center;padding:16px 0">판매 중인 아이템이 없습니다</p>`;
   } else {
-    rows = items.map(it => {
-      const soldOut = it.stock === 0;
-      const canBuy  = !soldOut && playerGold >= it.price;
-      return `<div class="shop-item-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #2d2d2d">
-        <div style="flex:1">
-          <div style="font-weight:600;font-size:14px">${escHtml(it.name)}</div>
-          <div style="color:#fbbf24;font-size:12px">💰 ${it.price.toLocaleString()} ${_t('shop_gold_label')}
-            ${it.stock === -1 ? '' : `<span style="color:#9ca3af;margin-left:6px">(재고: ${it.stock})</span>`}
+    items.forEach(it => {
+      const soldOut    = it.stock === 0;
+      const isSelected = sel?.itemId === it.itemId;
+      html += `<div class="shop-item-row" data-item-id="${escHtml(it.itemId)}"
+        style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;
+               margin-bottom:6px;cursor:${soldOut ? 'default' : 'pointer'};
+               border:2px solid ${isSelected ? '#3b82f6' : '#1f2937'};
+               background:${isSelected ? 'rgba(59,130,246,.12)' : 'rgba(255,255,255,.02)'};
+               opacity:${soldOut ? '0.45' : '1'};transition:border-color .15s,background .15s">
+        <div style="width:22px;height:22px;border-radius:50%;flex-shrink:0;
+                    border:2px solid ${isSelected ? '#3b82f6' : '#374151'};
+                    background:${isSelected ? '#3b82f6' : 'transparent'};
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:12px;color:#fff">${isSelected ? '✓' : ''}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;color:#f3f4f6">${escHtml(it.name)}</div>
+          <div style="font-size:12px;margin-top:3px;color:#fbbf24">
+            💰 ${it.price.toLocaleString()} ${_t('shop_gold_label')}
+            <span style="color:#6b7280;margin-left:6px">
+              ${it.stock === -1 ? '∞ 무제한' : `재고 ${it.stock}`}
+            </span>
           </div>
         </div>
-        ${soldOut
-          ? `<span style="color:#ef4444;font-size:12px">${_t('shop_out_of_stock')}</span>`
-          : `<button class="btn-small" onclick="window.__shopBuy('${escHtml(shop.id)}','${escHtml(it.itemId)}','${escHtml(it.name)}',${it.price})"
-               style="${canBuy ? '' : 'opacity:.5;cursor:not-allowed'}"
-               ${canBuy ? '' : 'disabled'}>구매</button>`
-        }
+        ${soldOut ? `<span style="font-size:11px;color:#ef4444;font-weight:600;flex-shrink:0">${_t('shop_out_of_stock')}</span>` : ''}
       </div>`;
-    }).join('');
+    });
   }
 
-  const goldBar = `<div style="text-align:right;color:#fbbf24;font-size:13px;margin-bottom:8px">💰 보유 골드: ${playerGold.toLocaleString()}</div>`;
+  // 하단: 수량 / 합계 / 구매 버튼
+  html += `<div style="border-top:1px solid #1f2937;margin-top:12px;padding-top:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="color:#9ca3af;font-size:13px">구매 수량</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button id="shopQtyMinus"
+          style="width:30px;height:30px;border-radius:8px;border:1px solid #374151;
+                 background:#1f2937;font-size:18px;line-height:1;
+                 color:${(!sel || _shopQty <= 1) ? '#4b5563' : '#f3f4f6'};
+                 cursor:${(!sel || _shopQty <= 1) ? 'not-allowed' : 'pointer'}"
+          ${(!sel || _shopQty <= 1) ? 'disabled' : ''}>−</button>
+        <span style="color:#f3f4f6;font-size:16px;font-weight:700;min-width:28px;text-align:center">
+          ${sel ? _shopQty : '─'}
+        </span>
+        <button id="shopQtyPlus"
+          style="width:30px;height:30px;border-radius:8px;border:1px solid #374151;
+                 background:#1f2937;font-size:18px;line-height:1;
+                 color:${(!sel || _shopQty >= maxQty) ? '#4b5563' : '#f3f4f6'};
+                 cursor:${(!sel || _shopQty >= maxQty) ? 'not-allowed' : 'pointer'}"
+          ${(!sel || _shopQty >= maxQty) ? 'disabled' : ''}>+</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <span style="color:#9ca3af;font-size:13px">합계</span>
+      <span style="color:#fbbf24;font-weight:700;font-size:16px">
+        ${sel ? `💰 ${total.toLocaleString()} ${_t('shop_gold_label')}` : '─'}
+      </span>
+    </div>
+    <button id="shopBuyBtn"
+      style="width:100%;padding:13px;border-radius:10px;border:none;
+             font-weight:700;font-size:15px;letter-spacing:.2px;
+             cursor:${canBuy ? 'pointer' : 'not-allowed'};
+             background:${canBuy ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#1f2937'};
+             color:${canBuy ? '#fff' : '#6b7280'};
+             box-shadow:${canBuy ? '0 3px 12px rgba(37,99,235,.4)' : 'none'}"
+      ${canBuy ? '' : 'disabled'}>
+      ${!sel ? '아이템을 선택하세요' : !canBuy ? '💸 골드가 부족합니다' : '🛒 구매하기'}
+    </button>
+  </div>`;
 
-  $('shopModalTitle').textContent = `${shop.name} (${typeLabel})`;
-  $('shopModalBody').innerHTML = goldBar + rows;
+  body.innerHTML = html;
 
-  if (_isAdmin) {
-    const adminBtn = $('shopModalAdminBtn');
-    if (adminBtn) { adminBtn.style.display = ''; adminBtn.onclick = () => { closeShopModal(); openShopAdminModal(shop); }; }
-  } else {
-    const adminBtn = $('shopModalAdminBtn');
-    if (adminBtn) adminBtn.style.display = 'none';
+  // 아이템 행 클릭 → 선택
+  body.querySelectorAll('.shop-item-row[data-item-id]').forEach(row => {
+    const it = items.find(i => i.itemId === row.dataset.itemId);
+    if (!it || it.stock === 0) return;
+    row.addEventListener('click', () => {
+      _shopSelectedItem = it;
+      _shopQty = 1;
+      _renderShopModalBody();
+    });
+  });
+
+  // 수량 조절
+  $('shopQtyMinus')?.addEventListener('click', () => {
+    if (_shopQty > 1) { _shopQty--; _renderShopModalBody(); }
+  });
+  $('shopQtyPlus')?.addEventListener('click', () => {
+    if (sel && _shopQty < maxQty) { _shopQty++; _renderShopModalBody(); }
+  });
+
+  // 구매하기
+  if (canBuy) {
+    $('shopBuyBtn')?.addEventListener('click', () => {
+      _execShopBuy(shop.id, sel.itemId, sel.name, sel.price, _shopQty);
+    });
   }
-
-  modal.classList.add('open');
 }
 
 function closeShopModal() {
   $('shopModal')?.classList.remove('open');
-  _activeShopId = null;
+  _activeShopId     = null;
+  _shopCurrentData  = null;
+  _shopSelectedItem = null;
+  _shopQty          = 1;
 }
 
-window.__shopBuy = async (shopId, itemId, itemName, price) => {
-  const qty = 1;
-  if (!confirm(_t('shop_buy_confirm', qty, (price * qty).toLocaleString()))) return;
+async function _execShopBuy(shopId, itemId, itemName, price, qty) {
+  const total = price * qty;
+  if (!confirm(_t('shop_buy_confirm', qty, total.toLocaleString()))) return;
   try {
     await httpsCallable(functions, 'buyShopItem')({ shopId, itemId, quantity: qty });
     closeShopModal();
-    // 현재 상점 데이터 갱신 후 재오픈
     await loadShops();
     const updatedShop = getShops().find(s => s.id === shopId);
     if (updatedShop) openShopModal(updatedShop);
-    await loadInventory();
+    await Promise.all([loadInventory(), loadPlayerState()]);
     showToast(_t('shop_buy_ok', itemName), 'success');
   } catch (err) {
     showToast(_t('shop_buy_fail', err.message), 'error');
   }
-};
+}
 
 // ── 상점 관리자 모달 ──────────────────────────────────────────────────────────
 function openShopAdminModal(shop) {
@@ -2680,6 +2794,12 @@ function _makeItemRow(it, idx) {
 
   const sel  = div.querySelector('.sad-itemid');
   const nameInput = div.querySelector('.sad-name');
+
+  // KNOWN_ITEMS has canonical names — always override stored names for these items
+  if (it?.itemId && KNOWN_ITEMS[it.itemId]) {
+    nameInput.value = KNOWN_ITEMS[it.itemId].name;
+  }
+
   sel.addEventListener('change', () => {
     const id = sel.value;
     if (!id) return;

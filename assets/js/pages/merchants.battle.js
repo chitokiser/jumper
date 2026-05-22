@@ -720,6 +720,7 @@ export async function loadPlayerState() {
     } else {
       _player.hp = _player.maxHp;
       _player.mp = _player.maxMp;
+      return 'new'; // 플레이어 문서 없음 → 초기화 필요 신호
     }
   } catch { /* 무시 */ }
 
