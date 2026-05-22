@@ -147,10 +147,12 @@ async function verifyOtp() {
     // watchAuth가 로그인 상태를 감지해서 자동으로 다음 단계 진행
   } catch (err) {
     const code = err?.code || "";
-    let msg = "인증 실패: 코드를 다시 확인해 주세요.";
-    if (code === "auth/code-expired")                msg = "인증번호가 만료되었습니다. 다시 요청해 주세요.";
-    if (code === "auth/invalid-verification-code")   msg = "인증번호가 올바르지 않습니다.";
-    if (code === "auth/missing-verification-code")   msg = "인증번호를 입력해 주세요.";
+    const status = err?.customData?.serverResponse?.error?.code || "";
+    let msg = "인증 실패 (" + (code || "unknown") + "): 코드를 다시 확인해 주세요.";
+    if (code === "auth/code-expired")              msg = "인증번호가 만료되었습니다. '인증번호 받기'를 다시 눌러 주세요.";
+    if (code === "auth/invalid-verification-code") msg = "인증번호가 올바르지 않습니다. (400: INVALID_CODE)";
+    if (code === "auth/missing-verification-code") msg = "인증번호를 입력해 주세요.";
+    if (code === "auth/session-expired")           msg = "세션이 만료되었습니다. 인증번호를 다시 요청해 주세요.";
     setAuthMsg(msg, "error");
     btn.disabled = false;
     btn.textContent = "확인";
