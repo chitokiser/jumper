@@ -1173,11 +1173,13 @@ export async function useReviveTicket() {
     else refreshMyMarkerIcon();
     _player.hp = Math.round(_player.maxHp * 0.5);
     _player.mp = Math.round(_player.maxMp * 0.5);
+    _player.token = (_player.token ?? 0) + 30;
     sendPlayerRevive();  // GS 서버에 부활 동기화
     playSound('revive');
     const myMark = _ctx?.myLocationMarker;
-    if (myMark) showFloat(_t('revive_success'), '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
+    if (myMark) showFloat('✨ 부활! 💎×30', '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
     updateCombatHud();
+    updateSkillBar();
     savePlayerState();
     _ctx?._onLoadInventory();
     updateSkillBar();
@@ -1754,14 +1756,16 @@ function battleTick() {
       _player.mp = _player.maxMp;
       _healAccum   = 0;
       _mpHealAccum = 0;
+      _player.token = (_player.token ?? 0) + 30;
       sendPlayerRevive();  // GS 서버에 부활 동기화 (state='dead' 해제)
       playSound('revive');
       const myMark = _ctx?.myLocationMarker;
       if (myMark) {
         const pos = myMark.getPosition();
-        showFloat('✨ 부활!', '#fbbf24', pos.lat(), pos.lng());
+        showFloat('✨ 부활! 💎×30', '#fbbf24', pos.lat(), pos.lng());
       }
       updateCombatHud();
+      updateSkillBar();
       savePlayerState();
     }
   }
@@ -2656,11 +2660,13 @@ export function syncReviveFromServer(hp) {
   { const _rm = _ctx?.myLocationMarker;
     if (_rm && typeof _rm.revive === 'function') _rm.revive();
     else refreshMyMarkerIcon(); }
+  _player.token = (_player.token ?? 0) + 30;
   playSound('revive');
   const myMark = _ctx?.myLocationMarker;
   const pos    = myMark?.getPosition();
-  if (pos) showFloat('✨ 부활!', '#fbbf24', pos.lat(), pos.lng());
+  if (pos) showFloat('✨ 부활! 💎×30', '#fbbf24', pos.lat(), pos.lng());
   updateCombatHud();
+  updateSkillBar();
   savePlayerState();
 }
 
