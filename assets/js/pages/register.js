@@ -63,14 +63,21 @@ let _confirmationResult = null;
 let _recaptchaVerifier  = null;
 let _authDone           = false;
 
-async function initRecaptcha() {
+function _clearRecaptcha() {
   try { _recaptchaVerifier?.clear(); } catch (_) {}
+  _recaptchaVerifier = null;
+  const el = $("recaptchaContainer");
+  if (el) el.innerHTML = "";
+}
+
+async function initRecaptcha() {
+  _clearRecaptcha();
   _recaptchaVerifier = new RecaptchaVerifier(auth, "recaptchaContainer", {
     size: "normal",
     callback: () => {},
     "expired-callback": () => {},
   });
-  try { await _recaptchaVerifier.render(); } catch (_) {}
+  await _recaptchaVerifier.render();
 }
 
 async function sendOtp() {
@@ -89,10 +96,11 @@ async function sendOtp() {
   const btn = $("btnSendOtp");
   btn.disabled = true;
   btn.textContent = "전송 중...";
-  setAuthMsg("");
+  setAuthMsg("reCAPTCHA 로딩 중...");
 
   try {
-    if (!_recaptchaVerifier) await initRecaptcha();
+    await initRecaptcha();
+    setAuthMsg("전화번호 인증 요청 중...");
     _confirmationResult = await signInWithPhoneNumber(auth, phone, _recaptchaVerifier);
     setAuthMsg("인증번호를 전송했습니다. 문자를 확인해 주세요. ✓", "ok");
     show("otpSection", true);
@@ -101,14 +109,15 @@ async function sendOtp() {
     const code = err?.code || "";
     const rawMsg = err?.message || String(err);
     let msg = "전송 실패: " + rawMsg;
-    if (code === "auth/invalid-phone-number")    msg = "전화번호 형식이 올바르지 않습니다. (예: +84 912 345 678)";
-    if (code === "auth/too-many-requests")        msg = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
-    if (code === "auth/captcha-check-failed")     msg = "보안 인증 실패. 페이지를 새로고침 후 다시 시도해 주세요.";
-    if (code === "auth/invalid-app-credential")   msg = "앱 인증 오류입니다. Firebase Console → Authentication → 승인된 도메인에 현재 도메인을 추가해 주세요.";
-    if (rawMsg.includes("error-code:-39"))        msg = "도메인 인증 오류 (error-code:-39). Firebase Console → Authentication → Settings → 승인된 도메인에 현재 도메인을 추가해 주세요.";
+    if (code === "auth/invalid-phone-number")  msg = "전화번호 형식이 올바르지 않습니다. (예: +84 912 345 678)";
+    if (code === "auth/too-many-requests")      msg = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+    if (code === "auth/captcha-check-failed")   msg = "보안 인증 실패. 페이지를 새로고침 후 다시 시도해 주세요.";
+    if (code === "auth/invalid-app-credential") msg = "앱 인증 오류. Firebase Console → Authentication → 승인된 도메인에 현재 도메인을 추가해 주세요.";
+    if (code === "auth/argument-error")         msg = "reCAPTCHA 초기화 실패. 페이지를 새로고침 후 다시 시도해 주세요.";
+    if (rawMsg.includes("error-code:-39"))      msg = "도메인 인증 오류(-39). Firebase Console → Authentication → Settings → 승인된 도메인에 현재 도메인 추가 필요.";
+    if (rawMsg.includes("503") || code === "auth/network-request-failed") msg = "네트워크 오류(503). 인터넷 연결 또는 Google 서비스 접근을 확인해 주세요.";
     setAuthMsg(msg, "error");
-    _recaptchaVerifier = null;
-    await initRecaptcha();
+    _clearRecaptcha();
   } finally {
     btn.disabled = false;
     btn.textContent = "인증번호 받기";
@@ -383,7 +392,6 @@ async function _initForUser(user) {
 
 // ── 진입점 ────────────────────────────────────────
 initTabs();
-initRecaptcha();
 
 watchAuth(async (ctx) => {
   if (_authDone) return;
