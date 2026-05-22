@@ -61,18 +61,25 @@ function isValidPhone(p) {
 // ── 전화번호 인증 ──────────────────────────────────
 let _confirmationResult = null;
 let _recaptchaVerifier  = null;
+let _recaptchaEl        = null; // 매번 새로 생성되는 DOM 노드
 let _authDone           = false;
 
 function _clearRecaptcha() {
   try { _recaptchaVerifier?.clear(); } catch (_) {}
   _recaptchaVerifier = null;
-  const el = $("recaptchaContainer");
-  if (el) el.innerHTML = "";
+  // 이전 컨테이너 노드를 DOM에서 완전히 제거 → 내부 레지스트리 충돌 방지
+  if (_recaptchaEl) { try { _recaptchaEl.remove(); } catch (_) {} }
+  _recaptchaEl = null;
 }
 
 async function initRecaptcha() {
   _clearRecaptcha();
-  _recaptchaVerifier = new RecaptchaVerifier(auth, "recaptchaContainer", {
+  // 부모 wrapper에 새 div를 매번 주입 — 동일 ID 재사용으로 인한 argument-error 방지
+  const wrapper = $("recaptchaWrapper");
+  _recaptchaEl = document.createElement("div");
+  if (wrapper) wrapper.appendChild(_recaptchaEl);
+
+  _recaptchaVerifier = new RecaptchaVerifier(auth, _recaptchaEl, {
     size: "normal",
     callback: () => {},
     "expired-callback": () => {},
