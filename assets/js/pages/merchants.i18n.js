@@ -280,6 +280,21 @@ const MESSAGES = {
   shop_name_prompt:      { ko: '상점 이름을 입력하세요',     vi: 'Nhập tên cửa hàng' },
   shop_enter_range:      { ko: '가까이 접근하세요! (20m 이내)', vi: 'Hãy đến gần hơn! (trong vòng 20m)' },
   shop_gold_label:       { ko: '골드',                      vi: 'Vàng' },
+
+  // ── 바닥 드랍 시스템 ──────────────────────────────────────────────────────────
+  drop_btn_title:        { ko: '버리기',                    vi: 'Bỏ' },
+  pickup_btn_label:      { ko: '줍기',                      vi: 'Nhặt' },
+  // {0} = itemId
+  drop_confirm:          { ko: '{0} 1개를 바닥에 버리겠습니까?\n10분 후 자동 소각됩니다.', vi: 'Bỏ 1 {0} xuống đất?\nSẽ tự hủy sau 10 phút.' },
+  drop_success:          { ko: '아이템을 버렸습니다',        vi: 'Đã bỏ vật phẩm' },
+  drop_no_location:      { ko: '위치 정보를 확인할 수 없습니다', vi: 'Không thể xác định vị trí' },
+  drop_no_item:          { ko: '인벤토리에 없는 아이템입니다', vi: 'Không có vật phẩm trong kho' },
+  drop_insufficient:     { ko: '아이템이 부족합니다',        vi: 'Không đủ vật phẩm' },
+  // {0} = label (아이템명)
+  pickup_success:        { ko: '{0} 획득!',                  vi: 'Nhận được {0}!' },
+  pickup_expired:        { ko: '아이템이 소각되었습니다',    vi: 'Vật phẩm đã bị hủy' },
+  pickup_too_far:        { ko: '아이템에 더 가까이 접근하세요', vi: 'Hãy đến gần vật phẩm hơn' },
+  pickup_gone:           { ko: '이미 누군가 주워갔습니다',   vi: 'Đã có người nhặt mất rồi' },
 };
 
 /**

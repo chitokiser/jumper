@@ -1588,6 +1588,19 @@ exports.adminDeleteTreasureKey = onCall(wrapError(async (req) => {
   return treasureH.adminDeleteTreasureKey(requireAuth(req), req.data ?? {});
 }));
 
+// ── 바닥 드랍 시스템 ───────────────────────────────────────────────────────────
+exports.dropInventoryItem = onCall(wrapError(async (req) => {
+  return treasureH.dropInventoryItem(requireAuth(req), req.data ?? {});
+}));
+
+exports.pickupDroppedItem = onCall(wrapError(async (req) => {
+  return treasureH.pickupDroppedItem(requireAuth(req), req.data ?? {});
+}));
+
+exports.cleanupExpiredDrops = onSchedule('every 5 minutes', async () => {
+  await treasureH.cleanupExpiredDrops();
+});
+
 // 관리자: 빨간약 직접 지급
 exports.adminGivePotion = onCall(wrapError(async (req) => {
   const adminUid = requireAuth(req);

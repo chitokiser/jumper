@@ -85,12 +85,22 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   if (dist > 30)
     throw new HttpsError('failed-precondition', `너무 멀리 있습니다 (${Math.round(dist)}m)`);
 
-  // 평생 1회 수집 제한
+  // 리스폰 기반 수집 제한 (같은 사람은 리스폰 전까지 재수집 불가)
+  const respawnMs = box.respawnIntervalMs || 86400000; // 기본 24시간
   const invBoxKey = `${uid}_${boxId}`;
   const logRef  = db.collection('treasure_logs').doc(invBoxKey);
   const logSnap = await logRef.get();
-  if (logSnap.exists)
-    throw new HttpsError('already-exists', '이미 획득한 보물박스입니다');
+  if (logSnap.exists) {
+    const lastMs = logSnap.data().collectedAt?.toMillis?.() || 0;
+    const remainMs = lastMs + respawnMs - Date.now();
+    if (remainMs > 0) {
+      const remainMin = Math.ceil(remainMs / 60000);
+      throw new HttpsError('already-exists',
+        `이미 획득한 보물박스입니다. ${remainMin >= 60 ? Math.ceil(remainMin/60) + '시간' : remainMin + '분'} 후 다시 시도하세요`,
+        { respawnRemainingMs: remainMs }
+      );
+    }
+  }
 
   // 정회원 전용 박스: CoopMall 멤버십 확인
   if (box.memberOnly) {
@@ -108,6 +118,10 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
 
   // 트랜잭션: 미개봉 박스 인벤토리 저장 + 수집 로그 기록
   const invBoxRef = db.collection('treasure_inventory_boxes').doc(invBoxKey);
+  const invBoxSnap = await invBoxRef.get();
+  if (invBoxSnap.exists)
+    throw new HttpsError('already-exists', '먼저 인벤토리의 보물박스를 열어주세요');
+
   await db.runTransaction(async (tx) => {
     tx.set(invBoxRef, {
       uid, boxId,
@@ -120,6 +134,7 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
     tx.set(logRef, {
       uid, boxId,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
+      respawnIntervalMs: respawnMs,
     });
   });
 
@@ -139,12 +154,27 @@ async function adminCollectTreasureBox(adminUid, { boxId } = {}) {
   const itemPool = box.itemPool || [];
   if (!itemPool.length) throw new HttpsError('failed-precondition', '아이템 풀이 비어 있습니다');
 
+  const respawnMs = box.respawnIntervalMs || 86400000;
   const logKey = `${adminUid}_${boxId}`;
   const logRef = db.collection('treasure_logs').doc(logKey);
   const logSnap = await logRef.get();
-  if (logSnap.exists) throw new HttpsError('already-exists', '이미 수집한 보물박스입니다');
+  if (logSnap.exists) {
+    const lastMs = logSnap.data().collectedAt?.toMillis?.() || 0;
+    const remainMs = lastMs + respawnMs - Date.now();
+    if (remainMs > 0) {
+      const remainMin = Math.ceil(remainMs / 60000);
+      throw new HttpsError('already-exists',
+        `이미 획득한 보물박스입니다. ${remainMin >= 60 ? Math.ceil(remainMin/60) + '시간' : remainMin + '분'} 후 다시 시도하세요`,
+        { respawnRemainingMs: remainMs }
+      );
+    }
+  }
 
   const invBoxRef = db.collection('treasure_inventory_boxes').doc(logKey);
+  const invBoxSnap = await invBoxRef.get();
+  if (invBoxSnap.exists)
+    throw new HttpsError('already-exists', '먼저 인벤토리의 보물박스를 열어주세요');
+
   await db.runTransaction(async (tx) => {
     tx.set(invBoxRef, {
       uid: adminUid, boxId,
@@ -157,6 +187,7 @@ async function adminCollectTreasureBox(adminUid, { boxId } = {}) {
     tx.set(logRef, {
       uid: adminUid, boxId,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
+      respawnIntervalMs: respawnMs,
     });
   });
 
@@ -530,6 +561,101 @@ async function usePotion(uid) {
   });
 }
 
+// ── 바닥 드랍 상수 ─────────────────────────────────────────────────────────────
+const DROP_EXPIRE_MS = 10 * 60 * 1000; // 10분
+const DROP_PICKUP_RANGE_M = 20;
+
+// ── 유저: 인벤토리 아이템 바닥에 버리기 ────────────────────────────────────────
+async function dropInventoryItem(uid, { itemId, count = 1, userLat, userLng } = {}) {
+  if (!itemId) throw new HttpsError('invalid-argument', 'itemId가 필요합니다');
+  if (userLat == null || userLng == null)
+    throw new HttpsError('invalid-argument', '위치 정보가 필요합니다');
+  count = Math.max(1, parseInt(count) || 1);
+
+  const invRef = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
+  let actualCount = count;
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(invRef);
+    if (!snap.exists) throw new HttpsError('not-found', '인벤토리에 없는 아이템입니다');
+    const current = snap.data().count || 0;
+    if (current < count) throw new HttpsError('failed-precondition', `아이템이 부족합니다 (보유: ${current})`);
+    actualCount = count;
+    const remaining = current - count;
+    if (remaining <= 0) tx.delete(invRef);
+    else tx.update(invRef, { count: remaining, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+  });
+
+  const expireTs = admin.firestore.Timestamp.fromMillis(Date.now() + DROP_EXPIRE_MS);
+  const dropRef = db.collection('dropped_items').doc();
+  await dropRef.set({
+    dropperUid: uid,
+    itemId,
+    count: actualCount,
+    lat: userLat,
+    lng: userLng,
+    droppedAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt: expireTs,
+  });
+
+  return { ok: true, dropId: dropRef.id };
+}
+
+// ── 유저: 바닥 아이템 줍기 ────────────────────────────────────────────────────
+async function pickupDroppedItem(uid, { dropId, userLat, userLng } = {}) {
+  if (!dropId) throw new HttpsError('invalid-argument', 'dropId가 필요합니다');
+  if (userLat == null || userLng == null)
+    throw new HttpsError('invalid-argument', '위치 정보가 필요합니다');
+
+  const dropRef = db.collection('dropped_items').doc(dropId);
+  let resultItemId, resultCount;
+
+  await db.runTransaction(async (tx) => {
+    const dropSnap = await tx.get(dropRef);
+    if (!dropSnap.exists)
+      throw new HttpsError('not-found', '아이템을 찾을 수 없습니다 (이미 줍혔거나 소각됨)');
+    const dropData = dropSnap.data();
+
+    const expiresAt = dropData.expiresAt?.toMillis?.() || 0;
+    if (Date.now() > expiresAt) {
+      tx.delete(dropRef);
+      throw new HttpsError('failed-precondition', '아이템이 이미 소각되었습니다');
+    }
+
+    const dist = haversine(userLat, userLng, dropData.lat, dropData.lng);
+    if (dist > DROP_PICKUP_RANGE_M)
+      throw new HttpsError('failed-precondition', `너무 멀리 있습니다 (${Math.round(dist)}m)`);
+
+    resultItemId = dropData.itemId;
+    resultCount = dropData.count;
+
+    const invRef = db.collection('treasure_inventory').doc(`${uid}_${resultItemId}`);
+    const invSnap = await tx.get(invRef);
+    const current = invSnap.exists ? (invSnap.data().count || 0) : 0;
+    tx.set(invRef, {
+      uid, itemId: resultItemId, count: current + resultCount,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    tx.delete(dropRef);
+  });
+
+  return { ok: true, itemId: resultItemId, count: resultCount };
+}
+
+// ── 스케줄: 만료된 바닥 아이템 소각 ──────────────────────────────────────────
+async function cleanupExpiredDrops() {
+  const now = admin.firestore.Timestamp.now();
+  const snap = await db.collection('dropped_items')
+    .where('expiresAt', '<=', now)
+    .limit(200)
+    .get();
+  if (snap.empty) return { deleted: 0 };
+  const batch = db.batch();
+  snap.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+  return { deleted: snap.size };
+}
+
 module.exports = {
   collectTreasureBox,
   openTreasureBox,
@@ -546,4 +672,7 @@ module.exports = {
   earnKey,
   adminSaveTreasureKey,
   adminDeleteTreasureKey,
+  dropInventoryItem,
+  pickupDroppedItem,
+  cleanupExpiredDrops,
 };

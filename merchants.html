@@ -219,6 +219,23 @@
       font-size: 9px; font-weight: 700; color: #ffd700;
       text-shadow: 0 1px 2px #000;
     }
+    /* 버리기 버튼 */
+    .inv-slot .drop-btn {
+      position: absolute; top: 2px; right: 2px;
+      background: rgba(180,40,40,.85); color: #fff;
+      border: none; border-radius: 4px;
+      font-size: 10px; line-height: 1; padding: 2px 3px;
+      cursor: pointer; display: none; z-index: 2;
+    }
+    .inv-slot.has-item:hover .drop-btn,
+    .inv-slot.has-item.touch-active .drop-btn { display: block; }
+    /* 바닥 드랍 마커 라벨 */
+    .drop-marker-label {
+      background: rgba(20,10,0,.85); color: #ffd700;
+      border: 1px solid #7a5c3a; border-radius: 6px;
+      font-size: 11px; padding: 2px 6px; white-space: nowrap;
+      pointer-events: none;
+    }
     /* 장비 능력치 패널 */
     .inv-equip-stats {
       display: flex; flex-wrap: wrap; gap: 8px;

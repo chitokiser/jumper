@@ -3,7 +3,7 @@
 
 import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js';
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
-         setDoc, deleteDoc, serverTimestamp }
+         setDoc, deleteDoc, serverTimestamp, onSnapshot }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged, signInWithPopup, signInAnonymously, signOut, linkWithPopup }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -80,6 +80,9 @@ let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
 let _gsMonsters     = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
 let _gsMarkers      = {};        // {monsterId: Marker} 게임 서버 몬스터 마커 (비-스프라이트)
 let _gsOverlays     = {};        // {monsterId: MonsterSpriteOverlay} 스프라이트 오버레이 (dragon 등)
+let _droppedItems   = {};        // {dropId: dropData} 바닥에 버려진 아이템
+let _dropMarkers    = {};        // {dropId: google.maps.Marker} 드랍 마커
+let _dropsUnsubscribe = null;    // onSnapshot 해제 함수
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
 const _ctx = {
@@ -1168,6 +1171,7 @@ function showMyLocation() {
     if (!_boxHpState[boxId]) return;
     _boxHpState[boxId].current = data.isDead ? 0 : (data.hp ?? _boxHpState[boxId].current);
   });
+  subscribeDroppedItems(); // 바닥 드랍 실시간 구독
   _gameStarted = true;
 
   if (btn) btn.title = _t('game_in_progress');
@@ -1368,8 +1372,19 @@ async function tryCollect(box) {
     renderBoxInventory();
   } catch (err) {
     const msg = err.message || '';
-    if (msg.includes('이미')) {
-      // 영구 수집 완료 → 세션 중 재시도 불필요
+    if (msg.includes('먼저 인벤토리')) {
+      _collectedBoxes.delete(box.id);
+      showToast(msg, 'info');
+    } else if (msg.includes('이미')) {
+      // 리스폰 전까지 재시도 불필요 — 남은 시간 토스트 표시
+      const remainMs = err.details?.respawnRemainingMs;
+      if (remainMs) {
+        const remainMin = Math.ceil(remainMs / 60000);
+        const label = remainMin >= 60 ? Math.ceil(remainMin / 60) + '시간' : remainMin + '분';
+        showToast(`${label} 후 다시 획득할 수 있습니다`, 'info');
+      } else {
+        showToast(msg, 'info');
+      }
     } else if (msg.includes('너무 멀리')) {
       _collectedBoxes.delete(box.id);
     } else if (msg.includes('정회원')) {
@@ -1748,6 +1763,22 @@ function renderInventory() {
           <span class="slot-name">${escHtml(meta.name || ('#' + itemId))}</span>
           <span class="slot-count">${count}</span>`;
       }
+      // 버리기 버튼 (장착된 장비 제외)
+      const isEquipped = (getEquippedWeapon() === itemId) || (getEquippedArmor() === itemId);
+      if (!isEquipped) {
+        const dropBtn = document.createElement('button');
+        dropBtn.className = 'drop-btn';
+        dropBtn.title = _t('drop_btn_title');
+        dropBtn.textContent = '🗑';
+        dropBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          dropItem(itemId, 1);
+        });
+        // 터치: 슬롯 길게 터치로 버리기 버튼 표시
+        slot.addEventListener('touchstart', () => slot.classList.add('touch-active'), { passive: true });
+        slot.addEventListener('touchend', () => setTimeout(() => slot.classList.remove('touch-active'), 1500), { passive: true });
+        slot.appendChild(dropBtn);
+      }
     } else {
       slot.innerHTML = '<span class="slot-placeholder">□</span>';
     }
@@ -1788,6 +1819,116 @@ async function usePotion() {
     alert(_t('use_failed', err.message));
   }
 }
+
+// ── 바닥 드랍 시스템 ──────────────────────────────────────────────────────────
+
+async function dropItem(itemId, count = 1) {
+  if (!_uid) return;
+  const pos = _ctx.lastPos;
+  if (!pos) { showToast(_t('drop_no_location'), 'info'); return; }
+
+  const meta = _items[String(itemId)] || {};
+  const label = meta.name || ('#' + itemId);
+  if (!confirm(_t('drop_confirm', label))) return;
+
+  try {
+    const fn = httpsCallable(functions, 'dropInventoryItem');
+    await fn({ itemId, count, userLat: pos.lat, userLng: pos.lng });
+    const cur = _inventory[itemId] || 0;
+    const remaining = cur - count;
+    if (remaining <= 0) delete _inventory[itemId];
+    else _inventory[itemId] = remaining;
+    renderInventory();
+    showToast(_t('drop_success'), 'success');
+  } catch (err) {
+    const msg = err.message || '';
+    if (msg.includes('인벤토리에')) showToast(_t('drop_no_item'), 'info');
+    else if (msg.includes('부족')) showToast(_t('drop_insufficient'), 'info');
+    else showToast(msg, 'info');
+  }
+}
+
+async function pickupDrop(dropId) {
+  if (!_uid) return;
+  const pos = _ctx.lastPos;
+  if (!pos) { showToast(_t('drop_no_location'), 'info'); return; }
+
+  try {
+    const fn = httpsCallable(functions, 'pickupDroppedItem');
+    const res = await fn({ dropId, userLat: pos.lat, userLng: pos.lng });
+    const meta = _items[String(res.data.itemId)] || {};
+    const label = meta.name || ('#' + res.data.itemId);
+    const count = res.data.count;
+    // 로컬 인벤토리 즉시 반영
+    _inventory[res.data.itemId] = (_inventory[res.data.itemId] || 0) + count;
+    renderInventory();
+    showToast(_t('pickup_success', `${label} x${count}`), 'success');
+    playSound('collect');
+  } catch (err) {
+    const msg = err.message || '';
+    if (msg.includes('소각')) showToast(_t('pickup_expired'), 'info');
+    else if (msg.includes('멀리')) showToast(_t('pickup_too_far'), 'info');
+    else if (msg.includes('찾을 수 없')) showToast(_t('pickup_gone'), 'info');
+    else showToast(msg, 'info');
+  }
+}
+
+function _addDropMarker(dropId, data) {
+  if (!_ctx.map) return;
+  if (_dropMarkers[dropId]) return; // 이미 존재
+  const label = (_items[data.itemId]?.name || data.itemId) + (data.count > 1 ? ` x${data.count}` : '');
+  const marker = new google.maps.Marker({
+    position: { lat: data.lat, lng: data.lng },
+    map: _ctx.map,
+    icon: {
+      url: `/assets/images/item/${escHtml(data.itemId)}.png`,
+      scaledSize: new google.maps.Size(28, 28),
+      anchor: new google.maps.Point(14, 14),
+    },
+    title: label,
+    zIndex: 10,
+  });
+  const infoWin = new google.maps.InfoWindow({
+    content: `<div class="drop-marker-label">📦 ${escHtml(label)}<br><button onclick="window._pickupDrop('${escHtml(dropId)}')" style="margin-top:4px;padding:2px 8px;background:#7a3a00;color:#fff;border:none;border-radius:4px;cursor:pointer">${_t('pickup_btn_label')}</button></div>`,
+  });
+  marker.addListener('click', () => infoWin.open(_ctx.map, marker));
+  _dropMarkers[dropId] = marker;
+}
+
+function _removeDropMarker(dropId) {
+  const m = _dropMarkers[dropId];
+  if (m) { m.setMap(null); delete _dropMarkers[dropId]; }
+}
+
+function subscribeDroppedItems() {
+  if (_dropsUnsubscribe) { _dropsUnsubscribe(); _dropsUnsubscribe = null; }
+  // 만료되지 않은 아이템만 구독
+  const now = new Date();
+  const q = query(collection(db, 'dropped_items'),
+    where('expiresAt', '>', now));
+  _dropsUnsubscribe = onSnapshot(q, (snap) => {
+    snap.docChanges().forEach(change => {
+      const dropId = change.doc.id;
+      const data = change.doc.data();
+      if (change.type === 'added') {
+        _droppedItems[dropId] = data;
+        _addDropMarker(dropId, data);
+      } else if (change.type === 'removed' || change.type === 'modified') {
+        delete _droppedItems[dropId];
+        _removeDropMarker(dropId);
+        if (change.type === 'modified' && change.doc.exists) {
+          _droppedItems[dropId] = data;
+          _addDropMarker(dropId, data);
+        }
+      }
+    });
+  }, (err) => {
+    console.warn('dropped_items snapshot error:', err.message);
+  });
+}
+
+// 전역 노출 (InfoWindow 버튼용)
+window._pickupDrop = pickupDrop;
 
 // ── 바우처 레시피 렌더링 ─────────────────────────────────────────────────────
 function renderVouchers() {
@@ -2247,6 +2388,11 @@ async function init() {
       _ctx.isAdmin = false;
       _renderAnonBadge(false);
       _renderMemberStatus(null);
+      // 드랍 구독 해제 및 마커 정리
+      if (_dropsUnsubscribe) { _dropsUnsubscribe(); _dropsUnsubscribe = null; }
+      Object.keys(_dropMarkers).forEach(id => { _dropMarkers[id].setMap(null); });
+      _dropMarkers = {};
+      _droppedItems = {};
     }
     // 관리자 패널 표시
     const abp = $('adminBattlePanel');

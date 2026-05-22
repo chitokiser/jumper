@@ -416,6 +416,11 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
       allow write: if false;
     }
+    // 바닥 드랍 — 로그인 유저 누구나 읽기, 쓰기는 서버 전용
+    match /dropped_items/{docId} {
+      allow get, list: if signedIn();
+      allow write: if false;
+    }
 
     // ── 위치 기반 전투 시스템 ─────────────────────────────────────
     match /battle_monsters/{docId} {
