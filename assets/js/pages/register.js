@@ -117,14 +117,15 @@ async function sendOtp() {
     const rawMsg = err?.message || String(err);
     let msg = "전송 실패: " + rawMsg;
     if (code === "auth/invalid-phone-number")  msg = "전화번호 형식이 올바르지 않습니다. (예: +84 912 345 678)";
-    if (code === "auth/too-many-requests")      msg = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+    if (code === "auth/too-many-requests")      msg = "SMS 발송 횟수를 초과했습니다. 약 10분 후 다시 시도해 주세요.";
     if (code === "auth/captcha-check-failed")   msg = "보안 인증 실패. 페이지를 새로고침 후 다시 시도해 주세요.";
     if (code === "auth/invalid-app-credential") msg = "앱 인증 오류. Firebase Console → Authentication → 승인된 도메인에 현재 도메인을 추가해 주세요.";
     if (code === "auth/argument-error")         msg = "reCAPTCHA 초기화 실패. 페이지를 새로고침 후 다시 시도해 주세요.";
     if (rawMsg.includes("error-code:-39"))      msg = "도메인 인증 오류(-39). Firebase Console → Authentication → Settings → 승인된 도메인에 현재 도메인 추가 필요.";
     if (rawMsg.includes("503") || code === "auth/network-request-failed") msg = "네트워크 오류(503). 인터넷 연결 또는 Google 서비스 접근을 확인해 주세요.";
     setAuthMsg(msg, "error");
-    _clearRecaptcha();
+    // Firebase 내부 reCAPTCHA 콜백이 완료된 후 정리 (즉시 remove 시 null.style 에러 발생)
+    setTimeout(_clearRecaptcha, 500);
   } finally {
     btn.disabled = false;
     btn.textContent = "인증번호 받기";
