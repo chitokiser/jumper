@@ -358,16 +358,24 @@
     .c-lv { font-weight:700; font-size:13px; color:#fbbf24; margin-bottom:6px; text-align:center; }
     .c-row { display:flex; align-items:center; gap:6px; margin:4px 0; }
     .c-lbl { width:16px; font-size:10px; font-weight:700; }
-    .c-hp-lbl { color:#f87171; } .c-mp-lbl { color:#60a5fa; }
+    .c-hp-lbl { color:#f87171; } .c-mp-lbl { color:#60a5fa; } .c-exp-lbl { color:#fbbf24; }
     .c-bar { flex:1; height:8px; background:rgba(255,255,255,.12); border-radius:4px; overflow:hidden; }
     .c-fill { height:100%; border-radius:4px; transition:width .3s; }
     .c-fill-hp { background:linear-gradient(90deg,#ef4444,#f87171); }
     .c-fill-mp { background:linear-gradient(90deg,#3b82f6,#60a5fa); }
+    .c-fill-exp { background:linear-gradient(90deg,#92400e,#f59e0b,#fde68a); }
     .c-fill-hp.low { background:#ef4444; animation:cPulse .7s infinite; }
     .c-val { font-size:9px; color:#d1d5db; white-space:nowrap; min-width:58px; text-align:right; }
+    .c-exp-val { font-size:9px; color:#fbbf24; white-space:nowrap; min-width:80px; text-align:right; }
     .c-spd { margin-top:4px; font-size:10px; color:#6ee7b7; text-align:center; }
     .c-dead { color:#ef4444; font-weight:700; font-size:12px; text-align:center; margin-top:4px; animation:cPulse 1s infinite; }
     @keyframes cPulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    /* 레벨업 오버레이 */
+    .levelup-overlay { position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+    .levelup-box { background:linear-gradient(135deg,rgba(146,64,14,.92),rgba(245,158,11,.92)); border:2px solid #fde68a; border-radius:20px; padding:24px 40px; text-align:center; animation:lvPopIn .5s cubic-bezier(.17,.67,.41,1.3); }
+    .levelup-title { font-size:22px; font-weight:900; color:#fff; letter-spacing:2px; text-shadow:0 0 16px #f59e0b; }
+    .levelup-lv { font-size:36px; font-weight:900; color:#fde68a; text-shadow:0 0 24px #f59e0b; margin-top:4px; }
+    @keyframes lvPopIn { 0%{transform:scale(0) rotate(-8deg);opacity:0} 60%{transform:scale(1.15) rotate(3deg)} 100%{transform:scale(1) rotate(0);opacity:1} }
     .c-stat-row { display:flex; justify-content:center; gap:10px; margin:3px 0 1px; }
     .c-stat-atk { font-size:11px; font-weight:700; color:#fbbf24; }
     .c-stat-def { font-size:11px; font-weight:700; color:#6ee7b7; }
@@ -862,6 +870,11 @@
       <div class="c-bar"><div class="c-fill c-fill-mp" id="cMpBar" style="width:100%"></div></div>
       <span class="c-val" id="cMpVal">1000 / 1000</span>
     </div>
+    <div class="c-row">
+      <span class="c-lbl c-exp-lbl">EX</span>
+      <div class="c-bar"><div class="c-fill c-fill-exp" id="cExpBar" style="width:0%"></div></div>
+      <span class="c-exp-val" id="cExpVal">Lv.1  0 / 400,000</span>
+    </div>
     <div class="c-stat-row">
       <span id="cAtk" class="c-stat-atk">⚔200</span>
       <span id="cDef" class="c-stat-def">🛡10</span>
@@ -1050,6 +1063,14 @@
   </main>
 
   <div id="siteFooter"></div>
+
+  <!-- 레벨업 오버레이 -->
+  <div id="levelupOverlay" class="levelup-overlay hidden">
+    <div class="levelup-box">
+      <div class="levelup-title">LEVEL UP!</div>
+      <div class="levelup-lv" id="levelupLv">Lv. 2</div>
+    </div>
+  </div>
 
   <!-- 보물 수집 토스트 -->
   <div id="collectToast"></div>

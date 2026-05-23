@@ -35,7 +35,8 @@ export function setGsMobsGetter(fn) { _gsMobsGetter = fn; }
 // ── 내부 배틀 상태 ────────────────────────────────────────────────────────────
 let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0, token:30,
                       weaponBonus:100, defense:10,
-                      equippedWeapon:'weapon_100', equippedArmor:'armo_10' };
+                      equippedWeapon:'weapon_100', equippedArmor:'armo_10',
+                      gsExp:0, gsLevel:1, nextLevelExp:400000 };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
 let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
 let _monsterMarkers  = {};     // { id: Marker }  — 비-스프라이트 몬스터
@@ -378,6 +379,10 @@ export function playSound(type) {
         break;
       }
       case 'skill_no_mp': [260,220].forEach((f,i)=>tone(f,0.3,0.15,i*0.1,'sawtooth')); break;
+      case 'levelup':
+        [523,659,784,1047,1319,1568].forEach((f,i)=>tone(f,0.35,0.2,i*0.07,'triangle'));
+        tone(2093,0.4,0.4,0.4,'sine');
+        break;
     }
   } catch { /* 오디오 미지원 무시 */ }
 }
@@ -679,6 +684,7 @@ function updateCombatHud() {
       dead.style.display = 'none';
     }
   }
+  updateExpBar();
 }
 
 // ── 플레이어 상태 저장/로드 ───────────────────────────────────────────────────
@@ -701,8 +707,12 @@ export async function loadPlayerState() {
     _player.maxMp = _player.level * 1000;
     if (snap.exists()) {
       const d = snap.data();
-      _player.gold  = d.gold  || 0;
-      _player.token = d.token ?? 30;
+      _player.gold    = d.gold  || 0;
+      _player.token   = d.token ?? 30;
+      _player.gsExp   = typeof d.gsExp   === 'number' ? d.gsExp   : 0;
+      _player.gsLevel = typeof d.gsLevel === 'number' ? d.gsLevel : _player.level;
+      _player.gsLevel = Math.max(_player.level, _player.gsLevel);
+      _player.nextLevelExp = calcNextLevelExp(_player.gsLevel);
       if ((d.level || 1) === _player.level) {
         _player.hp = Math.min(d.hp ?? _player.maxHp, _player.maxHp);
         _player.mp = Math.min(d.mp ?? _player.maxMp, _player.maxMp);
@@ -799,10 +809,52 @@ export function savePlayerState() {
         deathLng: _deathLng ?? null,
         equippedWeapon: _player.equippedWeapon || 'weapon_100',
         equippedArmor:  _player.equippedArmor  || 'armo_10',
+        gsExp:   _player.gsExp   || 0,
+        gsLevel: _player.gsLevel || _player.level,
         updatedAt: serverTimestamp(),
       }, { merge: true });
     } catch { /* 무시 */ }
   }, 3000);
+}
+
+// ── EXP / 레벨업 시스템 ───────────────────────────────────────────────────────
+function calcNextLevelExp(level) {
+  return Math.pow(level + 1, 2) * 100_000;
+}
+
+function updateExpBar() {
+  const expBar = document.getElementById('cExpBar');
+  const expVal = document.getElementById('cExpVal');
+  const gsLv   = _player.gsLevel || _player.level;
+  const gsExp  = _player.gsExp   || 0;
+  const nextLv = _player.nextLevelExp || calcNextLevelExp(gsLv);
+  const pct    = Math.min(100, (gsExp / nextLv) * 100);
+  if (expBar) expBar.style.width = pct + '%';
+  if (expVal) expVal.textContent = `Lv.${gsLv}  ${gsExp.toLocaleString()} / ${nextLv.toLocaleString()}`;
+}
+
+function showLevelUpEffect(newLevel) {
+  playSound('levelup');
+  const overlay = document.getElementById('levelupOverlay');
+  if (!overlay) return;
+  overlay.querySelector('#levelupLv').textContent = `Lv. ${newLevel}`;
+  overlay.classList.remove('hidden');
+  setTimeout(() => overlay.classList.add('hidden'), 3000);
+}
+
+export function onPlayerExp(d) {
+  _player.gsExp        = d.exp;
+  _player.gsLevel      = d.level;
+  _player.nextLevelExp = d.nextLevelExp;
+  updateExpBar();
+}
+
+export function onPlayerLevelUp(d) {
+  _player.gsExp        = d.exp;
+  _player.gsLevel      = d.newLevel;
+  _player.nextLevelExp = d.nextLevelExp;
+  updateExpBar();
+  showLevelUpEffect(d.newLevel);
 }
 
 // ── 플레이어 HP/MP 변경 ────────────────────────────────────────────────────────

@@ -21,7 +21,8 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          equipWeapon, equipArmor, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
          getEquippedWeapon, getEquippedArmor,
          updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
-         loadShops, getShops, deleteShop, checkShopProximity }
+         loadShops, getShops, deleteShop, checkShopProximity,
+         onPlayerExp, onPlayerLevelUp }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
@@ -2756,8 +2757,11 @@ async function init() {
       playSound(_gsAtk);
       syncHpFromServer(data.remainHp, data.damage);
     },
-    onPlayerDied:   ()     => syncDeathFromServer(),
-    onPlayerRevived:(data) => syncReviveFromServer(data.hp),
+    onPlayerDied:    ()     => syncDeathFromServer(),
+    onPlayerRevived: (data) => syncReviveFromServer(data.hp),
+    onPlayerExp:     (d)    => onPlayerExp(d),
+    onPlayerLevelUp: (d)    => onPlayerLevelUp(d),
+    onNotify:        (d)    => { if (d?.msg) showToast(d.msg); },
   });
 
   // WS 이벤트를 못 받은 경우 관리자 스폰 후 강제 렌더링

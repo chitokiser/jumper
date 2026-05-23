@@ -104,6 +104,7 @@ export function connectToGameServer() {
     _socket.emit('player:join', {
       userId: _ctx?.uid ?? 'anonymous',
       zoneId, lat, lng, accuracy, level,
+      lang: _ctx?.lang ?? window.LANG ?? 'ko',
     });
 
     // keep-alive: GPS 없는 PC에서 isStale(10s) 방지 — 5초마다 위치 재전송
@@ -146,6 +147,9 @@ export function connectToGameServer() {
   _socket.on('drop:spawned',      d => _handlers?.onDropSpawned?.(d));
   _socket.on('drop:removed',      d => _handlers?.onDropRemoved?.(d));
   _socket.on('drop:collected',    d => _handlers?.onDropCollected?.(d));
+  _socket.on('player:exp',        d => _handlers?.onPlayerExp?.(d));
+  _socket.on('player:levelup',    d => _handlers?.onPlayerLevelUp?.(d));
+  _socket.on('notify',            d => _handlers?.onNotify?.(d));
 }
 
 // ── 연결 해제 ──────────────────────────────────────────────────────────────────
