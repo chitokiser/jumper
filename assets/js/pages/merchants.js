@@ -2520,18 +2520,23 @@ async function init() {
 
   // ── 튜토리얼 박스 초기화 (신규 유저) ────────────────────────────────────────
   async function _initTutorialBoxesWhenReady() {
+    const waitFor = (check) => new Promise(resolve => {
+      if (check()) { resolve(); return; }
+      let tries = 0;
+      const id = setInterval(() => {
+        if (check() || ++tries >= 20) { clearInterval(id); resolve(); }
+      }, 500);
+    });
+
     // GPS 위치 확보까지 최대 10초 대기
-    let pos = _ctx?.lastPos;
-    if (!pos) {
-      await new Promise(resolve => {
-        let tries = 0;
-        const id = setInterval(() => {
-          pos = _ctx?.lastPos;
-          if (pos || ++tries >= 20) { clearInterval(id); resolve(); }
-        }, 500);
-      });
-    }
-    if (!pos) return; // GPS 없으면 스킵
+    await waitFor(() => !!_ctx?.lastPos);
+    const pos = _ctx?.lastPos;
+    if (!pos) return;
+
+    // 지도 초기화까지 최대 10초 대기
+    await waitFor(() => !!_ctx?.map);
+    if (!_ctx?.map) return;
+
     try {
       const fn = httpsCallable(functions, 'initTutorialBoxes');
       const res = await fn({ lat: pos.lat, lng: pos.lng });
