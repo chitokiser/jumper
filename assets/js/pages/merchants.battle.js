@@ -91,7 +91,7 @@ const SKILL_RANGE_M    = 40;
 const WIND_RANGE_M     = 30;   // 회오리 바람 전용 범위
 const METEOR_RANGE_M   = 60;   // 유성 전용 범위
 const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오브제 표시
-const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000, wind: 20000, meteor: 40000 };
+const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000, wind: 20000, meteor: 40000, heal: 30000 };
 const SKILL_FREEZE_MS = 20000;
 // 서버와 동일한 배율 (클라이언트 float 표시용)
 const GS_SKILL_MULT  = { lightning: 2.0, ice: 1.5, fire: 2.0, wind: 2.5, meteor: 3.0 };
@@ -626,6 +626,22 @@ export function updateSkillBar() {
       }
     }
   });
+
+  // 힐 버튼 상태
+  const healBtn  = document.getElementById('skillBtnHeal');
+  const healCdEl = document.getElementById('skillCdHeal');
+  if (healBtn) {
+    const cdExp = _skillCd.heal || 0;
+    const inCd  = now < cdExp;
+    const noMp  = _player.mp < SKILL_MP_COST;
+    healBtn.disabled = inCd || noMp || _isDead;
+    healBtn.classList.toggle('skill-cd',    inCd);
+    healBtn.classList.toggle('skill-no-mp', noMp && !inCd);
+    if (healCdEl) {
+      if (inCd) { healCdEl.textContent = Math.ceil((cdExp - now) / 1000) + 's'; healCdEl.style.display = ''; }
+      else healCdEl.style.display = 'none';
+    }
+  }
 
   // 마정석 버튼 상태
   const magicBtn   = document.getElementById('skillBtnMagicStone');
@@ -1222,6 +1238,58 @@ export function castMeteor() {
   _skillCd.meteor = Date.now() + SKILL_CD_MS.meteor;
   updateSkillBar();
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.meteor);
+}
+
+// ── 힐 스킬 (자가 회복) ───────────────────────────────────────────────────────
+export function castHeal() {
+  if (_isDead) return;
+  const now = Date.now();
+  if (_skillCd.heal && now < _skillCd.heal) return;
+  if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_heal')); return; }
+
+  const healAmt = _player.level * 100;
+  const prev    = _player.hp;
+  _player.hp    = Math.min(_player.maxHp, _player.hp + healAmt);
+  const actual  = _player.hp - prev;
+
+  const myMark = _ctx?.myLocationMarker;
+  if (myMark) {
+    const lat = myMark.getPosition().lat();
+    const lng = myMark.getPosition().lng();
+    showFloat(`💚+${actual}`, '#4ade80', lat, lng);
+    // 힐 원형 파동 효과
+    _healRipple(lat, lng);
+  }
+  playSound('heal');
+  _skillCd.heal = Date.now() + SKILL_CD_MS.heal;
+  updateCombatHud();
+  updateSkillBar();
+  setTimeout(() => updateSkillBar(), SKILL_CD_MS.heal);
+  savePlayerState();
+}
+
+function _healRipple(lat, lng) {
+  if (!window.google?.maps || !_ctx?.map) return;
+  const map = _ctx.map;
+  let size = 0;
+  const steps = 12;
+  const circle = new google.maps.Circle({
+    map,
+    center: { lat, lng },
+    radius: 0,
+    strokeColor: '#4ade80',
+    strokeOpacity: 0.8,
+    strokeWeight: 2,
+    fillColor: '#4ade80',
+    fillOpacity: 0.15,
+    zIndex: 300,
+  });
+  const tick = setInterval(() => {
+    size++;
+    circle.setRadius(size * 3);
+    circle.setOptions({ strokeOpacity: 0.8 - size / steps * 0.8, fillOpacity: 0.15 - size / steps * 0.15 });
+    if (size >= steps) { clearInterval(tick); circle.setMap(null); }
+  }, 60);
 }
 
 // ── 스킬 대상 선택 모달 ───────────────────────────────────────────────────────

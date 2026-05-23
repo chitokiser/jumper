@@ -13,7 +13,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          startBattleLoop, stopBattleLoop, startWatchPosition, startSharedSync,
          enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
          healHp, healMp, playSound, showFloat, animateArrow,
-         castLightning, castIceFreeze, castFireStorm, castWhirlwind, castMeteor,
+         castLightning, castIceFreeze, castFireStorm, castWhirlwind, castMeteor, castHeal,
          setGsSkillCallback, setGsMobsGetter,
          useReviveTicket, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
@@ -2718,6 +2718,7 @@ async function init() {
   $('skillBtn2')?.addEventListener('click', castFireStorm);
   $('skillBtn3')?.addEventListener('click', castWhirlwind);
   $('skillBtn4')?.addEventListener('click', castMeteor);
+  $('skillBtnHeal')?.addEventListener('click', castHeal);
   $('skillBtnPotion')?.addEventListener('click', usePotion);
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
 
@@ -2729,6 +2730,7 @@ async function init() {
     else if (e.key === '3') castFireStorm();
     else if (e.key === '4') castWhirlwind();
     else if (e.key === '7') castMeteor();
+    else if (e.key === '8') castHeal();
     else if (e.key === '5') usePotion();
     else if (e.key === '6') useMagicStone();
   });
