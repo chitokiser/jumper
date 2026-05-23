@@ -295,6 +295,10 @@ const MESSAGES = {
   pickup_expired:        { ko: '아이템이 소각되었습니다',    vi: 'Vật phẩm đã bị hủy' },
   pickup_too_far:        { ko: '아이템에 더 가까이 접근하세요', vi: 'Hãy đến gần vật phẩm hơn' },
   pickup_gone:           { ko: '이미 누군가 주워갔습니다',   vi: 'Đã có người nhặt mất rồi' },
+  // {0} = 아이템 이름
+  drop_nearby_toast:     { ko: '📦 근처에 아이템이 있습니다! ({0})',
+                           vi: '📦 Có vật phẩm gần đây! ({0})' },
+  drop_nearby_hud:       { ko: '근처 아이템',               vi: 'Vật phẩm gần' },
 };
 
 /**

@@ -229,6 +229,20 @@
     }
     .inv-slot.has-item:hover .drop-btn,
     .inv-slot.has-item.touch-active .drop-btn { display: block; }
+    /* 근처 드랍 알림 뱃지 (🎒 버튼 위) */
+    .drop-nearby-badge {
+      position: absolute; top: -4px; right: -4px;
+      background: #ef4444; color: #fff;
+      border-radius: 50%; min-width: 16px; height: 16px;
+      font-size: 10px; font-weight: 700; line-height: 16px;
+      text-align: center; padding: 0 2px;
+      animation: dropBadgePulse 1s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes dropBadgePulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.25); }
+    }
     /* 바닥 드랍 마커 라벨 */
     .drop-marker-label {
       background: rgba(20,10,0,.85); color: #ffd700;
@@ -952,7 +966,7 @@
         <button id="btnTutHelp" class="map-hud-btn" title="Hướng dẫn / 도움말">❓</button>
         <button id="btnGameToggle" class="map-hud-btn" title="Kết nối máy chủ">▶</button>
         <div id="gsStatusBadge"></div>
-        <button id="btnInventory" class="map-hud-btn" title="Túi đồ">🎒</button>
+        <button id="btnInventory" class="map-hud-btn" title="Túi đồ" style="position:relative">🎒<span id="dropNearbyBadge" class="drop-nearby-badge hidden"></span></button>
         <button id="btnMyLocation" class="map-hud-btn" title="Vị trí của tôi">📍</button>
         <button id="btnDetector" class="map-hud-btn" title="보물 탐지기 ON/OFF">📡</button>
         <button id="btnFullscreen" class="map-hud-btn" title="Toàn màn hình">⛶</button>

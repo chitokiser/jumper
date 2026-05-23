@@ -83,6 +83,7 @@ let _gsOverlays     = {};        // {monsterId: MonsterSpriteOverlay} 스프라�
 let _droppedItems   = {};        // {dropId: dropData} 바닥에 버려진 아이템
 let _dropMarkers    = {};        // {dropId: google.maps.Marker} 드랍 마커
 let _dropsUnsubscribe = null;    // onSnapshot 해제 함수
+let _alertedDropIds = new Set(); // 이미 알림을 보낸 dropId (중복 방지)
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
 const _ctx = {
@@ -1351,6 +1352,7 @@ async function checkProximity(lat, lng) {
   }
   checkShopProximity(lat, lng);
   _updateDetector(lat, lng);
+  _checkDropProximity(lat, lng);
 }
 
 async function tryCollect(box) {
@@ -1898,6 +1900,7 @@ function _addDropMarker(dropId, data) {
 function _removeDropMarker(dropId) {
   const m = _dropMarkers[dropId];
   if (m) { m.setMap(null); delete _dropMarkers[dropId]; }
+  _alertedDropIds.delete(dropId);
 }
 
 function subscribeDroppedItems() {
@@ -1925,6 +1928,86 @@ function subscribeDroppedItems() {
   }, (err) => {
     console.warn('dropped_items snapshot error:', err.message);
   });
+}
+
+// ── 드랍 아이템 근접 알림 ─────────────────────────────────────────────────────
+
+function _dropAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // 두 음 연속: 탐지기(880Hz)와 구별되는 밝은 상승 톤
+    [[660, 0], [880, 0.1]].forEach(([freq, delay]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.2);
+    });
+    setTimeout(() => ctx.close(), 600);
+  } catch(e) {}
+}
+
+function _updateDropNearbyBadge(count) {
+  const badge = $('dropNearbyBadge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count;
+    badge.classList.remove('hidden');
+    badge.title = _t('drop_nearby_hud');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function _checkDropProximity(lat, lng) {
+  let nearbyCount = 0;
+  const newAlerts = [];
+
+  for (const [dropId, data] of Object.entries(_droppedItems)) {
+    if (!data.lat || !data.lng) continue;
+    const dist = haversine(lat, lng, data.lat, data.lng);
+    if (dist <= 20) {
+      nearbyCount++;
+      if (!_alertedDropIds.has(dropId)) {
+        newAlerts.push({ dropId, data, dist });
+        _alertedDropIds.add(dropId);
+      }
+    }
+  }
+
+  // 범위를 벗어난 드랍은 알림 상태 초기화 (재진입 시 다시 알림)
+  for (const dropId of _alertedDropIds) {
+    if (!_droppedItems[dropId]) {
+      _alertedDropIds.delete(dropId);
+      continue;
+    }
+    const d = _droppedItems[dropId];
+    if (!d.lat || !d.lng) continue;
+    if (haversine(lat, lng, d.lat, d.lng) > 25) { // 히스테리시스 5m
+      _alertedDropIds.delete(dropId);
+    }
+  }
+
+  _updateDropNearbyBadge(nearbyCount);
+
+  if (newAlerts.length === 0) return;
+
+  // 소리 + 진동 1회
+  _dropAlertSound();
+  if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+
+  // 토스트: 여러 개면 대표 1개만 표시
+  const first = newAlerts[0];
+  const meta  = _items[first.data.itemId] || {};
+  const label = meta.name || ('#' + first.data.itemId);
+  const extra = newAlerts.length > 1 ? ` 외 ${newAlerts.length - 1}개` : '';
+  showToast(_t('drop_nearby_toast', label + extra), 'info');
 }
 
 // 전역 노출 (InfoWindow 버튼용)
@@ -2393,6 +2476,8 @@ async function init() {
       Object.keys(_dropMarkers).forEach(id => { _dropMarkers[id].setMap(null); });
       _dropMarkers = {};
       _droppedItems = {};
+      _alertedDropIds.clear();
+      _updateDropNearbyBadge(0);
     }
     // 관리자 패널 표시
     const abp = $('adminBattlePanel');
