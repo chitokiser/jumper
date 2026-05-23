@@ -1769,9 +1769,10 @@ function renderInventory() {
           <span class="slot-name">${escHtml(meta.name || ('#' + itemId))}</span>
           <span class="slot-count">${count}</span>`;
       }
-      // 버리기 버튼 (장착된 장비 제외)
+      // 버리기 버튼 (소모품·장착 장비 제외)
+      const isConsumable = ['potion_red', 'potion_mp', 'revive_ticket'].includes(itemId);
       const isEquipped = (getEquippedWeapon() === itemId) || (getEquippedArmor() === itemId);
-      if (!isEquipped) {
+      if (!isConsumable && !isEquipped) {
         const dropBtn = document.createElement('button');
         dropBtn.className = 'drop-btn';
         dropBtn.title = _t('drop_btn_title');
