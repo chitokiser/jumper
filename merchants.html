@@ -651,9 +651,17 @@
 
     /* 모바일 */
     @media (max-width: 640px) {
-      #skillBar { gap: 6px; padding: 6px 10px; bottom: 8px; }
+      #skillBar {
+        gap: 5px; padding: 5px 8px; bottom: 8px;
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+        max-width: calc(100vw - 16px);
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+      }
+      #skillBar::-webkit-scrollbar { display: none; }
       .skill-btn { width: 42px; height: 42px; font-size: 19px; border-radius: 10px; }
       .skill-key { display: none; }
+      .skill-name { font-size: 8px; }
       #combatHud { padding: 6px 10px; min-width: unset; font-size: 10px; }
       .c-val { min-width: 46px; }
     }
@@ -828,16 +836,15 @@
     .tut-btn-next { background: #7c3aed; color: #fff; }
     #btnTutHelp { background: rgba(255,255,255,.9); color: #374151; font-size: 14px; }
 
-    /* ── 언어 전환 ── */
+    /* ── 언어 전환 (헤더 hdr-right 안에 주입됨) ── */
     .lang-switcher {
-      position: fixed; bottom: 80px; left: 16px;
-      z-index: 8888; display: flex; flex-direction: row; gap: 4px;
+      display: flex; flex-direction: row; gap: 4px; align-items: center;
     }
     .lang-btn {
-      padding: 6px 10px; border: 1px solid rgba(124,58,237,.35);
-      border-radius: 8px; background: rgba(255,255,255,.92);
-      color: #6b7280; font-size: 0.78rem; font-weight: 700;
-      cursor: pointer; transition: all .15s; backdrop-filter: blur(4px);
+      padding: 4px 8px; border: 1px solid rgba(124,58,237,.35);
+      border-radius: 6px; background: transparent;
+      color: #6b7280; font-size: 0.72rem; font-weight: 700;
+      cursor: pointer; transition: all .15s; line-height: 1.4;
     }
     .lang-btn:hover { background: #ede9fe; color: #7c3aed; border-color: #7c3aed; }
     .lang-btn.is-active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
@@ -1202,6 +1209,25 @@
     document.querySelectorAll('[data-lang-btn]').forEach(function(btn) {
       btn.classList.toggle('is-active', btn.dataset.langBtn === window.LANG);
     });
+    // 헤더(hdr-right)가 주입되면 langSwitcher를 그 안으로 이동
+    (function() {
+      var switcher = document.getElementById('langSwitcher');
+      if (!switcher) return;
+      function tryMount() {
+        var hdrRight = document.querySelector('.hdr-right');
+        if (hdrRight) {
+          hdrRight.insertBefore(switcher, hdrRight.firstChild);
+          return true;
+        }
+        return false;
+      }
+      if (!tryMount()) {
+        var obs = new MutationObserver(function() {
+          if (tryMount()) obs.disconnect();
+        });
+        obs.observe(document.getElementById('siteHeader') || document.body, { childList: true, subtree: true });
+      }
+    })();
   </script>
 
   <!-- 튜토리얼 모달 -->
