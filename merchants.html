@@ -101,6 +101,21 @@
     .mc-filter input:focus { border-color: #f59e0b; }
     .mc-count { font-size: 12px; color: #888; }
 
+    /* 보물 통계 배너 */
+    #treasureStatsBanner {
+      display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;
+    }
+    .tsb-card {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, #1a0f02, #2c1a0e);
+      border: 1px solid #7a5c3a; border-radius: 10px;
+      padding: 8px 14px; min-width: 130px;
+    }
+    .tsb-icon { font-size: 20px; line-height: 1; }
+    .tsb-info { display: flex; flex-direction: column; }
+    .tsb-value { font-size: 18px; font-weight: 800; color: #fbbf24; line-height: 1.1; }
+    .tsb-label { font-size: 10px; color: #9ca3af; margin-top: 1px; }
+
     /* 회원등급 뱃지 */
     #mcMemberStatus {
       display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap;
@@ -968,6 +983,22 @@
       <div class="mc-hd">
         <h1>🗺️ Bản đồ kho báu</h1>
         <p>Đánh bại quái vật và thu thập vật phẩm<br>Các loại thuốc cần cho chiến đấu có thể nhận được khi thanh toán tại đại lý</p>
+        <div id="treasureStatsBanner">
+          <div class="tsb-card">
+            <span class="tsb-icon">👥</span>
+            <div class="tsb-info">
+              <span class="tsb-value" id="tsbParticipants">…</span>
+              <span class="tsb-label">보물 참여자 수</span>
+            </div>
+          </div>
+          <div class="tsb-card">
+            <span class="tsb-icon">🎁</span>
+            <div class="tsb-info">
+              <span class="tsb-value" id="tsbFound">…</span>
+              <span class="tsb-label">찾은 보물 개수</span>
+            </div>
+          </div>
+        </div>
         <div id="mcMemberStatus" style="display:none;"></div>
       </div>
 

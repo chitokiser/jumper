@@ -122,6 +122,7 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   if (invBoxSnap.exists)
     throw new HttpsError('already-exists', '먼저 인벤토리의 보물박스를 열어주세요');
 
+  const isFirstEver = !logSnap.exists;
   await db.runTransaction(async (tx) => {
     tx.set(invBoxRef, {
       uid, boxId,
@@ -137,6 +138,12 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
       respawnIntervalMs: respawnMs,
     });
   });
+
+  // 통계 업데이트 (비동기, 실패해도 무시)
+  const statsRef = db.collection('treasure_stats').doc('global');
+  const statsUpdate = { foundCount: admin.firestore.FieldValue.increment(1) };
+  if (isFirstEver) statsUpdate.participants = admin.firestore.FieldValue.increment(1);
+  statsRef.set(statsUpdate, { merge: true }).catch(() => {});
 
   return { ok: true, boxName: box.name || '보물박스' };
 }

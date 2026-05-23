@@ -2130,6 +2130,17 @@ async function loadTreasureBoxes() {
   snap.forEach(d => { if (d.data().active !== false) treasureBoxes.push({ id: d.id, ...d.data() }); });
 }
 
+async function loadTreasureStats() {
+  try {
+    const snap = await getDoc(doc(db, 'treasure_stats', 'global'));
+    const data = snap.exists() ? snap.data() : {};
+    const elP = document.getElementById('tsbParticipants');
+    const elF = document.getElementById('tsbFound');
+    if (elP) elP.textContent = (data.participants || 0).toLocaleString();
+    if (elF) elF.textContent = (data.foundCount   || 0).toLocaleString();
+  } catch (_) { /* 통계 실패 시 무시 */ }
+}
+
 async function loadItems() {
   const snap = await getDocs(collection(db, 'treasure_items'));
   _items = {};
@@ -2575,6 +2586,7 @@ async function init() {
     settle1(loadMapsScript()),
     settle1(getDocs(collection(db, 'merchants'))),
     settle1(loadTreasureBoxes()),
+    settle1(loadTreasureStats()),
   ]);
 
   // 가맹점 데이터 파싱

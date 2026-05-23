@@ -154,8 +154,16 @@ async function claimTutorialBox(uid, { boxIndex, userLat, userLng } = {}) {
     );
     tx.update(tutRef, { boxes: updatedBoxes });
 
-    return { gold: reward.gold, xp: reward.xp, badge: reward.badge, label: reward.label };
+    const wasFirstClaim = !data.boxes.some(b => b.claimed);
+    return { gold: reward.gold, xp: reward.xp, badge: reward.badge, label: reward.label, wasFirstClaim };
   });
+
+  // 첫 튜토리얼 박스 수령 시 참여자 통계 증가 (비동기, 실패 무시)
+  if (result.wasFirstClaim) {
+    db.collection('treasure_stats').doc('global')
+      .set({ participants: admin.firestore.FieldValue.increment(1) }, { merge: true })
+      .catch(() => {});
+  }
 
   return { ok: true, boxIndex: idx, ...result };
 }
