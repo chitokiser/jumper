@@ -61,6 +61,14 @@ const claimsModalTagId = document.getElementById('claimsModalTagId');
 const claimsList       = document.getElementById('claimsList');
 const claimsModalClose = document.getElementById('claimsModalClose');
 
+// QR 모달
+const qrModal        = document.getElementById('qrModal');
+const qrModalTagId   = document.getElementById('qrModalTagId');
+const qrCanvas       = document.getElementById('qrCanvas');
+const qrUrl          = document.getElementById('qrUrl');
+const qrDownloadBtn  = document.getElementById('qrDownloadBtn');
+const qrModalClose   = document.getElementById('qrModalClose');
+
 // ── 상태 ──────────────────────────────────────────────────────────────────────
 let tags = [];
 let editingTagId = null;
@@ -148,6 +156,7 @@ function renderTags() {
       <td>
         <div class="act-btns">
           <button class="btn-sm btn-edit js-edit">수정</button>
+          <button class="btn-sm btn-qr js-qr">QR</button>
           <button class="btn-sm btn-device js-device">기기</button>
           <button class="btn-sm btn-claim js-claims">수령기록</button>
           <button class="btn-sm btn-del js-del">삭제</button>
@@ -189,6 +198,12 @@ function renderTags() {
         btn.textContent = '복사됨!';
         setTimeout(() => { btn.textContent = '복사'; }, 1500);
       });
+    });
+  });
+  tagTableBody.querySelectorAll('.js-qr').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.closest('tr').dataset.id;
+      openQrModal(id);
     });
   });
 }
@@ -442,6 +457,30 @@ function closeClaimsModal() {
   claimsModal.classList.add('hidden');
 }
 
+// ── QR 코드 모달 ──────────────────────────────────────────────────────────────
+async function openQrModal(tagId) {
+  const url = getTagUrl(tagId);
+  qrModalTagId.textContent = tagId;
+  qrUrl.textContent = url;
+  qrModal.classList.remove('hidden');
+
+  // qrcode 라이브러리 동적 로드 (esm.sh)
+  try {
+    const QRCode = (await import('https://esm.sh/qrcode@1.5.3')).default;
+    await QRCode.toCanvas(qrCanvas, url, {
+      width: 280,
+      margin: 2,
+      color: { dark: '#1e1b4b', light: '#ffffff' },
+    });
+  } catch (err) {
+    qrCanvas.getContext('2d').fillText('QR 생성 실패', 10, 20);
+  }
+}
+
+function closeQrModal() {
+  qrModal.classList.add('hidden');
+}
+
 // ── 이벤트 바인딩 ────────────────────────────────────────────────────────────
 newTagBtn.addEventListener('click', openNewModal);
 modalCancelBtn.addEventListener('click', closeTagModal);
@@ -450,6 +489,13 @@ fRewardType.addEventListener('change', updateRewardFields);
 addDeviceBtn.addEventListener('click', addDevice);
 deviceModalClose.addEventListener('click', closeDeviceModal);
 claimsModalClose.addEventListener('click', closeClaimsModal);
+qrModalClose.addEventListener('click', closeQrModal);
+qrDownloadBtn.addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.download = `nfc-qr-${qrModalTagId.textContent}.png`;
+  a.href = qrCanvas.toDataURL('image/png');
+  a.click();
+});
 
 // 기기 지문 복사
 copyFpBtn.addEventListener('click', () => {
