@@ -2048,19 +2048,9 @@ function renderVouchers() {
   if (!el) return;
   if (!_vouchers.length) { el.innerHTML = `<div class="voucher-empty">${_t('no_craft_recipes')}</div>`; return; }
 
-  el.innerHTML = _vouchers.map(v => {
-    const reqs = (v.requirements || []).map(r => {
-      const isGold = r.type === 'gold' || r.itemId === 'coin';
-      const have   = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
-      const label  = isGold ? _t('coin_label') : escHtml(_items[String(r.itemId)]?.name || '#' + r.itemId);
-      const ok     = have >= r.count;
-      return `<span style="color:${ok?'#86efac':'#fca5a5'}">${label} ×${r.count} (${_t('have_label', have)})</span>`;
-    }).join(' + ');
-
-    // 진행률 계산: 재료별 min(보유/필요, 1) 평균
+  const vouchersSorted = _vouchers.map(v => {
     const requirements = v.requirements || [];
-    let metCount = 0;
-    let totalRatio = 0;
+    let metCount = 0, totalRatio = 0;
     for (const r of requirements) {
       const isGold = r.type === 'gold' || r.itemId === 'coin';
       const have   = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
@@ -2068,8 +2058,18 @@ function renderVouchers() {
       totalRatio += ratio;
       if (ratio >= 1) metCount++;
     }
-    const pct      = requirements.length > 0 ? Math.round(totalRatio / requirements.length * 100) : 0;
-    const canCraft = metCount === requirements.length && requirements.length > 0;
+    const pct = requirements.length > 0 ? Math.round(totalRatio / requirements.length * 100) : 0;
+    return { v, requirements, metCount, pct, canCraft: metCount === requirements.length && requirements.length > 0 };
+  }).sort((a, b) => b.pct - a.pct);
+
+  el.innerHTML = vouchersSorted.map(({ v, requirements, metCount, pct, canCraft }) => {
+    const reqs = (v.requirements || []).map(r => {
+      const isGold = r.type === 'gold' || r.itemId === 'coin';
+      const have   = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
+      const label  = isGold ? _t('coin_label') : escHtml(_items[String(r.itemId)]?.name || '#' + r.itemId);
+      const ok     = have >= r.count;
+      return `<span style="color:${ok?'#86efac':'#fca5a5'}">${label} ×${r.count} (${_t('have_label', have)})</span>`;
+    }).join(' + ');
     const progressBar = requirements.length > 0 ? `
       <div class="voucher-progress-wrap">
         <div class="voucher-progress-bar">
