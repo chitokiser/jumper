@@ -2,6 +2,7 @@
 // NFC 보물 감지 — 유저 페이지
 
 import { auth, functions } from '../firebase-init.js';
+import { login } from '../auth.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
@@ -10,16 +11,17 @@ const scanScreen   = document.getElementById('scanScreen');
 const foundScreen  = document.getElementById('foundScreen');
 const errorScreen  = document.getElementById('errorScreen');
 const scanStatus   = document.getElementById('scanStatus');
-const loginPrompt  = document.getElementById('loginPrompt');
 const chestIcon    = document.getElementById('chestIcon');
 const messageBox   = document.getElementById('messageBox');
 const messageText  = document.getElementById('messageText');
 const rewardInfo   = document.getElementById('rewardInfo');
 const rewardText   = document.getElementById('rewardText');
-const claimBtn     = document.getElementById('claimBtn');
-const claimResult  = document.getElementById('claimResult');
-const errorMsg     = document.getElementById('errorMsg');
-const starField    = document.getElementById('starField');
+const claimBtn       = document.getElementById('claimBtn');
+const claimResult    = document.getElementById('claimResult');
+const loginPrompt    = document.getElementById('loginPrompt');
+const loginGoogleBtn = document.getElementById('loginGoogleBtn');
+const errorMsg       = document.getElementById('errorMsg');
+const starField      = document.getElementById('starField');
 
 let currentUser = null;
 let tagId = null;
@@ -202,10 +204,12 @@ async function fetchTagPublicData(id) {
 // ── 수령 처리 ─────────────────────────────────────────────────────────────────
 async function handleClaim() {
   if (!currentUser) {
+    claimBtn.classList.add('hidden');
     loginPrompt.classList.remove('hidden');
     return;
   }
 
+  loginPrompt.classList.add('hidden');
   claimBtn.disabled = true;
   claimBtn.textContent = '처리 중...';
 
@@ -295,11 +299,6 @@ async function init() {
       // 발견 화면으로 전환
       showFound(tag);
 
-      if (!user) {
-        // 로그인 없이 발견화면 보여주되 수령 버튼 누르면 로그인 유도
-        claimBtn.textContent = '로그인 후 수령하기';
-      }
-
     } catch (err) {
       showError('태그 정보를 불러오는 중 오류가 발생했습니다: ' + err.message);
     }
@@ -307,6 +306,25 @@ async function init() {
 
   // 수령 버튼
   claimBtn.addEventListener('click', handleClaim);
+
+  // Google 로그인 버튼 — 팝업 로그인 후 자동 수령
+  loginGoogleBtn.addEventListener('click', async () => {
+    loginGoogleBtn.disabled = true;
+    loginGoogleBtn.textContent = '로그인 중...';
+    try {
+      await login();
+      // onAuthStateChanged 콜백이 currentUser를 갱신할 때까지 잠깐 대기
+      await new Promise(r => setTimeout(r, 800));
+      loginPrompt.classList.add('hidden');
+      claimBtn.classList.remove('hidden');
+      claimBtn.disabled = false;
+      claimBtn.textContent = '보물 수령하기';
+      handleClaim();
+    } catch (e) {
+      loginGoogleBtn.disabled = false;
+      loginGoogleBtn.textContent = 'Google로 로그인 후 수령';
+    }
+  });
 }
 
 init();
