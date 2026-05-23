@@ -2487,8 +2487,8 @@ async function init() {
           // 신규 유저 튜토리얼 보물박스 초기화 (GPS 위치 확보 후)
           _initTutorialBoxesWhenReady();
         } else if (!_isAnonymous) {
-          // 기존 유저: 미완료 튜토리얼 박스가 있으면 로드
-          _loadExistingTutorialBoxes();
+          // 기존 유저도 튜토리얼 박스 초기화 (없으면 생성, 있으면 기존 로드)
+          _initTutorialBoxesWhenReady();
         }
         renderExchangeSection();
         showDeathMarkerIfDead();
@@ -2537,17 +2537,6 @@ async function init() {
       const res = await fn({ lat: pos.lat, lng: pos.lng });
       if (res.data?.boxes?.length) loadTutorialBoxes(res.data.boxes);
     } catch { /* 튜토리얼 초기화 실패는 비치명적 */ }
-  }
-
-  async function _loadExistingTutorialBoxes() {
-    try {
-      const fn = httpsCallable(functions, 'getTutorialBoxes');
-      const res = await fn({});
-      if (res.data?.initialized && res.data?.boxes?.length) {
-        const unclaimed = res.data.boxes.filter(b => !b.claimed);
-        if (unclaimed.length) loadTutorialBoxes(res.data.boxes);
-      }
-    } catch { /* 비치명적 */ }
   }
 
   // ── Phase 1: 지도 표시에 필요한 것만 병렬 로드 ──────────────────────────────
