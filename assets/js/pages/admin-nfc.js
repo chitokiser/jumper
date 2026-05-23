@@ -458,22 +458,39 @@ function closeClaimsModal() {
 }
 
 // ── QR 코드 모달 ──────────────────────────────────────────────────────────────
-async function openQrModal(tagId) {
+function openQrModal(tagId) {
   const url = getTagUrl(tagId);
   qrModalTagId.textContent = tagId;
   qrUrl.textContent = url;
   qrModal.classList.remove('hidden');
 
-  // qrcode 라이브러리 동적 로드 (esm.sh)
   try {
-    const QRCode = (await import('https://esm.sh/qrcode@1.5.3')).default;
-    await QRCode.toCanvas(qrCanvas, url, {
-      width: 280,
-      margin: 2,
-      color: { dark: '#1e1b4b', light: '#ffffff' },
-    });
+    const qr = window.qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+
+    const modules = qr.getModuleCount();
+    const cell = Math.floor(280 / modules);
+    const size = cell * modules;
+
+    qrCanvas.width  = size;
+    qrCanvas.height = size;
+
+    const ctx = qrCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#1e1b4b';
+
+    for (let r = 0; r < modules; r++) {
+      for (let c = 0; c < modules; c++) {
+        if (qr.isDark(r, c)) ctx.fillRect(c * cell, r * cell, cell, cell);
+      }
+    }
   } catch (err) {
-    qrCanvas.getContext('2d').fillText('QR 생성 실패', 10, 20);
+    const ctx = qrCanvas.getContext('2d');
+    ctx.font = '13px sans-serif';
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText('QR 생성 실패: ' + err.message, 8, 24);
   }
 }
 
