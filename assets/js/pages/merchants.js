@@ -2056,14 +2056,36 @@ function renderVouchers() {
       const ok     = have >= r.count;
       return `<span style="color:${ok?'#86efac':'#fca5a5'}">${label} ×${r.count} (${_t('have_label', have)})</span>`;
     }).join(' + ');
-    const canCraft = (v.requirements||[]).every(r => {
+
+    // 진행률 계산: 재료별 min(보유/필요, 1) 평균
+    const requirements = v.requirements || [];
+    let metCount = 0;
+    let totalRatio = 0;
+    for (const r of requirements) {
       const isGold = r.type === 'gold' || r.itemId === 'coin';
-      return isGold ? getPlayerGold() >= r.count : (_inventory[String(r.itemId)]||0) >= r.count;
-    });
+      const have   = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
+      const ratio  = r.count > 0 ? Math.min(have / r.count, 1) : 1;
+      totalRatio += ratio;
+      if (ratio >= 1) metCount++;
+    }
+    const pct      = requirements.length > 0 ? Math.round(totalRatio / requirements.length * 100) : 0;
+    const canCraft = metCount === requirements.length && requirements.length > 0;
+    const progressBar = requirements.length > 0 ? `
+      <div class="voucher-progress-wrap">
+        <div class="voucher-progress-bar">
+          <div class="voucher-progress-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="voucher-progress-text">
+          <span class="vp-met">${metCount}/${requirements.length} 재료 충족</span>
+          <span>${pct}%</span>
+        </div>
+      </div>` : '';
+
     return `
       <div class="voucher-row">
         <div class="voucher-name">🎟 ${escHtml(v.name)}</div>
         <div class="voucher-reqs">${reqs}</div>
+        ${progressBar}
         <div class="voucher-reward">${_t('craft_reward_label', escHtml(v.reward || _t('default_voucher_reward')))}</div>
         <button class="btn-craft" data-voucher="${escHtml(v.id)}" ${canCraft?'':'disabled'}>
           ${canCraft ? _t('craft_btn') : _t('craft_insufficient')}
