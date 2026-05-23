@@ -3150,6 +3150,68 @@ let _tutorialBoxes = [];        // [{index, lat, lng, distM, claimed, marker}]
 let _tutorialProxState = {};    // {index: lastThresholdHit} — 중복 효과 방지
 const _claimedTutorialSet = new Set(); // 세션 내 수령 완료 인덱스 — loadTutorialBoxes 재호출 후에도 유지
 
+function _tutorialShowRewardPanel(data, lang) {
+  const existing = document.getElementById('tutorialRewardPanel');
+  if (existing) existing.remove();
+
+  const title = { ko: '🎁 보물 획득!', en: '🎁 Treasure Found!', vi: '🎁 Tìm thấy kho báu!' }[lang] || '🎁 보물 획득!';
+  const goldLabel = { ko: '골드', en: 'Gold', vi: 'Vàng' }[lang] || '골드';
+  const xpLabel   = { ko: '경험치', en: 'XP', vi: 'Kinh nghiệm' }[lang] || '경험치';
+  const badgeLabel = {
+    ko: '🏅 탐험가 뱃지 획득!',
+    en: '🏅 Explorer Badge earned!',
+    vi: '🏅 Nhận Huy hiệu Nhà thám hiểm!',
+  }[lang] || '🏅 탐험가 뱃지 획득!';
+  const tapLabel = { ko: '탭하여 닫기', en: 'Tap to close', vi: 'Nhấn để đóng' }[lang] || '탭하여 닫기';
+
+  const rows = [];
+  if (data.gold) rows.push(`<div class="trp-row"><span class="trp-icon">🪙</span><span class="trp-name">${goldLabel}</span><span class="trp-val">+${data.gold.toLocaleString()}</span></div>`);
+  if (data.xp)   rows.push(`<div class="trp-row"><span class="trp-icon">⭐</span><span class="trp-name">${xpLabel}</span><span class="trp-val">+${data.xp.toLocaleString()}</span></div>`);
+  if (data.badge === 'explorer') rows.push(`<div class="trp-badge">${badgeLabel}</div>`);
+
+  const panel = document.createElement('div');
+  panel.id = 'tutorialRewardPanel';
+  panel.innerHTML = `
+    <div class="trp-title">${title}</div>
+    <div class="trp-divider"></div>
+    ${rows.join('')}
+    <div class="trp-tap">${tapLabel}</div>`;
+  panel.style.cssText = `
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.85);
+    background:linear-gradient(145deg,#1e1b4b,#312e81);
+    border:2px solid #fbbf24;border-radius:18px;padding:24px 32px;
+    z-index:10000;text-align:center;min-width:240px;max-width:300px;
+    box-shadow:0 0 40px rgba(251,191,36,.45);
+    animation:trpIn .35s cubic-bezier(.34,1.56,.64,1) forwards;
+    font-family:inherit;cursor:pointer;`;
+
+  if (!document.getElementById('trpStyle')) {
+    const s = document.createElement('style');
+    s.id = 'trpStyle';
+    s.textContent = `
+      @keyframes trpIn{to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+      #tutorialRewardPanel{opacity:0}
+      #tutorialRewardPanel .trp-title{color:#fbbf24;font-size:20px;font-weight:800;margin-bottom:4px}
+      #tutorialRewardPanel .trp-divider{height:1px;background:rgba(251,191,36,.3);margin:10px 0}
+      #tutorialRewardPanel .trp-row{display:flex;align-items:center;gap:10px;padding:6px 0;color:#f1f5f9;font-size:16px}
+      #tutorialRewardPanel .trp-icon{font-size:20px;width:28px;text-align:center}
+      #tutorialRewardPanel .trp-name{flex:1;text-align:left;color:#cbd5e1;font-size:14px}
+      #tutorialRewardPanel .trp-val{font-weight:800;color:#fbbf24;font-size:18px}
+      #tutorialRewardPanel .trp-badge{margin-top:10px;padding:8px 12px;background:rgba(167,139,250,.2);border-radius:10px;color:#a78bfa;font-size:14px;font-weight:700}
+      #tutorialRewardPanel .trp-tap{margin-top:14px;color:#64748b;font-size:11px}`;
+    document.head.appendChild(s);
+  }
+
+  document.body.appendChild(panel);
+  const dismiss = () => {
+    panel.style.transition = 'opacity .2s';
+    panel.style.opacity = '0';
+    setTimeout(() => panel.remove(), 200);
+  };
+  panel.addEventListener('click', dismiss);
+  setTimeout(dismiss, 6000);
+}
+
 function _tutorialShowToast(msg, color = '#f59e0b') {
   const el = document.createElement('div');
   el.style.cssText = `position:fixed;top:20%;left:50%;transform:translateX(-50%);
@@ -3264,23 +3326,14 @@ async function _claimTutorialBox(box) {
     // 강한 진동
     if (navigator.vibrate) navigator.vibrate([100, 50, 200, 50, 300]);
 
-    // 보상 표시
+    // 보상 상세 패널 표시
     const lang = window.LANG || 'ko';
-    const label = data.label?.[lang] || data.label?.ko || '🎁 보상 획득!';
-    setTimeout(() => _tutorialShowToast(`🎁 ${label}`, '#fbbf24'), 400);
+    setTimeout(() => _tutorialShowRewardPanel(data, lang), 500);
 
     // 마커 제거 (0.8초 딜레이 — 연출 후)
     setTimeout(() => {
       if (box.marker) { box.marker.setMap(null); box.marker = null; }
     }, 800);
-
-    // 뱃지 획득 시 추가 안내
-    if (data.badge === 'explorer') {
-      setTimeout(() => _tutorialShowToast(
-        lang === 'vi' ? '🏅 Huy hiệu Nhà thám hiểm đã được trao!' : '🏅 탐험가 뱃지 획득!',
-        '#a78bfa'
-      ), 1800);
-    }
 
     // 골드·XP 반영
     if (data.gold) { _player.gold = (_player.gold || 0) + data.gold; updateHud?.(); }
