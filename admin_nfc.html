@@ -1,0 +1,246 @@
+<!-- /admin_nfc.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NFC 보물 관리 - Admin</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/pages/admin_orders.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+
+  <style>
+    .nfc-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .nfc-table th { text-align:left; padding:8px 10px; border-bottom:2px solid var(--border,#e2e8f0); color:var(--muted,#64748b); font-weight:600; white-space:nowrap; }
+    .nfc-table td { padding:9px 10px; border-bottom:1px solid var(--border,#e2e8f0); vertical-align:middle; }
+    .nfc-table tr:last-child td { border-bottom:none; }
+    .nfc-table tr:hover td { background:var(--surface,#f8fafc); }
+
+    .badge { display:inline-block; border-radius:99px; padding:2px 9px; font-size:11px; font-weight:700; }
+    .badge-on  { background:#dcfce7; color:#15803d; }
+    .badge-off { background:#fee2e2; color:#b91c1c; }
+    .badge-member { background:#dbeafe; color:#1d4ed8; }
+
+    .act-btns { display:flex; gap:6px; flex-wrap:wrap; }
+    .btn-sm { padding:4px 10px; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; transition:.15s; }
+    .btn-edit   { background:#3b82f6; color:#fff; }
+    .btn-edit:hover   { background:#2563eb; }
+    .btn-del    { background:#ef4444; color:#fff; }
+    .btn-del:hover    { background:#b91c1c; }
+    .btn-claim  { background:#8b5cf6; color:#fff; }
+    .btn-claim:hover  { background:#7c3aed; }
+    .btn-device { background:#f59e0b; color:#1c0f00; }
+    .btn-device:hover { background:#d97706; }
+    .btn-primary { background:#2563eb; color:#fff; border:none; padding:8px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
+    .btn-primary:hover { background:#1d4ed8; }
+    .btn-secondary { background:var(--surface,#f1f5f9); border:1px solid var(--border,#e2e8f0); padding:7px 16px; border-radius:8px; font-size:13px; cursor:pointer; }
+
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; }
+    .modal-box { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; }
+    .modal-box h3 { font-size:16px; font-weight:700; margin-bottom:16px; }
+
+    .form-row { margin-bottom:14px; }
+    .form-row label { display:block; font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; }
+    .form-row input, .form-row select, .form-row textarea {
+      width:100%; padding:8px 10px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; font-family:inherit;
+    }
+    .form-row textarea { resize:vertical; min-height:60px; }
+    .form-row input[type=checkbox] { width:auto; }
+    .check-row { display:flex; align-items:center; gap:8px; font-size:13px; }
+
+    .copy-row { display:flex; gap:6px; align-items:center; }
+    .copy-input { flex:1; font-family:monospace; font-size:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:6px 8px; }
+    .btn-copy { padding:5px 12px; background:#64748b; color:#fff; border:none; border-radius:6px; font-size:12px; cursor:pointer; }
+    .btn-copy:hover { background:#475569; }
+
+    .device-list { margin-top:8px; }
+    .device-item { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; background:#f8fafc; border-radius:6px; margin-bottom:4px; font-size:12px; }
+    .device-fp { font-family:monospace; color:#475569; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
+    .btn-remove-dev { padding:2px 8px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-size:11px; cursor:pointer; }
+
+    .claims-list { font-size:12px; }
+    .claims-list .claim-item { padding:6px 8px; border-bottom:1px solid #f1f5f9; }
+    .claims-list .claim-item:last-child { border-bottom:none; }
+    .mono { font-family:monospace; }
+
+    .empty { padding:32px; text-align:center; color:#94a3b8; }
+    .tag-url { font-family:monospace; font-size:11px; color:#6366f1; }
+
+    .hidden { display:none !important; }
+    .fingerprint-display { font-family:monospace; font-size:11px; word-break:break-all; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px; color:#475569; margin-top:4px; }
+    .fp-label { font-size:11px; color:#94a3b8; margin-bottom:2px; }
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="section">
+      <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <h2 class="section-title">NFC 보물 태그 관리</h2>
+          <p style="font-size:12px;color:#94a3b8;margin-top:2px;">NFC 태그 생성 · 기기 등록 · 수령 현황</p>
+        </div>
+        <button id="newTagBtn" class="btn-primary">+ 새 태그 생성</button>
+      </div>
+
+      <!-- 내 기기 지문 표시 -->
+      <div style="margin:12px 0;padding:12px 16px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;">
+        <p class="fp-label">이 기기의 지문 (등록 시 사용)</p>
+        <div id="myFingerprint" class="fingerprint-display">계산 중...</div>
+        <button id="copyFpBtn" class="btn-copy" style="margin-top:6px;font-size:11px;">복사</button>
+      </div>
+
+      <!-- 태그 테이블 -->
+      <div id="loadingRow" style="padding:32px;text-align:center;color:#94a3b8;">로딩 중...</div>
+      <div id="tableWrap" class="hidden" style="overflow-x:auto;">
+        <table class="nfc-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>태그명</th>
+              <th>보상</th>
+              <th>상태</th>
+              <th>수령수</th>
+              <th>URL</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="tagTableBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyRow" class="empty hidden">등록된 NFC 태그가 없습니다</div>
+    </section>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <!-- ── 태그 생성/수정 모달 ── -->
+  <div id="tagModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3 id="modalTitle">NFC 태그 생성</h3>
+
+      <div class="form-row">
+        <label>태그 ID (영문 숫자, 변경불가)</label>
+        <input id="fTagId" type="text" placeholder="예: treasure_01" />
+      </div>
+      <div class="form-row">
+        <label>태그 이름</label>
+        <input id="fLabel" type="text" placeholder="예: 1번 보물 위치" />
+      </div>
+      <div class="form-row">
+        <label>숨겨진 메시지 (스캔 시 표시)</label>
+        <textarea id="fMessage" placeholder="여기서 보물을 찾은 당신은 행운아입니다!"></textarea>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row">
+          <label>보상 유형</label>
+          <select id="fRewardType">
+            <option value="none">없음 (메시지만)</option>
+            <option value="item">아이템</option>
+            <option value="points">포인트</option>
+          </select>
+        </div>
+        <div class="form-row" id="rewardItemRow">
+          <label>아이템 ID</label>
+          <select id="fRewardItemId">
+            <option value="">아이템 선택...</option>
+          </select>
+        </div>
+        <div class="form-row" id="rewardCountRow">
+          <label>아이템 수량</label>
+          <input id="fRewardItemCount" type="number" value="1" min="1" />
+        </div>
+        <div class="form-row" id="rewardPointsRow">
+          <label>포인트 수량</label>
+          <input id="fRewardPoints" type="number" value="10" min="1" />
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row">
+          <label>쿨다운 (시간)</label>
+          <input id="fCooldown" type="number" value="24" min="0" />
+        </div>
+        <div class="form-row">
+          <label>최대 수령 수 (-1=무제한)</label>
+          <input id="fMaxClaims" type="number" value="-1" />
+        </div>
+        <div class="form-row">
+          <label>시작 시간 (0~23, 빈칸=항상)</label>
+          <input id="fStartHour" type="number" placeholder="0" min="0" max="23" />
+        </div>
+        <div class="form-row">
+          <label>종료 시간 (0~23)</label>
+          <input id="fEndHour" type="number" placeholder="24" min="0" max="24" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="check-row">
+          <input id="fActive" type="checkbox" checked />
+          <label for="fActive">활성화</label>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="check-row">
+          <input id="fMemberOnly" type="checkbox" />
+          <label for="fMemberOnly">정회원 전용</label>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="check-row">
+          <input id="fDeviceRestricted" type="checkbox" />
+          <label for="fDeviceRestricted">등록된 기기만 수령 가능</label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <button id="modalCancelBtn" class="btn-secondary">취소</button>
+        <button id="modalSaveBtn" class="btn-primary">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 기기 등록 모달 ── -->
+  <div id="deviceModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3>기기 관리 — <span id="deviceModalTagId"></span></h3>
+
+      <div class="form-row">
+        <label>등록할 기기 지문 (SHA-256)</label>
+        <textarea id="fDeviceFp" rows="3" placeholder="기기 지문을 붙여넣으세요"></textarea>
+      </div>
+      <div class="form-row">
+        <label>기기 이름 (선택)</label>
+        <input id="fDeviceLabel" type="text" placeholder="예: 홍길동 폰" />
+      </div>
+      <button id="addDeviceBtn" class="btn-primary" style="margin-bottom:16px;">기기 등록</button>
+
+      <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;">등록된 기기 목록</h4>
+      <div id="deviceList" class="device-list"></div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+        <button id="deviceModalClose" class="btn-secondary">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 수령 기록 모달 ── -->
+  <div id="claimsModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3>수령 기록 — <span id="claimsModalTagId"></span></h3>
+      <div id="claimsList" class="claims-list"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+        <button id="claimsModalClose" class="btn-secondary">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/js/pages/admin-nfc.js"></script>
+</body>
+</html>

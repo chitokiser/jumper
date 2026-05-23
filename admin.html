@@ -20,7 +20,7 @@
     <section class="section">
       <div class="page-h">
         <h1 class="page-title">관리자 승인</h1>
-        <p class="page-desc">판매회원신청 / 놀거리 승인 처리 &nbsp;|&nbsp; <a href="/admin_jackpot.html" style="color:#6366f1;font-weight:700;">🎰 잭팟 인출 관리</a></p>
+        <p class="page-desc">판매회원신청 / 놀거리 승인 처리 &nbsp;|&nbsp; <a href="/admin_jackpot.html" style="color:#6366f1;font-weight:700;">🎰 잭팟 인출 관리</a> &nbsp;|&nbsp; <a href="/admin_nfc.html" style="color:#0891b2;font-weight:700;">📡 NFC 보물 관리</a></p>
       </div>
 
       <div class="panel">
@@ -428,8 +428,18 @@
                 <div class="v"><input type="number" id="tBoxStartHour" class="select" style="width:80px;" value="0" min="0" max="23"></div>
                 <div class="k">종료 시간 (0~24)</div>
                 <div class="v"><input type="number" id="tBoxEndHour" class="select" style="width:80px;" value="24" min="0" max="24"></div>
-                <div class="k">아이템 풀 (JSON)</div>
-                <div class="v"><textarea id="tBoxItemPool" class="select" style="width:100%; height:70px; font-family:monospace; font-size:12px; resize:vertical;" placeholder='[{"itemId":"1","weight":10},{"itemId":"2","weight":5}]'></textarea></div>
+                <div class="k">아이템 풀</div>
+                <div class="v">
+                  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                    <select id="tBoxItemSelect" class="select" style="flex:1;">
+                      <option value="">아이템 선택...</option>
+                    </select>
+                    <input type="number" id="tBoxItemWeight" class="select" style="width:70px;" value="10" min="1" step="1" title="가중치(확률)">
+                    <button type="button" id="tBoxItemAdd" class="btn btn-sm">+ 추가</button>
+                  </div>
+                  <div id="tBoxItemPoolDisplay" style="margin-bottom:6px;"></div>
+                  <textarea id="tBoxItemPool" class="select" style="width:100%;height:52px;font-family:monospace;font-size:11px;resize:none;color:#94a3b8;background:#f8fafc;" readonly placeholder="(위에서 아이템을 추가하세요)"></textarea>
+                </div>
                 <div class="k">활성화</div>
                 <div class="v">
                   <select id="tBoxActive" class="select">

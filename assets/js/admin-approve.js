@@ -28,6 +28,7 @@ const PLATFORM_OWNER_ABI = [
 ];
 
 let _ownerSigner = null;  // Rabby/MetaMask 연결 후 저장
+let _cachedItems = [];    // treasure_items 캐시 (아이템 풀 드롭다운용)
 
 
 function $(id) {
@@ -1581,11 +1582,55 @@ $("btnRecordP2p")?.addEventListener("click", () => recordP2pTransferAction());
 
 // ── 보물찾기 관리 ──────────────────────────────────────────────────────────
 
+// ── 아이템 풀 편집기 ────────────────────────────────────────────────────────
+let _boxItemPool = [];  // 현재 편집 중인 item pool
+
+function syncItemPoolTextarea() {
+  const ta = $("tBoxItemPool");
+  if (ta) ta.value = JSON.stringify(_boxItemPool);
+}
+
+function renderItemPool() {
+  const el = $("tBoxItemPoolDisplay");
+  if (!el) return;
+  if (_boxItemPool.length === 0) {
+    el.innerHTML = "<div class='muted' style='font-size:12px;padding:4px 0;'>추가된 아이템 없음</div>";
+    syncItemPoolTextarea();
+    return;
+  }
+  el.innerHTML = _boxItemPool.map((entry, idx) => {
+    const item = _cachedItems.find(i => i.id === String(entry.itemId));
+    const label = item ? `#${entry.itemId} ${item.name}` : `#${entry.itemId}`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;background:#f1f5f9;border-radius:6px;font-size:12px;">
+      <span style="flex:1;font-weight:600;">${esc(label)}</span>
+      <span class="muted">가중치 <strong>${entry.weight}</strong></span>
+      <button type="button" class="btn btn-sm" data-poolidx="${idx}" data-act="removePoolItem"
+        style="padding:2px 8px;font-size:11px;background:#ef4444;color:#fff;">✕</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-act='removePoolItem']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      _boxItemPool.splice(Number(btn.dataset.poolidx), 1);
+      renderItemPool();
+    });
+  });
+  syncItemPoolTextarea();
+}
+
+function populateItemSelect() {
+  const sel = $("tBoxItemSelect");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">아이템 선택...</option>' +
+    _cachedItems.map(i => `<option value="${esc(i.id)}">#${esc(i.id)} ${esc(i.name)}</option>`).join("");
+}
+
 async function loadTreasureItemsList() {
   const el = $("treasureItemList");
   if (!el) return;
   el.innerHTML = "<div class='muted'>불러오는 중...</div>";
   const snap = await getDocs(collection(db, "treasure_items"));
+  _cachedItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  populateItemSelect();
   if (snap.empty) { el.innerHTML = "<div class='muted'>등록된 아이템 없음</div>"; return; }
   el.innerHTML = snap.docs.map(d => {
     const r = d.data();
@@ -1653,7 +1698,8 @@ async function loadTreasureBoxesList() {
       if (prev) { prev.textContent = r.lat ? `위도 ${Number(r.lat).toFixed(6)}, 경도 ${Number(r.lng).toFixed(6)}` : ""; prev.style.color = "#16a34a"; }
       $("tBoxStartHour").value = r.startHour ?? 0;
       $("tBoxEndHour").value   = r.endHour   ?? 24;
-      $("tBoxItemPool").value    = JSON.stringify(r.itemPool || [], null, 2);
+      _boxItemPool = Array.isArray(r.itemPool) ? r.itemPool : [];
+      renderItemPool();
       $("tBoxActive").value      = String(r.active !== false);
       $("tBoxMemberOnly").value  = String(r.memberOnly === true);
       $("tBoxHiddenBox").value   = String(r.hiddenBox === true);
@@ -1740,12 +1786,24 @@ $("tBoxCoords")?.addEventListener("input", () => {
   preview.style.color = c ? "#16a34a" : "#dc2626";
 });
 
+$("tBoxItemAdd")?.addEventListener("click", () => {
+  const sel = $("tBoxItemSelect");
+  const wtEl = $("tBoxItemWeight");
+  const itemId = sel?.value;
+  if (!itemId) return alert("아이템을 선택하세요.");
+  const weight = Math.max(1, parseInt(wtEl?.value || "10", 10) || 10);
+  const exists = _boxItemPool.find(e => String(e.itemId) === String(itemId));
+  if (exists) { exists.weight = weight; }
+  else { _boxItemPool.push({ itemId, weight }); }
+  renderItemPool();
+  if (sel) sel.value = "";
+  if (wtEl) wtEl.value = "10";
+});
+
 $("btnSaveTreasureBox")?.addEventListener("click", async () => {
   const coords = parseCoords($("tBoxCoords")?.value);
   if (!coords) return alert("좌표를 입력해 주세요.\n예: 20.948991, 105.974279");
-  let itemPool = [];
-  try   { itemPool = JSON.parse($("tBoxItemPool")?.value || "[]"); }
-  catch { return alert('아이템 풀 JSON 오류\n예: [{"itemId":"1","weight":10}]'); }
+  const itemPool = _boxItemPool.slice();
   try {
     const res = await httpsCallable(functions, "adminSaveTreasureBox")({
       boxId:     $("tBoxId")?.value.trim() || undefined,
@@ -1760,7 +1818,9 @@ $("btnSaveTreasureBox")?.addEventListener("click", async () => {
       keyId:      $("tBoxKeyId")?.value.trim() || null,
     });
     alert(`박스 저장 완료!\nboxId: ${res.data.boxId}`);
-    ["tBoxId","tBoxName","tBoxCoords","tBoxItemPool","tBoxKeyId"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    _boxItemPool = [];
+    renderItemPool();
+    ["tBoxId","tBoxName","tBoxCoords","tBoxKeyId"].forEach(id => { const e=$(id); if(e) e.value=""; });
     const prev = $("tBoxCoordsPreview"); if (prev) prev.textContent = "";
     if ($("tBoxStartHour"))  $("tBoxStartHour").value  = "0";
     if ($("tBoxEndHour"))    $("tBoxEndHour").value    = "24";

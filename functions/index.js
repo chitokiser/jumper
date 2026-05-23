@@ -43,6 +43,7 @@ const communityH             = require('./handlers/community');
 const buggyH                 = require('./handlers/buggy');
 const supportChatH           = require('./handlers/supportChat');
 const shopH                  = require('./handlers/shop');
+const nfcH                   = require('./handlers/nfc');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1873,6 +1874,38 @@ exports.adminInitAllPlayers = onCall(wrapError(async (req) => {
 }));
 
 // 최초 1회 호출 — 기존 users 수를 세어 stats/public 초기화 (어드민 전용)
+// ════════════════════════════════════════════════════════════════════════════
+// NFC 보물 태그 시스템
+// ════════════════════════════════════════════════════════════════════════════
+
+exports.adminSaveNfcTag = onCall(wrapError(async (req) => {
+  return nfcH.adminSaveNfcTag(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminDeleteNfcTag = onCall(wrapError(async (req) => {
+  return nfcH.adminDeleteNfcTag(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminRegisterDevice = onCall(wrapError(async (req) => {
+  return nfcH.adminRegisterDevice(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminRemoveDevice = onCall(wrapError(async (req) => {
+  return nfcH.adminRemoveDevice(requireAuth(req), req.data ?? {});
+}));
+
+exports.claimNfcTreasure = onCall(wrapError(async (req) => {
+  return nfcH.claimNfcTreasure(requireAuth(req), req.data ?? {});
+}));
+
+exports.adminListNfcTags = onCall(wrapError(async (req) => {
+  return nfcH.adminListNfcTags(requireAuth(req));
+}));
+
+exports.adminListNfcClaims = onCall(wrapError(async (req) => {
+  return nfcH.adminListNfcClaims(requireAuth(req), req.data ?? {});
+}));
+
 exports.initPublicStats = onCall(async (req) => {
   await requireAdmin(requireAuth(req));
   const [userSnap, logSnap] = await Promise.all([

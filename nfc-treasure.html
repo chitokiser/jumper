@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="/assets/images/jump/favicon.png" />
+  <title>NFC 보물 발견!</title>
+  <meta name="theme-color" content="#080614" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; background: #080614; color: #fff; min-height: 100vh; overflow-x: hidden; }
+    .font-fantasy { font-family: 'Cinzel Decorative', serif; }
+    .font-cinzel  { font-family: 'Cinzel', serif; }
+
+    .text-gold {
+      background: linear-gradient(135deg, #c8922a 0%, #fde68a 40%, #f59e0b 70%, #b45309 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    /* NFC 리플 애니메이션 */
+    .nfc-ripple {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ripple-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid rgba(245, 158, 11, 0.6);
+      animation: rippleOut 2s ease-out infinite;
+    }
+    .ripple-ring:nth-child(2) { animation-delay: 0.5s; }
+    .ripple-ring:nth-child(3) { animation-delay: 1s; }
+    @keyframes rippleOut {
+      0%   { width: 60px; height: 60px; opacity: 0.8; }
+      100% { width: 200px; height: 200px; opacity: 0; }
+    }
+
+    /* 보물 발견 폭발 애니메이션 */
+    @keyframes treasurePop {
+      0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
+      60%  { transform: scale(1.2) rotate(5deg); }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .treasure-pop { animation: treasurePop 0.6s cubic-bezier(.17,.67,.41,1.3) forwards; }
+
+    /* 파티클 */
+    .particle {
+      position: fixed;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: particleFly 1.5s ease-out forwards;
+    }
+    @keyframes particleFly {
+      0%   { transform: translate(0,0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+    }
+
+    /* 황금 버튼 */
+    .btn-gold {
+      background: linear-gradient(90deg, #92400e, #f59e0b, #fde68a, #f59e0b, #92400e);
+      background-size: 250% 100%;
+      animation: shimmer 3s linear infinite;
+      color: #1c0f00; font-weight: 700; font-family: 'Cinzel', serif;
+    }
+    @keyframes shimmer { 0% { background-position: 0% 0; } 100% { background-position: 250% 0; } }
+
+    /* 메시지 박스 타이핑 */
+    .typewriter { overflow: hidden; white-space: pre-wrap; }
+
+    /* 별 배경 */
+    .star { position: fixed; width: 2px; height: 2px; background: #fff; border-radius: 50%; animation: twinkle 3s ease-in-out infinite; }
+    @keyframes twinkle { 0%,100%{opacity:.1;} 50%{opacity:.8;} }
+
+    /* glow */
+    .glow-gold { box-shadow: 0 0 30px rgba(245,158,11,.5), 0 0 80px rgba(245,158,11,.2); }
+
+    .hidden { display: none !important; }
+
+    /* 스캔 화면 펄스 */
+    @keyframes scanPulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .scan-pulse { animation: scanPulse 2s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+
+  <!-- 별 배경 -->
+  <div id="starField" class="fixed inset-0 pointer-events-none z-0"></div>
+
+  <!-- ── 1. NFC 스캔 대기 화면 ── -->
+  <section id="scanScreen" class="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
+    <div class="mb-8">
+      <h1 class="font-fantasy text-3xl text-gold mb-2">NFC 보물 감지</h1>
+      <p class="text-amber-300/70 text-sm">NFC 태그에 스마트폰을 가까이 대세요</p>
+    </div>
+
+    <!-- NFC 아이콘 + 리플 -->
+    <div class="nfc-ripple mb-10 w-40 h-40">
+      <div class="ripple-ring"></div>
+      <div class="ripple-ring"></div>
+      <div class="ripple-ring"></div>
+      <div class="relative z-10 w-20 h-20 rounded-full bg-amber-900/40 border-2 border-amber-500 flex items-center justify-center scan-pulse glow-gold">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M8.111 16.404a5.5 5.5 0 010-8.808M12 20c5.523 0 10-4.477 10-10S17.523 0 12 0 2 4.477 2 10s4.477 10 10 10zM12 12a2 2 0 100-4 2 2 0 000 4z"/>
+        </svg>
+      </div>
+    </div>
+
+    <p id="scanStatus" class="text-amber-200/60 text-sm">태그를 감지하는 중...</p>
+
+    <!-- 로그인 필요 메시지 -->
+    <div id="loginPrompt" class="hidden mt-8 p-4 bg-amber-900/20 border border-amber-700/40 rounded-xl">
+      <p class="text-amber-300 text-sm mb-3">보물을 획득하려면 로그인이 필요합니다</p>
+      <a href="/index.html" class="inline-block px-6 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-sm font-bold transition">로그인 하러 가기</a>
+    </div>
+  </section>
+
+  <!-- ── 2. 보물 발견 화면 ── -->
+  <section id="foundScreen" class="hidden relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
+
+    <!-- 보물 상자 이모지 폭발 -->
+    <div id="chestIcon" class="treasure-pop text-8xl mb-4">📦</div>
+    <h1 class="font-fantasy text-3xl text-gold mb-2">보물 발견!</h1>
+    <p class="text-amber-300/80 text-sm mb-8">NFC 태그가 숨겨진 보물을 감지했습니다</p>
+
+    <!-- 숨겨진 메시지 -->
+    <div id="messageBox" class="hidden w-full max-w-sm mb-6 p-4 bg-gradient-to-br from-amber-950/80 to-stone-900/80 border border-amber-700/50 rounded-xl">
+      <p class="text-amber-400 text-xs font-cinzel mb-2 tracking-widest">✦ 숨겨진 메시지 ✦</p>
+      <p id="messageText" class="text-amber-100 text-sm leading-relaxed typewriter"></p>
+    </div>
+
+    <!-- 보상 정보 -->
+    <div id="rewardInfo" class="hidden w-full max-w-sm mb-6 p-4 bg-gradient-to-br from-yellow-950/60 to-stone-900/60 border border-yellow-600/40 rounded-xl">
+      <p class="text-yellow-400 text-xs font-cinzel mb-2 tracking-widest">✦ 획득 보상 ✦</p>
+      <p id="rewardText" class="text-white font-bold text-lg"></p>
+    </div>
+
+    <!-- 수령 버튼 -->
+    <button id="claimBtn" class="btn-gold px-8 py-3 rounded-xl text-base transition-transform hover:scale-105 active:scale-95 mb-4">
+      보물 수령하기
+    </button>
+
+    <!-- 수령 완료 -->
+    <div id="claimResult" class="hidden w-full max-w-sm p-4 rounded-xl text-sm font-bold text-center"></div>
+
+    <a href="/index.html" class="mt-4 text-amber-500/60 hover:text-amber-400 text-xs underline underline-offset-2">홈으로 돌아가기</a>
+  </section>
+
+  <!-- ── 3. 오류 화면 ── -->
+  <section id="errorScreen" class="hidden relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
+    <div class="text-6xl mb-4">🔒</div>
+    <h2 class="font-cinzel text-xl text-red-400 mb-2">보물 획득 실패</h2>
+    <p id="errorMsg" class="text-red-300/80 text-sm max-w-xs mb-8"></p>
+    <a href="/index.html" class="px-6 py-2 bg-stone-700 hover:bg-stone-600 rounded-lg text-sm transition">홈으로</a>
+  </section>
+
+  <!-- Firebase SDK -->
+  <script type="module" src="/assets/js/pages/nfc-treasure.js"></script>
+</body>
+</html>

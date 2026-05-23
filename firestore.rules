@@ -416,6 +416,11 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
       allow write: if false;
     }
+    match /treasure_voucher_purchases/{docId} {
+      allow get, list: if signedIn()
+        && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
     // 바닥 드랍 — 로그인 유저 누구나 읽기, 쓰기는 서버 전용
     match /dropped_items/{docId} {
       allow get, list: if signedIn();
@@ -616,6 +621,20 @@ service cloud.firestore {
       // 자신의 uid로만 생성 가능, 수정/삭제 불가
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
+    }
+
+    // ── NFC 보물 태그 시스템 ──────────────────────────────────────────────
+    // 태그 공개 정보 (위치·메시지 등) — 로그인 유저 누구나 읽기, 쓰기는 Cloud Function 전용
+    match /nfc_tags/{tagId} {
+      allow get, list: if signedIn();   // 유저가 태그 정보 조회 (스캔 시)
+      allow write: if false;            // Cloud Function only (adminSaveNfcTag 등)
+    }
+
+    // 수령 기록 — 본인 기록만 읽기, 쓰기는 Cloud Function 전용
+    match /nfc_claims/{docId} {
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;            // Cloud Function only (claimNfcTreasure)
     }
 
     match /{document=**} {
