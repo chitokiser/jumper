@@ -3067,3 +3067,285 @@ export function checkShopProximity(lat, lng) {
     if (nearest) _ctx?._onShopNear?.(nearest);
   }
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// 신규 유저 온보딩 튜토리얼 보물박스 시스템
+// ════════════════════════════════════════════════════════════════════════════
+
+let _tutorialBoxes = [];        // [{index, lat, lng, distM, claimed, marker}]
+let _tutorialProxState = {};    // {index: lastThresholdHit} — 중복 효과 방지
+
+function _tutorialShowToast(msg, color = '#f59e0b') {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;top:20%;left:50%;transform:translateX(-50%);
+    background:rgba(0,0,0,.85);color:${color};font-size:15px;font-weight:700;
+    padding:12px 24px;border-radius:12px;z-index:9998;pointer-events:none;
+    animation:fadeInDown .3s ease;text-align:center;max-width:280px;line-height:1.4;
+    border:2px solid ${color};`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function _tutorialScreenRipple() {
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) return;
+  const el = document.createElement('div');
+  el.style.cssText = `position:absolute;inset:0;border-radius:inherit;
+    background:radial-gradient(circle, rgba(251,191,36,.15) 0%, transparent 70%);
+    animation:fadeInDown .8s ease forwards;pointer-events:none;z-index:10;`;
+  overlay.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+function _tutorialHeartbeat() {
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) return;
+  for (let i = 0; i < 2; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.style.cssText = `position:absolute;inset:0;background:rgba(239,68,68,.12);
+        animation:fadeInDown .25s ease;pointer-events:none;z-index:10;`;
+      overlay.appendChild(el);
+      setTimeout(() => el.remove(), 250);
+    }, i * 400);
+  }
+}
+
+function _tutorialParticles(lat, lng) {
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) return;
+  const emojis = ['✨','⭐','💫','🌟'];
+  for (let i = 0; i < 4; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      const x = 40 + Math.random() * 20;
+      const y = 40 + Math.random() * 20;
+      el.style.cssText = `position:absolute;left:${x}%;top:${y}%;font-size:22px;
+        animation:fadeInDown .8s ease forwards;pointer-events:none;z-index:11;`;
+      el.textContent = emojis[i % emojis.length];
+      overlay.appendChild(el);
+      setTimeout(() => el.remove(), 800);
+    }, i * 150);
+  }
+}
+
+function _tutorialLightBurst() {
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) return;
+  const el = document.createElement('div');
+  el.style.cssText = `position:absolute;inset:0;
+    background:radial-gradient(circle, rgba(251,191,36,.6) 0%, rgba(251,191,36,0) 60%);
+    animation:fadeInDown .15s ease;pointer-events:none;z-index:12;`;
+  overlay.appendChild(el);
+  setTimeout(() => el.remove(), 600);
+}
+
+function _tutorialSlowMo() {
+  // 화면 전체에 brief 슬로우모 필터 느낌 (청백 vignette)
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) return;
+  const prev = overlay.style.filter || '';
+  overlay.style.transition = 'filter .1s';
+  overlay.style.filter = 'brightness(1.4) saturate(1.8)';
+  setTimeout(() => { overlay.style.filter = prev; }, 600);
+}
+
+function _tutorialDiscoveryAnimation(box) {
+  _tutorialSlowMo();
+  setTimeout(() => _tutorialLightBurst(), 100);
+  setTimeout(() => _tutorialParticles(box.lat, box.lng), 200);
+  // 박스 마커 애니메이션 (bounce → remove after claim)
+  if (box.marker) {
+    const el = box.marker.getElement?.();
+    if (el) {
+      el.style.animation = 'none';
+      el.style.transform = 'scale(1.5)';
+      setTimeout(() => { el.style.transform = 'scale(1)'; }, 500);
+    }
+  }
+}
+
+async function _claimTutorialBox(box) {
+  if (box.claimed || box._claiming) return;
+  box._claiming = true;
+
+  const pos = getMyPos();
+  if (!pos) { box._claiming = false; return; }
+
+  try {
+    const fn = httpsCallable(_ctx?.functions, 'claimTutorialBox');
+    const res = await fn({ boxIndex: box.index, userLat: pos.lat, userLng: pos.lng });
+    if (!res.data?.ok) { box._claiming = false; return; }
+
+    box.claimed = true;
+    const data = res.data;
+
+    // 발견 연출
+    _tutorialDiscoveryAnimation(box);
+    playSound('gold');
+
+    // 강한 진동
+    if (navigator.vibrate) navigator.vibrate([100, 50, 200, 50, 300]);
+
+    // 보상 표시
+    const lang = window.LANG || 'ko';
+    const label = data.label?.[lang] || data.label?.ko || '🎁 보상 획득!';
+    setTimeout(() => _tutorialShowToast(`🎁 ${label}`, '#fbbf24'), 400);
+
+    // 마커 제거 (0.8초 딜레이 — 연출 후)
+    setTimeout(() => {
+      if (box.marker) { box.marker.setMap(null); box.marker = null; }
+    }, 800);
+
+    // 뱃지 획득 시 추가 안내
+    if (data.badge === 'explorer') {
+      setTimeout(() => _tutorialShowToast(
+        lang === 'vi' ? '🏅 Huy hiệu Nhà thám hiểm đã được trao!' : '🏅 탐험가 뱃지 획득!',
+        '#a78bfa'
+      ), 1800);
+    }
+
+    // 골드·XP 반영
+    if (data.gold) { _player.gold = (_player.gold || 0) + data.gold; updateHud?.(); }
+    if (data.xp)   { _player.gsExp = (_player.gsExp || 0) + data.xp; }
+
+  } catch (err) {
+    const msg = err?.message || '수령 실패';
+    if (!msg.includes('거리')) _tutorialShowToast(`❌ ${msg}`, '#f87171');
+  } finally {
+    box._claiming = false;
+  }
+}
+
+function _renderTutorialMarker(box) {
+  const map = _ctx?.map;
+  if (!map) return;
+  if (box.marker) box.marker.setMap(null);
+
+  const label = String(box.distM) + 'm';
+  const marker = new google.maps.Marker({
+    position: { lat: box.lat, lng: box.lng },
+    map,
+    title: `🎁 튜토리얼 보물 (${label})`,
+    icon: {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="56" viewBox="0 0 48 56">
+          <filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <ellipse cx="24" cy="52" rx="12" ry="3" fill="rgba(0,0,0,.25)"/>
+          <g filter="url(#glow)">
+            <rect x="8" y="22" width="32" height="24" rx="4" fill="#b45309"/>
+            <rect x="8" y="22" width="32" height="10" rx="4" fill="#d97706"/>
+            <rect x="18" y="16" width="12" height="8" rx="3" fill="#92400e"/>
+            <rect x="20" y="22" width="8" height="24" fill="#b45309"/>
+            <rect x="8" y="22" width="32" height="2" fill="#fbbf24"/>
+            <text x="24" y="38" font-size="14" text-anchor="middle" dominant-baseline="middle">🎁</text>
+          </g>
+        </svg>`),
+      scaledSize: new google.maps.Size(48, 56),
+      anchor:     new google.maps.Point(24, 52),
+    },
+    zIndex: 200,
+    animation: google.maps.Animation.BOUNCE,
+  });
+
+  marker.addListener('click', () => {
+    const pos = getMyPos();
+    if (!pos) return;
+    const dist = haversine(pos.lat, pos.lng, box.lat, box.lng);
+    if (dist > 8) {
+      const lang = window.LANG || 'ko';
+      _tutorialShowToast(
+        lang === 'vi'
+          ? `🎁 Còn ${Math.round(dist)}m nữa! Tiến lại gần hơn.`
+          : `🎁 아직 ${Math.round(dist)}m 남았어요! 더 가까이 가세요.`,
+        '#fbbf24'
+      );
+      return;
+    }
+    _claimTutorialBox(box);
+  });
+
+  box.marker = marker;
+}
+
+export function loadTutorialBoxes(boxes) {
+  // 기존 마커 정리
+  for (const b of _tutorialBoxes) { if (b.marker) b.marker.setMap(null); }
+  _tutorialBoxes = [];
+  _tutorialProxState = {};
+
+  for (const b of (boxes || [])) {
+    if (b.claimed) continue;
+    const box = { ...b, marker: null, _claiming: false };
+    _tutorialBoxes.push(box);
+    _renderTutorialMarker(box);
+  }
+}
+
+export function clearTutorialBoxes() {
+  for (const b of _tutorialBoxes) { if (b.marker) b.marker.setMap(null); }
+  _tutorialBoxes = [];
+  _tutorialProxState = {};
+}
+
+// 매 GPS 업데이트마다 호출 — 거리 기반 UX 효과 발동
+export function checkTutorialProximity(lat, lng) {
+  if (_tutorialBoxes.length === 0) return;
+  const lang = window.LANG || 'ko';
+
+  for (const box of _tutorialBoxes) {
+    if (box.claimed) continue;
+    const dist = haversine(lat, lng, box.lat, box.lng);
+    const prev = _tutorialProxState[box.index] ?? Infinity;
+
+    // 8m 이내 → 자동 수령 시도
+    if (dist <= 8) {
+      if (prev > 8) {
+        _claimTutorialBox(box);
+        _tutorialProxState[box.index] = dist;
+      }
+      continue;
+    }
+
+    // 20m 이내 → 심박 + 파티클 (최초 진입 시만)
+    if (dist <= 20 && prev > 20) {
+      _tutorialHeartbeat();
+      _tutorialParticles(lat, lng);
+      if (navigator.vibrate) navigator.vibrate([50, 30, 100]);
+      _tutorialShowToast(
+        lang === 'vi'
+          ? `❤️ Còn ${Math.round(dist)}m! Kho báu đang gần...`
+          : `❤️ ${Math.round(dist)}m! 보물이 아주 가까워요...`,
+        '#f87171'
+      );
+      _tutorialProxState[box.index] = dist;
+      continue;
+    }
+
+    // 50m 이내 → 방향 안내 + 미세진동 (최초 진입 시만)
+    if (dist <= 50 && prev > 50) {
+      if (navigator.vibrate) navigator.vibrate(30);
+      _tutorialShowToast(
+        lang === 'vi'
+          ? `✨ ${Math.round(dist)}m — Cảm nhận hơi thở của kho báu!`
+          : `✨ ${Math.round(dist)}m — 보물의 기운이 느껴져요!`,
+        '#fbbf24'
+      );
+      _tutorialProxState[box.index] = dist;
+      continue;
+    }
+
+    // 100m 이내 → 미풍 화면 흔들림 (최초 진입 시만)
+    if (dist <= 100 && prev > 100) {
+      _tutorialScreenRipple();
+      _tutorialShowToast(
+        lang === 'vi'
+          ? `🌬️ ${Math.round(dist)}m — Có gì đó ở gần đây...`
+          : `🌬️ ${Math.round(dist)}m — 근처에 뭔가 있어요...`,
+        '#d1d5db'
+      );
+      _tutorialProxState[box.index] = dist;
+    }
+  }
+}

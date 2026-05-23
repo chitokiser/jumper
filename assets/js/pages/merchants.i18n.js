@@ -304,6 +304,10 @@ const MESSAGES = {
   drop_nearby_toast:     { ko: '📦 근처에 아이템이 있습니다! ({0})',
                            vi: '📦 Có vật phẩm gần đây! ({0})' },
   drop_nearby_hud:       { ko: '근처 아이템',               vi: 'Vật phẩm gần' },
+
+  // ── 튜토리얼 보물박스 ─────────────────────────────────────────────────────────
+  tutorial_init_fail:    { ko: '⚠️ 튜토리얼 초기화 실패',  vi: '⚠️ Khởi tạo hướng dẫn thất bại' },
+  tutorial_location_needed: { ko: '📍 위치 권한이 필요합니다', vi: '📍 Cần quyền vị trí' },
 };
 
 /**

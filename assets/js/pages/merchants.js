@@ -22,6 +22,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          getEquippedWeapon, getEquippedArmor,
          updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
          loadShops, getShops, deleteShop, checkShopProximity,
+         loadTutorialBoxes, clearTutorialBoxes, checkTutorialProximity,
          onPlayerExp, onPlayerLevelUp }
   from './merchants.battle.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
@@ -1315,6 +1316,7 @@ async function checkProximity(lat, lng) {
   if (!_uid) return;
   broadcastMyLocation(lat, lng); // 내 위치 Firestore에 방송
   sendPlayerLocation(lat, lng, _ctx.lastPos?.accuracy ?? 10); // 게임 서버로 전송
+  checkTutorialProximity(lat, lng); // 튜토리얼 보물박스 근접 효과
   for (const box of treasureBoxes) {
     if (!box.lat || !box.lng) continue;
     if (!isBoxActive(box)) continue;
@@ -2482,6 +2484,11 @@ async function init() {
             await loadPlayerState(); // 스타터 아이템 포함 재로드
             await loadInventory();
           } catch (e) { /* ignore */ }
+          // 신규 유저 튜토리얼 보물박스 초기화 (GPS 위치 확보 후)
+          _initTutorialBoxesWhenReady();
+        } else if (!_isAnonymous) {
+          // 기존 유저: 미완료 튜토리얼 박스가 있으면 로드
+          _loadExistingTutorialBoxes();
         }
         renderExchangeSection();
         showDeathMarkerIfDead();
@@ -2496,6 +2503,8 @@ async function init() {
       _ctx.isAdmin = false;
       _renderAnonBadge(false);
       _renderMemberStatus(null);
+      // 튜토리얼 마커 정리
+      clearTutorialBoxes();
       // 드랍 구독 해제 및 마커 정리
       if (_dropsUnsubscribe) { _dropsUnsubscribe(); _dropsUnsubscribe = null; }
       Object.keys(_dropMarkers).forEach(id => { _dropMarkers[id].setMap(null); });
@@ -2508,6 +2517,38 @@ async function init() {
     const abp = $('adminBattlePanel');
     if (abp) abp.classList.toggle('open', !!_isAdmin);
   });
+
+  // ── 튜토리얼 박스 초기화 (신규 유저) ────────────────────────────────────────
+  async function _initTutorialBoxesWhenReady() {
+    // GPS 위치 확보까지 최대 10초 대기
+    let pos = _ctx?.lastPos;
+    if (!pos) {
+      await new Promise(resolve => {
+        let tries = 0;
+        const id = setInterval(() => {
+          pos = _ctx?.lastPos;
+          if (pos || ++tries >= 20) { clearInterval(id); resolve(); }
+        }, 500);
+      });
+    }
+    if (!pos) return; // GPS 없으면 스킵
+    try {
+      const fn = httpsCallable(functions, 'initTutorialBoxes');
+      const res = await fn({ lat: pos.lat, lng: pos.lng });
+      if (res.data?.boxes?.length) loadTutorialBoxes(res.data.boxes);
+    } catch { /* 튜토리얼 초기화 실패는 비치명적 */ }
+  }
+
+  async function _loadExistingTutorialBoxes() {
+    try {
+      const fn = httpsCallable(functions, 'getTutorialBoxes');
+      const res = await fn({});
+      if (res.data?.initialized && res.data?.boxes?.length) {
+        const unclaimed = res.data.boxes.filter(b => !b.claimed);
+        if (unclaimed.length) loadTutorialBoxes(res.data.boxes);
+      }
+    } catch { /* 비치명적 */ }
+  }
 
   // ── Phase 1: 지도 표시에 필요한 것만 병렬 로드 ──────────────────────────────
   const settle1 = p => p.catch(() => null);

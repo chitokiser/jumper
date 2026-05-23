@@ -626,8 +626,9 @@ service cloud.firestore {
     // ── NFC 보물 태그 시스템 ──────────────────────────────────────────────
     // 태그 공개 정보 (위치·메시지 등) — 로그인 유저 누구나 읽기, 쓰기는 Cloud Function 전용
     match /nfc_tags/{tagId} {
-      allow get, list: if signedIn();   // 유저가 태그 정보 조회 (스캔 시)
-      allow write: if false;            // Cloud Function only (adminSaveNfcTag 등)
+      allow get: if true;              // QR 스캔 시 비로그인도 태그 공개 정보 조회 가능
+      allow list: if isAdmin();
+      allow write: if false;           // Cloud Function only (adminSaveNfcTag 등)
     }
 
     // 수령 기록 — 본인 기록만 읽기, 쓰기는 Cloud Function 전용
@@ -635,6 +636,14 @@ service cloud.firestore {
       allow get, list: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid);
       allow write: if false;            // Cloud Function only (claimNfcTreasure)
+    }
+
+    // ── 신규 유저 온보딩 튜토리얼 박스 ───────────────────────────────────────
+    // 본인 데이터만 읽기 가능, 쓰기는 Cloud Function 전용
+    match /tutorial_boxes/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if isAdmin();
+      allow write: if false; // Cloud Function only (initTutorialBoxes, claimTutorialBox)
     }
 
     match /{document=**} {

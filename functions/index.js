@@ -44,6 +44,7 @@ const buggyH                 = require('./handlers/buggy');
 const supportChatH           = require('./handlers/supportChat');
 const shopH                  = require('./handlers/shop');
 const nfcH                   = require('./handlers/nfc');
+const tutorialH              = require('./handlers/tutorial');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1904,6 +1905,25 @@ exports.adminListNfcTags = onCall(wrapError(async (req) => {
 
 exports.adminListNfcClaims = onCall(wrapError(async (req) => {
   return nfcH.adminListNfcClaims(requireAuth(req), req.data ?? {});
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
+// 튜토리얼 보물 발견 체험 시스템
+// ════════════════════════════════════════════════════════════════════════════
+
+exports.initTutorialBoxes = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return tutorialH.initTutorialBoxes(uid, req.data ?? {});
+}));
+
+exports.claimTutorialBox = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return tutorialH.claimTutorialBox(uid, req.data ?? {});
+}));
+
+exports.getTutorialBoxes = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return tutorialH.getTutorialBoxes(uid);
 }));
 
 exports.initPublicStats = onCall(async (req) => {
