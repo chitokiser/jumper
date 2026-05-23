@@ -188,3 +188,4 @@ jumpTreasury : 0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312
 - [ ] `tsc --noEmit`으로 타입 오류 없음을 확인했는가?
 
 - 변경사항이 20개 이상 넘으면 자동으로 git에 배포해줘
+- 게임서버 배포는 git push 후 반드시 cd game-server && railway up 을 추가로 실행해야 한다.
