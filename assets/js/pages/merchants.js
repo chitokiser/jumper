@@ -2241,14 +2241,15 @@ function renderExchangeSection() {
     const totalGoldNeed = goldInReqs + (v.minCoins || 0);
     const itemReqs      = reqs.filter(r => r.type !== 'gold' && r.itemId !== 'coin');
 
-    let minRatio = 1;
+    let totalRatio = 0;
+    let reqCount   = 0;
 
     // 아이템 요건 칩 (비코인)
     const chips = itemReqs.map(r => {
       const have  = _inventory[String(r.itemId)] || 0;
       const need  = r.count || 1;
       const ratio = Math.min(1, have / need);
-      if (ratio < minRatio) minRatio = ratio;
+      totalRatio += ratio; reqCount++;
 
       const meta   = _items[String(r.itemId)];
       const label  = escHtml(meta?.name || ('#' + r.itemId));
@@ -2266,7 +2267,7 @@ function renderExchangeSection() {
       if (!totalGoldNeed) return '';
       const have  = getPlayerGold();
       const ratio = Math.min(1, have / totalGoldNeed);
-      if (ratio < minRatio) minRatio = ratio;
+      totalRatio += ratio; reqCount++;
       const cls   = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(${have}/${totalGoldNeed})</small>` : '';
       return `<span class="exc-req-chip ${cls}">${_t('coin_chip', totalGoldNeed)}${haveStr}</span>`;
@@ -2277,7 +2278,7 @@ function renderExchangeSection() {
       if (!v.minLevel) return '';
       const have  = getPlayerLevel();
       const ok    = have >= v.minLevel;
-      if (!ok && minRatio > 0) minRatio = 0;
+      totalRatio += ok ? 1 : Math.min(1, have / v.minLevel); reqCount++;
       const cls   = !_uid ? 'no-data' : ok ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(LV.${have})</small>` : '';
       return `<span class="exc-req-chip ${cls}">${_t('level_chip', v.minLevel)}${haveStr}</span>`;
@@ -2288,16 +2289,16 @@ function renderExchangeSection() {
       const cost = v.magicStoneCost || 0;
       if (!cost) return '';
       const have  = getPlayerToken();
-      const ok    = have >= cost;
-      if (!ok && minRatio > 0) minRatio = 0;
-      const cls   = !_uid ? 'no-data' : ok ? 'ok' : 'lack';
+      const ratio = Math.min(1, have / cost);
+      totalRatio += ratio; reqCount++;
+      const cls   = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(${have}/${cost})</small>` : '';
       return `<span class="exc-req-chip ${cls}">${_t('magic_stone_chip', cost)}${haveStr}</span>`;
     })();
 
     const allChips = chips + coinChip + stoneChip + levelChip;
 
-    const pct    = Math.round(minRatio * 100);
+    const pct    = reqCount > 0 ? Math.round(totalRatio / reqCount * 100) : 0;
     const canDo  = _uid
       && (totalGoldNeed === 0 || getPlayerGold() >= totalGoldNeed)
       && itemReqs.every(r => (_inventory[String(r.itemId)] || 0) >= r.count)
