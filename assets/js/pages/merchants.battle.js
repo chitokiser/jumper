@@ -838,8 +838,8 @@ function showLevelUpEffect(newLevel) {
   const overlay = document.getElementById('levelupOverlay');
   if (!overlay) return;
   overlay.querySelector('#levelupLv').textContent = `Lv. ${newLevel}`;
-  overlay.classList.remove('hidden');
-  setTimeout(() => overlay.classList.add('hidden'), 3000);
+  overlay.classList.add('visible');
+  setTimeout(() => overlay.classList.remove('visible'), 3000);
 }
 
 export function onPlayerExp(d) {
