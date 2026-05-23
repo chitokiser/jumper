@@ -3142,6 +3142,7 @@ export function checkShopProximity(lat, lng) {
 
 let _tutorialBoxes = [];        // [{index, lat, lng, distM, claimed, marker}]
 let _tutorialProxState = {};    // {index: lastThresholdHit} — 중복 효과 방지
+const _claimedTutorialSet = new Set(); // 세션 내 수령 완료 인덱스 — loadTutorialBoxes 재호출 후에도 유지
 
 function _tutorialShowToast(msg, color = '#f59e0b') {
   const el = document.createElement('div');
@@ -3235,7 +3236,7 @@ function _tutorialDiscoveryAnimation(box) {
 }
 
 async function _claimTutorialBox(box) {
-  if (box.claimed || box._claiming) return;
+  if (box.claimed || box._claiming || _claimedTutorialSet.has(box.index)) return;
   box._claiming = true;
 
   const pos = getMyPos();
@@ -3247,6 +3248,7 @@ async function _claimTutorialBox(box) {
     if (!res.data?.ok) { box._claiming = false; return; }
 
     box.claimed = true;
+    _claimedTutorialSet.add(box.index);
     const data = res.data;
 
     // 발견 연출
@@ -3280,7 +3282,7 @@ async function _claimTutorialBox(box) {
 
   } catch (err) {
     const msg = err?.message || '수령 실패';
-    if (!msg.includes('거리')) _tutorialShowToast(`❌ ${msg}`, '#f87171');
+    _tutorialShowToast(`❌ ${msg}`, '#f87171');
   } finally {
     box._claiming = false;
   }
@@ -3318,15 +3320,21 @@ function _renderTutorialMarker(box) {
   });
 
   marker.addListener('click', () => {
+    const lang = window.LANG || 'ko';
     const pos = getMyPos();
-    if (!pos) return;
+    if (!pos) {
+      _tutorialShowToast(
+        lang === 'vi' ? '📍 Đang chờ GPS...' : '📍 GPS 위치 확인 중입니다.',
+        '#94a3b8'
+      );
+      return;
+    }
     const dist = haversine(pos.lat, pos.lng, box.lat, box.lng);
-    if (dist > 8) {
-      const lang = window.LANG || 'ko';
+    if (dist > 50) {
       _tutorialShowToast(
         lang === 'vi'
           ? `🎁 Còn ${Math.round(dist)}m nữa! Tiến lại gần hơn.`
-          : `🎁 아직 ${Math.round(dist)}m 남았어요! 더 가까이 가세요.`,
+          : `🎁 아직 ${Math.round(dist)}m 남았어요! 직접 걸어가세요.`,
         '#fbbf24'
       );
       return;
@@ -3344,7 +3352,7 @@ export function loadTutorialBoxes(boxes) {
   _tutorialProxState = {};
 
   for (const b of (boxes || [])) {
-    if (b.claimed) continue;
+    if (b.claimed || _claimedTutorialSet.has(b.index)) continue;
     const box = { ...b, marker: null, _claiming: false };
     _tutorialBoxes.push(box);
     _renderTutorialMarker(box);
