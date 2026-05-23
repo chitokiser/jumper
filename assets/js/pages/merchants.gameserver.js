@@ -231,6 +231,14 @@ export const gsAdminDeleteSpawn = (spawnId) =>
 export const gsAdminKillMonster = (monsterId) =>
   _adminFetch('POST', `/admin/monsters/${encodeURIComponent(monsterId)}/kill`);
 
+/** 전체 몬스터 타입 스탯 조회 */
+export const gsAdminGetMonsterTypes = () =>
+  _adminFetch('GET', '/admin/monster-types');
+
+/** 특정 타입의 maxHp / attackPower 수정 → 즉시 반영 */
+export const gsAdminPatchMonsterType = (type, data) =>
+  _adminFetch('PATCH', `/admin/monster-types/${encodeURIComponent(type)}`, data);
+
 // ── 내부 유틸 ──────────────────────────────────────────────────────────────────
 function _setState(s) {
   _state = s;

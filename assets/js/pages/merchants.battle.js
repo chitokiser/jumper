@@ -14,6 +14,7 @@ import { createPlayerSpriteOverlay }
 import { MonsterGrid }
   from './merchants.monster-grid.js';
 import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonster,
+         gsAdminGetMonsterTypes, gsAdminPatchMonsterType,
          isGameServerConnected, connectToGameServer, sendPlayerRevive }
   from './merchants.gameserver.js';
 import { _t } from './merchants.i18n.js';
@@ -130,6 +131,8 @@ export function initBattle(ctx, callbacks) {
   document.getElementById('btnRefreshGsSpawns')?.addEventListener('click', () => refreshGsSpawnList());
   // Firestore 몬스터 목록 새로고침 버튼
   document.getElementById('btnRefreshFsMonsters')?.addEventListener('click', () => refreshFirestoreMonsterList());
+  // 몬스터 타입 스탯 새로고침 버튼
+  document.getElementById('btnRefreshMonsterTypes')?.addEventListener('click', () => refreshGsMonsterTypes());
 
   startNearbyPlayersWatch();
 }
@@ -2446,6 +2449,58 @@ window.__killGsMonster = async (monsterId) => {
     await gsAdminKillMonster(monsterId);
     await refreshGsSpawnList();
   } catch (err) { alert('kill 오류: ' + err.message); }
+};
+
+// ── 몬스터 타입 스탯 패널 ─────────────────────────────────────────────────────
+
+const TYPE_LABEL = {
+  pirate: '🏴‍☠️ Pirate', pirate2: '🗡 Pirate2', pirate3: '💀 Pirate3',
+  orc: '🐗 Orc', orc2: '🗡️ Orc2', orc3: '⚔️ Orc3',
+  dragon: '🐉 Dragon', goblin: '👾 Goblin',
+};
+
+export async function refreshGsMonsterTypes() {
+  const el = document.getElementById('gsMonsterTypeList');
+  if (!el) return;
+  el.textContent = '로딩 중…';
+  try {
+    const data  = await gsAdminGetMonsterTypes();
+    const types = data.types || [];
+    if (types.length === 0) { el.textContent = '데이터 없음'; return; }
+
+    el.innerHTML = types.map(t => {
+      const label = TYPE_LABEL[t.type] || t.type;
+      return `<div class="gs-type-row" style="margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.08)">
+        <div style="color:#e5e7eb;font-size:10px;margin-bottom:2px">${label}</div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <label style="color:#9ca3af;font-size:9px">HP</label>
+          <input type="number" class="gs-type-hp" data-type="${t.type}" value="${t.maxHp}" min="1"
+            style="width:52px;background:#1f2937;border:1px solid #374151;color:#e5e7eb;font-size:10px;padding:1px 3px;border-radius:3px">
+          <label style="color:#9ca3af;font-size:9px">ATK</label>
+          <input type="number" class="gs-type-atk" data-type="${t.type}" value="${t.attackPower}" min="0"
+            style="width:48px;background:#1f2937;border:1px solid #374151;color:#e5e7eb;font-size:10px;padding:1px 3px;border-radius:3px">
+          <button onclick="window.__saveGsMonsterType('${t.type}')"
+            style="background:#7c3aed;border:none;color:#fff;font-size:9px;padding:2px 5px;border-radius:3px;cursor:pointer">저장</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    el.textContent = '오류: ' + err.message;
+  }
+}
+
+window.__saveGsMonsterType = async (type) => {
+  const hpInput  = document.querySelector(`.gs-type-hp[data-type="${type}"]`);
+  const atkInput = document.querySelector(`.gs-type-atk[data-type="${type}"]`);
+  if (!hpInput || !atkInput) return;
+  const maxHp      = parseInt(hpInput.value, 10);
+  const attackPower = parseInt(atkInput.value, 10);
+  if (!isFinite(maxHp) || maxHp < 1) { alert('HP는 1 이상이어야 합니다'); return; }
+  if (!isFinite(attackPower) || attackPower < 0) { alert('공격력은 0 이상이어야 합니다'); return; }
+  try {
+    const r = await gsAdminPatchMonsterType(type, { maxHp, attackPower });
+    alert(`✅ ${type} 저장 완료 (인스턴스 ${r.instancesUpdated}개 즉시 반영)`);
+  } catch (err) { alert('저장 오류: ' + err.message); }
 };
 
 window.__deleteBattleObj = async (type, id) => {

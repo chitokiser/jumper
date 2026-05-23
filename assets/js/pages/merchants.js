@@ -1835,13 +1835,19 @@ async function dropItem(itemId, count = 1) {
 
   try {
     const fn = httpsCallable(functions, 'dropInventoryItem');
-    await fn({ itemId, count, userLat: pos.lat, userLng: pos.lng });
+    const res = await fn({ itemId, count, userLat: pos.lat, userLng: pos.lng });
     const cur = _inventory[itemId] || 0;
     const remaining = cur - count;
     if (remaining <= 0) delete _inventory[itemId];
     else _inventory[itemId] = remaining;
     renderInventory();
     showToast(_t('drop_success'), 'success');
+    // onSnapshot 도달 전 마커를 즉시 표시
+    if (res.data?.dropId) {
+      const dropData = { itemId, count, lat: pos.lat, lng: pos.lng };
+      _droppedItems[res.data.dropId] = dropData;
+      _addDropMarker(res.data.dropId, dropData);
+    }
   } catch (err) {
     const msg = err.message || '';
     if (msg.includes('인벤토리에')) showToast(_t('drop_no_item'), 'info');
@@ -1863,6 +1869,8 @@ async function pickupDrop(dropId) {
     const count = res.data.count;
     // 로컬 인벤토리 즉시 반영
     _inventory[res.data.itemId] = (_inventory[res.data.itemId] || 0) + count;
+    delete _droppedItems[dropId];
+    _removeDropMarker(dropId);
     renderInventory();
     showToast(_t('pickup_success', `${label} x${count}`), 'success');
     playSound('collect');
@@ -1879,17 +1887,33 @@ function _addDropMarker(dropId, data) {
   if (!_ctx.map) return;
   if (_dropMarkers[dropId]) return; // 이미 존재
   const label = (_items[data.itemId]?.name || data.itemId) + (data.count > 1 ? ` x${data.count}` : '');
-  const marker = new google.maps.Marker({
+
+  // 이미지 존재 여부 확인 후 마커 생성
+  const imgUrl = `/assets/images/item/${data.itemId}.png`;
+  const img = new Image();
+  img.onload = () => _buildDropMarker(dropId, data, label, {
+    url: imgUrl, scaledSize: new google.maps.Size(28, 28), anchor: new google.maps.Point(14, 14),
+  });
+  img.onerror = () => _buildDropMarker(dropId, data, label, null);
+  img.src = imgUrl;
+}
+
+function _buildDropMarker(dropId, data, label, icon) {
+  if (!_ctx.map) return;
+  if (_dropMarkers[dropId]) return; // 이미 생성됨 (중복 방지)
+  const markerOpts = {
     position: { lat: data.lat, lng: data.lng },
     map: _ctx.map,
-    icon: {
-      url: `/assets/images/item/${escHtml(data.itemId)}.png`,
-      scaledSize: new google.maps.Size(28, 28),
-      anchor: new google.maps.Point(14, 14),
-    },
     title: label,
     zIndex: 10,
-  });
+  };
+  if (icon) {
+    markerOpts.icon = icon;
+  } else {
+    // 이미지 없을 때 — 📦 라벨 마커
+    markerOpts.label = { text: '📦', fontSize: '20px' };
+  }
+  const marker = new google.maps.Marker(markerOpts);
   const infoWin = new google.maps.InfoWindow({
     content: `<div class="drop-marker-label">📦 ${escHtml(label)}<br><button onclick="window._pickupDrop('${escHtml(dropId)}')" style="margin-top:4px;padding:2px 8px;background:#7a3a00;color:#fff;border:none;border-radius:4px;cursor:pointer">${_t('pickup_btn_label')}</button></div>`,
   });
