@@ -1632,10 +1632,15 @@ function _refreshBattleVisibility(myLat, myLng) {
   function show(lat, lng) {
     return overview || !hasPos || haversine(myLat, myLng, lat, lng) <= SKILL_RANGE_M;
   }
+  function showMonster(mob) {
+    if (overview || !hasPos) return true;
+    const visRange = Math.max(SKILL_RANGE_M, (mob.detectRadius || 30) + 5);
+    return haversine(myLat, myLng, mob.lat, mob.lng) <= visRange;
+  }
 
   for (const mob of _monsters) {
     if (!mob.lat || !mob.lng) continue;
-    const vis = show(mob.lat, mob.lng);
+    const vis = showMonster(mob);
     _monsterMarkers[mob.id]?.setMap(vis ? map : null);
     _monsterOverlays[mob.id]?.setMap?.(vis ? map : null);
   }
@@ -1656,7 +1661,8 @@ function _spawnMonsterMarker(mob) {
   // 플레이어 위치 기준 100m 밖이면 마커 숨김
   const myPos = _ctx?.lastPos;
   const overview = _ctx?.isAdmin || (_ctx?.map?.getZoom() ?? 18) <= OVERVIEW_ZOOM;
-  const startVisible = overview || !myPos || haversine(myPos.lat, myPos.lng, mob.lat, mob.lng) <= SKILL_RANGE_M;
+  const visRange = Math.max(SKILL_RANGE_M, (mob.detectRadius || 30) + 5);
+  const startVisible = overview || !myPos || haversine(myPos.lat, myPos.lng, mob.lat, mob.lng) <= visRange;
 
   // ── 스프라이트 타입 (dragon 등) ─────────────────────────────────────────────
   // image 필드가 단순 PNG 파일명(예: 23.png, 22.png)이면 스프라이트 무시 → 일반 마커
