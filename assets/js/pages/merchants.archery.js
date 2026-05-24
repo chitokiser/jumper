@@ -545,8 +545,7 @@ class ArcheryGame {
   // ── 종료 ────────────────────────────────────────────────────────────────────
   _end() {
     this._stop();
-    const bonus    = Math.floor(this._score / 100) * 5;
-    const total    = this._coins + bonus;
+    const total = this._score;
     if (total > 0) this._add(total);
 
     const shotFired = MAX_ARROWS - this._arrows;
