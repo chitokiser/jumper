@@ -384,6 +384,43 @@ export function playSound(type) {
         [523,659,784,1047,1319,1568].forEach((f,i)=>tone(f,0.35,0.2,i*0.07,'triangle'));
         tone(2093,0.4,0.4,0.4,'sine');
         break;
+      // ── 슬롯·기억력 게임 사운드 ──────────────────────────────────────────────
+      case 'hit': {
+        // 카드 매칭 / 릴 정지 — 맑은 핑 음
+        const hg = gain(0.28);
+        const ho = ac.createOscillator(); ho.type = 'sine'; ho.frequency.value = 880;
+        ho.frequency.exponentialRampToValueAtTime(1320, ac.currentTime + 0.06);
+        hg.gain.setValueAtTime(0.28, ac.currentTime);
+        hg.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.22);
+        ho.connect(hg); ho.start(); ho.stop(ac.currentTime + 0.22);
+        tone(1760, 0.12, 0.1, 0.04, 'triangle');
+        break;
+      }
+      case 'slot_win': {
+        // 슬롯 당첨 — 코인 연타 + 상승 팡파르
+        [523,659,784,1047].forEach((f,i)=>tone(f,0.28,0.14,i*0.06,'triangle'));
+        noise(0.06, 0.18);
+        break;
+      }
+      case 'miss': {
+        // 미스 / 틀림 — 짧은 버저
+        tone(220, 0.3, 0.12, 0, 'sawtooth');
+        tone(180, 0.2, 0.1, 0.08, 'sawtooth');
+        break;
+      }
+      case 'dead': {
+        // 게임 오버 — 하강 피치 + 잔향
+        const ddur = 1.0;
+        const dOsc = ac.createOscillator(); dOsc.type = 'sawtooth';
+        dOsc.frequency.setValueAtTime(440, ac.currentTime);
+        dOsc.frequency.exponentialRampToValueAtTime(55, ac.currentTime + ddur);
+        const dg = gain(0);
+        dg.gain.setValueAtTime(0.4, ac.currentTime);
+        dg.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + ddur);
+        dOsc.connect(dg); dOsc.start(); dOsc.stop(ac.currentTime + ddur);
+        tone(110, 0.25, 0.6, 0.1);
+        break;
+      }
     }
   } catch { /* 오디오 미지원 무시 */ }
 }
@@ -767,6 +804,24 @@ export async function loadPlayerState() {
 let _saveTimer = null;
 export function getPlayerGold()  { return _player.gold  || 0; }
 export function getPlayerToken() { return _player.token ?? 0; }
+
+export function addPlayerGold(amount) {
+  _player.gold = (_player.gold || 0) + amount;
+  updateCombatHud();
+  savePlayerState();
+}
+export function spendPlayerGold(amount) {
+  if ((_player.gold || 0) < amount) return false;
+  _player.gold -= amount;
+  updateCombatHud();
+  savePlayerState();
+  return true;
+}
+export function addPlayerGsExp(amount) {
+  _player.gsExp = (_player.gsExp || 0) + amount;
+  updateExpBar();
+  savePlayerState();
+}
 export function getPlayerLevel() { return _player.level || 1; }
 export function isPlayerDead() { return _isDead; }
 
@@ -1682,7 +1737,7 @@ function _spawnMonsterMarker(mob) {
         if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
           const myPos = _ctx.myLocationMarker.getPosition();
           const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-          const clickRange = 20;
+          const clickRange = mob.detectRadius || 30;
           if (dist <= clickRange) {
             const roll = Math.floor(Math.random() * 10) + 1;
             const isCrit = roll >= 6;
@@ -1733,7 +1788,7 @@ function _spawnMonsterMarker(mob) {
     if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
       const myPos = _ctx.myLocationMarker.getPosition();
       const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-      const clickRange = 20;
+      const clickRange = mob.detectRadius || 30;
       if (dist <= clickRange) {
         const roll   = Math.floor(Math.random() * 10) + 1;
         const isCrit = roll >= 6;

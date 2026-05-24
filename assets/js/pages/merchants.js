@@ -23,8 +23,11 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
          loadShops, getShops, deleteShop, checkShopProximity,
          loadTutorialBoxes, clearTutorialBoxes, checkTutorialProximity,
-         onPlayerExp, onPlayerLevelUp }
+         onPlayerExp, onPlayerLevelUp,
+         addPlayerGold, spendPlayerGold, addPlayerGsExp }
   from './merchants.battle.js';
+import { initMemoryGame, openMemoryGame } from './merchants.memory.js';
+import { initSlotMachine, openSlotMachine } from './merchants.slot.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
          sendPlayerAttack, sendPlayerRevive, sendPlayerSkill, sendDropCollect,
@@ -240,7 +243,7 @@ function initMap() {
 
   // 전체화면 진입/종료 시 position:fixed 모달들을 fullscreen 요소 안으로 이동
   // (HUD·스킬바는 Google Maps Control이므로 자동으로 fullscreen에 포함됨)
-  const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal'];
+  const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal', 'slotModal', 'memoryGameModal'];
   document.addEventListener('fullscreenchange', () => {
     const fs = document.fullscreenElement;
     const dest = fs || document.body;
@@ -2554,24 +2557,37 @@ async function init() {
     if (abp) abp.classList.toggle('open', !!_isAdmin);
   });
 
-  // ── 튜토리얼 박스 초기화 (신규 유저) ────────────────────────────────────────
+  // ── 튜토리얼 박스 초기화 ────────────────────────────────────────────────────
   async function _initTutorialBoxesWhenReady() {
-    const waitFor = (check) => new Promise(resolve => {
+    const waitFor = (check, maxTries = 20) => new Promise(resolve => {
       if (check()) { resolve(); return; }
       let tries = 0;
       const id = setInterval(() => {
-        if (check() || ++tries >= 20) { clearInterval(id); resolve(); }
+        if (check() || ++tries >= maxTries) { clearInterval(id); resolve(); }
       }, 500);
     });
-
-    // GPS 위치 확보까지 최대 10초 대기
-    await waitFor(() => !!_ctx?.lastPos);
-    const pos = _ctx?.lastPos;
-    if (!pos) return;
 
     // 지도 초기화까지 최대 10초 대기
     await waitFor(() => !!_ctx?.map);
     if (!_ctx?.map) return;
+
+    // 위치 확보: 이미 있으면 그걸 쓰고, 없으면 직접 GPS 요청 (최대 12초)
+    let pos = _ctx?.lastPos;
+    if (!pos && navigator.geolocation) {
+      pos = await new Promise(resolve => {
+        navigator.geolocation.getCurrentPosition(
+          p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: true, maximumAge: 30000, timeout: 12000 }
+        );
+      });
+    }
+    // 최후 fallback: 지도 중심 좌표 사용
+    if (!pos && _ctx?.map) {
+      const c = _ctx.map.getCenter();
+      if (c) pos = { lat: c.lat(), lng: c.lng() };
+    }
+    if (!pos) return;
 
     try {
       const fn = httpsCallable(functions, 'initTutorialBoxes');
@@ -2650,7 +2666,6 @@ async function init() {
   $('btnOverlayAnon')?.addEventListener('click', _signInAnonymous);
 
   // 버튼 이벤트
-  $('btnMyLocation')?.addEventListener('click', showMyLocation);
   $('btnInventory')?.addEventListener('click', openInventory);
   $('btnDetector')?.addEventListener('click', () => {
     const btn = $('btnDetector');
@@ -2756,6 +2771,40 @@ async function init() {
   $('skillBtnHeal')?.addEventListener('click', castHeal);
   $('skillBtnPotion')?.addEventListener('click', usePotion);
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
+
+  // 기억력 게임 초기화
+  initMemoryGame({
+    onSpendGold: (amount) => spendPlayerGold(amount),
+    onAddGold:   (amount) => addPlayerGold(amount),
+    onAddExp:    (amount) => addPlayerGsExp(amount),
+    onPlaySound: (type)   => playSound(type),
+  });
+
+  // 슬롯 머신 초기화
+  initSlotMachine({
+    onSpendGold: (amount) => spendPlayerGold(amount),
+    onAddGold:   (amount) => addPlayerGold(amount),
+    onPlaySound: (type)   => playSound(type),
+  });
+
+  // 미니게임 버튼 — 팝업 서브메뉴
+  (function () {
+    const popup = $('miniGamePopup');
+    $('skillBtnMiniGame')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      popup?.classList.toggle('hidden');
+    });
+    $('miniGameMemory')?.addEventListener('click', () => {
+      popup?.classList.add('hidden');
+      openMemoryGame();
+    });
+    $('miniGameSlot')?.addEventListener('click', () => {
+      popup?.classList.add('hidden');
+      openSlotMachine();
+    });
+    // 팝업 외부 클릭 시 닫기
+    document.addEventListener('click', () => popup?.classList.add('hidden'));
+  })();
 
   // 키보드 단축키 1/2/3/4/5/6
   document.addEventListener('keydown', (e) => {

@@ -650,6 +650,12 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only (initTutorialBoxes, claimTutorialBox)
     }
 
+    // ── 슬롯 머신 잭팟 풀 ────────────────────────────────────────────────────
+    match /slot_config/{docId} {
+      allow read: if true;
+      allow write: if false; // Cloud Function only
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

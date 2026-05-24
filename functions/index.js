@@ -45,6 +45,7 @@ const supportChatH           = require('./handlers/supportChat');
 const shopH                  = require('./handlers/shop');
 const nfcH                   = require('./handlers/nfc');
 const tutorialH              = require('./handlers/tutorial');
+const slotH                  = require('./handlers/slot');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1944,3 +1945,13 @@ exports.initPublicStats = onCall(async (req) => {
   });
   return { ok: true, userCount, totalCount };
 });
+
+// ── 슬롯 머신 ────────────────────────────────────────────────────────────────
+exports.spinSlot = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return slotH.spinSlot(uid, req.data ?? {});
+}));
+
+exports.getSlotJackpot = onCall(wrapError(async (_req) => {
+  return slotH.getJackpot();
+}));
