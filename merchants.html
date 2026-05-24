@@ -922,6 +922,20 @@
       .sm-reel img { width:64px; height:64px; }
     }
 
+    /* ── 활쏘기 미니게임 모달 ── */
+    .arch-modal { position:fixed; inset:0; z-index:9000; display:flex; align-items:center; justify-content:center; }
+    .arch-modal.hidden { display:none; }
+    .arch-overlay { position:absolute; inset:0; background:rgba(0,0,0,.85); }
+    .arch-panel {
+      position:relative; z-index:1;
+      width:min(98vw, 900px); height:min(96vh, 680px);
+      background:#0d1117; border-radius:12px;
+      overflow:hidden; display:flex; flex-direction:column;
+    }
+    @media (max-width:640px) {
+      .arch-panel { width:100vw; height:100dvh; border-radius:0; }
+    }
+
     /* ── 상품교환권 섹션 ── */
     .exc-section {
       margin-top: 40px;

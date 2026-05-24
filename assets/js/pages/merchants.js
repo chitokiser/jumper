@@ -244,7 +244,7 @@ function initMap() {
 
   // 전체화면 진입/종료 시 position:fixed 모달들을 fullscreen 요소 안으로 이동
   // (HUD·스킬바는 Google Maps Control이므로 자동으로 fullscreen에 포함됨)
-  const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal', 'slotModal', 'memoryGameModal'];
+  const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal'];
   document.addEventListener('fullscreenchange', () => {
     const fs = document.fullscreenElement;
     const dest = fs || document.body;

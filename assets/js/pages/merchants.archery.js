@@ -37,44 +37,57 @@ class ArcheryGame {
 
   // ── DOM 구성 ────────────────────────────────────────────────────────────────
   _buildDOM() {
-    const ov = document.createElement('div');
-    ov.id = 'archeryOverlay';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:#0d1117;display:none;flex-direction:column;overflow:hidden;';
+    const existing = document.getElementById('archeryModal');
+    if (existing) {
+      this._modal = existing;
+      this._panel = existing.querySelector('.arch-panel');
+      this._cacheRefs();
+      return;
+    }
 
-    ov.innerHTML = `
-      <div id="archHud" style="
-        position:absolute;top:0;left:0;right:0;z-index:2;
-        display:flex;justify-content:space-between;align-items:center;
-        padding:8px 14px;background:rgba(0,0,0,.6);
-        color:#fff;font:700 13px/1 monospace;pointer-events:none;
-      ">
-        <span id="archScore">SCORE: 0</span>
-        <span id="archCombo" style="font-size:17px;color:#ffd700;"></span>
-        <span id="archTime">TIME: ${GAME_SEC}</span>
-        <span id="archArrow">ARROW: ${MAX_ARROWS}</span>
-        <button id="archClose" style="pointer-events:all;background:#ef4444;color:#fff;border:none;border-radius:6px;padding:3px 12px;cursor:pointer;font-size:13px;">✕</button>
-      </div>
-      <canvas id="archCanvas" style="flex:1;width:100%;display:block;touch-action:none;"></canvas>
-      <div id="archPowerWrap" style="
-        position:absolute;bottom:74px;left:50%;transform:translateX(-50%);
-        width:130px;height:9px;background:rgba(255,255,255,.2);
-        border-radius:5px;overflow:hidden;display:none;
-      ">
-        <div id="archPowerFill" style="height:100%;width:0;border-radius:5px;
-          background:linear-gradient(90deg,#4ade80,#f59e0b,#ef4444);"></div>
+    const m = document.createElement('div');
+    m.id = 'archeryModal';
+    m.className = 'arch-modal hidden';
+    m.innerHTML = `
+      <div class="arch-overlay"></div>
+      <div class="arch-panel">
+        <div id="archHud" style="
+          display:flex;justify-content:space-between;align-items:center;
+          padding:8px 14px;background:rgba(0,0,0,.7);flex-shrink:0;
+          color:#fff;font:700 13px/1 monospace;
+        ">
+          <span id="archScore">SCORE: 0</span>
+          <span id="archCombo" style="font-size:17px;color:#ffd700;"></span>
+          <span id="archTime">TIME: ${GAME_SEC}</span>
+          <span id="archArrow">ARROW: ${MAX_ARROWS}</span>
+          <button id="archClose" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:3px 12px;cursor:pointer;font-size:13px;">✕</button>
+        </div>
+        <canvas id="archCanvas" style="flex:1;width:100%;display:block;touch-action:none;min-height:0;"></canvas>
+        <div id="archPowerWrap" style="
+          position:absolute;bottom:74px;left:50%;transform:translateX(-50%);
+          width:130px;height:9px;background:rgba(255,255,255,.2);
+          border-radius:5px;overflow:hidden;display:none;
+        ">
+          <div id="archPowerFill" style="height:100%;width:0;border-radius:5px;
+            background:linear-gradient(90deg,#4ade80,#f59e0b,#ef4444);"></div>
+        </div>
       </div>
     `;
-    document.body.appendChild(ov);
+    document.body.appendChild(m);
+    this._modal = m;
+    this._panel = m.querySelector('.arch-panel');
+    this._cacheRefs();
+    document.getElementById('archClose').addEventListener('click', () => this.close());
+  }
 
-    this._ov         = ov;
-    this._cv         = ov.querySelector('#archCanvas');
-    this._hudScore   = ov.querySelector('#archScore');
-    this._hudCombo   = ov.querySelector('#archCombo');
-    this._hudTime    = ov.querySelector('#archTime');
-    this._hudArrow   = ov.querySelector('#archArrow');
-    this._pwrWrap    = ov.querySelector('#archPowerWrap');
-    this._pwrFill    = ov.querySelector('#archPowerFill');
-    ov.querySelector('#archClose').addEventListener('click', () => this.close());
+  _cacheRefs() {
+    this._cv       = document.getElementById('archCanvas');
+    this._hudScore = document.getElementById('archScore');
+    this._hudCombo = document.getElementById('archCombo');
+    this._hudTime  = document.getElementById('archTime');
+    this._hudArrow = document.getElementById('archArrow');
+    this._pwrWrap  = document.getElementById('archPowerWrap');
+    this._pwrFill  = document.getElementById('archPowerFill');
   }
 
   // ── 공개 API ────────────────────────────────────────────────────────────────
@@ -84,15 +97,14 @@ class ArcheryGame {
       this._pageToast('코인이 부족합니다 (활쏘기: 100코인 필요)');
       return;
     }
-    this._ov.style.display = 'flex';
+    this._modal.classList.remove('hidden');
     this._start();
   }
 
   close() {
     this._stop();
-    this._ov.style.display = 'none';
-    // 결과 화면이 남아있으면 제거
-    this._ov.querySelector('.arch-result')?.remove();
+    this._modal.classList.add('hidden');
+    this._panel.querySelector('.arch-result')?.remove();
   }
 
   // ── 게임 생명주기 ────────────────────────────────────────────────────────────
@@ -558,7 +570,7 @@ class ArcheryGame {
         <button id="archExit"  style="padding:11px 24px;background:#374151;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;">나가기</button>
       </div>
     `;
-    this._ov.appendChild(res);
+    this._panel.appendChild(res);
 
     res.querySelector('#archRetry').addEventListener('click', () => {
       res.remove();
@@ -581,7 +593,7 @@ class ArcheryGame {
       'font-size:14px;pointer-events:none;transition:opacity .5s;z-index:3;text-align:center;',
     ].join('');
     h.textContent = '🏹 화면을 아래로 드래그 → 손을 떼면 발사!';
-    this._ov.appendChild(h);
+    this._panel.appendChild(h);
     setTimeout(() => { h.style.opacity = '0'; }, 2500);
     setTimeout(() => h.remove(), 3100);
   }
