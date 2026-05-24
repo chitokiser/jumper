@@ -33,7 +33,7 @@ const SYMBOLS = {
 };
 const SYMBOL_IDS = Object.keys(SYMBOLS);
 
-const ENTRY_COST     = 10;
+const ENTRY_COST     = 100;
 const AUTO_SPIN_COUNT = 10;
 const REEL_GAP_MS    = 500;
 const MIN_SPIN_MS    = 1800;

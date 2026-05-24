@@ -38,7 +38,7 @@ const CARD_IMAGES = [
 const TOTAL_PAIRS = 12; // 12쌍 = 24장
 const COLS        = 4;
 const ROWS        = 6;  // 4×6 = 24 cards = 12 pairs
-const ENTRY_COST  = 10;
+const ENTRY_COST  = 100;
 const MATCH_REWARD = 20;
 const COMBO_BONUS  = 50;
 const COMBO_TRIGGER = 3;

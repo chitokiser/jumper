@@ -32,7 +32,7 @@ const SYMBOLS = [
 ];
 
 const TOTAL_WEIGHT         = SYMBOLS.reduce((s, x) => s + x.weight, 0); // 100
-const ENTRY_COST           = 10;
+const ENTRY_COST           = 100;
 const JACKPOT_CONTRIBUTION = 10;
 const JACKPOT_BASE         = 1000;
 const REWARDS              = { normal: 300, rare: 1000, hero: 5000, two_match: 150 };

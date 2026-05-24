@@ -28,6 +28,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
   from './merchants.battle.js';
 import { initMemoryGame, openMemoryGame } from './merchants.memory.js';
 import { initSlotMachine, openSlotMachine } from './merchants.slot.js';
+import { initArcheryGame, openArcheryGame } from './merchants.archery.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
          sendPlayerAttack, sendPlayerRevive, sendPlayerSkill, sendDropCollect,
@@ -2787,6 +2788,13 @@ async function init() {
     onPlaySound: (type)   => playSound(type),
   });
 
+  // 활쏘기 미니게임 초기화
+  initArcheryGame({
+    onSpendGold: (amount) => spendPlayerGold(amount),
+    onAddGold:   (amount) => addPlayerGold(amount),
+    onPlaySound: (type)   => playSound(type),
+  });
+
   // 미니게임 버튼 — 팝업 서브메뉴
   (function () {
     const popup = $('miniGamePopup');
@@ -2801,6 +2809,10 @@ async function init() {
     $('miniGameSlot')?.addEventListener('click', () => {
       popup?.classList.add('hidden');
       openSlotMachine();
+    });
+    $('miniGameArchery')?.addEventListener('click', () => {
+      popup?.classList.add('hidden');
+      openArcheryGame();
     });
     // 팝업 외부 클릭 시 닫기
     document.addEventListener('click', () => popup?.classList.add('hidden'));
