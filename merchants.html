@@ -603,11 +603,13 @@
       box-shadow: 0 4px 24px rgba(0,0,0,.5);
     }
     .mg-popup.hidden { display: none; }
-    /* HUD 오른쪽 배치 시 팝업을 왼쪽으로 열기 */
+    /* HUD 오른쪽 배치 시 팝업을 왼쪽으로 열기 — 버튼 하단 기준 위로 펼침 */
     .mg-popup--left {
-      bottom: auto; left: auto;
-      top: 50%; right: calc(100% + 8px);
-      transform: translateY(-50%);
+      bottom: 0;
+      top: auto;
+      left: auto;
+      right: calc(100% + 8px);
+      transform: none;
     }
     .mg-popup-btn {
       display: flex; align-items: center; gap: 7px;
@@ -884,6 +886,18 @@
     }
     .sm-pay-row { display:flex; justify-content:space-between; font-size:.8rem; }
     .sm-pay-val { color:#fcd34d; font-weight:700; }
+    .sm-bet-row {
+      display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+      justify-content:center; padding:6px 12px;
+    }
+    .sm-bet-label { font-size:12px; color:#9ca3af; }
+    .sm-bet-btn {
+      padding:5px 12px; border-radius:6px; border:1px solid #374151;
+      background:#1f2937; color:#d1d5db; font-size:12px; cursor:pointer;
+      transition:.12s;
+    }
+    .sm-bet-btn:hover { background:#374151; color:#fff; }
+    .sm-bet-btn.active { background:#7c3aed; color:#fff; border-color:#a855f7; }
     .sm-controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
     .sm-btn {
       flex:1; min-width:110px; padding:10px 8px;
@@ -935,6 +949,162 @@
     @media (max-width:640px) {
       .arch-panel { width:100vw; height:100dvh; border-radius:0; }
     }
+
+    /* ── 몬스터 레이스 모달 ── */
+    .race-modal { position:fixed; inset:0; z-index:9000; display:flex; align-items:center; justify-content:center; }
+    .race-modal.hidden { display:none; }
+    .race-overlay { position:absolute; inset:0; background:rgba(0,0,0,.92); }
+    .race-panel {
+      position:relative; z-index:1;
+      width:min(98vw, 860px); height:min(96vh, 720px);
+      background:#0d0500; border:1px solid #7c3a00; border-radius:12px;
+      overflow:hidden; display:flex; flex-direction:column; color:#f3e8d0;
+    }
+    @media (max-width:640px) {
+      .race-panel { width:100vw; height:100dvh; border-radius:0; }
+    }
+    .race-hdr {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 14px; background:#1a0800; border-bottom:1px solid #7c3a00; flex-shrink:0;
+    }
+    .race-title { font-size:17px; font-weight:800; color:#f59e0b; }
+    .race-close-btn { background:#7f1d1d; border:none; color:#fff; border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:14px; }
+    .race-betting { display:flex; flex-direction:column; gap:8px; padding:10px 12px; overflow-y:auto; flex:1; }
+    .race-bet-timer { text-align:center; font-size:18px; font-weight:700; color:#fbbf24; letter-spacing:1px; }
+    .race-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    @media (max-width:480px) { .race-grid { grid-template-columns:repeat(2,1fr); } }
+    .race-card {
+      background:#1a0c00; border:2px solid #3a1a00; border-radius:8px;
+      padding:10px 6px; text-align:center; cursor:pointer; transition:.15s;
+    }
+    .race-card:hover { border-color:var(--mc,#f59e0b); transform:translateY(-2px); }
+    .race-card.selected { border-color:var(--mc,#f59e0b); background:#261200; box-shadow:0 0 10px color-mix(in srgb, var(--mc,#f59e0b) 40%, transparent); }
+    .rc-emoji { font-size:26px; line-height:1.2; }
+    .rc-img   { width:60px; height:60px; object-fit:contain; display:block; margin:0 auto 4px; }
+    .rc-name  { font-size:12px; font-weight:700; margin:3px 0 1px; }
+    .rc-trait { font-size:10px; color:#9ca3af; margin-bottom:4px; }
+    .rc-odds  { font-size:16px; font-weight:800; }
+    .race-bet-ctrl { display:flex; flex-direction:column; gap:8px; padding-top:4px; }
+    .race-bet-types { display:flex; gap:6px; flex-wrap:wrap; }
+    .rbt {
+      flex:1; min-width:80px; padding:6px 4px; border:1px solid #4b2200; border-radius:6px;
+      background:#1a0800; color:#d1a070; font-size:12px; cursor:pointer; transition:.12s;
+    }
+    .rbt.active { background:#7c2d12; color:#fff; border-color:#f97316; }
+    .race-amount-row { display:flex; align-items:center; gap:8px; }
+    .race-amt-btn {
+      width:32px; height:32px; border-radius:6px; border:1px solid #4b2200;
+      background:#1a0800; color:#f59e0b; font-size:18px; font-weight:700; cursor:pointer;
+    }
+    .race-amt-val { font-size:20px; font-weight:800; color:#fbbf24; min-width:60px; text-align:center; }
+    .race-preset-row { display:flex; gap:6px; flex-wrap:wrap; }
+    .race-amt-preset {
+      padding:4px 10px; border-radius:5px; border:1px solid #4b2200;
+      background:#1a0800; color:#d1a070; font-size:12px; cursor:pointer;
+    }
+    .race-amt-preset:hover { background:#2d1200; color:#fff; }
+    .race-bet-submit {
+      padding:10px 16px; border-radius:8px; border:none;
+      background:#b45309; color:#fff; font-size:14px; font-weight:700; cursor:pointer; transition:.15s; margin-top:4px;
+    }
+    .race-bet-submit:hover:not(:disabled) { background:#d97706; }
+    .race-bet-submit:disabled { background:#374151; color:#6b7280; cursor:not-allowed; }
+    .race-arena { display:flex; flex-direction:column; flex:1; min-height:0; }
+    .race-arena.hidden { display:none; }
+    .race-event-bar { height:32px; display:flex; align-items:center; justify-content:center; background:#1a0800; flex-shrink:0; }
+    .race-event-msg { font-size:14px; font-weight:700; color:#fbbf24; transition:opacity .4s; }
+    .race-canvas { flex:1; width:100%; display:block; min-height:0; }
+    .race-result { flex:1; display:flex; align-items:center; justify-content:center; overflow-y:auto; }
+    .race-result.hidden { display:none; }
+    .race-result-inner { text-align:center; padding:20px; max-width:400px; width:100%; }
+    .race-result-title { font-size:22px; font-weight:800; color:#fbbf24; margin-bottom:14px; }
+    .race-podium { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+    .race-podium-row { display:flex; align-items:center; gap:8px; justify-content:center; font-size:16px; font-weight:700; }
+    .race-result-icon { width:36px; height:36px; object-fit:contain; border-radius:50%; border:1px solid #7c3a00; flex-shrink:0; }
+    .race-win-msg  { color:#4ade80; font-size:22px; font-weight:800; margin:12px 0; padding:8px 12px; background:#052c14; border-radius:8px; border:1px solid #166534; }
+    .race-lose-msg { color:#f87171; font-size:15px; margin:12px 0; padding:8px 12px; background:#2c0505; border-radius:8px; border:1px solid #7f1d1d; }
+    .race-order { display:flex; flex-direction:column; gap:4px; margin:10px 0; }
+    .race-order-row { display:flex; align-items:center; gap:6px; font-size:13px; color:#d1a070; padding:4px 8px; border-radius:4px; }
+    .race-order-row.my-bet { background:#1c1000; color:#fbbf24; font-weight:700; border:1px solid #7c3a00; }
+    .race-order-icon { width:22px; height:22px; object-fit:contain; border-radius:50%; flex-shrink:0; }
+    .race-result-btns { display:flex; gap:10px; justify-content:center; margin-top:14px; }
+    .race-restart-btn {
+      padding:10px 18px; border-radius:8px; border:none;
+      background:#b45309; color:#fff; font-size:14px; font-weight:700; cursor:pointer;
+    }
+    .race-restart-btn:hover { background:#d97706; }
+    .race-close-result-btn {
+      padding:10px 18px; border-radius:8px; border:none;
+      background:#374151; color:#fff; font-size:14px; cursor:pointer;
+    }
+    .race-toast {
+      position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+      background:#1c1400; color:#fbbf24; border:1px solid #7c3a00;
+      padding:8px 16px; border-radius:8px; z-index:10000; font-size:13px; pointer-events:none;
+    }
+
+    /* ── Dungeon Survival 미니게임 ── */
+    .dg-modal {
+      position:fixed; inset:0; z-index:9100;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .dg-modal.hidden { display:none; }
+    .dg-overlay {
+      position:absolute; inset:0;
+      background:rgba(0,0,0,.82); backdrop-filter:blur(4px);
+    }
+    .dg-panel {
+      position:relative; z-index:1;
+      background:#0e0e1a; border:1px solid #2d2d4a;
+      border-radius:14px; overflow:hidden;
+      width:min(96vw,620px); height:min(90vh,680px);
+      display:flex; flex-direction:column;
+      box-shadow:0 8px 40px rgba(0,0,0,.7);
+    }
+    .dg-screen {
+      flex:1; display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      padding:24px 20px; gap:12px; text-align:center;
+    }
+    .dg-screen.hidden { display:none; }
+    .dg-entry-title { font-size:24px; font-weight:800; color:#c4b5fd; }
+    .dg-entry-desc  { font-size:13px; color:#9ca3af; line-height:1.7; }
+    .dg-death-stats { font-size:15px; color:#d1d5db; line-height:2; }
+    .dg-btn-gold {
+      padding:11px 28px; border-radius:10px; border:none;
+      background:#7c3aed; color:#fff; font-size:15px; font-weight:700;
+      cursor:pointer; transition:.15s; width:100%; max-width:280px;
+    }
+    .dg-btn-gold:hover { background:#6d28d9; }
+    .dg-btn-ghost {
+      padding:9px 20px; border-radius:8px;
+      border:1px solid #374151; background:none;
+      color:#9ca3af; font-size:13px; cursor:pointer; transition:.15s;
+    }
+    .dg-btn-ghost:hover { background:#1f2937; color:#fff; }
+    .dg-hud {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:7px 12px; background:#0a0a14;
+      border-bottom:1px solid #1f2937; flex-shrink:0; gap:10px;
+    }
+    .dg-hud-l { display:flex; align-items:center; gap:6px; flex:1; }
+    .dg-hud-r { display:flex; align-items:center; gap:10px; }
+    .dg-hp-bg  { flex:1; height:10px; background:#1f2937; border-radius:5px; overflow:hidden; min-width:80px; max-width:160px; }
+    .dg-hp-fill { height:100%; background:linear-gradient(90deg,#22c55e,#4ade80); border-radius:5px; transition:width .15s; }
+    .dg-hud-txt { font-size:12px; font-weight:700; color:#e5e7eb; white-space:nowrap; }
+    .dg-x-btn {
+      width:26px; height:26px; border-radius:6px;
+      border:none; background:#7f1d1d; color:#fff;
+      font-size:13px; cursor:pointer; flex-shrink:0;
+    }
+    .dg-canvas { display:block; width:100%; flex:1; }
+    .dg-toast {
+      position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+      background:#1e1e30; color:#e5e7eb; border:1px solid #4b5563;
+      padding:7px 18px; border-radius:8px; font-size:13px;
+      pointer-events:none; z-index:5; white-space:nowrap;
+    }
+    .dg-toast.hidden { display:none; }
 
     /* ── 상품교환권 섹션 ── */
     .exc-section {
@@ -1294,6 +1464,8 @@
             <button class="mg-popup-btn" id="miniGameMemory">🃏 기억력</button>
             <button class="mg-popup-btn" id="miniGameSlot">🎰 슬롯</button>
             <button class="mg-popup-btn" id="miniGameArchery">🏹 활쏘기</button>
+            <button class="mg-popup-btn" id="miniGameRace">🏇 몬스터 레이스</button>
+            <button class="mg-popup-btn" id="miniGameDungeon">🏰 던전</button>
           </div>
         </div>
         <div id="distPanel">

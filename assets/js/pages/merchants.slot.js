@@ -33,20 +33,23 @@ const SYMBOLS = {
 };
 const SYMBOL_IDS = Object.keys(SYMBOLS);
 
-const ENTRY_COST     = 100;
+const BET_OPTIONS    = [10, 20, 50, 100];
+const DEFAULT_BET    = 10;
 const AUTO_SPIN_COUNT = 10;
 const REEL_GAP_MS    = 500;
 const MIN_SPIN_MS    = 1800;
 const CYCLE_MS       = 100;
 
 const RARITY_COLOR = { normal: '#ccc', rare: '#4af', hero: '#fa4', legend: '#fd1' };
+// Outcome labels use {bet} placeholder — filled at runtime with actual reward
 const OUTCOME_LABELS = {
-  normal_match: '일반 트리플! +300',
-  rare_match:   '레어 트리플! +1000',
-  hero_match:   '영웅 트리플! +5000',
-  jackpot:      '🎉 잭팟!!!',
-  two_match:    '2개 일치! +150',
-  miss:         '아쉽네요...',
+  normal_match: (r) => `일반 트리플! +${r} 💰`,
+  rare_match:   (r) => `레어 트리플! +${r} 💰`,
+  hero_match:   (r) => `영웅 트리플! +${r} 💰`,
+  jackpot:      (r) => `🎉 잭팟! +${r} 💰`,
+  two_normal:   (r) => `2개 일치! +${r} 💰`,
+  two_match:    (r) => `레어 2개 일치! +${r} 💰`,
+  miss:         ()  => '아쉽네요...',
 };
 
 // ── SlotMachine 클래스 ───────────────────────────────────────────────────────
@@ -70,6 +73,7 @@ class SlotMachine {
     this._spinning   = false;
     this._autoMode   = false;
     this._autoLeft   = 0;
+    this._bet        = DEFAULT_BET;
 
     this._buildModal();
     this._bindEvents();
@@ -106,15 +110,21 @@ class SlotMachine {
 
         <div class="sm-paytable">
           <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#fd1">🏆 황금탑 × 3</span><span class="sm-pay-val">JACKPOT</span></div>
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#fa4">⭐ 영웅상점 × 3</span><span class="sm-pay-val">+5000</span></div>
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#4af">💎 레어상점 × 3</span><span class="sm-pay-val">+1000</span></div>
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#ccc">🏪 일반상점 × 3</span><span class="sm-pay-val">+300</span></div>
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#aaa">2개 일치</span><span class="sm-pay-val">+150</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#fa4">⭐ 영웅상점 × 3</span><span class="sm-pay-val">×500 bet</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#4af">💎 레어상점 × 3</span><span class="sm-pay-val">×100 bet</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#ccc">🏪 일반상점 × 3</span><span class="sm-pay-val">×30 bet</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#4af">💎 레어+ 2개 일치</span><span class="sm-pay-val">×15 bet</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#aaa">🏪 일반 2개 일치</span><span class="sm-pay-val">×3 bet</span></div>
+        </div>
+
+        <div class="sm-bet-row" id="smBetRow">
+          <span class="sm-bet-label">배팅:</span>
+          ${BET_OPTIONS.map(b => `<button class="sm-bet-btn${b===DEFAULT_BET?' active':''}" data-bet="${b}">${b} 💰</button>`).join('')}
         </div>
 
         <div class="sm-controls">
           <button class="sm-btn sm-btn-free" id="smFreeBtn">🎁 무료 스핀</button>
-          <button class="sm-btn sm-btn-spin" id="smSpinBtn">🎰 스핀 (−${ENTRY_COST} 💰)</button>
+          <button class="sm-btn sm-btn-spin" id="smSpinBtn">🎰 스핀 (−${DEFAULT_BET} 💰)</button>
           <button class="sm-btn sm-btn-auto" id="smAutoBtn">⚡ 자동 ×${AUTO_SPIN_COUNT}</button>
         </div>
 
@@ -147,6 +157,14 @@ class SlotMachine {
     document.getElementById('smSpinBtn')?.addEventListener('click',  () => this._doSpin(false));
     document.getElementById('smFreeBtn')?.addEventListener('click',  () => this._doSpin(true));
     document.getElementById('smAutoBtn')?.addEventListener('click',  () => this._startAuto());
+    document.getElementById('smBetRow')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-bet]');
+      if (!btn || this._spinning) return;
+      this._bet = parseInt(btn.dataset.bet, 10);
+      document.querySelectorAll('.sm-bet-btn').forEach(b => b.classList.toggle('active', b === btn));
+      const spinBtn = document.getElementById('smSpinBtn');
+      if (spinBtn) spinBtn.textContent = `🎰 스핀 (−${this._bet} 💰)`;
+    });
   }
 
   // ── 공개 API ───────────────────────────────────────────────────────────────
@@ -225,8 +243,10 @@ class SlotMachine {
   async _doSpin(isFree) {
     if (this._spinning) return;
 
+    const betAmt = isFree ? 10 : this._bet; // free spin always uses min bet for reward calc
+
     if (!isFree) {
-      const ok = this._spendGold(ENTRY_COST);
+      const ok = this._spendGold(betAmt);
       if (!ok) {
         this._showToast('골드가 부족합니다!');
         return;
@@ -252,8 +272,7 @@ class SlotMachine {
       this._setControls(true);
       const msg = err.message === 'FREE_USED' ? '오늘 무료 스핀은 이미 사용했습니다.' : '오류가 발생했습니다.';
       this._showToast(msg);
-      // 골드 환불
-      if (!isFree) this._addGold(ENTRY_COST);
+      if (!isFree) this._addGold(betAmt);
       return;
     }
 
@@ -270,16 +289,19 @@ class SlotMachine {
 
     await this._delay(200);
 
-    // 결과 처리
+    // 결과 처리 — reward scaled by bet multiplier (server base = 10 coins)
+    const mult = betAmt / 10;
     if (result.outcome === 'jackpot') {
-      this._onJackpot(result);
+      this._onJackpot(result, mult);
     } else if (result.reward > 0) {
-      this._addGold(result.reward);
+      const actualReward = Math.round(result.reward * mult);
+      this._addGold(actualReward);
       this._playSound('slot_win');
-      this._showToast(OUTCOME_LABELS[result.outcome] ?? `+${result.reward}`);
+      const labelFn = OUTCOME_LABELS[result.outcome];
+      this._showToast(labelFn ? labelFn(actualReward) : `+${actualReward} 💰`);
     } else {
       this._playSound('miss');
-      this._showToast(OUTCOME_LABELS.miss);
+      this._showToast(OUTCOME_LABELS.miss());
     }
 
     if (isFree) this._markFreeUsed();
@@ -310,25 +332,24 @@ class SlotMachine {
   }
 
   // ── 잭팟 연출 ──────────────────────────────────────────────────────────────
-  _onJackpot(result) {
-    this._addGold(result.jackpotWon);
+  _onJackpot(result, mult = 1) {
+    const won = Math.round(result.jackpotWon * mult);
+    this._addGold(won);
     this._playSound('levelup');
     if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 100, 50, 200]);
 
-    // 잭팟 전체화면 연출
     if (this._jackpotAnim) {
       this._jackpotAnim.classList.remove('hidden');
       this._jackpotAnim.querySelector('.sm-jackpot-text').textContent =
-        `🏆 JACKPOT +${result.jackpotWon} 💰 🏆`;
+        `🏆 JACKPOT +${won} 💰 🏆`;
       setTimeout(() => this._jackpotAnim?.classList.add('hidden'), 3500);
     }
 
-    // 패널 흔들기
     const panel = this._modal?.querySelector('.sm-panel');
     panel?.classList.add('sm-shake');
     setTimeout(() => panel?.classList.remove('sm-shake'), 600);
 
-    this._showToast(`🎉 잭팟! +${result.jackpotWon} 골드!`);
+    this._showToast(`🎉 잭팟! +${won} 💰`);
   }
 
   // ── UI 헬퍼 ───────────────────────────────────────────────────────────────

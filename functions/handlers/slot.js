@@ -32,10 +32,16 @@ const SYMBOLS = [
 ];
 
 const TOTAL_WEIGHT         = SYMBOLS.reduce((s, x) => s + x.weight, 0); // 100
-const ENTRY_COST           = 100;
+const ENTRY_COST           = 10;  // minimum bet (client multiplies reward by bet/10)
 const JACKPOT_CONTRIBUTION = 10;
 const JACKPOT_BASE         = 1000;
-const REWARDS              = { normal: 300, rare: 1000, hero: 5000, two_match: 150 };
+const REWARDS              = {
+  normal:         300,
+  rare:           1000,
+  hero:           5000,
+  two_normal:     30,   // 2× normal symbol
+  two_match:      150,  // 2× rare+ symbol
+};
 const JACKPOT_DOC          = 'slot_config/jackpot';
 
 function pickSymbol() {
@@ -87,14 +93,18 @@ async function spinSlot(uid, { isFree = false } = {}) {
       outcome = `${rarity}_match`;
     }
   } else {
-    // 2개 일치는 rare 이상 심볼에서만 당첨 (normal 2매치 제외 → 승률 ~17% → ~5%)
+    // 2개 일치: normal → two_normal(30×mult), rare+ → two_match(150×mult)
     const counts = {};
     for (const id of ids) counts[id] = (counts[id] ?? 0) + 1;
     const matchId = Object.entries(counts).find(([, c]) => c >= 2)?.[0];
     if (matchId) {
       const matchSym = reels.find(s => s.id === matchId);
-      if (matchSym && matchSym.rarity !== 'normal') {
-        reward = REWARDS.two_match; outcome = 'two_match';
+      if (matchSym) {
+        if (matchSym.rarity === 'normal') {
+          reward = REWARDS.two_normal; outcome = 'two_normal';
+        } else {
+          reward = REWARDS.two_match; outcome = 'two_match';
+        }
       }
     }
   }

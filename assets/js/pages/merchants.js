@@ -29,6 +29,8 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
 import { initMemoryGame, openMemoryGame } from './merchants.memory.js';
 import { initSlotMachine, openSlotMachine } from './merchants.slot.js';
 import { initArcheryGame, openArcheryGame } from './merchants.archery.js';
+import { initRaceGame, openRaceGame } from './merchants.race.js';
+import { initDungeonGame, openDungeonGame } from './merchants.dungeon.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
          sendPlayerAttack, sendPlayerRevive, sendPlayerSkill, sendDropCollect,
@@ -244,7 +246,7 @@ function initMap() {
 
   // 전체화면 진입/종료 시 position:fixed 모달들을 fullscreen 요소 안으로 이동
   // (HUD·스킬바는 Google Maps Control이므로 자동으로 fullscreen에 포함됨)
-  const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal'];
+  const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal', 'raceModal'];
   document.addEventListener('fullscreenchange', () => {
     const fs = document.fullscreenElement;
     const dest = fs || document.body;
@@ -2795,6 +2797,18 @@ async function init() {
     onPlaySound: (type)   => playSound(type),
   });
 
+  initRaceGame({
+    onSpendGold: (amount) => spendPlayerGold(amount),
+    onAddGold:   (amount) => addPlayerGold(amount),
+    onPlaySound: (type)   => playSound(type),
+  });
+
+  initDungeonGame({
+    onSpendGold: (amount) => spendPlayerGold(amount),
+    onAddGold:   (amount) => addPlayerGold(amount),
+    onPlaySound: (type)   => playSound(type),
+  });
+
   // 미니게임 버튼 — 팝업 서브메뉴
   (function () {
     const popup = $('miniGamePopup');
@@ -2813,6 +2827,14 @@ async function init() {
     $('miniGameArchery')?.addEventListener('click', () => {
       popup?.classList.add('hidden');
       openArcheryGame();
+    });
+    $('miniGameRace')?.addEventListener('click', () => {
+      popup?.classList.add('hidden');
+      openRaceGame();
+    });
+    $('miniGameDungeon')?.addEventListener('click', () => {
+      popup?.classList.add('hidden');
+      openDungeonGame();
     });
     // 팝업 외부 클릭 시 닫기
     document.addEventListener('click', () => popup?.classList.add('hidden'));
