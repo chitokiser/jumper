@@ -2,10 +2,12 @@
 // Dungeon Survival Mini-Game
 'use strict';
 
-const D_ENTRY    = 100;
-const D_WORLD_R  = 1000;
-const D_MAX_EACH = 5;
-const D_RESPAWN  = 10000; // ms
+const D_ENTRY        = 100;
+const D_WORLD_R      = 1000;
+const D_MAX_EACH     = 5;
+const D_RESPAWN      = 10000; // ms
+const D_FREE_PER_DAY = 3;
+const D_FREE_KEY     = 'dg_free_tickets';
 
 const D_MDEFS = [
   { id:'orc',    label:'Orc',    src:'/assets/images/slot/1.png',  maxHp:120, atk:15, spd:65,  range:80,  ranged:false, xp:20, coins:5  },
@@ -49,6 +51,49 @@ class DungeonGame {
     this._buildDOM();
   }
 
+  // ── Free ticket helpers ───────────────────────────────────────────────────────
+  _todayStr() { return new Date().toISOString().slice(0,10); }
+
+  _loadFreeData() {
+    try {
+      const raw = localStorage.getItem(D_FREE_KEY);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj.date === this._todayStr()) return obj;
+      }
+    } catch {}
+    return { date: this._todayStr(), used: 0 };
+  }
+
+  _getFreeLeft() {
+    return Math.max(0, D_FREE_PER_DAY - this._loadFreeData().used);
+  }
+
+  _useFreeTicket() {
+    const obj = this._loadFreeData();
+    obj.used = Math.min(D_FREE_PER_DAY, obj.used + 1);
+    localStorage.setItem(D_FREE_KEY, JSON.stringify(obj));
+  }
+
+  _updateTicketUI() {
+    const left = this._getFreeLeft();
+    const badge = document.getElementById('dgTicketBadge');
+    const freeBtn = document.getElementById('dgFreeEnterBtn');
+    const freeRespBtn = document.getElementById('dgFreeRespawnBtn');
+    if (badge) {
+      badge.textContent = `🎟️ ${left}/${D_FREE_PER_DAY} Free Today`;
+      badge.className = 'dg-ticket-badge' + (left > 0 ? ' dg-ticket-avail' : ' dg-ticket-empty');
+    }
+    if (freeBtn) {
+      freeBtn.textContent = `🎟️ Free Entry (${left} left)`;
+      freeBtn.classList.toggle('hidden', left === 0);
+    }
+    if (freeRespBtn) {
+      freeRespBtn.textContent = `🎟️ Free Re-enter (${left} left)`;
+      freeRespBtn.classList.toggle('hidden', left === 0);
+    }
+  }
+
   // ── DOM ──────────────────────────────────────────────────────────────────────
   _buildDOM() {
     if (document.getElementById('dungeonModal')) {
@@ -66,7 +111,9 @@ class DungeonGame {
         <div class="dg-screen" id="dgEntry">
           <div style="font-size:56px;margin-bottom:8px">🏰</div>
           <div class="dg-entry-title">Dungeon Survival</div>
-          <div class="dg-entry-desc">100 💰 entry fee • 6 monster types<br>Cannon & archer towers auto-defend<br>Click to move • Click monster to attack</div>
+          <div class="dg-entry-desc">100 💰 entry fee • 6 monster types<br>Cannon &amp; archer towers auto-defend<br>Click to move • Click monster to attack</div>
+          <div class="dg-ticket-badge" id="dgTicketBadge">🎟️ 3/3 Free Today</div>
+          <button class="dg-btn-free"  id="dgFreeEnterBtn">🎟️ Free Entry (3 left)</button>
           <button class="dg-btn-gold"  id="dgEnterBtn">⚔️ Enter Dungeon (100 💰)</button>
           <button class="dg-btn-ghost" id="dgEntryClose">Cancel</button>
         </div>
@@ -90,6 +137,7 @@ class DungeonGame {
           <div style="font-size:56px;margin-bottom:8px">💀</div>
           <div class="dg-entry-title" style="color:#f87171">You Died</div>
           <div class="dg-death-stats" id="dgDeathStats"></div>
+          <button class="dg-btn-free"  id="dgFreeRespawnBtn">🎟️ Free Re-enter (3 left)</button>
           <button class="dg-btn-gold"  id="dgRespawnBtn">🔄 Re-enter (100 💰)</button>
           <button class="dg-btn-ghost" id="dgLeaveBtn">Leave Dungeon</button>
         </div>
@@ -103,11 +151,13 @@ class DungeonGame {
 
   _bindUI() {
     const $ = id => this._modal.querySelector('#' + id);
-    $('dgEnterBtn')  ?.addEventListener('click', () => this._startGame());
-    $('dgEntryClose')?.addEventListener('click', () => this.close());
-    $('dgExitBtn')   ?.addEventListener('click', () => this._confirmExit());
-    $('dgRespawnBtn') ?.addEventListener('click', () => this._tryRespawn());
-    $('dgLeaveBtn')  ?.addEventListener('click', () => this.close());
+    $('dgFreeEnterBtn')  ?.addEventListener('click', () => this._startGame(true));
+    $('dgEnterBtn')      ?.addEventListener('click', () => this._startGame(false));
+    $('dgEntryClose')    ?.addEventListener('click', () => this.close());
+    $('dgExitBtn')       ?.addEventListener('click', () => this._confirmExit());
+    $('dgFreeRespawnBtn')?.addEventListener('click', () => this._tryRespawn(true));
+    $('dgRespawnBtn')    ?.addEventListener('click', () => this._tryRespawn(false));
+    $('dgLeaveBtn')      ?.addEventListener('click', () => this.close());
     this._canvas.addEventListener('click',    e => this._onCanvasClick(e));
     this._canvas.addEventListener('touchend', e => {
       e.preventDefault();
@@ -116,7 +166,7 @@ class DungeonGame {
   }
 
   // ── Screens ──────────────────────────────────────────────────────────────────
-  open() { this._modal.classList.remove('hidden'); this._show('dgEntry'); }
+  open() { this._modal.classList.remove('hidden'); this._show('dgEntry'); this._updateTicketUI(); }
   close() { this._stop(); this._modal.classList.add('hidden'); }
 
   _show(id) {
@@ -174,8 +224,13 @@ class DungeonGame {
   }
 
   // ── Game lifecycle ────────────────────────────────────────────────────────────
-  _startGame() {
-    if (!this._spend(D_ENTRY)) { this._toast('Not enough coins (100 required)'); return; }
+  _startGame(isFree = false) {
+    if (isFree) {
+      if (this._getFreeLeft() <= 0) { this._toast('No free tickets left today'); return; }
+      this._useFreeTicket();
+    } else {
+      if (!this._spend(D_ENTRY)) { this._toast('Not enough coins (100 required)'); return; }
+    }
     this._initState();
     this._initAudio();
     this._show('dgGame');
@@ -577,15 +632,22 @@ class DungeonGame {
       <div>Coins earned: <b>${p.coins} 💰</b></div>
       <div>XP earned: <b>${p.xp}</b></div>`;
     this._show('dgDeath');
+    this._updateTicketUI();
   }
 
-  _tryRespawn() {
-    if (!this._spend(D_ENTRY)) { this._toast('Not enough coins (100 required)'); return; }
+  _tryRespawn(isFree = false) {
+    if (isFree) {
+      if (this._getFreeLeft() <= 0) { this._toast('No free tickets left today'); return; }
+      this._useFreeTicket();
+    } else {
+      if (!this._spend(D_ENTRY)) { this._toast('Not enough coins (100 required)'); return; }
+    }
     this._initState();
     this._initAudio();
     this._show('dgGame');
     this._resizeCanvas();
     this._run();
+    this._updateTicketUI();
   }
 
   _toast(msg) {
