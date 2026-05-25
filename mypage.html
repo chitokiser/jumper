@@ -141,8 +141,9 @@
 
     /* ── 언어 전환 ── */
     .mp-lang-switcher{display:flex;gap:6px;justify-content:flex-end;padding:8px 16px 0;}
-    .mp-lang-btn{padding:4px 12px;border:1px solid var(--border,#e5e7eb);border-radius:20px;background:transparent;font-size:0.78rem;font-weight:600;cursor:pointer;color:var(--muted,#6b7280);transition:all .15s;}
-    .mp-lang-btn.active{background:var(--accent,#7c3aed);color:#fff;border-color:var(--accent,#7c3aed);}
+    .mp-lang-btn{padding:3px 6px;border:1px solid var(--border,#e5e7eb);border-radius:8px;background:transparent;font-size:1.3rem;line-height:1;cursor:pointer;transition:all .15s;}
+    .mp-lang-btn:hover{background:var(--accent-light,#ede9fe);border-color:var(--accent,#7c3aed);transform:scale(1.15);}
+    .mp-lang-btn.active{border-color:var(--accent,#7c3aed);box-shadow:0 0 6px rgba(124,58,237,.45);transform:scale(1.1);}
   </style>
 </head>
 <body>

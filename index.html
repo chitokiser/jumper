@@ -217,9 +217,9 @@
 
     /* ── 언어 전환 위젯 ── */
     .lang-switcher{position:fixed;bottom:80px;right:16px;z-index:8888;display:flex;flex-direction:column;gap:4px;}
-    .lang-btn{padding:6px 10px;border:1px solid rgba(124,58,237,.35);border-radius:8px;background:rgba(255,255,255,.92);color:#6b7280;font-size:0.78rem;font-weight:700;cursor:pointer;transition:all .15s;backdrop-filter:blur(4px);}
-    .lang-btn:hover{background:var(--accent-light,#ede9fe);color:var(--accent,#7c3aed);border-color:var(--accent,#7c3aed);}
-    .lang-btn.is-active{background:var(--accent,#7c3aed);color:#fff;border-color:var(--accent,#7c3aed);}
+    .lang-btn{padding:4px 6px;border:1px solid rgba(124,58,237,.35);border-radius:8px;background:rgba(255,255,255,.92);font-size:1.4rem;line-height:1;cursor:pointer;transition:all .15s;backdrop-filter:blur(4px);}
+    .lang-btn:hover{background:var(--accent-light,#ede9fe);border-color:var(--accent,#7c3aed);transform:scale(1.15);}
+    .lang-btn.is-active{border-color:var(--accent,#7c3aed);box-shadow:0 0 8px rgba(124,58,237,.5);transform:scale(1.1);}
   </style>
 </head>
 <body>
@@ -438,9 +438,9 @@
   <div id="siteFooter"></div>
 
   <div class="lang-switcher" id="langSwitcher">
-    <button class="lang-btn is-active" data-lang-btn="vi" onclick="setTownLang('vi')">VI</button>
-    <button class="lang-btn" data-lang-btn="en" onclick="setTownLang('en')">EN</button>
-    <button class="lang-btn" data-lang-btn="ko" onclick="setTownLang('ko')">KO</button>
+    <button class="lang-btn is-active" data-lang-btn="vi" onclick="setTownLang('vi')" title="Tiếng Việt">🇻🇳</button>
+    <button class="lang-btn" data-lang-btn="en" onclick="setTownLang('en')" title="English">🇬🇧</button>
+    <button class="lang-btn" data-lang-btn="ko" onclick="setTownLang('ko')" title="한국어">🇰🇷</button>
   </div>
 
   <script type="module" src="/assets/js/pages/community-preview.js"></script>

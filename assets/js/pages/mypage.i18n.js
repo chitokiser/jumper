@@ -367,8 +367,9 @@ function renderLangSwitcher(containerId) {
   if (!el) return;
 
   el.innerHTML = SUPPORTED_LANGS.map((lang) => {
-    const labels = { ko: '한국어', en: 'EN', vi: 'VI' };
-    return `<button class="mp-lang-btn${lang === (window.LANG || 'ko') ? ' active' : ''}" data-lang="${lang}">${labels[lang]}</button>`;
+    const flags  = { ko: '🇰🇷', en: '🇬🇧', vi: '🇻🇳' };
+    const titles = { ko: '한국어', en: 'English', vi: 'Tiếng Việt' };
+    return `<button class="mp-lang-btn${lang === (window.LANG || 'ko') ? ' active' : ''}" data-lang="${lang}" title="${titles[lang]}">${flags[lang]}</button>`;
   }).join('');
 
   el.addEventListener('click', (e) => {
