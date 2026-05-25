@@ -489,7 +489,14 @@ class MonsterRace {
 
   _placeBet() {
     if (!this._spend(this._betAmount)) {
-      this._showToast('코인이 부족합니다!');
+      const btn = document.getElementById('racePlaceBet');
+      btn.textContent = `❌ Not enough coins! (Need ${this._betAmount})`;
+      btn.style.background = '#7f1d1d';
+      setTimeout(() => {
+        btn.style.background = '';
+        this._updateBetUI();
+      }, 2000);
+      this._showModalMsg(`❌ Not enough coins!\nYou need ${this._betAmount} coins to place this bet.`);
       return;
     }
     this._lockedOdds = this._calcOdds(this._betMonster, this._betAmount);
@@ -501,9 +508,9 @@ class MonsterRace {
     const m    = MDEFS.find(x => x.id === this._betMonster);
     const mult = this._betType === 'win' ? 1 : this._betType === 'place' ? PLACE_MULT : SHOW_MULT;
     const est  = Math.floor(this._betAmount * this._lockedOdds * mult);
-    btn.textContent = `✅ 베팅 완료! 예상 +${est}코인`;
+    btn.textContent = `✅ Bet placed! Est. +${est} coins`;
     btn.disabled = true;
-    this._showToast(`${m.label}에 ${this._betAmount}코인 베팅 완료! (${this._lockedOdds.toFixed(2)}x)`);
+    this._showModalMsg(`✅ Bet placed on ${m.label}!\n${this._betAmount} coins · odds ${this._lockedOdds.toFixed(2)}x`);
   }
 
   // ── 레이스 페이즈 ─────────────────────────────────────────────────────────────
@@ -1028,13 +1035,28 @@ class MonsterRace {
     // 코인 결과 메시지 (베팅한 경우만 표시)
     let betMsg = '';
     if (this._betLocked && this._betMonster) {
-      const betM  = MDEFS.find(x => x.id === this._betMonster);
-      const place = this._finishOrder.indexOf(this._betMonster) + 1;
+      const betM   = MDEFS.find(x => x.id === this._betMonster);
+      const place  = this._finishOrder.indexOf(this._betMonster) + 1;
+      const net    = won ? payout - this._betAmount : -this._betAmount;
+      const netStr = net >= 0 ? `+${net}` : `${net}`;
       if (won) {
-        betMsg = `<div class="race-win-msg">🎉 ${betM.label} ${place}위! +${payout} 코인 획득!</div>`;
+        betMsg = `
+          <div class="race-win-msg">
+            🎉 ${betM.label} finished ${place}${_ordinal(place)}!
+            <div style="font-size:14px;margin-top:6px;opacity:.85">
+              Received: +${payout} 🪙 &nbsp;|&nbsp; Bet: −${this._betAmount} 🪙
+            </div>
+            <div style="font-size:22px;margin-top:4px">Net: ${netStr} 🪙</div>
+          </div>`;
       } else {
-        betMsg = `<div class="race-lose-msg">😢 ${betM.label} ${place}위... ${this._betAmount}코인 손실</div>`;
+        betMsg = `
+          <div class="race-lose-msg">
+            😢 ${betM.label} finished ${place}${_ordinal(place)}
+            <div style="font-size:18px;font-weight:800;margin-top:6px">Net: ${netStr} 🪙</div>
+          </div>`;
       }
+    } else if (!this._betLocked) {
+      betMsg = `<div class="race-no-bet-msg">👀 You didn't place a bet this round.</div>`;
     }
 
     const orderRows = this._finishOrder.map((id, i) => {
@@ -1067,6 +1089,17 @@ class MonsterRace {
     document.getElementById('raceCloseResult').addEventListener('click', () => this.close());
   }
 
+  _showModalMsg(msg) {
+    // Shows inside the race panel so it's always visible above the modal overlay
+    const existing = this._modal?.querySelector('.race-inline-msg');
+    if (existing) existing.remove();
+    const el = document.createElement('div');
+    el.className = 'race-inline-msg';
+    el.innerHTML = msg.replace(/\n/g, '<br>');
+    this._modal?.querySelector('.race-panel')?.appendChild(el);
+    setTimeout(() => el.remove(), 2800);
+  }
+
   _showToast(msg) {
     const t = document.createElement('div');
     t.className   = 'race-toast';
@@ -1080,6 +1113,12 @@ class MonsterRace {
 
 function _traitLabel(t) {
   return { sprinter:'⚡ 초반 강자', steady:'🛡️ 안정형', charger:'💥 중반 돌진', finisher:'🔥 후반 강자', chaos:'🎲 랜덤' }[t] || t;
+}
+
+function _ordinal(n) {
+  const v = n % 10, h = n % 100;
+  if (h >= 11 && h <= 13) return 'th';
+  return ['th','st','nd','rd'][v] || 'th';
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

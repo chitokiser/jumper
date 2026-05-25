@@ -71,22 +71,22 @@ function _mountHdrLang() {
   const container = document.getElementById('hdrLangSwitcher');
   if (!container) return;
   const LANGS = ['vi', 'en', 'ko'];
+  const FLAGS = { vi: '🇻🇳', en: '🇬🇧', ko: '🇰🇷' };
   const saved = localStorage.getItem('town_lang');
-  const cur = LANGS.includes(saved) ? saved : 'en';
-  container.querySelectorAll('[data-hdr-lang]').forEach(function(btn) {
-    btn.classList.toggle('is-active', btn.dataset.hdrLang === cur);
-  });
-  container.addEventListener('click', function(e) {
-    var btn = e.target.closest('[data-hdr-lang]');
-    if (!btn) return;
-    var lang = btn.dataset.hdrLang;
-    if (!LANGS.includes(lang)) return;
-    localStorage.setItem('town_lang', lang);
+  let cur = LANGS.includes(saved) ? saved : 'en';
+
+  function syncDesktop(lang) {
     container.querySelectorAll('[data-hdr-lang]').forEach(function(b) {
       b.classList.toggle('is-active', b.dataset.hdrLang === lang);
     });
+  }
+
+  function applyLang(lang) {
+    cur = lang;
+    localStorage.setItem('town_lang', lang);
+    syncDesktop(lang);
+    cycleBtn.textContent = FLAGS[lang];
     window.dispatchEvent(new CustomEvent('lang:change', { detail: { lang: lang } }));
-    // 페이지별 언어 재적용: 재로드 또는 이벤트 처리
     if (typeof window.setMerchantsLang === 'function') {
       window.setMerchantsLang(lang);
     } else if (typeof window.setTownLang === 'function') {
@@ -94,6 +94,28 @@ function _mountHdrLang() {
     } else {
       location.reload();
     }
+  }
+
+  syncDesktop(cur);
+
+  // Mobile: single flag button that cycles through languages
+  const cycleBtn = document.createElement('button');
+  cycleBtn.className = 'hdr-lang-cycle';
+  cycleBtn.textContent = FLAGS[cur];
+  cycleBtn.title = 'Change language';
+  container.appendChild(cycleBtn);
+  cycleBtn.addEventListener('click', function() {
+    const next = LANGS[(LANGS.indexOf(cur) + 1) % LANGS.length];
+    applyLang(next);
+  });
+
+  // Desktop: click on individual flag buttons
+  container.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-hdr-lang]');
+    if (!btn) return;
+    var lang = btn.dataset.hdrLang;
+    if (!LANGS.includes(lang)) return;
+    applyLang(lang);
   });
 }
 

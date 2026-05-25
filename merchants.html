@@ -1070,6 +1070,18 @@
       box-shadow:0 4px 20px #0007; animation:raceToastIn .2s ease;
     }
     @keyframes raceToastIn { from { opacity:0; transform:translateX(-50%) translateY(6px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+    .race-inline-msg {
+      position:absolute; bottom:70px; left:50%; transform:translateX(-50%);
+      background:#1c1000ee; color:#fbbf24; border:1px solid #f59e0b88;
+      padding:11px 20px; border-radius:10px; z-index:20; font-size:13px;
+      font-weight:600; text-align:center; white-space:pre-line; pointer-events:none;
+      box-shadow:0 4px 24px #0009; animation:raceToastIn .2s ease;
+      max-width:calc(100% - 32px);
+    }
+    .race-no-bet-msg {
+      color:#9ca3af; font-size:14px; margin:10px 0; padding:8px 12px;
+      background:#ffffff08; border-radius:8px; text-align:center;
+    }
 
     /* ── Dungeon Survival 미니게임 ── */
     .dg-modal {
@@ -1506,6 +1518,7 @@
         <div id="gsStatusBadge"></div>
         <button id="btnInventory" class="map-hud-btn" title="Túi đồ" style="position:relative">🎒<span id="dropNearbyBadge" class="drop-nearby-badge hidden"></span></button>
         <button id="btnDetector" class="map-hud-btn" title="보물 탐지기 ON/OFF">📡</button>
+        <button id="btnArScan" class="map-hud-btn" title="AR Treasure Scanner" onclick="location.href='/ar-scan.html'">📷</button>
         <button id="btnFullscreen" class="map-hud-btn" title="Toàn màn hình">⛶</button>
         <div style="position:relative;">
           <button id="skillBtnMiniGame" class="map-hud-btn" title="미니게임">🎮</button>

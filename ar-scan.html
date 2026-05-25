@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AR Treasure Scanner</title>
+  <meta name="theme-color" content="#000" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Noto Sans KR', 'Segoe UI', sans-serif; color: #fff; }
+
+    /* ── Permission screen ─────────────────────────────────────────────────── */
+    #permScreen {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 50% 30%, rgba(245,158,11,.18), transparent 70%),
+                  linear-gradient(180deg, #080614, #12082a);
+      padding: 32px 24px; text-align: center;
+    }
+    #permScreen h1 { font-size: 2rem; margin-bottom: 12px; color: #fde68a; }
+    #permScreen p  { color: #d97706; font-size: .9rem; line-height: 1.6; margin-bottom: 28px; max-width: 320px; }
+    #startBtn {
+      background: linear-gradient(90deg, #92400e, #f59e0b, #fde68a, #f59e0b, #92400e);
+      background-size: 250% 100%; animation: shimmer 3s linear infinite;
+      color: #1c0f00; font-weight: 700; border: none; cursor: pointer;
+      padding: 14px 36px; border-radius: 14px; font-size: 1rem; letter-spacing: .04em;
+    }
+    @keyframes shimmer { 0%{background-position:0% 0} 100%{background-position:250% 0} }
+    #permStatus { margin-top: 16px; font-size: .82rem; color: #f59e0b; min-height: 20px; }
+
+    /* ── AR screen ─────────────────────────────────────────────────────────── */
+    #arScreen { position: fixed; inset: 0; display: none; }
+    #arVideo  { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    #arCanvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+
+    /* ── Top HUD ───────────────────────────────────────────────────────────── */
+    #hud {
+      position: absolute; top: env(safe-area-inset-top, 0); left: 0; right: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: linear-gradient(180deg, rgba(0,0,0,.7), transparent);
+      z-index: 10; pointer-events: none;
+    }
+    #hudBack {
+      pointer-events: all; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.15);
+      color: #fff; border-radius: 50%; width: 38px; height: 38px; font-size: 1.1rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    #hudTitle { font-size: .78rem; color: #fde68a; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; }
+    #hudCount  { font-size: .78rem; color: #fbbf24; background: rgba(0,0,0,.4); padding: 4px 10px; border-radius: 12px; }
+
+    /* ── Radar bar ─────────────────────────────────────────────────────────── */
+    #radarBar {
+      position: absolute; top: 68px; left: 50%; transform: translateX(-50%);
+      width: min(340px, 90vw); height: 32px; z-index: 10; pointer-events: none;
+    }
+    #radarCanvas { width: 100%; height: 100%; }
+
+    /* ── Status ────────────────────────────────────────────────────────────── */
+    #arStatus {
+      position: absolute; bottom: 160px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,.6); color: #fbbf24; font-size: .78rem;
+      padding: 6px 14px; border-radius: 20px; white-space: nowrap; z-index: 10;
+      pointer-events: none; letter-spacing: .05em;
+    }
+
+    /* ── Claim panel ───────────────────────────────────────────────────────── */
+    #claimPanel {
+      position: absolute; bottom: env(safe-area-inset-bottom, 0); left: 0; right: 0;
+      padding: 20px 24px calc(20px + env(safe-area-inset-bottom, 0));
+      background: linear-gradient(0deg, rgba(0,0,0,.92) 80%, transparent);
+      z-index: 10; text-align: center; display: none;
+    }
+    #claimPanel.visible { display: block; }
+    #claimName { font-size: 1.1rem; font-weight: 700; color: #fde68a; margin-bottom: 6px; }
+    #claimDist { font-size: .8rem; color: #fbbf24; margin-bottom: 14px; }
+    #claimBtn {
+      width: 100%; max-width: 320px; padding: 14px; border-radius: 14px; border: none;
+      background: linear-gradient(90deg, #92400e, #f59e0b, #fde68a, #f59e0b, #92400e);
+      background-size: 250% 100%; animation: shimmer 3s linear infinite;
+      color: #1c0f00; font-weight: 700; font-size: 1rem; cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    #claimBtn:disabled { opacity: .55; animation: none; cursor: default; }
+    #claimResult { margin-top: 10px; font-size: .88rem; color: #86efac; min-height: 20px; }
+
+    /* ── Compass hint ──────────────────────────────────────────────────────── */
+    #compassHint {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      pointer-events: none; z-index: 9; opacity: .18;
+    }
+    #compassHint svg { width: 180px; height: 180px; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Permission / Start Screen ───────────────────────────────────────────── -->
+  <div id="permScreen">
+    <div style="font-size:5rem;margin-bottom:16px">📡</div>
+    <h1>AR Treasure Scanner</h1>
+    <p>Point your camera around to discover hidden treasure chests near your location.</p>
+    <button id="startBtn">📷 Start Scanning</button>
+    <p id="permStatus"></p>
+    <a href="/nfc-treasure.html" style="margin-top:24px;color:#6b7280;font-size:.8rem;text-decoration:underline">← Back</a>
+  </div>
+
+  <!-- ── AR Screen ────────────────────────────────────────────────────────────── -->
+  <div id="arScreen">
+    <video id="arVideo" autoplay playsinline muted></video>
+    <canvas id="arCanvas"></canvas>
+
+    <!-- compass decoration -->
+    <div id="compassHint" aria-hidden="true">
+      <svg viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="90" cy="90" r="88" stroke="#fbbf24" stroke-width="1"/>
+        <circle cx="90" cy="90" r="70" stroke="#fbbf24" stroke-width=".5" stroke-dasharray="4 6"/>
+        <text x="90" y="16" fill="#fbbf24" text-anchor="middle" font-size="11" font-family="sans-serif">N</text>
+        <text x="90" y="174" fill="#fbbf24" text-anchor="middle" font-size="11" font-family="sans-serif">S</text>
+        <text x="14" y="94" fill="#fbbf24" text-anchor="middle" font-size="11" font-family="sans-serif">W</text>
+        <text x="168" y="94" fill="#fbbf24" text-anchor="middle" font-size="11" font-family="sans-serif">E</text>
+      </svg>
+    </div>
+
+    <!-- Top HUD -->
+    <div id="hud">
+      <button id="hudBack">←</button>
+      <span id="hudTitle">📡 AR Scanner</span>
+      <span id="hudCount">—</span>
+    </div>
+
+    <!-- Radar bar -->
+    <div id="radarBar"><canvas id="radarCanvas" height="32"></canvas></div>
+
+    <!-- Status -->
+    <div id="arStatus">Locating...</div>
+
+    <!-- Claim panel -->
+    <div id="claimPanel">
+      <div id="claimName"></div>
+      <div id="claimDist"></div>
+      <button id="claimBtn">📦 Claim Treasure</button>
+      <div id="claimResult"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/js/pages/ar-scan.js"></script>
+</body>
+</html>

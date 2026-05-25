@@ -365,3 +365,19 @@
   box-shadow: 0 0 0 2px rgba(37,99,235,.25);
   transform: scale(1.1);
 }
+
+/* Mobile: single cycling flag — hides the 3-button row */
+.hdr-lang-cycle{
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+@media (max-width: 640px){
+  .hdr-lang-btn{ display: none !important; }
+  .hdr-lang-cycle{ display: inline-flex; align-items: center; }
+}

@@ -1,0 +1,449 @@
+// /assets/js/pages/ar-scan.js
+// AR 보물 스캐너 — 기존 treasure_boxes 컬렉션 + collectTreasureBox Cloud Function
+
+import { auth, db, functions } from '../firebase-init.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+// ── 상수 ──────────────────────────────────────────────────────────────────────
+const SCAN_RADIUS = 200;    // m: 이 반경 내 보물 로드
+const FOV_DEG     = 80;     // 수평 FOV (각도)
+const AIM_DEG     = 20;     // 이 각도 이내 → "조준" 판정
+const CHEST_BASE  = 72;     // px: 기본 보물상자 크기
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const permScreen  = document.getElementById('permScreen');
+const permStatus  = document.getElementById('permStatus');
+const startBtn    = document.getElementById('startBtn');
+const arScreen    = document.getElementById('arScreen');
+const arVideo     = document.getElementById('arVideo');
+const arCanvas    = document.getElementById('arCanvas');
+const arCtx       = arCanvas.getContext('2d');
+const radarCanvas = document.getElementById('radarCanvas');
+const radarCtx    = radarCanvas.getContext('2d');
+const hudBack     = document.getElementById('hudBack');
+const hudCount    = document.getElementById('hudCount');
+const arStatus    = document.getElementById('arStatus');
+const claimPanel  = document.getElementById('claimPanel');
+const claimName   = document.getElementById('claimName');
+const claimDist   = document.getElementById('claimDist');
+const claimBtn    = document.getElementById('claimBtn');
+const claimResult = document.getElementById('claimResult');
+
+// ── 상태 ──────────────────────────────────────────────────────────────────────
+let currentUser   = null;
+let userLat       = null;
+let userLng       = null;
+let compassHead   = 0;       // degrees: 0=North, CW
+let compassReady  = false;
+let nearbyBoxes   = [];
+let targetBox     = null;
+let rafId         = null;
+let gpsWatchId    = null;
+
+// ── 수학 헬퍼 ─────────────────────────────────────────────────────────────────
+function toRad(d) { return d * Math.PI / 180; }
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function bearing(lat1, lng1, lat2, lng2) {
+  const dLng = toRad(lng2 - lng1);
+  const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1))*Math.sin(toRad(lat2)) - Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+// -180 ~ +180 각도 차이
+function angleDiff(target, current) {
+  let d = (target - current + 360) % 360;
+  if (d > 180) d -= 360;
+  return d;
+}
+
+// ── GPS ───────────────────────────────────────────────────────────────────────
+function startGpsWatch() {
+  gpsWatchId = navigator.geolocation.watchPosition(
+    p => { userLat = p.coords.latitude; userLng = p.coords.longitude; },
+    () => {},
+    { enableHighAccuracy: true }
+  );
+}
+
+async function getGpsOnce() {
+  return new Promise((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      reject,
+      { enableHighAccuracy: true, timeout: 12000 }
+    )
+  );
+}
+
+// ── Firestore: 근처 박스 로드 ─────────────────────────────────────────────────
+async function loadNearbyBoxes(lat, lng) {
+  const snap = await getDocs(query(collection(db, 'treasure_boxes'), where('active', '==', true)));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(b => b.lat != null && b.lng != null && haversine(lat, lng, b.lat, b.lng) <= SCAN_RADIUS);
+}
+
+// ── 나침반 ────────────────────────────────────────────────────────────────────
+function setupCompass() {
+  const handler = e => {
+    compassReady = true;
+    if (e.webkitCompassHeading != null) {
+      compassHead = e.webkitCompassHeading;
+    } else if (e.alpha != null) {
+      compassHead = (360 - e.alpha) % 360;
+    }
+  };
+  if (typeof DeviceOrientationEvent !== 'undefined'
+      && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13+: must be called from user gesture — caller wraps this
+    DeviceOrientationEvent.requestPermission()
+      .then(s => { if (s === 'granted') window.addEventListener('deviceorientation', handler); })
+      .catch(() => {});
+  } else {
+    window.addEventListener('deviceorientation', handler);
+  }
+}
+
+// ── 카메라 ────────────────────────────────────────────────────────────────────
+async function startCamera() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+  });
+  arVideo.srcObject = stream;
+  await arVideo.play();
+}
+
+// ── Web Audio 성공 사운드 ──────────────────────────────────────────────────────
+function playSuccess() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523, 659, 784, 1047].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.value = f;
+      const t0 = ctx.currentTime + i * 0.12;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.3, t0 + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.4);
+      o.start(t0); o.stop(t0 + 0.4);
+    });
+  } catch (_) {}
+}
+
+// ── 파티클 (canvas 위에 DOM 파티클) ──────────────────────────────────────────
+function spawnParticles(x, y) {
+  const colors = ['#fde68a', '#f59e0b', '#fb923c', '#facc15'];
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    const angle = (Math.PI * 2 * i) / 20;
+    const dist  = 60 + Math.random() * 100;
+    p.style.cssText = `
+      position:fixed;left:${x}px;top:${y}px;
+      width:8px;height:8px;border-radius:50%;
+      background:${colors[i % colors.length]};
+      pointer-events:none;z-index:99;
+      animation:particleFly .9s ease-out forwards;
+      --tx:${Math.cos(angle)*dist}px;--ty:${Math.sin(angle)*dist}px;
+    `;
+    document.body.appendChild(p);
+    p.addEventListener('animationend', () => p.remove(), { once: true });
+  }
+}
+
+// ── 레이더 바 렌더 ────────────────────────────────────────────────────────────
+function renderRadar() {
+  if (!userLat) return;
+  const W = radarCanvas.width  = radarCanvas.offsetWidth;
+  const H = radarCanvas.height = 32;
+  radarCtx.clearRect(0, 0, W, H);
+
+  // 배경
+  radarCtx.fillStyle = 'rgba(0,0,0,.5)';
+  radarCtx.roundRect(0, 0, W, H, 8);
+  radarCtx.fill();
+
+  // 북쪽 눈금
+  const markAt = deg => {
+    const x = W/2 + ((angleDiff(deg, compassHead)) / (FOV_DEG/2)) * (W/2);
+    if (x < 0 || x > W) return;
+    radarCtx.fillStyle = '#fbbf2488';
+    radarCtx.fillRect(x - .5, 0, 1, H);
+  };
+  for (let d = 0; d < 360; d += 45) markAt(d);
+
+  // 보물 마커
+  for (const box of nearbyBoxes) {
+    const bear = bearing(userLat, userLng, box.lat, box.lng);
+    const diff = angleDiff(bear, compassHead);
+    if (Math.abs(diff) > 120) continue;
+    const x = W/2 + (diff / 120) * (W/2);
+    radarCtx.fillStyle = '#f59e0b';
+    radarCtx.beginPath();
+    radarCtx.arc(x, H/2, 5, 0, Math.PI*2);
+    radarCtx.fill();
+  }
+
+  // 중앙선
+  radarCtx.fillStyle = '#ffffff44';
+  radarCtx.fillRect(W/2 - .5, 4, 1, H-8);
+}
+
+// ── 메인 AR 렌더 루프 ────────────────────────────────────────────────────────
+let animTime = 0;
+
+function renderAR(ts) {
+  animTime = ts;
+  const W = arCanvas.width  = arCanvas.offsetWidth;
+  const H = arCanvas.height = arCanvas.offsetHeight;
+  arCtx.clearRect(0, 0, W, H);
+
+  if (!userLat) { rafId = requestAnimationFrame(renderAR); return; }
+
+  let aimed = null;
+  const now = ts / 1000;
+
+  for (const box of nearbyBoxes) {
+    const bear  = bearing(userLat, userLng, box.lat, box.lng);
+    const diff  = angleDiff(bear, compassHead);
+
+    if (Math.abs(diff) > FOV_DEG / 2) continue;
+
+    const dist  = haversine(userLat, userLng, box.lat, box.lng);
+    const frac  = 1 - dist / SCAN_RADIUS;           // 0=far 1=near
+    const scale = 0.55 + frac * 0.85;
+    const size  = CHEST_BASE * scale;
+    const screenX = W/2 + (diff / (FOV_DEG/2)) * (W/2);
+    const bounce  = Math.sin(now * 2 + box._phase) * 6;
+    const screenY = H * 0.40 + bounce;
+
+    const isAimed = Math.abs(diff) < AIM_DEG;
+    if (isAimed) aimed = box;
+
+    // glow ring when aimed
+    if (isAimed) {
+      const pulse = 0.55 + 0.45 * Math.sin(now * 4);
+      arCtx.save();
+      arCtx.globalAlpha = pulse * 0.6;
+      const grad = arCtx.createRadialGradient(screenX, screenY, size*0.2, screenX, screenY, size*1.1);
+      grad.addColorStop(0, '#fbbf24');
+      grad.addColorStop(1, 'transparent');
+      arCtx.fillStyle = grad;
+      arCtx.beginPath();
+      arCtx.arc(screenX, screenY, size*1.1, 0, Math.PI*2);
+      arCtx.fill();
+      arCtx.restore();
+    }
+
+    // drop shadow
+    arCtx.save();
+    arCtx.globalAlpha = 0.4 * scale;
+    arCtx.fillStyle = 'rgba(0,0,0,.6)';
+    arCtx.scale(1, 0.3);
+    arCtx.beginPath();
+    arCtx.ellipse(screenX, (screenY + size*0.55) / 0.3, size*0.45, size*0.18, 0, 0, Math.PI*2);
+    arCtx.fill();
+    arCtx.restore();
+
+    // chest emoji
+    arCtx.save();
+    arCtx.font = `${size}px serif`;
+    arCtx.textAlign = 'center';
+    arCtx.textBaseline = 'middle';
+    arCtx.globalAlpha = isAimed ? 1 : 0.78;
+    arCtx.fillText('📦', screenX, screenY);
+    arCtx.restore();
+
+    // distance label
+    arCtx.save();
+    arCtx.font = `bold ${Math.round(11 * scale)}px sans-serif`;
+    arCtx.fillStyle = '#fde68a';
+    arCtx.strokeStyle = 'rgba(0,0,0,.7)';
+    arCtx.lineWidth = 3;
+    arCtx.textAlign = 'center';
+    arCtx.textBaseline = 'top';
+    const label = `${Math.round(dist)}m`;
+    arCtx.strokeText(label, screenX, screenY + size*0.55);
+    arCtx.fillText(label,   screenX, screenY + size*0.55);
+    arCtx.restore();
+
+    // name label
+    if (box.name) {
+      arCtx.save();
+      arCtx.font = `${Math.round(10 * scale)}px sans-serif`;
+      arCtx.fillStyle = '#fff';
+      arCtx.strokeStyle = 'rgba(0,0,0,.8)';
+      arCtx.lineWidth = 3;
+      arCtx.textAlign = 'center';
+      arCtx.textBaseline = 'bottom';
+      arCtx.strokeText(box.name, screenX, screenY - size*0.55);
+      arCtx.fillText(box.name,   screenX, screenY - size*0.55);
+      arCtx.restore();
+    }
+  }
+
+  // crosshair
+  drawCrosshair(W, H);
+
+  // compass no-signal indicator
+  if (!compassReady) {
+    arCtx.save();
+    arCtx.font = '12px sans-serif';
+    arCtx.fillStyle = '#fbbf2499';
+    arCtx.textAlign = 'center';
+    arCtx.fillText('🧭 Move device to calibrate compass', W/2, H - 28);
+    arCtx.restore();
+  }
+
+  renderRadar();
+
+  if (aimed !== targetBox) {
+    targetBox = aimed;
+    updateClaimPanel();
+  }
+
+  rafId = requestAnimationFrame(renderAR);
+}
+
+function drawCrosshair(W, H) {
+  const cx = W/2, cy = H*0.40;
+  arCtx.save();
+  arCtx.strokeStyle = 'rgba(251,191,36,.55)';
+  arCtx.lineWidth = 1.5;
+  arCtx.setLineDash([5, 5]);
+  arCtx.beginPath(); arCtx.moveTo(cx-28, cy); arCtx.lineTo(cx+28, cy); arCtx.stroke();
+  arCtx.beginPath(); arCtx.moveTo(cx, cy-28); arCtx.lineTo(cx, cy+28); arCtx.stroke();
+  arCtx.restore();
+}
+
+// ── Claim 패널 갱신 ───────────────────────────────────────────────────────────
+function updateClaimPanel() {
+  if (targetBox) {
+    const dist = userLat ? Math.round(haversine(userLat, userLng, targetBox.lat, targetBox.lng)) : '?';
+    claimName.textContent = `📦 ${targetBox.name || 'Treasure Chest'}`;
+    claimDist.textContent = `${dist}m away`;
+    claimResult.textContent = '';
+    claimBtn.disabled = false;
+    claimBtn.dataset.boxId = targetBox.id;
+    claimPanel.classList.add('visible');
+  } else {
+    claimPanel.classList.remove('visible');
+  }
+}
+
+// ── Claim 처리 ────────────────────────────────────────────────────────────────
+async function handleClaim() {
+  const boxId = claimBtn.dataset.boxId;
+  if (!boxId || userLat == null) return;
+
+  if (!currentUser) {
+    claimResult.textContent = '⚠️ Please log in to claim';
+    claimResult.style.color = '#fca5a5';
+    return;
+  }
+
+  claimBtn.disabled = true;
+  claimBtn.textContent = 'Claiming...';
+  claimResult.textContent = '';
+
+  try {
+    const fn = httpsCallable(functions, 'collectTreasureBox');
+    const res = await fn({ boxId, userLat, userLng });
+
+    playSuccess();
+    if (navigator.vibrate) navigator.vibrate([200, 100, 300]);
+    spawnParticles(window.innerWidth/2, window.innerHeight*0.4);
+
+    const msg = res.data?.message || 'Treasure claimed! 🎉';
+    claimResult.textContent = `🎉 ${msg}`;
+    claimResult.style.color = '#86efac';
+
+    // 획득한 박스 목록에서 제거
+    nearbyBoxes = nearbyBoxes.filter(b => b.id !== boxId);
+    hudCount.textContent = `${nearbyBoxes.length} 📦`;
+    targetBox = null;
+    setTimeout(() => claimPanel.classList.remove('visible'), 3500);
+
+  } catch (err) {
+    claimResult.textContent = '⚠️ ' + (err.message || 'Error occurred');
+    claimResult.style.color = '#fca5a5';
+    claimBtn.disabled = false;
+    claimBtn.textContent = '📦 Claim Treasure';
+  }
+}
+
+// ── 초기화 ────────────────────────────────────────────────────────────────────
+async function init() {
+  startBtn.disabled = true;
+  permStatus.textContent = 'Getting GPS location...';
+
+  try {
+    // GPS
+    const pos = await getGpsOnce();
+    userLat = pos.lat;
+    userLng = pos.lng;
+
+    permStatus.textContent = 'Loading nearby treasures...';
+    nearbyBoxes = await loadNearbyBoxes(userLat, userLng);
+
+    // 각 박스에 bounce 위상 부여
+    nearbyBoxes.forEach((b, i) => { b._phase = i * 1.2; });
+
+    // 카메라
+    permStatus.textContent = 'Opening camera...';
+    await startCamera();
+
+    // 나침반 (iOS: 이 시점은 이미 user gesture 내부)
+    setupCompass();
+
+    // GPS 지속 감시
+    startGpsWatch();
+
+    // 화면 전환
+    permScreen.classList.add('hidden');
+    arScreen.style.display = 'block';
+
+    hudCount.textContent = `${nearbyBoxes.length} 📦`;
+    arStatus.textContent  = nearbyBoxes.length
+      ? `${nearbyBoxes.length} treasure${nearbyBoxes.length > 1 ? 's' : ''} nearby — scan around!`
+      : '📍 No treasures within 200m';
+
+    requestAnimationFrame(renderAR);
+
+  } catch (err) {
+    permStatus.textContent = '⚠️ ' + (err.message || 'Initialization failed');
+    startBtn.disabled = false;
+  }
+}
+
+// ── 이벤트 ────────────────────────────────────────────────────────────────────
+startBtn.addEventListener('click', init);
+claimBtn.addEventListener('click', handleClaim);
+hudBack.addEventListener('click', () => {
+  if (rafId) cancelAnimationFrame(rafId);
+  if (gpsWatchId != null) navigator.geolocation.clearWatch(gpsWatchId);
+  if (arVideo.srcObject) arVideo.srcObject.getTracks().forEach(t => t.stop());
+  history.back();
+});
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+onAuthStateChanged(auth, u => { currentUser = u; });
+
+// ── particle keyframe (DOM) ───────────────────────────────────────────────────
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes particleFly {
+    0%   { transform:translate(0,0) scale(1); opacity:1; }
+    100% { transform:translate(var(--tx),var(--ty)) scale(0); opacity:0; }
+  }
+`;
+document.head.appendChild(style);
