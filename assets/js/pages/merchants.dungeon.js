@@ -28,12 +28,12 @@ function scaleDef(base, stage) {
 
 // ── Monster base defs (minStage gates availability) ───────────────────────────
 const D_MDEFS = [
-  { id:'orc',    label:'Orc',    src:'/assets/images/slot/1.png',  minStage:1,  maxHp:120, atk:15, spd:65,  range:80,  ranged:false, xp:20, coins:5  },
-  { id:'pirate', label:'Pirate', src:'/assets/images/slot/2.png',  minStage:1,  maxHp:90,  atk:12, spd:80,  range:70,  ranged:false, xp:15, coins:4  },
-  { id:'wolf',   label:'Wolf',   src:'/assets/images/slot/5.png',  minStage:1,  maxHp:80,  atk:18, spd:100, range:75,  ranged:false, xp:25, coins:6  },
-  { id:'cabi',   label:'CABI',   src:'/assets/images/slot/4.png',  minStage:4,  maxHp:200, atk:25, spd:55,  range:150, ranged:true,  xp:50, coins:15 },
-  { id:'eye',    label:'Eye',    src:'/assets/images/slot/10.png', minStage:7,  maxHp:150, atk:20, spd:55,  range:140, ranged:true,  xp:35, coins:10 },
-  { id:'dragon', label:'Dragon', src:'/assets/images/slot/9.png',  minStage:10, maxHp:300, atk:40, spd:45,  range:170, ranged:true,  xp:80, coins:20 },
+  { id:'orc',    label:'Orc',    src:'/assets/images/slot/1.png',  minStage:1,  maxHp:240, atk:22, spd:75,  range:80,  ranged:false, xp:20, coins:4  },
+  { id:'pirate', label:'Pirate', src:'/assets/images/slot/2.png',  minStage:1,  maxHp:180, atk:18, spd:92,  range:70,  ranged:false, xp:15, coins:3  },
+  { id:'wolf',   label:'Wolf',   src:'/assets/images/slot/5.png',  minStage:1,  maxHp:160, atk:26, spd:115, range:75,  ranged:false, xp:25, coins:5  },
+  { id:'cabi',   label:'CABI',   src:'/assets/images/slot/4.png',  minStage:4,  maxHp:400, atk:36, spd:62,  range:150, ranged:true,  xp:50, coins:12 },
+  { id:'eye',    label:'Eye',    src:'/assets/images/slot/10.png', minStage:7,  maxHp:300, atk:30, spd:62,  range:140, ranged:true,  xp:35, coins:8  },
+  { id:'dragon', label:'Dragon', src:'/assets/images/slot/9.png',  minStage:10, maxHp:600, atk:58, spd:52,  range:170, ranged:true,  xp:80, coins:16 },
 ];
 
 // ── 5 Skill items ─────────────────────────────────────────────────────────────
@@ -46,8 +46,8 @@ const D_SKILLS = [
 ];
 
 const D_TOWER_DEF = {
-  cannon: { emoji:'💣', range:230, atk:55, rate:0.45, pColor:'#94a3b8', aoe:48, rad:18 },
-  archer: { emoji:'🏹', range:280, atk:22, rate:2.2,  pColor:'#fbbf24', aoe:0,  rad:14 },
+  cannon: { emoji:'💣', range:200, atk:20, rate:0.22, pColor:'#ef4444', aoe:0,  rad:18 },
+  archer: { emoji:'🏹', range:280, atk:28, rate:2.5,  pColor:'#fbbf24', aoe:0,  rad:14 },
 };
 
 const D_TOWER_SLOTS = (() => {
@@ -413,6 +413,12 @@ class DungeonGame {
       this._drops.push({ x:m.x+(Math.random()-.5)*40, y:m.y+(Math.random()-.5)*40, skillId:sk.id });
       this._addFloat(sk.emoji, m.x, m.y-65, '#e879f9');
     }
+    // 20% potion drop
+    if (Math.random() < 0.20) {
+      const heal=Math.round(15+this._stage*2);
+      this._drops.push({ x:m.x+(Math.random()-.5)*40, y:m.y+(Math.random()-.5)*40, potion:true, heal });
+      this._addFloat('🧪', m.x, m.y-55, '#f87171');
+    }
 
     const respawnMs=stageRespawnMs(this._stage);
     this._spawnMonster(m.base, null, respawnMs);
@@ -621,7 +627,7 @@ class DungeonGame {
           } else {
             p.hp-=m.def.atk; this._addFloat(`-${m.def.atk}`,p.x,p.y-30,'#ff5555'); this._sfx('hit');
           }
-          m.atkCd=1.4;
+          m.atkCd=1.1;
         }
       } else {
         const s=m.def.spd*dt; m.x+=dx/dist*s; m.y+=dy/dist*s;
@@ -634,20 +640,28 @@ class DungeonGame {
     for (const t of this._towers) {
       t.atkCd=Math.max(0,t.atkCd-dt);
       if (t.atkCd>0) continue;
-      let tgt=null, minD=t.range;
-      for (const m of this._monsters) {
-        if (m.state!=='alive') continue;
-        const d=Math.hypot(m.x-t.x,m.y-t.y);
-        if (d<minD) { minD=d; tgt=m; }
+      if (t.kind==='cannon') {
+        const dp=Math.hypot(p.x-t.x,p.y-t.y);
+        if (dp<=t.range) {
+          this._fireProj(t.x,t.y,p.x,p.y,{atk:t.atk,src:'cannon',spd:200,color:t.pColor,r:9,aoe:0});
+          t.atkCd=1/t.rate;
+        }
+      } else {
+        let tgt=null, minD=t.range;
+        for (const m of this._monsters) {
+          if (m.state!=='alive') continue;
+          const d=Math.hypot(m.x-t.x,m.y-t.y);
+          if (d<minD) { minD=d; tgt=m; }
+        }
+        if (tgt) { this._fireProj(t.x,t.y,tgt.x,tgt.y,{atk:t.atk,src:'tower',spd:310,color:t.pColor,r:5,aoe:0}); t.atkCd=1/t.rate; }
       }
-      if (tgt) { this._fireProj(t.x,t.y,tgt.x,tgt.y,{atk:t.atk,src:'tower',spd:310,color:t.pColor,r:t.kind==='cannon'?8:5,aoe:t.aoe}); t.atkCd=1/t.rate; }
     }
 
     // Projectile update
     this._projs=this._projs.filter(proj => {
       proj.x+=proj.vx*dt; proj.y+=proj.vy*dt; proj.ttl-=dt;
       if (proj.ttl<=0) return false;
-      if (proj.src==='mob') {
+      if (proj.src==='mob' || proj.src==='cannon') {
         if (Math.hypot(proj.x-p.x,proj.y-p.y)<22) { p.hp-=proj.atk; this._addFloat(`-${proj.atk}`,p.x,p.y-30,'#ff5555'); this._sfx('hit'); return false; }
       } else {
         for (const m of this._monsters) {
@@ -675,6 +689,11 @@ class DungeonGame {
           this._addFloat(`${sk?.emoji||'✨'}+1`,p.x,p.y-50,'#e879f9');
           this._toast(`${sk?.emoji} ${sk?.label} skill acquired! Press ${sk?.key}`);
           this._updateSkillBar();
+        } else if (drop.potion) {
+          const healed=Math.min(drop.heal,p.maxHp-p.hp);
+          p.hp=Math.min(p.maxHp,p.hp+drop.heal);
+          this._addFloat(`+${healed}❤️`,p.x,p.y-50,'#f87171');
+          this._toast(`🧪 Potion! +${drop.heal} HP`);
         } else {
           p.coins+=drop.coins; this._add(drop.coins);
         }
@@ -802,6 +821,11 @@ class DungeonGame {
         ctx.shadowColor=sk?.color||'#e879f9'; ctx.shadowBlur=14;
         ctx.fillText(sk?.emoji||'✨',d.x+cx,d.y+cy);
         ctx.restore();
+      } else if (d.potion) {
+        ctx.save();
+        ctx.shadowColor='#f87171'; ctx.shadowBlur=12;
+        ctx.fillText('🧪',d.x+cx,d.y+cy);
+        ctx.restore();
       } else {
         ctx.fillText('💰',d.x+cx,d.y+cy);
       }
@@ -812,8 +836,17 @@ class DungeonGame {
       const sx=t.x+cx, sy=t.y+cy;
       if (sx<-25||sx>W+25||sy<-25||sy>H+25) continue;
       ctx.save();
-      ctx.fillStyle=t.kind==='cannon'?'#475569':'#78716c';
-      ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=1.5;
+      if (t.kind==='cannon') {
+        ctx.globalAlpha=0.12;
+        ctx.fillStyle='#ef4444';
+        ctx.beginPath(); ctx.arc(sx,sy,t.range,0,Math.PI*2); ctx.fill();
+        ctx.globalAlpha=1;
+        ctx.strokeStyle='#ef4444'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.arc(sx,sy,t.range,0,Math.PI*2); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.fillStyle=t.kind==='cannon'?'#7f1d1d':'#78716c';
+      ctx.strokeStyle=t.kind==='cannon'?'#ef4444':'rgba(255,255,255,0.6)'; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.arc(sx,sy,t.rad,0,Math.PI*2); ctx.fill(); ctx.stroke();
       ctx.font=`${t.rad+2}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(t.emoji,sx,sy+1);

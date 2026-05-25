@@ -17,11 +17,24 @@ const MDEFS = [
   { id:'cerb',   label:'케르베로스', img:'/assets/images/slot/7.png',  clr:'#16a34a', odds:15.0, baseSpd:1.00, vr:0.48, trait:'chaos'    },
 ];
 
-const BET_MIN     = 10;
-const BET_MAX     = 1000;
-const BETTING_SEC = 30;
-const RACE_LAPS   = 2;
-const LAP_SCALE   = 0.040; // baseSpd=1.0 → ~25s/lap → 2 laps ≈ 50s
+const BET_MIN      = 10;
+const BET_MAX      = 1000;
+const BETTING_SEC  = 30;
+const RACE_LAPS    = 2;
+const LAP_SCALE    = 0.040; // baseSpd=1.0 → ~25s/lap → 2 laps ≈ 50s
+const HOUSE_TAKE   = 0.15;
+const SIM_POOL_BASE = 5000;
+const PLACE_MULT   = 0.55;
+const SHOW_MULT    = 0.35;
+
+// Simulated pool weights — inverse-odds so distribution mirrors static odds
+const _simWeights = (() => {
+  const raw = MDEFS.map(m => ({ id: m.id, w: 1 / m.odds }));
+  const sum  = raw.reduce((s, x) => s + x.w, 0);
+  const out  = {};
+  raw.forEach(x => { out[x.id] = x.w / sum; });
+  return out;
+})();
 
 // ── Web Audio 사운드 엔진 ──────────────────────────────────────────────────────
 
@@ -186,6 +199,9 @@ class MonsterRace {
     this._raf         = null;
     this._lastTs      = 0;
     this._msgTimeout  = null;
+    this._pool        = {};
+    this._totalPool   = 0;
+    this._lockedOdds  = 0;
 
     this._preloadImages();
     this._buildDOM();
@@ -274,6 +290,21 @@ class MonsterRace {
     if (this._msgTimeout) { clearTimeout(this._msgTimeout);   this._msgTimeout = null; }
   }
 
+  // ── 파리뮤추얼 풀 ────────────────────────────────────────────────────────────
+
+  _initPool() {
+    this._pool = {};
+    MDEFS.forEach(m => { this._pool[m.id] = Math.round(SIM_POOL_BASE * _simWeights[m.id]); });
+    this._totalPool = Object.values(this._pool).reduce((s, v) => s + v, 0);
+  }
+
+  _calcOdds(id, extraBet = 0) {
+    const poolForId = (this._pool[id] || 0) + extraBet;
+    const total     = this._totalPool + extraBet;
+    if (!poolForId) return 99;
+    return Math.max(1.05, (total * (1 - HOUSE_TAKE)) / poolForId);
+  }
+
   // ── 베팅 페이즈 ──────────────────────────────────────────────────────────────
 
   _startBetting() {
@@ -286,6 +317,8 @@ class MonsterRace {
     this._betLocked  = false;
     this._secsLeft   = BETTING_SEC;
     this._finishOrder = [];
+    this._lockedOdds  = 0;
+    this._initPool();
 
     document.getElementById('raceBetting').classList.remove('hidden');
     document.getElementById('raceArena').classList.add('hidden');
@@ -351,7 +384,8 @@ class MonsterRace {
         <img class="rc-img" src="${m.img}" alt="${m.label}" loading="eager">
         <div class="rc-name">${m.label}</div>
         <div class="rc-trait">${_traitLabel(m.trait)}</div>
-        <div class="rc-odds" style="color:${m.clr}">${m.odds.toFixed(1)}x</div>
+        <div class="rc-odds" data-mid="${m.id}" style="color:${m.clr}">${this._calcOdds(m.id).toFixed(2)}x</div>
+        <div class="rc-pool" data-mid="${m.id}">🪙${(this._pool[m.id]||0).toLocaleString()}</div>
       </div>
     `).join('');
     grid.querySelectorAll('.race-card').forEach(card => {
@@ -367,15 +401,25 @@ class MonsterRace {
 
   _updateBetUI() {
     document.getElementById('raceBetAmt').textContent = this._betAmount;
+    // Update live odds in each card
+    MDEFS.forEach(m => {
+      const simBet = m.id === this._betMonster ? this._betAmount : 0;
+      const odds   = this._calcOdds(m.id, simBet);
+      const el = document.querySelector(`.rc-odds[data-mid="${m.id}"]`);
+      if (el) el.textContent = odds.toFixed(2) + 'x';
+    });
     const btn = document.getElementById('racePlaceBet');
     if (this._betLocked) return;
     if (!this._betMonster) {
       btn.textContent = '몬스터를 선택하세요';
       btn.disabled = true;
     } else {
-      const m  = MDEFS.find(x => x.id === this._betMonster);
-      const tl = { win:'단승', place:'복승', show:'삼복승' }[this._betType];
-      btn.textContent = `${m.label}에 ${this._betAmount}코인 베팅 (${tl})`;
+      const m    = MDEFS.find(x => x.id === this._betMonster);
+      const odds = this._calcOdds(this._betMonster, this._betAmount);
+      const mult = this._betType === 'win' ? 1 : this._betType === 'place' ? PLACE_MULT : SHOW_MULT;
+      const est  = Math.floor(this._betAmount * odds * mult);
+      const tl   = { win:'단승', place:'복승', show:'삼복승' }[this._betType];
+      btn.textContent = `${m.label}에 ${this._betAmount}코인 (${tl}) → 예상 +${est}`;
       btn.disabled = false;
     }
   }
@@ -385,13 +429,18 @@ class MonsterRace {
       this._showToast('코인이 부족합니다!');
       return;
     }
+    this._lockedOdds = this._calcOdds(this._betMonster, this._betAmount);
+    this._pool[this._betMonster] = (this._pool[this._betMonster] || 0) + this._betAmount;
+    this._totalPool += this._betAmount;
     this._betLocked = true;
     this._audio.betPlaced();
-    const btn = document.getElementById('racePlaceBet');
-    btn.textContent = '✅ 베팅 완료!';
+    const btn  = document.getElementById('racePlaceBet');
+    const m    = MDEFS.find(x => x.id === this._betMonster);
+    const mult = this._betType === 'win' ? 1 : this._betType === 'place' ? PLACE_MULT : SHOW_MULT;
+    const est  = Math.floor(this._betAmount * this._lockedOdds * mult);
+    btn.textContent = `✅ 베팅 완료! 예상 +${est}코인`;
     btn.disabled = true;
-    const m = MDEFS.find(x => x.id === this._betMonster);
-    this._showToast(`${m.label}에 ${this._betAmount}코인 베팅 완료!`);
+    this._showToast(`${m.label}에 ${this._betAmount}코인 베팅 완료! (${this._lockedOdds.toFixed(2)}x)`);
   }
 
   // ── 레이스 페이즈 ─────────────────────────────────────────────────────────────
@@ -685,10 +734,10 @@ class MonsterRace {
       const m     = MDEFS.find(x => x.id === this._betMonster);
       const place = this._finishOrder.indexOf(this._betMonster) + 1;
       // 베팅 타입별 당첨 배수 (place=0이면 indexOf 못찾음 → 안전하게 0으로 처리)
-      const multMap = { win: place === 1 ? 1 : 0, place: place >= 1 && place <= 2 ? 0.5 : 0, show: place >= 1 && place <= 3 ? 0.25 : 0 };
+      const multMap = { win: place === 1 ? 1 : 0, place: place >= 1 && place <= 2 ? PLACE_MULT : 0, show: place >= 1 && place <= 3 ? SHOW_MULT : 0 };
       const mult    = multMap[this._betType] ?? 0;
       if (mult > 0) {
-        payout = Math.floor(this._betAmount * m.odds * mult);
+        payout = Math.floor(this._betAmount * (this._lockedOdds || m.odds) * mult);
         won    = true;
         this._add(payout);
         setTimeout(() => this._audio.win(), 300);
@@ -721,10 +770,11 @@ class MonsterRace {
     const orderRows = this._finishOrder.map((id, i) => {
       const m    = MDEFS.find(x => x.id === id);
       const mine = id === this._betMonster;
+      const oddsLabel = mine && this._lockedOdds ? `${this._lockedOdds.toFixed(2)}x ★` : `${this._calcOdds(m.id).toFixed(2)}x`;
       return `<div class="race-order-row${mine ? ' my-bet' : ''}">
         <img src="${m.img}" class="race-order-icon" alt="${m.label}">
         <span>${medals[i]} ${m.label}</span>
-        <span style="color:${m.clr};margin-left:auto">${m.odds}x</span>
+        <span style="color:${m.clr};margin-left:auto">${oddsLabel}</span>
       </div>`;
     }).join('');
 
