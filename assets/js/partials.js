@@ -56,11 +56,11 @@ const _HDR_T = {
 function applyHeaderI18n() {
   try {
     const saved = localStorage.getItem('town_lang');
-    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'vi';
-    const tbl = _HDR_T[lang] || _HDR_T.vi;
+    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'en';
+    const tbl = _HDR_T[lang] || _HDR_T.en;
     document.querySelectorAll('[data-hdr-i18n]').forEach(function (el) {
       const key = el.dataset.hdrI18n;
-      el.textContent = (tbl && tbl[key]) || (_HDR_T.vi[key]) || key;
+      el.textContent = (tbl && tbl[key]) || (_HDR_T.en[key]) || key;
     });
   } catch (e) {}
 }
@@ -72,7 +72,7 @@ function _mountHdrLang() {
   if (!container) return;
   const LANGS = ['vi', 'en', 'ko'];
   const saved = localStorage.getItem('town_lang');
-  const cur = LANGS.includes(saved) ? saved : 'vi';
+  const cur = LANGS.includes(saved) ? saved : 'en';
   container.querySelectorAll('[data-hdr-lang]').forEach(function(btn) {
     btn.classList.toggle('is-active', btn.dataset.hdrLang === cur);
   });
@@ -148,15 +148,15 @@ const _FTR_T = {
 function applyFooterI18n() {
   try {
     const saved = localStorage.getItem('town_lang');
-    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'vi';
-    const tbl = _FTR_T[lang] || _FTR_T.vi;
+    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'en';
+    const tbl = _FTR_T[lang] || _FTR_T.en;
     document.querySelectorAll('[data-ftr-i18n]').forEach(function (el) {
       const key = el.dataset.ftrI18n;
-      el.textContent = (tbl && tbl[key]) || (_FTR_T.vi[key]) || key;
+      el.textContent = (tbl && tbl[key]) || (_FTR_T.en[key]) || key;
     });
     document.querySelectorAll('[data-ftr-i18n-ph]').forEach(function (el) {
       const key = el.dataset.ftrI18nPh;
-      el.placeholder = (tbl && tbl[key]) || (_FTR_T.vi[key]) || key;
+      el.placeholder = (tbl && tbl[key]) || (_FTR_T.en[key]) || key;
     });
   } catch (e) {}
 }

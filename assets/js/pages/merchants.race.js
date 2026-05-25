@@ -39,7 +39,7 @@ const _simWeights = (() => {
 // ── Web Audio 사운드 엔진 ──────────────────────────────────────────────────────
 
 class RaceAudio {
-  constructor() { this._ac = null; this._drumTimer = null; }
+  constructor() { this._ac = null; this._drumTimer = null; this._loopNext = 0; this._loopStep = 0; }
 
   _ctx() {
     if (!this._ac) this._ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -60,7 +60,7 @@ class RaceAudio {
 
   _noise(bandFreq, q, gain, dur, when) {
     const ac = this._ctx(), now = when ?? ac.currentTime;
-    const len = Math.ceil(ac.sampleRate * dur);
+    const len = Math.ceil(ac.sampleRate * Math.max(dur, 0.01));
     const buf = ac.createBuffer(1, len, ac.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -73,50 +73,99 @@ class RaceAudio {
     src.start(now); src.stop(now + dur + 0.01);
   }
 
+  _bass(when, freq = 55, vol = 0.38) {
+    const ac = this._ctx(), now = when ?? ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(freq, now);
+    o.frequency.exponentialRampToValueAtTime(freq * 0.48, now + 0.38);
+    f.type = 'lowpass'; f.frequency.value = 180; f.Q.value = 0.7;
+    g.gain.setValueAtTime(vol, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+    o.connect(f); f.connect(g); g.connect(ac.destination);
+    o.start(now); o.stop(now + 0.46);
+  }
+
   _kick(when, vol = 1) {
-    this._osc(150, 'sine', vol * 1.2, 0.35, when, 0.01);
-    this._noise(80, 0.8, vol * 0.3, 0.06, when);
+    this._osc(160, 'sine', vol * 1.2, 0.38, when, 0.01);
+    this._noise(80, 0.8, vol * 0.3, 0.07, when);
   }
 
   _snare(when, vol = 1) {
-    this._osc(200, 'triangle', vol * 0.6, 0.12, when, 80);
-    this._noise(3000, 0.5, vol * 0.5, 0.15, when);
+    this._osc(200, 'triangle', vol * 0.6, 0.13, when, 80);
+    this._noise(3200, 0.5, vol * 0.55, 0.18, when);
   }
 
-  _hihat(when, vol = 0.18)   { this._noise(8000, 2,   vol, 0.04, when); }
-  _openHat(when, vol = 0.22) { this._noise(7000, 1.5, vol, 0.12, when); }
+  _hihat(when, vol = 0.15)   { this._noise(9500, 2.5, vol, 0.04, when); }
+  _openHat(when, vol = 0.2)  { this._noise(7500, 1.5, vol, 0.14, when); }
+  _rim(when, vol = 0.3) {
+    this._osc(650, 'square', vol * 0.4, 0.04, when);
+    this._noise(5000, 3, vol * 0.28, 0.05, when);
+  }
 
   betPlaced() {
-    this._osc(660, 'sine', 0.3, 0.08);
-    setTimeout(() => this._osc(880, 'sine', 0.3, 0.08), 80);
+    const ac = this._ctx(), now = ac.currentTime;
+    [880, 1100, 1320].forEach((f, i) => this._osc(f, 'sine', 0.22, 0.08, now + i * 0.045));
+    this._noise(9000, 3, 0.08, 0.14, now);
   }
 
   countdown(secsLeft) {
-    const freq = 440 + (BETTING_SEC - secsLeft) * 14;
-    this._osc(freq, 'square', 0.15, secsLeft <= 5 ? 0.12 : 0.07);
+    const ac = this._ctx(), now = ac.currentTime;
+    const urgent = secsLeft <= 5;
+    const freq = urgent ? 880 + (5 - secsLeft) * 110 : 440 + (BETTING_SEC - secsLeft) * 12;
+    this._osc(freq, 'square', urgent ? 0.22 : 0.1, urgent ? 0.11 : 0.07, now);
+    if (urgent) {
+      this._osc(freq * 2, 'sine', 0.1, 0.06, now + 0.03);
+      this._noise(6000, 2, 0.08, 0.08, now);
+    }
   }
 
   raceStart() {
     const ac = this._ctx(), now = ac.currentTime;
-    this._osc(1200, 'square', 0.25, 0.5, now, 1800);
-    this._noise(800, 0.3, 0.5, 1.4, now + 0.1);
-    this._noise(1200, 0.4, 0.35, 1.0, now + 0.3);
+    this._osc(80, 'sawtooth', 0.3, 1.8, now, 600);
+    this._noise(800, 0.3, 0.5, 2.0, now);
+    [523, 659, 784].forEach((f, i) => this._osc(f, 'square', 0.22, 0.9, now + 0.65 + i * 0.04, f * 1.4));
+    this._osc(1400, 'sawtooth', 0.4, 0.38, now + 1.15, 1900);
+    this._noise(2500, 0.5, 0.7, 0.65, now + 1.15);
+    setTimeout(() => this.crowd(0.38), 1250);
+  }
+
+  crowd(vol = 0.28, dur = 2.5) {
+    const ac = this._ctx(), now = ac.currentTime;
+    [350, 700, 1400].forEach((f, i) => this._noise(f, 0.25, vol * (0.9 - i * 0.2), dur, now + i * 0.08));
+    this._osc(180, 'sine', vol * 0.15, dur * 0.8, now, 225);
+    this._osc(184, 'sine', vol * 0.1,  dur * 0.8, now, 228);
   }
 
   startDrumLoop() {
     const ac = this._ctx();
-    const stepSec = (60 / 128) / 4;
+    const stepSec = (60 / 130) / 4;
     this._loopNext = ac.currentTime + 0.05;
     this._loopStep = 0;
     const tick = () => {
       const now = ac.currentTime;
-      while (this._loopNext < now + 0.3) {
-        const s = this._loopStep % 16;
-        if (s === 0 || s === 8)  this._kick(this._loopNext);
-        if (s === 13)            this._kick(this._loopNext, 0.6);
-        if (s === 4 || s === 12) this._snare(this._loopNext);
-        if (s % 2 === 0)         this._hihat(this._loopNext);
-        if (s === 6 || s === 14) this._openHat(this._loopNext);
+      while (this._loopNext < now + 0.32) {
+        const s = this._loopStep % 32;
+        // Kick
+        if (s === 0 || s === 16)           this._kick(this._loopNext);
+        if (s === 11 || s === 27)          this._kick(this._loopNext, 0.55);
+        // Snare
+        if (s === 8  || s === 24)          this._snare(this._loopNext);
+        // Bass
+        if (s === 0  || s === 16)          this._bass(this._loopNext, 55);
+        if (s === 11 || s === 27)          this._bass(this._loopNext, 44, 0.28);
+        if (s === 6  || s === 22)          this._bass(this._loopNext, 73, 0.22);
+        // Rim
+        if (s === 4  || s === 12 || s === 20 || s === 28) this._rim(this._loopNext);
+        // Hi-hat (8th notes)
+        if (s % 2 === 0)                   this._hihat(this._loopNext);
+        // Open hat
+        if (s === 6  || s === 14 || s === 22 || s === 30) this._openHat(this._loopNext);
+        // Drum fill (every 2 bars, last 4 steps)
+        if (s === 28) this._snare(this._loopNext, 0.4);
+        if (s === 29) this._snare(this._loopNext, 0.5);
+        if (s === 30) { this._snare(this._loopNext, 0.65); this._hihat(this._loopNext, 0.35); }
+        if (s === 31) { this._snare(this._loopNext, 0.8);  this._kick(this._loopNext, 0.3); }
+
         this._loopNext += stepSec;
         this._loopStep++;
       }
@@ -127,51 +176,65 @@ class RaceAudio {
 
   stopDrumLoop() { clearTimeout(this._drumTimer); this._drumTimer = null; }
 
-  evBoost()   {
+  evBoost() {
     const ac = this._ctx(), now = ac.currentTime;
-    this._osc(200, 'sawtooth', 0.25, 0.35, now, 900);
-    this._noise(2000, 1, 0.2, 0.2, now + 0.05);
+    [220, 330, 440, 660, 880].forEach((f, i) => this._osc(f, 'sawtooth', 0.18, 0.18, now + i * 0.055));
+    this._noise(2500, 1, 0.3, 0.45, now + 0.05);
+    this._osc(80, 'sine', 0.45, 0.45, now, 160);
   }
-  evTrap()    {
+
+  evTrap() {
     const ac = this._ctx(), now = ac.currentTime;
-    this._osc(600, 'sawtooth', 0.3, 0.3, now, 80);
-    this._noise(400, 1.5, 0.25, 0.25, now);
+    this._noise(2500, 0.6, 0.55, 0.35, now);
+    this._osc(110, 'sawtooth', 0.45, 0.5, now, 50);
+    this._osc(220, 'sawtooth', 0.3,  0.3, now + 0.05, 80);
   }
-  evStun()    {
+
+  evStun() {
     const ac = this._ctx(), now = ac.currentTime;
-    this._osc(120, 'sine', 0.4, 0.4, now, 60);
-    this._noise(300, 2, 0.2, 0.3, now);
+    this._noise(7500, 3.5, 0.6, 0.18, now);
+    this._noise(4000, 2,   0.35, 0.3, now + 0.1);
+    this._osc(80, 'sine', 0.55, 0.6, now, 35);
   }
+
   evBerserk() {
     const ac = this._ctx(), now = ac.currentTime;
-    this._osc(80,  'sawtooth', 0.5, 0.15, now);
-    this._osc(160, 'sawtooth', 0.4, 0.15, now + 0.05);
-    this._osc(240, 'sawtooth', 0.3, 0.15, now + 0.10);
-    this._noise(500, 0.5, 0.5, 0.3, now);
+    [80, 120, 160, 240, 320].forEach((f, i) => this._osc(f, 'sawtooth', 0.38 - i * 0.04, 0.5, now + i * 0.018));
+    this._noise(1200, 0.5, 0.65, 0.5, now);
   }
 
   monsterFinish(place) {
     const ac = this._ctx(), now = ac.currentTime;
     if (place === 1) {
-      [523, 659, 784, 1047].forEach((f, i) => this._osc(f, 'square', 0.22, 0.15, now + i * 0.12));
-      this._noise(1000, 0.5, 0.3, 0.5, now);
+      [523, 659, 784, 1047, 1568].forEach((f, i) => this._osc(f, 'square', 0.24, 0.22, now + i * 0.08));
+      this._noise(3000, 1, 0.4, 0.9, now);
+      setTimeout(() => this.crowd(0.5, 3.2), 200);
+    } else if (place === 2) {
+      [440, 554, 659].forEach((f, i) => this._osc(f, 'sine', 0.2, 0.18, now + i * 0.09));
+    } else if (place === 3) {
+      [330, 415, 494].forEach((f, i) => this._osc(f, 'triangle', 0.15, 0.14, now + i * 0.08));
     } else {
-      const freq = [440, 392, 349, 330, 294][Math.min(place - 2, 4)];
-      this._osc(freq, 'sine', 0.2, 0.18);
+      this._osc(220, 'triangle', 0.1, 0.1);
     }
   }
 
   win() {
     const ac = this._ctx(), now = ac.currentTime;
-    [523, 659, 784, 659, 784, 1047].forEach((f, i) => this._osc(f, 'square', 0.25, 0.18, now + i * 0.1));
-    for (let i = 0; i < 8; i++) setTimeout(() => this._noise(4000, 3, 0.15, 0.06), 600 + i * 60);
+    [523, 659, 784, 659, 784, 1047, 784, 1047, 1568].forEach((f, i) =>
+      this._osc(f, 'square', 0.24, 0.22, now + i * 0.1));
+    setTimeout(() => {
+      [523, 659, 784].forEach(f => this._osc(f, 'sine', 0.14, 2.0, ac.currentTime));
+    }, 900);
+    this.crowd(0.58, 3.8);
+    for (let i = 0; i < 14; i++) setTimeout(() => this._noise(9500, 3.5, 0.1, 0.05), 380 + i * 75);
   }
 
   lose() {
     const ac = this._ctx(), now = ac.currentTime;
-    this._osc(440, 'sawtooth', 0.2, 0.25, now, 380);
-    this._osc(330, 'sawtooth', 0.2, 0.25, now + 0.28, 290);
-    this._osc(220, 'sawtooth', 0.2, 0.5,  now + 0.58, 180);
+    // Classic sad trombone: D C B♭ A♭
+    [294, 262, 233, 208].forEach((f, i) => this._osc(f, 'sawtooth', 0.28, 0.38, now + i * 0.31, f * 0.9));
+    this._osc(55, 'sine', 0.2, 1.5, now, 44);
+    this._noise(500, 0.5, 0.1, 1.2, now + 0.85);
   }
 }
 
@@ -470,6 +533,8 @@ class MonsterRace {
 
     const luckMults = this._rollLuckMults();
 
+    this._elapsed        = 0;
+    this._raceParticles  = [];
     this._runners = MDEFS.map((m, i) => ({
       ...m,
       progress:        0,
@@ -481,6 +546,8 @@ class MonsterRace {
       finished:        false,
       finishPlace:     0,
       luckMult:        luckMults[m.id],
+      _trail:          [],
+      _speed:          0,
     }));
     this._finishOrder = [];
 
@@ -500,6 +567,8 @@ class MonsterRace {
   _loop(ts) {
     const dt = Math.min((ts - this._lastTs) / 1000, 0.05);
     this._lastTs = ts;
+    this._elapsed = (this._elapsed || 0) + dt;
+    this._dt = dt;
     this._updateRunners(dt);
     this._drawFrame();
     if (this._finishOrder.length === MDEFS.length) {
@@ -551,6 +620,7 @@ class MonsterRace {
       if (r.effectType === 'stun')    spd  = 0;
 
       r.progress += spd * LAP_SCALE * dt;
+      r._speed = spd;
 
       if (r.progress >= RACE_LAPS && !r.finished) {
         r.progress    = RACE_LAPS;
@@ -595,53 +665,77 @@ class MonsterRace {
     const cx = W / 2, cy = H / 2;
     const outerRx = W * 0.44, outerRy = H * 0.43;
     const innerRx = W * 0.23, innerRy = H * 0.22;
+    const elapsed = this._elapsed || 0;
+    const dt      = this._dt      || 0.016;
 
     ctx.clearRect(0, 0, W, H);
 
-    ctx.fillStyle = '#150800';
+    // Background radial gradient
+    const bgGrad = ctx.createRadialGradient(cx, cy, innerRx * 0.4, cx, cy, outerRx * 1.4);
+    bgGrad.addColorStop(0, '#1c0a00');
+    bgGrad.addColorStop(1, '#080200');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
 
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, outerRx + 22, outerRy + 22, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#2a1400';
-    ctx.fill();
+    // Crowd silhouettes
+    this._drawCrowd(ctx, cx, cy, outerRx, outerRy, elapsed);
 
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, outerRx, outerRy, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#6b3a1a';
-    ctx.fill();
+    // Track
+    this._drawTrack(ctx, cx, cy, outerRx, outerRy, innerRx, innerRy);
 
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, innerRx, innerRy, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#14532d';
-    ctx.fill();
-    ctx.strokeStyle = '#166534';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
+    // Dashed lane dividers
+    ctx.save();
+    ctx.setLineDash([5, 8]);
     for (let l = 1; l < MDEFS.length; l++) {
       const t = l / MDEFS.length;
       ctx.beginPath();
       ctx.ellipse(cx, cy, innerRx + t * (outerRx - innerRx), innerRy + t * (outerRy - innerRy), 0, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,200,100,0.07)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,200,100,0.10)';
+      ctx.lineWidth = 0.8;
       ctx.stroke();
     }
+    ctx.setLineDash([]);
+    ctx.restore();
 
+    // Finish line
+    this._drawFinishLine(ctx, cx, cy, innerRx, innerRy, outerRx, outerRy, elapsed);
+
+    // Torches
+    this._drawTorches(ctx, cx, cy, outerRx, outerRy, elapsed);
+
+    // Inner grass
+    const grassGrad = ctx.createRadialGradient(cx, cy - innerRy * 0.2, 4, cx, cy, innerRx * 0.95);
+    grassGrad.addColorStop(0, '#166534');
+    grassGrad.addColorStop(1, '#0f3d22');
     ctx.beginPath();
-    ctx.moveTo(cx, cy - innerRy - 2);
-    ctx.lineTo(cx, cy - outerRy + 2);
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 2.5;
+    ctx.ellipse(cx, cy, innerRx, innerRy, 0, 0, Math.PI * 2);
+    ctx.fillStyle = grassGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#1a7a3a';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    const flicker = 0.85 + Math.random() * 0.3;
-    ctx.font = `${Math.round(15 * flicker)}px serif`;
+    // Inner label
+    ctx.save();
+    ctx.font = `bold ${Math.round(W * 0.021)}px sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    [[0,-1],[1,0],[0,1],[-1,0]].forEach(([dx, dy]) => {
-      ctx.fillText('🔥', cx + dx * (outerRx + 16), cy + dy * (outerRy + 16));
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.fillText('🏟️ MONSTER RACE', cx, cy);
+    ctx.restore();
+
+    // Update & render particles
+    this._updateParticles(dt);
+    (this._raceParticles || []).forEach(p => {
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle   = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     });
 
+    // Progress bars
     const barAreaW = innerRx * 2 - 16;
     const barH     = Math.min(10, (innerRy * 2 - 12) / MDEFS.length);
     const leader   = this._runners.reduce((a, b) => a.progress > b.progress ? a : b);
@@ -650,10 +744,15 @@ class MonsterRace {
       const bx   = cx - innerRx + 8;
       const by   = cy - innerRy + 5 + i * (barH + 2);
       const fill = Math.min(r.progress / RACE_LAPS, 1) * barAreaW;
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
       ctx.fillRect(bx, by, barAreaW, barH);
-      ctx.fillStyle = r.id === leader.id && !r.finished ? r.clr + 'ff' : r.clr + 'cc';
-      ctx.fillRect(bx, by, fill, barH);
+      if (fill > 0) {
+        const bg = ctx.createLinearGradient(bx, by, bx + fill, by);
+        bg.addColorStop(0, r.clr + 'aa');
+        bg.addColorStop(1, r.id === leader.id && !r.finished ? r.clr + 'ff' : r.clr + 'cc');
+        ctx.fillStyle = bg;
+        ctx.fillRect(bx, by, fill, barH);
+      }
       if (barH >= 7) {
         ctx.font = `bold ${Math.min(7, barH)}px sans-serif`;
         ctx.textAlign = 'left'; ctx.fillStyle = '#fff';
@@ -662,41 +761,86 @@ class MonsterRace {
       }
     });
 
+    // Runners
     const R = Math.max(14, Math.min(20, W * 0.026));
     this._runners.forEach((r, i) => {
       const t     = (i + 0.5) / MDEFS.length;
       const rx    = innerRx + t * (outerRx - innerRx);
       const ry    = innerRy + t * (outerRy - innerRy);
       const angle = -Math.PI / 2 + r.startOffset + (r.progress / RACE_LAPS) * 2 * Math.PI;
-      const px    = cx + rx * Math.cos(angle);
-      const py    = cy + ry * Math.sin(angle);
+      const baseX = cx + rx * Math.cos(angle);
+      const baseY = cy + ry * Math.sin(angle);
+      const bounce = r.effectType === 'stun' ? 0 : Math.sin(elapsed * 13 + i * 1.4) * 3;
+      const px = baseX;
+      const py = baseY + bounce;
 
-      if (r.effectType) {
-        const glows = {
-          boost:   'rgba(249,115,22,0.5)',
-          trap:    'rgba(239,68,68,0.5)',
-          stun:    'rgba(167,139,250,0.55)',
-          berserk: 'rgba(220,38,38,0.75)',
-        };
+      // Update motion trail
+      if (!r._trail) r._trail = [];
+      r._trail.push({ x: px, y: py });
+      if (r._trail.length > 5) r._trail.shift();
+
+      // Draw trail
+      r._trail.forEach((pos, ti) => {
+        const ta = ((ti + 1) / r._trail.length) * 0.3;
+        ctx.save();
+        ctx.globalAlpha = ta;
         ctx.beginPath();
-        ctx.arc(px, py, R + 7, 0, Math.PI * 2);
-        ctx.fillStyle = glows[r.effectType];
+        ctx.arc(pos.x, pos.y, R * 0.52, 0, Math.PI * 2);
+        ctx.fillStyle = r.clr;
         ctx.fill();
+        ctx.restore();
+      });
+
+      // Shadow ellipse
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      ctx.ellipse(px, py + R * 0.65, R * 0.65, R * 0.2, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#000';
+      ctx.fill();
+      ctx.restore();
+
+      // Effect radial glow
+      if (r.effectType) {
+        const glowCols = {
+          boost:   ['#f97316', '#f9731600'],
+          trap:    ['#ef4444', '#ef444400'],
+          stun:    ['#a78bfa', '#a78bfa00'],
+          berserk: ['#dc2626', '#dc262600'],
+        };
+        const [c0, c1] = glowCols[r.effectType] || ['#ffffff', '#ffffff00'];
+        const gg = ctx.createRadialGradient(px, py, R * 0.4, px, py, R + 11);
+        gg.addColorStop(0, c0 + 'bb');
+        gg.addColorStop(1, c1);
+        ctx.beginPath();
+        ctx.arc(px, py, R + 11, 0, Math.PI * 2);
+        ctx.fillStyle = gg;
+        ctx.fill();
+
+        // Emit particles
+        if ((r.effectType === 'boost' || r.effectType === 'berserk') && Math.random() < 0.45) {
+          this._emitParticle(px, py, r.effectType === 'berserk' ? '#dc2626' : '#f97316');
+        } else if (r.effectType === 'stun' && Math.random() < 0.25) {
+          this._emitParticle(px, py, '#a78bfa');
+        }
       }
 
+      // Leader pulsing ring
       if (r.id === leader.id && !r.finished) {
+        const pr = R + 4 + Math.sin(elapsed * 5) * 2;
         ctx.beginPath();
-        ctx.arc(px, py, R + 4, 0, Math.PI * 2);
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
         ctx.strokeStyle = '#fbbf24';
         ctx.lineWidth = 2;
         ctx.stroke();
       }
 
-      const img = this._imgs[r.id];
+      // Monster image (clipped)
       ctx.save();
       ctx.beginPath();
       ctx.arc(px, py, R, 0, Math.PI * 2);
       ctx.clip();
+      const img = this._imgs[r.id];
       if (img && img.complete && img.naturalWidth > 0) {
         ctx.drawImage(img, px - R, py - R, R * 2, R * 2);
       } else {
@@ -705,19 +849,145 @@ class MonsterRace {
       }
       ctx.restore();
 
+      // Outline
       ctx.beginPath();
       ctx.arc(px, py, R, 0, Math.PI * 2);
       ctx.strokeStyle = r.finished ? '#fbbf24' : (r.id === this._betMonster ? '#fff' : 'rgba(255,255,255,0.45)');
       ctx.lineWidth   = r.finished ? 2.5 : (r.id === this._betMonster ? 2.5 : 1.5);
       ctx.stroke();
 
+      // Bet arrow
       if (r.id === this._betMonster) {
         ctx.font = `bold ${Math.min(9, R * 0.55)}px sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
         ctx.fillStyle = '#fbbf24';
         ctx.fillText('▲', px, py - R - 2);
       }
+
+      // Leader crown (floating, pulsing)
+      if (r.id === leader.id && !r.finished) {
+        const ca = 0.65 + Math.sin(elapsed * 3) * 0.35;
+        ctx.save();
+        ctx.globalAlpha = ca;
+        ctx.font = `${Math.round(R * 0.9)}px serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText('👑', px, py - R - 4);
+        ctx.restore();
+      }
+
+      // Finish medal overlay
+      if (r.finishPlace) {
+        const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣'];
+        ctx.font = `${Math.round(R * 0.85)}px serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(medals[r.finishPlace - 1], px, py - R - 2);
+      }
     });
+  }
+
+  _updateParticles(dt) {
+    if (!this._raceParticles) return;
+    this._raceParticles = this._raceParticles.filter(p => {
+      p.x += p.vx * dt * 55;
+      p.y += p.vy * dt * 55;
+      p.vy += 0.09;
+      p.alpha -= dt * 2.8;
+      p.r *= 0.96;
+      return p.alpha > 0.02 && p.r > 0.4;
+    });
+  }
+
+  _emitParticle(x, y, color) {
+    if (!this._raceParticles) this._raceParticles = [];
+    if (this._raceParticles.length >= 80) return;
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = 0.5 + Math.random() * 1.8;
+    this._raceParticles.push({
+      x, y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd - 1.6,
+      alpha: 0.85 + Math.random() * 0.15,
+      r: 2 + Math.random() * 2.5,
+      color,
+    });
+  }
+
+  _drawTrack(ctx, cx, cy, outerRx, outerRy, innerRx, innerRy) {
+    // Outer border glow
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, outerRx + 22, outerRy + 22, 0, 0, Math.PI * 2);
+    const borderGrad = ctx.createRadialGradient(cx, cy, outerRx, cx, cy, outerRx + 24);
+    borderGrad.addColorStop(0, '#3d1c08');
+    borderGrad.addColorStop(1, '#160800');
+    ctx.fillStyle = borderGrad;
+    ctx.fill();
+
+    // Dirt track surface
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, outerRx, outerRy, 0, 0, Math.PI * 2);
+    const trackGrad = ctx.createRadialGradient(cx - outerRx * 0.25, cy - outerRy * 0.2, 8, cx, cy, outerRx * 1.05);
+    trackGrad.addColorStop(0, '#8b4513');
+    trackGrad.addColorStop(0.45, '#7b3a1a');
+    trackGrad.addColorStop(1, '#4e2208');
+    ctx.fillStyle = trackGrad;
+    ctx.fill();
+  }
+
+  _drawCrowd(ctx, cx, cy, outerRx, outerRy, elapsed) {
+    const n = 28;
+    const palette = ['#e74c3c','#3498db','#f39c12','#2ecc71','#9b59b6','#e67e22','#1abc9c','#e91e63'];
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2;
+      const er  = outerRx + 32 + Math.sin(i * 1.7) * 6;
+      const ery = outerRy + 30 + Math.cos(i * 2.3) * 5;
+      const bx  = cx + er  * Math.cos(ang);
+      const by  = cy + ery * Math.sin(ang);
+      const h   = 13 + Math.sin(i * 0.8) * 3;
+      const ww  = 5 + Math.cos(i * 1.2) * 1.3;
+      const wave = Math.sin(elapsed * 2.2 + i * 0.55) * 3;
+      ctx.fillStyle = palette[i % palette.length] + '77';
+      ctx.fillRect(bx - ww / 2, by - h - wave, ww, h);
+      ctx.beginPath();
+      ctx.arc(bx, by - h - wave, ww * 0.58, 0, Math.PI * 2);
+      ctx.fillStyle = '#c8a882aa';
+      ctx.fill();
+    }
+  }
+
+  _drawTorches(ctx, cx, cy, outerRx, outerRy, elapsed) {
+    [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([dx, dy]) => {
+      const tx = cx + dx * (outerRx + 16);
+      const ty = cy + dy * (outerRy + 16);
+      const flicker = 0.82 + Math.random() * 0.36;
+      const gr = ctx.createRadialGradient(tx, ty, 2, tx, ty, 20 * flicker);
+      gr.addColorStop(0,   'rgba(255,170,20,0.88)');
+      gr.addColorStop(0.4, 'rgba(255,80,10,0.38)');
+      gr.addColorStop(1,   'rgba(255,40,0,0)');
+      ctx.beginPath();
+      ctx.arc(tx, ty, 20 * flicker, 0, Math.PI * 2);
+      ctx.fillStyle = gr;
+      ctx.fill();
+      ctx.font = `${Math.round(15 * flicker)}px serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('🔥', tx, ty);
+    });
+  }
+
+  _drawFinishLine(ctx, cx, cy, innerRx, innerRy, outerRx, outerRy, elapsed) {
+    const yTop = cy - outerRy + 4;
+    const yBot = cy - innerRy - 4;
+    const lineH = yBot - yTop;
+    const lineW = Math.max(6, (outerRx - innerRx) * 0.22);
+    const segs  = 6;
+    const segH  = lineH / segs;
+    for (let s = 0; s < segs; s++) {
+      const bright = (s % 2 === 0)
+        ? 0.75 + Math.sin(elapsed * 5 + s) * 0.2
+        : 0.15 + Math.cos(elapsed * 5 + s) * 0.08;
+      const v = Math.round(bright * 255);
+      ctx.fillStyle = `rgba(${v},${v},${v},0.92)`;
+      ctx.fillRect(cx - lineW / 2, yTop + s * segH, lineW, segH);
+    }
   }
 
   // ── 결과 페이즈 ──────────────────────────────────────────────────────────────

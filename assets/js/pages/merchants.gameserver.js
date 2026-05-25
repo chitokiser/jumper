@@ -104,7 +104,7 @@ export function connectToGameServer() {
     _socket.emit('player:join', {
       userId: _ctx?.uid ?? 'anonymous',
       zoneId, lat, lng, accuracy, level,
-      lang: _ctx?.lang ?? window.LANG ?? 'ko',
+      lang: _ctx?.lang ?? window.LANG ?? 'en',
     });
 
     // keep-alive: GPS 없는 PC에서 isStale(10s) 방지 — 5초마다 위치 재전송

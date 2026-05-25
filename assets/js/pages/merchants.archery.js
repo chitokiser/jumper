@@ -2,7 +2,9 @@
 // 활쏘기 미니게임 — merchants.js에서 initArcheryGame()으로 초기화
 'use strict';
 
-const ENTRY_COST  = 100;
+const ENTRY_COST     = 100;
+const PAYOUT_RATE    = 0.6;   // house edge: player gets 60% of raw score (break-even ≈ 167 pts)
+const HOUSE_SPD_MULT = 1.1;   // monsters are 10% faster for house advantage
 const MAX_ARROWS  = 20;
 const GAME_SEC    = 60;
 const GRAVITY     = 0.28;
@@ -94,7 +96,7 @@ class ArcheryGame {
   open() {
     if (this._running) return;
     if (!this._spend(ENTRY_COST)) {
-      this._pageToast('코인이 부족합니다 (활쏘기: 100코인 필요)');
+      this._pageToast('Not enough coins (Archery: 100 coins required)');
       return;
     }
     this._modal.classList.remove('hidden');
@@ -231,7 +233,7 @@ class ArcheryGame {
     for (const m of this._monsters) {
       if (!m.alive) continue;
       const dx = arrow.x - m.x, dy = arrow.y - m.y;
-      if (dx * dx + dy * dy < (m.sz * 0.46) * (m.sz * 0.46)) {
+      if (dx * dx + dy * dy < (m.sz * 0.42) * (m.sz * 0.42)) {
         arrow.hit  = true;
         arrow.alive = false;
         m.hp--;
@@ -293,7 +295,7 @@ class ArcheryGame {
 
     const dir   = Math.random() < 0.5 ? 1 : -1;
     const sz    = def[5] * (0.75 + Math.random() * 0.5);
-    const speed = def[4] * this._diff * (0.7 + Math.random() * 0.6);
+    const speed = def[4] * HOUSE_SPD_MULT * this._diff * (0.7 + Math.random() * 0.6);
     const hp    = (def[7] === 'hero' || def[7] === 'golden') ? 2 : 1;
 
     this._monsters.push({
@@ -545,11 +547,17 @@ class ArcheryGame {
   // ── 종료 ────────────────────────────────────────────────────────────────────
   _end() {
     this._stop();
-    const total = this._score;
+    const rawScore  = this._score;
+    const scorePay  = Math.floor(rawScore * PAYOUT_RATE);
+    const dropCoins = this._coins;
+    const total     = scorePay + dropCoins;
     if (total > 0) this._add(total);
 
     const shotFired = MAX_ARROWS - this._arrows;
     const acc = shotFired > 0 ? Math.round(this._kills / shotFired * 100) : 0;
+    const net = total - ENTRY_COST;
+    const netColor  = net >= 0 ? '#4ade80' : '#f87171';
+    const netLabel  = net >= 0 ? `+${net}` : `${net}`;
 
     const res = document.createElement('div');
     res.className = 'arch-result';
@@ -557,16 +565,22 @@ class ArcheryGame {
       'position:absolute;inset:0;z-index:5;',
       'background:rgba(0,0,0,.88);backdrop-filter:blur(4px);',
       'display:flex;flex-direction:column;align-items:center;justify-content:center;',
-      'color:#fff;gap:10px;',
+      'color:#fff;gap:8px;',
     ].join('');
     res.innerHTML = `
-      <div style="font-size:42px;">🏹 게임 종료!</div>
-      <div style="font-size:28px;color:#ffd700;font-weight:700;">SCORE: ${this._score}</div>
-      <div style="font-size:15px;color:#d1d5db;">명중률: ${acc}% &nbsp;|&nbsp; 최고 콤보: ×${this._maxCombo}</div>
-      <div style="font-size:16px;color:#4ade80;font-weight:600;">획득 코인: +${total} 🪙</div>
-      <div style="display:flex;gap:10px;margin-top:16px;">
-        <button id="archRetry" style="padding:11px 24px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;">🔄 다시하기</button>
-        <button id="archExit"  style="padding:11px 24px;background:#374151;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;">나가기</button>
+      <div style="font-size:40px;">🏹 Game Over</div>
+      <div style="font-size:26px;color:#ffd700;font-weight:700;">SCORE: ${rawScore}</div>
+      <div style="font-size:13px;color:#94a3b8;">Accuracy: ${acc}% &nbsp;|&nbsp; Best Combo: ×${this._maxCombo}</div>
+      <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px 22px;margin:4px 0;font-size:13px;line-height:1.9;text-align:right;min-width:200px;">
+        <div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#94a3b8;">Score × ${Math.round(PAYOUT_RATE * 100)}%</span><span>${rawScore} × ${PAYOUT_RATE} = ${scorePay} 🪙</span></div>
+        <div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#94a3b8;">Drop bonus</span><span>+${dropCoins} 🪙</span></div>
+        <div style="display:flex;justify-content:space-between;gap:20px;color:#fbbf24;border-top:1px solid rgba(255,255,255,.15);padding-top:4px;"><span>Total earned</span><span style="font-weight:700;">${total} 🪙</span></div>
+        <div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#94a3b8;">Entry cost</span><span style="color:#f87171;">-${ENTRY_COST} 🪙</span></div>
+        <div style="display:flex;justify-content:space-between;gap:20px;font-size:15px;font-weight:700;border-top:1px solid rgba(255,255,255,.15);padding-top:4px;"><span>Net</span><span style="color:${netColor};">${netLabel} 🪙</span></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <button id="archRetry" style="padding:11px 24px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;">🔄 Retry</button>
+        <button id="archExit"  style="padding:11px 24px;background:#374151;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;">Exit</button>
       </div>
     `;
     this._panel.appendChild(res);
@@ -574,7 +588,7 @@ class ArcheryGame {
     res.querySelector('#archRetry').addEventListener('click', () => {
       res.remove();
       if (!this._spend(ENTRY_COST)) {
-        this._pageToast('코인이 부족합니다 (100코인 필요)');
+        this._pageToast('Not enough coins (100 required)');
         this.close();
         return;
       }
@@ -591,7 +605,7 @@ class ArcheryGame {
       'background:rgba(0,0,0,.7);color:#fff;padding:8px 18px;border-radius:8px;',
       'font-size:14px;pointer-events:none;transition:opacity .5s;z-index:3;text-align:center;',
     ].join('');
-    h.textContent = '🏹 화면을 아래로 드래그 → 손을 떼면 발사!';
+    h.textContent = '🏹 Drag down to aim → release to shoot!';
     this._panel.appendChild(h);
     setTimeout(() => { h.style.opacity = '0'; }, 2500);
     setTimeout(() => h.remove(), 3100);

@@ -3382,7 +3382,7 @@ async function _claimTutorialBox(box) {
     if (navigator.vibrate) navigator.vibrate([100, 50, 200, 50, 300]);
 
     // 보상 상세 패널 표시
-    const lang = window.LANG || 'ko';
+    const lang = window.LANG || 'en';
     setTimeout(() => _tutorialShowRewardPanel(data, lang), 500);
 
     // 마커 제거 (0.8초 딜레이 — 연출 후)
@@ -3434,7 +3434,7 @@ function _renderTutorialMarker(box) {
   });
 
   marker.addListener('click', () => {
-    const lang = window.LANG || 'ko';
+    const lang = window.LANG || 'en';
     const pos = getMyPos();
     if (!pos) {
       _tutorialShowToast(
@@ -3482,7 +3482,7 @@ export function clearTutorialBoxes() {
 // 매 GPS 업데이트마다 호출 — 거리 기반 UX 효과 발동
 export function checkTutorialProximity(lat, lng) {
   if (_tutorialBoxes.length === 0) return;
-  const lang = window.LANG || 'ko';
+  const lang = window.LANG || 'en';
 
   for (const box of _tutorialBoxes) {
     if (box.claimed) continue;

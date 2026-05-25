@@ -189,3 +189,4 @@ jumpTreasury : 0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312
 
 - 변경사항이 20개 이상 넘으면 자동으로 git에 배포해줘
 - 게임서버 배포는 git push 후 반드시 cd game-server && railway up 을 추가로 실행해야 한다.
+- 게임을 포함한 사이트 작업의 기본 언어는 영어로 하고 베트남&한국어는 추가로 작업 한다.

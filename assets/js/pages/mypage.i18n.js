@@ -332,17 +332,17 @@ const MESSAGES = {
 };
 
 function _t(key, ...args) {
-  const lang = window.LANG || 'ko';
+  const lang = window.LANG || 'en';
   const entry = MESSAGES[key];
   if (!entry) return key;
-  let text = entry[lang] ?? entry['ko'] ?? key;
+  let text = entry[lang] ?? entry['en'] ?? key;
   args.forEach((v, i) => { text = text.replaceAll(`{${i}}`, v ?? ''); });
   return text;
 }
 
 function initLang() {
   const saved = localStorage.getItem('town_lang');
-  window.LANG = SUPPORTED_LANGS.includes(saved) ? saved : 'vi';
+  window.LANG = SUPPORTED_LANGS.includes(saved) ? saved : 'en';
 
   // data-i18n 속성 적용
   document.querySelectorAll('[data-i18n]').forEach((el) => {
@@ -369,7 +369,7 @@ function renderLangSwitcher(containerId) {
   el.innerHTML = SUPPORTED_LANGS.map((lang) => {
     const flags  = { ko: '🇰🇷', en: '🇬🇧', vi: '🇻🇳' };
     const titles = { ko: '한국어', en: 'English', vi: 'Tiếng Việt' };
-    return `<button class="mp-lang-btn${lang === (window.LANG || 'ko') ? ' active' : ''}" data-lang="${lang}" title="${titles[lang]}">${flags[lang]}</button>`;
+    return `<button class="mp-lang-btn${lang === (window.LANG || 'en') ? ' active' : ''}" data-lang="${lang}" title="${titles[lang]}">${flags[lang]}</button>`;
   }).join('');
 
   el.addEventListener('click', (e) => {
