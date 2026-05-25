@@ -12,6 +12,9 @@ const CLAIM_RADIUS  = 30;   // m: 이 거리 이내여야 획득 가능
 const FOV_DEG     = 80;     // 수평 FOV (각도)
 const AIM_DEG     = 20;     // 이 각도 이내 → "조준" 판정
 const CHEST_BASE  = 72;     // px: 기본 보물상자 크기
+const TARGET_FPS  = 20;     // 렌더 루프 상한 FPS (발열 억제)
+const FRAME_MS    = 1000 / TARGET_FPS;
+const COMPASS_MS  = 80;     // 나침반 이벤트 최소 간격 ms
 
 // ── 보물상자 이미지 프리로드 ──────────────────────────────────────────────────
 const chestImg = new Image();
@@ -107,7 +110,11 @@ async function loadNearbyBoxes(lat, lng) {
 
 // ── 나침반 ────────────────────────────────────────────────────────────────────
 function setupCompass() {
+  let lastCompassTs = 0;
   const handler = e => {
+    const now = Date.now();
+    if (now - lastCompassTs < COMPASS_MS) return;
+    lastCompassTs = now;
     compassReady = true;
     if (e.webkitCompassHeading != null) {
       compassHead = e.webkitCompassHeading;
@@ -129,7 +136,7 @@ function setupCompass() {
 // ── 카메라 ────────────────────────────────────────────────────────────────────
 async function startCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
   });
   arVideo.srcObject = stream;
   await arVideo.play();
@@ -212,8 +219,12 @@ function renderRadar() {
 
 // ── 메인 AR 렌더 루프 ────────────────────────────────────────────────────────
 let animTime = 0;
+let lastFrameTs = 0;
 
 function renderAR(ts) {
+  rafId = requestAnimationFrame(renderAR);
+  if (ts - lastFrameTs < FRAME_MS) return;   // FPS 상한 적용
+  lastFrameTs = ts;
   animTime = ts;
   const W = arCanvas.width  = arCanvas.offsetWidth;
   const H = arCanvas.height = arCanvas.offsetHeight;
@@ -231,29 +242,32 @@ function renderAR(ts) {
     if (Math.abs(diff) > FOV_DEG / 2) continue;
 
     const dist         = haversine(userLat, userLng, box.lat, box.lng);
-    const claimDist    = box.radius ?? CLAIM_RADIUS;
-    const inClaimRange = dist <= claimDist;
+    const claimR       = box.radius ?? CLAIM_RADIUS;
+    const inClaimRange = dist <= claimR;
 
-    // 획득 조건 미달이면 AR에 표시하지 않음
-    if (!inClaimRange) continue;
+    // 운영 시간 외에는 표시하지 않음
     if (!isInTimeRange(box.startHour ?? 0, box.endHour ?? 24)) continue;
-    const scale   = 1.4;
-    const size    = CHEST_BASE * scale;
-    const screenX = W/2 + (diff / (FOV_DEG/2)) * (W/2);
-    const bounce  = Math.sin(now * 3 + box._phase) * 10;
-    const screenY = H * 0.40 + bounce;
+
+    // 획득 가능 여부에 따라 색상·크기 분기
+    const scale    = inClaimRange ? 1.4 : 1.0;
+    const ringColor = inClaimRange ? '#4ade80' : '#f59e0b';
+    const glowColor = inClaimRange ? '#4ade80' : '#fbbf24';
+    const size     = CHEST_BASE * scale;
+    const screenX  = W/2 + (diff / (FOV_DEG/2)) * (W/2);
+    const bounce   = inClaimRange ? Math.sin(now * 3 + box._phase) * 10 : Math.sin(now * 1.5 + box._phase) * 4;
+    const screenY  = H * 0.40 + bounce;
 
     const isAimed = Math.abs(diff) < AIM_DEG;
     if (isAimed) aimed = box;
 
-    // 녹색 펄스 링
+    // 펄스 링
     const pulse = 0.4 + 0.6 * Math.abs(Math.sin(now * 3));
     arCtx.save();
     arCtx.globalAlpha = pulse;
-    arCtx.strokeStyle = '#4ade80';
-    arCtx.lineWidth = 3;
-    arCtx.shadowColor = '#4ade80';
-    arCtx.shadowBlur = 18;
+    arCtx.strokeStyle = ringColor;
+    arCtx.lineWidth = inClaimRange ? 3 : 1.5;
+    arCtx.shadowColor = ringColor;
+    arCtx.shadowBlur = 8;
     arCtx.beginPath();
     arCtx.arc(screenX, screenY, size * 0.72, 0, Math.PI * 2);
     arCtx.stroke();
@@ -262,7 +276,7 @@ function renderAR(ts) {
     const pulse2 = 0.2 + 0.3 * Math.abs(Math.sin(now * 1.5 + 1));
     arCtx.save();
     arCtx.globalAlpha = pulse2;
-    arCtx.strokeStyle = '#86efac';
+    arCtx.strokeStyle = ringColor;
     arCtx.lineWidth = 1.5;
     arCtx.beginPath();
     arCtx.arc(screenX, screenY, size * 1.05, 0, Math.PI * 2);
@@ -275,7 +289,7 @@ function renderAR(ts) {
       arCtx.save();
       arCtx.globalAlpha = aimPulse * 0.6;
       const grad = arCtx.createRadialGradient(screenX, screenY, size*0.2, screenX, screenY, size*1.1);
-      grad.addColorStop(0, '#4ade80');
+      grad.addColorStop(0, glowColor);
       grad.addColorStop(1, 'transparent');
       arCtx.fillStyle = grad;
       arCtx.beginPath();
@@ -296,9 +310,9 @@ function renderAR(ts) {
 
     // 보물상자 이미지
     arCtx.save();
-    arCtx.globalAlpha = 1;
-    arCtx.shadowColor = '#4ade80';
-    arCtx.shadowBlur = 24;
+    arCtx.globalAlpha = inClaimRange ? 1 : 0.65;
+    arCtx.shadowColor = glowColor;
+    arCtx.shadowBlur = 10;
     if (chestImg.complete && chestImg.naturalWidth > 0) {
       arCtx.drawImage(chestImg, screenX - size/2, screenY - size/2, size, size);
     } else {
@@ -312,12 +326,14 @@ function renderAR(ts) {
     // 거리 라벨
     arCtx.save();
     arCtx.font = `bold ${Math.round(11 * scale)}px sans-serif`;
-    arCtx.fillStyle = '#4ade80';
+    arCtx.fillStyle = inClaimRange ? '#4ade80' : '#fbbf24';
     arCtx.strokeStyle = 'rgba(0,0,0,.8)';
     arCtx.lineWidth = 3;
     arCtx.textAlign = 'center';
     arCtx.textBaseline = 'top';
-    const label = `${Math.round(dist)}m ✓ 획득 가능!`;
+    const label = inClaimRange
+      ? `${Math.round(dist)}m ✓ 획득 가능!`
+      : `${Math.round(dist)}m (${claimR}m 접근 필요)`;
     arCtx.strokeText(label, screenX, screenY + size*0.55);
     arCtx.fillText(label,   screenX, screenY + size*0.55);
     arCtx.restore();
@@ -326,7 +342,7 @@ function renderAR(ts) {
     if (box.name) {
       arCtx.save();
       arCtx.font = `${Math.round(10 * scale)}px sans-serif`;
-      arCtx.fillStyle = '#86efac';
+      arCtx.fillStyle = inClaimRange ? '#86efac' : '#fde68a';
       arCtx.strokeStyle = 'rgba(0,0,0,.8)';
       arCtx.lineWidth = 3;
       arCtx.textAlign = 'center';
@@ -356,8 +372,6 @@ function renderAR(ts) {
     targetBox = aimed;
     updateClaimPanel();
   }
-
-  rafId = requestAnimationFrame(renderAR);
 }
 
 function drawCrosshair(W, H) {
@@ -467,7 +481,7 @@ async function init() {
       ? `${nearbyBoxes.length} treasure${nearbyBoxes.length > 1 ? 's' : ''} nearby — scan around!`
       : `📍 No treasures within ${SCAN_RADIUS}m`;
 
-    requestAnimationFrame(renderAR);
+    rafId = requestAnimationFrame(renderAR);
 
   } catch (err) {
     permStatus.textContent = '⚠️ ' + (err.message || 'Initialization failed');
@@ -476,6 +490,16 @@ async function init() {
 }
 
 // ── 이벤트 ────────────────────────────────────────────────────────────────────
+// 백그라운드 진입 시 RAF 정지 → 발열·배터리 절약
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  } else if (arScreen.style.display !== 'none') {
+    lastFrameTs = 0;
+    rafId = requestAnimationFrame(renderAR);
+  }
+});
+
 startBtn.addEventListener('click', init);
 claimBtn.addEventListener('click', handleClaim);
 hudBack.addEventListener('click', () => {
