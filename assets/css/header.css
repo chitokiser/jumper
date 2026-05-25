@@ -336,3 +336,32 @@
   .brand-name{ font-size: 15px; }
   .user-badge{ max-width: 170px; }
 }
+
+/* ── 헤더 언어 스위처 ───────────────────────────────────────────────── */
+.hdr-lang{
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.hdr-lang-btn{
+  padding: 3px 5px;
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 7px;
+  background: transparent;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+
+.hdr-lang-btn:hover{
+  transform: scale(1.18);
+  border-color: rgba(37,99,235,.35);
+}
+
+.hdr-lang-btn.is-active{
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,.25);
+  transform: scale(1.1);
+}

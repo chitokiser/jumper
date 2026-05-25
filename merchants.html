@@ -1310,18 +1310,6 @@
     .tut-btn-next { background: #7c3aed; color: #fff; }
     #btnTutHelp { background: rgba(255,255,255,.9); color: #374151; font-size: 14px; }
 
-    /* ── 언어 전환 (헤더 hdr-right 안에 주입됨) ── */
-    .lang-switcher {
-      display: flex; flex-direction: row; gap: 4px; align-items: center;
-    }
-    .lang-btn {
-      padding: 3px 5px; border: 1px solid rgba(124,58,237,.35);
-      border-radius: 6px; background: transparent;
-      font-size: 1.25rem; line-height: 1;
-      cursor: pointer; transition: all .15s;
-    }
-    .lang-btn:hover { background: #ede9fe; border-color: #7c3aed; transform: scale(1.15); }
-    .lang-btn.is-active { border-color: #7c3aed; box-shadow: 0 0 6px rgba(124,58,237,.5); transform: scale(1.1); }
   </style>
 
   <script>
@@ -1697,37 +1685,6 @@
       </div>
     </div>
   </div>
-
-  <!-- 언어 전환 -->
-  <div class="lang-switcher" id="langSwitcher">
-    <button class="lang-btn" data-lang-btn="vi" onclick="setMerchantsLang('vi')" title="Tiếng Việt">🇻🇳</button>
-    <button class="lang-btn" data-lang-btn="en" onclick="setMerchantsLang('en')" title="English">🇬🇧</button>
-    <button class="lang-btn" data-lang-btn="ko" onclick="setMerchantsLang('ko')" title="한국어">🇰🇷</button>
-  </div>
-  <script>
-    document.querySelectorAll('[data-lang-btn]').forEach(function(btn) {
-      btn.classList.toggle('is-active', btn.dataset.langBtn === window.LANG);
-    });
-    // 헤더(hdr-right)가 주입되면 langSwitcher를 그 안으로 이동
-    (function() {
-      var switcher = document.getElementById('langSwitcher');
-      if (!switcher) return;
-      function tryMount() {
-        var hdrRight = document.querySelector('.hdr-right');
-        if (hdrRight) {
-          hdrRight.insertBefore(switcher, hdrRight.firstChild);
-          return true;
-        }
-        return false;
-      }
-      if (!tryMount()) {
-        var obs = new MutationObserver(function() {
-          if (tryMount()) obs.disconnect();
-        });
-        obs.observe(document.getElementById('siteHeader') || document.body, { childList: true, subtree: true });
-      }
-    })();
-  </script>
 
   <!-- 튜토리얼 모달 -->
   <div id="tutModal" class="hidden" role="dialog" aria-modal="true" aria-label="게임 가이드">

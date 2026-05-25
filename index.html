@@ -215,11 +215,6 @@
     .jp-sc-x{position:absolute;top:12px;right:14px;background:none;border:none;color:#64748b;font-size:22px;cursor:pointer;line-height:1;z-index:2;padding:2px 6px;}
     .jp-sc-x:hover{color:#94a3b8;}
 
-    /* ── 언어 전환 위젯 ── */
-    .lang-switcher{position:fixed;bottom:80px;right:16px;z-index:8888;display:flex;flex-direction:column;gap:4px;}
-    .lang-btn{padding:4px 6px;border:1px solid rgba(124,58,237,.35);border-radius:8px;background:rgba(255,255,255,.92);font-size:1.4rem;line-height:1;cursor:pointer;transition:all .15s;backdrop-filter:blur(4px);}
-    .lang-btn:hover{background:var(--accent-light,#ede9fe);border-color:var(--accent,#7c3aed);transform:scale(1.15);}
-    .lang-btn.is-active{border-color:var(--accent,#7c3aed);box-shadow:0 0 8px rgba(124,58,237,.5);transform:scale(1.1);}
   </style>
 </head>
 <body>
@@ -436,12 +431,6 @@
   </div>
 
   <div id="siteFooter"></div>
-
-  <div class="lang-switcher" id="langSwitcher">
-    <button class="lang-btn is-active" data-lang-btn="vi" onclick="setTownLang('vi')" title="Tiếng Việt">🇻🇳</button>
-    <button class="lang-btn" data-lang-btn="en" onclick="setTownLang('en')" title="English">🇬🇧</button>
-    <button class="lang-btn" data-lang-btn="ko" onclick="setTownLang('ko')" title="한국어">🇰🇷</button>
-  </div>
 
   <script type="module" src="/assets/js/pages/community-preview.js"></script>
   <script type="module" src="/assets/js/header-auth.js"></script>

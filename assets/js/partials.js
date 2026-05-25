@@ -67,6 +67,36 @@ function applyHeaderI18n() {
 window.applyHeaderI18n = applyHeaderI18n;
 window.addEventListener('lang:change', applyHeaderI18n);
 
+function _mountHdrLang() {
+  const container = document.getElementById('hdrLangSwitcher');
+  if (!container) return;
+  const LANGS = ['vi', 'en', 'ko'];
+  const saved = localStorage.getItem('town_lang');
+  const cur = LANGS.includes(saved) ? saved : 'vi';
+  container.querySelectorAll('[data-hdr-lang]').forEach(function(btn) {
+    btn.classList.toggle('is-active', btn.dataset.hdrLang === cur);
+  });
+  container.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-hdr-lang]');
+    if (!btn) return;
+    var lang = btn.dataset.hdrLang;
+    if (!LANGS.includes(lang)) return;
+    localStorage.setItem('town_lang', lang);
+    container.querySelectorAll('[data-hdr-lang]').forEach(function(b) {
+      b.classList.toggle('is-active', b.dataset.hdrLang === lang);
+    });
+    window.dispatchEvent(new CustomEvent('lang:change', { detail: { lang: lang } }));
+    // 페이지별 언어 재적용: 재로드 또는 이벤트 처리
+    if (typeof window.setMerchantsLang === 'function') {
+      window.setMerchantsLang(lang);
+    } else if (typeof window.setTownLang === 'function') {
+      window.setTownLang(lang);
+    } else {
+      location.reload();
+    }
+  });
+}
+
 const _FTR_T = {
   vi: {
     ftr_about_title:    'Giới thiệu',
@@ -277,6 +307,7 @@ window.addEventListener('lang:change', applyFooterI18n);
 
       await loadInto("siteHeader", "/partials/header.html");
       applyHeaderI18n();
+      _mountHdrLang();
       await loadInto("siteFooter", "/partials/footer.html");
       applyFooterI18n();
       ensureSupportChatScript();

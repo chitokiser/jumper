@@ -1479,7 +1479,7 @@ function initAccordion() {
 
 onAuthReady(async (ctx) => {
   initLang();
-  renderLangSwitcher('mpLangSwitcher');
+  window.addEventListener('lang:change', () => initLang());
 
   const loggedIn = (ctx?.loggedIn ?? ctx?.loggedin) === true;
   const user = ctx?.user;

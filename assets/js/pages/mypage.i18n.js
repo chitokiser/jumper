@@ -341,8 +341,8 @@ function _t(key, ...args) {
 }
 
 function initLang() {
-  const saved = localStorage.getItem('lang');
-  window.LANG = SUPPORTED_LANGS.includes(saved) ? saved : 'ko';
+  const saved = localStorage.getItem('town_lang');
+  window.LANG = SUPPORTED_LANGS.includes(saved) ? saved : 'vi';
 
   // data-i18n 속성 적용
   document.querySelectorAll('[data-i18n]').forEach((el) => {
@@ -378,7 +378,7 @@ function renderLangSwitcher(containerId) {
     const lang = btn.dataset.lang;
     if (!SUPPORTED_LANGS.includes(lang)) return;
     window.LANG = lang;
-    localStorage.setItem('lang', lang);
+    localStorage.setItem('town_lang', lang);
     initLang();
   });
 }
