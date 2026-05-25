@@ -4,7 +4,7 @@
 import { auth, db, functions } from '../firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
-import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { collection, getDocs, getDoc, doc, query, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 const SCAN_RADIUS   = 100;  // m: 이 반경 내 보물 로드
@@ -49,6 +49,8 @@ let nearbyBoxes   = [];
 let targetBox     = null;
 let rafId         = null;
 let gpsWatchId    = null;
+let lastSonarTs   = 0;       // 마지막 소나 핑 시각 (ms)
+let prevAimed     = null;    // 이전 프레임 aimed (로크온 감지용)
 
 // ── 수학 헬퍼 ─────────────────────────────────────────────────────────────────
 function toRad(d) { return d * Math.PI / 180; }
@@ -99,13 +101,28 @@ async function getGpsOnce() {
   );
 }
 
-// ── Firestore: 근처 박스 로드 ─────────────────────────────────────────────────
+// ── Firestore: 근처 박스 로드 (이미 획득한 박스 제외) ────────────────────────
 async function loadNearbyBoxes(lat, lng) {
   const snap = await getDocs(query(collection(db, 'treasure_boxes'), where('active', '==', true)));
-  return snap.docs
+  const boxes = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .filter(b => b.lat != null && b.lng != null && !b.hiddenBox
       && haversine(lat, lng, b.lat, b.lng) <= (b.scanRadius ?? SCAN_RADIUS));
+
+  if (!currentUser || !boxes.length) return boxes;
+
+  // 수집 로그 병렬 조회 — 리스폰 전인 박스 제거
+  const now = Date.now();
+  const logs = await Promise.all(
+    boxes.map(b => getDoc(doc(db, 'treasure_logs', `${currentUser.uid}_${b.id}`)))
+  );
+  return boxes.filter((b, i) => {
+    if (!logs[i].exists()) return true;
+    const d = logs[i].data();
+    const lastMs   = d.collectedAt?.toMillis?.() || 0;
+    const respawnMs = d.respawnIntervalMs ?? b.respawnIntervalMs ?? 86400000;
+    return lastMs + respawnMs <= now;  // 리스폰 됐으면 다시 표시
+  });
 }
 
 // ── 나침반 ────────────────────────────────────────────────────────────────────
@@ -142,20 +159,77 @@ async function startCamera() {
   await arVideo.play();
 }
 
-// ── Web Audio 성공 사운드 ──────────────────────────────────────────────────────
-function playSuccess() {
+// ── 오디오 시스템 ──────────────────────────────────────────────────────────────
+let audioCtx = null;
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// 소나 핑 — 거리가 가까울수록 고음·짧은 간격, 획득범위 내엔 더블핑
+function playSonarPing(dist, claimR) {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [523, 659, 784, 1047].forEach((f, i) => {
+    const ctx = getAudio();
+    const inClaim = dist <= claimR;
+    const ratio = Math.max(0, 1 - dist / Math.max(claimR * 8, 400));
+    const freq = 320 + ratio * 880;
+    const makeBeep = (f, startT, vol, dur) => {
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.connect(g); g.connect(ctx.destination);
-      o.type = 'sine'; o.frequency.value = f;
-      const t0 = ctx.currentTime + i * 0.12;
-      g.gain.setValueAtTime(0, t0);
-      g.gain.linearRampToValueAtTime(0.3, t0 + 0.05);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.4);
-      o.start(t0); o.stop(t0 + 0.4);
+      o.type = inClaim ? 'square' : 'sine';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0, startT);
+      g.gain.linearRampToValueAtTime(vol, startT + 0.018);
+      g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+      o.start(startT); o.stop(startT + dur + 0.01);
+    };
+    const t = ctx.currentTime;
+    makeBeep(freq, t, inClaim ? 0.28 : 0.12, inClaim ? 0.1 : 0.16);
+    if (inClaim) makeBeep(freq * 1.6, t + 0.13, 0.22, 0.09); // 더블 핑
+  } catch (_) {}
+}
+
+// 조준 로크온 사운드
+function playLockOn() {
+  try {
+    const ctx = getAudio();
+    [900, 1100, 1400].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'square'; o.frequency.value = f;
+      const t = ctx.currentTime + i * 0.065;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.14, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.075);
+      o.start(t); o.stop(t + 0.09);
     });
+  } catch (_) {}
+}
+
+// 획득 성공 사운드 (강화)
+function playSuccess() {
+  try {
+    const ctx = getAudio();
+    // 상승 팡파르
+    [523, 659, 784, 1047, 1319].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = i < 3 ? 'triangle' : 'sine'; o.frequency.value = f;
+      const t0 = ctx.currentTime + i * 0.1;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.35, t0 + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.5);
+      o.start(t0); o.stop(t0 + 0.55);
+    });
+    // 저음 타격감
+    const sub = ctx.createOscillator(), sg = ctx.createGain();
+    sub.connect(sg); sg.connect(ctx.destination);
+    sub.type = 'sine'; sub.frequency.setValueAtTime(120, ctx.currentTime);
+    sub.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.3);
+    sg.gain.setValueAtTime(0.5, ctx.currentTime);
+    sg.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    sub.start(ctx.currentTime); sub.stop(ctx.currentTime + 0.4);
   } catch (_) {}
 }
 
@@ -235,6 +309,29 @@ function renderAR(ts) {
   let aimed = null;
   const now = ts / 1000;
 
+  // ── 소나 핑: 가장 가까운 보물 기준 ──────────────────────────────────────────
+  let sonarDist = Infinity, sonarClaimR = CLAIM_RADIUS;
+  if (userLat) {
+    for (const box of nearbyBoxes) {
+      const d = haversine(userLat, userLng, box.lat, box.lng);
+      if (d < sonarDist) { sonarDist = d; sonarClaimR = box.radius ?? CLAIM_RADIUS; }
+    }
+  }
+  if (sonarDist < Infinity) {
+    // 거리에 따라 핑 간격: 클레임범위 밖 400m→2200ms, 30m→600ms / 클레임범위 내→300ms
+    const inClaim = sonarDist <= sonarClaimR;
+    const sonarInterval = inClaim
+      ? 300
+      : Math.max(600, 600 + (Math.min(sonarDist, 400) / 400) * 1600);
+    if (ts - lastSonarTs > sonarInterval) {
+      playSonarPing(sonarDist, sonarClaimR);
+      lastSonarTs = ts;
+    }
+  }
+
+  // ── 획득 범위 내 보물 수 (비네트용) ─────────────────────────────────────────
+  let claimableVisible = 0;
+
   for (const box of nearbyBoxes) {
     const bear  = bearing(userLat, userLng, box.lat, box.lng);
     const diff  = angleDiff(bear, compassHead);
@@ -257,6 +354,7 @@ function renderAR(ts) {
     const bounce   = inClaimRange ? Math.sin(now * 3 + box._phase) * 10 : Math.sin(now * 1.5 + box._phase) * 4;
     const screenY  = H * 0.40 + bounce;
 
+    if (inClaimRange) claimableVisible++;
     const isAimed = Math.abs(diff) < AIM_DEG;
     if (isAimed) aimed = box;
 
@@ -354,7 +452,10 @@ function renderAR(ts) {
   }
 
   // crosshair
-  drawCrosshair(W, H);
+  drawCrosshair(W, H, aimed);
+
+  // 획득 가능 보물이 화면에 있으면 가장자리 비네트
+  if (claimableVisible > 0) drawVignette(W, H, now);
 
   // compass no-signal indicator
   if (!compassReady) {
@@ -369,19 +470,42 @@ function renderAR(ts) {
   renderRadar();
 
   if (aimed !== targetBox) {
+    if (aimed && !prevAimed) playLockOn();   // 새로 조준
     targetBox = aimed;
     updateClaimPanel();
   }
+  prevAimed = aimed;
 }
 
-function drawCrosshair(W, H) {
+function drawCrosshair(W, H, aimed) {
   const cx = W/2, cy = H*0.40;
   arCtx.save();
-  arCtx.strokeStyle = 'rgba(251,191,36,.55)';
-  arCtx.lineWidth = 1.5;
+  arCtx.strokeStyle = aimed ? 'rgba(74,222,128,.9)' : 'rgba(251,191,36,.55)';
+  arCtx.lineWidth = aimed ? 2 : 1.5;
   arCtx.setLineDash([5, 5]);
   arCtx.beginPath(); arCtx.moveTo(cx-28, cy); arCtx.lineTo(cx+28, cy); arCtx.stroke();
   arCtx.beginPath(); arCtx.moveTo(cx, cy-28); arCtx.lineTo(cx, cy+28); arCtx.stroke();
+  // 조준 코너 브래킷
+  if (aimed) {
+    arCtx.setLineDash([]);
+    arCtx.lineWidth = 2.5;
+    const r = 22;
+    [[cx-r,cy-r,1,1],[cx+r,cy-r,-1,1],[cx-r,cy+r,1,-1],[cx+r,cy+r,-1,-1]].forEach(([x,y,sx,sy]) => {
+      arCtx.beginPath(); arCtx.moveTo(x+sx*10,y); arCtx.lineTo(x,y); arCtx.lineTo(x,y+sy*10); arCtx.stroke();
+    });
+  }
+  arCtx.restore();
+}
+
+// 획득 가능 보물 존재 시 화면 가장자리 초록 비네트
+function drawVignette(W, H, now) {
+  const alpha = 0.18 + 0.14 * Math.abs(Math.sin(now * 3.5));
+  const grad = arCtx.createRadialGradient(W/2, H/2, H*0.25, W/2, H/2, H*0.85);
+  grad.addColorStop(0, 'transparent');
+  grad.addColorStop(1, `rgba(74,222,128,${alpha})`);
+  arCtx.save();
+  arCtx.fillStyle = grad;
+  arCtx.fillRect(0, 0, W, H);
   arCtx.restore();
 }
 
@@ -416,7 +540,7 @@ async function handleClaim() {
   }
 
   claimBtn.disabled = true;
-  claimBtn.textContent = 'Claiming...';
+  claimBtn.textContent = '⏳ Claiming...';
   claimResult.textContent = '';
 
   try {
