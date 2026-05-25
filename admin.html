@@ -454,6 +454,16 @@
                     <option value="true">정회원 전용</option>
                   </select>
                 </div>
+                <div class="k">클릭 획득 거리 (m)</div>
+                <div class="v">
+                  <input type="number" id="tBoxClaimRadius" class="select" style="width:100px;" value="30" min="5" max="5000" step="5">
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">플레이어가 이 거리(m) 이내로 접근해야 보물을 획득할 수 있습니다. 크루저·이동 중 획득 시 크게 설정하세요 (예: 500~2000m).</div>
+                </div>
+                <div class="k">AR 스캔 거리 (m)</div>
+                <div class="v">
+                  <input type="number" id="tBoxScanRadius" class="select" style="width:100px;" value="100" min="10" max="5000" step="10">
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">AR 카메라 스캐너에서 이 거리(m) 이내 보물만 표시됩니다.</div>
+                </div>
                 <div class="k">숨김 보물</div>
                 <div class="v">
                   <select id="tBoxHiddenBox" class="select">

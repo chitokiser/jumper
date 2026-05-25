@@ -1703,7 +1703,9 @@ async function loadTreasureBoxesList() {
       $("tBoxActive").value      = String(r.active !== false);
       $("tBoxMemberOnly").value  = String(r.memberOnly === true);
       $("tBoxHiddenBox").value   = String(r.hiddenBox === true);
-      if ($("tBoxKeyId")) $("tBoxKeyId").value = r.keyId || "";
+      if ($("tBoxKeyId"))       $("tBoxKeyId").value       = r.keyId || "";
+      if ($("tBoxClaimRadius")) $("tBoxClaimRadius").value = r.radius     ?? 30;
+      if ($("tBoxScanRadius"))  $("tBoxScanRadius").value  = r.scanRadius ?? 100;
       const kRow = $("tBoxKeyIdRow"), kVal = $("tBoxKeyIdVal");
       if (kRow && kVal) { const show = r.hiddenBox === true; kRow.style.display = show ? "" : "none"; kVal.style.display = show ? "" : "none"; }
     });
@@ -1812,21 +1814,25 @@ $("btnSaveTreasureBox")?.addEventListener("click", async () => {
       startHour: Number($("tBoxStartHour")?.value) || 0,
       endHour:   Number($("tBoxEndHour")?.value)   || 24,
       itemPool,
-      active:     $("tBoxActive")?.value === "true",
-      memberOnly: $("tBoxMemberOnly")?.value === "true",
-      hiddenBox:  $("tBoxHiddenBox")?.value === "true",
-      keyId:      $("tBoxKeyId")?.value.trim() || null,
+      active:      $("tBoxActive")?.value === "true",
+      memberOnly:  $("tBoxMemberOnly")?.value === "true",
+      hiddenBox:   $("tBoxHiddenBox")?.value === "true",
+      keyId:       $("tBoxKeyId")?.value.trim() || null,
+      radius:      Number($("tBoxClaimRadius")?.value) || 30,
+      scanRadius:  Number($("tBoxScanRadius")?.value)  || 100,
     });
     alert(`박스 저장 완료!\nboxId: ${res.data.boxId}`);
     _boxItemPool = [];
     renderItemPool();
     ["tBoxId","tBoxName","tBoxCoords","tBoxKeyId"].forEach(id => { const e=$(id); if(e) e.value=""; });
     const prev = $("tBoxCoordsPreview"); if (prev) prev.textContent = "";
-    if ($("tBoxStartHour"))  $("tBoxStartHour").value  = "0";
-    if ($("tBoxEndHour"))    $("tBoxEndHour").value    = "24";
-    if ($("tBoxActive"))     $("tBoxActive").value     = "true";
-    if ($("tBoxMemberOnly")) $("tBoxMemberOnly").value = "false";
-    if ($("tBoxHiddenBox"))  $("tBoxHiddenBox").value  = "false";
+    if ($("tBoxStartHour"))   $("tBoxStartHour").value   = "0";
+    if ($("tBoxEndHour"))     $("tBoxEndHour").value     = "24";
+    if ($("tBoxActive"))      $("tBoxActive").value      = "true";
+    if ($("tBoxMemberOnly"))  $("tBoxMemberOnly").value  = "false";
+    if ($("tBoxHiddenBox"))   $("tBoxHiddenBox").value   = "false";
+    if ($("tBoxClaimRadius")) $("tBoxClaimRadius").value = "30";
+    if ($("tBoxScanRadius"))  $("tBoxScanRadius").value  = "100";
     const kRow = $("tBoxKeyIdRow"), kVal = $("tBoxKeyIdVal");
     if (kRow) kRow.style.display = "none"; if (kVal) kVal.style.display = "none";
     await loadTreasureBoxesList();
