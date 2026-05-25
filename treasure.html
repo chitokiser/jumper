@@ -83,8 +83,9 @@
     .divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, rgba(245,158,11,.5), transparent); margin: 0 40px; }
 
     /* ── Lang switcher ───────────────────────────────────────────────── */
-    .lang-btn { border: 1px solid rgba(245,158,11,.4); color: rgba(253,230,138,.7); font-family: 'Cinzel', serif; font-size: .7rem; letter-spacing: .05em; transition: all .2s; }
-    .lang-btn:hover, .lang-btn.active { background: #f59e0b; color: #1c0f00; border-color: #f59e0b; font-weight: 700; }
+    .lang-btn { border: 1px solid rgba(245,158,11,.4); color: rgba(253,230,138,.7); font-family: sans-serif; font-size: 1.25rem; line-height: 1; padding: 4px 6px; transition: all .2s; }
+    .lang-btn:hover, .lang-btn.active { background: rgba(245,158,11,.25); border-color: #f59e0b; transform: scale(1.15); }
+    .lang-btn.active { border-color: #f59e0b; box-shadow: 0 0 8px rgba(245,158,11,.6); }
 
     /* ── Hero BG ─────────────────────────────────────────────────────── */
     .hero-bg {
@@ -118,9 +119,9 @@
 
   <!-- ── Fixed: Lang Switcher ──────────────────────────────────────────── -->
   <div class="fixed top-4 right-4 z-50 flex gap-1.5">
-    <button class="lang-btn px-3 py-1.5 rounded-full" data-lang="ko">한국어</button>
-    <button class="lang-btn px-3 py-1.5 rounded-full" data-lang="en">EN</button>
-    <button class="lang-btn px-3 py-1.5 rounded-full" data-lang="vi">VI</button>
+    <button class="lang-btn rounded-full" data-lang="ko" title="한국어">🇰🇷</button>
+    <button class="lang-btn rounded-full" data-lang="en" title="English">🇬🇧</button>
+    <button class="lang-btn rounded-full" data-lang="vi" title="Tiếng Việt">🇻🇳</button>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════

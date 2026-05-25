@@ -1315,13 +1315,13 @@
       display: flex; flex-direction: row; gap: 4px; align-items: center;
     }
     .lang-btn {
-      padding: 4px 8px; border: 1px solid rgba(124,58,237,.35);
+      padding: 3px 5px; border: 1px solid rgba(124,58,237,.35);
       border-radius: 6px; background: transparent;
-      color: #6b7280; font-size: 0.72rem; font-weight: 700;
-      cursor: pointer; transition: all .15s; line-height: 1.4;
+      font-size: 1.25rem; line-height: 1;
+      cursor: pointer; transition: all .15s;
     }
-    .lang-btn:hover { background: #ede9fe; color: #7c3aed; border-color: #7c3aed; }
-    .lang-btn.is-active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    .lang-btn:hover { background: #ede9fe; border-color: #7c3aed; transform: scale(1.15); }
+    .lang-btn.is-active { border-color: #7c3aed; box-shadow: 0 0 6px rgba(124,58,237,.5); transform: scale(1.1); }
   </style>
 
   <script>
@@ -1700,9 +1700,9 @@
 
   <!-- 언어 전환 -->
   <div class="lang-switcher" id="langSwitcher">
-    <button class="lang-btn" data-lang-btn="vi" onclick="setMerchantsLang('vi')">VI</button>
-    <button class="lang-btn" data-lang-btn="en" onclick="setMerchantsLang('en')">EN</button>
-    <button class="lang-btn" data-lang-btn="ko" onclick="setMerchantsLang('ko')">KO</button>
+    <button class="lang-btn" data-lang-btn="vi" onclick="setMerchantsLang('vi')" title="Tiếng Việt">🇻🇳</button>
+    <button class="lang-btn" data-lang-btn="en" onclick="setMerchantsLang('en')" title="English">🇬🇧</button>
+    <button class="lang-btn" data-lang-btn="ko" onclick="setMerchantsLang('ko')" title="한국어">🇰🇷</button>
   </div>
   <script>
     document.querySelectorAll('[data-lang-btn]').forEach(function(btn) {
