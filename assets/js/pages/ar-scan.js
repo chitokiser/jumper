@@ -7,10 +7,15 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
-const SCAN_RADIUS = 200;    // m: 이 반경 내 보물 로드
+const SCAN_RADIUS   = 100;  // m: 이 반경 내 보물 로드
+const CLAIM_RADIUS  = 30;   // m: 이 거리 이내여야 획득 가능
 const FOV_DEG     = 80;     // 수평 FOV (각도)
 const AIM_DEG     = 20;     // 이 각도 이내 → "조준" 판정
 const CHEST_BASE  = 72;     // px: 기본 보물상자 크기
+
+// ── 보물상자 이미지 프리로드 ──────────────────────────────────────────────────
+const chestImg = new Image();
+chestImg.src = '/assets/images/item/box.png';
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 const permScreen  = document.getElementById('permScreen');
@@ -90,7 +95,8 @@ async function loadNearbyBoxes(lat, lng) {
   const snap = await getDocs(query(collection(db, 'treasure_boxes'), where('active', '==', true)));
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
-    .filter(b => b.lat != null && b.lng != null && haversine(lat, lng, b.lat, b.lng) <= SCAN_RADIUS);
+    .filter(b => b.lat != null && b.lng != null && !b.hiddenBox
+      && haversine(lat, lng, b.lat, b.lng) <= (b.scanRadius ?? SCAN_RADIUS));
 }
 
 // ── 나침반 ────────────────────────────────────────────────────────────────────
@@ -218,24 +224,54 @@ function renderAR(ts) {
 
     if (Math.abs(diff) > FOV_DEG / 2) continue;
 
-    const dist  = haversine(userLat, userLng, box.lat, box.lng);
+    const dist         = haversine(userLat, userLng, box.lat, box.lng);
+    const inClaimRange = dist <= CLAIM_RADIUS;
     const frac  = 1 - dist / SCAN_RADIUS;           // 0=far 1=near
-    const scale = 0.55 + frac * 0.85;
+    const scale = inClaimRange ? 1.4 : (0.55 + frac * 0.85);
     const size  = CHEST_BASE * scale;
     const screenX = W/2 + (diff / (FOV_DEG/2)) * (W/2);
-    const bounce  = Math.sin(now * 2 + box._phase) * 6;
+    const bounceAmp = inClaimRange ? 10 : 6;
+    const bounceSpd = inClaimRange ? 3  : 2;
+    const bounce  = Math.sin(now * bounceSpd + box._phase) * bounceAmp;
     const screenY = H * 0.40 + bounce;
 
     const isAimed = Math.abs(diff) < AIM_DEG;
     if (isAimed) aimed = box;
 
+    // 획득 가능 범위 — 녹색 확장 링
+    if (inClaimRange) {
+      const pulse = 0.4 + 0.6 * Math.abs(Math.sin(now * 3));
+      arCtx.save();
+      arCtx.globalAlpha = pulse;
+      arCtx.strokeStyle = '#4ade80';
+      arCtx.lineWidth = 3;
+      arCtx.shadowColor = '#4ade80';
+      arCtx.shadowBlur = 18;
+      arCtx.beginPath();
+      arCtx.arc(screenX, screenY, size * 0.72, 0, Math.PI * 2);
+      arCtx.stroke();
+      arCtx.restore();
+
+      // 두 번째 링 (느린 페이드)
+      const pulse2 = 0.2 + 0.3 * Math.abs(Math.sin(now * 1.5 + 1));
+      arCtx.save();
+      arCtx.globalAlpha = pulse2;
+      arCtx.strokeStyle = '#86efac';
+      arCtx.lineWidth = 1.5;
+      arCtx.beginPath();
+      arCtx.arc(screenX, screenY, size * 1.05, 0, Math.PI * 2);
+      arCtx.stroke();
+      arCtx.restore();
+    }
+
     // glow ring when aimed
     if (isAimed) {
+      const glowColor = inClaimRange ? '#4ade80' : '#fbbf24';
       const pulse = 0.55 + 0.45 * Math.sin(now * 4);
       arCtx.save();
       arCtx.globalAlpha = pulse * 0.6;
       const grad = arCtx.createRadialGradient(screenX, screenY, size*0.2, screenX, screenY, size*1.1);
-      grad.addColorStop(0, '#fbbf24');
+      grad.addColorStop(0, glowColor);
       grad.addColorStop(1, 'transparent');
       arCtx.fillStyle = grad;
       arCtx.beginPath();
@@ -254,24 +290,32 @@ function renderAR(ts) {
     arCtx.fill();
     arCtx.restore();
 
-    // chest emoji
+    // chest image (획득 가능 시 밝기 강조)
     arCtx.save();
-    arCtx.font = `${size}px serif`;
-    arCtx.textAlign = 'center';
-    arCtx.textBaseline = 'middle';
-    arCtx.globalAlpha = isAimed ? 1 : 0.78;
-    arCtx.fillText('📦', screenX, screenY);
+    arCtx.globalAlpha = inClaimRange ? 1 : (isAimed ? 1 : 0.78);
+    if (inClaimRange) {
+      arCtx.shadowColor = '#4ade80';
+      arCtx.shadowBlur = 24;
+    }
+    if (chestImg.complete && chestImg.naturalWidth > 0) {
+      arCtx.drawImage(chestImg, screenX - size/2, screenY - size/2, size, size);
+    } else {
+      arCtx.font = `${size}px serif`;
+      arCtx.textAlign = 'center';
+      arCtx.textBaseline = 'middle';
+      arCtx.fillText('📦', screenX, screenY);
+    }
     arCtx.restore();
 
-    // distance label
+    // distance label (획득 가능 시 녹색 + "CLAIM!")
     arCtx.save();
     arCtx.font = `bold ${Math.round(11 * scale)}px sans-serif`;
-    arCtx.fillStyle = '#fde68a';
-    arCtx.strokeStyle = 'rgba(0,0,0,.7)';
+    arCtx.fillStyle = inClaimRange ? '#4ade80' : '#fde68a';
+    arCtx.strokeStyle = 'rgba(0,0,0,.8)';
     arCtx.lineWidth = 3;
     arCtx.textAlign = 'center';
     arCtx.textBaseline = 'top';
-    const label = `${Math.round(dist)}m`;
+    const label = inClaimRange ? `${Math.round(dist)}m ✓ 획득 가능!` : `${Math.round(dist)}m`;
     arCtx.strokeText(label, screenX, screenY + size*0.55);
     arCtx.fillText(label,   screenX, screenY + size*0.55);
     arCtx.restore();
@@ -280,7 +324,7 @@ function renderAR(ts) {
     if (box.name) {
       arCtx.save();
       arCtx.font = `${Math.round(10 * scale)}px sans-serif`;
-      arCtx.fillStyle = '#fff';
+      arCtx.fillStyle = inClaimRange ? '#86efac' : '#fff';
       arCtx.strokeStyle = 'rgba(0,0,0,.8)';
       arCtx.lineWidth = 3;
       arCtx.textAlign = 'center';
@@ -328,11 +372,14 @@ function drawCrosshair(W, H) {
 // ── Claim 패널 갱신 ───────────────────────────────────────────────────────────
 function updateClaimPanel() {
   if (targetBox) {
-    const dist = userLat ? Math.round(haversine(userLat, userLng, targetBox.lat, targetBox.lng)) : '?';
+    const dist = userLat ? Math.round(haversine(userLat, userLng, targetBox.lat, targetBox.lng)) : null;
+    const inRange = dist !== null && dist <= CLAIM_RADIUS;
     claimName.textContent = `📦 ${targetBox.name || 'Treasure Chest'}`;
-    claimDist.textContent = `${dist}m away`;
+    claimDist.textContent = dist !== null
+      ? (inRange ? `${dist}m — 획득 가능!` : `${dist}m away (30m 이내로 접근하세요)`)
+      : '위치 확인 중...';
     claimResult.textContent = '';
-    claimBtn.disabled = false;
+    claimBtn.disabled = !inRange;
     claimBtn.dataset.boxId = targetBox.id;
     claimPanel.classList.add('visible');
   } else {

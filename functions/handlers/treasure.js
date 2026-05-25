@@ -436,7 +436,7 @@ async function adminSaveTreasureItem(adminUid, { itemId, name, image, descriptio
 // ── 관리자: 보물박스 저장 ─────────────────────────────────────────────────────
 async function adminSaveTreasureBox(adminUid, data = {}) {
   await requireAdmin(adminUid);
-  const { boxId, name, lat, lng, startHour, endHour, itemPool, active, hp, memberOnly, hiddenBox, keyId } = data;
+  const { boxId, name, lat, lng, radius, scanRadius, startHour, endHour, itemPool, active, hp, memberOnly, hiddenBox, keyId, respawnIntervalMs, description } = data;
   if (!lat || !lng) throw new HttpsError('invalid-argument', 'lat/lng가 필요합니다');
 
   const ref = boxId
@@ -444,18 +444,22 @@ async function adminSaveTreasureBox(adminUid, data = {}) {
     : db.collection('treasure_boxes').doc();
 
   await ref.set({
-    name:       name || '',
-    lat:        Number(lat),
-    lng:        Number(lng),
-    startHour:  Number(startHour ?? 0),
-    endHour:    Number(endHour ?? 24),
-    itemPool:   itemPool || [],
-    hp:         Number(hp ?? 300),
-    active:     active !== false,
-    memberOnly: memberOnly === true,
-    hiddenBox:  hiddenBox === true,
-    keyId:      (hiddenBox === true && keyId) ? String(keyId) : null,
-    updatedAt:  admin.firestore.FieldValue.serverTimestamp(),
+    name:               name || '',
+    description:        description || '',
+    lat:                Number(lat),
+    lng:                Number(lng),
+    radius:             Number(radius ?? 30),
+    scanRadius:         Number(scanRadius ?? 100),
+    startHour:          Number(startHour ?? 0),
+    endHour:            Number(endHour ?? 24),
+    itemPool:           itemPool || [],
+    hp:                 Number(hp ?? 300),
+    respawnIntervalMs:  Number(respawnIntervalMs ?? 86400000),
+    active:             active !== false,
+    memberOnly:         memberOnly === true,
+    hiddenBox:          hiddenBox === true,
+    keyId:              (hiddenBox === true && keyId) ? String(keyId) : null,
+    updatedAt:          admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
   return { ok: true, boxId: ref.id };
@@ -491,6 +495,14 @@ async function adminDeleteTreasureBox(adminUid, { boxId } = {}) {
   if (!boxId) throw new HttpsError('invalid-argument', 'boxId가 필요합니다');
   await db.collection('treasure_boxes').doc(boxId).update({ active: false });
   return { ok: true };
+}
+
+// ── 관리자: 보물박스 목록 조회 ────────────────────────────────────────────────
+async function adminListTreasureBoxes(adminUid) {
+  await requireAdmin(adminUid);
+  const snap = await db.collection('treasure_boxes').orderBy('updatedAt', 'desc').get();
+  const boxes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return { boxes };
 }
 
 // ── 관리자: 바우처 저장 ────────────────────────────────────────────────────────
@@ -674,6 +686,7 @@ module.exports = {
   adminSaveTreasureItem,
   adminSaveTreasureBox,
   adminDeleteTreasureBox,
+  adminListTreasureBoxes,
   adminSaveVoucher,
   adminGrantItem,
   earnKey,

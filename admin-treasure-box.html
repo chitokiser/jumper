@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AR Treasure Box Admin</title>
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { font-family: 'Noto Sans KR', 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
+
+    .page-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+    h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    /* layout */
+    .layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+    /* map */
+    #map { height: 480px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .map-hint { font-size: .78rem; color: #64748b; margin-top: 6px; }
+
+    /* form panel */
+    .panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; }
+    .panel h3 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .8rem; font-weight: 600; color: #475569; margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px;
+      font-size: .88rem; background: #f8fafc; color: #1e293b; outline: none;
+      transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #6366f1; background: #fff; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .check-row { display: flex; align-items: center; gap: 8px; font-size: .88rem; cursor: pointer; }
+    .check-row input[type=checkbox] { width: 16px; height: 16px; }
+
+    /* buttons */
+    .btn { padding: 9px 18px; border-radius: 8px; border: none; font-size: .88rem; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4f46e5; }
+    .btn-danger  { background: #ef4444; color: #fff; }
+    .btn-danger:hover:not(:disabled)  { background: #b91c1c; }
+    .btn-ghost   { background: #f1f5f9; color: #475569; }
+    .btn-ghost:hover { background: #e2e8f0; }
+    .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+
+    /* table */
+    .box-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: 24px; }
+    .box-table th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 600; white-space: nowrap; }
+    .box-table td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .box-table tr:hover td { background: #f8fafc; }
+    .badge { display: inline-block; border-radius: 99px; padding: 2px 9px; font-size: .72rem; font-weight: 700; }
+    .badge.on  { background: #dcfce7; color: #15803d; }
+    .badge.off { background: #fee2e2; color: #b91c1c; }
+    .act-btn { padding: 4px 10px; border-radius: 6px; font-size: .78rem; font-weight: 700; border: none; cursor: pointer; }
+    .act-edit { background: #dbeafe; color: #1d4ed8; }
+    .act-del  { background: #fee2e2; color: #b91c1c; margin-left: 4px; }
+
+    #formMsg { font-size: .82rem; min-height: 20px; margin-top: 8px; }
+    .ok  { color: #15803d; } .err { color: #b91c1c; }
+    .coord-display { font-size: .78rem; color: #6366f1; margin-top: 4px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+  <script src="/assets/js/partials.js" defer></script>
+
+  <div class="page-wrap">
+    <h2>📍 AR Treasure Box Admin</h2>
+
+    <div class="layout">
+      <!-- ── Left: Map ─────────────────────────────────────────────────── -->
+      <div>
+        <div id="map"></div>
+        <p class="map-hint">📌 Click on the map to set treasure location. Existing boxes shown as markers.</p>
+      </div>
+
+      <!-- ── Right: Form ───────────────────────────────────────────────── -->
+      <div class="panel">
+        <h3 id="formTitle">➕ New Treasure Box</h3>
+        <input type="hidden" id="fBoxId" />
+
+        <div class="form-group">
+          <label>Name</label>
+          <input id="fName" type="text" placeholder="e.g. Ha Long Bay Chest #1" />
+        </div>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <textarea id="fDesc" rows="2" placeholder="Hint or flavor text" style="resize:vertical"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>GPS Coordinates <span id="coordDisplay" class="coord-display"></span></label>
+          <div class="form-row">
+            <input id="fLat" type="number" step="any" placeholder="Latitude" />
+            <input id="fLng" type="number" step="any" placeholder="Longitude" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Claim Radius (m) — must be within to collect</label>
+            <input id="fRadius" type="number" value="30" min="5" max="200" />
+          </div>
+          <div class="form-group">
+            <label>Scan Radius (m) — visible in AR scanner up to</label>
+            <input id="fScanRadius" type="number" value="100" min="10" max="1000" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Open Hour (0–23)</label>
+            <input id="fStartHour" type="number" value="0" min="0" max="23" />
+          </div>
+          <div class="form-group">
+            <label>Close Hour (0–24)</label>
+            <input id="fEndHour" type="number" value="24" min="1" max="24" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>HP</label>
+            <input id="fHp" type="number" value="300" min="1" />
+          </div>
+          <div class="form-group">
+            <label>Respawn (hours)</label>
+            <input id="fRespawn" type="number" value="24" min="1" />
+          </div>
+        </div>
+
+        <div class="form-group" style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <label class="check-row"><input id="fActive" type="checkbox" checked /> Active</label>
+          <label class="check-row"><input id="fMemberOnly" type="checkbox" /> Members only</label>
+          <label class="check-row"><input id="fHidden" type="checkbox" /> Hidden (requires key)</label>
+        </div>
+
+        <div id="formMsg"></div>
+        <div class="btn-row">
+          <button id="saveBtn" class="btn btn-primary">💾 Save</button>
+          <button id="deleteBtn" class="btn btn-danger hidden">🗑 Delete</button>
+          <button id="resetBtn" class="btn btn-ghost">✕ Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Box Table ──────────────────────────────────────────────────────── -->
+    <div style="overflow-x:auto;margin-top:8px">
+      <table class="box-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Lat / Lng</th><th>Radius</th>
+            <th>Hours</th><th>HP</th><th>Respawn</th>
+            <th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="boxTableBody">
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:#94a3b8">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/js/pages/admin-treasure-box.js"></script>
+</body>
+</html>

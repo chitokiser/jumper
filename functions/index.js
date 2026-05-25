@@ -1559,6 +1559,10 @@ exports.adminDeleteTreasureBox = onCall(wrapError(async (req) => {
   return treasureH.adminDeleteTreasureBox(requireAuth(req), req.data ?? {});
 }));
 
+exports.adminListTreasureBoxes = onCall(wrapError(async (req) => {
+  return treasureH.adminListTreasureBoxes(requireAuth(req));
+}));
+
 exports.adminSaveVoucher = onCall(wrapError(async (req) => {
   return treasureH.adminSaveVoucher(requireAuth(req), req.data ?? {});
 }));
