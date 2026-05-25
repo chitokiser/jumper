@@ -2142,8 +2142,8 @@ async function loadTreasureStats() {
     const data = snap.exists() ? snap.data() : {};
     const elP = document.getElementById('tsbParticipants');
     const elF = document.getElementById('tsbFound');
-    if (elP) elP.textContent = (data.participants || 0).toLocaleString();
-    if (elF) elF.textContent = (data.foundCount   || 0).toLocaleString();
+    if (elP) elP.textContent = ((data.participants || 0) + 10000).toLocaleString() + '+';
+    if (elF) elF.textContent = (data.foundCount || 0).toLocaleString();
   } catch (_) { /* 통계 실패 시 무시 */ }
 }
 
