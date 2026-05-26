@@ -36,7 +36,7 @@ export function setGsMobsGetter(fn) { _gsMobsGetter = fn; }
 let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0, token:30,
                       weaponBonus:100,
                       equippedWeapon:'weapon_100',
-                      equippedHelmet:'armo_10', equippedLegs:null, equippedGloves:null, equippedBoots:null,
+                      equippedHelmet:'armo_10', equippedChest:null, equippedLegs:null, equippedGloves:null, equippedBoots:null,
                       gsExp:0, gsLevel:1, nextLevelExp:400000 };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
 let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
@@ -788,6 +788,7 @@ export async function loadPlayerState() {
       }
       // 방어구 4슬롯 로드 (구버전 equippedArmor → equippedHelmet 마이그레이션)
       _player.equippedHelmet = d.equippedHelmet || d.equippedArmor || null;
+      _player.equippedChest  = d.equippedChest  || null;
       _player.equippedLegs   = d.equippedLegs   || null;
       _player.equippedGloves = d.equippedGloves || null;
       _player.equippedBoots  = d.equippedBoots  || null;
@@ -838,6 +839,7 @@ function _equipNumFromId(itemId) {
 function _armorSlotFromId(itemId) {
   const id = String(itemId || '');
   if (id.startsWith('helm_')) return 'equippedHelmet';
+  if (id.startsWith('ches_')) return 'equippedChest';
   if (id.startsWith('legs_')) return 'equippedLegs';
   if (id.startsWith('glov_')) return 'equippedGloves';
   if (id.startsWith('boot_')) return 'equippedBoots';
@@ -848,6 +850,7 @@ function _armorSlotFromId(itemId) {
 export function getTotalAtk()  { return 100 + (_player.weaponBonus || 0); }
 export function getDefense() {
   return _equipNumFromId(_player.equippedHelmet) +
+         _equipNumFromId(_player.equippedChest) +
          _equipNumFromId(_player.equippedLegs) +
          _equipNumFromId(_player.equippedGloves) +
          _equipNumFromId(_player.equippedBoots);
@@ -857,6 +860,7 @@ export function getEquippedArmor()  { return _player.equippedHelmet  || null; } 
 export function getEquippedArmorSlots() {
   return {
     helmet: _player.equippedHelmet || null,
+    chest:  _player.equippedChest  || null,
     legs:   _player.equippedLegs   || null,
     gloves: _player.equippedGloves || null,
     boots:  _player.equippedBoots  || null,
@@ -878,7 +882,7 @@ export function equipArmor(itemId) {
 }
 /** 슬롯 직접 지정 장착 (armo_ 구버전 아이템 다중 슬롯 할당용) */
 export function equipArmorToSlot(slot, itemId) {
-  const key = { helmet:'equippedHelmet', legs:'equippedLegs', gloves:'equippedGloves', boots:'equippedBoots' }[slot];
+  const key = { helmet:'equippedHelmet', chest:'equippedChest', legs:'equippedLegs', gloves:'equippedGloves', boots:'equippedBoots' }[slot];
   if (!key) return;
   _player[key] = itemId;
   updateCombatHud();
@@ -892,7 +896,7 @@ export function unequipWeapon() {
 }
 /** slot: 'helmet' | 'legs' | 'gloves' | 'boots' */
 export function unequipArmor(slot) {
-  const key = { helmet:'equippedHelmet', legs:'equippedLegs', gloves:'equippedGloves', boots:'equippedBoots' }[slot];
+  const key = { helmet:'equippedHelmet', chest:'equippedChest', legs:'equippedLegs', gloves:'equippedGloves', boots:'equippedBoots' }[slot];
   if (key) _player[key] = null;
   updateCombatHud();
   savePlayerState();
@@ -916,6 +920,7 @@ export function savePlayerState() {
         deathLng: _deathLng ?? null,
         equippedWeapon:  _player.equippedWeapon  || 'weapon_100',
         equippedHelmet:  _player.equippedHelmet  || null,
+        equippedChest:   _player.equippedChest   || null,
         equippedLegs:    _player.equippedLegs    || null,
         equippedGloves:  _player.equippedGloves  || null,
         equippedBoots:   _player.equippedBoots   || null,

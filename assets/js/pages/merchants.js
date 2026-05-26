@@ -1634,6 +1634,7 @@ function renderBoxInventory() {
 // ── 인벤토리 렌더링 (4×5 = 20 슬롯) ────────────────────────────────────────
 const ARMOR_SLOT_META = {
   helmet: { label: _t('slot_helmet'), icon: '🪖' },
+  chest:  { label: _t('slot_chest'),  icon: '🛡' },
   legs:   { label: _t('slot_legs'),   icon: '🦵' },
   gloves: { label: _t('slot_gloves'), icon: '🥊' },
   boots:  { label: _t('slot_boots'),  icon: '👟' },
@@ -1652,6 +1653,7 @@ function _showArmorSlotPicker(itemId, defVal) {
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;';
   const slotList = [
     { key: 'helmet', icon: '🪖', label: _t('slot_helmet') },
+    { key: 'chest',  icon: '🛡', label: _t('slot_chest') },
     { key: 'legs',   icon: '🦵', label: _t('slot_legs') },
     { key: 'gloves', icon: '🥊', label: _t('slot_gloves') },
     { key: 'boots',  icon: '👟', label: _t('slot_boots') },
@@ -1827,15 +1829,15 @@ function renderInventory() {
           renderInventory();
           showInfoToast(_t('equip_weapon_toast', num, getTotalAtk()));
         });
-      } else if (['helm_','legs_','glov_','boot_','armo_'].some(p => String(itemId).startsWith(p))) {
+      } else if (['helm_','ches_','legs_','glov_','boot_','armo_'].some(p => String(itemId).startsWith(p))) {
         // ── 방어구 (4슬롯) ───────────────────────────────────────────────────
         const defVal = String(itemId).match(/(\d+)$/)?.[1] || '0';
         const armorSlots = getEquippedArmorSlots();
         const isEquipped = Object.values(armorSlots).includes(itemId);
         const folder = Math.floor(parseInt(defVal) / 10);
         const slotMeta = Object.entries(ARMOR_SLOT_META).find(([s]) =>
-          ({ helmet:'helm_', legs:'legs_', gloves:'glov_', boots:'boot_' }[s] &&
-           String(itemId).startsWith({ helmet:'helm_', legs:'legs_', gloves:'glov_', boots:'boot_' }[s]))
+          ({ helmet:'helm_', chest:'ches_', legs:'legs_', gloves:'glov_', boots:'boot_' }[s] &&
+           String(itemId).startsWith({ helmet:'helm_', chest:'ches_', legs:'legs_', gloves:'glov_', boots:'boot_' }[s]))
         );
         const slotLabel = slotMeta ? slotMeta[1].label : _t('equip_armor_label');
         const slotIcon  = slotMeta ? slotMeta[1].icon  : '🛡';

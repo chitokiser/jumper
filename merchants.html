@@ -413,9 +413,11 @@
     #adminBattlePanel {
       background: rgba(10,10,20,0.88); border-radius:10px;
       padding:8px; display:none; flex-direction:column;
-      gap:4px; margin:0 0 8px 8px; min-width:155px; max-width:210px;
+      gap:0; margin:0 0 8px 8px; min-width:155px; max-width:210px;
+      max-height: calc(100vh - 110px); overflow: hidden;
     }
     #adminBattlePanel.open { display:flex; }
+    #abPanelBody { overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:4px; padding-top:2px; }
     .ab-title { font-size:10px; color:#9ca3af; padding:2px 0 4px;
       border-bottom:1px solid rgba(255,255,255,.12); margin-bottom:2px; }
     .ab-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
@@ -1539,8 +1541,8 @@
 
       <!-- 관리자 전투 배치 패널 (LEFT_BOTTOM 커스텀 컨트롤) -->
       <div id="adminBattlePanel">
-        <!-- 좌표 검색 -->
-        <div style="display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.15);">
+        <!-- 좌표 검색 — 항상 고정 표시 -->
+        <div style="display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.15);flex-shrink:0;">
           <input id="abCoordInput" type="text" placeholder="위도, 경도" autocomplete="off"
             style="flex:1;min-width:0;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.45);color:#fff;font-size:11px;outline:none;">
           <button id="abCoordGo" title="이동"
@@ -1548,49 +1550,43 @@
           <button id="abCoordClear" title="마커 삭제"
             style="padding:4px 6px;border-radius:5px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:11px;cursor:pointer;">✕</button>
         </div>
-        <div class="ab-title">⚔️ Bố trí chiến đấu</div>
-        <button class="ab-btn" id="btnPlaceMonster">👾 Thêm quái vật</button>
-        <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 Đặt rồng</button>
-        <button class="ab-btn" id="btnPlaceOrc"    style="color:#16a34a;font-weight:700;">🐗 Đặt orc</button>
-        <button class="ab-btn" id="btnPlaceOrc2"    style="color:#15803d;font-weight:700;">🗡️ Đặt orc2</button>
-        <button class="ab-btn" id="btnPlaceOrc3"    style="color:#065f46;font-weight:700;">⚔️ Đặt orc3</button>
-        <button class="ab-btn" id="btnPlacePirate"  style="color:#b45309;font-weight:700;">🏴‍☠️ Đặt cướp biển</button>
-        <button class="ab-btn" id="btnPlacePirate2" style="color:#92400e;font-weight:700;">🗡 Đặt cướp biển2</button>
-        <button class="ab-btn" id="btnPlacePirate3" style="color:#78350f;font-weight:700;">💀 Đặt cướp biển3</button>
-        <button class="ab-btn" id="btnPlaceArcherTower">🏹 Tháp cung thủ</button>
-        <button class="ab-btn" id="btnPlaceCannonTower">💣 Tháp đại bác</button>
-        <button class="ab-btn" id="btnPlaceDeco">🎨 Đặt trang trí</button>
-        <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
-        <div style="color:#9ca3af;font-size:10px;text-align:center;margin-bottom:2px">🏪 Cửa hàng</div>
-        <button class="ab-btn" id="btnPlaceShopWeapon" style="color:#fbbf24;">⚔️ Đặt c/hàng vũ khí</button>
-        <button class="ab-btn" id="btnPlaceShopPotion" style="color:#86efac;">🧪 Đặt c/hàng thuốc</button>
-        <button class="ab-btn" id="btnPlaceShopMisc"   style="color:#c4b5fd;">🛍️ Đặt c/hàng linh tinh</button>
-        <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ Hủy bố trí</button>
-        <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 Hiện phạm vi</button>
-        <button class="ab-btn" id="btnGivePotion" style="margin-top:4px;color:#fca5a5;">💊 Cấp thuốc đỏ</button>
-        <button class="ab-btn" id="btnGiveRevive" style="color:#a78bfa;">🪄 Cấp thẻ hồi sinh</button>
-        <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
-        <button class="ab-btn" id="btnAdminInitAllPlayers" style="color:#fbbf24;font-weight:700;">🎁 모든 유저 스타터 초기화</button>
+        <!-- 스크롤 가능한 버튼 영역 -->
+        <div id="abPanelBody">
+          <div class="ab-title">⚔️ Bố trí chiến đấu</div>
+          <button class="ab-btn" id="btnPlaceMonster">👾 Thêm quái vật</button>
+          <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 Đặt rồng</button>
+          <button class="ab-btn" id="btnPlaceOrc"    style="color:#16a34a;font-weight:700;">🐗 Đặt orc</button>
+          <button class="ab-btn" id="btnPlaceOrc2"    style="color:#15803d;font-weight:700;">🗡️ Đặt orc2</button>
+          <button class="ab-btn" id="btnPlaceOrc3"    style="color:#065f46;font-weight:700;">⚔️ Đặt orc3</button>
+          <button class="ab-btn" id="btnPlacePirate"  style="color:#b45309;font-weight:700;">🏴‍☠️ Đặt cướp biển</button>
+          <button class="ab-btn" id="btnPlacePirate2" style="color:#92400e;font-weight:700;">🗡 Đặt cướp biển2</button>
+          <button class="ab-btn" id="btnPlacePirate3" style="color:#78350f;font-weight:700;">💀 Đặt cướp biển3</button>
+          <button class="ab-btn" id="btnPlaceArcherTower">🏹 Tháp cung thủ</button>
+          <button class="ab-btn" id="btnPlaceCannonTower">💣 Tháp đại bác</button>
+          <button class="ab-btn" id="btnPlaceDeco">🎨 Đặt trang trí</button>
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
+          <div style="color:#9ca3af;font-size:10px;text-align:center;margin-bottom:2px">🏪 Cửa hàng</div>
+          <button class="ab-btn" id="btnPlaceShopWeapon" style="color:#fbbf24;">⚔️ Đặt c/hàng vũ khí</button>
+          <button class="ab-btn" id="btnPlaceShopPotion" style="color:#86efac;">🧪 Đặt c/hàng thuốc</button>
+          <button class="ab-btn" id="btnPlaceShopMisc"   style="color:#c4b5fd;">🛍️ Đặt c/hàng linh tinh</button>
+          <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ Hủy bố trí</button>
+          <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 Hiện phạm vi</button>
+          <button class="ab-btn" id="btnGivePotion" style="margin-top:4px;color:#fca5a5;">💊 Cấp thuốc đỏ</button>
+          <button class="ab-btn" id="btnGiveRevive" style="color:#a78bfa;">🪄 Cấp thẻ hồi sinh</button>
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
+          <button class="ab-btn" id="btnAdminInitAllPlayers" style="color:#fbbf24;font-weight:700;">🎁 모든 유저 스타터 초기화</button>
 
-        <!-- Firestore 몬스터 목록 (기존 battle_monsters) -->
-        <div id="firestoreMonsterListWrap" style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <span class="ab-title" style="border:none;margin:0;padding:0">📦 Quái Firestore</span>
-            <button id="btnRefreshFsMonsters" style="background:none;border:none;color:#fbbf24;cursor:pointer;font-size:11px;padding:0;">↺</button>
+          <!-- GS Spawn list (game server realtime) -->
+          <div id="gsSpawnListWrap" style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+              <span class="ab-title" style="border:none;margin:0;padding:0">🗡 Danh sách GS Spawn</span>
+              <button id="btnRefreshGsSpawns" style="background:none;border:none;color:#6ee7b7;cursor:pointer;font-size:11px;padding:0;">↺</button>
+            </div>
+            <div id="gsSpawnList" style="color:#6b7280;font-size:10px;">Kết nối máy chủ rồi nhấn ↺</div>
           </div>
-          <div id="firestoreMonsterList" style="color:#6b7280;font-size:10px;max-height:140px;overflow-y:auto;">Đang tải…</div>
-        </div>
 
-        <!-- GS Spawn list (game server realtime) -->
-        <div id="gsSpawnListWrap" style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <span class="ab-title" style="border:none;margin:0;padding:0">🗡 Danh sách GS Spawn</span>
-            <button id="btnRefreshGsSpawns" style="background:none;border:none;color:#6ee7b7;cursor:pointer;font-size:11px;padding:0;">↺</button>
-          </div>
-          <div id="gsSpawnList" style="color:#6b7280;font-size:10px;">Kết nối máy chủ rồi nhấn ↺</div>
+          <button class="ab-btn" id="btnMonsterStatModal" style="margin-top:4px;color:#a78bfa;font-weight:600;">📊 몬스터 스탯 설정</button>
         </div>
-
-        <button class="ab-btn" id="btnMonsterStatModal" style="margin-top:4px;color:#a78bfa;font-weight:600;">📊 몬스터 스탯 설정</button>
       </div>
 
       <!-- 필터 -->

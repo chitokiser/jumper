@@ -158,6 +158,7 @@ const MESSAGES = {
   slot_helmet:           { ko: '투구',     en: 'Helmet',    vi: 'Mũ giáp' },
   slot_legs:             { ko: '레그가드', en: 'Leg Guard', vi: 'Bảo vệ chân' },
   slot_gloves:           { ko: '글로브',   en: 'Gloves',    vi: 'Găng tay' },
+  slot_chest:            { ko: '흉갑',     en: 'Chestplate', vi: 'Giáp ngực' },
   slot_boots:            { ko: '부츠',     en: 'Boots',     vi: 'Giày chiến đấu' },
 
   // ── 인벤토리 슬롯 ─────────────────────────────────────────────────────────────
