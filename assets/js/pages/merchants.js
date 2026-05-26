@@ -244,6 +244,47 @@ function initMap() {
   const adminBattlePanel = $('adminBattlePanel');
   if (adminBattlePanel) map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(adminBattlePanel);
 
+  // 좌표 검색 — 관리자 패널 내 입력 필드
+  let _coordMarker = null;
+  function _goToCoords(raw) {
+    const m = String(raw || '').trim().match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+    if (!m) return false;
+    const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+    if (isNaN(lat) || isNaN(lng)) return false;
+    map.panTo({ lat, lng });
+    map.setZoom(18);
+    if (_coordMarker) _coordMarker.setMap(null);
+    _coordMarker = new google.maps.Marker({
+      position: { lat, lng },
+      map,
+      title: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#2563eb',
+        fillOpacity: 0.9,
+        strokeColor: '#fff',
+        strokeWeight: 2,
+      },
+      zIndex: 9999,
+    });
+    infoWindow.setContent(`<div style="font-size:12px;font-weight:600;">📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>`);
+    infoWindow.open(map, _coordMarker);
+    return true;
+  }
+  $('abCoordGo')?.addEventListener('click', () => {
+    const ok = _goToCoords($('abCoordInput')?.value);
+    if (!ok) { const el = $('abCoordInput'); if (el) { el.style.borderColor = '#ef4444'; setTimeout(() => { el.style.borderColor = ''; }, 1200); } }
+  });
+  $('abCoordInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') $('abCoordGo')?.click();
+  });
+  $('abCoordClear')?.addEventListener('click', () => {
+    if (_coordMarker) { _coordMarker.setMap(null); _coordMarker = null; }
+    infoWindow.close();
+    const el = $('abCoordInput'); if (el) el.value = '';
+  });
+
   // 전체화면 진입/종료 시 position:fixed 모달들을 fullscreen 요소 안으로 이동
   // (HUD·스킬바는 Google Maps Control이므로 자동으로 fullscreen에 포함됨)
   const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal', 'raceModal', 'dungeonModal'];

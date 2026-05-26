@@ -1539,6 +1539,15 @@
 
       <!-- 관리자 전투 배치 패널 (LEFT_BOTTOM 커스텀 컨트롤) -->
       <div id="adminBattlePanel">
+        <!-- 좌표 검색 -->
+        <div style="display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.15);">
+          <input id="abCoordInput" type="text" placeholder="위도, 경도" autocomplete="off"
+            style="flex:1;min-width:0;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.45);color:#fff;font-size:11px;outline:none;">
+          <button id="abCoordGo" title="이동"
+            style="padding:4px 7px;border-radius:5px;border:none;background:#2563eb;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap;">📍 이동</button>
+          <button id="abCoordClear" title="마커 삭제"
+            style="padding:4px 6px;border-radius:5px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:11px;cursor:pointer;">✕</button>
+        </div>
         <div class="ab-title">⚔️ Bố trí chiến đấu</div>
         <button class="ab-btn" id="btnPlaceMonster">👾 Thêm quái vật</button>
         <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 Đặt rồng</button>
