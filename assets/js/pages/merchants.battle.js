@@ -34,8 +34,9 @@ export function setGsMobsGetter(fn) { _gsMobsGetter = fn; }
 
 // ── 내부 배틀 상태 ────────────────────────────────────────────────────────────
 let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0, token:30,
-                      weaponBonus:100, defense:10,
-                      equippedWeapon:'weapon_100', equippedArmor:'armo_10',
+                      weaponBonus:100,
+                      equippedWeapon:'weapon_100',
+                      equippedHelmet:'armo_10', equippedLegs:null, equippedGloves:null, equippedBoots:null,
                       gsExp:0, gsLevel:1, nextLevelExp:400000 };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
 let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
@@ -728,7 +729,7 @@ function updateCombatHud() {
   const mv = document.getElementById('cMpVal'); if (mv)  mv.textContent  = `${p.mp} / ${p.maxMp}`;
   const sp = document.getElementById('cSpd');   if (sp)  sp.textContent  = `SPD ${_currentSpeed.toFixed(1)} km/h`;
   const atkEl = document.getElementById('cAtk'); if (atkEl) atkEl.textContent = `⚔${getTotalAtk()}`;
-  const defEl = document.getElementById('cDef'); if (defEl) defEl.textContent = `🛡${p.defense||0}`;
+  const defEl = document.getElementById('cDef'); if (defEl) defEl.textContent = `🛡${getDefense()}`;
   const dead = document.getElementById('cDead');
   if (dead) {
     if (_isDead) {
@@ -785,10 +786,11 @@ export async function loadPlayerState() {
         _player.equippedWeapon = d.equippedWeapon;
         _player.weaponBonus    = _equipNumFromId(d.equippedWeapon);
       }
-      if (d.equippedArmor) {
-        _player.equippedArmor = d.equippedArmor;
-        _player.defense       = _equipNumFromId(d.equippedArmor);
-      }
+      // 방어구 4슬롯 로드 (구버전 equippedArmor → equippedHelmet 마이그레이션)
+      _player.equippedHelmet = d.equippedHelmet || d.equippedArmor || null;
+      _player.equippedLegs   = d.equippedLegs   || null;
+      _player.equippedGloves = d.equippedGloves || null;
+      _player.equippedBoots  = d.equippedBoots  || null;
     } else {
       _player.hp = _player.maxHp;
       _player.mp = _player.maxMp;
@@ -828,25 +830,49 @@ export function isPlayerDead() { return _isDead; }
 // ── 장비 시스템 ────────────────────────────────────────────────────────────────
 /** 아이템 ID 끝 숫자가 직접 수치: 'weapon_50' → 50, 'armo_10' → 10 */
 function _equipNumFromId(itemId) {
-  const m = String(itemId).match(/(\d+)$/);
+  const m = String(itemId || '').match(/(\d+)$/);
   return m ? parseInt(m[1]) : 0;
 }
+
+/** 아이템 ID 접두사로 방어구 슬롯 키 반환 */
+function _armorSlotFromId(itemId) {
+  const id = String(itemId || '');
+  if (id.startsWith('helm_')) return 'equippedHelmet';
+  if (id.startsWith('legs_')) return 'equippedLegs';
+  if (id.startsWith('glov_')) return 'equippedGloves';
+  if (id.startsWith('boot_')) return 'equippedBoots';
+  if (id.startsWith('armo_')) return 'equippedHelmet'; // 구버전 호환
+  return null;
+}
+
 export function getTotalAtk()  { return 100 + (_player.weaponBonus || 0); }
-export function getDefense()   { return _player.defense || 0; }
+export function getDefense() {
+  return _equipNumFromId(_player.equippedHelmet) +
+         _equipNumFromId(_player.equippedLegs) +
+         _equipNumFromId(_player.equippedGloves) +
+         _equipNumFromId(_player.equippedBoots);
+}
 export function getEquippedWeapon() { return _player.equippedWeapon || null; }
-export function getEquippedArmor()  { return _player.equippedArmor  || null; }
+export function getEquippedArmor()  { return _player.equippedHelmet  || null; } // 투구 슬롯 반환 (구버전 호환)
+export function getEquippedArmorSlots() {
+  return {
+    helmet: _player.equippedHelmet || null,
+    legs:   _player.equippedLegs   || null,
+    gloves: _player.equippedGloves || null,
+    boots:  _player.equippedBoots  || null,
+  };
+}
 
 export function equipWeapon(itemId) {
-  const bonus = _equipNumFromId(itemId);
-  _player.weaponBonus    = bonus;
+  _player.weaponBonus    = _equipNumFromId(itemId);
   _player.equippedWeapon = itemId;
   updateCombatHud();
   savePlayerState();
 }
 export function equipArmor(itemId) {
-  const def = _equipNumFromId(itemId);
-  _player.defense       = def;
-  _player.equippedArmor = itemId;
+  const slot = _armorSlotFromId(itemId);
+  if (!slot) return;
+  _player[slot] = itemId;
   updateCombatHud();
   savePlayerState();
 }
@@ -856,9 +882,10 @@ export function unequipWeapon() {
   updateCombatHud();
   savePlayerState();
 }
-export function unequipArmor() {
-  _player.defense       = 0;
-  _player.equippedArmor = null;
+/** slot: 'helmet' | 'legs' | 'gloves' | 'boots' */
+export function unequipArmor(slot) {
+  const key = { helmet:'equippedHelmet', legs:'equippedLegs', gloves:'equippedGloves', boots:'equippedBoots' }[slot];
+  if (key) _player[key] = null;
   updateCombatHud();
   savePlayerState();
 }
@@ -879,8 +906,11 @@ export function savePlayerState() {
         reviveWalkDist: _reviveWalkDist,
         deathLat: _deathLat ?? null,
         deathLng: _deathLng ?? null,
-        equippedWeapon: _player.equippedWeapon || 'weapon_100',
-        equippedArmor:  _player.equippedArmor  || 'armo_10',
+        equippedWeapon:  _player.equippedWeapon  || 'weapon_100',
+        equippedHelmet:  _player.equippedHelmet  || null,
+        equippedLegs:    _player.equippedLegs    || null,
+        equippedGloves:  _player.equippedGloves  || null,
+        equippedBoots:   _player.equippedBoots   || null,
         gsExp:   _player.gsExp   || 0,
         gsLevel: _player.gsLevel || _player.level,
         updatedAt: serverTimestamp(),
@@ -933,7 +963,7 @@ export function onPlayerLevelUp(d) {
 let _lastHealFloat = 0;
 function takeDamage(rawAmount, sourceLat, sourceLng) {
   if (_isDead) return;
-  const actual = Math.max(0, rawAmount - (_player.defense || 0));
+  const actual = Math.max(0, rawAmount - getDefense());
   const myMark = _ctx?.myLocationMarker;
   const lat = sourceLat || (myMark ? myMark.getPosition().lat() : null);
   const lng = sourceLng || (myMark ? myMark.getPosition().lng() : null);

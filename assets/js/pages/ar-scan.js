@@ -7,7 +7,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { collection, getDocs, getDoc, doc, query, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
-const SCAN_RADIUS   = 100;  // m: 이 반경 내 보물 로드
+const SCAN_RADIUS   = 300;  // m: scanRadius 미설정 박스의 기본 스캔 반경
 const CLAIM_RADIUS  = 30;   // m: 이 거리 이내여야 획득 가능
 const FOV_DEG     = 80;     // 수평 FOV (각도)
 const AIM_DEG     = 20;     // 이 각도 이내 → "조준" 판정
@@ -104,24 +104,28 @@ async function getGpsOnce() {
 // ── Firestore: 근처 박스 로드 (이미 획득한 박스 제외) ────────────────────────
 async function loadNearbyBoxes(lat, lng) {
   const snap = await getDocs(query(collection(db, 'treasure_boxes'), where('active', '==', true)));
-  const boxes = snap.docs
+  const withinRange = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .filter(b => b.lat != null && b.lng != null && !b.hiddenBox
       && haversine(lat, lng, b.lat, b.lng) <= (b.scanRadius ?? SCAN_RADIUS));
 
-  if (!currentUser || !boxes.length) return boxes;
+  if (!currentUser || !withinRange.length) return withinRange;
+
+  // 관리자는 클레임 필터 건너뜀 (박스 테스트 가능)
+  const adminSnap = await getDoc(doc(db, 'admins', currentUser.uid));
+  if (adminSnap.exists()) return withinRange;
 
   // 수집 로그 병렬 조회 — 리스폰 전인 박스 제거
   const now = Date.now();
   const logs = await Promise.all(
-    boxes.map(b => getDoc(doc(db, 'treasure_logs', `${currentUser.uid}_${b.id}`)))
+    withinRange.map(b => getDoc(doc(db, 'treasure_logs', `${currentUser.uid}_${b.id}`)))
   );
-  return boxes.filter((b, i) => {
+  return withinRange.filter((b, i) => {
     if (!logs[i].exists()) return true;
     const d = logs[i].data();
-    const lastMs   = d.collectedAt?.toMillis?.() || 0;
+    const lastMs    = d.collectedAt?.toMillis?.() || 0;
     const respawnMs = d.respawnIntervalMs ?? b.respawnIntervalMs ?? 86400000;
-    return lastMs + respawnMs <= now;  // 리스폰 됐으면 다시 표시
+    return lastMs + respawnMs <= now;
   });
 }
 

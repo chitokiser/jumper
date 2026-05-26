@@ -1,192 +1,158 @@
-# 코딩 원칙 — Jumper v10
+```markdown
+# CLAUDE.md — Jumper v10
 
-Claude Code가 이 프로젝트에서 작업할 때 **반드시 준수해야 할 원칙**입니다.
-
----
-
-## 0. 필수 규칙
-
-- **파일을 수정하기 전에 반드시 Read로 전체 내용을 먼저 읽는다.**
-- **가격·금액을 표시할 때는 KRW / VND / HEX 세 가지를 모두 표시한다.**
-- **Source Control pending changes가 10개 이상이면 자동으로 GitHub에 push한다.**
-- **배포: `firebase deploy --only functions` (단일 함수 배포 금지 — timeout 오류).**
-
----
-
-## 1. 프로젝트 구조
-
-### 주요 페이지 (HTML ↔ `assets/js/pages/` 1:1 대응)
-
-| 파일 | 설명 |
-|------|------|
-| `index.html` | 메인 (town_home) |
-| `mypage.html` | 마이페이지 (지갑, 바우처, 거래내역) |
-| `coop.html` | 협동조합 몰 — 상품 목록/구매 |
-| `coop-mall.html` | CoopMall 회원/포인트/바우처 관리 |
-| `dao.html` | DAO 거버넌스 |
-| `wallet.html` | 수탁 지갑 (HEX 입출금) |
-| `exchange.html` | HEX ↔ JUMP 거래소 |
-| `buggy.html` / `buggy-driver.html` / `buggy-admin.html` | 탈것 앱 |
-| `admin_coop.html` / `admin_jackpot.html` | 어드민 |
-| `merchants.html` | 가맹점 (게임 포함) |
-
-복잡한 페이지는 `.lib.js`, `.render.js`, `.hero.js` 서브모듈로 분리.
-
-### Cloud Functions (`functions/`)
-
-| 경로 | 역할 |
-|------|------|
-| `functions/index.js` | 모든 함수 진입점 |
-| `functions/handlers/coop.js` | 협동조합 몰 |
-| `functions/handlers/dao.js` | DAO |
-| `functions/handlers/buggy.js` | 탈것 |
-| `functions/handlers/exchange.js` | HEX ↔ JUMP 거래소 |
-| `functions/handlers/deposit.js` | HEX 입금 |
-| `functions/handlers/transaction.js` | 거래 내역 |
-| `functions/handlers/treasure.js` | 잭팟/보물상자 |
-| `functions/handlers/onboarding.js` | 가입/지갑 생성 |
-| `functions/wallet/chain.js` | ethers.js v6 — opBNB RPC, 컨트랙트 헬퍼 |
-| `functions/wallet/crypto.js` | 지갑 암호화/복호화 |
-
-### 스마트 컨트랙트 (`contract/`)
-`CoopMall.sol` (`pay`, `burnVoucher`, `convertPoints`) · `jumpPlatform.sol` · `jumpBank.sol` · `jumpTresury.sol`
+## 필수 규칙
+- 수정 전 반드시 파일 전체 Read
+- 가격 표시: KRW / VND / HEX 동시 표시
+- 상품 가격 기준은 HEX
+- pending changes 10개 이상 → git push
+- 변경사항 20개 이상 → git push + 게임서버 railway up
+- Functions 배포:
+  firebase deploy --only functions
+- 단일 함수 배포 금지
 
 ---
 
-## 2. 블록체인 / 결제
+## 기본 구조
+- HTML ↔ assets/js/pages 1:1 대응
+- 복잡한 페이지는 .lib.js / .render.js / .hero.js 분리
+- 공통 헤더/푸터:
+  partials.js 사용
+  (#siteHeader / #siteFooter 필수)
 
-- **체인**: opBNB Mainnet (L2), RPC: `https://opbnb-mainnet-rpc.bnbchain.org`, ethers.js v6
-- **토큰**: HEX (ERC-20, 18 dec) — 플랫폼 포인트 / JUMP (ERC-20, 0 dec) — 거래 / BNB — 가스
+---
 
-### 컨트랙트 주소
+## 블록체인
+- opBNB Mainnet
+- ethers.js v6
+- HEX = 플랫폼 포인트 (18dec)
+- JUMP = 거래토큰 (0dec)
+- BNB = gas
+
+---
+
+## 결제 규칙
+- 가격 입력은 HEX 기준
+- KRW/VND 환율 자동 계산 표시
+- 수수료/환율 하드코딩 금지
+- Firestore 또는 컨트랙트 조회 사용
+
+---
+
+## 정회원 시스템
+- coop.html 에서 10 HEX 결제 시 정회원
+- 기간: 가입 후 12개월
+- 만료 후 재가입 필요
+- merchants.html 정회원전용 보물박스 획득은 정회원만 가능
+
+---
+
+## 역할 판정
+반드시:
+getUserRole(uid)
+
+순서:
+1. admin
+2. approved guide
+3. users.role
+4. user / guest
+
+---
+
+## Cloud Functions
+- WALLET_MASTER_SECRET 사용
+- ADMIN_PRIVATE_KEY 사용
+- requireAuth()
+- requireAdmin()
+- wrapError()
+
+---
+
+## DOM 최적화
+- querySelector 반복 금지
+- DOM 초기 캐싱 필수
+- innerHTML 루프 반복 금지
+- 부분 렌더링 우선
+- style.display 금지
+- classList hidden 사용
+
+---
+
+## 이벤트 규칙
+- scroll/resize throttle 100ms
+- mousemove 50ms
+- search debounce 350ms
+- passive:true 사용
+- onSnapshot/setInterval/watchPosition cleanup 필수
+
+---
+
+## 금지사항
+- console.log 프로덕션 금지
+- 하드코딩 최소화
+- 단일 함수 deploy 금지
+- cleanup 없는 interval 금지
+
+---
+
+## 파일 크기
+- 기능 JS: 300줄
+- 페이지 JS: 700줄
+- Function handler: 1200줄
+- CSS: 600줄
+초과 시 분리
+
+---
+
+## Geocoding
+- Nominatim 사용
+- Google Geocoding API 금지
+
+---
+
+## Firebase 초기화
+- firebase-init.js
+- firestore-bridge.js
+
+---
+
+## 다국어 규칙
+기본 언어:
+- English
+
+추가:
+- Korean
+- Vietnamese
+
+모든 게임 메시지:
+ko / en / vi 동시 추가 필수
+
+---
+
+## 게임 서버 규칙
+- notify 이벤트 사용
+- i18n.ts MESSAGES 등록 필수
+- snake_case 키 사용
+- player:join 시 lang 포함
+- socket.on('notify') 처리
+
+---
+
+## 게임 서버 배포
+git push 후 반드시:
+cd game-server && railway up
+
+---
+
+## 커밋 규칙
+type: summary
+
+type:
+- feat
+- fix
+- refactor
+- perf
+- style
+- docs
+- chore
 ```
-jumpPlatform : 0x4d83A7764428fd1c116062aBb60c329E0E29f490
-jumpToken    : 0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464  (HEX)
-jumpJump     : 0xA3C35c52446C133b7211A743c6D47470D1385601  (JUMP)
-jumpBank     : 0x16752f8948ff2caA02e756c7C8fF0E04887A3a0E
-jumpTreasury : 0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312
-```
-`CoopMall`: Firestore `coopConfig/main.contractAddress`에서 조회.
-
-### 수탁 지갑
-- EOA 지갑 → Firestore `users/{uid}.wallet`, 개인키는 `WALLET_MASTER_SECRET`으로 AES 암호화
-- 관리자: `ADMIN_PRIVATE_KEY` Secret
-
-### 결제 경로 (CoopMall)
-| 경로 | 설명 |
-|------|------|
-| **수탁** | `hexToken.transfer(adminWallet, hexWei)` — 멘토 포인트 없음 |
-| **온체인** | `coopMall.pay(hexWei)` — 멘토 포인트 자동 적립 |
-
-### BPS · FX
-- BPS: 10000=100%, `burnFeeBps` (`coopProducts`/`coopVouchers`), `mentorRewardBps` 기본 1000
-- FX: `fetchExchangeRates()` → `{ krwPerUsd, vndPerUsd }` (`functions/wallet/exchange.js`)
-- 온체인 FX: `platform.fxKrwPerHexScaled()`, `platform.fxVndPerHexScaled()`, `platform.fxScale()`
-
----
-
-## 3. Firestore 주요 컬렉션
-
-| 컬렉션 | 설명 |
-|--------|------|
-| `users/{uid}` | 프로필 + 수탁 지갑(`wallet`) |
-| `coopProducts` | 상품 (`type: 'general'|'voucher'`, `burnFeeBps`) |
-| `coopOrders` | 주문 (`status: confirmed|burned`) |
-| `coopVouchers` | 바우처 (`status: active|burned`, `burnFeeBps`) |
-| `coopConfig/main` | 컨트랙트 주소, minStake 등 |
-| `admins/{uid}` | 관리자 목록 |
-| `guides/{uid}` | 가이드 (`.approved === true`) |
-| `buggy_config/default` | 탈것 설정 (`driverSharePct` 기본 80%) |
-| `jackpot_config` | 잭팟 설정 |
-| `town_home` | 메인 화면 데이터 |
-
----
-
-## 4. 역할(Role) 판정
-
-`assets/js/auth.js`의 `getUserRole(uid)` 만 사용:
-1. `admins/{uid}` 존재 → `admin`
-2. `guides/{uid}.approved === true` → `guide`
-3. `users/{uid}.role` → 해당 값
-4. 로그인 → `user` / 비로그인 → `guest`
-
----
-
-## 5. Firebase Cloud Functions 규칙
-
-- 배포: `firebase deploy --only functions` (단일 함수 배포 절대 금지)
-- 모든 `onCall`은 `WALLET_MASTER_SECRET`, `ADMIN_PRIVATE_KEY` secret 사용
-- `wrapError()` → `HttpsError` 래핑 / `requireAuth(request)` → uid / `requireAdmin(uid)` → admins 확인
-
----
-
-## 6. DOM · 이벤트 최적화
-
-- **DOM 캐싱**: 셀렉터는 초기화 시 1회 캐싱, 함수 내 반복 조회 금지
-- **일괄 렌더링**: 루프 내 `innerHTML` 반복 금지 — 문자열 누적 후 1회 삽입
-- **스타일**: `style.display` 직접 조작 금지 — `classList.add/remove('hidden')` 사용
-- **부분 갱신**: 변경된 노드만 갱신 (전체 재렌더 금지, 최초·전체교체 제외)
-- **이벤트 인터벌**: scroll/resize throttle 100ms, mousemove 50ms, 검색 debounce 350ms
-- **passive**: `scroll`, `touchstart`, `touchmove`, `wheel` → `{ passive: true }`
-- **cleanup 필수**: `onSnapshot`, `setInterval`, `watchPosition` — 재등록 전 해제, 섹션 파괴 시 정리
-
----
-
-## 7. 금지 사항
-
-| 금지 | 대안 |
-|------|------|
-| `querySelector` 반복 호출 | 초기 캐싱 |
-| `innerHTML` 루프 내 반복 갱신 | 문자열 누적 후 1회 삽입 |
-| `console.log` 프로덕션 | 제거 또는 `// TODO` |
-| 수수료율·요금 하드코딩 | Firestore 또는 컨트랙트 조회 |
-| `setInterval`/`onSnapshot` 미해제 | cleanup 변수 유지 |
-| `firebase deploy --only functions:fnName` | `firebase deploy --only functions` |
-
----
-
-## 8. 파일 크기 기준
-
-단일 기능 JS 300줄 / 페이지 JS 700줄 (초과 시 `.lib.js` 분리) / Cloud Functions 핸들러 1,200줄 / CSS 600줄
-
----
-
-## 9. 커밋 · 기타
-
-- 커밋: `type: 요약` — type: `feat|fix|refactor|perf|style|docs|chore`
-- Geocoding: **Nominatim** 사용 (Google Geocoding API 금지)
-- 공통 헤더/푸터: `partials.js` 주입 (`#siteHeader`, `#siteFooter` div 필수)
-- Firebase 초기화: `assets/js/firebase-init.js` + `assets/js/firestore-bridge.js`
-=모든 상품가격을 hex를 기준으로 입력하게 해야하고  환율에 따라 krw/vnd 동시에 표시해야 한다.
--정회원 개요:coop.html에서 10hex를 지불하면 정회원 됩니다. merchants.html에서 정회원만 획득 가능한 보물박스를 발행할 수 있습니다.
-정회원 기간은 가입 후 12개월 입니다.
-12개월 지난 후 다시 가입 해야 합니다.
-
----
-
-## 10. 게임 다중언어 유지 규칙 (ko / en / vi)
-
-게임 UI에 유저 안내문(알림, 오류, 상태 메시지)을 **추가·변경할 때마다** 아래 규칙을 반드시 함께 적용한다.
-
-### 서버 측 (`game-server/`)
-- 모든 서버→클라이언트 알림은 `S2C.NOTIFY` 이벤트 + `sendNotify(socketId, msg)` 패턴 사용
-- 메시지 문자열은 반드시 `game-server/src/lib/i18n.ts`의 `MESSAGES` 테이블에 등록
-- **ko / en / vi 세 언어를 동시에 추가** — 하나라도 누락 금지
-- 메시지 키 형식: `snake_case` (예: `zone_joined`, `err_cooldown`)
-- 플레이어 언어는 `player:join` 페이로드의 `lang` 필드로 전달 → `parseLang()` 처리
-- 언어 조회: `getLangBySocket(socketId)` 사용
-
-### 클라이언트 측 (`assets/js/pages/merchants.battle.js` 등)
-- 클라이언트가 직접 표시하는 안내문(스킬 오류, 전투 결과 등)도 ko/en/vi 지원 고려
-- 클라이언트는 `socket.on('notify', ({ msg }) => showToast(msg))` 로 서버 알림 수신
-- `player:join` 이벤트 전송 시 반드시 `lang` 필드 포함
-
-### 체크리스트 (게임 UI 수정 시 매번 확인)
-- [ ] 새 메시지 키를 `i18n.ts` MESSAGES 테이블에 ko/en/vi 모두 추가했는가?
-- [ ] `t(lang, 'new_key', ...args)` 호출 코드를 서버에 추가했는가?
-- [ ] 클라이언트가 `notify` 이벤트를 수신해 표시하는가?
-- [ ] `tsc --noEmit`으로 타입 오류 없음을 확인했는가?
-
-- 변경사항이 20개 이상 넘으면 자동으로 git에 배포해줘
-- 게임서버 배포는 git push 후 반드시 cd game-server && railway up 을 추가로 실행해야 한다.
-- 게임을 포함한 사이트 작업의 기본 언어는 영어로 하고 베트남&한국어는 추가로 작업 한다.

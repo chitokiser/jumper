@@ -19,7 +19,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
          spawnGsDrop, removeGsDrop,
          equipWeapon, equipArmor, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
-         getEquippedWeapon, getEquippedArmor,
+         getEquippedWeapon, getEquippedArmor, getEquippedArmorSlots,
          updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
          loadShops, getShops, deleteShop, checkShopProximity,
          loadTutorialBoxes, clearTutorialBoxes, checkTutorialProximity,
@@ -1591,13 +1591,24 @@ function renderBoxInventory() {
 }
 
 // ── 인벤토리 렌더링 (4×5 = 20 슬롯) ────────────────────────────────────────
+const ARMOR_SLOT_META = {
+  helmet: { label: _t('slot_helmet'), icon: '🪖' },
+  legs:   { label: _t('slot_legs'),   icon: '🦵' },
+  gloves: { label: _t('slot_gloves'), icon: '🥊' },
+  boots:  { label: _t('slot_boots'),  icon: '👟' },
+};
+
+function _defValFromId(itemId) {
+  const m = String(itemId || '').match(/(\d+)$/);
+  return m ? parseInt(m[1]) : 0;
+}
+
 function _updateEquipStats() {
   const statsEl = $('invEquipStats');
   if (!statsEl) return;
-  const wId  = getEquippedWeapon();
-  const aId  = getEquippedArmor();
-  const wNum = wId ? wId.replace('weapon_', '') : null;
-  const aNum = aId ? aId.replace('armo_', '')   : null;
+  const wId   = getEquippedWeapon();
+  const wNum  = wId ? String(wId).replace('weapon_', '') : null;
+  const slots = getEquippedArmorSlots();
 
   const weaponCard = wNum
     ? `<div data-unequip="weapon" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #ffd700;border-radius:8px;padding:5px 10px;min-width:100px;cursor:pointer;position:relative;" title="${_t('unequip_hint')}">
@@ -1612,24 +1623,26 @@ function _updateEquipStats() {
       </div>`
     : `<div style="background:#1a0e06;border:2px dashed #5c3a1e;border-radius:8px;padding:5px 10px;min-width:100px;color:#5c3a1e;font-size:11px;text-align:center;">${_t('no_weapon')}</div>`;
 
-  const armorCard = aNum
-    ? `<div data-unequip="armor" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #60a5fa;border-radius:8px;padding:5px 10px;min-width:100px;cursor:pointer;position:relative;" title="${_t('unequip_hint')}">
-        <img src="/assets/images/armor/${escHtml(aNum)}.png"
-             onerror="this.onerror=null;this.style.display='none'"
-             style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="${_t('armor_slot_name', aNum)}">
-        <div>
-          <div style="font-size:9px;color:#c9a870;">${_t('equip_armor_label')}</div>
-          <div style="font-size:12px;color:#60a5fa;font-weight:700;">${_t('armor_slot_name', aNum)}</div>
-        </div>
-        <span style="position:absolute;top:2px;right:4px;font-size:9px;color:#f87171;">${_t('unequip_btn')}</span>
-      </div>`
-    : `<div style="background:#1a0e06;border:2px dashed #5c3a1e;border-radius:8px;padding:5px 10px;min-width:100px;color:#5c3a1e;font-size:11px;text-align:center;">${_t('no_armor')}</div>`;
+  const armorCards = Object.entries(slots).map(([slot, itemId]) => {
+    const { label, icon } = ARMOR_SLOT_META[slot];
+    const defVal = _defValFromId(itemId);
+    return itemId
+      ? `<div data-unequip-slot="${slot}" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #60a5fa;border-radius:8px;padding:5px 10px;min-width:90px;cursor:pointer;position:relative;" title="${_t('unequip_hint')}">
+          <span style="font-size:20px;">${icon}</span>
+          <div>
+            <div style="font-size:9px;color:#c9a870;">${label}</div>
+            <div style="font-size:12px;color:#60a5fa;font-weight:700;">DEF ${defVal}</div>
+          </div>
+          <span style="position:absolute;top:2px;right:4px;font-size:9px;color:#f87171;">${_t('unequip_btn')}</span>
+        </div>`
+      : `<div style="background:#1a0e06;border:2px dashed #5c3a1e;border-radius:8px;padding:5px 10px;min-width:90px;color:#5c3a1e;font-size:11px;text-align:center;">${icon}<br>${label}</div>`;
+  }).join('');
 
   statsEl.innerHTML = `
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%;">
       ${weaponCard}
-      ${armorCard}
-      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#c9a870;">
+      ${armorCards}
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#c9a870;margin-top:4px;width:100%;">
         <span>⚔️ 총공격력: <b style="color:#ffd700;">${getTotalAtk()}</b></span>
         <span>🛡 방어력: <b style="color:#60a5fa;">${getDefense()}</b></span>
       </div>
@@ -1640,10 +1653,12 @@ function _updateEquipStats() {
     _updateEquipStats();
     renderInventory();
   });
-  statsEl.querySelector('[data-unequip="armor"]')?.addEventListener('click', () => {
-    unequipArmor();
-    _updateEquipStats();
-    renderInventory();
+  statsEl.querySelectorAll('[data-unequip-slot]').forEach(el => {
+    el.addEventListener('click', () => {
+      unequipArmor(el.dataset.unequipSlot);
+      _updateEquipStats();
+      renderInventory();
+    });
   });
 }
 
@@ -1728,12 +1743,18 @@ function renderInventory() {
           renderInventory();
           showInfoToast(_t('equip_weapon_toast', num, getTotalAtk()));
         });
-      } else if (String(itemId).startsWith('armo_')) {
-        // ── 방어구 ───────────────────────────────────────────────────────────
-        const num = String(itemId).replace(/^armo_\d+_?/, '');
-        const defVal = String(itemId).match(/(\d+)$/)?.[1] || num;
-        const isEquipped = getEquippedArmor() === itemId;
+      } else if (['helm_','legs_','glov_','boot_','armo_'].some(p => String(itemId).startsWith(p))) {
+        // ── 방어구 (4슬롯) ───────────────────────────────────────────────────
+        const defVal = String(itemId).match(/(\d+)$/)?.[1] || '0';
+        const armorSlots = getEquippedArmorSlots();
+        const isEquipped = Object.values(armorSlots).includes(itemId);
         const folder = Math.floor(parseInt(defVal) / 10);
+        const slotMeta = Object.entries(ARMOR_SLOT_META).find(([s]) =>
+          ({ helmet:'helm_', legs:'legs_', gloves:'glov_', boots:'boot_' }[s] &&
+           String(itemId).startsWith({ helmet:'helm_', legs:'legs_', gloves:'glov_', boots:'boot_' }[s]))
+        );
+        const slotLabel = slotMeta ? slotMeta[1].label : _t('equip_armor_label');
+        const slotIcon  = slotMeta ? slotMeta[1].icon  : '🛡';
         slot.title = _t('armor_slot_title', defVal);
         slot.style.cursor = 'pointer';
         if (isEquipped) slot.classList.add('equipped');
@@ -1741,7 +1762,7 @@ function renderInventory() {
           <img src="/assets/images/armo/${escHtml(String(folder))}/${escHtml(defVal)}.png"
                onerror="this.onerror=null;this.src='/assets/images/item/0.png'"
                alt="${_t('armor_slot_name', defVal)}" />
-          <span class="slot-name">${_t('armor_slot_name', defVal)}</span>
+          <span class="slot-name">${slotIcon} ${slotLabel}</span>
           ${isEquipped ? `<span class="slot-equipped">${_t('equipped_label')}</span>` : `<span class="slot-count">${count}</span>`}`;
         slot.addEventListener('click', () => {
           equipArmor(itemId);
@@ -1777,7 +1798,7 @@ function renderInventory() {
       }
       // 버리기 버튼 (소모품·장착 장비 제외)
       const isConsumable = ['potion_red', 'potion_mp', 'revive_ticket'].includes(itemId);
-      const isEquipped = (getEquippedWeapon() === itemId) || (getEquippedArmor() === itemId);
+      const isEquipped = (getEquippedWeapon() === itemId) || Object.values(getEquippedArmorSlots()).includes(itemId);
       if (!isConsumable && !isEquipped) {
         const dropBtn = document.createElement('button');
         dropBtn.className = 'drop-btn';
@@ -3176,7 +3197,7 @@ function _buildItemCatalog() {
 
 function _buildItemSelectOptions(currentItemId, shopType) {
   const catalog = _buildItemCatalog();
-  const PREFIX_MAP = { potion: ['potion_', 'revive_'], weapon_armor: ['weapon_', 'armo_', 'sword_', 'bow_', 'shield_', 'armor_'], misc: [] };
+  const PREFIX_MAP = { potion: ['potion_', 'revive_'], weapon_armor: ['weapon_', 'armo_', 'helm_', 'legs_', 'glov_', 'boot_', 'sword_', 'bow_', 'shield_', 'armor_'], misc: [] };
   const prefixes = PREFIX_MAP[shopType] || [];
 
   const filtered = Object.entries(catalog).filter(([id]) => {

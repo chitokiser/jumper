@@ -233,7 +233,7 @@ const TRANSLATIONS = {
     treasure_label: '보물찾기',
     treasure_sub: '지도 탐험 · 몬스터 전투 · 보물박스',
     sponsor_section: '스폰서 배너',
-    member_benefits_section: '정회원 혜택',
+    member_benefits_section: '점프토큰 소유자 혜택',
     view_all: '전체 보기',
     merchant_list_section: '가맹점 리스트',
     merchant_register: '가맹점 등록',

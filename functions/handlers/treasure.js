@@ -80,10 +80,11 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   if (!isInTimeRange(box.startHour ?? 0, box.endHour ?? 24))
     throw new HttpsError('failed-precondition', '보물박스가 현재 시간에 열려있지 않습니다');
 
-  // 서버측 거리 확인 (30m 허용 — GPS 오차 고려)
+  // 서버측 거리 확인 — 박스에 설정된 radius 사용 (기본 30m)
+  const claimRadius = Number(box.radius ?? 30);
   const dist = haversine(userLat, userLng, box.lat, box.lng);
-  if (dist > 30)
-    throw new HttpsError('failed-precondition', `너무 멀리 있습니다 (${Math.round(dist)}m)`);
+  if (dist > claimRadius)
+    throw new HttpsError('failed-precondition', `너무 멀리 있습니다 (${Math.round(dist)}m / 획득범위 ${claimRadius}m)`);
 
   // 리스폰 기반 수집 제한 (같은 사람은 리스폰 전까지 재수집 불가)
   const respawnMs = box.respawnIntervalMs || 86400000; // 기본 24시간

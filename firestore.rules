@@ -394,7 +394,7 @@ service cloud.firestore {
     }
     match /treasure_logs/{docId} {
       allow get: if signedIn()
-        && resource.data.uid == request.auth.uid;
+        && docId.matches(request.auth.uid + '_.*');
       allow list: if isAdmin();
       allow write: if false;
     }

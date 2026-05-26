@@ -1585,6 +1585,11 @@ $("btnRecordP2p")?.addEventListener("click", () => recordP2pTransferAction());
 // ── 아이템 풀 편집기 ────────────────────────────────────────────────────────
 let _boxItemPool = [];  // 현재 편집 중인 item pool
 
+// 보물박스 목록 상태
+let _allBoxes  = [];
+let _boxPage   = 0;
+const BOX_PAGE_SIZE = 20;
+
 function syncItemPoolTextarea() {
   const ta = $("tBoxItemPool");
   if (ta) ta.value = JSON.stringify(_boxItemPool);
@@ -1672,44 +1677,93 @@ async function loadTreasureBoxesList() {
   if (!el) return;
   el.innerHTML = "<div class='muted'>불러오는 중...</div>";
   const snap = await getDocs(collection(db, "treasure_boxes"));
-  if (snap.empty) { el.innerHTML = "<div class='muted'>등록된 박스 없음</div>"; return; }
-  el.innerHTML = snap.docs.map(d => {
-    const r = d.data();
-    const active = r.active !== false;
+  _allBoxes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  _boxPage = 0;
+  renderBoxPage();
+}
+
+function _getFilteredBoxes() {
+  const q   = ($("tBoxSearch")?.value || "").trim().toLowerCase();
+  const srt = $("tBoxSortSel")?.value || "name";
+  const activeOnly = $("tBoxFilterActive")?.checked;
+  let list = _allBoxes.filter(b => {
+    if (activeOnly && b.active === false) return false;
+    if (!q) return true;
+    return (b.name || "").toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
+  });
+  list.sort((a, b) => {
+    if (srt === "active") return (b.active !== false ? 1 : 0) - (a.active !== false ? 1 : 0);
+    if (srt === "member") return (b.memberOnly ? 1 : 0) - (a.memberOnly ? 1 : 0);
+    if (srt === "scan")   return (b.scanRadius ?? 100) - (a.scanRadius ?? 100);
+    return (a.name || "").localeCompare(b.name || "");
+  });
+  return list;
+}
+
+function _fillBoxForm(b, keepId) {
+  if ($("tBoxId")) $("tBoxId").value = keepId ? b.id : "";
+  if ($("tBoxName")) $("tBoxName").value = b.name || "";
+  if ($("tBoxCoords")) $("tBoxCoords").value = b.lat && b.lng ? `${b.lat}, ${b.lng}` : "";
+  const prev = $("tBoxCoordsPreview");
+  if (prev) { prev.textContent = b.lat ? `위도 ${Number(b.lat).toFixed(6)}, 경도 ${Number(b.lng).toFixed(6)}` : ""; prev.style.color = "#16a34a"; }
+  if ($("tBoxStartHour")) $("tBoxStartHour").value = b.startHour ?? 0;
+  if ($("tBoxEndHour"))   $("tBoxEndHour").value   = b.endHour   ?? 24;
+  _boxItemPool = Array.isArray(b.itemPool) ? b.itemPool : [];
+  renderItemPool();
+  if ($("tBoxActive"))      $("tBoxActive").value      = String(b.active !== false);
+  if ($("tBoxMemberOnly"))  $("tBoxMemberOnly").value  = String(b.memberOnly === true);
+  if ($("tBoxHiddenBox"))   $("tBoxHiddenBox").value   = String(b.hiddenBox === true);
+  if ($("tBoxKeyId"))       $("tBoxKeyId").value       = b.keyId || "";
+  if ($("tBoxClaimRadius")) $("tBoxClaimRadius").value = b.radius     ?? 30;
+  if ($("tBoxScanRadius"))  $("tBoxScanRadius").value  = b.scanRadius ?? 100;
+  const kRow = $("tBoxKeyIdRow"), kVal = $("tBoxKeyIdVal");
+  if (kRow && kVal) { const show = b.hiddenBox === true; kRow.style.display = show ? "" : "none"; kVal.style.display = show ? "" : "none"; }
+}
+
+function renderBoxPage() {
+  const el    = $("treasureBoxList");
+  const pager = $("treasureBoxPager");
+  if (!el) return;
+
+  const filtered   = _getFilteredBoxes();
+  const total      = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / BOX_PAGE_SIZE));
+  _boxPage = Math.min(_boxPage, totalPages - 1);
+  const pageItems  = filtered.slice(_boxPage * BOX_PAGE_SIZE, (_boxPage + 1) * BOX_PAGE_SIZE);
+
+  if (!pageItems.length) {
+    el.innerHTML = "<div class='muted'>해당 조건의 박스 없음</div>";
+    if (pager) pager.innerHTML = "";
+    return;
+  }
+
+  el.innerHTML = pageItems.map(b => {
+    const active = b.active !== false;
     return `<div class="card" style="display:flex;gap:12px;align-items:center;">
-      <div style="flex:1;">
-        <strong>${esc(r.name || "(이름없음)")}</strong>
-        <span class="muted" style="font-size:12px;margin-left:6px;">${active ? "✅ 활성" : "❌ 비활성"}${r.memberOnly ? " · 👑 정회원" : ""}${r.hiddenBox ? " · 🔮 숨김" : ""}${r.keyId ? ` · 🔑 Key ${esc(String(r.keyId))}` : ""} · ${(r.lat||0).toFixed(5)}, ${(r.lng||0).toFixed(5)} · ${r.startHour ?? 0}:00~${r.endHour ?? 24}:00</span>
-        <div class="muted" style="font-size:11px;font-family:monospace;">${esc(d.id)}</div>
+      <div style="flex:1;min-width:0;">
+        <strong>${esc(b.name || "(이름없음)")}</strong>
+        <span class="muted" style="font-size:12px;margin-left:6px;">${active ? "✅ 활성" : "❌ 비활성"}${b.memberOnly ? " · 👑 정회원" : ""}${b.hiddenBox ? " · 🔮 숨김" : ""}${b.keyId ? ` · 🔑 Key ${esc(String(b.keyId))}` : ""} · ${(b.lat||0).toFixed(5)}, ${(b.lng||0).toFixed(5)} · ${b.startHour ?? 0}:00~${b.endHour ?? 24}:00</span>
+        <div class="muted" style="font-size:11px;font-family:monospace;overflow:hidden;text-overflow:ellipsis;">${esc(b.id)}</div>
       </div>
-      <button class="btn btn-sm" data-act="editBox" data-id="${esc(d.id)}">수정</button>
-      <button class="btn btn-sm" data-act="deleteBox" data-id="${esc(d.id)}" style="color:var(--danger,#e53e3e);">비활성화</button>
+      <button class="btn btn-sm" data-act="copyBox"   data-id="${esc(b.id)}" title="이 박스를 복사해 새 박스로 등록">복사</button>
+      <button class="btn btn-sm" data-act="editBox"   data-id="${esc(b.id)}">수정</button>
+      <button class="btn btn-sm" data-act="deleteBox" data-id="${esc(b.id)}" style="color:var(--danger,#e53e3e);">비활성화</button>
     </div>`;
   }).join("");
+
   el.querySelectorAll("[data-act='editBox']").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const s = await getDoc(doc(db, "treasure_boxes", btn.dataset.id));
-      if (!s.exists()) return;
-      const r = s.data();
-      $("tBoxId").value        = btn.dataset.id;
-      $("tBoxName").value      = r.name || "";
-      $("tBoxCoords").value    = r.lat && r.lng ? `${r.lat}, ${r.lng}` : "";
-      const prev = $("tBoxCoordsPreview");
-      if (prev) { prev.textContent = r.lat ? `위도 ${Number(r.lat).toFixed(6)}, 경도 ${Number(r.lng).toFixed(6)}` : ""; prev.style.color = "#16a34a"; }
-      $("tBoxStartHour").value = r.startHour ?? 0;
-      $("tBoxEndHour").value   = r.endHour   ?? 24;
-      _boxItemPool = Array.isArray(r.itemPool) ? r.itemPool : [];
-      renderItemPool();
-      $("tBoxActive").value      = String(r.active !== false);
-      $("tBoxMemberOnly").value  = String(r.memberOnly === true);
-      $("tBoxHiddenBox").value   = String(r.hiddenBox === true);
-      if ($("tBoxKeyId"))       $("tBoxKeyId").value       = r.keyId || "";
-      if ($("tBoxClaimRadius")) $("tBoxClaimRadius").value = r.radius     ?? 30;
-      if ($("tBoxScanRadius"))  $("tBoxScanRadius").value  = r.scanRadius ?? 100;
-      const kRow = $("tBoxKeyIdRow"), kVal = $("tBoxKeyIdVal");
-      if (kRow && kVal) { const show = r.hiddenBox === true; kRow.style.display = show ? "" : "none"; kVal.style.display = show ? "" : "none"; }
+    const b = pageItems.find(x => x.id === btn.dataset.id);
+    if (b) btn.addEventListener("click", () => _fillBoxForm(b, true));
+  });
+
+  el.querySelectorAll("[data-act='copyBox']").forEach(btn => {
+    const b = pageItems.find(x => x.id === btn.dataset.id);
+    if (b) btn.addEventListener("click", () => {
+      _fillBoxForm(b, false);
+      if ($("tBoxName")) $("tBoxName").value = (b.name || "") + " (복사)";
     });
   });
+
   el.querySelectorAll("[data-act='deleteBox']").forEach(btn => {
     btn.addEventListener("click", async () => {
       if (!confirm("이 박스를 비활성화하시겠습니까?")) return;
@@ -1719,6 +1773,17 @@ async function loadTreasureBoxesList() {
       } catch (err) { alert("오류: " + (err.message || err)); }
     });
   });
+
+  if (pager) {
+    const start = _boxPage * BOX_PAGE_SIZE + 1;
+    const end   = Math.min((_boxPage + 1) * BOX_PAGE_SIZE, total);
+    pager.innerHTML = `
+      <button class="btn btn-sm" id="tBoxPrevPage" ${_boxPage === 0 ? "disabled" : ""}>◀</button>
+      <span style="font-size:12px;">${start}–${end} / 총 ${total}개</span>
+      <button class="btn btn-sm" id="tBoxNextPage" ${_boxPage >= totalPages - 1 ? "disabled" : ""}>▶</button>`;
+    $("tBoxPrevPage")?.addEventListener("click", () => { _boxPage--; renderBoxPage(); });
+    $("tBoxNextPage")?.addEventListener("click", () => { _boxPage++; renderBoxPage(); });
+  }
 }
 
 async function loadVouchersList() {
@@ -1935,6 +2000,9 @@ $("tBoxHiddenBox")?.addEventListener("change", () => {
 
 $("btnReloadTItems")?.addEventListener("click",    () => loadTreasureItemsList());
 $("btnReloadTBoxes")?.addEventListener("click",    () => loadTreasureBoxesList());
+$("tBoxSearch")?.addEventListener("input",  () => { _boxPage = 0; renderBoxPage(); });
+$("tBoxSortSel")?.addEventListener("change", () => { _boxPage = 0; renderBoxPage(); });
+$("tBoxFilterActive")?.addEventListener("change", () => { _boxPage = 0; renderBoxPage(); });
 $("btnReloadTVouchers")?.addEventListener("click", () => loadVouchersList());
 $("btnReloadTKeys")?.addEventListener("click",     () => loadTreasureKeysList());
 btnTabTreasure?.addEventListener("click", () => {

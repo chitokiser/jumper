@@ -148,12 +148,17 @@ const MESSAGES = {
                            vi: '🔑 Cần chìa khóa "{1}".\nHãy tiêu diệt quái vật để lấy chìa khóa!' },
 
   // ── 장비 능력치 패널 ──────────────────────────────────────────────────────────
-  equip_weapon_label:    { ko: '장착 무기',             vi: 'Vũ khí đang dùng' },
-  equip_armor_label:     { ko: '장착 방어구',           vi: 'Giáp đang dùng' },
-  no_weapon:             { ko: '무기 없음',             vi: 'Không có vũ khí' },
-  no_armor:              { ko: '방어구 없음',           vi: 'Không có giáp' },
-  unequip_hint:          { ko: '클릭하여 해제',         vi: 'Nhấn để tháo' },
-  unequip_btn:           { ko: '해제',                  vi: 'Tháo' },
+  equip_weapon_label:    { ko: '장착 무기',             en: 'Weapon',     vi: 'Vũ khí đang dùng' },
+  equip_armor_label:     { ko: '장착 방어구',           en: 'Armor',      vi: 'Giáp đang dùng' },
+  no_weapon:             { ko: '무기 없음',             en: 'No Weapon',  vi: 'Không có vũ khí' },
+  no_armor:              { ko: '방어구 없음',           en: 'No Armor',   vi: 'Không có giáp' },
+  unequip_hint:          { ko: '클릭하여 해제',         en: 'Click to unequip', vi: 'Nhấn để tháo' },
+  unequip_btn:           { ko: '해제',                  en: 'Unequip',    vi: 'Tháo' },
+  // ── 방어구 슬롯 이름 ──────────────────────────────────────────────────────────
+  slot_helmet:           { ko: '투구',     en: 'Helmet',    vi: 'Mũ giáp' },
+  slot_legs:             { ko: '레그가드', en: 'Leg Guard', vi: 'Bảo vệ chân' },
+  slot_gloves:           { ko: '글로브',   en: 'Gloves',    vi: 'Găng tay' },
+  slot_boots:            { ko: '부츠',     en: 'Boots',     vi: 'Giày chiến đấu' },
 
   // ── 인벤토리 슬롯 ─────────────────────────────────────────────────────────────
   hp_potion_name:        { ko: '빨간약',                vi: 'Thuốc đỏ' },
