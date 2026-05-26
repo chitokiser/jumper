@@ -18,7 +18,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          useReviveTicket, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
          syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
          spawnGsDrop, removeGsDrop,
-         equipWeapon, equipArmor, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
+         equipWeapon, equipArmor, equipArmorToSlot, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
          getEquippedWeapon, getEquippedArmor, getEquippedArmorSlots,
          updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
          loadShops, getShops, deleteShop, checkShopProximity,
@@ -1603,6 +1603,49 @@ function _defValFromId(itemId) {
   return m ? parseInt(m[1]) : 0;
 }
 
+function _showArmorSlotPicker(itemId, defVal) {
+  const existing = document.getElementById('armorSlotPickerModal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'armorSlotPickerModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;';
+  const slotList = [
+    { key: 'helmet', icon: '🪖', label: _t('slot_helmet') },
+    { key: 'legs',   icon: '🦵', label: _t('slot_legs') },
+    { key: 'gloves', icon: '🥊', label: _t('slot_gloves') },
+    { key: 'boots',  icon: '👟', label: _t('slot_boots') },
+  ];
+  modal.innerHTML = `
+    <div style="background:#1a0a00;border:2px solid #c9a870;border-radius:12px;padding:20px;max-width:300px;width:90%;text-align:center;">
+      <div style="color:#ffd700;font-size:14px;font-weight:700;margin-bottom:4px;">🛡 DEF ${defVal}</div>
+      <div style="color:#c9a870;font-size:12px;margin-bottom:14px;">${_t('armor_slot_picker_title')}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        ${slotList.map(s => `
+          <button data-slot="${s.key}"
+            style="background:#3b1a00;border:1px solid #c9a870;border-radius:8px;padding:10px 6px;cursor:pointer;
+                   color:#ffd700;font-size:13px;display:flex;align-items:center;gap:6px;justify-content:center;">
+            <span>${s.icon}</span><span>${s.label}</span>
+          </button>`).join('')}
+      </div>
+      <button id="armorSlotPickerCancel"
+        style="background:#5c3a1e;border:1px solid #7a5a3a;border-radius:8px;padding:7px 20px;cursor:pointer;color:#aaa;font-size:12px;">
+        ${_t('cancel_btn')}
+      </button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelectorAll('[data-slot]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      equipArmorToSlot(btn.dataset.slot, itemId);
+      modal.remove();
+      renderInventory();
+      _updateEquipStats();
+      showInfoToast(_t('equip_armor_toast', defVal));
+    });
+  });
+  document.getElementById('armorSlotPickerCancel').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
 function _updateEquipStats() {
   const statsEl = $('invEquipStats');
   if (!statsEl) return;
@@ -1765,9 +1808,14 @@ function renderInventory() {
           <span class="slot-name">${slotIcon} ${slotLabel}</span>
           ${isEquipped ? `<span class="slot-equipped">${_t('equipped_label')}</span>` : `<span class="slot-count">${count}</span>`}`;
         slot.addEventListener('click', () => {
-          equipArmor(itemId);
-          renderInventory();
-          showInfoToast(_t('equip_armor_toast', defVal));
+          if (String(itemId).startsWith('armo_')) {
+            _showArmorSlotPicker(itemId, defVal);
+          } else {
+            equipArmor(itemId);
+            renderInventory();
+            _updateEquipStats();
+            showInfoToast(_t('equip_armor_toast', defVal));
+          }
         });
       } else if (String(itemId).startsWith('key_')) {
         const kid = itemId.replace('key_', '');

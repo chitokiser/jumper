@@ -180,6 +180,8 @@ const MESSAGES = {
   equip_weapon_toast:    { ko: '⚔️ 무기 +{0} 장착! 총공격력 {1}', vi: '⚔️ Trang bị vũ khí +{0}! Tổng sát thương {1}' },
   // {0} = defVal
   equip_armor_toast:     { ko: '🛡 방어구 DEF {0} 장착!', vi: '🛡 Trang bị giáp DEF {0}!' },
+  armor_slot_picker_title: { ko: '슬롯 선택',  en: 'Select Slot', vi: 'Chọn vị trí' },
+  cancel_btn:              { ko: '취소',        en: 'Cancel',      vi: 'Hủy' },
   // {0} = keyName, {1} = kid
   key_slot_title:        { ko: '{0} (Key ID: {1}) — 보물박스 열쇠', vi: '{0} (Key ID: {1}) — Chìa khóa hộp' },
 

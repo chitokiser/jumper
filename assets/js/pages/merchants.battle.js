@@ -876,6 +876,14 @@ export function equipArmor(itemId) {
   updateCombatHud();
   savePlayerState();
 }
+/** 슬롯 직접 지정 장착 (armo_ 구버전 아이템 다중 슬롯 할당용) */
+export function equipArmorToSlot(slot, itemId) {
+  const key = { helmet:'equippedHelmet', legs:'equippedLegs', gloves:'equippedGloves', boots:'equippedBoots' }[slot];
+  if (!key) return;
+  _player[key] = itemId;
+  updateCombatHud();
+  savePlayerState();
+}
 export function unequipWeapon() {
   _player.weaponBonus    = 0;
   _player.equippedWeapon = null;
