@@ -1706,6 +1706,7 @@ function _fillBoxForm(b, keepId) {
   if ($("tBoxCoords")) $("tBoxCoords").value = b.lat && b.lng ? `${b.lat}, ${b.lng}` : "";
   const prev = $("tBoxCoordsPreview");
   if (prev) { prev.textContent = b.lat ? `위도 ${Number(b.lat).toFixed(6)}, 경도 ${Number(b.lng).toFixed(6)}` : ""; prev.style.color = "#16a34a"; }
+  _updateBoxMap(b.lat && b.lng ? { lat: Number(b.lat), lng: Number(b.lng) } : null);
   if ($("tBoxStartHour")) $("tBoxStartHour").value = b.startHour ?? 0;
   if ($("tBoxEndHour"))   $("tBoxEndHour").value   = b.endHour   ?? 24;
   _boxItemPool = Array.isArray(b.itemPool) ? b.itemPool : [];
@@ -1844,6 +1845,27 @@ function parseCoords(str) {
   return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
 }
 
+// 좌표 미리보기 지도
+let _boxMap = null;
+let _boxMarker = null;
+
+function _updateBoxMap(c) {
+  const el = $("tBoxMapPreview");
+  if (!el) return;
+  if (!c) { el.style.display = "none"; return; }
+  el.style.display = "block";
+  if (!_boxMap) {
+    _boxMap = L.map(el, { zoomControl: true, attributionControl: false }).setView([c.lat, c.lng], 17);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(_boxMap);
+    _boxMarker = L.marker([c.lat, c.lng]).addTo(_boxMap);
+  } else {
+    _boxMap.setView([c.lat, c.lng], 17);
+    _boxMarker.setLatLng([c.lat, c.lng]);
+    // 컨테이너가 숨겨졌다가 표시될 때 타일 갱신
+    _boxMap.invalidateSize();
+  }
+}
+
 // 좌표 입력 시 실시간 미리보기
 $("tBoxCoords")?.addEventListener("input", () => {
   const preview = $("tBoxCoordsPreview");
@@ -1851,6 +1873,7 @@ $("tBoxCoords")?.addEventListener("input", () => {
   const c = parseCoords($("tBoxCoords")?.value);
   preview.textContent = c ? `위도 ${c.lat.toFixed(6)}, 경도 ${c.lng.toFixed(6)}` : "좌표 형식 오류";
   preview.style.color = c ? "#16a34a" : "#dc2626";
+  _updateBoxMap(c);
 });
 
 $("tBoxItemAdd")?.addEventListener("click", () => {
@@ -1891,6 +1914,7 @@ $("btnSaveTreasureBox")?.addEventListener("click", async () => {
     renderItemPool();
     ["tBoxId","tBoxName","tBoxCoords","tBoxKeyId"].forEach(id => { const e=$(id); if(e) e.value=""; });
     const prev = $("tBoxCoordsPreview"); if (prev) prev.textContent = "";
+    _updateBoxMap(null);
     if ($("tBoxStartHour"))   $("tBoxStartHour").value   = "0";
     if ($("tBoxEndHour"))     $("tBoxEndHour").value     = "24";
     if ($("tBoxActive"))      $("tBoxActive").value      = "true";

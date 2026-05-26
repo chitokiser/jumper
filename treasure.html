@@ -208,33 +208,84 @@
       <p class="text-amber-200/50 text-sm mt-3" data-i18n="how_sub"></p>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-      <!-- Step 1: NPC 힌트 -->
-      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-7 text-center backdrop-blur-sm">
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-5">
+      <!-- Step 1: AR 스캐너 실행 -->
+      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-6 text-center backdrop-blur-sm">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
-        <div class="text-5xl mb-5">🧙</div>
+        <div class="text-4xl mb-4">📷</div>
         <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step1_label"></div>
-        <h3 class="font-bold text-white text-base mb-2" data-i18n="step1_title"></h3>
-        <p class="text-amber-200/55 text-sm leading-relaxed" data-i18n="step1_desc"></p>
+        <h3 class="font-bold text-white text-sm mb-2" data-i18n="step1_title"></h3>
+        <p class="text-amber-200/55 text-xs leading-relaxed" data-i18n="step1_desc"></p>
       </div>
-      <!-- Step 2: 반경 5m 접근 후 타격 -->
-      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-7 text-center backdrop-blur-sm" style="transition-delay:.1s">
+      <!-- Step 2: 접근 후 획득 -->
+      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-6 text-center backdrop-blur-sm" style="transition-delay:.08s">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
         <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
-        <div class="text-5xl mb-5">⚔️</div>
+        <div class="text-4xl mb-4">🎯</div>
         <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step2_label"></div>
-        <h3 class="font-bold text-white text-base mb-2" data-i18n="step2_title"></h3>
-        <p class="text-amber-200/55 text-sm leading-relaxed" data-i18n="step2_desc"></p>
+        <h3 class="font-bold text-white text-sm mb-2" data-i18n="step2_title"></h3>
+        <p class="text-amber-200/55 text-xs leading-relaxed" data-i18n="step2_desc"></p>
       </div>
-      <!-- Step 3: 몬스터 처치 → 열쇠 → 보물 개방 -->
-      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-7 text-center backdrop-blur-sm" style="transition-delay:.2s">
+      <!-- Step 3: 몬스터 처치 → 열쇠 (숨김 박스) -->
+      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-6 text-center backdrop-blur-sm" style="transition-delay:.16s">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
         <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
-        <div class="text-5xl mb-5">🗝️</div>
+        <div class="text-4xl mb-4">🗝️</div>
         <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step3_label"></div>
-        <h3 class="font-bold text-white text-base mb-2" data-i18n="step3_title"></h3>
-        <p class="text-amber-200/55 text-sm leading-relaxed" data-i18n="step3_desc"></p>
+        <h3 class="font-bold text-white text-sm mb-2" data-i18n="step3_title"></h3>
+        <p class="text-amber-200/55 text-xs leading-relaxed" data-i18n="step3_desc"></p>
       </div>
+      <!-- Step 4: 인벤토리에서 박스 개봉 → 경품 -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-emerald-500/8 to-transparent border border-emerald-500/25 rounded-2xl p-6 text-center backdrop-blur-sm" style="transition-delay:.24s">
+        <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
+        <div class="text-4xl mb-4">🎁</div>
+        <div class="font-cinzel text-emerald-400/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step4_label"></div>
+        <h3 class="font-bold text-white text-sm mb-2" data-i18n="step4_title"></h3>
+        <p class="text-amber-200/55 text-xs leading-relaxed" data-i18n="step4_desc"></p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 2.5 — 경품 지급 프로세스
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="py-10 px-4 max-w-3xl mx-auto fade-in">
+    <div class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 sm:p-8">
+      <div class="text-center mb-6">
+        <div class="font-cinzel text-amber-400/70 text-xs tracking-[.3em] uppercase mb-2" data-i18n="prize_eyebrow"></div>
+        <h3 class="font-fantasy text-gold text-xl sm:text-2xl" data-i18n="prize_title"></h3>
+      </div>
+      <!-- 플로우 -->
+      <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-6 text-xs sm:text-sm">
+        <div class="flex flex-col items-center gap-1 bg-white/5 rounded-xl px-4 py-3">
+          <span class="text-2xl">📷</span>
+          <span class="text-amber-200/70 font-cinzel" data-i18n="prize_flow1"></span>
+        </div>
+        <span class="text-amber-500 text-lg">→</span>
+        <div class="flex flex-col items-center gap-1 bg-white/5 rounded-xl px-4 py-3">
+          <span class="text-2xl">📦</span>
+          <span class="text-amber-200/70 font-cinzel" data-i18n="prize_flow2"></span>
+        </div>
+        <span class="text-amber-500 text-lg">→</span>
+        <div class="flex flex-col items-center gap-1 bg-white/5 rounded-xl px-4 py-3">
+          <span class="text-2xl">🔓</span>
+          <span class="text-amber-200/70 font-cinzel" data-i18n="prize_flow3"></span>
+        </div>
+        <span class="text-amber-500 text-lg">→</span>
+        <div class="flex flex-col items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3">
+          <span class="text-2xl">🎉</span>
+          <span class="text-emerald-300 font-bold font-cinzel" data-i18n="prize_flow4"></span>
+        </div>
+      </div>
+      <!-- 포인트 목록 -->
+      <ul class="space-y-2 text-xs sm:text-sm text-amber-200/60 max-w-xl mx-auto">
+        <li class="flex gap-2"><span class="text-amber-400 shrink-0">✦</span><span data-i18n="prize_note1"></span></li>
+        <li class="flex gap-2"><span class="text-amber-400 shrink-0">✦</span><span data-i18n="prize_note2"></span></li>
+        <li class="flex gap-2"><span class="text-amber-400 shrink-0">✦</span><span data-i18n="prize_note3"></span></li>
+        <li class="flex gap-2"><span class="text-purple-400 shrink-0">👑</span><span data-i18n="prize_note4"></span></li>
+      </ul>
     </div>
   </section>
 
@@ -257,16 +308,16 @@
         <div class="font-bold text-white text-sm mb-1" data-i18n="reward1_name"></div>
         <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward1_desc"></div>
       </div>
-      <!-- Mystery Box -->
+      <!-- HEX Points -->
       <div class="card-hover fade-in relative bg-gradient-to-b from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/25 rounded-2xl p-5 sm:p-6 text-center" style="transition-delay:.08s">
         <span class="reward-badge text-purple-200" data-i18n="badge_rare"></span>
-        <div class="text-4xl sm:text-5xl mb-4">🎲</div>
+        <div class="text-4xl sm:text-5xl mb-4">💠</div>
         <div class="font-bold text-white text-sm mb-1" data-i18n="reward2_name"></div>
         <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward2_desc"></div>
       </div>
       <!-- Rare Items -->
       <div class="card-hover fade-in relative bg-gradient-to-b from-blue-500/10 via-blue-500/5 to-transparent border border-blue-500/25 rounded-2xl p-5 sm:p-6 text-center" style="transition-delay:.16s">
-        <div class="text-4xl sm:text-5xl mb-4">💎</div>
+        <div class="text-4xl sm:text-5xl mb-4">⚔️</div>
         <div class="font-bold text-white text-sm mb-1" data-i18n="reward3_name"></div>
         <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward3_desc"></div>
       </div>
@@ -357,16 +408,31 @@
       // How to play
       how_eyebrow:     { ko: 'QUEST GUIDE', en: 'QUEST GUIDE', vi: 'HƯỚNG DẪN' },
       how_title:       { ko: '보물 찾는 법', en: 'How to Find Treasure', vi: 'Cách tìm kho báu' },
-      how_sub:         { ko: 'NPC의 단서를 쫓아 보물을 손에 넣으세요', en: 'Follow the NPC clues and claim the treasure', vi: 'Theo dấu gợi ý của NPC để chiếm kho báu' },
+      how_sub:         { ko: 'AR 스캐너로 보물을 발견하고 인벤토리에서 경품을 받으세요', en: 'Discover treasure with AR scanner and claim prizes from your inventory', vi: 'Khám phá kho báu bằng AR và nhận phần thưởng từ kho đồ' },
       step1_label:     { ko: 'STEP 01', en: 'STEP 01', vi: 'BƯỚC 01' },
-      step1_title:     { ko: 'NPC 힌트 수집', en: 'Gather NPC Hints', vi: 'Thu thập gợi ý NPC' },
-      step1_desc:      { ko: '지도 곳곳에 숨어 있는 NPC를 찾아 힌트를 얻으세요. 보물의 위치는 오직 NPC만이 알고 있습니다.', en: 'Find hidden NPCs across the map and collect their clues. Only they know where the treasure lies.', vi: 'Tìm các NPC ẩn trên bản đồ và thu thập gợi ý. Chỉ họ mới biết kho báu nằm ở đâu.' },
+      step1_title:     { ko: 'AR 스캐너 활성화', en: 'Activate AR Scanner', vi: 'Kích hoạt AR Scanner' },
+      step1_desc:      { ko: '앱에서 AR 스캐너를 실행하세요. 카메라로 현실 공간을 비추면 숨겨진 보물박스가 나타납니다.', en: 'Launch the AR scanner in the app. Point your camera at the real world to reveal hidden treasure boxes.', vi: 'Mở AR scanner trong ứng dụng. Hướng camera vào thực tế để khám phá các hộp kho báu ẩn.' },
       step2_label:     { ko: 'STEP 02', en: 'STEP 02', vi: 'BƯỚC 02' },
-      step2_title:     { ko: '접근 후 타격', en: 'Approach & Strike', vi: 'Tiếp cận & Tấn công' },
-      step2_desc:      { ko: '힌트를 바탕으로 보물 위치에 반경 5m 이내로 접근한 뒤 타격하면 보물을 획득할 수 있습니다.', en: 'Use the hints to locate the treasure, approach within 5 m, then strike to obtain it.', vi: 'Dùng gợi ý để định vị kho báu, tiếp cận trong vòng 5 m rồi tấn công để giành lấy.' },
+      step2_title:     { ko: '30m 이내 접근 후 획득', en: 'Approach within 30m & Claim', vi: 'Tiếp cận 30m & Thu thập' },
+      step2_desc:      { ko: 'AR로 발견한 보물에 실제 30m 이내로 이동하면 획득 버튼이 활성화됩니다. 현장에서 직접 보물박스를 수집하세요.', en: 'Move within 30 m of the discovered treasure in the real world to activate the claim button. Collect the box on-site.', vi: 'Di chuyển đến trong vòng 30 m của kho báu trong thực tế để kích hoạt nút thu thập.' },
       step3_label:     { ko: 'STEP 03', en: 'STEP 03', vi: 'BƯỚC 03' },
-      step3_title:     { ko: '열쇠로 보물 개방', en: 'Unlock with the Key', vi: 'Mở kho báu bằng chìa khóa' },
-      step3_desc:      { ko: '보물을 열려면 열쇠가 필요합니다. 주변 몬스터를 처치하면 열쇠를 드롭합니다. 열쇠를 획득한 뒤 보물상자를 여세요!', en: 'You need a key to open the treasure. Defeat nearby monsters to drop a key, then unlock the chest!', vi: 'Bạn cần chìa khóa để mở kho báu. Tiêu diệt quái vật xung quanh để nhận chìa khóa rồi mở rương!' },
+      step3_title:     { ko: '몬스터 처치 → 열쇠 획득', en: 'Defeat Monster → Get Key', vi: 'Tiêu diệt quái → Nhận chìa khóa' },
+      step3_desc:      { ko: '숨김 보물박스는 주변 몬스터를 처치해야 열쇠를 드롭합니다. 열쇠를 획득한 뒤 보물상자를 여세요!', en: 'Hidden treasure boxes require you to defeat nearby monsters to drop a key. Claim the key, then open the chest!', vi: 'Hộp kho báu ẩn yêu cầu tiêu diệt quái vật gần đó để nhận chìa khóa. Lấy chìa khóa rồi mở rương!' },
+      step4_label:     { ko: 'STEP 04', en: 'STEP 04', vi: 'BƯỚC 04' },
+      step4_title:     { ko: '인벤토리에서 박스 개봉 → 경품', en: 'Open Box in Inventory → Prize', vi: 'Mở hộp trong kho đồ → Phần thưởng' },
+      step4_desc:      { ko: '획득한 박스는 인벤토리에 보관됩니다. 인벤토리에서 박스를 개봉하면 즉시 경품(HEX·아이템·바우처)이 지급됩니다.', en: 'Collected boxes are stored in your inventory. Open the box there to instantly receive your prize — HEX, items, or vouchers.', vi: 'Hộp đã thu thập được lưu trong kho đồ. Mở hộp để nhận ngay phần thưởng — HEX, vật phẩm hoặc voucher.' },
+
+      // Prize distribution process
+      prize_eyebrow:   { ko: '경품 지급 프로세스', en: 'PRIZE DISTRIBUTION', vi: 'QUY TRÌNH PHẦN THƯỞNG' },
+      prize_title:     { ko: '보물 획득부터 경품까지', en: 'From Discovery to Prize', vi: 'Từ khám phá đến phần thưởng' },
+      prize_flow1:     { ko: 'AR 스캔', en: 'AR Scan', vi: 'AR Scan' },
+      prize_flow2:     { ko: '인벤토리 보관', en: 'Stored in Inventory', vi: 'Lưu vào kho đồ' },
+      prize_flow3:     { ko: '박스 개봉', en: 'Open Box', vi: 'Mở hộp' },
+      prize_flow4:     { ko: '경품 즉시 지급 🎉', en: 'Prize Instantly Delivered 🎉', vi: 'Nhận phần thưởng ngay 🎉' },
+      prize_note1:     { ko: '보물박스는 수집 즉시 인벤토리에 저장되며 언제든지 개봉 가능합니다.', en: 'Treasure boxes are saved to your inventory upon collection and can be opened any time.', vi: 'Hộp kho báu được lưu vào kho đồ ngay khi thu thập và có thể mở bất kỳ lúc nào.' },
+      prize_note2:     { ko: '박스 개봉 시 HEX 포인트, 희귀 아이템, VIP 바우처, 잭팟 중 하나가 무작위로 지급됩니다.', en: 'Opening a box randomly awards HEX points, rare items, VIP vouchers, or a jackpot prize.', vi: 'Mở hộp sẽ nhận ngẫu nhiên điểm HEX, vật phẩm hiếm, voucher VIP hoặc jackpot.' },
+      prize_note3:     { ko: '같은 보물박스는 24시간 후 재수집 가능합니다. 매일 새로운 경품 기회!', en: 'The same treasure box can be recollected after 24 hours — a fresh prize chance every day!', vi: 'Hộp kho báu có thể thu thập lại sau 24 giờ — cơ hội phần thưởng mới mỗi ngày!' },
+      prize_note4:     { ko: '정회원은 가맹점 독점 보물박스에 접근할 수 있으며 더 높은 잭팟 확률을 제공합니다.', en: 'Premium members gain access to exclusive merchant boxes with higher jackpot odds.', vi: 'Thành viên chính thức có thêm hộp độc quyền tại cửa hàng với tỷ lệ jackpot cao hơn.' },
 
       // Rewards
       rewards_eyebrow: { ko: 'LEGENDARY LOOT', en: 'LEGENDARY LOOT', vi: 'CHIẾN LỢI PHẨM' },
@@ -376,10 +442,10 @@
       badge_jackpot:   { ko: 'JACKPOT', en: 'JACKPOT', vi: 'JACKPOT' },
       reward1_name:    { ko: 'VIP 바우처', en: 'VIP Vouchers', vi: 'Voucher VIP' },
       reward1_desc:    { ko: '독점 할인 & 특별 혜택', en: 'Exclusive discounts & perks', vi: 'Giảm giá độc quyền & ưu đãi' },
-      reward2_name:    { ko: '미스터리 박스', en: 'Mystery Boxes', vi: 'Hộp bí ẩn' },
-      reward2_desc:    { ko: '희귀 아이템 & HEX 포인트', en: 'Rare items & HEX points', vi: 'Vật phẩm hiếm & điểm HEX' },
-      reward3_name:    { ko: '희귀 아이템', en: 'Rare Items', vi: 'Vật phẩm hiếm' },
-      reward3_desc:    { ko: '게임 강화 & 부활권', en: 'Game boosts & revive tickets', vi: 'Tăng cường game & vé hồi sinh' },
+      reward2_name:    { ko: 'HEX 포인트', en: 'HEX Points', vi: 'Điểm HEX' },
+      reward2_desc:    { ko: '온체인 HEX 포인트 즉시 지급', en: 'On-chain HEX points delivered instantly', vi: 'Điểm HEX on-chain được trao ngay lập tức' },
+      reward3_name:    { ko: '전투 아이템', en: 'Battle Items', vi: 'Vật phẩm chiến đấu' },
+      reward3_desc:    { ko: '무기·방어구·강화 아이템', en: 'Weapons, armor & power-up items', vi: 'Vũ khí, giáp & vật phẩm tăng cường' },
       reward4_name:    { ko: '잭팟 HEX', en: 'Jackpot HEX', vi: 'Jackpot HEX' },
       reward4_desc:    { ko: '대형 HEX 온체인 잭팟', en: 'Massive on-chain HEX jackpots', vi: 'Jackpot HEX on-chain khổng lồ' },
 

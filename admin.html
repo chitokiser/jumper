@@ -10,8 +10,10 @@
   <link rel="stylesheet" href="/assets/css/header.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
   <link rel="stylesheet" href="/assets/css/pages/admin_orders.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <script src="/assets/js/partials.js" defer></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <div id="siteHeader"></div>
@@ -423,6 +425,7 @@
                 <div class="v">
                   <input type="text" id="tBoxCoords" class="select" style="width:100%;" placeholder="예: 20.948991, 105.974279">
                   <div id="tBoxCoordsPreview" style="font-size:11px;color:var(--muted);margin-top:3px;"></div>
+                  <div id="tBoxMapPreview" style="height:220px;margin-top:6px;border-radius:6px;overflow:hidden;border:1px solid #334155;display:none;"></div>
                 </div>
                 <div class="k">시작 시간 (0~23)</div>
                 <div class="v"><input type="number" id="tBoxStartHour" class="select" style="width:80px;" value="0" min="0" max="23"></div>
