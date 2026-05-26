@@ -46,7 +46,9 @@ const MAX_MISS     = 10;
 const CLEAR_BONUS_GOLD = 500;
 const CLEAR_BONUS_XP   = 1000;
 
-const LS_KEY = 'memoryGame_stats';
+const LS_KEY       = 'memoryGame_stats';
+const LS_DAILY_KEY = 'memoryGame_daily';
+const DAILY_LIMIT  = 3;
 
 // ── MemoryGame 클래스 ──────────────────────────────────────────────────────────
 class MemoryGame {
@@ -139,7 +141,13 @@ class MemoryGame {
   open() {
     if (!this._modal) return;
     this._modal.classList.remove('hidden');
-    if (!this._running) this.start();
+    if (!this._running) {
+      if (this._getDailyPlays() >= DAILY_LIMIT) {
+        this._showDailyLimitScreen();
+      } else {
+        this.start();
+      }
+    }
   }
 
   close() {
@@ -151,11 +159,20 @@ class MemoryGame {
   }
 
   start() {
+    // 하루 3판 제한
+    const daily = this._getDailyPlays();
+    if (daily >= DAILY_LIMIT) {
+      this._showDailyLimitScreen();
+      return;
+    }
+
     // 입장료 부족 시 모달 안에 안내 표시
     if (!this._spendGold(ENTRY_COST)) {
       this._showNoGoldScreen();
       return;
     }
+
+    this._incDailyPlays();
 
     this._miss     = 0;
     this._match    = 0;
@@ -314,7 +331,13 @@ class MemoryGame {
     const stats = document.getElementById('mgResultStats');
     const again = document.getElementById('mgPlayAgain');
     if (!this._resultPanel) return;
-    if (again) again.style.display = '';
+
+    const daily    = this._getDailyPlays();
+    const remaining = DAILY_LIMIT - daily;
+    if (again) {
+      again.style.display = remaining > 0 ? '' : 'none';
+      if (remaining > 0) again.textContent = `다시 하기 (−${ENTRY_COST} 💰) · 오늘 ${remaining}판 남음`;
+    }
 
     const best = this._loadStats();
     if (cleared) {
@@ -332,6 +355,21 @@ class MemoryGame {
         `획득 골드: ${this._coinDelta > 0 ? '+' : ''}${this._coinDelta} &nbsp;|&nbsp; ` +
         `최고 기록: ${best.bestMatch} 매칭 · ${best.plays}회 플레이`;
     }
+    this._resultPanel.classList.remove('hidden');
+  }
+
+  _showDailyLimitScreen() {
+    const icon  = document.getElementById('mgResultIcon');
+    const title = document.getElementById('mgResultTitle');
+    const sub   = document.getElementById('mgResultSub');
+    const stats = document.getElementById('mgResultStats');
+    const again = document.getElementById('mgPlayAgain');
+    if (!this._resultPanel) return;
+    if (icon)  icon.textContent  = '⏰';
+    if (title) title.textContent = '오늘 참여 완료';
+    if (sub)   sub.textContent   = `하루 ${DAILY_LIMIT}판 제한에 도달했습니다`;
+    if (stats) stats.textContent = '내일 자정 이후 다시 도전하세요!';
+    if (again) again.style.display = 'none';
     this._resultPanel.classList.remove('hidden');
   }
 
@@ -372,6 +410,27 @@ class MemoryGame {
 
   _loadStats() {
     try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+  }
+
+  _todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  }
+
+  _getDailyPlays() {
+    try {
+      const rec = JSON.parse(localStorage.getItem(LS_DAILY_KEY) || '{}');
+      return rec.date === this._todayStr() ? (rec.count || 0) : 0;
+    } catch { return 0; }
+  }
+
+  _incDailyPlays() {
+    try {
+      const today = this._todayStr();
+      const rec   = JSON.parse(localStorage.getItem(LS_DAILY_KEY) || '{}');
+      const count = rec.date === today ? (rec.count || 0) + 1 : 1;
+      localStorage.setItem(LS_DAILY_KEY, JSON.stringify({ date: today, count }));
+    } catch (_) {}
   }
 }
 
