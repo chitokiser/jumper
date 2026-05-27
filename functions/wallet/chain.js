@@ -224,8 +224,11 @@ const COOP_MALL_ABI = [
 // 팩토리 함수
 // ────────────────────────────────────────────────
 
+// opBNB는 ENS 미지원 — static network 지정으로 ENS 조회 방지
+const OPBNB_NETWORK = new ethers.Network('opbnb', 204);
+
 function getProvider() {
-  return new ethers.JsonRpcProvider(RPC_URL);
+  return new ethers.JsonRpcProvider(RPC_URL, OPBNB_NETWORK, { staticNetwork: OPBNB_NETWORK });
 }
 
 function getPlatformContract(signerOrProvider) {
@@ -249,8 +252,8 @@ function getCoopMallContract(signerOrProvider) {
 }
 
 function getJumpAutoExchangeContract(signerOrProvider) {
-  const addr = process.env.JUMP_AUTO_EXCHANGE_ADDRESS;
-  if (!addr) throw new Error('[chain] JUMP_AUTO_EXCHANGE_ADDRESS 미설정');
+  const addr = (process.env.JUMP_AUTO_EXCHANGE_ADDRESS || '').trim();
+  if (!addr || !ethers.isAddress(addr)) throw new Error('[chain] JUMP_AUTO_EXCHANGE_ADDRESS 미설정 또는 잘못된 주소');
   return new ethers.Contract(addr, JUMP_AUTO_EXCHANGE_ABI, signerOrProvider);
 }
 
