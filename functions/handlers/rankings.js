@@ -7,23 +7,20 @@ const { getProvider, getJumpTokenContract } = require('../wallet/chain');
 
 const db = admin.firestore();
 
-async function getHomeRankings() {
-  const provider  = getProvider();
-  const jumpToken = getJumpTokenContract(provider);
-
-  // 1. 보물박스 랭킹 —————————————————————————————
+async function getTreasureRanking() {
   const bpSnap = await db.collection('battle_players')
-    .where('treasuresFound', '>', 0)
     .orderBy('treasuresFound', 'desc')
     .limit(10)
     .get();
 
-  const uids = bpSnap.docs.map(d => d.id);
-  const userSnaps = uids.length
-    ? await Promise.all(uids.map(uid => db.collection('users').doc(uid).get()))
-    : [];
+  const filtered = bpSnap.docs.filter(d => (d.data().treasuresFound || 0) > 0);
+  if (!filtered.length) return [];
 
-  const treasureRanking = bpSnap.docs.map((d, i) => {
+  const userSnaps = await Promise.all(
+    filtered.map(d => db.collection('users').doc(d.id).get())
+  );
+
+  return filtered.map((d, i) => {
     const ud = userSnaps[i]?.data() || {};
     return {
       rank:           i + 1,
@@ -33,9 +30,13 @@ async function getHomeRankings() {
       treasuresFound: d.data().treasuresFound || 0,
     };
   });
+}
 
-  // 2. JUMP 토큰 보유 랭킹 —————————————————————————
-  const usersSnap = await db.collection('users').limit(100).get();
+async function getJumpRanking() {
+  const provider  = getProvider();
+  const jumpToken = getJumpTokenContract(provider);
+
+  const usersSnap = await db.collection('users').limit(50).get();
 
   const walletUsers = usersSnap.docs.map(d => ({
     uid:         d.id,
@@ -44,11 +45,20 @@ async function getHomeRankings() {
     address:     d.data().wallet?.address || '',
   })).filter(u => ethers.isAddress(u.address));
 
-  const balances = await Promise.all(
-    walletUsers.map(u => jumpToken.balanceOf(u.address).catch(() => 0n))
-  );
+  if (!walletUsers.length) return [];
 
-  const jumpRanking = walletUsers
+  // batch RPC calls in groups of 10 to avoid overloading
+  const BATCH = 10;
+  const balances = [];
+  for (let i = 0; i < walletUsers.length; i += BATCH) {
+    const chunk = walletUsers.slice(i, i + BATCH);
+    const chunkBals = await Promise.all(
+      chunk.map(u => jumpToken.balanceOf(u.address).catch(() => 0n))
+    );
+    balances.push(...chunkBals);
+  }
+
+  return walletUsers
     .map((u, i) => ({ ...u, jumpBalance: balances[i] }))
     .filter(u => u.jumpBalance > 0n)
     .sort((a, b) => (b.jumpBalance > a.jumpBalance ? 1 : b.jumpBalance < a.jumpBalance ? -1 : 0))
@@ -61,6 +71,19 @@ async function getHomeRankings() {
       jumpBalance:   u.jumpBalance.toString(),
       walletAddress: u.address,
     }));
+}
+
+async function getHomeRankings() {
+  const [treasureRanking, jumpRanking] = await Promise.all([
+    getTreasureRanking().catch(err => {
+      console.error('getTreasureRanking error:', err.message);
+      return [];
+    }),
+    getJumpRanking().catch(err => {
+      console.error('getJumpRanking error:', err.message);
+      return [];
+    }),
+  ]);
 
   return { treasureRanking, jumpRanking };
 }
