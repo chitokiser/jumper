@@ -656,6 +656,20 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
 
+    // 사용자 보물 (실제 좌표 비공개 — Cloud Function만 접근)
+    match /user_treasures/{docId} {
+      allow read: if signedIn() && (
+        resource.data.ownerId == request.auth.uid || isAdmin()
+      );
+      allow write: if false; // Cloud Function only
+    }
+
+    // 사용자 보물 NPC (맵 표시용 — 좌표 공개, 보물 좌표 제외)
+    match /user_treasure_npcs/{docId} {
+      allow read: if true;
+      allow write: if false; // Cloud Function only
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

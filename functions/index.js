@@ -46,6 +46,7 @@ const shopH                  = require('./handlers/shop');
 const nfcH                   = require('./handlers/nfc');
 const tutorialH              = require('./handlers/tutorial');
 const slotH                  = require('./handlers/slot');
+const userTreasureH          = require('./handlers/userTreasure');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1958,4 +1959,29 @@ exports.spinSlot = onCall(wrapError(async (req) => {
 
 exports.getSlotJackpot = onCall(wrapError(async (_req) => {
   return slotH.getJackpot();
+}));
+
+// ── 사용자 보물 + NPC ─────────────────────────────────────────────────────────
+exports.registerUserTreasure = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return userTreasureH.registerUserTreasure(uid, req.data ?? {});
+}));
+
+exports.discoverUserTreasure = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return userTreasureH.discoverUserTreasure(uid, req.data ?? {});
+}));
+
+exports.listUserTreasureNpcs = onCall(wrapError(async (_req) => {
+  return userTreasureH.listUserTreasureNpcs();
+}));
+
+exports.getMyUserTreasures = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return userTreasureH.getMyUserTreasures(uid);
+}));
+
+exports.cancelUserTreasure = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return userTreasureH.cancelUserTreasure(uid, req.data ?? {});
 }));

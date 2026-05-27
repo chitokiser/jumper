@@ -92,6 +92,8 @@ let _droppedItems   = {};        // {dropId: dropData} 바닥에 버려진 아�
 let _dropMarkers    = {};        // {dropId: google.maps.Marker} 드랍 마커
 let _dropsUnsubscribe = null;    // onSnapshot 해제 함수
 let _alertedDropIds = new Set(); // 이미 알림을 보낸 dropId (중복 방지)
+let _utNpcMarkers   = {};        // {npcId: google.maps.Marker} 사용자 보물 NPC 마커
+let _utCurrentNpc   = null;      // 현재 선택된 사용자 보물 NPC
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
 const _ctx = {
@@ -2741,6 +2743,7 @@ async function init() {
     showDeathMarkerIfDead(); // 사망 상태 재접속 시 해골 마커 표시
     renderMarkers(allMerchants);
     renderBoxMarkers();
+    loadUserTreasureNpcs();
     fitMapToAllMarkers();
   }
   renderCards(allMerchants);
@@ -3487,6 +3490,178 @@ function renderHunterRanking(rows, tab) {
   }).join('');
 }
 
+// ── 사용자 보물 NPC 시스템 ─────────────────────────────────────────────────────
+
+async function loadUserTreasureNpcs() {
+  try {
+    const { data } = await httpsCallable(functions, 'listUserTreasureNpcs')();
+    const npcs = Array.isArray(data) ? data : [];
+    Object.values(_utNpcMarkers).forEach(m => m.setMap(null));
+    _utNpcMarkers = {};
+    npcs.forEach(npc => { _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc); });
+  } catch (_e) { /* silent */ }
+}
+
+function _makeUserNpcMarker(npc) {
+  const svgSrc = encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">` +
+    `<circle cx="11" cy="11" r="10" fill="#7B3F00" stroke="#FFD700" stroke-width="2"/>` +
+    `<text x="11" y="16" text-anchor="middle" font-size="12" font-family="serif">T</text></svg>`
+  );
+  const marker = new google.maps.Marker({
+    position: { lat: npc.lat, lng: npc.lng },
+    map: _ctx.map,
+    title: (npc.ownerName || '?') + '의 보물',
+    icon: {
+      url: 'data:image/svg+xml;charset=UTF-8,' + svgSrc,
+      scaledSize: new google.maps.Size(22, 22),
+      anchor: new google.maps.Point(11, 11),
+    },
+    zIndex: 50,
+  });
+  marker.addListener('click', () => showUserNpcInfo(npc));
+  return marker;
+}
+
+function showUserNpcInfo(npc) {
+  _utCurrentNpc = npc;
+  const modal = document.getElementById('utNpcModal');
+  if (!modal) return;
+  document.getElementById('utNpcOwner').textContent   = npc.ownerName || '?';
+  document.getElementById('utNpcHint').textContent    = npc.hint || '';
+  document.getElementById('utNpcStory').textContent   = npc.story || '';
+  document.getElementById('utNpcComment').textContent = npc.comment || '';
+  document.getElementById('utNpcRewardType').textContent = npc.type === 'item' ? '아이템' : '코인';
+  document.getElementById('utNpcRewardVal').textContent  = npc.type === 'item'
+    ? `×${npc.itemCount}` : `${npc.itemCount}`;
+  document.getElementById('utNpcRadius').textContent = `발견 반경: ${npc.radiusM}m`;
+  modal.classList.add('open');
+}
+
+async function discoverTreasure(npcId) {
+  const pos = _ctx.lastPos;
+  if (!pos) { alert('GPS 위치를 가져올 수 없습니다.'); return; }
+  const btn = document.getElementById('btnDiscoverTreasure');
+  if (btn) btn.disabled = true;
+  try {
+    const { data } = await httpsCallable(functions, 'discoverUserTreasure')(
+      { npcId, userLat: pos.lat, userLng: pos.lng }
+    );
+    document.getElementById('utNpcModal').classList.remove('open');
+    const reward = data.type === 'item' ? `아이템 ×${data.itemCount}` : `${data.itemCount} 코인`;
+    alert(`🎉 보물 발견!\n${data.ownerName}님의 보물\n보상: ${reward}`);
+    if (_utNpcMarkers[npcId]) {
+      _utNpcMarkers[npcId].setMap(null);
+      delete _utNpcMarkers[npcId];
+    }
+  } catch (e) {
+    alert(e.message || '보물 발견 실패');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function openRegisterTreasureModal() {
+  const modal = document.getElementById('utRegModal');
+  if (!modal) return;
+  const sel = document.getElementById('utRegItemSel');
+  if (sel) {
+    sel.innerHTML = '<option value="">-- 아이템 선택 --</option>';
+    Object.entries(_inventory)
+      .filter(([, cnt]) => cnt > 0)
+      .forEach(([itemId, cnt]) => {
+        const opt = document.createElement('option');
+        opt.value = itemId;
+        opt.textContent = `${itemId} (보유: ${cnt})`;
+        sel.appendChild(opt);
+      });
+  }
+  if (_ctx.lastPos) {
+    const { lat, lng } = _ctx.lastPos;
+    const posEl = document.getElementById('utRegPosDisplay');
+    if (posEl) posEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    const latEl = document.getElementById('utRegLat');
+    const lngEl = document.getElementById('utRegLng');
+    if (latEl) latEl.value = lat;
+    if (lngEl) lngEl.value = lng;
+  }
+  modal.classList.add('open');
+}
+
+async function registerTreasure() {
+  const activeTypeBtn = document.querySelector('.ut-reg-type-btn.active');
+  const type    = activeTypeBtn?.dataset.type || 'item';
+  const itemId  = document.getElementById('utRegItemSel')?.value || null;
+  const count   = parseInt(document.getElementById('utRegCount')?.value || '1', 10);
+  const radiusM = parseInt(document.getElementById('utRegRadius')?.value || '30', 10);
+  const hint    = document.getElementById('utRegHint')?.value?.trim();
+  const story   = document.getElementById('utRegStory')?.value?.trim();
+  const comment = document.getElementById('utRegComment')?.value?.trim();
+  const lat     = parseFloat(document.getElementById('utRegLat')?.value);
+  const lng     = parseFloat(document.getElementById('utRegLng')?.value);
+  if (!lat || !lng)      { alert('위치 정보가 없습니다. GPS 버튼을 눌러주세요.'); return; }
+  if (!hint || hint.length < 5) { alert('힌트는 5자 이상 입력하세요.'); return; }
+  if (type === 'item' && !itemId) { alert('아이템을 선택하세요.'); return; }
+  const btn = document.getElementById('btnUtRegSubmit');
+  if (btn) btn.disabled = true;
+  try {
+    await httpsCallable(functions, 'registerUserTreasure')(
+      { type, itemId, itemCount: count, lat, lng, hint, story, comment, radiusM }
+    );
+    document.getElementById('utRegModal').classList.remove('open');
+    alert('✅ 보물이 숨겨졌습니다!');
+    loadUserTreasureNpcs();
+  } catch (e) {
+    alert(e.message || '등록 실패');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function openMyTreasuresModal() {
+  const modal  = document.getElementById('utMyModal');
+  if (!modal) return;
+  const listEl = document.getElementById('utMyList');
+  if (listEl) listEl.innerHTML = '<p style="color:#aaa">불러오는 중...</p>';
+  modal.classList.add('open');
+  try {
+    const { data } = await httpsCallable(functions, 'getMyUserTreasures')();
+    const items = Array.isArray(data) ? data : [];
+    if (!items.length) {
+      listEl.innerHTML = '<p style="color:#aaa">숨긴 보물이 없습니다.</p>';
+      return;
+    }
+    const statusLabel = { active: '활성', found: '발견됨', cancelled: '취소됨', expired: '만료' };
+    listEl.innerHTML = items.map(t => {
+      const reward = t.type === 'item' ? `아이템 ×${t.itemCount}` : `${t.itemCount} 코인`;
+      const label  = statusLabel[t.status] || t.status;
+      return `<div class="ut-my-item">` +
+        `<span class="ut-my-status ut-status-${t.status}">${label}</span>` +
+        `<span>${reward}</span>` +
+        (t.status === 'active'
+          ? `<button class="ut-my-cancel" data-id="${t.id}">취소</button>` : '') +
+        `</div>`;
+    }).join('');
+    listEl.querySelectorAll('.ut-my-cancel').forEach(btn => {
+      btn.addEventListener('click', () => cancelTreasure(btn.dataset.id));
+    });
+  } catch (e) {
+    if (listEl) listEl.innerHTML = `<p style="color:#f88">오류: ${e.message}</p>`;
+  }
+}
+
+async function cancelTreasure(treasureId) {
+  if (!confirm('보물을 취소하면 아이템/골드가 반환됩니다. 계속하시겠습니까?')) return;
+  try {
+    await httpsCallable(functions, 'cancelUserTreasure')({ treasureId });
+    alert('✅ 보물이 취소되었습니다.');
+    openMyTreasuresModal();
+    loadUserTreasureNpcs();
+  } catch (e) {
+    alert(e.message || '취소 실패');
+  }
+}
+
 function initHunterRanking() {
   const section = $('hunterRankSection');
   if (!section) return;
@@ -3517,6 +3692,48 @@ document.addEventListener('DOMContentLoaded', () => {
       excGrid.classList.toggle('hidden', !isOpen);
     });
   }
+
+  // ── 사용자 보물 이벤트 ────────────────────────────────────────────────────────
+  const utNpcModal = document.getElementById('utNpcModal');
+  const utRegModal = document.getElementById('utRegModal');
+  const utMyModal  = document.getElementById('utMyModal');
+
+  document.getElementById('btnRegisterTreasure')
+    ?.addEventListener('click', openMyTreasuresModal);
+  document.getElementById('btnCloseUtNpc')
+    ?.addEventListener('click', () => utNpcModal?.classList.remove('open'));
+  document.getElementById('btnCloseUtReg')
+    ?.addEventListener('click', () => utRegModal?.classList.remove('open'));
+  document.getElementById('btnCloseUtMy')
+    ?.addEventListener('click', () => utMyModal?.classList.remove('open'));
+  document.getElementById('btnDiscoverTreasure')
+    ?.addEventListener('click', () => { if (_utCurrentNpc) discoverTreasure(_utCurrentNpc.id); });
+  document.getElementById('btnUtRegSubmit')
+    ?.addEventListener('click', registerTreasure);
+  document.getElementById('btnOpenUtReg')
+    ?.addEventListener('click', () => {
+      utMyModal?.classList.remove('open');
+      openRegisterTreasureModal();
+    });
+  document.getElementById('btnUtRegGps')
+    ?.addEventListener('click', () => {
+      const pos = _ctx.lastPos;
+      if (!pos) { alert('GPS 신호 대기 중...'); return; }
+      const posEl = document.getElementById('utRegPosDisplay');
+      const latEl = document.getElementById('utRegLat');
+      const lngEl = document.getElementById('utRegLng');
+      if (posEl) posEl.textContent = `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`;
+      if (latEl) latEl.value = pos.lat;
+      if (lngEl) lngEl.value = pos.lng;
+    });
+  document.querySelectorAll('.ut-reg-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ut-reg-type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('utRegItemWrap')
+        ?.classList.toggle('hidden', btn.dataset.type !== 'item');
+    });
+  });
 });
 
 init();

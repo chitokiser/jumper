@@ -1433,6 +1433,166 @@
       font-size: 0.72rem; color: var(--muted, #6b7280); white-space: nowrap;
     }
 
+    /* ── 사용자 보물 NPC 정보 모달 ── */
+    #utNpcModal {
+      display: none; position: fixed; inset: 0; z-index: 8500;
+      background: rgba(0,0,0,.7);
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    #utNpcModal.open { display: flex; }
+    .ut-npc-panel {
+      background: #2c1a0e; border: 3px solid #7a5c3a;
+      border-radius: 18px; width: min(360px,95vw);
+      box-shadow: 0 8px 40px rgba(0,0,0,.7); overflow: hidden;
+    }
+    .ut-npc-header {
+      background: linear-gradient(135deg,#5c3a1e,#3d2410);
+      color: #ffd700; padding: 14px 18px;
+      font-size: 15px; font-weight: 800;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #7a5c3a;
+    }
+    .ut-npc-close {
+      background: none; border: none; color: #ffd700;
+      font-size: 20px; cursor: pointer; line-height: 1; padding: 0 4px;
+    }
+    .ut-npc-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .ut-npc-field label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 3px; }
+    .ut-npc-field p { color: #f3e8d0; font-size: 13px; margin: 0; line-height: 1.55; word-break: break-word; }
+    .ut-npc-reward {
+      background: #1a0e06; border: 1px solid #5c3a1e; border-radius: 10px;
+      padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+    }
+    .ut-npc-reward-icon { font-size: 28px; }
+    .ut-npc-reward-info { flex: 1; }
+    .ut-npc-reward-type { font-size: 11px; color: #9ca3af; }
+    .ut-npc-reward-val  { font-size: 15px; font-weight: 800; color: #ffd700; }
+    .ut-npc-radius { font-size: 11px; color: #c9a870; margin-top: 2px; }
+    .btn-discover {
+      width: 100%; padding: 11px 0; border: none; border-radius: 10px;
+      background: linear-gradient(135deg,#b45309,#f59e0b);
+      color: #fff; font-size: 14px; font-weight: 800;
+      cursor: pointer; transition: opacity .15s;
+      box-shadow: 0 3px 12px rgba(245,158,11,.35);
+    }
+    .btn-discover:hover:not(:disabled) { opacity: .88; }
+    .btn-discover:disabled { background: #374151; color: #6b7280; cursor: not-allowed; box-shadow: none; }
+    .ut-npc-msg { font-size: 12px; text-align: center; color: #9ca3af; min-height: 16px; }
+
+    /* ── 보물 등록 모달 ── */
+    #utRegModal {
+      display: none; position: fixed; inset: 0; z-index: 8500;
+      background: rgba(0,0,0,.7); align-items: flex-start;
+      justify-content: center; overflow-y: auto; padding: 16px 0;
+    }
+    #utRegModal.open { display: flex; }
+    .ut-reg-panel {
+      background: #2c1a0e; border: 3px solid #7a5c3a;
+      border-radius: 18px; width: min(400px,95vw);
+      box-shadow: 0 8px 40px rgba(0,0,0,.7); overflow: hidden;
+      flex-shrink: 0; margin: auto 0;
+    }
+    .ut-reg-header {
+      background: linear-gradient(135deg,#5c3a1e,#3d2410);
+      color: #ffd700; padding: 14px 18px;
+      font-size: 15px; font-weight: 800;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #7a5c3a;
+    }
+    .ut-reg-close {
+      background: none; border: none; color: #ffd700;
+      font-size: 20px; cursor: pointer; line-height: 1; padding: 0 4px;
+    }
+    .ut-reg-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .ut-reg-label {
+      font-size: 11px; font-weight: 700; color: #c9a870;
+      text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 4px;
+    }
+    .ut-reg-input {
+      width: 100%; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid #5c3a1e; background: #1a0e06;
+      color: #f3e8d0; font-size: 13px; outline: none;
+      box-sizing: border-box; resize: vertical;
+    }
+    .ut-reg-input:focus { border-color: #ffd700; }
+    .ut-reg-type-row { display: flex; gap: 8px; }
+    .ut-reg-type-btn {
+      flex: 1; padding: 9px 0; border-radius: 8px;
+      border: 2px solid #5c3a1e; background: #1a0e06;
+      color: #c9a870; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all .15s;
+    }
+    .ut-reg-type-btn.active { border-color: #ffd700; background: #3d2410; color: #ffd700; }
+    .ut-reg-pos-row {
+      display: flex; gap: 6px; align-items: center;
+    }
+    .ut-reg-pos-val {
+      flex: 1; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid #5c3a1e; background: #1a0e06;
+      color: #c9a870; font-size: 12px;
+    }
+    .btn-use-gps {
+      padding: 8px 12px; border-radius: 8px; border: 1px solid #5c3a1e;
+      background: #3d2410; color: #ffd700; font-size: 12px;
+      cursor: pointer; white-space: nowrap; transition: background .15s;
+    }
+    .btn-use-gps:hover { background: #5c3a1e; }
+    .btn-reg-submit {
+      width: 100%; padding: 12px 0; border: none; border-radius: 10px;
+      background: linear-gradient(135deg,#7c3aed,#a855f7);
+      color: #fff; font-size: 14px; font-weight: 800;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .btn-reg-submit:hover:not(:disabled) { opacity: .88; }
+    .btn-reg-submit:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+    .ut-reg-msg { font-size: 12px; text-align: center; color: #9ca3af; min-height: 16px; }
+
+    /* ── 내 보물 목록 모달 ── */
+    #utMyModal {
+      display: none; position: fixed; inset: 0; z-index: 8500;
+      background: rgba(0,0,0,.7); align-items: flex-start;
+      justify-content: center; overflow-y: auto; padding: 16px 0;
+    }
+    #utMyModal.open { display: flex; }
+    .ut-my-panel {
+      background: #2c1a0e; border: 3px solid #7a5c3a;
+      border-radius: 18px; width: min(400px,95vw);
+      box-shadow: 0 8px 40px rgba(0,0,0,.7); overflow: hidden;
+      flex-shrink: 0; margin: auto 0;
+    }
+    .ut-my-header {
+      background: linear-gradient(135deg,#5c3a1e,#3d2410);
+      color: #ffd700; padding: 14px 18px;
+      font-size: 15px; font-weight: 800;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #7a5c3a;
+    }
+    .ut-my-close {
+      background: none; border: none; color: #ffd700;
+      font-size: 20px; cursor: pointer; line-height: 1; padding: 0 4px;
+    }
+    .ut-my-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; }
+    .ut-my-row {
+      background: #1a0e06; border: 1px solid #5c3a1e; border-radius: 10px;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .ut-my-row-hd { display: flex; justify-content: space-between; align-items: center; }
+    .ut-my-status {
+      font-size: 10px; font-weight: 700; padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .ut-my-status.active   { background: #065f46; color: #6ee7b7; }
+    .ut-my-status.found    { background: #1e3a5f; color: #93c5fd; }
+    .ut-my-status.cancelled{ background: #374151; color: #9ca3af; }
+    .ut-my-hint { font-size: 12px; color: #c9a870; }
+    .ut-my-meta { font-size: 11px; color: #6b7280; }
+    .btn-cancel-treasure {
+      align-self: flex-end; padding: 5px 12px; border: 1px solid #7f1d1d;
+      border-radius: 6px; background: rgba(127,29,29,.5);
+      color: #fca5a5; font-size: 11px; cursor: pointer; transition: background .15s;
+    }
+    .btn-cancel-treasure:hover { background: #7f1d1d; }
+
   </style>
 
   <script>
@@ -1603,6 +1763,7 @@
         <button id="btnInventory" class="map-hud-btn" title="Túi đồ" style="position:relative">🎒<span id="dropNearbyBadge" class="drop-nearby-badge hidden"></span></button>
         <button id="btnDetector" class="map-hud-btn" title="보물 탐지기 ON/OFF">📡</button>
         <button id="btnArScan" class="map-hud-btn" title="AR Treasure Scanner" onclick="location.href='/ar-scan.html'">📷</button>
+        <button id="btnRegisterTreasure" class="map-hud-btn" title="내 보물 숨기기 / 내 보물 목록">📍</button>
         <button id="btnFullscreen" class="map-hud-btn" title="Toàn màn hình">⛶</button>
         <div style="position:relative;">
           <button id="skillBtnMiniGame" class="map-hud-btn" title="미니게임">🎮</button>
@@ -1850,6 +2011,123 @@
   <div id="lb-overlay" role="dialog" aria-modal="true" aria-label="이미지 확대">
     <span id="lb-close" aria-label="닫기">×</span>
     <img id="lb-img" src="" alt="">
+  </div>
+
+  <!-- ── 사용자 보물 NPC 정보 모달 ── -->
+  <div id="utNpcModal" role="dialog" aria-modal="true">
+    <div class="ut-npc-panel">
+      <div class="ut-npc-header">
+        <span>🗝️ Treasure NPC</span>
+        <button class="ut-npc-close" id="btnCloseUtNpc">✕</button>
+      </div>
+      <div class="ut-npc-body">
+        <div class="ut-npc-field">
+          <label>등록자</label>
+          <p id="utNpcOwner">—</p>
+        </div>
+        <div class="ut-npc-field">
+          <label>힌트 / Hint</label>
+          <p id="utNpcHint">—</p>
+        </div>
+        <div class="ut-npc-field" id="utNpcStoryWrap">
+          <label>스토리 / Story</label>
+          <p id="utNpcStory"></p>
+        </div>
+        <div class="ut-npc-field" id="utNpcCommentWrap">
+          <label>코멘트 / Comment</label>
+          <p id="utNpcComment"></p>
+        </div>
+        <div class="ut-npc-reward">
+          <span class="ut-npc-reward-icon" id="utNpcIcon">🎁</span>
+          <div class="ut-npc-reward-info">
+            <div class="ut-npc-reward-type" id="utNpcRewardType">보물</div>
+            <div class="ut-npc-reward-val" id="utNpcRewardVal">—</div>
+            <div class="ut-npc-radius" id="utNpcRadius">발견 반경: —</div>
+          </div>
+        </div>
+        <div class="ut-npc-msg" id="utNpcMsg"></div>
+        <button class="btn-discover" id="btnDiscoverTreasure">🔍 발견하기 (GPS 확인)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 보물 등록 모달 ── -->
+  <div id="utRegModal" role="dialog" aria-modal="true">
+    <div class="ut-reg-panel">
+      <div class="ut-reg-header">
+        <span>📍 내 보물 숨기기</span>
+        <button class="ut-reg-close" id="btnCloseUtReg">✕</button>
+      </div>
+      <div class="ut-reg-body">
+        <div>
+          <span class="ut-reg-label">보물 타입</span>
+          <div class="ut-reg-type-row">
+            <button class="ut-reg-type-btn active" id="utRegTypeItem" data-type="item">🎁 아이템</button>
+            <button class="ut-reg-type-btn" id="utRegTypeCoin" data-type="coin">💰 코인</button>
+          </div>
+        </div>
+        <!-- 아이템 선택 (type=item) -->
+        <div id="utRegItemWrap">
+          <label class="ut-reg-label" for="utRegItemSel">아이템 선택</label>
+          <select class="ut-reg-input" id="utRegItemSel">
+            <option value="">인벤토리 로딩 중…</option>
+          </select>
+        </div>
+        <!-- 수량 -->
+        <div>
+          <label class="ut-reg-label" for="utRegCount" id="utRegCountLabel">수량</label>
+          <input class="ut-reg-input" id="utRegCount" type="number" min="1" value="1" placeholder="수량 입력">
+        </div>
+        <!-- GPS -->
+        <div>
+          <span class="ut-reg-label">보물 위치 (GPS)</span>
+          <div class="ut-reg-pos-row">
+            <span class="ut-reg-pos-val" id="utRegPosDisplay">—</span>
+            <button class="btn-use-gps" id="btnUtRegGps">📡 현재 위치 사용</button>
+          </div>
+          <input type="hidden" id="utRegLat">
+          <input type="hidden" id="utRegLng">
+        </div>
+        <!-- 반경 -->
+        <div>
+          <label class="ut-reg-label" for="utRegRadius">발견 반경 (10~200m)</label>
+          <input class="ut-reg-input" id="utRegRadius" type="number" min="10" max="200" value="30" placeholder="30">
+        </div>
+        <!-- 힌트 -->
+        <div>
+          <label class="ut-reg-label" for="utRegHint">힌트 (5자 이상 필수)</label>
+          <textarea class="ut-reg-input" id="utRegHint" rows="2" maxlength="200" placeholder="보물을 찾을 수 있는 힌트를 입력하세요…"></textarea>
+        </div>
+        <!-- 스토리 -->
+        <div>
+          <label class="ut-reg-label" for="utRegStory">스토리 (선택)</label>
+          <textarea class="ut-reg-input" id="utRegStory" rows="2" maxlength="500" placeholder="보물에 얽힌 이야기…"></textarea>
+        </div>
+        <!-- 코멘트 -->
+        <div>
+          <label class="ut-reg-label" for="utRegComment">코멘트 (선택)</label>
+          <input class="ut-reg-input" id="utRegComment" type="text" maxlength="200" placeholder="한마디…">
+        </div>
+        <div class="ut-reg-msg" id="utRegMsg"></div>
+        <button class="btn-reg-submit" id="btnUtRegSubmit">🗝️ 보물 숨기기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 내 보물 목록 모달 ── -->
+  <div id="utMyModal" role="dialog" aria-modal="true">
+    <div class="ut-my-panel">
+      <div class="ut-my-header">
+        <span>📦 내가 숨긴 보물</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="btnOpenUtReg" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;">+ 새 보물 숨기기</button>
+          <button class="ut-my-close" id="btnCloseUtMy">✕</button>
+        </div>
+      </div>
+      <div class="ut-my-body" id="utMyList">
+        <div style="color:#9ca3af;font-size:13px;text-align:center;padding:16px 0;">로딩 중…</div>
+      </div>
+    </div>
   </div>
 
   <!-- 게임서버 관리자 인증키 (Railway 환경변수 ADMIN_SECRET 과 동일하게 유지) -->
