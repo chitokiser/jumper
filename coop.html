@@ -165,6 +165,12 @@
     .coop-points-amount { font-size: 1.5rem; font-weight: 800; color: #4c1d95; }
     .coop-points-sub { font-size: 0.75rem; color: #7c3aed; }
     .coop-points-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* 이미지 라이트박스 */
+    .coop-lightbox { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.88); cursor: zoom-out; }
+    .coop-lightbox img { max-width: 96vw; max-height: 92vh; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 40px rgba(0,0,0,.6); cursor: default; display: block; }
+    .coop-lightbox-close { position: fixed; top: 16px; right: 16px; background: rgba(255,255,255,.18); border: none; color: #fff; border-radius: 50%; width: 38px; height: 38px; font-size: 1.1rem; cursor: pointer; line-height: 38px; text-align: center; }
+    .coop-lightbox-close:hover { background: rgba(255,255,255,.35); }
   </style>
 </head>
 <body>
@@ -331,7 +337,7 @@
         · 보이는 보물박스 5개 (반경 100m 내 랜덤 배치)<br>
         · 숨겨진 보물박스 2개 (5m 이내 접근 시만 발견)<br>
         · 몬스터 5마리 · 아처 타워 1기<br>
-        · 관리자 승인 후 활성화됩니다.
+        · 결제 완료 즉시 자동 활성화됩니다.
       </div>
 
       <div id="tpMsg" style="font-size:0.82rem;color:var(--danger,#ef4444);min-height:18px;margin-bottom:8px;"></div>
@@ -340,6 +346,12 @@
         <button type="button" id="tpSubmitBtn" style="flex:2;padding:11px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;">구매하기</button>
       </div>
     </div>
+  </div>
+
+  <!-- 이미지 라이트박스 -->
+  <div id="coopImgLightbox" class="coop-lightbox" style="display:none;" role="dialog" aria-modal="true" aria-label="이미지 확대">
+    <button class="coop-lightbox-close" id="coopLightboxClose" type="button" aria-label="닫기">✕</button>
+    <img id="coopLightboxImg" src="" alt="" onclick="event.stopPropagation()" />
   </div>
 
   <script type="module" src="/assets/js/pages/coop.js"></script>

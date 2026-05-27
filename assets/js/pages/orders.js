@@ -17,15 +17,18 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
-const tabOrders = $("tabOrders");
+const tabCoop    = $("tabCoop");
+const tabOrders  = $("tabOrders");
 const tabReviews = $("tabReviews");
-const viewOrders = $("viewOrders");
+const viewCoop    = $("viewCoop");
+const viewOrders  = $("viewOrders");
 const viewReviews = $("viewReviews");
-const btnReload = $("btnReload");
+const btnReload   = $("btnReload");
 
-const stateEl = $("state");
-const ordersList = $("ordersList");
-const myReviewsList = $("myReviewsList");
+const stateEl        = $("state");
+const coopOrdersList = $("coopOrdersList");
+const ordersList     = $("ordersList");
+const myReviewsList  = $("myReviewsList");
 
 function esc(s) {
   return String(s ?? "")
@@ -43,11 +46,12 @@ function setState(msg, kind = "") {
 }
 
 function setTab(which) {
-  const isOrders = which === "orders";
-  tabOrders?.classList.toggle("tab--active", isOrders);
-  tabReviews?.classList.toggle("tab--active", !isOrders);
-  if (viewOrders) viewOrders.style.display = isOrders ? "" : "none";
-  if (viewReviews) viewReviews.style.display = isOrders ? "none" : "";
+  tabCoop?.classList.toggle("tab--active",    which === "coop");
+  tabOrders?.classList.toggle("tab--active",  which === "orders");
+  tabReviews?.classList.toggle("tab--active", which === "reviews");
+  viewCoop?.classList.toggle("hidden",    which !== "coop");
+  viewOrders?.classList.toggle("hidden",  which !== "orders");
+  viewReviews?.classList.toggle("hidden", which !== "reviews");
 }
 
 function toMs(v) {
@@ -86,17 +90,73 @@ function statusChip(status) {
   // 표시 라벨(사용자 친화)
   const label =
     (vv === "paid" || vv === "pending") ? "결제확인 대기" :
-    (vv === "confirmed") ? "결제확인 완료" :
+    (vv === "confirmed") ? "결제 완료" :
     (vv === "settled" || vv === "completed") ? "정산 완료" :
+    (vv === "burned") ? "사용 완료" :
     (vv === "canceled") ? "취소" :
     (vv ? vv.toUpperCase() : "UNKNOWN");
 
   const cls =
     (vv === "canceled") ? "chip chip--bad" :
+    (vv === "burned") ? "chip chip--warn" :
     (vv === "paid" || vv === "pending" || vv === "confirmed" || vv === "settled" || vv === "completed") ? "chip chip--ok" :
     "chip";
 
   return `<span class="${cls}">${esc(label)}</span>`;
+}
+
+const COOP_TYPE_LABEL = {
+  membership:       '정회원',
+  general:          '일반상품',
+  voucher:          '바우처',
+  treasure_package: '보물패키지',
+};
+const OPBNB_TX = 'https://mainnet.opbnbscan.com/tx/';
+
+function renderCoopOrderCard(o) {
+  const title     = o.productName || '(상품명 없음)';
+  const typeLabel = COOP_TYPE_LABEL[o.type] || (o.type || '');
+  const hexPrice  = o.hexPrice != null ? `${o.hexPrice} HEX` : '';
+  const when      = fmtTs(o.createdAt);
+  const txHash    = o.txHash || '';
+  const pkgId     = o.packageId || '';
+
+  return `
+  <article class="card card--row">
+    <div class="card-body">
+      <div class="card-title">${esc(title)} ${statusChip(o.status)} ${typeLabel ? `<span class="chip">${esc(typeLabel)}</span>` : ''}</div>
+      <div class="card-meta">
+        ${when ? `<span>${esc(when)}</span>` : ''}
+        ${hexPrice ? `<span>· ${esc(hexPrice)}</span>` : ''}
+      </div>
+      ${pkgId ? `<div class="card-meta"><span>패키지 ID: <code>${esc(pkgId)}</code></span></div>` : ''}
+      ${txHash ? `<div class="card-meta"><a href="${OPBNB_TX}${esc(txHash)}" target="_blank" rel="noopener noreferrer" class="link-muted">TX: ${esc(txHash.slice(0, 12))}…</a></div>` : ''}
+    </div>
+  </article>`;
+}
+
+async function loadCoopOrders(uid) {
+  coopOrdersList.innerHTML = '';
+  setState('코압몰 구매내역 불러오는 중...');
+
+  const q = query(
+    collection(db, 'coopOrders'),
+    where('uid', '==', uid),
+    limit(100)
+  );
+
+  const snap = await getDocs(q);
+  const rows = [];
+  snap.forEach((d) => rows.push({ id: d.id, ...d.data(), _t: toMs(d.data()?.createdAt) }));
+  rows.sort((a, b) => (b._t || 0) - (a._t || 0));
+
+  if (!rows.length) {
+    setState('코압몰 구매내역이 없습니다.', 'muted');
+    return;
+  }
+
+  setState('');
+  coopOrdersList.innerHTML = rows.map(renderCoopOrderCard).join('');
 }
 
 async function getItem(itemId) {
@@ -295,21 +355,32 @@ async function loadMyReviews(uid) {
   myReviewsList.innerHTML = html.join("");
 }
 
+function activeTab() {
+  if (tabCoop?.classList.contains("tab--active"))    return "coop";
+  if (tabReviews?.classList.contains("tab--active")) return "reviews";
+  return "orders";
+}
+
 async function reload() {
   const user = auth.currentUser;
   if (!user) {
     setState("로그인이 필요합니다.", "bad");
-    ordersList.innerHTML = "";
-    myReviewsList.innerHTML = "";
+    coopOrdersList.innerHTML = "";
+    ordersList.innerHTML     = "";
+    myReviewsList.innerHTML  = "";
     return;
   }
 
-  if (tabOrders?.classList.contains("tab--active")) {
-    await loadOrders(user.uid);
-  } else {
-    await loadMyReviews(user.uid);
-  }
+  const tab = activeTab();
+  if (tab === "coop")    await loadCoopOrders(user.uid);
+  else if (tab === "reviews") await loadMyReviews(user.uid);
+  else                        await loadOrders(user.uid);
 }
+
+tabCoop?.addEventListener("click", async () => {
+  setTab("coop");
+  await reload();
+});
 
 tabOrders?.addEventListener("click", async () => {
   setTab("orders");
@@ -325,10 +396,9 @@ btnReload?.addEventListener("click", reload);
 
 onAuthReady(async () => {
   try {
-    setTab("orders");
+    setTab("coop");
     await reload();
   } catch (e) {
-    console.error(e);
     setState("권한 또는 네트워크 문제로 데이터를 읽지 못했습니다.", "bad");
   }
 });

@@ -129,6 +129,7 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
       uid, boxId,
       boxName:   box.name      || '',
       itemPool,
+      dropCount: box.dropCount || 1,
       hiddenBox: box.hiddenBox === true,
       keyId:     box.keyId     || null,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -194,6 +195,7 @@ async function adminCollectTreasureBox(adminUid, { boxId } = {}) {
       uid: adminUid, boxId,
       boxName:   box.name      || '',
       itemPool,
+      dropCount: box.dropCount || 1,
       hiddenBox: box.hiddenBox === true,
       keyId:     box.keyId     || null,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -234,19 +236,28 @@ async function openTreasureBox(uid, { boxId } = {}) {
     keyInvRef = keyDocRef;
   }
 
-  // 랜덤 아이템 선택
-  const itemId = pickWeightedItem(itemPool);
+  // dropCount만큼 랜덤 아이템 선택
+  const dropCount = Math.max(1, invBox.dropCount || 1);
+  const droppedIds = Array.from({ length: dropCount }, () => pickWeightedItem(itemPool));
+  const uniqueIds  = [...new Set(droppedIds)];
 
-  // 아이템 정보 조회
-  const itemSnap = await db.collection('treasure_items').doc(String(itemId)).get();
-  const itemData = itemSnap.exists ? itemSnap.data() : { name: `아이템 #${itemId}`, image: `${itemId}.png` };
+  // 아이템 정보 조회 (유니크 ID만)
+  const itemDataMap = {};
+  await Promise.all(uniqueIds.map(async id => {
+    const snap = await db.collection('treasure_items').doc(String(id)).get();
+    itemDataMap[id] = snap.exists ? snap.data() : { name: `아이템 #${id}`, image: `${id}.png` };
+  }));
+
+  // 아이템별 드랍 수 집계
+  const dropCountMap = {};
+  droppedIds.forEach(id => { dropCountMap[id] = (dropCountMap[id] || 0) + 1; });
 
   // 트랜잭션: 모든 읽기 → 검증 → 모든 쓰기 순서 엄수 (Firestore 규칙)
   await db.runTransaction(async (tx) => {
     // ── 모든 읽기 ──────────────────────────────────────────────────────────────
     const keySnap2 = keyInvRef ? await tx.get(keyInvRef) : null;
-    const invRef   = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
-    const invSnap  = await tx.get(invRef);
+    const invRefs  = uniqueIds.map(id => db.collection('treasure_inventory').doc(`${uid}_${id}`));
+    const invSnaps = await Promise.all(invRefs.map(ref => tx.get(ref)));
 
     // ── 검증 ──────────────────────────────────────────────────────────────────
     let currentKey = 0;
@@ -255,28 +266,33 @@ async function openTreasureBox(uid, { boxId } = {}) {
       if (currentKey <= 0)
         throw new HttpsError('failed-precondition', '열쇠가 없습니다 (동시 처리 중 소진)');
     }
-    const current = invSnap.exists ? (invSnap.data().count || 0) : 0;
 
     // ── 모든 쓰기 ─────────────────────────────────────────────────────────────
     if (keyInvRef) {
-      if (currentKey - 1 <= 0) {
-        tx.delete(keyInvRef);
-      } else {
-        tx.update(keyInvRef, { count: currentKey - 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-      }
+      if (currentKey - 1 <= 0) tx.delete(keyInvRef);
+      else tx.update(keyInvRef, { count: currentKey - 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
     }
-    tx.set(invRef, {
-      uid, itemId: String(itemId), count: current + 1,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
+    uniqueIds.forEach((id, i) => {
+      const current = invSnaps[i].exists ? (invSnaps[i].data().count || 0) : 0;
+      tx.set(invRefs[i], {
+        uid, itemId: String(id), count: current + dropCountMap[id],
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
     tx.delete(invBoxRef);
   });
 
+  const firstId = droppedIds[0];
   return {
     ok: true,
-    itemId:    String(itemId),
-    itemName:  itemData.name,
-    itemImage: itemData.image,
+    items:     droppedIds.map(id => ({
+      itemId:    String(id),
+      itemName:  itemDataMap[id]?.name  || `아이템 #${id}`,
+      itemImage: itemDataMap[id]?.image || `${id}.png`,
+    })),
+    itemId:    String(firstId),
+    itemName:  itemDataMap[firstId]?.name  || `아이템 #${firstId}`,
+    itemImage: itemDataMap[firstId]?.image || `${firstId}.png`,
     keyId:     needKey ? String(invBox.keyId) : null,
   };
 }

@@ -605,29 +605,43 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
     });
   }
 
+  // 보물 아이템풀 정의
+  const VISIBLE_ITEM_IDS = ['0','1','2','3','4','5'];
+  const HIDDEN_ITEM_IDS  = ['5','6','7','8','9','10'];
+  const visibleItemPool  = VISIBLE_ITEM_IDS.map(id => ({ itemId: id, weight: 1 }));
+  const hiddenItemPool   = HIDDEN_ITEM_IDS.map(id => ({ itemId: id, weight: 1 }));
+
   // 보물박스 IDs 수집용
   const boxIds = [];
-  // 5개 visible 보물박스 (radius 20m)
+  // 5개 visible 보물박스 (radius 20m, 드랍 1~5개 랜덤)
   for (let i = 0; i < 5; i++) {
-    const pos    = randomOffset(100);
-    const boxRef = db.collection('treasure_boxes').doc();
+    const pos      = randomOffset(100);
+    const boxRef   = db.collection('treasure_boxes').doc();
+    const dropCount = 1 + Math.floor(Math.random() * 5);
     boxIds.push(boxRef.id);
     batch.set(boxRef, {
-      packageId, ownerUid: uid, treasureName: nameStr,
+      packageId, ownerUid: uid,
+      name: `${nameStr} 보물상자 #${i + 1}`,
+      treasureName: nameStr,
       lat: pos.lat, lng: pos.lng, radius: 20, hidden: false,
-      active: false, respawnIntervalMs: 86400000, startHour: 0, endHour: 24,
+      active: true, respawnIntervalMs: 86400000, startHour: 0, endHour: 24,
+      itemPool: visibleItemPool, dropCount,
       slotIndex: i, createdAt: ts,
     });
   }
-  // 2개 hidden 보물박스 (radius 5m, 탐지기에만 반응)
+  // 2개 hidden 보물박스 (radius 5m, 드랍 1~2개 랜덤)
   for (let i = 0; i < 2; i++) {
-    const pos    = randomOffset(100);
-    const boxRef = db.collection('treasure_boxes').doc();
+    const pos      = randomOffset(100);
+    const boxRef   = db.collection('treasure_boxes').doc();
+    const dropCount = 1 + Math.floor(Math.random() * 2);
     boxIds.push(boxRef.id);
     batch.set(boxRef, {
-      packageId, ownerUid: uid, treasureName: nameStr,
-      lat: pos.lat, lng: pos.lng, radius: 5, hidden: true,
-      active: false, respawnIntervalMs: 86400000, startHour: 0, endHour: 24,
+      packageId, ownerUid: uid,
+      name: `${nameStr} 비밀상자 #${i + 1}`,
+      treasureName: nameStr,
+      lat: pos.lat, lng: pos.lng, radius: 5, hidden: true, hiddenBox: true,
+      active: true, respawnIntervalMs: 86400000, startHour: 0, endHour: 24,
+      itemPool: hiddenItemPool, dropCount,
       slotIndex: 5 + i, createdAt: ts,
     });
   }
@@ -641,7 +655,7 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
     batch.set(monRef, {
       packageId, ownerUid: uid,
       lat: pos.lat, lng: pos.lng,
-      active: false, level: 1 + Math.floor(Math.random() * 3),
+      active: true, level: 1 + Math.floor(Math.random() * 3),
       respawnIntervalMs: 3600000, createdAt: ts,
     });
   }
@@ -652,7 +666,7 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
   batch.set(towerRef, {
     packageId, ownerUid: uid,
     lat: towerPos.lat, lng: towerPos.lng,
-    active: false, type: 'archer', createdAt: ts,
+    active: true, type: 'archer', createdAt: ts,
   });
 
   // NPC 등록 (user_treasure_npcs) — 맵 표시용
@@ -669,7 +683,7 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
     treasureName: nameStr, lat: latNum, lng: lngNum,
     npcImageUrl: npcImageUrl ? String(npcImageUrl).trim() : '',
     boxIds, monsterIds, towerId: towerRef.id,
-    active: false, // 관리자 승인 후 활성화
+    active: true,
     createdAt: ts,
   });
 

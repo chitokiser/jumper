@@ -51,6 +51,10 @@ const el = {
   convertMsg:      $('coopConvertMsg'),
   convertCancel:   $('coopConvertCancel'),
   convertSubmit:   $('coopConvertSubmit'),
+  // 이미지 라이트박스
+  imgLightbox:      $('coopImgLightbox'),
+  imgLightboxImg:   $('coopLightboxImg'),
+  imgLightboxClose: $('coopLightboxClose'),
 };
 
 // ─────────────────────────────────────────────────────────
@@ -77,6 +81,22 @@ function escHtml(str) {
 
 function stripHtml(str) {
   return String(str || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function openImgLightbox(url, alt) {
+  el.imgLightboxImg.src = url;
+  el.imgLightboxImg.alt = alt || '';
+  show(el.imgLightbox, true);
+  el.imgLightbox.onclick    = closeImgLightbox;
+  el.imgLightboxClose.onclick = closeImgLightbox;
+  const onKey = (e) => {
+    if (e.key === 'Escape') { closeImgLightbox(); window.removeEventListener('keydown', onKey); }
+  };
+  window.addEventListener('keydown', onKey);
+}
+
+function closeImgLightbox() {
+  show(el.imgLightbox, false);
 }
 
 function fmtHex(wei) {
@@ -262,6 +282,12 @@ async function loadProducts() {
     card.querySelector('[data-detail]')?.addEventListener('click', (e) => {
       showDetailModal(e.currentTarget.dataset.detail);
     });
+    card.querySelectorAll('[data-lightbox]').forEach(img => {
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openImgLightbox(img.dataset.lightbox, img.dataset.lightalt);
+      });
+    });
     frag.appendChild(card);
   });
   grid.innerHTML = '';
@@ -272,6 +298,7 @@ function renderCard(p) {
   const sold = p.stock === 0;
   const imgHtml = p.imageUrl
     ? `<img class="coop-card-img" src="${escHtml(p.imageUrl)}" alt="${escHtml(p.name)}" loading="lazy"
+         style="cursor:zoom-in;" data-lightbox="${escHtml(p.imageUrl)}" data-lightalt="${escHtml(p.name)}"
          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
        <div class="coop-card-img-ph" style="display:none;">🛍</div>`
     : `<div class="coop-card-img-ph">🛍</div>`;
@@ -317,8 +344,14 @@ function showDetailModal(productId) {
 
   el.detailImg.innerHTML = p.imageUrl
     ? `<img class="coop-detail-img" src="${escHtml(p.imageUrl)}" alt="${escHtml(p.name)}" loading="lazy"
+         style="cursor:zoom-in;"
          onerror="this.outerHTML='<div class=\\'coop-detail-img-ph\\'>🛍</div>'">`
     : `<div class="coop-detail-img-ph">🛍</div>`;
+
+  if (p.imageUrl) {
+    const detImgEl = el.detailImg.querySelector('img');
+    if (detImgEl) detImgEl.onclick = () => openImgLightbox(p.imageUrl, p.name);
+  }
 
   el.detailBadge.innerHTML = p.type === 'voucher'
     ? `<span style="font-size:0.75rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:2px 10px;display:inline-block;margin-bottom:6px;">바우처</span>`
