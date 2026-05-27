@@ -1365,6 +1365,62 @@
     .tut-btn-next { background: #7c3aed; color: #fff; }
     #btnTutHelp { background: rgba(255,255,255,.9); color: #374151; font-size: 14px; }
 
+    /* ── 트레져헌터 랭킹 ── */
+    .hunter-rank-section {
+      margin-top: 40px;
+      padding: 28px 20px 32px;
+      border-top: 2px solid var(--border, #e5e7eb);
+    }
+    .hunter-rank-header { margin-bottom: 16px; }
+    .hunter-rank-title {
+      font-size: 1.2rem; font-weight: 800; margin: 0 0 14px;
+      color: var(--fg, #111827);
+    }
+    .hunter-rank-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .hunter-tab {
+      padding: 7px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+      border: 2px solid var(--border, #e5e7eb); background: transparent;
+      color: var(--muted, #6b7280); cursor: pointer; transition: all .15s;
+    }
+    .hunter-tab.active {
+      background: #92400e; border-color: #f59e0b; color: #fde68a;
+    }
+    .hunter-rank-list { display: flex; flex-direction: column; gap: 8px; }
+    .hunter-rank-loading { color: var(--muted, #6b7280); font-size: 0.9rem; padding: 8px 0; }
+    .hunter-rank-empty  { color: var(--muted, #6b7280); font-size: 0.9rem; padding: 8px 0; }
+    .hunter-rank-row {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface, #fff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 12px; padding: 10px 14px;
+    }
+    .hunter-rank-row.me { border-color: #f59e0b; background: #fffbeb; }
+    .hunter-rank-num {
+      font-size: 1.1rem; font-weight: 800; min-width: 28px; text-align: center;
+      color: var(--muted, #9ca3af);
+    }
+    .hunter-rank-num.gold   { color: #f59e0b; }
+    .hunter-rank-num.silver { color: #94a3b8; }
+    .hunter-rank-num.bronze { color: #b45309; }
+    .hunter-rank-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, #92400e, #f59e0b);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0; overflow: hidden;
+    }
+    .hunter-rank-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .hunter-rank-name {
+      flex: 1; font-size: 0.9rem; font-weight: 700;
+      color: var(--fg, #111827); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .hunter-rank-score {
+      font-size: 0.95rem; font-weight: 800; color: #b45309;
+      white-space: nowrap;
+    }
+    .hunter-rank-sub {
+      font-size: 0.72rem; color: var(--muted, #6b7280); white-space: nowrap;
+    }
+
   </style>
 
   <script>
@@ -1622,6 +1678,20 @@
         </div>
         <div class="exc-grid" id="excGrid">
           <div class="exc-loading">Đang tải...</div>
+        </div>
+      </div>
+
+      <!-- ── 트레져헌터 랭킹 ── -->
+      <div class="hunter-rank-section" id="hunterRankSection">
+        <div class="hunter-rank-header">
+          <h2 class="hunter-rank-title">🏆 Treasure Hunter Ranking</h2>
+          <div class="hunter-rank-tabs">
+            <button class="hunter-tab active" data-tab="monsters">⚔️ Monster Kills</button>
+            <button class="hunter-tab" data-tab="treasures">📦 Treasures Found</button>
+          </div>
+        </div>
+        <div class="hunter-rank-list" id="hunterRankList">
+          <div class="hunter-rank-loading">Loading...</div>
         </div>
       </div>
 

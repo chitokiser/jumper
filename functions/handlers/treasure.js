@@ -146,6 +146,12 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   if (isFirstEver) statsUpdate.participants = admin.firestore.FieldValue.increment(1);
   statsRef.set(statsUpdate, { merge: true }).catch(() => {});
 
+  // 플레이어 보물 수집 카운터 증가
+  db.collection('battle_players').doc(uid).set(
+    { treasuresFound: admin.firestore.FieldValue.increment(1) },
+    { merge: true }
+  ).catch(() => {});
+
   return { ok: true, boxName: box.name || '보물박스' };
 }
 

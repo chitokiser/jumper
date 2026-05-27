@@ -446,7 +446,7 @@ service cloud.firestore {
     }
     match /battle_players/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
-      allow list: if isAdmin();
+      allow list: if signedIn(); // 랭킹 쿼리 허용
       allow create, update: if signedIn() && request.auth.uid == uid;
       allow delete: if isAdmin();
     }

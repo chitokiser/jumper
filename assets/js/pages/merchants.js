@@ -2638,11 +2638,16 @@ async function init() {
             await loadPlayerState(); // 스타터 아이템 포함 재로드
             await loadInventory();
           } catch (e) { /* ignore */ }
-          // 신규 유저 튜토리얼 보물박스 초기화 (GPS 위치 확보 후)
           _initTutorialBoxesWhenReady();
         } else if (!_isAnonymous) {
-          // 기존 유저도 튜토리얼 박스 초기화 (없으면 생성, 있으면 기존 로드)
           _initTutorialBoxesWhenReady();
+        }
+        // 유저 표시 이름/사진 battle_players에 동기화 (랭킹 표시용)
+        if (!_isAnonymous && user?.displayName) {
+          setDoc(doc(db, 'battle_players', _uid), {
+            displayName: user.displayName,
+            photoURL: user.photoURL || null,
+          }, { merge: true }).catch(() => {});
         }
         renderExchangeSection();
         showDeathMarkerIfDead();
@@ -3419,5 +3424,86 @@ function showToast(msg, type = 'info') {
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3000);
 }
+
+// ── 트레져헌터 랭킹 ────────────────────────────────────────────────────────────
+let _hunterRankTab = 'monsters'; // 'monsters' | 'treasures'
+let _hunterRankCache = { monsters: null, treasures: null };
+
+async function loadHunterRanking(tab) {
+  const list = $('hunterRankList');
+  if (!list) return;
+
+  if (_hunterRankCache[tab]) {
+    renderHunterRanking(_hunterRankCache[tab], tab);
+    return;
+  }
+
+  list.innerHTML = '<div class="hunter-rank-loading">Loading...</div>';
+  try {
+    const field = tab === 'monsters' ? 'monstersKilled' : 'treasuresFound';
+    const snap = await getDocs(
+      query(collection(db, 'battle_players'), orderBy(field, 'desc'), limit(20))
+    );
+    const rows = [];
+    snap.forEach(d => {
+      const data = d.data();
+      const val = data[field] || 0;
+      if (val > 0) rows.push({ uid: d.id, val, displayName: data.displayName || null, photoURL: data.photoURL || null, gsLevel: data.gsLevel || data.level || 1 });
+    });
+    _hunterRankCache[tab] = rows;
+    renderHunterRanking(rows, tab);
+  } catch {
+    list.innerHTML = '<div class="hunter-rank-empty">Failed to load ranking.</div>';
+  }
+}
+
+function renderHunterRanking(rows, tab) {
+  const list = $('hunterRankList');
+  if (!list) return;
+  if (!rows.length) {
+    list.innerHTML = '<div class="hunter-rank-empty">No data yet. Be the first!</div>';
+    return;
+  }
+  const myUid = _uid;
+  const label = tab === 'monsters' ? 'kills' : 'found';
+  const medalClass = ['gold', 'silver', 'bronze'];
+  list.innerHTML = rows.map((r, i) => {
+    const rank = i + 1;
+    const numCls = medalClass[i] || '';
+    const isSelf = r.uid === myUid;
+    const name = escHtml(r.displayName || r.uid.slice(0, 8) + '…');
+    const avatar = r.photoURL
+      ? `<img src="${escHtml(r.photoURL)}" alt="" loading="lazy">`
+      : (name[0] || '?').toUpperCase();
+    return `<div class="hunter-rank-row${isSelf ? ' me' : ''}">
+      <div class="hunter-rank-num ${numCls}">${rank}</div>
+      <div class="hunter-rank-avatar">${r.photoURL ? `<img src="${escHtml(r.photoURL)}" alt="" loading="lazy">` : (escHtml(r.displayName || '?')[0] || '?')}</div>
+      <div class="hunter-rank-name">Lv.${r.gsLevel} ${name}</div>
+      <div>
+        <div class="hunter-rank-score">${r.val.toLocaleString()}</div>
+        <div class="hunter-rank-sub">${label}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function initHunterRanking() {
+  const section = $('hunterRankSection');
+  if (!section) return;
+
+  loadHunterRanking(_hunterRankTab);
+
+  section.querySelectorAll('.hunter-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      section.querySelectorAll('.hunter-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _hunterRankTab = btn.dataset.tab;
+      loadHunterRanking(_hunterRankTab);
+    });
+  });
+}
+
+// 페이지 로드 시 랭킹 초기화
+document.addEventListener('DOMContentLoaded', initHunterRanking);
 
 init();

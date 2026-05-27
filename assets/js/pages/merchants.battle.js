@@ -37,7 +37,8 @@ let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, g
                       weaponBonus:100,
                       equippedWeapon:'weapon_100',
                       equippedHelmet:'armo_10', equippedChest:null, equippedLegs:null, equippedGloves:null, equippedBoots:null,
-                      gsExp:0, gsLevel:1, nextLevelExp:400000 };
+                      gsExp:0, gsLevel:1, nextLevelExp:400000,
+                      monstersKilled:0 };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
 let _towers       = [];        // [{id, name, lat, lng, atk, radius, active}]
 let _monsterMarkers  = {};     // { id: Marker }  — 비-스프라이트 몬스터
@@ -764,8 +765,9 @@ export async function loadPlayerState() {
       const d = snap.data();
       _player.gold    = d.gold  || 0;
       _player.token   = d.token ?? 30;
-      _player.gsExp   = typeof d.gsExp   === 'number' ? d.gsExp   : 0;
-      _player.gsLevel = typeof d.gsLevel === 'number' ? d.gsLevel : _player.level;
+      _player.gsExp          = typeof d.gsExp          === 'number' ? d.gsExp          : 0;
+      _player.gsLevel        = typeof d.gsLevel        === 'number' ? d.gsLevel        : _player.level;
+      _player.monstersKilled = typeof d.monstersKilled === 'number' ? d.monstersKilled : 0;
       _player.gsLevel = Math.max(_player.level, _player.gsLevel);
       _player.nextLevelExp = calcNextLevelExp(_player.gsLevel);
       if ((d.level || 1) === _player.level) {
@@ -924,8 +926,9 @@ export function savePlayerState() {
         equippedLegs:    _player.equippedLegs    || null,
         equippedGloves:  _player.equippedGloves  || null,
         equippedBoots:   _player.equippedBoots   || null,
-        gsExp:   _player.gsExp   || 0,
-        gsLevel: _player.gsLevel || _player.level,
+        gsExp:          _player.gsExp          || 0,
+        gsLevel:        _player.gsLevel        || _player.level,
+        monstersKilled: _player.monstersKilled || 0,
         updatedAt: serverTimestamp(),
       }, { merge: true });
     } catch { /* 무시 */ }
@@ -2261,6 +2264,8 @@ async function hitMonster(monsterId, damage) {
     // 어그로 초기화 (내가 처치)
     delete _monsterAggro[monsterId];
     _aggroClaimed.delete(monsterId);
+
+    _player.monstersKilled = (_player.monstersKilled || 0) + 1;
 
     playSound('monster_die');
     showFloat(_t('float_kill'), '#fbbf24', mob.lat, mob.lng);
