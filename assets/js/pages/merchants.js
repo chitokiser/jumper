@@ -289,21 +289,22 @@ function initMap() {
 
   // 전체화면 진입/종료 시 position:fixed 모달들을 fullscreen 요소 안으로 이동
   // (HUD·스킬바는 Google Maps Control이므로 자동으로 fullscreen에 포함됨)
-  const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal', 'raceModal', 'dungeonModal'];
-  document.addEventListener('fullscreenchange', () => {
-    const fs = document.fullscreenElement;
+  const FS_MODALS = ['invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast', 'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal', 'raceModal', 'dungeonModal', 'utNpcModal', 'utRegModal', 'utMyModal'];
+  function _moveModalsToFs() {
+    const fs = document.fullscreenElement || document.webkitFullscreenElement;
     const dest = fs || document.body;
     FS_MODALS.forEach(id => {
       const el = document.getElementById(id);
       if (el) dest.appendChild(el);
     });
-    // battleOverlay: 전체화면 시 merchantMap 안으로, 종료 시 mc-map-wrap 안으로 복귀
     const bo = document.getElementById('battleOverlay');
     if (bo) {
       if (fs) fs.appendChild(bo);
       else document.querySelector('.mc-map-wrap')?.appendChild(bo);
     }
-  });
+  }
+  document.addEventListener('fullscreenchange', _moveModalsToFs);
+  document.addEventListener('webkitfullscreenchange', _moveModalsToFs);
 
   // 관리자: 지도 클릭 시 근처 숨김 보물박스 표시
   map.addListener('click', e => {
@@ -3706,6 +3707,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ?.addEventListener('click', () => utRegModal?.classList.remove('open'));
   document.getElementById('btnCloseUtMy')
     ?.addEventListener('click', () => utMyModal?.classList.remove('open'));
+  utNpcModal?.addEventListener('click', e => { if (e.target === utNpcModal) utNpcModal.classList.remove('open'); });
+  utRegModal?.addEventListener('click', e => { if (e.target === utRegModal) utRegModal.classList.remove('open'); });
+  utMyModal?.addEventListener('click',  e => { if (e.target === utMyModal)  utMyModal.classList.remove('open'); });
   document.getElementById('btnDiscoverTreasure')
     ?.addEventListener('click', () => { if (_utCurrentNpc) discoverTreasure(_utCurrentNpc.id); });
   document.getElementById('btnUtRegSubmit')
