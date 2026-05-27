@@ -52,7 +52,8 @@ async function getCoinExchangeStatus(uid) {
 
   // 유저 JUMP 온체인 잔액
   const snap       = await db.collection('users').doc(uid).get();
-  const address    = snap.data()?.wallet?.address || null;
+  const rawAddr    = snap.data()?.wallet?.address || '';
+  const address    = ethers.isAddress(rawAddr) ? rawAddr : null;
   const jumpBal    = address
     ? await getJumpTokenContract(provider).balanceOf(address)
     : 0n;

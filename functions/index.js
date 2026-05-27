@@ -26,10 +26,11 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // ── Firebase Secret Manager ──────────────────────────────────────────────────
-const walletSecret  = defineSecret('WALLET_MASTER_SECRET');
-const adminKeySecret= defineSecret('ADMIN_PRIVATE_KEY');
-const extApiSecret  = defineSecret('PARTNER_API_KEY');
-const geminiSecret  = defineSecret('GEMINI_API_KEY');
+const walletSecret       = defineSecret('WALLET_MASTER_SECRET');
+const adminKeySecret     = defineSecret('ADMIN_PRIVATE_KEY');
+const extApiSecret       = defineSecret('PARTNER_API_KEY');
+const geminiSecret       = defineSecret('GEMINI_API_KEY');
+const exchangeAddrSecret = defineSecret('JUMP_AUTO_EXCHANGE_ADDRESS');
 
 // ── 핸들러 ───────────────────────────────────────────────────────────────────
 const onboarding             = require('./handlers/onboarding');
@@ -47,6 +48,7 @@ const nfcH                   = require('./handlers/nfc');
 const tutorialH              = require('./handlers/tutorial');
 const slotH                  = require('./handlers/slot');
 const userTreasureH          = require('./handlers/userTreasure');
+const coinExchangeH          = require('./handlers/coinExchange');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -2001,3 +2003,60 @@ exports.deleteTreasureComment = onCall(wrapError(async (req) => {
 exports.listTreasureComments = onCall(wrapError(async (req) => {
   return userTreasureH.listTreasureComments(req.data ?? {});
 }));
+
+// ════════════════════════════════════════════════════════════════════════════
+// 게임코인 ↔ JUMP 교환 (JumpAutoExchange 컨트랙트)
+// ════════════════════════════════════════════════════════════════════════════
+
+// 교환 현황 조회 (비율, 잔고, 유저 gold/JUMP)
+exports.getCoinExchangeStatus = onCall(
+  { secrets: [adminKeySecret, exchangeAddrSecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    process.env.ADMIN_PRIVATE_KEY          = adminKeySecret.value();
+    process.env.JUMP_AUTO_EXCHANGE_ADDRESS = exchangeAddrSecret.value();
+    return coinExchangeH.getCoinExchangeStatus(uid);
+  })
+);
+
+// 게임코인 → JUMP 교환
+exports.buyJumpWithCoins = onCall(
+  { secrets: [walletSecret, adminKeySecret, exchangeAddrSecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    const { coinAmount } = req.data ?? {};
+    if (!coinAmount) throw new HttpsError('invalid-argument', 'coinAmount가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY          = adminKeySecret.value();
+    process.env.JUMP_AUTO_EXCHANGE_ADDRESS = exchangeAddrSecret.value();
+    const result = await coinExchangeH.buyJumpWithCoins(uid, coinAmount, walletSecret.value());
+    logger.info('buyJumpWithCoins', { uid, coinAmount, jumpAmount: result.jumpAmount, txHash: result.txHash });
+    return result;
+  })
+);
+
+// JUMP → 게임코인 교환
+exports.sellJumpForCoins = onCall(
+  { secrets: [walletSecret, adminKeySecret, exchangeAddrSecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    const { jumpAmount } = req.data ?? {};
+    if (!jumpAmount) throw new HttpsError('invalid-argument', 'jumpAmount가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY          = adminKeySecret.value();
+    process.env.JUMP_AUTO_EXCHANGE_ADDRESS = exchangeAddrSecret.value();
+    const result = await coinExchangeH.sellJumpForCoins(uid, jumpAmount, walletSecret.value());
+    logger.info('sellJumpForCoins', { uid, jumpAmount, coinAmount: result.coinAmount, txHash: result.txHash });
+    return result;
+  })
+);
+
+// 관리자: 교환 내역 목록
+exports.listCoinExchanges = onCall(
+  { secrets: [exchangeAddrSecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    await requireAdmin(uid);
+    process.env.JUMP_AUTO_EXCHANGE_ADDRESS = exchangeAddrSecret.value();
+    const { direction, limit } = req.data ?? {};
+    return coinExchangeH.listCoinExchanges({ direction, limit });
+  })
+);
