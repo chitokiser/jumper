@@ -8,7 +8,7 @@ import { collection, getDocs, query, orderBy, where } from 'https://www.gstatic.
 import { BrowserProvider, Contract } from 'https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.min.js';
 
 // CoopMall 컨트랙트 (onlyOwner 함수만 포함)
-const COOP_MALL_ADDRESS = '0x421Bb7Ba86c8cafA181F85C9907B864B85bEF49A';
+const COOP_MALL_ADDRESS = '0x0CA0F01377b8a4c35B603d8462e6fDb9135d00B4'; // CoopMall v4
 const COOP_MALL_OWNER_ABI = [
   'function setMembershipFee(uint256 feeWei) external',
   'function setMentorRewardBps(uint16 bps) external',
@@ -239,6 +239,8 @@ function renderProductTable(products) {
       : `<span class="ac-badge-off">비활성</span>`;
     const typeBadge = p.type === 'voucher'
       ? `<span style="font-size:0.72rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;">바우처</span>`
+      : p.type === 'treasure_package'
+      ? `<span style="font-size:0.72rem;background:#dcfce7;color:#15803d;border-radius:99px;padding:1px 7px;">보물패키지</span>`
       : `<span style="font-size:0.72rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 7px;">일반상품</span>`;
 
     return `
@@ -413,7 +415,7 @@ function startEdit(id, products) {
   const p = products.find(x => x.id === id);
   if (!p) return;
   $('editProductId').value  = id;
-  const typeVal = p.type === 'voucher' ? 'voucher' : 'general';
+  const typeVal = p.type === 'voucher' ? 'voucher' : p.type === 'treasure_package' ? 'treasure_package' : 'general';
   document.querySelectorAll('input[name="productType"]').forEach(r => { r.checked = r.value === typeVal; });
   const burnFeeRow = $('burnFeeBpsRow');
   if (burnFeeRow) burnFeeRow.style.display = typeVal === 'voucher' ? '' : 'none';

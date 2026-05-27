@@ -198,10 +198,10 @@
         <div id="coopJoinPanel" style="display:none;margin-bottom:28px;">
           <div class="coop-join-panel">
             <div class="icon">🏪</div>
-            <div class="title">정회원 가입</div>
-            <div class="sub">아래 회비를 납부하면 전용몰 정회원이 됩니다.<br>회비 상당의 JUMP 토큰이 지급됩니다.</div>
+            <div class="title" id="coopJoinTitle">정회원 가입</div>
+            <div class="sub" id="coopJoinSub">아래 회비를 납부하면 전용몰 정회원이 됩니다.<br>회비 상당의 JUMP 토큰이 지급됩니다.</div>
             <div class="coop-join-fee" id="coopJoinFeeDisplay">-- HEX</div>
-            <div class="coop-join-fee-sub" id="coopJoinFeeNote">회비의 50%가 멘토에게 포인트로 적립됩니다</div>
+            <div class="coop-join-fee-sub" id="coopJoinFeeNote">회비의 20%가 멘토에게 적립 · 1년 유효</div>
             <button class="btn btn--primary" id="coopJoinBtn" type="button">회원 가입하기</button>
             <div id="coopJoinMsg" style="font-size:0.82rem;color:var(--danger,#ef4444);margin-top:10px;min-height:18px;"></div>
           </div>
@@ -221,6 +221,7 @@
 
         <div class="section-h" style="margin-bottom:12px;">
           <span class="coop-badge" id="coopAccessBadge" style="display:none;">전용몰 회원</span>
+          <span id="coopExpiryInfo" style="display:none;font-size:0.78rem;color:var(--muted,#6b7280);margin-left:10px;"></span>
         </div>
         <div id="coopGrid" class="coop-grid"></div>
         <div id="coopEmpty" class="help small" style="display:none; text-align:center; padding:32px 0;">
@@ -280,6 +281,63 @@
       <div style="display:flex;gap:8px;">
         <button class="btn btn--sm" id="coopConvertCancel" type="button" style="flex:1;">취소</button>
         <button class="btn btn--primary" id="coopConvertSubmit" type="button" style="flex:2;">전환하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 보물 패키지 구매 모달 -->
+  <div id="coopTreasureModal" class="coop-modal" style="display:none;" aria-modal="true" role="dialog">
+    <div class="coop-modal-bd" id="coopTreasureBd"></div>
+    <div class="coop-modal-box" style="text-align:left; max-height:90vh; overflow-y:auto;">
+      <div style="text-align:center; margin-bottom:4px; font-size:2rem;">🗺️</div>
+      <div class="coop-modal-title" style="text-align:center;">프리미엄 보물 패키지</div>
+      <p style="font-size:0.82rem;color:var(--muted);margin:0 0 16px;text-align:center;">
+        보물 이름과 설치 위치를 입력하면 보물박스·몬스터·타워가 자동 생성됩니다.
+      </p>
+
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+        <div>
+          <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">보물 이름 *</label>
+          <input type="text" id="tpTreasureName" placeholder="예: 한강 숨겨진 보물"
+            style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;" />
+        </div>
+        <div>
+          <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">위도 (Latitude) *</label>
+          <input type="number" id="tpLat" placeholder="예: 37.5665" step="0.000001" min="-90" max="90"
+            style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;" />
+        </div>
+        <div>
+          <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">경도 (Longitude) *</label>
+          <input type="number" id="tpLng" placeholder="예: 126.9780" step="0.000001" min="-180" max="180"
+            style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;" />
+        </div>
+        <button type="button" id="tpGpsBtn"
+          style="padding:8px 16px;background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;width:fit-content;">
+          📍 현재 위치 사용
+        </button>
+        <div>
+          <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">NPC 이미지 URL <span style="font-weight:400;color:var(--muted);">(선택 · 권장 100×100px)</span></label>
+          <input type="url" id="tpNpcImageUrl" placeholder="https://..."
+            style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;" />
+          <div id="tpNpcPreview" style="margin-top:6px;display:none;">
+            <img id="tpNpcImg" src="" alt="NPC preview"
+              style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #c4b5fd;" />
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:10px 14px;font-size:0.8rem;color:#713f12;margin-bottom:14px;line-height:1.6;">
+        <b>생성 내용:</b><br>
+        · 보이는 보물박스 5개 (반경 100m 내 랜덤 배치)<br>
+        · 숨겨진 보물박스 2개 (5m 이내 접근 시만 발견)<br>
+        · 몬스터 5마리 · 아처 타워 1기<br>
+        · 관리자 승인 후 활성화됩니다.
+      </div>
+
+      <div id="tpMsg" style="font-size:0.82rem;color:var(--danger,#ef4444);min-height:18px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="tpCancelBtn" style="flex:1;padding:11px;background:var(--surface2,#f3f4f6);border:none;border-radius:8px;font-size:0.9rem;cursor:pointer;">취소</button>
+        <button type="button" id="tpSubmitBtn" style="flex:2;padding:11px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;">구매하기</button>
       </div>
     </div>
   </div>

@@ -221,7 +221,8 @@ async function adminSaveCoopProduct(uid, data) {
   if (hexPriceBig <= 0n) throw new Error('HEX 가격은 0보다 커야 합니다');
   const stockNum = Number(stock);
   if (!Number.isFinite(stockNum) || stockNum < -1) throw new Error('유효하지 않은 재고 (-1=무제한)');
-  const typeVal    = type === 'voucher' ? 'voucher' : 'general';
+  const VALID_TYPES = ['general', 'voucher', 'treasure_package'];
+  const typeVal    = VALID_TYPES.includes(type) ? type : 'general';
   const burnFeeNum = typeVal === 'voucher' ? Math.min(10000, Math.max(0, Math.round(Number(burnFeeBps) || 0))) : 0;
 
   const docData = {
@@ -282,8 +283,10 @@ async function coopGetMembership(uid) {
     address: walletData.address,
     eligible: info.eligible,
     member: info.member,
+    activeMember: info.activeMember,
     mentor: info.mentor,
     pointsWei: info.points.toString(),
+    expiry: info.expiry.toString(),
     membershipFeeHex: feeHex.toString(),
     fxKrwPerHexScaled: fxKrw.toString(),
     fxVndPerHexScaled: fxVnd.toString(),
@@ -305,7 +308,7 @@ async function coopJoinMall(uid, masterSecret) {
   const coopMall = getCoopMallContract(provider);
 
   const info = await coopMall.getUserInfo(walletData.address);
-  if (info.member) throw new Error('이미 전용몰 회원입니다');
+  if (info.activeMember) throw new Error('이미 활성 전용몰 회원입니다');
 
   const fee = await coopMall.membershipFeeHex();
 
@@ -319,8 +322,8 @@ async function coopJoinMall(uid, masterSecret) {
 
   const adminWallet = getAdminWallet();
 
-  // eligible 아닌 경우 자동으로 grantEligibility 호출 (멘토: 플랫폼 컨트랙트에서 조회)
-  if (!info.eligible) {
+  // eligible 아닌 경우, 또는 만료 후 재가입 시 grantEligibility 호출
+  if (!info.eligible || (info.member && !info.activeMember)) {
     let mentorAddr = '0x0000000000000000000000000000000000000000';
     try {
       const platform = getPlatformContract(provider);
@@ -367,6 +370,19 @@ async function coopJoinMall(uid, masterSecret) {
     coopMemberUntil: admin.firestore.Timestamp.fromDate(memberUntil),
   });
 
+  await db.collection('coopOrders').doc().set({
+    uid,
+    productId:   'membership',
+    productName: info.member ? '정회원 갱신' : '정회원 가입',
+    type:        'membership',
+    hexPrice:    ethers.formatEther(fee),
+    hexWei:      fee.toString(),
+    txHash:      receipt.hash,
+    status:      'confirmed',
+    mentorRewardBps: 0,
+    createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+  });
+
   return {
     txHash: receipt.hash,
     feeHex: parseFloat(ethers.formatEther(fee)).toFixed(4),
@@ -385,12 +401,7 @@ async function coopBuyOnChain(uid, { productId }, masterSecret) {
   const coopMall = getCoopMallContract(provider);
 
   const info = await coopMall.getUserInfo(walletData.address);
-  if (!info.member) throw new Error('전용몰 회원이 아닙니다');
-
-  const coopUntil = userSnap.data()?.coopMemberUntil;
-  if (coopUntil && coopUntil.toDate() < new Date()) {
-    throw new Error('정회원 기간이 만료되었습니다. 다시 가입해 주세요.');
-  }
+  if (!info.activeMember) throw new Error('활성 전용몰 회원이 아닙니다. 가입 또는 갱신이 필요합니다.');
 
   const productSnap = await db.collection('coopProducts').doc(productId).get();
   if (!productSnap.exists) throw new Error('상품이 존재하지 않습니다');
@@ -428,7 +439,10 @@ async function coopBuyOnChain(uid, { productId }, masterSecret) {
     await approveTx.wait();
   }
 
-  const gasLimit = await estimateGasWithBuffer(coopSigned, 'pay', [hexWei]);
+  const [gasLimit, mentorBps] = await Promise.all([
+    estimateGasWithBuffer(coopSigned, 'pay', [hexWei]),
+    coopMall.mentorRewardBps().then(Number).catch(() => 0),
+  ]);
   const tx = await coopSigned.pay(hexWei, { gasLimit });
   const receipt = await tx.wait();
   const txHash = receipt.hash;
@@ -443,6 +457,7 @@ async function coopBuyOnChain(uid, { productId }, masterSecret) {
     hexWei:      hexWei.toString(),
     txHash,
     status:      'confirmed',
+    mentorRewardBps: mentorBps,
     createdAt:   admin.firestore.FieldValue.serverTimestamp(),
   });
   if (product.stock > 0) {
@@ -470,12 +485,219 @@ async function coopBuyOnChain(uid, { productId }, masterSecret) {
   }
   await batch.commit();
 
+  // 자동추천인 상품 구매 시: 레벨 4 부여 + 명단 등록
+  if (product.name === '자동추천인 등록' || product.productCode === 'auto_referrer') {
+    const platform = getPlatformContract(provider);
+    const memberInfo = await platform.members(walletData.address);
+    if (Number(memberInfo.level) < 4) {
+      const platformSigned = getPlatformContract(adminWallet);
+      const levelTx = await platformSigned.adminSetLevel(walletData.address, 4);
+      await levelTx.wait();
+    }
+    await db.collection('autoReferrers').doc(uid).set({
+      uid,
+      walletAddress: walletData.address,
+      level: 4,
+      addedAt: admin.firestore.FieldValue.serverTimestamp(),
+      active: true,
+    });
+  }
+
   return {
     txHash,
     productName: product.name,
     hexPrice:  product.hexPrice,
     hexWei:    hexWei.toString(),
     amountHex: parseFloat(ethers.formatEther(hexWei)).toFixed(4),
+  };
+}
+
+// ─────────────────────────────────────────────
+// 보물 패키지 구매 (온체인 pay + 보물/몬스터/타워 생성)
+// ─────────────────────────────────────────────
+async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, npcImageUrl }, masterSecret) {
+  if (!productId) throw new Error('productId가 필요합니다');
+  const nameStr = String(treasureName || '').trim();
+  if (!nameStr) throw new Error('보물 이름이 필요합니다');
+  const latNum = parseFloat(lat);
+  const lngNum = parseFloat(lng);
+  if (!isFinite(latNum) || !isFinite(lngNum)) throw new Error('유효한 위치(위도/경도)가 필요합니다');
+  if (latNum < -90 || latNum > 90)   throw new Error('위도 범위 오류 (-90~90)');
+  if (lngNum < -180 || lngNum > 180) throw new Error('경도 범위 오류 (-180~180)');
+
+  const userSnap = await db.collection('users').doc(uid).get();
+  const walletData = userSnap.data()?.wallet;
+  if (!walletData?.encryptedKey) throw new Error('수탁 지갑이 없습니다');
+
+  const provider = getProvider();
+  const coopMall = getCoopMallContract(provider);
+  const info = await coopMall.getUserInfo(walletData.address);
+  if (!info.activeMember) throw new Error('활성 전용몰 회원이 아닙니다. 가입 또는 갱신이 필요합니다.');
+
+  const productSnap = await db.collection('coopProducts').doc(productId).get();
+  if (!productSnap.exists) throw new Error('상품이 존재하지 않습니다');
+  const product = productSnap.data();
+  if (!product.active)                      throw new Error('판매 중인 상품이 아닙니다');
+  if (product.type !== 'treasure_package')  throw new Error('보물 패키지 상품이 아닙니다');
+  if (product.stock === 0)                  throw new Error('품절된 상품입니다');
+  if (!product.hexPrice)                    throw new Error('상품 가격 정보가 없습니다 (hexPrice 미설정)');
+  const hexWei = BigInt(product.hexPrice);
+
+  const hexRead = getHexContract(provider);
+  const hexBal  = await hexRead.balanceOf(walletData.address);
+  if (hexBal < hexWei) {
+    const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
+    const need = parseFloat(ethers.formatEther(hexWei)).toFixed(4);
+    throw new Error(`HEX 잔액 부족. 필요: ${need} HEX, 보유: ${have} HEX`);
+  }
+
+  const adminWallet = getAdminWallet();
+  const bnbBal = await provider.getBalance(walletData.address);
+  if (bnbBal < ethers.parseEther('0.00005')) {
+    const fundTx = await adminWallet.sendTransaction({ to: walletData.address, value: ethers.parseEther('0.0001') });
+    await fundTx.wait();
+  }
+
+  const privateKey  = decrypt(walletData.encryptedKey, masterSecret);
+  const signer      = walletFromKey(privateKey, provider);
+  const hexSigned   = getHexContract(signer);
+  const coopSigned  = getCoopMallContract(signer);
+
+  const allowance = await hexSigned.allowance(walletData.address, COOP_MALL_ADDRESS);
+  if (allowance < hexWei) {
+    const approveTx = await hexSigned.approve(COOP_MALL_ADDRESS, hexWei, { gasLimit: 80000n });
+    await approveTx.wait();
+  }
+
+  const [gasLimit, mentorBps] = await Promise.all([
+    estimateGasWithBuffer(coopSigned, 'pay', [hexWei]),
+    coopMall.mentorRewardBps().then(Number).catch(() => 0),
+  ]);
+  const tx      = await coopSigned.pay(hexWei, { gasLimit });
+  const receipt = await tx.wait();
+  const txHash  = receipt.hash;
+
+  // 100m 반경 내 랜덤 좌표 생성
+  function randomOffset(radiusM) {
+    const r    = radiusM * Math.sqrt(Math.random());
+    const ang  = Math.random() * 2 * Math.PI;
+    const dLat = (r * Math.cos(ang)) / 111000;
+    const dLng = (r * Math.sin(ang)) / (111000 * Math.cos(latNum * Math.PI / 180));
+    return { lat: latNum + dLat, lng: lngNum + dLng };
+  }
+
+  const packageId = db.collection('coopTreasurePackages').doc().id;
+  const ts        = admin.firestore.FieldValue.serverTimestamp();
+  const batch     = db.batch();
+
+  // 주문 기록
+  batch.set(db.collection('coopOrders').doc(), {
+    uid, productId, productName: product.name,
+    type: 'treasure_package', hexPrice: product.hexPrice,
+    hexWei: hexWei.toString(), txHash, status: 'confirmed',
+    mentorRewardBps: mentorBps, packageId, createdAt: ts,
+  });
+
+  // 재고 감소
+  if (product.stock > 0) {
+    batch.update(db.collection('coopProducts').doc(productId), {
+      stock: admin.firestore.FieldValue.increment(-1),
+    });
+  }
+
+  // 보물박스 IDs 수집용
+  const boxIds = [];
+  // 5개 visible 보물박스 (radius 20m)
+  for (let i = 0; i < 5; i++) {
+    const pos    = randomOffset(100);
+    const boxRef = db.collection('treasure_boxes').doc();
+    boxIds.push(boxRef.id);
+    batch.set(boxRef, {
+      packageId, ownerUid: uid, treasureName: nameStr,
+      lat: pos.lat, lng: pos.lng, radius: 20, hidden: false,
+      active: false, respawnIntervalMs: 86400000, startHour: 0, endHour: 24,
+      slotIndex: i, createdAt: ts,
+    });
+  }
+  // 2개 hidden 보물박스 (radius 5m, 탐지기에만 반응)
+  for (let i = 0; i < 2; i++) {
+    const pos    = randomOffset(100);
+    const boxRef = db.collection('treasure_boxes').doc();
+    boxIds.push(boxRef.id);
+    batch.set(boxRef, {
+      packageId, ownerUid: uid, treasureName: nameStr,
+      lat: pos.lat, lng: pos.lng, radius: 5, hidden: true,
+      active: false, respawnIntervalMs: 86400000, startHour: 0, endHour: 24,
+      slotIndex: 5 + i, createdAt: ts,
+    });
+  }
+
+  // 5개 몬스터 (battle_monsters)
+  const monsterIds = [];
+  for (let i = 0; i < 5; i++) {
+    const pos    = randomOffset(100);
+    const monRef = db.collection('battle_monsters').doc();
+    monsterIds.push(monRef.id);
+    batch.set(monRef, {
+      packageId, ownerUid: uid,
+      lat: pos.lat, lng: pos.lng,
+      active: false, level: 1 + Math.floor(Math.random() * 3),
+      respawnIntervalMs: 3600000, createdAt: ts,
+    });
+  }
+
+  // 1개 아처 타워 (battle_towers)
+  const towerPos = randomOffset(50);
+  const towerRef = db.collection('battle_towers').doc();
+  batch.set(towerRef, {
+    packageId, ownerUid: uid,
+    lat: towerPos.lat, lng: towerPos.lng,
+    active: false, type: 'archer', createdAt: ts,
+  });
+
+  // NPC 등록 (user_treasure_npcs) — 맵 표시용
+  batch.set(db.collection('user_treasure_npcs').doc(packageId), {
+    packageId, ownerUid: uid,
+    treasureName: nameStr, npcName: nameStr, promoText: '',
+    npcImageUrl: npcImageUrl ? String(npcImageUrl).trim() : '',
+    lat: latNum, lng: lngNum, active: true, createdAt: ts,
+  });
+
+  // 패키지 마스터 기록
+  batch.set(db.collection('coopTreasurePackages').doc(packageId), {
+    uid, productId, txHash,
+    treasureName: nameStr, lat: latNum, lng: lngNum,
+    npcImageUrl: npcImageUrl ? String(npcImageUrl).trim() : '',
+    boxIds, monsterIds, towerId: towerRef.id,
+    active: false, // 관리자 승인 후 활성화
+    createdAt: ts,
+  });
+
+  await batch.commit();
+
+  return {
+    txHash, packageId, productName: product.name,
+    hexPrice: product.hexPrice, hexWei: hexWei.toString(),
+    amountHex: parseFloat(ethers.formatEther(hexWei)).toFixed(4),
+    boxCount: boxIds.length, monsterCount: monsterIds.length,
+  };
+}
+
+// ─────────────────────────────────────────────
+// 자동추천인: 랜덤 멘토 주소 조회 (공개)
+// ─────────────────────────────────────────────
+async function getRandomAutoReferrer() {
+  const snap = await db.collection('autoReferrers')
+    .where('active', '==', true)
+    .get();
+
+  if (snap.empty) return { address: null, count: 0 };
+
+  const docs = snap.docs;
+  const pick = docs[Math.floor(Math.random() * docs.length)];
+  return {
+    address: pick.data().walletAddress,
+    count: docs.length,
   };
 }
 
@@ -1292,6 +1514,7 @@ async function coopGetMyVouchers(uid) {
 
 module.exports = {
   listCoopProducts,
+  getRandomAutoReferrer,
   buyCoopProduct,
   adminSetCoopConfig,
   adminSaveCoopProduct,
@@ -1299,6 +1522,7 @@ module.exports = {
   coopGetMembership,
   coopJoinMall,
   coopBuyOnChain,
+  coopBuyTreasurePackage,
   coopConvertPoints,
   coopAdminGrantEligibility,
   coopAdminGetStats,

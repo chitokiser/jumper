@@ -60,7 +60,7 @@ let _products = [];
 let _pointsWei = 0n;
 let _membershipFeeWei = 0n;
 let _fx = null;         // { fxKrwPerHexScaled, fxVndPerHexScaled, fxScale }
-let _memberStatus = 'loading'; // 'guest' | 'no-wallet' | 'not-member' | 'member'
+let _memberStatus = 'loading'; // 'guest' | 'no-wallet' | 'not-member' | 'expired' | 'member'
 
 // ─────────────────────────────────────────────────────────
 // 유틸
@@ -121,11 +121,13 @@ function hideAll() {
 // Cloud Function 헬퍼
 // ─────────────────────────────────────────────────────────
 const cf = {
-  getMembership:  httpsCallable(functions, 'coopGetMembership'),
-  joinMall:       httpsCallable(functions, 'coopJoinMall'),
-  listProducts:   httpsCallable(functions, 'listCoopProducts'),
-  buy:            httpsCallable(functions, 'coopBuyOnChain'),
-  convert:        httpsCallable(functions, 'coopConvertPoints'),
+  getMembership:        httpsCallable(functions, 'coopGetMembership'),
+  joinMall:             httpsCallable(functions, 'coopJoinMall'),
+  listProducts:         httpsCallable(functions, 'listCoopProducts'),
+  buy:                  httpsCallable(functions, 'coopBuyOnChain'),
+  buyTreasurePackage:   httpsCallable(functions, 'coopBuyTreasurePackage'),
+  convert:              httpsCallable(functions, 'coopConvertPoints'),
+  randomAutoReferrer:   httpsCallable(functions, 'getRandomAutoReferrer'),
 };
 
 // ─────────────────────────────────────────────────────────
@@ -180,8 +182,18 @@ async function init(user) {
     };
   }
 
-  if (!membership.member) {
-    _memberStatus = 'not-member';
+  if (!membership.activeMember) {
+    const isExpired = !!membership.member;
+    _memberStatus = isExpired ? 'expired' : 'not-member';
+
+    if (isExpired) {
+      const titleEl = document.getElementById('coopJoinTitle');
+      const subEl   = document.getElementById('coopJoinSub');
+      if (titleEl) titleEl.textContent = '정회원 갱신';
+      if (subEl)   subEl.textContent   = '회원 기간이 만료되었습니다. 재가입하여 혜택을 계속 누리세요.';
+      if (el.joinBtn) el.joinBtn.textContent = '재가입하기';
+    }
+
     el.joinFee.innerHTML =
       `${fmtHex(_membershipFeeWei)}<br>` +
       `<small style="font-size:0.82rem;color:var(--muted,#6b7280);">` +
@@ -193,12 +205,20 @@ async function init(user) {
     return;
   }
 
-  // 정회원
+  // 활성 정회원
   _memberStatus = 'member';
   _pointsWei = BigInt(membership.pointsWei || '0');
   renderPointsPanel();
   show(el.pointsPanel, true);
   show(el.accessBadge, true);
+
+  const expiryTs = Number(membership.expiry || '0');
+  if (expiryTs > 0) {
+    const expiryDate = new Date(expiryTs * 1000).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+    const expiryEl = document.getElementById('coopExpiryInfo');
+    if (expiryEl) { expiryEl.textContent = `만료: ${expiryDate}`; expiryEl.style.display = ''; }
+  }
+
   show(el.loading, false);
   show(el.main, true);
 }
@@ -259,6 +279,8 @@ function renderCard(p) {
   const stockTxt = p.stock === -1 ? '' : sold ? '품절' : `재고 ${p.stock}개`;
   const typeBadge = p.type === 'voucher'
     ? `<span style="font-size:0.72rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 8px;display:inline-block;margin-bottom:4px;">바우처</span>`
+    : p.type === 'treasure_package'
+    ? `<span style="font-size:0.72rem;background:#dcfce7;color:#15803d;border-radius:99px;padding:1px 8px;display:inline-block;margin-bottom:4px;">보물패키지</span>`
     : `<span style="font-size:0.72rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 8px;display:inline-block;margin-bottom:4px;">일반상품</span>`;
 
   const hexAmt   = p.hexPrice ? (Number(p.hexPrice) / 1e18).toFixed(4) : '—';
@@ -300,6 +322,8 @@ function showDetailModal(productId) {
 
   el.detailBadge.innerHTML = p.type === 'voucher'
     ? `<span style="font-size:0.75rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:2px 10px;display:inline-block;margin-bottom:6px;">바우처</span>`
+    : p.type === 'treasure_package'
+    ? `<span style="font-size:0.75rem;background:#dcfce7;color:#15803d;border-radius:99px;padding:2px 10px;display:inline-block;margin-bottom:6px;">보물패키지</span>`
     : `<span style="font-size:0.75rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:2px 10px;display:inline-block;margin-bottom:6px;">일반상품</span>`;
 
   el.detailName.textContent  = p.name || '';
@@ -340,6 +364,13 @@ function showDetailModal(productId) {
       closeDetailModal();
       el.joinPanel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
+  } else if (_memberStatus === 'expired') {
+    el.detailBuyBtn.disabled    = false;
+    el.detailBuyBtn.textContent = '회원 갱신 후 구매 가능';
+    el.detailBuyBtn.onclick     = () => {
+      closeDetailModal();
+      el.joinPanel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
   } else if (_memberStatus === 'loading') {
     el.detailBuyBtn.disabled    = true;
     el.detailBuyBtn.textContent = '회원 확인 중...';
@@ -362,6 +393,38 @@ function showDetailModal(productId) {
   };
   window.addEventListener('keydown', onKey);
 
+  // 자동추천인 상품: 랜덤 멘토 주소 표시
+  const isAutoReferrer = p.productCode === 'auto_referrer' || p.name === '자동추천인 등록';
+  let autoReferrerEl = document.getElementById('coopAutoReferrerInfo');
+  if (!autoReferrerEl) {
+    autoReferrerEl = document.createElement('div');
+    autoReferrerEl.id = 'coopAutoReferrerInfo';
+    autoReferrerEl.style.cssText =
+      'margin-top:12px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;' +
+      'border-radius:10px;font-size:0.82rem;color:#065f46;line-height:1.7;';
+    el.detailBuyBtn.insertAdjacentElement('beforebegin', autoReferrerEl);
+  }
+  if (isAutoReferrer) {
+    autoReferrerEl.style.display = '';
+    autoReferrerEl.innerHTML = '⏳ 자동추천인 명단 조회 중…';
+    cf.randomAutoReferrer().then(res => {
+      const addr  = res.data?.address;
+      const count = res.data?.count ?? 0;
+      if (!addr) {
+        autoReferrerEl.innerHTML =
+          `<b>현재 자동추천인 명단</b>: 0명<br>` +
+          `<span style="color:#6b7280;">아직 등록된 자동추천인이 없습니다.<br>첫 번째로 등록해보세요!</span>`;
+      } else {
+        autoReferrerEl.innerHTML =
+          `<b>현재 자동추천인 명단</b>: ${count}명<br>` +
+          `예시 배정 멘토: <code style="background:#dcfce7;padding:1px 6px;border-radius:4px;font-size:0.8rem;">` +
+          `${addr.slice(0,6)}…${addr.slice(-4)}</code>`;
+      }
+    }).catch(() => { autoReferrerEl.style.display = 'none'; });
+  } else {
+    autoReferrerEl.style.display = 'none';
+  }
+
   show(el.detailModal, true);
 }
 
@@ -375,6 +438,13 @@ function closeDetailModal() {
 async function handleBuy(productId) {
   const product = _products.find(p => p.id === productId);
   if (!product) return;
+
+  // 보물 패키지는 별도 모달로 처리
+  if (product.type === 'treasure_package') {
+    closeDetailModal();
+    showTreasurePackageModal(productId);
+    return;
+  }
 
   const confirmHex = product.hexPrice ? (Number(product.hexPrice) / 1e18).toFixed(4) : '?';
   if (!confirm(
@@ -402,7 +472,114 @@ async function handleBuy(productId) {
   }
 }
 
-function showDoneModal(d, isVoucher = false) {
+// ─────────────────────────────────────────────────────────
+// 보물 패키지 구매 모달
+// ─────────────────────────────────────────────────────────
+let _tpProductId = null;
+
+function showTreasurePackageModal(productId) {
+  _tpProductId = productId;
+  const tpModal   = document.getElementById('coopTreasureModal');
+  const tpBd      = document.getElementById('coopTreasureBd');
+  const tpCancel  = document.getElementById('tpCancelBtn');
+  const tpSubmit  = document.getElementById('tpSubmitBtn');
+  const tpGpsBtn  = document.getElementById('tpGpsBtn');
+  const tpNpcUrl  = document.getElementById('tpNpcImageUrl');
+  const tpNpcPrev = document.getElementById('tpNpcPreview');
+  const tpNpcImg  = document.getElementById('tpNpcImg');
+  const tpMsg     = document.getElementById('tpMsg');
+
+  // 초기화
+  document.getElementById('tpTreasureName').value = '';
+  document.getElementById('tpLat').value = '';
+  document.getElementById('tpLng').value = '';
+  tpNpcUrl.value = '';
+  tpNpcPrev.style.display = 'none';
+  tpMsg.textContent = '';
+  tpSubmit.disabled = false;
+  tpSubmit.textContent = '구매하기';
+
+  // NPC 이미지 미리보기
+  tpNpcUrl.oninput = () => {
+    const url = tpNpcUrl.value.trim();
+    if (url) {
+      tpNpcImg.src = url;
+      tpNpcPrev.style.display = '';
+    } else {
+      tpNpcPrev.style.display = 'none';
+    }
+  };
+
+  // 현재 GPS 위치
+  tpGpsBtn.onclick = () => {
+    tpGpsBtn.textContent = '위치 가져오는 중...';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        document.getElementById('tpLat').value = pos.coords.latitude.toFixed(6);
+        document.getElementById('tpLng').value = pos.coords.longitude.toFixed(6);
+        tpGpsBtn.textContent = '📍 현재 위치 사용';
+      },
+      () => {
+        tpMsg.textContent = 'GPS 위치를 가져올 수 없습니다. 직접 입력해주세요.';
+        tpGpsBtn.textContent = '📍 현재 위치 사용';
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const closeModal = () => { show(tpModal, false); };
+  tpBd.onclick     = closeModal;
+  tpCancel.onclick = closeModal;
+
+  tpSubmit.onclick = async () => {
+    const treasureName = document.getElementById('tpTreasureName').value.trim();
+    const lat = parseFloat(document.getElementById('tpLat').value);
+    const lng = parseFloat(document.getElementById('tpLng').value);
+    const npcImageUrl = tpNpcUrl.value.trim();
+
+    if (!treasureName) { tpMsg.textContent = '보물 이름을 입력하세요'; return; }
+    if (!isFinite(lat) || lat < -90 || lat > 90) { tpMsg.textContent = '유효한 위도를 입력하세요 (-90~90)'; return; }
+    if (!isFinite(lng) || lng < -180 || lng > 180) { tpMsg.textContent = '유효한 경도를 입력하세요 (-180~180)'; return; }
+
+    const product = _products.find(p => p.id === _tpProductId);
+    const confirmHex = product?.hexPrice ? (Number(product.hexPrice) / 1e18).toFixed(4) : '?';
+    if (!confirm(
+      `[보물 패키지 구매 확인]\n\n` +
+      `보물 이름: ${treasureName}\n` +
+      `위치: ${lat.toFixed(5)}, ${lng.toFixed(5)}\n` +
+      `결제 금액: ${confirmHex} HEX\n` +
+      `           ${hexWeiToKrw(product?.hexPrice||'0')} / ${hexWeiToVnd(product?.hexPrice||'0')}\n\n` +
+      `보물박스 5개 + 숨겨진 박스 2개 + 몬스터 5마리 + 타워 1기가 생성됩니다.\n` +
+      `(관리자 승인 후 활성화)\n\n구매하시겠습니까?`
+    )) return;
+
+    tpSubmit.disabled    = true;
+    tpSubmit.textContent = '처리 중...';
+    tpMsg.textContent    = '';
+
+    try {
+      const res = await cf.buyTreasurePackage({ productId: _tpProductId, treasureName, lat, lng, npcImageUrl });
+      closeModal();
+      const d = res.data;
+      showDoneModal({
+        ...d,
+        productName: d.productName,
+        amountHex:   d.amountHex,
+        hexWei:      d.hexWei,
+      }, false, true);
+      const idx = _products.findIndex(p => p.id === _tpProductId);
+      if (idx !== -1 && _products[idx].stock > 0) _products[idx].stock--;
+    } catch (err) {
+      tpMsg.textContent    = '구매 실패: ' + (err?.message || '서버 오류');
+      tpSubmit.disabled    = false;
+      tpSubmit.textContent = '구매하기';
+    }
+  };
+
+  show(tpModal, true);
+}
+
+function showDoneModal(d, isVoucher = false, isTreasure = false) {
   const voucherNote = isVoucher
     ? `<div style="margin-top:14px;padding:10px 14px;background:#fef3c7;border-radius:10px;font-size:0.85rem;color:#92400e;line-height:1.6;">
         🎫 바우처가 지갑에 발급되었습니다.<br>
@@ -411,14 +588,20 @@ function showDoneModal(d, isVoucher = false) {
         </a>
       </div>`
     : '';
+  const treasureNote = isTreasure
+    ? `<div style="margin-top:14px;padding:10px 14px;background:#dcfce7;border-radius:10px;font-size:0.85rem;color:#15803d;line-height:1.6;">
+        🗺️ 보물박스 ${d.boxCount||7}개 · 몬스터 ${d.monsterCount||5}마리 · 타워 1기가 생성되었습니다.<br>
+        관리자 승인 후 지도에 활성화됩니다.
+      </div>`
+    : '';
   el.doneKvs.innerHTML = `
     <div class="coop-modal-kv"><span class="k">상품명</span><span class="v">${escHtml(d.productName)}</span></div>
     <div class="coop-modal-kv"><span class="k">결제금액</span><span class="v">${d.amountHex||'?'} HEX<br><small style="font-size:0.82rem;color:var(--muted,#6b7280);">${hexWeiToKrw(d.hexWei||'0')} / ${hexWeiToVnd(d.hexWei||'0')}</small></span></div>
     <div class="coop-modal-kv"><span class="k">TxHash</span><span class="v" style="font-size:0.75em;">${(d.txHash||'').slice(0,22)}…</span></div>
-    ${voucherNote}
+    ${voucherNote}${treasureNote}
   `;
   show(el.doneModal, true);
-  el.doneModalBd.onclick   = closeDoneModal;
+  el.doneModalBd.onclick    = closeDoneModal;
   el.doneModalClose.onclick = closeDoneModal;
 }
 
@@ -450,7 +633,7 @@ el.joinBtn.addEventListener('click', async () => {
     setTimeout(() => location.reload(), 1500);
   } catch (err) {
     el.joinBtn.disabled    = false;
-    el.joinBtn.textContent = '회원 가입하기';
+    el.joinBtn.textContent = _memberStatus === 'expired' ? '재가입하기' : '회원 가입하기';
     el.joinMsg.style.color = '';
     el.joinMsg.textContent = err?.message || '처리 실패';
   }

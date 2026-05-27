@@ -863,6 +863,13 @@ exports.adminDeleteCoopProduct = onCall(
   })
 );
 
+exports.getRandomAutoReferrer = onCall(
+  {},
+  wrapError(async (_request) => {
+    return coopH.getRandomAutoReferrer();
+  })
+);
+
 exports.coopGetMembership = onCall(
   {},
   wrapError(async (request) => {
@@ -891,6 +898,21 @@ exports.coopBuyOnChain = onCall(
     process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
     const result = await coopH.coopBuyOnChain(uid, { productId }, walletSecret.value());
     logger.info('coopBuyOnChain', { uid, productId, txHash: result.txHash });
+    return result;
+  })
+);
+
+exports.coopBuyTreasurePackage = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { productId, treasureName, lat, lng, npcImageUrl } = request.data ?? {};
+    if (!productId)    throw new HttpsError('invalid-argument', 'productId가 필요합니다');
+    if (!treasureName) throw new HttpsError('invalid-argument', '보물 이름이 필요합니다');
+    if (lat == null || lng == null) throw new HttpsError('invalid-argument', '위치 정보가 필요합니다');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await coopH.coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, npcImageUrl }, walletSecret.value());
+    logger.info('coopBuyTreasurePackage', { uid, productId, packageId: result.packageId });
     return result;
   })
 );
@@ -2003,6 +2025,16 @@ exports.deleteTreasureComment = onCall(wrapError(async (req) => {
 
 exports.listTreasureComments = onCall(wrapError(async (req) => {
   return userTreasureH.listTreasureComments(req.data ?? {});
+}));
+
+exports.checkHintUnlock = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return userTreasureH.checkHintUnlock(uid, req.data ?? {});
+}));
+
+exports.unlockHint = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return userTreasureH.unlockHint(uid, req.data ?? {});
 }));
 
 // ════════════════════════════════════════════════════════════════════════════

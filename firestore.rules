@@ -670,6 +670,20 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
 
+    // 보물 패키지 (구매자 생성 — Cloud Function only write, 공개 읽기)
+    match /coopTreasurePackages/{docId} {
+      allow read: if true;
+      allow write: if false; // Cloud Function only
+    }
+
+    // 패키지 댓글 (누구나 작성, 본인·관리자만 삭제)
+    match /packageComments/{docId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
