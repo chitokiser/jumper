@@ -3539,26 +3539,43 @@ function showUserNpcInfo(npc) {
   modal.classList.add('open');
 }
 
+function _utNpcMsg(text, isErr) {
+  const el = document.getElementById('utNpcMsg');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = isErr ? '#f87171' : '#6ee7b7';
+}
+
 async function discoverTreasure(npcId) {
   const pos = _ctx.lastPos;
-  if (!pos) { alert('GPS 위치를 가져올 수 없습니다.'); return; }
+  if (!pos) {
+    _utNpcMsg('📡 GPS 위치를 확인 중입니다. 게임을 시작하세요.', true);
+    return;
+  }
   const btn = document.getElementById('btnDiscoverTreasure');
-  if (btn) btn.disabled = true;
+  const origTxt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 확인 중...'; }
+  _utNpcMsg('');
   try {
     const { data } = await httpsCallable(functions, 'discoverUserTreasure')(
       { npcId, userLat: pos.lat, userLng: pos.lng }
     );
     document.getElementById('utNpcModal').classList.remove('open');
-    const reward = data.type === 'item' ? `아이템 ×${data.itemCount}` : `${data.itemCount} 코인`;
-    alert(`🎉 보물 발견!\n${data.ownerName}님의 보물\n보상: ${reward}`);
     if (_utNpcMarkers[npcId]) {
       _utNpcMarkers[npcId].setMap(null);
       delete _utNpcMarkers[npcId];
     }
+    const reward = data.type === 'item' ? `아이템 ×${data.itemCount}` : `${data.itemCount} 코인`;
+    const toast = document.getElementById('collectToast');
+    if (toast) {
+      toast.innerHTML = `🎉 보물 발견!<br><small>${data.ownerName}님의 보물 · ${reward}</small>`;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
   } catch (e) {
-    alert(e.message || '보물 발견 실패');
+    _utNpcMsg('⚠️ ' + (e.message || '보물 발견 실패'), true);
   } finally {
-    if (btn) btn.disabled = false;
+    if (btn) { btn.disabled = false; btn.textContent = origTxt; }
   }
 }
 

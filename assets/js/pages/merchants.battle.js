@@ -28,6 +28,14 @@ let _ctx = null;
 let _gsSkillCallback = null;
 export function setGsSkillCallback(fn) { _gsSkillCallback = fn; }
 
+// ── 내비게이션 맵 (heading-up) ──────────────────────────────────────────────────
+let _headingUpMode  = false;
+let _compassCallback = null; // (headingDeg) => void — 나침반 UI 갱신
+
+export function setHeadingUpMode(on) { _headingUpMode = on; }
+export function isHeadingUpMode()    { return _headingUpMode; }
+export function setCompassCallback(fn) { _compassCallback = fn; }
+
 // ── GS 몬스터 getter (merchants.js가 주입) ────────────────────────────────────
 let _gsMobsGetter = null;
 export function setGsMobsGetter(fn) { _gsMobsGetter = fn; }
