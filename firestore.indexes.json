@@ -144,6 +144,22 @@
         { "fieldPath": "uid", "order": "ASCENDING" },
         { "fieldPath": "craftedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "user_treasures",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "user_treasure_npcs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
