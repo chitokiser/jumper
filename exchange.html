@@ -316,6 +316,23 @@
     .ex-info-val.neg { color: #ef5350; }
     .ex-info-sub { font-size: 10px; color: #363a45; margin-top: 2px; }
 
+    /* ── 게임코인 ↔ JUMP 교환 섹션 ─────────────────── */
+    .ce-section { border-top: 2px solid #2a5f5a; }
+    .ce-title { color: #26a69a !important; font-size: 12px !important; }
+    .ce-panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 600px) { .ce-panels { grid-template-columns: 1fr; } }
+    .ce-panel {
+      background: #131722; border: 1px solid #1e222d;
+      border-radius: 6px; padding: 14px;
+    }
+    .ce-panel-title { margin-bottom: 10px !important; }
+    .ce-panel-title.buy  { color: #26a69a !important; }
+    .ce-panel-title.sell { color: #ef5350 !important; }
+
     /* ── 로그인 안내 ─────────────────────────────────── */
     .ex-notice {
       text-align: center; padding: 80px 24px;
@@ -594,6 +611,69 @@
             </div>
           </div>
         </div>
+
+        <!-- ④ 게임코인 ↔ JUMP 교환 ──────────────────────────── -->
+        <div class="ex-info-area ce-section">
+          <div class="ex-info-title ce-title">게임코인 ↔ JUMP 교환 (JumpAutoExchange)</div>
+
+          <!-- 상태 행 -->
+          <div class="ex-info-grid" style="margin-bottom:14px;">
+            <div class="ex-info-box">
+              <div class="ex-info-lbl">교환 비율</div>
+              <div class="ex-info-val" id="ceRate">–</div>
+              <div class="ex-info-sub">게임코인 → JUMP</div>
+            </div>
+            <div class="ex-info-box">
+              <div class="ex-info-lbl">컨트랙트 JUMP 잔고</div>
+              <div class="ex-info-val" id="ceContractBal">–</div>
+            </div>
+            <div class="ex-info-box">
+              <div class="ex-info-lbl">내 게임코인 (Gold)</div>
+              <div class="ex-info-val" id="ceUserGold">–</div>
+            </div>
+            <div class="ex-info-box">
+              <div class="ex-info-lbl">내 JUMP 잔액</div>
+              <div class="ex-info-val" id="ceUserJump">–</div>
+            </div>
+            <div class="ex-info-box">
+              <div class="ex-info-lbl">교환 활성화</div>
+              <div class="ex-info-val" id="ceSaleEnabled">–</div>
+            </div>
+            <div class="ex-info-box" style="grid-column:1/-1">
+              <div class="ex-info-lbl">내 수탁 지갑 주소 (JUMP 입금 주소)</div>
+              <div class="ex-info-val" id="ceWalletAddr" style="font-size:11px;word-break:break-all;font-family:monospace">–</div>
+            </div>
+          </div>
+
+          <!-- 교환 패널 2열 -->
+          <div class="ce-panels">
+
+            <!-- BUY: 코인 → JUMP -->
+            <div class="ce-panel">
+              <div class="ex-info-title ce-panel-title buy">게임코인 → JUMP 구매</div>
+              <div class="ex-field">
+                <div class="ex-field-lbl">사용할 게임코인</div>
+                <input type="number" id="ceBuyCoins" placeholder="0" min="100" step="100" />
+              </div>
+              <div class="ex-preview-box" id="ceBuyPreview"></div>
+              <button class="ex-action-btn buy" id="btnCeBuy" type="button">구매</button>
+              <div class="ex-status" id="ceBuyStatus"></div>
+            </div>
+
+            <!-- SELL: JUMP → 코인 -->
+            <div class="ce-panel">
+              <div class="ex-info-title ce-panel-title sell">JUMP → 게임코인 변환</div>
+              <div class="ex-field">
+                <div class="ex-field-lbl">판매할 JUMP 수량</div>
+                <input type="number" id="ceSellJump" placeholder="0" min="1" step="1" />
+              </div>
+              <div class="ex-preview-box" id="ceSellPreview"></div>
+              <button class="ex-action-btn sell" id="btnCeSell" type="button">변환</button>
+              <div class="ex-status" id="ceSellStatus"></div>
+            </div>
+
+          </div><!-- /ce-panels -->
+        </div><!-- /ce-section -->
 
       </div><!-- /exMain -->
     </div><!-- /ex-wrap -->

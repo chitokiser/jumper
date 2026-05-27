@@ -483,6 +483,109 @@ function bindClaim() {
 }
 
 // ─────────────────────────────────────────────────
+// 게임코인 ↔ JUMP 교환 (JumpAutoExchange)
+// ─────────────────────────────────────────────────
+let _coinStatus = null;
+
+async function loadCoinExStatus() {
+  try {
+    const fn  = httpsCallable(functions, 'getCoinExchangeStatus');
+    const res = await fn();
+    _coinStatus = res.data;
+    const rate = Number(_coinStatus.coinPerJump || 100);
+    setText('ceRate',        rate + ' 코인 = 1 JUMP');
+    setText('ceContractBal', fmtJump(_coinStatus.contractJumpBalance || '0') + ' JUMP');
+    setText('ceUserGold',    Number(_coinStatus.userGold || 0).toLocaleString() + ' 코인');
+    setText('ceUserJump',    fmtJump(_coinStatus.userJumpBalance || '0') + ' JUMP');
+    setText('ceWalletAddr',  _coinStatus.walletAddress || '지갑 없음');
+    const enabledEl = $('ceSaleEnabled');
+    if (enabledEl) {
+      enabledEl.textContent = _coinStatus.saleEnabled ? '활성화' : '비활성화';
+      enabledEl.className   = 'ex-info-val' + (_coinStatus.saleEnabled ? ' pos' : ' neg');
+    }
+  } catch (err) {
+    setText('ceRate', '로드 실패: ' + (err.message || String(err)));
+  }
+}
+
+function bindCoinBuy() {
+  const input   = $('ceBuyCoins');
+  const preview = $('ceBuyPreview');
+  if (input && preview) {
+    input.addEventListener('input', () => {
+      const coins = parseInt(input.value, 10);
+      if (!coins || coins <= 0 || !_coinStatus) { preview.style.display = 'none'; return; }
+      const rate = Number(_coinStatus.coinPerJump || 100);
+      const jump = Math.floor(coins / rate);
+      preview.innerHTML  = `받을 JUMP: <strong>${jump}</strong><br>비율: ${rate} 코인 = 1 JUMP`;
+      preview.style.display = '';
+    });
+  }
+  const btn = $('btnCeBuy');
+  if (!btn) return;
+  btn.onclick = async () => {
+    const coins = parseInt($('ceBuyCoins')?.value, 10);
+    if (!coins || coins <= 0) { alert('코인 수량을 입력하세요'); return; }
+    const rate     = Number(_coinStatus?.coinPerJump || 100);
+    const jump     = Math.floor(coins / rate);
+    if (jump <= 0) { alert(`최소 ${rate}코인이 필요합니다`); return; }
+    const userGold = Number(_coinStatus?.userGold || 0);
+    if (coins > userGold) { alert(`게임코인 부족\n보유: ${userGold.toLocaleString()}코인`); return; }
+    if (!confirm(`게임코인 ${coins.toLocaleString()}개 → JUMP ${jump}개 구매\n진행하시겠습니까?`)) return;
+    setLoading('btnCeBuy', true, '구매');
+    setStatus('ceBuyStatus', '처리 중...');
+    try {
+      const fn  = httpsCallable(functions, 'buyJumpWithCoins');
+      const res = await fn({ coinAmount: coins });
+      setStatus('ceBuyStatus', `완료! JUMP ${res.data.jumpAmount}개 수령`);
+      await loadCoinExStatus();
+    } catch (err) {
+      setStatus('ceBuyStatus', '실패: ' + (err.message || String(err)), true);
+    } finally {
+      setLoading('btnCeBuy', false, '구매');
+    }
+  };
+}
+
+function bindCoinSell() {
+  const input   = $('ceSellJump');
+  const preview = $('ceSellPreview');
+  if (input && preview) {
+    input.addEventListener('input', () => {
+      const jump = parseInt(input.value, 10);
+      if (!jump || jump <= 0 || !_coinStatus) { preview.style.display = 'none'; return; }
+      const rate  = Number(_coinStatus.coinPerJump || 100);
+      const coins = jump * rate;
+      preview.innerHTML  = `받을 코인: <strong>${coins.toLocaleString()}</strong>`;
+      preview.style.display = '';
+    });
+  }
+  const btn = $('btnCeSell');
+  if (!btn) return;
+  btn.onclick = async () => {
+    const jump = parseInt($('ceSellJump')?.value, 10);
+    if (!jump || jump <= 0) { alert('JUMP 수량을 입력하세요'); return; }
+    const userJump = Number(_coinStatus?.userJumpBalance || '0');
+    if (jump > userJump) { alert(`JUMP 잔액 부족\n보유: ${userJump} JUMP`); return; }
+    const rate  = Number(_coinStatus?.coinPerJump || 100);
+    const coins = jump * rate;
+    if (!confirm(`JUMP ${jump}개 → 게임코인 ${coins.toLocaleString()}개 변환\n진행하시겠습니까?`)) return;
+    setLoading('btnCeSell', true, '변환');
+    setStatus('ceSellStatus', '처리 중...');
+    try {
+      const fn  = httpsCallable(functions, 'sellJumpForCoins');
+      const res = await fn({ jumpAmount: jump });
+      setStatus('ceSellStatus', `완료! 코인 ${Number(res.data.coinAmount).toLocaleString()}개 수령`);
+      await loadCoinExStatus();
+    } catch (err) {
+      setStatus('ceSellStatus', '실패: ' + (err.message || String(err)), true);
+    } finally {
+      setLoading('btnCeSell', false, '변환');
+    }
+  };
+}
+
+// ─────────────────────────────────────────────────
 // 초기화
 // ─────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
@@ -500,13 +603,17 @@ onAuthStateChanged(auth, async (user) => {
   if (m) m.style.display = '';
 
   const btnRefresh = $('btnRefresh');
-  if (btnRefresh) btnRefresh.onclick = loadStatus;
+  if (btnRefresh) btnRefresh.onclick = async () => {
+    await Promise.all([loadStatus(), loadCoinExStatus()]);
+  };
 
   bindBuy();
   bindSell();
   bindStake();
   bindUnstake();
   bindClaim();
+  bindCoinBuy();
+  bindCoinSell();
 
-  await loadStatus();
+  await Promise.all([loadStatus(), loadCoinExStatus()]);
 });

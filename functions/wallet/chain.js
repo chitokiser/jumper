@@ -142,6 +142,34 @@ const JUMP_BANK_ABI = [
   'event DividendClaimed(address indexed who, uint256 payHexWei)',
 ];
 
+// JumpAutoExchange 컨트랙트 (게임코인 ↔ JUMP)
+
+const JUMP_AUTO_EXCHANGE_ABI = [
+  // 구매 (게임코인 → JUMP) — operator 전용
+  'function purchaseJumpFor(address buyer, uint256 gameCoinAmount) external',
+  // 판매 (JUMP → 게임코인) — operator 전용, returns gameCoinAmount
+  'function sellJumpForCoins(address seller, uint256 jumpAmount) external returns (uint256)',
+  // approve 필요량 확인용
+  'function allowance(address owner, address spender) external view returns (uint256)',
+  // 미리보기
+  'function previewBuy(uint256 gameCoinAmount) external view returns (uint256)',
+  'function previewSell(uint256 jumpAmount) external view returns (uint256)',
+  // 설정 조회
+  'function coinPerJump() external view returns (uint256)',
+  'function saleEnabled() external view returns (bool)',
+  'function contractJumpBalance() external view returns (uint256)',
+  // 기록 조회
+  'function purchaseCount() external view returns (uint256)',
+  'function sellCount() external view returns (uint256)',
+  'function getPurchase(uint256 index) external view returns (address buyer, uint256 gameCoinUsed, uint256 jumpAmount, uint256 timestamp)',
+  'function getSell(uint256 index) external view returns (address seller, uint256 jumpAmount, uint256 gameCoinReceived, uint256 timestamp)',
+  'function getUserPurchaseIds(address user) external view returns (uint256[] memory)',
+  'function getUserSellIds(address user) external view returns (uint256[] memory)',
+  // 이벤트
+  'event JumpPurchased(address indexed buyer, uint256 gameCoinUsed, uint256 jumpAmount, uint256 timestamp)',
+  'event JumpSold(address indexed seller, uint256 jumpAmount, uint256 gameCoinReceived, uint256 timestamp)',
+];
+
 // CoopMall 컨트랙트 (폐쇄 전용몰)
 const COOP_MALL_ADDRESS = '0x421Bb7Ba86c8cafA181F85C9907B864B85bEF49A';
 
@@ -220,6 +248,12 @@ function getCoopMallContract(signerOrProvider) {
   return new ethers.Contract(COOP_MALL_ADDRESS, COOP_MALL_ABI, signerOrProvider);
 }
 
+function getJumpAutoExchangeContract(signerOrProvider) {
+  const addr = process.env.JUMP_AUTO_EXCHANGE_ADDRESS;
+  if (!addr) throw new Error('[chain] JUMP_AUTO_EXCHANGE_ADDRESS 미설정');
+  return new ethers.Contract(addr, JUMP_AUTO_EXCHANGE_ABI, signerOrProvider);
+}
+
 /**
  * 복호화된 private key로 Wallet 복원
  */
@@ -254,6 +288,7 @@ module.exports = {
   getJumpTokenContract,
   getJumpBankContract,
   getCoopMallContract,
+  getJumpAutoExchangeContract,
   walletFromKey,
   getAdminWallet,
   estimateGasWithBuffer,
