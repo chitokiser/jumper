@@ -223,6 +223,26 @@
     .jp-sc-x{position:absolute;top:12px;right:14px;background:none;border:none;color:#64748b;font-size:22px;cursor:pointer;line-height:1;z-index:2;padding:2px 6px;}
     .jp-sc-x:hover{color:#94a3b8;}
 
+    /* ── 랭킹 ── */
+    .ranking-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    @media(max-width:600px){.ranking-grid{grid-template-columns:1fr;}}
+    .ranking-card{background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;overflow:hidden;}
+    .ranking-card-title{padding:12px 16px;font-size:0.88rem;font-weight:700;border-bottom:1px solid var(--border,#e5e7eb);background:var(--surface2,#f9fafb);}
+    .ranking-list{padding:8px 0;}
+    .ranking-loading{text-align:center;color:var(--muted,#6b7280);font-size:0.82rem;padding:20px 0;}
+    .ranking-empty{text-align:center;color:var(--muted,#9ca3af);font-size:0.82rem;padding:20px 0;}
+    .ranking-row{display:flex;align-items:center;gap:10px;padding:8px 14px;transition:background .12s;}
+    .ranking-row:hover{background:var(--surface2,#f9fafb);}
+    .ranking-num{width:22px;text-align:center;font-size:0.85rem;font-weight:700;color:var(--muted,#6b7280);flex-shrink:0;}
+    .ranking-num.gold{color:#f59e0b;font-size:1rem;}
+    .ranking-num.silver{color:#94a3b8;font-size:1rem;}
+    .ranking-num.bronze{color:#b45309;font-size:1rem;}
+    .ranking-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;background:var(--accent-light,#ede9fe);flex-shrink:0;}
+    .ranking-avatar-ph{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#ede9fe,#ddd6fe);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:var(--accent,#7c3aed);flex-shrink:0;}
+    .ranking-info{flex:1;min-width:0;}
+    .ranking-name{font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .ranking-val{font-size:0.75rem;color:var(--muted,#6b7280);}
+
   </style>
 </head>
 <body>
@@ -371,6 +391,29 @@
           </a>
         </div>
         <div class="sponsor-dots" id="sponsorDots" aria-label="배너 페이지"></div>
+      </div>
+    </section>
+
+    <!-- ── 랭킹 섹션 ── -->
+    <section class="section" id="rankingSection">
+      <div class="section-h">
+        <h2 class="section-title">🏆 랭킹</h2>
+      </div>
+      <div class="ranking-grid">
+        <!-- 보물박스 랭킹 -->
+        <div class="ranking-card">
+          <div class="ranking-card-title">📦 보물박스 수집 랭킹</div>
+          <div id="treasureRankingList" class="ranking-list">
+            <div class="ranking-loading">로딩 중...</div>
+          </div>
+        </div>
+        <!-- JUMP 토큰 보유 랭킹 -->
+        <div class="ranking-card">
+          <div class="ranking-card-title">🪙 JUMP 토큰 보유 랭킹</div>
+          <div id="jumpRankingList" class="ranking-list">
+            <div class="ranking-loading">로딩 중...</div>
+          </div>
+        </div>
       </div>
     </section>
 

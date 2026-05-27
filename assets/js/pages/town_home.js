@@ -427,6 +427,45 @@ function openShareModal(winner) {
   };
 }
 
+function renderRankingList(el, rows, valueFn) {
+  if (!el) return;
+  if (!rows.length) {
+    el.innerHTML = `<div class="ranking-empty">${_t('ranking_empty')}</div>`;
+    return;
+  }
+  const MEDALS = ['🥇', '🥈', '🥉'];
+  const MEDAL_CLS = ['gold', 'silver', 'bronze'];
+  el.innerHTML = rows.map(row => {
+    const i = row.rank - 1;
+    const numHtml = i < 3
+      ? `<div class="ranking-num ${MEDAL_CLS[i]}">${MEDALS[i]}</div>`
+      : `<div class="ranking-num">${row.rank}</div>`;
+    const avatarHtml = row.photoURL
+      ? `<img class="ranking-avatar" src="${escHtml(row.photoURL)}" alt="" loading="lazy">`
+      : `<div class="ranking-avatar-ph">${escHtml(String(row.displayName || '?')[0].toUpperCase())}</div>`;
+    return `<div class="ranking-row">${numHtml}${avatarHtml}<div class="ranking-info"><div class="ranking-name">${escHtml(row.displayName || '익명')}</div><div class="ranking-val">${escHtml(valueFn(row))}</div></div></div>`;
+  }).join('');
+}
+
+async function loadRankings() {
+  const treasureEl = $('treasureRankingList');
+  const jumpEl = $('jumpRankingList');
+  if (!treasureEl && !jumpEl) return;
+
+  try {
+    const fn = httpsCallable(functions, 'getHomeRankings');
+    const res = await fn();
+    const { treasureRanking = [], jumpRanking = [] } = res.data || {};
+    renderRankingList(treasureEl, treasureRanking, (r) => `${Number(r.treasuresFound).toLocaleString()}${_t('ranking_found_suffix')}`);
+    renderRankingList(jumpEl, jumpRanking, (r) => `${Number(r.jumpBalance).toLocaleString()} JUMP`);
+  } catch (e) {
+    console.warn('loadRankings failed:', e);
+    const errHtml = `<div class="ranking-empty">${_t('ranking_error')}</div>`;
+    if (treasureEl) treasureEl.innerHTML = errHtml;
+    if (jumpEl) jumpEl.innerHTML = errHtml;
+  }
+}
+
 async function isAdmin(uid) {
   if (!uid) return false;
   try {
@@ -1006,6 +1045,7 @@ initLang();
 loadNotices();
 initJackpotTicker();
 loadJackpotWinners();
+loadRankings();
 loadUsedMarketPreview();
 loadMerchants();
 loadCoopProducts();

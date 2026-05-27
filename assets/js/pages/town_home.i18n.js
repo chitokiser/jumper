@@ -106,6 +106,9 @@ const TRANSLATIONS = {
     used_market_sub: 'Mua bán nhanh chóng như Karrot',
     treasure_hide_title: '🗝️ Giấu kho báu của bạn',
     treasure_hide_sub: 'Đăng ký bảo vật — người dùng khác tìm kiếm → nhận phần thưởng!',
+    ranking_error: 'Không thể tải bảng xếp hạng',
+    ranking_empty: 'Chưa có dữ liệu xếp hạng',
+    ranking_found_suffix: ' hộp báu',
   },
   en: {
     page_title: 'Ocean Park - Where Adventure Begins',
@@ -213,6 +216,9 @@ const TRANSLATIONS = {
     used_market_sub: 'Buy and sell as easy as Carrot',
     treasure_hide_title: '🗝️ Hide Your Treasure',
     treasure_hide_sub: 'Register your item on the map — let others find it and earn rewards!',
+    ranking_error: 'Failed to load rankings',
+    ranking_empty: 'No ranking data yet',
+    ranking_found_suffix: ' found',
   },
   ko: {
     page_title: '모험이 시작되는 오션파크',
@@ -320,6 +326,9 @@ const TRANSLATIONS = {
     used_market_sub: '당근처럼 쉽고 빠르게 사고팔기',
     treasure_hide_title: '🗝️ 내 보물을 지도에 숨겨보세요',
     treasure_hide_sub: '아이템·코인을 등록하면 다른 유저가 GPS로 발견 → 보상 지급!',
+    ranking_error: '랭킹 로드 실패',
+    ranking_empty: '랭킹 데이터가 없습니다',
+    ranking_found_suffix: '개 발견',
   },
 };
 

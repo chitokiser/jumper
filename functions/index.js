@@ -49,6 +49,7 @@ const tutorialH              = require('./handlers/tutorial');
 const slotH                  = require('./handlers/slot');
 const userTreasureH          = require('./handlers/userTreasure');
 const coinExchangeH          = require('./handlers/coinExchange');
+const rankingsH              = require('./handlers/rankings');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -2059,4 +2060,10 @@ exports.listCoinExchanges = onCall(
     const { direction, limit } = req.data ?? {};
     return coinExchangeH.listCoinExchanges({ direction, limit });
   })
+);
+
+// ── 홈 랭킹 ──────────────────────────────────────────────────────────────────
+exports.getHomeRankings = onCall(
+  { region: 'us-central1', timeoutSeconds: 60 },
+  wrapError(async () => rankingsH.getHomeRankings())
 );
