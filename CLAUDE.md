@@ -158,4 +158,14 @@ type:
 ```
 
 ## 구글 검색엔진 등록 유지
- -구글검색엔진 확인된 상태 유지 할것
+- 구글검색엔진 확인된 상태 유지 할것
+- 검색엔진 신뢰도 높일 것
+- 베트남 여행 필수 사이트 — 공항에서부터 보물찾기 이벤트 키워드 유지
+
+## SEO 규칙
+- 모든 공개 페이지: title / description / og / twitter 메타 필수
+- title 형식: "페이지명 | JumpDAO — 부제"
+- 핵심 키워드: 베트남여행, 공항보물찾기, 위치기반게임, Web3, AR보물
+- canonical URL 필수
+- robots.txt: Sitemap 경로 포함 유지
+- sitemap.xml: 공개 페이지만 포함, admin/* 제외
