@@ -3504,6 +3504,19 @@ function initHunterRanking() {
 }
 
 // 페이지 로드 시 랭킹 초기화
-document.addEventListener('DOMContentLoaded', initHunterRanking);
+document.addEventListener('DOMContentLoaded', () => {
+  initHunterRanking();
+
+  // Phiếu đổi hàng 섹션 접기/펼치기
+  const excSection = document.getElementById('excSection');
+  const excToggleBtn = document.getElementById('excToggleBtn');
+  const excGrid = document.getElementById('excGrid');
+  if (excToggleBtn && excSection && excGrid) {
+    excToggleBtn.addEventListener('click', () => {
+      const isOpen = excSection.classList.toggle('open');
+      excGrid.classList.toggle('hidden', !isOpen);
+    });
+  }
+});
 
 init();

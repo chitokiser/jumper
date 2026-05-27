@@ -1201,13 +1201,25 @@
       padding-top: 32px;
       border-top: 2px solid var(--border, #e5e7eb);
     }
-    .exc-header { margin-bottom: 20px; }
+    .exc-header {
+      margin-bottom: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      user-select: none;
+    }
+    .exc-header-left { flex: 1; }
+    .exc-toggle-icon {
+      font-size: 1.1rem; color: var(--muted, #6b7280);
+      transition: transform 0.25s ease;
+      flex-shrink: 0; margin-left: 12px;
+    }
+    .exc-section.open .exc-toggle-icon { transform: rotate(180deg); }
     .exc-title {
       font-size: 1.35rem; font-weight: 800;
       margin: 0 0 6px;
       display: flex; align-items: center; gap: 8px;
     }
     .exc-desc { font-size: 0.88rem; color: var(--muted, #6b7280); margin: 0; }
+    .exc-grid.hidden { display: none; }
     .exc-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1671,12 +1683,15 @@
       </div>
 
       <!-- ── 상품교환권 섹션 ── -->
-      <div class="exc-section">
-        <div class="exc-header">
-          <h2 class="exc-title">🎟 Phiếu đổi hàng</h2>
-          <p class="exc-desc">Thu thập vật phẩm để đổi lấy phiếu mua hàng thực tế!</p>
+      <div class="exc-section" id="excSection">
+        <div class="exc-header" id="excToggleBtn">
+          <div class="exc-header-left">
+            <h2 class="exc-title">🎟 Phiếu đổi hàng</h2>
+            <p class="exc-desc">Thu thập vật phẩm để đổi lấy phiếu mua hàng thực tế!</p>
+          </div>
+          <span class="exc-toggle-icon">▼</span>
         </div>
-        <div class="exc-grid" id="excGrid">
+        <div class="exc-grid hidden" id="excGrid">
           <div class="exc-loading">Đang tải...</div>
         </div>
       </div>
