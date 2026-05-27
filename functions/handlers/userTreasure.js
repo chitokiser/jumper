@@ -17,9 +17,9 @@ function haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// 보물 위치에서 50~150m 랜덤 오프셋에 NPC 배치
+// 보물 위치에서 10~100m 랜덤 오프셋에 NPC 배치
 function randomNearbyPos(lat, lng) {
-  const dist  = 50 + Math.random() * 100;
+  const dist  = 10 + Math.random() * 90;
   const angle = Math.random() * 2 * Math.PI;
   const dLat  = (dist * Math.cos(angle)) / 111320;
   const dLng  = (dist * Math.sin(angle)) / (111320 * Math.cos(lat * Math.PI / 180));
@@ -37,7 +37,7 @@ async function registerUserTreasure(uid, {
   if (!hint || String(hint).trim().length < 5)
     throw new HttpsError('invalid-argument', '힌트는 5자 이상 입력하세요');
 
-  const radius = Math.max(10, Math.min(200, Number(radiusM) || 30));
+  const radius = Math.max(5, Math.min(50, Number(radiusM) || 5));
   const count  = Math.max(1, Math.floor(Number(itemCount) || 1));
 
   const userSnap = await db.collection('users').doc(uid).get();
@@ -52,7 +52,6 @@ async function registerUserTreasure(uid, {
     const current = invSnap.exists ? (invSnap.data().count || 0) : 0;
     if (current < count)
       throw new HttpsError('failed-precondition', `아이템 수량 부족 (보유: ${current})`);
-    // 인벤토리 차감
     await db.collection('treasure_inventory').doc(`${uid}_${itemId}`).set({
       uid, itemId, count: current - count,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -68,8 +67,9 @@ async function registerUserTreasure(uid, {
     }, { merge: true });
   }
 
-  const npcPos     = randomNearbyPos(Number(lat), Number(lng));
-  const expiresAt  = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const npcImageNum = Math.ceil(Math.random() * 10);
+  const npcPos      = randomNearbyPos(Number(lat), Number(lng));
+  const expiresAt   = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
   const treasureRef = db.collection('user_treasures').doc();
   const npcRef      = db.collection('user_treasure_npcs').doc();
@@ -102,8 +102,9 @@ async function registerUserTreasure(uid, {
     tx.set(npcRef, {
       ...commonData,
       userTreasureId: treasureRef.id,
-      ownerId:   uid,
-      ownerName: displayName,
+      ownerId:      uid,
+      ownerName:    displayName,
+      npcImageNum,
       lat:         npcPos.lat,
       lng:         npcPos.lng,
       treasureLat: Number(lat),
@@ -174,7 +175,6 @@ async function discoverUserTreasure(uid, { npcId, userLat, userLng } = {}) {
     }
   });
 
-  // 랭킹 카운터 (트랜잭션 밖 — 실패해도 무방)
   db.collection('battle_players').doc(uid).set(
     { treasuresFound: admin.firestore.FieldValue.increment(1) },
     { merge: true }
@@ -200,17 +200,19 @@ async function listUserTreasureNpcs() {
   return snap.docs.map(d => {
     const r = d.data();
     return {
-      id:        d.id,
-      ownerName: r.ownerName,
-      lat:       r.lat,
-      lng:       r.lng,
-      hint:      r.hint,
-      story:     r.story,
-      comment:   r.comment,
-      radiusM:   r.radiusM,
-      type:      r.type,
-      itemId:    r.itemId,
-      itemCount: r.itemCount,
+      id:          d.id,
+      ownerId:     r.ownerId,
+      ownerName:   r.ownerName,
+      npcImageNum: r.npcImageNum || 1,
+      lat:         r.lat,
+      lng:         r.lng,
+      hint:        r.hint,
+      story:       r.story,
+      comment:     r.comment,
+      radiusM:     r.radiusM,
+      type:        r.type,
+      itemId:      r.itemId,
+      itemCount:   r.itemCount,
     };
   });
 }
@@ -264,10 +266,83 @@ async function cancelUserTreasure(uid, { treasureId } = {}) {
   return { ok: true };
 }
 
+// ── 댓글 추가 ────────────────────────────────────────────────────────────────
+async function addTreasureComment(uid, { npcId, text } = {}) {
+  if (!npcId || !text || !String(text).trim())
+    throw new HttpsError('invalid-argument', 'npcId, text 필수');
+  const trimmed = String(text).trim().slice(0, 200);
+  if (trimmed.length < 1)
+    throw new HttpsError('invalid-argument', '댓글 내용을 입력하세요');
+
+  const npcSnap = await db.collection('user_treasure_npcs').doc(npcId).get();
+  if (!npcSnap.exists) throw new HttpsError('not-found', 'NPC를 찾을 수 없습니다');
+
+  const userSnap = await db.collection('users').doc(uid).get();
+  const displayName = userSnap.exists
+    ? (userSnap.data().displayName || userSnap.data().name || '익명')
+    : '익명';
+
+  const ref = db.collection('user_treasure_npcs').doc(npcId).collection('comments').doc();
+  await ref.set({
+    uid,
+    displayName,
+    text: trimmed,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true, commentId: ref.id };
+}
+
+// ── 댓글 삭제 (본인 또는 관리자) ─────────────────────────────────────────────
+async function deleteTreasureComment(uid, { npcId, commentId } = {}, isAdmin = false) {
+  if (!npcId || !commentId)
+    throw new HttpsError('invalid-argument', 'npcId, commentId 필수');
+
+  const npcSnap = await db.collection('user_treasure_npcs').doc(npcId).get();
+  if (!npcSnap.exists) throw new HttpsError('not-found', 'NPC를 찾을 수 없습니다');
+  const npcData = npcSnap.data();
+
+  const commentRef = db.collection('user_treasure_npcs').doc(npcId).collection('comments').doc(commentId);
+  const commentSnap = await commentRef.get();
+  if (!commentSnap.exists) throw new HttpsError('not-found', '댓글을 찾을 수 없습니다');
+  const comment = commentSnap.data();
+
+  // 댓글 작성자, NPC 소유자(보물 숨긴 사람), 관리자만 삭제 가능
+  if (comment.uid !== uid && npcData.ownerId !== uid && !isAdmin)
+    throw new HttpsError('permission-denied', '삭제 권한이 없습니다');
+
+  await commentRef.delete();
+  return { ok: true };
+}
+
+// ── 댓글 목록 조회 ───────────────────────────────────────────────────────────
+async function listTreasureComments({ npcId } = {}) {
+  if (!npcId) throw new HttpsError('invalid-argument', 'npcId 필수');
+
+  const snap = await db.collection('user_treasure_npcs').doc(npcId)
+    .collection('comments')
+    .orderBy('createdAt', 'asc')
+    .limit(50)
+    .get();
+
+  return snap.docs.map(d => {
+    const r = d.data();
+    return {
+      id:          d.id,
+      uid:         r.uid,
+      displayName: r.displayName,
+      text:        r.text,
+      createdAt:   r.createdAt?.toMillis() ?? null,
+    };
+  });
+}
+
 module.exports = {
   registerUserTreasure,
   discoverUserTreasure,
   listUserTreasureNpcs,
   getMyUserTreasures,
   cancelUserTreasure,
+  addTreasureComment,
+  deleteTreasureComment,
+  listTreasureComments,
 };

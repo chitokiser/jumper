@@ -1440,27 +1440,35 @@
     /* ── 사용자 보물 NPC 정보 모달 ── */
     #utNpcModal {
       display: none; position: fixed; inset: 0; z-index: 8500;
-      background: rgba(0,0,0,.7);
-      align-items: center; justify-content: center; padding: 16px;
+      background: rgba(0,0,0,.75);
+      align-items: flex-start; justify-content: center;
+      padding: 16px 16px 32px; overflow-y: auto;
     }
     #utNpcModal.open { display: flex; }
     .ut-npc-panel {
       background: #2c1a0e; border: 3px solid #7a5c3a;
-      border-radius: 18px; width: min(360px,95vw);
+      border-radius: 18px; width: min(380px,95vw);
       box-shadow: 0 8px 40px rgba(0,0,0,.7); overflow: hidden;
+      flex-shrink: 0; margin: auto 0;
     }
     .ut-npc-header {
       background: linear-gradient(135deg,#5c3a1e,#3d2410);
-      color: #ffd700; padding: 14px 18px;
+      color: #ffd700; padding: 12px 18px;
       font-size: 15px; font-weight: 800;
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; align-items: center; gap: 10px;
       border-bottom: 2px solid #7a5c3a;
     }
+    .ut-npc-avatar {
+      width: 44px; height: 44px; border-radius: 10px;
+      border: 2px solid #ffd700; object-fit: cover; flex-shrink: 0;
+      background: #1a0e06;
+    }
+    .ut-npc-header-title { flex: 1; }
     .ut-npc-close {
       background: none; border: none; color: #ffd700;
-      font-size: 20px; cursor: pointer; line-height: 1; padding: 0 4px;
+      font-size: 20px; cursor: pointer; line-height: 1; padding: 0 4px; flex-shrink: 0;
     }
-    .ut-npc-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .ut-npc-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 11px; }
     .ut-npc-field label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 3px; }
     .ut-npc-field p { color: #f3e8d0; font-size: 13px; margin: 0; line-height: 1.55; word-break: break-word; }
     .ut-npc-reward {
@@ -1472,6 +1480,34 @@
     .ut-npc-reward-type { font-size: 11px; color: #9ca3af; }
     .ut-npc-reward-val  { font-size: 15px; font-weight: 800; color: #ffd700; }
     .ut-npc-radius { font-size: 11px; color: #c9a870; margin-top: 2px; }
+    /* 댓글 섹션 */
+    .ut-npc-comments { border-top: 1px solid #3d2410; padding-top: 10px; }
+    .ut-npc-comments-title { font-size: 11px; font-weight: 700; color: #c9a870; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .ut-npc-comment-list { max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    .ut-npc-comment-item { background: #1a0e06; border: 1px solid #3d2410; border-radius: 8px; padding: 7px 10px; position: relative; }
+    .ut-npc-comment-author { font-size: 10px; font-weight: 700; color: #c9a870; margin-bottom: 2px; }
+    .ut-npc-comment-text { font-size: 12px; color: #e5d5b5; line-height: 1.5; word-break: break-word; padding-right: 24px; }
+    .ut-npc-comment-del {
+      position: absolute; top: 6px; right: 6px;
+      background: none; border: none; color: #6b7280; font-size: 14px;
+      cursor: pointer; line-height: 1; padding: 0 2px;
+    }
+    .ut-npc-comment-del:hover { color: #f87171; }
+    .ut-npc-comment-empty { font-size: 12px; color: #6b7280; text-align: center; padding: 8px 0; }
+    .ut-npc-comment-form { display: flex; gap: 6px; align-items: flex-end; }
+    .ut-npc-comment-input {
+      flex: 1; padding: 7px 9px; border-radius: 8px;
+      border: 1px solid #5c3a1e; background: #1a0e06;
+      color: #f3e8d0; font-size: 12px; outline: none; resize: none;
+      box-sizing: border-box; line-height: 1.4;
+    }
+    .ut-npc-comment-input:focus { border-color: #ffd700; }
+    .btn-comment-submit {
+      padding: 7px 12px; border: none; border-radius: 8px;
+      background: #5c3a1e; color: #ffd700; font-size: 12px; font-weight: 700;
+      cursor: pointer; white-space: nowrap; transition: background .15s;
+    }
+    .btn-comment-submit:hover { background: #7a5c3a; }
     .btn-discover {
       width: 100%; padding: 11px 0; border: none; border-radius: 10px;
       background: linear-gradient(135deg,#b45309,#f59e0b);
@@ -2021,7 +2057,8 @@
   <div id="utNpcModal" role="dialog" aria-modal="true">
     <div class="ut-npc-panel">
       <div class="ut-npc-header">
-        <span>🗝️ Treasure NPC</span>
+        <img class="ut-npc-avatar" id="utNpcAvatar" src="/assets/images/npc/npc1.png" alt="NPC">
+        <div class="ut-npc-header-title">🗝️ Treasure NPC</div>
         <button class="ut-npc-close" id="btnCloseUtNpc">✕</button>
       </div>
       <div class="ut-npc-body">
@@ -2038,7 +2075,7 @@
           <p id="utNpcStory"></p>
         </div>
         <div class="ut-npc-field" id="utNpcCommentWrap">
-          <label>코멘트 / Comment</label>
+          <label>등록자 메시지</label>
           <p id="utNpcComment"></p>
         </div>
         <div class="ut-npc-reward">
@@ -2047,6 +2084,17 @@
             <div class="ut-npc-reward-type" id="utNpcRewardType">보물</div>
             <div class="ut-npc-reward-val" id="utNpcRewardVal">—</div>
             <div class="ut-npc-radius" id="utNpcRadius">발견 반경: —</div>
+          </div>
+        </div>
+        <!-- 댓글 섹션 -->
+        <div class="ut-npc-comments">
+          <div class="ut-npc-comments-title">💬 댓글</div>
+          <div class="ut-npc-comment-list" id="utNpcCommentList">
+            <div class="ut-npc-comment-empty">로딩 중…</div>
+          </div>
+          <div class="ut-npc-comment-form">
+            <textarea id="utNpcCommentInput" class="ut-npc-comment-input" rows="2" placeholder="댓글을 입력하세요…" maxlength="200"></textarea>
+            <button class="btn-comment-submit" id="btnUtNpcCommentSubmit">전송</button>
           </div>
         </div>
         <div class="ut-npc-msg" id="utNpcMsg"></div>
@@ -2080,7 +2128,7 @@
         <!-- 수량 -->
         <div>
           <label class="ut-reg-label" for="utRegCount" id="utRegCountLabel">수량</label>
-          <input class="ut-reg-input" id="utRegCount" type="number" min="1" value="1" placeholder="수량 입력">
+          <input class="ut-reg-input" id="utRegCount" type="number" min="1" value="100" placeholder="수량 입력">
         </div>
         <!-- GPS -->
         <div>
@@ -2094,8 +2142,8 @@
         </div>
         <!-- 반경 -->
         <div>
-          <label class="ut-reg-label" for="utRegRadius">발견 반경 (10~200m)</label>
-          <input class="ut-reg-input" id="utRegRadius" type="number" min="10" max="200" value="30" placeholder="30">
+          <label class="ut-reg-label" for="utRegRadius">발견 반경 (5~50m)</label>
+          <input class="ut-reg-input" id="utRegRadius" type="number" min="5" max="50" value="5" placeholder="5">
         </div>
         <!-- 힌트 -->
         <div>

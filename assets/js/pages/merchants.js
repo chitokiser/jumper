@@ -92,7 +92,8 @@ let _droppedItems   = {};        // {dropId: dropData} 바닥에 버려진 아�
 let _dropMarkers    = {};        // {dropId: google.maps.Marker} 드랍 마커
 let _dropsUnsubscribe = null;    // onSnapshot 해제 함수
 let _alertedDropIds = new Set(); // 이미 알림을 보낸 dropId (중복 방지)
-let _utNpcMarkers   = {};        // {npcId: google.maps.Marker} 사용자 보물 NPC 마커
+let _utNpcMarkers   = {};        // {npcId: google.maps.Marker} 사용자 보물 NPC 마커 (map에 등록된 것만)
+let _utNpcData      = [];        // 서버에서 받은 전체 NPC 데이터 배열 (위치 기반 proximity 계산용)
 let _utCurrentNpc   = null;      // 현재 선택된 사용자 보물 NPC
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
@@ -1340,14 +1341,19 @@ function _updateDetector(lat, lng) {
     const d = haversine(lat, lng, Number(box.lat), Number(box.lng));
     if (d < minDist) minDist = d;
   }
+  // 사용자 숨긴 보물 NPC 위치도 탐지 (NPC 위치 기준)
+  for (const npc of _utNpcData) {
+    if (!npc.lat || !npc.lng) continue;
+    const d = haversine(lat, lng, npc.lat, npc.lng);
+    if (d < minDist) minDist = d;
+  }
   if (minDist > 30) {
-    _detectorNextInterval = 0; // 범위 밖 — 루프 자연 종료
+    _detectorNextInterval = 0;
     return;
   }
   // 30m → 2000ms / 0m → 150ms 선형 보간
   _detectorNextInterval = Math.round(Math.max(150, 150 + (minDist / 30) * 1850));
   if (!_detectorBeepTimer) {
-    // 아직 루프가 없으면 즉시 beep 시작
     _detectorBeep();
     _detectorBeepTimer = setTimeout(_scheduleNextBeep, _detectorNextInterval);
   }
@@ -1407,6 +1413,7 @@ async function checkProximity(lat, lng) {
   checkShopProximity(lat, lng);
   _updateDetector(lat, lng);
   _checkDropProximity(lat, lng);
+  _checkUserNpcProximity(lat, lng);
 }
 
 async function tryCollect(box) {
@@ -3497,24 +3504,42 @@ async function loadUserTreasureNpcs() {
   try {
     const { data } = await httpsCallable(functions, 'listUserTreasureNpcs')();
     const npcs = Array.isArray(data) ? data : [];
+    // 기존 마커 제거
     Object.values(_utNpcMarkers).forEach(m => m.setMap(null));
     _utNpcMarkers = {};
-    npcs.forEach(npc => { _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc); });
+    _utNpcData = npcs;
+    // 현재 위치 기준 초기 5m 이내 NPC만 즉시 표시
+    const pos = _ctx.lastPos;
+    if (pos) {
+      npcs.forEach(npc => {
+        const d = haversine(pos.lat, pos.lng, npc.lat, npc.lng);
+        if (d <= 5) _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc);
+      });
+    }
   } catch (_e) { /* silent */ }
 }
 
+// 5m 이내 NPC 마커 표시 / 8m 초과 시 숨김 (히스테리시스)
+function _checkUserNpcProximity(lat, lng) {
+  for (const npc of _utNpcData) {
+    const d = haversine(lat, lng, npc.lat, npc.lng);
+    if (d <= 5 && !_utNpcMarkers[npc.id]) {
+      _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc);
+    } else if (d > 8 && _utNpcMarkers[npc.id]) {
+      _utNpcMarkers[npc.id].setMap(null);
+      delete _utNpcMarkers[npc.id];
+    }
+  }
+}
+
 function _makeUserNpcMarker(npc) {
-  const svgSrc = encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">` +
-    `<circle cx="11" cy="11" r="10" fill="#7B3F00" stroke="#FFD700" stroke-width="2"/>` +
-    `<text x="11" y="16" text-anchor="middle" font-size="12" font-family="serif">T</text></svg>`
-  );
+  const imgNum = npc.npcImageNum || 1;
   const marker = new google.maps.Marker({
     position: { lat: npc.lat, lng: npc.lng },
     map: _ctx.map,
     title: (npc.ownerName || '?') + '의 보물',
     icon: {
-      url: 'data:image/svg+xml;charset=UTF-8,' + svgSrc,
+      url: `/assets/images/npc/npc${imgNum}.png`,
       scaledSize: new google.maps.Size(22, 22),
       anchor: new google.maps.Point(11, 11),
     },
@@ -3528,14 +3553,30 @@ function showUserNpcInfo(npc) {
   _utCurrentNpc = npc;
   const modal = document.getElementById('utNpcModal');
   if (!modal) return;
+  // NPC 이미지
+  const avatarEl = document.getElementById('utNpcAvatar');
+  if (avatarEl) avatarEl.src = `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
+  // 기본 정보
   document.getElementById('utNpcOwner').textContent   = npc.ownerName || '?';
   document.getElementById('utNpcHint').textContent    = npc.hint || '';
   document.getElementById('utNpcStory').textContent   = npc.story || '';
   document.getElementById('utNpcComment').textContent = npc.comment || '';
+  const storyWrap = document.getElementById('utNpcStoryWrap');
+  const commentWrap = document.getElementById('utNpcCommentWrap');
+  if (storyWrap) storyWrap.classList.toggle('hidden', !npc.story);
+  if (commentWrap) commentWrap.classList.toggle('hidden', !npc.comment);
+  // 보상 정보
   document.getElementById('utNpcRewardType').textContent = npc.type === 'item' ? '아이템' : '코인';
   document.getElementById('utNpcRewardVal').textContent  = npc.type === 'item'
     ? `×${npc.itemCount}` : `${npc.itemCount}`;
   document.getElementById('utNpcRadius').textContent = `발견 반경: ${npc.radiusM}m`;
+  // 자기 보물이면 발견하기 버튼 숨김
+  const discoverBtn = document.getElementById('btnDiscoverTreasure');
+  if (discoverBtn) discoverBtn.classList.toggle('hidden', npc.ownerId === _uid);
+  // 메시지 초기화
+  _utNpcMsg('');
+  // 댓글 로드
+  loadNpcComments(npc.id);
   modal.classList.add('open');
 }
 
@@ -3579,6 +3620,67 @@ async function discoverTreasure(npcId) {
   }
 }
 
+// ── 댓글 시스템 ────────────────────────────────────────────────────────────────
+
+async function loadNpcComments(npcId) {
+  const listEl = document.getElementById('utNpcCommentList');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="ut-npc-comment-empty">로딩 중…</div>';
+  try {
+    const { data } = await httpsCallable(functions, 'listTreasureComments')({ npcId });
+    const comments = Array.isArray(data) ? data : [];
+    if (!comments.length) {
+      listEl.innerHTML = '<div class="ut-npc-comment-empty">댓글이 없습니다. 첫 번째 댓글을 남겨보세요!</div>';
+      return;
+    }
+    listEl.innerHTML = comments.map(c => {
+      const canDel = (c.uid === _uid || _isAdmin) && _uid;
+      const dateStr = c.createdAt ? new Date(c.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      return `<div class="ut-npc-comment-item" data-cid="${c.id}">
+        <div class="ut-npc-comment-author">${escHtml(c.displayName || '익명')} <span style="color:#6b7280;font-weight:400">${dateStr}</span></div>
+        <div class="ut-npc-comment-text">${escHtml(c.text)}</div>
+        ${canDel ? `<button class="ut-npc-comment-del" data-cid="${c.id}" title="삭제">✕</button>` : ''}
+      </div>`;
+    }).join('');
+    listEl.querySelectorAll('.ut-npc-comment-del').forEach(btn => {
+      btn.addEventListener('click', () => deleteNpcComment(npcId, btn.dataset.cid));
+    });
+  } catch (e) {
+    listEl.innerHTML = `<div class="ut-npc-comment-empty" style="color:#f87171">댓글 로드 실패</div>`;
+  }
+}
+
+async function submitNpcComment() {
+  const npc = _utCurrentNpc;
+  if (!npc) return;
+  if (!_uid) { _utNpcMsg('댓글을 달려면 로그인하세요.', true); return; }
+  const input = document.getElementById('utNpcCommentInput');
+  const text = input?.value?.trim();
+  if (!text) return;
+  const btn = document.getElementById('btnUtNpcCommentSubmit');
+  if (btn) btn.disabled = true;
+  try {
+    await httpsCallable(functions, 'addTreasureComment')({ npcId: npc.id, text });
+    if (input) input.value = '';
+    loadNpcComments(npc.id);
+  } catch (e) {
+    _utNpcMsg('⚠️ ' + (e.message || '댓글 전송 실패'), true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function deleteNpcComment(npcId, commentId) {
+  try {
+    await httpsCallable(functions, 'deleteTreasureComment')({ npcId, commentId });
+    loadNpcComments(npcId);
+  } catch (e) {
+    _utNpcMsg('⚠️ ' + (e.message || '삭제 실패'), true);
+  }
+}
+
+// ── 보물 등록 ──────────────────────────────────────────────────────────────────
+
 function openRegisterTreasureModal() {
   const modal = document.getElementById('utRegModal');
   if (!modal) return;
@@ -3606,31 +3708,44 @@ function openRegisterTreasureModal() {
   modal.classList.add('open');
 }
 
+function _utRegMsg(text, isErr) {
+  const el = document.getElementById('utRegMsg');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = isErr ? '#f87171' : '#6ee7b7';
+}
+
 async function registerTreasure() {
   const activeTypeBtn = document.querySelector('.ut-reg-type-btn.active');
   const type    = activeTypeBtn?.dataset.type || 'item';
   const itemId  = document.getElementById('utRegItemSel')?.value || null;
   const count   = parseInt(document.getElementById('utRegCount')?.value || '1', 10);
-  const radiusM = parseInt(document.getElementById('utRegRadius')?.value || '30', 10);
+  const radiusM = parseInt(document.getElementById('utRegRadius')?.value || '5', 10);
   const hint    = document.getElementById('utRegHint')?.value?.trim();
   const story   = document.getElementById('utRegStory')?.value?.trim();
   const comment = document.getElementById('utRegComment')?.value?.trim();
   const lat     = parseFloat(document.getElementById('utRegLat')?.value);
   const lng     = parseFloat(document.getElementById('utRegLng')?.value);
-  if (!lat || !lng)      { alert('위치 정보가 없습니다. GPS 버튼을 눌러주세요.'); return; }
-  if (!hint || hint.length < 5) { alert('힌트는 5자 이상 입력하세요.'); return; }
-  if (type === 'item' && !itemId) { alert('아이템을 선택하세요.'); return; }
+  if (!lat || !lng)      { _utRegMsg('위치 정보가 없습니다. GPS 버튼을 눌러주세요.', true); return; }
+  if (!hint || hint.length < 5) { _utRegMsg('힌트는 5자 이상 입력하세요.', true); return; }
+  if (type === 'item' && !itemId) { _utRegMsg('아이템을 선택하세요.', true); return; }
   const btn = document.getElementById('btnUtRegSubmit');
   if (btn) btn.disabled = true;
+  _utRegMsg('등록 중…');
   try {
     await httpsCallable(functions, 'registerUserTreasure')(
       { type, itemId, itemCount: count, lat, lng, hint, story, comment, radiusM }
     );
     document.getElementById('utRegModal').classList.remove('open');
-    alert('✅ 보물이 숨겨졌습니다!');
+    const toast = document.getElementById('collectToast');
+    if (toast) {
+      toast.innerHTML = '✅ 보물이 숨겨졌습니다! NPC가 근처에 자동 생성됩니다.';
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
     loadUserTreasureNpcs();
   } catch (e) {
-    alert(e.message || '등록 실패');
+    _utRegMsg('⚠️ ' + (e.message || '등록 실패'), true);
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -3669,14 +3784,17 @@ async function openMyTreasuresModal() {
 }
 
 async function cancelTreasure(treasureId) {
-  if (!confirm('보물을 취소하면 아이템/골드가 반환됩니다. 계속하시겠습니까?')) return;
+  const listEl = document.getElementById('utMyList');
+  if (!listEl) return;
+  const prev = listEl.innerHTML;
+  listEl.innerHTML = '<p style="color:#aaa;text-align:center;padding:12px">취소 중…</p>';
   try {
     await httpsCallable(functions, 'cancelUserTreasure')({ treasureId });
-    alert('✅ 보물이 취소되었습니다.');
     openMyTreasuresModal();
     loadUserTreasureNpcs();
   } catch (e) {
-    alert(e.message || '취소 실패');
+    listEl.innerHTML = prev;
+    listEl.insertAdjacentHTML('afterbegin', `<p style="color:#f87171;font-size:12px;padding:6px 0">⚠️ ${e.message || '취소 실패'}</p>`);
   }
 }
 
@@ -3739,7 +3857,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnUtRegGps')
     ?.addEventListener('click', () => {
       const pos = _ctx.lastPos;
-      if (!pos) { alert('GPS 신호 대기 중...'); return; }
+      if (!pos) { _utRegMsg('📡 GPS 신호 대기 중... 게임을 먼저 시작하세요.', true); return; }
       const posEl = document.getElementById('utRegPosDisplay');
       const latEl = document.getElementById('utRegLat');
       const lngEl = document.getElementById('utRegLng');
@@ -3753,8 +3871,18 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.classList.add('active');
       document.getElementById('utRegItemWrap')
         ?.classList.toggle('hidden', btn.dataset.type !== 'item');
+      // 코인 선택 시 기본 수량 100, 아이템 선택 시 1
+      const countEl = document.getElementById('utRegCount');
+      if (countEl) countEl.value = btn.dataset.type === 'coin' ? '100' : '1';
     });
   });
+
+  document.getElementById('btnUtNpcCommentSubmit')
+    ?.addEventListener('click', submitNpcComment);
+  document.getElementById('utNpcCommentInput')
+    ?.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitNpcComment(); }
+    });
 });
 
 init();

@@ -1985,3 +1985,19 @@ exports.cancelUserTreasure = onCall(wrapError(async (req) => {
   const uid = requireAuth(req);
   return userTreasureH.cancelUserTreasure(uid, req.data ?? {});
 }));
+
+exports.addTreasureComment = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return userTreasureH.addTreasureComment(uid, req.data ?? {});
+}));
+
+exports.deleteTreasureComment = onCall(wrapError(async (req) => {
+  const uid     = requireAuth(req);
+  let isAdmin   = false;
+  try { await requireAdmin(uid); isAdmin = true; } catch (_) {}
+  return userTreasureH.deleteTreasureComment(uid, req.data ?? {}, isAdmin);
+}));
+
+exports.listTreasureComments = onCall(wrapError(async (req) => {
+  return userTreasureH.listTreasureComments(req.data ?? {});
+}));
