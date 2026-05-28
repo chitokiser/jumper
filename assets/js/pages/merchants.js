@@ -3321,7 +3321,11 @@ async function _execRepairShop(shop) {
 function openShopModal(shop) {
   // 1km 이내에 있어야만 상점 이용 가능
   const myPos = _ctx?.lastPos;
-  if (myPos && shop.lat && shop.lng) {
+  if (!myPos) {
+    showToast(_t('shop_gps_wait'), 'warn');
+    return;
+  }
+  if (shop.lat && shop.lng) {
     const distM = haversine(myPos.lat, myPos.lng, shop.lat, shop.lng);
     if (distM > 1000) {
       showToast(_t('shop_too_far', Math.round(distM / 100) / 10), 'warn');
@@ -3655,14 +3659,25 @@ async function _execLevelUpShop(shop) {
 }
 
 async function _execShopBuy(shopId, itemId, itemName, price, qty) {
+  const pos = _ctx?.lastPos;
+  if (!pos?.lat || !pos?.lng) {
+    showToast(_t('shop_gps_wait'), 'warn');
+    return;
+  }
+  if (_shopCurrentData?.lat && _shopCurrentData?.lng) {
+    const distM = haversine(pos.lat, pos.lng, _shopCurrentData.lat, _shopCurrentData.lng);
+    if (distM > 1000) {
+      showToast(_t('shop_too_far', Math.round(distM / 100) / 10), 'warn');
+      return;
+    }
+  }
   const total = price * qty;
   if (!confirm(_t('shop_buy_confirm', qty, total.toLocaleString()))) return;
   try {
-    const pos = _ctx.lastPos;
     await httpsCallable(functions, 'buyShopItem')({
       shopId, itemId, quantity: qty,
-      lat: pos?.lat ?? null,
-      lng: pos?.lng ?? null,
+      lat: pos.lat,
+      lng: pos.lng,
     });
     closeShopModal();
     await Promise.all([loadInventory(), loadPlayerState(), loadShops()]);

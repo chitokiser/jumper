@@ -133,8 +133,12 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {})
   const shop = shopSnap.data();
   if (!shop.active) throw new HttpsError('failed-precondition', '현재 이용할 수 없는 상점입니다');
 
-  // 1km 거리 제한 (위치를 전달한 경우에만 검증)
-  if (shop.lat != null && shop.lng != null && lat != null && lng != null) {
+  // 위치 정보 필수 — GPS 없이는 구매 불가
+  if (lat == null || lng == null)
+    throw new HttpsError('invalid-argument', '위치 정보가 필요합니다. GPS를 활성화하세요.');
+
+  // 1km 거리 제한
+  if (shop.lat != null && shop.lng != null) {
     const dist = haversineM(lat, lng, shop.lat, shop.lng);
     if (dist > 1000)
       throw new HttpsError('failed-precondition',

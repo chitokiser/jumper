@@ -270,6 +270,7 @@ const MESSAGES = {
   tut_done:              { ko: '시작하기 ✓',                vi: 'Bắt đầu ✓' },
 
   // ── 상점 ─────────────────────────────────────────────────────────────────────
+  shop_gps_wait:         { ko: '📍 GPS 위치를 확인 중입니다. 잠시 후 다시 시도하세요.', vi: '📍 Đang xác định vị trí GPS. Vui lòng thử lại sau.' },
   shop_too_far:          { ko: '📍 상점과 너무 멀리 있습니다 (현재 {0}km — 1km 이내에서만 이용 가능)', vi: '📍 Bạn ở quá xa cửa hàng ({0}km — chỉ sử dụng được trong vòng 1km)' },
   shop_buy_confirm:      { ko: '{0}개 구매 ({1} 골드)?',   vi: 'Mua {0} cái ({1} vàng)?' },
   shop_not_enough_gold:  { ko: '골드가 부족합니다',         vi: 'Không đủ vàng' },
