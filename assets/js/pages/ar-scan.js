@@ -1,10 +1,13 @@
 // /assets/js/pages/ar-scan.js
-// AR 보물 스캐너 — 기존 treasure_boxes 컬렉션 + collectTreasureBox Cloud Function
+// AR 보물 스캐너 — treasure_boxes + user_treasure_npcs
 
 import { auth, db, functions } from '../firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { collection, getDocs, getDoc, doc, query, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+const fnCollect  = httpsCallable(functions, 'collectTreasureBox');
+const fnDiscover = httpsCallable(functions, 'discoverUserTreasure');
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 const SCAN_RADIUS   = 300;  // m: scanRadius 미설정 박스의 기본 스캔 반경
@@ -51,6 +54,7 @@ let rafId         = null;
 let gpsWatchId    = null;
 let lastSonarTs   = 0;       // 마지막 소나 핑 시각 (ms)
 let prevAimed     = null;    // 이전 프레임 aimed (로크온 감지용)
+let isAdminUser   = false;   // 관리자 여부 (전세계 NPC 표시)
 
 // ── 수학 헬퍼 ─────────────────────────────────────────────────────────────────
 function toRad(d) { return d * Math.PI / 180; }
@@ -101,32 +105,76 @@ async function getGpsOnce() {
   );
 }
 
-// ── Firestore: 근처 박스 로드 (이미 획득한 박스 제외) ────────────────────────
+// ── Firestore: 근처 박스 + 개인 보물 NPC 로드 ────────────────────────────────
 async function loadNearbyBoxes(lat, lng) {
-  const snap = await getDocs(query(collection(db, 'treasure_boxes'), where('active', '==', true)));
-  const withinRange = snap.docs
+  const now = Date.now();
+
+  // 관리자 판별
+  isAdminUser = false;
+  if (currentUser) {
+    const adminSnap = await getDoc(doc(db, 'admins', currentUser.uid));
+    if (adminSnap.exists()) isAdminUser = true;
+  }
+
+  // ── treasure_boxes (관리자·가맹점 생성 NPC) ──────────────────────────────
+  const [boxSnap, npcSnap] = await Promise.all([
+    getDocs(query(collection(db, 'treasure_boxes'), where('active', '==', true))),
+    getDocs(query(collection(db, 'user_treasure_npcs'), where('status', '==', 'active'))),
+  ]);
+
+  const allBoxes = boxSnap.docs
     .map(d => ({ id: d.id, ...d.data() }))
-    .filter(b => b.lat != null && b.lng != null && !b.hiddenBox
-      && haversine(lat, lng, b.lat, b.lng) <= (b.scanRadius ?? SCAN_RADIUS));
+    .filter(b => b.lat != null && b.lng != null);
+
+  // ── user_treasure_npcs (개인 보물 NPC) → 공통 형식으로 정규화 ─────────────
+  const userNpcs = npcSnap.docs
+    .map(d => {
+      const r = d.data();
+      // 만료 체크
+      if (r.expiresAt && r.expiresAt.toMillis() < now) return null;
+      return {
+        id:           d.id,
+        lat:          r.lat,
+        lng:          r.lng,
+        name:         `🗝️ ${r.ownerName || '익명'}의 보물`,
+        hint:         r.hint || '',
+        radius:       r.radiusM ?? 5,
+        scanRadius:   SCAN_RADIUS,
+        startHour:    0,
+        endHour:      24,
+        active:       true,
+        isUserNpc:    true,
+        ownerId:      r.ownerId,
+      };
+    })
+    .filter(b => b !== null && b.lat != null && b.lng != null);
+
+  const combined = [...allBoxes, ...userNpcs];
+
+  // 관리자: 거리·시간 필터 없이 전세계 모든 NPC
+  if (isAdminUser) return combined;
+
+  // 일반 유저: 스캔 반경 이내 필터
+  const withinRange = combined.filter(
+    b => haversine(lat, lng, b.lat, b.lng) <= (b.scanRadius ?? SCAN_RADIUS)
+  );
 
   if (!currentUser || !withinRange.length) return withinRange;
 
-  // 관리자는 클레임 필터 건너뜀 (박스 테스트 가능)
-  const adminSnap = await getDoc(doc(db, 'admins', currentUser.uid));
-  if (adminSnap.exists()) return withinRange;
-
-  // 수집 로그 병렬 조회 — 리스폰 전인 박스 제거
-  const now = Date.now();
+  // treasure_boxes만 리스폰 로그 체크 (user NPC는 서버에서 status로 관리)
+  const boxes = withinRange.filter(b => !b.isUserNpc);
   const logs = await Promise.all(
-    withinRange.map(b => getDoc(doc(db, 'treasure_logs', `${currentUser.uid}_${b.id}`)))
+    boxes.map(b => getDoc(doc(db, 'treasure_logs', `${currentUser.uid}_${b.id}`)))
   );
-  return withinRange.filter((b, i) => {
+  const filteredBoxes = boxes.filter((b, i) => {
     if (!logs[i].exists()) return true;
     const d = logs[i].data();
     const lastMs    = d.collectedAt?.toMillis?.() || 0;
     const respawnMs = d.respawnIntervalMs ?? b.respawnIntervalMs ?? 86400000;
     return lastMs + respawnMs <= now;
   });
+
+  return [...filteredBoxes, ...withinRange.filter(b => b.isUserNpc)];
 }
 
 // ── 나침반 ────────────────────────────────────────────────────────────────────
@@ -346,8 +394,8 @@ function renderAR(ts) {
     const claimR       = box.radius ?? CLAIM_RADIUS;
     const inClaimRange = dist <= claimR;
 
-    // 운영 시간 외에는 표시하지 않음
-    if (!isInTimeRange(box.startHour ?? 0, box.endHour ?? 24)) continue;
+    // 운영 시간 외에는 표시하지 않음 (관리자는 시간 제한 없음)
+    if (!isAdminUser && !isInTimeRange(box.startHour ?? 0, box.endHour ?? 24)) continue;
 
     // 획득 가능 여부에 따라 색상·크기 분기
     const scale    = inClaimRange ? 1.4 : 1.0;
@@ -519,12 +567,25 @@ function updateClaimPanel() {
     const dist = userLat ? Math.round(haversine(userLat, userLng, targetBox.lat, targetBox.lng)) : null;
     const claimR = targetBox.radius ?? CLAIM_RADIUS;
     const inRange = dist !== null && dist <= claimR;
-    claimName.textContent = `📦 ${targetBox.name || 'Treasure Chest'}`;
+    const isOwn   = targetBox.isUserNpc && targetBox.ownerId === currentUser?.uid;
+
+    claimName.textContent = targetBox.isUserNpc
+      ? `🗝️ ${targetBox.name}`
+      : `📦 ${targetBox.name || 'Treasure Chest'}`;
+
     claimDist.textContent = dist !== null
-      ? (inRange ? `${dist}m — 획득 가능!` : `${dist}m away (${claimR}m 이내로 접근하세요)`)
+      ? (inRange ? `${dist}m — 획득 가능!` : `${dist}m (${claimR}m 이내로 접근하세요)`)
       : '위치 확인 중...';
-    claimResult.textContent = '';
-    claimBtn.disabled = !inRange;
+
+    if (targetBox.isUserNpc && targetBox.hint) {
+      claimResult.textContent = `💡 ${targetBox.hint}`;
+      claimResult.style.color = '#fde68a';
+    } else {
+      claimResult.textContent = '';
+    }
+
+    claimBtn.disabled = !inRange || isOwn;
+    claimBtn.textContent = isOwn ? '내 보물 (획득 불가)' : '📦 Claim Treasure';
     claimBtn.dataset.boxId = targetBox.id;
     claimPanel.classList.add('visible');
   } else {
@@ -547,19 +608,25 @@ async function handleClaim() {
   claimBtn.textContent = '⏳ Claiming...';
   claimResult.textContent = '';
 
+  const box = nearbyBoxes.find(b => b.id === boxId);
+
   try {
-    const fn = httpsCallable(functions, 'collectTreasureBox');
-    const res = await fn({ boxId, userLat, userLng });
+    let msg;
+    if (box?.isUserNpc) {
+      const res = await fnDiscover({ npcId: boxId, userLat, userLng });
+      msg = res.data?.message || `🎉 보물 발견! +${res.data?.bonusCoin ?? 0} Coin`;
+    } else {
+      const res = await fnCollect({ boxId, userLat, userLng });
+      msg = res.data?.message || 'Treasure claimed! 🎉';
+    }
 
     playSuccess();
     if (navigator.vibrate) navigator.vibrate([200, 100, 300]);
     spawnParticles(window.innerWidth/2, window.innerHeight*0.4);
 
-    const msg = res.data?.message || 'Treasure claimed! 🎉';
     claimResult.textContent = `🎉 ${msg}`;
     claimResult.style.color = '#86efac';
 
-    // 획득한 박스 목록에서 제거
     nearbyBoxes = nearbyBoxes.filter(b => b.id !== boxId);
     hudCount.textContent = `${nearbyBoxes.length} 📦`;
     targetBox = null;
