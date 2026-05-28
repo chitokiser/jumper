@@ -74,7 +74,7 @@ class DungeonGame {
     this._raf      = null;
     this._lastTs   = 0;
     this._keyHandler = null;
-    D_MDEFS.forEach(d => { const img=new Image(); img.src=d.src; this._imgs[d.id]=img; });
+    this._imgsLoaded = false;
     this._buildDOM();
   }
 
@@ -197,7 +197,13 @@ class DungeonGame {
   }
 
   // ── Screens ──────────────────────────────────────────────────────────────────
-  open()  { this._modal.classList.remove('hidden'); this._show('dgEntry'); this._updateTicketUI(); }
+  open()  {
+    if (!this._imgsLoaded) {
+      this._imgsLoaded = true;
+      D_MDEFS.forEach(d => { const img = new Image(); img.src = d.src; this._imgs[d.id] = img; });
+    }
+    this._modal.classList.remove('hidden'); this._show('dgEntry'); this._updateTicketUI();
+  }
   close() { this._stop(); this._modal.classList.add('hidden'); }
 
   _show(id) {

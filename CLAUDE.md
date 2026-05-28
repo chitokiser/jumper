@@ -68,6 +68,18 @@ getUserRole(uid)
 
 ---
 
+## 성능 / 서버 부하 최소화
+- Firestore 쿼리는 반드시 필요한 시점에만 실행 (페이지 로드 즉시 금지)
+- 뷰포트 진입 시 로드: IntersectionObserver 사용 (threshold: 0.1)
+- 메모리 캐시 → localStorage 캐시(TTL) → Firestore 순서 우선
+- 랭킹·목록 쿼리: where 필터로 불필요한 문서 스캔 제거
+- 이미지 프리로드: 실제 필요 시점(게임 시작·모달 열기)에만 실행
+- 모듈 최상단 preload 금지 — lazy load 원칙
+- Promise.race + 타임아웃(10s) 추가로 무한 로딩 방지
+- Firestore rules: 공개 데이터는 if true, 인증 필요 데이터만 signedIn()
+
+---
+
 ## DOM 최적화
 - querySelector 반복 금지
 - DOM 초기 캐싱 필수
@@ -160,7 +172,10 @@ type:
 ## 구글 검색엔진 등록 유지
 - 구글검색엔진 확인된 상태 유지 할것
 - 검색엔진 신뢰도 높일 것
-- 베트남 여행 필수 사이트 — 공항에서부터 보물찾기 이벤트 키워드 유지
+- 보물숨기기— 보물찾기
+- 지오캐싱과 포켓몬고를 뛰어넘는 플랫폼
+- 가맹점 이용시 물약 & 잭팟
+-
 
 ## SEO 규칙
 - 모든 공개 페이지: title / description / og / twitter 메타 필수
@@ -169,3 +184,7 @@ type:
 - canonical URL 필수
 - robots.txt: Sitemap 경로 포함 유지
 - sitemap.xml: 공개 페이지만 포함, admin/* 제외
+
+
+## 유저 id를 표시해야 할때 
+-가입 당시 입력한 이름을 사용한다

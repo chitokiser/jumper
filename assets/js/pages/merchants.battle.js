@@ -90,7 +90,8 @@ let _lastPosWriteAt       = 0;      // 위치 Firestore 저장 쓰로틀
 
 // ── 상점 상태 ─────────────────────────────────────────────────────────────────
 let _shops        = [];   // [{id, name, type, lat, lng, items, active}]
-let _shopMarkers  = {};   // { shopId: google.maps.Marker }
+let _shopMarkers   = {};   // { shopId: google.maps.Marker } — main icon
+let _shopHpMarkers = {};   // { shopId: google.maps.Marker } — HP bar overlay
 const SHOP_RANGE_M = 20;  // 상점 진입 반경(m)
 const SHOP_EXIT_M  = 30;  // 상점 이탈 판정 반경(m) — GPS 노이즈로 인한 오발동 방지 히스테리시스
 const SHOP_ICONS  = { weapon_armor: '⚔️', potion: '🧪', misc: '🛍️' };
@@ -3172,10 +3173,19 @@ export function hideMyMarker() {
 
 function _makeShopIcon(type, imageUrl) {
   const url = imageUrl || 'assets/images/shops/arms.png';
+  return { url, scaledSize: new google.maps.Size(44, 44), anchor: new google.maps.Point(22, 22) };
+}
+
+function _makeShopHpBarIcon(hp, maxHp) {
+  const pct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
+  const barColor = pct > 60 ? '#10b981' : pct > 30 ? '#f59e0b' : '#ef4444';
+  const W = 44, H = 7;
+  const barW = Math.round(W * pct / 100);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect x="0" y="0" width="${W}" height="${H}" rx="3" fill="#374151"/><rect x="0" y="0" width="${barW}" height="${H}" rx="3" fill="${barColor}"/></svg>`;
   return {
-    url,
-    scaledSize: new google.maps.Size(44, 44),
-    anchor:     new google.maps.Point(22, 22),
+    url: 'data:image/svg+xml,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(W, H),
+    anchor:     new google.maps.Point(W / 2, -28),
   };
 }
 
@@ -3191,6 +3201,17 @@ function _renderShopMarker(shop) {
     icon:   _makeShopIcon(shop.type, shop.image),
     zIndex: 50,
   });
+
+  if (shop.maxHp > 0 && shop.hp != null) {
+    const hpMarker = new google.maps.Marker({
+      position: { lat: shop.lat, lng: shop.lng },
+      map,
+      icon:     _makeShopHpBarIcon(shop.hp, shop.maxHp),
+      zIndex:   51,
+      clickable: false,
+    });
+    _shopHpMarkers[shop.id] = hpMarker;
+  }
 
   marker.addListener('click', () => {
     const iw = _ctx?.infoWindow;
@@ -3215,20 +3236,56 @@ export async function loadShops() {
     const snap = await getDocs(collection(_ctx.db, 'game_shops'));
     _shops = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     Object.values(_shopMarkers).forEach(m => m.setMap(null));
+    Object.values(_shopHpMarkers).forEach(m => m.setMap(null));
     _shopMarkers = {};
-    _shops.forEach(s => { if (s.active) _renderShopMarker(s); });
-  } catch (err) {
+    _shopHpMarkers = {};
+    if (_ctx?.map) {
+      _shops.forEach(s => { if (s.active) _renderShopMarker(s); });
+    } else {
+      // 지도 초기화 전 로드됐을 경우 — 지도 준비 후 재렌더
+      const tid = setInterval(() => {
+        if (!_ctx?.map) return;
+        clearInterval(tid);
+        _shops.forEach(s => { if (s.active) _renderShopMarker(s); });
+      }, 300);
+    }
+  } catch {
     // 상점 로드 실패는 비치명적
   }
 }
 
 export function getShops() { return _shops; }
 
+export function updateShopHpMarker(shopId, newHp) {
+  const shop = _shops.find(s => s.id === shopId);
+  if (!shop) return;
+  shop.hp = newHp;
+  if (shop.maxHp > 0) {
+    const hpMarker = _shopHpMarkers[shopId];
+    if (hpMarker) {
+      hpMarker.setIcon(_makeShopHpBarIcon(newHp, shop.maxHp));
+    } else {
+      const map = _ctx?.map;
+      if (map) {
+        const m = new google.maps.Marker({
+          position: { lat: shop.lat, lng: shop.lng },
+          map,
+          icon:      _makeShopHpBarIcon(newHp, shop.maxHp),
+          zIndex:    51,
+          clickable: false,
+        });
+        _shopHpMarkers[shopId] = m;
+      }
+    }
+  }
+}
+
 export async function deleteShop(shopId) {
   if (!_ctx?.db) return;
   await deleteDoc(doc(_ctx.db, 'game_shops', shopId));
   _shops = _shops.filter(s => s.id !== shopId);
   if (_shopMarkers[shopId]) { _shopMarkers[shopId].setMap(null); delete _shopMarkers[shopId]; }
+  if (_shopHpMarkers[shopId]) { _shopHpMarkers[shopId].setMap(null); delete _shopHpMarkers[shopId]; }
 }
 
 let _lastNearShopId = null;

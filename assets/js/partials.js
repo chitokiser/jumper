@@ -56,7 +56,7 @@ const _HDR_T = {
 function applyHeaderI18n() {
   try {
     const saved = localStorage.getItem('town_lang');
-    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'en';
+    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'ko';
     const tbl = _HDR_T[lang] || _HDR_T.en;
     document.querySelectorAll('[data-hdr-i18n]').forEach(function (el) {
       const key = el.dataset.hdrI18n;
@@ -73,7 +73,7 @@ function _mountHdrLang() {
   const LANGS = ['vi', 'en', 'ko'];
   const FLAGS = { vi: '🇻🇳', en: '🇬🇧', ko: '🇰🇷' };
   const saved = localStorage.getItem('town_lang');
-  let cur = LANGS.includes(saved) ? saved : 'en';
+  let cur = LANGS.includes(saved) ? saved : 'ko';
 
   function syncDesktop(lang) {
     container.querySelectorAll('[data-hdr-lang]').forEach(function(b) {
@@ -170,7 +170,7 @@ const _FTR_T = {
 function applyFooterI18n() {
   try {
     const saved = localStorage.getItem('town_lang');
-    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'en';
+    const lang = ['vi', 'en', 'ko'].includes(saved) ? saved : 'ko';
     const tbl = _FTR_T[lang] || _FTR_T.en;
     document.querySelectorAll('[data-ftr-i18n]').forEach(function (el) {
       const key = el.dataset.ftrI18n;

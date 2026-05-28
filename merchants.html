@@ -2152,15 +2152,20 @@
           <label class="ut-reg-label" for="utRegCount" id="utRegCountLabel">수량</label>
           <input class="ut-reg-input" id="utRegCount" type="number" min="1" value="100" placeholder="수량 입력">
         </div>
-        <!-- GPS -->
+        <!-- 보물 위치 -->
         <div>
-          <span class="ut-reg-label">보물 위치 (GPS)</span>
-          <div class="ut-reg-pos-row">
-            <span class="ut-reg-pos-val" id="utRegPosDisplay">—</span>
-            <button class="btn-use-gps" id="btnUtRegGps">📡 현재 위치 사용</button>
+          <span class="ut-reg-label">보물 위치</span>
+          <button class="btn-use-gps" id="btnUtRegGps" style="width:100%;margin-bottom:6px">📡 현재 GPS 위치 사용</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div>
+              <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:3px">위도 (Lat)</label>
+              <input class="ut-reg-input" id="utRegLat" type="number" step="any" placeholder="예: 10.823099" style="margin-bottom:0">
+            </div>
+            <div>
+              <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:3px">경도 (Lng)</label>
+              <input class="ut-reg-input" id="utRegLng" type="number" step="any" placeholder="예: 106.629664" style="margin-bottom:0">
+            </div>
           </div>
-          <input type="hidden" id="utRegLat">
-          <input type="hidden" id="utRegLng">
         </div>
         <!-- 반경 -->
         <div>

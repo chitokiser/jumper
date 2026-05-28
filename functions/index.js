@@ -1897,6 +1897,10 @@ exports.buyShopItem = onCall(wrapError(async (req) => {
   return shopH.buyShopItem(requireAuth(req), req.data ?? {});
 }));
 
+exports.getShopSales = onCall(wrapError(async (req) => {
+  return shopH.getShopSales(requireAuth(req), req.data ?? {});
+}));
+
 exports.initBattlePlayer = onCall(wrapError(async (req) => {
   return shopH.initBattlePlayer(requireAuth(req));
 }));
@@ -1907,6 +1911,10 @@ exports.adminInitAllPlayers = onCall(wrapError(async (req) => {
 
 exports.attackShop = onCall(wrapError(async (req) => {
   return shopH.attackShop(requireAuth(req), req.data ?? {});
+}));
+
+exports.repairShop = onCall(wrapError(async (req) => {
+  return shopH.repairShop(requireAuth(req), req.data ?? {});
 }));
 
 exports.transferShop = onCall(wrapError(async (req) => {

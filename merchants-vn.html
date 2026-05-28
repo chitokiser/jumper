@@ -736,35 +736,49 @@
   <!-- Thanh kỹ năng — đăng ký làm BOTTOM_CENTER Custom Control trong initMap() -->
   <div id="skillBar">
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn0" title="Triệu hồi sét (1) — MP 100">⚡</button>
+      <button class="skill-btn" id="skillBtn0" title="Sét (1) — MP 100">⚡</button>
       <div class="skill-cd-overlay" id="skillCd0" style="display:none;"></div>
       <span class="skill-key">1</span>
       <span class="skill-name">Sét</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn1" title="Triệu hồi băng (2) — MP 100">❄️</button>
+      <button class="skill-btn" id="skillBtn1" title="Băng (2) — MP 100">❄️</button>
       <div class="skill-cd-overlay" id="skillCd1" style="display:none;"></div>
       <span class="skill-key">2</span>
       <span class="skill-name">Băng</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn2" title="Triệu hồi lửa (3) — MP 100">🔥</button>
+      <button class="skill-btn" id="skillBtn2" title="Lửa (3) — MP 100">🔥</button>
       <div class="skill-cd-overlay" id="skillCd2" style="display:none;"></div>
       <span class="skill-key">3</span>
       <span class="skill-name">Lửa</span>
     </div>
     <div class="skill-slot" style="position:relative;">
-      <button class="skill-btn" id="skillBtnPotion" title="Dùng thuốc đỏ (4) — HP +100">
+      <button class="skill-btn" id="skillBtnPotion" title="Thuốc đỏ (6) — HP +100">
         <img src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="Thuốc đỏ">
       </button>
       <span class="skill-badge" id="skillPotionBadge"></span>
-      <span class="skill-key">4</span>
+      <span class="skill-key">6</span>
       <span class="skill-name">Thuốc đỏ</span>
     </div>
+    <div class="skill-slot">
+      <button class="skill-btn" id="skillBtnHeal" title="Hồi máu (7) — MP 100 · HP ×Cấp × 100 · CD 30s">💚</button>
+      <div class="skill-cd-overlay" id="skillCdHeal" style="display:none;"></div>
+      <span class="skill-key">7</span>
+      <span class="skill-name">Hồi máu</span>
+    </div>
     <div class="skill-slot" style="position:relative;">
-      <button class="skill-btn" id="skillBtnMagicStone" title="Dùng đá phép (5) — HP +100">💎</button>
+      <button class="skill-btn" id="skillBtnMpPotion" title="Thuốc xanh (8) — Hồi MP">
+        <img src="/assets/images/item/mp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="Thuốc xanh">
+      </button>
+      <span class="skill-badge" id="skillMpPotionBadge"></span>
+      <span class="skill-key">8</span>
+      <span class="skill-name">Thuốc xanh</span>
+    </div>
+    <div class="skill-slot" style="position:relative;">
+      <button class="skill-btn" id="skillBtnMagicStone" title="Đá phép (9) — MP +100">💎</button>
       <span class="skill-badge" id="skillMagicStoneBadge"></span>
-      <span class="skill-key">5</span>
+      <span class="skill-key">9</span>
       <span class="skill-name">Đá phép</span>
     </div>
   </div>

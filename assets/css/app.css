@@ -1,5 +1,7 @@
 ﻿/* /assets/css/app.css */
 
+.hidden { display: none !important; }
+
 :root {
   --bg:    #f5f9ff;
   --card:  #ffffff;

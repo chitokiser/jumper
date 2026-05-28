@@ -239,7 +239,7 @@ async function discoverUserTreasure(uid, { npcId, userLat, userLng } = {}) {
       foundByName: finderName,
       foundAt:     admin.firestore.FieldValue.serverTimestamp(),
     });
-    tx.update(db.collection('user_treasure_npcs').doc(npcId), { status: 'found' });
+    tx.delete(db.collection('user_treasure_npcs').doc(npcId));
 
     if (treasure.type === 'item') {
       const invRef = db.collection('treasure_inventory').doc(`${uid}_${treasure.itemId}`);

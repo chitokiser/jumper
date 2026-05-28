@@ -19,6 +19,15 @@ function weaponBonus(weaponId) {
   return m ? Number(m[1]) : 0;
 }
 
+function haversineM(lat1, lng1, lat2, lng2) {
+  const R    = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a    = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 async function isAdmin(uid) {
   return requireAdmin(uid).then(() => true).catch(() => false);
 }
@@ -113,7 +122,7 @@ async function adminDeleteShop(uid, { shopId } = {}) {
 }
 
 // ── 유저: 상점 아이템 구매 (판매금액 50% → 상점주인 골드) ───────────────────
-async function buyShopItem(uid, { shopId, itemId, quantity = 1 } = {}) {
+async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {}) {
   if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
   if (!itemId) throw new HttpsError('invalid-argument', 'itemId가 필요합니다');
   const qty = Math.floor(Number(quantity));
@@ -123,6 +132,14 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1 } = {}) {
   if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
   const shop = shopSnap.data();
   if (!shop.active) throw new HttpsError('failed-precondition', '현재 이용할 수 없는 상점입니다');
+
+  // 1km 거리 제한 (위치를 전달한 경우에만 검증)
+  if (shop.lat != null && shop.lng != null && lat != null && lng != null) {
+    const dist = haversineM(lat, lng, shop.lat, shop.lng);
+    if (dist > 1000)
+      throw new HttpsError('failed-precondition',
+        `상점에서 너무 멀리 있습니다 (${Math.round(dist)}m). 1km 이내에서만 구매할 수 있습니다.`);
+  }
 
   const itemDef = (shop.items || []).find(it => it.itemId === itemId);
   if (!itemDef) throw new HttpsError('not-found', '해당 아이템을 이 상점에서 판매하지 않습니다');
@@ -172,16 +189,72 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1 } = {}) {
         tx.set(ownerRef, { uid: ownerUid, token: 30, hp: 1000, mp: 1000, level: 1, gold: ownerShare, updatedAt: now });
     }
 
-    // Deduct finite stock
+    // Sales log
+    const salesRef = db.collection('shop_sales_logs').doc();
+    tx.set(salesRef, {
+      shopId, itemId,
+      itemName: itemDef.name || itemId,
+      qty, totalCost, ownerShare,
+      buyerUid: uid,
+      ownerUid: ownerUid || null,
+      createdAt: now,
+    });
+
+    // Aggregate stats + optional stock update (single write to shopRef)
+    const shopUpdate = {
+      totalRevenue: admin.firestore.FieldValue.increment(ownerShare),
+      totalSales:   admin.firestore.FieldValue.increment(qty),
+    };
     if (itemDef.stock !== -1) {
-      const newItems = shop.items.map(it =>
+      shopUpdate.items = shop.items.map(it =>
         it.itemId === itemId ? { ...it, stock: it.stock - qty } : it
       );
-      tx.update(shopRef, { items: newItems });
     }
+    tx.update(shopRef, shopUpdate);
   });
 
   return { ok: true, itemId, quantity: qty, totalCost, ownerShare };
+}
+
+// ── 상점주인/관리자: 매출 실적 조회 ─────────────────────────────────────────
+async function getShopSales(uid, { shopId, limit = 20 } = {}) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
+
+  const shopSnap = await db.collection('game_shops').doc(shopId).get();
+  if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+  const shop = shopSnap.data();
+
+  const admin_ = await isAdmin(uid);
+  if (!admin_ && shop.ownerUid !== uid)
+    throw new HttpsError('permission-denied', '상점 소유자 또는 관리자만 조회할 수 있습니다');
+
+  const safeLimit = Math.min(Math.max(1, Number(limit) || 20), 50);
+  const snap = await db.collection('shop_sales_logs')
+    .where('shopId', '==', shopId)
+    .orderBy('createdAt', 'desc')
+    .limit(safeLimit)
+    .get();
+
+  const sales = snap.docs.map(d => {
+    const data = d.data();
+    return {
+      id:         d.id,
+      itemId:     data.itemId,
+      itemName:   data.itemName,
+      qty:        data.qty,
+      totalCost:  data.totalCost,
+      ownerShare: data.ownerShare,
+      buyerUid:   data.buyerUid,
+      createdAt:  data.createdAt?.toDate?.()?.toISOString?.() ?? null,
+    };
+  });
+
+  return {
+    sales,
+    totalRevenue: shop.totalRevenue ?? 0,
+    totalSales:   shop.totalSales   ?? 0,
+    shopName:     shop.name,
+  };
 }
 
 // ── 유저: 상점 공격 ──────────────────────────────────────────────────────────
@@ -455,6 +528,7 @@ module.exports = {
   adminSaveShop,
   adminDeleteShop,
   buyShopItem,
+  getShopSales,
   attackShop,
   repairShop,
   transferShop,

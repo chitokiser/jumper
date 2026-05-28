@@ -342,7 +342,7 @@ function _t(key, ...args) {
 
 function initLang() {
   const saved = localStorage.getItem('town_lang');
-  window.LANG = SUPPORTED_LANGS.includes(saved) ? saved : 'en';
+  window.LANG = SUPPORTED_LANGS.includes(saved) ? saved : 'ko';
 
   // data-i18n 속성 적용
   document.querySelectorAll('[data-i18n]').forEach((el) => {

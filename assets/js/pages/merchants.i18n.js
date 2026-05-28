@@ -270,7 +270,7 @@ const MESSAGES = {
   tut_done:              { ko: '시작하기 ✓',                vi: 'Bắt đầu ✓' },
 
   // ── 상점 ─────────────────────────────────────────────────────────────────────
-  shop_too_far:          { ko: '상점과 너무 멀리 있습니다 (20m 이내 접근 필요)', vi: 'Bạn đang ở quá xa cửa hàng (cần đến trong vòng 20m)' },
+  shop_too_far:          { ko: '📍 상점과 너무 멀리 있습니다 (현재 {0}km — 1km 이내에서만 이용 가능)', vi: '📍 Bạn ở quá xa cửa hàng ({0}km — chỉ sử dụng được trong vòng 1km)' },
   shop_buy_confirm:      { ko: '{0}개 구매 ({1} 골드)?',   vi: 'Mua {0} cái ({1} vàng)?' },
   shop_not_enough_gold:  { ko: '골드가 부족합니다',         vi: 'Không đủ vàng' },
   shop_buy_ok:           { ko: '{0} 구매 완료!',            vi: 'Đã mua {0} thành công!' },
@@ -329,7 +329,7 @@ const MESSAGES = {
  * @returns {string}
  */
 export function _t(key, ...args) {
-  const lang = (window.LANG || 'en');
+  const lang = (window.LANG || 'ko');
   const entry = MESSAGES[key];
   if (!entry) return key;
   let str = entry[lang] ?? entry.en ?? key;

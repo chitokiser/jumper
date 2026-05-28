@@ -333,7 +333,7 @@ const TRANSLATIONS = {
 };
 
 const SUPPORTED_LANGS = ['vi', 'en', 'ko'];
-const DEFAULT_LANG = 'vi';
+const DEFAULT_LANG = 'ko';
 const STORAGE_KEY = 'town_lang';
 let _lang = DEFAULT_LANG;
 

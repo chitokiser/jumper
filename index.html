@@ -268,14 +268,14 @@
       <div class="hero-bg-vignette"></div>
     </div>
     <div class="town-hero-inner hero-content">
-      <h1 class="town-title" data-i18n="hero_title">우리동네 보물찾기</h1>
+      <h1 class="town-title" data-i18n="hero_title">우리동네 보물찾기&숨기기</h1>
       <p class="town-desc">
         <span data-i18n="hero_desc">누군가의 보물에 기록된 사연을 찾아보세요</span><br/>
         JumpDAO
       </p>
       <div class="hero-actions">
         <a class="btn btn--primary hero-cta-btn" href="/merchants.html">
-          🗺️ <span data-i18n="treasure_label">보물찾기</span>
+          🗺️ <span data-i18n="treasure_label">보물찾기&숨기기</span>
         </a>
       </div>
     </div>
@@ -284,14 +284,14 @@
   <main class="page">
     <section class="section">
       <div class="section-h">
-        <h2 class="section-title" data-i18n="notice_section">Thông báo</h2>
+        <h2 class="section-title" data-i18n="notice_section">공지사항</h2>
       </div>
       <div class="panel notice-panel">
         <ol class="notice-list" id="noticeList"></ol>
-        <button id="noticeMoreBtn" class="more-btn" data-i18n="notice_more" style="display:none;">Xem thêm</button>
+        <button id="noticeMoreBtn" class="more-btn" data-i18n="notice_more" style="display:none;">더보기</button>
         <div class="help small">
-          <span data-i18n="notice_help">Chỉ quản trị viên mới có thể đăng thông báo.</span>
-          <a href="/admin_notices.html" id="noticeAdminLink" data-i18n="notice_admin" style="display:none;">Quản lý thông báo</a>
+          <span data-i18n="notice_help">관리자만 공지사항을 등록 할 수 있습니다</span>
+          <a href="/admin_notices.html" id="noticeAdminLink" data-i18n="notice_admin" style="display:none;">공지 관리</a>
         </div>
       </div>
     </section>
@@ -301,20 +301,20 @@
         <div class="jackpot-inner">
           <div>
             <div class="jackpot-kicker">MERCHANT PAY JACKPOT</div>
-            <div class="jackpot-title" data-i18n="jackpot_title">Jackpot thanh toán tức thì</div>
-            <div class="jackpot-meta" id="jackpotUpdated"><span class="jackpot-dot"></span><span data-i18n="jackpot_waiting">Đang chờ cập nhật thời gian thực</span></div>
+            <div class="jackpot-title" data-i18n="jackpot_title">가맹점 결제 즉석 잭팟</div>
+            <div class="jackpot-meta" id="jackpotUpdated"><span class="jackpot-dot"></span><span data-i18n="jackpot_waiting">실시간 조회 대기중</span></div>
           </div>
           <div class="jackpot-side">
             <div class="jackpot-value" id="jackpotDisplayValue">- HEX</div>
             <div class="jackpot-fiat" id="jackpotFiatValue">약 - KRW / - VND</div>
             <div class="jackpot-stats">
               <div class="jackpot-stat">
-                <span class="k" data-i18n="jackpot_winner_count">Tổng người trúng</span>
+                <span class="k" data-i18n="jackpot_winner_count">총 당첨자 수</span>
                 <strong id="jackpotWinnerCount">-</strong>
               </div>
               <div class="jackpot-stat">
-                <span class="k" data-i18n="jackpot_reward">Phần thưởng</span>
-                <strong id="jackpotHighestWin" data-i18n="jackpot_item">Jackpot vật phẩm</strong>
+                <span class="k" data-i18n="jackpot_reward">당첨 보상</span>
+                <strong id="jackpotHighestWin" data-i18n="jackpot_item">아이템 잭팟</strong>
               </div>
             </div>
           </div>
@@ -324,10 +324,10 @@
         <div class="jp-winners-wrap">
           <hr style="border:none;border-top:1px solid rgba(255,255,255,.1);margin:14px 0 12px;">
           <div class="jp-winners-head">
-            <span class="jp-winners-title" data-i18n="jackpot_recent">🏆 Người trúng gần đây</span>
+            <span class="jp-winners-title" data-i18n="jackpot_recent">🏆 최근 당첨자</span>
           </div>
           <div id="jackpotWinnersList">
-            <p class="jp-winners-empty" data-i18n="loading">Đang tải...</p>
+            <p class="jp-winners-empty" data-i18n="loading">불러오는 중...</p>
           </div>
         </div>
       </div>
@@ -338,18 +338,18 @@
 
     <section class="section">
       <div class="section-h">
-        <h2 class="section-title" data-i18n="shortcuts_section">Lối tắt</h2>
+        <h2 class="section-title" data-i18n="shortcuts_section">바로가기</h2>
       </div>
       <div class="shortcut-row">
         <a class="shortcut-card" href="/mypage.html">
           <span class="shortcut-icon">💳</span>
-          <span class="shortcut-label" data-i18n="wallet_label">Ví của tôi</span>
-          <span class="shortcut-sub" data-i18n="wallet_sub">Số dư HEX · Thanh toán · Quét QR</span>
+          <span class="shortcut-label" data-i18n="wallet_label">내 지갑</span>
+          <span class="shortcut-sub" data-i18n="wallet_sub">HEX 잔고 · 결제 · QR 스캔</span>
         </a>
         <a class="shortcut-card" href="/exchange.html">
           <span class="shortcut-icon">🪙</span>
-          <span class="shortcut-label" data-i18n="exchange_label">Sàn giao dịch</span>
-          <span class="shortcut-sub" data-i18n="exchange_sub">Mua · Bán JUMP · Stake</span>
+          <span class="shortcut-label" data-i18n="exchange_label">토큰 거래소</span>
+          <span class="shortcut-sub" data-i18n="exchange_sub">JUMP 매수 · 매도 · 스테이킹</span>
         </a>
         <a class="shortcut-card" href="/merchants.html">
           <span class="shortcut-icon">🗝️</span>
@@ -360,36 +360,36 @@
     </section>
     <section class="section" id="sponsorSection">
       <div class="section-h">
-        <h2 class="section-title" data-i18n="sponsor_section">Banner tài trợ</h2>
+        <h2 class="section-title" data-i18n="sponsor_section">스폰서 배너</h2>
       </div>
       <div class="panel sponsor-panel">
         <div class="sponsor-rotator" id="sponsorRotator" aria-label="스폰서 배너">
           <a class="sponsor-slide is-active" data-idx="0" href="https://hexdao.netlify.app" target="_blank" rel="noopener">
             <img class="sponsor-slide-logo" src="/assets/images/jump/hex.png" alt="HEX DAO" />
             <div class="sponsor-slide-copy">
-              <strong data-i18n="hexdao_title">Sàn giao dịch HEX DAO</strong>
-              <span data-i18n="hexdao_sub">Đến sàn giao dịch token của chúng ta</span>
+              <strong data-i18n="hexdao_title">HEX DAO 거래소</strong>
+              <span data-i18n="hexdao_sub">우리들의 토큰거래소 바로가기</span>
             </div>
           </a>
           <a class="sponsor-slide" data-idx="1" href="/coop.html">
             <img class="sponsor-slide-logo" src="/assets/images/jump/logo2.png" alt="JumpDAO" />
             <div class="sponsor-slide-copy">
-              <strong data-i18n="jumpdao_title">Cửa hàng hội viên JumpDAO</strong>
-              <span data-i18n="jumpdao_sub">Khám phá quyền lợi dành riêng cho cộng đồng</span>
+              <strong data-i18n="jumpdao_title">JumpDAO 정회원전용몰</strong>
+              <span data-i18n="jumpdao_sub">교민 네트워크 전용 혜택을 확인해보세요</span>
             </div>
           </a>
           <a class="sponsor-slide" data-idx="2" href="/used-market.html">
             <img class="sponsor-slide-logo" src="/assets/images/jump/BI.png" alt="중고거래" />
             <div class="sponsor-slide-copy">
-              <strong data-i18n="used_market_title">Mở sàn hàng cũ hội viên</strong>
-              <span data-i18n="used_market_sub">Mua bán nhanh chóng như Karrot</span>
+              <strong data-i18n="used_market_title">회원간 중고거래 오픈</strong>
+              <span data-i18n="used_market_sub">당근처럼 쉽고 빠르게 사고팔기</span>
             </div>
           </a>
           <a class="sponsor-slide" data-idx="3" href="/merchants.html">
             <img class="sponsor-slide-logo" src="/assets/images/jump/logo2.png" alt="보물 숨기기" />
             <div class="sponsor-slide-copy">
-              <strong data-i18n="treasure_hide_title">🗝️ Giấu kho báu của bạn</strong>
-              <span data-i18n="treasure_hide_sub">Đăng ký bảo vật — người dùng khác tìm kiếm → nhận phần thưởng!</span>
+              <strong data-i18n="treasure_hide_title">🗝️ 내 보물을 지도에 숨겨보세요</strong>
+              <span data-i18n="treasure_hide_sub">아이템·코인을 등록하면 다른 유저가 GPS로 발견 → 보상 지급!</span>
             </div>
           </a>
         </div>
@@ -424,10 +424,10 @@
     <section class="section" id="communityPreviewSection">
       <div class="section-h">
         <h2 class="section-title" data-i18n="member_benefits_section">점프토큰 소유자 혜택</h2>
-        <a class="btn btn--ghost btn--sm" href="/community.html" data-i18n="view_all">Xem tất cả</a>
+        <a class="btn btn--ghost btn--sm" href="/community.html" data-i18n="view_all">전체 보기</a>
       </div>
       <div id="communityPreviewGrid" class="comm-preview-grid">
-        <div class="comm-preview-empty" data-i18n="loading">Đang tải...</div>
+        <div class="comm-preview-empty" data-i18n="loading">불러오는 중...</div>
       </div>
     </section>
 
@@ -435,9 +435,9 @@
 
     <section class="section" id="merchantListSection">
       <div class="section-h">
-        <h2 class="section-title" data-i18n="merchant_list_section">Danh sách cửa hàng</h2>
+        <h2 class="section-title" data-i18n="merchant_list_section">가맹점 리스트</h2>
         <div class="section-tools">
-          <a class="btn btn--primary" href="/family-register.html" data-i18n="merchant_register">Đăng ký cửa hàng</a>
+          <a class="btn btn--primary" href="/family-register.html" data-i18n="merchant_register">가맹점 등록</a>
         </div>
       </div>
       <div id="merchantListState" class="help small" style="margin:4px 0 10px;"></div>
@@ -446,16 +446,16 @@
 
     <section class="section" id="coopProductsSection">
       <div class="section-h">
-        <h2 class="section-title" data-i18n="member_mall_section">Cửa hàng hội viên</h2>
-        <a class="btn btn--ghost btn--sm" href="/coop.html" data-i18n="view_all">Xem tất cả</a>
+        <h2 class="section-title" data-i18n="member_mall_section">정회원 전용몰</h2>
+        <a class="btn btn--ghost btn--sm" href="/coop.html" data-i18n="view_all">전체 보기</a>
       </div>
       <div id="coopProductsGrid" class="mp-product-grid"></div>
     </section>
 
     <section class="section" id="home-homestay-photos">
       <div class="section-h">
-        <h2 class="section-title" data-i18n="homestay_section">Chỗ nghỉ</h2>
-        <a class="btn btn--ghost btn--sm" href="/homestay.html" data-i18n="view_all">Xem tất cả</a>
+        <h2 class="section-title" data-i18n="homestay_section">잠자리</h2>
+        <a class="btn btn--ghost btn--sm" href="/homestay.html" data-i18n="view_all">전체 보기</a>
       </div>
       <div class="photo-grid-4">
         <a class="photo-tile-4" href="/homestay.html"><img loading="lazy" src="/assets/images/homestay/1.png" alt="홈스테이"></a>
@@ -467,8 +467,8 @@
 
     <section class="section" id="home-what-photos">
       <div class="section-h">
-        <h2 class="section-title" data-i18n="activities_section">Vui chơi</h2>
-        <a class="btn btn--ghost btn--sm" href="/what.html" data-i18n="view_all">Xem tất cả</a>
+        <h2 class="section-title" data-i18n="activities_section">놀거리</h2>
+        <a class="btn btn--ghost btn--sm" href="/what.html" data-i18n="view_all">전체 보기</a>
       </div>
       <div class="photo-grid-4">
         <a class="photo-tile-4" href="/what.html"><img loading="lazy" src="/assets/images/what/1.png" alt="볼거리"></a>
@@ -484,7 +484,7 @@
     <div class="mp-modal-backdrop" id="mpModalBackdrop"></div>
     <div class="mp-modal-box">
       <div class="mp-modal-head">
-        <h3 id="mpModalTitle" data-i18n="modal_products">Sản phẩm cửa hàng</h3>
+        <h3 id="mpModalTitle" data-i18n="modal_products">가맹점 상품</h3>
         <button class="mp-modal-close" id="mpModalClose" type="button" aria-label="Đóng">×</button>
       </div>
       <div id="mpModalState" class="help" style="margin-bottom:8px;"></div>
