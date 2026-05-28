@@ -281,7 +281,13 @@ async function discoverUserTreasure(uid, { npcId, userLat, userLng } = {}) {
 }
 
 // ── NPC 목록 조회 (활성 상태) ─────────────────────────────────────────────────
-async function listUserTreasureNpcs() {
+async function listUserTreasureNpcs(uid = null) {
+  let isAdmin = false;
+  if (uid) {
+    const adminSnap = await db.collection('admins').doc(uid).get();
+    isAdmin = adminSnap.exists;
+  }
+
   const snap = await db.collection('user_treasure_npcs')
     .where('status', '==', 'active')
     .orderBy('createdAt', 'desc')
@@ -290,6 +296,7 @@ async function listUserTreasureNpcs() {
 
   return snap.docs.map(d => {
     const r = d.data();
+    const showActual = isAdmin || (uid && r.ownerId === uid);
     return {
       id:          d.id,
       ownerId:     r.ownerId,
@@ -305,6 +312,9 @@ async function listUserTreasureNpcs() {
       itemId:      r.itemId,
       itemCount:   r.itemCount,
       bonusCoin:   r.bonusCoin || 0,
+      ...(showActual && r.treasureLat != null
+        ? { treasureLat: r.treasureLat, treasureLng: r.treasureLng }
+        : {}),
     };
   });
 }

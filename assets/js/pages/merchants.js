@@ -89,8 +89,9 @@ let _droppedItems   = {};        // {dropId: dropData} 바닥에 버려진 아�
 let _dropMarkers    = {};        // {dropId: google.maps.Marker} 드랍 마커
 let _dropsUnsubscribe = null;    // onSnapshot 해제 함수
 let _alertedDropIds = new Set(); // 이미 알림을 보낸 dropId (중복 방지)
-let _utNpcMarkers   = {};        // {npcId: google.maps.Marker} 사용자 보물 NPC 마커 (map에 등록된 것만)
-let _utNpcData      = [];        // 서버에서 받은 전체 NPC 데이터 배열 (위치 기반 proximity 계산용)
+let _utNpcMarkers    = {};        // {npcId: google.maps.Marker} 사용자 보물 NPC 마커 (map에 등록된 것만)
+let _utActualMarkers = {};        // {npcId: google.maps.Marker} 실제 보물 위치 마커 (관리자/소유자 전용)
+let _utNpcData       = [];        // 서버에서 받은 전체 NPC 데이터 배열 (위치 기반 proximity 계산용)
 let _utCurrentNpc   = null;      // 현재 선택된 사용자 보물 NPC
 let _hintUnlocked   = false;     // 현재 NPC 힌트 잠금 해제 여부
 
@@ -3073,7 +3074,10 @@ async function init() {
       playSound(_gsAtk);
       syncHpFromServer(data.remainHp, data.damage);
     },
-    onPlayerDied:    ()     => syncDeathFromServer(),
+    onPlayerDied:    ()     => {
+      syncDeathFromServer();
+      ['utNpcModal', 'utRegModal', 'utMyModal'].forEach(id => document.getElementById(id)?.classList.remove('open'));
+    },
     onPlayerRevived: (data) => syncReviveFromServer(data.hp),
     onPlayerExp:     (d)    => onPlayerExp(d),
     onPlayerLevelUp: (d)    => onPlayerLevelUp(d),
@@ -3928,9 +3932,15 @@ async function loadUserTreasureNpcs() {
     const npcs = Array.isArray(data) ? data : [];
     // 기존 마커 제거
     Object.values(_utNpcMarkers).forEach(m => m.setMap(null));
-    _utNpcMarkers = {};
+    Object.values(_utActualMarkers).forEach(m => m.setMap(null));
+    _utNpcMarkers    = {};
+    _utActualMarkers = {};
     _utNpcData = npcs;
-    // 현재 위치 기준 초기 5m 이내 NPC만 즉시 표시
+    // 실제 위치 마커 (관리자/소유자 전용 — 항상 표시)
+    npcs.forEach(npc => {
+      if (npc.treasureLat != null) _utActualMarkers[npc.id] = _makeActualTreasureMarker(npc);
+    });
+    // NPC 마커: 현재 위치 기준 200m 이내만 즉시 표시
     const pos = _ctx.lastPos;
     if (pos) {
       npcs.forEach(npc => {
@@ -3968,6 +3978,27 @@ function _makeUserNpcMarker(npc) {
     zIndex: 50,
   });
   marker.addListener('click', () => showUserNpcInfo(npc));
+  return marker;
+}
+
+function _makeActualTreasureMarker(npc) {
+  const label = npc.ownerName ? `📍 ${npc.ownerName}의 실제 보물` : '📍 실제 보물 위치';
+  const marker = new google.maps.Marker({
+    position: { lat: npc.treasureLat, lng: npc.treasureLng },
+    map: _ctx.map,
+    title: label,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 8,
+      fillColor: '#facc15',
+      fillOpacity: 0.95,
+      strokeColor: '#92400e',
+      strokeWeight: 2,
+    },
+    zIndex: 60,
+  });
+  const iw = new google.maps.InfoWindow({ content: `<div style="font-size:12px;padding:4px 6px">${label}</div>` });
+  marker.addListener('click', () => iw.open(_ctx.map, marker));
   return marker;
 }
 
@@ -4253,13 +4284,27 @@ async function openMyTreasuresModal() {
     listEl.innerHTML = items.map(t => {
       const reward = t.type === 'item' ? `아이템 ×${t.itemCount}` : `${t.itemCount} 코인`;
       const label  = statusLabel[t.status] || t.status;
+      const hasCoords = t.lat != null && t.lng != null;
       return `<div class="ut-my-item">` +
         `<span class="ut-my-status ut-status-${t.status}">${label}</span>` +
         `<span>${reward}</span>` +
+        (hasCoords
+          ? `<button class="ut-my-locate" data-lat="${t.lat}" data-lng="${t.lng}" title="지도에서 보기">📍</button>` : '') +
         (t.status === 'active'
           ? `<button class="ut-my-cancel" data-id="${t.id}">취소</button>` : '') +
         `</div>`;
     }).join('');
+    listEl.querySelectorAll('.ut-my-locate').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const lat = parseFloat(btn.dataset.lat);
+        const lng = parseFloat(btn.dataset.lng);
+        if (!isNaN(lat) && !isNaN(lng) && _ctx.map) {
+          modal.classList.remove('open');
+          _ctx.map.panTo({ lat, lng });
+          _ctx.map.setZoom(18);
+        }
+      });
+    });
     listEl.querySelectorAll('.ut-my-cancel').forEach(btn => {
       btn.addEventListener('click', () => cancelTreasure(btn.dataset.id));
     });

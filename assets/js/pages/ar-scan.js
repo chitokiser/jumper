@@ -127,11 +127,13 @@ async function loadNearbyBoxes(lat, lng) {
     .filter(b => b.lat != null && b.lng != null);
 
   // ── user_treasure_npcs (개인 보물 NPC) → 공통 형식으로 정규화 ─────────────
+  const myUid = currentUser?.uid || null;
   const userNpcs = npcSnap.docs
     .map(d => {
       const r = d.data();
-      // 만료 체크
       if (r.expiresAt && r.expiresAt.toMillis() < now) return null;
+      const isOwner = myUid && r.ownerId === myUid;
+      const showActual = (isAdminUser || isOwner) && r.treasureLat != null;
       return {
         id:           d.id,
         lat:          r.lat,
@@ -145,11 +147,29 @@ async function loadNearbyBoxes(lat, lng) {
         active:       true,
         isUserNpc:    true,
         ownerId:      r.ownerId,
+        ...(showActual ? { treasureLat: r.treasureLat, treasureLng: r.treasureLng } : {}),
       };
     })
     .filter(b => b !== null && b.lat != null && b.lng != null);
 
-  const combined = [...allBoxes, ...userNpcs];
+  // 실제 보물 위치 핀 (관리자/소유자 전용) — NPC와 별도 AR 핀
+  const actualPins = userNpcs
+    .filter(n => n.treasureLat != null)
+    .map(n => ({
+      id:        `actual_${n.id}`,
+      lat:       n.treasureLat,
+      lng:       n.treasureLng,
+      name:      `📍 ${n.name.replace('🗝️ ', '')} (실제 위치)`,
+      hint:      '',
+      radius:    n.radius,
+      scanRadius: SCAN_RADIUS,
+      startHour: 0,
+      endHour:   24,
+      active:    true,
+      isActualPin: true,
+    }));
+
+  const combined = [...allBoxes, ...userNpcs, ...actualPins];
 
   // 관리자: 거리·시간 필터 없이 전세계 모든 NPC
   if (isAdminUser) return combined;
@@ -396,6 +416,30 @@ function renderAR(ts) {
 
     // 운영 시간 외에는 표시하지 않음 (관리자는 시간 제한 없음)
     if (!isAdminUser && !isInTimeRange(box.startHour ?? 0, box.endHour ?? 24)) continue;
+
+    // 실제 보물 위치 핀 (관리자/소유자 전용) — 단순 위치 표시만
+    if (box.isActualPin) {
+      const px = W/2 + (diff / (FOV_DEG/2)) * (W/2);
+      const py = H * 0.35;
+      arCtx.save();
+      arCtx.font = '26px serif';
+      arCtx.textAlign = 'center';
+      arCtx.textBaseline = 'middle';
+      arCtx.fillText('📍', px, py);
+      arCtx.restore();
+      arCtx.save();
+      arCtx.font = 'bold 10px sans-serif';
+      arCtx.fillStyle = '#facc15';
+      arCtx.strokeStyle = 'rgba(0,0,0,.85)';
+      arCtx.lineWidth = 3;
+      arCtx.textAlign = 'center';
+      arCtx.textBaseline = 'top';
+      const pinLabel = `실제위치 ${Math.round(dist)}m`;
+      arCtx.strokeText(pinLabel, px, py + 16);
+      arCtx.fillText(pinLabel,   px, py + 16);
+      arCtx.restore();
+      continue;
+    }
 
     // 획득 가능 여부에 따라 색상·크기 분기
     const scale    = inClaimRange ? 1.4 : 1.0;

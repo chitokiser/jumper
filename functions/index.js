@@ -2021,8 +2021,9 @@ exports.discoverUserTreasure = onCall(wrapError(async (req) => {
   return userTreasureH.discoverUserTreasure(uid, req.data ?? {});
 }));
 
-exports.listUserTreasureNpcs = onCall(wrapError(async (_req) => {
-  return userTreasureH.listUserTreasureNpcs();
+exports.listUserTreasureNpcs = onCall(wrapError(async (req) => {
+  const uid = req.auth?.uid || null;
+  return userTreasureH.listUserTreasureNpcs(uid);
 }));
 
 exports.getMyUserTreasures = onCall(wrapError(async (req) => {
