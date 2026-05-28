@@ -11,6 +11,9 @@ module.exports = {
       optimizer: { enabled: true, runs: 200 },
     },
   },
+  paths: {
+    sources: './contracts',   // contracts/ + ../contract/ 모두 포함
+  },
   networks: {
     opbnb: {
       url: 'https://opbnb-mainnet-rpc.bnbchain.org',

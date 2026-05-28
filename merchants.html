@@ -1494,6 +1494,18 @@
     }
     .ut-npc-comment-del:hover { color: #f87171; }
     .ut-npc-comment-empty { font-size: 12px; color: #6b7280; text-align: center; padding: 8px 0; }
+    /* 힌트 잠금 */
+    .hint-locked { filter: blur(4px); user-select: none; pointer-events: none; transition: filter .3s; }
+    #btnUnlockHint {
+      display: none; width: 100%;
+      padding: 8px 14px; border: none; border-radius: 8px;
+      background: #5c3a1e; color: #ffd700; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: background .15s; margin-top: 2px;
+    }
+    #btnUnlockHint.visible { display: block; }
+    #btnUnlockHint:hover:not(:disabled) { background: #7a5c3a; }
+    /* 댓글 이미지 */
+    .comment-img { max-width: 100%; border-radius: 6px; margin-top: 4px; cursor: zoom-in; display: block; }
     .ut-npc-comment-form { display: flex; gap: 6px; align-items: flex-end; }
     .ut-npc-comment-input {
       flex: 1; padding: 7px 9px; border-radius: 8px;
@@ -1887,8 +1899,8 @@
       <div class="exc-section" id="excSection">
         <div class="exc-header" id="excToggleBtn">
           <div class="exc-header-left">
-            <h2 class="exc-title">🎟 Phiếu đổi hàng</h2>
-            <p class="exc-desc">Thu thập vật phẩm để đổi lấy phiếu mua hàng thực tế!</p>
+            <h2 class="exc-title">🎟 바우쳐교환</h2>
+            <p class="exc-desc">보물을 모아 상품권과 교환하세요</p>
           </div>
           <span class="exc-toggle-icon">▼</span>
         </div>
@@ -2069,6 +2081,7 @@
         <div class="ut-npc-field">
           <label>힌트 / Hint</label>
           <p id="utNpcHint">—</p>
+          <button id="btnUnlockHint">🔓 힌트 잠금 해제 (10 Coin)</button>
         </div>
         <div class="ut-npc-field" id="utNpcStoryWrap">
           <label>스토리 / Story</label>

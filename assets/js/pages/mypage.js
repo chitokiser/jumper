@@ -512,6 +512,54 @@ async function loadMenteeIncome(_uid) {
   }
 }
 
+async function loadCoopOrders(uid) {
+  const section = $('coopOrderSection');
+  const listEl  = $('coopOrderList');
+  if (!listEl) return;
+
+  try {
+    const q = query(
+      collection(db, 'coopOrders'),
+      where('uid', '==', uid),
+      orderBy('createdAt', 'desc'),
+      limit(30)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+
+    show('coopOrderSection', true);
+
+    const TYPE_LABEL = { membership: '정회원', voucher: '바우처', general: '일반' };
+    const rows = snap.docs.map((d) => {
+      const o = d.data();
+      const hexAmt  = (Number(BigInt(o.hexWei || '0')) / 1e18).toFixed(4);
+      const date    = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleString('ko-KR') : '-';
+      const typeLbl = TYPE_LABEL[o.type] || o.type || '일반';
+      const txLink  = o.txHash
+        ? `<a href="https://opbnb.bscscan.com/tx/${o.txHash}" target="_blank" rel="noopener" style="font-size:0.72em;color:var(--accent);">TX ↗</a>`
+        : '';
+      return `<tr>
+        <td style="font-size:0.82em;">${date}</td>
+        <td>${o.productName || '-'} <span style="font-size:0.7em;background:#f3e8ff;color:#7c3aed;padding:1px 5px;border-radius:8px;font-weight:600;">${typeLbl}</span></td>
+        <td style="text-align:right;font-weight:600;color:#dc2626;">${hexAmt} HEX</td>
+        <td style="text-align:center;">${txLink}</td>
+      </tr>`;
+    }).join('');
+
+    listEl.innerHTML = `<table class="mp-table" style="width:100%;border-collapse:collapse;">
+      <thead><tr style="font-size:0.78em;color:#94a3b8;">
+        <th style="text-align:left;padding:4px 6px;">날짜</th>
+        <th style="text-align:left;padding:4px 6px;">상품</th>
+        <th style="text-align:right;padding:4px 6px;">금액</th>
+        <th style="text-align:center;padding:4px 6px;">TX</th>
+      </tr></thead>
+      <tbody style="font-size:0.88em;">${rows}</tbody>
+    </table>`;
+  } catch (_) {
+    if (listEl) listEl.innerHTML = '<p class="hint muted">구매 내역을 불러올 수 없습니다.</p>';
+  }
+}
+
 async function loadJackpotHistory(uid) {
   const wrap    = $("jackpotHistList");
   const section = $("jackpotHistSection");
@@ -1560,6 +1608,10 @@ onAuthReady(async (ctx) => {
     loadMenteeIncome(user.uid);
     const btnRefreshMenteeIncome = $("btnRefreshMenteeIncome");
     if (btnRefreshMenteeIncome) btnRefreshMenteeIncome.onclick = () => loadMenteeIncome(user.uid);
+
+    loadCoopOrders(user.uid);
+    const btnRefreshCoopOrders = $("btnRefreshCoopOrders");
+    if (btnRefreshCoopOrders) btnRefreshCoopOrders.onclick = () => loadCoopOrders(user.uid);
   } catch (err) {
     console.error("\uB9C8\uC774\uD398\uC774\uC9C0 \uCD08\uAE30\uD654 \uC2E4\uD328", err);
   }

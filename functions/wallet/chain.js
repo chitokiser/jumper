@@ -171,11 +171,13 @@ const JUMP_AUTO_EXCHANGE_ABI = [
 ];
 
 // CoopMall 컨트랙트 (폐쇄 전용몰)
-const COOP_MALL_ADDRESS = '0x421Bb7Ba86c8cafA181F85C9907B864B85bEF49A';
+const COOP_MALL_ADDRESS = '0x0CA0F01377b8a4c35B603d8462e6fDb9135d00B4'; // CoopMall v4
 
 const COOP_MALL_ABI = [
   // 상태 조회
-  'function getUserInfo(address addr) external view returns (bool eligible, bool member, address mentor, uint256 points)',
+  'function getUserInfo(address addr) external view returns (bool eligible, bool member, bool activeMember, address mentor, uint256 points, uint256 expiry)',
+  'function isActiveMember(address addr) external view returns (bool)',
+  'function memberExpiry(address addr) external view returns (uint256)',
   'function membershipFeeHex() external view returns (uint256)',
   'function mentorRewardBps() external view returns (uint16)',
   'function contractHexBalance() external view returns (uint256)',
@@ -191,6 +193,7 @@ const COOP_MALL_ABI = [
   'function grantEligibility(address user, address mentor) external',
   'function setMembershipFee(uint256 feeWei) external',
   'function setMentorRewardBps(uint16 bps) external',
+  'function setJumpBank(address _jb) external',
   'function withdrawHex(uint256 amount) external',
   'function withdrawJump(uint256 amount) external',
   // 바우처 — 관리자 액션
@@ -211,11 +214,13 @@ const COOP_MALL_ABI = [
   'function getVoucherInfo(uint256 voucherId) external view returns (uint256 templateId, address vOwner, bool burned, uint256 hexPrice, uint16 burnFeeBps, bool templateActive, string memory description, string memory usagePlace, string memory imageURI)',
   // 이벤트
   'event EligibilityGranted(address indexed user, address indexed mentor)',
-  'event MemberJoined(address indexed user, uint256 feeHex, uint256 jumpGiven)',
-  'event Paid(address indexed buyer, uint256 hexAmount, uint256 mentorPoints)',
+  'event MemberJoined(address indexed user, uint256 feeHex, uint256 jumpGiven, uint256 bankAmount, bool renewed)',
+  'event Paid(address indexed buyer, uint256 hexAmount, uint256 mentorPoints, uint256 bankAmount)',
   'event PointsConverted(address indexed user, uint256 pts, uint256 upperBonus)',
+  'event MembershipFeeChanged(uint256 newFeeWei)',
+  'event MentorBpsChanged(uint16 newBps)',
   'event VoucherTemplateCreated(uint256 indexed templateId, uint256 hexPrice, uint16 burnFeeBps)',
-  'event VoucherBought(uint256 indexed voucherId, uint256 indexed templateId, address indexed buyer)',
+  'event VoucherBought(uint256 indexed voucherId, uint256 indexed templateId, address indexed buyer, uint256 bankAmount)',
   'event VoucherTransferred(uint256 indexed voucherId, address indexed from, address indexed to)',
   'event VoucherBurned(uint256 indexed voucherId, address indexed owner, uint256 hexReturned, uint256 feeKept)',
 ];

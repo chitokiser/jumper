@@ -526,6 +526,40 @@ async function getMenteeIncome(uid) {
     }
   }
 
+  // CoopMall 구매 내역에서 멘토 수당 집계
+  const allCoopOrders = [];
+  await Promise.all(chunks.map(async (chunk) => {
+    const snap = await db.collection('coopOrders')
+      .where('uid', 'in', chunk)
+      .where('status', '==', 'confirmed')
+      .orderBy('createdAt', 'desc')
+      .limit(200)
+      .get();
+    snap.docs.forEach((d) => allCoopOrders.push(d.data()));
+  }));
+
+  for (const order of allCoopOrders) {
+    const entry = menteeMap[order.uid];
+    if (!entry) continue;
+    if (order.type === 'membership') continue;
+    const mentorBps = Number(order.mentorRewardBps ?? 0);
+    if (mentorBps === 0) continue;
+    const hexAmt = Number(BigInt(order.hexWei || '0')) / 1e18;
+    const myEst  = hexAmt * (mentorBps / 10000);
+    entry.txCount++;
+    entry.totalAmountHex += hexAmt;
+    entry.myEstimatedEarningHex += myEst;
+    if (entry.recentTxs.length < 5) {
+      entry.recentTxs.push({
+        amountHex: hexAmt,
+        feeBps: mentorBps,
+        myEst,
+        createdAt: order.createdAt?.toMillis?.() ?? null,
+        label: `CoopMall: ${order.productName || ''}`,
+      });
+    }
+  }
+
   return { mentees: Object.values(menteeMap), myAddress };
 }
 

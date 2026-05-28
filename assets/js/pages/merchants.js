@@ -95,6 +95,7 @@ let _alertedDropIds = new Set(); // 이미 알림을 보낸 dropId (중복 방�
 let _utNpcMarkers   = {};        // {npcId: google.maps.Marker} 사용자 보물 NPC 마커 (map에 등록된 것만)
 let _utNpcData      = [];        // 서버에서 받은 전체 NPC 데이터 배열 (위치 기반 proximity 계산용)
 let _utCurrentNpc   = null;      // 현재 선택된 사용자 보물 NPC
+let _hintUnlocked   = false;     // 현재 NPC 힌트 잠금 해제 여부
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
 const _ctx = {
@@ -3439,16 +3440,32 @@ function showToast(msg, type = 'info') {
 // ── 트레져헌터 랭킹 ────────────────────────────────────────────────────────────
 let _hunterRankTab = 'monsters'; // 'monsters' | 'treasures'
 let _hunterRankCache = { monsters: null, treasures: null };
+const _RANK_TTL = 5 * 60 * 1000; // 5분 로컬캐시
+
+function _rankLoad(tab) {
+  try {
+    const raw = localStorage.getItem(`hunterRank_${tab}`);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    return Date.now() - ts < _RANK_TTL ? data : null;
+  } catch { return null; }
+}
+function _rankSave(tab, rows) {
+  try { localStorage.setItem(`hunterRank_${tab}`, JSON.stringify({ data: rows, ts: Date.now() })); } catch { /* 무시 */ }
+}
 
 async function loadHunterRanking(tab) {
   const list = $('hunterRankList');
   if (!list) return;
 
-  if (_hunterRankCache[tab]) {
-    renderHunterRanking(_hunterRankCache[tab], tab);
-    return;
-  }
+  // 1) 메모리 캐시
+  if (_hunterRankCache[tab]) { renderHunterRanking(_hunterRankCache[tab], tab); return; }
 
+  // 2) localStorage 캐시 (5분 TTL)
+  const cached = _rankLoad(tab);
+  if (cached) { _hunterRankCache[tab] = cached; renderHunterRanking(cached, tab); return; }
+
+  // 3) Firestore 요청
   list.innerHTML = '<div class="hunter-rank-loading">Loading...</div>';
   try {
     const field = tab === 'monsters' ? 'monstersKilled' : 'treasuresFound';
@@ -3462,6 +3479,7 @@ async function loadHunterRanking(tab) {
       if (val > 0) rows.push({ uid: d.id, val, displayName: data.displayName || null, photoURL: data.photoURL || null, gsLevel: data.gsLevel || data.level || 1 });
     });
     _hunterRankCache[tab] = rows;
+    _rankSave(tab, rows);
     renderHunterRanking(rows, tab);
   } catch {
     list.innerHTML = '<div class="hunter-rank-empty">Failed to load ranking.</div>';
@@ -3513,19 +3531,19 @@ async function loadUserTreasureNpcs() {
     if (pos) {
       npcs.forEach(npc => {
         const d = haversine(pos.lat, pos.lng, npc.lat, npc.lng);
-        if (d <= 5) _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc);
+        if (d <= 200) _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc);
       });
     }
   } catch (_e) { /* silent */ }
 }
 
-// 5m 이내 NPC 마커 표시 / 8m 초과 시 숨김 (히스테리시스)
+// 200m 이내 NPC 마커 표시 / 250m 초과 시 숨김 (히스테리시스)
 function _checkUserNpcProximity(lat, lng) {
   for (const npc of _utNpcData) {
     const d = haversine(lat, lng, npc.lat, npc.lng);
-    if (d <= 5 && !_utNpcMarkers[npc.id]) {
+    if (d <= 200 && !_utNpcMarkers[npc.id]) {
       _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc);
-    } else if (d > 8 && _utNpcMarkers[npc.id]) {
+    } else if (d > 250 && _utNpcMarkers[npc.id]) {
       _utNpcMarkers[npc.id].setMap(null);
       delete _utNpcMarkers[npc.id];
     }
@@ -3551,21 +3569,18 @@ function _makeUserNpcMarker(npc) {
 
 function showUserNpcInfo(npc) {
   _utCurrentNpc = npc;
+  _hintUnlocked = false;
   const modal = document.getElementById('utNpcModal');
   if (!modal) return;
-  // NPC 이미지
   const avatarEl = document.getElementById('utNpcAvatar');
   if (avatarEl) avatarEl.src = `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
-  // 기본 정보
   document.getElementById('utNpcOwner').textContent   = npc.ownerName || '?';
-  document.getElementById('utNpcHint').textContent    = npc.hint || '';
   document.getElementById('utNpcStory').textContent   = npc.story || '';
   document.getElementById('utNpcComment').textContent = npc.comment || '';
   const storyWrap = document.getElementById('utNpcStoryWrap');
   const commentWrap = document.getElementById('utNpcCommentWrap');
   if (storyWrap) storyWrap.classList.toggle('hidden', !npc.story);
   if (commentWrap) commentWrap.classList.toggle('hidden', !npc.comment);
-  // 보상 정보
   document.getElementById('utNpcRewardType').textContent = npc.type === 'item' ? '아이템' : '코인';
   document.getElementById('utNpcRewardVal').textContent  = npc.type === 'item'
     ? `×${npc.itemCount}` : `${npc.itemCount}`;
@@ -3573,11 +3588,20 @@ function showUserNpcInfo(npc) {
   // 자기 보물이면 발견하기 버튼 숨김
   const discoverBtn = document.getElementById('btnDiscoverTreasure');
   if (discoverBtn) discoverBtn.classList.toggle('hidden', npc.ownerId === _uid);
-  // 메시지 초기화
+  // 힌트: 초기에는 흐림 처리, 버튼 숨김
+  const hintEl = document.getElementById('utNpcHint');
+  const unlockBtn = document.getElementById('btnUnlockHint');
+  if (hintEl) { hintEl.textContent = npc.hint || ''; hintEl.classList.add('hint-locked'); }
+  if (unlockBtn) { unlockBtn.classList.remove('visible'); unlockBtn.disabled = false; unlockBtn.textContent = '🔓 힌트 잠금 해제 (10 Coin)'; }
   _utNpcMsg('');
-  // 댓글 로드
-  loadNpcComments(npc.id);
   modal.classList.add('open');
+  // 잠금 해제 여부 비동기 확인 (자기 보물이면 즉시 해제)
+  if (npc.ownerId === _uid) {
+    _applyHintUnlocked();
+  } else {
+    _checkHintUnlockStatus(npc.id);
+  }
+  loadNpcComments(npc.id);
 }
 
 function _utNpcMsg(text, isErr) {
@@ -3585,6 +3609,54 @@ function _utNpcMsg(text, isErr) {
   if (!el) return;
   el.textContent = text;
   el.style.color = isErr ? '#f87171' : '#6ee7b7';
+}
+
+async function _checkHintUnlockStatus(npcId) {
+  const unlockBtn = document.getElementById('btnUnlockHint');
+  if (!_uid) {
+    if (unlockBtn) unlockBtn.classList.remove('visible');
+    return;
+  }
+  try {
+    const { data } = await httpsCallable(functions, 'checkHintUnlock')({ npcId });
+    if (data.unlocked) {
+      _applyHintUnlocked();
+    } else {
+      if (unlockBtn) unlockBtn.classList.add('visible');
+    }
+  } catch (_e) {
+    if (unlockBtn) unlockBtn.classList.add('visible');
+  }
+}
+
+function _applyHintUnlocked() {
+  _hintUnlocked = true;
+  const hintEl = document.getElementById('utNpcHint');
+  if (hintEl) hintEl.classList.remove('hint-locked');
+  const unlockBtn = document.getElementById('btnUnlockHint');
+  if (unlockBtn) unlockBtn.classList.remove('visible');
+}
+
+async function unlockHintAction() {
+  const npc = _utCurrentNpc;
+  if (!npc) return;
+  if (!_uid) { _utNpcMsg('로그인이 필요합니다.', true); return; }
+  const btn = document.getElementById('btnUnlockHint');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 처리 중...'; }
+  try {
+    await httpsCallable(functions, 'unlockHint')({ npcId: npc.id });
+    _applyHintUnlocked();
+    _utNpcMsg('힌트 잠금이 해제되었습니다! 🔓', false);
+  } catch (e) {
+    _utNpcMsg('⚠️ ' + (e.message || '잠금 해제 실패'), true);
+    if (btn) { btn.disabled = false; btn.textContent = '🔓 힌트 잠금 해제 (10 Coin)'; }
+  }
+}
+
+function _renderCommentText(text) {
+  const escaped = escHtml(text);
+  return escaped.replace(/(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp))(?:\s|$)/gi,
+    (_, url) => `<img class="comment-img" src="${url}" alt="이미지" onclick="openLightbox('${url}','')"> `);
 }
 
 async function discoverTreasure(npcId) {
@@ -3638,7 +3710,7 @@ async function loadNpcComments(npcId) {
       const dateStr = c.createdAt ? new Date(c.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
       return `<div class="ut-npc-comment-item" data-cid="${c.id}">
         <div class="ut-npc-comment-author">${escHtml(c.displayName || '익명')} <span style="color:#6b7280;font-weight:400">${dateStr}</span></div>
-        <div class="ut-npc-comment-text">${escHtml(c.text)}</div>
+        <div class="ut-npc-comment-text">${_renderCommentText(c.text)}</div>
         ${canDel ? `<button class="ut-npc-comment-del" data-cid="${c.id}" title="삭제">✕</button>` : ''}
       </div>`;
     }).join('');
@@ -3654,6 +3726,10 @@ async function submitNpcComment() {
   const npc = _utCurrentNpc;
   if (!npc) return;
   if (!_uid) { _utNpcMsg('댓글을 달려면 로그인하세요.', true); return; }
+  if (!_hintUnlocked && npc.ownerId !== _uid) {
+    _utNpcMsg('댓글을 달려면 먼저 힌트를 잠금 해제하세요. (10 Coin)', true);
+    return;
+  }
   const input = document.getElementById('utNpcCommentInput');
   const text = input?.value?.trim();
   if (!text) return;
@@ -3802,8 +3878,6 @@ function initHunterRanking() {
   const section = $('hunterRankSection');
   if (!section) return;
 
-  loadHunterRanking(_hunterRankTab);
-
   section.querySelectorAll('.hunter-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       section.querySelectorAll('.hunter-tab').forEach(b => b.classList.remove('active'));
@@ -3812,6 +3886,14 @@ function initHunterRanking() {
       loadHunterRanking(_hunterRankTab);
     });
   });
+
+  // 섹션이 뷰포트에 들어올 때만 로드 (DOMContentLoaded 즉시 요청 방지)
+  const observer = new IntersectionObserver(entries => {
+    if (!entries[0].isIntersecting) return;
+    observer.disconnect();
+    loadHunterRanking(_hunterRankTab);
+  }, { threshold: 0.1 });
+  observer.observe(section);
 }
 
 // 페이지 로드 시 랭킹 초기화
@@ -3847,6 +3929,8 @@ document.addEventListener('DOMContentLoaded', () => {
   utMyModal?.addEventListener('click',  e => { if (e.target === utMyModal)  utMyModal.classList.remove('open'); });
   document.getElementById('btnDiscoverTreasure')
     ?.addEventListener('click', () => { if (_utCurrentNpc) discoverTreasure(_utCurrentNpc.id); });
+  document.getElementById('btnUnlockHint')
+    ?.addEventListener('click', unlockHintAction);
   document.getElementById('btnUtRegSubmit')
     ?.addEventListener('click', registerTreasure);
   document.getElementById('btnOpenUtReg')

@@ -82,3 +82,6 @@ jumper-jackpot/
 
 # game-server는 별도 Git 저장소 (github.com/chitokiser/jumper-game-server)
 game-server/
+
+# Local Netlify folder
+.netlify

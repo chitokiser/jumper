@@ -112,10 +112,10 @@ function renderShopCard(s) {
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
-        <button class="btn btn-sm" onclick="adminShopEdit(${idJson})">수정</button>
-        <button class="btn btn-sm" onclick="adminShopLevelUp(${idJson},${lvl})">레벨업 (${nextCost.toLocaleString()}G)</button>
-        <button class="btn btn-sm" onclick="adminShopTransfer(${idJson})">양도</button>
-        <button class="btn btn-sm" style="background:#dc2626;color:#fff;border-color:#dc2626;" onclick="adminShopDelete(${idJson})">삭제</button>
+        <button class="btn btn-sm" onclick='adminShopEdit(${idJson})'>수정</button>
+        <button class="btn btn-sm" onclick='adminShopLevelUp(${idJson},${lvl})'>레벨업 (${nextCost.toLocaleString()}G)</button>
+        <button class="btn btn-sm" onclick='adminShopTransfer(${idJson})'>양도</button>
+        <button class="btn btn-sm" style="background:#dc2626;color:#fff;border-color:#dc2626;" onclick='adminShopDelete(${idJson})'>삭제</button>
       </div>
     </div>
   </div>`;

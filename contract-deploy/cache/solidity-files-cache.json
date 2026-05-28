@@ -37,6 +37,44 @@
         "IERC20",
         "JumpAutoExchange"
       ]
+    },
+    "C:\\Users\\Asus\\Desktop\\project\\jumper\\jumper_v10\\contract-deploy\\contracts\\CoopMall.sol": {
+      "lastModificationDate": 1779874690208,
+      "contentHash": "f897b189a738b3cffd05081a15120770",
+      "sourceName": "contracts/CoopMall.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "CoopMall",
+        "IERC20",
+        "IJumpBank"
+      ]
     }
   }
 }
