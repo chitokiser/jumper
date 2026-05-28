@@ -38,6 +38,7 @@
               <button class="btn btn-sm" id="btnTabDao" type="button">DAO 승인</button>
               <button class="btn btn-sm" id="btnTabTreasure" type="button">🎁 보물찾기</button>
               <button class="btn btn-sm" id="btnTabChat" type="button">💬 채팅</button>
+              <button class="btn btn-sm" id="btnTabShops" type="button">🏪 상점 관리</button>
             </div>
 
             <div class="toolbar-right">
@@ -564,6 +565,76 @@
 
           </div>
 
+          <!-- ── 🏪 상점 관리 탭 ── -->
+          <div id="tabShops" style="display:none;">
+
+            <!-- 상점 생성/수정 폼 -->
+            <div class="list-head" style="margin-top:8px;">
+              <div class="muted">🏪 상점 생성 / 수정 (game_shops)</div>
+              <button class="btn btn-sm" id="btnReloadShops" type="button">목록 새로고침</button>
+            </div>
+            <div class="card" style="margin-top:4px;">
+              <div class="kv" style="margin-bottom:8px;">
+                <div class="k">상점 ID (수정 시)</div>
+                <div class="v"><input type="text" id="shopId" class="select" style="width:100%;" placeholder="비우면 신규 생성"></div>
+                <div class="k">상점 이름</div>
+                <div class="v"><input type="text" id="shopName" class="select" style="width:100%;" placeholder="예: 용사의 무기점"></div>
+                <div class="k">소유자 UID</div>
+                <div class="v"><input type="text" id="shopOwnerUid" class="select" style="width:100%;" placeholder="비우면 관리자 UID"></div>
+                <div class="k">상점 타입</div>
+                <div class="v">
+                  <select id="shopType" class="select">
+                    <option value="weapon_armor">무기/방어구</option>
+                    <option value="potion">포션</option>
+                    <option value="misc">기타</option>
+                  </select>
+                </div>
+                <div class="k">좌표</div>
+                <div class="v"><input type="text" id="shopCoords" class="select" style="width:100%;" placeholder="예: 20.948991, 105.974279"></div>
+                <div class="k">레벨 (초기)</div>
+                <div class="v"><input type="number" id="shopLevel" class="select" style="width:80px;" value="1" min="1" max="100"></div>
+                <div class="k">이미지 URL</div>
+                <div class="v"><input type="text" id="shopImageUrl" class="select" style="width:100%;" placeholder="https://... 또는 비워두기"></div>
+                <div class="k">활성화</div>
+                <div class="v">
+                  <select id="shopActive" class="select">
+                    <option value="true">활성</option>
+                    <option value="false">비활성</option>
+                  </select>
+                </div>
+                <div class="k">판매 아이템 (JSON)</div>
+                <div class="v">
+                  <textarea id="shopItems" class="select" style="width:100%;height:80px;font-family:monospace;font-size:11px;resize:vertical;"
+                    placeholder='[{"itemId":"weapon_100","name":"강철검","price":500},{"itemId":"potion_red","name":"빨간포션","price":100}]'></textarea>
+                  <div class="muted" style="font-size:11px;margin-top:3px;">형식: [{"itemId":"...","name":"...","price":골드수량}]</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <button class="btn btn-sm" id="btnSaveShop" type="button">💾 상점 저장</button>
+                <button class="btn btn-sm" id="btnClearShopForm" type="button">초기화</button>
+                <span id="shopSaveResult" style="font-size:13px;margin-left:4px;"></span>
+              </div>
+            </div>
+
+            <!-- 상점 목록 -->
+            <div id="shopList" class="list" style="margin-top:12px;"></div>
+
+            <!-- 양도 다이얼로그용 숨김 영역 -->
+            <div id="shopTransferSection" style="display:none;margin-top:16px;">
+              <div class="card">
+                <div class="muted" style="font-size:13px;margin-bottom:8px;">상점 양도 — 이메일 입력</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input type="text" id="shopTransferEmail" class="select" style="flex:1;" placeholder="양도받을 유저 이메일">
+                  <input type="hidden" id="shopTransferTargetId">
+                  <button class="btn btn-sm" id="btnConfirmTransfer" type="button">양도 확인</button>
+                  <button class="btn btn-sm" id="btnCancelTransfer" type="button">취소</button>
+                </div>
+                <span id="shopTransferResult" style="font-size:13px;margin-top:6px;display:block;"></span>
+              </div>
+            </div>
+
+          </div>
+
           <!-- ── 1:1 채팅 관리 탭 ── -->
           <div id="tabChat" style="display:none;">
             <div class="list-head" style="align-items:center;">
@@ -633,5 +704,6 @@
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/admin-approve.js"></script>
   <script type="module" src="/assets/js/admin-support-chat.js"></script>
+  <script type="module" src="/assets/js/admin_shops.js"></script>
 </body>
 </html>

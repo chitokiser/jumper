@@ -1905,6 +1905,22 @@ exports.adminInitAllPlayers = onCall(wrapError(async (req) => {
   return shopH.adminInitAllPlayers(requireAuth(req));
 }));
 
+exports.attackShop = onCall(wrapError(async (req) => {
+  return shopH.attackShop(requireAuth(req), req.data ?? {});
+}));
+
+exports.transferShop = onCall(wrapError(async (req) => {
+  return shopH.transferShop(requireAuth(req), req.data ?? {});
+}));
+
+exports.levelUpShop = onCall(wrapError(async (req) => {
+  return shopH.levelUpShop(requireAuth(req), req.data ?? {});
+}));
+
+exports.updateShopAppearance = onCall(wrapError(async (req) => {
+  return shopH.updateShopAppearance(requireAuth(req), req.data ?? {});
+}));
+
 // 최초 1회 호출 — 기존 users 수를 세어 stats/public 초기화 (어드민 전용)
 // ════════════════════════════════════════════════════════════════════════════
 // NFC 보물 태그 시스템

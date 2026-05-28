@@ -1,5 +1,5 @@
 // functions/handlers/shop.js
-// 게임 내 상점 시스템 (무기/방어구, 약물, 잡템)
+// 게임 내 상점 시스템 (소유/공격/점령/레벨업/양도)
 'use strict';
 
 const admin = require('firebase-admin');
@@ -8,13 +8,30 @@ const { requireAdmin } = require('../wallet/admin');
 
 const db = admin.firestore();
 
-const VALID_TYPES = ['weapon_armor', 'potion', 'misc'];
+const VALID_TYPES         = ['weapon_armor', 'potion', 'misc'];
+const BASE_HP_PER_LEVEL   = 10000;
+const BASE_ATK            = 100;
+const ATTACK_COOLDOWN_SEC = 60;
 
-// ── 관리자: 상점 저장 (생성/수정) ─────────────────────────────────────────────
+function weaponBonus(weaponId) {
+  if (!weaponId) return 0;
+  const m = String(weaponId).match(/^weapon_(\d+)$/);
+  return m ? Number(m[1]) : 0;
+}
+
+async function isAdmin(uid) {
+  return requireAdmin(uid).then(() => true).catch(() => false);
+}
+
+// ── 관리자: 상점 생성/수정 ────────────────────────────────────────────────────
 async function adminSaveShop(uid, data = {}) {
   await requireAdmin(uid);
 
-  const { shopId, name, type, lat, lng, items = [], active = true } = data;
+  const {
+    shopId, name, type, lat, lng, items = [],
+    active = true, ownerUid, imageUrl = '',
+    level: inputLevel = 1,
+  } = data;
 
   if (!name || typeof name !== 'string' || !name.trim())
     throw new HttpsError('invalid-argument', '상점 이름이 필요합니다');
@@ -25,7 +42,6 @@ async function adminSaveShop(uid, data = {}) {
   if (!Array.isArray(items))
     throw new HttpsError('invalid-argument', 'items는 배열이어야 합니다');
 
-  // 아이템 배열 유효성 검사
   for (const item of items) {
     if (!item.itemId || typeof item.itemId !== 'string')
       throw new HttpsError('invalid-argument', '각 아이템에 itemId가 필요합니다');
@@ -37,47 +53,66 @@ async function adminSaveShop(uid, data = {}) {
       throw new HttpsError('invalid-argument', 'stock은 숫자여야 합니다 (-1: 무제한)');
   }
 
+  const finalOwnerUid = (ownerUid && String(ownerUid).trim()) ? ownerUid.trim() : uid;
+  const level = Math.max(1, Math.floor(Number(inputLevel) || 1));
+  const maxHp = level * BASE_HP_PER_LEVEL;
+  const now   = admin.firestore.FieldValue.serverTimestamp();
+
   const payload = {
     name: name.trim(),
     type,
-    lat,
-    lng,
+    lat, lng,
     items: items.map(it => ({
       itemId: it.itemId,
-      name: it.name,
-      price: it.price,
-      stock: it.stock ?? -1,
+      name:   it.name,
+      price:  it.price,
+      stock:  it.stock ?? -1,
     })),
     active,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    imageUrl,
+    ownerUid: finalOwnerUid,
+    level,
+    maxHp,
+    updatedAt: now,
   };
 
   let ref;
   if (shopId) {
     ref = db.collection('game_shops').doc(shopId);
-    await ref.update(payload);
+    const existing = await ref.get();
+    if (!existing.exists) {
+      payload.hp        = maxHp;
+      payload.createdAt = now;
+      await ref.set(payload);
+    } else {
+      const prev = existing.data();
+      // Reset HP when admin changes level
+      if ((prev.level ?? 1) !== level) payload.hp = maxHp;
+      await ref.update(payload);
+    }
   } else {
-    payload.createdAt = admin.firestore.FieldValue.serverTimestamp();
+    payload.hp        = maxHp;
+    payload.createdAt = now;
     ref = await db.collection('game_shops').add(payload);
   }
 
   return { ok: true, shopId: ref.id };
 }
 
-// ── 관리자: 상점 삭제 ──────────────────────────────────────────────────────────
+// ── 관리자: 상점 삭제 ────────────────────────────────────────────────────────
 async function adminDeleteShop(uid, { shopId } = {}) {
   await requireAdmin(uid);
   if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
 
   const ref = db.collection('game_shops').doc(shopId);
-  const snap = await ref.get();
-  if (!snap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+  if (!(await ref.get()).exists)
+    throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
 
   await ref.delete();
   return { ok: true };
 }
 
-// ── 유저: 상점 아이템 구매 ─────────────────────────────────────────────────────
+// ── 유저: 상점 아이템 구매 (판매금액 50% → 상점주인 골드) ───────────────────
 async function buyShopItem(uid, { shopId, itemId, quantity = 1 } = {}) {
   if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
   if (!itemId) throw new HttpsError('invalid-argument', 'itemId가 필요합니다');
@@ -92,39 +127,53 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1 } = {}) {
   const itemDef = (shop.items || []).find(it => it.itemId === itemId);
   if (!itemDef) throw new HttpsError('not-found', '해당 아이템을 이 상점에서 판매하지 않습니다');
 
-  // 재고 확인 (-1 = 무제한)
   if (itemDef.stock !== -1 && itemDef.stock < qty)
     throw new HttpsError('failed-precondition', `재고가 부족합니다 (남은 재고: ${itemDef.stock})`);
 
-  const totalCost = itemDef.price * qty;
+  const totalCost  = itemDef.price * qty;
+  const ownerShare = Math.floor(totalCost * 0.5);
+  const ownerUid   = shop.ownerUid;
+  const sameUser   = !ownerUid || ownerUid === uid;
+
   const playerRef = db.collection('battle_players').doc(uid);
   const invRef    = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
+  const shopRef   = db.collection('game_shops').doc(shopId);
+  const ownerRef  = sameUser ? null : db.collection('battle_players').doc(ownerUid);
+  const now       = admin.firestore.FieldValue.serverTimestamp();
 
   await db.runTransaction(async (tx) => {
-    const [pSnap, invSnap] = await Promise.all([tx.get(playerRef), tx.get(invRef)]);
+    const [pSnap, invSnap, ownerSnap] = await Promise.all([
+      tx.get(playerRef),
+      tx.get(invRef),
+      ownerRef ? tx.get(ownerRef) : Promise.resolve(null),
+    ]);
 
     const currentGold = pSnap.exists ? (pSnap.data().gold ?? 0) : 0;
     if (currentGold < totalCost)
       throw new HttpsError('failed-precondition',
         `골드가 부족합니다 (보유: ${currentGold}, 필요: ${totalCost})`);
 
-    const playerWrite = { gold: currentGold - totalCost, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-    if (pSnap.exists) {
-      tx.update(playerRef, playerWrite);
-    } else {
-      tx.set(playerRef, { uid, token: 30, hp: 1000, mp: 1000, level: 1, ...playerWrite });
+    // Net cost from buyer: if buyer == owner, 50% flows back
+    const netCost = sameUser ? totalCost - ownerShare : totalCost;
+    const playerWrite = { gold: currentGold - netCost, updatedAt: now };
+    if (pSnap.exists) tx.update(playerRef, playerWrite);
+    else tx.set(playerRef, { uid, token: 30, hp: 1000, mp: 1000, level: 1, gold: 0, ...playerWrite });
+
+    // Credit buyer inventory
+    const currentCount = invSnap.exists ? (invSnap.data().count ?? 0) : 0;
+    tx.set(invRef, { uid, itemId, count: currentCount + qty, updatedAt: now }, { merge: true });
+
+    // Credit owner 50%
+    if (ownerRef && ownerShare > 0) {
+      const ownerGold = ownerSnap?.exists ? (ownerSnap.data().gold ?? 0) : 0;
+      if (ownerSnap?.exists)
+        tx.update(ownerRef, { gold: ownerGold + ownerShare, updatedAt: now });
+      else
+        tx.set(ownerRef, { uid: ownerUid, token: 30, hp: 1000, mp: 1000, level: 1, gold: ownerShare, updatedAt: now });
     }
 
-    const currentCount = invSnap.exists ? (invSnap.data().count ?? 0) : 0;
-    tx.set(invRef, {
-      uid, itemId,
-      count: currentCount + qty,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    // 유한 재고 차감
+    // Deduct finite stock
     if (itemDef.stock !== -1) {
-      const shopRef = db.collection('game_shops').doc(shopId);
       const newItems = shop.items.map(it =>
         it.itemId === itemId ? { ...it, stock: it.stock - qty } : it
       );
@@ -132,35 +181,194 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1 } = {}) {
     }
   });
 
-  return { ok: true, itemId, quantity: qty, totalCost };
+  return { ok: true, itemId, quantity: qty, totalCost, ownerShare };
+}
+
+// ── 유저: 상점 공격 ──────────────────────────────────────────────────────────
+async function attackShop(uid, { shopId } = {}) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
+
+  const shopRef   = db.collection('game_shops').doc(shopId);
+  const playerRef = db.collection('battle_players').doc(uid);
+  const coolRef   = db.collection('shop_attack_cooldowns').doc(`${uid}_${shopId}`);
+  const now       = admin.firestore.FieldValue.serverTimestamp();
+
+  const [shopSnap, playerSnap, coolSnap] = await Promise.all([
+    shopRef.get(), playerRef.get(), coolRef.get(),
+  ]);
+
+  if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+  const shop = shopSnap.data();
+  if (!shop.active) throw new HttpsError('failed-precondition', '비활성화된 상점입니다');
+  if (shop.ownerUid === uid)
+    throw new HttpsError('failed-precondition', '자신의 상점은 공격할 수 없습니다');
+
+  // Cooldown check
+  if (coolSnap.exists) {
+    const lastSec = coolSnap.data().lastAt?.seconds ?? 0;
+    const elapsed = Date.now() / 1000 - lastSec;
+    if (elapsed < ATTACK_COOLDOWN_SEC)
+      throw new HttpsError('failed-precondition',
+        `공격 쿨다운 중 (${Math.ceil(ATTACK_COOLDOWN_SEC - elapsed)}초 남음)`);
+  }
+
+  const player = playerSnap.exists ? playerSnap.data() : {};
+  const atk    = BASE_ATK + weaponBonus(player.equippedWeapon || 'weapon_50');
+
+  const currentHp = shop.hp ?? shop.maxHp ?? BASE_HP_PER_LEVEL;
+  const newHp     = Math.max(0, currentHp - atk);
+  const conquered = newHp === 0;
+
+  const batch = db.batch();
+
+  batch.update(shopRef, {
+    hp:        conquered ? shop.maxHp : newHp, // reset HP on conquest
+    ownerUid:  conquered ? uid : shop.ownerUid,
+    updatedAt: now,
+  });
+
+  batch.set(coolRef, { uid, shopId, lastAt: now });
+
+  batch.set(db.collection('shop_attack_logs').doc(), {
+    shopId,
+    attackerUid:  uid,
+    prevOwnerUid: shop.ownerUid,
+    atk,
+    prevHp:   currentHp,
+    newHp:    conquered ? shop.maxHp : newHp,
+    conquered,
+    createdAt: now,
+  });
+
+  await batch.commit();
+
+  return {
+    ok: true, atk,
+    prevHp: currentHp,
+    newHp: conquered ? shop.maxHp : newHp,
+    conquered,
+    shopName: shop.name,
+  };
+}
+
+// ── 상점주인/관리자: 이메일로 양도 ───────────────────────────────────────────
+async function transferShop(uid, { shopId, toEmail } = {}) {
+  if (!shopId)  throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
+  if (!toEmail) throw new HttpsError('invalid-argument', '수신자 이메일이 필요합니다');
+
+  const shopSnap = await db.collection('game_shops').doc(shopId).get();
+  if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+  const shop = shopSnap.data();
+
+  const admin_ = await isAdmin(uid);
+  if (!admin_ && shop.ownerUid !== uid)
+    throw new HttpsError('permission-denied', '상점 소유자만 양도할 수 있습니다');
+
+  const usersSnap = await db.collection('users')
+    .where('email', '==', toEmail.trim().toLowerCase())
+    .limit(1).get();
+  if (usersSnap.empty)
+    throw new HttpsError('not-found', `이메일 ${toEmail}에 해당하는 유저를 찾을 수 없습니다`);
+
+  const toUid = usersSnap.docs[0].id;
+  if (toUid === uid)
+    throw new HttpsError('invalid-argument', '자신에게는 양도할 수 없습니다');
+
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const batch = db.batch();
+  batch.update(db.collection('game_shops').doc(shopId), { ownerUid: toUid, updatedAt: now });
+  batch.set(db.collection('shop_transfer_logs').doc(), {
+    shopId, fromUid: uid, toUid, toEmail, createdAt: now,
+  });
+  await batch.commit();
+
+  return { ok: true, toUid, toEmail };
+}
+
+// ── 상점주인/관리자: 레벨업 ──────────────────────────────────────────────────
+async function levelUpShop(uid, { shopId } = {}) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
+
+  const shopRef   = db.collection('game_shops').doc(shopId);
+  const playerRef = db.collection('battle_players').doc(uid);
+
+  const [shopSnap, playerSnap] = await Promise.all([shopRef.get(), playerRef.get()]);
+  if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+
+  const shop    = shopSnap.data();
+  const admin_  = await isAdmin(uid);
+  if (!admin_ && shop.ownerUid !== uid)
+    throw new HttpsError('permission-denied', '상점 소유자만 레벨업할 수 있습니다');
+
+  const currentLevel = shop.level ?? 1;
+  const cost         = currentLevel * currentLevel * 10000;
+  const gold         = playerSnap.exists ? (playerSnap.data().gold ?? 0) : 0;
+
+  if (!admin_ && gold < cost)
+    throw new HttpsError('failed-precondition',
+      `골드 부족 (보유: ${gold.toLocaleString()}, 필요: ${cost.toLocaleString()})`);
+
+  const newLevel = currentLevel + 1;
+  const newMaxHp = newLevel * BASE_HP_PER_LEVEL;
+  const now      = admin.firestore.FieldValue.serverTimestamp();
+
+  const batch = db.batch();
+  batch.update(shopRef, { level: newLevel, maxHp: newMaxHp, hp: newMaxHp, updatedAt: now });
+  if (!admin_ && playerSnap.exists)
+    batch.update(playerRef, { gold: gold - cost, updatedAt: now });
+
+  await batch.commit();
+  return { ok: true, newLevel, newMaxHp, cost };
+}
+
+// ── 상점주인/관리자: 이름·이미지 수정 ─────────────────────────────────────────
+async function updateShopAppearance(uid, { shopId, name, imageUrl } = {}) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
+
+  const shopSnap = await db.collection('game_shops').doc(shopId).get();
+  if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+  const shop = shopSnap.data();
+
+  const admin_ = await isAdmin(uid);
+  if (!admin_ && shop.ownerUid !== uid)
+    throw new HttpsError('permission-denied', '상점 소유자만 수정할 수 있습니다');
+
+  const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+  if (name && typeof name === 'string' && name.trim()) update.name = name.trim();
+  if (imageUrl !== undefined) update.imageUrl = imageUrl;
+
+  if (Object.keys(update).length === 1)
+    throw new HttpsError('invalid-argument', '변경할 항목이 없습니다');
+
+  await db.collection('game_shops').doc(shopId).update(update);
+  return { ok: true };
 }
 
 // ── 스타터 팩 정의 ─────────────────────────────────────────────────────────────
 const STARTER_PACK = {
   equippedWeapon: 'weapon_50',
   equippedArmor:  'armo_10',
-  token:          30,   // 마정석
+  token:          30,
   gold:           0,
   hp:             1000,
   mp:             1000,
   level:          1,
 };
 const STARTER_INV = [
-  { itemId: 'weapon_50',    count: 1  },
-  { itemId: 'armo_10',      count: 1  },
-  { itemId: 'revive_ticket',count: 30 },
-  { itemId: 'potion_red',   count: 30 },
+  { itemId: 'weapon_50',     count: 1  },
+  { itemId: 'armo_10',       count: 1  },
+  { itemId: 'revive_ticket', count: 30 },
+  { itemId: 'potion_red',    count: 30 },
 ];
 
 async function _applyStarterToPlayer(uid, existingSnap) {
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const now   = admin.firestore.FieldValue.serverTimestamp();
   const batch = db.batch();
-
   const playerRef = db.collection('battle_players').doc(uid);
+
   if (!existingSnap || !existingSnap.exists) {
     batch.set(playerRef, { uid, ...STARTER_PACK, updatedAt: now });
   } else {
-    // 기존 유저: 스타터 장비/마정석만 최솟값 보장
     const d = existingSnap.data();
     const update = {};
     if ((d.token ?? 0) < STARTER_PACK.token) update.token = STARTER_PACK.token;
@@ -171,18 +379,16 @@ async function _applyStarterToPlayer(uid, existingSnap) {
   }
 
   for (const { itemId, count } of STARTER_INV) {
-    const invRef = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
+    const invRef  = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
     const invSnap = await invRef.get();
     const current = invSnap.exists ? (invSnap.data().count ?? 0) : 0;
-    if (current < count) {
+    if (current < count)
       batch.set(invRef, { uid, itemId, count, updatedAt: now }, { merge: true });
-    }
   }
 
   await batch.commit();
 }
 
-// ── 플레이어 초기화 (자기 자신, 게임 첫 접속 시) ──────────────────────────────
 async function initBattlePlayer(uid) {
   const playerRef = db.collection('battle_players').doc(uid);
   const snap = await playerRef.get();
@@ -191,24 +397,32 @@ async function initBattlePlayer(uid) {
   return { ok: true, created: true };
 }
 
-// ── 관리자: 모든 유저 스타터 초기화 ──────────────────────────────────────────
 async function adminInitAllPlayers(uid) {
   await requireAdmin(uid);
   const usersSnap = await db.collection('users').get();
-  let processed = 0;
-  const CHUNK = 20;
   const uids = usersSnap.docs.map(d => d.id);
+  const CHUNK = 20;
+  let processed = 0;
 
   for (let i = 0; i < uids.length; i += CHUNK) {
-    const chunk = uids.slice(i, i + CHUNK);
-    await Promise.all(chunk.map(async (u) => {
+    await Promise.all(uids.slice(i, i + CHUNK).map(async (u) => {
       const snap = await db.collection('battle_players').doc(u).get();
       await _applyStarterToPlayer(u, snap);
     }));
-    processed += chunk.length;
+    processed += Math.min(CHUNK, uids.length - i);
   }
 
   return { ok: true, processed };
 }
 
-module.exports = { adminSaveShop, adminDeleteShop, buyShopItem, initBattlePlayer, adminInitAllPlayers };
+module.exports = {
+  adminSaveShop,
+  adminDeleteShop,
+  buyShopItem,
+  attackShop,
+  transferShop,
+  levelUpShop,
+  updateShopAppearance,
+  initBattlePlayer,
+  adminInitAllPlayers,
+};
