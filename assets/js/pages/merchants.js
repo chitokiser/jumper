@@ -4273,10 +4273,12 @@ async function registerTreasure() {
   const hint    = document.getElementById('utRegHint')?.value?.trim();
   const story   = document.getElementById('utRegStory')?.value?.trim();
   const comment = document.getElementById('utRegComment')?.value?.trim();
-  const lat     = parseFloat(document.getElementById('utRegLat')?.value);
-  const lng     = parseFloat(document.getElementById('utRegLng')?.value);
-  if (!lat || !lng || isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180)
-    { _utRegMsg('위도·경도를 올바르게 입력하거나 GPS 버튼을 사용하세요.', true); return; }
+  const coordsRaw = document.getElementById('utRegCoords')?.value?.trim() || '';
+  const coordsParts = coordsRaw.split(/[\s,]+/).map(Number);
+  const lat = coordsParts[0];
+  const lng = coordsParts[1];
+  if (!coordsRaw || coordsParts.length < 2 || isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180)
+    { _utRegMsg('좌표를 올바르게 입력하세요. 예) 21.1515283, 106.716195', true); return; }
   if (!hint || hint.length < 5) { _utRegMsg('힌트는 5자 이상 입력하세요.', true); return; }
   if (type === 'item' && !itemId) { _utRegMsg('아이템을 선택하세요.', true); return; }
   const btn = document.getElementById('btnUtRegSubmit');
@@ -4431,10 +4433,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ?.addEventListener('click', () => {
       const pos = _ctx.lastPos;
       if (!pos) { _utRegMsg('📡 GPS 신호 대기 중... 게임을 먼저 시작하세요.', true); return; }
-      const latEl = document.getElementById('utRegLat');
-      const lngEl = document.getElementById('utRegLng');
-      if (latEl) latEl.value = pos.lat;
-      if (lngEl) lngEl.value = pos.lng;
+      const coordsEl = document.getElementById('utRegCoords');
+      if (coordsEl) coordsEl.value = `${pos.lat.toFixed(7)}, ${pos.lng.toFixed(7)}`;
       _utRegMsg(`📍 ${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`, false);
     });
   document.querySelectorAll('.ut-reg-type-btn').forEach(btn => {
