@@ -21,7 +21,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          equipWeapon, equipArmor, equipArmorToSlot, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
          getEquippedWeapon, getEquippedArmor, getEquippedArmorSlots,
          updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
-         loadShops, getShops, deleteShop, checkShopProximity,
+         loadShops, getShops, deleteShop, checkShopProximity, updateShopHpMarker,
          loadTutorialBoxes, clearTutorialBoxes, checkTutorialProximity,
          onPlayerExp, onPlayerLevelUp,
          addPlayerGold, spendPlayerGold, addPlayerGsExp }
@@ -39,9 +39,6 @@ import { initGameServer, connectToGameServer, disconnectFromGameServer,
 import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
   from './merchants.monster-sprite.js';
 import { _t } from './merchants.i18n.js';
-
-// 스프라이트 이미지 즉시 프리로드 (몬스터 등장 전 브라우저 캐시 확보)
-preloadSpriteImages();
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -1190,7 +1187,10 @@ function showMyLocation() {
   mapWrap.requestFullscreen?.().catch(() => {});
 
   const _onGpsReady = () => {
-    if (!isGameServerConnected()) connectToGameServer();
+    if (!isGameServerConnected()) {
+      preloadSpriteImages(); // 게임 시작 시점에만 스프라이트 프리로드
+      connectToGameServer();
+    }
   };
 
   // 첫 클릭: 게임 시작 + 현재 위치로 즉시 이동
@@ -1778,11 +1778,15 @@ function renderInventory() {
       return Number(a[0]) - Number(b[0]);
     });
 
-  // 스킬바 빨간약 뱃지 업데이트
-  const potBadge = $('skillPotionBadge');
-  const potBtn   = $('skillBtnPotion');
-  if (potBadge) potBadge.textContent = (_inventory['potion_red'] || 0) > 0 ? String(_inventory['potion_red']) : '';
-  if (potBtn)   potBtn.disabled = (_inventory['potion_red'] || 0) <= 0;
+  // 스킬바 약 뱃지 업데이트
+  const potBadge   = $('skillPotionBadge');
+  const potBtn     = $('skillBtnPotion');
+  const mpPotBadge = $('skillMpPotionBadge');
+  const mpPotBtn   = $('skillBtnMpPotion');
+  if (potBadge)   potBadge.textContent   = (_inventory['potion_red'] || 0) > 0 ? String(_inventory['potion_red']) : '';
+  if (potBtn)     potBtn.disabled        = (_inventory['potion_red'] || 0) <= 0;
+  if (mpPotBadge) mpPotBadge.textContent = (_inventory['potion_mp']  || 0) > 0 ? String(_inventory['potion_mp'])  : '';
+  if (mpPotBtn)   mpPotBtn.disabled      = (_inventory['potion_mp']  || 0) <= 0;
 
   grid.innerHTML = '';
   for (let i = 0; i < SLOTS; i++) {
@@ -2514,6 +2518,11 @@ function openInventory() {
   const tokenEl = document.getElementById('invToken');
   if (goldEl)  goldEl.textContent  = getPlayerGold();
   if (tokenEl) tokenEl.textContent = getPlayerToken();
+  // Firestore에서 최신 골드/토큰 동기화 (상점 판매 수익 반영)
+  loadPlayerState().then(() => {
+    if (goldEl)  goldEl.textContent  = getPlayerGold();
+    if (tokenEl) tokenEl.textContent = getPlayerToken();
+  }).catch(() => {});
 }
 function closeInventory() { $('invModal').classList.remove('open'); }
 
@@ -2614,7 +2623,12 @@ async function init() {
 
   // 상점 콜백 등록
   _ctx._onShopNear  = (shop) => openShopModal(shop);
-  _ctx._onShopClick = (shop) => _isAdmin ? openShopAdminModal(shop) : openShopModal(shop);
+  _ctx._onShopClick = (shop) => {
+    if (_isAdmin) { openShopAdminModal(shop); return; }
+    // 공격 모드 중 → 마커 탭으로도 바로 공격
+    if (_attackMode?.shopId === shop.id) { _doAttackShop(shop); return; }
+    openShopModal(shop);
+  };
 
   // Auth 리스너 (비동기 — 블로킹 없음)
   onAuthStateChanged(auth, async user => {
@@ -2900,8 +2914,9 @@ async function init() {
   $('skillBtn2')?.addEventListener('click', castFireStorm);
   $('skillBtn3')?.addEventListener('click', castWhirlwind);
   $('skillBtn4')?.addEventListener('click', castMeteor);
-  $('skillBtnHeal')?.addEventListener('click', castHeal);
   $('skillBtnPotion')?.addEventListener('click', usePotion);
+  $('skillBtnHeal')?.addEventListener('click', castHeal);
+  $('skillBtnMpPotion')?.addEventListener('click', useMpPotion);
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
 
   // 기억력 게임 초기화
@@ -2969,17 +2984,18 @@ async function init() {
     document.addEventListener('click', () => popup?.classList.add('hidden'));
   })();
 
-  // 키보드 단축키 1/2/3/4/5/6
+  // 키보드 단축키 1-9
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.key === '1') castLightning();
     else if (e.key === '2') castIceFreeze();
     else if (e.key === '3') castFireStorm();
     else if (e.key === '4') castWhirlwind();
-    else if (e.key === '7') castMeteor();
-    else if (e.key === '8') castHeal();
-    else if (e.key === '5') usePotion();
-    else if (e.key === '6') useMagicStone();
+    else if (e.key === '5') castMeteor();
+    else if (e.key === '6') usePotion();
+    else if (e.key === '7') castHeal();
+    else if (e.key === '8') useMpPotion();
+    else if (e.key === '9') useMagicStone();
   });
 
   // 전투 HUD 클릭 → 접기/펼치기 (모바일: 기본 접힘)
@@ -3099,7 +3115,203 @@ let _shopCurrentData = null;
 let _shopSelectedItem = null;
 let _shopQty         = 1;
 
+// ── 공격 모드 (10분) ─────────────────────────────────────────────────────────
+let _attackMode = null; // { shopId, shop, expiresAt, timerId, countdownId }
+
+function _enterAttackMode(shop) {
+  if (_attackMode) _exitAttackMode();
+  const expiresAt = Date.now() + 10 * 60 * 1000;
+  const timerId   = setTimeout(_exitAttackMode, 10 * 60 * 1000);
+  _attackMode = { shopId: shop.id, shop: { ...shop }, expiresAt, timerId, countdownId: null };
+  _renderAttackPanel();
+  _attackMode.countdownId = setInterval(_updateAttackPanelTimer, 1000);
+}
+
+function _exitAttackMode() {
+  if (_attackMode) {
+    clearTimeout(_attackMode.timerId);
+    clearInterval(_attackMode.countdownId);
+    _attackMode = null;
+  }
+  if (_shopAtkCdTimer) { clearInterval(_shopAtkCdTimer); _shopAtkCdTimer = null; }
+  const p = document.getElementById('shopAttackPanel');
+  if (p) p.classList.add('hidden');
+}
+
+function _getAttackPanelRoot() {
+  return document.fullscreenElement || document.webkitFullscreenElement || document.body;
+}
+
+function _renderAttackPanel() {
+  let panel = document.getElementById('shopAttackPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'shopAttackPanel';
+    panel.style.cssText = [
+      'position:fixed;bottom:80px;left:50%;transform:translateX(-50%)',
+      'z-index:9999;width:min(360px,92vw)',
+      'background:#1a0a0a;border:2px solid #dc2626;border-radius:14px',
+      'padding:14px 16px;box-shadow:0 4px 24px rgba(220,38,38,.45)',
+    ].join(';');
+    // fullscreenchange 시 패널을 fullscreen 컨테이너로 이동
+    const _onFsChange = () => {
+      const p = document.getElementById('shopAttackPanel');
+      if (!p) return;
+      _getAttackPanelRoot().appendChild(p);
+    };
+    document.addEventListener('fullscreenchange', _onFsChange);
+    document.addEventListener('webkitfullscreenchange', _onFsChange);
+  }
+  _getAttackPanelRoot().appendChild(panel);
+  panel.classList.remove('hidden');
+  _refreshAttackPanel();
+}
+
+function _refreshAttackPanel() {
+  const panel = document.getElementById('shopAttackPanel');
+  if (!panel || !_attackMode) return;
+  const { shop } = _attackMode;
+  const hp    = shop.hp    ?? '?';
+  const maxHp = shop.maxHp ?? '?';
+  const hpPct = (shop.maxHp && shop.hp != null) ? Math.max(0, Math.round(shop.hp / shop.maxHp * 100)) : 100;
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="color:#fca5a5;font-weight:700;font-size:14px">⚔️ 공격 중 — ${escHtml(shop.name)}</span>
+      <button id="atkPanelExit" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;margin-bottom:4px">
+        <span>HP</span><span id="atkPanelHp">${hp} / ${maxHp}</span>
+      </div>
+      <div style="background:#374151;border-radius:4px;height:8px;overflow:hidden">
+        <div id="atkPanelHpBar" style="background:#dc2626;width:${hpPct}%;height:100%;border-radius:4px;transition:width .4s"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button id="atkPanelBtn"
+        style="flex:1;padding:13px;border-radius:10px;border:none;font-weight:700;font-size:16px;cursor:pointer;
+               background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;
+               box-shadow:0 3px 12px rgba(220,38,38,.4);letter-spacing:.3px">
+        ⚔️ 공격
+      </button>
+      <span id="atkPanelTimer" style="color:#6b7280;font-size:13px;min-width:44px;text-align:center"></span>
+    </div>`;
+  _updateAttackPanelTimer();
+  document.getElementById('atkPanelExit')?.addEventListener('click', _exitAttackMode);
+  document.getElementById('atkPanelBtn')?.addEventListener('click', () => _doAttackShop(_attackMode?.shop));
+}
+
+function _updateAttackPanelTimer() {
+  const el = document.getElementById('atkPanelTimer');
+  if (!el || !_attackMode) return;
+  const rem = Math.max(0, Math.ceil((_attackMode.expiresAt - Date.now()) / 1000));
+  const m = Math.floor(rem / 60), s = rem % 60;
+  el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  if (rem === 0) _exitAttackMode();
+}
+
+function _updateAttackPanelHp(newHp) {
+  if (!_attackMode) return;
+  _attackMode.shop.hp = newHp;
+  const maxHp = _attackMode.shop.maxHp ?? newHp;
+  const pct   = maxHp > 0 ? Math.max(0, Math.round(newHp / maxHp * 100)) : 0;
+  const hpEl  = document.getElementById('atkPanelHp');
+  const barEl = document.getElementById('atkPanelHpBar');
+  if (hpEl)  hpEl.textContent  = `${newHp} / ${maxHp}`;
+  if (barEl) barEl.style.width = `${pct}%`;
+  updateShopHpMarker(_attackMode.shop.id, newHp);
+}
+
+let _shopAtkCdTimer = null;
+
+function _startShopAtkCd(sec) {
+  const btn = $('atkPanelBtn');
+  if (!btn) return;
+  if (_shopAtkCdTimer) clearInterval(_shopAtkCdTimer);
+  let left = sec;
+  btn.disabled = true;
+  btn.textContent = `⚔️ ${left}s`;
+  _shopAtkCdTimer = setInterval(() => {
+    left--;
+    if (left <= 0) {
+      clearInterval(_shopAtkCdTimer);
+      _shopAtkCdTimer = null;
+      btn.disabled = false;
+      btn.textContent = '⚔️ 공격';
+    } else {
+      btn.textContent = `⚔️ ${left}s`;
+    }
+  }, 1000);
+}
+
+async function _doAttackShop(shop) {
+  if (!shop) return;
+  if (!_uid || _isAnonymous) {
+    showFloat(_t('login_required') || '로그인 필요', '#ef4444', shop.lat, shop.lng);
+    return;
+  }
+  const btn = $('atkPanelBtn');
+  if (btn?.disabled) return;
+
+  playSound('melee_hit');
+  if (_ctx.lastPos) animateArrow(_ctx.lastPos.lat, _ctx.lastPos.lng, shop.lat, shop.lng, '#ef4444');
+  showFloat('⚔️', '#ef4444', shop.lat, shop.lng);
+  _startShopAtkCd(5);
+  try {
+    const fn = httpsCallable(functions, 'attackShop');
+    const res = await fn({ shopId: shop.id });
+    const { atk, newHp, conquered, shopName } = res.data;
+    _updateAttackPanelHp(newHp);
+    if (conquered) {
+      playSound('monster_die');
+      showFloat(`👑 정복! ${shopName}`, '#facc15', shop.lat, shop.lng);
+      _exitAttackMode();
+    } else {
+      showFloat(`-${atk} HP`, '#f87171', shop.lat, shop.lng);
+    }
+  } catch (e) {
+    const msg = e?.message || '';
+    const cdMatch = msg.match(/(\d+)초 남음/);
+    if (cdMatch) {
+      const remSec = Number(cdMatch[1]);
+      _startShopAtkCd(remSec);
+      showFloat(`⏳ ${remSec}초`, '#94a3b8', shop.lat, shop.lng);
+    } else if (msg.includes('자신의 상점')) {
+      showFloat('자신의 상점은 공격 불가', '#94a3b8', shop.lat, shop.lng);
+      _exitAttackMode();
+    } else {
+      showFloat('공격 실패', '#ef4444', shop.lat, shop.lng);
+    }
+  }
+}
+
+async function _execRepairShop(shop) {
+  const missing = Math.max(0, (shop.maxHp ?? 0) - (shop.hp ?? shop.maxHp ?? 0));
+  if (!missing) return;
+  const cost = missing;
+  if (!confirm(`HP ${missing.toLocaleString()} 수리 → 💰 ${cost.toLocaleString()} 골드 차감\n진행하시겠습니까?`)) return;
+  try {
+    const res = await httpsCallable(functions, 'repairShop')({ shopId: shop.id });
+    const { repairHp, cost: paid, newHp } = res.data;
+    closeShopModal();
+    await Promise.all([loadPlayerState(), loadShops()]);
+    showToast(`🔧 수리 완료 (+${repairHp.toLocaleString()} HP, -💰${paid.toLocaleString()})`, 'success');
+  } catch (e) {
+    showToast(e?.message || '수리 실패', 'error');
+  }
+}
+
 function openShopModal(shop) {
+  // 1km 이내에 있어야만 상점 이용 가능
+  const myPos = _ctx?.lastPos;
+  if (myPos && shop.lat && shop.lng) {
+    const distM = haversine(myPos.lat, myPos.lng, shop.lat, shop.lng);
+    if (distM > 1000) {
+      showToast(_t('shop_too_far', Math.round(distM / 100) / 10), 'warn');
+      return;
+    }
+  }
+
   _activeShopId     = shop.id;
   _shopCurrentData  = shop;
   _shopSelectedItem = null;
@@ -3136,11 +3348,20 @@ function _renderShopModalBody() {
   const total     = sel ? sel.price * _shopQty : 0;
   const canBuy    = !!sel && playerGold >= total;
 
-  // 보유 골드
-  let html = `<div style="display:flex;justify-content:flex-end;align-items:center;
-    padding-bottom:10px;border-bottom:1px solid #1f2937;margin-bottom:10px">
-    <span style="color:#9ca3af;font-size:12px;margin-right:6px">보유 골드</span>
-    <span style="color:#fbbf24;font-weight:700;font-size:14px">💰 ${playerGold.toLocaleString()}</span>
+  // 상점 정보 헤더 (소유자 + 보유 골드)
+  const ownerUid  = shop.ownerUid || '';
+  const ownerDisp = ownerUid ? ownerUid.slice(0, 8) + '…' : '─';
+  const isOwnerMe = ownerUid && ownerUid === _uid;
+  let html = `<div style="padding-bottom:10px;border-bottom:1px solid #1f2937;margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="color:#9ca3af;font-size:12px">🏪 소유자</span>
+      <span style="color:${isOwnerMe ? '#60a5fa' : '#d1d5db'};font-size:12px;font-weight:600;
+                   font-family:monospace">${isOwnerMe ? '👑 나' : ownerDisp}</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="color:#9ca3af;font-size:12px">보유 골드</span>
+      <span style="color:#fbbf24;font-weight:700;font-size:14px">💰 ${playerGold.toLocaleString()}</span>
+    </div>
   </div>`;
 
   // 아이템 목록
@@ -3213,6 +3434,43 @@ function _renderShopModalBody() {
       ${canBuy ? '' : 'disabled'}>
       ${!sel ? '아이템을 선택하세요' : !canBuy ? '💸 골드가 부족합니다' : '🛒 구매하기'}
     </button>
+    ${(() => {
+      const isOwn = shop.ownerUid && shop.ownerUid === _uid;
+      const hp    = shop.hp    ?? shop.maxHp ?? 0;
+      const maxHp = shop.maxHp ?? 0;
+      if (isOwn) {
+        const missing  = Math.max(0, maxHp - hp);
+        const cost     = missing; // 1 골드 / 1 HP
+        const hpPct    = maxHp > 0 ? Math.round(hp / maxHp * 100) : 100;
+        const canRepair = missing > 0 && playerGold >= cost;
+        return `<div style="margin-top:10px;padding:10px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid #1f2937">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;margin-bottom:5px">
+            <span>🏠 내 상점 HP</span>
+            <span style="color:${hpPct < 50 ? '#ef4444' : '#10b981'};font-weight:600">${hp.toLocaleString()} / ${maxHp.toLocaleString()}</span>
+          </div>
+          <div style="background:#374151;border-radius:4px;height:6px;margin-bottom:8px;overflow:hidden">
+            <div style="background:${hpPct < 50 ? '#ef4444' : '#10b981'};width:${hpPct}%;height:100%;border-radius:4px"></div>
+          </div>
+          ${missing > 0
+            ? `<button id="shopRepairBtn" ${canRepair ? '' : 'disabled'}
+                style="width:100%;padding:10px;border-radius:8px;border:none;font-weight:700;font-size:13px;
+                       cursor:${canRepair ? 'pointer' : 'not-allowed'};
+                       background:${canRepair ? 'linear-gradient(135deg,#059669,#047857)' : '#1f2937'};
+                       color:${canRepair ? '#fff' : '#6b7280'}">
+                🔧 전체 수리 <span style="font-weight:400;opacity:.8">(💰 ${cost.toLocaleString()} 골드)</span>
+              </button>`
+            : `<div style="text-align:center;color:#10b981;font-size:12px;font-weight:600">✅ HP 최대</div>`
+          }
+        </div>`;
+      }
+      return `<button id="shopAttackBtn"
+        style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;
+               font-weight:700;font-size:14px;cursor:pointer;
+               background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;
+               box-shadow:0 3px 12px rgba(220,38,38,.35)">
+        ⚔️ 공격하기 <span style="font-weight:400;font-size:12px;opacity:.8">(HP ${hp.toLocaleString()}/${maxHp.toLocaleString()})</span>
+      </button>`;
+    })()}
   </div>`;
 
   body.innerHTML = html;
@@ -3242,6 +3500,15 @@ function _renderShopModalBody() {
       _execShopBuy(shop.id, sel.itemId, sel.name, sel.price, _shopQty);
     });
   }
+
+  // 공격하기 → 공격 모드 진입 (10분)
+  $('shopAttackBtn')?.addEventListener('click', () => {
+    closeShopModal();
+    _enterAttackMode(shop);
+  });
+
+  // 내 상점 HP 수리
+  $('shopRepairBtn')?.addEventListener('click', () => _execRepairShop(shop));
 }
 
 function closeShopModal() {
@@ -3469,14 +3736,15 @@ async function loadHunterRanking(tab) {
   list.innerHTML = '<div class="hunter-rank-loading">Loading...</div>';
   try {
     const field = tab === 'monsters' ? 'monstersKilled' : 'treasuresFound';
-    const snap = await getDocs(
-      query(collection(db, 'battle_players'), orderBy(field, 'desc'), limit(20))
-    );
+    const snap = await Promise.race([
+      getDocs(query(collection(db, 'battle_players'), where(field, '>', 0), orderBy(field, 'desc'), limit(20))),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000)),
+    ]);
     const rows = [];
     snap.forEach(d => {
       const data = d.data();
       const val = data[field] || 0;
-      if (val > 0) rows.push({ uid: d.id, val, displayName: data.displayName || null, photoURL: data.photoURL || null, gsLevel: data.gsLevel || data.level || 1 });
+      rows.push({ uid: d.id, val, displayName: data.displayName || null, photoURL: data.photoURL || null, gsLevel: data.gsLevel || data.level || 1 });
     });
     _hunterRankCache[tab] = rows;
     _rankSave(tab, rows);
@@ -3574,17 +3842,22 @@ function showUserNpcInfo(npc) {
   if (!modal) return;
   const avatarEl = document.getElementById('utNpcAvatar');
   if (avatarEl) avatarEl.src = `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
-  document.getElementById('utNpcOwner').textContent   = npc.ownerName || '?';
-  document.getElementById('utNpcStory').textContent   = npc.story || '';
-  document.getElementById('utNpcComment').textContent = npc.comment || '';
+  const ownerEl = document.getElementById('utNpcOwner');
+  if (ownerEl) ownerEl.textContent = npc.ownerName || '?';
+  const storyEl = document.getElementById('utNpcStory');
+  if (storyEl) storyEl.textContent = npc.story || '';
+  const commentEl = document.getElementById('utNpcComment');
+  if (commentEl) commentEl.textContent = npc.comment || '';
   const storyWrap = document.getElementById('utNpcStoryWrap');
   const commentWrap = document.getElementById('utNpcCommentWrap');
   if (storyWrap) storyWrap.classList.toggle('hidden', !npc.story);
   if (commentWrap) commentWrap.classList.toggle('hidden', !npc.comment);
-  document.getElementById('utNpcRewardType').textContent = npc.type === 'item' ? '아이템' : '코인';
-  document.getElementById('utNpcRewardVal').textContent  = npc.type === 'item'
-    ? `×${npc.itemCount}` : `${npc.itemCount}`;
-  document.getElementById('utNpcRadius').textContent = `발견 반경: ${npc.radiusM}m`;
+  const rewardTypeEl = document.getElementById('utNpcRewardType');
+  if (rewardTypeEl) rewardTypeEl.textContent = npc.type === 'item' ? '아이템' : '코인';
+  const rewardValEl = document.getElementById('utNpcRewardVal');
+  if (rewardValEl) rewardValEl.textContent = npc.type === 'item' ? `×${npc.itemCount}` : `${npc.itemCount}`;
+  const radiusEl = document.getElementById('utNpcRadius');
+  if (radiusEl) radiusEl.textContent = `발견 반경: ${npc.radiusM}m`;
   // 자기 보물이면 발견하기 버튼 숨김
   const discoverBtn = document.getElementById('btnDiscoverTreasure');
   if (discoverBtn) discoverBtn.classList.toggle('hidden', npc.ownerId === _uid);
@@ -3919,11 +4192,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnRegisterTreasure')
     ?.addEventListener('click', openMyTreasuresModal);
   document.getElementById('btnCloseUtNpc')
-    ?.addEventListener('click', () => utNpcModal?.classList.remove('open'));
+    ?.addEventListener('click', e => { e.stopPropagation(); utNpcModal?.classList.remove('open'); });
   document.getElementById('btnCloseUtReg')
-    ?.addEventListener('click', () => utRegModal?.classList.remove('open'));
+    ?.addEventListener('click', e => { e.stopPropagation(); utRegModal?.classList.remove('open'); });
   document.getElementById('btnCloseUtMy')
-    ?.addEventListener('click', () => utMyModal?.classList.remove('open'));
+    ?.addEventListener('click', e => { e.stopPropagation(); utMyModal?.classList.remove('open'); });
   utNpcModal?.addEventListener('click', e => { if (e.target === utNpcModal) utNpcModal.classList.remove('open'); });
   utRegModal?.addEventListener('click', e => { if (e.target === utRegModal) utRegModal.classList.remove('open'); });
   utMyModal?.addEventListener('click',  e => { if (e.target === utMyModal)  utMyModal.classList.remove('open'); });

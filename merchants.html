@@ -1467,6 +1467,7 @@
     .ut-npc-close {
       background: none; border: none; color: #ffd700;
       font-size: 20px; cursor: pointer; line-height: 1; padding: 0 4px; flex-shrink: 0;
+      touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0);
     }
     .ut-npc-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 11px; }
     .ut-npc-field label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 3px; }
@@ -1695,54 +1696,62 @@
   <!-- 스킬바 — initMap()에서 BOTTOM_CENTER Custom Control로 등록 -->
   <div id="skillBar">
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn0" title="Triệu sét (1) — MP 100">⚡</button>
+      <button class="skill-btn" id="skillBtn0" title="번개 (1) — MP 100">⚡</button>
       <div class="skill-cd-overlay" id="skillCd0" style="display:none;"></div>
       <span class="skill-key">1</span>
-      <span class="skill-name">Sét</span>
+      <span class="skill-name">번개</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn1" title="Triệu băng (2) — MP 100">❄️</button>
+      <button class="skill-btn" id="skillBtn1" title="얼음 (2) — MP 100">❄️</button>
       <div class="skill-cd-overlay" id="skillCd1" style="display:none;"></div>
       <span class="skill-key">2</span>
-      <span class="skill-name">Băng</span>
+      <span class="skill-name">얼음</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn2" title="Triệu lửa (3) — MP 100">🔥</button>
+      <button class="skill-btn" id="skillBtn2" title="불꽃 (3) — MP 100">🔥</button>
       <div class="skill-cd-overlay" id="skillCd2" style="display:none;"></div>
       <span class="skill-key">3</span>
-      <span class="skill-name">Lửa</span>
+      <span class="skill-name">불꽃</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn3" title="회오리바람 (4) — MP 100 · 반경 30m">🌪️</button>
+      <button class="skill-btn" id="skillBtn3" title="회오리 (4) — MP 100 · 반경 30m">🌪️</button>
       <div class="skill-cd-overlay" id="skillCd3" style="display:none;"></div>
       <span class="skill-key">4</span>
       <span class="skill-name">회오리</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn4" title="유성 (7) — MP 100 · 반경 60m · 3.0× · 쿨 40초">☄️</button>
+      <button class="skill-btn" id="skillBtn4" title="유성 (5) — MP 100 · 반경 60m · 3.0× · 쿨 40초">☄️</button>
       <div class="skill-cd-overlay" id="skillCd4" style="display:none;"></div>
-      <span class="skill-key">7</span>
+      <span class="skill-key">5</span>
       <span class="skill-name">유성</span>
     </div>
     <div class="skill-slot" style="position:relative;">
-      <button class="skill-btn" id="skillBtnPotion" title="Dùng thuốc đỏ (5) — HP +100">
-        <img src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="Thuốc đỏ">
+      <button class="skill-btn" id="skillBtnPotion" title="빨간약 (6) — HP +100">
+        <img src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="빨간약">
       </button>
       <span class="skill-badge" id="skillPotionBadge"></span>
-      <span class="skill-key">5</span>
-      <span class="skill-name">Thuốc đỏ</span>
-    </div>
-    <div class="skill-slot" style="position:relative;">
-      <button class="skill-btn" id="skillBtnMagicStone" title="마정석 사용 (6) — MP +100">💎</button>
-      <span class="skill-badge" id="skillMagicStoneBadge"></span>
       <span class="skill-key">6</span>
-      <span class="skill-name">마정석</span>
+      <span class="skill-name">빨간약</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtnHeal" title="힐 (8) — MP 100 소모 · HP 레벨×100 회복 · 30초 쿨">💚</button>
+      <button class="skill-btn" id="skillBtnHeal" title="힐 (7) — MP 100 소모 · HP 레벨×100 회복 · 30초 쿨">💚</button>
       <div class="skill-cd-overlay" id="skillCdHeal" style="display:none;"></div>
-      <span class="skill-key">8</span>
+      <span class="skill-key">7</span>
       <span class="skill-name">힐</span>
+    </div>
+    <div class="skill-slot" style="position:relative;">
+      <button class="skill-btn" id="skillBtnMpPotion" title="파란약 (8) — MP 회복">
+        <img src="/assets/images/item/mp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="파란약">
+      </button>
+      <span class="skill-badge" id="skillMpPotionBadge"></span>
+      <span class="skill-key">8</span>
+      <span class="skill-name">파란약</span>
+    </div>
+    <div class="skill-slot" style="position:relative;">
+      <button class="skill-btn" id="skillBtnMagicStone" title="마정석 (9) — MP +100">💎</button>
+      <span class="skill-badge" id="skillMagicStoneBadge"></span>
+      <span class="skill-key">9</span>
+      <span class="skill-name">마정석</span>
     </div>
   </div>
 

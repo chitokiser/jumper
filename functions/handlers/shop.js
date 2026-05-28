@@ -11,7 +11,7 @@ const db = admin.firestore();
 const VALID_TYPES         = ['weapon_armor', 'potion', 'misc'];
 const BASE_HP_PER_LEVEL   = 10000;
 const BASE_ATK            = 100;
-const ATTACK_COOLDOWN_SEC = 60;
+const ATTACK_COOLDOWN_SEC = 5;
 
 function weaponBonus(weaponId) {
   if (!weaponId) return 0;
@@ -131,7 +131,7 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1 } = {}) {
     throw new HttpsError('failed-precondition', `재고가 부족합니다 (남은 재고: ${itemDef.stock})`);
 
   const totalCost  = itemDef.price * qty;
-  const ownerShare = Math.floor(totalCost * 0.5);
+  const ownerShare = Math.round(totalCost * 0.5);  // ceil 대신 round — 1골드 아이템도 오너 수익 발생
   const ownerUid   = shop.ownerUid;
   const sameUser   = !ownerUid || ownerUid === uid;
 
@@ -415,11 +415,48 @@ async function adminInitAllPlayers(uid) {
   return { ok: true, processed };
 }
 
+// ── 상점 주인: HP 수리 (100 HP당 100 골드) ───────────────────────────────────
+const REPAIR_COST_PER_HP = 1; // 1 골드 / 1 HP
+
+async function repairShop(uid, { shopId, amount } = {}) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
+
+  const shopRef   = db.collection('game_shops').doc(shopId);
+  const playerRef = db.collection('battle_players').doc(uid);
+
+  const [shopSnap, playerSnap] = await Promise.all([shopRef.get(), playerRef.get()]);
+
+  if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+  const shop = shopSnap.data();
+  if (shop.ownerUid !== uid) throw new HttpsError('permission-denied', '상점 주인만 수리할 수 있습니다');
+
+  const maxHp    = shop.maxHp ?? BASE_HP_PER_LEVEL;
+  const currentHp = shop.hp   ?? maxHp;
+  const missing  = maxHp - currentHp;
+
+  if (missing <= 0) throw new HttpsError('failed-precondition', 'HP가 이미 최대입니다');
+
+  // amount 미지정 시 전체 수리
+  const repairHp = amount ? Math.min(Math.max(1, Math.floor(Number(amount))), missing) : missing;
+  const cost     = repairHp * REPAIR_COST_PER_HP;
+
+  const gold = playerSnap.exists ? (playerSnap.data().gold ?? 0) : 0;
+  if (gold < cost) throw new HttpsError('failed-precondition', `골드가 부족합니다 (필요: ${cost}, 보유: ${gold})`);
+
+  const batch = db.batch();
+  batch.update(shopRef,   { hp: currentHp + repairHp, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+  batch.update(playerRef, { gold: admin.firestore.FieldValue.increment(-cost) });
+  await batch.commit();
+
+  return { ok: true, repairHp, cost, newHp: currentHp + repairHp, maxHp };
+}
+
 module.exports = {
   adminSaveShop,
   adminDeleteShop,
   buyShopItem,
   attackShop,
+  repairShop,
   transferShop,
   levelUpShop,
   updateShopAppearance,
