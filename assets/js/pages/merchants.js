@@ -90,7 +90,7 @@ let _dropMarkers    = {};        // {dropId: google.maps.Marker} 드랍 마커
 let _dropsUnsubscribe = null;    // onSnapshot 해제 함수
 let _alertedDropIds = new Set(); // 이미 알림을 보낸 dropId (중복 방지)
 let _utNpcMarkers    = {};        // {npcId: google.maps.Marker} 사용자 보물 NPC 마커 (map에 등록된 것만)
-let _utActualMarkers = {};        // {npcId: google.maps.Marker} 실제 보물 위치 마커 (관리자/소유자 전용)
+let _utActualMarkers = {};        // {npcId: {marker, line}} 실제 보물 위치 마커+선 (관리자/소유자 전용)
 let _utNpcData       = [];        // 서버에서 받은 전체 NPC 데이터 배열 (위치 기반 proximity 계산용)
 let _utCurrentNpc   = null;      // 현재 선택된 사용자 보물 NPC
 let _hintUnlocked   = false;     // 현재 NPC 힌트 잠금 해제 여부
@@ -3932,7 +3932,7 @@ async function loadUserTreasureNpcs() {
     const npcs = Array.isArray(data) ? data : [];
     // 기존 마커 제거
     Object.values(_utNpcMarkers).forEach(m => m.setMap(null));
-    Object.values(_utActualMarkers).forEach(m => m.setMap(null));
+    Object.values(_utActualMarkers).forEach(({ marker, line }) => { marker.setMap(null); line?.setMap(null); });
     _utNpcMarkers    = {};
     _utActualMarkers = {};
     _utNpcData = npcs;
@@ -3983,23 +3983,42 @@ function _makeUserNpcMarker(npc) {
 
 function _makeActualTreasureMarker(npc) {
   const label = npc.ownerName ? `📍 ${npc.ownerName}의 실제 보물` : '📍 실제 보물 위치';
+  // 별 모양 마커
   const marker = new google.maps.Marker({
     position: { lat: npc.treasureLat, lng: npc.treasureLng },
     map: _ctx.map,
     title: label,
+    label: { text: '★', color: '#facc15', fontSize: '18px', fontWeight: 'bold' },
     icon: {
       path: google.maps.SymbolPath.CIRCLE,
-      scale: 8,
-      fillColor: '#facc15',
-      fillOpacity: 0.95,
-      strokeColor: '#92400e',
-      strokeWeight: 2,
+      scale: 13,
+      fillColor: '#78350f',
+      fillOpacity: 0.9,
+      strokeColor: '#facc15',
+      strokeWeight: 2.5,
     },
-    zIndex: 60,
+    zIndex: 65,
+  });
+  // NPC 위치(미끼) → 실제 위치 점선
+  const line = new google.maps.Polyline({
+    path: [
+      { lat: npc.lat, lng: npc.lng },
+      { lat: npc.treasureLat, lng: npc.treasureLng },
+    ],
+    map: _ctx.map,
+    strokeColor: '#facc15',
+    strokeOpacity: 0,
+    strokeWeight: 2,
+    icons: [{
+      icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 },
+      offset: '0',
+      repeat: '12px',
+    }],
+    zIndex: 55,
   });
   const iw = new google.maps.InfoWindow({ content: `<div style="font-size:12px;padding:4px 6px">${label}</div>` });
   marker.addListener('click', () => iw.open(_ctx.map, marker));
-  return marker;
+  return { marker, line };
 }
 
 function showUserNpcInfo(npc) {
