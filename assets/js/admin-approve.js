@@ -1862,12 +1862,30 @@ function _updateBoxMap(c) {
     _boxMap = L.map(el, { zoomControl: true, attributionControl: false }).setView([c.lat, c.lng], 17);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(_boxMap);
     _boxMarker = L.marker([c.lat, c.lng]).addTo(_boxMap);
+    // 지도 클릭 → 좌표 자동 입력
+    _boxMap.on('click', function(e) {
+      const lat = parseFloat(e.latlng.lat.toFixed(7));
+      const lng = parseFloat(e.latlng.lng.toFixed(7));
+      _boxMarker.setLatLng([lat, lng]);
+      const coordsEl = $('tBoxCoords');
+      if (coordsEl) coordsEl.value = `${lat}, ${lng}`;
+      const preview = $('tBoxCoordsPreview');
+      if (preview) {
+        preview.textContent = `위도 ${lat.toFixed(6)}, 경도 ${lng.toFixed(6)}`;
+        preview.style.color = '#16a34a';
+      }
+    });
   } else {
     _boxMap.setView([c.lat, c.lng], 17);
     _boxMarker.setLatLng([c.lat, c.lng]);
     // 컨테이너가 숨겨졌다가 표시될 때 타일 갱신
     _boxMap.invalidateSize();
   }
+}
+
+function _initBoxMapDefault() {
+  if (_boxMap) { _boxMap.invalidateSize(); return; }
+  _updateBoxMap({ lat: 20.9488, lng: 105.9743 });
 }
 
 // 좌표 입력 시 실시간 미리보기
@@ -2035,6 +2053,7 @@ $("btnReloadTVouchers")?.addEventListener("click", () => loadVouchersList());
 $("btnReloadTKeys")?.addEventListener("click",     () => loadTreasureKeysList());
 btnTabTreasure?.addEventListener("click", () => {
   showTab("treasure");
+  _initBoxMapDefault();
   loadTreasureItemsList();
   loadTreasureBoxesList();
   loadVouchersList();

@@ -4279,6 +4279,7 @@ async function registerTreasure() {
       setTimeout(() => toast.classList.add('hidden'), 3500);
     }
     loadUserTreasureNpcs();
+    loadPlayerState().then(() => renderInventory());
   } catch (e) {
     _utRegMsg('⚠️ ' + (e.message || '등록 실패'), true);
   } finally {

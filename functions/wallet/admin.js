@@ -40,4 +40,15 @@ async function requireAdmin(uid) {
   throw new Error('관리자 권한이 없습니다');
 }
 
-module.exports = { requireAdmin, ADMIN_EMAILS };
+/** requireAdmin 과 동일한 세 가지 조건을 boolean으로 반환 */
+async function isAdminUid(uid) {
+  if (!uid) return false;
+  try {
+    await requireAdmin(uid);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+module.exports = { requireAdmin, isAdminUid, ADMIN_EMAILS };

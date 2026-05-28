@@ -4,6 +4,7 @@
 
 const admin = require('firebase-admin');
 const { HttpsError } = require('firebase-functions/v2/https');
+const { isAdminUid } = require('../wallet/admin');
 
 const db = admin.firestore();
 
@@ -282,11 +283,7 @@ async function discoverUserTreasure(uid, { npcId, userLat, userLng } = {}) {
 
 // ── NPC 목록 조회 (활성 상태) ─────────────────────────────────────────────────
 async function listUserTreasureNpcs(uid = null) {
-  let isAdmin = false;
-  if (uid) {
-    const adminSnap = await db.collection('admins').doc(uid).get();
-    isAdmin = adminSnap.exists;
-  }
+  const isAdmin = uid ? await isAdminUid(uid) : false;
 
   const snap = await db.collection('user_treasure_npcs')
     .where('status', '==', 'active')
