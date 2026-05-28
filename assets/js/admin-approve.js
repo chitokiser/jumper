@@ -53,6 +53,7 @@ const btnTabMembers    = $("btnTabMembers");
 const btnTabDao        = $("btnTabDao");
 const btnTabTreasure   = $("btnTabTreasure");
 const btnTabChat       = $("btnTabChat");
+const btnTabShops      = $("btnTabShops");
 const tabGuides        = $("tabGuides");
 const tabMerchants     = $("tabMerchants");
 const tabItems         = $("tabItems");
@@ -62,6 +63,7 @@ const tabMembers       = $("tabMembers");
 const tabDao           = $("tabDao");
 const tabTreasure      = $("tabTreasure");
 const tabChat          = $("tabChat");
+const tabShops         = $("tabShops");
 const daoApproveList   = $("daoApproveList");
 const btnReloadDao     = $("btnReloadDao");
 const itemsFilter      = $("itemsFilter");
@@ -1158,6 +1160,7 @@ function showTab(which) {
   if (tabDao)       tabDao.style.display       = which === "dao"       ? "" : "none";
   if (tabTreasure)  tabTreasure.style.display  = which === "treasure"  ? "" : "none";
   if (tabChat)      tabChat.style.display      = which === "chat"      ? "" : "none";
+  if (tabShops)     tabShops.style.display     = which === "shops"     ? "" : "none";
 
   // 툴바 부속 요소 가시성
   if (itemsFilter)       itemsFilter.style.display       = which === "items"     ? "" : "none";
@@ -1175,6 +1178,7 @@ function showTab(which) {
   btnTabDao?.classList.toggle("is-active",       which === "dao");
   btnTabTreasure?.classList.toggle("is-active",  which === "treasure");
   btnTabChat?.classList.toggle("is-active",      which === "chat");
+  btnTabShops?.classList.toggle("is-active",     which === "shops");
 }
 
 async function checkAdmin(user) {
@@ -2037,6 +2041,7 @@ btnTabTreasure?.addEventListener("click", () => {
   loadTreasureKeysList();
 });
 btnTabChat?.addEventListener("click", () => showTab("chat"));
+btnTabShops?.addEventListener("click", () => { showTab("shops"); window._adminLoadShops?.(); });
 
 // ── 무기 등록 ──────────────────────────────────────────────────────────────────
 function updateWeaponPreview() {

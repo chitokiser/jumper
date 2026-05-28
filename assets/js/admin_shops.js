@@ -9,8 +9,6 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const btnTabShops        = document.getElementById('btnTabShops');
-const tabShops           = document.getElementById('tabShops');
 const fldShopId          = document.getElementById('shopId');
 const fldShopName        = document.getElementById('shopName');
 const fldShopOwnerUid    = document.getElementById('shopOwnerUid');
@@ -68,20 +66,9 @@ function typeLabel(t) {
   return t || '';
 }
 
-// ── Tab activation ────────────────────────────────────────────────────────────
-function activateShopTab() {
-  [
-    'tabGuides','tabMerchants','tabItems','tabDeposits',
-    'tabHex','tabMembers','tabDao','tabTreasure','tabChat',
-  ].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
-  tabShops.style.display = '';
-  loadShops();
-}
+// loadShops는 admin-approve.js의 btnTabShops 리스너에서 window._adminLoadShops()로 호출됨
+window._adminLoadShops = loadShops;
 
-btnTabShops?.addEventListener('click', activateShopTab);
 btnReloadShops?.addEventListener('click', loadShops);
 
 // ── Render shop card ──────────────────────────────────────────────────────────
