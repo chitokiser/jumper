@@ -288,9 +288,14 @@
             <input id="soMaturityDays" type="number" min="1" step="1" placeholder="예: 365"
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">스테이킹 조건 (JUMP) <span style="color:#9ca3af;font-weight:400;">0 = 제한 없음</span></label>
+            <input id="soStakeRequired" type="number" min="0" step="1" placeholder="예: 1000"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
+          </div>
         </div>
         <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">
-          유저가 구매 가격(HEX) 지불 → 바우처 지갑 보관 → 만기 후 행사 or 양도 가능
+          유저가 바우처 가격(HEX) 지불 → 바우처 지갑 보관 → 만기 후 행사 or 양도 가능
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <button id="btnSoCreateOffering" type="button" class="btn btn--primary" style="padding:9px 20px;">오퍼링 발행</button>
@@ -358,6 +363,7 @@
           <div id="soBuyMaturity" style="font-weight:600;"></div>
         </div>
       </div>
+      <div id="soBuyStakeReq" style="display:none;padding:8px 12px;background:#fef3c7;border-radius:8px;font-size:0.82rem;color:#92400e;font-weight:600;margin-bottom:10px;"></div>
       <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;">수탁 지갑 HEX로 결제됩니다. 만기 후 권리행사 또는 제3자 양도 가능합니다.</div>
       <div id="soBuyMsg" style="font-size:0.82rem;min-height:20px;margin-bottom:12px;"></div>
       <button id="btnSoBuyConfirm" type="button" class="btn btn--primary" style="width:100%;padding:12px;font-size:0.95rem;">🛒 구매하기</button>

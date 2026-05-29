@@ -5,10 +5,19 @@
 const admin  = require('firebase-admin');
 const { ethers } = require('ethers');
 const {
-  getProvider, getHexContract, walletFromKey,
-  getAdminWallet, estimateGasWithBuffer,
+  getProvider, getHexContract, getJumpBankContract,
+  walletFromKey, getAdminWallet, estimateGasWithBuffer,
 } = require('../wallet/chain');
 const { decrypt } = require('../wallet/crypto');
+
+async function getUserStaked(uid) {
+  const userSnap = await db.collection('users').doc(uid).get();
+  const address  = userSnap.data()?.wallet?.address;
+  if (!address) return { staked: 0, walletData: userSnap.data()?.wallet };
+  const jumpBank = getJumpBankContract(getProvider());
+  const info     = await jumpBank.user(address);
+  return { staked: Number(info.depo), walletData: userSnap.data()?.wallet };
+}
 
 const db = admin.firestore();
 
@@ -37,17 +46,18 @@ function getStockOptionContract(signerOrProvider) {
 async function adminCreateOffering(uid, {
   name, description,
   strikePrice,      // 행사 가격 HEX (float, 예: 10.5)
-  voucherPrice,     // 구매 가격 HEX (float, 예: 5)
+  voucherPrice,     // 바우처 가격 HEX (float, 예: 5)
   jumpPerVoucher,   // 바우처 1장당 JUMP 수량 (정수)
   totalVouchers,    // 발행 수량
   maturityDays,     // 만기까지 일수
+  stakeRequired,    // 구매 자격: 최소 스테이킹 JUMP (0 = 제한 없음)
 }) {
-  if (!name)                          throw new Error('오퍼링 이름을 입력하세요');
-  if (!strikePrice || strikePrice <= 0) throw new Error('행사 가격을 입력하세요 (HEX/JUMP)');
-  if (!voucherPrice || voucherPrice < 0) throw new Error('구매 가격을 입력하세요');
+  if (!name)                             throw new Error('오퍼링 이름을 입력하세요');
+  if (!strikePrice || strikePrice <= 0)  throw new Error('행사 가격을 입력하세요 (HEX/JUMP)');
+  if (!voucherPrice || voucherPrice < 0) throw new Error('바우처 가격을 입력하세요');
   if (!jumpPerVoucher || jumpPerVoucher <= 0) throw new Error('바우처당 JUMP 수량을 입력하세요');
-  if (!totalVouchers || totalVouchers <= 0) throw new Error('발행 수량을 입력하세요');
-  if (!maturityDays || maturityDays < 1) throw new Error('만기일을 입력하세요');
+  if (!totalVouchers || totalVouchers <= 0)   throw new Error('발행 수량을 입력하세요');
+  if (!maturityDays || maturityDays < 1)      throw new Error('만기일을 입력하세요');
 
   const strikePriceWei  = ethers.parseEther(String(strikePrice)).toString();
   const voucherPriceWei = ethers.parseEther(String(voucherPrice)).toString();
@@ -62,6 +72,7 @@ async function adminCreateOffering(uid, {
     jumpPerVoucher: Math.round(jumpPerVoucher),
     totalVouchers:  Math.round(totalVouchers),
     soldVouchers:   0,
+    stakeRequired:  Math.max(0, Math.round(Number(stakeRequired) || 0)),
     maturityDays,
     maturityDate,
     active:    true,
@@ -69,7 +80,7 @@ async function adminCreateOffering(uid, {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  return { offeringId: ref.id, name, strikePrice, voucherPrice, jumpPerVoucher, totalVouchers };
+  return { offeringId: ref.id, name, strikePrice, voucherPrice, jumpPerVoucher, totalVouchers, stakeRequired: Math.round(Number(stakeRequired) || 0) };
 }
 
 // ── 2. 공개: 스톡옵션 오퍼링 목록 조회 ────────────────────────────────────────
@@ -109,6 +120,17 @@ async function buyStockOptionVoucher(uid, { offeringId }, masterSecret) {
   const offering = offeringSnap.data();
   if (!offering.active) throw new Error('종료된 오퍼링입니다');
   if (offering.soldVouchers >= offering.totalVouchers) throw new Error('매진되었습니다');
+
+  // 스테이킹 조건 확인
+  const stakeRequired = offering.stakeRequired || 0;
+  if (stakeRequired > 0) {
+    const { staked } = await getUserStaked(uid);
+    if (staked < stakeRequired) {
+      throw new Error(
+        `스테이킹 조건 미충족. 필요: JUMP ${stakeRequired.toLocaleString()}개, 보유: ${staked.toLocaleString()}개`
+      );
+    }
+  }
 
   // 유저 수탁지갑 조회
   const userSnap   = await db.collection('users').doc(uid).get();

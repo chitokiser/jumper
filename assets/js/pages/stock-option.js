@@ -57,6 +57,7 @@ function initAdminUI() {
       jumpPerVoucher: parseInt($('soJumpPerVoucher')?.value || '0'),
       totalVouchers:  parseInt($('soTotalVouchers')?.value || '0'),
       maturityDays:   parseInt($('soMaturityDays')?.value || '0'),
+      stakeRequired:  parseInt($('soStakeRequired')?.value || '0'),
     };
     if (!data.name) { setMsg(msgEl, '오퍼링 이름을 입력하세요', false); return; }
     if (!data.strikePrice || !data.jumpPerVoucher || !data.totalVouchers || !data.maturityDays) {
@@ -140,10 +141,16 @@ async function loadPublicOfferings() {
     listEl.innerHTML = '';
     const frag = document.createDocumentFragment();
     offerings.forEach(o => {
-      const remaining = (o.totalVouchers || 0) - (o.soldVouchers || 0);
-      const matDate   = fmtDate(o.maturityDate);
-      const card      = document.createElement('div');
-      card.innerHTML  = `
+      const remaining    = (o.totalVouchers || 0) - (o.soldVouchers || 0);
+      const matDate      = fmtDate(o.maturityDate);
+      const stakeReq     = o.stakeRequired || 0;
+      const stakeBadge   = stakeReq > 0
+        ? `<div style="margin-bottom:10px;padding:7px 10px;background:#fef3c7;border-radius:8px;font-size:0.8rem;color:#92400e;font-weight:600;">
+             🪙 스테이킹 조건: JUMP ${stakeReq.toLocaleString()}개 이상
+           </div>`
+        : '';
+      const card = document.createElement('div');
+      card.innerHTML = `
         <div style="border:1px solid var(--border,#e5e7eb);border-radius:14px;overflow:hidden;background:var(--surface,#fff);">
           <div style="background:linear-gradient(135deg,#1e3a5f,#1e40af);padding:14px 16px;">
             <div style="color:#fff;font-weight:700;font-size:1rem;">📈 ${escHtml(o.name)}</div>
@@ -151,7 +158,7 @@ async function loadPublicOfferings() {
           </div>
           <div style="padding:14px 16px;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-              <div><div style="font-size:0.72rem;color:var(--muted);">구매 가격</div>
+              <div><div style="font-size:0.72rem;color:var(--muted);">바우처 가격</div>
                    <div style="font-weight:700;font-size:1rem;color:#1d4ed8;">${o.voucherPrice} HEX</div></div>
               <div><div style="font-size:0.72rem;color:var(--muted);">JUMP 수량</div>
                    <div style="font-weight:700;font-size:1rem;">${o.jumpPerVoucher} JUMP</div></div>
@@ -160,6 +167,7 @@ async function loadPublicOfferings() {
               <div><div style="font-size:0.72rem;color:var(--muted);">만기일</div>
                    <div style="font-weight:600;">${matDate}</div></div>
             </div>
+            ${stakeBadge}
             <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">
               잔여 ${remaining}/${o.totalVouchers}장
             </div>
@@ -190,7 +198,13 @@ function openBuyModal(o) {
   document.getElementById('soBuyJump').textContent         = `${o.jumpPerVoucher} JUMP`;
   document.getElementById('soBuyStrike').textContent       = `${o.strikePrice} HEX/JUMP`;
   document.getElementById('soBuyMaturity').textContent     = fmtDate(o.maturityDate);
-  document.getElementById('soBuyMsg').textContent          = '';
+  const stakeEl = document.getElementById('soBuyStakeReq');
+  if (stakeEl) {
+    const req = o.stakeRequired || 0;
+    stakeEl.textContent  = req > 0 ? `🪙 조건: JUMP ${req.toLocaleString()}개 이상 스테이킹` : '';
+    stakeEl.style.display = req > 0 ? '' : 'none';
+  }
+  document.getElementById('soBuyMsg').textContent = '';
   document.getElementById('btnSoBuyConfirm').disabled      = false;
   document.getElementById('btnSoBuyConfirm').textContent   = '🛒 구매하기';
   modal.style.display = 'flex';
