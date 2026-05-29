@@ -876,3 +876,44 @@ watchAuth(({ loggedIn, role, profile }) => {
 
 // ── 초기 로드 ────────────────────────────────────────────────
 loadEvents(true);
+
+// ── 스톡옵션 탭 전환 ─────────────────────────────────────────
+(function initStockOptionTab() {
+  const btnEvents      = $('btnTabEvents');
+  const btnSO          = $('btnTabStockOption');
+  const listView       = $('commListView');
+  const soView         = $('stockOptionView');
+  if (!btnEvents || !btnSO || !listView || !soView) return;
+
+  let soInited = false;
+
+  function showEvents() {
+    listView.style.display = '';
+    soView.style.display   = 'none';
+    btnEvents.style.borderBottomColor = '#7c3aed';
+    btnEvents.style.color             = '#7c3aed';
+    btnSO.style.borderBottomColor     = 'transparent';
+    btnSO.style.color                 = 'var(--muted,#6b7280)';
+  }
+
+  function showStockOption() {
+    listView.style.display = 'none';
+    soView.style.display   = '';
+    btnSO.style.borderBottomColor    = '#7c3aed';
+    btnSO.style.color                = '#7c3aed';
+    btnEvents.style.borderBottomColor = 'transparent';
+    btnEvents.style.color             = 'var(--muted,#6b7280)';
+
+    if (!soInited) {
+      soInited = true;
+      import('/assets/js/pages/stock-option.js').then(mod => {
+        mod.initStockOption(_user, _isAdmin);
+      }).catch(err => {
+        soView.innerHTML = `<div style="color:#ef4444;padding:20px;">스톡옵션 모듈 로드 실패: ${err.message}</div>`;
+      });
+    }
+  }
+
+  btnEvents.addEventListener('click', showEvents);
+  btnSO.addEventListener('click',     showStockOption);
+})();

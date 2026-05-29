@@ -50,6 +50,7 @@ const slotH                  = require('./handlers/slot');
 const userTreasureH          = require('./handlers/userTreasure');
 const coinExchangeH          = require('./handlers/coinExchange');
 const rankingsH              = require('./handlers/rankings');
+const stockOptionH           = require('./handlers/stockOption');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -2143,5 +2144,57 @@ exports.adminSeedRankings = onCall(
     const uid = requireAuth(request);
     await requireAdmin(uid);
     return seedH.seedAllRankings();
+  })
+);
+
+// ── 스톡옵션 바우처 시스템 ────────────────────────────────────────────────────
+exports.adminCreateStockVoucher = onCall(
+  { secrets: [walletSecret], timeoutSeconds: 180 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    return stockOptionH.adminCreateStockVoucher(uid, request.data ?? {}, walletSecret.value());
+  })
+);
+
+exports.adminGetAllStockVouchers = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    return stockOptionH.adminGetAllVouchers();
+  })
+);
+
+exports.getMyStockVouchers = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return stockOptionH.getMyStockVouchers(uid);
+  })
+);
+
+exports.syncStockVoucherTransfer = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return stockOptionH.syncVoucherTransfer(uid, request.data ?? {});
+  })
+);
+
+exports.syncStockOptionExecution = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return stockOptionH.syncOptionExecution(uid, request.data ?? {});
+  })
+);
+
+exports.adminSetStockOptionContract = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    return stockOptionH.adminSetContractAddress(uid, request.data ?? {});
   })
 );

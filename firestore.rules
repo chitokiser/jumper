@@ -697,6 +697,20 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ── 스톡옵션 바우처 ─────────────────────────────────────────────────────
+    match /stockOptionVouchers/{docId} {
+      allow get, list: if signedIn();          // 본인 바우처 조회 (Cloud Function 통해 필터)
+      allow write: if false;                   // Cloud Function only
+    }
+    match /voucherTransfers/{docId} {
+      allow get, list: if isAdmin();
+      allow write: if false;
+    }
+    match /optionExecutions/{docId} {
+      allow get, list: if isAdmin();
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -41,6 +41,16 @@
     <!-- ── 목록 뷰 ── -->
     <div id="commListView">
 
+      <!-- 상위 탭 (행사 / 스톡옵션) -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:2px solid var(--border,#e5e7eb);padding-bottom:0;">
+        <button id="btnTabEvents" type="button"
+          style="padding:8px 18px;font-size:0.9rem;font-weight:700;border:none;background:none;cursor:pointer;
+                 border-bottom:3px solid #7c3aed;color:#7c3aed;margin-bottom:-2px;">🗓 행사</button>
+        <button id="btnTabStockOption" type="button"
+          style="padding:8px 18px;font-size:0.9rem;font-weight:700;border:none;background:none;cursor:pointer;
+                 border-bottom:3px solid transparent;color:var(--muted,#6b7280);margin-bottom:-2px;">📈 스톡옵션</button>
+      </div>
+
       <!-- 탭 -->
       <div class="comm-tabs" id="commTabs">
         <button class="comm-tab active" data-filter="upcoming">예정 행사</button>
@@ -228,6 +238,146 @@
         <button class="btn btn--ghost" id="commModalCancel" type="button">취소</button>
         <button class="btn btn--primary" id="commModalSubmit" type="button">등록</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- 스톡옵션 뷰 -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div id="stockOptionView" style="display:none;padding:0 4px;">
+
+    <!-- MetaMask 연결 바 -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:12px 14px;
+                background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:12px;flex-wrap:wrap;">
+      <span style="color:#c7d2fe;font-size:0.85rem;flex:1;">MetaMask 지갑으로 권리행사·양도를 진행합니다</span>
+      <button id="btnSoConnectMm" type="button"
+        style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">
+        🦊 MetaMask 연결
+      </button>
+      <span id="soMmAddress" style="font-size:0.78rem;color:#a5b4fc;"></span>
+    </div>
+
+    <!-- ── 관리자 패널 ──────────────────────────────────────────────── -->
+    <div id="soAdminPanel" style="display:none;margin-bottom:28px;">
+      <h3 style="font-size:1rem;font-weight:700;margin:0 0 14px;color:var(--fg);">🔑 관리자 — 스톡옵션 관리</h3>
+
+      <!-- 컨트랙트 주소 설정 -->
+      <div style="background:var(--surface2,#f9fafb);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px;">컨트랙트 주소 설정</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="soContractAddrInput" type="text" placeholder="0x..." maxlength="42"
+            style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;" />
+          <button id="btnSoSetContract" type="button" class="btn btn--sm btn--primary">저장</button>
+        </div>
+        <div id="soContractMsg" style="font-size:0.8rem;min-height:18px;margin-top:6px;"></div>
+      </div>
+
+      <!-- 바우처 생성 폼 -->
+      <div style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:12px;">📋 새 스톡옵션 바우처 발행</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">대상자 지갑 주소 *</label>
+            <input id="soRecipient" type="text" placeholder="0x..." maxlength="42"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
+          </div>
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">행사 가격 (HEX / 1 JUMP) *</label>
+            <input id="soStrikePrice" type="number" step="0.0001" min="0" placeholder="예: 10.5"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
+          </div>
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">행사 수량 (JUMP) *</label>
+            <input id="soTotalAmount" type="number" min="1" step="1" placeholder="예: 1000"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
+          </div>
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">만기까지 일수 *</label>
+            <input id="soMaturityDays" type="number" min="1" step="1" placeholder="예: 365"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
+          </div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:10px;">
+          발행 비용 = 행사가 × 수량 HEX → JumpBank 자동 전송
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button id="btnSoCreateVoucher" type="button" class="btn btn--primary" style="padding:9px 20px;">바우처 발행</button>
+          <div id="soCreateMsg" style="font-size:0.82rem;min-height:20px;flex:1;"></div>
+        </div>
+      </div>
+
+      <!-- 전체 바우처 목록 -->
+      <div style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:0.85rem;font-weight:600;">📊 전체 바우처 목록</div>
+          <button id="btnSoRefreshAdmin" type="button" class="btn btn--ghost btn--sm">새로고침</button>
+        </div>
+        <div id="soAdminVoucherList"><div style="color:var(--muted);font-size:0.85rem;">불러오는 중...</div></div>
+      </div>
+    </div>
+
+    <!-- ── 유저 패널: 내 바우처 ──────────────────────────────────────── -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="font-size:1rem;font-weight:700;margin:0;color:var(--fg);">📈 내 스톡옵션 바우처</h3>
+        <button id="btnSoRefreshUser" type="button" class="btn btn--ghost btn--sm">새로고침</button>
+      </div>
+      <div id="soUserVoucherList" style="display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));"></div>
+      <div id="soUserEmpty" style="display:none;text-align:center;padding:32px 0;color:var(--muted,#6b7280);">
+        보유 중인 스톡옵션 바우처가 없습니다.
+      </div>
+    </div>
+  </div><!-- /stockOptionView -->
+
+  <!-- ── 권리행사 모달 ────────────────────────────────────────────────── -->
+  <div id="soExecuteModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+    <div style="background:#1a0e06;border:1px solid #7c3aed;border-radius:16px;width:min(420px,94vw);padding:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <h3 style="margin:0;color:#fef3c7;font-size:1rem;">⚡ 권리행사 — 바우처 <span id="soExecVoucherId"></span></h3>
+        <button id="btnSoExecClose" type="button" style="background:none;border:none;color:#9ca3af;font-size:1.3rem;cursor:pointer;">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+        <div style="background:rgba(124,58,237,.12);border-radius:8px;padding:10px;">
+          <div style="font-size:0.72rem;color:#a78bfa;">행사 가격</div>
+          <div id="soExecStrike" style="font-weight:700;color:#fef3c7;font-size:0.9rem;"></div>
+        </div>
+        <div style="background:rgba(124,58,237,.12);border-radius:8px;padding:10px;">
+          <div style="font-size:0.72rem;color:#a78bfa;">잔여 수량</div>
+          <div id="soExecRemaining" style="font-weight:700;color:#86efac;font-size:0.9rem;"></div>
+        </div>
+      </div>
+      <label style="font-size:0.82rem;color:#d1d5db;display:block;margin-bottom:6px;">행사 수량 (JUMP) *</label>
+      <input id="soExecAmount" type="number" min="1" step="1" placeholder="JUMP 수량 입력"
+        style="width:100%;padding:10px 12px;background:#0d1117;color:#f9fafb;border:1px solid #6b7280;border-radius:8px;font-size:0.9rem;box-sizing:border-box;margin-bottom:6px;" />
+      <div style="font-size:0.75rem;color:#9ca3af;margin-bottom:14px;">
+        ① HEX approve → ② 권리행사 → JUMP 수령 (MetaMask 2단계 서명)
+      </div>
+      <div id="soExecMsg" style="font-size:0.82rem;min-height:20px;margin-bottom:12px;"></div>
+      <button id="btnSoExecute" type="button"
+        style="width:100%;padding:12px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:0.95rem;font-weight:700;cursor:pointer;">
+        ⚡ 권리행사 확인
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 양도 모달 ────────────────────────────────────────────────────── -->
+  <div id="soTransferModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+    <div style="background:#0d1117;border:1px solid #059669;border-radius:16px;width:min(400px,94vw);padding:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <h3 style="margin:0;color:#ecfdf5;font-size:1rem;">🔄 바우처 양도 — <span id="soTransferVoucherId"></span></h3>
+        <button id="btnSoTransferClose" type="button" style="background:none;border:none;color:#9ca3af;font-size:1.3rem;cursor:pointer;">✕</button>
+      </div>
+      <label style="font-size:0.82rem;color:#d1d5db;display:block;margin-bottom:6px;">받는 지갑 주소 *</label>
+      <input id="soTransferTo" type="text" placeholder="0x..." maxlength="42"
+        style="width:100%;padding:10px 12px;background:#111827;color:#f9fafb;border:1px solid #6b7280;border-radius:8px;font-size:0.85rem;box-sizing:border-box;margin-bottom:12px;" />
+      <div style="font-size:0.75rem;color:#6b7280;margin-bottom:14px;">
+        양도 후에는 취소할 수 없습니다. 수신자가 권리행사 권한을 갖습니다.
+      </div>
+      <div id="soTransferMsg" style="font-size:0.82rem;min-height:20px;margin-bottom:12px;"></div>
+      <button id="btnSoTransfer" type="button"
+        style="width:100%;padding:12px;background:#059669;color:#fff;border:none;border-radius:10px;font-size:0.95rem;font-weight:700;cursor:pointer;">
+        🔄 양도 확인
+      </button>
     </div>
   </div>
 
