@@ -41,12 +41,15 @@ const cfSyncExecution    = httpsCallable(functions, 'syncStockOptionExecution');
 const cfSetContract      = httpsCallable(functions, 'adminSetStockOptionContract');
 
 // ── 상태 ────────────────────────────────────────────────────────────────────
-let _user        = null;
-let _isAdmin     = false;
-let _provider    = null;
-let _signer      = null;
-let _mmAddress   = null;
-let _contractAddr = null;
+// 배포된 컨트랙트 주소 (opBNB Mainnet, 2026-05-29)
+const STOCK_OPTION_CONTRACT = '0x0e328ddD602CbA103a39dF822CcFD4690C633677';
+
+let _user         = null;
+let _isAdmin      = false;
+let _provider     = null;
+let _signer       = null;
+let _mmAddress    = null;
+let _contractAddr = STOCK_OPTION_CONTRACT;
 
 const $ = id => document.getElementById(id);
 const escHtml = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -103,11 +106,6 @@ function setMmStatus(connected) {
 
 async function getContract() {
   if (!_signer) throw new Error('MetaMask를 먼저 연결해주세요');
-  if (!_contractAddr) {
-    const snap = await getDoc(doc(db, 'settings', 'stockOption'));
-    _contractAddr = snap.data()?.contractAddress;
-    if (!_contractAddr) throw new Error('컨트랙트 주소가 설정되지 않았습니다');
-  }
   const ethersLib = await import('https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.min.js');
   const ethers    = ethersLib.ethers ?? ethersLib.default ?? ethersLib;
   return new ethers.Contract(_contractAddr, STOCK_OPTION_ABI, _signer);
@@ -430,13 +428,9 @@ function init(user, isAdmin) {
     if (adminPanel) adminPanel.style.display = '';
     initAdminUI();
 
-    // 현재 설정된 컨트랙트 주소 표시
-    getDoc(doc(db, 'settings', 'stockOption')).then(snap => {
-      const addr = snap.data()?.contractAddress || '';
-      _contractAddr = addr;
-      const inp = $('soContractAddrInput');
-      if (inp && addr) inp.value = addr;
-    }).catch(() => {});
+    // 컨트랙트 주소 입력란에 배포된 주소 표시
+    const inp = $('soContractAddrInput');
+    if (inp) inp.value = _contractAddr;
   }
 
   // 유저 바우처 로드

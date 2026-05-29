@@ -24,10 +24,13 @@ const STOCK_OPTION_ABI = [
   'event OptionExecuted(uint256 indexed voucherId, address indexed user, uint256 amount, uint256 hexPaid)',
 ];
 
+// 배포된 컨트랙트 주소 (opBNB Mainnet, 2026-05-29)
+const DEPLOYED_CONTRACT_ADDRESS = '0x0e328ddD602CbA103a39dF822CcFD4690C633677';
+
 async function getContractAddress() {
   const snap = await db.collection('settings').doc('stockOption').get();
-  const addr = snap.data()?.contractAddress;
-  if (!addr || !ethers.isAddress(addr)) throw new Error('스톡옵션 컨트랙트 주소가 설정되지 않았습니다 (settings/stockOption.contractAddress)');
+  const addr = snap.data()?.contractAddress || DEPLOYED_CONTRACT_ADDRESS;
+  if (!ethers.isAddress(addr)) throw new Error('컨트랙트 주소가 유효하지 않습니다');
   return addr;
 }
 
