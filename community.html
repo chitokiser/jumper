@@ -107,6 +107,10 @@
         <div class="comm-rating-section" id="detailRatingSection" style="display:none;">
           <h3 class="comm-section-title">참석 후기 / 평점</h3>
           <div class="comm-my-rating" id="myRatingArea" style="display:none;">
+            <div id="adminReviewNameRow" style="display:none;margin-bottom:8px;">
+              <input id="adminReviewName" type="text" placeholder="작성자 이름 (관리자 전용, 공란 시 내 이름)"
+                style="width:100%;padding:7px 10px;border:1px solid #4b5563;border-radius:8px;background:#111827;color:#f9fafb;font-size:0.85rem;box-sizing:border-box;" />
+            </div>
             <div class="comm-star-row" id="myStars" data-val="0"></div>
             <textarea class="comm-review-input" id="myReviewInput" placeholder="후기를 작성해 주세요 (선택)..." rows="3"></textarea>
             <button class="btn btn--primary btn--sm" id="btnSubmitReview">후기 등록</button>
@@ -119,6 +123,10 @@
         <div class="comm-comment-section" id="detailCommentSection">
           <h3 class="comm-section-title">댓글</h3>
           <div class="comm-comment-form" id="commCommentForm" style="display:none;">
+            <div id="adminCommentNameRow" style="display:none;margin-bottom:6px;">
+              <input id="adminCommentName" type="text" placeholder="작성자 이름 (관리자 전용, 공란 시 내 이름)"
+                style="width:100%;padding:7px 10px;border:1px solid #4b5563;border-radius:8px;background:#111827;color:#f9fafb;font-size:0.85rem;box-sizing:border-box;" />
+            </div>
             <textarea class="comm-comment-input" id="commCommentInput" placeholder="댓글을 입력하세요..." rows="2"></textarea>
             <button class="btn btn--primary btn--sm" id="btnSubmitComment">등록</button>
           </div>

@@ -414,26 +414,94 @@ async function loadReviews(eventId) {
   cont.innerHTML = '';
   if (snap.empty) { cont.innerHTML = '<p style="font-size:0.85rem;color:var(--muted);margin:0 24px;">아직 후기가 없습니다.</p>'; }
   snap.docs.forEach(d => {
-    const r = d.data();
+    const r    = d.data();
     const item = el('div', 'comm-review-item');
     item.innerHTML = `
-      <div class="comm-review-top">
+      <div class="comm-review-top" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <span class="comm-review-author">${escHtml(r.displayName || '익명')}</span>
         <span class="comm-review-stars">${starsHtml(r.rating || 0)}</span>
         <span class="comm-review-date">${r.createdAt ? fmtDate(r.createdAt) : ''}</span>
+        ${_isAdmin ? `<button type="button" data-edit-review="${d.id}"
+          style="margin-left:auto;font-size:0.72rem;padding:2px 8px;background:none;border:1px solid #4b5563;border-radius:6px;color:#9ca3af;cursor:pointer;">✏️ 편집</button>
+          <button type="button" data-del-review="${d.id}"
+          style="font-size:0.72rem;padding:2px 8px;background:none;border:1px solid #7f1d1d;border-radius:6px;color:#f87171;cursor:pointer;">🗑</button>` : ''}
       </div>
       ${r.text ? `<div class="comm-review-text">${escHtml(r.text)}</div>` : ''}
     `;
+    if (_isAdmin) {
+      item.querySelector(`[data-edit-review="${d.id}"]`)?.addEventListener('click', () =>
+        _openReviewEdit(item, d.id, r, eventId));
+      item.querySelector(`[data-del-review="${d.id}"]`)?.addEventListener('click', async () => {
+        if (!confirm('이 후기를 삭제하시겠습니까?')) return;
+        const revRef   = doc(db, 'community_events', eventId, 'reviews', d.id);
+        const eventRef = doc(db, 'community_events', eventId);
+        await runTransaction(db, async tx => {
+          tx.delete(revRef);
+          tx.update(eventRef, {
+            ratingSum:   increment(-(r.rating || 0)),
+            ratingCount: increment(-1),
+          });
+        });
+        loadReviews(eventId);
+        if (_currentEvent) renderAvgRating(_currentEvent);
+      });
+    }
     cont.appendChild(item);
   });
 
-  // 이미 후기를 남긴 경우 폼 숨김
-  if (_user) {
+  // 이미 후기를 남긴 경우 폼 숨김 (관리자는 항상 폼 유지)
+  if (_user && !_isAdmin) {
     const myReview = snap.docs.find(d => d.id === _user.uid);
-    if (myReview) {
-      $('myRatingArea').style.display = 'none';
-    }
+    if (myReview) $('myRatingArea').style.display = 'none';
   }
+}
+
+function _openReviewEdit(item, docId, r, eventId) {
+  const stars = r.rating || 0;
+  item.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;padding:10px;background:rgba(124,58,237,.08);border-radius:10px;border:1px solid #4b2d7f;">
+      <input type="text" id="erName_${docId}" value="${escHtml(r.displayName||'')}" placeholder="작성자 이름"
+        style="padding:6px 10px;border:1px solid #374151;border-radius:6px;background:#111827;color:#f9fafb;font-size:0.85rem;" />
+      <div id="erStars_${docId}" data-val="${stars}" style="display:flex;gap:4px;">
+        ${[1,2,3,4,5].map(i =>
+          `<button type="button" class="comm-star-btn${i<=stars?' active':''}" data-v="${i}" style="font-size:1.3rem;background:none;border:none;cursor:pointer;color:${i<=stars?'#f59e0b':'#4b5563'};">★</button>`
+        ).join('')}
+      </div>
+      <textarea id="erText_${docId}" rows="3"
+        style="padding:7px 10px;border:1px solid #374151;border-radius:6px;background:#111827;color:#f9fafb;font-size:0.85rem;resize:vertical;">${escHtml(r.text||'')}</textarea>
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="erSave_${docId}" class="btn btn--primary btn--sm">저장</button>
+        <button type="button" id="erCancel_${docId}" class="btn btn--ghost btn--sm">취소</button>
+      </div>
+    </div>`;
+  const starRow = item.querySelector(`#erStars_${docId}`);
+  starRow.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = parseInt(btn.dataset.v);
+      starRow.dataset.val = v;
+      starRow.querySelectorAll('button').forEach((b, i) => {
+        b.style.color = i < v ? '#f59e0b' : '#4b5563';
+      });
+    });
+  });
+  item.querySelector(`#erSave_${docId}`).addEventListener('click', async () => {
+    const newName   = item.querySelector(`#erName_${docId}`).value.trim() || '익명';
+    const newRating = parseInt(starRow.dataset.val) || stars;
+    const newText   = item.querySelector(`#erText_${docId}`).value.trim();
+    try {
+      const revRef   = doc(db, 'community_events', eventId, 'reviews', docId);
+      const eventRef = doc(db, 'community_events', eventId);
+      await runTransaction(db, async tx => {
+        tx.update(revRef, { displayName: newName, rating: newRating, text: newText, editedAt: serverTimestamp() });
+        if (newRating !== (r.rating || 0)) {
+          tx.update(eventRef, { ratingSum: increment(newRating - (r.rating || 0)) });
+        }
+      });
+      loadReviews(eventId);
+      if (_currentEvent) renderAvgRating(_currentEvent);
+    } catch (err) { alert('수정 오류: ' + err.message); }
+  });
+  item.querySelector(`#erCancel_${docId}`).addEventListener('click', () => loadReviews(eventId));
 }
 
 // 댓글 로드
@@ -443,17 +511,55 @@ async function loadComments(eventId) {
   cont.innerHTML = '';
   if (snap.empty) { cont.innerHTML = '<p class="comm-empty-text" style="font-size:0.85rem;">댓글이 없습니다.</p>'; return; }
   snap.docs.forEach(d => {
-    const c = d.data();
+    const c    = d.data();
     const item = el('div', 'comm-comment-item');
     item.innerHTML = `
-      <div class="comm-comment-top">
+      <div class="comm-comment-top" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <span class="comm-comment-author">${escHtml(c.displayName || '익명')}</span>
         <span class="comm-comment-date">${c.createdAt ? fmtDate(c.createdAt) : ''}</span>
+        ${_isAdmin ? `<button type="button" data-edit-cmt="${d.id}"
+          style="margin-left:auto;font-size:0.72rem;padding:2px 8px;background:none;border:1px solid #4b5563;border-radius:6px;color:#9ca3af;cursor:pointer;">✏️ 편집</button>
+          <button type="button" data-del-cmt="${d.id}"
+          style="font-size:0.72rem;padding:2px 8px;background:none;border:1px solid #7f1d1d;border-radius:6px;color:#f87171;cursor:pointer;">🗑</button>` : ''}
       </div>
       <div class="comm-comment-text">${escHtml(c.text || '')}</div>
     `;
+    if (_isAdmin) {
+      item.querySelector(`[data-edit-cmt="${d.id}"]`)?.addEventListener('click', () =>
+        _openCommentEdit(item, d.id, c, eventId));
+      item.querySelector(`[data-del-cmt="${d.id}"]`)?.addEventListener('click', async () => {
+        if (!confirm('이 댓글을 삭제하시겠습니까?')) return;
+        await deleteDoc(doc(db, 'community_events', eventId, 'comments', d.id));
+        loadComments(eventId);
+      });
+    }
     cont.appendChild(item);
   });
+}
+
+function _openCommentEdit(item, docId, c, eventId) {
+  item.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;padding:10px;background:rgba(59,130,246,.08);border-radius:10px;border:1px solid #1e3a5f;">
+      <input type="text" id="ecName_${docId}" value="${escHtml(c.displayName||'')}" placeholder="작성자 이름"
+        style="padding:6px 10px;border:1px solid #374151;border-radius:6px;background:#111827;color:#f9fafb;font-size:0.85rem;" />
+      <textarea id="ecText_${docId}" rows="2"
+        style="padding:7px 10px;border:1px solid #374151;border-radius:6px;background:#111827;color:#f9fafb;font-size:0.85rem;resize:vertical;">${escHtml(c.text||'')}</textarea>
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="ecSave_${docId}" class="btn btn--primary btn--sm">저장</button>
+        <button type="button" id="ecCancel_${docId}" class="btn btn--ghost btn--sm">취소</button>
+      </div>
+    </div>`;
+  item.querySelector(`#ecSave_${docId}`).addEventListener('click', async () => {
+    const newName = item.querySelector(`#ecName_${docId}`).value.trim() || '익명';
+    const newText = item.querySelector(`#ecText_${docId}`).value.trim();
+    if (!newText) { alert('댓글 내용을 입력하세요'); return; }
+    try {
+      await updateDoc(doc(db, 'community_events', eventId, 'comments', docId),
+        { displayName: newName, text: newText, editedAt: serverTimestamp() });
+      loadComments(eventId);
+    } catch (err) { alert('수정 오류: ' + err.message); }
+  });
+  item.querySelector(`#ecCancel_${docId}`).addEventListener('click', () => loadComments(eventId));
 }
 
 // ── 탭 ───────────────────────────────────────────────────────
@@ -481,28 +587,34 @@ $('btnSubmitReview').addEventListener('click', async () => {
   const rating = parseInt($('myStars').dataset.val || '0');
   if (rating < 1) { alert('별점을 선택해 주세요.'); return; }
   const text = $('myReviewInput').value.trim();
-  const btn = $('btnSubmitReview');
+  const btn  = $('btnSubmitReview');
   btn.disabled = true; btn.textContent = '등록 중...';
   try {
-    const eventRef  = doc(db, 'community_events', _currentEvent.id);
-    // 문서 ID = uid → 1인 1후기 보장
-    const reviewRef = doc(db, 'community_events', _currentEvent.id, 'reviews', _user.uid);
+    const eventRef = doc(db, 'community_events', _currentEvent.id);
 
-    await runTransaction(db, async (tx) => {
-      const existing = await tx.get(reviewRef);
-      if (existing.exists()) throw new Error('이미 후기를 작성하셨습니다.');
-      tx.set(reviewRef, {
-        uid:         _user.uid,
-        displayName: _user.displayName || '익명',
-        rating,
-        text,
-        createdAt:   serverTimestamp(),
+    if (_isAdmin) {
+      // 관리자: 원하는 이름으로, 중복 제한 없이 등록
+      const displayName = $('adminReviewName').value.trim() || _user.displayName || '익명';
+      const reviewRef   = doc(collection(db, 'community_events', _currentEvent.id, 'reviews'));
+      await runTransaction(db, async tx => {
+        tx.set(reviewRef, { uid: _user.uid, displayName, rating, text, createdAt: serverTimestamp() });
+        tx.update(eventRef, { ratingSum: increment(rating), ratingCount: increment(1) });
       });
-      tx.update(eventRef, {
-        ratingSum:   increment(rating),
-        ratingCount: increment(1),
+      $('adminReviewName').value = '';
+    } else {
+      // 일반 유저: 문서 ID = uid → 1인 1후기 보장
+      const reviewRef = doc(db, 'community_events', _currentEvent.id, 'reviews', _user.uid);
+      await runTransaction(db, async (tx) => {
+        const existing = await tx.get(reviewRef);
+        if (existing.exists()) throw new Error('이미 후기를 작성하셨습니다.');
+        tx.set(reviewRef, {
+          uid:         _user.uid,
+          displayName: _user.displayName || '익명',
+          rating, text, createdAt: serverTimestamp(),
+        });
+        tx.update(eventRef, { ratingSum: increment(rating), ratingCount: increment(1) });
       });
-    });
+    }
 
     $('myRatingArea').style.display = 'none';
     const updSnap = await getDoc(eventRef);
@@ -523,14 +635,18 @@ $('btnSubmitComment').addEventListener('click', async () => {
   if (!text) return;
   const btn = $('btnSubmitComment');
   btn.disabled = true; btn.textContent = '등록 중...';
+  const displayName = _isAdmin
+    ? ($('adminCommentName').value.trim() || _user.displayName || '익명')
+    : (_user.displayName || '익명');
   try {
     await addDoc(collection(db, 'community_events', _currentEvent.id, 'comments'), {
       uid: _user.uid,
-      displayName: _user.displayName || '익명',
+      displayName,
       text,
       createdAt: serverTimestamp(),
     });
     $('commCommentInput').value = '';
+    if (_isAdmin) $('adminCommentName').value = '';
     loadComments(_currentEvent.id);
   } catch (err) {
     alert('댓글 등록 중 오류: ' + err.message);
@@ -744,9 +860,11 @@ watchAuth(({ loggedIn, role, profile }) => {
   _user    = loggedIn ? profile : null;
   _isAdmin = loggedIn && role === 'admin';
 
-  // 관리자 전용 버튼
-  $('btnCreateEvent').style.display  = _isAdmin ? '' : 'none';
-  $('detailAdminBtns').style.display = (_isAdmin && _currentEvent) ? '' : 'none';
+  // 관리자 전용 버튼 / 입력 필드
+  $('btnCreateEvent').style.display      = _isAdmin ? '' : 'none';
+  $('detailAdminBtns').style.display     = (_isAdmin && _currentEvent) ? '' : 'none';
+  $('adminReviewNameRow').style.display  = _isAdmin ? '' : 'none';
+  $('adminCommentNameRow').style.display = _isAdmin ? '' : 'none';
 
   // 댓글/후기 폼
   if (_currentEvent) {
