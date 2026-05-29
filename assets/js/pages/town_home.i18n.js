@@ -2,8 +2,8 @@
 const TRANSLATIONS = {
   vi: {
     page_title: 'Công viên Đại dương - Nơi bắt đầu cuộc phiêu lưu',
-    hero_title: 'Đoàn kết miền Bắc Việt Nam',
-    hero_desc: 'Khởi đầu cho sự cùng phát triển',
+    hero_title: 'Vượt qua Pokémon và Geocaching',
+    hero_desc: 'Thu hút thợ săn kho báu toàn cầu',
     notice_section: 'Thông báo',
     notice_more: 'Xem thêm',
     notice_help: 'Chỉ quản trị viên mới có thể đăng thông báo.',
@@ -112,8 +112,8 @@ const TRANSLATIONS = {
   },
   en: {
     page_title: 'Ocean Park - Where Adventure Begins',
-    hero_title: 'Northern Vietnam Solidarity',
-    hero_desc: 'The Start of Mutual Growth',
+    hero_title: 'Beyond Pokémon & Geocaching',
+    hero_desc: 'Attract Treasure Hunters Worldwide',
     notice_section: 'Notices',
     notice_more: 'More',
     notice_help: 'Only administrators can post notices.',
@@ -222,8 +222,8 @@ const TRANSLATIONS = {
   },
   ko: {
     page_title: '모험이 시작되는 오션파크',
-    hero_title: '베트남 북부 연대',
-    hero_desc: '상생 완성을 위한 시작',
+    hero_title: '포켓몬과 지오캐싱을 넘어서',
+    hero_desc: '전세계 트레져헌터를 유치 하세요',
     notice_section: '공지사항',
     notice_more: '더보기',
     notice_help: '공지사항은 관리자만 작성할 수 있습니다.',
