@@ -188,3 +188,67 @@ type:
 
 ## 유저 id를 표시해야 할때 
 -가입 당시 입력한 이름을 사용한다
+
+---
+
+## Firestore 읽기 규칙 (과다 읽기 방지)
+
+### onSnapshot 금지 패턴
+- **전체 컬렉션 onSnapshot 절대 금지** — 반드시 where 필터 포함
+  ```js
+  // 금지
+  onSnapshot(collection(db, 'battle_players'), ...)
+  // 허용
+  onSnapshot(query(collection(db, 'battle_players'), where('geohash7', 'in', cells)), ...)
+  ```
+- **`includeMetadataChanges: true` 금지** — 모든 이벤트 2배 발화, 명시적 필요 없으면 사용 금지
+- onSnapshot과 setInterval 폴링이 **같은 데이터를 중복 구독 금지** — 하나만 사용
+
+### 반복 호출 함수 캐시 필수
+- `loadInventory()`, `loadPlayerState()`, `loadShops()` 등 반복 호출 함수는 **30초 TTL 캐시** 필수
+- 캐시 패턴:
+  ```js
+  let _lastFetch = 0;
+  const CACHE_MS = 30000;
+  async function loadXxx({ force = false } = {}) {
+    if (!force && Date.now() - _lastFetch < CACHE_MS) { /* 캐시 렌더만 */ return; }
+    _lastFetch = Date.now();
+    // Firestore 읽기...
+  }
+  ```
+- 실제 데이터 변경 시(구매·제작·수리 등)만 `{ force: true }` 사용
+
+### 폴링 간격 기준
+- 근처 유저/위치 폴링: **최소 30초**
+- 위치 쓰기 (`user_locations`): **최소 5초 + 5m 이상 이동 시만**
+- 배틀 루프: 게임 서버 WebSocket 이벤트 기반, Firestore 폴링 금지
+
+---
+
+## GPS 보안 규칙 (위치 우회 방지)
+
+### _ctx.gpsPos vs _ctx.lastPos
+- **`_ctx.gpsPos`** — 보안용. `navigator.geolocation` 콜백에서만 설정. 절대로 맵 센터·기타 값으로 대체 금지
+- **`_ctx.lastPos`** — 렌더링용. 맵 패닝 시 갱신 가능 (PC 모드 지원)
+- 거리 검증(상점·보물 등)은 반드시 `_ctx.gpsPos` 사용
+
+### map idle 리스너 금지 패턴
+```js
+// 금지 — GPS가 있어도 맵 센터로 덮어쓴다
+if (!_ctx.lastPos || _ctx.lastPos.accuracy > 5) {
+  _ctx.lastPos = { lat: c.lat(), lng: c.lng() };
+}
+// 허용 — 실제 GPS 없을 때만
+if (_ctx.gpsPos) return;
+if (!_ctx.lastPos) { _ctx.lastPos = { lat: c.lat(), lng: c.lng() }; }
+```
+
+### 백엔드 거리 검증 원칙
+- Cloud Functions에서 클라이언트 제공 `lat/lng` **신뢰 금지**
+- 거리 검증 시 `battle_players/{uid}` Firestore 저장 위치 사용
+- 저장 위치 `updatedAt` 10분 초과 시 거부
+  ```js
+  const playerLoc = (await db.collection('battle_players').doc(uid).get()).data();
+  if (!playerLoc?.lat || Date.now() - playerLoc.updatedAt.toMillis() > 600000)
+    throw new HttpsError('failed-precondition', 'GPS 위치 확인 불가');
+  ```
