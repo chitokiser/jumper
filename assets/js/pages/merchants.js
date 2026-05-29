@@ -2862,6 +2862,19 @@ async function init() {
     }
   });
 
+  // AR 스캔: 풀스크린을 먼저 종료한 뒤 이동 (카메라 활성화 시 브라우저가 강제 종료하는 문제 방지)
+  $('btnArScan')?.addEventListener('click', () => {
+    const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const go   = () => { location.href = '/ar-scan.html'; };
+    if (inFs) {
+      (document.exitFullscreen ?? document.webkitExitFullscreen)
+        ?.call(document)
+        .then(go).catch(go);
+    } else {
+      go();
+    }
+  });
+
   function _onFullscreenChange() {
     const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
     const btn = $('btnFullscreen');

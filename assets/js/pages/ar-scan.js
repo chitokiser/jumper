@@ -739,13 +739,28 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-startBtn.addEventListener('click', init);
+startBtn.addEventListener('click', () => {
+  // 사용자 제스처 컨텍스트에서 즉시 풀스크린 진입
+  // (await 이후엔 브라우저가 제스처 체인을 끊어 requestFullscreen 거부)
+  const fsTarget = document.documentElement;
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    (fsTarget.requestFullscreen ?? fsTarget.webkitRequestFullscreen)
+      ?.call(fsTarget).catch(() => {});
+  }
+  init();
+});
 claimBtn.addEventListener('click', handleClaim);
 hudBack.addEventListener('click', () => {
   if (rafId) cancelAnimationFrame(rafId);
   if (gpsWatchId != null) navigator.geolocation.clearWatch(gpsWatchId);
   if (arVideo.srcObject) arVideo.srcObject.getTracks().forEach(t => t.stop());
-  history.back();
+  const exitFs = document.exitFullscreen ?? document.webkitExitFullscreen;
+  const back   = () => history.back();
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    exitFs?.call(document).then(back).catch(back);
+  } else {
+    back();
+  }
 });
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
