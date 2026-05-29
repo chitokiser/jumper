@@ -2134,3 +2134,14 @@ exports.getHomeRankings = onCall(
   { region: 'us-central1', timeoutSeconds: 60 },
   wrapError(async () => rankingsH.getHomeRankings())
 );
+
+// ── 랭킹 더미 데이터 시드 (관리자 전용 — 1회 실행 후 제거 예정) ─────────────
+const seedH = require('./handlers/seed');
+exports.adminSeedRankings = onCall(
+  { timeoutSeconds: 120 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    return seedH.seedAllRankings();
+  })
+);
