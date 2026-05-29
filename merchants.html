@@ -1459,7 +1459,7 @@
       border-bottom: 2px solid #7a5c3a;
     }
     .ut-npc-avatar {
-      width: 44px; height: 44px; border-radius: 10px;
+      width: 44px; height: 44px; border-radius: 50%;
       border: 2px solid #ffd700; object-fit: cover; flex-shrink: 0;
       background: #1a0e06;
     }
@@ -2097,7 +2097,7 @@
       <div class="ut-npc-header">
         <img class="ut-npc-avatar" id="utNpcAvatar" src="/assets/images/npc/npc1.png" alt="NPC">
         <div class="ut-npc-header-title">🗝️ Treasure NPC</div>
-        <button class="ut-npc-close" id="btnCloseUtNpc">✕</button>
+        <button type="button" class="ut-npc-close" id="btnCloseUtNpc" onclick="document.getElementById('utNpcModal').classList.remove('open')">✕</button>
       </div>
       <div class="ut-npc-body">
         <div class="ut-npc-field">

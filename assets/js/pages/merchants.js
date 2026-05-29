@@ -3988,6 +3988,30 @@ function _checkUserNpcProximity(lat, lng) {
   }
 }
 
+function _circularIcon(src, size) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(img, 0, 0, size, size);
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
+      ctx.stroke();
+      resolve(c.toDataURL());
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+}
+
 function _makeUserNpcMarker(npc) {
   const imgUrl = npc.npcImageUrl || `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
   const titleBase = (npc.ownerName || '?') + '의 보물';
@@ -4000,12 +4024,19 @@ function _makeUserNpcMarker(npc) {
     title,
     icon: {
       url: imgUrl,
-      scaledSize: new google.maps.Size(22, 22),
-      anchor: new google.maps.Point(11, 11),
+      scaledSize: new google.maps.Size(34, 34),
+      anchor: new google.maps.Point(17, 17),
     },
     zIndex: 50,
   });
   marker.addListener('click', () => showUserNpcInfo(npc));
+  _circularIcon(imgUrl, 34).then(dataUrl => {
+    marker.setIcon({
+      url: dataUrl,
+      scaledSize: new google.maps.Size(34, 34),
+      anchor: new google.maps.Point(17, 17),
+    });
+  });
   return marker;
 }
 

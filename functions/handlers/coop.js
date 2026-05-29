@@ -626,6 +626,7 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
       lat: pos.lat, lng: pos.lng, radius: 20, hidden: false,
       active: true, respawnIntervalMs: 86400000, startHour: 0, endHour: 24,
       itemPool: visibleItemPool, dropCount,
+      coinReward: 1000,
       slotIndex: i, createdAt: ts,
     });
   }
@@ -642,6 +643,7 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
       lat: pos.lat, lng: pos.lng, radius: 5, hidden: true, hiddenBox: true,
       active: true, respawnIntervalMs: 86400000, startHour: 0, endHour: 24,
       itemPool: hiddenItemPool, dropCount,
+      coinReward: 1000,
       slotIndex: 5 + i, createdAt: ts,
     });
   }
@@ -693,6 +695,7 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
     lat: latNum, lng: lngNum,
     status: 'active', active: true,    // status: listUserTreasureNpcs where('status','==','active') 호환
     radiusM: 100,
+    itemCount: 1000,
     createdAt: ts,
   });
 
