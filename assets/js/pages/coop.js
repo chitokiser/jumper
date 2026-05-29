@@ -159,10 +159,9 @@ const cf = {
 async function init(user) {
   show(el.loading, true);
 
-  // 항상 상품 목록 먼저 로드 (비로그인도 열람 가능)
-  await loadProducts();
-
   if (!user) {
+    // 비로그인: FX 없이 상품 열람 (가격 '—')
+    await loadProducts();
     _memberStatus = 'guest';
     el.noticeText.innerHTML =
       '로그인 후 구매할 수 있습니다. &nbsp;<a href="#" id="coopLoginLink" style="color:#7c3aed;font-weight:600;">로그인하기 →</a>';
@@ -181,6 +180,8 @@ async function init(user) {
     const res = await cf.getMembership();
     membership = res.data;
   } catch (err) {
+    // 멤버십 조회 실패: FX 없이라도 상품 표시
+    await loadProducts();
     show(el.loading, false);
     show(el.main, true);
     return;
@@ -191,14 +192,13 @@ async function init(user) {
     el.noticeText.innerHTML =
       '수탁 지갑이 없습니다. &nbsp;<a href="/mypage.html" style="color:#7c3aed;font-weight:600;">마이페이지에서 지갑 생성 →</a>';
     show(el.noticeBanner, true);
+    await loadProducts();
     show(el.loading, false);
     show(el.main, true);
     return;
   }
 
-  // 지갑 있는 유저: 바우쳐 섹션 비동기 로드
-  loadCoopVouchers();
-
+  // 지갑 있는 유저: FX 먼저 설정 후 상품 렌더링 → KRW/VND 정상 표시
   _membershipFeeWei = BigInt(membership.membershipFeeHex || '0');
   if (membership.fxKrwPerHexScaled) {
     _fx = {
@@ -207,6 +207,10 @@ async function init(user) {
       fxScale:           membership.fxScale,
     };
   }
+
+  await loadProducts();
+
+  loadCoopVouchers();
 
   if (!membership.activeMember) {
     const isExpired = !!membership.member;
