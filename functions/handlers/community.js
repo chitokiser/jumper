@@ -80,10 +80,19 @@ async function buyEventVoucher(uid, { eventId }, masterSecret) {
   const soldQty  = event.voucherSold || 0;
   if (totalQty > 0 && soldQty >= totalQty) throw new Error('바우처가 모두 매진되었습니다');
 
-  // 3. 중복 구매 확인
-  const voucherRef = db.collection('community_event_vouchers').doc(`${uid}_${eventId}`);
-  const existing   = await voucherRef.get();
-  if (existing.exists) throw new Error('이미 이 행사의 바우처를 구매하셨습니다');
+  // 3. 구매 방식 확인
+  const purchaseLimit = event.purchaseLimit || 'once';
+  const isMultiple    = purchaseLimit === 'multiple';
+
+  // 1회 구매 제한: 빠른 사전 체크 (on-chain 비용 절약)
+  const voucherRef = isMultiple
+    ? db.collection('community_event_vouchers').doc()          // auto-ID (연속 구매)
+    : db.collection('community_event_vouchers').doc(`${uid}_${eventId}`); // 고정 ID (1회 한정)
+
+  if (!isMultiple) {
+    const existing = await voucherRef.get();
+    if (existing.exists) throw new Error('이미 구매한 바우처입니다. 1인 1회만 구매할 수 있습니다');
+  }
 
   // 4. 스테이킹 조건 확인
   const { staked, address, walletData } = await getUserStaked(uid);
@@ -130,24 +139,38 @@ async function buyEventVoucher(uid, { eventId }, masterSecret) {
   const txHash     = receipt.hash;
 
   // 9. Firestore 기록
-  const batch = db.batch();
+  //    1회 한정: 트랜잭션으로 원자적 중복 방지 (race condition 차단)
+  //    연속 구매: auto-ID doc 단순 set
+  await db.runTransaction(async (t) => {
+    // 수량 체크는 항상
+    const eSnap   = await t.get(eventRef);
+    const curSold = eSnap.data()?.voucherSold || 0;
+    const curQty  = eSnap.data()?.voucherQty  || 0;
+    if (curQty > 0 && curSold >= curQty) throw new Error('바우처가 모두 매진되었습니다');
 
-  batch.set(voucherRef, {
-    uid,
-    eventId,
-    eventName:   event.name || '',
-    priceVnd:    event.voucherPrice,
-    hexWei:      hexWei.toString(),
-    txHash,
-    staked,
-    createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+    // 1회 한정: 트랜잭션 내에서 중복 재확인
+    if (!isMultiple) {
+      const snap = await t.get(voucherRef);
+      if (snap.exists) throw new Error('이미 구매한 바우처입니다. 1인 1회만 구매할 수 있습니다');
+    }
+
+    t.set(voucherRef, {
+      uid,
+      eventId,
+      eventName:    event.name || '',
+      priceVnd:     event.voucherPrice,
+      hexWei:       hexWei.toString(),
+      txHash,
+      staked,
+      purchaseLimit,
+      status:       'active',
+      createdAt:    admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    t.update(eventRef, {
+      voucherSold: admin.firestore.FieldValue.increment(1),
+    });
   });
-
-  batch.update(eventRef, {
-    voucherSold: admin.firestore.FieldValue.increment(1),
-  });
-
-  await batch.commit();
 
   return {
     txHash,
@@ -171,18 +194,25 @@ async function checkEventEligibility(uid, { eventId }) {
   const event = eventSnap.data();
 
   const { staked } = await getUserStaked(uid);
-  const required   = event.stakeRequired || 0;
-  const soldQty    = event.voucherSold   || 0;
-  const totalQty   = event.voucherQty    || 0;
+  const required      = event.stakeRequired  || 0;
+  const soldQty       = event.voucherSold    || 0;
+  const totalQty      = event.voucherQty     || 0;
+  const purchaseLimit = event.purchaseLimit  || 'once';
 
-  const voucherSnap = await db.collection('community_event_vouchers')
-    .doc(`${uid}_${eventId}`).get();
+  // 연속구매 모드에서는 alreadyBought를 항상 false로 — 재구매 허용
+  let alreadyBought = false;
+  if (purchaseLimit === 'once') {
+    const voucherSnap = await db.collection('community_event_vouchers')
+      .doc(`${uid}_${eventId}`).get();
+    alreadyBought = voucherSnap.exists;
+  }
 
   return {
     staked,
     required,
     eligible:       staked >= required,
-    alreadyBought:  voucherSnap.exists,
+    alreadyBought,
+    purchaseLimit,
     remainingQty:   totalQty > 0 ? Math.max(0, totalQty - soldQty) : null,
     voucherPrice:   event.voucherPrice || 0,
     voucherQty:     totalQty,

@@ -317,13 +317,15 @@ async function renderVoucherBox(d) {
       </div>
       ${sellersHtml}`;
 
+    const isMultiple = data.purchaseLimit === 'multiple';
+
     if (data.soldOut) {
       html += `<div class="comm-voucher-no-access">🚫 매진되었습니다.</div>`;
-    } else if (data.alreadyBought) {
+    } else if (data.alreadyBought && !isMultiple) {
       const verifyUrl = `${location.origin}/voucher-verify.html?v=${encodeURIComponent(_user.uid + '_' + d.id)}`;
       html += `
         <div class="comm-voucher-owned">
-          ✅ 바우처 구매 완료
+          ✅ 바우처 구매 완료 <span style="font-size:0.75rem;color:#6b7280;">(1인 1회 한정)</span>
           <div style="font-size:0.8rem;margin-top:6px;color:#15803d;">판매자에게 아래 QR코드를 제시하세요</div>
           <div id="voucherQr" style="margin:10px auto;width:fit-content;"></div>
           <div style="font-size:0.72rem;color:#4ade80;word-break:break-all;">${verifyUrl}</div>
@@ -334,7 +336,10 @@ async function renderVoucherBox(d) {
         <a href="/exchange.html" style="color:#c2410c;font-weight:700;">→ 거래소에서 스테이킹하기</a>
       </div>`;
     } else {
-      html += `<button class="btn--voucher" id="btnBuyVoucher">🎟 바우처 구매</button>`;
+      const limitLabel = isMultiple
+        ? `<div style="font-size:0.75rem;color:#9ca3af;margin-top:6px;text-align:center;">연속 구매 가능</div>`
+        : `<div style="font-size:0.75rem;color:#9ca3af;margin-top:6px;text-align:center;">1인 1회 한정 구매</div>`;
+      html += `<button class="btn--voucher" id="btnBuyVoucher">🎟 바우처 구매</button>${limitLabel}`;
     }
 
     box.innerHTML = html;
@@ -586,6 +591,10 @@ function openEventModal(editData = null) {
   $('fldPhotoUrl').value      = editData?.photoUrl      || '';
   $('fldEventContent').value  = editData?.content       || '';
 
+  // 구매 방식
+  const pl = editData?.purchaseLimit || 'once';
+  document.querySelectorAll('input[name="fldPurchaseLimit"]').forEach(r => { r.checked = r.value === pl; });
+
   // 날짜 유형
   const type = editData?.scheduleType || 'once';
   document.querySelectorAll('input[name="fldDateType"]').forEach(r => { r.checked = r.value === type; });
@@ -682,6 +691,7 @@ $('commModalSubmit').addEventListener('click', async () => {
       allowedSellers: [...document.querySelectorAll('input[name="sellerCheck"]:checked')]
         .map(cb => ({ id: cb.value, name: cb.dataset.name || cb.value })),
       settlementAmount: parseInt($('fldSettlementAmount').value) || 0,
+      purchaseLimit: document.querySelector('input[name="fldPurchaseLimit"]:checked')?.value || 'once',
       photoUrl:      $('fldPhotoUrl').value.trim(),
       content,
       updatedAt:     serverTimestamp(),
