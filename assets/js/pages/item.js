@@ -253,7 +253,7 @@ function renderItem({ id, data, viewerUid, viewerIsAdmin, ownerEmail }) {
     meta.innerHTML = `
       <span class="pill">${esc(status)}</span>
       <span class="mono">id: ${esc(id)}</span>
-      ${(viewerIsAdmin || isOwner) ? `<span class="mono">ownerUid: ${esc(ownerUid)}</span>` : ""}
+      ${(viewerIsAdmin || isOwner) ? `<span class="mono">판매자: ${esc(ownerEmail)}</span>` : ""}
     `;
   }
 
@@ -1027,14 +1027,22 @@ async function main({ user, profile }) {
     const viewerUid = user?.uid || "";
     const viewerIsAdmin = isAdmin(profile);
 
-    // 판매자 이메일 조회
+    // 판매자 이메일 조회 (users → guides 순으로 시도)
     const ownerUidForEmail = data.ownerUid || data.guideUid || "";
     let ownerEmail = "-";
     if (ownerUidForEmail) {
       try {
         const ownerSnap = await getDoc(doc(db, "users", ownerUidForEmail));
-        ownerEmail = ownerSnap.data()?.email || "-";
-      } catch (_) { /* 권한 없으면 무시 */ }
+        const ud = ownerSnap.data() || {};
+        ownerEmail = ud.email || ud.emailAddress || "-";
+      } catch (_) {}
+      if (ownerEmail === "-") {
+        try {
+          const guideSnap = await getDoc(doc(db, "guides", ownerUidForEmail));
+          const gd = guideSnap.data() || {};
+          ownerEmail = gd.email || gd.emailAddress || "-";
+        } catch (_) {}
+      }
     }
 
     const itemInfo = renderItem({ id, data, viewerUid, viewerIsAdmin, ownerEmail });
