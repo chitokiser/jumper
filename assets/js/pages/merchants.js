@@ -1152,6 +1152,7 @@ function _panToMyLocation() {
     (pos) => {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
       _ctx.lastPos = { lat, lng, accuracy, heading: heading ?? null };
+      _ctx.gpsPos  = { lat, lng, accuracy, ts: Date.now() };
       updateMyLocation(lat, lng, accuracy, heading ?? null);
       if (_ctx.map) {
         _ctx.map.panTo({ lat, lng });
@@ -1199,6 +1200,7 @@ function showMyLocation() {
     (pos) => {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
       _ctx.lastPos = { lat, lng, accuracy, heading: heading ?? null };
+      _ctx.gpsPos  = { lat, lng, accuracy, ts: Date.now() };
       updateMyLocation(lat, lng, accuracy, heading ?? null);
       if (_ctx.map) {
         _ctx.map.panTo({ lat, lng });
@@ -1209,11 +1211,7 @@ function showMyLocation() {
       _onGpsReady();
     },
     () => {
-      // GPS 실패 시 지도 중심 좌표로 대체
-      if (!_ctx.lastPos && _ctx.map) {
-        const c = _ctx.map.getCenter();
-        if (c) _ctx.lastPos = { lat: c.lat(), lng: c.lng(), accuracy: 10 };
-      }
+      // GPS 실패: gpsPos는 갱신하지 않는다 (맵 센터 대체 금지)
       if (btn) btn.textContent = '📍';
       _onGpsReady();
     },
@@ -3097,13 +3095,13 @@ async function init() {
     }
   });
 
-  // PC 모드: 맵 패닝 시 플레이어 위치를 맵 중심으로 자동 갱신
-  // (accuracy === 10 이면 PC fallback 사용 중으로 판단)
+  // PC 모드: 맵 패닝 시 lastPos를 맵 중심으로 갱신 (렌더링 전용)
+  // 실제 GPS가 있으면(gpsPos 존재) 덮어쓰지 않는다
   if (map) {
     map.addListener('idle', () => {
       if (!isGameServerConnected()) return;
-      if (!_ctx.lastPos || _ctx.lastPos.accuracy > 5) {
-        // 실제 GPS 없는 경우 → 맵 중심으로 업데이트
+      if (_ctx.gpsPos) return; // 실제 GPS 있으면 맵 센터로 대체 금지
+      if (!_ctx.lastPos) {
         const c = map.getCenter();
         if (c) _ctx.lastPos = { lat: c.lat(), lng: c.lng(), accuracy: 10 };
       }
@@ -3319,8 +3317,8 @@ async function _execRepairShop(shop) {
 }
 
 function openShopModal(shop) {
-  // 1km 이내에 있어야만 상점 이용 가능
-  const myPos = _ctx?.lastPos;
+  // 1km 이내에 있어야만 상점 이용 가능 — 반드시 실제 GPS(gpsPos) 사용
+  const myPos = _ctx?.gpsPos;
   if (!myPos) {
     showToast(_t('shop_gps_wait'), 'warn');
     return;
@@ -3659,7 +3657,7 @@ async function _execLevelUpShop(shop) {
 }
 
 async function _execShopBuy(shopId, itemId, itemName, price, qty) {
-  const pos = _ctx?.lastPos;
+  const pos = _ctx?.gpsPos; // 반드시 실제 GPS 위치 사용
   if (!pos?.lat || !pos?.lng) {
     showToast(_t('shop_gps_wait'), 'warn');
     return;
@@ -3676,8 +3674,6 @@ async function _execShopBuy(shopId, itemId, itemName, price, qty) {
   try {
     await httpsCallable(functions, 'buyShopItem')({
       shopId, itemId, quantity: qty,
-      lat: pos.lat,
-      lng: pos.lng,
     });
     closeShopModal();
     await Promise.all([loadInventory(), loadPlayerState(), loadShops()]);

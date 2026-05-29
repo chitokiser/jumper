@@ -3040,6 +3040,7 @@ export function startWatchPosition() {
     (pos) => {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
       _ctx.lastPos = { lat, lng, accuracy, heading };
+      _ctx.gpsPos  = { lat, lng, accuracy, ts: Date.now() };
       updateMyLocation(lat, lng, accuracy, heading);
       // GPS 쓰로틀: 5m 이상 이동 시만 근접 GS 존 재조회
       const prox = _lastProximityPos;

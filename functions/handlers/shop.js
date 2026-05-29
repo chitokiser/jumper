@@ -133,13 +133,23 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {})
   const shop = shopSnap.data();
   if (!shop.active) throw new HttpsError('failed-precondition', '현재 이용할 수 없는 상점입니다');
 
-  // 위치 정보 필수 — GPS 없이는 구매 불가
-  if (lat == null || lng == null)
-    throw new HttpsError('invalid-argument', '위치 정보가 필요합니다. GPS를 활성화하세요.');
+  // 위치: 클라이언트 제공 lat/lng 대신 서버에 저장된 최신 GPS 위치를 사용
+  const playerLocSnap = await db.collection('battle_players').doc(uid).get();
+  const playerLoc = playerLocSnap.exists ? playerLocSnap.data() : null;
+  const storedLat = playerLoc?.lat;
+  const storedLng = playerLoc?.lng;
+  const locUpdatedAt = playerLoc?.updatedAt?.toMillis?.() ?? null;
 
-  // 1km 거리 제한
+  if (storedLat == null || storedLng == null)
+    throw new HttpsError('failed-precondition', 'GPS 위치가 확인되지 않습니다. 게임을 시작하고 위치를 활성화하세요.');
+
+  // 위치 데이터 최신성 검증: 10분 초과 시 거부
+  if (locUpdatedAt == null || Date.now() - locUpdatedAt > 10 * 60 * 1000)
+    throw new HttpsError('failed-precondition', 'GPS 위치 정보가 너무 오래되었습니다. 지도를 열고 위치를 다시 확인하세요.');
+
+  // 1km 거리 제한 (서버 저장 위치 기준)
   if (shop.lat != null && shop.lng != null) {
-    const dist = haversineM(lat, lng, shop.lat, shop.lng);
+    const dist = haversineM(storedLat, storedLng, shop.lat, shop.lng);
     if (dist > 1000)
       throw new HttpsError('failed-precondition',
         `상점에서 너무 멀리 있습니다 (${Math.round(dist)}m). 1km 이내에서만 구매할 수 있습니다.`);
