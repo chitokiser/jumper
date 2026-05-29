@@ -137,11 +137,12 @@ async function doRegister(uid, user) {
   setStep("step3", "doing");
   const createWallet = httpsCallable(functions, "createWallet");
   const walletResult = await createWallet({ mentorAddress });
-  const walletAddress = walletResult.data?.address;
+  const walletAddress  = walletResult.data?.address;
+  const referralBonus  = walletResult.data?.referralBonus;
   setStep("step2", "done");
   setStep("step3", "done");
 
-  return walletAddress;
+  return { walletAddress, referralBonus };
 }
 
 // ── 폼 이벤트 바인딩 ──────────────────────────────
@@ -156,7 +157,7 @@ function bindForm(uid, user) {
 
     try {
       setState("가입 처리 중...");
-      const walletAddress = await doRegister(uid, user);
+      const { walletAddress, referralBonus } = await doRegister(uid, user);
       setState("가입 완료!");
 
       show("regForm",    false);
@@ -167,6 +168,14 @@ function bindForm(uid, user) {
       show("onChainRow", true);
       const onChainEl = $("onChainStatus");
       if (onChainEl) { onChainEl.textContent = "등록 완료 ✓"; onChainEl.style.color = "var(--accent)"; }
+
+      // 추천인 보너스 알림
+      if (referralBonus) {
+        const bonusEl = document.createElement("p");
+        bonusEl.style.cssText = "margin-top:12px;padding:10px 14px;background:#fef3c7;border-radius:10px;font-size:0.88rem;color:#92400e;font-weight:600;text-align:center;";
+        bonusEl.textContent = "🎁 추천인 보너스! 게임코인 1,000 포인트가 지급되었습니다.";
+        $("alreadyDone")?.appendChild(bonusEl);
+      }
     } catch (err) {
       setState("오류 발생");
       const box  = $("stepBox");
