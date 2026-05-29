@@ -524,8 +524,7 @@ function showTreasurePackageModal(productId) {
 
   // 초기화
   document.getElementById('tpTreasureName').value = '';
-  document.getElementById('tpLat').value = '';
-  document.getElementById('tpLng').value = '';
+  document.getElementById('tpLatLng').value = '';
   tpNpcUrl.value = '';
   tpNpcPrev.style.display = 'none';
   tpMsg.textContent = '';
@@ -548,8 +547,7 @@ function showTreasurePackageModal(productId) {
     tpGpsBtn.textContent = '위치 가져오는 중...';
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        document.getElementById('tpLat').value = pos.coords.latitude.toFixed(6);
-        document.getElementById('tpLng').value = pos.coords.longitude.toFixed(6);
+        document.getElementById('tpLatLng').value = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
         tpGpsBtn.textContent = '📍 현재 위치 사용';
       },
       () => {
@@ -566,13 +564,14 @@ function showTreasurePackageModal(productId) {
 
   tpSubmit.onclick = async () => {
     const treasureName = document.getElementById('tpTreasureName').value.trim();
-    const lat = parseFloat(document.getElementById('tpLat').value);
-    const lng = parseFloat(document.getElementById('tpLng').value);
+    const [latStr, lngStr] = (document.getElementById('tpLatLng').value.trim()).split(',').map(s => s.trim());
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
     const npcImageUrl = tpNpcUrl.value.trim();
 
     if (!treasureName) { tpMsg.textContent = '보물 이름을 입력하세요'; return; }
-    if (!isFinite(lat) || lat < -90 || lat > 90) { tpMsg.textContent = '유효한 위도를 입력하세요 (-90~90)'; return; }
-    if (!isFinite(lng) || lng < -180 || lng > 180) { tpMsg.textContent = '유효한 경도를 입력하세요 (-180~180)'; return; }
+    if (!isFinite(lat) || lat < -90 || lat > 90) { tpMsg.textContent = '좌표를 올바르게 입력하세요 (예: 21.110101, 106.393556)'; return; }
+    if (!isFinite(lng) || lng < -180 || lng > 180) { tpMsg.textContent = '좌표를 올바르게 입력하세요 (예: 21.110101, 106.393556)'; return; }
 
     const product = _products.find(p => p.id === _tpProductId);
     const confirmHex = product?.hexPrice ? (Number(product.hexPrice) / 1e18).toFixed(4) : '?';

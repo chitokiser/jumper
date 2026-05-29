@@ -308,13 +308,8 @@
             style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;" />
         </div>
         <div>
-          <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">위도 (Latitude) *</label>
-          <input type="number" id="tpLat" placeholder="예: 37.5665" step="0.000001" min="-90" max="90"
-            style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;" />
-        </div>
-        <div>
-          <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">경도 (Longitude) *</label>
-          <input type="number" id="tpLng" placeholder="예: 126.9780" step="0.000001" min="-180" max="180"
+          <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">좌표 (위도, 경도) *</label>
+          <input type="text" id="tpLatLng" placeholder="예: 21.110101, 106.393556"
             style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box;" />
         </div>
         <button type="button" id="tpGpsBtn"
