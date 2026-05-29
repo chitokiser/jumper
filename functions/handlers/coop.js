@@ -1119,6 +1119,38 @@ async function coopTransferVoucher(uid, { docId, voucherId, toAddress, sourceCol
   const recipientSnap = await db.collection('users').where('wallet.address', '==', toAddress).limit(1).get();
   const recipientUid  = recipientSnap.empty ? null : recipientSnap.docs[0].id;
 
+  // ── 커뮤니티 행사 바우처 Firestore-only 이체 ───────────────────────
+  if (sourceCollection === 'community_event_vouchers' && docId) {
+    const ref  = db.collection('community_event_vouchers').doc(docId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('행사 바우처가 존재하지 않습니다');
+    const data = snap.data();
+    if (data.uid !== uid) throw new Error('바우처 소유자가 아닙니다');
+    if (data.status && data.status !== 'active') throw new Error('이미 사용된 바우처입니다');
+
+    const batch = db.batch();
+    batch.update(ref, {
+      status:    'transferred',
+      toAddress,
+      toUid:     recipientUid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    batch.set(db.collection('community_event_vouchers').doc(), {
+      uid:          recipientUid || toAddress,
+      eventId:      data.eventId    || '',
+      eventName:    data.eventName  || '',
+      priceVnd:     data.priceVnd   || 0,
+      hexWei:       data.hexWei     || '0',
+      purchaseLimit: data.purchaseLimit || 'once',
+      status:       'active',
+      fromUid:      uid,
+      fromAddress:  walletData.address,
+      createdAt:    admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    return { docId, toAddress, txHash: null };
+  }
+
   // ── 게임 바우처 (treasure_voucher_logs) Firestore-only 이체 ────────
   if (sourceCollection === 'treasure_voucher_logs' && docId) {
     const ref  = db.collection('treasure_voucher_logs').doc(docId);
@@ -1271,6 +1303,45 @@ async function coopTransferVoucher(uid, { docId, voucherId, toAddress, sourceCol
 //     - 상품 바우처: admin 지갑에서 직접 HEX 전송
 // ─────────────────────────────────────────────
 async function coopBurnVoucher(uid, { docId, voucherId, sourceCollection }, masterSecret) {
+  // ── 커뮤니티 행사 바우처: 구매 금액(hexWei) 환급 후 소각 ─────────
+  if (sourceCollection === 'community_event_vouchers' && docId) {
+    const ref  = db.collection('community_event_vouchers').doc(docId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('행사 바우처가 존재하지 않습니다');
+    const data = snap.data();
+    if (data.uid !== uid) throw new Error('바우처 소유자가 아닙니다');
+    if (data.status && data.status !== 'active') throw new Error('이미 사용된 바우처입니다');
+
+    const hexWei = BigInt(data.hexWei || '0');
+
+    if (hexWei > 0n) {
+      const userSnap   = await db.collection('users').doc(uid).get();
+      const walletData = userSnap.data()?.wallet;
+      if (!walletData?.address) throw new Error('수탁 지갑이 없습니다');
+
+      const provider    = getProvider();
+      const adminWallet = getAdminWallet();
+      const hexRead     = getHexContract(provider);
+      const adminBal    = await hexRead.balanceOf(adminWallet.address);
+      if (adminBal < hexWei) throw new Error('관리자 잔액 부족. 고객센터에 문의하세요');
+
+      const hexSigned = getHexContract(adminWallet);
+      const gasLimit  = await estimateGasWithBuffer(hexSigned, 'transfer', [walletData.address, hexWei]);
+      const tx        = await hexSigned.transfer(walletData.address, hexWei, { gasLimit });
+      const receipt   = await tx.wait();
+
+      await ref.update({
+        status:     'burned',
+        burnTxHash: receipt.hash,
+        updatedAt:  admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return { docId, txHash: receipt.hash, hexRefund: hexWei.toString() };
+    }
+
+    await ref.update({ status: 'burned', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    return { docId, txHash: null, hexRefund: '0' };
+  }
+
   // ── 게임 바우처 (treasure_voucher_logs): HEX 환급 없이 소각 ───────
   if (sourceCollection === 'treasure_voucher_logs' && docId) {
     const ref  = db.collection('treasure_voucher_logs').doc(docId);
@@ -1486,7 +1557,7 @@ async function coopGetMyVouchers(uid) {
     });
 
   // coopVouchers 문서에 burnFeeBps=0이면 coopProducts에서 재조회 (구매 전 생성된 레거시 문서 대응)
-  const [vBpsLookups, gameVoucherSnap] = await Promise.all([
+  const [vBpsLookups, gameVoucherSnap, communityVoucherSnap] = await Promise.all([
     Promise.all(
       vSnap.docs.map(d => {
         const data = d.data();
@@ -1499,6 +1570,10 @@ async function coopGetMyVouchers(uid) {
     db.collection('treasure_voucher_logs')
       .where('uid', '==', uid)
       .orderBy('craftedAt', 'desc')
+      .limit(50)
+      .get(),
+    db.collection('community_event_vouchers')
+      .where('uid', '==', uid)
       .limit(50)
       .get(),
   ]);
@@ -1528,6 +1603,30 @@ async function coopGetMyVouchers(uid) {
       };
     });
 
+  const communityVouchers = communityVoucherSnap.docs
+    .filter(d => {
+      const s = d.data().status;
+      return !s || s === 'active';
+    })
+    .map(d => {
+      const v = d.data();
+      return {
+        id:               d.id,
+        source:           'community',
+        sourceCollection: 'community_event_vouchers',
+        ownerUid:         uid,
+        hexPrice:         v.hexWei || '0',
+        burnFeeBps:       0,
+        description:      v.eventName || '행사 바우처',
+        usagePlace:       v.eventId   || '',
+        imageUrl:         '',
+        status:           'active',
+        createdAt:        v.createdAt,
+        eventId:          v.eventId,
+        priceVnd:         v.priceVnd  || 0,
+      };
+    });
+
   return {
     vouchers: [
       ...vSnap.docs.map((d, i) => {
@@ -1540,6 +1639,7 @@ async function coopGetMyVouchers(uid) {
       }),
       ...orderVouchers,
       ...gameVouchers,
+      ...communityVouchers,
     ],
     fxKrwPerHexScaled: fxKrw.toString(),
     fxVndPerHexScaled: fxVnd.toString(),

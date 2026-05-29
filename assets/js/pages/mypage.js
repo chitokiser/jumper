@@ -1638,6 +1638,7 @@ onAuthReady(async (ctx) => {
   let _pendingVoucherId  = null;
   let _pendingDocId      = null;
   let _pendingCollection = null;
+  let _pendingHexPrice   = null;
 
   // ── 내 지갑 QR 렌더 ─────────────────────────────────────────────────────
   let _myWalletAddress = null;
@@ -1828,12 +1829,15 @@ onAuthReady(async (ctx) => {
       const imgTag = imgSrc
         ? `<img src="${imgSrc}" alt="${_t('voucher_default_name')}" style="width:100%;height:110px;object-fit:cover;display:block;background:#f3f4f6;" onerror="this.style.display='none'">`
         : `<div style="width:100%;height:60px;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.4rem;">🎫</div>`;
-      const isGameVoucher    = v.source === 'game';
-      const isProductVoucher = v.source === 'product';
-      // 온체인 바우처는 voucherId(숫자), 상품/게임 바우처는 docId(Firestore 문서 ID) 사용
-      const vid   = (isProductVoucher || isGameVoucher) ? null : v.voucherId;
+      const isGameVoucher      = v.source === 'game';
+      const isProductVoucher   = v.source === 'product';
+      const isCommunityVoucher = v.source === 'community';
+      // 온체인 바우처는 voucherId(숫자), 나머지는 docId(Firestore 문서 ID) 사용
+      const vid   = (isProductVoucher || isGameVoucher || isCommunityVoucher) ? null : v.voucherId;
       const docId = v.id;
-      const col   = isGameVoucher ? 'treasure_voucher_logs' : 'coop';
+      const col   = isGameVoucher      ? 'treasure_voucher_logs'
+                  : isCommunityVoucher ? 'community_event_vouchers'
+                  : 'coop';
       const hp    = v.hexPrice ?? '0';
       const refundWei = (!isGameVoucher && hp !== '0')
         ? String(BigInt(hp) - BigInt(hp) * BigInt(v.burnFeeBps ?? 0) / BigInt(10000))
@@ -1842,12 +1846,20 @@ onAuthReady(async (ctx) => {
       // 소스 배지
       const sourceBadge = isGameVoucher
         ? `<span style="font-size:0.7rem;background:#d1fae5;color:#065f46;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">${_t('voucher_game_badge')}</span>`
+        : isCommunityVoucher
+        ? `<span style="font-size:0.7rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">행사</span>`
         : `<span style="font-size:0.7rem;background:#ede9fe;color:#5b21b6;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">${_t('voucher_shop_badge')}</span>`;
 
       // 가격 영역
       let priceHtml;
       if (isGameVoucher) {
         priceHtml = `<div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:6px;">${_t('voucher_game_src')}</div>`;
+      } else if (isCommunityVoucher) {
+        const vndStr = v.priceVnd ? v.priceVnd.toLocaleString() + ' ₫' : '';
+        const krwStr = hexWeiToKrwStr(hp);
+        const fxLine = (krwStr || vndStr) ? `<span style="color:#9ca3af;">${[krwStr, vndStr].filter(Boolean).join(' / ')}</span>` : '';
+        const refundLine = refundWei !== '0' ? `<br>${_t('voucher_refund', fmtHexShort(refundWei))}` : '';
+        priceHtml = `<div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:6px;">${_t('voucher_price', fmtHexShort(hp))}${refundLine}<br>${fxLine}</div>`;
       } else {
         const krwStr = hexWeiToKrwStr(hp);
         const vndStr = hexWeiToVndStr(hp);
@@ -1906,9 +1918,11 @@ onAuthReady(async (ctx) => {
         _pendingDocId      = btn.dataset.docid || null;
         _pendingVoucherId  = btn.dataset.vid ? Number(btn.dataset.vid) : null;
         _pendingCollection = btn.dataset.collection || null;
-        const hp  = btn.dataset.hexPrice ?? '0';
+        _pendingHexPrice   = btn.dataset.hexPrice ?? '0';
+        const hp  = _pendingHexPrice;
         const bps = Number(btn.dataset.burnFeeBps ?? 0);
-        const isGame = _pendingCollection === 'treasure_voucher_logs';
+        const isGame = _pendingCollection === 'treasure_voucher_logs'
+          || (_pendingCollection === 'community_event_vouchers' && (!hp || hp === '0'));
         const label = _pendingVoucherId ? `#${_pendingVoucherId}` : _t('burn_selected_voucher');
         if ($('vbInfo')) {
           if (isGame) {
@@ -1997,6 +2011,7 @@ onAuthReady(async (ctx) => {
     _pendingVoucherId  = null;
     _pendingDocId      = null;
     _pendingCollection = null;
+    _pendingHexPrice   = null;
   });
 
   // 소각 확인
@@ -2027,7 +2042,9 @@ onAuthReady(async (ctx) => {
     setVbStatus('');
     [1, 2, 3, 4].forEach(n => stepState(n, 'wait'));
 
-    const isGameBurnFlow = _pendingCollection === 'treasure_voucher_logs';
+    // community 바우처는 hexPrice > 0 이면 온체인 환급 흐름 (product와 동일)
+    const isGameBurnFlow = _pendingCollection === 'treasure_voucher_logs'
+      || (_pendingCollection === 'community_event_vouchers' && (!_pendingHexPrice || _pendingHexPrice === '0'));
     let progressTimer = null;
     try {
       stepState(1, 'active');
@@ -2065,6 +2082,7 @@ onAuthReady(async (ctx) => {
         _pendingVoucherId  = null;
         _pendingDocId      = null;
         _pendingCollection = null;
+        _pendingHexPrice   = null;
         await loadMyVouchers();
       }, 1800);
     } catch (err) {
@@ -2086,6 +2104,7 @@ onAuthReady(async (ctx) => {
     _pendingVoucherId  = null;
     _pendingDocId      = null;
     _pendingCollection = null;
+    _pendingHexPrice   = null;
   });
 
   // 섹션 열릴 때 첫 로드
