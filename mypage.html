@@ -503,6 +503,27 @@
         </div>
       </section>
 
+      <!-- 친구 초대하기 -->
+      <section class="panel mp-section collapsible is-collapsed" id="referralSection" style="display:none;">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">👥 친구 초대하기</h2>
+        </div>
+        <div style="padding:4px 0 16px;">
+          <p class="hint" style="margin-bottom:14px;line-height:1.6;">
+            아래 QR코드 또는 초대 링크로 가입하면 자동으로 <strong>나의 멘티</strong>가 됩니다.
+          </p>
+          <div id="referralQrWrap" style="margin:0 auto 14px;width:fit-content;"></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+            <input id="referralLink" type="text" readonly
+              style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border,#e5e7eb);
+                     border-radius:8px;font-size:0.78rem;background:var(--surface2,#f9fafb);
+                     color:var(--muted,#6b7280);cursor:text;" />
+            <button id="btnCopyReferral" class="btn btn--sm btn--primary" type="button">🔗 링크 복사</button>
+          </div>
+          <p id="referralCopyMsg" style="font-size:0.8rem;color:var(--accent,#7c3aed);min-height:18px;text-align:center;"></p>
+        </div>
+      </section>
+
       <!-- 잭팟 당첨 내역 -->
       <section class="panel mp-section collapsible is-collapsed" id="jackpotHistSection" style="display:none;">
         <div class="mp-section-head">

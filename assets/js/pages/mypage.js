@@ -46,6 +46,54 @@ function renderProfile(userData, fireUser) {
   setText("infoPhone", userData?.phone || "-");
 }
 
+// ── 친구 초대 QR ──────────────────────────────────────────────────────────────
+function renderReferralSection(walletAddress) {
+  const section = $('referralSection');
+  if (!section || !walletAddress) return;
+  section.style.display = '';
+
+  const inviteUrl = `${location.origin}/register.html?mentor=${encodeURIComponent(walletAddress)}`;
+  const linkEl    = $('referralLink');
+  const qrWrap    = $('referralQrWrap');
+  const copyBtn   = $('btnCopyReferral');
+  const copyMsg   = $('referralCopyMsg');
+
+  if (linkEl) linkEl.value = inviteUrl;
+
+  // QR 코드 생성 (뷰포트 진입 시 lazy load)
+  const observer = new IntersectionObserver(entries => {
+    if (!entries[0].isIntersecting) return;
+    observer.disconnect();
+    import('https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm').then(mod => {
+      const canvas = document.createElement('canvas');
+      mod.default.toCanvas(canvas, inviteUrl, { width: 200, margin: 1 }, () => {
+        if (qrWrap) { qrWrap.innerHTML = ''; qrWrap.appendChild(canvas); }
+      });
+    }).catch(() => {
+      if (qrWrap) qrWrap.innerHTML =
+        `<a href="${inviteUrl}" style="font-size:0.75rem;word-break:break-all;">${inviteUrl}</a>`;
+    });
+  }, { threshold: 0.1 });
+  if (qrWrap) observer.observe(qrWrap);
+
+  // 복사 버튼
+  copyBtn?.addEventListener('click', () => {
+    navigator.clipboard.writeText(inviteUrl).catch(() => {
+      if (linkEl) { linkEl.select(); document.execCommand('copy'); }
+    }).finally(() => {
+      if (copyMsg) {
+        copyMsg.textContent = '✅ 링크가 복사되었습니다!';
+        setTimeout(() => { copyMsg.textContent = ''; }, 2000);
+      }
+    });
+  }, { once: false });
+
+  // 섹션 헤더 클릭 토글
+  section.querySelector('.mp-section-head')?.addEventListener('click', () => {
+    section.classList.toggle('is-collapsed');
+  }, { once: true });
+}
+
 function renderWallet(userData) {
   const addr = userData?.wallet?.address;
   const isMetaMask = userData?.wallet?.type === "metamask" || (addr && !userData?.wallet?.encryptedKey);
@@ -1563,6 +1611,7 @@ onAuthReady(async (ctx) => {
 
     renderProfile(data, user);
     renderWallet(data);
+    renderReferralSection(walletAddress);
     bindCreateWallet();
     bindConnectMetaMask(user.uid);
     bindOnChainRegister(user.uid);
