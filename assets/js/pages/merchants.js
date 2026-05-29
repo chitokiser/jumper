@@ -765,7 +765,7 @@ function updateDistDisplay() {
 const NEARBY_RADIUS_M    = 100;
 const LOC_WRITE_INTERVAL = 5000;   // 5초마다 위치 쓰기
 const LOC_STALE_MS       = 30000;  // 30초 이상 미업데이트 시 마커 제거
-const LOC_POLL_INTERVAL  = 10000;  // 10초마다 근처 유저 폴링
+const LOC_POLL_INTERVAL  = 30000;  // 30초마다 근처 유저 폴링
 
 // ── Geohash 인라인 구현 (CDN 불필요) ─────────────────────────────────────────
 const _GH32 = '0123456789bcdefghjkmnpqrstuvwxyz';
@@ -2240,7 +2240,7 @@ function renderVouchers() {
           showInfoToast(_t('armor_equip_craft', reward, getDefense()));
         }
         alert(_t('craft_success', res.data.voucherName, reward));
-        await loadInventory();
+        await loadInventory({ force: true });
       } catch (err) {
         alert(_t('craft_failed', err.message || err));
         btn.disabled = false; btn.textContent = _t('craft_btn');
@@ -2291,12 +2291,22 @@ async function loadVouchers() {
   snap.forEach(d => { if (d.data().active !== false) _vouchers.push({ id: d.id, ...d.data() }); });
 }
 
-async function loadInventory() {
+let _invLastFetch = 0;
+const INV_CACHE_MS = 30000; // 30초 TTL
+
+async function loadInventory({ force = false } = {}) {
   if (!_uid) {
     _inventory = {}; _boxInventory = [];
     renderBoxInventory(); renderInventory(); renderVouchers(); renderMyVouchers([]);
     return;
   }
+
+  const now = Date.now();
+  if (!force && now - _invLastFetch < INV_CACHE_MS) {
+    renderBoxInventory(); renderInventory(); renderVouchers();
+    return;
+  }
+  _invLastFetch = now;
 
   const settle = p => p.then(v => ({ ok: true, v })).catch(e => { console.error('loadInventory query error:', e.message); showToast(`인벤토리 로드 오류: ${e.message}`, 'error'); return { ok: false }; });
 
@@ -2498,7 +2508,7 @@ function renderExchangeSection() {
       try {
         const res = await httpsCallable(functions, 'craftVoucher')({ voucherId: vid });
         alert(_t('exchange_success', res.data.voucherName, res.data.reward));
-        await loadInventory();
+        await loadInventory({ force: true });
         renderExchangeSection();
       } catch (err) {
         alert(_t('craft_failed', err.message || err));
@@ -2660,7 +2670,7 @@ async function init() {
           try {
             await httpsCallable(functions, 'initBattlePlayer')();
             await loadPlayerState(); // 스타터 아이템 포함 재로드
-            await loadInventory();
+            await loadInventory({ force: true });
           } catch (e) { /* ignore */ }
           _initTutorialBoxesWhenReady();
         } else if (!_isAnonymous) {
@@ -2894,7 +2904,7 @@ async function init() {
     try {
       const res = await httpsCallable(functions, 'adminGiveRevive')({ targetUid, count });
       alert(`✅ 부활권 ${res.data.given}장 지급 완료`);
-      if (targetUid === _uid) await loadInventory();
+      if (targetUid === _uid) await loadInventory({ force: true });
     } catch (err) { alert('실패: ' + err.message); }
   });
 
@@ -2906,7 +2916,7 @@ async function init() {
     try {
       const res = await httpsCallable(functions, 'adminGivePotion')({ targetUid, count });
       alert(`✅ ${targetUid.slice(0,8)}… 에게 빨간약 ${res.data.given}병 지급 완료`);
-      if (targetUid === _uid) await loadInventory();
+      if (targetUid === _uid) await loadInventory({ force: true });
     } catch (err) { alert('실패: ' + err.message); }
   });
   $('btnAdminInitAllPlayers')?.addEventListener('click', async () => {
@@ -3309,7 +3319,7 @@ async function _execRepairShop(shop) {
     const res = await httpsCallable(functions, 'repairShop')({ shopId: shop.id });
     const { repairHp, cost: paid, newHp } = res.data;
     closeShopModal();
-    await Promise.all([loadPlayerState(), loadShops()]);
+    await Promise.all([loadPlayerState({ force: true }), loadShops()]);
     showToast(`🔧 수리 완료 (+${repairHp.toLocaleString()} HP, -💰${paid.toLocaleString()})`, 'success');
   } catch (e) {
     showToast(e?.message || '수리 실패', 'error');
@@ -3649,7 +3659,7 @@ async function _execLevelUpShop(shop) {
   try {
     const res = await httpsCallable(functions, 'levelUpShop')({ shopId: shop.id });
     closeShopModal();
-    await Promise.all([loadPlayerState(), loadShops()]);
+    await Promise.all([loadPlayerState({ force: true }), loadShops()]);
     showToast(`⬆️ 레벨업 완료! Lv.${res.data.newLevel} (Max HP ${res.data.newMaxHp.toLocaleString()})`, 'success');
   } catch (err) {
     showToast(err.message || '레벨업 실패', 'error');
@@ -3676,7 +3686,7 @@ async function _execShopBuy(shopId, itemId, itemName, price, qty) {
       shopId, itemId, quantity: qty,
     });
     closeShopModal();
-    await Promise.all([loadInventory(), loadPlayerState(), loadShops()]);
+    await Promise.all([loadInventory({ force: true }), loadPlayerState({ force: true }), loadShops()]);
     showToast(_t('shop_buy_ok', itemName), 'success');
   } catch (err) {
     showToast(_t('shop_buy_fail', err.message), 'error');

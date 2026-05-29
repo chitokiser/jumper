@@ -150,7 +150,7 @@ export function initBattle(ctx, callbacks) {
   document.getElementById('btnMonsterStatCancel')?.addEventListener('click', () => closeMonsterStatModal());
   document.getElementById('btnMonsterStatSaveAll')?.addEventListener('click', () => saveAllMonsterStats());
 
-  startNearbyPlayersWatch();
+  // 근처 플레이어 마커는 _pollNearbyPlayers(30s geohash 폴링)이 담당 — 전체 onSnapshot 금지
 }
 
 // ── 사운드 시스템 (Web Audio API) ────────────────────────────────────────────
@@ -753,9 +753,16 @@ function updateCombatHud() {
 }
 
 // ── 플레이어 상태 저장/로드 ───────────────────────────────────────────────────
-export async function loadPlayerState() {
+let _playerStateLastFetch = 0;
+const PLAYER_STATE_CACHE_MS = 30000; // 30초 TTL
+
+export async function loadPlayerState({ force = false } = {}) {
   const uid = _ctx?.uid;
   if (!uid) return;
+
+  const now = Date.now();
+  if (!force && now - _playerStateLastFetch < PLAYER_STATE_CACHE_MS) return;
+  _playerStateLastFetch = now;
 
   try {
     const res = await httpsCallable(_ctx.functions, 'getMyOnChain')();
@@ -2384,9 +2391,8 @@ export function startSharedSync(onBoxHpChange) {
   if (!_ctx?.db || _battleHpUnsub) return;
   _battleHpUnsub = onSnapshot(
     collection(_ctx.db, 'battle_hp'),
-    { includeMetadataChanges: true },
     (snap) => {
-      snap.docChanges({ includeMetadataChanges: true }).forEach(change => {
+      snap.docChanges().forEach(change => {
         if (change.doc.metadata.hasPendingWrites) return; // 내 쓰기 제외
         if (change.type === 'removed') return;
         const docId = change.doc.id;
