@@ -85,11 +85,14 @@ async function adminCreateOffering(uid, {
 
 // ── 2. 공개: 스톡옵션 오퍼링 목록 조회 ────────────────────────────────────────
 async function getStockOfferings() {
+  // orderBy 없이 단일 필드 where만 사용 — 복합 인덱스 불필요
   const snap = await db.collection('stockOptionOfferings')
     .where('active', '==', true)
-    .orderBy('createdAt', 'desc')
     .get();
-  return { offerings: snap.docs.map(d => ({ id: d.id, ...d.data() })) };
+  const offerings = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  return { offerings };
 }
 
 // ── 3. 관리자: 전체 오퍼링·바우처 관리 ──────────────────────────────────────
@@ -249,15 +252,15 @@ async function getMyStockVouchers(uid) {
   const address   = userSnap.data()?.wallet?.address?.toLowerCase();
   if (!address) return { vouchers: [], userAddress: null };
 
+  // orderBy 없이 단일 필드 where만 사용 — 복합 인덱스 불필요
   const snap = await db.collection('stockOptionVouchers')
     .where('currentOwner', '==', address)
-    .orderBy('createdAt', 'desc')
     .get();
+  const vouchers = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
-  return {
-    vouchers:    snap.docs.map(d => ({ id: d.id, ...d.data() })),
-    userAddress: address,
-  };
+  return { vouchers, userAddress: address };
 }
 
 // ── 6. 유저: 권리행사 (수탁지갑으로 executeOption 호출) ──────────────────────
