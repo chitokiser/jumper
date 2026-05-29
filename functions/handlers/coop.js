@@ -646,17 +646,30 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
     });
   }
 
-  // 5개 몬스터 (battle_monsters)
+  // 몬스터 배치: 괴물눈 2마리 + cabi 3마리
+  const MONSTER_PRESETS = [
+    { type: 'Monster eyes', name: 'Monster eyes', image: '22.png', atk: 80, detectRadius: 30, respawnMinutes: 2 },
+    { type: 'Monster eyes', name: 'Monster eyes', image: '22.png', atk: 80, detectRadius: 30, respawnMinutes: 2 },
+    { type: 'cabi',         name: 'cabi',         image: '23.png', atk: 20, detectRadius: 30, respawnMinutes: 2 },
+    { type: 'cabi',         name: 'cabi',         image: '23.png', atk: 20, detectRadius: 30, respawnMinutes: 2 },
+    { type: 'cabi',         name: 'cabi',         image: '23.png', atk: 20, detectRadius: 30, respawnMinutes: 2 },
+  ];
   const monsterIds = [];
-  for (let i = 0; i < 5; i++) {
+  for (const preset of MONSTER_PRESETS) {
     const pos    = randomOffset(100);
+    const lv     = 1 + Math.floor(Math.random() * 3);
+    const maxHp  = preset.type === 'Monster eyes' ? lv * 100 * 8 : 500;
     const monRef = db.collection('battle_monsters').doc();
     monsterIds.push(monRef.id);
     batch.set(monRef, {
       packageId, ownerUid: uid,
       lat: pos.lat, lng: pos.lng,
-      active: true, level: 1 + Math.floor(Math.random() * 3),
-      respawnIntervalMs: 3600000, createdAt: ts,
+      active: true, level: lv,
+      type: preset.type, name: preset.name, image: preset.image,
+      maxHp, hp: maxHp, atk: preset.atk,
+      detectRadius: preset.detectRadius,
+      respawnIntervalMs: preset.respawnMinutes * 60 * 1000,
+      createdAt: ts,
     });
   }
 
@@ -669,12 +682,18 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
     active: true, type: 'archer', createdAt: ts,
   });
 
-  // NPC 등록 (user_treasure_npcs) — 맵 표시용
+  // NPC 등록 (user_treasure_npcs) — status/ownerId 필드 통일 (listUserTreasureNpcs 쿼리 호환)
+  const npcImageSaved = npcImageUrl ? String(npcImageUrl).trim() : '';
   batch.set(db.collection('user_treasure_npcs').doc(packageId), {
-    packageId, ownerUid: uid,
+    packageId,
+    ownerId: uid, ownerUid: uid,       // ownerId: listUserTreasureNpcs 쿼리 호환
+    ownerName: nameStr,
     treasureName: nameStr, npcName: nameStr, promoText: '',
-    npcImageUrl: npcImageUrl ? String(npcImageUrl).trim() : '',
-    lat: latNum, lng: lngNum, active: true, createdAt: ts,
+    npcImageUrl: npcImageSaved,
+    lat: latNum, lng: lngNum,
+    status: 'active', active: true,    // status: listUserTreasureNpcs where('status','==','active') 호환
+    radiusM: 100,
+    createdAt: ts,
   });
 
   // 패키지 마스터 기록

@@ -3986,13 +3986,13 @@ function _checkUserNpcProximity(lat, lng) {
 }
 
 function _makeUserNpcMarker(npc) {
-  const imgNum = npc.npcImageNum || 1;
+  const imgUrl = npc.npcImageUrl || `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
   const marker = new google.maps.Marker({
     position: { lat: npc.lat, lng: npc.lng },
     map: _ctx.map,
     title: (npc.ownerName || '?') + '의 보물',
     icon: {
-      url: `/assets/images/npc/npc${imgNum}.png`,
+      url: imgUrl,
       scaledSize: new google.maps.Size(22, 22),
       anchor: new google.maps.Point(11, 11),
     },
@@ -4048,7 +4048,7 @@ function showUserNpcInfo(npc) {
   const modal = document.getElementById('utNpcModal');
   if (!modal) return;
   const avatarEl = document.getElementById('utNpcAvatar');
-  if (avatarEl) avatarEl.src = `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
+  if (avatarEl) avatarEl.src = npc.npcImageUrl || `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
   const ownerEl = document.getElementById('utNpcOwner');
   if (ownerEl) ownerEl.textContent = npc.ownerName || '?';
   const storyEl = document.getElementById('utNpcStory');
