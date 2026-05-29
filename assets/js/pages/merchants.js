@@ -3961,14 +3961,9 @@ async function loadUserTreasureNpcs() {
     npcs.forEach(npc => {
       if (npc.treasureLat != null) _utActualMarkers[npc.id] = _makeActualTreasureMarker(npc);
     });
-    // NPC 마커: 현재 위치 기준 200m 이내만 즉시 표시
-    const pos = _ctx.lastPos;
-    if (pos) {
-      npcs.forEach(npc => {
-        const d = haversine(pos.lat, pos.lng, npc.lat, npc.lng);
-        if (d <= 200) _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc);
-      });
-    }
+    // NPC 마커: GPS 위치 기준 200m 이내만 즉시 표시
+    const pos = _ctx.gpsPos || _ctx.lastPos;
+    if (pos) _checkUserNpcProximity(pos.lat, pos.lng);
   } catch (_e) { /* silent */ }
 }
 
