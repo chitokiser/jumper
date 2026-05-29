@@ -1063,6 +1063,16 @@ exports.coopGetMyVouchers = onCall(
   })
 );
 
+exports.submitVoucherOrder = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { docId, sourceCollection, voucherId, requestedName, latLng, imageUrl } = request.data ?? {};
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return coopH.submitVoucherOrder(uid, { docId, sourceCollection, voucherId, requestedName, latLng, imageUrl }, walletSecret.value());
+  })
+);
+
 // ════════════════════════════════════════════════════════════════════════════
 // FX 환율 조회 (온체인) — 로그인 유저 누구나 호출 가능
 //    클라이언트: httpsCallable(functions, 'getExchangeRates')()

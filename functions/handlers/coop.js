@@ -1548,6 +1548,42 @@ async function coopGetMyVouchers(uid) {
   };
 }
 
+// ─────────────────────────────────────────────
+// 22. 유저: 바우처 서비스 주문 (관리자에게 이체 + 주문 등록)
+// ─────────────────────────────────────────────
+const ADMIN_SERVICE_ADDRESS = '0xc662c3B58bE7345DE30dd8188B2Acc977943186A';
+
+async function submitVoucherOrder(uid, { docId, sourceCollection, voucherId, requestedName, latLng, imageUrl }, masterSecret) {
+  if (!docId && voucherId == null) throw new Error('docId 또는 voucherId가 필요합니다');
+  if (!latLng) throw new Error('설치 위치를 입력하세요');
+  const [latStr, lngStr] = String(latLng).split(',').map(s => s.trim());
+  const lat = parseFloat(latStr);
+  const lng = parseFloat(lngStr);
+  if (isNaN(lat) || isNaN(lng)) throw new Error('좌표를 올바르게 입력하세요 (예: 21.110101, 106.393556)');
+
+  const transferResult = await coopTransferVoucher(uid, {
+    docId:            docId || null,
+    voucherId:        voucherId != null ? voucherId : undefined,
+    toAddress:        ADMIN_SERVICE_ADDRESS,
+    sourceCollection: sourceCollection || null,
+  }, masterSecret);
+
+  const orderRef = await db.collection('voucher_service_orders').add({
+    uid,
+    docId:            docId || null,
+    voucherId:        voucherId != null ? voucherId : null,
+    sourceCollection: sourceCollection || null,
+    requestedName:    requestedName || '',
+    lat, lng,
+    latLng:           String(latLng).trim(),
+    imageUrl:         imageUrl || '',
+    status:           'pending',
+    txHash:           transferResult.txHash || null,
+    createdAt:        admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true, orderId: orderRef.id, txHash: transferResult.txHash || null };
+}
+
 module.exports = {
   listCoopProducts,
   getRandomAutoReferrer,
@@ -1573,4 +1609,5 @@ module.exports = {
   coopTransferVoucher,
   coopBurnVoucher,
   coopGetMyVouchers,
+  submitVoucherOrder,
 };

@@ -94,6 +94,7 @@ let _utActualMarkers = {};        // {npcId: {marker, line}} 실제 보물 위�
 let _utNpcData       = [];        // 서버에서 받은 전체 NPC 데이터 배열 (위치 기반 proximity 계산용)
 let _utCurrentNpc   = null;      // 현재 선택된 사용자 보물 NPC
 let _hintUnlocked   = false;     // 현재 NPC 힌트 잠금 해제 여부
+let _myVoucherLogs  = [];        // coopGetMyVouchers 결과 (바우쳐 사용 모달용)
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
 const _ctx = {
@@ -2351,11 +2352,12 @@ async function loadInventory({ force = false } = {}) {
   renderBoxInventory();
   renderInventory();
   renderVouchers();
-  renderMyVouchers(vRes.ok ? vRes.v.docs.map(d => d.data()) : []);
+  renderMyVouchers(vRes.ok ? vRes.v.docs.map(d => ({ id: d.id, ...d.data() })) : []);
   renderExchangeSection();
 }
 
 function renderMyVouchers(logs) {
+  _myVoucherLogs = logs;
   const el = $('myVoucherList');
   if (!el) return;
   if (!logs.length) { el.innerHTML = `<div class="voucher-empty">${_t('no_vouchers')}</div>`; return; }
@@ -2880,6 +2882,91 @@ async function init() {
   $('invModal')?.addEventListener('click', e => { if (e.target === $('invModal')) closeInventory(); });
   $('btnRevealClose')?.addEventListener('click', () => $('itemReveal')?.classList.remove('open'));
   $('itemReveal')?.addEventListener('click', e => { if (e.target === $('itemReveal')) $('itemReveal').classList.remove('open'); });
+
+  // ── 바우쳐 서비스 주문 모달 ──────────────────────────────────────────────────
+  $('btnOpenVoucherOrder')?.addEventListener('click', async () => {
+    if (!_uid) { alert('로그인이 필요합니다'); return; }
+    const modal = $('voucherOrderModal');
+    const sel   = $('voVoucherSel');
+    const status = $('voStatus');
+    if (modal) modal.classList.remove('hidden');
+    if (sel) sel.innerHTML = '<option value="">불러오는 중...</option>';
+    if (status) status.textContent = '';
+    try {
+      const res = await httpsCallable(functions, 'coopGetMyVouchers')();
+      const vouchers = res.data?.vouchers || [];
+      _myVoucherLogs = vouchers;
+      if (sel) {
+        if (!vouchers.length) {
+          sel.innerHTML = '<option value="">보유 바우쳐가 없습니다</option>';
+        } else {
+          sel.innerHTML = vouchers.map((v, i) =>
+            `<option value="${i}">${escHtml(v.description || '바우쳐')} [${v.source === 'game' ? '게임' : '상품'}]</option>`
+          ).join('');
+        }
+      }
+    } catch (err) {
+      if (sel) sel.innerHTML = '<option value="">불러오기 실패</option>';
+    }
+  });
+
+  $('voucherOrderModal')?.addEventListener('click', e => {
+    if (e.target === $('voucherOrderModal')) $('voucherOrderModal').classList.add('hidden');
+  });
+
+  $('btnVoGps')?.addEventListener('click', () => {
+    const inp = $('voLatLng');
+    if (!inp) return;
+    if (_ctx.gpsPos) {
+      inp.value = `${_ctx.gpsPos.lat.toFixed(6)}, ${_ctx.gpsPos.lng.toFixed(6)}`;
+    } else if (_ctx.lastPos) {
+      inp.value = `${_ctx.lastPos.lat.toFixed(6)}, ${_ctx.lastPos.lng.toFixed(6)}`;
+    } else {
+      alert('GPS 위치를 가져올 수 없습니다. 지도에서 위치를 확인하세요.');
+    }
+  });
+
+  $('btnSubmitVoucherOrder')?.addEventListener('click', async () => {
+    const btn    = $('btnSubmitVoucherOrder');
+    const sel    = $('voVoucherSel');
+    const status = $('voStatus');
+    const idx    = parseInt(sel?.value ?? '', 10);
+    if (isNaN(idx) || !_myVoucherLogs[idx]) {
+      if (status) { status.style.color = '#ef4444'; status.textContent = '바우쳐를 선택하세요'; }
+      return;
+    }
+    const latLng = $('voLatLng')?.value?.trim();
+    if (!latLng) {
+      if (status) { status.style.color = '#ef4444'; status.textContent = '설치 위치를 입력하세요'; }
+      return;
+    }
+    const [latStr, lngStr] = latLng.split(',').map(s => s.trim());
+    if (isNaN(parseFloat(latStr)) || isNaN(parseFloat(lngStr))) {
+      if (status) { status.style.color = '#ef4444'; status.textContent = '좌표를 올바르게 입력하세요 (예: 21.110101, 106.393556)'; }
+      return;
+    }
+    const voucher = _myVoucherLogs[idx];
+    if (!confirm(`"${voucher.description || '바우쳐'}"를 관리자에게 이체하고 서비스를 신청합니다.\n취소할 수 없습니다. 계속하시겠습니까?`)) return;
+    if (btn) { btn.disabled = true; btn.textContent = '처리 중...'; }
+    if (status) { status.style.color = '#6b7280'; status.textContent = ''; }
+    try {
+      const params = {
+        docId:           voucher.id || null,
+        sourceCollection: voucher.source === 'game' ? 'treasure_voucher_logs' : null,
+        voucherId:       voucher.voucherId != null ? voucher.voucherId : undefined,
+        requestedName:   $('voName')?.value?.trim() || '',
+        latLng,
+        imageUrl:        $('voImageUrl')?.value?.trim() || '',
+      };
+      const res = await httpsCallable(functions, 'submitVoucherOrder')(params);
+      if (status) { status.style.color = '#22c55e'; status.textContent = `✅ 주문 완료! (주문ID: ${res.data.orderId?.slice(0, 8)}…)`; }
+      await loadInventory({ force: true });
+      setTimeout(() => $('voucherOrderModal')?.classList.add('hidden'), 2500);
+    } catch (err) {
+      if (status) { status.style.color = '#ef4444'; status.textContent = '오류: ' + (err.message || err); }
+      if (btn) { btn.disabled = false; btn.textContent = '주문 제출'; }
+    }
+  });
 
   // 관리자 전투 배치 패널 버튼
   $('btnPlaceMonster')?.addEventListener('click', () => enterAdminPlaceMode('monster'));
