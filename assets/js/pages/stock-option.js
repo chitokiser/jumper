@@ -22,22 +22,29 @@ let _isAdmin = false;
 const $ = id => document.getElementById(id);
 const escHtml = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+function tsToDate(ts) {
+  if (!ts) return null;
+  if (ts?.toDate) return ts.toDate();
+  const secs = ts.seconds ?? ts._seconds ?? 0;
+  return new Date(secs * 1000);
+}
+
 function fmtDate(ts) {
-  if (!ts) return '-';
-  const d = ts?.toDate ? ts.toDate() : new Date((ts?.seconds || 0) * 1000);
+  const d = tsToDate(ts);
+  if (!d) return '-';
   return d.toLocaleDateString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit' });
 }
 
 function daysLeft(ts) {
-  if (!ts) return '-';
-  const d    = ts?.toDate ? ts.toDate() : new Date((ts?.seconds || 0) * 1000);
+  const d = tsToDate(ts);
+  if (!d) return '-';
   const diff = Math.ceil((d - Date.now()) / 86400000);
   return diff > 0 ? `D-${diff}` : '만기';
 }
 
 function isMatured(ts) {
-  if (!ts) return false;
-  const d = ts?.toDate ? ts.toDate() : new Date((ts?.seconds || 0) * 1000);
+  const d = tsToDate(ts);
+  if (!d) return false;
   return d <= new Date();
 }
 
