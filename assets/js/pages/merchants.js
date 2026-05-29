@@ -3961,15 +3961,23 @@ async function loadUserTreasureNpcs() {
     npcs.forEach(npc => {
       if (npc.treasureLat != null) _utActualMarkers[npc.id] = _makeActualTreasureMarker(npc);
     });
-    // NPC 마커: GPS 위치 기준 200m 이내만 즉시 표시
-    const pos = _ctx.gpsPos || _ctx.lastPos;
-    if (pos) _checkUserNpcProximity(pos.lat, pos.lng);
+    // NPC 마커: 관리자는 전체 즉시 표시, 일반은 GPS 200m 이내만
+    if (_isAdmin) {
+      _checkUserNpcProximity(0, 0);
+    } else {
+      const pos = _ctx.gpsPos || _ctx.lastPos;
+      if (pos) _checkUserNpcProximity(pos.lat, pos.lng);
+    }
   } catch (_e) { /* silent */ }
 }
 
-// 200m 이내 NPC 마커 표시 / 250m 초과 시 숨김 (히스테리시스)
+// 200m 이내 NPC 마커 표시 / 250m 초과 시 숨김 (히스테리시스) — 관리자는 전체 표시
 function _checkUserNpcProximity(lat, lng) {
   for (const npc of _utNpcData) {
+    if (_isAdmin) {
+      if (!_utNpcMarkers[npc.id]) _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc);
+      continue;
+    }
     const d = haversine(lat, lng, npc.lat, npc.lng);
     if (d <= 200 && !_utNpcMarkers[npc.id]) {
       _utNpcMarkers[npc.id] = _makeUserNpcMarker(npc);
@@ -3982,10 +3990,14 @@ function _checkUserNpcProximity(lat, lng) {
 
 function _makeUserNpcMarker(npc) {
   const imgUrl = npc.npcImageUrl || `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
+  const titleBase = (npc.ownerName || '?') + '의 보물';
+  const title = _isAdmin
+    ? `[ADMIN] ${titleBase} | ${npc.lat?.toFixed(6)}, ${npc.lng?.toFixed(6)}`
+    : titleBase;
   const marker = new google.maps.Marker({
     position: { lat: npc.lat, lng: npc.lng },
     map: _ctx.map,
-    title: (npc.ownerName || '?') + '의 보물',
+    title,
     icon: {
       url: imgUrl,
       scaledSize: new google.maps.Size(22, 22),
@@ -4046,6 +4058,23 @@ function showUserNpcInfo(npc) {
   if (avatarEl) avatarEl.src = npc.npcImageUrl || `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
   const ownerEl = document.getElementById('utNpcOwner');
   if (ownerEl) ownerEl.textContent = npc.ownerName || '?';
+  // 관리자용 좌표 정보
+  let adminRow = document.getElementById('utNpcAdminInfo');
+  if (_isAdmin) {
+    if (!adminRow) {
+      adminRow = document.createElement('div');
+      adminRow.id = 'utNpcAdminInfo';
+      adminRow.style.cssText = 'font-size:0.75rem;background:#1e293b;color:#7dd3fc;border-radius:6px;padding:6px 10px;margin:6px 0;font-family:monospace;word-break:break-all;';
+      ownerEl?.parentElement?.after(adminRow);
+    }
+    const dist = (_ctx.gpsPos || _ctx.lastPos)
+      ? Math.round(haversine((_ctx.gpsPos || _ctx.lastPos).lat, (_ctx.gpsPos || _ctx.lastPos).lng, npc.lat, npc.lng)) + 'm'
+      : '거리 불명';
+    adminRow.textContent = `📍 ${npc.lat?.toFixed(6)}, ${npc.lng?.toFixed(6)} | 현위치 ${dist} | id: ${npc.id}`;
+    adminRow.classList.remove('hidden');
+  } else if (adminRow) {
+    adminRow.classList.add('hidden');
+  }
   const storyEl = document.getElementById('utNpcStory');
   if (storyEl) storyEl.textContent = npc.story || '';
   const commentEl = document.getElementById('utNpcComment');
