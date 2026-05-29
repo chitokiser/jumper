@@ -4249,10 +4249,8 @@ function openRegisterTreasureModal() {
   }
   if (_ctx.lastPos) {
     const { lat, lng } = _ctx.lastPos;
-    const latEl = document.getElementById('utRegLat');
-    const lngEl = document.getElementById('utRegLng');
-    if (latEl) latEl.value = lat;
-    if (lngEl) lngEl.value = lng;
+    const coordsEl = document.getElementById('utRegCoords');
+    if (coordsEl) coordsEl.value = `${lat.toFixed(7)}, ${lng.toFixed(7)}`;
   }
   modal.classList.add('open');
 }
