@@ -65,6 +65,7 @@ let _pointsWei = 0n;
 let _membershipFeeWei = 0n;
 let _fx = null;         // { fxKrwPerHexScaled, fxVndPerHexScaled, fxScale }
 let _memberStatus = 'loading'; // 'guest' | 'no-wallet' | 'not-member' | 'expired' | 'member'
+let _coopVouchers = [];
 
 // ─────────────────────────────────────────────────────────
 // 유틸
@@ -148,6 +149,8 @@ const cf = {
   buyTreasurePackage:   httpsCallable(functions, 'coopBuyTreasurePackage'),
   convert:              httpsCallable(functions, 'coopConvertPoints'),
   randomAutoReferrer:   httpsCallable(functions, 'getRandomAutoReferrer'),
+  getMyVouchers:        httpsCallable(functions, 'coopGetMyVouchers'),
+  submitVoucherOrder:   httpsCallable(functions, 'submitVoucherOrder'),
 };
 
 // ─────────────────────────────────────────────────────────
@@ -192,6 +195,9 @@ async function init(user) {
     show(el.main, true);
     return;
   }
+
+  // 지갑 있는 유저: 바우쳐 섹션 비동기 로드
+  loadCoopVouchers();
 
   _membershipFeeWei = BigInt(membership.membershipFeeHex || '0');
   if (membership.fxKrwPerHexScaled) {
@@ -730,6 +736,123 @@ el.convertSubmit.addEventListener('click', async () => {
 function closeConvertModal() {
   show(el.convertModal, false);
 }
+
+// ─────────────────────────────────────────────────────────
+// 바우쳐 사용하기
+// ─────────────────────────────────────────────────────────
+function loadCoopVouchers() {
+  const section = $('coopVoucherSection');
+  const listEl  = $('coopVoucherList');
+  if (section) section.style.display = '';
+  if (listEl) listEl.innerHTML = '<span style="color:var(--muted,#6b7280);">불러오는 중...</span>';
+  cf.getMyVouchers().then(res => {
+    const vouchers = res.data?.vouchers || [];
+    _coopVouchers = vouchers;
+    if (!listEl) return;
+    if (!vouchers.length) {
+      listEl.innerHTML = '<span style="color:var(--muted,#6b7280);">보유 바우쳐가 없습니다</span>';
+    } else {
+      listEl.innerHTML = vouchers.map(v =>
+        `<div style="padding:6px 10px;border-radius:8px;background:rgba(124,58,237,.12);margin-bottom:4px;">` +
+        `<span style="font-weight:600;">${escHtml(v.description || '바우쳐')}</span> ` +
+        `<span style="color:#9ca3af;font-size:0.8rem;">[${v.source === 'game' ? '게임' : '상품'}]</span>` +
+        `</div>`
+      ).join('');
+    }
+  }).catch(() => {
+    if (listEl) listEl.innerHTML = '<span style="color:#ef4444;">바우쳐 불러오기 실패</span>';
+  });
+}
+
+function openCoopVoucherOrderModal() {
+  const modal  = $('coopVoucherOrderModal');
+  const sel    = $('coopVoVoucherSel');
+  const status = $('coopVoStatus');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  if (status) { status.style.color = ''; status.textContent = ''; }
+  if (sel) sel.innerHTML = '<option value="">불러오는 중...</option>';
+  cf.getMyVouchers().then(res => {
+    const vouchers = res.data?.vouchers || [];
+    _coopVouchers = vouchers;
+    if (!sel) return;
+    if (!vouchers.length) {
+      sel.innerHTML = '<option value="">보유 바우쳐가 없습니다</option>';
+    } else {
+      sel.innerHTML = vouchers.map((v, i) =>
+        `<option value="${i}">${escHtml(v.description || '바우쳐')} [${v.source === 'game' ? '게임' : '상품'}]</option>`
+      ).join('');
+    }
+  }).catch(() => {
+    if (sel) sel.innerHTML = '<option value="">불러오기 실패</option>';
+  });
+}
+
+function closeCoopVoucherOrderModal() {
+  const modal = $('coopVoucherOrderModal');
+  if (modal) modal.style.display = 'none';
+}
+
+$('coopBtnOpenVoucherOrder')?.addEventListener('click', openCoopVoucherOrderModal);
+$('coopBtnCloseVoucherOrder')?.addEventListener('click', closeCoopVoucherOrderModal);
+$('coopVoucherOrderModal')?.addEventListener('click', e => {
+  if (e.target === $('coopVoucherOrderModal')) closeCoopVoucherOrderModal();
+});
+
+$('coopBtnVoGps')?.addEventListener('click', () => {
+  const inp = $('coopVoLatLng');
+  if (!inp) return;
+  navigator.geolocation.getCurrentPosition(
+    pos => { inp.value = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`; },
+    () => {
+      const s = $('coopVoStatus');
+      if (s) { s.style.color = '#ef4444'; s.textContent = 'GPS 위치를 가져올 수 없습니다. 직접 입력해주세요.'; }
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
+
+$('coopBtnSubmitVoucherOrder')?.addEventListener('click', async () => {
+  const btn    = $('coopBtnSubmitVoucherOrder');
+  const sel    = $('coopVoVoucherSel');
+  const status = $('coopVoStatus');
+  const idx    = parseInt(sel?.value ?? '', 10);
+  if (isNaN(idx) || !_coopVouchers[idx]) {
+    if (status) { status.style.color = '#ef4444'; status.textContent = '바우쳐를 선택하세요'; }
+    return;
+  }
+  const latLng = $('coopVoLatLng')?.value?.trim();
+  if (!latLng) {
+    if (status) { status.style.color = '#ef4444'; status.textContent = '설치 위치를 입력하세요'; }
+    return;
+  }
+  const [latStr, lngStr] = latLng.split(',').map(s => s.trim());
+  if (isNaN(parseFloat(latStr)) || isNaN(parseFloat(lngStr))) {
+    if (status) { status.style.color = '#ef4444'; status.textContent = '좌표를 올바르게 입력하세요 (예: 21.110101, 106.393556)'; }
+    return;
+  }
+  const voucher = _coopVouchers[idx];
+  if (!confirm(`"${voucher.description || '바우쳐'}"를 관리자에게 이체하고 서비스를 신청합니다.\n취소할 수 없습니다. 계속하시겠습니까?`)) return;
+  if (btn) { btn.disabled = true; btn.textContent = '처리 중...'; }
+  if (status) { status.style.color = '#6b7280'; status.textContent = ''; }
+  try {
+    const params = {
+      docId:            voucher.id || null,
+      sourceCollection: voucher.source === 'game' ? 'treasure_voucher_logs' : null,
+      voucherId:        voucher.voucherId != null ? voucher.voucherId : undefined,
+      requestedName:    $('coopVoName')?.value?.trim() || '',
+      latLng,
+      imageUrl:         $('coopVoImageUrl')?.value?.trim() || '',
+    };
+    const res = await cf.submitVoucherOrder(params);
+    if (status) { status.style.color = '#22c55e'; status.textContent = `✅ 주문 완료! (주문ID: ${res.data.orderId?.slice(0, 8)}…)`; }
+    loadCoopVouchers();
+    setTimeout(closeCoopVoucherOrderModal, 2500);
+  } catch (err) {
+    if (status) { status.style.color = '#ef4444'; status.textContent = '오류: ' + (err.message || err); }
+    if (btn) { btn.disabled = false; btn.textContent = '주문 제출'; }
+  }
+});
 
 // ─────────────────────────────────────────────────────────
 // 인증 감시 → 초기화

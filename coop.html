@@ -233,6 +233,20 @@
         <div id="coopEmpty" class="help small" style="display:none; text-align:center; padding:32px 0;">
           등록된 상품이 없습니다.
         </div>
+
+        <!-- 내 바우쳐 섹션 -->
+        <div id="coopVoucherSection" style="display:none;margin-top:32px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h3 style="margin:0;font-size:1rem;font-weight:700;color:var(--fg,#1f2937);">🎟 내 바우쳐</h3>
+            <button type="button" id="coopBtnOpenVoucherOrder"
+              style="background:#7c3aed;color:white;border:none;border-radius:10px;padding:8px 18px;font-size:13px;cursor:pointer;font-weight:600;box-shadow:0 2px 8px rgba(124,58,237,0.3);">
+              바우쳐 사용하기
+            </button>
+          </div>
+          <div id="coopVoucherList" style="font-size:0.85rem;color:var(--muted,#6b7280);min-height:32px;">
+            <span id="coopVoucherListMsg">바우쳐를 불러오는 중...</span>
+          </div>
+        </div>
       </div>
 
     </section>
@@ -287,6 +301,50 @@
       <div style="display:flex;gap:8px;">
         <button class="btn btn--sm" id="coopConvertCancel" type="button" style="flex:1;">취소</button>
         <button class="btn btn--primary" id="coopConvertSubmit" type="button" style="flex:2;">전환하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 바우쳐 사용하기 모달 -->
+  <div id="coopVoucherOrderModal" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;">
+    <div style="background:#1a0e06;border:1px solid #92400e;border-radius:16px;width:min(460px,95vw);max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.6);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,.08);">
+        <h3 style="margin:0;color:#fef3c7;font-size:1.05rem;">🎟 바우쳐 사용하기</h3>
+        <button type="button" id="coopBtnCloseVoucherOrder"
+          style="background:none;border:none;color:#d1d5db;font-size:1.4rem;cursor:pointer;line-height:1;padding:2px 6px;">✕</button>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="font-size:0.82rem;color:#d1d5db;display:block;margin-bottom:6px;">바우쳐 선택</label>
+          <select id="coopVoVoucherSel"
+            style="width:100%;padding:10px 12px;background:#0d1117;color:#f9fafb;border:1px solid #6b7280;border-radius:8px;font-size:0.9rem;">
+            <option value="">불러오는 중...</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.82rem;color:#d1d5db;display:block;margin-bottom:6px;">원하는 이름 <span style="color:#6b7280;">(선택)</span></label>
+          <input type="text" id="coopVoName" placeholder="예: 황금 드래곤"
+            style="width:100%;padding:10px 12px;background:#0d1117;color:#f9fafb;border:1px solid #6b7280;border-radius:8px;font-size:0.9rem;box-sizing:border-box;" />
+        </div>
+        <div>
+          <label style="font-size:0.82rem;color:#d1d5db;display:block;margin-bottom:6px;">설치 위치 <span style="color:#fbbf24;">*</span></label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="coopVoLatLng" placeholder="예: 21.110101, 106.393556"
+              style="flex:1;padding:10px 12px;background:#0d1117;color:#f9fafb;border:1px solid #6b7280;border-radius:8px;font-size:0.9rem;" />
+            <button type="button" id="coopBtnVoGps"
+              style="background:#1e3a5f;color:#93c5fd;border:1px solid #3b82f6;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;white-space:nowrap;">📍 GPS</button>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:0.82rem;color:#d1d5db;display:block;margin-bottom:6px;">원하는 이미지 URL <span style="color:#6b7280;">(선택)</span></label>
+          <input type="text" id="coopVoImageUrl" placeholder="https://..."
+            style="width:100%;padding:10px 12px;background:#0d1117;color:#f9fafb;border:1px solid #6b7280;border-radius:8px;font-size:0.9rem;box-sizing:border-box;" />
+        </div>
+        <div id="coopVoStatus" style="min-height:20px;font-size:0.85rem;"></div>
+        <button type="button" id="coopBtnSubmitVoucherOrder"
+          style="background:#7c3aed;color:white;border:none;border-radius:10px;padding:12px;font-size:0.95rem;cursor:pointer;font-weight:700;width:100%;">
+          주문 제출
+        </button>
       </div>
     </div>
   </div>

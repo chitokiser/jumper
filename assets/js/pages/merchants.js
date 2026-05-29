@@ -2884,10 +2884,10 @@ async function init() {
   $('itemReveal')?.addEventListener('click', e => { if (e.target === $('itemReveal')) $('itemReveal').classList.remove('open'); });
 
   // ── 바우쳐 서비스 주문 모달 ──────────────────────────────────────────────────
-  $('btnOpenVoucherOrder')?.addEventListener('click', async () => {
+  async function _openVoucherOrderModal() {
     if (!_uid) { alert('로그인이 필요합니다'); return; }
-    const modal = $('voucherOrderModal');
-    const sel   = $('voVoucherSel');
+    const modal  = $('voucherOrderModal');
+    const sel    = $('voVoucherSel');
     const status = $('voStatus');
     if (modal) modal.classList.remove('hidden');
     if (sel) sel.innerHTML = '<option value="">불러오는 중...</option>';
@@ -2908,7 +2908,10 @@ async function init() {
     } catch (err) {
       if (sel) sel.innerHTML = '<option value="">불러오기 실패</option>';
     }
-  });
+  }
+
+  $('btnOpenVoucherOrder')?.addEventListener('click', _openVoucherOrderModal);
+  $('btnOpenVoucherOrderMap')?.addEventListener('click', _openVoucherOrderModal);
 
   $('voucherOrderModal')?.addEventListener('click', e => {
     if (e.target === $('voucherOrderModal')) $('voucherOrderModal').classList.add('hidden');
