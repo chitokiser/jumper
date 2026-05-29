@@ -303,7 +303,12 @@ service cloud.firestore {
     match /merchants/{merchantId} {
       allow get, list: if true;
       allow create, delete: if false; // Cloud Functions only
-      allow update: if isAdmin();     // 관리자 직접 수정 허용 (gmap 등)
+      allow update: if isAdmin()
+        || (signedIn()
+            && resource.data.ownerUid is string
+            && resource.data.ownerUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['career', 'region', 'description', 'updatedAt']));
     }
 
     // places (places/{placeId})
