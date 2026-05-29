@@ -468,13 +468,14 @@ service cloud.firestore {
       allow update, delete: if isAdmin()
         || (signedIn() && resource.data.authorUid == request.auth.uid);
 
-      // 평점(후기) 서브컬렉션 — 문서 ID = uid (1인 1후기)
+      // 평점(후기) 서브컬렉션 — 문서 ID = uid (1인 1후기), 관리자는 자유 ID
       match /reviews/{reviewId} {
         allow get, list: if true;
-        allow create: if signedIn()
-          && reviewId == request.auth.uid      // 본인 uid로만 생성 가능
-          && !exists(/databases/$(database)/documents/community_events/$(eventId)/reviews/$(request.auth.uid));
-        allow update, delete: if isAdmin();    // 수정·삭제는 관리자만
+        allow create: if isAdmin()             // 관리자: 원하는 이름·ID로 자유 등록
+          || (signedIn()
+              && reviewId == request.auth.uid  // 일반 유저: 본인 uid로만
+              && !exists(/databases/$(database)/documents/community_events/$(eventId)/reviews/$(request.auth.uid)));
+        allow update, delete: if isAdmin();
       }
 
       // 댓글 서브컬렉션
