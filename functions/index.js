@@ -2148,12 +2148,26 @@ exports.adminSeedRankings = onCall(
 );
 
 // ── 스톡옵션 바우처 시스템 ────────────────────────────────────────────────────
-exports.adminCreateStockVoucher = onCall(
-  { secrets: [walletSecret], timeoutSeconds: 180 },
+exports.adminCreateStockOffering = onCall(
+  {},
   wrapError(async (request) => {
     const uid = requireAuth(request);
     await requireAdmin(uid);
-    return stockOptionH.adminCreateStockVoucher(uid, request.data ?? {}, walletSecret.value());
+    return stockOptionH.adminCreateOffering(uid, request.data ?? {});
+  })
+);
+
+exports.getStockOfferings = onCall(
+  {},
+  wrapError(async () => stockOptionH.getStockOfferings())
+);
+
+exports.adminGetAllStockOfferings = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    return stockOptionH.adminGetAllOfferings();
   })
 );
 
@@ -2166,6 +2180,15 @@ exports.adminGetAllStockVouchers = onCall(
   })
 );
 
+exports.buyStockOptionVoucher = onCall(
+  { secrets: [walletSecret, adminKeySecret], timeoutSeconds: 180 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return stockOptionH.buyStockOptionVoucher(uid, request.data ?? {}, walletSecret.value());
+  })
+);
+
 exports.getMyStockVouchers = onCall(
   {},
   wrapError(async (request) => {
@@ -2174,27 +2197,29 @@ exports.getMyStockVouchers = onCall(
   })
 );
 
-exports.syncStockVoucherTransfer = onCall(
-  {},
+exports.exerciseStockOption = onCall(
+  { secrets: [walletSecret, adminKeySecret], timeoutSeconds: 180 },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    return stockOptionH.syncVoucherTransfer(uid, request.data ?? {});
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return stockOptionH.exerciseStockOption(uid, request.data ?? {}, walletSecret.value());
   })
 );
 
-exports.syncStockOptionExecution = onCall(
-  {},
+exports.transferStockOptionVoucher = onCall(
+  { secrets: [walletSecret, adminKeySecret], timeoutSeconds: 120 },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    return stockOptionH.syncOptionExecution(uid, request.data ?? {});
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return stockOptionH.transferStockOptionVoucher(uid, request.data ?? {}, walletSecret.value());
   })
 );
 
-exports.adminSetStockOptionContract = onCall(
+exports.adminToggleStockOffering = onCall(
   {},
   wrapError(async (request) => {
     const uid = requireAuth(request);
     await requireAdmin(uid);
-    return stockOptionH.adminSetContractAddress(uid, request.data ?? {});
+    return stockOptionH.adminToggleOffering(uid, request.data ?? {});
   })
 );

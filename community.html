@@ -242,53 +242,45 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════════ -->
-  <!-- 스톡옵션 뷰 -->
+  <!-- 스톡옵션 뷰 (수탁지갑 기반, MetaMask 불필요) -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <div id="stockOptionView" style="display:none;padding:0 4px;">
 
-    <!-- MetaMask 연결 바 -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:12px 14px;
-                background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:12px;flex-wrap:wrap;">
-      <span style="color:#c7d2fe;font-size:0.85rem;flex:1;">MetaMask 지갑으로 권리행사·양도를 진행합니다</span>
-      <button id="btnSoConnectMm" type="button"
-        style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">
-        🦊 MetaMask 연결
-      </button>
-      <span id="soMmAddress" style="font-size:0.78rem;color:#a5b4fc;"></span>
-    </div>
-
-    <!-- ── 관리자 패널 ──────────────────────────────────────────────── -->
+    <!-- ── 관리자 패널 ─────────────────────────────────────────────── -->
     <div id="soAdminPanel" style="display:none;margin-bottom:28px;">
-      <h3 style="font-size:1rem;font-weight:700;margin:0 0 14px;color:var(--fg);">🔑 관리자 — 스톡옵션 관리</h3>
+      <h3 style="font-size:1rem;font-weight:700;margin:0 0 14px;">🔑 관리자 — 스톡옵션 오퍼링 발행</h3>
 
-      <!-- 컨트랙트 주소 설정 -->
-      <div style="background:var(--surface2,#f9fafb);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
-        <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px;">컨트랙트 주소 설정</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <input id="soContractAddrInput" type="text" placeholder="0x..." maxlength="42"
-            style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;" />
-          <button id="btnSoSetContract" type="button" class="btn btn--sm btn--primary">저장</button>
-        </div>
-        <div id="soContractMsg" style="font-size:0.8rem;min-height:18px;margin-top:6px;"></div>
-      </div>
-
-      <!-- 바우처 생성 폼 -->
-      <div style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
-        <div style="font-size:0.85rem;font-weight:600;margin-bottom:12px;">📋 새 스톡옵션 바우처 발행</div>
+      <div style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:12px;">📋 새 오퍼링 등록</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-          <div>
-            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">대상자 지갑 주소 *</label>
-            <input id="soRecipient" type="text" placeholder="0x..." maxlength="42"
+          <div style="grid-column:1/-1;">
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">오퍼링 이름 *</label>
+            <input id="soOfferingName" type="text" placeholder="예: 2026 장기보유자 스톡옵션 1차"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">설명</label>
+            <input id="soOfferingDesc" type="text" placeholder="간단한 설명 (선택)"
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
           <div>
-            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">행사 가격 (HEX / 1 JUMP) *</label>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">구매 가격 (HEX) *</label>
+            <input id="soVoucherPrice" type="number" step="0.0001" min="0" placeholder="예: 5"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
+          </div>
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">JUMP 수량/장 *</label>
+            <input id="soJumpPerVoucher" type="number" min="1" step="1" placeholder="예: 1000"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
+          </div>
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">행사 가격 (HEX/JUMP) *</label>
             <input id="soStrikePrice" type="number" step="0.0001" min="0" placeholder="예: 10.5"
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
           <div>
-            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">행사 수량 (JUMP) *</label>
-            <input id="soTotalAmount" type="number" min="1" step="1" placeholder="예: 1000"
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">총 발행 수량 (장) *</label>
+            <input id="soTotalVouchers" type="number" min="1" step="1" placeholder="예: 100"
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
           <div>
@@ -297,39 +289,82 @@
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
         </div>
-        <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-bottom:10px;">
-          발행 비용 = 행사가 × 수량 HEX → JumpBank 자동 전송
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">
+          유저가 구매 가격(HEX) 지불 → 바우처 지갑 보관 → 만기 후 행사 or 양도 가능
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <button id="btnSoCreateVoucher" type="button" class="btn btn--primary" style="padding:9px 20px;">바우처 발행</button>
+          <button id="btnSoCreateOffering" type="button" class="btn btn--primary" style="padding:9px 20px;">오퍼링 발행</button>
           <div id="soCreateMsg" style="font-size:0.82rem;min-height:20px;flex:1;"></div>
         </div>
       </div>
 
-      <!-- 전체 바우처 목록 -->
-      <div style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;padding:14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <div style="font-size:0.85rem;font-weight:600;">📊 전체 바우처 목록</div>
+      <div style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;padding:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:0.85rem;font-weight:600;">📊 전체 오퍼링 목록</div>
           <button id="btnSoRefreshAdmin" type="button" class="btn btn--ghost btn--sm">새로고침</button>
         </div>
-        <div id="soAdminVoucherList"><div style="color:var(--muted);font-size:0.85rem;">불러오는 중...</div></div>
+        <div id="soAdminOfferingList"><div style="color:var(--muted);font-size:0.85rem;">불러오는 중...</div></div>
       </div>
     </div>
 
-    <!-- ── 유저 패널: 내 바우처 ──────────────────────────────────────── -->
+    <!-- ── 구매 가능한 오퍼링 ───────────────────────────────────────── -->
+    <div style="margin-bottom:28px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:1rem;font-weight:700;margin:0;">📈 스톡옵션 바우처 구매</h3>
+        <button id="btnSoRefreshMarket" type="button" class="btn btn--ghost btn--sm">새로고침</button>
+      </div>
+      <div id="soOfferingList" style="display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));"></div>
+      <div id="soOfferingEmpty" style="display:none;text-align:center;padding:32px 0;color:var(--muted);">
+        현재 구매 가능한 스톡옵션이 없습니다.
+      </div>
+    </div>
+
+    <!-- ── 내 바우처 ───────────────────────────────────────────────── -->
     <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <h3 style="font-size:1rem;font-weight:700;margin:0;color:var(--fg);">📈 내 스톡옵션 바우처</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:1rem;font-weight:700;margin:0;">🎟 내 스톡옵션 바우처</h3>
         <button id="btnSoRefreshUser" type="button" class="btn btn--ghost btn--sm">새로고침</button>
       </div>
-      <div id="soUserVoucherList" style="display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));"></div>
-      <div id="soUserEmpty" style="display:none;text-align:center;padding:32px 0;color:var(--muted,#6b7280);">
+      <div id="soUserVoucherList" style="display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));"></div>
+      <div id="soUserEmpty" style="display:none;text-align:center;padding:32px 0;color:var(--muted);">
         보유 중인 스톡옵션 바우처가 없습니다.
       </div>
     </div>
   </div><!-- /stockOptionView -->
 
-  <!-- ── 권리행사 모달 ────────────────────────────────────────────────── -->
+  <!-- 구매 모달 -->
+  <div id="soBuyModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+    <div style="background:var(--surface,#fff);border-radius:16px;width:min(420px,94vw);padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.3);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="margin:0;font-size:1rem;">🛒 스톡옵션 구매</h3>
+        <button id="btnSoBuyClose" type="button" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted);">✕</button>
+      </div>
+      <div style="font-weight:700;font-size:1.05rem;margin-bottom:14px;" id="soBuyOfferingName"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+        <div style="background:var(--surface2,#f9fafb);border-radius:8px;padding:10px;">
+          <div style="font-size:0.72rem;color:var(--muted);">구매 가격 (HEX)</div>
+          <div id="soBuyPrice" style="font-weight:700;font-size:1.1rem;color:#1d4ed8;"></div>
+        </div>
+        <div style="background:var(--surface2,#f9fafb);border-radius:8px;padding:10px;">
+          <div style="font-size:0.72rem;color:var(--muted);">JUMP 수량</div>
+          <div id="soBuyJump" style="font-weight:700;font-size:1.1rem;"></div>
+        </div>
+        <div style="background:var(--surface2,#f9fafb);border-radius:8px;padding:10px;">
+          <div style="font-size:0.72rem;color:var(--muted);">행사 가격</div>
+          <div id="soBuyStrike" style="font-weight:600;"></div>
+        </div>
+        <div style="background:var(--surface2,#f9fafb);border-radius:8px;padding:10px;">
+          <div style="font-size:0.72rem;color:var(--muted);">만기일</div>
+          <div id="soBuyMaturity" style="font-weight:600;"></div>
+        </div>
+      </div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;">수탁 지갑 HEX로 결제됩니다. 만기 후 권리행사 또는 제3자 양도 가능합니다.</div>
+      <div id="soBuyMsg" style="font-size:0.82rem;min-height:20px;margin-bottom:12px;"></div>
+      <button id="btnSoBuyConfirm" type="button" class="btn btn--primary" style="width:100%;padding:12px;font-size:0.95rem;">🛒 구매하기</button>
+    </div>
+  </div>
+
+  <!-- 권리행사 모달 -->
   <div id="soExecuteModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
     <div style="background:#1a0e06;border:1px solid #7c3aed;border-radius:16px;width:min(420px,94vw);padding:24px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
@@ -349,9 +384,7 @@
       <label style="font-size:0.82rem;color:#d1d5db;display:block;margin-bottom:6px;">행사 수량 (JUMP) *</label>
       <input id="soExecAmount" type="number" min="1" step="1" placeholder="JUMP 수량 입력"
         style="width:100%;padding:10px 12px;background:#0d1117;color:#f9fafb;border:1px solid #6b7280;border-radius:8px;font-size:0.9rem;box-sizing:border-box;margin-bottom:6px;" />
-      <div style="font-size:0.75rem;color:#9ca3af;margin-bottom:14px;">
-        ① HEX approve → ② 권리행사 → JUMP 수령 (MetaMask 2단계 서명)
-      </div>
+      <div style="font-size:0.75rem;color:#9ca3af;margin-bottom:14px;">수탁 지갑 HEX로 결제 → JUMP 수령 (MetaMask 불필요)</div>
       <div id="soExecMsg" style="font-size:0.82rem;min-height:20px;margin-bottom:12px;"></div>
       <button id="btnSoExecute" type="button"
         style="width:100%;padding:12px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:0.95rem;font-weight:700;cursor:pointer;">
@@ -360,7 +393,7 @@
     </div>
   </div>
 
-  <!-- ── 양도 모달 ────────────────────────────────────────────────────── -->
+  <!-- 양도 모달 -->
   <div id="soTransferModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
     <div style="background:#0d1117;border:1px solid #059669;border-radius:16px;width:min(400px,94vw);padding:24px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
