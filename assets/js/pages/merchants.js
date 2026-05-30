@@ -2330,6 +2330,14 @@ async function loadTreasureBoxes() {
   const snap = await getDocs(collection(db, 'treasure_boxes'));
   treasureBoxes = [];
   snap.forEach(d => { if (d.data().active !== false) treasureBoxes.push({ id: d.id, ...d.data() }); });
+  _updateTreasureOnMapCount();
+}
+
+function _updateTreasureOnMapCount() {
+  const el = document.getElementById('tsbOnMap');
+  if (!el) return;
+  const total = treasureBoxes.length + _utNpcData.length;
+  el.textContent = total.toLocaleString();
 }
 
 async function loadTreasureStats() {
@@ -4127,6 +4135,7 @@ async function loadUserTreasureNpcs() {
     _utNpcMarkers    = {};
     _utActualMarkers = {};
     _utNpcData = npcs;
+    _updateTreasureOnMapCount(); // 유저 숨김 보물 포함해서 재집계
     // 실제 위치 마커 (관리자/소유자 전용 — 항상 표시)
     npcs.forEach(npc => {
       if (npc.treasureLat != null) _utActualMarkers[npc.id] = _makeActualTreasureMarker(npc);
