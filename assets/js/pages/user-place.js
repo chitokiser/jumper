@@ -180,17 +180,16 @@ async function loadMyList() {
     ];
     if (!all.length) { listEl.innerHTML = '<div style="color:var(--muted);">배치한 오브젝트 없음</div>'; return; }
 
-    const now = Date.now();
     listEl.innerHTML = all.map(o => {
-      const exp   = o.expiresAt?._seconds ? o.expiresAt._seconds * 1000 : (o.expiresAt?.seconds ?? 0) * 1000;
-      const left  = Math.max(0, Math.ceil((exp - now) / 60000));
-      const hLeft = `${Math.floor(left/60)}h ${left%60}m`;
+      const d = o.createdAt?._seconds
+        ? new Date(o.createdAt._seconds * 1000).toLocaleDateString('ko-KR')
+        : '-';
       return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;
                 border:1px solid var(--border);margin-bottom:5px;font-size:0.82rem;">
         <span>${o.emoji}</span>
         <div style="flex:1;">
           <div style="font-weight:600;">${o.label}</div>
-          <div style="color:var(--muted);">잔여 ${hLeft}</div>
+          <div style="color:var(--muted);">배치일 ${d}</div>
         </div>
       </div>`;
     }).join('');

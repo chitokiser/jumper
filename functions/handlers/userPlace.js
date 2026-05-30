@@ -5,7 +5,6 @@
 const admin = require('firebase-admin');
 const db    = admin.firestore();
 
-const EXPIRES_MS = 24 * 60 * 60 * 1000; // 24시간 유효
 
 // ── 카탈로그 ─────────────────────────────────────────────────────────────────
 const CATALOG = {
@@ -68,12 +67,10 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
     t.set(bpRef, { gold: admin.firestore.FieldValue.increment(-def.price) }, { merge: true });
   });
 
-  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + EXPIRES_MS);
   const base = {
     ownerUid: uid, ownerName,
     lat: Number(lat), lng: Number(lng),
     active: true, userPlaced: true,
-    expiresAt,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
