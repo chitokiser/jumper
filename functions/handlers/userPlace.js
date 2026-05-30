@@ -54,10 +54,12 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('유효하지 않은 좌표');
 
   const bpRef     = db.collection('battle_players').doc(uid);
-  const userSnap  = await db.collection('users').doc(uid).get();
+  const userRef   = db.collection('users').doc(uid);
+  const userSnap  = await userRef.get();
   const ownerName = userSnap.data()?.name || '플레이어';
 
-  // GP 차감 (트랜잭션)
+  // GP 차감 + 배치 번호 증가 (트랜잭션)
+  let placeNo = 1;
   await db.runTransaction(async t => {
     const bp   = await t.get(bpRef);
     const gold = bp.exists ? (bp.data().gold ?? 0) : 0;
@@ -65,6 +67,11 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
       throw new Error(`GP 부족. 필요: ${def.price.toLocaleString()} GP, 보유: ${gold.toLocaleString()} GP`);
     }
     t.set(bpRef, { gold: admin.firestore.FieldValue.increment(-def.price) }, { merge: true });
+
+    // placeCount 증가 (users 문서)
+    const uSnap = await t.get(userRef);
+    placeNo = (uSnap.data()?.placeCount ?? 0) + 1;
+    t.set(userRef, { placeCount: placeNo }, { merge: true });
   });
 
   const base = {
@@ -76,10 +83,12 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
 
   let docId = null;
 
+  const nim = `${ownerName}님의`;
+
   if (def.type === 'box') {
     const ref = await db.collection('treasure_boxes').add({
       ...base,
-      name:     `${ownerName}의 ${def.label}`,
+      name:     `${nim} 보물${placeNo}`,
       hiddenBox: false,
       hp:        def.hp,
       itemPool:  def.itemPool,
@@ -88,7 +97,7 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
   } else if (def.type === 'monster') {
     const ref = await db.collection('battle_monsters').add({
       ...base,
-      name:          def.label,
+      name:          `${nim} ${def.label}${placeNo}`,
       image:         def.image ?? null,
       monsterType:   def.monsterType ?? null,
       maxHp:         def.maxHp,
@@ -101,7 +110,7 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
   } else if (def.type === 'tower') {
     const ref = await db.collection('battle_towers').add({
       ...base,
-      name:   `${ownerName}의 ${def.label}`,
+      name:   `${nim} 아쳐타워${placeNo}`,
       type:   'archer',
       atk:    def.atk,
       radius: def.radius,
