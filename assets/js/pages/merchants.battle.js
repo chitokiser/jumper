@@ -2491,6 +2491,7 @@ export function enterAdminPlaceMode(type) {
   document.getElementById('btnPlacePirate2')?.classList.toggle('placing', type === 'pirate2');
   document.getElementById('btnPlacePirate3')?.classList.toggle('placing', type === 'pirate3');
   document.getElementById('btnPlaceZombie1')?.classList.toggle('placing', type === 'zombie1');
+  document.getElementById('btnPlaceZombie3')?.classList.toggle('placing', type === 'zombie3');
   document.getElementById('btnPlaceArcherTower')?.classList.toggle('placing', type === 'archer_tower');
   document.getElementById('btnPlaceCannonTower')?.classList.toggle('placing', type === 'cannon_tower');
   document.getElementById('btnPlaceDeco')?.classList.toggle('placing', type === 'deco');
@@ -2534,7 +2535,7 @@ export function enterAdminPlaceMode(type) {
         alert(`✅ ${name} 배치 완료 (Firebase)\n서버가 꺼져도 유지됩니다.`);
       } catch (err) { alert('Firebase 배치 오류: ' + err.message); }
 
-    } else if (['dragon','orc','orc2','orc3','pirate','pirate2','pirate3','zombie1'].includes(_adminPlaceMode)) {
+    } else if (['dragon','orc','orc2','orc3','pirate','pirate2','pirate3','zombie1','zombie3'].includes(_adminPlaceMode)) {
       // ── 게임서버(GS) 몬스터 스폰 — 타입별 사전 설정값으로 즉시 배치 ────────────
       if (!isGameServerConnected()) {
         connectToGameServer();
@@ -2552,6 +2553,7 @@ export function enterAdminPlaceMode(type) {
         orc3:    { maxHp: 3000, attackPower:  260, attackRangeM: 20, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
         dragon:  { maxHp: 6000, attackPower:  320, attackRangeM: 20, aggroRangeM: 100, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
         zombie1: { maxHp:  800, attackPower:   80, attackRangeM: 15, aggroRangeM:  35, moveSpeed: 0.9, attackCooldownMs: 2000, respawnSeconds: 120 },
+        zombie3: { maxHp: 1400, attackPower:  140, attackRangeM: 15, aggroRangeM:  40, moveSpeed: 0.8, attackCooldownMs: 2200, respawnSeconds: 150 },
       };
       const p = GS_DEFAULTS[monsterType];
       if (!confirm(
@@ -2755,7 +2757,7 @@ const TYPE_LABEL = {
   dragon:  '🐉 Dragon',
   orc:     '🐗 Orc',     orc2: '🗡️ Orc2',    orc3: '⚔️ Orc3',
   pirate:  '🏴‍☠️ Pirate', pirate2: '🗡 Pirate2', pirate3: '💀 Pirate3',
-  zombie1: '🧟 Zombie1',
+  zombie1: '🧟 Zombie1',  zombie3: '🧟 Zombie3',
   goblin:  '👾 Goblin',
 };
 

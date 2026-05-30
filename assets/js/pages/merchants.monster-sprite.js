@@ -160,6 +160,23 @@ export const SPRITE_CONFIGS = {
       respawn: { prefix: 'Idle',   frames: 4, fps: 6,  loop: false },
     },
   },
+  zombie3: {
+    monsterType: 'zombie3',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/Zombie3/animation/',
+    displaySize: 72,
+    facingLeft:  false,
+    startFrame:  1,
+    padDigits:   0,
+    animations: {
+      idle:    { prefix: 'Idle',   frames: 4, fps: 6,  loop: true  },
+      walk:    { prefix: 'Walk',   frames: 6, fps: 8,  loop: true  },
+      attack:  { prefix: 'Attack', frames: 5, fps: 12, loop: false },
+      hit:     { prefix: 'Hurt',   frames: 5, fps: 12, loop: false },
+      death:   { prefix: 'Dead',   frames: 8, fps: 7,  loop: false },
+      respawn: { prefix: 'Idle',   frames: 4, fps: 6,  loop: false },
+    },
+  },
 };
 
 // 서버 상태 → 애니메이션 이름 매핑
