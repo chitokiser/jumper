@@ -41,6 +41,7 @@ import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
 import { _t } from './merchants.i18n.js';
 import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterActive }
   from './starter-pack.js';
+import { initUserPlace } from './user-place.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -1380,7 +1381,8 @@ function _maybeInitStarterPack(lat, lng) {
     box.lat && box.lng && !_collectedBoxes.has(box.id) && isBoxActive(box) &&
     haversine(lat, lng, Number(box.lat), Number(box.lng)) <= 100
   );
-  if (hasNearby) return; // 실제 보물 있음 → 스타터팩 불필요
+  const forceStarter = new URLSearchParams(location.search).has('starter');
+  if (hasNearby && !forceStarter) return; // 실제 보물 있음 → 스타터팩 불필요
   _starterInitDone = true;
   initStarterPack(_uid, lat, lng, _ctx.map, infoWindow);
 }
@@ -2808,6 +2810,13 @@ async function init() {
     renderBoxMarkers();
     loadUserTreasureNpcs();
     fitMapToAllMarkers();
+    // 배치 상점 초기화 (지도 준비 후)
+    if (_uid) {
+      initUserPlace(_ctx.map, infoWindow, getPlayerGold, () => {
+        loadTreasureBoxes().then(renderBoxMarkers);
+        loadBattleData();
+      });
+    }
   }
   renderCards(allMerchants);
 

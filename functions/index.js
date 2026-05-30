@@ -52,6 +52,7 @@ const coinExchangeH          = require('./handlers/coinExchange');
 const rankingsH              = require('./handlers/rankings');
 const stockOptionH           = require('./handlers/stockOption');
 const starterH               = require('./handlers/starter');
+const userPlaceH             = require('./handlers/userPlace');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -2239,5 +2240,22 @@ exports.recordStarterClaim = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
     return starterH.recordStarterClaim(uid, request.data ?? {});
+  })
+);
+
+// ── 유저 배치 상점 ────────────────────────────────────────────────────────────
+exports.placeUserObject = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return userPlaceH.placeUserObject(uid, request.data ?? {});
+  })
+);
+
+exports.getMyPlacedObjects = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return userPlaceH.getMyPlacedObjects(uid);
   })
 );
