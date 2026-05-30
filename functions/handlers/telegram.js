@@ -1,10 +1,16 @@
 'use strict';
 
-const admin = require('firebase-admin');
+const admin  = require('firebase-admin');
 const crypto = require('crypto');
-const { HttpsError } = require('firebase-functions/v2/https');
 
 const db = admin.firestore();
+
+// wrapError가 HttpsError로 변환 — 핸들러 파일은 plain Error만 사용
+function _err(code, msg) {
+  const e = new Error(msg);
+  e.httpCode = code; // index.js wrapError가 읽는 커스텀 필드
+  return e;
+}
 
 /**
  * Telegram WebApp initData HMAC 검증
@@ -97,14 +103,14 @@ async function findOrCreateTelegramUser(tgUser) {
  * @returns {{ token: string, uid: string, isNew: boolean }}
  */
 async function authWithTelegram(initData, botToken) {
-  if (!initData) throw new HttpsError('invalid-argument', 'initData 누락');
+  if (!initData) throw _err('invalid-argument', 'initData 누락');
 
   if (!validateTelegramInitData(initData, botToken)) {
-    throw new HttpsError('unauthenticated', '유효하지 않은 Telegram 데이터');
+    throw _err('unauthenticated', '유효하지 않은 Telegram 데이터');
   }
 
   const tgUser = parseTelegramUser(initData);
-  if (!tgUser?.id) throw new HttpsError('invalid-argument', 'user 정보 없음');
+  if (!tgUser?.id) throw _err('invalid-argument', 'user 정보 없음');
 
   const { uid, isNew } = await findOrCreateTelegramUser(tgUser);
 

@@ -75,7 +75,9 @@ function wrapError(fn) {
     } catch (err) {
       logger.error('[Functions Error]', err);
       if (err instanceof HttpsError) throw err;
-      throw new HttpsError('internal', err.message || '서버 오류');
+      // 핸들러가 _err()로 던진 경우 httpCode를 그대로 사용
+      const code = err.httpCode || 'internal';
+      throw new HttpsError(code, err.message || '서버 오류');
     }
   };
 }
