@@ -147,7 +147,7 @@ export const SPRITE_CONFIGS = {
     monsterType: 'zombie1',
     framesMode:  true,
     basePath:    '/assets/images/monsters/zombie1/animation/',
-    displaySize: 72,
+    displaySize: 40,
     facingLeft:  false,
     startFrame:  1,   // Idle1.png 형식 — 1부터 시작
     padDigits:   0,   // 패딩 없음
@@ -164,7 +164,7 @@ export const SPRITE_CONFIGS = {
     monsterType: 'zombie3',
     framesMode:  true,
     basePath:    '/assets/images/monsters/Zombie3/animation/',
-    displaySize: 72,
+    displaySize: 40,
     facingLeft:  false,
     startFrame:  1,
     padDigits:   0,
