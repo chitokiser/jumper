@@ -148,11 +148,16 @@ function _onMapClick(lat, lng, item) {
     confirmBtn.disabled    = true;
     confirmBtn.textContent = '처리 중...';
     try {
-      await cfPlace({ itemKey: item.key, lat, lng });
-      $('upConfirmMsg').textContent    = '✅ 배치 완료!';
-      $('upConfirmMsg').style.color    = '#22c55e';
-      _refreshCb?.();
-      setTimeout(() => { modal.style.display = 'none'; }, 1500);
+      const res = await cfPlace({ itemKey: item.key, lat, lng });
+      const spent = item.price;
+      $('upConfirmMsg').textContent = `✅ 배치 완료! (🪙 ${spent.toLocaleString()} GP 차감)`;
+      $('upConfirmMsg').style.color = '#22c55e';
+      _refreshCb?.(); // loadPlayerState + 지도 새로고침
+      setTimeout(() => {
+        modal.style.display = 'none';
+        // 카탈로그가 열려 있으면 GP 표시 갱신
+        if ($('userPlacePanel')?.style.display !== 'none') _renderCatalog();
+      }, 1500);
     } catch (e) {
       $('upConfirmMsg').textContent  = '오류: ' + e.message;
       $('upConfirmMsg').style.color  = '#ef4444';

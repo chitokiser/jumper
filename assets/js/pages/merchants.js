@@ -2863,6 +2863,7 @@ async function init() {
     // 배치 상점 초기화 (지도 준비 후)
     if (_uid) {
       initUserPlace(_ctx.map, infoWindow, getPlayerGold, () => {
+        loadPlayerState({ force: true }); // GP 차감 후 클라이언트 gold 갱신
         loadTreasureBoxes().then(renderBoxMarkers);
         loadBattleData();
       });
