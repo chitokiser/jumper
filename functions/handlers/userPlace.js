@@ -58,19 +58,20 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
   const userSnap  = await userRef.get();
   const ownerName = userSnap.data()?.name || '플레이어';
 
-  // GP 차감 + 배치 번호 증가 (트랜잭션)
+  // GP 차감 + 배치 번호 증가 (트랜잭션 — reads 먼저, writes 나중)
   let placeNo = 1;
   await db.runTransaction(async t => {
-    const bp   = await t.get(bpRef);
+    // ① 모든 read 먼저
+    const [bp, uSnap] = await Promise.all([t.get(bpRef), t.get(userRef)]);
+
     const gold = bp.exists ? (bp.data().gold ?? 0) : 0;
     if (gold < def.price) {
       throw new Error(`GP 부족. 필요: ${def.price.toLocaleString()} GP, 보유: ${gold.toLocaleString()} GP`);
     }
-    t.set(bpRef, { gold: admin.firestore.FieldValue.increment(-def.price) }, { merge: true });
-
-    // placeCount 증가 (users 문서)
-    const uSnap = await t.get(userRef);
     placeNo = (uSnap.data()?.placeCount ?? 0) + 1;
+
+    // ② 모든 write 나중
+    t.set(bpRef,   { gold: admin.firestore.FieldValue.increment(-def.price) }, { merge: true });
     t.set(userRef, { placeCount: placeNo }, { merge: true });
   });
 
