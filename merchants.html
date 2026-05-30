@@ -2220,8 +2220,21 @@
         <!-- 보물 위치 -->
         <div>
           <span class="ut-reg-label">보물 위치</span>
-          <button class="btn-use-gps" id="btnUtRegGps" style="width:100%;margin-bottom:6px">📡 현재 GPS 위치 사용</button>
-          <input class="ut-reg-input" id="utRegCoords" type="text" placeholder="예: 21.1515283, 106.716195" style="margin-bottom:0">
+          <button class="btn-use-gps" id="btnUtRegPickMap"
+            style="width:100%;margin-bottom:6px;background:#1d4ed8;color:#fff;border:none;
+                   border-radius:8px;padding:9px;font-size:0.88rem;font-weight:700;cursor:pointer;">
+            🗺️ 지도에서 위치 클릭으로 선택
+          </button>
+          <button class="btn-use-gps" id="btnUtRegGps"
+            style="width:100%;margin-bottom:6px;">
+            📡 현재 GPS 위치 사용
+          </button>
+          <div id="utRegCoordsDisplay"
+            style="font-size:0.8rem;color:#6b7280;padding:6px 10px;background:#f3f4f6;
+                   border-radius:6px;min-height:28px;display:flex;align-items:center;gap:6px;">
+            <span id="utRegCoordsText">위치 미선택</span>
+          </div>
+          <input id="utRegCoords" type="hidden">
         </div>
         <!-- 반경 -->
         <div>

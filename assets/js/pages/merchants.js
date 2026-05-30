@@ -4432,9 +4432,69 @@ async function deleteNpcComment(npcId, commentId) {
 
 // ── 보물 등록 ──────────────────────────────────────────────────────────────────
 
-function openRegisterTreasureModal() {
+// 지도 클릭으로 선택된 보물 위치
+let _utPickedLat = null, _utPickedLng = null;
+let _utPickMarker = null, _utPickListener = null;
+
+function _utSetPickedCoords(lat, lng) {
+  _utPickedLat = lat;
+  _utPickedLng = lng;
+  const hidden = document.getElementById('utRegCoords');
+  const text   = document.getElementById('utRegCoordsText');
+  if (hidden) hidden.value = `${lat}, ${lng}`;
+  if (text)   text.textContent = `📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  if (text)   text.style.color = '#059669';
+}
+
+function _utStartMapPick() {
+  // 모달 닫고 지도 클릭 모드 진입
+  document.getElementById('utRegModal')?.classList.remove('open');
+
+  const banner = document.getElementById('userPlaceBanner');
+  const cancelBtn = document.getElementById('btnUserPlaceCancelMode');
+  if (banner) { banner.textContent = '📍 보물을 숨길 위치를 지도에서 클릭하세요'; banner.style.display = 'block'; }
+  if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
+  // 기존 마커 제거
+  if (_utPickMarker) { _utPickMarker.setMap(null); _utPickMarker = null; }
+  if (_utPickListener) { google.maps.event.removeListener(_utPickListener); _utPickListener = null; }
+
+  _utPickListener = map.addListener('click', e => {
+    const lat = e.latLng.lat(), lng = e.latLng.lng();
+
+    // 선택 마커 표시
+    if (_utPickMarker) _utPickMarker.setMap(null);
+    _utPickMarker = new google.maps.Marker({
+      position: { lat, lng }, map,
+      icon: { url: '/assets/images/item/box.png', scaledSize: new google.maps.Size(32, 32), anchor: new google.maps.Point(16, 16) },
+      title: '보물 위치', zIndex: 99,
+    });
+
+    // 리스너 정리 & 배너 숨김
+    google.maps.event.removeListener(_utPickListener); _utPickListener = null;
+    if (banner) banner.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+
+    // 좌표 저장 후 모달 재오픈
+    _utSetPickedCoords(lat, lng);
+    openRegisterTreasureModal(true); // skipPickReset=true
+  });
+
+  // 취소 버튼 공유 (user-place와 동일 버튼 재사용)
+  const cancelHandler = () => {
+    if (_utPickListener) { google.maps.event.removeListener(_utPickListener); _utPickListener = null; }
+    if (banner) banner.style.display = 'none';
+    if (cancelBtn) { cancelBtn.style.display = 'none'; cancelBtn.removeEventListener('click', cancelHandler); }
+    openRegisterTreasureModal(true);
+  };
+  cancelBtn?.addEventListener('click', cancelHandler, { once: true });
+}
+
+function openRegisterTreasureModal(skipPickReset = false) {
   const modal = document.getElementById('utRegModal');
   if (!modal) return;
+
+  // 아이템 목록
   const sel = document.getElementById('utRegItemSel');
   if (sel) {
     sel.innerHTML = '<option value="">-- 아이템 선택 --</option>';
@@ -4447,11 +4507,12 @@ function openRegisterTreasureModal() {
         sel.appendChild(opt);
       });
   }
-  if (_ctx.lastPos) {
-    const { lat, lng } = _ctx.lastPos;
-    const coordsEl = document.getElementById('utRegCoords');
-    if (coordsEl) coordsEl.value = `${lat.toFixed(7)}, ${lng.toFixed(7)}`;
+
+  // 좌표: 이미 선택된 게 없고 GPS 있으면 자동 세팅
+  if (!skipPickReset && !_utPickedLat && _ctx.lastPos) {
+    _utSetPickedCoords(_ctx.lastPos.lat, _ctx.lastPos.lng);
   }
+
   modal.classList.add('open');
 }
 
@@ -4471,12 +4532,8 @@ async function registerTreasure() {
   const hint    = document.getElementById('utRegHint')?.value?.trim();
   const story   = document.getElementById('utRegStory')?.value?.trim();
   const comment = document.getElementById('utRegComment')?.value?.trim();
-  const coordsRaw = document.getElementById('utRegCoords')?.value?.trim() || '';
-  const coordsParts = coordsRaw.split(/[\s,]+/).map(Number);
-  const lat = coordsParts[0];
-  const lng = coordsParts[1];
-  if (!coordsRaw || coordsParts.length < 2 || isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180)
-    { _utRegMsg('좌표를 올바르게 입력하세요. 예) 21.1515283, 106.716195', true); return; }
+  const lat = _utPickedLat, lng = _utPickedLng;
+  if (!lat || !lng) { _utRegMsg('지도에서 보물 위치를 먼저 선택하세요.', true); return; }
   if (!hint || hint.length < 5) { _utRegMsg('힌트는 5자 이상 입력하세요.', true); return; }
   if (type === 'item' && !itemId) { _utRegMsg('아이템을 선택하세요.', true); return; }
   const btn = document.getElementById('btnUtRegSubmit');
@@ -4487,6 +4544,11 @@ async function registerTreasure() {
       { type, itemId, itemCount: count, lat, lng, hint, story, comment, radiusM }
     );
     document.getElementById('utRegModal').classList.remove('open');
+    // 선택 마커·상태 초기화
+    if (_utPickMarker) { _utPickMarker.setMap(null); _utPickMarker = null; }
+    _utPickedLat = null; _utPickedLng = null;
+    const coordsText = document.getElementById('utRegCoordsText');
+    if (coordsText) { coordsText.textContent = '위치 미선택'; coordsText.style.color = ''; }
     const toast = document.getElementById('collectToast');
     if (toast) {
       toast.innerHTML = '✅ 보물이 숨겨졌습니다! NPC가 근처에 자동 생성됩니다.';
@@ -4627,13 +4689,14 @@ document.addEventListener('DOMContentLoaded', () => {
       utMyModal?.classList.remove('open');
       openRegisterTreasureModal();
     });
+  document.getElementById('btnUtRegPickMap')
+    ?.addEventListener('click', _utStartMapPick);
   document.getElementById('btnUtRegGps')
     ?.addEventListener('click', () => {
-      const pos = _ctx.lastPos;
+      const pos = _ctx.gpsPos || _ctx.lastPos;
       if (!pos) { _utRegMsg('📡 GPS 신호 대기 중... 게임을 먼저 시작하세요.', true); return; }
-      const coordsEl = document.getElementById('utRegCoords');
-      if (coordsEl) coordsEl.value = `${pos.lat.toFixed(7)}, ${pos.lng.toFixed(7)}`;
-      _utRegMsg(`📍 ${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`, false);
+      _utSetPickedCoords(pos.lat, pos.lng);
+      _utRegMsg(`📍 현재 위치 적용됨`, false);
     });
   document.querySelectorAll('.ut-reg-type-btn').forEach(btn => {
     btn.addEventListener('click', () => {
