@@ -2552,8 +2552,8 @@ export function enterAdminPlaceMode(type) {
         orc2:    { maxHp: 2000, attackPower:  190, attackRangeM: 20, aggroRangeM:  55, moveSpeed: 1.1, attackCooldownMs: 2200, respawnSeconds: 200 },
         orc3:    { maxHp: 3000, attackPower:  260, attackRangeM: 20, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
         dragon:  { maxHp: 6000, attackPower:  320, attackRangeM: 20, aggroRangeM: 100, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
-        zombie1: { maxHp:  800, attackPower:   80, attackRangeM: 15, aggroRangeM:  35, moveSpeed: 0.9, attackCooldownMs: 2000, respawnSeconds: 120 },
-        zombie3: { maxHp: 1400, attackPower:  140, attackRangeM: 15, aggroRangeM:  40, moveSpeed: 0.8, attackCooldownMs: 2200, respawnSeconds: 150 },
+        zombie1: { maxHp:  800, attackPower:   80, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.9, attackCooldownMs: 2000, respawnSeconds: 120 },
+        zombie3: { maxHp: 1400, attackPower:  140, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.8, attackCooldownMs: 2200, respawnSeconds: 150 },
       };
       const p = GS_DEFAULTS[monsterType];
       if (!confirm(
@@ -2786,24 +2786,24 @@ async function _loadMonsterStatModal() {
     const data  = await gsAdminGetMonsterTypes();
     const types = data.types || [];
     _origStats = {};
-    for (const t of types) _origStats[t.type] = { maxHp: t.maxHp, attackPower: t.attackPower };
+    for (const t of types) _origStats[t.type] = { maxHp: t.maxHp, attackPower: t.attackPower, attackRangeM: t.attackRangeM ?? 20 };
+
+    const INP = (cls, type, val, min) =>
+      `<input type="number" class="${cls}" data-type="${type}" value="${val}" min="${min}"
+        style="width:62px;background:#1f2937;border:1px solid #374151;color:#e5e7eb;font-size:12px;padding:4px 5px;border-radius:6px;text-align:center">`;
 
     tbody.innerHTML = types.map(t => {
       const label = TYPE_LABEL[t.type] || t.type;
+      const atkRange = t.attackRangeM ?? 20;
       return `<tr style="border-bottom:1px solid #1f2937">
-        <td style="padding:10px 8px;color:#e5e7eb;font-size:14px">${label}</td>
-        <td style="padding:10px 8px;text-align:center">
-          <input type="number" class="ms-hp" data-type="${t.type}" value="${t.maxHp}" min="1"
-            style="width:70px;background:#1f2937;border:1px solid #374151;color:#e5e7eb;font-size:13px;padding:4px 6px;border-radius:6px;text-align:center">
-        </td>
-        <td style="padding:10px 8px;text-align:center">
-          <input type="number" class="ms-atk" data-type="${t.type}" value="${t.attackPower}" min="0"
-            style="width:70px;background:#1f2937;border:1px solid #374151;color:#e5e7eb;font-size:13px;padding:4px 6px;border-radius:6px;text-align:center">
-        </td>
+        <td style="padding:8px 8px;color:#e5e7eb;font-size:13px;white-space:nowrap">${label}</td>
+        <td style="padding:8px 6px;text-align:center">${INP('ms-hp',  t.type, t.maxHp,     1)}</td>
+        <td style="padding:8px 6px;text-align:center">${INP('ms-atk', t.type, t.attackPower, 0)}</td>
+        <td style="padding:8px 6px;text-align:center">${INP('ms-range', t.type, atkRange,   1)}</td>
       </tr>`;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#ef4444;padding:20px">오류: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:20px">오류: ${err.message}</td></tr>`;
   }
 }
 
@@ -2817,17 +2817,20 @@ async function saveAllMonsterStats() {
   const changed  = [];
 
   for (const inp of hpInputs) {
-    const type        = inp.dataset.type;
-    const maxHp       = parseInt(inp.value, 10);
-    const atkInp      = document.querySelector(`.ms-atk[data-type="${type}"]`);
-    const attackPower = parseInt(atkInp?.value ?? '0', 10);
+    const type         = inp.dataset.type;
+    const maxHp        = parseInt(inp.value, 10);
+    const atkInp       = document.querySelector(`.ms-atk[data-type="${type}"]`);
+    const rangeInp     = document.querySelector(`.ms-range[data-type="${type}"]`);
+    const attackPower  = parseInt(atkInp?.value ?? '0', 10);
+    const attackRangeM = parseInt(rangeInp?.value ?? '20', 10);
 
-    if (!isFinite(maxHp) || maxHp < 1) { alert(`${type}: HP는 1 이상이어야 합니다`); if (btn) btn.disabled = false; return; }
+    if (!isFinite(maxHp) || maxHp < 1)         { alert(`${type}: HP는 1 이상이어야 합니다`);   if (btn) btn.disabled = false; return; }
     if (!isFinite(attackPower) || attackPower < 0) { alert(`${type}: 공격력은 0 이상이어야 합니다`); if (btn) btn.disabled = false; return; }
+    if (!isFinite(attackRangeM) || attackRangeM < 1) { alert(`${type}: 공격범위는 1m 이상이어야 합니다`); if (btn) btn.disabled = false; return; }
 
     const orig = _origStats[type] || {};
-    if (maxHp !== orig.maxHp || attackPower !== orig.attackPower) {
-      changed.push({ type, maxHp, attackPower });
+    if (maxHp !== orig.maxHp || attackPower !== orig.attackPower || attackRangeM !== orig.attackRangeM) {
+      changed.push({ type, maxHp, attackPower, attackRangeM });
     }
   }
 
@@ -2840,7 +2843,7 @@ async function saveAllMonsterStats() {
   let saved = 0, totalInstances = 0;
   for (const c of changed) {
     try {
-      const r = await gsAdminPatchMonsterType(c.type, { maxHp: c.maxHp, attackPower: c.attackPower });
+      const r = await gsAdminPatchMonsterType(c.type, { maxHp: c.maxHp, attackPower: c.attackPower, attackRangeM: c.attackRangeM });
       totalInstances += r.instancesUpdated || 0;
       saved++;
     } catch (err) {
@@ -2853,7 +2856,7 @@ async function saveAllMonsterStats() {
   if (msg) msg.textContent = `✅ ${saved}종 저장 완료 (인스턴스 ${totalInstances}개 즉시 반영)`;
   if (btn) btn.disabled = false;
   // 저장 후 원래 값 갱신
-  for (const c of changed) _origStats[c.type] = { maxHp: c.maxHp, attackPower: c.attackPower };
+  for (const c of changed) _origStats[c.type] = { maxHp: c.maxHp, attackPower: c.attackPower, attackRangeM: c.attackRangeM };
 }
 
 window.__deleteBattleObj = async (type, id) => {
