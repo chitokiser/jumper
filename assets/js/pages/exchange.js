@@ -304,6 +304,17 @@ async function loadStatus() {
       sideRoiEl.style.color = roiBps > 0 ? '#26a69a' : roiBps < 0 ? '#ef5350' : '#9598a1';
     }
 
+    // 상단 내 자산 카드
+    setText('heroJumpBal',    fmtJump(_status.jumpBalance));
+    setText('heroStaked',     fmtJump(_status.staked));
+    setText('heroHexBal',     fmtHex(_status.hexBalance));
+    setText('heroPendingDiv', fmtHex(_status.pendingDividend));
+    const heroRoiEl = $('heroRoi');
+    if (heroRoiEl) {
+      heroRoiEl.textContent = (roiBps >= 0 ? '+' : '') + (roiBps / 100).toFixed(2) + ' %';
+      heroRoiEl.style.color = roiBps > 0 ? '#22c55e' : roiBps < 0 ? '#ef4444' : '#e2e8f0';
+    }
+
     // 가격 차트 업데이트
     if (_status.chart && _status.chart.length > 0) {
       renderChart(_status.chart);
