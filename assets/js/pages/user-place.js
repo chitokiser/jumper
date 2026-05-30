@@ -20,7 +20,8 @@ const CATALOG = [
   { key: 'mon_orc2',    emoji: '🗡️', label: 'Orc2',          desc: 'HP 1800 · ATK 80',    price: 20000, tag: 'monster' },
   { key: 'mon_orc3',    emoji: '⚔️', label: 'Orc3',          desc: 'HP 2500 · ATK 100',   price: 25000, tag: 'monster' },
   // 타워
-  { key: 'archer_tower', emoji: '🏹', label: '아쳐타워',   desc: 'ATK 50 · 반경 40m',         price:  20000, tag: 'tower' },
+  { key: 'archer_tower', emoji: '🏹', label: '아쳐타워',  desc: 'ATK 50 · 반경 40m · HP 500',   price:  20000, tag: 'tower' },
+  { key: 'cannon_tower', emoji: '💣', label: '대포타워',  desc: 'ATK 120 · 반경 35m · HP 1000', price: 100000, tag: 'tower' },
   // 상점
   { key: 'shop_potion',  emoji: '🧪', label: '약물상점',   desc: '물약·버프 아이템 판매',       price: 600000, tag: 'shop' },
   { key: 'shop_weapon',  emoji: '⚔️', label: '무기상점',   desc: '무기 장비 아이템 판매',       price: 400000, tag: 'shop' },

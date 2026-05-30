@@ -41,8 +41,12 @@ const CATALOG = {
     monsterType: 'orc3', maxHp: 2500, atk: 100, detectRadius: 45,
   },
   archer_tower: {
-    price: 20000, type: 'tower', label: '아쳐타워',
-    atk: 50, radius: 40, hp: 500,
+    price:  20000, type: 'tower', label: '아쳐타워',
+    towerType: 'archer', atk: 50,  radius: 40, hp:  500, image: '/assets/images/shops/tower.png',
+  },
+  cannon_tower: {
+    price: 100000, type: 'tower', label: '대포타워',
+    towerType: 'cannon', atk: 120, radius: 35, hp: 1000, image: '/assets/images/shops/tower2.png',
   },
   shop_potion: {
     price: 600000, type: 'shop', label: '약물상점',
@@ -127,12 +131,12 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
   } else if (def.type === 'tower') {
     const ref = await db.collection('battle_towers').add({
       ...base,
-      name:   `${nim} 아쳐타워${placeNo}`,
-      type:   'archer',
+      name:   `${nim} ${def.label}${placeNo}`,
+      type:   def.towerType,
       atk:    def.atk,
       radius: def.radius,
       hp:     def.hp,
-      image:  '/assets/images/shops/tower.png',
+      image:  def.image,
     });
     docId = ref.id;
   } else if (def.type === 'shop') {
