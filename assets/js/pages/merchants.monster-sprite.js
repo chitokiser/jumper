@@ -143,6 +143,23 @@ export const SPRITE_CONFIGS = {
       respawn: { prefix: '3_3-PIRATE_IDLE_',   frames: 6, fps: 6,  loop: false },
     },
   },
+  zombie1: {
+    monsterType: 'zombie1',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/zombie1/animation/',
+    displaySize: 72,
+    facingLeft:  false,
+    startFrame:  1,   // Idle1.png 형식 — 1부터 시작
+    padDigits:   0,   // 패딩 없음
+    animations: {
+      idle:    { prefix: 'Idle',   frames: 4, fps: 6,  loop: true  },
+      walk:    { prefix: 'Walk',   frames: 6, fps: 8,  loop: true  },
+      attack:  { prefix: 'Attack', frames: 6, fps: 12, loop: false },
+      hit:     { prefix: 'Hurt',   frames: 5, fps: 12, loop: false },
+      death:   { prefix: 'Dead',   frames: 8, fps: 7,  loop: false },
+      respawn: { prefix: 'Idle',   frames: 4, fps: 6,  loop: false },
+    },
+  },
 };
 
 // 서버 상태 → 애니메이션 이름 매핑
@@ -563,8 +580,11 @@ function _getOverlayClass() {
       this._animState = animName;
 
       let frameIdx = 0;
+      const _startFrame = this._cfg.startFrame ?? 0;
+      const _padDigits  = this._cfg.padDigits  ?? 3;
       const setFrame = (idx) => {
-        const padded = String(idx).padStart(3, '0');
+        const actualIdx = idx + _startFrame;
+        const padded = _padDigits > 0 ? String(actualIdx).padStart(_padDigits, '0') : String(actualIdx);
         const url = `${this._cfg.basePath}${animCfg.prefix}${padded}.png`;
         // 캐시된 Image가 완전히 로드된 경우 src를 직접 복사해 즉시 표시
         const cached = _preloadCache.get(url);
@@ -693,9 +713,15 @@ export function preloadSpriteImages() {
       }
     } else if (cfg.framesMode) {
       // 1단계: idle 첫 프레임만 즉시 로드 (몬스터가 화면에 가장 먼저 보이는 이미지)
+      const _sf = cfg.startFrame ?? 0;
+      const _pd = cfg.padDigits  ?? 3;
+      const _frameUrl = (prefix, idx) => {
+        const n = _pd > 0 ? String(idx).padStart(_pd, '0') : String(idx);
+        return cfg.basePath + prefix + n + '.png';
+      };
       const idleAnim = cfg.animations.idle;
       if (idleAnim) {
-        const url0 = cfg.basePath + idleAnim.prefix + '000.png';
+        const url0 = _frameUrl(idleAnim.prefix, _sf);
         if (!_preloadCache.has(url0)) {
           const img = new Image();
           img.src = url0;
@@ -704,9 +730,9 @@ export function preloadSpriteImages() {
       }
       // 2단계: 나머지 프레임은 나중에
       for (const [animName, anim] of Object.entries(cfg.animations)) {
-        const start = (animName === 'idle') ? 1 : 0; // idle[0]은 이미 로드
+        const start = (animName === 'idle') ? 1 : 0;
         for (let i = start; i < anim.frames; i++) {
-          const url = cfg.basePath + anim.prefix + String(i).padStart(3, '0') + '.png';
+          const url = _frameUrl(anim.prefix, i + _sf);
           if (!_preloadCache.has(url)) later.push(url);
         }
       }
