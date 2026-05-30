@@ -66,12 +66,52 @@ const CATALOG = {
   },
 };
 
+// ── 가격 조회 (Firestore 우선, 없으면 CATALOG 기본값) ─────────────────────────
+const PRICES_DOC = () => db.collection('config').doc('userPlacePrices');
+
+async function _getEffectivePrice(itemKey) {
+  try {
+    const snap = await PRICES_DOC().get();
+    if (snap.exists && snap.data()[itemKey] != null) return Number(snap.data()[itemKey]);
+  } catch (_) {}
+  return CATALOG[itemKey]?.price ?? 0;
+}
+
+async function getUserPlacePrices() {
+  const snap = await PRICES_DOC().get();
+  const overrides = snap.exists ? snap.data() : {};
+  const result = {};
+  for (const [key, def] of Object.entries(CATALOG)) {
+    result[key] = {
+      label: def.label,
+      price: overrides[key] != null ? Number(overrides[key]) : def.price,
+      defaultPrice: def.price,
+    };
+  }
+  return { prices: result };
+}
+
+async function adminSetUserPlacePrices(data) {
+  const updates = {};
+  for (const [key, val] of Object.entries(data)) {
+    if (CATALOG[key] && Number.isFinite(Number(val)) && Number(val) >= 0) {
+      updates[key] = Number(val);
+    }
+  }
+  updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+  await PRICES_DOC().set(updates, { merge: true });
+  return { ok: true, updated: Object.keys(updates).length - 1 };
+}
+
 // ── 1. 오브젝트 배치 ──────────────────────────────────────────────────────────
 async function placeUserObject(uid, { itemKey, lat, lng }) {
   const def = CATALOG[itemKey];
   if (!def)           throw new Error('유효하지 않은 아이템 키');
   if (!lat || !lng)   throw new Error('좌표가 필요합니다');
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('유효하지 않은 좌표');
+
+  // Firestore 우선 가격 조회
+  const price = await _getEffectivePrice(itemKey);
 
   const bpRef     = db.collection('battle_players').doc(uid);
   const userRef   = db.collection('users').doc(uid);
@@ -85,13 +125,13 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
     const [bp, uSnap] = await Promise.all([t.get(bpRef), t.get(userRef)]);
 
     const gold = bp.exists ? (bp.data().gold ?? 0) : 0;
-    if (gold < def.price) {
-      throw new Error(`GP 부족. 필요: ${def.price.toLocaleString()} GP, 보유: ${gold.toLocaleString()} GP`);
+    if (gold < price) {
+      throw new Error(`GP 부족. 필요: ${price.toLocaleString()} GP, 보유: ${gold.toLocaleString()} GP`);
     }
     placeNo = (uSnap.data()?.placeCount ?? 0) + 1;
 
     // ② 모든 write 나중
-    t.set(bpRef,   { gold: admin.firestore.FieldValue.increment(-def.price) }, { merge: true });
+    t.set(bpRef,   { gold: admin.firestore.FieldValue.increment(-price) }, { merge: true });
     t.set(userRef, { placeCount: placeNo }, { merge: true });
   });
 
@@ -150,7 +190,7 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
     docId = ref.id;
   }
 
-  return { ok: true, docId, itemKey, label: def.label, price: def.price };
+  return { ok: true, docId, itemKey, label: def.label, price };
 }
 
 // ── 2. 내가 배치한 오브젝트 목록 ─────────────────────────────────────────────
@@ -173,4 +213,4 @@ async function getMyPlacedObjects(uid) {
   };
 }
 
-module.exports = { CATALOG, placeUserObject, getMyPlacedObjects };
+module.exports = { CATALOG, placeUserObject, getMyPlacedObjects, getUserPlacePrices, adminSetUserPlacePrices };

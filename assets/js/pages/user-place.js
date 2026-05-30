@@ -4,8 +4,10 @@
 import { functions } from '/assets/js/firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
-const cfPlace    = httpsCallable(functions, 'placeUserObject', { timeout: 30000 });
-const cfGetMine  = httpsCallable(functions, 'getMyPlacedObjects');
+const cfPlace        = httpsCallable(functions, 'placeUserObject', { timeout: 30000 });
+const cfGetMine      = httpsCallable(functions, 'getMyPlacedObjects');
+const cfGetPrices    = httpsCallable(functions, 'getUserPlacePrices');
+const cfSetPrices    = httpsCallable(functions, 'adminSetUserPlacePrices');
 
 // ── 카탈로그 (서버와 동일) ────────────────────────────────────────────────────
 const CATALOG = [
@@ -52,10 +54,25 @@ export function initUserPlace(map, infoWindow, getGoldFn, onPlacedCb) {
   $('btnUserPlaceMyList')?.addEventListener('click', loadMyList);
 }
 
+// ── 서버 가격 캐시 ────────────────────────────────────────────────────────────
+let _serverPrices = null; // { key: { price, label, defaultPrice } }
+
+async function _fetchPrices() {
+  try {
+    const res = await cfGetPrices();
+    _serverPrices = res.data?.prices ?? null;
+  } catch (_) {}
+}
+
+function _effectivePrice(key) {
+  return _serverPrices?.[key]?.price ?? CATALOG.find(c => c.key === key)?.price ?? 0;
+}
+
 // ── 상점 패널 ─────────────────────────────────────────────────────────────────
-function openShopPanel() {
+async function openShopPanel() {
   const panel = $('userPlacePanel');
   if (!panel) return;
+  if (!_serverPrices) await _fetchPrices();
   _renderCatalog();
   panel.style.display = 'flex';
 }
@@ -72,7 +89,8 @@ function _renderCatalog() {
   const gold = _getGold ? _getGold() : 0;
 
   const rows = CATALOG.map(item => {
-    const canAfford = gold >= item.price;
+    const price     = _effectivePrice(item.key);
+    const canAfford = gold >= price;
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;
                   border:1px solid var(--border,#e5e7eb);margin-bottom:6px;
@@ -84,7 +102,7 @@ function _renderCatalog() {
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:0.8rem;font-weight:700;color:${canAfford ? '#d97706' : '#9ca3af'};">
-            🪙 ${item.price.toLocaleString()} GP
+            🪙 ${price.toLocaleString()} GP
           </div>
           <button data-key="${item.key}" ${canAfford ? '' : 'disabled'}
             style="margin-top:3px;padding:4px 10px;border:none;border-radius:6px;font-size:0.78rem;
@@ -111,7 +129,8 @@ function _renderCatalog() {
 // ── 배치 모드 ─────────────────────────────────────────────────────────────────
 function _startPlaceMode(itemKey) {
   _placingKey = itemKey;
-  const item  = CATALOG.find(c => c.key === itemKey);
+  const itemDef = CATALOG.find(c => c.key === itemKey);
+  const item  = { ...itemDef, price: _effectivePrice(itemKey) };
   closeShopPanel();
 
   // 지도 위 안내 배너 표시
@@ -208,5 +227,73 @@ async function loadMyList() {
     }).join('');
   } catch (e) {
     listEl.innerHTML = `<div style="color:#ef4444;">오류: ${e.message}</div>`;
+  }
+}
+
+// ── 관리자: 가격 편집 ─────────────────────────────────────────────────────────
+export async function loadAdminPriceEditor(containerEl) {
+  if (!containerEl) return;
+  containerEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">가격 로딩 중...</div>';
+  try {
+    const res = await cfGetPrices();
+    const prices = res.data?.prices ?? {};
+    const rows = Object.entries(prices).map(([key, info]) => `
+      <tr>
+        <td style="padding:7px 10px;font-size:0.85rem;">${info.label}</td>
+        <td style="padding:7px 10px;font-size:0.78rem;color:var(--muted);">
+          기본 ${info.defaultPrice.toLocaleString()} GP
+        </td>
+        <td style="padding:7px 8px;">
+          <input type="number" data-price-key="${key}" value="${info.price}"
+            min="0" step="1000"
+            style="width:120px;padding:5px 8px;border:1px solid var(--border);
+                   border-radius:6px;font-size:0.85rem;font-family:monospace;box-sizing:border-box;">
+        </td>
+      </tr>`).join('');
+
+    containerEl.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="font-size:0.75rem;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);">
+            <th style="padding:6px 10px;">아이템</th>
+            <th style="padding:6px 10px;">기본가</th>
+            <th style="padding:6px 8px;">현재 GP 가격</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+        <button id="btnSavePlacePrices" type="button"
+          style="padding:8px 20px;background:#1d4ed8;color:#fff;border:none;
+                 border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer;">
+          💾 가격 저장
+        </button>
+        <span id="placePriceMsg" style="font-size:0.82rem;"></span>
+      </div>`;
+
+    containerEl.querySelector('#btnSavePlacePrices')?.addEventListener('click', async () => {
+      const btn = containerEl.querySelector('#btnSavePlacePrices');
+      const msg = containerEl.querySelector('#placePriceMsg');
+      btn.disabled = true; btn.textContent = '저장 중...';
+      const data = {};
+      containerEl.querySelectorAll('[data-price-key]').forEach(inp => {
+        const v = parseInt(inp.value, 10);
+        if (Number.isFinite(v) && v >= 0) data[inp.dataset.priceKey] = v;
+      });
+      try {
+        await cfSetPrices(data);
+        _serverPrices = null; // 캐시 초기화
+        msg.textContent = '✅ 저장 완료';
+        msg.style.color = '#22c55e';
+      } catch (e) {
+        msg.textContent = '오류: ' + e.message;
+        msg.style.color = '#ef4444';
+      } finally {
+        btn.disabled = false; btn.textContent = '💾 가격 저장';
+        setTimeout(() => { msg.textContent = ''; }, 3000);
+      }
+    });
+  } catch (e) {
+    containerEl.innerHTML = `<div style="color:#ef4444;">오류: ${e.message}</div>`;
   }
 }

@@ -3,6 +3,7 @@
 
 import { functions } from '../firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { loadAdminPriceEditor } from './user-place.js';
 
 // ── Cloud Functions ────────────────────────────────────────────────────────────
 const cfAdminCreateOffering = httpsCallable(functions, 'adminCreateStockOffering');
@@ -52,6 +53,9 @@ function isMatured(ts) {
 function initAdminUI() {
   const panel = $('soAdminPanel');
   if (panel) panel.style.display = '';
+
+  // 배치 상점 가격 편집 패널 로드
+  loadAdminPriceEditor(document.getElementById('placePriceEditorWrap'));
 
   $('btnSoCreateOffering')?.addEventListener('click', async () => {
     const btn   = $('btnSoCreateOffering');

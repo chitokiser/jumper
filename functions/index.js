@@ -2259,3 +2259,17 @@ exports.getMyPlacedObjects = onCall(
     return userPlaceH.getMyPlacedObjects(uid);
   })
 );
+
+exports.getUserPlacePrices = onCall(
+  {},
+  wrapError(async () => userPlaceH.getUserPlacePrices())
+);
+
+exports.adminSetUserPlacePrices = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    return userPlaceH.adminSetUserPlacePrices(request.data ?? {});
+  })
+);
