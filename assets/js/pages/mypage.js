@@ -149,24 +149,41 @@ async function loadOnChainData(uid) {
       show("expRow", true);
       show("expBarRow", true);
 
-      const expPct = d.requiredExp > 0
-        ? Math.min(100, Math.round((d.exp / d.requiredExp) * 100))
+      // 게임화면과 동일한 gsExp를 Firestore에서 읽어 표시 (싱크 맞춤)
+      let displayExp = d.exp;
+      let displayRequired = d.requiredExp;
+      try {
+        const bpSnap = await getDoc(doc(db, 'battle_players', uid));
+        if (bpSnap.exists()) {
+          const bp = bpSnap.data();
+          const gsExp   = typeof bp.gsExp   === 'number' ? bp.gsExp   : d.exp;
+          const gsLevel = typeof bp.gsLevel === 'number' ? bp.gsLevel : d.level;
+          const nextLvExp = Math.pow(gsLevel + 1, 2) * 100_000; // 게임화면과 동일 계산식
+          displayExp      = gsExp;
+          displayRequired = nextLvExp;
+          // 게임 레벨도 동기화 표시
+          if (gsLevel > 0) setText("levelDisplay", "Lv." + Math.max(d.level, gsLevel));
+        }
+      } catch (_) { /* fallback: onChain 값 사용 */ }
+
+      const expPct = displayRequired > 0
+        ? Math.min(100, Math.round((displayExp / displayRequired) * 100))
         : 0;
 
-      setText("expDisplay", `${d.exp.toLocaleString()} / ${d.requiredExp.toLocaleString()}`);
+      setText("expDisplay", `${displayExp.toLocaleString()} / ${displayRequired.toLocaleString()}`);
 
       const barFill = $("expBarFill");
       if (barFill) barFill.style.width = expPct + "%";
 
       const expReqEl = $("expRequired");
       if (expReqEl) {
-        const remain = Math.max(0, d.requiredExp - d.exp);
+        const remain = Math.max(0, displayRequired - displayExp);
         expReqEl.textContent = remain > 0
           ? _t('exp_remain', remain.toLocaleString())
           : _t('exp_can_levelup');
       }
 
-      show("levelUpRow", d.exp >= d.requiredExp);
+      show("levelUpRow", displayExp >= displayRequired);
 
       const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
       const isZeroMentor = !d.mentor || d.mentor === ZERO_ADDR;
