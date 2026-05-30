@@ -39,6 +39,8 @@ import { initGameServer, connectToGameServer, disconnectFromGameServer,
 import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
   from './merchants.monster-sprite.js';
 import { _t } from './merchants.i18n.js';
+import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterActive }
+  from './starter-pack.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -1210,6 +1212,7 @@ function showMyLocation() {
       broadcastMyLocation(lat, lng);
       if (btn) btn.textContent = '📍';
       _onGpsReady();
+      _maybeInitStarterPack(lat, lng);
     },
     () => {
       // GPS 실패: gpsPos는 갱신하지 않는다 (맵 센터 대체 금지)
@@ -1369,12 +1372,26 @@ function _stopDetector() {
   if (btn) { btn.style.background = ''; btn.style.boxShadow = ''; btn.title = '보물 탐지기 ON/OFF'; }
 }
 
+// ── 초보자 체험 패키지: 100m 내 실제 보물박스 없을 때만 활성화 ──────────────
+let _starterInitDone = false;
+function _maybeInitStarterPack(lat, lng) {
+  if (_starterInitDone || isStarterActive()) return;
+  const hasNearby = treasureBoxes.some(box =>
+    box.lat && box.lng && !_collectedBoxes.has(box.id) && isBoxActive(box) &&
+    haversine(lat, lng, Number(box.lat), Number(box.lng)) <= 100
+  );
+  if (hasNearby) return; // 실제 보물 있음 → 스타터팩 불필요
+  _starterInitDone = true;
+  initStarterPack(_uid, lat, lng, _ctx.map, infoWindow);
+}
+
 // ── 보물박스 근접 감지 — 범위 내 마커 강조, HP 있으면 공격해야 수집 ──────────
 async function checkProximity(lat, lng) {
   if (!_uid) return;
   broadcastMyLocation(lat, lng); // 내 위치 Firestore에 방송
   sendPlayerLocation(lat, lng, _ctx.lastPos?.accuracy ?? 10); // 게임 서버로 전송
   checkTutorialProximity(lat, lng); // 튜토리얼 보물박스 근접 효과
+  updateStarterPlayerPos(lat, lng); // 스타터팩 마커 show/hide
   for (const box of treasureBoxes) {
     if (!box.lat || !box.lng) continue;
     if (!isBoxActive(box)) continue;

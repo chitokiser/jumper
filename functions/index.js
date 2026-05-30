@@ -51,6 +51,7 @@ const userTreasureH          = require('./handlers/userTreasure');
 const coinExchangeH          = require('./handlers/coinExchange');
 const rankingsH              = require('./handlers/rankings');
 const stockOptionH           = require('./handlers/stockOption');
+const starterH               = require('./handlers/starter');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -2221,5 +2222,22 @@ exports.adminToggleStockOffering = onCall(
     const uid = requireAuth(request);
     await requireAdmin(uid);
     return stockOptionH.adminToggleOffering(uid, request.data ?? {});
+  })
+);
+
+// ── 초보자 체험 패키지 ──────────────────────────────────────────────────────
+exports.getStarterPack = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return starterH.getStarterPack(uid);
+  })
+);
+
+exports.recordStarterClaim = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return starterH.recordStarterClaim(uid, request.data ?? {});
   })
 );
