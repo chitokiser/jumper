@@ -31,6 +31,7 @@ const adminKeySecret     = defineSecret('ADMIN_PRIVATE_KEY');
 const extApiSecret       = defineSecret('PARTNER_API_KEY');
 const geminiSecret       = defineSecret('GEMINI_API_KEY');
 const exchangeAddrSecret = defineSecret('JUMP_AUTO_EXCHANGE_ADDRESS');
+const telegramBotSecret  = defineSecret('TELEGRAM_BOT_TOKEN');
 
 // ── 핸들러 ───────────────────────────────────────────────────────────────────
 const onboarding             = require('./handlers/onboarding');
@@ -53,6 +54,7 @@ const rankingsH              = require('./handlers/rankings');
 const stockOptionH           = require('./handlers/stockOption');
 const starterH               = require('./handlers/starter');
 const userPlaceH             = require('./handlers/userPlace');
+const telegramH              = require('./handlers/telegram');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -2227,14 +2229,7 @@ exports.adminToggleStockOffering = onCall(
 );
 
 // ── 초보자 체험 패키지 ──────────────────────────────────────────────────────
-exports.getStarterPack = onCall(
-  {},
-  wrapError(async (request) => {
-    const uid = requireAuth(request);
-    return starterH.getStarterPack(uid);
-  })
-);
-
+// getStarterPack 제거: 시드·클레임이 클라이언트 로컬로 이전됨 (Firestore 읽기 절감)
 exports.recordStarterClaim = onCall(
   {},
   wrapError(async (request) => {
@@ -2273,3 +2268,17 @@ exports.adminSetUserPlacePrices = onCall(
     return userPlaceH.adminSetUserPlacePrices(request.data ?? {});
   })
 );
+
+// ════════════════════════════════════════════════════════════════════════════
+// Telegram Mini App 인증
+// 클라이언트: httpsCallable(functions, 'telegramAuth')({ initData })
+// 선행 작업: firebase functions:secrets:set TELEGRAM_BOT_TOKEN
+// ════════════════════════════════════════════════════════════════════════════
+exports.telegramAuth = onCall(
+  { secrets: [telegramBotSecret] },
+  wrapError(async (request) => {
+    const { initData } = request.data || {};
+    return telegramH.authWithTelegram(initData, telegramBotSecret.value());
+  })
+);
+

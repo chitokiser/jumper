@@ -1,13 +1,17 @@
 // /assets/js/pages/starter-pack.js
-// 초보자 체험 패키지 — seed 기반 클라이언트 생성, 획득만 서버 저장
+// 초보자 체험 패키지 — 완전 로컬 생성, 획득 결과만 서버 저장
+//
+// 설계 원칙:
+//  - 시드 = uid + UTC일자 → 서버 호출 없이 결정론적 재생성 가능
+//  - 클레임 추적 → localStorage (서버 읽기 0회)
+//  - 보상 지급 → recordStarterClaim Cloud Function (쓰기만, 읽기 최소)
 
 import { functions } from '/assets/js/firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
-const cfGetStarterPack    = httpsCallable(functions, 'getStarterPack');
-const cfRecordClaim       = httpsCallable(functions, 'recordStarterClaim');
+const cfRecordClaim = httpsCallable(functions, 'recordStarterClaim');
 
-// ── 몬스터 정의 (실제 게임과 동일 에셋) ──────────────────────────────────────
+// ── 몬스터 정의 ──────────────────────────────────────────────────────────────
 const MONSTER_TYPES = [
   { type: 'orc',    img: '/assets/images/monsters/orc/ORK_01_IDLE_000.png',    name: '오크',   hp: 3 },
   { type: 'orc2',   img: '/assets/images/monsters/orc2/ORK_02_IDLE_000.png',   name: '오크2',  hp: 4 },
@@ -37,7 +41,7 @@ function makePrng(seed) {
   };
 }
 
-// ── 위도/경도 오프셋 생성 (30~90m 반경) ─────────────────────────────────────
+// ── 위도/경도 오프셋 생성 ────────────────────────────────────────────────────
 function _offsetPos(rand, centerLat, centerLng, minM, maxM) {
   const angle = rand() * Math.PI * 2;
   const dist  = minM + rand() * (maxM - minM);
@@ -49,7 +53,7 @@ function _offsetPos(rand, centerLat, centerLng, minM, maxM) {
   };
 }
 
-// ── 씨드 기반 오브젝트 생성 ─────────────────────────────────────────────────
+// ── 씨드 기반 오브젝트 생성 (보물 15개 + 몬스터 15개) ────────────────────────
 export function generateStarterObjects(seed, centerLat, centerLng) {
   const rand      = makePrng(seed);
   const treasures = [];
@@ -57,7 +61,7 @@ export function generateStarterObjects(seed, centerLat, centerLng) {
 
   for (let i = 0; i < 15; i++) {
     const pos   = _offsetPos(rand, centerLat, centerLng, 25, 85);
-    const boxId = Math.floor(rand() * 5) + 1;   // 1~5
+    const boxId = Math.floor(rand() * 5) + 1;
     treasures.push({
       id:    `starter_t_${i}`,
       ...pos,
@@ -68,10 +72,10 @@ export function generateStarterObjects(seed, centerLat, centerLng) {
   }
 
   for (let i = 0; i < 15; i++) {
-    const pos     = _offsetPos(rand, centerLat, centerLng, 20, 80);
-    const mIdx    = Math.floor(rand() * MONSTER_TYPES.length);
-    const gold    = Math.floor(rand() * 5) + 1;  // 1~5
-    const mDef    = MONSTER_TYPES[mIdx];
+    const pos  = _offsetPos(rand, centerLat, centerLng, 20, 80);
+    const mIdx = Math.floor(rand() * MONSTER_TYPES.length);
+    const gold = Math.floor(rand() * 5) + 1;
+    const mDef = MONSTER_TYPES[mIdx];
     monsters.push({
       id:    `starter_m_${i}`,
       ...pos,
@@ -84,29 +88,62 @@ export function generateStarterObjects(seed, centerLat, centerLng) {
   return { treasures, monsters };
 }
 
-// ── 상태 ─────────────────────────────────────────────────────────────────────
-let _pack      = null;   // { starterSeed, starterResetAt, claimedIds }
-let _objects   = null;   // { treasures, monsters }
-let _markers   = [];     // google.maps.Marker[]
-let _map       = null;
-let _uid       = null;
-let _infoWin   = null;
-let _active    = false;
+// ── 로컬 시드 생성 (UTC 일자 기반 — 매일 자동 리셋, 서버 불필요) ─────────────
+function _makeDailySeed(uid) {
+  const dayIndex = Math.floor(Date.now() / 86400000);
+  return `${uid}:${dayIndex}`;
+}
 
-// ── 초기화 ───────────────────────────────────────────────────────────────────
-export async function initStarterPack(uid, lat, lng, map, infoWindow) {
-  _uid    = uid;
-  _map    = map;
+// ── localStorage 클레임 추적 ──────────────────────────────────────────────────
+function _lsKey(seed) { return `starter_v2_${seed}`; }
+
+function _loadClaimed(seed) {
+  try {
+    const raw = localStorage.getItem(_lsKey(seed));
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+}
+
+function _saveClaimed(seed, claimedSet) {
+  try {
+    localStorage.setItem(_lsKey(seed), JSON.stringify([...claimedSet]));
+  } catch {}
+}
+
+// 이전 날짜 키 정리 (스토리지 낭비 방지)
+function _cleanupOldLsKeys(currentSeed) {
+  try {
+    const currentKey = _lsKey(currentSeed);
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k?.startsWith('starter_v2_') && k !== currentKey) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch {}
+}
+
+// ── 상태 ─────────────────────────────────────────────────────────────────────
+let _seed    = null;
+let _claimed = null;  // Set<string>
+let _objects = null;  // { treasures, monsters }
+let _markers = [];
+let _map     = null;
+let _uid     = null;
+let _infoWin = null;
+let _active  = false;
+
+// ── 초기화 (서버 호출 없음) ───────────────────────────────────────────────────
+export function initStarterPack(uid, lat, lng, map, infoWindow) {
+  _uid     = uid;
+  _map     = map;
   _infoWin = infoWindow;
 
-  try {
-    const res = await cfGetStarterPack();
-    _pack     = res.data;
-  } catch (e) {
-    return; // 네트워크 오류 시 스킵
-  }
+  _seed    = _makeDailySeed(uid);
+  _claimed = _loadClaimed(_seed);
+  _cleanupOldLsKeys(_seed);
 
-  _objects = generateStarterObjects(_pack.starterSeed, lat, lng);
+  _objects = generateStarterObjects(_seed, lat, lng);
   _active  = true;
   _renderMarkers();
 }
@@ -114,19 +151,18 @@ export async function initStarterPack(uid, lat, lng, map, infoWindow) {
 // ── 마커 렌더링 ──────────────────────────────────────────────────────────────
 function _renderMarkers() {
   _clearMarkers();
-  const claimed = new Set(_pack?.claimedIds ?? []);
 
   for (const t of _objects.treasures) {
-    if (claimed.has(t.id)) continue;
+    if (_claimed.has(t.id)) continue;
     const marker = new google.maps.Marker({
       position: { lat: t.lat, lng: t.lng },
-      map: _map,
+      map:      _map,
       icon: {
-        url: t.icon,
+        url:        t.icon,
         scaledSize: new google.maps.Size(28, 28),
-        anchor: new google.maps.Point(14, 14),
+        anchor:     new google.maps.Point(14, 14),
       },
-      title: t.label,
+      title:  t.label,
       zIndex: 5,
     });
     marker.addListener('click', () => _onTreasureClick(t, marker));
@@ -135,16 +171,16 @@ function _renderMarkers() {
   }
 
   for (const m of _objects.monsters) {
-    if (claimed.has(m.id)) continue;
+    if (_claimed.has(m.id)) continue;
     const marker = new google.maps.Marker({
       position: { lat: m.lat, lng: m.lng },
-      map: _map,
+      map:      _map,
       icon: {
-        url: m.img,
+        url:        m.img,
         scaledSize: new google.maps.Size(36, 36),
-        anchor: new google.maps.Point(18, 18),
+        anchor:     new google.maps.Point(18, 18),
       },
-      title: m.label,
+      title:  m.label,
       zIndex: 6,
     });
     marker.addListener('click', () => _onMonsterClick(m, marker));
@@ -167,6 +203,12 @@ function _haversine(lat1, lng1, lat2, lng2) {
   const Δλ = (lng2 - lng1) * Math.PI / 180;
   const a  = Math.sin(Δφ/2)**2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function _getPlayerDist(lat, lng) {
+  const pos = window._starterPlayerPos;
+  if (!pos) return 9999;
+  return _haversine(pos.lat, pos.lng, lat, lng);
 }
 
 // ── 보물 클릭 ─────────────────────────────────────────────────────────────────
@@ -210,12 +252,6 @@ function _onMonsterClick(m, marker) {
   _infoWin.open(_map, marker);
 }
 
-function _getPlayerDist(lat, lng) {
-  const pos = window._starterPlayerPos;
-  if (!pos) return 9999;
-  return _haversine(pos.lat, pos.lng, lat, lng);
-}
-
 // ── 전역 콜백 (InfoWindow 버튼에서 호출) ─────────────────────────────────────
 window.__starterClaimTreasure = async (id, boxId) => {
   await _claimItem(id, 'treasure', { kind: 'box', boxId });
@@ -225,23 +261,28 @@ window.__starterKillMonster = async (id, gold) => {
   await _claimItem(id, 'monster', { kind: 'gold', amount: gold });
 };
 
+// ── 클레임 처리 (획득 결과만 서버 저장) ──────────────────────────────────────
 async function _claimItem(itemId, type, drop) {
-  if (!_pack || !_uid) return;
-  if (_pack.claimedIds?.includes(itemId)) return;
+  if (!_uid || !_seed) return;
+  if (_claimed.has(itemId)) return;
+
   try {
     await cfRecordClaim({ itemId, type, drop });
-    if (!_pack.claimedIds) _pack.claimedIds = [];
-    _pack.claimedIds.push(itemId);
-    // 해당 마커 제거
+
+    // 서버 성공 후 로컬 상태 갱신
+    _claimed.add(itemId);
+    _saveClaimed(_seed, _claimed);
+
     const idx = _markers.findIndex(m => m._starterId === itemId);
     if (idx !== -1) { _markers[idx].setMap(null); _markers.splice(idx, 1); }
     if (_infoWin) _infoWin.close();
+
     const msg = type === 'treasure'
       ? `🎁 보물박스 ${drop.boxId} 획득!`
       : `⚔️ 처치! 🪙 ${drop.amount} gold 획득`;
     _showToast(msg);
   } catch (e) {
-    _showToast('오류: ' + e.message, true);
+    _showToast('오류: ' + (e.message || '잠시 후 다시 시도'), true);
   }
 }
 
@@ -255,24 +296,23 @@ function _showToast(msg, isError = false) {
   setTimeout(() => el.remove(), 2500);
 }
 
-// ── GPS 위치 갱신 시 호출 (마커 show/hide) ──────────────────────────────────
+// ── GPS 위치 갱신 시 호출 (100m 내 표시) ─────────────────────────────────────
 export function updateStarterPlayerPos(lat, lng) {
   window._starterPlayerPos = { lat, lng };
   if (!_active || !_markers.length) return;
   for (const marker of _markers) {
     const pos  = marker.getPosition();
     const dist = _haversine(lat, lng, pos.lat(), pos.lng());
-    // 100m 밖은 숨김, 100m 내 표시
     marker.setMap(dist <= 100 ? _map : null);
   }
 }
 
-// ── 100m 내 실제 보물박스가 있는지 외부에서 판단 후 활성화 ─────────────────
-export function isStarterActive() { return _active; }
+export function isStarterActive()  { return _active; }
 
 export function destroyStarterPack() {
   _clearMarkers();
   _active  = false;
-  _pack    = null;
+  _seed    = null;
+  _claimed = null;
   _objects = null;
 }
