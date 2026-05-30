@@ -110,6 +110,7 @@ const TRANSLATIONS = {
     ranking_error: 'Không thể tải bảng xếp hạng',
     ranking_empty: 'Chưa có dữ liệu xếp hạng',
     ranking_found_suffix: ' hộp báu',
+    slogan_marquee: '🏴‍☠️ Kho báu của tôi sẽ tồn tại mãi trên bản đồ &nbsp;•&nbsp; 💎 Để lại truyền thuyết trên bản đồ &nbsp;•&nbsp; 🚶 Bước chân tạo ra kinh tế &nbsp;•&nbsp; 🗺️ Cả thế giới thực là một dungeon &nbsp;•&nbsp; ⚔️ Trở thành lãnh chúa 1km &nbsp;•&nbsp; 🌍 Thế giới do người chơi tạo ra &nbsp;•&nbsp; 💰 Di chuyển là khai thác &nbsp;•&nbsp; 🏆 Hãy là người giấu kho báu trước &nbsp;•&nbsp; 🌟 Con hẻm bình thường cũng thành danh thắng khi có kho báu &nbsp;•&nbsp; 🏰 Xây cửa hàng và mở rộng đế chế',
   },
   en: {
     page_title: 'Ocean Park - Where Adventure Begins',
@@ -221,6 +222,7 @@ const TRANSLATIONS = {
     ranking_error: 'Failed to load rankings',
     ranking_empty: 'No ranking data yet',
     ranking_found_suffix: ' found',
+    slogan_marquee: '🏴‍☠️ My treasure lives on the map forever &nbsp;•&nbsp; 💎 Leave your legend on the map &nbsp;•&nbsp; 🚶 Footsteps build the economy &nbsp;•&nbsp; 🗺️ The entire real world is a dungeon &nbsp;•&nbsp; ⚔️ Become the lord of 1km &nbsp;•&nbsp; 🌍 World made by players, value shared by players &nbsp;•&nbsp; 💰 Movement is mining &nbsp;•&nbsp; 🏆 Be the one who hides treasure first &nbsp;•&nbsp; 🌟 Any alley becomes a landmark when treasure is hidden &nbsp;•&nbsp; 🏰 Build shops and expand your empire',
   },
   ko: {
     page_title: '모험이 시작되는 오션파크',
@@ -332,6 +334,7 @@ const TRANSLATIONS = {
     ranking_error: '랭킹 로드 실패',
     ranking_empty: '랭킹 데이터가 없습니다',
     ranking_found_suffix: '개 발견',
+    slogan_marquee: '🏴‍☠️ 나는 죽어도 내가 숨긴 보물은 지도에 영원히 남는다 &nbsp;•&nbsp; 💎 지도 위에 전설을 남겨라 &nbsp;•&nbsp; 🚶 발걸음이 모여 경제를 만든다 &nbsp;•&nbsp; 🗺️ 현실 세계 전체가 하나의 던전이다 &nbsp;•&nbsp; ⚔️ 1km의 군주가 되어라 &nbsp;•&nbsp; 🌍 유저가 만드는 세계, 유저가 나누는 가치 &nbsp;•&nbsp; 💰 이동이 곧 채굴이다 &nbsp;•&nbsp; 🏆 보물을 찾는 사람보다 먼저 숨기고 생성하는 사람이 되어라 &nbsp;•&nbsp; 🌟 평범한 골목도 보물이 숨겨지면 명소가 된다 &nbsp;•&nbsp; 🏰 상점을 세우고 제국을 확장하라',
   },
 };
 
@@ -356,6 +359,10 @@ export function applyLang(lang) {
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = _t(el.dataset.i18n);
+  });
+  // innerHTML 번역 (슬로건 마키 등 HTML 엔티티 포함 요소)
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    el.innerHTML = _t(el.dataset.i18nHtml);
   });
   document.title = _t('page_title');
   document.querySelectorAll('[data-lang-btn]').forEach(btn => {
