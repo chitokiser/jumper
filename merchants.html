@@ -42,6 +42,20 @@
     .mc-map-wrap:fullscreen {
       overflow: visible;
     }
+    /* CSS 전체화면 폴백 (iOS Safari 등 Fullscreen API 미지원 브라우저) */
+    .mc-map-wrap.mc-css-fs {
+      position: fixed !important;
+      inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      height: 100vh !important;
+      z-index: 8000 !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      border: none !important;
+      overflow: hidden !important;
+    }
+    body.mc-css-fs-active { overflow: hidden !important; }
     @media (max-width: 600px) { .mc-map-wrap { height: 340px; } }
     #merchantMap { width: 100%; height: 100%; }
 

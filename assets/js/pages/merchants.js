@@ -213,6 +213,51 @@ function loadMapsScript() {
   });
 }
 
+// ── 전체화면 (네이티브 API + CSS 폴백) ───────────────────────────────────────
+let _cssFs = false;
+
+function _isInFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement) || _cssFs;
+}
+
+function _requestFullscreen() {
+  const el = document.querySelector('.mc-map-wrap') ?? document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) {
+    req.call(el)
+      .then(() => setTimeout(_moveModalsToFs, 300))
+      .catch(() => _enterCssFs()); // 네이티브 실패 시 CSS 폴백
+  } else {
+    _enterCssFs(); // iOS Safari 등 API 자체가 없는 경우
+  }
+}
+
+function _enterCssFs() {
+  const el = document.querySelector('.mc-map-wrap');
+  if (!el || _cssFs) return;
+  _cssFs = true;
+  el.classList.add('mc-css-fs');
+  document.body.classList.add('mc-css-fs-active');
+  const btn = document.getElementById('btnFullscreen');
+  if (btn) btn.textContent = '✕';
+  // CSS FS는 body 기준 position:fixed 이므로 모달 이동 불필요
+}
+
+function _exitCssFs() {
+  const el = document.querySelector('.mc-map-wrap');
+  if (!el || !_cssFs) return;
+  _cssFs = false;
+  el.classList.remove('mc-css-fs');
+  document.body.classList.remove('mc-css-fs-active');
+  const btn = document.getElementById('btnFullscreen');
+  if (btn) btn.textContent = '⛶';
+}
+
+function _exitFullscreen() {
+  if (_cssFs) { _exitCssFs(); return; }
+  (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+}
+
 // ── 전체화면 모달 이동 (모듈 스코프 — initMap 외부에서도 호출 가능) ────────────
 const FS_MODALS = [
   'invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast',
@@ -1195,11 +1240,7 @@ function showMyLocation() {
   }
 
   // 전체화면 전환 (모바일 호환: 특정 요소 기준)
-  const mapWrap = document.querySelector('.mc-map-wrap') ?? document.documentElement;
-  const fsRequest = mapWrap.requestFullscreen ?? mapWrap.webkitRequestFullscreen;
-  fsRequest?.call(mapWrap).catch(() => {});
-  // fullscreenchange 이전에 모달 미리 이동 (타이밍 보장)
-  setTimeout(_moveModalsToFs, 300);
+  _requestFullscreen();
 
   const _onGpsReady = () => {
     if (!isGameServerConnected()) {
@@ -2889,30 +2930,17 @@ async function init() {
   });
   initTutorial();
   $('btnFullscreen')?.addEventListener('click', () => {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      const el = document.querySelector('.mc-map-wrap') ?? document.documentElement;
-      const req = el.requestFullscreen ?? el.webkitRequestFullscreen;
-      req?.call(el).then(() => setTimeout(_moveModalsToFs, 300)).catch(() => {});
-    } else {
-      (document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document);
-    }
+    if (_isInFullscreen()) { _exitFullscreen(); } else { _requestFullscreen(); }
   });
 
-  // AR 스캔: 풀스크린을 먼저 종료한 뒤 이동 (카메라 활성화 시 브라우저가 강제 종료하는 문제 방지)
+  // AR 스캔: 전체화면 먼저 종료 후 이동
   $('btnArScan')?.addEventListener('click', () => {
-    const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    const go   = () => { location.href = '/ar-scan.html'; };
-    if (inFs) {
-      (document.exitFullscreen ?? document.webkitExitFullscreen)
-        ?.call(document)
-        .then(go).catch(go);
-    } else {
-      go();
-    }
+    const go = () => { location.href = '/ar-scan.html'; };
+    if (_isInFullscreen()) { _exitFullscreen(); setTimeout(go, 200); } else { go(); }
   });
 
   function _onFullscreenChange() {
-    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const isFs = _isInFullscreen();
     const btn = $('btnFullscreen');
     if (btn) btn.textContent = isFs ? '✕' : '⛶';
     if (!isFs && _ctx.map) {
