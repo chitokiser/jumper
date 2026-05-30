@@ -213,6 +213,31 @@ function loadMapsScript() {
   });
 }
 
+// ── 전체화면 모달 이동 (모듈 스코프 — initMap 외부에서도 호출 가능) ────────────
+const FS_MODALS = [
+  'invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast',
+  'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal', 'raceModal', 'dungeonModal',
+  'utNpcModal', 'utRegModal', 'utMyModal',
+  'userPlacePanel', 'userPlaceConfirmModal', 'userPlaceBanner', 'btnUserPlaceCancelMode',
+  'soBuyModal', 'soExecuteModal', 'soTransferModal',
+  'anonBadge',
+];
+function _moveModalsToFs() {
+  const fs   = document.fullscreenElement || document.webkitFullscreenElement;
+  const dest = fs || document.body;
+  FS_MODALS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== dest) dest.appendChild(el);
+  });
+  const bo = document.getElementById('battleOverlay');
+  if (bo) {
+    if (fs) fs.appendChild(bo);
+    else document.querySelector('.mc-map-wrap')?.appendChild(bo);
+  }
+}
+document.addEventListener('fullscreenchange',       _moveModalsToFs);
+document.addEventListener('webkitfullscreenchange', _moveModalsToFs);
+
 // ── 지도 초기화 ──────────────────────────────────────────────────────────────
 function initMap() {
   map = new google.maps.Map($('merchantMap'), {
@@ -290,35 +315,6 @@ function initMap() {
     infoWindow.close();
     const el = $('abCoordInput'); if (el) el.value = '';
   });
-
-  // 전체화면 진입/종료 시 position:fixed 모달들을 fullscreen 요소 안으로 이동
-  // (HUD·스킬바는 Google Maps Control이므로 자동으로 fullscreen에 포함됨)
-  const FS_MODALS = [
-    'invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast',
-    'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal', 'raceModal', 'dungeonModal',
-    'utNpcModal', 'utRegModal', 'utMyModal',
-    // 배치 상점
-    'userPlacePanel', 'userPlaceConfirmModal', 'userPlaceBanner', 'btnUserPlaceCancelMode',
-    // 스톡옵션
-    'soBuyModal', 'soExecuteModal', 'soTransferModal',
-    // 익명 배지
-    'anonBadge',
-  ];
-  function _moveModalsToFs() {
-    const fs = document.fullscreenElement || document.webkitFullscreenElement;
-    const dest = fs || document.body;
-    FS_MODALS.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) dest.appendChild(el);
-    });
-    const bo = document.getElementById('battleOverlay');
-    if (bo) {
-      if (fs) fs.appendChild(bo);
-      else document.querySelector('.mc-map-wrap')?.appendChild(bo);
-    }
-  }
-  document.addEventListener('fullscreenchange', _moveModalsToFs);
-  document.addEventListener('webkitfullscreenchange', _moveModalsToFs);
 
   // 관리자: 지도 클릭 시 근처 숨김 보물박스 표시
   map.addListener('click', e => {
@@ -1198,8 +1194,12 @@ function showMyLocation() {
     toggleBtn.classList.add('gs-connecting');
   }
 
-  // 전체화면 전환 — documentElement 사용: position:fixed 모달이 항상 보임
-  document.documentElement.requestFullscreen?.().catch(() => {});
+  // 전체화면 전환 (모바일 호환: 특정 요소 기준)
+  const mapWrap = document.querySelector('.mc-map-wrap') ?? document.documentElement;
+  const fsRequest = mapWrap.requestFullscreen ?? mapWrap.webkitRequestFullscreen;
+  fsRequest?.call(mapWrap).catch(() => {});
+  // fullscreenchange 이전에 모달 미리 이동 (타이밍 보장)
+  setTimeout(_moveModalsToFs, 300);
 
   const _onGpsReady = () => {
     if (!isGameServerConnected()) {
@@ -2890,7 +2890,9 @@ async function init() {
   initTutorial();
   $('btnFullscreen')?.addEventListener('click', () => {
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
+      const el = document.querySelector('.mc-map-wrap') ?? document.documentElement;
+      const req = el.requestFullscreen ?? el.webkitRequestFullscreen;
+      req?.call(el).then(() => setTimeout(_moveModalsToFs, 300)).catch(() => {});
     } else {
       (document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document);
     }
