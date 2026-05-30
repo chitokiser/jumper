@@ -44,6 +44,22 @@ const CATALOG = {
     price: 20000, type: 'tower', label: '아쳐타워',
     atk: 50, radius: 40, hp: 500,
   },
+  shop_potion: {
+    price: 600000, type: 'shop', label: '약물상점',
+    shopType: 'shop_potion', image: '/assets/images/shops/potion.png',
+  },
+  shop_weapon: {
+    price: 400000, type: 'shop', label: '무기상점',
+    shopType: 'shop_weapon_armor', image: '/assets/images/shops/weapon.png',
+  },
+  shop_armor: {
+    price: 400000, type: 'shop', label: '방어구 상점',
+    shopType: 'shop_weapon_armor', image: '/assets/images/shops/armor.png',
+  },
+  shop_misc: {
+    price: 300000, type: 'shop', label: '잡템상점',
+    shopType: 'shop_misc', image: '/assets/images/shops/misc.png',
+  },
 };
 
 // ── 1. 오브젝트 배치 ──────────────────────────────────────────────────────────
@@ -119,6 +135,15 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
       image:  '/assets/images/shops/tower.png',
     });
     docId = ref.id;
+  } else if (def.type === 'shop') {
+    const ref = await db.collection('game_shops').add({
+      ...base,
+      name:  `${nim} ${def.label}${placeNo}`,
+      type:  def.shopType,
+      image: def.image ?? null,
+      items: [],  // 관리자가 이후 아이템 등록
+    });
+    docId = ref.id;
   }
 
   return { ok: true, docId, itemKey, label: def.label, price: def.price };
@@ -126,18 +151,21 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
 
 // ── 2. 내가 배치한 오브젝트 목록 ─────────────────────────────────────────────
 async function getMyPlacedObjects(uid) {
-  const [boxes, monsters, towers] = await Promise.all([
+  const [boxes, monsters, towers, shops] = await Promise.all([
     db.collection('treasure_boxes')
       .where('ownerUid', '==', uid).where('active', '==', true).limit(20).get(),
     db.collection('battle_monsters')
       .where('ownerUid', '==', uid).where('active', '==', true).limit(20).get(),
     db.collection('battle_towers')
       .where('ownerUid', '==', uid).where('active', '==', true).limit(20).get(),
+    db.collection('game_shops')
+      .where('ownerUid', '==', uid).where('active', '==', true).limit(20).get(),
   ]);
   return {
     boxes:    boxes.docs.map(d => ({ id: d.id, ...d.data() })),
     monsters: monsters.docs.map(d => ({ id: d.id, ...d.data() })),
     towers:   towers.docs.map(d => ({ id: d.id, ...d.data() })),
+    shops:    shops.docs.map(d => ({ id: d.id, ...d.data() })),
   };
 }
 

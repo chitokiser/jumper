@@ -20,7 +20,12 @@ const CATALOG = [
   { key: 'mon_orc2',    emoji: '🗡️', label: 'Orc2',          desc: 'HP 1800 · ATK 80',    price: 20000, tag: 'monster' },
   { key: 'mon_orc3',    emoji: '⚔️', label: 'Orc3',          desc: 'HP 2500 · ATK 100',   price: 25000, tag: 'monster' },
   // 타워
-  { key: 'archer_tower', emoji: '🏹', label: '아쳐타워', desc: 'ATK 50 · 반경 40m',       price: 20000, tag: 'tower' },
+  { key: 'archer_tower', emoji: '🏹', label: '아쳐타워',   desc: 'ATK 50 · 반경 40m',         price:  20000, tag: 'tower' },
+  // 상점
+  { key: 'shop_potion',  emoji: '🧪', label: '약물상점',   desc: '물약·버프 아이템 판매',       price: 600000, tag: 'shop' },
+  { key: 'shop_weapon',  emoji: '⚔️', label: '무기상점',   desc: '무기 장비 아이템 판매',       price: 400000, tag: 'shop' },
+  { key: 'shop_armor',   emoji: '🛡️', label: '방어구 상점', desc: '방어구 장비 아이템 판매',   price: 400000, tag: 'shop' },
+  { key: 'shop_misc',    emoji: '🎒', label: '잡템상점',   desc: '소모품·기타 아이템 판매',     price: 300000, tag: 'shop' },
 ];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────────
@@ -178,10 +183,12 @@ async function loadMyList() {
   try {
     const res  = await cfGetMine();
     const { boxes, monsters, towers } = res.data;
+    const shopEmoji = (t) => ({ shop_potion:'🧪', shop_weapon_armor:'⚔️', shop_misc:'🎒' }[t] ?? '🏪');
     const all  = [
       ...boxes.map(o    => ({ ...o, emoji: '🎁', label: o.name })),
       ...monsters.map(o => ({ ...o, emoji: '👾', label: o.name })),
       ...towers.map(o   => ({ ...o, emoji: '🏹', label: o.name })),
+      ...(res.data.shops ?? []).map(o => ({ ...o, emoji: shopEmoji(o.type), label: o.name })),
     ];
     if (!all.length) { listEl.innerHTML = '<div style="color:var(--muted);">배치한 오브젝트 없음</div>'; return; }
 
