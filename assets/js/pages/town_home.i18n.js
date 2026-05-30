@@ -2,8 +2,9 @@
 const TRANSLATIONS = {
   vi: {
     page_title: 'Công viên Đại dương - Nơi bắt đầu cuộc phiêu lưu',
-    hero_title: 'Vượt qua Pokémon và Geocaching',
-    hero_desc: 'Thu hút thợ săn kho báu toàn cầu',
+    hero_title: 'Di chuyển là tài sản',
+    hero_desc: 'Từ thời đại xem quảng cáo, sang thời đại di chuyển tìm kho báu',
+    hero_sub: 'Thực tế chính là bản đồ game — JumpDAO',
     notice_section: 'Thông báo',
     notice_more: 'Xem thêm',
     notice_help: 'Chỉ quản trị viên mới có thể đăng thông báo.',
@@ -112,8 +113,9 @@ const TRANSLATIONS = {
   },
   en: {
     page_title: 'Ocean Park - Where Adventure Begins',
-    hero_title: 'Beyond Pokémon & Geocaching',
-    hero_desc: 'Attract Treasure Hunters Worldwide',
+    hero_title: 'Your Footsteps Build the Economy',
+    hero_desc: 'From the age of watching ads, to the age of moving for treasure',
+    hero_sub: 'The real world is the game map — JumpDAO',
     notice_section: 'Notices',
     notice_more: 'More',
     notice_help: 'Only administrators can post notices.',
@@ -222,8 +224,9 @@ const TRANSLATIONS = {
   },
   ko: {
     page_title: '모험이 시작되는 오션파크',
-    hero_title: '포켓몬과 지오캐싱을 넘어서',
-    hero_desc: '전세계 트레져헌터를 유치 하세요',
+    hero_title: '이동이 곧 자산이다',
+    hero_desc: '광고를 보는 시대에서, 보물을 찾아 움직이는 시대로',
+    hero_sub: '현실이 곧 게임맵이다 — JumpDAO',
     notice_section: '공지사항',
     notice_more: '더보기',
     notice_help: '공지사항은 관리자만 작성할 수 있습니다.',
