@@ -466,10 +466,14 @@ function startCountdown() {
 
 function startRace() {
   showPhase('game');
-  buildSkillBar();
-  startEngine();
-  _lastTs = performance.now();
-  _raf = requestAnimationFrame(loop);
+  // 게임화면이 표시된 후 resizeCanvas (숨겨진 상태에서 호출 시 clientWidth=0)
+  requestAnimationFrame(() => {
+    resizeCanvas();
+    buildSkillBar();
+    startEngine();
+    _lastTs = performance.now();
+    _raf = requestAnimationFrame(loop);
+  });
 }
 
 function makeItems() {
@@ -523,20 +527,26 @@ function initFullscreen() {
   });
 }
 
+// 논리 해상도 고정 — CSS 스케일로 반응형 처리 (DPR 이슈 없이 단순화)
+const LOGIC_W = 400, LOGIC_H = 225;
+
 function resizeCanvas() {
   const canvas = $('raceCanvas');
   const wrap   = $('canvasWrap');
-  if (!canvas || !wrap) return;
-  // 논리 해상도는 고정, CSS 크기만 조절 (모바일 선명도)
-  const dpr  = Math.min(window.devicePixelRatio || 1, 2);
-  const w    = wrap.clientWidth;
-  const h    = Math.round(w * 9 / 16);
-  canvas.style.width  = w + 'px';
-  canvas.style.height = h + 'px';
-  // 실제 픽셀 (DPR 적용)
-  canvas.width  = Math.round(w * dpr);
-  canvas.height = Math.round(h * dpr);
-  initRenderer(canvas);  // ctx 재초기화
+  if (!canvas) return;
+
+  // 논리 해상도 고정 (항상 400×225)
+  canvas.width  = LOGIC_W;
+  canvas.height = LOGIC_H;
+
+  // CSS 표시 크기: 컨테이너 너비에 맞춤 (없으면 100%)
+  const cw = wrap?.clientWidth || window.innerWidth;
+  if (cw > 0) {
+    canvas.style.width  = cw + 'px';
+    canvas.style.height = Math.round(cw * LOGIC_H / LOGIC_W) + 'px';
+  }
+
+  initRenderer(canvas);
 }
 
 // ── 초기화 ───────────────────────────────────────────────────────────────────

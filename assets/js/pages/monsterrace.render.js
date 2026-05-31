@@ -176,8 +176,8 @@ export function renderScene(track, racers, player, items, ts) {
   for (const item of items) {
     if (!item.active) continue;
     const dist = item.trackPos - player.pos;
-    if (dist < 0.5 || dist > DRAW_N) continue;
-    const si = segMap[Math.round(dist)];
+    if (dist < 0.5 || dist > DRAW_N - 1) continue;
+    const si = segMap[Math.floor(dist)] || segMap[Math.ceil(dist)];
     if (!si) continue;
     const sc  = D_NEAR / si.depth;
     const sz  = 40 * sc;
@@ -200,7 +200,7 @@ export function renderScene(track, racers, player, items, ts) {
 
   for (const r of ahead) {
     const dist = r.pos - player.pos;
-    const si   = segMap[Math.round(dist)];
+    const si   = segMap[Math.floor(dist)] || segMap[Math.ceil(dist)];
     if (!si) continue;
     const sc   = D_NEAR / si.depth;
     const sh   = 90 * sc;
@@ -277,8 +277,8 @@ export function renderScene(track, racers, player, items, ts) {
     for (const trap of (r.traps||[])) {
       if (!trap.active) continue;
       const dist = trap.pos - player.pos;
-      if (dist < 0.3 || dist > DRAW_N) continue;
-      const si = segMap[Math.round(dist)];
+      if (dist < 0.3 || dist > DRAW_N - 1) continue;
+      const si = segMap[Math.floor(dist)] || segMap[Math.ceil(dist)];
       if (!si) continue;
       const sc = D_NEAR / si.depth;
       const sz = Math.max(8, 22 * sc);
