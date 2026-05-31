@@ -244,32 +244,8 @@ export function renderScene(track, racers, player, items, ts) {
     }
   }
 
-  // ── 플레이어 (하단 중앙) ───────────────────────────────────────────────────
-  const spd    = player.speed / player.maxSpeed;
-  const pFps   = 4 + spd * 12;
-  const pFrame = getFrame('player', pFps, ts);
-
-  const pw = 68 + spd * 8, ph = 86;
-  const px = W/2 - pw/2, py = H - ph - 16;
-
-  // 부스트 속도선
-  if (player.effects?.boost > Date.now()) {
-    _ctx.save();
-    _ctx.globalAlpha = 0.35;
-    for (let i = 0; i < 6; i++) {
-      const lx = px - 30 + i * 18;
-      _ctx.fillStyle = '#60a5fa';
-      _ctx.fillRect(lx, py + ph*0.3, 3 + Math.random()*4, 2);
-    }
-    _ctx.restore();
-  }
-
-  if (pFrame) {
-    _ctx.drawImage(pFrame, px, py, pw, ph);
-  } else {
-    _ctx.fillStyle = '#3b82f6';
-    _ctx.fillRect(px, py, pw, ph);
-  }
+  // ── 플레이어 스케이트보드 (3인칭 후방 시점) ────────────────────────────────
+  drawPlayerBoard(_ctx, W, H, player, ts);
 
   // ── 트랩 이모지 ────────────────────────────────────────────────────────────
   _ctx.textAlign = 'center';
@@ -288,17 +264,127 @@ export function renderScene(track, racers, player, items, ts) {
     }
   }
 
-  // ── 부스트 속도감 오버레이 ─────────────────────────────────────────────────
-  if (spd > 0.85) {
+  // ── 속도감 오버레이 (빠를수록 비네팅) ──────────────────────────────────────
+  const spd = player.speed / player.maxSpeed;
+  if (spd > 0.7) {
     _ctx.save();
-    _ctx.globalAlpha = (spd - 0.85) * 1.5;
-    const vg = _ctx.createRadialGradient(W/2,H/2,10,W/2,H/2,W*0.7);
+    _ctx.globalAlpha = (spd - 0.7) * 1.2;
+    const vg = _ctx.createRadialGradient(W/2,H/2,20,W/2,H/2,W*0.75);
     vg.addColorStop(0,'transparent');
-    vg.addColorStop(1,'#000000aa');
+    vg.addColorStop(1,'#000000cc');
     _ctx.fillStyle = vg;
     _ctx.fillRect(0,0,W,H);
     _ctx.restore();
   }
 
   _ctx.restore(); // shake 해제
+}
+
+// ── 스케이트보드 + 라이더 (하단 중앙 고정 시점) ────────────────────────────────
+function drawPlayerBoard(ctx, W, H, player, ts) {
+  const spd   = player.speed / player.maxSpeed;
+  const steer = player.lane * 0.18;         // 조향에 따른 기울기
+  const boost = (player.effects?.boost || 0) > Date.now();
+  const fallen= player.fallUntil > Date.now();
+
+  const cx = W / 2;
+  const cy = H - 28;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (fallen) ctx.rotate(Math.PI / 2 + Math.sin(ts*0.01)*0.3);
+  else        ctx.rotate(steer * 0.25);
+
+  // ── 속도 트레일 ──
+  if (spd > 0.3 && !fallen) {
+    ctx.save();
+    ctx.globalAlpha = spd * 0.6;
+    const trailColors = boost ? ['#60a5fa','#93c5fd','#bfdbfe'] : ['#ffffff44','#ffffff22','#ffffff11'];
+    trailColors.forEach((c, i) => {
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 2 - i * 0.5;
+      ctx.beginPath();
+      [-18, -6, 6, 18].forEach(ox => {
+        ctx.moveTo(ox, 8);
+        ctx.lineTo(ox + (Math.random()-0.5)*4, 8 + 14 + i*6 + spd*12);
+      });
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // ── 바퀴 (뒷면 2개) ──
+  ctx.fillStyle = '#111';
+  [[-20, 6], [20, 6]].forEach(([ox, oy]) => {
+    ctx.beginPath();
+    ctx.ellipse(ox, oy, 6, 4, 0, 0, Math.PI*2);
+    ctx.fill();
+    // 바퀴 테두리
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // ── 보드 데크 ──
+  ctx.fillStyle = boost ? '#1d4ed8' : '#7c2d12';
+  ctx.beginPath();
+  ctx.roundRect(-28, -4, 56, 10, 4);
+  ctx.fill();
+
+  // 그립 테이프 패턴
+  ctx.fillStyle = boost ? '#3b82f6' : '#431407';
+  ctx.beginPath();
+  ctx.roundRect(-24, -3, 48, 8, 3);
+  ctx.fill();
+
+  // 로고 줄무늬
+  ctx.fillStyle = '#ffffff33';
+  ctx.fillRect(-8, -2, 16, 2);
+
+  // ── 라이더 실루엣 (캐릭터 뒷모습) ──
+  if (!fallen) {
+    // 다리
+    ctx.fillStyle = '#1e3a5f';
+    ctx.beginPath();
+    ctx.roundRect(-10, -22, 8, 18, 3);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(2, -22, 8, 18, 3);
+    ctx.fill();
+
+    // 몸통
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath();
+    ctx.roundRect(-14, -42, 28, 22, 5);
+    ctx.fill();
+
+    // 팔 (조향에 따라 움직임)
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath();
+    ctx.roundRect(-22, -40, 9, 16, 3);
+    ctx.save();
+    ctx.translate(0, 0);
+    ctx.rotate(steer * 0.4);
+    ctx.roundRect(13, -40, 9, 16, 3);
+    ctx.restore();
+    ctx.fill();
+
+    // 헬멧
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.arc(0, -46, 12, 0, Math.PI*2);
+    ctx.fill();
+    // 헬멧 챙
+    ctx.fillStyle = '#b91c1c';
+    ctx.beginPath();
+    ctx.ellipse(0, -35, 14, 4, 0, 0, Math.PI);
+    ctx.fill();
+    // 고글
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.roundRect(-8, -50, 16, 7, 3);
+    ctx.fill();
+  }
+
+  ctx.restore();
 }

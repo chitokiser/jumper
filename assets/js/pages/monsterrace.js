@@ -137,7 +137,7 @@ let _selectedSkills = [];
 let _track = null, _player = null, _racers = [], _items = [];
 let _traps = [], _log = [], _finishOrder = [];
 let _raf = null, _lastTs = 0, _gameTs = 0;
-const _keys = {left:false, right:false};
+const _keys = {left:false, right:false, gas:false, brake:false};
 let _aiTimers = {};
 
 const $ = id => document.getElementById(id);
@@ -250,13 +250,19 @@ function updateRacer(r, isPlayer) {
     * (slowMax ? 0.6:1.0)
     * (r.wobble>0 ? 0.82:1.0);
 
-  if (r.speed < top) r.speed = Math.min(r.speed + ACCEL * (isPlayer?1:0.92), top);
-
   if (isPlayer) {
+    // 액셀: GAS 버튼 → 최고속, 미입력 → 60% 자동 유지
+    const targetSpeed = _keys.gas ? top : top * 0.6;
+    if (r.speed < targetSpeed)       r.speed = Math.min(r.speed + ACCEL, targetSpeed);
+    else if (_keys.brake)            r.speed = Math.max(0, r.speed - ACCEL * 3);
+    else if (r.speed > targetSpeed)  r.speed = Math.max(targetSpeed, r.speed - ACCEL * 0.5);
+
     if (_keys.left)  r.lane = Math.max(-1.8, r.lane - STEER);
     if (_keys.right) r.lane = Math.min( 1.8, r.lane + STEER);
     if (Math.abs(r.lane) > 1.5) r.speed *= 0.97;   // 코스 이탈 페널티
   } else {
+    // AI: 항상 전속력
+    if (r.speed < top) r.speed = Math.min(r.speed + ACCEL * 0.92, top);
     r.lane += (Math.random()-0.5)*0.015;
     r.lane  = r.lane * 0.97;
     r.lane  = Math.max(-1.5, Math.min(1.5, r.lane));
@@ -487,12 +493,16 @@ function makeItems() {
 // ── 입력 ─────────────────────────────────────────────────────────────────────
 function initInput() {
   document.addEventListener('keydown',e=>{
-    if(e.key==='ArrowLeft') { e.preventDefault(); _keys.left=true; }
-    if(e.key==='ArrowRight'){ e.preventDefault(); _keys.right=true; }
+    if(e.key==='ArrowLeft')  { e.preventDefault(); _keys.left=true; }
+    if(e.key==='ArrowRight') { e.preventDefault(); _keys.right=true; }
+    if(e.key==='ArrowUp'||e.key===' ') { e.preventDefault(); _keys.gas=true; }
+    if(e.key==='ArrowDown')  { e.preventDefault(); _keys.brake=true; }
   });
   document.addEventListener('keyup',e=>{
-    if(e.key==='ArrowLeft') _keys.left=false;
+    if(e.key==='ArrowLeft')  _keys.left=false;
     if(e.key==='ArrowRight') _keys.right=false;
+    if(e.key==='ArrowUp'||e.key===' ') _keys.gas=false;
+    if(e.key==='ArrowDown')  _keys.brake=false;
   });
 
   const touch=(id,key)=>{
@@ -500,10 +510,12 @@ function initInput() {
     el.addEventListener('touchstart',e=>{e.preventDefault();_keys[key]=true;},{passive:false});
     el.addEventListener('touchend',  e=>{e.preventDefault();_keys[key]=false;},{passive:false});
     el.addEventListener('mousedown',()=>_keys[key]=true);
-    document.addEventListener('mouseup',()=>_keys[key]=false);
+    document.addEventListener('mouseup',()=>{ _keys[key]=false; });
   };
   touch('btnLeft','left');
   touch('btnRight','right');
+  touch('btnGas','gas');
+  touch('btnBrake','brake');
 }
 
 // ── 전체화면 ─────────────────────────────────────────────────────────────────

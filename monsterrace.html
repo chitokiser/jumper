@@ -115,18 +115,25 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
 .sk-btn small{font-size:8px;color:#9ca3af;white-space:nowrap}
 .sk-btn .cd{position:absolute;top:1px;right:4px;font-size:9px;font-weight:700;color:#fbbf24}
 
-/* 조향 버튼 */
+/* 조향+액셀+브레이크 버튼 */
 #steerBar{
   position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
-  display:flex;gap:56px;pointer-events:all
+  display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;
+  gap:5px;width:200px;pointer-events:all
 }
 .steer{
-  width:66px;height:48px;background:rgba(255,255,255,.13);
-  border:2px solid rgba(255,255,255,.22);border-radius:14px;
-  font-size:22px;cursor:pointer;display:flex;align-items:center;
-  justify-content:center;user-select:none;pointer-events:all
+  height:44px;background:rgba(255,255,255,.13);
+  border:2px solid rgba(255,255,255,.22);border-radius:12px;
+  font-size:20px;cursor:pointer;display:flex;align-items:center;
+  flex-direction:column;justify-content:center;user-select:none;pointer-events:all;
+  color:#fff;gap:1px
 }
-.steer:active{background:rgba(255,255,255,.3)}
+.steer small{font-size:8px;color:#9ca3af}
+.steer:active,.steer.pressed{background:rgba(255,255,255,.35);border-color:#60a5fa}
+#btnGas{background:rgba(34,197,94,.25);border-color:#22c55e;grid-column:2;grid-row:1}
+#btnBrake{background:rgba(239,68,68,.18);border-color:#ef4444;grid-column:2;grid-row:2}
+#btnLeft{grid-column:1;grid-row:1/3}
+#btnRight{grid-column:3;grid-row:1/3}
 
 /* ── 완주 ── */
 #finishScreen{text-align:center}
@@ -222,10 +229,12 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
       <!-- 스킬 -->
       <div id="skillBar"></div>
 
-      <!-- 조향 -->
+      <!-- 조향 + 액셀 + 브레이크 -->
       <div id="steerBar">
-        <button class="steer" id="btnLeft">◀</button>
-        <button class="steer" id="btnRight">▶</button>
+        <button class="steer" id="btnLeft">◀<small>LEFT</small></button>
+        <button class="steer" id="btnGas">▲<small>GAS</small></button>
+        <button class="steer" id="btnRight">▶<small>RIGHT</small></button>
+        <button class="steer" id="btnBrake" style="font-size:16px">■<small>BRAKE</small></button>
       </div>
     </div>
   </div>
