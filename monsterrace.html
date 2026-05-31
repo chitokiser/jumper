@@ -37,11 +37,13 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
 /* ── 스킬 선택 ── */
 #skillScreen h2{font-size:17px;font-weight:800}
 #skCount{font-size:12px;color:#9ca3af}
-#skillGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;width:100%;max-width:340px;padding-bottom:4px}
+#skillGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;max-width:420px;padding-bottom:4px}
 .sp-btn{background:#111827;border:2px solid #1f2937;border-radius:11px;
-  padding:9px 5px;cursor:pointer;color:#fff;text-align:center;transition:all .15s;line-height:1.2}
-.sp-emoji{font-size:20px;display:block;margin-bottom:3px}
-.sp-name{font-size:10px}.sp-mp{font-size:9px;color:#60a5fa;margin-top:2px}
+  padding:8px 4px;cursor:pointer;color:#fff;text-align:center;transition:all .15s;line-height:1.2}
+.sp-emoji{font-size:18px;display:block;margin-bottom:2px}
+.sp-name{font-size:9px;font-weight:700}
+.sp-mp{font-size:8px;color:#60a5fa;margin-top:1px}
+.sp-desc{font-size:7px;color:#6b7280;margin-top:2px;line-height:1.3}
 .sp-btn.sel{border-color:#f59e0b;background:#1c1400}
 
 /* ── 카운트다운 ── */
@@ -100,15 +102,18 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
   animation:logIn .25s ease}
 @keyframes logIn{from{opacity:0;transform:translateX(-4px)}to{opacity:1}}
 
-/* ── 컨트롤 통합 래퍼 (스킬 + 조향 겹침 방지) ── */
+/* ── 컨트롤 래퍼 (조향만) ── */
 #controls{
   position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
-  display:flex;flex-direction:column;align-items:center;gap:5px;
   pointer-events:all;
 }
 
-/* 스킬 버튼 */
-#skillBar{display:flex;gap:6px;}
+/* 스킬 버튼 — 오른쪽 세로 배치 */
+#skillBar{
+  position:absolute;right:8px;bottom:6px;
+  display:flex;flex-direction:column;gap:5px;
+  pointer-events:all;
+}
 .sk-btn{
   display:flex;flex-direction:column;align-items:center;gap:1px;
   background:rgba(0,0,0,.85);border:2px solid #374151;border-radius:10px;
@@ -189,20 +194,20 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
   <div class="cd-sub">레이서 집결!</div>
   <div id="cdNum">3</div>
   <div class="racer-grid">
-    <div class="racer-chip"><div class="racer-dot" style="background:#3b82f6"></div>🛹 Player</div>
-    <div class="racer-chip"><div class="racer-dot" style="background:#4a7c2f"></div>👹 Orc3</div>
-    <div class="racer-chip"><div class="racer-dot" style="background:#7c3a1a"></div>🏴‍☠️ Pirate3</div>
-    <div class="racer-chip"><div class="racer-dot" style="background:#5a7a3a"></div>🧟 Zombie1</div>
-    <div class="racer-chip"><div class="racer-dot" style="background:#4a6a2a"></div>🧟 Zombie2</div>
-    <div class="racer-chip"><div class="racer-dot" style="background:#8b0000"></div>🐉 Dragon</div>
-    <div class="racer-chip"><div class="racer-dot" style="background:#2d6e2d"></div>🟢 슬라임</div>
+    <div class="racer-chip"><div class="racer-dot" style="background:#3b82f6"></div>🏎️ Player</div>
+    <div class="racer-chip"><div class="racer-dot" style="background:#4a7c2f"></div>👹 Orc</div>
+    <div class="racer-chip"><div class="racer-dot" style="background:#7c3a1a"></div>🏴‍☠️ Pirate</div>
+    <div class="racer-chip"><div class="racer-dot" style="background:#5a7a3a"></div>🧟 Zombie</div>
+    <div class="racer-chip"><div class="racer-dot" style="background:#4a3a5a"></div>👻 Banshee</div>
+    <div class="racer-chip"><div class="racer-dot" style="background:#5a00aa"></div>🟣 Cabi</div>
+    <div class="racer-chip"><div class="racer-dot" style="background:#8a8a00"></div>🪖 Troll</div>
   </div>
 </div>
 
 <!-- 게임 -->
 <div id="gameScreen" class="screen hidden">
   <div id="canvasWrap">
-    <canvas id="raceCanvas"></canvas>
+    <canvas id="raceCanvas" tabindex="0" style="outline:none"></canvas>
 
     <button id="btnFs" title="전체 화면">⤢</button>
 
@@ -228,17 +233,24 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
         </div>
       </div>
 
+      <!-- 상태 이상 -->
+      <div id="statusTxt" style="position:absolute;top:46px;left:50%;transform:translateX(-50%);
+        font-size:9px;font-weight:700;color:#fbbf24;text-shadow:0 0 6px #000;
+        white-space:nowrap;pointer-events:none;text-align:center"></div>
+
       <!-- 로그 -->
       <div id="logBox"></div>
 
-      <!-- 스킬 + 조향 통합 (겹침 방지) -->
+        <!-- 스킬 버튼 — 우측 독립 배치 -->
+      <div id="skillBar"></div>
+
+      <!-- 조향 버튼 -->
       <div id="controls">
-        <div id="skillBar"></div>
         <div id="steerBar">
-          <button class="steer" id="btnLeft">◀<small>LEFT</small></button>
-          <button class="steer" id="btnGas">▲<small>GAS</small></button>
-          <button class="steer" id="btnRight">▶<small>RIGHT</small></button>
-          <button class="steer" id="btnBrake">■<small>BRAKE</small></button>
+          <button class="steer" id="btnLeft" tabindex="-1">◀<small>LEFT</small></button>
+          <button class="steer" id="btnGas" tabindex="-1">▲<small>GAS</small></button>
+          <button class="steer" id="btnRight" tabindex="-1">▶<small>RIGHT</small></button>
+          <button class="steer" id="btnBrake" tabindex="-1">■<small>BRAKE</small></button>
         </div>
       </div>
     </div>

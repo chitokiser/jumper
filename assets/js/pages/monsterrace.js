@@ -18,24 +18,28 @@ const AI_THINK  = 1100;
 
 // ── 스킬 정의 ────────────────────────────────────────────────────────────────
 const SKILLS = {
-  boost:    { name:'부스트',      mp:20, emoji:'⚡', type:'move',   cd:4000 },
-  apple:    { name:'사과던지기',  mp:10, emoji:'🍎', type:'attack', cd:3000 },
-  rock:     { name:'돌멩이',      mp:15, emoji:'🪨', type:'attack', cd:3500 },
-  web:      { name:'거미줄',      mp:20, emoji:'🕸️',  type:'attack', cd:5000 },
-  banana:   { name:'바나나',      mp:10, emoji:'🍌', type:'trap',   cd:3000 },
-  oil:      { name:'기름통',      mp:15, emoji:'🛢️',  type:'trap',   cd:4000 },
-  poop:     { name:'몬스터똥',   mp:10, emoji:'💩', type:'trap',   cd:3000 },
-  jump_sk:  { name:'점프',        mp:10, emoji:'🦘', type:'move',   cd:4000 },
-  lightning:{ name:'번개질주',    mp:30, emoji:'⚡', type:'move',   cd:7000 },
+  // 공격형
+  apple:    { name:'사과던지기', mp:10, emoji:'🍎', type:'attack', cd:3000, desc:'전방 속도 -30% / 3초' },
+  rock:     { name:'돌멩이투척', mp:15, emoji:'🪨', type:'attack', cd:4000, desc:'전방 차량 뒤집기' },
+  web:      { name:'거미줄발사', mp:20, emoji:'🕸️',  type:'attack', cd:5000, desc:'전방 최고속 -40% / 3초' },
+  tornado:  { name:'회오리바람', mp:30, emoji:'🌪️', type:'attack', cd:9000, desc:'전방 2대 내 뒤로 날려버림' },
+  // 함정형
+  banana:   { name:'바나나껍질', mp:10, emoji:'🍌', type:'trap',   cd:3000, desc:'밟으면 스핀+조향불가' },
+  oil:      { name:'기름통',    mp:15, emoji:'🛢️',  type:'trap',   cd:4000, desc:'밟으면 속도↑+조향불가' },
+  poop:     { name:'몬스터똥', mp:10, emoji:'💩', type:'trap',   cd:3000, desc:'밟으면 2초 감속' },
+  ice:      { name:'얼음지대', mp:20, emoji:'🧊', type:'trap',   cd:5000, desc:'밟으면 미끄럼+조향불가' },
+  // 이동형
+  boost:    { name:'부스트',   mp:20, emoji:'⚡', type:'move',   cd:5000, desc:'속도 x2 / 3초' },
+  lightning:{ name:'번개질주', mp:30, emoji:'🌩️', type:'move',   cd:8000, desc:'속도 x2 + 무적 / 5초' },
 };
 
 const AI_DEFS = [
-  { id:'orc3',   imgKey:'orc3',   name:'Orc3',   color:'#4a7c2f', spd:1.00, skills:['apple','banana','boost'] },
-  { id:'pirate3',imgKey:'pirate3',name:'Pirate3',color:'#7c3a1a', spd:0.98, skills:['rock','oil','boost'] },
-  { id:'zombie1',imgKey:'zombie1',name:'Zombie1',color:'#5a7a3a', spd:0.93, skills:['banana','poop','jump_sk'] },
-  { id:'zombie2',imgKey:'zombie3',name:'Zombie2',color:'#4a6a2a', spd:0.91, skills:['poop','web','banana'] },
-  { id:'dragon', imgKey:'dragon', name:'Dragon', color:'#8b0000', spd:1.05, skills:['web','lightning','apple'] },
-  { id:'slime',  imgKey:'zombie1',name:'슬라임', color:'#2d6e2d', spd:0.96, skills:['rock','oil','boost'] },
+  { id:'orc',    imgKey:'orc',     name:'Orc',    color:'#4a7c2f', spd:1.00, skills:['apple','banana','boost'] },
+  { id:'pirate', imgKey:'pirate',  name:'Pirate', color:'#7c3a1a', spd:0.98, skills:['rock','oil','boost'] },
+  { id:'zombie', imgKey:'zombie1', name:'Zombie', color:'#5a7a3a', spd:0.93, skills:['banana','poop','ice'] },
+  { id:'banshee',imgKey:'zombie2', name:'Banshee',color:'#4a3a5a', spd:0.91, skills:['poop','web','banana'] },
+  { id:'cabi',   imgKey:'cabi',    name:'Cabi',   color:'#5a00aa', spd:1.05, skills:['web','tornado','apple'] },
+  { id:'troll',  imgKey:'troll',   name:'Troll',  color:'#8a8a00', spd:0.96, skills:['rock','ice','boost'] },
 ];
 
 // ── 사운드 시스템 (Web Audio API) ─────────────────────────────────────────────
@@ -213,7 +217,8 @@ async function awardPrize(rank) {
 // ── 레이서 팩토리 ─────────────────────────────────────────────────────────────
 function makeRacer(def, isPlayer) {
   return {
-    id:      def.id,  imgKey: def.imgKey || 'player',
+    id:      def.id,
+    imgKey:  isPlayer ? 'user' : (def.imgKey || 'orc'),
     name:    def.name, color: def.color,
     pos:     0, lane: 0, speed: 0,
     maxSpeed: MAX_SPEED * (def.spd || 1),
@@ -242,27 +247,53 @@ function useSkill(racer, id) {
   const now = Date.now();
   switch (sk.type) {
     case 'move':
-      if (id === 'boost')     { racer.effects.boost   = now+3000; playBoost(); }
-      if (id === 'lightning') { racer.effects.boost   = now+2000; racer.effects.invincible = now+2000; playBoost(); }
-      if (id === 'jump_sk')   { racer.effects.jumping = now+2000; tone(600,'sine',0.2,0.3); }
+      if (id==='boost')     { racer.effects.boost=now+3000; playBoost(); }
+      if (id==='lightning') { racer.effects.boost=now+5000; racer.effects.invincible=now+5000; playBoost();
+                              tone(1200,'sine',0.08,0.3); addLog(`⚡ ${racer.name} 무적+질주!`); }
       break;
     case 'attack': {
-      const fwd = findNearest(racer, true);
-      if (!fwd || (fwd.effects.invincible||0) > now) break;
-      if (id==='apple')  { fwd.effects.slow=now+3000; addLog(`${fwd.name} 감속!`); playSkillHit(); }
-      if (id==='rock')   { fwd.effects.stun=now+500;  addLog(`${fwd.name} 기절!`); triggerShake(5); playSkillHit(); }
-      if (id==='web')    { fwd.effects.slowMax=now+3000; addLog(`${fwd.name} 거미줄!`); playSkillHit(); }
+      if (id==='tornado') {
+        // 전방 2마리를 내 뒤로 날려버림
+        const targets = findFront(racer, 2);
+        if (!targets.length) break;
+        targets.forEach(t => {
+          if ((t.effects.invincible||0)>now) return;
+          t.pos = racer.pos - 3 - Math.random();
+          t.effects.spin = now + 2500;
+          t.speed *= 0.25;
+          addLog(`🌪️ ${t.name} 날아감!`);
+        });
+        triggerShake(7);
+        tone(150,'sine',0.5,0.25,400); tone(80,'sawtooth',0.4,0.15);
+        break;
+      }
+      const fwd = findFront(racer, 1)[0];
+      if (!fwd || (fwd.effects.invincible||0)>now) break;
+      if (id==='apple') { fwd.effects.slow=now+3000; addLog(`🍎 ${fwd.name} 속도 -30%!`); playSkillHit(); }
+      if (id==='rock')  { fwd.fallUntil=now+2500; fwd.speed=0; triggerShake(8);
+                          addLog(`🪨 ${fwd.name} 뒤집힘!`); playFall(); playSkillHit(); }
+      if (id==='web')   { fwd.effects.slowMax=now+3000; addLog(`🕸️ ${fwd.name} 최고속 -40%!`); playSkillHit(); }
       break;
     }
     case 'trap': {
-      const emoji = {banana:'🍌',oil:'🛢️',poop:'💩'}[id]||'🪤';
-      const t = { ownerId:racer.id, pos:racer.pos-1, lane:racer.lane+( Math.random()-0.5)*0.3, skillId:id, emoji, active:true };
+      const emojiMap = {banana:'🍌',oil:'🛢️',poop:'💩',ice:'🧊'};
+      const t = { ownerId:racer.id, pos:racer.pos-1,
+                  lane:racer.lane+(Math.random()-0.5)*0.3,
+                  skillId:id, emoji:emojiMap[id]||'🪤', active:true };
       _traps.push(t); racer.traps.push(t);
       playTrap();
       break;
     }
   }
   if (racer.isPlayer) renderHUD();
+}
+
+// ahead=true: 전방, n개 반환
+function findFront(racer, n=1) {
+  return [_player,..._racers]
+    .filter(r=>r.id!==racer.id&&!r.finished&&r.pos>racer.pos)
+    .sort((a,b)=>a.pos-b.pos)
+    .slice(0, n);
 }
 
 function findNearest(racer, ahead) {
@@ -288,22 +319,74 @@ function updateRacer(r, isPlayer) {
     * (slowMax ? 0.6:1.0)
     * (r.wobble>0 ? 0.82:1.0);
 
-  if (isPlayer) {
-    // 액셀: GAS 버튼 → 최고속, 미입력 → 60% 자동 유지
-    const targetSpeed = _keys.gas ? top : top * 0.6;
-    if (r.speed < targetSpeed)       r.speed = Math.min(r.speed + ACCEL, targetSpeed);
-    else if (_keys.brake)            r.speed = Math.max(0, r.speed - ACCEL * 3);
-    else if (r.speed > targetSpeed)  r.speed = Math.max(targetSpeed, r.speed - ACCEL * 0.5);
+  const spinning  = (r.effects.spin||0)>now;
+  const oilSlide  = (r.effects.oilSlide||0)>now;
+  const iceSlide  = (r.effects.iceSlide||0)>now;
+  const anySlide  = spinning || oilSlide || iceSlide;
 
-    if (_keys.left)  r.lane = Math.max(-1.8, r.lane - STEER);
-    if (_keys.right) r.lane = Math.min( 1.8, r.lane + STEER);
-    if (Math.abs(r.lane) > 1.5) r.speed *= 0.97;   // 코스 이탈 페널티
+  if (isPlayer) {
+    const vr = Math.min(1, r.speed / r.maxSpeed);
+
+    // ── 스핀 효과 (바나나 — 차량 회전, 조향 불가) ────────────────────────
+    if (spinning) {
+      r.lane += Math.sin(now * 0.014) * 0.18;
+      r.lane = Math.max(-1.8, Math.min(1.8, r.lane));
+      r.speed = Math.max(0, r.speed - ACCEL * 0.8);
+    }
+    // ── 기름 슬라이드 (속도↑ + 조향 불가) ───────────────────────────────
+    else if (oilSlide) {
+      r.speed = Math.min(r.maxSpeed * 1.6, r.speed + ACCEL * 1.5);
+      r.lane += (Math.random()-0.5) * 0.06;
+      r.lane = Math.max(-1.8, Math.min(1.8, r.lane));
+    }
+    // ── 얼음 슬라이드 (미끄럼 + 조향 불가) ──────────────────────────────
+    else if (iceSlide) {
+      r.speed = Math.max(top * 0.35, r.speed - ACCEL * 0.15);
+      r.lane += (Math.random()-0.5) * 0.05;
+      r.lane = Math.max(-1.8, Math.min(1.8, r.lane));
+    }
+    // ── 정상 주행 ─────────────────────────────────────────────────────────
+    else {
+      // 가속 / 브레이크
+      const targetSpeed = _keys.gas ? top : top * 0.6;
+      if (r.speed < targetSpeed)      r.speed = Math.min(r.speed + ACCEL, targetSpeed);
+      else if (_keys.brake)           r.speed = Math.max(0, r.speed - ACCEL * 3);
+      else if (r.speed > targetSpeed) r.speed = Math.max(targetSpeed, r.speed - ACCEL * 0.5);
+
+      // 조향 + 코너링 물리
+      const steerInput = (_keys.right ? 1 : 0) - (_keys.left ? 1 : 0);
+      if (steerInput !== 0) {
+        const effSteer = STEER * (1 - vr * 0.5);
+        r.lane = Math.max(-1.8, Math.min(1.8, r.lane + steerInput * effSteer));
+        const latG = Math.max(0, vr - 0.3);
+        r.speed = Math.max(top * 0.25, r.speed * (1 - latG * latG * 0.009));
+      }
+
+      // 트랙 커브 원심력
+      const curSeg = _track?.[((Math.floor(r.pos)) % SEGS + SEGS) % SEGS];
+      if (curSeg?.curve) {
+        const centrifugal = -(curSeg.curve / 3) * vr * vr * 0.015;
+        r.lane = Math.max(-1.8, Math.min(1.8, r.lane + centrifugal));
+      }
+    }
+
+    // 코스 이탈 페널티
+    if (Math.abs(r.lane) > 1.3) {
+      const offRoad = (Math.abs(r.lane) - 1.3) / 0.5;
+      r.speed *= (1 - offRoad * 0.05);
+    }
   } else {
-    // AI: 항상 전속력
+    // AI
     if (r.speed < top) r.speed = Math.min(r.speed + ACCEL * 0.92, top);
-    r.lane += (Math.random()-0.5)*0.015;
-    r.lane  = r.lane * 0.97;
-    r.lane  = Math.max(-1.5, Math.min(1.5, r.lane));
+    if (spinning) {
+      r.lane += Math.sin(now * 0.014) * 0.12;
+    } else if (oilSlide || iceSlide) {
+      r.lane += (Math.random()-0.5) * 0.05;
+    } else {
+      r.lane += (Math.random()-0.5)*0.015;
+      r.lane = r.lane * 0.97;
+    }
+    r.lane = Math.max(-1.5, Math.min(1.5, r.lane));
   }
 
   if (r.wobble > 0) { r.lane += Math.sin(now*0.01)*0.09; r.wobble -= 16; }
@@ -321,16 +404,29 @@ function checkTraps(r) {
   for (const t of _traps) {
     if (!t.active || t.ownerId===r.id) continue;
     if (Math.abs(t.pos-r.pos) > 1.5 || Math.abs(t.lane-r.lane) > 0.65) continue;
-    if ((r.effects.jumping||0)>now || (r.effects.invincible||0)>now) continue;
+    if ((r.effects.invincible||0)>now) continue;
     t.active = false;
-    addLog(`${r.name} 함정!`);
-    if (t.skillId==='banana') {
-      r.fallUntil = now+2000; r.speed=0; triggerShake(8);
-      addLog(`${r.name} 넘어짐!`); if(r.isPlayer) playFall();
-    } else if (t.skillId==='oil') {
-      r.wobble = 3000;
-    } else if (t.skillId==='poop') {
-      r.effects.slow = now+2000;
+    switch (t.skillId) {
+      case 'banana':
+        // 스핀 + 조향 불가 2초
+        r.effects.spin = now+2000; r.speed *= 0.6; triggerShake(7);
+        addLog(`🍌 ${r.name} 스핀!`); if(r.isPlayer) playFall();
+        break;
+      case 'oil':
+        // 속도↑ + 조향 불가 3초
+        r.effects.oilSlide = now+3000;
+        addLog(`🛢️ ${r.name} 기름 미끄럼!`); if(r.isPlayer) tone(200,'sawtooth',0.3,0.18);
+        break;
+      case 'poop':
+        // 2초 감속
+        r.effects.slow = now+2000;
+        addLog(`💩 ${r.name} 감속!`);
+        break;
+      case 'ice':
+        // 미끄럼 + 조향 불가 3초
+        r.effects.iceSlide = now+3000;
+        addLog(`🧊 ${r.name} 빙판!`); if(r.isPlayer) tone(1200,'sine',0.15,0.12);
+        break;
     }
     if (r.isPlayer) renderHUD();
   }
@@ -416,6 +512,18 @@ function renderHUD() {
   if ($('mpBar'))  $('mpBar').style.width  = (mpPct*100) + '%';
   if ($('hpVal'))  $('hpVal').textContent  = Math.ceil(_player.hp);
   if ($('mpVal'))  $('mpVal').textContent  = Math.ceil(_player.mp);
+  // 상태 이상 표시
+  const now3 = Date.now();
+  const statusIcons = [];
+  if ((_player.effects?.spin||0)>now3)      statusIcons.push('🌀스핀');
+  if ((_player.effects?.oilSlide||0)>now3)  statusIcons.push('🛢️미끄럼');
+  if ((_player.effects?.iceSlide||0)>now3)  statusIcons.push('🧊빙판');
+  if ((_player.effects?.slow||0)>now3)      statusIcons.push('🐢감속');
+  if ((_player.effects?.slowMax||0)>now3)   statusIcons.push('🕸️거미줄');
+  if ((_player.effects?.boost||0)>now3)     statusIcons.push('⚡부스트');
+  if ((_player.effects?.invincible||0)>now3)statusIcons.push('🛡️무적');
+  const stEl = $('statusTxt');
+  if (stEl) stEl.textContent = statusIcons.join(' ');
   if ($('rankTxt')) $('rankTxt').textContent = `${_player.currentRank||'?'}위 / 7`;
   if ($('lapTxt'))  $('lapTxt').textContent  = `${Math.min(_player.lap+1,TOTAL_LAPS)}/${TOTAL_LAPS}랩`;
   if ($('gpTxt'))   $('gpTxt').textContent   = `💰${_playerGP}`;
@@ -453,7 +561,7 @@ function renderSkillGrid() {
   Object.entries(SKILLS).forEach(([id,sk])=>{
     const btn = document.createElement('button');
     btn.className = 'sp-btn'; btn.dataset.id = id;
-    btn.innerHTML = `<span class="sp-emoji">${sk.emoji}</span><div class="sp-name">${sk.name}</div><div class="sp-mp">MP ${sk.mp}</div>`;
+    btn.innerHTML = `<span class="sp-emoji">${sk.emoji}</span><div class="sp-name">${sk.name}</div><div class="sp-mp">MP ${sk.mp}</div><div class="sp-desc">${sk.desc||''}</div>`;
     btn.addEventListener('click',()=>{
       if (_selectedSkills.includes(id)) {
         _selectedSkills=_selectedSkills.filter(s=>s!==id);
@@ -518,6 +626,9 @@ function startRace() {
     startEngine();
     _lastTs = performance.now();
     _raf = requestAnimationFrame(loop);
+    // 캔버스에 포커스 — 키보드 이벤트가 스크롤 컨테이너에 가로채이지 않도록
+    const cv = $('raceCanvas');
+    if (cv) cv.focus();
   });
 }
 
@@ -532,16 +643,20 @@ function makeItems() {
 // ── 입력 ─────────────────────────────────────────────────────────────────────
 function initInput() {
   document.addEventListener('keydown',e=>{
-    if(e.key==='ArrowLeft')  { e.preventDefault(); _keys.left=true; }
-    if(e.key==='ArrowRight') { e.preventDefault(); _keys.right=true; }
-    if(e.key==='ArrowUp'||e.key===' ') { e.preventDefault(); _keys.gas=true; }
-    if(e.key==='ArrowDown')  { e.preventDefault(); _keys.brake=true; }
+    switch(e.key){
+      case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); _keys.left=true;  break;
+      case 'ArrowRight':case 'd': case 'D': e.preventDefault(); _keys.right=true; break;
+      case 'ArrowUp':   case 'w': case 'W': case ' ': e.preventDefault(); _keys.gas=true;   break;
+      case 'ArrowDown': case 's': case 'S': e.preventDefault(); _keys.brake=true; break;
+    }
   });
   document.addEventListener('keyup',e=>{
-    if(e.key==='ArrowLeft')  _keys.left=false;
-    if(e.key==='ArrowRight') _keys.right=false;
-    if(e.key==='ArrowUp'||e.key===' ') _keys.gas=false;
-    if(e.key==='ArrowDown')  _keys.brake=false;
+    switch(e.key){
+      case 'ArrowLeft': case 'a': case 'A': _keys.left=false;  break;
+      case 'ArrowRight':case 'd': case 'D': _keys.right=false; break;
+      case 'ArrowUp':   case 'w': case 'W': case ' ': _keys.gas=false;   break;
+      case 'ArrowDown': case 's': case 'S': _keys.brake=false; break;
+    }
   });
 
   const touch=(id,key)=>{
