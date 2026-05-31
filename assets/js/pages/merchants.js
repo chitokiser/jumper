@@ -42,6 +42,7 @@ import { _t } from './merchants.i18n.js';
 import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterActive }
   from './starter-pack.js';
 import { initUserPlace } from './user-place.js';
+import { initMyMap, activateMyMap, deactivateMyMap, setMyMapPlaceMode, isMyMapActive } from './merchants.mymap.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -2870,6 +2871,12 @@ async function init() {
         loadBattleData();
       });
     }
+
+    // 체험 탭 초기화
+    if (_uid) {
+      initMyMap(_uid, _ctx.map, infoWindow);
+      _initMyMapUI();
+    }
   }
   renderCards(allMerchants);
 
@@ -4751,5 +4758,60 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitNpcComment(); }
     });
 });
+
+// ── 체험 탭 UI 초기화 ─────────────────────────────────────────────────────────
+function _initMyMapUI() {
+  const btnMyMap    = document.getElementById('btnMyMap');
+  const panel       = document.getElementById('myMapPanel');
+  const modeBar     = document.getElementById('myMapModeBar');
+  const cancelBtn   = document.getElementById('myMapCancelBtn');
+  const itemBtns    = document.querySelectorAll('.mymap-item-btn');
+  if (!btnMyMap || !panel) return;
+
+  let _activePlaceKey = null;
+
+  function _setPlaceKey(key) {
+    _activePlaceKey = key;
+    itemBtns.forEach(b => b.classList.toggle('active', b.dataset.type === key));
+    setMyMapPlaceMode(key);
+    if (key) {
+      const def = document.querySelector(`.mymap-item-btn[data-type="${key}"] span`);
+      modeBar.textContent = `${def?.textContent || ''} 배치 중 — 지도를 탭하세요`;
+      modeBar.classList.remove('hidden');
+    } else {
+      modeBar.classList.add('hidden');
+    }
+  }
+
+  // HUD 버튼 토글
+  btnMyMap.addEventListener('click', async () => {
+    if (isMyMapActive()) {
+      deactivateMyMap();
+      _setPlaceKey(null);
+      panel.classList.remove('open');
+      btnMyMap.classList.remove('mymap-on');
+    } else {
+      panel.classList.add('open');
+      btnMyMap.classList.add('mymap-on');
+      await activateMyMap();
+    }
+  });
+
+  // 아이템 타입 버튼 클릭
+  itemBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.type;
+      _setPlaceKey(_activePlaceKey === key ? null : key);
+    });
+  });
+
+  // 닫기
+  cancelBtn.addEventListener('click', () => {
+    deactivateMyMap();
+    _setPlaceKey(null);
+    panel.classList.remove('open');
+    btnMyMap.classList.remove('mymap-on');
+  });
+}
 
 init();

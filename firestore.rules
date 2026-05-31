@@ -203,6 +203,11 @@ service cloud.firestore {
       allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
 
       allow list, delete: if isAdmin();
+
+      // 체험 탭 — 개인 맵 아이템 (본인만 읽기/쓰기, 최대 50개는 클라이언트 제한)
+      match /myMap/{docId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
     }
 
     // settlements
