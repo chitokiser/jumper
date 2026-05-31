@@ -217,7 +217,7 @@ async function _doVerify() {
 async function _doWithdraw() {
   const gp      = parseInt(document.getElementById('tonWithdrawGp')?.value)   || 0;
   const address = document.getElementById('tonWithdrawAddr')?.value?.trim();
-  if (gp < 1000)   return _toast('최소 출금은 1,000 GP 입니다', 'warn');
+  if (gp < 10000)  return _toast('최소 출금은 10,000 GP 입니다', 'warn');
   if (!address)    return _toast('TON 지갑 주소를 입력하세요', 'warn');
   if (!confirm(`${gp.toLocaleString()} GP → TON 출금을 요청하시겠습니까?\n지갑: ${address}`)) return;
 

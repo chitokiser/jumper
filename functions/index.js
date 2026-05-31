@@ -2310,11 +2310,12 @@ exports.telegramAuth = onCall(
 
 // ════════════════════════════════════════════════════════════════════════════
 // TON ↔ GameCoin 교환 시스템
+// 사전 작업: firebase functions:secrets:set TON_ADMIN_MNEMONIC
 // ════════════════════════════════════════════════════════════════════════════
-const tonExchangeH = require('./handlers/tonExchange');
+const tonExchangeH   = require('./handlers/tonExchange');
+const tonMnemonic    = defineSecret('TON_ADMIN_MNEMONIC');  // 관리자 TON 지갑 24-word 시드
 
 // TON 실시간 가격 + 교환비 조회 (인증 불필요)
-// 클라이언트: httpsCallable(functions, 'tonGetPrice')()
 exports.tonGetPrice = onCall(
   wrapError(async () => {
     const info = await tonExchangeH.getPrice();
@@ -2323,11 +2324,10 @@ exports.tonGetPrice = onCall(
   })
 );
 
-// TON 입금 확인 → GameCoin 지급
-// 클라이언트: httpsCallable(functions, 'tonDepositVerify')({ txHash: '...' })
+// TON 입금 TX 검증 → GameCoin 자동 지급
 exports.tonDepositVerify = onCall(
   wrapError(async (request) => {
-    const uid    = requireAuth(request);
+    const uid = requireAuth(request);
     const { txHash } = request.data ?? {};
     if (!txHash) throw new HttpsError('invalid-argument', 'txHash가 필요합니다');
     const result = await tonExchangeH.verifyDeposit(txHash, uid);
@@ -2336,21 +2336,26 @@ exports.tonDepositVerify = onCall(
   })
 );
 
-// GameCoin → TON 출금 요청
-// 클라이언트: httpsCallable(functions, 'tonWithdrawRequest')({ gamecoin: 5000, walletAddress: 'EQ...' })
+// GameCoin → TON 자동 출금 (최소 10,000 GP, @ton/ton SDK로 즉시 송금)
 exports.tonWithdrawRequest = onCall(
+  { secrets: [tonMnemonic] },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const { gamecoin, walletAddress } = request.data ?? {};
-    if (!gamecoin || !walletAddress) throw new HttpsError('invalid-argument', 'gamecoin, walletAddress 필요');
-    const result = await tonExchangeH.requestWithdraw(Number(gamecoin), walletAddress, uid);
-    logger.info('tonWithdrawRequest', { uid, gamecoin, tonAmount: result.tonAmount });
+    if (!gamecoin || !walletAddress) {
+      throw new HttpsError('invalid-argument', 'gamecoin, walletAddress 필요');
+    }
+    const gp = Number(gamecoin);
+    if (gp < 10000) {
+      throw new HttpsError('invalid-argument', '최소 출금은 10,000 GP 입니다');
+    }
+    const result = await tonExchangeH.requestWithdraw(gp, walletAddress, uid, tonMnemonic.value());
+    logger.info('tonWithdrawRequest', { uid, gamecoin: gp, tonAmount: result.tonAmount, txHash: result.txHash });
     return result;
   })
 );
 
 // 내 TON 거래 내역 조회
-// 클라이언트: httpsCallable(functions, 'tonGetTransactions')()
 exports.tonGetTransactions = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
