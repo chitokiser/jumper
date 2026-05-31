@@ -518,25 +518,72 @@ function initInput() {
   touch('btnBrake','brake');
 }
 
-// ── 전체화면 ─────────────────────────────────────────────────────────────────
+// ── 전체화면 (네이티브 API + CSS 폴백 이중 구조) ──────────────────────────────
+// 네이티브: requestFullscreen (Android/Desktop)
+// CSS 폴백: .race-css-fs 클래스 (iOS Safari)
+let _cssFs = false;
+
 function initFullscreen() {
   const btn  = $('btnFs');
   const wrap = $('canvasWrap');
-  if (!btn || !wrap) return;
+  const game = $('gameScreen');
+  if (!btn) return;
 
   btn.addEventListener('click', ()=>{
     if (document.fullscreenElement) {
       document.exitFullscreen?.();
+      return;
+    }
+    if (_cssFs) {
+      _exitCssFs(btn, wrap, game);
+      return;
+    }
+    // 네이티브 시도 → 실패 시 CSS 폴백
+    const req = wrap?.requestFullscreen || wrap?.webkitRequestFullscreen;
+    if (req) {
+      req.call(wrap).catch(() => _enterCssFs(btn, wrap, game));
     } else {
-      wrap.requestFullscreen?.() || wrap.webkitRequestFullscreen?.();
+      _enterCssFs(btn, wrap, game);
     }
   });
 
   document.addEventListener('fullscreenchange', ()=>{
-    const full = !!document.fullscreenElement;
-    btn.textContent = full ? '⛶' : '⛶';
+    if (!document.fullscreenElement && !_cssFs) {
+      _syncFsBtn(btn, false);
+      resizeCanvas();
+    } else if (document.fullscreenElement) {
+      _syncFsBtn(btn, true);
+      resizeCanvas();
+    }
+  });
+  document.addEventListener('webkitfullscreenchange', ()=>{
+    const full = !!document.webkitFullscreenElement;
+    _syncFsBtn(btn, full);
     resizeCanvas();
   });
+}
+
+function _enterCssFs(btn, wrap, game) {
+  _cssFs = true;
+  document.body.style.overflow = 'hidden';
+  if (game) { game.style.position='fixed'; game.style.inset='0'; game.style.zIndex='9000'; game.style.background='#0a0a1a'; }
+  if (wrap) { wrap.style.maxWidth='none'; wrap.style.width='100vw'; wrap.style.height='100vh'; wrap.style.display='flex'; wrap.style.alignItems='center'; }
+  _syncFsBtn(btn, true);
+  resizeCanvas();
+}
+
+function _exitCssFs(btn, wrap, game) {
+  _cssFs = false;
+  document.body.style.overflow = '';
+  if (game) { game.style.position=''; game.style.inset=''; game.style.zIndex=''; game.style.background=''; }
+  if (wrap) { wrap.style.maxWidth=''; wrap.style.width=''; wrap.style.height=''; wrap.style.display=''; wrap.style.alignItems=''; }
+  _syncFsBtn(btn, false);
+  resizeCanvas();
+}
+
+function _syncFsBtn(btn, isFull) {
+  btn.textContent = isFull ? '⤡' : '⤢';
+  btn.title       = isFull ? '화면 축소' : '전체 화면';
 }
 
 // 논리 해상도 고정 — CSS 스케일로 반응형 처리 (DPR 이슈 없이 단순화)
@@ -544,18 +591,32 @@ const LOGIC_W = 400, LOGIC_H = 225;
 
 function resizeCanvas() {
   const canvas = $('raceCanvas');
-  const wrap   = $('canvasWrap');
   if (!canvas) return;
 
-  // 논리 해상도 고정 (항상 400×225)
+  // 논리 해상도 항상 400×225
   canvas.width  = LOGIC_W;
   canvas.height = LOGIC_H;
 
-  // CSS 표시 크기: 컨테이너 너비에 맞춤 (없으면 100%)
-  const cw = wrap?.clientWidth || window.innerWidth;
+  // 표시 크기 계산
+  const isFull = !!document.fullscreenElement || !!document.webkitFullscreenElement || _cssFs;
+  let cw, ch;
+  if (isFull) {
+    // 전체화면: 화면 비율에 맞게 최대화 (letterbox)
+    const sw = window.innerWidth, sh = window.innerHeight;
+    if (sw / sh > LOGIC_W / LOGIC_H) {
+      ch = sh; cw = Math.round(sh * LOGIC_W / LOGIC_H);
+    } else {
+      cw = sw; ch = Math.round(sw * LOGIC_H / LOGIC_W);
+    }
+  } else {
+    const wrap = $('canvasWrap');
+    cw = wrap?.clientWidth || window.innerWidth;
+    ch = Math.round(cw * LOGIC_H / LOGIC_W);
+  }
+
   if (cw > 0) {
     canvas.style.width  = cw + 'px';
-    canvas.style.height = Math.round(cw * LOGIC_H / LOGIC_W) + 'px';
+    canvas.style.height = ch + 'px';
   }
 
   initRenderer(canvas);
