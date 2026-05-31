@@ -24,7 +24,8 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          loadShops, getShops, deleteShop, checkShopProximity, updateShopHpMarker,
          loadTutorialBoxes, clearTutorialBoxes, checkTutorialProximity,
          onPlayerExp, onPlayerLevelUp,
-         addPlayerGold, spendPlayerGold, addPlayerGsExp }
+         addPlayerGold, spendPlayerGold, addPlayerGsExp,
+         getPlayerSnapshot, syncPlayerFromDungeon }
   from './merchants.battle.js';
 import { initDungeonGame, openDungeonGame } from './merchants.dungeon.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
@@ -3146,10 +3147,12 @@ async function init() {
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
 
   initDungeonGame({
-    onSpendGold:  (amount)        => spendPlayerGold(amount),
-    onAddGold:    (amount)        => addPlayerGold(amount),
-    onPlaySound:  (type)          => playSound(type),
-    getInventory: ()              => ({ ..._inventory }),
+    onSpendGold:      (amount)        => spendPlayerGold(amount),
+    onAddGold:        (amount)        => addPlayerGold(amount),
+    onPlaySound:      (type)          => playSound(type),
+    getInventory:     ()              => ({ ..._inventory }),
+    getPlayerSnapshot: ()             => getPlayerSnapshot(),
+    onSyncPlayer:     (state)         => syncPlayerFromDungeon(state),
     onUseItem:    (itemId, cnt=1) => {
       const cur = _inventory[itemId] || 0;
       if (cur < cnt) return false;
@@ -3160,7 +3163,6 @@ async function init() {
       return true;
     },
     onExit: () => {
-      // 던전 퇴장 시 Game Hub 복귀 버튼 보이기
       try { document.getElementById('ghFloatBtn')?.style && (document.getElementById('ghFloatBtn').style.display = 'flex'); } catch {}
     },
   });

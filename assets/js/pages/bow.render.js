@@ -54,15 +54,14 @@ export function addHitParticles(x, y, kill, dragon=false) {
   if (kill) _parts.push({x,y,vx:0,vy:0,life:1,dc:.055,sz:dragon?55:30,col:'rgba(255,255,255,.88)',grav:0});
 }
 
-export function addArrowParticle(x, y, fire, pierce) {
+export function addArrowParticle(x, y, fire, pierce, sc) {
   if (Math.random()>.60) return;
-  // 원근 스케일: 아래(플레이어 근처) = 크게, 위(원거리) = 작게
-  const sc = Math.max(0.1, Math.min(1.0, (y - LH*0.22) / (AY - LH*0.22)));
+  const s = sc ?? Math.max(0.1, Math.min(1.0, (y - LH*0.22) / (AY - LH*0.22)));
   _parts.push({
     x:x+(Math.random()-.5)*3, y:y+(Math.random()-.5)*3,
     vx:(Math.random()-.5)*1.0, vy:(Math.random()-.5)*1.0,
     life:1, dc:.16, grav:0,
-    sz:(fire?4.5:pierce?3.5:2.5)*sc,
+    sz:(fire?4.5:pierce?3.5:2.5)*s,
     col:fire?`hsl(${18+Math.random()*22},100%,${46+Math.random()*20}%)`
        :pierce?'#c4b5fd':'rgba(251,191,36,.82)',
   });
@@ -167,30 +166,61 @@ function drawMonster(ctx, sprs, m) {
 }
 
 function drawArrow(ctx, a) {
-  // 원근 스케일: 플레이어 위치(AY)=1.0, 수평선(LH*0.22) 방향으로 갈수록 작아짐
-  const HORIZON = LH * 0.22;
-  const sc = Math.max(0.06, Math.min(1.0, (a.y - HORIZON) / (AY - HORIZON)));
+  const sc = a.sc ?? Math.max(0.06, Math.min(1.0, (a.y - LH*0.22) / (AY - LH*0.22)));
 
-  const len=Math.sqrt(a.vx*a.vx+a.vy*a.vy)||1;
-  const nx=a.vx/len, ny=a.vy/len, px=-ny, py=nx;
+  // ① 지면 그림자 (화살이 멀어질수록 작아지며 바닥에 표시)
+  const shadowAlpha = (1 - sc) * 0.32;
+  if (shadowAlpha > 0.03) {
+    ctx.save();
+    ctx.globalAlpha = shadowAlpha;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(a.x, AY - 10, (10 * sc + 2), 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ② 잔상 트레일
+  if (a.trail && a.trail.length > 1) {
+    const trailColor = a.fire ? '#ff5500' : a.pierce ? '#8b5cf6' : '#fde68a';
+    for (let i = 0; i < a.trail.length - 1; i++) {
+      const tp0 = a.trail[i], tp1 = a.trail[i + 1];
+      const alpha = (1 - i / a.trail.length) * 0.55;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = trailColor;
+      ctx.lineWidth = Math.max(0.4, (a.fire ? 3 : a.pierce ? 2.5 : 2) * tp0.sc);
+      ctx.lineCap = 'round';
+      ctx.shadowColor = trailColor;
+      ctx.shadowBlur = 4 * tp0.sc;
+      ctx.beginPath();
+      ctx.moveTo(tp0.x, tp0.y);
+      ctx.lineTo(tp1.x, tp1.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ③ 화살 본체
+  const len = Math.sqrt(a.vx * a.vx + a.vy * a.vy) || 1;
+  const nx = a.vx / len, ny = a.vy / len, px = -ny, py = nx;
 
   ctx.save();
-  ctx.shadowColor = a.fire?'#ff2200':a.explode?'#cc00ff':a.pierce?'#a78bfa':'#fbbf24';
-  ctx.shadowBlur  = (a.fire?18:a.explode?16:a.pierce?13:9) * sc;
-  ctx.strokeStyle = a.fire?'#ff7700':a.explode?'#dd00ff':a.pierce?'#c4b5fd':'#fde68a';
-  ctx.lineWidth   = (a.fire?4:a.pierce?3.5:3) * sc;
-  ctx.lineCap='round';
-  // 화살대 (길이도 원근 스케일)
+  ctx.shadowColor = a.fire ? '#ff2200' : a.explode ? '#cc00ff' : a.pierce ? '#a78bfa' : '#fbbf24';
+  ctx.shadowBlur  = (a.fire ? 18 : a.explode ? 16 : a.pierce ? 13 : 9) * sc;
+  ctx.strokeStyle = a.fire ? '#ff7700' : a.explode ? '#dd00ff' : a.pierce ? '#c4b5fd' : '#fde68a';
+  ctx.lineWidth   = (a.fire ? 4 : a.pierce ? 3.5 : 3) * sc;
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(a.x - nx*24*sc, a.y - ny*24*sc);
-  ctx.lineTo(a.x + nx*3*sc,  a.y + ny*3*sc);
+  ctx.moveTo(a.x - nx * 24 * sc, a.y - ny * 24 * sc);
+  ctx.lineTo(a.x + nx * 3  * sc, a.y + ny * 3  * sc);
   ctx.stroke();
   // 화살촉
-  ctx.fillStyle = a.fire?'#ff4400':a.explode?'#ee00ff':a.pierce?'#8b5cf6':'#f59e0b';
+  ctx.fillStyle = a.fire ? '#ff4400' : a.explode ? '#ee00ff' : a.pierce ? '#8b5cf6' : '#f59e0b';
   ctx.beginPath();
-  ctx.moveTo(a.x + nx*13*sc,           a.y + ny*13*sc);
-  ctx.lineTo(a.x - nx*2*sc + px*6*sc,  a.y - ny*2*sc + py*6*sc);
-  ctx.lineTo(a.x - nx*2*sc - px*6*sc,  a.y - ny*2*sc - py*6*sc);
+  ctx.moveTo(a.x + nx * 13 * sc,            a.y + ny * 13 * sc);
+  ctx.lineTo(a.x - nx * 2  * sc + px * 6 * sc, a.y - ny * 2  * sc + py * 6 * sc);
+  ctx.lineTo(a.x - nx * 2  * sc - px * 6 * sc, a.y - ny * 2  * sc - py * 6 * sc);
   ctx.closePath(); ctx.fill();
   ctx.restore();
 }
@@ -346,20 +376,25 @@ function drawCannonballs(ctx, cannonballs) {
 }
 
 function drawArcher(ctx, imgs, st) {
-  const shooting = Date.now()-st.shootTs < 380;
-  const img=(shooting&&imgs.user2)?imgs.user2:imgs.user1;
+  const now = Date.now();
+  const shooting = now - st.shootTs < 380;
+  const img = (shooting && imgs.user2) ? imgs.user2 : imgs.user1;
   if (!img) return;
-  const uh=120, uw=uh*(img.naturalWidth||1)/(img.naturalHeight||1);
-  const px = st.playerX ?? AX;  // 플레이어 X 위치 (이동 가능)
+  const uh = 120, uw = uh * (img.naturalWidth||1) / (img.naturalHeight||1);
+  const px = st.playerX ?? AX;
+
+  // 발사 반동: 150ms 동안 아래로 8px 튕겼다 복귀
+  const recoilT = Math.max(0, 1 - (now - (st.shootTs||0)) / 150);
+  const recoilY = Math.sin(recoilT * Math.PI) * 8;
+
   ctx.save();
-  if      (st.rapidUntil>Date.now()){ ctx.shadowColor='#fbbf24'; ctx.shadowBlur=30; }
-  else if (st.fireMode)              { ctx.shadowColor='#ff4400'; ctx.shadowBlur=24; }
-  else if (st.pierceMode)            { ctx.shadowColor='#a78bfa'; ctx.shadowBlur=20; }
-  // 피격 시 빨간 플래시
-  if (st.hitFlash>0) {
-    ctx.shadowColor='#ff0000'; ctx.shadowBlur=30*st.hitFlash;
+  if      (st.rapidUntil > now) { ctx.shadowColor='#fbbf24'; ctx.shadowBlur=30; }
+  else if (st.fireMode)         { ctx.shadowColor='#ff4400'; ctx.shadowBlur=24; }
+  else if (st.pierceMode)       { ctx.shadowColor='#a78bfa'; ctx.shadowBlur=20; }
+  if (st.hitFlash > 0) {
+    ctx.shadowColor='#ff0000'; ctx.shadowBlur=30 * st.hitFlash;
   }
-  ctx.drawImage(img, px-uw/2, AY-uh, uw, uh);
+  ctx.drawImage(img, px - uw/2, AY - uh + recoilY, uw, uh);
   ctx.restore();
 }
 

@@ -143,6 +143,18 @@ html,body{height:100%;background:#080c18;color:#fff;
 /* 로딩 */
 #loadingScreen{font-size:15px;color:#9ca3af;gap:14px}
 
+/* ── 게임 헤더 ── */
+.g-hdr{display:flex;justify-content:space-between;align-items:center;
+  width:100%;max-width:300px;padding-bottom:6px}
+.g-back{color:#4b5563;font-size:12px;text-decoration:none;transition:color .15s}
+.g-back:hover{color:#9ca3af}
+.g-login-btn{background:none;border:1px solid #374151;border-radius:8px;
+  color:#9ca3af;font-size:11px;padding:5px 11px;cursor:pointer;transition:all .15s}
+.g-login-btn:hover{border-color:#f59e0b;color:#f59e0b}
+.g-user-chip{font-size:11px;color:#6b7280;background:#1f2937;
+  border-radius:8px;padding:5px 10px;max-width:120px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+
 /* ── 로그인 ── */
 #loginScreen{gap:18px;text-align:center}
 .login-title{font-size:22px;font-weight:900}
@@ -187,18 +199,27 @@ html,body{height:100%;background:#080c18;color:#fff;
 
 <!-- 로비 -->
 <div id="lobbyScreen" class="screen hidden">
+  <div class="g-hdr">
+    <a href="/merchants.html" class="g-back">← 게임으로</a>
+    <div id="gHdrRight"><button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button></div>
+  </div>
   <div class="mem-title">🃏 스피드<br><span>기억력 게임</span></div>
   <div class="stat-card">
     <h3>내 정보</h3>
     <div class="sr"><span class="lbl">💰 GP</span><span class="val" id="lobbyGP">—</span></div>
+    <div class="sr" id="loginHint" style="margin-top:6px;font-size:11px;color:#4b5563;display:none">
+      <span>GP 저장은 <a href="#" id="btnLoginFromLobby" style="color:#f59e0b;text-decoration:none">로그인</a> 필요</span>
+    </div>
   </div>
-  <div class="badge">참가비: 100 GP</div>
+  <div class="badge" style="background:#065f46;color:#6ee7b7;border:1px solid #10b981">🆓 무료 입장</div>
   <div class="rule-box">
     <div>🃏 <b>4×6 그리드</b> — 24장 (12쌍)</div>
     <div>⏱️ 첫 카드 오픈 후 <b>2초 이내</b> 두 번째 선택</div>
-    <div>💀 <b>30번 틀리면</b> 게임 오버</div>
+    <div>💀 오답 1회 <b>-15점</b> 패널티</div>
+    <div>💀 <b>30번 틀리면</b> 게임 오버 (보상 없음)</div>
     <div>🔥 연속 성공 시 <b>콤보 보너스</b></div>
-    <div>🏆 전체 클리어 시 <b>+200 GP 보너스</b></div>
+    <div>🏆 클리어 달성 시 <b>+300 GP</b> 보너스</div>
+    <div>⚡ <b>1분 이내</b> 클리어 추가 <b>+200 GP</b></div>
     <div>♾️ 무제한 입장 가능</div>
   </div>
   <button class="btn-main" id="btnEnter">🃏 게임 시작</button>
@@ -218,6 +239,10 @@ html,body{height:100%;background:#080c18;color:#fff;
 
 <!-- 결과 -->
 <div id="resultScreen" class="screen hidden">
+  <div class="g-hdr" style="margin-bottom:4px">
+    <a href="/merchants.html" class="g-back">← 게임으로</a>
+    <div id="gHdrRight2"></div>
+  </div>
   <div class="res-title" id="resTitle">게임 오버</div>
   <div class="res-score" id="resScore">0점</div>
   <div class="res-gp" id="resGP">0 GP</div>

@@ -1,7 +1,7 @@
 // bow.js — 활쏘기 몬스터 사냥 미니게임
 import { db, auth } from '/assets/js/firebase-init.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
   LW, LH, AX, AY, ROWS,
   initBowRenderer, renderFrame, updateRenderer,
@@ -10,8 +10,8 @@ import {
 import { playSound } from './merchants.battle.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const BASE_FEE    = 100;
-const FEE_STEP    = 50;
+const BASE_FEE    = 0;   // 무료 입장
+const FEE_STEP    = 0;
 const RESET_MS    = 24 * 60 * 60 * 1000;
 const GAME_KEY    = 'bowEntry';
 const GAME_TIME   = 60;
@@ -87,7 +87,12 @@ let _uid=null, _playerGP=0, _playerMP=1000, _playerMaxMP=1000;
 let _playerHP=1000, _playerMaxHP=1000, _playerAttack=50, _playerDefense=0;
 
 async function loadPlayer() {
-  if (!_uid) return;
+  if (!_uid) {
+    $('lobbyGP').textContent = '게스트';
+    $('btnEnter').disabled = false;
+    _updateFeeDisplay();
+    return;
+  }
   try {
     const d=(await getDoc(doc(db,'battle_players',_uid))).data()||{};
     _playerGP    = d.gold||0;
@@ -111,15 +116,9 @@ async function loadPlayer() {
 
 function _updateFeeDisplay() {
   const badge = $('feeBadge');
-  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
+  if (badge) badge.textContent = '🆓 무료 입장';
   const info = $('feeInfo');
-  if (!info) return;
-  if (_entryCount === 0) {
-    info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
-  } else {
-    const h = Math.ceil((_entryResetAt + RESET_MS - Date.now()) / 3_600_000);
-    info.textContent = `오늘 ${_entryCount}번째 참가 · ${h}시간 후 100GP 리셋`;
-  }
+  if (info) info.textContent = '무료로 무제한 입장 가능';
 }
 
 function arrowDmg(fire=false) {
@@ -231,16 +230,21 @@ function updateMonsters(dt) {
 }
 
 // ── 화살 ─────────────────────────────────────────────────────────────────────
-const ARROW_SPD = 9.5;
+const ARROW_T_SPEED = 0.032; // t 증가속도 (1프레임당, ~520ms 비행)
 
 function createArrow(cx,cy,spread=0,fire=false,pierce=false,explode=false){
-  // 화살은 _playerX 위치에서 발사 (플레이어가 좌우로 이동하므로)
-  const ang=Math.atan2(cy-AY,cx-_playerX)+spread;
+  const spreadX = spread * 120; // 각도 → 화면 픽셀 좌우 퍼짐
+  const initDx = cx - _playerX, initDy = cy - AY;
+  const initLen = Math.sqrt(initDx*initDx + initDy*initDy) || 1;
   _arrows.push({
-    x:_playerX, y:AY,
-    vx:Math.cos(ang)*ARROW_SPD, vy:Math.sin(ang)*ARROW_SPD,
-    fire, pierce, explode, dmg:arrowDmg(fire),
-    hitIds:new Set(), active:true,
+    t: 0, dt: ARROW_T_SPEED,
+    startX: _playerX, startY: AY,
+    aimX: cx + spreadX, aimY: cy,
+    x: _playerX, y: AY, sc: 1.0,
+    vx: initDx / initLen, vy: initDy / initLen,
+    trail: [],
+    fire, pierce, explode, dmg: arrowDmg(fire),
+    hitIds: new Set(), active: true,
   });
 }
 
@@ -319,17 +323,35 @@ function _takeDamage(amount) {
   if (_playerHP<=0) setTimeout(gameOver,350);
 }
 
-const ARROW_GRAVITY = 0.16; // 포물선 중력 (px/frame²)
-
 function updateArrows(dt){
   const r=dt/16.67;
   for (let i=_arrows.length-1;i>=0;i--){
     const a=_arrows[i];
     if(!a.active){_arrows.splice(i,1);continue;}
-    a.vy += ARROW_GRAVITY * r;  // 중력 누적 → 포물선
-    a.x+=a.vx*r; a.y+=a.vy*r;
-    addArrowParticle(a.x,a.y,a.fire,a.pierce);
-    if(a.x<-25||a.x>LW+25||a.y<-25||a.y>LH+25) _arrows.splice(i,1);
+
+    a.t = Math.min(1, a.t + r * a.dt);
+
+    // 원근 위치: t^1.5 ease-in → 출발 느리고 멀어질수록 가속
+    const pT = Math.pow(a.t, 1.5);
+    a.x = a.startX + (a.aimX - a.startX) * pT;
+    a.y = a.startY + (a.aimY - a.startY) * pT;
+
+    // 원근 스케일: 1.0 → 0.08
+    a.sc = Math.max(0.08, 1.0 - 0.92 * a.t);
+
+    // 방향 벡터 (t^1.5 미분 = 1.5*t^0.5 방향)
+    const dPT = 1.5 * Math.sqrt(Math.max(0.01, a.t));
+    a.vx = dPT * (a.aimX - a.startX);
+    a.vy = dPT * (a.aimY - a.startY);
+
+    // 잔상 트레일 저장
+    a.trail.unshift({x: a.x, y: a.y, sc: a.sc});
+    if(a.trail.length > 10) a.trail.pop();
+
+    addArrowParticle(a.x, a.y, a.fire, a.pierce, a.sc);
+
+    if(a.t >= 1) a.active = false;
+    if(a.x < -30 || a.x > LW+30 || a.y < -30) a.active = false;
   }
 }
 
@@ -392,6 +414,7 @@ function fireArrow(cx,cy){
   const fire=_fireMode; _fireMode=false;
   createArrow(cx,cy,0,fire,_pierceMode,false);
   _arrowsFired++;
+  triggerShake(3); // 발사 반동
   playSound('arrow_shot');
   renderHUD();
 }
@@ -658,12 +681,40 @@ async function init(){
   window.addEventListener('resize',resizeCanvas); resizeCanvas();
   await loadAssets();
   $('btnEnter')?.addEventListener('click',async()=>{
-    if(!_uid){alert('로그인이 필요합니다');return;}
-    if(!await deductFee()){alert('GP가 부족합니다 (100 GP 필요)');return;}
+    if(!await deductFee()){alert('GP가 부족합니다');return;}
     _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 선택';$('skConfirm').disabled=true;showPhase('skill');
   });
   $('skConfirm')?.addEventListener('click',startCountdown);
   $('btnRestart')?.addEventListener('click',()=>location.reload());
-  onAuthStateChanged(auth,async user=>{_uid=user?.uid||null;await loadPlayer();showPhase('lobby');});
+
+  // 헤더 Google 로그인
+  function _bindHdrLogin(){
+    $('gLoginBtn')?.addEventListener('click',async()=>{
+      try{
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='로그인 중...';
+        await signInWithPopup(auth,new GoogleAuthProvider());
+      }catch(e){
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='🔑 Google 로그인';
+        if(!e.message?.includes('popup-closed')) alert('로그인 오류: '+e.message);
+      }
+    });
+  }
+  function _updateHdr(user){
+    const r=$('gHdrRight'); if(!r) return;
+    if(user&&!user.isAnonymous){
+      r.innerHTML=`<span class="g-user-chip">👤 ${user.displayName||'유저'}</span>`;
+    } else {
+      r.innerHTML=`<button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button>`;
+      _bindHdrLogin();
+    }
+  }
+  _bindHdrLogin();
+
+  onAuthStateChanged(auth,async user=>{
+    _uid=user?.uid||null;
+    await loadPlayer();
+    _updateHdr(user);
+    showPhase('lobby');
+  });
 }
 init();

@@ -858,6 +858,16 @@ export function addPlayerGsExp(amount) {
 export function getPlayerLevel() { return _player.level || 1; }
 export function isPlayerDead() { return _isDead; }
 
+// ── 던전 PlayerState 연동 ────────────────────────────────────────────────────
+export function getPlayerSnapshot() {
+  return { hp:_player.hp, maxHp:_player.maxHp, mp:_player.mp, maxMp:_player.maxMp,
+           attack:getTotalAtk(), defense:getDefense() };
+}
+export function syncPlayerFromDungeon({ hp, mp }) {
+  _player.hp = Math.max(0, Math.min(_player.maxHp, Math.round(hp)));
+  _player.mp = Math.max(0, Math.min(_player.maxMp, Math.round(mp)));
+}
+
 // ── 장비 시스템 ────────────────────────────────────────────────────────────────
 /** 아이템 ID 끝 숫자가 직접 수치: 'weapon_50' → 50, 'armo_10' → 10 */
 function _equipNumFromId(itemId) {

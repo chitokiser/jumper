@@ -20,13 +20,16 @@ const CARD_POOL = [
   '/assets/images/item/necklace.PNG','/assets/images/item/rings.PNG',
 ];
 
-const ENTRY_FEE    = 100;
+const ENTRY_FEE    = 0;    // 무료 입장
 const TOTAL_PAIRS  = 12;   // 4×6 = 24장 = 12쌍
 const MAX_MISS     = 30;
 const TIMER_MS     = 2000; // 2초
 const MATCH_GP     = 30;   // 쌍 매칭 보상
 const COMBO_BONUS  = 20;   // 콤보당 추가 GP (연속 성공마다)
-const CLEAR_BONUS  = 200;  // 전체 클리어 보너스
+const MISS_PENALTY = 15;   // 오답 1회 점수 패널티 (30회 × 15 = 450 → 클리어 보너스로 상쇄)
+const CLEAR_BONUS  = 300;  // 클리어 달성 보너스 (오답 수 무관)
+const TIME_BONUS   = 200;  // 1분 이내 클리어 추가 보너스
+const TIME_LIMIT_MS= 60000;// 1분
 
 // ── Firebase ─────────────────────────────────────────────────────────────────
 let _uid=null, _playerGP=0;
@@ -38,10 +41,11 @@ async function loadPlayer() {
     _playerGP=d.gold||0;
   } catch {}
   $('lobbyGP').textContent=_playerGP;
-  $('btnEnter').disabled=_playerGP<ENTRY_FEE;
+  $('btnEnter').disabled=false;
 }
 
 async function deductFee() {
+  if (ENTRY_FEE <= 0) return true;
   if (_playerGP<ENTRY_FEE) return false;
   try { await updateDoc(doc(db,'battle_players',_uid),{gold:increment(-ENTRY_FEE)}); _playerGP-=ENTRY_FEE; return true; }
   catch { return false; }
@@ -56,7 +60,7 @@ async function awardGP(amount) {
 let _cards=[];        // {el, pairId, flipped, matched}
 let _flipped=[];      // 현재 뒤집힌 카드 인덱스 (최대 2개)
 let _locked=false;
-let _misses=0, _matched=0, _combo=0, _score=0;
+let _misses=0, _matched=0, _combo=0, _score=0, _startTime=0;
 let _timerToken=0;
 let _timerRaf=null;
 let _timerStart=0;
@@ -167,9 +171,11 @@ function checkMatch(){
     // ❌ 매칭 실패
     _combo=0;
     _misses++;
+    _score-=MISS_PENALTY;
     c1.el.classList.add('wrong');
     c2.el.classList.add('wrong');
     playMiss();
+    showFloat(`-${MISS_PENALTY}점 💀`,c1.el,'#ef4444');
     updateHUD();
     setTimeout(()=>{
       c1.flipped=c2.flipped=false;
@@ -237,6 +243,7 @@ function onPickTimeout(token){
   _flipped=[];
   _combo=0;
   _misses++;
+  _score-=MISS_PENALTY;
   _locked=false;
   playTimeout();
   updateHUD();
@@ -273,35 +280,39 @@ function showFloat(text,anchorEl,color='#fff'){
 // ── 게임 종료 ────────────────────────────────────────────────────────────────
 async function gameClear(){
   stopPickTimer();
+  const elapsed=Date.now()-_startTime;
   _score+=CLEAR_BONUS;
+  const timeBonus=elapsed<TIME_LIMIT_MS?TIME_BONUS:0;
+  if(timeBonus>0) _score+=timeBonus;
   playClear();
-  const netGP=_score;
+  const netGP=Math.max(0,_score);
   await awardGP(netGP);
+  const sec=Math.floor(elapsed/1000);
+  const infoParts=[`오답: ${_misses}회`,`클리어 시간: ${sec}초`,`+${CLEAR_BONUS}GP 클리어 보너스`];
+  if(timeBonus>0) infoParts.push(`⚡1분 보너스: +${TIME_BONUS}GP`);
   $('resTitle').textContent='🏆 전체 클리어!';
   $('resTitle').className='res-title clear';
   $('resScore').textContent=_score+'점';
   $('resGP').textContent=`+${netGP} GP 획득!`;
-  $('resInfo').textContent=`오답: ${_misses}회 | 클리어 보너스: +${CLEAR_BONUS}GP`;
+  $('resInfo').textContent=infoParts.join(' | ');
   showPhase('result');
 }
 
 async function gameOver(){
   stopPickTimer();
   playGameOver();
-  const netGP=_score;
-  if(netGP>0) await awardGP(netGP);
   $('resTitle').textContent='💀 게임 오버';
   $('resTitle').className='res-title over';
   $('resScore').textContent=_score+'점';
-  $('resGP').textContent=netGP>0?`+${netGP} GP 획득`:'획득 GP 없음';
-  $('resInfo').textContent=`매칭: ${_matched}/12 | 오답: ${_misses}회`;
+  $('resGP').textContent='획득 GP 없음';
+  $('resInfo').textContent=`매칭: ${_matched}/12 | 오답: ${_misses}회 | 클리어 실패 시 보상 없음`;
   showPhase('result');
 }
 
 // ── 게임 시작 ─────────────────────────────────────────────────────────────────
 function startGame(){
   _cards=[];_flipped=[];_locked=false;
-  _misses=0;_matched=0;_combo=0;_score=0;
+  _misses=0;_matched=0;_combo=0;_score=0;_startTime=Date.now();
   _timerToken=0;
   buildGrid();
   updateHUD();
@@ -343,24 +354,56 @@ async function init(){
     }
   });
 
-  $('btnEnter')?.addEventListener('click',async()=>{
-    if(!_uid){ showPhase('login'); return; }
-    const ok=await deductFee();
-    if(!ok){alert('GP가 부족합니다 (100 GP 필요)');return;}
-    startGame();
+  $('btnEnter')?.addEventListener('click',()=>startGame());
+
+  $('btnRestart')?.addEventListener('click',()=>startGame());
+
+  $('btnLoginFromLobby')?.addEventListener('click',async e=>{
+    e.preventDefault();
+    try {
+      $('btnLoginFromLobby').textContent='로그인 중...';
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch(err) {
+      $('btnLoginFromLobby').textContent='로그인';
+      if(!err.message?.includes('popup-closed')) alert('로그인 오류: '+err.message);
+    }
   });
 
-  $('btnRestart')?.addEventListener('click',async()=>{
-    if(!_uid){ showPhase('login'); return; }
-    const ok=await deductFee();
-    if(!ok){alert('GP가 부족합니다 (100 GP 필요)');return;}
-    startGame();
-  });
+  // 헤더 Google 로그인
+  function _bindHdrLogin(){
+    $('gLoginBtn')?.addEventListener('click',async()=>{
+      try{
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='로그인 중...';
+        await signInWithPopup(auth,new GoogleAuthProvider());
+      }catch(e){
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='🔑 Google 로그인';
+        if(!e.message?.includes('popup-closed')) alert('로그인 오류: '+e.message);
+      }
+    });
+  }
+  function _updateHdr(user){
+    const r=$('gHdrRight'); if(!r) return;
+    if(user&&!user.isAnonymous){
+      r.innerHTML=`<span class="g-user-chip">👤 ${user.displayName||'유저'}</span>`;
+    } else {
+      r.innerHTML=`<button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button>`;
+      _bindHdrLogin();
+    }
+  }
+  _bindHdrLogin();
 
   onAuthStateChanged(auth,async user=>{
     _uid=user?.uid||null;
-    if(!_uid) { showPhase('login'); return; }
-    await loadPlayer();
+    if(_uid){
+      await loadPlayer();
+      const hint=$('loginHint');
+      if(hint) hint.style.display='none';
+    } else {
+      $('lobbyGP').textContent='게스트';
+      const hint=$('loginHint');
+      if(hint) hint.style.display='flex';
+    }
+    _updateHdr(user);
     showPhase('lobby');
   });
 }

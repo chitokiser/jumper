@@ -1,7 +1,7 @@
 // monsterrace.js — Monster Skate Race 게임 로직
 import { db, auth } from '/assets/js/firebase-init.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
   buildTrack, initRenderer, loadAllSprites, renderScene,
   triggerShake, SEGS, TOTAL_LAPS,
@@ -165,7 +165,15 @@ const $ = id => document.getElementById(id);
 
 // ── DB ───────────────────────────────────────────────────────────────────────
 async function loadPlayerData() {
-  if (!_uid) return;
+  if (!_uid) {
+    $('lobbyGP').textContent = '게스트';
+    $('lobbyHP').textContent = '—';
+    $('lobbyMP').textContent = '—';
+    $('btnEnter').disabled = false;
+    const badge=$('feeBadge'); if(badge) badge.textContent='🆓 체험 무료';
+    const info=$('feeInfo'); if(info) info.textContent='게스트는 무료 체험 가능 (GP 적립 안 됨)';
+    return;
+  }
   try {
     const snap = await getDoc(doc(db,'battle_players',_uid));
     if (snap.exists()) {
@@ -774,9 +782,10 @@ async function init() {
   await loadAllSprites();
 
   $('btnEnter')?.addEventListener('click', async ()=>{
-    if (!_uid) { alert('로그인이 필요합니다'); return; }
-    const ok = await deductFee();
-    if (!ok)  { alert('GP가 부족합니다 (100 GP 필요)'); return; }
+    if (_uid) {
+      const ok = await deductFee();
+      if (!ok) { alert('GP가 부족합니다'); return; }
+    }
     _selectedSkills = [];
     renderSkillGrid();
     $('skCount').textContent = '0/3 선택';
@@ -787,9 +796,33 @@ async function init() {
   $('skConfirm')?.addEventListener('click', startCountdown);
   $('btnRestart')?.addEventListener('click', ()=>location.reload());
 
+  // 헤더 Google 로그인
+  function _bindHdrLogin(){
+    $('gLoginBtn')?.addEventListener('click',async()=>{
+      try{
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='로그인 중...';
+        await signInWithPopup(auth,new GoogleAuthProvider());
+      }catch(e){
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='🔑 Google 로그인';
+        if(!e.message?.includes('popup-closed')) alert('로그인 오류: '+e.message);
+      }
+    });
+  }
+  function _updateHdr(user){
+    const r=$('gHdrRight'); if(!r) return;
+    if(user&&!user.isAnonymous){
+      r.innerHTML=`<span class="g-user-chip">👤 ${user.displayName||'유저'}</span>`;
+    } else {
+      r.innerHTML=`<button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button>`;
+      _bindHdrLogin();
+    }
+  }
+  _bindHdrLogin();
+
   onAuthStateChanged(auth, async user=>{
     _uid = user?.uid || null;
     await loadPlayerData();
+    _updateHdr(user);
     showPhase('lobby');
   });
 }

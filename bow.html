@@ -136,6 +136,18 @@ html,body{height:100%;background:#050510;color:#fff;
 .spin{width:34px;height:34px;border:3px solid #1f2937;border-top-color:#f59e0b;
   border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 게임 헤더 ── */
+.g-hdr{display:flex;justify-content:space-between;align-items:center;
+  width:100%;max-width:320px;padding-bottom:6px}
+.g-back{color:#4b5563;font-size:12px;text-decoration:none;transition:color .15s}
+.g-back:hover{color:#9ca3af}
+.g-login-btn{background:none;border:1px solid #374151;border-radius:8px;
+  color:#9ca3af;font-size:11px;padding:5px 11px;cursor:pointer;transition:all .15s}
+.g-login-btn:hover{border-color:#f59e0b;color:#f59e0b}
+.g-user-chip{font-size:11px;color:#6b7280;background:#1f2937;
+  border-radius:8px;padding:5px 10px;max-width:120px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -147,6 +159,10 @@ html,body{height:100%;background:#050510;color:#fff;
 
 <!-- 로비 -->
 <div id="lobbyScreen" class="screen hidden">
+  <div class="g-hdr">
+    <a href="/merchants.html" class="g-back">← 게임으로</a>
+    <div id="gHdrRight"><button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button></div>
+  </div>
   <div class="bow-title">🏹 활쏘기<br><span>Monster Hunt</span></div>
   <div style="font-size:12px;color:#9ca3af;text-align:center">1분 동안 몬스터를 최대한 많이 잡아라!</div>
   <div class="stat-card">
@@ -205,6 +221,10 @@ html,body{height:100%;background:#050510;color:#fff;
 
 <!-- 결과 -->
 <div id="resultScreen" class="screen hidden">
+  <div class="g-hdr" style="margin-bottom:4px">
+    <a href="/merchants.html" class="g-back">← 게임으로</a>
+    <div id="gHdrRight2"></div>
+  </div>
   <div class="res-title">🏹 사냥 완료!</div>
   <div id="resFinalScore">0점</div>
   <div id="resGP">+0 GP</div>
