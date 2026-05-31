@@ -29,38 +29,52 @@ function fetchJson(url) {
   });
 }
 
-// ── TON 실시간 가격 (Binance primary → CoinGecko fallback, 60초 캐시) ─────────
+// ── TON 실시간 가격 (Binance → OKX → Bybit → CoinGecko, 60초 캐시) ──────────
 async function getTonUsdPrice() {
   const now = Date.now();
   if (_tonCache.usd > 0 && now - _tonCache.ts < TON_CACHE_TTL) return _tonCache.usd;
 
-  // 1순위: Binance (빠르고 정확, 키 불필요)
-  try {
-    const d = await fetchJson('https://api.binance.com/api/v3/ticker/price?symbol=TONUSDT');
-    const p = parseFloat(d?.price);
-    if (p > 0) { _tonCache = { usd: p, ts: now }; return p; }
-  } catch (e) { console.warn('[ton] Binance 실패:', e.message); }
+  const apis = [
+    { name: 'Binance', fn: async () => {
+      const d = await fetchJson('https://api.binance.com/api/v3/ticker/price?symbol=TONUSDT');
+      return parseFloat(d?.price);
+    }},
+    { name: 'OKX', fn: async () => {
+      const d = await fetchJson('https://www.okx.com/api/v5/market/ticker?instId=TON-USDT');
+      return parseFloat(d?.data?.[0]?.last);
+    }},
+    { name: 'Bybit', fn: async () => {
+      const d = await fetchJson('https://api.bybit.com/v5/market/tickers?category=spot&symbol=TONUSDT');
+      return parseFloat(d?.result?.list?.[0]?.lastPrice);
+    }},
+    { name: 'CoinGecko', fn: async () => {
+      const d = await fetchJson('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd');
+      return d?.['the-open-network']?.usd;
+    }},
+  ];
 
-  // 2순위: CoinGecko
-  try {
-    const d = await fetchJson('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd');
-    const p = d?.['the-open-network']?.usd;
-    if (p > 0) { _tonCache = { usd: p, ts: now }; return p; }
-  } catch (e) { console.warn('[ton] CoinGecko 실패:', e.message); }
+  for (const api of apis) {
+    try {
+      const p = await api.fn();
+      if (p > 0) { _tonCache = { usd: p, ts: now }; return p; }
+    } catch (e) { console.warn(`[ton] ${api.name} 실패:`, e.message); }
+  }
 
-  // 캐시라도 반환 (최신 실패 시), 캐시도 없으면 에러
   if (_tonCache.usd > 0) return _tonCache.usd;
   throw new Error('TON 시세 조회 실패 — 잠시 후 다시 시도해 주세요');
 }
 
-// ── 가격 + 교환비 반환 ────────────────────────────────────────────────────────
+// ── 가격 + 교환비 + 관리자 지갑 반환 ─────────────────────────────────────────
 async function getPrice() {
   const usd = await getTonUsdPrice();
+  const snap = await db.collection('config').doc('ton').get().catch(() => null);
+  const adminWallet = snap?.data()?.adminWallet || '';
   return {
     tonUsd:          usd,
     coinPerTon:      Math.floor(usd * COIN_PER_USD),
     coinPerUsd:      COIN_PER_USD,
     minWithdrawGp:   MIN_WITHDRAW_GP,
+    adminWallet,
     updatedAt:       new Date().toISOString(),
   };
 }

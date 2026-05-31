@@ -43,13 +43,9 @@ export async function initTonExchange() {
     if (_connected) _setWithdrawAddress(_walletAddr);
   });
 
-  // 가격 로드 (캐시 포함)
+  // 가격 로드 (adminWallet 포함) + 1분 갱신
   await _loadPrice();
-  _priceTimer = setInterval(_loadPrice, 60 * 1000); // 1분 갱신
-
-  // 관리자 지갑 주소 + 잔고 로드
-  await _loadAdminWallet();
-  _loadAdminBalance();
+  _priceTimer = setInterval(_loadPrice, 60 * 1000);
 
   // 이벤트 연결
   _bindEvents();
@@ -59,30 +55,18 @@ export async function initTonExchange() {
 async function _loadPrice() {
   try {
     const { data } = await _fnPrice();
-    _tonUsd      = data.tonUsd      || 0;
-    _coinPerTon  = data.coinPerTon  || 0;
-    _adminWallet = data.adminWallet || _adminWallet;
+    _tonUsd     = data.tonUsd     || 0;
+    _coinPerTon = data.coinPerTon || 0;
+    if (data.adminWallet && !_adminWallet) {
+      _adminWallet = data.adminWallet;
+      _renderAdminWallet();
+      _loadAdminBalance();
+    }
     _renderPrice();
     _recalcDeposit();
     _recalcWithdraw();
   } catch (e) {
     console.warn('[ton] 가격 로드 실패:', e.message);
-  }
-}
-
-// ── 관리자 지갑 주소 ──────────────────────────────────────────────────────────
-async function _loadAdminWallet() {
-  try {
-    const { db } = await import('/assets/js/firebase-init.js');
-    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
-    const snap = await getDoc(doc(db, 'config', 'ton'));
-    const addr = snap.data()?.adminWallet || '';
-    if (!addr) { console.warn('[ton] config/ton.adminWallet 미설정'); return; }
-    _adminWallet = addr;
-    _renderAdminWallet();
-    _loadAdminBalance();
-  } catch (e) {
-    console.warn('[ton] 관리자 지갑 로드 실패:', e.message);
   }
 }
 
