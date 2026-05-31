@@ -10,9 +10,17 @@ import {
 import { playSound } from './merchants.battle.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const ENTRY_FEE = 100;
-const GAME_TIME = 60;
-const ARROW_PENALTY = 3; // 화살 1발당 점수 감점
+const BASE_FEE    = 100;
+const FEE_STEP    = 50;
+const RESET_MS    = 24 * 60 * 60 * 1000;
+const GAME_KEY    = 'bowEntry';
+const GAME_TIME   = 60;
+const ARROW_PENALTY = 3;
+
+// ── 참가비 상태 ───────────────────────────────────────────────────────────────
+let _entryFee     = BASE_FEE;
+let _entryCount   = 0;
+let _entryResetAt = 0;
 
 // ── 스킬 정의 ────────────────────────────────────────────────────────────────
 const SKILLS = {
@@ -86,9 +94,32 @@ async function loadPlayer() {
     _playerMP    = d.mp||1000;   _playerMaxMP = d.maxMp||_playerMP;
     _playerHP    = d.hp||1000;   _playerMaxHP = d.maxHp||_playerHP;
     _playerAttack= d.attack||50; _playerDefense= d.defense||0;
+
+    const entry = d[GAME_KEY] || {};
+    const now = Date.now();
+    if (!entry.resetAt || now - entry.resetAt > RESET_MS) {
+      _entryCount = 0; _entryResetAt = 0;
+    } else {
+      _entryCount = entry.count || 0; _entryResetAt = entry.resetAt;
+    }
+    _entryFee = BASE_FEE + _entryCount * FEE_STEP;
   } catch {}
-  $('lobbyGP').textContent=_playerGP;
-  $('btnEnter').disabled=_playerGP<ENTRY_FEE;
+  $('lobbyGP').textContent = _playerGP;
+  _updateFeeDisplay();
+  $('btnEnter').disabled = _playerGP < _entryFee;
+}
+
+function _updateFeeDisplay() {
+  const badge = $('feeBadge');
+  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
+  const info = $('feeInfo');
+  if (!info) return;
+  if (_entryCount === 0) {
+    info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
+  } else {
+    const h = Math.ceil((_entryResetAt + RESET_MS - Date.now()) / 3_600_000);
+    info.textContent = `오늘 ${_entryCount}번째 참가 · ${h}시간 후 100GP 리셋`;
+  }
 }
 
 function arrowDmg(fire=false) {
@@ -98,9 +129,23 @@ function arrowDmg(fire=false) {
 }
 
 async function deductFee() {
-  if (_playerGP<ENTRY_FEE) return false;
-  try { await updateDoc(doc(db,'battle_players',_uid),{gold:increment(-ENTRY_FEE)}); _playerGP-=ENTRY_FEE; return true; }
-  catch { return false; }
+  if (_playerGP < _entryFee) return false;
+  try {
+    const now = Date.now();
+    const isReset = !_entryResetAt || now - _entryResetAt > RESET_MS;
+    const newCount    = isReset ? 1 : _entryCount + 1;
+    const newResetAt  = isReset ? now : _entryResetAt;
+    await updateDoc(doc(db,'battle_players',_uid), {
+      gold: increment(-_entryFee),
+      [`${GAME_KEY}.count`]:   newCount,
+      [`${GAME_KEY}.resetAt`]: newResetAt,
+    });
+    _playerGP    -= _entryFee;
+    _entryCount   = newCount;
+    _entryResetAt = newResetAt;
+    _entryFee     = BASE_FEE + _entryCount * FEE_STEP;
+    return true;
+  } catch { return false; }
 }
 
 async function awardScore(score) {

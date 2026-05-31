@@ -8,8 +8,16 @@ import {
 } from './monsterrace.render.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const ENTRY_FEE  = 100;
-const PRIZES     = [500, 250, 150, 50, 30, 20, 10];
+const BASE_FEE    = 100;
+const FEE_STEP    = 50;
+const RESET_MS    = 24 * 60 * 60 * 1000;
+const GAME_KEY    = 'raceEntry';
+const PRIZES      = [500, 250, 150, 50, 30, 20, 10];
+
+// ── 참가비 상태 ───────────────────────────────────────────────────────────────
+let _entryFee     = BASE_FEE;
+let _entryCount   = 0;
+let _entryResetAt = 0;
 const MAX_SPEED  = 0.152;   // ×2 (was 0.076)
 const ACCEL      = 0.0026;  // ×2 (was 0.0013)
 const STEER      = 0.055;
@@ -165,18 +173,55 @@ async function loadPlayerData() {
       _playerHP = d.hp || 1000; _playerMaxHP = _playerHP;
       _playerMP = d.mp || 1000; _playerMaxMP = _playerMP;
       _playerGP = d.gold || 0;
+
+      const entry = d[GAME_KEY] || {};
+      const now = Date.now();
+      if (!entry.resetAt || now - entry.resetAt > RESET_MS) {
+        _entryCount = 0; _entryResetAt = 0;
+      } else {
+        _entryCount = entry.count || 0; _entryResetAt = entry.resetAt;
+      }
+      _entryFee = BASE_FEE + _entryCount * FEE_STEP;
     }
   } catch {}
   $('lobbyGP').textContent = _playerGP;
   $('lobbyHP').textContent = _playerHP;
   $('lobbyMP').textContent = _playerMP;
-  $('btnEnter').disabled   = _playerGP < ENTRY_FEE;
+  $('btnEnter').disabled   = _playerGP < _entryFee;
+  _updateFeeDisplay();
+}
+
+function _updateFeeDisplay() {
+  const badge = $('feeBadge');
+  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
+  const info = $('feeInfo');
+  if (!info) return;
+  if (_entryCount === 0) {
+    info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
+  } else {
+    const h = Math.ceil((_entryResetAt + RESET_MS - Date.now()) / 3_600_000);
+    info.textContent = `오늘 ${_entryCount}번째 참가 · ${h}시간 후 100GP 리셋`;
+  }
 }
 
 async function deductFee() {
-  if (_playerGP < ENTRY_FEE) return false;
-  try { await updateDoc(doc(db,'battle_players',_uid), {gold: increment(-ENTRY_FEE)}); _playerGP -= ENTRY_FEE; return true; }
-  catch { return false; }
+  if (_playerGP < _entryFee) return false;
+  try {
+    const now = Date.now();
+    const isReset    = !_entryResetAt || now - _entryResetAt > RESET_MS;
+    const newCount   = isReset ? 1 : _entryCount + 1;
+    const newResetAt = isReset ? now : _entryResetAt;
+    await updateDoc(doc(db,'battle_players',_uid), {
+      gold: increment(-_entryFee),
+      [`${GAME_KEY}.count`]:   newCount,
+      [`${GAME_KEY}.resetAt`]: newResetAt,
+    });
+    _playerGP    -= _entryFee;
+    _entryCount   = newCount;
+    _entryResetAt = newResetAt;
+    _entryFee     = BASE_FEE + _entryCount * FEE_STEP;
+    return true;
+  } catch { return false; }
 }
 
 async function awardPrize(rank) {
