@@ -1423,16 +1423,10 @@ function _stopDetector() {
   if (btn) { btn.style.background = ''; btn.style.boxShadow = ''; btn.title = '보물 탐지기 ON/OFF'; }
 }
 
-// ── 초보자 체험 패키지: 100m 내 실제 보물박스 없을 때만 활성화 ──────────────
+// ── 초보자 체험 패키지: 항상 생성 (실제 보물 유무 무관) ──────────────────────
 let _starterInitDone = false;
 function _maybeInitStarterPack(lat, lng) {
   if (_starterInitDone || isStarterActive()) return;
-  const hasNearby = treasureBoxes.some(box =>
-    box.lat && box.lng && !_collectedBoxes.has(box.id) && isBoxActive(box) &&
-    haversine(lat, lng, Number(box.lat), Number(box.lng)) <= 100
-  );
-  const forceStarter = new URLSearchParams(location.search).has('starter');
-  if (hasNearby && !forceStarter) return; // 실제 보물 있음 → 스타터팩 불필요
   _starterInitDone = true;
   initStarterPack(_uid, lat, lng, _ctx.map, infoWindow);
 }
