@@ -73,14 +73,17 @@ async function _loadPrice() {
 // ── 관리자 지갑 주소 ──────────────────────────────────────────────────────────
 async function _loadAdminWallet() {
   try {
-    // Firestore public read (로그인 불필요)
     const { db } = await import('/assets/js/firebase-init.js');
     const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
     const snap = await getDoc(doc(db, 'config', 'ton'));
-    _adminWallet = snap.data()?.adminWallet || '';
+    const addr = snap.data()?.adminWallet || '';
+    if (!addr) { console.warn('[ton] config/ton.adminWallet 미설정'); return; }
+    _adminWallet = addr;
     _renderAdminWallet();
-    _loadAdminBalance(); // 주소 로드 후 즉시 잔고 조회
-  } catch {}
+    _loadAdminBalance();
+  } catch (e) {
+    console.warn('[ton] 관리자 지갑 로드 실패:', e.message);
+  }
 }
 
 // ── UI 렌더 ───────────────────────────────────────────────────────────────────
@@ -151,7 +154,6 @@ function _recalcWithdraw() {
 function _bindEvents() {
   document.getElementById('tonDepositAmt')?.addEventListener('input',  _recalcDeposit);
   document.getElementById('tonWithdrawGp')?.addEventListener('input',  _recalcWithdraw);
-  document.getElementById('tonConnectWallet')?.addEventListener('click', _connectWallet);
   document.getElementById('tonSendBtn')?.addEventListener('click',     _doDeposit);
   document.getElementById('tonVerifyBtn')?.addEventListener('click',   _doVerify);
   document.getElementById('tonWithdrawBtn')?.addEventListener('click', _doWithdraw);
@@ -166,15 +168,6 @@ function _bindEvents() {
       document.getElementById(btn.dataset.target)?.classList.remove('hidden');
     });
   });
-}
-
-// ── 지갑 연결 ─────────────────────────────────────────────────────────────────
-async function _connectWallet() {
-  if (!_tonUI) return _toast('TON Connect SDK 로딩 중...', 'warn');
-  try {
-    if (_connected) { await _tonUI.disconnect(); }
-    else            { await _tonUI.openModal(); }
-  } catch (e) { _toast('지갑 연결 오류: ' + e.message, 'error'); }
 }
 
 // ── 입금 (TON 전송) ───────────────────────────────────────────────────────────
@@ -307,25 +300,27 @@ function _toast(msg, type = 'info') {
   el._timer = setTimeout(() => { el.style.display = 'none'; }, 3500);
 }
 
-// ── 관리자 지갑 잔고 조회 ─────────────────────────────────────────────────────
+// ── 관리자 지갑 잔고 조회 (tonapi.io — CORS 허용, 무료) ──────────────────────
 async function _loadAdminBalance() {
   if (!_adminWallet) return;
+  const balEl = document.getElementById('tonAdminBalance');
+  const usdEl = document.getElementById('tonAdminBalanceUsd');
   try {
     const res = await fetch(
-      `https://toncenter.com/api/v2/getAddressBalance?address=${encodeURIComponent(_adminWallet)}`,
+      `https://tonapi.io/v2/accounts/${encodeURIComponent(_adminWallet)}`,
       { cache: 'no-store' }
     );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
-    const nanoton = parseInt(d?.result || '0', 10);
-    if (isNaN(nanoton)) return;
+    const nanoton = parseInt(d?.balance ?? '0', 10);
+    if (isNaN(nanoton)) throw new Error('잔고 파싱 실패');
     const ton = nanoton / 1e9;
     const usd = _tonUsd ? ton * _tonUsd : 0;
-    const balEl = document.getElementById('tonAdminBalance');
-    const usdEl = document.getElementById('tonAdminBalanceUsd');
     if (balEl) balEl.textContent = ton.toFixed(4);
     if (usdEl) usdEl.textContent = usd > 0 ? '$' + usd.toFixed(2) : '$—';
   } catch (e) {
     console.warn('[ton] 잔고 조회 실패:', e.message);
+    if (balEl) balEl.textContent = '오류';
   }
 }
 
