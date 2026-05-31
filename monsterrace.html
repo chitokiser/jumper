@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
+<title>Monster Skate Race | JumpDAO</title>
+<meta name="robots" content="noindex"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0a0a1a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;touch-action:none}
+
+/* ── 공통 화면 레이아웃 ── */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px}
+.screen.hidden{display:none}
+
+/* ── 게임 캔버스 래퍼 ── */
+#gameScreen{padding:0;background:#0a0a1a}
+#canvasWrap{position:relative;width:100%;max-width:600px;margin:0 auto}
+#raceCanvas{width:100%;height:auto;display:block;image-rendering:pixelated}
+
+/* ── HUD ── */
+#hud{position:absolute;inset:0;pointer-events:none}
+#hudTop{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 10px;gap:6px}
+.hud-box{background:rgba(0,0,0,.7);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700}
+#hpMpBox{display:flex;flex-direction:column;gap:3px;min-width:80px}
+.stat-row{display:flex;align-items:center;gap:4px;font-size:11px}
+.stat-label{width:20px;font-weight:700;color:#94a3b8}
+.bar-bg{flex:1;height:6px;background:#1f2937;border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .2s}
+#hpBar{background:#22c55e;width:100%}
+#mpBar{background:#3b82f6;width:100%}
+#rankBox{font-size:15px;letter-spacing:-.3px}
+#lapBox{font-size:12px}
+#gpBox{font-size:12px;color:#fbbf24}
+
+/* ── 로그 ── */
+#raceLog{position:absolute;top:50px;left:8px;width:180px;font-size:10px;line-height:1.6;pointer-events:none}
+#raceLog div{background:rgba(0,0,0,.55);border-radius:4px;padding:1px 5px;margin-bottom:1px;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1}}
+
+/* ── 스킬 바 ── */
+#skillBar{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);display:flex;gap:8px;pointer-events:all}
+.skill-btn-race{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:rgba(0,0,0,.8);border:2px solid #374151;
+  border-radius:12px;padding:6px 10px;font-size:18px;cursor:pointer;
+  position:relative;min-width:52px;color:#fff
+}
+.skill-btn-race small{font-size:9px;color:#9ca3af;white-space:nowrap}
+.skill-btn-race.on-cd{opacity:.5}
+.skill-btn-race .cd{
+  position:absolute;top:2px;right:4px;font-size:9px;font-weight:700;color:#fbbf24
+}
+
+/* ── 조향 버튼 ── */
+#steerBar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:60px;pointer-events:all}
+.steer-btn{
+  width:64px;height:52px;background:rgba(255,255,255,.12);
+  border:2px solid rgba(255,255,255,.25);border-radius:14px;
+  font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  user-select:none
+}
+.steer-btn:active{background:rgba(255,255,255,.3)}
+
+/* ── 로비 화면 ── */
+#lobbyScreen{text-align:center}
+.race-title{font-size:28px;font-weight:900;letter-spacing:-1px;line-height:1.1}
+.race-title span{color:#f59e0b}
+.race-sub{font-size:13px;color:#9ca3af;margin-top:4px}
+.stat-card{background:#111827;border:1px solid #1f2937;border-radius:14px;padding:14px 20px;width:100%;max-width:320px}
+.stat-card h3{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.stat-row-l{display:flex;justify-content:space-between;padding:3px 0;font-size:14px}
+.stat-row-l .label{color:#9ca3af}
+.stat-row-l .val{font-weight:700}
+.entry-badge{background:#1e40af;border-radius:8px;padding:6px 16px;font-size:13px;font-weight:700}
+.btn-main{
+  padding:12px 36px;background:#f59e0b;color:#000;border:none;
+  border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 20px rgba(245,158,11,.4);transition:opacity .15s
+}
+.btn-main:hover{opacity:.85}
+.btn-main:disabled{opacity:.4;cursor:not-allowed}
+.btn-sec{padding:8px 20px;background:#374151;color:#fff;border:none;border-radius:10px;font-size:13px;cursor:pointer}
+
+/* ── 스킬 선택 화면 ── */
+#skillScreen{overflow-y:auto;max-height:100vh}
+#skillScreen h2{font-size:18px;font-weight:800}
+#skillCount{font-size:13px;color:#9ca3af}
+#skillGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:360px}
+.skill-pick-btn{
+  background:#111827;border:2px solid #1f2937;border-radius:12px;
+  padding:10px 6px;cursor:pointer;color:#fff;text-align:center;transition:all .15s
+}
+.skill-pick-btn span{font-size:22px;display:block;margin-bottom:4px}
+.skill-pick-btn div{font-size:11px;line-height:1.3}
+.skill-pick-btn .mp-cost{font-size:10px;color:#60a5fa;margin-top:2px}
+.skill-pick-btn.selected{border-color:#f59e0b;background:#1c1500}
+
+/* ── 카운트다운 ── */
+#countdownScreen{text-align:center}
+#cdNum{font-size:96px;font-weight:900;color:#f59e0b;text-shadow:0 0 40px #f59e0b80;animation:pulse .9s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.cd-sub{font-size:14px;color:#9ca3af}
+.racer-list{display:flex;flex-direction:column;gap:4px;max-width:300px;width:100%}
+.racer-item{display:flex;align-items:center;gap:8px;background:#111827;border-radius:8px;padding:6px 10px;font-size:13px}
+.racer-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+
+/* ── 완주 화면 ── */
+#finishScreen{text-align:center}
+.finish-title{font-size:32px;font-weight:900;margin-bottom:6px}
+#finishRank{font-size:48px;font-weight:900;color:#f59e0b;margin:8px 0}
+#finishGP{font-size:22px;color:#22c55e;font-weight:700}
+
+/* ── 로딩 ── */
+#loadingScreen{font-size:16px;color:#9ca3af}
+.loader{width:36px;height:36px;border:3px solid #1f2937;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ══ 로딩 ══ -->
+<div id="loadingScreen" class="screen">
+  <div class="loader"></div>
+  <div>게임 로딩 중...</div>
+</div>
+
+<!-- ══ 로비 ══ -->
+<div id="lobbyScreen" class="screen hidden">
+  <div class="race-title">🛹 Monster<br><span>Skate Race</span></div>
+  <div class="race-sub">스케이트보드로 6마리 몬스터를 꺾어라!</div>
+
+  <div class="stat-card">
+    <h3>내 스탯</h3>
+    <div class="stat-row-l"><span class="label">❤️ HP</span><span class="val" id="lobbyHP">—</span></div>
+    <div class="stat-row-l"><span class="label">💧 MP</span><span class="val" id="lobbyMP">—</span></div>
+    <div class="stat-row-l"><span class="label">💰 GP</span><span class="val" id="lobbyGP">—</span></div>
+  </div>
+
+  <div class="entry-badge">참가비: 100 GP</div>
+
+  <button class="btn-main" id="btnEnter">🏁 레이스 참가</button>
+  <div style="font-size:11px;color:#4b5563;margin-top:4px">1위 500GP · 2위 250GP · 3위 150GP</div>
+  <a href="/merchants.html" style="font-size:12px;color:#6b7280;text-decoration:none;">← 게임으로 돌아가기</a>
+</div>
+
+<!-- ══ 스킬 선택 ══ -->
+<div id="skillScreen" class="screen hidden">
+  <h2>🎒 스킬 선택</h2>
+  <div id="skillCount">0 / 3 선택</div>
+  <div id="skillGrid"></div>
+  <button class="btn-main" id="skillConfirmBtn" disabled style="margin-top:8px">출발 대기 →</button>
+</div>
+
+<!-- ══ 카운트다운 ══ -->
+<div id="countdownScreen" class="screen hidden">
+  <div class="cd-sub">모든 레이서 집결!</div>
+  <div id="cdNum">3</div>
+  <div class="racer-list">
+    <div class="racer-item"><div class="racer-dot" style="background:#3b82f6"></div>🛹 Player (You)</div>
+    <div class="racer-item"><div class="racer-dot" style="background:#4a7c2f"></div>👹 Orc3</div>
+    <div class="racer-item"><div class="racer-dot" style="background:#7c3a1a"></div>🏴‍☠️ Pirate3</div>
+    <div class="racer-item"><div class="racer-dot" style="background:#5a7a3a"></div>🧟 Zombie1</div>
+    <div class="racer-item"><div class="racer-dot" style="background:#4a6a2a"></div>🧟 Zombie2</div>
+    <div class="racer-item"><div class="racer-dot" style="background:#8b0000"></div>🐉 Dragon</div>
+    <div class="racer-item"><div class="racer-dot" style="background:#3a6e3a"></div>🟢 슬라임</div>
+  </div>
+</div>
+
+<!-- ══ 게임 화면 ══ -->
+<div id="gameScreen" class="screen hidden" style="justify-content:flex-start">
+  <div id="canvasWrap">
+    <canvas id="raceCanvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div id="hudTop">
+        <div class="hud-box" id="hpMpBox">
+          <div class="stat-row">
+            <span class="stat-label">HP</span>
+            <div class="bar-bg"><div class="bar-fill" id="hpBar"></div></div>
+            <span id="hpVal" style="font-size:10px;width:34px;text-align:right"></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">MP</span>
+            <div class="bar-bg"><div class="bar-fill" id="mpBar"></div></div>
+            <span id="mpVal" style="font-size:10px;width:34px;text-align:right"></span>
+          </div>
+        </div>
+        <div class="hud-box" id="rankBox"><span id="rankDisplay">—</span></div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="hud-box" id="lapBox"><span id="lapDisplay">1/3</span></div>
+          <div class="hud-box" id="gpBox"><span id="gpDisplay">GP: —</span></div>
+        </div>
+      </div>
+
+      <!-- 레이스 로그 -->
+      <div id="raceLog"></div>
+
+      <!-- 스킬 버튼 -->
+      <div id="skillBar"></div>
+
+      <!-- 조향 버튼 -->
+      <div id="steerBar">
+        <button class="steer-btn" id="btnLeft">◀</button>
+        <button class="steer-btn" id="btnRight">▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 완주 ══ -->
+<div id="finishScreen" class="screen hidden">
+  <div class="finish-title">🏁 레이스 완료!</div>
+  <div id="finishRank">?위</div>
+  <div id="finishGP">+? GP</div>
+  <div style="margin-top:8px;font-size:13px;color:#9ca3af">GP가 자동 지급됩니다</div>
+  <button class="btn-main" id="btnRestart" style="margin-top:16px">다시 도전!</button>
+  <a href="/merchants.html" style="font-size:12px;color:#6b7280;text-decoration:none;margin-top:6px">← 게임으로 돌아가기</a>
+</div>
+
+<script>
+window.firebaseConfig = {
+  apiKey:            "AIzaSyD6oGXWcQIAa46ZiO6E9fBWOXqiNCAL4-c",
+  authDomain:        "jumper-b15aa.firebaseapp.com",
+  projectId:         "jumper-b15aa",
+  storageBucket:     "jumper-b15aa.firebasestorage.app",
+  messagingSenderId: "1051842479371",
+  appId:             "1:1051842479371:web:cd0dca2c1eab0e44b58e0e"
+};
+</script>
+<script type="module" src="/assets/js/pages/monsterrace.js"></script>
+</body>
+</html>
