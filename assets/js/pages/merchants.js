@@ -259,7 +259,9 @@ function _exitFullscreen() {
   (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
 }
 
-// ── 전체화면 모달 이동 (모듈 스코프 — initMap 외부에서도 호출 가능) ────────────
+// ── 전체화면 모달 이동 ───────────────────────────────────────────────────────
+// 정적 ID 목록 + 자동 감지(z-index 500 이상 직계 body children) 이중 구조
+// 새 모달 추가 시: HTML에 data-fs-modal 속성만 붙이면 자동 이동
 const FS_MODALS = [
   'invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast',
   'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal', 'raceModal', 'dungeonModal',
@@ -267,14 +269,42 @@ const FS_MODALS = [
   'userPlacePanel', 'userPlaceConfirmModal', 'userPlaceBanner', 'btnUserPlaceCancelMode',
   'soBuyModal', 'soExecuteModal', 'soTransferModal',
   'anonBadge',
+  // 누락 보완
+  'levelupOverlay', 'voucherOrderModal', 'tutModal', 'lb-overlay', 'monsterStatModal',
+  'myMapPanel',
 ];
+
+// 풀스크린 컨테이너 밖에 있는 fixed 요소를 안으로 이동시키지 않으면
+// Fullscreen API 환경에서 body에 남은 position:fixed 요소는 화면에서 사라짐.
 function _moveModalsToFs() {
   const fs   = document.fullscreenElement || document.webkitFullscreenElement;
   const dest = fs || document.body;
+
+  // 1) 정적 목록
   FS_MODALS.forEach(id => {
     const el = document.getElementById(id);
     if (el && el.parentElement !== dest) dest.appendChild(el);
   });
+
+  // 2) data-fs-modal 속성 요소 (미래 모달 자동 포함)
+  document.querySelectorAll('[data-fs-modal]').forEach(el => {
+    if (el.parentElement !== dest) dest.appendChild(el);
+  });
+
+  // 3) body 직계 자식 중 z-index 500 이상인 position:fixed 요소 자동 이동
+  //    (JS로 동적 생성된 모달 포함 — siteHeader/siteFooter 제외)
+  if (fs) {
+    const skip = new Set(['siteHeader', 'siteFooter', 'merchantMap', 'battleOverlay']);
+    Array.from(document.body.children).forEach(el => {
+      if (skip.has(el.id)) return;
+      const s = window.getComputedStyle(el);
+      if (s.position === 'fixed' && parseInt(s.zIndex, 10) >= 500) {
+        fs.appendChild(el);
+      }
+    });
+  }
+
+  // battleOverlay는 mc-map-wrap 안에 위치해야 함
   const bo = document.getElementById('battleOverlay');
   if (bo) {
     if (fs) fs.appendChild(bo);
