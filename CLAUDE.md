@@ -1,315 +1,125 @@
-```markdown
 # CLAUDE.md — Jumper v10
 
-## 필수 규칙
-- 수정 전 반드시 파일 전체 Read
-- 가격 표시: KRW / VND / HEX 동시 표시
-- 상품 가격 기준은 HEX
-- pending changes 10개 이상 → git push
-- 변경사항 20개 이상 → git push + 게임서버 railway up
-- Functions 배포:
-  firebase deploy --only functions
-- 단일 함수 배포 금지
+## 필수
+- 수정 전 파일 전체 Read 필수
+- 가격 표시: KRW / VND / HEX 동시
+- pending changes 10개↑ → git push
+- 변경 20개↑ → git push + `cd game-server && railway up`
+- Functions 배포: `firebase deploy --only functions` (단일 함수 배포 금지)
 
 ---
 
-## 기본 구조
+## 구조
 - HTML ↔ assets/js/pages 1:1 대응
-- 복잡한 페이지는 .lib.js / .render.js / .hero.js 분리
-- 공통 헤더/푸터:
-  partials.js 사용
-  (#siteHeader / #siteFooter 필수)
+- 복잡한 페이지: `.lib.js` / `.render.js` / `.hero.js` 분리
+- 공통 헤더/푸터: `partials.js` (`#siteHeader` / `#siteFooter`)
 
 ---
 
 ## 블록체인
-- opBNB Mainnet
-- ethers.js v6
-- HEX = 플랫폼 포인트 (18dec)
-- JUMP = 거래토큰 (0dec)
-- BNB = gas
+- opBNB Mainnet / ethers.js v6
+- HEX = 플랫폼 포인트 (18dec), JUMP = 거래토큰 (0dec), BNB = gas
+- 가격 입력은 HEX 기준, 환율 하드코딩 금지 (Firestore 또는 컨트랙트 조회)
 
 ---
 
-## 결제 규칙
-- 가격 입력은 HEX 기준
-- KRW/VND 환율 자동 계산 표시
-- 수수료/환율 하드코딩 금지
-- Firestore 또는 컨트랙트 조회 사용
-
----
-
-## 정회원 시스템
-- coop.html 에서 10 HEX 결제 시 정회원
-- 기간: 가입 후 12개월
-- 만료 후 재가입 필요
-- merchants.html 정회원전용 보물박스 획득은 정회원만 가능
-
----
-
-## 역할 판정
-반드시:
-getUserRole(uid)
-
-순서:
-1. admin
-2. approved guide
-3. users.role
-4. user / guest
+## 온체인 가스비 절약 (최우선)
+- **이벤트마다 온체인 쓰기 금지** — XP 획득·이동 등 빈번한 이벤트는 Firestore만
+- **배치 지연 동기화** — 플래그(`pendingOnChainSync: true`) → 스케줄러 6시간 배치
+- **최종 상태만 1tx** — 레벨 1→5 올라도 `adminSetLevel(5)` 1tx
+- **관리자 지갑 우선** — 보상·레벨·포인트는 adminSetLevel/adminCreditHex 사용
+- 온체인 저장 허용: 결제 / 레벨업 배치 / 지갑 최초 등록 / 관리자 명시 요청만
 
 ---
 
 ## Cloud Functions
-- WALLET_MASTER_SECRET 사용
-- ADMIN_PRIVATE_KEY 사용
-- requireAuth()
-- requireAdmin()
-- wrapError()
+- `requireAuth()` / `requireAdmin()` / `wrapError()` 필수
+- Secrets: `WALLET_MASTER_SECRET`, `ADMIN_PRIVATE_KEY`
+- 핸들러 파일에서 `firebase-functions` 직접 import 금지 — `index.js`에서만
 
 ---
 
-## 성능 / 서버 부하 최소화
-- Firestore 쿼리는 반드시 필요한 시점에만 실행 (페이지 로드 즉시 금지)
-- 뷰포트 진입 시 로드: IntersectionObserver 사용 (threshold: 0.1)
-- 메모리 캐시 → localStorage 캐시(TTL) → Firestore 순서 우선
-- 랭킹·목록 쿼리: where 필터로 불필요한 문서 스캔 제거
-- 이미지 프리로드: 실제 필요 시점(게임 시작·모달 열기)에만 실행
-- 모듈 최상단 preload 금지 — lazy load 원칙
-- Promise.race + 타임아웃(10s) 추가로 무한 로딩 방지
-- Firestore rules: 공개 데이터는 if true, 인증 필요 데이터만 signedIn()
+## 역할 판정 — `getUserRole(uid)` 순서
+1. admins/{uid} → admin
+2. guides/{uid}.approved === true → guide
+3. users/{uid}.role → 해당 role
+4. 기본 → user / guest
 
 ---
 
-## DOM 최적화
-- querySelector 반복 금지
-- DOM 초기 캐싱 필수
-- innerHTML 루프 반복 금지
-- 부분 렌더링 우선
-- style.display 금지
-- classList hidden 사용
+## 정회원
+- coop.html 10 HEX 결제 → 12개월 정회원
+- 정회원 전용 보물박스는 정회원만 획득 가능
 
 ---
 
-## 이벤트 규칙
-- scroll/resize throttle 100ms
-- mousemove 50ms
-- search debounce 350ms
-- passive:true 사용
-- onSnapshot/setInterval/watchPosition cleanup 필수
+## Firestore 읽기 최적화
+- 쿼리는 필요 시점에만 (페이지 로드 즉시 금지)
+- 전체 컬렉션 onSnapshot 금지 — where 필터 필수
+- `includeMetadataChanges: true` 금지
+- 반복 호출 함수: 30초 TTL 캐시 필수
+- 폴링: 위치 최소 30초, 위치 쓰기 최소 5초 + 5m 이동 시만
 
 ---
 
-## 금지사항
-- console.log 프로덕션 금지
+## GPS 보안
+- `_ctx.gpsPos` — 보안용, `navigator.geolocation` 콜백에서만 설정
+- `_ctx.lastPos` — 렌더링용 (맵 패닝 시 갱신 가능)
+- 거리 검증은 반드시 `_ctx.gpsPos` 사용
+- Cloud Functions: 클라이언트 lat/lng 신뢰 금지, `battle_players` 저장 위치 사용
+
+---
+
+## DOM / 이벤트
+- `querySelector` 반복 금지 — 초기 캐싱 필수
+- `style.display` 금지 — `classList.hidden` 사용
+- `innerHTML` 루프 금지 — 부분 렌더링 우선
+- scroll/resize throttle 100ms, mousemove 50ms, search debounce 350ms
+- `passive: true` 사용
+- onSnapshot / setInterval / watchPosition cleanup 필수
+
+---
+
+## 금지
+- `console.log` 프로덕션 금지
 - 하드코딩 최소화
-- 단일 함수 deploy 금지
 - cleanup 없는 interval 금지
+- Google Geocoding API 금지 → Nominatim 사용
+- 풀스크린 모달 추가 시 `data-fs-modal` 속성 부착 (FS_MODALS 목록 자동 포함)
 
 ---
 
-## 파일 크기
-- 기능 JS: 300줄
-- 페이지 JS: 700줄
-- Function handler: 1200줄
-- CSS: 600줄
-초과 시 분리
+## 파일 크기 한도 (초과 시 분리)
+기능 JS 300줄 / 페이지 JS 700줄 / Function handler 1200줄 / CSS 600줄
 
 ---
 
-## Geocoding
-- Nominatim 사용
-- Google Geocoding API 금지
+## 다국어 — ko / en / vi 동시 추가 필수
+- 기본 언어: English
+- 게임 메시지 전부 3개 언어
+
+---
+
+## 게임 서버
+- notify 이벤트 사용, i18n.ts MESSAGES 등록, snake_case 키
+- player:join 시 lang 포함, socket.on('notify') 처리
+
+---
+
+## SEO (공개 페이지 전부)
+- title / description / og / twitter 메타 필수
+- title 형식: `"페이지명 | JumpDAO — 부제"`
+- canonical URL 필수, sitemap.xml에 admin/* 제외
+
+---
+
+## 커밋
+`feat` / `fix` / `refactor` / `perf` / `style` / `docs` / `chore`
 
 ---
 
 ## Firebase 초기화
-- firebase-init.js
-- firestore-bridge.js
+`firebase-init.js` / `firestore-bridge.js`
 
----
-
-## 다국어 규칙
-기본 언어:
-- English
-
-추가:
-- Korean
-- Vietnamese
-
-모든 게임 메시지:
-ko / en / vi 동시 추가 필수
-
----
-
-## 게임 서버 규칙
-- notify 이벤트 사용
-- i18n.ts MESSAGES 등록 필수
-- snake_case 키 사용
-- player:join 시 lang 포함
-- socket.on('notify') 처리
-
----
-
-## 게임 서버 배포
-git push 후 반드시:
-cd game-server && railway up
-
----
-
-## 커밋 규칙
-type: summary
-
-type:
-- feat
-- fix
-- refactor
-- perf
-- style
-- docs
-- chore
-```
-
-## 구글 검색엔진 등록 유지
-- 구글검색엔진 확인된 상태 유지 할것
-- 검색엔진 신뢰도 높일 것
-- 보물숨기기— 보물찾기
-- 지오캐싱과 포켓몬고를 뛰어넘는 플랫폼
-- 가맹점 이용시 물약 & 잭팟
--
-
-## SEO 규칙
-- 모든 공개 페이지: title / description / og / twitter 메타 필수
-- title 형식: "페이지명 | JumpDAO — 부제"
-- 핵심 키워드: 베트남여행, 공항보물찾기, 위치기반게임, Web3, AR보물
-- canonical URL 필수
-- robots.txt: Sitemap 경로 포함 유지
-- sitemap.xml: 공개 페이지만 포함, admin/* 제외
-
-
-## 유저 id를 표시해야 할때 
--가입 당시 입력한 이름을 사용한다
-
----
-
-## Firestore 읽기 규칙 (과다 읽기 방지)
-
-### onSnapshot 금지 패턴
-- **전체 컬렉션 onSnapshot 절대 금지** — 반드시 where 필터 포함
-  ```js
-  // 금지
-  onSnapshot(collection(db, 'battle_players'), ...)
-  // 허용
-  onSnapshot(query(collection(db, 'battle_players'), where('geohash7', 'in', cells)), ...)
-  ```
-- **`includeMetadataChanges: true` 금지** — 모든 이벤트 2배 발화, 명시적 필요 없으면 사용 금지
-- onSnapshot과 setInterval 폴링이 **같은 데이터를 중복 구독 금지** — 하나만 사용
-
-### 반복 호출 함수 캐시 필수
-- `loadInventory()`, `loadPlayerState()`, `loadShops()` 등 반복 호출 함수는 **30초 TTL 캐시** 필수
-- 캐시 패턴:
-  ```js
-  let _lastFetch = 0;
-  const CACHE_MS = 30000;
-  async function loadXxx({ force = false } = {}) {
-    if (!force && Date.now() - _lastFetch < CACHE_MS) { /* 캐시 렌더만 */ return; }
-    _lastFetch = Date.now();
-    // Firestore 읽기...
-  }
-  ```
-- 실제 데이터 변경 시(구매·제작·수리 등)만 `{ force: true }` 사용
-
-### 폴링 간격 기준
-- 근처 유저/위치 폴링: **최소 30초**
-- 위치 쓰기 (`user_locations`): **최소 5초 + 5m 이상 이동 시만**
-- 배틀 루프: 게임 서버 WebSocket 이벤트 기반, Firestore 폴링 금지
-
----
-
-## 온체인 가스비 절약 규칙 (최우선)
-
-> opBNB는 가스비가 저렴하지만 트랜잭션 수 자체를 최소화한다.
-> 모든 온체인 쓰기는 "꼭 필요한가?"를 먼저 질문한다.
-
-### 온체인 쓰기 금지 패턴
-- **이벤트마다 쓰기 금지** — XP 획득, 클릭, 이동 등 빈번한 이벤트는 절대 온체인 저장 안 함
-- **매 레벨업마다 즉시 온체인 저장 금지** — Firestore 플래그로 누적 후 배치 처리
-- **유저 지갑 서명 트랜잭션 최소화** — 가능하면 adminSetLevel/adminCredit 등 관리자 1tx로 대체
-- **같은 데이터 중복 온체인 저장 금지** — Firestore에 이미 있으면 온체인에 또 저장하지 않음
-
-### 가스 절약 패턴 (필수 적용)
-
-#### 배치 지연 동기화 (Batch Deferred Sync)
-빈번한 상태 변화는 Firestore에 플래그만 기록하고 스케줄러가 배치 처리:
-```js
-// 클라이언트/Cloud Function: 플래그만 기록 (가스 0)
-await setDoc(ref, { pendingOnChainSync: true, pendingValue: newValue }, { merge: true });
-
-// 스케줄러(onSchedule): 6시간마다 배치 처리 — 여러 레벨업도 1tx
-exports.scheduledSync = onSchedule('every 6 hours', async () => {
-  const snap = await db.collection('...').where('pendingOnChainSync', '==', true).limit(20).get();
-  for (const doc of snap.docs) { await adminContract.setXxx(doc.data().pendingValue); }
-});
-```
-
-#### 최종 상태만 저장 (Last-Write-Wins)
-중간 상태는 버리고 최종 값만 온체인에 1회 저장:
-- 레벨 1→5 연속 상승 → `adminSetLevel(5)` 1tx (레벨 2, 3, 4는 온체인 저장 안 함)
-- 여러 번 결제 합산 → 한 번에 크레딧 지급
-
-#### 관리자 지갑 1tx 원칙
-유저가 가스비를 내는 트랜잭션보다 관리자 지갑 `adminSetLevel` / `adminCreditHex` 활용:
-- 유저 서명 필요한 경우에만 유저 지갑 사용
-- 보상·레벨·포인트 지급은 관리자 지갑 1tx
-
-### 온체인 저장 허용 기준
-온체인에 저장해도 되는 경우만 트랜잭션 생성:
-1. **결제 (payMerchantHex)** — 금액이 오가는 실거래
-2. **레벨업 배치** — 스케줄러가 판단 (6시간 1회, 최대 20명)
-3. **수동 동기화** — 유저 요청, 24시간 1회 제한
-4. **지갑 생성·등록** — 최초 1회만
-5. **관리자 명시 요청** — 관리자가 직접 트리거
-
-### Firestore → 온체인 동기화 필드 컨벤션
-온체인 대기 중인 데이터는 항상 아래 3개 필드로 표시:
-```
-pendingOnChainSync: true          // 스케줄러 감지용
-pendingOnChainLevel: number       // 최종 목표값 (중간 값 저장 안 함)
-pendingOnChainUpdatedAt: timestamp
-```
-동기화 완료 후:
-```
-pendingOnChainSync: FieldValue.delete()
-onChainLevel: number              // 실제 반영된 값
-lastOnChainSyncAt: timestamp
-lastOnChainSyncTxHash: string
-```
-
----
-
-## GPS 보안 규칙 (위치 우회 방지)
-
-### _ctx.gpsPos vs _ctx.lastPos
-- **`_ctx.gpsPos`** — 보안용. `navigator.geolocation` 콜백에서만 설정. 절대로 맵 센터·기타 값으로 대체 금지
-- **`_ctx.lastPos`** — 렌더링용. 맵 패닝 시 갱신 가능 (PC 모드 지원)
-- 거리 검증(상점·보물 등)은 반드시 `_ctx.gpsPos` 사용
-
-### map idle 리스너 금지 패턴
-```js
-// 금지 — GPS가 있어도 맵 센터로 덮어쓴다
-if (!_ctx.lastPos || _ctx.lastPos.accuracy > 5) {
-  _ctx.lastPos = { lat: c.lat(), lng: c.lng() };
-}
-// 허용 — 실제 GPS 없을 때만
-if (_ctx.gpsPos) return;
-if (!_ctx.lastPos) { _ctx.lastPos = { lat: c.lat(), lng: c.lng() }; }
-```
-
-### 백엔드 거리 검증 원칙
-- Cloud Functions에서 클라이언트 제공 `lat/lng` **신뢰 금지**
-- 거리 검증 시 `battle_players/{uid}` Firestore 저장 위치 사용
-- 저장 위치 `updatedAt` 10분 초과 시 거부
-  ```js
-  const playerLoc = (await db.collection('battle_players').doc(uid).get()).data();
-  if (!playerLoc?.lat || Date.now() - playerLoc.updatedAt.toMillis() > 600000)
-    throw new HttpsError('failed-precondition', 'GPS 위치 확인 불가');
-  ```
+## 유저 ID 표시
+가입 당시 입력한 이름 사용
