@@ -28,25 +28,25 @@ const SKILLS = {
 const p3 = n => String(n).padStart(3,'0');
 const MON_DEFS = {
   orc: {
-    hp:6, pts:40,
+    hp:18, pts:40,
     walk: Array.from({length:6},(_,i)=>`/assets/images/monsters/orc3/ORK_03_WALK_${p3(i)}.png`),
     hurt: Array.from({length:6},(_,i)=>`/assets/images/monsters/orc3/ORK_03_HURT_${p3(i)}.png`),
     die:  Array.from({length:6},(_,i)=>`/assets/images/monsters/orc3/ORK_03_DIE_${p3(i)}.png`),
   },
   pirate: {
-    hp:3, pts:30,
+    hp:9, pts:30,
     walk: Array.from({length:6},(_,i)=>`/assets/images/monsters/pirate3/3_3-PIRATE_WALK_${p3(i)}.png`),
     hurt: Array.from({length:6},(_,i)=>`/assets/images/monsters/pirate3/3_3-PIRATE_HURT_${p3(i)}.png`),
     die:  Array.from({length:6},(_,i)=>`/assets/images/monsters/pirate3/3_3-PIRATE_DIE_${p3(i)}.png`),
   },
   zombie: {
-    hp:3, pts:25,
+    hp:9, pts:25,
     walk: Array.from({length:8},(_,i)=>`/assets/images/monsters/zombie1/animation/Run${i+1}.png`),
     hurt: Array.from({length:5},(_,i)=>`/assets/images/monsters/zombie1/animation/Hurt${i+1}.png`),
     die:  Array.from({length:8},(_,i)=>`/assets/images/monsters/zombie1/animation/Dead${i+1}.png`),
   },
   dragon: {
-    hp:9, pts:100,
+    hp:27, pts:100,
     walk: Array.from({length:6},(_,i)=>`/assets/images/monsters/dragon/fly${p3(i)}.png`),
     hurt: Array.from({length:6},(_,i)=>`/assets/images/monsters/dragon/idle${p3(i)}.png`),
     die:  Array.from({length:6},(_,i)=>`/assets/images/monsters/dragon/attak${p3(i)}.png`),
