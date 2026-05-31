@@ -169,7 +169,7 @@ function drawPlayerKart(ctx, W, H, player, ts) {
 
   // 스프라이트 (바닥 기준으로 기울여 그리기)
   if(!img) return;
-  const imgH = H*0.40;
+  const imgH = H*0.20;
   const imgW = imgH*(img.naturalWidth/img.naturalHeight);
   ctx.save();
   ctx.translate(W/2, H-2);
