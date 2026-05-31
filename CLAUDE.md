@@ -225,6 +225,67 @@ type:
 
 ---
 
+## 온체인 가스비 절약 규칙 (최우선)
+
+> opBNB는 가스비가 저렴하지만 트랜잭션 수 자체를 최소화한다.
+> 모든 온체인 쓰기는 "꼭 필요한가?"를 먼저 질문한다.
+
+### 온체인 쓰기 금지 패턴
+- **이벤트마다 쓰기 금지** — XP 획득, 클릭, 이동 등 빈번한 이벤트는 절대 온체인 저장 안 함
+- **매 레벨업마다 즉시 온체인 저장 금지** — Firestore 플래그로 누적 후 배치 처리
+- **유저 지갑 서명 트랜잭션 최소화** — 가능하면 adminSetLevel/adminCredit 등 관리자 1tx로 대체
+- **같은 데이터 중복 온체인 저장 금지** — Firestore에 이미 있으면 온체인에 또 저장하지 않음
+
+### 가스 절약 패턴 (필수 적용)
+
+#### 배치 지연 동기화 (Batch Deferred Sync)
+빈번한 상태 변화는 Firestore에 플래그만 기록하고 스케줄러가 배치 처리:
+```js
+// 클라이언트/Cloud Function: 플래그만 기록 (가스 0)
+await setDoc(ref, { pendingOnChainSync: true, pendingValue: newValue }, { merge: true });
+
+// 스케줄러(onSchedule): 6시간마다 배치 처리 — 여러 레벨업도 1tx
+exports.scheduledSync = onSchedule('every 6 hours', async () => {
+  const snap = await db.collection('...').where('pendingOnChainSync', '==', true).limit(20).get();
+  for (const doc of snap.docs) { await adminContract.setXxx(doc.data().pendingValue); }
+});
+```
+
+#### 최종 상태만 저장 (Last-Write-Wins)
+중간 상태는 버리고 최종 값만 온체인에 1회 저장:
+- 레벨 1→5 연속 상승 → `adminSetLevel(5)` 1tx (레벨 2, 3, 4는 온체인 저장 안 함)
+- 여러 번 결제 합산 → 한 번에 크레딧 지급
+
+#### 관리자 지갑 1tx 원칙
+유저가 가스비를 내는 트랜잭션보다 관리자 지갑 `adminSetLevel` / `adminCreditHex` 활용:
+- 유저 서명 필요한 경우에만 유저 지갑 사용
+- 보상·레벨·포인트 지급은 관리자 지갑 1tx
+
+### 온체인 저장 허용 기준
+온체인에 저장해도 되는 경우만 트랜잭션 생성:
+1. **결제 (payMerchantHex)** — 금액이 오가는 실거래
+2. **레벨업 배치** — 스케줄러가 판단 (6시간 1회, 최대 20명)
+3. **수동 동기화** — 유저 요청, 24시간 1회 제한
+4. **지갑 생성·등록** — 최초 1회만
+5. **관리자 명시 요청** — 관리자가 직접 트리거
+
+### Firestore → 온체인 동기화 필드 컨벤션
+온체인 대기 중인 데이터는 항상 아래 3개 필드로 표시:
+```
+pendingOnChainSync: true          // 스케줄러 감지용
+pendingOnChainLevel: number       // 최종 목표값 (중간 값 저장 안 함)
+pendingOnChainUpdatedAt: timestamp
+```
+동기화 완료 후:
+```
+pendingOnChainSync: FieldValue.delete()
+onChainLevel: number              // 실제 반영된 값
+lastOnChainSyncAt: timestamp
+lastOnChainSyncTxHash: string
+```
+
+---
+
 ## GPS 보안 규칙 (위치 우회 방지)
 
 ### _ctx.gpsPos vs _ctx.lastPos
