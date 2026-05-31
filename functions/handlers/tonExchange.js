@@ -28,16 +28,28 @@ function fetchJson(url) {
   });
 }
 
-// ── TON 실시간 가격 (CoinGecko, 60초 캐시) ───────────────────────────────────
+// ── TON 실시간 가격 (Binance primary → CoinGecko fallback, 60초 캐시) ─────────
 async function getTonUsdPrice() {
   const now = Date.now();
   if (_tonCache.usd > 0 && now - _tonCache.ts < TON_CACHE_TTL) return _tonCache.usd;
+
+  // 1순위: Binance (빠르고 정확, 키 불필요)
+  try {
+    const d = await fetchJson('https://api.binance.com/api/v3/ticker/price?symbol=TONUSDT');
+    const p = parseFloat(d?.price);
+    if (p > 0) { _tonCache = { usd: p, ts: now }; return p; }
+  } catch (e) { console.warn('[ton] Binance 실패:', e.message); }
+
+  // 2순위: CoinGecko
   try {
     const d = await fetchJson('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd');
     const p = d?.['the-open-network']?.usd;
-    if (p > 0) _tonCache = { usd: p, ts: now };
+    if (p > 0) { _tonCache = { usd: p, ts: now }; return p; }
   } catch (e) { console.warn('[ton] CoinGecko 실패:', e.message); }
-  return _tonCache.usd > 0 ? _tonCache.usd : 2.50;
+
+  // 캐시라도 반환 (최신 실패 시), 캐시도 없으면 에러
+  if (_tonCache.usd > 0) return _tonCache.usd;
+  throw new Error('TON 시세 조회 실패 — 잠시 후 다시 시도해 주세요');
 }
 
 // ── 가격 + 교환비 반환 ────────────────────────────────────────────────────────

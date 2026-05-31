@@ -3396,14 +3396,23 @@
     else if (game === 'bow')  { location.href = '/bow.html'; }
   };
 
-  // ── TON 가격 조회 (CoinGecko) ─────────────────────────────────────────────
+  // ── TON 가격 조회 (Binance primary → CoinGecko fallback) ─────────────────
   async function fetchTonPrice() {
+    // 1순위: Binance (정확, 빠름)
     try {
-      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd', { cache: 'no-store' });
-      const d = await res.json();
-      _tonUsd = d?.['the-open-network']?.usd || 0;
-    } catch { _tonUsd = 2.65; } // fallback
-    updateEconomy();
+      const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=TONUSDT', { cache: 'no-store' });
+      const d = await r.json();
+      const p = parseFloat(d?.price);
+      if (p > 0) { _tonUsd = p; updateEconomy(); return; }
+    } catch {}
+    // 2순위: CoinGecko
+    try {
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd', { cache: 'no-store' });
+      const d = await r.json();
+      const p = d?.['the-open-network']?.usd || 0;
+      if (p > 0) { _tonUsd = p; updateEconomy(); return; }
+    } catch {}
+    updateEconomy(); // 실패 시 기존 캐시 값 유지
   }
 
   function tonToGp(ton) {
