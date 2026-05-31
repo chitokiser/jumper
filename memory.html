@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>스피드 기억력 | JumpDAO</title>
+<meta name="description" content="4×6 스피드 기억력 카드 매칭 게임. 30번 틀리면 게임오버!"/>
+<meta property="og:title" content="스피드 기억력 | JumpDAO"/>
+<link rel="canonical" href="/memory.html"/>
+<meta name="robots" content="noindex"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#080c18;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  overflow:hidden;user-select:none;touch-action:manipulation}
+
+/* ── 공통 화면 ── */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:16px;gap:10px;overflow-y:auto}
+.screen.hidden{display:none!important}
+
+/* ── 로비 ── */
+.mem-title{font-size:clamp(22px,6vw,32px);font-weight:900;letter-spacing:-1px;text-align:center}
+.mem-title span{color:#f59e0b}
+.stat-card{background:#111827;border:1px solid #1f2937;border-radius:14px;
+  padding:12px 20px;width:100%;max-width:300px}
+.stat-card h3{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.sr{display:flex;justify-content:space-between;padding:3px 0;font-size:14px}
+.sr .lbl{color:#9ca3af}.sr .val{font-weight:700}
+.badge{background:#1e40af;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700}
+.rule-box{background:#111827;border:1px solid #374151;border-radius:10px;
+  padding:10px 14px;font-size:11px;color:#9ca3af;line-height:1.7;width:100%;max-width:300px}
+.rule-box b{color:#f59e0b}
+.btn-main{padding:11px 32px;background:#f59e0b;color:#000;border:none;
+  border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 20px rgba(245,158,11,.4);transition:opacity .15s;width:100%;max-width:280px}
+.btn-main:active{opacity:.8}.btn-main:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── 게임 화면 ── */
+#gameScreen{padding:8px 8px 12px;justify-content:flex-start;gap:6px;background:#080c18}
+
+/* HUD */
+#gameHdr{
+  display:flex;justify-content:space-between;align-items:center;
+  width:100%;max-width:360px;padding:0 2px;
+}
+.ghb{background:rgba(255,255,255,.08);border-radius:8px;
+  padding:5px 10px;font-size:12px;font-weight:700;
+  display:flex;align-items:center;gap:4px}
+#missBox{color:#f87171}
+#missBox.danger{color:#ff2222;animation:blink .4s ease-in-out infinite}
+#scoreBox{color:#fbbf24}
+#comboBox{color:#a78bfa;transition:opacity .2s}
+#comboBox.hidden{display:none}
+
+/* 2초 타이머 바 */
+#timerWrap{width:100%;max-width:360px;height:10px;
+  background:rgba(255,255,255,.10);border-radius:5px;overflow:hidden;position:relative}
+#timerWrap.hidden{visibility:hidden}
+#timerBar{height:100%;width:100%;border-radius:5px;
+  background:linear-gradient(90deg,#f59e0b,#ef4444)}
+#timerWrap.urgent #timerBar{background:#ef4444;animation:timerPulse .25s ease-in-out infinite}
+@keyframes timerPulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* 카드 그리드 */
+#gameGrid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+  width:100%;max-width:360px;
+  padding:2px;
+}
+
+/* 카드 */
+.mem-card{
+  aspect-ratio:3/4;
+  perspective:700px;
+  cursor:pointer;
+}
+.mem-card-inner{
+  position:relative;width:100%;height:100%;
+  transform-style:preserve-3d;
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+}
+.mem-card.flipped .mem-card-inner,
+.mem-card.matched .mem-card-inner{
+  transform:rotateY(180deg);
+}
+.mem-card-front,.mem-card-back{
+  position:absolute;inset:0;border-radius:9px;
+  backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid transparent;
+}
+/* 앞면 (뒤집힘 전) */
+.mem-card-front{
+  background:repeating-linear-gradient(
+    45deg,#1a2a4a 0px,#1a2a4a 5px,#0f1e35 5px,#0f1e35 10px
+  );
+  border-color:#2d4a8e;
+  font-size:clamp(14px,4vw,22px);
+}
+/* 뒷면 (카드 이미지) */
+.mem-card-back{
+  transform:rotateY(180deg);
+  background:#111827;
+  border-color:#374151;
+  overflow:hidden;
+}
+.mem-card-back img{width:72%;height:72%;object-fit:contain;image-rendering:pixelated}
+/* 매치 상태 */
+.mem-card.matched .mem-card-back{
+  border-color:#22c55e;
+  opacity:.55;
+}
+/* 오답 플래시 */
+.mem-card.wrong .mem-card-back{ border-color:#ef4444; }
+
+/* 콤보 팝업 텍스트 */
+.float-txt{
+  position:fixed;left:50%;transform:translateX(-50%);
+  font-size:22px;font-weight:900;pointer-events:none;z-index:200;
+  animation:floatUp .9s ease forwards;
+}
+@keyframes floatUp{
+  0%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-60px) scale(1.3)}
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.spin{width:34px;height:34px;border:3px solid #1f2937;border-top-color:#f59e0b;
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 결과 화면 ── */
+#resultScreen{text-align:center;gap:12px}
+.res-title{font-size:28px;font-weight:900;margin-bottom:4px}
+.res-title.clear{color:#f59e0b;text-shadow:0 0 20px #f59e0b66}
+.res-title.over{color:#ef4444}
+.res-score{font-size:clamp(32px,9vw,48px);font-weight:900}
+.res-gp{font-size:20px;font-weight:700;color:#22c55e}
+.res-info{font-size:13px;color:#6b7280}
+
+/* 로딩 */
+#loadingScreen{font-size:15px;color:#9ca3af;gap:14px}
+</style>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div id="loadingScreen" class="screen">
+  <div class="spin"></div>로딩 중...
+</div>
+
+<!-- 로비 -->
+<div id="lobbyScreen" class="screen hidden">
+  <div class="mem-title">🃏 스피드<br><span>기억력 게임</span></div>
+  <div class="stat-card">
+    <h3>내 정보</h3>
+    <div class="sr"><span class="lbl">💰 GP</span><span class="val" id="lobbyGP">—</span></div>
+  </div>
+  <div class="badge">참가비: 100 GP</div>
+  <div class="rule-box">
+    <div>🃏 <b>4×6 그리드</b> — 24장 (12쌍)</div>
+    <div>⏱️ 첫 카드 오픈 후 <b>2초 이내</b> 두 번째 선택</div>
+    <div>💀 <b>30번 틀리면</b> 게임 오버</div>
+    <div>🔥 연속 성공 시 <b>콤보 보너스</b></div>
+    <div>🏆 전체 클리어 시 <b>+200 GP 보너스</b></div>
+    <div>♾️ 무제한 입장 가능</div>
+  </div>
+  <button class="btn-main" id="btnEnter">🃏 게임 시작</button>
+  <a href="/merchants.html" style="font-size:12px;color:#4b5563;text-decoration:none">← 게임으로</a>
+</div>
+
+<!-- 게임 -->
+<div id="gameScreen" class="screen hidden">
+  <div id="gameHdr">
+    <div class="ghb" id="missBox">💀 <span id="missTxt">0</span>/30</div>
+    <div class="ghb" id="comboBox" class="hidden">🔥<span id="comboTxt">×2</span></div>
+    <div class="ghb" id="scoreBox">💰 <span id="scoreTxt">0</span></div>
+  </div>
+  <div id="timerWrap" class="hidden"><div id="timerBar"></div></div>
+  <div id="gameGrid"></div>
+</div>
+
+<!-- 결과 -->
+<div id="resultScreen" class="screen hidden">
+  <div class="res-title" id="resTitle">게임 오버</div>
+  <div class="res-score" id="resScore">0점</div>
+  <div class="res-gp" id="resGP">0 GP</div>
+  <div class="res-info" id="resInfo"></div>
+  <button class="btn-main" id="btnRestart" style="margin-top:14px">다시 도전!</button>
+  <a href="/merchants.html" style="font-size:12px;color:#4b5563;text-decoration:none;margin-top:4px">← 게임으로</a>
+</div>
+
+<script>
+window.firebaseConfig={
+  apiKey:"AIzaSyD6oGXWcQIAa46ZiO6E9fBWOXqiNCAL4-c",
+  authDomain:"jumper-b15aa.firebaseapp.com",
+  projectId:"jumper-b15aa",
+  storageBucket:"jumper-b15aa.firebasestorage.app",
+  messagingSenderId:"1051842479371",
+  appId:"1:1051842479371:web:cd0dca2c1eab0e44b58e0e"
+};
+</script>
+<script type="module" src="/assets/js/pages/memory.js"></script>
+</body>
+</html>

@@ -7,10 +7,12 @@ import {
   initBowRenderer, renderFrame, updateRenderer,
   addHitParticles, addArrowParticle, triggerShake,
 } from './bow.render.js';
+import { playSound } from './merchants.battle.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const ENTRY_FEE = 100;
 const GAME_TIME = 60;
+const ARROW_PENALTY = 3; // 화살 1발당 점수 감점
 
 // ── 스킬 정의 ────────────────────────────────────────────────────────────────
 const SKILLS = {
@@ -58,10 +60,12 @@ const _img = {};
 
 async function loadAssets() {
   const ld = s => new Promise(r=>{ const i=new Image(); i.onload=()=>r(i); i.onerror=()=>r(null); i.src=s; });
-  [_img.back,_img.user1,_img.user2] = await Promise.all([
+  [_img.back,_img.user1,_img.user2,_img.tower,_img.tower2] = await Promise.all([
     ld('/assets/images/bow/user/back.png'),
     ld('/assets/images/bow/user/1.png'),
     ld('/assets/images/bow/user/2.png'),
+    ld('/assets/images/shops/tower.png'),
+    ld('/assets/images/shops/tower2.png'),
   ]);
   await Promise.all(Object.entries(MON_DEFS).flatMap(([key,def])=>
     ['walk','hurt','die'].map(async anim=>{
@@ -72,15 +76,25 @@ async function loadAssets() {
 
 // ── Firebase ─────────────────────────────────────────────────────────────────
 let _uid=null, _playerGP=0, _playerMP=1000, _playerMaxMP=1000;
+let _playerHP=1000, _playerMaxHP=1000, _playerAttack=50, _playerDefense=0;
 
 async function loadPlayer() {
   if (!_uid) return;
   try {
     const d=(await getDoc(doc(db,'battle_players',_uid))).data()||{};
-    _playerGP=d.gold||0; _playerMP=d.mp||1000; _playerMaxMP=_playerMP;
+    _playerGP    = d.gold||0;
+    _playerMP    = d.mp||1000;   _playerMaxMP = d.maxMp||_playerMP;
+    _playerHP    = d.hp||1000;   _playerMaxHP = d.maxHp||_playerHP;
+    _playerAttack= d.attack||50; _playerDefense= d.defense||0;
   } catch {}
   $('lobbyGP').textContent=_playerGP;
   $('btnEnter').disabled=_playerGP<ENTRY_FEE;
+}
+
+function arrowDmg(fire=false) {
+  // 보물찾기 DB 공격력 기반: attack/10을 기본 데미지로, 최소 1
+  const base = Math.max(1, Math.ceil(_playerAttack / 10));
+  return fire ? base * 2 : base;
 }
 
 async function deductFee() {
@@ -90,7 +104,7 @@ async function deductFee() {
 }
 
 async function awardScore(score) {
-  const gp=score>=4000?500:score>=2000?250:score>=1000?120:score>=500?50:0;
+  const gp=score>=4000?300:score>=2000?150:score>=1000?70:score>=500?30:0;
   if (gp>0&&_uid) try{ await updateDoc(doc(db,'battle_players',_uid),{gold:increment(gp)}); }catch{}
   return gp;
 }
@@ -98,6 +112,7 @@ async function awardScore(score) {
 // ── 게임 상태 ────────────────────────────────────────────────────────────────
 let _phase='loading';
 let _score=0, _combo=0, _maxCombo=0, _comboTs=0;
+let _arrowsFired=0;
 let _timeLeft=GAME_TIME, _timerIv=null;
 let _monsters=[], _arrows=[], _effects=[];
 let _raf=null, _lastTs=0, _ts=0;
@@ -107,22 +122,20 @@ let _fireMode=false, _pierceMode=false, _rapidUntil=0;
 let _selectedSkills=[], _skillCd={};
 let _lastShot=0, _lastAim=[LW/2,LH*.45];
 let _shootTs=0;
-let _ac=null;
+
+// 플레이어 이동 + 피격
+let _playerX = LW/2;  // 현재 X 위치 (이동 가능)
+let _hitFlash = 0;    // 피격 시각 효과 (0→1)
+
+// 대포 시스템
+const CANNON_Y_FR = ROWS[1].yFr;  // 지평선 레벨 (row 1)
+const _cannons = [
+  { x:14,      nextFire:5000, firing:0 },
+  { x:LW-14,   nextFire:8500, firing:0 },
+];
+let _cannonballs = [];
 
 const $ = id=>document.getElementById(id);
-
-// ── 사운드 ───────────────────────────────────────────────────────────────────
-function sfx(freq,type,dur,vol=0.18){
-  try{
-    if(!_ac) _ac=new(window.AudioContext||window.webkitAudioContext)();
-    const o=_ac.createOscillator(),g=_ac.createGain();
-    o.connect(g);g.connect(_ac.destination);
-    o.type=type;o.frequency.value=freq;
-    g.gain.setValueAtTime(vol,_ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,_ac.currentTime+dur);
-    o.start();o.stop(_ac.currentTime+dur);
-  }catch{}
-}
 
 // ── 몬스터 ───────────────────────────────────────────────────────────────────
 function spawnMonster(ri) {
@@ -176,13 +189,89 @@ function updateMonsters(dt) {
 const ARROW_SPD = 9.5;
 
 function createArrow(cx,cy,spread=0,fire=false,pierce=false,explode=false){
-  const ang=Math.atan2(cy-AY,cx-AX)+spread;
+  // 화살은 _playerX 위치에서 발사 (플레이어가 좌우로 이동하므로)
+  const ang=Math.atan2(cy-AY,cx-_playerX)+spread;
   _arrows.push({
-    x:AX, y:AY,
+    x:_playerX, y:AY,
     vx:Math.cos(ang)*ARROW_SPD, vy:Math.sin(ang)*ARROW_SPD,
-    fire, pierce, explode, dmg:fire?2:1,
+    fire, pierce, explode, dmg:arrowDmg(fire),
     hitIds:new Set(), active:true,
   });
+}
+
+// ── 대포 시스템 ────────────────────────────────────────────────────────────────
+function updateCannons(dt) {
+  for (const c of _cannons) {
+    c.nextFire-=dt;
+    if (c.firing>0) c.firing=Math.max(0,c.firing-dt*0.004);
+    if (c.nextFire<=0 && _phase==='game') {
+      _fireCannonball(c);
+      c.nextFire = 3200+Math.random()*3000;
+      c.firing = 1.0;
+    }
+  }
+
+  const horizonY = CANNON_Y_FR*LH;
+  const groundY  = AY - 15;
+
+  for (let i=_cannonballs.length-1;i>=0;i--) {
+    const cb=_cannonballs[i];
+    if (cb.exploding) {
+      cb.explodeT+=dt;
+      if (cb.explodeT>700) _cannonballs.splice(i,1);
+      continue;
+    }
+    cb.elapsed+=dt;
+    cb.t = Math.min(1, cb.elapsed/cb.duration);
+
+    // 포물선 궤도: 지평선→위쪽 호→착탄 지점
+    cb.x = cb.sx + (cb.tx-cb.sx)*cb.t;
+    cb.y = horizonY + (groundY-horizonY)*cb.t - 85*Math.sin(cb.t*Math.PI);
+    cb.r = 3 + 26*cb.t;  // 반경 3→29
+
+    // 착탄 경고 (HUD)
+    if (cb.t>0.5) $('cannonWarning')?.classList.add('alert');
+
+    if (cb.t>=1) {
+      $('cannonWarning')?.classList.remove('alert');
+      // 피해 판정: 착탄점에서 플레이어 거리 기반
+      const dist=Math.abs(_playerX-cb.tx);
+      const hitR=62;
+      if (dist<hitR) {
+        const ratio=1-dist/hitR;
+        const dmg=Math.round(_playerMaxHP*0.10*ratio);
+        if(dmg>0) _takeDamage(dmg);
+      }
+      // 폭발 전환
+      cb.exploding=true; cb.explodeT=0;
+      addHitParticles(cb.tx, groundY, true, false);
+      triggerShake(7);
+      playSound('cannon_hit');
+    }
+  }
+}
+
+function _fireCannonball(cannon) {
+  const spread = 28+Math.random()*45;
+  const dir    = Math.random()>0.5?1:-1;
+  const tx     = Math.max(35, Math.min(LW-35, _playerX + dir*spread*(Math.random()>0.5?1:0.2)));
+  _cannonballs.push({
+    sx:cannon.x, tx,
+    t:0, elapsed:0, duration:2400+Math.random()*700,
+    x:cannon.x, y:CANNON_Y_FR*LH, r:3,
+    exploding:false, explodeT:0, maxR:29,
+  });
+  playSound('cannon_shot');
+}
+
+function _takeDamage(amount) {
+  const reduced=Math.max(1, amount - Math.floor(_playerDefense*0.5));
+  _playerHP=Math.max(0, _playerHP-reduced);
+  _hitFlash=1.0;
+  _effects.push({type:'msg',text:`💥-${reduced}`,x:_playerX,y:AY-115,vy:-.9,alpha:1.3,big:false});
+  triggerShake(4);
+  playSound('player_hit');
+  if (_playerHP<=0) setTimeout(gameOver,350);
 }
 
 function updateArrows(dt){
@@ -234,12 +323,12 @@ function checkHits(){
             });
             a.active=false;
           }
-          sfx(isDragon?120:300,'sawtooth',.2,.25);
+          playSound(isDragon?'monster_atk_dragon':'monster_die');
         } else {
           m.hurtLeft=450; m.frame=0; m.fTime=0;
           addHitParticles(m.x,gy-bh*.55,false);
           triggerShake(2);
-          sfx(600,'sine',.09,.12);
+          playSound('arrow_hit');
         }
         if(!a.active) break;
       }
@@ -254,7 +343,8 @@ function fireArrow(cx,cy){
   _lastShot=now; _lastAim=[cx,cy]; _shootTs=now;
   const fire=_fireMode; _fireMode=false;
   createArrow(cx,cy,0,fire,_pierceMode,false);
-  sfx(fire?280:820,'sine',.055,.10);
+  _arrowsFired++;
+  playSound('arrow_shot');
   renderHUD();
 }
 
@@ -266,37 +356,43 @@ function useSkill(id){
   switch(id){
     case 'triple':
       for(const s of [-0.18,0,0.18]) createArrow(cx,cy,s,_fireMode,_pierceMode,false);
-      _fireMode=false; sfx(420,'sine',.07,.18);
+      _arrowsFired+=3; _fireMode=false; playSound('arrow_shot');
       break;
     case 'fire':
       _fireMode=true;
       _effects.push({type:'msg',text:'🔥 화염시!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
-      sfx(200,'sawtooth',.12,.2);
+      playSound('skill_fire');
       break;
     case 'poison':{
       const ri=ROWS.reduce((b,r,i)=>Math.abs(r.yFr*LH-cy)<Math.abs(ROWS[b].yFr*LH-cy)?i:b,0);
       _monsters.filter(m=>m.ri===ri&&!m.dead).forEach(m=>{m.poisonUntil=now+3000;});
       _effects.push({type:'msg',text:'☠️ 독!',x:LW/2,y:ROWS[ri].yFr*LH,vy:-.5,alpha:1.2,big:false});
-      sfx(140,'sine',.28,.14); break;
+      playSound('skill_ice'); break;
     }
     case 'explode':
       createArrow(cx,cy,0,false,false,true);
+      _arrowsFired++;
       _effects.push({type:'msg',text:'💥 폭발!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
-      sfx(90,'sawtooth',.2,.2); break;
+      playSound('cannon_shot'); break;
     case 'rapidfire':
       _rapidUntil=now+5000;
       _effects.push({type:'msg',text:'⚡ 연사!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
-      sfx(520,'square',.07,.18); break;
+      playSound('tower_shot'); break;
     case 'pierce':
       _pierceMode=true; setTimeout(()=>{_pierceMode=false;},5000);
       _effects.push({type:'msg',text:'🪃 관통!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
-      sfx(720,'sine',.09,.14); break;
+      playSound('arrow_shot'); break;
   }
   renderHUD();
 }
 
 // ── HUD ──────────────────────────────────────────────────────────────────────
 function renderHUD(){
+  // HP 바
+  const hpPct=(_playerHP/_playerMaxHP*100).toFixed(1);
+  $('hpFill').style.width=hpPct+'%';
+  $('hpBox')?.classList.toggle('danger',_playerHP/_playerMaxHP<0.3);
+
   $('mpFill').style.width=(_playerMP/_playerMaxMP*100)+'%';
   $('scoreTxt').textContent='💰 '+_score.toLocaleString();
   const tEl=$('timerTxt'); tEl.textContent=_timeLeft;
@@ -322,11 +418,15 @@ function loop(ts){
   updateMonsters(dt);
   updateArrows(dt);
   checkHits();
+  updateCannons(dt);
+  if(_hitFlash>0) _hitFlash=Math.max(0,_hitFlash-dt*0.006);
   updateRenderer(dt);
   renderFrame({
     imgs:_img, sprs:_spr,
     monsters:_monsters, arrows:_arrows, effects:_effects,
+    cannons:_cannons, cannonballs:_cannonballs,
     aim:_lastAim, shootTs:_shootTs, ts:_ts,
+    playerX:_playerX, hitFlash:_hitFlash,
     fireMode:_fireMode, pierceMode:_pierceMode, rapidUntil:_rapidUntil,
   });
   renderHUD();
@@ -338,12 +438,20 @@ function startTimer(){
   _timerIv=setInterval(()=>{ if(--_timeLeft<=0){ clearInterval(_timerIv); endGame(); } },1000);
 }
 
+function gameOver(){
+  clearInterval(_timerIv);
+  endGame();
+}
+
 async function endGame(){
   _phase='result'; cancelAnimationFrame(_raf); _raf=null;
-  const gp=await awardScore(_score);
-  $('resFinalScore').textContent=_score.toLocaleString()+'점';
+  $('cannonWarning')?.classList.remove('alert');
+  const penalty = _arrowsFired * ARROW_PENALTY;
+  const finalScore = Math.max(0, _score - penalty);
+  const gp=await awardScore(finalScore);
+  $('resFinalScore').textContent=finalScore.toLocaleString()+'점';
   $('resGP').textContent=gp>0?`+${gp} GP 획득!`:'GP 없음 (500점 미달)';
-  $('resInfo').textContent=`최고 콤보: ×${_maxCombo}`;
+  $('resInfo').textContent=`원점수 ${_score.toLocaleString()} − 화살 ${_arrowsFired}발(−${penalty.toLocaleString()}pt) · 최고콤보 ×${_maxCombo}`;
   showPhase('result');
 }
 
@@ -408,9 +516,18 @@ function initInput(){
   },{passive:false});
   canvas.addEventListener('touchmove',e=>{
     if(_phase!=='game')return; e.preventDefault();
-    const t=e.changedTouches[0]; _lastAim=pos({clientX:t.clientX,clientY:t.clientY});
+    const t=e.changedTouches[0];
+    const [cx,cy]=pos({clientX:t.clientX,clientY:t.clientY});
+    _lastAim=[cx,cy];
+    // 터치 이동으로 플레이어 좌우 회피
+    _playerX=Math.max(30,Math.min(LW-30,cx));
   },{passive:false});
-  canvas.addEventListener('mousemove',e=>{if(_phase!=='game')return;_lastAim=pos(e);});
+  canvas.addEventListener('mousemove',e=>{
+    if(_phase!=='game')return;
+    const [cx,cy]=pos(e); _lastAim=[cx,cy];
+    // 마우스 이동으로 플레이어 좌우 회피
+    _playerX=Math.max(30,Math.min(LW-30,cx));
+  });
   document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 }
 
@@ -448,11 +565,17 @@ function buildSkillBar(){
 // ── 카운트다운 / 시작 ─────────────────────────────────────────────────────────
 function startCountdown(){
   if(!_selectedSkills.length) _selectedSkills=['triple','fire','rapidfire'];
-  _score=0;_combo=0;_maxCombo=0;_comboTs=0;
+  _score=0;_combo=0;_maxCombo=0;_comboTs=0;_arrowsFired=0;
   _monsters=[];_arrows=[];_effects=[];
   _rowCount=new Array(ROWS.length).fill(0);
   _spawnNext=new Array(ROWS.length).fill(0);
-  _fireMode=false;_pierceMode=false;_rapidUntil=0;_skillCd={};_playerMP=_playerMaxMP;
+  _fireMode=false;_pierceMode=false;_rapidUntil=0;_skillCd={};
+  _playerMP=_playerMaxMP;
+  _playerX=LW/2; _hitFlash=0;
+  _cannonballs=[];
+  _cannons[0].nextFire=3800; _cannons[0].firing=0;
+  _cannons[1].nextFire=6000; _cannons[1].firing=0;
+  $('cannonWarning')?.classList.remove('alert');
   showPhase('countdown');
   let n=3; $('cdNum').textContent=n;
   const iv=setInterval(()=>{

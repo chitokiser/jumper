@@ -26,10 +26,6 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          onPlayerExp, onPlayerLevelUp,
          addPlayerGold, spendPlayerGold, addPlayerGsExp }
   from './merchants.battle.js';
-import { initMemoryGame, openMemoryGame } from './merchants.memory.js';
-import { initSlotMachine, openSlotMachine } from './merchants.slot.js';
-import { initArcheryGame, openArcheryGame } from './merchants.archery.js';
-import { initRaceGame, openRaceGame } from './merchants.race.js';
 import { initDungeonGame, openDungeonGame } from './merchants.dungeon.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
          isGameServerConnected, sendPlayerLocation,
@@ -3149,34 +3145,6 @@ async function init() {
   $('skillBtnMpPotion')?.addEventListener('click', useMpPotion);
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
 
-  // 기억력 게임 초기화
-  initMemoryGame({
-    onSpendGold: (amount) => spendPlayerGold(amount),
-    onAddGold:   (amount) => addPlayerGold(amount),
-    onAddExp:    (amount) => addPlayerGsExp(amount),
-    onPlaySound: (type)   => playSound(type),
-  });
-
-  // 슬롯 머신 초기화
-  initSlotMachine({
-    onSpendGold: (amount) => spendPlayerGold(amount),
-    onAddGold:   (amount) => addPlayerGold(amount),
-    onPlaySound: (type)   => playSound(type),
-  });
-
-  // 활쏘기 미니게임 초기화
-  initArcheryGame({
-    onSpendGold: (amount) => spendPlayerGold(amount),
-    onAddGold:   (amount) => addPlayerGold(amount),
-    onPlaySound: (type)   => playSound(type),
-  });
-
-  initRaceGame({
-    onSpendGold: (amount) => spendPlayerGold(amount),
-    onAddGold:   (amount) => addPlayerGold(amount),
-    onPlaySound: (type)   => playSound(type),
-  });
-
   initDungeonGame({
     onSpendGold: (amount) => spendPlayerGold(amount),
     onAddGold:   (amount) => addPlayerGold(amount),
@@ -3189,22 +3157,6 @@ async function init() {
     $('skillBtnMiniGame')?.addEventListener('click', (e) => {
       e.stopPropagation();
       popup?.classList.toggle('hidden');
-    });
-    $('miniGameMemory')?.addEventListener('click', () => {
-      popup?.classList.add('hidden');
-      openMemoryGame();
-    });
-    $('miniGameSlot')?.addEventListener('click', () => {
-      popup?.classList.add('hidden');
-      openSlotMachine();
-    });
-    $('miniGameArchery')?.addEventListener('click', () => {
-      popup?.classList.add('hidden');
-      openArcheryGame();
-    });
-    $('miniGameRace')?.addEventListener('click', () => {
-      popup?.classList.add('hidden');
-      openRaceGame();
     });
     $('miniGameDungeon')?.addEventListener('click', () => {
       popup?.classList.add('hidden');

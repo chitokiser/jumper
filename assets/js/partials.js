@@ -3,7 +3,7 @@ const _HDR_T = {
   vi: {
     hdr_explore: 'Khám phá', hdr_treasure: 'Tìm kho báu', hdr_stay: 'Chỗ nghỉ',
     hdr_sights: 'Điểm tham quan', hdr_food: 'Ẩm thực', hdr_shopping: 'Mua sắm',
-    hdr_benefits: 'Quyền lợi Jump', hdr_limousine: 'Jump Limousine', hdr_dao: 'Biểu quyết DAO', hdr_monster_race: '🛹 Monster Race', hdr_bow: '🏹 Bắn cung',
+    hdr_benefits: 'Quyền lợi Jump', hdr_limousine: 'Jump Limousine', hdr_dao: 'Biểu quyết DAO', hdr_monster_race: '🛹 Monster Race', hdr_bow: '🏹 Bắn cung', hdr_memory: '🃏 Ghi nhớ tốc độ',
     hdr_signup: 'Đăng ký', hdr_my_services: 'Dịch vụ của tôi', hdr_wallet: 'Ví của tôi',
     hdr_exchange: 'Sàn giao dịch Jump', hdr_used: 'Chợ đồ cũ', hdr_mall: 'Cửa hàng hội viên',
     hdr_orders: 'Đơn hàng của tôi', hdr_sales: 'Trung tâm bán hàng',
@@ -20,7 +20,7 @@ const _HDR_T = {
   en: {
     hdr_explore: 'Explore', hdr_treasure: 'Treasure Hunt', hdr_stay: 'Stay',
     hdr_sights: 'Sights', hdr_food: 'Food', hdr_shopping: 'Shopping',
-    hdr_benefits: 'Jump Benefits', hdr_limousine: 'Jump Limousine', hdr_dao: 'DAO Vote', hdr_monster_race: '🛹 Monster Race', hdr_bow: '🏹 Archery',
+    hdr_benefits: 'Jump Benefits', hdr_limousine: 'Jump Limousine', hdr_dao: 'DAO Vote', hdr_monster_race: '🛹 Monster Race', hdr_bow: '🏹 Archery', hdr_memory: '🃏 Speed Memory',
     hdr_signup: 'Sign Up', hdr_my_services: 'My Services', hdr_wallet: 'My Wallet',
     hdr_exchange: 'Jump Exchange', hdr_used: 'Used Market', hdr_mall: 'Member Mall',
     hdr_orders: 'My Orders', hdr_sales: 'Sales Center',
@@ -37,7 +37,7 @@ const _HDR_T = {
   ko: {
     hdr_explore: '탐색', hdr_treasure: '보물찾기', hdr_stay: '잠자리',
     hdr_sights: '볼거리', hdr_food: '먹거리', hdr_shopping: '살거리',
-    hdr_benefits: 'Jump혜택', hdr_limousine: '점프리무진', hdr_dao: 'DAO 의결', hdr_monster_race: '🛹 몬스터 레이스', hdr_bow: '🏹 활쏘기',
+    hdr_benefits: 'Jump혜택', hdr_limousine: '점프리무진', hdr_dao: 'DAO 의결', hdr_monster_race: '🛹 몬스터 레이스', hdr_bow: '🏹 활쏘기', hdr_memory: '🃏 스피드 기억력',
     hdr_signup: '회원가입', hdr_my_services: '내 서비스', hdr_wallet: '내지갑',
     hdr_exchange: 'Jump 토큰거래소', hdr_used: '중고거래', hdr_mall: '회원전용몰',
     hdr_orders: '내 주문', hdr_sales: '판매센터',
