@@ -840,6 +840,18 @@ export function spendPlayerGold(amount) {
 }
 export function addPlayerGsExp(amount) {
   _player.gsExp = (_player.gsExp || 0) + amount;
+
+  // 레벨업 체크 (standalone XP — 게임서버 미연결 상태 포함)
+  let leveled = false;
+  while (_player.gsExp >= (_player.nextLevelExp || calcNextLevelExp(_player.gsLevel))) {
+    _player.gsExp   -= _player.nextLevelExp || calcNextLevelExp(_player.gsLevel);
+    _player.gsLevel  = (_player.gsLevel || 1) + 1;
+    _player.nextLevelExp = calcNextLevelExp(_player.gsLevel);
+    showLevelUpEffect(_player.gsLevel);
+    leveled = true;
+  }
+  if (leveled) _markPendingOnChainSync(_player.gsLevel);
+
   updateExpBar();
   savePlayerState();
 }
@@ -989,6 +1001,18 @@ export function onPlayerLevelUp(d) {
   _player.nextLevelExp = d.nextLevelExp;
   updateExpBar();
   showLevelUpEffect(d.newLevel);
+  _markPendingOnChainSync(d.newLevel);
+}
+
+// 레벨업 시 Firestore에 온체인 동기화 플래그 기록 (가스 절약 — 즉시 온체인 저장 안 함)
+function _markPendingOnChainSync(newLevel) {
+  const uid = _ctx?.uid;
+  if (!uid || !_ctx?.db) return;
+  setDoc(doc(_ctx.db, 'battle_players', uid), {
+    pendingOnChainSync:    true,
+    pendingOnChainLevel:   newLevel,
+    pendingOnChainUpdatedAt: serverTimestamp(),
+  }, { merge: true }).catch(() => {}); // 비동기 fire-and-forget
 }
 
 // ── 플레이어 HP/MP 변경 ────────────────────────────────────────────────────────

@@ -245,6 +245,11 @@
               <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">레벨업 가능! →</button>
             </span>
           </div>
+          <!-- 온체인 경험치 동기화 상태 -->
+          <div class="mp-kv hidden" id="onChainSyncRow" style="align-items:flex-start;padding:4px 0 8px;">
+            <span class="k" style="font-size:12px;color:#6b7280;">온체인 저장</span>
+            <span class="v" id="onChainSyncStatus" style="flex:1;"></span>
+          </div>
           <div class="mp-kv" id="pointRow" style="display:none;">
             <span class="k" data-i18n="label_point">포인트(hex로 변경가능)</span>
             <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">

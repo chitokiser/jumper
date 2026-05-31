@@ -54,6 +54,7 @@ const rankingsH              = require('./handlers/rankings');
 const stockOptionH           = require('./handlers/stockOption');
 const starterH               = require('./handlers/starter');
 const userPlaceH             = require('./handlers/userPlace');
+const expSyncH               = require('./handlers/expSync');
 const telegramH              = require('./handlers/telegram');
 const { requireAdmin }       = require('./wallet/admin');
 
@@ -2268,6 +2269,29 @@ exports.adminSetUserPlacePrices = onCall(
     const uid = requireAuth(request);
     await requireAdmin(uid);
     return userPlaceH.adminSetUserPlacePrices(request.data ?? {});
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 게임 경험치 → 온체인 레벨 배치 동기화
+// 설계: XP마다 온체인 저장 ❌ → 레벨업 시 Firestore 플래그 → 6시간 배치 1tx
+// ════════════════════════════════════════════════════════════════════════════
+exports.scheduledExpSync = onSchedule(
+  { schedule: 'every 6 hours', secrets: [adminKeySecret] },
+  async () => {
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const count = await expSyncH.batchSyncPendingLevels();
+    logger.info('[scheduledExpSync] 완료', { synced: count });
+  }
+);
+
+// 수동 동기화 — 유저 직접 요청 (24시간 1회 제한)
+exports.requestOnChainLevelSync = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return expSyncH.manualSyncLevel(uid);
   })
 );
 

@@ -158,11 +158,13 @@ async function loadOnChainData(uid) {
           const bp = bpSnap.data();
           const gsExp   = typeof bp.gsExp   === 'number' ? bp.gsExp   : d.exp;
           const gsLevel = typeof bp.gsLevel === 'number' ? bp.gsLevel : d.level;
-          const nextLvExp = Math.pow(gsLevel + 1, 2) * 100_000; // 게임화면과 동일 계산식
+          const nextLvExp = Math.pow(gsLevel + 1, 2) * 100_000;
           displayExp      = gsExp;
           displayRequired = nextLvExp;
-          // 게임 레벨도 동기화 표시
           if (gsLevel > 0) setText("levelDisplay", "Lv." + Math.max(d.level, gsLevel));
+
+          // 온체인 동기화 상태 표시
+          _renderOnChainSyncStatus(bp, uid);
         }
       } catch (_) { /* fallback: onChain 값 사용 */ }
 
@@ -2226,3 +2228,69 @@ onAuthReady(async (ctx) => {
     }
   };
 })();
+
+// ── 온체인 경험치 동기화 상태 UI ────────────────────────────────────────────────
+// 레벨업 → Firestore 플래그 → 6시간 배치 또는 수동 동기화 → adminSetLevel() 1tx
+function _renderOnChainSyncStatus(bp, uid) {
+  const row       = document.getElementById('onChainSyncRow');
+  const container = document.getElementById('onChainSyncStatus');
+  if (!row || !container) return;
+  row.classList.remove('hidden');
+
+  const pending      = bp.pendingOnChainSync === true;
+  const pendingLevel = bp.pendingOnChainLevel || null;
+  const onChainLevel = bp.onChainLevel || null;
+  const lastSyncAt   = bp.lastOnChainSyncAt?.toDate?.() || null;
+  const lastTxHash   = bp.lastOnChainSyncTxHash || null;
+
+  let statusHtml;
+  if (pending && pendingLevel) {
+    const lastSyncStr = lastSyncAt ? lastSyncAt.toLocaleDateString() : '—';
+    statusHtml = `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="background:#f59e0b;color:#000;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;">
+          ⏳ 동기화 대기 Lv.${pendingLevel}
+        </span>
+        <span style="font-size:11px;color:#9ca3af;">자동 동기화: 최대 6시간 이내</span>
+        <button id="btnManualSync" style="
+          padding:4px 12px;background:#3b82f6;color:#fff;border:none;
+          border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+          지금 동기화
+        </button>
+      </div>`;
+  } else if (onChainLevel) {
+    const syncStr = lastSyncAt ? lastSyncAt.toLocaleDateString() : '—';
+    const txShort = lastTxHash ? lastTxHash.slice(0, 10) + '…' : '';
+    statusHtml = `
+      <span style="background:#10b981;color:#fff;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;">
+        ✅ 온체인 Lv.${onChainLevel} 동기화됨
+      </span>
+      <span style="font-size:11px;color:#9ca3af;margin-left:6px;">${syncStr}${txShort ? ' · ' + txShort : ''}</span>`;
+  } else {
+    statusHtml = `<span style="font-size:11px;color:#6b7280;">온체인 레벨 미기록 (레벨업 후 자동 저장)</span>`;
+  }
+
+  container.innerHTML = statusHtml;
+
+  // 수동 동기화 버튼 이벤트
+  const manualBtn = document.getElementById('btnManualSync');
+  if (!manualBtn) return;
+  manualBtn.addEventListener('click', async () => {
+    manualBtn.disabled = true;
+    manualBtn.textContent = '동기화 중…';
+    try {
+      const fn  = httpsCallable(functions, 'requestOnChainLevelSync');
+      const res = await fn();
+      if (res.data?.already) {
+        manualBtn.textContent = '대기 없음';
+      } else if (res.data?.skipped) {
+        manualBtn.textContent = '이미 최신';
+      } else {
+        manualBtn.textContent = `✅ Lv.${res.data?.newLevel} 저장 완료`;
+      }
+    } catch (e) {
+      manualBtn.disabled = false;
+      manualBtn.textContent = '실패: ' + (e.message || '오류');
+    }
+  });
+}
