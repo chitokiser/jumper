@@ -2565,6 +2565,8 @@
 <!-- ══════════════════════════════════════════════════════════════════
      GAME HUB PORTAL — Jump22 통합 런처
 ══════════════════════════════════════════════════════════════════ -->
+<!-- TON Connect UI SDK -->
+<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet">
 
@@ -2938,6 +2940,136 @@
   text-align: center; letter-spacing: .04em;
 }
 
+/* ── TON 탭 전환 버튼 ── */
+.gh-tabs {
+  display: flex; gap: 4px;
+  padding: 0 16px 0;
+  border-bottom: 1px solid var(--gh-border);
+  flex-shrink: 0; position: relative; z-index: 1;
+  overflow-x: auto; scrollbar-width: none;
+}
+.gh-tabs::-webkit-scrollbar { display: none; }
+.gh-tab-btn {
+  padding: 9px 14px; border: none; background: transparent;
+  cursor: pointer; font-family: var(--gh-mono); font-size: 10px;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gh-muted); border-bottom: 2px solid transparent;
+  white-space: nowrap; transition: color .15s, border-color .15s;
+}
+.gh-tab-btn.active { color: var(--gh-cyan); border-bottom-color: var(--gh-cyan); }
+.gh-tab-panel.hidden { display: none !important; }
+
+/* ── TON Exchange 패널 ── */
+.ton-panel { display: flex; flex-direction: column; gap: 14px; }
+.ton-info-bar {
+  background: rgba(0,229,255,.05);
+  border: 1px solid rgba(0,229,255,.15);
+  border-radius: 10px; padding: 12px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
+}
+.ton-info-seg { display: flex; flex-direction: column; gap: 2px; }
+.ton-info-lbl { font-family: var(--gh-mono); font-size: 8px; letter-spacing:.1em; text-transform:uppercase; color:var(--gh-muted); }
+.ton-info-val { font-family: var(--gh-mono); font-size: 15px; font-weight:700; color:var(--gh-cyan); }
+.ton-info-val.green { color: var(--gh-green); }
+.ton-info-updated { font-family:var(--gh-mono); font-size:8px; color:var(--gh-muted); }
+
+/* 지갑 연결 */
+.ton-wallet-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--gh-surface); border: 1px solid var(--gh-border);
+  border-radius: 9px; padding: 10px 14px; gap: 10px;
+}
+.ton-wallet-info { display:flex; flex-direction:column; gap:2px; }
+.ton-wallet-status { font-family:var(--gh-mono); font-size:10px; font-weight:700; color:var(--gh-muted); }
+.ton-wallet-addr   { font-family:var(--gh-mono); font-size:11px; color:var(--gh-text); }
+#tonConnectBtnRoot { min-width:120px; }
+.ton-connect-btn {
+  padding: 8px 16px; background: linear-gradient(135deg,rgba(0,229,255,.18),rgba(0,229,255,.06));
+  border: 1px solid rgba(0,229,255,.4); border-radius: 7px;
+  cursor: pointer; font-family:var(--gh-mono); font-size:11px;
+  letter-spacing:.08em; color:var(--gh-cyan); white-space:nowrap;
+  transition:all .15s;
+}
+.ton-connect-btn:hover { background:rgba(0,229,255,.28); }
+
+/* 탭 내부 */
+.ton-tabs { display:flex; gap:4px; margin-bottom:10px; }
+.ton-tab-btn {
+  flex:1; padding:8px 4px;
+  background:rgba(0,0,0,.3); border:1px solid var(--gh-border);
+  border-radius:7px; cursor:pointer;
+  font-family:var(--gh-mono); font-size:10px; letter-spacing:.08em;
+  color:var(--gh-muted); text-transform:uppercase; transition:all .15s;
+}
+.ton-tab-btn.active { background:rgba(0,229,255,.1); border-color:rgba(0,229,255,.35); color:var(--gh-cyan); }
+
+/* 입력 필드 */
+.ton-field { display:flex; flex-direction:column; gap:4px; }
+.ton-field-row { display:flex; align-items:center; gap:8px; }
+.ton-label { font-family:var(--gh-mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--gh-muted); }
+.ton-input {
+  flex:1; padding:9px 12px;
+  background:rgba(0,0,0,.4); border:1px solid var(--gh-border);
+  border-radius:7px; color:var(--gh-text);
+  font-family:var(--gh-mono); font-size:13px; outline:none;
+  transition:border-color .15s;
+}
+.ton-input:focus { border-color:rgba(0,229,255,.45); }
+.ton-unit { font-family:var(--gh-mono); font-size:11px; color:var(--gh-muted); white-space:nowrap; }
+.ton-result {
+  font-family:var(--gh-mono); font-size:16px; font-weight:700;
+  color:var(--gh-green); min-width:100px; text-align:right;
+}
+.ton-admin-addr {
+  background:rgba(0,0,0,.5); border:1px solid var(--gh-border);
+  border-radius:7px; padding:8px 12px;
+  font-family:var(--gh-mono); font-size:11px; color:var(--gh-text);
+  word-break:break-all; display:flex; align-items:center; justify-content:space-between; gap:6px;
+}
+.ton-copy-btn {
+  background:rgba(0,229,255,.08); border:1px solid rgba(0,229,255,.2);
+  border-radius:5px; padding:3px 8px; cursor:pointer;
+  font-family:var(--gh-mono); font-size:9px; color:var(--gh-cyan);
+  white-space:nowrap; transition:all .15s;
+}
+.ton-copy-btn:hover { background:rgba(0,229,255,.2); }
+.ton-action-btn {
+  width:100%; padding:11px;
+  background:linear-gradient(135deg,rgba(184,255,0,.15),rgba(184,255,0,.06));
+  border:1px solid rgba(184,255,0,.35); border-radius:8px; cursor:pointer;
+  font-family:var(--gh-mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--gh-green); font-weight:700; transition:all .15s;
+}
+.ton-action-btn:hover { background:rgba(184,255,0,.25); box-shadow:0 0 16px rgba(184,255,0,.2); }
+.ton-action-btn:disabled { opacity:.4; cursor:not-allowed; }
+.ton-note { font-family:var(--gh-mono); font-size:9px; color:var(--gh-muted); text-align:center; line-height:1.6; }
+.ton-sep { height:1px; background:var(--gh-border); margin:2px 0; }
+
+/* 거래 내역 */
+.ton-tx-row {
+  display:grid; grid-template-columns:60px 1fr 80px 60px 80px;
+  gap:6px; align-items:center; padding:7px 0;
+  border-bottom:1px solid var(--gh-border); font-family:var(--gh-mono); font-size:10px;
+}
+.ton-tx-type.deposit  { color:#4ade80; }
+.ton-tx-type.withdraw { color:#f87171; }
+.ton-tx-amount  { color:var(--gh-text); font-weight:700; }
+.ton-tx-ton     { color:var(--gh-cyan); }
+.ton-tx-status.confirmed { color:#4ade80; }
+.ton-tx-status.pending   { color:var(--gh-amber); }
+.ton-tx-status.failed    { color:#f87171; }
+.ton-tx-date    { color:var(--gh-muted); font-size:9px; }
+
+/* 토스트 */
+.ton-toast { display:none; position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+  padding:9px 18px; border-radius:8px; font-family:var(--gh-mono); font-size:12px;
+  font-weight:700; white-space:nowrap; z-index:99999; box-shadow:0 4px 16px rgba(0,0,0,.5); }
+.ton-toast-success { background:#064e3b; color:#4ade80; border:1px solid #166534; }
+.ton-toast-warn    { background:#451a03; color:#fb923c; border:1px solid #7c2d12; }
+.ton-toast-error   { background:#450a0a; color:#f87171; border:1px solid #991b1b; }
+.ton-toast-info    { background:#0c1a2e; color:var(--gh-cyan); border:1px solid rgba(0,229,255,.3); }
+
 /* ── 플로팅 허브 버튼 (지도 위) ── */
 #ghFloatBtn {
   position: fixed; bottom: 24px; right: 16px; z-index: 5000;
@@ -3029,8 +3161,17 @@
     </div>
   </div>
 
+  <!-- 탭 네비게이션 -->
+  <div class="gh-tabs">
+    <button class="gh-tab-btn active" data-gh-tab="ghTabGames">🎮 게임</button>
+    <button class="gh-tab-btn" data-gh-tab="ghTabTon">💎 TON 교환</button>
+  </div>
+
   <!-- Body -->
   <div class="gh-body">
+
+    <!-- ▼ 게임 탭 ▼ -->
+    <div id="ghTabGames" class="gh-tab-panel">
 
     <!-- 신규 유저 온보딩 -->
     <div class="gh-onboard" id="ghOnboard">
@@ -3139,6 +3280,89 @@
         <div class="gh-ex-note">Rate: 100 GP per $0.01 USD · 1 JUMP = 10 GP · 실시간 환율 연동</div>
       </div>
     </div>
+
+    </div><!-- /ghTabGames -->
+
+    <!-- ▼ TON 교환 탭 ▼ -->
+    <div id="ghTabTon" class="gh-tab-panel hidden">
+      <div class="ton-panel">
+        <div class="ton-info-bar" style="position:relative">
+          <div class="ton-info-seg"><div class="ton-info-lbl">1 TON</div><div class="ton-info-val" id="tonPriceUsd">$—</div></div>
+          <div class="ton-info-seg" style="text-align:center"><div class="ton-info-lbl">→ Game Coin</div><div class="ton-info-val green" id="tonPriceCoin">— GP</div></div>
+          <div class="ton-info-seg" style="text-align:right"><div class="ton-info-lbl">기준</div><div class="ton-info-val">1 USD = 10,000 GP</div></div>
+          <div style="position:absolute;bottom:4px;right:10px;font-family:var(--gh-mono);font-size:8px;color:var(--gh-muted)" id="tonPriceUpdated">—</div>
+        </div>
+
+        <div class="ton-wallet-bar">
+          <div class="ton-wallet-info">
+            <div class="ton-wallet-status" id="tonWalletStatus">○ 미연결</div>
+            <div class="ton-wallet-addr"   id="tonWalletAddr">지갑 미연결</div>
+          </div>
+          <div id="tonConnectBtnRoot">
+            <button class="ton-connect-btn" id="tonConnectWallet">🔗 지갑 연결</button>
+          </div>
+        </div>
+
+        <div class="ton-tabs">
+          <button class="ton-tab-btn active" data-target="tonTabDeposit">▼ 입금</button>
+          <button class="ton-tab-btn"        data-target="tonTabWithdraw">▲ 출금</button>
+          <button class="ton-tab-btn"        data-target="tonTabHistory" id="tonHistoryTabBtn">📋 내역</button>
+        </div>
+
+        <!-- 입금 -->
+        <div id="tonTabDeposit" class="ton-tab-panel">
+          <div class="ton-field" style="margin-bottom:10px">
+            <div class="ton-label">STEP 1 — 입금 TON 수량</div>
+            <div class="ton-field-row">
+              <input class="ton-input" id="tonDepositAmt" type="number" min="0.01" step="0.01" placeholder="0.00">
+              <span class="ton-unit">TON =</span>
+              <span class="ton-result" id="tonDepositGp">— GP</span>
+            </div>
+          </div>
+          <div class="ton-field" style="margin-bottom:10px">
+            <div class="ton-label">STEP 2 — 입금 주소 (관리자 지갑)</div>
+            <div class="ton-admin-addr">
+              <span id="tonDepositAddr" style="word-break:break-all;font-size:10px">로딩 중...</span>
+              <button class="ton-copy-btn" id="tonCopyAddr">복사</button>
+            </div>
+          </div>
+          <div class="ton-sep" style="margin-bottom:8px"></div>
+          <button class="ton-action-btn" id="tonSendBtn" style="margin-bottom:8px">💎 STEP 3 — TON Connect 전송</button>
+          <div class="ton-field">
+            <div class="ton-label">STEP 4 — TX Hash 입력 후 GP 지급</div>
+            <input class="ton-input" id="tonVerifyHash" type="text" placeholder="TX Hash 붙여넣기" style="font-size:10px;margin-bottom:6px">
+            <button class="ton-action-btn" id="tonVerifyBtn">✅ 입금 확인 → GP 지급</button>
+          </div>
+          <div class="ton-note" style="margin-top:8px">전송 후 TX Hash는 지갑 앱 → 거래 내역에서 확인 · 약 30초~2분 소요</div>
+        </div>
+
+        <!-- 출금 -->
+        <div id="tonTabWithdraw" class="ton-tab-panel hidden">
+          <div class="ton-field" style="margin-bottom:10px">
+            <div class="ton-label">출금 GP (최소 1,000 GP)</div>
+            <div class="ton-field-row">
+              <input class="ton-input" id="tonWithdrawGp" type="number" min="1000" step="100" placeholder="1000">
+              <span class="ton-unit">GP =</span>
+              <span class="ton-result" id="tonWithdrawTon">— TON</span>
+            </div>
+          </div>
+          <div class="ton-field" style="margin-bottom:12px">
+            <div class="ton-label">수신 TON 지갑 주소</div>
+            <input class="ton-input" id="tonWithdrawAddr" type="text" placeholder="EQ... 또는 UQ..." style="font-size:11px">
+          </div>
+          <button class="ton-action-btn" id="tonWithdrawBtn">📤 출금 요청</button>
+          <div class="ton-note" style="margin-top:8px">출금 후 관리자 검토 24시간 내 · 1일 최대 500,000 GP</div>
+        </div>
+
+        <!-- 내역 -->
+        <div id="tonTabHistory" class="ton-tab-panel hidden">
+          <div id="tonHistoryList" style="max-height:220px;overflow-y:auto">
+            <div style="color:var(--gh-muted);font-size:11px;text-align:center;padding:16px">내역 탭 클릭 시 로드됩니다</div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /ghTabTon -->
 
   </div><!-- /gh-body -->
 </div><!-- /#gameHub -->
@@ -3260,10 +3484,51 @@
   setInterval(updatePlayers,   30 * 1000);       // 30초
   setInterval(updateWallet,    15 * 1000);       // 15초
 
+  // ── Game Hub 탭 전환 ────────────────────────────────────────────────────────
+  document.querySelectorAll('[data-gh-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-gh-tab]').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.gh-tab-panel').forEach(p => p.classList.add('hidden'));
+      btn.classList.add('active');
+      const target = document.getElementById(btn.dataset.ghTab);
+      if (target) target.classList.remove('hidden');
+    });
+  });
+
+  // TON 탭 내부 탭 전환
+  document.querySelectorAll('.ton-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ton-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.ton-tab-panel').forEach(p => p.classList.add('hidden'));
+      btn.classList.add('active');
+      const target = document.getElementById(btn.dataset.target);
+      if (target) target.classList.remove('hidden');
+      // 내역 탭 클릭 시 자동 로드
+      if (btn.dataset.target === 'tonTabHistory') {
+        window._tonLoadHistory?.();
+      }
+    });
+  });
+
+  // TON 모듈 초기화 (동적 import)
+  setTimeout(async () => {
+    try {
+      const ton = await import('/assets/js/pages/merchants.ton.js');
+      await ton.initTonExchange();
+      // 내역 로드 함수 노출
+      window._tonLoadHistory = () => document.getElementById('tonHistoryBtn')?.click?.();
+    } catch (e) {
+      console.warn('[ton] 모듈 로드 실패:', e);
+    }
+  }, 1500);
+
   // 페이지 로드 시 허브 표시 (auth state 로딩 후)
   setTimeout(showHub, 300);
 
 }());
+
+// TON 토스트 엘리먼트 (body 레벨)
+document.body.insertAdjacentHTML('beforeend', '<div id="tonToast" class="ton-toast"></div>');
 </script>
 </body>
 </html>

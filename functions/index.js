@@ -2308,3 +2308,53 @@ exports.telegramAuth = onCall(
   })
 );
 
+// ════════════════════════════════════════════════════════════════════════════
+// TON ↔ GameCoin 교환 시스템
+// ════════════════════════════════════════════════════════════════════════════
+const tonExchangeH = require('./handlers/tonExchange');
+
+// TON 실시간 가격 + 교환비 조회 (인증 불필요)
+// 클라이언트: httpsCallable(functions, 'tonGetPrice')()
+exports.tonGetPrice = onCall(
+  wrapError(async () => {
+    const info = await tonExchangeH.getPrice();
+    logger.info('tonGetPrice', { tonUsd: info.tonUsd });
+    return info;
+  })
+);
+
+// TON 입금 확인 → GameCoin 지급
+// 클라이언트: httpsCallable(functions, 'tonDepositVerify')({ txHash: '...' })
+exports.tonDepositVerify = onCall(
+  wrapError(async (request) => {
+    const uid    = requireAuth(request);
+    const { txHash } = request.data ?? {};
+    if (!txHash) throw new HttpsError('invalid-argument', 'txHash가 필요합니다');
+    const result = await tonExchangeH.verifyDeposit(txHash, uid);
+    logger.info('tonDepositVerify', { uid, txHash, gamecoin: result.gamecoin });
+    return result;
+  })
+);
+
+// GameCoin → TON 출금 요청
+// 클라이언트: httpsCallable(functions, 'tonWithdrawRequest')({ gamecoin: 5000, walletAddress: 'EQ...' })
+exports.tonWithdrawRequest = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { gamecoin, walletAddress } = request.data ?? {};
+    if (!gamecoin || !walletAddress) throw new HttpsError('invalid-argument', 'gamecoin, walletAddress 필요');
+    const result = await tonExchangeH.requestWithdraw(Number(gamecoin), walletAddress, uid);
+    logger.info('tonWithdrawRequest', { uid, gamecoin, tonAmount: result.tonAmount });
+    return result;
+  })
+);
+
+// 내 TON 거래 내역 조회
+// 클라이언트: httpsCallable(functions, 'tonGetTransactions')()
+exports.tonGetTransactions = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return tonExchangeH.getMyTransactions(uid, 30);
+  })
+);
+
