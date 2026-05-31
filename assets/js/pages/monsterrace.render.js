@@ -39,7 +39,7 @@ export async function loadAllSprites() {
 export function getFrame(key) { return _imgs[key]||null; }
 
 // ── 렌더러 초기화 ─────────────────────────────────────────────────────────────
-const DRAW_N=130, D_NEAR=480, SEG_D=280, ROAD_HW=0.55;
+const DRAW_N=160, D_NEAR=420, SEG_D=220, ROAD_HW=0.68;
 let _ctx, _W, _H, _shake=0;
 
 export function initRenderer(c){ _ctx=c.getContext('2d'); _W=c.width; _H=c.height; }

@@ -228,64 +228,48 @@ function drawEffects(ctx, effects) {
   }
 }
 
-// ── 대포 타워 (지평선 양쪽 끝, tower.png 사용) ───────────────────────────────
+// ── 대포 타워 (배경 산봉우리에 안착, tower.png 1/10 크기) ───────────────────
+// back.png 기준: 좌측 소봉 → x≈14, y≈LH*0.46 / 우측 소봉 → x≈LW-14, y≈LH*0.44
 function drawCannons(ctx, cannons, imgs) {
-  const gy = ROWS[1].yFr * LH;
   const towerImg = imgs?.tower;
   for (const c of cannons) {
-    const cx = c.x;
+    const cx  = c.x;
     const dir = cx < LW/2 ? 1 : -1;
+    // 좌우 봉우리 높이 미세 차이 반영
+    const gy  = cx < LW/2 ? LH * 0.46 : LH * 0.44;
     ctx.save();
     ctx.translate(cx, gy);
     ctx.scale(dir, 1);
 
     if (towerImg && towerImg.naturalWidth) {
-      const th = 70;
+      // 1/10 크기 (was 70 → 7)
+      const th  = 7;
       const twd = th * towerImg.naturalWidth / towerImg.naturalHeight;
       ctx.drawImage(towerImg, -twd / 2, -th, twd, th);
+      // 발사 시 작은 글로우
       if (c.firing > 0) {
         ctx.save();
-        ctx.globalAlpha = c.firing;
-        ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 18;
-        ctx.fillStyle = '#ff8800';
-        ctx.beginPath(); ctx.arc(twd * 0.38, -th * 0.54, 9, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#ffee00';
-        ctx.beginPath(); ctx.arc(twd * 0.38, -th * 0.54, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = c.firing * 0.9;
+        ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 6;
+        ctx.fillStyle = '#ff9900';
+        ctx.beginPath(); ctx.arc(twd * 0.4, -th * 0.5, 2.5, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
       }
     } else {
-      const TS = 10;
-      ctx.fillStyle='#4a4050';
-      ctx.fillRect(-TS, -TS*3, TS*2, TS*3);
+      // fallback — 축소 캔버스 드로잉
+      const TS = 1;
+      ctx.fillStyle='#4a4050'; ctx.fillRect(-TS, -TS*3, TS*2, TS*3);
       ctx.fillStyle='#3a3040';
-      for (let t=0;t<3;t++) ctx.fillRect(-TS+t*TS*.7, -TS*4, TS*.55, TS);
-      ctx.fillStyle='#1a1a1a';
-      ctx.fillRect(TS*.5, -TS*1.8, TS*2.2, TS*.85);
-      ctx.fillStyle='#000';
-      ctx.beginPath(); ctx.arc(TS*2.7, -TS*1.38, TS*.34, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle='#5a4030';
-      ctx.beginPath(); ctx.arc(TS*.9, -TS*.6, TS*.6, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle='#8a6050';
-      ctx.beginPath(); ctx.arc(TS*.9, -TS*.6, TS*.35, 0, Math.PI*2); ctx.fill();
+      for (let t=0;t<3;t++) ctx.fillRect(-TS+t*TS*.7,-TS*4,TS*.55,TS);
+      ctx.fillStyle='#1a1a1a'; ctx.fillRect(TS*.5,-TS*1.8,TS*2.2,TS*.85);
       if (c.firing > 0) {
         ctx.globalAlpha = c.firing;
-        ctx.fillStyle = '#ff8800';
-        ctx.beginPath(); ctx.arc(TS*3.1,-TS*1.38,TS*.8,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#ffee00';
-        ctx.beginPath(); ctx.arc(TS*3.1,-TS*1.38,TS*.4,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#ff8800';
+        ctx.beginPath(); ctx.arc(TS*3,-TS*1.4,TS*.8,0,Math.PI*2); ctx.fill();
       }
     }
     ctx.restore();
   }
-}
-
-// ── 아처 타워 (플레이어 하단, tower2.png 사용) ───────────────────────────────
-function drawArcherTower(ctx, imgs, playerX) {
-  const tw = imgs?.tower2;
-  if (!tw || !tw.naturalWidth) return;
-  const th = 118;
-  const twd = th * tw.naturalWidth / tw.naturalHeight;
-  ctx.drawImage(tw, playerX - twd / 2, AY - th, twd, th);
 }
 
 // ── 포탄 렌더링 (포물선, 점점 커짐) ─────────────────────────────────────────
@@ -398,7 +382,6 @@ export function renderFrame(st) {
   drawCannonballs(ctx, st.cannonballs || []);
   drawParticles(ctx);
   drawEffects(ctx, st.effects);
-  drawArcherTower(ctx, st.imgs, st.playerX ?? AX);
   drawArcher(ctx, st.imgs, st);
   drawCrosshair(ctx, st.aim);
 

@@ -128,7 +128,7 @@ let _playerX = LW/2;  // 현재 X 위치 (이동 가능)
 let _hitFlash = 0;    // 피격 시각 효과 (0→1)
 
 // 대포 시스템
-const CANNON_Y_FR = ROWS[1].yFr;  // 지평선 레벨 (row 1)
+const CANNON_Y_FR = 0.45;  // 산봉우리 레벨 (back.png 좌우 소봉 기준)
 const _cannons = [
   { x:14,      nextFire:5000, firing:0 },
   { x:LW-14,   nextFire:8500, firing:0 },

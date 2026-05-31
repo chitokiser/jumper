@@ -30,8 +30,6 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
   border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;
   box-shadow:0 4px 20px rgba(245,158,11,.4);transition:opacity .15s;width:100%;max-width:280px}
 .btn-main:active{opacity:.8}.btn-main:disabled{opacity:.4;cursor:not-allowed}
-.btn-sec{padding:8px 20px;background:#374151;color:#fff;border:none;
-  border-radius:10px;font-size:13px;cursor:pointer}
 .prize-row{font-size:11px;color:#4b5563;text-align:center}
 
 /* ── 스킬 선택 ── */
@@ -57,25 +55,33 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
 .racer-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .racer-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:100%;max-width:300px}
 
-/* ── 게임 화면 ── */
-#gameScreen{padding:0;justify-content:flex-start;background:#0a0a1a}
+/* ── 게임 화면 (9:16 세로) ── */
+#gameScreen{
+  padding:0;justify-content:center;align-items:center;background:#0a0a1a;
+  position:fixed;inset:0;display:flex;
+}
 
-/* 캔버스 래퍼 — 보물찾기와 동일한 반응형 */
+/* 9:16 캔버스 래퍼 */
 #canvasWrap{
-  position:relative;width:100%;max-width:600px;margin:0 auto;
+  position:relative;
+  /* 화면 높이 기준으로 9:16 비율 유지 */
+  width:min(100vw, calc(100vh * 9 / 16));
+  height:min(100vh, calc(100vw * 16 / 9));
+  max-width:400px;
   background:#0a0a1a;
+  flex-shrink:0;
 }
 #canvasWrap:fullscreen,#canvasWrap:-webkit-full-screen{
-  max-width:100%;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center
+  max-width:100%;width:100vw;height:100vh;
 }
 #raceCanvas{
-  display:block;width:100%;height:auto;
+  display:block;width:100%;height:100%;
   image-rendering:optimizeSpeed;image-rendering:pixelated
 }
 
 /* ── HUD ── */
 #hud{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between}
-#hudTop{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 8px;gap:5px}
+#hudTop{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 8px;gap:5px;flex-wrap:wrap}
 .hb{background:rgba(0,0,0,.72);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;backdrop-filter:blur(2px)}
 #hpmpBox{display:flex;flex-direction:column;gap:2px;min-width:76px}
 .strow{display:flex;align-items:center;gap:3px;font-size:10px}
@@ -85,8 +91,13 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
 #hpBar{background:#22c55e;width:100%}
 #mpBar{background:#3b82f6;width:100%}
 .stval{font-size:9px;width:28px;text-align:right;color:#d1d5db}
-#rankBox{font-size:13px;text-align:center}
+#rankBox{font-size:13px;text-align:center;min-width:52px}
 #lapGpBox{display:flex;flex-direction:column;gap:3px;text-align:right}
+
+/* 속도 + 거리 HUD 행 */
+#hudRow2{display:flex;justify-content:space-between;align-items:center;padding:2px 8px;gap:4px;pointer-events:none}
+#speedTxt{color:#22d3ee;font-size:12px;font-weight:900;min-width:72px}
+#distTxt{color:#a78bfa;font-size:11px;text-align:right;min-width:68px}
 
 /* 전체화면 버튼 */
 #btnFs{
@@ -94,23 +105,25 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
   background:rgba(0,0,0,.6);border:none;border-radius:6px;
   padding:4px 7px;font-size:14px;cursor:pointer;pointer-events:all;color:#fff
 }
+/* 홈 버튼 */
+#btnHome{
+  position:absolute;top:6px;left:8px;z-index:10;
+  background:rgba(0,0,0,.6);border:none;border-radius:6px;
+  padding:4px 8px;font-size:12px;cursor:pointer;pointer-events:all;color:#fff;
+  text-decoration:none;display:flex;align-items:center;gap:3px;
+  font-weight:700;
+}
 
 /* 레이스 로그 */
-#logBox{position:absolute;top:52px;left:6px;width:160px;pointer-events:none}
+#logBox{position:absolute;top:58px;left:6px;width:160px;pointer-events:none}
 .log-line{font-size:9px;line-height:1.55;background:rgba(0,0,0,.55);
   border-radius:4px;padding:1px 5px;margin-bottom:1px;
   animation:logIn .25s ease}
 @keyframes logIn{from{opacity:0;transform:translateX(-4px)}to{opacity:1}}
 
-/* ── 컨트롤 래퍼 (조향만) ── */
-#controls{
-  position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
-  pointer-events:all;
-}
-
-/* 스킬 버튼 — 오른쪽 세로 배치 */
+/* ── 스킬 버튼 ── */
 #skillBar{
-  position:absolute;right:8px;bottom:6px;
+  position:absolute;right:8px;bottom:100px;
   display:flex;flex-direction:column;gap:5px;
   pointer-events:all;
 }
@@ -124,11 +137,22 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
 .sk-btn small{font-size:8px;color:#9ca3af;white-space:nowrap}
 .sk-btn .cd{position:absolute;top:1px;right:3px;font-size:9px;font-weight:700;color:#fbbf24}
 
-/* 조향+액셀+브레이크 */
+/* 상태이상 */
+#statusTxt{
+  position:absolute;top:50px;left:50%;transform:translateX(-50%);
+  font-size:9px;font-weight:700;color:#fbbf24;text-shadow:0 0 6px #000;
+  white-space:nowrap;pointer-events:none;text-align:center
+}
+
+/* ── 컨트롤 ── */
+#controls{
+  position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+  pointer-events:all;
+}
 #steerBar{
   display:grid;
-  grid-template-columns:70px 62px 70px;
-  grid-template-rows:42px 42px;
+  grid-template-columns:72px 64px 72px;
+  grid-template-rows:46px 46px;
   gap:5px;
 }
 .steer{
@@ -141,9 +165,30 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
 .steer small{font-size:8px;color:#9ca3af}
 .steer:active{background:rgba(255,255,255,.35);border-color:#60a5fa}
 #btnGas  {background:rgba(34,197,94,.25);border-color:#22c55e;grid-column:2;grid-row:1}
+#btnGas.auto-on{background:rgba(34,197,94,.55);border-color:#4ade80}
 #btnBrake{background:rgba(239,68,68,.18);border-color:#ef4444;grid-column:2;grid-row:2;font-size:15px}
 #btnLeft {grid-column:1;grid-row:1/3}
 #btnRight{grid-column:3;grid-row:1/3}
+
+/* ── FINISH 오버레이 ── */
+#finishOverlay{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:rgba(0,0,0,.45);pointer-events:none;z-index:50;
+}
+#finishOverlay.hidden{display:none!important}
+.finish-text{
+  font-size:clamp(64px,22vw,96px);font-weight:900;
+  color:#f59e0b;text-shadow:0 0 40px #f59e0baa, 0 0 80px #f59e0b44;
+  letter-spacing:-2px;
+  animation:finishPop .4s cubic-bezier(.17,.67,.4,1.4) both;
+}
+.finish-sub{font-size:18px;color:#fff;font-weight:700;margin-top:8px;
+  text-shadow:0 2px 8px #000;letter-spacing:2px}
+@keyframes finishPop{
+  from{transform:scale(0.4);opacity:0}
+  to{transform:scale(1);opacity:1}
+}
 
 /* ── 완주 ── */
 #finishScreen{text-align:center}
@@ -178,7 +223,7 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
   <div class="badge">참가비: 100 GP</div>
   <button class="btn-main" id="btnEnter">🏁 레이스 참가</button>
   <div class="prize-row">🥇500 · 🥈250 · 🥉150 · 4위~50·30·20·10 GP</div>
-  <a href="/merchants.html" style="font-size:12px;color:#4b5563;text-decoration:none">← 게임으로</a>
+  <a href="/index.html" style="font-size:12px;color:#4b5563;text-decoration:none">← 홈으로</a>
 </div>
 
 <!-- 스킬 선택 -->
@@ -210,6 +255,7 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
     <canvas id="raceCanvas" tabindex="0" style="outline:none"></canvas>
 
     <button id="btnFs" title="전체 화면">⤢</button>
+    <a id="btnHome" href="/index.html">🏠 홈</a>
 
     <div id="hud">
       <!-- 상단 HUD -->
@@ -233,15 +279,19 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
         </div>
       </div>
 
+      <!-- 속도 + 거리 행 -->
+      <div id="hudRow2">
+        <div class="hb" id="speedTxt">0 km/h</div>
+        <div class="hb" id="distTxt">— km</div>
+      </div>
+
       <!-- 상태 이상 -->
-      <div id="statusTxt" style="position:absolute;top:46px;left:50%;transform:translateX(-50%);
-        font-size:9px;font-weight:700;color:#fbbf24;text-shadow:0 0 6px #000;
-        white-space:nowrap;pointer-events:none;text-align:center"></div>
+      <div id="statusTxt"></div>
 
       <!-- 로그 -->
       <div id="logBox"></div>
 
-        <!-- 스킬 버튼 — 우측 독립 배치 -->
+      <!-- 스킬 버튼 -->
       <div id="skillBar"></div>
 
       <!-- 조향 버튼 -->
@@ -254,17 +304,23 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
         </div>
       </div>
     </div>
+
+    <!-- FINISH 오버레이 -->
+    <div id="finishOverlay" class="hidden">
+      <div class="finish-text">FINISH!</div>
+      <div class="finish-sub" id="finishSubTxt"></div>
+    </div>
   </div>
 </div>
 
-<!-- 완주 -->
+<!-- 완주 결과 -->
 <div id="finishScreen" class="screen hidden">
   <div class="fin-title">🏁 레이스 완료!</div>
   <div id="finishRank">?위</div>
   <div id="finishGP">+? GP</div>
   <div style="font-size:12px;color:#6b7280;margin-top:6px">GP 자동 지급 완료</div>
   <button class="btn-main" id="btnRestart" style="margin-top:14px">다시 도전!</button>
-  <a href="/merchants.html" style="font-size:12px;color:#4b5563;text-decoration:none;margin-top:6px">← 게임으로</a>
+  <a href="/index.html" style="font-size:12px;color:#4b5563;text-decoration:none;margin-top:6px">← 홈으로</a>
 </div>
 
 <script>

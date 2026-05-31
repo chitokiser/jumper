@@ -1,4 +1,4 @@
-// monsterrace.js — Monster Skate Race 게임 로직 + 사운드
+// monsterrace.js — Monster Skate Race 게임 로직
 import { db, auth } from '/assets/js/firebase-init.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -8,46 +8,43 @@ import {
 } from './monsterrace.render.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const ENTRY_FEE = 100;
-const PRIZES    = [500, 250, 150, 50, 30, 20, 10];
-const MAX_SPEED = 0.076;
-const ACCEL     = 0.0013;
-const STEER     = 0.045;
-const FALL_DUR  = 5000;
-const AI_THINK  = 1100;
+const ENTRY_FEE  = 100;
+const PRIZES     = [500, 250, 150, 50, 30, 20, 10];
+const MAX_SPEED  = 0.152;   // ×2 (was 0.076)
+const ACCEL      = 0.0026;  // ×2 (was 0.0013)
+const STEER      = 0.055;
+const LANE_MAX   = 2.3;     // 도로 끝까지 (was 1.8)
+const AI_THINK   = 2800;    // AI 반응 느리게 (was 1100)
+const MAX_KMH    = 280;     // 최대속도 km/h 표시
+const RACE_KM    = 3.0;     // 총 레이스 거리 km
 
 // ── 스킬 정의 ────────────────────────────────────────────────────────────────
 const SKILLS = {
-  // 공격형
   apple:    { name:'사과던지기', mp:10, emoji:'🍎', type:'attack', cd:3000, desc:'전방 속도 -30% / 3초' },
   rock:     { name:'돌멩이투척', mp:15, emoji:'🪨', type:'attack', cd:4000, desc:'전방 차량 뒤집기' },
   web:      { name:'거미줄발사', mp:20, emoji:'🕸️',  type:'attack', cd:5000, desc:'전방 최고속 -40% / 3초' },
   tornado:  { name:'회오리바람', mp:30, emoji:'🌪️', type:'attack', cd:9000, desc:'전방 2대 내 뒤로 날려버림' },
-  // 함정형
   banana:   { name:'바나나껍질', mp:10, emoji:'🍌', type:'trap',   cd:3000, desc:'밟으면 스핀+조향불가' },
   oil:      { name:'기름통',    mp:15, emoji:'🛢️',  type:'trap',   cd:4000, desc:'밟으면 속도↑+조향불가' },
   poop:     { name:'몬스터똥', mp:10, emoji:'💩', type:'trap',   cd:3000, desc:'밟으면 2초 감속' },
   ice:      { name:'얼음지대', mp:20, emoji:'🧊', type:'trap',   cd:5000, desc:'밟으면 미끄럼+조향불가' },
-  // 이동형
   boost:    { name:'부스트',   mp:20, emoji:'⚡', type:'move',   cd:5000, desc:'속도 x2 / 3초' },
   lightning:{ name:'번개질주', mp:30, emoji:'🌩️', type:'move',   cd:8000, desc:'속도 x2 + 무적 / 5초' },
 };
 
+// AI 속도 약화 (was 0.91~1.05)
 const AI_DEFS = [
-  { id:'orc',    imgKey:'orc',     name:'Orc',    color:'#4a7c2f', spd:1.00, skills:['apple','banana','boost'] },
-  { id:'pirate', imgKey:'pirate',  name:'Pirate', color:'#7c3a1a', spd:0.98, skills:['rock','oil','boost'] },
-  { id:'zombie', imgKey:'zombie1', name:'Zombie', color:'#5a7a3a', spd:0.93, skills:['banana','poop','ice'] },
-  { id:'banshee',imgKey:'zombie2', name:'Banshee',color:'#4a3a5a', spd:0.91, skills:['poop','web','banana'] },
-  { id:'cabi',   imgKey:'cabi',    name:'Cabi',   color:'#5a00aa', spd:1.05, skills:['web','tornado','apple'] },
-  { id:'troll',  imgKey:'troll',   name:'Troll',  color:'#8a8a00', spd:0.96, skills:['rock','ice','boost'] },
+  { id:'orc',    imgKey:'orc',     name:'Orc',    color:'#4a7c2f', spd:0.78, skills:['apple','banana','boost'] },
+  { id:'pirate', imgKey:'pirate',  name:'Pirate', color:'#7c3a1a', spd:0.76, skills:['rock','oil','boost'] },
+  { id:'zombie', imgKey:'zombie1', name:'Zombie', color:'#5a7a3a', spd:0.72, skills:['banana','poop','ice'] },
+  { id:'banshee',imgKey:'zombie2', name:'Banshee',color:'#4a3a5a', spd:0.70, skills:['poop','web','banana'] },
+  { id:'cabi',   imgKey:'cabi',    name:'Cabi',   color:'#5a00aa', spd:0.82, skills:['web','tornado','apple'] },
+  { id:'troll',  imgKey:'troll',   name:'Troll',  color:'#8a8a00', spd:0.74, skills:['rock','ice','boost'] },
 ];
 
-// ── 사운드 시스템 (Web Audio API) ─────────────────────────────────────────────
+// ── 자동차 엔진 사운드 (Web Audio API) ───────────────────────────────────────
 let _ac = null;
-// 바퀴 굴러가는 소리 노드
-let _rollSrc = null, _rollGain = null, _rollFilter = null;
-// 오르막/내리막/점프 효과음 타이머
-let _terrainSndTs = 0;
+let _engOsc1 = null, _engOsc2 = null, _engGain = null, _engFilter = null;
 
 function ac() {
   if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -67,108 +64,80 @@ function tone(freq, type, dur, vol=0.25, startFreq=0) {
   } catch {}
 }
 
-function noise(dur, vol=0.2, cutoff=400) {
-  try {
-    const a=ac();
-    const buf=a.createBuffer(1,a.sampleRate*dur,a.sampleRate);
-    const data=buf.getChannelData(0);
-    for(let i=0;i<data.length;i++) data[i]=Math.random()*2-1;
-    const src=a.createBufferSource(), gain=a.createGain(), filt=a.createBiquadFilter();
-    src.buffer=buf; filt.type='lowpass'; filt.frequency.value=cutoff;
-    src.connect(filt); filt.connect(gain); gain.connect(a.destination);
-    gain.gain.setValueAtTime(vol,a.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
-    src.start(); src.stop(a.currentTime+dur);
-  } catch {}
-}
-
-function playCountdown(n) {
-  if(n>0) tone(440,'sine',0.22,0.4);
-  else { tone(880,'sine',0.15,0.5); tone(1320,'sine',0.28,0.4); }
-}
-function playBoost()    { tone(200,'sawtooth',0.06,0.2); tone(500,'sawtooth',0.22,0.2); }
-function playPickup()   { tone(880,'sine',0.09,0.28); tone(1100,'sine',0.14,0.22); }
-function playSkillHit() { tone(400,'square',0.05,0.22); tone(200,'square',0.28,0.18); }
-function playFall()     { noise(0.28,0.3,600); tone(80,'sine',0.35,0.25); }
-function playFinish()   { [523,659,784,1047,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.32,0.38),i*75)); }
-function playTrap()     { tone(250,'sawtooth',0.05,0.18); tone(150,'sawtooth',0.28,0.18); }
-
-// ── 스케이트보드 바퀴 굴러가는 소리 ──────────────────────────────────────────
-// 도로 마찰 노이즈 + 바퀴 클릭/클럭 패턴
 function startEngine() {
   try {
     const a = ac();
-    if (_rollSrc) return;
+    if (_engOsc1) return;
 
-    // 바퀴 마찰 노이즈 (지속)
-    const bufLen = a.sampleRate * 2;
-    const buf    = a.createBuffer(1, bufLen, a.sampleRate);
-    const data   = buf.getChannelData(0);
-    // 주기적인 클럭 패턴 (바퀴 이음매 소리)
-    for (let i=0; i<bufLen; i++) {
-      const t    = i / a.sampleRate;
-      const roll = Math.random() * 0.4;                 // 기본 노이즈
-      const click = Math.abs(Math.sin(t * 18 * Math.PI)) > 0.96 ? 0.6 : 0; // 이음매 클릭
-      data[i] = (roll + click) * (Math.random() > 0.5 ? 1 : -1);
-    }
+    _engGain   = a.createGain();
+    _engFilter = a.createBiquadFilter();
 
-    _rollSrc    = a.createBufferSource();
-    _rollGain   = a.createGain();
-    _rollFilter = a.createBiquadFilter();
+    _engOsc1 = a.createOscillator();
+    _engOsc2 = a.createOscillator();
+    const subGain = a.createGain();
 
-    _rollSrc.buffer = buf;
-    _rollSrc.loop   = true;
+    // 메인 엔진 파형 (sawtooth = 거친 엔진음)
+    _engOsc1.type = 'sawtooth';
+    _engOsc1.frequency.value = 68;
 
-    _rollFilter.type             = 'bandpass';
-    _rollFilter.frequency.value  = 900;
-    _rollFilter.Q.value          = 1.5;
+    // 서브 하모닉 (옥타브 위 — 고rpm 느낌)
+    _engOsc2.type = 'square';
+    _engOsc2.frequency.value = 136;
+    subGain.gain.value = 0.28;
 
-    _rollSrc.connect(_rollFilter);
-    _rollFilter.connect(_rollGain);
-    _rollGain.connect(a.destination);
-    _rollGain.gain.value = 0;
-    _rollSrc.start();
+    _engFilter.type = 'lowpass';
+    _engFilter.frequency.value = 320;
+    _engFilter.Q.value = 2.2;
+
+    _engOsc1.connect(_engFilter);
+    _engOsc2.connect(subGain);
+    subGain.connect(_engFilter);
+    _engFilter.connect(_engGain);
+    _engGain.connect(a.destination);
+
+    _engGain.gain.value = 0.02; // idle 볼륨
+    _engOsc1.start(); _engOsc2.start();
   } catch {}
 }
 
 function updateEngine(speed, maxSpeed) {
-  if (!_rollGain || !_rollFilter) return;
+  if (!_engGain || !_engFilter || !_engOsc1 || !_engOsc2) return;
   try {
     const r  = speed / maxSpeed;
     const a  = ac();
-    // 속도 빠를수록: 볼륨 up, 주파수 up (고음 = 빠른 바퀴 회전)
-    _rollGain.gain.linearRampToValueAtTime(r > 0.05 ? 0.06 + r * 0.1 : 0, a.currentTime + 0.08);
-    _rollFilter.frequency.linearRampToValueAtTime(600 + r * 1400, a.currentTime + 0.08);
-    _rollFilter.Q.value = 1.2 + r * 0.8;
+    const ct = a.currentTime;
 
-    // ── 지형 효과음 (오르막/내리막/점프) ──────────────────────────────────
-    const now = Date.now();
-    if (now - _terrainSndTs > 1200 && speed > maxSpeed * 0.3) {
-      const seg = _track?.[((Math.floor(_player?.pos || 0)) % SEGS + SEGS) % SEGS];
-      if (seg) {
-        if (seg.hill > 5) {
-          // 오르막: 바퀴소리 피치 내려가며 힘든 소리
-          tone(300 + r*100, 'sawtooth', 0.3, 0.06, 500+r*200);
-          _terrainSndTs = now;
-        } else if (seg.hill < -4) {
-          // 내리막: 빠르게 올라가는 바람 소리
-          tone(800+r*400, 'sine', 0.25, 0.04, 300);
-          _terrainSndTs = now;
-        }
-      }
-    }
+    // RPM: 아이들 68Hz → 최고 230Hz
+    const freq = 68 + r * 170;
+    _engOsc1.frequency.linearRampToValueAtTime(freq, ct + 0.12);
+    _engOsc2.frequency.linearRampToValueAtTime(freq * 2.1, ct + 0.12);
+
+    // 필터 컷오프: 고rpm일수록 날카로운 음색
+    _engFilter.frequency.linearRampToValueAtTime(260 + r * 1400, ct + 0.10);
+
+    // 볼륨: 공회전 0.02 → 최고 0.09
+    const vol = r > 0.04 ? 0.025 + r * 0.065 : 0.02;
+    _engGain.gain.linearRampToValueAtTime(vol, ct + 0.09);
   } catch {}
 }
 
-// 점프 사운드 (점프 구간 진입 시 외부에서 호출)
-function playJumpLand() {
-  noise(0.12, 0.3, 1200);
-  tone(180, 'sine', 0.2, 0.18);
+function stopEngine() {
+  try {
+    if (_engGain) _engGain.gain.linearRampToValueAtTime(0, ac().currentTime + 0.45);
+    setTimeout(() => {
+      try { _engOsc1?.stop(); _engOsc2?.stop(); } catch {}
+      _engOsc1 = _engOsc2 = _engGain = _engFilter = null;
+    }, 550);
+  } catch {}
 }
 
-function stopEngine() {
-  try { _rollGain?.gain.linearRampToValueAtTime(0, ac().currentTime + 0.3); } catch {}
-}
+function playCountdown(n) { if(n>0) tone(440,'sine',0.22,0.4); else { tone(880,'sine',0.15,0.5); tone(1320,'sine',0.28,0.4); } }
+function playBoost()    { tone(180,'sawtooth',0.05,0.18); tone(480,'sawtooth',0.2,0.18); }
+function playPickup()   { tone(880,'sine',0.09,0.28); tone(1100,'sine',0.14,0.22); }
+function playSkillHit() { tone(400,'square',0.05,0.22); tone(200,'square',0.28,0.18); }
+function playFall()     { try{const a=ac(),buf=a.createBuffer(1,a.sampleRate*.28,a.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);const s=a.createBufferSource(),g=a.createGain();s.buffer=buf;s.connect(g);g.connect(a.destination);g.gain.value=0.28;s.start();s.stop(a.currentTime+0.28);}catch{} }
+function playFinish()   { [523,659,784,1047,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.32,0.38),i*75)); }
+function playTrap()     { tone(250,'sawtooth',0.05,0.18); tone(150,'sawtooth',0.28,0.18); }
 
 // ── 게임 상태 ─────────────────────────────────────────────────────────────────
 let _phase = 'loading';
@@ -179,6 +148,8 @@ let _selectedSkills = [];
 let _track = null, _player = null, _racers = [], _items = [];
 let _traps = [], _log = [], _finishOrder = [];
 let _raf = null, _lastTs = 0, _gameTs = 0;
+let _ended = false;
+let _gasLocked = false; // 가스 토글 상태
 const _keys = {left:false, right:false, gas:false, brake:false};
 let _aiTimers = {};
 
@@ -217,10 +188,10 @@ async function awardPrize(rank) {
 // ── 레이서 팩토리 ─────────────────────────────────────────────────────────────
 function makeRacer(def, isPlayer) {
   return {
-    id:      def.id,
-    imgKey:  isPlayer ? 'user' : (def.imgKey || 'orc'),
-    name:    def.name, color: def.color,
-    pos:     0, lane: 0, speed: 0,
+    id: def.id,
+    imgKey: isPlayer ? 'user' : (def.imgKey || 'orc'),
+    name: def.name, color: def.color,
+    pos: 0, lane: 0, speed: 0,
     maxSpeed: MAX_SPEED * (def.spd || 1),
     hp: isPlayer ? _playerHP : 700+Math.random()*500,
     maxHp: isPlayer ? _playerMaxHP : 1000,
@@ -228,7 +199,7 @@ function makeRacer(def, isPlayer) {
     maxMp: isPlayer ? _playerMaxMP : 800,
     lap: 0, finished: false, rank: 0, currentRank: 1,
     fallUntil: 0, wobble: 0,
-    effects: {},   // { boost, slow, slowMax, stun, jumping, invincible }: timestamp
+    effects: {},
     skills: def.skills || [],
     skillCooldowns: {},
     traps: [], isPlayer,
@@ -253,14 +224,12 @@ function useSkill(racer, id) {
       break;
     case 'attack': {
       if (id==='tornado') {
-        // 전방 2마리를 내 뒤로 날려버림
         const targets = findFront(racer, 2);
         if (!targets.length) break;
         targets.forEach(t => {
           if ((t.effects.invincible||0)>now) return;
           t.pos = racer.pos - 3 - Math.random();
-          t.effects.spin = now + 2500;
-          t.speed *= 0.25;
+          t.effects.spin = now + 2500; t.speed *= 0.25;
           addLog(`🌪️ ${t.name} 날아감!`);
         });
         triggerShake(7);
@@ -270,8 +239,7 @@ function useSkill(racer, id) {
       const fwd = findFront(racer, 1)[0];
       if (!fwd || (fwd.effects.invincible||0)>now) break;
       if (id==='apple') { fwd.effects.slow=now+3000; addLog(`🍎 ${fwd.name} 속도 -30%!`); playSkillHit(); }
-      if (id==='rock')  { fwd.fallUntil=now+2500; fwd.speed=0; triggerShake(8);
-                          addLog(`🪨 ${fwd.name} 뒤집힘!`); playFall(); playSkillHit(); }
+      if (id==='rock')  { fwd.fallUntil=now+2500; fwd.speed=0; triggerShake(8); addLog(`🪨 ${fwd.name} 뒤집힘!`); playFall(); playSkillHit(); }
       if (id==='web')   { fwd.effects.slowMax=now+3000; addLog(`🕸️ ${fwd.name} 최고속 -40%!`); playSkillHit(); }
       break;
     }
@@ -288,14 +256,11 @@ function useSkill(racer, id) {
   if (racer.isPlayer) renderHUD();
 }
 
-// ahead=true: 전방, n개 반환
 function findFront(racer, n=1) {
   return [_player,..._racers]
     .filter(r=>r.id!==racer.id&&!r.finished&&r.pos>racer.pos)
-    .sort((a,b)=>a.pos-b.pos)
-    .slice(0, n);
+    .sort((a,b)=>a.pos-b.pos).slice(0, n);
 }
-
 function findNearest(racer, ahead) {
   return [_player,..._racers]
     .filter(r=>r.id!==racer.id&&!r.finished)
@@ -319,74 +284,70 @@ function updateRacer(r, isPlayer) {
     * (slowMax ? 0.6:1.0)
     * (r.wobble>0 ? 0.82:1.0);
 
-  const spinning  = (r.effects.spin||0)>now;
-  const oilSlide  = (r.effects.oilSlide||0)>now;
-  const iceSlide  = (r.effects.iceSlide||0)>now;
-  const anySlide  = spinning || oilSlide || iceSlide;
+  const spinning = (r.effects.spin||0)>now;
+  const oilSlide = (r.effects.oilSlide||0)>now;
+  const iceSlide = (r.effects.iceSlide||0)>now;
 
   if (isPlayer) {
     const vr = Math.min(1, r.speed / r.maxSpeed);
 
-    // ── 스핀 효과 (바나나 — 차량 회전, 조향 불가) ────────────────────────
     if (spinning) {
       r.lane += Math.sin(now * 0.014) * 0.18;
-      r.lane = Math.max(-1.8, Math.min(1.8, r.lane));
+      r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane));
       r.speed = Math.max(0, r.speed - ACCEL * 0.8);
-    }
-    // ── 기름 슬라이드 (속도↑ + 조향 불가) ───────────────────────────────
-    else if (oilSlide) {
+    } else if (oilSlide) {
       r.speed = Math.min(r.maxSpeed * 1.6, r.speed + ACCEL * 1.5);
       r.lane += (Math.random()-0.5) * 0.06;
-      r.lane = Math.max(-1.8, Math.min(1.8, r.lane));
-    }
-    // ── 얼음 슬라이드 (미끄럼 + 조향 불가) ──────────────────────────────
-    else if (iceSlide) {
+      r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane));
+    } else if (iceSlide) {
       r.speed = Math.max(top * 0.35, r.speed - ACCEL * 0.15);
       r.lane += (Math.random()-0.5) * 0.05;
-      r.lane = Math.max(-1.8, Math.min(1.8, r.lane));
-    }
-    // ── 정상 주행 ─────────────────────────────────────────────────────────
-    else {
-      // 가속 / 브레이크
-      const targetSpeed = _keys.gas ? top : top * 0.6;
-      if (r.speed < targetSpeed)      r.speed = Math.min(r.speed + ACCEL, targetSpeed);
-      else if (_keys.brake)           r.speed = Math.max(0, r.speed - ACCEL * 3);
-      else if (r.speed > targetSpeed) r.speed = Math.max(targetSpeed, r.speed - ACCEL * 0.5);
-
-      // 조향 + 코너링 물리
-      const steerInput = (_keys.right ? 1 : 0) - (_keys.left ? 1 : 0);
-      if (steerInput !== 0) {
-        const effSteer = STEER * (1 - vr * 0.5);
-        r.lane = Math.max(-1.8, Math.min(1.8, r.lane + steerInput * effSteer));
-        const latG = Math.max(0, vr - 0.3);
-        r.speed = Math.max(top * 0.25, r.speed * (1 - latG * latG * 0.009));
+      r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane));
+    } else {
+      // 가속: _keys.gas = true면 최대속도로, false면 0.55배
+      const targetSpeed = _keys.gas ? top : top * 0.55;
+      if (r.speed < targetSpeed) {
+        r.speed = Math.min(r.speed + ACCEL, targetSpeed);
+      } else if (_keys.brake) {
+        // 관성법칙: 속도에 따라 제동력 선형 증가 (고속일수록 제동거리 ↑)
+        const brakeForce = ACCEL * 1.6 + r.speed * 0.04;
+        r.speed = Math.max(0, r.speed - brakeForce);
+      } else if (r.speed > targetSpeed) {
+        r.speed = Math.max(targetSpeed, r.speed - ACCEL * 0.45);
       }
 
-      // 트랙 커브 원심력
+      const steerInput = (_keys.right ? 1 : 0) - (_keys.left ? 1 : 0);
+      if (steerInput !== 0) {
+        const effSteer = STEER * (1 - vr * 0.45);
+        r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane + steerInput * effSteer));
+        const latG = Math.max(0, vr - 0.3);
+        r.speed = Math.max(top * 0.2, r.speed * (1 - latG * latG * 0.009));
+      }
+
       const curSeg = _track?.[((Math.floor(r.pos)) % SEGS + SEGS) % SEGS];
       if (curSeg?.curve) {
         const centrifugal = -(curSeg.curve / 3) * vr * vr * 0.015;
-        r.lane = Math.max(-1.8, Math.min(1.8, r.lane + centrifugal));
+        r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane + centrifugal));
       }
     }
 
-    // 코스 이탈 페널티
-    if (Math.abs(r.lane) > 1.3) {
-      const offRoad = (Math.abs(r.lane) - 1.3) / 0.5;
-      r.speed *= (1 - offRoad * 0.05);
+    // 코스 이탈 페널티 (경계 확장)
+    if (Math.abs(r.lane) > 1.9) {
+      const offRoad = (Math.abs(r.lane) - 1.9) / 0.5;
+      r.speed *= (1 - offRoad * 0.06);
     }
   } else {
-    // AI
-    if (r.speed < top) r.speed = Math.min(r.speed + ACCEL * 0.92, top);
+    // AI — 속도 및 반응 약화
+    if (r.speed < top) r.speed = Math.min(r.speed + ACCEL * 0.60, top);
     if (spinning) {
       r.lane += Math.sin(now * 0.014) * 0.12;
     } else if (oilSlide || iceSlide) {
       r.lane += (Math.random()-0.5) * 0.05;
     } else {
-      r.lane += (Math.random()-0.5)*0.015;
+      r.lane += (Math.random()-0.5) * 0.018;
       r.lane = r.lane * 0.97;
     }
-    r.lane = Math.max(-1.5, Math.min(1.5, r.lane));
+    r.lane = Math.max(-1.6, Math.min(1.6, r.lane));
   }
 
   if (r.wobble > 0) { r.lane += Math.sin(now*0.01)*0.09; r.wobble -= 16; }
@@ -407,26 +368,10 @@ function checkTraps(r) {
     if ((r.effects.invincible||0)>now) continue;
     t.active = false;
     switch (t.skillId) {
-      case 'banana':
-        // 스핀 + 조향 불가 2초
-        r.effects.spin = now+2000; r.speed *= 0.6; triggerShake(7);
-        addLog(`🍌 ${r.name} 스핀!`); if(r.isPlayer) playFall();
-        break;
-      case 'oil':
-        // 속도↑ + 조향 불가 3초
-        r.effects.oilSlide = now+3000;
-        addLog(`🛢️ ${r.name} 기름 미끄럼!`); if(r.isPlayer) tone(200,'sawtooth',0.3,0.18);
-        break;
-      case 'poop':
-        // 2초 감속
-        r.effects.slow = now+2000;
-        addLog(`💩 ${r.name} 감속!`);
-        break;
-      case 'ice':
-        // 미끄럼 + 조향 불가 3초
-        r.effects.iceSlide = now+3000;
-        addLog(`🧊 ${r.name} 빙판!`); if(r.isPlayer) tone(1200,'sine',0.15,0.12);
-        break;
+      case 'banana': r.effects.spin=now+2000; r.speed*=0.6; triggerShake(7); addLog(`🍌 ${r.name} 스핀!`); if(r.isPlayer)playFall(); break;
+      case 'oil':    r.effects.oilSlide=now+3000; addLog(`🛢️ ${r.name} 기름 미끄럼!`); if(r.isPlayer)tone(200,'sawtooth',0.3,0.18); break;
+      case 'poop':   r.effects.slow=now+2000; addLog(`💩 ${r.name} 감속!`); break;
+      case 'ice':    r.effects.iceSlide=now+3000; addLog(`🧊 ${r.name} 빙판!`); if(r.isPlayer)tone(1200,'sine',0.15,0.12); break;
     }
     if (r.isPlayer) renderHUD();
   }
@@ -447,13 +392,13 @@ function aiThink(r) {
   const now = Date.now();
   if ((now - (_aiTimers[r.id]||0)) < AI_THINK) return;
   _aiTimers[r.id] = now;
-  if (Math.random() < 0.45 && r.skills.length) {
+  // 스킬 사용 확률 대폭 감소 (was 0.45)
+  if (Math.random() < 0.18 && r.skills.length) {
     useSkill(r, r.skills[Math.floor(Math.random()*r.skills.length)]);
   }
 }
 
 // ── 완주 / 종료 ───────────────────────────────────────────────────────────────
-let _ended = false;
 function finishRacer(r) {
   if (_ended) return;
   r.finished = true; r.speed *= 0.3;
@@ -463,6 +408,14 @@ function finishRacer(r) {
   if (_finishOrder.length >= 7 || r.isPlayer) endRace(r.rank);
 }
 
+function showFinishOverlay(rank) {
+  const el = $('finishOverlay'); if (!el) return;
+  const sub = $('finishSubTxt');
+  if (sub) sub.textContent = `${rank}위 완주!`;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 2200);
+}
+
 async function endRace(rank) {
   if (_ended) return; _ended = true;
   stopEngine();
@@ -470,13 +423,14 @@ async function endRace(rank) {
   playFinish();
 
   const finalRank = _player.rank || (7 - _finishOrder.filter(r=>!r.isPlayer).length);
-  const gp = await awardPrize(finalRank - 1);
+  showFinishOverlay(finalRank);
 
+  const gp = await awardPrize(finalRank - 1);
   setTimeout(() => {
     $('finishRank').textContent = `${finalRank}위 완주!`;
     $('finishGP').textContent   = `+${gp} GP 획득!`;
     showPhase('finish');
-  }, 600);
+  }, 1800);
 }
 
 // ── 게임 루프 ─────────────────────────────────────────────────────────────────
@@ -492,12 +446,11 @@ function loop(ts) {
   checkItems(_player);
   for (const r of _racers) { checkTraps(r); checkItems(r); }
 
-  // 순위 정렬
   const active = [_player,..._racers].filter(r=>!r.finished);
   active.sort((a,b)=>b.pos-a.pos);
   active.forEach((r,i)=>r.currentRank=i+1);
 
-  _player.isBraking = _keys.brake;   // 렌더러에 브레이크 상태 전달
+  _player.isBraking = _keys.brake;
   updateEngine(_player.speed, _player.maxSpeed);
 
   renderScene(_track, _racers, _player, _items, _gameTs);
@@ -512,29 +465,40 @@ function renderHUD() {
   if ($('mpBar'))  $('mpBar').style.width  = (mpPct*100) + '%';
   if ($('hpVal'))  $('hpVal').textContent  = Math.ceil(_player.hp);
   if ($('mpVal'))  $('mpVal').textContent  = Math.ceil(_player.mp);
-  // 상태 이상 표시
+
+  // 상태 이상
   const now3 = Date.now();
   const statusIcons = [];
-  if ((_player.effects?.spin||0)>now3)      statusIcons.push('🌀스핀');
-  if ((_player.effects?.oilSlide||0)>now3)  statusIcons.push('🛢️미끄럼');
-  if ((_player.effects?.iceSlide||0)>now3)  statusIcons.push('🧊빙판');
-  if ((_player.effects?.slow||0)>now3)      statusIcons.push('🐢감속');
-  if ((_player.effects?.slowMax||0)>now3)   statusIcons.push('🕸️거미줄');
-  if ((_player.effects?.boost||0)>now3)     statusIcons.push('⚡부스트');
-  if ((_player.effects?.invincible||0)>now3)statusIcons.push('🛡️무적');
+  if ((_player.effects?.spin||0)>now3)       statusIcons.push('🌀스핀');
+  if ((_player.effects?.oilSlide||0)>now3)   statusIcons.push('🛢️미끄럼');
+  if ((_player.effects?.iceSlide||0)>now3)   statusIcons.push('🧊빙판');
+  if ((_player.effects?.slow||0)>now3)       statusIcons.push('🐢감속');
+  if ((_player.effects?.slowMax||0)>now3)    statusIcons.push('🕸️거미줄');
+  if ((_player.effects?.boost||0)>now3)      statusIcons.push('⚡부스트');
+  if ((_player.effects?.invincible||0)>now3) statusIcons.push('🛡️무적');
   const stEl = $('statusTxt');
   if (stEl) stEl.textContent = statusIcons.join(' ');
-  if ($('rankTxt')) $('rankTxt').textContent = `${_player.currentRank||'?'}위 / 7`;
-  if ($('lapTxt'))  $('lapTxt').textContent  = `${Math.min(_player.lap+1,TOTAL_LAPS)}/${TOTAL_LAPS}랩`;
-  if ($('gpTxt'))   $('gpTxt').textContent   = `💰${_playerGP}`;
+
+  if ($('rankTxt'))  $('rankTxt').textContent  = `${_player.currentRank||'?'}위 / 7`;
+  if ($('lapTxt'))   $('lapTxt').textContent   = `${Math.min(_player.lap+1,TOTAL_LAPS)}/${TOTAL_LAPS}랩`;
+  if ($('gpTxt'))    $('gpTxt').textContent    = `💰${_playerGP}`;
+
+  // 속도 (km/h)
+  const kmh = Math.round(_player.speed / _player.maxSpeed * MAX_KMH);
+  if ($('speedTxt')) $('speedTxt').textContent = kmh + ' km/h';
+
+  // 남은 거리
+  const totalSegs = SEGS * TOTAL_LAPS;
+  const traveled  = Math.min(_player.pos, totalSegs);
+  const distKm    = Math.max(0, RACE_KM * (1 - traveled / totalSegs));
+  if ($('distTxt')) $('distTxt').textContent = distKm.toFixed(2) + ' km 남음';
 
   // 스킬 쿨다운
   _selectedSkills.forEach((sk,i)=>{
     const btn = $(`skBtn${i}`); if (!btn) return;
-    const cd = (_player.skillCooldowns[sk]||0) - Date.now();
-    const mp = SKILLS[sk]?.mp || 0;
-    const off = cd>0 || _player.mp < mp;
-    btn.style.opacity = off ? '0.45' : '1';
+    const cd  = (_player.skillCooldowns[sk]||0) - Date.now();
+    const mp  = SKILLS[sk]?.mp || 0;
+    btn.style.opacity = (cd>0 || _player.mp<mp) ? '0.45' : '1';
     const cdEl = btn.querySelector('.cd');
     if (cdEl) cdEl.textContent = cd>0 ? Math.ceil(cd/1000)+'s' : '';
   });
@@ -563,12 +527,8 @@ function renderSkillGrid() {
     btn.className = 'sp-btn'; btn.dataset.id = id;
     btn.innerHTML = `<span class="sp-emoji">${sk.emoji}</span><div class="sp-name">${sk.name}</div><div class="sp-mp">MP ${sk.mp}</div><div class="sp-desc">${sk.desc||''}</div>`;
     btn.addEventListener('click',()=>{
-      if (_selectedSkills.includes(id)) {
-        _selectedSkills=_selectedSkills.filter(s=>s!==id);
-        btn.classList.remove('sel');
-      } else if (_selectedSkills.length<3) {
-        _selectedSkills.push(id); btn.classList.add('sel');
-      }
+      if (_selectedSkills.includes(id)) { _selectedSkills=_selectedSkills.filter(s=>s!==id); btn.classList.remove('sel'); }
+      else if (_selectedSkills.length<3) { _selectedSkills.push(id); btn.classList.add('sel'); }
       $('skCount').textContent = `${_selectedSkills.length}/3 선택`;
       $('skConfirm').disabled  = _selectedSkills.length<1;
     });
@@ -596,6 +556,7 @@ function startCountdown() {
   _items   = makeItems();
   _traps   = []; _log = []; _finishOrder = []; _ended = false;
   _gameTs  = 0;
+  _gasLocked = false; _keys.gas = false;
 
   _player = makeRacer({id:'player',imgKey:'player',name:'Player',color:'#3b82f6',spd:1.0,skills:_selectedSkills},true);
   _racers = AI_DEFS.map(d=>makeRacer(d,false));
@@ -613,23 +574,31 @@ function startCountdown() {
     n--;
     playCountdown(n);
     if (n>0) { $('cdNum').textContent = n; }
-    else     { $('cdNum').textContent = 'GO!'; clearInterval(iv); setTimeout(startRace,500); }
-  },1000);
+    else     { $('cdNum').textContent = 'GO!'; clearInterval(iv); setTimeout(startRace, 500); }
+  }, 1000);
 }
 
 function startRace() {
   showPhase('game');
-  // 게임화면이 표시된 후 resizeCanvas (숨겨진 상태에서 호출 시 clientWidth=0)
   requestAnimationFrame(() => {
     resizeCanvas();
     buildSkillBar();
     startEngine();
     _lastTs = performance.now();
     _raf = requestAnimationFrame(loop);
-    // 캔버스에 포커스 — 키보드 이벤트가 스크롤 컨테이너에 가로채이지 않도록
     const cv = $('raceCanvas');
     if (cv) cv.focus();
+    // 자동 풀스크린
+    autoFullscreen();
   });
+}
+
+function autoFullscreen() {
+  const btn = $('btnFs'), wrap = $('canvasWrap'), game = $('gameScreen');
+  if (!btn || _cssFs) return;
+  const req = wrap?.requestFullscreen || wrap?.webkitRequestFullscreen;
+  if (req) req.call(wrap).catch(() => _enterCssFs(btn, wrap, game));
+  else _enterCssFs(btn, wrap, game);
 }
 
 function makeItems() {
@@ -654,27 +623,40 @@ function initInput() {
     switch(e.key){
       case 'ArrowLeft': case 'a': case 'A': _keys.left=false;  break;
       case 'ArrowRight':case 'd': case 'D': _keys.right=false; break;
-      case 'ArrowUp':   case 'w': case 'W': case ' ': _keys.gas=false;   break;
+      case 'ArrowUp':   case 'w': case 'W': case ' ':
+        // 키보드 gas: gasLocked 아닐 때만 해제
+        if (!_gasLocked) _keys.gas=false;
+        break;
       case 'ArrowDown': case 's': case 'S': _keys.brake=false; break;
     }
   });
 
-  const touch=(id,key)=>{
-    const el=$(id); if(!el)return;
+  // 좌/우/브레이크: 누르는 동안 유지 (hold)
+  for (const [id, key] of [['btnLeft','left'],['btnRight','right'],['btnBrake','brake']]) {
+    const el = $(id); if (!el) continue;
     el.addEventListener('touchstart',e=>{e.preventDefault();_keys[key]=true;},{passive:false});
     el.addEventListener('touchend',  e=>{e.preventDefault();_keys[key]=false;},{passive:false});
-    el.addEventListener('mousedown',()=>_keys[key]=true);
-    document.addEventListener('mouseup',()=>{ _keys[key]=false; });
-  };
-  touch('btnLeft','left');
-  touch('btnRight','right');
-  touch('btnGas','gas');
-  touch('btnBrake','brake');
+    el.addEventListener('mousedown', ()=>_keys[key]=true);
+    document.addEventListener('mouseup', ()=>_keys[key]=false);
+  }
+
+  // 가스: 터치 시 토글 (1번 → AUTO ON, 2번 → OFF)
+  const gasEl = $('btnGas');
+  if (gasEl) {
+    gasEl.addEventListener('touchstart', e => {
+      e.preventDefault();
+      _gasLocked = !_gasLocked;
+      _keys.gas = _gasLocked;
+      gasEl.classList.toggle('auto-on', _gasLocked);
+      gasEl.innerHTML = _gasLocked ? '▲<small>AUTO ●</small>' : '▲<small>GAS</small>';
+    }, {passive:false});
+    // 마우스: hold 동작
+    gasEl.addEventListener('mousedown', () => _keys.gas = true);
+    document.addEventListener('mouseup', () => { if (!_gasLocked) _keys.gas = false; });
+  }
 }
 
-// ── 전체화면 (네이티브 API + CSS 폴백 이중 구조) ──────────────────────────────
-// 네이티브: requestFullscreen (Android/Desktop)
-// CSS 폴백: .race-css-fs 클래스 (iOS Safari)
+// ── 전체화면 ──────────────────────────────────────────────────────────────────
 let _cssFs = false;
 
 function initFullscreen() {
@@ -682,97 +664,58 @@ function initFullscreen() {
   const wrap = $('canvasWrap');
   const game = $('gameScreen');
   if (!btn) return;
-
   btn.addEventListener('click', ()=>{
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.();
-      return;
-    }
-    if (_cssFs) {
-      _exitCssFs(btn, wrap, game);
-      return;
-    }
-    // 네이티브 시도 → 실패 시 CSS 폴백
+    if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
+    if (_cssFs) { _exitCssFs(btn, wrap, game); return; }
     const req = wrap?.requestFullscreen || wrap?.webkitRequestFullscreen;
-    if (req) {
-      req.call(wrap).catch(() => _enterCssFs(btn, wrap, game));
-    } else {
-      _enterCssFs(btn, wrap, game);
-    }
+    if (req) req.call(wrap).catch(()=>_enterCssFs(btn,wrap,game));
+    else _enterCssFs(btn,wrap,game);
   });
-
   document.addEventListener('fullscreenchange', ()=>{
-    if (!document.fullscreenElement && !_cssFs) {
-      _syncFsBtn(btn, false);
-      resizeCanvas();
-    } else if (document.fullscreenElement) {
-      _syncFsBtn(btn, true);
-      resizeCanvas();
-    }
+    if (!document.fullscreenElement && !_cssFs) { _syncFsBtn(btn,false); resizeCanvas(); }
+    else if (document.fullscreenElement) { _syncFsBtn(btn,true); resizeCanvas(); }
   });
   document.addEventListener('webkitfullscreenchange', ()=>{
-    const full = !!document.webkitFullscreenElement;
-    _syncFsBtn(btn, full);
-    resizeCanvas();
+    _syncFsBtn(btn, !!document.webkitFullscreenElement); resizeCanvas();
   });
 }
-
-function _enterCssFs(btn, wrap, game) {
-  _cssFs = true;
-  document.body.style.overflow = 'hidden';
-  if (game) { game.style.position='fixed'; game.style.inset='0'; game.style.zIndex='9000'; game.style.background='#0a0a1a'; }
-  if (wrap) { wrap.style.maxWidth='none'; wrap.style.width='100vw'; wrap.style.height='100vh'; wrap.style.display='flex'; wrap.style.alignItems='center'; }
-  _syncFsBtn(btn, true);
-  resizeCanvas();
+function _enterCssFs(btn,wrap,game){
+  _cssFs=true; document.body.style.overflow='hidden';
+  if(game){game.style.position='fixed';game.style.inset='0';game.style.zIndex='9000';game.style.background='#0a0a1a';}
+  if(wrap){wrap.style.maxWidth='none';wrap.style.width='100vw';wrap.style.height='100vh';wrap.style.display='flex';wrap.style.alignItems='center';}
+  _syncFsBtn(btn,true); resizeCanvas();
 }
-
-function _exitCssFs(btn, wrap, game) {
-  _cssFs = false;
-  document.body.style.overflow = '';
-  if (game) { game.style.position=''; game.style.inset=''; game.style.zIndex=''; game.style.background=''; }
-  if (wrap) { wrap.style.maxWidth=''; wrap.style.width=''; wrap.style.height=''; wrap.style.display=''; wrap.style.alignItems=''; }
-  _syncFsBtn(btn, false);
-  resizeCanvas();
+function _exitCssFs(btn,wrap,game){
+  _cssFs=false; document.body.style.overflow='';
+  if(game){game.style.position='';game.style.inset='';game.style.zIndex='';game.style.background='';}
+  if(wrap){wrap.style.maxWidth='';wrap.style.width='';wrap.style.height='';wrap.style.display='';wrap.style.alignItems='';}
+  _syncFsBtn(btn,false); resizeCanvas();
 }
+function _syncFsBtn(btn,full){ btn.textContent=full?'⤡':'⤢'; btn.title=full?'화면 축소':'전체 화면'; }
 
-function _syncFsBtn(btn, isFull) {
-  btn.textContent = isFull ? '⤡' : '⤢';
-  btn.title       = isFull ? '화면 축소' : '전체 화면';
-}
-
-// 논리 해상도 고정 — CSS 스케일로 반응형 처리 (DPR 이슈 없이 단순화)
-const LOGIC_W = 640, LOGIC_H = 360;
+// ── 캔버스 리사이즈 (9:16) ───────────────────────────────────────────────────
+const LOGIC_W = 360, LOGIC_H = 640;  // 9:16 세로
 
 function resizeCanvas() {
   const canvas = $('raceCanvas');
   if (!canvas) return;
 
-  // 논리 해상도 항상 400×225
   canvas.width  = LOGIC_W;
   canvas.height = LOGIC_H;
 
-  // 표시 크기 계산
   const isFull = !!document.fullscreenElement || !!document.webkitFullscreenElement || _cssFs;
   let cw, ch;
   if (isFull) {
-    // 전체화면: 화면 비율에 맞게 최대화 (letterbox)
     const sw = window.innerWidth, sh = window.innerHeight;
-    if (sw / sh > LOGIC_W / LOGIC_H) {
-      ch = sh; cw = Math.round(sh * LOGIC_W / LOGIC_H);
-    } else {
-      cw = sw; ch = Math.round(sw * LOGIC_H / LOGIC_W);
-    }
+    if (sh / sw > LOGIC_H / LOGIC_W) { cw = sw; ch = Math.round(sw * LOGIC_H / LOGIC_W); }
+    else { ch = sh; cw = Math.round(sh * LOGIC_W / LOGIC_H); }
   } else {
     const wrap = $('canvasWrap');
-    cw = wrap?.clientWidth || window.innerWidth;
+    cw = wrap?.clientWidth  || window.innerWidth;
     ch = Math.round(cw * LOGIC_H / LOGIC_W);
   }
 
-  if (cw > 0) {
-    canvas.style.width  = cw + 'px';
-    canvas.style.height = ch + 'px';
-  }
-
+  if (cw > 0) { canvas.style.width = cw+'px'; canvas.style.height = ch+'px'; }
   initRenderer(canvas);
 }
 
@@ -781,10 +724,8 @@ async function init() {
   showPhase('loading');
   initInput();
   initFullscreen();
-
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
-
   await loadAllSprites();
 
   $('btnEnter')?.addEventListener('click', async ()=>{
