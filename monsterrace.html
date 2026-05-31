@@ -100,39 +100,44 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
   animation:logIn .25s ease}
 @keyframes logIn{from{opacity:0;transform:translateX(-4px)}to{opacity:1}}
 
-/* 스킬 버튼 */
-#skillBar{
-  position:absolute;bottom:54px;left:50%;transform:translateX(-50%);
-  display:flex;gap:6px;pointer-events:all
+/* ── 컨트롤 통합 래퍼 (스킬 + 조향 겹침 방지) ── */
+#controls{
+  position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  pointer-events:all;
 }
+
+/* 스킬 버튼 */
+#skillBar{display:flex;gap:6px;}
 .sk-btn{
-  display:flex;flex-direction:column;align-items:center;gap:2px;
-  background:rgba(0,0,0,.82);border:2px solid #374151;border-radius:11px;
-  padding:5px 9px;font-size:17px;cursor:pointer;
-  position:relative;min-width:48px;color:#fff;
-  transition:opacity .2s;pointer-events:all
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  background:rgba(0,0,0,.85);border:2px solid #374151;border-radius:10px;
+  padding:5px 8px;font-size:16px;cursor:pointer;
+  position:relative;min-width:46px;color:#fff;
+  transition:opacity .2s;pointer-events:all;
 }
 .sk-btn small{font-size:8px;color:#9ca3af;white-space:nowrap}
-.sk-btn .cd{position:absolute;top:1px;right:4px;font-size:9px;font-weight:700;color:#fbbf24}
+.sk-btn .cd{position:absolute;top:1px;right:3px;font-size:9px;font-weight:700;color:#fbbf24}
 
-/* 조향+액셀+브레이크 버튼 */
+/* 조향+액셀+브레이크 */
 #steerBar{
-  position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
-  display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;
-  gap:5px;width:200px;pointer-events:all
+  display:grid;
+  grid-template-columns:70px 62px 70px;
+  grid-template-rows:42px 42px;
+  gap:5px;
 }
 .steer{
-  height:44px;background:rgba(255,255,255,.13);
+  background:rgba(255,255,255,.13);
   border:2px solid rgba(255,255,255,.22);border-radius:12px;
   font-size:20px;cursor:pointer;display:flex;align-items:center;
-  flex-direction:column;justify-content:center;user-select:none;pointer-events:all;
-  color:#fff;gap:1px
+  flex-direction:column;justify-content:center;user-select:none;
+  pointer-events:all;color:#fff;gap:1px;
 }
 .steer small{font-size:8px;color:#9ca3af}
-.steer:active,.steer.pressed{background:rgba(255,255,255,.35);border-color:#60a5fa}
-#btnGas{background:rgba(34,197,94,.25);border-color:#22c55e;grid-column:2;grid-row:1}
-#btnBrake{background:rgba(239,68,68,.18);border-color:#ef4444;grid-column:2;grid-row:2}
-#btnLeft{grid-column:1;grid-row:1/3}
+.steer:active{background:rgba(255,255,255,.35);border-color:#60a5fa}
+#btnGas  {background:rgba(34,197,94,.25);border-color:#22c55e;grid-column:2;grid-row:1}
+#btnBrake{background:rgba(239,68,68,.18);border-color:#ef4444;grid-column:2;grid-row:2;font-size:15px}
+#btnLeft {grid-column:1;grid-row:1/3}
 #btnRight{grid-column:3;grid-row:1/3}
 
 /* ── 완주 ── */
@@ -226,15 +231,15 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
       <!-- 로그 -->
       <div id="logBox"></div>
 
-      <!-- 스킬 -->
-      <div id="skillBar"></div>
-
-      <!-- 조향 + 액셀 + 브레이크 -->
-      <div id="steerBar">
-        <button class="steer" id="btnLeft">◀<small>LEFT</small></button>
-        <button class="steer" id="btnGas">▲<small>GAS</small></button>
-        <button class="steer" id="btnRight">▶<small>RIGHT</small></button>
-        <button class="steer" id="btnBrake" style="font-size:16px">■<small>BRAKE</small></button>
+      <!-- 스킬 + 조향 통합 (겹침 방지) -->
+      <div id="controls">
+        <div id="skillBar"></div>
+        <div id="steerBar">
+          <button class="steer" id="btnLeft">◀<small>LEFT</small></button>
+          <button class="steer" id="btnGas">▲<small>GAS</small></button>
+          <button class="steer" id="btnRight">▶<small>RIGHT</small></button>
+          <button class="steer" id="btnBrake">■<small>BRAKE</small></button>
+        </div>
       </div>
     </div>
   </div>

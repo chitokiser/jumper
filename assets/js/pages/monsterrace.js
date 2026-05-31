@@ -40,7 +40,10 @@ const AI_DEFS = [
 
 // ── 사운드 시스템 (Web Audio API) ─────────────────────────────────────────────
 let _ac = null;
-let _engineOsc = null, _engineGain = null;
+// 바퀴 굴러가는 소리 노드
+let _rollSrc = null, _rollGain = null, _rollFilter = null;
+// 오르막/내리막/점프 효과음 타이머
+let _terrainSndTs = 0;
 
 function ac() {
   if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -49,83 +52,118 @@ function ac() {
 
 function tone(freq, type, dur, vol=0.25, startFreq=0) {
   try {
-    const a = ac();
-    const osc  = a.createOscillator();
-    const gain = a.createGain();
+    const a=ac(), osc=a.createOscillator(), gain=a.createGain();
     osc.connect(gain); gain.connect(a.destination);
-    osc.type = type;
-    if (startFreq) {
-      osc.frequency.setValueAtTime(startFreq, a.currentTime);
-      osc.frequency.linearRampToValueAtTime(freq, a.currentTime + dur * 0.8);
-    } else {
-      osc.frequency.value = freq;
-    }
-    gain.gain.setValueAtTime(vol, a.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
-    osc.start(); osc.stop(a.currentTime + dur);
+    osc.type=type;
+    if(startFreq){ osc.frequency.setValueAtTime(startFreq,a.currentTime); osc.frequency.linearRampToValueAtTime(freq,a.currentTime+dur*.8); }
+    else osc.frequency.value=freq;
+    gain.gain.setValueAtTime(vol,a.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
+    osc.start(); osc.stop(a.currentTime+dur);
   } catch {}
 }
 
-function noise(dur, vol=0.2) {
+function noise(dur, vol=0.2, cutoff=400) {
   try {
-    const a = ac();
-    const buf = a.createBuffer(1, a.sampleRate * dur, a.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
-    const src  = a.createBufferSource();
-    const gain = a.createGain();
-    const filt = a.createBiquadFilter();
-    src.buffer = buf;
-    filt.type = 'lowpass'; filt.frequency.value = 400;
+    const a=ac();
+    const buf=a.createBuffer(1,a.sampleRate*dur,a.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i]=Math.random()*2-1;
+    const src=a.createBufferSource(), gain=a.createGain(), filt=a.createBiquadFilter();
+    src.buffer=buf; filt.type='lowpass'; filt.frequency.value=cutoff;
     src.connect(filt); filt.connect(gain); gain.connect(a.destination);
-    gain.gain.setValueAtTime(vol, a.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
-    src.start(); src.stop(a.currentTime + dur);
+    gain.gain.setValueAtTime(vol,a.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
+    src.start(); src.stop(a.currentTime+dur);
   } catch {}
 }
 
 function playCountdown(n) {
-  if (n > 0)  tone(440, 'sine', 0.25, 0.4);
-  else        { tone(880,'sine',0.15,0.5); tone(1320,'sine',0.3,0.4); }
+  if(n>0) tone(440,'sine',0.22,0.4);
+  else { tone(880,'sine',0.15,0.5); tone(1320,'sine',0.28,0.4); }
 }
+function playBoost()    { tone(200,'sawtooth',0.06,0.2); tone(500,'sawtooth',0.22,0.2); }
+function playPickup()   { tone(880,'sine',0.09,0.28); tone(1100,'sine',0.14,0.22); }
+function playSkillHit() { tone(400,'square',0.05,0.22); tone(200,'square',0.28,0.18); }
+function playFall()     { noise(0.28,0.3,600); tone(80,'sine',0.35,0.25); }
+function playFinish()   { [523,659,784,1047,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.32,0.38),i*75)); }
+function playTrap()     { tone(250,'sawtooth',0.05,0.18); tone(150,'sawtooth',0.28,0.18); }
 
-function playBoost()    { tone(300,'sawtooth',0.08,0.3); tone(600,'sawtooth',0.25,0.25); }
-function playPickup()   { tone(880,'sine',0.1,0.3); tone(1100,'sine',0.15,0.25); }
-function playSkillHit() { tone(400,'square',0.05,0.25); tone(200,'square',0.3,0.2); }
-function playFall()     { noise(0.3,0.35); tone(80,'sine',0.4,0.3); }
-function playFinish()   { [523,659,784,1047,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.35,0.4),i*80)); }
-function playTrap()     { tone(250,'sawtooth',0.06,0.2); tone(150,'sawtooth',0.3,0.2); }
-
+// ── 스케이트보드 바퀴 굴러가는 소리 ──────────────────────────────────────────
+// 도로 마찰 노이즈 + 바퀴 클릭/클럭 패턴
 function startEngine() {
   try {
     const a = ac();
-    if (_engineOsc) return;
-    _engineOsc  = a.createOscillator();
-    _engineGain = a.createGain();
-    const dist  = a.createWaveShaper();
-    const curve = new Float32Array(256);
-    for (let i=0;i<256;i++) curve[i] = (i < 128) ? -1 + i/64 : (i-128)/64;
-    dist.curve = curve;
-    _engineOsc.connect(dist); dist.connect(_engineGain); _engineGain.connect(a.destination);
-    _engineOsc.type = 'sawtooth';
-    _engineOsc.frequency.value = 100;
-    _engineGain.gain.value = 0.04;
-    _engineOsc.start();
+    if (_rollSrc) return;
+
+    // 바퀴 마찰 노이즈 (지속)
+    const bufLen = a.sampleRate * 2;
+    const buf    = a.createBuffer(1, bufLen, a.sampleRate);
+    const data   = buf.getChannelData(0);
+    // 주기적인 클럭 패턴 (바퀴 이음매 소리)
+    for (let i=0; i<bufLen; i++) {
+      const t    = i / a.sampleRate;
+      const roll = Math.random() * 0.4;                 // 기본 노이즈
+      const click = Math.abs(Math.sin(t * 18 * Math.PI)) > 0.96 ? 0.6 : 0; // 이음매 클릭
+      data[i] = (roll + click) * (Math.random() > 0.5 ? 1 : -1);
+    }
+
+    _rollSrc    = a.createBufferSource();
+    _rollGain   = a.createGain();
+    _rollFilter = a.createBiquadFilter();
+
+    _rollSrc.buffer = buf;
+    _rollSrc.loop   = true;
+
+    _rollFilter.type             = 'bandpass';
+    _rollFilter.frequency.value  = 900;
+    _rollFilter.Q.value          = 1.5;
+
+    _rollSrc.connect(_rollFilter);
+    _rollFilter.connect(_rollGain);
+    _rollGain.connect(a.destination);
+    _rollGain.gain.value = 0;
+    _rollSrc.start();
   } catch {}
 }
 
 function updateEngine(speed, maxSpeed) {
-  if (!_engineOsc) return;
+  if (!_rollGain || !_rollFilter) return;
   try {
-    const r = speed / maxSpeed;
-    const a = ac();
-    _engineOsc.frequency.linearRampToValueAtTime(90 + r * 220, a.currentTime + 0.1);
-    _engineGain.gain.linearRampToValueAtTime(0.03 + r * 0.09, a.currentTime + 0.1);
+    const r  = speed / maxSpeed;
+    const a  = ac();
+    // 속도 빠를수록: 볼륨 up, 주파수 up (고음 = 빠른 바퀴 회전)
+    _rollGain.gain.linearRampToValueAtTime(r > 0.05 ? 0.06 + r * 0.1 : 0, a.currentTime + 0.08);
+    _rollFilter.frequency.linearRampToValueAtTime(600 + r * 1400, a.currentTime + 0.08);
+    _rollFilter.Q.value = 1.2 + r * 0.8;
+
+    // ── 지형 효과음 (오르막/내리막/점프) ──────────────────────────────────
+    const now = Date.now();
+    if (now - _terrainSndTs > 1200 && speed > maxSpeed * 0.3) {
+      const seg = _track?.[((Math.floor(_player?.pos || 0)) % SEGS + SEGS) % SEGS];
+      if (seg) {
+        if (seg.hill > 5) {
+          // 오르막: 바퀴소리 피치 내려가며 힘든 소리
+          tone(300 + r*100, 'sawtooth', 0.3, 0.06, 500+r*200);
+          _terrainSndTs = now;
+        } else if (seg.hill < -4) {
+          // 내리막: 빠르게 올라가는 바람 소리
+          tone(800+r*400, 'sine', 0.25, 0.04, 300);
+          _terrainSndTs = now;
+        }
+      }
+    }
   } catch {}
 }
 
+// 점프 사운드 (점프 구간 진입 시 외부에서 호출)
+function playJumpLand() {
+  noise(0.12, 0.3, 1200);
+  tone(180, 'sine', 0.2, 0.18);
+}
+
 function stopEngine() {
-  try { _engineGain?.gain.setValueAtTime(0, ac().currentTime); } catch {}
+  try { _rollGain?.gain.linearRampToValueAtTime(0, ac().currentTime + 0.3); } catch {}
 }
 
 // ── 게임 상태 ─────────────────────────────────────────────────────────────────
@@ -363,6 +401,7 @@ function loop(ts) {
   active.sort((a,b)=>b.pos-a.pos);
   active.forEach((r,i)=>r.currentRank=i+1);
 
+  _player.isBraking = _keys.brake;   // 렌더러에 브레이크 상태 전달
   updateEngine(_player.speed, _player.maxSpeed);
 
   renderScene(_track, _racers, _player, _items, _gameTs);
@@ -587,7 +626,7 @@ function _syncFsBtn(btn, isFull) {
 }
 
 // 논리 해상도 고정 — CSS 스케일로 반응형 처리 (DPR 이슈 없이 단순화)
-const LOGIC_W = 400, LOGIC_H = 225;
+const LOGIC_W = 640, LOGIC_H = 360;
 
 function resizeCanvas() {
   const canvas = $('raceCanvas');
