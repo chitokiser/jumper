@@ -56,11 +56,13 @@ export function addHitParticles(x, y, kill, dragon=false) {
 
 export function addArrowParticle(x, y, fire, pierce) {
   if (Math.random()>.60) return;
+  // 원근 스케일: 아래(플레이어 근처) = 크게, 위(원거리) = 작게
+  const sc = Math.max(0.1, Math.min(1.0, (y - LH*0.22) / (AY - LH*0.22)));
   _parts.push({
     x:x+(Math.random()-.5)*3, y:y+(Math.random()-.5)*3,
     vx:(Math.random()-.5)*1.0, vy:(Math.random()-.5)*1.0,
     life:1, dc:.16, grav:0,
-    sz:fire?4.5:pierce?3.5:2.5,
+    sz:(fire?4.5:pierce?3.5:2.5)*sc,
     col:fire?`hsl(${18+Math.random()*22},100%,${46+Math.random()*20}%)`
        :pierce?'#c4b5fd':'rgba(251,191,36,.82)',
   });
@@ -165,23 +167,30 @@ function drawMonster(ctx, sprs, m) {
 }
 
 function drawArrow(ctx, a) {
+  // 원근 스케일: 플레이어 위치(AY)=1.0, 수평선(LH*0.22) 방향으로 갈수록 작아짐
+  const HORIZON = LH * 0.22;
+  const sc = Math.max(0.06, Math.min(1.0, (a.y - HORIZON) / (AY - HORIZON)));
+
   const len=Math.sqrt(a.vx*a.vx+a.vy*a.vy)||1;
   const nx=a.vx/len, ny=a.vy/len, px=-ny, py=nx;
+
   ctx.save();
   ctx.shadowColor = a.fire?'#ff2200':a.explode?'#cc00ff':a.pierce?'#a78bfa':'#fbbf24';
-  ctx.shadowBlur  = a.fire?18:a.explode?16:a.pierce?13:9;
+  ctx.shadowBlur  = (a.fire?18:a.explode?16:a.pierce?13:9) * sc;
   ctx.strokeStyle = a.fire?'#ff7700':a.explode?'#dd00ff':a.pierce?'#c4b5fd':'#fde68a';
-  ctx.lineWidth   = a.fire?4:a.pierce?3.5:3;
+  ctx.lineWidth   = (a.fire?4:a.pierce?3.5:3) * sc;
   ctx.lineCap='round';
+  // 화살대 (길이도 원근 스케일)
   ctx.beginPath();
-  ctx.moveTo(a.x-nx*24,a.y-ny*24);
-  ctx.lineTo(a.x+nx*3, a.y+ny*3);
+  ctx.moveTo(a.x - nx*24*sc, a.y - ny*24*sc);
+  ctx.lineTo(a.x + nx*3*sc,  a.y + ny*3*sc);
   ctx.stroke();
+  // 화살촉
   ctx.fillStyle = a.fire?'#ff4400':a.explode?'#ee00ff':a.pierce?'#8b5cf6':'#f59e0b';
   ctx.beginPath();
-  ctx.moveTo(a.x+nx*13,a.y+ny*13);
-  ctx.lineTo(a.x-nx*2+px*6,a.y-ny*2+py*6);
-  ctx.lineTo(a.x-nx*2-px*6,a.y-ny*2-py*6);
+  ctx.moveTo(a.x + nx*13*sc,           a.y + ny*13*sc);
+  ctx.lineTo(a.x - nx*2*sc + px*6*sc,  a.y - ny*2*sc + py*6*sc);
+  ctx.lineTo(a.x - nx*2*sc - px*6*sc,  a.y - ny*2*sc - py*6*sc);
   ctx.closePath(); ctx.fill();
   ctx.restore();
 }

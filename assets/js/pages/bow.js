@@ -319,11 +319,14 @@ function _takeDamage(amount) {
   if (_playerHP<=0) setTimeout(gameOver,350);
 }
 
+const ARROW_GRAVITY = 0.16; // 포물선 중력 (px/frame²)
+
 function updateArrows(dt){
   const r=dt/16.67;
   for (let i=_arrows.length-1;i>=0;i--){
     const a=_arrows[i];
     if(!a.active){_arrows.splice(i,1);continue;}
+    a.vy += ARROW_GRAVITY * r;  // 중력 누적 → 포물선
     a.x+=a.vx*r; a.y+=a.vy*r;
     addArrowParticle(a.x,a.y,a.fire,a.pierce);
     if(a.x<-25||a.x>LW+25||a.y<-25||a.y>LH+25) _arrows.splice(i,1);
