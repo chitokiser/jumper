@@ -12,6 +12,7 @@ const db                  = admin.firestore();
 const COIN_PER_USD        = 10000;         // 1 USD = 10,000 GameCoin
 const TON_CACHE_TTL       = 60 * 1000;    // 60초 가격 캐시
 const MIN_WITHDRAW_GP     = 10000;         // 최소 출금 10,000 GP
+const WITHDRAW_FEE_RATE   = 0.03;          // 출금 수수료 3%
 const MAX_DAILY_WITHDRAW  = 1_000_000;    // 1일 최대 출금 1,000,000 GP
 const TONCENTER_BASE      = 'https://toncenter.com/api/v2';
 
@@ -195,16 +196,18 @@ async function requestWithdraw(gamecoin, walletAddress, uid, adminMnemonic) {
   const balance   = playerDoc.data()?.gold || 0;
   if (balance < gamecoin) throw new Error('GP 잔액이 부족합니다');
 
-  // 환율 계산
-  const tonUsd    = await getTonUsdPrice();
-  const tonAmount = gamecoin / (tonUsd * COIN_PER_USD);
+  // 환율 계산 (수수료 3% 차감 후 TON 환산)
+  const tonUsd   = await getTonUsdPrice();
+  const feeGp    = Math.floor(gamecoin * WITHDRAW_FEE_RATE);
+  const netGp    = gamecoin - feeGp;
+  const tonAmount = netGp / (tonUsd * COIN_PER_USD);
   if (tonAmount < 0.001) throw new Error('출금 TON 수량이 너무 적습니다 (최소 0.001 TON)');
 
   // GP 선차감 (processing 상태)
   const txRef = db.collection('ton_transactions').doc();
   const batch = db.batch();
   batch.set(txRef, {
-    uid, walletAddress, gamecoin, tonAmount, usdRate: tonUsd,
+    uid, walletAddress, gamecoin, feeGp, netGp, tonAmount, usdRate: tonUsd,
     type: 'withdraw', status: 'processing',
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
@@ -231,7 +234,7 @@ async function requestWithdraw(gamecoin, walletAddress, uid, adminMnemonic) {
     throw new Error('TON 송금 실패: ' + sendErr.message);
   }
 
-  return { id: txRef.id, gamecoin, tonAmount, usdRate: tonUsd, txHash, status: 'confirmed' };
+  return { id: txRef.id, gamecoin, feeGp, netGp, tonAmount, usdRate: tonUsd, txHash, status: 'confirmed' };
 }
 
 // ── 거래 내역 ─────────────────────────────────────────────────────────────────

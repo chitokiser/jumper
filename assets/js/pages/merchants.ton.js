@@ -126,14 +126,25 @@ function _recalcDeposit() {
   gpResult.textContent = gp > 0 ? gp.toLocaleString() + ' GP' : '— GP';
 }
 
-// ── 출금 계산 ─────────────────────────────────────────────────────────────────
+// ── 출금 계산 (수수료 3% 차감) ───────────────────────────────────────────────
+const WITHDRAW_FEE_RATE = 0.03;
+
 function _recalcWithdraw() {
-  const gpInput  = document.getElementById('tonWithdrawGp');
-  const tonResult= document.getElementById('tonWithdrawTon');
+  const gpInput   = document.getElementById('tonWithdrawGp');
+  const tonResult = document.getElementById('tonWithdrawTon');
+  const feeEl     = document.getElementById('tonWithdrawFeeInfo');
   if (!gpInput || !tonResult) return;
   const gp  = parseInt(gpInput.value) || 0;
-  const ton = _coinPerTon > 0 ? gp / _coinPerTon : 0;
+  if (gp <= 0) {
+    tonResult.textContent = '— TON';
+    if (feeEl) feeEl.textContent = '';
+    return;
+  }
+  const fee = Math.floor(gp * WITHDRAW_FEE_RATE);
+  const net = gp - fee;
+  const ton = _coinPerTon > 0 ? net / _coinPerTon : 0;
   tonResult.textContent = ton > 0 ? ton.toFixed(4) + ' TON' : '— TON';
+  if (feeEl) feeEl.textContent = `수수료 3% = ${fee.toLocaleString()} GP 차감 → 실수령 ${net.toLocaleString()} GP`;
 }
 
 // ── 이벤트 바인딩 ─────────────────────────────────────────────────────────────
@@ -221,12 +232,19 @@ async function _doWithdraw() {
   const address = document.getElementById('tonWithdrawAddr')?.value?.trim();
   if (gp < 10000)  return _toast('최소 출금은 10,000 GP 입니다', 'warn');
   if (!address)    return _toast('TON 지갑 주소를 입력하세요', 'warn');
-  if (!confirm(`${gp.toLocaleString()} GP → TON 출금을 요청하시겠습니까?\n지갑: ${address}`)) return;
+  const fee = Math.floor(gp * WITHDRAW_FEE_RATE);
+  const net = gp - fee;
+  const ton = _coinPerTon > 0 ? net / _coinPerTon : 0;
+  if (!confirm(`출금 요청 확인\n\n` +
+    `차감 GP: ${gp.toLocaleString()} GP\n` +
+    `수수료 3%: ${fee.toLocaleString()} GP\n` +
+    `실수령: ${ton.toFixed(4)} TON\n\n` +
+    `지갑: ${address}`)) return;
 
   _setLoading('tonWithdrawBtn', true);
   try {
     const { data } = await _fnWithdraw({ gamecoin: gp, walletAddress: address });
-    _toast(`출금 요청 완료! ${data.tonAmount.toFixed(4)} TON → 검토 후 송금됩니다`, 'success');
+    _toast(`출금 완료! ${data.tonAmount.toFixed(4)} TON 송금됨 (수수료 ${fee.toLocaleString()} GP 차감)`, 'success');
     document.getElementById('tonWithdrawGp').value = '';
     _recalcWithdraw();
     window.dispatchEvent(new CustomEvent('ton:withdrawn', { detail: data }));
