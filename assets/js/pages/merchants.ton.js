@@ -47,8 +47,9 @@ export async function initTonExchange() {
   await _loadPrice();
   _priceTimer = setInterval(_loadPrice, 60 * 1000); // 1분 갱신
 
-  // 관리자 지갑 주소 로드 (Firestore public config)
-  _loadAdminWallet();
+  // 관리자 지갑 주소 + 잔고 로드
+  await _loadAdminWallet();
+  _loadAdminBalance();
 
   // 이벤트 연결
   _bindEvents();
@@ -78,6 +79,7 @@ async function _loadAdminWallet() {
     const snap = await getDoc(doc(db, 'config', 'ton'));
     _adminWallet = snap.data()?.adminWallet || '';
     _renderAdminWallet();
+    _loadAdminBalance(); // 주소 로드 후 즉시 잔고 조회
   } catch {}
 }
 
@@ -287,4 +289,29 @@ function _toast(msg, type = 'info') {
   el._timer = setTimeout(() => { el.style.display = 'none'; }, 3500);
 }
 
-export { _loadPrice as refreshTonPrice };
+// ── 관리자 지갑 잔고 조회 ─────────────────────────────────────────────────────
+async function _loadAdminBalance() {
+  if (!_adminWallet) return;
+  try {
+    const res = await fetch(
+      `https://toncenter.com/api/v2/getAddressBalance?address=${encodeURIComponent(_adminWallet)}`,
+      { cache: 'no-store' }
+    );
+    const d = await res.json();
+    const nanoton = parseInt(d?.result || '0', 10);
+    if (isNaN(nanoton)) return;
+    const ton = nanoton / 1e9;
+    const usd = _tonUsd ? ton * _tonUsd : 0;
+    const balEl = document.getElementById('tonAdminBalance');
+    const usdEl = document.getElementById('tonAdminBalanceUsd');
+    if (balEl) balEl.textContent = ton.toFixed(4);
+    if (usdEl) usdEl.textContent = usd > 0 ? '$' + usd.toFixed(2) : '$—';
+  } catch (e) {
+    console.warn('[ton] 잔고 조회 실패:', e.message);
+  }
+}
+
+// 전역 노출 (버튼 onclick용)
+window._tonRefreshBalance = _loadAdminBalance;
+
+export { _loadPrice as refreshTonPrice, _loadAdminBalance as loadAdminBalance };

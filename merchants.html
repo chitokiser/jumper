@@ -3289,8 +3289,24 @@
         <div class="ton-info-bar" style="position:relative">
           <div class="ton-info-seg"><div class="ton-info-lbl">1 TON</div><div class="ton-info-val" id="tonPriceUsd">$—</div></div>
           <div class="ton-info-seg" style="text-align:center"><div class="ton-info-lbl">→ Game Coin</div><div class="ton-info-val green" id="tonPriceCoin">— GP</div></div>
-          <div class="ton-info-seg" style="text-align:right"><div class="ton-info-lbl">기준</div><div class="ton-info-val">1 USD = 10,000 GP</div></div>
+          <div class="ton-info-seg" style="text-align:right"><div class="ton-info-lbl">1 USD</div><div class="ton-info-val">10,000 GP</div></div>
           <div style="position:absolute;bottom:4px;right:10px;font-family:var(--gh-mono);font-size:8px;color:var(--gh-muted)" id="tonPriceUpdated">—</div>
+        </div>
+
+        <!-- 관리자 지갑 잔고 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          background:rgba(184,255,0,.05);border:1px solid rgba(184,255,0,.18);
+          border-radius:9px;padding:9px 14px;gap:10px">
+          <div>
+            <div style="font-family:var(--gh-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--gh-muted);margin-bottom:3px">관리자 지갑 잔고 (출금 가능)</div>
+            <div style="display:flex;align-items:baseline;gap:8px">
+              <span style="font-family:var(--gh-mono);font-size:20px;font-weight:700;color:var(--gh-green)" id="tonAdminBalance">—</span>
+              <span style="font-family:var(--gh-mono);font-size:11px;color:var(--gh-muted)">TON</span>
+              <span style="font-family:var(--gh-mono);font-size:11px;color:var(--gh-muted)">≈</span>
+              <span style="font-family:var(--gh-mono);font-size:13px;color:var(--gh-cyan)" id="tonAdminBalanceUsd">$—</span>
+            </div>
+          </div>
+          <button onclick="window._tonRefreshBalance()" style="background:rgba(184,255,0,.1);border:1px solid rgba(184,255,0,.25);border-radius:7px;padding:5px 10px;cursor:pointer;font-family:var(--gh-mono);font-size:10px;color:var(--gh-green)">↻ 갱신</button>
         </div>
 
         <div class="ton-wallet-bar">
