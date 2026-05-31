@@ -3146,9 +3146,23 @@ async function init() {
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
 
   initDungeonGame({
-    onSpendGold: (amount) => spendPlayerGold(amount),
-    onAddGold:   (amount) => addPlayerGold(amount),
-    onPlaySound: (type)   => playSound(type),
+    onSpendGold:  (amount)        => spendPlayerGold(amount),
+    onAddGold:    (amount)        => addPlayerGold(amount),
+    onPlaySound:  (type)          => playSound(type),
+    getInventory: ()              => ({ ..._inventory }),
+    onUseItem:    (itemId, cnt=1) => {
+      const cur = _inventory[itemId] || 0;
+      if (cur < cnt) return false;
+      const remaining = cur - cnt;
+      if (remaining <= 0) delete _inventory[itemId];
+      else _inventory[itemId] = remaining;
+      updateInventoryBar?.();
+      return true;
+    },
+    onExit: () => {
+      // 던전 퇴장 시 Game Hub 복귀 버튼 보이기
+      try { document.getElementById('ghFloatBtn')?.style && (document.getElementById('ghFloatBtn').style.display = 'flex'); } catch {}
+    },
   });
 
   // 미니게임 버튼 — 팝업 서브메뉴

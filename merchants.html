@@ -2561,5 +2561,709 @@
 
     <button class="mymap-cancel-btn" id="myMapCancelBtn">✕ 닫기</button>
   </div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     GAME HUB PORTAL — Jump22 통합 런처
+══════════════════════════════════════════════════════════════════ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+<style>
+/* ── Game Hub 전용 변수 ── */
+:root {
+  --gh-bg:      #04060e;
+  --gh-surface: #080c16;
+  --gh-border:  #0f1a2e;
+  --gh-cyan:    #00e5ff;
+  --gh-green:   #b8ff00;
+  --gh-red:     #ff3b3b;
+  --gh-amber:   #ffbb00;
+  --gh-text:    #c4d4e8;
+  --gh-muted:   #3a4e62;
+  --gh-mono:    'Share Tech Mono', monospace;
+  --gh-sans:    'Barlow Condensed', sans-serif;
+}
+
+/* ── 오버레이 기반 ── */
+#gameHub {
+  position: fixed; inset: 0; z-index: 9500;
+  background: var(--gh-bg);
+  display: flex; flex-direction: column;
+  font-family: var(--gh-sans);
+  color: var(--gh-text);
+  overflow: hidden;
+  transition: opacity .35s, transform .35s;
+}
+#gameHub.gh-hidden {
+  opacity: 0; pointer-events: none; transform: scale(1.015);
+}
+/* 노이즈 그레인 오버레이 */
+#gameHub::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-size: 256px;
+}
+/* 스캔라인 */
+#gameHub::after {
+  content: '';
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,229,255,0.018) 2px,
+    rgba(0,229,255,0.018) 4px
+  );
+}
+
+/* ── 헤더 ── */
+.gh-header {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--gh-border);
+  background: linear-gradient(180deg, rgba(0,229,255,0.04) 0%, transparent 100%);
+  flex-shrink: 0;
+}
+.gh-logo {
+  font-family: var(--gh-mono);
+  font-size: clamp(15px, 3.5vw, 22px);
+  color: var(--gh-cyan);
+  letter-spacing: .08em;
+  display: flex; align-items: center; gap: 8px;
+}
+.gh-logo-pulse {
+  width: 8px; height: 8px;
+  background: var(--gh-cyan);
+  border-radius: 50%;
+  animation: ghPulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(0,229,255,.7);
+}
+@keyframes ghPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0,229,255,.7); }
+  60%  { box-shadow: 0 0 0 8px rgba(0,229,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,229,255,0); }
+}
+.gh-header-right {
+  display: flex; align-items: center; gap: 12px;
+}
+.gh-wallet-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(0,229,255,0.07);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 8px; padding: 6px 12px;
+  font-family: var(--gh-mono); font-size: 12px;
+}
+.gh-wallet-label { color: var(--gh-muted); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+.gh-wallet-gp { color: var(--gh-green); font-weight: 700; font-size: 13px; }
+.gh-wallet-sep { color: var(--gh-muted); }
+.gh-wallet-ton { color: var(--gh-cyan); font-size: 11px; }
+.gh-close-btn {
+  width: 34px; height: 34px;
+  background: rgba(255,59,59,0.1);
+  border: 1px solid rgba(255,59,59,0.3);
+  border-radius: 6px; cursor: pointer;
+  color: #ff3b3b; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.gh-close-btn:hover { background: rgba(255,59,59,0.25); transform: scale(1.05); }
+
+/* ── 이코노미 바 ── */
+.gh-economy-bar {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; padding: 10px 20px;
+  background: rgba(0,0,0,.4);
+  border-bottom: 1px solid var(--gh-border);
+  overflow-x: auto; flex-shrink: 0;
+  scrollbar-width: none;
+}
+.gh-economy-bar::-webkit-scrollbar { display: none; }
+.gh-econ-seg {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 16px;
+  border-right: 1px solid var(--gh-border);
+  white-space: nowrap;
+}
+.gh-econ-seg:last-child { border-right: none; }
+.gh-econ-lbl {
+  font-family: var(--gh-mono); font-size: 9px;
+  color: var(--gh-muted); text-transform: uppercase; letter-spacing: .1em;
+}
+.gh-econ-val {
+  font-family: var(--gh-mono); font-size: 13px;
+  color: var(--gh-cyan);
+}
+.gh-econ-val.green { color: var(--gh-green); }
+.gh-econ-arrow { color: var(--gh-muted); font-size: 11px; }
+/* 이코노미 입력기 */
+.gh-conv-wrap {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 16px;
+}
+.gh-conv-input {
+  width: 72px; background: rgba(0,229,255,0.06);
+  border: 1px solid rgba(0,229,255,0.25); border-radius: 5px;
+  color: var(--gh-cyan); font-family: var(--gh-mono); font-size: 12px;
+  padding: 3px 7px; outline: none; text-align: right;
+}
+.gh-conv-input:focus { border-color: var(--gh-cyan); box-shadow: 0 0 8px rgba(0,229,255,.2); }
+
+/* ── 메인 콘텐츠 영역 ── */
+.gh-body {
+  position: relative; z-index: 1;
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 20px 16px 24px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.gh-body::-webkit-scrollbar { width: 4px; }
+.gh-body::-webkit-scrollbar-thumb { background: var(--gh-border); border-radius: 2px; }
+
+/* ── 섹션 헤더 ── */
+.gh-section-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 2px;
+}
+.gh-section-title {
+  font-family: var(--gh-mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: .18em;
+  color: var(--gh-muted);
+}
+.gh-section-line {
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--gh-border) 0%, transparent 100%);
+}
+
+/* ── 게임 카드 그리드 ── */
+.gh-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 700px) { .gh-grid { grid-template-columns: 1fr; } }
+@media (min-width: 701px) and (max-width: 960px) { .gh-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── 게임 카드 ── */
+.gh-card {
+  position: relative;
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
+  border-radius: 12px; overflow: hidden;
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s, transform .2s;
+  min-height: 220px;
+  display: flex; flex-direction: column;
+}
+.gh-card:hover {
+  border-color: rgba(0,229,255,0.45);
+  box-shadow: 0 0 28px rgba(0,229,255,.1), 0 8px 32px rgba(0,0,0,.6);
+  transform: translateY(-3px);
+}
+/* 호버 스캔 이펙트 */
+.gh-card::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,229,255,0.08) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity .25s;
+}
+.gh-card:hover::before { opacity: 1; }
+/* 부팅 스캔 라인 */
+.gh-card::after {
+  content: '';
+  position: absolute; left: 0; right: 0;
+  top: -100%; height: 100%; z-index: 3; pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(0,229,255,.06) 50%, transparent 100%);
+  transition: none;
+}
+.gh-card:hover::after {
+  animation: ghScan .5s ease forwards;
+}
+@keyframes ghScan {
+  from { top: -100%; }
+  to   { top: 100%; }
+}
+
+/* 배경 이미지 */
+.gh-card-img {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: .18;
+  transition: opacity .25s;
+}
+.gh-card:hover .gh-card-img { opacity: .28; }
+
+/* 코너 장식 */
+.gh-card-corner {
+  position: absolute; top: 8px; right: 8px; z-index: 4;
+  width: 16px; height: 16px;
+  border-top: 1.5px solid rgba(0,229,255,.5);
+  border-right: 1.5px solid rgba(0,229,255,.5);
+}
+.gh-card:hover .gh-card-corner {
+  border-color: var(--gh-cyan);
+  box-shadow: 2px -2px 8px rgba(0,229,255,.3);
+}
+
+/* 뱃지 */
+.gh-badge {
+  position: absolute; top: 12px; left: 12px; z-index: 4;
+  font-family: var(--gh-mono); font-size: 9px; letter-spacing: .12em;
+  padding: 3px 8px; border-radius: 3px; font-weight: 700;
+}
+.gh-badge-live  { background: rgba(255,59,59,.15); color: #ff6b6b; border: 1px solid rgba(255,59,59,.3); }
+.gh-badge-event { background: rgba(255,187,0,.12); color: #ffbb00; border: 1px solid rgba(255,187,0,.3); }
+.gh-badge-new   { background: rgba(184,255,0,.12);  color: var(--gh-green);  border: 1px solid rgba(184,255,0,.3); }
+.gh-badge-live::before { content: '● '; animation: ghBlink .9s ease-in-out infinite; }
+@keyframes ghBlink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* 카드 콘텐츠 */
+.gh-card-body {
+  position: relative; z-index: 4;
+  flex: 1; padding: 44px 14px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.gh-card-name {
+  font-size: clamp(18px, 3.5vw, 22px); font-weight: 900;
+  line-height: 1.1; color: #fff;
+  letter-spacing: -.3px;
+}
+.gh-card-desc {
+  font-size: 12px; color: var(--gh-muted);
+  font-family: var(--gh-mono); line-height: 1.4;
+  margin-top: 2px;
+}
+.gh-card-reward {
+  font-family: var(--gh-mono); font-size: 11px;
+  color: var(--gh-green); margin-top: 4px;
+}
+.gh-card-players {
+  font-family: var(--gh-mono); font-size: 10px;
+  color: var(--gh-muted);
+  display: flex; align-items: center; gap: 4px;
+}
+.gh-players-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gh-green);
+  animation: ghPulse 2s ease-in-out infinite;
+}
+
+/* 카드 하단 */
+.gh-card-foot {
+  position: relative; z-index: 4;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--gh-border);
+  display: flex; gap: 8px;
+}
+.gh-btn-play {
+  flex: 1; padding: 10px;
+  background: linear-gradient(135deg, rgba(0,229,255,.15), rgba(0,229,255,.05));
+  border: 1px solid rgba(0,229,255,.35);
+  border-radius: 7px; cursor: pointer;
+  font-family: var(--gh-mono); font-size: 12px; letter-spacing: .1em;
+  color: var(--gh-cyan); font-weight: 700;
+  transition: all .15s;
+  text-transform: uppercase;
+}
+.gh-btn-play:hover {
+  background: rgba(0,229,255,.22);
+  box-shadow: 0 0 16px rgba(0,229,255,.25);
+}
+.gh-btn-info {
+  width: 38px; padding: 10px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--gh-border);
+  border-radius: 7px; cursor: pointer;
+  color: var(--gh-muted); font-size: 14px;
+  transition: all .15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.gh-btn-info:hover { color: var(--gh-text); border-color: rgba(255,255,255,.15); }
+
+/* ── 이코노미 패널 ── */
+.gh-exchange-panel {
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
+  border-radius: 12px; padding: 16px;
+}
+.gh-ex-title {
+  font-family: var(--gh-mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: .16em;
+  color: var(--gh-muted); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.gh-ex-title::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--gh-border);
+}
+.gh-ex-grid {
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 10px;
+}
+.gh-ex-side {
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--gh-border);
+  border-radius: 8px; padding: 10px 12px;
+}
+.gh-ex-side-label {
+  font-family: var(--gh-mono); font-size: 9px;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gh-muted); margin-bottom: 4px;
+}
+.gh-ex-side-val {
+  font-family: var(--gh-mono); font-size: 18px;
+  font-weight: 700;
+}
+.gh-ex-side-val.cyan { color: var(--gh-cyan); }
+.gh-ex-side-val.green { color: var(--gh-green); }
+.gh-ex-arrow-box {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.gh-ex-arrow-icon { font-size: 18px; color: var(--gh-muted); }
+.gh-ex-rate {
+  font-family: var(--gh-mono); font-size: 9px;
+  color: var(--gh-muted); text-align: center;
+}
+.gh-ex-input {
+  width: 100%; background: transparent;
+  border: none; outline: none;
+  color: var(--gh-cyan); font-family: var(--gh-mono);
+  font-size: 18px; font-weight: 700;
+}
+.gh-ex-note {
+  font-family: var(--gh-mono); font-size: 9.5px;
+  color: var(--gh-muted); margin-top: 10px;
+  text-align: center; letter-spacing: .04em;
+}
+
+/* ── 플로팅 허브 버튼 (지도 위) ── */
+#ghFloatBtn {
+  position: fixed; bottom: 24px; right: 16px; z-index: 5000;
+  width: 52px; height: 52px;
+  background: var(--gh-surface);
+  border: 1px solid rgba(0,229,255,.4);
+  border-radius: 50%; cursor: pointer;
+  display: none; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 0 20px rgba(0,229,255,.2), 0 4px 16px rgba(0,0,0,.5);
+  transition: all .2s;
+  animation: ghFloat 3s ease-in-out infinite;
+}
+#ghFloatBtn:hover {
+  transform: scale(1.12);
+  box-shadow: 0 0 30px rgba(0,229,255,.4), 0 4px 24px rgba(0,0,0,.6);
+}
+@keyframes ghFloat {
+  0%,100% { box-shadow: 0 0 20px rgba(0,229,255,.2), 0 4px 16px rgba(0,0,0,.5); }
+  50%      { box-shadow: 0 0 30px rgba(0,229,255,.35), 0 6px 20px rgba(0,0,0,.5); }
+}
+
+/* ── 온보딩 배너 ── */
+.gh-onboard {
+  background: linear-gradient(135deg, rgba(184,255,0,.06), rgba(0,229,255,.06));
+  border: 1px solid rgba(184,255,0,.2);
+  border-radius: 10px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.gh-onboard-icon { font-size: 26px; flex-shrink: 0; }
+.gh-onboard-text { flex: 1; }
+.gh-onboard-title { font-size: 14px; font-weight: 700; color: var(--gh-green); margin-bottom: 2px; }
+.gh-onboard-sub { font-family: var(--gh-mono); font-size: 10px; color: var(--gh-muted); }
+.gh-onboard-btn {
+  padding: 8px 14px; white-space: nowrap;
+  background: rgba(184,255,0,.12);
+  border: 1px solid rgba(184,255,0,.3);
+  border-radius: 7px; cursor: pointer;
+  font-family: var(--gh-mono); font-size: 10px;
+  letter-spacing: .08em; color: var(--gh-green);
+  transition: all .15s;
+}
+.gh-onboard-btn:hover { background: rgba(184,255,0,.22); }
+</style>
+
+<!-- Game Hub HTML -->
+<div id="gameHub">
+  <!-- Header -->
+  <header class="gh-header">
+    <div class="gh-logo">
+      <div class="gh-logo-pulse"></div>
+      JUMP22_HUB
+    </div>
+    <div class="gh-header-right">
+      <div class="gh-wallet-chip">
+        <div>
+          <div class="gh-wallet-label">Wallet</div>
+          <div class="gh-wallet-gp" id="ghGP">— GP</div>
+        </div>
+        <span class="gh-wallet-sep">|</span>
+        <div class="gh-wallet-ton" id="ghTonBal">TON —</div>
+      </div>
+      <button class="gh-close-btn" id="ghCloseBtn">✕</button>
+    </div>
+  </header>
+
+  <!-- Economy Bar -->
+  <div class="gh-economy-bar">
+    <div class="gh-econ-seg">
+      <span class="gh-econ-lbl">1 TON</span>
+      <span class="gh-econ-arrow">≈</span>
+      <span class="gh-econ-val" id="ghTonUsd">$—</span>
+    </div>
+    <div class="gh-econ-seg">
+      <span class="gh-econ-lbl">→ Game Coin</span>
+      <span class="gh-econ-val green" id="ghTonGp">— GP</span>
+    </div>
+    <div class="gh-econ-seg">
+      <span class="gh-econ-lbl">1 JUMP</span>
+      <span class="gh-econ-arrow">=</span>
+      <span class="gh-econ-val">10 GP</span>
+    </div>
+    <div class="gh-conv-wrap">
+      <input type="number" class="gh-conv-input" id="ghConvInput"
+             placeholder="0.0" min="0" step="0.01" value="1">
+      <span class="gh-econ-lbl">TON</span>
+      <span class="gh-econ-arrow">→</span>
+      <span class="gh-econ-val green" id="ghConvResult">— GP</span>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="gh-body">
+
+    <!-- 신규 유저 온보딩 -->
+    <div class="gh-onboard" id="ghOnboard">
+      <div class="gh-onboard-icon">🚀</div>
+      <div class="gh-onboard-text">
+        <div class="gh-onboard-title">Jump22 에 오신 것을 환영합니다</div>
+        <div class="gh-onboard-sub">GPS 켜고 보물찾기부터 시작 → 게임코인 획득 → 토큰 교환</div>
+      </div>
+      <button class="gh-onboard-btn" onclick="ghEnterGame('treasure')">▶ 시작하기</button>
+    </div>
+
+    <!-- Game Cards -->
+    <div>
+      <div class="gh-section-head">
+        <span class="gh-section-title">// game_universe</span>
+        <div class="gh-section-line"></div>
+      </div>
+      <div class="gh-grid">
+
+        <!-- Card 1: 보물찾기 & 던전 -->
+        <div class="gh-card" onclick="ghEnterGame('treasure')">
+          <div class="gh-card-img" style="background-image:url('/assets/images/bow/user/back.png')"></div>
+          <div class="gh-card-corner"></div>
+          <span class="gh-badge gh-badge-live">LIVE</span>
+          <div class="gh-card-body">
+            <div class="gh-card-name">보물찾기<br>&amp; 던전</div>
+            <div class="gh-card-desc">// GPS-based treasure hunt<br>// dungeon survival combat</div>
+            <div class="gh-card-reward">+120 GP / day</div>
+            <div class="gh-card-players">
+              <div class="gh-players-dot"></div>
+              <span id="ghP0">12,450명 플레이 중</span>
+            </div>
+          </div>
+          <div class="gh-card-foot">
+            <button class="gh-btn-play" onclick="event.stopPropagation();ghEnterGame('treasure')">▶ ENTER MAP</button>
+            <button class="gh-btn-info" title="게임 정보" onclick="event.stopPropagation()">ℹ</button>
+          </div>
+        </div>
+
+        <!-- Card 2: 몬스터 레이스 -->
+        <div class="gh-card" onclick="ghEnterGame('race')">
+          <div class="gh-card-img" style="background-image:url('/assets/images/race/back.png')"></div>
+          <div class="gh-card-corner"></div>
+          <span class="gh-badge gh-badge-event">EVENT</span>
+          <div class="gh-card-body">
+            <div class="gh-card-name">Monster<br>Race</div>
+            <div class="gh-card-desc">// realtime 7-player race<br>// skill items &amp; traps</div>
+            <div class="gh-card-reward">+500 GP / win</div>
+            <div class="gh-card-players">
+              <div class="gh-players-dot"></div>
+              <span id="ghP1">3,280명 플레이 중</span>
+            </div>
+          </div>
+          <div class="gh-card-foot">
+            <button class="gh-btn-play" onclick="event.stopPropagation();ghEnterGame('race')">▶ RACE NOW</button>
+            <button class="gh-btn-info" title="게임 정보" onclick="event.stopPropagation()">ℹ</button>
+          </div>
+        </div>
+
+        <!-- Card 3: 화살쏘기 -->
+        <div class="gh-card" onclick="ghEnterGame('bow')">
+          <div class="gh-card-img" style="background-image:url('/assets/images/bow/user/back.png');filter:hue-rotate(120deg)"></div>
+          <div class="gh-card-corner"></div>
+          <span class="gh-badge gh-badge-new">NEW</span>
+          <div class="gh-card-body">
+            <div class="gh-card-name">활쏘기<br>Hunt</div>
+            <div class="gh-card-desc">// 60-second monster hunt<br>// perspective arrow physics</div>
+            <div class="gh-card-reward">+300 GP / game</div>
+            <div class="gh-card-players">
+              <div class="gh-players-dot"></div>
+              <span id="ghP2">2,150명 플레이 중</span>
+            </div>
+          </div>
+          <div class="gh-card-foot">
+            <button class="gh-btn-play" onclick="event.stopPropagation();ghEnterGame('bow')">▶ SHOOT</button>
+            <button class="gh-btn-info" title="게임 정보" onclick="event.stopPropagation()">ℹ</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Economy Converter Panel -->
+    <div>
+      <div class="gh-section-head">
+        <span class="gh-section-title">// economy_layer</span>
+        <div class="gh-section-line"></div>
+      </div>
+      <div class="gh-exchange-panel">
+        <div class="gh-ex-title">💱 Coin Converter — 즉시 보상 확인</div>
+        <div class="gh-ex-grid">
+          <div class="gh-ex-side">
+            <div class="gh-ex-side-label">TON Input</div>
+            <input class="gh-ex-input gh-ex-side-val cyan" id="ghExTon"
+                   type="number" value="1" min="0" step="0.01" placeholder="0.0">
+          </div>
+          <div class="gh-ex-arrow-box">
+            <div class="gh-ex-arrow-icon">→</div>
+            <div class="gh-ex-rate" id="ghExRate">$—/TON</div>
+          </div>
+          <div class="gh-ex-side">
+            <div class="gh-ex-side-label">Game Coin</div>
+            <div class="gh-ex-side-val green" id="ghExGp">— GP</div>
+          </div>
+        </div>
+        <div class="gh-ex-note">Rate: 100 GP per $0.01 USD · 1 JUMP = 10 GP · 실시간 환율 연동</div>
+      </div>
+    </div>
+
+  </div><!-- /gh-body -->
+</div><!-- /#gameHub -->
+
+<!-- 지도 뷰로 복귀했을 때 허브 재진입 버튼 -->
+<button id="ghFloatBtn" title="Game Hub">🎮</button>
+
+<script>
+// ── Game Hub 초기화 ─────────────────────────────────────────────────────────
+(function () {
+  'use strict';
+
+  const HUB = document.getElementById('gameHub');
+  const FLOAT = document.getElementById('ghFloatBtn');
+  let _tonUsd = 0;
+
+  // 허브 표시/숨김
+  function showHub()  { HUB?.classList.remove('gh-hidden'); if (FLOAT) FLOAT.style.display = 'none'; }
+  function hideHub()  {
+    HUB?.classList.add('gh-hidden');
+    if (FLOAT) { FLOAT.style.display = 'flex'; }
+  }
+
+  document.getElementById('ghCloseBtn')?.addEventListener('click', hideHub);
+  document.getElementById('ghFloatBtn')?.addEventListener('click', showHub);
+
+  // 게임 진입
+  window.ghEnterGame = function (game) {
+    if (game === 'treasure') { hideHub(); }
+    else if (game === 'race') { location.href = '/monsterrace.html'; }
+    else if (game === 'bow')  { location.href = '/bow.html'; }
+  };
+
+  // ── TON 가격 조회 (CoinGecko) ─────────────────────────────────────────────
+  async function fetchTonPrice() {
+    try {
+      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd', { cache: 'no-store' });
+      const d = await res.json();
+      _tonUsd = d?.['the-open-network']?.usd || 0;
+    } catch { _tonUsd = 2.65; } // fallback
+    updateEconomy();
+  }
+
+  function tonToGp(ton) {
+    if (!_tonUsd || !ton) return 0;
+    const usd = ton * _tonUsd;
+    return Math.round(usd / 0.01 * 100); // 100 GP per $0.01
+  }
+
+  function updateEconomy() {
+    const fmt = n => n.toLocaleString();
+    const usdEl = document.getElementById('ghTonUsd');
+    const gpEl  = document.getElementById('ghTonGp');
+    const exRate= document.getElementById('ghExRate');
+    const exGp  = document.getElementById('ghExGp');
+    const convR = document.getElementById('ghConvResult');
+    const convI = document.getElementById('ghConvInput');
+    const exTon = document.getElementById('ghExTon');
+
+    if (usdEl)  usdEl.textContent  = _tonUsd ? '$' + _tonUsd.toFixed(2) : '$—';
+    if (gpEl)   gpEl.textContent   = _tonUsd ? fmt(tonToGp(1)) + ' GP' : '— GP';
+    if (exRate) exRate.textContent = _tonUsd ? '$' + _tonUsd.toFixed(2) + '/TON' : '$—/TON';
+
+    const calcGp = gp => { if (gp) gp.textContent = _tonUsd ? fmt(tonToGp(parseFloat(exTon?.value || 1) || 0)) + ' GP' : '— GP'; };
+    calcGp(exGp);
+
+    if (convI && convR) {
+      const v = parseFloat(convI.value) || 0;
+      convR.textContent = _tonUsd ? fmt(tonToGp(v)) + ' GP' : '— GP';
+    }
+  }
+
+  // 실시간 입력 연동
+  document.getElementById('ghConvInput')?.addEventListener('input', updateEconomy);
+  document.getElementById('ghExTon')    ?.addEventListener('input', updateEconomy);
+
+  // ── 플레이어 수 (fake + real 混合) ─────────────────────────────────────────
+  const BASE_PLAYERS = [12450, 3280, 2150];
+  const playerEls    = ['ghP0', 'ghP1', 'ghP2'];
+  function updatePlayers() {
+    BASE_PLAYERS.forEach((base, i) => {
+      const jitter = Math.floor(Math.random() * 200) - 100;
+      const count  = Math.max(base - 300, base + jitter);
+      const el = document.getElementById(playerEls[i]);
+      if (el) el.textContent = count.toLocaleString() + '명 플레이 중';
+    });
+  }
+
+  // ── 지갑 잔액 (기존 battle.js 연동) ────────────────────────────────────────
+  function updateWallet() {
+    try {
+      const gp = typeof getPlayerGold === 'function' ? getPlayerGold() : null;
+      if (gp !== null) {
+        const el = document.getElementById('ghGP');
+        if (el) el.textContent = Number(gp).toLocaleString() + ' GP';
+      }
+    } catch {}
+  }
+
+  // ── 온보딩 배너: 로그인 유저는 숨김 ────────────────────────────────────────
+  function checkOnboard() {
+    const ob = document.getElementById('ghOnboard');
+    if (!ob) return;
+    try {
+      const gp = typeof getPlayerGold === 'function' ? getPlayerGold() : -1;
+      if (gp > 0) ob.style.display = 'none';
+    } catch {}
+  }
+
+  // ── 초기 실행 ────────────────────────────────────────────────────────────
+  fetchTonPrice();
+  updatePlayers();
+
+  // 지갑 + 온보딩 — auth 준비 후 업데이트
+  setTimeout(() => { updateWallet(); checkOnboard(); }, 2000);
+
+  // 주기적 갱신
+  setInterval(fetchTonPrice,    5 * 60 * 1000); // 5분
+  setInterval(updatePlayers,   30 * 1000);       // 30초
+  setInterval(updateWallet,    15 * 1000);       // 15초
+
+  // 페이지 로드 시 허브 표시 (auth state 로딩 후)
+  setTimeout(showHub, 300);
+
+}());
+</script>
 </body>
 </html>
