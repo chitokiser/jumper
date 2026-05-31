@@ -1,7 +1,7 @@
 // memory.js — 스피드 기억력 게임 (4×6, 30회 오답 게임오버, 2초 타이머)
 import { db, auth } from '/assets/js/firebase-init.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
 // ── 카드 이미지 풀 ────────────────────────────────────────────────────────────
 const CARD_POOL = [
@@ -311,7 +311,7 @@ function startGame(){
 }
 
 // ── 화면 전환 ─────────────────────────────────────────────────────────────────
-const SCREENS=['loading','lobby','game','result'];
+const SCREENS=['loading','login','lobby','game','result'];
 function showPhase(name){
   SCREENS.forEach(s=>$(`${s}Screen`)?.classList.add('hidden'));
   $(`${name}Screen`)?.classList.remove('hidden');
@@ -322,15 +322,36 @@ function showPhase(name){
 async function init(){
   showPhase('loading');
 
+  // Google 로그인
+  $('btnGoogleLogin')?.addEventListener('click',async()=>{
+    try {
+      $('btnGoogleLogin').textContent='로그인 중...';
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch(e) {
+      $('btnGoogleLogin').innerHTML='<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:22px;height:22px" alt=""> Google로 로그인';
+      if(!e.message?.includes('popup-closed')) alert('로그인 오류: '+e.message);
+    }
+  });
+
+  // 익명 로그인
+  $('btnAnonymous')?.addEventListener('click',async()=>{
+    try {
+      $('btnAnonymous').textContent='연결 중...';
+      await signInAnonymously(auth);
+    } catch(e) {
+      $('btnAnonymous').textContent='👤 익명으로 플레이 (GP 저장 안 됨)';
+    }
+  });
+
   $('btnEnter')?.addEventListener('click',async()=>{
-    if(!_uid){alert('로그인이 필요합니다');return;}
+    if(!_uid){ showPhase('login'); return; }
     const ok=await deductFee();
     if(!ok){alert('GP가 부족합니다 (100 GP 필요)');return;}
     startGame();
   });
 
   $('btnRestart')?.addEventListener('click',async()=>{
-    if(!_uid){alert('로그인이 필요합니다');return;}
+    if(!_uid){ showPhase('login'); return; }
     const ok=await deductFee();
     if(!ok){alert('GP가 부족합니다 (100 GP 필요)');return;}
     startGame();
@@ -338,6 +359,7 @@ async function init(){
 
   onAuthStateChanged(auth,async user=>{
     _uid=user?.uid||null;
+    if(!_uid) { showPhase('login'); return; }
     await loadPlayer();
     showPhase('lobby');
   });

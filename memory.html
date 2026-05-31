@@ -142,6 +142,27 @@ html,body{height:100%;background:#080c18;color:#fff;
 
 /* 로딩 */
 #loadingScreen{font-size:15px;color:#9ca3af;gap:14px}
+
+/* ── 로그인 ── */
+#loginScreen{gap:18px;text-align:center}
+.login-title{font-size:22px;font-weight:900}
+.login-title span{color:#f59e0b}
+.login-desc{font-size:13px;color:#6b7280;line-height:1.7;max-width:280px}
+.btn-google{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:13px 28px;border:none;border-radius:14px;cursor:pointer;
+  background:#fff;color:#111;font-size:15px;font-weight:700;
+  box-shadow:0 4px 20px rgba(0,0,0,.35);width:100%;max-width:280px;
+  transition:opacity .15s;
+}
+.btn-google:active{opacity:.8}
+.btn-google img{width:22px;height:22px}
+.btn-guest{
+  background:none;border:1px solid #374151;border-radius:12px;
+  color:#6b7280;font-size:13px;padding:10px 24px;cursor:pointer;
+  width:100%;max-width:280px;transition:border-color .15s;
+}
+.btn-guest:hover{border-color:#6b7280;color:#9ca3af}
 </style>
 </head>
 <body>
@@ -149,6 +170,19 @@ html,body{height:100%;background:#080c18;color:#fff;
 <!-- 로딩 -->
 <div id="loadingScreen" class="screen">
   <div class="spin"></div>로딩 중...
+</div>
+
+<!-- 로그인 -->
+<div id="loginScreen" class="screen hidden">
+  <div style="font-size:52px">🃏</div>
+  <div class="login-title">스피드<br><span>기억력 게임</span></div>
+  <div class="login-desc">게임 포인트(GP)를 획득하려면<br>로그인이 필요합니다</div>
+  <button class="btn-google" id="btnGoogleLogin">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+    Google로 로그인
+  </button>
+  <button class="btn-guest" id="btnAnonymous">👤 익명으로 플레이 (GP 저장 안 됨)</button>
+  <a href="/merchants.html" style="font-size:12px;color:#374151;text-decoration:none">← 게임으로</a>
 </div>
 
 <!-- 로비 -->
