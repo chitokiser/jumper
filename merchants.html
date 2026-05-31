@@ -3262,7 +3262,9 @@
       </div>
       <div class="gh-exchange-panel">
         <div class="gh-ex-title">💱 Coin Converter — 즉시 보상 확인</div>
-        <div class="gh-ex-grid">
+
+        <!-- TON → GP -->
+        <div class="gh-ex-grid" style="margin-bottom:10px">
           <div class="gh-ex-side">
             <div class="gh-ex-side-label">TON Input</div>
             <input class="gh-ex-input gh-ex-side-val cyan" id="ghExTon"
@@ -3277,7 +3279,46 @@
             <div class="gh-ex-side-val green" id="ghExGp">— GP</div>
           </div>
         </div>
-        <div class="gh-ex-note">Rate: 100 GP per $0.01 USD · 1 JUMP = 10 GP · 실시간 환율 연동</div>
+
+        <!-- 구분선 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="flex:1;height:1px;background:var(--gh-border)"></div>
+          <span style="font-family:var(--gh-mono);font-size:9px;color:var(--gh-muted)">역방향</span>
+          <div style="flex:1;height:1px;background:var(--gh-border)"></div>
+        </div>
+
+        <!-- GP → TON (역방향) -->
+        <div class="gh-ex-grid" style="margin-bottom:12px">
+          <div class="gh-ex-side">
+            <div class="gh-ex-side-label">Game Coin Input</div>
+            <input class="gh-ex-input gh-ex-side-val green" id="ghExGpInput"
+                   type="number" min="0" step="1000" placeholder="10000"
+                   style="color:var(--gh-green)">
+          </div>
+          <div class="gh-ex-arrow-box">
+            <div class="gh-ex-arrow-icon">→</div>
+            <div class="gh-ex-rate" style="color:var(--gh-muted);font-size:8px">GP÷환율</div>
+          </div>
+          <div class="gh-ex-side">
+            <div class="gh-ex-side-label">TON</div>
+            <div class="gh-ex-side-val cyan" id="ghExTonResult">— TON</div>
+          </div>
+        </div>
+
+        <!-- TON 교환 버튼 -->
+        <button id="ghExchangeBtn"
+          style="width:100%;padding:12px;
+            background:linear-gradient(135deg,rgba(0,229,255,.18),rgba(0,229,255,.06));
+            border:1px solid rgba(0,229,255,.45);border-radius:10px;cursor:pointer;
+            font-family:var(--gh-mono);font-size:13px;letter-spacing:.08em;
+            color:var(--gh-cyan);font-weight:700;transition:all .2s;
+            box-shadow:0 0 18px rgba(0,229,255,.08)">
+          💎 TON 교환하기 →
+        </button>
+
+        <div class="gh-ex-note" style="margin-top:8px">
+          Rate: 100 GP per $0.01 USD · 최소 10,000 GP · 실시간 환율 연동
+        </div>
       </div>
     </div>
 
@@ -3463,6 +3504,36 @@
   // 실시간 입력 연동
   document.getElementById('ghConvInput')?.addEventListener('input', updateEconomy);
   document.getElementById('ghExTon')    ?.addEventListener('input', updateEconomy);
+
+  // GP → TON 역방향 계산
+  function updateGpToTon() {
+    const gp  = parseInt(document.getElementById('ghExGpInput')?.value) || 0;
+    const res = document.getElementById('ghExTonResult');
+    if (!res) return;
+    if (!_tonUsd || gp <= 0) { res.textContent = '— TON'; return; }
+    const ton = gp / (_tonUsd * 10000);
+    res.textContent = ton.toFixed(4) + ' TON';
+  }
+  document.getElementById('ghExGpInput')?.addEventListener('input', updateGpToTon);
+
+  // TON 교환 버튼 → TON 탭 출금으로 이동
+  document.getElementById('ghExchangeBtn')?.addEventListener('click', () => {
+    const gp = document.getElementById('ghExGpInput')?.value;
+    // TON 탭으로 전환
+    document.querySelectorAll('[data-gh-tab]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.gh-tab-panel').forEach(p => p.classList.add('hidden'));
+    const tonTab = document.querySelector('[data-gh-tab="ghTabTon"]');
+    if (tonTab) { tonTab.classList.add('active'); document.getElementById('ghTabTon')?.classList.remove('hidden'); }
+    // 출금 탭 열기
+    document.querySelectorAll('.ton-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.ton-tab-panel').forEach(p => p.classList.add('hidden'));
+    const wdBtn = document.querySelector('.ton-tab-btn[data-target="tonTabWithdraw"]');
+    if (wdBtn) { wdBtn.classList.add('active'); document.getElementById('tonTabWithdraw')?.classList.remove('hidden'); }
+    // GP 값 자동 입력
+    if (gp) { const el = document.getElementById('tonWithdrawGp'); if (el) { el.value = gp; el.dispatchEvent(new Event('input')); } }
+    // 스크롤 상단
+    document.querySelector('.gh-body')?.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
   // ── 플레이어 수 (fake + real 混合) ─────────────────────────────────────────
   const BASE_PLAYERS = [12450, 3280, 2150];
