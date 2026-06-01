@@ -14,14 +14,24 @@ const BASE_FEE=100, FEE_STEP=50, RESET_MS=86400000, GAME_KEY='dungeonEntry';
 
 // ── 몬스터 종류 ───────────────────────────────────────────────────────────
 const MON_TYPES = {
-  zombie:   {sp:'zombie', sz:2.2, maxHp:160, atk:20, spd:55, xp:22, coins:5, detect:50, atk_range:4},
-  orc:      {sp:'orc1',   sz:2.4, maxHp:240, atk:28, spd:48, xp:30, coins:7, detect:50, atk_range:4},
-  skeleton: {sp:'orc2',   sz:2.2, maxHp:180, atk:22, spd:60, xp:25, coins:6, detect:55, atk_range:4},
-  goblin:   {sp:'pirate1',sz:2.0, maxHp:120, atk:16, spd:72, xp:18, coins:4, detect:45, atk_range:3.5},
-  elite:    {sp:'orc3',   sz:2.6, maxHp:350, atk:40, spd:44, xp:55, coins:12, detect:60, atk_range:5},
-  boss:     {sp:'dragon', sz:4.0, maxHp:1800,atk:90, spd:36, xp:200,coins:50, detect:80, atk_range:8, isBoss:true},
+  zombie:   {sp:'zombie', sz:2.2, maxHp:320, atk:38, spd:80,  xp:22, coins:5,  detect:65, atk_range:4},
+  orc:      {sp:'orc1',   sz:2.4, maxHp:480, atk:55, spd:62,  xp:30, coins:7,  detect:65, atk_range:4},
+  skeleton: {sp:'orc2',   sz:2.2, maxHp:360, atk:44, spd:90,  xp:25, coins:6,  detect:70, atk_range:4},
+  goblin:   {sp:'pirate1',sz:2.0, maxHp:240, atk:32, spd:105, xp:18, coins:4,  detect:60, atk_range:3.5},
+  elite:    {sp:'orc3',   sz:2.6, maxHp:700, atk:75, spd:58,  xp:55, coins:12, detect:75, atk_range:5},
+  boss:     {sp:'dragon', sz:4.0, maxHp:4000,atk:150,spd:42,  xp:200,coins:80, detect:90, atk_range:8, isBoss:true},
 };
-const ROOM_SPAWNS = ['zombie','orc','skeleton','goblin','zombie','orc','skeleton','elite'];
+// 방별 몬스터 조합 (복수 타입 혼합)
+const ROOM_CONFIGS = [
+  ['zombie','zombie','goblin','goblin','zombie'],
+  ['orc','orc','skeleton','skeleton','goblin'],
+  ['skeleton','skeleton','zombie','orc','goblin'],
+  ['orc','orc','orc','elite','skeleton'],
+  ['goblin','goblin','zombie','zombie','orc'],
+  ['elite','orc','orc','skeleton','skeleton'],
+  ['elite','elite','orc','orc','zombie'],
+  ['elite','elite','skeleton','goblin','orc'],
+];
 
 // ── 싱글톤 ────────────────────────────────────────────────────────────────
 let _instance = null;
@@ -292,18 +302,32 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
       kills:0, coins:0, xp:0,
     };
 
-    // 몬스터: 각 방에 분배 (보스 방은 최후 방)
+    // 몬스터: 방당 8~15마리, 최소 100마리 이상
     this._monsters=[];
     const roomCount=Math.min(rooms.length,10);
     for (let ri=0; ri<roomCount; ri++) {
       const room=rooms[ri];
       const isBossRoom=(ri===roomCount-1&&ri>=4);
-      const typeKey=isBossRoom?'boss':ROOM_SPAWNS[ri%ROOM_SPAWNS.length];
-      const def=MON_TYPES[typeKey];
-      const maxMon=isBossRoom?1:Math.min(10,Math.floor(room.size/15)+3);
-      const spawns=room.spawnPoints.slice(0,maxMon);
-      for (const sp of spawns) {
-        this._monsters.push(this._makeMon(typeKey,def,sp.x,sp.y,ri));
+
+      if (isBossRoom) {
+        // 보스방: 보스 1 + 수호자 8마리
+        this._monsters.push(this._makeMon('boss',MON_TYPES.boss,room.cx,room.cy,ri));
+        const guards=['elite','elite','orc','orc','skeleton','skeleton','goblin','goblin'];
+        guards.forEach((t,i)=>{
+          const sp=room.spawnPoints[i%Math.max(1,room.spawnPoints.length)];
+          const ox=(Math.random()-.5)*10, oy=(Math.random()-.5)*10;
+          this._monsters.push(this._makeMon(t,MON_TYPES[t],(sp?.x??room.cx)+ox,(sp?.y??room.cy)+oy,ri));
+        });
+      } else {
+        // 일반방: 방 크기 비례 (최소 8, 최대 15)
+        const count=Math.min(15,Math.max(8,Math.floor(room.size/6)));
+        const cfg=ROOM_CONFIGS[ri%ROOM_CONFIGS.length];
+        for (let i=0;i<count;i++) {
+          const typeKey=cfg[i%cfg.length];
+          const sp=room.spawnPoints[i%Math.max(1,room.spawnPoints.length)];
+          const ox=(Math.random()-.5)*12, oy=(Math.random()-.5)*12;
+          this._monsters.push(this._makeMon(typeKey,MON_TYPES[typeKey],(sp?.x??room.cx)+ox,(sp?.y??room.cy)+oy,ri));
+        }
       }
     }
 
@@ -574,7 +598,7 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
       const nf=MSPRITE_DEFS[m.def.sp]?.die?.length||6;
       m.frame=Math.min(m.frame+1,nf-1);
     }
-    if (!m.respawnAt) m.respawnAt=now+30000;
+    if (!m.respawnAt) m.respawnAt=now+12000;
     if (now>m.respawnAt) {
       // 리스폰
       m.hp=m.def.maxHp; m.state='idle'; m.frame=0; m.frameTimer=0;

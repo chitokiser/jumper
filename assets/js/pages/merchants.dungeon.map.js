@@ -19,14 +19,41 @@ export async function loadDungeonMap(src) {
   tx.drawImage(_mapImg, 0, 0, GRID_W, GRID_H);
   const px = tx.getImageData(0, 0, GRID_W, GRID_H).data;
 
-  // 바닥/복도(밝은 타일) vs 벽(어두운 돌)/공허(순수 검정) 구분
-  // threshold 38: 바닥 avg ~50+, 벽 avg ~15-40, 공허 avg ~0-10
-  _walkable = new Uint8Array(GRID_W * GRID_H);
-  for (let i = 0; i < _walkable.length; i++) {
+  // ① 밝기 threshold로 후보 바닥 셀 추출
+  const raw = new Uint8Array(GRID_W * GRID_H);
+  for (let i = 0; i < raw.length; i++) {
     const avg = (px[i*4] + px[i*4+1] + px[i*4+2]) / 3;
-    _walkable[i] = avg > 38 ? 1 : 0;
+    raw[i] = avg > 38 ? 1 : 0;
   }
-  // erosion 제거: 좁은 복도(2~3셀)가 0셀로 소실되는 원인이었으므로 미사용
+
+  // ② 중앙에서 Flood Fill → 연결된 바닥만 walkable 처리
+  //    (벽 장식 타일처럼 threshold는 통과하지만 바닥과 미연결된 픽셀 차단)
+  _walkable = new Uint8Array(GRID_W * GRID_H);
+  let seedX = GRID_W >> 1, seedY = GRID_H >> 1;
+  // 중심에서 가장 가까운 walkable 셀 탐색
+  outer: for (let r = 0; r <= 30; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+        const nx = seedX+dx, ny = seedY+dy;
+        if (nx>=0&&nx<GRID_W&&ny>=0&&ny<GRID_H&&raw[ny*GRID_W+nx]) {
+          seedX=nx; seedY=ny; break outer;
+        }
+      }
+    }
+  }
+  // BFS 확산
+  const bfsQ = [[seedX, seedY]];
+  _walkable[seedY*GRID_W+seedX] = 1;
+  while (bfsQ.length) {
+    const [cx,cy] = bfsQ.shift();
+    for (const [nx,ny] of [[cx-1,cy],[cx+1,cy],[cx,cy-1],[cx,cy+1]]) {
+      if (nx<0||nx>=GRID_W||ny<0||ny>=GRID_H) continue;
+      const ni = ny*GRID_W+nx;
+      if (!raw[ni]||_walkable[ni]) continue;
+      _walkable[ni]=1; bfsQ.push([nx,ny]);
+    }
+  }
 
   const rooms = _detectRooms();
   return { img: _mapImg, walkable: _walkable, rooms };
