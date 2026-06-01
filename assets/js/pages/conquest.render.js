@@ -11,6 +11,7 @@ import { ROAD_SEGMENTS } from './conquest.path.js';
 
 let _cv, _ctx, _mapImg;
 let _fogCv=null, _fogCtx=null;
+let _fogSmCv=null, _fogSmCtx=null;  // 1/4 해상도 fogGrid 마스크
 let _towerImgs = {};
 
 // ── 건물 타일 (픽셀 분석으로 자동 감지) ─────────────────────────────────
@@ -27,6 +28,7 @@ export function initRenderer(cv){
   _ctx.imageSmoothingEnabled=true;
   _ctx.imageSmoothingQuality='high';
   _fogCv=null; _fogCtx=null;
+  _fogSmCv=null; _fogSmCtx=null;
 }
 export async function loadMapAssets(){
   _mapImg=await _ldImg('/assets/images/conquest/map.png');
@@ -85,7 +87,7 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
   _drawPOIs(pois);
   _drawCastleHP(castleHp,maxCastleHp);
   if(walls) _drawWalls(walls);
-  _drawFog(defenders, phase);
+  _drawFog(fogGrid, defenders);
   _drawRevealAnims();
 
   // 몬스터 이동 경로 안개 걷힘 — render단에서 처리 (world coords만 사용)
@@ -316,25 +318,68 @@ function _buildVisionSources(defenders) {
   return srcs;
 }
 
-function _drawFog(defenders, phase) {
+// fogGrid 마스크: 1/4 해상도로 렌더 후 bilinear 업스케일 → 보간이 경계를 부드럽게 만듦
+const _SM = 4; // 다운스케일 비율
+
+function _applyFogGridLayer(fc, fogGrid, vis, W, H) {
+  const vW = vis.r - vis.l, vH = vis.b - vis.t;
+  if (vW <= 0 || vH <= 0) return;
+
+  const MW = Math.ceil(W / _SM), MH = Math.ceil(H / _SM);
+  if (!_fogSmCv || _fogSmCv.width !== MW || _fogSmCv.height !== MH) {
+    _fogSmCv = document.createElement('canvas');
+    _fogSmCv.width = MW; _fogSmCv.height = MH;
+    _fogSmCtx = _fogSmCv.getContext('2d');
+  }
+
+  // 각 픽셀 → 월드 좌표 → fogGrid 조회 → 투명(공개)/불투명(안개)
+  const data = new Uint8ClampedArray(MW * MH * 4);
+  for (let sy = 0; sy < MH; sy++) {
+    for (let sx = 0; sx < MW; sx++) {
+      const wx = vis.l + (sx + 0.5) / MW * vW;
+      const wy = vis.t + (sy + 0.5) / MH * vH;
+      const col = Math.floor(wx / CELL_W);
+      const row = Math.floor(wy / CELL_H);
+      // 공개된 셀 = alpha 255 (destination-out이 안개를 제거)
+      let a = 0;
+      if (col >= 0 && col < FOG_COLS && row >= 0 && row < FOG_ROWS
+          && fogGrid[row * FOG_COLS + col] === 0) a = 255;
+      const i = (sy * MW + sx) * 4;
+      data[i+3] = a;
+    }
+  }
+  _fogSmCtx.putImageData(new ImageData(data, MW, MH), 0, 0);
+
+  // destination-out + bilinear 업스케일 → 경계가 부드럽게 보간됨
+  fc.save();
+  fc.globalCompositeOperation = 'destination-out';
+  fc.imageSmoothingEnabled = true;
+  fc.imageSmoothingQuality = 'high';
+  fc.drawImage(_fogSmCv, 0, 0, W, H);
+  fc.restore();
+}
+
+function _drawFog(fogGrid, defenders) {
   const W = _cv.width, H = _cv.height;
+  const vis = getVisibleRect();
+  const s   = getScale();
 
   if (!_fogCv || _fogCv.width !== W || _fogCv.height !== H) {
     _fogCv = document.createElement('canvas');
     _fogCv.width = W; _fogCv.height = H;
     _fogCtx = _fogCv.getContext('2d');
   }
-
   const fc = _fogCtx;
-  const s  = getScale();
-
   fc.clearRect(0, 0, W, H);
 
-  // 1. 전체 화면을 짙은 안개로 채우기
+  // ── 1. 전체 안개 채우기 ───────────────────────────────────────────────────
   fc.fillStyle = 'rgba(4,7,2,0.96)';
   fc.fillRect(0, 0, W, H);
 
-  // 2. destination-out: 시야 원마다 Radial Gradient로 부드럽게 제거
+  // ── 2. 지나간 경로 걷히기 (fogGrid 기반, 지속적) ─────────────────────────
+  if (fogGrid) _applyFogGridLayer(fc, fogGrid, vis, W, H);
+
+  // ── 3. 현재 시야 (유닛 위치 기반, Radial Gradient) ────────────────────────
   fc.save();
   fc.globalCompositeOperation = 'destination-out';
 
@@ -342,20 +387,17 @@ function _drawFog(defenders, phase) {
     const [px, py] = worldToScreen(src.wx, src.wy);
     const r = src.r * s;
     if (r < 1) continue;
-
     const g = fc.createRadialGradient(px, py, 0, px, py, r);
-    g.addColorStop(0,    'rgba(0,0,0,1)');    // 중심: 완전 투명 (선명하게 보임)
-    g.addColorStop(0.62, 'rgba(0,0,0,1)');    // 내부 안전구역: 완전 선명
-    g.addColorStop(0.80, 'rgba(0,0,0,0.75)'); // 부드러운 전환 시작
-    g.addColorStop(0.92, 'rgba(0,0,0,0.30)'); // 흐릿한 안개 경계
-    g.addColorStop(1.0,  'rgba(0,0,0,0)');    // 외부: 안개로 복귀
+    g.addColorStop(0,    'rgba(0,0,0,1)');
+    g.addColorStop(0.62, 'rgba(0,0,0,1)');
+    g.addColorStop(0.80, 'rgba(0,0,0,0.75)');
+    g.addColorStop(0.92, 'rgba(0,0,0,0.30)');
+    g.addColorStop(1.0,  'rgba(0,0,0,0)');
     fc.fillStyle = g;
-    fc.beginPath();
-    fc.arc(px, py, r, 0, Math.PI * 2);
-    fc.fill();
+    fc.beginPath(); fc.arc(px, py, r, 0, Math.PI * 2); fc.fill();
   }
 
-  // 3. Reveal 애니메이션 (폭발·스킬 등 순간 시야 확장)
+  // Reveal 애니메이션
   for (const a of getRevealAnims()) {
     const p = Math.min(1, a.t / a.dur);
     const [px, py] = worldToScreen(a.wx, a.wy);
@@ -366,15 +408,16 @@ function _drawFog(defenders, phase) {
     g.addColorStop(0.7, `rgba(0,0,0,${p * 0.4})`);
     g.addColorStop(1.0, 'rgba(0,0,0,0)');
     fc.fillStyle = g;
-    fc.beginPath();
-    fc.arc(px, py, r, 0, Math.PI * 2);
-    fc.fill();
+    fc.beginPath(); fc.arc(px, py, r, 0, Math.PI * 2); fc.fill();
   }
-
   fc.restore();
 
-  // 4. 메인 캔버스에 합성 — blur 없이도 Radial Gradient 자체가 부드러운 경계 보장
-  _ctx.drawImage(_fogCv, 0, 0);
+  // ── 4. 메인 캔버스에 합성 (약한 blur로 fogGrid 경계 추가 완화) ────────────
+  const B = 6;
+  _ctx.save();
+  _ctx.filter = `blur(${B}px)`;
+  _ctx.drawImage(_fogCv, -B, -B, W + B*2, H + B*2);
+  _ctx.restore();
 }
 
 // ── 안개 해제 이펙트 (황금 링) ───────────────────────────────────────────

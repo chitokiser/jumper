@@ -332,7 +332,10 @@ function showPhase(name){
 
 // ── 초기화 ───────────────────────────────────────────────────────────────────
 async function init(){
-  showPhase('loading');
+  // 로비를 즉시 표시 — 인증 대기 없이 바로 게임 가능
+  $('lobbyGP').textContent='—';
+  const _enterBtn=$('btnEnter'); if(_enterBtn) _enterBtn.disabled=false;
+  showPhase('lobby');
 
   // Google 로그인
   $('btnGoogleLogin')?.addEventListener('click',async()=>{
@@ -401,12 +404,13 @@ async function init(){
       if(hint) hint.style.display='none';
     } else {
       $('lobbyGP').textContent='게스트';
-      const btn=$('btnEnter'); if(btn) btn.disabled=false;  // 비로그인도 무료 입장
+      const btn=$('btnEnter'); if(btn) btn.disabled=false;
       const hint=$('loginHint');
       if(hint) hint.style.display='flex';
     }
     _updateHdr(user);
-    showPhase('lobby');
+    // 이미 로비가 열려있으면 phase 변경 생략
+    if(_phase==='loading') showPhase('lobby');
   });
 }
 init();
