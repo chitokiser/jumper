@@ -4805,13 +4805,29 @@ function _initMyMapUI() {
     });
   });
 
-  // 닫기
-  cancelBtn.addEventListener('click', () => {
+  // ✕ 닫기 버튼
+  cancelBtn?.addEventListener('click', closePanel);
+
+  // 패널 바깥 클릭 시 닫기
+  document.addEventListener('click', (e) => {
+    if (!panel.classList.contains('open')) return;
+    if (panel.contains(e.target) || e.target === btnMyMap) return;
+    closePanel();
+  }, { passive: true });
+
+  // 아래로 스와이프 시 닫기
+  let _touchStartY = 0;
+  panel.addEventListener('touchstart', (e) => { _touchStartY = e.touches[0].clientY; }, { passive: true });
+  panel.addEventListener('touchend', (e) => {
+    if (e.changedTouches[0].clientY - _touchStartY > 60) closePanel();
+  }, { passive: true });
+
+  function closePanel() {
     deactivateMyMap();
     _setPlaceKey(null);
     panel.classList.remove('open');
     btnMyMap.classList.remove('mymap-on');
-  });
+  }
 }
 
 init();
