@@ -2,6 +2,7 @@
 // NFC 보물 태그 관리자 페이지
 
 import { auth, db, functions } from '../firebase-init.js';
+import { esc } from '../esc.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
@@ -449,7 +450,7 @@ async function openClaimsModal(tagId) {
     }).join('');
     claimsList.innerHTML = html;
   } catch (err) {
-    claimsList.innerHTML = `<p style="color:#ef4444;padding:16px;">${err.message}</p>`;
+    claimsList.innerHTML = `<p style="color:#ef4444;padding:16px;">${esc(err.message)}</p>`;
   }
 }
 

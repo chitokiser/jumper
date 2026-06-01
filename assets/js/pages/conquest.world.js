@@ -6,7 +6,7 @@ export const CASTLE_WX = 5000, CASTLE_WY = 5000;
 export const FOG_COLS = 300, FOG_ROWS = 300;
 export const CELL_W = WX / FOG_COLS;   // 33 world-unit
 export const CELL_H = WY / FOG_ROWS;
-const INIT_REVEAL_R = 700;
+const INIT_REVEAL_R = 1500; // 성벽 전체(반경 1200) + 외곽 여유
 
 // ── POI 정의 ──────────────────────────────────────────────────────────────
 export const POI_DEFS = {
@@ -20,11 +20,11 @@ export const POI_DEFS = {
 
 // ── 카메라 상태 ───────────────────────────────────────────────────────────
 let _camX=CASTLE_WX, _camY=CASTLE_WY;
-let _viewW=1000;   // 화면에 보이는 월드 폭
+let _viewW=1200;  // 성 전체(2400유닛)의 절반 — 성벽+도로 일부 표시
 let _cW=360, _cH=640, _scale=1;
 
 export function initCamera(cv){
-  _cW=cv.width; _cH=cv.height; _viewW=1000; _recalc();
+  _cW=cv.width; _cH=cv.height; _viewW=1200; _recalc();
 }
 export function resizeCamera(w,h){ _cW=w; _cH=h; _recalc(); }
 function _recalc(){ _scale=_cW/_viewW; }
@@ -45,7 +45,7 @@ export function panBy(dxPx,dyPx){
 }
 export function moveCamTo(wx,wy){ _camX=clamp(wx,0,WX); _camY=clamp(wy,0,WY); }
 export function zoomBy(f){
-  _viewW=clamp(_viewW/f,300,8000); _recalc();
+  _viewW=clamp(_viewW/f,400,8000); _recalc();
 }
 export function getVisibleRect(){
   const hw=_viewW/2, hh=(_cH/_cW)*_viewW/2;

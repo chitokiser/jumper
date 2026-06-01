@@ -118,6 +118,15 @@
 
 ---
 
+## API 키 / 시크릿 노출 금지
+- **HTML·JS 소스에 API 키 직접 하드코딩 금지** — Firebase config, Maps 키 포함
+- Firebase config: `assets/js/firebase-config.js` 에만 보관, HTML `<script>` 인라인 주입 금지
+- `window.firebaseConfig` 인라인 블록 HTML에 추가 금지 — `firebase-init.js`가 자동으로 `firebase-config.js` 로드
+- Google Maps 키: 반드시 `window.__mapsKey` 패턴만 허용 (HTML 최상단 1곳만, 중복 금지)
+- `.env` / 개인키 / 서버 시크릿은 절대 커밋 금지
+
+---
+
 ## Firebase 초기화
 `firebase-init.js` / `firestore-bridge.js`
 

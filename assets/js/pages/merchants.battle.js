@@ -2,6 +2,7 @@
 // 위치 기반 전투 시스템 (merchants.js에서 분리)
 // ctx 객체를 통해 core와 공유 상태를 교환한다.
 
+import { esc } from '/assets/js/esc.js';
 import { collection, getDocs, doc, getDoc, query, where,
          addDoc, deleteDoc, setDoc, serverTimestamp, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
@@ -2837,7 +2838,7 @@ async function _loadMonsterStatModal() {
       </tr>`;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:20px">오류: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:20px">오류: ${esc(err.message)}</td></tr>`;
   }
 }
 

@@ -337,6 +337,82 @@
   .user-badge{ max-width: 170px; }
 }
 
+/* ── 중첩 서브 그룹 (탐색 > 게임) ──────────────────────────────────── */
+.nav-sub-group{
+  position: relative;
+}
+
+.nav-sub-title{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  min-height: 44px;
+  color: var(--hdr-text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .18s, border-color .18s, color .18s;
+  text-align: left;
+}
+.nav-sub-title::after{
+  content: "›";
+  font-size: 1rem;
+  margin-left: 6px;
+  opacity: .5;
+  transition: transform .18s;
+}
+.nav-sub-group.open .nav-sub-title::after{
+  transform: rotate(90deg);
+}
+.nav-sub-title:hover{
+  background: var(--hdr-hover);
+  border-color: rgba(37,99,235,.18);
+  color: var(--hdr-text-2);
+}
+
+.nav-sub-menu{
+  display: none;
+  flex-direction: column;
+  padding: 8px;
+  gap: 4px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.98);
+  border: 1px solid rgba(0,0,0,.10);
+  box-shadow: 0 10px 28px rgba(0,0,0,.16);
+}
+.nav-sub-group.open .nav-sub-menu{ display: flex; }
+
+/* Desktop: 오른쪽으로 펼침 */
+@media (min-width: 861px){
+  .nav-sub-menu{
+    position: absolute;
+    left: calc(100% + 4px);
+    top: 0;
+    min-width: 200px;
+  }
+}
+
+/* Mobile: 아코디언 인라인 */
+@media (max-width: 860px){
+  .nav-sub-group{
+    width: 100%;
+  }
+  .nav-sub-menu{
+    position: static;
+    background: rgba(37,99,235,.05);
+    border: 1px solid rgba(37,99,235,.14);
+    box-shadow: none;
+    margin-top: 4px;
+  }
+}
+
 /* ── 헤더 언어 스위처 ───────────────────────────────────────────────── */
 .hdr-lang{
   display: flex;

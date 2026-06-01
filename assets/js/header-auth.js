@@ -116,6 +116,12 @@ function initNavGroups(){
     if(btn) btn.setAttribute("aria-expanded", on ? "true" : "false");
   }
 
+  function setSubOpen(sub, on){
+    const btn = sub.querySelector(".nav-sub-title");
+    sub.classList.toggle("open", on);
+    if(btn) btn.setAttribute("aria-expanded", on ? "true" : "false");
+  }
+
   groups.forEach((g)=>{
     const btn = g.querySelector(".nav-group-title");
     if(!btn) return;
@@ -126,6 +132,18 @@ function initNavGroups(){
       const willOpen = !g.classList.contains("open");
       groups.forEach((other)=> setOpen(other, false));
       setOpen(g, willOpen);
+    });
+
+    g.querySelectorAll(".nav-sub-group").forEach((sub)=>{
+      const subBtn = sub.querySelector(".nav-sub-title");
+      if(!subBtn) return;
+      subBtn.addEventListener("click", (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        const willOpen = !sub.classList.contains("open");
+        g.querySelectorAll(".nav-sub-group").forEach((s)=> setSubOpen(s, false));
+        setSubOpen(sub, willOpen);
+      });
     });
   });
 

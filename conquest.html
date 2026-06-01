@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <title>Monster Frontier: Kingdom Defense | JumpDAO</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -38,7 +39,7 @@ html,body{height:100%;background:#0a0f05;color:#fff;
   color:#9ca3af;border-radius:10px;font-size:12px;cursor:pointer;width:100%;max-width:290px}
 
 /* ── 게임 화면 ── */
-#gameScreen{padding:0;justify-content:flex-start;background:#080e04}
+#gameScreen{padding:0;justify-content:flex-start;align-items:center;background:#080e04}
 
 /* 상단 HUD */
 #gameTop{
@@ -71,6 +72,15 @@ html,body{height:100%;background:#0a0f05;color:#fff;
 .u-btn:disabled{opacity:.35;cursor:not-allowed}
 .u-btn.active{border-color:#22c55e;background:rgba(34,197,94,.18);color:#4ade80}
 .u-btn.active small{color:#86efac}
+.tower-btn{border-color:#6b4a28!important;color:#c8954a}
+.tower-btn.active{border-color:#f59e0b!important;background:rgba(245,158,11,.18)!important;color:#fbbf24}
+.tower-btn.active small{color:#fde68a}
+.hero-btn{border-color:#b8860b!important;color:#ffd700}
+.hero-btn.active{border-color:#ffd700!important;background:rgba(255,215,0,.18)!important;color:#fff}
+.skill-btn{color:#818cf8;border-color:#4338ca}
+.repair-btn{color:#fbbf24;border-color:#92400e}
+.skill-btn:not(:disabled){animation:skillReady .8s ease-in-out infinite alternate}
+@keyframes skillReady{from{border-color:#4338ca}to{border-color:#818cf8;box-shadow:0 0 6px #818cf8}}
 
 .ctrl-btns{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
 .ctrl-btn{
@@ -138,13 +148,20 @@ html,body{height:100%;background:#0a0f05;color:#fff;
   <div id="gameBot">
     <!-- 병력 배치 탭 -->
     <div class="unit-tabs">
-      <button class="u-btn" id="btn_villager"><span>🛡️</span>수비대<br><small>50 GP</small></button>
-      <button class="u-btn" id="btn_miner">  <span>⛏️</span>광부<br><small>60 GP</small></button>
-      <button class="u-btn" id="btn_scout">  <span>🗺️</span>정찰대<br><small>70 GP</small></button>
+      <button class="u-btn" id="btn_villager">     <span>🛡️</span>수비대<br><small>50 GP</small></button>
+      <button class="u-btn" id="btn_miner">        <span>⛏️</span>광부<br><small>60 GP</small></button>
+      <button class="u-btn" id="btn_scout">        <span>🗺️</span>정찰대<br><small>70 GP</small></button>
+      <button class="u-btn tower-btn" id="btn_archer_tower"><span>🏹</span>궁수탑<br><small>120 GP</small></button>
+      <button class="u-btn tower-btn" id="btn_cannon_tower"><span>💣</span>대포탑<br><small>220 GP</small></button>
+      <button class="u-btn hero-btn"  id="btn_hero">        <span>⚔️</span>영웅<br><small>300 GP</small></button>
     </div>
     <!-- 제어 버튼 -->
     <div class="ctrl-btns">
-      <button class="ctrl-btn" id="btnDispatch">🔭 정찰 파견</button>
+      <button class="ctrl-btn" id="btnDispatch">🔭 정찰</button>
+      <button class="ctrl-btn" id="btnGuard">🛡 경계</button>
+      <button class="ctrl-btn" id="btnPatrol">🔄 순찰</button>
+      <button class="ctrl-btn skill-btn" id="btnHeroSkill" disabled>⚡ 스킬</button>
+      <button class="ctrl-btn repair-btn" id="btnRepair">🔨 성벽수리 <small>150GP</small></button>
       <button class="ctrl-btn" id="btnHome">🏰 성으로</button>
       <button class="ctrl-btn" id="btnDeselect">✖ 해제</button>
     </div>
@@ -161,16 +178,6 @@ html,body{height:100%;background:#0a0f05;color:#fff;
   <a href="/index.html" style="font-size:12px;color:#4b5563;text-decoration:none;margin-top:4px">← 홈으로</a>
 </div>
 
-<script>
-window.firebaseConfig={
-  apiKey:"AIzaSyD6oGXWcQIAa46ZiO6E9fBWOXqiNCAL4-c",
-  authDomain:"jumper-b15aa.firebaseapp.com",
-  projectId:"jumper-b15aa",
-  storageBucket:"jumper-b15aa.firebasestorage.app",
-  messagingSenderId:"1051842479371",
-  appId:"1:1051842479371:web:cd0dca2c1eab0e44b58e0e"
-};
-</script>
 <script type="module" src="/assets/js/pages/conquest.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 // MyPage: profile / wallet / on-chain status / deposit & payment history
 
 import { _t, initLang, renderLangSwitcher } from './mypage.i18n.js';
+import { esc } from '/assets/js/esc.js';
 import { onAuthReady } from "../auth.js";
 import { db, functions, auth } from "/assets/js/firebase-init.js";
 import { login } from "../auth.js";
@@ -573,7 +574,7 @@ async function loadMenteeIncome(_uid) {
     if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
 
   } catch (err) {
-    listEl.innerHTML = `<div class="mi-empty">${_t('mi_error', err.message)}</div>`;
+    listEl.innerHTML = `<div class="mi-empty">${_t('mi_error', esc(err.message))}</div>`;
     if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
     console.warn("loadMenteeIncome failed:", err);
   }
@@ -779,7 +780,7 @@ async function loadJackpotHistory(uid) {
         if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
       }
     } else {
-      wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_err', err.message)}</div>`;
+      wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_err', esc(err.message))}</div>`;
       if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
     }
   }

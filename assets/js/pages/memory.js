@@ -1,5 +1,6 @@
 // memory.js — 스피드 기억력 게임 (4×6, 30회 오답 게임오버, 2초 타이머)
 import { db, auth } from '/assets/js/firebase-init.js';
+import { esc } from '/assets/js/esc.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
@@ -384,7 +385,7 @@ async function init(){
   function _updateHdr(user){
     const r=$('gHdrRight'); if(!r) return;
     if(user&&!user.isAnonymous){
-      r.innerHTML=`<span class="g-user-chip">👤 ${user.displayName||'유저'}</span>`;
+      r.innerHTML=`<span class="g-user-chip">👤 ${esc(user.displayName||'유저')}</span>`;
     } else {
       r.innerHTML=`<button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button>`;
       _bindHdrLogin();

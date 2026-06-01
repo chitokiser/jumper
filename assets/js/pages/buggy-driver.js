@@ -1,6 +1,7 @@
 // assets/js/pages/buggy-driver.js
 // 버기카 기사 앱
 
+import { esc } from '/assets/js/esc.js';
 import { getApps, initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {
@@ -852,7 +853,7 @@ async function loadEarnings(period = _currentEarnPeriod) {
         </div>`;
     }).join('');
   } catch (err) {
-    earnList.innerHTML = `<div style="text-align:center;color:#dc2626;padding:20px;">오류: ${err.message}</div>`;
+    earnList.innerHTML = `<div style="text-align:center;color:#dc2626;padding:20px;">오류: ${esc(err.message)}</div>`;
   }
 }
 

@@ -2,6 +2,7 @@
 // AR 보물상자 GPS 위치 관리자 페이지
 
 import { auth, functions } from '../firebase-init.js';
+import { esc } from '../esc.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
@@ -86,7 +87,7 @@ async function loadBoxes() {
     renderTable(boxes);
     renderMapMarkers(boxes);
   } catch (err) {
-    boxTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:#ef4444">${err.message}</td></tr>`;
+    boxTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:#ef4444">${esc(err.message)}</td></tr>`;
   }
 }
 

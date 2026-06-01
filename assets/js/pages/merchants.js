@@ -2,6 +2,7 @@
 // 가맹점 지도 + 보물찾기 시스템
 
 import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js';
+import { esc } from '/assets/js/esc.js';
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
          setDoc, deleteDoc, serverTimestamp, onSnapshot }
                           from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
@@ -4196,23 +4197,24 @@ function _makeUserNpcMarker(npc) {
   const title = _isAdmin
     ? `[ADMIN] ${titleBase} | ${npc.lat?.toFixed(6)}, ${npc.lng?.toFixed(6)}`
     : titleBase;
+  const SZ = 64;
   const marker = new google.maps.Marker({
     position: { lat: npc.lat, lng: npc.lng },
     map: _ctx.map,
     title,
     icon: {
       url: imgUrl,
-      scaledSize: new google.maps.Size(34, 34),
-      anchor: new google.maps.Point(17, 17),
+      scaledSize: new google.maps.Size(SZ, SZ),
+      anchor: new google.maps.Point(SZ / 2, SZ / 2),
     },
     zIndex: 50,
   });
   marker.addListener('click', () => showUserNpcInfo(npc));
-  _circularIcon(imgUrl, 34).then(dataUrl => {
+  _circularIcon(imgUrl, SZ).then(dataUrl => {
     marker.setIcon({
       url: dataUrl,
-      scaledSize: new google.maps.Size(34, 34),
-      anchor: new google.maps.Point(17, 17),
+      scaledSize: new google.maps.Size(SZ, SZ),
+      anchor: new google.maps.Point(SZ / 2, SZ / 2),
     });
   });
   return marker;
@@ -4395,7 +4397,7 @@ async function discoverTreasure(npcId) {
     const reward = data.type === 'item' ? `아이템 ×${data.itemCount}` : `${data.itemCount} 코인`;
     const toast = document.getElementById('collectToast');
     if (toast) {
-      toast.innerHTML = `🎉 보물 발견!<br><small>${data.ownerName}님의 보물 · ${reward}</small>`;
+      toast.innerHTML = `🎉 보물 발견!<br><small>${esc(data.ownerName)}님의 보물 · ${esc(reward)}</small>`;
       toast.classList.remove('hidden');
       setTimeout(() => toast.classList.add('hidden'), 4000);
     }

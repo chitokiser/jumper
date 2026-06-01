@@ -2,6 +2,7 @@
 // JUMP DAO 의결 페이지 프론트엔드
 
 import { getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { esc } from '/assets/js/esc.js';
 import { getAuth, onAuthStateChanged }
                                 from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { getFirestore, collection, query, orderBy, where, getDocs,
@@ -193,7 +194,7 @@ async function loadProposals() {
       list.appendChild(renderCard(d.id, data));
     });
   } catch (err) {
-    list.innerHTML = `<div class="dao-empty"><div class="dao-empty-text">불러오기 실패: ${err.message}</div></div>`;
+    list.innerHTML = `<div class="dao-empty"><div class="dao-empty-text">불러오기 실패: ${esc(err.message)}</div></div>`;
   }
 }
 

@@ -1,4 +1,4 @@
-// conquest.js — Monster Frontier 메인 (10km 월드·안개탐험·카메라팬)
+// conquest.js — Monster Frontier 메인 (수성전: 성 외부 공격, 도로 이동)
 import { db, auth } from '/assets/js/firebase-init.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -7,25 +7,36 @@ import {
   makeFogGrid, revealFog, generatePOIs, addRevealAnim, updateRevealAnims,
   drawMinimap, minimapHit, CASTLE_WX, CASTLE_WY, POI_DEFS,
 } from './conquest.world.js';
-import { initRenderer, loadMapAssets, renderScene } from './conquest.render.js';
+import { initRenderer, loadMapAssets, renderScene, isMapObstacle } from './conquest.render.js';
 import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL } from './conquest.units.js';
+import { getSpawnPos, snapToRoad } from './conquest.path.js';
+import { resumeAudio, playSound } from './conquest.audio.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────
 const ENTRY_FEE  = 100;
 const START_GP   = 300;
 const MINE_RATE  = 3000;
 const PREP_TIME  = 15000;
-const MAX_HP     = 1000;
-const SPAWN_R    = 470;  // 성 중심에서 스폰 반경
+const MAX_HP     = 10000;
+const WALL_HP    = 3000;
+const WALL_REPAIR_COST = 150;
+const WALL_REPAIR_AMT  = 800;
+const WALL_NAMES = {north:'북벽',south:'남벽',east:'동벽',west:'서벽'};
+const HERO_SKILL_CD   = 30000;
+const HERO_SKILL_RANGE = 400;
 
+// ── 웨이브 정의 (10웨이브 + 난이도 가파르게 상승) ──────────────────────────
 const WAVES = [
-  [{type:'orc',  count:12,side:'rand'}],
-  [{type:'orc',  count:10,side:'rand'},{type:'orc2',  count:8, side:'rand'}],
-  [{type:'orc2', count:18,side:'all'}],
-  [{type:'orc',  count:10,side:'rand'},{type:'zombie', count:12,side:'rand'}],
-  [{type:'orc2', count:15,side:'all'}, {type:'zombie', count:10,side:'rand'}],
-  [{type:'zombie',count:20,side:'all'},{type:'pirate', count:8, side:'rand'}],
-  [{type:'pirate',count:28,side:'all'}],
+  [{type:'orc',    count:8,  side:'rand'}],
+  [{type:'orc',    count:10, side:'rand'},{type:'orc2',   count:5,  side:'rand'}],
+  [{type:'orc2',   count:12, side:'all'}],
+  [{type:'orc',    count:8,  side:'rand'},{type:'zombie',  count:8,  side:'rand'}],
+  [{type:'orc2',   count:12, side:'all'}, {type:'zombie',  count:8,  side:'rand'},{type:'dragon',count:1,side:'rand'}],
+  [{type:'zombie', count:15, side:'all'}, {type:'pirate',  count:6,  side:'rand'},{type:'dragon',count:2,side:'rand'}],
+  [{type:'pirate', count:20, side:'all'}, {type:'dragon',  count:3,  side:'rand'}],
+  [{type:'orc2',   count:15, side:'all'}, {type:'pirate',  count:10, side:'all'},{type:'dragon',count:3,side:'all'}],
+  [{type:'zombie', count:20, side:'all'}, {type:'orc2',    count:15, side:'all'},{type:'dragon',count:4,side:'rand'}],
+  [{type:'pirate', count:25, side:'all'}, {type:'zombie',  count:20, side:'all'},{type:'dragon',count:5,side:'all'}],
 ];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────
@@ -36,11 +47,11 @@ let _defenders=[],_monsters=[],_fogGrid=null,_pois=[];
 let _prepTimer=PREP_TIME,_mineTimer=0,_spawnQ=[],_spawnTimer=0,_waveActive=false;
 let _sprites=null,_raf=null,_lastTs=0;
 let _placingType='villager',_placing=false,_selected=new Set();
-let _dispatchMode=false; // 정찰 파견 모드
+let _dispatchMode=false;
+let _heroSkillCd=0;
+let _walls={}; // 영웅 스킬 쿨다운 잔여 ms
 
-// 카메라 드래그
 let _drag=null;
-// 핀치 줌
 let _pinch=null;
 
 const $=id=>document.getElementById(id);
@@ -76,7 +87,13 @@ function startGame(){
   _defenders=[];_monsters=[];_spawnQ=[];
   _fogGrid=makeFogGrid(); _pois=generatePOIs();
   _prepTimer=PREP_TIME;_mineTimer=0;_spawnTimer=0;_waveActive=false;
-  _selected=new Set();_placing=false;_dispatchMode=false;
+  _selected=new Set();_placing=false;_dispatchMode=false;_heroSkillCd=0;
+  _walls={
+    north:{hp:WALL_HP,maxHp:WALL_HP,breached:false},
+    south:{hp:WALL_HP,maxHp:WALL_HP,breached:false},
+    east: {hp:WALL_HP,maxHp:WALL_HP,breached:false},
+    west: {hp:WALL_HP,maxHp:WALL_HP,breached:false},
+  };
   moveCamTo(CASTLE_WX,CASTLE_WY);
   showPhase('game'); _resizeCanvas();
   renderHUD(); _lastTs=performance.now();
@@ -84,6 +101,7 @@ function startGame(){
 }
 async function endGame(won){
   cancelAnimationFrame(_raf);
+  if(won) playSound('revive'); else playSound('player_die');
   const reward=won&&!_freePlay?Math.floor(150+_wave*40):0;
   if(won&&reward>0)await awardGP(reward);
   const el=$('gameResult');
@@ -101,6 +119,7 @@ function _loop(ts){
   renderScene({
     defenders:_defenders,monsters:_monsters,
     castleHp:_castleHp,maxCastleHp:MAX_HP,
+    walls:_walls,
     fogGrid:_fogGrid,pois:_pois,
     prepCountdown:_prepTimer,wave:_waveActive,phase:_phase,
   },_sprites);
@@ -109,33 +128,39 @@ function _loop(ts){
 function _update(dt){
   _mineTimer+=dt;
   if(_mineTimer>=MINE_RATE){_mineTimer-=MINE_RATE;_addGP(5);}
+  if(_heroSkillCd>0) _heroSkillCd=Math.max(0,_heroSkillCd-dt);
 
   if(!_waveActive){_prepTimer-=dt;if(_prepTimer<=0)_startWave();renderHUD();return;}
 
   if(_spawnQ.length){_spawnTimer-=dt;if(_spawnTimer<=0){_spawnTimer=360;const s=_spawnQ.shift();_monsters.push(makeUnit(s.type,s.x,s.y));}}
 
   for(let i=_defenders.length-1;i>=0;i--){
-    const dead=updateUnit(_defenders[i],_defenders,_monsters,dt);
-    for(const ev of _defenders[i].events||[])if(ev.type==='addGP')_addGP(ev.amount);
+    const dead=updateUnit(_defenders[i],_defenders,_monsters,dt,_walls);
+    for(const ev of _defenders[i].events||[]){
+      if(ev.type==='addGP'){_addGP(ev.amount);playSound('gold_pickup');}
+      if(ev.type==='sound')_sfx(ev.name);
+    }
     if(dead){_selected.delete(_defenders[i].id);_defenders.splice(i,1);}
   }
+
   for(let i=_monsters.length-1;i>=0;i--){
-    const dead=updateUnit(_monsters[i],_defenders,_monsters,dt);
+    const dead=updateUnit(_monsters[i],_defenders,_monsters,dt,_walls);
+    for(const ev of _monsters[i].events||[]){
+      if(ev.type==='damageCastle') _castleHp-=ev.amount;
+      if(ev.type==='damageWall') _damageWall(ev.wall,ev.amount);
+      if(ev.type==='sound')_sfx(ev.name);
+    }
     if(dead)_monsters.splice(i,1);
   }
 
-  // 수비대·정찰대 주변 안개 해제
+  // 수비대 주변 안개 해제
   for(const d of _defenders){
     if(d.type==='scout')revealFog(_fogGrid,d.x,d.y,120,_pois).forEach(_onDiscover);
     else revealFog(_fogGrid,d.x,d.y,70,_pois).forEach(_onDiscover);
   }
-
-  // 몬스터 성 내부 데미지
-  for(let i=_monsters.length-1;i>=0;i--){
-    const m=_monsters[i];if(m.dying||!m.insideCastle)continue;
-    if(Math.hypot(m.x-CASTLE_WX,m.y-CASTLE_WY)<38){
-      _castleHp-=m.atk*0.05;m.hp=-999;m.dying=true;m.dyingTimer=600;m.animState='die';
-    }
+  // 몬스터 이동 경로 안개 걷힘 (좁은 시야)
+  for(const m of _monsters){
+    if(!m.dying) revealFog(_fogGrid,m.x,m.y,40,_pois).forEach(_onDiscover);
   }
 
   updateRevealAnims(dt);
@@ -157,54 +182,139 @@ function _onDiscover(poi){
 function _showNotif(msg){
   const el=$('notifBox'); if(!el) return;
   const item=document.createElement('div');
-  item.className='notif-item';
-  item.textContent=msg;
+  item.className='notif-item';item.textContent=msg;
   el.prepend(item);
   setTimeout(()=>item.remove(),3500);
 }
 
 // ── 웨이브 ────────────────────────────────────────────────────────────────
 function _startWave(){
+  playSound('levelup');
   _waveActive=true;
   const def=WAVES[Math.min(_wave,WAVES.length-1)];
-  const scale=1+_wave*0.28;
+  const scale=1+_wave*0.35; // 웨이브마다 35% 병력 증가
   def.forEach(g=>{
-    for(let i=0;i<Math.ceil(g.count*scale);i++)
-      _spawnQ.push({type:g.type,..._randEdge(g.side)});
+    for(let i=0;i<Math.ceil(g.count*scale);i++){
+      const pos=getSpawnPos(g.side);
+      _spawnQ.push({type:g.type,x:pos.x,y:pos.y});
+    }
   });
   _spawnQ.sort(()=>Math.random()-.5);
   _spawnTimer=0;_wave++;renderHUD();
 }
-function _randEdge(side){
-  const sides=['top','bot','lft','rgt'];
-  const s=side==='rand'?sides[Math.floor(Math.random()*4)]:side==='all'?sides[(_spawnQ.length)%4]:side;
-  const m=20;
-  if(s==='top') return{x:CASTLE_WX-SPAWN_R+m+Math.random()*(SPAWN_R*2-m*2),y:CASTLE_WY-SPAWN_R+m};
-  if(s==='bot') return{x:CASTLE_WX-SPAWN_R+m+Math.random()*(SPAWN_R*2-m*2),y:CASTLE_WY+SPAWN_R-m};
-  if(s==='lft') return{x:CASTLE_WX-SPAWN_R+m,y:CASTLE_WY-SPAWN_R+m+Math.random()*(SPAWN_R*2-m*2)};
-                return{x:CASTLE_WX+SPAWN_R-m,y:CASTLE_WY-SPAWN_R+m+Math.random()*(SPAWN_R*2-m*2)};
-}
 
 function _addGP(n){_gp+=n;}
 
+// ── 성벽 피해 처리 ────────────────────────────────────────────────────────
+function _damageWall(key,dmg){
+  const w=_walls[key];if(!w||w.breached)return;
+  w.hp=Math.max(0,w.hp-dmg);
+  if(w.hp<=0){
+    w.hp=0;w.breached=true;
+    playSound('cannon_hit');
+    _showNotif(`💥 ${WALL_NAMES[key]} 함락! 몬스터가 침투합니다!`);
+    // 해당 성벽에 대기 중인 몬스터 즉시 진입
+    for(const m of _monsters){
+      if(m.atGate&&m.attackingWall===key) m.insideCastle=true;
+    }
+  }
+}
+
+// ── 성벽 수리 ─────────────────────────────────────────────────────────────
+function _repairWalls(){
+  if(_gp<WALL_REPAIR_COST)return;
+  let repaired=false;
+  for(const key of Object.keys(_walls)){
+    const w=_walls[key];
+    if(w.hp<w.maxHp){
+      w.hp=Math.min(w.maxHp,w.hp+WALL_REPAIR_AMT);
+      if(w.breached&&w.hp>0) w.breached=false;
+      repaired=true;
+    }
+  }
+  if(repaired){_gp-=WALL_REPAIR_COST;playSound('gold_pickup');renderHUD();}
+}
+
+// ── 영웅 스킬 ─────────────────────────────────────────────────────────────
+function _useHeroSkill(){
+  if(_heroSkillCd>0)return;
+  const hero=_defenders.find(d=>d.type==='hero'&&d.selected&&!d.dying);
+  if(!hero)return;
+  let hitCount=0;
+  for(const m of _monsters){
+    if(!m.dying&&Math.hypot(m.x-hero.x,m.y-hero.y)<=HERO_SKILL_RANGE){
+      m.hp-=hero.atk*8; m.hitFlash=400;
+      if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=900;}
+      hitCount++;
+    }
+  }
+  _heroSkillCd=HERO_SKILL_CD;
+  playSound('skill_lightning');
+  addRevealAnim(hero.x,hero.y,HERO_SKILL_RANGE);
+  _showNotif(`⚡ 영웅 스킬! ${hitCount}마리 섬광 타격`);
+  renderHUD();
+}
+
+// ── 사운드 이벤트 → merchants.battle.js 동일 타입으로 매핑 ──────────────
+const _SFX_MAP = {
+  arrow:       'tower_shot',
+  cannon:      'cannon_shot',
+  hit:         'arrow_hit',
+  death:       'monster_die',
+  castle_hit:  'cannon_hit',
+  coin:        'gold_pickup',
+  mine:        'box_hit',
+  dragon_roar: 'dragon_roar',
+};
+function _sfx(name){ const t=_SFX_MAP[name]||name; playSound(t); }
+
 // ── HUD ──────────────────────────────────────────────────────────────────
+const ALL_UNIT_BTNS=['villager','miner','scout','archer_tower','cannon_tower','hero'];
 function renderHUD(){
   if($('hudWave'))  $('hudWave').textContent  =`웨이브 ${_wave}`;
   if($('hudGP'))    $('hudGP').textContent    =`💰 ${Math.floor(_gp)}`;
   if($('hudCastle'))$('hudCastle').textContent=`🏰 ${Math.max(0,Math.ceil(_castleHp))}`;
   if($('hudPrep'))  $('hudPrep').textContent  =_waveActive?`웨이브 ${_wave} 진행`:_prepTimer>0?`${Math.ceil(_prepTimer/1000)}s`:'';
-  ['villager','miner','scout'].forEach(t=>{
+  ALL_UNIT_BTNS.forEach(t=>{
     const btn=$(`btn_${t}`);if(!btn)return;
     btn.disabled=_gp<(UNIT_DEFS[t]?.cost||50);
     btn.classList.toggle('active',_placing&&_placingType===t);
   });
   const db2=$('btnDispatch');
   if(db2)db2.classList.toggle('active',_dispatchMode);
-  if($('hudSelected'))$('hudSelected').textContent=_selected.size>0?`${_selected.size}명 선택`:'';
+  // 선택 유닛 상태 표시
+  const selEl=$('hudSelected');
+  if(selEl){
+    if(_selected.size>0){
+      const first=_defenders.find(d=>d.selected&&!d.isTower);
+      const mode=first?.patrolMode?'🔄순찰':first?.guardMode?'🛡경계':first?.targetId?'⚔공격':'🚶이동대기';
+      selEl.textContent=`${_selected.size}명 ${mode}`;
+    } else selEl.textContent='';
+  }
+  // 경계 버튼 활성 표시
+  const guardBtn=$('btnGuard');
+  if(guardBtn){
+    const anyGuard=_selected.size>0&&[..._selected].some(id=>{const d=_defenders.find(d=>d.id===id);return d?.guardMode;});
+    guardBtn.classList.toggle('active',anyGuard);
+  const patrolBtn=$('btnPatrol');
+  if(patrolBtn){
+    const anyPatrol=_selected.size>0&&[..._selected].some(id=>{const d=_defenders.find(d=>d.id===id);return d?.patrolMode;});
+    patrolBtn.classList.toggle('active',anyPatrol);
+  }
+  }
+  // 영웅 스킬 버튼
+  const heroSkillBtn=$('btnHeroSkill');
+  if(heroSkillBtn){
+    const hasHero=_defenders.some(d=>d.type==='hero'&&d.selected&&!d.dying);
+    heroSkillBtn.disabled=!hasHero||_heroSkillCd>0;
+    const cd=_heroSkillCd>0?` (${Math.ceil(_heroSkillCd/1000)}s)`:'';
+    heroSkillBtn.textContent=`⚡ 영웅 스킬${cd}`;
+  }
 }
 
-// ── 입력: 캔버스 터치/마우스 ─────────────────────────────────────────────
+// ── 입력: 터치/마우스 ─────────────────────────────────────────────────────
 function _onTouchStart(e){
+  resumeAudio(); // Chrome 자동재생 정책: 첫 터치에서 AudioContext 활성화
   if(_phase!=='game')return;
   if(e.touches?.length===2){
     _pinch={d:Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)};
@@ -223,7 +333,7 @@ function _onTouchMove(e){
   if(!_drag)return;
   const t=e.touches?.[0]||e;
   const dx=t.clientX-_drag.x, dy=t.clientY-_drag.y;
-  if(Math.hypot(dx,dy)>6)_drag.moved=true;
+  if(Math.hypot(dx,dy)>10)_drag.moved=true;
   if(_drag.moved)panBy(dx,dy);
   _drag.x=t.clientX;_drag.y=t.clientY;
   e.preventDefault();
@@ -242,72 +352,74 @@ function _handleTap(cx,cy){
   const rect=cv.getBoundingClientRect();
   const sx=cx-rect.left, sy=cy-rect.top;
 
-  // 미니맵 클릭
   const mm=minimapHit(sx,sy,cv.width,cv.height);
   if(mm){moveCamTo(mm.wx,mm.wy);return;}
 
   const[wx,wy]=screenToWorld(sx,sy);
   if(wx<0||wx>10000||wy<0||wy>10000)return;
 
-  // 정찰 파견 모드
+  // 정찰 파견
   if(_dispatchMode){
     const cost=UNIT_DEFS.scout.cost;
     if(_gp<cost)return;
     _gp-=cost;
     const scout=makeUnit('scout',CASTLE_WX,CASTLE_WY);
-    scout.cmdX=wx;scout.cmdY=wy;
+    const snap=snapToRoad(wx,wy);
+    scout.cmdX=snap.x;scout.cmdY=snap.y;
     _defenders.push(scout);
-    // 목적지 도착 시 안개 대량 해제
-    scout._revealTarget={wx,wy,r:200};
-    addRevealAnim(wx,wy,200);
+    scout._revealTarget={wx:snap.x,wy:snap.y,r:200};
+    addRevealAnim(snap.x,snap.y,200);
     renderHUD();return;
   }
 
-  // 유닛 선택
-  const hit=_defenders.find(u=>!u.dying&&Math.hypot(wx-u.x,wy-u.y)<u.size*.6);
+  // ── 우선순위 ①: 아군 탭 → 선택 (배치 모드 자동 취소) ──────────────────
+  const hit=_defenders.find(u=>!u.dying&&Math.hypot(wx-u.x,wy-u.y)<u.size*3);
   if(hit){
-    if(!e?.shiftKey)_selected.clear();
-    if(_selected.has(hit.id))_selected.delete(hit.id);else _selected.add(hit.id);
+    _placing=false; // 배치 모드였어도 선택 우선
+    _selected.clear();
+    _selected.add(hit.id);
     _defenders.forEach(d=>d.selected=_selected.has(d.id));
     renderHUD();return;
   }
 
-  // 선택된 유닛 이동 명령
+  // ── 우선순위 ②: 선택된 아군이 있을 때 ────────────────────────────────
   if(_selected.size>0){
-    _defenders.forEach(d=>{if(d.selected){d.cmdX=wx;d.cmdY=wy;}});
-    return;
+    // 적 탭 → 공격 타겟 지정
+    const enemy=_monsters.find(m=>!m.dying&&Math.hypot(wx-m.x,wy-m.y)<m.size*3);
+    if(enemy){
+      _defenders.forEach(d=>{
+        if(d.selected&&!d.isTower){
+          d.targetId=enemy.id;d.guardMode=false;d.cmdX=null;d.cmdY=null;
+        }
+      });
+      renderHUD();return;
+    }
+    // 빈 공간 탭 → 이동 명령
+    _placing=false;
+    _defenders.forEach(d=>{
+      if(d.selected&&!d.isTower){
+        d.cmdX=wx;d.cmdY=wy;d.targetId=null;d.guardMode=false;
+      }
+    });
+    renderHUD();return;
   }
 
-  // 유닛 배치
+  // ── 우선순위 ③: 배치 모드 → 유닛/타워 배치 ──────────────────────────
   if(_placing){
     const cost=UNIT_DEFS[_placingType]?.cost||50;
     if(_gp<cost)return;
-    if(Math.hypot(wx-CASTLE_WX,wy-CASTLE_WY)<45)return;
+    if(isMapObstacle(wx,wy)){_showNotif('⛔ 건물 위에는 배치 불가');return;}
     _gp-=cost;
+    playSound('hit');
     _defenders.push(makeUnit(_placingType,wx,wy));
     revealFog(_fogGrid,wx,wy,80,_pois).forEach(_onDiscover);
     renderHUD();
   }
 }
 
-// ── 마우스 휠 줌 ─────────────────────────────────────────────────────────
 function _onWheel(e){
   e.preventDefault();
   zoomBy(e.deltaY<0?1.15:0.87);
-}
-
-// ── 정찰대 목적지 도착 체크 ───────────────────────────────────────────────
-function _checkScoutArrival(dt){
-  for(const d of _defenders){
-    if(d.type!=='scout'||!d._revealTarget)continue;
-    const t=d._revealTarget;
-    if(d.cmdX===null&&d.cmdY===null){
-      const disc=revealFog(_fogGrid,t.wx,t.wy,t.r,_pois);
-      disc.forEach(_onDiscover);
-      addRevealAnim(t.wx,t.wy,t.r);
-      d._revealTarget=null;
-    }
-  }
 }
 
 // ── 캔버스 ───────────────────────────────────────────────────────────────
@@ -315,9 +427,11 @@ function _resizeCanvas(){
   const cv=$('gameCanvas');
   const topH=$('gameTop')?.offsetHeight||44;
   const botH=$('gameBot')?.offsetHeight||88;
-  cv.width=window.innerWidth;
-  cv.height=window.innerHeight-topH-botH;
-  initRenderer(cv); initCamera(cv); resizeCamera(cv.width,cv.height);
+  // 가로·세로 동일 — 10km×10km 정사각형 맵 유지
+  const size=Math.min(window.innerWidth, window.innerHeight-topH-botH);
+  cv.width=size; cv.height=size;
+  cv.style.width=size+'px'; cv.style.height=size+'px';
+  initRenderer(cv); initCamera(cv); resizeCamera(size,size);
 }
 
 function _setPlacing(type){
@@ -338,10 +452,34 @@ async function init(){
   $('btnFreePlay')?.addEventListener('click',()=>{_freePlay=true;startGame();});
   $('btnRestart')?.addEventListener('click',()=>showPhase('lobby'));
 
-  ['villager','miner','scout'].forEach(t=>$(`btn_${t}`)?.addEventListener('click',()=>_setPlacing(t)));
+  ALL_UNIT_BTNS.forEach(t=>$(`btn_${t}`)?.addEventListener('click',()=>_setPlacing(t)));
+  $('btnHeroSkill')?.addEventListener('click',_useHeroSkill);
 
   $('btnDispatch')?.addEventListener('click',()=>{
     _dispatchMode=!_dispatchMode;_placing=false;_selected.clear();_defenders.forEach(d=>d.selected=false);renderHUD();
+  });
+  $('btnGuard')?.addEventListener('click',()=>{
+    _defenders.forEach(d=>{
+      if(d.selected&&!d.isTower){
+        d.guardMode=!d.guardMode;
+        if(d.guardMode){d.cmdX=null;d.cmdY=null;d.targetId=null;d.patrolMode=false;}
+      }
+    });
+    renderHUD();
+  });
+  $('btnRepair')?.addEventListener('click',_repairWalls);
+  $('btnPatrol')?.addEventListener('click',()=>{
+    _defenders.forEach(d=>{
+      if(d.selected&&!d.isTower){
+        d.patrolMode=!d.patrolMode;
+        if(d.patrolMode){
+          d.patrolHome={x:d.x,y:d.y};
+          d.patrolTarget=null;d.patrolTimer=0;
+          d.guardMode=false;d.cmdX=null;d.cmdY=null;d.targetId=null;
+        }
+      }
+    });
+    renderHUD();
   });
   $('btnDeselect')?.addEventListener('click',()=>{
     _selected.clear();_defenders.forEach(d=>d.selected=false);_placing=false;_dispatchMode=false;renderHUD();
@@ -359,7 +497,21 @@ async function init(){
 
   window.addEventListener('resize',()=>{if(_phase==='game')_resizeCanvas();});
 
-  onAuthStateChanged(auth,async user=>{_uid=user?.uid||null;await loadPlayer();});
+  // Telegram Mini App 최적화
+  if(window.Telegram?.WebApp){
+    const tg=window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    try{ tg.setHeaderColor('#0a0f05'); }catch(_){}
+    tg.BackButton?.onClick?.(()=>showPhase('lobby'));
+    if(tg.initDataUnsafe?.user?.id)
+      _uid=String(tg.initDataUnsafe.user.id);
+  }
+
+  onAuthStateChanged(auth,async user=>{
+    if(!_uid) _uid=user?.uid||null;
+    await loadPlayer();
+  });
 }
 
 init();

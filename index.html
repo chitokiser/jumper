@@ -308,18 +308,23 @@
         <span style="font-size:0.9em;opacity:.85;" data-i18n="hero_sub">현실이 곧 게임맵이다 — JumpDAO</span>
       </p>
       <div class="hero-actions">
-        <a class="btn btn--primary hero-cta-btn" href="/merchants.html">
-          🗺️ <span data-i18n="treasure_label">보물찾기&숨기기</span>
-        </a>
-        <a class="btn btn--primary hero-cta-btn" href="/monsterrace.html"
-           style="background:#7c3aed;box-shadow:0 4px 20px rgba(124,58,237,.4)">
-          🛹 몬스터레이스
-        </a>
-        <a class="btn btn--primary hero-cta-btn" href="/bow.html"
-           style="background:#dc2626;box-shadow:0 4px 20px rgba(220,38,38,.4)">
-          🏹 화살쏘기
-        </a>
+        <div class="game-menu-wrap">
+          <button class="btn btn--primary hero-cta-btn game-menu-btn" id="gameMenuBtn" type="button">
+            🎮 <span data-i18n="play_game">게임하기</span> ▾
+          </button>
+          <div class="game-menu-dropdown" id="gameMenuDropdown" hidden>
+            <a class="game-menu-item" href="/merchants.html">🗺️ <span data-i18n="treasure_label">보물찾기&숨기기</span></a>
+            <a class="game-menu-item" href="/monsterrace.html">🛹 몬스터레이스</a>
+            <a class="game-menu-item" href="/bow.html">🏹 화살쏘기</a>
+          </div>
+        </div>
       </div>
+      <style>
+        .game-menu-wrap{position:relative;display:inline-block;}
+        .game-menu-dropdown{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:6px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.45);z-index:200;}
+        .game-menu-item{display:flex;align-items:center;gap:8px;padding:10px 14px;color:#f1f5f9;font-size:0.9rem;font-weight:600;text-decoration:none;border-radius:8px;transition:background .15s;}
+        .game-menu-item:hover{background:rgba(255,255,255,.1);}
+      </style>
     </div>
   </section>
 
@@ -547,6 +552,18 @@
 
   <script type="module" src="/assets/js/pages/community-preview.js"></script>
   <script type="module" src="/assets/js/header-auth.js"></script>
+  <script>
+    (function(){
+      const btn = document.getElementById('gameMenuBtn');
+      const drop = document.getElementById('gameMenuDropdown');
+      if(!btn||!drop) return;
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        drop.hidden = !drop.hidden;
+      });
+      document.addEventListener('click', function(){ drop.hidden = true; });
+    })();
+  </script>
 </body>
 </html>
 

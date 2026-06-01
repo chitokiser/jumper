@@ -2,6 +2,7 @@
 // 소셜 커뮤니티 – 행사 목록 / 상세 / 평점 / 댓글
 
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { esc } from '/assets/js/esc.js';
 import { getFirestore, collection, doc,
   addDoc, getDoc, getDocs, updateDoc, deleteDoc,
   runTransaction, query, orderBy, where, limit, startAfter,
@@ -909,7 +910,7 @@ loadEvents(true);
       import('/assets/js/pages/stock-option.js').then(mod => {
         mod.initStockOption(_user, _isAdmin);
       }).catch(err => {
-        soView.innerHTML = `<div style="color:#ef4444;padding:20px;">스톡옵션 모듈 로드 실패: ${err.message}</div>`;
+        soView.innerHTML = `<div style="color:#ef4444;padding:20px;">스톡옵션 모듈 로드 실패: ${esc(err.message)}</div>`;
       });
     }
   }

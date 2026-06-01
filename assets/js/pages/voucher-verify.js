@@ -1,6 +1,7 @@
 // /assets/js/pages/voucher-verify.js
 // 바우처 QR 확인 페이지 — 판매자 사용 확인 + 정산 안내
 
+import { esc } from '/assets/js/esc.js';
 import { getApps, initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFirestore, doc, getDoc }
@@ -169,7 +170,7 @@ async function init() {
 
     render();
   } catch (err) {
-    root.innerHTML = `<div class="verify-error">불러오기 실패: ${err.message}</div>`;
+    root.innerHTML = `<div class="verify-error">불러오기 실패: ${esc(err.message)}</div>`;
   }
 }
 
