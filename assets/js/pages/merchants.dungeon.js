@@ -394,7 +394,7 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
     if (this._keys['d']||this._keys['arrowright']) dx=+1;
     if (dx!==0||dy!==0) {
       const len=Math.hypot(dx,dy)||1;
-      const res=tryMove(p.x,p.y,dx/len*spd,dy/len*spd,2.2);
+      const res=tryMove(p.x,p.y,dx/len*spd,dy/len*spd,1.0);
       if(res.x!==p.x||res.y!==p.y){p.x=res.x;p.y=res.y;moved=true;}
       p.facing=dx>0?1:(dx<0?-1:p.facing);
       p.path=[]; p.pathIdx=0; // WASD 사용 시 클릭 경로 취소
@@ -408,7 +408,7 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
         p.pathIdx++; if(p.pathIdx>=p.path.length){p.path=[];p.pathIdx=0;}
       } else {
         const s=Math.min(18*dt,d);
-        const res=tryMove(p.x,p.y,(wp.x-p.x)/d*s,(wp.y-p.y)/d*s,2.2);
+        const res=tryMove(p.x,p.y,(wp.x-p.x)/d*s,(wp.y-p.y)/d*s,1.0);
         if(res.x!==p.x||res.y!==p.y){p.x=res.x;p.y=res.y;moved=true;}
         p.facing=wp.x>p.x?1:-1;
       }

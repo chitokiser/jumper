@@ -19,22 +19,13 @@ export async function loadDungeonMap(src) {
   tx.drawImage(_mapImg, 0, 0, GRID_W, GRID_H);
   const px = tx.getImageData(0, 0, GRID_W, GRID_H).data;
 
-  const raw = new Uint8Array(GRID_W * GRID_H);
-  for (let i = 0; i < raw.length; i++) {
-    const avg = (px[i*4] + px[i*4+1] + px[i*4+2]) / 3;
-    raw[i] = avg > 38 ? 1 : 0;
-  }
-
-  // 벽 침투 방지용 1셀 침식 (erosion)
+  // threshold 낮춤: 복도 타일(어두운 갈색)이 잘려나가지 않도록
   _walkable = new Uint8Array(GRID_W * GRID_H);
-  for (let y = 1; y < GRID_H-1; y++) {
-    for (let x = 1; x < GRID_W-1; x++) {
-      if (raw[y*GRID_W+x] && raw[(y-1)*GRID_W+x] && raw[(y+1)*GRID_W+x]
-          && raw[y*GRID_W+x-1] && raw[y*GRID_W+x+1]) {
-        _walkable[y*GRID_W+x] = 1;
-      }
-    }
+  for (let i = 0; i < _walkable.length; i++) {
+    const avg = (px[i*4] + px[i*4+1] + px[i*4+2]) / 3;
+    _walkable[i] = avg > 18 ? 1 : 0;  // 18 이하만 벽(pure black void)
   }
+  // 침식 제거 — 복도가 좁아지는 원인이므로 순수 threshold 만 사용
 
   const rooms = _detectRooms();
   return { img: _mapImg, walkable: _walkable, rooms };
@@ -106,8 +97,8 @@ export function isWalkable(wx,wy) {
   return _walkable[cy*GRID_W+cx]===1;
 }
 
-// 원형 충돌 고려 이동 (슬라이딩)
-export function tryMove(x, y, dx, dy, r=2.2) {
+// 원형 충돌 고려 이동 (슬라이딩) — r=1.0으로 좁은 복도 통과 가능
+export function tryMove(x, y, dx, dy, r=1.0) {
   const ok = (wx,wy) => isWalkable(wx,wy)
     && isWalkable(wx-r,wy) && isWalkable(wx+r,wy)
     && isWalkable(wx,wy-r) && isWalkable(wx,wy+r);
