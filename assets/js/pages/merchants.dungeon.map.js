@@ -19,13 +19,14 @@ export async function loadDungeonMap(src) {
   tx.drawImage(_mapImg, 0, 0, GRID_W, GRID_H);
   const px = tx.getImageData(0, 0, GRID_W, GRID_H).data;
 
-  // threshold 낮춤: 복도 타일(어두운 갈색)이 잘려나가지 않도록
+  // 바닥/복도(밝은 타일) vs 벽(어두운 돌)/공허(순수 검정) 구분
+  // threshold 38: 바닥 avg ~50+, 벽 avg ~15-40, 공허 avg ~0-10
   _walkable = new Uint8Array(GRID_W * GRID_H);
   for (let i = 0; i < _walkable.length; i++) {
     const avg = (px[i*4] + px[i*4+1] + px[i*4+2]) / 3;
-    _walkable[i] = avg > 18 ? 1 : 0;  // 18 이하만 벽(pure black void)
+    _walkable[i] = avg > 38 ? 1 : 0;
   }
-  // 침식 제거 — 복도가 좁아지는 원인이므로 순수 threshold 만 사용
+  // erosion 제거: 좁은 복도(2~3셀)가 0셀로 소실되는 원인이었으므로 미사용
 
   const rooms = _detectRooms();
   return { img: _mapImg, walkable: _walkable, rooms };
