@@ -158,10 +158,7 @@ function _update(dt){
     if(d.type==='scout')revealFog(_fogGrid,d.x,d.y,120,_pois).forEach(_onDiscover);
     else revealFog(_fogGrid,d.x,d.y,70,_pois).forEach(_onDiscover);
   }
-  // 몬스터 이동 경로 안개 걷힘 (좁은 시야)
-  for(const m of _monsters){
-    if(!m.dying) revealFog(_fogGrid,m.x,m.y,40,_pois).forEach(_onDiscover);
-  }
+  // 몬스터는 안개를 걷히지 않음 — 아군만 탐험
 
   updateRevealAnims(dt);
   if(_castleHp<=0){endGame(false);return;}

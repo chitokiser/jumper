@@ -299,13 +299,13 @@ function _roundRect(x,y,w,h,r){
 
 // 유닛 타입별 시야 반경 (world units)
 const VISION_R = {
-  castle:   850,
-  hero:     700,
-  scout:    750,
-  villager: 380,
-  miner:    300,
-  archer_tower: 500,
-  cannon_tower: 450,
+  castle:   1500, // INIT_REVEAL_R 와 일치 — fogGrid 초기 공개 범위와 동일
+  hero:     600,
+  scout:    650,
+  villager: 300,
+  miner:    250,
+  archer_tower: 400,
+  cannon_tower: 380,
 };
 
 function _buildVisionSources(defenders) {
