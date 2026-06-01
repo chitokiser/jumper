@@ -401,6 +401,7 @@ async function init(){
       if(hint) hint.style.display='none';
     } else {
       $('lobbyGP').textContent='게스트';
+      const btn=$('btnEnter'); if(btn) btn.disabled=false;  // 비로그인도 무료 입장
       const hint=$('loginHint');
       if(hint) hint.style.display='flex';
     }

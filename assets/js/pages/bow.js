@@ -684,7 +684,7 @@ async function init(){
   await loadAssets();
   $('btnEnter')?.addEventListener('click',async()=>{
     if(!await deductFee()){alert('GP가 부족합니다');return;}
-    _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 선택';$('skConfirm').disabled=true;showPhase('skill');
+    _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 선택';$('skConfirm').disabled=false;showPhase('skill');
   });
   $('skConfirm')?.addEventListener('click',startCountdown);
   $('btnRestart')?.addEventListener('click',()=>location.reload());
