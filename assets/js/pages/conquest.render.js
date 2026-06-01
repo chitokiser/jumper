@@ -4,12 +4,13 @@ import {
   drawMinimap, WX, WY, FOG_COLS, FOG_ROWS, CELL_W, CELL_H,
   CASTLE_WX, CASTLE_WY,
 } from './conquest.world.js';
+// FOG_COLS/ROWS/CELL_W/H: minimap에서만 사용 — fog 렌더링에서는 사용 안 함
 import { getFrame, MINES, UNIT_DEFS } from './conquest.units.js';
 import { POI_DEFS } from './conquest.world.js';
 import { ROAD_SEGMENTS } from './conquest.path.js';
 
 let _cv, _ctx, _mapImg;
-let _fogSmCv=null;
+let _fogCv=null, _fogCtx=null;
 let _towerImgs = {};
 
 // ── 건물 타일 (픽셀 분석으로 자동 감지) ─────────────────────────────────
@@ -25,7 +26,7 @@ export function initRenderer(cv){
   _cv=cv; _ctx=cv.getContext('2d');
   _ctx.imageSmoothingEnabled=true;
   _ctx.imageSmoothingQuality='high';
-  _fogSmCv=null;
+  _fogCv=null; _fogCtx=null;
 }
 export async function loadMapAssets(){
   _mapImg=await _ldImg('/assets/images/conquest/map.png');
@@ -84,7 +85,7 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
   _drawPOIs(pois);
   _drawCastleHP(castleHp,maxCastleHp);
   if(walls) _drawWalls(walls);
-  _drawFog(fogGrid);
+  _drawFog(defenders, phase);
   _drawRevealAnims();
 
   // 몬스터 이동 경로 안개 걷힘 — render단에서 처리 (world coords만 사용)
@@ -291,72 +292,102 @@ function _roundRect(x,y,w,h,r){
   _ctx.closePath();
 }
 
-// ── 안개 ─────────────────────────────────────────────────────────────────────
-// 64×64 픽셀맵을 화면 크기로 업스케일 → 보간 + blur로 자연스러운 그라디언트
-const _FOG_SM = 64;
+// ── Soft Fog of War — RenderTexture + Radial Gradient Alpha Mask ─────────────
+// 셀/픽셀/타일 기반 완전 금지 — 유닛 월드 좌표 기반 라디얼 그라디언트만 사용
 
-function _drawFog(fogGrid){
-  if(!fogGrid) return;
-  const W=_cv.width, H=_cv.height;
-  const vis=getVisibleRect();
-  const vW=vis.r-vis.l, vH=vis.b-vis.t;
-  if(vW<=0||vH<=0) return;
+// 유닛 타입별 시야 반경 (world units)
+const VISION_R = {
+  castle:   850,
+  hero:     700,
+  scout:    750,
+  villager: 380,
+  miner:    300,
+  archer_tower: 500,
+  cannon_tower: 450,
+};
 
-  if(!_fogSmCv){
-    _fogSmCv=document.createElement('canvas');
-    _fogSmCv.width=_fogSmCv.height=_FOG_SM;
+function _buildVisionSources(defenders) {
+  const srcs = [{ wx: CASTLE_WX, wy: CASTLE_WY, r: VISION_R.castle }];
+  if (!defenders) return srcs;
+  for (const u of defenders) {
+    if (u.dying || u.hp <= 0) continue;
+    srcs.push({ wx: u.x, wy: u.y, r: VISION_R[u.type] || 400 });
   }
-
-  const SM=_FOG_SM;
-  const anims=getRevealAnims();
-  const buf=new Uint8ClampedArray(SM*SM*4);
-
-  for(let py=0;py<SM;py++){
-    for(let px=0;px<SM;px++){
-      const wx=vis.l+(px+.5)/SM*vW;
-      const wy=vis.t+(py+.5)/SM*vH;
-      const col=Math.floor(wx/CELL_W);
-      const row=Math.floor(wy/CELL_H);
-
-      let a=242; // 안개 불투명도
-      if(col>=0&&col<FOG_COLS&&row>=0&&row<FOG_ROWS&&fogGrid[row*FOG_COLS+col]===0){
-        a=0; // 탐험 완료 → 완전 투명
-      } else if(anims.length){
-        for(const an of anims){
-          const p=Math.min(1,an.t/an.dur);
-          if(Math.hypot(wx-an.wx,wy-an.wy)<an.maxR*p){
-            a=Math.round(242*(1-p)); break;
-          }
-        }
-      }
-
-      const i=(py*SM+px)*4;
-      buf[i]=5; buf[i+1]=9; buf[i+2]=3; buf[i+3]=a;
-    }
-  }
-
-  _fogSmCv.getContext('2d').putImageData(new ImageData(buf,SM,SM),0,0);
-
-  // 저해상도 → 고해상도 업스케일 (보간) + blur → 픽셀 경계 완전 제거
-  const B=28;
-  _ctx.save();
-  _ctx.imageSmoothingEnabled=true;
-  _ctx.imageSmoothingQuality='high';
-  _ctx.filter=`blur(${B}px)`;
-  _ctx.drawImage(_fogSmCv, -B, -B, W+B*2, H+B*2);
-  _ctx.restore();
+  return srcs;
 }
 
-// ── 안개 해제 이펙트 ──────────────────────────────────────────────────────
+function _drawFog(defenders, phase) {
+  const W = _cv.width, H = _cv.height;
+
+  if (!_fogCv || _fogCv.width !== W || _fogCv.height !== H) {
+    _fogCv = document.createElement('canvas');
+    _fogCv.width = W; _fogCv.height = H;
+    _fogCtx = _fogCv.getContext('2d');
+  }
+
+  const fc = _fogCtx;
+  const s  = getScale();
+
+  fc.clearRect(0, 0, W, H);
+
+  // 1. 전체 화면을 짙은 안개로 채우기
+  fc.fillStyle = 'rgba(4,7,2,0.96)';
+  fc.fillRect(0, 0, W, H);
+
+  // 2. destination-out: 시야 원마다 Radial Gradient로 부드럽게 제거
+  fc.save();
+  fc.globalCompositeOperation = 'destination-out';
+
+  for (const src of _buildVisionSources(defenders)) {
+    const [px, py] = worldToScreen(src.wx, src.wy);
+    const r = src.r * s;
+    if (r < 1) continue;
+
+    const g = fc.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0,    'rgba(0,0,0,1)');    // 중심: 완전 투명 (선명하게 보임)
+    g.addColorStop(0.62, 'rgba(0,0,0,1)');    // 내부 안전구역: 완전 선명
+    g.addColorStop(0.80, 'rgba(0,0,0,0.75)'); // 부드러운 전환 시작
+    g.addColorStop(0.92, 'rgba(0,0,0,0.30)'); // 흐릿한 안개 경계
+    g.addColorStop(1.0,  'rgba(0,0,0,0)');    // 외부: 안개로 복귀
+    fc.fillStyle = g;
+    fc.beginPath();
+    fc.arc(px, py, r, 0, Math.PI * 2);
+    fc.fill();
+  }
+
+  // 3. Reveal 애니메이션 (폭발·스킬 등 순간 시야 확장)
+  for (const a of getRevealAnims()) {
+    const p = Math.min(1, a.t / a.dur);
+    const [px, py] = worldToScreen(a.wx, a.wy);
+    const r = a.maxR * p * s;
+    if (r < 1) continue;
+    const g = fc.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0,   `rgba(0,0,0,${p})`);
+    g.addColorStop(0.7, `rgba(0,0,0,${p * 0.4})`);
+    g.addColorStop(1.0, 'rgba(0,0,0,0)');
+    fc.fillStyle = g;
+    fc.beginPath();
+    fc.arc(px, py, r, 0, Math.PI * 2);
+    fc.fill();
+  }
+
+  fc.restore();
+
+  // 4. 메인 캔버스에 합성 — blur 없이도 Radial Gradient 자체가 부드러운 경계 보장
+  _ctx.drawImage(_fogCv, 0, 0);
+}
+
+// ── 안개 해제 이펙트 (황금 링) ───────────────────────────────────────────
 function _drawRevealAnims(){
   const s=getScale();
   for(const a of getRevealAnims()){
     const p=Math.min(1,a.t/a.dur);
     const[sx,sy]=worldToScreen(a.wx,a.wy);
     const r=a.maxR*p*s;
+    if(r<1) continue;
     _ctx.save();
-    _ctx.strokeStyle=`rgba(255,220,80,${(1-p)*.7})`;
-    _ctx.lineWidth=3*s;
+    _ctx.strokeStyle=`rgba(255,220,80,${(1-p)*0.6})`;
+    _ctx.lineWidth=Math.max(1,2*s);
     _ctx.beginPath(); _ctx.arc(sx,sy,r,0,Math.PI*2); _ctx.stroke();
     _ctx.restore();
   }
