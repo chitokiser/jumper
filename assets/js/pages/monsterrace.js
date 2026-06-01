@@ -352,6 +352,7 @@ function drawRearview() {
 // ── 게임 상태 ─────────────────────────────────────────────────────────────────
 let _phase = 'loading';
 let _uid   = null;
+let _freeMode = false;
 let _playerGP = 0, _playerHP = 1000, _playerMP = 1000;
 let _playerMaxHP = 1000, _playerMaxMP = 1000;
 let _selectedSkills = [];
@@ -435,6 +436,7 @@ async function deductFee() {
 }
 
 async function awardPrize(rank) {
+  if (_freeMode) return 0;  // 무료 체험 — 보상 없음
   const gp = PRIZES[Math.min(rank, PRIZES.length-1)] || 10;
   if (_uid) try { await updateDoc(doc(db,'battle_players',_uid), {gold: increment(gp)}); } catch {}
   return gp;
@@ -746,7 +748,7 @@ async function endRace(rank) {
   const gp = await awardPrize(finalRank - 1);
   setTimeout(() => {
     $('finishRank').textContent = `${finalRank}위 완주!`;
-    $('finishGP').textContent   = `+${gp} GP 획득!`;
+    $('finishGP').textContent   = _freeMode ? '🆓 무료 체험 (보상 없음)' : `+${gp} GP 획득!`;
     showPhase('finish');
   }, 1800);
 }
@@ -1056,6 +1058,16 @@ async function init() {
       const ok = await deductFee();
       if (!ok) { alert('GP가 부족합니다'); return; }
     }
+    _freeMode = false;
+    _selectedSkills = [];
+    renderSkillGrid();
+    $('skCount').textContent = '0/3 선택';
+    $('skConfirm').disabled  = true;
+    showPhase('skill');
+  });
+
+  $('btnFreePlay')?.addEventListener('click', ()=>{
+    _freeMode = true;
     _selectedSkills = [];
     renderSkillGrid();
     $('skCount').textContent = '0/3 선택';

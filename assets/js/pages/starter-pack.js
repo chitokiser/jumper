@@ -145,6 +145,7 @@ export function initStarterPack(uid, lat, lng, map, infoWindow) {
 
   _objects = generateStarterObjects(_seed, lat, lng);
   _active  = true;
+  window._starterPlayerPos = { lat, lng };  // GPS 즉시 초기화
   _renderMarkers();
 }
 
@@ -177,8 +178,8 @@ function _renderMarkers() {
       map:      _map,
       icon: {
         url:        m.img,
-        scaledSize: new google.maps.Size(36, 36),
-        anchor:     new google.maps.Point(18, 18),
+        scaledSize: new google.maps.Size(64, 64),
+        anchor:     new google.maps.Point(32, 32),
       },
       title:  m.label,
       zIndex: 6,
@@ -215,18 +216,15 @@ function _getPlayerDist(lat, lng) {
 function _onTreasureClick(t, marker) {
   if (!_infoWin) return;
   const dist = _getPlayerDist(t.lat, t.lng);
-  const near = dist <= 20;
+  const distTxt = dist < 9999 ? `${Math.round(dist)}m 거리` : 'GPS 확인 중...';
   _infoWin.setContent(`
     <div style="padding:8px;min-width:160px;">
       <div style="font-weight:700;margin-bottom:4px;">🎁 체험 보물박스 ${t.boxId}</div>
-      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:8px;">${Math.round(dist)}m 거리</div>
-      ${near
-        ? `<button onclick="window.__starterClaimTreasure('${t.id}',${t.boxId})"
-             style="width:100%;padding:6px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;">
-             획득하기
-           </button>`
-        : `<div style="font-size:0.8rem;color:#ef4444;">20m 이내로 이동하세요</div>`
-      }
+      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:8px;">${distTxt}</div>
+      <button onclick="window.__starterClaimTreasure('${t.id}',${t.boxId})"
+        style="width:100%;padding:6px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;">
+        획득하기
+      </button>
     </div>`);
   _infoWin.open(_map, marker);
 }
@@ -235,19 +233,16 @@ function _onTreasureClick(t, marker) {
 function _onMonsterClick(m, marker) {
   if (!_infoWin) return;
   const dist = _getPlayerDist(m.lat, m.lng);
-  const near = dist <= 20;
+  const distTxt = dist < 9999 ? `${Math.round(dist)}m` : 'GPS 확인 중';
   _infoWin.setContent(`
     <div style="padding:8px;min-width:160px;">
-      <img src="${m.img}" style="width:48px;height:48px;object-fit:contain;display:block;margin:0 auto 6px;">
+      <img src="${m.img}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px;">
       <div style="font-weight:700;text-align:center;">${m.name} (체험)</div>
-      <div style="font-size:0.8rem;color:#6b7280;text-align:center;margin-bottom:8px;">보상: 🪙 ${m.gold} gold · ${Math.round(dist)}m</div>
-      ${near
-        ? `<button onclick="window.__starterKillMonster('${m.id}',${m.gold})"
-             style="width:100%;padding:6px;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;">
-             처치하기
-           </button>`
-        : `<div style="font-size:0.8rem;color:#ef4444;">20m 이내로 이동하세요</div>`
-      }
+      <div style="font-size:0.8rem;color:#6b7280;text-align:center;margin-bottom:8px;">보상: 🪙 ${m.gold} gold · ${distTxt}</div>
+      <button onclick="window.__starterKillMonster('${m.id}',${m.gold})"
+        style="width:100%;padding:6px;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;">
+        처치하기
+      </button>
     </div>`);
   _infoWin.open(_map, marker);
 }

@@ -129,6 +129,7 @@ function arrowDmg(fire=false) {
 }
 
 async function deductFee() {
+  if (_entryFee <= 0) return true;  // 무료 입장 — DB 쓰기 불필요
   if (_playerGP < _entryFee) return false;
   try {
     const now = Date.now();
