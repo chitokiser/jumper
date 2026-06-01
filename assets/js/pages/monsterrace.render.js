@@ -1,4 +1,5 @@
 // monsterrace.render.js — 카트라이더 렌더러 (이미지 스프라이트)
+import { tickParticles, drawParticles } from './monsterrace.fx.js';
 
 export const SEGS       = 300;
 export const TOTAL_LAPS = 3;
@@ -40,7 +41,7 @@ export function getFrame(key) { return _imgs[key]||null; }
 
 // ── 렌더러 초기화 ─────────────────────────────────────────────────────────────
 const DRAW_N=160, D_NEAR=420, SEG_D=220, ROAD_HW=0.68;
-let _ctx, _W, _H, _shake=0;
+let _ctx, _W, _H, _shake=0, _bobY=0;
 
 export function initRenderer(c){ _ctx=c.getContext('2d'); _W=c.width; _H=c.height; }
 export function triggerShake(s=6){ _shake=s; }
@@ -140,9 +141,11 @@ function drawPlayerKart(ctx, W, H, player, ts) {
   const spinning = (player.effects?.spin||0)>now2;
   const sliding  = (player.effects?.oilSlide||0)>now2 || (player.effects?.iceSlide||0)>now2;
   // 스핀 시 빠른 회전 / 슬라이드 시 좌우 흔들림 / 정상 시 코너링 기울기
+  const driftLean = (player.drift||0) * 0.18;
   const steer = spinning ? Math.sin(now2*0.015)*1.4
               : sliding  ? player.lane*(0.08+spd*0.07) + Math.sin(now2*0.008)*0.12
-              : player.lane*(0.08+spd*0.07);
+              : player.lane*(0.08+spd*0.07) + driftLean;
+  const suspBob = Math.sin(ts*0.007*(1+spd*4))*spd*1.2;
 
   // 고속 스트릭
   if(spd>0.5&&!fallen){
@@ -172,7 +175,7 @@ function drawPlayerKart(ctx, W, H, player, ts) {
   const imgH = H*0.20;
   const imgW = imgH*(img.naturalWidth/img.naturalHeight);
   ctx.save();
-  ctx.translate(W/2, H-2);
+  ctx.translate(W/2, H-2+suspBob);
   if(fallen) ctx.rotate(Math.PI/2);
   else       ctx.rotate(steer);
   if(boost) ctx.filter='brightness(1.4) saturate(1.7) hue-rotate(210deg)';
@@ -189,11 +192,14 @@ export function renderScene(track, racers, player, items, ts) {
   const shX=_shake>0?(Math.random()-.5)*_shake*2:0;
   const shY=_shake>0?(Math.random()-.5)*_shake:0;
   _shake=Math.max(0,_shake-.6);
-  _ctx.save(); _ctx.translate(shX,shY);
+  tickParticles();
+  const pSeg=Math.floor(player.pos);
+  _bobY=_bobY*0.88+(track[((pSeg)%SEGS+SEGS)%SEGS]?.hill||0)*0.4;
+  const bobOffset=Math.sin(ts*0.007*(1+spd*4))*spd*2.2+_bobY*spd;
+  _ctx.save(); _ctx.translate(shX,shY+bobOffset);
 
   drawBg(player.lane);
 
-  const pSeg=Math.floor(player.pos);
   const segMap={};
   let curX=-player.lane*W*0.06, hillY=0;
   const dl=[];
@@ -291,6 +297,9 @@ export function renderScene(track, racers, player, items, ts) {
       _ctx.fillText(trap.emoji,si.cx+trap.lane*si.w2*1.35,si.y2-4);
     }
   }
+
+  // 파티클 (스파크/스모크)
+  drawParticles(_ctx, segMap, player.pos, D_NEAR, DRAW_N);
 
   // 플레이어 카트
   drawPlayerKart(_ctx,W,H,player,ts);

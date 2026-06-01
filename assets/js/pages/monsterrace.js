@@ -1,5 +1,6 @@
 // monsterrace.js — Monster Skate Race 게임 로직
 import { db, auth } from '/assets/js/firebase-init.js';
+import { addSparks, addSmoke, resetParticles } from './monsterrace.fx.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
@@ -25,6 +26,8 @@ const LANE_MAX   = 2.3;     // 도로 끝까지 (was 1.8)
 const AI_THINK   = 2800;    // AI 반응 느리게 (was 1100)
 const MAX_KMH    = 280;     // 최대속도 km/h 표시
 const RACE_KM    = 3.0;     // 총 레이스 거리 km
+const GEARS        = [0.22, 0.42, 0.62, 0.80, 1.0];
+const GEAR_ACCEL_M = [2.0,  1.55, 1.25, 1.0,  0.82];
 
 // ── 스킬 정의 ────────────────────────────────────────────────────────────────
 const SKILLS = {
@@ -147,6 +150,204 @@ function playFall()     { try{const a=ac(),buf=a.createBuffer(1,a.sampleRate*.28
 function playFinish()   { [523,659,784,1047,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.32,0.38),i*75)); }
 function playTrap()     { tone(250,'sawtooth',0.05,0.18); tone(150,'sawtooth',0.28,0.18); }
 
+// ── 충돌 쿨다운 (프레임마다 재충돌 방지) ────────────────────────────────────
+const _colCD = {};
+
+function checkVehicleCollisions() {
+  const all = [_player, ..._racers].filter(r => !r.finished);
+  const now = Date.now();
+  for (let i = 0; i < all.length; i++) {
+    for (let j = i+1; j < all.length; j++) {
+      const a = all[i], b = all[j];
+      const key = a.id < b.id ? `${a.id}_${b.id}` : `${b.id}_${a.id}`;
+      if ((_colCD[key]||0) > now) continue;
+
+      const pd = Math.abs(a.pos - b.pos), ld = Math.abs(a.lane - b.lane);
+      if (pd > 1.3 || ld > 0.52) continue;
+
+      _colCD[key] = now + 380;
+      const relSpd = Math.abs(a.speed - b.speed);
+      const impact = Math.max(0.15, Math.min(1, (relSpd * 8) + (0.52 - ld)));
+
+      // 측면 밀어내기
+      const dir = a.lane < b.lane ? 1 : -1;
+      const push = 0.12 + impact * 0.18;
+      a.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, a.lane - dir * push));
+      b.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, b.lane + dir * push));
+
+      // 감속 (후방 차량이 더 크게)
+      const pen = impact * 0.22;
+      if (a.pos >= b.pos) { a.speed *= (1-pen*0.5); b.speed *= (1-pen); }
+      else                { a.speed *= (1-pen);     b.speed *= (1-pen*0.5); }
+
+      // 흔들림 + 조향 손실
+      a.wobble = Math.max(a.wobble||0, impact * 110);
+      b.wobble = Math.max(b.wobble||0, impact * 110);
+      if (impact > 0.35) {
+        const dur = impact * 1400;
+        a.steerLossUntil = now + dur;
+        b.steerLossUntil = now + dur;
+      }
+
+      // 사운드 + 쉐이크
+      _playCollision(impact);
+      if (impact > 0.18) playTireScreech(impact);
+      if (impact > 0.25) triggerShake(Math.ceil(impact * 5));
+      addSparks(a.pos, (a.lane + b.lane) * 0.5, impact);
+      if (a.isPlayer || b.isPlayer) addLog(`💥 ${a.name}↔${b.name} 충돌!`);
+    }
+  }
+}
+
+function _playCollision(impact) {
+  try {
+    const a = ac(), sr = a.sampleRate;
+    const len = Math.ceil(sr * 0.16);
+    const buf = a.createBuffer(1, len, sr);
+    const ch = buf.getChannelData(0);
+    for (let i=0;i<len;i++) ch[i]=(Math.random()*2-1)*Math.exp(-i/len*12)*impact;
+    const src=a.createBufferSource(), g=a.createGain();
+    src.buffer=buf; g.gain.value=0.38; src.connect(g); g.connect(a.destination); src.start();
+    tone(85,'sine',0.14,impact*0.22);
+    if (impact > 0.4) tone(1100,'sawtooth',0.06,impact*0.09);
+  } catch {}
+}
+
+function playTireScreech(impact) {
+  try {
+    const a = ac(), dur = 0.10 + impact * 0.16;
+    const osc = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(900 + impact * 500, a.currentTime);
+    osc.frequency.linearRampToValueAtTime(180, a.currentTime + dur);
+    f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 4;
+    g.gain.setValueAtTime(impact * 0.15, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+    osc.connect(f); f.connect(g); g.connect(a.destination);
+    osc.start(); osc.stop(a.currentTime + dur);
+  } catch {}
+}
+
+function _gearAccel(r) {
+  const sr = r.speed / r.maxSpeed;
+  let g = 0;
+  while (g < GEARS.length - 1 && sr > GEARS[g] + 0.04) g++;
+  if (r.isPlayer && (r.gear||1) !== g+1 && g+1 > (r.gear||1)) {
+    tone(185 + g * 32, 'sine', 0.04, 0.052);
+  }
+  r.gear = g + 1;
+  return ACCEL * GEAR_ACCEL_M[g];
+}
+
+// ── AI 엔진 사운드 (거리 기반 볼륨) ─────────────────────────────────────────
+const _aiAudio = {};
+const _AI_BASE_FREQ = [52, 58, 55, 48, 62, 50];
+
+function initAISounds() {
+  try {
+    const a = ac();
+    _racers.forEach((r, i) => {
+      const base = _AI_BASE_FREQ[i] || 55;
+      const osc = a.createOscillator(), osc2 = a.createOscillator();
+      const g = a.createGain(), g2 = a.createGain();
+      const filt = a.createBiquadFilter();
+      osc.type='sawtooth'; osc.frequency.value=base;
+      osc2.type='square';  osc2.frequency.value=base*2; g2.gain.value=0.24;
+      filt.type='lowpass'; filt.frequency.value=300; filt.Q.value=1.8;
+      osc.connect(filt); osc2.connect(g2); g2.connect(filt);
+      filt.connect(g); g.connect(a.destination);
+      g.gain.value=0;
+      osc.start(); osc2.start();
+      _aiAudio[r.id] = { osc, osc2, g, g2, filt, base };
+    });
+  } catch {}
+}
+
+function updateAISounds() {
+  try {
+    const a=ac(), ct=a.currentTime;
+    for (const r of _racers) {
+      const n=_aiAudio[r.id]; if(!n) continue;
+      const dist=Math.abs(r.pos-_player.pos);
+      const vol=Math.max(0, 0.048 - dist*0.006) * (r.finished?0:1);
+      const spd=r.speed/r.maxSpeed;
+      const freq=n.base + spd*145;
+      n.g.gain.linearRampToValueAtTime(vol, ct+0.1);
+      n.osc.frequency.linearRampToValueAtTime(freq, ct+0.14);
+      n.osc2.frequency.linearRampToValueAtTime(freq*2.05, ct+0.14);
+      n.filt.frequency.linearRampToValueAtTime(270+spd*1200, ct+0.1);
+    }
+  } catch {}
+}
+
+function stopAllAISounds() {
+  try {
+    const ct = ac().currentTime;
+    for (const id in _aiAudio) {
+      const n = _aiAudio[id];
+      n.g.gain.linearRampToValueAtTime(0, ct+0.4);
+      setTimeout(()=>{ try{n.osc.stop();n.osc2.stop();}catch{} },500);
+    }
+  } catch {}
+  Object.keys(_aiAudio).forEach(k=>delete _aiAudio[k]);
+}
+
+// ── 백미러 (후방 차량 미니 HUD) ──────────────────────────────────────────────
+function initRearview() {
+  if (document.getElementById('rearviewCv')) return;
+  const cv = document.createElement('canvas');
+  cv.id='rearviewCv'; cv.width=160; cv.height=68;
+  cv.style.cssText='position:absolute;top:8px;left:50%;transform:translateX(-50%);'
+    +'border-radius:10px;border:2px solid rgba(255,255,255,.4);'
+    +'background:rgba(0,0,0,.82);z-index:200;pointer-events:none;'
+    +'box-shadow:0 2px 12px rgba(0,0,0,.7);';
+  document.getElementById('canvasWrap')?.appendChild(cv);
+}
+
+function drawRearview() {
+  const cv=document.getElementById('rearviewCv'); if(!cv) return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(8,8,18,.88)'; ctx.fillRect(0,0,W,H);
+
+  // 중앙선
+  ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 레이블
+  ctx.fillStyle='rgba(255,255,255,.38)'; ctx.font='bold 7px sans-serif';
+  ctx.textAlign='center'; ctx.fillText('◄ REAR VIEW ►', W/2, 8);
+
+  // 후방 차량 (최대 4대)
+  const behind=[..._racers].filter(r=>!r.finished&&_player.pos-r.pos>0&&_player.pos-r.pos<9)
+    .sort((a,b)=>b.pos-a.pos).slice(0,4);
+
+  behind.forEach(r=>{
+    const prog=(_player.pos-r.pos)/9;
+    const ry=12+prog*(H-20);
+    const rx=W/2+(r.lane/LANE_MAX)*(W/2-10);
+    const cw=Math.max(8,14*(1-prog*.5)), ch=Math.max(5,7*(1-prog*.4));
+    ctx.fillStyle=r.color||'#888';
+    ctx.shadowColor=r.color; ctx.shadowBlur=5;
+    ctx.fillRect(rx-cw/2, ry-ch/2, cw, ch);
+    ctx.shadowBlur=0;
+    if (prog<0.45) {
+      ctx.fillStyle='rgba(255,255,255,.75)';
+      ctx.font='6px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(r.name.slice(0,5), rx, ry+ch/2+7);
+    }
+  });
+
+  // 플레이어 표시
+  const prx=W/2+(_player.lane/LANE_MAX)*(W/2-10);
+  ctx.fillStyle='#60a5fa'; ctx.shadowColor='#3b82f6'; ctx.shadowBlur=6;
+  ctx.fillRect(prx-7, H-11, 14, 7);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(255,255,255,.8)'; ctx.font='bold 6px sans-serif';
+  ctx.textAlign='center'; ctx.fillText('YOU', prx, H-1);
+}
+
 // ── 게임 상태 ─────────────────────────────────────────────────────────────────
 let _phase = 'loading';
 let _uid   = null;
@@ -252,7 +453,9 @@ function makeRacer(def, isPlayer) {
     maxMp: isPlayer ? _playerMaxMP : 800,
     lap: 0, finished: false, rank: 0, currentRank: 1,
     fallUntil: 0, wobble: 0,
+    drift: 0, steerLossUntil: 0,
     effects: {},
+    gear: 1,
     skills: def.skills || [],
     skillCooldowns: {},
     traps: [], isPlayer,
@@ -360,7 +563,7 @@ function updateRacer(r, isPlayer) {
       // 가속: _keys.gas = true면 최대속도로, false면 0.55배
       const targetSpeed = _keys.gas ? top : top * 0.55;
       if (r.speed < targetSpeed) {
-        r.speed = Math.min(r.speed + ACCEL, targetSpeed);
+        r.speed = Math.min(r.speed + _gearAccel(r), targetSpeed);
       } else if (_keys.brake) {
         // 관성법칙: 속도에 따라 제동력 선형 증가 (고속일수록 제동거리 ↑)
         const brakeForce = ACCEL * 1.6 + r.speed * 0.04;
@@ -370,11 +573,23 @@ function updateRacer(r, isPlayer) {
       }
 
       const steerInput = (_keys.right ? 1 : 0) - (_keys.left ? 1 : 0);
+      const steerLoss = (r.steerLossUntil||0) > now;
       if (steerInput !== 0) {
-        const effSteer = STEER * (1 - vr * 0.45);
+        // steerLoss: 충돌 후 조향력 감소
+        const effSteer = STEER * (1 - vr * 0.45) * (steerLoss ? 0.18 : 1);
         r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane + steerInput * effSteer));
         const latG = Math.max(0, vr - 0.3);
         r.speed = Math.max(top * 0.2, r.speed * (1 - latG * latG * 0.009));
+        // 드리프트: 고속 급조향 시 미끄러짐
+        if (vr > 0.72) {
+          r.drift = Math.max(-1, Math.min(1, (r.drift||0) + steerInput * (vr-0.72) * 0.18));
+          r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane + r.drift * 0.04));
+          if (Math.abs(r.drift) > 0.22 && Math.random() < 0.12) {
+            addSmoke(r.pos, r.lane + steerInput * 0.14);
+          }
+        }
+      } else {
+        r.drift = (r.drift||0) * 0.88; // 드리프트 복귀
       }
 
       const curSeg = _track?.[((Math.floor(r.pos)) % SEGS + SEGS) % SEGS];
@@ -440,13 +655,60 @@ function checkItems(r) {
   }
 }
 
-// ── AI ───────────────────────────────────────────────────────────────────────
+// ── AI (개선: 충돌회피 + 전략적스킬 + 난이도) ────────────────────────────────
+const AI_DIFF = {
+  Easy:      { ms:3500, skillP:0.09, avoidP:0.3,  spdM:0.72 },
+  Normal:    { ms:2500, skillP:0.20, avoidP:0.60, spdM:0.82 },
+  Hard:      { ms:1500, skillP:0.38, avoidP:0.85, spdM:0.93 },
+  Nightmare: { ms:800,  skillP:0.58, avoidP:1.0,  spdM:1.04 },
+};
+const _curDiff = 'Normal';
+
 function aiThink(r) {
-  const now = Date.now();
-  if ((now - (_aiTimers[r.id]||0)) < AI_THINK) return;
-  _aiTimers[r.id] = now;
-  // 스킬 사용 확률 대폭 감소 (was 0.45)
-  if (Math.random() < 0.18 && r.skills.length) {
+  const now=Date.now(), d=AI_DIFF[_curDiff];
+  if ((now-(_aiTimers[r.id]||0)) < d.ms) return;
+  _aiTimers[r.id]=now;
+
+  // 함정 회피
+  const nearTrap = _traps.find(t => t.active && Math.abs(t.pos-r.pos)<1.6 && Math.abs(t.lane-r.lane)<0.55);
+  if (nearTrap) {
+    const trapAway = r.lane < nearTrap.lane ? -1 : 1;
+    r.lane = Math.max(-1.6, Math.min(1.6, r.lane + trapAway * 0.24));
+    _aiTimers[r.id] = now; return;
+  }
+
+  // 충돌 회피: 근접 차량 존재 시 차선 변경
+  if (Math.random() < d.avoidP) {
+    const near=[_player,..._racers].find(o=>
+      o.id!==r.id && !o.finished &&
+      Math.abs(o.pos-r.pos)<1.1 && Math.abs(o.lane-r.lane)<0.45
+    );
+    if (near) {
+      const away = r.lane < near.lane ? -1 : 1;
+      r.lane = Math.max(-1.6, Math.min(1.6, r.lane + away*(0.18+Math.random()*0.15)));
+    }
+  }
+
+  if (Math.random() < d.skillP && r.skills.length) {
+    const front  = findNearest(r, true);
+    const behind = findNearest(r, false);
+    const attacks= r.skills.filter(s=>SKILLS[s]?.type==='attack');
+    const traps  = r.skills.filter(s=>SKILLS[s]?.type==='trap');
+    const moves  = r.skills.filter(s=>SKILLS[s]?.type==='move');
+
+    // 앞에 차량이 가까울 때 공격
+    if (front && Math.abs(front.pos-r.pos)<2.5 && attacks.length && Math.random()<0.65) {
+      useSkill(r, attacks[Math.floor(Math.random()*attacks.length)]); return;
+    }
+    // 뒤에 차량이 가까울 때 함정
+    if (behind && Math.abs(behind.pos-r.pos)<1.8 && traps.length && Math.random()<0.5) {
+      useSkill(r, traps[Math.floor(Math.random()*traps.length)]); return;
+    }
+    // 순위 뒤처질 때 부스트
+    if ((r.currentRank||1)>3 && moves.length && Math.random()<0.55) {
+      useSkill(r, moves[Math.floor(Math.random()*moves.length)]); return;
+    }
+    // 랜덤 사용
     useSkill(r, r.skills[Math.floor(Math.random()*r.skills.length)]);
   }
 }
@@ -472,7 +734,9 @@ function showFinishOverlay(rank) {
 async function endRace(rank) {
   if (_ended) return; _ended = true;
   stopEngine();
+  stopAllAISounds();
   cancelAnimationFrame(_raf);
+  resetParticles();
   playFinish();
 
   const finalRank = _player.rank || (7 - _finishOrder.filter(r=>!r.isPlayer).length);
@@ -498,6 +762,7 @@ function loop(ts) {
   checkTraps(_player);
   checkItems(_player);
   for (const r of _racers) { checkTraps(r); checkItems(r); }
+  checkVehicleCollisions();
 
   const active = [_player,..._racers].filter(r=>!r.finished);
   active.sort((a,b)=>b.pos-a.pos);
@@ -505,8 +770,10 @@ function loop(ts) {
 
   _player.isBraking = _keys.brake;
   updateEngine(_player.speed, _player.maxSpeed);
+  updateAISounds();
 
   renderScene(_track, _racers, _player, _items, _gameTs);
+  drawRearview();
   renderHUD();
 }
 
@@ -636,7 +903,9 @@ function startRace() {
   requestAnimationFrame(() => {
     resizeCanvas();
     buildSkillBar();
+    initRearview();
     startEngine();
+    initAISounds();
     _lastTs = performance.now();
     _raf = requestAnimationFrame(loop);
     const cv = $('raceCanvas');

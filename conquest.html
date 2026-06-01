@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Monster Frontier: Kingdom Defense | JumpDAO</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0a0f05;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:16px;gap:10px;overflow-y:auto}
+.screen.hidden{display:none!important}
+
+/* ── 로딩 ── */
+#loadingScreen{gap:14px;font-size:15px;color:#6b7280}
+.spin{width:36px;height:36px;border:3px solid #1f2937;border-top-color:#22c55e;
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 로비 ── */
+.logo{font-size:clamp(20px,6vw,30px);font-weight:900;text-align:center;line-height:1.2}
+.logo span{color:#f59e0b}
+.desc{font-size:12px;color:#9ca3af;text-align:center;max-width:290px}
+.stat-box{background:#111827;border:1px solid #1f2937;border-radius:12px;
+  padding:10px 18px;width:100%;max-width:290px;font-size:13px}
+.sr{display:flex;justify-content:space-between;padding:4px 0}
+.sr .l{color:#6b7280}.sr .v{font-weight:700;color:#fbbf24}
+.notice{background:#0f172a;border:1px solid #374151;border-radius:10px;
+  padding:8px 14px;font-size:11px;color:#9ca3af;text-align:center;max-width:290px}
+.notice b{color:#f59e0b}
+.btn-main{padding:11px 0;background:#22c55e;color:#000;border:none;
+  border-radius:12px;font-size:15px;font-weight:900;cursor:pointer;
+  width:100%;max-width:290px;transition:opacity .15s}
+.btn-main:disabled{opacity:.4;cursor:not-allowed}
+.btn-free{padding:9px 0;background:transparent;border:1px solid #374151;
+  color:#9ca3af;border-radius:10px;font-size:12px;cursor:pointer;width:100%;max-width:290px}
+
+/* ── 게임 화면 ── */
+#gameScreen{padding:0;justify-content:flex-start;background:#080e04}
+
+/* 상단 HUD */
+#gameTop{
+  width:100%;display:flex;align-items:center;gap:4px;flex-wrap:nowrap;
+  padding:5px 8px;background:rgba(0,0,0,.9);border-bottom:1px solid #1f2937;
+  flex-shrink:0;min-height:42px;
+}
+.hc{background:rgba(255,255,255,.07);border-radius:7px;padding:3px 8px;
+  font-size:11px;font-weight:700;white-space:nowrap}
+#hudPrep{font-size:10px;color:#fbbf24;flex:1;text-align:center}
+#hudSelected{font-size:10px;color:#22c55e;min-width:58px;text-align:right}
+
+/* 캔버스 */
+#gameCanvas{display:block;flex-shrink:0;background:#0d1508;touch-action:none;user-select:none}
+
+/* 하단 HUD */
+#gameBot{
+  width:100%;display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+  padding:5px 8px;background:rgba(0,0,0,.92);border-top:1px solid #1f2937;
+  flex-shrink:0;min-height:82px;
+}
+.unit-tabs{display:flex;gap:4px;flex:1;min-width:0}
+.u-btn{
+  flex:1;padding:5px 3px;border:2px solid #374151;border-radius:8px;
+  background:rgba(255,255,255,.04);color:#fff;font-size:9px;font-weight:700;
+  cursor:pointer;transition:all .15s;text-align:center;line-height:1.3;
+}
+.u-btn span{display:block;font-size:13px}
+.u-btn small{color:#6b7280;font-size:8px}
+.u-btn:disabled{opacity:.35;cursor:not-allowed}
+.u-btn.active{border-color:#22c55e;background:rgba(34,197,94,.18);color:#4ade80}
+.u-btn.active small{color:#86efac}
+
+.ctrl-btns{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
+.ctrl-btn{
+  padding:4px 8px;border:1px solid #374151;border-radius:7px;
+  background:rgba(255,255,255,.05);color:#9ca3af;font-size:10px;cursor:pointer;
+  white-space:nowrap;transition:all .15s;
+}
+.ctrl-btn.active{border-color:#a855f7;background:rgba(168,85,247,.18);color:#d8b4fe}
+.ctrl-btn:hover{border-color:#6b7280}
+
+/* 발견 알림 */
+#notifBox{
+  position:absolute;top:50px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;gap:4px;z-index:50;pointer-events:none;
+  width:280px;
+}
+.notif-item{
+  background:rgba(245,158,11,.92);color:#000;font-weight:800;font-size:13px;
+  padding:7px 14px;border-radius:10px;text-align:center;
+  animation:notifIn .3s ease both;
+}
+@keyframes notifIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── 게임오버 ── */
+#gameoverScreen{gap:14px}
+#gameResult{text-align:center;line-height:1.7}
+.btn-rs{padding:11px 32px;background:#f59e0b;color:#000;border:none;
+  border-radius:12px;font-size:14px;font-weight:900;cursor:pointer;width:100%;max-width:240px}
+</style>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div id="loadingScreen" class="screen">
+  <div class="spin"></div>에셋 로딩 중...
+</div>
+
+<!-- 로비 -->
+<div id="lobbyScreen" class="screen hidden">
+  <div class="logo">⚔️ Monster Frontier<br><span>Kingdom Defense</span></div>
+  <div class="desc">10km×10km 광활한 세계를 탐험하고<br>몬스터 군단으로부터 왕국을 지켜라!</div>
+  <div class="stat-box">
+    <div class="sr"><span class="l">💰 보유 GP</span><span class="v" id="lobbyGP">—</span></div>
+    <div class="sr"><span class="l">🎟 입장료</span><span class="v">100 GP</span></div>
+    <div class="sr"><span class="l">🗺 맵 크기</span><span class="v">10km × 10km</span></div>
+  </div>
+  <div class="notice">정찰대를 파견해 숨겨진 보물을 발견하세요<br><b>클리어 시 +150~430 GP 지급</b></div>
+  <button class="btn-main" id="btnPlay">⚔️ 100 GP로 출전!</button>
+  <button class="btn-free" id="btnFreePlay">🆓 무료 체험 (보상 없음)</button>
+  <a href="/index.html" style="font-size:12px;color:#4b5563;text-decoration:none">← 홈으로</a>
+</div>
+
+<!-- 게임 -->
+<div id="gameScreen" class="screen hidden">
+  <div id="gameTop">
+    <div class="hc" id="hudWave">웨이브 0</div>
+    <div class="hc" id="hudCastle">🏰 1000</div>
+    <div id="hudPrep">준비 중...</div>
+    <div class="hc" id="hudGP">💰 300</div>
+    <div id="hudSelected"></div>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="gameBot">
+    <!-- 병력 배치 탭 -->
+    <div class="unit-tabs">
+      <button class="u-btn" id="btn_villager"><span>🛡️</span>수비대<br><small>50 GP</small></button>
+      <button class="u-btn" id="btn_miner">  <span>⛏️</span>광부<br><small>60 GP</small></button>
+      <button class="u-btn" id="btn_scout">  <span>🗺️</span>정찰대<br><small>70 GP</small></button>
+    </div>
+    <!-- 제어 버튼 -->
+    <div class="ctrl-btns">
+      <button class="ctrl-btn" id="btnDispatch">🔭 정찰 파견</button>
+      <button class="ctrl-btn" id="btnHome">🏰 성으로</button>
+      <button class="ctrl-btn" id="btnDeselect">✖ 해제</button>
+    </div>
+  </div>
+
+  <!-- 발견 알림 -->
+  <div id="notifBox"></div>
+</div>
+
+<!-- 게임오버 -->
+<div id="gameoverScreen" class="screen hidden">
+  <div id="gameResult"></div>
+  <button class="btn-rs" id="btnRestart">다시 도전!</button>
+  <a href="/index.html" style="font-size:12px;color:#4b5563;text-decoration:none;margin-top:4px">← 홈으로</a>
+</div>
+
+<script>
+window.firebaseConfig={
+  apiKey:"AIzaSyD6oGXWcQIAa46ZiO6E9fBWOXqiNCAL4-c",
+  authDomain:"jumper-b15aa.firebaseapp.com",
+  projectId:"jumper-b15aa",
+  storageBucket:"jumper-b15aa.firebasestorage.app",
+  messagingSenderId:"1051842479371",
+  appId:"1:1051842479371:web:cd0dca2c1eab0e44b58e0e"
+};
+</script>
+<script type="module" src="/assets/js/pages/conquest.js"></script>
+</body>
+</html>
