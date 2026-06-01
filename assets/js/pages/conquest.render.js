@@ -9,7 +9,7 @@ import { POI_DEFS } from './conquest.world.js';
 import { ROAD_SEGMENTS } from './conquest.path.js';
 
 let _cv, _ctx, _mapImg;
-let _fogCv=null, _fogCtx=null;
+let _fogSmCv=null;
 let _towerImgs = {};
 
 // ── 건물 타일 (픽셀 분석으로 자동 감지) ─────────────────────────────────
@@ -25,7 +25,7 @@ export function initRenderer(cv){
   _cv=cv; _ctx=cv.getContext('2d');
   _ctx.imageSmoothingEnabled=true;
   _ctx.imageSmoothingQuality='high';
-  _fogCv=null;
+  _fogSmCv=null;
 }
 export async function loadMapAssets(){
   _mapImg=await _ldImg('/assets/images/conquest/map.png');
@@ -291,93 +291,60 @@ function _roundRect(x,y,w,h,r){
   _ctx.closePath();
 }
 
-// ── 안개 (destination-out 원형 + 대형 blur → 자욱한 안개) ───────────────
+// ── 안개 ─────────────────────────────────────────────────────────────────────
+// 64×64 픽셀맵을 화면 크기로 업스케일 → 보간 + blur로 자연스러운 그라디언트
+const _FOG_SM = 64;
+
 function _drawFog(fogGrid){
   if(!fogGrid) return;
   const W=_cv.width, H=_cv.height;
-  const vis=getVisibleRect(), s=getScale();
+  const vis=getVisibleRect();
+  const vW=vis.r-vis.l, vH=vis.b-vis.t;
+  if(vW<=0||vH<=0) return;
 
-  if(!_fogCv||_fogCv.width!==W||_fogCv.height!==H){
-    _fogCv=document.createElement('canvas');
-    _fogCv.width=W; _fogCv.height=H;
-    _fogCtx=_fogCv.getContext('2d');
+  if(!_fogSmCv){
+    _fogSmCv=document.createElement('canvas');
+    _fogSmCv.width=_fogSmCv.height=_FOG_SM;
   }
-  const fc=_fogCtx;
-  fc.clearRect(0,0,W,H);
 
-  // 1. 짙은 안개색으로 전체 채우기
-  fc.fillStyle='rgba(5,9,3,1)';
-  fc.fillRect(0,0,W,H);
-
-  // 2. 안개 표면 wisp (드리프트) — 소용돌이 패턴
-  _paintFogWisps(fc, W, H);
-
-  // 3. 가시 영역을 원형으로 잘라냄 (destination-out)
-  fc.save();
-  fc.globalCompositeOperation='destination-out';
-  fc.fillStyle='rgba(0,0,0,1)';
-
-  const cMin=Math.max(0,Math.floor(vis.l/CELL_W)-2);
-  const cMax=Math.min(FOG_COLS-1,Math.ceil(vis.r/CELL_W)+2);
-  const rMin=Math.max(0,Math.floor(vis.t/CELL_H)-2);
-  const rMax=Math.min(FOG_ROWS-1,Math.ceil(vis.b/CELL_H)+2);
+  const SM=_FOG_SM;
   const anims=getRevealAnims();
-  const cellPx=CELL_W*s;
-  const circR=Math.max(cellPx, 3);  // 픽셀 이하 셀도 최소 3px
+  const buf=new Uint8ClampedArray(SM*SM*4);
 
-  for(let r=rMin;r<=rMax;r++){
-    for(let c=cMin;c<=cMax;c++){
-      if(fogGrid[r*FOG_COLS+c]!==0) continue;  // 안개 있음 → 건너뜀
-      const wx=(c+.5)*CELL_W, wy=(r+.5)*CELL_H;
-      const[px,py]=worldToScreen(wx,wy);
-      let alpha=1;
-      for(const a of anims){
-        const p=Math.min(1,a.t/a.dur);
-        if(Math.hypot(wx-a.wx,wy-a.wy)<a.maxR*p) alpha=Math.max(alpha,p);
+  for(let py=0;py<SM;py++){
+    for(let px=0;px<SM;px++){
+      const wx=vis.l+(px+.5)/SM*vW;
+      const wy=vis.t+(py+.5)/SM*vH;
+      const col=Math.floor(wx/CELL_W);
+      const row=Math.floor(wy/CELL_H);
+
+      let a=242; // 안개 불투명도
+      if(col>=0&&col<FOG_COLS&&row>=0&&row<FOG_ROWS&&fogGrid[row*FOG_COLS+col]===0){
+        a=0; // 탐험 완료 → 완전 투명
+      } else if(anims.length){
+        for(const an of anims){
+          const p=Math.min(1,an.t/an.dur);
+          if(Math.hypot(wx-an.wx,wy-an.wy)<an.maxR*p){
+            a=Math.round(242*(1-p)); break;
+          }
+        }
       }
-      fc.globalAlpha=alpha;
-      fc.beginPath();
-      fc.arc(px,py,circR,0,Math.PI*2);
-      fc.fill();
+
+      const i=(py*SM+px)*4;
+      buf[i]=5; buf[i+1]=9; buf[i+2]=3; buf[i+3]=a;
     }
   }
-  fc.globalAlpha=1;
-  fc.restore();
 
-  // 4. 큰 blur → 경계가 자욱하게 번짐
-  const blurPx=Math.max(40, Math.round(cellPx*3));
+  _fogSmCv.getContext('2d').putImageData(new ImageData(buf,SM,SM),0,0);
+
+  // 저해상도 → 고해상도 업스케일 (보간) + blur → 픽셀 경계 완전 제거
+  const B=28;
   _ctx.save();
-  _ctx.filter=`blur(${blurPx}px)`;
-  _ctx.drawImage(_fogCv,0,0);
+  _ctx.imageSmoothingEnabled=true;
+  _ctx.imageSmoothingQuality='high';
+  _ctx.filter=`blur(${B}px)`;
+  _ctx.drawImage(_fogSmCv, -B, -B, W+B*2, H+B*2);
   _ctx.restore();
-}
-
-// wisp 설정 (모듈 레벨 — 매 프레임 재생성 없이 재사용)
-const _WISPS=[
-  {ph:0,     sp:0.00022,rx:0.32,ry:0.22},
-  {ph:1.047, sp:0.00017,rx:0.28,ry:0.18},
-  {ph:2.094, sp:0.00030,rx:0.24,ry:0.28},
-  {ph:3.141, sp:0.00019,rx:0.35,ry:0.16},
-  {ph:4.189, sp:0.00026,rx:0.20,ry:0.30},
-  {ph:5.236, sp:0.00015,rx:0.30,ry:0.24},
-];
-
-// 안개 캔버스 위에 천천히 흐르는 반투명 wisp 패턴 그리기
-function _paintFogWisps(fc, W, H){
-  const t=performance.now();
-  for(const w of _WISPS){
-    const cx=W*(0.5+0.48*Math.sin(t*w.sp+w.ph));
-    const cy=H*(0.5+0.48*Math.cos(t*w.sp*0.65+w.ph));
-    const r=Math.min(W,H)*(w.rx+w.ry*0.5);
-    const g=fc.createRadialGradient(cx,cy,0,cx,cy,r);
-    g.addColorStop(0,'rgba(18,32,10,0.45)');   // 안개 속 연한 초록빛 코어
-    g.addColorStop(0.45,'rgba(10,18,6,0.22)');
-    g.addColorStop(1,'rgba(0,0,0,0)');
-    fc.fillStyle=g;
-    fc.beginPath();
-    fc.arc(cx,cy,r,0,Math.PI*2);
-    fc.fill();
-  }
 }
 
 // ── 안개 해제 이펙트 ──────────────────────────────────────────────────────
