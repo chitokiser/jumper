@@ -1,4 +1,4 @@
-// memory.js — 스피드 기억력 게임 (4×6, 30회 오답 게임오버, 2초 타이머)
+// memory.js — 스피드 기억력 게임 (4×6, 20회 오답 게임오버, 2초 타이머)
 import { db, auth } from '/assets/js/firebase-init.js';
 import { esc } from '/assets/js/esc.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
@@ -23,7 +23,7 @@ const CARD_POOL = [
 
 const ENTRY_FEE    = 0;    // 무료 입장
 const TOTAL_PAIRS  = 12;   // 4×6 = 24장 = 12쌍
-const MAX_MISS     = 30;
+const MAX_MISS     = 20;
 const TIMER_MS     = 2000; // 2초
 const MATCH_GP     = 30;   // 쌍 매칭 보상
 const COMBO_BONUS  = 20;   // 콤보당 추가 GP (연속 성공마다)

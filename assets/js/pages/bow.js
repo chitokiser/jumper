@@ -16,7 +16,7 @@ const FEE_STEP    = 0;
 const RESET_MS    = 24 * 60 * 60 * 1000;
 const GAME_KEY    = 'bowEntry';
 const GAME_TIME   = 60;
-const ARROW_PENALTY = 3;
+const ARROW_PENALTY = 60;  // 화살 1발당 감점 — 스팸 방지
 
 // ── 참가비 상태 ───────────────────────────────────────────────────────────────
 let _entryFee     = BASE_FEE;
@@ -150,7 +150,7 @@ async function deductFee() {
 }
 
 async function awardScore(score) {
-  const gp=score>=4000?300:score>=2000?150:score>=1000?70:score>=500?30:0;
+  const gp=score>=7000?300:score>=4500?150:score>=2000?70:score>=800?30:0;
   if (gp>0&&_uid) try{ await updateDoc(doc(db,'battle_players',_uid),{gold:increment(gp)}); }catch{}
   return gp;
 }
@@ -523,7 +523,7 @@ async function endGame(){
   const finalScore = Math.max(0, _score - penalty);
   const gp=await awardScore(finalScore);
   $('resFinalScore').textContent=finalScore.toLocaleString()+'점';
-  $('resGP').textContent=gp>0?`+${gp} GP 획득!`:'GP 없음 (500점 미달)';
+  $('resGP').textContent=gp>0?`+${gp} GP 획득!`:'GP 없음 (800점 미달)';
   $('resInfo').textContent=`원점수 ${_score.toLocaleString()} − 화살 ${_arrowsFired}발(−${penalty.toLocaleString()}pt) · 최고콤보 ×${_maxCombo}`;
   showPhase('result');
 }
