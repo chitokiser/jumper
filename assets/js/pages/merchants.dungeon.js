@@ -207,12 +207,16 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
     q('dgReEnterBtn')?.addEventListener('click',()=>this._show('dgEntry'));
     q('dgLeaveBtn')?.addEventListener('click',()=>this.close());
     q('dgHpPotBtn')?.addEventListener('click',()=>this._usePot('hp'));
-    q('dgMpPotBtn')?.addEventListener('click',()=>this._usePot('mp'));
-    this._canvas.addEventListener('click',e=>this._onClick(e));
-    this._canvas.addEventListener('touchend',e=>{e.preventDefault();if(e.changedTouches[0])this._onClick(e.changedTouches[0]);},{passive:false});
+    q('dgMpPotBtn')?.addEventListener('click',e=>{e.stopPropagation();this._usePot('mp');});
+    this._canvas.addEventListener('click',e=>{e.stopPropagation();this._onClick(e);});
+    this._canvas.addEventListener('touchend',e=>{e.stopPropagation();e.preventDefault();if(e.changedTouches[0])this._onClick(e.changedTouches[0]);},{passive:false});
     ['fire','ice','bolt','meteor','wind'].forEach(id=>{
-      q(`dgSk_${id}`)?.addEventListener('click',()=>this._useSkill(id));
+      q(`dgSk_${id}`)?.addEventListener('click',e=>{e.stopPropagation();this._useSkill(id);});
     });
+    // 모달 자체에서 이벤트가 하위 지도로 전파되지 않도록 차단
+    this._modal.addEventListener('click',e=>e.stopPropagation());
+    this._modal.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
+    this._modal.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
   }
 
   // ── 열기/닫기 ───────────────────────────────────────────────────────────

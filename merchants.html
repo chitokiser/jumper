@@ -1869,7 +1869,7 @@
         <button id="btnMyMap" class="map-hud-btn" title="체험 탭 — 나만 보이는 보물/몬스터 배치">🧪</button>
         <button id="btnFullscreen" class="map-hud-btn" title="Toàn màn hình">⛶</button>
         <div style="position:relative;">
-          <button id="skillBtnMiniGame" class="map-hud-btn" title="미니게임">🎮</button>
+          <button id="skillBtnMiniGame" class="map-hud-btn" title="미니게임">🕹️</button>
           <div class="mg-popup mg-popup--left hidden" id="miniGamePopup">
             <button class="mg-popup-btn" id="miniGameDungeon">🏰 던전</button>
           </div>
@@ -3231,7 +3231,11 @@
 
         <!-- Card 1: 보물찾기 & 던전 -->
         <div class="gh-card" onclick="ghEnterGame('treasure')">
-          <div class="gh-card-img" style="background-image:url('/assets/images/bow/user/back.png')"></div>
+          <div class="gh-card-img" style="background:linear-gradient(135deg,#0a1f0a,#0d2d1a,#1a3d20);display:flex;align-items:center;justify-content:center;font-size:44px;position:relative;overflow:hidden;">
+            🗺️
+            <span style="position:absolute;bottom:6px;right:8px;font-size:24px;opacity:.75;">🏰</span>
+            <span style="position:absolute;top:8px;left:10px;font-size:18px;opacity:.5;">💎</span>
+          </div>
           <div class="gh-card-corner"></div>
           <span class="gh-badge gh-badge-live">LIVE</span>
           <div class="gh-card-body">
