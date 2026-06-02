@@ -27,16 +27,16 @@ const HERO_SKILL_RANGE = 400;
 
 // ── 웨이브 정의 (10웨이브 + 난이도 가파르게 상승) ──────────────────────────
 const WAVES = [
-  [{type:'orc',    count:8,  side:'rand'}],
-  [{type:'orc',    count:10, side:'rand'},{type:'orc2',   count:5,  side:'rand'}],
-  [{type:'orc2',   count:12, side:'all'}],
-  [{type:'orc',    count:8,  side:'rand'},{type:'zombie',  count:8,  side:'rand'}],
-  [{type:'orc2',   count:12, side:'all'}, {type:'zombie',  count:8,  side:'rand'},{type:'dragon',count:1,side:'rand'}],
-  [{type:'zombie', count:15, side:'all'}, {type:'pirate',  count:6,  side:'rand'},{type:'dragon',count:2,side:'rand'}],
-  [{type:'pirate', count:20, side:'all'}, {type:'dragon',  count:3,  side:'rand'}],
-  [{type:'orc2',   count:15, side:'all'}, {type:'pirate',  count:10, side:'all'},{type:'dragon',count:3,side:'all'}],
-  [{type:'zombie', count:20, side:'all'}, {type:'orc2',    count:15, side:'all'},{type:'dragon',count:4,side:'rand'}],
-  [{type:'pirate', count:25, side:'all'}, {type:'zombie',  count:20, side:'all'},{type:'dragon',count:5,side:'all'}],
+  [{type:'orc',    count:25, side:'rand'}],
+  [{type:'orc',    count:30, side:'rand'},{type:'orc2',   count:15, side:'rand'}],
+  [{type:'orc2',   count:35, side:'all'}],
+  [{type:'orc',    count:25, side:'rand'},{type:'zombie',  count:25, side:'rand'}],
+  [{type:'orc2',   count:35, side:'all'}, {type:'zombie',  count:20, side:'rand'},{type:'dragon',count:3, side:'rand'}],
+  [{type:'zombie', count:40, side:'all'}, {type:'pirate',  count:18, side:'rand'},{type:'dragon',count:5, side:'rand'}],
+  [{type:'pirate', count:45, side:'all'}, {type:'dragon',  count:8,  side:'rand'}],
+  [{type:'orc2',   count:40, side:'all'}, {type:'pirate',  count:28, side:'all'},{type:'dragon',count:8, side:'all'}],
+  [{type:'zombie', count:50, side:'all'}, {type:'orc2',    count:35, side:'all'},{type:'dragon',count:10,side:'rand'}],
+  [{type:'pirate', count:60, side:'all'}, {type:'zombie',  count:50, side:'all'},{type:'dragon',count:12,side:'all'}],
 ];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ function _update(dt){
 
   if(!_waveActive){_prepTimer-=dt;if(_prepTimer<=0)_startWave();renderHUD();return;}
 
-  if(_spawnQ.length){_spawnTimer-=dt;if(_spawnTimer<=0){_spawnTimer=360;const s=_spawnQ.shift();_monsters.push(makeUnit(s.type,s.x,s.y));}}
+  if(_spawnQ.length){_spawnTimer-=dt;if(_spawnTimer<=0){_spawnTimer=180;const s=_spawnQ.shift();_monsters.push(makeUnit(s.type,s.x,s.y));}}
 
   for(let i=_defenders.length-1;i>=0;i--){
     const dead=updateUnit(_defenders[i],_defenders,_monsters,dt,_walls);

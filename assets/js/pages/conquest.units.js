@@ -186,7 +186,17 @@ function _d(ax,ay,bx,by){return Math.hypot(ax-bx,ay-by);}
 function _nearestMine(mx,my){
   return MINES.reduce((b,m)=>_d(mx,my,m.x,m.y)<_d(mx,my,b.x,b.y)?m:b);
 }
-function _inside(x,y){const W=CASTLE_WALL;return x>W.l&&x<W.r&&y>W.t&&y<W.b;}
+function _inside(x,y){
+  const W=CASTLE_WALL;
+  if(!(x>W.l&&x<W.r&&y>W.t&&y<W.b)) return false;
+  // 성문 통로(halfGate 범위)는 진입 허용 — 이동 경로가 막히지 않게
+  const hg=W.halfGate||200;
+  if(Math.abs(x-CX)<=hg&&y<=W.t+hg) return false; // 북문
+  if(Math.abs(x-CX)<=hg&&y>=W.b-hg) return false; // 남문
+  if(Math.abs(y-CY)<=hg&&x<=W.l+hg) return false; // 서문
+  if(Math.abs(y-CY)<=hg&&x>=W.r-hg) return false; // 동문
+  return true;
+}
 
 // ── AI 업데이트 ──────────────────────────────────────────────────────────
 export function updateUnit(u,allies,enemies,dt,walls=null){
