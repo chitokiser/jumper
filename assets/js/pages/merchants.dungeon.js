@@ -319,8 +319,8 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
           this._monsters.push(this._makeMon(t,MON_TYPES[t],(sp?.x??room.cx)+ox,(sp?.y??room.cy)+oy,ri));
         });
       } else {
-        // 일반방: 방 크기 비례 (최소 8, 최대 15)
-        const count=Math.min(15,Math.max(8,Math.floor(room.size/6)));
+        // 일반방: 방 크기 비례 (최소 15, 최대 30)
+        const count=Math.min(30,Math.max(15,Math.floor(room.size/3)));
         const cfg=ROOM_CONFIGS[ri%ROOM_CONFIGS.length];
         for (let i=0;i<count;i++) {
           const typeKey=cfg[i%cfg.length];
@@ -615,7 +615,8 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
     const d=Math.hypot(wp.x-m.x,wp.y-m.y);
     if (d<2.5) { m.pathIdx++; return; }
     const s=Math.min(spd*dt,d);
-    const res=tryMove(m.x,m.y,(wp.x-m.x)/d*s,(wp.y-m.y)/d*s,m.def.sz*0.5);
+    // 반경 0.6 고정 — sz*0.5 대신 작은 값으로 좁은 복도 통과 보장
+    const res=tryMove(m.x,m.y,(wp.x-m.x)/d*s,(wp.y-m.y)/d*s,0.6);
     m.x=res.x; m.y=res.y;
     m.facing=wp.x>m.x?1:-1;
   }

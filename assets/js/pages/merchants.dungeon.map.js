@@ -42,12 +42,14 @@ export async function loadDungeonMap(src) {
       }
     }
   }
-  // BFS 확산
+  // BFS 확산 — 8방향: 1픽셀 폭 대각선 복도도 연결 허용
   const bfsQ = [[seedX, seedY]];
   _walkable[seedY*GRID_W+seedX] = 1;
   while (bfsQ.length) {
     const [cx,cy] = bfsQ.shift();
-    for (const [nx,ny] of [[cx-1,cy],[cx+1,cy],[cx,cy-1],[cx,cy+1]]) {
+    for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) {
+      if (dx===0&&dy===0) continue;
+      const nx=cx+dx, ny=cy+dy;
       if (nx<0||nx>=GRID_W||ny<0||ny>=GRID_H) continue;
       const ni = ny*GRID_W+nx;
       if (!raw[ni]||_walkable[ni]) continue;
@@ -77,7 +79,9 @@ function _detectRooms() {
       while (q.length) {
         const [cx,cy] = q.shift();
         cells.push([cx,cy]);
-        for (const [nx,ny] of [[cx-1,cy],[cx+1,cy],[cx,cy-1],[cx,cy+1]]) {
+        for (let ddy=-1;ddy<=1;ddy++) for (let ddx=-1;ddx<=1;ddx++) {
+          if (ddx===0&&ddy===0) continue;
+          const nx=cx+ddx, ny=cy+ddy;
           if (nx<0||nx>=GRID_W||ny<0||ny>=GRID_H) continue;
           const ni = ny*GRID_W+nx;
           if (!_walkable[ni]||vis[ni]) continue;
@@ -138,7 +142,7 @@ export function tryMove(x, y, dx, dy, r=1.0) {
 }
 
 // ── A* 경로탐색 ────────────────────────────────────────────────────────────
-const _DIRS4 = [[-1,0],[1,0],[0,-1],[0,1]];
+const _DIRS4 = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
 
 export function findPath(sx, sy, gx, gy) {
   if (!_walkable) return [{x:gx,y:gy}];
