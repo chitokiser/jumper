@@ -5,6 +5,7 @@ const B = '/assets/images';
 // ── 성벽 상수 (맵 이미지 실측: 성벽 3800-6200) ────────────────────────────
 export const CASTLE_WX = CX, CASTLE_WY = CY;
 export const CASTLE_WALL = {l:3800,r:6200,t:3800,b:6200,halfGate:200};
+const CASTLE_KEEP_R = 450; // 성 내부 오브제 외곽 반경 — 몬스터는 여기서 멈추고 공격
 export const GATES = [
   {x:5000,y:3800,dir:'top'},{x:5000,y:6200,dir:'bot'},
   {x:3800,y:5000,dir:'lft'},{x:6200,y:5000,dir:'rgt'},
@@ -228,10 +229,10 @@ function _updateMonster(u,allies,dt,walls){
     return;
   }
 
-  // 성벽 함락 후 내부 진입 → 성 중심으로 이동
+  // 성벽 함락 후 내부 진입 → 성 오브제 외곽까지 이동 후 공격
   if(u.insideCastle){
     const dist=_d(u.x,u.y,CASTLE_WX,CASTLE_WY);
-    if(dist<80){
+    if(dist<=CASTLE_KEEP_R){
       u.animState='attack';
       if(u.atkCooldown<=0){
         u.events.push({type:'damageCastle',amount:u.atk});

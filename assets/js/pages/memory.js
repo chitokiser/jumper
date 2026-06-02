@@ -66,7 +66,7 @@ let _timerToken=0;
 let _timerRaf=null;
 let _timerStart=0;
 let _ac=null;
-let _phase='loading';
+let _phase='lobby';
 
 const $=id=>document.getElementById(id);
 

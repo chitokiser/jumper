@@ -14,7 +14,7 @@ import { resumeAudio, playSound } from './conquest.audio.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────
 const ENTRY_FEE  = 100;
-const START_GP   = 300;
+const START_GP   = 3000;
 const MINE_RATE  = 3000;
 const PREP_TIME  = 15000;
 const MAX_HP     = 10000;
