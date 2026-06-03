@@ -25,7 +25,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🎮 *JUMP22 Game Hub*\n\n"
         "From GPS Treasure Hunt to Monster Battles!\n"
-        "Pick a game, earn GP, and exchange for TON! 🚀",
+        "Pick a game, earn GP, and exchange for Reward! 🚀",
         parse_mode="Markdown",
         reply_markup=reply_markup
     )
