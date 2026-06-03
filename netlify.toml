@@ -1,27 +1,27 @@
 [build]
   publish = "."
 
+# ── 전역 보안 헤더 ────────────────────────────────────────────────────────────
+# X-Frame-Options 는 전역 적용하지 않음 — Telegram Mini App 페이지별 CSP로 제어
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
 
-# ── Telegram Mini App 허용 ─────────────────────────────────────────────────────
-# CSP frame-ancestors 는 현대 브라우저에서 X-Frame-Options 를 대체하므로
-# Telegram Web(web.telegram.org) 에서 Mini App 로드 허용
+# ── Telegram Mini App 허용 페이지 ─────────────────────────────────────────────
+# CSP frame-ancestors 로 Telegram Web 허용, X-Frame-Options 는 설정 안 함
 [[headers]]
   for = "/telegram.html"
   [headers.values]
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
 
 [[headers]]
-  for = "/merchants.html"
+  for = "/tg-hub.html"
   [headers.values]
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
 
 [[headers]]
-  for = "/tg-hub.html"
+  for = "/merchants.html"
   [headers.values]
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
 
@@ -50,6 +50,14 @@
   [headers.values]
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
 
+# ── 관리자 페이지: iframe 완전 차단 ──────────────────────────────────────────
+[[headers]]
+  for = "/admin*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    Content-Security-Policy = "frame-ancestors 'none'"
+
+# ── 캐시 제어 ────────────────────────────────────────────────────────────────
 [[headers]]
   for = "/sitemap.xml"
   [headers.values]
