@@ -24,6 +24,12 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+# ── 환경변수 진단 로그 ────────────────────────────────────────────────────────
+_env_keys = [k for k in os.environ.keys() if not k.startswith("_")]
+print(f"[DIAG] 환경변수 목록 ({len(_env_keys)}개): {sorted(_env_keys)}")
+print(f"[DIAG] BOT_TOKEN 존재: {bool(os.environ.get('BOT_TOKEN'))}")
+print(f"[DIAG] FIREBASE_SERVICE_ACCOUNT 존재: {bool(os.environ.get('FIREBASE_SERVICE_ACCOUNT'))}")
+
 # ── 필수 환경변수 검증 ────────────────────────────────────────────────────────
 _REQUIRED = ["BOT_TOKEN", "FIREBASE_SERVICE_ACCOUNT"]
 _missing  = [v for v in _REQUIRED if not os.environ.get(v)]
