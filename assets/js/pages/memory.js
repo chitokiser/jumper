@@ -51,10 +51,11 @@ async function loadPlayer() {
     const d=(await getDoc(doc(db,'battle_players',_uid))).data()||{};
     _playerGP=d.gold||0;
     const entry=d[GAME_KEY]||{}, now=Date.now();
-    if(!entry.resetAt||now-entry.resetAt>RESET_MS){
+    const resetAtMs=entry.resetAt?.toMillis?.()??( typeof entry.resetAt==='number'?entry.resetAt:0);
+    if(!resetAtMs||now-resetAtMs>RESET_MS){
       _entryCount=0; _entryResetAt=0;
     } else {
-      _entryCount=entry.count||0; _entryResetAt=entry.resetAt;
+      _entryCount=entry.count||0; _entryResetAt=resetAtMs;
     }
     _entryFee=BASE_FEE+_entryCount*FEE_STEP;
   } catch {}

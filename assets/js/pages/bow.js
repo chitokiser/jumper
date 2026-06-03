@@ -105,10 +105,12 @@ async function loadPlayer() {
 
     const entry = d[GAME_KEY] || {};
     const now = Date.now();
-    if (!entry.resetAt || now - entry.resetAt > RESET_MS) {
+    // Firestore Timestamp → ms 변환 (서버 저장값이 Timestamp일 수 있음)
+    const resetAtMs = entry.resetAt?.toMillis?.() ?? (typeof entry.resetAt === 'number' ? entry.resetAt : 0);
+    if (!resetAtMs || now - resetAtMs > RESET_MS) {
       _entryCount = 0; _entryResetAt = 0;
     } else {
-      _entryCount = entry.count || 0; _entryResetAt = entry.resetAt;
+      _entryCount = entry.count || 0; _entryResetAt = resetAtMs;
     }
     _entryFee = BASE_FEE + _entryCount * FEE_STEP;
   } catch {}

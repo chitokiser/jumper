@@ -89,15 +89,14 @@ function _chargeEntry(t, data, ref, gameKey) {
     throw new Error(`GP 부족 — 필요: ${fee.toLocaleString()} GP, 보유: ${gold.toLocaleString()} GP`);
 
   const newCount   = count + 1;
-  const newResetAt = count === 0
-    ? admin.firestore.Timestamp.now()
-    : (entry.resetAt || admin.firestore.Timestamp.now());
+  // ms 숫자로 저장 — 클라이언트에서 Timestamp 변환 없이 직접 비교 가능
+  const existingResetMs = entry.resetAt?.toMillis?.() ?? (typeof entry.resetAt === 'number' ? entry.resetAt : 0);
+  const newResetAt = count === 0 ? now : (existingResetMs || now);
 
-  t.update(ref, {
+  t.set(ref, {
     gold:                   admin.firestore.FieldValue.increment(-fee),
-    [`${gameKey}.count`]:   newCount,
-    [`${gameKey}.resetAt`]: newResetAt,
-  });
+    [gameKey]: { count: newCount, resetAt: newResetAt },
+  }, { merge: true });
 
   return { fee, isFree: false, newCount };
 }
