@@ -9,8 +9,10 @@ import { collection, getDocs, getDoc, doc, query, where } from 'https://www.gsta
 const fnCollect = httpsCallable(functions, 'collectTreasureBox');
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
-const SCAN_RADIUS   = 300;  // m: scanRadius 미설정 박스의 기본 스캔 반경
-const CLAIM_RADIUS  = 30;   // m: 이 거리 이내여야 획득 가능
+const SCAN_RADIUS            = 300;  // m: Firestore 로드 반경 (넉넉하게)
+const CLAIM_RADIUS           = 30;   // m: 이 거리 이내여야 획득 가능
+const DISPLAY_RADIUS_NORMAL  = 30;   // m: 일반 유저 AR 레이더 표시 반경
+const DISPLAY_RADIUS_PREMIUM = 100;  // m: 정회원 AR 레이더 표시 반경
 const FOV_DEG     = 80;     // 수평 FOV (각도)
 const AIM_DEG     = 20;     // 이 각도 이내 → "조준" 판정
 const CHEST_BASE  = 72;     // px: 기본 보물상자 크기
@@ -42,18 +44,20 @@ const claimBtn    = document.getElementById('claimBtn');
 const claimResult = document.getElementById('claimResult');
 
 // ── 상태 ──────────────────────────────────────────────────────────────────────
-let currentUser   = null;
-let userLat       = null;
-let userLng       = null;
-let compassHead   = 0;       // degrees: 0=North, CW
-let compassReady  = false;
-let nearbyBoxes   = [];
-let targetBox     = null;
-let rafId         = null;
-let gpsWatchId    = null;
-let lastSonarTs   = 0;       // 마지막 소나 핑 시각 (ms)
-let prevAimed     = null;    // 이전 프레임 aimed (로크온 감지용)
-let isAdminUser   = false;   // 관리자 여부 (전세계 NPC 표시)
+let currentUser      = null;
+let userLat          = null;
+let userLng          = null;
+let compassHead      = 0;
+let compassReady     = false;
+let nearbyBoxes      = [];
+let targetBox        = null;
+let rafId            = null;
+let gpsWatchId       = null;
+let lastSonarTs      = 0;
+let prevAimed        = null;
+let isAdminUser      = false;
+let isPremiumUser    = false;  // 정회원 여부
+let userDisplayRadius = DISPLAY_RADIUS_NORMAL; // 현재 레이더 표시 반경
 
 // ── 수학 헬퍼 ─────────────────────────────────────────────────────────────────
 function toRad(d) { return d * Math.PI / 180; }
@@ -109,32 +113,43 @@ async function loadNearbyBoxes(lat, lng) {
   const now = Date.now();
 
   // 관리자 판별
-  isAdminUser = false;
+  isAdminUser  = false;
+  isPremiumUser = false;
   if (currentUser) {
-    const adminSnap = await getDoc(doc(db, 'admins', currentUser.uid));
+    const [adminSnap, userSnap] = await Promise.all([
+      getDoc(doc(db, 'admins', currentUser.uid)),
+      getDoc(doc(db, 'users',  currentUser.uid)),
+    ]);
     if (adminSnap.exists()) isAdminUser = true;
+
+    // 정회원 확인 (UTC+7 기준 오늘 날짜와 비교)
+    const coopUntil  = (userSnap.data() || {}).coopMemberUntil;
+    const todayUtc7  = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    isPremiumUser    = !!(coopUntil && coopUntil >= todayUtc7);
   }
+  userDisplayRadius = isPremiumUser ? DISPLAY_RADIUS_PREMIUM : DISPLAY_RADIUS_NORMAL;
 
   // ── treasure_boxes (관리자·가맹점 생성 공개 보물만) ────────────────────────
   // hiddenBox: true 인 숨김 보물은 AR에서 제외 — 지도 근접 감지로만 발견 가능
-  // user_treasure_npcs (개인 숨김 보물)도 AR에서 완전 제외
   const boxSnap = await getDocs(
     query(collection(db, 'treasure_boxes'), where('active', '==', true))
   );
 
   const allBoxes = boxSnap.docs
     .map(d => ({ id: d.id, ...d.data() }))
-    .filter(b => b.lat != null && b.lng != null && !b.hiddenBox); // hiddenBox 제외
+    .filter(b => b.lat != null && b.lng != null && !b.hiddenBox);
 
   const combined = [...allBoxes];
 
-  // 관리자: 거리·시간 필터 없이 (단, 숨김 보물은 제외 유지)
+  // 관리자: 거리·시간 필터 없이 전부 표시
   if (isAdminUser) return combined;
 
-  // 일반 유저: 스캔 반경 이내 필터
-  const withinRange = combined.filter(
-    b => haversine(lat, lng, b.lat, b.lng) <= (b.scanRadius ?? SCAN_RADIUS)
-  );
+  // ── 레이더 반경 필터 ─────────────────────────────────────────────────────────
+  // 정회원 100m / 일반 30m — box.scanRadius 와 userDisplayRadius 중 작은 값 적용
+  const withinRange = combined.filter(b => {
+    const effectiveR = Math.min(b.scanRadius ?? SCAN_RADIUS, userDisplayRadius);
+    return haversine(lat, lng, b.lat, b.lng) <= effectiveR;
+  });
 
   if (!currentUser || !withinRange.length) return withinRange;
 
@@ -483,6 +498,42 @@ function renderAR(ts) {
   // 획득 가능 보물이 화면에 있으면 가장자리 비네트
   if (claimableVisible > 0) drawVignette(W, H, now);
 
+  // ── 레이더 범위 배지 (우측 상단) ─────────────────────────────────────────────
+  {
+    const badgeText = isPremiumUser
+      ? `⭐ ${DISPLAY_RADIUS_PREMIUM}m`
+      : `🔒 ${DISPLAY_RADIUS_NORMAL}m`;
+    const badgeBg  = isPremiumUser ? 'rgba(34,197,94,0.75)' : 'rgba(251,191,36,0.70)';
+    arCtx.save();
+    arCtx.font = 'bold 11px sans-serif';
+    const tw  = arCtx.measureText(badgeText).width;
+    const bw  = tw + 16, bh = 22, bx = W - bw - 8, by = 8;
+    arCtx.fillStyle = 'rgba(0,0,0,0.45)';
+    arCtx.beginPath();
+    arCtx.roundRect(bx - 1, by - 1, bw + 2, bh + 2, 5);
+    arCtx.fill();
+    arCtx.fillStyle = badgeBg;
+    arCtx.beginPath();
+    arCtx.roundRect(bx, by, bw, bh, 4);
+    arCtx.fill();
+    arCtx.fillStyle = '#fff';
+    arCtx.textAlign = 'center';
+    arCtx.textBaseline = 'middle';
+    arCtx.fillText(badgeText, bx + bw / 2, by + bh / 2);
+    arCtx.restore();
+
+    // 비프리미엄: 화면 하단에 업그레이드 힌트
+    if (!isPremiumUser && !nearbyBoxes.length) {
+      arCtx.save();
+      arCtx.font = '12px sans-serif';
+      arCtx.fillStyle = 'rgba(251,191,36,0.85)';
+      arCtx.textAlign = 'center';
+      arCtx.textBaseline = 'bottom';
+      arCtx.fillText('⭐ Premium: 100m 레이더 · 매일 무료 게임 3회', W / 2, H - 44);
+      arCtx.restore();
+    }
+  }
+
   // compass no-signal indicator
   if (!compassReady) {
     arCtx.save();
@@ -630,9 +681,12 @@ async function init() {
     arScreen.style.display = 'block';
 
     hudCount.textContent = `${nearbyBoxes.length} 📦`;
-    arStatus.textContent  = nearbyBoxes.length
-      ? `${nearbyBoxes.length} treasure${nearbyBoxes.length > 1 ? 's' : ''} nearby — scan around!`
-      : `📍 No treasures within ${SCAN_RADIUS}m`;
+    const radarTag = isPremiumUser
+      ? `⭐ ${DISPLAY_RADIUS_PREMIUM}m Premium Radar`
+      : `🔒 ${DISPLAY_RADIUS_NORMAL}m | ⭐ Upgrade→${DISPLAY_RADIUS_PREMIUM}m`;
+    arStatus.textContent = nearbyBoxes.length
+      ? `${nearbyBoxes.length} treasure${nearbyBoxes.length > 1 ? 's' : ''} nearby — ${radarTag}`
+      : `No treasures within ${userDisplayRadius}m — ${radarTag}`;
 
     rafId = requestAnimationFrame(renderAR);
 
