@@ -1026,6 +1026,7 @@ btnReloadDao?.addEventListener("click", () => loadDaoProposals());
 let _allUsers    = [];
 let _userSearch  = "";
 let _userFilter  = "all";
+let _userSort    = "date_desc";
 let _userSearchTimer = null;
 
 async function loadUsersList() {
@@ -1058,13 +1059,34 @@ function renderUsersList() {
     if (srch) {
       const hit = (u.name || "").toLowerCase().includes(srch) ||
                   (u.displayName || "").toLowerCase().includes(srch) ||
-                  (u.email || "").toLowerCase().includes(srch);
+                  (u.email || "").toLowerCase().includes(srch) ||
+                  (u.username ? ("@" + u.username).toLowerCase().includes(srch) : false);
       if (!hit) return false;
     }
+    if (_userFilter === "telegram")    return u.source === "telegram";
     if (_userFilter === "member")      return !!(u.coopMemberUntil && u.coopMemberUntil > today);
     if (_userFilter === "blacklisted") return !!u.blacklisted;
     return true;
   });
+
+  // 정렬
+  const _ts = u => u.createdAt?.seconds ?? u.registeredAt?.seconds ?? 0;
+  const _seen = u => u.lastSeenAt?.seconds ?? _ts(u);
+  const _name = u => (u.name || u.displayName || "").toLowerCase();
+  filtered.sort((a, b) => {
+    if (_userSort === "date_asc")  return _ts(a) - _ts(b);
+    if (_userSort === "seen_desc") return _seen(b) - _seen(a);
+    if (_userSort === "name_asc")  return _name(a).localeCompare(_name(b), "ko");
+    return _ts(b) - _ts(a); // date_desc (기본)
+  });
+
+  // 상단 카운트 표시
+  const isTgFilter = _userFilter === "telegram";
+  const tgTotal = isTgFilter ? filtered.length : filtered.filter(u => u.source === "telegram").length;
+  const countLabel = isTgFilter
+    ? `📱 텔레그램 ${filtered.length}명`
+    : `전체 ${filtered.length}명 (텔레그램 ${tgTotal}명 포함)`;
+  setState(countLabel);
 
   if (!filtered.length) {
     userList.innerHTML = '<p class="muted" style="padding:12px 0;">조건에 맞는 회원이 없습니다.</p>';
@@ -1081,20 +1103,23 @@ function renderUsersList() {
     const role     = u.role || "user";
     const isMember = !!(u.coopMemberUntil && u.coopMemberUntil > today);
     const isBlack  = !!u.blacklisted;
+    const isTg     = u.source === "telegram";
 
     const dateVal  = u.createdAt?.seconds ?? u.registeredAt?.seconds ?? null;
-    const dateStr  = dateVal
-      ? new Date(dateVal * 1000).toLocaleDateString("ko")
-      : "-";
+    const dateStr  = dateVal ? new Date(dateVal * 1000).toLocaleDateString("ko") : "-";
+    const seenVal  = u.lastSeenAt?.seconds ?? null;
+    const seenStr  = seenVal ? new Date(seenVal * 1000).toLocaleString("ko") : null;
 
     const roleBadge = role === "admin"
       ? '<span class="badge" style="background:#7c3aed;color:#fff;">관리자</span>'
       : role === "guide"
         ? '<span class="badge" style="background:#0284c7;color:#fff;">판매회원</span>'
         : '';
-
+    const tgBadge    = isTg
+      ? '<span class="badge" style="background:#229ed9;color:#fff;">📱 텔레그램</span>'
+      : '';
     const memberBadge = isMember
-      ? `<span class="badge" style="background:#16a34a;color:#fff;">👑 정회원</span>`
+      ? '<span class="badge" style="background:#16a34a;color:#fff;">👑 정회원</span>'
       : '';
     const blackBadge  = isBlack
       ? '<span class="badge" style="background:#dc2626;color:#fff;">⛔ 차단</span>'
@@ -1102,13 +1127,20 @@ function renderUsersList() {
     const memberExp   = isMember
       ? `<div class="muted" style="font-size:11px;">정회원 만료: ${esc(u.coopMemberUntil)}</div>`
       : '';
+    const tgInfo = isTg
+      ? `<div class="muted" style="font-size:11px;">
+           TG ID: ${esc(u.telegramId || "-")}
+           ${u.username ? ` · @${esc(u.username)}` : ""}
+           ${seenStr ? ` · 최근 접속: ${esc(seenStr)}` : ""}
+         </div>`
+      : (seenStr ? `<div class="muted" style="font-size:11px;">최근 접속: ${esc(seenStr)}</div>` : "");
 
-    return `<div class="card" style="display:flex;gap:12px;align-items:center;padding:10px 14px;">
+    return `<div class="card" style="display:flex;gap:12px;align-items:center;padding:10px 14px;${isTg ? "border-left:3px solid #229ed9;" : ""}">
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:14px;">${name} ${roleBadge}${memberBadge}${blackBadge}</div>
+        <div style="font-weight:600;font-size:14px;">${name} ${tgBadge}${roleBadge}${memberBadge}${blackBadge}</div>
         <div class="muted" style="font-size:12px;margin-top:2px;">${email} · 가입: ${esc(dateStr)}</div>
         <div class="muted" style="font-size:11px;font-family:monospace;">UID: ${esc(uid)} · 지갑: ${wallet}</div>
-        ${memberExp}
+        ${tgInfo}${memberExp}
       </div>
       <button class="btn btn-sm" data-act="viewUser" data-uid="${esc(uid)}" style="font-size:12px;flex-shrink:0;">상세</button>
     </div>`;
@@ -1122,7 +1154,7 @@ function renderUsersList() {
       const u   = _allUsers.find(x => x._id === uid);
       if (!u) return;
       const { _id, ...data } = u;
-      openDialog(`회원 상세 — ${u.name || u.email || uid}`, { uid: _id, ...data });
+      openDialog(`회원 상세 — ${u.name || u.displayName || u.email || uid}`, { uid: _id, ...data });
     });
   });
 }
@@ -1130,6 +1162,7 @@ function renderUsersList() {
 {
   const inputSearch = $("inputUserSearch");
   const selFilter   = $("selUserFilter");
+  const selSort     = $("selUserSort");
   const btnReload   = $("btnReloadUsers");
 
   inputSearch?.addEventListener("input", () => {
@@ -1142,6 +1175,11 @@ function renderUsersList() {
 
   selFilter?.addEventListener("change", () => {
     _userFilter = selFilter.value;
+    renderUsersList();
+  });
+
+  selSort?.addEventListener("change", () => {
+    _userSort = selSort.value;
     renderUsersList();
   });
 
