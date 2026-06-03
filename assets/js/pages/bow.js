@@ -12,12 +12,12 @@ import {
 import { playSound } from './merchants.battle.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const BASE_FEE    = 100;
-const FEE_STEP    = 50;
-const RESET_MS    = 24 * 60 * 60 * 1000;
-const GAME_KEY    = 'bowEntry';
-const GAME_TIME   = 60;
-const ARROW_PENALTY = 60;  // 화살 1발당 감점 — 스팸 방지
+const BASE_FEE      = 100;
+const FEE_STEP      = 50;
+const RESET_MS      = 24 * 60 * 60 * 1000;
+const GAME_KEY      = 'bowEntry';
+const GAME_TIME     = 60;
+const MISS_PENALTY  = 15;   // 빗나간 화살 1발당 감점 (명중한 화살은 패널티 없음)
 
 // ── 참가비 상태 ───────────────────────────────────────────────────────────────
 let _entryFee     = BASE_FEE;
@@ -149,7 +149,7 @@ async function deductFee() {
 }
 
 async function awardScore(score) {
-  const gp = score>=7000?300:score>=4500?150:score>=2000?70:score>=800?30:0;
+  const gp = score>=6000?300:score>=3500?200:score>=2000?120:score>=1000?60:score>=400?20:0;
   if (_freeMode || gp <= 0 || !_uid) return 0;
   try {
     await httpsCallable(functions, 'claimGameReward')({ gameType: 'bow', amount: gp });
@@ -160,7 +160,7 @@ async function awardScore(score) {
 // ── 게임 상태 ────────────────────────────────────────────────────────────────
 let _phase='loading';
 let _score=0, _combo=0, _maxCombo=0, _comboTs=0;
-let _arrowsFired=0;
+let _arrowsFired=0, _arrowsHit=0, _killCount=0;
 let _timeLeft=GAME_TIME, _timerIv=null;
 let _monsters=[], _arrows=[], _effects=[];
 let _raf=null, _lastTs=0, _ts=0;
@@ -248,7 +248,7 @@ function createArrow(cx,cy,spread=0,fire=false,pierce=false,explode=false){
     vx: initDx / initLen, vy: initDy / initLen,
     trail: [],
     fire, pierce, explode, dmg: arrowDmg(fire),
-    hitIds: new Set(), active: true,
+    hitIds: new Set(), active: true, didHit: false,
   });
 }
 
@@ -373,8 +373,11 @@ function checkHits(){
       if(Math.abs(a.x-m.x)<bw*.52&&Math.abs(a.y-my)<bh*.52){
         a.hitIds.add(m.id);
         if(!a.pierce) a.active=false;
-        const mult=1+Math.min(_combo,10)*.3;
-        const pts=Math.round(row.pts*a.dmg*mult);
+        // 명중 추적 (화살당 최초 1회만)
+        if(!a.didHit){ a.didHit=true; _arrowsHit++; }
+        // 공격력 곱 제거: row.pts × 콤보배율만 사용
+        const mult=1+Math.min(_combo,15)*.15;
+        const pts=Math.round(row.pts*mult);
         m.hp-=a.dmg; _combo++; _comboTs=now; _score+=pts;
         if(_combo>_maxCombo) _maxCombo=_combo;
         _effects.push({type:'score',text:'+'+pts,x:m.x,y:gy-bh-8,vy:-1.2,alpha:1});
@@ -382,7 +385,7 @@ function checkHits(){
         if(_combo>1&&_combo%5===0)
           _effects.push({type:'msg',text:`🔥${_combo} COMBO!`,x:LW/2,y:LH*.38,vy:-.5,alpha:1.4,big:true});
         if(m.hp<=0){
-          m.dead=true; m.frame=0; m.fTime=0;
+          m.dead=true; m.frame=0; m.fTime=0; _killCount++;
           const isDragon=m.key==='dragon';
           addHitParticles(m.x,gy-bh*.55,true,isDragon);
           triggerShake(isDragon?12:6);
@@ -521,12 +524,33 @@ function gameOver(){
 async function endGame(){
   _phase='result'; cancelAnimationFrame(_raf); _raf=null;
   $('cannonWarning')?.classList.remove('alert');
-  const penalty = _arrowsFired * ARROW_PENALTY;
+  const missed   = Math.max(0, _arrowsFired - _arrowsHit);
+  const penalty  = missed * MISS_PENALTY;
   const finalScore = Math.max(0, _score - penalty);
-  const gp=await awardScore(finalScore);
-  $('resFinalScore').textContent=finalScore.toLocaleString()+'점';
-  $('resGP').textContent=_freeMode?'🆓 무료 입장 (보상 없음)':gp>0?`+${gp} GP 획득!`:'GP 없음 (800점 미달)';
-  $('resInfo').textContent=`원점수 ${_score.toLocaleString()} − 화살 ${_arrowsFired}발(−${penalty.toLocaleString()}pt) · 최고콤보 ×${_maxCombo}`;
+  const accuracy = _arrowsFired > 0 ? Math.round(_arrowsHit / _arrowsFired * 100) : 0;
+  const gp = await awardScore(finalScore);
+
+  $('resFinalScore').textContent = finalScore.toLocaleString() + 'pts';
+
+  const gpEl = $('resGP');
+  if (_freeMode) {
+    gpEl.textContent = '🆓 Free play — no reward';
+    gpEl.style.color = '#6b7280';
+  } else if (gp > 0) {
+    gpEl.innerHTML = `+${gp} GP`;
+    gpEl.style.color = '#22c55e';
+  } else {
+    gpEl.textContent = 'No GP — reach 400pts to earn';
+    gpEl.style.color = '#ef4444';
+  }
+
+  // 상세 분석
+  const tier = finalScore>=6000?'🏆 Legend':finalScore>=3500?'⭐ Excellent':finalScore>=2000?'👍 Good':finalScore>=1000?'🙂 Average':finalScore>=400?'🌱 Beginner':'💀 No reward';
+  $('resInfo').innerHTML =
+    `${tier}<br>` +
+    `Kills <b>${_killCount}</b> · Accuracy <b>${accuracy}%</b> (${_arrowsHit}/${_arrowsFired}) · Max Combo ×<b>${_maxCombo}</b><br>` +
+    `<span style="color:#6b7280;font-size:11px">Raw ${_score.toLocaleString()} − miss penalty ${penalty.toLocaleString()} = ${finalScore.toLocaleString()}</span>`;
+
   showPhase('result');
 }
 
@@ -640,7 +664,7 @@ function buildSkillBar(){
 // ── 카운트다운 / 시작 ─────────────────────────────────────────────────────────
 function startCountdown(){
   if(!_selectedSkills.length) _selectedSkills=['triple','fire','rapidfire'];
-  _score=0;_combo=0;_maxCombo=0;_comboTs=0;_arrowsFired=0;
+  _score=0;_combo=0;_maxCombo=0;_comboTs=0;_arrowsFired=0;_arrowsHit=0;_killCount=0;
   _monsters=[];_arrows=[];_effects=[];
   _rowCount=new Array(ROWS.length).fill(0);
   _spawnNext=new Array(ROWS.length).fill(0);
