@@ -682,6 +682,8 @@ async function init(){
   initInput(); initFullscreen();
   window.addEventListener('resize',resizeCanvas); resizeCanvas();
   await loadAssets();
+  // 에셋 로드 완료 즉시 로비 표시 — Firebase auth 응답 대기 없이 버튼 즉시 활성화
+  showPhase('lobby');
   $('btnEnter')?.addEventListener('click',async()=>{
     if(!await deductFee()){alert('GP가 부족합니다');return;}
     _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 선택';$('skConfirm').disabled=false;showPhase('skill');
@@ -712,11 +714,12 @@ async function init(){
   }
   _bindHdrLogin();
 
+  // auth는 백그라운드에서 GP·헤더만 업데이트 (화면 전환 없음)
   onAuthStateChanged(auth,async user=>{
     _uid=user?.uid||null;
     await loadPlayer();
     _updateHdr(user);
-    showPhase('lobby');
+    if(_phase==='loading') showPhase('lobby');
   });
 }
 init();
