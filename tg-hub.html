@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"/>
   <title>JumpDAO</title>
   <meta name="robots" content="noindex"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -424,6 +427,13 @@
     }
   });
 
+  // 게임에서 돌아올 때 캐시된 이전 버전 방지 — visibilitychange로 재로드
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && _uid) {
+      loadUser(_uid);
+    }
+  });
+
   if (isTelegramMiniApp()) {
     try {
       const result = await loginWithTelegram();
@@ -433,7 +443,6 @@
       }
     } catch { /* 조용히 실패 */ }
   } else {
-    // 비-텔레그램 환경(PC 브라우저 직접 접속) — 로그인 없이 UI만 표시
     elLv.textContent = 'Lv —';
     elGp.textContent = '— GP';
   }
