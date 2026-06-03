@@ -55,9 +55,7 @@ function clamp(v,lo,hi){ return v<lo?lo:v>hi?hi:v; }
 
 // ── 안개 그리드 ───────────────────────────────────────────────────────────
 export function makeFogGrid(){
-  const g=new Uint8Array(FOG_COLS*FOG_ROWS).fill(1);
-  _doReveal(g,CASTLE_WX,CASTLE_WY,INIT_REVEAL_R);
-  return g;
+  return new Uint8Array(FOG_COLS*FOG_ROWS).fill(0); // 안개 없음 — 전체 공개
 }
 function _idx(c,r){ return r*FOG_COLS+c; }
 function _wToC(wx,wy){

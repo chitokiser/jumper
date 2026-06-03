@@ -133,12 +133,13 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
 .dg-pot-btn:disabled{opacity:.35}
 .dg-pot-cnt{font-size:9.5px;font-weight:700;color:#4ade80}
 .dg-toast{
+  display:block;writing-mode:horizontal-tb;direction:ltr;
   position:absolute;top:46px;left:50%;transform:translateX(-50%);
   background:rgba(15,8,28,.88);border:1px solid rgba(124,58,237,.45);
   color:#e2e8f0;font-size:11px;font-weight:700;
-  padding:4px 14px;border-radius:20px;line-height:1.3;
+  padding:4px 14px;border-radius:20px;line-height:1.6;
   pointer-events:none;white-space:nowrap;z-index:10;
-  width:auto;height:auto;max-width:85%;overflow:hidden;text-overflow:ellipsis;
+  max-width:90%;text-align:center;
   box-shadow:0 2px 12px rgba(0,0,0,.55);
 }
 .dg-toast.hidden{display:none}
@@ -206,7 +207,7 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
     q('dgExitBtn')?.addEventListener('click',()=>{if(confirm('던전에서 나가시겠습니까?'))this.close();});
     q('dgReEnterBtn')?.addEventListener('click',()=>this._show('dgEntry'));
     q('dgLeaveBtn')?.addEventListener('click',()=>this.close());
-    q('dgHpPotBtn')?.addEventListener('click',()=>this._usePot('hp'));
+    q('dgHpPotBtn')?.addEventListener('click',e=>{e.stopPropagation();this._usePot('hp');});
     q('dgMpPotBtn')?.addEventListener('click',e=>{e.stopPropagation();this._usePot('mp');});
     this._canvas.addEventListener('click',e=>{e.stopPropagation();this._onClick(e);});
     this._canvas.addEventListener('touchend',e=>{e.stopPropagation();e.preventDefault();if(e.changedTouches[0])this._onClick(e.changedTouches[0]);},{passive:false});
@@ -335,10 +336,12 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
       }
     }
 
-    this._skills={fire:0,ice:0,bolt:0,meteor:0,wind:0};
+    this._skills={fire:99,ice:99,bolt:99,meteor:99,wind:99}; // 항상 사용 가능 (MP 소모)
     this._skillCds={fire:0,ice:0,bolt:0,meteor:0,wind:0};
     const SKILL_CDS={fire:8,ice:10,bolt:7,meteor:15,wind:20};
+    const SKILL_MP={fire:30,ice:40,bolt:25,meteor:60,wind:50};
     this._SKILL_CDS=SKILL_CDS;
+    this._SKILL_MP=SKILL_MP;
     this._projs=[]; this._floats=[]; this._effects=[];
     this._drops=[];
     this._dying=false;
@@ -672,10 +675,13 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
   // ── 스킬 ─────────────────────────────────────────────────────────────────
   _useSkill(id) {
     if (!this._running||!this._p) return;
-    if (!(this._skills[id]>0)){this._toast(`${id} 스킬 없음`);return;}
-    if ((this._skillCds[id]||0)>0){this._toast('쿨다운 중');return;}
+    if ((this._skillCds[id]||0)>0){this._toast('⏳ 쿨다운 중');return;}
+    const mpCost=this._SKILL_MP?.[id]||30;
+    if (this._p.mp<mpCost){this._toast(`💧 MP 부족 (${mpCost} 필요)`);return;}
     const p=this._p, s=this._SKILL_CDS[id], now=Date.now();
-    this._skills[id]--; this._skillCds[id]=s; this._sfx('skill');
+    p.mp=Math.max(0,p.mp-mpCost); // MP 차감
+    this._skillCds[id]=s;
+    this._sfxSkill(id); // 스킬별 사운드
     const range=30;
     if (id==='fire') {
       this._effects.push({type:'fire',x:p.x,y:p.y,r:range,at:now,dur:700,color:'#f97316'});

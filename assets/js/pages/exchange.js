@@ -1,5 +1,5 @@
 // /assets/js/pages/exchange.js
-// JUMP 토큰 거래소 UI + 가격 차트
+// 토큰거래소 — HEX↔JUMP 거래 + 차트 (스왑 추가분은 exchange.swap.js)
 
 import { auth, functions } from '../firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -320,6 +320,9 @@ async function loadStatus() {
       renderChart(_status.chart);
     }
 
+    // HEX 잔액을 스왑 패널에 동기화
+    if (window.__updateSwapHexBal) window.__updateSwapHexBal(fmtHex(_status.hexBalance));
+
     setText('exState', '');
   } catch (err) {
     setText('exState', '오류: ' + (err.message || '알 수 없는 오류'));
@@ -506,7 +509,9 @@ async function loadCoinExStatus() {
     const rate = Number(_coinStatus.coinPerJump || 100);
     setText('ceRate',        rate + ' 코인 = 1 JUMP');
     setText('ceContractBal', fmtJump(_coinStatus.contractJumpBalance || '0') + ' JUMP');
-    setText('ceUserGold',    Number(_coinStatus.userGold || 0).toLocaleString() + ' 코인');
+    const goldAmt = Number(_coinStatus.userGold || 0);
+    setText('ceUserGold', goldAmt.toLocaleString() + ' 코인');
+    setText('ceGoldBal',  goldAmt.toLocaleString());
     setText('ceUserJump',    fmtJump(_coinStatus.userJumpBalance || '0') + ' JUMP');
     setText('ceWalletAddr',  _coinStatus.walletAddress || '지갑 없음');
     const enabledEl = $('ceSaleEnabled');
@@ -625,6 +630,8 @@ onAuthStateChanged(auth, async (user) => {
   bindClaim();
   bindCoinBuy();
   bindCoinSell();
+  window.__loadCoinExStatus = loadCoinExStatus;
+  window.__loadStatus = loadStatus;
 
   await Promise.all([loadStatus(), loadCoinExStatus()]);
 });

@@ -87,8 +87,6 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
   _drawPOIs(pois);
   _drawCastleHP(castleHp,maxCastleHp);
   if(walls) _drawWalls(walls);
-  _drawFog(fogGrid, defenders);
-  _drawRevealAnims();
 
   // 몬스터 이동 경로 안개 걷힘 — render단에서 처리 (world coords만 사용)
   // (실제 revealFog 호출은 conquest.js _update에서 처리됨)

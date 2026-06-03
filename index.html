@@ -308,23 +308,10 @@
         <span style="font-size:0.9em;opacity:.85;" data-i18n="hero_sub">현실이 곧 게임맵이다 — JumpDAO</span>
       </p>
       <div class="hero-actions">
-        <div class="game-menu-wrap">
-          <button class="btn btn--primary hero-cta-btn game-menu-btn" id="gameMenuBtn" type="button">
-            🎮 <span data-i18n="play_game">게임하기</span> ▾
-          </button>
-          <div class="game-menu-dropdown" id="gameMenuDropdown" hidden>
-            <a class="game-menu-item" href="/merchants.html">🗺️ <span data-i18n="treasure_label">보물찾기&숨기기</span></a>
-            <a class="game-menu-item" href="/monsterrace.html">🛹 몬스터레이스</a>
-            <a class="game-menu-item" href="/bow.html">🏹 화살쏘기</a>
-          </div>
-        </div>
+        <a class="btn btn--primary hero-cta-btn" href="/merchants.html">
+          🎮 <span data-i18n="play_game">게임하기</span>
+        </a>
       </div>
-      <style>
-        .game-menu-wrap{position:relative;display:inline-block;}
-        .game-menu-dropdown{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:6px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.45);z-index:200;}
-        .game-menu-item{display:flex;align-items:center;gap:8px;padding:10px 14px;color:#f1f5f9;font-size:0.9rem;font-weight:600;text-decoration:none;border-radius:8px;transition:background .15s;}
-        .game-menu-item:hover{background:rgba(255,255,255,.1);}
-      </style>
     </div>
   </section>
 

@@ -1,0 +1,467 @@
+<!-- /admin_exchange.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>토큰거래소 관리 - JumpDAO Admin</title>
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <script src="/assets/js/partials.js" defer></script>
+
+  <style>
+    body { background: #0b0f1a; }
+    .adex-wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+    .adex-title { font-size: 20px; font-weight: 800; color: #e2e8f0; margin: 0 0 4px; }
+    .adex-sub   { font-size: 12px; color: #475569; margin: 0 0 24px; }
+
+    /* ── 섹션 카드 ── */
+    .adex-card {
+      background: #0f1521; border: 1px solid #1e2840;
+      border-radius: 10px; padding: 20px; margin-bottom: 20px;
+    }
+    .adex-card-title {
+      font-size: 12px; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: .8px;
+      margin: 0 0 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .adex-card-title .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; flex-shrink: 0;
+    }
+
+    /* ── 환율 그리드 ── */
+    .rate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .rate-item {
+      background: #111b30; border: 1px solid #1e2840;
+      border-radius: 8px; padding: 14px;
+    }
+    .rate-pair { font-size: 12px; font-weight: 700; color: #e2e8f0; margin-bottom: 10px; }
+    .rate-field { margin-bottom: 8px; }
+    .rate-label { font-size: 10px; color: #475569; margin-bottom: 3px; }
+    .rate-input {
+      width: 100%; box-sizing: border-box;
+      background: #0b0f1a; border: 1px solid #1e2840;
+      border-radius: 5px; color: #e2e8f0; font-size: 13px;
+      padding: 7px 9px; outline: none; font-family: monospace;
+    }
+    .rate-input:focus { border-color: #3b82f6; }
+    .rate-toggle {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .rate-toggle input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+    .rate-toggle label { font-size: 11px; color: #94a3b8; cursor: pointer; }
+    .rate-save {
+      width: 100%; padding: 8px; background: linear-gradient(135deg,#2563eb,#3b82f6);
+      border: none; border-radius: 6px; color: #fff; font-size: 11px;
+      font-weight: 700; cursor: pointer;
+    }
+    .rate-save:hover { background: linear-gradient(135deg,#1d4ed8,#2563eb); }
+    .rate-save:disabled { opacity: .4; cursor: not-allowed; }
+    .rate-status { font-size: 10px; margin-top: 5px; min-height: 14px; }
+    .rate-status.ok  { color: #22c55e; }
+    .rate-status.err { color: #ef4444; }
+
+    /* ── 거래내역 테이블 ── */
+    .adex-filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .adex-select {
+      background: #111b30; border: 1px solid #1e2840; border-radius: 6px;
+      color: #94a3b8; font-size: 11px; padding: 6px 10px; outline: none; cursor: pointer;
+    }
+    .adex-input {
+      background: #111b30; border: 1px solid #1e2840; border-radius: 6px;
+      color: #e2e8f0; font-size: 11px; padding: 6px 10px; outline: none;
+      font-family: monospace;
+    }
+    .adex-btn {
+      background: #1e2840; border: 1px solid #2d3d5a; color: #94a3b8;
+      font-size: 11px; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    }
+    .adex-btn:hover { background: #2d3d5a; color: #e2e8f0; }
+    .adex-btn.primary { background: linear-gradient(135deg,#2563eb,#3b82f6); border-color: transparent; color: #fff; }
+    .adex-tbl-wrap { overflow-x: auto; border: 1px solid #1e2840; border-radius: 8px; }
+    .adex-tbl { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 760px; }
+    .adex-tbl th {
+      color: #334155; font-weight: 700; padding: 9px 10px;
+      border-bottom: 1px solid #1e2840; text-align: left;
+      white-space: nowrap; background: #0b0f1a;
+      font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .adex-tbl td {
+      color: #64748b; padding: 8px 10px;
+      border-bottom: 1px solid #111b30; font-family: monospace;
+    }
+    .adex-tbl tr:last-child td { border-bottom: none; }
+    .adex-tbl tr:hover td { background: #0f1521; }
+    .adex-badge {
+      display: inline-block; padding: 2px 7px; border-radius: 4px;
+      font-size: 10px; font-weight: 600; font-family: sans-serif;
+    }
+    .adex-badge.ok      { background: rgba(34,197,94,.1);  color: #22c55e; }
+    .adex-badge.pending { background: rgba(245,158,11,.1); color: #f59e0b; }
+    .adex-badge.fail    { background: rgba(239,68,68,.1);  color: #ef4444; }
+    .adex-approve-btn {
+      background: #059669; border: none; border-radius: 4px;
+      color: #fff; font-size: 10px; padding: 3px 8px; cursor: pointer;
+    }
+    .adex-approve-btn:hover { background: #047857; }
+    .adex-more {
+      display: block; width: 100%; margin-top: 10px;
+      background: #1e2840; border: 1px solid #2d3d5a;
+      color: #64748b; font-size: 11px; padding: 9px;
+      border-radius: 6px; cursor: pointer;
+    }
+    .adex-more:hover { background: #2d3d5a; color: #94a3b8; }
+    .adex-state { font-size: 11px; color: #475569; margin-bottom: 12px; min-height: 16px; }
+    .adex-state.err { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <div class="adex-wrap">
+      <h1 class="adex-title">토큰거래소 관리</h1>
+      <p class="adex-sub">환율 설정 · 교환쌍 활성화 · 거래내역 조회</p>
+
+      <div id="adexState" class="adex-state">권한 확인 중...</div>
+
+      <!-- ① 환율 관리 ───────────────────────────────── -->
+      <div class="adex-card" id="rateSection" style="display:none;">
+        <div class="adex-card-title"><span class="dot"></span> 환율 설정</div>
+        <div class="rate-grid">
+
+          <!-- HEX ↔ JUMP -->
+          <div class="rate-item">
+            <div class="rate-pair">HEX ↔ JUMP</div>
+            <div class="rate-field">
+              <div class="rate-label">환율 (컨트랙트 자동 결정)</div>
+              <input class="rate-input" id="rateHexJump" value="컨트랙트" disabled />
+            </div>
+            <div class="rate-toggle">
+              <input type="checkbox" id="enabledHexJump" checked disabled />
+              <label for="enabledHexJump">항상 활성화 (컨트랙트 상태에 따름)</label>
+            </div>
+            <div class="rate-status" id="statusHexJump" style="color:#334155;">컨트랙트 관리</div>
+          </div>
+
+          <!-- JUMP ↔ 게임코인 -->
+          <div class="rate-item">
+            <div class="rate-pair">JUMP ↔ 게임코인</div>
+            <div class="rate-field">
+              <div class="rate-label">환율 (게임코인 / JUMP)</div>
+              <input type="number" class="rate-input" id="rateJumpCoin" placeholder="10" min="1" step="1" />
+            </div>
+            <div class="rate-field">
+              <div class="rate-label">수수료 (%)</div>
+              <input type="number" class="rate-input" id="feeJumpCoin" placeholder="0" min="0" max="10" step="0.1" />
+            </div>
+            <div class="rate-toggle">
+              <input type="checkbox" id="enabledJumpCoin" />
+              <label for="enabledJumpCoin">교환 활성화</label>
+            </div>
+            <button class="rate-save" id="btnSaveJumpCoin" type="button">저장</button>
+            <div class="rate-status" id="statusJumpCoin"></div>
+          </div>
+
+          <!-- TON ↔ 게임코인 -->
+          <div class="rate-item">
+            <div class="rate-pair">TON ↔ 게임코인</div>
+            <div class="rate-field">
+              <div class="rate-label">환율 (게임코인 / TON)</div>
+              <input type="number" class="rate-input" id="rateTonCoin" placeholder="500" min="1" step="1" />
+            </div>
+            <div class="rate-field">
+              <div class="rate-label">수수료 (%)</div>
+              <input type="number" class="rate-input" id="feeTonCoin" placeholder="1" min="0" max="10" step="0.1" />
+            </div>
+            <div class="rate-toggle">
+              <input type="checkbox" id="enabledTonCoin" />
+              <label for="enabledTonCoin">교환 활성화</label>
+            </div>
+            <button class="rate-save" id="btnSaveTonCoin" type="button">저장</button>
+            <div class="rate-status" id="statusTonCoin"></div>
+          </div>
+
+          <!-- HEX ↔ TON -->
+          <div class="rate-item">
+            <div class="rate-pair">HEX ↔ TON</div>
+            <div class="rate-field">
+              <div class="rate-label">환율 (TON / HEX)</div>
+              <input type="number" class="rate-input" id="rateHexTon" placeholder="0.02" min="0.0001" step="0.0001" />
+            </div>
+            <div class="rate-field">
+              <div class="rate-label">수수료 (%)</div>
+              <input type="number" class="rate-input" id="feeHexTon" placeholder="1" min="0" max="10" step="0.1" />
+            </div>
+            <div class="rate-toggle">
+              <input type="checkbox" id="enabledHexTon" />
+              <label for="enabledHexTon">교환 활성화</label>
+            </div>
+            <button class="rate-save" id="btnSaveHexTon" type="button">저장</button>
+            <div class="rate-status" id="statusHexTon"></div>
+          </div>
+
+        </div>
+      </div><!-- /rateSection -->
+
+      <!-- ② 거래내역 조회 ──────────────────────────── -->
+      <div class="adex-card" id="histSection" style="display:none;">
+        <div class="adex-card-title"><span class="dot" style="background:#22c55e;"></span> 거래내역 조회</div>
+        <div class="adex-filters">
+          <input type="text" id="adexFilterUid" class="adex-input" placeholder="유저ID 검색" style="width:200px;" />
+          <select id="adexFilterPair" class="adex-select">
+            <option value="">전체 교환</option>
+            <option value="hex_jump">HEX ↔ JUMP</option>
+            <option value="jump_gamecoin">JUMP ↔ 게임코인</option>
+            <option value="ton_gamecoin">TON ↔ 게임코인</option>
+            <option value="hex_ton">HEX ↔ TON</option>
+          </select>
+          <select id="adexFilterStatus" class="adex-select">
+            <option value="">전체 상태</option>
+            <option value="completed">완료</option>
+            <option value="pending">대기</option>
+            <option value="failed">실패</option>
+          </select>
+          <button class="adex-btn primary" id="btnAdexSearch" type="button">🔍 검색</button>
+        </div>
+        <div class="adex-tbl-wrap">
+          <table class="adex-tbl">
+            <thead>
+              <tr>
+                <th>거래일시</th>
+                <th>유저ID</th>
+                <th>교환종류</th>
+                <th>교환수량</th>
+                <th>수령수량</th>
+                <th>수수료</th>
+                <th>상태</th>
+                <th>처리</th>
+              </tr>
+            </thead>
+            <tbody id="adexTblBody">
+              <tr><td colspan="8" style="text-align:center;color:#334155;padding:24px;">검색 후 표시됩니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="adex-more" id="btnAdexMore" style="display:none;" type="button">더 보기</button>
+      </div><!-- /histSection -->
+
+    </div>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module">
+    import { auth, functions, db } from '/assets/js/firebase-init.js';
+    import { onAuthStateChanged }  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+    import { httpsCallable }       from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+    import { doc, getDoc, collection, query, where, orderBy, limit, startAfter, getDocs }
+                                   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+    const $ = id => document.getElementById(id);
+    function setState(msg, isErr = false) {
+      const el = $('adexState');
+      if (!el) return;
+      el.textContent = msg;
+      el.className = 'adex-state' + (isErr ? ' err' : '');
+    }
+    function setRateStatus(id, msg, ok = true) {
+      const el = $(id);
+      if (!el) return;
+      el.textContent = msg;
+      el.className = 'rate-status ' + (ok ? 'ok' : 'err');
+    }
+
+    const PAIR_LABELS = {
+      buyJump:'HEX → JUMP', sellJump:'JUMP → HEX',
+      stakeJump:'JUMP 스테이킹', unstakeJump:'JUMP 언스테이킹', claimDividend:'배당 청구',
+      buyJumpWithCoins:'게임코인 → JUMP', sellJumpForCoins:'JUMP → 게임코인',
+      swap_ton_to_coin:'TON → 게임코인', swap_coin_to_ton:'게임코인 → TON',
+      swap_hex_to_ton:'HEX → TON', swap_ton_to_hex:'TON → HEX',
+    };
+    const STATUS_CLS = { completed:'ok', pending:'pending', failed:'fail' };
+
+    function fmtDate(iso) {
+      if (!iso) return '–';
+      return new Date(iso).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    }
+
+    // ── 환율 로드 ─────────────────────────────────────
+    async function loadRates() {
+      try {
+        const fn  = httpsCallable(functions, 'getSwapRates');
+        const res = await fn();
+        const r   = res.data || {};
+        const jc  = r.jump_gamecoin || {};
+        const tc  = r.ton_gamecoin  || {};
+        const ht  = r.hex_ton       || {};
+        if ($('rateJumpCoin'))  $('rateJumpCoin').value  = jc.rate    ?? 10;
+        if ($('feeJumpCoin'))   $('feeJumpCoin').value   = jc.fee     ?? 0;
+        if ($('enabledJumpCoin')) $('enabledJumpCoin').checked = jc.enabled !== false;
+        if ($('rateTonCoin'))   $('rateTonCoin').value   = tc.rate    ?? 500;
+        if ($('feeTonCoin'))    $('feeTonCoin').value    = tc.fee     ?? 1;
+        if ($('enabledTonCoin')) $('enabledTonCoin').checked = !!tc.enabled;
+        if ($('rateHexTon'))    $('rateHexTon').value    = ht.rate    ?? 0.02;
+        if ($('feeHexTon'))     $('feeHexTon').value     = ht.fee     ?? 1;
+        if ($('enabledHexTon')) $('enabledHexTon').checked = !!ht.enabled;
+      } catch (err) {
+        setState('환율 로드 실패: ' + err.message, true);
+      }
+    }
+
+    // ── 환율 저장 ─────────────────────────────────────
+    function bindRateSave(btnId, statusId, pair, rateId, feeId, enabledId) {
+      const btn = $(btnId);
+      if (!btn) return;
+      btn.onclick = async () => {
+        btn.disabled = true;
+        try {
+          const fn = httpsCallable(functions, 'adminSetSwapRate');
+          await fn({
+            pair,
+            rate:    parseFloat($(rateId)?.value    || '0'),
+            fee:     parseFloat($(feeId)?.value     || '0'),
+            enabled: $(enabledId)?.checked ?? false,
+          });
+          setRateStatus(statusId, '저장 완료 ✓', true);
+          setTimeout(() => setRateStatus(statusId, '', true), 3000);
+        } catch (err) {
+          setRateStatus(statusId, '실패: ' + err.message, false);
+        } finally {
+          btn.disabled = false;
+        }
+      };
+    }
+
+    // ── 거래내역 (관리자: 전체 users) ────────────────
+    let _lastSnap = null;
+    let _hasMore  = false;
+
+    async function searchHistory(reset = false) {
+      if (reset) _lastSnap = null;
+      const uidFilter    = $('adexFilterUid')?.value.trim()   || '';
+      const pairFilter   = $('adexFilterPair')?.value         || '';
+      const statusFilter = $('adexFilterStatus')?.value       || '';
+
+      const pairMap = {
+        hex_jump:      ['buyJump','sellJump'],
+        jump_gamecoin: ['buyJumpWithCoins','sellJumpForCoins'],
+        ton_gamecoin:  ['swap_ton_to_coin','swap_coin_to_ton'],
+        hex_ton:       ['swap_hex_to_ton','swap_ton_to_hex'],
+      };
+
+      try {
+        let q = collection(db, 'transactions');
+        const constraints = [orderBy('createdAt', 'desc'), limit(30)];
+        if (uidFilter) constraints.unshift(where('uid', '==', uidFilter));
+        if (_lastSnap) constraints.push(startAfter(_lastSnap));
+        const snap = await getDocs(query(q, ...constraints));
+        _lastSnap = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
+        _hasMore  = snap.docs.length === 30;
+
+        let items = snap.docs.map(d => ({ id: d.id, ...d.data(),
+          createdAt: d.data().createdAt?.toDate?.()?.toISOString() || null }));
+
+        if (pairFilter && pairMap[pairFilter]) {
+          items = items.filter(it => pairMap[pairFilter].includes(it.type));
+        }
+        if (statusFilter) {
+          items = items.filter(it => (it.status || 'completed') === statusFilter);
+        }
+
+        renderAdexRows(items, reset);
+        $('btnAdexMore').style.display = _hasMore ? '' : 'none';
+      } catch (err) {
+        $('adexTblBody').innerHTML = `<tr><td colspan="8" style="color:#ef4444;padding:16px;">오류: ${err.message}</td></tr>`;
+      }
+    }
+
+    function renderAdexRows(items, reset) {
+      const tbody = $('adexTblBody');
+      if (!tbody) return;
+      if (!items.length && reset) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#334155;padding:20px;">결과 없음</td></tr>';
+        return;
+      }
+      const rows = items.map(it => {
+        const label  = PAIR_LABELS[it.type] || it.type || '–';
+        const status = it.status || 'completed';
+        const cls    = STATUS_CLS[status] || '';
+        const stLabel = { completed:'완료', pending:'대기', failed:'실패' }[status] || status;
+        const from   = it.fromAmount != null ? Number(it.fromAmount).toLocaleString(undefined,{maximumFractionDigits:4})
+          : (it.hexCost ? (Number(it.hexCost)/1e18).toFixed(4) : (it.coinAmount||it.jumpAmount||'–'));
+        const to     = it.toAmount != null ? Number(it.toAmount).toLocaleString(undefined,{maximumFractionDigits:4})
+          : (it.jumpAmount||it.hexAmount||it.coinAmount||'–');
+        const fee    = it.feeAmount != null ? Number(it.feeAmount).toFixed(4) : (it.rate!=null?it.rate+'%':'–');
+        const approveBtn = status === 'pending'
+          ? `<button class="adex-approve-btn" data-id="${it.id}" data-swap="${it.swapId||''}">승인</button>`
+          : '–';
+        return `<tr>
+          <td>${fmtDate(it.createdAt)}</td>
+          <td style="font-size:10px;">${(it.uid||'').slice(0,10)}…</td>
+          <td style="font-family:sans-serif;color:#94a3b8;">${label}</td>
+          <td>${from}</td>
+          <td>${to}</td>
+          <td>${fee}</td>
+          <td><span class="adex-badge ${cls}">${stLabel}</span></td>
+          <td>${approveBtn}</td>
+        </tr>`;
+      });
+      if (reset) {
+        tbody.innerHTML = rows.join('');
+      } else {
+        tbody.insertAdjacentHTML('beforeend', rows.join(''));
+      }
+
+      // 승인 버튼 이벤트
+      tbody.querySelectorAll('.adex-approve-btn').forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn.dataset.id;
+          if (!id || !confirm('이 거래를 승인(완료) 처리하시겠습니까?')) return;
+          btn.disabled = true;
+          try {
+            const { doc: firestoreDoc, updateDoc } = await import(
+              'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'
+            );
+            await updateDoc(firestoreDoc(db, 'transactions', id), { status: 'completed' });
+            btn.closest('tr').querySelector('.adex-badge').textContent = '완료';
+            btn.closest('tr').querySelector('.adex-badge').className = 'adex-badge ok';
+            btn.remove();
+          } catch (err) {
+            alert('승인 실패: ' + err.message);
+            btn.disabled = false;
+          }
+        };
+      });
+    }
+
+    // ── 초기화 ───────────────────────────────────────
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { setState('로그인이 필요합니다.', true); return; }
+
+      // 관리자 확인
+      try {
+        const admSnap = await getDoc(doc(db, 'admins', user.uid));
+        if (!admSnap.exists()) { setState('관리자 권한이 없습니다.', true); return; }
+      } catch (err) {
+        setState('권한 확인 실패: ' + err.message, true);
+        return;
+      }
+
+      setState('');
+      $('rateSection').style.display = '';
+      $('histSection').style.display = '';
+
+      await loadRates();
+
+      bindRateSave('btnSaveJumpCoin', 'statusJumpCoin', 'jump_gamecoin', 'rateJumpCoin', 'feeJumpCoin', 'enabledJumpCoin');
+      bindRateSave('btnSaveTonCoin',  'statusTonCoin',  'ton_gamecoin',  'rateTonCoin',  'feeTonCoin',  'enabledTonCoin');
+      bindRateSave('btnSaveHexTon',   'statusHexTon',   'hex_ton',       'rateHexTon',   'feeHexTon',   'enabledHexTon');
+
+      $('btnAdexSearch').addEventListener('click', () => searchHistory(true));
+      $('btnAdexMore').addEventListener('click',   () => searchHistory(false));
+    });
+  </script>
+</body>
+</html>

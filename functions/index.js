@@ -26,12 +26,16 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // ── Firebase Secret Manager ──────────────────────────────────────────────────
-const walletSecret       = defineSecret('WALLET_MASTER_SECRET');
-const adminKeySecret     = defineSecret('ADMIN_PRIVATE_KEY');
-const extApiSecret       = defineSecret('PARTNER_API_KEY');
-const geminiSecret       = defineSecret('GEMINI_API_KEY');
-const exchangeAddrSecret = defineSecret('JUMP_AUTO_EXCHANGE_ADDRESS');
-const telegramBotSecret  = defineSecret('TELEGRAM_BOT_TOKEN');
+const walletSecret        = defineSecret('WALLET_MASTER_SECRET');
+const adminKeySecret      = defineSecret('ADMIN_PRIVATE_KEY');
+const extApiSecret        = defineSecret('PARTNER_API_KEY');
+const geminiSecret        = defineSecret('GEMINI_API_KEY');
+const exchangeAddrSecret  = defineSecret('JUMP_AUTO_EXCHANGE_ADDRESS');
+const telegramBotSecret   = defineSecret('TELEGRAM_BOT_TOKEN');
+const tonMnemonicSecret   = defineSecret('TON_WALLET_MNEMONIC');
+const tonDepositSecret    = defineSecret('TON_DEPOSIT_ADDRESS');
+const tonCenterKeySecret  = defineSecret('TON_CENTER_API_KEY');
+const tonPrivKeySecret    = defineSecret('TON_PRIVATE_KEY');
 
 // ── 핸들러 ───────────────────────────────────────────────────────────────────
 const onboarding             = require('./handlers/onboarding');
@@ -56,6 +60,7 @@ const starterH               = require('./handlers/starter');
 const userPlaceH             = require('./handlers/userPlace');
 const expSyncH               = require('./handlers/expSync');
 const telegramH              = require('./handlers/telegram');
+const tonPaymentH            = require('./handlers/tonPayment');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -755,6 +760,95 @@ exports.claimJumpDividend = onCall(
     logger.info('claimJumpDividend', { uid, hexAmount: result.hexAmount, txHash: result.txHash });
     return result;
   })
+);
+
+// ── 토큰거래소 — 스왑 환율 / 거래내역 / TON·HEX 교환 ──────────────────────────
+
+// 스왑 환율 조회 (전체 사용자)
+exports.getSwapRates = onCall(
+  wrapError(async (request) => {
+    requireAuth(request);
+    return await exchangeH.getSwapRates();
+  })
+);
+
+// 거래내역 조회 (페이지네이션)
+exports.getExchangeHistory = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await exchangeH.getExchangeHistory(uid, request.data || {});
+  })
+);
+
+// TON ↔ 게임코인 교환 신청
+exports.requestTonCoinSwap = onCall(
+  { secrets: [tonDepositSecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.TON_DEPOSIT_ADDRESS = tonDepositSecret.value();
+    const { direction, amount, tonAddress } = request.data || {};
+    const result = await exchangeH.requestTonCoinSwap(uid, { direction, amount, tonAddress });
+    logger.info('requestTonCoinSwap', { uid, direction, amount, swapId: result.swapId });
+    return result;
+  })
+);
+
+// HEX ↔ TON 교환 신청
+exports.requestHexTonSwap = onCall(
+  { secrets: [walletSecret, adminKeySecret, tonPrivKeySecret, tonCenterKeySecret] },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    process.env.ADMIN_PRIVATE_KEY  = adminKeySecret.value();
+    process.env.TON_PRIVATE_KEY    = tonPrivKeySecret.value();
+    process.env.TON_CENTER_API_KEY = tonCenterKeySecret.value();
+    const { direction, amount, tonAddress, senderAddress, tonNano, sentAt } = request.data || {};
+    const result = await exchangeH.requestHexTonSwap(uid, {
+      direction, amount, tonAddress,
+      senderAddress, tonNano, sentAt,
+      masterSecret: walletSecret.value(),
+    });
+    logger.info('requestHexTonSwap', { uid, direction, amount, swapId: result.swapId, status: result.status });
+    return result;
+  })
+);
+
+// 관리자 — 스왑 환율 설정
+exports.adminSetSwapRate = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+    return await exchangeH.adminSetSwapRate(uid, request.data || {});
+  })
+);
+
+// ── TON 자동 처리 ─────────────────────────────────────────────────────────────
+
+// 플랫폼 TON 잔액 조회 (클라이언트 표시용)
+exports.getPlatformTonInfo = onCall(
+  { secrets: [tonMnemonicSecret, tonDepositSecret, tonCenterKeySecret] },
+  wrapError(async (request) => {
+    requireAuth(request);
+    process.env.TON_WALLET_MNEMONIC   = tonMnemonicSecret.value();
+    process.env.TON_DEPOSIT_ADDRESS   = tonDepositSecret.value();
+    process.env.TON_CENTER_API_KEY    = tonCenterKeySecret.value();
+    return await tonPaymentH.getPlatformTonInfo();
+  })
+);
+
+// 2분마다 TON 입금 감지 + 자동 게임코인 지급 + coin→TON 자동 송금
+exports.processTonSwaps = onSchedule(
+  {
+    schedule: 'every 2 minutes',
+    secrets:  [tonMnemonicSecret, tonDepositSecret, tonCenterKeySecret],
+  },
+  async () => {
+    process.env.TON_WALLET_MNEMONIC = tonMnemonicSecret.value();
+    process.env.TON_DEPOSIT_ADDRESS = tonDepositSecret.value();
+    process.env.TON_CENTER_API_KEY  = tonCenterKeySecret.value();
+    logger.info('[processTonSwaps] 스케줄 실행');
+    await tonPaymentH.processTonSwaps();
+    logger.info('[processTonSwaps] 완료');
+  }
 );
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -2314,9 +2408,11 @@ exports.telegramAuth = onCall(
 // ════════════════════════════════════════════════════════════════════════════
 const tonMnemonic = defineSecret('TON_ADMIN_MNEMONIC');  // 관리자 TON 지갑 24-word 시드
 
-// TON 실시간 가격 + 교환비 조회 (인증 불필요)
+// TON 실시간 가격 + 교환비 + 관리자 지갑 주소 조회
 exports.tonGetPrice = onCall(
+  { secrets: [tonDepositSecret] },
   wrapError(async () => {
+    process.env.TON_DEPOSIT_ADDRESS = tonDepositSecret.value();
     const tonH = require('./handlers/tonExchange');
     const info = await tonH.getPrice();
     logger.info('tonGetPrice', { tonUsd: info.tonUsd });
@@ -2326,7 +2422,9 @@ exports.tonGetPrice = onCall(
 
 // TON 입금 TX 검증 → GameCoin 자동 지급
 exports.tonDepositVerify = onCall(
+  { secrets: [tonDepositSecret] },
   wrapError(async (request) => {
+    process.env.TON_DEPOSIT_ADDRESS = tonDepositSecret.value();
     const uid    = requireAuth(request);
     const { txHash } = request.data ?? {};
     if (!txHash) throw new HttpsError('invalid-argument', 'txHash가 필요합니다');
@@ -2337,9 +2435,26 @@ exports.tonDepositVerify = onCall(
   })
 );
 
+// TonConnect 전송 후 자동 TX 탐색 → GameCoin 지급
+exports.tonDepositAuto = onCall(
+  { secrets: [tonDepositSecret], timeoutSeconds: 120 },
+  wrapError(async (request) => {
+    process.env.TON_DEPOSIT_ADDRESS = tonDepositSecret.value();
+    const uid = requireAuth(request);
+    const { senderAddress, tonNano, sentAt } = request.data ?? {};
+    if (!senderAddress) throw new HttpsError('invalid-argument', 'senderAddress가 필요합니다');
+    if (!tonNano || tonNano <= 0) throw new HttpsError('invalid-argument', 'tonNano가 필요합니다');
+    if (!sentAt) throw new HttpsError('invalid-argument', 'sentAt이 필요합니다');
+    const tonH   = require('./handlers/tonExchange');
+    const result = await tonH.verifyDepositAuto(senderAddress, Number(tonNano), Number(sentAt), uid);
+    logger.info('tonDepositAuto', { uid, senderAddress, tonNano, gamecoin: result.gamecoin });
+    return result;
+  })
+);
+
 // GameCoin → TON 자동 출금 (최소 10,000 GP, @ton/ton SDK로 즉시 송금)
 exports.tonWithdrawRequest = onCall(
-  { secrets: [tonMnemonic] },
+  { secrets: [tonPrivKeySecret, tonCenterKeySecret] },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const { gamecoin, walletAddress } = request.data ?? {};
@@ -2348,8 +2463,10 @@ exports.tonWithdrawRequest = onCall(
     const gp = Number(gamecoin);
     if (gp < 10000)
       throw new HttpsError('invalid-argument', '최소 출금은 10,000 GP 입니다');
+    process.env.TON_PRIVATE_KEY    = tonPrivKeySecret.value();
+    process.env.TON_CENTER_API_KEY = tonCenterKeySecret.value();
     const tonH   = require('./handlers/tonExchange');
-    const result = await tonH.requestWithdraw(gp, walletAddress, uid, tonMnemonic.value());
+    const result = await tonH.requestWithdraw(gp, walletAddress, uid);
     logger.info('tonWithdrawRequest', { uid, gamecoin: gp, tonAmount: result.tonAmount, txHash: result.txHash });
     return result;
   })
