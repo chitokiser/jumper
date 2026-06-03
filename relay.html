@@ -232,6 +232,16 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
     <button class="spd-btn" id="btnSpeed4">4×</button>
   </div>
 
+  <!-- 탭 부스트 영역 -->
+  <div style="width:100%;max-width:360px;padding:0 10px;flex-shrink:0">
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#fbbf24;margin-bottom:3px">
+      <span>⚡ 부스트 게이지</span>
+      <span id="tapPct">0%</span>
+    </div>
+    <div style="background:#1f2937;border-radius:4px;height:8px;overflow:hidden">
+      <div id="tapBar" style="height:100%;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:4px;width:0%;transition:width .1s"></div>
+    </div>
+  </div>
   <div id="tapArea">👆 탭해서 부스트!</div>
   <div id="skillBar"></div>
 </div>

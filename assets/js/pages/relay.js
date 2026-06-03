@@ -3,8 +3,9 @@ import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { CW, CH, renderRace, renderNextRunner, renderLeaderArrow, getSpriteFrames, preloadSprites } from './relay.render.js';
+import { CW, CH, renderRace, renderNextUp, renderLeaderCrown, renderBatonPass, preloadAll } from './relay.render.js';
 import { LEGS, LEG_DIST, NUM_TEAMS, SKILL_DEFS, teamGrade, buildTeam, tickRace, playerTap, useSkill, calcPayout, GRADE_ODDS } from './relay.race.js';
+import { sfx, tickFootstep } from './relay.sound.js';
 
 // ── 캐릭터 정의 ───────────────────────────────────────────────────────────────
 const CHARS = {
@@ -201,6 +202,9 @@ function buildTeams() {
   }
   // 스킬 쿨다운 초기화
   _teams[_playerTeamIdx].skillCd = {};
+  // 사운드 콜백
+  _teams[_playerTeamIdx].onBaton  = () => sfx('baton');
+  _teams[_playerTeamIdx].onFinish = (rank) => { if (rank === 1) sfx('crowd_cheer'); };
 }
 
 // ── 레이스 루프 ───────────────────────────────────────────────────────────────
@@ -221,7 +225,8 @@ function startRace() {
   _lastTs = performance.now();
   _raf = requestAnimationFrame(raceLoop);
   _updateSkillBar();
-  preloadSprites(CHAR_IDS, CHARS);
+  preloadAll();
+  sfx('entry');
 }
 
 function raceLoop(ts) {
@@ -233,9 +238,13 @@ function raceLoop(ts) {
   const now = performance.now();
 
   tickRace(_teams, dt, now, CHARS);
-  renderRace(ctx, _teams, CHARS, now);
-  renderNextRunner(ctx, _teams[_playerTeamIdx], CHARS, now);
-  renderLeaderArrow(ctx, _teams, now);
+  renderRace(ctx, _teams, now);
+  renderNextUp(ctx, _teams[_playerTeamIdx], now);
+  renderLeaderCrown(ctx, _teams);
+  renderBatonPass(ctx, _teams, now);
+  // 내 팀 주자 발소리
+  const pt = _teams[_playerTeamIdx];
+  if (pt && !pt.batonPass) tickFootstep(now, pt.runners[pt.legIdx]?.spd || 0);
   _updateRaceHUD(now);
 
   // 모두 완주
@@ -254,6 +263,19 @@ function _updateRaceHUD(now) {
   if (runner) {
     $('hudRunner') && ($('hudRunner').textContent = runner.name);
     $('hudSpd')    && ($('hudSpd').textContent    = (runner.spd||0).toFixed(1)+'m/s');
+  }
+  // 탭 부스트 게이지 시각화
+  const tapPct = Math.min(100, Math.round((pt.tapBonus || 0) * 100));
+  const tapBar = $('tapBar');
+  const tapPctEl = $('tapPct');
+  if (tapBar) tapBar.style.width = tapPct + '%';
+  if (tapPctEl) tapPctEl.textContent = tapPct + '%';
+  // 탭 영역 텍스트 변경
+  const tapArea = $('tapArea');
+  if (tapArea) {
+    if (tapPct >= 90) tapArea.textContent = '🔥 MAX BOOST!';
+    else if (tapPct >= 50) tapArea.textContent = `⚡ ${tapPct}% — 계속 탭!`;
+    else tapArea.textContent = '👆 탭해서 부스트!';
   }
   // 스킬 쿨 표시
   _updateSkillBar(now);
@@ -290,6 +312,9 @@ async function showResult() {
   if (payout > 0) {
     await awardGP(payout);
     _playerGP += payout;
+    sfx('finish');
+  } else {
+    sfx('entry');
   }
 
   // 결과 화면 렌더
@@ -315,8 +340,8 @@ async function showResult() {
 function initRaceInput() {
   const tapArea = $('tapArea');
   if (tapArea) {
-    tapArea.addEventListener('click',    () => { if(_phase==='race') playerTap(_teams[_playerTeamIdx]); });
-    tapArea.addEventListener('touchstart', e => { e.preventDefault(); if(_phase==='race') playerTap(_teams[_playerTeamIdx]); }, {passive:false});
+    tapArea.addEventListener('click',    () => { if(_phase==='race'){ playerTap(_teams[_playerTeamIdx]); sfx('tap'); } });
+    tapArea.addEventListener('touchstart', e => { e.preventDefault(); if(_phase==='race'){ playerTap(_teams[_playerTeamIdx]); sfx('tap'); } }, {passive:false});
   }
   // 배속 버튼
   $('btnSpeed1') && $('btnSpeed1').addEventListener('click', () => { _speed=1; _syncSpeedBtns(); });
@@ -346,6 +371,7 @@ function buildSkillBar() {
       if (_phase !== 'race') return;
       const now = performance.now();
       if (useSkill(id, _teams[_playerTeamIdx], _teams, now)) {
+        sfx(`skill_${id}`);
         _updateSkillBar(now);
       }
     });

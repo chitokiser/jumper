@@ -5,8 +5,8 @@ export const LEG_DIST  = 100;   // 한 선수 달리기 거리 (단위)
 export const TOTAL_DIST = LEGS * LEG_DIST;
 export const NUM_TEAMS = 6;
 
-// 등급별 기본 속도 배율
-const GRADE_SPD = { S: 1.30, A: 1.12, B: 1.00, C: 0.86, D: 0.72 };
+// 등급별 기본 속도 배율 — 격차 축소로 경기 흥미 유지
+const GRADE_SPD = { S: 1.15, A: 1.07, B: 1.00, C: 0.94, D: 0.87 };
 // 등급별 배당 배율
 export const GRADE_ODDS = { S: 1.5, A: 2.0, B: 4.0, C: 8.0, D: 15.0 };
 
@@ -85,20 +85,24 @@ function runnerSpeed(runner, team, tapBonus, now) {
   const { stats, stamina, spdMult } = runner;
   const gradeMult = GRADE_SPD[stats.grade];
   const baseSpd   = 4.5 + stats.speed * 0.065;  // ~5.2 (D) ~ 10.5 (S) units/sec
-  const stFactor  = 0.55 + (stamina / 100) * 0.55;  // 0.55 .. 1.10
-  const rand      = 0.92 + Math.random() * 0.16;     // ±8%
+  const stFactor  = 0.65 + (stamina / 100) * 0.45;  // 0.65 .. 1.10
+  const rand      = 0.90 + Math.random() * 0.20;     // ±10% — 더 큰 랜덤성으로 역전 가능
 
   // 바통 전달 감속
   if (team.batonPass) return 0;
 
-  // AI 성향 보정
+  // AI 성향 보정 — AI 전체적으로 더 빠르게 (플레이어가 탭해야 이길 수 있도록)
   let aiFactor = 1.0;
   if (!team.isPlayer) {
-    if (runner.type === 'defensive' && team.totDist < TOTAL_DIST * 0.6) aiFactor = 0.92;
-    if (runner.type === 'aggressive') aiFactor = 1.05;
+    aiFactor = 1.08; // AI 기본 8% 부스트
+    if (runner.type === 'aggressive') aiFactor = 1.12;
+    if (runner.type === 'defensive' && team.totDist > TOTAL_DIST * 0.6) aiFactor = 1.15; // 후반 역전
+    // 뒤처진 AI 추격 부스트
+    const sorted = [team]; // 단순화
+    if (team.rank > 3) aiFactor *= 1.05;
   }
 
-  return baseSpd * gradeMult * stFactor * rand * spdMult * aiFactor * (1 + tapBonus * 0.3);
+  return baseSpd * gradeMult * stFactor * rand * spdMult * aiFactor * (1 + tapBonus * 0.45);
 }
 
 // ── 레이스 틱 ─────────────────────────────────────────────────────────────────
@@ -134,10 +138,9 @@ export function tickRace(teams, dt, now, CHARS) {
       if (runner.spdTime <= 0) { runner.spdMult = 1.0; runner.spdTime = 0; }
     }
 
-    // 탭 보너스 만료
-    if (team.tapTime > 0) {
-      team.tapTime -= dt;
-      if (team.tapTime <= 0) team.tapBonus = 0;
+    // 탭 보너스 점진적 감소 (연타 안 하면 빠르게 줄어듦)
+    if (team.tapBonus > 0) {
+      team.tapBonus = Math.max(0, team.tapBonus - dt * 0.55);
     }
 
     // 스태미나 감소 (철인 스킬이면 무시)
@@ -184,9 +187,11 @@ export function tickRace(teams, dt, now, CHARS) {
         team.batonPass  = true;
         team.batonTimer = 0.3 + Math.random() * 0.9; // 0.3~1.2초
         team.legDist = 0;
+        if (team.onBaton) team.onBaton();
       } else {
         team.finishTime = now;
         team.rank = finishedCount + 1;
+        if (team.onFinish) team.onFinish(team.rank);
       }
     }
   });
@@ -208,9 +213,10 @@ export function tickRace(teams, dt, now, CHARS) {
 export function playerTap(team) {
   const runner = team.runners[team.legIdx];
   if (!runner || runner.done || team.batonPass) return;
-  team.tapBonus = Math.min(1.0, (team.tapBonus || 0) + 0.15);
-  team.tapTime  = 1.2; // 1.2초 지속
-  runner.stamina = Math.max(0, runner.stamina - 2.5);
+  // 탭마다 +0.12, 최대 1.0 — 계속 눌러야 MAX 유지
+  team.tapBonus = Math.min(1.0, (team.tapBonus || 0) + 0.12);
+  team.tapTime  = 0.8; // 0.8초 후 감소 시작 (짧게 해서 연타 필요)
+  runner.stamina = Math.max(0, runner.stamina - 1.5);
 }
 
 // ── 스킬 사용 ─────────────────────────────────────────────────────────────────
