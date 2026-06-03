@@ -7,6 +7,19 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
 
+# ── Telegram Mini App 허용 ─────────────────────────────────────────────────────
+# CSP frame-ancestors 는 현대 브라우저에서 X-Frame-Options 를 대체하므로
+# Telegram Web(web.telegram.org) 에서 Mini App 로드 허용
+[[headers]]
+  for = "/telegram.html"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
+
+[[headers]]
+  for = "/merchants.html"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
+
 [[headers]]
   for = "/sitemap.xml"
   [headers.values]
