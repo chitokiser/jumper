@@ -15,14 +15,37 @@ from telegram.ext import (
     MessageHandler, ContextTypes, filters,
 )
 
+import sys
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+# Windows 콘솔 UTF-8 강제 (이모지 출력용)
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+# ── 필수 환경변수 검증 ────────────────────────────────────────────────────────
+_REQUIRED = ["BOT_TOKEN", "FIREBASE_SERVICE_ACCOUNT"]
+_missing  = [v for v in _REQUIRED if not os.environ.get(v)]
+if _missing:
+    print(f"[ERROR] 필수 환경변수 누락: {', '.join(_missing)}")
+    print("Railway -> 봇 서비스 -> Variables 탭에서 설정하세요.")
+    sys.exit(1)
+
 # ── Firebase 초기화 ───────────────────────────────────────────────────────────
-_sa_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT", "{}")
-_cred    = credentials.Certificate(json.loads(_sa_json))
-firebase_admin.initialize_app(_cred)
-_db      = firestore.client()
+try:
+    _sa_json = os.environ["FIREBASE_SERVICE_ACCOUNT"]
+    _cred    = credentials.Certificate(json.loads(_sa_json))
+    firebase_admin.initialize_app(_cred)
+    _db      = firestore.client()
+    print("[OK] Firebase 연결 성공")
+except json.JSONDecodeError as e:
+    print(f"[ERROR] FIREBASE_SERVICE_ACCOUNT JSON 파싱 실패: {e}")
+    print("Railway Variables에서 JSON 전체를 정확히 붙여넣었는지 확인하세요.")
+    sys.exit(1)
+except Exception as e:
+    print(f"[ERROR] Firebase 초기화 실패: {e}")
+    sys.exit(1)
 
 BOT_TOKEN             = os.environ["BOT_TOKEN"]
 HUB_URL               = "https://jump22.netlify.app/telegram.html"
