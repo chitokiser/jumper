@@ -529,7 +529,7 @@ function renderAR(ts) {
       arCtx.fillStyle = 'rgba(251,191,36,0.85)';
       arCtx.textAlign = 'center';
       arCtx.textBaseline = 'bottom';
-      arCtx.fillText('⭐ Premium: 100m 레이더 · 매일 무료 게임 3회', W / 2, H - 44);
+      arCtx.fillText('⭐ Premium: 100m 레이더 · 매일 게임코인 3,500GP 충전', W / 2, H - 44);
       arCtx.restore();
     }
   }

@@ -372,7 +372,7 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = (
             f"🎉 *Premium membership activated!*\n\n"
             f"Expires: `{expiry}`\n"
-            f"3 free game entries per day unlocked!\n"
+            f"🎁 Daily 3,500 GP top-up activated (when GP ≤ 1,000)!\n"
         )
         if is_first:
             text += "🎮 Level 4 boost applied!\n"
@@ -416,18 +416,18 @@ async def _send_membership_ui(message, st: dict):
         ]
     else:
         text = (
-            "Free member\n\n"
-            "⭐ *Premium benefits:*\n"
-            "• 🎁 3,500 GP free daily top-up\n"
-            "  _(only when GP is 1,000 or below)_\n"
-            "• Premium-only treasure boxes\n"
-            "• Instant Level 4 boost (first time only)\n"
-            "• 500 GP reward for each referral\n\n"
-            f"Price: 💎 {price} TON / 30 days"
+            "일반회원\n\n"
+            "⭐ *정회원 혜택:*\n"
+            "• 🎁 매일 게임코인 3,500 GP 충전\n"
+            "  _(GP 1,000 이하일 때만 충전 가능)_\n"
+            "• 정회원 전용 보물박스\n"
+            "• 레벨 4 즉시 부스트 (최초 1회)\n"
+            "• 친구 초대 500 GP 보상\n\n"
+            f"가격: 💎 {price} TON / 30일"
         )
         keyboard = [
             [InlineKeyboardButton(
-                f"💎 Join Premium ({price} TON)",
+                f"💎 정회원 가입 ({price} TON)",
                 callback_data="buy_premium",
             )],
         ]
