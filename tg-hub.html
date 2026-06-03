@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"/>
+  <title>JumpDAO</title>
+  <meta name="robots" content="noindex"/>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+    :root{
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --accent: #58a6ff;
+    }
+
+    body{
+      min-height:100vh;
+      background:var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      overflow-x:hidden;
+      padding-bottom:env(safe-area-inset-bottom);
+    }
+
+    /* ── 헤더 ── */
+    .hub-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 16px 10px;
+      border-bottom:1px solid var(--border);
+      position:sticky;top:0;
+      background:rgba(13,17,23,.92);
+      backdrop-filter:blur(10px);
+      z-index:10;
+    }
+    .hub-brand{display:flex;align-items:center;gap:9px}
+    .hub-logo{width:32px;height:32px;border-radius:9px;object-fit:contain}
+    .hub-name{font-size:17px;font-weight:800;letter-spacing:-.4px}
+
+    .hub-stats{display:flex;align-items:center;gap:8px}
+    .stat-chip{
+      display:flex;align-items:center;gap:5px;
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:999px;padding:5px 11px;
+      font-size:13px;font-weight:700;
+    }
+    .stat-chip .icon{font-size:14px;line-height:1}
+    .stat-chip.gp .icon{color:#fbbf24}
+    .stat-chip.lv .icon{color:#a78bfa}
+
+    /* ── 게임 그리드 ── */
+    .hub-body{padding:14px 12px 16px}
+
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+
+    .game-card{
+      position:relative;
+      border-radius:14px;
+      overflow:hidden;
+      cursor:pointer;
+      border:1px solid transparent;
+      transition:transform .15s,box-shadow .15s;
+      text-decoration:none;
+      display:block;
+    }
+    .game-card:active{transform:scale(.96)}
+
+    .card-bg{
+      position:absolute;inset:0;
+      opacity:.18;
+      transition:opacity .2s;
+    }
+    .game-card:active .card-bg{opacity:.28}
+
+    .card-inner{
+      position:relative;
+      padding:14px 13px 13px;
+      background:var(--surface);
+    }
+
+    .card-icon{font-size:28px;line-height:1;margin-bottom:8px;display:block}
+    .card-title{font-size:14px;font-weight:800;line-height:1.25;margin-bottom:3px}
+    .card-sub{font-size:11px;color:var(--muted);line-height:1.4}
+    .card-play{
+      display:inline-flex;align-items:center;gap:3px;
+      margin-top:10px;
+      font-size:11px;font-weight:700;
+      padding:4px 10px;border-radius:999px;
+      border:none;cursor:pointer;
+      transition:opacity .15s;
+    }
+    .card-play:active{opacity:.7}
+
+    /* 게임별 색상 */
+    .c-treasure .card-bg{background:linear-gradient(135deg,#f59e0b,#d97706)}
+    .c-treasure .card-play{background:rgba(245,158,11,.2);color:#fbbf24}
+    .c-treasure{border-color:rgba(245,158,11,.25)}
+
+    .c-race .card-bg{background:linear-gradient(135deg,#ef4444,#dc2626)}
+    .c-race .card-play{background:rgba(239,68,68,.2);color:#f87171}
+    .c-race{border-color:rgba(239,68,68,.25)}
+
+    .c-archery .card-bg{background:linear-gradient(135deg,#22c55e,#16a34a)}
+    .c-archery .card-play{background:rgba(34,197,94,.2);color:#4ade80}
+    .c-archery{border-color:rgba(34,197,94,.25)}
+
+    .c-memory .card-bg{background:linear-gradient(135deg,#8b5cf6,#7c3aed)}
+    .c-memory .card-play{background:rgba(139,92,246,.2);color:#a78bfa}
+    .c-memory{border-color:rgba(139,92,246,.25)}
+
+    .c-defense{
+      grid-column:span 2;
+      border-color:rgba(59,130,246,.25);
+    }
+    .c-defense .card-bg{background:linear-gradient(135deg,#3b82f6,#2563eb)}
+    .c-defense .card-play{background:rgba(59,130,246,.2);color:#60a5fa}
+    .c-defense .card-inner{
+      display:flex;align-items:center;gap:14px;
+      padding:14px 16px;
+    }
+    .c-defense .card-left{flex-shrink:0}
+    .c-defense .card-icon{font-size:36px;margin:0}
+    .c-defense .card-info{flex:1}
+    .c-defense .card-title{font-size:15px}
+
+    /* ── GP 교환 안내 ── */
+    .exchange-bar{
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      margin:0 12px 14px;
+      padding:9px 14px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:10px;
+      font-size:12px;color:var(--muted);
+    }
+    .exchange-bar strong{color:var(--text)}
+    .ex-sep{opacity:.4}
+
+    /* ── 스켈레톤 ── */
+    .skeleton{
+      animation:pulse 1.4s ease-in-out infinite;
+      background:var(--surface);
+      border-radius:4px;
+    }
+    @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+    @keyframes fadeUp{
+      from{opacity:0;transform:translateY(10px)}
+      to{opacity:1;transform:none}
+    }
+    .hub-body{animation:fadeUp .3s ease both}
+  </style>
+</head>
+<body>
+
+  <header class="hub-header">
+    <div class="hub-brand">
+      <img class="hub-logo" src="/assets/images/jump/logo2.png" alt="JumpDAO"/>
+      <span class="hub-name">JumpDAO</span>
+    </div>
+    <div class="hub-stats">
+      <div class="stat-chip lv">
+        <span class="icon">⚡</span>
+        <span id="statLv">Lv —</span>
+      </div>
+      <div class="stat-chip gp">
+        <span class="icon">⭐</span>
+        <span id="statGp">— GP</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="exchange-bar">
+    <strong>Game Points</strong>
+    <span class="ex-sep">⇔</span>
+    <strong>Toncoin &amp; USDT</strong>
+  </div>
+
+  <main class="hub-body">
+    <div class="grid">
+
+      <a class="game-card c-treasure" href="/treasure.html">
+        <div class="card-bg"></div>
+        <div class="card-inner">
+          <span class="card-icon">🗺️</span>
+          <div class="card-title">Treasure Hunt</div>
+          <div class="card-sub">Find hidden chests<br>near you</div>
+          <div class="card-play">PLAY →</div>
+        </div>
+      </a>
+
+      <a class="game-card c-race" href="/monsterrace.html">
+        <div class="card-bg"></div>
+        <div class="card-inner">
+          <span class="card-icon">🏎️</span>
+          <div class="card-title">Monster Racing</div>
+          <div class="card-sub">Race to the top,<br>earn GP</div>
+          <div class="card-play">PLAY →</div>
+        </div>
+      </a>
+
+      <a class="game-card c-archery" href="/bow.html">
+        <div class="card-bg"></div>
+        <div class="card-inner">
+          <span class="card-icon">🏹</span>
+          <div class="card-title">Archery Hunt</div>
+          <div class="card-sub">Shoot monsters,<br>score GP</div>
+          <div class="card-play">PLAY →</div>
+        </div>
+      </a>
+
+      <a class="game-card c-memory" href="/memory.html">
+        <div class="card-bg"></div>
+        <div class="card-inner">
+          <span class="card-icon">🃏</span>
+          <div class="card-title">Speed Memory</div>
+          <div class="card-sub">Match cards,<br>beat the clock</div>
+          <div class="card-play">PLAY →</div>
+        </div>
+      </a>
+
+      <a class="game-card c-defense" href="/conquest.html">
+        <div class="card-bg"></div>
+        <div class="card-inner">
+          <div class="card-left">
+            <span class="card-icon">🏰</span>
+          </div>
+          <div class="card-info">
+            <div class="card-title">Monster Defense</div>
+            <div class="card-sub">Defend your tower · tower defense strategy</div>
+            <div class="card-play">PLAY →</div>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </main>
+
+  <script type="module">
+    import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
+    import { db } from '/assets/js/firebase-init.js';
+    import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+    const twa = window.Telegram?.WebApp;
+    if (twa) { twa.ready(); twa.expand(); }
+
+    const elLv = document.getElementById('statLv');
+    const elGp = document.getElementById('statGp');
+
+    async function loadUser(uid) {
+      try {
+        const [playerSnap] = await Promise.all([
+          getDoc(doc(db, 'battle_players', uid)),
+        ]);
+        const p = playerSnap.exists() ? playerSnap.data() : {};
+        elLv.textContent = `Lv ${p.level ?? 1}`;
+        elGp.textContent = `${(p.gold ?? 0).toLocaleString()} GP`;
+      } catch { /* UI는 기본값 유지 */ }
+    }
+
+    if (isTelegramMiniApp()) {
+      try {
+        const result = await loginWithTelegram();
+        if (result?.uid) loadUser(result.uid);
+      } catch { /* 조용히 실패 */ }
+    }
+  </script>
+
+</body>
+</html>
