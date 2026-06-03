@@ -50,6 +50,11 @@
   [headers.values]
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
 
+[[headers]]
+  for = "/relay.html"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
+
 # ── 관리자 페이지: iframe 완전 차단 ──────────────────────────────────────────
 [[headers]]
   for = "/admin*"

@@ -7,8 +7,9 @@ const { todayUtc7 } = require('./membership');
 // ── 게임 타입별 최대 단일 보상 한도 ─────────────────────────────────────────
 const GAME_MAX_REWARD = {
   memory:   700,
-  bow:      2000,   // score/10 방식 — 최대 20,000pts 대응
+  bow:      2000,
   race:     500,
+  relay:    3000,   // D등급 우승 15× 시 최대 (200GP × 15 = 3000)
   dungeon:  300,
   conquest: 300,
 };
@@ -22,6 +23,7 @@ const RESET_MS      = 24 * 60 * 60 * 1000;
 const DAILY_MAX_EARN = {
   memory:  5000,
   bow:     10000,
+  relay:   15000,
   default: 10000,
 };
 

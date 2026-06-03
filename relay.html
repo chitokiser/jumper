@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>이어달리기 Relay Race | JumpDAO 점프다오 — 팀 릴레이 GP 보상</title>
+<meta name="description" content="점프다오(JumpDAO) 이어달리기(Relay Race) — 4명 팀을 구성해 6팀이 겨루는 400m 릴레이 경주! 게임포인트(GP)를 획득해 Toncoin·USDT로 교환."/>
+<meta name="keywords" content="이어달리기, Relay Race, JumpDAO, 점프다오, jumpdao, 게임포인트, Game Points, 릴레이, TON보상, Toncoin Rewards, USDT Rewards"/>
+<meta name="robots" content="index, follow"/>
+<link rel="canonical" href="https://jump22.netlify.app/relay.html"/>
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="JumpDAO"/>
+<meta property="og:url" content="https://jump22.netlify.app/relay.html"/>
+<meta property="og:title" content="이어달리기 Relay Race | JumpDAO 점프다오"/>
+<meta property="og:description" content="4명 팀 릴레이 경주. 팀 등급에 따른 배당 GP 획득!"/>
+<meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<link rel="alternate" hreflang="ko" href="https://jump22.netlify.app/relay.html"/>
+<link rel="alternate" hreflang="en" href="https://jump22.netlify.app/relay.html"/>
+<link rel="alternate" hreflang="x-default" href="https://jump22.netlify.app/relay.html"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0a0a1a;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  overflow-x:hidden;user-select:none}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;overflow-y:auto;padding:12px 12px 20px}
+.screen.hidden{display:none!important}
+
+/* ── 로딩 ── */
+#loadingScreen{justify-content:center;gap:14px;font-size:15px;color:#6b7280}
+.spin{width:34px;height:34px;border:3px solid #1f2937;border-top-color:#f59e0b;
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 공통 헤더 ── */
+.g-hdr{display:flex;justify-content:space-between;align-items:center;
+  width:100%;max-width:360px;padding-bottom:6px;flex-shrink:0}
+.g-back{color:#4b5563;font-size:12px;text-decoration:none;transition:color .15s}
+.g-back:hover{color:#9ca3af}
+.g-login-btn{background:none;border:1px solid #374151;border-radius:8px;
+  color:#9ca3af;font-size:11px;padding:5px 11px;cursor:pointer;transition:all .15s}
+.g-login-btn:hover{border-color:#f59e0b;color:#f59e0b}
+.g-user-chip{font-size:11px;color:#6b7280;background:#1f2937;
+  border-radius:8px;padding:5px 10px}
+
+/* ── 로비 ── */
+#lobbyScreen{gap:8px}
+.relay-title{font-size:clamp(20px,5vw,28px);font-weight:900;letter-spacing:-1px;text-align:center}
+.relay-title span{color:#f59e0b}
+
+.stat-row{display:flex;justify-content:space-between;align-items:center;
+  background:#111827;border:1px solid #1f2937;border-radius:10px;
+  padding:8px 14px;width:100%;max-width:360px;font-size:13px}
+.stat-row .val{font-weight:700;color:#fbbf24}
+
+/* 캐릭터 그리드 */
+#charGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  width:100%;max-width:360px}
+.char-card{background:#111827;border:2px solid #1f2937;border-radius:10px;
+  padding:7px 5px;cursor:pointer;color:#fff;text-align:center;transition:all .15s}
+.char-card:hover{border-color:#374151}
+.char-card.selected{border-color:#f59e0b;background:#1c1400}
+.char-grade{font-size:13px;font-weight:900;line-height:1}
+.char-name{font-size:10px;margin-top:2px;color:#9ca3af}
+.char-spd{font-size:9px;color:#6b7280;margin-top:1px}
+
+/* 팀 슬롯 */
+#teamSlots{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;
+  width:100%;max-width:360px}
+.team-slot{background:#1f2937;border:1px dashed #374151;border-radius:8px;
+  padding:6px 3px;font-size:9px;color:#6b7280;text-align:center;min-height:38px;
+  display:flex;align-items:center;justify-content:center}
+.team-slot.filled{background:#1c1a00;border-color:#f59e0b;color:#fbbf24;font-size:9px}
+
+#teamOdds{font-size:11px;color:#a78bfa;text-align:center}
+
+.badge{background:#1e40af;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700}
+.btn-main{padding:11px 28px;background:#f59e0b;color:#000;border:none;
+  border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 20px rgba(245,158,11,.4);transition:opacity .15s;width:100%;max-width:360px}
+.btn-main:active{opacity:.8}.btn-main:disabled{opacity:.4;cursor:not-allowed}
+.btn-free{padding:9px;background:none;border:1px solid #374151;border-radius:12px;
+  color:#6b7280;font-size:13px;cursor:pointer;width:100%;max-width:360px}
+.hint-row{font-size:10px;color:#4b5563;text-align:center}
+
+/* ── 스킬 선택 ── */
+#skillScreen{justify-content:flex-start;gap:10px}
+#skillScreen h2{font-size:17px;font-weight:800;margin-top:4px}
+#skillGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;width:100%;max-width:360px}
+.skill-pick-btn{background:#111827;border:2px solid #1f2937;border-radius:11px;
+  padding:10px 8px;cursor:pointer;color:#fff;text-align:center;transition:all .15s}
+.skill-pick-btn.selected{border-color:#f59e0b;background:#1c1400}
+.sk-emoji{font-size:22px;display:block;margin-bottom:3px}
+.sk-name{font-size:11px;font-weight:700}
+.sk-desc{font-size:9px;color:#6b7280;margin-top:2px}
+
+/* ── 레이스 ── */
+#raceScreen{padding:0;gap:0;overflow:hidden;background:#0a0a1a}
+
+.race-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px 6px;width:100%;max-width:360px;flex-shrink:0;
+  background:rgba(10,10,26,.9);border-bottom:1px solid #1f2937;
+}
+.race-header .hud-chip{
+  background:#111827;border-radius:6px;padding:3px 8px;
+  font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;
+}
+.race-header .hud-label{font-size:8px;color:#6b7280}
+
+#raceCanvas{display:block;width:100%;max-width:360px;
+  touch-action:none;flex-shrink:0;border-top:1px solid #1f2937}
+
+/* 탭 영역 */
+#tapArea{
+  width:100%;max-width:360px;
+  flex:1;min-height:56px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.05));
+  border:1px solid rgba(245,158,11,.25);border-radius:10px;
+  margin:6px auto;cursor:pointer;user-select:none;
+  font-size:14px;font-weight:800;color:#fbbf24;letter-spacing:.5px;
+  transition:background .1s;
+}
+#tapArea:active{background:rgba(245,158,11,.28)}
+
+/* 스킬바 */
+#skillBar{display:flex;gap:6px;width:100%;max-width:360px;
+  padding:0 10px 6px;justify-content:center;flex-shrink:0}
+.sk-btn{display:flex;flex-direction:column;align-items:center;gap:1px;
+  background:rgba(0,0,0,.85);border:2px solid #374151;border-radius:10px;
+  padding:5px 12px;font-size:16px;cursor:pointer;position:relative;
+  color:#fff;transition:opacity .2s;min-width:64px}
+.sk-btn small{font-size:8px;color:#9ca3af;white-space:nowrap}
+.sk-btn .cd{position:absolute;top:1px;right:3px;font-size:9px;font-weight:700;color:#fbbf24}
+.sk-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* 배속 버튼 */
+.speed-row{display:flex;gap:5px;justify-content:flex-end;padding:0 10px;flex-shrink:0}
+.spd-btn{background:#1f2937;border:1px solid #374151;border-radius:6px;
+  color:#9ca3af;font-size:11px;padding:3px 9px;cursor:pointer}
+.spd-btn.active{background:#374151;color:#fbbf24;border-color:#fbbf24}
+
+/* ── 결과 ── */
+#resultScreen{gap:10px;justify-content:flex-start;padding-top:20px}
+.res-rank{font-size:clamp(36px,10vw,52px);font-weight:900;color:#fbbf24}
+.res-payout{font-size:20px;font-weight:700;color:#22c55e}
+.res-grade{font-size:13px;color:#9ca3af;margin-top:2px}
+
+.rank-list{width:100%;max-width:360px;background:#111827;border-radius:12px;
+  overflow:hidden;border:1px solid #1f2937}
+.rank-row{display:flex;justify-content:space-between;align-items:center;
+  padding:9px 14px;font-size:13px;border-bottom:1px solid #1f2937}
+.rank-row:last-child{border-bottom:none}
+.rank-row.mine{background:#1c1a00;color:#fbbf24}
+.rank-grade{font-size:11px;color:#6b7280}
+
+</style>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div id="loadingScreen" class="screen">
+  <div class="spin"></div>
+  <span>로딩 중...</span>
+</div>
+
+<!-- 로비 -->
+<div id="lobbyScreen" class="screen hidden">
+  <div class="g-hdr">
+    <a href="/tg-hub.html" class="g-back">← 허브로</a>
+    <div id="gHdrRight"><button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button></div>
+  </div>
+  <div class="relay-title">🏃 이어달리기<br><span>Relay Race</span></div>
+  <div style="font-size:11px;color:#9ca3af;text-align:center">4명 선수로 팀 구성 → 6팀 릴레이 대결</div>
+
+  <div class="stat-row">
+    <span>💰 보유 GP</span><span class="val" id="lobbyGP">—</span>
+  </div>
+
+  <div style="font-size:11px;color:#6b7280;width:100%;max-width:360px">👇 선수 선택 (4명)</div>
+  <div id="charGrid"></div>
+
+  <div id="teamSlots"></div>
+  <div id="teamOdds" style="min-height:16px"></div>
+
+  <div class="badge" id="feeBadge">참가비: 100 GP</div>
+  <div id="feeInfo" style="font-size:10px;color:#9ca3af">오늘 첫 참가 · 24시간 후 자동 리셋</div>
+
+  <button class="btn-main" id="btnEnter" disabled>🏁 팀 확정 &amp; 스킬 선택</button>
+  <button class="btn-free" id="btnFreePlay">🆓 무료 입장 (보상 없음)</button>
+  <div class="hint-row">S팀 우승 ×1.5 · A ×2 · B ×4 · C ×8 · D ×15 · 1위만 지급</div>
+  <a href="/tg-hub.html" class="g-back" style="margin-top:8px">← 허브로</a>
+</div>
+
+<!-- 스킬 선택 -->
+<div id="skillScreen" class="screen hidden">
+  <h2>🎒 스킬 선택</h2>
+  <div id="skCount" style="font-size:12px;color:#9ca3af">0/3 선택</div>
+  <div id="skillGrid"></div>
+  <button class="btn-main" id="btnStartRace" disabled style="margin-top:4px">🏁 경기 시작!</button>
+</div>
+
+<!-- 레이스 -->
+<div id="raceScreen" class="screen hidden">
+  <div class="race-header">
+    <div class="hud-chip">
+      <span class="hud-label">순위</span>
+      <span id="hudPos">—</span>
+    </div>
+    <div class="hud-chip">
+      <span class="hud-label">구간</span>
+      <span id="hudLeg">1/4</span>
+    </div>
+    <div class="hud-chip" style="max-width:120px;overflow:hidden">
+      <span class="hud-label">주자</span>
+      <span id="hudRunner" style="font-size:10px;white-space:nowrap">—</span>
+    </div>
+    <div class="hud-chip">
+      <span class="hud-label">속도</span>
+      <span id="hudSpd">—</span>
+    </div>
+  </div>
+
+  <canvas id="raceCanvas" width="360" height="300"></canvas>
+
+  <div class="speed-row">
+    <button class="spd-btn active" id="btnSpeed1">1×</button>
+    <button class="spd-btn" id="btnSpeed2">2×</button>
+    <button class="spd-btn" id="btnSpeed4">4×</button>
+  </div>
+
+  <div id="tapArea">👆 탭해서 부스트!</div>
+  <div id="skillBar"></div>
+</div>
+
+<!-- 결과 -->
+<div id="resultScreen" class="screen hidden">
+  <div class="g-hdr" style="margin-bottom:4px">
+    <a href="/tg-hub.html" class="g-back">← 허브로</a>
+  </div>
+  <div class="relay-title">🏁 경기 완료!</div>
+  <div class="res-rank" id="resultRank">🥇 1위</div>
+  <div class="res-payout" id="resultPayout">+0 GP</div>
+  <div class="res-grade" id="resultGrade">팀 등급: B</div>
+
+  <div class="rank-list" id="resultRankList"></div>
+
+  <button class="btn-main" id="btnRestart" style="margin-top:10px">다시 도전!</button>
+  <a href="/tg-hub.html" style="font-size:12px;color:#4b5563;text-decoration:none;margin-top:6px">← 허브로</a>
+</div>
+
+<script type="module" src="/assets/js/pages/relay.js"></script>
+</body>
+</html>
