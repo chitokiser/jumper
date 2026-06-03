@@ -2,5 +2,5 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python3 bot.py"
+startCommand = "/opt/venv/bin/python3 bot.py"
 restartPolicyType = "always"
