@@ -86,7 +86,11 @@
       border-bottom: 1px solid #1e2840; text-align: left;
       white-space: nowrap; background: #0b0f1a;
       font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
+      cursor: pointer; user-select: none;
     }
+    .adex-tbl th:hover { color: #64748b; }
+    .adex-tbl th.sort-asc::after  { content: ' ▲'; }
+    .adex-tbl th.sort-desc::after { content: ' ▼'; }
     .adex-tbl td {
       color: #64748b; padding: 8px 10px;
       border-bottom: 1px solid #111b30; font-family: monospace;
@@ -114,6 +118,46 @@
     .adex-more:hover { background: #2d3d5a; color: #94a3b8; }
     .adex-state { font-size: 11px; color: #475569; margin-bottom: 12px; min-height: 16px; }
     .adex-state.err { color: #ef4444; }
+
+    /* ── 유저별 조회 ── */
+    .utx-user-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+    .utx-user-item {
+      display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+      background: #111b30; border: 1px solid #1e2840; border-radius: 8px; cursor: pointer;
+    }
+    .utx-user-item:hover { border-color: #3b82f6; background: #0f1a2e; }
+    .utx-user-item.active { border-color: #3b82f6; background: #0f1a2e; }
+    .utx-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg,#1e40af,#3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: #fff; font-weight: 700; flex-shrink: 0;
+    }
+    .utx-user-name  { font-size: 13px; color: #e2e8f0; font-weight: 600; }
+    .utx-user-meta  { font-size: 10px; color: #475569; font-family: monospace; }
+    .utx-view-btn   {
+      margin-left: auto; background: #1e3a5f; border: 1px solid #2563eb;
+      color: #60a5fa; font-size: 10px; padding: 4px 10px; border-radius: 5px; cursor: pointer;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .utx-view-btn:hover { background: #2563eb; color: #fff; }
+    .utx-stats {
+      display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;
+    }
+    .utx-stat-chip {
+      background: #111b30; border: 1px solid #1e2840; border-radius: 6px;
+      padding: 6px 12px; font-size: 11px;
+    }
+    .utx-stat-chip .lbl { color: #475569; }
+    .utx-stat-chip .val { color: #e2e8f0; font-weight: 700; margin-left: 4px; }
+    .utx-user-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+      padding: 10px 14px; background: #0b1628; border: 1px solid #1e3a5f;
+      border-radius: 8px;
+    }
+    .utx-user-header .name { font-size: 15px; font-weight: 700; color: #e2e8f0; }
+    .utx-user-header .uid  { font-size: 10px; color: #334155; font-family: monospace; }
+    .utx-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -247,6 +291,61 @@
         <button class="adex-more" id="btnAdexMore" style="display:none;" type="button">더 보기</button>
       </div><!-- /histSection -->
 
+      <!-- ③ 유저별 거래기록 전체 보기 ──────────────── -->
+      <div class="adex-card" id="userTxSection" style="display:none;">
+        <div class="adex-card-title"><span class="dot" style="background:#a855f7;"></span> 유저별 거래기록 전체 보기</div>
+
+        <!-- 유저 검색 -->
+        <div class="adex-filters">
+          <input type="text" id="utxSearch" class="adex-input"
+            placeholder="이름 · 이메일 · UID 입력" style="width:240px;" />
+          <button class="adex-btn primary" id="btnUtxSearch" type="button">👤 유저 검색</button>
+        </div>
+        <div id="utxUserList" class="utx-user-list"></div>
+
+        <!-- 선택된 유저 거래 패널 -->
+        <div id="utxTxPanel" style="display:none; margin-top:16px;">
+          <div id="utxUserHeader" class="utx-user-header"></div>
+          <div id="utxStats" class="utx-stats"></div>
+          <div class="utx-toolbar">
+            <select id="utxSortField" class="adex-select">
+              <option value="date">날짜순</option>
+              <option value="type">교환종류순</option>
+              <option value="from">보낸 수량순</option>
+              <option value="to">받은 수량순</option>
+            </select>
+            <select id="utxSortDir" class="adex-select">
+              <option value="desc">내림차순</option>
+              <option value="asc">오름차순</option>
+            </select>
+            <select id="utxTypeFilter" class="adex-select">
+              <option value="">전체 종류</option>
+              <option value="hex_jump">HEX ↔ JUMP</option>
+              <option value="jump_gamecoin">JUMP ↔ 게임코인</option>
+              <option value="ton_gamecoin">TON ↔ 게임코인</option>
+              <option value="hex_ton">HEX ↔ TON</option>
+            </select>
+            <span id="utxCount" style="font-size:11px;color:#475569;margin-left:auto;"></span>
+          </div>
+          <div class="adex-tbl-wrap">
+            <table class="adex-tbl">
+              <thead>
+                <tr>
+                  <th data-col="date">거래일시</th>
+                  <th data-col="type">교환종류</th>
+                  <th data-col="from">보낸 수량</th>
+                  <th data-col="to">받은 수량</th>
+                  <th data-col="fee">수수료</th>
+                  <th>상태</th>
+                  <th>처리</th>
+                </tr>
+              </thead>
+              <tbody id="utxTblBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /userTxSection -->
+
     </div>
   </main>
 
@@ -256,7 +355,7 @@
     import { auth, functions, db } from '/assets/js/firebase-init.js';
     import { onAuthStateChanged }  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
     import { httpsCallable }       from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
-    import { doc, getDoc, collection, query, where, orderBy, limit, startAfter, getDocs }
+    import { doc, getDoc, updateDoc, collection, query, where, orderBy, limit, startAfter, getDocs }
                                    from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
     const $ = id => document.getElementById(id);
@@ -421,10 +520,7 @@
           if (!id || !confirm('이 거래를 승인(완료) 처리하시겠습니까?')) return;
           btn.disabled = true;
           try {
-            const { doc: firestoreDoc, updateDoc } = await import(
-              'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'
-            );
-            await updateDoc(firestoreDoc(db, 'transactions', id), { status: 'completed' });
+            await updateDoc(doc(db, 'transactions', id), { status: 'completed' });
             btn.closest('tr').querySelector('.adex-badge').textContent = '완료';
             btn.closest('tr').querySelector('.adex-badge').className = 'adex-badge ok';
             btn.remove();
@@ -461,7 +557,266 @@
 
       $('btnAdexSearch').addEventListener('click', () => searchHistory(true));
       $('btnAdexMore').addEventListener('click',   () => searchHistory(false));
+
+      $('userTxSection').style.display = '';
+      initUserTxSection();
     });
+
+    // ══════════════════════════════════════════════════════
+    // ③ 유저별 거래기록 전체 보기
+    // ══════════════════════════════════════════════════════
+
+    const PAIR_MAP_REV = {
+      buyJump:'hex_jump', sellJump:'hex_jump',
+      stakeJump:'hex_jump', unstakeJump:'hex_jump', claimDividend:'hex_jump',
+      buyJumpWithCoins:'jump_gamecoin', sellJumpForCoins:'jump_gamecoin',
+      swap_ton_to_coin:'ton_gamecoin', swap_coin_to_ton:'ton_gamecoin',
+      swap_hex_to_ton:'hex_ton', swap_ton_to_hex:'hex_ton',
+    };
+
+    let _utxAllTx   = [];  // 선택 유저의 전체 거래
+    let _utxSortField = 'date';
+    let _utxSortDir   = 'desc';
+    let _utxTypeFilter = '';
+
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // ── 유저 검색 ─────────────────────────────────────────
+    async function searchUsers(term) {
+      const list = $('utxUserList');
+      list.innerHTML = '<div style="color:#475569;font-size:11px;padding:6px 0;">검색 중…</div>';
+      const t = term.trim();
+      if (!t) { list.innerHTML = ''; return; }
+
+      const results = new Map();
+
+      try {
+        // 1) UID 직접 조회
+        const byUid = await getDoc(doc(db, 'users', t));
+        if (byUid.exists()) results.set(byUid.id, { _id: byUid.id, ...byUid.data() });
+
+        // 2) 이메일 정확 검색
+        const byEmail = await getDocs(query(
+          collection(db, 'users'),
+          where('email', '==', t), limit(10)
+        ));
+        byEmail.forEach(d => results.set(d.id, { _id: d.id, ...d.data() }));
+
+        // 3) displayName 전방일치 검색
+        const byName = await getDocs(query(
+          collection(db, 'users'),
+          where('displayName', '>=', t),
+          where('displayName', '<=', t + ''),
+          limit(10)
+        ));
+        byName.forEach(d => results.set(d.id, { _id: d.id, ...d.data() }));
+
+        // 4) telegramId / username (텔레그램 유저)
+        const byTgUser = await getDocs(query(
+          collection(db, 'users'),
+          where('username', '==', t.replace(/^@/, '')), limit(5)
+        ));
+        byTgUser.forEach(d => results.set(d.id, { _id: d.id, ...d.data() }));
+
+      } catch (e) { /* Firestore 인덱스 없으면 일부 쿼리 무시 */ }
+
+      renderUserSearchResults([...results.values()]);
+    }
+
+    function renderUserSearchResults(users) {
+      const list = $('utxUserList');
+      if (!users.length) {
+        list.innerHTML = '<div style="color:#475569;font-size:11px;padding:6px 0;">일치하는 유저 없음</div>';
+        return;
+      }
+      list.innerHTML = users.map(u => {
+        const name  = esc(u.displayName || u.name || '(이름없음)');
+        const email = esc(u.email || '-');
+        const uid   = esc(u._id);
+        const isTg  = u.source === 'telegram';
+        const initials = (u.displayName || u.name || '?')[0].toUpperCase();
+        const tgBadge = isTg ? ' <span style="font-size:9px;background:#229ed9;color:#fff;padding:1px 5px;border-radius:3px;">TG</span>' : '';
+        return `<div class="utx-user-item" data-uid="${uid}">
+          <div class="utx-avatar">${esc(initials)}</div>
+          <div style="min-width:0;">
+            <div class="utx-user-name">${name}${tgBadge}</div>
+            <div class="utx-user-meta">${email} · ${uid}</div>
+          </div>
+          <button class="utx-view-btn" data-uid="${uid}" data-name="${name}">거래 전체 보기</button>
+        </div>`;
+      }).join('');
+
+      list.querySelectorAll('.utx-view-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          list.querySelectorAll('.utx-user-item').forEach(el => el.classList.remove('active'));
+          btn.closest('.utx-user-item').classList.add('active');
+          loadUserTx(btn.dataset.uid, btn.dataset.name);
+        });
+      });
+    }
+
+    // ── 거래 전체 로드 ────────────────────────────────────
+    async function loadUserTx(uid, name) {
+      const panel = $('utxTxPanel');
+      const tbody = $('utxTblBody');
+      panel.style.display = '';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:20px;">불러오는 중…</td></tr>';
+      $('utxStats').innerHTML = '';
+      $('utxCount').textContent = '';
+
+      $('utxUserHeader').innerHTML = `
+        <div class="utx-avatar" style="width:36px;height:36px;font-size:15px;">${esc((name||'?')[0].toUpperCase())}</div>
+        <div>
+          <div class="name">${esc(name)}</div>
+          <div class="uid">${esc(uid)}</div>
+        </div>`;
+
+      try {
+        // Firestore: uid 기준 전체 조회 (최대 500건)
+        const snap = await getDocs(query(
+          collection(db, 'transactions'),
+          where('uid', '==', uid),
+          orderBy('createdAt', 'desc'),
+          limit(500)
+        ));
+
+        _utxAllTx = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          createdAt: d.data().createdAt?.toDate?.()?.toISOString() || null,
+        }));
+
+        renderUtxStats();
+        renderUtxTable();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" style="color:#ef4444;padding:16px;">오류: ${esc(err.message)}</td></tr>`;
+      }
+    }
+
+    // ── 통계 요약 ─────────────────────────────────────────
+    function renderUtxStats() {
+      const total  = _utxAllTx.length;
+      const byType = {};
+      _utxAllTx.forEach(tx => {
+        const pair = PAIR_MAP_REV[tx.type] || 'other';
+        byType[pair] = (byType[pair] || 0) + 1;
+      });
+      const pairLabel = { hex_jump:'HEX↔JUMP', jump_gamecoin:'JUMP↔GP', ton_gamecoin:'TON↔GP', hex_ton:'HEX↔TON', other:'기타' };
+      let html = `<div class="utx-stat-chip"><span class="lbl">총 거래</span><span class="val">${total}건</span></div>`;
+      Object.entries(byType).forEach(([k, v]) => {
+        html += `<div class="utx-stat-chip"><span class="lbl">${pairLabel[k]||k}</span><span class="val">${v}건</span></div>`;
+      });
+      $('utxStats').innerHTML = html;
+    }
+
+    // ── 테이블 렌더 ───────────────────────────────────────
+    function renderUtxTable() {
+      const tbody = $('utxTblBody');
+      let items = [..._utxAllTx];
+
+      // 종류 필터
+      if (_utxTypeFilter) {
+        items = items.filter(tx => (PAIR_MAP_REV[tx.type] || 'other') === _utxTypeFilter);
+      }
+
+      // 정렬
+      const getFrom = tx => tx.fromAmount ?? tx.hexCost ?? tx.coinAmount ?? tx.jumpAmount ?? 0;
+      const getTo   = tx => tx.toAmount   ?? tx.jumpAmount ?? tx.hexAmount ?? tx.coinAmount ?? 0;
+      items.sort((a, b) => {
+        let va, vb;
+        if (_utxSortField === 'type') { va = a.type || ''; vb = b.type || ''; }
+        else if (_utxSortField === 'from') { va = Number(getFrom(a)); vb = Number(getFrom(b)); }
+        else if (_utxSortField === 'to')   { va = Number(getTo(a));   vb = Number(getTo(b)); }
+        else { va = a.createdAt || ''; vb = b.createdAt || ''; }
+        if (va < vb) return _utxSortDir === 'asc' ? -1 : 1;
+        if (va > vb) return _utxSortDir === 'asc' ?  1 : -1;
+        return 0;
+      });
+
+      $('utxCount').textContent = `${items.length}건`;
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#334155;padding:20px;">거래 없음</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(tx => {
+        const label  = PAIR_LABELS[tx.type] || tx.type || '–';
+        const status = tx.status || 'completed';
+        const cls    = STATUS_CLS[status] || '';
+        const stLabel = { completed:'완료', pending:'대기', failed:'실패' }[status] || status;
+        const from   = tx.fromAmount != null ? Number(tx.fromAmount).toLocaleString(undefined, { maximumFractionDigits:4 })
+          : (tx.hexCost ? (Number(tx.hexCost)/1e18).toFixed(4) : (tx.coinAmount || tx.jumpAmount || '–'));
+        const to     = tx.toAmount != null ? Number(tx.toAmount).toLocaleString(undefined, { maximumFractionDigits:4 })
+          : (tx.jumpAmount || tx.hexAmount || tx.coinAmount || '–');
+        const fee    = tx.feeAmount != null ? Number(tx.feeAmount).toFixed(4) : (tx.rate != null ? tx.rate + '%' : '–');
+        const approveBtn = status === 'pending'
+          ? `<button class="adex-approve-btn" data-id="${esc(tx.id)}">승인</button>`
+          : '–';
+        return `<tr>
+          <td>${fmtDate(tx.createdAt)}</td>
+          <td style="font-family:sans-serif;color:#94a3b8;">${esc(label)}</td>
+          <td>${esc(String(from))}</td>
+          <td>${esc(String(to))}</td>
+          <td>${esc(String(fee))}</td>
+          <td><span class="adex-badge ${cls}">${stLabel}</span></td>
+          <td>${approveBtn}</td>
+        </tr>`;
+      }).join('');
+
+      // 승인 버튼
+      tbody.querySelectorAll('.adex-approve-btn').forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn.dataset.id;
+          if (!id || !confirm('이 거래를 승인 처리하시겠습니까?')) return;
+          btn.disabled = true;
+          try {
+            await updateDoc(doc(db, 'transactions', id), { status: 'completed' });
+            const tx = _utxAllTx.find(t => t.id === id);
+            if (tx) tx.status = 'completed';
+            renderUtxTable();
+          } catch (err) {
+            alert('승인 실패: ' + err.message);
+            btn.disabled = false;
+          }
+        };
+      });
+    }
+
+    // ── 이벤트 바인딩 ─────────────────────────────────────
+    function initUserTxSection() {
+      const inp = $('utxSearch');
+      const btn = $('btnUtxSearch');
+
+      const doSearch = () => searchUsers(inp?.value || '');
+      btn?.addEventListener('click', doSearch);
+      inp?.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+      $('utxSortField')?.addEventListener('change', e => { _utxSortField = e.target.value; renderUtxTable(); });
+      $('utxSortDir')?.addEventListener('change',   e => { _utxSortDir   = e.target.value; renderUtxTable(); });
+      $('utxTypeFilter')?.addEventListener('change',e => { _utxTypeFilter = e.target.value; renderUtxTable(); });
+
+      // 컬럼 헤더 클릭 정렬
+      document.querySelectorAll('#utxTxPanel .adex-tbl th[data-col]').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.dataset.col;
+          if (_utxSortField === col) {
+            _utxSortDir = _utxSortDir === 'desc' ? 'asc' : 'desc';
+          } else {
+            _utxSortField = col;
+            _utxSortDir = 'desc';
+          }
+          document.querySelectorAll('#utxTxPanel .adex-tbl th').forEach(h => h.className = '');
+          th.className = 'sort-' + _utxSortDir;
+          $('utxSortField').value = _utxSortField;
+          $('utxSortDir').value   = _utxSortDir;
+          renderUtxTable();
+        });
+      });
+    }
   </script>
 </body>
 </html>
