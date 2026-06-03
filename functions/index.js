@@ -61,6 +61,7 @@ const userPlaceH             = require('./handlers/userPlace');
 const expSyncH               = require('./handlers/expSync');
 const telegramH              = require('./handlers/telegram');
 const tonPaymentH            = require('./handlers/tonPayment');
+const gameRewardH            = require('./handlers/gameReward');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -119,6 +120,26 @@ exports.adminSelfOnboard = onCall(
     return result;
   })
 );
+
+// ════════════════════════════════════════════════════════════════════════════
+// [SECURITY] 게임 GP 보상 — 서버사이드 검증 (클라이언트 금액 조작 방지)
+//    클라이언트: httpsCallable(functions, 'claimGameReward')({ gameType:'memory', amount:300 })
+// ════════════════════════════════════════════════════════════════════════════
+exports.claimGameReward = onCall(wrapError(async (request) => {
+  const uid      = requireAuth(request);
+  const { gameType, amount } = request.data ?? {};
+  return await gameRewardH.claimGameReward(uid, gameType, amount);
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
+// [SECURITY] 게임 참가비 차감 — 서버사이드 잔액·횟수 검증 원자 처리
+//    클라이언트: httpsCallable(functions, 'payGameEntry')({ gameKey:'memoryEntry' })
+// ════════════════════════════════════════════════════════════════════════════
+exports.payGameEntry = onCall(wrapError(async (request) => {
+  const uid      = requireAuth(request);
+  const { gameKey } = request.data ?? {};
+  return await gameRewardH.payGameEntry(uid, gameKey);
+}));
 
 // ════════════════════════════════════════════════════════════════════════════
 // 2. 온체인 회원 가입

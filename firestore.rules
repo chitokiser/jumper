@@ -457,7 +457,11 @@ service cloud.firestore {
     match /battle_players/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list: if true; // 랭킹 공개 (Hunter Ranking)
-      allow create, update: if signedIn() && request.auth.uid == uid;
+      // gold 필드는 Cloud Functions(Admin SDK)만 변경 가능 — 클라이언트 직접 쓰기 금지
+      allow create: if signedIn() && request.auth.uid == uid
+        && !request.resource.data.keys().hasAny(['gold']);
+      allow update: if signedIn() && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['gold']);
       allow delete: if isAdmin();
     }
 

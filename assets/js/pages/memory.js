@@ -1,8 +1,9 @@
 // memory.js — 스피드 기억력 게임 (4×6, 20회 오답 게임오버, 2초 타이머)
-import { db, auth } from '/assets/js/firebase-init.js';
+import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { esc } from '/assets/js/esc.js';
-import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
 // ── 카드 이미지 풀 ────────────────────────────────────────────────────────────
 const CARD_POOL = [
@@ -76,27 +77,22 @@ function _updateFeeDisplay() {
 }
 
 async function deductFee() {
-  if(_playerGP<_entryFee) return false;
+  if (!_uid) return false;
   try {
-    const now=Date.now();
-    const isReset=!_entryResetAt||now-_entryResetAt>RESET_MS;
-    const newCount=isReset?1:_entryCount+1;
-    const newResetAt=isReset?now:_entryResetAt;
-    await updateDoc(doc(db,'battle_players',_uid),{
-      gold:increment(-_entryFee),
-      [`${GAME_KEY}.count`]:newCount,
-      [`${GAME_KEY}.resetAt`]:newResetAt,
-    });
-    _playerGP-=_entryFee;
-    _entryCount=newCount; _entryResetAt=newResetAt;
-    _entryFee=BASE_FEE+_entryCount*FEE_STEP;
+    const res = await httpsCallable(functions, 'payGameEntry')({ gameKey: GAME_KEY });
+    const { fee, newCount } = res.data;
+    _playerGP -= fee;
+    _entryCount = newCount;
+    _entryFee = BASE_FEE + newCount * FEE_STEP;
     return true;
   } catch { return false; }
 }
 
 async function awardGP(amount) {
-  if (_freeMode||amount<=0||!_uid) return;
-  try { await updateDoc(doc(db,'battle_players',_uid),{gold:increment(amount)}); } catch {}
+  if (_freeMode || amount <= 0 || !_uid) return;
+  try {
+    await httpsCallable(functions, 'claimGameReward')({ gameType: 'memory', amount });
+  } catch {}
 }
 
 // ── 게임 상태 ────────────────────────────────────────────────────────────────

@@ -1,7 +1,8 @@
 // bow.js — 활쏘기 몬스터 사냥 미니게임
-import { db, auth } from '/assets/js/firebase-init.js';
+import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { esc } from '/assets/js/esc.js';
-import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
   LW, LH, AX, AY, ROWS,
@@ -136,30 +137,23 @@ function arrowDmg(fire=false) {
 }
 
 async function deductFee() {
-  if (_entryFee <= 0) return true;  // 무료 입장 — DB 쓰기 불필요
-  if (_playerGP < _entryFee) return false;
+  if (!_uid) return false;
   try {
-    const now = Date.now();
-    const isReset = !_entryResetAt || now - _entryResetAt > RESET_MS;
-    const newCount    = isReset ? 1 : _entryCount + 1;
-    const newResetAt  = isReset ? now : _entryResetAt;
-    await updateDoc(doc(db,'battle_players',_uid), {
-      gold: increment(-_entryFee),
-      [`${GAME_KEY}.count`]:   newCount,
-      [`${GAME_KEY}.resetAt`]: newResetAt,
-    });
-    _playerGP    -= _entryFee;
-    _entryCount   = newCount;
-    _entryResetAt = newResetAt;
-    _entryFee     = BASE_FEE + _entryCount * FEE_STEP;
+    const res = await httpsCallable(functions, 'payGameEntry')({ gameKey: GAME_KEY });
+    const { fee, newCount } = res.data;
+    _playerGP   -= fee;
+    _entryCount  = newCount;
+    _entryFee    = BASE_FEE + newCount * FEE_STEP;
     return true;
   } catch { return false; }
 }
 
 async function awardScore(score) {
-  const gp=score>=7000?300:score>=4500?150:score>=2000?70:score>=800?30:0;
-  if (_freeMode) return 0;
-  if (gp>0&&_uid) try{ await updateDoc(doc(db,'battle_players',_uid),{gold:increment(gp)}); }catch{}
+  const gp = score>=7000?300:score>=4500?150:score>=2000?70:score>=800?30:0;
+  if (_freeMode || gp <= 0 || !_uid) return 0;
+  try {
+    await httpsCallable(functions, 'claimGameReward')({ gameType: 'bow', amount: gp });
+  } catch {}
   return gp;
 }
 
