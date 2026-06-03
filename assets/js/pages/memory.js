@@ -21,7 +21,7 @@ const CARD_POOL = [
   '/assets/images/item/necklace.PNG','/assets/images/item/rings.PNG',
 ];
 
-const ENTRY_FEE    = 0;    // 무료 입장
+const ENTRY_FEE    = 10;
 const TOTAL_PAIRS  = 12;   // 4×6 = 24장 = 12쌍
 const MAX_MISS     = 20;
 const TIMER_MS     = 2000; // 2초
@@ -36,13 +36,21 @@ const TIME_LIMIT_MS= 60000;// 1분
 let _uid=null, _playerGP=0;
 
 async function loadPlayer() {
-  if (!_uid) return;
+  if (!_uid) {
+    $('lobbyGP').textContent='게스트';
+    $('btnEnter').disabled=false;
+    const badge=$('feeBadge'); if(badge) badge.textContent='참가비: '+ENTRY_FEE+' GP';
+    const info=$('feeInfo'); if(info) info.textContent='로그인하면 참가비 내고 GP 획득 가능';
+    return;
+  }
   try {
     const d=(await getDoc(doc(db,'battle_players',_uid))).data()||{};
     _playerGP=d.gold||0;
   } catch {}
   $('lobbyGP').textContent=_playerGP;
-  $('btnEnter').disabled=false;
+  $('btnEnter').disabled=_playerGP<ENTRY_FEE;
+  const badge=$('feeBadge'); if(badge) badge.textContent='참가비: '+ENTRY_FEE+' GP';
+  const info=$('feeInfo'); if(info) info.textContent='GP 획득 가능';
 }
 
 async function deductFee() {
@@ -53,7 +61,7 @@ async function deductFee() {
 }
 
 async function awardGP(amount) {
-  if (amount<=0||!_uid) return;
+  if (_freeMode||amount<=0||!_uid) return;
   try { await updateDoc(doc(db,'battle_players',_uid),{gold:increment(amount)}); } catch {}
 }
 
@@ -67,6 +75,7 @@ let _timerRaf=null;
 let _timerStart=0;
 let _ac=null;
 let _phase='lobby';
+let _freeMode=false;
 
 const $=id=>document.getElementById(id);
 
@@ -294,7 +303,7 @@ async function gameClear(){
   $('resTitle').textContent='🏆 전체 클리어!';
   $('resTitle').className='res-title clear';
   $('resScore').textContent=_score+'점';
-  $('resGP').textContent=`+${netGP} GP 획득!`;
+  $('resGP').textContent=_freeMode?'🆓 무료 입장 (보상 없음)':`+${netGP} GP 획득!`;
   $('resInfo').textContent=infoParts.join(' | ');
   showPhase('result');
 }
@@ -358,9 +367,17 @@ async function init(){
     }
   });
 
-  $('btnEnter')?.addEventListener('click',()=>startGame());
+  $('btnEnter')?.addEventListener('click',async()=>{
+    if(_uid){if(!await deductFee()){alert('GP가 부족합니다 (입장료: '+ENTRY_FEE+' GP)');return;}}
+    _freeMode=false;
+    startGame();
+  });
+  $('btnFreePlay')?.addEventListener('click',()=>{
+    _freeMode=true;
+    startGame();
+  });
 
-  $('btnRestart')?.addEventListener('click',()=>startGame());
+  $('btnRestart')?.addEventListener('click',()=>{ _freeMode=true; startGame(); });
 
   $('btnLoginFromLobby')?.addEventListener('click',async e=>{
     e.preventDefault();

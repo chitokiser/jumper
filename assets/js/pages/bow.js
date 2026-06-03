@@ -11,7 +11,7 @@ import {
 import { playSound } from './merchants.battle.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const BASE_FEE    = 0;   // 무료 입장
+const BASE_FEE    = 50;
 const FEE_STEP    = 0;
 const RESET_MS    = 24 * 60 * 60 * 1000;
 const GAME_KEY    = 'bowEntry';
@@ -86,6 +86,7 @@ async function loadAssets() {
 // ── Firebase ─────────────────────────────────────────────────────────────────
 let _uid=null, _playerGP=0, _playerMP=1000, _playerMaxMP=1000;
 let _playerHP=1000, _playerMaxHP=1000, _playerAttack=50, _playerDefense=0;
+let _freeMode=false;
 
 async function loadPlayer() {
   if (!_uid) {
@@ -151,6 +152,7 @@ async function deductFee() {
 
 async function awardScore(score) {
   const gp=score>=7000?300:score>=4500?150:score>=2000?70:score>=800?30:0;
+  if (_freeMode) return 0;
   if (gp>0&&_uid) try{ await updateDoc(doc(db,'battle_players',_uid),{gold:increment(gp)}); }catch{}
   return gp;
 }
@@ -523,7 +525,7 @@ async function endGame(){
   const finalScore = Math.max(0, _score - penalty);
   const gp=await awardScore(finalScore);
   $('resFinalScore').textContent=finalScore.toLocaleString()+'점';
-  $('resGP').textContent=gp>0?`+${gp} GP 획득!`:'GP 없음 (800점 미달)';
+  $('resGP').textContent=_freeMode?'🆓 무료 입장 (보상 없음)':gp>0?`+${gp} GP 획득!`:'GP 없음 (800점 미달)';
   $('resInfo').textContent=`원점수 ${_score.toLocaleString()} − 화살 ${_arrowsFired}발(−${penalty.toLocaleString()}pt) · 최고콤보 ×${_maxCombo}`;
   showPhase('result');
 }
@@ -685,8 +687,13 @@ async function init(){
   // 에셋 로드 완료 즉시 로비 표시 — Firebase auth 응답 대기 없이 버튼 즉시 활성화
   showPhase('lobby');
   $('btnEnter')?.addEventListener('click',async()=>{
-    if(!await deductFee()){alert('GP가 부족합니다');return;}
-    _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 선택';$('skConfirm').disabled=false;showPhase('skill');
+    if(_uid){if(!await deductFee()){alert('GP가 부족합니다');return;}}
+    _freeMode=false;
+    _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 선택';$('skConfirm').disabled=true;showPhase('skill');
+  });
+  $('btnFreePlay')?.addEventListener('click',()=>{
+    _freeMode=true;
+    _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 선택';$('skConfirm').disabled=true;showPhase('skill');
   });
   $('skConfirm')?.addEventListener('click',startCountdown);
   $('btnRestart')?.addEventListener('click',()=>location.reload());
