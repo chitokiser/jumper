@@ -1,8 +1,12 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://jump22.netlify.app/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>2026-05-30</lastmod></url>
-  <url><loc>https://jump22.netlify.app/treasure.html</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>2026-05-30</lastmod></url>
-  <url><loc>https://jump22.netlify.app/merchants.html</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>2026-05-30</lastmod></url>
+  <url><loc>https://jump22.netlify.app/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>2026-06-03</lastmod></url>
+  <url><loc>https://jump22.netlify.app/merchants.html</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>2026-06-03</lastmod></url>
+  <url><loc>https://jump22.netlify.app/treasure.html</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>2026-06-03</lastmod></url>
+  <url><loc>https://jump22.netlify.app/bow.html</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>2026-06-03</lastmod></url>
+  <url><loc>https://jump22.netlify.app/memory.html</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>2026-06-03</lastmod></url>
+  <url><loc>https://jump22.netlify.app/monsterrace.html</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>2026-06-03</lastmod></url>
+  <url><loc>https://jump22.netlify.app/conquest.html</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>2026-06-03</lastmod></url>
   <url><loc>https://jump22.netlify.app/coop.html</loc><changefreq>weekly</changefreq><priority>0.8</priority><lastmod>2026-05-30</lastmod></url>
   <url><loc>https://jump22.netlify.app/about.html</loc><changefreq>monthly</changefreq><priority>0.7</priority><lastmod>2026-05-30</lastmod></url>
   <url><loc>https://jump22.netlify.app/faq.html</loc><changefreq>monthly</changefreq><priority>0.7</priority><lastmod>2026-05-30</lastmod></url>

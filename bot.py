@@ -270,9 +270,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("⭐ 정회원 혜택 보기",  callback_data="membership_info")],
     ]
     await update.message.reply_text(
-        "🎮 *JUMP22 Game Hub*\n\n"
-        "From GPS Treasure Hunt to Monster Battles!\n"
-        "Pick a game, earn GP, and exchange for Reward! 🚀",
+        "*JumpDAO*\n\n"
+        "A game hub featuring only games where\n"
+        "Game Points ⇔ Toncoin & USDT can be exchanged",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
