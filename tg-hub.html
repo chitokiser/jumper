@@ -159,6 +159,29 @@
       to{opacity:1;transform:none}
     }
     .hub-body{animation:fadeUp .3s ease both}
+
+    /* ── 일일 GP 충전 배너 ── */
+    .topup-bar{
+      display:none;
+      align-items:center;justify-content:space-between;gap:10px;
+      margin:0 12px 12px;
+      padding:10px 14px;
+      background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(245,158,11,.06));
+      border:1px solid rgba(251,191,36,.3);
+      border-radius:10px;
+      font-size:13px;
+    }
+    .topup-bar.show{display:flex}
+    .topup-info strong{color:#fbbf24;font-size:14px}
+    .topup-info small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+    .topup-btn{
+      flex-shrink:0;
+      background:#f59e0b;color:#000;border:none;border-radius:8px;
+      font-size:12px;font-weight:800;padding:7px 14px;cursor:pointer;
+      transition:opacity .15s;white-space:nowrap;
+    }
+    .topup-btn:active{opacity:.7}
+    .topup-btn:disabled{opacity:.4;cursor:not-allowed}
   </style>
 </head>
 <body>
@@ -184,6 +207,15 @@
     <strong>Game Points</strong>
     <span class="ex-sep">⇔</span>
     <strong>Toncoin &amp; USDT</strong>
+  </div>
+
+  <!-- 일일 GP 충전 배너 (정회원 + GP≤1000 + 미수령 시 노출) -->
+  <div class="topup-bar" id="topupBar">
+    <div class="topup-info">
+      <strong>🎁 Daily 3,500 GP</strong>
+      <small>Premium benefit — GP ≤ 1,000 only</small>
+    </div>
+    <button class="topup-btn" id="topupBtn">Claim</button>
   </div>
 
   <main class="hub-body">
@@ -248,30 +280,71 @@
 
   <script type="module">
     import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
-    import { db } from '/assets/js/firebase-init.js';
+    import { db, functions } from '/assets/js/firebase-init.js';
     import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+    import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
     const twa = window.Telegram?.WebApp;
     if (twa) { twa.ready(); twa.expand(); }
 
-    const elLv = document.getElementById('statLv');
-    const elGp = document.getElementById('statGp');
+    const elLv      = document.getElementById('statLv');
+    const elGp      = document.getElementById('statGp');
+    const topupBar  = document.getElementById('topupBar');
+    const topupBtn  = document.getElementById('topupBtn');
+
+    const TOPUP_THRESHOLD = 1000;
+    let _currentUid = null;
 
     async function loadUser(uid) {
       try {
-        const [playerSnap] = await Promise.all([
+        const [userSnap, playerSnap] = await Promise.all([
+          getDoc(doc(db, 'users', uid)),
           getDoc(doc(db, 'battle_players', uid)),
         ]);
+        const u = userSnap.exists()   ? userSnap.data()   : {};
         const p = playerSnap.exists() ? playerSnap.data() : {};
-        elLv.textContent = `Lv ${p.level ?? 1}`;
-        elGp.textContent = `${(p.gold ?? 0).toLocaleString()} GP`;
+
+        const gp    = p.gold  ?? 0;
+        const level = p.level ?? 1;
+        elLv.textContent = `Lv ${level}`;
+        elGp.textContent = `${gp.toLocaleString()} GP`;
+
+        // 일일 GP 충전 배너 노출 여부
+        const today     = new Date(Date.now() + 7*3600000).toISOString().slice(0,10);
+        const topupKey  = `dailyTopup_${today}`;
+        const isPremium = !!(u.coopMemberUntil && u.coopMemberUntil >= today);
+        const claimed   = !!(p[topupKey]);
+
+        if (isPremium && !claimed && gp <= TOPUP_THRESHOLD) {
+          topupBar.classList.add('show');
+        }
       } catch { /* UI는 기본값 유지 */ }
     }
+
+    topupBtn.addEventListener('click', async () => {
+      if (!_currentUid) return;
+      topupBtn.disabled = true;
+      topupBtn.textContent = '…';
+      try {
+        const fn = httpsCallable(functions, 'claimDailyGpTopup');
+        const { data } = await fn();
+        elGp.textContent = `${data.newGold.toLocaleString()} GP`;
+        topupBar.classList.remove('show');
+        topupBtn.textContent = '✅ Claimed!';
+      } catch (e) {
+        topupBtn.disabled = false;
+        topupBtn.textContent = 'Claim';
+        alert(e.message || 'Failed to claim');
+      }
+    });
 
     if (isTelegramMiniApp()) {
       try {
         const result = await loginWithTelegram();
-        if (result?.uid) loadUser(result.uid);
+        if (result?.uid) {
+          _currentUid = result.uid;
+          loadUser(result.uid);
+        }
       } catch { /* 조용히 실패 */ }
     }
   </script>

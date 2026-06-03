@@ -52,7 +52,6 @@ HUB_URL               = "https://jump22.netlify.app/telegram.html"
 TON_DEPOSIT_ADDRESS   = os.environ.get("TON_DEPOSIT_ADDRESS", "")
 MEMBERSHIP_TON_PRICE  = float(os.environ.get("MEMBERSHIP_TON_PRICE", "5"))
 TON_CENTER_API_KEY    = os.environ.get("TON_CENTER_API_KEY", "")
-FREE_ENTRY_MAX        = 3
 UTC7                  = timezone(timedelta(hours=7))
 _executor             = ThreadPoolExecutor(max_workers=4)
 
@@ -73,6 +72,9 @@ async def _run(fn, *args):
 
 # ── Firestore 동기 함수 ────────────────────────────────────────────────────────
 
+DAILY_GP_TOPUP   = 3500
+TOPUP_THRESHOLD  = 1000
+
 def _get_status(uid: str) -> dict:
     user_snap   = _db.collection("users").document(uid).get()
     player_snap = _db.collection("battle_players").document(uid).get()
@@ -88,21 +90,23 @@ def _get_status(uid: str) -> dict:
         exp_dt    = datetime.strptime(expiry, "%Y-%m-%d").replace(tzinfo=UTC7)
         days_left = max(0, (exp_dt.date() - datetime.now(UTC7).date()).days + 1)
 
-    free_key  = f"freeEntry_{today}"
-    free_used = player.get(free_key, 0)
+    topup_key     = f"dailyTopup_{today}"
+    topup_claimed = bool(player.get(topup_key, False))
+    current_gp    = player.get("gold", 0)
 
     # TON 가격: membership_config 우선, 없으면 env var
     cfg_snap  = _db.collection("membership_config").document("pricing").get()
     ton_price = (cfg_snap.to_dict() or {}).get("tonPrice", MEMBERSHIP_TON_PRICE) if cfg_snap.exists else MEMBERSHIP_TON_PRICE
 
     return {
-        "is_premium":  is_prem,
-        "expires_at":  expiry or None,
-        "days_left":   days_left,
-        "free_used":   free_used,
-        "free_left":   max(0, FREE_ENTRY_MAX - free_used) if is_prem else 0,
-        "name":        user.get("displayName") or user.get("name") or "회원",
-        "ton_price":   ton_price,
+        "is_premium":    is_prem,
+        "expires_at":    expiry or None,
+        "days_left":     days_left,
+        "current_gp":    current_gp,
+        "topup_claimed": topup_claimed,
+        "topup_eligible": is_prem and not topup_claimed and current_gp <= TOPUP_THRESHOLD,
+        "name":          user.get("displayName") or user.get("name") or "회원",
+        "ton_price":     ton_price,
     }
 
 
@@ -391,10 +395,20 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _send_membership_ui(message, st: dict):
     price = st["ton_price"]
     if st["is_premium"]:
+        topup_status = (
+            "✅ Today's 3,500 GP already claimed"
+            if st.get("topup_claimed")
+            else (
+                "🟡 GP above 1,000 — top-up not available"
+                if st.get("current_gp", 0) > 1000
+                else "🎁 3,500 GP top-up available! Open Game Hub to claim"
+            )
+        )
         text = (
             f"⭐ *Premium Member*\n"
-            f"Expires: `{st['expires_at']}` (D-{st['days_left']})\n"
-            f"Free entries today: {st['free_used']} / {FREE_ENTRY_MAX} used"
+            f"Expires: `{st['expires_at']}` (D-{st['days_left']})\n\n"
+            f"💰 Current GP: `{st.get('current_gp', 0):,}`\n"
+            f"{topup_status}"
         )
         keyboard = [
             [InlineKeyboardButton("🔄 Extend 30 days",    callback_data="buy_premium")],
@@ -404,7 +418,8 @@ async def _send_membership_ui(message, st: dict):
         text = (
             "Free member\n\n"
             "⭐ *Premium benefits:*\n"
-            "• 3 free game entries every day\n"
+            "• 🎁 3,500 GP free daily top-up\n"
+            "  _(only when GP is 1,000 or below)_\n"
             "• Premium-only treasure boxes\n"
             "• Instant Level 4 boost (first time only)\n"
             "• 500 GP reward for each referral\n\n"

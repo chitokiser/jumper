@@ -143,8 +143,15 @@ exports.payGameEntry = onCall(wrapError(async (request) => {
 }));
 
 // ════════════════════════════════════════════════════════════════════════════
-// 정회원(Membership) — Telegram Stars 결제 기반
+// 정회원(Membership) — 일일 GP 충전
 // ════════════════════════════════════════════════════════════════════════════
+
+// 일일 GP 충전 — 정회원 + GP ≤ 1000 + 오늘 미수령
+//   클라이언트: httpsCallable(functions, 'claimDailyGpTopup')()
+exports.claimDailyGpTopup = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await membershipH.claimDailyGpTopup(uid);
+}));
 
 // 정회원 상태 조회 (클라이언트 + bot.py)
 exports.getMembershipStatus = onCall(wrapError(async (request) => {

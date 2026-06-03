@@ -3,10 +3,12 @@ const admin = require('firebase-admin');
 const db    = admin.firestore();
 
 const MEMBERSHIP_DAYS   = 30;
-const FREE_ENTRY_MAX    = 3;
 const REFERRAL_GP       = 500;
 const LEVEL_BONUS       = 4;
-const FREE_ENTRY_GAMES  = new Set(['bowEntry', 'memoryEntry', 'raceEntry', 'conquestEntry']);
+
+// ── 일일 GP 충전 설정 ──────────────────────────────────────────────────────────
+const DAILY_GP_TOPUP    = 3500;   // 매일 지급 GP
+const TOPUP_THRESHOLD   = 1000;   // GP 이 값 이하일 때만 충전 가능
 
 // UTC+7 기준 오늘 날짜 문자열 (YYYY-MM-DD)
 function todayUtc7() {
@@ -17,27 +19,40 @@ function isPremiumActive(coopMemberUntil) {
   return !!(coopMemberUntil && coopMemberUntil >= todayUtc7());
 }
 
-// ── 정회원 무료 입장 자격 확인 ─────────────────────────────────────────────────
-// gameReward.payGameEntry 에서 호출 (트랜잭션 내부에서 직접 쓰므로 여기선 read-only)
-async function checkFreeEntry(uid, gameKey) {
-  if (!FREE_ENTRY_GAMES.has(gameKey)) return { eligible: false };
-
+// ── 일일 GP 충전 (정회원 전용) ──────────────────────────────────────────────────
+// 조건: ① 정회원 ② GP ≤ 1000 ③ 오늘 미수령
+async function claimDailyGpTopup(uid) {
   const userSnap = await db.collection('users').doc(uid).get();
-  if (!userSnap.exists) return { eligible: false };
+  if (!userSnap.exists) throw new Error('User not found');
 
   const coopUntil = (userSnap.data() || {}).coopMemberUntil;
-  if (!isPremiumActive(coopUntil)) return { eligible: false };
+  if (!isPremiumActive(coopUntil)) throw new Error('Premium membership required');
 
-  const freeKey  = `freeEntry_${todayUtc7()}`;
-  const playerSnap = await db.collection('battle_players').doc(uid).get();
-  const freeUsed = (playerSnap.data() || {})[freeKey] || 0;
+  const today    = todayUtc7();
+  const topupKey = `dailyTopup_${today}`;
+  const ref      = db.collection('battle_players').doc(uid);
 
-  return {
-    eligible:  freeUsed < FREE_ENTRY_MAX,
-    freeUsed,
-    freeLeft:  Math.max(0, FREE_ENTRY_MAX - freeUsed),
-    freeKey,
-  };
+  return db.runTransaction(async t => {
+    const snap = await t.get(ref);
+    const data = snap.exists ? snap.data() : {};
+
+    if (data[topupKey]) throw new Error('Already claimed today');
+
+    const currentGP = data.gold || 0;
+    if (currentGP > TOPUP_THRESHOLD) {
+      throw new Error(`GP must be ${TOPUP_THRESHOLD} or below to claim (current: ${currentGP.toLocaleString()} GP)`);
+    }
+
+    t.set(ref, {
+      gold:       admin.firestore.FieldValue.increment(DAILY_GP_TOPUP),
+      [topupKey]: true,
+    }, { merge: true });
+
+    return {
+      gp:      DAILY_GP_TOPUP,
+      newGold: currentGP + DAILY_GP_TOPUP,
+    };
+  });
 }
 
 // ── 정회원 상태 조회 ──────────────────────────────────────────────────────────
@@ -59,42 +74,31 @@ async function getMembershipStatus(uid) {
     daysLeft  = Math.max(0, Math.ceil(ms / 86400000));
   }
 
-  const freeKey      = `freeEntry_${today}`;
-  const freeUsedToday = player[freeKey] || 0;
+  const topupKey         = `dailyTopup_${today}`;
+  const topupClaimedToday = !!(player[topupKey]);
+  const currentGP        = player.gold || 0;
+  const topupEligible    = isPremium && !topupClaimedToday && currentGP <= TOPUP_THRESHOLD;
 
-  // 설정에서 가격 조회
-  const cfgSnap  = await db.collection('membership_config').doc('pricing').get();
+  const cfgSnap    = await db.collection('membership_config').doc('pricing').get();
   const starsPrice = (cfgSnap.data() || {}).starsPrice || 500;
 
   return {
     isPremium,
-    expiresAt:      expiry  || null,
+    expiresAt:          expiry  || null,
     daysLeft,
-    freeUsedToday,
-    freeMaxDaily:   FREE_ENTRY_MAX,
-    freeLeft:       isPremium ? Math.max(0, FREE_ENTRY_MAX - freeUsedToday) : 0,
-    memberFirstJoin: !!(user.memberFirstJoin),
+    currentGP,
+    dailyTopupAmount:   DAILY_GP_TOPUP,
+    topupThreshold:     TOPUP_THRESHOLD,
+    topupClaimedToday,
+    topupEligible,
+    memberFirstJoin:    !!(user.memberFirstJoin),
     starsPrice,
   };
-}
-
-// ── 관리자: 가격 설정 ──────────────────────────────────────────────────────────
-async function adminSetMembershipPrice(starsPrice) {
-  const p = Number(starsPrice);
-  if (!Number.isFinite(p) || p < 1 || !Number.isInteger(p))
-    throw new Error('Stars 가격은 1 이상 정수여야 합니다');
-
-  await db.collection('membership_config').doc('pricing').set(
-    { starsPrice: p, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
-    { merge: true }
-  );
-  return { starsPrice: p };
 }
 
 // ── 관리자: 통계 조회 ──────────────────────────────────────────────────────────
 async function adminGetMembershipStats() {
   const today         = todayUtc7();
-  const firstOfMonth  = today.slice(0, 7) + '-01';
   const weekLater     = new Date(Date.now() + 7 * 3600 * 1000 + 7 * 86400000)
     .toISOString().slice(0, 10);
 
@@ -132,25 +136,34 @@ async function adminGetMembershipStats() {
   };
 }
 
-// ── 초대 보상 처리 (bot.py 에서 호출) ─────────────────────────────────────────
-// referrerUid: 초대한 정회원 UID, newUserUid: 신규 가입 유저 UID
+// ── 관리자: 가격 설정 ──────────────────────────────────────────────────────────
+async function adminSetMembershipPrice(starsPrice) {
+  const p = Number(starsPrice);
+  if (!Number.isFinite(p) || p < 1 || !Number.isInteger(p))
+    throw new Error('Stars 가격은 1 이상 정수여야 합니다');
+
+  await db.collection('membership_config').doc('pricing').set(
+    { starsPrice: p, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+    { merge: true }
+  );
+  return { starsPrice: p };
+}
+
+// ── 초대 보상 처리 ─────────────────────────────────────────────────────────────
 async function processReferralReward(referrerUid, newUserUid) {
   if (!referrerUid || !newUserUid) throw new Error('파라미터 누락');
   if (referrerUid === newUserUid)  throw new Error('자기 초대 불가');
 
-  // 중복 확인
   const dupSnap = await db.collection('membership_referrals')
     .where('newUserUid', '==', newUserUid)
     .limit(1).get();
   if (!dupSnap.empty) throw new Error('이미 처리된 초대');
 
-  // 초대자 정회원 확인
   const referrerSnap = await db.collection('users').doc(referrerUid).get();
   if (!referrerSnap.exists) throw new Error('초대자 없음');
   if (!isPremiumActive((referrerSnap.data() || {}).coopMemberUntil))
     throw new Error('초대자가 정회원이 아닙니다');
 
-  // 500 GP 지급
   await db.collection('battle_players').doc(referrerUid).set(
     { gold: admin.firestore.FieldValue.increment(REFERRAL_GP) },
     { merge: true }
@@ -168,13 +181,13 @@ async function processReferralReward(referrerUid, newUserUid) {
 }
 
 module.exports = {
-  checkFreeEntry,
+  claimDailyGpTopup,
   getMembershipStatus,
   adminSetMembershipPrice,
   adminGetMembershipStats,
   processReferralReward,
   isPremiumActive,
   todayUtc7,
-  FREE_ENTRY_MAX,
-  FREE_ENTRY_GAMES,
+  DAILY_GP_TOPUP,
+  TOPUP_THRESHOLD,
 };

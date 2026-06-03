@@ -2,7 +2,7 @@
 // gameReward.js — 게임 GP 보상/참가비 서버사이드 처리 (클라이언트 신뢰 불가)
 const admin = require('firebase-admin');
 const db    = admin.firestore();
-const { isPremiumActive, todayUtc7, FREE_ENTRY_MAX, FREE_ENTRY_GAMES } = require('./membership');
+const { todayUtc7 } = require('./membership');
 
 // ── 게임 타입별 최대 단일 보상 한도 ─────────────────────────────────────────
 const GAME_MAX_REWARD = {
@@ -58,9 +58,8 @@ async function claimGameReward(uid, gameType, amount) {
 }
 
 /**
- * 게임 참가비 차감
- * - 정회원 + 대상 게임 + 오늘 무료 횟수 남아있으면 → 무료 입장
- * - 그 외 → GP 차감 (원자 트랜잭션)
+ * 게임 참가비 차감 — GP 차감 (원자 트랜잭션)
+ * 무료 입장 혜택 제거됨 — 정회원은 daily GP 충전으로 대체
  */
 async function payGameEntry(uid, gameKey) {
   if (!uid || typeof gameKey !== 'string') throw new Error('파라미터 오류');
@@ -68,41 +67,8 @@ async function payGameEntry(uid, gameKey) {
   const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'dungeonEntry', 'conquestEntry'];
   if (!allowedKeys.includes(gameKey)) throw new Error(`알 수 없는 게임 키: ${gameKey}`);
 
-  const ref   = db.collection('battle_players').doc(uid);
-  const today = todayUtc7();
+  const ref = db.collection('battle_players').doc(uid);
 
-  // ── 정회원 무료 입장 확인 (트랜잭션 밖에서 users read) ──────────────────
-  if (FREE_ENTRY_GAMES.has(gameKey)) {
-    const userSnap = await db.collection('users').doc(uid).get();
-    const coopUntil = (userSnap.data() || {}).coopMemberUntil;
-
-    if (isPremiumActive(coopUntil)) {
-      const freeKey = `freeEntry_${today}`;
-
-      return db.runTransaction(async t => {
-        const snap = await t.get(ref);
-        if (!snap.exists) throw new Error('플레이어 데이터 없음');
-        const data     = snap.data();
-        const freeUsed = data[freeKey] || 0;
-
-        if (freeUsed < FREE_ENTRY_MAX) {
-          // 무료 입장 — GP 차감 없이 카운터만 증가
-          t.set(ref, { [freeKey]: admin.firestore.FieldValue.increment(1) }, { merge: true });
-          return {
-            fee:      0,
-            isFree:   true,
-            freeUsed: freeUsed + 1,
-            freeLeft: FREE_ENTRY_MAX - freeUsed - 1,
-            newCount: (data[gameKey]?.count) || 0,
-          };
-        }
-        // 무료 소진 → 유료로 fallthrough
-        return _chargeEntry(t, data, ref, gameKey);
-      });
-    }
-  }
-
-  // ── 일반 유료 입장 ──────────────────────────────────────────────────────
   return db.runTransaction(async t => {
     const snap = await t.get(ref);
     if (!snap.exists) throw new Error('플레이어 데이터 없음');
