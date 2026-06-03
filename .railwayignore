@@ -1,0 +1,21 @@
+# Railway 업로드 제외 목록
+# Dockerfile이 bot.py + requirements.txt만 필요로 함
+
+node_modules/
+functions/
+assets/
+game-server/
+jumper-jackpot/
+.venv/
+__pycache__/
+.firebase/
+.netlify/
+*.html
+*.css
+*.xml
+*.md
+sitemap.xml
+CLAUDE.md
+.gitignore
+firebase.json
+.firebaserc
