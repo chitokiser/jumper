@@ -7,7 +7,7 @@ const { todayUtc7 } = require('./membership');
 // ── 게임 타입별 최대 단일 보상 한도 ─────────────────────────────────────────
 const GAME_MAX_REWARD = {
   memory:   700,
-  bow:      300,
+  bow:      2000,   // score/10 방식 — 최대 20,000pts 대응
   race:     500,
   dungeon:  300,
   conquest: 300,
@@ -21,7 +21,7 @@ const RESET_MS      = 24 * 60 * 60 * 1000;
 // ── 하루 최대 총 GP 획득 한도 ────────────────────────────────────────────────
 const DAILY_MAX_EARN = {
   memory:  5000,
-  bow:     3000,
+  bow:     10000,
   default: 10000,
 };
 

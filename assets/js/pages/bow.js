@@ -149,7 +149,7 @@ async function deductFee() {
 }
 
 async function awardScore(score) {
-  const gp = score>=6000?300:score>=3500?200:score>=2000?120:score>=1000?60:score>=400?20:0;
+  const gp = Math.floor(score / 10);
   if (_freeMode || gp <= 0 || !_uid) return 0;
   try {
     await httpsCallable(functions, 'claimGameReward')({ gameType: 'bow', amount: gp });
@@ -537,15 +537,14 @@ async function endGame(){
     gpEl.textContent = '🆓 Free play — no reward';
     gpEl.style.color = '#6b7280';
   } else if (gp > 0) {
-    gpEl.innerHTML = `+${gp} GP`;
+    gpEl.innerHTML = `+${gp} GP  <span style="font-size:13px;color:#6b7280">(${finalScore.toLocaleString()} ÷ 10)</span>`;
     gpEl.style.color = '#22c55e';
   } else {
-    gpEl.textContent = 'No GP — reach 400pts to earn';
+    gpEl.textContent = 'No GP (score too low)';
     gpEl.style.color = '#ef4444';
   }
 
-  // 상세 분석
-  const tier = finalScore>=6000?'🏆 Legend':finalScore>=3500?'⭐ Excellent':finalScore>=2000?'👍 Good':finalScore>=1000?'🙂 Average':finalScore>=400?'🌱 Beginner':'💀 No reward';
+  const tier = finalScore>=8000?'🏆 Legend':finalScore>=5000?'⭐ Excellent':finalScore>=3000?'👍 Good':finalScore>=1500?'🙂 Average':finalScore>=500?'🌱 Beginner':'💀 Try again';
   $('resInfo').innerHTML =
     `${tier}<br>` +
     `Kills <b>${_killCount}</b> · Accuracy <b>${accuracy}%</b> (${_arrowsHit}/${_arrowsFired}) · Max Combo ×<b>${_maxCombo}</b><br>` +
