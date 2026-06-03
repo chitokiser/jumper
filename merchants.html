@@ -2661,6 +2661,12 @@
 .gh-wallet-gp { color: var(--gh-green); font-weight: 700; font-size: 13px; }
 .gh-wallet-sep { color: var(--gh-muted); }
 .gh-wallet-ton { color: var(--gh-cyan); font-size: 11px; }
+.gh-lang-sw { display:flex; gap:3px; }
+.gh-lang-btn { background:none; border:1px solid rgba(255,255,255,.15); border-radius:5px;
+  color:rgba(255,255,255,.42); font-size:10px; font-family:var(--gh-mono); font-weight:700;
+  padding:3px 7px; cursor:pointer; transition:all .15s; letter-spacing:.05em; }
+.gh-lang-btn.active { border-color:var(--gh-cyan); color:var(--gh-cyan); background:rgba(0,229,255,.08); }
+.gh-lang-btn:hover:not(.active) { color:rgba(255,255,255,.7); border-color:rgba(255,255,255,.3); }
 .gh-close-btn {
   width: 34px; height: 34px;
   background: rgba(255,59,59,0.1);
@@ -3124,6 +3130,11 @@
       JUMP22_HUB
     </div>
     <div class="gh-header-right">
+      <div class="gh-lang-sw" id="ghLangSw">
+        <button class="gh-lang-btn active" data-lang="en">EN</button>
+        <button class="gh-lang-btn" data-lang="ko">KO</button>
+        <button class="gh-lang-btn" data-lang="vi">VI</button>
+      </div>
       <button class="gh-close-btn" id="ghCloseBtn">✕</button>
     </div>
   </header>
@@ -3704,6 +3715,341 @@
 
 // TON 토스트 엘리먼트 (body 레벨)
 document.body.insertAdjacentHTML('beforeend', '<div id="tonToast" class="ton-toast"></div>');
+</script>
+
+<script>
+// ── Game Hub i18n (ko / en / vi) ─────────────────────────────────────────────
+(function () {
+  'use strict';
+
+  const T = {
+    en: {
+      tab_games: '🎮 Games',
+      tab_ton:   '💎 TON Exchange',
+      onboard_title: 'Welcome to Jump22',
+      onboard_sub:   'Turn on GPS → Treasure Hunt → Earn GP → Exchange tokens',
+      onboard_btn:   '▶ Start',
+      section_games: '// game_universe',
+      section_econ:  '// economy_layer',
+      trial_badge:   '★ New Start',
+      trial_name:    'Treasure Hunt<br>Trial',
+      trial_desc:    '// Start immediately for free<br>// Place treasure &amp; monsters<br>// Collect to earn GP',
+      trial_warn:    '⚠ Other mini-games require GP<br>Earn GP with trial first!',
+      trial_btn:     '▶ Free Trial',
+      memory_name:   'Memory<br>Game',
+      memory_desc:   '// Card matching mini-game<br>// Faster = more GP',
+      memory_login:  'Play without login',
+      memory_btn:    '▶ PLAY',
+      treasure_name: 'Treasure Hunt<br>&amp; Dungeon',
+      treasure_desc: '// GPS-based treasure hunt<br>// dungeon survival combat',
+      treasure_btn:  '▶ ENTER MAP',
+      race_desc:     '// realtime 7-player race<br>// skill items &amp; traps',
+      race_btn:      '▶ RACE NOW',
+      conquest_name: 'Castle<br>Defense',
+      conquest_desc: '// Monsters attack from all sides<br>// Defend walls · Build towers<br>// Deploy heroes &amp; defenders',
+      conquest_sub:  'Become lord &amp; protect the kingdom',
+      conquest_btn:  '▶ START DEFENSE',
+      bow_name:      'Archery<br>Hunt',
+      bow_desc:      '// 60-second monster hunt<br>// perspective arrow physics',
+      bow_btn:       '▶ SHOOT',
+      playing:       ' playing',
+      econ_title:    '💱 Coin Converter — Check rewards instantly',
+      econ_ton_in:   'TON Input',
+      econ_coin_in:  'Game Coin Input',
+      econ_reverse:  'reverse',
+      econ_note:     'Rate: 100 GP per $0.01 USD · Min 10,000 GP · Live exchange rate',
+      econ_btn:      '💎 TON Exchange →',
+      ton_admin_lbl: 'Admin wallet balance (withdrawable)',
+      ton_wallet_nc: '○ Not connected',
+      ton_wallet_ad: 'Wallet not connected',
+      ton_ex_btn:    '💎 TON Exchange',
+      dep_tab:       '▼ Deposit',
+      wd_tab:        '▲ Withdraw',
+      hist_tab:      '📋 History',
+      dep_step1:     'STEP 1 — Deposit TON amount',
+      dep_step2:     'STEP 2 — Deposit address (admin wallet)',
+      dep_copy:      'Copy',
+      dep_step3:     '💎 STEP 3 — Send via TON Connect',
+      dep_step4_lbl: 'STEP 4 — Enter TX Hash to get GP',
+      dep_step4_ph:  'Paste TX Hash',
+      dep_verify:    '✅ Confirm deposit → Get GP',
+      dep_note:      'After sending, find TX Hash in wallet app → History · Takes 30s~2min',
+      wd_label:      'Withdraw GP (min 10,000 GP)',
+      wd_addr_lbl:   'Recipient TON wallet address',
+      wd_addr_ph:    'EQ... or UQ...',
+      wd_btn:        '📤 Request Withdrawal',
+      wd_note:       'Min 10,000 GP · 3% fee deducted · Instant auto transfer · Max 1,000,000 GP/day',
+      hist_empty:    'Click history tab to load',
+    },
+    ko: {
+      tab_games: '🎮 게임',
+      tab_ton:   '💎 TON 교환',
+      onboard_title: 'Jump22에 오신 것을 환영합니다',
+      onboard_sub:   'GPS 켜고 보물찾기부터 시작 → 게임코인 획득 → 토큰 교환',
+      onboard_btn:   '▶ 시작하기',
+      section_games: '// game_universe',
+      section_econ:  '// economy_layer',
+      trial_badge:   '★ 신규 시작',
+      trial_name:    '보물찾기<br>체험판',
+      trial_desc:    '// GP 0원으로 즉시 시작<br>// 내 지도에 보물·몬스터 배치<br>// 수집하여 GP 획득',
+      trial_warn:    '⚠ 다른 미니게임은 GP가 필요합니다<br>체험판으로 먼저 GP를 모으세요!',
+      trial_btn:     '▶ 무료 체험',
+      memory_name:   '기억력<br>게임',
+      memory_desc:   '// 카드 매칭 미니게임<br>// 빠를수록 더 많은 GP',
+      memory_login:  '로그인 없이 플레이 가능',
+      memory_btn:    '▶ PLAY',
+      treasure_name: '보물찾기<br>&amp; 던전',
+      treasure_desc: '// GPS 기반 보물찾기<br>// 던전 생존 전투',
+      treasure_btn:  '▶ ENTER MAP',
+      race_desc:     '// 실시간 7인 레이스<br>// 스킬 아이템 &amp; 함정',
+      race_btn:      '▶ RACE NOW',
+      conquest_name: '몬스터<br>수성',
+      conquest_desc: '// 사방에서 몬스터가 몰려온다<br>// 성벽을 지켜라 · 타워 건설<br>// 영웅 · 수비대 배치',
+      conquest_sub:  '성주가 되어 왕국을 수호',
+      conquest_btn:  '▶ 수성 시작',
+      bow_name:      '활쏘기<br>Hunt',
+      bow_desc:      '// 60초 몬스터 사냥<br>// 원근감 화살 물리',
+      bow_btn:       '▶ SHOOT',
+      playing:       '명 플레이 중',
+      econ_title:    '💱 Coin Converter — 즉시 보상 확인',
+      econ_ton_in:   'TON 입력',
+      econ_coin_in:  'Game Coin 입력',
+      econ_reverse:  '역방향',
+      econ_note:     'Rate: 100 GP per $0.01 USD · 최소 10,000 GP · 실시간 환율 연동',
+      econ_btn:      '💎 TON 교환하기 →',
+      ton_admin_lbl: '관리자 지갑 잔고 (출금 가능)',
+      ton_wallet_nc: '○ 미연결',
+      ton_wallet_ad: '지갑 미연결',
+      ton_ex_btn:    '💎 TON교환하기',
+      dep_tab:       '▼ 입금',
+      wd_tab:        '▲ 출금',
+      hist_tab:      '📋 내역',
+      dep_step1:     'STEP 1 — 입금 TON 수량',
+      dep_step2:     'STEP 2 — 입금 주소 (관리자 지갑)',
+      dep_copy:      '복사',
+      dep_step3:     '💎 STEP 3 — TON Connect 전송',
+      dep_step4_lbl: 'STEP 4 — TX Hash 입력 후 GP 지급',
+      dep_step4_ph:  'TX Hash 붙여넣기',
+      dep_verify:    '✅ 입금 확인 → GP 지급',
+      dep_note:      '전송 후 TX Hash는 지갑 앱 → 거래 내역에서 확인 · 약 30초~2분 소요',
+      wd_label:      '출금 GP (최소 10,000 GP)',
+      wd_addr_lbl:   '수신 TON 지갑 주소',
+      wd_addr_ph:    'EQ... 또는 UQ...',
+      wd_btn:        '📤 출금 요청',
+      wd_note:       '최소 10,000 GP · 수수료 3% 차감 · 즉시 자동 송금 · 1일 최대 1,000,000 GP',
+      hist_empty:    '내역 탭 클릭 시 로드됩니다',
+    },
+    vi: {
+      tab_games: '🎮 Trò chơi',
+      tab_ton:   '💎 Đổi TON',
+      onboard_title: 'Chào mừng đến Jump22',
+      onboard_sub:   'Bật GPS → Tìm kho báu → Kiếm GP → Đổi token',
+      onboard_btn:   '▶ Bắt đầu',
+      section_games: '// game_universe',
+      section_econ:  '// economy_layer',
+      trial_badge:   '★ Người mới',
+      trial_name:    'Tìm Kho Báu<br>Thử nghiệm',
+      trial_desc:    '// Bắt đầu ngay miễn phí<br>// Đặt kho báu &amp; quái vật<br>// Thu thập để kiếm GP',
+      trial_warn:    '⚠ Mini-game khác cần GP<br>Hãy kiếm GP với bản thử trước!',
+      trial_btn:     '▶ Dùng Thử',
+      memory_name:   'Trò Chơi<br>Trí Nhớ',
+      memory_desc:   '// Mini-game ghép thẻ<br>// Nhanh hơn = nhiều GP hơn',
+      memory_login:  'Chơi không cần đăng nhập',
+      memory_btn:    '▶ CHƠI',
+      treasure_name: 'Tìm Kho Báu<br>&amp; Hầm Ngục',
+      treasure_desc: '// Săn kho báu theo GPS<br>// Chiến đấu sinh tồn trong hầm',
+      treasure_btn:  '▶ VÀO BẢN ĐỒ',
+      race_desc:     '// Đua 7 người thời gian thực<br>// Vật phẩm kỹ năng &amp; bẫy',
+      race_btn:      '▶ ĐUA NGAY',
+      conquest_name: 'Phòng Thủ<br>Lâu Đài',
+      conquest_desc: '// Quái vật tấn công từ mọi phía<br>// Bảo vệ tường · Xây tháp<br>// Triển khai anh hùng &amp; lính',
+      conquest_sub:  'Trở thành lãnh chúa bảo vệ vương quốc',
+      conquest_btn:  '▶ BẮT ĐẦU',
+      bow_name:      'Săn Bắn<br>Bằng Cung',
+      bow_desc:      '// Săn quái trong 60 giây<br>// Vật lý mũi tên phối cảnh',
+      bow_btn:       '▶ BẮN',
+      playing:       ' đang chơi',
+      econ_title:    '💱 Bộ chuyển đổi — Kiểm tra phần thưởng',
+      econ_ton_in:   'Nhập TON',
+      econ_coin_in:  'Nhập Game Coin',
+      econ_reverse:  'ngược lại',
+      econ_note:     'Tỷ lệ: 100 GP/$0.01 USD · Tối thiểu 10,000 GP · Tỷ giá thực tế',
+      econ_btn:      '💎 Đổi TON →',
+      ton_admin_lbl: 'Số dư ví quản trị (có thể rút)',
+      ton_wallet_nc: '○ Chưa kết nối',
+      ton_wallet_ad: 'Ví chưa kết nối',
+      ton_ex_btn:    '💎 Đổi TON',
+      dep_tab:       '▼ Nạp tiền',
+      wd_tab:        '▲ Rút tiền',
+      hist_tab:      '📋 Lịch sử',
+      dep_step1:     'BƯỚC 1 — Số lượng TON nạp',
+      dep_step2:     'BƯỚC 2 — Địa chỉ nạp (ví quản trị)',
+      dep_copy:      'Sao chép',
+      dep_step3:     '💎 BƯỚC 3 — Gửi qua TON Connect',
+      dep_step4_lbl: 'BƯỚC 4 — Nhập TX Hash để nhận GP',
+      dep_step4_ph:  'Dán TX Hash',
+      dep_verify:    '✅ Xác nhận nạp → Nhận GP',
+      dep_note:      'Sau khi gửi, tìm TX Hash trong lịch sử ví · Mất 30s~2 phút',
+      wd_label:      'Rút GP (tối thiểu 10,000 GP)',
+      wd_addr_lbl:   'Địa chỉ ví TON người nhận',
+      wd_addr_ph:    'EQ... hoặc UQ...',
+      wd_btn:        '📤 Yêu cầu rút tiền',
+      wd_note:       'Tối thiểu 10,000 GP · Phí 3% · Chuyển tự động · Tối đa 1,000,000 GP/ngày',
+      hist_empty:    'Nhấp tab lịch sử để tải',
+    }
+  };
+
+  // 플레이어 수 숫자 (언어 무관하게 숫자만, 접미사만 번역)
+  const PLAYER_COUNTS = { ghP0: '12,450', ghP1: '3,280', ghP2: '2,150' };
+
+  function q(sel) { return document.querySelector(sel); }
+  function qi(id) { return document.getElementById(id); }
+  function ih(el, html) { if (el) el.innerHTML = html; }
+  function tc(el, txt)  { if (el) el.textContent = txt; }
+
+  function applyGhI18n(lang) {
+    const t = T[lang] || T.en;
+
+    // ── 탭 버튼 ──────────────────────────────────────────────────────────
+    const tabs = document.querySelectorAll('.gh-tab-btn');
+    if (tabs[0]) tabs[0].textContent = t.tab_games;
+    if (tabs[1]) tabs[1].textContent = t.tab_ton;
+
+    // ── 온보딩 ───────────────────────────────────────────────────────────
+    tc(q('.gh-onboard-title'), t.onboard_title);
+    tc(q('.gh-onboard-sub'),   t.onboard_sub);
+    tc(q('.gh-onboard-btn'),   t.onboard_btn);
+
+    // ── 섹션 타이틀 ───────────────────────────────────────────────────────
+    const secTitles = document.querySelectorAll('.gh-section-title');
+    if (secTitles[0]) secTitles[0].textContent = t.section_games;
+    if (secTitles[1]) secTitles[1].textContent = t.section_econ;
+
+    // ── 카드: 보물찾기 체험판 ─────────────────────────────────────────────
+    const cards = document.querySelectorAll('.gh-card');
+    const c0 = cards[0]; // trial
+    if (c0) {
+      const badge = c0.querySelector('.gh-badge'); if (badge) badge.textContent = t.trial_badge;
+      const name  = c0.querySelector('.gh-card-name'); ih(name, t.trial_name);
+      const desc  = c0.querySelector('.gh-card-desc'); ih(desc, t.trial_desc);
+      const warn  = c0.querySelector('[style*="f59e0b"]'); ih(warn, t.trial_warn);
+      const btn   = c0.querySelector('.gh-btn-play'); tc(btn, t.trial_btn);
+    }
+
+    // ── 카드: 기억력 게임 ─────────────────────────────────────────────────
+    const c1 = cards[1];
+    if (c1) {
+      const name  = c1.querySelector('.gh-card-name'); ih(name, t.memory_name);
+      const desc  = c1.querySelector('.gh-card-desc'); ih(desc, t.memory_desc);
+      const login = c1.querySelector('.gh-card-players span'); tc(login, t.memory_login);
+      const btn   = c1.querySelector('.gh-btn-play'); tc(btn, t.memory_btn);
+    }
+
+    // ── 카드: 보물찾기 & 던전 ─────────────────────────────────────────────
+    const c2 = cards[2];
+    if (c2) {
+      const name = c2.querySelector('.gh-card-name'); ih(name, t.treasure_name);
+      const desc = c2.querySelector('.gh-card-desc'); ih(desc, t.treasure_desc);
+      const btn  = c2.querySelector('.gh-btn-play'); tc(btn, t.treasure_btn);
+      const cnt  = qi('ghP0'); if (cnt) cnt.textContent = PLAYER_COUNTS.ghP0 + t.playing;
+    }
+
+    // ── 카드: Monster Race ────────────────────────────────────────────────
+    const c3 = cards[3];
+    if (c3) {
+      const desc = c3.querySelector('.gh-card-desc'); ih(desc, t.race_desc);
+      const btn  = c3.querySelector('.gh-btn-play'); tc(btn, t.race_btn);
+      const cnt  = qi('ghP1'); if (cnt) cnt.textContent = PLAYER_COUNTS.ghP1 + t.playing;
+    }
+
+    // ── 카드: 몬스터 수성 ─────────────────────────────────────────────────
+    const c4 = cards[4];
+    if (c4) {
+      const name = c4.querySelector('.gh-card-name'); ih(name, t.conquest_name);
+      const desc = c4.querySelector('.gh-card-desc'); ih(desc, t.conquest_desc);
+      const sub  = c4.querySelector('.gh-card-players span'); tc(sub, t.conquest_sub);
+      const btn  = c4.querySelector('.gh-btn-play'); tc(btn, t.conquest_btn);
+    }
+
+    // ── 카드: 활쏘기 ──────────────────────────────────────────────────────
+    const c5 = cards[5];
+    if (c5) {
+      const name = c5.querySelector('.gh-card-name'); ih(name, t.bow_name);
+      const desc = c5.querySelector('.gh-card-desc'); ih(desc, t.bow_desc);
+      const btn  = c5.querySelector('.gh-btn-play'); tc(btn, t.bow_btn);
+      const cnt  = qi('ghP2'); if (cnt) cnt.textContent = PLAYER_COUNTS.ghP2 + t.playing;
+    }
+
+    // ── Economy Converter ────────────────────────────────────────────────
+    tc(q('.gh-ex-title'), t.econ_title);
+    const exLabels = document.querySelectorAll('.gh-ex-side-label');
+    if (exLabels[0]) exLabels[0].textContent = t.econ_ton_in;
+    if (exLabels[1]) exLabels[1].textContent = 'Game Coin';
+    if (exLabels[2]) exLabels[2].textContent = t.econ_coin_in;
+    if (exLabels[3]) exLabels[3].textContent = 'TON';
+    const revSpan = document.querySelector('.gh-body .gh-ex-grid + div span');
+    tc(revSpan, t.econ_reverse);
+    tc(q('.gh-ex-note'), t.econ_note);
+    tc(qi('ghExchangeBtn'), t.econ_btn);
+
+    // ── TON 탭 ───────────────────────────────────────────────────────────
+    const tonAdminLbl = document.querySelector('[style*="text-transform:uppercase"]');
+    tc(tonAdminLbl, t.ton_admin_lbl);
+    tc(qi('tonWalletStatus'), t.ton_wallet_nc);
+    tc(qi('tonWalletAddr'),   t.ton_wallet_ad);
+
+    const tonTabBtns = document.querySelectorAll('.ton-tab-btn');
+    if (tonTabBtns[0]) tonTabBtns[0].textContent = t.dep_tab;
+    if (tonTabBtns[1]) tonTabBtns[1].textContent = t.wd_tab;
+    if (tonTabBtns[2]) tonTabBtns[2].textContent = t.hist_tab;
+
+    // 입금 탭
+    const depLabels = document.querySelectorAll('.ton-label');
+    if (depLabels[0]) depLabels[0].textContent = t.dep_step1;
+    if (depLabels[1]) depLabels[1].textContent = t.dep_step2;
+    if (depLabels[2]) depLabels[2].textContent = t.dep_step4_lbl;
+    if (depLabels[3]) depLabels[3].textContent = t.wd_label;
+    if (depLabels[4]) depLabels[4].textContent = t.wd_addr_lbl;
+
+    tc(qi('tonCopyAddr'), t.dep_copy);
+    tc(qi('tonSendBtn'),  t.dep_step3);
+    tc(qi('tonVerifyBtn'), t.dep_verify);
+
+    const ph4 = qi('tonVerifyHash'); if (ph4) ph4.placeholder = t.dep_step4_ph;
+    const wdAddrIn = qi('tonWithdrawAddr'); if (wdAddrIn) wdAddrIn.placeholder = t.wd_addr_ph;
+    tc(qi('tonWithdrawBtn'), t.wd_btn);
+
+    const tonNotes = document.querySelectorAll('.ton-note');
+    if (tonNotes[0]) tonNotes[0].textContent = t.dep_note;
+    if (tonNotes[1]) tonNotes[1].textContent = t.wd_note;
+
+    const histEmpty = document.querySelector('#tonHistoryList div');
+    tc(histEmpty, t.hist_empty);
+
+    // 출금 요청 버튼의 TON교환하기 버튼
+    const tonExBtn = document.querySelector('#ghTabTon button[onclick*="exchange"]') ||
+                     document.querySelector('#ghTabTon button[onclick*="Exchange"]');
+    if (tonExBtn) tonExBtn.textContent = t.ton_ex_btn;
+  }
+
+  // ── 언어 스위처 이벤트 ─────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('ghLang') || 'en';
+    applyGhI18n(saved);
+    document.querySelectorAll('.gh-lang-btn').forEach(btn => {
+      if (btn.dataset.lang === saved) btn.classList.add('active');
+      else btn.classList.remove('active');
+      btn.addEventListener('click', () => {
+        const lang = btn.dataset.lang;
+        localStorage.setItem('ghLang', lang);
+        applyGhI18n(lang);
+        document.querySelectorAll('.gh-lang-btn').forEach(b =>
+          b.classList.toggle('active', b.dataset.lang === lang)
+        );
+      });
+    });
+  });
+})();
 </script>
 </body>
 </html>
