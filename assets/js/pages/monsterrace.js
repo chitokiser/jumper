@@ -44,14 +44,14 @@ const SKILLS = {
   lightning:{ name:'번개질주', mp:30, emoji:'🌩️', type:'move',   cd:8000, desc:'속도 x2 + 무적 / 5초' },
 };
 
-// AI 속도 약화 (was 0.91~1.05)
+// AI 성향: aggressive(공격적), balanced(균형), defensive(안정)
 const AI_DEFS = [
-  { id:'orc',    imgKey:'orc',     name:'Orc',    color:'#4a7c2f', spd:0.78, skills:['apple','banana','boost'] },
-  { id:'pirate', imgKey:'pirate',  name:'Pirate', color:'#7c3a1a', spd:0.76, skills:['rock','oil','boost'] },
-  { id:'zombie', imgKey:'zombie1', name:'Zombie', color:'#5a7a3a', spd:0.72, skills:['banana','poop','ice'] },
-  { id:'banshee',imgKey:'zombie2', name:'Banshee',color:'#4a3a5a', spd:0.70, skills:['poop','web','banana'] },
-  { id:'cabi',   imgKey:'cabi',    name:'Cabi',   color:'#5a00aa', spd:0.82, skills:['web','tornado','apple'] },
-  { id:'troll',  imgKey:'troll',   name:'Troll',  color:'#8a8a00', spd:0.74, skills:['rock','ice','boost'] },
+  { id:'orc',    imgKey:'orc',     name:'Orc',    color:'#4a7c2f', spd:0.78, aiStyle:'aggressive', skills:['apple','banana','boost'] },
+  { id:'pirate', imgKey:'pirate',  name:'Pirate', color:'#7c3a1a', spd:0.76, aiStyle:'aggressive', skills:['rock','oil','boost'] },
+  { id:'zombie', imgKey:'zombie1', name:'Zombie', color:'#5a7a3a', spd:0.72, aiStyle:'balanced',   skills:['banana','poop','ice'] },
+  { id:'banshee',imgKey:'zombie2', name:'Banshee',color:'#4a3a5a', spd:0.70, aiStyle:'defensive',  skills:['poop','web','banana'] },
+  { id:'cabi',   imgKey:'cabi',    name:'Cabi',   color:'#5a00aa', spd:0.82, aiStyle:'aggressive', skills:['web','tornado','apple'] },
+  { id:'troll',  imgKey:'troll',   name:'Troll',  color:'#8a8a00', spd:0.74, aiStyle:'balanced',   skills:['rock','ice','boost'] },
 ];
 
 // ── 자동차 엔진 사운드 (Web Audio API) ───────────────────────────────────────
@@ -459,6 +459,7 @@ function makeRacer(def, isPlayer) {
     drift: 0, steerLossUntil: 0,
     effects: {},
     gear: 1,
+    aiStyle: def.aiStyle || 'balanced',
     skills: def.skills || [],
     skillCooldowns: {},
     traps: [], isPlayer,
@@ -608,16 +609,74 @@ function updateRacer(r, isPlayer) {
       r.speed *= (1 - offRoad * 0.06);
     }
   } else {
-    // AI — 속도 및 반응 약화
-    if (r.speed < top) r.speed = Math.min(r.speed + ACCEL * 0.60, top);
+    // ── AI 레이싱 (코너링·드리프트·추월·관성) ──────────────────────────
+    const style = r.aiStyle || 'balanced';
+    const vr = r.speed / r.maxSpeed;
+
+    // 1. 전방 5세그먼트 커브 예측
+    let maxCurveAhead = 0;
+    for (let i = 1; i <= 5; i++) {
+      const seg = _track?.[(Math.floor(r.pos) + i) % SEGS];
+      if (seg?.curve) maxCurveAhead = Math.max(maxCurveAhead, Math.abs(seg.curve));
+    }
+    const cornerIntensity = Math.min(1, maxCurveAhead / 5);
+
+    // 2. 성향별 코너 감속 비율
+    const brakeM = style === 'aggressive' ? 1 - cornerIntensity * 0.22
+                 : style === 'defensive'  ? 1 - cornerIntensity * 0.48
+                 :                          1 - cornerIntensity * 0.35;
+    const effectiveTop = top * brakeM;
+
+    // 3. 코너 진입 전 감속 / 탈출 후 재가속
+    const accelM = style === 'aggressive' ? 0.78 : style === 'defensive' ? 0.62 : 0.70;
+    if (r.speed < effectiveTop) r.speed = Math.min(r.speed + ACCEL * accelM, effectiveTop);
+    else r.speed = Math.max(effectiveTop, r.speed - ACCEL * 0.38);
+
     if (spinning) {
       r.lane += Math.sin(now * 0.014) * 0.12;
     } else if (oilSlide || iceSlide) {
-      r.lane += (Math.random()-0.5) * 0.05;
+      r.lane += (Math.random() - 0.5) * 0.05;
     } else {
-      r.lane += (Math.random()-0.5) * 0.018;
-      r.lane = r.lane * 0.97;
+      // 4. 현재 세그먼트 커브 값 (양수=우회전, 음수=좌회전)
+      const curSeg = _track?.[(Math.floor(r.pos) % SEGS + SEGS) % SEGS];
+      const curve = curSeg?.curve || 0;
+
+      // 5. 레이싱 라인: 커브 안쪽으로 파고들기
+      const racingM = style === 'aggressive' ? 0.42 : style === 'defensive' ? 0.24 : 0.33;
+      const racingLine = -curve * racingM;
+
+      // 6. 추월: 전방 차량 차단 시 차선 변경
+      const blocker = [_player, ..._racers].find(o =>
+        o.id !== r.id && !o.finished &&
+        o.pos > r.pos && o.pos - r.pos < 1.6 &&
+        Math.abs(o.lane - r.lane) < 0.52
+      );
+      let targetLane = racingLine;
+      if (blocker && style !== 'defensive') {
+        const avoidDir = r.lane <= blocker.lane ? -1 : 1;
+        targetLane = Math.max(-1.4, Math.min(1.4, blocker.lane + avoidDir * 0.88));
+      }
+
+      // 7. 부드러운 조향 (성향별 반응속도)
+      const steerRate = style === 'aggressive' ? 0.11 : style === 'defensive' ? 0.065 : 0.088;
+      r.lane += (targetLane - r.lane) * steerRate;
+
+      // 8. 고속 코너링 드리프트 (관성)
+      if (vr > 0.70 && Math.abs(curve) > 1.5) {
+        const driftDir = curve > 0 ? 1 : -1;
+        r.drift = (r.drift || 0) * 0.80 + driftDir * (vr - 0.70) * 0.20;
+        r.lane += r.drift * 0.028;
+        if (Math.abs(r.drift) > 0.22 && Math.random() < 0.13) {
+          addSmoke(r.pos, r.lane + driftDir * 0.12);
+        }
+        if (Math.abs(r.drift) > 0.38 && Math.random() < 0.07) {
+          playTireScreech(Math.min(1, Math.abs(r.drift)));
+        }
+      } else {
+        r.drift = (r.drift || 0) * 0.88;
+      }
     }
+
     r.lane = Math.max(-1.6, Math.min(1.6, r.lane));
   }
 
@@ -669,7 +728,11 @@ const _curDiff = 'Normal';
 
 function aiThink(r) {
   const now=Date.now(), d=AI_DIFF[_curDiff];
-  if ((now-(_aiTimers[r.id]||0)) < d.ms) return;
+  const style = r.aiStyle || 'balanced';
+  const thinkMs = style === 'aggressive' ? d.ms * 0.60
+                : style === 'defensive'  ? d.ms * 1.35
+                : d.ms;
+  if ((now-(_aiTimers[r.id]||0)) < thinkMs) return;
   _aiTimers[r.id]=now;
 
   // 함정 회피
