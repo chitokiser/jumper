@@ -4,13 +4,15 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
+import requests as _req
+
 from telegram import (
-    Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice,
+    Update, InlineKeyboardButton, InlineKeyboardMarkup,
     MenuButtonWebApp, WebAppInfo,
 )
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
-    PreCheckoutQueryHandler, MessageHandler, ContextTypes, filters,
+    MessageHandler, ContextTypes, filters,
 )
 
 import firebase_admin
@@ -22,12 +24,17 @@ _cred    = credentials.Certificate(json.loads(_sa_json))
 firebase_admin.initialize_app(_cred)
 _db      = firestore.client()
 
-BOT_TOKEN      = os.environ["BOT_TOKEN"]
-STARS_PRICE    = int(os.environ.get("MEMBERSHIP_STARS_PRICE", "500"))
-HUB_URL        = "https://jump22.netlify.app/telegram.html"  # Mini App 진입점
-FREE_ENTRY_MAX = 3
-UTC7           = timezone(timedelta(hours=7))
-_executor      = ThreadPoolExecutor(max_workers=4)
+BOT_TOKEN             = os.environ["BOT_TOKEN"]
+HUB_URL               = "https://jump22.netlify.app/telegram.html"
+TON_DEPOSIT_ADDRESS   = os.environ.get("TON_DEPOSIT_ADDRESS", "")
+MEMBERSHIP_TON_PRICE  = float(os.environ.get("MEMBERSHIP_TON_PRICE", "5"))
+TON_CENTER_API_KEY    = os.environ.get("TON_CENTER_API_KEY", "")
+FREE_ENTRY_MAX        = 3
+UTC7                  = timezone(timedelta(hours=7))
+_executor             = ThreadPoolExecutor(max_workers=4)
+
+# 유저별 상태 (txHash 입력 대기)
+_user_state: dict = {}   # {telegram_user_id: 'awaiting_txhash'}
 
 # ── 헬퍼 ──────────────────────────────────────────────────────────────────────
 
@@ -58,11 +65,12 @@ def _get_status(uid: str) -> dict:
         exp_dt    = datetime.strptime(expiry, "%Y-%m-%d").replace(tzinfo=UTC7)
         days_left = max(0, (exp_dt.date() - datetime.now(UTC7).date()).days + 1)
 
-    free_key    = f"freeEntry_{today}"
-    free_used   = player.get(free_key, 0)
+    free_key  = f"freeEntry_{today}"
+    free_used = player.get(free_key, 0)
 
-    cfg_snap    = _db.collection("membership_config").document("pricing").get()
-    stars_price = (cfg_snap.to_dict() or {}).get("starsPrice", STARS_PRICE) if cfg_snap.exists else STARS_PRICE
+    # TON 가격: membership_config 우선, 없으면 env var
+    cfg_snap  = _db.collection("membership_config").document("pricing").get()
+    ton_price = (cfg_snap.to_dict() or {}).get("tonPrice", MEMBERSHIP_TON_PRICE) if cfg_snap.exists else MEMBERSHIP_TON_PRICE
 
     return {
         "is_premium":  is_prem,
@@ -71,11 +79,12 @@ def _get_status(uid: str) -> dict:
         "free_used":   free_used,
         "free_left":   max(0, FREE_ENTRY_MAX - free_used) if is_prem else 0,
         "name":        user.get("displayName") or user.get("name") or "회원",
-        "stars_price": stars_price,
+        "ton_price":   ton_price,
     }
 
 
-def _activate(uid: str, payment_id: str, stars_amount: int) -> str:
+def _activate(uid: str, payment_id: str, ton_amount: float, extra: dict = None) -> tuple:
+    """정회원 활성화 + 결제 기록. (new_expiry, is_first) 반환."""
     user_ref  = _db.collection("users").document(uid)
     user_snap = user_ref.get()
     today     = _today_utc7()
@@ -84,7 +93,6 @@ def _activate(uid: str, payment_id: str, stars_amount: int) -> str:
     expiry = user.get("coopMemberUntil", "")
     base   = (datetime.strptime(expiry, "%Y-%m-%d").replace(tzinfo=UTC7)
               if expiry and expiry >= today else datetime.now(UTC7))
-
     new_expiry = (base + timedelta(days=30)).strftime("%Y-%m-%d")
     is_first   = not user.get("memberFirstJoin")
 
@@ -93,7 +101,7 @@ def _activate(uid: str, payment_id: str, stars_amount: int) -> str:
         updates["memberFirstJoin"] = firestore.SERVER_TIMESTAMP
     user_ref.set(updates, merge=True)
 
-    # 최초 가입: 레벨 4 지급 (현재 레벨 < 4 인 경우만)
+    # 최초 가입: 레벨 4 지급
     if is_first:
         p_ref  = _db.collection("battle_players").document(uid)
         p_snap = p_ref.get()
@@ -101,16 +109,73 @@ def _activate(uid: str, payment_id: str, stars_amount: int) -> str:
         if level < 4:
             p_ref.set({"level": 4}, merge=True)
 
-    _db.collection("membership_payments").document(payment_id).set({
+    # 결제 기록
+    payment_doc = {
         "uid":               uid,
-        "starsAmount":       stars_amount,
+        "tonAmount":         ton_amount,
         "paymentId":         payment_id,
         "expiresAt":         new_expiry,
         "createdMonth":      new_expiry[:7],
         "isFirstMembership": is_first,
         "createdAt":         firestore.SERVER_TIMESTAMP,
+    }
+    if extra:
+        payment_doc.update(extra)
+    _db.collection("membership_payments").document(payment_id).set(payment_doc)
+
+    return new_expiry, is_first
+
+
+def _verify_and_activate_ton(uid: str, txhash: str) -> dict:
+    """TON 트랜잭션 확인 후 정회원 활성화."""
+    pay_id = f"ton_{txhash}"
+
+    # 중복 체크
+    dup = _db.collection("membership_payments").document(pay_id).get()
+    if dup.exists:
+        raise Exception("이미 처리된 트랜잭션입니다.")
+
+    # TON Center API로 트랜잭션 조회
+    headers = {"X-API-Key": TON_CENTER_API_KEY} if TON_CENTER_API_KEY else {}
+    try:
+        resp = _req.get(
+            "https://toncenter.com/api/v3/transactions",
+            params={"hash": txhash, "limit": 1},
+            headers=headers,
+            timeout=20,
+        )
+        resp.raise_for_status()
+    except _req.exceptions.Timeout:
+        raise Exception("TON API 타임아웃. 잠시 후 다시 시도해주세요.")
+    except Exception as e:
+        raise Exception(f"TON API 오류: {e}")
+
+    data = resp.json()
+    txs  = data.get("transactions", [])
+    if not txs:
+        raise Exception("트랜잭션을 찾을 수 없습니다. 블록체인 확인에 수 분이 걸릴 수 있습니다.")
+
+    tx     = txs[0]
+    in_msg = tx.get("in_msg", {})
+
+    # 금액 확인 (nanoTON)
+    value_nano    = int(in_msg.get("value") or 0)
+    required_nano = int(MEMBERSHIP_TON_PRICE * 1_000_000_000)
+    if value_nano < required_nano:
+        actual = value_nano / 1_000_000_000
+        raise Exception(f"금액 부족: {actual:.4f} TON 전송됨 (필요: {MEMBERSHIP_TON_PRICE} TON)")
+
+    ton_received = value_nano / 1_000_000_000
+
+    # 정회원 활성화
+    new_expiry, is_first = _activate(uid, pay_id, ton_received, {
+        "txHash":      txhash,
+        "fromAddress": in_msg.get("source", ""),
+        "paymentType": "ton",
     })
-    return new_expiry
+
+    _process_pending_referral(uid)
+    return {"expiresAt": new_expiry, "isFirstMembership": is_first}
 
 
 def _save_pending_referral(new_uid: str, referrer_uid: str):
@@ -159,7 +224,7 @@ def _process_pending_referral(new_uid: str):
     })
     _db.collection("pending_referrals").document(new_uid).delete()
 
-# ── 핸들러 ────────────────────────────────────────────────────────────────────
+# ── 명령어 핸들러 ──────────────────────────────────────────────────────────────
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args or []
@@ -169,7 +234,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _run(_save_pending_referral, uid, args[0][3:])
 
     keyboard = [
-        # WebApp 버튼 — Telegram 내에서 Mini App으로 열림 (자동 인증 포함)
         [InlineKeyboardButton("🎮 JUMP22 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
         [
             InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/merchants"),
@@ -197,6 +261,17 @@ async def cmd_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _send_membership_ui(update.message, st)
 
 
+async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if _user_state.pop(user_id, None):
+        await update.message.reply_text("결제가 취소되었습니다.")
+
+
+async def cmd_play(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await cmd_start(update, context)
+
+# ── 콜백 핸들러 ───────────────────────────────────────────────────────────────
+
 async def cb_membership_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -206,50 +281,30 @@ async def cb_membership_info(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q     = update.callback_query
+    q       = update.callback_query
     await q.answer()
-    uid   = _uid(q.from_user.id)
-    st    = await _run(_get_status, uid)
-    price = st["stars_price"]
+    user_id = q.from_user.id
+    uid     = _uid(user_id)
+    st      = await _run(_get_status, uid)
+    price   = st["ton_price"]
 
-    await context.bot.send_invoice(
-        chat_id=q.message.chat_id,
-        title="⭐ JumpDAO Premium Membership",
-        description=(
-            "30일 정회원 혜택:\n"
-            "• 매일 무료 게임 입장 3회\n"
-            "• 정회원 전용 보물박스\n"
-            "• 레벨 4 즉시 부스트 (최초 1회)\n"
-            "• 친구 초대 500 GP 보상"
-        ),
-        payload=f"premium_{uid}",
-        currency="XTR",
-        prices=[LabeledPrice("Premium Membership (30일)", price)],
+    # txHash 입력 대기 상태로 전환
+    _user_state[user_id] = "awaiting_txhash"
+
+    addr_display = f"`{TON_DEPOSIT_ADDRESS}`" if TON_DEPOSIT_ADDRESS else "_(주소 미설정 — 관리자에게 문의)_"
+
+    text = (
+        f"💎 *정회원 TON 결제*\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"💰 금액: `{price} TON`\n"
+        f"📬 입금 주소:\n{addr_display}\n"
+        f"━━━━━━━━━━━━━━━━━━\n\n"
+        f"1️⃣ 위 주소로 정확히 *{price} TON* 전송\n"
+        f"2️⃣ 전송 완료 후 *트랜잭션 해시*를 이 채팅에 붙여넣기\n\n"
+        f"_해시는 TON 지갑 앱 → 거래 내역 → 해당 거래 상세에서 확인_\n\n"
+        f"/cancel 로 취소"
     )
-
-
-async def pre_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.pre_checkout_query.answer(ok=True)
-
-
-async def successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    pay        = update.message.successful_payment
-    uid        = pay.invoice_payload.replace("premium_", "")
-    pay_id     = pay.telegram_payment_charge_id
-    stars      = pay.total_amount
-
-    new_expiry = await _run(_activate, uid, pay_id, stars)
-    await _run(_process_pending_referral, uid)
-
-    bot_name = (await context.bot.get_me()).username
-    invite   = f"https://t.me/{bot_name}?start=REF{uid}"
-    await update.message.reply_text(
-        f"🎉 *정회원 가입 완료!*\n\n"
-        f"만료일: `{new_expiry}`\n"
-        f"매일 무료 게임 입장 3회가 활성화됩니다.\n\n"
-        f"👥 친구 초대 링크:\n`{invite}`",
-        parse_mode="Markdown",
-    )
+    await q.message.reply_text(text, parse_mode="Markdown")
 
 
 async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -264,13 +319,55 @@ async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
     )
 
+# ── 메시지 핸들러 (txHash 수신) ───────────────────────────────────────────────
 
-async def cmd_play(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await cmd_start(update, context)
+async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if _user_state.get(user_id) != "awaiting_txhash":
+        return
+
+    txhash = (update.message.text or "").strip()
+    if len(txhash) < 20:
+        return  # 너무 짧으면 무시
+
+    _user_state.pop(user_id, None)
+    uid = _uid(user_id)
+
+    wait_msg = await update.message.reply_text("🔍 결제 확인 중... (최대 20초)")
+
+    try:
+        result    = await _run(_verify_and_activate_ton, uid, txhash)
+        expiry    = result["expiresAt"]
+        is_first  = result["isFirstMembership"]
+        bot_name  = (await context.bot.get_me()).username
+        invite    = f"https://t.me/{bot_name}?start=REF{uid}"
+
+        text = (
+            f"🎉 *정회원 활성화 완료!*\n\n"
+            f"만료일: `{expiry}`\n"
+            f"매일 무료 게임 입장 3회 활성화!\n"
+        )
+        if is_first:
+            text += "🎮 레벨 4 부스트 적용!\n"
+        text += f"\n👥 친구 초대 링크:\n`{invite}`"
+
+        await wait_msg.delete()
+        await update.message.reply_text(text, parse_mode="Markdown")
+
+    except Exception as e:
+        # 실패 시 재시도 허용
+        _user_state[user_id] = "awaiting_txhash"
+        await wait_msg.delete()
+        await update.message.reply_text(
+            f"❌ 확인 실패: {e}\n\n"
+            "트랜잭션 해시를 다시 확인 후 전송하거나\n"
+            "/cancel 로 취소하세요."
+        )
 
 # ── 공통 UI ───────────────────────────────────────────────────────────────────
 
 async def _send_membership_ui(message, st: dict):
+    price = st["ton_price"]
     if st["is_premium"]:
         text = (
             f"⭐ *Premium Member*\n"
@@ -278,8 +375,8 @@ async def _send_membership_ui(message, st: dict):
             f"오늘 무료 입장: {st['free_used']} / {FREE_ENTRY_MAX}회 사용"
         )
         keyboard = [
-            [InlineKeyboardButton("🔄 30일 연장",        callback_data="buy_premium")],
-            [InlineKeyboardButton("👥 친구 초대 링크",   callback_data="referral_link")],
+            [InlineKeyboardButton("🔄 30일 연장",       callback_data="buy_premium")],
+            [InlineKeyboardButton("👥 친구 초대 링크",  callback_data="referral_link")],
         ]
     else:
         text = (
@@ -289,11 +386,11 @@ async def _send_membership_ui(message, st: dict):
             "• 정회원 전용 보물박스\n"
             "• 레벨 4 즉시 부스트 (최초 1회)\n"
             "• 친구 초대 500 GP 보상\n\n"
-            f"가격: ⭐ {st['stars_price']} Stars / 30일"
+            f"가격: 💎 {price} TON / 30일"
         )
         keyboard = [
             [InlineKeyboardButton(
-                f"⭐ 정회원 가입 ({st['stars_price']} Stars)",
+                f"💎 정회원 가입 ({price} TON)",
                 callback_data="buy_premium",
             )],
         ]
@@ -302,7 +399,7 @@ async def _send_membership_ui(message, st: dict):
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-# ── 진입점 ────────────────────────────────────────────────────────────────────
+# ── 봇 초기화 ─────────────────────────────────────────────────────────────────
 
 async def _post_init(application):
     """봇 시작 시 Menu Button을 Game Hub Mini App으로 고정 설정."""
@@ -313,21 +410,24 @@ async def _post_init(application):
         )
     )
 
+# ── 진입점 ────────────────────────────────────────────────────────────────────
+
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(_post_init).build()
 
     app.add_handler(CommandHandler("start",      cmd_start))
     app.add_handler(CommandHandler("play",       cmd_play))
     app.add_handler(CommandHandler("membership", cmd_membership))
+    app.add_handler(CommandHandler("cancel",     cmd_cancel))
 
     app.add_handler(CallbackQueryHandler(cb_membership_info, pattern="^membership_info$"))
     app.add_handler(CallbackQueryHandler(cb_buy_premium,     pattern="^buy_premium$"))
     app.add_handler(CallbackQueryHandler(cb_referral_link,   pattern="^referral_link$"))
 
-    app.add_handler(PreCheckoutQueryHandler(pre_checkout))
-    app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
+    # 텍스트 메시지 → txHash 처리 (명령어 제외)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_txhash))
 
-    print("✅ Bot is running...")
+    print("✅ Bot is running (TON payment mode)...")
     app.run_polling()
 
 if __name__ == "__main__":
