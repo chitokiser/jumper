@@ -19,17 +19,15 @@ import sys
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Windows 콘솔 UTF-8 강제 (이모지 출력용)
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-# ── 필수 환경변수 검증 ────────────────────────────────────────────────────────
+# ── 환경변수 검증 ─────────────────────────────────────────────────────────────
 _REQUIRED = ["BOT_TOKEN", "FIREBASE_SERVICE_ACCOUNT"]
 _missing  = [v for v in _REQUIRED if not os.environ.get(v)]
 if _missing:
-    print(f"[ERROR] 필수 환경변수 누락: {', '.join(_missing)}")
-    print("Railway -> 봇 서비스 -> Variables 탭에서 설정하세요.")
+    print(f"[ERROR] Missing env vars: {', '.join(_missing)}")
     sys.exit(1)
 
 # ── Firebase 초기화 ───────────────────────────────────────────────────────────
@@ -38,13 +36,12 @@ try:
     _cred    = credentials.Certificate(json.loads(_sa_json))
     firebase_admin.initialize_app(_cred)
     _db      = firestore.client()
-    print("[OK] Firebase 연결 성공")
+    print("[OK] Firebase connected")
 except json.JSONDecodeError as e:
-    print(f"[ERROR] FIREBASE_SERVICE_ACCOUNT JSON 파싱 실패: {e}")
-    print("Railway Variables에서 JSON 전체를 정확히 붙여넣었는지 확인하세요.")
+    print(f"[ERROR] FIREBASE_SERVICE_ACCOUNT JSON parse failed: {e}")
     sys.exit(1)
 except Exception as e:
-    print(f"[ERROR] Firebase 초기화 실패: {e}")
+    print(f"[ERROR] Firebase init failed: {e}")
     sys.exit(1)
 
 BOT_TOKEN             = os.environ["BOT_TOKEN"]
@@ -54,11 +51,12 @@ MEMBERSHIP_TON_PRICE  = float(os.environ.get("MEMBERSHIP_TON_PRICE", "5"))
 TON_CENTER_API_KEY    = os.environ.get("TON_CENTER_API_KEY", "")
 UTC7                  = timezone(timedelta(hours=7))
 _executor             = ThreadPoolExecutor(max_workers=4)
+DAILY_GP_TOPUP        = 3500
+TOPUP_THRESHOLD       = 1000
 
-# 유저별 상태 (txHash 입력 대기)
 _user_state: dict = {}   # {telegram_user_id: 'awaiting_txhash'}
 
-# ── 헬퍼 ──────────────────────────────────────────────────────────────────────
+# ── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
 def _today_utc7() -> str:
     return datetime.now(UTC7).strftime("%Y-%m-%d")
@@ -70,10 +68,7 @@ async def _run(fn, *args):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(_executor, lambda: fn(*args))
 
-# ── Firestore 동기 함수 ────────────────────────────────────────────────────────
-
-DAILY_GP_TOPUP   = 3500
-TOPUP_THRESHOLD  = 1000
+# ── Firestore ────────────────────────────────────────────────────────────────
 
 def _get_status(uid: str) -> dict:
     user_snap   = _db.collection("users").document(uid).get()
@@ -94,24 +89,22 @@ def _get_status(uid: str) -> dict:
     topup_claimed = bool(player.get(topup_key, False))
     current_gp    = player.get("gold", 0)
 
-    # TON 가격: membership_config 우선, 없으면 env var
     cfg_snap  = _db.collection("membership_config").document("pricing").get()
     ton_price = (cfg_snap.to_dict() or {}).get("tonPrice", MEMBERSHIP_TON_PRICE) if cfg_snap.exists else MEMBERSHIP_TON_PRICE
 
     return {
-        "is_premium":    is_prem,
-        "expires_at":    expiry or None,
-        "days_left":     days_left,
-        "current_gp":    current_gp,
-        "topup_claimed": topup_claimed,
+        "is_premium":     is_prem,
+        "expires_at":     expiry or None,
+        "days_left":      days_left,
+        "current_gp":     current_gp,
+        "topup_claimed":  topup_claimed,
         "topup_eligible": is_prem and not topup_claimed and current_gp <= TOPUP_THRESHOLD,
-        "name":          user.get("displayName") or user.get("name") or "회원",
-        "ton_price":     ton_price,
+        "name":           user.get("displayName") or user.get("name") or "Member",
+        "ton_price":      ton_price,
     }
 
 
 def _activate(uid: str, payment_id: str, ton_amount: float, extra: dict = None) -> tuple:
-    """정회원 활성화 + 결제 기록. (new_expiry, is_first) 반환."""
     user_ref  = _db.collection("users").document(uid)
     user_snap = user_ref.get()
     today     = _today_utc7()
@@ -128,7 +121,6 @@ def _activate(uid: str, payment_id: str, ton_amount: float, extra: dict = None) 
         updates["memberFirstJoin"] = firestore.SERVER_TIMESTAMP
     user_ref.set(updates, merge=True)
 
-    # 최초 가입: 레벨 4 지급
     if is_first:
         p_ref  = _db.collection("battle_players").document(uid)
         p_snap = p_ref.get()
@@ -136,7 +128,6 @@ def _activate(uid: str, payment_id: str, ton_amount: float, extra: dict = None) 
         if level < 4:
             p_ref.set({"level": 4}, merge=True)
 
-    # 결제 기록
     payment_doc = {
         "uid":               uid,
         "tonAmount":         ton_amount,
@@ -154,15 +145,12 @@ def _activate(uid: str, payment_id: str, ton_amount: float, extra: dict = None) 
 
 
 def _verify_and_activate_ton(uid: str, txhash: str) -> dict:
-    """TON 트랜잭션 확인 후 정회원 활성화."""
     pay_id = f"ton_{txhash}"
 
-    # 중복 체크
     dup = _db.collection("membership_payments").document(pay_id).get()
     if dup.exists:
-        raise Exception("이미 처리된 트랜잭션입니다.")
+        raise Exception("이미 처리된 트랜잭션입니다. / Transaction already processed.")
 
-    # TON Center API로 트랜잭션 조회
     headers = {"X-API-Key": TON_CENTER_API_KEY} if TON_CENTER_API_KEY else {}
     try:
         resp = _req.get(
@@ -173,28 +161,32 @@ def _verify_and_activate_ton(uid: str, txhash: str) -> dict:
         )
         resp.raise_for_status()
     except _req.exceptions.Timeout:
-        raise Exception("TON API 타임아웃. 잠시 후 다시 시도해주세요.")
+        raise Exception("TON API 타임아웃 — 잠시 후 다시 시도하세요.\nTON API timeout — please retry.")
     except Exception as e:
-        raise Exception(f"TON API 오류: {e}")
+        raise Exception(f"TON API 오류 / error: {e}")
 
     data = resp.json()
     txs  = data.get("transactions", [])
     if not txs:
-        raise Exception("트랜잭션을 찾을 수 없습니다. 블록체인 확인에 수 분이 걸릴 수 있습니다.")
+        raise Exception(
+            "트랜잭션을 찾을 수 없습니다. 수 분 후 다시 시도하세요.\n"
+            "Transaction not found. Please retry in a few minutes."
+        )
 
     tx     = txs[0]
     in_msg = tx.get("in_msg", {})
 
-    # 금액 확인 (nanoTON)
     value_nano    = int(in_msg.get("value") or 0)
     required_nano = int(MEMBERSHIP_TON_PRICE * 1_000_000_000)
     if value_nano < required_nano:
         actual = value_nano / 1_000_000_000
-        raise Exception(f"금액 부족: {actual:.4f} TON 전송됨 (필요: {MEMBERSHIP_TON_PRICE} TON)")
+        raise Exception(
+            f"금액 부족 / Insufficient amount: {actual:.4f} TON sent "
+            f"(required: {MEMBERSHIP_TON_PRICE} TON)"
+        )
 
     ton_received = value_nano / 1_000_000_000
 
-    # 정회원 활성화
     new_expiry, is_first = _activate(uid, pay_id, ton_received, {
         "txHash":      txhash,
         "fromAddress": in_msg.get("source", ""),
@@ -251,7 +243,7 @@ def _process_pending_referral(new_uid: str):
     })
     _db.collection("pending_referrals").document(new_uid).delete()
 
-# ── 명령어 핸들러 ──────────────────────────────────────────────────────────────
+# ── 명령어 핸들러 ─────────────────────────────────────────────────────────────
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args or []
@@ -261,22 +253,24 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _run(_save_pending_referral, uid, args[0][3:])
 
     keyboard = [
-        [InlineKeyboardButton("🎮 JUMP22 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
+        [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
         [
-            InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/merchants"),
-            InlineKeyboardButton("🛹 Monster Race",   url="https://jump22.netlify.app/monsterrace"),
+            InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/treasure.html"),
+            InlineKeyboardButton("🏎️ Monster Racing",  url="https://jump22.netlify.app/monsterrace.html"),
         ],
         [
-            InlineKeyboardButton("🏹 Archery Hunt",   url="https://jump22.netlify.app/bow"),
-            InlineKeyboardButton("🃏 Memory Game",    url="https://jump22.netlify.app/memory"),
+            InlineKeyboardButton("🏹 Archery Hunt",   url="https://jump22.netlify.app/bow.html"),
+            InlineKeyboardButton("🃏 Speed Memory",   url="https://jump22.netlify.app/memory.html"),
         ],
-        [InlineKeyboardButton("🏰 Monster Siege",    url="https://jump22.netlify.app/conquest")],
-        [InlineKeyboardButton("⭐ 정회원 혜택 보기",  callback_data="membership_info")],
+        [InlineKeyboardButton("🏰 Monster Defense",   url="https://jump22.netlify.app/conquest.html")],
+        [InlineKeyboardButton("⭐ 정회원 혜택 / Premium Benefits", callback_data="membership_info")],
     ]
     await update.message.reply_text(
         "*JumpDAO*\n\n"
-        "A game hub featuring only games where\n"
-        "Game Points ⇔ Toncoin & USDT can be exchanged",
+        "게임포인트 ⇔ Toncoin & USDT 교환이 가능한\n"
+        "검증된 코인 게임 허브입니다.\n\n"
+        "_A verified game hub where_\n"
+        "_Game Points ⇔ Toncoin & USDT can be exchanged_",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
@@ -291,13 +285,15 @@ async def cmd_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if _user_state.pop(user_id, None):
-        await update.message.reply_text("결제가 취소되었습니다.")
+        await update.message.reply_text(
+            "결제가 취소되었습니다.\nPayment cancelled."
+        )
 
 
 async def cmd_play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await cmd_start(update, context)
 
-# ── 콜백 핸들러 ───────────────────────────────────────────────────────────────
+# ── 콜백 핸들러 ──────────────────────────────────────────────────────────────
 
 async def cb_membership_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -315,21 +311,23 @@ async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     st      = await _run(_get_status, uid)
     price   = st["ton_price"]
 
-    # txHash 입력 대기 상태로 전환
     _user_state[user_id] = "awaiting_txhash"
 
-    addr_display = f"`{TON_DEPOSIT_ADDRESS}`" if TON_DEPOSIT_ADDRESS else "_(address not set — contact admin)_"
+    addr_display = f"`{TON_DEPOSIT_ADDRESS}`" if TON_DEPOSIT_ADDRESS else "_(주소 미설정 — 관리자 문의 / address not set — contact admin)_"
 
     text = (
-        f"💎 *Premium Membership — TON Payment*\n"
+        f"💎 *정회원 TON 결제 / Premium TON Payment*\n"
         f"━━━━━━━━━━━━━━━━━━\n"
-        f"💰 Amount: `{price} TON`\n"
-        f"📬 Deposit address:\n{addr_display}\n"
+        f"💰 금액 / Amount: `{price} TON`\n"
+        f"📬 입금 주소 / Deposit address:\n{addr_display}\n"
         f"━━━━━━━━━━━━━━━━━━\n\n"
-        f"1️⃣ Send exactly *{price} TON* to the address above\n"
-        f"2️⃣ Paste the *transaction hash* into this chat\n\n"
-        f"_Find the hash in your TON wallet → Transaction history → Transaction details_\n\n"
-        f"/cancel to abort"
+        f"1️⃣ 위 주소로 정확히 *{price} TON* 전송\n"
+        f"    _Send exactly *{price} TON* to the address above_\n\n"
+        f"2️⃣ 전송 후 *트랜잭션 해시*를 이 채팅에 붙여넣기\n"
+        f"    _Paste the *transaction hash* into this chat_\n\n"
+        f"_해시: TON 지갑 앱 → 거래 내역 → 해당 거래 상세_\n"
+        f"_Hash: TON wallet → Transaction history → Details_\n\n"
+        f"/cancel 로 취소 / to abort"
     )
     await q.message.reply_text(text, parse_mode="Markdown")
 
@@ -341,12 +339,14 @@ async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bot_name = (await context.bot.get_me()).username
     link     = f"https://t.me/{bot_name}?start=REF{uid}"
     await q.message.reply_text(
-        f"👥 *Referral Link*\n\n`{link}`\n\n"
-        "When a friend joins Premium using this link, you get *500 GP*!",
+        f"👥 *친구 초대 링크 / Referral Link*\n\n"
+        f"`{link}`\n\n"
+        f"이 링크로 친구가 정회원 가입 시 *500 GP* 지급!\n"
+        f"_When a friend joins Premium via this link, you get *500 GP*!_",
         parse_mode="Markdown",
     )
 
-# ── 메시지 핸들러 (txHash 수신) ───────────────────────────────────────────────
+# ── 메시지 핸들러 (txHash 수신) ──────────────────────────────────────────────
 
 async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -355,12 +355,12 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     txhash = (update.message.text or "").strip()
     if len(txhash) < 20:
-        return  # 너무 짧으면 무시
+        return
 
     _user_state.pop(user_id, None)
     uid = _uid(user_id)
 
-    wait_msg = await update.message.reply_text("🔍 Verifying payment... (up to 20 sec)")
+    wait_msg = await update.message.reply_text("🔍 결제 확인 중... / Verifying payment... (최대 20초 / up to 20 sec)")
 
     try:
         result    = await _run(_verify_and_activate_ton, uid, txhash)
@@ -370,13 +370,16 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
         invite    = f"https://t.me/{bot_name}?start=REF{uid}"
 
         text = (
-            f"🎉 *Premium membership activated!*\n\n"
-            f"Expires: `{expiry}`\n"
-            f"🎁 Daily 3,500 GP top-up activated (when GP ≤ 1,000)!\n"
+            f"🎉 *정회원 활성화 완료! / Premium Activated!*\n\n"
+            f"만료일 / Expires: `{expiry}`\n"
+            f"🎁 매일 3,500 GP 충전 활성화 (GP 1,000 이하 시)\n"
+            f"_Daily 3,500 GP top-up activated (when GP ≤ 1,000)_\n"
         )
         if is_first:
-            text += "🎮 Level 4 boost applied!\n"
-        text += f"\n👥 Your referral link:\n`{invite}`"
+            text += "🎮 레벨 4 부스트 적용! / Level 4 boost applied!\n"
+        text += (
+            f"\n👥 친구 초대 링크 / Referral link:\n`{invite}`"
+        )
 
         await wait_msg.delete()
         await update.message.reply_text(text, parse_mode="Markdown")
@@ -385,9 +388,10 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _user_state[user_id] = "awaiting_txhash"
         await wait_msg.delete()
         await update.message.reply_text(
-            f"❌ Verification failed: {e}\n\n"
-            "Please check the transaction hash and try again, or\n"
-            "/cancel to abort."
+            f"❌ 확인 실패 / Verification failed: {e}\n\n"
+            "트랜잭션 해시를 다시 확인 후 전송하거나\n"
+            "_Please check the hash and try again, or_\n"
+            "/cancel 로 취소 / to abort"
         )
 
 # ── 공통 UI ───────────────────────────────────────────────────────────────────
@@ -395,39 +399,41 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _send_membership_ui(message, st: dict):
     price = st["ton_price"]
     if st["is_premium"]:
-        topup_status = (
-            "✅ Today's 3,500 GP already claimed"
-            if st.get("topup_claimed")
-            else (
-                "🟡 GP above 1,000 — top-up not available"
-                if st.get("current_gp", 0) > 1000
-                else "🎁 3,500 GP top-up available! Open Game Hub to claim"
-            )
-        )
+        gp = st.get("current_gp", 0)
+        if st.get("topup_claimed"):
+            topup_line = "✅ 오늘 3,500 GP 충전 완료 / Today's top-up claimed"
+        elif gp > TOPUP_THRESHOLD:
+            topup_line = f"🟡 GP {gp:,} — 1,000 초과로 충전 불가 / GP above 1,000, top-up unavailable"
+        else:
+            topup_line = "🎁 3,500 GP 충전 가능! Game Hub에서 수령\n_3,500 GP available! Claim in Game Hub_"
+
         text = (
-            f"⭐ *Premium Member*\n"
-            f"Expires: `{st['expires_at']}` (D-{st['days_left']})\n\n"
-            f"💰 Current GP: `{st.get('current_gp', 0):,}`\n"
-            f"{topup_status}"
+            f"⭐ *정회원 / Premium Member*\n"
+            f"만료 / Expires: `{st['expires_at']}` (D-{st['days_left']})\n\n"
+            f"💰 보유 GP / Current GP: `{gp:,}`\n"
+            f"{topup_line}"
         )
         keyboard = [
-            [InlineKeyboardButton("🔄 Extend 30 days",    callback_data="buy_premium")],
-            [InlineKeyboardButton("👥 Referral link",     callback_data="referral_link")],
+            [InlineKeyboardButton("🔄 30일 연장 / Extend 30 days", callback_data="buy_premium")],
+            [InlineKeyboardButton("👥 친구 초대 링크 / Referral link", callback_data="referral_link")],
         ]
     else:
         text = (
-            "일반회원\n\n"
-            "⭐ *정회원 혜택:*\n"
+            "일반회원 / Free Member\n\n"
+            "⭐ *정회원 혜택 / Premium Benefits:*\n"
             "• 🎁 매일 게임코인 3,500 GP 충전\n"
-            "  _(GP 1,000 이하일 때만 충전 가능)_\n"
-            "• 정회원 전용 보물박스\n"
+            "    _(GP 1,000 이하일 때만)_\n"
+            "    _Daily 3,500 GP top-up (when GP ≤ 1,000)_\n"
+            "• 정회원 전용 보물박스 / Exclusive treasure boxes\n"
             "• 레벨 4 즉시 부스트 (최초 1회)\n"
-            "• 친구 초대 500 GP 보상\n\n"
-            f"가격: 💎 {price} TON / 30일"
+            "    _Instant Level 4 boost (first time only)_\n"
+            "• 친구 초대 500 GP 보상\n"
+            "    _500 GP reward per referral_\n\n"
+            f"가격 / Price: 💎 {price} TON / 30일 (days)"
         )
         keyboard = [
             [InlineKeyboardButton(
-                f"💎 정회원 가입 ({price} TON)",
+                f"💎 정회원 가입 / Join Premium ({price} TON)",
                 callback_data="buy_premium",
             )],
         ]
@@ -439,18 +445,15 @@ async def _send_membership_ui(message, st: dict):
 # ── 봇 초기화 ─────────────────────────────────────────────────────────────────
 
 async def error_handler(_update, context: ContextTypes.DEFAULT_TYPE):
-    """Conflict 에러 무시 — 이전 인스턴스가 종료될 때까지 대기."""
     import telegram.error as tg_err
     if isinstance(context.error, tg_err.Conflict):
-        print("[WARN] Conflict: 이전 인스턴스와 충돌, 무시하고 계속...")
+        print("[WARN] Conflict: previous instance still running, ignoring...")
         return
     print(f"[ERROR] Unhandled: {context.error}")
 
 
 async def _post_init(application):
-    """봇 시작 시 이전 세션 종료 대기 + Menu Button 설정."""
-    import asyncio
-    await asyncio.sleep(3)  # 이전 인스턴스 종료 대기
+    await asyncio.sleep(3)
     try:
         await application.bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
@@ -475,11 +478,10 @@ def main():
     app.add_handler(CallbackQueryHandler(cb_buy_premium,     pattern="^buy_premium$"))
     app.add_handler(CallbackQueryHandler(cb_referral_link,   pattern="^referral_link$"))
 
-    # 텍스트 메시지 → txHash 처리 (명령어 제외)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_txhash))
     app.add_error_handler(error_handler)
 
-    print("✅ Bot is running (TON payment mode)...")
+    print("✅ Bot is running (bilingual KO/EN)...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
