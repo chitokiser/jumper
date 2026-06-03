@@ -314,18 +314,18 @@ async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # txHash 입력 대기 상태로 전환
     _user_state[user_id] = "awaiting_txhash"
 
-    addr_display = f"`{TON_DEPOSIT_ADDRESS}`" if TON_DEPOSIT_ADDRESS else "_(주소 미설정 — 관리자에게 문의)_"
+    addr_display = f"`{TON_DEPOSIT_ADDRESS}`" if TON_DEPOSIT_ADDRESS else "_(address not set — contact admin)_"
 
     text = (
-        f"💎 *정회원 TON 결제*\n"
+        f"💎 *Premium Membership — TON Payment*\n"
         f"━━━━━━━━━━━━━━━━━━\n"
-        f"💰 금액: `{price} TON`\n"
-        f"📬 입금 주소:\n{addr_display}\n"
+        f"💰 Amount: `{price} TON`\n"
+        f"📬 Deposit address:\n{addr_display}\n"
         f"━━━━━━━━━━━━━━━━━━\n\n"
-        f"1️⃣ 위 주소로 정확히 *{price} TON* 전송\n"
-        f"2️⃣ 전송 완료 후 *트랜잭션 해시*를 이 채팅에 붙여넣기\n\n"
-        f"_해시는 TON 지갑 앱 → 거래 내역 → 해당 거래 상세에서 확인_\n\n"
-        f"/cancel 로 취소"
+        f"1️⃣ Send exactly *{price} TON* to the address above\n"
+        f"2️⃣ Paste the *transaction hash* into this chat\n\n"
+        f"_Find the hash in your TON wallet → Transaction history → Transaction details_\n\n"
+        f"/cancel to abort"
     )
     await q.message.reply_text(text, parse_mode="Markdown")
 
@@ -337,8 +337,8 @@ async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bot_name = (await context.bot.get_me()).username
     link     = f"https://t.me/{bot_name}?start=REF{uid}"
     await q.message.reply_text(
-        f"👥 *친구 초대 링크*\n\n`{link}`\n\n"
-        "친구가 이 링크로 정회원 가입 시 *500 GP*를 드립니다!",
+        f"👥 *Referral Link*\n\n`{link}`\n\n"
+        "When a friend joins Premium using this link, you get *500 GP*!",
         parse_mode="Markdown",
     )
 
@@ -356,7 +356,7 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _user_state.pop(user_id, None)
     uid = _uid(user_id)
 
-    wait_msg = await update.message.reply_text("🔍 결제 확인 중... (최대 20초)")
+    wait_msg = await update.message.reply_text("🔍 Verifying payment... (up to 20 sec)")
 
     try:
         result    = await _run(_verify_and_activate_ton, uid, txhash)
@@ -366,25 +366,24 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
         invite    = f"https://t.me/{bot_name}?start=REF{uid}"
 
         text = (
-            f"🎉 *정회원 활성화 완료!*\n\n"
-            f"만료일: `{expiry}`\n"
-            f"매일 무료 게임 입장 3회 활성화!\n"
+            f"🎉 *Premium membership activated!*\n\n"
+            f"Expires: `{expiry}`\n"
+            f"3 free game entries per day unlocked!\n"
         )
         if is_first:
-            text += "🎮 레벨 4 부스트 적용!\n"
-        text += f"\n👥 친구 초대 링크:\n`{invite}`"
+            text += "🎮 Level 4 boost applied!\n"
+        text += f"\n👥 Your referral link:\n`{invite}`"
 
         await wait_msg.delete()
         await update.message.reply_text(text, parse_mode="Markdown")
 
     except Exception as e:
-        # 실패 시 재시도 허용
         _user_state[user_id] = "awaiting_txhash"
         await wait_msg.delete()
         await update.message.reply_text(
-            f"❌ 확인 실패: {e}\n\n"
-            "트랜잭션 해시를 다시 확인 후 전송하거나\n"
-            "/cancel 로 취소하세요."
+            f"❌ Verification failed: {e}\n\n"
+            "Please check the transaction hash and try again, or\n"
+            "/cancel to abort."
         )
 
 # ── 공통 UI ───────────────────────────────────────────────────────────────────
@@ -394,26 +393,26 @@ async def _send_membership_ui(message, st: dict):
     if st["is_premium"]:
         text = (
             f"⭐ *Premium Member*\n"
-            f"만료일: `{st['expires_at']}` (D-{st['days_left']})\n"
-            f"오늘 무료 입장: {st['free_used']} / {FREE_ENTRY_MAX}회 사용"
+            f"Expires: `{st['expires_at']}` (D-{st['days_left']})\n"
+            f"Free entries today: {st['free_used']} / {FREE_ENTRY_MAX} used"
         )
         keyboard = [
-            [InlineKeyboardButton("🔄 30일 연장",       callback_data="buy_premium")],
-            [InlineKeyboardButton("👥 친구 초대 링크",  callback_data="referral_link")],
+            [InlineKeyboardButton("🔄 Extend 30 days",    callback_data="buy_premium")],
+            [InlineKeyboardButton("👥 Referral link",     callback_data="referral_link")],
         ]
     else:
         text = (
-            "일반회원\n\n"
-            "⭐ 정회원 혜택:\n"
-            "• 매일 무료 게임 입장 3회\n"
-            "• 정회원 전용 보물박스\n"
-            "• 레벨 4 즉시 부스트 (최초 1회)\n"
-            "• 친구 초대 500 GP 보상\n\n"
-            f"가격: 💎 {price} TON / 30일"
+            "Free member\n\n"
+            "⭐ *Premium benefits:*\n"
+            "• 3 free game entries every day\n"
+            "• Premium-only treasure boxes\n"
+            "• Instant Level 4 boost (first time only)\n"
+            "• 500 GP reward for each referral\n\n"
+            f"Price: 💎 {price} TON / 30 days"
         )
         keyboard = [
             [InlineKeyboardButton(
-                f"💎 정회원 가입 ({price} TON)",
+                f"💎 Join Premium ({price} TON)",
                 callback_data="buy_premium",
             )],
         ]

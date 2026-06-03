@@ -21,6 +21,36 @@
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
 
 [[headers]]
+  for = "/tg-hub.html"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
+
+[[headers]]
+  for = "/bow.html"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
+
+[[headers]]
+  for = "/monsterrace.html"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
+
+[[headers]]
+  for = "/memory.html"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
+
+[[headers]]
+  for = "/conquest.html"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
+
+[[headers]]
+  for = "/treasure.html"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
+
+[[headers]]
   for = "/sitemap.xml"
   [headers.values]
     Content-Type = "application/xml; charset=utf-8"
