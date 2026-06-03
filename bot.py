@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice,
+    MenuButtonWebApp, WebAppInfo,
 )
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
@@ -23,6 +24,7 @@ _db      = firestore.client()
 
 BOT_TOKEN      = os.environ["BOT_TOKEN"]
 STARS_PRICE    = int(os.environ.get("MEMBERSHIP_STARS_PRICE", "500"))
+HUB_URL        = "https://jump22.netlify.app/telegram.html"  # Mini App 진입점
 FREE_ENTRY_MAX = 3
 UTC7           = timezone(timedelta(hours=7))
 _executor      = ThreadPoolExecutor(max_workers=4)
@@ -167,8 +169,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _run(_save_pending_referral, uid, args[0][3:])
 
     keyboard = [
-        [InlineKeyboardButton("🎮 JUMP22 Game Hub",
-            url="https://jump22.netlify.app/merchants")],
+        # WebApp 버튼 — Telegram 내에서 Mini App으로 열림 (자동 인증 포함)
+        [InlineKeyboardButton("🎮 JUMP22 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
         [
             InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/merchants"),
             InlineKeyboardButton("🛹 Monster Race",   url="https://jump22.netlify.app/monsterrace"),
@@ -302,8 +304,17 @@ async def _send_membership_ui(message, st: dict):
 
 # ── 진입점 ────────────────────────────────────────────────────────────────────
 
+async def _post_init(application):
+    """봇 시작 시 Menu Button을 Game Hub Mini App으로 고정 설정."""
+    await application.bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text="🎮 Game Hub",
+            web_app=WebAppInfo(url=HUB_URL),
+        )
+    )
+
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(BOT_TOKEN).post_init(_post_init).build()
 
     app.add_handler(CommandHandler("start",      cmd_start))
     app.add_handler(CommandHandler("play",       cmd_play))

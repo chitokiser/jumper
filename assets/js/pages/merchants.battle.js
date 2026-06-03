@@ -736,6 +736,9 @@ function updateCombatHud() {
   if (mmp) mmp.style.width = mpPct + '%';
 
   const lv = document.getElementById('cLv');    if (lv)  lv.textContent  = _t('hud_lv', p.level, p.gold||0, p.token??0);
+  // 상단 GP 배지 업데이트
+  const gpVal = document.getElementById('hudGpVal');
+  if (gpVal) gpVal.textContent = (p.gold || 0).toLocaleString();
   const hv = document.getElementById('cHpVal'); if (hv)  hv.textContent  = `${p.hp} / ${p.maxHp}`;
   const mv = document.getElementById('cMpVal'); if (mv)  mv.textContent  = `${p.mp} / ${p.maxMp}`;
   const sp = document.getElementById('cSpd');   if (sp)  sp.textContent  = `SPD ${_currentSpeed.toFixed(1)} km/h`;

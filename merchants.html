@@ -70,6 +70,29 @@
     }
     .map-hud-btn:hover { transform: scale(1.08); }
 
+    /* 상단 GP 배지 */
+    #hudGpBadge {
+      background: rgba(0,0,0,0.65);
+      border: 1.5px solid rgba(251,191,36,0.6);
+      border-radius: 10px;
+      padding: 5px 6px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #fbbf24;
+      text-align: center;
+      white-space: nowrap;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.35);
+      min-width: 42px;
+      cursor: default;
+    }
+    #hudGpBadge .gp-icon { font-size: 14px; line-height: 1; }
+    #hudGpBadge .gp-val  { font-size: 11px; line-height: 1.1; letter-spacing: -0.3px; }
+
     /* 게임 서버 토글 버튼 상태 */
     #btnGameToggle { background: #16a34a; color: #fff; font-size: 16px; }
     #btnGameToggle.gs-connecting { background: #d97706; animation: gs-pulse .8s ease-in-out infinite alternate; }
@@ -1858,6 +1881,11 @@
       </div>
       <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 -->
       <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;align-items:center;">
+        <!-- GP 배지: 상단 고정 -->
+        <div id="hudGpBadge" title="게임코인 (GP)">
+          <span class="gp-icon">💰</span>
+          <span class="gp-val" id="hudGpVal">–</span>
+        </div>
         <button id="btnTutHelp" class="map-hud-btn" title="Hướng dẫn / 도움말">❓</button>
         <button id="btnGameToggle" class="map-hud-btn" title="Kết nối máy chủ">▶</button>
         <div id="gsStatusBadge"></div>
