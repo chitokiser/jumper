@@ -7,15 +7,67 @@ export const TOTAL_LAPS = 3;
 // ── 트랙 생성 ─────────────────────────────────────────────────────────────────
 export function buildTrack() {
   const t = [];
-  const s=(n,h=0)  =>{ for(let i=0;i<n;i++) t.push({curve:0,hill:h,obj:null}); };
-  const c=(n,cv,h=0)=>{ for(let i=0;i<n;i++) t.push({curve:cv,hill:h,obj:null}); };
-  s(40); c(40,2.5); s(20,12); c(30,-3,9);
-  s(15,-5); c(50,2); s(25); c(35,-4); s(20);
-  c(25,2.5,6); s(10,-7);
-  while(t.length<SEGS) t.push({curve:0,hill:0,obj:null});
-  for(let i=0;i<SEGS;i+=6)  t[i].obj  = i%18===0 ? 'lamp' : 'tree';
-  for(let i=3;i<SEGS;i+=10) t[i].obj2 = 'tree';
-  return t.slice(0,SEGS);
+  const s = (n, h=0)      => { for(let i=0;i<n;i++) t.push({curve:0,   hill:h, obj:null}); };
+  const c = (n, cv, h=0)  => { for(let i=0;i<n;i++) t.push({curve:cv,  hill:h, obj:null}); };
+
+  // ── 스타트 직선 ────────────────────────────────────────────────────────
+  s(18);
+
+  // ── 완만한 우회전 ──────────────────────────────────────────────────────
+  c(28, 2.2);
+
+  // ── 짧은 직선 ──────────────────────────────────────────────────────────
+  s(10);
+
+  // ── S자 코너 (좌→우) + 언덕 ────────────────────────────────────────────
+  c(22, -3.5, 7);    // 좌회전 오르막
+  c(22,  3.5, -7);   // 우회전 내리막
+
+  // ── 직선 (짧) ──────────────────────────────────────────────────────────
+  s(8);
+
+  // ── 헤어핀 우회전 (급코너) ────────────────────────────────────────────
+  c(20, 6.5, -8);    // 내리막 타이트 우회전
+
+  // ── 짧은 직선 ──────────────────────────────────────────────────────────
+  s(8);
+
+  // ── 완만한 좌회전 스위퍼 ──────────────────────────────────────────────
+  c(38, -2.2, 5);    // 오르막 좌
+
+  // ── 직선 ───────────────────────────────────────────────────────────────
+  s(12);
+
+  // ── 중간 우회전 + 내리막 ──────────────────────────────────────────────
+  c(24,  4.0, -10);
+
+  // ── 짧은 직선 ──────────────────────────────────────────────────────────
+  s(8);
+
+  // ── S자 코너 (우→좌) ────────────────────────────────────────────────────
+  c(20,  3.2, 4);    // 우 오르막
+  c(20, -3.2, -4);   // 좌 내리막
+
+  // ── 직선 ───────────────────────────────────────────────────────────────
+  s(12);
+
+  // ── 헤어핀 좌회전 (급코너) ───────────────────────────────────────────
+  c(22, -6.2, 6);    // 오르막 타이트 좌회전
+
+  // ── 직선 (짧) ──────────────────────────────────────────────────────────
+  s(8);
+
+  // ── 완만한 우회전으로 피니시 ──────────────────────────────────────────
+  c(24,  2.5);
+
+  // ── 나머지 직선으로 채움 (300 세그까지) ───────────────────────────────
+  while(t.length < SEGS) t.push({curve:0, hill:0, obj:null});
+
+  // ── 환경 오브젝트 배치 ────────────────────────────────────────────────
+  for(let i=0; i<SEGS; i+=6)  t[i].obj  = i%18===0 ? 'lamp' : 'tree';
+  for(let i=3; i<SEGS; i+=10) t[i].obj2 = 'tree';
+
+  return t.slice(0, SEGS);
 }
 
 // ── 이미지 로딩 ───────────────────────────────────────────────────────────────
@@ -240,7 +292,7 @@ export function renderScene(track, racers, player, items, ts) {
     const sc=D_NEAR/si.depth, sz=18*sc;
     if(sz<3) continue;
     const bob=Math.sin(ts*.003+item.id)*4*sc;
-    const bx=si.cx+item.lane*si.w2*1.35, by=si.y2-sz-bob;
+    const bx=si.cx+item.lane*si.w2*1.05, by=si.y2-sz-bob;
     _ctx.save();
     _ctx.fillStyle='#4c1d95'; _rr(_ctx,bx-sz/2,by,sz,sz,2*sc); _ctx.fill();
     _ctx.fillStyle='rgba(167,139,250,0.28)'; _rr(_ctx,bx-sz/2,by,sz,sz*.44,2*sc); _ctx.fill();
@@ -262,7 +314,8 @@ export function renderScene(track, racers, player, items, ts) {
       const img=_imgs[r.imgKey];
       const sh=130*sc;
       const sw=img?sh*(img.naturalWidth/img.naturalHeight):sh;
-      const bx=si.cx+r.lane*si.w2*1.35;
+      // lane±1.0 = 도로 경계 → 배율 1.0 적용 (기존 1.35는 도로 밖)
+      const bx=si.cx+r.lane*si.w2*1.05;
       // 그림자
       _ctx.fillStyle='rgba(0,0,0,0.3)';
       _ctx.beginPath(); _ctx.ellipse(bx,si.y2-2,sw*.38,sh*.06,0,0,Math.PI*2); _ctx.fill();
@@ -294,7 +347,7 @@ export function renderScene(track, racers, player, items, ts) {
       if(!si) continue;
       const sc=D_NEAR/si.depth, sz=Math.max(10,26*sc);
       _ctx.font=`${sz}px serif`;
-      _ctx.fillText(trap.emoji,si.cx+trap.lane*si.w2*1.35,si.y2-4);
+      _ctx.fillText(trap.emoji,si.cx+trap.lane*si.w2*1.05,si.y2-4);
     }
   }
 

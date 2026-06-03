@@ -23,7 +23,8 @@ let _entryResetAt = 0;
 const MAX_SPEED  = 0.152;   // ×2 (was 0.076)
 const ACCEL      = 0.0026;  // ×2 (was 0.0013)
 const STEER      = 0.055;
-const LANE_MAX   = 2.3;     // 도로 끝까지 (was 1.8)
+const LANE_MAX   = 2.3;     // 물리 절대 한계
+const ROAD_W     = 0.88;   // 도로 경계 (±이상은 잔디/오프로드)
 const AI_THINK   = 2800;    // AI 반응 느리게 (was 1100)
 const MAX_KMH    = 280;     // 최대속도 km/h 표시
 const RACE_KM    = 3.0;     // 총 레이스 거리 km
@@ -603,10 +604,12 @@ function updateRacer(r, isPlayer) {
       }
     }
 
-    // 코스 이탈 페널티 (경계 확장)
-    if (Math.abs(r.lane) > 1.9) {
-      const offRoad = (Math.abs(r.lane) - 1.9) / 0.5;
-      r.speed *= (1 - offRoad * 0.06);
+    // 코스 이탈 페널티 (도로 경계 ROAD_W 기준)
+    if (Math.abs(r.lane) > ROAD_W) {
+      const offRoad = Math.min(1, (Math.abs(r.lane) - ROAD_W) / (LANE_MAX - ROAD_W));
+      r.speed *= (1 - offRoad * 0.14);
+      // 도로쪽으로 천천히 복귀
+      r.lane *= 0.97;
     }
   } else {
     // ── AI 레이싱 (코너링·드리프트·추월·관성) ──────────────────────────
@@ -641,11 +644,11 @@ function updateRacer(r, isPlayer) {
       const curSeg = _track?.[(Math.floor(r.pos) % SEGS + SEGS) % SEGS];
       const curve = curSeg?.curve || 0;
 
-      // 5. 레이싱 라인: 커브 안쪽으로 파고들기
-      const racingM = style === 'aggressive' ? 0.42 : style === 'defensive' ? 0.24 : 0.33;
-      const racingLine = -curve * racingM;
+      // 5. 레이싱 라인: 커브 안쪽 공략 — 도로 경계 안으로 클램프
+      const racingM = style === 'aggressive' ? 0.38 : style === 'defensive' ? 0.22 : 0.30;
+      const racingLine = Math.max(-0.68, Math.min(0.68, -curve * racingM));
 
-      // 6. 추월: 전방 차량 차단 시 차선 변경
+      // 6. 추월: 전방 차량 차단 시 도로 안에서 차선 변경
       const blocker = [_player, ..._racers].find(o =>
         o.id !== r.id && !o.finished &&
         o.pos > r.pos && o.pos - r.pos < 1.6 &&
@@ -654,7 +657,7 @@ function updateRacer(r, isPlayer) {
       let targetLane = racingLine;
       if (blocker && style !== 'defensive') {
         const avoidDir = r.lane <= blocker.lane ? -1 : 1;
-        targetLane = Math.max(-1.4, Math.min(1.4, blocker.lane + avoidDir * 0.88));
+        targetLane = Math.max(-ROAD_W, Math.min(ROAD_W, blocker.lane + avoidDir * 0.72));
       }
 
       // 7. 부드러운 조향 (성향별 반응속도)
@@ -677,7 +680,13 @@ function updateRacer(r, isPlayer) {
       }
     }
 
-    r.lane = Math.max(-1.6, Math.min(1.6, r.lane));
+    // 도로 경계 제한 + 오프로드 속도 패널티
+    r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane));
+    if (Math.abs(r.lane) > ROAD_W) {
+      const offRoad = Math.min(1, (Math.abs(r.lane) - ROAD_W) / (LANE_MAX - ROAD_W));
+      r.speed *= (1 - offRoad * 0.10);
+      r.lane *= 0.95; // 도로로 복귀
+    }
   }
 
   if (r.wobble > 0) { r.lane += Math.sin(now*0.01)*0.09; r.wobble -= 16; }
@@ -735,15 +744,15 @@ function aiThink(r) {
   if ((now-(_aiTimers[r.id]||0)) < thinkMs) return;
   _aiTimers[r.id]=now;
 
-  // 함정 회피
+  // 함정 회피 (도로 경계 안에서)
   const nearTrap = _traps.find(t => t.active && Math.abs(t.pos-r.pos)<1.6 && Math.abs(t.lane-r.lane)<0.55);
   if (nearTrap) {
     const trapAway = r.lane < nearTrap.lane ? -1 : 1;
-    r.lane = Math.max(-1.6, Math.min(1.6, r.lane + trapAway * 0.24));
+    r.lane = Math.max(-ROAD_W, Math.min(ROAD_W, r.lane + trapAway * 0.22));
     _aiTimers[r.id] = now; return;
   }
 
-  // 충돌 회피: 근접 차량 존재 시 차선 변경
+  // 충돌 회피: 근접 차량 존재 시 차선 변경 (도로 경계 안에서)
   if (Math.random() < d.avoidP) {
     const near=[_player,..._racers].find(o=>
       o.id!==r.id && !o.finished &&
@@ -751,7 +760,7 @@ function aiThink(r) {
     );
     if (near) {
       const away = r.lane < near.lane ? -1 : 1;
-      r.lane = Math.max(-1.6, Math.min(1.6, r.lane + away*(0.18+Math.random()*0.15)));
+      r.lane = Math.max(-ROAD_W, Math.min(ROAD_W, r.lane + away*(0.18+Math.random()*0.14)));
     }
   }
 
