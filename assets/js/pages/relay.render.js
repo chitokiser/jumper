@@ -1,315 +1,381 @@
-// relay.render.js — 이어달리기 렌더링 (원형 트랙 · 원근감 · 스프라이트)
+// relay.render.js — 이어달리기 렌더링 v2 (대형 트랙·원근·불꽃·바통)
 import { LEG_DIST, LEGS } from './relay.race.js';
 
-export const CW = 360, CH = 320;
-const CX = CW / 2, CY = CH * 0.46;
+export const CW = 360, CH = 380;
+const CX = CW / 2, CY = CH * 0.44;
 
 // ── 파티클 풀 ─────────────────────────────────────────────────────────────────
-const _particles = [];
+const _dust  = [];
+const _sparks = [];     // 바통 전달 스파크
+const _fireworks = [];  // 골인 축포
 
-function addDust(x, y, scale = 1) {
-  for (let i = 0; i < 3; i++) {
-    _particles.push({
-      x: x + (Math.random() - 0.5) * 10 * scale,
-      y: y + (Math.random() - 0.5) * 4 * scale,
-      vx: (Math.random() - 0.6) * 1.2,
-      vy: -(Math.random() * 0.8 + 0.2),
-      life: 1, decay: 0.04 + Math.random() * 0.03,
-      r: (1.5 + Math.random() * 2.5) * scale,
-      color: `rgba(${180+Math.random()*40|0},${140+Math.random()*30|0},${100+Math.random()*20|0},`
+export function launchFireworks(x, y) {
+  for (let i = 0; i < 80; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = 3 + Math.random() * 8;
+    _fireworks.push({
+      x: x ?? CX, y: y ?? CY - 60,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd - 4,
+      life: 1, decay: 0.012 + Math.random() * 0.018,
+      r:   2.5 + Math.random() * 3,
+      hue: Math.random() * 360,
+      trail: [],
     });
   }
 }
 
-function updateParticles() {
-  for (let i = _particles.length - 1; i >= 0; i--) {
-    const p = _particles[i];
-    p.x += p.vx; p.y += p.vy; p.life -= p.decay;
-    if (p.life <= 0) _particles.splice(i, 1);
+export function launchBatonSpark(x, y) {
+  for (let i = 0; i < 18; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 2 + Math.random() * 4;
+    _sparks.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s-1, life:1, decay:0.07 });
   }
 }
 
-function drawParticles(ctx) {
-  _particles.forEach(p => {
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
-    ctx.fillStyle = p.color + (p.life * 0.45) + ')';
-    ctx.fill();
+function addDust(x, y, sc) {
+  if (Math.random() > 0.2) return;
+  _dust.push({ x:x+(Math.random()-.5)*8*sc, y:y+(Math.random()-.5)*4*sc,
+    vx:(Math.random()-.65)*1.1, vy:-(Math.random()*.7+.1),
+    life:1, decay:0.038+Math.random()*.03, r:(1.5+Math.random()*2)*sc });
+}
+
+function tickParticles(dt) {
+  [_dust, _sparks, _fireworks].forEach(pool => {
+    for (let i = pool.length - 1; i >= 0; i--) {
+      const p = pool[i];
+      p.x  += p.vx * dt * 60;
+      p.y  += p.vy * dt * 60;
+      if (pool === _fireworks) p.vy += 0.12 * dt * 60; // 중력
+      p.life -= p.decay * dt * 60;
+      if (p.life <= 0) pool.splice(i, 1);
+    }
   });
 }
 
-// ── 스프라이트 캐시 & 로딩 ────────────────────────────────────────────────────
-const _cache = {};
-
-function img(src) {
-  if (!_cache[src]) { const i = new Image(); i.src = src; _cache[src] = i; }
-  return _cache[src];
+function drawParticles(ctx) {
+  _dust.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(180,145,100,${p.life * 0.4})`;
+    ctx.fill();
+  });
+  _sparks.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r ?? 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,220,80,${p.life})`;
+    ctx.fill();
+  });
+  _fireworks.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * Math.max(0.1, p.life), 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${p.hue},100%,70%,${p.life * 0.9})`;
+    ctx.fill();
+    // 꼬리
+    if (p.trail) {
+      p.trail.push({ x: p.x, y: p.y });
+      if (p.trail.length > 5) p.trail.shift();
+      p.trail.forEach((t, ti) => {
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, p.r * 0.4 * (ti / p.trail.length), 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue},100%,80%,${p.life * (ti/p.trail.length) * 0.5})`;
+        ctx.fill();
+      });
+    }
+  });
 }
 
-// 스페이스 인코딩 헬퍼
+// ── 스프라이트 ────────────────────────────────────────────────────────────────
+const _cache = {};
 const enc = s => s.replace(/ /g, '%20');
 const pad = (n, w = 3) => String(n).padStart(w, '0');
 
 const SPRITE_DEFS = {
-  orc1:     { dir:'/assets/images/monsters/orc/',     fn:i=>`ORK_01_WALK_${pad(i)}.png`,           n:6  },
-  orc2:     { dir:'/assets/images/monsters/orc2/',    fn:i=>`ORK_02_WALK_${pad(i)}.png`,           n:6  },
-  orc3:     { dir:'/assets/images/monsters/orc3/',    fn:i=>`ORK_03_WALK_${pad(i)}.png`,           n:6  },
-  zombie1:  { dir:'/assets/images/monsters/zombie1/animation/', fn:i=>`Run${i+1}.png`,             n:10 },
-  zombie3:  { dir:'/assets/images/monsters/Zombie3/animation/', fn:i=>`Run${i+1}.png`,             n:10 },
-  pirate1:  { dir:'/assets/images/monsters/pirate/',  fn:i=>`1_entity_000_WALK_${pad(i)}.png`,     n:6  },
-  pirate2:  { dir:'/assets/images/monsters/pirate2/', fn:i=>`2_entity_000_WALK_${pad(i)}.png`,     n:6  },
-  pirate3:  { dir:'/assets/images/monsters/pirate3/', fn:i=>`3_3-PIRATE_WALK_${pad(i)}.png`,       n:6  },
-  troll:    { dir:enc('/assets/images/troll/PNG/Animation/Troll1/'), fn:i=>`Run_${pad(i)}.png`,    n:10 },
-  // Villager — 정확한 경로: PNG/PNG Sequences/Running/
-  villager1:{ dir:enc('/assets/images/villager/Zombie_Villager_1/PNG/PNG Sequences/Running/'), fn:i=>`0_Zombie_Villager_Running_${pad(i)}.png`, n:12 },
-  villager2:{ dir:enc('/assets/images/villager/Zombie_Villager_2/PNG/PNG Sequences/Running/'), fn:i=>`0_Zombie_Villager_Running_${pad(i)}.png`, n:12 },
-  villager3:{ dir:enc('/assets/images/villager/Zombie_Villager_3/PNG/PNG Sequences/Running/'), fn:i=>`0_Zombie_Villager_Running_${pad(i)}.png`, n:12 },
+  orc1:     { dir:'/assets/images/monsters/orc/',     fn:i=>`ORK_01_WALK_${pad(i)}.png`,                       n:6  },
+  orc2:     { dir:'/assets/images/monsters/orc2/',    fn:i=>`ORK_02_WALK_${pad(i)}.png`,                       n:6  },
+  orc3:     { dir:'/assets/images/monsters/orc3/',    fn:i=>`ORK_03_WALK_${pad(i)}.png`,                       n:6  },
+  zombie1:  { dir:'/assets/images/monsters/zombie1/animation/', fn:i=>`Run${i+1}.png`,                         n:10 },
+  zombie3:  { dir:'/assets/images/monsters/Zombie3/animation/', fn:i=>`Run${i+1}.png`,                         n:10 },
+  pirate1:  { dir:'/assets/images/monsters/pirate/',  fn:i=>`1_entity_000_WALK_${pad(i)}.png`,                 n:6  },
+  pirate2:  { dir:'/assets/images/monsters/pirate2/', fn:i=>`2_entity_000_WALK_${pad(i)}.png`,                 n:6  },
+  pirate3:  { dir:'/assets/images/monsters/pirate3/', fn:i=>`3_3-PIRATE_WALK_${pad(i)}.png`,                   n:6  },
+  troll:    { dir:enc('/assets/images/troll/PNG/Animation/Troll1/'), fn:i=>`Run_${pad(i)}.png`,               n:10 },
+  villager1:{ dir:enc('/assets/images/villager/Zombie_Villager_1/PNG/PNG Sequences/Running/'),
+              fn:i=>`0_Zombie_Villager_Running_${pad(i)}.png`, n:12 },
+  villager2:{ dir:enc('/assets/images/villager/Zombie_Villager_2/PNG/PNG Sequences/Running/'),
+              fn:i=>`0_Zombie_Villager_Running_${pad(i)}.png`, n:12 },
+  villager3:{ dir:enc('/assets/images/villager/Zombie_Villager_3/PNG/PNG Sequences/Running/'),
+              fn:i=>`0_Zombie_Villager_Running_${pad(i)}.png`, n:12 },
   knight1:  { dir:enc('/assets/images/knight/_PNG/1_KNIGHT/'), fn:i=>`Knight_01__RUN_${pad(i)}.png`, n:10 },
   knight2:  { dir:enc('/assets/images/knight/_PNG/2_KNIGHT/'), fn:i=>`Knight_02__RUN_${pad(i)}.png`, n:10 },
   knight3:  { dir:enc('/assets/images/knight/_PNG/3_KNIGHT/'), fn:i=>`Knight_03__RUN_${pad(i)}.png`, n:10 },
 };
 
+function imgAt(src) {
+  if (!_cache[src]) { const i = new Image(); i.src = src; _cache[src] = i; }
+  return _cache[src];
+}
+
 export function getFrames(charId) {
   const d = SPRITE_DEFS[charId];
-  if (!d) return [];
-  return Array.from({ length: d.n }, (_, i) => img(d.dir + d.fn(i)));
+  return d ? Array.from({ length: d.n }, (_, i) => imgAt(d.dir + d.fn(i))) : [];
 }
 
 export function preloadAll() {
-  Object.keys(SPRITE_DEFS).forEach(id => getFrames(id));
+  Object.keys(SPRITE_DEFS).forEach(getFrames);
 }
 
 // ── 트랙 좌표 ─────────────────────────────────────────────────────────────────
-// lane 0 = 안쪽, lane 5 = 바깥쪽
-function laneRadii(lane) {
-  return { rx: 88 + lane * 9.5, ry: 48 + lane * 5.5 };
+function laneR(lane) {
+  return { rx: 108 + lane * 10.5, ry: 58 + lane * 6 };
 }
 
-// progress 0~1 → 화면 (x, y, perspScale)
 export function trackPos(progress, lane) {
-  const { rx, ry } = laneRadii(lane);
-  const angle = progress * Math.PI * 2 - Math.PI / 2;  // 위쪽 12시에서 시작
+  const { rx, ry } = laneR(lane);
+  const angle = progress * Math.PI * 2 - Math.PI / 2;
   const x = CX + rx * Math.cos(angle);
   const y = CY + ry * Math.sin(angle);
-  // 원근: 아래(가까운쪽) ≈ 1.0, 위(먼쪽) ≈ 0.55
-  const perspScale = 0.55 + ((Math.sin(angle) + 1) / 2) * 0.45;
-  return { x, y, perspScale };
+  const perspScale = 0.52 + ((Math.sin(angle) + 1) / 2) * 0.50;
+  return { x, y, perspScale, angle };
 }
 
-// ── 트랙 드로잉 ───────────────────────────────────────────────────────────────
-export function drawTrack(ctx) {
-  // ① 하늘 배경
-  const sky = ctx.createLinearGradient(0, 0, 0, CH * 0.3);
-  sky.addColorStop(0, '#0a1628');
-  sky.addColorStop(1, '#1a2840');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, CW, CH * 0.35);
+// ── 트랙 배경 드로잉 ──────────────────────────────────────────────────────────
+let _trackCache = null;
 
-  // 배경 (경기장 바닥)
-  ctx.fillStyle = '#1a2e1a';
-  ctx.fillRect(0, CH * 0.3, CW, CH * 0.7);
+function buildTrackCache(w, h) {
+  const off = document.createElement('canvas');
+  off.width = w; off.height = h;
+  const ctx = off.getContext('2d');
 
-  // ② 잔디 (안쪽 타원)
-  const inner = laneRadii(-0.5);
-  ctx.beginPath();
-  ctx.ellipse(CX, CY, inner.rx, inner.ry, 0, 0, Math.PI * 2);
-  const grassGrad = ctx.createRadialGradient(CX, CY - 8, 10, CX, CY, inner.rx);
-  grassGrad.addColorStop(0, '#2d6a2d');
-  grassGrad.addColorStop(0.6, '#256325');
-  grassGrad.addColorStop(1, '#1e5a1e');
-  ctx.fillStyle = grassGrad;
-  ctx.fill();
+  // 배경 하늘
+  const sky = ctx.createLinearGradient(0, 0, 0, h * 0.28);
+  sky.addColorStop(0, '#08112a'); sky.addColorStop(1, '#1a2e50');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h * 0.3);
 
+  // 배경 바닥
+  const gnd = ctx.createLinearGradient(0, h * 0.28, 0, h);
+  gnd.addColorStop(0, '#1a3020'); gnd.addColorStop(1, '#0d1a10');
+  ctx.fillStyle = gnd; ctx.fillRect(0, h * 0.27, w, h * 0.73);
+
+  // 관중석 (점선 배경)
+  for (let i = 0; i < 260; i++) {
+    const px = Math.random() * w, py = Math.random() * h * 0.22;
+    ctx.fillStyle = `rgba(${100+Math.random()*100|0},${80+Math.random()*80|0},${60+Math.random()*60|0},0.4)`;
+    ctx.beginPath(); ctx.arc(px, py, 1.5 + Math.random(), 0, Math.PI * 2); ctx.fill();
+  }
+
+  // 잔디 (내부)
+  const cx = w/2, cy = h * 0.44;
+  const ir = laneR(-0.6);
+  ctx.beginPath(); ctx.ellipse(cx, cy, ir.rx, ir.ry, 0, 0, Math.PI * 2);
+  const grassG = ctx.createRadialGradient(cx, cy - 10, 10, cx, cy, ir.rx);
+  grassG.addColorStop(0, '#2d7a2d'); grassG.addColorStop(0.7, '#236523'); grassG.addColorStop(1, '#1a5a1a');
+  ctx.fillStyle = grassG; ctx.fill();
   // 잔디 줄무늬
-  ctx.save();
-  ctx.clip();
-  for (let x = CX - inner.rx; x < CX + inner.rx; x += 14) {
-    ctx.fillStyle = x % 28 < 14 ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.03)';
-    ctx.fillRect(x, CY - inner.ry, 14, inner.ry * 2);
+  ctx.save(); ctx.clip();
+  for (let x = cx - ir.rx; x < cx + ir.rx; x += 13) {
+    ctx.fillStyle = x % 26 < 13 ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.04)';
+    ctx.fillRect(x, cy - ir.ry, 13, ir.ry * 2);
   }
   ctx.restore();
 
-  // ③ 트랙 레이어 (6개 레인, 안→밖 순서로 그려서 바깥이 위에 오도록)
-  const LANE_COLORS = ['#8B2500','#9B3000','#AB3500','#BB3A00','#CB3F00','#D94400'];
-  const LANE_LINES  = ['#e8a060','#e8a060','#eaa062','#eaa062','#ecaa65','#ecaa65'];
-
+  // 트랙 레인 (바깥→안 순서)
+  const COLORS = ['#6b1c00','#7a2000','#8a2500','#9a2a00','#aa2f00','#bb3400'];
   for (let lane = 5; lane >= 0; lane--) {
-    const lo = laneRadii(lane + 0.5);
-    const li = laneRadii(lane - 0.5);
-
-    // 레인 채우기 (도넛 형태)
+    const lo = laneR(lane + 0.5), li = laneR(lane - 0.5);
     ctx.beginPath();
-    ctx.ellipse(CX, CY, lo.rx, lo.ry, 0, 0, Math.PI * 2);
-    ctx.ellipse(CX, CY, li.rx, li.ry, 0, 0, Math.PI * 2, true);
-    ctx.fillStyle = LANE_COLORS[lane];
-    ctx.fill('evenodd');
-
-    // 레인 구분선 (안쪽 테두리)
-    ctx.beginPath();
-    ctx.ellipse(CX, CY, li.rx, li.ry, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = LANE_LINES[lane];
-    ctx.lineWidth = lane === 0 ? 1.5 : 1;
+    ctx.ellipse(cx, cy, lo.rx, lo.ry, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, li.rx, li.ry, 0, 0, Math.PI * 2, true);
+    const tg = ctx.createRadialGradient(cx, cy, li.rx, cx, cy, lo.rx);
+    tg.addColorStop(0, COLORS[lane]); tg.addColorStop(1, COLORS[Math.min(5,lane+1)]);
+    ctx.fillStyle = tg; ctx.fill('evenodd');
+    // 레인 구분선
+    ctx.beginPath(); ctx.ellipse(cx, cy, li.rx, li.ry, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,220,150,0.5)'; ctx.lineWidth = lane === 0 ? 1.8 : 1;
     ctx.stroke();
   }
 
   // 바깥 테두리
-  const outer = laneRadii(5.5);
-  ctx.beginPath();
-  ctx.ellipse(CX, CY, outer.rx, outer.ry, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = '#fff8';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  const or = laneR(5.6);
+  ctx.beginPath(); ctx.ellipse(cx, cy, or.rx, or.ry, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2; ctx.stroke();
 
-  // ④ 스타트/피니시 라인 (12시 방향)
-  const p0 = trackPos(0, -0.5), p5 = trackPos(0, 5.5);
-  ctx.beginPath();
-  ctx.moveTo(p0.x, p0.y);
-  ctx.lineTo(p5.x, p5.y);
-  ctx.strokeStyle = '#ffffffcc';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
+  // 스타트/피니시 라인 (두꺼운 흰 줄)
+  const ft = trackPos(0, -0.6), fb = trackPos(0, 5.6);
+  ctx.beginPath(); ctx.moveTo(ft.x, ft.y); ctx.lineTo(fb.x, fb.y);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+
+  // 중간 교환 라인 (반바퀴 위치, 점선)
+  const ht = trackPos(0.5, -0.4), hb = trackPos(0.5, 5.4);
+  ctx.beginPath(); ctx.moveTo(ht.x, ht.y); ctx.lineTo(hb.x, hb.y);
+  ctx.setLineDash([6,4]); ctx.strokeStyle = 'rgba(255,230,100,.6)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.setLineDash([]);
 
   // FINISH 텍스트
-  ctx.fillStyle = '#ffffffaa';
-  ctx.font = 'bold 8px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('FINISH', CX, CY - outer.ry - 6);
+  ctx.fillStyle = '#ffffffbb';
+  ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('FINISH / START', cx, cy - or.ry - 7);
+  // 교환 텍스트
+  ctx.fillStyle = 'rgba(255,230,100,.6)';
+  ctx.font = '8px sans-serif';
+  ctx.fillText('EXCHANGE', cx, cy + or.ry + 13);
 
-  // ⑤ 레인 번호 (바깥쪽에 작게)
+  // 레인 번호
   for (let l = 0; l < 6; l++) {
-    const { rx, ry } = laneRadii(l);
-    ctx.fillStyle = 'rgba(255,255,255,.35)';
-    ctx.font = '7px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(l + 1, CX + rx + 9, CY + ry * 0.15 + 2);
+    const { rx, ry } = laneR(l);
+    ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.font = '7px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(l + 1, cx + rx * 0.98 + 10, cy + 3);
   }
+
+  return off;
 }
 
 // ── 러너 드로잉 ───────────────────────────────────────────────────────────────
-function drawRunner(ctx, team, runner, x, y, sc, isPlayer, now) {
-  const size = Math.round(36 * sc);
+function drawRunner(ctx, team, runner, x, y, sc, isPlayer, now, isBaton) {
+  const sz = Math.max(24, Math.round(44 * sc));
   const frames = getFrames(runner.id);
   const fi = runner.animFrame % Math.max(1, frames.length);
+  const fr = frames[fi];
 
-  // 그림자
-  ctx.beginPath();
-  ctx.ellipse(x, y + size * 0.5, size * 0.32, size * 0.12, 0, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,.35)';
-  ctx.fill();
-
-  // 스프라이트 or 폴백
-  const frame = frames[fi];
-  if (frame?.complete && frame.naturalWidth > 0) {
-    ctx.drawImage(frame, x - size / 2, y - size * 0.85, size, size);
-  } else {
-    // 폴백 캐릭터 원
-    const gr = ctx.createRadialGradient(x, y - size * 0.35, 2, x, y - size * 0.35, size * 0.4);
-    gr.addColorStop(0, '#fff');
-    gr.addColorStop(1, team.color || '#888');
-    ctx.beginPath();
-    ctx.arc(x, y - size * 0.35, size * 0.4, 0, Math.PI * 2);
-    ctx.fillStyle = gr;
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.font = `bold ${Math.round(8 * sc)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(runner.name.slice(0, 3), x, y - size * 0.28);
-  }
-
-  // 등급 배지
-  const gradeColor = { S:'#ffd700', A:'#c0c0c0', B:'#cd7f32', C:'#8aaa4a', D:'#aaa' }[runner.grade] || '#fff';
-  if (sc > 0.75) {
-    ctx.fillStyle = gradeColor;
-    ctx.font = `bold ${Math.round(7 * sc)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`[${runner.grade}]`, x, y - size * 0.9);
-  }
-
-  // 팀 라벨 (플레이어 팀 강조)
-  if (isPlayer) {
-    ctx.strokeStyle = '#ffd700';
-    ctx.lineWidth = 1.5 * sc;
-    ctx.beginPath();
-    ctx.arc(x, y - size * 0.35, size * 0.46, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  // 스태미나 바
-  const bW = Math.round(26 * sc), bH = Math.round(4 * sc);
-  const bX = x - bW / 2, bY = y - size * 0.95;
-  ctx.fillStyle = '#333';
-  ctx.fillRect(bX, bY, bW, bH);
-  const stColor = runner.stamina > 60 ? '#22c55e' : runner.stamina > 30 ? '#fbbf24' : '#ef4444';
-  ctx.fillStyle = stColor;
-  ctx.fillRect(bX, bY, bW * (runner.stamina / 100), bH);
-
-  // 속도 이펙트 (부스트 중 / 탭 시)
-  if (runner.spdMult > 1.1) {
-    ctx.save();
-    ctx.globalAlpha = 0.5;
+  // 속도선 (탭 부스트 시)
+  if (team.tapBonus > 0.3 && sc > 0.7) {
+    ctx.save(); ctx.globalAlpha = team.tapBonus * 0.5;
     for (let i = 1; i <= 3; i++) {
-      ctx.drawImage(frame?.complete ? frame : new Image(),
-        x - size / 2 - i * 5 * sc, y - size * 0.85 + i * 1.5, size * (1 - i * 0.08), size * (1 - i * 0.08));
+      ctx.strokeStyle = `rgba(255,220,50,${0.4 - i*0.1})`;
+      ctx.lineWidth = (4 - i) * sc;
+      ctx.beginPath();
+      ctx.moveTo(x - i * 8 * sc, y - sz * 0.4 + i * 1);
+      ctx.lineTo(x - i * 8 * sc - 14 * sc, y - sz * 0.4 + i * 1);
+      ctx.stroke();
     }
-    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
-  // 이벤트 텍스트 플로팅
-  if (runner.eventLabel && now - runner.eventTs < 2000) {
-    const alpha = 1 - (now - runner.eventTs) / 2000;
-    const fy = y - size * 0.9 - (now - runner.eventTs) * 0.025;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold ${Math.round(9 * sc)}px sans-serif`;
+  // 바통 전달 중 글로우
+  if (isBaton) {
+    ctx.save();
+    const glow = ctx.createRadialGradient(x, y - sz*0.3, 0, x, y - sz*0.3, sz * 0.7);
+    glow.addColorStop(0, 'rgba(255,220,50,.6)'); glow.addColorStop(1, 'rgba(255,220,50,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(x, y - sz*0.3, sz * 0.7, 0, Math.PI * 2);
+    ctx.fill(); ctx.restore();
+  }
+
+  // 그림자
+  ctx.beginPath(); ctx.ellipse(x, y + sz * 0.44, sz * 0.28, sz * 0.1, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fill();
+
+  // 스프라이트 or 폴백
+  if (fr?.complete && fr.naturalWidth > 0) {
+    ctx.drawImage(fr, x - sz * 0.55, y - sz * 0.95, sz * 1.1, sz * 1.0);
+  } else {
+    const gr = ctx.createRadialGradient(x, y - sz*0.4, 2, x, y - sz*0.4, sz*0.45);
+    gr.addColorStop(0, '#fff'); gr.addColorStop(1, team.color || '#888');
+    ctx.beginPath(); ctx.arc(x, y - sz*0.4, sz*0.45, 0, Math.PI*2);
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.fillStyle = '#000'; ctx.font = `bold ${Math.round(9*sc)}px sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(runner.eventLabel, x, fy);
-    ctx.globalAlpha = 1;
+    ctx.fillText(runner.name.slice(0,4), x, y - sz*0.33);
+  }
+
+  // 플레이어 팀 링
+  if (isPlayer) {
+    const pulse = 0.8 + Math.sin(Date.now() / 200) * 0.15;
+    ctx.strokeStyle = `rgba(255,215,0,${pulse})`;
+    ctx.lineWidth = 2 * sc;
+    ctx.beginPath(); ctx.arc(x, y - sz*0.4, sz * 0.55 * pulse, 0, Math.PI*2); ctx.stroke();
+  }
+
+  // 등급 뱃지
+  if (sc > 0.68) {
+    const gc = {S:'#ffd700',A:'#c0c0c0',B:'#cd7f32',C:'#aada50',D:'#aaa'}[runner.grade]||'#fff';
+    ctx.fillStyle = 'rgba(0,0,0,.6)';
+    ctx.beginPath(); ctx.roundRect(x-12*sc, y-sz*1.02, 24*sc, 12*sc, 3); ctx.fill();
+    ctx.fillStyle = gc; ctx.font = `bold ${Math.round(7.5*sc)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`[${runner.grade}] ${runner.name.slice(0,5)}`, x, y - sz * 0.95);
+  }
+
+  // 스태미나 바
+  const bW = Math.round(30*sc), bH = Math.round(4*sc);
+  const bX = x - bW/2, bY = y - sz*1.1;
+  ctx.fillStyle = '#222'; ctx.fillRect(bX, bY, bW, bH);
+  const sc2 = runner.stamina > 60 ? '#22c55e' : runner.stamina > 30 ? '#fbbf24' : '#ef4444';
+  ctx.fillStyle = sc2; ctx.fillRect(bX, bY, bW*(runner.stamina/100), bH);
+
+  // 이벤트 텍스트
+  if (runner.eventLabel && now - runner.eventTs < 2200) {
+    const a = 1 - (now - runner.eventTs) / 2200;
+    const fy = y - sz * 1.05 - (now - runner.eventTs) * 0.022;
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(10*sc)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.fillText(runner.eventLabel, x, fy);
+    ctx.restore();
   }
 }
 
+// ── 카운트다운 오버레이 ──────────────────────────────────────────────────────
+export function renderCountdown(ctx, num, now) {
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(0, 0, CW, CH);
+
+  const pulse = 1 + Math.sin((now % 300) / 300 * Math.PI) * 0.12;
+  const text  = num > 0 ? String(num) : 'GO!';
+  const color = num > 0 ? '#fbbf24' : '#22c55e';
+  const size  = num > 0 ? 100 * pulse : 80 * pulse;
+
+  ctx.save();
+  ctx.translate(CX, CY);
+  ctx.font = `900 ${size|0}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // 그림자 효과
+  ctx.shadowColor = color; ctx.shadowBlur = 40;
+  ctx.fillStyle = color;
+  ctx.fillText(text, 0, 0);
+  ctx.shadowBlur = 0; ctx.restore();
+
+  ctx.fillStyle = 'rgba(255,255,255,.6)';
+  ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('READY…', CX, CY + 70);
+}
+
 // ── 메인 렌더 ────────────────────────────────────────────────────────────────
-export function renderRace(ctx, teams, now) {
-  ctx.clearRect(0, 0, CW, CH);
+export function renderRace(ctx, teams, now, dt) {
+  // 트랙 배경 (캐시)
+  if (!_trackCache) _trackCache = buildTrackCache(CW, CH);
+  ctx.drawImage(_trackCache, 0, 0);
 
-  // 트랙 배경
-  drawTrack(ctx);
-  updateParticles();
+  tickParticles(dt || 0.016);
 
-  // 러너를 Y 좌표 기준으로 정렬 (원근법: 작은 Y = 먼쪽 = 먼저 그림)
-  const runners = [];
+  // 러너 수집 & Y 정렬
+  const drawList = [];
   teams.forEach((team, ti) => {
     if (team.finishTime !== null) return;
     const runner = team.runners[team.legIdx];
     if (!runner) return;
-    const legProg = runner.dist / LEG_DIST;
     const totalProg = (team.legIdx * LEG_DIST + runner.dist) / (LEGS * LEG_DIST);
-    const pos = trackPos(totalProg % 1, ti);   // 레인 = 팀 인덱스
-    runners.push({ team, runner, pos, isPlayer: team.isPlayer, ti });
-
-    // 먼지 파티클
-    if (runner.spd > 3 && Math.random() < 0.15) {
-      addDust(pos.x, pos.y, pos.perspScale);
-    }
+    const pos = trackPos(totalProg % 1, ti);
+    if (Math.random() < 0.12) addDust(pos.x, pos.y, pos.perspScale);
+    drawList.push({ team, runner, pos, isPlayer: team.isPlayer, ti });
   });
 
-  // 파티클 먼저
   drawParticles(ctx);
 
-  // Y 오름차순 정렬 후 그리기 (멀리 있는 것 먼저)
-  runners.sort((a, b) => a.pos.y - b.pos.y).forEach(({ team, runner, pos, isPlayer }) => {
-    drawRunner(ctx, team, runner, pos.x, pos.y, pos.perspScale, isPlayer, now);
+  // 원근 정렬 (Y 오름차순 = 먼 곳 먼저)
+  drawList.sort((a, b) => a.pos.y - b.pos.y).forEach(({ team, runner, pos, isPlayer }) => {
+    drawRunner(ctx, team, runner, pos.x, pos.y, pos.perspScale, isPlayer, now, team.batonPass);
   });
 
-  // 골인 팀 표시
-  teams.filter(t => t.finishTime !== null).forEach((team, i) => {
-    const medals = ['🥇','🥈','🥉'];
-    ctx.fillStyle = 'rgba(0,0,0,.6)';
-    ctx.fillRect(4, 4 + i * 20, 72, 17);
-    ctx.fillStyle = team.isPlayer ? '#ffd700' : '#fff';
-    ctx.font = 'bold 10px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(`${medals[i]||team.rank+'위'} ${team.label}`, 8, 16 + i * 20);
+  // 골인 팀 뱃지
+  const finished = teams.filter(t => t.finishTime !== null).sort((a,b)=>a.rank-b.rank);
+  finished.forEach((team, i) => {
+    const medals = ['🥇','🥈','🥉','4위','5위','6위'];
+    ctx.fillStyle = team.isPlayer ? 'rgba(255,215,0,.22)' : 'rgba(0,0,0,.5)';
+    ctx.beginPath(); ctx.roundRect(4, 4 + i * 22, 80, 19, 4); ctx.fill();
+    ctx.fillStyle = team.isPlayer ? '#ffd700' : '#ccc';
+    ctx.font = `bold 10px sans-serif`; ctx.textAlign = 'left';
+    ctx.fillText(`${medals[i]} ${team.label}[${team.grade}]`, 8, 18 + i * 22);
   });
 }
 
@@ -319,34 +385,24 @@ export function renderNextUp(ctx, team, now) {
   const next = team.runners[team.legIdx + 1];
   if (!next) return;
 
-  ctx.fillStyle = 'rgba(10,10,30,.75)';
-  ctx.beginPath();
-  ctx.roundRect(CW - 82, 2, 80, 42, 6);
-  ctx.fill();
-  ctx.strokeStyle = '#fbbf2466';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.fillStyle = 'rgba(10,10,30,.78)';
+  ctx.beginPath(); ctx.roundRect(CW - 90, 2, 88, 50, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,191,36,.5)'; ctx.lineWidth = 1; ctx.stroke();
 
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 8px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('NEXT ▶', CW - 5, 13);
+  ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'right';
+  ctx.fillText('NEXT ▶', CW - 5, 14);
 
   const frames = getFrames(next.id);
-  const fr = frames[Math.floor(now / 100) % Math.max(1, frames.length)];
-  if (fr?.complete && fr.naturalWidth > 0) {
-    ctx.drawImage(fr, CW - 80, 14, 24, 24);
-  }
+  const fr = frames[Math.floor(now / 90) % Math.max(1, frames.length)];
+  if (fr?.complete && fr.naturalWidth > 0) ctx.drawImage(fr, CW - 87, 16, 26, 28);
 
-  ctx.fillStyle = '#fff';
-  ctx.font = '8px sans-serif';
-  ctx.fillText(next.name, CW - 5, 27);
-  const gc = { S:'#ffd700', A:'#c0c0c0', B:'#cd7f32', C:'#8aaa4a', D:'#aaa' }[next.grade];
-  ctx.fillStyle = gc || '#fff';
-  ctx.fillText(`[${next.grade}]`, CW - 5, 39);
+  ctx.fillStyle = '#fff'; ctx.font = '8px sans-serif';
+  ctx.fillText(next.name, CW - 5, 30);
+  const gc = {S:'#ffd700',A:'#c0c0c0',B:'#cd7f32',C:'#8aaa4a',D:'#aaa'}[next.grade]||'#fff';
+  ctx.fillStyle = gc; ctx.fillText(`[${next.grade}]`, CW - 5, 42);
 }
 
-// ── 리더 크라운 ───────────────────────────────────────────────────────────────
+// ── 리더 크라운 ──────────────────────────────────────────────────────────────
 export function renderLeaderCrown(ctx, teams) {
   const active = teams.filter(t => t.finishTime === null);
   if (!active.length) return;
@@ -354,26 +410,34 @@ export function renderLeaderCrown(ctx, teams) {
   const li = teams.indexOf(leader);
   const runner = leader.runners[leader.legIdx];
   if (!runner) return;
-  const totalProg = (leader.legIdx * LEG_DIST + runner.dist) / (LEGS * LEG_DIST);
-  const pos = trackPos(totalProg % 1, li);
-  const sz = Math.round(36 * pos.perspScale);
-
-  ctx.font = `${Math.round(12 * pos.perspScale)}px sans-serif`;
+  const tp = (leader.legIdx * LEG_DIST + runner.dist) / (LEGS * LEG_DIST);
+  const pos = trackPos(tp % 1, li);
+  const sz  = Math.round(44 * pos.perspScale);
+  ctx.font = `${Math.round(14 * pos.perspScale)}px sans-serif`;
   ctx.textAlign = 'center';
-  ctx.fillText('👑', pos.x, pos.y - sz * 1.05);
+  ctx.fillText('👑', pos.x, pos.y - sz * 1.12);
 }
 
-// ── 바통 전달 이펙트 ──────────────────────────────────────────────────────────
+// ── 바통 전달 이펙트 ─────────────────────────────────────────────────────────
 export function renderBatonPass(ctx, teams, now) {
   teams.forEach((team, ti) => {
     if (!team.batonPass) return;
-    const pos = trackPos((team.legIdx * LEG_DIST + LEG_DIST) / (LEGS * LEG_DIST) % 1, ti);
-    const alpha = 0.5 + Math.sin(now / 80) * 0.4;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#ffd700';
-    ctx.font = `bold ${Math.round(14 * pos.perspScale)}px sans-serif`;
+    const progress = ((team.legIdx + 1) * LEG_DIST) / (LEGS * LEG_DIST) % 1;
+    const pos = trackPos(progress, ti);
+    const pulse = 0.7 + Math.sin(now / 60) * 0.3;
+
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    // 글로우 링
+    const gr = ctx.createRadialGradient(pos.x, pos.y, 4, pos.x, pos.y, 28 * pos.perspScale);
+    gr.addColorStop(0, 'rgba(255,220,50,.9)'); gr.addColorStop(1, 'rgba(255,220,50,0)');
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, 28 * pos.perspScale, 0, Math.PI * 2);
+    ctx.fill();
+    // 텍스트
+    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(11 * pos.perspScale)}px sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('🏃💨', pos.x, pos.y - 24 * pos.perspScale);
-    ctx.globalAlpha = 1;
+    ctx.fillText('🏃BATON!', pos.x, pos.y - 22 * pos.perspScale);
+    ctx.restore();
   });
 }

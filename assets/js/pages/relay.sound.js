@@ -157,6 +157,56 @@ export function sfx(type) {
         break;
       }
 
+      // 출발 신호 총소리 (빵!)
+      case 'start_gun': {
+        const ctx = ac();
+        // ① 충격파 (화이트노이즈 폭발)
+        const blen = Math.floor(ctx.sampleRate * 0.012);
+        const bbuf = ctx.createBuffer(1, blen, ctx.sampleRate);
+        const bd = bbuf.getChannelData(0);
+        for (let i = 0; i < blen; i++) bd[i] = (Math.random()*2-1) * Math.pow(1 - i/blen, 0.3);
+        const bs = ctx.createBufferSource(); bs.buffer = bbuf;
+        const bg = ctx.createGain(); bg.gain.value = 2.5;
+        bs.connect(bg); bg.connect(ctx.destination); bs.start();
+        // ② 저음 붐
+        const boom = ctx.createOscillator(); boom.type = 'sine';
+        boom.frequency.setValueAtTime(120, ctx.currentTime);
+        boom.frequency.exponentialRampToValueAtTime(28, ctx.currentTime + 0.35);
+        const bg2 = ctx.createGain();
+        bg2.gain.setValueAtTime(2.0, ctx.currentTime);
+        bg2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        boom.connect(bg2); bg2.connect(ctx.destination); boom.start(); boom.stop(ctx.currentTime + 0.5);
+        // ③ 잔향 노이즈
+        const rlen = Math.floor(ctx.sampleRate * 0.6);
+        const rbuf = ctx.createBuffer(1, rlen, ctx.sampleRate);
+        const rd = rbuf.getChannelData(0);
+        for (let i = 0; i < rlen; i++) rd[i] = (Math.random()*2-1) * Math.exp(-i/(ctx.sampleRate*0.08));
+        const rs = ctx.createBufferSource(); rs.buffer = rbuf;
+        const lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = 800;
+        const rg = ctx.createGain(); rg.gain.value = 0.8;
+        rs.connect(lpf); lpf.connect(rg); rg.connect(ctx.destination); rs.start();
+        break;
+      }
+
+      // 축포 팡파레 (1위 골인)
+      case 'finish_fanfare': {
+        // 화려한 팡파레
+        const fanfare = [
+          [523,0.5],[659,0.45],[784,0.4],[1047,0.6],
+          [784,0.3],[1047,0.3],[1319,0.7]
+        ];
+        fanfare.forEach(([f,v], i) => tone(f, v, 0.22, i * 0.11, 'triangle'));
+        // 폭죽 효과음 × 4
+        [0.0, 0.3, 0.6, 0.9].forEach(t => {
+          const ctx2 = ac();
+          setTimeout(() => {
+            noise(0.08, 0.6, 6000);
+            tone(800 + Math.random()*400, 0.3, 0.1, 0, 'sine');
+          }, t * 1000);
+        });
+        break;
+      }
+
       // 참가비 차감
       case 'entry':
         tone(440, 0.2, 0.06, 0, 'sine');

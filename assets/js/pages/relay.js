@@ -3,7 +3,7 @@ import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { CW, CH, renderRace, renderNextUp, renderLeaderCrown, renderBatonPass, preloadAll } from './relay.render.js';
+import { CW, CH, renderRace, renderNextUp, renderLeaderCrown, renderBatonPass, renderCountdown, launchFireworks, launchBatonSpark, preloadAll } from './relay.render.js';
 import { LEGS, LEG_DIST, NUM_TEAMS, SKILL_DEFS, teamGrade, buildTeam, tickRace, playerTap, useSkill, calcPayout, GRADE_ODDS } from './relay.race.js';
 import { sfx, tickFootstep } from './relay.sound.js';
 
@@ -46,7 +46,8 @@ let _entryFee = BASE_FEE, _entryCount = 0, _entryResetAt = 0;
 let _freeMode = false;
 
 // ── 게임 상태 ─────────────────────────────────────────────────────────────────
-let _phase = 'loading';   // loading | lobby | skill | race | result
+let _phase = 'loading';   // loading | lobby | skill | countdown | race | result
+let _cdNum = 3;           // 카운트다운 숫자
 let _selectedChars = [];  // 플레이어가 선택한 4명
 let _selectedSkills = []; // 선택한 스킬 3개
 let _teams = [];
@@ -203,8 +204,19 @@ function buildTeams() {
   // 스킬 쿨다운 초기화
   _teams[_playerTeamIdx].skillCd = {};
   // 사운드 콜백
-  _teams[_playerTeamIdx].onBaton  = () => sfx('baton');
-  _teams[_playerTeamIdx].onFinish = (rank) => { if (rank === 1) sfx('crowd_cheer'); };
+  _firstFinishDone = false;
+  _teams.forEach((team, ti) => {
+    team.onBaton = () => {
+      sfx('baton');
+      // 바통 전달 위치에 스파크
+      const progress = ((team.legIdx + 1) * LEG_DIST) / (LEGS * LEG_DIST) % 1;
+      const { x, y } = { x: CW/2, y: CH/2 }; // 정확한 위치는 render에서 계산
+      launchBatonSpark(CW/2 + (Math.random()-0.5)*100, CH/2 + (Math.random()-0.5)*60);
+    };
+    team.onFinish = (rank) => {
+      if (rank === 1) sfx('crowd_cheer');
+    };
+  });
 }
 
 // ── 레이스 루프 ───────────────────────────────────────────────────────────────
@@ -221,13 +233,49 @@ function initCanvas() {
 function startRace() {
   showPhase('raceScreen');
   initCanvas();
-  _speed = 1;
-  _lastTs = performance.now();
-  _raf = requestAnimationFrame(raceLoop);
-  _updateSkillBar();
   preloadAll();
-  sfx('entry');
+  _cdNum = 3;
+  _phase = 'countdown';
+  _lastTs = performance.now();
+  _raf = requestAnimationFrame(countdownLoop);
 }
+
+// ── 카운트다운 루프 ──────────────────────────────────────────────────────────
+let _cdStart = 0;
+function countdownLoop(ts) {
+  if (_phase !== 'countdown') return;
+  if (!_cdStart) _cdStart = ts;
+  const elapsed = ts - _cdStart;
+
+  // 배경 그리기
+  if (!ctx) return;
+  ctx.clearRect(0, 0, CW, CH);
+
+  // 트랙 배경만 그리기 (러너 없이)
+  const { renderRace: rr } = { renderRace };
+  renderCountdown(ctx, _cdNum, ts);
+
+  const step = Math.floor(elapsed / 900);
+  if (step >= 4) {
+    // GO! → 레이스 시작
+    sfx('start_gun');
+    _cdStart = 0;
+    _phase = 'race';
+    _speed = 1;
+    _lastTs = performance.now();
+    _updateSkillBar();
+    _raf = requestAnimationFrame(raceLoop);
+    return;
+  }
+  const newNum = 3 - step;
+  if (newNum !== _cdNum) {
+    _cdNum = newNum;
+    if (_cdNum > 0) sfx('entry'); // 카운트 비프
+  }
+  _raf = requestAnimationFrame(countdownLoop);
+}
+
+let _firstFinishDone = false;
 
 function raceLoop(ts) {
   if (_phase !== 'race') return;
@@ -238,10 +286,20 @@ function raceLoop(ts) {
   const now = performance.now();
 
   tickRace(_teams, dt, now, CHARS);
-  renderRace(ctx, _teams, now);
+  renderRace(ctx, _teams, now, dt);
   renderNextUp(ctx, _teams[_playerTeamIdx], now);
   renderLeaderCrown(ctx, _teams);
   renderBatonPass(ctx, _teams, now);
+
+  // 첫 골인 → 축포
+  if (!_firstFinishDone && _teams.some(t => t.finishTime !== null)) {
+    _firstFinishDone = true;
+    sfx('finish_fanfare');
+    launchFireworks(CX, CY - 80);
+    setTimeout(() => launchFireworks(CX - 80, CY - 40), 300);
+    setTimeout(() => launchFireworks(CX + 80, CY - 40), 600);
+    setTimeout(() => launchFireworks(CX, CY + 20), 900);
+  }
   // 내 팀 주자 발소리
   const pt = _teams[_playerTeamIdx];
   if (pt && !pt.batonPass) tickFootstep(now, pt.runners[pt.legIdx]?.spd || 0);

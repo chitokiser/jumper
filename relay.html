@@ -97,21 +97,24 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
 .sk-desc{font-size:9px;color:#6b7280;margin-top:2px}
 
 /* ── 레이스 ── */
-#raceScreen{padding:0;gap:0;overflow:hidden;background:#0a0a1a}
+#raceScreen{padding:0;gap:0;overflow:hidden;background:#08112a;justify-content:flex-start}
 
-.race-header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:8px 10px 6px;width:100%;max-width:360px;flex-shrink:0;
-  background:rgba(10,10,26,.9);border-bottom:1px solid #1f2937;
+/* HUD는 캔버스 위에 오버레이 */
+.canvas-wrap{position:relative;width:100%;max-width:360px;flex-shrink:0}
+#raceCanvas{display:block;width:100%;touch-action:none}
+
+.race-hud-overlay{
+  position:absolute;top:0;left:0;right:0;
+  display:flex;align-items:flex-start;justify-content:space-between;
+  padding:5px 8px;pointer-events:none;
 }
-.race-header .hud-chip{
-  background:#111827;border-radius:6px;padding:3px 8px;
+.hud-chip{
+  background:rgba(10,10,30,.75);border:1px solid rgba(255,255,255,.12);
+  border-radius:6px;padding:3px 7px;
   font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;
+  backdrop-filter:blur(4px);
 }
-.race-header .hud-label{font-size:8px;color:#6b7280}
-
-#raceCanvas{display:block;width:100%;max-width:360px;
-  touch-action:none;flex-shrink:0;border-top:1px solid #1f2937}
+.hud-label{font-size:8px;color:#6b7280}
 
 /* 탭 영역 */
 #tapArea{
@@ -205,26 +208,18 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
 
 <!-- 레이스 -->
 <div id="raceScreen" class="screen hidden">
-  <div class="race-header">
-    <div class="hud-chip">
-      <span class="hud-label">순위</span>
-      <span id="hudPos">—</span>
-    </div>
-    <div class="hud-chip">
-      <span class="hud-label">구간</span>
-      <span id="hudLeg">1/4</span>
-    </div>
-    <div class="hud-chip" style="max-width:120px;overflow:hidden">
-      <span class="hud-label">주자</span>
-      <span id="hudRunner" style="font-size:10px;white-space:nowrap">—</span>
-    </div>
-    <div class="hud-chip">
-      <span class="hud-label">속도</span>
-      <span id="hudSpd">—</span>
+  <div class="canvas-wrap">
+    <canvas id="raceCanvas" width="360" height="380"></canvas>
+    <div class="race-hud-overlay">
+      <div class="hud-chip"><span class="hud-label">순위</span><span id="hudPos">—</span></div>
+      <div class="hud-chip"><span class="hud-label">구간</span><span id="hudLeg">1/4</span></div>
+      <div class="hud-chip" style="max-width:110px;overflow:hidden">
+        <span class="hud-label">주자</span>
+        <span id="hudRunner" style="font-size:9px;white-space:nowrap">—</span>
+      </div>
+      <div class="hud-chip"><span class="hud-label">속도</span><span id="hudSpd">—</span></div>
     </div>
   </div>
-
-  <canvas id="raceCanvas" width="360" height="300"></canvas>
 
   <div class="speed-row">
     <button class="spd-btn active" id="btnSpeed1">1×</button>
