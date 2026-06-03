@@ -21,7 +21,10 @@ const CARD_POOL = [
   '/assets/images/item/necklace.PNG','/assets/images/item/rings.PNG',
 ];
 
-const ENTRY_FEE    = 10;
+const BASE_FEE     = 100;
+const FEE_STEP     = 50;
+const RESET_MS     = 24 * 60 * 60 * 1000;
+const GAME_KEY     = 'memoryEntry';
 const TOTAL_PAIRS  = 12;   // 4×6 = 24장 = 12쌍
 const MAX_MISS     = 20;
 const TIMER_MS     = 2000; // 2초
@@ -34,30 +37,61 @@ const TIME_LIMIT_MS= 60000;// 1분
 
 // ── Firebase ─────────────────────────────────────────────────────────────────
 let _uid=null, _playerGP=0;
+let _entryFee=BASE_FEE, _entryCount=0, _entryResetAt=0;
 
 async function loadPlayer() {
   if (!_uid) {
     $('lobbyGP').textContent='게스트';
-    $('btnEnter').disabled=false;
-    const badge=$('feeBadge'); if(badge) badge.textContent='참가비: '+ENTRY_FEE+' GP';
-    const info=$('feeInfo'); if(info) info.textContent='로그인하면 참가비 내고 GP 획득 가능';
+    $('btnEnter').disabled=true;
+    _updateFeeDisplay();
     return;
   }
   try {
     const d=(await getDoc(doc(db,'battle_players',_uid))).data()||{};
     _playerGP=d.gold||0;
+    const entry=d[GAME_KEY]||{}, now=Date.now();
+    if(!entry.resetAt||now-entry.resetAt>RESET_MS){
+      _entryCount=0; _entryResetAt=0;
+    } else {
+      _entryCount=entry.count||0; _entryResetAt=entry.resetAt;
+    }
+    _entryFee=BASE_FEE+_entryCount*FEE_STEP;
   } catch {}
   $('lobbyGP').textContent=_playerGP;
-  $('btnEnter').disabled=_playerGP<ENTRY_FEE;
-  const badge=$('feeBadge'); if(badge) badge.textContent='참가비: '+ENTRY_FEE+' GP';
-  const info=$('feeInfo'); if(info) info.textContent='GP 획득 가능';
+  $('btnEnter').disabled=_playerGP<_entryFee;
+  _updateFeeDisplay();
+}
+
+function _updateFeeDisplay() {
+  const badge=$('feeBadge');
+  if(badge) badge.textContent=`참가비: ${_entryFee} GP`;
+  const info=$('feeInfo');
+  if(!info) return;
+  if(!_uid){ info.textContent='로그인하면 참가비 내고 GP 획득 가능'; return; }
+  if(!_entryCount){ info.textContent='오늘 첫 참가 · 24시간 후 자동 리셋'; }
+  else {
+    const h=Math.ceil((_entryResetAt+RESET_MS-Date.now())/3_600_000);
+    info.textContent=`오늘 ${_entryCount}번째 참가 · ${h}시간 후 100GP 리셋`;
+  }
 }
 
 async function deductFee() {
-  if (ENTRY_FEE <= 0) return true;
-  if (_playerGP<ENTRY_FEE) return false;
-  try { await updateDoc(doc(db,'battle_players',_uid),{gold:increment(-ENTRY_FEE)}); _playerGP-=ENTRY_FEE; return true; }
-  catch { return false; }
+  if(_playerGP<_entryFee) return false;
+  try {
+    const now=Date.now();
+    const isReset=!_entryResetAt||now-_entryResetAt>RESET_MS;
+    const newCount=isReset?1:_entryCount+1;
+    const newResetAt=isReset?now:_entryResetAt;
+    await updateDoc(doc(db,'battle_players',_uid),{
+      gold:increment(-_entryFee),
+      [`${GAME_KEY}.count`]:newCount,
+      [`${GAME_KEY}.resetAt`]:newResetAt,
+    });
+    _playerGP-=_entryFee;
+    _entryCount=newCount; _entryResetAt=newResetAt;
+    _entryFee=BASE_FEE+_entryCount*FEE_STEP;
+    return true;
+  } catch { return false; }
 }
 
 async function awardGP(amount) {
@@ -368,7 +402,8 @@ async function init(){
   });
 
   $('btnEnter')?.addEventListener('click',async()=>{
-    if(_uid){if(!await deductFee()){alert('GP가 부족합니다 (입장료: '+ENTRY_FEE+' GP)');return;}}
+    if(!_uid){alert('로그인이 필요합니다');return;}
+    if(!await deductFee()){alert('GP가 부족합니다 (입장료: '+_entryFee+' GP)');return;}
     _freeMode=false;
     startGame();
   });

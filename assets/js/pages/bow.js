@@ -11,8 +11,8 @@ import {
 import { playSound } from './merchants.battle.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const BASE_FEE    = 50;
-const FEE_STEP    = 0;
+const BASE_FEE    = 100;
+const FEE_STEP    = 50;
 const RESET_MS    = 24 * 60 * 60 * 1000;
 const GAME_KEY    = 'bowEntry';
 const GAME_TIME   = 60;
@@ -118,9 +118,15 @@ async function loadPlayer() {
 
 function _updateFeeDisplay() {
   const badge = $('feeBadge');
-  if (badge) badge.textContent = '🆓 무료 입장';
+  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
   const info = $('feeInfo');
-  if (info) info.textContent = '무료로 무제한 입장 가능';
+  if (!info) return;
+  if (!_entryCount) {
+    info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
+  } else {
+    const h = Math.ceil((_entryResetAt + RESET_MS - Date.now()) / 3_600_000);
+    info.textContent = `오늘 ${_entryCount}번째 참가 · ${h}시간 후 100GP 리셋`;
+  }
 }
 
 function arrowDmg(fire=false) {
