@@ -176,7 +176,17 @@ def _verify_and_activate_ton(uid: str, txhash: str) -> dict:
     tx     = txs[0]
     in_msg = tx.get("in_msg", {})
 
-    value_nano    = int(in_msg.get("value") or 0)
+    # W5/스마트 컨트랙트 지갑: in_msg.value가 null이면 out_msgs에서 금액 탐색
+    value_nano = int(in_msg.get("value") or 0)
+    sender     = in_msg.get("source") or ""
+    if value_nano == 0:
+        for out in tx.get("out_msgs", []):
+            v = int(out.get("value") or 0)
+            if v > 0:
+                value_nano = v
+                sender     = tx.get("account", sender)
+                break
+
     required_nano = int(MEMBERSHIP_TON_PRICE * 1_000_000_000)
     if value_nano < required_nano:
         actual = value_nano / 1_000_000_000
@@ -189,7 +199,7 @@ def _verify_and_activate_ton(uid: str, txhash: str) -> dict:
 
     new_expiry, is_first = _activate(uid, pay_id, ton_received, {
         "txHash":      txhash,
-        "fromAddress": in_msg.get("source", ""),
+        "fromAddress": sender,
         "paymentType": "ton",
     })
 
