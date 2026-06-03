@@ -326,7 +326,7 @@ async function gameClear(){
   const timeBonus=elapsed<TIME_LIMIT_MS?TIME_BONUS:0;
   if(timeBonus>0) _score+=timeBonus;
   playClear();
-  const netGP=Math.max(0,_score);
+  const netGP=Math.min(1200, Math.max(0, _score));  // 서버 한도 1200 캡
   await awardGP(netGP);
   const sec=Math.floor(elapsed/1000);
   const infoParts=[`오답: ${_misses}회`,`클리어 시간: ${sec}초`,`+${CLEAR_BONUS}GP 클리어 보너스`];

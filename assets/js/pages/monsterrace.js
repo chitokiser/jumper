@@ -1,8 +1,9 @@
 // monsterrace.js — Monster Skate Race 게임 로직
-import { db, auth } from '/assets/js/firebase-init.js';
+import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { esc } from '/assets/js/esc.js';
 import { addSparks, addSmoke, resetParticles } from './monsterrace.fx.js';
-import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
   buildTrack, initRenderer, loadAllSprites, renderScene,
@@ -417,29 +418,23 @@ function _updateFeeDisplay() {
 }
 
 async function deductFee() {
-  if (_playerGP < _entryFee) return false;
+  if (!_uid) return false;
   try {
-    const now = Date.now();
-    const isReset    = !_entryResetAt || now - _entryResetAt > RESET_MS;
-    const newCount   = isReset ? 1 : _entryCount + 1;
-    const newResetAt = isReset ? now : _entryResetAt;
-    await updateDoc(doc(db,'battle_players',_uid), {
-      gold: increment(-_entryFee),
-      [`${GAME_KEY}.count`]:   newCount,
-      [`${GAME_KEY}.resetAt`]: newResetAt,
-    });
-    _playerGP    -= _entryFee;
-    _entryCount   = newCount;
-    _entryResetAt = newResetAt;
-    _entryFee     = BASE_FEE + _entryCount * FEE_STEP;
+    const res = await httpsCallable(functions, 'payGameEntry')({ gameKey: GAME_KEY });
+    const { fee, newCount } = res.data;
+    _playerGP   -= fee;
+    _entryCount  = newCount;
+    _entryFee    = BASE_FEE + newCount * FEE_STEP;
     return true;
   } catch { return false; }
 }
 
 async function awardPrize(rank) {
-  if (_freeMode) return 0;  // 무료 체험 — 보상 없음
-  const gp = PRIZES[Math.min(rank, PRIZES.length-1)] || 10;
-  if (_uid) try { await updateDoc(doc(db,'battle_players',_uid), {gold: increment(gp)}); } catch {}
+  if (_freeMode || !_uid) return 0;
+  const gp = PRIZES[Math.min(rank, PRIZES.length - 1)] || 10;
+  try {
+    await httpsCallable(functions, 'claimGameReward')({ gameType: 'race', amount: gp });
+  } catch {}
   return gp;
 }
 

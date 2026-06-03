@@ -6,10 +6,10 @@ const { todayUtc7 } = require('./membership');
 
 // ── 게임 타입별 최대 단일 보상 한도 ─────────────────────────────────────────
 const GAME_MAX_REWARD = {
-  memory:   700,
+  memory:   1200,  // 최대 가능 점수: 매칭360 + 콤보240 + 클리어300 + 시간보너스200 = 1100
   bow:      2000,
   race:     500,
-  relay:    3000,   // D등급 우승 15× 시 최대 (200GP × 15 = 3000)
+  relay:    3000,
   dungeon:  300,
   conquest: 300,
 };
