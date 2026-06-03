@@ -424,14 +424,28 @@ async def _send_membership_ui(message, st: dict):
 
 # ── 봇 초기화 ─────────────────────────────────────────────────────────────────
 
+async def error_handler(_update, context: ContextTypes.DEFAULT_TYPE):
+    """Conflict 에러 무시 — 이전 인스턴스가 종료될 때까지 대기."""
+    import telegram.error as tg_err
+    if isinstance(context.error, tg_err.Conflict):
+        print("[WARN] Conflict: 이전 인스턴스와 충돌, 무시하고 계속...")
+        return
+    print(f"[ERROR] Unhandled: {context.error}")
+
+
 async def _post_init(application):
-    """봇 시작 시 Menu Button을 Game Hub Mini App으로 고정 설정."""
-    await application.bot.set_chat_menu_button(
-        menu_button=MenuButtonWebApp(
-            text="🎮 Game Hub",
-            web_app=WebAppInfo(url=HUB_URL),
+    """봇 시작 시 이전 세션 종료 대기 + Menu Button 설정."""
+    import asyncio
+    await asyncio.sleep(3)  # 이전 인스턴스 종료 대기
+    try:
+        await application.bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="🎮 Game Hub",
+                web_app=WebAppInfo(url=HUB_URL),
+            )
         )
-    )
+    except Exception:
+        pass
 
 # ── 진입점 ────────────────────────────────────────────────────────────────────
 
@@ -449,6 +463,7 @@ def main():
 
     # 텍스트 메시지 → txHash 처리 (명령어 제외)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_txhash))
+    app.add_error_handler(error_handler)
 
     print("✅ Bot is running (TON payment mode)...")
     app.run_polling(drop_pending_updates=True)
