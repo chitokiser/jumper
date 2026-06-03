@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>정회원 관리 | JumpDAO Admin</title>
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <script src="/assets/js/partials.js" defer></script>
+  <style>
+    body { background: #0b0f1a; }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+    .pg-title { font-size: 20px; font-weight: 800; color: #e2e8f0; margin: 0 0 4px; }
+    .pg-sub   { font-size: 12px; color: #475569; margin: 0 0 24px; }
+    .state    { font-size: 11px; color: #475569; min-height: 16px; margin-bottom: 16px; }
+    .state.err { color: #ef4444; }
+
+    /* 카드 */
+    .card {
+      background: #0f1521; border: 1px solid #1e2840;
+      border-radius: 10px; padding: 20px; margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 11px; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: .8px;
+      display: flex; align-items: center; gap: 8px; margin: 0 0 16px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* 통계 그리드 */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .stat-chip {
+      background: #111b30; border: 1px solid #1e2840; border-radius: 8px; padding: 14px;
+    }
+    .stat-chip .lbl { font-size: 10px; color: #475569; margin-bottom: 4px; }
+    .stat-chip .val { font-size: 22px; font-weight: 800; color: #e2e8f0; }
+    .stat-chip .sub { font-size: 10px; color: #334155; margin-top: 2px; }
+
+    /* 가격 설정 */
+    .price-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .price-input {
+      background: #111b30; border: 1px solid #1e2840; border-radius: 6px;
+      color: #e2e8f0; font-size: 14px; padding: 8px 12px; outline: none; width: 140px;
+      font-family: monospace;
+    }
+    .price-input:focus { border-color: #3b82f6; }
+    .btn-save {
+      background: linear-gradient(135deg,#2563eb,#3b82f6); border: none;
+      border-radius: 6px; color: #fff; font-size: 12px; font-weight: 700;
+      padding: 8px 18px; cursor: pointer;
+    }
+    .btn-save:hover { background: linear-gradient(135deg,#1d4ed8,#2563eb); }
+    .btn-save:disabled { opacity: .4; cursor: not-allowed; }
+    .save-status { font-size: 11px; margin-left: 8px; min-width: 80px; }
+    .save-status.ok  { color: #22c55e; }
+    .save-status.err { color: #ef4444; }
+
+    /* 테이블 */
+    .tbl-wrap { overflow-x: auto; border: 1px solid #1e2840; border-radius: 8px; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 560px; }
+    th {
+      color: #334155; font-weight: 700; padding: 9px 10px;
+      border-bottom: 1px solid #1e2840; text-align: left;
+      background: #0b0f1a; font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
+      white-space: nowrap;
+    }
+    td {
+      color: #64748b; padding: 8px 10px;
+      border-bottom: 1px solid #111b30; font-family: monospace;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #0f1521; }
+    .badge {
+      display: inline-block; padding: 2px 7px; border-radius: 4px;
+      font-size: 10px; font-weight: 600; font-family: sans-serif;
+    }
+    .badge.ok      { background: rgba(34,197,94,.1);  color: #22c55e; }
+    .badge.warn    { background: rgba(245,158,11,.1); color: #f59e0b; }
+    .badge.danger  { background: rgba(239,68,68,.1);  color: #ef4444; }
+    .empty { text-align:center; color:#334155; padding:24px; }
+
+    /* 탭 */
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .tab-btn {
+      background: #111b30; border: 1px solid #1e2840; border-radius: 6px;
+      color: #475569; font-size: 11px; padding: 6px 14px; cursor: pointer;
+    }
+    .tab-btn.active { background: #1e3a5f; border-color: #2563eb; color: #60a5fa; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+  <main class="page">
+    <div class="wrap">
+      <h1 class="pg-title">⭐ 정회원 관리</h1>
+      <p class="pg-sub">Telegram Stars 결제 기반 멤버십 통계 및 설정</p>
+      <div id="pgState" class="state">권한 확인 중…</div>
+
+      <!-- ① 통계 -->
+      <div class="card" id="statsCard" style="display:none;">
+        <div class="card-title"><span class="dot" style="background:#3b82f6;"></span>통계</div>
+        <div class="stat-grid" id="statGrid">
+          <div class="stat-chip"><div class="lbl">활성 정회원</div><div class="val" id="stActive">–</div></div>
+          <div class="stat-chip"><div class="lbl">7일 내 만료</div><div class="val" id="stExpiring">–</div></div>
+          <div class="stat-chip"><div class="lbl">총 결제 건수</div><div class="val" id="stTotal">–</div></div>
+          <div class="stat-chip"><div class="lbl">이번 달 결제</div><div class="val" id="stMonth">–</div></div>
+          <div class="stat-chip"><div class="lbl">총 Stars 수입</div><div class="val" id="stStars">–</div><div class="sub">⭐ Stars</div></div>
+          <div class="stat-chip"><div class="lbl">이번 달 Stars</div><div class="val" id="stStarsMonth">–</div><div class="sub">⭐ Stars</div></div>
+          <div class="stat-chip"><div class="lbl">초대 보상 지급</div><div class="val" id="stRef">–</div><div class="sub" id="stRefGp"></div></div>
+          <div class="stat-chip"><div class="lbl">현재 가격</div><div class="val" id="stPrice">–</div><div class="sub">⭐ Stars / 30일</div></div>
+        </div>
+        <button class="btn-save" id="btnRefreshStats" style="margin-top:14px;background:#1e2840;border:1px solid #2d3d5a;color:#94a3b8;" type="button">새로고침</button>
+      </div>
+
+      <!-- ② 가격 설정 -->
+      <div class="card" id="priceCard" style="display:none;">
+        <div class="card-title"><span class="dot" style="background:#22c55e;"></span>가격 설정</div>
+        <p style="font-size:12px;color:#475569;margin:0 0 14px;">
+          Telegram Stars 가격을 변경합니다. bot.py의 <code>MEMBERSHIP_STARS_PRICE</code> 환경변수와 일치시키세요.
+        </p>
+        <div class="price-row">
+          <input type="number" id="inputStarsPrice" class="price-input" min="1" step="1" placeholder="500" />
+          <button class="btn-save" id="btnSavePrice" type="button">⭐ 저장</button>
+          <span class="save-status" id="priceStatus"></span>
+        </div>
+      </div>
+
+      <!-- ③ 회원 목록 탭 -->
+      <div class="card" id="memberCard" style="display:none;">
+        <div class="card-title"><span class="dot" style="background:#a855f7;"></span>회원 목록</div>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="expiring">7일 내 만료</button>
+          <button class="tab-btn" data-tab="payments">최근 결제</button>
+          <button class="tab-btn" data-tab="referrals">초대 보상</button>
+        </div>
+
+        <!-- 7일 내 만료 -->
+        <div class="tab-panel active" id="tabExpiring">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>이름</th><th>UID</th><th>만료일</th><th>상태</th></tr></thead>
+              <tbody id="tbExpiring"><tr><td colspan="4" class="empty">–</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 최근 결제 -->
+        <div class="tab-panel" id="tabPayments">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>결제일</th><th>UID</th><th>Stars</th><th>만료일</th><th>최초가입</th></tr></thead>
+              <tbody id="tbPayments"><tr><td colspan="5" class="empty">로딩 중…</td></tr></tbody>
+            </table>
+          </div>
+          <button id="btnMorePayments" style="display:none;width:100%;margin-top:8px;background:#1e2840;border:1px solid #2d3d5a;color:#64748b;font-size:11px;padding:8px;border-radius:6px;cursor:pointer;" type="button">더 보기</button>
+        </div>
+
+        <!-- 초대 보상 -->
+        <div class="tab-panel" id="tabReferrals">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>보상일</th><th>초대자 UID</th><th>신규 UID</th><th>GP</th></tr></thead>
+              <tbody id="tbReferrals"><tr><td colspan="4" class="empty">로딩 중…</td></tr></tbody>
+            </table>
+          </div>
+          <button id="btnMoreRefs" style="display:none;width:100%;margin-top:8px;background:#1e2840;border:1px solid #2d3d5a;color:#64748b;font-size:11px;padding:8px;border-radius:6px;cursor:pointer;" type="button">더 보기</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="siteFooter"></div>
+
+  <script type="module">
+    import { auth, functions, db } from '/assets/js/firebase-init.js';
+    import { onAuthStateChanged }  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+    import { httpsCallable }       from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+    import {
+      doc, getDoc, collection, query, orderBy, limit, startAfter, getDocs
+    } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+    const $ = id => document.getElementById(id);
+    const setState = (msg, err = false) => {
+      const el = $('pgState');
+      el.textContent = msg;
+      el.className   = 'state' + (err ? ' err' : '');
+    };
+
+    function fmtDate(ts) {
+      if (!ts) return '–';
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      return d.toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    }
+    function today() { return new Date().toISOString().slice(0, 10); }
+    function daysLeft(expStr) {
+      if (!expStr) return 0;
+      return Math.max(0, Math.ceil((new Date(expStr) - new Date()) / 86400000));
+    }
+
+    // ── 통계 ──────────────────────────────────────────────────────────────────
+    async function loadStats() {
+      try {
+        const fn  = httpsCallable(functions, 'adminGetMembershipStats');
+        const res = await fn();
+        const d   = res.data;
+        $('stActive').textContent      = d.activeCount.toLocaleString();
+        $('stExpiring').textContent    = d.expiringCount.toLocaleString();
+        $('stTotal').textContent       = d.totalPayments.toLocaleString();
+        $('stMonth').textContent       = d.monthPayments.toLocaleString();
+        $('stStars').textContent       = d.totalStars.toLocaleString();
+        $('stStarsMonth').textContent  = d.totalStarsMonth.toLocaleString();
+        $('stRef').textContent         = d.referralRewards.toLocaleString();
+        $('stRefGp').textContent       = `${(d.totalReferralGp || 0).toLocaleString()} GP 지급`;
+        $('stPrice').textContent       = d.starsPrice;
+        $('inputStarsPrice').value     = d.starsPrice;
+
+        // 만료 임박 테이블
+        const tbody = $('tbExpiring');
+        if (!d.expiringMembers?.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty">만료 임박 회원 없음</td></tr>';
+        } else {
+          tbody.innerHTML = d.expiringMembers.map(m => {
+            const dl  = daysLeft(m.expiresAt);
+            const cls = dl <= 2 ? 'danger' : dl <= 5 ? 'warn' : 'ok';
+            return `<tr>
+              <td style="color:#e2e8f0;">${m.name}</td>
+              <td style="font-size:10px;">${m.uid}</td>
+              <td>${m.expiresAt}</td>
+              <td><span class="badge ${cls}">D-${dl}</span></td>
+            </tr>`;
+          }).join('');
+        }
+      } catch (err) {
+        setState('통계 로드 실패: ' + err.message, true);
+      }
+    }
+
+    // ── 최근 결제 ──────────────────────────────────────────────────────────────
+    let _payLast = null;
+    async function loadPayments(reset = false) {
+      if (reset) _payLast = null;
+      const tbody = $('tbPayments');
+      try {
+        const constraints = [orderBy('createdAt', 'desc'), limit(20)];
+        if (_payLast) constraints.push(startAfter(_payLast));
+        const snap = await getDocs(query(collection(db, 'membership_payments'), ...constraints));
+        _payLast = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
+        $('btnMorePayments').style.display = snap.docs.length === 20 ? '' : 'none';
+
+        const rows = snap.docs.map(d => {
+          const v = d.data();
+          return `<tr>
+            <td>${fmtDate(v.createdAt)}</td>
+            <td style="font-size:10px;">${(v.uid||'').slice(0,14)}…</td>
+            <td style="color:#fbbf24;">⭐ ${v.starsAmount}</td>
+            <td>${v.expiresAt || '–'}</td>
+            <td>${v.isFirstMembership ? '<span class="badge ok">최초</span>' : '–'}</td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="5" class="empty">결제 내역 없음</td></tr>';
+
+        if (reset) tbody.innerHTML = rows;
+        else tbody.insertAdjacentHTML('beforeend', rows);
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:#ef4444;padding:16px;">${err.message}</td></tr>`;
+      }
+    }
+
+    // ── 초대 보상 ──────────────────────────────────────────────────────────────
+    let _refLast = null;
+    async function loadReferrals(reset = false) {
+      if (reset) _refLast = null;
+      const tbody = $('tbReferrals');
+      try {
+        const constraints = [orderBy('createdAt', 'desc'), limit(20)];
+        if (_refLast) constraints.push(startAfter(_refLast));
+        const snap = await getDocs(query(collection(db, 'membership_referrals'), ...constraints));
+        _refLast = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
+        $('btnMoreRefs').style.display = snap.docs.length === 20 ? '' : 'none';
+
+        const rows = snap.docs.map(d => {
+          const v = d.data();
+          return `<tr>
+            <td>${fmtDate(v.createdAt)}</td>
+            <td style="font-size:10px;">${(v.referrerUid||'').slice(0,14)}…</td>
+            <td style="font-size:10px;">${(v.newUserUid||'').slice(0,14)}…</td>
+            <td style="color:#22c55e;">+${(v.gpRewarded||500).toLocaleString()} GP</td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="4" class="empty">초대 보상 내역 없음</td></tr>';
+
+        if (reset) tbody.innerHTML = rows;
+        else tbody.insertAdjacentHTML('beforeend', rows);
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#ef4444;padding:16px;">${err.message}</td></tr>`;
+      }
+    }
+
+    // ── 가격 저장 ──────────────────────────────────────────────────────────────
+    function bindPriceSave() {
+      const btn = $('btnSavePrice');
+      btn.onclick = async () => {
+        const price = parseInt($('inputStarsPrice').value, 10);
+        if (!price || price < 1) { $('priceStatus').textContent = '1 이상 입력'; $('priceStatus').className = 'save-status err'; return; }
+        btn.disabled = true;
+        try {
+          await httpsCallable(functions, 'adminSetMembershipPrice')({ starsPrice: price });
+          $('priceStatus').textContent = '저장 완료 ✓';
+          $('priceStatus').className   = 'save-status ok';
+          $('stPrice').textContent     = price;
+          setTimeout(() => { $('priceStatus').textContent = ''; }, 3000);
+        } catch (err) {
+          $('priceStatus').textContent = err.message;
+          $('priceStatus').className   = 'save-status err';
+        } finally { btn.disabled = false; }
+      };
+    }
+
+    // ── 탭 전환 ───────────────────────────────────────────────────────────────
+    let _tabLoaded = {};
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        $('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+        if (!_tabLoaded[tab]) {
+          _tabLoaded[tab] = true;
+          if (tab === 'payments')  loadPayments(true);
+          if (tab === 'referrals') loadReferrals(true);
+        }
+      });
+    });
+
+    $('btnMorePayments')?.addEventListener('click', () => loadPayments(false));
+    $('btnMoreRefs')?.addEventListener('click',     () => loadReferrals(false));
+    $('btnRefreshStats')?.addEventListener('click', loadStats);
+
+    // ── 초기화 ────────────────────────────────────────────────────────────────
+    onAuthStateChanged(auth, async user => {
+      if (!user) { setState('로그인이 필요합니다.', true); return; }
+      try {
+        const snap = await getDoc(doc(db, 'admins', user.uid));
+        const isOp = user.email?.toLowerCase() === 'daguri75@gmail.com';
+        if (!snap.exists() && !isOp) { setState('관리자 권한 없음', true); return; }
+      } catch (e) { setState('권한 확인 실패: ' + e.message, true); return; }
+
+      setState('');
+      $('statsCard').style.display  = '';
+      $('priceCard').style.display  = '';
+      $('memberCard').style.display = '';
+
+      bindPriceSave();
+      await loadStats();
+    });
+  </script>
+</body>
+</html>

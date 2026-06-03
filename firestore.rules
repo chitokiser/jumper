@@ -720,6 +720,38 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── Telegram Stars 정회원 시스템 ──────────────────────────────────────────
+
+    // 가격 설정 — 로그인 유저 읽기, 관리자만 쓰기
+    match /membership_config/{docId} {
+      allow get, list: if signedIn();
+      allow write: if false; // Cloud Function only (adminSetMembershipPrice)
+    }
+
+    // 결제 기록 — 본인 읽기, CF만 쓰기
+    match /membership_payments/{docId} {
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false; // Cloud Function only (bot.py → firebase-admin)
+    }
+
+    // 초대 기록 — 본인 읽기, CF만 쓰기
+    match /membership_referrals/{docId} {
+      allow get, list: if isAdmin()
+        || (signedIn() && (
+          resource.data.referrerUid == request.auth.uid
+          || resource.data.newUserUid == request.auth.uid
+        ));
+      allow write: if false; // Cloud Function only
+    }
+
+    // 대기 중 초대 — bot.py(firebase-admin)가 씀, 본인 읽기
+    match /pending_referrals/{docId} {
+      allow get: if signedIn() && request.auth.uid == docId;
+      allow list: if isAdmin();
+      allow write: if false; // Cloud Function only
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

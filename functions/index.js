@@ -62,6 +62,7 @@ const expSyncH               = require('./handlers/expSync');
 const telegramH              = require('./handlers/telegram');
 const tonPaymentH            = require('./handlers/tonPayment');
 const gameRewardH            = require('./handlers/gameReward');
+const membershipH            = require('./handlers/membership');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -139,6 +140,37 @@ exports.payGameEntry = onCall(wrapError(async (request) => {
   const uid      = requireAuth(request);
   const { gameKey } = request.data ?? {};
   return await gameRewardH.payGameEntry(uid, gameKey);
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
+// 정회원(Membership) — Telegram Stars 결제 기반
+// ════════════════════════════════════════════════════════════════════════════
+
+// 정회원 상태 조회 (클라이언트 + bot.py)
+exports.getMembershipStatus = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await membershipH.getMembershipStatus(uid);
+}));
+
+// 관리자: Stars 가격 변경
+exports.adminSetMembershipPrice = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  await requireAdmin(uid);
+  const { starsPrice } = request.data ?? {};
+  return await membershipH.adminSetMembershipPrice(starsPrice);
+}));
+
+// 관리자: 통계 조회
+exports.adminGetMembershipStats = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  await requireAdmin(uid);
+  return await membershipH.adminGetMembershipStats();
+}));
+
+// 초대 보상 처리 (bot.py → 내부 호출, 공유 시크릿 헤더 검증)
+exports.processReferralReward = onCall(wrapError(async (request) => {
+  const { referrerUid, newUserUid } = request.data ?? {};
+  return await membershipH.processReferralReward(referrerUid, newUserUid);
 }));
 
 // ════════════════════════════════════════════════════════════════════════════
