@@ -1,10 +1,9 @@
 // conquest.render.js — 렌더링 (카메라·성·안개·유닛·POI·타워)
 import {
   worldToScreen, getScale, getVisibleRect, getRevealAnims,
-  drawMinimap, WX, WY, FOG_COLS, FOG_ROWS, CELL_W, CELL_H,
+  WX, WY,
   CASTLE_WX, CASTLE_WY,
 } from './conquest.world.js';
-// FOG_COLS/ROWS/CELL_W/H: minimap에서만 사용 — fog 렌더링에서는 사용 안 함
 import { getFrame, MINES, UNIT_DEFS } from './conquest.units.js';
 import { POI_DEFS } from './conquest.world.js';
 import { ROAD_SEGMENTS } from './conquest.path.js';
@@ -123,7 +122,6 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
     _ctx.restore();
   }
 
-  drawMinimap(_ctx,fogGrid,pois||[],defenders,W,H);
 }
 
 // ── 맵 배경 ──────────────────────────────────────────────────────────────

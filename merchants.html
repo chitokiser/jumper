@@ -3559,6 +3559,30 @@
           </div>
         </div>
 
+        <!-- Card 5: 이어달리기 -->
+        <div class="gh-card" onclick="ghEnterGame('relay')" style="border-color:rgba(59,130,246,.4);box-shadow:0 0 18px rgba(59,130,246,.1)">
+          <div class="gh-card-img" style="background:linear-gradient(135deg,#0a0f1a,#0f1a2e,#1a2e4a);display:flex;align-items:center;justify-content:center;font-size:44px;position:relative;overflow:hidden;">
+            🏃
+            <span style="position:absolute;bottom:6px;right:8px;font-size:22px;opacity:.7;">🏅</span>
+            <span style="position:absolute;top:8px;left:10px;font-size:18px;opacity:.5;">⚡</span>
+          </div>
+          <div class="gh-card-corner"></div>
+          <span class="gh-badge" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;">TEAM</span>
+          <div class="gh-card-body">
+            <div class="gh-card-name">이어달리기<br>Relay Race</div>
+            <div class="gh-card-desc">// 4명 팀 · 6팀 경쟁<br>// 등급별 배당 GP 획득<br>// 스킬 &amp; 전략 선택</div>
+            <div class="gh-card-reward">+100~1500 GP / race</div>
+            <div class="gh-card-players">
+              <div class="gh-players-dot" style="background:#3b82f6;box-shadow:0 0 6px #3b82f6;"></div>
+              <span>팀을 구성해 결승선을 향해</span>
+            </div>
+          </div>
+          <div class="gh-card-foot">
+            <button class="gh-btn-play" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;" onclick="event.stopPropagation();ghEnterGame('relay')">▶ RACE</button>
+            <button class="gh-btn-info" title="게임 정보" onclick="event.stopPropagation()">ℹ</button>
+          </div>
+        </div>
+
         <!-- Card 3: 화살쏘기 -->
         <div class="gh-card" onclick="ghEnterGame('bow')">
           <div class="gh-card-img" style="background-image:url('/assets/images/bow/user/back.png');filter:hue-rotate(120deg)"></div>
@@ -3637,6 +3661,7 @@
     else if (game === 'race')     { location.href = '/monsterrace.html'; }
     else if (game === 'bow')      { location.href = '/bow.html'; }
     else if (game === 'conquest') { location.href = '/conquest.html'; }
+    else if (game === 'relay')    { location.href = '/relay.html'; }
   };
 
   // ── TON 가격 조회 (Binance primary → CoinGecko fallback) ─────────────────
@@ -3772,6 +3797,10 @@
       conquest_desc: '// Monsters attack from all sides<br>// Defend walls · Build towers<br>// Deploy heroes &amp; defenders',
       conquest_sub:  'Become lord &amp; protect the kingdom',
       conquest_btn:  '▶ START DEFENSE',
+      relay_name:    'Relay<br>Race',
+      relay_desc:    '// 4-player team · 6 teams<br>// grade-based GP payout<br>// skills &amp; strategy',
+      relay_sub:     'Build a team and race to the finish',
+      relay_btn:     '▶ RACE',
       bow_name:      'Archery<br>Hunt',
       bow_desc:      '// 60-second monster hunt<br>// perspective arrow physics',
       bow_btn:       '▶ SHOOT',
@@ -3830,6 +3859,10 @@
       conquest_desc: '// 사방에서 몬스터가 몰려온다<br>// 성벽을 지켜라 · 타워 건설<br>// 영웅 · 수비대 배치',
       conquest_sub:  '성주가 되어 왕국을 수호',
       conquest_btn:  '▶ 수성 시작',
+      relay_name:    '이어달리기<br>Relay Race',
+      relay_desc:    '// 4명 팀 · 6팀 경쟁<br>// 등급별 배당 GP 획득<br>// 스킬 &amp; 전략 선택',
+      relay_sub:     '팀을 구성해 결승선을 향해',
+      relay_btn:     '▶ RACE',
       bow_name:      '활쏘기<br>Hunt',
       bow_desc:      '// 60초 몬스터 사냥<br>// 원근감 화살 물리',
       bow_btn:       '▶ SHOOT',
@@ -3888,6 +3921,10 @@
       conquest_desc: '// Quái vật tấn công từ mọi phía<br>// Bảo vệ tường · Xây tháp<br>// Triển khai anh hùng &amp; lính',
       conquest_sub:  'Trở thành lãnh chúa bảo vệ vương quốc',
       conquest_btn:  '▶ BẮT ĐẦU',
+      relay_name:    'Chạy Tiếp Sức<br>Relay Race',
+      relay_desc:    '// Đội 4 người · 6 đội thi đấu<br>// GP thưởng theo hạng đội<br>// Kỹ năng &amp; chiến thuật',
+      relay_sub:     'Lập đội và chạy về đích',
+      relay_btn:     '▶ CHẠY',
       bow_name:      'Săn Bắn<br>Bằng Cung',
       bow_desc:      '// Săn quái trong 60 giây<br>// Vật lý mũi tên phối cảnh',
       bow_btn:       '▶ BẮN',
@@ -3994,12 +4031,21 @@
       const btn  = c4.querySelector('.gh-btn-play'); tc(btn, t.conquest_btn);
     }
 
-    // ── 카드: 활쏘기 ──────────────────────────────────────────────────────
+    // ── 카드: 이어달리기 ──────────────────────────────────────────────────
     const c5 = cards[5];
     if (c5) {
-      const name = c5.querySelector('.gh-card-name'); ih(name, t.bow_name);
-      const desc = c5.querySelector('.gh-card-desc'); ih(desc, t.bow_desc);
-      const btn  = c5.querySelector('.gh-btn-play'); tc(btn, t.bow_btn);
+      const name = c5.querySelector('.gh-card-name'); ih(name, t.relay_name);
+      const desc = c5.querySelector('.gh-card-desc'); ih(desc, t.relay_desc);
+      const sub  = c5.querySelector('.gh-card-players span'); tc(sub, t.relay_sub);
+      const btn  = c5.querySelector('.gh-btn-play'); tc(btn, t.relay_btn);
+    }
+
+    // ── 카드: 활쏘기 ──────────────────────────────────────────────────────
+    const c6 = cards[6];
+    if (c6) {
+      const name = c6.querySelector('.gh-card-name'); ih(name, t.bow_name);
+      const desc = c6.querySelector('.gh-card-desc'); ih(desc, t.bow_desc);
+      const btn  = c6.querySelector('.gh-btn-play'); tc(btn, t.bow_btn);
       const cnt  = qi('ghP2'); if (cnt) cnt.textContent = PLAYER_COUNTS.ghP2 + t.playing;
     }
 

@@ -1,12 +1,12 @@
 // conquest.js — Monster Frontier 메인 (수성전: 성 외부 공격, 도로 이동)
 import { db, auth, functions } from '/assets/js/firebase-init.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import {
   initCamera, resizeCamera, screenToWorld, panBy, zoomBy, moveCamTo,
   makeFogGrid, revealFog, generatePOIs, addRevealAnim, updateRevealAnims,
-  drawMinimap, minimapHit, CASTLE_WX, CASTLE_WY, POI_DEFS,
+  CASTLE_WX, CASTLE_WY, POI_DEFS,
 } from './conquest.world.js';
 import { initRenderer, loadMapAssets, renderScene, isMapObstacle } from './conquest.render.js';
 import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL } from './conquest.units.js';
@@ -376,9 +376,6 @@ function _handleTap(cx,cy){
   const cv=$('gameCanvas');
   const rect=cv.getBoundingClientRect();
   const sx=cx-rect.left, sy=cy-rect.top;
-
-  const mm=minimapHit(sx,sy,cv.width,cv.height);
-  if(mm){moveCamTo(mm.wx,mm.wy);return;}
 
   const[wx,wy]=screenToWorld(sx,sy);
   if(wx<0||wx>10000||wy<0||wy>10000)return;
