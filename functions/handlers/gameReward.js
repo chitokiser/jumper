@@ -78,7 +78,7 @@ async function payGameEntry(uid, gameKey) {
   });
 }
 
-/** 트랜잭션 내부: GP 차감 + 참가 카운터 갱신 */
+/** 트랜잭션 내부: GP 차감 + 참가 카운터 갱신 — v2 (resetAt 숫자/Timestamp 모두 처리) */
 function _chargeEntry(t, data, ref, gameKey) {
   const gold  = data.gold || 0;
   const entry = data[gameKey] || {};
