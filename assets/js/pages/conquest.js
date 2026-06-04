@@ -31,6 +31,16 @@ const WALL_NAMES = {north:'북벽',south:'남벽',east:'동벽',west:'서벽'};
 const HERO_SKILL_CD   = 30000;
 const HERO_SKILL_RANGE = 400;
 
+// ── 스킬 정의 ─────────────────────────────────────────────────────────────
+// range: 세계 좌표 기준 성 중심으로부터의 반경 (0 = 전체 맵)
+// dmg: 피해량, freeze: 빙결 ms, knockback: 밀쳐내기 세계단위
+const SKILL_DEFS = {
+  fire:   {emoji:'🔥',name:'화염',   cost:200, cd:20000, range:1200, dmg:250, color:'#f97316'},
+  ice:    {emoji:'❄️',name:'얼음',   cost:250, cd:30000, range:0,    dmg:80,  freeze:3000, color:'#93c5fd'},
+  wind:   {emoji:'🌪️',name:'회오리', cost:200, cd:25000, range:1400, dmg:150, knockback:600, color:'#6ee7b7'},
+  meteor: {emoji:'☄️',name:'유성',   cost:350, cd:45000, range:0,    dmg:480, color:'#ea580c'},
+};
+
 // ── 웨이브 정의 (10웨이브 + 난이도 가파르게 상승) ──────────────────────────
 const WAVES = [
   [{type:'orc',    count:25, side:'rand'}],
@@ -55,7 +65,9 @@ let _sprites=null,_raf=null,_lastTs=0;
 let _placingType='villager',_placing=false,_selected=new Set();
 let _dispatchMode=false;
 let _heroSkillCd=0;
-let _walls={}; // 영웅 스킬 쿨다운 잔여 ms
+let _walls={};
+let _skillCds={};    // {fire: endTimestamp, ...}
+let _skillEffects=[]; // 캔버스 이펙트 목록
 
 let _drag=null;
 let _pinch=null;
@@ -117,6 +129,7 @@ function startGame(){
   _fogGrid=makeFogGrid(); _pois=generatePOIs();
   _prepTimer=PREP_TIME;_mineTimer=0;_spawnTimer=0;_waveActive=false;
   _selected=new Set();_placing=false;_dispatchMode=false;_heroSkillCd=0;
+  _skillCds={};_skillEffects=[];_updateSkillUI();
   _walls={
     north:{hp:WALL_HP,maxHp:WALL_HP,breached:false},
     south:{hp:WALL_HP,maxHp:WALL_HP,breached:false},
@@ -151,6 +164,7 @@ function _loop(ts){
     walls:_walls,
     fogGrid:_fogGrid,pois:_pois,
     prepCountdown:_prepTimer,wave:_waveActive,phase:_phase,
+    skillEffects:_skillEffects,
   },_sprites);
 }
 
@@ -172,15 +186,21 @@ function _update(dt){
     if(dead){_selected.delete(_defenders[i].id);_defenders.splice(i,1);}
   }
 
+  const now2=Date.now();
   for(let i=_monsters.length-1;i>=0;i--){
-    const dead=updateUnit(_monsters[i],_defenders,_monsters,dt,_walls);
-    for(const ev of _monsters[i].events||[]){
+    const m=_monsters[i];
+    // 빙결 중인 몬스터는 AI 스킵 (위치·이벤트 고정)
+    if(m._frozenUntil&&now2<m._frozenUntil){m.hitFlash=Math.max(0,(m.hitFlash||0)-dt);continue;}
+    const dead=updateUnit(m,_defenders,_monsters,dt,_walls);
+    for(const ev of m.events||[]){
       if(ev.type==='damageCastle') _castleHp-=ev.amount;
       if(ev.type==='damageWall') _damageWall(ev.wall,ev.amount);
       if(ev.type==='sound')_sfx(ev.name);
     }
     if(dead)_monsters.splice(i,1);
   }
+  // 만료 이펙트 정리
+  _skillEffects=_skillEffects.filter(e=>Date.now()-e.startAt<e.dur);
 
   // 수비대 주변 안개 해제
   for(const d of _defenders){
@@ -281,6 +301,70 @@ function _useHeroSkill(){
   renderHUD();
 }
 
+// ── 마법 스킬 (화염·얼음·회오리·유성) ────────────────────────────────────
+function _useSkill(type){
+  if(_phase!=='game') return;
+  const def=SKILL_DEFS[type]; if(!def) return;
+  const now=Date.now();
+  if(_skillCds[type]&&now<_skillCds[type]){
+    _showNotif(`⏳ ${def.name} 쿨다운 중`); return;
+  }
+  if(_gp<def.cost){
+    _showNotif(`💰 GP 부족 (${def.name}: ${def.cost}GP)`); return;
+  }
+  _gp-=def.cost;
+  _skillCds[type]=now+def.cd;
+  renderHUD();
+
+  const cx=CASTLE_WX, cy=CASTLE_WY;
+  let hitCount=0;
+  for(const m of _monsters){
+    if(m.dying) continue;
+    const dist=Math.hypot(m.x-cx, m.y-cy);
+    const inRange=def.range===0||dist<=def.range;
+    if(!inRange) continue;
+    m.hp-=def.dmg;
+    m.hitFlash=500;
+    hitCount++;
+    if(def.freeze) m._frozenUntil=now+def.freeze;
+    if(def.knockback){
+      const d=dist||1;
+      m.x+=(m.x-cx)/d*def.knockback;
+      m.y+=(m.y-cy)/d*def.knockback;
+      // 밀쳐낸 후 경로 인덱스 되감기 (자연스러운 복귀)
+      if(m.waypointIdx>0) m.waypointIdx=Math.max(0,m.waypointIdx-3);
+    }
+    if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=900;}
+  }
+
+  _skillEffects.push({type,x:cx,y:cy,startAt:now,
+    dur:type==='meteor'?900:type==='ice'?1300:1100,
+    color:def.color, range:def.range||2000});
+
+  playSound(`skill_${type}`);
+  _showNotif(`${def.emoji} ${def.name}! ${hitCount > 0 ? hitCount+'마리 타격' : 'GP 소모'}`);
+  _updateSkillUI();
+  // 쿨다운 종료 시 UI 갱신
+  setTimeout(_updateSkillUI, def.cd);
+}
+
+function _updateSkillUI(){
+  const now=Date.now(), inGame=_phase==='game';
+  for(const [type,def] of Object.entries(SKILL_DEFS)){
+    const btn=$(`sk_${type}`), cdEl=$(`sk_${type}_cd`);
+    if(!btn) continue;
+    const rem=Math.max(0,(_skillCds[type]||0)-now);
+    if(rem>0){
+      btn.disabled=true; btn.classList.remove('sk-ready');
+      if(cdEl){cdEl.classList.remove('hidden');cdEl.textContent=Math.ceil(rem/1000)+'s';}
+    } else {
+      btn.disabled=!inGame||_gp<def.cost;
+      btn.classList.toggle('sk-ready',inGame&&_gp>=def.cost);
+      if(cdEl) cdEl.classList.add('hidden');
+    }
+  }
+}
+
 // ── 사운드 이벤트 → merchants.battle.js 동일 타입으로 매핑 ──────────────
 const _SFX_MAP = {
   arrow:       'tower_shot',
@@ -306,6 +390,7 @@ function renderHUD(){
     btn.disabled=_gp<(UNIT_DEFS[t]?.cost||50);
     btn.classList.toggle('active',_placing&&_placingType===t);
   });
+  _updateSkillUI();
   const db2=$('btnDispatch');
   if(db2)db2.classList.toggle('active',_dispatchMode);
   // 선택 유닛 상태 표시
@@ -476,6 +561,7 @@ async function init(){
 
   ALL_UNIT_BTNS.forEach(t=>$(`btn_${t}`)?.addEventListener('click',()=>_setPlacing(t)));
   $('btnHeroSkill')?.addEventListener('click',_useHeroSkill);
+  Object.keys(SKILL_DEFS).forEach(t=>$(`sk_${t}`)?.addEventListener('click',()=>_useSkill(t)));
 
   $('btnDispatch')?.addEventListener('click',()=>{
     _dispatchMode=!_dispatchMode;_placing=false;_selected.clear();_defenders.forEach(d=>d.selected=false);renderHUD();

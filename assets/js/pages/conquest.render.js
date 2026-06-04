@@ -75,7 +75,7 @@ function _ldImg(src){
 }
 
 // ── 메인 렌더 ─────────────────────────────────────────────────────────────
-export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGrid,pois,prepCountdown,wave,phase},sprites){
+export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGrid,pois,prepCountdown,wave,phase,skillEffects},sprites){
   if(!_ctx)return;
   const W=_cv.width,H=_cv.height;
   _ctx.clearRect(0,0,W,H);
@@ -87,9 +87,6 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
   _drawCastleHP(castleHp,maxCastleHp);
   if(walls) _drawWalls(walls);
 
-  // 몬스터 이동 경로 안개 걷힘 — render단에서 처리 (world coords만 사용)
-  // (실제 revealFog 호출은 conquest.js _update에서 처리됨)
-
   // ── 유닛 + 건물 타일 Y축 정렬 통합 렌더 ──────────────────────────────
   const vis=getVisibleRect();
   const buf=200;
@@ -97,7 +94,6 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
   const visUnits=[...defenders,...monsters]
     .filter(u=>u.x>vis.l-buf&&u.x<vis.r+buf&&u.y>vis.t-buf&&u.y<vis.b+buf);
 
-  // 건물 타일: sortY = 타일 앞쪽 경계 (유닛이 이 Y보다 아래 있으면 타일 앞에 보임)
   const visTiles=(_buildingTiles||[]).filter(t=>
     t.wx>vis.l-t.cW&&t.wx<vis.r+t.cW&&t.wy>vis.t-t.cH&&t.wy<vis.b+t.cH
   );
@@ -112,6 +108,9 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
     else _drawBuildingTile(item.obj);
   }
 
+  // ── 스킬 이펙트 (유닛 위) ──────────────────────────────────────────────
+  if(skillEffects?.length) _drawSkillEffects(skillEffects, W, H);
+
   if(phase==='game'&&!wave&&prepCountdown>0){
     const[cx,cy]=worldToScreen(CASTLE_WX,CASTLE_WY-130);
     _ctx.save();
@@ -121,7 +120,101 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
     _ctx.fillText(`웨이브 시작까지 ${Math.ceil(prepCountdown/1000)}s`,cx,cy);
     _ctx.restore();
   }
+}
 
+// ── 스킬 이펙트 렌더링 ────────────────────────────────────────────────────
+function _drawSkillEffects(effects, W, H){
+  const ctx=_ctx, s=getScale(), now=Date.now();
+  for(const e of effects){
+    const t=Math.min(1,(now-e.startAt)/e.dur); // 0→1 진행
+    const alpha=t<0.5?t*2:(1-t)*2;             // 0→1→0 페이드
+    const [sx,sy]=worldToScreen(e.x,e.y);
+    const maxR=e.range*s*0.85;
+
+    ctx.save();
+    ctx.globalAlpha=Math.max(0,alpha*0.82);
+
+    if(e.type==='fire'){
+      // 팽창하는 붉은 링 3겹
+      for(let i=0;i<3;i++){
+        const r=maxR*(t+i*0.12);
+        const g=ctx.createRadialGradient(sx,sy,r*0.3,sx,sy,r);
+        g.addColorStop(0,'rgba(255,100,0,0.0)');
+        g.addColorStop(0.6,`rgba(255,80,0,${0.5-i*0.12})`);
+        g.addColorStop(1,'rgba(200,30,0,0)');
+        ctx.fillStyle=g;
+        ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fill();
+      }
+      // 불꽃 링
+      ctx.strokeStyle=`rgba(255,150,0,${alpha})`;
+      ctx.lineWidth=4*s; ctx.beginPath();
+      ctx.arc(sx,sy,maxR*t,0,Math.PI*2); ctx.stroke();
+
+    } else if(e.type==='ice'){
+      // 파란 확산 링 + 얼음 결정 패턴
+      const r=maxR*(0.3+t*0.7);
+      const g=ctx.createRadialGradient(sx,sy,r*0.5,sx,sy,r);
+      g.addColorStop(0,'rgba(147,197,253,0.35)');
+      g.addColorStop(0.7,'rgba(59,130,246,0.2)');
+      g.addColorStop(1,'rgba(96,165,250,0)');
+      ctx.fillStyle=g; ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=`rgba(147,197,253,${alpha*0.9})`;
+      ctx.lineWidth=3*s; ctx.setLineDash([8*s,5*s]);
+      ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.stroke();
+      ctx.setLineDash([]);
+      // 빙결 빔 6방향
+      for(let i=0;i<6;i++){
+        const a=i/6*Math.PI*2;
+        ctx.strokeStyle=`rgba(196,219,255,${alpha*0.6})`;
+        ctx.lineWidth=2*s;
+        ctx.beginPath();
+        ctx.moveTo(sx,sy);
+        ctx.lineTo(sx+Math.cos(a)*r,sy+Math.sin(a)*r);
+        ctx.stroke();
+      }
+
+    } else if(e.type==='wind'){
+      // 나선형 회오리 링
+      for(let ring=0;ring<4;ring++){
+        const rr=maxR*(t*0.8+ring*0.07);
+        ctx.strokeStyle=`rgba(110,231,183,${alpha*(0.7-ring*0.12)})`;
+        ctx.lineWidth=(3-ring*0.5)*s;
+        ctx.beginPath();
+        for(let a=0;a<Math.PI*2;a+=0.1){
+          const spiral=rr*(1+0.08*Math.sin(a*6+t*12));
+          const px=sx+Math.cos(a+t*4+ring)*spiral;
+          const py=sy+Math.sin(a+t*4+ring)*spiral;
+          if(a===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+        }
+        ctx.closePath(); ctx.stroke();
+      }
+      // 중심 회전 원
+      const cr=ctx.createRadialGradient(sx,sy,0,sx,sy,maxR*0.25*t);
+      cr.addColorStop(0,'rgba(167,243,208,0.5)'); cr.addColorStop(1,'rgba(52,211,153,0)');
+      ctx.fillStyle=cr; ctx.beginPath();ctx.arc(sx,sy,maxR*0.25*t,0,Math.PI*2);ctx.fill();
+
+    } else if(e.type==='meteor'){
+      // 거대 충격파 + 섬광
+      const blastR=maxR*t;
+      if(t<0.35){
+        // 낙하 섬광
+        ctx.fillStyle=`rgba(255,200,50,${(0.35-t)/0.35*0.8})`;
+        ctx.fillRect(0,0,W,H);
+      }
+      const g2=ctx.createRadialGradient(sx,sy,0,sx,sy,blastR);
+      g2.addColorStop(0,`rgba(255,255,200,${alpha*0.9})`);
+      g2.addColorStop(0.2,`rgba(255,120,0,${alpha*0.7})`);
+      g2.addColorStop(0.7,`rgba(200,40,0,${alpha*0.3})`);
+      g2.addColorStop(1,'rgba(100,10,0,0)');
+      ctx.fillStyle=g2; ctx.beginPath();ctx.arc(sx,sy,blastR,0,Math.PI*2);ctx.fill();
+      // 충격파 링
+      ctx.strokeStyle=`rgba(255,180,0,${alpha*0.8})`;
+      ctx.lineWidth=6*s*Math.max(0.3,1-t);
+      ctx.beginPath();ctx.arc(sx,sy,blastR,0,Math.PI*2);ctx.stroke();
+    }
+
+    ctx.restore();
+  }
 }
 
 // ── 맵 배경 ──────────────────────────────────────────────────────────────

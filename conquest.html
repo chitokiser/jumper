@@ -124,6 +124,31 @@ html,body{height:100%;background:#0a0f05;color:#fff;
 .ctrl-btn.active{border-color:#a855f7;background:rgba(168,85,247,.18);color:#d8b4fe}
 .ctrl-btn:hover{border-color:#6b7280}
 
+/* ── 스킬바 ── */
+#skillBar{
+  width:100%;display:flex;gap:4px;padding:4px 8px;
+  background:rgba(0,0,0,.96);border-top:1px solid #312e81;
+  flex-shrink:0;
+}
+.sk-btn{
+  flex:1;padding:4px 2px;border:2px solid #4338ca;border-radius:8px;
+  background:rgba(67,56,202,.12);color:#818cf8;font-size:10px;font-weight:700;
+  cursor:pointer;transition:all .15s;text-align:center;line-height:1.3;
+  position:relative;overflow:hidden;
+}
+.sk-btn:disabled{opacity:.38;cursor:not-allowed;border-color:#374151;color:#6b7280;animation:none}
+.sk-btn.sk-ready{animation:skReady .9s ease-in-out infinite alternate}
+@keyframes skReady{from{border-color:#4338ca}to{border-color:#818cf8;box-shadow:0 0 7px #818cf888}}
+.sk-emoji{display:block;font-size:16px;line-height:1.1}
+.sk-name {display:block;font-size:8px;color:#c7d2fe}
+.sk-cost {display:block;font-size:8px;color:#fbbf24}
+.sk-cd-ov{
+  position:absolute;inset:0;background:rgba(0,0,0,.65);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:800;color:#fff;border-radius:6px;
+}
+.sk-cd-ov.hidden{display:none}
+
 /* 발견 알림 */
 #notifBox{
   position:absolute;top:50px;left:50%;transform:translateX(-50%);
@@ -177,6 +202,34 @@ html,body{height:100%;background:#0a0f05;color:#fff;
   </div>
 
   <canvas id="gameCanvas"></canvas>
+
+  <!-- 스킬바 -->
+  <div id="skillBar">
+    <button class="sk-btn sk-ready" id="sk_fire">
+      <span class="sk-emoji">🔥</span>
+      <span class="sk-name">화염</span>
+      <span class="sk-cost">200 GP</span>
+      <div class="sk-cd-ov hidden" id="sk_fire_cd"></div>
+    </button>
+    <button class="sk-btn sk-ready" id="sk_ice">
+      <span class="sk-emoji">❄️</span>
+      <span class="sk-name">얼음</span>
+      <span class="sk-cost">250 GP</span>
+      <div class="sk-cd-ov hidden" id="sk_ice_cd"></div>
+    </button>
+    <button class="sk-btn sk-ready" id="sk_wind">
+      <span class="sk-emoji">🌪️</span>
+      <span class="sk-name">회오리</span>
+      <span class="sk-cost">200 GP</span>
+      <div class="sk-cd-ov hidden" id="sk_wind_cd"></div>
+    </button>
+    <button class="sk-btn sk-ready" id="sk_meteor">
+      <span class="sk-emoji">☄️</span>
+      <span class="sk-name">유성</span>
+      <span class="sk-cost">350 GP</span>
+      <div class="sk-cd-ov hidden" id="sk_meteor_cd"></div>
+    </button>
+  </div>
 
   <div id="gameBot">
     <!-- 병력 배치 탭 -->

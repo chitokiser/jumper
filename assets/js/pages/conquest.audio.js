@@ -109,6 +109,44 @@ export function playSound(type) {
         [1800,1200,900].forEach((f,i)=>tone(f,0.3,0.06,i*0.03,'square'));
         break;
 
+      // ── 스킬: 화염 ────────────────────────────────────────────────────────
+      case 'skill_fire':
+        noise(0.35,0.18);
+        tone(60,0.6,0.5,0,'sawtooth');
+        [220,180,140].forEach((f,i)=>tone(f,0.45,0.35,i*0.06,'sawtooth'));
+        tone(800,0.2,0.15,0.05,'square');
+        break;
+
+      // ── 스킬: 얼음 ────────────────────────────────────────────────────────
+      case 'skill_ice':
+        [2093,1760,1319,880].forEach((f,i)=>tone(f,0.22,0.3,i*0.06,'triangle'));
+        tone(440,0.18,0.6,0.1,'sine');
+        noise(0.08,0.08);
+        break;
+
+      // ── 스킬: 회오리 ──────────────────────────────────────────────────────
+      case 'skill_wind': {
+        const wg=gain(0.28);
+        const wo=ac.createOscillator(); wo.type='sawtooth';
+        wo.frequency.setValueAtTime(200,ac.currentTime);
+        wo.frequency.linearRampToValueAtTime(600,ac.currentTime+0.4);
+        wo.frequency.linearRampToValueAtTime(100,ac.currentTime+0.9);
+        wg.gain.setValueAtTime(0.28,ac.currentTime);
+        wg.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.9);
+        wo.connect(wg); wo.start(); wo.stop(ac.currentTime+0.9);
+        noise(0.18,0.7);
+        break;
+      }
+
+      // ── 스킬: 유성 ────────────────────────────────────────────────────────
+      case 'skill_meteor':
+        noise(0.5,0.6);
+        tone(40,0.8,0.6,0,'sawtooth');
+        tone(80,0.5,0.5,0.05,'sawtooth');
+        [1200,800,500].forEach((f,i)=>tone(f,0.3,0.2,i*0.08,'square'));
+        tone(60,0.6,0.8,0.1,'sine');
+        break;
+
       // ── 웨이브 시작 (levelup 팡파르) ──────────────────────────────────────
       case 'levelup':
         [523,659,784,1047,1319,1568].forEach((f,i)=>tone(f,0.35,0.2,i*0.07,'triangle'));
