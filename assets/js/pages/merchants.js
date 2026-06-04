@@ -3213,6 +3213,15 @@ async function init() {
     });
     $('miniGameDungeon')?.addEventListener('click', () => {
       popup?.classList.add('hidden');
+      // ── 던전 진입 사전 안내 ────────────────────────────────────────────
+      if (!_gameStarted) {
+        showToast('📍 먼저 게임 시작 버튼(▶)을 눌러 보물찾기를 시작하세요!', 'warn');
+        return;
+      }
+      if (isPlayerDead()) {
+        showToast('💀 사망 상태입니다. 부활 아이템을 사용하거나 부활 지점으로 이동하세요.', 'warn');
+        return;
+      }
       openDungeonGame();
     });
     // 팝업 외부 클릭 시 닫기

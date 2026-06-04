@@ -256,9 +256,14 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
   async _tryEnter() {
     const btn=document.getElementById('dgEnterBtn');
     if (btn) btn.disabled=true;
+    // 게임 미시작 안내
+    if (!this._uid) {
+      this._toast('📍 지도 화면에서 게임 시작(▶) 버튼을 먼저 눌러주세요');
+      if (btn) btn.disabled=false; return;
+    }
     await this._loadDB();
     if (!this._opts.onSpendGold(this._entryFee)){
-      this._toast(`GP 부족 (${this._entryFee}GP 필요)`);
+      this._toast(`💰 GP 부족 (${this._entryFee}GP 필요) — 보물찾기로 GP를 모으세요`);
       if (btn) btn.disabled=false; return;
     }
     await this._recordEntry();
