@@ -307,6 +307,16 @@ def _process_pending_referral(new_uid: str):
 
 # ── 명령어 핸들러 ─────────────────────────────────────────────────────────────
 
+async def cmd_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """그룹/채널 chat_id 확인 — ANNOUNCE_GROUP_ID 설정용"""
+    chat = update.effective_chat
+    await update.message.reply_text(
+        f"📋 Chat ID: <code>{chat.id}</code>\n"
+        f"Type: {chat.type}\n"
+        f"Title: {chat.title or chat.username or '(private)'}",
+        parse_mode="HTML"
+    )
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args or []
     uid  = _uid(update.effective_user.id)
@@ -649,6 +659,7 @@ async def _post_init(application):
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(_post_init).build()
 
+    app.add_handler(CommandHandler("chatid",     cmd_chatid))
     app.add_handler(CommandHandler("start",      cmd_start))
     app.add_handler(CommandHandler("play",       cmd_play))
     app.add_handler(CommandHandler("membership", cmd_membership))
