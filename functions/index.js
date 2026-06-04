@@ -2541,3 +2541,37 @@ exports.tonGetTransactions = onCall(
   })
 );
 
+// ════════════════════════════════════════════════════════════════════════════
+// Telegram Bot: 지갑 생성 + 온체인 등록
+// bot.py → POST X-Bot-Token 헤더로 인증, uid + mentorAddress 전달
+// ════════════════════════════════════════════════════════════════════════════
+exports.telegramRegister = onRequest(
+  { cors: false, secrets: [walletSecret, adminKeySecret, telegramBotSecret] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method Not Allowed' });
+      return;
+    }
+    try {
+      if ((req.headers['x-bot-token'] || '') !== telegramBotSecret.value()) {
+        res.status(401).json({ error: '인증 실패' });
+        return;
+      }
+      const { uid, mentorAddress } = req.body ?? {};
+      if (!uid || !uid.startsWith('tg_')) {
+        res.status(400).json({ error: 'uid 오류 (tg_ 접두사 필요)' });
+        return;
+      }
+      process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+      const result = await onboarding.createCustodialWallet(
+        uid, walletSecret.value(), mentorAddress || null
+      );
+      logger.info('telegramRegister', { uid, address: result.address, created: result.created });
+      res.json(result);
+    } catch (err) {
+      logger.error('[telegramRegister Error]', err);
+      res.status(500).json({ error: err.message || '서버 오류' });
+    }
+  }
+);
+

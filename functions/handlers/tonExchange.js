@@ -187,9 +187,13 @@ async function sendTonAutomatic(toAddress, tonAmount) {
 async function verifyDeposit(txHash, uid) {
   if (!txHash?.trim()) throw new Error('txHash가 누락됐습니다');
 
-  // 중복 처리 방지
+  // 중복 처리 방지 — confirmed/processing 모두 차단 (리플레이 공격 방어)
   const dup = await db.collection('ton_transactions').where('txHash', '==', txHash).limit(1).get();
-  if (!dup.empty && dup.docs[0].data().status === 'confirmed') throw new Error('이미 처리된 트랜잭션입니다');
+  if (!dup.empty) {
+    const status = dup.docs[0].data().status;
+    if (status === 'confirmed') throw new Error('이미 처리된 트랜잭션입니다');
+    if (status === 'processing') throw new Error('처리 중인 트랜잭션입니다. 잠시 후 다시 확인해 주세요');
+  }
 
   const adminWallet = getAdminWallet();
   const tx          = await fetchTxByHash(txHash);

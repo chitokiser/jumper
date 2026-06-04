@@ -49,10 +49,12 @@ HUB_URL               = "https://jump22.netlify.app/telegram.html"
 TON_DEPOSIT_ADDRESS   = os.environ.get("TON_DEPOSIT_ADDRESS", "")
 MEMBERSHIP_TON_PRICE  = float(os.environ.get("MEMBERSHIP_TON_PRICE", "5"))
 TON_CENTER_API_KEY    = os.environ.get("TON_CENTER_API_KEY", "")
+FUNCTIONS_BASE_URL    = os.environ.get("FUNCTIONS_BASE_URL", "")
 UTC7                  = timezone(timedelta(hours=7))
 _executor             = ThreadPoolExecutor(max_workers=4)
 DAILY_GP_TOPUP        = 3500
 TOPUP_THRESHOLD       = 1000
+DEFAULT_MENTOR_ADDR   = "0xc662c3B58bE7345DE30dd8188B2Acc977943186A"
 
 _user_state: dict = {}   # {telegram_user_id: 'awaiting_txhash'}
 
@@ -102,6 +104,56 @@ def _get_status(uid: str) -> dict:
         "name":           user.get("displayName") or user.get("name") or "Member",
         "ton_price":      ton_price,
     }
+
+
+def _get_user_wallet(uid: str):
+    """수탁 지갑 보유 여부 확인. encryptedKey가 있는 경우만 반환."""
+    try:
+        snap = _db.collection("users").document(uid).get()
+        if snap.exists:
+            wallet = (snap.to_dict() or {}).get("wallet", {})
+            if wallet.get("encryptedKey"):
+                return wallet
+    except Exception:
+        pass
+    return None
+
+
+def _get_auto_referrers() -> list:
+    """autoReferrers 컬렉션에서 활성 멘토 목록 반환 (최대 4개)."""
+    try:
+        snap = _db.collection("autoReferrers").where("active", "==", True).get()
+        result = []
+        for doc in snap:
+            data = doc.to_dict() or {}
+            addr = data.get("walletAddress", "")
+            name = data.get("name") or data.get("displayName") or ""
+            if addr:
+                label = name or (addr[:6] + "..." + addr[-4:])
+                result.append({"address": addr, "label": label})
+        return result[:4]
+    except Exception:
+        return []
+
+
+def _call_telegram_register(uid: str, mentor_address: str) -> dict:
+    """Cloud Function telegramRegister 호출. 지갑 생성 + 온체인 등록."""
+    if not FUNCTIONS_BASE_URL:
+        raise Exception("FUNCTIONS_BASE_URL 환경변수가 설정되지 않았습니다")
+    url = f"{FUNCTIONS_BASE_URL}/telegramRegister"
+    resp = _req.post(
+        url,
+        json={"uid": uid, "mentorAddress": mentor_address},
+        headers={"X-Bot-Token": BOT_TOKEN},
+        timeout=90,
+    )
+    if not resp.ok:
+        try:
+            err_msg = resp.json().get("error") or f"HTTP {resp.status_code}"
+        except Exception:
+            err_msg = f"HTTP {resp.status_code}"
+        raise Exception(err_msg)
+    return resp.json()
 
 
 def _activate(uid: str, payment_id: str, ton_amount: float, extra: dict = None) -> tuple:
@@ -264,6 +316,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
+        [InlineKeyboardButton("📝 회원가입 / Register", callback_data="register_check")],
         [
             InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/treasure.html"),
             InlineKeyboardButton("🏎️ Monster Racing",  url="https://jump22.netlify.app/monsterrace.html"),
@@ -318,6 +371,21 @@ async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     user_id = q.from_user.id
     uid     = _uid(user_id)
+
+    # 수탁 지갑 미보유 시 회원가입 먼저 안내
+    wallet = await _run(_get_user_wallet, uid)
+    if not wallet:
+        await q.message.reply_text(
+            "⚠️ *회원가입이 필요합니다 / Registration required*\n\n"
+            "정회원 업그레이드 전에 먼저 회원가입(지갑 생성)을 완료해주세요.\n"
+            "_Please complete registration before upgrading to Premium._",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("📝 회원가입 / Register", callback_data="register_check"),
+            ]]),
+        )
+        return
+
     st      = await _run(_get_status, uid)
     price   = st["ton_price"]
 
@@ -355,6 +423,108 @@ async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"_When a friend joins Premium via this link, you get *500 GP*!_",
         parse_mode="Markdown",
     )
+
+
+async def cb_register_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """회원가입 버튼 → 지갑 보유 여부 확인 후 멘토 선택 또는 이미 가입 안내."""
+    q = update.callback_query
+    await q.answer()
+    uid    = _uid(q.from_user.id)
+    wallet = await _run(_get_user_wallet, uid)
+
+    if wallet:
+        addr = wallet.get("address", "")
+        short = addr[:8] + "..." + addr[-6:] if addr else "?"
+        await q.message.reply_text(
+            f"✅ *이미 가입된 계정입니다 / Already registered*\n"
+            f"지갑 / Wallet: `{short}`\n\n"
+            f"정회원 업그레이드를 진행하세요.\n"
+            f"_Proceed to Premium upgrade._",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("⭐ 정회원 업그레이드 / Go Premium", callback_data="membership_info"),
+            ]]),
+        )
+        return
+
+    # 멘토 목록 조회
+    referrers = await _run(_get_auto_referrers)
+    keyboard  = []
+    for r in referrers:
+        keyboard.append([InlineKeyboardButton(
+            f"👤 {r['label']}", callback_data=f"select_mentor_{r['address']}"
+        )])
+    keyboard.append([InlineKeyboardButton(
+        "🏠 기본 멘토 / Default Mentor",
+        callback_data=f"select_mentor_{DEFAULT_MENTOR_ADDR}",
+    )])
+
+    await q.message.reply_text(
+        "👤 *멘토를 선택하세요 / Select a Mentor*\n\n"
+        "멘토는 추천인으로 등록되며 추후 변경이 어렵습니다.\n"
+        "_Mentor is your referrer and cannot be easily changed later._",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+async def cb_select_mentor(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """멘토 선택 → Cloud Function telegramRegister 호출 → 지갑 생성 + 온체인 등록."""
+    q = update.callback_query
+    await q.answer()
+    uid            = _uid(q.from_user.id)
+    mentor_address = q.data[len("select_mentor_"):]
+
+    wait_msg = await q.message.reply_text(
+        "⏳ *지갑 생성 및 가입 처리 중...*\n"
+        "_Creating wallet and registering on-chain... (up to 60s)_",
+        parse_mode="Markdown",
+    )
+
+    try:
+        result     = await _run(_call_telegram_register, uid, mentor_address)
+        address    = result.get("address", "")
+        created    = result.get("created", False)
+        registered = result.get("registered", False)
+
+        await wait_msg.delete()
+
+        if not created:
+            short = address[:8] + "..." + address[-6:] if address else "?"
+            await q.message.reply_text(
+                f"✅ *이미 가입된 계정입니다 / Already registered*\n"
+                f"지갑 / Wallet: `{short}`",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("⭐ 정회원 업그레이드 / Go Premium", callback_data="membership_info"),
+                ]]),
+            )
+            return
+
+        chain_line = "✅ 온체인 등록 완료 / On-chain registered\n" if registered else ""
+        await q.message.reply_text(
+            f"🎉 *가입 완료! / Registration Complete!*\n\n"
+            f"💼 지갑 / Wallet: `{address}`\n"
+            f"{chain_line}\n"
+            f"이제 정회원 업그레이드를 진행하세요!\n"
+            f"_Proceed to Premium upgrade!_",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("⭐ 정회원 가입 / Join Premium", callback_data="membership_info"),
+            ]]),
+        )
+
+    except Exception as e:
+        await wait_msg.delete()
+        await q.message.reply_text(
+            f"❌ *가입 실패 / Registration failed*\n\n{e}\n\n"
+            "잠시 후 다시 시도하거나 고객센터에 문의하세요.\n"
+            "_Please retry later or contact support._",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔄 다시 시도 / Retry", callback_data="register_check"),
+            ]]),
+        )
 
 # ── 메시지 핸들러 (txHash 수신) ──────────────────────────────────────────────
 
@@ -487,6 +657,8 @@ def main():
     app.add_handler(CallbackQueryHandler(cb_membership_info, pattern="^membership_info$"))
     app.add_handler(CallbackQueryHandler(cb_buy_premium,     pattern="^buy_premium$"))
     app.add_handler(CallbackQueryHandler(cb_referral_link,   pattern="^referral_link$"))
+    app.add_handler(CallbackQueryHandler(cb_register_check,  pattern="^register_check$"))
+    app.add_handler(CallbackQueryHandler(cb_select_mentor,   pattern="^select_mentor_"))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_txhash))
     app.add_error_handler(error_handler)

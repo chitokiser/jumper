@@ -87,20 +87,18 @@ async function createCustodialWallet(uid, masterSecret, mentorAddress) {
       },
     }, { merge: true });
 
-    // 4) 추천인 보너스: 기본 주소가 아닌 실제 추천인 → 게임코인 1,000 지급
-    if (mentorAddress.toLowerCase() !== DEFAULT_MENTOR_ADDRESS.toLowerCase()) {
-      try {
-        await db.collection('battle_players').doc(uid).set({
-          uid,
-          gold: admin.firestore.FieldValue.increment(1000),
-          referralBonusAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-      } catch (bonusErr) {
-        console.warn('[createCustodialWallet] 추천인 보너스 지급 실패:', bonusErr.message);
-      }
+    // 4) 신규 가입 보너스: 멘토 관계없이 첫 가입 시 1,000 GP 지급
+    try {
+      await db.collection('battle_players').doc(uid).set({
+        uid,
+        gold: admin.firestore.FieldValue.increment(1000),
+        joinBonusAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    } catch (bonusErr) {
+      console.warn('[createCustodialWallet] 가입 보너스 지급 실패:', bonusErr.message);
     }
 
-    return { address: wallet.address, created: true, registered: true, referralBonus: mentorAddress.toLowerCase() !== DEFAULT_MENTOR_ADDRESS.toLowerCase() };
+    return { address: wallet.address, created: true, registered: true, joinBonus: true };
   } catch (regErr) {
     console.warn('[createCustodialWallet] 온체인 자동 등록 실패:', regErr.message);
     return { address: wallet.address, created: true, registered: false };
