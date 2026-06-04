@@ -123,7 +123,10 @@ export function getFrames(charId) {
 
 export function preloadAll() {
   Object.keys(SPRITE_DEFS).forEach(getFrames);
+  imgAt('/assets/images/jump/logo2.png'); // 로고 프리로드
 }
+
+const _logoImg = imgAt('/assets/images/jump/logo2.png');
 
 // ── 트랙 좌표 ─────────────────────────────────────────────────────────────────
 function laneR(lane) {
@@ -345,6 +348,16 @@ export function renderRace(ctx, teams, now, dt) {
   // 트랙 배경 (캐시)
   if (!_trackCache) _trackCache = buildTrackCache(CW, CH);
   ctx.drawImage(_trackCache, 0, 0);
+
+  // 잔디 중앙 JumpDAO 로고
+  if (_logoImg?.complete && _logoImg.naturalWidth > 0) {
+    const lw = 72;
+    const lh = lw * (_logoImg.naturalHeight / _logoImg.naturalWidth);
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.drawImage(_logoImg, CX - lw / 2, CY - lh / 2, lw, lh);
+    ctx.restore();
+  }
 
   tickParticles(dt || 0.016);
 

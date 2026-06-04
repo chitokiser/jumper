@@ -8,6 +8,8 @@ const HOUSE_SPD_MULT = 1.1;   // monsters are 10% faster for house advantage
 const MAX_ARROWS  = 20;
 const GAME_SEC    = 60;
 const GRAVITY     = 0.28;
+const CANNON_PENALTY_BASE = 30; // 대포 피격 기본 점수 패널티
+const CANNON_HIT_RADIUS   = 30; // 플레이어 피격 판정 반경
 
 // [imgIdx, label, basePts, coinDrop, baseSpeed, baseSize, spawnWeight, rarity]
 const MDEFS = [
@@ -124,8 +126,12 @@ class ArcheryGame {
     this._timeLeft   = GAME_SEC;
     this._coins      = 0;
     this._kills      = 0;
+    this._cannonHits = 0;
     this._monsters   = [];
     this._flyArrows  = [];
+    this._cannonballs = [];
+    this._cannonTimer = 120;
+    this._cannonFlash = 0;
     this._particles  = [];
     this._floats     = [];
     this._aiming     = false;
@@ -208,6 +214,43 @@ class ArcheryGame {
       if (a.alive) this._hitTest(a);
     }
 
+    // 대포알 스폰 타이머
+    this._cannonTimer -= dt;
+    if (this._cannonTimer <= 0) {
+      this._spawnCannon(W, H);
+      const interval = Math.max(55, 160 - this._diff * 25);
+      this._cannonTimer = interval + Math.random() * 50;
+    }
+
+    // 대포알 이동 + 플레이어 피격 판정
+    const pX = W / 2, pY = H - 56;
+    for (const cb of this._cannonballs) {
+      if (!cb.alive) continue;
+      cb.x += cb.vx * dt;
+      cb.y += cb.vy * dt;
+      cb.trail.push({ x: cb.x, y: cb.y });
+      if (cb.trail.length > 9) cb.trail.shift();
+      if (cb.y > H + 30 || cb.x < -30 || cb.x > W + 30) { cb.alive = false; continue; }
+      // 화살 요격 판정
+      for (const a of this._flyArrows) {
+        if (!a.alive) continue;
+        if ((a.x - cb.x) ** 2 + (a.y - cb.y) ** 2 < (cb.r + 6) ** 2) {
+          a.alive = false; cb.alive = false;
+          this._burst(cb.x, cb.y, '#f97316', 12);
+          this._float(cb.x, cb.y - 20, '💥 INTERCEPT!', '#f97316', 14);
+          break;
+        }
+      }
+      if (!cb.alive) continue;
+      // 플레이어 피격
+      if ((cb.x - pX) ** 2 + (cb.y - pY) ** 2 < CANNON_HIT_RADIUS ** 2) {
+        cb.alive = false;
+        this._onCannonHit(cb.x, cb.y, W, H);
+      }
+    }
+    this._cannonballs = this._cannonballs.filter(cb => cb.alive);
+    if (this._cannonFlash > 0) this._cannonFlash -= dt;
+
     // 파티클
     for (const p of this._particles) {
       p.x += p.vx * dt; p.y += p.vy * dt;
@@ -222,10 +265,45 @@ class ArcheryGame {
       f.a = Math.max(0, f.life / f.ml);
     }
 
-    this._monsters  = this._monsters.filter(m => m.alive);
-    this._flyArrows = this._flyArrows.filter(a => a.alive);
-    this._particles = this._particles.filter(p => p.life > 0);
-    this._floats    = this._floats.filter(f => f.life > 0);
+    this._monsters    = this._monsters.filter(m => m.alive);
+    this._flyArrows   = this._flyArrows.filter(a => a.alive);
+    this._cannonballs = this._cannonballs.filter(cb => cb.alive);
+    this._particles   = this._particles.filter(p => p.life > 0);
+    this._floats      = this._floats.filter(f => f.life > 0);
+  }
+
+  // ── 대포알 스폰 ──────────────────────────────────────────────────────────────
+  _spawnCannon(W, H) {
+    const alive = this._monsters.filter(m => m.alive);
+    if (alive.length === 0) return;
+    const src = alive[Math.floor(Math.random() * alive.length)];
+    const pX = W / 2, pY = H - 56;
+    const dx = pX - src.x, dy = pY - src.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const spd = (2.8 + this._diff * 0.55) * (0.8 + Math.random() * 0.4);
+    this._cannonballs.push({
+      alive: true,
+      x: src.x, y: src.y,
+      vx: dx / len * spd,
+      vy: dy / len * spd,
+      r: 9,
+      trail: [],
+    });
+    this._burst(src.x, src.y, '#f97316', 5);
+  }
+
+  // ── 대포 피격 처리 ───────────────────────────────────────────────────────────
+  _onCannonHit(hx, hy, W, H) {
+    const penalty = CANNON_PENALTY_BASE + Math.floor(this._diff * 8);
+    this._score = Math.max(0, this._score - penalty);
+    this._combo = 0;
+    this._cannonHits++;
+    this._cannonFlash = 14;
+    this._hudScore.textContent = `SCORE: ${this._score}`;
+    this._hudCombo.textContent = '';
+    this._burst(hx, hy, '#ef4444', 18);
+    this._float(W / 2, H - 90, `💥 CANNON HIT! -${penalty}`, '#ef4444', 18);
+    this._snd?.('hit');
   }
 
   // ── 명중 판정 ────────────────────────────────────────────────────────────────
@@ -396,6 +474,45 @@ class ArcheryGame {
       ctx.restore();
     }
 
+    // 대포알
+    for (const cb of this._cannonballs) {
+      if (!cb.alive) continue;
+      // 꼬리
+      cb.trail.forEach((t, i) => {
+        const ratio = (i + 1) / cb.trail.length;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, cb.r * 0.55 * ratio, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,${100 + Math.floor(ratio * 80)},0,${ratio * 0.5})`;
+        ctx.fill();
+      });
+      // 포탄 본체
+      const g = ctx.createRadialGradient(cb.x - cb.r * 0.3, cb.y - cb.r * 0.35, 1, cb.x, cb.y, cb.r);
+      g.addColorStop(0, '#bbb'); g.addColorStop(1, '#222');
+      ctx.beginPath(); ctx.arc(cb.x, cb.y, cb.r, 0, Math.PI * 2);
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,80,0,.7)';
+      ctx.lineWidth = 1.5; ctx.stroke();
+      // 경고 삼각형 (플레이어 방향)
+      const pX = W / 2, pY = H - 56;
+      const dx = pX - cb.x, dy = pY - cb.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 150) {
+        ctx.save();
+        ctx.globalAlpha = 0.55 * (1 - dist / 150);
+        ctx.fillStyle = '#ef4444';
+        ctx.font = `bold ${Math.round(12 + (1 - dist / 150) * 6)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('⚠', cb.x, cb.y - cb.r - 4);
+        ctx.restore();
+      }
+    }
+
+    // 대포 피격 화면 플래시
+    if (this._cannonFlash > 0) {
+      ctx.fillStyle = `rgba(220,0,0,${Math.min(0.38, this._cannonFlash / 14 * 0.38)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
     // 활 (하단 중앙)
     this._drawBow(ctx, W, H);
 
@@ -559,6 +676,11 @@ class ArcheryGame {
     const netColor  = net >= 0 ? '#4ade80' : '#f87171';
     const netLabel  = net >= 0 ? `+${net}` : `${net}`;
 
+    const cannonHits   = this._cannonHits;
+    const cannonPenRow = cannonHits > 0
+      ? `<div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#f87171;">💥 Cannon hits ×${cannonHits}</span><span style="color:#f87171;">score deducted</span></div>`
+      : '';
+
     const res = document.createElement('div');
     res.className = 'arch-result';
     res.style.cssText = [
@@ -570,9 +692,10 @@ class ArcheryGame {
     res.innerHTML = `
       <div style="font-size:40px;">🏹 Game Over</div>
       <div style="font-size:26px;color:#ffd700;font-weight:700;">SCORE: ${rawScore}</div>
-      <div style="font-size:13px;color:#94a3b8;">Accuracy: ${acc}% &nbsp;|&nbsp; Best Combo: ×${this._maxCombo}</div>
+      <div style="font-size:13px;color:#94a3b8;">Accuracy: ${acc}% &nbsp;|&nbsp; Best Combo: ×${this._maxCombo} &nbsp;|&nbsp; <span style="color:${cannonHits>0?'#f87171':'#94a3b8'}">💥 ${cannonHits} hits</span></div>
       <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px 22px;margin:4px 0;font-size:13px;line-height:1.9;text-align:right;min-width:200px;">
         <div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#94a3b8;">Score × ${Math.round(PAYOUT_RATE * 100)}%</span><span>${rawScore} × ${PAYOUT_RATE} = ${scorePay} 🪙</span></div>
+        ${cannonPenRow}
         <div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#94a3b8;">Drop bonus</span><span>+${dropCoins} 🪙</span></div>
         <div style="display:flex;justify-content:space-between;gap:20px;color:#fbbf24;border-top:1px solid rgba(255,255,255,.15);padding-top:4px;"><span>Total earned</span><span style="font-weight:700;">${total} 🪙</span></div>
         <div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#94a3b8;">Entry cost</span><span style="color:#f87171;">-${ENTRY_COST} 🪙</span></div>

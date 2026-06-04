@@ -1231,8 +1231,14 @@ async function cleanupMyLocation() {
 let _gameStarted = false;
 
 function _panToMyLocation() {
-  if (!navigator.geolocation) return;
   const btn = $('btnMyLocation');
+  // watchPosition이 이미 실행 중이면 캐시된 위치로 즉시 이동 — 재요청 금지
+  const cached = _ctx?.gpsPos || _ctx?.lastPos;
+  if (cached) {
+    if (_ctx.map) { _ctx.map.panTo({ lat: cached.lat, lng: cached.lng }); _ctx.map.setZoom(17); }
+    return;
+  }
+  if (!navigator.geolocation) return;
   if (btn) btn.textContent = '⏳';
   navigator.geolocation.getCurrentPosition(
     (pos) => {
@@ -1240,10 +1246,7 @@ function _panToMyLocation() {
       _ctx.lastPos = { lat, lng, accuracy, heading: heading ?? null };
       _ctx.gpsPos  = { lat, lng, accuracy, ts: Date.now() };
       updateMyLocation(lat, lng, accuracy, heading ?? null);
-      if (_ctx.map) {
-        _ctx.map.panTo({ lat, lng });
-        _ctx.map.setZoom(17);
-      }
+      if (_ctx.map) { _ctx.map.panTo({ lat, lng }); _ctx.map.setZoom(17); }
       if (btn) btn.textContent = '📍';
     },
     () => { if (btn) btn.textContent = '📍'; },
@@ -1261,58 +1264,51 @@ function showMyLocation() {
     return;
   }
 
-  const btn        = $('btnMyLocation');
-  const toggleBtn  = $('btnGameToggle');
+  const btn       = $('btnMyLocation');
+  const toggleBtn = $('btnGameToggle');
 
-  if (btn)       btn.textContent = '⏳';
+  if (btn) btn.textContent = '⏳';
   if (toggleBtn && !isGameServerConnected()) {
     toggleBtn.textContent = '⏳';
     toggleBtn.classList.add('gs-connecting');
   }
 
-  // 전체화면 전환 (모바일 호환: 특정 요소 기준)
   _requestFullscreen();
 
-  const _onGpsReady = () => {
+  // ── GPS 권한 요청은 watchPosition 단 한 번 ──────────────────────────────────
+  // getCurrentPosition + watchPosition 을 각각 호출하면 Telegram에서 팝업이 2번
+  // → watchPosition 의 첫 번째 콜백을 초기 위치 이동에 활용해 1번으로 통합
+  startWatchPosition((lat, lng) => {
+    // 첫 위치 수신 시: 지도 이동 + 서버 연결
+    if (_ctx.map) {
+      _ctx.map.panTo({ lat, lng });
+      _ctx.map.setZoom(18);
+    }
+    broadcastMyLocation(lat, lng);
+    if (btn) btn.textContent = '📍';
     if (!isGameServerConnected()) {
-      preloadSpriteImages(); // 게임 시작 시점에만 스프라이트 프리로드
+      preloadSpriteImages();
       connectToGameServer();
     }
-  };
+    _maybeInitStarterPack(lat, lng);
+  });
 
-  // 첫 클릭: 게임 시작 + 현재 위치로 즉시 이동
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
-      _ctx.lastPos = { lat, lng, accuracy, heading: heading ?? null };
-      _ctx.gpsPos  = { lat, lng, accuracy, ts: Date.now() };
-      updateMyLocation(lat, lng, accuracy, heading ?? null);
-      if (_ctx.map) {
-        _ctx.map.panTo({ lat, lng });
-        _ctx.map.setZoom(18);
-      }
-      broadcastMyLocation(lat, lng);
-      if (btn) btn.textContent = '📍';
-      _onGpsReady();
-      _maybeInitStarterPack(lat, lng);
-    },
-    () => {
-      // GPS 실패: gpsPos는 갱신하지 않는다 (맵 센터 대체 금지)
-      if (btn) btn.textContent = '📍';
-      _onGpsReady();
-    },
-    { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
-  );
+  // GPS 실패 시에도 서버는 연결 (맵 센터 기준으로 플레이)
+  setTimeout(() => {
+    if (!isGameServerConnected()) {
+      preloadSpriteImages();
+      connectToGameServer();
+    }
+    if (btn && btn.textContent === '⏳') btn.textContent = '📍';
+  }, 9000);
 
-  startWatchPosition();   // GPS 백그라운드 추적 시작
-  startBattleLoop();      // 전투 루프 시작
-  startNearbyPlayers();   // 주변 유저 실시간 표시
-  // 몬스터/타워/박스 HP 공유 동기화
+  startBattleLoop();
+  startNearbyPlayers();
   startSharedSync((boxId, data) => {
     if (!_boxHpState[boxId]) return;
     _boxHpState[boxId].current = data.isDead ? 0 : (data.hp ?? _boxHpState[boxId].current);
   });
-  subscribeDroppedItems(); // 바닥 드랍 실시간 구독
+  subscribeDroppedItems();
   _gameStarted = true;
 
   if (btn) btn.title = _t('game_in_progress');
@@ -1515,12 +1511,13 @@ async function tryCollect(box) {
   if (_collectedBoxes.has(box.id)) return;
   _collectedBoxes.add(box.id); // 동시 중복 호출 방지
   try {
-    const pos = await new Promise((res, rej) =>
-      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000 }));
+    // watchPosition으로 이미 수집된 위치 사용 — getCurrentPosition 재호출 금지 (Telegram 권한 팝업 방지)
+    const cached = _ctx?.gpsPos || _ctx?.lastPos;
+    if (!cached) { _collectedBoxes.delete(box.id); showToast('GPS 위치를 확인 중입니다. 잠시 후 다시 시도하세요.', 'warn'); return; }
     const result = await httpsCallable(functions, 'collectTreasureBox')({
       boxId: box.id,
-      userLat: pos.coords.latitude,
-      userLng: pos.coords.longitude,
+      userLat: cached.lat,
+      userLng: cached.lng,
     });
     const d = result.data;
     showCollectToast(d.boxName);
@@ -2842,18 +2839,8 @@ async function init() {
     await waitFor(() => !!_ctx?.map);
     if (!_ctx?.map) return;
 
-    // 위치 확보: 이미 있으면 그걸 쓰고, 없으면 직접 GPS 요청 (최대 12초)
-    let pos = _ctx?.lastPos;
-    if (!pos && navigator.geolocation) {
-      pos = await new Promise(resolve => {
-        navigator.geolocation.getCurrentPosition(
-          p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-          () => resolve(null),
-          { enableHighAccuracy: true, maximumAge: 30000, timeout: 12000 }
-        );
-      });
-    }
-    // 최후 fallback: 지도 중심 좌표 사용
+    // 위치 확보: 캐시된 GPS 우선 사용 — 자동 GPS 요청 금지 (Telegram 권한 팝업 방지)
+    let pos = _ctx?.gpsPos || _ctx?.lastPos;
     if (!pos && _ctx?.map) {
       const c = _ctx.map.getCenter();
       if (c) pos = { lat: c.lat(), lng: c.lng() };

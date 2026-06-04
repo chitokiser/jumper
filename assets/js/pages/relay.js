@@ -3,6 +3,7 @@ import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
 import { CW, CH, renderRace, renderNextUp, renderLeaderCrown, renderBatonPass, renderCountdown, launchFireworks, launchBatonSpark, preloadAll } from './relay.render.js';
 import { LEGS, LEG_DIST, NUM_TEAMS, SKILL_DEFS, teamGrade, buildTeam, tickRace, playerTap, useSkill, calcPayout, GRADE_ODDS } from './relay.race.js';
 import { sfx, tickFootstep } from './relay.sound.js';
@@ -509,6 +510,9 @@ export async function init() {
 
   initRaceInput();
   _bindLogin();
+
+  // Telegram Mini App: Firebase 미인증 시 자동 로그인
+  if(isTelegramMiniApp() && !auth.currentUser) loginWithTelegram().catch(()=>{});
 
   onAuthStateChanged(auth, async user => {
     _uid = user?.uid || null;

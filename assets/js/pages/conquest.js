@@ -3,6 +3,7 @@ import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
 import {
   initCamera, resizeCamera, screenToWorld, panBy, zoomBy, moveCamTo,
   makeFogGrid, revealFog, generatePOIs, addRevealAnim, updateRevealAnims,
@@ -520,18 +521,19 @@ async function init(){
   window.addEventListener('resize',()=>{if(_phase==='game')_resizeCanvas();});
 
   // Telegram Mini App 최적화
-  if(window.Telegram?.WebApp){
+  if(isTelegramMiniApp()){
     const tg=window.Telegram.WebApp;
     tg.ready();
     tg.expand();
     try{ tg.setHeaderColor('#0a0f05'); }catch(_){}
     tg.BackButton?.onClick?.(()=>showPhase('lobby'));
-    if(tg.initDataUnsafe?.user?.id)
-      _uid=String(tg.initDataUnsafe.user.id);
+    // Telegram 숫자 ID를 _uid에 직접 대입하지 않음 — Firebase Auth UID와 불일치 버그 방지
+    // Firebase 미인증 상태면 자동 로그인 시도
+    if(!auth.currentUser) loginWithTelegram().catch(()=>{});
   }
 
   onAuthStateChanged(auth,async user=>{
-    if(!_uid) _uid=user?.uid||null;
+    _uid = user?.uid || null;  // Firebase Auth UID 항상 우선
     await loadPlayer();
   });
 }

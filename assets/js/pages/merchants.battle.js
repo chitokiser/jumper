@@ -3103,15 +3103,26 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
 }
 
 // ── 백그라운드 근접 감지 + 전투 GPS 추적 ─────────────────────────────────────
-export function startWatchPosition() {
+// onFirst: 첫 번째 위치 수신 시 한 번만 호출되는 콜백 (지도 이동 등)
+export function startWatchPosition(onFirst) {
   if (!navigator.geolocation) return;
-  if (_ctx?.locationWatchId != null) return;
+  if (_ctx?.locationWatchId != null) {
+    // 이미 실행 중 — 현재 위치로 즉시 onFirst 호출
+    if (onFirst && (_ctx.gpsPos || _ctx.lastPos)) {
+      const p = _ctx.gpsPos || _ctx.lastPos;
+      onFirst(p.lat, p.lng, p.accuracy, p.heading ?? null);
+    }
+    return;
+  }
+  let _firstFired = false;
   const watchId = navigator.geolocation.watchPosition(
     (pos) => {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
       _ctx.lastPos = { lat, lng, accuracy, heading };
       _ctx.gpsPos  = { lat, lng, accuracy, ts: Date.now() };
       updateMyLocation(lat, lng, accuracy, heading);
+      // 첫 번째 위치 수신 — 지도 이동 콜백
+      if (!_firstFired) { _firstFired = true; onFirst?.(lat, lng, accuracy, heading); }
       // GPS 쓰로틀: 5m 이상 이동 시만 근접 GS 존 재조회
       const prox = _lastProximityPos;
       if (!prox || MonsterGrid.distSq(lat, lng, prox.lat, prox.lng) >= 25) {
