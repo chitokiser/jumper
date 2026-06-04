@@ -116,74 +116,111 @@ async function adminGetUserGpHistory(uid) {
     relay: '이어달리기', dungeon: '던전', conquest: '몬스터수성',
   };
 
-  const [bpSnap, paySnap] = await Promise.all([
-    db.collection('battle_players').doc(uid).get(),
-    db.collection('membership_payments').where('uid', '==', uid).limit(50).get(),
-  ]);
+  // Firestore Timestamp → ms 안전 변환
+  function toMs(v) {
+    if (!v) return null;
+    if (typeof v.toMillis === 'function') return v.toMillis();
+    if (typeof v.seconds === 'number')    return v.seconds * 1000;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
 
-  const bp      = bpSnap.exists ? (bpSnap.data() || {}) : {};
+  // ms → YYYY-MM-DD 안전 변환
+  function msToDate(ms) {
+    if (!ms) return null;
+    try { return new Date(ms).toISOString().slice(0, 10); } catch { return null; }
+  }
+
+  // 각 쿼리를 독립적으로 처리 (한쪽 실패해도 다른 쪽 결과 반환)
+  let bp = {};
+  let payDocs = [];
+
+  try {
+    const bpSnap = await db.collection('battle_players').doc(uid).get();
+    if (bpSnap.exists) bp = bpSnap.data() || {};
+  } catch (_) {}
+
+  try {
+    const paySnap = await db.collection('membership_payments')
+      .where('uid', '==', uid).limit(50).get();
+    payDocs = paySnap.docs;
+  } catch (_) {}
+
   const history = [];
 
   // ── 1. battle_players 필드 파싱 ──────────────────────────────────────────
   for (const [key, val] of Object.entries(bp)) {
-    // gameEarn_{type}_{YYYY-MM-DD}
-    const earnMatch = key.match(/^gameEarn_([a-z]+)_(\d{4}-\d{2}-\d{2})$/);
-    if (earnMatch && val > 0) {
-      history.push({
-        date:  earnMatch[2],
-        type:  'game',
-        label: GAME_LABELS[earnMatch[1]] || earnMatch[1],
-        gp:    val,
-      });
-      continue;
-    }
-    // dailyTopup_{YYYY-MM-DD}
-    const topupMatch = key.match(/^dailyTopup_(\d{4}-\d{2}-\d{2})$/);
-    if (topupMatch && val === true) {
-      history.push({
-        date:  topupMatch[1],
-        type:  'topup',
-        label: '정회원 일일 충전',
-        gp:    3500,
-      });
-      continue;
-    }
+    try {
+      // gameEarn_{type}_{YYYY-MM-DD}
+      const earnMatch = key.match(/^gameEarn_([a-z]+)_(\d{4}-\d{2}-\d{2})$/);
+      if (earnMatch) {
+        const gp = Number(val);
+        if (Number.isFinite(gp) && gp > 0) {
+          history.push({
+            date:  earnMatch[2],
+            type:  'game',
+            label: GAME_LABELS[earnMatch[1]] || earnMatch[1],
+            gp,
+          });
+        }
+        continue;
+      }
+      // dailyTopup_{YYYY-MM-DD}
+      const topupMatch = key.match(/^dailyTopup_(\d{4}-\d{2}-\d{2})$/);
+      if (topupMatch && val === true) {
+        history.push({
+          date:  topupMatch[1],
+          type:  'topup',
+          label: '정회원 일일 충전',
+          gp:    3500,
+        });
+        continue;
+      }
+    } catch (_) {}
   }
 
-  // ── 2. 신규 가입 보너스 ───────────────────────────────────────────────────
-  if (bp.joinBonusAt) {
-    const ts = bp.joinBonusAt.toMillis ? bp.joinBonusAt.toMillis() : Number(bp.joinBonusAt);
-    history.push({
-      date:  new Date(ts).toISOString().slice(0, 10),
-      type:  'bonus',
-      label: '신규 가입 보너스',
-      gp:    1000,
-    });
+  // ── 2. 가입 보너스 (joinBonusAt / referralBonusAt) ────────────────────────
+  for (const field of ['joinBonusAt', 'referralBonusAt']) {
+    if (!bp[field]) continue;
+    try {
+      const ms   = toMs(bp[field]);
+      const date = msToDate(ms);
+      if (date) {
+        history.push({
+          date,
+          type:  'bonus',
+          label: field === 'joinBonusAt' ? '신규 가입 보너스' : '추천 보너스',
+          gp:    1000,
+        });
+      }
+    } catch (_) {}
   }
 
   // ── 3. TON 정회원 결제 내역 ───────────────────────────────────────────────
-  for (const d of paySnap.docs) {
-    const p  = d.data();
-    const ts = p.createdAt?.toMillis?.() ?? Date.now();
-    history.push({
-      date:    new Date(ts).toISOString().slice(0, 10),
-      type:    'membership',
-      label:   p.isFirstMembership ? '정회원 가입 (TON)' : '정회원 연장 (TON)',
-      gp:      0,   // GP 변동 없음 — 정보용
-      tonAmount: p.tonAmount ?? null,
-      expiresAt: p.expiresAt ?? null,
-    });
+  for (const d of payDocs) {
+    try {
+      const p    = d.data() || {};
+      const ms   = toMs(p.createdAt) ?? Date.now();
+      const date = msToDate(ms) || new Date().toISOString().slice(0, 10);
+      history.push({
+        date,
+        type:      'membership',
+        label:     p.isFirstMembership ? '정회원 가입 (TON)' : '정회원 연장 (TON)',
+        gp:        0,
+        tonAmount: p.tonAmount    ?? null,
+        expiresAt: p.expiresAt    ?? null,
+      });
+    } catch (_) {}
   }
 
   // ── 날짜 내림차순 정렬 ────────────────────────────────────────────────────
   history.sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
 
-  // ── GP 합계 계산 ──────────────────────────────────────────────────────────
   const totalEarned = history.reduce((s, r) => s + (r.gp || 0), 0);
 
   return {
     uid,
-    currentGold: bp.gold || 0,
+    currentGold: Number(bp.gold) || 0,
     totalEarned,
     history,
   };
