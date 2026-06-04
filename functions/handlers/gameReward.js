@@ -80,20 +80,23 @@ async function payGameEntry(uid, gameKey) {
 
 /** 트랜잭션 내부: GP 차감 + 참가 카운터 갱신 */
 function _chargeEntry(t, data, ref, gameKey) {
-  const gold   = data.gold || 0;
-  const entry  = data[gameKey] || {};
-  const now    = Date.now();
-  const resetAt = entry.resetAt?.toMillis?.() ?? 0;
-  const count  = (resetAt && now - resetAt < RESET_MS) ? (entry.count || 0) : 0;
-  const fee    = GAME_BASE_FEE + count * GAME_FEE_STEP;
+  const gold  = data.gold || 0;
+  const entry = data[gameKey] || {};
+  const now   = Date.now();
+
+  // resetAt는 숫자(ms) 또는 Firestore Timestamp 모두 허용
+  const resetAtRaw = entry.resetAt;
+  const resetAt = resetAtRaw?.toMillis?.()
+    ?? (typeof resetAtRaw === 'number' ? resetAtRaw : 0);
+
+  const count = (resetAt && now - resetAt < RESET_MS) ? (entry.count || 0) : 0;
+  const fee   = GAME_BASE_FEE + count * GAME_FEE_STEP;
 
   if (gold < fee)
     throw new Error(`GP 부족 — 필요: ${fee.toLocaleString()} GP, 보유: ${gold.toLocaleString()} GP`);
 
   const newCount   = count + 1;
-  // ms 숫자로 저장 — 클라이언트에서 Timestamp 변환 없이 직접 비교 가능
-  const existingResetMs = entry.resetAt?.toMillis?.() ?? (typeof entry.resetAt === 'number' ? entry.resetAt : 0);
-  const newResetAt = count === 0 ? now : (existingResetMs || now);
+  const newResetAt = count === 0 ? now : (resetAt || now);
 
   t.set(ref, {
     gold:                   admin.firestore.FieldValue.increment(-fee),
