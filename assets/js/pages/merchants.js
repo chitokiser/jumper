@@ -2,6 +2,7 @@
 // 가맹점 지도 + 보물찾기 시스템
 
 import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js';
+import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
 import { esc } from '/assets/js/esc.js';
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
          setDoc, deleteDoc, serverTimestamp, onSnapshot }
@@ -2957,6 +2958,32 @@ async function init() {
       badge.style.display = 'none';
     }
   }
+
+  // ── 텔레그램 Mini App 자동 인증 ─────────────────────────────────────────────
+  // merchants.html에 직접 진입한 경우에도 텔레그램 인증 처리
+  if (isTelegramMiniApp()) {
+    // 텔레그램 로그인 버튼 표시
+    const tgBtn = $('btnOverlayTelegram');
+    if (tgBtn) tgBtn.style.display = '';
+
+    // Firebase 미인증 상태에서만 자동 인증 시도
+    if (!auth.currentUser) {
+      loginWithTelegram().catch(() => {/* 실패 시 수동 버튼으로 fallback */});
+    }
+  }
+
+  // 텔레그램 로그인 버튼 핸들러
+  $('btnOverlayTelegram')?.addEventListener('click', async () => {
+    const btn = $('btnOverlayTelegram');
+    if (btn) { btn.textContent = '인증 중…'; btn.disabled = true; }
+    try {
+      const result = await loginWithTelegram();
+      if (!result) throw new Error('텔레그램 인증 실패');
+    } catch (e) {
+      if (btn) { btn.textContent = '📱 텔레그램 계정으로 로그인'; btn.disabled = false; }
+      alert('텔레그램 로그인 오류: ' + (e?.message || '알 수 없는 오류'));
+    }
+  });
 
   // 로그인 오버레이 버튼 — Google 팝업 로그인
   $('btnOverlayLogin')?.addEventListener('click', async () => {
