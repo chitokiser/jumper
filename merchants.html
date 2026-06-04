@@ -1703,6 +1703,15 @@
 
   </style>
 
+  <!-- Telegram Mini App: 텔레그램에서 열릴 때 자동 확장 -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    (function () {
+      const twa = window.Telegram?.WebApp;
+      if (twa) { twa.ready(); twa.expand(); }
+    })();
+  </script>
+
   <script>
     window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";
     window.LANG = (localStorage.getItem('town_lang') || 'en');

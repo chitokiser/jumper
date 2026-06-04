@@ -24,7 +24,6 @@
       overflow: hidden;
     }
 
-    /* ── 로딩 뷰 ── */
     #loadingView {
       display: flex;
       flex-direction: column;
@@ -35,96 +34,49 @@
     #loadingView.hidden { display: none; }
 
     .logo {
-      width: 88px;
-      height: 88px;
-      border-radius: 22px;
-      margin-bottom: 20px;
+      width: 88px; height: 88px;
+      border-radius: 22px; margin-bottom: 20px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     }
-
-    .title {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      margin-bottom: 6px;
-    }
-
+    .title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
     .subtitle {
-      font-size: 13px;
-      opacity: 0.55;
-      margin-bottom: 36px;
-      text-align: center;
-      line-height: 1.6;
+      font-size: 13px; opacity: 0.55; margin-bottom: 36px;
+      text-align: center; line-height: 1.6;
     }
-
     .spinner {
-      width: 36px;
-      height: 36px;
+      width: 36px; height: 36px;
       border: 3px solid rgba(255,255,255,0.15);
       border-top-color: var(--tg-theme-button-color, #54a9eb);
       border-radius: 50%;
       animation: spin 0.75s linear infinite;
     }
+    .status { margin-top: 14px; font-size: 13px; opacity: 0.5; min-height: 18px; }
 
-    .status {
-      margin-top: 14px;
-      font-size: 13px;
-      opacity: 0.5;
-      min-height: 18px;
-    }
-
-    /* ── 에러 뷰 ── */
     #errorView {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      padding: 32px 24px;
-      text-align: center;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 14px;
+      padding: 32px 24px; text-align: center;
       animation: fadeIn 0.4s ease;
     }
     #errorView.hidden { display: none; }
-
-    .error-icon { font-size: 52px; }
-
-    .error-title {
-      font-size: 18px;
-      font-weight: 700;
-    }
-
-    .error-msg {
-      font-size: 14px;
-      opacity: 0.65;
-      line-height: 1.6;
-    }
-
-    .error-hint {
-      font-size: 12px;
-      opacity: 0.4;
-      margin-top: 4px;
-    }
-
+    .error-icon  { font-size: 52px; }
+    .error-title { font-size: 18px; font-weight: 700; }
+    .error-msg   { font-size: 14px; opacity: 0.65; line-height: 1.6; }
     .btn-retry {
-      margin-top: 8px;
-      padding: 12px 28px;
+      margin-top: 8px; padding: 12px 28px;
       background: var(--tg-theme-button-color, #54a9eb);
       color: var(--tg-theme-button-text-color, #ffffff);
-      border: none;
-      border-radius: 12px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s;
+      border: none; border-radius: 12px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
     }
     .btn-retry:active { opacity: 0.75; }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin   { to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
   </style>
 </head>
 <body>
 
-  <!-- 로딩 상태 -->
   <div id="loadingView">
     <img class="logo" src="/assets/images/jump/logo2.png" alt="JumpDAO" />
     <div class="title">JumpDAO</div>
@@ -133,7 +85,6 @@
     <div class="status" id="statusText">로그인 중...</div>
   </div>
 
-  <!-- 에러 상태 -->
   <div id="errorView" class="hidden">
     <div class="error-icon">📱</div>
     <div class="error-title" id="errorTitle">텔레그램에서 실행해주세요</div>
@@ -141,32 +92,28 @@
       @JumpDaoBot 에서 게임을 시작하세요<br>
       Please open via @JumpDaoBot
     </div>
-    <div class="error-hint" id="errorHint"></div>
     <button class="btn-retry hidden" id="btnRetry">다시 시도</button>
   </div>
 
   <script type="module">
     import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
 
+    const twa         = window.Telegram?.WebApp;
     const loadingView = document.getElementById('loadingView');
     const errorView   = document.getElementById('errorView');
     const statusText  = document.getElementById('statusText');
     const errorTitle  = document.getElementById('errorTitle');
     const errorMsg    = document.getElementById('errorMsg');
-    const errorHint   = document.getElementById('errorHint');
     const btnRetry    = document.getElementById('btnRetry');
 
-    function showError(title, msg, hint = '', canRetry = false) {
+    if (twa) { twa.ready(); twa.expand(); }
+
+    function showError(title, msg, canRetry = false) {
       loadingView.classList.add('hidden');
       errorView.classList.remove('hidden');
       errorTitle.textContent = title;
       errorMsg.innerHTML = msg;
-      errorHint.textContent = hint;
       if (canRetry) btnRetry.classList.remove('hidden');
-    }
-
-    function setStatus(text) {
-      statusText.textContent = text;
     }
 
     async function init() {
@@ -179,30 +126,29 @@
       }
 
       try {
-        setStatus('인증 중...');
+        statusText.textContent = '인증 중...';
         const result = await loginWithTelegram();
 
         if (!result) {
-          showError('로그인 실패', '잠시 후 다시 시도해주세요', '', true);
+          showError('로그인 실패', '잠시 후 다시 시도해주세요', true);
           return;
         }
 
-        setStatus(result.isNew ? '새 계정 생성 완료!' : '로그인 성공!');
+        statusText.textContent = result.isNew ? '새 계정 생성 완료!' : '로그인 성공!';
 
         setTimeout(() => {
-          window.location.replace('/tg-hub.html');
-        }, 700);
+          window.location.replace('/merchants.html');
+        }, 600);
 
       } catch (err) {
-        const msg = err?.message || '알 수 없는 오류';
-        showError('로그인 실패', msg, '잠시 후 다시 시도해주세요', true);
+        showError('로그인 실패', err?.message || '알 수 없는 오류', true);
       }
     }
 
     btnRetry.addEventListener('click', () => {
       errorView.classList.add('hidden');
       loadingView.classList.remove('hidden');
-      setStatus('재시도 중...');
+      statusText.textContent = '재시도 중...';
       init();
     });
 
