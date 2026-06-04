@@ -11,7 +11,7 @@ import {
 } from './conquest.world.js';
 import { initRenderer, loadMapAssets, renderScene, isMapObstacle } from './conquest.render.js';
 import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL } from './conquest.units.js';
-import { getSpawnPos, snapToRoad } from './conquest.path.js';
+import { getSpawnPos, getDragonSpawnPos, snapToRoad } from './conquest.path.js';
 import { resumeAudio, playSound } from './conquest.audio.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────
@@ -261,7 +261,8 @@ function _startWave(){
   const scale=1+_wave*0.35; // 웨이브마다 35% 병력 증가
   def.forEach(g=>{
     for(let i=0;i<Math.ceil(g.count*scale);i++){
-      const pos=getSpawnPos(g.side);
+      // 드래곤은 대각선(2시·4시·7시·11시)에서 날아옴
+      const pos = g.type==='dragon' ? getDragonSpawnPos() : getSpawnPos(g.side);
       _spawnQ.push({type:g.type,x:pos.x,y:pos.y});
     }
   });

@@ -81,6 +81,25 @@ export function getSpawnPos(side) {
   };
 }
 
+// ── 드래곤 대각선 스폰 (2시·4시·7시·11시 방향) ─────────────────────────────
+// 시계 방향 대각선 코너에서 날아옴 (flying 유닛 전용 — 도로 불필요)
+const DRAGON_SPAWNS = [
+  {x:8500, y:1200},  // 2시 (NE)
+  {x:8500, y:8800},  // 4시 (SE)
+  {x:1500, y:8800},  // 7시 (SW)
+  {x:1200, y:1200},  // 11시 (NW)
+];
+let _dragonIdx = 0;
+export function getDragonSpawnPos() {
+  // 랜덤 선택 (같은 방향 연속 출현 방지: 마지막과 다른 위치 선택)
+  let idx;
+  do { idx = Math.floor(Math.random() * 4); } while (idx === _dragonIdx && Math.random() < 0.7);
+  _dragonIdx = idx;
+  const base = DRAGON_SPAWNS[idx];
+  const sc = 120;
+  return { x: base.x + (Math.random() - 0.5) * sc, y: base.y + (Math.random() - 0.5) * sc };
+}
+
 // ── 가장 가까운 도로 위 점 (수비대 이동 명령 스냅용) ─────────────────────
 export function snapToRoad(wx, wy) {
   let best={x:wx,y:wy}, minD=Infinity;
