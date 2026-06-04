@@ -24,6 +24,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
          loadShops, getShops, deleteShop, checkShopProximity, updateShopHpMarker,
          loadTutorialBoxes, clearTutorialBoxes, checkTutorialProximity,
+         loadTrialMonsters, clearTrialMonsters,
          onPlayerExp, onPlayerLevelUp,
          addPlayerGold, spendPlayerGold, addPlayerGsExp,
          getPlayerSnapshot, syncPlayerFromDungeon }
@@ -2812,6 +2813,7 @@ async function init() {
       _renderMemberStatus(null);
       // 튜토리얼 마커 정리
       clearTutorialBoxes();
+      clearTrialMonsters();
       // 드랍 구독 해제 및 마커 정리
       if (_dropsUnsubscribe) { _dropsUnsubscribe(); _dropsUnsubscribe = null; }
       Object.keys(_dropMarkers).forEach(id => { _dropMarkers[id].setMap(null); });
@@ -2862,6 +2864,32 @@ async function init() {
       const res = await fn({ lat: pos.lat, lng: pos.lng });
       if (res.data?.boxes?.length) loadTutorialBoxes(res.data.boxes);
     } catch { /* 튜토리얼 초기화 실패는 비치명적 */ }
+
+    // 체험판 몬스터 배치 — 사용자 위치 기준 50~120m 거리에 2마리
+    try {
+      const _bearingOffset = (lat, lng, distM, bearingDeg) => {
+        const R   = 6371000;
+        const rad = Math.PI / 180;
+        const b   = bearingDeg * rad;
+        const dLat = (distM / R) / rad;
+        const dLng = (distM / R) / rad / Math.cos(lat * rad);
+        return {
+          lat: lat + dLat * Math.cos(b),
+          lng: lng + dLng * Math.sin(b),
+        };
+      };
+      const monDefs = [
+        { defIdx: 0, hp: 1, id: 'tm0' },  // 슬라임 (쉬움)
+        { defIdx: 3, hp: 3, id: 'tm1' },  // 오크 (보통)
+      ];
+      const monsters = monDefs.map((def, i) => {
+        const bearing = 40 + i * 140 + Math.random() * 60;
+        const dist    = 60  + i * 30  + Math.random() * 30;
+        const p = _bearingOffset(pos.lat, pos.lng, dist, bearing);
+        return { ...def, maxHp: def.hp, lat: p.lat, lng: p.lng };
+      });
+      loadTrialMonsters(monsters);
+    } catch { /* 몬스터 배치 실패는 비치명적 */ }
   }
 
   // ── Phase 1: 지도 표시에 필요한 것만 병렬 로드 ──────────────────────────────

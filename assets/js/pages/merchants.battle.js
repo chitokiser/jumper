@@ -3705,3 +3705,311 @@ export function checkTutorialProximity(lat, lng) {
     }
   }
 }
+
+// ══════════════════════════════════════════════════════════════
+// 체험판 몬스터 — 지도 마커 + 탭 활쏘기 UI
+// ══════════════════════════════════════════════════════════════
+
+let _trialMonsters = []; // [{id, lat, lng, imgIdx, name, hp, maxHp, marker, defeated}]
+
+// 몬스터 종류 (활쏘기 게임 이미지 1~6만 사용)
+const _TRIAL_MON_DEFS = [
+  { imgIdx: 0, name: '슬라임',   nameEn: 'Slime',    nameVi: 'Slime',    hp: 1, reward: 30  },
+  { imgIdx: 1, name: '고블린',   nameEn: 'Goblin',   nameVi: 'Goblin',   hp: 2, reward: 50  },
+  { imgIdx: 2, name: '스켈레톤', nameEn: 'Skeleton', nameVi: 'Bộ xương', hp: 2, reward: 50  },
+  { imgIdx: 3, name: '오크',     nameEn: 'Orc',      nameVi: 'Orc',      hp: 3, reward: 80  },
+];
+
+function _trialMonName(def) {
+  const lang = window.LANG || 'en';
+  return lang === 'ko' ? def.name : lang === 'vi' ? def.nameVi : def.nameEn;
+}
+
+// ── 탭 사격 모달 ─────────────────────────────────────────────
+function _openTrialArchery(mon) {
+  if (mon.defeated) return;
+
+  const lang = window.LANG || 'en';
+  const monName = _trialMonName(_TRIAL_MON_DEFS[mon.defIdx]);
+  const MAX_ARROWS = mon.maxHp + 2;         // 여유 화살 2개
+  const REWARD_GP  = _TRIAL_MON_DEFS[mon.defIdx].reward;
+  const IMG_SRC    = `/assets/images/slot/${mon.defIdx + 1}.png`;
+
+  let arrows  = MAX_ARROWS;
+  let hp      = mon.maxHp;
+  let animId  = null;
+  let monX    = 50;  // % 단위 (0~100)
+  let monDir  = 1;   // 이동 방향
+  let monSpd  = 0.4 + Math.random() * 0.4;
+  let hitting = false;
+
+  // 기존 모달 제거
+  document.getElementById('trialArchModal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'trialArchModal';
+  modal.innerHTML = `
+    <div class="tam-bg"></div>
+    <div class="tam-wrap">
+      <div class="tam-hud">
+        <span class="tam-name">${monName}</span>
+        <div class="tam-hp-bar"><div class="tam-hp-fill" id="tamHpFill" style="width:100%"></div></div>
+        <span class="tam-arrows" id="tamArrows">🏹 ${arrows}</span>
+      </div>
+      <div class="tam-arena" id="tamArena">
+        <div class="tam-hint" id="tamHint">${lang === 'ko' ? '몬스터를 탭하세요!' : lang === 'vi' ? 'Nhấn vào quái vật!' : 'Tap the monster!'}</div>
+        <img class="tam-mon" id="tamMon" src="${IMG_SRC}" draggable="false"/>
+        <div class="tam-miss" id="tamMiss"></div>
+        <div class="tam-result hidden" id="tamResult"></div>
+      </div>
+      <button class="tam-close" id="tamClose">✕</button>
+    </div>`;
+
+  // 스타일 (한 번만 삽입)
+  if (!document.getElementById('tamStyle')) {
+    const s = document.createElement('style');
+    s.id = 'tamStyle';
+    s.textContent = `
+      #trialArchModal{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;}
+      .tam-bg{position:absolute;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);}
+      .tam-wrap{position:relative;width:min(380px,92vw);background:linear-gradient(145deg,#0f172a,#1e1b4b);
+        border:2px solid #6366f1;border-radius:20px;overflow:hidden;
+        box-shadow:0 0 40px rgba(99,102,241,.4);}
+      .tam-hud{display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(0,0,0,.4);}
+      .tam-name{font-size:14px;font-weight:800;color:#e2e8f0;white-space:nowrap;}
+      .tam-hp-bar{flex:1;height:10px;background:rgba(255,255,255,.15);border-radius:5px;overflow:hidden;}
+      .tam-hp-fill{height:100%;background:linear-gradient(90deg,#ef4444,#f97316);transition:width .2s;}
+      .tam-arrows{font-size:14px;font-weight:700;color:#fbbf24;white-space:nowrap;}
+      .tam-arena{position:relative;height:220px;overflow:hidden;background:
+        radial-gradient(ellipse at 50% 80%,rgba(99,102,241,.2),transparent 70%),
+        linear-gradient(180deg,#0c1a2e 0%,#1a2744 100%);}
+      .tam-hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);
+        color:#94a3b8;font-size:12px;font-weight:600;white-space:nowrap;pointer-events:none;}
+      .tam-mon{position:absolute;bottom:24px;width:68px;height:68px;object-fit:contain;
+        image-rendering:pixelated;cursor:pointer;transform:translateX(-50%);
+        filter:drop-shadow(0 0 8px rgba(239,68,68,.6));transition:transform .08s;}
+      .tam-mon.hit{animation:monHit .25s ease;}
+      @keyframes monHit{0%{transform:translateX(-50%) scale(1.3) rotate(-8deg)}
+        50%{transform:translateX(-50%) scale(.9) rotate(5deg)}
+        100%{transform:translateX(-50%) scale(1)}}
+      .tam-miss{position:absolute;font-size:22px;pointer-events:none;opacity:0;
+        transition:opacity .3s;top:40%;left:50%;transform:translate(-50%,-50%);}
+      .tam-miss.show{animation:missAnim .5s ease forwards;}
+      @keyframes missAnim{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+        100%{opacity:0;transform:translate(-50%,-160%) scale(.7)}}
+      .tam-result{position:absolute;inset:0;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;gap:8px;
+        background:rgba(0,0,0,.7);font-size:24px;font-weight:800;color:#fbbf24;
+        animation:trpIn .3s ease;}
+      .tam-result.hidden{display:none;}
+      .tam-close{position:absolute;top:10px;right:12px;background:rgba(255,255,255,.1);
+        border:none;border-radius:8px;color:#94a3b8;font-size:15px;cursor:pointer;
+        padding:3px 9px;z-index:1;}`;
+    document.head.appendChild(s);
+  }
+
+  document.body.appendChild(modal);
+
+  const monEl   = modal.querySelector('#tamMon');
+  const hpFill  = modal.querySelector('#tamHpFill');
+  const arrowEl = modal.querySelector('#tamArrows');
+  const missEl  = modal.querySelector('#tamMiss');
+  const result  = modal.querySelector('#tamResult');
+  const arena   = modal.querySelector('#tamArena');
+  const hint    = modal.querySelector('#tamHint');
+
+  function setHpFill() {
+    hpFill.style.width = (hp / mon.maxHp * 100) + '%';
+  }
+
+  function updateMonPos() {
+    monEl.style.left = monX + '%';
+  }
+
+  // 애니메이션 루프: 몬스터 좌우 이동
+  let lastT = 0;
+  function loop(t) {
+    if (!lastT) lastT = t;
+    const dt = (t - lastT) / 16;
+    lastT = t;
+    monX += monDir * monSpd * dt;
+    if (monX > 85) { monX = 85; monDir = -1; }
+    if (monX < 10) { monX = 10; monDir = 1;  }
+    updateMonPos();
+    animId = requestAnimationFrame(loop);
+  }
+  animId = requestAnimationFrame(loop);
+
+  function closeModal() {
+    if (animId) cancelAnimationFrame(animId);
+    modal.remove();
+  }
+
+  function showResult(win) {
+    if (animId) cancelAnimationFrame(animId);
+    monSpd = 0;
+    hint.style.display = 'none';
+
+    if (win) {
+      mon.defeated = true;
+      _claimedTutorialSet.add('mon_' + mon.id);
+      // 마커 제거
+      setTimeout(() => { if (mon.marker) { mon.marker.setMap(null); mon.marker = null; } }, 600);
+      // GP 지급
+      if (REWARD_GP) { _player.gold = (_player.gold || 0) + REWARD_GP; updateHud?.(); }
+      playSound('gold');
+      if (navigator.vibrate) navigator.vibrate([80, 40, 160]);
+
+      const winMsg = lang === 'ko'
+        ? `🏹 처치 완료!\n+${REWARD_GP} GP`
+        : lang === 'vi'
+        ? `🏹 Đã hạ gục!\n+${REWARD_GP} GP`
+        : `🏹 Defeated!\n+${REWARD_GP} GP`;
+
+      result.classList.remove('hidden');
+      result.innerHTML = winMsg.split('\n').map(l =>
+        `<div>${l}</div>`).join('');
+      // 보상 패널도 표시
+      setTimeout(() => _tutorialShowRewardPanel({ gold: REWARD_GP }, lang), 400);
+      setTimeout(closeModal, 2200);
+    } else {
+      const failMsg = lang === 'ko' ? '🏹 화살 부족!\n다시 도전하세요'
+        : lang === 'vi' ? '🏹 Hết tên!\nThử lại'
+        : '🏹 Out of arrows!\nTry again';
+      result.classList.remove('hidden');
+      result.style.color = '#f87171';
+      result.innerHTML = failMsg.split('\n').map(l => `<div>${l}</div>`).join('');
+      setTimeout(closeModal, 1800);
+    }
+  }
+
+  // 히트 판정: 클릭 좌표가 몬스터 이미지 위인지 확인
+  function tryShoot(e) {
+    if (hp <= 0 || arrows <= 0 || hitting) return;
+    hitting = true;
+    setTimeout(() => { hitting = false; }, 180);
+
+    arrows--;
+    arrowEl.textContent = '🏹 ' + arrows;
+
+    const rect    = arena.getBoundingClientRect();
+    const monRect = monEl.getBoundingClientRect();
+    const cx      = e.clientX ?? (e.touches?.[0]?.clientX);
+    const cy      = e.clientY ?? (e.touches?.[0]?.clientY);
+
+    const hit = cx >= monRect.left - 12 && cx <= monRect.right + 12
+             && cy >= monRect.top  - 12 && cy <= monRect.bottom + 12;
+
+    if (hit) {
+      hp--;
+      setHpFill();
+      monEl.classList.remove('hit');
+      void monEl.offsetWidth; // reflow
+      monEl.classList.add('hit');
+      monSpd = Math.min(monSpd + 0.1, 1.2); // 맞을수록 빨라짐
+      playSound?.('arrow_hit');
+
+      // 타격 파티클
+      const spark = document.createElement('div');
+      spark.style.cssText = `position:absolute;left:${monRect.left - rect.left + 20}px;
+        top:${monRect.top - rect.top + 10}px;font-size:20px;pointer-events:none;
+        animation:missAnim .5s ease forwards;`;
+      spark.textContent = ['💥','⚡','✨'][Math.floor(Math.random()*3)];
+      arena.appendChild(spark);
+      setTimeout(() => spark.remove(), 500);
+
+      if (hp <= 0) { showResult(true); return; }
+    } else {
+      // 미스
+      missEl.textContent = '🏹 miss';
+      missEl.classList.remove('show');
+      void missEl.offsetWidth;
+      missEl.classList.add('show');
+    }
+
+    if (arrows <= 0 && hp > 0) showResult(false);
+  }
+
+  arena.addEventListener('click', tryShoot);
+  arena.addEventListener('touchstart', e => { e.preventDefault(); tryShoot(e); }, { passive: false });
+  modal.querySelector('#tamClose').addEventListener('click', closeModal);
+  modal.querySelector('.tam-bg').addEventListener('click', closeModal);
+}
+
+// ── 마커 렌더링 ───────────────────────────────────────────────
+function _renderTrialMonsterMarker(mon) {
+  const map = _ctx?.map;
+  if (!map || mon.defeated) return;
+  if (mon.marker) mon.marker.setMap(null);
+
+  const def  = _TRIAL_MON_DEFS[mon.defIdx];
+  const lang = window.LANG || 'en';
+  const name = _trialMonName(def);
+
+  // HP 하트 표시
+  const hearts = '❤️'.repeat(mon.maxHp);
+
+  const marker = new google.maps.Marker({
+    position: { lat: mon.lat, lng: mon.lng },
+    map,
+    title: `👾 ${name} ${hearts}`,
+    icon: {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="52" height="64" viewBox="0 0 52 64">
+          <filter id="gs"><feGaussianBlur stdDeviation="2.5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <ellipse cx="26" cy="60" rx="13" ry="3.5" fill="rgba(0,0,0,.3)"/>
+          <g filter="url(#gs)">
+            <circle cx="26" cy="28" r="22" fill="#1e1b4b" stroke="#6366f1" stroke-width="2.5"/>
+            <text x="26" y="34" font-size="26" text-anchor="middle" dominant-baseline="middle">👾</text>
+          </g>
+          <text x="26" y="14" font-size="9" text-anchor="middle" fill="#fbbf24" font-weight="bold">${name}</text>
+          <text x="26" y="56" font-size="8" text-anchor="middle" fill="#f87171">${hearts}</text>
+        </svg>`),
+      scaledSize: new google.maps.Size(52, 64),
+      anchor:     new google.maps.Point(26, 60),
+    },
+    zIndex: 210,
+    animation: google.maps.Animation.BOUNCE,
+  });
+
+  marker.addListener('click', () => {
+    const lang = window.LANG || 'en';
+    const pos  = getMyPos();
+    if (!pos) {
+      _tutorialShowToast(
+        lang === 'vi' ? '📍 Đang chờ GPS...' : '📍 GPS 위치 확인 중...',
+        '#94a3b8'
+      );
+      return;
+    }
+    const dist = haversine(pos.lat, pos.lng, mon.lat, mon.lng);
+    if (dist > 80) {
+      _tutorialShowToast(
+        lang === 'vi'
+          ? `👾 Còn ${Math.round(dist)}m — Tiến lại gần hơn để bắn!`
+          : `👾 ${Math.round(dist)}m 거리 — 가까이 가서 활을 쏘세요!`,
+        '#a78bfa'
+      );
+      return;
+    }
+    _openTrialArchery(mon);
+  });
+
+  mon.marker = marker;
+}
+
+export function loadTrialMonsters(monsters) {
+  clearTrialMonsters();
+  for (const m of (monsters || [])) {
+    if (_claimedTutorialSet.has('mon_' + m.id)) continue;
+    const mon = { ...m, defeated: false, marker: null };
+    _trialMonsters.push(mon);
+    _renderTrialMonsterMarker(mon);
+  }
+}
+
+export function clearTrialMonsters() {
+  for (const m of _trialMonsters) { if (m.marker) m.marker.setMap(null); }
+  _trialMonsters = [];
+}
