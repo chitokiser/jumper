@@ -87,13 +87,27 @@ async function createCustodialWallet(uid, masterSecret, mentorAddress) {
       },
     }, { merge: true });
 
-    // 4) 신규 가입 보너스: 멘토 관계없이 첫 가입 시 1,000 GP 지급
+    // 4) 신규 가입 보너스 + 정회원 레벨 4 플래그
     try {
-      await db.collection('battle_players').doc(uid).set({
+      const today   = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+      const userNow = await userRef.get();
+      const coopUntil = (userNow.data() || {}).coopMemberUntil || '';
+      const isPremium = !!(coopUntil && coopUntil >= today);
+
+      const bpUpdate = {
         uid,
-        gold: admin.firestore.FieldValue.increment(1000),
+        gold:        admin.firestore.FieldValue.increment(1000),
         joinBonusAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+      };
+
+      // 이미 정회원이면 온체인 레벨 4 배치 동기화 예약
+      if (isPremium) {
+        bpUpdate.level              = 4;
+        bpUpdate.pendingOnChainSync  = true;
+        bpUpdate.pendingOnChainLevel = 4;
+      }
+
+      await db.collection('battle_players').doc(uid).set(bpUpdate, { merge: true });
     } catch (bonusErr) {
       console.warn('[createCustodialWallet] 가입 보너스 지급 실패:', bonusErr.message);
     }
