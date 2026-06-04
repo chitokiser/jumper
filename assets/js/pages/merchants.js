@@ -1519,6 +1519,8 @@ async function tryCollect(box) {
       _boxInventory.push({ boxId: box.id, boxName: d.boxName, hiddenBox: box.hiddenBox || false, keyId: box.keyId || null });
     }
     renderBoxInventory();
+    // 보물 발견 생중계
+    httpsCallable(functions, 'broadcastGpEvent')({ game: 'treasure_find', amount: 0, label: d.boxName || '보물상자' }).catch(() => {});
   } catch (err) {
     const msg = err.message || '';
     if (msg.includes('먼저 인벤토리')) {

@@ -2465,15 +2465,18 @@ exports.requestOnChainLevelSync = onCall(
 //           (값: Telegram 그룹/채널 chat_id, 예: -1001234567890)
 // ════════════════════════════════════════════════════════════════════════════
 const _GAME_LABELS = {
-  relay:       '🏃 이어달리기',
-  conquest:    '🏰 몬스터수성',
-  dungeon:     '⚔️ 던전',
-  archery:     '🏹 활쏘기',
-  memory:      '🧠 기억력게임',
-  treasure:    '💎 보물찾기',
-  monsterrace: '🐉 몬스터레이스',
+  relay:          '🏃 이어달리기',
+  conquest:       '🏰 몬스터수성',
+  dungeon:        '⚔️ 던전',
+  archery:        '🏹 활쏘기',
+  memory:         '🧠 기억력게임',
+  treasure:       '💎 보물찾기',
+  monsterrace:    '🐉 몬스터레이스',
+  treasure_hide:  '📦 보물 숨기기',
+  treasure_find:  '🏆 보물 발견',
+  treasure_issue: '🎁 보물 발행',
 };
-// 유저별 마지막 브로드캐스트 시각 (인스턴스 내 캐시, 30초 쿨다운)
+// 유저별 마지막 브로드캐스트 시각 (인스턴스 내 캐시, 이벤트 종류별 15초 쿨다운)
 const _broadcastCooldown = new Map();
 
 exports.broadcastGpEvent = onCall(
@@ -2481,28 +2484,47 @@ exports.broadcastGpEvent = onCall(
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) return { ok: false };
-    const { game, amount } = request.data || {};
-    if (!game || !amount || amount < 50) return { ok: false };  // 50GP 미만 무시
+    const { game, amount, label: extraLabel } = request.data || {};
+    if (!game) return { ok: false };
 
-    const chatId = announceGroupSecret.value();
+    // 보물 이벤트는 GP 없이 허용, 일반 게임은 50GP 이상만
+    const isTreasureEvent = game.startsWith('treasure_');
+    if (!isTreasureEvent && (!amount || amount < 50)) return { ok: false };
+
+    const chatId = announceGroupSecret.value()?.trim();
     if (!chatId) return { ok: false };
 
-    // 30초 쿨다운 (연속 스팸 방지)
-    const now = Date.now();
-    if (now - (_broadcastCooldown.get(uid) || 0) < 30000) return { ok: false };
-    _broadcastCooldown.set(uid, now);
+    // 쿨다운: 이벤트 종류별 독립 키 (treasure 이벤트 15초, GP 이벤트 30초)
+    const cdKey  = `${uid}:${game}`;
+    const cdMs   = isTreasureEvent ? 15000 : 30000;
+    const now    = Date.now();
+    if (now - (_broadcastCooldown.get(cdKey) || 0) < cdMs) return { ok: false };
+    _broadcastCooldown.set(cdKey, now);
 
     try {
       const snap = await db.collection('battle_players').doc(uid).get();
       const d    = snap.data() || {};
-      // displayName 없으면 users 컬렉션에서 조회
       let name = d.displayName || d.name;
       if (!name) {
         const uSnap = await db.collection('users').doc(uid).get();
         name = uSnap.data()?.displayName || uSnap.data()?.name || '모험가';
       }
-      const label = _GAME_LABELS[game] || '🎮 게임';
-      const msg   = `${label}\n<b>${name}</b>님이 <b>+${Number(amount).toLocaleString()} GP</b> 획득! 🎉`;
+
+      let msg;
+      if (game === 'treasure_hide') {
+        const item = extraLabel || '보물';
+        msg = `📦 <b>${name}</b>님이 <b>${item}</b>을(를) 지도에 숨겼습니다! 찾을 수 있을까요? 🔍`;
+      } else if (game === 'treasure_find') {
+        const boxName = extraLabel || '보물상자';
+        msg = `🏆 <b>${name}</b>님이 <b>${boxName}</b>을(를) 발견했습니다! 💎`;
+      } else if (game === 'treasure_issue') {
+        const item = extraLabel || '보물';
+        msg = `🎁 <b>${name}</b>님이 <b>${item}</b>을(를) 발행했습니다!`;
+      } else {
+        const gameLabel = _GAME_LABELS[game] || '🎮 게임';
+        msg = `${gameLabel}\n<b>${name}</b>님이 <b>+${Number(amount).toLocaleString()} GP</b> 획득! 🎉`;
+      }
+
       logger.info('[broadcastGpEvent] sending', { uid, game, amount, chatId });
       const ok = await telegramH.sendTelegramMessage(telegramBotSecret.value(), chatId, msg);
       logger.info('[broadcastGpEvent] result', { ok });

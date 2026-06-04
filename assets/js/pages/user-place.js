@@ -177,6 +177,9 @@ function _onMapClick(lat, lng, item) {
       const spent = item.price;
       $('upConfirmMsg').textContent = `✅ 배치 완료! (🪙 ${spent.toLocaleString()} GP 차감)`;
       $('upConfirmMsg').style.color = '#22c55e';
+      // 보물 숨기기/발행 생중계
+      const evtGame = item.tag === 'box' ? 'treasure_issue' : 'treasure_hide';
+      httpsCallable(functions, 'broadcastGpEvent')({ game: evtGame, amount: 0, label: `${item.emoji} ${item.label}` }).catch(() => {});
       _refreshCb?.(); // loadPlayerState + 지도 새로고침
       setTimeout(() => {
         modal.style.display = 'none';
