@@ -6,7 +6,9 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/f
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { collection, getDocs, getDoc, doc, query, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
-const fnCollect = httpsCallable(functions, 'collectTreasureBox');
+const fnCollect        = httpsCallable(functions, 'collectTreasureBox');
+const fnInitTutorial   = httpsCallable(functions, 'initTutorialBoxes');
+const fnClaimTutorial  = httpsCallable(functions, 'claimTutorialBox');
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 const SCAN_RADIUS            = 300;  // m: Firestore 로드 반경 (넉넉하게)
@@ -157,13 +159,37 @@ async function loadNearbyBoxes(lat, lng) {
   const logs = await Promise.all(
     withinRange.map(b => getDoc(doc(db, 'treasure_logs', `${currentUser.uid}_${b.id}`)))
   );
-  return withinRange.filter((b, i) => {
+  const regular = withinRange.filter((b, i) => {
     if (!logs[i].exists()) return true;
     const d = logs[i].data();
     const lastMs    = d.collectedAt?.toMillis?.() || 0;
     const respawnMs = d.respawnIntervalMs ?? b.respawnIntervalMs ?? 86400000;
     return lastMs + respawnMs <= now;
   });
+
+  // ── 체험보물 병합 ─────────────────────────────────────────────────────────────
+  const tutorialBoxes = [];
+  try {
+    const tres = await fnInitTutorial({ lat, lng });
+    for (const tb of tres.data?.boxes || []) {
+      if (tb.claimed) continue;
+      const dist = haversine(lat, lng, tb.lat, tb.lng);
+      if (dist <= Math.max(userDisplayRadius, SCAN_RADIUS)) {
+        tutorialBoxes.push({
+          id:         `tutorial_${tb.index}`,
+          boxIndex:   tb.index,
+          isTutorial: true,
+          name:       `🌟 체험보물 #${tb.index + 1}`,
+          lat:        tb.lat,
+          lng:        tb.lng,
+          scanRadius: DISPLAY_RADIUS_PREMIUM,
+          active:     true,
+        });
+      }
+    }
+  } catch { /* 체험보물 로드 실패는 무시 */ }
+
+  return [...regular, ...tutorialBoxes];
 }
 
 // ── 나침반 ────────────────────────────────────────────────────────────────────
@@ -626,8 +652,17 @@ async function handleClaim() {
   const box = nearbyBoxes.find(b => b.id === boxId);
 
   try {
-    const res = await fnCollect({ boxId, userLat, userLng });
-    const msg = res.data?.message || 'Treasure claimed! 🎉';
+    let msg;
+    if (box?.isTutorial) {
+      // ── 체험보물 수령 ────────────────────────────────────────────────────────
+      const res = await fnClaimTutorial({ boxIndex: box.boxIndex, userLat, userLng });
+      if (!res.data?.ok) throw new Error(res.data?.error || '수령 실패');
+      msg = `🌟 체험보물 획득! ${res.data.gold ? `+${res.data.gold} GP` : ''}`;
+    } else {
+      // ── 일반 보물 수령 ───────────────────────────────────────────────────────
+      const res = await fnCollect({ boxId, userLat, userLng });
+      msg = res.data?.message || 'Treasure claimed! 🎉';
+    }
 
     playSuccess();
     if (navigator.vibrate) navigator.vibrate([200, 100, 300]);
@@ -637,7 +672,7 @@ async function handleClaim() {
     claimResult.style.color = '#86efac';
 
     // AR 보물 발견 생중계
-    const boxName = box?.name || res.data?.boxName || 'AR 보물상자';
+    const boxName = box?.name || 'AR 보물상자';
     httpsCallable(functions, 'broadcastGpEvent')({ game: 'treasure_find', amount: 0, label: `📡 AR스캔 · ${boxName}` }).catch(() => {});
 
     nearbyBoxes = nearbyBoxes.filter(b => b.id !== boxId);
