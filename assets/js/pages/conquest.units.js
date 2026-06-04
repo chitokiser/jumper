@@ -11,9 +11,12 @@ export const GATES = [
   {x:3800,y:5000,dir:'lft'},{x:6200,y:5000,dir:'rgt'},
 ];
 // 광산: 도로 위 위치 (성벽 밖, 각 접근로 중간)
+// 광물 위치 — 성 내부 4곳 (성벽 3800~6200 안쪽)
 export const MINES = [
-  {x:5000,y:2100},{x:5000,y:7900},
-  {x:2100,y:5000},{x:7900,y:5000},
+  {x:4300,y:4300},  // 북서
+  {x:5700,y:4300},  // 북동
+  {x:4300,y:5700},  // 남서
+  {x:5700,y:5700},  // 남동
 ];
 
 // ── 프레임 배열 헬퍼 ──────────────────────────────────────────────────────
@@ -390,9 +393,9 @@ function _updateMiner(u,dt){
       if(u.mineTimer<=0)u.minerState='returning';
       break;
     case'returning':{
-      const g=GATES[0];
-      _moveTo(u,g.x,g.y,dt);u.animState='walk';
-      if(_d(u.x,u.y,g.x,g.y)<30){
+      // 성 중심(창고)으로 귀환 — 성 내부 광물이므로 성문까지 나갈 필요 없음
+      _moveTo(u,CX,CY,dt);u.animState='walk';
+      if(_d(u.x,u.y,CX,CY)<40){
         u.events.push({type:'addGP',amount:30});
         u.minerState='to_mine';u.mineTarget=_nearestMine(u.x,u.y);
       }
