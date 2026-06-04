@@ -117,6 +117,8 @@ async function awardGP(amount) {
   try {
     await updateDoc(doc(db, 'battle_players', _uid), { gold: increment(amount) });
   } catch {}
+  // GP 생중계
+  if (amount >= 50) httpsCallable(functions, 'broadcastGpEvent')({ game: 'relay', amount }).catch(() => {});
 }
 
 // ── 로비: 캐릭터 선택 ────────────────────────────────────────────────────────

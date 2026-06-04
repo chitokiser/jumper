@@ -174,4 +174,26 @@ async function telegramWebAuth(userData, botToken) {
   return { token: customToken, uid, isNew };
 }
 
-module.exports = { authWithTelegram, telegramWebAuth };
+/**
+ * Telegram Bot API sendMessage
+ * @param {string} botToken
+ * @param {string|number} chatId  — 그룹/채널 ID
+ * @param {string} text           — HTML 마크업 허용
+ */
+async function sendTelegramMessage(botToken, chatId, text) {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        disable_notification: true,  // 소리 없이 조용히 전송
+      }),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
+module.exports = { authWithTelegram, telegramWebAuth, sendTelegramMessage };

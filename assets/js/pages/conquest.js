@@ -120,7 +120,12 @@ async function deductEntry(){
     return false;
   }
 }
-async function awardGP(n){if(!_uid||_freePlay)return;try{await updateDoc(doc(db,'battle_players',_uid),{gold:increment(n)});}catch{}}
+async function awardGP(n){
+  if(!_uid||_freePlay||n<=0)return;
+  try{ await updateDoc(doc(db,'battle_players',_uid),{gold:increment(n)}); }catch{}
+  // GP 생중계 (50GP 이상만)
+  if(n>=50) httpsCallable(functions,'broadcastGpEvent')({game:'conquest',amount:n}).catch(()=>{});
+}
 
 // ── 게임 시작 / 종료 ─────────────────────────────────────────────────────
 function startGame(){

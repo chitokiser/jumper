@@ -32,6 +32,7 @@ const extApiSecret        = defineSecret('PARTNER_API_KEY');
 const geminiSecret        = defineSecret('GEMINI_API_KEY');
 const exchangeAddrSecret  = defineSecret('JUMP_AUTO_EXCHANGE_ADDRESS');
 const telegramBotSecret   = defineSecret('TELEGRAM_BOT_TOKEN');
+const announceGroupSecret = defineSecret('ANNOUNCE_GROUP_ID'); // GP 생중계 그룹 채팅 ID
 const tonMnemonicSecret   = defineSecret('TON_WALLET_MNEMONIC');
 const tonDepositSecret    = defineSecret('TON_DEPOSIT_ADDRESS');
 const tonCenterKeySecret  = defineSecret('TON_CENTER_API_KEY');
@@ -2456,6 +2457,54 @@ exports.requestOnChainLevelSync = onCall(
     process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
     return expSyncH.manualSyncLevel(uid);
   })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// GP 획득 생중계 — 그룹 채팅에 게임별 GP 브로드캐스트
+// 선행 작업: firebase functions:secrets:set ANNOUNCE_GROUP_ID
+//           (값: Telegram 그룹/채널 chat_id, 예: -1001234567890)
+// ════════════════════════════════════════════════════════════════════════════
+const _GAME_LABELS = {
+  relay:       '🏃 이어달리기',
+  conquest:    '🏰 몬스터수성',
+  dungeon:     '⚔️ 던전',
+  archery:     '🏹 활쏘기',
+  memory:      '🧠 기억력',
+  treasure:    '💎 보물찾기',
+  monsterrace: '🐉 몬스터레이스',
+};
+// 유저별 마지막 브로드캐스트 시각 (인스턴스 내 캐시, 30초 쿨다운)
+const _broadcastCooldown = new Map();
+
+exports.broadcastGpEvent = onCall(
+  { secrets: [telegramBotSecret, announceGroupSecret] },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) return { ok: false };
+    const { game, amount } = request.data || {};
+    if (!game || !amount || amount < 50) return { ok: false };  // 50GP 미만 무시
+
+    const chatId = announceGroupSecret.value();
+    if (!chatId) return { ok: false };
+
+    // 30초 쿨다운 (연속 스팸 방지)
+    const now = Date.now();
+    if (now - (_broadcastCooldown.get(uid) || 0) < 30000) return { ok: false };
+    _broadcastCooldown.set(uid, now);
+
+    try {
+      const snap = await db.collection('battle_players').doc(uid).get();
+      const d    = snap.data() || {};
+      const name = d.displayName || d.name || '모험가';
+      const label = _GAME_LABELS[game] || '🎮 게임';
+      const msg   = `${label}\n<b>${name}</b>님이 <b>+${Number(amount).toLocaleString()} GP</b> 획득! 🎉`;
+      await telegramH.sendTelegramMessage(telegramBotSecret.value(), chatId, msg);
+      return { ok: true };
+    } catch (e) {
+      logger.warn('[broadcastGpEvent]', e?.message);
+      return { ok: false };
+    }
+  }
 );
 
 // ════════════════════════════════════════════════════════════════════════════
