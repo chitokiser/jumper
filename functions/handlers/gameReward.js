@@ -92,6 +92,7 @@ function _chargeEntry(t, data, ref, gameKey) {
   const count = (resetAt && now - resetAt < RESET_MS) ? (entry.count || 0) : 0;
   const fee   = GAME_BASE_FEE + count * GAME_FEE_STEP;
 
+
   if (gold < fee)
     throw new Error(`GP 부족 — 필요: ${fee.toLocaleString()} GP, 보유: ${gold.toLocaleString()} GP`);
 
