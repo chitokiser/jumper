@@ -636,6 +636,10 @@ async function handleClaim() {
     claimResult.textContent = `🎉 ${msg}`;
     claimResult.style.color = '#86efac';
 
+    // AR 보물 발견 생중계
+    const boxName = box?.name || res.data?.boxName || 'AR 보물상자';
+    httpsCallable(functions, 'broadcastGpEvent')({ game: 'treasure_find', amount: 0, label: `📡 AR스캔 · ${boxName}` }).catch(() => {});
+
     nearbyBoxes = nearbyBoxes.filter(b => b.id !== boxId);
     hudCount.textContent = `${nearbyBoxes.length} 📦`;
     targetBox = null;
