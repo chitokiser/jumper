@@ -3324,64 +3324,77 @@
     <!-- ▼ 게임 탭 ▼ -->
     <div id="ghTabGames" class="gh-tab-panel">
 
-    <!-- 초보자 가이드 -->
-    <div class="gh-onboard" id="ghOnboard">
+    <!-- 초보자 가이드 (block 레이아웃 — gh-onboard flex 간섭 없음) -->
+    <div id="ghOnboard" style="
+      background:linear-gradient(135deg,rgba(184,255,0,.05),rgba(0,229,255,.05));
+      border:1px solid rgba(184,255,0,.2);border-radius:12px;padding:16px;
+      margin-bottom:4px;">
 
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <span style="font-size:18px;">🎮</span>
-        <span style="font-family:var(--gh-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gh-muted)">beginner_guide</span>
+      <!-- 헤더 라인 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:16px;">🎮</span>
+        <span style="font-family:var(--gh-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gh-muted);">beginner_guide</span>
         <div style="flex:1;height:1px;background:var(--gh-border);"></div>
       </div>
 
-      <p style="font-size:13px;line-height:1.75;color:var(--gh-text);margin-bottom:14px;">
-        처음 오신 분은 <strong style="color:var(--gh-gold)">게임코인</strong>이 필요합니다.<br>
+      <!-- 안내 문구 -->
+      <p style="font-size:13px;line-height:1.7;color:var(--gh-text);margin:0 0 14px;">
+        처음 오신 분은 <strong style="color:var(--gh-gold);">게임코인</strong>이 필요합니다.<br>
         <span style="color:var(--gh-muted);font-size:12px;">
           보물찾기 체험판으로 먼저 게임코인을 모으고,
-          온체인 등록을 하여 <strong style="color:var(--gh-green)">1,000 게임코인을 무상</strong>으로 받으신 후
-          다른 게임에 참여하여 게임코인을 모으세요.
+          온체인 등록으로 <strong style="color:var(--gh-green);">1,000 GP 무상</strong> 수령 후
+          다른 게임에 참여하세요.
         </span>
       </p>
 
-      <!-- 3단계 버튼 -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <!-- 3단계 버튼 그리드 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
 
-        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;
-          background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.25);
-          border-radius:10px;padding:10px 6px;">
-          <div style="font-size:20px;">🗺️</div>
-          <div style="font-family:var(--gh-mono);font-size:9px;color:var(--gh-gold);letter-spacing:.05em;">STEP 1</div>
-          <div style="font-size:11px;font-weight:700;color:var(--gh-text);text-align:center;line-height:1.3;">보물찾기<br>체험판</div>
-          <button onclick="ghEnterGame('trial')"
-            style="width:100%;padding:6px 4px;background:linear-gradient(135deg,#d97706,#f59e0b);
-              color:#000;border:none;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;">
-            ▶ 무료 시작
+        <!-- STEP 1 -->
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;
+          gap:5px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.3);
+          border-radius:10px;padding:10px 4px;">
+          <span style="font-size:22px;line-height:1;">🗺️</span>
+          <span style="font-family:var(--gh-mono);font-size:8px;color:var(--gh-gold);letter-spacing:.08em;">STEP 1</span>
+          <span style="font-size:11px;font-weight:700;color:var(--gh-text);line-height:1.3;">보물찾기<br>체험판</span>
+          <button onclick="ghEnterGame('trial')" style="
+            width:100%;margin-top:2px;padding:7px 2px;
+            background:linear-gradient(135deg,#d97706,#f59e0b);
+            color:#000;border:none;border-radius:7px;
+            font-size:11px;font-weight:900;cursor:pointer;">
+            ▶ 무료시작
           </button>
         </div>
 
-        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;
-          background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.25);
-          border-radius:10px;padding:10px 6px;">
-          <div style="font-size:20px;">📝</div>
-          <div style="font-family:var(--gh-mono);font-size:9px;color:var(--gh-green);letter-spacing:.05em;">STEP 2</div>
-          <div style="font-size:11px;font-weight:700;color:var(--gh-text);text-align:center;line-height:1.3;">온체인<br>등록 +1,000GP</div>
-          <a href="/mypage.html#onboard"
-            style="width:100%;display:block;text-align:center;padding:6px 4px;
-              background:linear-gradient(135deg,#16a34a,#4ade80);
-              color:#000;text-decoration:none;border-radius:7px;font-size:11px;font-weight:800;">
-            📝 등록하기
+        <!-- STEP 2 -->
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;
+          gap:5px;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.3);
+          border-radius:10px;padding:10px 4px;">
+          <span style="font-size:22px;line-height:1;">📝</span>
+          <span style="font-family:var(--gh-mono);font-size:8px;color:var(--gh-green);letter-spacing:.08em;">STEP 2</span>
+          <span style="font-size:11px;font-weight:700;color:var(--gh-text);line-height:1.3;">온체인등록<br>+1,000GP</span>
+          <a href="/mypage.html#onboard" style="
+            width:100%;margin-top:2px;display:block;padding:7px 2px;
+            background:linear-gradient(135deg,#16a34a,#4ade80);
+            color:#000;text-decoration:none;
+            border-radius:7px;font-size:11px;font-weight:900;">
+            📝 등록
           </a>
         </div>
 
-        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;
-          background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.25);
-          border-radius:10px;padding:10px 6px;">
-          <div style="font-size:20px;">🎮</div>
-          <div style="font-family:var(--gh-mono);font-size:9px;color:var(--gh-blue);letter-spacing:.05em;">STEP 3</div>
-          <div style="font-size:11px;font-weight:700;color:var(--gh-text);text-align:center;line-height:1.3;">미니게임<br>참여</div>
-          <button onclick="document.getElementById('ghOnboard').scrollIntoView({behavior:'smooth'});document.querySelector('.gh-grid')?.scrollIntoView({behavior:'smooth',block:'start'})"
-            style="width:100%;padding:6px 4px;background:linear-gradient(135deg,#2563eb,#60a5fa);
-              color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;">
-            🕹️ 게임 보기
+        <!-- STEP 3 -->
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;
+          gap:5px;background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.3);
+          border-radius:10px;padding:10px 4px;">
+          <span style="font-size:22px;line-height:1;">🎮</span>
+          <span style="font-family:var(--gh-mono);font-size:8px;color:var(--gh-blue);letter-spacing:.08em;">STEP 3</span>
+          <span style="font-size:11px;font-weight:700;color:var(--gh-text);line-height:1.3;">미니게임<br>참여</span>
+          <button onclick="document.querySelector('.gh-grid')?.scrollIntoView({behavior:'smooth',block:'start'})" style="
+            width:100%;margin-top:2px;padding:7px 2px;
+            background:linear-gradient(135deg,#2563eb,#60a5fa);
+            color:#fff;border:none;border-radius:7px;
+            font-size:11px;font-weight:900;cursor:pointer;">
+            🕹️ 게임목록
           </button>
         </div>
 
