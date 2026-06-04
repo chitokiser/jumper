@@ -212,7 +212,10 @@ function _update(dt){
   updateRevealAnims(dt);
   if(_castleHp<=0){endGame(false);return;}
   if(_waveActive&&_monsters.length===0&&_spawnQ.length===0){
-    _waveActive=false;_prepTimer=PREP_TIME;_addGP(60+_wave*25);
+    _waveActive=false;_prepTimer=PREP_TIME;
+    const waveReward=_wave*100;
+    _addGP(waveReward);
+    _showNotif(`🏆 ${_wave}웨이브 클리어! +${waveReward} GP`);
     if(_wave>=WAVES.length){endGame(true);return;}
   }
   renderHUD();
