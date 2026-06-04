@@ -3316,29 +3316,38 @@
     </div>
   </header>
 
-  <!-- Economy Bar -->
-  <div class="gh-economy-bar">
-    <div class="gh-econ-seg">
-      <span class="gh-econ-lbl">1 TON</span>
-      <span class="gh-econ-arrow">≈</span>
-      <span class="gh-econ-val" id="ghTonUsd">$—</span>
+  <!-- 플레이어 상태 + 환율 통합 바 -->
+  <div class="gh-economy-bar" style="justify-content:space-between;padding:8px 16px;gap:8px;">
+
+    <!-- 내 레벨 · GP (왼쪽, 로그인 시 표시) -->
+    <div id="ghPlayerChips" style="display:none;align-items:center;gap:6px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:4px;
+        background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);
+        border-radius:20px;padding:4px 10px;">
+        <span style="font-size:12px;">⚡</span>
+        <span id="ghPlayerLv" style="font-family:var(--gh-mono);font-size:12px;font-weight:700;color:#a78bfa;">Lv —</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;
+        background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4);
+        border-radius:20px;padding:4px 10px;">
+        <span style="font-size:12px;">🪙</span>
+        <span id="ghPlayerGp" style="font-family:var(--gh-mono);font-size:12px;font-weight:700;color:#fbbf24;">— GP</span>
+      </div>
     </div>
-    <div class="gh-econ-seg">
-      <span class="gh-econ-lbl">→ Game Coin</span>
-      <span class="gh-econ-val green" id="ghTonGp">— GP</span>
+
+    <!-- 환율 (오른쪽, 항상 표시) -->
+    <div style="display:flex;align-items:center;gap:0;overflow-x:auto;scrollbar-width:none;flex-shrink:1;min-width:0;">
+      <div class="gh-econ-seg">
+        <span class="gh-econ-lbl">1 TON</span>
+        <span class="gh-econ-arrow">≈</span>
+        <span class="gh-econ-val" id="ghTonUsd">$—</span>
+      </div>
+      <div class="gh-econ-seg">
+        <span class="gh-econ-lbl">→ GP</span>
+        <span class="gh-econ-val green" id="ghTonGp">—</span>
+      </div>
     </div>
-    <div class="gh-econ-seg">
-      <span class="gh-econ-lbl">1 JUMP</span>
-      <span class="gh-econ-arrow">=</span>
-      <span class="gh-econ-val">10 GP</span>
-    </div>
-    <div class="gh-conv-wrap">
-      <input type="number" class="gh-conv-input" id="ghConvInput"
-             placeholder="0.0" min="0" step="0.01" value="1">
-      <span class="gh-econ-lbl">TON</span>
-      <span class="gh-econ-arrow">→</span>
-      <span class="gh-econ-val green" id="ghConvResult">— GP</span>
-    </div>
+
   </div>
 
   <!-- 탭 네비게이션 -->

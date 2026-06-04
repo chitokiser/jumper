@@ -740,14 +740,26 @@ function updateCombatHud() {
   const gpVal = document.getElementById('hudGpVal');
   if (gpVal) gpVal.textContent = (p.gold || 0).toLocaleString();
 
-  // 상단 내 레벨·GP 바 업데이트
-  const bar    = document.getElementById('mcPlayerBar');
-  const barLv  = document.getElementById('mcPlayerLv');
-  const barGp  = document.getElementById('mcPlayerGp');
+  // 상단 내 레벨·GP 바 업데이트 (mc-hd 및 게임허브 칩)
+  const gpStr = (p.gold || 0).toLocaleString() + ' GP';
+  const lvStr = `Lv ${p.level ?? 1}`;
+
+  const bar = document.getElementById('mcPlayerBar');
   if (bar) {
     bar.style.display = 'flex';
-    if (barLv) barLv.textContent = `Lv ${p.level ?? 1}`;
-    if (barGp) barGp.textContent = `${(p.gold || 0).toLocaleString()} GP`;
+    const barLv = document.getElementById('mcPlayerLv');
+    const barGp = document.getElementById('mcPlayerGp');
+    if (barLv) barLv.textContent = lvStr;
+    if (barGp) barGp.textContent = gpStr;
+  }
+
+  const chips = document.getElementById('ghPlayerChips');
+  if (chips) {
+    chips.style.display = 'flex';
+    const ghLv = document.getElementById('ghPlayerLv');
+    const ghGp = document.getElementById('ghPlayerGp');
+    if (ghLv) ghLv.textContent = lvStr;
+    if (ghGp) ghGp.textContent = gpStr;
   }
   const hv = document.getElementById('cHpVal'); if (hv)  hv.textContent  = `${p.hp} / ${p.maxHp}`;
   const mv = document.getElementById('cMpVal'); if (mv)  mv.textContent  = `${p.mp} / ${p.maxMp}`;
