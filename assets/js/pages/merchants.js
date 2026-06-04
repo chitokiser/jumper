@@ -1275,32 +1275,26 @@ function showMyLocation() {
 
   _requestFullscreen();
 
-  // ── GPS 권한 요청은 watchPosition 단 한 번 ──────────────────────────────────
-  // getCurrentPosition + watchPosition 을 각각 호출하면 Telegram에서 팝업이 2번
-  // → watchPosition 의 첫 번째 콜백을 초기 위치 이동에 활용해 1번으로 통합
+  // ── 게임 서버 즉시 연결 (GPS와 무관) ──────────────────────────────────────
+  preloadSpriteImages();
+  connectToGameServer();
+
+  // ── GPS watchPosition — 권한 요청 1회, 첫 위치로 지도 이동 ────────────────
+  // getCurrentPosition 별도 호출 없이 watchPosition만 사용 → Telegram 팝업 1회
   startWatchPosition((lat, lng) => {
-    // 첫 위치 수신 시: 지도 이동 + 서버 연결
     if (_ctx.map) {
       _ctx.map.panTo({ lat, lng });
       _ctx.map.setZoom(18);
     }
     broadcastMyLocation(lat, lng);
     if (btn) btn.textContent = '📍';
-    if (!isGameServerConnected()) {
-      preloadSpriteImages();
-      connectToGameServer();
-    }
     _maybeInitStarterPack(lat, lng);
   });
 
-  // GPS 실패 시에도 서버는 연결 (맵 센터 기준으로 플레이)
+  // GPS 응답이 늦어도 버튼 복원
   setTimeout(() => {
-    if (!isGameServerConnected()) {
-      preloadSpriteImages();
-      connectToGameServer();
-    }
     if (btn && btn.textContent === '⏳') btn.textContent = '📍';
-  }, 9000);
+  }, 8000);
 
   startBattleLoop();
   startNearbyPlayers();
