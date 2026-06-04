@@ -4,6 +4,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- 텔레그램 인증 후 깜빡임 방지: CSS 로드 전에 동기 실행 -->
+  <script>
+    (function () {
+      if (sessionStorage.getItem('tg_auth_ok') === '1') {
+        sessionStorage.removeItem('tg_auth_ok');
+        document.documentElement.classList.add('tg-authed');
+      }
+    })();
+  </script>
+  <style>
+    /* 텔레그램에서 진입 시 login overlay 즉시 숨김 — onAuthStateChanged 대기 불필요 */
+    html.tg-authed #gameLoginOverlay { display: none !important; }
+    /* 흰 화면 플래시 방지 — 배경을 미리 설정 */
+    html.tg-authed body { background: #f9fafb; }
+  </style>
   <title>게임 허브 | JumpDAO 점프다오 — 보물찾기·몬스터레이싱·활쏘기·스피드기억력·TON·USDT</title>
   <meta name="description" content="점프다오(JumpDAO) 코인 게임 허브. 보물찾기·몬스터레이싱·활쏘기(Archery)·스피드기억력·몬스터 방어 5가지 게임으로 GP를 획득하고 Toncoin(TON)·USDT로 교환. Treasure Hunt, Monster Racing, Speed Memory, Archery Hunt, Monster Defense with Toncoin & USDT Rewards." />
   <meta name="keywords" content="점프다오, JumpDAO, jumpdao, 게임허브, 코인게임허브, 보물찾기, 몬스터레이싱, 활쏘기, 스피드기억력, 몬스터방어, TON게임, USDT게임, Toncoin보상, USDT보상, 게임포인트, GP교환, Treasure Hunt, Monster Racing, Archery Hunt, Speed Memory, Monster Defense, Game Points, Toncoin Rewards, USDT Rewards, blockchain game, Web3 game, AR treasure, 위치기반게임" />
@@ -1959,7 +1974,7 @@
         <div id="gameLoginOverlay" style="
           position:absolute;inset:0;z-index:500;
           background:rgba(15,15,30,0.82);
-          display:flex;flex-direction:column;
+          display:none;flex-direction:column;
           align-items:center;justify-content:center;gap:14px;
           backdrop-filter:blur(3px);
         ">

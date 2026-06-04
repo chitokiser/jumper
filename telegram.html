@@ -134,11 +134,9 @@
           return;
         }
 
-        statusText.textContent = result.isNew ? '새 계정 생성 완료!' : '로그인 성공!';
-
-        setTimeout(() => {
-          window.location.replace('/merchants.html');
-        }, 600);
+        // merchants.html에서 login overlay를 즉시 숨기도록 플래그 설정
+        sessionStorage.setItem('tg_auth_ok', '1');
+        window.location.replace('/merchants.html');
 
       } catch (err) {
         showError('로그인 실패', err?.message || '알 수 없는 오류', true);
