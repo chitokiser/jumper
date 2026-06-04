@@ -1701,6 +1701,106 @@
     }
     .btn-cancel-treasure:hover { background: #7f1d1d; }
 
+  /* ═══════════════════════════════════
+     단순명료 디자인 오버라이드
+  ═══════════════════════════════════ */
+
+  /* 래퍼 */
+  .mc-wrap { padding: 0 16px 64px; max-width: 960px; }
+
+  /* 헤더 */
+  .mc-hd { padding: 20px 0 16px; border-bottom: 1px solid #f0f0f0; margin-bottom: 16px; }
+  .mc-hd h1 { font-size: 20px; font-weight: 800; color: #111; margin: 0 0 4px; letter-spacing: -.4px; }
+  .mc-hd p  { font-size: 13px; color: #6b7280; margin: 0 0 14px; line-height: 1.5; }
+
+  /* 통계 배너 — 라이트 칩 스타일 */
+  #treasureStatsBanner {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 0;
+  }
+  .tsb-card {
+    display: flex; align-items: center; gap: 7px;
+    background: #f8fafc; border: 1px solid #e5e7eb;
+    border-radius: 8px; padding: 7px 12px;
+    min-width: 0;
+  }
+  .tsb-icon { font-size: 16px; line-height: 1; flex-shrink: 0; }
+  .tsb-info { display: flex; flex-direction: column; gap: 1px; }
+  .tsb-value { font-size: 15px; font-weight: 800; color: #111; line-height: 1.1; }
+  .tsb-label { font-size: 10px; color: #9ca3af; letter-spacing: .02em; }
+
+  /* 지도 */
+  .mc-map-wrap {
+    border-radius: 14px; border: 1px solid #e5e7eb;
+    height: 480px; margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  }
+  @media (max-width: 600px) { .mc-map-wrap { height: 360px; } }
+
+  /* 검색 */
+  .mc-filter { margin-bottom: 18px; gap: 8px; }
+  .mc-filter input {
+    background: #f9fafb; border: 1.5px solid #e5e7eb;
+    border-radius: 10px; padding: 10px 14px;
+    font-size: 14px; color: #111;
+    box-shadow: none;
+  }
+  .mc-filter input:focus { background: #fff; border-color: #6366f1; outline: none; }
+
+  /* 가맹점 카드 */
+  .mc-grid { gap: 10px; }
+  .mc-card {
+    background: #fff; border: 1px solid #f0f0f0;
+    border-radius: 12px; padding: 16px 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    transition: box-shadow .15s, transform .12s;
+  }
+  .mc-card:hover {
+    box-shadow: 0 4px 18px rgba(0,0,0,.1);
+    transform: translateY(-2px); border-color: #e0e7ff;
+  }
+  .mc-card-name   { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 3px; }
+  .mc-card-career { font-size: 12px; color: #6366f1; font-weight: 600; margin-bottom: 4px; }
+  .mc-card-region { font-size: 12px; color: #9ca3af; }
+  .mc-card-desc   { font-size: 12px; color: #4b5563; margin-top: 8px; line-height: 1.6; }
+
+  /* 섹션 공통 헤더 */
+  .exc-title, .hunter-rank-title {
+    font-size: 16px; font-weight: 700; color: #111; letter-spacing: -.3px;
+  }
+  .exc-desc { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .exc-section {
+    background: #fff; border: 1px solid #f0f0f0;
+    border-radius: 12px; margin-bottom: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  }
+  .exc-header {
+    padding: 14px 18px;
+    border-bottom: none;
+  }
+  .exc-section.open .exc-header { border-bottom: 1px solid #f0f0f0; }
+
+  /* 랭킹 */
+  .hunter-rank-section {
+    background: #fff; border: 1px solid #f0f0f0;
+    border-radius: 12px; padding: 0; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  }
+  .hunter-rank-header {
+    padding: 14px 18px 12px; border-bottom: 1px solid #f5f5f5;
+  }
+  .hunter-rank-title { margin-bottom: 10px; }
+  .hunter-tab {
+    font-size: 12px; padding: 5px 12px; border-radius: 20px;
+    border: 1px solid #e5e7eb; background: #f9fafb; color: #6b7280;
+    font-weight: 600; cursor: pointer; transition: all .15s;
+  }
+  .hunter-tab.active {
+    background: #111; color: #fff; border-color: #111;
+  }
+  .hunter-rank-list { padding: 8px 0; }
+  .hunter-rank-row { padding: 9px 18px; }
+  .hunter-rank-row:hover { background: #fafafa; }
+
   </style>
 
   <!-- Telegram Mini App: 텔레그램에서 열릴 때 자동 확장 -->
@@ -1824,8 +1924,7 @@
 
       <div class="mc-hd">
         <h1>🗺️ 보물 지도</h1>
-
-<p>몬스터를 물리치고 아이템을 모으세요<br>전투에 필요한 물약은 상점에서 구입할 수 있습니다</p>
+        <p>몬스터를 물리치고 아이템을 모으세요 · 물약은 상점에서 구입</p>
         <div id="treasureStatsBanner">
           <div class="tsb-card">
             <span class="tsb-icon">👥</span>
