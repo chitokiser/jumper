@@ -89,8 +89,8 @@
     <div class="error-icon">📱</div>
     <div class="error-title" id="errorTitle">텔레그램에서 실행해주세요</div>
     <div class="error-msg" id="errorMsg">
-      @JumpDaoBot 에서 게임을 시작하세요<br>
-      Please open via @JumpDaoBot
+      @jumpdao_game_bot 에서 게임을 시작하세요<br>
+      Please open via @jumpdao_game_bot
     </div>
     <button class="btn-retry hidden" id="btnRetry">다시 시도</button>
   </div>
@@ -120,7 +120,7 @@
       if (!isTelegramMiniApp()) {
         showError(
           '텔레그램에서 실행해주세요',
-          '@JumpDaoBot 에서 게임을 시작하세요<br>Please open via @JumpDaoBot'
+          '@jumpdao_game_bot 에서 게임을 시작하세요<br>Please open via @jumpdao_game_bot'
         );
         return;
       }

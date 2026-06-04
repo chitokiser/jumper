@@ -118,8 +118,7 @@ async function adminGetUserGpHistory(uid) {
 
   const [bpSnap, paySnap] = await Promise.all([
     db.collection('battle_players').doc(uid).get(),
-    db.collection('membership_payments').where('uid', '==', uid)
-      .orderBy('createdAt', 'desc').limit(50).get(),
+    db.collection('membership_payments').where('uid', '==', uid).limit(50).get(),
   ]);
 
   const bp      = bpSnap.exists ? (bpSnap.data() || {}) : {};
