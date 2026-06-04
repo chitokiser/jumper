@@ -852,6 +852,10 @@ export function addPlayerGold(amount) {
   _player.gold = (_player.gold || 0) + amount;
   updateCombatHud();
   savePlayerState();
+  // GP 생중계 (50 GP 이상 획득 시)
+  if (amount >= 50 && _ctx?.functions && _ctx?.uid) {
+    httpsCallable(_ctx.functions, 'broadcastGpEvent')({ game: 'treasure', amount }).catch(() => {});
+  }
 }
 export function spendPlayerGold(amount) {
   if ((_player.gold || 0) < amount) return false;
