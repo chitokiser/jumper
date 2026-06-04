@@ -493,8 +493,8 @@ function _handleTap(cx,cy){
   }
 
   // ── 우선순위 ②: 비배치 모드 — 아군 탭 → 선택 ───────────────────────────
-  // 선택 판정 반경: size*1.5 (기존 size*3에서 축소 — 화면 터치 편의 유지)
-  const hit=_defenders.find(u=>!u.dying&&Math.hypot(wx-u.x,wy-u.y)<u.size*1.5);
+  // 배치 모드는 ①에서 이미 처리되므로 size*3 전체 반경 그대로 사용
+  const hit=_defenders.find(u=>!u.dying&&Math.hypot(wx-u.x,wy-u.y)<u.size*5);
   if(hit){
     _selected.clear();
     _selected.add(hit.id);
@@ -505,7 +505,7 @@ function _handleTap(cx,cy){
   // ── 우선순위 ③: 선택된 아군이 있을 때 ────────────────────────────────
   if(_selected.size>0){
     // 적 탭 → 공격 타겟 지정
-    const enemy=_monsters.find(m=>!m.dying&&Math.hypot(wx-m.x,wy-m.y)<m.size*1.5);
+    const enemy=_monsters.find(m=>!m.dying&&Math.hypot(wx-m.x,wy-m.y)<m.size*3);
     if(enemy){
       _defenders.forEach(d=>{
         if(d.selected&&!d.isTower){
