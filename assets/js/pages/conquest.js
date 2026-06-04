@@ -1,7 +1,8 @@
 // conquest.js — Monster Frontier 메인 (수성전: 성 외부 공격, 도로 이동)
-import { db, auth } from '/assets/js/firebase-init.js';
-import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { db, auth, functions } from '/assets/js/firebase-init.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import {
   initCamera, resizeCamera, screenToWorld, panBy, zoomBy, moveCamTo,
   makeFogGrid, revealFog, generatePOIs, addRevealAnim, updateRevealAnims,
@@ -13,7 +14,11 @@ import { getSpawnPos, snapToRoad } from './conquest.path.js';
 import { resumeAudio, playSound } from './conquest.audio.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────
-const ENTRY_FEE  = 100;
+const GAME_KEY   = 'conquestEntry';
+const BASE_FEE   = 100;
+const FEE_STEP   = 50;
+let   _entryFee  = BASE_FEE;   // 현재 회차 참가비 (서버 응답으로 갱신)
+const ENTRY_FEE  = BASE_FEE;   // 하위 호환
 const START_GP   = 3000;
 const MINE_RATE  = 3000;
 const PREP_TIME  = 15000;
@@ -66,18 +71,41 @@ function showPhase(n){
 // ── Firebase ──────────────────────────────────────────────────────────────
 async function loadPlayer(){
   if(!_uid){renderLobby();return;}
-  try{const s=await getDoc(doc(db,'battle_players',_uid));if(s.exists())_playerGP=s.data().gold||0;}catch{}
+  try{
+    const s=await getDoc(doc(db,'battle_players',_uid));
+    if(s.exists()){
+      const d=s.data();
+      _playerGP=d.gold||0;
+      // 현재 회차 참가비 계산 (서버와 동일 로직 — 표시 전용)
+      const entry=d[GAME_KEY]||{};
+      const now=Date.now();
+      const resetAt=typeof entry.resetAt==='number'?entry.resetAt:(entry.resetAt?.toMillis?.()??0);
+      const count=(resetAt&&now-resetAt<86400000)?entry.count||0:0;
+      _entryFee=BASE_FEE+count*FEE_STEP;
+    }
+  }catch{}
   renderLobby();
 }
 function renderLobby(){
   const el=$('lobbyGP');if(el)el.textContent=_uid?`${_playerGP} GP`:'게스트';
-  const btn=$('btnPlay');if(btn)btn.disabled=_uid&&_playerGP<ENTRY_FEE;
+  const feeEl=$('lobbyFee');if(feeEl)feeEl.textContent=`${_entryFee} GP`;
+  const btn=$('btnPlay');
+  if(btn){btn.disabled=_uid&&_playerGP<_entryFee;btn.textContent=`⚔️ ${_entryFee} GP로 출전!`;}
   showPhase('lobby');
 }
 async function deductEntry(){
   if(_freePlay||!_uid)return true;
-  if(_playerGP<ENTRY_FEE)return false;
-  try{await updateDoc(doc(db,'battle_players',_uid),{gold:increment(-ENTRY_FEE)});_playerGP-=ENTRY_FEE;return true;}catch{return false;}
+  if(_playerGP<_entryFee)return false;
+  try{
+    const res=await httpsCallable(functions,'payGameEntry')({gameKey:GAME_KEY});
+    const {fee,newCount}=res.data;
+    _playerGP-=fee;
+    _entryFee=BASE_FEE+newCount*FEE_STEP;
+    return true;
+  }catch(e){
+    console.warn('[conquest] 참가비 차감 실패:',e?.message);
+    return false;
+  }
 }
 async function awardGP(n){if(!_uid||_freePlay)return;try{await updateDoc(doc(db,'battle_players',_uid),{gold:increment(n)});}catch{}}
 

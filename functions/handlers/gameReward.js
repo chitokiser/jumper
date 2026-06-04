@@ -66,7 +66,7 @@ async function claimGameReward(uid, gameType, amount) {
 async function payGameEntry(uid, gameKey) {
   if (!uid || typeof gameKey !== 'string') throw new Error('파라미터 오류');
 
-  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'dungeonEntry', 'conquestEntry'];
+  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'relayEntry', 'dungeonEntry', 'conquestEntry'];
   if (!allowedKeys.includes(gameKey)) throw new Error(`알 수 없는 게임 키: ${gameKey}`);
 
   const ref = db.collection('battle_players').doc(uid);
