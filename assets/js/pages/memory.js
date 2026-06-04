@@ -93,6 +93,7 @@ async function awardGP(amount) {
   if (_freeMode || amount <= 0 || !_uid) return;
   try {
     await httpsCallable(functions, 'claimGameReward')({ gameType: 'memory', amount });
+    if (amount >= 50) httpsCallable(functions, 'broadcastGpEvent')({ game: 'memory', amount }).catch(() => {});
   } catch {}
 }
 

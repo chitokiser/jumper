@@ -2469,7 +2469,7 @@ const _GAME_LABELS = {
   conquest:    '🏰 몬스터수성',
   dungeon:     '⚔️ 던전',
   archery:     '🏹 활쏘기',
-  memory:      '🧠 기억력',
+  memory:      '🧠 기억력게임',
   treasure:    '💎 보물찾기',
   monsterrace: '🐉 몬스터레이스',
 };
@@ -2495,13 +2495,20 @@ exports.broadcastGpEvent = onCall(
     try {
       const snap = await db.collection('battle_players').doc(uid).get();
       const d    = snap.data() || {};
-      const name = d.displayName || d.name || '모험가';
+      // displayName 없으면 users 컬렉션에서 조회
+      let name = d.displayName || d.name;
+      if (!name) {
+        const uSnap = await db.collection('users').doc(uid).get();
+        name = uSnap.data()?.displayName || uSnap.data()?.name || '모험가';
+      }
       const label = _GAME_LABELS[game] || '🎮 게임';
       const msg   = `${label}\n<b>${name}</b>님이 <b>+${Number(amount).toLocaleString()} GP</b> 획득! 🎉`;
-      await telegramH.sendTelegramMessage(telegramBotSecret.value(), chatId, msg);
-      return { ok: true };
+      logger.info('[broadcastGpEvent] sending', { uid, game, amount, chatId });
+      const ok = await telegramH.sendTelegramMessage(telegramBotSecret.value(), chatId, msg);
+      logger.info('[broadcastGpEvent] result', { ok });
+      return { ok };
     } catch (e) {
-      logger.warn('[broadcastGpEvent]', e?.message);
+      logger.warn('[broadcastGpEvent] error', e?.message);
       return { ok: false };
     }
   }

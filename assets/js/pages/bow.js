@@ -155,6 +155,7 @@ async function awardScore(score) {
   if (_freeMode || gp <= 0 || !_uid) return 0;
   try {
     await httpsCallable(functions, 'claimGameReward')({ gameType: 'bow', amount: gp });
+    if (gp >= 50) httpsCallable(functions, 'broadcastGpEvent')({ game: 'archery', amount: gp }).catch(() => {});
   } catch {}
   return gp;
 }

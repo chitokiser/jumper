@@ -434,6 +434,7 @@ async function awardPrize(rank) {
   const gp = PRIZES[Math.min(rank, PRIZES.length - 1)] || 10;
   try {
     await httpsCallable(functions, 'claimGameReward')({ gameType: 'race', amount: gp });
+    if (gp >= 50) httpsCallable(functions, 'broadcastGpEvent')({ game: 'monsterrace', amount: gp }).catch(() => {});
   } catch {}
   return gp;
 }
