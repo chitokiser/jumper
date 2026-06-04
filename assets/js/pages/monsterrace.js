@@ -42,8 +42,8 @@ const SKILLS = {
   oil:      { name:'기름통',    mp:15, emoji:'🛢️',  type:'trap',   cd:4000, desc:'밟으면 속도↑+조향불가' },
   poop:     { name:'몬스터똥', mp:10, emoji:'💩', type:'trap',   cd:3000, desc:'밟으면 2초 감속' },
   ice:      { name:'얼음지대', mp:20, emoji:'🧊', type:'trap',   cd:5000, desc:'밟으면 미끄럼+조향불가' },
-  boost:    { name:'부스트',   mp:20, emoji:'⚡', type:'move',   cd:5000, desc:'속도 x2 / 3초' },
-  lightning:{ name:'번개질주', mp:30, emoji:'🌩️', type:'move',   cd:8000, desc:'속도 x2 + 무적 / 5초' },
+  boost:    { name:'부스트',   mp:35, emoji:'⚡', type:'move',   cd:9000,  desc:'속도 x1.45 / 2.5초 (과열 주의)' },
+  lightning:{ name:'번개질주', mp:50, emoji:'🌩️', type:'move',   cd:15000, desc:'속도 x1.65 + 무적 / 3.5초 (과열 주의)' },
 };
 
 // AI 성향: aggressive(공격적), balanced(균형), defensive(안정)
@@ -473,11 +473,29 @@ function useSkill(racer, id) {
 
   const now = Date.now();
   switch (sk.type) {
-    case 'move':
-      if (id==='boost')     { racer.effects.boost=now+3000; playBoost(); }
-      if (id==='lightning') { racer.effects.boost=now+5000; racer.effects.invincible=now+5000; playBoost();
-                              tone(1200,'sine',0.08,0.3); addLog(`⚡ ${racer.name} 무적+질주!`); }
+    case 'move': {
+      // 이미 부스트/번개 활성 중이면 중복 사용 금지
+      const alreadyBoosted = (racer.effects.boost||0)>now || (racer.effects.lightning||0)>now;
+      if (alreadyBoosted) { addLog(`⚠️ ${racer.name} 부스트 중복 불가`); break; }
+
+      if (id==='boost') {
+        const endT = now + 2500;
+        racer.effects.boost = endT;
+        // 과열: 부스트 종료 후 1.8초 속도 80%
+        racer.effects.overheat = endT + 1800;
+        playBoost();
+      }
+      if (id==='lightning') {
+        const endT = now + 3500;
+        racer.effects.lightning   = endT;
+        racer.effects.invincible  = endT;
+        racer.effects.overheat    = endT + 2200;
+        playBoost();
+        tone(1200,'sine',0.08,0.3);
+        addLog(`⚡ ${racer.name} 무적+질주!`);
+      }
       break;
+    }
     case 'attack': {
       if (id==='tornado') {
         const targets = findFront(racer, 2);
@@ -531,14 +549,20 @@ function updateRacer(r, isPlayer) {
   if (r.fallUntil > now) { r.speed *= 0.88; return; }
   if ((r.effects.stun||0) > now) { r.speed *= 0.94; return; }
 
-  const boosted = (r.effects.boost||0)>now;
-  const slowed  = (r.effects.slow||0)>now;
-  const slowMax = (r.effects.slowMax||0)>now;
+  const boosted   = (r.effects.boost||0)>now;
+  const lightning = (r.effects.lightning||0)>now;
+  const overheat  = (r.effects.overheat||0)>now;
+  const slowed    = (r.effects.slow||0)>now;
+  const slowMax   = (r.effects.slowMax||0)>now;
+
+  // 부스트 배수: 일반부스트 1.45x, 번개질주 1.65x, 과열 0.82x (엔진 쿨다운)
+  const boostMult = lightning ? 1.65 : boosted ? 1.45 : 1.0;
   const top = r.maxSpeed
-    * (boosted ? 2.0:1.0)
-    * (slowed  ? 0.7:1.0)
-    * (slowMax ? 0.6:1.0)
-    * (r.wobble>0 ? 0.82:1.0);
+    * boostMult
+    * (overheat ? 0.82 : 1.0)
+    * (slowed   ? 0.70 : 1.0)
+    * (slowMax  ? 0.60 : 1.0)
+    * (r.wobble > 0 ? 0.82 : 1.0);
 
   const spinning = (r.effects.spin||0)>now;
   const oilSlide = (r.effects.oilSlide||0)>now;
@@ -596,14 +620,21 @@ function updateRacer(r, isPlayer) {
       if (curSeg?.curve) {
         const centrifugal = -(curSeg.curve / 3) * vr * vr * 0.015;
         r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane + centrifugal));
+
+        // 커브 미조향 페널티: 커브 강도 > 1.5이고 조향 없으면 고속일수록 강제 감속
+        const steerInput = (_keys.right ? 1 : 0) - (_keys.left ? 1 : 0);
+        const curveAbs = Math.abs(curSeg.curve);
+        if (curveAbs > 1.5 && steerInput === 0 && vr > 0.55) {
+          const penalty = (curveAbs - 1.5) / 3.5 * (vr - 0.55) * 0.45;
+          r.speed = Math.max(top * 0.45, r.speed * (1 - penalty));
+        }
       }
     }
 
-    // 코스 이탈 페널티 (도로 경계 ROAD_W 기준)
+    // 코스 이탈 페널티 강화 (14% → 28%)
     if (Math.abs(r.lane) > ROAD_W) {
       const offRoad = Math.min(1, (Math.abs(r.lane) - ROAD_W) / (LANE_MAX - ROAD_W));
-      r.speed *= (1 - offRoad * 0.14);
-      // 도로쪽으로 천천히 복귀
+      r.speed *= (1 - offRoad * 0.28);
       r.lane *= 0.97;
     }
   } else {
@@ -723,10 +754,10 @@ function checkItems(r) {
 
 // ── AI (개선: 충돌회피 + 전략적스킬 + 난이도) ────────────────────────────────
 const AI_DIFF = {
-  Easy:      { ms:3500, skillP:0.09, avoidP:0.3,  spdM:0.72 },
-  Normal:    { ms:2500, skillP:0.20, avoidP:0.60, spdM:0.82 },
-  Hard:      { ms:1500, skillP:0.38, avoidP:0.85, spdM:0.93 },
-  Nightmare: { ms:800,  skillP:0.58, avoidP:1.0,  spdM:1.04 },
+  Easy:      { ms:3500, skillP:0.12, avoidP:0.35, spdM:0.80 },
+  Normal:    { ms:2200, skillP:0.30, avoidP:0.70, spdM:0.92 },
+  Hard:      { ms:1400, skillP:0.50, avoidP:0.90, spdM:1.00 },
+  Nightmare: { ms:700,  skillP:0.70, avoidP:1.00, spdM:1.10 },
 };
 const _curDiff = 'Normal';
 
@@ -774,8 +805,10 @@ function aiThink(r) {
     if (behind && Math.abs(behind.pos-r.pos)<1.8 && traps.length && Math.random()<0.5) {
       useSkill(r, traps[Math.floor(Math.random()*traps.length)]); return;
     }
-    // 순위 뒤처질 때 부스트
-    if ((r.currentRank||1)>3 && moves.length && Math.random()<0.55) {
+    // 순위 뒤처질 때 or 플레이어가 1위일 때 공격적 부스트
+    const playerAhead = _player && !_player.finished && _player.pos > r.pos;
+    const useBoostP = (r.currentRank||1)>2 ? 0.75 : playerAhead ? 0.55 : 0.30;
+    if (moves.length && Math.random() < useBoostP) {
       useSkill(r, moves[Math.floor(Math.random()*moves.length)]); return;
     }
     // 랜덤 사용
