@@ -483,7 +483,19 @@ function _handleTap(cx,cy){
     renderHUD();return;
   }
 
-  // ── 우선순위 ①: 배치 모드 → 선택 체크 없이 바로 배치 ───────────────────
+  // ── 우선순위 ①: 기존 아군 탭 → 무조건 선택 (배치 모드 자동 해제) ─────────
+  // 배치 모드 중에도 기존 유닛을 탭하면 선택 모드로 전환
+  const hit=_defenders.find(u=>!u.dying&&Math.hypot(wx-u.x,wy-u.y)<u.size*5);
+  if(hit){
+    _placing=false;           // 배치 모드 해제
+    _placingType='villager';  // 버튼 active 상태 초기화
+    _selected.clear();
+    _selected.add(hit.id);
+    _defenders.forEach(d=>d.selected=_selected.has(d.id));
+    renderHUD();return;
+  }
+
+  // ── 우선순위 ②: 배치 모드 → 빈 공간 탭이면 유닛 배치 ───────────────────
   if(_placing){
     const cost=UNIT_DEFS[_placingType]?.cost||50;
     if(_gp<cost)return;
@@ -492,16 +504,6 @@ function _handleTap(cx,cy){
     playSound('hit');
     _defenders.push(makeUnit(_placingType,wx,wy));
     revealFog(_fogGrid,wx,wy,80,_pois).forEach(_onDiscover);
-    renderHUD();return;
-  }
-
-  // ── 우선순위 ②: 비배치 모드 — 아군 탭 → 선택 ───────────────────────────
-  // 배치 모드는 ①에서 이미 처리되므로 size*3 전체 반경 그대로 사용
-  const hit=_defenders.find(u=>!u.dying&&Math.hypot(wx-u.x,wy-u.y)<u.size*5);
-  if(hit){
-    _selected.clear();
-    _selected.add(hit.id);
-    _defenders.forEach(d=>d.selected=_selected.has(d.id));
     renderHUD();return;
   }
 
