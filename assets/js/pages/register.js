@@ -2,6 +2,7 @@
 // 회원가입: 소셜 로그인(Google/Facebook/Apple) → 정보 저장 → 수탁 지갑 생성 → 온체인 등록
 
 import { watchAuth, login, loginWithFacebook, loginWithApple } from "../auth.js";
+import { loginWithTelegramWidget } from "../telegram-auth.js";
 import { db, functions } from "/assets/js/firebase-init.js";
 
 import {
@@ -79,6 +80,49 @@ function initSocialButtons() {
   $("btnGoogleLogin")?.addEventListener("click", () => handleLogin(login, "btnGoogleLogin"));
   $("btnFacebookLogin")?.addEventListener("click", () => handleLogin(loginWithFacebook, "btnFacebookLogin"));
   $("btnAppleLogin")?.addEventListener("click", () => handleLogin(loginWithApple, "btnAppleLogin"));
+
+  // 텔레그램 로그인 위젯
+  $("btnTelegramLogin")?.addEventListener("click", () => {
+    const btn  = $("btnTelegramLogin");
+    const wrap = $("telegramWidgetWrap");
+    if (!wrap) return;
+
+    // Telegram Login Widget 스크립트 동적 삽입
+    if (!document.getElementById("tgWidgetScript")) {
+      const s = document.createElement("script");
+      s.id   = "tgWidgetScript";
+      s.src  = "https://telegram.org/js/telegram-widget.js?22";
+      s.setAttribute("data-telegram-login", "JumpDaoBot");
+      s.setAttribute("data-size", "large");
+      s.setAttribute("data-radius", "8");
+      s.setAttribute("data-request-access", "write");
+      s.setAttribute("data-onauth", "window.__onTgWidgetAuth(user)");
+      s.async = true;
+      wrap.appendChild(s);
+      wrap.style.display = "block";
+      if (btn) { btn.textContent = "텔레그램 앱에서 인증해주세요…"; btn.disabled = true; }
+    } else {
+      wrap.style.display = wrap.style.display === "none" ? "block" : "none";
+    }
+  });
+
+  // 텔레그램 위젯 콜백 (전역 함수로 등록)
+  window.__onTgWidgetAuth = async (userData) => {
+    const btn  = $("btnTelegramLogin");
+    const msg  = $("socialMsg");
+    if (btn) { btn.textContent = "텔레그램 인증 중…"; btn.disabled = true; }
+    try {
+      await loginWithTelegramWidget(userData);
+      // watchAuth가 로그인 감지 후 자동으로 다음 단계 처리
+    } catch (e) {
+      const text = e?.message || "텔레그램 로그인 실패";
+      if (msg) msg.textContent = text;
+      if (btn) {
+        btn.innerHTML = '<span class="social-icon" style="background:#fff;color:#0088cc;font-weight:900;">✈</span> Telegram으로 계속하기';
+        btn.disabled = false;
+      }
+    }
+  };
 }
 
 // ── 이미 가입한 경우 표시 ──────────────────────────

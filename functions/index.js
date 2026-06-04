@@ -2551,6 +2551,17 @@ exports.tonGetTransactions = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
+// Telegram 웹 로그인 위젯 인증 (일반 브라우저에서 텔레그램 ID로 로그인)
+// ════════════════════════════════════════════════════════════════════════════
+exports.telegramWebAuth = onCall(
+  { secrets: [telegramBotSecret] },
+  wrapError(async (request) => {
+    const userData = request.data ?? {};
+    return await telegramH.telegramWebAuth(userData, telegramBotSecret.value());
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
 // Telegram Bot: 지갑 생성 + 온체인 등록
 // bot.py → POST X-Bot-Token 헤더로 인증, uid + mentorAddress 전달
 // ════════════════════════════════════════════════════════════════════════════

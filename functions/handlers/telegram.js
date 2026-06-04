@@ -122,4 +122,56 @@ async function authWithTelegram(initData, botToken) {
   return { token: customToken, uid, isNew };
 }
 
-module.exports = { authWithTelegram };
+/**
+ * 웹 브라우저용 텔레그램 로그인 위젯 인증
+ * https://core.telegram.org/widgets/login
+ *
+ * 검증 방식 (Mini App initData와 다름):
+ *   secret_key  = SHA256(bot_token)
+ *   hash        = HMAC_SHA256(dataCheckString, secret_key)
+ *   auth_date 24시간 이내만 허용
+ */
+async function telegramWebAuth(userData, botToken) {
+  const { hash, ...fields } = userData ?? {};
+  if (!hash)        throw _err('invalid-argument', 'hash 누락');
+  if (!fields.id)   throw _err('invalid-argument', 'id 누락');
+
+  // 만료 확인 (24시간)
+  const age = Math.floor(Date.now() / 1000) - Number(fields.auth_date || 0);
+  if (age > 86400)  throw _err('unauthenticated', '인증 데이터가 만료되었습니다 (24시간 초과)');
+
+  // 데이터 문자열 생성 (null/undefined 제외, 키 정렬)
+  const dataCheckString = Object.entries(fields)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join('\n');
+
+  // secret_key = SHA256(bot_token) — widget 전용
+  const secretKey = crypto.createHash('sha256').update(botToken).digest();
+  const computedHash = crypto
+    .createHmac('sha256', secretKey)
+    .update(dataCheckString)
+    .digest('hex');
+
+  if (computedHash !== hash) {
+    throw _err('unauthenticated', '텔레그램 서명 검증 실패');
+  }
+
+  const tgUser = {
+    id:         Number(fields.id),
+    first_name: fields.first_name || '',
+    last_name:  fields.last_name  || undefined,
+    username:   fields.username   || undefined,
+    photo_url:  fields.photo_url  || undefined,
+  };
+
+  const { uid, isNew } = await findOrCreateTelegramUser(tgUser);
+  const customToken = await admin.auth().createCustomToken(uid, {
+    telegram_id: String(tgUser.id),
+  });
+
+  return { token: customToken, uid, isNew };
+}
+
+module.exports = { authWithTelegram, telegramWebAuth };

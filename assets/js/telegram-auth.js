@@ -53,3 +53,21 @@ export async function loginWithTelegram() {
 
   return { user: cred.user, uid, isNew };
 }
+
+/**
+ * 웹 브라우저용 Telegram Login Widget 인증
+ * Telegram 위젯이 콜백으로 전달한 userData를 서버에서 검증 후 Firebase 로그인
+ *
+ * @param {object} userData - 위젯 콜백에서 받은 {id, first_name, hash, auth_date, ...}
+ * @returns {{ user, uid, isNew }}
+ */
+export async function loginWithTelegramWidget(userData) {
+  if (!userData?.id || !userData?.hash) {
+    throw new Error('텔레그램 인증 데이터가 없습니다');
+  }
+  const callFn = httpsCallable(functions, 'telegramWebAuth');
+  const { data } = await callFn(userData);
+  const { token, uid, isNew } = data;
+  const cred = await signInWithCustomToken(auth, token);
+  return { user: cred.user, uid, isNew };
+}
