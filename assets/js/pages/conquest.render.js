@@ -219,13 +219,74 @@ function _drawSkillEffects(effects, W, H){
 
 // ── 맵 배경 ──────────────────────────────────────────────────────────────
 function _drawMap(W,H){
-  _ctx.fillStyle='#111a08'; _ctx.fillRect(0,0,W,H);
-  if(!_mapImg){_ctx.fillStyle='#1a2e10';_ctx.fillRect(0,0,W,H);return;}
-  const s=getScale();
-  const[sx,sy]=worldToScreen(0,0);
-  _ctx.imageSmoothingEnabled=true;
-  _ctx.imageSmoothingQuality='high';
-  _ctx.drawImage(_mapImg,sx,sy,WX*s,WY*s);
+  if(_mapImg){
+    // map.png 정상 로드 시 이미지 렌더
+    _ctx.fillStyle='#111a08'; _ctx.fillRect(0,0,W,H);
+    const s=getScale();
+    const[sx,sy]=worldToScreen(0,0);
+    _ctx.imageSmoothingEnabled=true; _ctx.imageSmoothingQuality='high';
+    _ctx.drawImage(_mapImg,sx,sy,WX*s,WY*s);
+    return;
+  }
+  // ── map.png 로드 실패 시 프로시저럴 지형 폴백 ─────────────────────────
+  _drawProceduralMap(W,H);
+}
+
+function _drawProceduralMap(W,H){
+  const ctx=_ctx, s=getScale();
+
+  // 1. 잔디 배경
+  const bg=ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#1a3a12'); bg.addColorStop(1,'#0f2208');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  // 2. 잔디 줄무늬
+  ctx.save();
+  for(let i=0;i<16;i++){
+    const [x0]=worldToScreen(i*WX/16,0), [x1]=worldToScreen((i+1)*WX/16,0);
+    ctx.fillStyle=i%2===0?'rgba(0,0,0,.06)':'rgba(255,255,255,.03)';
+    ctx.fillRect(x0,0,x1-x0,H);
+  }
+  ctx.restore();
+
+  // 3. 성 외곽 잔디 (밝은 원형)
+  const [cx,cy]=worldToScreen(CASTLE_WX,CASTLE_WY);
+  const castleR=2600*s;
+  const gCastle=ctx.createRadialGradient(cx,cy,castleR*0.3,cx,cy,castleR);
+  gCastle.addColorStop(0,'rgba(60,110,30,0.55)');
+  gCastle.addColorStop(1,'rgba(60,110,30,0)');
+  ctx.fillStyle=gCastle; ctx.beginPath(); ctx.arc(cx,cy,castleR,0,Math.PI*2); ctx.fill();
+
+  // 4. 성벽 사각형
+  const [wl,wt]=worldToScreen(3800,3800);
+  const [wr,wb]=worldToScreen(6200,6200);
+  ctx.strokeStyle='rgba(200,170,80,0.7)'; ctx.lineWidth=Math.max(3,8*s);
+  ctx.strokeRect(wl,wt,wr-wl,wb-wt);
+  ctx.fillStyle='rgba(180,140,60,0.12)'; ctx.fillRect(wl,wt,wr-wl,wb-wt);
+
+  // 5. 도로 (성문 → 맵 가장자리, 4방향)
+  const roads=[
+    [{x:5000,y:3800},{x:5000,y:0}],
+    [{x:5000,y:6200},{x:5000,y:10000}],
+    [{x:3800,y:5000},{x:0,y:5000}],
+    [{x:6200,y:5000},{x:10000,y:5000}],
+  ];
+  ctx.save();
+  ctx.strokeStyle='rgba(180,150,70,0.45)'; ctx.lineWidth=Math.max(4,100*s);
+  ctx.lineCap='round';
+  for(const[a,b] of roads){
+    const[ax,ay]=worldToScreen(a.x,a.y);
+    const[bx,by]=worldToScreen(b.x,b.y);
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+  }
+  ctx.restore();
+
+  // 6. 성 중심 표시
+  const [hx,hy]=worldToScreen(CASTLE_WX,CASTLE_WY);
+  ctx.fillStyle='rgba(255,215,0,0.18)';
+  ctx.beginPath(); ctx.arc(hx,hy,Math.max(8,60*s),0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(255,215,0,0.5)'; ctx.lineWidth=Math.max(2,3*s);
+  ctx.stroke();
 }
 
 // ── 도로 선 렌더링 (맵 이미지 위에 오버레이, 반투명) ────────────────────
