@@ -845,6 +845,7 @@ export async function loadPlayerState({ force = false } = {}) {
 }
 
 let _saveTimer = null;
+let _saveForceTimer = null;  // 최대 30초 강제 저장 타이머
 export function getPlayerGold()  { return _player.gold  || 0; }
 export function getPlayerToken() { return _player.token ?? 0; }
 
@@ -968,35 +969,48 @@ export function unequipArmor(slot) {
   savePlayerState();
 }
 
-export function savePlayerState() {
+async function _flushPlayerState() {
   const uid = _ctx?.uid;
   if (!uid) return;
   clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(async () => {
-    try {
-      await setDoc(doc(_ctx.db, 'battle_players', uid), {
-        uid, level: _player.level, xp: _player.xp,
-        hp: _player.hp, mp: _player.mp,
-        maxHp: _player.maxHp, maxMp: _player.maxMp,
-        gold:  _player.gold  || 0,
-        token: _player.token ?? 30,
-        isDead: _isDead,
-        reviveWalkDist: _reviveWalkDist,
-        deathLat: _deathLat ?? null,
-        deathLng: _deathLng ?? null,
-        equippedWeapon:  _player.equippedWeapon  || 'weapon_100',
-        equippedHelmet:  _player.equippedHelmet  || null,
-        equippedChest:   _player.equippedChest   || null,
-        equippedLegs:    _player.equippedLegs    || null,
-        equippedGloves:  _player.equippedGloves  || null,
-        equippedBoots:   _player.equippedBoots   || null,
-        gsExp:          _player.gsExp          || 0,
-        gsLevel:        _player.gsLevel        || _player.level,
-        monstersKilled: _player.monstersKilled || 0,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-    } catch { /* 무시 */ }
-  }, 3000);
+  clearTimeout(_saveForceTimer);
+  _saveTimer = null;
+  _saveForceTimer = null;
+  try {
+    await setDoc(doc(_ctx.db, 'battle_players', uid), {
+      uid, level: _player.level, xp: _player.xp,
+      hp: _player.hp, mp: _player.mp,
+      maxHp: _player.maxHp, maxMp: _player.maxMp,
+      gold:  _player.gold  || 0,
+      token: _player.token ?? 30,
+      isDead: _isDead,
+      reviveWalkDist: _reviveWalkDist,
+      deathLat: _deathLat ?? null,
+      deathLng: _deathLng ?? null,
+      equippedWeapon:  _player.equippedWeapon  || 'weapon_100',
+      equippedHelmet:  _player.equippedHelmet  || null,
+      equippedChest:   _player.equippedChest   || null,
+      equippedLegs:    _player.equippedLegs    || null,
+      equippedGloves:  _player.equippedGloves  || null,
+      equippedBoots:   _player.equippedBoots   || null,
+      gsExp:          _player.gsExp          || 0,
+      gsLevel:        _player.gsLevel        || _player.level,
+      monstersKilled: _player.monstersKilled || 0,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch { /* 무시 */ }
+}
+
+export function savePlayerState() {
+  const uid = _ctx?.uid;
+  if (!uid) return;
+  // 8초 디바운스: 연속 전투 중 불필요한 중간 저장 억제
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_flushPlayerState, 8000);
+  // 최대 30초 강제 저장: 데이터 유실 방지
+  if (!_saveForceTimer) {
+    _saveForceTimer = setTimeout(_flushPlayerState, 30000);
+  }
 }
 
 // ── EXP / 레벨업 시스템 ───────────────────────────────────────────────────────
