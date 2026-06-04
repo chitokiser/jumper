@@ -1142,7 +1142,10 @@ function renderUsersList() {
         <div class="muted" style="font-size:11px;font-family:monospace;">UID: ${esc(uid)} · 지갑: ${wallet}</div>
         ${tgInfo}${memberExp}
       </div>
-      <button class="btn btn-sm" data-act="viewUser" data-uid="${esc(uid)}" style="font-size:12px;flex-shrink:0;">상세</button>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+        <button class="btn btn-sm" data-act="viewUser" data-uid="${esc(uid)}" style="font-size:12px;">상세</button>
+        <button class="btn btn-sm" data-act="viewGp"   data-uid="${esc(uid)}" data-name="${name}" style="font-size:12px;background:#f0fdf4;border-color:#16a34a;color:#15803d;">🪙 GP 내역</button>
+      </div>
     </div>`;
   }).join("");
 
@@ -1157,6 +1160,119 @@ function renderUsersList() {
       openDialog(`회원 상세 — ${u.name || u.displayName || u.email || uid}`, { uid: _id, ...data });
     });
   });
+
+  userList.querySelectorAll("[data-act='viewGp']").forEach(btn => {
+    btn.addEventListener("click", () => showGpHistory(btn.dataset.uid, btn.dataset.name));
+  });
+}
+
+// ── GP 내역 모달 ─────────────────────────────────────────────────────────────
+async function showGpHistory(uid, userName) {
+  // 기존 모달 제거
+  document.getElementById("gpHistoryModal")?.remove();
+
+  const TYPE_COLOR = {
+    game:       "#3b82f6",
+    topup:      "#16a34a",
+    bonus:      "#f59e0b",
+    membership: "#8b5cf6",
+  };
+  const TYPE_ICON = {
+    game:       "🎮",
+    topup:      "🎁",
+    bonus:      "⭐",
+    membership: "👑",
+  };
+
+  const modal = document.createElement("div");
+  modal.id = "gpHistoryModal";
+  modal.style.cssText = `position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);
+    display:flex;align-items:center;justify-content:center;padding:16px;`;
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:min(560px,100%);
+      max-height:80vh;display:flex;flex-direction:column;
+      box-shadow:0 8px 40px rgba(0,0,0,.2);overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        padding:16px 20px;border-bottom:1px solid #e5e7eb;">
+        <div>
+          <div style="font-size:16px;font-weight:700;">🪙 GP 내역 — ${esc(userName || uid)}</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:2px;font-family:monospace;">${esc(uid)}</div>
+        </div>
+        <button id="gpHistoryClose" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;padding:4px 8px;">✕</button>
+      </div>
+      <div id="gpHistoryBody" style="overflow-y:auto;padding:16px 20px;flex:1;">
+        <div style="color:#6b7280;text-align:center;padding:24px;">불러오는 중...</div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  modal.querySelector("#gpHistoryClose").addEventListener("click", () => modal.remove());
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+
+  const body = modal.querySelector("#gpHistoryBody");
+
+  try {
+    const fn   = httpsCallable(functions, "adminGetUserGpHistory");
+    const res  = await fn({ targetUid: uid });
+    const data = res.data;
+
+    if (!data?.history?.length) {
+      body.innerHTML = `<div style="color:#9ca3af;text-align:center;padding:24px;">
+        현재 보유 GP: <strong>${(data?.currentGold || 0).toLocaleString()} GP</strong><br>
+        <span style="font-size:12px;margin-top:8px;display:block;">기록된 내역이 없습니다.</span>
+      </div>`;
+      return;
+    }
+
+    // 요약 카드
+    let html = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;color:#16a34a;font-weight:600;">현재 보유 GP</div>
+          <div style="font-size:20px;font-weight:800;color:#15803d;margin-top:4px;">
+            ${(data.currentGold || 0).toLocaleString()}
+          </div>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;color:#2563eb;font-weight:600;">누적 획득 GP</div>
+          <div style="font-size:20px;font-weight:800;color:#1d4ed8;margin-top:4px;">
+            ${(data.totalEarned || 0).toLocaleString()}
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#6b7280;font-weight:600;margin-bottom:8px;
+        padding-bottom:6px;border-bottom:1px solid #f3f4f6;">
+        내역 ${data.history.length}건
+      </div>`;
+
+    // 내역 테이블
+    html += data.history.map(r => {
+      const color = TYPE_COLOR[r.type] || "#6b7280";
+      const icon  = TYPE_ICON[r.type]  || "•";
+      const gpStr = r.gp > 0
+        ? `<span style="font-weight:700;color:${color};">+${r.gp.toLocaleString()} GP</span>`
+        : `<span style="color:#9ca3af;font-size:11px;">(GP 없음)</span>`;
+      const extra = r.tonAmount
+        ? `<span style="font-size:10px;color:#8b5cf6;margin-left:4px;">${r.tonAmount} TON · 만료: ${r.expiresAt || "-"}</span>`
+        : "";
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;
+          border-bottom:1px solid #f9fafb;">
+          <span style="font-size:18px;flex-shrink:0;">${icon}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:#111;">
+              ${esc(r.label)}${extra}
+            </div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:1px;">${esc(r.date)}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">${gpStr}</div>
+        </div>`;
+    }).join("");
+
+    body.innerHTML = html;
+  } catch (err) {
+    body.innerHTML = `<div style="color:#dc2626;padding:16px;">오류: ${esc(err.message)}</div>`;
+  }
 }
 
 {

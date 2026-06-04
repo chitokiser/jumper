@@ -174,6 +174,15 @@ exports.adminGetMembershipStats = onCall(wrapError(async (request) => {
   return await membershipH.adminGetMembershipStats();
 }));
 
+// 관리자: 유저 GP 내역 조회
+exports.adminGetUserGpHistory = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  await requireAdmin(uid);
+  const { targetUid } = request.data ?? {};
+  if (!targetUid) throw new HttpsError('invalid-argument', 'targetUid 누락');
+  return await gameRewardH.adminGetUserGpHistory(targetUid);
+}));
+
 // 초대 보상 처리 (bot.py → 내부 호출, 공유 시크릿 헤더 검증)
 exports.processReferralReward = onCall(wrapError(async (request) => {
   const { referrerUid, newUserUid } = request.data ?? {};
