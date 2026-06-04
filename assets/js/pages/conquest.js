@@ -149,12 +149,24 @@ function startGame(){
 async function endGame(won){
   cancelAnimationFrame(_raf);
   if(won) playSound('revive'); else playSound('player_die');
-  const reward=won&&!_freePlay?Math.floor(150+_wave*40):0;
-  if(won&&reward>0)await awardGP(reward);
+
+  // 승리: 웨이브당 40 + 기본 150 GP
+  // 패배: 완료한 웨이브당 50 GP 위로 보상 (웨이브 1개라도 클리어했으면 지급)
+  const winReward  = won && !_freePlay ? Math.floor(150 + _wave * 40) : 0;
+  const loseReward = !won && !_freePlay && _wave > 0 ? _wave * 50 : 0;
+  const reward = winReward || loseReward;
+
+  if(reward > 0) await awardGP(reward);
+
   const el=$('gameResult');
-  if(el)el.innerHTML=won
-    ?`<div style="font-size:26px;color:#fbbf24">승리!</div><div>${_wave}웨이브 클리어</div><div style="color:#22c55e;font-size:18px">+${reward} GP</div>`
-    :`<div style="font-size:26px;color:#ef4444">게임오버</div><div style="color:#9ca3af">성이 함락되었습니다</div>`;
+  if(el) el.innerHTML = won
+    ? `<div style="font-size:26px;color:#fbbf24">승리! 🏆</div>
+       <div>${_wave}웨이브 전부 클리어</div>
+       <div style="color:#22c55e;font-size:18px">+${reward} GP</div>`
+    : `<div style="font-size:26px;color:#ef4444">게임오버 💀</div>
+       <div style="color:#9ca3af">${_wave}웨이브까지 방어 — 성이 함락되었습니다</div>
+       <div style="color:#fbbf24;font-size:16px;margin-top:6px">${loseReward > 0 ? `+${loseReward} GP 위로 보상` : '웨이브를 클리어해야 보상이 지급됩니다'}</div>`;
+
   showPhase('gameover');
 }
 
