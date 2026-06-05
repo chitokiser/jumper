@@ -812,6 +812,39 @@ async def cb_show_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _reply_rate(q.message)
 
 
+def _seed_stars_products():
+    col  = _db.collection("stars_products")
+    if len(col.limit(1).get()) > 0:
+        return {"skipped": True}
+    products = [
+        {
+            "name": "Premium Membership (30 Days)",
+            "description": "⭐ Daily 3,500 GP top-up + exclusive treasure boxes + Level 4 boost. Valid 30 days.",
+            "starsPrice": 800,
+            "productType": "premium",
+            "grantValue": 30,
+            "active": True,
+        },
+    ]
+    for p in products:
+        col.add({**p, "createdAt": firestore.SERVER_TIMESTAMP})
+    return {"seeded": len(products)}
+
+
+async def cmd_seedstars(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """관리자 전용: Stars 상품 시드."""
+    uid = _uid(update.effective_user.id)
+    admin_snap = _db.collection("admins").document(uid).get()
+    if not admin_snap.exists:
+        return
+    try:
+        result = await _run(_seed_stars_products)
+        msg = "✅ Already seeded." if result.get("skipped") else f"✅ Seeded {result['seeded']} product(s)."
+        await update.message.reply_text(msg)
+    except Exception as e:
+        await update.message.reply_text(f"❌ {e}")
+
+
 async def cmd_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """그룹/채널 chat_id 확인 — ANNOUNCE_GROUP_ID 설정용"""
     chat = update.effective_chat
@@ -1364,6 +1397,7 @@ def main():
     app.add_handler(CommandHandler("rate",       cmd_rate))
     app.add_handler(CommandHandler("buy",        cmd_buy))
     app.add_handler(CommandHandler("mystats",    cmd_mystats))
+    app.add_handler(CommandHandler("seedstars",  cmd_seedstars))
 
     app.add_handler(CallbackQueryHandler(cb_membership_info,   pattern="^membership_info$"))
     app.add_handler(CallbackQueryHandler(cb_buy_premium,       pattern="^buy_premium$"))
