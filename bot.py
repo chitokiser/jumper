@@ -333,6 +333,7 @@ def _save_pending_referral(new_uid: str, referrer_uid: str):
 
 
 def _process_pending_referral(new_uid: str):
+    """추천인에게 500 GP 지급 — 지갑 생성 완료 시 호출 (정회원 조건 없음)."""
     pending = _db.collection("pending_referrals").document(new_uid).get()
     if not pending.exists:
         return
@@ -341,16 +342,13 @@ def _process_pending_referral(new_uid: str):
     if not referrer_uid or referrer_uid == new_uid:
         return
 
+    # 이미 처리된 추천이면 스킵
     dup = _db.collection("membership_referrals").where("newUserUid", "==", new_uid).limit(1).get()
     if len(dup) > 0:
         return
 
-    today    = _today_utc7()
     ref_snap = _db.collection("users").document(referrer_uid).get()
     if not ref_snap.exists:
-        return
-    expiry = (ref_snap.to_dict() or {}).get("coopMemberUntil", "")
-    if not expiry or expiry < today:
         return
 
     _db.collection("battle_players").document(referrer_uid).set(
@@ -406,6 +404,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
             [InlineKeyboardButton("📝 회원가입 / Register (1000 게임코인 에어드랍)", callback_data="register_check")],
+            [InlineKeyboardButton("👥 친구 초대링크 받기 / Get Referral Link", callback_data="referral_link")],
             [
                 InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/treasure.html"),
                 InlineKeyboardButton("🏎️ Monster Racing",  url="https://jump22.netlify.app/monsterrace.html"),
@@ -414,6 +413,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("🏹 Archery Hunt",   url="https://jump22.netlify.app/bow.html"),
                 InlineKeyboardButton("🃏 Speed Memory",   url="https://jump22.netlify.app/memory.html"),
             ],
+            [InlineKeyboardButton("🏃 이어달리기 / Relay Race", url="https://jump22.netlify.app/relay.html")],
             [InlineKeyboardButton("🏰 Monster Defense",   url="https://jump22.netlify.app/conquest.html")],
             [InlineKeyboardButton("⭐ 정회원 혜택 / Premium Benefits", callback_data="membership_info")],
         ]
@@ -671,20 +671,24 @@ async def cb_select_mentor(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
+        # 지갑 생성 성공 → 추천인 500 GP 처리
+        try:
+            await _run(_process_pending_referral, uid)
+        except Exception:
+            pass
+
         chain_line = (
-            "✅ [3/3] 온체인 등록 완료 / On-chain registered\n"
+            "온체인 등록 완료\n"
             if registered else
-            "⏳ [3/3] 온체인 등록 진행 중 (자동 완료 예정)\n"
-            "    _On-chain registration in progress (auto-complete)_\n"
+            "온체인 등록 진행 중 (자동 완료 예정)\n"
         )
-        bonus_line = "🎁 *1,000 GP* 에어드랍 지급 완료! / *1,000 GP* airdrop credited!\n" if join_bonus else ""
+        bonus_line = "🎁 *1,000 GP* 지급 완료!\n" if join_bonus else ""
         await _edit(
-            f"🎉 *가입 완료! / Registration Complete!*\n\n"
-            f"💼 지갑 / Wallet: `{address}`\n"
+            f"🎉 *수탁지갑 생성 완료!*\n\n"
+            f"💼 지갑: `{address}`\n"
             f"{chain_line}"
             f"{bonus_line}\n"
-            f"이제 정회원 업그레이드를 진행하세요!\n"
-            f"_Proceed to Premium upgrade!_",
+            f"이제 정회원 업그레이드를 진행하세요!",
             [[InlineKeyboardButton("⭐ 정회원 가입 / Join Premium", callback_data="membership_info")]],
         )
 
