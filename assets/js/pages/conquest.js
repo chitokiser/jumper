@@ -74,6 +74,8 @@ let _pinch=null;
 
 const $=id=>document.getElementById(id);
 
+const UNIT_EMOJI={villager:'🛡️',miner:'⛏️',scout:'🔍',archer_tower:'🏹',cannon_tower:'💣',hero:'⚔️'};
+
 // ── 화면 전환 ─────────────────────────────────────────────────────────────
 function showPhase(n){
   ['loading','lobby','game','gameover'].forEach(p=>$(`${p}Screen`)?.classList.add('hidden'));
@@ -414,14 +416,32 @@ function renderHUD(){
   _updateSkillUI();
   const db2=$('btnDispatch');
   if(db2)db2.classList.toggle('active',_dispatchMode);
-  // 선택 유닛 상태 표시
+  // 선택 유닛 상태 표시 (HUD 우측 소형)
   const selEl=$('hudSelected');
-  if(selEl){
-    if(_selected.size>0){
-      const first=_defenders.find(d=>d.selected&&!d.isTower);
-      const mode=first?.patrolMode?'🔄순찰':first?.guardMode?'🛡경계':first?.targetId?'⚔공격':'🚶이동대기';
-      selEl.textContent=`${_selected.size}명 ${mode}`;
-    } else selEl.textContent='';
+  if(selEl) selEl.textContent=_selected.size>0?`${_selected.size}명 선택`:'';
+
+  // 선택 유닛 배너 (캔버스 위 오버레이)
+  const banner=$('unitBanner');
+  if(banner){
+    const first=_defenders.find(d=>d.selected&&!d.dying);
+    if(first){
+      const def=UNIT_DEFS[first.type]||{};
+      const maxHp=def.hp||1;
+      const hpPct=Math.max(0,Math.min(100,(first.hp/maxHp)*100));
+      const hpColor=hpPct>50?'#22c55e':hpPct>25?'#f59e0b':'#ef4444';
+      const mode=first.patrolMode?'🔄 순찰':first.guardMode?'🛡 경계':first.targetId?'⚔️ 공격':'🚶 대기';
+      const emoji=UNIT_EMOJI[first.type]||'👤';
+      const extra=_selected.size>1?` +${_selected.size-1}명`:'';
+      $('ubIcon').textContent=emoji;
+      $('ubLabel').textContent=(def.label||first.type)+extra;
+      $('ubHpFill').style.width=hpPct+'%';
+      $('ubHpFill').style.background=hpColor;
+      $('ubHpText').textContent=`${first.hp}/${maxHp}`;
+      $('ubMode').textContent=mode;
+      banner.classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
+    }
   }
   // 경계 버튼 활성 표시
   const guardBtn=$('btnGuard');
@@ -555,13 +575,16 @@ function _onWheel(e){
 // ── 캔버스 ───────────────────────────────────────────────────────────────
 function _resizeCanvas(){
   const cv=$('gameCanvas');
-  const topH=$('gameTop')?.offsetHeight||44;
+  const topH=($('gameTop')?.offsetHeight||44)+($('skillBar')?.offsetHeight||0);
   const botH=$('gameBot')?.offsetHeight||88;
-  // 가로·세로 동일 — 10km×10km 정사각형 맵 유지
-  const size=Math.min(window.innerWidth, window.innerHeight-topH-botH);
-  cv.width=size; cv.height=size;
-  cv.style.width=size+'px'; cv.style.height=size+'px';
-  initRenderer(cv); initCamera(cv); resizeCamera(size,size);
+  const availH=window.innerHeight-topH-botH;
+  const availW=window.innerWidth;
+  // 9:16 세로형 최대화
+  let w=availW, h=Math.round(w*16/9);
+  if(h>availH){h=availH;w=Math.round(h*9/16);}
+  cv.width=w; cv.height=h;
+  cv.style.width=w+'px'; cv.style.height=h+'px';
+  initRenderer(cv); initCamera(cv); resizeCamera(w,h);
 }
 
 function _setPlacing(type){

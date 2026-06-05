@@ -72,7 +72,21 @@ html,body{height:100%;background:#0a0f05;color:#fff;
   color:#9ca3af;border-radius:10px;font-size:12px;cursor:pointer;width:100%;max-width:290px}
 
 /* ── 게임 화면 ── */
-#gameScreen{padding:0;justify-content:flex-start;align-items:center;background:#080e04}
+#gameScreen{padding:0;justify-content:flex-start;align-items:center;background:#080e04;position:relative}
+
+/* 선택 유닛 배너 */
+#unitBanner{
+  position:absolute;left:0;right:0;top:44px;
+  background:rgba(8,14,4,.95);border-bottom:1px solid #1f2937;
+  padding:5px 10px;display:flex;align-items:center;gap:8px;
+  z-index:15;pointer-events:none;
+}
+#unitBanner.hidden{display:none!important}
+.ub-label{font-size:13px;font-weight:800;color:#fff;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ub-hpbar{width:64px;height:5px;background:#1f2937;border-radius:3px;overflow:hidden;flex-shrink:0}
+.ub-hpfill{height:100%;border-radius:3px;transition:width .15s,background .15s}
+.ub-mode{font-size:11px;color:#6ee7b7;flex-shrink:0;white-space:nowrap}
 
 /* 상단 HUD */
 #gameTop{
@@ -199,6 +213,14 @@ html,body{height:100%;background:#0a0f05;color:#fff;
     <div id="hudPrep">준비 중...</div>
     <div class="hc" id="hudGP">💰 300</div>
     <div id="hudSelected"></div>
+  </div>
+  <!-- 선택 유닛 배너 -->
+  <div id="unitBanner" class="hidden">
+    <span id="ubIcon" style="font-size:20px;flex-shrink:0;line-height:1"></span>
+    <span class="ub-label" id="ubLabel"></span>
+    <div class="ub-hpbar"><div class="ub-hpfill" id="ubHpFill"></div></div>
+    <span id="ubHpText" style="font-size:10px;color:#9ca3af;white-space:nowrap;flex-shrink:0"></span>
+    <span class="ub-mode" id="ubMode"></span>
   </div>
 
   <canvas id="gameCanvas"></canvas>
