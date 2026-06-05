@@ -752,6 +752,18 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
 
+    // NPC 캐릭터 — 누구나 읽기, 관리자만 쓰기
+    match /npc_characters/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // NPC 스케줄러 상태 — 관리자 읽기, Cloud Function 쓰기(admin SDK)
+    match /system/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
