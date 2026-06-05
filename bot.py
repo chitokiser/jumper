@@ -455,14 +455,13 @@ async def _send_group_invite_link(message, uid: str, context: ContextTypes.DEFAU
             link = invite.invite_link
             await _run(_store_invite_link, link, uid)
         await _safe_reply(message,
-            f"🔗 내 그룹 초대링크 / My group invite link\n\n{link}\n\n"
-            f"이 링크로 입장한 신규 멤버 1명당 *+{GROUP_INVITE_GP} GP* 지급!\n"
-            f"_(최초 입장 기준, 중복 없음)_\n"
-            f"_+{GROUP_INVITE_GP} GP per new member (first join only)_"
+            f"🔗 *Your group invite link*\n\n{link}\n\n"
+            f"Earn *+{GROUP_INVITE_GP} GP* for every new member who joins!\n"
+            f"_(First join only, no duplicates)_"
         )
     except Exception as e:
         print(f"[ERROR] _send_group_invite_link: {e}")
-        await _safe_reply(message, "❌ 링크 생성 실패. 봇이 그룹 관리자(초대링크 생성 권한)인지 확인해주세요.")
+        await _safe_reply(message, "❌ Failed to create link. Make sure the bot is a group admin with invite link permission.")
 
 
 async def cmd_mylink(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -476,22 +475,20 @@ async def cmd_myinvites(update: Update, context: ContextTypes.DEFAULT_TYPE):
         invites = await _run(_get_my_invites, uid)
         if not invites:
             await _safe_reply(update.message,
-                "👥 아직 초대한 멤버가 없습니다.\n"
-                "_No invited members yet._\n\n"
-                "/mylink 으로 초대링크를 받으세요!"
+                "👥 *No invited members yet.*\n\n"
+                "Use /mylink to get your group invite link!"
             )
             return
         total_gp = sum(i["gp"] for i in invites)
         lines = "\n".join(f"• {i['name']} (+{i['gp']} GP)" for i in invites)
         await _safe_reply(update.message,
-            f"👥 내가 초대한 멤버 / My invited members\n\n"
+            f"👥 *My Invited Members*\n\n"
             f"{lines}\n\n"
-            f"총 *{len(invites)}명* · 누적 *+{total_gp} GP* 획득\n"
-            f"_Total {len(invites)} members · +{total_gp} GP earned_"
+            f"Total: *{len(invites)} members* · *+{total_gp} GP* earned"
         )
     except Exception as e:
         print(f"[ERROR] cmd_myinvites: {e}")
-        await _safe_reply(update.message, "❌ 조회 실패. 잠시 후 다시 시도해주세요.")
+        await _safe_reply(update.message, "❌ Failed to load. Please try again later.")
 
 
 async def cmd_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -517,14 +514,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # 그룹에서는 web_app 버튼이 BadRequest를 유발하므로 DM 유도 메시지만 전송
             bot_name = _bot_username or context.bot.username or (await context.bot.get_me()).username
             keyboard = [[
-                InlineKeyboardButton("🎮 JumpDAO 시작하기 / Open Bot", url=f"https://t.me/{bot_name}?start=hi"),
+                InlineKeyboardButton("🎮 Open JumpDAO Bot", url=f"https://t.me/{bot_name}?start=hi"),
             ]]
             await update.message.reply_text(
                 "*JumpDAO*\n\n"
-                "게임포인트 ⇔ Toncoin & USDT 교환이 가능한 검증된 코인 게임 허브입니다.\n"
-                "_A verified game hub where Game Points ⇔ Toncoin & USDT can be exchanged._\n\n"
-                "👇 아래 버튼을 눌러 봇 개인 채팅에서 시작하세요!\n"
-                "_Tap the button below to start in a private chat with the bot!_",
+                "A verified game hub where\n"
+                "Game Points ⇔ Toncoin & USDT can be exchanged.\n\n"
+                "👇 Tap below to start in a private chat!",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup(keyboard),
             )
@@ -532,9 +528,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = [
             [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
-            [InlineKeyboardButton("📝 회원가입 / Register (1000 게임코인 에어드랍)", callback_data="register_check")],
-            [InlineKeyboardButton("👥 친구 초대링크 받기 / Get Referral Link", callback_data="referral_link")],
-            [InlineKeyboardButton(f"🔗 그룹 초대링크 (+{GROUP_INVITE_GP} GP) / Group Invite", callback_data="group_invite_link")],
+            [InlineKeyboardButton("📝 Register — Get 1,000 GP Airdrop!", callback_data="register_check")],
+            [InlineKeyboardButton("👥 Get Referral Link (+500 GP)", callback_data="referral_link")],
+            [InlineKeyboardButton(f"🔗 Group Invite Link (+{GROUP_INVITE_GP} GP/person)", callback_data="group_invite_link")],
             [
                 InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/treasure.html"),
                 InlineKeyboardButton("🏎️ Monster Racing",  url="https://jump22.netlify.app/monsterrace.html"),
@@ -543,16 +539,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("🏹 Archery Hunt",   url="https://jump22.netlify.app/bow.html"),
                 InlineKeyboardButton("🃏 Speed Memory",   url="https://jump22.netlify.app/memory.html"),
             ],
-            [InlineKeyboardButton("🏃 이어달리기 / Relay Race", url="https://jump22.netlify.app/relay.html")],
-            [InlineKeyboardButton("🏰 Monster Defense",   url="https://jump22.netlify.app/conquest.html")],
-            [InlineKeyboardButton("⭐ 정회원 혜택 / Premium Benefits", callback_data="membership_info")],
+            [InlineKeyboardButton("🏃 Relay Race", url="https://jump22.netlify.app/relay.html")],
+            [InlineKeyboardButton("🏰 Monster Defense", url="https://jump22.netlify.app/conquest.html")],
+            [InlineKeyboardButton("⭐ Premium Benefits", callback_data="membership_info")],
         ]
         await update.message.reply_text(
             "*JumpDAO*\n\n"
-            "게임포인트 ⇔ Toncoin & USDT 교환이 가능한\n"
-            "검증된 코인 게임 허브입니다.\n\n"
-            "_A verified game hub where_\n"
-            "_Game Points ⇔ Toncoin & USDT can be exchanged_",
+            "A verified game hub where\n"
+            "Game Points ⇔ Toncoin & USDT can be exchanged.",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
@@ -567,19 +561,13 @@ async def cmd_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _send_membership_ui(update.message, st)
     except Exception as e:
         print(f"[ERROR] cmd_membership: {e}")
-        await update.message.reply_text(
-            "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.\n"
-            "_An error occurred. Please try again later._",
-            parse_mode="Markdown",
-        )
+        await update.message.reply_text("❌ An error occurred. Please try again later.")
 
 
 async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if _user_state.pop(user_id, None):
-        await update.message.reply_text(
-            "결제가 취소되었습니다.\nPayment cancelled."
-        )
+        await update.message.reply_text("Payment cancelled.")
 
 
 async def cmd_play(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -596,7 +584,7 @@ async def cb_membership_info(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await _send_membership_ui(q.message, st)
     except Exception as e:
         print(f"[ERROR] cb_membership_info: {e}")
-        await _safe_reply(q.message, "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "membership_info")
+        await _safe_reply(q.message, "❌ An error occurred. Please try again later.", "membership_info")
 
 
 async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -610,12 +598,11 @@ async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
         wallet = await _run(_get_user_wallet, uid)
         if not wallet:
             await q.message.reply_text(
-                "⚠️ *회원가입이 필요합니다 / Registration required*\n\n"
-                "정회원 업그레이드 전에 먼저 회원가입(지갑 생성)을 완료해주세요.\n"
-                "_Please complete registration before upgrading to Premium._",
+                "⚠️ *Registration required*\n\n"
+                "Please complete registration (create wallet) before upgrading to Premium.",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("📝 회원가입 / Register", callback_data="register_check"),
+                    InlineKeyboardButton("📝 Register", callback_data="register_check"),
                 ]]),
             )
             return
@@ -625,26 +612,23 @@ async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         _user_state[user_id] = "awaiting_txhash"
 
-        addr_display = f"`{TON_DEPOSIT_ADDRESS}`" if TON_DEPOSIT_ADDRESS else "_(주소 미설정 — 관리자 문의 / address not set — contact admin)_"
+        addr_display = f"`{TON_DEPOSIT_ADDRESS}`" if TON_DEPOSIT_ADDRESS else "_(address not set — contact admin)_"
 
         text = (
-            f"💎 *정회원 TON 결제 / Premium TON Payment*\n"
+            f"💎 *Premium TON Payment*\n"
             f"━━━━━━━━━━━━━━━━━━\n"
-            f"💰 금액 / Amount: `{price} TON`\n"
-            f"📬 입금 주소 / Deposit address:\n{addr_display}\n"
+            f"💰 Amount: `{price} TON`\n"
+            f"📬 Deposit address:\n{addr_display}\n"
             f"━━━━━━━━━━━━━━━━━━\n\n"
-            f"1️⃣ 위 주소로 정확히 *{price} TON* 전송\n"
-            f"    _Send exactly *{price} TON* to the address above_\n\n"
-            f"2️⃣ 전송 후 *트랜잭션 해시*를 이 채팅에 붙여넣기\n"
-            f"    _Paste the *transaction hash* into this chat_\n\n"
-            f"_해시: TON 지갑 앱 → 거래 내역 → 해당 거래 상세_\n"
-            f"_Hash: TON wallet → Transaction history → Details_\n\n"
-            f"/cancel 로 취소 / to abort"
+            f"1️⃣ Send exactly *{price} TON* to the address above\n\n"
+            f"2️⃣ Paste the *transaction hash* into this chat\n\n"
+            f"_Hash: TON wallet app → Transaction history → Details_\n\n"
+            f"/cancel to abort"
         )
         await q.message.reply_text(text, parse_mode="Markdown")
     except Exception as e:
         print(f"[ERROR] cb_buy_premium: {e}")
-        await _safe_reply(q.message, "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "buy_premium")
+        await _safe_reply(q.message, "❌ An error occurred. Please try again later.", "buy_premium")
 
 
 async def cb_group_invite_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -664,13 +648,14 @@ async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             raise Exception("bot_name unavailable")
         link     = f"https://t.me/{bot_name}?start=REF{uid}"
         await q.message.reply_text(
-            f"👥 친구 초대 링크\n\n{link}\n\n"
-            f"친구가 수탁지갑을 생성하면 500 GP 지급!\n"
-            f"(지갑 생성 후 자동 지급, 정회원 불필요)",
+            f"👥 *Your Referral Link*\n\n{link}\n\n"
+            f"Earn *+500 GP* when your friend creates a custodial wallet!\n"
+            f"_(Paid automatically after wallet creation, no Premium required)_",
+            parse_mode="Markdown",
         )
     except Exception as e:
         print(f"[ERROR] cb_referral_link: {e}")
-        await _safe_reply(q.message, "❌ 링크 생성 실패. 잠시 후 다시 시도해주세요.", "referral_link")
+        await _safe_reply(q.message, "❌ Failed to generate link. Please try again.", "referral_link")
 
 
 async def cb_register_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -688,32 +673,30 @@ async def cb_register_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             addr   = (wallet or {}).get("address", "")
             short  = addr[:8] + "..." + addr[-6:] if addr else "?"
             await q.message.reply_text(
-                f"✅ *이미 가입된 계정입니다*\n지갑: `{short}`\n\n"
-                f"_Already registered._",
+                f"✅ *Already registered*\nWallet: `{short}`",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("⭐ 정회원 혜택", callback_data="membership_info"),
+                    InlineKeyboardButton("⭐ Premium Benefits", callback_data="membership_info"),
                 ]]),
             )
             return
 
-        bonus_line  = "🎁 *1,000 GP* 지급 완료!\n" if result.get("got_bonus") else ""
-        level_line  = "⭐ 정회원 레벨 4 설정됨!\n" if result.get("is_premium") else ""
+        bonus_line = "🎁 *1,000 GP* credited!\n" if result.get("got_bonus") else ""
+        level_line = "⭐ Level 4 boost applied!\n" if result.get("is_premium") else ""
         await q.message.reply_text(
-            f"✅ *가입 완료!*\n\n"
+            f"✅ *Registration complete!*\n\n"
             f"{bonus_line}"
             f"{level_line}\n"
-            f"💼 수탁지갑을 생성하면 온체인 레벨업이 가능합니다.\n"
-            f"_Create a custodial wallet to unlock on-chain level-up!_",
+            f"💼 Create a custodial wallet to unlock on-chain level-up!",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("💼 수탁지갑 생성하기 / Create Wallet", callback_data="create_wallet")],
-                [InlineKeyboardButton("⭐ 정회원 혜택 보기", callback_data="membership_info")],
+                [InlineKeyboardButton("💼 Create Wallet", callback_data="create_wallet")],
+                [InlineKeyboardButton("⭐ Premium Benefits", callback_data="membership_info")],
             ]),
         )
     except Exception as e:
         print(f"[ERROR] cb_register_check: {e}")
-        await _safe_reply(q.message, "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "register_check")
+        await _safe_reply(q.message, "❌ An error occurred. Please try again later.", "register_check")
 
 
 async def cb_create_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -729,19 +712,18 @@ async def cb_create_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"👤 {r['label']}", callback_data=f"select_mentor_{r['address']}"
             )])
         keyboard.append([InlineKeyboardButton(
-            "🏠 기본 멘토 / Default Mentor",
+            "🏠 Default Mentor",
             callback_data=f"select_mentor_{DEFAULT_MENTOR_ADDR}",
         )])
         await q.message.reply_text(
-            "💼 *수탁지갑 생성 — 멘토를 선택하세요*\n\n"
-            "멘토는 추천인으로 등록되며 추후 변경이 어렵습니다.\n"
-            "_Select your mentor (referrer)._",
+            "💼 *Create Custodial Wallet — Select Your Mentor*\n\n"
+            "Your mentor is registered as your referrer and cannot be changed easily.",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
     except Exception as e:
         print(f"[ERROR] cb_create_wallet: {e}")
-        await _safe_reply(q.message, "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "create_wallet")
+        await _safe_reply(q.message, "❌ An error occurred. Please try again later.", "create_wallet")
 
 
 async def cb_select_mentor(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -753,9 +735,7 @@ async def cb_select_mentor(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 처리 중 메시지 — edit_text로 결과를 덮어쓰므로 delete 불필요
     wait_msg = await q.message.reply_text(
-        "⏳ *[1/3] 지갑 생성 중... / Creating wallet...*\n"
-        "잠시만 기다려주세요 (최대 90초)\n"
-        "_Please wait (up to 90 sec)_",
+        "⏳ *[1/3] Creating wallet...*\n_Please wait (up to 90 sec)_",
         parse_mode="Markdown",
     )
 
@@ -777,44 +757,37 @@ async def cb_select_mentor(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not created:
             short = address[:8] + "..." + address[-6:] if address else "?"
             await _edit(
-                f"✅ *이미 가입된 계정입니다 / Already registered*\n"
-                f"지갑 / Wallet: `{short}`",
-                [[InlineKeyboardButton("⭐ 정회원 업그레이드 / Go Premium", callback_data="membership_info")]],
+                f"✅ *Already registered*\nWallet: `{short}`",
+                [[InlineKeyboardButton("⭐ Go Premium", callback_data="membership_info")]],
             )
             return
 
-        # 지갑 생성 성공 → 추천인 500 GP 처리
         try:
             await _run(_process_pending_referral, uid)
         except Exception:
             pass
 
-        chain_line = (
-            "온체인 등록 완료\n"
-            if registered else
-            "온체인 등록 진행 중 (자동 완료 예정)\n"
-        )
-        bonus_line = "🎁 *1,000 GP* 지급 완료!\n" if join_bonus else ""
+        chain_line = "On-chain registration complete\n" if registered else "On-chain registration in progress (auto)\n"
+        bonus_line = "🎁 *1,000 GP* credited!\n" if join_bonus else ""
         await _edit(
-            f"🎉 *수탁지갑 생성 완료!*\n\n"
-            f"💼 지갑: `{address}`\n"
+            f"🎉 *Wallet Created!*\n\n"
+            f"💼 Wallet: `{address}`\n"
             f"{chain_line}"
             f"{bonus_line}\n"
-            f"이제 정회원 업그레이드를 진행하세요!",
-            [[InlineKeyboardButton("⭐ 정회원 가입 / Join Premium", callback_data="membership_info")]],
+            f"You can now upgrade to Premium!",
+            [[InlineKeyboardButton("⭐ Join Premium", callback_data="membership_info")]],
         )
 
     except Exception as e:
         print(f"[ERROR] cb_select_mentor: {e}")
         err_msg = str(e)
         if "timeout" in err_msg.lower() or "timed out" in err_msg.lower():
-            err_msg = "서버 응답 시간 초과 / Server timeout — 잠시 후 다시 시도하세요"
+            err_msg = "Server timeout — please try again later"
         await _edit(
-            f"❌ *가입 실패 / Registration failed*\n\n"
+            f"❌ *Registration failed*\n\n"
             f"{err_msg}\n\n"
-            "잠시 후 다시 시도하거나 고객센터에 문의하세요.\n"
-            "_Please retry later or contact support._",
-            [[InlineKeyboardButton("🔄 다시 시도 / Retry", callback_data="register_check")]],
+            "Please retry later or contact support.",
+            [[InlineKeyboardButton("🔄 Retry", callback_data="register_check")]],
         )
 
 # ── 그룹 멤버 입장 감지 ──────────────────────────────────────────────────────
@@ -830,8 +803,28 @@ async def on_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if new_st not in ("member", "restricted") or old_st in ("member", "administrator", "creator", "restricted"):
         return
 
-    new_uid     = _uid(cm.new_chat_member.user.id)
+    new_member  = cm.new_chat_member.user
+    new_uid     = _uid(new_member.id)
     inviter_uid = None
+
+    # 환영 메시지
+    try:
+        name     = new_member.first_name or "there"
+        bot_name = _bot_username or context.bot.username or ""
+        welcome  = (
+            f"👋 Welcome, <b>{name}</b>!\n\n"
+            f"🎁 <b>Register</b> → Get <b>1,000 GP</b> instantly\n"
+            f"🔗 <b>Invite friends</b> → Earn <b>+{GROUP_INVITE_GP} GP</b> per person\n\n"
+            f"Tap below to start! 👇"
+        )
+        kb = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🎮 Start JumpDAO", url=f"https://t.me/{bot_name}?start=hi")
+        ]]) if bot_name else None
+        await context.bot.send_message(chat_id=GROUP_CHAT_ID, text=welcome,
+                                       parse_mode="HTML", reply_markup=kb,
+                                       disable_notification=True)
+    except Exception:
+        pass
 
     # 방법1: 추적 초대링크로 입장
     if cm.invite_link:
@@ -855,7 +848,7 @@ async def on_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 tg_id = int(inviter_uid.replace("tg_", ""))
                 await context.bot.send_message(
                     chat_id=tg_id,
-                    text=f"🎉 그룹 초대 보상! / Invite reward!\n\n*+{GROUP_INVITE_GP} GP* 지급됐습니다!\n_+{GROUP_INVITE_GP} GP has been credited!_",
+                    text=f"🎉 *Invite Reward!*\n\n*+{GROUP_INVITE_GP} GP* has been credited to your account!",
                     parse_mode="Markdown",
                 )
             except Exception:
@@ -878,8 +871,7 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = _uid(user_id)
 
     wait_msg = await update.message.reply_text(
-        "🔍 *결제 확인 중... / Verifying payment...*\n"
-        "잠시만 기다려주세요 (최대 20초) / _Please wait (up to 20 sec)_",
+        "🔍 *Verifying payment...*\n_Please wait (up to 20 sec)_",
         parse_mode="Markdown",
     )
 
@@ -898,15 +890,14 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
         invite    = f"https://t.me/{bot_name}?start=REF{uid}"
 
         text = (
-            f"🎉 *정회원 활성화 완료! / Premium Activated!*\n\n"
-            f"✅ 결제 확인 완료 / Payment verified\n"
-            f"만료일 / Expires: `{expiry}`\n"
-            f"🎁 매일 3,500 GP 충전 활성화 (GP 1,000 이하 시)\n"
-            f"_Daily 3,500 GP top-up activated (when GP ≤ 1,000)_\n"
+            f"🎉 *Premium Activated!*\n\n"
+            f"✅ Payment verified\n"
+            f"Expires: `{expiry}`\n"
+            f"🎁 Daily 3,500 GP top-up activated (when GP ≤ 1,000)\n"
         )
         if is_first:
-            text += "🎮 레벨 4 부스트 적용! / Level 4 boost applied!\n"
-        text += f"\n👥 친구 초대 링크 / Referral link:\n`{invite}`"
+            text += "🎮 Level 4 boost applied!\n"
+        text += f"\n👥 Your referral link:\n`{invite}`"
 
         await _edit_pay(text)
 
@@ -914,11 +905,10 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _user_state[user_id] = "awaiting_txhash"
         print(f"[ERROR] handle_txhash: {e}")
         await _edit_pay(
-            f"❌ *확인 실패 / Verification failed*\n\n"
+            f"❌ *Verification failed*\n\n"
             f"{e}\n\n"
-            "트랜잭션 해시를 다시 확인 후 전송하거나\n"
-            "_Please check the hash and try again, or_\n"
-            "/cancel 로 취소 / to abort"
+            "Please check the hash and try again, or\n"
+            "/cancel to abort"
         )
 
 # ── 공통 UI ───────────────────────────────────────────────────────────────────
@@ -928,39 +918,35 @@ async def _send_membership_ui(message, st: dict):
     if st["is_premium"]:
         gp = st.get("current_gp", 0)
         if st.get("topup_claimed"):
-            topup_line = "✅ 오늘 3,500 GP 충전 완료 / Today's top-up claimed"
+            topup_line = "✅ Today's 3,500 GP top-up claimed"
         elif gp > TOPUP_THRESHOLD:
-            topup_line = f"🟡 GP {gp:,} — 1,000 초과로 충전 불가 / GP above 1,000, top-up unavailable"
+            topup_line = f"🟡 GP {gp:,} — GP above 1,000, top-up unavailable"
         else:
-            topup_line = "🎁 3,500 GP 충전 가능! Game Hub에서 수령\n_3,500 GP available! Claim in Game Hub_"
+            topup_line = "🎁 3,500 GP available! Claim in Game Hub"
 
         text = (
-            f"⭐ *정회원 / Premium Member*\n"
-            f"만료 / Expires: `{st['expires_at']}` (D-{st['days_left']})\n\n"
-            f"💰 보유 GP / Current GP: `{gp:,}`\n"
+            f"⭐ *Premium Member*\n"
+            f"Expires: `{st['expires_at']}` (D-{st['days_left']})\n\n"
+            f"💰 Current GP: `{gp:,}`\n"
             f"{topup_line}"
         )
         keyboard = [
-            [InlineKeyboardButton("🔄 30일 연장 / Extend 30 days", callback_data="buy_premium")],
-            [InlineKeyboardButton("👥 친구 초대 링크 / Referral link", callback_data="referral_link")],
+            [InlineKeyboardButton("🔄 Extend 30 days", callback_data="buy_premium")],
+            [InlineKeyboardButton("👥 Referral link", callback_data="referral_link")],
         ]
     else:
         text = (
-            "일반회원 / Free Member\n\n"
-            "⭐ *정회원 혜택 / Premium Benefits:*\n"
-            "• 🎁 매일 게임코인 3,500 GP 충전\n"
-            "    _(GP 1,000 이하일 때만)_\n"
-            "    _Daily 3,500 GP top-up (when GP ≤ 1,000)_\n"
-            "• 정회원 전용 보물박스 / Exclusive treasure boxes\n"
-            "• 레벨 4 즉시 부스트 (최초 1회)\n"
-            "    _Instant Level 4 boost (first time only)_\n"
-            "• 친구 초대 500 GP 보상\n"
-            "    _500 GP reward per referral_\n\n"
-            f"가격 / Price: 💎 {price} TON / 30일 (days)"
+            "Free Member\n\n"
+            "⭐ *Premium Benefits:*\n"
+            "• 🎁 Daily 3,500 GP top-up _(when GP ≤ 1,000)_\n"
+            "• Exclusive Premium treasure boxes\n"
+            "• Instant Level 4 boost _(first time only)_\n"
+            "• 500 GP reward per referral\n\n"
+            f"Price: 💎 {price} TON / 30 days"
         )
         keyboard = [
             [InlineKeyboardButton(
-                f"💎 정회원 가입 / Join Premium ({price} TON)",
+                f"💎 Join Premium ({price} TON)",
                 callback_data="buy_premium",
             )],
         ]
