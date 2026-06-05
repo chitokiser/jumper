@@ -122,6 +122,19 @@ async function awardGP(amount) {
 }
 
 // ── 로비: 캐릭터 선택 ────────────────────────────────────────────────────────
+const GRADE_LIMIT = { S: 1, A: 1, B: 1 }; // 등급별 최대 선택 수
+
+function _gradeCount(grade) {
+  return _selectedChars.filter(id => CHARS[id].grade === grade).length;
+}
+
+function _isGradeLocked(id) {
+  const grade = CHARS[id].grade;
+  if (!GRADE_LIMIT[grade]) return false;
+  if (_selectedChars.includes(id)) return false;
+  return _gradeCount(grade) >= GRADE_LIMIT[grade];
+}
+
 function renderCharGrid() {
   const grid = $('charGrid');
   if (!grid) return;
@@ -129,14 +142,17 @@ function renderCharGrid() {
   CHAR_IDS.forEach(id => {
     const c = CHARS[id];
     const sel = _selectedChars.includes(id);
+    const locked = _isGradeLocked(id);
     const gradeColor = {S:'#ffd700',A:'#c0c0c0',B:'#cd7f32',C:'#8aaa4a',D:'#aaa'}[c.grade]||'#fff';
     const card = document.createElement('button');
-    card.className = `char-card${sel?' selected':''}`;
+    card.className = `char-card${sel?' selected':''}${locked?' grade-locked':''}`;
     card.dataset.id = id;
+    card.disabled = locked && !sel;
     card.innerHTML = `
       <div class="char-grade" style="color:${gradeColor}">${c.grade}</div>
       <div class="char-name">${c.name}</div>
-      <div class="char-spd">⚡${c.speed}</div>`;
+      <div class="char-spd">⚡${c.speed}</div>
+      ${locked ? '<div class="grade-lock-msg">1개 제한</div>' : ''}`;
     card.addEventListener('click', () => toggleChar(id));
     grid.appendChild(card);
   });
@@ -145,8 +161,9 @@ function renderCharGrid() {
 
 function toggleChar(id) {
   if (_selectedChars.includes(id)) {
-    _selectedChars = _selectedChars.filter(x=>x!==id);
+    _selectedChars = _selectedChars.filter(x => x !== id);
   } else if (_selectedChars.length < 4) {
+    if (_isGradeLocked(id)) return;
     _selectedChars.push(id);
   }
   renderCharGrid();
