@@ -415,6 +415,18 @@ def _get_my_invites(uid: str) -> list:
     return result
 
 
+def _airdrop_join_gp(uid: str) -> bool:
+    """그룹 최초 입장 100 GP 에어드랍 (멱등)."""
+    ref = _db.collection("group_join_rewards").document(uid)
+    if ref.get(timeout=_FS_TIMEOUT).exists:
+        return False
+    _db.collection("battle_players").document(uid).set(
+        {"gold": firestore.Increment(100)}, merge=True
+    )
+    ref.set({"uid": uid, "gpRewarded": 100, "createdAt": firestore.SERVER_TIMESTAMP})
+    return True
+
+
 def _get_my_invite_link(uid: str) -> str | None:
     snaps = _db.collection("group_invite_links").where("inviterUid", "==", uid).limit(1).get()
     for s in snaps:
@@ -851,13 +863,22 @@ async def on_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     new_uid     = _uid(new_member.id)
     inviter_uid = None
 
-    # 환영 메시지
+    # ── 최초 입장 100 GP 에어드랍 ──────────────────────────────────────────
+    airdropped = False
+    try:
+        airdropped = await _run(_airdrop_join_gp, new_uid)
+    except Exception:
+        pass
+
+    # ── 그룹 환영 메시지 ────────────────────────────────────────────────────
     try:
         name     = new_member.first_name or "there"
         bot_name = _bot_username or context.bot.username or ""
+        airdrop_line = "🎉 <b>+100 GP Airdrop</b> has been credited to your account!\n" if airdropped else ""
         welcome  = (
             f"👋 Welcome, <b>{name}</b>!\n\n"
-            f"🎁 <b>Register</b> → Get <b>1,000 GP</b> instantly\n"
+            f"{airdrop_line}"
+            f"📝 <b>Register</b> → Get <b>+1,000 GP</b> more\n"
             f"🔗 <b>Invite friends</b> → Earn <b>+{GROUP_INVITE_GP} GP</b> per person\n\n"
             f"Tap below to start! 👇"
         )
@@ -869,6 +890,32 @@ async def on_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                        disable_notification=True)
     except Exception:
         pass
+
+    # ── 신규 멤버에게 DM 광고 (최초 입장 시만) ──────────────────────────────
+    if airdropped:
+        try:
+            bot_name = _bot_username or context.bot.username or ""
+            dm_text = (
+                f"🎁 <b>You received +100 GP Airdrop!</b>\n\n"
+                f"Welcome to JumpDAO Community!\n"
+                f"100 GP has been added to your account.\n\n"
+                f"<b>Earn even more:</b>\n"
+                f"📝 Register → <b>+1,000 GP</b> bonus\n"
+                f"🔗 Invite friends → <b>+{GROUP_INVITE_GP} GP</b> each\n"
+                f"⭐ Go Premium → Daily <b>3,500 GP</b> top-up\n\n"
+                f"Tap below to get started! 👇"
+            )
+            kb_dm = InlineKeyboardMarkup([[
+                InlineKeyboardButton("🎮 Start JumpDAO", url=f"https://t.me/{bot_name}?start=hi")
+            ]]) if bot_name else None
+            await context.bot.send_message(
+                chat_id=new_member.id,
+                text=dm_text,
+                parse_mode="HTML",
+                reply_markup=kb_dm,
+            )
+        except Exception:
+            pass
 
     # 방법1: 추적 초대링크로 입장
     if cm.invite_link:
@@ -883,7 +930,7 @@ async def on_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             inviter_uid = _uid(cm.from_user.id)
 
     if not inviter_uid:
-        return
+        return  # 초대자 없으면 이하 보상 스킵 (에어드랍은 이미 완료)
 
     try:
         rewarded = await _run(_reward_group_invite, inviter_uid, new_uid)
