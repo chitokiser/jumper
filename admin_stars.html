@@ -124,7 +124,11 @@
       $('badgeStatus').textContent = '로딩 중...';
       try {
         const fn   = httpsCallable(functions, 'starsGetAdminStats');
-        const res  = await fn();
+        // 30초 타임아웃 적용 (500 에러 시 무한 대기 방지)
+        const res  = await Promise.race([
+          fn(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000)),
+        ]);
         _statsData = res.data;
 
         $('totalStars').textContent    = (_statsData.totalStars || 0).toLocaleString() + ' ⭐';
@@ -178,25 +182,56 @@
 
     loadStats();
 
-    // ── NPC 시드 ──────────────────────────────────────────────────────────
+    // ── NPC 시드 (Firestore 직접 쓰기 — CORS 우회) ───────────────────────
+    const NPC_SEED = [
+      {name:'Arthur22',level:18},{name:'MorganHunter',level:24},{name:'Ranger57',level:31},
+      {name:'Shadow2',level:9},{name:'Falcon5453',level:42},{name:'Titan8',level:35},
+      {name:'Phoenix99',level:27},{name:'Wolf73',level:21},{name:'Drake47',level:38},
+      {name:'Viking3',level:14},{name:'StormX',level:45},{name:'BladeEdge',level:29},
+      {name:'Thunder55',level:33},{name:'EchoWolf',level:17},{name:'Viper42',level:40},
+      {name:'Cobra33',level:22},{name:'SteelClaw',level:36},{name:'IronFang5',level:11},
+      {name:'Lance77',level:48},{name:'AceRider',level:25},{name:'Logan9',level:19},
+      {name:'CrimsonX',level:44},{name:'NightBlade',level:32},{name:'DarkWolf3',level:7},
+      {name:'StarFire',level:39},{name:'MoonHunter',level:16},{name:'SunStrike7',level:50},
+      {name:'GoldRush',level:28},{name:'SilverFox',level:23},{name:'BronzeAxe9',level:41},
+      {name:'CrystalX5',level:15},{name:'DiamondKing',level:47},{name:'RubyFire',level:30},
+      {name:'EmeraldBow',level:13},{name:'ShadowFang',level:43},{name:'OnyxBlade3',level:26},
+      {name:'AmberX7',level:34},{name:'JadeWolf',level:8},{name:'ObsidianS',level:20},
+      {name:'TitanFist9',level:46},{name:'Nexus7',level:37},{name:'Vertex99',level:12},
+      {name:'QuantumX',level:49},{name:'ApexHunt',level:10},{name:'ZeroK5',level:6},
+      {name:'Hydra55',level:44},{name:'Cerberus9',level:38},{name:'Olympus3',level:22},
+      {name:'Kronos22',level:31},{name:'Atlas88',level:50},
+    ];
+
     $('btnNpcSeed').addEventListener('click', async () => {
       if (!confirm('NPC 50명을 npc_characters 컬렉션에 등록합니다. 이미 있으면 스킵됩니다.')) return;
       $('btnNpcSeed').disabled = true;
       $('btnNpcSeed').textContent = '⏳ 등록 중...';
+      const npcMsg = $('npcMsg');
       try {
-        const fn  = httpsCallable(functions, 'seedNpcCharacters');
-        const res = await fn();
-        const npcMsg = $('npcMsg');
-        npcMsg.style.display = 'block';
-        npcMsg.style.color   = '#4ade80';
-        npcMsg.textContent   = res.data.skipped
-          ? '✅ 이미 등록 완료 (스킵)'
-          : `✅ NPC ${res.data.count}명 등록 완료! 17±3분 간격으로 이벤트가 발송됩니다.`;
+        const { getFirestore, collection, getDocs, writeBatch, doc, serverTimestamp } =
+          await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+        const { app } = await import('/assets/js/firebase-init.js');
+        const db  = getFirestore(app);
+        const col = collection(db, 'npc_characters');
+        const existing = await getDocs(col);
+        if (existing.size >= 50) {
+          npcMsg.style.display = 'block'; npcMsg.style.color = '#4ade80';
+          npcMsg.textContent = '✅ 이미 등록 완료 (스킵)';
+          return;
+        }
+        const batch = writeBatch(db);
+        NPC_SEED.forEach((npc, idx) => {
+          const ref = doc(col);
+          batch.set(ref, { id: ref.id, name: npc.name, level: npc.level,
+            avatar: String((idx % 10) + 1), created_at: serverTimestamp() });
+        });
+        await batch.commit();
+        npcMsg.style.display = 'block'; npcMsg.style.color = '#4ade80';
+        npcMsg.textContent = `✅ NPC ${NPC_SEED.length}명 등록 완료! 17±3분 간격으로 이벤트가 발송됩니다.`;
       } catch (e) {
-        const npcMsg = $('npcMsg');
-        npcMsg.style.display = 'block';
-        npcMsg.style.color   = '#f87171';
-        npcMsg.textContent   = '❌ 실패: ' + e.message;
+        npcMsg.style.display = 'block'; npcMsg.style.color = '#f87171';
+        npcMsg.textContent = '❌ 실패: ' + e.message;
       } finally {
         $('btnNpcSeed').disabled = false;
         $('btnNpcSeed').textContent = '🤖 NPC 50명 등록';
