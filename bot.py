@@ -733,23 +733,53 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
             await update.message.reply_text("⚠️ Payment already processed.")
             return
 
-        # Cloud Function으로 지급 위임
+        # Cloud Function으로 지급 위임 + 결과 수신
+        grant_result = {}
         if FUNCTIONS_BASE_URL:
-            _req.post(
-                f"{FUNCTIONS_BASE_URL}/starsGrantProduct",
-                json={"chargeId": charge_id},
-                headers={"X-Bot-Token": BOT_TOKEN},
-                timeout=30,
-            )
+            try:
+                resp = _req.post(
+                    f"{FUNCTIONS_BASE_URL}/starsGrantProduct",
+                    json={"chargeId": charge_id},
+                    headers={"X-Bot-Token": BOT_TOKEN},
+                    timeout=30,
+                )
+                grant_result = resp.json() if resp.ok else {}
+            except Exception:
+                pass
 
         emoji = _PRODUCT_TYPE_EMOJI.get(product.get("productType",""), "🎁")
-        await update.message.reply_text(
-            f"🎉 *Payment Successful!*\n\n"
-            f"{emoji} *{product['name']}* has been credited!\n"
-            f"Stars paid: {sp.total_amount} ⭐\n\n"
-            f"_Enjoy your purchase!_",
-            parse_mode="Markdown",
-        )
+
+        # 랜덤박스인 경우 GP 결과 표시
+        if product.get("productType") == "random_box" and grant_result.get("gp"):
+            gp = grant_result["gp"]
+            tier = (
+                "🏆 JACKPOT!" if gp >= 5001 else
+                "💎 Amazing!" if gp >= 1001 else
+                "✨ Great!"   if gp >= 501  else
+                "🎉 Nice!"    if gp >= 101  else
+                "👍 OK"
+            )
+            msg = (
+                f"🎁 *Random Box Opened!*\n\n"
+                f"{tier}\n"
+                f"You won *{gp:,} GP*!\n\n"
+                f"Stars paid: {sp.total_amount} ⭐"
+            )
+        elif grant_result.get("ok") is False and grant_result.get("reason") == "daily_limit_exceeded":
+            msg = (
+                f"⚠️ *Daily limit reached!*\n\n"
+                f"You can only buy 3 Random Boxes per day.\n"
+                f"Stars refund: please contact support with ID:\n`{charge_id}`"
+            )
+        else:
+            msg = (
+                f"🎉 *Payment Successful!*\n\n"
+                f"{emoji} *{product['name']}* has been credited!\n"
+                f"Stars paid: {sp.total_amount} ⭐\n\n"
+                f"_Enjoy your purchase!_"
+            )
+
+        await update.message.reply_text(msg, parse_mode="Markdown")
     except Exception as e:
         print(f"[ERROR] successful_payment_handler: {e}")
         await update.message.reply_text(
@@ -823,6 +853,15 @@ def _seed_stars_products():
             "starsPrice": 800,
             "productType": "premium",
             "grantValue": 30,
+            "active": True,
+        },
+        {
+            "name": "🎁 Random Box",
+            "description": "Open a mystery box! Win 1 ~ 10,000 GP instantly. Max 3 per day.",
+            "starsPrice": 29,
+            "productType": "random_box",
+            "grantValue": 1,
+            "dailyLimit": 3,
             "active": True,
         },
     ]

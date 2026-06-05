@@ -31,33 +31,42 @@ async function grantProduct(chargeId) {
     case 'gp':
       await db.collection('battle_players').doc(uid)
         .set({ gold: FieldValue.increment(product.grantValue || 0) }, { merge: true });
-      granted = true;
+      granted = { granted: true };
       break;
     case 'key':
       granted = await _grantKey(uid, product.grantValue || 1);
       break;
-    case 'random_box':
+    case 'random_box': {
+      const dailyLimit = product.dailyLimit || 3;
+      const withinLimit = await _checkDailyLimit(uid, 'random_box', dailyLimit);
+      if (!withinLimit) {
+        await payRef.set({ grantStatus: 'limit_exceeded' }, { merge: true });
+        return { ok: false, reason: 'daily_limit_exceeded' };
+      }
       granted = await _grantRandomBox(uid);
       break;
+    }
     case 'jump_pkg':
       await db.collection('battle_players').doc(uid)
         .set({ jumpTokens: FieldValue.increment(product.grantValue || 0) }, { merge: true });
-      granted = true;
+      granted = { granted: true };
       break;
     default:
       throw new Error('Unknown productType: ' + productType);
   }
 
-  if (granted) {
+  const grantResult = typeof granted === 'object' ? granted : { granted };
+  if (grantResult.granted) {
     await payRef.set({
       grantStatus: 'done',
       grantedAt:   FieldValue.serverTimestamp(),
+      ...(grantResult.gp !== undefined ? { grantedGp: grantResult.gp } : {}),
     }, { merge: true });
 
     await _processAffiliateCommission({ uid, starsAmount, referrerUid, chargeId });
   }
 
-  return { ok: granted };
+  return { ok: !!grantResult.granted, gp: grantResult.gp };
 }
 
 // ── 상품별 지급 로직 ─────────────────────────────────────────────────────────
@@ -88,19 +97,64 @@ async function _grantPremium(uid, days) {
     const level  = (bpSnap.data() || {}).level || 1;
     if (level < 4) await bpRef.set({ level: 4 }, { merge: true });
   }
-  return true;
+  return { granted: true };
 }
 
 async function _grantKey(uid, count) {
   await db.collection('battle_players').doc(uid)
     .set({ keys: FieldValue.increment(count) }, { merge: true });
-  return true;
+  return { granted: true };
+}
+
+// ── 랜덤박스 확률 테이블 ─────────────────────────────────────────────────────
+//  GP 범위       확률 (누적)
+//  1~10          50%
+//  11~50         25%  → 75%
+//  51~100        15%  → 90%
+//  101~500        7%  → 97%
+//  501~1,000      2%  → 99%
+//  1,001~5,000   0.9% → 99.9%
+//  5,001~10,000  0.1% → 100%
+
+function _randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function _rollRandomBox() {
+  const r = Math.random() * 100;
+  if (r < 50)   return _randInt(1,    10);
+  if (r < 75)   return _randInt(11,   50);
+  if (r < 90)   return _randInt(51,  100);
+  if (r < 97)   return _randInt(101,  500);
+  if (r < 99)   return _randInt(501, 1000);
+  if (r < 99.9) return _randInt(1001, 5000);
+  return          _randInt(5001, 10000);
 }
 
 async function _grantRandomBox(uid) {
-  // 랜덤박스: battle_players.randomBoxes 증가
+  const gp = _rollRandomBox();
   await db.collection('battle_players').doc(uid)
-    .set({ randomBoxes: FieldValue.increment(1) }, { merge: true });
+    .set({ gold: FieldValue.increment(gp) }, { merge: true });
+  // 결과 기록 (유저가 확인할 수 있도록)
+  await db.collection('random_box_results').add({
+    uid, gp,
+    openedAt: FieldValue.serverTimestamp(),
+  });
+  return { granted: true, gp };
+}
+
+// ── 일일 구매 제한 ────────────────────────────────────────────────────────────
+
+async function _checkDailyLimit(uid, productType, limitPerDay) {
+  const today  = _todayUtc7();
+  const ref    = db.collection('stars_daily_purchases').doc(`${uid}_${today}`);
+  const snap   = await ref.get();
+  const count  = (snap.data() || {})[productType] || 0;
+  if (count >= limitPerDay) return false;
+  await ref.set(
+    { [productType]: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() },
+    { merge: true }
+  );
   return true;
 }
 
