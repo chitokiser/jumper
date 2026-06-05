@@ -95,6 +95,21 @@ async function findOrCreateTelegramUser(tgUser) {
     { merge: true }
   );
 
+  // 신규 가입 즉시 100 GP 지급 — 지갑 생성 전에도 게임 플레이 가능하도록
+  try {
+    await db.collection('battle_players').doc(uid).set(
+      {
+        uid,
+        gold:          100,
+        joinBonusAt:   admin.firestore.FieldValue.serverTimestamp(),
+        createdAt:     admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (bonusErr) {
+    console.warn('[findOrCreateTelegramUser] 초기 GP 지급 실패:', bonusErr.message);
+  }
+
   return { uid, isNew: true };
 }
 
