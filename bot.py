@@ -125,6 +125,60 @@ def _get_user_wallet(uid: str):
     return None
 
 
+def _register_tg_and_give_gp(uid: str, tg_user) -> dict:
+    """텔레그램 유저 정보 DB 저장 + 1000 GP 즉시 지급 (멱등)."""
+    user_ref = _db.collection("users").document(uid)
+    bp_ref   = _db.collection("battle_players").document(uid)
+
+    user_snap = user_ref.get()
+    user_data = user_snap.to_dict() or {}
+
+    # 이미 수탁지갑 보유 → 완전 가입된 상태
+    if user_data.get("wallet", {}).get("encryptedKey"):
+        return {"status": "already_registered"}
+
+    # 텔레그램 유저 정보 저장
+    display_name = " ".join(filter(None, [tg_user.first_name, tg_user.last_name])) \
+                   or f"TGUser{tg_user.id}"
+    update_doc = {
+        "telegramId":  str(tg_user.id),
+        "displayName": display_name,
+        "username":    tg_user.username or None,
+        "source":      "telegram",
+        "role":        "user",
+        "updatedAt":   firestore.SERVER_TIMESTAMP,
+    }
+    if not user_snap.exists:
+        update_doc["createdAt"] = firestore.SERVER_TIMESTAMP
+    user_ref.set(update_doc, merge=True)
+
+    # 이미 보너스 받았으면 스킵
+    bp_snap  = bp_ref.get()
+    bp_data  = bp_snap.to_dict() or {}
+    got_bonus = bool(bp_data.get("joinBonusAt"))
+    if got_bonus:
+        return {"status": "registered", "got_bonus": False}
+
+    # 정회원 여부 확인 → 레벨4 동시 설정
+    today      = _today_utc7()
+    coop_until = user_data.get("coopMemberUntil", "")
+    is_premium = bool(coop_until and coop_until >= today)
+
+    bp_update = {
+        "uid":        uid,
+        "displayName": display_name,
+        "gold":        firestore.Increment(1000),
+        "joinBonusAt": firestore.SERVER_TIMESTAMP,
+    }
+    if is_premium:
+        bp_update["level"]              = 4
+        bp_update["pendingOnChainSync"]  = True
+        bp_update["pendingOnChainLevel"] = 4
+
+    bp_ref.set(bp_update, merge=True)
+    return {"status": "registered", "got_bonus": True, "is_premium": is_premium}
+
+
 def _get_auto_referrers() -> list:
     """autoReferrers 컬렉션에서 활성 멘토 목록 반환 (최대 4개)."""
     try:
@@ -495,30 +549,61 @@ async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cb_register_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """회원가입 버튼 → 지갑 보유 여부 확인 후 멘토 선택 또는 이미 가입 안내."""
+    """회원가입 버튼 → DB 저장 + 1000 GP 즉시 지급 → 수탁지갑 생성 유도."""
     q = update.callback_query
     await q.answer()
-    uid = _uid(q.from_user.id)
+    uid     = _uid(q.from_user.id)
+    tg_user = q.from_user
 
     try:
-        wallet = await _run(_get_user_wallet, uid)
+        result = await _run(_register_tg_and_give_gp, uid, tg_user)
 
-        if wallet:
-            addr  = wallet.get("address", "")
-            short = addr[:8] + "..." + addr[-6:] if addr else "?"
+        if result["status"] == "already_registered":
+            wallet = await _run(_get_user_wallet, uid)
+            addr   = (wallet or {}).get("address", "")
+            short  = addr[:8] + "..." + addr[-6:] if addr else "?"
             await q.message.reply_text(
-                f"✅ *이미 가입된 계정입니다 / Already registered*\n"
-                f"지갑 / Wallet: `{short}`\n\n"
-                f"정회원 업그레이드를 진행하세요.\n"
-                f"_Proceed to Premium upgrade._",
+                f"✅ *이미 가입된 계정입니다*\n지갑: `{short}`\n\n"
+                f"_Already registered._",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("⭐ 정회원 업그레이드 / Go Premium", callback_data="membership_info"),
+                    InlineKeyboardButton("⭐ 정회원 혜택", callback_data="membership_info"),
                 ]]),
             )
             return
 
-        # 멘토 목록 조회
+        bonus_line  = "🎁 *1,000 GP* 지급 완료!\n" if result.get("got_bonus") else ""
+        level_line  = "⭐ 정회원 레벨 4 설정됨!\n" if result.get("is_premium") else ""
+        await q.message.reply_text(
+            f"✅ *가입 완료!*\n\n"
+            f"{bonus_line}"
+            f"{level_line}\n"
+            f"💼 수탁지갑을 생성하면 온체인 레벨업이 가능합니다.\n"
+            f"_Create a custodial wallet to unlock on-chain level-up!_",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("💼 수탁지갑 생성하기 / Create Wallet", callback_data="create_wallet")],
+                [InlineKeyboardButton("⭐ 정회원 혜택 보기", callback_data="membership_info")],
+            ]),
+        )
+    except Exception as e:
+        print(f"[ERROR] cb_register_check: {e}")
+        await q.message.reply_text(
+            "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.\n"
+            "_An error occurred. Please try again later._",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔄 다시 시도", callback_data="register_check"),
+            ]]),
+        )
+
+
+async def cb_create_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """수탁지갑 생성 → 멘토 선택 UI."""
+    q = update.callback_query
+    await q.answer()
+
+    try:
         referrers = await _run(_get_auto_referrers)
         keyboard  = []
         for r in referrers:
@@ -529,22 +614,20 @@ async def cb_register_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🏠 기본 멘토 / Default Mentor",
             callback_data=f"select_mentor_{DEFAULT_MENTOR_ADDR}",
         )])
-
         await q.message.reply_text(
-            "👤 *멘토를 선택하세요 / Select a Mentor*\n\n"
+            "💼 *수탁지갑 생성 — 멘토를 선택하세요*\n\n"
             "멘토는 추천인으로 등록되며 추후 변경이 어렵습니다.\n"
-            "_Mentor is your referrer and cannot be easily changed later._",
+            "_Select your mentor (referrer)._",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
     except Exception as e:
-        print(f"[ERROR] cb_register_check: {e}")
+        print(f"[ERROR] cb_create_wallet: {e}")
         await q.message.reply_text(
-            "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.\n"
-            "_An error occurred. Please try again later._",
+            "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("🔄 다시 시도 / Retry", callback_data="register_check"),
+                InlineKeyboardButton("🔄 다시 시도", callback_data="create_wallet"),
             ]]),
         )
 
@@ -761,6 +844,7 @@ def main():
     app.add_handler(CallbackQueryHandler(cb_buy_premium,     pattern="^buy_premium$"))
     app.add_handler(CallbackQueryHandler(cb_referral_link,   pattern="^referral_link$"))
     app.add_handler(CallbackQueryHandler(cb_register_check,  pattern="^register_check$"))
+    app.add_handler(CallbackQueryHandler(cb_create_wallet,   pattern="^create_wallet$"))
     app.add_handler(CallbackQueryHandler(cb_select_mentor,   pattern="^select_mentor_"))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_txhash))
