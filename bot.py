@@ -66,9 +66,15 @@ def _today_utc7() -> str:
 def _uid(tg_id: int) -> str:
     return f"tg_{tg_id}"
 
-async def _run(fn, *args):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_executor, lambda: fn(*args))
+async def _run(fn, *args, timeout=20):
+    loop = asyncio.get_running_loop()
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(_executor, lambda: fn(*args)),
+            timeout=timeout,
+        )
+    except asyncio.TimeoutError:
+        raise Exception(f"서버 응답 없음 ({timeout}s) — 잠시 후 다시 시도해주세요")
 
 # ── Firestore ────────────────────────────────────────────────────────────────
 
