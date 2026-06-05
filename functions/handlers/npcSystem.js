@@ -53,19 +53,19 @@ function _randGp(type) {
 function _buildMsg(name, type, gp) {
   switch (type) {
     case 'treasure_find':
-      return `🤖 NPC <b>${name}</b>님이 보물을 발견했습니다! +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `🤖 <b>${name}</b>님이 보물을 발견했습니다! +${gp} GP <i>(시스템 이벤트)</i>`;
     case 'treasure_hide':
-      return `🤖 NPC <b>${name}</b>님이 새로운 보물을 숨겨두었습니다. <i>(시스템 이벤트)</i>`;
+      return `🤖 <b>${name}</b>님이 새로운 보물을 숨겨두었습니다. <i>(시스템 이벤트)</i>`;
     case 'dungeon':
-      return `⚔️ NPC <b>${name}</b>님이 던전 생존 성공! +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `⚔️ <b>${name}</b>님이 던전 생존 성공! +${gp} GP <i>(시스템 이벤트)</i>`;
     case 'monsterrace':
-      return `🐉 NPC <b>${name}</b>님 몬스터 레이스 우승! +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `🐉 <b>${name}</b>님 몬스터 레이스 우승! +${gp} GP <i>(시스템 이벤트)</i>`;
     case 'archery':
-      return `🏹 NPC <b>${name}</b>님이 활쏘기 +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `🏹 <b>${name}</b>님이 활쏘기 +${gp} GP <i>(시스템 이벤트)</i>`;
     case 'relay':
-      return `🏃 NPC <b>${name}</b>님이 이어달리기 +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `🏃 <b>${name}</b>님이 이어달리기 +${gp} GP <i>(시스템 이벤트)</i>`;
     default:
-      return `🤖 NPC <b>${name}</b>님이 +${gp} GP 획득! <i>(시스템 이벤트)</i>`;
+      return `🤖 <b>${name}</b>님이 +${gp} GP 획득! <i>(시스템 이벤트)</i>`;
   }
 }
 
