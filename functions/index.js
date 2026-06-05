@@ -59,6 +59,7 @@ const rankingsH              = require('./handlers/rankings');
 const stockOptionH           = require('./handlers/stockOption');
 const starterH               = require('./handlers/starter');
 const dailyAreaH             = require('./handlers/dailyArea');
+const npcH                   = require('./handlers/npcSystem');
 const userPlaceH             = require('./handlers/userPlace');
 const expSyncH               = require('./handlers/expSync');
 const telegramH              = require('./handlers/telegram');
@@ -2530,6 +2531,8 @@ exports.broadcastGpEvent = onCall(
       logger.info('[broadcastGpEvent] sending', { uid, game, amount, chatId });
       const ok = await telegramH.sendTelegramMessage(telegramBotSecret.value(), chatId, msg);
       logger.info('[broadcastGpEvent] result', { ok });
+      // 실제 유저 이벤트 발생 → NPC 스케줄러 지연 트리거
+      if (ok) npcH.markRealUserEvent().catch(() => {});
       return { ok };
     } catch (e) {
       logger.warn('[broadcastGpEvent] error', e?.message);
@@ -2537,6 +2540,29 @@ exports.broadcastGpEvent = onCall(
     }
   }
 );
+
+// ── NPC 이벤트 스케줄러 (1분마다 체크 → 14~20분 랜덤 간격 발화) ────────────
+exports.npcEventScheduler = onSchedule(
+  { schedule: 'every 1 minutes', secrets: [telegramBotSecret, announceGroupSecret] },
+  async () => {
+    try {
+      const result = await npcH.runNpcScheduler(
+        telegramBotSecret.value(),
+        announceGroupSecret.value()?.trim(),
+      );
+      if (result.ok) logger.info('[npcEventScheduler] fired', result);
+    } catch (e) {
+      logger.error('[npcEventScheduler] error', e?.message);
+    }
+  }
+);
+
+// NPC 캐릭터 초기 시드 (관리자 1회 실행)
+exports.seedNpcCharacters = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  await requireAdmin(uid);
+  return npcH.seedNpcCharacters();
+}));
 
 // ════════════════════════════════════════════════════════════════════════════
 // Telegram Mini App 인증
