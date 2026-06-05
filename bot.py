@@ -24,8 +24,6 @@ if sys.platform == "win32":
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # ── 환경변수 검증 ─────────────────────────────────────────────────────────────
-print(f"[DEBUG] ENV keys with BOT: {[k for k in os.environ if 'BOT' in k]}")
-print(f"[DEBUG] BOT_TOKEN len: {len(os.environ.get('BOT_TOKEN',''))}")
 _REQUIRED = ["BOT_TOKEN", "FIREBASE_SERVICE_ACCOUNT"]
 _missing  = [v for v in _REQUIRED if not os.environ.get(v)]
 if _missing:
