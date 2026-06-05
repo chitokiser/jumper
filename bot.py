@@ -82,8 +82,8 @@ def _fetch_ton_usd() -> float:
 
 
 def _get_stars_products() -> list:
-    snaps = _db.collection("stars_products").where("active", "==", True).get()
-    items = [{"id": s.id, **s.to_dict()} for s in snaps]
+    snaps = _db.collection("stars_products").get(timeout=_FS_TIMEOUT)
+    items = [{"id": s.id, **s.to_dict()} for s in snaps if (s.to_dict() or {}).get("active")]
     return sorted(items, key=lambda x: x.get("starsPrice", 0))
 
 
@@ -644,14 +644,15 @@ async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
             emoji = _PRODUCT_TYPE_EMOJI.get(p.get("productType",""), "🛒")
             label = f"{emoji} {p['name']} — {p['starsPrice']} ⭐"
             keyboard.append([InlineKeyboardButton(label, callback_data=f"stars_buy_{p['id']}")])
-        await _safe_reply(update.message,
+        await update.message.reply_text(
             "⭐ *JumpDAO Stars Shop*\n\n"
             "Select a product to purchase with Telegram Stars:",
+            parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
     except Exception as e:
         print(f"[ERROR] cmd_buy: {e}")
-        await _safe_reply(update.message, "❌ Failed to load shop. Please try again.")
+        await update.message.reply_text("❌ Failed to load shop. Please try again.")
 
 
 async def cb_stars_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -827,8 +828,9 @@ async def cb_stars_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{emoji} {p['name']} — {p['starsPrice']} ⭐",
                 callback_data=f"stars_buy_{p['id']}"
             )])
-        await _safe_reply(q.message,
+        await q.message.reply_text(
             "⭐ *JumpDAO Stars Shop*\n\nSelect a product to purchase with Telegram Stars:",
+            parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
     except Exception as e:
