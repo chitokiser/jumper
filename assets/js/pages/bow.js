@@ -323,8 +323,11 @@ function _fireCannonball(cannon) {
 function _takeDamage(amount) {
   const reduced=Math.max(1, amount - Math.floor(_playerDefense*0.5));
   _playerHP=Math.max(0, _playerHP-reduced);
+  const scorePenalty = reduced * 10;
+  _score=Math.max(0, _score - scorePenalty);
   _hitFlash=1.0;
-  _effects.push({type:'msg',text:`💥-${reduced}`,x:_playerX,y:AY-115,vy:-.9,alpha:1.3,big:false});
+  _effects.push({type:'msg',text:`💥-${reduced}HP`,x:_playerX,y:AY-115,vy:-.9,alpha:1.3,big:false});
+  _effects.push({type:'msg',text:`📉-${scorePenalty.toLocaleString()}pts`,x:_playerX,y:AY-145,vy:-.7,alpha:1.2,big:false});
   triggerShake(4);
   playSound('player_hit');
   if (_playerHP<=0) setTimeout(gameOver,350);
