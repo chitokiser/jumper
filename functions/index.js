@@ -58,6 +58,7 @@ const coinExchangeH          = require('./handlers/coinExchange');
 const rankingsH              = require('./handlers/rankings');
 const stockOptionH           = require('./handlers/stockOption');
 const starterH               = require('./handlers/starter');
+const dailyAreaH             = require('./handlers/dailyArea');
 const userPlaceH             = require('./handlers/userPlace');
 const expSyncH               = require('./handlers/expSync');
 const telegramH              = require('./handlers/telegram');
@@ -2730,5 +2731,41 @@ exports.starsUpsertProduct = onCall(
     requireAdmin(request);
     return starsH.upsertProduct(request.data);
   })
+);
+
+// ── 일일 구역 (보물박스 15 + 몬스터 15 / 24h 리셋) ──────────────────────────
+exports.createDailyArea = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { lat, lng } = request.data ?? {};
+  if (!lat || !lng) throw new HttpsError('invalid-argument', 'lat/lng required');
+  return dailyAreaH.createDailyArea(uid, lat, lng);
+}));
+
+exports.claimDailyItem = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { itemId } = request.data ?? {};
+  if (!itemId) throw new HttpsError('invalid-argument', 'itemId required');
+  return dailyAreaH.claimDailyItem(uid, itemId);
+}));
+
+// Affiliate 커미션 GP 환급 (bot.py 내부 호출)
+exports.starsRedeemCommission = onRequest(
+  { cors: false, secrets: [telegramBotSecret], timeoutSeconds: 60 },
+  async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).end(); return; }
+    if ((req.headers['x-bot-token'] || '') !== telegramBotSecret.value()) {
+      res.status(401).json({ error: 'Unauthorized' }); return;
+    }
+    const { uid } = req.body || {};
+    if (!uid) { res.status(400).json({ error: 'uid required' }); return; }
+    try {
+      const result = await starsH.redeemAffiliateCommission(uid);
+      logger.info('[starsRedeemCommission]', { uid, ...result });
+      res.json(result);
+    } catch (e) {
+      logger.error('[starsRedeemCommission] error', e?.message);
+      res.status(500).json({ error: e?.message });
+    }
+  }
 );
 

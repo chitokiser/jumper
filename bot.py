@@ -146,20 +146,32 @@ def _set_referrer(uid: str, referrer_uid: str):
 
 
 def _get_affiliate_stats(uid: str) -> dict:
-    sales = _db.collection("affiliate_sales").where("referrerUid", "==", uid).get()
+    sales     = _db.collection("affiliate_sales").where("referrerUid", "==", uid).get()
+    referrals = _db.collection("membership_referrals").where("referrerUid", "==", uid).get()
+
     buyers = set()
     total_stars = 0
     pending_commission = 0
     for s in sales:
         d = s.to_dict() or {}
-        buyers.add(d.get("buyerUid",""))
+        buyers.add(d.get("buyerUid", ""))
         total_stars += d.get("starsAmount", 0)
         if d.get("status") == "pending":
             pending_commission += d.get("commissionStars", 0)
+
+    gp_referral_count = 0
+    gp_earned = 0
+    for r in referrals:
+        d = r.to_dict() or {}
+        gp_referral_count += 1
+        gp_earned += d.get("gpRewarded", 500)
+
     return {
         "total_referred":     len(buyers),
         "total_stars":        total_stars,
         "pending_commission": pending_commission,
+        "gp_referral_count":  gp_referral_count,
+        "gp_earned":          gp_earned,
     }
 
 
@@ -673,8 +685,7 @@ async def cb_stars_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
             description=product.get("description", product["name"]),
             payload=payload,
             currency="XTR",
-            prices=[LabeledPrice(product["name"], product["starsPrice"])],
-            provider_token="",
+            prices=[LabeledPrice(product["name"], int(product["starsPrice"]))],
         )
     except Exception as e:
         print(f"[ERROR] cb_stars_buy: {e}")
@@ -813,6 +824,143 @@ async def cmd_mystats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _safe_reply(update.message, "❌ Failed to load stats. Please try again.")
 
 
+async def cmd_affiliate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """어필리에이트 프로그램 대시보드."""
+    uid = _uid(update.effective_user.id)
+    try:
+        code     = await _run(_get_or_create_referral_code, uid)
+        stats    = await _run(_get_affiliate_stats, uid)
+        bot_name = _bot_username or context.bot.username or ""
+        link     = f"https://t.me/{bot_name}?start=JUMPREF_{code}" if bot_name else f"Code: {code}"
+        pending  = stats["pending_commission"]
+        gp_from_redeem = pending * 100
+
+        lines = [
+            "🤝 *JumpDAO Affiliate Program*\n",
+            f"🔗 Your invite link:\n`{link}`\n",
+            "📊 *Stats*",
+            f"• Wallet referrals: *{stats['gp_referral_count']}* friends → *{stats['gp_earned']:,} GP* earned",
+            f"• Stars referrals: *{stats['total_referred']}* buyers · *{stats['total_stars']} ⭐* total",
+            f"• Pending commission (10%): *{pending} ⭐* → *{gp_from_redeem:,} GP*\n",
+            "_Earn +500 GP per friend who creates a wallet_",
+            "_Earn 10% Stars commission on every purchase_",
+        ]
+        keyboard = []
+        if pending > 0:
+            keyboard.append([InlineKeyboardButton(
+                f"💰 Redeem {pending} ⭐ → {gp_from_redeem:,} GP",
+                callback_data="affiliate_redeem",
+            )])
+        keyboard.append([InlineKeyboardButton("📊 My Invite Stats", callback_data="affiliate_stats")])
+        await update.message.reply_text(
+            "\n".join(lines),
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
+        )
+    except Exception as e:
+        print(f"[ERROR] cmd_affiliate: {e}")
+        await _safe_reply(update.message, "❌ Failed to load affiliate stats. Please try again.")
+
+
+async def cb_affiliate_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """버튼으로 어필리에이트 대시보드 진입 — cmd_affiliate와 동일."""
+    q = update.callback_query
+    await q.answer()
+    # update.message를 흉내내는 임시 객체 없이 직접 처리
+    uid = _uid(q.from_user.id)
+    try:
+        code     = await _run(_get_or_create_referral_code, uid)
+        stats    = await _run(_get_affiliate_stats, uid)
+        bot_name = _bot_username or context.bot.username or ""
+        link     = f"https://t.me/{bot_name}?start=JUMPREF_{code}" if bot_name else f"Code: {code}"
+        pending  = stats["pending_commission"]
+        gp_from_redeem = pending * 100
+        lines = [
+            "🤝 *JumpDAO Affiliate Program*\n",
+            f"🔗 Your invite link:\n`{link}`\n",
+            "📊 *Stats*",
+            f"• Wallet referrals: *{stats['gp_referral_count']}* friends → *{stats['gp_earned']:,} GP* earned",
+            f"• Stars referrals: *{stats['total_referred']}* buyers · *{stats['total_stars']} ⭐* total",
+            f"• Pending commission (10%): *{pending} ⭐* → *{gp_from_redeem:,} GP*\n",
+            "_Earn +500 GP per friend who creates a wallet_",
+            "_Earn 10% Stars commission on every purchase_",
+        ]
+        keyboard = []
+        if pending > 0:
+            keyboard.append([InlineKeyboardButton(
+                f"💰 Redeem {pending} ⭐ → {gp_from_redeem:,} GP",
+                callback_data="affiliate_redeem",
+            )])
+        keyboard.append([InlineKeyboardButton("📊 Stats Detail", callback_data="affiliate_stats")])
+        await q.message.reply_text(
+            "\n".join(lines),
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        print(f"[ERROR] cb_affiliate_dashboard: {e}")
+        await _safe_reply(q.message, "❌ Failed to load affiliate info. Please try again.", "affiliate_dashboard")
+
+
+async def cb_affiliate_redeem(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Pending Stars 커미션을 GP로 환급."""
+    q   = update.callback_query
+    await q.answer()
+    uid = _uid(q.from_user.id)
+    try:
+        if not FUNCTIONS_BASE_URL:
+            raise Exception("Service temporarily unavailable.")
+        import requests as _req
+        resp = _req.post(
+            f"{FUNCTIONS_BASE_URL}/starsRedeemCommission",
+            json={"uid": uid},
+            headers={"x-bot-token": os.environ.get("BOT_TOKEN", "")},
+            timeout=30,
+        )
+        result = resp.json()
+        if result.get("ok"):
+            stars = result["starsRedeemed"]
+            gp    = result["gpGranted"]
+            await q.message.reply_text(
+                f"✅ *Commission Redeemed!*\n\n"
+                f"• {stars} ⭐ → *{gp:,} GP* added to your account",
+                parse_mode="Markdown",
+            )
+        else:
+            reason = result.get("reason", "unknown")
+            msg = {
+                "no_pending_commission": "No pending commission to redeem.",
+                "commission_too_small":  "Commission too small to redeem (min 1 ⭐).",
+            }.get(reason, f"Could not redeem: {reason}")
+            await _safe_reply(q.message, f"ℹ️ {msg}")
+    except Exception as e:
+        print(f"[ERROR] cb_affiliate_redeem: {e}")
+        await _safe_reply(q.message, "❌ Redemption failed. Please try again.", "affiliate_redeem")
+
+
+async def cb_affiliate_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """어필리에이트 통계 상세."""
+    q   = update.callback_query
+    await q.answer()
+    uid = _uid(q.from_user.id)
+    try:
+        stats = await _run(_get_affiliate_stats, uid)
+        pending = stats["pending_commission"]
+        await q.message.reply_text(
+            f"📊 *Affiliate Stats*\n\n"
+            f"👥 Wallet referrals: *{stats['gp_referral_count']}* friends\n"
+            f"💰 GP earned (referrals): *{stats['gp_earned']:,} GP*\n\n"
+            f"⭐ Stars buyers: *{stats['total_referred']}*\n"
+            f"⭐ Total Stars via referrals: *{stats['total_stars']} ⭐*\n"
+            f"⭐ Pending commission: *{pending} ⭐* ({pending * 100:,} GP)\n\n"
+            f"_Use /affiliate to redeem your commission_",
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        print(f"[ERROR] cb_affiliate_stats: {e}")
+        await _safe_reply(q.message, "❌ Failed to load stats.")
+
+
 async def cb_stars_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -898,11 +1046,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_group = update.effective_chat.type in ("group", "supergroup")
 
     if args and args[0].startswith("JUMPREF_"):
-        # Stars Affiliate 추천코드 처리
+        # Stars Affiliate 추천코드 처리 + GP 지갑 생성 보상도 함께 등록
         ref_code = args[0][8:]
         referrer_uid = await _run(_find_uid_by_referral_code, ref_code)
         if referrer_uid:
             await _run(_set_referrer, uid, referrer_uid)
+            await _run(_save_pending_referral, uid, referrer_uid)
     elif args and args[0].startswith("REF"):
         await _run(_save_pending_referral, uid, args[0][3:])
 
@@ -926,7 +1075,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
             [InlineKeyboardButton("📝 Register — Get 1,000 GP Airdrop!", callback_data="register_check")],
-            [InlineKeyboardButton("👥 Get Referral Link (+500 GP)", callback_data="referral_link")],
+            [InlineKeyboardButton("🤝 Affiliate Program", callback_data="affiliate_dashboard")],
             [InlineKeyboardButton("⭐ Stars Shop", callback_data="stars_shop")],
             [InlineKeyboardButton("💱 TON → GP Rate", callback_data="show_rate")],
             [InlineKeyboardButton("💬 Join Official Community", url="https://t.me/jumpdao_eng")],
@@ -1429,11 +1578,15 @@ def main():
     app.add_handler(CommandHandler("rate",       cmd_rate))
     app.add_handler(CommandHandler("buy",        cmd_buy))
     app.add_handler(CommandHandler("mystats",    cmd_mystats))
+    app.add_handler(CommandHandler("affiliate",  cmd_affiliate))
     app.add_handler(CommandHandler("seedstars",  cmd_seedstars))
 
-    app.add_handler(CallbackQueryHandler(cb_membership_info,   pattern="^membership_info$"))
-    app.add_handler(CallbackQueryHandler(cb_buy_premium,       pattern="^buy_premium$"))
-    app.add_handler(CallbackQueryHandler(cb_referral_link,     pattern="^referral_link$"))
+    app.add_handler(CallbackQueryHandler(cb_membership_info,    pattern="^membership_info$"))
+    app.add_handler(CallbackQueryHandler(cb_buy_premium,        pattern="^buy_premium$"))
+    app.add_handler(CallbackQueryHandler(cb_referral_link,      pattern="^referral_link$"))
+    app.add_handler(CallbackQueryHandler(cb_affiliate_redeem,   pattern="^affiliate_redeem$"))
+    app.add_handler(CallbackQueryHandler(cb_affiliate_stats,    pattern="^affiliate_stats$"))
+    app.add_handler(CallbackQueryHandler(cb_affiliate_dashboard, pattern="^affiliate_dashboard$"))
     app.add_handler(CallbackQueryHandler(cb_stars_shop,        pattern="^stars_shop$"))
     app.add_handler(CallbackQueryHandler(cb_stars_buy,         pattern="^stars_buy_"))
     app.add_handler(CallbackQueryHandler(cb_show_rate,         pattern="^show_rate$"))

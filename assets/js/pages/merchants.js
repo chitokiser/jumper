@@ -42,7 +42,8 @@ import { _t } from './merchants.i18n.js';
 import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterActive }
   from './starter-pack.js';
 import { initUserPlace } from './user-place.js';
-import { initMyMap, activateMyMap, deactivateMyMap, setMyMapPlaceMode, isMyMapActive } from './merchants.mymap.js';
+import { initMyMap, activateMyMap, deactivateMyMap, setMyMapPlaceMode, isMyMapActive, checkMyMapProximity } from './merchants.mymap.js';
+import { initDailyArea, checkDailyProximity } from './merchants.daily.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -207,7 +208,7 @@ function loadMapsScript() {
     if (window.google?.maps) return resolve();
     window.__merchantMapCb = resolve;
     const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${window.__mapsKey || ''}&callback=__merchantMapCb&language=ko&region=KR`;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${window.__mapsKey || ''}&callback=__merchantMapCb&language=en`;
     s.async = true;
     s.onerror = () => reject(new Error('Google Maps 로드 실패'));
     document.head.appendChild(s);
@@ -1289,6 +1290,7 @@ function showMyLocation() {
     broadcastMyLocation(lat, lng);
     if (btn) btn.textContent = '📍';
     _maybeInitStarterPack(lat, lng);
+    _maybeInitDailyArea(lat, lng);
   });
 
   // GPS 응답이 늦어도 버튼 복원
@@ -1452,6 +1454,15 @@ function _maybeInitStarterPack(lat, lng) {
   initStarterPack(_uid, lat, lng, _ctx.map, infoWindow);
 }
 
+let _dailyAreaDone = false;
+function _maybeInitDailyArea(lat, lng) {
+  if (_dailyAreaDone || !_uid || !_ctx.map) return;
+  _dailyAreaDone = true;
+  // GP 획득 시 HUD 업데이트 콜백 등록
+  window._dailyOnGpGain = (gp) => { addPlayerGold(gp); };
+  initDailyArea(_uid, lat, lng, _ctx.map, infoWindow);
+}
+
 // ── 보물박스 근접 감지 — 범위 내 마커 강조, HP 있으면 공격해야 수집 ──────────
 async function checkProximity(lat, lng) {
   if (!_uid) return;
@@ -1499,6 +1510,10 @@ async function checkProximity(lat, lng) {
   _updateDetector(lat, lng);
   _checkDropProximity(lat, lng);
   _checkUserNpcProximity(lat, lng);
+  // 체험 탭 근접 감지 — mymap.js에서 GPS 위치 접근용 전역 노출
+  window._myMapGetPos = () => _ctx.gpsPos || _ctx.lastPos;
+  checkMyMapProximity(lat, lng);
+  checkDailyProximity(lat, lng);
 }
 
 async function tryCollect(box) {

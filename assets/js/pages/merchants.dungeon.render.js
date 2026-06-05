@@ -1,4 +1,4 @@
-// merchants.dungeon.render.js — v6 (dungeon.png 슬라이스 렌더, 카메라 분리)
+// merchants.dungeon.render.js — v7 (2x player, lighting, screenshake, zoom, enhanced effects)
 import { GRID_W, GRID_H, CELL, WORLD_W, WORLD_H } from './merchants.dungeon.map.js';
 
 // ── 스프라이트 캐시 ───────────────────────────────────────────────────────
@@ -56,51 +56,46 @@ export function initDungeonRenderer(canvas) {
 export function resizeDungeonRenderer(canvas){ initDungeonRenderer(canvas); }
 
 // ── 뷰포트 설정 ──────────────────────────────────────────────────────────
-const VIEWPORT=120;   // 화면에 보이는 월드 단위(가로)
+const VIEWPORT_BASE = 120;  // zoom=1일 때 화면에 보이는 월드 단위(가로)
 
 // ── 메인 렌더 ────────────────────────────────────────────────────────────
 export function renderDungeonFrame(st) {
   if (!_ctx||!_W||!_H) return;
-  const {mapImg,player,monsters,projs,floats,effects,drops,rooms,cam,ts,debug,walkable}=st;
+  const {mapImg,player,monsters,projs,floats,effects,drops,rooms,cam,ts,debug,walkable,
+         zoom=1.0,shake={x:0,y:0}} = st;
 
-  const scale = _W / VIEWPORT;          // px per world unit
-  const visH  = _H / scale;             // 화면에 보이는 월드 높이
+  const VIEWPORT = VIEWPORT_BASE / Math.max(0.3, zoom);
+  const scale = _W / VIEWPORT;
+  const visH  = _H / scale;
 
   // ── ① 배경 초기화 ────────────────────────────────────────────────────
-  _ctx.fillStyle='#080810';
+  _ctx.fillStyle='#050508';
   _ctx.fillRect(0,0,_W,_H);
 
-  // ── ② dungeon.png 배경 (트랜스폼 없이 직접 슬라이싱) ────────────────
+  // 화면 흔들림 적용
+  const sx = shake.x * scale * 0.5;
+  const sy = shake.y * scale * 0.5;
+
+  // ── ② dungeon.png 배경 ───────────────────────────────────────────────
   if (mapImg && mapImg.naturalWidth>0 && mapImg.naturalHeight>0) {
     const iw=mapImg.naturalWidth, ih=mapImg.naturalHeight;
-
-    // 카메라가 바라보는 월드 영역
     const wLeft = cam.x - VIEWPORT/2;
     const wTop  = cam.y - visH/2;
-
-    // 이미지에서 해당 영역의 픽셀 좌표
-    const sx = wLeft/WORLD_W * iw;
-    const sy = wTop /WORLD_H * ih;
-    const sw = VIEWPORT/WORLD_W * iw;
-    const sh = visH   /WORLD_H * ih;
-
-    // 이미지 경계 클램프
-    const csx=Math.max(0,sx), csy=Math.max(0,sy);
-    const cex=Math.min(iw,sx+sw), cey=Math.min(ih,sy+sh);
-    const ow=(csx-sx)/sw*_W, oh=(csy-sy)/sh*_H;
-    const dw=(cex-csx)/sw*_W, dh=(cey-csy)/sh*_H;
-
-    if (dw>0&&dh>0) {
-      _ctx.drawImage(mapImg, csx,csy, cex-csx,cey-csy, ow,oh, dw,dh);
-    }
+    const imgSx = wLeft/WORLD_W * iw;
+    const imgSy = wTop /WORLD_H * ih;
+    const imgSw = VIEWPORT/WORLD_W * iw;
+    const imgSh = visH   /WORLD_H * ih;
+    const csx=Math.max(0,imgSx), csy=Math.max(0,imgSy);
+    const cex=Math.min(iw,imgSx+imgSw), cey=Math.min(ih,imgSy+imgSh);
+    const ow=(csx-imgSx)/imgSw*_W+sx, oh=(csy-imgSy)/imgSh*_H+sy;
+    const dw=(cex-csx)/imgSw*_W, dh=(cey-csy)/imgSh*_H;
+    if (dw>0&&dh>0) _ctx.drawImage(mapImg, csx,csy, cex-csx,cey-csy, ow,oh, dw,dh);
   }
 
-  // ── ③ 월드 좌표 엔티티 (카메라 트랜스폼 적용) ───────────────────────
+  // ── ③ 월드 좌표 엔티티 ────────────────────────────────────────────────
   _ctx.save();
-  // 월드 좌표 → 화면 좌표: screen = (world - cam) * scale + (W/2, H/2)
-  _ctx.translate(_W/2 - cam.x*scale, _H/2 - cam.y*scale);
+  _ctx.translate(_W/2 - cam.x*scale + sx, _H/2 - cam.y*scale + sy);
 
-  // 디버그 F1: NavMesh 그리드
   if (debug?.navmesh && walkable) {
     for (let y=0;y<GRID_H;y++) for (let x=0;x<GRID_W;x++) {
       if (!walkable[y*GRID_W+x]) {
@@ -110,23 +105,18 @@ export function renderDungeonFrame(st) {
     }
   }
 
-  // 디버그 F4: 방 영역
   if (debug?.rooms && rooms?.length) {
     const RC=['#3b82f6','#22c55e','#f59e0b','#a78bfa','#f87171','#34d399','#fb923c','#60a5fa'];
     rooms.forEach((rm,i)=>{
-      _ctx.save();
-      _ctx.globalAlpha=0.09;
-      _ctx.fillStyle=RC[i%RC.length];
+      _ctx.save(); _ctx.globalAlpha=0.09; _ctx.fillStyle=RC[i%RC.length];
       for (const [gx,gy] of rm.cells) _ctx.fillRect(gx*CELL*scale,gy*CELL*scale,CELL*scale,CELL*scale);
       _ctx.restore();
-      _ctx.fillStyle=RC[i%RC.length];
-      _ctx.font=`bold ${Math.round(scale*3)}px sans-serif`;
+      _ctx.fillStyle=RC[i%RC.length]; _ctx.font=`bold ${Math.round(scale*3)}px sans-serif`;
       _ctx.textAlign='center'; _ctx.textBaseline='middle';
       _ctx.fillText(`R${i+1}`,rm.cx*scale,rm.cy*scale);
     });
   }
 
-  // 이펙트
   _drawEffects(_ctx, effects, scale);
 
   // 드롭 아이템
@@ -138,19 +128,11 @@ export function renderDungeonFrame(st) {
     _ctx.shadowBlur=0;
   }
 
-  // 디버그 F2: 탐지반경 + 경로
   if (debug?.detect) {
     for (const m of monsters) {
       if (m.state==='die') continue;
-      _ctx.save();
-      _ctx.globalAlpha=0.1; _ctx.fillStyle='#ef4444';
+      _ctx.save(); _ctx.globalAlpha=0.1; _ctx.fillStyle='#ef4444';
       _ctx.beginPath(); _ctx.arc(m.x*scale,m.y*scale,m.def.detect*scale,0,Math.PI*2); _ctx.fill();
-      if (debug.path&&m.path?.length>m.pathIdx) {
-        _ctx.globalAlpha=0.5; _ctx.strokeStyle='#ef4444'; _ctx.lineWidth=0.5*scale;
-        _ctx.beginPath(); _ctx.moveTo(m.x*scale,m.y*scale);
-        for (let i=m.pathIdx;i<m.path.length;i++) _ctx.lineTo(m.path[i].x*scale,m.path[i].y*scale);
-        _ctx.stroke();
-      }
       _ctx.restore();
     }
   }
@@ -168,12 +150,11 @@ export function renderDungeonFrame(st) {
   for (const pr of projs) {
     _ctx.save();
     if (pr.isArrow) {
-      // 화살: 방향에 따른 선분
       const len=scale*3.5;
       const sp=Math.hypot(pr.vx,pr.vy)||1;
       const ax=pr.vx/sp, ay=pr.vy/sp;
       _ctx.strokeStyle='#fde68a'; _ctx.lineWidth=scale*0.45; _ctx.lineCap='round';
-      _ctx.shadowColor='#f59e0b'; _ctx.shadowBlur=scale*1.5;
+      _ctx.shadowColor='#f59e0b'; _ctx.shadowBlur=scale*2;
       _ctx.beginPath();
       _ctx.moveTo(pr.x*scale-ax*len, pr.y*scale-ay*len);
       _ctx.lineTo(pr.x*scale+ax*len*.5, pr.y*scale+ay*len*.5);
@@ -187,23 +168,12 @@ export function renderDungeonFrame(st) {
   }
 
   // 플레이어
-  if (player) {
-    _drawPlayer(_ctx, player, scale, ts);
-
-    // 디버그 F3: 플레이어 경로
-    if (debug?.path&&player.path?.length>player.pathIdx) {
-      _ctx.save(); _ctx.strokeStyle='rgba(251,191,36,.6)'; _ctx.lineWidth=0.4*scale; _ctx.setLineDash([scale,scale]);
-      _ctx.beginPath(); _ctx.moveTo(player.x*scale,player.y*scale);
-      for (let i=player.pathIdx;i<player.path.length;i++) _ctx.lineTo(player.path[i].x*scale,player.path[i].y*scale);
-      _ctx.stroke(); _ctx.setLineDash([]); _ctx.restore();
-    }
-  }
+  if (player) _drawPlayer(_ctx, player, scale, ts);
 
   // 플로팅 텍스트
   _ctx.textAlign='center'; _ctx.textBaseline='middle';
   for (const f of floats) {
-    _ctx.save();
-    _ctx.globalAlpha=Math.min(1,f.life);
+    _ctx.save(); _ctx.globalAlpha=Math.min(1,f.life);
     _ctx.font=`bold ${Math.round(scale*2.5)}px sans-serif`;
     _ctx.fillStyle=f.color||'#fff';
     _ctx.strokeStyle='rgba(0,0,0,.8)'; _ctx.lineWidth=0.4*scale;
@@ -214,7 +184,10 @@ export function renderDungeonFrame(st) {
 
   _ctx.restore(); // 카메라 트랜스폼 해제
 
-  // ── ④ 디버그 HUD (화면 좌표) ──────────────────────────────────────────
+  // ── ④ 다이나믹 조명 (카메라 해제 후, 화면 좌표로 그리기) ──────────────
+  if (player) _drawLighting(_ctx, player, scale, cam, ts, VIEWPORT, visH);
+
+  // ── ⑤ 디버그 HUD ─────────────────────────────────────────────────────
   if (debug&&(debug.navmesh||debug.detect||debug.path||debug.rooms)) {
     _ctx.fillStyle='rgba(0,0,0,.7)'; _ctx.fillRect(4,4,190,16);
     _ctx.fillStyle='#fbbf24'; _ctx.font='10px monospace'; _ctx.textAlign='left';
@@ -222,12 +195,46 @@ export function renderDungeonFrame(st) {
   }
 }
 
-// ── 플레이어 ─────────────────────────────────────────────────────────────
+// ── 다이나믹 조명 (비네팅 + 토치 플리커) ─────────────────────────────────
+function _drawLighting(ctx, player, scale, cam, ts, VIEWPORT, visH) {
+  // 플레이어 화면 중앙 위치
+  const px = _W/2, py = _H/2;
+
+  // 토치 플리커 (sin 합성으로 자연스러운 깜빡임)
+  const flicker = 1.0
+    + Math.sin(ts * 0.003) * 0.06
+    + Math.sin(ts * 0.0071) * 0.04
+    + Math.sin(ts * 0.0137) * 0.02;
+
+  // 조명 반경 (화면의 ~55%)
+  const lightR = Math.min(_W, _H) * 0.55 * flicker;
+  const outerR = Math.min(_W, _H) * 1.1;
+
+  // 방사형 그래디언트 — 중심 투명, 외곽 어두움
+  const grad = ctx.createRadialGradient(px, py, lightR*0.3, px, py, outerR);
+  grad.addColorStop(0,   'rgba(0,0,0,0)');
+  grad.addColorStop(0.55,'rgba(0,0,0,0.15)');
+  grad.addColorStop(0.78,'rgba(0,0,0,0.55)');
+  grad.addColorStop(1,   'rgba(0,0,0,0.92)');
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, _W, _H);
+
+  // 따뜻한 토치 색온도 오버레이
+  const warmGrad = ctx.createRadialGradient(px, py, 0, px, py, lightR * 1.2);
+  warmGrad.addColorStop(0,   `rgba(255,180,60,${0.06 * flicker})`);
+  warmGrad.addColorStop(0.5, `rgba(255,120,20,${0.04 * flicker})`);
+  warmGrad.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = warmGrad;
+  ctx.fillRect(0, 0, _W, _H);
+}
+
+// ── 플레이어 (2배 크기) ───────────────────────────────────────────────────
 function _drawPlayer(ctx, p, scale, ts) {
   const t=ts*0.001;
-  const pw=IMGS.p_body?.naturalWidth||200, ph=IMGS.p_body?.naturalHeight||200;
-  // 플레이어 높이: scale * 8 world unit 기준
-  const sc=scale*8/ph;
+  const ph=IMGS.p_body?.naturalHeight||200;
+  // 플레이어 높이: scale * 16 (기존 8에서 2배)
+  const sc=scale*16/ph;
 
   let bodyY=0,armLA=0,armRA=0,legLA=0,legRA=0;
   if (p.animState==='walk') {
@@ -251,13 +258,13 @@ function _drawPlayer(ctx, p, scale, ts) {
   _part(ctx,IMGS.p_bow1,   scale*.45, -scale*.2,  armRA*.6, sc*.8);
   _part(ctx,IMGS.p_legL,  -scale*.15,  scale*.8,  legLA, sc*.72);
   _part(ctx,IMGS.p_armL,  -scale*.35, -scale*.1,  armLA, sc*.75);
-  _part(ctx,IMGS.p_head,   0,         -scale*.95, 0,     sc*.62);   // 머리 크기 축소
+  _part(ctx,IMGS.p_head,   0,         -scale*.95, 0,     sc*.62);
   _part(ctx,IMGS.p_handR,  scale*.55, -scale*.1,  armRA, sc*.50);
   _part(ctx,IMGS.p_handL, -scale*.50, -scale*.1,  armLA, sc*.50);
   ctx.restore();
 
   // HP 바
-  const bw=scale*5, bh=scale*0.4, bx=-bw/2, by=-scale*2.8;
+  const bw=scale*6, bh=scale*0.5, bx=-bw/2, by=-scale*3.5;
   ctx.fillStyle='rgba(0,0,0,.7)'; ctx.fillRect(bx,by,bw,bh);
   const r=Math.max(0,p.hp/p.maxHp);
   ctx.fillStyle=r>.6?'#22c55e':r>.3?'#f59e0b':'#ef4444';
@@ -283,7 +290,6 @@ function _drawMonster(ctx, m, scale, ts) {
   const frames=IMGS.m[spKey]?.[anim];
   const img=frames?.[Math.min(m.frame,(frames.length||1)-1)];
 
-  // 몬스터 표시 높이 — 플레이어와 유사 스케일 (def.sz * scale * 4)
   const dispH=m.def.sz*scale*4;
   const dispW=img?(img.naturalWidth/img.naturalHeight)*dispH:dispH;
   const dieAlpha=m.state==='die'?Math.max(0.1,1-(m.frame/((MSPRITE_DEFS[spKey]?.die?.length||6)-1))):1;
@@ -293,7 +299,6 @@ function _drawMonster(ctx, m, scale, ts) {
   if (m.facing<0) ctx.scale(-1,1);
   ctx.globalAlpha=dieAlpha;
 
-  // 그림자
   ctx.save(); ctx.globalAlpha=dieAlpha*.35;
   ctx.fillStyle='rgba(0,0,0,.6)';
   ctx.beginPath(); ctx.ellipse(0,m.def.sz*scale*.35,m.def.sz*scale*.65,m.def.sz*scale*.2,0,0,Math.PI*2); ctx.fill();
@@ -306,7 +311,6 @@ function _drawMonster(ctx, m, scale, ts) {
     ctx.beginPath(); ctx.arc(0,0,m.def.sz*scale,0,Math.PI*2); ctx.fill();
   }
 
-  // HP 바
   if (m.state!=='die') {
     const bw=m.def.sz*scale*2.5, bh=scale*0.5;
     const by=-dispH+m.def.sz*scale*.2;
@@ -321,39 +325,111 @@ function _drawMonster(ctx, m, scale, ts) {
   ctx.restore();
 }
 
-// ── 이펙트 ───────────────────────────────────────────────────────────────
+// ── 이펙트 (강화된 파티클) ───────────────────────────────────────────────
 function _drawEffects(ctx, effects, scale) {
   if (!effects) return;
   const now=Date.now();
   for (const ef of effects) {
     const p=Math.min(1,(now-ef.at)/ef.dur);
     if (p>=1) continue;
-    ctx.save(); ctx.globalAlpha=(1-p)*.75;
+    ctx.save(); ctx.globalAlpha=(1-p)*.85;
     const ex=ef.x*scale, ey=ef.y*scale, er=ef.r*scale;
-    if (ef.type==='fire'||ef.type==='ice'||ef.type==='wind') {
+
+    if (ef.type==='fire') {
+      // 불꽃: 다중 레이어 + 파티클
+      const g=ctx.createRadialGradient(ex,ey,0,ex,ey,er*(1+p*.5));
+      g.addColorStop(0,'rgba(255,255,200,.95)');
+      g.addColorStop(0.3,ef.color+'ee');
+      g.addColorStop(0.7,'rgba(220,50,0,.6)');
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ex,ey,er*(1+p*.5),0,Math.PI*2); ctx.fill();
+      // 스파크 파티클
+      ctx.shadowColor=ef.color; ctx.shadowBlur=scale*3;
+      for (let i=0; i<8; i++) {
+        const a=i/8*Math.PI*2+p*4, r=er*(0.5+p*0.5);
+        ctx.fillStyle='rgba(255,200,50,.8)';
+        ctx.beginPath(); ctx.arc(ex+Math.cos(a)*r,ey+Math.sin(a)*r,scale*0.8,0,Math.PI*2); ctx.fill();
+      }
+      ctx.shadowBlur=0;
+
+    } else if (ef.type==='ice') {
       const g=ctx.createRadialGradient(ex,ey,0,ex,ey,er*(1+p*.3));
-      g.addColorStop(0,ef.color+'cc'); g.addColorStop(1,'transparent');
+      g.addColorStop(0,'rgba(200,240,255,.9)');
+      g.addColorStop(0.4,ef.color+'cc');
+      g.addColorStop(1,'transparent');
       ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ex,ey,er*(1+p*.3),0,Math.PI*2); ctx.fill();
+      // 결정 파티클
+      ctx.strokeStyle='rgba(180,230,255,.7)'; ctx.lineWidth=scale*0.4;
+      for (let i=0; i<6; i++) {
+        const a=i/6*Math.PI*2, r=er*(0.3+p*0.6);
+        ctx.beginPath(); ctx.moveTo(ex,ey); ctx.lineTo(ex+Math.cos(a)*r,ey+Math.sin(a)*r); ctx.stroke();
+      }
+
+    } else if (ef.type==='wind') {
+      // 회오리
+      for (let ring=0; ring<3; ring++) {
+        const rScale=0.5+ring*0.25;
+        const g=ctx.createRadialGradient(ex,ey,0,ex,ey,er*rScale*(1+p*.2));
+        g.addColorStop(0,'transparent');
+        g.addColorStop(0.6,ef.color+'44');
+        g.addColorStop(1,'transparent');
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ex,ey,er*rScale*(1+p*.2),0,Math.PI*2); ctx.fill();
+      }
+
     } else if (ef.type==='bolt') {
-      ctx.strokeStyle=ef.color; ctx.lineWidth=scale*.3; ctx.shadowColor=ef.color; ctx.shadowBlur=scale*2;
+      ctx.strokeStyle=ef.color; ctx.lineWidth=scale*.5; ctx.shadowColor=ef.color; ctx.shadowBlur=scale*4;
       for (const seg of ef.segs||[]) {
         ctx.beginPath(); ctx.moveTo(seg.from.x*scale,seg.from.y*scale); ctx.lineTo(seg.to.x*scale,seg.to.y*scale); ctx.stroke();
+        // 충격파
+        ctx.lineWidth=scale*1.5; ctx.globalAlpha=(1-p)*.2;
+        ctx.beginPath(); ctx.moveTo(seg.from.x*scale,seg.from.y*scale); ctx.lineTo(seg.to.x*scale,seg.to.y*scale); ctx.stroke();
+        ctx.globalAlpha=(1-p)*.85; ctx.lineWidth=scale*.5;
       }
+
     } else if (ef.type==='meteor_warn') {
-      ctx.strokeStyle=ef.color; ctx.lineWidth=scale*.3; ctx.setLineDash([scale,scale]);
-      ctx.beginPath(); ctx.arc(ex,ey,er,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle=ef.color; ctx.lineWidth=scale*.35;
+      ctx.setLineDash([scale,scale]); ctx.shadowColor=ef.color; ctx.shadowBlur=scale*2;
+      ctx.beginPath(); ctx.arc(ex,ey,er,0,Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]); ctx.shadowBlur=0;
+      // 경고 크로스헤어
+      ctx.strokeStyle='rgba(251,146,60,.5)'; ctx.lineWidth=scale*.2;
+      ctx.beginPath(); ctx.moveTo(ex-er,ey); ctx.lineTo(ex+er,ey); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ex,ey-er); ctx.lineTo(ex,ey+er); ctx.stroke();
+
     } else if (ef.type==='meteor_hit') {
-      const g2=ctx.createRadialGradient(ex,ey,0,ex,ey,er*(1+p*1.5));
-      g2.addColorStop(0,'rgba(255,255,200,.95)'); g2.addColorStop(.4,ef.color+'aa'); g2.addColorStop(1,'transparent');
-      ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(ex,ey,er*(1+p*1.5),0,Math.PI*2); ctx.fill();
+      // 폭발: 다중 레이어
+      const blast=er*(1+p*2.5);
+      const g2=ctx.createRadialGradient(ex,ey,0,ex,ey,blast);
+      g2.addColorStop(0,'rgba(255,255,220,1)');
+      g2.addColorStop(0.2,'rgba(255,160,20,.95)');
+      g2.addColorStop(0.5,ef.color+'cc');
+      g2.addColorStop(0.8,'rgba(100,30,0,.4)');
+      g2.addColorStop(1,'transparent');
+      ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(ex,ey,blast,0,Math.PI*2); ctx.fill();
+      // 충격파 링
+      ctx.strokeStyle=`rgba(255,200,100,${(1-p)*.6})`; ctx.lineWidth=scale*1.5;
+      ctx.beginPath(); ctx.arc(ex,ey,blast*.8,0,Math.PI*2); ctx.stroke();
+      // 파편 파티클
+      ctx.shadowColor='#fbbf24'; ctx.shadowBlur=scale*2;
+      for (let i=0; i<12; i++) {
+        const a=i/12*Math.PI*2, r=blast*(0.4+Math.random()*.5);
+        ctx.fillStyle=`rgba(255,${100+Math.floor(Math.random()*100)},20,.8)`;
+        ctx.beginPath(); ctx.arc(ex+Math.cos(a)*r,ey+Math.sin(a)*r,scale*(0.8+Math.random()*1.2),0,Math.PI*2); ctx.fill();
+      }
+      ctx.shadowBlur=0;
+
     } else if (ef.type==='kill') {
-      ctx.fillStyle=ef.color+'55'; ctx.beginPath(); ctx.arc(ex,ey,er*(1+p),0,Math.PI*2); ctx.fill();
+      // 처치 이펙트: 황금 폭발
+      ctx.fillStyle=`rgba(251,191,36,${(1-p)*.5})`;
+      ctx.beginPath(); ctx.arc(ex,ey,er*(1+p*1.5),0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle=`rgba(251,191,36,${(1-p)*.7})`; ctx.lineWidth=scale*.3;
+      ctx.beginPath(); ctx.arc(ex,ey,er*(0.8+p*0.8),0,Math.PI*2); ctx.stroke();
     }
     ctx.restore();
   }
 }
 
-// ── 레거시 호환 (bow.js 등 다른 파일의 import 오류 방지) ─────────────────
+// ── 레거시 호환 ───────────────────────────────────────────────────────────
 export function drawPlayerSprite(){}
 export function addArrowParticle() {}
 export function triggerShake()     {}

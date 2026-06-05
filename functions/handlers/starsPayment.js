@@ -249,10 +249,40 @@ async function upsertProduct(data) {
   return { created: true, id: ref.id };
 }
 
+// ── Affiliate 커미션 GP 환급 ──────────────────────────────────────────────────
+
+async function redeemAffiliateCommission(uid) {
+  const pendingSnaps = await db.collection('affiliate_sales')
+    .where('referrerUid', '==', uid)
+    .where('status', '==', 'pending')
+    .get();
+
+  if (pendingSnaps.empty) return { ok: false, reason: 'no_pending_commission' };
+
+  let totalStars = 0;
+  pendingSnaps.forEach(s => { totalStars += (s.data().commissionStars || 0); });
+
+  if (totalStars < 1) return { ok: false, reason: 'commission_too_small' };
+
+  const gpAmount = totalStars * 100; // 1⭐ = 100 GP
+  const batch = db.batch();
+  pendingSnaps.forEach(s => {
+    batch.update(s.ref, { status: 'paid', paidAt: FieldValue.serverTimestamp() });
+  });
+
+  await Promise.all([
+    batch.commit(),
+    db.collection('battle_players').doc(uid)
+      .set({ gold: FieldValue.increment(gpAmount) }, { merge: true }),
+  ]);
+
+  return { ok: true, starsRedeemed: totalStars, gpGranted: gpAmount };
+}
+
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
 function _todayUtc7() {
   return new Date(Date.now() + 7*3600*1000).toISOString().slice(0,10);
 }
 
-module.exports = { grantProduct, getAdminStats, seedProducts, upsertProduct };
+module.exports = { grantProduct, getAdminStats, seedProducts, upsertProduct, redeemAffiliateCommission };
