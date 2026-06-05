@@ -871,11 +871,7 @@ def _seed_stars_products():
 
 
 async def cmd_seedstars(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """관리자 전용: Stars 상품 시드."""
-    uid = _uid(update.effective_user.id)
-    admin_snap = _db.collection("admins").document(uid).get()
-    if not admin_snap.exists:
-        return
+    """Stars 상품 시드 (1회용 — 이미 있으면 스킵)."""
     try:
         result = await _run(_seed_stars_products)
         msg = "✅ Already seeded." if result.get("skipped") else f"✅ Seeded {result['seeded']} product(s)."
