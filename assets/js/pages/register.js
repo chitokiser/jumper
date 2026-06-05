@@ -151,14 +151,15 @@ async function doRegister(uid, user) {
 
   setStep("step2", "doing");
   setStep("step3", "doing");
-  const createWallet = httpsCallable(functions, "createWallet");
+  const createWallet = httpsCallable(functions, "createWallet", { timeout: 300000 });
   const walletResult = await createWallet({ mentorAddress });
   const walletAddress  = walletResult.data?.address;
+  const joinBonus      = walletResult.data?.joinBonus;
   const referralBonus  = walletResult.data?.referralBonus;
   setStep("step2", "done");
   setStep("step3", "done");
 
-  return { walletAddress, referralBonus };
+  return { walletAddress, joinBonus, referralBonus };
 }
 
 // ── 폼 이벤트 바인딩 ──────────────────────────────
@@ -173,7 +174,7 @@ function bindForm(uid, user) {
 
     try {
       setState("가입 처리 중...");
-      const { walletAddress, referralBonus } = await doRegister(uid, user);
+      const { walletAddress, joinBonus, referralBonus } = await doRegister(uid, user);
       setState("가입 완료!");
 
       show("regForm",    false);
@@ -185,11 +186,17 @@ function bindForm(uid, user) {
       const onChainEl = $("onChainStatus");
       if (onChainEl) { onChainEl.textContent = "등록 완료 ✓"; onChainEl.style.color = "var(--accent)"; }
 
-      // 추천인 보너스 알림
+      // 가입 보너스 알림
+      if (joinBonus) {
+        const bonusEl = document.createElement("p");
+        bonusEl.style.cssText = "margin-top:12px;padding:10px 14px;background:#d1fae5;border-radius:10px;font-size:0.88rem;color:#065f46;font-weight:600;text-align:center;";
+        bonusEl.textContent = "🎁 가입 축하! 게임코인 1,000 GP가 지급되었습니다.";
+        $("alreadyDone")?.appendChild(bonusEl);
+      }
       if (referralBonus) {
         const bonusEl = document.createElement("p");
-        bonusEl.style.cssText = "margin-top:12px;padding:10px 14px;background:#fef3c7;border-radius:10px;font-size:0.88rem;color:#92400e;font-weight:600;text-align:center;";
-        bonusEl.textContent = "🎁 추천인 보너스! 게임코인 1,000 포인트가 지급되었습니다.";
+        bonusEl.style.cssText = "margin-top:8px;padding:10px 14px;background:#fef3c7;border-radius:10px;font-size:0.88rem;color:#92400e;font-weight:600;text-align:center;";
+        bonusEl.textContent = "👥 추천인 보너스! 추가 게임코인이 지급되었습니다.";
         $("alreadyDone")?.appendChild(bonusEl);
       }
     } catch (err) {
@@ -214,7 +221,9 @@ async function _initForUser(user) {
     const snap = await getDoc(doc(db, "users", user.uid));
     const data = snap.exists() ? snap.data() : null;
 
-    if (data?.name) {
+    // 지갑까지 완전히 생성된 경우만 "완료" 처리
+    // 이름만 저장되고 지갑 생성이 실패한 경우 → 폼으로 돌아가 재시도
+    if (data?.wallet?.encryptedKey) {
       setState("이미 가입된 계정입니다.");
       showAlreadyDone(data);
       return;
@@ -229,6 +238,20 @@ async function _initForUser(user) {
     if (mentorEl && !mentorEl.value) {
       const urlMentor = new URLSearchParams(location.search).get("mentor") || "";
       mentorEl.value = /^0x[0-9a-fA-F]{40}$/.test(urlMentor) ? urlMentor : DEFAULT_MENTOR;
+    }
+
+    // 프로필은 저장됐지만 지갑이 없는 경우: 기존 값 미리 채움
+    if (data?.name) {
+      const nameEl  = $("userName");
+      const phoneEl = $("userPhone");
+      if (nameEl  && !nameEl.value)  nameEl.value  = data.name;
+      if (phoneEl && !phoneEl.value) phoneEl.value = data.phone || "";
+      setState("지갑 생성을 완료해주세요.");
+      const hint = document.createElement("p");
+      hint.className = "hint";
+      hint.style.cssText = "color:#d97706;font-size:0.85rem;margin-bottom:8px;";
+      hint.textContent = "이전에 지갑 생성이 완료되지 않았습니다. 아래 버튼을 눌러 완료해주세요.";
+      $("regForm")?.prepend(hint);
     }
 
     bindForm(user.uid, user);

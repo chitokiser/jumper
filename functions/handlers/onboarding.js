@@ -33,7 +33,21 @@ const DEFAULT_MENTOR_ADDRESS = '0xc662c3B58bE7345DE30dd8188B2Acc977943186A';
  * @returns {{ address: string, created: boolean }}
  */
 async function createCustodialWallet(uid, masterSecret, mentorAddress) {
-  // 멘토 주소 없으면 기본 주소 사용
+  const fast = await createWalletAndBonus(uid, masterSecret, mentorAddress);
+  if (!fast.created) return fast;
+  try {
+    await registerOnChainBackground(uid, mentorAddress, masterSecret);
+    return { ...fast, registered: true };
+  } catch (_) {
+    return { ...fast, registered: false };
+  }
+}
+
+/**
+ * 1단계(빠름): 지갑 Firestore 저장 + 가입 보너스 지급
+ * telegramRegister에서 봇 응답 전에 호출 — 3~5초 내 완료
+ */
+async function createWalletAndBonus(uid, masterSecret, mentorAddress) {
   if (!mentorAddress || !ethers.isAddress(mentorAddress)) {
     mentorAddress = DEFAULT_MENTOR_ADDRESS;
   }
@@ -41,82 +55,63 @@ async function createCustodialWallet(uid, masterSecret, mentorAddress) {
   const userRef = db.collection('users').doc(uid);
   const snap    = await userRef.get();
 
-  // 멱등: 수탁 지갑(encryptedKey 포함)이 이미 있으면 그대로 반환
-  // MetaMask 등 개인지갑(address만 있고 encryptedKey 없음)은 재생성 허용
+  // 멱등: 수탁 지갑이 이미 있으면 그대로 반환
   if (snap.exists && snap.data()?.wallet?.address && snap.data()?.wallet?.encryptedKey) {
-    return { address: snap.data().wallet.address, created: false };
+    return { address: snap.data().wallet.address, created: false, joinBonus: false };
   }
 
-  // 새 지갑 생성
   const wallet       = ethers.Wallet.createRandom();
   const encryptedKey = encrypt(wallet.privateKey, masterSecret);
 
   await userRef.set({
-    wallet: {
-      address:      wallet.address,
-      encryptedKey,                        // 평문 key는 절대 저장 안 함
-      createdAt:    admin.firestore.FieldValue.serverTimestamp(),
-    },
+    wallet: { address: wallet.address, encryptedKey, createdAt: admin.firestore.FieldValue.serverTimestamp() },
   }, { merge: true });
 
+  let joinBonus = false;
   try {
-    const provider    = getProvider();
-    const adminWallet = getAdminWallet();
-
-    // 1) 수탁 지갑에 가스비 BNB 소량 전송
-    const fundTx = await adminWallet.sendTransaction({
-      to:    wallet.address,
-      value: ethers.parseEther('0.0001'),
-    });
-    await fundTx.wait();
-
-    // 2) 수탁 지갑으로 register(mentorAddress)
-    const signer   = walletFromKey(wallet.privateKey, provider);
-    const platform = getPlatformContract(signer);
-    const gasLimit = await estimateGasWithBuffer(platform, 'register', [mentorAddress]);
-    const regTx    = await platform.register(mentorAddress, { gasLimit });
-    await regTx.wait();
-
-    // 3) Firestore 온체인 상태 기록
-    await userRef.set({
-      onChain: {
-        registered:    true,
-        registeredAt:  admin.firestore.FieldValue.serverTimestamp(),
-        mentorAddress,
-        txHash:        regTx.hash,
-      },
-    }, { merge: true });
-
-    // 4) 신규 가입 보너스 + 정회원 레벨 4 플래그
-    try {
-      const today   = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
-      const userNow = await userRef.get();
-      const coopUntil = (userNow.data() || {}).coopMemberUntil || '';
-      const isPremium = !!(coopUntil && coopUntil >= today);
-
-      const bpUpdate = {
-        uid,
-        gold:        admin.firestore.FieldValue.increment(1000),
-        joinBonusAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-
-      // 이미 정회원이면 온체인 레벨 4 배치 동기화 예약
-      if (isPremium) {
-        bpUpdate.level              = 4;
-        bpUpdate.pendingOnChainSync  = true;
-        bpUpdate.pendingOnChainLevel = 4;
-      }
-
-      await db.collection('battle_players').doc(uid).set(bpUpdate, { merge: true });
-    } catch (bonusErr) {
-      console.warn('[createCustodialWallet] 가입 보너스 지급 실패:', bonusErr.message);
-    }
-
-    return { address: wallet.address, created: true, registered: true, joinBonus: true };
-  } catch (regErr) {
-    console.warn('[createCustodialWallet] 온체인 자동 등록 실패:', regErr.message);
-    return { address: wallet.address, created: true, registered: false };
+    const today     = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+    const userNow   = await userRef.get();
+    const coopUntil = (userNow.data() || {}).coopMemberUntil || '';
+    const isPremium = !!(coopUntil && coopUntil >= today);
+    const bpUpdate  = { uid, gold: admin.firestore.FieldValue.increment(1000), joinBonusAt: admin.firestore.FieldValue.serverTimestamp() };
+    if (isPremium) { bpUpdate.level = 4; bpUpdate.pendingOnChainSync = true; bpUpdate.pendingOnChainLevel = 4; }
+    await db.collection('battle_players').doc(uid).set(bpUpdate, { merge: true });
+    joinBonus = true;
+  } catch (bonusErr) {
+    console.warn('[createWalletAndBonus] 보너스 지급 실패:', bonusErr.message);
   }
+
+  return { address: wallet.address, created: true, registered: false, joinBonus };
+}
+
+/**
+ * 2단계(느림): BNB 충전 + 온체인 register — 응답 후 백그라운드 실행
+ */
+async function registerOnChainBackground(uid, mentorAddress, masterSecret) {
+  if (!mentorAddress || !ethers.isAddress(mentorAddress)) {
+    mentorAddress = DEFAULT_MENTOR_ADDRESS;
+  }
+  const userRef    = db.collection('users').doc(uid);
+  const snap       = await userRef.get();
+  const walletData = snap.data()?.wallet;
+  if (!walletData?.encryptedKey) throw new Error('지갑 없음');
+
+  const privateKey  = decrypt(walletData.encryptedKey, masterSecret);
+  const provider    = getProvider();
+  const adminWallet = getAdminWallet();
+
+  const fundTx = await adminWallet.sendTransaction({ to: walletData.address, value: ethers.parseEther('0.0001') });
+  await fundTx.wait();
+
+  const signer   = walletFromKey(privateKey, provider);
+  const platform = getPlatformContract(signer);
+  const gasLimit = await estimateGasWithBuffer(platform, 'register', [mentorAddress]);
+  const regTx    = await platform.register(mentorAddress, { gasLimit });
+  await regTx.wait();
+
+  await userRef.set({
+    onChain: { registered: true, registeredAt: admin.firestore.FieldValue.serverTimestamp(), mentorAddress, txHash: regTx.hash },
+  }, { merge: true });
 }
 
 // ────────────────────────────────────────────────
@@ -660,6 +655,8 @@ async function adminSetBlacklist(emailOrUid, blocked) {
 
 module.exports = {
   createCustodialWallet,
+  createWalletAndBonus,
+  registerOnChainBackground,
   registerOnChain,
   registerMentor,
   getUserOnChainData,

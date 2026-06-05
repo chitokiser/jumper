@@ -2001,9 +2001,21 @@ function renderInventory() {
           e.stopPropagation();
           dropItem(itemId, 1);
         });
-        // 터치: 슬롯 길게 터치로 버리기 버튼 표시
-        slot.addEventListener('touchstart', () => slot.classList.add('touch-active'), { passive: true });
-        slot.addEventListener('touchend', () => setTimeout(() => slot.classList.remove('touch-active'), 1500), { passive: true });
+        // 터치: 600ms 길게 눌러야 쓰레기통 표시 (짧은 탭은 장착으로 처리)
+        let _lpt = null;
+        slot.addEventListener('touchstart', () => {
+          _lpt = setTimeout(() => slot.classList.add('touch-active'), 600);
+        }, { passive: true });
+        slot.addEventListener('touchend', () => {
+          clearTimeout(_lpt);
+          if (slot.classList.contains('touch-active')) {
+            setTimeout(() => slot.classList.remove('touch-active'), 2000);
+          }
+        }, { passive: true });
+        slot.addEventListener('touchcancel', () => {
+          clearTimeout(_lpt);
+          slot.classList.remove('touch-active');
+        }, { passive: true });
         slot.appendChild(dropBtn);
       }
     } else {

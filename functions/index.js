@@ -96,7 +96,7 @@ function wrapError(fn) {
 //    클라이언트: httpsCallable(functions, 'createWallet')()
 // ════════════════════════════════════════════════════════════════════════════
 exports.createWallet = onCall(
-  { secrets: [walletSecret, adminKeySecret] },
+  { secrets: [walletSecret, adminKeySecret], timeoutSeconds: 300 },
   wrapError(async (request) => {
     const uid           = requireAuth(request);
     const mentorAddress = request.data?.mentorAddress ?? null;
@@ -2644,31 +2644,41 @@ exports.telegramWebAuth = onCall(
 // bot.py → POST X-Bot-Token 헤더로 인증, uid + mentorAddress 전달
 // ════════════════════════════════════════════════════════════════════════════
 exports.telegramRegister = onRequest(
-  { cors: false, secrets: [walletSecret, adminKeySecret, telegramBotSecret] },
+  { cors: false, secrets: [walletSecret, adminKeySecret, telegramBotSecret], timeoutSeconds: 120 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method Not Allowed' });
       return;
     }
+    if ((req.headers['x-bot-token'] || '') !== telegramBotSecret.value()) {
+      res.status(401).json({ error: '인증 실패' });
+      return;
+    }
+    const { uid, mentorAddress } = req.body ?? {};
+    if (!uid || !uid.startsWith('tg_')) {
+      res.status(400).json({ error: 'uid 오류 (tg_ 접두사 필요)' });
+      return;
+    }
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+
+    // 1단계: 지갑 생성 + 보너스 (빠른 Firestore 작업, ~3초)
+    //        완료 즉시 봇에 응답 → 봇이 로딩 없이 바로 결과 표시
+    let fastResult;
     try {
-      if ((req.headers['x-bot-token'] || '') !== telegramBotSecret.value()) {
-        res.status(401).json({ error: '인증 실패' });
-        return;
-      }
-      const { uid, mentorAddress } = req.body ?? {};
-      if (!uid || !uid.startsWith('tg_')) {
-        res.status(400).json({ error: 'uid 오류 (tg_ 접두사 필요)' });
-        return;
-      }
-      process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-      const result = await onboarding.createCustodialWallet(
-        uid, walletSecret.value(), mentorAddress || null
-      );
-      logger.info('telegramRegister', { uid, address: result.address, created: result.created });
-      res.json(result);
+      fastResult = await onboarding.createWalletAndBonus(uid, walletSecret.value(), mentorAddress || null);
     } catch (err) {
-      logger.error('[telegramRegister Error]', err);
-      res.status(500).json({ error: err.message || '서버 오류' });
+      logger.error('[telegramRegister] wallet/bonus error', err);
+      res.status(500).json({ error: err.message || '지갑 생성 실패' });
+      return;
+    }
+
+    logger.info('telegramRegister fast', { uid, address: fastResult.address, created: fastResult.created });
+    res.json(fastResult);  // 봇에 즉시 응답
+
+    // 2단계: 온체인 등록 (느린 블록체인 작업, 응답 후 백그라운드 실행)
+    if (fastResult.created) {
+      onboarding.registerOnChainBackground(uid, mentorAddress || null, walletSecret.value())
+        .catch((err) => logger.warn('[telegramRegister] onchain background error', err.message));
     }
   }
 );

@@ -182,18 +182,30 @@ async function telegramWebAuth(userData, botToken) {
  */
 async function sendTelegramMessage(botToken, chatId, text) {
   try {
+    // chat_id 정규화: 개행·공백 제거
+    // 양수 = private(DM) / 그대로 사용
+    // 음수 = 그룹/슈퍼그룹/채널 / 그대로 사용
+    const normalizedId = String(chatId).trim();
+
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: chatId,
+        chat_id: normalizedId,
         text,
         parse_mode: 'HTML',
-        disable_notification: true,  // 소리 없이 조용히 전송
+        disable_notification: true,
       }),
     });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error('[sendTelegramMessage] API error', normalizedId, body?.description);
+    }
     return res.ok;
-  } catch { return false; }
+  } catch (e) {
+    console.error('[sendTelegramMessage] fetch error', e?.message);
+    return false;
+  }
 }
 
 module.exports = { authWithTelegram, telegramWebAuth, sendTelegramMessage };
