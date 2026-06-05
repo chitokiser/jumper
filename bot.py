@@ -8,11 +8,12 @@ import requests as _req
 
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup,
-    MenuButtonWebApp, WebAppInfo,
+    MenuButtonWebApp, WebAppInfo, LabeledPrice,
 )
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
     MessageHandler, ContextTypes, filters, ChatMemberHandler,
+    PreCheckoutQueryHandler,
 )
 
 import sys
@@ -78,6 +79,87 @@ def _fetch_ton_usd() -> float:
     _ton_cache["usd"] = price
     _ton_cache["ts"]  = now
     return price
+
+
+def _get_stars_products() -> list:
+    snaps = _db.collection("stars_products").where("active", "==", True).order_by("starsPrice").get()
+    return [{"id": s.id, **s.to_dict()} for s in snaps]
+
+
+def _get_stars_product(product_id: str) -> dict | None:
+    snap = _db.collection("stars_products").document(product_id).get(timeout=_FS_TIMEOUT)
+    if snap.exists:
+        return {"id": snap.id, **snap.to_dict()}
+    return None
+
+
+def _save_stars_payment(charge_id: str, uid: str, provider_charge_id: str,
+                         product: dict, referrer_uid: str | None) -> bool:
+    ref = _db.collection("stars_payments").document(charge_id)
+    if ref.get(timeout=_FS_TIMEOUT).exists:
+        return False  # 중복
+    ref.set({
+        "uid":                      uid,
+        "telegramPaymentChargeId":  charge_id,
+        "providerPaymentChargeId":  provider_charge_id,
+        "productId":                product["id"],
+        "productType":              product.get("productType",""),
+        "starsAmount":              product.get("starsPrice", 0),
+        "status":                   "paid",
+        "grantStatus":              "pending",
+        "referrerUid":              referrer_uid,
+        "createdAt":                firestore.SERVER_TIMESTAMP,
+        "grantedAt":                None,
+    })
+    return True
+
+
+def _get_referral_code(uid: str) -> str:
+    return "JUMP" + uid.replace("tg_","").upper()[:8]
+
+
+def _get_or_create_referral_code(uid: str) -> str:
+    code = _get_referral_code(uid)
+    _db.collection("users").document(uid).set(
+        {"referralCode": code}, merge=True
+    )
+    return code
+
+
+def _find_uid_by_referral_code(code: str) -> str | None:
+    snaps = _db.collection("users").where("referralCode", "==", code).limit(1).get()
+    for s in snaps:
+        return s.id
+    return None
+
+
+def _set_referrer(uid: str, referrer_uid: str):
+    if uid == referrer_uid:
+        return
+    u = _db.collection("users").document(uid).get(timeout=_FS_TIMEOUT)
+    if (u.to_dict() or {}).get("referrerId"):
+        return  # 이미 등록됨 — 수정 불가
+    _db.collection("users").document(uid).set(
+        {"referrerId": referrer_uid}, merge=True
+    )
+
+
+def _get_affiliate_stats(uid: str) -> dict:
+    sales = _db.collection("affiliate_sales").where("referrerUid", "==", uid).get()
+    buyers = set()
+    total_stars = 0
+    pending_commission = 0
+    for s in sales:
+        d = s.to_dict() or {}
+        buyers.add(d.get("buyerUid",""))
+        total_stars += d.get("starsAmount", 0)
+        if d.get("status") == "pending":
+            pending_commission += d.get("commissionStars", 0)
+    return {
+        "total_referred":     len(buyers),
+        "total_stars":        total_stars,
+        "pending_commission": pending_commission,
+    }
 
 
 def _today_utc7() -> str:
@@ -539,6 +621,190 @@ async def cmd_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _reply_rate(update.message)
 
 
+# ── Telegram Stars 결제 ───────────────────────────────────────────────────────
+
+_PRODUCT_TYPE_EMOJI = {
+    'premium':    '⭐',
+    'gp':         '💰',
+    'key':        '🗝️',
+    'random_box': '🎁',
+    'jump_pkg':   '🏃',
+}
+
+async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Stars 상품 목록 표시."""
+    try:
+        products = await _run(_get_stars_products)
+        if not products:
+            await _safe_reply(update.message, "⚠️ No products available right now.")
+            return
+        keyboard = []
+        for p in products:
+            emoji = _PRODUCT_TYPE_EMOJI.get(p.get("productType",""), "🛒")
+            label = f"{emoji} {p['name']} — {p['starsPrice']} ⭐"
+            keyboard.append([InlineKeyboardButton(label, callback_data=f"stars_buy_{p['id']}")])
+        await _safe_reply(update.message,
+            "⭐ *JumpDAO Stars Shop*\n\n"
+            "Select a product to purchase with Telegram Stars:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        print(f"[ERROR] cmd_buy: {e}")
+        await _safe_reply(update.message, "❌ Failed to load shop. Please try again.")
+
+
+async def cb_stars_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """상품 선택 → send_invoice 호출."""
+    q = update.callback_query
+    await q.answer()
+    product_id = q.data[len("stars_buy_"):]
+    uid = _uid(q.from_user.id)
+    try:
+        product = await _run(_get_stars_product, product_id)
+        if not product or not product.get("active"):
+            await _safe_reply(q.message, "❌ Product not available.")
+            return
+        payload = f"{product_id}:{uid}"
+        await context.bot.send_invoice(
+            chat_id=q.from_user.id,
+            title=product["name"],
+            description=product.get("description", product["name"]),
+            payload=payload,
+            currency="XTR",
+            prices=[LabeledPrice(product["name"], product["starsPrice"])],
+            provider_token="",
+        )
+    except Exception as e:
+        print(f"[ERROR] cb_stars_buy: {e}")
+        await _safe_reply(q.message, "❌ Failed to create invoice. Please try again.")
+
+
+async def pre_checkout_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """결제 전 검증 — 반드시 60초 내 응답."""
+    q = update.pre_checkout_query
+    try:
+        parts = (q.invoice_payload or "").split(":")
+        if len(parts) != 2:
+            await q.answer(ok=False, error_message="Invalid payment data.")
+            return
+        product_id, uid = parts
+        product = await _run(_get_stars_product, product_id)
+        if not product or not product.get("active"):
+            await q.answer(ok=False, error_message="Product is no longer available.")
+            return
+        if product.get("starsPrice") != q.total_amount:
+            await q.answer(ok=False, error_message="Price mismatch. Please restart the purchase.")
+            return
+        await q.answer(ok=True)
+    except Exception as e:
+        print(f"[ERROR] pre_checkout_handler: {e}")
+        await q.answer(ok=False, error_message="Server error. Please try again.")
+
+
+async def successful_payment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """결제 완료 처리."""
+    sp      = update.message.successful_payment
+    uid     = _uid(update.effective_user.id)
+    charge_id  = sp.telegram_payment_charge_id
+    provider_id = sp.provider_payment_charge_id or ""
+
+    parts = (sp.invoice_payload or "").split(":")
+    if len(parts) != 2:
+        return
+    product_id, payload_uid = parts
+    if payload_uid != uid:
+        print(f"[WARN] Stars payment uid mismatch: {payload_uid} vs {uid}")
+        return
+
+    try:
+        product = await _run(_get_stars_product, product_id)
+        if not product:
+            await update.message.reply_text("❌ Product not found. Contact support.")
+            return
+
+        # 추천인 조회
+        u_snap = await _run(lambda: _db.collection("users").document(uid).get(timeout=_FS_TIMEOUT))
+        referrer_uid = (u_snap.to_dict() or {}).get("referrerId") if u_snap.exists else None
+
+        # 중복 방지 저장
+        saved = await _run(_save_stars_payment, charge_id, uid, provider_id, product, referrer_uid)
+        if not saved:
+            await update.message.reply_text("⚠️ Payment already processed.")
+            return
+
+        # Cloud Function으로 지급 위임
+        if FUNCTIONS_BASE_URL:
+            _req.post(
+                f"{FUNCTIONS_BASE_URL}/starsGrantProduct",
+                json={"chargeId": charge_id},
+                headers={"X-Bot-Token": BOT_TOKEN},
+                timeout=30,
+            )
+
+        emoji = _PRODUCT_TYPE_EMOJI.get(product.get("productType",""), "🎁")
+        await update.message.reply_text(
+            f"🎉 *Payment Successful!*\n\n"
+            f"{emoji} *{product['name']}* has been credited!\n"
+            f"Stars paid: {sp.total_amount} ⭐\n\n"
+            f"_Enjoy your purchase!_",
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        print(f"[ERROR] successful_payment_handler: {e}")
+        await update.message.reply_text(
+            "⚠️ Payment received but item delivery failed.\n"
+            "Please contact support with your payment ID:\n"
+            f"`{charge_id}`",
+            parse_mode="Markdown",
+        )
+
+
+async def cmd_mystats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """내 추천인 통계 + Stars 매출."""
+    uid = _uid(update.effective_user.id)
+    try:
+        code  = await _run(_get_or_create_referral_code, uid)
+        stats = await _run(_get_affiliate_stats, uid)
+        bot_name = _bot_username or context.bot.username or ""
+        link = f"https://t.me/{bot_name}?start=JUMPREF_{code}" if bot_name else f"Code: {code}"
+        await _safe_reply(update.message,
+            f"👥 *My Referral Stats*\n\n"
+            f"🔗 Your invite link:\n`{link}`\n\n"
+            f"📊 Stats:\n"
+            f"• Total referred: *{stats['total_referred']}* members\n"
+            f"• Stars purchases by referrals: *{stats['total_stars']} ⭐*\n"
+            f"• Pending commission: *{stats['pending_commission']} ⭐*\n\n"
+            f"_Commission paid automatically via Telegram Affiliate Program_"
+        )
+    except Exception as e:
+        print(f"[ERROR] cmd_mystats: {e}")
+        await _safe_reply(update.message, "❌ Failed to load stats. Please try again.")
+
+
+async def cb_stars_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    try:
+        products = await _run(_get_stars_products)
+        if not products:
+            await _safe_reply(q.message, "⚠️ No products available right now.")
+            return
+        keyboard = []
+        for p in products:
+            emoji = _PRODUCT_TYPE_EMOJI.get(p.get("productType",""), "🛒")
+            keyboard.append([InlineKeyboardButton(
+                f"{emoji} {p['name']} — {p['starsPrice']} ⭐",
+                callback_data=f"stars_buy_{p['id']}"
+            )])
+        await _safe_reply(q.message,
+            "⭐ *JumpDAO Stars Shop*\n\nSelect a product to purchase with Telegram Stars:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        print(f"[ERROR] cb_stars_shop: {e}")
+        await _safe_reply(q.message, "❌ Failed to load shop. Please try again.", "stars_shop")
+
+
 async def cb_show_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -560,7 +826,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid     = _uid(update.effective_user.id)
     is_group = update.effective_chat.type in ("group", "supergroup")
 
-    if args and args[0].startswith("REF"):
+    if args and args[0].startswith("JUMPREF_"):
+        # Stars Affiliate 추천코드 처리
+        ref_code = args[0][8:]
+        referrer_uid = await _run(_find_uid_by_referral_code, ref_code)
+        if referrer_uid:
+            await _run(_set_referrer, uid, referrer_uid)
+    elif args and args[0].startswith("REF"):
         await _run(_save_pending_referral, uid, args[0][3:])
 
     try:
@@ -584,6 +856,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
             [InlineKeyboardButton("📝 Register — Get 1,000 GP Airdrop!", callback_data="register_check")],
             [InlineKeyboardButton("👥 Get Referral Link (+500 GP)", callback_data="referral_link")],
+            [InlineKeyboardButton("⭐ Stars Shop", callback_data="stars_shop")],
             [InlineKeyboardButton("💱 TON → GP Rate", callback_data="show_rate")],
             [InlineKeyboardButton("💬 Join Official Community", url="https://t.me/jumpdao_eng")],
             [InlineKeyboardButton(f"🔗 Invite Friends to Group → +{GROUP_INVITE_GP} GP/person", callback_data="group_invite_link")],
@@ -1088,16 +1361,22 @@ def main():
     app.add_handler(CommandHandler("mylink",     cmd_mylink))
     app.add_handler(CommandHandler("myinvites",  cmd_myinvites))
     app.add_handler(CommandHandler("rate",       cmd_rate))
+    app.add_handler(CommandHandler("buy",        cmd_buy))
+    app.add_handler(CommandHandler("mystats",    cmd_mystats))
 
     app.add_handler(CallbackQueryHandler(cb_membership_info,   pattern="^membership_info$"))
     app.add_handler(CallbackQueryHandler(cb_buy_premium,       pattern="^buy_premium$"))
     app.add_handler(CallbackQueryHandler(cb_referral_link,     pattern="^referral_link$"))
+    app.add_handler(CallbackQueryHandler(cb_stars_shop,        pattern="^stars_shop$"))
+    app.add_handler(CallbackQueryHandler(cb_stars_buy,         pattern="^stars_buy_"))
     app.add_handler(CallbackQueryHandler(cb_show_rate,         pattern="^show_rate$"))
     app.add_handler(CallbackQueryHandler(cb_group_invite_link, pattern="^group_invite_link$"))
     app.add_handler(CallbackQueryHandler(cb_register_check,    pattern="^register_check$"))
     app.add_handler(CallbackQueryHandler(cb_create_wallet,     pattern="^create_wallet$"))
     app.add_handler(CallbackQueryHandler(cb_select_mentor,     pattern="^select_mentor_"))
 
+    app.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
+    app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
     app.add_handler(ChatMemberHandler(on_chat_member, ChatMemberHandler.CHAT_MEMBER))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_txhash))
     app.add_error_handler(error_handler)

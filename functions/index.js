@@ -63,6 +63,7 @@ const expSyncH               = require('./handlers/expSync');
 const telegramH              = require('./handlers/telegram');
 const tonPaymentH            = require('./handlers/tonPayment');
 const gameRewardH            = require('./handlers/gameReward');
+const starsH                 = require('./handlers/starsPayment');
 const membershipH            = require('./handlers/membership');
 const { requireAdmin }       = require('./wallet/admin');
 
@@ -2681,5 +2682,45 @@ exports.telegramRegister = onRequest(
         .catch((err) => logger.warn('[telegramRegister] onchain background error', err.message));
     }
   }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// Telegram Stars 결제 — 상품 지급
+// POST body: { chargeId }  /  X-Bot-Token 헤더 검증
+// ════════════════════════════════════════════════════════════════════════════
+exports.starsGrantProduct = onRequest(
+  { cors: false, secrets: [telegramBotSecret], timeoutSeconds: 60 },
+  async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).end(); return; }
+    if ((req.headers['x-bot-token'] || '') !== telegramBotSecret.value()) {
+      res.status(401).json({ error: 'Unauthorized' }); return;
+    }
+    const { chargeId } = req.body || {};
+    if (!chargeId) { res.status(400).json({ error: 'chargeId required' }); return; }
+    try {
+      const result = await starsH.grantProduct(chargeId);
+      logger.info('[starsGrantProduct]', { chargeId, ...result });
+      res.json(result);
+    } catch (e) {
+      logger.error('[starsGrantProduct] error', e?.message);
+      res.status(500).json({ error: e?.message });
+    }
+  }
+);
+
+// Stars 관리자 통계
+exports.starsGetAdminStats = onCall(
+  wrapError(async (request) => {
+    requireAdmin(request);
+    return starsH.getAdminStats();
+  })
+);
+
+// Stars 상품 시드 (최초 1회)
+exports.starsSeedProducts = onCall(
+  wrapError(async (request) => {
+    requireAdmin(request);
+    return starsH.seedProducts();
+  })
 );
 

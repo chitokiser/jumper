@@ -1,0 +1,168 @@
+<!-- /admin_stars.html — Telegram Stars 매출 관리자 페이지 -->
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stars Dashboard — JumpDAO Admin</title>
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <script src="/assets/js/partials.js"></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/firestore-bridge.js"></script>
+  <style>
+    .stars-wrap{max-width:900px;margin:0 auto;padding:20px 16px}
+    .stars-title{font-size:22px;font-weight:900;margin-bottom:18px}
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+    .stat-card{background:#111827;border:1px solid #1f2937;border-radius:12px;padding:16px}
+    .stat-card .label{font-size:11px;color:#6b7280;margin-bottom:4px}
+    .stat-card .value{font-size:26px;font-weight:900;color:#f59e0b}
+    .section-title{font-size:14px;font-weight:800;color:#9ca3af;margin:20px 0 10px;text-transform:uppercase;letter-spacing:.05em}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{text-align:left;padding:8px 10px;background:#111827;color:#6b7280;font-weight:700;border-bottom:1px solid #1f2937}
+    td{padding:8px 10px;border-bottom:1px solid #111827}
+    tr:hover td{background:#0d1117}
+    .btn-csv{padding:8px 18px;background:#22c55e;color:#000;border:none;border-radius:8px;font-weight:800;cursor:pointer;font-size:13px}
+    .btn-seed{padding:8px 18px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:800;cursor:pointer;font-size:13px}
+    .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:#1f2937;color:#9ca3af}
+    #statusMsg{padding:8px 14px;border-radius:8px;font-size:13px;display:none}
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <div class="stars-wrap">
+      <div class="stars-title">⭐ Telegram Stars Dashboard</div>
+
+      <div class="badges">
+        <span class="badge" id="badgeStatus">로딩 중...</span>
+      </div>
+
+      <div id="statusMsg"></div>
+
+      <!-- 요약 카드 -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="label">Total Stars Revenue</div>
+          <div class="value" id="totalStars">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Total Transactions</div>
+          <div class="value" id="totalCount">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Unique Referrers</div>
+          <div class="value" id="totalReferrers">—</div>
+        </div>
+      </div>
+
+      <!-- 일별 매출 -->
+      <div class="section-title">Daily Revenue</div>
+      <table id="tblDaily">
+        <thead><tr><th>Date</th><th>Stars ⭐</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- 월별 매출 -->
+      <div class="section-title">Monthly Revenue</div>
+      <table id="tblMonthly">
+        <thead><tr><th>Month</th><th>Stars ⭐</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- 추천인 TOP 20 -->
+      <div class="section-title">Top Referrers (Affiliate)</div>
+      <table id="tblReferrers">
+        <thead><tr><th>UID</th><th>Stars ⭐</th><th>Purchases</th><th>Commission (10%)</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- 버튼 -->
+      <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+        <button class="btn-csv" id="btnCsv">📥 Download CSV</button>
+        <button class="btn-seed" id="btnSeed">🌱 Seed Products</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module">
+    import { functions } from '/assets/js/firebase-init.js';
+    import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+
+    const $ = id => document.getElementById(id);
+    let _statsData = null;
+
+    function showStatus(msg, ok = true) {
+      const el = $('statusMsg');
+      el.textContent = msg;
+      el.style.display = 'block';
+      el.style.background = ok ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)';
+      el.style.color = ok ? '#4ade80' : '#f87171';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
+    async function loadStats() {
+      $('badgeStatus').textContent = '로딩 중...';
+      try {
+        const fn   = httpsCallable(functions, 'starsGetAdminStats');
+        const res  = await fn();
+        _statsData = res.data;
+
+        $('totalStars').textContent    = (_statsData.totalStars || 0).toLocaleString() + ' ⭐';
+        $('totalCount').textContent    = (_statsData.totalCount || 0).toLocaleString();
+        $('totalReferrers').textContent = (_statsData.topReferrers || []).length;
+        $('badgeStatus').textContent   = '✅ 로드 완료';
+
+        // 일별
+        const daily = Object.entries(_statsData.byDay || {}).sort((a,b)=>b[0].localeCompare(a[0]));
+        $('tblDaily').querySelector('tbody').innerHTML =
+          daily.map(([d,v]) => `<tr><td>${d}</td><td>${v.toLocaleString()} ⭐</td></tr>`).join('') || '<tr><td colspan="2" style="color:#6b7280">데이터 없음</td></tr>';
+
+        // 월별
+        const monthly = Object.entries(_statsData.byMonth || {}).sort((a,b)=>b[0].localeCompare(a[0]));
+        $('tblMonthly').querySelector('tbody').innerHTML =
+          monthly.map(([m,v]) => `<tr><td>${m}</td><td>${v.toLocaleString()} ⭐</td></tr>`).join('') || '<tr><td colspan="2" style="color:#6b7280">데이터 없음</td></tr>';
+
+        // 추천인
+        $('tblReferrers').querySelector('tbody').innerHTML =
+          (_statsData.topReferrers || []).map(r =>
+            `<tr><td style="font-size:11px">${r.uid}</td><td>${r.stars.toLocaleString()} ⭐</td><td>${r.count}</td><td>${Math.floor(r.stars*0.1).toLocaleString()} ⭐</td></tr>`
+          ).join('') || '<tr><td colspan="4" style="color:#6b7280">데이터 없음</td></tr>';
+
+      } catch (e) {
+        $('badgeStatus').textContent = '❌ 로드 실패';
+        showStatus('Failed to load: ' + e.message, false);
+      }
+    }
+
+    $('btnCsv').addEventListener('click', () => {
+      if (!_statsData) return;
+      const rows = [['date','stars_revenue']];
+      Object.entries(_statsData.byDay || {}).sort().forEach(([d,v]) => rows.push([d,v]));
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = 'affiliate_report.csv';
+      a.click();
+    });
+
+    $('btnSeed').addEventListener('click', async () => {
+      if (!confirm('상품 시드 데이터를 등록합니다. (이미 있으면 스킵)')) return;
+      try {
+        const fn  = httpsCallable(functions, 'starsSeedProducts');
+        const res = await fn();
+        showStatus(res.data.skipped ? '이미 시드 완료' : `${res.data.seeded}개 상품 등록 완료`);
+      } catch (e) {
+        showStatus('Seed failed: ' + e.message, false);
+      }
+    });
+
+    loadStats();
+  </script>
+</body>
+</html>
