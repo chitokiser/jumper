@@ -1,0 +1,17 @@
+node_modules
+functions/node_modules
+.git
+.firebase
+.env
+*.pyc
+__pycache__
+assets
+functions
+game-server
+jumper-jackpot
+*.html
+*.css
+*.md
+firestore.rules
+firestore.indexes.json
+storage.rules
