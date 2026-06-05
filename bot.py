@@ -941,7 +941,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
             [InlineKeyboardButton("🏃 Relay Race", url="https://jump22.netlify.app/relay.html")],
             [InlineKeyboardButton("🏰 Monster Defense", url="https://jump22.netlify.app/conquest.html")],
-            [InlineKeyboardButton("⭐ Premium Benefits", callback_data="membership_info")],
         ]
         await update.message.reply_text(
             "*JumpDAO*\n\n"
@@ -1075,9 +1074,6 @@ async def cb_register_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await q.message.reply_text(
                 f"✅ *Already registered*\nWallet: `{short}`",
                 parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("⭐ Premium Benefits", callback_data="membership_info"),
-                ]]),
             )
             return
 
@@ -1091,7 +1087,6 @@ async def cb_register_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("💼 Create Wallet", callback_data="create_wallet")],
-                [InlineKeyboardButton("⭐ Premium Benefits", callback_data="membership_info")],
             ]),
         )
     except Exception as e:
