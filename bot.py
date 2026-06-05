@@ -82,8 +82,9 @@ def _fetch_ton_usd() -> float:
 
 
 def _get_stars_products() -> list:
-    snaps = _db.collection("stars_products").where("active", "==", True).order_by("starsPrice").get()
-    return [{"id": s.id, **s.to_dict()} for s in snaps]
+    snaps = _db.collection("stars_products").where("active", "==", True).get()
+    items = [{"id": s.id, **s.to_dict()} for s in snaps]
+    return sorted(items, key=lambda x: x.get("starsPrice", 0))
 
 
 def _get_stars_product(product_id: str) -> dict | None:
