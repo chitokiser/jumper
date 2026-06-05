@@ -251,7 +251,10 @@
 
     // Service Worker 등록 (PWA 필수)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(reg => {
+        // 기존 SW 캐시 업데이트 강제
+        reg.update();
+      }).catch(() => {});
     }
 
     // 이미 설치됐거나 dismissed면 종료

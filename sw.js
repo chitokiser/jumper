@@ -1,5 +1,5 @@
 // /sw.js — Jumper 기사앱 Service Worker
-const CACHE_NAME = "jumper-driver-v1";
+const CACHE_NAME = "jumper-driver-v2";
 
 // 앱 셸: 오프라인에서도 로드되어야 하는 핵심 파일
 const SHELL_URLS = [
@@ -31,22 +31,23 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// --- Fetch: 네트워크 우선, 실패 시 캐시 ---
+// --- Fetch: 버기카 기사앱 파일만 처리 ---
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // GET + 동일 오리진만 처리
   if (req.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
-
-  // Firebase / API 요청은 캐시 건너뜀
   if (url.pathname.startsWith("/__/") || url.pathname.startsWith("/api/")) return;
+
+  // 버기카 기사앱 관련 경로만 SW가 처리 — 다른 페이지는 건드리지 않음
+  const isBuggyAsset = SHELL_URLS.includes(url.pathname) ||
+                       url.pathname.startsWith("/buggy-driver");
+  if (!isBuggyAsset) return;
 
   event.respondWith(
     fetch(req)
       .then((res) => {
-        // 성공 응답은 캐시에 저장 (셸 파일 대상)
         if (res.ok && SHELL_URLS.includes(url.pathname)) {
           const clone = res.clone();
           caches.open(CACHE_NAME).then((c) => c.put(req, clone));
@@ -56,7 +57,6 @@ self.addEventListener("fetch", (event) => {
       .catch(() =>
         caches.match(req).then((cached) => {
           if (cached) return cached;
-          // 네비게이션 요청 → 오프라인 페이지
           if (req.mode === "navigate") {
             return caches.match("/buggy-driver.html").then(
               (page) =>
