@@ -17,7 +17,7 @@ const FEE_STEP      = 50;
 const RESET_MS      = 24 * 60 * 60 * 1000;
 const GAME_KEY      = 'bowEntry';
 const GAME_TIME     = 60;
-const MISS_PENALTY  = 15;   // 빗나간 화살 1발당 감점 (명중한 화살은 패널티 없음)
+const MISS_PENALTY  = 30;   // 빗나간 화살 1발당 감점 (x2)
 
 // ── 참가비 상태 ───────────────────────────────────────────────────────────────
 let _entryFee     = BASE_FEE;
@@ -151,7 +151,7 @@ async function deductFee() {
 }
 
 async function awardScore(score) {
-  const gp = Math.floor(score / 10);
+  const gp = Math.floor(score / 20);
   if (_freeMode || gp <= 0 || !_uid) return 0;
   try {
     await httpsCallable(functions, 'claimGameReward')({ gameType: 'bow', amount: gp });
@@ -422,7 +422,7 @@ function checkHits(){
 
 // ── 화살 발사 ────────────────────────────────────────────────────────────────
 function fireArrow(cx,cy){
-  const now=Date.now(); if(now-_lastShot<95) return;
+  const now=Date.now(); if(now-_lastShot<200) return;
   _lastShot=now; _lastAim=[cx,cy]; _shootTs=now;
   const fire=_fireMode; _fireMode=false;
   createArrow(cx,cy,0,fire,_pierceMode,false);
@@ -459,7 +459,7 @@ function useSkill(id){
       _effects.push({type:'msg',text:'💥 폭발!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
       playSound('cannon_shot'); break;
     case 'rapidfire':
-      _rapidUntil=now+5000;
+      _rapidUntil=now+2500;
       _effects.push({type:'msg',text:'⚡ 연사!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
       playSound('tower_shot'); break;
     case 'pierce':
@@ -498,7 +498,7 @@ function renderHUD(){
 function loop(ts){
   _raf=requestAnimationFrame(loop);
   const dt=Math.min(50,ts-_lastTs); _lastTs=ts; _ts+=dt;
-  if(_rapidUntil>Date.now()&&Date.now()-_lastShot>175) fireArrow(_lastAim[0],_lastAim[1]);
+  if(_rapidUntil>Date.now()&&Date.now()-_lastShot>350) fireArrow(_lastAim[0],_lastAim[1]);
   updateMonsters(dt);
   updateArrows(dt);
   checkHits();
