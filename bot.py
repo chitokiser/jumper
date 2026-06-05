@@ -57,6 +57,7 @@ TOPUP_THRESHOLD       = 1000
 DEFAULT_MENTOR_ADDR   = "0xc662c3B58bE7345DE30dd8188B2Acc977943186A"
 
 _user_state: dict = {}   # {telegram_user_id: 'awaiting_txhash'}
+_bot_username: str = ""  # _post_init에서 캐싱
 
 # ── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -401,7 +402,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if is_group:
             # 그룹에서는 web_app 버튼이 BadRequest를 유발하므로 DM 유도 메시지만 전송
-            bot_name = (await context.bot.get_me()).username
+            bot_name = _bot_username or context.bot.username or (await context.bot.get_me()).username
             keyboard = [[
                 InlineKeyboardButton("🎮 JumpDAO 시작하기 / Open Bot", url=f"https://t.me/{bot_name}?start=hi"),
             ]]
@@ -537,7 +538,9 @@ async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     try:
         uid      = _uid(q.from_user.id)
-        bot_name = (await context.bot.get_me()).username
+        bot_name = _bot_username or context.bot.username or (await context.bot.get_me()).username
+        if not bot_name:
+            raise Exception("bot_name unavailable")
         link     = f"https://t.me/{bot_name}?start=REF{uid}"
         await q.message.reply_text(
             f"👥 친구 초대 링크\n\n{link}\n\n"
@@ -724,7 +727,7 @@ async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result    = await _run(_verify_and_activate_ton, uid, txhash)
         expiry    = result["expiresAt"]
         is_first  = result["isFirstMembership"]
-        bot_name  = (await context.bot.get_me()).username
+        bot_name  = _bot_username or context.bot.username or (await context.bot.get_me()).username
         invite    = f"https://t.me/{bot_name}?start=REF{uid}"
 
         text = (
@@ -810,6 +813,13 @@ async def error_handler(_update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _post_init(application):
+    global _bot_username
+    try:
+        me = await application.bot.get_me()
+        _bot_username = me.username or ""
+        print(f"[OK] Bot: @{_bot_username}")
+    except Exception as e:
+        print(f"[WARN] get_me failed: {e}")
     await asyncio.sleep(3)
     try:
         await application.bot.set_chat_menu_button(
