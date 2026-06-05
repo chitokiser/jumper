@@ -151,7 +151,7 @@ async function deductFee() {
 }
 
 async function awardScore(score) {
-  const gp = Math.floor(score / 20);
+  const gp = Math.floor(score / 10);
   if (_freeMode || gp <= 0 || !_uid) return 0;
   try {
     await httpsCallable(functions, 'claimGameReward')({ gameType: 'bow', amount: gp });
