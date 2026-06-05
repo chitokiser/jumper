@@ -76,11 +76,23 @@ async def _run(fn, *args, timeout=20):
     except asyncio.TimeoutError:
         raise Exception(f"서버 응답 없음 ({timeout}s) — 잠시 후 다시 시도해주세요")
 
+async def _safe_reply(message, text, retry_btn=None):
+    """Markdown 없이 안전하게 메시지 전송. 실패해도 plain text로 재시도."""
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+    markup = InlineKeyboardMarkup([[InlineKeyboardButton("🔄 다시 시도", callback_data=retry_btn)]]) if retry_btn else None
+    for pm in ("Markdown", None):
+        try:
+            await message.reply_text(text if pm else text.replace("*", "").replace("_", "").replace("`", ""),
+                                     parse_mode=pm, reply_markup=markup)
+            return
+        except Exception:
+            pass
+
 # ── Firestore ────────────────────────────────────────────────────────────────
 
 def _get_status(uid: str) -> dict:
-    user_snap   = _db.collection("users").document(uid).get()
-    player_snap = _db.collection("battle_players").document(uid).get()
+    user_snap   = _db.collection("users").document(uid).get(timeout=_FS_TIMEOUT)
+    player_snap = _db.collection("battle_players").document(uid).get(timeout=_FS_TIMEOUT)
     user        = user_snap.to_dict()   or {} if user_snap.exists   else {}
     player      = player_snap.to_dict() or {} if player_snap.exists else {}
 
@@ -97,7 +109,7 @@ def _get_status(uid: str) -> dict:
     topup_claimed = bool(player.get(topup_key, False))
     current_gp    = player.get("gold", 0)
 
-    cfg_snap  = _db.collection("membership_config").document("pricing").get()
+    cfg_snap  = _db.collection("membership_config").document("pricing").get(timeout=_FS_TIMEOUT)
     ton_price = (cfg_snap.to_dict() or {}).get("tonPrice", MEMBERSHIP_TON_PRICE) if cfg_snap.exists else MEMBERSHIP_TON_PRICE
 
     return {
@@ -115,7 +127,7 @@ def _get_status(uid: str) -> dict:
 def _get_user_wallet(uid: str):
     """수탁 지갑 보유 여부 확인. encryptedKey가 있는 경우만 반환."""
     try:
-        snap = _db.collection("users").document(uid).get()
+        snap = _db.collection("users").document(uid).get(timeout=_FS_TIMEOUT)
         if snap.exists:
             wallet = (snap.to_dict() or {}).get("wallet", {})
             if wallet.get("encryptedKey"):
@@ -125,12 +137,15 @@ def _get_user_wallet(uid: str):
     return None
 
 
+_FS_TIMEOUT = 10  # Firestore gRPC 호출 타임아웃 (초)
+
+
 def _register_tg_and_give_gp(uid: str, tg_user) -> dict:
     """텔레그램 유저 정보 DB 저장 + 1000 GP 즉시 지급 (멱등)."""
     user_ref = _db.collection("users").document(uid)
     bp_ref   = _db.collection("battle_players").document(uid)
 
-    user_snap = user_ref.get()
+    user_snap = user_ref.get(timeout=_FS_TIMEOUT)
     user_data = user_snap.to_dict() or {}
 
     # 이미 수탁지갑 보유 → 완전 가입된 상태
@@ -466,11 +481,7 @@ async def cb_membership_info(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await _send_membership_ui(q.message, st)
     except Exception as e:
         print(f"[ERROR] cb_membership_info: {e}")
-        await q.message.reply_text(
-            "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.\n"
-            "_An error occurred. Please try again later._",
-            parse_mode="Markdown",
-        )
+        await _safe_reply(q.message, "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "membership_info")
 
 
 async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -518,34 +529,24 @@ async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.message.reply_text(text, parse_mode="Markdown")
     except Exception as e:
         print(f"[ERROR] cb_buy_premium: {e}")
-        await q.message.reply_text(
-            "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.\n"
-            "_An error occurred. Please try again later._",
-            parse_mode="Markdown",
-        )
+        await _safe_reply(q.message, "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "buy_premium")
 
 
 async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q        = update.callback_query
+    q   = update.callback_query
     await q.answer()
     try:
         uid      = _uid(q.from_user.id)
         bot_name = (await context.bot.get_me()).username
         link     = f"https://t.me/{bot_name}?start=REF{uid}"
         await q.message.reply_text(
-            f"👥 *친구 초대 링크 / Referral Link*\n\n"
-            f"`{link}`\n\n"
-            f"이 링크로 친구가 정회원 가입 시 *500 GP* 지급!\n"
-            f"_When a friend joins Premium via this link, you get *500 GP*!_",
-            parse_mode="Markdown",
+            f"👥 친구 초대 링크\n\n{link}\n\n"
+            f"친구가 수탁지갑을 생성하면 500 GP 지급!\n"
+            f"(지갑 생성 후 자동 지급, 정회원 불필요)",
         )
     except Exception as e:
         print(f"[ERROR] cb_referral_link: {e}")
-        await q.message.reply_text(
-            "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.\n"
-            "_An error occurred. Please try again later._",
-            parse_mode="Markdown",
-        )
+        await _safe_reply(q.message, "❌ 링크 생성 실패. 잠시 후 다시 시도해주세요.", "referral_link")
 
 
 async def cb_register_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -588,14 +589,7 @@ async def cb_register_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         print(f"[ERROR] cb_register_check: {e}")
-        await q.message.reply_text(
-            "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.\n"
-            "_An error occurred. Please try again later._",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("🔄 다시 시도", callback_data="register_check"),
-            ]]),
-        )
+        await _safe_reply(q.message, "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "register_check")
 
 
 async def cb_create_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -623,13 +617,7 @@ async def cb_create_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         print(f"[ERROR] cb_create_wallet: {e}")
-        await q.message.reply_text(
-            "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("🔄 다시 시도", callback_data="create_wallet"),
-            ]]),
-        )
+        await _safe_reply(q.message, "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "create_wallet")
 
 
 async def cb_select_mentor(update: Update, context: ContextTypes.DEFAULT_TYPE):
