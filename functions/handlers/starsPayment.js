@@ -163,7 +163,7 @@ async function getAdminStats() {
 // ── 상품 시드 데이터 ─────────────────────────────────────────────────────────
 
 const SEED_PRODUCTS = [
-  { name:'Premium 30 Days',      description:'Unlock Premium: daily 3,500 GP top-up + exclusive boxes + Lv4 boost', starsPrice:100, productType:'premium',    grantValue:30,    active:true },
+  { name:'Premium Membership (30 Days)', description:'⭐ Upgrade to Premium: daily 3,500 GP top-up + exclusive treasure boxes + Level 4 boost. Valid 30 days.', starsPrice:800, productType:'premium', grantValue:30, active:true },
   { name:'5,000 GP Package',     description:'5,000 Game Points credited instantly',                                 starsPrice:50,  productType:'gp',         grantValue:5000,  active:true },
   { name:'15,000 GP Package',    description:'15,000 Game Points — best value!',                                    starsPrice:130, productType:'gp',         grantValue:15000, active:true },
   { name:'Treasure Box Key',     description:'One key to open a treasure box',                                      starsPrice:30,  productType:'key',         grantValue:1,     active:true },
@@ -183,10 +183,22 @@ async function seedProducts() {
   return { seeded: SEED_PRODUCTS.length };
 }
 
+async function upsertProduct(data) {
+  const col = db.collection('stars_products');
+  // productType 기준 기존 상품 덮어쓰기
+  const existing = await col.where('productType','==',data.productType).limit(1).get();
+  if (!existing.empty) {
+    await existing.docs[0].ref.set({ ...data, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    return { updated: true, id: existing.docs[0].id };
+  }
+  const ref = await col.add({ ...data, createdAt: FieldValue.serverTimestamp() });
+  return { created: true, id: ref.id };
+}
+
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
 function _todayUtc7() {
   return new Date(Date.now() + 7*3600*1000).toISOString().slice(0,10);
 }
 
-module.exports = { grantProduct, getAdminStats, seedProducts };
+module.exports = { grantProduct, getAdminStats, seedProducts, upsertProduct };

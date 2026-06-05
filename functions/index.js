@@ -2724,3 +2724,11 @@ exports.starsSeedProducts = onCall(
   })
 );
 
+// Stars 상품 추가/수정 (관리자)
+exports.starsUpsertProduct = onCall(
+  wrapError(async (request) => {
+    requireAdmin(request);
+    return starsH.upsertProduct(request.data);
+  })
+);
+
