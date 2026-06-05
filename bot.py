@@ -382,6 +382,22 @@ def _process_pending_referral(new_uid: str):
     _db.collection("pending_referrals").document(new_uid).delete()
 
 
+def _get_my_invites(uid: str) -> list:
+    snaps = _db.collection("group_invite_rewards").where("inviterUid", "==", uid).get()
+    result = []
+    for s in snaps:
+        d = s.to_dict() or {}
+        new_uid = d.get("newMemberUid", "")
+        # 멤버 이름 조회
+        try:
+            u = _db.collection("users").document(new_uid).get(timeout=_FS_TIMEOUT)
+            name = (u.to_dict() or {}).get("displayName") or new_uid
+        except Exception:
+            name = new_uid
+        result.append({"name": name, "gp": d.get("gpRewarded", 0)})
+    return result
+
+
 def _get_my_invite_link(uid: str) -> str | None:
     snaps = _db.collection("group_invite_links").where("inviterUid", "==", uid).limit(1).get()
     for s in snaps:
@@ -452,6 +468,30 @@ async def _send_group_invite_link(message, uid: str, context: ContextTypes.DEFAU
 async def cmd_mylink(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = _uid(update.effective_user.id)
     await _send_group_invite_link(update.message, uid, context)
+
+
+async def cmd_myinvites(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = _uid(update.effective_user.id)
+    try:
+        invites = await _run(_get_my_invites, uid)
+        if not invites:
+            await _safe_reply(update.message,
+                "👥 아직 초대한 멤버가 없습니다.\n"
+                "_No invited members yet._\n\n"
+                "/mylink 으로 초대링크를 받으세요!"
+            )
+            return
+        total_gp = sum(i["gp"] for i in invites)
+        lines = "\n".join(f"• {i['name']} (+{i['gp']} GP)" for i in invites)
+        await _safe_reply(update.message,
+            f"👥 내가 초대한 멤버 / My invited members\n\n"
+            f"{lines}\n\n"
+            f"총 *{len(invites)}명* · 누적 *+{total_gp} GP* 획득\n"
+            f"_Total {len(invites)} members · +{total_gp} GP earned_"
+        )
+    except Exception as e:
+        print(f"[ERROR] cmd_myinvites: {e}")
+        await _safe_reply(update.message, "❌ 조회 실패. 잠시 후 다시 시도해주세요.")
 
 
 async def cmd_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -969,6 +1009,7 @@ def main():
     app.add_handler(CommandHandler("membership", cmd_membership))
     app.add_handler(CommandHandler("cancel",     cmd_cancel))
     app.add_handler(CommandHandler("mylink",     cmd_mylink))
+    app.add_handler(CommandHandler("myinvites",  cmd_myinvites))
 
     app.add_handler(CallbackQueryHandler(cb_membership_info,   pattern="^membership_info$"))
     app.add_handler(CallbackQueryHandler(cb_buy_premium,       pattern="^buy_premium$"))
