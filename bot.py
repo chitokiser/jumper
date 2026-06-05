@@ -12,7 +12,7 @@ from telegram import (
 )
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
-    MessageHandler, ContextTypes, filters,
+    MessageHandler, ContextTypes, filters, ChatMemberHandler,
 )
 
 import sys
@@ -55,6 +55,8 @@ _executor             = ThreadPoolExecutor(max_workers=4)
 DAILY_GP_TOPUP        = 3500
 TOPUP_THRESHOLD       = 1000
 DEFAULT_MENTOR_ADDR   = "0xc662c3B58bE7345DE30dd8188B2Acc977943186A"
+GROUP_CHAT_ID         = int(os.environ.get("GROUP_CHAT_ID", "0"))
+GROUP_INVITE_GP       = 100
 
 _user_state: dict = {}   # {telegram_user_id: 'awaiting_txhash'}
 _bot_username: str = ""  # _post_init에서 캐싱
@@ -379,7 +381,78 @@ def _process_pending_referral(new_uid: str):
     })
     _db.collection("pending_referrals").document(new_uid).delete()
 
+
+def _get_my_invite_link(uid: str) -> str | None:
+    snaps = _db.collection("group_invite_links").where("inviterUid", "==", uid).limit(1).get()
+    for s in snaps:
+        return (s.to_dict() or {}).get("linkUrl")
+    return None
+
+
+def _store_invite_link(link_url: str, uid: str):
+    token = link_url.rstrip("/").split("/")[-1].lstrip("+")
+    _db.collection("group_invite_links").document(token).set({
+        "inviterUid": uid,
+        "linkUrl":    link_url,
+        "createdAt":  firestore.SERVER_TIMESTAMP,
+    }, merge=True)
+
+
+def _get_inviter_by_link(link_url: str) -> str | None:
+    token = link_url.rstrip("/").split("/")[-1].lstrip("+")
+    snap = _db.collection("group_invite_links").document(token).get(timeout=_FS_TIMEOUT)
+    return (snap.to_dict() or {}).get("inviterUid") if snap.exists else None
+
+
+def _reward_group_invite(inviter_uid: str, new_uid: str) -> bool:
+    if inviter_uid == new_uid:
+        return False
+    if _db.collection("group_invite_rewards").document(new_uid).get(timeout=_FS_TIMEOUT).exists:
+        return False
+    if not _db.collection("users").document(inviter_uid).get(timeout=_FS_TIMEOUT).exists:
+        return False
+    _db.collection("battle_players").document(inviter_uid).set(
+        {"gold": firestore.Increment(GROUP_INVITE_GP)}, merge=True
+    )
+    _db.collection("group_invite_rewards").document(new_uid).set({
+        "inviterUid":   inviter_uid,
+        "newMemberUid": new_uid,
+        "gpRewarded":   GROUP_INVITE_GP,
+        "createdAt":    firestore.SERVER_TIMESTAMP,
+    })
+    return True
+
 # ── 명령어 핸들러 ─────────────────────────────────────────────────────────────
+
+async def _send_group_invite_link(message, uid: str, context: ContextTypes.DEFAULT_TYPE):
+    if not GROUP_CHAT_ID:
+        await _safe_reply(message, "❌ 그룹이 설정되지 않았습니다. / Group not configured.")
+        return
+    try:
+        link = await _run(_get_my_invite_link, uid)
+        if not link:
+            invite = await context.bot.create_chat_invite_link(
+                chat_id=GROUP_CHAT_ID,
+                name=f"inv_{uid}",
+                creates_join_request=False,
+            )
+            link = invite.invite_link
+            await _run(_store_invite_link, link, uid)
+        await _safe_reply(message,
+            f"🔗 내 그룹 초대링크 / My group invite link\n\n{link}\n\n"
+            f"이 링크로 입장한 신규 멤버 1명당 *+{GROUP_INVITE_GP} GP* 지급!\n"
+            f"_(최초 입장 기준, 중복 없음)_\n"
+            f"_+{GROUP_INVITE_GP} GP per new member (first join only)_"
+        )
+    except Exception as e:
+        print(f"[ERROR] _send_group_invite_link: {e}")
+        await _safe_reply(message, "❌ 링크 생성 실패. 봇이 그룹 관리자(초대링크 생성 권한)인지 확인해주세요.")
+
+
+async def cmd_mylink(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = _uid(update.effective_user.id)
+    await _send_group_invite_link(update.message, uid, context)
+
 
 async def cmd_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """그룹/채널 chat_id 확인 — ANNOUNCE_GROUP_ID 설정용"""
@@ -421,6 +494,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
             [InlineKeyboardButton("📝 회원가입 / Register (1000 게임코인 에어드랍)", callback_data="register_check")],
             [InlineKeyboardButton("👥 친구 초대링크 받기 / Get Referral Link", callback_data="referral_link")],
+            [InlineKeyboardButton(f"🔗 그룹 초대링크 (+{GROUP_INVITE_GP} GP) / Group Invite", callback_data="group_invite_link")],
             [
                 InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/treasure.html"),
                 InlineKeyboardButton("🏎️ Monster Racing",  url="https://jump22.netlify.app/monsterrace.html"),
@@ -531,6 +605,13 @@ async def cb_buy_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"[ERROR] cb_buy_premium: {e}")
         await _safe_reply(q.message, "❌ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "buy_premium")
+
+
+async def cb_group_invite_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    uid = _uid(q.from_user.id)
+    await _send_group_invite_link(q.message, uid, context)
 
 
 async def cb_referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -696,6 +777,52 @@ async def cb_select_mentor(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [[InlineKeyboardButton("🔄 다시 시도 / Retry", callback_data="register_check")]],
         )
 
+# ── 그룹 멤버 입장 감지 ──────────────────────────────────────────────────────
+
+async def on_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    cm = update.chat_member
+    if not GROUP_CHAT_ID or cm.chat.id != GROUP_CHAT_ID:
+        return
+
+    old_st = cm.old_chat_member.status
+    new_st = cm.new_chat_member.status
+    # 신규 입장만 처리 (left/kicked/none → member)
+    if new_st not in ("member", "restricted") or old_st in ("member", "administrator", "creator", "restricted"):
+        return
+
+    new_uid     = _uid(cm.new_chat_member.user.id)
+    inviter_uid = None
+
+    # 방법1: 추적 초대링크로 입장
+    if cm.invite_link:
+        try:
+            inviter_uid = await _run(_get_inviter_by_link, cm.invite_link.invite_link)
+        except Exception:
+            pass
+
+    # 방법2: 직접 추가 (Add Member)
+    if not inviter_uid and cm.from_user and not cm.from_user.is_bot:
+        if cm.from_user.id != cm.new_chat_member.user.id:
+            inviter_uid = _uid(cm.from_user.id)
+
+    if not inviter_uid:
+        return
+
+    try:
+        rewarded = await _run(_reward_group_invite, inviter_uid, new_uid)
+        if rewarded:
+            try:
+                tg_id = int(inviter_uid.replace("tg_", ""))
+                await context.bot.send_message(
+                    chat_id=tg_id,
+                    text=f"🎉 그룹 초대 보상! / Invite reward!\n\n*+{GROUP_INVITE_GP} GP* 지급됐습니다!\n_+{GROUP_INVITE_GP} GP has been credited!_",
+                    parse_mode="Markdown",
+                )
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"[ERROR] on_chat_member: {e}")
+
 # ── 메시지 핸들러 (txHash 수신) ──────────────────────────────────────────────
 
 async def handle_txhash(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -841,19 +968,22 @@ def main():
     app.add_handler(CommandHandler("play",       cmd_play))
     app.add_handler(CommandHandler("membership", cmd_membership))
     app.add_handler(CommandHandler("cancel",     cmd_cancel))
+    app.add_handler(CommandHandler("mylink",     cmd_mylink))
 
-    app.add_handler(CallbackQueryHandler(cb_membership_info, pattern="^membership_info$"))
-    app.add_handler(CallbackQueryHandler(cb_buy_premium,     pattern="^buy_premium$"))
-    app.add_handler(CallbackQueryHandler(cb_referral_link,   pattern="^referral_link$"))
-    app.add_handler(CallbackQueryHandler(cb_register_check,  pattern="^register_check$"))
-    app.add_handler(CallbackQueryHandler(cb_create_wallet,   pattern="^create_wallet$"))
-    app.add_handler(CallbackQueryHandler(cb_select_mentor,   pattern="^select_mentor_"))
+    app.add_handler(CallbackQueryHandler(cb_membership_info,   pattern="^membership_info$"))
+    app.add_handler(CallbackQueryHandler(cb_buy_premium,       pattern="^buy_premium$"))
+    app.add_handler(CallbackQueryHandler(cb_referral_link,     pattern="^referral_link$"))
+    app.add_handler(CallbackQueryHandler(cb_group_invite_link, pattern="^group_invite_link$"))
+    app.add_handler(CallbackQueryHandler(cb_register_check,    pattern="^register_check$"))
+    app.add_handler(CallbackQueryHandler(cb_create_wallet,     pattern="^create_wallet$"))
+    app.add_handler(CallbackQueryHandler(cb_select_mentor,     pattern="^select_mentor_"))
 
+    app.add_handler(ChatMemberHandler(on_chat_member, ChatMemberHandler.CHAT_MEMBER))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_txhash))
     app.add_error_handler(error_handler)
 
     print("✅ Bot is running (bilingual KO/EN)...")
-    app.run_polling(drop_pending_updates=True)
+    app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     main()
