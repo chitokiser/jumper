@@ -575,11 +575,9 @@ function _onWheel(e){
 // ── 캔버스 ───────────────────────────────────────────────────────────────
 function _resizeCanvas(){
   const cv=$('gameCanvas');
-  const topH=($('gameTop')?.offsetHeight||44)+($('skillBar')?.offsetHeight||0);
-  const botH=$('gameBot')?.offsetHeight||88;
-  const availH=window.innerHeight-topH-botH;
   const availW=window.innerWidth;
-  // 9:16 세로형 최대화
+  const availH=window.innerHeight;
+  // 풀스크린 9:16 최대화
   let w=availW, h=Math.round(w*16/9);
   if(h>availH){h=availH;w=Math.round(h*9/16);}
   cv.width=w; cv.height=h;
@@ -587,9 +585,13 @@ function _resizeCanvas(){
   initRenderer(cv); initCamera(cv); resizeCamera(w,h);
 }
 
+function _openModal(id){ $(id)?.classList.remove('hidden'); }
+function _closeModal(id){ $(id)?.classList.add('hidden'); }
+
 function _setPlacing(type){
   if(_placing&&_placingType===type){_placing=false;}
   else{_placing=true;_placingType=type;_dispatchMode=false;_selected.clear();_defenders.forEach(d=>d.selected=false);}
+  _closeModal('deployModal');
   renderHUD();
 }
 
@@ -605,12 +607,22 @@ async function init(){
   $('btnFreePlay')?.addEventListener('click',()=>{_freePlay=true;startGame();});
   $('btnRestart')?.addEventListener('click',()=>showPhase('lobby'));
 
+  // 모달 열기/닫기
+  $('btnDeployModal')?.addEventListener('click',()=>_openModal('deployModal'));
+  $('btnCommandModal')?.addEventListener('click',()=>_openModal('commandModal'));
+  $('btnCloseDeployModal')?.addEventListener('click',()=>_closeModal('deployModal'));
+  $('btnCloseCommandModal')?.addEventListener('click',()=>_closeModal('commandModal'));
+  // 모달 배경 탭 → 닫기
+  $('deployModal')?.addEventListener('click',e=>{if(e.target===e.currentTarget)_closeModal('deployModal');});
+  $('commandModal')?.addEventListener('click',e=>{if(e.target===e.currentTarget)_closeModal('commandModal');});
+
   ALL_UNIT_BTNS.forEach(t=>$(`btn_${t}`)?.addEventListener('click',()=>_setPlacing(t)));
-  $('btnHeroSkill')?.addEventListener('click',_useHeroSkill);
+  $('btnHeroSkill')?.addEventListener('click',()=>{_useHeroSkill();_closeModal('commandModal');});
   Object.keys(SKILL_DEFS).forEach(t=>$(`sk_${t}`)?.addEventListener('click',()=>_useSkill(t)));
 
   $('btnDispatch')?.addEventListener('click',()=>{
-    _dispatchMode=!_dispatchMode;_placing=false;_selected.clear();_defenders.forEach(d=>d.selected=false);renderHUD();
+    _dispatchMode=!_dispatchMode;_placing=false;_selected.clear();_defenders.forEach(d=>d.selected=false);
+    _closeModal('commandModal');renderHUD();
   });
   $('btnGuard')?.addEventListener('click',()=>{
     _defenders.forEach(d=>{
@@ -619,9 +631,9 @@ async function init(){
         if(d.guardMode){d.cmdX=null;d.cmdY=null;d.targetId=null;d.patrolMode=false;}
       }
     });
-    renderHUD();
+    _closeModal('commandModal');renderHUD();
   });
-  $('btnRepair')?.addEventListener('click',_repairWalls);
+  $('btnRepair')?.addEventListener('click',()=>{_repairWalls();_closeModal('commandModal');});
   $('btnPatrol')?.addEventListener('click',()=>{
     _defenders.forEach(d=>{
       if(d.selected&&!d.isTower){
@@ -633,10 +645,11 @@ async function init(){
         }
       }
     });
-    renderHUD();
+    _closeModal('commandModal');renderHUD();
   });
   $('btnDeselect')?.addEventListener('click',()=>{
-    _selected.clear();_defenders.forEach(d=>d.selected=false);_placing=false;_dispatchMode=false;renderHUD();
+    _selected.clear();_defenders.forEach(d=>d.selected=false);_placing=false;_dispatchMode=false;
+    _closeModal('commandModal');renderHUD();
   });
   $('btnHome')?.addEventListener('click',()=>moveCamTo(CASTLE_WX,CASTLE_WY));
 

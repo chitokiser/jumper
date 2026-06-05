@@ -71,15 +71,33 @@ html,body{height:100%;background:#0a0f05;color:#fff;
 .btn-free{padding:9px 0;background:transparent;border:1px solid #374151;
   color:#9ca3af;border-radius:10px;font-size:12px;cursor:pointer;width:100%;max-width:290px}
 
-/* ── 게임 화면 ── */
-#gameScreen{padding:0;justify-content:flex-start;align-items:center;background:#080e04;position:relative}
+/* ── 게임 화면 (풀스크린) ── */
+#gameScreen{padding:0;background:#000;overflow:hidden}
+#gameCanvas{
+  display:block;position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  background:#0d1508;touch-action:none;user-select:none;
+}
+
+/* 상단 HUD 오버레이 */
+#gameTop{
+  position:absolute;top:0;left:0;right:0;z-index:10;
+  display:flex;align-items:center;gap:4px;flex-wrap:nowrap;
+  padding:5px 8px;background:rgba(0,0,0,.78);
+  backdrop-filter:blur(6px);min-height:40px;
+}
+.hc{background:rgba(255,255,255,.1);border-radius:7px;padding:3px 8px;
+  font-size:11px;font-weight:700;white-space:nowrap}
+#hudPrep{font-size:10px;color:#fbbf24;flex:1;text-align:center}
+#hudSelected{font-size:10px;color:#22c55e;min-width:58px;text-align:right}
 
 /* 선택 유닛 배너 */
 #unitBanner{
-  position:absolute;left:0;right:0;top:44px;
-  background:rgba(8,14,4,.95);border-bottom:1px solid #1f2937;
+  position:absolute;left:0;right:0;top:40px;
+  background:rgba(0,0,0,.82);backdrop-filter:blur(4px);
+  border-bottom:1px solid #1f2937;
   padding:5px 10px;display:flex;align-items:center;gap:8px;
-  z-index:15;pointer-events:none;
+  z-index:10;pointer-events:none;
 }
 #unitBanner.hidden{display:none!important}
 .ub-label{font-size:13px;font-weight:800;color:#fff;flex:1;min-width:0;
@@ -88,62 +106,82 @@ html,body{height:100%;background:#0a0f05;color:#fff;
 .ub-hpfill{height:100%;border-radius:3px;transition:width .15s,background .15s}
 .ub-mode{font-size:11px;color:#6ee7b7;flex-shrink:0;white-space:nowrap}
 
-/* 상단 HUD */
-#gameTop{
-  width:100%;display:flex;align-items:center;gap:4px;flex-wrap:nowrap;
-  padding:5px 8px;background:rgba(0,0,0,.9);border-bottom:1px solid #1f2937;
-  flex-shrink:0;min-height:42px;
+/* 스킬바 오버레이 */
+#skillBar{
+  position:absolute;bottom:46px;left:0;right:0;z-index:10;
+  display:flex;gap:4px;padding:3px 8px;
+  background:rgba(0,0,0,.72);backdrop-filter:blur(4px);
 }
-.hc{background:rgba(255,255,255,.07);border-radius:7px;padding:3px 8px;
-  font-size:11px;font-weight:700;white-space:nowrap}
-#hudPrep{font-size:10px;color:#fbbf24;flex:1;text-align:center}
-#hudSelected{font-size:10px;color:#22c55e;min-width:58px;text-align:right}
 
-/* 캔버스 */
-#gameCanvas{display:block;flex-shrink:0;background:#0d1508;touch-action:none;user-select:none}
-
-/* 하단 HUD */
-#gameBot{
-  width:100%;display:flex;align-items:center;gap:5px;flex-wrap:wrap;
-  padding:5px 8px;background:rgba(0,0,0,.92);border-top:1px solid #1f2937;
-  flex-shrink:0;min-height:82px;
+/* 액션바 오버레이 */
+#actionBar{
+  position:absolute;bottom:0;left:0;right:0;z-index:10;
+  display:flex;align-items:center;gap:5px;padding:5px 8px;
+  background:rgba(0,0,0,.88);backdrop-filter:blur(6px);
+  border-top:1px solid #1f2937;
 }
-.unit-tabs{display:flex;gap:4px;flex:1;min-width:0}
+.act-btn{
+  flex:1;padding:8px 4px;border:1px solid #374151;border-radius:10px;
+  background:rgba(255,255,255,.06);color:#d1d5db;font-size:11px;font-weight:800;
+  cursor:pointer;text-align:center;transition:all .15s;
+}
+.act-btn.deploy{border-color:#16a34a;color:#4ade80;background:rgba(22,163,74,.12)}
+.act-btn.home{flex:0 0 42px;padding:8px;font-size:18px;
+  border-color:#374151;background:rgba(255,255,255,.05)}
+.act-btn.cmd{border-color:#4338ca;color:#818cf8;background:rgba(67,56,202,.12)}
+.act-btn:active{opacity:.7}
+
+/* 유닛 버튼 공통 */
 .u-btn{
-  flex:1;padding:5px 3px;border:2px solid #374151;border-radius:8px;
+  flex:1;padding:8px 4px;border:2px solid #374151;border-radius:10px;
   background:rgba(255,255,255,.04);color:#fff;font-size:9px;font-weight:700;
   cursor:pointer;transition:all .15s;text-align:center;line-height:1.3;
 }
-.u-btn span{display:block;font-size:13px}
+.u-btn span{display:block;font-size:15px;margin-bottom:2px}
 .u-btn small{color:#6b7280;font-size:8px}
 .u-btn:disabled{opacity:.35;cursor:not-allowed}
 .u-btn.active{border-color:#22c55e;background:rgba(34,197,94,.18);color:#4ade80}
 .u-btn.active small{color:#86efac}
 .tower-btn{border-color:#6b4a28!important;color:#c8954a}
 .tower-btn.active{border-color:#f59e0b!important;background:rgba(245,158,11,.18)!important;color:#fbbf24}
-.tower-btn.active small{color:#fde68a}
 .hero-btn{border-color:#b8860b!important;color:#ffd700}
 .hero-btn.active{border-color:#ffd700!important;background:rgba(255,215,0,.18)!important;color:#fff}
+
+/* ── 모달 ── */
+.cq-modal{
+  position:fixed;inset:0;background:rgba(0,0,0,.72);
+  z-index:200;display:flex;align-items:flex-end;justify-content:center;
+}
+.cq-modal.hidden{display:none!important}
+.cq-panel{
+  background:#111827;border-radius:20px 20px 0 0;
+  padding:14px 12px 28px;width:100%;max-width:480px;
+  max-height:72vh;overflow-y:auto;
+}
+.cq-title{font-size:11px;font-weight:800;color:#6b7280;text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:10px;text-align:center}
+.cq-unit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.cq-cmd-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px}
+.cmd-btn{
+  padding:11px 6px;border:1px solid #374151;border-radius:12px;
+  background:rgba(255,255,255,.05);color:#d1d5db;
+  font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;
+}
+.cmd-btn:disabled{opacity:.35;cursor:not-allowed}
+.cmd-btn.active{border-color:#a855f7;background:rgba(168,85,247,.18);color:#d8b4fe}
+.cmd-btn.skill-btn{color:#818cf8;border-color:#4338ca}
+.cmd-btn.repair-btn{color:#fbbf24;border-color:#92400e}
 .skill-btn{color:#818cf8;border-color:#4338ca}
 .repair-btn{color:#fbbf24;border-color:#92400e}
 .skill-btn:not(:disabled){animation:skillReady .8s ease-in-out infinite alternate}
 @keyframes skillReady{from{border-color:#4338ca}to{border-color:#818cf8;box-shadow:0 0 6px #818cf8}}
-
-.ctrl-btns{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
-.ctrl-btn{
-  padding:4px 8px;border:1px solid #374151;border-radius:7px;
-  background:rgba(255,255,255,.05);color:#9ca3af;font-size:10px;cursor:pointer;
-  white-space:nowrap;transition:all .15s;
+.cq-close{
+  width:100%;padding:11px;background:rgba(255,255,255,.06);
+  border:1px solid #374151;border-radius:12px;color:#9ca3af;
+  font-size:13px;cursor:pointer;margin-top:6px;
 }
-.ctrl-btn.active{border-color:#a855f7;background:rgba(168,85,247,.18);color:#d8b4fe}
-.ctrl-btn:hover{border-color:#6b7280}
 
-/* ── 스킬바 ── */
-#skillBar{
-  width:100%;display:flex;gap:4px;padding:4px 8px;
-  background:rgba(0,0,0,.96);border-top:1px solid #312e81;
-  flex-shrink:0;
-}
+/* ── 스킬 버튼 ── */
 .sk-btn{
   flex:1;padding:4px 2px;border:2px solid #4338ca;border-radius:8px;
   background:rgba(67,56,202,.12);color:#818cf8;font-size:10px;font-weight:700;
@@ -207,6 +245,8 @@ html,body{height:100%;background:#0a0f05;color:#fff;
 
 <!-- 게임 -->
 <div id="gameScreen" class="screen hidden">
+
+  <!-- 상단 HUD 오버레이 -->
   <div id="gameTop">
     <div class="hc" id="hudWave">웨이브 0</div>
     <div class="hc" id="hudCastle">🏰 1000</div>
@@ -214,7 +254,8 @@ html,body{height:100%;background:#0a0f05;color:#fff;
     <div class="hc" id="hudGP">💰 300</div>
     <div id="hudSelected"></div>
   </div>
-  <!-- 선택 유닛 배너 -->
+
+  <!-- 선택 유닛 배너 오버레이 -->
   <div id="unitBanner" class="hidden">
     <span id="ubIcon" style="font-size:20px;flex-shrink:0;line-height:1"></span>
     <span class="ub-label" id="ubLabel"></span>
@@ -223,55 +264,65 @@ html,body{height:100%;background:#0a0f05;color:#fff;
     <span class="ub-mode" id="ubMode"></span>
   </div>
 
+  <!-- 캔버스 (풀스크린 중앙) -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- 스킬바 -->
+  <!-- 스킬바 오버레이 -->
   <div id="skillBar">
     <button class="sk-btn sk-ready" id="sk_fire">
-      <span class="sk-emoji">🔥</span>
-      <span class="sk-name">화염</span>
-      <span class="sk-cost">200 GP</span>
-      <div class="sk-cd-ov hidden" id="sk_fire_cd"></div>
+      <span class="sk-emoji">🔥</span><span class="sk-name">화염</span>
+      <span class="sk-cost">200 GP</span><div class="sk-cd-ov hidden" id="sk_fire_cd"></div>
     </button>
     <button class="sk-btn sk-ready" id="sk_ice">
-      <span class="sk-emoji">❄️</span>
-      <span class="sk-name">얼음</span>
-      <span class="sk-cost">250 GP</span>
-      <div class="sk-cd-ov hidden" id="sk_ice_cd"></div>
+      <span class="sk-emoji">❄️</span><span class="sk-name">얼음</span>
+      <span class="sk-cost">250 GP</span><div class="sk-cd-ov hidden" id="sk_ice_cd"></div>
     </button>
     <button class="sk-btn sk-ready" id="sk_wind">
-      <span class="sk-emoji">🌪️</span>
-      <span class="sk-name">회오리</span>
-      <span class="sk-cost">200 GP</span>
-      <div class="sk-cd-ov hidden" id="sk_wind_cd"></div>
+      <span class="sk-emoji">🌪️</span><span class="sk-name">회오리</span>
+      <span class="sk-cost">200 GP</span><div class="sk-cd-ov hidden" id="sk_wind_cd"></div>
     </button>
     <button class="sk-btn sk-ready" id="sk_meteor">
-      <span class="sk-emoji">☄️</span>
-      <span class="sk-name">유성</span>
-      <span class="sk-cost">350 GP</span>
-      <div class="sk-cd-ov hidden" id="sk_meteor_cd"></div>
+      <span class="sk-emoji">☄️</span><span class="sk-name">유성</span>
+      <span class="sk-cost">350 GP</span><div class="sk-cd-ov hidden" id="sk_meteor_cd"></div>
     </button>
   </div>
 
-  <div id="gameBot">
-    <!-- 병력 배치 탭 -->
-    <div class="unit-tabs">
-      <button class="u-btn" id="btn_villager">     <span>🛡️</span>수비대<br><small>50 GP</small></button>
-      <button class="u-btn" id="btn_miner">        <span>⛏️</span>광부<br><small>60 GP</small></button>
-      <button class="u-btn" id="btn_scout">        <span>🗺️</span>정찰대<br><small>70 GP</small></button>
-      <button class="u-btn tower-btn" id="btn_archer_tower"><span>🏹</span>궁수탑<br><small>120 GP</small></button>
-      <button class="u-btn tower-btn" id="btn_cannon_tower"><span>💣</span>대포탑<br><small>220 GP</small></button>
-      <button class="u-btn hero-btn"  id="btn_hero">        <span>⚔️</span>영웅<br><small>300 GP</small></button>
+  <!-- 액션바 오버레이 -->
+  <div id="actionBar">
+    <button class="act-btn deploy" id="btnDeployModal">⚔️ Deploy</button>
+    <button class="act-btn home"   id="btnHome">🏰</button>
+    <button class="act-btn cmd"    id="btnCommandModal">🎯 Commands</button>
+  </div>
+
+  <!-- 병력 배치 모달 -->
+  <div id="deployModal" class="cq-modal hidden" data-fs-modal>
+    <div class="cq-panel">
+      <div class="cq-title">⚔️ Deploy Unit</div>
+      <div class="cq-unit-grid">
+        <button class="u-btn" id="btn_villager"><span>🛡️</span>수비대<br><small>50 GP</small></button>
+        <button class="u-btn" id="btn_miner"><span>⛏️</span>광부<br><small>60 GP</small></button>
+        <button class="u-btn" id="btn_scout"><span>🗺️</span>정찰대<br><small>70 GP</small></button>
+        <button class="u-btn tower-btn" id="btn_archer_tower"><span>🏹</span>궁수탑<br><small>120 GP</small></button>
+        <button class="u-btn tower-btn" id="btn_cannon_tower"><span>💣</span>대포탑<br><small>220 GP</small></button>
+        <button class="u-btn hero-btn"  id="btn_hero"><span>⚔️</span>영웅<br><small>300 GP</small></button>
+      </div>
+      <button class="cq-close" id="btnCloseDeployModal">✖ Close</button>
     </div>
-    <!-- 제어 버튼 -->
-    <div class="ctrl-btns">
-      <button class="ctrl-btn" id="btnDispatch">🔭 정찰</button>
-      <button class="ctrl-btn" id="btnGuard">🛡 경계</button>
-      <button class="ctrl-btn" id="btnPatrol">🔄 순찰</button>
-      <button class="ctrl-btn skill-btn" id="btnHeroSkill" disabled>⚡ 스킬</button>
-      <button class="ctrl-btn repair-btn" id="btnRepair">🔨 성벽수리 <small>150GP</small></button>
-      <button class="ctrl-btn" id="btnHome">🏰 성으로</button>
-      <button class="ctrl-btn" id="btnDeselect">✖ 해제</button>
+  </div>
+
+  <!-- 명령 모달 -->
+  <div id="commandModal" class="cq-modal hidden" data-fs-modal>
+    <div class="cq-panel">
+      <div class="cq-title">🎯 Commands</div>
+      <div class="cq-cmd-grid">
+        <button class="cmd-btn" id="btnDispatch">🔭 정찰</button>
+        <button class="cmd-btn" id="btnGuard">🛡 경계</button>
+        <button class="cmd-btn" id="btnPatrol">🔄 순찰</button>
+        <button class="cmd-btn skill-btn" id="btnHeroSkill" disabled>⚡ 영웅 스킬</button>
+        <button class="cmd-btn repair-btn" id="btnRepair">🔨 성벽수리 150GP</button>
+        <button class="cmd-btn" id="btnDeselect">✖ 선택 해제</button>
+      </div>
+      <button class="cq-close" id="btnCloseCommandModal">← Close</button>
     </div>
   </div>
 
