@@ -60,8 +60,25 @@ GROUP_INVITE_GP       = 100
 
 _user_state: dict = {}   # {telegram_user_id: 'awaiting_txhash'}
 _bot_username: str = ""  # _post_init에서 캐싱
+_ton_cache: dict  = {"usd": 0.0, "ts": 0.0}
+_TON_CACHE_TTL    = 300  # 5분
 
 # ── 헬퍼 ─────────────────────────────────────────────────────────────────────
+
+def _fetch_ton_usd() -> float:
+    now = datetime.now().timestamp()
+    if now - _ton_cache["ts"] < _TON_CACHE_TTL and _ton_cache["usd"] > 0:
+        return _ton_cache["usd"]
+    resp = _req.get(
+        "https://api.coingecko.com/api/v3/simple/price",
+        params={"ids": "the-open-network", "vs_currencies": "usd"},
+        timeout=8,
+    )
+    price = float(resp.json()["the-open-network"]["usd"])
+    _ton_cache["usd"] = price
+    _ton_cache["ts"]  = now
+    return price
+
 
 def _today_utc7() -> str:
     return datetime.now(UTC7).strftime("%Y-%m-%d")
@@ -491,6 +508,31 @@ async def cmd_myinvites(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _safe_reply(update.message, "❌ Failed to load. Please try again later.")
 
 
+async def _reply_rate(message):
+    try:
+        usd = await _run(_fetch_ton_usd)
+        gp  = int(usd * 10_000)
+        await _safe_reply(message,
+            f"💱 *TON Exchange Rate*\n\n"
+            f"1 TON = *${usd:,.2f}* USD\n"
+            f"1 TON = *{gp:,} GP*\n\n"
+            f"_(Updates every 5 min · Source: CoinGecko)_"
+        )
+    except Exception as e:
+        print(f"[ERROR] _reply_rate: {e}")
+        await _safe_reply(message, "❌ Failed to fetch rate. Please try again.")
+
+
+async def cmd_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _reply_rate(update.message)
+
+
+async def cb_show_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    await _reply_rate(q.message)
+
+
 async def cmd_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """그룹/채널 chat_id 확인 — ANNOUNCE_GROUP_ID 설정용"""
     chat = update.effective_chat
@@ -530,7 +572,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
             [InlineKeyboardButton("📝 Register — Get 1,000 GP Airdrop!", callback_data="register_check")],
             [InlineKeyboardButton("👥 Get Referral Link (+500 GP)", callback_data="referral_link")],
-            [InlineKeyboardButton(f"🔗 Group Invite Link (+{GROUP_INVITE_GP} GP/person)", callback_data="group_invite_link")],
+            [InlineKeyboardButton("💱 TON → GP Rate", callback_data="show_rate")],
+            [InlineKeyboardButton("💬 Join Official Community", url="https://t.me/jumpdao_eng")],
+            [InlineKeyboardButton(f"🔗 Invite Friends to Group → +{GROUP_INVITE_GP} GP/person", callback_data="group_invite_link")],
             [
                 InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/treasure.html"),
                 InlineKeyboardButton("🏎️ Monster Racing",  url="https://jump22.netlify.app/monsterrace.html"),
@@ -996,10 +1040,12 @@ def main():
     app.add_handler(CommandHandler("cancel",     cmd_cancel))
     app.add_handler(CommandHandler("mylink",     cmd_mylink))
     app.add_handler(CommandHandler("myinvites",  cmd_myinvites))
+    app.add_handler(CommandHandler("rate",       cmd_rate))
 
     app.add_handler(CallbackQueryHandler(cb_membership_info,   pattern="^membership_info$"))
     app.add_handler(CallbackQueryHandler(cb_buy_premium,       pattern="^buy_premium$"))
     app.add_handler(CallbackQueryHandler(cb_referral_link,     pattern="^referral_link$"))
+    app.add_handler(CallbackQueryHandler(cb_show_rate,         pattern="^show_rate$"))
     app.add_handler(CallbackQueryHandler(cb_group_invite_link, pattern="^group_invite_link$"))
     app.add_handler(CallbackQueryHandler(cb_register_check,    pattern="^register_check$"))
     app.add_handler(CallbackQueryHandler(cb_create_wallet,     pattern="^create_wallet$"))
