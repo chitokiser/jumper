@@ -4013,6 +4013,9 @@ async function _execShopBuy(shopId, itemId, itemName, price, qty) {
 }
 
 // ── 상점 관리자 모달 ──────────────────────────────────────────────────────────
+// Normalize user-placed shop types ('shop_potion' → 'potion') for the admin select
+const _SHOP_TYPE_NORMALIZE = { shop_weapon_armor: 'weapon_armor', shop_potion: 'potion', shop_misc: 'misc' };
+
 function openShopAdminModal(shop) {
   const modal = $('shopAdminModal');
   if (!modal) return;
@@ -4020,7 +4023,7 @@ function openShopAdminModal(shop) {
   $('shopAdminModalTitle').textContent = `${_t('shop_admin_title')}: ${shop.name}`;
   $('shopAdminShopId').value   = shop.id;
   $('shopAdminShopName').value = shop.name;
-  $('shopAdminShopType').value = shop.type;
+  $('shopAdminShopType').value = _SHOP_TYPE_NORMALIZE[shop.type] || shop.type;
 
   _renderShopAdminItems(shop.items || []);
   modal.classList.add('open');
@@ -4052,8 +4055,12 @@ function _buildItemCatalog() {
 
 function _buildItemSelectOptions(currentItemId, shopType) {
   const catalog = _buildItemCatalog();
-  const PREFIX_MAP = { potion: ['potion_', 'revive_'], weapon_armor: ['weapon_', 'armo_', 'helm_', 'legs_', 'glov_', 'boot_', 'sword_', 'bow_', 'shield_', 'armor_'], misc: [] };
-  const prefixes = PREFIX_MAP[shopType] || [];
+  const PREFIX_MAP = {
+    potion:       ['potion_', 'revive_'],
+    weapon_armor: ['weapon_', 'armor_', 'armo_', 'helm_', 'legs_', 'glov_', 'boot_', 'ches_', 'sword_', 'bow_', 'shield_'],
+    misc:         [],
+  };
+  const prefixes = PREFIX_MAP[_SHOP_TYPE_NORMALIZE[shopType] || shopType] || [];
 
   const filtered = Object.entries(catalog).filter(([id]) => {
     if (!prefixes.length) return true;
@@ -5059,12 +5066,12 @@ function _openOwnerItemEditor(shop) {
 
   // 카테고리별 아이템 접두사 필터
   const PREFIXES = {
-    potion:       ['potion_', 'revive_'],
-    weapon_armor: ['weapon_', 'armor_', 'helm_', 'sword_', 'bow_', 'shield_', 'armo_', 'legs_', 'glov_', 'boot_'],
-    misc:         [],
-    shop_potion:  ['potion_', 'revive_'],
-    shop_weapon_armor: ['weapon_', 'armor_'],
-    shop_misc:    [],
+    potion:            ['potion_', 'revive_'],
+    weapon_armor:      ['weapon_', 'armor_', 'armo_', 'helm_', 'legs_', 'glov_', 'boot_', 'sword_', 'bow_', 'shield_', 'ches_'],
+    misc:              [],
+    shop_potion:       ['potion_', 'revive_'],
+    shop_weapon_armor: ['weapon_', 'armor_', 'armo_', 'helm_', 'legs_', 'glov_', 'boot_', 'sword_', 'bow_', 'shield_', 'ches_'],
+    shop_misc:         [],
   };
   const shopType  = shop.type || 'misc';
   const prefixes  = PREFIXES[shopType] || [];

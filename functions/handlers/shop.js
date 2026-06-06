@@ -33,21 +33,33 @@ async function isAdmin(uid) {
 }
 
 // ── 관리자: 상점 생성/수정 ────────────────────────────────────────────────────
+const _TYPE_NORMALIZE = { shop_weapon_armor: 'weapon_armor', shop_potion: 'potion', shop_misc: 'misc' };
+
 async function adminSaveShop(uid, data = {}) {
   await requireAdmin(uid);
 
   const {
-    shopId, name, type, lat, lng, items = [],
+    shopId, name, items = [],
     active = true, ownerUid, imageUrl = '',
     level: inputLevel = 1,
   } = data;
+  // Normalize user-placed shop types ('shop_potion' → 'potion')
+  const type = _TYPE_NORMALIZE[data.type] || data.type;
+  let   lat  = data.lat;
+  let   lng  = data.lng;
 
   if (!name || typeof name !== 'string' || !name.trim())
-    throw new HttpsError('invalid-argument', '상점 이름이 필요합니다');
+    throw new HttpsError('invalid-argument', 'Shop name is required');
   if (!VALID_TYPES.includes(type))
-    throw new HttpsError('invalid-argument', `type은 ${VALID_TYPES.join('|')} 중 하나여야 합니다`);
+    throw new HttpsError('invalid-argument', `type must be one of: ${VALID_TYPES.join('|')}`);
+
+  // If editing an existing shop and lat/lng not supplied, read them from Firestore
+  if (shopId && (lat == null || lng == null)) {
+    const existing = await db.collection('game_shops').doc(shopId).get();
+    if (existing.exists) { lat = existing.data().lat; lng = existing.data().lng; }
+  }
   if (lat == null || lng == null || typeof lat !== 'number' || typeof lng !== 'number')
-    throw new HttpsError('invalid-argument', '위치 좌표(lat/lng)가 필요합니다');
+    throw new HttpsError('invalid-argument', 'Location coordinates (lat/lng) are required');
   if (!Array.isArray(items))
     throw new HttpsError('invalid-argument', 'items는 배열이어야 합니다');
 
