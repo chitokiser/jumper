@@ -46,9 +46,9 @@ const MESSAGES = {
   hud_lv:                { en: 'LV.{0}  💰{1}  💎Stone{2}',
                            ko: 'LV.{0}  💰{1}  💎마정석{2}',
                            vi: 'LV.{0}  💰{1}  💎Đá phép{2}' },
-  hud_dead:              { en: '💀 Dead — {0}m to revive',
-                           ko: '💀 사망 — 부활까지 {0}m 남음',
-                           vi: '💀 Đã chết — còn {0}m để hồi sinh' },
+  hud_dead:              { en: '💀 Dead — Auto-reviving…',
+                           ko: '💀 사망 — 자동 부활 중…',
+                           vi: '💀 Đã chết — Đang tự hồi sinh…' },
 
   // ── 스킬 에러 메시지 ──────────────────────────────────────────────────────────
   skill_locating:        { en: '📍 Getting location...',  ko: '📍 위치 확인 중...', vi: '📍 Đang xác định vị trí...' },

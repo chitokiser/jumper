@@ -29,7 +29,8 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          onPlayerExp, onPlayerLevelUp,
          addPlayerGold, spendPlayerGold, addPlayerGsExp,
          getPlayerSnapshot, syncPlayerFromDungeon,
-         spendPlayerMp, getPlayerMp, getPlayerMaxMp }
+         spendPlayerMp, getPlayerMp, getPlayerMaxMp,
+         setSpawnPos, updateSpawnPos }
   from './merchants.battle.js';
 import { initDungeonGame, openDungeonGame } from './merchants.dungeon.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
@@ -1323,6 +1324,7 @@ function showMyLocation() {
       if (_ctx.map) { _ctx.map.panTo({ lat, lng }); _ctx.map.setZoom(18); }
       broadcastMyLocation(lat, lng);
       if (btn) btn.textContent = '📍';
+      setSpawnPos(lat, lng); // record spawn on first GPS fix
       _maybeInitStarterPack(lat, lng);
       _maybeInitDailyArea(lat, lng);
     });
@@ -2849,7 +2851,9 @@ async function init() {
     const gameToggle   = $('btnGameToggle');
 
     if (_uid) {
-      // 로그인됨 (일반 또는 익명) → 오버레이 숨김
+      // 로그인됨 → 다중 기기 방지 세션 등록
+      _startSessionGuard(_uid);
+      // 오버레이 숨김
       if (loginOverlay) loginOverlay.style.display = 'none';
       if (gameToggle)   gameToggle.disabled = false;
 
@@ -2904,6 +2908,8 @@ async function init() {
       loadInventory();
       _renderMemberStatus(_uid);
     } else {
+      // 로그아웃 → 세션 감시 해제
+      _stopSessionGuard();
       // 비로그인 → 오버레이 표시
       if (loginOverlay) loginOverlay.style.display = 'flex';
       if (gameToggle)   gameToggle.disabled = true;
@@ -2980,6 +2986,7 @@ async function init() {
       moveMarker: (lat, lng) => {
         _ctx.lastPos = { lat, lng, accuracy: 10, heading: null };
         updateMyLocation(lat, lng, 10, null);
+        updateSpawnPos(lat, lng); // warp destination becomes new spawn
       },
     });
     // 가상 위치 탭 이동 시 proximity 체크 연결
@@ -4529,7 +4536,7 @@ function showUserNpcInfo(npc) {
   const hintEl = document.getElementById('utNpcHint');
   const unlockBtn = document.getElementById('btnUnlockHint');
   if (hintEl) { hintEl.textContent = npc.hint || ''; hintEl.classList.add('hint-locked'); }
-  if (unlockBtn) { unlockBtn.classList.remove('visible'); unlockBtn.disabled = false; unlockBtn.textContent = '🔓 힌트 잠금 해제 (10 Coin)'; }
+  if (unlockBtn) { unlockBtn.classList.remove('visible'); unlockBtn.disabled = false; unlockBtn.textContent = '🔓 Unlock Hint (10 Coin)'; }
   _utNpcMsg('');
   modal.classList.add('open');
   // 잠금 해제 여부 비동기 확인 (자기 보물이면 즉시 해제)
@@ -4577,16 +4584,26 @@ function _applyHintUnlocked() {
 async function unlockHintAction() {
   const npc = _utCurrentNpc;
   if (!npc) return;
-  if (!_uid) { _utNpcMsg('로그인이 필요합니다.', true); return; }
+  if (!_uid) { _utNpcMsg('Login required to unlock hints.', true); return; }
   const btn = document.getElementById('btnUnlockHint');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ 처리 중...'; }
+  // Virtual Explore mode block
+  if (isVirtualMode()) {
+    _utNpcMsg(
+      '🌍 Hint unlock is not available in Virtual Explore mode.\n' +
+      'Switch to GPS mode and visit this location in person to:\n' +
+      '• Unlock hints (10 Coin)\n• Collect hidden treasure',
+      true
+    );
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing...'; }
   try {
     await httpsCallable(functions, 'unlockHint')({ npcId: npc.id });
     _applyHintUnlocked();
-    _utNpcMsg('힌트 잠금이 해제되었습니다! 🔓', false);
+    _utNpcMsg('🔓 Hint unlocked!', false);
   } catch (e) {
-    _utNpcMsg('⚠️ ' + (e.message || '잠금 해제 실패'), true);
-    if (btn) { btn.disabled = false; btn.textContent = '🔓 힌트 잠금 해제 (10 Coin)'; }
+    _utNpcMsg('⚠️ ' + (e.message || 'Unlock failed'), true);
+    if (btn) { btn.disabled = false; btn.textContent = '🔓 Unlock Hint (10 Coin)'; }
   }
 }
 
@@ -4597,14 +4614,22 @@ function _renderCommentText(text) {
 }
 
 async function discoverTreasure(npcId) {
-  const pos = _ctx.lastPos;
+  if (isVirtualMode()) {
+    _utNpcMsg(
+      '🌍 Cannot collect hidden treasure in Virtual Explore mode.\n' +
+      'Switch to GPS mode and visit this exact location in person.',
+      true
+    );
+    return;
+  }
+  const pos = _ctx.gpsPos || _ctx.lastPos;
   if (!pos) {
-    _utNpcMsg('📡 GPS 위치를 확인 중입니다. 게임을 시작하세요.', true);
+    _utNpcMsg('📡 Getting your GPS location... Press ▶ to start GPS mode first.', true);
     return;
   }
   const btn = document.getElementById('btnDiscoverTreasure');
   const origTxt = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ 확인 중...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Checking...'; }
   _utNpcMsg('');
   try {
     const { data } = await httpsCallable(functions, 'discoverUserTreasure')(
@@ -4980,6 +5005,40 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitNpcComment(); }
     });
 });
+
+// ── 다중 기기 세션 방지 ────────────────────────────────────────────────────────
+// 같은 계정이 다른 기기에서 로그인하면 현재 기기를 강제 로그아웃
+const _SESSION_ID = Date.now().toString(36) + Math.random().toString(36).slice(2);
+let _sessionGuardUnsub = null;
+
+function _startSessionGuard(uid) {
+  if (_sessionGuardUnsub) return; // 이미 시작됨
+  const ref = doc(db, 'user_sessions', uid);
+  // 이 기기 세션 등록
+  setDoc(ref, {
+    sessionId: _SESSION_ID,
+    startedAt: serverTimestamp(),
+    ua: navigator.userAgent.slice(0, 120),
+  }, { merge: true }).catch(() => {});
+  // 다른 기기에서 로그인하면 sessionId가 바뀜 → 강제 로그아웃
+  _sessionGuardUnsub = onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return;
+    if (snap.data().sessionId !== _SESSION_ID) {
+      _stopSessionGuard();
+      alert(
+        '⚠️ Your account was signed in from another device.\n\n' +
+        'Only one active session is allowed per account.\n' +
+        'You have been signed out of this device.'
+      );
+      signOut(auth).finally(() => window.location.reload());
+    }
+  });
+}
+
+function _stopSessionGuard() {
+  _sessionGuardUnsub?.();
+  _sessionGuardUnsub = null;
+}
 
 // ── 페이지 진입 시 워프모드 자동 시작 ─────────────────────────────────────────
 // 지도 + 로그인 준비 완료 후 1회 실행 — 자동으로 상점 선택 모달 표시

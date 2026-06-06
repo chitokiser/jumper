@@ -68,9 +68,13 @@ let _lastProximityPos = null;  // GPS 스캔 쓰로틀용 마지막 위치
 let _dbgNearby = 0, _dbgAiCount = 0, _dbgFpsTick = 0, _dbgFpsLast = Date.now(), _dbgFps = 0;
 let _healAccum       = 0;      // HP 회복용 누적거리(m)
 let _mpHealAccum     = 0;      // MP 회복용 누적거리(m)
-let _reviveWalkDist  = 0;      // 사망 후 부활용 누적거리(m)
+let _reviveWalkDist  = 0;      // (legacy, kept for save compat)
 let _currentSpeed    = 0;      // km/h
 let _isDead          = false;
+let _spawnLat        = null;   // spawn position (first GPS fix or warp start)
+let _spawnLng        = null;
+let _autoReviveTimer = null;   // setInterval for countdown
+let _autoReviveCountdown = 0;  // seconds remaining
 let _goldDrops       = [];     // [{id, lat, lng, amount, marker}]
 let _adminPlaceMode  = null;   // 'monster' | 'tower' | 'deco' | null
 let _adminMapListener = null;
@@ -798,7 +802,7 @@ function updateCombatHud() {
   if (dead) {
     if (_isDead) {
       dead.style.display = '';
-      dead.textContent = _t('hud_dead', Math.max(0, Math.round(10 - _reviveWalkDist)));
+      dead.textContent = `💀 Dead — Auto-reviving in ${_autoReviveCountdown}s...`;
     } else {
       dead.style.display = 'none';
     }
@@ -2217,6 +2221,16 @@ export function startBattleLoop() {
 
 export function stopBattleLoop() {
   if (_battleLoopId) { clearInterval(_battleLoopId); _battleLoopId = null; }
+  if (_autoReviveTimer) { clearInterval(_autoReviveTimer); _autoReviveTimer = null; }
+}
+
+/** Set spawn position (first GPS fix, or warp location). */
+export function setSpawnPos(lat, lng) {
+  if (lat && lng && (_spawnLat === null)) { _spawnLat = lat; _spawnLng = lng; }
+}
+/** Override spawn position (e.g. when warping to a new shop). */
+export function updateSpawnPos(lat, lng) {
+  if (lat && lng) { _spawnLat = lat; _spawnLng = lng; }
 }
 
 function battleTick() {
@@ -2224,31 +2238,50 @@ function battleTick() {
   checkTowerAttacks();
   checkGoldPickup();
   _updateDebugPanel();
-  if (_isDead) {
-    if (_reviveWalkDist >= 10) {
-      _isDead = false;
-      _reviveWalkDist = 0;
-      _clearDeathMarker();
-      { const _rm = _ctx?.myLocationMarker;
-        if (_rm && typeof _rm.revive === 'function') _rm.revive();
-        else refreshMyMarkerIcon(); }
-      _player.hp = _player.maxHp;
-      _player.mp = _player.maxMp;
-      _healAccum   = 0;
-      _mpHealAccum = 0;
-      _player.token = (_player.token ?? 0) + 30;
-      sendPlayerRevive();  // GS 서버에 부활 동기화 (state='dead' 해제)
-      playSound('revive');
-      const myMark = _ctx?.myLocationMarker;
-      if (myMark) {
-        const pos = myMark.getPosition();
-        showFloat('✨ 부활! 💎×30', '#fbbf24', pos.lat(), pos.lng());
-      }
+  if (_isDead && !_autoReviveTimer) {
+    // Start 5-second auto-revive countdown if not already running
+    _autoReviveCountdown = 5;
+    updateCombatHud();
+    _autoReviveTimer = setInterval(() => {
+      _autoReviveCountdown = Math.max(0, _autoReviveCountdown - 1);
       updateCombatHud();
-      updateSkillBar();
-      savePlayerState();
-    }
+      if (_autoReviveCountdown <= 0) {
+        clearInterval(_autoReviveTimer);
+        _autoReviveTimer = null;
+        _performAutoRevive();
+      }
+    }, 1000);
   }
+}
+
+function _performAutoRevive() {
+  if (!_isDead) return;
+  _isDead = false;
+  _reviveWalkDist = 0;
+  _clearDeathMarker();
+  const _rm = _ctx?.myLocationMarker;
+  if (_rm && typeof _rm.revive === 'function') _rm.revive();
+  else refreshMyMarkerIcon();
+  _player.hp = Math.round(_player.maxHp * 0.5);
+  _player.mp = Math.round(_player.maxMp * 0.5);
+  _healAccum   = 0;
+  _mpHealAccum = 0;
+  _player.token = (_player.token ?? 0) + 30;
+  // Warp marker back to spawn
+  if (_spawnLat && _spawnLng) {
+    _ctx.lastPos = { lat: _spawnLat, lng: _spawnLng, accuracy: 10, heading: null };
+    updateMyLocation(_spawnLat, _spawnLng, 10, null);
+  }
+  sendPlayerRevive();
+  playSound('revive');
+  const myMark = _ctx?.myLocationMarker;
+  if (myMark) {
+    const pos = myMark.getPosition();
+    showFloat('✨ Auto-Revived! Warped to spawn. 💎×30', '#fbbf24', pos.lat(), pos.lng());
+  }
+  updateCombatHud();
+  updateSkillBar();
+  savePlayerState();
 }
 
 // ── 몬스터 돌진 애니메이션 ────────────────────────────────────────────────────
