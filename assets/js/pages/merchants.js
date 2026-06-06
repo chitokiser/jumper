@@ -293,6 +293,7 @@ const FS_MODALS = [
   'utNpcModal', 'utRegModal', 'utMyModal',
   'userPlacePanel', 'userPlaceConfirmModal', 'userPlaceBanner', 'btnUserPlaceCancelMode',
   'soBuyModal', 'soExecuteModal', 'soTransferModal',
+  'vmModal',
   'anonBadge',
   // 누락 보완
   'levelupOverlay', 'voucherOrderModal', 'tutModal', 'lb-overlay', 'monsterStatModal',
@@ -2095,18 +2096,26 @@ async function useMpPotion() {
 async function usePotion() {
   if (!_uid) return;
   const current = _inventory['potion_red'] || 0;
-  if (current <= 0) { alert(_t('no_hp_potion')); return; }
+  if (current <= 0) { showInfoToast(_t('no_hp_potion')); return; }
 
+  // Optimistic instant update — no waiting for Cloud Function
+  _inventory['potion_red'] = Math.max(0, current - 1);
+  healHp(100);
+  renderInventory();
+  showInfoToast(_t('use_hp_potion_toast'));
+  playSound('heal');
+
+  // 백그라운드 서버 동기화
   try {
-    const fn = httpsCallable(functions, 'usePotion');
-    const res = await fn();
+    const res = await httpsCallable(functions, 'usePotion')();
     _inventory['potion_red'] = res.data.remaining;
-    healHp(100);
-    showInfoToast(_t('use_hp_potion_toast'));
-    playSound('heal');
     renderInventory();
   } catch (err) {
-    alert(_t('use_failed', err.message));
+    // 실패 시 롤백
+    _inventory['potion_red'] = current;
+    healHp(-100);
+    renderInventory();
+    showInfoToast('Potion use failed: ' + err.message);
   }
 }
 
@@ -2146,6 +2155,11 @@ async function dropItem(itemId, count = 1) {
 
 async function pickupDrop(dropId) {
   if (!_uid) return;
+  // 사망 상태에서는 드랍 아이템 획득 불가
+  if (isPlayerDead()) {
+    showToast('⚠️ You cannot pick up items while dead. Revive first!', 'warn');
+    return;
+  }
   const pos = _ctx.lastPos;
   if (!pos) { showToast(_t('drop_no_location'), 'info'); return; }
 
@@ -2202,10 +2216,15 @@ function _buildDropMarker(dropId, data, label, icon) {
     markerOpts.label = { text: '📦', fontSize: '20px' };
   }
   const marker = new google.maps.Marker(markerOpts);
-  const infoWin = new google.maps.InfoWindow({
-    content: `<div class="drop-marker-label">📦 ${escHtml(label)}<br><button onclick="window._pickupDrop('${escHtml(dropId)}')" style="margin-top:4px;padding:2px 8px;background:#7a3a00;color:#fff;border:none;border-radius:4px;cursor:pointer">${_t('pickup_btn_label')}</button></div>`,
+  const infoWin = new google.maps.InfoWindow({ content: '' });
+  marker.addListener('click', () => {
+    const dead = isPlayerDead();
+    infoWin.setContent(`<div class="drop-marker-label">📦 ${escHtml(label)}` +
+      (dead ? '<br><span style="color:#ef4444;font-size:11px;">💀 Revive first to pick up items (within 30m)</span>' :
+              `<br><button onclick="window._pickupDrop('${escHtml(dropId)}')" style="margin-top:4px;padding:2px 8px;background:#7a3a00;color:#fff;border:none;border-radius:4px;cursor:pointer">${_t('pickup_btn_label')}</button>`) +
+      '</div>');
+    infoWin.open(_ctx.map, marker);
   });
-  marker.addListener('click', () => infoWin.open(_ctx.map, marker));
   _dropMarkers[dropId] = marker;
 }
 
@@ -2702,6 +2721,8 @@ const TUT_STEPS = [
   { icon: '📍', titleKey: 'tut_step1_title', bodyKey: 'tut_step1_body' },
   { icon: '👾', titleKey: 'tut_step2_title', bodyKey: 'tut_step2_body' },
   { icon: '📦', titleKey: 'tut_step3_title', bodyKey: 'tut_step3_body' },
+  { icon: '🌍', titleKey: 'tut_step4_title', bodyKey: 'tut_step4_body' },
+  { icon: '🏪', titleKey: 'tut_step5_title', bodyKey: 'tut_step5_body' },
 ];
 
 function initTutorial() {
@@ -3018,9 +3039,15 @@ async function init() {
   // 버튼 이벤트
   $('btnInventory')?.addEventListener('click', openInventory);
   $('btnVirtualMode')?.addEventListener('click', () => {
-    // Virtual Explore는 GPS 게임이 꺼진 상태에서만 가능
-    if (_gameStarted && !isVirtualMode()) {
-      showToast('📍 GPS 게임 중에는 Virtual 모드를 사용할 수 없습니다. 게임을 종료(■)하세요.', 'warn');
+    if (isVirtualMode()) {
+      // Virtual ON 상태: 재워프(새 상점 선택) 허용 — 게임 서버 상태 무관
+      toggleVirtualMode(); // 먼저 Off
+      setTimeout(() => toggleVirtualMode(), 50); // 즉시 새 선택 모달 열기
+      return;
+    }
+    // Virtual OFF 상태: GPS 게임 중이면 차단
+    if (_gameStarted) {
+      showToast('⛔ Stop the game first (■) before using Virtual Explore.', 'warn');
       return;
     }
     toggleVirtualMode();
@@ -4112,18 +4139,27 @@ $('btnShopAdminSave')?.addEventListener?.('click', async () => {
   const items    = _collectShopAdminItems();
   if (!name) { alert('Please enter a shop name.'); return; }
 
-  // 5km 반경 내 동일 카테고리 중복 검사
+  // 5km radius duplicate check — covers admin ('potion') and user-placed ('shop_potion') type aliases
+  const _shopTypeAliases = {
+    weapon_armor:       ['weapon_armor', 'shop_weapon_armor'],
+    shop_weapon_armor:  ['weapon_armor', 'shop_weapon_armor'],
+    potion:             ['potion', 'shop_potion'],
+    shop_potion:        ['potion', 'shop_potion'],
+    misc:               ['misc', 'shop_misc'],
+    shop_misc:          ['misc', 'shop_misc'],
+  };
+  const _validTypes = _shopTypeAliases[type] || [type];
   const shopData = getShops().find(s => s.id === shopId);
   const lat = shopData?.lat, lng = shopData?.lng;
   if (lat && lng) {
     const conflict = getShops().find(s =>
-      s.id !== shopId && s.type === type &&
+      s.id !== shopId && _validTypes.includes(s.type) &&
       haversine(lat, lng, s.lat, s.lng) <= 5000
     );
     if (conflict) {
       alert(
-        `⛔ Cannot place this shop here.\n\n` +
-        `A "${type}" shop already exists within 5km:\n"${conflict.name}"\n\n` +
+        `⛔ Cannot save this shop.\n\n` +
+        `A "${conflict.type}" shop already exists within 5km:\n"${conflict.name}"\n\n` +
         `Only one shop per category is allowed within a 5km radius.`
       );
       return;

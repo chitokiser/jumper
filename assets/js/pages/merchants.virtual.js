@@ -358,6 +358,7 @@ function _buildModal() {
   const el = document.createElement('div');
   el.id = 'vmModal';
   el.className = 'hidden';
+  el.setAttribute('data-fs-modal', ''); // visible in fullscreen mode
   el.innerHTML = `
 <style>
 #vmModal{position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;

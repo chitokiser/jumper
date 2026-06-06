@@ -240,17 +240,25 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
     });
     docId = ref.id;
   } else if (def.type === 'shop') {
-    // 5km 반경 내 동일 카테고리 중복 금지 — 서버 사이드 검증
-    const nearby = await db.collection('game_shops')
+    // type 정규화 맵 — admin 배치(potion)와 유저 배치(shop_potion) 동일 카테고리 처리
+    const TYPE_ALIASES = {
+      shop_potion:       ['shop_potion', 'potion'],
+      shop_weapon_armor: ['shop_weapon_armor', 'weapon_armor'],
+      shop_misc:         ['shop_misc', 'misc'],
+    };
+    const aliasTypes = TYPE_ALIASES[def.shopType] || [def.shopType];
+
+    // 5km 반경 내 동일 카테고리 중복 금지 — 모든 alias 타입 체크
+    const nearbySnap = await db.collection('game_shops')
       .where('active', '==', true)
-      .where('type', '==', def.shopType)
       .get();
-    for (const doc of nearby.docs) {
+    for (const doc of nearbySnap.docs) {
       const s = doc.data();
       if (!s.lat || !s.lng) continue;
+      if (!aliasTypes.includes(s.type)) continue;
       if (haversineM(Number(lat), Number(lng), s.lat, s.lng) <= 5000) {
         throw new Error(
-          `⛔ A "${def.shopType}" shop already exists within 5km: "${s.name}". ` +
+          `⛔ A "${s.type}" shop already exists within 5km: "${s.name}". ` +
           `Only one shop per category is allowed within a 5km radius.`
         );
       }

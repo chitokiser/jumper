@@ -105,8 +105,8 @@ function _renderCatalog() {
     const price     = _effectivePrice(item.key);
     const canAfford = gold >= price;
     return `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;
-                  border:1px solid var(--border,#e5e7eb);margin-bottom:6px;
+      <div data-place-key="${item.key}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;
+                  border:1px solid var(--border,#e5e7eb);margin-bottom:6px;cursor:pointer;
                   background:${canAfford ? 'var(--surface,#fff)' : '#f9fafb'};">
         <span style="font-size:1.4rem;">${item.emoji}</span>
         <div style="flex:1;min-width:0;">
@@ -117,25 +117,34 @@ function _renderCatalog() {
           <div style="font-size:0.8rem;font-weight:700;color:${canAfford ? '#d97706' : '#9ca3af'};">
             🪙 ${price.toLocaleString()} GP
           </div>
-          <button data-key="${item.key}" ${canAfford ? '' : 'disabled'}
-            style="margin-top:3px;padding:4px 10px;border:none;border-radius:6px;font-size:0.78rem;
-                   font-weight:600;cursor:${canAfford ? 'pointer' : 'not-allowed'};
+          <div style="margin-top:3px;padding:4px 10px;border:none;border-radius:6px;font-size:0.78rem;
+                   font-weight:600;display:inline-block;
                    background:${canAfford ? '#1d4ed8' : '#e5e7eb'};
                    color:${canAfford ? '#fff' : '#9ca3af'};">
-            배치
-          </button>
+            ${canAfford ? 'Place' : '💰 Need GP'}
+          </div>
         </div>
       </div>`;
   }).join('');
 
   container.innerHTML = `
     <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
-      보유 GP: <strong style="color:#d97706;">🪙 ${gold.toLocaleString()}</strong>
+      Your GP: <strong style="color:#d97706;">🪙 ${gold.toLocaleString()}</strong>
     </div>
     ${rows}`;
 
-  container.querySelectorAll('button[data-key]').forEach(btn => {
-    btn.addEventListener('click', () => _startPlaceMode(btn.dataset.key));
+  container.querySelectorAll('[data-place-key]').forEach(row => {
+    row.addEventListener('click', () => {
+      const key   = row.dataset.placeKey;
+      const price = _effectivePrice(key);
+      const cur   = _getGold ? _getGold() : 0;
+      if (cur < price) {
+        const short = price - cur;
+        _showPlaceToast(`💰 Not enough GP! Need ${price.toLocaleString()} GP — you are short by ${short.toLocaleString()} GP.`);
+        return;
+      }
+      _startPlaceMode(key);
+    });
   });
 }
 
@@ -149,7 +158,7 @@ function _startPlaceMode(itemKey) {
   // 지도 위 안내 배너 표시
   const banner = $('userPlaceBanner');
   if (banner) {
-    banner.textContent = `📍 ${item.emoji} ${item.label} 배치할 위치를 지도에서 클릭하세요`;
+    banner.textContent = `📍 ${item.emoji} ${item.label} — Tap a spot on the map to place it`;
     banner.style.display = 'block';
   }
   $('btnUserPlaceCancelMode').style.display = 'inline-block';
@@ -180,29 +189,27 @@ function _onMapClick(lat, lng, item) {
   $('upConfirmMsg').textContent    = '';
   const confirmBtn = $('btnUpConfirm');
   confirmBtn.disabled    = false;
-  confirmBtn.textContent = '✅ 배치 확인';
+  confirmBtn.textContent = '✅ Confirm Placement';
 
   const doPlace = async () => {
     confirmBtn.disabled    = true;
-    confirmBtn.textContent = '처리 중...';
+    confirmBtn.textContent = 'Processing...';
     try {
       const res = await cfPlace({ itemKey: item.key, lat, lng });
       const spent = item.price;
-      $('upConfirmMsg').textContent = `✅ 배치 완료! (🪙 ${spent.toLocaleString()} GP 차감)`;
+      $('upConfirmMsg').textContent = `✅ Placed! (🪙 ${spent.toLocaleString()} GP spent)`;
       $('upConfirmMsg').style.color = '#22c55e';
-      // 보물 숨기기/발행 생중계
       const evtGame = item.tag === 'box' ? 'treasure_issue' : 'treasure_hide';
       httpsCallable(functions, 'broadcastGpEvent')({ game: evtGame, amount: 0, label: `${item.emoji} ${item.label}` }).catch(() => {});
-      _refreshCb?.(); // loadPlayerState + 지도 새로고침
+      _refreshCb?.();
       setTimeout(() => {
         modal.style.display = 'none';
-        // 카탈로그가 열려 있으면 GP 표시 갱신
         if ($('userPlacePanel')?.style.display !== 'none') _renderCatalog();
       }, 1500);
     } catch (e) {
-      $('upConfirmMsg').textContent  = '오류: ' + e.message;
+      $('upConfirmMsg').textContent  = 'Error: ' + e.message;
       $('upConfirmMsg').style.color  = '#ef4444';
-      confirmBtn.disabled = false; confirmBtn.textContent = '✅ 배치 확인';
+      confirmBtn.disabled = false; confirmBtn.textContent = '✅ Confirm Placement';
     }
   };
 
@@ -310,6 +317,18 @@ export async function loadAdminPriceEditor(containerEl) {
       }
     });
   } catch (e) {
-    containerEl.innerHTML = `<div style="color:#ef4444;">오류: ${e.message}</div>`;
+    containerEl.innerHTML = `<div style="color:#ef4444;">Error: ${e.message}</div>`;
   }
 }
+
+function _showPlaceToast(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  el.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+    padding:9px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9900;
+    background:#dc2626;color:#fff;pointer-events:none;white-space:nowrap;
+    box-shadow:0 4px 16px rgba(220,38,38,.4);`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+

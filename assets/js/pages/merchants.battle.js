@@ -1913,7 +1913,7 @@ function _spawnMonsterMarker(mob) {
     const overlay = createMonsterSpriteOverlay(
       startVisible ? map : null, gsLike,
       () => {
-        if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
+        if (!_isDead && _battleLoopId && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
           const myPos = _ctx.myLocationMarker.getPosition();
           const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
           const clickRange = mob.detectRadius || 30;
@@ -1935,7 +1935,14 @@ function _spawnMonsterMarker(mob) {
                 if (isCrit) showCriticalToast();
               }, _spr1?.getBowPixel?.());
             return;
+          } else if (!_battleLoopId) {
+            // 게임 미시작 안내
+            const iw = _ctx?.infoWindow;
+            if (iw) { iw.setContent('<div style="font-size:12px;padding:6px 10px;color:#374151">▶ Press <b>Play</b> to start the game and fight monsters!</div>'); iw.open(map, _monsterOverlays[mob.id] ?? null); }
           }
+        } else if (!_battleLoopId && _ctx?.myLocationMarker) {
+          const iw = _ctx?.infoWindow;
+          if (iw) { iw.setContent('<div style="font-size:12px;padding:6px 10px;color:#374151">▶ Press <b>Play</b> to start the game and fight monsters!</div>'); iw.open(map); }
         }
         const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
         infoWindow?.setContent(`
@@ -1964,7 +1971,9 @@ function _spawnMonsterMarker(mob) {
     zIndex: 50,
   });
   marker.addListener('click', () => {
-    if (!_isDead && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
+    // 마커가 지도에 없으면(보이지 않으면) 공격 불가
+    if (!marker.getMap()) return;
+    if (!_isDead && _battleLoopId && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
       const myPos = _ctx.myLocationMarker.getPosition();
       const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
       const clickRange = mob.detectRadius || 30;
@@ -1987,6 +1996,11 @@ function _spawnMonsterMarker(mob) {
           }, _spr2?.getBowPixel?.());
         return;
       }
+    }
+    if (!_battleLoopId) {
+      infoWindow?.setContent('<div style="font-size:12px;padding:8px 12px;color:#374151;min-width:180px">▶ Press <b>Play</b> to connect the game server and fight monsters!<br><span style="font-size:11px;color:#6b7280;">Tap the ▶ button to start.</span></div>');
+      infoWindow?.open(map, marker);
+      return;
     }
     const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
     infoWindow?.setContent(`
@@ -2728,11 +2742,18 @@ export function enterAdminPlaceMode(type) {
     } else if (['shop_weapon_armor','shop_potion','shop_misc'].includes(_adminPlaceMode)) {
       const typeMap = { shop_weapon_armor: 'weapon_armor', shop_potion: 'potion', shop_misc: 'misc' };
       const shopType = typeMap[_adminPlaceMode];
-      const defaultNames = { weapon_armor: '무기/방어구 상점', potion: '약물 상점', misc: '잡템 상점' };
+      const defaultNames = { weapon_armor: 'Weapon/Armor Shop', potion: 'Potion Shop', misc: 'General Shop' };
+      // alias covers both admin-style ('potion') and user-placed-style ('shop_potion') type strings
+      const typeAliases = {
+        weapon_armor: ['weapon_armor', 'shop_weapon_armor'],
+        potion:       ['potion', 'shop_potion'],
+        misc:         ['misc', 'shop_misc'],
+      };
+      const validTypes = typeAliases[shopType] || [shopType];
 
-      // 배치 전 5km 내 동일 카테고리 중복 검사
+      // 5km radius duplicate check — includes both admin and user-placed shop type strings
       const conflict = _shops.find(s =>
-        s.active && s.type === shopType &&
+        s.active && validTypes.includes(s.type) &&
         haversine(lat, lng, s.lat, s.lng) <= 5000
       );
       if (conflict) {
