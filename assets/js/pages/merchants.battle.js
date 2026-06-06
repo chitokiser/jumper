@@ -2743,7 +2743,7 @@ export function enterAdminPlaceMode(type) {
         orc:     { maxHp: 1200, attackPower:  120, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.2, attackCooldownMs: 2000, respawnSeconds: 150 },
         orc2:    { maxHp: 2000, attackPower:  190, attackRangeM: 20, aggroRangeM:  55, moveSpeed: 1.1, attackCooldownMs: 2200, respawnSeconds: 200 },
         orc3:    { maxHp: 3000, attackPower:  260, attackRangeM: 20, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
-        dragon:  { maxHp: 6000, attackPower:  320, attackRangeM: 20, aggroRangeM: 100, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
+        dragon:  { maxHp: 6000, attackPower:  320, attackRangeM: 20, aggroRangeM:  30, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
         zombie1: { maxHp:  800, attackPower:   80, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.9, attackCooldownMs: 2000, respawnSeconds: 120 },
         zombie3: { maxHp: 1400, attackPower:  140, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.8, attackCooldownMs: 2200, respawnSeconds: 150 },
       };

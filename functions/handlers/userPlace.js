@@ -70,35 +70,35 @@ const CATALOG = {
   },
   mon_zvil1: {
     price: 55000, type: 'monster', label: 'Zombie Villager 1',
-    monsterType: 'zombie_villager1', maxHp: 5500, atk: 220, detectRadius: 45,
+    monsterType: 'zombie_villager1', maxHp: 5500, atk: 220, detectRadius: 30,
   },
   mon_zvil2: {
     price: 60000, type: 'monster', label: 'Zombie Villager 2',
-    monsterType: 'zombie_villager2', maxHp: 6000, atk: 240, detectRadius: 50,
+    monsterType: 'zombie_villager2', maxHp: 6000, atk: 240, detectRadius: 30,
   },
   mon_zvil3: {
     price: 65000, type: 'monster', label: 'Zombie Villager 3',
-    monsterType: 'zombie_villager3', maxHp: 6500, atk: 260, detectRadius: 50,
+    monsterType: 'zombie_villager3', maxHp: 6500, atk: 260, detectRadius: 30,
   },
   mon_troll: {
     price: 70000, type: 'monster', label: 'Troll',
-    monsterType: 'troll', maxHp: 7000, atk: 280, detectRadius: 50,
+    monsterType: 'troll', maxHp: 7000, atk: 280, detectRadius: 30,
   },
   mon_knight1: {
     price: 75000, type: 'monster', label: 'Knight 1',
-    monsterType: 'knight1', maxHp: 7500, atk: 300, detectRadius: 50,
+    monsterType: 'knight1', maxHp: 7500, atk: 300, detectRadius: 30,
   },
   mon_knight2: {
     price: 80000, type: 'monster', label: 'Knight 2',
-    monsterType: 'knight2', maxHp: 8000, atk: 320, detectRadius: 55,
+    monsterType: 'knight2', maxHp: 8000, atk: 320, detectRadius: 30,
   },
   mon_knight3: {
     price: 85000, type: 'monster', label: 'Knight 3',
-    monsterType: 'knight3', maxHp: 8500, atk: 340, detectRadius: 55,
+    monsterType: 'knight3', maxHp: 8500, atk: 340, detectRadius: 30,
   },
   mon_dragon: {
     price: 200000, type: 'monster', label: 'Dragon',
-    monsterType: 'dragon', maxHp: 20000, atk: 500, detectRadius: 60,
+    monsterType: 'dragon', maxHp: 20000, atk: 500, detectRadius: 30,
   },
   archer_tower: {
     price:  20000, type: 'tower', label: '아쳐타워',
