@@ -316,6 +316,11 @@ async function craftVoucher(uid, { voucherId } = {}) {
   const rewardItemId = (voucher.reward || '').trim();
   const isItemReward = /^(weapon_|armo_|potion_|revive_ticket)/.test(rewardItemId);
 
+  // GP 보상 범위 계산 (트랜잭션 밖에서 랜덤 결정 → 재시도 시에도 동일하게 보장됨)
+  const gpMin = Math.max(0, Math.floor(Number(voucher.gpRewardMin) || 0));
+  const gpMax = Math.max(gpMin, Math.floor(Number(voucher.gpRewardMax) || 0));
+  const gpGranted = gpMin > 0 ? (Math.floor(Math.random() * (gpMax - gpMin + 1)) + gpMin) : 0;
+
   return await db.runTransaction(async (tx) => {
     // ── 모든 읽기를 쓰기 전에 완료 (Firestore 트랜잭션 규칙) ──────────────────
 
@@ -326,10 +331,10 @@ async function craftVoucher(uid, { voucherId } = {}) {
       throw new HttpsError('already-exists', '이미 구매한 바우처입니다');
     }
 
-    // 2) 코인(gold) + 마정석(token) 잔액
+    // 2) 코인(gold) + 마정석(token) 잔액 / GP 보상 시에도 battle_players 읽기 필요
     const magicStoneCost = parseInt(voucher.magicStoneCost || 0);
     let playerRef, currentGold = 0, currentToken = 0;
-    if (goldNeeded > 0 || magicStoneCost > 0) {
+    if (goldNeeded > 0 || magicStoneCost > 0 || gpGranted > 0) {
       playerRef = db.collection('battle_players').doc(uid);
       const pSnap = await tx.get(playerRef);
       currentGold  = pSnap.exists ? (pSnap.data().gold  || 0) : 0;
@@ -362,10 +367,11 @@ async function craftVoucher(uid, { voucherId } = {}) {
 
     // ── 이하 쓰기만 ──────────────────────────────────────────────────────────
 
-    // 코인 + 마정석 차감
-    if (goldNeeded > 0 || magicStoneCost > 0) {
+    // 코인 차감 + 마정석 차감 + GP 보상 지급 (한 번의 write로 처리)
+    if (goldNeeded > 0 || magicStoneCost > 0 || gpGranted > 0) {
       const upd = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-      if (goldNeeded > 0)      upd.gold  = currentGold  - goldNeeded;
+      const finalGold = currentGold - goldNeeded + gpGranted;
+      upd.gold  = finalGold;
       if (magicStoneCost > 0)  upd.token = currentToken - magicStoneCost;
       tx.update(playerRef, upd);
     }
@@ -403,7 +409,7 @@ async function craftVoucher(uid, { voucherId } = {}) {
       }, { merge: true });
     }
 
-    return { ok: true, voucherName: voucher.name, reward: voucher.reward };
+    return { ok: true, voucherName: voucher.name, reward: voucher.reward, gpGranted };
   });
 }
 
@@ -531,8 +537,12 @@ async function adminListTreasureBoxes(adminUid) {
 // ── 관리자: 바우처 저장 ────────────────────────────────────────────────────────
 async function adminSaveVoucher(adminUid, data = {}) {
   await requireAdmin(adminUid);
-  const { voucherId, name, requirements, reward, image, active, minCoins, minLevel } = data;
+  const { voucherId, name, requirements, reward, image, active, minCoins, minLevel,
+          gpRewardMin, gpRewardMax } = data;
   if (!name) throw new HttpsError('invalid-argument', 'name이 필요합니다');
+
+  const gpMin = Math.max(0, Math.floor(Number(gpRewardMin) || 0));
+  const gpMax = Math.max(gpMin, Math.floor(Number(gpRewardMax) || 0));
 
   const ref = voucherId
     ? db.collection('treasure_vouchers').doc(voucherId)
@@ -542,6 +552,8 @@ async function adminSaveVoucher(adminUid, data = {}) {
     name,
     requirements: requirements || [],
     reward:       reward || '',
+    gpRewardMin:  gpMin,
+    gpRewardMax:  gpMax,
     image:        image  || '',
     minCoins:     Number(minCoins) || 0,
     minLevel:     Number(minLevel) || 0,

@@ -2402,6 +2402,7 @@ function renderVouchers() {
       try {
         const res = await httpsCallable(functions, 'craftVoucher')({ voucherId: vid });
         const reward = res.data.reward || '';
+        const gpGranted = res.data.gpGranted || 0;
         if (reward.startsWith('weapon_')) {
           equipWeapon(reward);
           showInfoToast(_t('weapon_equip_craft', reward, getTotalAtk()));
@@ -2409,7 +2410,12 @@ function renderVouchers() {
           equipArmor(reward);
           showInfoToast(_t('armor_equip_craft', reward, getDefense()));
         }
-        alert(_t('craft_success', res.data.voucherName, reward));
+        if (gpGranted > 0) {
+          addPlayerGold(gpGranted); // immediate local update
+          showInfoToast(`🪙 +${gpGranted.toLocaleString()} GP rewarded!`);
+        }
+        const rewardDisp = gpGranted > 0 ? `+${gpGranted.toLocaleString()} GP` : reward;
+        alert(_t('craft_success', res.data.voucherName, rewardDisp));
         await loadInventory({ force: true });
       } catch (err) {
         alert(_t('craft_failed', err.message || err));
@@ -2686,7 +2692,13 @@ function renderExchangeSection() {
       btn.disabled = true; btn.textContent = _t('exchange_processing');
       try {
         const res = await httpsCallable(functions, 'craftVoucher')({ voucherId: vid });
-        alert(_t('exchange_success', res.data.voucherName, res.data.reward));
+        const gpG = res.data.gpGranted || 0;
+        if (gpG > 0) {
+          addPlayerGold(gpG);
+          showInfoToast(`🪙 +${gpG.toLocaleString()} GP rewarded!`);
+        }
+        const dispReward = gpG > 0 ? `+${gpG.toLocaleString()} GP` : res.data.reward;
+        alert(_t('exchange_success', res.data.voucherName, dispReward));
         await loadInventory({ force: true });
         renderExchangeSection();
       } catch (err) {

@@ -1956,7 +1956,7 @@ async function loadVouchersList() {
     return `<div class="card" style="display:flex;gap:12px;align-items:center;">
       <div style="flex:1;">
         <strong>${esc(r.name)}</strong> ${r.active !== false ? "✅" : "❌"}
-        <div class="muted" style="font-size:12px;">${esc(r.reward || "")}${r.image ? ` · 🖼 ${esc(r.image)}` : ""}${r.minCoins ? ` · 💰≥${r.minCoins}` : ""}${r.minLevel ? ` · LV≥${r.minLevel}` : ""}</div>
+        <div class="muted" style="font-size:12px;">${esc(r.reward || "")}${r.gpRewardMin > 0 ? ` · 🪙GP ${r.gpRewardMin}~${r.gpRewardMax || r.gpRewardMin}` : ""}${r.image ? ` · 🖼 ${esc(r.image)}` : ""}${r.minCoins ? ` · 💰≥${r.minCoins}` : ""}${r.minLevel ? ` · LV≥${r.minLevel}` : ""}</div>
         <div class="muted" style="font-size:11px;font-family:monospace;">${esc(d.id)}</div>
       </div>
       <button class="btn btn-sm" data-act="editVoucher" data-id="${esc(d.id)}">수정</button>
@@ -1971,6 +1971,8 @@ async function loadVouchersList() {
       $("tVoucherName").value      = r.name   || "";
       $("tVoucherReqs").value      = JSON.stringify(r.requirements || [], null, 2);
       $("tVoucherReward").value    = r.reward || "";
+      $("tVoucherGpMin").value     = r.gpRewardMin || 0;
+      $("tVoucherGpMax").value     = r.gpRewardMax || 0;
       $("tVoucherImage").value     = r.image  || "";
       $("tVoucherMinCoins").value  = r.minCoins || 0;
       $("tVoucherMinLevel").value  = r.minLevel || 0;
@@ -2110,21 +2112,28 @@ $("btnSaveVoucher")?.addEventListener("click", async () => {
   let requirements = [];
   try   { requirements = JSON.parse($("tVoucherReqs")?.value || "[]"); }
   catch { return alert('재료 JSON 오류\n예: [{"itemId":"1","count":3}]'); }
-  const minCoins = parseInt($("tVoucherMinCoins")?.value || "0", 10) || 0;
-  const minLevel = parseInt($("tVoucherMinLevel")?.value || "0", 10) || 0;
+  const minCoins   = parseInt($("tVoucherMinCoins")?.value || "0", 10) || 0;
+  const minLevel   = parseInt($("tVoucherMinLevel")?.value || "0", 10) || 0;
+  const gpRewardMin = parseInt($("tVoucherGpMin")?.value || "0", 10) || 0;
+  const gpRewardMax = Math.max(gpRewardMin, parseInt($("tVoucherGpMax")?.value || "0", 10) || 0);
+  if (gpRewardMin > 0 && gpRewardMax < gpRewardMin)
+    return alert("GP 최댓값은 최솟값보다 크거나 같아야 합니다.");
   try {
     const res = await httpsCallable(functions, "adminSaveVoucher")({
       voucherId:    $("tVoucherId")?.value.trim() || undefined,
       name,
       requirements,
-      reward:    $("tVoucherReward")?.value.trim() || "",
-      image:     $("tVoucherImage")?.value.trim()  || "",
+      reward:       $("tVoucherReward")?.value.trim() || "",
+      gpRewardMin,
+      gpRewardMax,
+      image:        $("tVoucherImage")?.value.trim()  || "",
       minCoins,
       minLevel,
       active: $("tVoucherActive")?.value === "true",
     });
-    alert(`바우처 저장 완료!\nvoucherId: ${res.data.voucherId}`);
-    ["tVoucherId","tVoucherName","tVoucherReqs","tVoucherReward","tVoucherImage","tVoucherMinCoins","tVoucherMinLevel"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    const gpInfo = gpRewardMin > 0 ? ` (GP 보상: ${gpRewardMin}~${gpRewardMax})` : "";
+    alert(`바우처 저장 완료!\nvoucherId: ${res.data.voucherId}${gpInfo}`);
+    ["tVoucherId","tVoucherName","tVoucherReqs","tVoucherReward","tVoucherGpMin","tVoucherGpMax","tVoucherImage","tVoucherMinCoins","tVoucherMinLevel"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
     if ($("tVoucherActive")) $("tVoucherActive").value = "true";
     await loadVouchersList();
   } catch (err) { alert("오류: " + (err.message || err)); }
