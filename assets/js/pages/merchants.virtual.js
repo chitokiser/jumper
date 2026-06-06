@@ -2,12 +2,80 @@
 // GPS OFF 상태에서 상점 워프 → 실제 플레이어 마커를 목표 위치로 이동
 // 이후 ▶(플레이) 버튼으로 게임 서버 연결 → 워프 위치 기준 탐험·몬스터 사냥
 
-import { db } from '/assets/js/firebase-init.js';
+import { db, functions } from '/assets/js/firebase-init.js';
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
 const WARP_RADIUS_M  = 5000;
-const SPAWN_OFFSET_M = 550;   // 상점 방어 구조물 밖 스폰
+const SPAWN_OFFSET_M = 550;
 const BASE_MP_COST   = 100;
+
+// ── 국기 이모지 (좌표 바운딩 박스 기반 — API 불필요, 즉시 표시) ───────────────
+// 순서 중요: 작고 구체적인 나라를 먼저, 겹치는 큰 나라를 나중에
+const _COUNTRY_BOXES = [
+  // 동남아
+  { f:'🇻🇳', n:'Vietnam',     lat:[8.1,23.4],   lng:[102.1,109.5] },
+  { f:'🇹🇭', n:'Thailand',    lat:[5.6,20.5],   lng:[97.3,105.7] },
+  { f:'🇰🇭', n:'Cambodia',    lat:[10.4,14.7],  lng:[102.3,107.6] },
+  { f:'🇱🇦', n:'Laos',        lat:[13.9,22.5],  lng:[100.1,107.7] },
+  { f:'🇲🇾', n:'Malaysia',    lat:[0.8,7.4],    lng:[99.6,119.3] },
+  { f:'🇸🇬', n:'Singapore',   lat:[1.1,1.5],    lng:[103.6,104.1] },
+  { f:'🇮🇩', n:'Indonesia',   lat:[-11.0,5.9],  lng:[95.0,141.0] },
+  { f:'🇵🇭', n:'Philippines', lat:[4.6,21.1],   lng:[116.9,126.6] },
+  { f:'🇲🇲', n:'Myanmar',     lat:[9.8,28.5],   lng:[92.2,101.2] },
+  // 동아시아
+  { f:'🇰🇷', n:'S.Korea',     lat:[33.1,38.6],  lng:[124.6,130.0] },
+  { f:'🇯🇵', n:'Japan',       lat:[24.0,45.5],  lng:[122.9,153.0] },
+  { f:'🇹🇼', n:'Taiwan',      lat:[21.9,25.3],  lng:[119.9,122.1] },
+  { f:'🇭🇰', n:'HongKong',    lat:[22.1,22.6],  lng:[113.8,114.5] },
+  { f:'🇲🇴', n:'Macao',       lat:[22.1,22.2],  lng:[113.5,113.6] },
+  { f:'🇨🇳', n:'China',       lat:[18.0,53.6],  lng:[73.5,135.1] },
+  { f:'🇲🇳', n:'Mongolia',    lat:[41.6,52.2],  lng:[87.7,119.9] },
+  // 남아시아
+  { f:'🇮🇳', n:'India',       lat:[6.7,35.5],   lng:[68.1,97.4] },
+  { f:'🇳🇵', n:'Nepal',       lat:[26.3,30.4],  lng:[80.1,88.2] },
+  { f:'🇧🇩', n:'Bangladesh',  lat:[20.6,26.6],  lng:[88.0,92.7] },
+  { f:'🇵🇰', n:'Pakistan',    lat:[23.6,37.1],  lng:[60.9,77.8] },
+  // 중동
+  { f:'🇦🇪', n:'UAE',         lat:[22.6,26.1],  lng:[51.6,56.4] },
+  { f:'🇸🇦', n:'Saudi',       lat:[16.3,32.2],  lng:[36.5,55.7] },
+  { f:'🇹🇷', n:'Turkey',      lat:[35.8,42.1],  lng:[26.0,44.8] },
+  // 유럽
+  { f:'🇬🇧', n:'UK',          lat:[49.9,60.9],  lng:[-8.6,1.8] },
+  { f:'🇫🇷', n:'France',      lat:[41.3,51.1],  lng:[-5.1,9.6] },
+  { f:'🇩🇪', n:'Germany',     lat:[47.3,55.1],  lng:[5.9,15.0] },
+  { f:'🇮🇹', n:'Italy',       lat:[36.7,47.1],  lng:[6.6,18.5] },
+  { f:'🇪🇸', n:'Spain',       lat:[36.0,43.8],  lng:[-9.3,4.3] },
+  { f:'🇵🇹', n:'Portugal',    lat:[36.8,42.2],  lng:[-9.5,-6.2] },
+  { f:'🇳🇱', n:'Netherlands', lat:[50.8,53.5],  lng:[3.4,7.2] },
+  { f:'🇧🇪', n:'Belgium',     lat:[49.5,51.5],  lng:[2.5,6.4] },
+  { f:'🇨🇭', n:'Switzerland', lat:[45.8,47.8],  lng:[5.9,10.5] },
+  { f:'🇦🇹', n:'Austria',     lat:[46.4,49.0],  lng:[9.5,17.2] },
+  { f:'🇵🇱', n:'Poland',      lat:[49.0,54.8],  lng:[14.1,24.2] },
+  { f:'🇷🇺', n:'Russia',      lat:[41.2,81.9],  lng:[19.6,190.0] },
+  { f:'🇺🇦', n:'Ukraine',     lat:[44.4,52.4],  lng:[22.1,40.2] },
+  // 오세아니아
+  { f:'🇦🇺', n:'Australia',   lat:[-43.7,-10.7],lng:[113.3,153.6] },
+  { f:'🇳🇿', n:'NewZealand',  lat:[-46.6,-34.4],lng:[166.4,178.6] },
+  // 아메리카
+  { f:'🇺🇸', n:'USA',         lat:[24.5,49.4],  lng:[-125.0,-66.9] },
+  { f:'🇨🇦', n:'Canada',      lat:[41.7,83.1],  lng:[-141.0,-52.6] },
+  { f:'🇲🇽', n:'Mexico',      lat:[14.5,32.7],  lng:[-118.4,-86.7] },
+  { f:'🇧🇷', n:'Brazil',      lat:[-33.7,5.3],  lng:[-73.9,-34.8] },
+  { f:'🇦🇷', n:'Argentina',   lat:[-55.1,-21.8],lng:[-73.6,-53.6] },
+  // 아프리카
+  { f:'🇿🇦', n:'S.Africa',    lat:[-34.8,-22.1],lng:[16.5,32.9] },
+  { f:'🇪🇬', n:'Egypt',       lat:[22.0,31.7],  lng:[24.7,37.1] },
+  { f:'🇳🇬', n:'Nigeria',     lat:[4.3,13.9],   lng:[2.7,14.7] },
+];
+
+function _shopFlag(lat, lng) {
+  for (const b of _COUNTRY_BOXES) {
+    if (lat >= b.lat[0] && lat <= b.lat[1] && lng >= b.lng[0] && lng <= b.lng[1])
+      return b.f;
+  }
+  return '🌍';
+}
 
 const GPS_ONLY_RARITIES = ['rare', 'legendary'];
 function _isGpsOnly(box) {
@@ -75,16 +143,30 @@ function _calcMpCost(shop) {
 }
 
 // ── 워프 활성화 ──────────────────────────────────────────────────────────
-function _activate(shop) {
+async function _activate(shop) {
   // MP 차감
   const mpCost = _calcMpCost(shop);
   if (_cbs) {
     const cur = _cbs.getMp();
-    if (cur < mpCost) { _showToast(`💙 MP 부족 (필요 ${mpCost} / 현재 ${cur})`); return; }
+    if (cur < mpCost) {
+      _showToast(`💙 Not enough MP (need ${mpCost} / have ${cur})`);
+      return;
+    }
     _cbs.spendMp(mpCost);
   }
 
-  // 상점 500m 외곽 랜덤 방향 스폰
+  // 입장료 10 GP → 상점 주인에게 지불 (자신 상점 제외, 무소유 상점 제외)
+  try {
+    await httpsCallable(functions, 'payWarpEntrance')({ shopId: shop.id });
+  } catch (e) {
+    if (e?.message?.includes('Not enough GP')) {
+      _showToast('💰 Not enough GP — warp entrance fee is 10 GP.');
+      return;
+    }
+    // shop has no owner or other non-critical error → proceed
+  }
+
+  // 500m 외곽 스폰
   const spawnPos = _offsetPos(shop.lat, shop.lng, SPAWN_OFFSET_M, Math.random() * 360);
 
   _active = true;
@@ -115,7 +197,7 @@ function _activate(shop) {
 
   _onModeChange?.(true, shop);
   _updateBtn(true);
-  _showToast(`🌍 ${shop.name} 워프 완료!${_cbs ? ` 💙-${mpCost}` : ''} · 지도 탭으로 이동`);
+  _showToast(`🌍 Warped to ${shop.name}!${_cbs ? ` 💙-${mpCost}` : ''} Tap the map to move.`);
 }
 
 // ── 비활성화 ─────────────────────────────────────────────────────────────
@@ -126,7 +208,7 @@ function _deactivate() {
   if (_mapClickLsn) { google.maps.event.removeListener(_mapClickLsn); _mapClickLsn = null; }
   _onModeChange?.(false, null);
   _updateBtn(false);
-  _showToast('📍 GPS 모드로 전환됐습니다');
+  _showToast('📍 Switched to GPS mode.');
 }
 
 // ── 지도 탭 → 실제 캐릭터 걷기 이동 ──────────────────────────────────────
@@ -202,7 +284,8 @@ async function _loadShops() {
     _shops = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .filter(s => s.lat && s.lng)
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      // 매출(totalRevenue) 내림차순 정렬 — 클릭 많은 상점이 최상단
+      .sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0));
   } catch { /* silent */ }
 }
 
@@ -217,29 +300,30 @@ function _showShopSelector() {
     const dist    = myPos ? _haversine(myPos.lat, myPos.lng, s.lat, s.lng) : null;
     const distTxt = dist !== null
       ? (dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`)
-      : '거리 불명';
+      : 'Unknown dist.';
     const mpCost    = myPos
       ? Math.round((BASE_MP_COST + _haversine(myPos.lat, myPos.lng, s.lat, s.lng) / 1000) / 10)
       : Math.round(BASE_MP_COST / 10);
     const canAfford = curMp >= mpCost;
     const typeLabel = s.type === 'weapon_armor' ? '⚔️' : s.type === 'potion' ? '🧪' : '🛒';
+    const flag      = _shopFlag(s.lat, s.lng);
     const rivals    = _shops.filter(o =>
       o.id !== s.id && o.type === s.type && _haversine(s.lat, s.lng, o.lat, o.lng) <= 5000
     ).length;
     const badge = rivals > 0
       ? `<span class="vm-rival">⚔️×${rivals}</span>`
-      : `<span class="vm-excl">독점</span>`;
+      : `<span class="vm-excl">Monopoly</span>`;
 
     return `<div class="vm-shop-row${canAfford ? '' : ' vm-shop-disabled'}"
                  onclick="${canAfford ? `window.__vmWarp('${s.id}')` : 'void 0'}">
       <span class="vm-shop-icon">${typeLabel}</span>
       <div class="vm-shop-info">
-        <div class="vm-shop-name">${s.name || '상점'}&nbsp;${badge}</div>
+        <div class="vm-shop-name">${flag} ${s.name || 'Shop'}&nbsp;${badge}</div>
         <div class="vm-shop-dist">${distTxt}</div>
       </div>
       <span class="vm-shop-mp${canAfford ? '' : ' vm-shop-mp-low'}">💙${mpCost}</span>
     </div>`;
-  }).join('') || '<div style="color:#6b7280;padding:20px;text-align:center;">등록된 상점이 없습니다</div>';
+  }).join('') || '<div style="color:#6b7280;padding:20px;text-align:center;">No shops found.</div>';
 
   const mpBar = _cbs
     ? `<div class="vm-mp-bar-wrap">
@@ -306,11 +390,11 @@ function _buildModal() {
 </style>
 <div class="vm-sheet">
   <div class="vm-sheet-handle"></div>
-  <div class="vm-sheet-title">🌍 Virtual Explore — 상점 선택</div>
-  <div class="vm-sheet-sub">워프 후 ▶ 버튼으로 게임 서버 연결 · 지도 탭으로 캐릭터 이동</div>
+  <div class="vm-sheet-title">🌍 Virtual Explore — Select a Shop</div>
+  <div class="vm-sheet-sub">Warp · pay 10 GP entrance fee · press ▶ to start · tap map to move</div>
   <div id="vmMpBar"></div>
   <div id="vmShopList"></div>
-  <button class="vm-close-btn" onclick="window.__vmCloseModal()">✕ 닫기</button>
+  <button class="vm-close-btn" onclick="window.__vmCloseModal()">✕ Close</button>
 </div>`;
   document.body.appendChild(el);
   el.addEventListener('click', e => { if (e.target === el) _closeModal(); });
@@ -323,7 +407,7 @@ function _updateBtn(on) {
   const btn = document.getElementById('btnVirtualMode');
   if (!btn) return;
   btn.textContent      = on ? '🌍' : '🌍';
-  btn.title            = on ? 'Virtual Mode ON — GPS 모드로 전환' : 'Virtual Explore — 상점 워프';
+  btn.title            = on ? 'Virtual Mode ON — switch to GPS mode' : 'Virtual Explore — warp to a shop';
   btn.style.background = on ? '#7c3aed' : '';
   btn.style.color      = on ? '#fff' : '';
   btn.style.boxShadow  = on ? '0 0 10px #7c3aed88' : '';

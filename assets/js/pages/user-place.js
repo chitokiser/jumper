@@ -11,24 +11,37 @@ const cfSetPrices    = httpsCallable(functions, 'adminSetUserPlacePrices');
 
 // ── 카탈로그 (서버와 동일) ────────────────────────────────────────────────────
 const CATALOG = [
-  // 보물박스
-  { key: 'box_lv1',     emoji: '🎁', label: '보물박스 Lv1', desc: '아이템 1~3 랜덤 1개',  price: 5000,  tag: 'box' },
-  { key: 'box_lv2',     emoji: '🎁', label: '보물박스 Lv2', desc: '아이템 4~7 랜덤 1개',  price: 10000, tag: 'box' },
-  { key: 'box_lv3',     emoji: '🎁', label: '보물박스 Lv3', desc: '아이템 8~11 랜덤 1개', price: 15000, tag: 'box' },
-  // 몬스터
-  { key: 'mon_cabi',    emoji: '👾', label: 'cabi',          desc: 'HP 500 · ATK 20',     price: 5000,  tag: 'monster' },
-  { key: 'mon_eyes',    emoji: '👁️', label: 'Monster eyes', desc: 'HP 800 · ATK 80',     price: 10000, tag: 'monster' },
-  { key: 'mon_orc1',    emoji: '🐗', label: 'Orc',           desc: 'HP 1200 · ATK 60',    price: 15000, tag: 'monster' },
-  { key: 'mon_orc2',    emoji: '🗡️', label: 'Orc2',          desc: 'HP 1800 · ATK 80',    price: 20000, tag: 'monster' },
-  { key: 'mon_orc3',    emoji: '⚔️', label: 'Orc3',          desc: 'HP 2500 · ATK 100',   price: 25000, tag: 'monster' },
-  // 타워
-  { key: 'archer_tower', emoji: '🏹', label: '아쳐타워',  desc: 'ATK 50 · 반경 40m · HP 500',   price:  20000, tag: 'tower' },
-  { key: 'cannon_tower', emoji: '💣', label: '대포타워',  desc: 'ATK 120 · 반경 35m · HP 1000', price: 100000, tag: 'tower' },
-  // 상점
-  { key: 'shop_potion',  emoji: '🧪', label: '약물상점',   desc: '물약·버프 아이템 판매',       price: 600000, tag: 'shop' },
-  { key: 'shop_weapon',  emoji: '⚔️', label: '무기상점',   desc: '무기 장비 아이템 판매',       price: 400000, tag: 'shop' },
-  { key: 'shop_armor',   emoji: '🛡️', label: '방어구 상점', desc: '방어구 장비 아이템 판매',   price: 400000, tag: 'shop' },
-  { key: 'shop_misc',    emoji: '🎒', label: '잡템상점',   desc: '소모품·기타 아이템 판매',     price: 300000, tag: 'shop' },
+  // Treasure Boxes
+  { key: 'box_lv1',     emoji: '🎁', label: 'Treasure Box Lv1', desc: 'Random item (tier 1–3)',   price: 5000,   tag: 'box' },
+  { key: 'box_lv2',     emoji: '🎁', label: 'Treasure Box Lv2', desc: 'Random item (tier 4–7)',   price: 10000,  tag: 'box' },
+  { key: 'box_lv3',     emoji: '🎁', label: 'Treasure Box Lv3', desc: 'Random item (tier 8–11)',  price: 15000,  tag: 'box' },
+  // Monsters
+  { key: 'mon_cabi',    emoji: '👾', label: 'Cabi',              desc: 'HP 500 · ATK 20',          price: 5000,   tag: 'monster' },
+  { key: 'mon_eyes',    emoji: '👁️', label: 'Monster Eyes',     desc: 'HP 800 · ATK 80',          price: 10000,  tag: 'monster' },
+  { key: 'mon_orc1',    emoji: '🐗', label: 'Orc',               desc: 'HP 1,200 · ATK 60',        price: 15000,  tag: 'monster' },
+  { key: 'mon_orc2',    emoji: '🗡️', label: 'Orc 2',             desc: 'HP 1,800 · ATK 80',        price: 20000,  tag: 'monster' },
+  { key: 'mon_orc3',    emoji: '⚔️', label: 'Orc 3',             desc: 'HP 2,500 · ATK 100',       price: 25000,  tag: 'monster' },
+  { key: 'mon_pirate',  emoji: '🏴‍☠️', label: 'Pirate',           desc: 'HP 3,000 · ATK 120',       price: 30000,  tag: 'monster' },
+  { key: 'mon_pirate2', emoji: '🏴‍☠️', label: 'Pirate 2',         desc: 'HP 3,500 · ATK 140',       price: 35000,  tag: 'monster' },
+  { key: 'mon_pirate3', emoji: '🏴‍☠️', label: 'Pirate 3',         desc: 'HP 4,000 · ATK 160',       price: 40000,  tag: 'monster' },
+  { key: 'mon_zombie1', emoji: '🧟', label: 'Zombie',             desc: 'HP 4,500 · ATK 180',       price: 45000,  tag: 'monster' },
+  { key: 'mon_zombie3', emoji: '🧟', label: 'Zombie 3',           desc: 'HP 5,000 · ATK 200',       price: 50000,  tag: 'monster' },
+  { key: 'mon_zvil1',   emoji: '🧟', label: 'Zombie Villager 1',  desc: 'HP 5,500 · ATK 220',       price: 55000,  tag: 'monster' },
+  { key: 'mon_zvil2',   emoji: '🧟', label: 'Zombie Villager 2',  desc: 'HP 6,000 · ATK 240',       price: 60000,  tag: 'monster' },
+  { key: 'mon_zvil3',   emoji: '🧟', label: 'Zombie Villager 3',  desc: 'HP 6,500 · ATK 260',       price: 65000,  tag: 'monster' },
+  { key: 'mon_troll',   emoji: '👹', label: 'Troll',              desc: 'HP 7,000 · ATK 280',       price: 70000,  tag: 'monster' },
+  { key: 'mon_knight1', emoji: '🛡️', label: 'Knight 1',           desc: 'HP 7,500 · ATK 300',       price: 75000,  tag: 'monster' },
+  { key: 'mon_knight2', emoji: '⚔️', label: 'Knight 2',           desc: 'HP 8,000 · ATK 320',       price: 80000,  tag: 'monster' },
+  { key: 'mon_knight3', emoji: '👑', label: 'Knight 3',           desc: 'HP 8,500 · ATK 340',       price: 85000,  tag: 'monster' },
+  { key: 'mon_dragon',  emoji: '🐉', label: 'Dragon',             desc: 'HP 20,000 · ATK 500',      price: 200000, tag: 'monster' },
+  // Towers
+  { key: 'archer_tower', emoji: '🏹', label: 'Archer Tower',    desc: 'ATK 50 · radius 40m · HP 500',    price: 20000,  tag: 'tower' },
+  { key: 'cannon_tower', emoji: '💣', label: 'Cannon Tower',    desc: 'ATK 120 · radius 35m · HP 1000',  price: 100000, tag: 'tower' },
+  // Shops
+  { key: 'shop_potion',  emoji: '🧪', label: 'Potion Shop',     desc: 'Sell potions & buff items',        price: 600000, tag: 'shop' },
+  { key: 'shop_weapon',  emoji: '⚔️', label: 'Weapon Shop',     desc: 'Sell weapon equipment',            price: 400000, tag: 'shop' },
+  { key: 'shop_armor',   emoji: '🛡️', label: 'Armor Shop',      desc: 'Sell armor equipment',             price: 400000, tag: 'shop' },
+  { key: 'shop_misc',    emoji: '🎒', label: 'General Shop',    desc: 'Sell miscellaneous items',         price: 300000, tag: 'shop' },
 ];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────────

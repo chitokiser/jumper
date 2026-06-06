@@ -93,9 +93,41 @@ let _lastPosWriteAt       = 0;      // 위치 Firestore 저장 쓰로틀
 let _shops        = [];   // [{id, name, type, lat, lng, items, active}]
 let _shopMarkers   = {};   // { shopId: google.maps.Marker } — main icon
 let _shopHpMarkers = {};   // { shopId: google.maps.Marker } — HP bar overlay
-const SHOP_RANGE_M = 20;  // 상점 진입 반경(m)
-const SHOP_EXIT_M  = 30;  // 상점 이탈 판정 반경(m) — GPS 노이즈로 인한 오발동 방지 히스테리시스
+const SHOP_RANGE_M = 20;
+const SHOP_EXIT_M  = 30;
 const SHOP_ICONS  = { weapon_armor: '⚔️', potion: '🧪', misc: '🛍️' };
+
+// 좌표 기반 국기 이모지 (바운딩 박스)
+const _FLAG_BOXES = [
+  { f:'🇻🇳',lat:[8.1,23.4],  lng:[102.1,109.5]},{ f:'🇹🇭',lat:[5.6,20.5], lng:[97.3,105.7]},
+  { f:'🇰🇭',lat:[10.4,14.7], lng:[102.3,107.6]},{ f:'🇱🇦',lat:[13.9,22.5],lng:[100.1,107.7]},
+  { f:'🇲🇾',lat:[0.8,7.4],   lng:[99.6,119.3]}, { f:'🇸🇬',lat:[1.1,1.5],  lng:[103.6,104.1]},
+  { f:'🇮🇩',lat:[-11.0,5.9], lng:[95.0,141.0]}, { f:'🇵🇭',lat:[4.6,21.1], lng:[116.9,126.6]},
+  { f:'🇲🇲',lat:[9.8,28.5],  lng:[92.2,101.2]}, { f:'🇰🇷',lat:[33.1,38.6],lng:[124.6,130.0]},
+  { f:'🇯🇵',lat:[24.0,45.5], lng:[122.9,153.0]},{ f:'🇹🇼',lat:[21.9,25.3],lng:[119.9,122.1]},
+  { f:'🇭🇰',lat:[22.1,22.6], lng:[113.8,114.5]},{ f:'🇨🇳',lat:[18.0,53.6],lng:[73.5,135.1]},
+  { f:'🇲🇳',lat:[41.6,52.2], lng:[87.7,119.9]}, { f:'🇮🇳',lat:[6.7,35.5], lng:[68.1,97.4]},
+  { f:'🇳🇵',lat:[26.3,30.4], lng:[80.1,88.2]},  { f:'🇧🇩',lat:[20.6,26.6],lng:[88.0,92.7]},
+  { f:'🇵🇰',lat:[23.6,37.1], lng:[60.9,77.8]},  { f:'🇦🇪',lat:[22.6,26.1],lng:[51.6,56.4]},
+  { f:'🇸🇦',lat:[16.3,32.2], lng:[36.5,55.7]},  { f:'🇹🇷',lat:[35.8,42.1],lng:[26.0,44.8]},
+  { f:'🇬🇧',lat:[49.9,60.9], lng:[-8.6,1.8]},   { f:'🇫🇷',lat:[41.3,51.1],lng:[-5.1,9.6]},
+  { f:'🇩🇪',lat:[47.3,55.1], lng:[5.9,15.0]},   { f:'🇮🇹',lat:[36.7,47.1],lng:[6.6,18.5]},
+  { f:'🇪🇸',lat:[36.0,43.8], lng:[-9.3,4.3]},   { f:'🇵🇹',lat:[36.8,42.2],lng:[-9.5,-6.2]},
+  { f:'🇳🇱',lat:[50.8,53.5], lng:[3.4,7.2]},    { f:'🇧🇪',lat:[49.5,51.5],lng:[2.5,6.4]},
+  { f:'🇨🇭',lat:[45.8,47.8], lng:[5.9,10.5]},   { f:'🇵🇱',lat:[49.0,54.8],lng:[14.1,24.2]},
+  { f:'🇷🇺',lat:[41.2,81.9], lng:[19.6,190.0]}, { f:'🇺🇦',lat:[44.4,52.4],lng:[22.1,40.2]},
+  { f:'🇦🇺',lat:[-43.7,-10.7],lng:[113.3,153.6]},{ f:'🇳🇿',lat:[-46.6,-34.4],lng:[166.4,178.6]},
+  { f:'🇺🇸',lat:[24.5,49.4], lng:[-125.0,-66.9]},{ f:'🇨🇦',lat:[41.7,83.1],lng:[-141.0,-52.6]},
+  { f:'🇲🇽',lat:[14.5,32.7], lng:[-118.4,-86.7]},{ f:'🇧🇷',lat:[-33.7,5.3],lng:[-73.9,-34.8]},
+  { f:'🇦🇷',lat:[-55.1,-21.8],lng:[-73.6,-53.6]},{ f:'🇿🇦',lat:[-34.8,-22.1],lng:[16.5,32.9]},
+  { f:'🇪🇬',lat:[22.0,31.7], lng:[24.7,37.1]},  { f:'🇳🇬',lat:[4.3,13.9], lng:[2.7,14.7]},
+];
+function _shopFlagFromCoords(lat, lng) {
+  if (!lat || !lng) return '🌍';
+  for (const b of _FLAG_BOXES)
+    if (lat >= b.lat[0] && lat <= b.lat[1] && lng >= b.lng[0] && lng <= b.lng[1]) return b.f;
+  return '🌍';
+}
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST      = 100;
@@ -3355,8 +3387,9 @@ function _renderShopMarker(shop) {
     const iw = _ctx?.infoWindow;
     if (iw) {
       const typeLabel = { weapon_armor: '⚔️ 무기/방어구', potion: '🧪 약물', misc: '🛍️ 잡템' }[shop.type] || shop.type;
+      const flag = _shopFlagFromCoords(shop.lat, shop.lng);
       iw.setContent(`<div style="font-size:13px;padding:4px 8px;min-width:120px">
-        <strong>${escHtml(shop.name)}</strong><br>
+        <strong>${flag} ${escHtml(shop.name)}</strong><br>
         <span style="color:#888;font-size:11px">${typeLabel}</span>
       </div>`);
       iw.open(map, marker);
@@ -3429,12 +3462,13 @@ export async function deleteShop(shopId) {
 let _lastNearShopId = null;
 
 export function checkShopProximity(lat, lng) {
+  // 상점 자동 진입(팝업) 및 공격은 GPS 모드에서만 — Virtual 모드에서는 구매만 가능
+  const virtualMode = _ctx?.virtualMode;
   let nearest = null;
   let nearestDist = Infinity;
   for (const shop of _shops) {
     if (!shop.active) continue;
     const dist = haversine(lat, lng, shop.lat, shop.lng);
-    // 현재 머물던 상점은 넓은 이탈 임계값 사용 (GPS 노이즈로 인한 경계 진동 방지)
     const threshold = shop.id === _lastNearShopId ? SHOP_EXIT_M : SHOP_RANGE_M;
     if (dist <= threshold && dist < nearestDist) {
       nearestDist = dist;
@@ -3444,7 +3478,8 @@ export function checkShopProximity(lat, lng) {
   const nearId = nearest?.id ?? null;
   if (nearId !== _lastNearShopId) {
     _lastNearShopId = nearId;
-    if (nearest) _ctx?._onShopNear?.(nearest);
+    // Virtual 모드에서는 자동 진입 팝업 발동 안 함 (공격 방지)
+    if (nearest && !virtualMode) _ctx?._onShopNear?.(nearest);
   }
 }
 

@@ -555,6 +555,67 @@ async function repairShop(uid, { shopId, amount } = {}) {
   return { ok: true, repairHp, cost, newHp: currentHp + repairHp, maxHp };
 }
 
+// ── 워프 입장료: 상점 방문 시 10GP 상점 주인에게 지불 ─────────────────────────
+const WARP_ENTRANCE_FEE = 10;
+
+async function payWarpEntrance(uid, { shopId } = {}) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId is required');
+
+  const shopRef   = db.collection('game_shops').doc(shopId);
+  const playerRef = db.collection('battle_players').doc(uid);
+
+  const [shopSnap, playerSnap] = await Promise.all([shopRef.get(), playerRef.get()]);
+  if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found');
+
+  const shop    = shopSnap.data();
+  const ownerUid = shop.ownerUid;
+
+  // 자신의 상점은 입장료 없음
+  if (ownerUid === uid) return { ok: true, fee: 0, skipped: true };
+
+  const playerGold = playerSnap.exists ? (playerSnap.data().gold ?? 0) : 0;
+  if (playerGold < WARP_ENTRANCE_FEE)
+    throw new HttpsError('failed-precondition',
+      `Not enough GP. Entrance fee: ${WARP_ENTRANCE_FEE} GP`);
+
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const batch = db.batch();
+
+  // 플레이어 GP 차감
+  batch.set(playerRef, { gold: admin.firestore.FieldValue.increment(-WARP_ENTRANCE_FEE) }, { merge: true });
+
+  // 상점 주인 GP 지급 (주인이 있을 때만)
+  if (ownerUid) {
+    const ownerRef = db.collection('battle_players').doc(ownerUid);
+    batch.set(ownerRef, { gold: admin.firestore.FieldValue.increment(WARP_ENTRANCE_FEE) }, { merge: true });
+  }
+
+  // 매출 기록
+  const saleRef = db.collection('shop_sales').doc();
+  batch.set(saleRef, {
+    shopId,
+    shopName:    shop.name || '',
+    ownerUid:    ownerUid || null,
+    buyerUid:    uid,
+    itemId:      'warp_entrance',
+    itemName:    'Warp Entrance Fee',
+    qty:         1,
+    totalCost:   WARP_ENTRANCE_FEE,
+    ownerShare:  ownerUid ? WARP_ENTRANCE_FEE : 0,
+    createdAt:   now,
+  });
+
+  // 상점 totalRevenue 카운터 (매출순 정렬용)
+  batch.set(shopRef, {
+    totalRevenue:  admin.firestore.FieldValue.increment(WARP_ENTRANCE_FEE),
+    totalVisits:   admin.firestore.FieldValue.increment(1),
+    updatedAt:     now,
+  }, { merge: true });
+
+  await batch.commit();
+  return { ok: true, fee: WARP_ENTRANCE_FEE };
+}
+
 // ── 상점 소유자: 이름 변경 + 판매 아이템 등록/수정 ───────────────────────────
 async function ownerSaveShopItems(uid, { shopId, name, items = [] } = {}) {
   if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
@@ -585,6 +646,32 @@ async function ownerSaveShopItems(uid, { shopId, name, items = [] } = {}) {
       throw new HttpsError('invalid-argument', 'price는 0 이상의 숫자여야 합니다');
   }
 
+  // 아이템이 상점 카테고리에 맞는 타입인지 검사 (관리자 제외)
+  // → 잡템상점(300K)으로 개설 후 약물상점(600K) 아이템 등록 방지
+  if (!adminOk) {
+    const ALLOWED_PREFIXES = {
+      potion:       ['potion_', 'revive_'],
+      shop_potion:  ['potion_', 'revive_'],
+      weapon_armor: ['weapon_', 'armor_', 'helm_', 'sword_', 'bow_', 'shield_',
+                     'armo_', 'legs_', 'glov_', 'boot_'],
+      shop_weapon_armor: ['weapon_', 'armor_', 'helm_', 'sword_', 'bow_', 'shield_',
+                          'armo_', 'legs_', 'glov_', 'boot_'],
+      misc:         null, // 제한 없음
+      shop_misc:    null,
+    };
+    const allowed = ALLOWED_PREFIXES[shop.type];
+    if (allowed !== null && allowed !== undefined) {
+      for (const item of items) {
+        const ok = allowed.some(p => item.itemId.startsWith(p));
+        if (!ok)
+          throw new HttpsError('invalid-argument',
+            `아이템 "${item.itemId}"은 "${shop.type}" 상점에 등록할 수 없습니다. ` +
+            `상점 카테고리에 맞는 아이템만 등록 가능합니다.`
+          );
+      }
+    }
+  }
+
   const cleanItems = items.map(it => ({
     itemId: String(it.itemId).trim(),
     name:   String(it.name).trim(),
@@ -592,6 +679,7 @@ async function ownerSaveShopItems(uid, { shopId, name, items = [] } = {}) {
     stock:  typeof it.stock === 'number' ? Math.floor(it.stock) : -1,
   }));
 
+  // type·lat·lng·ownerUid·active는 절대 변경 불가 — 명시적 허용 필드만 update
   const update = {
     items:     cleanItems,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -616,4 +704,5 @@ module.exports = {
   initBattlePlayer,
   adminInitAllPlayers,
   ownerSaveShopItems,
+  payWarpEntrance,
 };

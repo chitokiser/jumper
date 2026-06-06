@@ -24,8 +24,8 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          getEquippedWeapon, getEquippedArmor, getEquippedArmorSlots,
          updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
          loadShops, getShops, deleteShop, checkShopProximity, updateShopHpMarker,
-         loadTutorialBoxes, clearTutorialBoxes, checkTutorialProximity,
-         loadTrialMonsters, clearTrialMonsters,
+         clearTutorialBoxes, checkTutorialProximity,
+         clearTrialMonsters,
          onPlayerExp, onPlayerLevelUp,
          addPlayerGold, spendPlayerGold, addPlayerGsExp,
          getPlayerSnapshot, syncPlayerFromDungeon,
@@ -170,6 +170,29 @@ function haversine(lat1, lng1, lat2, lng2) {
   const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
   const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const _FLAG_BOXES_MC = [
+  {f:'🇻🇳',la:[8.1,23.4], lo:[102.1,109.5]},{f:'🇹🇭',la:[5.6,20.5], lo:[97.3,105.7]},
+  {f:'🇰🇭',la:[10.4,14.7],lo:[102.3,107.6]},{f:'🇱🇦',la:[13.9,22.5],lo:[100.1,107.7]},
+  {f:'🇲🇾',la:[0.8,7.4],  lo:[99.6,119.3]}, {f:'🇸🇬',la:[1.1,1.5],  lo:[103.6,104.1]},
+  {f:'🇮🇩',la:[-11.0,5.9],lo:[95.0,141.0]}, {f:'🇵🇭',la:[4.6,21.1], lo:[116.9,126.6]},
+  {f:'🇲🇲',la:[9.8,28.5], lo:[92.2,101.2]}, {f:'🇰🇷',la:[33.1,38.6],lo:[124.6,130.0]},
+  {f:'🇯🇵',la:[24.0,45.5],lo:[122.9,153.0]},{f:'🇹🇼',la:[21.9,25.3],lo:[119.9,122.1]},
+  {f:'🇭🇰',la:[22.1,22.6],lo:[113.8,114.5]},{f:'🇨🇳',la:[18.0,53.6],lo:[73.5,135.1]},
+  {f:'🇮🇳',la:[6.7,35.5], lo:[68.1,97.4]},  {f:'🇦🇪',la:[22.6,26.1],lo:[51.6,56.4]},
+  {f:'🇹🇷',la:[35.8,42.1],lo:[26.0,44.8]},  {f:'🇬🇧',la:[49.9,60.9],lo:[-8.6,1.8]},
+  {f:'🇫🇷',la:[41.3,51.1],lo:[-5.1,9.6]},   {f:'🇩🇪',la:[47.3,55.1],lo:[5.9,15.0]},
+  {f:'🇮🇹',la:[36.7,47.1],lo:[6.6,18.5]},   {f:'🇪🇸',la:[36.0,43.8],lo:[-9.3,4.3]},
+  {f:'🇷🇺',la:[41.2,81.9],lo:[19.6,190.0]}, {f:'🇦🇺',la:[-43.7,-10.7],lo:[113.3,153.6]},
+  {f:'🇺🇸',la:[24.5,49.4],lo:[-125.0,-66.9]},{f:'🇨🇦',la:[41.7,83.1],lo:[-141.0,-52.6]},
+  {f:'🇧🇷',la:[-33.7,5.3],lo:[-73.9,-34.8]},{f:'🇦🇷',la:[-55.1,-21.8],lo:[-73.6,-53.6]},
+];
+function _flagFromCoords(lat, lng) {
+  if (lat == null || lng == null) return '🌍';
+  for (const b of _FLAG_BOXES_MC)
+    if (lat >= b.la[0] && lat <= b.la[1] && lng >= b.lo[0] && lng <= b.lo[1]) return b.f;
+  return '🌍';
 }
 
 function nowVietnamHour() {
@@ -2802,16 +2825,18 @@ async function init() {
       // 익명 유저 배지 표시
       _renderAnonBadge(_isAnonymous);
 
+      // 체험판 마커 즉시 제거 (체험탭 폐지)
+      clearTutorialBoxes();
+      clearTrialMonsters();
+
       loadPlayerState().then(async (status) => {
         if (status === 'new' && !_isAnonymous) {
           try {
             await httpsCallable(functions, 'initBattlePlayer')();
-            await loadPlayerState(); // 스타터 아이템 포함 재로드
+            await loadPlayerState();
             await loadInventory({ force: true });
           } catch (e) { /* ignore */ }
-          _initTutorialBoxesWhenReady();
         } else if (!_isAnonymous) {
-          _initTutorialBoxesWhenReady();
         }
         // 유저 표시 이름/사진 battle_players에 동기화 (랭킹 표시용)
         if (!_isAnonymous) {
@@ -2862,60 +2887,6 @@ async function init() {
   });
 
   // ── 튜토리얼 박스 초기화 ────────────────────────────────────────────────────
-  async function _initTutorialBoxesWhenReady() {
-    const waitFor = (check, maxTries = 20) => new Promise(resolve => {
-      if (check()) { resolve(); return; }
-      let tries = 0;
-      const id = setInterval(() => {
-        if (check() || ++tries >= maxTries) { clearInterval(id); resolve(); }
-      }, 500);
-    });
-
-    // 지도 초기화까지 최대 10초 대기
-    await waitFor(() => !!_ctx?.map);
-    if (!_ctx?.map) return;
-
-    // 위치 확보: 캐시된 GPS 우선 사용 — 자동 GPS 요청 금지 (Telegram 권한 팝업 방지)
-    let pos = _ctx?.gpsPos || _ctx?.lastPos;
-    if (!pos && _ctx?.map) {
-      const c = _ctx.map.getCenter();
-      if (c) pos = { lat: c.lat(), lng: c.lng() };
-    }
-    if (!pos) return;
-
-    try {
-      const fn = httpsCallable(functions, 'initTutorialBoxes');
-      const res = await fn({ lat: pos.lat, lng: pos.lng });
-      if (res.data?.boxes?.length) loadTutorialBoxes(res.data.boxes);
-    } catch { /* 튜토리얼 초기화 실패는 비치명적 */ }
-
-    // 체험판 몬스터 배치 — 사용자 위치 기준 50~120m 거리에 2마리
-    try {
-      const _bearingOffset = (lat, lng, distM, bearingDeg) => {
-        const R   = 6371000;
-        const rad = Math.PI / 180;
-        const b   = bearingDeg * rad;
-        const dLat = (distM / R) / rad;
-        const dLng = (distM / R) / rad / Math.cos(lat * rad);
-        return {
-          lat: lat + dLat * Math.cos(b),
-          lng: lng + dLng * Math.sin(b),
-        };
-      };
-      const monDefs = [
-        { defIdx: 0, hp: 1, id: 'tm0' },  // 슬라임 (쉬움)
-        { defIdx: 3, hp: 3, id: 'tm1' },  // 오크 (보통)
-      ];
-      const monsters = monDefs.map((def, i) => {
-        const bearing = 40 + i * 140 + Math.random() * 60;
-        const dist    = 60  + i * 30  + Math.random() * 30;
-        const p = _bearingOffset(pos.lat, pos.lng, dist, bearing);
-        return { ...def, maxHp: def.hp, lat: p.lat, lng: p.lng };
-      });
-      loadTrialMonsters(monsters);
-    } catch { /* 몬스터 배치 실패는 비치명적 */ }
-  }
-
   // ── Phase 1: 지도 표시에 필요한 것만 병렬 로드 ──────────────────────────────
   const settle1 = p => p.catch(() => null);
   const [, merchantSnap] = await Promise.all([
@@ -2955,6 +2926,7 @@ async function init() {
 
     // Virtual Explore Mode 초기화
     initVirtualMode(_ctx, map, infoWindow, (active, _shop) => {
+      _ctx.virtualMode = active; // checkShopProximity 공격 차단용
       if (!active) {
         const pos = _ctx.gpsPos || _ctx.lastPos;
         if (pos) checkProximity(pos.lat, pos.lng);
@@ -3565,6 +3537,11 @@ async function _doAttackShop(shop) {
     showFloat(_t('login_required') || '로그인 필요', '#ef4444', shop.lat, shop.lng);
     return;
   }
+  // 상점 공격은 GPS 모드(실제 현장)에서만 가능
+  if (isVirtualMode()) {
+    showToast('⛔ Shop attacks require GPS mode. Visit the shop in person.', 'warn');
+    return;
+  }
   const btn = $('atkPanelBtn');
   if (btn?.disabled) return;
 
@@ -3643,7 +3620,8 @@ function openShopModal(shop) {
   if (!modal) return;
 
   const typeLabelMap = { weapon_armor: '⚔️ 무기/방어구', potion: '🧪 약물', misc: '🛍️ 잡템' };
-  $('shopModalTitle').textContent = `${shop.name} (${typeLabelMap[shop.type] || shop.type})`;
+  const shopFlag = _flagFromCoords(shop.lat, shop.lng);
+  $('shopModalTitle').textContent = `${shopFlag} ${shop.name} (${typeLabelMap[shop.type] || shop.type})`;
 
   const adminBtn = $('shopModalAdminBtn');
   if (adminBtn) {
@@ -3817,6 +3795,13 @@ function _renderShopModalBody() {
             📊 매출 실적 보기
           </button>
           <div id="shopSalesPanel" style="display:none;margin-top:8px"></div>
+        </div>`;
+      }
+      // 상점 공격은 GPS 모드(실제 현장)에서만 가능
+      if (isVirtualMode()) {
+        return `<div style="margin-top:8px;padding:10px;border-radius:10px;border:1px solid #374151;
+                             text-align:center;color:#6b7280;font-size:12px;">
+          📍 Shop attacks require GPS mode.<br>Visit the shop in person to conquer it.
         </div>`;
       }
       return `<button id="shopAttackBtn"

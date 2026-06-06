@@ -5,6 +5,14 @@
 const admin = require('firebase-admin');
 const db    = admin.firestore();
 
+function haversineM(lat1, lng1, lat2, lng2) {
+  const R    = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a    = Math.sin(dLat/2)**2
+    + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
 // ── 카탈로그 ─────────────────────────────────────────────────────────────────
 const CATALOG = {
@@ -39,6 +47,58 @@ const CATALOG = {
   mon_orc3: {
     price: 25000, type: 'monster', label: 'Orc3',
     monsterType: 'orc3', maxHp: 2500, atk: 100, detectRadius: 45,
+  },
+  mon_pirate: {
+    price: 30000, type: 'monster', label: 'Pirate',
+    monsterType: 'pirate', maxHp: 3000, atk: 120, detectRadius: 40,
+  },
+  mon_pirate2: {
+    price: 35000, type: 'monster', label: 'Pirate 2',
+    monsterType: 'pirate2', maxHp: 3500, atk: 140, detectRadius: 40,
+  },
+  mon_pirate3: {
+    price: 40000, type: 'monster', label: 'Pirate 3',
+    monsterType: 'pirate3', maxHp: 4000, atk: 160, detectRadius: 45,
+  },
+  mon_zombie1: {
+    price: 45000, type: 'monster', label: 'Zombie',
+    monsterType: 'zombie1', maxHp: 4500, atk: 180, detectRadius: 40,
+  },
+  mon_zombie3: {
+    price: 50000, type: 'monster', label: 'Zombie 3',
+    monsterType: 'zombie3', maxHp: 5000, atk: 200, detectRadius: 45,
+  },
+  mon_zvil1: {
+    price: 55000, type: 'monster', label: 'Zombie Villager 1',
+    monsterType: 'zombie_villager1', maxHp: 5500, atk: 220, detectRadius: 45,
+  },
+  mon_zvil2: {
+    price: 60000, type: 'monster', label: 'Zombie Villager 2',
+    monsterType: 'zombie_villager2', maxHp: 6000, atk: 240, detectRadius: 50,
+  },
+  mon_zvil3: {
+    price: 65000, type: 'monster', label: 'Zombie Villager 3',
+    monsterType: 'zombie_villager3', maxHp: 6500, atk: 260, detectRadius: 50,
+  },
+  mon_troll: {
+    price: 70000, type: 'monster', label: 'Troll',
+    monsterType: 'troll', maxHp: 7000, atk: 280, detectRadius: 50,
+  },
+  mon_knight1: {
+    price: 75000, type: 'monster', label: 'Knight 1',
+    monsterType: 'knight1', maxHp: 7500, atk: 300, detectRadius: 50,
+  },
+  mon_knight2: {
+    price: 80000, type: 'monster', label: 'Knight 2',
+    monsterType: 'knight2', maxHp: 8000, atk: 320, detectRadius: 55,
+  },
+  mon_knight3: {
+    price: 85000, type: 'monster', label: 'Knight 3',
+    monsterType: 'knight3', maxHp: 8500, atk: 340, detectRadius: 55,
+  },
+  mon_dragon: {
+    price: 200000, type: 'monster', label: 'Dragon',
+    monsterType: 'dragon', maxHp: 20000, atk: 500, detectRadius: 60,
   },
   archer_tower: {
     price:  20000, type: 'tower', label: '아쳐타워',
