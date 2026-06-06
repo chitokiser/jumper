@@ -2904,6 +2904,8 @@ async function init() {
         }
         renderExchangeSection();
         showDeathMarkerIfDead();
+        // 로그인 완료 후 워프모드 자동 시작 시도 (지도가 먼저 준비된 경우 여기서 실행)
+        _maybeAutoStartVirtualMode();
       });
       loadInventory();
       _renderMemberStatus(_uid);
@@ -2989,8 +2991,11 @@ async function init() {
     // 가상 위치 탭 이동 시 proximity 체크 연결
     _ctx._onVirtualMove = (lat, lng) => checkProximity(lat, lng);
 
-    // 첫 방문 Virtual Mode 안내
+    // 첫 방문 Virtual Mode 안내 (기존 guide tooltip)
     _initVirtualModeGuide();
+
+    // ── 페이지 진입 시 워프모드 자동 시작 ─────────────────────────────────
+    _maybeAutoStartVirtualMode();
   }
   renderCards(allMerchants);
 
@@ -3424,13 +3429,23 @@ async function init() {
   window.addEventListener('gs:forceRenderMonster', (e) => _renderGsMonster(e.detail));
 
   $('btnGameToggle')?.addEventListener('click', () => {
-    if (!_uid) return; // 비로그인 차단 (disabled이지만 방어코드 유지)
+    if (!_uid) return;
     if (isGameServerConnected()) {
       disconnectFromGameServer();
-    } else {
-      // GPS + 지도 확대 + 캐릭터 + 전체화면 + 서버 연결 한 번에
-      showMyLocation();
+      return;
     }
+    // ▶ 버튼 누를 때 워프모드가 아니면 → GPS 모드 전환 확인
+    if (!isVirtualMode()) {
+      const ok = confirm(
+        '📍 Switch to GPS Mode?\n\n' +
+        'GPS Mode uses your real location and will request location permission.\n\n' +
+        'In Warp Mode you can explore freely without GPS.\n' +
+        'Tap 🌍 Virtual Explorer to warp to any shop instead.\n\n' +
+        'Continue with GPS Mode?'
+      );
+      if (!ok) return;
+    }
+    showMyLocation();
   });
 
   // PC 모드: 맵 패닝 시 lastPos를 맵 중심으로 갱신 (렌더링 전용)
@@ -4971,6 +4986,19 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitNpcComment(); }
     });
 });
+
+// ── 페이지 진입 시 워프모드 자동 시작 ─────────────────────────────────────────
+// 지도 + 로그인 준비 완료 후 1회 실행 — 자동으로 상점 선택 모달 표시
+let _autoVirtualDone = false;
+function _maybeAutoStartVirtualMode() {
+  if (_autoVirtualDone) return;
+  if (!_uid) return;              // 아직 로그인 안 됨 → auth 콜백에서 재시도
+  if (!window.google?.maps) return; // 지도 미준비
+  if (isVirtualMode()) return;    // 이미 워프모드
+  _autoVirtualDone = true;
+  // 지도가 완전히 렌더된 뒤 상점 선택 모달 열기
+  setTimeout(() => toggleVirtualMode(), 800);
+}
 
 // ── 첫 방문 Virtual Mode 안내 ─────────────────────────────────────────────
 function _initVirtualModeGuide() {
