@@ -2267,10 +2267,14 @@ function _performAutoRevive() {
   _healAccum   = 0;
   _mpHealAccum = 0;
   _player.token = (_player.token ?? 0) + 30;
-  // Warp marker back to spawn
+  // Warp back to spawn — use ctx callback so both GPS and virtual mode are handled
   if (_spawnLat && _spawnLng) {
-    _ctx.lastPos = { lat: _spawnLat, lng: _spawnLng, accuracy: 10, heading: null };
-    updateMyLocation(_spawnLat, _spawnLng, 10, null);
+    if (_ctx._doReviveAtSpawn) {
+      _ctx._doReviveAtSpawn(_spawnLat, _spawnLng);
+    } else {
+      _ctx.lastPos = { lat: _spawnLat, lng: _spawnLng, accuracy: 10, heading: null };
+      updateMyLocation(_spawnLat, _spawnLng, 10, null);
+    }
   }
   sendPlayerRevive();
   playSound('revive');
@@ -3332,7 +3336,7 @@ export function syncDeathFromServer() {
   _showDeathMarker();
   refreshMyMarkerIcon();
   playSound('player_die');
-  if (pos) showFloat('💀 사망', '#fbbf24', pos.lat(), pos.lng());
+  if (pos) showFloat('💀 Defeated!', '#fbbf24', pos.lat(), pos.lng());
   updateCombatHud();
   savePlayerState();
 }

@@ -45,7 +45,7 @@ import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterA
   from './starter-pack.js';
 import { initUserPlace } from './user-place.js';
 import { initDailyArea, checkDailyProximity } from './merchants.daily.js';
-import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, toggleVirtualMode } from './merchants.virtual.js';
+import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, toggleVirtualMode, setVirtualPos } from './merchants.virtual.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -2991,6 +2991,19 @@ async function init() {
     });
     // 가상 위치 탭 이동 시 proximity 체크 연결
     _ctx._onVirtualMove = (lat, lng) => checkProximity(lat, lng);
+
+    // 사망 자동 부활 워프 — GPS/워프 양 모드 공통 처리
+    _ctx._doReviveAtSpawn = (lat, lng) => {
+      _ctx.lastPos = { lat, lng, accuracy: 10, heading: null };
+      updateMyLocation(lat, lng, 10, null);
+      if (isVirtualMode()) {
+        setVirtualPos(lat, lng); // update virtual pos so map-taps start from spawn
+      } else {
+        // GPS mode: pan map to spawn
+        _ctx.map?.panTo({ lat, lng });
+        _ctx.map?.setZoom(18);
+      }
+    };
 
     // 첫 방문 Virtual Mode 안내 (기존 guide tooltip)
     _initVirtualModeGuide();

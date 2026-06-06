@@ -112,6 +112,12 @@ export function initVirtualMode(ctx, map, infoWindow, onModeChange, cbs = null) 
 export function isVirtualMode() { return _active; }
 export function getVirtualPos() { return _virtualPos; }
 export function getWarpShop()   { return _warpShop; }
+/** Force-set the virtual position (e.g. on auto-revive warp-back). */
+export function setVirtualPos(lat, lng) {
+  if (!_active || !lat || !lng) return;
+  _virtualPos = { lat, lng };
+  _map?.panTo({ lat, lng });
+}
 export function canCollectInVirtual(box) {
   if (!_active) return true;
   return !_isGpsOnly(box);
