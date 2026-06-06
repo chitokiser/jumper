@@ -173,6 +173,31 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
   // Firestore 우선 가격 조회
   const price = await _getEffectivePrice(itemKey);
 
+  // ── 상점 5km 중복 검사 — GP 차감 전에 실행 (GP 손실 방지 + 즉시 피드백)
+  if (def.type === 'shop') {
+    const TYPE_ALIASES = {
+      shop_potion:       ['shop_potion', 'potion'],
+      shop_weapon_armor: ['shop_weapon_armor', 'weapon_armor'],
+      shop_misc:         ['shop_misc', 'misc'],
+    };
+    const aliasTypes = TYPE_ALIASES[def.shopType] || [def.shopType];
+    const allShopsSnap = await db.collection('game_shops')
+      .where('active', '==', true)
+      .get();
+    for (const shopDoc of allShopsSnap.docs) {
+      const s = shopDoc.data();
+      if (!s.lat || !s.lng) continue;
+      if (!aliasTypes.includes(s.type)) continue;
+      const distM = haversineM(Number(lat), Number(lng), Number(s.lat), Number(s.lng));
+      if (distM <= 5000) {
+        throw new Error(
+          `⛔ A "${s.type}" shop already exists within 5km: "${s.name || shopDoc.id}" (${Math.round(distM)}m away). ` +
+          `Only one shop per category is allowed within a 5km radius.`
+        );
+      }
+    }
+  }
+
   const bpRef     = db.collection('battle_players').doc(uid);
   const userRef   = db.collection('users').doc(uid);
   const userSnap  = await userRef.get();
@@ -186,7 +211,7 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
 
     const gold = bp.exists ? (bp.data().gold ?? 0) : 0;
     if (gold < price) {
-      throw new Error(`GP 부족. 필요: ${price.toLocaleString()} GP, 보유: ${gold.toLocaleString()} GP`);
+      throw new Error(`Not enough GP. Required: ${price.toLocaleString()} GP, Available: ${gold.toLocaleString()} GP`);
     }
     placeNo = (uSnap.data()?.placeCount ?? 0) + 1;
 
@@ -240,29 +265,7 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
     });
     docId = ref.id;
   } else if (def.type === 'shop') {
-    // type 정규화 맵 — admin 배치(potion)와 유저 배치(shop_potion) 동일 카테고리 처리
-    const TYPE_ALIASES = {
-      shop_potion:       ['shop_potion', 'potion'],
-      shop_weapon_armor: ['shop_weapon_armor', 'weapon_armor'],
-      shop_misc:         ['shop_misc', 'misc'],
-    };
-    const aliasTypes = TYPE_ALIASES[def.shopType] || [def.shopType];
-
-    // 5km 반경 내 동일 카테고리 중복 금지 — 모든 alias 타입 체크
-    const nearbySnap = await db.collection('game_shops')
-      .where('active', '==', true)
-      .get();
-    for (const doc of nearbySnap.docs) {
-      const s = doc.data();
-      if (!s.lat || !s.lng) continue;
-      if (!aliasTypes.includes(s.type)) continue;
-      if (haversineM(Number(lat), Number(lng), s.lat, s.lng) <= 5000) {
-        throw new Error(
-          `⛔ A "${s.type}" shop already exists within 5km: "${s.name}". ` +
-          `Only one shop per category is allowed within a 5km radius.`
-        );
-      }
-    }
+    // 5km 체크는 트랜잭션 전에 이미 완료됨
     const ref = await db.collection('game_shops').add({
       ...base,
       name:  `${nim} ${def.label}${placeNo}`,
