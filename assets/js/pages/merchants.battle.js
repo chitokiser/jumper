@@ -2266,7 +2266,7 @@ function _performAutoRevive() {
   _player.mp = Math.round(_player.maxMp * 0.5);
   _healAccum   = 0;
   _mpHealAccum = 0;
-  _player.token = (_player.token ?? 0) + 30;
+  // No token cost or reward — auto-revive is free, tokens stay unchanged
   // Warp back to spawn — use ctx callback so both GPS and virtual mode are handled
   if (_spawnLat && _spawnLng) {
     if (_ctx._doReviveAtSpawn) {
@@ -2281,7 +2281,7 @@ function _performAutoRevive() {
   const myMark = _ctx?.myLocationMarker;
   if (myMark) {
     const pos = myMark.getPosition();
-    showFloat('✨ Auto-Revived! Warped to spawn. 💎×30', '#fbbf24', pos.lat(), pos.lng());
+    showFloat('✨ Auto-Revived at spawn! HP/MP 50%', '#fbbf24', pos.lat(), pos.lng());
   }
   updateCombatHud();
   updateSkillBar();
