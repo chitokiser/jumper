@@ -2495,16 +2495,16 @@ exports.requestOnChainLevelSync = onCall(
 //           (값: Telegram 그룹/채널 chat_id, 예: -1001234567890)
 // ════════════════════════════════════════════════════════════════════════════
 const _GAME_LABELS = {
-  relay:          '🏃 이어달리기',
-  conquest:       '🏰 몬스터수성',
-  dungeon:        '⚔️ 던전',
-  archery:        '🏹 활쏘기',
-  memory:         '🧠 기억력게임',
-  treasure:       '💎 보물찾기',
-  monsterrace:    '🐉 몬스터레이스',
-  treasure_hide:  '📦 보물 숨기기',
-  treasure_find:  '🏆 보물 발견',
-  treasure_issue: '🎁 보물 발행',
+  relay:          '🏃 Sprint Relay',
+  conquest:       '🏰 Monster Siege',
+  dungeon:        '⚔️ Dungeon',
+  archery:        '🏹 Archery',
+  memory:         '🧠 Memory Game',
+  treasure:       '💎 Treasure Hunt',
+  monsterrace:    '🐉 Monster Race',
+  treasure_hide:  '📦 Treasure Hidden',
+  treasure_find:  '🏆 Treasure Found',
+  treasure_issue: '🎁 Treasure Issued',
 };
 // 유저별 마지막 브로드캐스트 시각 (인스턴스 내 캐시, 이벤트 종류별 15초 쿨다운)
 const _broadcastCooldown = new Map();
@@ -2537,22 +2537,22 @@ exports.broadcastGpEvent = onCall(
       let name = d.displayName || d.name;
       if (!name) {
         const uSnap = await db.collection('users').doc(uid).get();
-        name = uSnap.data()?.displayName || uSnap.data()?.name || '모험가';
+        name = uSnap.data()?.displayName || uSnap.data()?.name || 'Adventurer';
       }
 
       let msg;
       if (game === 'treasure_hide') {
-        const item = extraLabel || '보물';
-        msg = `📦 <b>${name}</b>님이 <b>${item}</b>을(를) 지도에 숨겼습니다! 찾을 수 있을까요? 🔍`;
+        const item = extraLabel || 'Treasure';
+        msg = `📦 <b>${name}</b> has hidden <b>${item}</b> on the map! Can you find it? 🔍`;
       } else if (game === 'treasure_find') {
-        const boxName = extraLabel || '보물상자';
-        msg = `🏆 <b>${name}</b>님이 <b>${boxName}</b>을(를) 발견했습니다! 💎`;
+        const boxName = extraLabel || 'Treasure Box';
+        msg = `🏆 <b>${name}</b> discovered <b>${boxName}</b>! 💎`;
       } else if (game === 'treasure_issue') {
-        const item = extraLabel || '보물';
-        msg = `🎁 <b>${name}</b>님이 <b>${item}</b>을(를) 발행했습니다!`;
+        const item = extraLabel || 'Treasure';
+        msg = `🎁 <b>${name}</b> published <b>${item}</b> on the map!`;
       } else {
-        const gameLabel = _GAME_LABELS[game] || '🎮 게임';
-        msg = `${gameLabel}\n<b>${name}</b>님이 <b>+${Number(amount).toLocaleString()} GP</b> 획득! 🎉`;
+        const gameLabel = _GAME_LABELS[game] || '🎮 Game';
+        msg = `${gameLabel}\n<b>${name}</b> earned <b>+${Number(amount).toLocaleString()} GP</b>! 🎉`;
       }
 
       logger.info('[broadcastGpEvent] sending', { uid, game, amount, chatId });

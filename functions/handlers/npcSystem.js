@@ -53,19 +53,19 @@ function _randGp(type) {
 function _buildMsg(name, type, gp) {
   switch (type) {
     case 'treasure_find':
-      return `🤖 <b>${name}</b>님이 보물을 발견했습니다! +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `🤖 <b>${name}</b> discovered treasure! +${gp} GP <i>(NPC Event)</i>`;
     case 'treasure_hide':
-      return `🤖 <b>${name}</b>님이 새로운 보물을 숨겨두었습니다. <i>(시스템 이벤트)</i>`;
+      return `🤖 <b>${name}</b> has hidden new treasure on the map. <i>(NPC Event)</i>`;
     case 'dungeon':
-      return `⚔️ <b>${name}</b>님이 던전 생존 성공! +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `⚔️ <b>${name}</b> survived the dungeon! +${gp} GP <i>(NPC Event)</i>`;
     case 'monsterrace':
-      return `🐉 <b>${name}</b>님 몬스터 레이스 우승! +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `🐉 <b>${name}</b> won Monster Race! +${gp} GP <i>(NPC Event)</i>`;
     case 'archery':
-      return `🏹 <b>${name}</b>님이 활쏘기 +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `🏹 <b>${name}</b> hit the mark in Archery! +${gp} GP <i>(NPC Event)</i>`;
     case 'relay':
-      return `🏃 <b>${name}</b>님이 이어달리기 +${gp} GP <i>(시스템 이벤트)</i>`;
+      return `🏃 <b>${name}</b> completed Sprint Relay! +${gp} GP <i>(NPC Event)</i>`;
     default:
-      return `🤖 <b>${name}</b>님이 +${gp} GP 획득! <i>(시스템 이벤트)</i>`;
+      return `🤖 <b>${name}</b> earned +${gp} GP! <i>(NPC Event)</i>`;
   }
 }
 
