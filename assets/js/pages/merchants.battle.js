@@ -2253,7 +2253,24 @@ function battleTick() {
 
 // ── 몬스터 돌진 애니메이션 ────────────────────────────────────────────────────
 function animateMonsterCharge(mob, myLat, myLng, onHit) {
-  const marker = _monsterMarkers[mob.id];
+  const marker  = _monsterMarkers[mob.id];
+  const spriteOv = _monsterOverlays[mob.id];
+
+  // Sprite overlay: play attack animation + hit flash, no marker charge
+  if (!marker && spriteOv) {
+    spriteOv.playAttack(() => {});
+    const battleOv = document.getElementById('battleOverlay');
+    const ep = battleOv && latLngToPixel(myLat, myLng);
+    if (ep) {
+      const hit = document.createElement('div');
+      hit.className = 'hit-flash';
+      hit.style.cssText = `left:${ep.x}px;top:${ep.y}px;background:radial-gradient(circle,#ef4444,transparent)`;
+      battleOv.appendChild(hit);
+      setTimeout(() => hit.remove(), 320);
+    }
+    onHit?.();
+    return;
+  }
   if (!marker) { onHit?.(); return; }
 
   const origLat = mob.lat, origLng = mob.lng;
@@ -2322,7 +2339,7 @@ function checkMonsterAttacks() {
       const aggro = _monsterAggro[mob.id];
       if (aggro && aggro !== myUid) continue;
 
-      const _mobKind = String(mob.type || '').replace(/\d+$/, '');
+      const _mobKind = String(mob.monsterType || mob.type || '').replace(/\d+$/, '');
       const _atkSound = (_mobKind === 'dragon') ? 'monster_atk_dragon'
                       : (_mobKind === 'orc')    ? 'monster_atk_orc'
                       : (_mobKind === 'pirate') ? 'monster_atk_pirate'
@@ -2459,6 +2476,11 @@ async function hitMonster(monsterId, damage) {
 
     _monsterGrid.remove(monsterId);
     if (marker) { marker.setMap(null); delete _monsterMarkers[monsterId]; }
+    const dyingOverlay = _monsterOverlays[monsterId];
+    if (dyingOverlay) {
+      dyingOverlay.playDeathAndRemove();
+      delete _monsterOverlays[monsterId];
+    }
     _scheduleMonsterRespawn(mob, Date.now());
   }
 }
@@ -2488,11 +2510,14 @@ function _onMonsterHpChange(monsterId, data) {
     mob.hp = 0;
     _monsterGrid.remove(monsterId);
     if (_monsterMarkers[monsterId]) { _monsterMarkers[monsterId].setMap(null); delete _monsterMarkers[monsterId]; }
+    const syncDyingOv = _monsterOverlays[monsterId];
+    if (syncDyingOv) { syncDyingOv.playDeathAndRemove(); delete _monsterOverlays[monsterId]; }
     delete _monsterAggro[monsterId];
     _aggroClaimed.delete(monsterId);
     _scheduleMonsterRespawn(mob, data.deadAt?.toMillis?.() || Date.now());
   } else if (!data.isDead && data.hp > 0) {
-    if (mob.hp <= 0 && !_monsterMarkers[monsterId]) {
+    const noMarker  = !_monsterMarkers[monsterId] && !_monsterOverlays[monsterId];
+    if (mob.hp <= 0 && noMarker) {
       mob.hp = data.hp;
       _monsterGrid.register(mob);
       if (_ctx?.map) _spawnMonsterMarker(mob);

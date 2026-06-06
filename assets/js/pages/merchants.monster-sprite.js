@@ -643,6 +643,15 @@ function _getOverlayClass() {
       if (!this._oneShot) this._syncAnim(monster.state);
     }
 
+    /** Firestore 몬스터 공격 시 attack 애니메이션 one-shot 재생 후 idle 복귀 */
+    playAttack(onComplete) {
+      if (this._oneShot) { onComplete?.(); return; }
+      this._playOneShot('attack', () => {
+        this._syncAnim(this._logicState);
+        onComplete?.();
+      });
+    }
+
     /** monster:died 수신 시 — death 애니메이션 후 오버레이 자체 제거 */
     playDeathAndRemove() {
       this._oneShot = true;
