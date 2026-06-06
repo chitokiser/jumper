@@ -28,7 +28,8 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          loadTrialMonsters, clearTrialMonsters,
          onPlayerExp, onPlayerLevelUp,
          addPlayerGold, spendPlayerGold, addPlayerGsExp,
-         getPlayerSnapshot, syncPlayerFromDungeon }
+         getPlayerSnapshot, syncPlayerFromDungeon,
+         spendPlayerMp, getPlayerMp, getPlayerMaxMp }
   from './merchants.battle.js';
 import { initDungeonGame, openDungeonGame } from './merchants.dungeon.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
@@ -42,8 +43,8 @@ import { _t } from './merchants.i18n.js';
 import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterActive }
   from './starter-pack.js';
 import { initUserPlace } from './user-place.js';
-import { initMyMap, activateMyMap, deactivateMyMap, setMyMapPlaceMode, isMyMapActive, checkMyMapProximity } from './merchants.mymap.js';
 import { initDailyArea, checkDailyProximity } from './merchants.daily.js';
+import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, toggleVirtualMode } from './merchants.virtual.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -272,7 +273,6 @@ const FS_MODALS = [
   'anonBadge',
   // 누락 보완
   'levelupOverlay', 'voucherOrderModal', 'tutModal', 'lb-overlay', 'monsterStatModal',
-  'myMapPanel',
 ];
 
 // 풀스크린 컨테이너 밖에 있는 fixed 요소를 안으로 이동시키지 않으면
@@ -1256,47 +1256,56 @@ function _panToMyLocation() {
 }
 
 function showMyLocation() {
-  if (!_uid) return; // 비로그인 차단
-  if (!navigator.geolocation) { alert(_t('no_geolocation')); return; }
+  if (!_uid) return;
+  if (!navigator.geolocation && !isVirtualMode()) { alert(_t('no_geolocation')); return; }
 
-  // 이미 시작됨 → 내 위치로 확대 이동만
+  // 이미 시작됨
   if (_gameStarted) {
-    _panToMyLocation();
+    // Virtual 모드면 지도 이동 없이 유지, GPS 모드면 내 위치로 이동
+    if (!isVirtualMode()) _panToMyLocation();
     return;
   }
 
   const btn       = $('btnMyLocation');
   const toggleBtn = $('btnGameToggle');
 
-  if (btn) btn.textContent = '⏳';
-  if (toggleBtn && !isGameServerConnected()) {
-    toggleBtn.textContent = '⏳';
-    toggleBtn.classList.add('gs-connecting');
-  }
-
-  _requestFullscreen();
-
-  // ── 게임 서버 즉시 연결 (GPS와 무관) ──────────────────────────────────────
   preloadSpriteImages();
   connectToGameServer();
 
-  // ── GPS watchPosition — 권한 요청 1회, 첫 위치로 지도 이동 ────────────────
-  // getCurrentPosition 별도 호출 없이 watchPosition만 사용 → Telegram 팝업 1회
-  startWatchPosition((lat, lng) => {
-    if (_ctx.map) {
-      _ctx.map.panTo({ lat, lng });
-      _ctx.map.setZoom(18);
-    }
-    broadcastMyLocation(lat, lng);
+  if (isVirtualMode()) {
+    // ── Virtual 모드: GPS 시작 없이 게임 서버만 연결 ────────────────────────
+    // _ctx.lastPos = 워프 위치 (virtual.js에서 이미 설정됨) → 그대로 유지
     if (btn) btn.textContent = '📍';
-    _maybeInitStarterPack(lat, lng);
-    _maybeInitDailyArea(lat, lng);
-  });
+    if (toggleBtn) { toggleBtn.textContent = '⏳'; toggleBtn.classList.add('gs-connecting'); }
 
-  // GPS 응답이 늦어도 버튼 복원
-  setTimeout(() => {
-    if (btn && btn.textContent === '⏳') btn.textContent = '📍';
-  }, 8000);
+    // 현재 가상 위치를 게임 서버로 즉시 전송
+    const vpos = getVirtualPos();
+    if (vpos) {
+      sendPlayerLocation(vpos.lat, vpos.lng, 10);
+      checkProximity(vpos.lat, vpos.lng);
+    }
+  } else {
+    // ── GPS 모드: 기존 로직 ──────────────────────────────────────────────────
+    if (btn) btn.textContent = '⏳';
+    if (toggleBtn && !isGameServerConnected()) {
+      toggleBtn.textContent = '⏳';
+      toggleBtn.classList.add('gs-connecting');
+    }
+
+    _requestFullscreen();
+
+    startWatchPosition((lat, lng) => {
+      if (_ctx.map) { _ctx.map.panTo({ lat, lng }); _ctx.map.setZoom(18); }
+      broadcastMyLocation(lat, lng);
+      if (btn) btn.textContent = '📍';
+      _maybeInitStarterPack(lat, lng);
+      _maybeInitDailyArea(lat, lng);
+    });
+
+    setTimeout(() => {
+      if (btn && btn.textContent === '⏳') btn.textContent = '📍';
+    }, 8000);
+  }
 
   startBattleLoop();
   startNearbyPlayers();
@@ -1510,9 +1519,6 @@ async function checkProximity(lat, lng) {
   _updateDetector(lat, lng);
   _checkDropProximity(lat, lng);
   _checkUserNpcProximity(lat, lng);
-  // 체험 탭 근접 감지 — mymap.js에서 GPS 위치 접근용 전역 노출
-  window._myMapGetPos = () => _ctx.gpsPos || _ctx.lastPos;
-  checkMyMapProximity(lat, lng);
   checkDailyProximity(lat, lng);
 }
 
@@ -1522,7 +1528,13 @@ async function tryCollect(box) {
   try {
     // watchPosition으로 이미 수집된 위치 사용 — getCurrentPosition 재호출 금지 (Telegram 권한 팝업 방지)
     const cached = _ctx?.gpsPos || _ctx?.lastPos;
-    if (!cached) { _collectedBoxes.delete(box.id); showToast('GPS 위치를 확인 중입니다. 잠시 후 다시 시도하세요.', 'warn'); return; }
+    if (!cached) {
+      _collectedBoxes.delete(box.id);
+      showToast(isVirtualMode()
+        ? 'Move your character near the treasure box first (tap the map).'
+        : 'Locating your position… please try again in a moment.', 'warn');
+      return;
+    }
     const result = await httpsCallable(functions, 'collectTreasureBox')({
       boxId: box.id,
       userLat: cached.lat,
@@ -2933,17 +2945,34 @@ async function init() {
     // 배치 상점 초기화 (지도 준비 후)
     if (_uid) {
       initUserPlace(_ctx.map, infoWindow, getPlayerGold, () => {
-        loadPlayerState({ force: true }); // GP 차감 후 클라이언트 gold 갱신
+        loadPlayerState({ force: true });
         loadTreasureBoxes().then(renderBoxMarkers);
         loadBattleData();
+        loadShops(); // 새 상점 마커 즉시 갱신
       });
     }
 
-    // 체험 탭 초기화
-    if (_uid) {
-      initMyMap(_uid, _ctx.map, infoWindow);
-      _initMyMapUI();
-    }
+    // Virtual Explore Mode 초기화
+    initVirtualMode(_ctx, map, infoWindow, (active, _shop) => {
+      if (!active) {
+        const pos = _ctx.gpsPos || _ctx.lastPos;
+        if (pos) checkProximity(pos.lat, pos.lng);
+      }
+    }, {
+      spendMp:    (amount) => spendPlayerMp(amount),
+      getMp:      ()       => getPlayerMp(),
+      getMaxMp:   ()       => getPlayerMaxMp(),
+      // 실제 플레이어 마커를 가상 위치로 이동 + _ctx.lastPos 동기화
+      moveMarker: (lat, lng) => {
+        _ctx.lastPos = { lat, lng, accuracy: 10, heading: null };
+        updateMyLocation(lat, lng, 10, null);
+      },
+    });
+    // 가상 위치 탭 이동 시 proximity 체크 연결
+    _ctx._onVirtualMove = (lat, lng) => checkProximity(lat, lng);
+
+    // 첫 방문 Virtual Mode 안내
+    _initVirtualModeGuide();
   }
   renderCards(allMerchants);
 
@@ -3015,6 +3044,14 @@ async function init() {
 
   // 버튼 이벤트
   $('btnInventory')?.addEventListener('click', openInventory);
+  $('btnVirtualMode')?.addEventListener('click', () => {
+    // Virtual Explore는 GPS 게임이 꺼진 상태에서만 가능
+    if (_gameStarted && !isVirtualMode()) {
+      showToast('📍 GPS 게임 중에는 Virtual 모드를 사용할 수 없습니다. 게임을 종료(■)하세요.', 'warn');
+      return;
+    }
+    toggleVirtualMode();
+  });
   $('btnDetector')?.addEventListener('click', () => {
     const btn = $('btnDetector');
     if (_detectorActive) {
@@ -3579,16 +3616,20 @@ async function _execRepairShop(shop) {
 }
 
 function openShopModal(shop) {
-  // 1km 이내에 있어야만 상점 이용 가능 — 반드시 실제 GPS(gpsPos) 사용
-  const myPos = _ctx?.gpsPos;
+  // Virtual 모드: 가상 위치(lastPos) 사용 / GPS 모드: 실제 GPS(gpsPos) 사용
+  const myPos = isVirtualMode() ? _ctx?.lastPos : _ctx?.gpsPos;
   if (!myPos) {
-    showToast(_t('shop_gps_wait'), 'warn');
+    showToast(isVirtualMode()
+      ? 'Move your character near the shop first (tap the map).'
+      : _t('shop_gps_wait'), 'warn');
     return;
   }
   if (shop.lat && shop.lng) {
     const distM = haversine(myPos.lat, myPos.lng, shop.lat, shop.lng);
     if (distM > 1000) {
-      showToast(_t('shop_too_far', Math.round(distM / 100) / 10), 'warn');
+      showToast(isVirtualMode()
+        ? `Your character is ${Math.round(distM / 100) / 10}km away. Walk closer to use this shop.`
+        : _t('shop_too_far', Math.round(distM / 100) / 10), 'warn');
       return;
     }
   }
@@ -3919,15 +3960,19 @@ async function _execLevelUpShop(shop) {
 }
 
 async function _execShopBuy(shopId, itemId, itemName, price, qty) {
-  const pos = _ctx?.gpsPos; // 반드시 실제 GPS 위치 사용
+  const pos = isVirtualMode() ? _ctx?.lastPos : _ctx?.gpsPos;
   if (!pos?.lat || !pos?.lng) {
-    showToast(_t('shop_gps_wait'), 'warn');
+    showToast(isVirtualMode()
+      ? 'Move your character near the shop first (tap the map).'
+      : _t('shop_gps_wait'), 'warn');
     return;
   }
   if (_shopCurrentData?.lat && _shopCurrentData?.lng) {
     const distM = haversine(pos.lat, pos.lng, _shopCurrentData.lat, _shopCurrentData.lng);
     if (distM > 1000) {
-      showToast(_t('shop_too_far', Math.round(distM / 100) / 10), 'warn');
+      showToast(isVirtualMode()
+        ? `Your character is ${Math.round(distM / 100) / 10}km away. Walk closer to buy.`
+        : _t('shop_too_far', Math.round(distM / 100) / 10), 'warn');
       return;
     }
   }
@@ -4070,15 +4115,32 @@ $('btnShopAdminSave')?.addEventListener?.('click', async () => {
   const name     = $('shopAdminShopName')?.value?.trim();
   const type     = $('shopAdminShopType')?.value;
   const items    = _collectShopAdminItems();
-  if (!name) { alert('상점 이름을 입력하세요'); return; }
+  if (!name) { alert('Please enter a shop name.'); return; }
+
+  // 5km 반경 내 동일 카테고리 중복 검사
+  const shopData = getShops().find(s => s.id === shopId);
+  const lat = shopData?.lat, lng = shopData?.lng;
+  if (lat && lng) {
+    const conflict = getShops().find(s =>
+      s.id !== shopId && s.type === type &&
+      haversine(lat, lng, s.lat, s.lng) <= 5000
+    );
+    if (conflict) {
+      alert(
+        `⛔ Cannot place this shop here.\n\n` +
+        `A "${type}" shop already exists within 5km:\n"${conflict.name}"\n\n` +
+        `Only one shop per category is allowed within a 5km radius.`
+      );
+      return;
+    }
+  }
+
   try {
-    await httpsCallable(functions, 'adminSaveShop')({ shopId, name, type, items,
-      lat: getShops().find(s => s.id === shopId)?.lat,
-      lng: getShops().find(s => s.id === shopId)?.lng });
+    await httpsCallable(functions, 'adminSaveShop')({ shopId, name, type, items, lat, lng });
     await loadShops();
     $('shopAdminModal')?.classList.remove('open');
     showToast(_t('shop_admin_saved'), 'success');
-  } catch (err) { alert('저장 실패: ' + err.message); }
+  } catch (err) { alert('Save failed: ' + err.message); }
 });
 
 $('btnShopAdminDelete')?.addEventListener?.('click', async () => {
@@ -4833,75 +4895,86 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ── 체험 탭 UI 초기화 ─────────────────────────────────────────────────────────
-function _initMyMapUI() {
-  const btnMyMap    = document.getElementById('btnMyMap');
-  const panel       = document.getElementById('myMapPanel');
-  const modeBar     = document.getElementById('myMapModeBar');
-  const cancelBtn   = document.getElementById('myMapCancelBtn');
-  const itemBtns    = document.querySelectorAll('.mymap-item-btn');
-  if (!btnMyMap || !panel) return;
+// ── 첫 방문 Virtual Mode 안내 ─────────────────────────────────────────────
+function _initVirtualModeGuide() {
+  const KEY = 'jmp_vm_guide_v1';
+  try { if (localStorage.getItem(KEY)) return; } catch { return; }
 
-  let _activePlaceKey = null;
+  // HUD가 Google Maps Custom Control로 렌더될 때까지 대기
+  setTimeout(() => {
+    const btn = document.getElementById('btnVirtualMode');
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    if (!rect.width) return;
 
-  function _setPlaceKey(key) {
-    _activePlaceKey = key;
-    itemBtns.forEach(b => b.classList.toggle('active', b.dataset.type === key));
-    setMyMapPlaceMode(key);
-    if (key) {
-      const def = document.querySelector(`.mymap-item-btn[data-type="${key}"] span`);
-      modeBar.textContent = `${def?.textContent || ''} 배치 중 — 지도를 탭하세요`;
-      modeBar.classList.remove('hidden');
-    } else {
-      modeBar.classList.add('hidden');
+    // 버튼 기준 오른쪽 정렬, 버튼 바로 위에 배치
+    const right  = Math.max(4, window.innerWidth  - rect.right);
+    const bottom = Math.max(4, window.innerHeight - rect.top + 12);
+
+    const el = document.createElement('div');
+    el.id = 'vmGuide';
+    el.style.cssText = `position:fixed;z-index:10000;right:${right}px;bottom:${bottom}px;
+      display:flex;flex-direction:column;align-items:flex-end;cursor:pointer;`;
+
+    el.innerHTML = `
+<style>
+#vmGuide .vg-box {
+  background:#0f172a; border:2px solid #7c3aed; border-radius:14px;
+  padding:13px 15px; max-width:210px;
+  box-shadow:0 6px 28px rgba(124,58,237,.55);
+  font-size:12px; color:#e2e8f0; line-height:1.65;
+}
+#vmGuide .vg-title {
+  color:#a78bfa; font-weight:800; font-size:13px;
+  display:block; margin-bottom:5px;
+}
+#vmGuide .vg-close {
+  float:right; font-size:11px; color:#475569;
+  background:none; border:none; cursor:pointer; padding:0; margin-left:6px;
+}
+#vmGuide .vg-arrow {
+  font-size:26px; text-align:right; padding-right:10px; line-height:1;
+  animation: vgBounce .55s ease-in-out infinite alternate;
+  margin-top:3px;
+}
+@keyframes vgBounce {
+  from { transform:translateY(0); }
+  to   { transform:translateY(9px); }
+}
+#btnVirtualMode.vg-glow {
+  animation: vgPulse .9s ease-in-out infinite alternate;
+}
+@keyframes vgPulse {
+  from { box-shadow:0 0 6px 2px rgba(124,58,237,.55); }
+  to   { box-shadow:0 0 16px 7px rgba(124,58,237,.9); }
+}
+</style>
+<div class="vg-box">
+  <button class="vg-close" id="vmGuideClose">✕</button>
+  <span class="vg-title">🌍 Tap here to Warp!</span>
+  Turn off GPS, select a shop, and your
+  character will teleport there.<br>
+  Hunt monsters &amp; collect treasures
+  within the <strong style="color:#a78bfa;">5km radius</strong>.
+</div>
+<div class="vg-arrow">👇</div>`;
+
+    document.body.appendChild(el);
+    btn.classList.add('vg-glow');
+
+    function dismiss() {
+      el.remove();
+      btn.classList.remove('vg-glow');
+      try { localStorage.setItem(KEY, '1'); } catch {}
     }
-  }
 
-  // HUD 버튼 토글
-  btnMyMap.addEventListener('click', async () => {
-    if (isMyMapActive()) {
-      deactivateMyMap();
-      _setPlaceKey(null);
-      panel.classList.remove('open');
-      btnMyMap.classList.remove('mymap-on');
-    } else {
-      panel.classList.add('open');
-      btnMyMap.classList.add('mymap-on');
-      await activateMyMap();
-    }
-  });
-
-  // 아이템 타입 버튼 클릭
-  itemBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const key = btn.dataset.type;
-      _setPlaceKey(_activePlaceKey === key ? null : key);
+    el.addEventListener('click', dismiss);
+    document.getElementById('vmGuideClose')?.addEventListener('click', e => {
+      e.stopPropagation(); dismiss();
     });
-  });
-
-  // ✕ 닫기 버튼
-  cancelBtn?.addEventListener('click', closePanel);
-
-  // 패널 바깥 클릭 시 닫기
-  document.addEventListener('click', (e) => {
-    if (!panel.classList.contains('open')) return;
-    if (panel.contains(e.target) || e.target === btnMyMap) return;
-    closePanel();
-  }, { passive: true });
-
-  // 아래로 스와이프 시 닫기
-  let _touchStartY = 0;
-  panel.addEventListener('touchstart', (e) => { _touchStartY = e.touches[0].clientY; }, { passive: true });
-  panel.addEventListener('touchend', (e) => {
-    if (e.changedTouches[0].clientY - _touchStartY > 60) closePanel();
-  }, { passive: true });
-
-  function closePanel() {
-    deactivateMyMap();
-    _setPlaceKey(null);
-    panel.classList.remove('open');
-    btnMyMap.classList.remove('mymap-on');
-  }
+    btn.addEventListener('click', dismiss, { once: true });
+    setTimeout(dismiss, 15000); // 15초 후 자동 닫힘
+  }, 1400);
 }
 
 init();

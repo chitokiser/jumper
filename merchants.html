@@ -2025,7 +2025,7 @@
         <button id="btnArScan" class="map-hud-btn" title="AR Treasure Scanner">📷</button>
         <button id="btnRegisterTreasure" class="map-hud-btn" title="내 보물 숨기기 / 내 보물 목록">📍</button>
         <button id="btnUserPlaceShop" class="map-hud-btn" title="배치 상점 — GP로 보물/몬스터/타워 배치">🏪</button>
-        <button id="btnMyMap" class="map-hud-btn" title="체험 탭 — 나만 보이는 보물/몬스터 배치">🧪</button>
+        <button id="btnVirtualMode" class="map-hud-btn" title="Virtual Explore Mode — 상점 워프 원격 탐험">🌍</button>
         <button id="btnFullscreen" class="map-hud-btn" title="Toàn màn hình">⛶</button>
         <div style="position:relative;">
           <button id="skillBtnMiniGame" class="map-hud-btn" title="미니게임">🕹️</button>
@@ -2583,169 +2583,6 @@
                  border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer;">✅ 배치 확인</button>
       </div>
     </div>
-  </div>
-
-  <!-- ══ 체험 탭 패널 ══════════════════════════════════════════════════════ -->
-  <style>
-    /* 체험 탭 패널 */
-    #myMapPanel {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      z-index: 800;
-      background: #1e1e2e;
-      border-top: 1px solid #2d2d44;
-      border-radius: 18px 18px 0 0;
-      padding: 14px 16px 24px;
-      transform: translateY(100%);
-      transition: transform 0.28s cubic-bezier(.4,0,.2,1);
-      max-height: 60vh;
-      overflow-y: auto;
-    }
-    #myMapPanel.open { transform: translateY(0); }
-
-    .mymap-handle {
-      width: 36px; height: 4px;
-      background: #4b5563;
-      border-radius: 2px;
-      margin: 0 auto 12px;
-    }
-    .mymap-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-    .mymap-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: #e5e7eb;
-    }
-    #myMapCount {
-      font-size: 12px;
-      color: #6b7280;
-      background: #111827;
-      border-radius: 20px;
-      padding: 2px 10px;
-    }
-    .mymap-mode-bar {
-      font-size: 12px;
-      color: #f59e0b;
-      background: rgba(245,158,11,.1);
-      border: 1px solid rgba(245,158,11,.3);
-      border-radius: 8px;
-      padding: 6px 10px;
-      margin-bottom: 10px;
-      text-align: center;
-    }
-    .mymap-mode-bar.hidden { display: none; }
-
-    .mymap-section-label {
-      font-size: 11px;
-      color: #6b7280;
-      font-weight: 600;
-      letter-spacing: .5px;
-      text-transform: uppercase;
-      margin: 10px 0 6px;
-    }
-    .mymap-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    .mymap-item-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 8px 4px;
-      background: #111827;
-      border: 2px solid transparent;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: border-color .15s, background .15s;
-    }
-    .mymap-item-btn img {
-      width: 32px;
-      height: 32px;
-      object-fit: contain;
-    }
-    .mymap-item-btn span {
-      font-size: 10px;
-      color: #9ca3af;
-      text-align: center;
-      line-height: 1.2;
-    }
-    .mymap-item-btn.active {
-      border-color: #3b82f6;
-      background: rgba(59,130,246,.12);
-    }
-    .mymap-item-btn.active span { color: #60a5fa; }
-
-    .mymap-cancel-btn {
-      width: 100%;
-      margin-top: 10px;
-      padding: 9px 0;
-      background: #374151;
-      color: #d1d5db;
-      border: none;
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    #btnMyMap.mymap-on { background: #3b82f6; color: #fff; }
-  </style>
-
-  <div id="myMapPanel">
-    <div class="mymap-handle"></div>
-    <div class="mymap-header">
-      <div class="mymap-title">🧪 체험 탭</div>
-      <div id="myMapCount">0 / 50</div>
-    </div>
-
-    <div class="mymap-mode-bar hidden" id="myMapModeBar">
-      지도를 탭해서 배치 · 다른 유형 선택 시 변경
-    </div>
-
-    <div class="mymap-section-label">보물</div>
-    <div class="mymap-grid" id="myMapTreasureGrid">
-      <button class="mymap-item-btn" data-type="treasure1">
-        <img src="/assets/images/item/box.png" alt="">
-        <span>보물박스</span>
-      </button>
-    </div>
-
-    <div class="mymap-section-label">몬스터</div>
-    <div class="mymap-grid" id="myMapMonsterGrid">
-      <button class="mymap-item-btn" data-type="monster_orc">
-        <img src="/assets/images/monsters/orc/ORK_01_IDLE_000.png" alt="">
-        <span>오크</span>
-      </button>
-      <button class="mymap-item-btn" data-type="monster_orc2">
-        <img src="/assets/images/monsters/orc2/ORK_02_IDLE_000.png" alt="">
-        <span>오크2</span>
-      </button>
-      <button class="mymap-item-btn" data-type="monster_orc3">
-        <img src="/assets/images/monsters/orc3/ORK_03_IDLE_000.png" alt="">
-        <span>오크3</span>
-      </button>
-      <button class="mymap-item-btn" data-type="monster_pirate">
-        <img src="/assets/images/monsters/pirate/1_entity_000_ATTACK_000.png" alt="">
-        <span>해적</span>
-      </button>
-      <button class="mymap-item-btn" data-type="monster_slime">
-        <img src="/assets/images/monsters/22.png" alt="">
-        <span>슬라임</span>
-      </button>
-      <button class="mymap-item-btn" data-type="monster_goblin">
-        <img src="/assets/images/monsters/23.png" alt="">
-        <span>고블린</span>
-      </button>
-    </div>
-
-    <button class="mymap-cancel-btn" id="myMapCancelBtn">✕ 닫기</button>
   </div>
 
 <!-- ══════════════════════════════════════════════════════════════════
@@ -3385,7 +3222,7 @@
       <p style="font-size:13px;line-height:1.7;color:var(--gh-text);margin:0 0 14px;">
         처음 오신 분은 <strong style="color:var(--gh-gold);">게임코인</strong>이 필요합니다.<br>
         <span style="color:var(--gh-muted);font-size:12px;">
-          보물찾기 체험판으로 먼저 게임코인을 모으고,
+          🌍 Start <strong style="color:var(--gh-gold);">Hunt &amp; Hide</strong> — warp to any shop and explore,
           온체인 등록으로 <strong style="color:var(--gh-green);">1,000 GP 무상</strong> 수령 후
           다른 게임에 참여하세요.
         </span>
@@ -3400,13 +3237,13 @@
           border-radius:10px;padding:10px 4px;">
           <span style="font-size:22px;line-height:1;">🗺️</span>
           <span style="font-family:var(--gh-mono);font-size:8px;color:var(--gh-gold);letter-spacing:.08em;">STEP 1</span>
-          <span style="font-size:11px;font-weight:700;color:var(--gh-text);line-height:1.3;">보물찾기<br>체험판</span>
-          <button onclick="ghEnterGame('trial')" style="
+          <span style="font-size:11px;font-weight:700;color:var(--gh-text);line-height:1.3;">Hunt<br>&amp; Hide</span>
+          <button onclick="ghEnterGame('treasure')" style="
             width:100%;margin-top:2px;padding:7px 2px;
             background:linear-gradient(135deg,#d97706,#f59e0b);
             color:#000;border:none;border-radius:7px;
             font-size:11px;font-weight:900;cursor:pointer;">
-            ▶ 무료시작
+            ▶ 즉시시작
           </button>
         </div>
 
@@ -3453,24 +3290,6 @@
       </div>
       <div class="gh-grid">
 
-        <!-- Card 0: 보물찾기 체험판 (신규 유저 시작) -->
-        <div class="gh-card" onclick="ghEnterGame('trial')" style="border-color:rgba(251,191,36,.45);box-shadow:0 0 18px rgba(251,191,36,.12)">
-          <div class="gh-card-img" style="background:linear-gradient(135deg,#1a1000,#2d1f00);display:flex;align-items:center;justify-content:center;font-size:48px;">🗺️</div>
-          <div class="gh-card-corner"></div>
-          <span class="gh-badge" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:900;">★ 신규 시작</span>
-          <div class="gh-card-body">
-            <div class="gh-card-name">보물찾기<br>체험판</div>
-            <div class="gh-card-desc">// GP 0원으로 즉시 시작<br>// 내 지도에 보물·몬스터 배치<br>// 수집하여 GP 획득</div>
-            <div style="font-family:var(--gh-mono);font-size:9px;color:#f59e0b;margin-top:6px;line-height:1.6;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:6px;padding:5px 8px;">
-              ⚠ 다른 미니게임은 GP가 필요합니다<br>체험판으로 먼저 GP를 모으세요!
-            </div>
-          </div>
-          <div class="gh-card-foot">
-            <button class="gh-btn-play" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#000;font-weight:900;" onclick="event.stopPropagation();ghEnterGame('trial')">▶ 무료 체험</button>
-            <button class="gh-btn-info" title="게임 정보" onclick="event.stopPropagation()">ℹ</button>
-          </div>
-        </div>
-
         <!-- Card 0b: 기억력 게임 -->
         <div class="gh-card" onclick="ghEnterGame('memory')">
           <div class="gh-card-img" style="background:linear-gradient(135deg,#0a0a1e,#1a1040);display:flex;align-items:center;justify-content:center;font-size:48px;">🧠</div>
@@ -3491,7 +3310,7 @@
           </div>
         </div>
 
-        <!-- Card 1: 보물찾기 & 던전 -->
+        <!-- Card 1: Hunt & Hide -->
         <div class="gh-card" onclick="ghEnterGame('treasure')">
           <div class="gh-card-img" style="background:linear-gradient(135deg,#0a1f0a,#0d2d1a,#1a3d20);display:flex;align-items:center;justify-content:center;font-size:44px;position:relative;overflow:hidden;">
             🗺️
@@ -3501,8 +3320,8 @@
           <div class="gh-card-corner"></div>
           <span class="gh-badge gh-badge-live">LIVE</span>
           <div class="gh-card-body">
-            <div class="gh-card-name">보물찾기<br>&amp; 던전</div>
-            <div class="gh-card-desc">// GPS-based treasure hunt<br>// dungeon survival combat</div>
+            <div class="gh-card-name">Hunt<br>&amp; Hide</div>
+            <div class="gh-card-desc">// Warp · explore · hunt monsters<br>// Hide &amp; find treasures on the map</div>
             <div class="gh-card-reward">+120 GP / day</div>
             <div class="gh-card-players">
               <div class="gh-players-dot"></div>
@@ -3638,15 +3457,6 @@
   // 게임 진입
   window.ghEnterGame = function (game) {
     if (game === 'treasure') { hideHub(); }
-    else if (game === 'trial') {
-      hideHub();
-      // 지도 뷰로 전환 후 체험 탭 패널 열기
-      setTimeout(() => {
-        const panel = document.getElementById('myMapPanel');
-        if (panel) { panel.classList.add('open'); }
-        else { document.getElementById('btnMyMap')?.click(); }
-      }, 150);
-    }
     else if (game === 'memory')   { location.href = '/memory.html'; }
     else if (game === 'race')     { location.href = '/monsterrace.html'; }
     else if (game === 'bow')      { location.href = '/bow.html'; }
@@ -3769,17 +3579,12 @@
       onboard_btn:   '▶ Start',
       section_games: '// game_universe',
       section_econ:  '// economy_layer',
-      trial_badge:   '★ New Start',
-      trial_name:    'Treasure Hunt<br>Trial',
-      trial_desc:    '// Start immediately for free<br>// Place treasure &amp; monsters<br>// Collect to earn GP',
-      trial_warn:    '⚠ Other mini-games require GP<br>Earn GP with trial first!',
-      trial_btn:     '▶ Free Trial',
       memory_name:   'Memory<br>Game',
       memory_desc:   '// Card matching mini-game<br>// Faster = more GP',
       memory_login:  'Play without login',
       memory_btn:    '▶ PLAY',
-      treasure_name: 'Treasure Hunt<br>&amp; Dungeon',
-      treasure_desc: '// GPS-based treasure hunt<br>// dungeon survival combat',
+      treasure_name: 'Hunt<br>&amp; Hide',
+      treasure_desc: '// Warp · explore · hunt monsters<br>// Hide &amp; find treasures on the map',
       treasure_btn:  '▶ ENTER MAP',
       race_desc:     '// realtime 7-player race<br>// skill items &amp; traps',
       race_btn:      '▶ RACE NOW',
@@ -3840,8 +3645,8 @@
       memory_desc:   '// 카드 매칭 미니게임<br>// 빠를수록 더 많은 GP',
       memory_login:  '로그인 없이 플레이 가능',
       memory_btn:    '▶ PLAY',
-      treasure_name: '보물찾기<br>&amp; 던전',
-      treasure_desc: '// GPS 기반 보물찾기<br>// 던전 생존 전투',
+      treasure_name: 'Hunt<br>&amp; Hide',
+      treasure_desc: '// 워프 · 탐험 · 몬스터 사냥<br>// 지도에 보물 숨기기 &amp; 찾기',
       treasure_btn:  '▶ ENTER MAP',
       race_desc:     '// 실시간 7인 레이스<br>// 스킬 아이템 &amp; 함정',
       race_btn:      '▶ RACE NOW',
@@ -3902,8 +3707,8 @@
       memory_desc:   '// Mini-game ghép thẻ<br>// Nhanh hơn = nhiều GP hơn',
       memory_login:  'Chơi không cần đăng nhập',
       memory_btn:    '▶ CHƠI',
-      treasure_name: 'Tìm Kho Báu<br>&amp; Hầm Ngục',
-      treasure_desc: '// Săn kho báu theo GPS<br>// Chiến đấu sinh tồn trong hầm',
+      treasure_name: 'Hunt<br>&amp; Hide',
+      treasure_desc: '// Dịch chuyển · khám phá · săn quái<br>// Giấu &amp; tìm kho báu trên bản đồ',
       treasure_btn:  '▶ VÀO BẢN ĐỒ',
       race_desc:     '// Đua 7 người thời gian thực<br>// Vật phẩm kỹ năng &amp; bẫy',
       race_btn:      '▶ ĐUA NGAY',
@@ -3975,19 +3780,9 @@
     if (secTitles[0]) secTitles[0].textContent = t.section_games;
     if (secTitles[1]) secTitles[1].textContent = t.section_econ;
 
-    // ── 카드: 보물찾기 체험판 ─────────────────────────────────────────────
-    const cards = document.querySelectorAll('.gh-card');
-    const c0 = cards[0]; // trial
-    if (c0) {
-      const badge = c0.querySelector('.gh-badge'); if (badge) badge.textContent = t.trial_badge;
-      const name  = c0.querySelector('.gh-card-name'); ih(name, t.trial_name);
-      const desc  = c0.querySelector('.gh-card-desc'); ih(desc, t.trial_desc);
-      const warn  = c0.querySelector('[style*="f59e0b"]'); ih(warn, t.trial_warn);
-      const btn   = c0.querySelector('.gh-btn-play'); tc(btn, t.trial_btn);
-    }
-
     // ── 카드: 기억력 게임 ─────────────────────────────────────────────────
-    const c1 = cards[1];
+    const cards = document.querySelectorAll('.gh-card');
+    const c1 = cards[0];
     if (c1) {
       const name  = c1.querySelector('.gh-card-name'); ih(name, t.memory_name);
       const desc  = c1.querySelector('.gh-card-desc'); ih(desc, t.memory_desc);
@@ -3996,7 +3791,7 @@
     }
 
     // ── 카드: 보물찾기 & 던전 ─────────────────────────────────────────────
-    const c2 = cards[2];
+    const c2 = cards[1];
     if (c2) {
       const name = c2.querySelector('.gh-card-name'); ih(name, t.treasure_name);
       const desc = c2.querySelector('.gh-card-desc'); ih(desc, t.treasure_desc);
@@ -4005,7 +3800,7 @@
     }
 
     // ── 카드: Monster Race ────────────────────────────────────────────────
-    const c3 = cards[3];
+    const c3 = cards[2];
     if (c3) {
       const desc = c3.querySelector('.gh-card-desc'); ih(desc, t.race_desc);
       const btn  = c3.querySelector('.gh-btn-play'); tc(btn, t.race_btn);
@@ -4013,7 +3808,7 @@
     }
 
     // ── 카드: 몬스터 수성 ─────────────────────────────────────────────────
-    const c4 = cards[4];
+    const c4 = cards[3];
     if (c4) {
       const name = c4.querySelector('.gh-card-name'); ih(name, t.conquest_name);
       const desc = c4.querySelector('.gh-card-desc'); ih(desc, t.conquest_desc);
@@ -4022,7 +3817,7 @@
     }
 
     // ── 카드: 이어달리기 ──────────────────────────────────────────────────
-    const c5 = cards[5];
+    const c5 = cards[4];
     if (c5) {
       const name = c5.querySelector('.gh-card-name'); ih(name, t.relay_name);
       const desc = c5.querySelector('.gh-card-desc'); ih(desc, t.relay_desc);
@@ -4031,7 +3826,7 @@
     }
 
     // ── 카드: 활쏘기 ──────────────────────────────────────────────────────
-    const c6 = cards[6];
+    const c6 = cards[5];
     if (c6) {
       const name = c6.querySelector('.gh-card-name'); ih(name, t.bow_name);
       const desc = c6.querySelector('.gh-card-desc'); ih(desc, t.bow_desc);

@@ -98,10 +98,10 @@ const SHOP_EXIT_M  = 30;  // 상점 이탈 판정 반경(m) — GPS 노이즈로
 const SHOP_ICONS  = { weapon_armor: '⚔️', potion: '🧪', misc: '🛍️' };
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
-const SKILL_MP_COST    = 100;
-const SKILL_RANGE_M    = 40;
-const WIND_RANGE_M     = 30;   // 회오리 바람 전용 범위
-const METEOR_RANGE_M   = 60;   // 유성 전용 범위
+const SKILL_MP_COST      = 100;
+const SKILL_RANGE_M      = 40;
+const WIND_RANGE_M       = 30;
+const METEOR_RANGE_M     = 60;
 const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오브제 표시
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000, wind: 20000, meteor: 40000, heal: 30000 };
 const SKILL_FREEZE_MS = 20000;
@@ -1107,6 +1107,17 @@ export function healMp(amount) {
   updateSkillBar();
   savePlayerState();
 }
+
+export function spendPlayerMp(amount) {
+  if (_player.mp < amount) return false;
+  _player.mp -= amount;
+  updateCombatHud();
+  updateSkillBar();
+  savePlayerState();
+  return true;
+}
+export function getPlayerMp()    { return _player.mp; }
+export function getPlayerMaxMp() { return _player.maxMp; }
 
 export function healHp(amount) {
   if (_isDead) return;
@@ -2683,6 +2694,22 @@ export function enterAdminPlaceMode(type) {
       const typeMap = { shop_weapon_armor: 'weapon_armor', shop_potion: 'potion', shop_misc: 'misc' };
       const shopType = typeMap[_adminPlaceMode];
       const defaultNames = { weapon_armor: '무기/방어구 상점', potion: '약물 상점', misc: '잡템 상점' };
+
+      // 배치 전 5km 내 동일 카테고리 중복 검사
+      const conflict = _shops.find(s =>
+        s.active && s.type === shopType &&
+        haversine(lat, lng, s.lat, s.lng) <= 5000
+      );
+      if (conflict) {
+        alert(
+          `⛔ Cannot place shop here.\n\n` +
+          `A "${shopType}" shop already exists within 5km:\n"${conflict.name}"\n\n` +
+          `Only one shop per category is allowed within a 5km radius.`
+        );
+        exitAdminPlaceMode();
+        return;
+      }
+
       const name = prompt('상점 이름:', defaultNames[shopType]);
       if (!name) { exitAdminPlaceMode(); return; }
       try {
