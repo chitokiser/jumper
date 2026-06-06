@@ -7,6 +7,13 @@
 - 변경 20개↑ → git push + `cd game-server && railway up`
 - Functions 배포: `firebase deploy --only functions` (단일 함수 배포 금지)
 
+## ⚠️ 전체화면 모달 필수 규칙 (반복 발생 버그)
+- **모든 모달/오버레이는 반드시 `data-fs-modal` 속성 부착**
+- 전체화면 진입 시 `_moveModalsToFs()`가 이 속성을 가진 요소를 fullscreen 컨테이너로 이동
+- 없으면 전체화면에서 모달이 보이지 않음 (body에 고정되어 fullscreen 레이어 아래 숨겨짐)
+- `FS_MODALS` 배열(merchants.js)에 ID를 추가하거나 `data-fs-modal` 속성 둘 중 하나 필수
+- **동적으로 생성하는 모달도 예외 없이 적용**
+
 ---
 
 ## 구조

@@ -273,6 +273,7 @@ const FS_MODALS = [
   'anonBadge',
   // 누락 보완
   'levelupOverlay', 'voucherOrderModal', 'tutModal', 'lb-overlay', 'monsterStatModal',
+  'ownerItemModal',
 ];
 
 // 풀스크린 컨테이너 밖에 있는 fixed 요소를 안으로 이동시키지 않으면
@@ -3804,6 +3805,12 @@ function _renderShopModalBody() {
             ⬆️ 레벨업 (Lv.${shop.level ?? 1} → ${(shop.level ?? 1) + 1})
             <span style="font-weight:400;opacity:.8">(💰 ${lvlCost.toLocaleString()} 골드)</span>
           </button>
+          <button id="shopEditItemsBtn"
+            style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:none;
+                   font-weight:700;font-size:13px;cursor:pointer;
+                   background:linear-gradient(135deg,#0369a1,#0284c7);color:#fff;">
+            📦 판매 아이템 등록/수정
+          </button>
           <button id="shopSalesBtn"
             style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid #374151;
                    background:transparent;color:#9ca3af;font-size:13px;font-weight:600;cursor:pointer">
@@ -3864,6 +3871,9 @@ function _renderShopModalBody() {
 
   // 매출 실적
   $('shopSalesBtn')?.addEventListener('click', () => _loadShopSales(shop.id));
+
+  // 소유자 아이템 등록/수정
+  $('shopEditItemsBtn')?.addEventListener('click', () => _openOwnerItemEditor(shop));
 }
 
 function closeShopModal() {
@@ -4975,6 +4985,149 @@ function _initVirtualModeGuide() {
     btn.addEventListener('click', dismiss, { once: true });
     setTimeout(dismiss, 15000); // 15초 후 자동 닫힘
   }, 1400);
+}
+
+// ── 상점 소유자 아이템 편집기 ─────────────────────────────────────────────────
+function _openOwnerItemEditor(shop) {
+  // 기존 모달 재사용
+  let modal = document.getElementById('ownerItemModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ownerItemModal';
+    modal.setAttribute('data-fs-modal', ''); // 전체화면에서도 표시되도록
+    modal.style.cssText = `position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.7);
+      display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;`;
+    modal.innerHTML = `
+      <div style="background:#111827;border:1px solid #374151;border-radius:14px;
+                  padding:20px;width:380px;max-width:95vw;flex-shrink:0;margin:auto 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="color:#e2e8f0;font-weight:800;font-size:15px;">📦 상점 관리</div>
+          <button id="ownerItemClose" style="background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;">✕</button>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:5px;">상점 이름</div>
+          <input id="ownerShopName" type="text" maxlength="30" placeholder="상점 이름"
+            style="width:100%;background:#0f172a;color:#e5e7eb;border:1px solid #374151;
+                   border-radius:8px;padding:9px 12px;font-size:13px;box-sizing:border-box;"/>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">판매 아이템</div>
+        <div id="ownerItemList" style="margin-bottom:12px;"></div>
+        <button id="ownerItemAddRow"
+          style="width:100%;padding:9px;background:#1e293b;color:#94a3b8;border:1px dashed #334155;
+                 border-radius:8px;font-size:13px;cursor:pointer;margin-bottom:12px;">
+          + 아이템 추가
+        </button>
+        <div id="ownerItemMsg" style="font-size:12px;min-height:16px;margin-bottom:8px;"></div>
+        <button id="ownerItemSave"
+          style="width:100%;padding:12px;background:linear-gradient(135deg,#0369a1,#0284c7);
+                 color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+          💾 저장
+        </button>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+  }
+
+  modal.style.display = 'flex';
+
+  const list    = document.getElementById('ownerItemList');
+  const msg     = document.getElementById('ownerItemMsg');
+  const addBtn  = document.getElementById('ownerItemAddRow');
+  const saveBtn = document.getElementById('ownerItemSave');
+  const closeBtn = document.getElementById('ownerItemClose');
+
+  // 카테고리별 아이템 접두사 필터
+  const PREFIXES = {
+    potion:       ['potion_', 'revive_'],
+    weapon_armor: ['weapon_', 'armor_', 'helm_', 'sword_', 'bow_', 'shield_', 'armo_', 'legs_', 'glov_', 'boot_'],
+    misc:         [],
+    shop_potion:  ['potion_', 'revive_'],
+    shop_weapon_armor: ['weapon_', 'armor_'],
+    shop_misc:    [],
+  };
+  const shopType  = shop.type || 'misc';
+  const prefixes  = PREFIXES[shopType] || [];
+  const catalog   = _buildItemCatalog();
+  const filtered  = Object.entries(catalog).filter(([id]) =>
+    !prefixes.length || prefixes.some(p => id.startsWith(p))
+  );
+
+  const S = 'background:#0f172a;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:5px 8px;font-size:12px;width:100%;box-sizing:border-box;';
+
+  function _makeRow(it = null) {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 70px 28px;gap:6px;margin-bottom:6px;align-items:center;';
+    const opts = filtered.map(([id, d]) => {
+      const sel = it?.itemId === id ? ' selected' : '';
+      return `<option value="${escHtml(id)}"${sel}>${escHtml(d.name)} (${escHtml(id)})</option>`;
+    }).join('');
+    div.innerHTML = `
+      <select style="${S}"><option value="">-- 아이템 선택 --</option>${opts}</select>
+      <input type="number" placeholder="가격" value="${it?.price ?? 100}" min="0"
+             style="${S}">
+      <input type="number" placeholder="-1=무한" value="${it?.stock ?? -1}" min="-1"
+             style="${S}">
+      <button style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 6px;cursor:pointer;font-size:13px;">✕</button>`;
+    div.querySelector('button').addEventListener('click', () => div.remove());
+    return div;
+  }
+
+  // 현재 상점 이름 세팅
+  const nameInput = document.getElementById('ownerShopName');
+  if (nameInput) nameInput.value = shop.name || '';
+
+  // 기존 아이템 렌더
+  list.innerHTML = '';
+  (shop.items || []).forEach(it => list.appendChild(_makeRow(it)));
+
+  addBtn.onclick = () => list.appendChild(_makeRow());
+
+  closeBtn.onclick = () => { modal.style.display = 'none'; };
+
+  saveBtn.onclick = async () => {
+    msg.style.color = '#6b7280'; msg.textContent = '저장 중…';
+    saveBtn.disabled = true;
+
+    const rows = list.querySelectorAll('div');
+    const items = [];
+    for (const row of rows) {
+      const itemId = row.querySelector('select')?.value?.trim();
+      if (!itemId) continue;
+      const name  = catalog[itemId]?.name || itemId;
+      const price = Number(row.querySelectorAll('input')[0]?.value ?? 0);
+      const stock = Number(row.querySelectorAll('input')[1]?.value ?? -1);
+      if (isNaN(price) || price < 0) { msg.style.color = '#ef4444'; msg.textContent = `가격 오류: ${itemId}`; saveBtn.disabled = false; return; }
+      items.push({ itemId, name, price, stock });
+    }
+
+    try {
+      const newName = document.getElementById('ownerShopName')?.value?.trim() || null;
+      if (newName !== null && newName.length === 0) {
+        msg.style.color = '#ef4444'; msg.textContent = '상점 이름을 입력하세요';
+        saveBtn.disabled = false; return;
+      }
+      await httpsCallable(functions, 'ownerSaveShopItems')({ shopId: shop.id, name: newName, items });
+      msg.style.color = '#22c55e'; msg.textContent = `✅ 저장 완료`;
+      // _shopCurrentData 즉시 갱신 — 다음 편집 시 최신 아이템 목록·이름 반영
+      if (_shopCurrentData && _shopCurrentData.id === shop.id) {
+        _shopCurrentData.items = items;
+        shop.items = items;
+        if (newName) { _shopCurrentData.name = newName; shop.name = newName; }
+        _renderShopModalBody();
+      }
+      // 상점 모달 타이틀 갱신
+      if (newName) {
+        const titleEl = document.querySelector('#shopModal .shop-modal-title, #shopModal [data-shop-name]');
+        if (titleEl) titleEl.textContent = newName;
+      }
+      await loadShops();
+      setTimeout(() => { modal.style.display = 'none'; }, 1200);
+    } catch (e) {
+      msg.style.color = '#ef4444'; msg.textContent = '오류: ' + (e.message || e);
+    } finally {
+      saveBtn.disabled = false;
+    }
+  };
 }
 
 init();

@@ -85,6 +85,23 @@ async function adminSaveShop(uid, data = {}) {
     updatedAt: now,
   };
 
+  // 5km 반경 내 동일 카테고리 중복 검사 (신규 배치 or 위치 변경 시)
+  const nearby = await db.collection('game_shops')
+    .where('active', '==', true)
+    .where('type', '==', type)
+    .get();
+  for (const doc of nearby.docs) {
+    if (doc.id === shopId) continue; // 자기 자신은 제외
+    const s = doc.data();
+    if (!s.lat || !s.lng) continue;
+    if (haversineM(lat, lng, s.lat, s.lng) <= 5000) {
+      throw new HttpsError('already-exists',
+        `⛔ A "${type}" shop already exists within 5km: "${s.name}". ` +
+        `Only one shop per category is allowed within a 5km radius.`
+      );
+    }
+  }
+
   let ref;
   if (shopId) {
     ref = db.collection('game_shops').doc(shopId);
@@ -538,6 +555,54 @@ async function repairShop(uid, { shopId, amount } = {}) {
   return { ok: true, repairHp, cost, newHp: currentHp + repairHp, maxHp };
 }
 
+// ── 상점 소유자: 이름 변경 + 판매 아이템 등록/수정 ───────────────────────────
+async function ownerSaveShopItems(uid, { shopId, name, items = [] } = {}) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
+  if (!Array.isArray(items)) throw new HttpsError('invalid-argument', 'items는 배열이어야 합니다');
+
+  const ref  = db.collection('game_shops').doc(shopId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+
+  const shop = snap.data();
+  const isOwner = shop.ownerUid === uid;
+  const adminOk = await isAdmin(uid);
+  if (!isOwner && !adminOk)
+    throw new HttpsError('permission-denied', '이 상점의 소유자만 수정할 수 있습니다');
+
+  // 이름 유효성 검사
+  const newName = name ? String(name).trim() : null;
+  if (newName !== null && newName.length === 0)
+    throw new HttpsError('invalid-argument', '상점 이름은 비워둘 수 없습니다');
+
+  // 아이템 유효성 검사
+  for (const item of items) {
+    if (!item.itemId || typeof item.itemId !== 'string')
+      throw new HttpsError('invalid-argument', '각 아이템에 itemId가 필요합니다');
+    if (!item.name || typeof item.name !== 'string')
+      throw new HttpsError('invalid-argument', '각 아이템에 name이 필요합니다');
+    if (typeof item.price !== 'number' || item.price < 0)
+      throw new HttpsError('invalid-argument', 'price는 0 이상의 숫자여야 합니다');
+  }
+
+  const cleanItems = items.map(it => ({
+    itemId: String(it.itemId).trim(),
+    name:   String(it.name).trim(),
+    price:  Math.round(Number(it.price)),
+    stock:  typeof it.stock === 'number' ? Math.floor(it.stock) : -1,
+  }));
+
+  const update = {
+    items:     cleanItems,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (newName) update.name = newName;
+
+  await ref.update(update);
+
+  return { ok: true, count: cleanItems.length };
+}
+
 module.exports = {
   adminSaveShop,
   adminDeleteShop,
@@ -550,4 +615,5 @@ module.exports = {
   updateShopAppearance,
   initBattlePlayer,
   adminInitAllPlayers,
+  ownerSaveShopItems,
 };

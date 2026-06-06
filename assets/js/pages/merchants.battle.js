@@ -2283,6 +2283,7 @@ function checkMonsterAttacks() {
                       : 'monster_atk';
       playSound(_atkSound);
       animateMonsterCharge(mob, myLat, myLng, () => {
+        if (_isDead) return; // 비행 중 사망 시 시체 공격 방지
         takeDamage(mob.atk || 10, myLat, myLng);
       });
       _monsterAtkTs[mob.id] = now;
@@ -2306,12 +2307,14 @@ function checkTowerAttacks() {
       if (isCannon) {
         playSound('cannon_shot');
         animateCannonShot(tower.lat, tower.lng, myLat, myLng, () => {
+          if (_isDead) return; // 비행 중 사망 시 시체 공격 방지
           playSound('cannon_hit');
           takeDamage(tower.atk || 80, myLat, myLng);
         });
       } else {
         playSound('tower_shot');
         animateTowerShot(tower.lat, tower.lng, myLat, myLng, () => {
+          if (_isDead) return; // 비행 중 사망 시 시체 공격 방지
           takeDamage(tower.atk || 20, myLat, myLng);
         });
       }
@@ -3299,7 +3302,15 @@ export function hideMyMarker() {
 // ── 상점 시스템 ───────────────────────────────────────────────────────────────
 
 function _makeShopIcon(type, imageUrl) {
-  const url = imageUrl || 'assets/images/shops/arms.png';
+  const TYPE_IMG = {
+    potion:       '/assets/images/shops/shop2.png',
+    shop_potion:  '/assets/images/shops/shop2.png',
+    weapon_armor: '/assets/images/shops/arms.png',
+    shop_weapon_armor: '/assets/images/shops/arms.png',
+    misc:         '/assets/images/shops/castle.png',
+    shop_misc:    '/assets/images/shops/castle.png',
+  };
+  const url = imageUrl || TYPE_IMG[type] || '/assets/images/shops/arms.png';
   return { url, scaledSize: new google.maps.Size(44, 44), anchor: new google.maps.Point(22, 22) };
 }
 

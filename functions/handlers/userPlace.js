@@ -50,19 +50,19 @@ const CATALOG = {
   },
   shop_potion: {
     price: 600000, type: 'shop', label: '약물상점',
-    shopType: 'shop_potion', image: '/assets/images/shops/potion.png',
+    shopType: 'shop_potion', image: '/assets/images/shops/shop2.png',
   },
   shop_weapon: {
     price: 400000, type: 'shop', label: '무기상점',
-    shopType: 'shop_weapon_armor', image: '/assets/images/shops/weapon.png',
+    shopType: 'shop_weapon_armor', image: '/assets/images/shops/arms.png',
   },
   shop_armor: {
     price: 400000, type: 'shop', label: '방어구 상점',
-    shopType: 'shop_weapon_armor', image: '/assets/images/shops/armor.png',
+    shopType: 'shop_weapon_armor', image: '/assets/images/shops/arms.png',
   },
   shop_misc: {
     price: 300000, type: 'shop', label: '잡템상점',
-    shopType: 'shop_misc', image: '/assets/images/shops/misc.png',
+    shopType: 'shop_misc', image: '/assets/images/shops/castle.png',
   },
 };
 
@@ -180,12 +180,27 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
     });
     docId = ref.id;
   } else if (def.type === 'shop') {
+    // 5km 반경 내 동일 카테고리 중복 금지 — 서버 사이드 검증
+    const nearby = await db.collection('game_shops')
+      .where('active', '==', true)
+      .where('type', '==', def.shopType)
+      .get();
+    for (const doc of nearby.docs) {
+      const s = doc.data();
+      if (!s.lat || !s.lng) continue;
+      if (haversineM(Number(lat), Number(lng), s.lat, s.lng) <= 5000) {
+        throw new Error(
+          `⛔ A "${def.shopType}" shop already exists within 5km: "${s.name}". ` +
+          `Only one shop per category is allowed within a 5km radius.`
+        );
+      }
+    }
     const ref = await db.collection('game_shops').add({
       ...base,
       name:  `${nim} ${def.label}${placeNo}`,
       type:  def.shopType,
       image: def.image ?? null,
-      items: [],  // 관리자가 이후 아이템 등록
+      items: [],
     });
     docId = ref.id;
   }

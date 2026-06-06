@@ -69,8 +69,9 @@ export function toggleVirtualMode() {
 // ── MP 비용 ──────────────────────────────────────────────────────────────
 function _calcMpCost(shop) {
   const pos = _ctx.lastPos;
-  if (!pos) return BASE_MP_COST;
-  return Math.round(BASE_MP_COST + _haversine(pos.lat, pos.lng, shop.lat, shop.lng) / 1000);
+  if (!pos) return Math.round(BASE_MP_COST / 10);
+  const distKm = _haversine(pos.lat, pos.lng, shop.lat, shop.lng) / 1000;
+  return Math.round((BASE_MP_COST + distKm) / 10);
 }
 
 // ── 워프 활성화 ──────────────────────────────────────────────────────────
@@ -218,8 +219,8 @@ function _showShopSelector() {
       ? (dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`)
       : '거리 불명';
     const mpCost    = myPos
-      ? Math.round(BASE_MP_COST + _haversine(myPos.lat, myPos.lng, s.lat, s.lng) / 1000)
-      : BASE_MP_COST;
+      ? Math.round((BASE_MP_COST + _haversine(myPos.lat, myPos.lng, s.lat, s.lng) / 1000) / 10)
+      : Math.round(BASE_MP_COST / 10);
     const canAfford = curMp >= mpCost;
     const typeLabel = s.type === 'weapon_armor' ? '⚔️' : s.type === 'potion' ? '🧪' : '🛒';
     const rivals    = _shops.filter(o =>

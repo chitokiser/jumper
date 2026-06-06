@@ -2074,6 +2074,10 @@ exports.adminSaveShop = onCall(wrapError(async (req) => {
   return shopH.adminSaveShop(requireAuth(req), req.data ?? {});
 }));
 
+exports.ownerSaveShopItems = onCall(wrapError(async (req) => {
+  return shopH.ownerSaveShopItems(requireAuth(req), req.data ?? {});
+}));
+
 exports.adminDeleteShop = onCall(wrapError(async (req) => {
   return shopH.adminDeleteShop(requireAuth(req), req.data ?? {});
 }));
