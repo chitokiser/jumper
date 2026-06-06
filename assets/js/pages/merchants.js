@@ -1571,12 +1571,6 @@ async function tryCollect(box) {
       _boxInventory.push({ boxId: box.id, boxName: d.boxName, hiddenBox: box.hiddenBox || false, keyId: box.keyId || null });
     }
     renderBoxInventory();
-    // 인벤토리 자동 열기 — 박스 위치로 스크롤해 즉시 열 수 있도록
-    setTimeout(() => {
-      openInventory();
-      const boxList = $('boxInvList');
-      if (boxList) boxList.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 1800);
     // 보물 발견 생중계
     httpsCallable(functions, 'broadcastGpEvent')({ game: 'treasure_find', amount: 0, label: d.boxName || '보물상자' }).catch(() => {});
   } catch (err) {
