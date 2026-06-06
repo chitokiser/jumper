@@ -177,6 +177,119 @@ export const SPRITE_CONFIGS = {
       respawn: { prefix: 'Idle',   frames: 4, fps: 6,  loop: false },
     },
   },
+
+  // ── Zombie Villager series (55k / 60k / 65k GP) ──────────────────────────
+  // basePath ends at "PNG Sequences/" — prefix includes subdirectory + filename prefix
+  // Spaces in paths work natively via img.src assignment
+  zombie_villager1: {
+    monsterType: 'zombie_villager1',
+    framesMode:  true,
+    basePath:    '/assets/images/villager/Zombie_Villager_1/PNG/PNG Sequences/',
+    displaySize: 65,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'Idle/0_Zombie_Villager_Idle_',                 frames: 10, fps: 7,  loop: true  },
+      walk:    { prefix: 'Running/0_Zombie_Villager_Running_',            frames: 12, fps: 10, loop: true  },
+      attack:  { prefix: 'Run Slashing/0_Zombie_Villager_Run Slashing_', frames: 12, fps: 12, loop: false },
+      hit:     { prefix: 'Hurt/0_Zombie_Villager_Hurt_',                 frames: 12, fps: 12, loop: false },
+      death:   { prefix: 'Dying/0_Zombie_Villager_Dying_',               frames: 15, fps: 8,  loop: false },
+      respawn: { prefix: 'Idle/0_Zombie_Villager_Idle_',                 frames: 6,  fps: 6,  loop: false },
+    },
+  },
+  zombie_villager2: {
+    monsterType: 'zombie_villager2',
+    framesMode:  true,
+    basePath:    '/assets/images/villager/Zombie_Villager_2/PNG/PNG Sequences/',
+    displaySize: 65,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'Idle/0_Zombie_Villager_Idle_',                 frames: 10, fps: 7,  loop: true  },
+      walk:    { prefix: 'Running/0_Zombie_Villager_Running_',            frames: 12, fps: 10, loop: true  },
+      attack:  { prefix: 'Run Slashing/0_Zombie_Villager_Run Slashing_', frames: 12, fps: 12, loop: false },
+      hit:     { prefix: 'Hurt/0_Zombie_Villager_Hurt_',                 frames: 12, fps: 12, loop: false },
+      death:   { prefix: 'Dying/0_Zombie_Villager_Dying_',               frames: 15, fps: 8,  loop: false },
+      respawn: { prefix: 'Idle/0_Zombie_Villager_Idle_',                 frames: 6,  fps: 6,  loop: false },
+    },
+  },
+  zombie_villager3: {
+    monsterType: 'zombie_villager3',
+    framesMode:  true,
+    basePath:    '/assets/images/villager/Zombie_Villager_3/PNG/PNG Sequences/',
+    displaySize: 65,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'Idle/0_Zombie_Villager_Idle_',                 frames: 10, fps: 7,  loop: true  },
+      walk:    { prefix: 'Running/0_Zombie_Villager_Running_',            frames: 12, fps: 10, loop: true  },
+      attack:  { prefix: 'Run Slashing/0_Zombie_Villager_Run Slashing_', frames: 12, fps: 12, loop: false },
+      hit:     { prefix: 'Hurt/0_Zombie_Villager_Hurt_',                 frames: 12, fps: 12, loop: false },
+      death:   { prefix: 'Dying/0_Zombie_Villager_Dying_',               frames: 15, fps: 8,  loop: false },
+      respawn: { prefix: 'Idle/0_Zombie_Villager_Idle_',                 frames: 6,  fps: 6,  loop: false },
+    },
+  },
+
+  // ── Troll (70k GP) ────────────────────────────────────────────────────────
+  troll: {
+    monsterType: 'troll',
+    framesMode:  true,
+    basePath:    '/assets/images/troll/PNG/Animation/Troll1/',
+    displaySize: 85,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'Idle_',   frames: 10, fps: 7,  loop: true  },
+      walk:    { prefix: 'Walk_',   frames: 10, fps: 9,  loop: true  },
+      attack:  { prefix: 'Attack_', frames: 10, fps: 12, loop: false },
+      hit:     { prefix: 'Hurt_',   frames: 10, fps: 12, loop: false },
+      death:   { prefix: 'Dead_',   frames: 10, fps: 8,  loop: false },
+      respawn: { prefix: 'Idle_',   frames: 6,  fps: 6,  loop: false },
+    },
+  },
+
+  // ── Knight series (75k / 80k / 85k GP) ───────────────────────────────────
+  knight1: {
+    monsterType: 'knight1',
+    framesMode:  true,
+    basePath:    '/assets/images/knight/_PNG/1_KNIGHT/',
+    displaySize: 72,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'Knight_01__IDLE_',   frames: 10, fps: 7,  loop: true  },
+      walk:    { prefix: 'Knight_01__WALK_',   frames: 10, fps: 9,  loop: true  },
+      attack:  { prefix: 'Knight_01__ATTACK_', frames: 10, fps: 12, loop: false },
+      hit:     { prefix: 'Knight_01__HURT_',   frames: 10, fps: 12, loop: false },
+      death:   { prefix: 'Knight_01__DIE_',    frames: 10, fps: 8,  loop: false },
+      respawn: { prefix: 'Knight_01__IDLE_',   frames: 6,  fps: 6,  loop: false },
+    },
+  },
+  knight2: {
+    monsterType: 'knight2',
+    framesMode:  true,
+    basePath:    '/assets/images/knight/_PNG/2_KNIGHT/',
+    displaySize: 72,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'Knight_02__IDLE_',   frames: 10, fps: 7,  loop: true  },
+      walk:    { prefix: 'Knight_02__WALK_',   frames: 10, fps: 9,  loop: true  },
+      attack:  { prefix: 'Knight_02__ATTACK_', frames: 10, fps: 12, loop: false },
+      hit:     { prefix: 'Knight_02__HURT_',   frames: 10, fps: 12, loop: false },
+      death:   { prefix: 'Knight_02__DIE_',    frames: 10, fps: 8,  loop: false },
+      respawn: { prefix: 'Knight_02__IDLE_',   frames: 6,  fps: 6,  loop: false },
+    },
+  },
+  knight3: {
+    monsterType: 'knight3',
+    framesMode:  true,
+    basePath:    '/assets/images/knight/_PNG/3_KNIGHT/',
+    displaySize: 72,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'Knight_03__IDLE_',   frames: 10, fps: 7,  loop: true  },
+      walk:    { prefix: 'Knight_03__WALK_',   frames: 10, fps: 9,  loop: true  },
+      attack:  { prefix: 'Knight_03__ATTACK_', frames: 10, fps: 12, loop: false },
+      hit:     { prefix: 'Knight_03__HURT_',   frames: 10, fps: 12, loop: false },
+      death:   { prefix: 'Knight_03__DIE_',    frames: 10, fps: 8,  loop: false },
+      respawn: { prefix: 'Knight_03__IDLE_',   frames: 6,  fps: 6,  loop: false },
+    },
+  },
 };
 
 // 서버 상태 → 애니메이션 이름 매핑
