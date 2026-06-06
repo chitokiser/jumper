@@ -1839,6 +1839,25 @@ exports.adminGivePotion = onCall(wrapError(async (req) => {
   return { ok: true, given: n };
 }));
 
+// ── 관리자: GP(gold) 지급 / 설정
+exports.adminSetGold = onCall(wrapError(async (req) => {
+  const adminUid = requireAuth(req);
+  await requireAdmin(adminUid);
+  const { targetUid, gold, mode = 'set' } = req.data ?? {};
+  if (!targetUid) throw new HttpsError('invalid-argument', 'targetUid 필요');
+  const amount = Math.max(0, Math.floor(Number(gold)));
+  if (isNaN(amount)) throw new HttpsError('invalid-argument', 'gold는 숫자여야 합니다');
+  const db = admin.firestore();
+  const ref = db.collection('battle_players').doc(targetUid);
+  if (mode === 'add') {
+    await ref.set({ gold: admin.firestore.FieldValue.increment(amount), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  } else {
+    await ref.set({ gold: amount, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  }
+  const snap = await ref.get();
+  return { ok: true, gold: snap.data()?.gold ?? amount };
+}));
+
 exports.adminGiveRevive = onCall(wrapError(async (req) => {
   const adminUid = requireAuth(req);
   await requireAdmin(adminUid);

@@ -3228,6 +3228,21 @@ async function init() {
       if (targetUid === _uid) await loadInventory({ force: true });
     } catch (err) { alert('실패: ' + err.message); }
   });
+  $('btnSetGold')?.addEventListener('click', async () => {
+    const targetUid = prompt('GP를 수정할 유저 UID:', '') || '';
+    if (!targetUid.trim()) return;
+    const modeRaw = prompt('모드: set(덮어쓰기) / add(추가)', 'set');
+    const mode = modeRaw?.trim() === 'add' ? 'add' : 'set';
+    const gold = parseInt(prompt(`${mode === 'add' ? '추가할' : '설정할'} GP 금액:`, '0') || '0');
+    if (isNaN(gold) || gold < 0) { alert('유효하지 않은 금액'); return; }
+    if (!confirm(`UID: ${targetUid.slice(0,12)}…\n${mode === 'add' ? `+${gold.toLocaleString()} GP 추가` : `GP → ${gold.toLocaleString()} 으로 설정`}\n\n진행하겠습니까?`)) return;
+    try {
+      const res = await httpsCallable(functions, 'adminSetGold')({ targetUid: targetUid.trim(), gold, mode });
+      alert(`✅ 완료\n현재 GP: ${res.data.gold.toLocaleString()}`);
+      if (targetUid === _uid) loadPlayerState({ force: true });
+    } catch (err) { alert('실패: ' + err.message); }
+  });
+
   $('btnAdminInitAllPlayers')?.addEventListener('click', async () => {
     if (!confirm('모든 유저에게 스타터 팩을 초기화하시겠습니까?\n(이미 더 많이 가진 유저는 영향 없음)')) return;
     try {
