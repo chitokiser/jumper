@@ -21,14 +21,16 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 // ── 가중 랜덤 아이템 선택 ──────────────────────────────────────────────────────
+// itemPool 은 {itemId, weight} 객체 배열 또는 순수 itemId 문자열 배열 둘 다 허용
 function pickWeightedItem(itemPool) {
-  const total = itemPool.reduce((s, e) => s + (e.weight || 1), 0);
+  const pool = itemPool.map(e => (typeof e === 'string' ? { itemId: e, weight: 1 } : e));
+  const total = pool.reduce((s, e) => s + (e.weight || 1), 0);
   let r = Math.random() * total;
-  for (const e of itemPool) {
+  for (const e of pool) {
     r -= (e.weight || 1);
     if (r <= 0) return e.itemId;
   }
-  return itemPool[itemPool.length - 1].itemId;
+  return pool[pool.length - 1].itemId;
 }
 
 // ── 시간 범위 확인 ─────────────────────────────────────────────────────────────

@@ -1571,25 +1571,31 @@ async function tryCollect(box) {
       _boxInventory.push({ boxId: box.id, boxName: d.boxName, hiddenBox: box.hiddenBox || false, keyId: box.keyId || null });
     }
     renderBoxInventory();
+    // 인벤토리 자동 열기 — 박스 위치로 스크롤해 즉시 열 수 있도록
+    setTimeout(() => {
+      openInventory();
+      const boxList = $('boxInvList');
+      if (boxList) boxList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 1800);
     // 보물 발견 생중계
     httpsCallable(functions, 'broadcastGpEvent')({ game: 'treasure_find', amount: 0, label: d.boxName || '보물상자' }).catch(() => {});
   } catch (err) {
     const msg = err.message || '';
     if (msg.includes('먼저 인벤토리')) {
       _collectedBoxes.delete(box.id);
-      showToast(msg, 'info');
+      showToast('⚠️ Open the box already in your inventory first!', 'warn');
     } else if (msg.includes('이미')) {
-      // 리스폰 전까지 재시도 불필요 — 남은 시간 토스트 표시
       const remainMs = err.details?.respawnRemainingMs;
       if (remainMs) {
         const remainMin = Math.ceil(remainMs / 60000);
-        const label = remainMin >= 60 ? Math.ceil(remainMin / 60) + '시간' : remainMin + '분';
-        showToast(`${label} 후 다시 획득할 수 있습니다`, 'info');
+        const label = remainMin >= 60 ? `${Math.ceil(remainMin / 60)}h` : `${remainMin}m`;
+        showToast(`⏰ Try again in ${label}`, 'info');
       } else {
-        showToast(msg, 'info');
+        showToast('⏰ Already collected — try again later.', 'info');
       }
     } else if (msg.includes('너무 멀리')) {
       _collectedBoxes.delete(box.id);
+      showToast('📍 Too far from the box. Move closer and try again.', 'warn');
     } else if (msg.includes('정회원')) {
       _collectedBoxes.delete(box.id);
       infoWindow.setContent(`<div style="font-size:13px;padding:8px;min-width:200px;">
@@ -1597,9 +1603,15 @@ async function tryCollect(box) {
         <div style="color:#555;font-size:12px;">${_t('member_only_box_desc')}</div>
       </div>`);
       if (box._marker) infoWindow.open(map, box._marker);
+    } else if (msg.includes('아이템 풀') || msg.includes('비어')) {
+      _collectedBoxes.delete(box.id);
+      showToast('⚠️ This box has no items configured. Please contact admin.', 'warn');
+    } else if (msg.includes('시간에 열려있지')) {
+      _collectedBoxes.delete(box.id);
+      showToast('⏰ This box is not available at the current time.', 'warn');
     } else {
       _collectedBoxes.delete(box.id);
-      console.warn('collect:', msg);
+      showToast(`❌ Collection failed: ${msg || 'Unknown error'}`, 'warn');
     }
   }
 }
