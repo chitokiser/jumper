@@ -2239,8 +2239,8 @@ function battleTick() {
   checkGoldPickup();
   _updateDebugPanel();
   if (_isDead && !_autoReviveTimer) {
-    // Start 5-second auto-revive countdown if not already running
-    _autoReviveCountdown = 5;
+    // Start 15-second auto-revive countdown if not already running
+    _autoReviveCountdown = 15;
     updateCombatHud();
     _autoReviveTimer = setInterval(() => {
       _autoReviveCountdown = Math.max(0, _autoReviveCountdown - 1);
