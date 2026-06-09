@@ -3029,7 +3029,7 @@ async function init() {
         const pos = _ctx.lastPos || _ctx.gpsPos;
         if (pos) forceWriteBattlePos(pos.lat, pos.lng);
       },
-      isServerConnected: () => isGameServerConnected(),
+      isServerConnected: () => _gameStarted,
     });
     window._mtOpenPlantFromMyTrees = () => {
       document.getElementById('mtMyTreesModal')?.classList.remove('open');
