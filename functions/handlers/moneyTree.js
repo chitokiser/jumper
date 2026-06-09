@@ -131,6 +131,10 @@ async function buySeedling(uid, { shopId, qty = 1 }) {
         gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now,
       });
     }
+    tx.set(db.collection('game_shops').doc(shopId), {
+      seedlingRevenue: admin.firestore.FieldValue.increment(ownerShare),
+      seedlingCount:   admin.firestore.FieldValue.increment(n),
+    }, { merge: true });
   });
 
   await _log('buy_seedling', { uid, shopId, qty: n, totalCost, ownerShare, ownerUid });
@@ -170,6 +174,10 @@ async function buyTreeBooster(uid, { shopId, qty = 1 }) {
         gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now,
       });
     }
+    tx.set(db.collection('game_shops').doc(shopId), {
+      boosterRevenue: admin.firestore.FieldValue.increment(ownerShare),
+      boosterCount:   admin.firestore.FieldValue.increment(n),
+    }, { merge: true });
   });
 
   await _log('buy_booster', { uid, shopId, qty: n, totalCost, ownerShare, ownerUid });

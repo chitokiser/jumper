@@ -294,9 +294,13 @@ async function getShopSales(uid, { shopId, limit = 20 } = {}) {
 
   return {
     sales,
-    totalRevenue: shop.totalRevenue ?? 0,
-    totalSales:   shop.totalSales   ?? 0,
-    shopName:     shop.name,
+    totalRevenue:   shop.totalRevenue   ?? 0,
+    totalSales:     shop.totalSales     ?? 0,
+    seedlingRevenue: shop.seedlingRevenue ?? 0,
+    seedlingCount:   shop.seedlingCount  ?? 0,
+    boosterRevenue:  shop.boosterRevenue ?? 0,
+    boosterCount:    shop.boosterCount   ?? 0,
+    shopName:        shop.name,
   };
 }
 

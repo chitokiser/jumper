@@ -4066,17 +4066,37 @@ async function _loadShopSales(shopId) {
 
   try {
     const res = await httpsCallable(functions, 'getShopSales')({ shopId, limit: 20 });
-    const { sales, totalRevenue, totalSales } = res.data;
+    const { sales, totalRevenue, totalSales, seedlingRevenue, seedlingCount, boosterRevenue, boosterCount } = res.data;
+    const mtRevenue = (seedlingRevenue || 0) + (boosterRevenue || 0);
+    const mtCount   = (seedlingCount  || 0) + (boosterCount  || 0);
+    const grandTotal = (totalRevenue || 0) + mtRevenue;
     let html = `
       <div style="background:rgba(255,255,255,.03);border:1px solid #1f2937;border-radius:10px;padding:12px">
-        <div style="display:flex;gap:12px;margin-bottom:12px">
+        <div style="display:flex;gap:12px;margin-bottom:8px">
           <div style="flex:1;background:#1f2937;border-radius:8px;padding:10px;text-align:center">
-            <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">총 수익 (골드)</div>
-            <div style="color:#fbbf24;font-weight:700;font-size:18px">💰 ${(totalRevenue||0).toLocaleString()}</div>
+            <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">총 수익 (합계)</div>
+            <div style="color:#fbbf24;font-weight:700;font-size:18px">💰 ${grandTotal.toLocaleString()}</div>
           </div>
           <div style="flex:1;background:#1f2937;border-radius:8px;padding:10px;text-align:center">
             <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">총 판매 수량</div>
-            <div style="color:#60a5fa;font-weight:700;font-size:18px">${(totalSales||0).toLocaleString()} 개</div>
+            <div style="color:#60a5fa;font-weight:700;font-size:18px">${((totalSales||0)+mtCount).toLocaleString()} 개</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <div style="flex:1;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px;text-align:center">
+            <div style="color:#34d399;font-size:10px;margin-bottom:2px">🛒 아이템 매출</div>
+            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(totalRevenue||0).toLocaleString()}</div>
+            <div style="color:#6b7280;font-size:10px">${(totalSales||0).toLocaleString()} 개</div>
+          </div>
+          <div style="flex:1;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:8px;text-align:center">
+            <div style="color:#6ee7b7;font-size:10px;margin-bottom:2px">🌱 묘목 매출</div>
+            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(seedlingRevenue||0).toLocaleString()}</div>
+            <div style="color:#6b7280;font-size:10px">${(seedlingCount||0).toLocaleString()} 개</div>
+          </div>
+          <div style="flex:1;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:8px;padding:8px;text-align:center">
+            <div style="color:#c4b5fd;font-size:10px;margin-bottom:2px">💊 영양제 매출</div>
+            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(boosterRevenue||0).toLocaleString()}</div>
+            <div style="color:#6b7280;font-size:10px">${(boosterCount||0).toLocaleString()} 개</div>
           </div>
         </div>`;
     if (!sales.length) {
