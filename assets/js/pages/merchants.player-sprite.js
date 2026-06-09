@@ -396,6 +396,41 @@ function _getOverlayCls() {
       if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
     }
 
+    _drawShadows(ctx) {
+      ctx.save();
+      ctx.translate(OX, OY);
+      const cx = 0, cy = 4;   // shadow center: slightly below feet (OY)
+
+      // 1. Circular shadow — soft radial gradient blob (squashed ellipse)
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(1, 0.32);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 13);
+      g.addColorStop(0,   'rgba(0,0,0,0.25)');
+      g.addColorStop(0.6, 'rgba(0,0,0,0.10)');
+      g.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.beginPath();
+      ctx.arc(0, 0, 13, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.restore();
+
+      // 2. Ground contact shadow — tight ellipse
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 8, 3, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.30)';
+      ctx.fill();
+
+      // 3. Floor ring — position indicator ring
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 10, 3.5, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.38)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
     _render() {
       if (!this._canvas || !this._ready || !_scmlData) return;
 
@@ -420,6 +455,8 @@ function _getOverlayCls() {
       const objs = _frame(STATE_ANIM[this._state] || '_IDLE', timeMs);
       const ctx  = this._canvas.getContext('2d');
       ctx.clearRect(0, 0, CW, CH);
+
+      this._drawShadows(ctx);
 
       ctx.save();
       ctx.translate(OX, OY);
