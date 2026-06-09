@@ -18,15 +18,29 @@ function haversineM(lat1, lng1, lat2, lng2) {
 const CATALOG = {
   box_lv1: {
     price: 5000, type: 'box', label: '보물박스 Lv1',
-    hp: 200, itemPool: ['item1','item2','item3'],
+    hp: 200, itemPool: [
+      { itemId: '0', weight: 10 },
+      { itemId: '1', weight: 10 },
+      { itemId: '2', weight: 10 },
+    ],
   },
   box_lv2: {
     price: 10000, type: 'box', label: '보물박스 Lv2',
-    hp: 300, itemPool: ['item4','item5','item6','item7'],
+    hp: 300, itemPool: [
+      { itemId: '3', weight: 10 },
+      { itemId: '4', weight: 10 },
+      { itemId: '5', weight: 10 },
+      { itemId: '6', weight: 10 },
+    ],
   },
   box_lv3: {
     price: 15000, type: 'box', label: '보물박스 Lv3',
-    hp: 500, itemPool: ['item8','item9','item10','item11'],
+    hp: 500, itemPool: [
+      { itemId: '7',  weight: 10 },
+      { itemId: '8',  weight: 10 },
+      { itemId: '9',  weight: 10 },
+      { itemId: '10', weight: 10 },
+    ],
   },
   mon_cabi: {
     price: 5000, type: 'monster', label: 'cabi',

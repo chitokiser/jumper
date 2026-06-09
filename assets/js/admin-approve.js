@@ -1987,7 +1987,9 @@ function _fillBoxForm(b, keepId) {
   _updateBoxMap(b.lat && b.lng ? { lat: Number(b.lat), lng: Number(b.lng) } : null);
   if ($("tBoxStartHour")) $("tBoxStartHour").value = b.startHour ?? 0;
   if ($("tBoxEndHour"))   $("tBoxEndHour").value   = b.endHour   ?? 24;
-  _boxItemPool = Array.isArray(b.itemPool) ? b.itemPool : [];
+  _boxItemPool = Array.isArray(b.itemPool)
+    ? b.itemPool.map(e => (typeof e === 'string' ? { itemId: e, weight: 1 } : e))
+    : [];
   renderItemPool();
   if ($("tBoxActive"))      $("tBoxActive").value      = String(b.active !== false);
   if ($("tBoxMemberOnly"))  $("tBoxMemberOnly").value  = String(b.memberOnly === true);
