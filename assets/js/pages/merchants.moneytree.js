@@ -252,9 +252,11 @@ export function openPlantModal(shopId) {
 }
 
 window._mtConfirmPlant = async function() {
-  if (!_activeShopId || !_functions) return;
+  if (!_functions) { alert('Functions not initialized. Please reload.'); return; }
+  if (!_activeShopId) { alert('Shop ID missing — please open a shop first and plant from there.'); return; }
   const btn = document.getElementById('mtPlantConfirmBtn');
   if (btn) btn.disabled = true;
+  _onEnsurePos?.();
   try {
     const fn = httpsCallable(_functions, 'plantSeedling');
     const { data } = await fn({ shopId: _activeShopId });
@@ -267,7 +269,8 @@ window._mtConfirmPlant = async function() {
     await refreshMoneyTreeInventory();
     if (_ctx?.gpsPos) loadMoneyTreeMarkers(_ctx.gpsPos.lat, _ctx.gpsPos.lng);
   } catch (e) {
-    _showMtToast(e?.message || '식재 실패', 'error');
+    const code = e?.code ? ` [${e.code}]` : '';
+    alert(`식재 실패${code}: ${e?.message || '알 수 없는 오류'}`);
   } finally {
     if (btn) btn.disabled = false;
   }
