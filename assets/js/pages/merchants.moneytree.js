@@ -182,10 +182,10 @@ window._mtBuySeedling = async function() {
   try {
     const fn = httpsCallable(_functions, 'buySeedling');
     const { data } = await fn({ shopId: _activeShopId, qty });
-    _showMtToast(`🌱 묘목 ${data.qty}개 구매! (-${data.cost.toLocaleString()} GP)`, 'success');
+    _showMtToast(`🌱 Seedling x${data.qty} purchased! −${data.cost.toLocaleString()} GP`, 'success');
     await refreshMoneyTreeInventory();
     document.getElementById('mtInvSeedlings').textContent = _inv?.seedlings ?? 0;
-  } catch (e) { _showMtToast(e?.message || '구매 실패', 'error'); }
+  } catch (e) { _showMtToast(e?.message || 'Purchase failed', 'error'); }
   finally { if (btn) btn.disabled = false; }
 };
 
@@ -264,7 +264,7 @@ function _renderMyTreeList(trees) {
 // ── 식재 버튼 (물약상점에서 호출) ────────────────────────────────────────────
 export function openPlantModal(shopId, shopData = null) {
   if (_isServerConnected && !_isServerConnected()) {
-    _showMtToast('Please connect to the game server first.\nTap the ▶ Play button to join before planting.', 'error');
+    _showMtToast('Connect to the game server first — tap ▶ Play to join.', 'error');
     return;
   }
   _activeShopId = shopId;
@@ -287,10 +287,11 @@ window._mtConfirmPlant = async function() {
     const fn = httpsCallable(_functions, 'plantSeedling');
     const { data } = await fn({ shopId: _activeShopId });
     document.getElementById('mtPlantModal')?.classList.remove('open');
-    let msg = `🌱 식재 완료! (${data.treeId})`;
-    if (data.ticketGranted) msg += '\n🎟️ 묘목 10개 달성 — 수확권 +1!';
-    if (data.lotteryTriggeredWin) msg += '\n🎉 복권 당첨 발생 (다른 유저 수확권 +1)';
-    if (data.lotteryNumber) msg += `\n🎲 복권 번호: ${data.lotteryNumber}`;
+    const extras = [];
+    if (data.ticketGranted) extras.push('🎟️ Harvest ticket +1!');
+    if (data.lotteryTriggeredWin) extras.push('🎉 Lottery triggered');
+    if (data.lotteryNumber) extras.push(`🎲 #${data.lotteryNumber}`);
+    const msg = `🌱 Planted! (${data.treeId})` + (extras.length ? ' · ' + extras.join(' · ') : '');
     playSound('plant_seedling');
     _showMtToast(msg, 'success');
     await refreshMoneyTreeInventory();
@@ -303,10 +304,7 @@ window._mtConfirmPlant = async function() {
       const coords = (_activeShopData?.lat && _activeShopData?.lng)
         ? ` (${_activeShopData.lat.toFixed(5)}, ${_activeShopData.lng.toFixed(5)})`
         : '';
-      _showMtToast(
-        `Cannot plant here.\nThis seedling was purchased at "${shopName}"${coords}.\nGo back to that shop to plant it.`,
-        'error'
-      );
+      _showMtToast(`Cannot plant here — go back to "${shopName}" to plant.`, 'error');
     } else {
       _showMtToast(`Plant failed: ${msg}`, 'error');
     }
@@ -348,7 +346,7 @@ window._mtSpinBooster = async function() {
     await refreshMoneyTreeInventory();
   } catch (e) {
     clearInterval(window._mtSlotInterval);
-    _showMtToast(e?.message || '영양제 사용 실패', 'error');
+    _showMtToast(e?.message || 'Booster failed', 'error');
     if (btn) btn.disabled = false;
   }
 };
@@ -369,7 +367,7 @@ function _stopSlotAnimation(result) {
   if (el) el.textContent = result;
   const valEl = document.getElementById('mtSlotResultVal');
   if (valEl) valEl.textContent = result;
-  _showMtToast(`💊 슬롯 결과: +${result} 성장치!`, 'success');
+  _showMtToast(`💊 Booster: +${result} growth!`, 'success');
 }
 
 // ── 수확 ─────────────────────────────────────────────────────────────────────
@@ -379,10 +377,10 @@ window._mtDoHarvest = async function(treeId) {
   try {
     const fn = httpsCallable(_functions, 'harvestTree');
     const { data } = await fn({ treeId });
-    _showMtToast(`✅ 수확 완료! +${data.amount.toLocaleString()} GP (세금 ${data.tax.toLocaleString()} GP)`, 'success');
+    _showMtToast(`✅ Harvested! +${data.amount.toLocaleString()} GP · tax ${data.tax.toLocaleString()} GP`, 'success');
     await refreshMoneyTreeInventory();
     if (_ctx?.gpsPos) loadMoneyTreeMarkers(_ctx.gpsPos.lat, _ctx.gpsPos.lng);
-  } catch (e) { _showMtToast(e?.message || '수확 실패', 'error'); }
+  } catch (e) { _showMtToast(e?.message || 'Harvest failed', 'error'); }
 };
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────────
@@ -391,10 +389,11 @@ function _showMtToast(msg, type = 'info') {
   if (!toast) return;
   toast.textContent = msg;
   toast.style.cssText = `display:block;position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
-    z-index:9999;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;white-space:pre-line;
+    z-index:9999;padding:8px 16px;border-radius:10px;font-size:12px;font-weight:600;
+    white-space:normal;line-height:1.4;
     background:${type === 'error' ? '#7f1d1d' : type === 'success' ? '#14532d' : '#1e3a5f'};
     color:#fff;border:1px solid ${type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : '#3b82f6'};
-    max-width:280px;text-align:center;`;
+    max-width:300px;min-width:180px;text-align:center;`;
   clearTimeout(window._mtToastTimer);
   window._mtToastTimer = setTimeout(() => { toast.style.display = 'none'; }, 3500);
 }
