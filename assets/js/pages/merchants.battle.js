@@ -3265,11 +3265,11 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
   }
 }
 
-// 돈나무 구매 직전 battle_players 위치 강제 기록 (10초 쓰로틀 우회)
+// 묘목 식재 직전 battle_players 위치 강제 기록 (10초 쓰로틀 우회) — Promise 반환
 export function forceWriteBattlePos(lat, lng) {
-  if (!_ctx?.uid || !_ctx?.db) return;
+  if (!_ctx?.uid || !_ctx?.db) return Promise.resolve();
   _lastPosWriteAt = Date.now();
-  setDoc(doc(_ctx.db, 'battle_players', _ctx.uid), { lat, lng, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  return setDoc(doc(_ctx.db, 'battle_players', _ctx.uid), { lat, lng, updatedAt: serverTimestamp() }, { merge: true });
 }
 
 // ── 백그라운드 근접 감지 + 전투 GPS 추적 ─────────────────────────────────────

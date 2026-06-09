@@ -3027,7 +3027,7 @@ async function init() {
     initMoneyTree(_ctx, map, functions, {
       onEnsurePos: () => {
         const pos = _ctx.lastPos || _ctx.gpsPos;
-        if (pos) forceWriteBattlePos(pos.lat, pos.lng);
+        return pos ? forceWriteBattlePos(pos.lat, pos.lng) : Promise.resolve();
       },
       isServerConnected: () => _gameStarted,
     });

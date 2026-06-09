@@ -256,7 +256,8 @@ window._mtConfirmPlant = async function() {
   if (!_activeShopId) { _showMtToast('No shop selected. Walk near a shop and try again.', 'error'); return; }
   const btn = document.getElementById('mtPlantConfirmBtn');
   if (btn) btn.disabled = true;
-  _onEnsurePos?.();
+  // 워프/GPS 모드 공통 — Firestore 위치 쓰기가 완료된 뒤 CF 호출 (race condition 방지)
+  await _onEnsurePos?.();
   try {
     const fn = httpsCallable(_functions, 'plantSeedling');
     const { data } = await fn({ shopId: _activeShopId });
@@ -267,7 +268,8 @@ window._mtConfirmPlant = async function() {
     if (data.lotteryNumber) msg += `\n🎲 복권 번호: ${data.lotteryNumber}`;
     _showMtToast(msg, 'success');
     await refreshMoneyTreeInventory();
-    if (_ctx?.gpsPos) loadMoneyTreeMarkers(_ctx.gpsPos.lat, _ctx.gpsPos.lng);
+    const refPos = _ctx?.lastPos || _ctx?.gpsPos;
+    if (refPos) loadMoneyTreeMarkers(refPos.lat, refPos.lng);
   } catch (e) {
     const code = e?.code ? ` [${e.code}]` : '';
     _showMtToast(`식재 실패${code}: ${e?.message || '알 수 없는 오류'}`, 'error');
