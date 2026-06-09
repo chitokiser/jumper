@@ -22,7 +22,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          spawnGsDrop, removeGsDrop,
          equipWeapon, equipArmor, equipArmorToSlot, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
          getEquippedWeapon, getEquippedArmor, getEquippedArmorSlots,
-         updateMyLocation, showDeathMarkerIfDead, hideMyMarker,
+         updateMyLocation, showDeathMarkerIfDead, hideMyMarker, forceWriteBattlePos,
          loadShops, getShops, deleteShop, checkShopProximity, updateShopHpMarker,
          clearTutorialBoxes, checkTutorialProximity,
          clearTrialMonsters,
@@ -3021,7 +3021,12 @@ async function init() {
     _initVirtualModeGuide();
 
     // ── 돈나무 초기화 ──────────────────────────────────────────────────────
-    initMoneyTree(_ctx, map, functions);
+    initMoneyTree(_ctx, map, functions, {
+      onEnsurePos: () => {
+        const pos = _ctx.lastPos || _ctx.gpsPos;
+        if (pos) forceWriteBattlePos(pos.lat, pos.lng);
+      },
+    });
     window._mtOpenPlantFromMyTrees = () => {
       document.getElementById('mtMyTreesModal')?.classList.remove('open');
       openPlantModal(_activeShopId || null);

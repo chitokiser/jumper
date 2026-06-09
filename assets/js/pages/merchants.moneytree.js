@@ -10,13 +10,15 @@ let _activeShopId = null;
 let _treeMarkers = [];
 let _cfg = null;
 let _inv = null;
+let _onEnsurePos = null;
 
 const IMG_BASE = '/assets/images/tree/';
 
-export function initMoneyTree(ctx, map, functions) {
+export function initMoneyTree(ctx, map, functions, { onEnsurePos } = {}) {
   _ctx = ctx;
   _map = map;
   _functions = functions;
+  _onEnsurePos = onEnsurePos ?? null;
 }
 
 // ── 인벤토리 HUD 업데이트 ────────────────────────────────────────────────────
@@ -140,6 +142,7 @@ export function renderMoneyTreeShopSection(shop, cfg) {
 // ── 묘목 구매 ────────────────────────────────────────────────────────────────
 window._mtBuySeedling = async function() {
   if (!_activeShopId || !_functions) return;
+  _onEnsurePos?.();
   const qty = 1;
   try {
     const fn = httpsCallable(_functions, 'buySeedling');
@@ -152,6 +155,7 @@ window._mtBuySeedling = async function() {
 
 window._mtBuyBooster = async function() {
   if (!_activeShopId || !_functions) return;
+  _onEnsurePos?.();
   try {
     const fn = httpsCallable(_functions, 'buyTreeBooster');
     const { data } = await fn({ shopId: _activeShopId, qty: 1 });
