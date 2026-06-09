@@ -3033,7 +3033,23 @@ async function init() {
     });
     window._mtOpenPlantFromMyTrees = () => {
       document.getElementById('mtMyTreesModal')?.classList.remove('open');
-      openPlantModal(_activeShopId || null);
+      // 상점 모달을 거치지 않은 경우 현재 위치에서 가장 가까운 상점 자동 선택
+      let shopId = _activeShopId;
+      if (!shopId) {
+        const pos = _ctx.lastPos || _ctx.gpsPos;
+        if (pos) {
+          const shops = getShops().filter(s => s.active);
+          if (shops.length) {
+            const nearest = shops.reduce((best, s) => {
+              const dlat = s.lat - pos.lat, dlng = s.lng - pos.lng;
+              const d = dlat * dlat + dlng * dlng;
+              return (!best || d < best.d) ? { s, d } : best;
+            }, null);
+            shopId = nearest?.s?.id || null;
+          }
+        }
+      }
+      openPlantModal(shopId);
     };
 
     // ── 페이지 진입 시 워프모드 자동 시작 ─────────────────────────────────

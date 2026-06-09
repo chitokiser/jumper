@@ -252,8 +252,8 @@ export function openPlantModal(shopId) {
 }
 
 window._mtConfirmPlant = async function() {
-  if (!_functions) { alert('Functions not initialized. Please reload.'); return; }
-  if (!_activeShopId) { alert('Shop ID missing — please open a shop first and plant from there.'); return; }
+  if (!_functions) { _showMtToast('Functions not initialized. Please reload.', 'error'); return; }
+  if (!_activeShopId) { _showMtToast('No shop selected. Walk near a shop and try again.', 'error'); return; }
   const btn = document.getElementById('mtPlantConfirmBtn');
   if (btn) btn.disabled = true;
   _onEnsurePos?.();
@@ -270,7 +270,7 @@ window._mtConfirmPlant = async function() {
     if (_ctx?.gpsPos) loadMoneyTreeMarkers(_ctx.gpsPos.lat, _ctx.gpsPos.lng);
   } catch (e) {
     const code = e?.code ? ` [${e.code}]` : '';
-    alert(`식재 실패${code}: ${e?.message || '알 수 없는 오류'}`);
+    _showMtToast(`식재 실패${code}: ${e?.message || '알 수 없는 오류'}`, 'error');
   } finally {
     if (btn) btn.disabled = false;
   }
