@@ -116,9 +116,19 @@ export function renderMoneyTreeShopSection(shop, cfg) {
           <div style="font-size:13px;font-weight:600;color:#f3f4f6">🌱 묘목</div>
           <div style="font-size:11px;color:#9ca3af">💰 ${seedPrice} GP · 보유: <span id="mtInvSeedlings">${inv?.seedlings ?? 0}</span>개</div>
         </div>
-        <button id="mtBuySeedlingBtn" onclick="window._mtBuySeedling()"
-          style="padding:8px 14px;border-radius:8px;border:none;font-weight:700;font-size:12px;
-                 cursor:pointer;background:linear-gradient(135deg,#059669,#047857);color:#fff">구매</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="display:flex;align-items:center;border:1px solid #374151;border-radius:8px;overflow:hidden">
+            <button onclick="window._mtSeedQtyStep(-1)"
+              style="padding:6px 10px;border:none;background:#1f2937;color:#9ca3af;font-size:16px;cursor:pointer;line-height:1">−</button>
+            <input id="mtSeedQtyInput" type="number" min="1" max="99" value="1"
+              style="width:38px;border:none;background:#111827;color:#f3f4f6;text-align:center;font-size:13px;font-weight:700;padding:6px 0;-moz-appearance:textfield">
+            <button onclick="window._mtSeedQtyStep(1)"
+              style="padding:6px 10px;border:none;background:#1f2937;color:#9ca3af;font-size:16px;cursor:pointer;line-height:1">+</button>
+          </div>
+          <button id="mtBuySeedlingBtn" onclick="window._mtBuySeedling()"
+            style="padding:8px 14px;border-radius:8px;border:none;font-weight:700;font-size:12px;
+                   cursor:pointer;background:linear-gradient(135deg,#059669,#047857);color:#fff">구매</button>
+        </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;
         background:rgba(255,255,255,.03);border-radius:8px;border:1px solid #1f2937">
@@ -140,10 +150,20 @@ export function renderMoneyTreeShopSection(shop, cfg) {
 }
 
 // ── 묘목 구매 ────────────────────────────────────────────────────────────────
+window._mtSeedQtyStep = function(delta) {
+  const el = document.getElementById('mtSeedQtyInput');
+  if (!el) return;
+  const v = Math.min(99, Math.max(1, (parseInt(el.value) || 1) + delta));
+  el.value = v;
+};
+
 window._mtBuySeedling = async function() {
   if (!_activeShopId || !_functions) return;
   _onEnsurePos?.();
-  const qty = 1;
+  const qtyEl = document.getElementById('mtSeedQtyInput');
+  const qty = Math.min(99, Math.max(1, parseInt(qtyEl?.value) || 1));
+  const btn = document.getElementById('mtBuySeedlingBtn');
+  if (btn) btn.disabled = true;
   try {
     const fn = httpsCallable(_functions, 'buySeedling');
     const { data } = await fn({ shopId: _activeShopId, qty });
@@ -151,6 +171,7 @@ window._mtBuySeedling = async function() {
     await refreshMoneyTreeInventory();
     document.getElementById('mtInvSeedlings').textContent = _inv?.seedlings ?? 0;
   } catch (e) { _showMtToast(e?.message || '구매 실패', 'error'); }
+  finally { if (btn) btn.disabled = false; }
 };
 
 window._mtBuyBooster = async function() {

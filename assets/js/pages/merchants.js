@@ -1751,7 +1751,8 @@ function showItemReveal(itemName, itemImage, itemId) {
   const name = $('itemRevealName');
   if (img) {
     const fallback = itemId ? `/assets/images/item/${escHtml(String(itemId))}.png` : '/assets/images/item/0.png';
-    const src = itemImage ? `/assets/images/item/${escHtml(itemImage)}` : fallback;
+    const _ri = itemImage;
+    const src = _ri ? (_ri.startsWith('/') || _ri.startsWith('http') ? _ri : `/assets/images/item/${escHtml(_ri)}`) : fallback;
     img.src = src;
     img.onerror = () => { img.onerror = null; img.src = fallback; };
     img.style.display = '';
@@ -2050,10 +2051,11 @@ function renderInventory() {
           <span class="slot-count">${count}</span>`;
       } else {
         const meta = _items[String(itemId)] || {};
-        const imgFile = meta.image || (itemId + '.png');
+        const _imgRaw = meta.image || (itemId + '.png');
         const fallbackImg = `/assets/images/item/${escHtml(String(itemId))}.png`;
+        const imgFile = _imgRaw.startsWith('/') || _imgRaw.startsWith('http') ? _imgRaw : `/assets/images/item/${escHtml(_imgRaw)}`;
         slot.innerHTML = `
-          <img src="/assets/images/item/${escHtml(imgFile)}"
+          <img src="${imgFile}"
                onerror="this.onerror=null;this.src='${fallbackImg}'"
                alt="${escHtml(meta.name || itemId)}" />
           <span class="slot-name">${escHtml(meta.name || ('#' + itemId))}</span>
@@ -2609,7 +2611,8 @@ function renderExchangeSection() {
 
       const meta   = _items[String(r.itemId)];
       const label  = escHtml(meta?.name || ('#' + r.itemId));
-      const imgSrc = meta?.image ? `/assets/images/item/${escHtml(meta.image)}` : '';
+      const _imgM = meta?.image || '';
+      const imgSrc = _imgM ? (_imgM.startsWith('/') || _imgM.startsWith('http') ? _imgM : `/assets/images/item/${escHtml(_imgM)}`) : '';
       const cls    = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(${have}/${need})</small>` : '';
       const imgTag = imgSrc
