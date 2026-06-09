@@ -94,7 +94,7 @@ export function openTreeInfoModal(tree) {
   const boostBtn    = document.getElementById('mtBtnBoost');
   const harvestBtn  = document.getElementById('mtBtnHarvest');
   if (boostBtn)   { boostBtn.dataset.treeid = tree.treeId;   boostBtn.classList.toggle('hidden', !tree.isOwn); }
-  if (harvestBtn) { harvestBtn.dataset.treeid = tree.treeId; harvestBtn.classList.toggle('hidden', tree.value <= 0); }
+  if (harvestBtn) { harvestBtn.dataset.treeid = tree.treeId; harvestBtn.classList.toggle('hidden', !tree.isOwn || tree.value <= 0); }
 
   modal.classList.add('open');
 }

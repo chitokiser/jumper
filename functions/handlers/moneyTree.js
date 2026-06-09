@@ -308,6 +308,7 @@ async function harvestTree(uid, { treeId }) {
   ]);
   if (!treeSnap.exists) throw new HttpsError('not-found', 'Tree not found.');
   const tree = treeSnap.data();
+  if (tree.ownerUid !== uid) throw new HttpsError('permission-denied', 'You can only harvest your own trees.');
   const cfg  = { ...DEFAULTS, ...(cfgSnap.exists ? cfgSnap.data() : {}) };
 
   const dist = haversineM(player.lat, player.lng, tree.lat, tree.lng);
