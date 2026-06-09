@@ -3938,8 +3938,8 @@ function _renderShopModalBody() {
 
   body.innerHTML = html;
 
-  // 물약상점: 돈나무 섹션 렌더링 (config 비동기 조회)
-  if (shop.type === 'potion' && _uid && !_isAnonymous) {
+  // 돈나무 묘목 판매 활성화된 상점: 돈나무 섹션 렌더링
+  if (shop.sellsMt && _uid && !_isAnonymous) {
     httpsCallable(functions, 'getMoneyTreeConfig')()
       .then(({ data }) => {
         const mtSection = document.getElementById('mtShopSection');
@@ -5224,6 +5224,12 @@ function _openOwnerItemEditor(shop) {
                  border-radius:8px;font-size:13px;cursor:pointer;margin-bottom:12px;">
           + 아이템 추가
         </button>
+        <label style="display:flex;align-items:center;gap:10px;padding:10px;
+                      background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);
+                      border-radius:8px;cursor:pointer;margin-bottom:12px;">
+          <input type="checkbox" id="ownerSellsMtChk" style="width:16px;height:16px;cursor:pointer;accent-color:#22c55e;">
+          <span style="font-size:13px;color:#e2e8f0;">🌱 돈나무 묘목 상품 판매 활성화</span>
+        </label>
         <div id="ownerItemMsg" style="font-size:12px;min-height:16px;margin-bottom:8px;"></div>
         <button id="ownerItemSave"
           style="width:100%;padding:12px;background:linear-gradient(135deg,#0369a1,#0284c7);
@@ -5283,6 +5289,10 @@ function _openOwnerItemEditor(shop) {
   const nameInput = document.getElementById('ownerShopName');
   if (nameInput) nameInput.value = shop.name || '';
 
+  // 돈나무 토글 초기값
+  const mtChk = document.getElementById('ownerSellsMtChk');
+  if (mtChk) mtChk.checked = !!shop.sellsMt;
+
   // 기존 아이템 렌더
   list.innerHTML = '';
   (shop.items || []).forEach(it => list.appendChild(_makeRow(it)));
@@ -5313,12 +5323,15 @@ function _openOwnerItemEditor(shop) {
         msg.style.color = '#ef4444'; msg.textContent = '상점 이름을 입력하세요';
         saveBtn.disabled = false; return;
       }
-      await httpsCallable(functions, 'ownerSaveShopItems')({ shopId: shop.id, name: newName, items });
+      const sellsMt = document.getElementById('ownerSellsMtChk')?.checked ?? !!shop.sellsMt;
+      await httpsCallable(functions, 'ownerSaveShopItems')({ shopId: shop.id, name: newName, items, sellsMt });
       msg.style.color = '#22c55e'; msg.textContent = `✅ 저장 완료`;
       // _shopCurrentData 즉시 갱신 — 다음 편집 시 최신 아이템 목록·이름 반영
       if (_shopCurrentData && _shopCurrentData.id === shop.id) {
         _shopCurrentData.items = items;
+        _shopCurrentData.sellsMt = sellsMt;
         shop.items = items;
+        shop.sellsMt = sellsMt;
         if (newName) { _shopCurrentData.name = newName; shop.name = newName; }
         _renderShopModalBody();
       }

@@ -629,7 +629,7 @@ async function payWarpEntrance(uid, { shopId } = {}) {
 }
 
 // ── 상점 소유자: 이름 변경 + 판매 아이템 등록/수정 ───────────────────────────
-async function ownerSaveShopItems(uid, { shopId, name, items = [] } = {}) {
+async function ownerSaveShopItems(uid, { shopId, name, items = [], sellsMt } = {}) {
   if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
   if (!Array.isArray(items)) throw new HttpsError('invalid-argument', 'items는 배열이어야 합니다');
 
@@ -697,6 +697,7 @@ async function ownerSaveShopItems(uid, { shopId, name, items = [] } = {}) {
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
   if (newName) update.name = newName;
+  if (sellsMt !== undefined) update.sellsMt = !!sellsMt;
 
   await ref.update(update);
 
