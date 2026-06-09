@@ -37,10 +37,15 @@ export async function refreshMoneyTreeInventory() {
 }
 
 function _updateHud(inv) {
+  const tickets = inv?.harvestTickets ?? 0;
   const sEl = document.getElementById('mtHudSeedlings');
   const tEl = document.getElementById('mtHudTickets');
+  const iEl = document.getElementById('mtInvTickets');
+  const mEl = document.getElementById('mtMyTreesTicketCount');
   if (sEl) sEl.textContent = inv?.seedlings ?? 0;
-  if (tEl) tEl.textContent = inv?.harvestTickets ?? 0;
+  if (tEl) tEl.textContent = tickets;
+  if (iEl) iEl.textContent = tickets;
+  if (mEl) mEl.textContent = tickets;
 }
 
 // ── 나무 마커 로드 ────────────────────────────────────────────────────────────
@@ -155,10 +160,18 @@ export function renderMoneyTreeShopSection(shop, cfg) {
                    cursor:pointer;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff">구매</button>
         </div>
       </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;
+        background:rgba(251,191,36,.06);border-radius:8px;border:1px solid rgba(251,191,36,.25)">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#fbbf24">🎟️ Harvest Tickets</div>
+          <div style="font-size:11px;color:#9ca3af">1 ticket per 10 plants · use to harvest trees</div>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:#fbbf24"><span id="mtInvTickets">${inv?.harvestTickets ?? 0}</span></div>
+      </div>
       <button onclick="window._mtOpenMyTrees()"
         style="width:100%;padding:10px;border-radius:8px;border:none;font-weight:700;font-size:13px;
                cursor:pointer;background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)">
-        🌳 내 나무 보기 / 식재
+        🌳 View My Trees / Plant
       </button>
     </div>
   </div>`;
@@ -273,6 +286,8 @@ export function openPlantModal(shopId, shopData = null) {
   if (!modal || !_functions) return;
   const inv = _inv;
   document.getElementById('mtPlantSeedCount').textContent = inv?.seedlings ?? '?';
+  const tcEl = document.getElementById('mtPlantTicketCount');
+  if (tcEl) tcEl.textContent = inv?.harvestTickets ?? '?';
   modal.classList.add('open');
 }
 
@@ -373,7 +388,7 @@ function _stopSlotAnimation(result) {
 // ── 수확 ─────────────────────────────────────────────────────────────────────
 window._mtDoHarvest = async function(treeId) {
   document.getElementById('mtMyTreesModal')?.classList.remove('open');
-  if (!confirm(`🌳 나무(${treeId})를 수확하시겠습니까?\n수확권 1장이 소모됩니다.`)) return;
+  if (!confirm(`🌳 Harvest tree (${treeId})?\n1 harvest ticket will be consumed.`)) return;
   try {
     const fn = httpsCallable(_functions, 'harvestTree');
     const { data } = await fn({ treeId });

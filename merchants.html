@@ -2194,8 +2194,10 @@
                 border:1px solid #1f2937;box-shadow:0 20px 60px rgba(0,0,0,.5)">
       <div style="font-size:16px;font-weight:700;color:#34d399;margin-bottom:12px;text-align:center">🌱 묘목 식재</div>
       <div style="font-size:13px;color:#d1d5db;margin-bottom:16px;text-align:center">
-        현재 위치에 묘목을 심습니다.<br>
-        보유 묘목: <strong style="color:#fbbf24" id="mtPlantSeedCount">0</strong>개
+        Plant a seedling at your current location.<br>
+        Seedlings: <strong style="color:#fbbf24" id="mtPlantSeedCount">0</strong>
+        &nbsp;·&nbsp;
+        🎟️ Tickets: <strong style="color:#fbbf24" id="mtPlantTicketCount">0</strong>
       </div>
       <div style="display:flex;gap:10px">
         <button onclick="document.getElementById('mtPlantModal').classList.remove('open')"
@@ -2217,7 +2219,7 @@
                 border:1px solid #1f2937;max-height:80vh;display:flex;flex-direction:column">
       <div style="display:flex;align-items:center;justify-content:space-between;
                   padding:14px 16px;border-bottom:1px solid #1f2937">
-        <span style="font-size:15px;font-weight:700;color:#34d399">🌳 내 나무 목록</span>
+        <span style="font-size:15px;font-weight:700;color:#34d399">🌳 My Trees &nbsp;<span style="font-size:12px;color:#fbbf24;font-weight:600">🎟️ <span id="mtMyTreesTicketCount">0</span></span></span>
         <button onclick="document.getElementById('mtMyTreesModal').classList.remove('open')"
           style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;padding:2px 6px">✕</button>
       </div>
