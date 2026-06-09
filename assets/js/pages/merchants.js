@@ -72,6 +72,7 @@ let markers         = [];
 let placeMarkers    = [];
 let treasureBoxes   = [];     // [{id, lat, lng, startHour, endHour, itemPool, active, name}]
 let boxMarkers      = [];
+let boxShadows      = {};     // { box.id: google.maps.Marker }
 let _uid            = null;   // 로그인 유저 UID
 let _userEmail      = null;   // 로그인 유저 이메일
 let _isAdmin        = false;  // 관리자 여부
@@ -655,6 +656,30 @@ function attackBox(box, marker) {
   infoWindow.open(map, marker);
 }
 
+// ── 보물박스 그림자 헬퍼 ──────────────────────────────────────────────────────
+function _makeBoxShadowIcon(size) {
+  const sw = Math.round(size * 1.05);
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="14">' +
+    '<defs><filter id="sf"><feGaussianBlur stdDeviation="2.5"/></filter></defs>' +
+    '<ellipse cx="' + (sw / 2) + '" cy="7" rx="' + (sw / 2 - 2) + '" ry="5"' +
+    ' fill="rgba(0,0,0,0.32)" filter="url(#sf)"/></svg>';
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(sw, 14),
+    anchor: new google.maps.Point(sw / 2, 7 - size / 2),
+  };
+}
+function _placeBoxShadow(id, lat, lng, size) {
+  if (boxShadows[id]) boxShadows[id].setMap(null);
+  boxShadows[id] = new google.maps.Marker({
+    position: { lat, lng }, map,
+    icon: _makeBoxShadowIcon(size), zIndex: 1, clickable: false,
+  });
+}
+function _dropBoxShadow(id) {
+  if (boxShadows[id]) { boxShadows[id].setMap(null); delete boxShadows[id]; }
+}
+
 // ── 보물박스 마커 렌더링 ──────────────────────────────────────────────────────
 function _makeBoxMarker(box, lat, lng, size, animate) {
   const active = isBoxActive(box);
@@ -804,11 +829,14 @@ function _revealHiddenBox(box) {
   const marker = _makeBoxMarker(box, lat, lng, 38, true);
   box._marker = marker;
   boxMarkers.push(marker);
+  _placeBoxShadow(box.id, lat, lng, 38);
 }
 
 function renderBoxMarkers() {
   boxMarkers.forEach(m => m.setMap(null));
   boxMarkers = [];
+  Object.values(boxShadows).forEach(m => m.setMap(null));
+  boxShadows = {};
   if (!map) return;
   if (!isGameServerConnected()) return; // 서버 연결 시에만 보물박스 표시
   if (!_sharedBounds) _sharedBounds = new google.maps.LatLngBounds();
@@ -824,6 +852,7 @@ function renderBoxMarkers() {
     const marker = _makeBoxMarker(box, lat, lng, 20, false);
     boxMarkers.push(marker);
     box._marker = marker;
+    _placeBoxShadow(box.id, lat, lng, 20);
     _sharedBounds.extend({ lat, lng });
   });
 }
@@ -1527,6 +1556,7 @@ async function checkProximity(lat, lng) {
         box._marker.setMap(null);
         boxMarkers = boxMarkers.filter(m => m !== box._marker);
         box._marker = null;
+        _dropBoxShadow(box.id);
       }
       continue;
     }
@@ -2050,15 +2080,16 @@ function renderInventory() {
           </div>
           <span class="slot-count">${count}</span>`;
       } else {
-        const meta = _items[String(itemId)] || {};
-        const _imgRaw = meta.image || (itemId + '.png');
-        const fallbackImg = `/assets/images/item/${escHtml(String(itemId))}.png`;
+        const numericId = String(itemId).replace(/\D/g, '') || '0';
+        const meta = _items[String(itemId)] || _items[numericId] || {};
+        const _imgRaw = meta.image || (numericId + '.png');
+        const fallbackImg = `/assets/images/item/0.png`;
         const imgFile = _imgRaw.startsWith('/') || _imgRaw.startsWith('http') ? _imgRaw : `/assets/images/item/${escHtml(_imgRaw)}`;
         slot.innerHTML = `
           <img src="${imgFile}"
                onerror="this.onerror=null;this.src='${fallbackImg}'"
                alt="${escHtml(meta.name || itemId)}" />
-          <span class="slot-name">${escHtml(meta.name || ('#' + itemId))}</span>
+          <span class="slot-name">${escHtml(meta.name || ('#' + numericId))}</span>
           <span class="slot-count">${count}</span>`;
       }
       // 버리기 버튼 (소모품·장착 장비 제외)

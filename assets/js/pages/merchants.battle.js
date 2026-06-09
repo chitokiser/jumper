@@ -97,6 +97,9 @@ let _lastPosWriteAt       = 0;      // 위치 Firestore 저장 쓰로틀
 let _shops        = [];   // [{id, name, type, lat, lng, items, active}]
 let _shopMarkers   = {};   // { shopId: google.maps.Marker } — main icon
 let _shopHpMarkers = {};   // { shopId: google.maps.Marker } — HP bar overlay
+let _monsterShadows = {};  // { id: Marker } 그림자
+let _towerShadows   = {};  // { id: Marker } 그림자
+let _shopShadows    = {};  // { id: Marker } 그림자
 const SHOP_RANGE_M = 20;
 const SHOP_EXIT_M  = 30;
 const SHOP_ICONS  = { weapon_armor: '⚔️', potion: '🧪', misc: '🛍️' };
@@ -1847,6 +1850,31 @@ window.__deleteDeco = async (id) => {
 };
 
 // ── 몬스터 마커 ───────────────────────────────────────────────────────────────
+function _makeShadowIcon(size) {
+  const sw = Math.round(size * 1.05);
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="14">' +
+    '<defs><filter id="sf"><feGaussianBlur stdDeviation="2.5"/></filter></defs>' +
+    '<ellipse cx="' + (sw / 2) + '" cy="7" rx="' + (sw / 2 - 2) + '" ry="5"' +
+    ' fill="rgba(0,0,0,0.32)" filter="url(#sf)"/></svg>';
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(sw, 14),
+    anchor: new google.maps.Point(sw / 2, 7 - size / 2),
+  };
+}
+
+function _placeShadow(id, lat, lng, size, mapObj, reg) {
+  if (reg[id]) reg[id].setMap(null);
+  reg[id] = new google.maps.Marker({
+    position: { lat, lng }, map: mapObj,
+    icon: _makeShadowIcon(size), zIndex: 1, clickable: false,
+  });
+}
+
+function _dropShadow(id, reg) {
+  if (reg[id]) { reg[id].setMap(null); delete reg[id]; }
+}
+
 function getMonsterIcon(image) {
   if (image && (image.startsWith('/') || image.startsWith('http'))) {
     return { url: image, scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
@@ -1854,11 +1882,13 @@ function getMonsterIcon(image) {
   const emoji = image || '🐉';
   const isEmoji = !image || image.length <= 4;
   if (isEmoji) {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46">
+      <defs><filter id="sf"><feGaussianBlur stdDeviation="2"/></filter></defs>
+      <ellipse cx="18" cy="43" rx="14" ry="4" fill="rgba(0,0,0,0.30)" filter="url(#sf)"/>
       <circle cx="18" cy="18" r="17" fill="rgba(220,38,38,0.85)" stroke="#fff" stroke-width="2"/>
       <text x="18" y="24" font-size="18" text-anchor="middle">${emoji}</text></svg>`;
     return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-             scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+             scaledSize: new google.maps.Size(36,46), anchor: new google.maps.Point(18,18) };
   }
   // 이미 경로가 포함된 경우(assets/... 형태) 그대로 사용
   const imgPath = image.includes('/') ? `/${image}` : `/assets/images/monsters/${image}`;
@@ -1894,10 +1924,13 @@ function _refreshBattleVisibility(myLat, myLng) {
     const vis = showMonster(mob);
     _monsterMarkers[mob.id]?.setMap(vis ? map : null);
     _monsterOverlays[mob.id]?.setMap?.(vis ? map : null);
+    _monsterShadows[mob.id]?.setMap(vis ? map : null);
   }
   for (const tower of _towers) {
     if (!tower.lat || !tower.lng) continue;
-    _towerMarkers[tower.id]?.setMap(show(tower.lat, tower.lng) ? map : null);
+    const towerVis = show(tower.lat, tower.lng);
+    _towerMarkers[tower.id]?.setMap(towerVis ? map : null);
+    _towerShadows[tower.id]?.setMap(towerVis ? map : null);
   }
   for (const d of _decoMarkers) {
     if (!d.lat || !d.lng || !d.marker) continue;
@@ -2032,6 +2065,7 @@ function _spawnMonsterMarker(mob) {
     infoWindow?.open(map, marker);
   });
   _monsterMarkers[mob.id] = marker;
+  _placeShadow(mob.id, mob.lat, mob.lng, 36, startVisible ? map : null, _monsterShadows);
 }
 
 function renderMonsterMarkers() {
@@ -2039,6 +2073,8 @@ function renderMonsterMarkers() {
   _monsterMarkers = {};
   Object.values(_monsterOverlays).forEach(o => o?.setMap(null));
   _monsterOverlays = {};
+  Object.values(_monsterShadows).forEach(m => m.setMap(null));
+  _monsterShadows = {};
   for (const mob of _monsters) {
     if (!mob.lat || !mob.lng || mob.hp <= 0) continue;
     _spawnMonsterMarker(mob);
@@ -2099,6 +2135,7 @@ function attackTower(tower, marker) {
     // 타워 파괴
     marker.setMap(null);
     delete _towerMarkers[tower.id];
+    _dropShadow(tower.id, _towerShadows);
     infoWindow?.close();
     showFloat(_t('tower_destroyed'), '#f97316', pos.lat(), pos.lng());
     playSound('gold_drop');
@@ -2167,6 +2204,7 @@ function createTowerMarker(tower, map, infoWindow) {
       infoWindow?.open(map, marker);
     }
   });
+  if (map && tower.id) _placeShadow(tower.id, tower.lat, tower.lng, 38, map, _towerShadows);
   return marker;
 }
 
@@ -2175,7 +2213,8 @@ function renderTowerMarkers() {
   const infoWindow = _ctx?.infoWindow;
   Object.values(_towerMarkers).forEach(m => m.setMap(null));
   Object.values(_towerRanges).forEach(c => c.setMap(null));
-  _towerMarkers = {}; _towerRanges = {};
+  Object.values(_towerShadows).forEach(m => m.setMap(null));
+  _towerMarkers = {}; _towerRanges = {}; _towerShadows = {};
   const myPos = _ctx?.lastPos;
   for (const tower of _towers) {
     if (!tower.lat || !tower.lng) continue;
@@ -2531,6 +2570,7 @@ async function hitMonster(monsterId, damage) {
       dyingOverlay.playDeathAndRemove();
       delete _monsterOverlays[monsterId];
     }
+    _dropShadow(monsterId, _monsterShadows);
     _scheduleMonsterRespawn(mob, Date.now());
   }
 }
@@ -2562,6 +2602,7 @@ function _onMonsterHpChange(monsterId, data) {
     if (_monsterMarkers[monsterId]) { _monsterMarkers[monsterId].setMap(null); delete _monsterMarkers[monsterId]; }
     const syncDyingOv = _monsterOverlays[monsterId];
     if (syncDyingOv) { syncDyingOv.playDeathAndRemove(); delete _monsterOverlays[monsterId]; }
+    _dropShadow(monsterId, _monsterShadows);
     delete _monsterAggro[monsterId];
     _aggroClaimed.delete(monsterId);
     _scheduleMonsterRespawn(mob, data.deadAt?.toMillis?.() || Date.now());
@@ -2583,6 +2624,7 @@ function _onTowerHpChange(towerId, data) {
   if (!tower) return;
   if (data.isDead) {
     if (_towerMarkers[towerId]) { _towerMarkers[towerId].setMap(null); delete _towerMarkers[towerId]; }
+    _dropShadow(towerId, _towerShadows);
     delete _towerHpState[towerId];
     if (!_towerRespawn[towerId]) {
       const elapsed   = Date.now() - (data.deadAt?.toMillis?.() || Date.now());
@@ -3100,11 +3142,13 @@ window.__deleteBattleObj = async (type, id) => {
       if (_monsterMarkers[id])  { _monsterMarkers[id].setMap(null);  delete _monsterMarkers[id]; }
       // 스프라이트 오버레이도 함께 제거
       if (_monsterOverlays[id]) { _monsterOverlays[id].setMap(null); delete _monsterOverlays[id]; }
+      _dropShadow(id, _monsterShadows);
       refreshFirestoreMonsterList();
     } else {
       _towers = _towers.filter(t => t.id !== id);
       if (_towerMarkers[id])  { _towerMarkers[id].setMap(null);  delete _towerMarkers[id]; }
       if (_towerRanges[id])   { _towerRanges[id].setMap(null);   delete _towerRanges[id]; }
+      _dropShadow(id, _towerShadows);
     }
     _ctx?.infoWindow?.close();
   } catch (err) { alert('삭제 실패: ' + err.message); }
@@ -3466,6 +3510,7 @@ function _renderShopMarker(shop) {
   const map = _ctx?.map;
   if (!map || !shop.active) return;
   if (_shopMarkers[shop.id]) { _shopMarkers[shop.id].setMap(null); }
+  _dropShadow(shop.id, _shopShadows);
 
   const marker = new google.maps.Marker({
     position: { lat: shop.lat, lng: shop.lng },
@@ -3501,6 +3546,7 @@ function _renderShopMarker(shop) {
     _ctx._onShopClick?.(freshShop);
   });
 
+  _placeShadow(shop.id, shop.lat, shop.lng, 44, map, _shopShadows);
   _shopMarkers[shop.id] = marker;
 }
 
@@ -3511,8 +3557,10 @@ export async function loadShops() {
     _shops = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     Object.values(_shopMarkers).forEach(m => m.setMap(null));
     Object.values(_shopHpMarkers).forEach(m => m.setMap(null));
+    Object.values(_shopShadows).forEach(m => m.setMap(null));
     _shopMarkers = {};
     _shopHpMarkers = {};
+    _shopShadows = {};
     if (_ctx?.map) {
       _shops.forEach(s => { if (s.active) _renderShopMarker(s); });
     } else {
@@ -3560,6 +3608,7 @@ export async function deleteShop(shopId) {
   _shops = _shops.filter(s => s.id !== shopId);
   if (_shopMarkers[shopId]) { _shopMarkers[shopId].setMap(null); delete _shopMarkers[shopId]; }
   if (_shopHpMarkers[shopId]) { _shopHpMarkers[shopId].setMap(null); delete _shopHpMarkers[shopId]; }
+  _dropShadow(shopId, _shopShadows);
 }
 
 let _lastNearShopId = null;

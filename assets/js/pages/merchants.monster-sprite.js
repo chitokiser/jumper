@@ -366,6 +366,16 @@ function _injectStyles() {
   border-radius: 2px;
   transition: width .35s, background .35s;
 }
+.ms-overlay .ms-shadow {
+  position: absolute;
+  bottom: -6px; left: 50%;
+  transform: translateX(-50%);
+  width: 60%; height: 12px;
+  background: rgba(0,0,0,0.30);
+  border-radius: 50%;
+  filter: blur(3px);
+  pointer-events: none;
+}
 `;
 
   // 타입별 sprite CSS 생성
@@ -539,6 +549,11 @@ function _getOverlayClass() {
       div.className = 'ms-overlay';
       div.tabIndex = -1;   // 클릭 시 포커스 링(사각형) 방지
       div.style.cssText = `width:${size}px;height:${size}px;outline:none;border:none;background:transparent;box-shadow:none;`;
+
+      // 그림자
+      const shadow = document.createElement('div');
+      shadow.className = 'ms-shadow';
+      div.appendChild(shadow);
 
       // 스프라이트 프레임
       let frame;
