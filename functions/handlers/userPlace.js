@@ -266,10 +266,12 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
     docId = ref.id;
   } else if (def.type === 'shop') {
     // 5km 체크는 트랜잭션 전에 이미 완료됨
+    // shop_potion → potion 등 정규화 (moneyTree CF 타입 체크와 일치)
+    const normalizedShopType = def.shopType.replace(/^shop_/, '');
     const ref = await db.collection('game_shops').add({
       ...base,
       name:  `${nim} ${def.label}${placeNo}`,
-      type:  def.shopType,
+      type:  normalizedShopType,
       image: def.image ?? null,
       items: [],
     });

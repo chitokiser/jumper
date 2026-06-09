@@ -57,13 +57,13 @@ function treeImageNum(value) {
 
 async function _validateGps(uid) {
   const snap = await db.collection('battle_players').doc(uid).get();
-  if (!snap.exists) throw new HttpsError('not-found', '플레이어 정보 없음');
+  if (!snap.exists) throw new HttpsError('not-found', 'Player data not found.');
   const d = snap.data();
   if (d.lat == null || d.lng == null)
-    throw new HttpsError('failed-precondition', 'GPS 위치가 확인되지 않습니다. 잠시 후 다시 시도하세요.');
+    throw new HttpsError('failed-precondition', 'Your location is not set. Please wait a moment and try again.');
   const age = Date.now() - (d.updatedAt?.toMillis?.() ?? 0);
   if (age > 10 * 60 * 1000)
-    throw new HttpsError('failed-precondition', 'GPS 위치 정보가 너무 오래되었습니다. 이동 후 다시 시도하세요.');
+    throw new HttpsError('failed-precondition', 'Location data is too old. Please move to refresh your position.');
   return d;
 }
 
@@ -100,7 +100,7 @@ async function adminSetMoneyTreeConfig(uid, data) {
 
 // ── 묘목 구매 (물약상점) ──────────────────────────────────────────────────────
 async function buySeedling(uid, { shopId, qty = 1 }) {
-  if (!shopId) throw new HttpsError('invalid-argument', 'shopId 누락');
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId is required.');
   const n = Math.max(1, Math.floor(qty));
   const cfg = await getConfig();
   const totalCost = cfg.seedlingPriceGp * n;
@@ -109,11 +109,12 @@ async function buySeedling(uid, { shopId, qty = 1 }) {
     db.collection('game_shops').doc(shopId).get(),
     _validateGps(uid),
   ]);
-  if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+  if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found.');
   const shop = shopSnap.data();
-  if (shop.type !== 'potion') throw new HttpsError('failed-precondition', '물약상점에서만 구매 가능합니다');
+  const shopType = shop.type?.replace(/^shop_/, '') ?? shop.type;
+  if (shopType !== 'potion') throw new HttpsError('failed-precondition', 'Seedlings can only be purchased at a Potion Shop.');
   const dist = haversineM(player.lat, player.lng, shop.lat, shop.lng);
-  if (dist > 5000) throw new HttpsError('failed-precondition', `상점에서 너무 멉니다 (${Math.round(dist)}m)`);
+  if (dist > 5000) throw new HttpsError('failed-precondition', `You are too far from the shop (${Math.round(dist)}m). Move within 5 km.`);
 
   const ownerUid = shop.ownerUid;
   const ownerShare = Math.floor(totalCost * cfg.shopOwnerCommissionSeedling);
@@ -122,7 +123,7 @@ async function buySeedling(uid, { shopId, qty = 1 }) {
     const pRef = db.collection('battle_players').doc(uid);
     const pSnap = await tx.get(pRef);
     const gold = pSnap.data()?.gold ?? 0;
-    if (gold < totalCost) throw new HttpsError('failed-precondition', `GP 부족 (보유 ${gold}, 필요 ${totalCost})`);
+    if (gold < totalCost) throw new HttpsError('failed-precondition', `Not enough GP (have ${gold}, need ${totalCost}).`);
     const now = admin.firestore.FieldValue.serverTimestamp();
     tx.update(pRef, { gold: gold - totalCost, seedlings: admin.firestore.FieldValue.increment(n), updatedAt: now });
     if (ownerUid && ownerUid !== uid) {
@@ -138,7 +139,7 @@ async function buySeedling(uid, { shopId, qty = 1 }) {
 
 // ── 영양제 구매 (물약상점) ────────────────────────────────────────────────────
 async function buyTreeBooster(uid, { shopId, qty = 1 }) {
-  if (!shopId) throw new HttpsError('invalid-argument', 'shopId 누락');
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId is required.');
   const n = Math.max(1, Math.floor(qty));
   const cfg = await getConfig();
   const totalCost = cfg.boosterPriceGp * n;
@@ -147,11 +148,12 @@ async function buyTreeBooster(uid, { shopId, qty = 1 }) {
     db.collection('game_shops').doc(shopId).get(),
     _validateGps(uid),
   ]);
-  if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+  if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found.');
   const shop = shopSnap.data();
-  if (shop.type !== 'potion') throw new HttpsError('failed-precondition', '물약상점에서만 구매 가능합니다');
+  const shopType = shop.type?.replace(/^shop_/, '') ?? shop.type;
+  if (shopType !== 'potion') throw new HttpsError('failed-precondition', 'Boosters can only be purchased at a Potion Shop.');
   const dist = haversineM(player.lat, player.lng, shop.lat, shop.lng);
-  if (dist > 5000) throw new HttpsError('failed-precondition', `상점에서 너무 멉니다 (${Math.round(dist)}m)`);
+  if (dist > 5000) throw new HttpsError('failed-precondition', `You are too far from the shop (${Math.round(dist)}m). Move within 5 km.`);
 
   const ownerUid = shop.ownerUid;
   const ownerShare = Math.floor(totalCost * cfg.shopOwnerCommissionBooster);
@@ -160,7 +162,7 @@ async function buyTreeBooster(uid, { shopId, qty = 1 }) {
     const pRef = db.collection('battle_players').doc(uid);
     const pSnap = await tx.get(pRef);
     const gold = pSnap.data()?.gold ?? 0;
-    if (gold < totalCost) throw new HttpsError('failed-precondition', `GP 부족 (보유 ${gold}, 필요 ${totalCost})`);
+    if (gold < totalCost) throw new HttpsError('failed-precondition', `Not enough GP (have ${gold}, need ${totalCost}).`);
     const now = admin.firestore.FieldValue.serverTimestamp();
     tx.update(pRef, { gold: gold - totalCost, treeBoosters: admin.firestore.FieldValue.increment(n), updatedAt: now });
     if (ownerUid && ownerUid !== uid) {
@@ -176,18 +178,18 @@ async function buyTreeBooster(uid, { shopId, qty = 1 }) {
 
 // ── 묘목 식재 ────────────────────────────────────────────────────────────────
 async function plantSeedling(uid, { shopId }) {
-  if (!shopId) throw new HttpsError('invalid-argument', 'shopId 누락');
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId is required.');
 
   const [shopSnap, player, cfg] = await Promise.all([
     db.collection('game_shops').doc(shopId).get(),
     _validateGps(uid),
     getConfig(),
   ]);
-  if (!shopSnap.exists) throw new HttpsError('not-found', '상점을 찾을 수 없습니다');
+  if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found.');
   const shop = shopSnap.data();
   const dist = haversineM(player.lat, player.lng, shop.lat, shop.lng);
-  if (dist > 5000) throw new HttpsError('failed-precondition', `상점에서 5km 이내에서만 식재 가능합니다 (${Math.round(dist)}m)`);
-  if ((player.seedlings ?? 0) < 1) throw new HttpsError('failed-precondition', '묘목이 없습니다');
+  if (dist > 5000) throw new HttpsError('failed-precondition', `You must be within 5 km of the shop to plant (${Math.round(dist)}m away).`);
+  if ((player.seedlings ?? 0) < 1) throw new HttpsError('failed-precondition', 'You have no seedlings.');
 
   // 10m 이내 나무 존재 여부 확인
   const near = await db.collection('money_trees')
@@ -197,7 +199,7 @@ async function plantSeedling(uid, { shopId }) {
   for (const d of near.docs) {
     const t = d.data();
     if (haversineM(player.lat, player.lng, t.lat, t.lng) < 10)
-      throw new HttpsError('failed-precondition', '이미 나무가 있는 위치입니다 (10m 이내)');
+      throw new HttpsError('failed-precondition', 'There is already a tree within 10 m of this location.');
   }
 
   // 복권 번호 생성
@@ -214,7 +216,7 @@ async function plantSeedling(uid, { shopId }) {
     const pSnap = await tx.get(pRef);
     const pData = pSnap.data() ?? {};
 
-    if ((pData.seedlings ?? 0) < 1) throw new HttpsError('failed-precondition', '묘목이 없습니다');
+    if ((pData.seedlings ?? 0) < 1) throw new HttpsError('failed-precondition', 'You have no seedlings.');
 
     const cfgData = { ...DEFAULTS, ...(cfgSnap.exists ? cfgSnap.data() : {}) };
     const newCounter = (cfgData.globalPlantCounter ?? 0) + 1;
@@ -264,18 +266,18 @@ async function plantSeedling(uid, { shopId }) {
 
 // ── 영양제 사용 (슬롯머신) ────────────────────────────────────────────────────
 async function useTreeBooster(uid, { treeId }) {
-  if (!treeId) throw new HttpsError('invalid-argument', 'treeId 누락');
+  if (!treeId) throw new HttpsError('invalid-argument', 'treeId is required.');
   const cfg = await getConfig();
 
   const [treeSnap, player] = await Promise.all([
     db.collection('money_trees').doc(treeId).get(),
     _validateGps(uid),
   ]);
-  if (!treeSnap.exists) throw new HttpsError('not-found', '나무를 찾을 수 없습니다');
+  if (!treeSnap.exists) throw new HttpsError('not-found', 'Tree not found.');
   const tree = treeSnap.data();
-  if (tree.ownerUid !== uid) throw new HttpsError('permission-denied', '내 나무에만 영양제를 사용할 수 있습니다');
+  if (tree.ownerUid !== uid) throw new HttpsError('permission-denied', 'You can only use boosters on your own trees.');
   const dist = haversineM(player.lat, player.lng, tree.lat, tree.lng);
-  if (dist > 50) throw new HttpsError('failed-precondition', `나무 위치 50m 이내에서만 사용 가능합니다 (${Math.round(dist)}m)`);
+  if (dist > 50) throw new HttpsError('failed-precondition', `You must be within 50 m of the tree to use a booster (${Math.round(dist)}m away).`);
 
   const boostResult = Math.floor(Math.random() * (cfg.boosterMax - cfg.boosterMin + 1)) + cfg.boosterMin;
   const now = admin.firestore.FieldValue.serverTimestamp();
@@ -284,7 +286,7 @@ async function useTreeBooster(uid, { treeId }) {
     const pRef = db.collection('battle_players').doc(uid);
     const pSnap = await tx.get(pRef);
     if ((pSnap.data()?.treeBoosters ?? 0) < 1)
-      throw new HttpsError('failed-precondition', '영양제가 없습니다');
+      throw new HttpsError('failed-precondition', 'You have no boosters.');
     tx.update(pRef, { treeBoosters: admin.firestore.FieldValue.increment(-1), updatedAt: now });
     tx.update(db.collection('money_trees').doc(treeId), {
       boostTotal: admin.firestore.FieldValue.increment(boostResult), updatedAt: now,
@@ -297,23 +299,23 @@ async function useTreeBooster(uid, { treeId }) {
 
 // ── 나무 수확 ────────────────────────────────────────────────────────────────
 async function harvestTree(uid, { treeId }) {
-  if (!treeId) throw new HttpsError('invalid-argument', 'treeId 누락');
+  if (!treeId) throw new HttpsError('invalid-argument', 'treeId is required.');
 
   const [treeSnap, player, cfgSnap] = await Promise.all([
     db.collection('money_trees').doc(treeId).get(),
     _validateGps(uid),
     CONFIG_REF.get(),
   ]);
-  if (!treeSnap.exists) throw new HttpsError('not-found', '나무를 찾을 수 없습니다');
+  if (!treeSnap.exists) throw new HttpsError('not-found', 'Tree not found.');
   const tree = treeSnap.data();
   const cfg  = { ...DEFAULTS, ...(cfgSnap.exists ? cfgSnap.data() : {}) };
 
   const dist = haversineM(player.lat, player.lng, tree.lat, tree.lng);
-  if (dist > 50) throw new HttpsError('failed-precondition', `나무 위치 50m 이내에서만 수확 가능합니다 (${Math.round(dist)}m)`);
-  if ((player.harvestTickets ?? 0) < 1) throw new HttpsError('failed-precondition', '수확권이 없습니다');
+  if (dist > 50) throw new HttpsError('failed-precondition', `You must be within 50 m of the tree to harvest (${Math.round(dist)}m away).`);
+  if ((player.harvestTickets ?? 0) < 1) throw new HttpsError('failed-precondition', 'You have no harvest tickets.');
 
   const treeValue = calcTreeValue(cfg.globalPlantCounter, tree.baseCounter, cfg.growthRate, cfg.maxTreeValue, tree.boostTotal);
-  if (treeValue <= 0) throw new HttpsError('failed-precondition', '아직 가치가 없는 나무입니다 (다른 유저의 식재를 기다리세요)');
+  if (treeValue <= 0) throw new HttpsError('failed-precondition', 'This tree has no value yet. Wait for other players to plant nearby.');
 
   const tax            = Math.floor(treeValue * cfg.harvestTaxRate);
   const harvesterGp    = treeValue - tax;
