@@ -228,6 +228,9 @@
     /* ── 상점 모달 ── */
     #shopModal.open, #shopAdminModal.open { display: flex !important; }
 
+    /* ── 돈나무 모달 ── */
+    #mtPlantModal.open, #mtMyTreesModal.open, #mtBoosterModal.open, #mtTreeModal.open { display: flex !important; }
+
     /* ── 인벤토리 모달 ── */
     #invModal {
       display: none;
@@ -1932,6 +1935,13 @@
       <span class="skill-key">9</span>
       <span class="skill-name">마정석</span>
     </div>
+    <!-- 돈나무 HUD -->
+    <div class="skill-slot" style="position:relative;" onclick="window._mtOpenMyTrees && window._mtOpenMyTrees()" title="돈나무 — 묘목/수확권 현황">
+      <button class="skill-btn" style="cursor:pointer;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.4)">🌳</button>
+      <span class="skill-badge" id="mtHudSeedlings" style="background:#059669;top:-4px;right:-4px"></span>
+      <span class="skill-key"></span>
+      <span class="skill-name" style="font-size:9px;line-height:1.1">묘목<br><span id="mtHudTickets" style="color:#fbbf24">0</span>🎟</span>
+    </div>
   </div>
 
   <main class="page">
@@ -2171,6 +2181,110 @@
   </main>
 
   <div id="siteFooter"></div>
+
+  <!-- ══ 돈나무 모달 ══════════════════════════════════════════════════════════ -->
+
+  <!-- 식재 확인 모달 -->
+  <div id="mtPlantModal" data-fs-modal
+    style="display:none;position:fixed;inset:0;z-index:8200;background:rgba(0,0,0,.7);
+           align-items:center;justify-content:center">
+    <div style="background:#111827;border-radius:16px;padding:20px;width:90%;max-width:320px;
+                border:1px solid #1f2937;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="font-size:16px;font-weight:700;color:#34d399;margin-bottom:12px;text-align:center">🌱 묘목 식재</div>
+      <div style="font-size:13px;color:#d1d5db;margin-bottom:16px;text-align:center">
+        현재 위치에 묘목을 심습니다.<br>
+        보유 묘목: <strong style="color:#fbbf24" id="mtPlantSeedCount">0</strong>개
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('mtPlantModal').classList.remove('open')"
+          style="flex:1;padding:11px;border-radius:8px;border:1px solid #374151;background:transparent;
+                 color:#9ca3af;font-weight:600;font-size:13px;cursor:pointer">취소</button>
+        <button id="mtPlantConfirmBtn" onclick="window._mtConfirmPlant && window._mtConfirmPlant()"
+          style="flex:2;padding:11px;border-radius:8px;border:none;
+                 background:linear-gradient(135deg,#059669,#047857);color:#fff;
+                 font-weight:700;font-size:13px;cursor:pointer">🌱 식재하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 내 나무 목록 모달 -->
+  <div id="mtMyTreesModal" data-fs-modal
+    style="display:none;position:fixed;inset:0;z-index:8200;background:rgba(0,0,0,.75);
+           align-items:flex-start;justify-content:center;padding-top:40px">
+    <div style="background:#111827;border-radius:16px;width:92%;max-width:380px;
+                border:1px solid #1f2937;max-height:80vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:14px 16px;border-bottom:1px solid #1f2937">
+        <span style="font-size:15px;font-weight:700;color:#34d399">🌳 내 나무 목록</span>
+        <button onclick="document.getElementById('mtMyTreesModal').classList.remove('open')"
+          style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;padding:2px 6px">✕</button>
+      </div>
+      <div id="mtMyTreeList" style="flex:1;overflow-y:auto;padding:12px"></div>
+      <div style="padding:12px;border-top:1px solid #1f2937">
+        <button onclick="window._mtOpenPlantFromMyTrees && window._mtOpenPlantFromMyTrees()"
+          style="width:100%;padding:11px;border-radius:8px;border:none;
+                 background:linear-gradient(135deg,#059669,#047857);color:#fff;
+                 font-weight:700;font-size:13px;cursor:pointer">🌱 현재 위치에 식재</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 영양제 슬롯머신 모달 -->
+  <div id="mtBoosterModal" data-fs-modal
+    style="display:none;position:fixed;inset:0;z-index:8300;background:rgba(0,0,0,.8);
+           align-items:center;justify-content:center">
+    <div style="background:#111827;border-radius:16px;padding:24px;width:90%;max-width:300px;
+                border:1px solid #374151;text-align:center">
+      <div style="font-size:15px;font-weight:700;color:#a78bfa;margin-bottom:16px">💊 영양제 슬롯머신</div>
+      <div style="font-size:64px;font-weight:900;color:#fbbf24;
+                  background:rgba(255,255,255,.05);border-radius:12px;padding:20px;
+                  border:2px solid #374151;margin-bottom:16px;
+                  font-variant-numeric:tabular-nums;min-height:88px;
+                  display:flex;align-items:center;justify-content:center"
+           id="mtSlotResult">?</div>
+      <div id="mtSlotResultRow" class="hidden"
+        style="margin-bottom:14px;font-size:13px;color:#34d399;font-weight:600">
+        🎉 성장치 +<span id="mtSlotResultVal" style="color:#fbbf24"></span> 적용!
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('mtBoosterModal').classList.remove('open')"
+          style="flex:1;padding:11px;border-radius:8px;border:1px solid #374151;background:transparent;
+                 color:#9ca3af;font-weight:600;font-size:13px;cursor:pointer">닫기</button>
+        <button id="mtSlotSpinBtn" onclick="window._mtSpinBooster && window._mtSpinBooster()"
+          style="flex:2;padding:11px;border-radius:8px;border:none;
+                 background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;
+                 font-weight:700;font-size:14px;cursor:pointer">🎰 사용하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 나무 정보 모달 (지도 마커 클릭) -->
+  <div id="mtTreeModal" data-fs-modal
+    style="display:none;position:fixed;inset:0;z-index:8200;background:rgba(0,0,0,.7);
+           align-items:center;justify-content:center">
+    <div style="background:#111827;border-radius:16px;padding:20px;width:90%;max-width:320px;
+                border:1px solid #1f2937">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <img id="mtTreeImg" src="/assets/images/tree/1.png" style="width:56px;height:56px;object-fit:contain">
+        <div>
+          <div style="font-size:11px;color:#6b7280" id="mtTreeId"></div>
+          <div style="font-size:16px;font-weight:700;color:#fbbf24" id="mtTreeValue"></div>
+          <div style="font-size:12px;color:#9ca3af">소유: <span id="mtTreeOwner"></span></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="mtBtnBoost" onclick="window._mtDoBoost && window._mtDoBoost(this.dataset.treeid)"
+          style="flex:1;padding:10px;border-radius:8px;border:none;font-weight:700;font-size:12px;
+                 cursor:pointer;background:#7c3aed;color:#fff">💊 영양제</button>
+        <button id="mtBtnHarvest" onclick="window._mtDoHarvest && window._mtDoHarvest(this.dataset.treeid)"
+          style="flex:1;padding:10px;border-radius:8px;border:none;font-weight:700;font-size:12px;
+                 cursor:pointer;background:#059669;color:#fff">🌾 수확</button>
+        <button onclick="document.getElementById('mtTreeModal').classList.remove('open')"
+          style="padding:10px 12px;border-radius:8px;border:1px solid #374151;background:transparent;
+                 color:#9ca3af;font-size:12px;font-weight:600;cursor:pointer">✕</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 레벨업 오버레이 -->
   <div id="levelupOverlay" class="levelup-overlay">

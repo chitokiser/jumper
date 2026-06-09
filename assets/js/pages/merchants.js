@@ -46,6 +46,8 @@ import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterA
 import { initUserPlace } from './user-place.js';
 import { initDailyArea, checkDailyProximity } from './merchants.daily.js';
 import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, toggleVirtualMode, setVirtualPos } from './merchants.virtual.js';
+import { initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers,
+         renderMoneyTreeShopSection, openPlantModal } from './merchants.moneytree.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -89,6 +91,7 @@ let _detectorActive       = false;  // 보물 탐지기 ON/OFF
 let _detectorBeepTimer    = null;   // setTimeout handle
 let _detectorNextInterval = 0;      // 다음 beep 간격(ms), 0=범위 밖
 let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
+let _mtMarkerLoadTs = 0;         // 돈나무 마커 마지막 로드 시각 (ms)
 let _gsMonsters     = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
 let _gsMarkers      = {};        // {monsterId: Marker} 게임 서버 몬스터 마커 (비-스프라이트)
 let _gsOverlays     = {};        // {monsterId: MonsterSpriteOverlay} 스프라이트 오버레이 (dragon 등)
@@ -299,6 +302,8 @@ const FS_MODALS = [
   // 누락 보완
   'levelupOverlay', 'voucherOrderModal', 'tutModal', 'lb-overlay', 'monsterStatModal',
   'ownerItemModal',
+  // 돈나무 모달
+  'mtPlantModal', 'mtMyTreesModal', 'mtBoosterModal', 'mtTreeModal',
 ];
 
 // 풀스크린 컨테이너 밖에 있는 fixed 요소를 안으로 이동시키지 않으면
@@ -1547,6 +1552,11 @@ async function checkProximity(lat, lng) {
   _checkDropProximity(lat, lng);
   _checkUserNpcProximity(lat, lng);
   checkDailyProximity(lat, lng);
+  // 돈나무 마커: 60초마다 갱신
+  if (!_isAnonymous && Date.now() - _mtMarkerLoadTs > 60_000) {
+    _mtMarkerLoadTs = Date.now();
+    loadMoneyTreeMarkers(lat, lng);
+  }
 }
 
 async function tryCollect(box) {
@@ -2902,6 +2912,8 @@ async function init() {
         }
         renderExchangeSection();
         showDeathMarkerIfDead();
+        // 돈나무 인벤토리 HUD
+        if (!_isAnonymous) refreshMoneyTreeInventory().catch(() => {});
         // 로그인 완료 후 워프모드 자동 시작 시도 (지도가 먼저 준비된 경우 여기서 실행)
         _maybeAutoStartVirtualMode();
       });
@@ -3007,6 +3019,13 @@ async function init() {
 
     // 첫 방문 Virtual Mode 안내 (기존 guide tooltip)
     _initVirtualModeGuide();
+
+    // ── 돈나무 초기화 ──────────────────────────────────────────────────────
+    initMoneyTree(_ctx, map, functions);
+    window._mtOpenPlantFromMyTrees = () => {
+      document.getElementById('mtMyTreesModal')?.classList.remove('open');
+      openPlantModal(_activeShopId || null);
+    };
 
     // ── 페이지 진입 시 워프모드 자동 시작 ─────────────────────────────────
     _maybeAutoStartVirtualMode();
@@ -3910,6 +3929,25 @@ function _renderShopModalBody() {
   </div>`;
 
   body.innerHTML = html;
+
+  // 물약상점: 돈나무 섹션 렌더링 (config 비동기 조회)
+  if (shop.type === 'potion' && _uid && !_isAnonymous) {
+    httpsCallable(functions, 'getMoneyTreeConfig')()
+      .then(({ data }) => {
+        const mtSection = document.getElementById('mtShopSection');
+        const placeholder = body.querySelector('#mtShopSectionPlaceholder');
+        if (!mtSection) {
+          const div = document.createElement('div');
+          div.innerHTML = renderMoneyTreeShopSection(shop, data);
+          body.appendChild(div.firstElementChild);
+          // 식재 버튼
+          body.querySelector('button[onclick*="_mtOpenMyTrees"]')?.addEventListener('click', () => {
+            window._mtOpenMyTrees && window._mtOpenMyTrees();
+          });
+        }
+      })
+      .catch(() => {});
+  }
 
   // 아이템 행 클릭 → 선택
   body.querySelectorAll('.shop-item-row[data-item-id]').forEach(row => {

@@ -67,6 +67,7 @@ const tonPaymentH            = require('./handlers/tonPayment');
 const gameRewardH            = require('./handlers/gameReward');
 const starsH                 = require('./handlers/starsPayment');
 const membershipH            = require('./handlers/membership');
+const moneyTreeH             = require('./handlers/moneyTree');
 const { requireAdmin }       = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -191,6 +192,71 @@ exports.adminGetUserGpHistory = onCall(wrapError(async (request) => {
 exports.processReferralReward = onCall(wrapError(async (request) => {
   const { referrerUid, newUserUid } = request.data ?? {};
   return await membershipH.processReferralReward(referrerUid, newUserUid);
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
+// 돈나무(Money Tree) 시스템
+// ════════════════════════════════════════════════════════════════════════════
+exports.getMoneyTreeConfig = onCall(wrapError(async (request) => {
+  requireAuth(request);
+  return await moneyTreeH.getMoneyTreeConfig();
+}));
+
+exports.adminSetMoneyTreeConfig = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.adminSetMoneyTreeConfig(uid, request.data ?? {});
+}));
+
+exports.buySeedling = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.buySeedling(uid, request.data ?? {});
+}));
+
+exports.buyTreeBooster = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.buyTreeBooster(uid, request.data ?? {});
+}));
+
+exports.plantSeedling = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.plantSeedling(uid, request.data ?? {});
+}));
+
+exports.useTreeBooster = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.useTreeBooster(uid, request.data ?? {});
+}));
+
+exports.harvestTree = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.harvestTree(uid, request.data ?? {});
+}));
+
+exports.getNearbyTrees = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { lat, lng, radiusKm } = request.data ?? {};
+  return await moneyTreeH.getNearbyTrees(uid, { lat, lng, radiusKm });
+}));
+
+exports.getMyTrees = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.getMyTrees(uid);
+}));
+
+exports.getMoneyTreeInventory = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.getMyInventory(uid);
+}));
+
+exports.grantSeedlingDrop = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { monsterType } = request.data ?? {};
+  return await moneyTreeH.grantSeedlingDrop(uid, { monsterType });
+}));
+
+exports.adminGetMoneyTreeStats = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.adminGetMoneyTreeStats(uid);
 }));
 
 // ════════════════════════════════════════════════════════════════════════════
