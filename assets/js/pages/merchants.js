@@ -5281,8 +5281,12 @@ function _openOwnerItemEditor(shop) {
           💾 저장
         </button>
       </div>`;
-    document.body.appendChild(modal);
+    (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+  } else {
+    // 이미 생성된 모달이 FS 전환으로 body에 남아있을 경우 올바른 컨테이너로 이동
+    const dest = document.fullscreenElement || document.webkitFullscreenElement || document.body;
+    if (modal.parentElement !== dest) dest.appendChild(modal);
   }
 
   modal.style.display = 'flex';
