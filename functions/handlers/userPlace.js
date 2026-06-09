@@ -270,10 +270,11 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
     const normalizedShopType = def.shopType.replace(/^shop_/, '');
     const ref = await db.collection('game_shops').add({
       ...base,
-      name:  `${nim} ${def.label}${placeNo}`,
-      type:  normalizedShopType,
-      image: def.image ?? null,
-      items: [],
+      name:    `${nim} ${def.label}${placeNo}`,
+      type:    normalizedShopType,
+      image:   def.image ?? null,
+      items:   [],
+      sellsMt: normalizedShopType === 'potion',
     });
     docId = ref.id;
   }

@@ -141,9 +141,19 @@ export function renderMoneyTreeShopSection(shop, cfg) {
           <div style="font-size:13px;font-weight:600;color:#f3f4f6">💊 영양제</div>
           <div style="font-size:11px;color:#9ca3af">💰 ${boostPrice} GP · 보유: <span id="mtInvBoosters">${inv?.treeBoosters ?? 0}</span>개</div>
         </div>
-        <button id="mtBuyBoosterBtn" onclick="window._mtBuyBooster()"
-          style="padding:8px 14px;border-radius:8px;border:none;font-weight:700;font-size:12px;
-                 cursor:pointer;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff">구매</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="display:flex;align-items:center;border:1px solid #374151;border-radius:8px;overflow:hidden">
+            <button onclick="window._mtBoostQtyStep(-1)"
+              style="padding:6px 10px;border:none;background:#1f2937;color:#9ca3af;font-size:16px;cursor:pointer;line-height:1">−</button>
+            <input id="mtBoostQtyInput" type="number" min="1" max="99" value="1"
+              style="width:38px;border:none;background:#111827;color:#f3f4f6;text-align:center;font-size:13px;font-weight:700;padding:6px 0;-moz-appearance:textfield">
+            <button onclick="window._mtBoostQtyStep(1)"
+              style="padding:6px 10px;border:none;background:#1f2937;color:#9ca3af;font-size:16px;cursor:pointer;line-height:1">+</button>
+          </div>
+          <button id="mtBuyBoosterBtn" onclick="window._mtBuyBooster()"
+            style="padding:8px 14px;border-radius:8px;border:none;font-weight:700;font-size:12px;
+                   cursor:pointer;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff">구매</button>
+        </div>
       </div>
       <button onclick="window._mtOpenMyTrees()"
         style="width:100%;padding:10px;border-radius:8px;border:none;font-weight:700;font-size:13px;
@@ -179,16 +189,27 @@ window._mtBuySeedling = async function() {
   finally { if (btn) btn.disabled = false; }
 };
 
+window._mtBoostQtyStep = function(delta) {
+  const el = document.getElementById('mtBoostQtyInput');
+  if (!el) return;
+  el.value = Math.min(99, Math.max(1, (parseInt(el.value) || 1) + delta));
+};
+
 window._mtBuyBooster = async function() {
   if (!_activeShopId || !_functions) return;
   _onEnsurePos?.();
+  const qtyEl = document.getElementById('mtBoostQtyInput');
+  const qty = Math.min(99, Math.max(1, parseInt(qtyEl?.value) || 1));
+  const btn = document.getElementById('mtBuyBoosterBtn');
+  if (btn) btn.disabled = true;
   try {
     const fn = httpsCallable(_functions, 'buyTreeBooster');
-    const { data } = await fn({ shopId: _activeShopId, qty: 1 });
-    _showMtToast(`💊 영양제 ${data.qty}개 구매! (-${data.cost.toLocaleString()} GP)`, 'success');
+    const { data } = await fn({ shopId: _activeShopId, qty });
+    _showMtToast(`💊 Booster x${data.qty} purchased! (-${data.cost.toLocaleString()} GP)`, 'success');
     await refreshMoneyTreeInventory();
     document.getElementById('mtInvBoosters').textContent = _inv?.treeBoosters ?? 0;
-  } catch (e) { _showMtToast(e?.message || '구매 실패', 'error'); }
+  } catch (e) { _showMtToast(e?.message || 'Purchase failed', 'error'); }
+  finally { if (btn) btn.disabled = false; }
 };
 
 // ── 내 나무 모달 ─────────────────────────────────────────────────────────────
