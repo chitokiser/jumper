@@ -456,6 +456,19 @@ export function playSound(type) {
         tone(180, 0.2, 0.1, 0.08, 'sawtooth');
         break;
       }
+      case 'plant_seedling': {
+        // 묘목 식재 성공 — 흙 퍼석 + 새싹 돋는 상승음
+        const sbuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.06), ac.sampleRate);
+        const sd = sbuf.getChannelData(0);
+        for (let i = 0; i < sd.length; i++) sd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ac.sampleRate * 0.018));
+        const ss = ac.createBufferSource(); ss.buffer = sbuf;
+        const sf = ac.createBiquadFilter(); sf.type = 'bandpass'; sf.frequency.value = 380; sf.Q.value = 0.9;
+        const sg = ac.createGain(); sg.gain.value = 0.9;
+        ss.connect(sf); sf.connect(sg); sg.connect(ac.destination); ss.start();
+        [330, 415, 523, 659, 784].forEach((f, i) => tone(f, 0.22, 0.18, 0.06 + i * 0.07, 'triangle'));
+        tone(1047, 0.18, 0.3, 0.42, 'sine');
+        break;
+      }
       case 'dead': {
         // 게임 오버 — 하강 피치 + 잔향
         const ddur = 1.0;

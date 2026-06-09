@@ -2,6 +2,7 @@
 // 돈나무(Money Tree) 프론트엔드 모듈
 
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { playSound } from './merchants.battle.js';
 
 let _functions = null;
 let _map = null;
@@ -266,6 +267,7 @@ window._mtConfirmPlant = async function() {
     if (data.ticketGranted) msg += '\n🎟️ 묘목 10개 달성 — 수확권 +1!';
     if (data.lotteryTriggeredWin) msg += '\n🎉 복권 당첨 발생 (다른 유저 수확권 +1)';
     if (data.lotteryNumber) msg += `\n🎲 복권 번호: ${data.lotteryNumber}`;
+    playSound('plant_seedling');
     _showMtToast(msg, 'success');
     await refreshMoneyTreeInventory();
     const refPos = _ctx?.lastPos || _ctx?.gpsPos;
