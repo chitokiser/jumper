@@ -230,4 +230,35 @@ async function adminGetUserGpHistory(uid) {
   };
 }
 
-module.exports = { claimGameReward, payGameEntry, adminGetUserGpHistory };
+/**
+ * 관리자 GP 직접 충전 — battle_players.gold 증가 + 감사 로그
+ */
+async function adminChargeGp(adminUid, { targetUid, amount, note } = {}) {
+  if (!targetUid)                             throw new Error('targetUid 누락');
+  const gp = Math.floor(Number(amount));
+  if (!Number.isFinite(gp) || gp <= 0)       throw new Error('amount는 1 이상 정수여야 합니다');
+  if (gp > 10_000_000)                        throw new Error('1회 최대 충전량 초과 (1,000만 GP)');
+
+  const bpRef    = db.collection('battle_players').doc(targetUid);
+  const logRef   = db.collection('gp_admin_charges').doc();
+
+  await db.runTransaction(async t => {
+    const snap = await t.get(bpRef);
+    const before = Number((snap.data() || {}).gold) || 0;
+    t.set(bpRef, { gold: admin.firestore.FieldValue.increment(gp) }, { merge: true });
+    t.set(logRef, {
+      adminUid,
+      targetUid,
+      amount: gp,
+      before,
+      after: before + gp,
+      note:  note || '',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  const after = await bpRef.get().then(s => Number((s.data() || {}).gold) || 0);
+  return { success: true, charged: gp, newBalance: after };
+}
+
+module.exports = { claimGameReward, payGameEntry, adminGetUserGpHistory, adminChargeGp };

@@ -1143,8 +1143,9 @@ function renderUsersList() {
         ${tgInfo}${memberExp}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
-        <button class="btn btn-sm" data-act="viewUser" data-uid="${esc(uid)}" style="font-size:12px;">상세</button>
-        <button class="btn btn-sm" data-act="viewGp"   data-uid="${esc(uid)}" data-name="${name}" style="font-size:12px;background:#f0fdf4;border-color:#16a34a;color:#15803d;">🪙 GP 내역</button>
+        <button class="btn btn-sm" data-act="viewUser"    data-uid="${esc(uid)}" style="font-size:12px;">상세</button>
+        <button class="btn btn-sm" data-act="viewGp"      data-uid="${esc(uid)}" data-name="${name}" style="font-size:12px;background:#f0fdf4;border-color:#16a34a;color:#15803d;">🪙 GP 내역</button>
+        <button class="btn btn-sm" data-act="chargeGp"    data-uid="${esc(uid)}" data-name="${name}" style="font-size:12px;background:#fffbeb;border-color:#d97706;color:#b45309;">💰 GP 충전</button>
       </div>
     </div>`;
   }).join("");
@@ -1163,6 +1164,10 @@ function renderUsersList() {
 
   userList.querySelectorAll("[data-act='viewGp']").forEach(btn => {
     btn.addEventListener("click", () => showGpHistory(btn.dataset.uid, btn.dataset.name));
+  });
+
+  userList.querySelectorAll("[data-act='chargeGp']").forEach(btn => {
+    btn.addEventListener("click", () => showGpChargeModal(btn.dataset.uid, btn.dataset.name));
   });
 }
 
@@ -1273,6 +1278,121 @@ async function showGpHistory(uid, userName) {
   } catch (err) {
     body.innerHTML = `<div style="color:#dc2626;padding:16px;">오류: ${esc(err.message)}</div>`;
   }
+}
+
+// ── GP 충전 모달 ──────────────────────────────────────────────────────────────
+function showGpChargeModal(uid, userName) {
+  document.getElementById("gpChargeModal")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "gpChargeModal";
+  modal.style.cssText = `position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.65);
+    display:flex;align-items:center;justify-content:center;padding:16px;`;
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:min(420px,100%);
+      box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        padding:16px 20px;border-bottom:1px solid #e5e7eb;background:#fffbeb;">
+        <div>
+          <div style="font-size:16px;font-weight:700;">💰 GP 충전</div>
+          <div style="font-size:12px;color:#92400e;margin-top:2px;font-weight:600;">${esc(userName || uid)}</div>
+          <div style="font-size:10px;color:#9ca3af;font-family:monospace;">${esc(uid)}</div>
+        </div>
+        <button id="gpChargeClose" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;padding:4px 8px;">✕</button>
+      </div>
+      <div style="padding:20px;">
+        <div id="gpChargeCurrentBal" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;
+          padding:10px 14px;font-size:13px;color:#15803d;font-weight:600;margin-bottom:16px;">
+          현재 GP 조회 중...
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">충전 금액 (GP)</label>
+          <input id="gpChargeAmount" type="number" min="1" max="10000000" step="1000"
+            placeholder="예: 10000"
+            style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;
+              font-size:15px;font-weight:700;box-sizing:border-box;">
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+            ${[1000,5000,10000,50000,100000].map(v =>
+              `<button class="gp-preset" data-v="${v}"
+                style="padding:4px 10px;border:1px solid #d97706;border-radius:6px;background:#fffbeb;
+                  color:#b45309;font-size:11px;font-weight:700;cursor:pointer;">
+                +${v.toLocaleString()}
+              </button>`
+            ).join("")}
+          </div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">사유 (선택)</label>
+          <input id="gpChargeNote" type="text" maxlength="200"
+            placeholder="예: 이벤트 보상, CS 처리 등"
+            style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;
+              font-size:13px;box-sizing:border-box;">
+        </div>
+        <div id="gpChargeResult" style="display:none;padding:10px 14px;border-radius:8px;
+          font-size:13px;font-weight:600;margin-bottom:12px;"></div>
+        <button id="gpChargeConfirm"
+          style="width:100%;padding:12px;border:none;border-radius:10px;font-size:15px;font-weight:700;
+            cursor:pointer;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;">
+          💰 충전 실행
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector("#gpChargeClose").addEventListener("click", close);
+  modal.addEventListener("click", e => { if (e.target === modal) close(); });
+
+  // 프리셋 버튼
+  modal.querySelectorAll(".gp-preset").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const inp = modal.querySelector("#gpChargeAmount");
+      inp.value = btn.dataset.v;
+    });
+  });
+
+  // 현재 GP 조회
+  const balEl = modal.querySelector("#gpChargeCurrentBal");
+  httpsCallable(functions, "adminGetUserGpHistory")({ targetUid: uid })
+    .then(r => {
+      balEl.textContent = `현재 보유 GP: ${(r.data?.currentGold || 0).toLocaleString()} GP`;
+    })
+    .catch(() => { balEl.textContent = "현재 GP 조회 실패"; balEl.style.background = "#fef2f2"; });
+
+  // 충전 실행
+  modal.querySelector("#gpChargeConfirm").addEventListener("click", async () => {
+    const amount = parseInt(modal.querySelector("#gpChargeAmount").value);
+    const note   = modal.querySelector("#gpChargeNote").value.trim();
+    const resEl  = modal.querySelector("#gpChargeResult");
+    const btn    = modal.querySelector("#gpChargeConfirm");
+
+    if (!amount || amount < 1) {
+      resEl.style.cssText = "display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:12px;";
+      resEl.textContent = "충전 금액을 입력하세요.";
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "처리 중...";
+    resEl.style.display = "none";
+
+    try {
+      const fn = httpsCallable(functions, "adminChargeGp");
+      const { data } = await fn({ targetUid: uid, amount, note });
+      resEl.style.cssText = "display:block;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:12px;";
+      resEl.textContent = `✅ 충전 완료! +${data.charged.toLocaleString()} GP → 잔액: ${data.newBalance.toLocaleString()} GP`;
+      balEl.textContent = `현재 보유 GP: ${data.newBalance.toLocaleString()} GP`;
+      modal.querySelector("#gpChargeAmount").value = "";
+      modal.querySelector("#gpChargeNote").value = "";
+    } catch (err) {
+      resEl.style.cssText = "display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:12px;";
+      resEl.textContent = `오류: ${esc(err.message || "충전 실패")}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "💰 충전 실행";
+    }
+  });
 }
 
 {

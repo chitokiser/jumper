@@ -188,6 +188,14 @@ exports.adminGetUserGpHistory = onCall(wrapError(async (request) => {
   return await gameRewardH.adminGetUserGpHistory(targetUid);
 }));
 
+// 관리자: 유저 GP 직접 충전
+exports.adminChargeGp = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  await requireAdmin(uid);
+  const { targetUid, amount, note } = request.data ?? {};
+  return await gameRewardH.adminChargeGp(uid, { targetUid, amount, note });
+}));
+
 // 초대 보상 처리 (bot.py → 내부 호출, 공유 시크릿 헤더 검증)
 exports.processReferralReward = onCall(wrapError(async (request) => {
   const { referrerUid, newUserUid } = request.data ?? {};
