@@ -8,6 +8,7 @@ let _functions = null;
 let _map = null;
 let _ctx = null;
 let _activeShopId = null;
+let _activeShopData = null;
 let _treeMarkers = [];
 let _cfg = null;
 let _inv = null;
@@ -105,6 +106,7 @@ export function closeTreeInfoModal() {
 // ── 물약상점 돈나무 섹션 렌더링 ──────────────────────────────────────────────
 export function renderMoneyTreeShopSection(shop, cfg) {
   _activeShopId = shop.id || shop.shopId;
+  _activeShopData = { name: shop.name, lat: shop.lat, lng: shop.lng };
   _cfg = cfg;
   const seedPrice = cfg?.seedlingPriceGp?.toLocaleString() ?? '100,000';
   const boostPrice = cfg?.boosterPriceGp?.toLocaleString() ?? '1,000';
@@ -239,12 +241,13 @@ function _renderMyTreeList(trees) {
 }
 
 // ── 식재 버튼 (물약상점에서 호출) ────────────────────────────────────────────
-export function openPlantModal(shopId) {
+export function openPlantModal(shopId, shopData = null) {
   if (_isServerConnected && !_isServerConnected()) {
     _showMtToast('Please connect to the game server first.\nTap the ▶ Play button to join before planting.', 'error');
     return;
   }
   _activeShopId = shopId;
+  if (shopData) _activeShopData = shopData;
   const modal = document.getElementById('mtPlantModal');
   if (!modal || !_functions) return;
   const inv = _inv;
@@ -273,8 +276,19 @@ window._mtConfirmPlant = async function() {
     const refPos = _ctx?.lastPos || _ctx?.gpsPos;
     if (refPos) loadMoneyTreeMarkers(refPos.lat, refPos.lng);
   } catch (e) {
-    const code = e?.code ? ` [${e.code}]` : '';
-    _showMtToast(`식재 실패${code}: ${e?.message || '알 수 없는 오류'}`, 'error');
+    const msg = e?.message || 'Unknown error';
+    if (msg.includes('5 km') || msg.includes('too far') || msg.includes('within')) {
+      const shopName = _activeShopData?.name || 'the potion shop';
+      const coords = (_activeShopData?.lat && _activeShopData?.lng)
+        ? ` (${_activeShopData.lat.toFixed(5)}, ${_activeShopData.lng.toFixed(5)})`
+        : '';
+      _showMtToast(
+        `Cannot plant here.\nThis seedling was purchased at "${shopName}"${coords}.\nGo back to that shop to plant it.`,
+        'error'
+      );
+    } else {
+      _showMtToast(`Plant failed: ${msg}`, 'error');
+    }
   } finally {
     if (btn) btn.disabled = false;
   }

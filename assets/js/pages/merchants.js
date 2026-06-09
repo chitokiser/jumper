@@ -3035,6 +3035,9 @@ async function init() {
       document.getElementById('mtMyTreesModal')?.classList.remove('open');
       // 상점 모달을 거치지 않은 경우 현재 위치에서 가장 가까운 상점 자동 선택
       let shopId = _activeShopId;
+      let shopData = _shopCurrentData
+        ? { name: _shopCurrentData.name, lat: _shopCurrentData.lat, lng: _shopCurrentData.lng }
+        : null;
       if (!shopId) {
         const pos = _ctx.lastPos || _ctx.gpsPos;
         if (pos) {
@@ -3046,10 +3049,11 @@ async function init() {
               return (!best || d < best.d) ? { s, d } : best;
             }, null);
             shopId = nearest?.s?.id || null;
+            if (nearest?.s) shopData = { name: nearest.s.name, lat: nearest.s.lat, lng: nearest.s.lng };
           }
         }
       }
-      openPlantModal(shopId);
+      openPlantModal(shopId, shopData);
     };
 
     // ── 페이지 진입 시 워프모드 자동 시작 ─────────────────────────────────

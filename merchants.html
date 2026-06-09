@@ -2023,15 +2023,13 @@
         </div>
       </div>
       <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 -->
-      <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;align-items:center;">
+      <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;align-items:center;max-height:calc(100vh - 80px);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;">
         <!-- GP 배지: 상단 고정 -->
         <div id="hudGpBadge" title="게임코인 (GP)">
           <span class="gp-icon">💰</span>
           <span class="gp-val" id="hudGpVal">–</span>
         </div>
         <button id="btnTutHelp" class="map-hud-btn" title="Hướng dẫn / 도움말">❓</button>
-        <button id="btnGameToggle" class="map-hud-btn" title="Kết nối máy chủ">▶</button>
-        <div id="gsStatusBadge"></div>
         <button id="btnInventory" class="map-hud-btn" title="Túi đồ" style="position:relative">🎒<span id="dropNearbyBadge" class="drop-nearby-badge hidden"></span></button>
         <button id="btnDetector" class="map-hud-btn" title="보물 탐지기 ON/OFF">📡</button>
         <button id="btnArScan" class="map-hud-btn" title="AR Treasure Scanner">📷</button>
@@ -2045,6 +2043,8 @@
             <button class="mg-popup-btn" id="miniGameDungeon">🏰 던전</button>
           </div>
         </div>
+        <button id="btnGameToggle" class="map-hud-btn" title="Connect to game server">▶</button>
+        <div id="gsStatusBadge"></div>
         <div id="distPanel">
           <span class="dist-label">Khoảng cách</span>
           <span class="dist-value" id="distValue">0m</span>
