@@ -3345,6 +3345,9 @@ async function init() {
     onExit: () => {
       try { document.getElementById('ghFloatBtn')?.style && (document.getElementById('ghFloatBtn').style.display = 'flex'); } catch {}
     },
+    onDungeonEnd: ({ gp }) => {
+      httpsCallable(functions, 'broadcastGpEvent')({ game: 'dungeon', amount: gp }).catch(() => {});
+    },
   });
 
   // 미니게임 버튼 — 팝업 서브메뉴

@@ -910,5 +910,6 @@ canvas#dgCanvas{display:block;flex:1;width:100%;cursor:crosshair;touch-action:no
       <div class="dg-stat-row"><span class="k">XP Gained</span><span class="v">${p.xp} XP</span></div>`;
     this._updateEntryUI();
     this._show('dgResult');
+    if (gp >= 50) this._opts.onDungeonEnd?.({ gp, kills: p.kills, cleared, manualExit });
   }
 }
