@@ -11,14 +11,16 @@ let _treeMarkers = [];
 let _cfg = null;
 let _inv = null;
 let _onEnsurePos = null;
+let _isServerConnected = null;
 
 const IMG_BASE = '/assets/images/tree/';
 
-export function initMoneyTree(ctx, map, functions, { onEnsurePos } = {}) {
+export function initMoneyTree(ctx, map, functions, { onEnsurePos, isServerConnected } = {}) {
   _ctx = ctx;
   _map = map;
   _functions = functions;
   _onEnsurePos = onEnsurePos ?? null;
+  _isServerConnected = isServerConnected ?? null;
 }
 
 // ── 인벤토리 HUD 업데이트 ────────────────────────────────────────────────────
@@ -237,6 +239,10 @@ function _renderMyTreeList(trees) {
 
 // ── 식재 버튼 (물약상점에서 호출) ────────────────────────────────────────────
 export function openPlantModal(shopId) {
+  if (_isServerConnected && !_isServerConnected()) {
+    _showMtToast('Please connect to the game server first.\nTap the ▶ Play button to join before planting.', 'error');
+    return;
+  }
   _activeShopId = shopId;
   const modal = document.getElementById('mtPlantModal');
   if (!modal || !_functions) return;
