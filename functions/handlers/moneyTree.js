@@ -10,12 +10,12 @@ const db = admin.firestore();
 const CONFIG_REF = db.doc('system_config/money_tree');
 
 const DEFAULTS = {
-  seedlingPriceGp: 100000,
+  seedlingPriceGp: 10000,
   seedlingPriceStars: 80,
   lotteryMin: 1, lotteryMax: 1000,
-  growthRate: 500, maxTreeValue: 5000000,
+  growthRate: 50, maxTreeValue: 500000,
   harvestTicketThreshold: 10,
-  boosterPriceGp: 1000, boosterMin: 1, boosterMax: 100,
+  boosterPriceGp: 1000, boosterMin: 1, boosterMax: 10,
   trollDropRate: 0.10, harvestTaxRate: 0.10,
   shopOwnerCommissionSeedling: 0.30,
   shopOwnerCommissionBooster: 0.50,
@@ -42,16 +42,16 @@ function calcTreeValue(globalCounter, baseCounter, growthRate, maxValue, boostTo
 }
 
 function treeImageNum(value) {
-  if (value >= 5000000) return 11;
-  if (value >= 3200000) return 10;
-  if (value >= 1600000) return 9;
-  if (value >= 1200000) return 8;
-  if (value >= 800000)  return 7;
-  if (value >= 400000)  return 6;
-  if (value >= 200000)  return 5;
-  if (value >= 100000)  return 4;
-  if (value >= 50000)   return 3;
-  if (value >= 5000)    return 2;
+  if (value >= 500000) return 11;
+  if (value >= 320000) return 10;
+  if (value >= 160000) return 9;
+  if (value >= 120000) return 8;
+  if (value >= 80000)  return 7;
+  if (value >= 40000)  return 6;
+  if (value >= 20000)  return 5;
+  if (value >= 10000)  return 4;
+  if (value >= 5000)   return 3;
+  if (value >= 500)    return 2;
   return 1;
 }
 

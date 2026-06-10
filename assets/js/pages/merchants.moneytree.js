@@ -113,7 +113,7 @@ export function renderMoneyTreeShopSection(shop, cfg) {
   _activeShopId = shop.id || shop.shopId;
   _activeShopData = { name: shop.name, lat: shop.lat, lng: shop.lng };
   _cfg = cfg;
-  const seedPrice = cfg?.seedlingPriceGp?.toLocaleString() ?? '100,000';
+  const seedPrice = cfg?.seedlingPriceGp?.toLocaleString() ?? '10,000';
   const boostPrice = cfg?.boosterPriceGp?.toLocaleString() ?? '1,000';
   const inv = _inv;
   return `<div id="mtShopSection" style="margin-top:14px;padding:12px;background:rgba(16,185,129,.06);
