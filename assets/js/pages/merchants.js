@@ -4189,6 +4189,7 @@ async function _execShopBuy(shopId, itemId, itemName, price, qty) {
   }
   const total = price * qty;
   if (!confirm(_t('shop_buy_confirm', qty, total.toLocaleString()))) return;
+  spendPlayerGold(total);
   try {
     await httpsCallable(functions, 'buyShopItem')({
       shopId, itemId, quantity: qty,
@@ -4197,6 +4198,7 @@ async function _execShopBuy(shopId, itemId, itemName, price, qty) {
     await Promise.all([loadInventory({ force: true }), loadPlayerState({ force: true }), loadShops()]);
     showToast(_t('shop_buy_ok', itemName), 'success');
   } catch (err) {
+    addPlayerGold(total);
     showToast(_t('shop_buy_fail', err.message), 'error');
   }
 }

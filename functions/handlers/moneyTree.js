@@ -134,10 +134,9 @@ async function buySeedling(uid, { shopId, qty = 1 }) {
   if (haversineM(player.lat, player.lng, shop.lat, shop.lng) > 5000)
     throw new HttpsError('failed-precondition', `You are too far from the shop. Move within 5 km.`);
 
-  const ownerUid = shop.ownerUid;
-  const ownerShare = Math.floor(totalCost * cfg.shopOwnerCommissionRate);
-  const svAmt = Math.floor(totalCost * cfg.mentorSvRate);
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const ownerUid   = shop.ownerUid;
+  const ownerShare = Math.floor(totalCost * 0.30);
+  const now        = admin.firestore.FieldValue.serverTimestamp();
 
   await db.runTransaction(async (tx) => {
     const pRef = db.collection('battle_players').doc(uid);
@@ -146,45 +145,16 @@ async function buySeedling(uid, { shopId, qty = 1 }) {
     const gold = pData.gold ?? 0;
     if (gold < totalCost) throw new HttpsError('failed-precondition', `Not enough GP (have ${gold}, need ${totalCost}).`);
 
-    // Auto-assign shop owner as mentor on first purchase
-    const autoAssign = !pData.mentorUid && ownerUid && ownerUid !== uid;
-    const mentorUid = pData.mentorUid ?? (autoAssign ? ownerUid : null);
-
-    // Read owner doc if we will write to it
-    let ownerData = null;
-    if (ownerUid && ownerUid !== uid) {
-      ownerData = (await tx.get(db.collection('battle_players').doc(ownerUid))).data() ?? {};
-    }
-
-    // Determine if mentor qualifies to receive SV
-    let mentorIsMentor = autoAssign; // auto-assigned owner becomes isMentor
-    if (mentorUid && !autoAssign) {
-      if (mentorUid === ownerUid) {
-        mentorIsMentor = ownerData?.isMentor ?? false;
-      } else if (mentorUid !== uid) {
-        mentorIsMentor = (await tx.get(db.collection('battle_players').doc(mentorUid))).data()?.isMentor ?? false;
-      }
-    }
-
     tx.update(pRef, {
       gold: gold - totalCost,
       seedlings: admin.firestore.FieldValue.increment(n),
-      ...(autoAssign ? { mentorUid: ownerUid } : {}),
       updatedAt: now,
     });
 
-    if (ownerUid && ownerUid !== uid) {
-      const ownerUpd = { gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now };
-      if (autoAssign) ownerUpd.isMentor = true;
-      if (ownerUid === mentorUid && mentorIsMentor && svAmt > 0)
-        ownerUpd.sv = admin.firestore.FieldValue.increment(svAmt);
-      tx.update(db.collection('battle_players').doc(ownerUid), ownerUpd);
-    }
-
-    if (mentorUid && mentorUid !== ownerUid && mentorUid !== uid && mentorIsMentor && svAmt > 0) {
-      tx.update(db.collection('battle_players').doc(mentorUid), {
-        sv: admin.firestore.FieldValue.increment(svAmt), updatedAt: now,
-      });
+    if (ownerUid && ownerUid !== uid && ownerShare > 0) {
+      tx.set(db.collection('battle_players').doc(ownerUid), {
+        gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now,
+      }, { merge: true });
     }
 
     tx.set(db.collection('game_shops').doc(shopId), {
@@ -193,7 +163,7 @@ async function buySeedling(uid, { shopId, qty = 1 }) {
     }, { merge: true });
   });
 
-  await _log('buy_seedling', { uid, shopId, qty: n, totalCost, ownerShare, svAmt, ownerUid });
+  await _log('buy_seedling', { uid, shopId, qty: n, totalCost, ownerShare, ownerUid });
   return { ok: true, qty: n, cost: totalCost };
 }
 
@@ -215,10 +185,9 @@ async function buyTreeBooster(uid, { shopId, qty = 1 }) {
   if (haversineM(player.lat, player.lng, shop.lat, shop.lng) > 5000)
     throw new HttpsError('failed-precondition', `You are too far from the shop. Move within 5 km.`);
 
-  const ownerUid = shop.ownerUid;
-  const ownerShare = Math.floor(totalCost * cfg.shopOwnerCommissionRate);
-  const svAmt = Math.floor(totalCost * cfg.mentorSvRate);
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const ownerUid   = shop.ownerUid;
+  const ownerShare = Math.floor(totalCost * 0.30);
+  const now        = admin.firestore.FieldValue.serverTimestamp();
 
   await db.runTransaction(async (tx) => {
     const pRef = db.collection('battle_players').doc(uid);
@@ -227,42 +196,16 @@ async function buyTreeBooster(uid, { shopId, qty = 1 }) {
     const gold = pData.gold ?? 0;
     if (gold < totalCost) throw new HttpsError('failed-precondition', `Not enough GP (have ${gold}, need ${totalCost}).`);
 
-    const autoAssign = !pData.mentorUid && ownerUid && ownerUid !== uid;
-    const mentorUid = pData.mentorUid ?? (autoAssign ? ownerUid : null);
-
-    let ownerData = null;
-    if (ownerUid && ownerUid !== uid) {
-      ownerData = (await tx.get(db.collection('battle_players').doc(ownerUid))).data() ?? {};
-    }
-
-    let mentorIsMentor = autoAssign;
-    if (mentorUid && !autoAssign) {
-      if (mentorUid === ownerUid) {
-        mentorIsMentor = ownerData?.isMentor ?? false;
-      } else if (mentorUid !== uid) {
-        mentorIsMentor = (await tx.get(db.collection('battle_players').doc(mentorUid))).data()?.isMentor ?? false;
-      }
-    }
-
     tx.update(pRef, {
       gold: gold - totalCost,
       treeBoosters: admin.firestore.FieldValue.increment(n),
-      ...(autoAssign ? { mentorUid: ownerUid } : {}),
       updatedAt: now,
     });
 
-    if (ownerUid && ownerUid !== uid) {
-      const ownerUpd = { gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now };
-      if (autoAssign) ownerUpd.isMentor = true;
-      if (ownerUid === mentorUid && mentorIsMentor && svAmt > 0)
-        ownerUpd.sv = admin.firestore.FieldValue.increment(svAmt);
-      tx.update(db.collection('battle_players').doc(ownerUid), ownerUpd);
-    }
-
-    if (mentorUid && mentorUid !== ownerUid && mentorUid !== uid && mentorIsMentor && svAmt > 0) {
-      tx.update(db.collection('battle_players').doc(mentorUid), {
-        sv: admin.firestore.FieldValue.increment(svAmt), updatedAt: now,
-      });
+    if (ownerUid && ownerUid !== uid && ownerShare > 0) {
+      tx.set(db.collection('battle_players').doc(ownerUid), {
+        gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now,
+      }, { merge: true });
     }
 
     tx.set(db.collection('game_shops').doc(shopId), {
@@ -271,7 +214,7 @@ async function buyTreeBooster(uid, { shopId, qty = 1 }) {
     }, { merge: true });
   });
 
-  await _log('buy_booster', { uid, shopId, qty: n, totalCost, ownerShare, svAmt, ownerUid });
+  await _log('buy_booster', { uid, shopId, qty: n, totalCost, ownerShare, ownerUid });
   return { ok: true, qty: n, cost: totalCost };
 }
 
@@ -530,9 +473,10 @@ async function buyMentorRegTicket(uid, { shopId }) {
   if (haversineM(player.lat, player.lng, shop.lat, shop.lng) > 5000)
     throw new HttpsError('failed-precondition', 'Too far from shop. Move within 5 km.');
 
-  const ownerUid = shop.ownerUid;
-  const ownerShare = Math.floor(cost * cfg.shopOwnerCommissionRate);
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const ownerUid   = shop.ownerUid;
+  const ownerShare = Math.floor(cost * 0.20);
+  const svAmt      = Math.floor(cost * 0.40);
+  const now        = admin.firestore.FieldValue.serverTimestamp();
 
   await db.runTransaction(async (tx) => {
     const pRef = db.collection('battle_players').doc(uid);
@@ -543,12 +487,34 @@ async function buyMentorRegTicket(uid, { shopId }) {
     if (gold < cost)
       throw new HttpsError('failed-precondition', `Not enough GP (have ${gold}, need ${cost}).`);
 
-    tx.update(pRef, { gold: gold - cost, isMentor: true, updatedAt: now });
+    // Auto-assign shop owner as mentor if buyer has none
+    const autoAssign    = !pData.mentorUid && ownerUid && ownerUid !== uid;
+    const mentorUid     = pData.mentorUid ?? (autoAssign ? ownerUid : null);
+    let mentorIsMentor  = autoAssign;
+    if (mentorUid && !autoAssign) {
+      if (mentorUid === ownerUid) {
+        mentorIsMentor = ((await tx.get(db.collection('battle_players').doc(ownerUid))).data() ?? {}).isMentor ?? false;
+      } else if (mentorUid !== uid) {
+        mentorIsMentor = ((await tx.get(db.collection('battle_players').doc(mentorUid))).data() ?? {}).isMentor ?? false;
+      }
+    }
+
+    const playerUpd = { gold: gold - cost, isMentor: true, updatedAt: now };
+    if (autoAssign) playerUpd.mentorUid = ownerUid;
+    tx.update(pRef, playerUpd);
 
     if (ownerUid && ownerUid !== uid) {
-      tx.set(db.collection('battle_players').doc(ownerUid), {
-        gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now,
-      }, { merge: true });
+      const ownerUpd = { gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now };
+      if (autoAssign) ownerUpd.isMentor = true;
+      if (mentorUid === ownerUid && mentorIsMentor && svAmt > 0)
+        ownerUpd.sv = admin.firestore.FieldValue.increment(svAmt);
+      tx.set(db.collection('battle_players').doc(ownerUid), ownerUpd, { merge: true });
+    }
+
+    if (mentorUid && mentorUid !== ownerUid && mentorUid !== uid && mentorIsMentor && svAmt > 0) {
+      tx.update(db.collection('battle_players').doc(mentorUid), {
+        sv: admin.firestore.FieldValue.increment(svAmt), updatedAt: now,
+      });
     }
 
     tx.set(db.collection('game_shops').doc(shopId), {
@@ -557,7 +523,7 @@ async function buyMentorRegTicket(uid, { shopId }) {
     }, { merge: true });
   });
 
-  await _log('buy_mentor_reg', { uid, shopId, cost, ownerShare, ownerUid });
+  await _log('buy_mentor_reg', { uid, shopId, cost, ownerShare, svAmt, ownerUid });
   return { ok: true, cost };
 }
 

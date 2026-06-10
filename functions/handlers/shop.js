@@ -150,7 +150,15 @@ async function adminDeleteShop(uid, { shopId } = {}) {
   return { ok: true };
 }
 
-// ── 유저: 상점 아이템 구매 (판매금액 50% → 상점주인 골드) ───────────────────
+// potion_* / revive_* / ticket_mon_* → mentor system (20% owner, 40% SV mentor, 40% system)
+// everything else → default 50% owner
+function _shopRevenueType(itemId) {
+  if (itemId.startsWith('potion_') || itemId.startsWith('revive_')) return 'mentor';
+  if (itemId.startsWith('ticket_mon_')) return 'mentor';
+  return 'default';
+}
+
+// ── 유저: 상점 아이템 구매 ─────────────────────────────────────────────────────
 async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {}) {
   if (!shopId) throw new HttpsError('invalid-argument', 'shopId가 필요합니다');
   if (!itemId) throw new HttpsError('invalid-argument', 'itemId가 필요합니다');
@@ -186,14 +194,15 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {})
 
   const itemDef = (shop.items || []).find(it => it.itemId === itemId);
   if (!itemDef) throw new HttpsError('not-found', '해당 아이템을 이 상점에서 판매하지 않습니다');
-
   if (itemDef.stock !== -1 && itemDef.stock < qty)
     throw new HttpsError('failed-precondition', `재고가 부족합니다 (남은 재고: ${itemDef.stock})`);
 
   const totalCost  = itemDef.price * qty;
-  const ownerShare = Math.round(totalCost * 0.5);  // ceil 대신 round — 1골드 아이템도 오너 수익 발생
   const ownerUid   = shop.ownerUid;
   const sameUser   = !ownerUid || ownerUid === uid;
+  const useMentor  = _shopRevenueType(itemId) === 'mentor';
+  const ownerShare = Math.round(totalCost * (useMentor ? 0.20 : 0.50));
+  const svAmt      = useMentor ? Math.round(totalCost * 0.40) : 0;
 
   const playerRef = db.collection('battle_players').doc(uid);
   const invRef    = db.collection('treasure_inventory').doc(`${uid}_${itemId}`);
@@ -207,29 +216,57 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {})
       tx.get(invRef),
       ownerRef ? tx.get(ownerRef) : Promise.resolve(null),
     ]);
-
-    const currentGold = pSnap.exists ? (pSnap.data().gold ?? 0) : 0;
+    const pData = pSnap.exists ? pSnap.data() : {};
+    const currentGold = pData.gold ?? 0;
     if (currentGold < totalCost)
       throw new HttpsError('failed-precondition',
         `골드가 부족합니다 (보유: ${currentGold}, 필요: ${totalCost})`);
 
-    // Net cost from buyer: if buyer == owner, 50% flows back
-    const netCost = sameUser ? totalCost - ownerShare : totalCost;
+    // Mentor system: resolve mentor uid for eligible items
+    let mentorUid = null, mentorIsMentor = false, autoAssign = false;
+    if (useMentor && svAmt > 0) {
+      autoAssign = !pData.mentorUid && ownerUid && ownerUid !== uid;
+      mentorUid  = pData.mentorUid ?? (autoAssign ? ownerUid : null);
+      if (mentorUid) {
+        if (autoAssign) {
+          mentorIsMentor = true;
+        } else if (mentorUid === ownerUid) {
+          mentorIsMentor = (ownerSnap?.data() ?? {}).isMentor ?? false;
+        } else if (mentorUid !== uid) {
+          mentorIsMentor = (await tx.get(db.collection('battle_players').doc(mentorUid))).data()?.isMentor ?? false;
+        }
+      }
+    }
+
+    // Buyer pays full for mentor items; default items: owner rebate when same user
+    const netCost     = (!useMentor && sameUser) ? totalCost - ownerShare : totalCost;
     const playerWrite = { gold: currentGold - netCost, updatedAt: now };
+    if (autoAssign) playerWrite.mentorUid = ownerUid;
     if (pSnap.exists) tx.update(playerRef, playerWrite);
     else tx.set(playerRef, { uid, token: 30, hp: 1000, mp: 1000, level: 1, gold: 0, ...playerWrite });
 
-    // Credit buyer inventory
+    // Inventory
     const currentCount = invSnap.exists ? (invSnap.data().count ?? 0) : 0;
     tx.set(invRef, { uid, itemId, count: currentCount + qty, updatedAt: now }, { merge: true });
 
-    // Credit owner 50%
+    // Owner share
     if (ownerRef && ownerShare > 0) {
-      const ownerGold = ownerSnap?.exists ? (ownerSnap.data().gold ?? 0) : 0;
+      const ownerGold  = ownerSnap?.exists ? (ownerSnap.data().gold ?? 0) : 0;
+      const ownerWrite = { gold: ownerGold + ownerShare, updatedAt: now };
+      if (autoAssign) ownerWrite.isMentor = true;
+      if (useMentor && mentorUid === ownerUid && mentorIsMentor && svAmt > 0)
+        ownerWrite.sv = admin.firestore.FieldValue.increment(svAmt);
       if (ownerSnap?.exists)
-        tx.update(ownerRef, { gold: ownerGold + ownerShare, updatedAt: now });
+        tx.update(ownerRef, ownerWrite);
       else
-        tx.set(ownerRef, { uid: ownerUid, token: 30, hp: 1000, mp: 1000, level: 1, gold: ownerShare, updatedAt: now });
+        tx.set(ownerRef, { uid: ownerUid, token: 30, hp: 1000, mp: 1000, level: 1, ...ownerWrite });
+    }
+
+    // Mentor SV when mentor is separate from owner
+    if (useMentor && mentorUid && mentorUid !== ownerUid && mentorUid !== uid && mentorIsMentor && svAmt > 0) {
+      tx.update(db.collection('battle_players').doc(mentorUid), {
+        sv: admin.firestore.FieldValue.increment(svAmt), updatedAt: now,
+      });
     }
 
     // Sales log
@@ -237,9 +274,9 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {})
     tx.set(salesRef, {
       shopId, itemId,
       itemName: itemDef.name || itemId,
-      qty, totalCost, ownerShare,
-      buyerUid: uid,
-      ownerUid: ownerUid || null,
+      qty, totalCost, ownerShare, svAmt,
+      buyerUid: uid, ownerUid: ownerUid || null,
+      mentorUid: mentorUid || null,
       createdAt: now,
     });
 
