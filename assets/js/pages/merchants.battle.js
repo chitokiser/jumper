@@ -447,6 +447,17 @@ export function playSound(type) {
         tone(1760, 0.12, 0.1, 0.04, 'triangle');
         break;
       }
+      case 'slot_tick': {
+        // 슬롯 숫자 돌아가는 틱
+        const tbuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.012), ac.sampleRate);
+        const td = tbuf.getChannelData(0);
+        for (let i = 0; i < td.length; i++) td[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ac.sampleRate * 0.004));
+        const ts = ac.createBufferSource(); ts.buffer = tbuf;
+        const tg = ac.createGain(); tg.gain.value = 0.18;
+        ts.connect(tg); tg.connect(ac.destination); ts.start();
+        tone(1800, 0.06, 0.008, 0, 'sine');
+        break;
+      }
       case 'slot_win': {
         // 슬롯 당첨 — 코인 연타 + 상승 팡파르
         [523,659,784,1047].forEach((f,i)=>tone(f,0.28,0.14,i*0.06,'triangle'));

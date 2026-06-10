@@ -426,6 +426,8 @@ export function openBoosterSlotModal(treeId) {
   document.getElementById('mtSlotResult').textContent = '?';
   document.getElementById('mtSlotResultRow').classList.add('hidden');
   document.getElementById('mtSlotSpinBtn').disabled = false;
+  const cntEl = document.getElementById('mtSlotBoosterCount');
+  if (cntEl) cntEl.textContent = _inv?.treeBoosters ?? 0;
   modal.classList.add('open');
 }
 
@@ -439,11 +441,13 @@ window._mtSpinBooster = async function() {
   try {
     const fn = httpsCallable(_functions, 'useTreeBooster');
     const { data } = await fn({ treeId });
+    await refreshMoneyTreeInventory();
     setTimeout(() => {
       _stopSlotAnimation(data.boostResult);
       document.getElementById('mtSlotResultRow').classList.remove('hidden');
+      const cntEl = document.getElementById('mtSlotBoosterCount');
+      if (cntEl) cntEl.textContent = _inv?.treeBoosters ?? 0;
     }, 1500);
-    await refreshMoneyTreeInventory();
   } catch (e) {
     clearInterval(window._mtSlotInterval);
     _showMtToast(e?.message || 'Booster failed', 'error');
@@ -454,10 +458,9 @@ window._mtSpinBooster = async function() {
 function _startSlotAnimation() {
   const el = document.getElementById('mtSlotResult');
   if (!el) return;
-  let n = 0;
   window._mtSlotInterval = setInterval(() => {
-    n = Math.floor(Math.random() * 100) + 1;
-    el.textContent = n;
+    el.textContent = Math.floor(Math.random() * 25) + 1;
+    playSound('slot_tick');
   }, 80);
 }
 

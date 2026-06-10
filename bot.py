@@ -1072,6 +1072,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
+        def _game(label: str, page: str):
+            return InlineKeyboardButton(label, web_app=WebAppInfo(
+                url=f"https://jump22.netlify.app/telegram.html?redirect=/{page}"
+            ))
+
         keyboard = [
             [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
             [InlineKeyboardButton("📝 Register — Get 1,000 GP Airdrop!", callback_data="register_check")],
@@ -1081,15 +1086,15 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("💬 Join Official Community", url="https://t.me/jumpdao_eng")],
             [InlineKeyboardButton(f"🔗 Invite Friends to Group → +{GROUP_INVITE_GP} GP/person", callback_data="group_invite_link")],
             [
-                InlineKeyboardButton("🗺️ Treasure Hunt",  url="https://jump22.netlify.app/treasure.html"),
-                InlineKeyboardButton("🏎️ Monster Racing",  url="https://jump22.netlify.app/monsterrace.html"),
+                _game("🗺️ Treasure Hunt",  "treasure.html"),
+                _game("🏎️ Monster Racing",  "monsterrace.html"),
             ],
             [
-                InlineKeyboardButton("🏹 Archery Hunt",   url="https://jump22.netlify.app/bow.html"),
-                InlineKeyboardButton("🃏 Speed Memory",   url="https://jump22.netlify.app/memory.html"),
+                _game("🏹 Archery Hunt",   "bow.html"),
+                _game("🃏 Speed Memory",   "memory.html"),
             ],
-            [InlineKeyboardButton("🏃 Relay Race", url="https://jump22.netlify.app/relay.html")],
-            [InlineKeyboardButton("🏰 Monster Defense", url="https://jump22.netlify.app/conquest.html")],
+            [_game("🏃 Relay Race", "relay.html")],
+            [_game("🏰 Monster Defense", "conquest.html")],
         ]
         await update.message.reply_text(
             "*JumpDAO*\n\n"

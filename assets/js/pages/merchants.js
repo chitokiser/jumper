@@ -93,6 +93,8 @@ let _detectorBeepTimer    = null;   // setTimeout handle
 let _detectorNextInterval = 0;      // 다음 beep 간격(ms), 0=범위 밖
 let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
 let _mtMarkerLoadTs = 0;         // 돈나무 마커 마지막 로드 시각 (ms)
+let _userMapMarkers = [];        // google.maps.Marker[] — user face markers
+const _cfGetUserMarkers = httpsCallable(functions, 'getUserMarkers');
 let _gsMonsters     = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
 let _gsMarkers      = {};        // {monsterId: Marker} 게임 서버 몬스터 마커 (비-스프라이트)
 let _gsOverlays     = {};        // {monsterId: MonsterSpriteOverlay} 스프라이트 오버레이 (dragon 등)
@@ -3014,6 +3016,7 @@ async function init() {
         loadTreasureBoxes().then(renderBoxMarkers);
         loadBattleData();
         loadShops(); // 새 상점 마커 즉시 갱신
+        loadUserMapMarkers(); // 유저 마커 즉시 갱신
       });
     }
 
@@ -3570,6 +3573,50 @@ async function init() {
     renderVouchers();
     renderExchangeSection();
   });
+
+  loadUserMapMarkers();
+}
+
+// ── 유저 지도 마커 (얼굴 이미지 + 링크) ──────────────────────────────────────
+async function loadUserMapMarkers() {
+  if (!map) return;
+  try {
+    const { data } = await _cfGetUserMarkers();
+    const mkrs = data?.markers ?? [];
+    _userMapMarkers.forEach(m => m.setMap(null));
+    _userMapMarkers = [];
+    mkrs.forEach(m => {
+      if (!m.lat || !m.lng) return;
+      const marker = new google.maps.Marker({
+        position: { lat: m.lat, lng: m.lng },
+        map,
+        title: `📸 ${m.displayName}`,
+        icon: {
+          url: 'data:image/svg+xml,' + encodeURIComponent(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="42" viewBox="0 0 36 42">
+              <circle cx="18" cy="18" r="17" fill="#7c3aed" stroke="#fff" stroke-width="2"/>
+              <text x="18" y="24" font-size="18" text-anchor="middle">📸</text>
+              <polygon points="12,34 18,42 24,34" fill="#7c3aed"/>
+            </svg>`
+          ),
+          scaledSize: new google.maps.Size(36, 42),
+          anchor: new google.maps.Point(18, 42),
+        },
+        zIndex: 150,
+      });
+      marker.addListener('click', () => {
+        infoWindow.setContent(
+          `<div style="max-width:200px;text-align:center;">` +
+          `<img src="${escHtml(m.imageUrl)}" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #7c3aed;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;" onerror="this.style.display='none'" />` +
+          `<div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escHtml(m.displayName)}</div>` +
+          `<a href="${escHtml(m.linkUrl)}" target="_blank" rel="noopener" style="display:inline-block;padding:4px 14px;background:#7c3aed;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">Visit →</a>` +
+          `</div>`
+        );
+        infoWindow.open(map, marker);
+      });
+      _userMapMarkers.push(marker);
+    });
+  } catch { /* silent — non-critical */ }
 }
 
 // ── 상점 모달 (유저용) ────────────────────────────────────────────────────────

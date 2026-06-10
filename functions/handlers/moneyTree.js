@@ -15,7 +15,7 @@ const DEFAULTS = {
   lotteryMin: 1, lotteryMax: 1000,
   growthRate: 50, maxTreeValue: 500000,
   harvestTicketThreshold: 10,
-  boosterPriceGp: 1000, boosterMin: 1, boosterMax: 10,
+  boosterPriceGp: 1000, boosterMin: 1, boosterMax: 25,
   trollDropRate: 0.10, harvestTaxRate: 0.10,
   shopOwnerCommissionRate: 0.20,
   mentorSvRate: 0.40,

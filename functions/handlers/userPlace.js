@@ -436,4 +436,62 @@ async function getMyPlacementTickets(uid) {
   return { tickets };
 }
 
-module.exports = { CATALOG, placeUserObject, getMyPlacedObjects, getUserPlacePrices, adminSetUserPlacePrices, useTicket, getMyPlacementTickets };
+// ── 유저 지도 마커 (얼굴 이미지 + 링크) ─────────────────────────────────────
+
+const MARKER_GP_PRICE = 10000;
+
+async function placeUserMarker(uid, { imageUrl, linkUrl, lat, lng }) {
+  if (!imageUrl || !linkUrl)         throw new Error('Image URL and link URL are required');
+  if (lat == null || lng == null)    throw new Error('Coordinates are required');
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('Invalid coordinates');
+  try { new URL(imageUrl); new URL(linkUrl); } catch { throw new Error('Invalid URL format'); }
+
+  const bpRef   = db.collection('battle_players').doc(uid);
+  const userRef = db.collection('users').doc(uid);
+
+  await db.runTransaction(async t => {
+    const bp   = await t.get(bpRef);
+    const gold = bp.exists ? (bp.data().gold ?? 0) : 0;
+    if (gold < MARKER_GP_PRICE) {
+      throw new Error(`Not enough GP. Need ${MARKER_GP_PRICE.toLocaleString()}, have ${gold.toLocaleString()}.`);
+    }
+    t.set(bpRef, { gold: admin.firestore.FieldValue.increment(-MARKER_GP_PRICE) }, { merge: true });
+  });
+
+  const userSnap    = await userRef.get();
+  const userData    = userSnap.data() || {};
+  const displayName = userData.name || userData.displayName || 'Player';
+
+  const ref = await db.collection('user_markers').add({
+    uid,
+    displayName,
+    imageUrl,
+    linkUrl,
+    lat:       Number(lat),
+    lng:       Number(lng),
+    active:    true,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { id: ref.id, gpSpent: MARKER_GP_PRICE };
+}
+
+async function getUserMarkers() {
+  const snap = await db.collection('user_markers').where('active', '==', true).get();
+  return {
+    markers: snap.docs.map(d => {
+      const data = d.data();
+      return {
+        id:          d.id,
+        uid:         data.uid,
+        displayName: data.displayName,
+        imageUrl:    data.imageUrl,
+        linkUrl:     data.linkUrl,
+        lat:         data.lat,
+        lng:         data.lng,
+      };
+    }),
+  };
+}
+
+module.exports = { CATALOG, placeUserObject, getMyPlacedObjects, getUserPlacePrices, adminSetUserPlacePrices, useTicket, getMyPlacementTickets, placeUserMarker, getUserMarkers };

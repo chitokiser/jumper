@@ -10,6 +10,7 @@ const cfGetPrices    = httpsCallable(functions, 'getUserPlacePrices');
 const cfSetPrices    = httpsCallable(functions, 'adminSetUserPlacePrices');
 const cfUseTicket    = httpsCallable(functions, 'useTicket', { timeout: 30000 });
 const cfGetTickets   = httpsCallable(functions, 'getMyPlacementTickets');
+const cfPlaceMarker  = httpsCallable(functions, 'placeUserMarker', { timeout: 30000 });
 
 // ── 카탈로그 (서버와 동일) ────────────────────────────────────────────────────
 const CATALOG = [
@@ -68,6 +69,9 @@ export function initUserPlace(map, infoWindow, getGoldFn, onPlacedCb) {
   $('btnUserPlaceCancelMode')?.addEventListener('click', _cancelPlaceMode);
   $('btnUserPlaceMyList')?.addEventListener('click', loadMyList);
   $('btnUserPlaceTickets')?.addEventListener('click', loadTicketList);
+  $('btnUserPlaceMarker')?.addEventListener('click', _openMarkerForm);
+  $('btnMarkerFormCancel')?.addEventListener('click', _closeMarkerForm);
+  $('btnMarkerFormPlace')?.addEventListener('click', _onMarkerFormSubmit);
 }
 
 // ── 서버 가격 캐시 ────────────────────────────────────────────────────────────
@@ -435,5 +439,100 @@ function _showPlaceToast(msg) {
     box-shadow:0 4px 16px rgba(220,38,38,.4);`;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3000);
+}
+
+// ── 유저 마커 (얼굴 이미지 + 클릭 링크) ─────────────────────────────────────
+
+let _markerPendingPos = null; // { lat, lng }
+
+function _openMarkerForm() {
+  const panel = $('userPlacePanel');
+  if (panel) panel.style.display = 'none';
+  const form = $('userMarkerForm');
+  if (!form) return;
+  $('markerImageUrl').value = '';
+  $('markerLinkUrl').value  = '';
+  $('markerFormMsg').textContent = '';
+  $('btnMarkerFormPlace').disabled = false;
+  $('btnMarkerFormPlace').textContent = '📍 Choose Location on Map';
+  form.style.display = 'flex';
+}
+
+function _closeMarkerForm() {
+  const form = $('userMarkerForm');
+  if (form) form.style.display = 'none';
+  _markerPendingPos = null;
+  _cancelPlaceMode();
+}
+
+function _onMarkerFormSubmit() {
+  const imageUrl = ($('markerImageUrl').value || '').trim();
+  const linkUrl  = ($('markerLinkUrl').value  || '').trim();
+  const msg      = $('markerFormMsg');
+
+  if (!imageUrl || !linkUrl) {
+    msg.textContent = 'Please fill in both fields.';
+    msg.style.color = '#ef4444';
+    return;
+  }
+  try { new URL(imageUrl); new URL(linkUrl); } catch {
+    msg.textContent = 'Invalid URL format.';
+    msg.style.color = '#ef4444';
+    return;
+  }
+
+  const gold = _getGold ? _getGold() : 0;
+  if (gold < 10000) {
+    msg.textContent = `Not enough GP — need 10,000 GP (have ${gold.toLocaleString()}).`;
+    msg.style.color = '#ef4444';
+    return;
+  }
+
+  const form = $('userMarkerForm');
+  if (form) form.style.display = 'none';
+
+  // Enter map placement mode
+  const banner = $('userPlaceBanner');
+  if (banner) {
+    banner.textContent = '📍 📸 My Marker — Tap on the map to choose location';
+    banner.style.display = 'block';
+  }
+  $('btnUserPlaceCancelMode').style.display = 'inline-block';
+
+  _clickListener = _map.addListener('click', e => {
+    if (_clickListener) { google.maps.event.removeListener(_clickListener); _clickListener = null; }
+    if (banner) banner.style.display = 'none';
+    $('btnUserPlaceCancelMode').style.display = 'none';
+    _confirmMarkerPlace(imageUrl, linkUrl, e.latLng.lat(), e.latLng.lng());
+  });
+}
+
+async function _confirmMarkerPlace(imageUrl, linkUrl, lat, lng) {
+  const modal = $('userPlaceConfirmModal');
+  if (!modal) return;
+  $('upConfirmLabel').textContent = '📸 My Marker';
+  $('upConfirmPrice').textContent = '🪙 10,000 GP';
+  $('upConfirmCoord').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  $('upConfirmMsg').textContent   = '';
+  const btn = $('btnUpConfirm');
+  btn.disabled    = false;
+  btn.textContent = '✅ Confirm Placement';
+
+  btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = 'Processing...';
+    try {
+      await cfPlaceMarker({ imageUrl, linkUrl, lat, lng });
+      $('upConfirmMsg').textContent = '✅ Marker placed! (🪙 10,000 GP spent)';
+      $('upConfirmMsg').style.color = '#22c55e';
+      _refreshCb?.();
+      setTimeout(() => { modal.style.display = 'none'; }, 1500);
+    } catch (e) {
+      $('upConfirmMsg').textContent = 'Error: ' + e.message;
+      $('upConfirmMsg').style.color = '#ef4444';
+      btn.disabled = false; btn.textContent = '✅ Confirm Placement';
+    }
+  };
+  $('btnUpCancel').onclick = () => { modal.style.display = 'none'; };
+  modal.style.display = 'flex';
 }
 
