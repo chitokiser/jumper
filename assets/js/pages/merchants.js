@@ -3828,6 +3828,12 @@ function openShopModal(shop) {
 function _renderShopModalBody() {
   const body = $('shopModalBody');
   if (!body || !_shopCurrentData) return;
+  if (!document.getElementById('shopQtyStyle')) {
+    const s = document.createElement('style');
+    s.id = 'shopQtyStyle';
+    s.textContent = '#shopQtyInput::-webkit-outer-spin-button,#shopQtyInput::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}#shopQtyInput{-moz-appearance:textfield}';
+    document.head.appendChild(s);
+  }
 
   const shop      = _shopCurrentData;
   const items     = shop.items || [];
@@ -3895,9 +3901,12 @@ function _renderShopModalBody() {
                  color:${(!sel || _shopQty <= 1) ? '#4b5563' : '#f3f4f6'};
                  cursor:${(!sel || _shopQty <= 1) ? 'not-allowed' : 'pointer'}"
           ${(!sel || _shopQty <= 1) ? 'disabled' : ''}>−</button>
-        <span style="color:#f3f4f6;font-size:16px;font-weight:700;min-width:28px;text-align:center">
-          ${sel ? _shopQty : '─'}
-        </span>
+        <input id="shopQtyInput" type="number" min="1" max="${maxQty}"
+          value="${sel ? _shopQty : 1}"
+          style="width:54px;height:30px;text-align:center;border-radius:8px;
+                 border:1px solid #4b5563;background:#111827;color:#f3f4f6;
+                 font-size:16px;font-weight:700;padding:0 4px;box-sizing:border-box;"
+          ${!sel ? 'disabled' : ''}>
         <button id="shopQtyPlus"
           style="width:30px;height:30px;border-radius:8px;border:1px solid #374151;
                  background:#1f2937;font-size:18px;line-height:1;
@@ -3908,7 +3917,7 @@ function _renderShopModalBody() {
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <span style="color:#9ca3af;font-size:13px">합계</span>
-      <span style="color:#fbbf24;font-weight:700;font-size:16px">
+      <span id="shopTotalAmount" style="color:#fbbf24;font-weight:700;font-size:16px">
         ${sel ? `💰 ${total.toLocaleString()} ${_t('shop_gold_label')}` : '─'}
       </span>
     </div>
@@ -4023,13 +4032,42 @@ function _renderShopModalBody() {
     });
   });
 
-  // 수량 조절
+  // 수량 조절 — 전체 재렌더 없이 qty·합계·버튼만 업데이트
+  const _qtyUpdate = () => {
+    const inp = $('shopQtyInput');
+    if (!inp || !sel) return;
+    const mq = sel.stock === -1 ? 99 : sel.stock;
+    const v  = Math.max(1, Math.min(parseInt(inp.value, 10) || 1, mq));
+    _shopQty = v; inp.value = v;
+    const tot  = sel.price * v;
+    const gold = getPlayerGold();
+    const ok   = gold >= tot;
+    const totEl = $('shopTotalAmount');
+    if (totEl) totEl.textContent = `💰 ${tot.toLocaleString()} ${_t('shop_gold_label')}`;
+    const btn = $('shopBuyBtn');
+    if (btn) {
+      btn.disabled = !ok;
+      btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+      btn.style.background = ok ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#1f2937';
+      btn.style.color = ok ? '#fff' : '#6b7280';
+      btn.style.boxShadow = ok ? '0 3px 12px rgba(37,99,235,.4)' : 'none';
+      btn.textContent = ok ? '🛒 구매하기' : '💸 골드가 부족합니다';
+    }
+    const mi = $('shopQtyMinus');
+    if (mi) { mi.disabled = v <= 1; mi.style.color = v <= 1 ? '#4b5563' : '#f3f4f6'; mi.style.cursor = v <= 1 ? 'not-allowed' : 'pointer'; }
+    const pl = $('shopQtyPlus');
+    if (pl) { pl.disabled = v >= mq; pl.style.color = v >= mq ? '#4b5563' : '#f3f4f6'; pl.style.cursor = v >= mq ? 'not-allowed' : 'pointer'; }
+  };
   $('shopQtyMinus')?.addEventListener('click', () => {
-    if (_shopQty > 1) { _shopQty--; _renderShopModalBody(); }
+    const inp = $('shopQtyInput'); if (!inp) return;
+    inp.value = Math.max(1, (parseInt(inp.value, 10) || 1) - 1); _qtyUpdate();
   });
   $('shopQtyPlus')?.addEventListener('click', () => {
-    if (sel && _shopQty < maxQty) { _shopQty++; _renderShopModalBody(); }
+    const inp = $('shopQtyInput'); if (!inp || !sel) return;
+    const mq = sel.stock === -1 ? 99 : sel.stock;
+    inp.value = Math.min(mq, (parseInt(inp.value, 10) || 1) + 1); _qtyUpdate();
   });
+  $('shopQtyInput')?.addEventListener('input', _qtyUpdate);
 
   // 구매하기
   if (canBuy) {
@@ -4397,15 +4435,25 @@ $('shopAdminShopType')?.addEventListener?.('change', () => {
 });
 
 function showToast(msg, type = 'info') {
+  const ICON = { success: '✅', error: '❌', warn: '⚠️', info: 'ℹ️' };
+  const BG   = { success: '#15803d', error: '#b91c1c', warn: '#b45309', info: '#1d4ed8' };
   const el = document.createElement('div');
   el.className = 'game-toast';
-  el.textContent = msg;
-  el.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
-    padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;
-    background:${type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : '#1e40af'};color:white;
-    box-shadow:0 4px 12px rgba(0,0,0,.4);pointer-events:none;`;
+  el.innerHTML = `<span style="font-size:15px;flex-shrink:0;line-height:1.2">${ICON[type] || ICON.info}</span>` +
+    `<span style="flex:1;font-size:13px;line-height:1.4;word-break:break-word">${escHtml(msg)}</span>`;
+  el.style.cssText = `position:fixed;bottom:90px;left:50%;` +
+    `transform:translateX(-50%) translateY(8px);opacity:0;` +
+    `display:flex;align-items:flex-start;gap:8px;` +
+    `max-width:min(300px,88vw);padding:10px 14px;border-radius:14px;` +
+    `background:${BG[type] || BG.info};color:#fff;z-index:9999;` +
+    `box-shadow:0 4px 18px rgba(0,0,0,.5);pointer-events:none;` +
+    `transition:opacity .2s ease,transform .2s ease;`;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+  requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(0)'; });
+  setTimeout(() => {
+    el.style.opacity = '0'; el.style.transform = 'translateX(-50%) translateY(8px)';
+    setTimeout(() => el.remove(), 250);
+  }, 2750);
 }
 
 // ── 트레져헌터 랭킹 ────────────────────────────────────────────────────────────
