@@ -239,7 +239,7 @@ function loadMapsScript() {
     const s = document.createElement('script');
     s.src = `https://maps.googleapis.com/maps/api/js?key=${window.__mapsKey || ''}&callback=__merchantMapCb&language=en`;
     s.async = true;
-    s.onerror = () => reject(new Error('Google Maps 로드 실패'));
+    s.onerror = () => reject(new Error('Google Maps failed to load'));
     document.head.appendChild(s);
   });
 }
@@ -1614,7 +1614,7 @@ async function tryCollect(box) {
     }
     renderBoxInventory();
     // 보물 발견 생중계
-    httpsCallable(functions, 'broadcastGpEvent')({ game: 'treasure_find', amount: 0, label: d.boxName || '보물상자' }).catch(() => {});
+    httpsCallable(functions, 'broadcastGpEvent')({ game: 'treasure_find', amount: 0, label: d.boxName || 'Treasure Box' }).catch(() => {});
   } catch (err) {
     const msg = err.message || '';
     if (msg.includes('먼저 인벤토리')) {
