@@ -10,6 +10,7 @@ let _ctx = null;
 let _activeShopId = null;
 let _activeShopData = null;
 let _treeMarkers = [];
+let _treeShadows = [];
 let _cfg = null;
 let _inv = null;
 let _onEnsurePos = null;
@@ -66,13 +67,36 @@ export async function loadMoneyTreeMarkers(lat, lng) {
   } catch (_) {}
 }
 
+function _makeTreeShadowIcon() {
+  const sw = 36, h = 12;
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="' + h + '">' +
+    '<defs><filter id="tsf"><feGaussianBlur stdDeviation="2"/></filter></defs>' +
+    '<ellipse cx="18" cy="6" rx="15" ry="4.5" fill="rgba(0,0,0,0.32)" filter="url(#tsf)"/></svg>';
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(sw, h),
+    anchor: new google.maps.Point(18, 6),
+  };
+}
+
 function _clearTreeMarkers() {
   _treeMarkers.forEach(m => m.setMap(null));
   _treeMarkers = [];
+  _treeShadows.forEach(m => m.setMap(null));
+  _treeShadows = [];
 }
 
 function _addTreeMarker(tree) {
   if (!_map || !window.google) return;
+  const shadow = new google.maps.Marker({
+    position: { lat: tree.lat, lng: tree.lng },
+    map: _map,
+    icon: _makeTreeShadowIcon(),
+    zIndex: 1,
+    clickable: false,
+  });
+  _treeShadows.push(shadow);
+
   const icon = {
     url: `${IMG_BASE}${tree.imageNum}.png`,
     scaledSize: new google.maps.Size(40, 40),

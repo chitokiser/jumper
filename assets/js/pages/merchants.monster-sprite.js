@@ -368,22 +368,22 @@ function _injectStyles() {
 }
 .ms-overlay .ms-shadow {
   position: absolute;
-  bottom: -6px; left: 50%;
+  bottom: -4px; left: 50%;
   transform: translateX(-50%);
-  width: 60%; height: 12px;
-  background: rgba(0,0,0,0.30);
+  width: 38%; height: 8px;
+  background: rgba(0,0,0,0.40);
   border-radius: 50%;
-  filter: blur(3px);
+  filter: blur(2px);
   pointer-events: none;
 }
 .ms-overlay .ms-shadow-float {
   position: absolute;
-  bottom: -20px; left: 50%;
+  bottom: -22px; left: 50%;
   transform: translateX(-50%);
-  width: 38%; height: 8px;
-  background: rgba(0,0,0,0.16);
+  width: 50%; height: 10px;
+  background: rgba(0,0,0,0.12);
   border-radius: 50%;
-  filter: blur(5px);
+  filter: blur(6px);
   pointer-events: none;
 }
 `;
