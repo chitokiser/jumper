@@ -43,11 +43,13 @@ function _updateHud(inv) {
   const iEl = document.getElementById('mtInvTickets');
   const mEl = document.getElementById('mtMyTreesTicketCount');
   const svEl = document.getElementById('mtHudSv');
+  const bEl = document.getElementById('mtHudBoosters');
   if (sEl)  sEl.textContent  = inv?.seedlings ?? 0;
   if (tEl)  tEl.textContent  = tickets;
   if (iEl)  iEl.textContent  = tickets;
   if (mEl)  mEl.textContent  = tickets;
   if (svEl) svEl.textContent = (inv?.sv ?? 0).toLocaleString();
+  if (bEl)  bEl.textContent  = inv?.treeBoosters ?? 0;
   // live-update mentor panel SV if shop is open
   const svBalEl = document.getElementById('mtMentorSvBalance');
   if (svBalEl) svBalEl.textContent = (inv?.sv ?? 0).toLocaleString();
@@ -423,6 +425,7 @@ function _stopSlotAnimation(result) {
   if (el) el.textContent = result;
   const valEl = document.getElementById('mtSlotResultVal');
   if (valEl) valEl.textContent = result;
+  playSound('slot_win');
   _showMtToast(`💊 Booster: +${result} growth!`, 'success');
 }
 
