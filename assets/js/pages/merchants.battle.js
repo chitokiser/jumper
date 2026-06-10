@@ -1868,11 +1868,26 @@ function _makeShadowIcon(size) {
   };
 }
 
-function _placeShadow(id, lat, lng, size, mapObj, reg) {
+// Floating objects (dragon, Monster eyes) cast a smaller, lower-opacity shadow further below
+function _makeFloatingShadowIcon(size) {
+  const sw = Math.round(size * 0.62);
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="10">' +
+    '<defs><filter id="sf2"><feGaussianBlur stdDeviation="4"/></filter></defs>' +
+    '<ellipse cx="' + (sw / 2) + '" cy="5" rx="' + (sw / 2 - 1) + '" ry="3.5"' +
+    ' fill="rgba(0,0,0,0.17)" filter="url(#sf2)"/></svg>';
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(sw, 10),
+    anchor: new google.maps.Point(sw / 2, 5 - size / 2 - 12),
+  };
+}
+
+function _placeShadow(id, lat, lng, size, mapObj, reg, floating = false) {
   if (reg[id]) reg[id].setMap(null);
   reg[id] = new google.maps.Marker({
     position: { lat, lng }, map: mapObj,
-    icon: _makeShadowIcon(size), zIndex: 1, clickable: false,
+    icon: floating ? _makeFloatingShadowIcon(size) : _makeShadowIcon(size),
+    zIndex: 1, clickable: false,
   });
 }
 
@@ -2070,7 +2085,8 @@ function _spawnMonsterMarker(mob) {
     infoWindow?.open(map, marker);
   });
   _monsterMarkers[mob.id] = marker;
-  _placeShadow(mob.id, mob.lat, mob.lng, 36, startVisible ? map : null, _monsterShadows);
+  const _isFloatingMob = mob.monsterType === 'Monster eyes';
+  _placeShadow(mob.id, mob.lat, mob.lng, 36, startVisible ? map : null, _monsterShadows, _isFloatingMob);
 }
 
 function renderMonsterMarkers() {

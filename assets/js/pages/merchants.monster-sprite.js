@@ -376,6 +376,16 @@ function _injectStyles() {
   filter: blur(3px);
   pointer-events: none;
 }
+.ms-overlay .ms-shadow-float {
+  position: absolute;
+  bottom: -20px; left: 50%;
+  transform: translateX(-50%);
+  width: 38%; height: 8px;
+  background: rgba(0,0,0,0.16);
+  border-radius: 50%;
+  filter: blur(5px);
+  pointer-events: none;
+}
 `;
 
   // 타입별 sprite CSS 생성
@@ -552,7 +562,7 @@ function _getOverlayClass() {
 
       // 그림자
       const shadow = document.createElement('div');
-      shadow.className = 'ms-shadow';
+      shadow.className = this._type === 'dragon' ? 'ms-shadow-float' : 'ms-shadow';
       div.appendChild(shadow);
 
       // 스프라이트 프레임
