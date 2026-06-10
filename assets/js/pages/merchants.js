@@ -822,7 +822,7 @@ function _revealHiddenBox(box) {
     background:rgba(124,58,237,0.92);color:#fff;font-size:16px;font-weight:700;
     padding:14px 28px;border-radius:12px;z-index:9999;pointer-events:none;
     text-align:center;box-shadow:0 0 32px rgba(124,58,237,0.7);`;
-  el.textContent = '✨ 숨겨진 보물 발견!';
+  el.textContent = '✨ Hidden Treasure Found!';
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2500);
 
@@ -868,7 +868,7 @@ function renderCards(list) {
     el.className = 'mc-card';
     el.dataset.id = m.id;
     el.innerHTML = `
-      <div class="mc-card-name">${escHtml(m.name || _t('no_name_label'))}${m._latLng ? '<span class="mc-badge-map">지도</span>' : ''}</div>
+      <div class="mc-card-name">${escHtml(m.name || _t('no_name_label'))}${m._latLng ? '<span class="mc-badge-map">Map</span>' : ''}</div>
       ${m.career  ? `<div class="mc-card-career">${escHtml(m.career)}</div>` : ''}
       ${m.region  ? `<div class="mc-card-region">📍 ${escHtml(m.region)}</div>` : ''}
       ${m.phone   ? `<div class="mc-card-phone">📞 ${escHtml(m.phone)}</div>` : ''}
@@ -1099,7 +1099,7 @@ function _renderGsMonster(monster) {
           const mLng = m.currentLng ?? m.lng ?? lng;
           const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
           if (dist > GS_MONSTER_ATTACK_RANGE_M) {
-            showFloat(`${Math.round(dist)}m — 접근!`, '#facc15', mLat, mLng);
+            showFloat(`${Math.round(dist)}m — Approach!`, '#facc15', mLat, mLng);
             return;
           }
           playSound('melee_hit');
@@ -1144,7 +1144,7 @@ function _renderGsMonster(monster) {
     const mLng = m?.currentLng ?? m?.lng ?? lng;
     const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
     if (dist > GS_MONSTER_ATTACK_RANGE_M) {
-      infoWindow?.setContent(`<div style="font-size:13px;padding:4px;">👾 ${escHtml(type)}<br><span style="color:#888;font-size:11px;">거리 ${Math.round(dist)}m — ${GS_MONSTER_ATTACK_RANGE_M}m 이내 접근 후 공격</span></div>`);
+      infoWindow?.setContent(`<div style="font-size:13px;padding:4px;">👾 ${escHtml(type)}<br><span style="color:#888;font-size:11px;">Distance ${Math.round(dist)}m — move within ${GS_MONSTER_ATTACK_RANGE_M}m to attack</span></div>`);
       infoWindow?.open(map, marker);
       return;
     }
@@ -1393,7 +1393,7 @@ function _getDeviceId() {
 async function _signInAnonymous() {
   const btn = $('btnOverlayAnon');
   const msgEl = $('anonLoginMsg');
-  if (btn) { btn.textContent = '연결 중…'; btn.disabled = true; }
+  if (btn) { btn.textContent = 'Connecting…'; btn.disabled = true; }
   if (msgEl) msgEl.style.display = 'none';
 
   const deviceId = _getDeviceId();
@@ -1411,7 +1411,7 @@ async function _signInAnonymous() {
         // 같은 기기에서 다른 계정 시도 → 차단
         await signOut(auth);
         if (msgEl) {
-          msgEl.textContent = '이 기기에 이미 다른 계정이 등록되어 있습니다. 1기기 1계정만 허용됩니다.';
+          msgEl.textContent = 'Another account is already registered on this device. One account per device only.';
           msgEl.style.display = 'block';
         }
         return;
@@ -1424,7 +1424,7 @@ async function _signInAnonymous() {
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
         await setDoc(userRef, {
-          displayName: `게스트#${guestNum}`,
+          displayName: `Guest#${guestNum}`,
           isAnonymous: true,
           createdAt: serverTimestamp(),
           role: 'user',
@@ -1434,11 +1434,11 @@ async function _signInAnonymous() {
     }
   } catch (e) {
     if (msgEl) {
-      msgEl.textContent = '오류: ' + (e.message || e.code || String(e));
+      msgEl.textContent = 'Error: ' + (e.message || e.code || String(e));
       msgEl.style.display = 'block';
     }
   } finally {
-    if (btn) { btn.textContent = '👤 익명으로 게임하기'; btn.disabled = false; }
+    if (btn) { btn.textContent = '👤 Play as Guest'; btn.disabled = false; }
   }
 }
 
@@ -1446,10 +1446,10 @@ async function _linkGoogleAccount() {
   if (!auth.currentUser?.isAnonymous) return;
   try {
     await linkWithPopup(auth.currentUser, googleProvider);
-    alert('✅ Google 계정 연동 완료! 앞으로 Google 로그인으로 접속하세요.');
+    alert('✅ Google account linked! Sign in with Google from now on.');
   } catch (e) {
     if (e.code !== 'auth/popup-closed-by-user') {
-      alert('연동 오류: ' + (e.message || e.code));
+      alert('Link error: ' + (e.message || e.code));
     }
   }
 }
@@ -1513,7 +1513,7 @@ function _stopDetector() {
   clearTimeout(_detectorBeepTimer);
   _detectorBeepTimer = null;
   const btn = $('btnDetector');
-  if (btn) { btn.style.background = ''; btn.style.boxShadow = ''; btn.title = '보물 탐지기 ON/OFF'; }
+  if (btn) { btn.style.background = ''; btn.style.boxShadow = ''; btn.title = 'Treasure Detector ON/OFF'; }
 }
 
 // ── 초보자 체험 패키지: 항상 생성 (실제 보물 유무 무관) ──────────────────────
@@ -2388,7 +2388,7 @@ function _checkDropProximity(lat, lng) {
   const first = newAlerts[0];
   const meta  = _items[first.data.itemId] || {};
   const label = meta.name || ('#' + first.data.itemId);
-  const extra = newAlerts.length > 1 ? ` 외 ${newAlerts.length - 1}개` : '';
+  const extra = newAlerts.length > 1 ? ` and ${newAlerts.length - 1} more` : '';
   showToast(_t('drop_nearby_toast', label + extra), 'info');
 }
 
@@ -2543,7 +2543,7 @@ async function loadInventory({ force = false } = {}) {
   }
   _invLastFetch = now;
 
-  const settle = p => p.then(v => ({ ok: true, v })).catch(e => { console.error('loadInventory query error:', e.message); showToast(`인벤토리 로드 오류: ${e.message}`, 'error'); return { ok: false }; });
+  const settle = p => p.then(v => ({ ok: true, v })).catch(e => { console.error('loadInventory query error:', e.message); showToast(`Inventory load error: ${e.message}`, 'error'); return { ok: false }; });
 
   const [invRes, boxRes, vRes, purchaseRes] = await Promise.all([
     settle(getDocs(query(collection(db, 'treasure_inventory'), where('uid', '==', _uid)))),
@@ -3102,9 +3102,9 @@ async function init() {
         badge.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:900;' +
           'background:#1f2937;border:1px solid #374151;border-radius:20px;padding:4px 14px;' +
           'display:flex;align-items:center;gap:8px;font-size:12px;color:#9ca3af;';
-        badge.innerHTML = '<span>👤 게스트 모드</span>' +
+        badge.innerHTML = '<span>👤 Guest Mode</span>' +
           '<button id="btnLinkGoogle" style="background:#ff6b00;color:#fff;border:none;border-radius:12px;' +
-          'padding:2px 10px;font-size:11px;cursor:pointer;font-weight:600;">Google 연동</button>';
+          'padding:2px 10px;font-size:11px;cursor:pointer;font-weight:600;">Link Google</button>';
         document.body.appendChild(badge);
         $('btnLinkGoogle')?.addEventListener('click', _linkGoogleAccount);
       }
@@ -3130,28 +3130,28 @@ async function init() {
   // 텔레그램 로그인 버튼 핸들러
   $('btnOverlayTelegram')?.addEventListener('click', async () => {
     const btn = $('btnOverlayTelegram');
-    if (btn) { btn.textContent = '인증 중…'; btn.disabled = true; }
+    if (btn) { btn.textContent = 'Authenticating…'; btn.disabled = true; }
     try {
       const result = await loginWithTelegram();
-      if (!result) throw new Error('텔레그램 인증 실패');
+      if (!result) throw new Error('Telegram authentication failed');
     } catch (e) {
-      if (btn) { btn.textContent = '📱 텔레그램 계정으로 로그인'; btn.disabled = false; }
-      alert('텔레그램 로그인 오류: ' + (e?.message || '알 수 없는 오류'));
+      if (btn) { btn.textContent = '📱 Sign in with Telegram'; btn.disabled = false; }
+      alert('Telegram login error: ' + (e?.message || 'Unknown error'));
     }
   });
 
   // 로그인 오버레이 버튼 — Google 팝업 로그인
   $('btnOverlayLogin')?.addEventListener('click', async () => {
     const btn = $('btnOverlayLogin');
-    if (btn) { btn.textContent = '로그인 중…'; btn.disabled = true; }
+    if (btn) { btn.textContent = 'Signing in…'; btn.disabled = true; }
     try { await signInWithPopup(auth, googleProvider); }
     catch (e) {
       const code = e?.code || '';
       if (code && code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
-        alert('로그인 오류: ' + code);
+        alert('Login error: ' + code);
       }
     } finally {
-      if (btn) { btn.textContent = '🔑 Google 로그인'; btn.disabled = false; }
+      if (btn) { btn.textContent = '🔑 Google Sign-In'; btn.disabled = false; }
     }
   });
 
@@ -3178,13 +3178,13 @@ async function init() {
     const btn = $('btnDetector');
     if (_detectorActive) {
       _stopDetector();
-      if (btn) btn.title = '보물 탐지기 OFF — 클릭해서 켜기';
+      if (btn) btn.title = 'Treasure Detector OFF — click to enable';
     } else {
       _detectorActive = true;
       if (btn) {
         btn.style.background = '#7c3aed';
         btn.style.boxShadow = '0 0 10px #7c3aed88';
-        btn.title = '보물 탐지기 ON — 클릭해서 끄기';
+        btn.title = 'Treasure Detector ON — click to disable';
       }
       // 현재 위치 기준으로 즉시 업데이트
       if (_ctx.lastPos) _updateDetector(_ctx.lastPos.lat, _ctx.lastPos.lng);
@@ -3224,12 +3224,12 @@ async function init() {
 
   // ── 바우쳐 서비스 주문 모달 ──────────────────────────────────────────────────
   async function _openVoucherOrderModal() {
-    if (!_uid) { alert('로그인이 필요합니다'); return; }
+    if (!_uid) { alert('Login required'); return; }
     const modal  = $('voucherOrderModal');
     const sel    = $('voVoucherSel');
     const status = $('voStatus');
     if (modal) modal.classList.remove('hidden');
-    if (sel) sel.innerHTML = '<option value="">불러오는 중...</option>';
+    if (sel) sel.innerHTML = '<option value="">Loading...</option>';
     if (status) status.textContent = '';
     try {
       const res = await httpsCallable(functions, 'coopGetMyVouchers')();
@@ -3237,15 +3237,15 @@ async function init() {
       _myVoucherLogs = vouchers;
       if (sel) {
         if (!vouchers.length) {
-          sel.innerHTML = '<option value="">보유 바우쳐가 없습니다</option>';
+          sel.innerHTML = '<option value="">No vouchers available</option>';
         } else {
           sel.innerHTML = vouchers.map((v, i) =>
-            `<option value="${i}">${escHtml(v.description || '바우쳐')} [${v.source === 'game' ? '게임' : '상품'}]</option>`
+            `<option value="${i}">${escHtml(v.description || 'Voucher')} [${v.source === 'game' ? 'Game' : 'Item'}]</option>`
           ).join('');
         }
       }
     } catch (err) {
-      if (sel) sel.innerHTML = '<option value="">불러오기 실패</option>';
+      if (sel) sel.innerHTML = '<option value="">Load failed</option>';
     }
   }
 
@@ -3264,7 +3264,7 @@ async function init() {
     } else if (_ctx.lastPos) {
       inp.value = `${_ctx.lastPos.lat.toFixed(6)}, ${_ctx.lastPos.lng.toFixed(6)}`;
     } else {
-      alert('GPS 위치를 가져올 수 없습니다. 지도에서 위치를 확인하세요.');
+      alert('GPS location unavailable. Check your position on the map.');
     }
   });
 
@@ -3274,22 +3274,22 @@ async function init() {
     const status = $('voStatus');
     const idx    = parseInt(sel?.value ?? '', 10);
     if (isNaN(idx) || !_myVoucherLogs[idx]) {
-      if (status) { status.style.color = '#ef4444'; status.textContent = '바우쳐를 선택하세요'; }
+      if (status) { status.style.color = '#ef4444'; status.textContent = 'Please select a voucher'; }
       return;
     }
     const latLng = $('voLatLng')?.value?.trim();
     if (!latLng) {
-      if (status) { status.style.color = '#ef4444'; status.textContent = '설치 위치를 입력하세요'; }
+      if (status) { status.style.color = '#ef4444'; status.textContent = 'Please enter the installation location'; }
       return;
     }
     const [latStr, lngStr] = latLng.split(',').map(s => s.trim());
     if (isNaN(parseFloat(latStr)) || isNaN(parseFloat(lngStr))) {
-      if (status) { status.style.color = '#ef4444'; status.textContent = '좌표를 올바르게 입력하세요 (예: 21.110101, 106.393556)'; }
+      if (status) { status.style.color = '#ef4444'; status.textContent = 'Enter valid coordinates (e.g. 21.110101, 106.393556)'; }
       return;
     }
     const voucher = _myVoucherLogs[idx];
-    if (!confirm(`"${voucher.description || '바우쳐'}"를 관리자에게 이체하고 서비스를 신청합니다.\n취소할 수 없습니다. 계속하시겠습니까?`)) return;
-    if (btn) { btn.disabled = true; btn.textContent = '처리 중...'; }
+    if (!confirm(`Transfer "${voucher.description || 'Voucher'}" to admin and request service.\nThis cannot be undone. Continue?`)) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
     if (status) { status.style.color = '#6b7280'; status.textContent = ''; }
     try {
       const params = {
@@ -3301,12 +3301,12 @@ async function init() {
         imageUrl:        $('voImageUrl')?.value?.trim() || '',
       };
       const res = await httpsCallable(functions, 'submitVoucherOrder')(params);
-      if (status) { status.style.color = '#22c55e'; status.textContent = `✅ 주문 완료! (주문ID: ${res.data.orderId?.slice(0, 8)}…)`; }
+      if (status) { status.style.color = '#22c55e'; status.textContent = `✅ Order complete! (Order ID: ${res.data.orderId?.slice(0, 8)}…)`; }
       await loadInventory({ force: true });
       setTimeout(() => $('voucherOrderModal')?.classList.add('hidden'), 2500);
     } catch (err) {
-      if (status) { status.style.color = '#ef4444'; status.textContent = '오류: ' + (err.message || err); }
-      if (btn) { btn.disabled = false; btn.textContent = '주문 제출'; }
+      if (status) { status.style.color = '#ef4444'; status.textContent = 'Error: ' + (err.message || err); }
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit Order'; }
     }
   });
 

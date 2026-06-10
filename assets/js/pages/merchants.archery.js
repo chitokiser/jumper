@@ -13,17 +13,17 @@ const CANNON_HIT_RADIUS   = 30; // 플레이어 피격 판정 반경
 
 // [imgIdx, label, basePts, coinDrop, baseSpeed, baseSize, spawnWeight, rarity]
 const MDEFS = [
-  [0,  '슬라임',     10,  0, 1.3, 64, 28, 'normal'],
-  [1,  '고블린',     10,  0, 1.7, 58, 22, 'normal'],
-  [2,  '스켈레톤',   10,  0, 1.5, 60, 20, 'normal'],
-  [3,  '오크',       10,  0, 1.1, 74, 16, 'normal'],
-  [4,  '독거미',     30,  2, 2.4, 52,  5, 'rare'],
-  [5,  '좀비',       30,  2, 2.9, 48,  4, 'rare'],
-  [6,  '마법사',     30,  2, 2.7, 54,  3, 'rare'],
-  [7,  '해골왕',    100,  5, 3.4, 46,  1, 'hero'],
-  [8,  '드래곤',    100,  5, 1.6, 84,  1, 'hero'],
-  [9,  '황금몬스터', 200, 20, 3.8, 42,  0.5, 'golden'],
-  [10, '보물상자',   80,  8, 0.8, 68,  1, 'rare'],
+  [0,  'Slime',          10,  0, 1.3, 64, 28, 'normal'],
+  [1,  'Goblin',         10,  0, 1.7, 58, 22, 'normal'],
+  [2,  'Skeleton',       10,  0, 1.5, 60, 20, 'normal'],
+  [3,  'Orc',            10,  0, 1.1, 74, 16, 'normal'],
+  [4,  'Spider',         30,  2, 2.4, 52,  5, 'rare'],
+  [5,  'Zombie',         30,  2, 2.9, 48,  4, 'rare'],
+  [6,  'Mage',           30,  2, 2.7, 54,  3, 'rare'],
+  [7,  'Skull King',    100,  5, 3.4, 46,  1, 'hero'],
+  [8,  'Dragon',        100,  5, 1.6, 84,  1, 'hero'],
+  [9,  'Golden Monster', 200, 20, 3.8, 42,  0.5, 'golden'],
+  [10, 'Treasure Chest',  80,  8, 0.8, 68,  1, 'rare'],
 ];
 const SPAWN_WEIGHT = MDEFS.reduce((s, d) => s + d[6], 0);
 const MON_IMGS = Array.from({ length: 11 }, (_, i) => `/assets/images/slot/${i + 1}.png`);
@@ -352,7 +352,7 @@ class ArcheryGame {
     this._burst(hx, hy, headshot ? '#ffd700' : isGolden ? '#fbbf24' : '#ff8844', headshot ? 22 : 10);
     this._float(hx, hy - 28, label, color, headshot ? 20 : 15);
     if (coin > 0) this._float(hx, hy - 52, `🪙 +${coin}`, '#fbbf24', 13);
-    if (isGolden) this._float(hx, hy - 72, '✨ 황금몬스터!', '#ffd700', 16);
+    if (isGolden) this._float(hx, hy - 72, '✨ Golden Monster!', '#ffd700', 16);
 
     this._snd?.(isGolden || headshot ? 'slot_win' : 'hit');
 

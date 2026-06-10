@@ -569,17 +569,29 @@ async function adminSaveVoucher(adminUid, data = {}) {
 // ── 유저: 부활권 사용 ─────────────────────────────────────────────────────────
 async function useReviveTicket(uid) {
   const invRef = db.collection('treasure_inventory').doc(`${uid}_revive_ticket`);
+  const playerRef = db.collection('battle_players').doc(uid);
   return await db.runTransaction(async (tx) => {
-    const snap = await tx.get(invRef);
+    const [snap, playerSnap] = await Promise.all([tx.get(invRef), tx.get(playerRef)]);
     const current = snap.exists ? (snap.data().count || 0) : 0;
-    if (current <= 0) throw new HttpsError('failed-precondition', '부활권이 없습니다');
+    if (current <= 0) throw new HttpsError('failed-precondition', 'No revive ticket available');
     const newCount = current - 1;
     if (newCount <= 0) {
       tx.delete(invRef);
     } else {
       tx.update(invRef, { count: newCount, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
     }
-    return { ok: true, remaining: newCount };
+    // Restore XP penalty that was deducted on death
+    const playerData = playerSnap.exists ? playerSnap.data() : {};
+    const penalty = playerData.xpDeathPenalty || 0;
+    if (penalty > 0) {
+      const restoredXp = (playerData.xp || 0) + penalty;
+      tx.update(playerRef, {
+        xp: restoredXp,
+        xpDeathPenalty: 0,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    return { ok: true, remaining: newCount, xpRestored: penalty };
   });
 }
 

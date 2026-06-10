@@ -26,7 +26,7 @@ const MANIFEST_URL = 'https://jump22.netlify.app/tonconnect-manifest.json';
 export async function initTonExchange() {
   // TON Connect UI SDK 로드 확인
   if (typeof TON_CONNECT_UI === 'undefined') {
-    console.warn('[ton] TON Connect UI SDK 미로드');
+    console.warn('[ton] TON Connect UI SDK not loaded');
     return;
   }
 
@@ -66,7 +66,7 @@ async function _loadPrice() {
     _recalcDeposit();
     _recalcWithdraw();
   } catch (e) {
-    console.warn('[ton] 가격 로드 실패:', e.message);
+    console.warn('[ton] Price load failed:', e.message);
   }
 }
 
@@ -75,7 +75,7 @@ function _renderPrice() {
   const el = (id) => document.getElementById(id);
   if (el('tonPriceUsd'))    el('tonPriceUsd').textContent    = _tonUsd ? `$${_tonUsd.toFixed(2)}` : '—';
   if (el('tonPriceCoin'))   el('tonPriceCoin').textContent   = _coinPerTon ? `${_coinPerTon.toLocaleString()} GP` : '—';
-  if (el('tonPriceUpdated'))el('tonPriceUpdated').textContent= new Date().toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
+  if (el('tonPriceUpdated'))el('tonPriceUpdated').textContent= new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'});
 }
 
 function _renderAdminWallet() {
@@ -93,9 +93,9 @@ function _renderAdminWallet() {
 function _updateWalletStatus() {
   const statusEl = document.getElementById('tonWalletStatus');
   const addrEl   = document.getElementById('tonWalletAddr');
-  if (statusEl) statusEl.textContent = _connected ? '● 연결됨' : '○ 미연결';
+  if (statusEl) statusEl.textContent = _connected ? '● Connected' : '○ Not connected';
   if (statusEl) statusEl.style.color = _connected ? '#b8ff00' : '#6b7280';
-  if (addrEl)   addrEl.textContent   = _connected ? (_walletAddr.slice(0,8)+'…'+_walletAddr.slice(-6)) : '지갑 미연결';
+  if (addrEl)   addrEl.textContent   = _connected ? (_walletAddr.slice(0,8)+'…'+_walletAddr.slice(-6)) : 'Wallet not connected';
 }
 
 function _setWithdrawAddress(addr) {
@@ -131,7 +131,7 @@ function _recalcWithdraw() {
   const net = gp - fee;
   const ton = _coinPerTon > 0 ? net / _coinPerTon : 0;
   tonResult.textContent = ton > 0 ? ton.toFixed(4) + ' TON' : '— TON';
-  if (feeEl) feeEl.textContent = `수수료 3% = ${fee.toLocaleString()} GP 차감 → 실수령 ${net.toLocaleString()} GP`;
+  if (feeEl) feeEl.textContent = `Fee 3% = ${fee.toLocaleString()} GP deducted → Net ${net.toLocaleString()} GP`;
 }
 
 // ── 이벤트 바인딩 ─────────────────────────────────────────────────────────────
@@ -156,11 +156,11 @@ function _bindEvents() {
 
 // ── 입금 (TON 전송) ───────────────────────────────────────────────────────────
 async function _doDeposit() {
-  if (!_connected) return _toast('먼저 TON 지갑을 연결하세요', 'warn');
-  if (!_adminWallet) return _toast('관리자 지갑 주소를 로드 중입니다...', 'warn');
+  if (!_connected) return _toast('Please connect your TON wallet first', 'warn');
+  if (!_adminWallet) return _toast('Loading admin wallet address...', 'warn');
 
   const tonAmt = parseFloat(document.getElementById('tonDepositAmt')?.value) || 0;
-  if (tonAmt < 0.01) return _toast('최소 입금은 0.01 TON 입니다', 'warn');
+  if (tonAmt < 0.01) return _toast('Minimum deposit is 0.01 TON', 'warn');
 
   const nanoTon = Math.floor(tonAmt * 1e9);
   _setLoading('tonSendBtn', true);
@@ -176,11 +176,11 @@ async function _doDeposit() {
     const txHash = result?.boc || '';
     const hashEl = document.getElementById('tonVerifyHash');
     if (hashEl) hashEl.value = txHash;
-    _toast('TON 전송 완료! 아래에서 "입금 확인" 버튼을 누르세요', 'success');
+    _toast('TON sent! Click "Confirm Deposit" below to verify.', 'success');
     document.getElementById('tonDepositAmt').value = '';
     _recalcDeposit();
   } catch (e) {
-    if (!e.message?.includes('User')) _toast('전송 오류: ' + e.message, 'error');
+    if (!e.message?.includes('User')) _toast('Transfer error: ' + e.message, 'error');
   } finally {
     _setLoading('tonSendBtn', false);
   }
@@ -189,15 +189,15 @@ async function _doDeposit() {
 // ── 입금 검증 ─────────────────────────────────────────────────────────────────
 async function _doVerify() {
   const txHash = document.getElementById('tonVerifyHash')?.value?.trim();
-  if (!txHash) return _toast('TX Hash를 입력하세요', 'warn');
+  if (!txHash) return _toast('Please enter the TX Hash', 'warn');
   _setLoading('tonVerifyBtn', true);
   try {
     const { data } = await _fnVerify({ txHash });
-    _toast(`✅ 입금 완료! +${data.gamecoin.toLocaleString()} GP (${data.tonAmount.toFixed(4)} TON)`, 'success');
+    _toast(`✅ Deposit confirmed! +${data.gamecoin.toLocaleString()} GP (${data.tonAmount.toFixed(4)} TON)`, 'success');
     document.getElementById('tonVerifyHash').value = '';
     window.dispatchEvent(new CustomEvent('ton:deposited', { detail: data }));
   } catch (e) {
-    _toast('입금 확인 실패: ' + (e.message || '네트워크 오류'), 'error');
+    _toast('Deposit verification failed: ' + (e.message || 'Network error'), 'error');
   } finally {
     _setLoading('tonVerifyBtn', false);
   }
@@ -207,26 +207,26 @@ async function _doVerify() {
 async function _doWithdraw() {
   const gp      = parseInt(document.getElementById('tonWithdrawGp')?.value)   || 0;
   const address = document.getElementById('tonWithdrawAddr')?.value?.trim();
-  if (gp < 10000)  return _toast('최소 출금은 10,000 GP 입니다', 'warn');
-  if (!address)    return _toast('TON 지갑 주소를 입력하세요', 'warn');
+  if (gp < 10000)  return _toast('Minimum withdrawal is 10,000 GP', 'warn');
+  if (!address)    return _toast('Please enter your TON wallet address', 'warn');
   const fee = Math.floor(gp * WITHDRAW_FEE_RATE);
   const net = gp - fee;
   const ton = _coinPerTon > 0 ? net / _coinPerTon : 0;
-  if (!confirm(`출금 요청 확인\n\n` +
-    `차감 GP: ${gp.toLocaleString()} GP\n` +
-    `수수료 3%: ${fee.toLocaleString()} GP\n` +
-    `실수령: ${ton.toFixed(4)} TON\n\n` +
-    `지갑: ${address}`)) return;
+  if (!confirm(`Confirm Withdrawal\n\n` +
+    `GP deducted: ${gp.toLocaleString()} GP\n` +
+    `Fee 3%: ${fee.toLocaleString()} GP\n` +
+    `Net receive: ${ton.toFixed(4)} TON\n\n` +
+    `Wallet: ${address}`)) return;
 
   _setLoading('tonWithdrawBtn', true);
   try {
     const { data } = await _fnWithdraw({ gamecoin: gp, walletAddress: address });
-    _toast(`출금 완료! ${data.tonAmount.toFixed(4)} TON 송금됨 (수수료 ${fee.toLocaleString()} GP 차감)`, 'success');
+    _toast(`Withdrawal complete! ${data.tonAmount.toFixed(4)} TON sent (fee ${fee.toLocaleString()} GP deducted)`, 'success');
     document.getElementById('tonWithdrawGp').value = '';
     _recalcWithdraw();
     window.dispatchEvent(new CustomEvent('ton:withdrawn', { detail: data }));
   } catch (e) {
-    _toast('출금 요청 실패: ' + (e.message || '네트워크 오류'), 'error');
+    _toast('Withdrawal request failed: ' + (e.message || 'Network error'), 'error');
   } finally {
     _setLoading('tonWithdrawBtn', false);
   }
@@ -236,23 +236,23 @@ async function _doWithdraw() {
 async function _loadHistory() {
   const container = document.getElementById('tonHistoryList');
   if (!container) return;
-  container.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:12px">로딩 중...</div>';
+  container.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:12px">Loading...</div>';
   try {
     const { data } = await _fnHistory();
     if (!data.length) {
-      container.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:12px">거래 내역이 없습니다</div>';
+      container.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:12px">No transaction history</div>';
       return;
     }
     container.innerHTML = data.map(tx => `
       <div class="ton-tx-row">
-        <span class="ton-tx-type ${tx.type}">${tx.type === 'deposit' ? '▼ 입금' : '▲ 출금'}</span>
+        <span class="ton-tx-type ${tx.type}">${tx.type === 'deposit' ? '▼ Deposit' : '▲ Withdraw'}</span>
         <span class="ton-tx-amount">${tx.type === 'deposit' ? '+' : '-'}${tx.gamecoin.toLocaleString()} GP</span>
         <span class="ton-tx-ton">${tx.tonAmount.toFixed(4)} TON</span>
         <span class="ton-tx-status ${tx.status}">${tx.status}</span>
-        <span class="ton-tx-date">${tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('ko-KR') : '—'}</span>
+        <span class="ton-tx-date">${tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('en-US') : '—'}</span>
       </div>`).join('');
   } catch (e) {
-    container.innerHTML = `<div style="color:#f87171;font-size:11px;text-align:center;padding:12px">오류: ${e.message}</div>`;
+    container.innerHTML = `<div style="color:#f87171;font-size:11px;text-align:center;padding:12px">Error: ${e.message}</div>`;
   }
 }
 
@@ -261,8 +261,8 @@ async function _copyAdminAddr() {
   if (!_adminWallet) return;
   try {
     await navigator.clipboard.writeText(_adminWallet);
-    _toast('주소가 복사됐습니다', 'success');
-  } catch { _toast('복사 실패 — 직접 선택하세요', 'warn'); }
+    _toast('Address copied', 'success');
+  } catch { _toast('Copy failed — select manually', 'warn'); }
 }
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────────
@@ -271,7 +271,7 @@ function _setLoading(btnId, on) {
   if (!btn) return;
   btn.disabled = on;
   btn._origText = btn._origText || btn.textContent;
-  btn.textContent = on ? '처리 중...' : btn._origText;
+  btn.textContent = on ? 'Processing...' : btn._origText;
 }
 
 function _toast(msg, type = 'info') {
@@ -297,14 +297,14 @@ async function _loadAdminBalance() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
     const nanoton = parseInt(d?.balance ?? '0', 10);
-    if (isNaN(nanoton)) throw new Error('잔고 파싱 실패');
+    if (isNaN(nanoton)) throw new Error('Balance parse failed');
     const ton = nanoton / 1e9;
     const usd = _tonUsd ? ton * _tonUsd : 0;
     if (balEl) balEl.textContent = ton.toFixed(4);
     if (usdEl) usdEl.textContent = usd > 0 ? '$' + usd.toFixed(2) : '$—';
   } catch (e) {
-    console.warn('[ton] 잔고 조회 실패:', e.message);
-    if (balEl) balEl.textContent = '오류';
+    console.warn('[ton] Balance fetch failed:', e.message);
+    if (balEl) balEl.textContent = 'Error';
   }
 }
 

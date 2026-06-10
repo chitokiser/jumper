@@ -620,7 +620,7 @@ function dropGoldTokens(mob) {
 
   const marker = new google.maps.Marker({
     position: { lat, lng }, map,
-    title: `💰 코인 ×${amount} — 클릭하여 획득`,
+    title: `💰 Coins ×${amount} — Tap to collect`,
     icon: { url: '/assets/images/item/coins.png',
             scaledSize: new google.maps.Size(28, 28),
             anchor: new google.maps.Point(14, 14) },
@@ -1132,6 +1132,9 @@ function takeDamage(rawAmount, sourceLat, sourceLng) {
     _isDead = true;
     _player.hp = 0;
     _reviveWalkDist = 0;
+    const penalty = Math.floor((_player.xp || 0) * 0.01);
+    _player.xp = Math.max(0, (_player.xp || 0) - penalty);
+    _player.xpDeathPenalty = (_player.xpDeathPenalty || 0) + penalty;
     const myMark2 = _ctx?.myLocationMarker;
     if (myMark2) {
       _deathLat = myMark2.getPosition().lat();
@@ -1266,7 +1269,7 @@ function getGsTargetsInRange() {
     const lat = m.currentLat ?? m.lat;
     const lng = m.currentLng ?? m.lng;
     if (!lat || !lng) continue;
-    result.push({ id, name: m.type || '서버몬스터', lat, lng,
+    result.push({ id, name: m.type || 'ServerMonster', lat, lng,
                   hp: m.hp ?? 1, maxHp: m.maxHp ?? 1, image: '👾', _isGs: true });
   }
   return result;
@@ -1654,10 +1657,12 @@ export async function useReviveTicket() {
     _player.hp = Math.round(_player.maxHp * 0.5);
     _player.mp = Math.round(_player.maxMp * 0.5);
     _player.token = (_player.token ?? 0) + 30;
+    _player.xp = (_player.xp || 0) + (_player.xpDeathPenalty || 0);
+    _player.xpDeathPenalty = 0;
     sendPlayerRevive();  // GS 서버에 부활 동기화
     playSound('revive');
     const myMark = _ctx?.myLocationMarker;
-    if (myMark) showFloat('✨ 부활! 💎×30', '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
+    if (myMark) showFloat('✨ Revived! 💎×30', '#a78bfa', myMark.getPosition().lat(), myMark.getPosition().lng());
     updateCombatHud();
     updateSkillBar();
     savePlayerState();
@@ -1785,11 +1790,11 @@ function renderDecoMarkers() {
 function _decoInfoContent(d) {
   return `<div style="font-size:13px;line-height:1.7;min-width:180px;">
     <img src="${escHtml(d.imageUrl)}" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 6px;">
-    <div style="font-weight:700;text-align:center;margin-bottom:4px;">${escHtml(d.name||'데코')}</div>
+    <div style="font-weight:700;text-align:center;margin-bottom:4px;">${escHtml(d.name||'Deco')}</div>
     ${_ctx?.isAdmin ? `
       <div style="display:flex;gap:6px;margin-top:6px;">
-        <button onclick="window.__editDecoForm('${d.id}')" style="flex:1;padding:4px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;cursor:pointer;">✏️ 수정</button>
-        <button onclick="window.__deleteDeco('${d.id}')" style="flex:1;padding:4px;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:4px;cursor:pointer;">🗑️ 삭제</button>
+        <button onclick="window.__editDecoForm('${d.id}')" style="flex:1;padding:4px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;cursor:pointer;">✏️ Edit</button>
+        <button onclick="window.__deleteDeco('${d.id}')" style="flex:1;padding:4px;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:4px;cursor:pointer;">🗑️ Delete</button>
       </div>` : ''}
   </div>`;
 }
@@ -1800,19 +1805,19 @@ window.__editDecoForm = (id) => {
   const iw = _ctx?.infoWindow;
   if (!iw) return;
   iw.setContent(`<div style="font-size:13px;line-height:1.8;min-width:200px;">
-    <div style="font-weight:700;margin-bottom:8px;">✏️ 데코 수정</div>
-    <label style="display:block;margin-bottom:4px;">이름
+    <div style="font-weight:700;margin-bottom:8px;">✏️ Edit Deco</div>
+    <label style="display:block;margin-bottom:4px;">Name
       <input id="decoEditName" value="${escHtml(d.name||'')}" style="width:100%;box-sizing:border-box;padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;">
     </label>
-    <label style="display:block;margin-bottom:4px;">이미지 경로
+    <label style="display:block;margin-bottom:4px;">Image Path
       <input id="decoEditImg" value="${escHtml(d.imageUrl||'')}" style="width:100%;box-sizing:border-box;padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;">
     </label>
-    <label style="display:block;margin-bottom:8px;">크기(px)
+    <label style="display:block;margin-bottom:8px;">Size (px)
       <input id="decoEditSize" type="number" value="${d.size||48}" min="16" max="256" style="width:100%;box-sizing:border-box;padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;">
     </label>
     <div style="display:flex;gap:6px;">
-      <button onclick="window.__saveDecoEdit('${id}')" style="flex:1;padding:5px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:4px;cursor:pointer;">💾 저장</button>
-      <button onclick="window.__cancelDecoEdit('${id}')" style="flex:1;padding:5px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">취소</button>
+      <button onclick="window.__saveDecoEdit('${id}')" style="flex:1;padding:5px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:4px;cursor:pointer;">💾 Save</button>
+      <button onclick="window.__cancelDecoEdit('${id}')" style="flex:1;padding:5px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">Cancel</button>
     </div>
   </div>`);
 };
@@ -1830,7 +1835,7 @@ window.__saveDecoEdit = async (id) => {
     const marker = _decoMarkers.find(x => x.id === id)?.marker;
     _ctx?.infoWindow?.setContent(_decoInfoContent(d));
     if (marker) _ctx?.infoWindow?.open(_ctx.map, marker);
-  } catch (e) { alert('저장 실패: ' + e.message); }
+  } catch (e) { alert('Save failed: ' + e.message); }
 };
 
 window.__cancelDecoEdit = (id) => {
@@ -1840,13 +1845,13 @@ window.__cancelDecoEdit = (id) => {
 };
 
 window.__deleteDeco = async (id) => {
-  if (!confirm('이 데코를 삭제하시겠습니까?')) return;
+  if (!confirm('Delete this deco?')) return;
   try {
     await deleteDoc(doc(_ctx.db, 'map_decorations', id));
     _decoMarkers.filter(d => d.id === id).forEach(d => d.marker?.setMap(null));
     _decoMarkers = _decoMarkers.filter(d => d.id !== id);
     _ctx?.infoWindow?.close();
-  } catch (e) { alert('삭제 실패: ' + e.message); }
+  } catch (e) { alert('Delete failed: ' + e.message); }
 };
 
 // ── 몬스터 마커 ───────────────────────────────────────────────────────────────
@@ -2260,9 +2265,9 @@ function _updateDebugPanel() {
   const active = _monsterGrid.size;
   const cells  = _monsterGrid.cellCount;
   panel.innerHTML =
-    `FS몬스터: ${total} | 그리드: ${active}<br>` +
-    `셀: ${cells} | 주변: ${_dbgNearby}<br>` +
-    `AI처리: ${_dbgAiCount} | 틱FPS: ${_dbgFps}`;
+    `FSMon: ${total} | Grid: ${active}<br>` +
+    `Cells: ${cells} | Nearby: ${_dbgNearby}<br>` +
+    `AI: ${_dbgAiCount} | FPS: ${_dbgFps}`;
 }
 
 // ── 배틀 루프 ─────────────────────────────────────────────────────────────────
@@ -2556,7 +2561,7 @@ async function hitMonster(monsterId, damage) {
     if (mob.monsterType === 'dragon' && Math.random() < 0.10) {
       httpsCallable(_ctx.functions, 'earnReviveTicket')()
         .then(() => {
-          showFloat('🔮 부활권 드랍!', '#a78bfa', mob.lat, mob.lng);
+          showFloat('🔮 Revive Ticket dropped!', '#a78bfa', mob.lat, mob.lng);
           _ctx._onLoadInventory?.();
         })
         .catch(err => console.warn('[earnReviveTicket]', err.message));
@@ -2614,7 +2619,7 @@ function _onMonsterHpChange(monsterId, data) {
       if (_ctx?.map) _spawnMonsterMarker(mob);
     } else if (mob.hp > 0) {
       mob.hp = data.hp;
-      if (_monsterMarkers[monsterId]) _monsterMarkers[monsterId].setTitle(`${mob.name||'몬스터'} HP:${mob.hp}`);
+      if (_monsterMarkers[monsterId]) _monsterMarkers[monsterId].setTitle(`${mob.name||'Monster'} HP:${mob.hp}`);
     }
   }
 }
@@ -2757,19 +2762,19 @@ export function enterAdminPlaceMode(type) {
     if (_adminPlaceMode === 'monster') {
       // ── Firebase battle_monsters 추가 (서버 오프라인에도 유지) ──────────────
       const lv = _ctx?.playerLevel ?? 1;
-      const monsterType = prompt('몬스터 타입 (Monster eyes / cabi):', 'Monster eyes') || 'Monster eyes';
+      const monsterType = prompt('Monster type (Monster eyes / cabi):', 'Monster eyes') || 'Monster eyes';
       const PRESETS_FB = {
         'cabi':          { name:'cabi',          image:'23.png', maxHp: 500,     atk:20, detectRadius:30, respawnMinutes:2 },
         'Monster eyes':  { name:'Monster eyes',  image:'22.png', maxHp: lv*100*8, atk:80, detectRadius:30, respawnMinutes:2 },
       };
       const p = PRESETS_FB[monsterType] || PRESETS_FB['Monster eyes'];
 
-      const name           = prompt(`몬스터 이름:`,       p.name)            || p.name;
-      const image          = prompt(`이미지 (이모지 or 경로):`, p.image)      || p.image;
-      const maxHp          = parseInt(prompt(`최대 HP:`,   p.maxHp)           || p.maxHp);
-      const atk            = parseInt(prompt(`공격력:`,    p.atk)             || p.atk);
-      const detectRadius   = parseInt(prompt(`탐지 반경(m):`, p.detectRadius) || p.detectRadius);
-      const respawnMinutes = parseInt(prompt(`리스폰 시간(분):`, p.respawnMinutes) || p.respawnMinutes);
+      const name           = prompt(`Monster name:`,       p.name)            || p.name;
+      const image          = prompt(`Image (emoji or path):`, p.image)      || p.image;
+      const maxHp          = parseInt(prompt(`Max HP:`,   p.maxHp)           || p.maxHp);
+      const atk            = parseInt(prompt(`Attack:`,    p.atk)             || p.atk);
+      const detectRadius   = parseInt(prompt(`Detect radius (m):`, p.detectRadius) || p.detectRadius);
+      const respawnMinutes = parseInt(prompt(`Respawn time (min):`, p.respawnMinutes) || p.respawnMinutes);
 
       try {
         const ref = await addDoc(collection(_ctx.db, 'battle_monsters'), {
@@ -2783,14 +2788,14 @@ export function enterAdminPlaceMode(type) {
         _monsterGrid.register(newMob);
         renderMonsterMarkers();
         refreshFirestoreMonsterList();
-        alert(`✅ ${name} 배치 완료 (Firebase)\n서버가 꺼져도 유지됩니다.`);
-      } catch (err) { alert('Firebase 배치 오류: ' + err.message); }
+        alert(`✅ ${name} placed (Firebase)\nPersists even when server is offline.`);
+      } catch (err) { alert('Firebase placement error: ' + err.message); }
 
     } else if (['dragon','orc','orc2','orc3','pirate','pirate2','pirate3','zombie1','zombie3'].includes(_adminPlaceMode)) {
       // ── 게임서버(GS) 몬스터 스폰 — 타입별 사전 설정값으로 즉시 배치 ────────────
       if (!isGameServerConnected()) {
         connectToGameServer();
-        alert('⚠️ 게임서버에 연결 중입니다.\n연결 후(■ 표시) 다시 배치해주세요.');
+        alert('⚠️ Connecting to game server.\nPlease try again after connecting (■ indicator).');
         return;
       }
       const monsterType = _adminPlaceMode;
@@ -2808,28 +2813,28 @@ export function enterAdminPlaceMode(type) {
       };
       const p = GS_DEFAULTS[monsterType];
       if (!confirm(
-        `[${monsterType}] 배치 확인\n` +
-        `HP: ${p.maxHp}  ATK: ${p.attackPower}  공격범위: ${p.attackRangeM}m\n` +
-        `탐지: ${p.aggroRangeM}m  리스폰: ${p.respawnSeconds}초`
+        `[${monsterType}] Placement confirm\n` +
+        `HP: ${p.maxHp}  ATK: ${p.attackPower}  Attack range: ${p.attackRangeM}m\n` +
+        `Detect: ${p.aggroRangeM}m  Respawn: ${p.respawnSeconds}s`
       )) return;
 
       try {
         const result = await gsAdminAddSpawn({ monsterType, lat, lng, maxCount: 1, ...p });
-        alert(`✅ ${monsterType} 배치 완료 (zone: ${result.zoneId})`);
+        alert(`✅ ${monsterType} placed (zone: ${result.zoneId})`);
         await refreshGsSpawnList();
-      } catch (err) { alert('GS 배치 오류: ' + err.message); }
+      } catch (err) { alert('GS placement error: ' + err.message); }
 
     } else if (_adminPlaceMode === 'archer_tower' || _adminPlaceMode === 'cannon_tower') {
       const towerType = _adminPlaceMode === 'cannon_tower' ? 'cannon' : 'archer';
-      const defName   = towerType === 'cannon' ? '대포 타워' : '아처 타워';
+      const defName   = towerType === 'cannon' ? 'Cannon Tower' : 'Archer Tower';
       const defAtk    = towerType === 'cannon' ? '80' : '20';
       const defRadius = '30';
       const defEmoji  = towerType === 'cannon' ? '💣' : '🏹';
-      const name   = prompt('타워 이름:', defName) || defName;
-      const atk    = parseInt(prompt('데미지:', defAtk) || defAtk);
-      const radius = parseInt(prompt('공격 반경(m):', defRadius) || defRadius);
+      const name   = prompt('Tower name:', defName) || defName;
+      const atk    = parseInt(prompt('Damage:', defAtk) || defAtk);
+      const radius = parseInt(prompt('Attack radius (m):', defRadius) || defRadius);
       const defImg = towerType === 'cannon' ? '/assets/images/shops/tower2.png' : '/assets/images/shops/tower.png';
-      const image  = prompt('이미지 (이모지 or 경로)', defImg) || defImg;
+      const image  = prompt('Image (emoji or path)', defImg) || defImg;
       try {
         const ref = await addDoc(collection(_ctx.db, 'battle_towers'), {
           name, lat, lng, atk, radius, image, type: towerType, hp: 1000, active: true,
@@ -2837,14 +2842,14 @@ export function enterAdminPlaceMode(type) {
         });
         _towers.push({ id: ref.id, name, lat, lng, atk, radius, image, type: towerType, hp: 1000, active: true });
         renderTowerMarkers();
-        alert(`✅ ${name} 설치 완료`);
-      } catch (err) { alert('오류: ' + err.message); }
+        alert(`✅ ${name} placed`);
+      } catch (err) { alert('Error: ' + err.message); }
 
     } else if (_adminPlaceMode === 'deco') {
-      const name     = prompt('데코 이름:', '해적선') || '해적선';
-      const imageUrl = prompt('이미지 경로:', '/assets/images/npc/npc1.png') || '/assets/images/npc/npc1.png';
+      const name     = prompt('Deco name:', 'Pirate Ship') || 'Pirate Ship';
+      const imageUrl = prompt('Image path:', '/assets/images/npc/npc1.png') || '/assets/images/npc/npc1.png';
       if (!imageUrl) { exitAdminPlaceMode(); return; }
-      const size = parseInt(prompt('크기 (픽셀, 기본 48):', '48') || '48');
+      const size = parseInt(prompt('Size (px, default 48):', '48') || '48');
       try {
         const ref = await addDoc(collection(_ctx.db, 'map_decorations'), {
           name, lat, lng, imageUrl, size, active: true,
@@ -2853,8 +2858,8 @@ export function enterAdminPlaceMode(type) {
         const newDeco = { id: ref.id, name, lat, lng, imageUrl, size, active: true };
         _decoMarkers.push(newDeco);
         renderDecoMarkers();
-        alert(`✅ 데코 "${name}" 배치 완료`);
-      } catch (err) { alert('오류: ' + err.message); }
+        alert(`✅ Deco "${name}" placed`);
+      } catch (err) { alert('Error: ' + err.message); }
 
     } else if (['shop_weapon_armor','shop_potion','shop_misc'].includes(_adminPlaceMode)) {
       const typeMap = { shop_weapon_armor: 'weapon_armor', shop_potion: 'potion', shop_misc: 'misc' };
@@ -2883,7 +2888,7 @@ export function enterAdminPlaceMode(type) {
         return;
       }
 
-      const name = prompt('상점 이름:', defaultNames[shopType]);
+      const name = prompt('Shop name:', defaultNames[shopType]);
       if (!name) { exitAdminPlaceMode(); return; }
       try {
         const ref = await addDoc(collection(_ctx.db, 'game_shops'), {
@@ -2893,8 +2898,8 @@ export function enterAdminPlaceMode(type) {
         const newShop = { id: ref.id, name: name.trim(), type: shopType, lat, lng, items: [], active: true };
         _shops.push(newShop);
         _renderShopMarker(newShop);
-        alert(`✅ 상점 "${name}" 배치 완료\n마커를 클릭하여 아이템을 설정하세요.`);
-      } catch (err) { alert('상점 배치 오류: ' + err.message); }
+        alert(`✅ Shop "${name}" placed\nClick the marker to configure items.`);
+      } catch (err) { alert('Shop placement error: ' + err.message); }
     }
     exitAdminPlaceMode();
   });
@@ -2923,11 +2928,11 @@ export function refreshFirestoreMonsterList() {
   if (!el) return;
 
   const list = _monsters.filter(m => m.active !== false);
-  if (list.length === 0) { el.textContent = '없음'; return; }
+  if (list.length === 0) { el.textContent = 'None'; return; }
 
   el.innerHTML = list.map(m => {
     const emoji = m.monsterType ? (TYPE_EMOJI[m.monsterType] || '👾') : (m.image || '👾');
-    const name  = escHtml(m.name || m.monsterType || '몬스터');
+    const name  = escHtml(m.name || m.monsterType || 'Monster');
     const hp    = `HP ${m.hp ?? m.maxHp}/${m.maxHp}`;
     const lat   = m.lat?.toFixed(4) ?? '?';
     const lng   = m.lng?.toFixed(4) ?? '?';
@@ -2939,7 +2944,7 @@ export function refreshFirestoreMonsterList() {
         <span style="color:#f97316">${hp}</span>
       </span>
       <span class="gs-spawn-actions">
-        <button class="gs-spawn-del" onclick="window.__deleteBattleObj('monster','${m.id}')" title="삭제">🗑</button>
+        <button class="gs-spawn-del" onclick="window.__deleteBattleObj('monster','${m.id}')" title="Delete">🗑</button>
       </span>
     </div>`;
   }).join('');
@@ -2952,7 +2957,7 @@ const TYPE_EMOJI = { dragon: '🐉', orc: '👹', goblin: '👾' };
 export async function refreshGsSpawnList() {
   const el = document.getElementById('gsSpawnList');
   if (!el) return;
-  el.textContent = '로딩 중…';
+  el.textContent = 'Loading…';
   try {
     const data   = await gsAdminGetSpawns();
     const spawns = data.spawns || [];
@@ -2974,7 +2979,7 @@ export async function refreshGsSpawnList() {
         }}));
       }
     }
-    if (spawns.length === 0) { el.textContent = '스폰 없음'; return; }
+    if (spawns.length === 0) { el.textContent = 'No spawns'; return; }
 
     el.innerHTML = spawns.map(s => {
       const emoji    = TYPE_EMOJI[s.monsterType] || '👾';
@@ -2988,7 +2993,7 @@ export async function refreshGsSpawnList() {
       const killBtns = (s.instances || [])
         .filter(m => m.state !== 'dead' && m.state !== 'respawning')
         .map(m =>
-          `<button class="gs-spawn-kill" onclick="window.__killGsMonster('${m.monsterId}')" title="강제 사망">💀</button>`
+          `<button class="gs-spawn-kill" onclick="window.__killGsMonster('${m.monsterId}')" title="Force kill">💀</button>`
         ).join('');
 
       return `<div class="gs-spawn-row">
@@ -3000,29 +3005,29 @@ export async function refreshGsSpawnList() {
         </span>
         <span class="gs-spawn-actions">
           ${killBtns}
-          <button class="gs-spawn-del" onclick="window.__deleteGsSpawn('${s.spawnId}')" title="스폰 삭제">🗑</button>
+          <button class="gs-spawn-del" onclick="window.__deleteGsSpawn('${s.spawnId}')" title="Delete spawn">🗑</button>
         </span>
       </div>`;
     }).join('');
   } catch (err) {
-    el.textContent = '오류: ' + err.message;
+    el.textContent = 'Error: ' + err.message;
   }
 }
 
 window.__deleteGsSpawn = async (spawnId) => {
-  if (!confirm(`스폰 [${spawnId}] 을 삭제하시겠습니까?\n해당 스폰의 몬스터가 즉시 제거됩니다.`)) return;
+  if (!confirm(`Delete spawn [${spawnId}]?\nAll monsters from this spawn will be removed immediately.`)) return;
   try {
     const r = await gsAdminDeleteSpawn(spawnId);
-    alert(`✅ 삭제 완료 (인스턴스 ${r.instancesRemoved}개 제거)`);
+    alert(`✅ Deleted (${r.instancesRemoved} instance(s) removed)`);
     await refreshGsSpawnList();
-  } catch (err) { alert('삭제 오류: ' + err.message); }
+  } catch (err) { alert('Delete error: ' + err.message); }
 };
 
 window.__killGsMonster = async (monsterId) => {
   try {
     await gsAdminKillMonster(monsterId);
     await refreshGsSpawnList();
-  } catch (err) { alert('kill 오류: ' + err.message); }
+  } catch (err) { alert('Kill error: ' + err.message); }
 };
 
 // ── 몬스터 스탯 설정 모달 ─────────────────────────────────────────────────────
@@ -3054,7 +3059,7 @@ async function _loadMonsterStatModal() {
   const tbody = document.getElementById('monsterStatTbody');
   const msg   = document.getElementById('monsterStatMsg');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#6b7280;padding:24px">로딩 중…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#6b7280;padding:24px">Loading…</td></tr>';
   if (msg) msg.textContent = '';
   try {
     const data  = await gsAdminGetMonsterTypes();
@@ -3077,7 +3082,7 @@ async function _loadMonsterStatModal() {
       </tr>`;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:20px">오류: ${esc(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:20px">Error: ${esc(err.message)}</td></tr>`;
   }
 }
 
@@ -3085,7 +3090,7 @@ async function saveAllMonsterStats() {
   const btn = document.getElementById('btnMonsterStatSaveAll');
   const msg = document.getElementById('monsterStatMsg');
   if (btn) btn.disabled = true;
-  if (msg) msg.textContent = '저장 중…';
+  if (msg) msg.textContent = 'Saving…';
 
   const hpInputs = document.querySelectorAll('.ms-hp');
   const changed  = [];
@@ -3098,9 +3103,9 @@ async function saveAllMonsterStats() {
     const attackPower  = parseInt(atkInp?.value ?? '0', 10);
     const attackRangeM = parseInt(rangeInp?.value ?? '20', 10);
 
-    if (!isFinite(maxHp) || maxHp < 1)         { alert(`${type}: HP는 1 이상이어야 합니다`);   if (btn) btn.disabled = false; return; }
-    if (!isFinite(attackPower) || attackPower < 0) { alert(`${type}: 공격력은 0 이상이어야 합니다`); if (btn) btn.disabled = false; return; }
-    if (!isFinite(attackRangeM) || attackRangeM < 1) { alert(`${type}: 공격범위는 1m 이상이어야 합니다`); if (btn) btn.disabled = false; return; }
+    if (!isFinite(maxHp) || maxHp < 1)         { alert(`${type}: HP must be at least 1`);   if (btn) btn.disabled = false; return; }
+    if (!isFinite(attackPower) || attackPower < 0) { alert(`${type}: Attack must be 0 or more`); if (btn) btn.disabled = false; return; }
+    if (!isFinite(attackRangeM) || attackRangeM < 1) { alert(`${type}: Attack range must be at least 1m`); if (btn) btn.disabled = false; return; }
 
     const orig = _origStats[type] || {};
     if (maxHp !== orig.maxHp || attackPower !== orig.attackPower || attackRangeM !== orig.attackRangeM) {
@@ -3109,7 +3114,7 @@ async function saveAllMonsterStats() {
   }
 
   if (changed.length === 0) {
-    if (msg) msg.textContent = '변경 사항 없음';
+    if (msg) msg.textContent = 'No changes';
     if (btn) btn.disabled = false;
     return;
   }
@@ -3121,20 +3126,20 @@ async function saveAllMonsterStats() {
       totalInstances += r.instancesUpdated || 0;
       saved++;
     } catch (err) {
-      if (msg) msg.textContent = `${c.type} 오류: ${err.message}`;
+      if (msg) msg.textContent = `${c.type} error: ${err.message}`;
       if (btn) btn.disabled = false;
       return;
     }
   }
 
-  if (msg) msg.textContent = `✅ ${saved}종 저장 완료 (인스턴스 ${totalInstances}개 즉시 반영)`;
+  if (msg) msg.textContent = `✅ ${saved} type(s) saved (${totalInstances} instance(s) updated)`;
   if (btn) btn.disabled = false;
   // 저장 후 원래 값 갱신
   for (const c of changed) _origStats[c.type] = { maxHp: c.maxHp, attackPower: c.attackPower, attackRangeM: c.attackRangeM };
 }
 
 window.__deleteBattleObj = async (type, id) => {
-  if (!confirm('삭제하시겠습니까?')) return;
+  if (!confirm('Delete this object?')) return;
   try {
     await deleteDoc(doc(_ctx.db, type === 'monster' ? 'battle_monsters' : 'battle_towers', id));
     if (type === 'monster') {
@@ -3151,7 +3156,7 @@ window.__deleteBattleObj = async (type, id) => {
       _dropShadow(id, _towerShadows);
     }
     _ctx?.infoWindow?.close();
-  } catch (err) { alert('삭제 실패: ' + err.message); }
+  } catch (err) { alert('Delete failed: ' + err.message); }
 };
 
 // ── 방어탑 범위 토글 ──────────────────────────────────────────────────────────
@@ -3162,7 +3167,7 @@ export function toggleTowerRanges() {
     circle.setMap(_showTowerRange ? map : null);
   });
   document.getElementById('btnToggleTowerRange').textContent =
-    _showTowerRange ? '🙈 범위 숨기기' : '👁 범위 표시';
+    _showTowerRange ? '🙈 Hide Range' : '👁 Show Range';
 }
 
 // ── 사망 마커 ─────────────────────────────────────────────────────────────────
@@ -3391,6 +3396,9 @@ export function syncDeathFromServer() {
   _isDead         = true;
   _player.hp      = 0;
   _reviveWalkDist = 0;
+  const penalty = Math.floor((_player.xp || 0) * 0.01);
+  _player.xp = Math.max(0, (_player.xp || 0) - penalty);
+  _player.xpDeathPenalty = (_player.xpDeathPenalty || 0) + penalty;
   const myMark = _ctx?.myLocationMarker;
   const pos    = myMark?.getPosition();
   if (pos) {
@@ -3421,7 +3429,7 @@ export function syncReviveFromServer(hp) {
   playSound('revive');
   const myMark = _ctx?.myLocationMarker;
   const pos    = myMark?.getPosition();
-  if (pos) showFloat('✨ 부활! 💎×30', '#fbbf24', pos.lat(), pos.lng());
+  if (pos) showFloat('✨ Revived! 💎×30', '#fbbf24', pos.lat(), pos.lng());
   updateCombatHud();
   updateSkillBar();
   savePlayerState();
@@ -3435,7 +3443,7 @@ export function spawnGsDrop(dropId, lat, lng, gold, onClaim) {
   const map = _ctx.map;
   const marker = new google.maps.Marker({
     position: { lat, lng }, map,
-    title: `💰 코인 ×${gold} — 클릭 획득`,
+    title: `💰 Coins ×${gold} — Tap to collect`,
     icon: { url: '/assets/images/item/coins.png',
             scaledSize: new google.maps.Size(32, 32),
             anchor: new google.maps.Point(16, 16) },
@@ -3534,7 +3542,7 @@ function _renderShopMarker(shop) {
   marker.addListener('click', () => {
     const iw = _ctx?.infoWindow;
     if (iw) {
-      const typeLabel = { weapon_armor: '⚔️ 무기/방어구', potion: '🧪 약물', misc: '🛍️ 잡템' }[shop.type] || shop.type;
+      const typeLabel = { weapon_armor: '⚔️ Weapon/Armor', potion: '🧪 Potion', misc: '🛍️ General' }[shop.type] || shop.type;
       const flag = _shopFlagFromCoords(shop.lat, shop.lng);
       iw.setContent(`<div style="font-size:13px;padding:4px 8px;min-width:120px">
         <strong>${flag} ${escHtml(shop.name)}</strong><br>
@@ -3643,19 +3651,15 @@ let _tutorialBoxes = [];        // [{index, lat, lng, distM, claimed, marker}]
 let _tutorialProxState = {};    // {index: lastThresholdHit} — 중복 효과 방지
 const _claimedTutorialSet = new Set(); // 세션 내 수령 완료 인덱스 — loadTutorialBoxes 재호출 후에도 유지
 
-function _tutorialShowRewardPanel(data, lang) {
+function _tutorialShowRewardPanel(data) {
   const existing = document.getElementById('tutorialRewardPanel');
   if (existing) existing.remove();
 
-  const title = { ko: '🎁 보물 획득!', en: '🎁 Treasure Found!', vi: '🎁 Tìm thấy kho báu!' }[lang] || '🎁 보물 획득!';
-  const goldLabel = { ko: '골드', en: 'Gold', vi: 'Vàng' }[lang] || '골드';
-  const xpLabel   = { ko: '경험치', en: 'XP', vi: 'Kinh nghiệm' }[lang] || '경험치';
-  const badgeLabel = {
-    ko: '🏅 탐험가 뱃지 획득!',
-    en: '🏅 Explorer Badge earned!',
-    vi: '🏅 Nhận Huy hiệu Nhà thám hiểm!',
-  }[lang] || '🏅 탐험가 뱃지 획득!';
-  const tapLabel = { ko: '탭하여 닫기', en: 'Tap to close', vi: 'Nhấn để đóng' }[lang] || '탭하여 닫기';
+  const title = '🎁 Treasure Found!';
+  const goldLabel = 'Gold';
+  const xpLabel   = 'XP';
+  const badgeLabel = '🏅 Explorer Badge earned!';
+  const tapLabel = 'Tap to close';
 
   const rows = [];
   if (data.gold) rows.push(`<div class="trp-row"><span class="trp-icon">🪙</span><span class="trp-name">${goldLabel}</span><span class="trp-val">+${data.gold.toLocaleString()}</span></div>`);
@@ -3820,8 +3824,7 @@ async function _claimTutorialBox(box) {
     if (navigator.vibrate) navigator.vibrate([100, 50, 200, 50, 300]);
 
     // 보상 상세 패널 표시
-    const lang = window.LANG || 'en';
-    setTimeout(() => _tutorialShowRewardPanel(data, lang), 500);
+    setTimeout(() => _tutorialShowRewardPanel(data), 500);
 
     // 마커 제거 (0.8초 딜레이 — 연출 후)
     setTimeout(() => {
@@ -3833,7 +3836,7 @@ async function _claimTutorialBox(box) {
     if (data.xp)   { _player.gsExp = (_player.gsExp || 0) + data.xp; }
 
   } catch (err) {
-    const msg = err?.message || '수령 실패';
+    const msg = err?.message || 'Claim failed';
     _tutorialShowToast(`❌ ${msg}`, '#f87171');
   } finally {
     box._claiming = false;
@@ -3849,7 +3852,7 @@ function _renderTutorialMarker(box) {
   const marker = new google.maps.Marker({
     position: { lat: box.lat, lng: box.lng },
     map,
-    title: `🎁 튜토리얼 보물 (${label})`,
+    title: `🎁 Tutorial Treasure (${label})`,
     icon: {
       url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="56" viewBox="0 0 48 56">
@@ -3872,23 +3875,14 @@ function _renderTutorialMarker(box) {
   });
 
   marker.addListener('click', () => {
-    const lang = window.LANG || 'en';
     const pos = getMyPos();
     if (!pos) {
-      _tutorialShowToast(
-        lang === 'vi' ? '📍 Đang chờ GPS...' : '📍 GPS 위치 확인 중입니다.',
-        '#94a3b8'
-      );
+      _tutorialShowToast('📍 Waiting for GPS...', '#94a3b8');
       return;
     }
     const dist = haversine(pos.lat, pos.lng, box.lat, box.lng);
     if (dist > 50) {
-      _tutorialShowToast(
-        lang === 'vi'
-          ? `🎁 Còn ${Math.round(dist)}m nữa! Tiến lại gần hơn.`
-          : `🎁 아직 ${Math.round(dist)}m 남았어요! 직접 걸어가세요.`,
-        '#fbbf24'
-      );
+      _tutorialShowToast(`🎁 ${Math.round(dist)}m away! Walk closer.`, '#fbbf24');
       return;
     }
     _claimTutorialBox(box);
@@ -3920,7 +3914,6 @@ export function clearTutorialBoxes() {
 // 매 GPS 업데이트마다 호출 — 거리 기반 UX 효과 발동
 export function checkTutorialProximity(lat, lng) {
   if (_tutorialBoxes.length === 0) return;
-  const lang = window.LANG || 'en';
 
   for (const box of _tutorialBoxes) {
     if (box.claimed) continue;
@@ -3941,12 +3934,7 @@ export function checkTutorialProximity(lat, lng) {
       _tutorialHeartbeat();
       _tutorialParticles(lat, lng);
       if (navigator.vibrate) navigator.vibrate([50, 30, 100]);
-      _tutorialShowToast(
-        lang === 'vi'
-          ? `❤️ Còn ${Math.round(dist)}m! Kho báu đang gần...`
-          : `❤️ ${Math.round(dist)}m! 보물이 아주 가까워요...`,
-        '#f87171'
-      );
+      _tutorialShowToast(`❤️ ${Math.round(dist)}m! Treasure is very close...`, '#f87171');
       _tutorialProxState[box.index] = dist;
       continue;
     }
@@ -3954,12 +3942,7 @@ export function checkTutorialProximity(lat, lng) {
     // 50m 이내 → 방향 안내 + 미세진동 (최초 진입 시만)
     if (dist <= 50 && prev > 50) {
       if (navigator.vibrate) navigator.vibrate(30);
-      _tutorialShowToast(
-        lang === 'vi'
-          ? `✨ ${Math.round(dist)}m — Cảm nhận hơi thở của kho báu!`
-          : `✨ ${Math.round(dist)}m — 보물의 기운이 느껴져요!`,
-        '#fbbf24'
-      );
+      _tutorialShowToast(`✨ ${Math.round(dist)}m — You sense the treasure's energy!`, '#fbbf24');
       _tutorialProxState[box.index] = dist;
       continue;
     }
@@ -3967,12 +3950,7 @@ export function checkTutorialProximity(lat, lng) {
     // 100m 이내 → 미풍 화면 흔들림 (최초 진입 시만)
     if (dist <= 100 && prev > 100) {
       _tutorialScreenRipple();
-      _tutorialShowToast(
-        lang === 'vi'
-          ? `🌬️ ${Math.round(dist)}m — Có gì đó ở gần đây...`
-          : `🌬️ ${Math.round(dist)}m — 근처에 뭔가 있어요...`,
-        '#d1d5db'
-      );
+      _tutorialShowToast(`🌬️ ${Math.round(dist)}m — Something is nearby...`, '#d1d5db');
       _tutorialProxState[box.index] = dist;
     }
   }
@@ -3993,15 +3971,13 @@ const _TRIAL_MON_DEFS = [
 ];
 
 function _trialMonName(def) {
-  const lang = window.LANG || 'en';
-  return lang === 'ko' ? def.name : lang === 'vi' ? def.nameVi : def.nameEn;
+  return def.nameEn;
 }
 
 // ── 탭 사격 모달 ─────────────────────────────────────────────
 function _openTrialArchery(mon) {
   if (mon.defeated) return;
 
-  const lang = window.LANG || 'en';
   const monName = _trialMonName(_TRIAL_MON_DEFS[mon.defIdx]);
   const MAX_ARROWS = mon.maxHp + 2;         // 여유 화살 2개
   const REWARD_GP  = _TRIAL_MON_DEFS[mon.defIdx].reward;
@@ -4029,7 +4005,7 @@ function _openTrialArchery(mon) {
         <span class="tam-arrows" id="tamArrows">🏹 ${arrows}</span>
       </div>
       <div class="tam-arena" id="tamArena">
-        <div class="tam-hint" id="tamHint">${lang === 'ko' ? '몬스터를 탭하세요!' : lang === 'vi' ? 'Nhấn vào quái vật!' : 'Tap the monster!'}</div>
+        <div class="tam-hint" id="tamHint">Tap the monster!</div>
         <img class="tam-mon" id="tamMon" src="${IMG_SRC}" draggable="false"/>
         <div class="tam-miss" id="tamMiss"></div>
         <div class="tam-result hidden" id="tamResult"></div>
@@ -4132,22 +4108,16 @@ function _openTrialArchery(mon) {
       playSound('gold');
       if (navigator.vibrate) navigator.vibrate([80, 40, 160]);
 
-      const winMsg = lang === 'ko'
-        ? `🏹 처치 완료!\n+${REWARD_GP} GP`
-        : lang === 'vi'
-        ? `🏹 Đã hạ gục!\n+${REWARD_GP} GP`
-        : `🏹 Defeated!\n+${REWARD_GP} GP`;
+      const winMsg = `🏹 Defeated!\n+${REWARD_GP} GP`;
 
       result.classList.remove('hidden');
       result.innerHTML = winMsg.split('\n').map(l =>
         `<div>${l}</div>`).join('');
       // 보상 패널도 표시
-      setTimeout(() => _tutorialShowRewardPanel({ gold: REWARD_GP }, lang), 400);
+      setTimeout(() => _tutorialShowRewardPanel({ gold: REWARD_GP }), 400);
       setTimeout(closeModal, 2200);
     } else {
-      const failMsg = lang === 'ko' ? '🏹 화살 부족!\n다시 도전하세요'
-        : lang === 'vi' ? '🏹 Hết tên!\nThử lại'
-        : '🏹 Out of arrows!\nTry again';
+      const failMsg = '🏹 Out of arrows!\nTry again';
       result.classList.remove('hidden');
       result.style.color = '#f87171';
       result.innerHTML = failMsg.split('\n').map(l => `<div>${l}</div>`).join('');
@@ -4215,7 +4185,6 @@ function _renderTrialMonsterMarker(mon) {
   if (mon.marker) mon.marker.setMap(null);
 
   const def  = _TRIAL_MON_DEFS[mon.defIdx];
-  const lang = window.LANG || 'en';
   const name = _trialMonName(def);
 
   // HP 하트 표시
@@ -4246,23 +4215,14 @@ function _renderTrialMonsterMarker(mon) {
   });
 
   marker.addListener('click', () => {
-    const lang = window.LANG || 'en';
     const pos  = getMyPos();
     if (!pos) {
-      _tutorialShowToast(
-        lang === 'vi' ? '📍 Đang chờ GPS...' : '📍 GPS 위치 확인 중...',
-        '#94a3b8'
-      );
+      _tutorialShowToast('📍 Waiting for GPS...', '#94a3b8');
       return;
     }
     const dist = haversine(pos.lat, pos.lng, mon.lat, mon.lng);
     if (dist > 80) {
-      _tutorialShowToast(
-        lang === 'vi'
-          ? `👾 Còn ${Math.round(dist)}m — Tiến lại gần hơn để bắn!`
-          : `👾 ${Math.round(dist)}m 거리 — 가까이 가서 활을 쏘세요!`,
-        '#a78bfa'
-      );
+      _tutorialShowToast(`👾 ${Math.round(dist)}m away — Get closer to shoot!`, '#a78bfa');
       return;
     }
     _openTrialArchery(mon);

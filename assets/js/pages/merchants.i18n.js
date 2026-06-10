@@ -354,10 +354,9 @@ const MESSAGES = {
  * @returns {string}
  */
 export function _t(key, ...args) {
-  const lang  = (window.LANG || 'en');
   const entry = MESSAGES[key];
   if (!entry) return key;
-  let str = entry[lang] ?? entry.en ?? entry.ko ?? key;
+  let str = entry.en ?? key;
   args.forEach((v, i) => { str = str.replaceAll(`{${i}}`, v); });
   return str;
 }

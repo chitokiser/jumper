@@ -34,16 +34,16 @@ const GEAR_ACCEL_M = [2.0,  1.55, 1.25, 1.0,  0.82];
 
 // ── 스킬 정의 ────────────────────────────────────────────────────────────────
 const SKILLS = {
-  apple:    { name:'사과던지기', mp:10, emoji:'🍎', type:'attack', cd:3000, desc:'전방 속도 -30% / 3초' },
-  rock:     { name:'돌멩이투척', mp:15, emoji:'🪨', type:'attack', cd:4000, desc:'전방 차량 뒤집기' },
-  web:      { name:'거미줄발사', mp:20, emoji:'🕸️',  type:'attack', cd:5000, desc:'전방 최고속 -40% / 3초' },
-  tornado:  { name:'회오리바람', mp:30, emoji:'🌪️', type:'attack', cd:9000, desc:'전방 2대 내 뒤로 날려버림' },
-  banana:   { name:'바나나껍질', mp:10, emoji:'🍌', type:'trap',   cd:3000, desc:'밟으면 스핀+조향불가' },
-  oil:      { name:'기름통',    mp:15, emoji:'🛢️',  type:'trap',   cd:4000, desc:'밟으면 속도↑+조향불가' },
-  poop:     { name:'몬스터똥', mp:10, emoji:'💩', type:'trap',   cd:3000, desc:'밟으면 2초 감속' },
-  ice:      { name:'얼음지대', mp:20, emoji:'🧊', type:'trap',   cd:5000, desc:'밟으면 미끄럼+조향불가' },
-  boost:    { name:'부스트',   mp:35, emoji:'⚡', type:'move',   cd:9000,  desc:'속도 x1.45 / 2.5초 (과열 주의)' },
-  lightning:{ name:'번개질주', mp:50, emoji:'🌩️', type:'move',   cd:15000, desc:'속도 x1.65 + 무적 / 3.5초 (과열 주의)' },
+  apple:    { name:'Apple Throw',  mp:10, emoji:'🍎', type:'attack', cd:3000, desc:'Front speed -30% / 3s' },
+  rock:     { name:'Rock Throw',   mp:15, emoji:'🪨', type:'attack', cd:4000, desc:'Flip the vehicle ahead' },
+  web:      { name:'Web Shot',     mp:20, emoji:'🕸️',  type:'attack', cd:5000, desc:'Front max speed -40% / 3s' },
+  tornado:  { name:'Tornado',      mp:30, emoji:'🌪️', type:'attack', cd:9000, desc:'Blast 2 vehicles ahead backwards' },
+  banana:   { name:'Banana Peel',  mp:10, emoji:'🍌', type:'trap',   cd:3000, desc:'Spin + no steering if hit' },
+  oil:      { name:'Oil Drum',     mp:15, emoji:'🛢️',  type:'trap',   cd:4000, desc:'Speed↑ + no steering if hit' },
+  poop:     { name:'Monster Poop', mp:10, emoji:'💩', type:'trap',   cd:3000, desc:'2s slow if hit' },
+  ice:      { name:'Ice Zone',     mp:20, emoji:'🧊', type:'trap',   cd:5000, desc:'Slip + no steering if hit' },
+  boost:    { name:'Boost',        mp:35, emoji:'⚡', type:'move',   cd:9000,  desc:'Speed x1.45 / 2.5s (watch overheat)' },
+  lightning:{ name:'Lightning',    mp:50, emoji:'🌩️', type:'move',   cd:15000, desc:'Speed x1.65 + invincible / 3.5s (watch overheat)' },
 };
 
 // AI 성향: aggressive(공격적), balanced(균형), defensive(안정)
@@ -197,7 +197,7 @@ function checkVehicleCollisions() {
       if (impact > 0.18) playTireScreech(impact);
       if (impact > 0.25) triggerShake(Math.ceil(impact * 5));
       addSparks(a.pos, (a.lane + b.lane) * 0.5, impact);
-      if (a.isPlayer || b.isPlayer) addLog(`💥 ${a.name}↔${b.name} 충돌!`);
+      if (a.isPlayer || b.isPlayer) addLog(`💥 ${a.name}↔${b.name} collision!`);
     }
   }
 }
@@ -371,12 +371,12 @@ const $ = id => document.getElementById(id);
 // ── DB ───────────────────────────────────────────────────────────────────────
 async function loadPlayerData() {
   if (!_uid) {
-    $('lobbyGP').textContent = '게스트';
+    $('lobbyGP').textContent = 'Guest';
     $('lobbyHP').textContent = '—';
     $('lobbyMP').textContent = '—';
     $('btnEnter').disabled = false;
-    const badge=$('feeBadge'); if(badge) badge.textContent='🆓 체험 무료';
-    const info=$('feeInfo'); if(info) info.textContent='게스트는 무료 체험 가능 (GP 적립 안 됨)';
+    const badge=$('feeBadge'); if(badge) badge.textContent='🆓 Free Trial';
+    const info=$('feeInfo'); if(info) info.textContent='Guests can play for free (no GP rewards)';
     return;
   }
   try {
@@ -406,14 +406,14 @@ async function loadPlayerData() {
 
 function _updateFeeDisplay() {
   const badge = $('feeBadge');
-  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
+  if (badge) badge.textContent = `Entry fee: ${_entryFee} GP`;
   const info = $('feeInfo');
   if (!info) return;
   if (_entryCount === 0) {
-    info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
+    info.textContent = 'First entry today · resets in 24h';
   } else {
     const h = Math.ceil((_entryResetAt + RESET_MS - Date.now()) / 3_600_000);
-    info.textContent = `오늘 ${_entryCount}번째 참가 · ${h}시간 후 100GP 리셋`;
+    info.textContent = `${_entryCount} entries today · 100GP reset in ${h}h`;
   }
 }
 
@@ -477,7 +477,7 @@ function useSkill(racer, id) {
     case 'move': {
       // 이미 부스트/번개 활성 중이면 중복 사용 금지
       const alreadyBoosted = (racer.effects.boost||0)>now || (racer.effects.lightning||0)>now;
-      if (alreadyBoosted) { addLog(`⚠️ ${racer.name} 부스트 중복 불가`); break; }
+      if (alreadyBoosted) { addLog(`⚠️ ${racer.name} boost already active`); break; }
 
       if (id==='boost') {
         const endT = now + 2500;
@@ -493,7 +493,7 @@ function useSkill(racer, id) {
         racer.effects.overheat    = endT + 2200;
         playBoost();
         tone(1200,'sine',0.08,0.3);
-        addLog(`⚡ ${racer.name} 무적+질주!`);
+        addLog(`⚡ ${racer.name} invincible+sprint!`);
       }
       break;
     }
@@ -505,7 +505,7 @@ function useSkill(racer, id) {
           if ((t.effects.invincible||0)>now) return;
           t.pos = racer.pos - 3 - Math.random();
           t.effects.spin = now + 2500; t.speed *= 0.25;
-          addLog(`🌪️ ${t.name} 날아감!`);
+          addLog(`🌪️ ${t.name} blown away!`);
         });
         triggerShake(7);
         tone(150,'sine',0.5,0.25,400); tone(80,'sawtooth',0.4,0.15);
@@ -513,9 +513,9 @@ function useSkill(racer, id) {
       }
       const fwd = findFront(racer, 1)[0];
       if (!fwd || (fwd.effects.invincible||0)>now) break;
-      if (id==='apple') { fwd.effects.slow=now+3000; addLog(`🍎 ${fwd.name} 속도 -30%!`); playSkillHit(); }
-      if (id==='rock')  { fwd.fallUntil=now+2500; fwd.speed=0; triggerShake(8); addLog(`🪨 ${fwd.name} 뒤집힘!`); playFall(); playSkillHit(); }
-      if (id==='web')   { fwd.effects.slowMax=now+3000; addLog(`🕸️ ${fwd.name} 최고속 -40%!`); playSkillHit(); }
+      if (id==='apple') { fwd.effects.slow=now+3000; addLog(`🍎 ${fwd.name} speed -30%!`); playSkillHit(); }
+      if (id==='rock')  { fwd.fallUntil=now+2500; fwd.speed=0; triggerShake(8); addLog(`🪨 ${fwd.name} flipped!`); playFall(); playSkillHit(); }
+      if (id==='web')   { fwd.effects.slowMax=now+3000; addLog(`🕸️ ${fwd.name} max speed -40%!`); playSkillHit(); }
       break;
     }
     case 'trap': {
@@ -734,10 +734,10 @@ function checkTraps(r) {
     if ((r.effects.invincible||0)>now) continue;
     t.active = false;
     switch (t.skillId) {
-      case 'banana': r.effects.spin=now+2000; r.speed*=0.6; triggerShake(7); addLog(`🍌 ${r.name} 스핀!`); if(r.isPlayer)playFall(); break;
-      case 'oil':    r.effects.oilSlide=now+3000; addLog(`🛢️ ${r.name} 기름 미끄럼!`); if(r.isPlayer)tone(200,'sawtooth',0.3,0.18); break;
-      case 'poop':   r.effects.slow=now+2000; addLog(`💩 ${r.name} 감속!`); break;
-      case 'ice':    r.effects.iceSlide=now+3000; addLog(`🧊 ${r.name} 빙판!`); if(r.isPlayer)tone(1200,'sine',0.15,0.12); break;
+      case 'banana': r.effects.spin=now+2000; r.speed*=0.6; triggerShake(7); addLog(`🍌 ${r.name} spin!`); if(r.isPlayer)playFall(); break;
+      case 'oil':    r.effects.oilSlide=now+3000; addLog(`🛢️ ${r.name} oil slide!`); if(r.isPlayer)tone(200,'sawtooth',0.3,0.18); break;
+      case 'poop':   r.effects.slow=now+2000; addLog(`💩 ${r.name} slowed!`); break;
+      case 'ice':    r.effects.iceSlide=now+3000; addLog(`🧊 ${r.name} ice slide!`); if(r.isPlayer)tone(1200,'sine',0.15,0.12); break;
     }
     if (r.isPlayer) renderHUD();
   }
@@ -823,14 +823,14 @@ function finishRacer(r) {
   r.finished = true; r.speed *= 0.3;
   r.rank = _finishOrder.length+1;
   _finishOrder.push(r);
-  addLog(`🏁 ${r.name} ${r.rank}위!`);
+  addLog(`🏁 ${r.name} #${r.rank} finish!`);
   if (_finishOrder.length >= 7 || r.isPlayer) endRace(r.rank);
 }
 
 function showFinishOverlay(rank) {
   const el = $('finishOverlay'); if (!el) return;
   const sub = $('finishSubTxt');
-  if (sub) sub.textContent = `${rank}위 완주!`;
+  if (sub) sub.textContent = `#${rank} finish!`;
   el.classList.remove('hidden');
   setTimeout(() => el.classList.add('hidden'), 2200);
 }
@@ -848,8 +848,8 @@ async function endRace(rank) {
 
   const gp = await awardPrize(finalRank - 1);
   setTimeout(() => {
-    $('finishRank').textContent = `${finalRank}위 완주!`;
-    $('finishGP').textContent   = _freeMode ? '🆓 무료 체험 (보상 없음)' : `+${gp} GP 획득!`;
+    $('finishRank').textContent = `#${finalRank} finish!`;
+    $('finishGP').textContent   = _freeMode ? '🆓 Free Play (no reward)' : `+${gp} GP earned!`;
     showPhase('finish');
   }, 1800);
 }
@@ -893,18 +893,18 @@ function renderHUD() {
   // 상태 이상
   const now3 = Date.now();
   const statusIcons = [];
-  if ((_player.effects?.spin||0)>now3)       statusIcons.push('🌀스핀');
-  if ((_player.effects?.oilSlide||0)>now3)   statusIcons.push('🛢️미끄럼');
-  if ((_player.effects?.iceSlide||0)>now3)   statusIcons.push('🧊빙판');
-  if ((_player.effects?.slow||0)>now3)       statusIcons.push('🐢감속');
-  if ((_player.effects?.slowMax||0)>now3)    statusIcons.push('🕸️거미줄');
-  if ((_player.effects?.boost||0)>now3)      statusIcons.push('⚡부스트');
-  if ((_player.effects?.invincible||0)>now3) statusIcons.push('🛡️무적');
+  if ((_player.effects?.spin||0)>now3)       statusIcons.push('🌀Spin');
+  if ((_player.effects?.oilSlide||0)>now3)   statusIcons.push('🛢️Oil');
+  if ((_player.effects?.iceSlide||0)>now3)   statusIcons.push('🧊Ice');
+  if ((_player.effects?.slow||0)>now3)       statusIcons.push('🐢Slow');
+  if ((_player.effects?.slowMax||0)>now3)    statusIcons.push('🕸️Web');
+  if ((_player.effects?.boost||0)>now3)      statusIcons.push('⚡Boost');
+  if ((_player.effects?.invincible||0)>now3) statusIcons.push('🛡️Shield');
   const stEl = $('statusTxt');
   if (stEl) stEl.textContent = statusIcons.join(' ');
 
-  if ($('rankTxt'))  $('rankTxt').textContent  = `${_player.currentRank||'?'}위 / 7`;
-  if ($('lapTxt'))   $('lapTxt').textContent   = `${Math.min(_player.lap+1,TOTAL_LAPS)}/${TOTAL_LAPS}랩`;
+  if ($('rankTxt'))  $('rankTxt').textContent  = `#${_player.currentRank||'?'} / 7`;
+  if ($('lapTxt'))   $('lapTxt').textContent   = `${Math.min(_player.lap+1,TOTAL_LAPS)}/${TOTAL_LAPS} laps`;
   if ($('gpTxt'))    $('gpTxt').textContent    = `💰${_playerGP}`;
 
   // 속도 (km/h)
@@ -915,7 +915,7 @@ function renderHUD() {
   const totalSegs = SEGS * TOTAL_LAPS;
   const traveled  = Math.min(_player.pos, totalSegs);
   const distKm    = Math.max(0, RACE_KM * (1 - traveled / totalSegs));
-  if ($('distTxt')) $('distTxt').textContent = distKm.toFixed(2) + ' km 남음';
+  if ($('distTxt')) $('distTxt').textContent = distKm.toFixed(2) + ' km left';
 
   // 스킬 쿨다운
   _selectedSkills.forEach((sk,i)=>{
@@ -953,7 +953,7 @@ function renderSkillGrid() {
     btn.addEventListener('click',()=>{
       if (_selectedSkills.includes(id)) { _selectedSkills=_selectedSkills.filter(s=>s!==id); btn.classList.remove('sel'); }
       else if (_selectedSkills.length<3) { _selectedSkills.push(id); btn.classList.add('sel'); }
-      $('skCount').textContent = `${_selectedSkills.length}/3 선택`;
+      $('skCount').textContent = `${_selectedSkills.length}/3 selected`;
       $('skConfirm').disabled  = _selectedSkills.length<1;
     });
     grid.appendChild(btn);
@@ -1117,7 +1117,7 @@ function _exitCssFs(btn,wrap,game){
   if(wrap){wrap.style.maxWidth='';wrap.style.width='';wrap.style.height='';wrap.style.display='';wrap.style.alignItems='';}
   _syncFsBtn(btn,false); resizeCanvas();
 }
-function _syncFsBtn(btn,full){ btn.textContent=full?'⤡':'⤢'; btn.title=full?'화면 축소':'전체 화면'; }
+function _syncFsBtn(btn,full){ btn.textContent=full?'⤡':'⤢'; btn.title=full?'Exit Fullscreen':'Fullscreen'; }
 
 // ── 캔버스 리사이즈 (9:16) ───────────────────────────────────────────────────
 const LOGIC_W = 360, LOGIC_H = 640;  // 9:16 세로
@@ -1157,12 +1157,12 @@ async function init() {
   $('btnEnter')?.addEventListener('click', async ()=>{
     if (_uid) {
       const ok = await deductFee();
-      if (!ok) { alert('GP가 부족합니다'); return; }
+      if (!ok) { alert('Not enough GP'); return; }
     }
     _freeMode = false;
     _selectedSkills = [];
     renderSkillGrid();
-    $('skCount').textContent = '0/3 선택';
+    $('skCount').textContent = '0/3 selected';
     $('skConfirm').disabled  = true;
     showPhase('skill');
   });
@@ -1171,7 +1171,7 @@ async function init() {
     _freeMode = true;
     _selectedSkills = [];
     renderSkillGrid();
-    $('skCount').textContent = '0/3 선택';
+    $('skCount').textContent = '0/3 selected';
     $('skConfirm').disabled  = true;
     showPhase('skill');
   });
@@ -1183,20 +1183,20 @@ async function init() {
   function _bindHdrLogin(){
     $('gLoginBtn')?.addEventListener('click',async()=>{
       try{
-        const btn=$('gLoginBtn'); if(btn) btn.textContent='로그인 중...';
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='Signing in...';
         await signInWithPopup(auth,new GoogleAuthProvider());
       }catch(e){
-        const btn=$('gLoginBtn'); if(btn) btn.textContent='🔑 Google 로그인';
-        if(!e.message?.includes('popup-closed')) alert('로그인 오류: '+e.message);
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='🔑 Google Login';
+        if(!e.message?.includes('popup-closed')) alert('Login error: '+e.message);
       }
     });
   }
   function _updateHdr(user){
     const r=$('gHdrRight'); if(!r) return;
     if(user&&!user.isAnonymous){
-      r.innerHTML=`<span class="g-user-chip">👤 ${esc(user.displayName||'유저')}</span>`;
+      r.innerHTML=`<span class="g-user-chip">👤 ${esc(user.displayName||'User')}</span>`;
     } else {
-      r.innerHTML=`<button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button>`;
+      r.innerHTML=`<button class="g-login-btn" id="gLoginBtn">🔑 Google Login</button>`;
       _bindHdrLogin();
     }
   }

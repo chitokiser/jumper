@@ -24,13 +24,13 @@ const TRIAL_GP = {
 
 // ── 아이템 타입 정의 ──────────────────────────────────────────────────────────
 export const MYMAP_DEFS = {
-  treasure1: { cat: 'treasure', icon: '/assets/images/item/box.png',                                    label: '🎁 보물박스',  size: 28 },
-  monster_orc:    { cat: 'monster',  icon: '/assets/images/monsters/orc/ORK_01_IDLE_000.png',           label: '👹 오크',     size: 36 },
-  monster_orc2:   { cat: 'monster',  icon: '/assets/images/monsters/orc2/ORK_02_IDLE_000.png',         label: '👺 오크2',    size: 36 },
-  monster_orc3:   { cat: 'monster',  icon: '/assets/images/monsters/orc3/ORK_03_IDLE_000.png',         label: '🐗 오크3',    size: 36 },
-  monster_pirate: { cat: 'monster',  icon: '/assets/images/monsters/pirate/1_entity_000_ATTACK_000.png',label: '🏴‍☠️ 해적',   size: 36 },
-  monster_slime:  { cat: 'monster',  icon: '/assets/images/monsters/22.png',                            label: '🟢 슬라임',   size: 36 },
-  monster_goblin: { cat: 'monster',  icon: '/assets/images/monsters/23.png',                            label: '🗡️ 고블린',   size: 36 },
+  treasure1: { cat: 'treasure', icon: '/assets/images/item/box.png',                                    label: '🎁 Treasure Box', size: 28 },
+  monster_orc:    { cat: 'monster',  icon: '/assets/images/monsters/orc/ORK_01_IDLE_000.png',           label: '👹 Orc',          size: 36 },
+  monster_orc2:   { cat: 'monster',  icon: '/assets/images/monsters/orc2/ORK_02_IDLE_000.png',         label: '👺 Orc 2',        size: 36 },
+  monster_orc3:   { cat: 'monster',  icon: '/assets/images/monsters/orc3/ORK_03_IDLE_000.png',         label: '🐗 Orc 3',        size: 36 },
+  monster_pirate: { cat: 'monster',  icon: '/assets/images/monsters/pirate/1_entity_000_ATTACK_000.png',label: '🏴‍☠️ Pirate',     size: 36 },
+  monster_slime:  { cat: 'monster',  icon: '/assets/images/monsters/22.png',                            label: '🟢 Slime',        size: 36 },
+  monster_goblin: { cat: 'monster',  icon: '/assets/images/monsters/23.png',                            label: '🗡️ Goblin',       size: 36 },
 };
 
 // ── 상태 ─────────────────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ function _onMarkerClick(item, marker) {
   const def  = MYMAP_DEFS[item.typeKey] || MYMAP_DEFS.treasure1;
   const gp   = TRIAL_GP[item.typeKey] || 50;
   const isTreasure = def.cat === 'treasure';
-  const actionLabel = isTreasure ? '🎁 수집하기' : '⚔️ 전투';
+  const actionLabel = isTreasure ? '🎁 Collect' : '⚔️ Battle';
 
   // 현재 GPS 위치 확인
   const pos = window._myMapGetPos?.();
@@ -118,13 +118,13 @@ function _onMarkerClick(item, marker) {
   const inRange = dist !== null && dist <= COLLECT_DIST;
 
   const distText = dist !== null
-    ? (inRange ? `📍 ${Math.round(dist)}m 이내 — 수집 가능!` : `📍 ${Math.round(dist)}m — ${Math.round(dist - COLLECT_DIST)}m 더 가까이`)
-    : '📍 GPS 위치 확인 중...';
+    ? (inRange ? `📍 ${Math.round(dist)}m — In range!` : `📍 ${Math.round(dist)}m — ${Math.round(dist - COLLECT_DIST)}m closer`)
+    : '📍 Checking GPS...';
 
   _infoWin.setContent(`
     <div style="padding:8px 10px;min-width:160px;font-family:sans-serif;">
       <div style="font-weight:700;margin-bottom:4px;">${item.label || def.label}</div>
-      <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">🧪 체험 · +${gp} GP</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">🧪 Trial · +${gp} GP</div>
       <div style="font-size:11px;color:${inRange ? '#16a34a' : '#d97706'};margin-bottom:8px;">${distText}</div>
       ${inRange
         ? `<button onclick="window.__myMapCollect('${item.docId}')"
@@ -136,7 +136,7 @@ function _onMarkerClick(item, marker) {
       <button onclick="window.__myMapDelete('${item.docId}')"
         style="width:100%;margin-top:6px;padding:6px 0;background:#dc2626;color:#fff;border:none;
                border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">
-        🗑 삭제
+        🗑 Delete
       </button>
     </div>`);
   _infoWin.open(_map, marker);
@@ -152,7 +152,7 @@ export function checkMyMapProximity(lat, lng) {
       _alerted.add(item.docId);
       const def = MYMAP_DEFS[item.typeKey] || MYMAP_DEFS.treasure1;
       const gp  = TRIAL_GP[item.typeKey] || 50;
-      _showToast(`${def.label} 근처! 탭해서 +${gp} GP`, false);
+      _showToast(`${def.label} nearby! Tap for +${gp} GP`, false);
       if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
       // 마커 크기 강조
       _highlightMarker(item.docId, true);
@@ -209,7 +209,7 @@ window.__myMapCollect = async (docId) => {
 
   const def = MYMAP_DEFS[item.typeKey] || MYMAP_DEFS.treasure1;
   const isTreasure = def.cat === 'treasure';
-  _showToast(isTreasure ? `🎁 보물 수집! +${gp} GP` : `⚔️ 전투 승리! +${gp} GP`, false);
+  _showToast(isTreasure ? `🎁 Treasure collected! +${gp} GP` : `⚔️ Battle won! +${gp} GP`, false);
 };
 
 // ── 삭제 (InfoWindow 버튼) ───────────────────────────────────────────────────
@@ -221,7 +221,7 @@ window.__myMapDelete = async (docId) => {
   if (idx !== -1) { _markers[idx].setMap(null); _markers.splice(idx, 1); }
   if (_infoWin) _infoWin.close();
   _alerted.delete(docId);
-  _showToast('삭제됐습니다');
+  _showToast('Deleted');
   _updateCountUI();
 };
 
@@ -240,7 +240,7 @@ export function setMyMapPlaceMode(typeKey) {
 
 async function _placeItem(typeKey, lat, lng) {
   if (!_uid) return;
-  if (_items.length >= MAX_ITEMS) { _showToast(`최대 ${MAX_ITEMS}개까지 배치할 수 있어요`, true); return; }
+  if (_items.length >= MAX_ITEMS) { _showToast(`Max ${MAX_ITEMS} items allowed`, true); return; }
   const def  = MYMAP_DEFS[typeKey] || MYMAP_DEFS.treasure1;
   const data = { typeKey, cat: def.cat, lat, lng, label: def.label, createdAt: serverTimestamp() };
   const ref  = await addDoc(collection(db, 'users', _uid, 'myMap'), data);

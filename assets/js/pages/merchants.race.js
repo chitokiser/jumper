@@ -9,12 +9,12 @@
 // 위 정규화로 trait 없이 순수 luck만 승패를 결정하게 함.
 
 const MDEFS = [
-  { id:'wolf',   label:'늑대인간',   img:'/assets/images/slot/5.png',  clr:'#f97316', odds:1.8,  baseSpd:0.94, vr:0.12, trait:'sprinter' },
-  { id:'orc',    label:'오크',       img:'/assets/images/slot/1.png',  clr:'#8b5cf6', odds:2.5,  baseSpd:1.00, vr:0.10, trait:'steady'   },
-  { id:'demon',  label:'암흑악마',   img:'/assets/images/slot/8.png',  clr:'#94a3b8', odds:3.5,  baseSpd:1.00, vr:0.10, trait:'steady'   },
-  { id:'troll',  label:'트롤',       img:'/assets/images/slot/6.png',  clr:'#a16207', odds:5.0,  baseSpd:0.89, vr:0.22, trait:'charger'  },
-  { id:'dragon', label:'드래곤',     img:'/assets/images/slot/9.png',  clr:'#dc2626', odds:7.0,  baseSpd:0.86, vr:0.15, trait:'finisher' },
-  { id:'cerb',   label:'케르베로스', img:'/assets/images/slot/7.png',  clr:'#16a34a', odds:15.0, baseSpd:1.00, vr:0.48, trait:'chaos'    },
+  { id:'wolf',   label:'Werewolf',  img:'/assets/images/slot/5.png',  clr:'#f97316', odds:1.8,  baseSpd:0.94, vr:0.12, trait:'sprinter' },
+  { id:'orc',    label:'Orc',       img:'/assets/images/slot/1.png',  clr:'#8b5cf6', odds:2.5,  baseSpd:1.00, vr:0.10, trait:'steady'   },
+  { id:'demon',  label:'Dark Demon',img:'/assets/images/slot/8.png',  clr:'#94a3b8', odds:3.5,  baseSpd:1.00, vr:0.10, trait:'steady'   },
+  { id:'troll',  label:'Troll',     img:'/assets/images/slot/6.png',  clr:'#a16207', odds:5.0,  baseSpd:0.89, vr:0.22, trait:'charger'  },
+  { id:'dragon', label:'Dragon',    img:'/assets/images/slot/9.png',  clr:'#dc2626', odds:7.0,  baseSpd:0.86, vr:0.15, trait:'finisher' },
+  { id:'cerb',   label:'Cerberus',  img:'/assets/images/slot/7.png',  clr:'#16a34a', odds:15.0, baseSpd:1.00, vr:0.48, trait:'chaos'    },
 ];
 
 const BET_MIN      = 10;
@@ -296,19 +296,19 @@ class MonsterRace {
           <button id="raceClose" class="race-close-btn">✕</button>
         </div>
         <div id="raceBetting" class="race-betting">
-          <div class="race-bet-timer" id="raceBetTimer">⏱ ${BETTING_SEC}초</div>
+          <div class="race-bet-timer" id="raceBetTimer">⏱ ${BETTING_SEC}s</div>
           <div class="race-grid" id="raceGrid"></div>
           <div class="race-bet-ctrl">
             <div class="race-bet-types" id="raceBetTypes">
-              <button class="rbt active" data-type="win">단승 (1위)</button>
-              <button class="rbt" data-type="place">복승 (1~2위)</button>
-              <button class="rbt" data-type="show">삼복승 (1~3위)</button>
+              <button class="rbt active" data-type="win">Win (1st)</button>
+              <button class="rbt" data-type="place">Place (1-2nd)</button>
+              <button class="rbt" data-type="show">Show (1-3rd)</button>
             </div>
             <div class="race-amount-row">
               <button class="race-amt-btn" id="raceBetMinus">−</button>
               <span class="race-amt-val" id="raceBetAmt">100</span>
               <button class="race-amt-btn" id="raceBetPlus">+</button>
-              <span style="color:#9ca3af;font-size:12px;margin-left:4px;">코인</span>
+              <span style="color:#9ca3af;font-size:12px;margin-left:4px;">coins</span>
             </div>
             <div class="race-preset-row">
               <button class="race-amt-preset" data-v="50">50</button>
@@ -317,7 +317,7 @@ class MonsterRace {
               <button class="race-amt-preset" data-v="500">500</button>
               <button class="race-amt-preset" data-v="1000">MAX</button>
             </div>
-            <button id="racePlaceBet" class="race-bet-submit" disabled>몬스터를 선택하세요</button>
+            <button id="racePlaceBet" class="race-bet-submit" disabled>Select a monster</button>
           </div>
         </div>
         <div id="raceArena" class="race-arena hidden">
@@ -396,7 +396,7 @@ class MonsterRace {
 
     this._betTimer = setInterval(() => {
       this._secsLeft--;
-      timerEl.textContent = `⏱ ${this._secsLeft}초`;
+      timerEl.textContent = `⏱ ${this._secsLeft}s`;
       if (this._secsLeft <= 10) {
         timerEl.style.color = '#ef4444';
         this._audio.countdown(this._secsLeft);
@@ -474,15 +474,15 @@ class MonsterRace {
     const btn = document.getElementById('racePlaceBet');
     if (this._betLocked) return;
     if (!this._betMonster) {
-      btn.textContent = '몬스터를 선택하세요';
+      btn.textContent = 'Select a monster';
       btn.disabled = true;
     } else {
       const m    = MDEFS.find(x => x.id === this._betMonster);
       const odds = this._calcOdds(this._betMonster, this._betAmount);
       const mult = this._betType === 'win' ? 1 : this._betType === 'place' ? PLACE_MULT : SHOW_MULT;
       const est  = Math.floor(this._betAmount * odds * mult);
-      const tl   = { win:'단승', place:'복승', show:'삼복승' }[this._betType];
-      btn.textContent = `${m.label}에 ${this._betAmount}코인 (${tl}) → 예상 +${est}`;
+      const tl   = { win:'Win', place:'Place', show:'Show' }[this._betType];
+      btn.textContent = `Bet ${this._betAmount} coins on ${m.label} (${tl}) → Est. +${est}`;
       btn.disabled = false;
     }
   }
@@ -635,8 +635,8 @@ class MonsterRace {
         r.finishPlace = this._finishOrder.length + 1;
         this._finishOrder.push(r.id);
         this._audio.monsterFinish(r.finishPlace);
-        const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣'];
-        this._showEventMsg(`${r.label} ${medals[r.finishPlace - 1]} 완주!`);
+        const medals = ['🥇','🥈','🥉','4th','5th','6th'];
+        this._showEventMsg(`${r.label} ${medals[r.finishPlace - 1]} finished!`);
       }
     });
   }
@@ -650,7 +650,7 @@ class MonsterRace {
     else                { type = 'berserk'; dur = 1.0; this._audio.evBerserk(); }
     r.effectType      = type;
     r.effectRemaining = dur;
-    const icons = { boost:'🔥 가속!', trap:'⚠️ 함정!', stun:'💫 기절!', berserk:'💀 광란!' };
+    const icons = { boost:'🔥 Boost!', trap:'⚠️ Trap!', stun:'💫 Stunned!', berserk:'💀 Berserk!' };
     this._showEventMsg(`${r.label} ${icons[type]}`);
   }
 
@@ -763,7 +763,7 @@ class MonsterRace {
       if (barH >= 7) {
         ctx.font = `bold ${Math.min(7, barH)}px sans-serif`;
         ctx.textAlign = 'left'; ctx.fillStyle = '#fff';
-        const placeStr = r.finishPlace ? ` ${r.finishPlace}위` : (r.id === leader.id ? ' 선두' : '');
+        const placeStr = r.finishPlace ? ` #${r.finishPlace}` : (r.id === leader.id ? ' Lead' : '');
         ctx.fillText(`${r.label}${placeStr}`, bx + 2, by + barH / 2 + 0.5);
       }
     });
@@ -884,7 +884,7 @@ class MonsterRace {
 
       // Finish medal overlay
       if (r.finishPlace) {
-        const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣'];
+        const medals = ['🥇','🥈','🥉','4th','5th','6th'];
         ctx.font = `${Math.round(R * 0.85)}px serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
         ctx.fillText(medals[r.finishPlace - 1], px, py - R - 2);
@@ -1023,7 +1023,7 @@ class MonsterRace {
       }
     }
 
-    const medals     = ['🥇','🥈','🥉','4위','5위','6위'];
+    const medals     = ['🥇','🥈','🥉','4th','5th','6th'];
     const podiumHTML = this._finishOrder.slice(0, 3).map((id, i) => {
       const m = MDEFS.find(x => x.id === id);
       return `<div class="race-podium-row">
@@ -1072,13 +1072,13 @@ class MonsterRace {
 
     result.innerHTML = `
       <div class="race-result-inner">
-        <div class="race-result-title">🏁 레이스 결과</div>
+        <div class="race-result-title">🏁 Race Result</div>
         <div class="race-podium">${podiumHTML}</div>
         ${betMsg}
         <div class="race-order">${orderRows}</div>
         <div class="race-result-btns">
-          <button id="raceRestart" class="race-restart-btn">🔄 다시 베팅</button>
-          <button id="raceCloseResult" class="race-close-result-btn">✕ 닫기</button>
+          <button id="raceRestart" class="race-restart-btn">🔄 Bet Again</button>
+          <button id="raceCloseResult" class="race-close-result-btn">✕ Close</button>
         </div>
       </div>
     `;
@@ -1112,7 +1112,7 @@ class MonsterRace {
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
 function _traitLabel(t) {
-  return { sprinter:'⚡ 초반 강자', steady:'🛡️ 안정형', charger:'💥 중반 돌진', finisher:'🔥 후반 강자', chaos:'🎲 랜덤' }[t] || t;
+  return { sprinter:'⚡ Early Burst', steady:'🛡️ Steady', charger:'💥 Mid Surge', finisher:'🔥 Late Kick', chaos:'🎲 Random' }[t] || t;
 }
 
 function _ordinal(n) {

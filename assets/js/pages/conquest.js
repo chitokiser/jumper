@@ -27,7 +27,7 @@ const MAX_HP     = 10000;
 const WALL_HP    = 3000;
 const WALL_REPAIR_COST = 150;
 const WALL_REPAIR_AMT  = 800;
-const WALL_NAMES = {north:'북벽',south:'남벽',east:'동벽',west:'서벽'};
+const WALL_NAMES = {north:'North Wall',south:'South Wall',east:'East Wall',west:'West Wall'};
 const HERO_SKILL_CD   = 30000;
 const HERO_SKILL_RANGE = 400;
 
@@ -35,10 +35,10 @@ const HERO_SKILL_RANGE = 400;
 // range: 세계 좌표 기준 성 중심으로부터의 반경 (0 = 전체 맵)
 // dmg: 피해량, freeze: 빙결 ms, knockback: 밀쳐내기 세계단위
 const SKILL_DEFS = {
-  fire:   {emoji:'🔥',name:'화염',   cost:200, cd:20000, range:1200, dmg:250, color:'#f97316'},
-  ice:    {emoji:'❄️',name:'얼음',   cost:250, cd:30000, range:0,    dmg:80,  freeze:3000, color:'#93c5fd'},
-  wind:   {emoji:'🌪️',name:'회오리', cost:200, cd:25000, range:1400, dmg:150, knockback:600, color:'#6ee7b7'},
-  meteor: {emoji:'☄️',name:'유성',   cost:350, cd:45000, range:0,    dmg:480, color:'#ea580c'},
+  fire:   {emoji:'🔥',name:'Fire',       cost:200, cd:20000, range:1200, dmg:250, color:'#f97316'},
+  ice:    {emoji:'❄️',name:'Ice',        cost:250, cd:30000, range:0,    dmg:80,  freeze:3000, color:'#93c5fd'},
+  wind:   {emoji:'🌪️',name:'Whirlwind', cost:200, cd:25000, range:1400, dmg:150, knockback:600, color:'#6ee7b7'},
+  meteor: {emoji:'☄️',name:'Meteor',    cost:350, cd:45000, range:0,    dmg:480, color:'#ea580c'},
 };
 
 // ── 웨이브 정의 (10웨이브 + 난이도 가파르게 상승) ──────────────────────────
@@ -102,10 +102,10 @@ async function loadPlayer(){
   renderLobby();
 }
 function renderLobby(){
-  const el=$('lobbyGP');if(el)el.textContent=_uid?`${_playerGP} GP`:'게스트';
+  const el=$('lobbyGP');if(el)el.textContent=_uid?`${_playerGP} GP`:'Guest';
   const feeEl=$('lobbyFee');if(feeEl)feeEl.textContent=`${_entryFee} GP`;
   const btn=$('btnPlay');
-  if(btn){btn.disabled=_uid&&_playerGP<_entryFee;btn.textContent=`⚔️ ${_entryFee} GP로 출전!`;}
+  if(btn){btn.disabled=_uid&&_playerGP<_entryFee;btn.textContent=`⚔️ Enter for ${_entryFee} GP!`;}
   showPhase('lobby');
 }
 async function deductEntry(){
@@ -162,12 +162,12 @@ async function endGame(won){
 
   const el=$('gameResult');
   if(el) el.innerHTML = won
-    ? `<div style="font-size:26px;color:#fbbf24">승리! 🏆</div>
-       <div>${_wave}웨이브 전부 클리어</div>
+    ? `<div style="font-size:26px;color:#fbbf24">Victory! 🏆</div>
+       <div>All ${_wave} waves cleared</div>
        <div style="color:#22c55e;font-size:18px">+${reward} GP</div>`
-    : `<div style="font-size:26px;color:#ef4444">게임오버 💀</div>
-       <div style="color:#9ca3af">${_wave}웨이브까지 방어 — 성이 함락되었습니다</div>
-       <div style="color:#fbbf24;font-size:16px;margin-top:6px">${loseReward > 0 ? `+${loseReward} GP 위로 보상` : '웨이브를 클리어해야 보상이 지급됩니다'}</div>`;
+    : `<div style="font-size:26px;color:#ef4444">Game Over 💀</div>
+       <div style="color:#9ca3af">Defended to wave ${_wave} — Castle has fallen</div>
+       <div style="color:#fbbf24;font-size:16px;margin-top:6px">${loseReward > 0 ? `+${loseReward} GP consolation reward` : 'Clear a wave to earn rewards'}</div>`;
 
   showPhase('gameover');
 }
@@ -234,7 +234,7 @@ function _update(dt){
     _waveActive=false;_prepTimer=PREP_TIME;
     const waveReward=_wave*100;
     _addGP(waveReward);
-    _showNotif(`🏆 ${_wave}웨이브 클리어! +${waveReward} GP`);
+    _showNotif(`🏆 Wave ${_wave} cleared! +${waveReward} GP`);
     if(_wave>=WAVES.length){endGame(true);return;}
   }
   renderHUD();
@@ -245,7 +245,7 @@ function _onDiscover(poi){
   const def=POI_DEFS[poi.type]||{};
   addRevealAnim(poi.x,poi.y,200);
   _addGP(poi.reward||0);
-  _showNotif(`✨ ${def.name||poi.type} 발견! +${poi.reward} GP`);
+  _showNotif(`✨ ${def.name||poi.type} discovered! +${poi.reward} GP`);
 }
 function _showNotif(msg){
   const el=$('notifBox'); if(!el) return;
@@ -281,7 +281,7 @@ function _damageWall(key,dmg){
   if(w.hp<=0){
     w.hp=0;w.breached=true;
     playSound('cannon_hit');
-    _showNotif(`💥 ${WALL_NAMES[key]} 함락! 몬스터가 침투합니다!`);
+    _showNotif(`💥 ${WALL_NAMES[key]} breached! Monsters are invading!`);
     // 해당 성벽에 대기 중인 몬스터 즉시 진입
     for(const m of _monsters){
       if(m.atGate&&m.attackingWall===key) m.insideCastle=true;
@@ -320,7 +320,7 @@ function _useHeroSkill(){
   _heroSkillCd=HERO_SKILL_CD;
   playSound('skill_lightning');
   addRevealAnim(hero.x,hero.y,HERO_SKILL_RANGE);
-  _showNotif(`⚡ 영웅 스킬! ${hitCount}마리 섬광 타격`);
+  _showNotif(`⚡ Hero Skill! ${hitCount} monsters struck`);
   renderHUD();
 }
 
@@ -330,10 +330,10 @@ function _useSkill(type){
   const def=SKILL_DEFS[type]; if(!def) return;
   const now=Date.now();
   if(_skillCds[type]&&now<_skillCds[type]){
-    _showNotif(`⏳ ${def.name} 쿨다운 중`); return;
+    _showNotif(`⏳ ${def.name} on cooldown`); return;
   }
   if(_gp<def.cost){
-    _showNotif(`💰 GP 부족 (${def.name}: ${def.cost}GP)`); return;
+    _showNotif(`💰 Not enough GP (${def.name}: ${def.cost}GP)`); return;
   }
   _gp-=def.cost;
   _skillCds[type]=now+def.cd;
@@ -365,7 +365,7 @@ function _useSkill(type){
     color:def.color, range:def.range||2000});
 
   playSound(`skill_${type}`);
-  _showNotif(`${def.emoji} ${def.name}! ${hitCount > 0 ? hitCount+'마리 타격' : 'GP 소모'}`);
+  _showNotif(`${def.emoji} ${def.name}! ${hitCount > 0 ? hitCount+' hit' : 'GP spent'}`);
   _updateSkillUI();
   // 쿨다운 종료 시 UI 갱신
   setTimeout(_updateSkillUI, def.cd);
@@ -404,10 +404,10 @@ function _sfx(name){ const t=_SFX_MAP[name]||name; playSound(t); }
 // ── HUD ──────────────────────────────────────────────────────────────────
 const ALL_UNIT_BTNS=['villager','miner','scout','archer_tower','cannon_tower','hero'];
 function renderHUD(){
-  if($('hudWave'))  $('hudWave').textContent  =`웨이브 ${_wave}`;
+  if($('hudWave'))  $('hudWave').textContent  =`Wave ${_wave}`;
   if($('hudGP'))    $('hudGP').textContent    =`💰 ${Math.floor(_gp)}`;
   if($('hudCastle'))$('hudCastle').textContent=`🏰 ${Math.max(0,Math.ceil(_castleHp))}`;
-  if($('hudPrep'))  $('hudPrep').textContent  =_waveActive?`웨이브 ${_wave} 진행`:_prepTimer>0?`${Math.ceil(_prepTimer/1000)}s`:'';
+  if($('hudPrep'))  $('hudPrep').textContent  =_waveActive?`Wave ${_wave} in progress`:_prepTimer>0?`${Math.ceil(_prepTimer/1000)}s`:'';
   ALL_UNIT_BTNS.forEach(t=>{
     const btn=$(`btn_${t}`);if(!btn)return;
     btn.disabled=_gp<(UNIT_DEFS[t]?.cost||50);
@@ -418,7 +418,7 @@ function renderHUD(){
   if(db2)db2.classList.toggle('active',_dispatchMode);
   // 선택 유닛 상태 표시 (HUD 우측 소형)
   const selEl=$('hudSelected');
-  if(selEl) selEl.textContent=_selected.size>0?`${_selected.size}명 선택`:'';
+  if(selEl) selEl.textContent=_selected.size>0?`${_selected.size} selected`:'';
 
   // 선택 유닛 배너 (캔버스 위 오버레이)
   const banner=$('unitBanner');
@@ -429,9 +429,9 @@ function renderHUD(){
       const maxHp=def.hp||1;
       const hpPct=Math.max(0,Math.min(100,(first.hp/maxHp)*100));
       const hpColor=hpPct>50?'#22c55e':hpPct>25?'#f59e0b':'#ef4444';
-      const mode=first.patrolMode?'🔄 순찰':first.guardMode?'🛡 경계':first.targetId?'⚔️ 공격':'🚶 대기';
+      const mode=first.patrolMode?'🔄 Patrol':first.guardMode?'🛡 Guard':first.targetId?'⚔️ Attack':'🚶 Idle';
       const emoji=UNIT_EMOJI[first.type]||'👤';
-      const extra=_selected.size>1?` +${_selected.size-1}명`:'';
+      const extra=_selected.size>1?` +${_selected.size-1} more`:'';
       $('ubIcon').textContent=emoji;
       $('ubLabel').textContent=(def.label||first.type)+extra;
       $('ubHpFill').style.width=hpPct+'%';
@@ -460,7 +460,7 @@ function renderHUD(){
     const hasHero=_defenders.some(d=>d.type==='hero'&&d.selected&&!d.dying);
     heroSkillBtn.disabled=!hasHero||_heroSkillCd>0;
     const cd=_heroSkillCd>0?` (${Math.ceil(_heroSkillCd/1000)}s)`:'';
-    heroSkillBtn.textContent=`⚡ 영웅 스킬${cd}`;
+    heroSkillBtn.textContent=`⚡ Hero Skill${cd}`;
   }
 }
 
@@ -537,7 +537,7 @@ function _handleTap(cx,cy){
   if(_placing){
     const cost=UNIT_DEFS[_placingType]?.cost||50;
     if(_gp<cost)return;
-    if(isMapObstacle(wx,wy)){_showNotif('⛔ 건물 위에는 배치 불가');return;}
+    if(isMapObstacle(wx,wy)){_showNotif('⛔ Cannot place on a building');return;}
     _gp-=cost;
     playSound('hit');
     _defenders.push(makeUnit(_placingType,wx,wy));
@@ -602,7 +602,7 @@ async function init(){
   await loadMapAssets();
 
   $('btnPlay')?.addEventListener('click',async()=>{
-    _freePlay=false;if(!(await deductEntry())){alert('GP가 부족합니다');return;} startGame();
+    _freePlay=false;if(!(await deductEntry())){alert('Not enough GP');return;} startGame();
   });
   $('btnFreePlay')?.addEventListener('click',()=>{_freePlay=true;startGame();});
   $('btnRestart')?.addEventListener('click',()=>showPhase('lobby'));

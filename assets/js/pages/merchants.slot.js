@@ -8,28 +8,28 @@ import { functions }     from '../firebase-init.js';
 // ── 심볼 정의 (서버와 동일 순서) ────────────────────────────────────────────
 const SYMBOLS = {
   // normal
-  arms:    { img: '/assets/images/shops/arms.png',    label: '무기상점', rarity: 'normal' },
-  bakery:  { img: '/assets/images/shops/bakery.png',  label: '베이커리', rarity: 'normal' },
-  cafe:    { img: '/assets/images/shops/cafe.png',    label: '카페',     rarity: 'normal' },
-  eat:     { img: '/assets/images/shops/eat.png',     label: '식당',     rarity: 'normal' },
-  info:    { img: '/assets/images/shops/info.png',    label: '안내소',   rarity: 'normal' },
-  korea:   { img: '/assets/images/shops/korea.png',   label: '한식당',   rarity: 'normal' },
-  pub:     { img: '/assets/images/shops/pub.png',     label: '펍',       rarity: 'normal' },
-  shop2:   { img: '/assets/images/shops/shop2.png',   label: '잡화점',   rarity: 'normal' },
+  arms:    { img: '/assets/images/shops/arms.png',    label: 'Arms Shop',     rarity: 'normal' },
+  bakery:  { img: '/assets/images/shops/bakery.png',  label: 'Bakery',        rarity: 'normal' },
+  cafe:    { img: '/assets/images/shops/cafe.png',    label: 'Cafe',          rarity: 'normal' },
+  eat:     { img: '/assets/images/shops/eat.png',     label: 'Restaurant',    rarity: 'normal' },
+  info:    { img: '/assets/images/shops/info.png',    label: 'Info',          rarity: 'normal' },
+  korea:   { img: '/assets/images/shops/korea.png',   label: 'Korean BBQ',    rarity: 'normal' },
+  pub:     { img: '/assets/images/shops/pub.png',     label: 'Pub',           rarity: 'normal' },
+  shop2:   { img: '/assets/images/shops/shop2.png',   label: 'General Store', rarity: 'normal' },
   // rare
-  golf:    { img: '/assets/images/shops/golf.png',    label: '골프장',   rarity: 'rare'   },
-  japan:   { img: '/assets/images/shops/japan.png',   label: '일식당',   rarity: 'rare'   },
-  massage: { img: '/assets/images/shops/massage.png', label: '마사지',   rarity: 'rare'   },
-  park:    { img: '/assets/images/shops/park.png',    label: '파크',     rarity: 'rare'   },
-  pool:    { img: '/assets/images/shops/pool.png',    label: '풀장',     rarity: 'rare'   },
-  sanghai: { img: '/assets/images/shops/sanghai.png', label: '상하이',   rarity: 'hero'   },
+  golf:    { img: '/assets/images/shops/golf.png',    label: 'Golf',          rarity: 'rare'   },
+  japan:   { img: '/assets/images/shops/japan.png',   label: 'Japanese',      rarity: 'rare'   },
+  massage: { img: '/assets/images/shops/massage.png', label: 'Massage',       rarity: 'rare'   },
+  park:    { img: '/assets/images/shops/park.png',    label: 'Park',          rarity: 'rare'   },
+  pool:    { img: '/assets/images/shops/pool.png',    label: 'Pool',          rarity: 'rare'   },
+  sanghai: { img: '/assets/images/shops/sanghai.png', label: 'Shanghai',      rarity: 'hero'   },
   // hero
-  castle:  { img: '/assets/images/shops/castle.png',  label: '성',       rarity: 'hero'   },
-  ship:    { img: '/assets/images/shops/ship.png',    label: '선박',     rarity: 'hero'   },
-  tower:   { img: '/assets/images/shops/tower.png',   label: '타워',     rarity: 'hero'   },
-  venice:  { img: '/assets/images/shops/venice.png',  label: '베니스',   rarity: 'hero'   },
+  castle:  { img: '/assets/images/shops/castle.png',  label: 'Castle',        rarity: 'hero'   },
+  ship:    { img: '/assets/images/shops/ship.png',    label: 'Ship',          rarity: 'hero'   },
+  tower:   { img: '/assets/images/shops/tower.png',   label: 'Tower',         rarity: 'hero'   },
+  venice:  { img: '/assets/images/shops/venice.png',  label: 'Venice',        rarity: 'hero'   },
   // legend
-  tower2:  { img: '/assets/images/shops/tower2.png',  label: '황금탑',   rarity: 'legend' },
+  tower2:  { img: '/assets/images/shops/tower2.png',  label: 'Golden Tower',  rarity: 'legend' },
 };
 const SYMBOL_IDS = Object.keys(SYMBOLS);
 
@@ -43,13 +43,13 @@ const CYCLE_MS       = 100;
 const RARITY_COLOR = { normal: '#ccc', rare: '#4af', hero: '#fa4', legend: '#fd1' };
 // Outcome labels use {bet} placeholder — filled at runtime with actual reward
 const OUTCOME_LABELS = {
-  normal_match: (r) => `일반 트리플! +${r} 💰`,
-  rare_match:   (r) => `레어 트리플! +${r} 💰`,
-  hero_match:   (r) => `영웅 트리플! +${r} 💰`,
-  jackpot:      (r) => `🎉 잭팟! +${r} 💰`,
-  two_normal:   (r) => `2개 일치! +${r} 💰`,
-  two_match:    (r) => `레어 2개 일치! +${r} 💰`,
-  miss:         ()  => '아쉽네요...',
+  normal_match: (r) => `Normal Triple! +${r} 💰`,
+  rare_match:   (r) => `Rare Triple! +${r} 💰`,
+  hero_match:   (r) => `Hero Triple! +${r} 💰`,
+  jackpot:      (r) => `🎉 Jackpot! +${r} 💰`,
+  two_normal:   (r) => `2 Match! +${r} 💰`,
+  two_match:    (r) => `Rare 2 Match! +${r} 💰`,
+  miss:         ()  => 'So close...',
 };
 
 // ── SlotMachine 클래스 ───────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ class SlotMachine {
       <div class="sm-overlay" id="smOverlay"></div>
       <div class="sm-panel">
         <div class="sm-header">
-          <span class="sm-title">🎰 슬롯 머신</span>
+          <span class="sm-title">🎰 Slot Machine</span>
           <div class="sm-jackpot-display">
             <span class="sm-jackpot-label">JACKPOT</span>
             <span class="sm-jackpot-val" id="smJackpot">1000</span>
@@ -109,23 +109,23 @@ class SlotMachine {
         <div class="sm-toast hidden" id="smToast"></div>
 
         <div class="sm-paytable">
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#fd1">🏆 황금탑 × 3</span><span class="sm-pay-val">JACKPOT</span></div>
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#fa4">⭐ 영웅상점 × 3</span><span class="sm-pay-val">×500 bet</span></div>
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#4af">💎 레어상점 × 3</span><span class="sm-pay-val">×100 bet</span></div>
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#ccc">🏪 일반상점 × 3</span><span class="sm-pay-val">×30 bet</span></div>
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#4af">💎 레어+ 2개 일치</span><span class="sm-pay-val">×15 bet</span></div>
-          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#aaa">🏪 일반 2개 일치</span><span class="sm-pay-val">×3 bet</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#fd1">🏆 Golden Tower × 3</span><span class="sm-pay-val">JACKPOT</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#fa4">⭐ Hero Shop × 3</span><span class="sm-pay-val">×500 bet</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#4af">💎 Rare Shop × 3</span><span class="sm-pay-val">×100 bet</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#ccc">🏪 Normal Shop × 3</span><span class="sm-pay-val">×30 bet</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#4af">💎 Rare+ 2 Match</span><span class="sm-pay-val">×15 bet</span></div>
+          <div class="sm-pay-row"><span class="sm-pay-sym" style="color:#aaa">🏪 Normal 2 Match</span><span class="sm-pay-val">×3 bet</span></div>
         </div>
 
         <div class="sm-bet-row" id="smBetRow">
-          <span class="sm-bet-label">배팅:</span>
+          <span class="sm-bet-label">Bet:</span>
           ${BET_OPTIONS.map(b => `<button class="sm-bet-btn${b===DEFAULT_BET?' active':''}" data-bet="${b}">${b} 💰</button>`).join('')}
         </div>
 
         <div class="sm-controls">
-          <button class="sm-btn sm-btn-free" id="smFreeBtn">🎁 무료 스핀</button>
-          <button class="sm-btn sm-btn-spin" id="smSpinBtn">🎰 스핀 (−${DEFAULT_BET} 💰)</button>
-          <button class="sm-btn sm-btn-auto" id="smAutoBtn">⚡ 자동 ×${AUTO_SPIN_COUNT}</button>
+          <button class="sm-btn sm-btn-free" id="smFreeBtn">🎁 Free Spin</button>
+          <button class="sm-btn sm-btn-spin" id="smSpinBtn">🎰 Spin (−${DEFAULT_BET} 💰)</button>
+          <button class="sm-btn sm-btn-auto" id="smAutoBtn">⚡ Auto ×${AUTO_SPIN_COUNT}</button>
         </div>
 
         <div class="sm-jackpot-anim hidden" id="smJackpotAnim">
@@ -163,7 +163,7 @@ class SlotMachine {
       this._bet = parseInt(btn.dataset.bet, 10);
       document.querySelectorAll('.sm-bet-btn').forEach(b => b.classList.toggle('active', b === btn));
       const spinBtn = document.getElementById('smSpinBtn');
-      if (spinBtn) spinBtn.textContent = `🎰 스핀 (−${this._bet} 💰)`;
+      if (spinBtn) spinBtn.textContent = `🎰 Spin (−${this._bet} 💰)`;
     });
   }
 
@@ -189,7 +189,7 @@ class SlotMachine {
     const used  = localStorage.getItem('slotFreeDate');
     if (this._freeBtn) {
       this._freeBtn.disabled = (used === today);
-      this._freeBtn.textContent = (used === today) ? '🎁 무료 사용됨' : '🎁 무료 스핀';
+      this._freeBtn.textContent = (used === today) ? '🎁 Free Used' : '🎁 Free Spin';
     }
   }
 
@@ -248,7 +248,7 @@ class SlotMachine {
     if (!isFree) {
       const ok = this._spendGold(betAmt);
       if (!ok) {
-        this._showToast('골드가 부족합니다!');
+        this._showToast('Not enough gold!');
         return;
       }
     }
@@ -270,7 +270,7 @@ class SlotMachine {
       this._stopAllCycling();
       this._spinning = false;
       this._setControls(true);
-      const msg = err.message === 'FREE_USED' ? '오늘 무료 스핀은 이미 사용했습니다.' : '오류가 발생했습니다.';
+      const msg = err.message === 'FREE_USED' ? 'Free spin already used today.' : 'An error occurred.';
       this._showToast(msg);
       if (!isFree) this._addGold(betAmt);
       return;
@@ -315,7 +315,7 @@ class SlotMachine {
       this._autoLeft--;
       if (this._autoLeft === 0) {
         this._autoMode = false;
-        this._showToast('자동 스핀 완료!');
+        this._showToast('Auto-spin complete!');
       } else {
         await this._delay(600);
         this._doSpin(false);
@@ -349,7 +349,7 @@ class SlotMachine {
     panel?.classList.add('sm-shake');
     setTimeout(() => panel?.classList.remove('sm-shake'), 600);
 
-    this._showToast(`🎉 잭팟! +${won} 💰`);
+    this._showToast(`🎉 Jackpot! +${won} 💰`);
   }
 
   // ── UI 헬퍼 ───────────────────────────────────────────────────────────────

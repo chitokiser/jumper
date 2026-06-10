@@ -339,21 +339,21 @@ const TRANSLATIONS = {
 };
 
 const SUPPORTED_LANGS = ['vi', 'en', 'ko'];
-const DEFAULT_LANG = 'ko';
+const DEFAULT_LANG = 'en';
 const STORAGE_KEY = 'town_lang';
 let _lang = DEFAULT_LANG;
 
 export function getCurrentLang() { return _lang; }
 
 export function _t(key, ...args) {
-  const t = TRANSLATIONS[_lang] || TRANSLATIONS[DEFAULT_LANG];
-  let s = (t && t[key]) || (TRANSLATIONS[DEFAULT_LANG][key]) || key;
+  const t = TRANSLATIONS['en'];
+  let s = (t && t[key]) || key;
   args.forEach((a, i) => { s = s.replace(`{${i}}`, a); });
   return s;
 }
 
 export function applyLang(lang) {
-  if (!SUPPORTED_LANGS.includes(lang)) lang = DEFAULT_LANG;
+  lang = 'en';
   _lang = lang;
   localStorage.setItem(STORAGE_KEY, lang);
   document.documentElement.lang = lang;

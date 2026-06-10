@@ -80,7 +80,7 @@ function _addTreeMarker(tree) {
     position: { lat: tree.lat, lng: tree.lng },
     map: _map,
     icon,
-    title: `🌳 ${tree.value.toLocaleString()} GP${tree.isOwn ? ' (내 나무)' : ''}`,
+    title: `🌳 ${tree.value.toLocaleString()} GP${tree.isOwn ? ' (My Tree)' : ''}`,
     zIndex: 5,
   });
   marker.addListener('click', () => _onTreeMarkerClick(tree, marker));
@@ -98,7 +98,7 @@ export function openTreeInfoModal(tree) {
   const cfg = _cfg || {};
   document.getElementById('mtTreeImg').src       = `${IMG_BASE}${tree.imageNum}.png`;
   document.getElementById('mtTreeValue').textContent = tree.value.toLocaleString() + ' GP';
-  document.getElementById('mtTreeOwner').textContent = tree.isOwn ? '내 나무' : '다른 유저';
+  document.getElementById('mtTreeOwner').textContent = tree.isOwn ? 'My Tree' : 'Other User';
   document.getElementById('mtTreeId').textContent    = tree.treeId;
 
   const boostBtn    = document.getElementById('mtBtnBoost');
@@ -123,13 +123,13 @@ export function renderMoneyTreeShopSection(shop, cfg) {
   const inv = _inv;
   return `<div id="mtShopSection" style="margin-top:14px;padding:12px;background:rgba(16,185,129,.06);
     border:1px solid rgba(16,185,129,.25);border-radius:10px">
-    <div style="font-weight:700;font-size:13px;color:#34d399;margin-bottom:10px">🌳 돈나무 아이템</div>
+    <div style="font-weight:700;font-size:13px;color:#34d399;margin-bottom:10px">🌳 Money Tree Items</div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;
         background:rgba(255,255,255,.03);border-radius:8px;border:1px solid #1f2937">
         <div>
-          <div style="font-size:13px;font-weight:600;color:#f3f4f6">🌱 묘목</div>
-          <div style="font-size:11px;color:#9ca3af">💰 ${seedPrice} GP · 보유: <span id="mtInvSeedlings">${inv?.seedlings ?? 0}</span>개</div>
+          <div style="font-size:13px;font-weight:600;color:#f3f4f6">🌱 Seedling</div>
+          <div style="font-size:11px;color:#9ca3af">💰 ${seedPrice} GP · Owned: <span id="mtInvSeedlings">${inv?.seedlings ?? 0}</span></div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <div style="display:flex;align-items:center;border:1px solid #374151;border-radius:8px;overflow:hidden">
@@ -142,14 +142,14 @@ export function renderMoneyTreeShopSection(shop, cfg) {
           </div>
           <button id="mtBuySeedlingBtn" onclick="window._mtBuySeedling()"
             style="padding:8px 14px;border-radius:8px;border:none;font-weight:700;font-size:12px;
-                   cursor:pointer;background:linear-gradient(135deg,#059669,#047857);color:#fff">구매</button>
+                   cursor:pointer;background:linear-gradient(135deg,#059669,#047857);color:#fff">Buy</button>
         </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;
         background:rgba(255,255,255,.03);border-radius:8px;border:1px solid #1f2937">
         <div>
-          <div style="font-size:13px;font-weight:600;color:#f3f4f6">💊 영양제</div>
-          <div style="font-size:11px;color:#9ca3af">💰 ${boostPrice} GP · 보유: <span id="mtInvBoosters">${inv?.treeBoosters ?? 0}</span>개</div>
+          <div style="font-size:13px;font-weight:600;color:#f3f4f6">💊 Booster</div>
+          <div style="font-size:11px;color:#9ca3af">💰 ${boostPrice} GP · Owned: <span id="mtInvBoosters">${inv?.treeBoosters ?? 0}</span></div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <div style="display:flex;align-items:center;border:1px solid #374151;border-radius:8px;overflow:hidden">
@@ -162,7 +162,7 @@ export function renderMoneyTreeShopSection(shop, cfg) {
           </div>
           <button id="mtBuyBoosterBtn" onclick="window._mtBuyBooster()"
             style="padding:8px 14px;border-radius:8px;border:none;font-weight:700;font-size:12px;
-                   cursor:pointer;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff">구매</button>
+                   cursor:pointer;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff">Buy</button>
         </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;
@@ -272,7 +272,7 @@ window._mtOpenMyTrees = async function() {
   if (!modal || !_functions) return;
   modal.classList.add('open');
   const list = document.getElementById('mtMyTreeList');
-  if (list) list.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:20px">로딩중...</div>';
+  if (list) list.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:20px">Loading...</div>';
 
   try {
     const [treeRes, cfgRes] = await Promise.all([
@@ -290,7 +290,7 @@ function _renderMyTreeList(trees) {
   const list = document.getElementById('mtMyTreeList');
   if (!list) return;
   if (!trees.length) {
-    list.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:24px">심은 나무가 없습니다.<br>물약상점 근처에서 묘목을 심으세요.</div>';
+    list.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:24px">No trees planted yet.<br>Go near a Potion Shop to plant a seedling.</div>';
     return;
   }
   list.innerHTML = trees.map(t => `
@@ -300,16 +300,16 @@ function _renderMyTreeList(trees) {
         <div style="flex:1">
           <div style="font-size:12px;font-weight:700;color:#f3f4f6">${t.treeId}</div>
           <div style="font-size:12px;color:#fbbf24">💰 ${t.value.toLocaleString()} GP</div>
-          <div style="font-size:11px;color:#6b7280">부스트: +${t.boostTotal} | 복권: ${t.lotteryNumber ?? '없음'}</div>
+          <div style="font-size:11px;color:#6b7280">Boost: +${t.boostTotal} | Lottery: ${t.lotteryNumber ?? 'None'}</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px">
           <button onclick="window._mtDoBoost('${t.treeId}')"
             style="padding:5px 10px;border-radius:6px;border:none;font-size:11px;cursor:pointer;
-                   background:#7c3aed;color:#fff;font-weight:600">영양제</button>
+                   background:#7c3aed;color:#fff;font-weight:600">Boost</button>
           <button onclick="window._mtDoHarvest('${t.treeId}')"
             style="padding:5px 10px;border-radius:6px;border:none;font-size:11px;cursor:pointer;
                    background:${t.value > 0 ? '#059669' : '#374151'};color:${t.value > 0 ? '#fff' : '#6b7280'};font-weight:600"
-            ${t.value <= 0 ? 'disabled' : ''}>수확</button>
+            ${t.value <= 0 ? 'disabled' : ''}>Harvest</button>
         </div>
       </div>
     </div>`).join('');

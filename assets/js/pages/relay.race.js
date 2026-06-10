@@ -12,20 +12,20 @@ export const GRADE_ODDS = { S: 1.5, A: 2.0, B: 4.0, C: 8.0, D: 15.0 };
 
 // ── 랜덤 이벤트 ────────────────────────────────────────────────────────────────
 const EVENTS = [
-  { id:'slip',   label:'😱 미끄러짐!',     prob:0.008, spd:-0.35, dur:1.5 },
-  { id:'baton',  label:'⚠️ 바통 실수!',    prob:0.006, spd:-0.25, dur:2.0 },
-  { id:'lace',   label:'👟 신발끈 풀림!',  prob:0.005, spd:-0.20, dur:1.8 },
-  { id:'crowd',  label:'📣 관중 응원 버프!',prob:0.007, spd:+0.20, dur:3.0 },
-  { id:'comeback',label:'🔥 역전 버프!',   prob:0.004, spd:+0.35, dur:2.5 },
+  { id:'slip',   label:'😱 Slipped!',       prob:0.008, spd:-0.35, dur:1.5 },
+  { id:'baton',  label:'⚠️ Baton drop!',   prob:0.006, spd:-0.25, dur:2.0 },
+  { id:'lace',   label:'👟 Shoelace!',     prob:0.005, spd:-0.20, dur:1.8 },
+  { id:'crowd',  label:'📣 Crowd cheer!',  prob:0.007, spd:+0.20, dur:3.0 },
+  { id:'comeback',label:'🔥 Comeback!',    prob:0.004, spd:+0.35, dur:2.5 },
 ];
 
 // ── 스킬 정의 ─────────────────────────────────────────────────────────────────
 export const SKILL_DEFS = {
-  trip:    { name:'다리걸기',   emoji:'🦵', cd:18, desc:'앞 선수 -20% 2초',  type:'debuff' },
-  apple:   { name:'사과 던지기',emoji:'🍎', cd:20, desc:'앞 선수 혼란 3초',  type:'debuff' },
-  boost:   { name:'부스트',     emoji:'💨', cd:15, desc:'속도 +40% 3초',     type:'buff'   },
-  sprint:  { name:'질주본능',   emoji:'⚡', cd:25, desc:'스태미나 무시 5초', type:'buff'   },
-  iron:    { name:'철인',       emoji:'🛡️', cd:30, desc:'피로 무효 10초',    type:'buff'   },
+  trip:    { name:'Trip',       emoji:'🦵', cd:18, desc:'Front runner -20% / 2s',  type:'debuff' },
+  apple:   { name:'Apple Toss',emoji:'🍎', cd:20, desc:'Front runner confused 3s',  type:'debuff' },
+  boost:   { name:'Boost',     emoji:'💨', cd:15, desc:'Speed +40% / 3s',     type:'buff'   },
+  sprint:  { name:'Sprint',    emoji:'⚡', cd:25, desc:'Ignore stamina 5s', type:'buff'   },
+  iron:    { name:'Iron Body', emoji:'🛡️', cd:30, desc:'No fatigue 10s',    type:'buff'   },
 };
 
 // ── 팀 등급 계산 ──────────────────────────────────────────────────────────────
@@ -244,7 +244,7 @@ export function useSkill(skillId, playerTeam, allTeams, now) {
         .sort((a,b) => b.totDist - a.totDist)[0];
       if (leader) {
         const lr = leader.runners[leader.legIdx];
-        if (lr) { lr.spdMult = 0.8; lr.spdTime = 2; lr.eventLabel = '🦵 다리걸기!'; lr.eventTs = now; }
+        if (lr) { lr.spdMult = 0.8; lr.spdTime = 2; lr.eventLabel = '🦵 Tripped!'; lr.eventTs = now; }
       }
       break;
     }
@@ -254,7 +254,7 @@ export function useSkill(skillId, playerTeam, allTeams, now) {
         .sort((a,b) => b.totDist - a.totDist)[0];
       if (leader) {
         const lr = leader.runners[leader.legIdx];
-        if (lr) { lr.spdMult = 0.75; lr.spdTime = 3; lr.eventLabel = '🍎 사과 맞음!'; lr.eventTs = now; }
+        if (lr) { lr.spdMult = 0.75; lr.spdTime = 3; lr.eventLabel = '🍎 Apple hit!'; lr.eventTs = now; }
       }
       break;
     }

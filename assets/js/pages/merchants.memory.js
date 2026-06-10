@@ -92,7 +92,7 @@ class MemoryGame {
       <div class="mg-overlay" id="mgOverlay"></div>
       <div class="mg-panel">
         <div class="mg-header">
-          <span class="mg-title">🃏 기억력 게임</span>
+          <span class="mg-title">🃏 Memory Match</span>
           <div class="mg-hud">
             <span class="mg-hud-item"><span class="mg-hud-label">COIN</span><span class="mg-hud-val" id="mgCoin">+0</span></span>
             <span class="mg-hud-sep">|</span>
@@ -107,11 +107,11 @@ class MemoryGame {
         <div class="mg-result hidden" id="mgResult">
           <div class="mg-result-content">
             <div class="mg-result-icon" id="mgResultIcon">🏆</div>
-            <div class="mg-result-title" id="mgResultTitle">클리어!</div>
+            <div class="mg-result-title" id="mgResultTitle">Clear!</div>
             <div class="mg-result-sub" id="mgResultSub"></div>
             <div class="mg-result-stats" id="mgResultStats"></div>
-            <button class="mg-btn mg-btn-primary" id="mgPlayAgain">다시 하기 (−10 💰)</button>
-            <button class="mg-btn mg-btn-secondary" id="mgResultClose">닫기</button>
+            <button class="mg-btn mg-btn-primary" id="mgPlayAgain">Play Again (−${ENTRY_COST} 💰)</button>
+            <button class="mg-btn mg-btn-secondary" id="mgResultClose">Close</button>
           </div>
         </div>
       </div>
@@ -253,7 +253,7 @@ class MemoryGame {
     b.el.classList.add('mg-matched');
 
     if (this._combo >= COMBO_TRIGGER) {
-      this._showComboToast(`🔥 ${this._combo}콤보! +${COMBO_BONUS}`);
+      this._showComboToast(`🔥 ${this._combo} Combo! +${COMBO_BONUS}`);
       if (navigator.vibrate) navigator.vibrate([30, 20, 50]);
     }
     this._playSound('hit');
@@ -316,9 +316,9 @@ class MemoryGame {
     const again = document.getElementById('mgPlayAgain');
     if (!this._resultPanel) return;
     if (icon)  icon.textContent  = '💰';
-    if (title) title.textContent = '골드 부족';
-    if (sub)   sub.textContent   = `입장료 ${ENTRY_COST} 골드가 필요합니다`;
-    if (stats) stats.textContent = '몬스터를 처치하여 골드를 모은 후 도전하세요!';
+    if (title) title.textContent = 'Not Enough Gold';
+    if (sub)   sub.textContent   = `You need ${ENTRY_COST} gold to enter.`;
+    if (stats) stats.textContent = 'Defeat monsters to earn gold, then try again!';
     if (again) again.style.display = 'none';
     this._resultPanel.classList.remove('hidden');
     this._resultPanel._noGold = true;
@@ -336,24 +336,24 @@ class MemoryGame {
     const remaining = DAILY_LIMIT - daily;
     if (again) {
       again.style.display = remaining > 0 ? '' : 'none';
-      if (remaining > 0) again.textContent = `다시 하기 (−${ENTRY_COST} 💰) · 오늘 ${remaining}판 남음`;
+      if (remaining > 0) again.textContent = `Play Again (−${ENTRY_COST} 💰) · ${remaining} left today`;
     }
 
     const best = this._loadStats();
     if (cleared) {
       if (icon)  icon.textContent  = '🏆';
-      if (title) title.textContent = '클리어!';
-      if (sub)   sub.textContent   = `+${CLEAR_BONUS_GOLD} 골드 +${CLEAR_BONUS_XP} XP 획득`;
+      if (title) title.textContent = 'Clear!';
+      if (sub)   sub.textContent   = `+${CLEAR_BONUS_GOLD} gold +${CLEAR_BONUS_XP} XP earned!`;
     } else {
       if (icon)  icon.textContent  = '💀';
-      if (title) title.textContent = '게임 오버';
-      if (sub)   sub.textContent   = `미스 ${this._miss}회로 실패`;
+      if (title) title.textContent = 'Game Over';
+      if (sub)   sub.textContent   = `Failed with ${this._miss} misses`;
     }
     if (stats) {
       stats.innerHTML =
-        `매칭: ${this._match}/${TOTAL_PAIRS} &nbsp;|&nbsp; ` +
-        `획득 골드: ${this._coinDelta > 0 ? '+' : ''}${this._coinDelta} &nbsp;|&nbsp; ` +
-        `최고 기록: ${best.bestMatch} 매칭 · ${best.plays}회 플레이`;
+        `Matches: ${this._match}/${TOTAL_PAIRS} &nbsp;|&nbsp; ` +
+        `Gold: ${this._coinDelta > 0 ? '+' : ''}${this._coinDelta} &nbsp;|&nbsp; ` +
+        `Best: ${best.bestMatch} matches · ${best.plays} plays`;
     }
     this._resultPanel.classList.remove('hidden');
   }
@@ -366,9 +366,9 @@ class MemoryGame {
     const again = document.getElementById('mgPlayAgain');
     if (!this._resultPanel) return;
     if (icon)  icon.textContent  = '⏰';
-    if (title) title.textContent = '오늘 참여 완료';
-    if (sub)   sub.textContent   = `하루 ${DAILY_LIMIT}판 제한에 도달했습니다`;
-    if (stats) stats.textContent = '내일 자정 이후 다시 도전하세요!';
+    if (title) title.textContent = 'Daily Limit Reached';
+    if (sub)   sub.textContent   = `You've used all ${DAILY_LIMIT} daily plays.`;
+    if (stats) stats.textContent = 'Come back after midnight to play again!';
     if (again) again.style.display = 'none';
     this._resultPanel.classList.remove('hidden');
   }

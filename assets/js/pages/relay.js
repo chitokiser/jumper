@@ -33,7 +33,7 @@ const AI_POOLS = [
   ['pirate2','pirate3','troll','villager3'],['knight3','orc2','zombie1','pirate1'],
   ['troll','villager1','villager2','zombie3'],
 ];
-const TEAM_LABELS = ['A팀','B팀','C팀','D팀','E팀','F팀'];
+const TEAM_LABELS = ['Team A','Team B','Team C','Team D','Team E','Team F'];
 const TEAM_COLORS = ['#e74c3c','#e67e22','#f1c40f','#27ae60','#2980b9','#8e44ad'];
 
 // ── 참가비 ────────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ function showPhase(name) {
 // ── Firebase ─────────────────────────────────────────────────────────────────
 async function loadPlayer() {
   if (!_uid) {
-    $('lobbyGP').textContent = '게스트';
+    $('lobbyGP').textContent = 'Guest';
     _updateFeeDisplay();
     return;
   }
@@ -90,13 +90,13 @@ async function loadPlayer() {
 
 function _updateFeeDisplay() {
   const badge = $('feeBadge');
-  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
+  if (badge) badge.textContent = `Entry fee: ${_entryFee} GP`;
   const info = $('feeInfo');
   if (!info) return;
-  if (!_entryCount) info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
+  if (!_entryCount) info.textContent = 'First entry today · resets in 24h';
   else {
     const h = Math.ceil((_entryResetAt + RESET_MS - Date.now()) / 3_600_000);
-    info.textContent = `오늘 ${_entryCount}번째 참가 · ${h}시간 후 100GP 리셋`;
+    info.textContent = `${_entryCount} entries today · 100GP reset in ${h}h`;
   }
 }
 
@@ -152,7 +152,7 @@ function renderCharGrid() {
       <div class="char-grade" style="color:${gradeColor}">${c.grade}</div>
       <div class="char-name">${c.name}</div>
       <div class="char-spd">⚡${c.speed}</div>
-      ${locked ? '<div class="grade-lock-msg">1개 제한</div>' : ''}`;
+      ${locked ? '<div class="grade-lock-msg">Limit 1</div>' : ''}`;
     card.addEventListener('click', () => toggleChar(id));
     grid.appendChild(card);
   });
@@ -177,7 +177,7 @@ function _renderTeamSlots() {
     const id = _selectedChars[i];
     const c  = id ? CHARS[id] : null;
     return `<div class="team-slot${c?' filled':''}">
-      ${c ? `<b>${c.grade}</b> ${c.name.slice(0,8)}` : `${i+1}번 선수`}
+      ${c ? `<b>${c.grade}</b> ${c.name.slice(0,8)}` : `Runner ${i+1}`}
     </div>`;
   }).join('');
 
@@ -186,7 +186,7 @@ function _renderTeamSlots() {
     const g = teamGrade(_selectedChars, CHARS);
     const odds = GRADE_ODDS[g] || 2;
     const oddsEl = $('teamOdds');
-    if (oddsEl) oddsEl.textContent = `팀 등급 ${g} · 1위 배당 ×${odds}`;
+    if (oddsEl) oddsEl.textContent = `Team grade ${g} · 1st place payout ×${odds}`;
   }
 }
 
@@ -208,7 +208,7 @@ function renderSkillPicker() {
     });
     grid.appendChild(btn);
   });
-  $('skCount').textContent = `${_selectedSkills.length}/3 선택`;
+  $('skCount').textContent = `${_selectedSkills.length}/3 selected`;
 }
 
 // ── 팀 빌드 & 경기 시작 ──────────────────────────────────────────────────────
@@ -216,7 +216,7 @@ function buildTeams() {
   _teams = [];
   // 플레이어 팀 (A팀 = 0번)
   _playerTeamIdx = 0;
-  _teams.push(buildTeam(_selectedChars, CHARS, 'A팀', TEAM_COLORS[0], true));
+  _teams.push(buildTeam(_selectedChars, CHARS, 'Team A', TEAM_COLORS[0], true));
   // AI 팀
   for (let i = 0; i < NUM_TEAMS - 1; i++) {
     _teams.push(buildTeam(AI_POOLS[i % AI_POOLS.length], CHARS, TEAM_LABELS[i+1], TEAM_COLORS[i+1], false));
@@ -336,8 +336,8 @@ function _updateRaceHUD(now) {
   const pt  = _teams[_playerTeamIdx];
   const runner = pt.runners[pt.legIdx];
   const pos  = [..._teams].sort((a,b)=>b.totDist-a.totDist).indexOf(pt)+1;
-  $('hudPos')  && ($('hudPos').textContent  = `${pos}위`);
-  $('hudLeg')  && ($('hudLeg').textContent  = `${Math.min(pt.legIdx+1,LEGS)}/${LEGS} 구간`);
+  $('hudPos')  && ($('hudPos').textContent  = `#${pos}`);
+  $('hudLeg')  && ($('hudLeg').textContent  = `${Math.min(pt.legIdx+1,LEGS)}/${LEGS} legs`);
   if (runner) {
     $('hudRunner') && ($('hudRunner').textContent = runner.name);
     $('hudSpd')    && ($('hudSpd').textContent    = (runner.spd||0).toFixed(1)+'m/s');
@@ -352,8 +352,8 @@ function _updateRaceHUD(now) {
   const tapArea = $('tapArea');
   if (tapArea) {
     if (tapPct >= 90) tapArea.textContent = '🔥 MAX BOOST!';
-    else if (tapPct >= 50) tapArea.textContent = `⚡ ${tapPct}% — 계속 탭!`;
-    else tapArea.textContent = '👆 탭해서 부스트!';
+    else if (tapPct >= 50) tapArea.textContent = `⚡ ${tapPct}% — keep tapping!`;
+    else tapArea.textContent = '👆 Tap to boost!';
   }
   // 스킬 쿨 표시
   _updateSkillBar(now);
@@ -397,9 +397,9 @@ async function showResult() {
 
   // 결과 화면 렌더
   const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣'];
-  $('resultRank').textContent   = medals[rank-1] + ` ${rank}위`;
-  $('resultGrade').textContent  = `팀 등급: ${grade} · 배당 ×${GRADE_ODDS[grade]}`;
-  $('resultPayout').textContent = _freeMode ? '🆓 무료 입장 (보상 없음)' : payout > 0 ? `+${payout} GP 획득!` : '보상 없음 (3위 이하)';
+  $('resultRank').textContent   = medals[rank-1] + ` #${rank}`;
+  $('resultGrade').textContent  = `Team grade: ${grade} · payout ×${GRADE_ODDS[grade]}`;
+  $('resultPayout').textContent = _freeMode ? '🆓 Free Play (no reward)' : payout > 0 ? `+${payout} GP earned!` : 'No reward (3rd or lower)';
   $('resultPayout').style.color = payout > 0 ? '#22c55e' : '#9ca3af';
 
   const rankList = $('resultRankList');
@@ -470,9 +470,9 @@ function _updateHeader(user) {
   const r = $('gHdrRight');
   if (!r) return;
   if (user && !user.isAnonymous) {
-    r.innerHTML = `<span class="g-user-chip">👤 ${user.displayName?.split(' ')[0]||'유저'}</span>`;
+    r.innerHTML = `<span class="g-user-chip">👤 ${user.displayName?.split(' ')[0]||'User'}</span>`;
   } else {
-    r.innerHTML = `<button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button>`;
+    r.innerHTML = `<button class="g-login-btn" id="gLoginBtn">🔑 Google Login</button>`;
     _bindLogin();
   }
 }
@@ -484,7 +484,7 @@ export async function init() {
   // 로비 버튼 바인딩
   $('btnEnter')?.addEventListener('click', async () => {
     if (_selectedChars.length < 4) return;
-    if (_uid) { if (!await deductFee()) { alert('GP 부족'); return; } }
+    if (_uid) { if (!await deductFee()) { alert('Not enough GP'); return; } }
     _freeMode = false;
     buildTeams();
     _selectedSkills = [];
@@ -494,7 +494,7 @@ export async function init() {
   });
 
   $('btnFreePlay')?.addEventListener('click', () => {
-    if (_selectedChars.length < 4) { alert('선수 4명을 선택하세요'); return; }
+    if (_selectedChars.length < 4) { alert('Please select 4 runners'); return; }
     _freeMode = true;
     buildTeams();
     _selectedSkills = [];

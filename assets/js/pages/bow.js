@@ -26,12 +26,12 @@ let _entryResetAt = 0;
 
 // ── 스킬 정의 ────────────────────────────────────────────────────────────────
 const SKILLS = {
-  triple:    { name:'삼연시',   emoji:'🏹', mp:20, cd:4000, desc:'화살 3발 동시 발사' },
-  fire:      { name:'화염시',   emoji:'🔥', mp:15, cd:5000, desc:'다음 화살 데미지 x2' },
-  poison:    { name:'독화살',   emoji:'☠️',  mp:20, cd:6000, desc:'해당 줄 몬스터 3초 감속' },
-  explode:   { name:'폭발화살', emoji:'💥', mp:25, cd:7000, desc:'범위 폭발 피해' },
-  rapidfire: { name:'연사',     emoji:'⚡', mp:30, cd:9000, desc:'5초간 자동 연사' },
-  pierce:    { name:'관통시',   emoji:'🪃', mp:20, cd:5000, desc:'화살이 같은 줄 관통' },
+  triple:    { name:'Triple Shot', emoji:'🏹', mp:20, cd:4000, desc:'Fire 3 arrows at once' },
+  fire:      { name:'Fire Arrow', emoji:'🔥', mp:15, cd:5000, desc:'Next arrow deals x2 damage' },
+  poison:    { name:'Poison Arrow',emoji:'☠️',  mp:20, cd:6000, desc:'Slow row monsters 3s' },
+  explode:   { name:'Explode',    emoji:'💥', mp:25, cd:7000, desc:'Area explosion damage' },
+  rapidfire: { name:'Rapid Fire', emoji:'⚡', mp:30, cd:9000, desc:'Auto-fire for 5s' },
+  pierce:    { name:'Pierce',     emoji:'🪃', mp:20, cd:5000, desc:'Arrow pierces through row' },
 };
 
 // ── 몬스터 정의 (HP ×3) ───────────────────────────────────────────────────────
@@ -91,7 +91,7 @@ let _freeMode=false;
 
 async function loadPlayer() {
   if (!_uid) {
-    $('lobbyGP').textContent = '게스트';
+    $('lobbyGP').textContent = 'Guest';
     $('btnEnter').disabled = false;
     _updateFeeDisplay();
     return;
@@ -121,14 +121,14 @@ async function loadPlayer() {
 
 function _updateFeeDisplay() {
   const badge = $('feeBadge');
-  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
+  if (badge) badge.textContent = `Entry fee: ${_entryFee} GP`;
   const info = $('feeInfo');
   if (!info) return;
   if (!_entryCount) {
-    info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
+    info.textContent = 'First entry today · resets in 24h';
   } else {
     const h = Math.ceil((_entryResetAt + RESET_MS - Date.now()) / 3_600_000);
-    info.textContent = `오늘 ${_entryCount}번째 참가 · ${h}시간 후 100GP 리셋`;
+    info.textContent = `${_entryCount} entries today · 100GP reset in ${h}h`;
   }
 }
 
@@ -444,27 +444,27 @@ function useSkill(id){
       break;
     case 'fire':
       _fireMode=true;
-      _effects.push({type:'msg',text:'🔥 화염시!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
+      _effects.push({type:'msg',text:'🔥 Fire Arrow!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
       playSound('skill_fire');
       break;
     case 'poison':{
       const ri=ROWS.reduce((b,r,i)=>Math.abs(r.yFr*LH-cy)<Math.abs(ROWS[b].yFr*LH-cy)?i:b,0);
       _monsters.filter(m=>m.ri===ri&&!m.dead).forEach(m=>{m.poisonUntil=now+3000;});
-      _effects.push({type:'msg',text:'☠️ 독!',x:LW/2,y:ROWS[ri].yFr*LH,vy:-.5,alpha:1.2,big:false});
+      _effects.push({type:'msg',text:'☠️ Poison!',x:LW/2,y:ROWS[ri].yFr*LH,vy:-.5,alpha:1.2,big:false});
       playSound('skill_ice'); break;
     }
     case 'explode':
       createArrow(cx,cy,0,false,false,true);
       _arrowsFired++;
-      _effects.push({type:'msg',text:'💥 폭발!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
+      _effects.push({type:'msg',text:'💥 Explode!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
       playSound('cannon_shot'); break;
     case 'rapidfire':
       _rapidUntil=now+2500;
-      _effects.push({type:'msg',text:'⚡ 연사!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
+      _effects.push({type:'msg',text:'⚡ Rapid Fire!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
       playSound('tower_shot'); break;
     case 'pierce':
       _pierceMode=true; setTimeout(()=>{_pierceMode=false;},5000);
-      _effects.push({type:'msg',text:'🪃 관통!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
+      _effects.push({type:'msg',text:'🪃 Pierce!',x:LW/2,y:LH*.38,vy:-.4,alpha:1.3,big:true});
       playSound('arrow_shot'); break;
   }
   renderHUD();
@@ -607,7 +607,7 @@ function _exitCssFs(btn,wrap,game){
   if(wrap){wrap.style.maxWidth='';wrap.style.width='';wrap.style.height='';wrap.style.display='';wrap.style.alignItems='';wrap.style.justifyContent='';}
   _syncFsBtn(btn,false); resizeCanvas();
 }
-function _syncFsBtn(btn,full){btn.textContent=full?'⤡':'⤢';btn.title=full?'화면 축소':'전체 화면';}
+function _syncFsBtn(btn,full){btn.textContent=full?'⤡':'⤢';btn.title=full?'Exit Fullscreen':'Fullscreen';}
 
 // ── 입력 ─────────────────────────────────────────────────────────────────────
 function initInput(){
@@ -646,7 +646,7 @@ function renderSkillGrid(){
     btn.addEventListener('click',()=>{
       if(_selectedSkills.includes(id)){_selectedSkills=_selectedSkills.filter(s=>s!==id);btn.classList.remove('sel');}
       else if(_selectedSkills.length<3){_selectedSkills.push(id);btn.classList.add('sel');}
-      $('skCount').textContent=`${_selectedSkills.length}/3 선택`;
+      $('skCount').textContent=`${_selectedSkills.length}/3 selected`;
       $('skConfirm').disabled=_selectedSkills.length<1;
     });
     grid.appendChild(btn);
@@ -716,13 +716,13 @@ async function init(){
   // 에셋 로드 완료 즉시 로비 표시 — Firebase auth 응답 대기 없이 버튼 즉시 활성화
   showPhase('lobby');
   $('btnEnter')?.addEventListener('click',async()=>{
-    if(_uid){if(!await deductFee()){alert('GP가 부족합니다');return;}}
+    if(_uid){if(!await deductFee()){alert('Not enough GP');return;}}
     _freeMode=false;
-    _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 선택';$('skConfirm').disabled=true;showPhase('skill');
+    _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 selected';$('skConfirm').disabled=true;showPhase('skill');
   });
   $('btnFreePlay')?.addEventListener('click',()=>{
     _freeMode=true;
-    _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 선택';$('skConfirm').disabled=true;showPhase('skill');
+    _selectedSkills=[];renderSkillGrid();$('skCount').textContent='0/3 selected';$('skConfirm').disabled=true;showPhase('skill');
   });
   $('skConfirm')?.addEventListener('click',startCountdown);
   $('btnRestart')?.addEventListener('click',()=>location.reload());
@@ -731,20 +731,20 @@ async function init(){
   function _bindHdrLogin(){
     $('gLoginBtn')?.addEventListener('click',async()=>{
       try{
-        const btn=$('gLoginBtn'); if(btn) btn.textContent='로그인 중...';
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='Signing in...';
         await signInWithPopup(auth,new GoogleAuthProvider());
       }catch(e){
-        const btn=$('gLoginBtn'); if(btn) btn.textContent='🔑 Google 로그인';
-        if(!e.message?.includes('popup-closed')) alert('로그인 오류: '+e.message);
+        const btn=$('gLoginBtn'); if(btn) btn.textContent='🔑 Google Login';
+        if(!e.message?.includes('popup-closed')) alert('Login error: '+e.message);
       }
     });
   }
   function _updateHdr(user){
     const r=$('gHdrRight'); if(!r) return;
     if(user&&!user.isAnonymous){
-      r.innerHTML=`<span class="g-user-chip">👤 ${esc(user.displayName||'유저')}</span>`;
+      r.innerHTML=`<span class="g-user-chip">👤 ${esc(user.displayName||'User')}</span>`;
     } else {
-      r.innerHTML=`<button class="g-login-btn" id="gLoginBtn">🔑 Google 로그인</button>`;
+      r.innerHTML=`<button class="g-login-btn" id="gLoginBtn">🔑 Google Login</button>`;
       _bindHdrLogin();
     }
   }
