@@ -756,10 +756,10 @@ exports.adminSetBlacklist = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 18. 나의 멘티 목록 조회
-//     클라이언트: httpsCallable(functions, 'getMyMentees')()
+// 18. 온체인 멘티 목록 조회 (블록체인 이벤트 기반 — 별도 명칭)
+//     클라이언트: httpsCallable(functions, 'getMyOnChainMentees')()
 // ════════════════════════════════════════════════════════════════════════════
-exports.getMyMentees = onCall(
+exports.getMyOnChainMentees = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
     return await onboarding.getMyMentees(uid);
