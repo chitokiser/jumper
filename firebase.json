@@ -28,5 +28,26 @@
                   },
     "storage":  {
                     "rules":  "storage.rules"
-                }
+                },
+    "hosting": {
+        "public": ".",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**",
+            "functions/**",
+            "__pycache__/**",
+            "*.py",
+            "Dockerfile",
+            "CLAUDE.md",
+            "PROJECT_MAP.md",
+            "SECURITY.md"
+        ],
+        "rewrites": [
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
+    }
 }
