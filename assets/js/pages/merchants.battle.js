@@ -3490,8 +3490,8 @@ export function hideMyMarker() {
 
 function _makeShopIcon(type, imageUrl) {
   const TYPE_IMG = {
-    potion:       '/assets/images/shops/shop2.png',
-    shop_potion:  '/assets/images/shops/shop2.png',
+    potion:       '/assets/images/shops/potion.png',
+    shop_potion:  '/assets/images/shops/potion.png',
     weapon_armor: '/assets/images/shops/arms.png',
     shop_weapon_armor: '/assets/images/shops/arms.png',
     misc:         '/assets/images/shops/castle.png',
