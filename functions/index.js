@@ -284,6 +284,12 @@ exports.getMyMentees = onCall(wrapError(async (request) => {
   return await moneyTreeH.getMyMentees(uid);
 }));
 
+exports.plantBulkSeedlings = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { shopId } = request.data ?? {};
+  return await moneyTreeH.plantBulkSeedlings(uid, { shopId });
+}));
+
 // ════════════════════════════════════════════════════════════════════════════
 // 2. 온체인 회원 가입
 //    클라이언트: httpsCallable(functions, 'registerMember')({ mentorAddress: '0x...' })

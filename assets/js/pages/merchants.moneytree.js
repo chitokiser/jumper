@@ -328,9 +328,12 @@ export function openPlantModal(shopId, shopData = null) {
   const modal = document.getElementById('mtPlantModal');
   if (!modal || !_functions) return;
   const inv = _inv;
-  document.getElementById('mtPlantSeedCount').textContent = inv?.seedlings ?? '?';
+  const seeds = inv?.seedlings ?? 0;
+  document.getElementById('mtPlantSeedCount').textContent = seeds;
   const tcEl = document.getElementById('mtPlantTicketCount');
   if (tcEl) tcEl.textContent = inv?.harvestTickets ?? '?';
+  const allCountEl = document.getElementById('mtPlantAllCount');
+  if (allCountEl) allCountEl.textContent = seeds;
   modal.classList.add('open');
 }
 
@@ -368,6 +371,45 @@ window._mtConfirmPlant = async function() {
     }
   } finally {
     if (btn) btn.disabled = false;
+  }
+};
+
+window._mtPlantAll = async function() {
+  if (!_functions) { _showMtToast('Functions not initialized. Please reload.', 'error'); return; }
+  if (!_activeShopId) { _showMtToast('No shop selected. Walk near a shop and try again.', 'error'); return; }
+  const seeds = _inv?.seedlings ?? 0;
+  if (seeds < 1) { _showMtToast('No seedlings to plant.', 'error'); return; }
+
+  const confirmBtn = document.getElementById('mtPlantConfirmBtn');
+  const allBtn     = document.getElementById('mtPlantAllBtn');
+  if (confirmBtn) confirmBtn.disabled = true;
+  if (allBtn)     allBtn.disabled = true;
+
+  await _onEnsurePos?.();
+  try {
+    _showMtToast(`🌱 Planting ${seeds} seedling${seeds > 1 ? 's' : ''}…`, 'info');
+    const fn = httpsCallable(_functions, 'plantBulkSeedlings');
+    const { data } = await fn({ shopId: _activeShopId });
+    document.getElementById('mtPlantModal')?.classList.remove('open');
+    const msg = data.skipped > 0
+      ? `🌳 Planted ${data.planted}/${seeds} — ${data.skipped} spot(s) blocked (10m rule).`
+      : `🌳 All ${data.planted} seedling${data.planted > 1 ? 's' : ''} planted!`;
+    playSound('plant_seedling');
+    _showMtToast(msg, 'success');
+    await refreshMoneyTreeInventory();
+    const refPos = _ctx?.lastPos || _ctx?.gpsPos;
+    if (refPos) loadMoneyTreeMarkers(refPos.lat, refPos.lng);
+  } catch (e) {
+    const msg = e?.message || 'Plant failed';
+    if (msg.includes('5 km') || msg.includes('within')) {
+      const shopName = _activeShopData?.name || 'the potion shop';
+      _showMtToast(`Cannot plant here — go back to "${shopName}".`, 'error');
+    } else {
+      _showMtToast(`Plant failed: ${msg}`, 'error');
+    }
+  } finally {
+    if (confirmBtn) confirmBtn.disabled = false;
+    if (allBtn)     allBtn.disabled = false;
   }
 };
 

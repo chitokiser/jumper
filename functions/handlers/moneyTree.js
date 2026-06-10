@@ -306,6 +306,108 @@ async function plantSeedling(uid, { shopId }) {
   };
 }
 
+// ── 묘목 일괄 식재 ────────────────────────────────────────────────────────────
+// 플레이어 위치 중심 15m 간격 8방향 × 3링(25 후보지)에 보유 묘목 전부 심기
+async function plantBulkSeedlings(uid, { shopId }) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId is required.');
+
+  const [shopSnap, player, cfg] = await Promise.all([
+    db.collection('game_shops').doc(shopId).get(),
+    _validateGps(uid),
+    getConfig(),
+  ]);
+  if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found.');
+  const shop = shopSnap.data();
+  const dist = haversineM(player.lat, player.lng, shop.lat, shop.lng);
+  if (dist > 5000) throw new HttpsError('failed-precondition', `You must be within 5 km of the shop (${Math.round(dist)}m away).`);
+
+  const seedCount = player.seedlings ?? 0;
+  if (seedCount < 1) throw new HttpsError('failed-precondition', 'You have no seedlings.');
+
+  // 후보 위치: 중심 + 8방향 × 3링 = 25곳 (15m, 30m, 45m 간격)
+  const D = 0.000135; // ~15m
+  const DIRS = [[1,0],[0.707,0.707],[0,1],[-0.707,0.707],[-1,0],[-0.707,-0.707],[0,-1],[0.707,-0.707]];
+  const candidates = [
+    { lat: player.lat, lng: player.lng },
+    ...DIRS.flatMap((_, i, arr) => [1, 2, 3].map(r => ({
+      lat: player.lat + arr[i][0] * D * r,
+      lng: player.lng + arr[i][1] * D * r,
+    }))),
+  ];
+
+  // 반경 ~60m 내 기존 나무 한 번에 조회
+  const margin = D * 5;
+  const nearSnap = await db.collection('money_trees')
+    .where('lat', '>=', player.lat - margin)
+    .where('lat', '<=', player.lat + margin)
+    .get();
+  const existingTrees = nearSnap.docs.map(d => d.data());
+
+  const planted = [];
+  const justPlanted = []; // 이번 배치에서 심은 위치 (10m 중복 방지)
+
+  for (const pos of candidates) {
+    if (planted.length >= seedCount) break;
+
+    const blocked = [...existingTrees, ...justPlanted].some(t =>
+      haversineM(pos.lat, pos.lng, t.lat, t.lng) < 10
+    );
+    if (blocked) continue;
+
+    const lotteryR = Math.floor(Math.random() * (cfg.lotteryMax - cfg.lotteryMin + 1)) + cfg.lotteryMin;
+    const lotteryRef = db.collection('lottery_index').doc(String(lotteryR));
+    const lotterySnap = await lotteryRef.get();
+    const lotteryWinnerUid = (lotterySnap.exists && lotterySnap.data().uid !== uid)
+      ? lotterySnap.data().uid : null;
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    const result = await db.runTransaction(async (tx) => {
+      const pRef = db.collection('battle_players').doc(uid);
+      const [cfgSnap, pSnap] = await Promise.all([tx.get(CONFIG_REF), tx.get(pRef)]);
+      const pData = pSnap.data() ?? {};
+      if ((pData.seedlings ?? 0) < 1) return null;
+
+      const cfgData = { ...DEFAULTS, ...(cfgSnap.exists ? cfgSnap.data() : {}) };
+      const newCounter = (cfgData.globalPlantCounter ?? 0) + 1;
+      const treeId = `tree_${newCounter}`;
+      const newTotal = (pData.totalPlantsCount ?? 0) + 1;
+      const ticketBonus = newTotal % cfg.harvestTicketThreshold === 0 ? 1 : 0;
+      const assignedLottery = lotteryWinnerUid ? null : lotteryR;
+
+      tx.update(pRef, {
+        seedlings: admin.firestore.FieldValue.increment(-1),
+        totalPlantsCount: admin.firestore.FieldValue.increment(1),
+        harvestTickets: admin.firestore.FieldValue.increment(ticketBonus),
+        updatedAt: now,
+      });
+      tx.set(CONFIG_REF, { globalPlantCounter: newCounter }, { merge: true });
+      tx.set(db.collection('money_trees').doc(treeId), {
+        treeId, ownerUid: uid, plantedAt: now,
+        baseCounter: newCounter - 1,
+        lat: pos.lat, lng: pos.lng,
+        shopId, boostTotal: 0,
+        lotteryNumber: assignedLottery,
+      });
+      if (lotteryWinnerUid) {
+        tx.update(db.collection('battle_players').doc(lotteryWinnerUid), {
+          harvestTickets: admin.firestore.FieldValue.increment(1), updatedAt: now,
+        });
+        tx.delete(lotteryRef);
+      } else {
+        tx.set(lotteryRef, { uid, createdAt: now });
+      }
+      return { treeId, ticketBonus };
+    });
+
+    if (!result) break; // 묘목 소진
+    planted.push({ treeId: result.treeId, lat: pos.lat, lng: pos.lng });
+    justPlanted.push({ lat: pos.lat, lng: pos.lng });
+    await _log('plant_seedling', { uid, shopId, treeId: result.treeId, lat: pos.lat, lng: pos.lng, bulk: true });
+  }
+
+  return { ok: true, planted: planted.length, skipped: seedCount - planted.length, trees: planted };
+}
+
 // ── 영양제 사용 (슬롯머신) ────────────────────────────────────────────────────
 async function useTreeBooster(uid, { treeId }) {
   if (!treeId) throw new HttpsError('invalid-argument', 'treeId is required.');
@@ -624,6 +726,7 @@ module.exports = {
   buySeedling,
   buyTreeBooster,
   plantSeedling,
+  plantBulkSeedlings,
   useTreeBooster,
   harvestTree,
   getNearbyTrees,
