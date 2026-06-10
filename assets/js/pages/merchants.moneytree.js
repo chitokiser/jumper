@@ -42,10 +42,15 @@ function _updateHud(inv) {
   const tEl = document.getElementById('mtHudTickets');
   const iEl = document.getElementById('mtInvTickets');
   const mEl = document.getElementById('mtMyTreesTicketCount');
-  if (sEl) sEl.textContent = inv?.seedlings ?? 0;
-  if (tEl) tEl.textContent = tickets;
-  if (iEl) iEl.textContent = tickets;
-  if (mEl) mEl.textContent = tickets;
+  const svEl = document.getElementById('mtHudSv');
+  if (sEl)  sEl.textContent  = inv?.seedlings ?? 0;
+  if (tEl)  tEl.textContent  = tickets;
+  if (iEl)  iEl.textContent  = tickets;
+  if (mEl)  mEl.textContent  = tickets;
+  if (svEl) svEl.textContent = (inv?.sv ?? 0).toLocaleString();
+  // live-update mentor panel SV if shop is open
+  const svBalEl = document.getElementById('mtMentorSvBalance');
+  if (svBalEl) svBalEl.textContent = (inv?.sv ?? 0).toLocaleString();
 }
 
 // ── 나무 마커 로드 ────────────────────────────────────────────────────────────
@@ -172,6 +177,42 @@ export function renderMoneyTreeShopSection(shop, cfg) {
         style="width:100%;padding:10px;border-radius:8px;border:none;font-weight:700;font-size:13px;
                cursor:pointer;background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)">
         🌳 View My Trees / Plant
+      </button>
+      ${_renderMentorSection(inv, cfg)}
+    </div>
+  </div>`;
+}
+
+function _renderMentorSection(inv, cfg) {
+  const regPrice = cfg?.mentorRegTicketPriceGp?.toLocaleString() ?? '50,000';
+  if (!inv?.isMentor) {
+    return `<div style="margin-top:8px;padding:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.25);border-radius:8px">
+      <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:6px">⭐ Mentor Registration</div>
+      <div style="font-size:11px;color:#9ca3af;margin-bottom:8px">Register as a mentor to earn 40% SV when your mentees buy. Cost: <b style="color:#fbbf24">${regPrice} GP</b></div>
+      <button id="mtBuyMentorRegBtn" onclick="window._mtBuyMentorReg()"
+        style="width:100%;padding:8px;border-radius:8px;border:none;font-weight:700;font-size:12px;
+               cursor:pointer;background:linear-gradient(135deg,#d97706,#b45309);color:#fff">
+        Register as Mentor — ${regPrice} GP
+      </button>
+    </div>`;
+  }
+  const sv = inv?.sv ?? 0;
+  return `<div style="margin-top:8px;padding:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.25);border-radius:8px">
+    <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:8px">⭐ Mentor Panel</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:12px;color:#9ca3af">SV Balance</div>
+      <div style="font-size:16px;font-weight:700;color:#fbbf24" id="mtMentorSvBalance">${sv.toLocaleString()}</div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button onclick="window._mtOpenConvertSv()"
+        style="flex:1;padding:8px;border-radius:8px;border:none;font-weight:700;font-size:11px;
+               cursor:pointer;background:linear-gradient(135deg,#059669,#047857);color:#fff">
+        Convert SV → GP
+      </button>
+      <button onclick="window._mtOpenMentees()"
+        style="flex:1;padding:8px;border-radius:8px;border:none;font-weight:700;font-size:11px;
+               cursor:pointer;background:rgba(99,102,241,.2);color:#818cf8;border:1px solid rgba(99,102,241,.4)">
+        My Mentees
       </button>
     </div>
   </div>`;
@@ -396,6 +437,122 @@ window._mtDoHarvest = async function(treeId) {
     await refreshMoneyTreeInventory();
     if (_ctx?.gpsPos) loadMoneyTreeMarkers(_ctx.gpsPos.lat, _ctx.gpsPos.lng);
   } catch (e) { _showMtToast(e?.message || 'Harvest failed', 'error'); }
+};
+
+// ── 멘토 등록 ────────────────────────────────────────────────────────────────
+window._mtBuyMentorReg = async function() {
+  if (!_activeShopId || !_functions) return;
+  _onEnsurePos?.();
+  const btn = document.getElementById('mtBuyMentorRegBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const fn = httpsCallable(_functions, 'buyMentorRegTicket');
+    const { data } = await fn({ shopId: _activeShopId });
+    _showMtToast(`⭐ You are now a Mentor! -${data.cost.toLocaleString()} GP`, 'success');
+    _inv = await refreshMoneyTreeInventory();
+    // Re-render shop section so mentor panel replaces registration row
+    const section = document.getElementById('mtShopSection');
+    if (section && _cfg) section.outerHTML = renderMoneyTreeShopSection(
+      { id: _activeShopId, ..._activeShopData }, _cfg);
+  } catch (e) { _showMtToast(e?.message || 'Registration failed', 'error'); }
+  finally { const b = document.getElementById('mtBuyMentorRegBtn'); if (b) b.disabled = false; }
+};
+
+// ── SV → GP 변환 ─────────────────────────────────────────────────────────────
+window._mtOpenConvertSv = function() {
+  const existing = document.getElementById('mtConvertSvModal');
+  if (existing) existing.remove();
+  const sv = _inv?.sv ?? 0;
+  const modal = document.createElement('div');
+  modal.id = 'mtConvertSvModal';
+  modal.setAttribute('data-fs-modal', '');
+  modal.style.cssText = `position:fixed;inset:0;z-index:10100;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.7);`;
+  modal.innerHTML = `
+    <div style="background:#111827;border:1px solid #374151;border-radius:14px;padding:20px;width:280px;max-width:90vw">
+      <div style="font-size:15px;font-weight:700;color:#fbbf24;margin-bottom:12px">Convert SV → GP</div>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">Available SV: <b style="color:#fbbf24">${sv.toLocaleString()}</b></div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:12px">Converting SV grants the same amount in GP, and cascades 50% SV to your mentor chain (up to 6 levels).</div>
+      <input id="mtConvertSvAmt" type="number" min="1" max="${sv}" value="${sv}"
+        style="width:100%;padding:8px;border-radius:8px;border:1px solid #374151;background:#1f2937;
+               color:#f3f4f6;font-size:14px;font-weight:700;text-align:center;margin-bottom:12px;box-sizing:border-box">
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('mtConvertSvModal').remove()"
+          style="flex:1;padding:9px;border-radius:8px;border:1px solid #374151;background:transparent;color:#9ca3af;font-size:13px;cursor:pointer">
+          Cancel
+        </button>
+        <button id="mtConvertSvConfirmBtn" onclick="window._mtConfirmConvertSv()"
+          style="flex:1;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,#059669,#047857);
+                 color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+          Convert
+        </button>
+      </div>
+    </div>`;
+  const fsContainer = document.getElementById('fullscreenContainer') || document.body;
+  fsContainer.appendChild(modal);
+};
+
+window._mtConfirmConvertSv = async function() {
+  if (!_functions) return;
+  const amtEl = document.getElementById('mtConvertSvAmt');
+  const amount = Math.floor(parseFloat(amtEl?.value) || 0);
+  if (amount <= 0) { _showMtToast('Enter a positive amount.', 'error'); return; }
+  const btn = document.getElementById('mtConvertSvConfirmBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const fn = httpsCallable(_functions, 'convertSvToGp');
+    await fn({ amount });
+    document.getElementById('mtConvertSvModal')?.remove();
+    _showMtToast(`✅ Converted ${amount.toLocaleString()} SV → GP!`, 'success');
+    await refreshMoneyTreeInventory();
+  } catch (e) { _showMtToast(e?.message || 'Conversion failed', 'error'); }
+  finally { const b = document.getElementById('mtConvertSvConfirmBtn'); if (b) b.disabled = false; }
+};
+
+// ── 멘티 목록 ─────────────────────────────────────────────────────────────────
+window._mtOpenMentees = async function() {
+  const existing = document.getElementById('mtMenteesModal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'mtMenteesModal';
+  modal.setAttribute('data-fs-modal', '');
+  modal.style.cssText = `position:fixed;inset:0;z-index:10100;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.7);`;
+  modal.innerHTML = `
+    <div style="background:#111827;border:1px solid #374151;border-radius:14px;padding:20px;
+                width:320px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:15px;font-weight:700;color:#818cf8">My Mentees</div>
+        <button onclick="document.getElementById('mtMenteesModal').remove()"
+          style="background:transparent;border:none;color:#6b7280;font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div id="mtMenteeList" style="overflow-y:auto;flex:1;color:#9ca3af;text-align:center;padding:20px">Loading...</div>
+    </div>`;
+  const fsContainer = document.getElementById('fullscreenContainer') || document.body;
+  fsContainer.appendChild(modal);
+
+  try {
+    const fn = httpsCallable(_functions, 'getMyMentees');
+    const { data } = await fn();
+    const list = document.getElementById('mtMenteeList');
+    if (!list) return;
+    if (!data.mentees?.length) {
+      list.innerHTML = '<div style="padding:20px">No mentees yet.</div>';
+      return;
+    }
+    list.style.textAlign = 'left';
+    list.style.padding = '0';
+    list.innerHTML = data.mentees.map(m => `
+      <div style="padding:8px 10px;border-bottom:1px solid #1f2937;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#f3f4f6">${m.displayName}</div>
+          <div style="font-size:11px;color:#6b7280">Trees: ${m.totalPlantsCount}${m.isMentor ? ' · ⭐ Mentor' : ''}</div>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    const list = document.getElementById('mtMenteeList');
+    if (list) list.innerHTML = `<div style="color:#ef4444;padding:20px">${e.message}</div>`;
+  }
 };
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────────

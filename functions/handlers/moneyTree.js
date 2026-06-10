@@ -17,8 +17,11 @@ const DEFAULTS = {
   harvestTicketThreshold: 10,
   boosterPriceGp: 1000, boosterMin: 1, boosterMax: 10,
   trollDropRate: 0.10, harvestTaxRate: 0.10,
-  shopOwnerCommissionSeedling: 0.30,
-  shopOwnerCommissionBooster: 0.50,
+  shopOwnerCommissionRate: 0.20,
+  mentorSvRate: 0.40,
+  svCascadeRate: 0.50,
+  svCascadeLevels: 6,
+  mentorRegTicketPriceGp: 50000,
   globalPlantCounter: 0,
 };
 
@@ -74,6 +77,21 @@ async function _log(type, data) {
   });
 }
 
+async function _resolveUpline(uid, maxLevels) {
+  const chain = [];
+  const visited = new Set([uid]);
+  let cur = uid;
+  for (let i = 0; i < maxLevels; i++) {
+    const snap = await db.collection('battle_players').doc(cur).get();
+    const mentor = snap.data()?.mentorUid;
+    if (!mentor || visited.has(mentor)) break;
+    visited.add(mentor);
+    chain.push(mentor);
+    cur = mentor;
+  }
+  return chain;
+}
+
 // ── 설정 조회 ──────────────────────────────────────────────────────────────────
 async function getMoneyTreeConfig() {
   return await getConfig();
@@ -87,7 +105,7 @@ async function adminSetMoneyTreeConfig(uid, data) {
     'growthRate', 'maxTreeValue', 'harvestTicketThreshold',
     'boosterPriceGp', 'boosterMin', 'boosterMax',
     'trollDropRate', 'harvestTaxRate',
-    'shopOwnerCommissionSeedling', 'shopOwnerCommissionBooster',
+    'shopOwnerCommissionRate', 'mentorSvRate', 'svCascadeRate', 'mentorRegTicketPriceGp',
   ];
   const update = {};
   for (const k of allowed) {
@@ -113,31 +131,69 @@ async function buySeedling(uid, { shopId, qty = 1 }) {
   const shop = shopSnap.data();
   const shopType = shop.type?.replace(/^shop_/, '') ?? shop.type;
   if (shopType !== 'potion') throw new HttpsError('failed-precondition', 'Seedlings can only be purchased at a Potion Shop.');
-  const dist = haversineM(player.lat, player.lng, shop.lat, shop.lng);
-  if (dist > 5000) throw new HttpsError('failed-precondition', `You are too far from the shop (${Math.round(dist)}m). Move within 5 km.`);
+  if (haversineM(player.lat, player.lng, shop.lat, shop.lng) > 5000)
+    throw new HttpsError('failed-precondition', `You are too far from the shop. Move within 5 km.`);
 
   const ownerUid = shop.ownerUid;
-  const ownerShare = Math.floor(totalCost * cfg.shopOwnerCommissionSeedling);
+  const ownerShare = Math.floor(totalCost * cfg.shopOwnerCommissionRate);
+  const svAmt = Math.floor(totalCost * cfg.mentorSvRate);
+  const now = admin.firestore.FieldValue.serverTimestamp();
 
   await db.runTransaction(async (tx) => {
     const pRef = db.collection('battle_players').doc(uid);
     const pSnap = await tx.get(pRef);
-    const gold = pSnap.data()?.gold ?? 0;
+    const pData = pSnap.data() ?? {};
+    const gold = pData.gold ?? 0;
     if (gold < totalCost) throw new HttpsError('failed-precondition', `Not enough GP (have ${gold}, need ${totalCost}).`);
-    const now = admin.firestore.FieldValue.serverTimestamp();
-    tx.update(pRef, { gold: gold - totalCost, seedlings: admin.firestore.FieldValue.increment(n), updatedAt: now });
+
+    // Auto-assign shop owner as mentor on first purchase
+    const autoAssign = !pData.mentorUid && ownerUid && ownerUid !== uid;
+    const mentorUid = pData.mentorUid ?? (autoAssign ? ownerUid : null);
+
+    // Read owner doc if we will write to it
+    let ownerData = null;
     if (ownerUid && ownerUid !== uid) {
-      tx.update(db.collection('battle_players').doc(ownerUid), {
-        gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now,
+      ownerData = (await tx.get(db.collection('battle_players').doc(ownerUid))).data() ?? {};
+    }
+
+    // Determine if mentor qualifies to receive SV
+    let mentorIsMentor = autoAssign; // auto-assigned owner becomes isMentor
+    if (mentorUid && !autoAssign) {
+      if (mentorUid === ownerUid) {
+        mentorIsMentor = ownerData?.isMentor ?? false;
+      } else if (mentorUid !== uid) {
+        mentorIsMentor = (await tx.get(db.collection('battle_players').doc(mentorUid))).data()?.isMentor ?? false;
+      }
+    }
+
+    tx.update(pRef, {
+      gold: gold - totalCost,
+      seedlings: admin.firestore.FieldValue.increment(n),
+      ...(autoAssign ? { mentorUid: ownerUid } : {}),
+      updatedAt: now,
+    });
+
+    if (ownerUid && ownerUid !== uid) {
+      const ownerUpd = { gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now };
+      if (autoAssign) ownerUpd.isMentor = true;
+      if (ownerUid === mentorUid && mentorIsMentor && svAmt > 0)
+        ownerUpd.sv = admin.firestore.FieldValue.increment(svAmt);
+      tx.update(db.collection('battle_players').doc(ownerUid), ownerUpd);
+    }
+
+    if (mentorUid && mentorUid !== ownerUid && mentorUid !== uid && mentorIsMentor && svAmt > 0) {
+      tx.update(db.collection('battle_players').doc(mentorUid), {
+        sv: admin.firestore.FieldValue.increment(svAmt), updatedAt: now,
       });
     }
+
     tx.set(db.collection('game_shops').doc(shopId), {
       seedlingRevenue: admin.firestore.FieldValue.increment(ownerShare),
       seedlingCount:   admin.firestore.FieldValue.increment(n),
     }, { merge: true });
   });
 
-  await _log('buy_seedling', { uid, shopId, qty: n, totalCost, ownerShare, ownerUid });
+  await _log('buy_seedling', { uid, shopId, qty: n, totalCost, ownerShare, svAmt, ownerUid });
   return { ok: true, qty: n, cost: totalCost };
 }
 
@@ -156,31 +212,66 @@ async function buyTreeBooster(uid, { shopId, qty = 1 }) {
   const shop = shopSnap.data();
   const shopType = shop.type?.replace(/^shop_/, '') ?? shop.type;
   if (shopType !== 'potion') throw new HttpsError('failed-precondition', 'Boosters can only be purchased at a Potion Shop.');
-  const dist = haversineM(player.lat, player.lng, shop.lat, shop.lng);
-  if (dist > 5000) throw new HttpsError('failed-precondition', `You are too far from the shop (${Math.round(dist)}m). Move within 5 km.`);
+  if (haversineM(player.lat, player.lng, shop.lat, shop.lng) > 5000)
+    throw new HttpsError('failed-precondition', `You are too far from the shop. Move within 5 km.`);
 
   const ownerUid = shop.ownerUid;
-  const ownerShare = Math.floor(totalCost * cfg.shopOwnerCommissionBooster);
+  const ownerShare = Math.floor(totalCost * cfg.shopOwnerCommissionRate);
+  const svAmt = Math.floor(totalCost * cfg.mentorSvRate);
+  const now = admin.firestore.FieldValue.serverTimestamp();
 
   await db.runTransaction(async (tx) => {
     const pRef = db.collection('battle_players').doc(uid);
     const pSnap = await tx.get(pRef);
-    const gold = pSnap.data()?.gold ?? 0;
+    const pData = pSnap.data() ?? {};
+    const gold = pData.gold ?? 0;
     if (gold < totalCost) throw new HttpsError('failed-precondition', `Not enough GP (have ${gold}, need ${totalCost}).`);
-    const now = admin.firestore.FieldValue.serverTimestamp();
-    tx.update(pRef, { gold: gold - totalCost, treeBoosters: admin.firestore.FieldValue.increment(n), updatedAt: now });
+
+    const autoAssign = !pData.mentorUid && ownerUid && ownerUid !== uid;
+    const mentorUid = pData.mentorUid ?? (autoAssign ? ownerUid : null);
+
+    let ownerData = null;
     if (ownerUid && ownerUid !== uid) {
-      tx.update(db.collection('battle_players').doc(ownerUid), {
-        gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now,
+      ownerData = (await tx.get(db.collection('battle_players').doc(ownerUid))).data() ?? {};
+    }
+
+    let mentorIsMentor = autoAssign;
+    if (mentorUid && !autoAssign) {
+      if (mentorUid === ownerUid) {
+        mentorIsMentor = ownerData?.isMentor ?? false;
+      } else if (mentorUid !== uid) {
+        mentorIsMentor = (await tx.get(db.collection('battle_players').doc(mentorUid))).data()?.isMentor ?? false;
+      }
+    }
+
+    tx.update(pRef, {
+      gold: gold - totalCost,
+      treeBoosters: admin.firestore.FieldValue.increment(n),
+      ...(autoAssign ? { mentorUid: ownerUid } : {}),
+      updatedAt: now,
+    });
+
+    if (ownerUid && ownerUid !== uid) {
+      const ownerUpd = { gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now };
+      if (autoAssign) ownerUpd.isMentor = true;
+      if (ownerUid === mentorUid && mentorIsMentor && svAmt > 0)
+        ownerUpd.sv = admin.firestore.FieldValue.increment(svAmt);
+      tx.update(db.collection('battle_players').doc(ownerUid), ownerUpd);
+    }
+
+    if (mentorUid && mentorUid !== ownerUid && mentorUid !== uid && mentorIsMentor && svAmt > 0) {
+      tx.update(db.collection('battle_players').doc(mentorUid), {
+        sv: admin.firestore.FieldValue.increment(svAmt), updatedAt: now,
       });
     }
+
     tx.set(db.collection('game_shops').doc(shopId), {
       boosterRevenue: admin.firestore.FieldValue.increment(ownerShare),
       boosterCount:   admin.firestore.FieldValue.increment(n),
     }, { merge: true });
   });
 
-  await _log('buy_booster', { uid, shopId, qty: n, totalCost, ownerShare, ownerUid });
+  await _log('buy_booster', { uid, shopId, qty: n, totalCost, ownerShare, svAmt, ownerUid });
   return { ok: true, qty: n, cost: totalCost };
 }
 
@@ -418,6 +509,116 @@ async function getMyInventory(uid) {
     treeBoosters:     d.treeBoosters     ?? 0,
     totalPlantsCount: d.totalPlantsCount ?? 0,
     lotteryNumbers:   lotterySnap.docs.map(x => Number(x.id)),
+    sv:               d.sv               ?? 0,
+    isMentor:         d.isMentor         ?? false,
+    mentorUid:        d.mentorUid        ?? null,
+  };
+}
+
+// ── 멘토 등록권 구매 ─────────────────────────────────────────────────────────
+async function buyMentorRegTicket(uid, { shopId }) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId is required.');
+  const cfg = await getConfig();
+  const cost = cfg.mentorRegTicketPriceGp;
+
+  const [shopSnap, player] = await Promise.all([
+    db.collection('game_shops').doc(shopId).get(),
+    _validateGps(uid),
+  ]);
+  if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found.');
+  const shop = shopSnap.data();
+  if (haversineM(player.lat, player.lng, shop.lat, shop.lng) > 5000)
+    throw new HttpsError('failed-precondition', 'Too far from shop. Move within 5 km.');
+
+  const ownerUid = shop.ownerUid;
+  const ownerShare = Math.floor(cost * cfg.shopOwnerCommissionRate);
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
+  await db.runTransaction(async (tx) => {
+    const pRef = db.collection('battle_players').doc(uid);
+    const pSnap = await tx.get(pRef);
+    const pData = pSnap.data() ?? {};
+    if (pData.isMentor) throw new HttpsError('already-exists', 'You are already a mentor.');
+    const gold = pData.gold ?? 0;
+    if (gold < cost)
+      throw new HttpsError('failed-precondition', `Not enough GP (have ${gold}, need ${cost}).`);
+
+    tx.update(pRef, { gold: gold - cost, isMentor: true, updatedAt: now });
+
+    if (ownerUid && ownerUid !== uid) {
+      tx.set(db.collection('battle_players').doc(ownerUid), {
+        gold: admin.firestore.FieldValue.increment(ownerShare), updatedAt: now,
+      }, { merge: true });
+    }
+
+    tx.set(db.collection('game_shops').doc(shopId), {
+      mentorRegRevenue: admin.firestore.FieldValue.increment(ownerShare),
+      mentorRegCount:   admin.firestore.FieldValue.increment(1),
+    }, { merge: true });
+  });
+
+  await _log('buy_mentor_reg', { uid, shopId, cost, ownerShare, ownerUid });
+  return { ok: true, cost };
+}
+
+// ── SV → GP 변환 ─────────────────────────────────────────────────────────────
+async function convertSvToGp(uid, { amount }) {
+  if (!amount || amount <= 0) throw new HttpsError('invalid-argument', 'Amount must be positive.');
+  const amt = Math.floor(amount);
+  const cfg = await getConfig();
+
+  // Resolve upline outside transaction (mentor chain is stable)
+  const upline = await _resolveUpline(uid, cfg.svCascadeLevels);
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
+  await db.runTransaction(async (tx) => {
+    const pRef = db.collection('battle_players').doc(uid);
+    const pSnap = await tx.get(pRef);
+    const pData = pSnap.data() ?? {};
+    if (!pData.isMentor)
+      throw new HttpsError('permission-denied', 'Only mentors can convert SV to GP.');
+    if ((pData.sv ?? 0) < amt)
+      throw new HttpsError('failed-precondition', `Not enough SV (have ${pData.sv ?? 0}, need ${amt}).`);
+
+    tx.update(pRef, {
+      sv:   admin.firestore.FieldValue.increment(-amt),
+      gold: admin.firestore.FieldValue.increment(amt),
+      updatedAt: now,
+    });
+
+    // Cascade SV up to 6 levels of upline mentors
+    let cascade = amt;
+    for (const mentorUid of upline) {
+      cascade = Math.floor(cascade * cfg.svCascadeRate);
+      if (cascade <= 0) break;
+      const mRef = db.collection('battle_players').doc(mentorUid);
+      const mSnap = await tx.get(mRef);
+      if (mSnap.data()?.isMentor) {
+        tx.update(mRef, { sv: admin.firestore.FieldValue.increment(cascade), updatedAt: now });
+      }
+    }
+  });
+
+  await _log('sv_to_gp', { uid, amount: amt, upline });
+  return { ok: true, amount: amt };
+}
+
+// ── 멘티 목록 조회 ────────────────────────────────────────────────────────────
+async function getMyMentees(uid) {
+  const snap = await db.collection('battle_players')
+    .where('mentorUid', '==', uid)
+    .limit(50)
+    .get();
+  return {
+    mentees: snap.docs.map(d => {
+      const data = d.data();
+      return {
+        uid: d.id,
+        displayName: data.displayName ?? data.name ?? '—',
+        totalPlantsCount: data.totalPlantsCount ?? 0,
+        isMentor: data.isMentor ?? false,
+      };
+    }),
   };
 }
 
@@ -464,4 +665,7 @@ module.exports = {
   getMyInventory,
   grantSeedlingDrop,
   adminGetMoneyTreeStats,
+  buyMentorRegTicket,
+  convertSvToGp,
+  getMyMentees,
 };

@@ -267,6 +267,23 @@ exports.adminGetMoneyTreeStats = onCall(wrapError(async (request) => {
   return await moneyTreeH.adminGetMoneyTreeStats(uid);
 }));
 
+exports.buyMentorRegTicket = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { shopId } = request.data ?? {};
+  return await moneyTreeH.buyMentorRegTicket(uid, { shopId });
+}));
+
+exports.convertSvToGp = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { amount } = request.data ?? {};
+  return await moneyTreeH.convertSvToGp(uid, { amount });
+}));
+
+exports.getMyMentees = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await moneyTreeH.getMyMentees(uid);
+}));
+
 // ════════════════════════════════════════════════════════════════════════════
 // 2. 온체인 회원 가입
 //    클라이언트: httpsCallable(functions, 'registerMember')({ mentorAddress: '0x...' })
