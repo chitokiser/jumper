@@ -134,10 +134,6 @@ const CATALOG = {
     price: 400000, type: 'shop', label: '방어구 상점',
     shopType: 'shop_weapon_armor', image: '/assets/images/shops/arms.png',
   },
-  shop_misc: {
-    price: 300000, type: 'shop', label: '잡템상점',
-    shopType: 'shop_misc', image: '/assets/images/shops/castle.png',
-  },
 };
 
 // ── 가격 조회 (Firestore 우선, 없으면 CATALOG 기본값) ─────────────────────────
@@ -316,4 +312,128 @@ async function getMyPlacedObjects(uid) {
   };
 }
 
-module.exports = { CATALOG, placeUserObject, getMyPlacedObjects, getUserPlacePrices, adminSetUserPlacePrices };
+// ── 3. 배치권 사용 ────────────────────────────────────────────────────────────
+async function useTicket(uid, { itemId, lat, lng }) {
+  if (!itemId || !String(itemId).startsWith('ticket_')) throw new Error('Invalid ticket item');
+  const catalogKey = String(itemId).replace(/^ticket_/, '');
+  const def = CATALOG[catalogKey];
+  if (!def) throw new Error('Unknown ticket type: ' + catalogKey);
+  if (!lat || !lng) throw new Error('Coordinates required');
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('Invalid coordinates');
+
+  // 상점 배치권은 5km 중복 검사 동일 적용
+  if (def.type === 'shop') {
+    const TYPE_ALIASES = {
+      shop_potion:       ['shop_potion', 'potion'],
+      shop_weapon_armor: ['shop_weapon_armor', 'weapon_armor'],
+    };
+    const aliasTypes = TYPE_ALIASES[def.shopType] || [def.shopType];
+    const allShopsSnap = await db.collection('game_shops').where('active', '==', true).get();
+    for (const shopDoc of allShopsSnap.docs) {
+      const s = shopDoc.data();
+      if (!s.lat || !s.lng) continue;
+      if (!aliasTypes.includes(s.type)) continue;
+      const distM = haversineM(Number(lat), Number(lng), Number(s.lat), Number(s.lng));
+      if (distM <= 5000) {
+        throw new Error(
+          `⛔ A "${s.type}" shop already exists within 5km: "${s.name || shopDoc.id}" (${Math.round(distM)}m away). ` +
+          `Only one shop per category is allowed within a 5km radius.`
+        );
+      }
+    }
+  }
+
+  const userRef = db.collection('users').doc(uid);
+  const userSnap = await userRef.get();
+  const ownerName = userSnap.data()?.name || 'Player';
+
+  // treasure_inventory에서 티켓 확인
+  const invSnap = await db.collection('treasure_inventory')
+    .where('uid', '==', uid)
+    .where('itemId', '==', itemId)
+    .limit(1)
+    .get();
+  if (invSnap.empty) throw new Error('No placement ticket available: ' + itemId);
+  const invDocRef = invSnap.docs[0].ref;
+
+  let placeNo = 1;
+  await db.runTransaction(async t => {
+    const [invDoc, uSnap] = await Promise.all([t.get(invDocRef), t.get(userRef)]);
+    if (!invDoc.exists || (invDoc.data().count ?? 0) <= 0) throw new Error('Ticket not available');
+    placeNo = (uSnap.data()?.placeCount ?? 0) + 1;
+    t.update(invDocRef, { count: admin.firestore.FieldValue.increment(-1) });
+    t.set(userRef, { placeCount: placeNo }, { merge: true });
+  });
+
+  const base = {
+    ownerUid: uid, ownerName,
+    lat: Number(lat), lng: Number(lng),
+    active: true, userPlaced: true, placedByTicket: true,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  const nim = `${ownerName}님의`;
+  let docId = null;
+
+  if (def.type === 'box') {
+    const ref = await db.collection('treasure_boxes').add({
+      ...base, name: `${nim} 보물${placeNo}`,
+      hiddenBox: false, hp: def.hp, itemPool: def.itemPool,
+    });
+    docId = ref.id;
+  } else if (def.type === 'monster') {
+    const ref = await db.collection('battle_monsters').add({
+      ...base, name: `${nim} ${def.label}${placeNo}`,
+      image: def.image ?? null, monsterType: def.monsterType ?? null,
+      maxHp: def.maxHp, hp: def.maxHp, atk: def.atk,
+      detectRadius: def.detectRadius, respawnMinutes: 0,
+    });
+    docId = ref.id;
+  } else if (def.type === 'tower') {
+    const ref = await db.collection('battle_towers').add({
+      ...base, name: `${nim} ${def.label}${placeNo}`,
+      type: def.towerType, atk: def.atk, radius: def.radius,
+      hp: def.hp, image: def.image,
+    });
+    docId = ref.id;
+  } else if (def.type === 'shop') {
+    const normalizedShopType = def.shopType.replace(/^shop_/, '');
+    const ref = await db.collection('game_shops').add({
+      ...base, name: `${nim} ${def.label}${placeNo}`,
+      type: normalizedShopType, image: def.image ?? null,
+      items: [], sellsMt: normalizedShopType === 'potion',
+    });
+    docId = ref.id;
+  }
+
+  return { ok: true, docId, catalogKey, label: def.label };
+}
+
+// ── 4. 내 배치권 목록 ─────────────────────────────────────────────────────────
+async function getMyPlacementTickets(uid) {
+  const snap = await db.collection('treasure_inventory')
+    .where('uid', '==', uid)
+    .get();
+  const tickets = snap.docs
+    .filter(d => d.data().itemId?.startsWith('ticket_') && (d.data().count ?? 0) > 0)
+    .map(d => {
+      const { itemId, count } = d.data();
+      const catalogKey = itemId.replace(/^ticket_/, '');
+      const def = CATALOG[catalogKey];
+      return {
+        itemId, count,
+        catalogKey,
+        label: def?.label ?? catalogKey,
+        type: def?.type ?? null,
+        emoji: def?.type === 'monster' ? '👾'
+          : def?.type === 'box'     ? '🎁'
+          : def?.type === 'tower'   ? '🏹'
+          : def?.type === 'shop'    ? '🧪'
+          : '🎟️',
+      };
+    })
+    .filter(t => t.type !== null);
+  return { tickets };
+}
+
+module.exports = { CATALOG, placeUserObject, getMyPlacedObjects, getUserPlacePrices, adminSetUserPlacePrices, useTicket, getMyPlacementTickets };

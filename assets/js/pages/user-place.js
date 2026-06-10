@@ -8,6 +8,8 @@ const cfPlace        = httpsCallable(functions, 'placeUserObject', { timeout: 30
 const cfGetMine      = httpsCallable(functions, 'getMyPlacedObjects');
 const cfGetPrices    = httpsCallable(functions, 'getUserPlacePrices');
 const cfSetPrices    = httpsCallable(functions, 'adminSetUserPlacePrices');
+const cfUseTicket    = httpsCallable(functions, 'useTicket', { timeout: 30000 });
+const cfGetTickets   = httpsCallable(functions, 'getMyPlacementTickets');
 
 // ── 카탈로그 (서버와 동일) ────────────────────────────────────────────────────
 const CATALOG = [
@@ -41,7 +43,6 @@ const CATALOG = [
   { key: 'shop_potion',  emoji: '🧪', label: 'Potion Shop',     desc: 'Sell potions & buff items',        price: 600000, tag: 'shop' },
   { key: 'shop_weapon',  emoji: '⚔️', label: 'Weapon Shop',     desc: 'Sell weapon equipment',            price: 400000, tag: 'shop' },
   { key: 'shop_armor',   emoji: '🛡️', label: 'Armor Shop',      desc: 'Sell armor equipment',             price: 400000, tag: 'shop' },
-  { key: 'shop_misc',    emoji: '🎒', label: 'General Shop',    desc: 'Sell miscellaneous items',         price: 300000, tag: 'shop' },
 ];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ let _infoWin      = null;
 let _getGold      = null;   // () => number
 let _refreshCb    = null;   // 배치 후 데이터 새로고침 콜백
 let _placingKey   = null;   // 현재 배치 중인 아이템 키
+let _placingTicketId = null; // 현재 배치 중인 티켓 itemId
 let _clickListener = null;
 
 const $ = id => document.getElementById(id);
@@ -65,6 +67,7 @@ export function initUserPlace(map, infoWindow, getGoldFn, onPlacedCb) {
   $('btnUserPlaceClose')?.addEventListener('click', closeShopPanel);
   $('btnUserPlaceCancelMode')?.addEventListener('click', _cancelPlaceMode);
   $('btnUserPlaceMyList')?.addEventListener('click', loadMyList);
+  $('btnUserPlaceTickets')?.addEventListener('click', loadTicketList);
 }
 
 // ── 서버 가격 캐시 ────────────────────────────────────────────────────────────
@@ -86,6 +89,7 @@ async function openShopPanel() {
   const panel = $('userPlacePanel');
   if (!panel) return;
   if (!_serverPrices) await _fetchPrices();
+  _showTab('catalog');
   _renderCatalog();
   panel.style.display = 'flex';
 }
@@ -94,6 +98,15 @@ function closeShopPanel() {
   const panel = $('userPlacePanel');
   if (panel) panel.style.display = 'none';
   _cancelPlaceMode();
+}
+
+function _showTab(tab) {
+  const catalog = $('userPlaceCatalog');
+  const myList  = $('userPlaceMyList');
+  const tickets = $('userPlaceTickets');
+  if (catalog) catalog.style.display = tab === 'catalog' ? 'block' : 'none';
+  if (myList)  myList.style.display  = tab === 'mylist'  ? 'block' : 'none';
+  if (tickets) tickets.style.display = tab === 'tickets' ? 'block' : 'none';
 }
 
 function _renderCatalog() {
@@ -171,6 +184,7 @@ function _startPlaceMode(itemKey) {
 
 function _cancelPlaceMode() {
   _placingKey = null;
+  _placingTicketId = null;
   if (_clickListener) { google.maps.event.removeListener(_clickListener); _clickListener = null; }
   const banner = $('userPlaceBanner');
   if (banner) banner.style.display = 'none';
@@ -220,6 +234,7 @@ function _onMapClick(lat, lng, item) {
 
 // ── 내 배치 목록 ──────────────────────────────────────────────────────────────
 async function loadMyList() {
+  _showTab('mylist');
   const listEl = $('userPlaceMyList');
   if (!listEl) return;
   listEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">불러오는 중...</div>';
@@ -251,6 +266,96 @@ async function loadMyList() {
   } catch (e) {
     listEl.innerHTML = `<div style="color:#ef4444;">오류: ${e.message}</div>`;
   }
+}
+
+// ── 배치권 목록 ───────────────────────────────────────────────────────────────
+async function loadTicketList() {
+  _showTab('tickets');
+  const el = $('userPlaceTickets');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:12px 0;">Loading tickets...</div>';
+  try {
+    const { data } = await cfGetTickets();
+    const tickets = data?.tickets ?? [];
+    if (!tickets.length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:12px 0;">No placement tickets in inventory.<br>Buy tickets from NPC shops to place objects for free!</div>';
+      return;
+    }
+    el.innerHTML = tickets.map(t => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;
+                  border:1px solid var(--border,#e5e7eb);margin-bottom:6px;">
+        <span style="font-size:1.4rem;">${t.emoji}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:0.88rem;">${t.label}</div>
+          <div style="font-size:0.75rem;color:var(--muted,#6b7280);">Qty: ${t.count}</div>
+        </div>
+        <button data-ticket-id="${t.itemId}" data-ticket-label="${t.label}" data-ticket-emoji="${t.emoji}"
+          style="padding:5px 12px;background:#16a34a;color:#fff;border:none;border-radius:8px;
+                 font-size:0.82rem;font-weight:700;cursor:pointer;">
+          📌 Use
+        </button>
+      </div>`).join('');
+    el.querySelectorAll('[data-ticket-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _startTicketPlaceMode(btn.dataset.ticketId, btn.dataset.ticketLabel, btn.dataset.ticketEmoji);
+      });
+    });
+  } catch (e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:0.85rem;">Error: ${e.message}</div>`;
+  }
+}
+
+// ── 배치권 배치 모드 ─────────────────────────────────────────────────────────
+function _startTicketPlaceMode(itemId, label, emoji) {
+  _placingTicketId = itemId;
+  _placingKey = null;
+  closeShopPanel();
+
+  const banner = $('userPlaceBanner');
+  if (banner) {
+    banner.textContent = `📍 ${emoji} ${label} (Ticket) — Tap a spot on the map to place it`;
+    banner.style.display = 'block';
+  }
+  $('btnUserPlaceCancelMode').style.display = 'inline-block';
+
+  _clickListener = _map.addListener('click', e => {
+    _onTicketMapClick(e.latLng.lat(), e.latLng.lng(), itemId, label, emoji);
+  });
+}
+
+function _onTicketMapClick(lat, lng, itemId, label, emoji) {
+  _cancelPlaceMode();
+
+  const modal = $('userPlaceConfirmModal');
+  if (!modal) return;
+  $('upConfirmLabel').textContent  = `${emoji} ${label} (Ticket)`;
+  $('upConfirmPrice').textContent  = '🎟️ 1 Ticket (Free)';
+  $('upConfirmCoord').textContent  = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  $('upConfirmMsg').textContent    = '';
+  const confirmBtn = $('btnUpConfirm');
+  confirmBtn.disabled    = false;
+  confirmBtn.textContent = '✅ Confirm Placement';
+
+  const doPlace = async () => {
+    confirmBtn.disabled    = true;
+    confirmBtn.textContent = 'Processing...';
+    try {
+      await cfUseTicket({ itemId, lat, lng });
+      $('upConfirmMsg').textContent = `✅ Placed! (Ticket consumed)`;
+      $('upConfirmMsg').style.color = '#22c55e';
+      _refreshCb?.();
+      setTimeout(() => { modal.style.display = 'none'; }, 1500);
+    } catch (e) {
+      $('upConfirmMsg').textContent = 'Error: ' + e.message;
+      $('upConfirmMsg').style.color = '#ef4444';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '✅ Confirm Placement';
+    }
+  };
+
+  confirmBtn.onclick = doPlace;
+  $('btnUpCancel').onclick = () => { modal.style.display = 'none'; };
+  modal.style.display = 'flex';
 }
 
 // ── 관리자: 가격 편집 ─────────────────────────────────────────────────────────

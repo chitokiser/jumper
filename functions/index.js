@@ -2557,6 +2557,22 @@ exports.adminSetUserPlacePrices = onCall(
   })
 );
 
+exports.useTicket = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return userPlaceH.useTicket(uid, request.data ?? {});
+  })
+);
+
+exports.getMyPlacementTickets = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return userPlaceH.getMyPlacementTickets(uid);
+  })
+);
+
 // ════════════════════════════════════════════════════════════════════════════
 // 게임 경험치 → 온체인 레벨 배치 동기화
 // 설계: XP마다 온체인 저장 ❌ → 레벨업 시 Firestore 플래그 → 6시간 배치 1tx

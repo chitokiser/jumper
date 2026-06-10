@@ -2661,15 +2661,19 @@
           <div style="font-size:0.75rem;color:var(--muted);">GP로 보물 / 몬스터 / 타워 / 상점을 영구 배치</div>
         </div>
         <div style="display:flex;gap:8px;">
+          <button id="btnUserPlaceTickets" type="button"
+            style="padding:5px 10px;border:1px solid var(--border);border-radius:8px;
+                   background:var(--surface2,#f9fafb);font-size:0.78rem;cursor:pointer;">🎟️ Tickets</button>
           <button id="btnUserPlaceMyList" type="button"
             style="padding:5px 10px;border:1px solid var(--border);border-radius:8px;
-                   background:var(--surface2,#f9fafb);font-size:0.78rem;cursor:pointer;">내 배치</button>
+                   background:var(--surface2,#f9fafb);font-size:0.78rem;cursor:pointer;">My Placements</button>
           <button id="btnUserPlaceClose" type="button"
             style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted);">✕</button>
         </div>
       </div>
       <div id="userPlaceCatalog" style="overflow-y:auto;flex:1;"></div>
       <div id="userPlaceMyList" style="display:none;overflow-y:auto;flex:1;"></div>
+      <div id="userPlaceTickets" style="display:none;overflow-y:auto;flex:1;"></div>
     </div>
   </div>
 
