@@ -3578,65 +3578,71 @@ async function init() {
 }
 
 // ── 유저 지도 마커 (얼굴 원형 프레임 OverlayView) ────────────────────────────
-class UserFaceMarkerOverlay extends google.maps.OverlayView {
-  constructor(data) {
-    super();
-    this._d   = data; // { id, displayName, imageUrl, linkUrl, lat, lng }
-    this._div = null;
-  }
-  onAdd() {
-    const { displayName, imageUrl, linkUrl } = this._d;
-    const SZ  = 54;
-    const div = document.createElement('div');
-    div.style.cssText = 'position:absolute;cursor:pointer;text-align:center;z-index:150;';
+// google.maps 로드 후에만 클래스 생성 (최상단 extends 평가 방지)
+let _UserFaceMarkerOverlayClass = null;
+function _getUserFaceMarkerOverlayClass() {
+  if (_UserFaceMarkerOverlayClass) return _UserFaceMarkerOverlayClass;
+  _UserFaceMarkerOverlayClass = class extends google.maps.OverlayView {
+    constructor(data) {
+      super();
+      this._d   = data;
+      this._div = null;
+    }
+    onAdd() {
+      const { displayName, imageUrl, linkUrl } = this._d;
+      const SZ  = 54;
+      const div = document.createElement('div');
+      div.style.cssText = 'position:absolute;cursor:pointer;text-align:center;z-index:150;';
 
-    const ring = document.createElement('div');
-    ring.style.cssText = `width:${SZ}px;height:${SZ}px;border-radius:50%;
-      border:3px solid #ffd700;box-sizing:border-box;overflow:hidden;
-      background:#7c3aed;box-shadow:0 2px 10px rgba(0,0,0,.5);`;
-    const img = document.createElement('img');
-    img.src              = imageUrl;
-    img.alt              = '';
-    img.style.cssText    = 'width:100%;height:100%;object-fit:cover;display:block;';
-    img.onerror          = () => { img.style.display = 'none'; };
-    ring.appendChild(img);
-    div.appendChild(ring);
+      const ring = document.createElement('div');
+      ring.style.cssText = `width:${SZ}px;height:${SZ}px;border-radius:50%;
+        border:3px solid #ffd700;box-sizing:border-box;overflow:hidden;
+        background:#7c3aed;box-shadow:0 2px 10px rgba(0,0,0,.5);`;
+      const img = document.createElement('img');
+      img.src           = imageUrl;
+      img.alt           = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      img.onerror       = () => { img.style.display = 'none'; };
+      ring.appendChild(img);
+      div.appendChild(ring);
 
-    const lbl = document.createElement('div');
-    lbl.textContent   = displayName;
-    lbl.style.cssText = `margin-top:2px;font-size:10px;font-weight:700;color:#fff;
-      text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap;
-      max-width:72px;overflow:hidden;text-overflow:ellipsis;`;
-    div.appendChild(lbl);
+      const lbl = document.createElement('div');
+      lbl.textContent   = displayName;
+      lbl.style.cssText = `margin-top:2px;font-size:10px;font-weight:700;color:#fff;
+        text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap;
+        max-width:72px;overflow:hidden;text-overflow:ellipsis;`;
+      div.appendChild(lbl);
 
-    div.addEventListener('click', () => {
-      infoWindow.setContent(
-        `<div style="max-width:200px;text-align:center;">` +
-        `<img src="${escHtml(imageUrl)}" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #7c3aed;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;" onerror="this.style.display='none'" />` +
-        `<div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escHtml(displayName)}</div>` +
-        `<a href="${escHtml(linkUrl)}" target="_blank" rel="noopener" style="display:inline-block;padding:4px 14px;background:#7c3aed;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">Visit →</a>` +
-        `</div>`
-      );
-      infoWindow.setPosition(new google.maps.LatLng(this._d.lat, this._d.lng));
-      infoWindow.open(map);
-    });
+      div.addEventListener('click', () => {
+        infoWindow.setContent(
+          `<div style="max-width:200px;text-align:center;">` +
+          `<img src="${escHtml(imageUrl)}" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #7c3aed;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;" onerror="this.style.display='none'" />` +
+          `<div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escHtml(displayName)}</div>` +
+          `<a href="${escHtml(linkUrl)}" target="_blank" rel="noopener" style="display:inline-block;padding:4px 14px;background:#7c3aed;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">Visit →</a>` +
+          `</div>`
+        );
+        infoWindow.setPosition(new google.maps.LatLng(this._d.lat, this._d.lng));
+        infoWindow.open(map);
+      });
 
-    this._div = div;
-    this.getPanes().overlayMouseTarget.appendChild(div);
-  }
-  draw() {
-    if (!this._div) return;
-    const proj = this.getProjection();
-    if (!proj) return;
-    const SZ = 54;
-    const pt = proj.fromLatLngToDivPixel(new google.maps.LatLng(this._d.lat, this._d.lng));
-    this._div.style.left = `${pt.x - SZ / 2}px`;
-    this._div.style.top  = `${pt.y - SZ / 2}px`;
-  }
-  onRemove() {
-    this._div?.remove();
-    this._div = null;
-  }
+      this._div = div;
+      this.getPanes().overlayMouseTarget.appendChild(div);
+    }
+    draw() {
+      if (!this._div) return;
+      const proj = this.getProjection();
+      if (!proj) return;
+      const SZ = 54;
+      const pt = proj.fromLatLngToDivPixel(new google.maps.LatLng(this._d.lat, this._d.lng));
+      this._div.style.left = `${pt.x - SZ / 2}px`;
+      this._div.style.top  = `${pt.y - SZ / 2}px`;
+    }
+    onRemove() {
+      this._div?.remove();
+      this._div = null;
+    }
+  };
+  return _UserFaceMarkerOverlayClass;
 }
 
 async function loadUserMapMarkers() {
@@ -3646,9 +3652,10 @@ async function loadUserMapMarkers() {
     const mkrs = data?.markers ?? [];
     _userMapMarkers.forEach(m => m.setMap(null));
     _userMapMarkers = [];
+    const OverlayClass = _getUserFaceMarkerOverlayClass();
     mkrs.forEach(m => {
       if (!m.lat || !m.lng) return;
-      const overlay = new UserFaceMarkerOverlay(m);
+      const overlay = new OverlayClass(m);
       overlay.setMap(map);
       _userMapMarkers.push(overlay);
     });
