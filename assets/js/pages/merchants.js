@@ -3616,11 +3616,18 @@ function _getUserFaceMarkerOverlayClass() {
       div.appendChild(lbl);
 
       div.addEventListener('click', () => {
+        const isOwn = this._d.uid && this._d.uid === _uid;
+        const editBtn = isOwn
+          ? `<button onclick="document.getElementById('btnUserPlaceMarker').click();document.querySelector('[data-iw-close]')?.click();"
+               style="display:block;width:100%;margin-top:6px;padding:4px 14px;background:#6b7280;color:#fff;
+                      border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">✏️ Edit My Marker</button>`
+          : '';
         infoWindow.setContent(
           `<div style="max-width:200px;text-align:center;">` +
           `<img src="${escHtml(imageUrl)}" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #7c3aed;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;" onerror="this.style.display='none'" />` +
           `<div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escHtml(displayName)}</div>` +
           `<a href="${escHtml(linkUrl)}" target="_blank" rel="noopener" style="display:inline-block;padding:4px 14px;background:#7c3aed;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">Visit →</a>` +
+          editBtn +
           `</div>`
         );
         infoWindow.setPosition(new google.maps.LatLng(this._d.lat, this._d.lng));
