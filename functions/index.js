@@ -2416,6 +2416,30 @@ exports.sellJumpForCoins = onCall(
   })
 );
 
+// HEX → GP 현황 조회
+exports.getHexGpStatus = onCall(
+  { secrets: [adminKeySecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    return coinExchangeH.getHexGpStatus(uid);
+  })
+);
+
+// HEX → GP 전환
+exports.hexToGp = onCall(
+  { secrets: [walletSecret, adminKeySecret] },
+  wrapError(async (req) => {
+    const uid = requireAuth(req);
+    const { hexWei } = req.data ?? {};
+    if (!hexWei) throw new HttpsError('invalid-argument', 'hexWei is required');
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    const result = await coinExchangeH.hexToGp(uid, hexWei, walletSecret.value());
+    logger.info('hexToGp', { uid, hexWei, gpAmount: result.gpAmount, txHash: result.txHash });
+    return result;
+  })
+);
+
 // 관리자: 교환 내역 목록
 exports.listCoinExchanges = onCall(
   { secrets: [exchangeAddrSecret] },
@@ -2605,6 +2629,14 @@ exports.updateUserMarker = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
     return userPlaceH.updateUserMarker(uid, request.data ?? {});
+  })
+);
+
+exports.deleteUserMarker = onCall(
+  {},
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return userPlaceH.deleteUserMarker(uid, request.data ?? {});
   })
 );
 

@@ -1618,6 +1618,14 @@ onAuthReady(async (ctx) => {
   show("mainContent", true);
   initAccordion();
 
+  if (location.hash) {
+    const target = document.querySelector(location.hash);
+    if (target?.classList.contains('collapsible')) {
+      target.classList.remove('is-collapsed');
+      setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    }
+  }
+
   try {
     const snap = await getDoc(doc(db, "users", user.uid));
     const data = snap.exists() ? snap.data() : {};

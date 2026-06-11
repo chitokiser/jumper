@@ -10,6 +10,7 @@ const { HttpsError } = require('firebase-functions/v2/https');
 const { decrypt } = require('../wallet/crypto');
 const {
   getProvider,
+  getHexContract,
   getJumpTokenContract,
   getJumpAutoExchangeContract,
   getAdminWallet,
@@ -273,9 +274,97 @@ async function listCoinExchanges({ direction, limit: lim = 50 } = {}) {
   });
 }
 
+// ─────────────────────────────────────────────────────────────
+// 4. HEX → GameCoin(GP) 현황 조회
+// ─────────────────────────────────────────────────────────────
+async function getHexGpStatus(uid) {
+  const bpSnap = await db.collection('battle_players').doc(uid).get();
+  const gold   = bpSnap.exists ? (bpSnap.data().gold || 0) : 0;
+
+  const snap    = await db.collection('users').doc(uid).get();
+  const rawAddr = snap.data()?.wallet?.address || '';
+  const provider = getProvider();
+  const hexBal  = ethers.isAddress(rawAddr)
+    ? await getHexContract(provider).balanceOf(rawAddr)
+    : 0n;
+
+  const cfgSnap  = await db.collection('config').doc('exchange').get();
+  const gpPerHex = cfgSnap.exists ? (cfgSnap.data().gpPerHex || 1000) : 1000;
+
+  return {
+    userHexBalance: hexBal.toString(),
+    userGold:       gold,
+    gpPerHex,
+    walletAddress:  ethers.isAddress(rawAddr) ? rawAddr : null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 5. HEX → GameCoin(GP) 전환
+//
+// 흐름:
+//   1) 유저 수탁 지갑 HEX 잔액 확인
+//   2) Firestore config/exchange.gpPerHex 비율 조회
+//   3) 유저 수탁 지갑 → admin 지갑 HEX transfer
+//   4) battle_players.gold += gpAmount
+//   5) hex_gp_exchanges 기록
+// ─────────────────────────────────────────────────────────────
+async function hexToGp(uid, hexWei, masterSecret) {
+  const hexAmt = BigInt(hexWei);
+  if (hexAmt <= 0n)
+    throw new HttpsError('invalid-argument', 'hexWei must be a positive integer string');
+
+  const { signer, address } = await getCustodialSigner(uid, masterSecret);
+  const provider = getProvider();
+
+  const hexBal = await getHexContract(provider).balanceOf(address);
+  if (hexBal < hexAmt)
+    throw new HttpsError('failed-precondition', 'Insufficient HEX balance');
+
+  const cfgSnap  = await db.collection('config').doc('exchange').get();
+  const gpPerHex = cfgSnap.exists ? Number(cfgSnap.data().gpPerHex || 1000) : 1000;
+  if (gpPerHex <= 0)
+    throw new HttpsError('failed-precondition', 'HEX→GP conversion is currently disabled');
+
+  const gpAmount = Math.floor(Number(hexAmt) / 1e18 * gpPerHex);
+  if (gpAmount <= 0)
+    throw new HttpsError('invalid-argument', 'Amount too small — results in 0 GP');
+
+  const adminAddr = getAdminWallet().address;
+  const hexToken  = getHexContract(signer);
+
+  let receipt;
+  try {
+    const gasEst = await hexToken.transfer.estimateGas(adminAddr, hexAmt);
+    const tx     = await hexToken.transfer(adminAddr, hexAmt, { gasLimit: gasEst * 12n / 10n });
+    receipt      = await tx.wait();
+  } catch (err) {
+    throw new HttpsError('internal', `On-chain transfer failed: ${err.message}`);
+  }
+
+  await db.collection('battle_players').doc(uid).set({
+    gold:      admin.firestore.FieldValue.increment(gpAmount),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  await db.collection('hex_gp_exchanges').add({
+    uid,
+    walletAddress: address,
+    hexWei:        hexAmt.toString(),
+    gpAmount,
+    gpPerHex,
+    txHash:        receipt.hash,
+    createdAt:     admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { ok: true, gpAmount, txHash: receipt.hash };
+}
+
 module.exports = {
   getCoinExchangeStatus,
   buyJumpWithCoins,
   sellJumpForCoins,
   listCoinExchanges,
+  getHexGpStatus,
+  hexToGp,
 };

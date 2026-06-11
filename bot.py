@@ -684,6 +684,7 @@ async def cb_stars_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
             title=product["name"],
             description=product.get("description", product["name"]),
             payload=payload,
+            provider_token="",
             currency="XTR",
             prices=[LabeledPrice(product["name"], int(product["starsPrice"]))],
         )

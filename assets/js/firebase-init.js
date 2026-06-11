@@ -1,6 +1,7 @@
 // /assets/js/firebase-init.js
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getAuth, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider,
+         setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { getFunctions } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
@@ -47,6 +48,16 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth      = getAuth(app);
 const db        = getFirestore(app);
 const functions = getFunctions(app); // 기본 리전: us-central1
+
+// Telegram Mini App WebView: IndexedDB async writes may not complete before page navigation.
+// Use session persistence (synchronous sessionStorage) so the auth token survives
+// the telegram.html → merchants.html redirect without a timing race.
+// Detected via initData (fresh open) or tg_auth_ok (post-redirect).
+const _isTgCtx = !!(window.Telegram?.WebApp?.initData)
+              || sessionStorage.getItem('tg_auth_ok') === '1';
+if (_isTgCtx) {
+  try { await setPersistence(auth, browserSessionPersistence); } catch (_) { /* fallback to default */ }
+}
 
 // ── 에뮬레이터 연결 (Functions 로컬 테스트용) ──────────────────────
 // 사용법:

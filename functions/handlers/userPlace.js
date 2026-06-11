@@ -493,6 +493,20 @@ async function updateUserMarker(uid, { markerId, displayName, imageUrl, linkUrl 
   return { updated: true };
 }
 
+async function deleteUserMarker(uid, { markerId }) {
+  if (!markerId) throw new Error('Marker ID required');
+  const ref  = db.collection('user_markers').doc(markerId);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data().uid !== uid || !snap.data().active) {
+    throw new Error('Marker not found or access denied');
+  }
+  await ref.update({
+    active:    false,
+    deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { deleted: true };
+}
+
 async function placeUserMarker(uid, { displayName, imageUrl, linkUrl, lat, lng }) {
   if (!imageUrl || !linkUrl)         throw new Error('Image URL and link URL are required');
   if (lat == null || lng == null)    throw new Error('Coordinates are required');
@@ -592,4 +606,4 @@ async function getUserMarkers() {
   };
 }
 
-module.exports = { CATALOG, placeUserObject, getMyPlacedObjects, getUserPlacePrices, adminSetUserPlacePrices, useTicket, getMyPlacementTickets, placeUserMarker, getUserMarkers, getMyUserMarker, updateUserMarker };
+module.exports = { CATALOG, placeUserObject, getMyPlacedObjects, getUserPlacePrices, adminSetUserPlacePrices, useTicket, getMyPlacementTickets, placeUserMarker, getUserMarkers, getMyUserMarker, updateUserMarker, deleteUserMarker };

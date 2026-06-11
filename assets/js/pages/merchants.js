@@ -3128,7 +3128,11 @@ async function init() {
 
     // Firebase 미인증 상태에서만 자동 인증 시도
     if (!auth.currentUser) {
-      loginWithTelegram().catch(() => {/* 실패 시 수동 버튼으로 fallback */});
+      loginWithTelegram().catch(err => {
+        const tgBtn = $('btnOverlayTelegram');
+        if (tgBtn) tgBtn.textContent = '⚠️ Auto-login failed — tap to retry';
+        console.warn('[TG auth]', err?.message || err);
+      });
     }
   }
 

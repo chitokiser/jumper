@@ -464,6 +464,7 @@
           <button class="swap-tab-btn" data-swap="jump-coin">JUMP ↔ 게임코인</button>
           <button class="swap-tab-btn" data-swap="ton-coin">TON ↔ 게임코인</button>
           <button class="swap-tab-btn" data-swap="hex-ton">HEX ↔ TON</button>
+          <button class="swap-tab-btn" data-swap="hex-gp">HEX → GP</button>
           <button class="swap-tab-btn" data-swap="history">거래내역</button>
         </div>
 
@@ -775,6 +776,35 @@
           </div>
         </div><!-- /swapPanel-hex-ton -->
 
+        <!-- ⑨ HEX → GameCoin 패널 ──────────────────── -->
+        <div id="swapPanel-hex-gp" class="swap-panel">
+          <div class="ce-section">
+            <div class="ex-info-title ce-title">💎 HEX → GameCoin (GP)</div>
+
+            <!-- My GP balance -->
+            <div style="display:flex;align-items:center;justify-content:space-between;background:#0a1f14;border:1px solid #1a3a2a;border-radius:8px;padding:10px 16px;margin-bottom:14px;">
+              <span style="font-size:11px;color:#475569;">My GameCoin Balance</span>
+              <span id="hgGpBal" style="font-size:22px;font-weight:800;font-family:monospace;color:#22c55e;">–</span>
+            </div>
+
+            <div class="ce-info-grid">
+              <div class="ex-info-box"><div class="ex-info-lbl">Rate</div><div class="ex-info-val" id="hgGpPerHex">–</div><div class="ex-info-sub">per 1 HEX</div></div>
+              <div class="ex-info-box"><div class="ex-info-lbl">My HEX Balance</div><div class="ex-info-val" id="hgHexBal">–</div></div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <div class="ex-info-title ce-panel-title buy">Convert HEX → GP</div>
+              <div class="ex-field"><div class="ex-field-lbl">HEX Amount</div><input type="number" id="hgHexInput" placeholder="0.0" min="0.001" step="0.001" /></div>
+              <div class="ex-preview-box" id="hgPreview" style="display:none;"></div>
+              <button class="ex-action-btn buy" id="btnHgConvert" type="button">Convert HEX → GP</button>
+              <div class="ex-status" id="hgStatus"></div>
+              <p style="font-size:11px;color:#64748b;margin-top:10px;">
+                Need HEX? <a href="/mypage#hex-topup" style="color:#fbbf24;">Top up HEX on My Page →</a>
+              </p>
+            </div>
+          </div>
+        </div><!-- /swapPanel-hex-gp -->
+
         <!-- ⑧ 거래내역 패널 ─────────────────────────── -->
         <div id="swapPanel-history" class="swap-panel">
           <div class="hist-wrap">
@@ -785,6 +815,7 @@
                 <option value="jump_gamecoin">JUMP ↔ 게임코인</option>
                 <option value="ton_gamecoin">TON ↔ 게임코인</option>
                 <option value="hex_ton">HEX ↔ TON</option>
+                <option value="hex_gp">HEX → GP</option>
               </select>
               <select id="histFilterStatus" class="hist-filter-select">
                 <option value="">전체 상태</option>
@@ -864,6 +895,7 @@
         if (key === 'history'  && window.__historyLoad)   window.__historyLoad();
         if ((key === 'ton-coin' || key === 'hex-ton') && window.__swapRatesLoad) window.__swapRatesLoad();
         if (key === 'jump-coin' && window.__coinExLoad)  window.__coinExLoad();
+        if (key === 'hex-gp'   && window.__hexGpLoad)    window.__hexGpLoad();
       }
 
       swapBtns.forEach(btn => {
@@ -891,5 +923,6 @@
 
   <script type="module" src="/assets/js/pages/exchange.js"></script>
   <script type="module" src="/assets/js/pages/exchange.swap.js"></script>
+  <script type="module" src="/assets/js/pages/exchange.hexgp.js"></script>
 </body>
 </html>

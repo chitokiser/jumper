@@ -13,6 +13,7 @@ const cfGetTickets   = httpsCallable(functions, 'getMyPlacementTickets');
 const cfPlaceMarker  = httpsCallable(functions, 'placeUserMarker', { timeout: 30000 });
 const cfGetMyMarker  = httpsCallable(functions, 'getMyUserMarker');
 const cfUpdateMarker = httpsCallable(functions, 'updateUserMarker', { timeout: 30000 });
+const cfDeleteMarker = httpsCallable(functions, 'deleteUserMarker', { timeout: 30000 });
 
 // ── 카탈로그 (서버와 동일) ────────────────────────────────────────────────────
 const CATALOG = [
@@ -76,6 +77,11 @@ export function initUserPlace(map, infoWindow, getGoldFn, onPlacedCb, getDisplay
   $('btnUserPlaceMarker')?.addEventListener('click', _openMarkerForm);
   $('btnMarkerFormCancel')?.addEventListener('click', _closeMarkerForm);
   $('btnMarkerFormPlace')?.addEventListener('click', _onMarkerFormSubmit);
+  $('btnMarkerFormDelete')?.addEventListener('click', () => {
+    if (!_editMarkerId) return;
+    if (!confirm('Remove your marker from the map?')) return;
+    _doDeleteMarker(_editMarkerId);
+  });
 }
 
 // ── 서버 가격 캐시 ────────────────────────────────────────────────────────────
@@ -455,36 +461,41 @@ async function _openMarkerForm() {
   if (panel) panel.style.display = 'none';
   const form = $('userMarkerForm');
   if (!form) return;
-  // Reset to "new" state
-  $('markerDisplayName').value        = '';
-  $('markerImageUrl').value           = '';
-  $('markerLinkUrl').value            = '';
-  $('markerFormMsg').textContent      = '';
-  $('markerFormTitle').textContent    = '📸 Place My Marker';
-  $('markerFormCost').innerHTML       = 'Pin your face photo + link on the map — <strong style="color:#d97706;">🪙 10,000 GP</strong>';
-  $('btnMarkerFormPlace').disabled    = false;
-  $('btnMarkerFormPlace').textContent = '📍 Choose Location on Map';
-  _editMarkerId = null;
-  form.style.display = 'flex';
 
-  // Check for existing active marker
+  // Load existing marker first, then show the form fully populated
+  _editMarkerId = null;
+  let existingMarker = null;
   try {
     const { data } = await cfGetMyMarker();
-    if (data?.marker) {
-      const m = data.marker;
-      _editMarkerId = m.id;
-      $('markerDisplayName').value        = m.displayName || '';
-      $('markerImageUrl').value           = m.imageUrl    || '';
-      $('markerLinkUrl').value            = m.linkUrl     || '';
-      $('markerFormTitle').textContent    = '✏️ Edit My Marker';
-      $('markerFormCost').textContent     = 'Update your existing marker — Free';
-      $('btnMarkerFormPlace').textContent = '💾 Save Changes';
-    } else {
-      // Pre-fill name with username for new markers
-      const defaultName = _getDisplayName?.() || '';
-      if (defaultName) $('markerDisplayName').value = defaultName;
-    }
+    if (data?.marker) existingMarker = data.marker;
   } catch (_) {}
+
+  // Reset form
+  $('markerFormMsg').textContent      = '';
+  $('btnMarkerFormPlace').disabled    = false;
+  const deleteBtn = $('btnMarkerFormDelete');
+
+  if (existingMarker) {
+    const m = existingMarker;
+    _editMarkerId = m.id;
+    $('markerDisplayName').value        = m.displayName || '';
+    $('markerImageUrl').value           = m.imageUrl    || '';
+    $('markerLinkUrl').value            = m.linkUrl     || '';
+    $('markerFormTitle').textContent    = '✏️ Edit My Marker';
+    $('markerFormCost').textContent     = 'Update your existing marker — Free';
+    $('btnMarkerFormPlace').textContent = '💾 Save Changes';
+    if (deleteBtn) deleteBtn.style.display = 'block';
+  } else {
+    $('markerDisplayName').value        = _getDisplayName?.() || '';
+    $('markerImageUrl').value           = '';
+    $('markerLinkUrl').value            = '';
+    $('markerFormTitle').textContent    = '📸 Place My Marker';
+    $('markerFormCost').innerHTML       = 'Pin your face photo + link on the map — <strong style="color:#d97706;">🪙 10,000 GP</strong>';
+    $('btnMarkerFormPlace').textContent = '📍 Choose Location on Map';
+    if (deleteBtn) deleteBtn.style.display = 'none';
+  }
+
+  form.style.display = 'flex';
 }
 
 function _closeMarkerForm() {
@@ -558,6 +569,23 @@ async function _doUpdateMarker(markerId, { displayName, imageUrl, linkUrl }) {
     msg.style.color = '#ef4444';
     btn.disabled = false;
     btn.textContent = '💾 Save Changes';
+  }
+}
+
+async function _doDeleteMarker(markerId) {
+  const msg = $('markerFormMsg');
+  const btn = $('btnMarkerFormDelete');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
+  try {
+    await cfDeleteMarker({ markerId });
+    msg.textContent = '✅ Marker removed.';
+    msg.style.color = '#22c55e';
+    _refreshCb?.();
+    setTimeout(_closeMarkerForm, 1200);
+  } catch (e) {
+    msg.textContent = 'Error: ' + e.message;
+    msg.style.color = '#ef4444';
+    if (btn) { btn.disabled = false; btn.textContent = '🗑️ Delete Marker'; }
   }
 }
 
