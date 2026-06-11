@@ -961,6 +961,31 @@ async def cb_affiliate_stats(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await _safe_reply(q.message, "❌ Failed to load stats.")
 
 
+async def cb_charge_gp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    try:
+        products = await _run(_get_gp_products)
+        if not products:
+            await _safe_reply(q.message, "⚠️ No GP packages available right now.")
+            return
+        keyboard = []
+        for p in products:
+            keyboard.append([InlineKeyboardButton(
+                f"💰 {p['name']} — {p['starsPrice']} ⭐",
+                callback_data=f"stars_buy_{p['id']}"
+            )])
+        await q.message.reply_text(
+            "💰 *Charge Game Points*\n\n"
+            "Select a package to purchase with Telegram Stars ⭐:",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        print(f"[ERROR] cb_charge_gp: {e}")
+        await _safe_reply(q.message, "❌ Failed to load GP packages. Please try again.")
+
+
 async def cb_stars_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -992,39 +1017,99 @@ async def cb_show_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _reply_rate(q.message)
 
 
+_SEED_STARS_PRODUCTS = [
+    {
+        "name": "Premium Membership (30 Days)",
+        "description": "⭐ Daily 3,500 GP top-up + exclusive treasure boxes + Level 4 boost. Valid 30 days.",
+        "starsPrice": 800,
+        "productType": "premium",
+        "grantValue": 30,
+        "active": True,
+    },
+    {
+        "name": "🎁 Random Box",
+        "description": "Open a mystery box! Win 1 ~ 10,000 GP instantly. Max 3 per day.",
+        "starsPrice": 29,
+        "productType": "random_box",
+        "grantValue": 1,
+        "dailyLimit": 3,
+        "active": True,
+    },
+    # 1 Star ≈ $0.013 → 130 GP  /  rate: 100 Stars = $1.30 = 13,000 GP
+    {
+        "name": "💰 13,000 GP",
+        "description": "13,000 Game Points — 100 Stars ($1.30)",
+        "starsPrice": 100,
+        "productType": "gp",
+        "grantValue": 13000,
+        "active": True,
+    },
+    {
+        "name": "💰 130,000 GP",
+        "description": "130,000 Game Points — 1,000 Stars ($13.00)",
+        "starsPrice": 1000,
+        "productType": "gp",
+        "grantValue": 130000,
+        "active": True,
+    },
+    {
+        "name": "💰 1,300,000 GP",
+        "description": "1,300,000 Game Points — 10,000 Stars ($130.00)",
+        "starsPrice": 10000,
+        "productType": "gp",
+        "grantValue": 1300000,
+        "active": True,
+    },
+]
+
+# 잘못된 구 상품 이름 목록 — seed 시 자동 비활성화
+_DEPRECATED_PRODUCT_NAMES = {"💰 13,000 GP Pack"}
+
+
 def _seed_stars_products():
-    col  = _db.collection("stars_products")
-    if len(col.limit(1).get()) > 0:
-        return {"skipped": True}
-    products = [
-        {
-            "name": "Premium Membership (30 Days)",
-            "description": "⭐ Daily 3,500 GP top-up + exclusive treasure boxes + Level 4 boost. Valid 30 days.",
-            "starsPrice": 800,
-            "productType": "premium",
-            "grantValue": 30,
-            "active": True,
-        },
-        {
-            "name": "🎁 Random Box",
-            "description": "Open a mystery box! Win 1 ~ 10,000 GP instantly. Max 3 per day.",
-            "starsPrice": 29,
-            "productType": "random_box",
-            "grantValue": 1,
-            "dailyLimit": 3,
-            "active": True,
-        },
-    ]
-    for p in products:
-        col.add({**p, "createdAt": firestore.SERVER_TIMESTAMP})
-    return {"seeded": len(products)}
+    col = _db.collection("stars_products")
+    all_docs = col.get(timeout=_FS_TIMEOUT)
+    existing_names = {s.to_dict().get("name") for s in all_docs}
+
+    added = 0
+    for p in _SEED_STARS_PRODUCTS:
+        if p["name"] not in existing_names:
+            col.add({**p, "createdAt": firestore.SERVER_TIMESTAMP})
+            added += 1
+
+    # 구 상품 비활성화
+    deactivated = 0
+    for doc in all_docs:
+        name = doc.to_dict().get("name")
+        if name in _DEPRECATED_PRODUCT_NAMES and doc.to_dict().get("active"):
+            doc.reference.update({"active": False})
+            deactivated += 1
+
+    return {"seeded": added, "skipped": len(_SEED_STARS_PRODUCTS) - added, "deactivated": deactivated}
+
+
+def _get_gp_products() -> list:
+    snaps = (
+        _db.collection("stars_products")
+        .where("productType", "==", "gp")
+        .where("active", "==", True)
+        .get(timeout=_FS_TIMEOUT)
+    )
+    items = [{"id": s.id, **s.to_dict()} for s in snaps]
+    return sorted(items, key=lambda x: x.get("starsPrice", 0))
 
 
 async def cmd_seedstars(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Stars 상품 시드 (1회용 — 이미 있으면 스킵)."""
     try:
         result = await _run(_seed_stars_products)
-        msg = "✅ Already seeded." if result.get("skipped") else f"✅ Seeded {result['seeded']} product(s)."
+        seeded = result.get("seeded", 0)
+        skipped = result.get("skipped", 0)
+        deactivated = result.get("deactivated", 0)
+        parts = []
+        parts.append(f"✅ Seeded {seeded} new" if seeded > 0 else f"✅ All {skipped} products exist")
+        if deactivated: parts.append(f"{deactivated} deprecated deactivated")
+        msg = " · ".join(parts) + "."
         await update.message.reply_text(msg)
     except Exception as e:
         await update.message.reply_text(f"❌ {e}")
@@ -1081,7 +1166,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎮 Game Hub", web_app=WebAppInfo(url=HUB_URL))],
             [InlineKeyboardButton("📝 Register — Get 1,000 GP Airdrop!", callback_data="register_check")],
             [InlineKeyboardButton("🤝 Affiliate Program", callback_data="affiliate_dashboard")],
-            [InlineKeyboardButton("⭐ Stars Shop", callback_data="stars_shop")],
+            [InlineKeyboardButton("💰 Charge GP", callback_data="charge_gp"),
+             InlineKeyboardButton("⭐ Stars Shop", callback_data="stars_shop")],
             [InlineKeyboardButton("💱 TON → GP Rate", callback_data="show_rate")],
             [InlineKeyboardButton("💬 Join Official Community", url="https://t.me/jumpdao_eng")],
             [InlineKeyboardButton(f"🔗 Invite Friends to Group → +{GROUP_INVITE_GP} GP/person", callback_data="group_invite_link")],
@@ -1592,6 +1678,7 @@ def main():
     app.add_handler(CallbackQueryHandler(cb_affiliate_redeem,   pattern="^affiliate_redeem$"))
     app.add_handler(CallbackQueryHandler(cb_affiliate_stats,    pattern="^affiliate_stats$"))
     app.add_handler(CallbackQueryHandler(cb_affiliate_dashboard, pattern="^affiliate_dashboard$"))
+    app.add_handler(CallbackQueryHandler(cb_charge_gp,         pattern="^charge_gp$"))
     app.add_handler(CallbackQueryHandler(cb_stars_shop,        pattern="^stars_shop$"))
     app.add_handler(CallbackQueryHandler(cb_stars_buy,         pattern="^stars_buy_"))
     app.add_handler(CallbackQueryHandler(cb_show_rate,         pattern="^show_rate$"))

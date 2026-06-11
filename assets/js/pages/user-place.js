@@ -49,22 +49,24 @@ const CATALOG = [
 ];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────────
-let _map          = null;
-let _infoWin      = null;
-let _getGold      = null;   // () => number
-let _refreshCb    = null;   // 배치 후 데이터 새로고침 콜백
-let _placingKey   = null;   // 현재 배치 중인 아이템 키
-let _placingTicketId = null; // 현재 배치 중인 티켓 itemId
-let _clickListener = null;
+let _map             = null;
+let _infoWin         = null;
+let _getGold         = null;   // () => number
+let _refreshCb       = null;   // 배치 후 데이터 새로고침 콜백
+let _getDisplayName  = null;   // () => string|null
+let _placingKey      = null;   // 현재 배치 중인 아이템 키
+let _placingTicketId = null;   // 현재 배치 중인 티켓 itemId
+let _clickListener   = null;
 
 const $ = id => document.getElementById(id);
 
 // ── 초기화 ────────────────────────────────────────────────────────────────────
-export function initUserPlace(map, infoWindow, getGoldFn, onPlacedCb) {
-  _map       = map;
-  _infoWin   = infoWindow;
-  _getGold   = getGoldFn;
-  _refreshCb = onPlacedCb;
+export function initUserPlace(map, infoWindow, getGoldFn, onPlacedCb, getDisplayNameFn = null) {
+  _map            = map;
+  _infoWin        = infoWindow;
+  _getGold        = getGoldFn;
+  _refreshCb      = onPlacedCb;
+  _getDisplayName = getDisplayNameFn;
 
   $('btnUserPlaceShop')?.addEventListener('click', openShopPanel);
   $('btnUserPlaceClose')?.addEventListener('click', closeShopPanel);
@@ -477,6 +479,10 @@ async function _openMarkerForm() {
       $('markerFormTitle').textContent    = '✏️ Edit My Marker';
       $('markerFormCost').textContent     = 'Update your existing marker — Free';
       $('btnMarkerFormPlace').textContent = '💾 Save Changes';
+    } else {
+      // Pre-fill name with username for new markers
+      const defaultName = _getDisplayName?.() || '';
+      if (defaultName) $('markerDisplayName').value = defaultName;
     }
   } catch (_) {}
 }

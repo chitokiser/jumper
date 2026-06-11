@@ -7,6 +7,10 @@
 - 변경 20개↑ → git push + `cd game-server && railway up`
 - Functions 배포: `firebase deploy --only functions` (단일 함수 배포 금지)
 
+## 실행 환경
+- **bot.py (텔레그램 봇)** → Railway에서 실행 중 — 수정 후 Railway 재배포 필요
+- **game-server** → Railway에서 실행 중 (`cd game-server && railway up`)
+
 ## ⚠️ 전체화면 모달 필수 규칙 (반복 발생 버그)
 - **모든 모달/오버레이는 반드시 `data-fs-modal` 속성 부착**
 - 전체화면 진입 시 `_moveModalsToFs()`가 이 속성을 가진 요소를 fullscreen 컨테이너로 이동

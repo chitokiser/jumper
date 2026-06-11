@@ -117,6 +117,7 @@ const _ctx = {
   functions,
   uid:                 null,   // auth 후 설정
   isAdmin:             false,
+  displayName:         null,   // auth 후 설정 — 마커 폼 기본값에 사용
   myLocationMarker:    null,   // battle이 쓰고 core가 읽음
   myLocationAccCircle: null,
   locationWatchId:     null,
@@ -2940,6 +2941,7 @@ async function init() {
             } catch { /* ignore */ }
           }
           if (displayName) {
+            _ctx.displayName = displayName;
             setDoc(doc(db, 'battle_players', _uid), {
               displayName,
               photoURL: user?.photoURL || null,
@@ -3017,7 +3019,7 @@ async function init() {
         loadBattleData();
         loadShops(); // 새 상점 마커 즉시 갱신
         loadUserMapMarkers(); // 유저 마커 즉시 갱신
-      });
+      }, () => _ctx.displayName || null);
     }
 
     // Virtual Explore Mode 초기화

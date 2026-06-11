@@ -220,6 +220,10 @@ const SEED_PRODUCTS = [
   { name:'Premium Membership (30 Days)', description:'⭐ Upgrade to Premium: daily 3,500 GP top-up + exclusive treasure boxes + Level 4 boost. Valid 30 days.', starsPrice:800, productType:'premium', grantValue:30, active:true },
   { name:'5,000 GP Package',     description:'5,000 Game Points credited instantly',                                 starsPrice:50,  productType:'gp',         grantValue:5000,  active:true },
   { name:'15,000 GP Package',    description:'15,000 Game Points — best value!',                                    starsPrice:130, productType:'gp',         grantValue:15000, active:true },
+  // 1 Star ≈ $0.013 → 130 GP  /  rate: 100 Stars = $1.30 = 13,000 GP
+  { name:'💰 13,000 GP',         description:'13,000 Game Points — 100 Stars ($1.30)',                                 starsPrice:100,  productType:'gp',        grantValue:13000,   active:true },
+  { name:'💰 130,000 GP',        description:'130,000 Game Points — 1,000 Stars ($13.00)',                            starsPrice:1000, productType:'gp',        grantValue:130000,  active:true },
+  { name:'💰 1,300,000 GP',      description:'1,300,000 Game Points — 10,000 Stars ($130.00)',                        starsPrice:10000,productType:'gp',        grantValue:1300000, active:true },
   { name:'Treasure Box Key',     description:'One key to open a treasure box',                                      starsPrice:30,  productType:'key',         grantValue:1,     active:true },
   { name:'Random Box',           description:'A mystery box with random rewards',                                   starsPrice:80,  productType:'random_box',  grantValue:1,     active:true },
   { name:'Jump Token Package',   description:'100 JUMP tokens delivered to your wallet',                            starsPrice:200, productType:'jump_pkg',    grantValue:100,   active:true },
@@ -227,20 +231,24 @@ const SEED_PRODUCTS = [
 
 async function seedProducts() {
   const col = db.collection('stars_products');
-  const snap = await col.limit(1).get();
-  if (!snap.empty) return { skipped: true };
+  const snap = await col.get();
+  const existing = new Set(snap.docs.map(d => d.data().name));
   const batch = db.batch();
+  let added = 0;
   SEED_PRODUCTS.forEach(p => {
-    batch.set(col.doc(), { ...p, createdAt: FieldValue.serverTimestamp() });
+    if (!existing.has(p.name)) {
+      batch.set(col.doc(), { ...p, createdAt: FieldValue.serverTimestamp() });
+      added++;
+    }
   });
-  await batch.commit();
-  return { seeded: SEED_PRODUCTS.length };
+  if (added > 0) await batch.commit();
+  return { seeded: added, skipped: SEED_PRODUCTS.length - added };
 }
 
 async function upsertProduct(data) {
   const col = db.collection('stars_products');
-  // productType 기준 기존 상품 덮어쓰기
-  const existing = await col.where('productType','==',data.productType).limit(1).get();
+  // name 기준 덮어쓰기 (동일 productType 복수 허용)
+  const existing = await col.where('name','==',data.name).limit(1).get();
   if (!existing.empty) {
     await existing.docs[0].ref.set({ ...data, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
     return { updated: true, id: existing.docs[0].id };

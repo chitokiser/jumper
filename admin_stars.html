@@ -28,6 +28,11 @@
     tr:hover td{background:#0d1117}
     .btn-csv{padding:8px 18px;background:#22c55e;color:#000;border:none;border-radius:8px;font-weight:800;cursor:pointer;font-size:13px}
     .btn-seed{padding:8px 18px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:800;cursor:pointer;font-size:13px}
+    .btn-save{padding:6px 14px;background:#f59e0b;color:#000;border:none;border-radius:6px;font-weight:800;cursor:pointer;font-size:12px}
+    .pkg-table input{background:#0d1117;border:1px solid #374151;border-radius:6px;color:#fff;padding:4px 8px;width:100px;font-size:13px}
+    .pkg-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+    .pkg-active{background:rgba(34,197,94,.15);color:#4ade80}
+    .pkg-inactive{background:rgba(239,68,68,.15);color:#f87171}
     .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
     .badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;background:#1f2937;color:#9ca3af}
     #statusMsg{padding:8px 14px;border-radius:8px;font-size:13px;display:none}
@@ -87,6 +92,24 @@
       <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
         <button class="btn-csv" id="btnCsv">📥 Download CSV</button>
         <button class="btn-seed" id="btnSeed">🌱 Seed Products</button>
+      </div>
+
+      <!-- GP 패키지 편집 -->
+      <div style="margin-top:32px;padding:20px;background:#111827;border:1px solid #1f2937;border-radius:12px">
+        <div class="section-title" style="margin-top:0">💰 GP Package Editor</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:14px">
+          Stars 환율이 크게 변동될 때 수동으로 패키지를 조정하세요.<br>
+          <b>1 Star ≈ $0.013</b> · 기준: 100 Stars = $1.30 = 13,000 GP (130 GP/Star)
+        </div>
+        <table class="pkg-table" id="tblPackages">
+          <thead>
+            <tr>
+              <th>Name</th><th>Stars ⭐</th><th>GP Grant</th><th>GP/Star</th><th>Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody><tr><td colspan="6" style="color:#6b7280">로딩 중...</td></tr></tbody>
+        </table>
+        <div id="pkgMsg" style="margin-top:10px;font-size:12px;display:none"></div>
       </div>
 
       <!-- NPC 시스템 관리 -->
@@ -177,11 +200,101 @@
       try {
         const fn  = httpsCallable(functions, 'starsSeedProducts');
         const res = await fn();
-        showStatus(res.data.skipped ? '이미 시드 완료' : `${res.data.seeded}개 상품 등록 완료`);
+        const d   = res.data;
+        const msg = d.seeded > 0
+          ? `${d.seeded}개 신규 등록 완료` + (d.deactivated ? ` · ${d.deactivated}개 구 상품 비활성화` : '')
+          : `전체 ${d.skipped}개 이미 존재`;
+        showStatus(msg);
+        await loadPackages();
       } catch (e) {
         showStatus('Seed failed: ' + e.message, false);
       }
     });
+
+    // ── GP 패키지 편집 ─────────────────────────────────────────────────────────
+    async function loadPackages() {
+      try {
+        const { getFirestore, collection, getDocs } =
+          await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+        const { app } = await import('/assets/js/firebase-init.js');
+        const db   = getFirestore(app);
+        const snap = await getDocs(collection(db, 'stars_products'));
+        const pkgs = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(p => p.productType === 'gp')
+          .sort((a, b) => (a.starsPrice || 0) - (b.starsPrice || 0));
+
+        const tbody = $('tblPackages').querySelector('tbody');
+        if (!pkgs.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="color:#6b7280">GP 패키지 없음 — Seed Products 실행</td></tr>';
+          return;
+        }
+        tbody.innerHTML = pkgs.map(p => {
+          const ratio = p.starsPrice ? Math.round(p.grantValue / p.starsPrice) : 0;
+          const badge = p.active
+            ? '<span class="pkg-badge pkg-active">Active</span>'
+            : '<span class="pkg-badge pkg-inactive">Inactive</span>';
+          return `<tr data-id="${p.id}">
+            <td style="font-size:12px">${p.name}</td>
+            <td><input class="inp-stars" type="number" value="${p.starsPrice}" min="1" /></td>
+            <td><input class="inp-gp"    type="number" value="${p.grantValue}" min="1" /></td>
+            <td class="ratio-cell" style="color:#f59e0b;font-weight:700">${ratio.toLocaleString()}</td>
+            <td>${badge}</td>
+            <td><button class="btn-save" data-id="${p.id}">Save</button></td>
+          </tr>`;
+        }).join('');
+
+        // ratio 실시간 갱신
+        tbody.querySelectorAll('tr[data-id]').forEach(row => {
+          const inpS = row.querySelector('.inp-stars');
+          const inpG = row.querySelector('.inp-gp');
+          const ratioCell = row.querySelector('.ratio-cell');
+          function updateRatio() {
+            const r = inpS.value > 0 ? Math.round(inpG.value / inpS.value) : 0;
+            ratioCell.textContent = r.toLocaleString();
+          }
+          inpS.addEventListener('input', updateRatio);
+          inpG.addEventListener('input', updateRatio);
+        });
+
+        tbody.addEventListener('click', async e => {
+          const btn = e.target.closest('.btn-save');
+          if (!btn) return;
+          const id  = btn.dataset.id;
+          const row = tbody.querySelector(`tr[data-id="${id}"]`);
+          const stars = parseInt(row.querySelector('.inp-stars').value);
+          const gp    = parseInt(row.querySelector('.inp-gp').value);
+          if (!stars || !gp || stars < 1 || gp < 1) {
+            showPkgMsg('Invalid values', false); return;
+          }
+          btn.disabled = true; btn.textContent = '…';
+          try {
+            const fn  = httpsCallable(functions, 'starsUpsertProduct');
+            const pkg = snap.docs.find(d => d.id === id)?.data() || {};
+            await fn({ ...pkg, name: pkg.name, starsPrice: stars, grantValue: gp });
+            showPkgMsg(`✅ ${pkg.name} updated (${stars} ⭐ → ${gp.toLocaleString()} GP)`);
+            await loadPackages();
+          } catch (err) {
+            showPkgMsg('❌ ' + err.message, false);
+          } finally {
+            btn.disabled = false; btn.textContent = 'Save';
+          }
+        }, { once: false });
+      } catch (e) {
+        $('tblPackages').querySelector('tbody').innerHTML =
+          `<tr><td colspan="6" style="color:#f87171">${e.message}</td></tr>`;
+      }
+    }
+
+    function showPkgMsg(msg, ok = true) {
+      const el = $('pkgMsg');
+      el.textContent = msg;
+      el.style.display = 'block';
+      el.style.color = ok ? '#4ade80' : '#f87171';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
+    loadPackages();
 
     loadStats();
 
