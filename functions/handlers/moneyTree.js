@@ -464,8 +464,7 @@ async function harvestTree(uid, { treeId }) {
   if (tree.ownerUid !== uid) throw new HttpsError('permission-denied', 'You can only harvest your own trees.');
   const cfg  = { ...DEFAULTS, ...(cfgSnap.exists ? cfgSnap.data() : {}) };
 
-  const dist = haversineM(player.lat, player.lng, tree.lat, tree.lng);
-  if (dist > 50) throw new HttpsError('failed-precondition', `You must be within 50 m of the tree to harvest (${Math.round(dist)}m away).`);
+  // Owner can harvest from anywhere — distance check skipped for own trees
   if ((player.harvestTickets ?? 0) < 1) throw new HttpsError('failed-precondition', 'You have no harvest tickets.');
 
   const treeValue = calcTreeValue(cfg.globalPlantCounter, tree.baseCounter, cfg.growthRate, cfg.maxTreeValue, tree.boostTotal);
