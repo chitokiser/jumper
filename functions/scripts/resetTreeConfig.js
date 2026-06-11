@@ -14,7 +14,7 @@ async function main() {
     maxTreeValue:       500000,
     boosterPriceGp:     1000,
     boosterMin:         1,
-    boosterMax:         10,
+    boosterMax:         25,
     mentorRegTicketPriceGp: 50000,
   }, { merge: true });
   console.log('system_config/money_tree reset to correct values.');

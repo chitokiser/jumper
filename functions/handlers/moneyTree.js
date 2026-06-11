@@ -427,15 +427,10 @@ async function useTreeBooster(uid, { treeId }) {
   if (!treeId) throw new HttpsError('invalid-argument', 'treeId is required.');
   const cfg = await getConfig();
 
-  const [treeSnap, player] = await Promise.all([
-    db.collection('money_trees').doc(treeId).get(),
-    _validateGps(uid),
-  ]);
+  const treeSnap = await db.collection('money_trees').doc(treeId).get();
   if (!treeSnap.exists) throw new HttpsError('not-found', 'Tree not found.');
   const tree = treeSnap.data();
   if (tree.ownerUid !== uid) throw new HttpsError('permission-denied', 'You can only use boosters on your own trees.');
-  const dist = haversineM(player.lat, player.lng, tree.lat, tree.lng);
-  if (dist > 50) throw new HttpsError('failed-precondition', `You must be within 50 m of the tree to use a booster (${Math.round(dist)}m away).`);
 
   const boostResult = Math.floor(Math.random() * (cfg.boosterMax - cfg.boosterMin + 1)) + cfg.boosterMin;
   const now = admin.firestore.FieldValue.serverTimestamp();
