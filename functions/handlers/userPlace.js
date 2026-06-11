@@ -454,7 +454,46 @@ async function _findNearestShop(lat, lng, radiusM = 500) {
   return best;
 }
 
-async function placeUserMarker(uid, { imageUrl, linkUrl, lat, lng }) {
+async function getMyUserMarker(uid) {
+  const snap = await db.collection('user_markers')
+    .where('uid', '==', uid)
+    .where('active', '==', true)
+    .orderBy('createdAt', 'desc')
+    .limit(1)
+    .get();
+  if (snap.empty) return { marker: null };
+  const d = snap.docs[0];
+  const data = d.data();
+  return {
+    marker: {
+      id:          d.id,
+      displayName: data.displayName,
+      imageUrl:    data.imageUrl,
+      linkUrl:     data.linkUrl,
+      lat:         data.lat,
+      lng:         data.lng,
+    },
+  };
+}
+
+async function updateUserMarker(uid, { markerId, displayName, imageUrl, linkUrl }) {
+  if (!markerId) throw new Error('Marker ID required');
+  const ref  = db.collection('user_markers').doc(markerId);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data().uid !== uid || !snap.data().active) {
+    throw new Error('Marker not found or access denied');
+  }
+  const updates = {};
+  if (imageUrl)    { try { new URL(imageUrl); } catch { throw new Error('Invalid image URL'); } updates.imageUrl = imageUrl; }
+  if (linkUrl)     { try { new URL(linkUrl);  } catch { throw new Error('Invalid link URL');  } updates.linkUrl  = linkUrl;  }
+  if (displayName) updates.displayName = String(displayName).trim().slice(0, 40);
+  if (!Object.keys(updates).length) throw new Error('Nothing to update');
+  updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+  await ref.update(updates);
+  return { updated: true };
+}
+
+async function placeUserMarker(uid, { displayName, imageUrl, linkUrl, lat, lng }) {
   if (!imageUrl || !linkUrl)         throw new Error('Image URL and link URL are required');
   if (lat == null || lng == null)    throw new Error('Coordinates are required');
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('Invalid coordinates');
@@ -484,16 +523,16 @@ async function placeUserMarker(uid, { imageUrl, linkUrl, lat, lng }) {
     }
   });
 
-  const userSnap    = await userRef.get();
-  const userData    = userSnap.data() || {};
-  const displayName = userData.name || userData.displayName || 'Player';
+  const userSnap     = await userRef.get();
+  const userData     = userSnap.data() || {};
+  const resolvedName = displayName?.trim() || userData.name || userData.displayName || 'Player';
 
   const now       = admin.firestore.FieldValue.serverTimestamp();
   const expiresAt = new Date(Date.now() + MARKER_DAYS * 24 * 60 * 60 * 1000);
 
   const markerRef = await db.collection('user_markers').add({
     uid,
-    displayName,
+    displayName: resolvedName,
     imageUrl,
     linkUrl,
     lat:           Number(lat),
@@ -553,4 +592,4 @@ async function getUserMarkers() {
   };
 }
 
-module.exports = { CATALOG, placeUserObject, getMyPlacedObjects, getUserPlacePrices, adminSetUserPlacePrices, useTicket, getMyPlacementTickets, placeUserMarker, getUserMarkers };
+module.exports = { CATALOG, placeUserObject, getMyPlacedObjects, getUserPlacePrices, adminSetUserPlacePrices, useTicket, getMyPlacementTickets, placeUserMarker, getUserMarkers, getMyUserMarker, updateUserMarker };

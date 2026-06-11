@@ -2725,10 +2725,16 @@
   <div id="userMarkerForm" data-fs-modal style="display:none;position:fixed;inset:0;z-index:9500;
     background:rgba(0,0,0,.7);align-items:center;justify-content:center;">
     <div style="background:var(--surface,#fff);border-radius:16px;width:min(360px,94vw);padding:24px;">
-      <div style="font-weight:800;font-size:1rem;margin-bottom:4px;">📸 Place My Marker</div>
-      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:16px;">
+      <div id="markerFormTitle" style="font-weight:800;font-size:1rem;margin-bottom:4px;">📸 Place My Marker</div>
+      <div id="markerFormCost" style="font-size:0.75rem;color:var(--muted);margin-bottom:16px;">
         Pin your face photo + link on the map — <strong style="color:#d97706;">🪙 10,000 GP</strong>
       </div>
+      <label style="display:block;margin-bottom:12px;">
+        <span style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Display Name</span>
+        <input id="markerDisplayName" type="text" placeholder="Your name (optional)"
+          style="width:100%;padding:10px 12px;border:2px solid #6b7280;border-radius:8px;
+                 font-size:0.85rem;box-sizing:border-box;background:#fff;color:#111;outline:none;" />
+      </label>
       <label style="display:block;margin-bottom:12px;">
         <span style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Face Image URL</span>
         <input id="markerImageUrl" type="url" placeholder="https://example.com/my-photo.jpg"
@@ -2741,7 +2747,7 @@
           style="width:100%;padding:10px 12px;border:2px solid #6b7280;border-radius:8px;
                  font-size:0.85rem;box-sizing:border-box;background:#fff;color:#111;outline:none;" />
       </label>
-      <div id="markerFormMsg" style="font-size:0.82rem;min-height:16px;margin-bottom:10px;"></div>
+      <div id="markerFormMsg" style="font-size:0.82rem;min-height:16px;margin-bottom:10px;color:#ef4444;"></div>
       <div style="display:flex;gap:8px;">
         <button id="btnMarkerFormCancel" type="button"
           style="flex:1;padding:9px;border:1px solid var(--border);border-radius:8px;

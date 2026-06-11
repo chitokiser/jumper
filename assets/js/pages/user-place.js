@@ -11,6 +11,8 @@ const cfSetPrices    = httpsCallable(functions, 'adminSetUserPlacePrices');
 const cfUseTicket    = httpsCallable(functions, 'useTicket', { timeout: 30000 });
 const cfGetTickets   = httpsCallable(functions, 'getMyPlacementTickets');
 const cfPlaceMarker  = httpsCallable(functions, 'placeUserMarker', { timeout: 30000 });
+const cfGetMyMarker  = httpsCallable(functions, 'getMyUserMarker');
+const cfUpdateMarker = httpsCallable(functions, 'updateUserMarker', { timeout: 30000 });
 
 // ── 카탈로그 (서버와 동일) ────────────────────────────────────────────────────
 const CATALOG = [
@@ -444,18 +446,39 @@ function _showPlaceToast(msg) {
 // ── 유저 마커 (얼굴 이미지 + 클릭 링크) ─────────────────────────────────────
 
 let _markerPendingPos = null; // { lat, lng }
+let _editMarkerId     = null; // set when editing existing marker
 
-function _openMarkerForm() {
+async function _openMarkerForm() {
   const panel = $('userPlacePanel');
   if (panel) panel.style.display = 'none';
   const form = $('userMarkerForm');
   if (!form) return;
-  $('markerImageUrl').value = '';
-  $('markerLinkUrl').value  = '';
-  $('markerFormMsg').textContent = '';
-  $('btnMarkerFormPlace').disabled = false;
+  // Reset to "new" state
+  $('markerDisplayName').value        = '';
+  $('markerImageUrl').value           = '';
+  $('markerLinkUrl').value            = '';
+  $('markerFormMsg').textContent      = '';
+  $('markerFormTitle').textContent    = '📸 Place My Marker';
+  $('markerFormCost').innerHTML       = 'Pin your face photo + link on the map — <strong style="color:#d97706;">🪙 10,000 GP</strong>';
+  $('btnMarkerFormPlace').disabled    = false;
   $('btnMarkerFormPlace').textContent = '📍 Choose Location on Map';
+  _editMarkerId = null;
   form.style.display = 'flex';
+
+  // Check for existing active marker
+  try {
+    const { data } = await cfGetMyMarker();
+    if (data?.marker) {
+      const m = data.marker;
+      _editMarkerId = m.id;
+      $('markerDisplayName').value        = m.displayName || '';
+      $('markerImageUrl').value           = m.imageUrl    || '';
+      $('markerLinkUrl').value            = m.linkUrl     || '';
+      $('markerFormTitle').textContent    = '✏️ Edit My Marker';
+      $('markerFormCost').textContent     = 'Update your existing marker — Free';
+      $('btnMarkerFormPlace').textContent = '💾 Save Changes';
+    }
+  } catch (_) {}
 }
 
 function _closeMarkerForm() {
@@ -466,18 +489,24 @@ function _closeMarkerForm() {
 }
 
 function _onMarkerFormSubmit() {
-  const imageUrl = ($('markerImageUrl').value || '').trim();
-  const linkUrl  = ($('markerLinkUrl').value  || '').trim();
-  const msg      = $('markerFormMsg');
+  const displayName = ($('markerDisplayName').value || '').trim();
+  const imageUrl    = ($('markerImageUrl').value    || '').trim();
+  const linkUrl     = ($('markerLinkUrl').value     || '').trim();
+  const msg         = $('markerFormMsg');
 
   if (!imageUrl || !linkUrl) {
-    msg.textContent = 'Please fill in both fields.';
+    msg.textContent = 'Please fill in both URL fields.';
     msg.style.color = '#ef4444';
     return;
   }
   try { new URL(imageUrl); new URL(linkUrl); } catch {
     msg.textContent = 'Invalid URL format.';
     msg.style.color = '#ef4444';
+    return;
+  }
+
+  if (_editMarkerId) {
+    _doUpdateMarker(_editMarkerId, { displayName, imageUrl, linkUrl });
     return;
   }
 
@@ -503,11 +532,30 @@ function _onMarkerFormSubmit() {
     if (_clickListener) { google.maps.event.removeListener(_clickListener); _clickListener = null; }
     if (banner) banner.style.display = 'none';
     $('btnUserPlaceCancelMode').style.display = 'none';
-    _confirmMarkerPlace(imageUrl, linkUrl, e.latLng.lat(), e.latLng.lng());
+    _confirmMarkerPlace(displayName, imageUrl, linkUrl, e.latLng.lat(), e.latLng.lng());
   });
 }
 
-async function _confirmMarkerPlace(imageUrl, linkUrl, lat, lng) {
+async function _doUpdateMarker(markerId, { displayName, imageUrl, linkUrl }) {
+  const msg = $('markerFormMsg');
+  const btn = $('btnMarkerFormPlace');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    await cfUpdateMarker({ markerId, displayName, imageUrl, linkUrl });
+    msg.textContent = '✅ Marker updated!';
+    msg.style.color = '#22c55e';
+    _refreshCb?.();
+    setTimeout(_closeMarkerForm, 1500);
+  } catch (e) {
+    msg.textContent = 'Error: ' + e.message;
+    msg.style.color = '#ef4444';
+    btn.disabled = false;
+    btn.textContent = '💾 Save Changes';
+  }
+}
+
+async function _confirmMarkerPlace(displayName, imageUrl, linkUrl, lat, lng) {
   const modal = $('userPlaceConfirmModal');
   if (!modal) return;
   $('upConfirmLabel').textContent = '📸 My Marker';
@@ -521,7 +569,7 @@ async function _confirmMarkerPlace(imageUrl, linkUrl, lat, lng) {
   btn.onclick = async () => {
     btn.disabled = true; btn.textContent = 'Processing...';
     try {
-      await cfPlaceMarker({ imageUrl, linkUrl, lat, lng });
+      await cfPlaceMarker({ displayName, imageUrl, linkUrl, lat, lng });
       $('upConfirmMsg').textContent = '✅ Marker placed! (🪙 10,000 GP spent)';
       $('upConfirmMsg').style.color = '#22c55e';
       _refreshCb?.();
