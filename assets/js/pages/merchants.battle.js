@@ -71,6 +71,7 @@ let _mpHealAccum     = 0;      // MP 회복용 누적거리(m)
 let _reviveWalkDist  = 0;      // (legacy, kept for save compat)
 let _currentSpeed    = 0;      // km/h
 let _isDead          = false;
+let _xp99Saved       = false;  // 99% on-chain checkpoint per level
 let _spawnLat        = null;   // spawn position (first GPS fix or warp start)
 let _spawnLng        = null;
 let _autoReviveTimer = null;   // setInterval for countdown
@@ -940,7 +941,16 @@ export function addPlayerGsExp(amount) {
     showLevelUpEffect(_player.gsLevel);
     leveled = true;
   }
-  if (leveled) _markPendingOnChainSync(_player.gsLevel);
+  if (leveled) {
+    _xp99Saved = false;
+    _markPendingOnChainSync(_player.gsLevel);
+  } else if (!_xp99Saved) {
+    const nextLvExp = _player.nextLevelExp || calcNextLevelExp(_player.gsLevel);
+    if (nextLvExp > 0 && _player.gsExp / nextLvExp >= 0.99) {
+      _xp99Saved = true;
+      _markPendingOnChainSync(_player.gsLevel); // 99% 체크포인트 온체인 저장 (1회)
+    }
+  }
 
   updateExpBar();
   savePlayerState();
@@ -1143,9 +1153,11 @@ function takeDamage(rawAmount, sourceLat, sourceLng) {
     _isDead = true;
     _player.hp = 0;
     _reviveWalkDist = 0;
-    const penalty = Math.floor((_player.xp || 0) * 0.01);
-    _player.xp = Math.max(0, (_player.xp || 0) - penalty);
+    const penalty = Math.floor((_player.gsExp || 0) * 0.01);
+    _player.gsExp = Math.max(0, (_player.gsExp || 0) - penalty);
     _player.xpDeathPenalty = (_player.xpDeathPenalty || 0) + penalty;
+    _xp99Saved = false; // 패널티로 99% 아래로 떨어질 수 있으므로 초기화
+    updateExpBar();
     const myMark2 = _ctx?.myLocationMarker;
     if (myMark2) {
       _deathLat = myMark2.getPosition().lat();
