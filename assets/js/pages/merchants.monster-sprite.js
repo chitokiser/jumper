@@ -292,6 +292,18 @@ export const SPRITE_CONFIGS = {
   },
 };
 
+// 스프라이트 이미지 하단 투명 패딩(px) — 캐릭터 발이 좌표에 정확히 닿도록 보정
+// 값 = round(transparent_bottom_rows * displaySize / original_height)
+const GROUND_OFFSETS = {
+  dragon: 0, // 비행 몬스터 — 그림자 분리 효과 유지
+  orc: 8,  orc2: 8,  orc3: 7,
+  pirate: 2, pirate2: 4, pirate3: 3,
+  zombie1: 0, zombie3: 0,
+  zombie_villager1: 11, zombie_villager2: 11, zombie_villager3: 11,
+  troll: 1,
+  knight1: 23, knight2: 23, knight3: 23,
+};
+
 // 서버 상태 → 애니메이션 이름 매핑
 const STATE_TO_ANIM = {
   idle:       'idle',
@@ -561,8 +573,10 @@ function _getOverlayClass() {
       div.style.cssText = `width:${size}px;height:${size}px;outline:none;border:none;background:transparent;box-shadow:none;`;
 
       // 그림자
+      const groundOffset = GROUND_OFFSETS[this._type] ?? 0;
       const shadow = document.createElement('div');
       shadow.className = this._type === 'dragon' ? 'ms-shadow-float' : 'ms-shadow';
+      if (this._type !== 'dragon') shadow.style.bottom = `${groundOffset - 4}px`;
       div.appendChild(shadow);
 
       // 스프라이트 프레임
@@ -583,6 +597,7 @@ function _getOverlayClass() {
       // HP 바
       const hpWrap = document.createElement('div');
       hpWrap.className = 'ms-hp-wrap';
+      if (this._type !== 'dragon') hpWrap.style.bottom = `${groundOffset + 2}px`;
       const hpBar = document.createElement('div');
       hpBar.className = 'ms-hp-bar';
       hpWrap.appendChild(hpBar);
@@ -610,10 +625,11 @@ function _getOverlayClass() {
       if (!this._div) return;
       const proj = this.getProjection();
       if (!proj) return;
-      const pt   = proj.fromLatLngToDivPixel(new google.maps.LatLng(this._lat, this._lng));
-      const size = this._cfg.displaySize;
-      this._div.style.left = (pt.x - size / 2) + 'px';
-      this._div.style.top  = (pt.y - size)      + 'px';
+      const pt           = proj.fromLatLngToDivPixel(new google.maps.LatLng(this._lat, this._lng));
+      const size         = this._cfg.displaySize;
+      const groundOffset = GROUND_OFFSETS[this._type] ?? 0;
+      this._div.style.left = (pt.x - size / 2)             + 'px';
+      this._div.style.top  = (pt.y - size + groundOffset)   + 'px';
     }
 
     onRemove() {

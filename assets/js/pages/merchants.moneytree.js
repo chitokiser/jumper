@@ -18,6 +18,11 @@ let _isServerConnected = null;
 
 const IMG_BASE = '/assets/images/tree/';
 
+// 이미지별 실제 토양 기저부 Y 좌표 (투명 패딩 보정)
+// anchor_y = round(content_bottom_row * 40 / image_height)
+const _TREE_ANCHOR_Y = { 1: 26, 2: 37, 5: 38, 6: 38 };
+// 3,4,7-11 은 anchor_y=39 (기본값)
+
 export function initMoneyTree(ctx, map, functions, { onEnsurePos, isServerConnected } = {}) {
   _ctx = ctx;
   _map = map;
@@ -100,7 +105,7 @@ function _addTreeMarker(tree) {
   const icon = {
     url: `${IMG_BASE}${tree.imageNum}.png`,
     scaledSize: new google.maps.Size(40, 40),
-    anchor: new google.maps.Point(20, 40),
+    anchor: new google.maps.Point(20, _TREE_ANCHOR_Y[tree.imageNum] ?? 39),
   };
   const marker = new google.maps.Marker({
     position: { lat: tree.lat, lng: tree.lng },
