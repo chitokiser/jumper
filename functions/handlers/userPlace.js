@@ -438,7 +438,21 @@ async function getMyPlacementTickets(uid) {
 
 // ── 유저 지도 마커 (얼굴 이미지 + 링크) ─────────────────────────────────────
 
-const MARKER_GP_PRICE = 10000;
+const MARKER_GP_PRICE   = 10000;
+const MARKER_OWNER_SHARE = 5000; // 50 %
+const MARKER_DAYS        = 30;   // expiry
+
+async function _findNearestShop(lat, lng, radiusM = 500) {
+  const snap = await db.collection('game_shops').where('active', '==', true).get();
+  let best = null, bestDist = Infinity;
+  for (const doc of snap.docs) {
+    const s = doc.data();
+    if (!s.lat || !s.lng || !s.ownerUid) continue;
+    const d = haversineM(lat, lng, s.lat, s.lng);
+    if (d <= radiusM && d < bestDist) { best = doc; bestDist = d; }
+  }
+  return best;
+}
 
 async function placeUserMarker(uid, { imageUrl, linkUrl, lat, lng }) {
   if (!imageUrl || !linkUrl)         throw new Error('Image URL and link URL are required');
@@ -449,48 +463,93 @@ async function placeUserMarker(uid, { imageUrl, linkUrl, lat, lng }) {
   const bpRef   = db.collection('battle_players').doc(uid);
   const userRef = db.collection('users').doc(uid);
 
+  // Find nearest shop before transaction (read-only, safe outside tx)
+  const shopDoc   = await _findNearestShop(Number(lat), Number(lng), 500);
+  const shopId    = shopDoc ? shopDoc.id : null;
+  const shopData  = shopDoc ? shopDoc.data() : null;
+  const shopOwnerUid = shopData?.ownerUid ?? null;
+
   await db.runTransaction(async t => {
     const bp   = await t.get(bpRef);
     const gold = bp.exists ? (bp.data().gold ?? 0) : 0;
     if (gold < MARKER_GP_PRICE) {
       throw new Error(`Not enough GP. Need ${MARKER_GP_PRICE.toLocaleString()}, have ${gold.toLocaleString()}.`);
     }
+    // Deduct full cost from buyer
     t.set(bpRef, { gold: admin.firestore.FieldValue.increment(-MARKER_GP_PRICE) }, { merge: true });
+    // Credit 50 % to shop owner (if found and different from buyer)
+    if (shopOwnerUid && shopOwnerUid !== uid) {
+      const ownerBpRef = db.collection('battle_players').doc(shopOwnerUid);
+      t.set(ownerBpRef, { gold: admin.firestore.FieldValue.increment(MARKER_OWNER_SHARE) }, { merge: true });
+    }
   });
 
   const userSnap    = await userRef.get();
   const userData    = userSnap.data() || {};
   const displayName = userData.name || userData.displayName || 'Player';
 
-  const ref = await db.collection('user_markers').add({
+  const now       = admin.firestore.FieldValue.serverTimestamp();
+  const expiresAt = new Date(Date.now() + MARKER_DAYS * 24 * 60 * 60 * 1000);
+
+  const markerRef = await db.collection('user_markers').add({
     uid,
     displayName,
     imageUrl,
     linkUrl,
-    lat:       Number(lat),
-    lng:       Number(lng),
-    active:    true,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    lat:           Number(lat),
+    lng:           Number(lng),
+    active:        true,
+    shopId:        shopId ?? null,
+    shopOwnerUid:  shopOwnerUid ?? null,
+    ownerShare:    shopOwnerUid ? MARKER_OWNER_SHARE : 0,
+    expiresAt,
+    createdAt:     now,
   });
 
-  return { id: ref.id, gpSpent: MARKER_GP_PRICE };
+  // Log to shop_sales_logs for revenue tracking
+  if (shopId && shopOwnerUid) {
+    await db.collection('shop_sales_logs').add({
+      shopId,
+      ownerUid:    shopOwnerUid,
+      buyerUid:    uid,
+      itemId:      'user_marker',
+      itemName:    '📍 Map Marker',
+      qty:         1,
+      grossGp:     MARKER_GP_PRICE,
+      ownerShare:  MARKER_OWNER_SHARE,
+      systemShare: MARKER_GP_PRICE - MARKER_OWNER_SHARE,
+      markerId:    markerRef.id,
+      createdAt:   now,
+    });
+  }
+
+  return { id: markerRef.id, gpSpent: MARKER_GP_PRICE, ownerShare: shopOwnerUid ? MARKER_OWNER_SHARE : 0 };
 }
 
 async function getUserMarkers() {
+  const now  = new Date();
   const snap = await db.collection('user_markers').where('active', '==', true).get();
   return {
-    markers: snap.docs.map(d => {
-      const data = d.data();
-      return {
-        id:          d.id,
-        uid:         data.uid,
-        displayName: data.displayName,
-        imageUrl:    data.imageUrl,
-        linkUrl:     data.linkUrl,
-        lat:         data.lat,
-        lng:         data.lng,
-      };
-    }),
+    markers: snap.docs
+      .filter(d => {
+        const exp = d.data().expiresAt;
+        // Legacy docs (no expiresAt) are shown; docs with future expiresAt are shown
+        if (!exp) return true;
+        const expMs = exp.toMillis ? exp.toMillis() : new Date(exp).getTime();
+        return expMs > now.getTime();
+      })
+      .map(d => {
+        const data = d.data();
+        return {
+          id:          d.id,
+          uid:         data.uid,
+          displayName: data.displayName,
+          imageUrl:    data.imageUrl,
+          linkUrl:     data.linkUrl,
+          lat:         data.lat,
+          lng:         data.lng,
+        };
+      }),
   };
 }
 

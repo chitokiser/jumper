@@ -3587,22 +3587,29 @@ async function loadUserMapMarkers() {
     _userMapMarkers = [];
     mkrs.forEach(m => {
       if (!m.lat || !m.lng) return;
+      const SZ = 52;
       const marker = new google.maps.Marker({
         position: { lat: m.lat, lng: m.lng },
         map,
-        title: `📸 ${m.displayName}`,
+        title: `📍 ${m.displayName}`,
         icon: {
           url: 'data:image/svg+xml,' + encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="42" viewBox="0 0 36 42">
-              <circle cx="18" cy="18" r="17" fill="#7c3aed" stroke="#fff" stroke-width="2"/>
-              <text x="18" y="24" font-size="18" text-anchor="middle">📸</text>
-              <polygon points="12,34 18,42 24,34" fill="#7c3aed"/>
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${SZ}" height="${SZ}" viewBox="0 0 ${SZ} ${SZ}">
+              <circle cx="${SZ/2}" cy="${SZ/2}" r="${SZ/2-1}" fill="#7c3aed" stroke="#ffd700" stroke-width="2"/>
             </svg>`
           ),
-          scaledSize: new google.maps.Size(36, 42),
-          anchor: new google.maps.Point(18, 42),
+          scaledSize: new google.maps.Size(SZ, SZ),
+          anchor: new google.maps.Point(SZ / 2, SZ / 2),
         },
         zIndex: 150,
+      });
+      // Load actual face image as circular icon (async)
+      _circularIcon(m.imageUrl, SZ).then(dataUrl => {
+        marker.setIcon({
+          url: dataUrl,
+          scaledSize: new google.maps.Size(SZ, SZ),
+          anchor: new google.maps.Point(SZ / 2, SZ / 2),
+        });
       });
       marker.addListener('click', () => {
         infoWindow.setContent(
