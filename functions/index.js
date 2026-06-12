@@ -284,11 +284,14 @@ exports.getMyMentees = onCall(wrapError(async (request) => {
   return await moneyTreeH.getMyMentees(uid);
 }));
 
-exports.plantBulkSeedlings = onCall(wrapError(async (request) => {
-  const uid = requireAuth(request);
-  const { shopId } = request.data ?? {};
-  return await moneyTreeH.plantBulkSeedlings(uid, { shopId });
-}));
+exports.plantBulkSeedlings = onCall(
+  { timeoutSeconds: 300 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const { shopId } = request.data ?? {};
+    return await moneyTreeH.plantBulkSeedlings(uid, { shopId });
+  })
+);
 
 // ════════════════════════════════════════════════════════════════════════════
 // 2. 온체인 회원 가입

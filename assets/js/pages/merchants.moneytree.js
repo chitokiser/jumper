@@ -419,7 +419,7 @@ window._mtPlantAll = async function() {
   await _onEnsurePos?.();
   try {
     _showMtToast(`🌱 Planting ${seeds} seedling${seeds > 1 ? 's' : ''}…`, 'info');
-    const fn = httpsCallable(_functions, 'plantBulkSeedlings');
+    const fn = httpsCallable(_functions, 'plantBulkSeedlings', { timeout: 300000 });
     const { data } = await fn({ shopId: _activeShopId });
     document.getElementById('mtPlantModal')?.classList.remove('open');
     const msg = data.skipped > 0
