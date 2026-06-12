@@ -1662,7 +1662,7 @@ async def _broadcast_harvest(app, name: str, gp: int, is_npc: bool = False):
         tier = "✨💰"
     else:
         tier = "🌳"
-    label = "🤖 NPC" if is_npc else "🌍 Player"
+    label = "🤖" if is_npc else "🌍 Player"
     text = (
         f"{tier} <b>{name}</b> harvested a money tree!\n"
         f"💰 <b>+{gp:,} GP</b>\n"
