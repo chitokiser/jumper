@@ -1598,7 +1598,7 @@ async function checkProximity(lat, lng) {
   // 금광 마커: 120초마다 갱신
   if (!_isAnonymous && Date.now() - _gmMarkerLoadTs > 120_000) {
     _gmMarkerLoadTs = Date.now();
-    loadGoldMineMarkers();
+    loadGoldMineMarkers(lat, lng);
   }
 }
 

@@ -25,9 +25,11 @@ export function initGoldMine(ctx, map, functions, uid) {
 export function setGoldMineUid(uid) { _uid = uid; }
 
 // ── Load / refresh map markers ────────────────────────────────────────────────
-export async function loadGoldMineMarkers() {
+export async function loadGoldMineMarkers(centerLat, centerLng) {
   if (!_map || !_fns || !_uid) return;
-  const pos = _ctx?.lastPos;
+  const pos = (centerLat != null && centerLng != null)
+    ? { lat: centerLat, lng: centerLng }
+    : (_ctx?.lastPos ?? _ctx?.gpsPos);
   if (!pos) return;
   try {
     const fn = httpsCallable(_fns, 'getNearbyGoldMines');
@@ -275,7 +277,7 @@ async function _doInstall(storeId, lat, lng) {
   try {
     const fn = httpsCallable(_fns, 'createGoldMine');
     const { data } = await fn({ storeId, lat, lng });
-    await loadGoldMineMarkers();
+    await loadGoldMineMarkers(lat, lng);
     _showInstallSuccess(data.installCost);
   } catch (e) {
     _showToast(e.message ?? 'Installation failed', 'error');
