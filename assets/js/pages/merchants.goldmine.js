@@ -274,12 +274,15 @@ function _showInstallSuccess(cost) {
 
 async function _doInstall(storeId, lat, lng) {
   _showToast('Installing…', 'info');
+  console.warn('[GoldMine] _doInstall start', { storeId, lat, lng, uid: _uid, hasFns: !!_fns });
   try {
     const fn = httpsCallable(_fns, 'createGoldMine');
     const { data } = await fn({ storeId, lat, lng });
+    console.warn('[GoldMine] createGoldMine success', data);
     await loadGoldMineMarkers(lat, lng);
     _showInstallSuccess(data.installCost);
   } catch (e) {
+    console.error('[GoldMine] createGoldMine error', e);
     _showToast(e.message ?? 'Installation failed', 'error');
   }
 }
