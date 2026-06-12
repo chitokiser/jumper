@@ -37,9 +37,9 @@ async function getConfig() {
 }
 
 // ── 금광 설치 ──────────────────────────────────────────────────────────────────
-async function createGoldMine(uid, { storeId, lat, lng }) {
+// lat/lng은 클라이언트에서 받지 않음 — Firestore shop 데이터를 서버에서 직접 사용
+async function createGoldMine(uid, { storeId }) {
   if (!storeId) throw new HttpsError('invalid-argument', 'storeId is required');
-  if (lat == null || lng == null) throw new HttpsError('invalid-argument', 'lat and lng are required');
 
   const [shopSnap, playerSnap, cfg] = await Promise.all([
     db.collection('game_shops').doc(storeId).get(),
@@ -50,12 +50,15 @@ async function createGoldMine(uid, { storeId, lat, lng }) {
   if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found');
   const shop = shopSnap.data();
   if (shop.ownerUid !== uid) throw new HttpsError('permission-denied', 'You do not own this shop');
-  if (shop.lat != null && shop.lng != null) {
-    const distToShop = haversineM(lat, lng, shop.lat, shop.lng);
-    if (distToShop > MINE_RADIUS_M) {
-      throw new HttpsError('failed-precondition',
-        `Gold mine must be within 5km of your shop (${Math.round(distToShop / 100) / 10}km away)`);
-    }
+
+  // 기존 활성 금광 있으면 중복 설치 방지
+  const existingSnap = await db.collection('gold_mines')
+    .where('store_id', '==', storeId)
+    .where('status', '==', 'active')
+    .limit(1)
+    .get();
+  if (!existingSnap.empty) {
+    throw new HttpsError('already-exists', 'This shop already has an active gold mine');
   }
 
   const playerGold = playerSnap.exists ? (playerSnap.data().gold ?? 0) : 0;
@@ -63,6 +66,10 @@ async function createGoldMine(uid, { storeId, lat, lng }) {
     throw new HttpsError('failed-precondition',
       `Not enough GP. Need ${cfg.installCost.toLocaleString()}, have ${playerGold.toLocaleString()}`);
   }
+
+  // shop 위치를 서버에서 직접 사용 (클라이언트 전달 불필요)
+  const lat = typeof shop.lat === 'number' ? shop.lat : null;
+  const lng = typeof shop.lng === 'number' ? shop.lng : null;
 
   const totalGold = Math.floor(10000 + Math.random() * (10000000 - 10000));
   const now = admin.firestore.FieldValue.serverTimestamp();
@@ -77,8 +84,8 @@ async function createGoldMine(uid, { storeId, lat, lng }) {
   batch.set(mineRef, {
     owner_id: uid,
     store_id: storeId,
-    store_lat: shop.lat,
-    store_lng: shop.lng,
+    store_lat: lat,
+    store_lng: lng,
     lat,
     lng,
     miners_count:     0,
@@ -91,7 +98,7 @@ async function createGoldMine(uid, { storeId, lat, lng }) {
   });
 
   await batch.commit();
-  return { ok: true, mineId: mineRef.id, installCost: cfg.installCost };
+  return { ok: true, mineId: mineRef.id, installCost: cfg.installCost, lat, lng };
 }
 
 // ── 광부 배치 ──────────────────────────────────────────────────────────────────

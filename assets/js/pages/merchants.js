@@ -4224,7 +4224,7 @@ function _renderShopModalBody() {
   // Gold Mine 설치
   $('shopInstallMineBtn')?.addEventListener('click', () => {
     closeShopModal();
-    promptInstallMine(shop.id, shop.lat, shop.lng);
+    promptInstallMine(shop.id);
   });
 }
 

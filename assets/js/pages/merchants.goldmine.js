@@ -204,24 +204,10 @@ async function _deployMiners(mineId, count) {
 }
 
 // ── Install mine (called from shop modal "Install Gold Mine" button) ───────────
-export function promptInstallMine(storeId, shopLat, shopLng) {
+// Only storeId needed — server reads shop lat/lng from Firestore directly
+export function promptInstallMine(storeId) {
   document.getElementById('shopModal')?.classList.remove('open');
-
-  // Shop may not have lat/lng set — fall back to current GPS position
-  let lat = (shopLat != null && !isNaN(+shopLat)) ? +shopLat : null;
-  let lng = (shopLng != null && !isNaN(+shopLng)) ? +shopLng : null;
-
-  if (lat == null || lng == null) {
-    const pos = _ctx?.gpsPos ?? _ctx?.lastPos;
-    if (!pos) {
-      _showToast('Location unavailable. Enable GPS or update shop location.', 'error');
-      return;
-    }
-    lat = pos.lat;
-    lng = pos.lng;
-  }
-
-  _doInstall(storeId, lat, lng);
+  _doInstall(storeId);
 }
 
 function _showInstallSuccess(cost) {
@@ -244,13 +230,16 @@ function _showInstallSuccess(cost) {
   el.querySelector('#gmSuccessOkBtn').onclick = () => el.classList.remove('open');
 }
 
-async function _doInstall(storeId, lat, lng) {
+async function _doInstall(storeId) {
   if (!_fns) { _showToast('System not ready — refresh the page.', 'error'); return; }
   _showToast('Installing…', 'info');
   try {
     const fn = httpsCallable(_fns, 'createGoldMine');
-    const { data } = await fn({ storeId, lat, lng });
-    await loadGoldMineMarkers(lat, lng);
+    const { data } = await fn({ storeId });
+    // CF returns lat/lng from shop's Firestore record — use for marker refresh
+    const refLat = data.lat ?? _ctx?.lastPos?.lat ?? _ctx?.gpsPos?.lat;
+    const refLng = data.lng ?? _ctx?.lastPos?.lng ?? _ctx?.gpsPos?.lng;
+    await loadGoldMineMarkers(refLat, refLng);
     _showInstallSuccess(data.installCost);
   } catch (e) {
     _showToast(e.message ?? 'Installation failed', 'error');
