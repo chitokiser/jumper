@@ -68,7 +68,7 @@ const gameRewardH            = require('./handlers/gameReward');
 const starsH                 = require('./handlers/starsPayment');
 const membershipH            = require('./handlers/membership');
 const moneyTreeH             = require('./handlers/moneyTree');
-const { requireAdmin }       = require('./wallet/admin');
+const { requireAdmin, ADMIN_EMAILS } = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
 // 유틸 함수
@@ -2939,12 +2939,37 @@ exports.starsGrantProduct = onRequest(
   }
 );
 
+// 관리자 자기 등록 (부트스트랩) — ADMIN_EMAILS 일치 시 admins/{uid} 생성
+exports.adminRegisterSelf = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+
+  // JWT 토큰 이메일 우선, 없으면 Admin SDK 조회
+  let email = request.auth?.token?.email?.toLowerCase();
+  if (!email) {
+    try {
+      const record = await admin.auth().getUser(uid);
+      email = record.email?.toLowerCase();
+    } catch (_) {}
+  }
+
+  if (!email || !ADMIN_EMAILS.includes(email)) {
+    throw new HttpsError('permission-denied', 'Not in admin email list');
+  }
+
+  const db = admin.firestore();
+  await Promise.all([
+    db.collection('admins').doc(uid).set({ email, createdAt: new Date() }),
+    db.collection('users').doc(uid).set({ isAdmin: true }, { merge: true }),
+  ]);
+  return { ok: true };
+}));
+
 // Stars 관리자 통계
 exports.starsGetAdminStats = onCall(
   { timeoutSeconds: 60 },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    await requireAdmin(uid);
+    await requireAdmin(uid, request.auth?.token?.email);
     return starsH.getAdminStats();
   })
 );
@@ -2954,7 +2979,7 @@ exports.starsSeedProducts = onCall(
   { timeoutSeconds: 60 },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    await requireAdmin(uid);
+    await requireAdmin(uid, request.auth?.token?.email);
     return starsH.seedProducts();
   })
 );
@@ -2964,7 +2989,7 @@ exports.starsUpsertProduct = onCall(
   { timeoutSeconds: 60 },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    await requireAdmin(uid);
+    await requireAdmin(uid, request.auth?.token?.email);
     return starsH.upsertProduct(request.data);
   })
 );

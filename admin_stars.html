@@ -131,8 +131,9 @@
   <div id="siteFooter"></div>
 
   <script type="module">
-    import { functions } from '/assets/js/firebase-init.js';
+    import { functions, auth } from '/assets/js/firebase-init.js';
     import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
     const $ = id => document.getElementById(id);
     let _statsData = null;
@@ -294,9 +295,17 @@
       setTimeout(() => { el.style.display = 'none'; }, 3000);
     }
 
-    loadPackages();
-
-    loadStats();
+    // auth 상태 확인 후 admin 등록(최초 1회) → 데이터 로드
+    let _initialized = false;
+    onAuthStateChanged(auth, async user => {
+      if (!user || _initialized) return;
+      _initialized = true;
+      try {
+        await httpsCallable(functions, 'adminRegisterSelf')();
+      } catch (_) { /* 이미 등록됐거나 권한 없음 — 무시 */ }
+      loadPackages();
+      loadStats();
+    });
 
     // ── NPC 시드 (Firestore 직접 쓰기 — CORS 우회) ───────────────────────
     const NPC_SEED = [
