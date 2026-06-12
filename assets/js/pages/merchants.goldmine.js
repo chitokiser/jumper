@@ -214,56 +214,40 @@ function _haversineM(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function _cancelActiveInstall() {
-  if (!_activeInstall) return;
-  const { clickHandler, circle, previewMarker } = _activeInstall;
-  try { google.maps.event.removeListener(clickHandler); } catch (_) {}
-  try { circle?.setMap(null); } catch (_) {}
-  try { previewMarker?.setMap(null); } catch (_) {}
-  _activeInstall = null;
-}
-
 export function promptInstallMine(storeId, shopLat, shopLng) {
   if (!_map) { _showToast('Map not ready — please wait a moment', 'warn'); return; }
-  if (shopLat == null || shopLng == null || typeof shopLat !== 'number' || typeof shopLng !== 'number') {
-    _showToast('Shop location not set — cannot place gold mine', 'warn'); return;
+
+  _showToast('Tap anywhere on the map to place your gold mine (within 5km of your shop)', 'info');
+
+  // Draw guidance circle if shop has valid coordinates
+  let circle = null;
+  if (shopLat != null && shopLng != null) {
+    try {
+      circle = new google.maps.Circle({
+        center: { lat: shopLat, lng: shopLng },
+        radius: MINE_RADIUS_M,
+        map: _map,
+        strokeColor: '#f59e0b', strokeOpacity: 0.7, strokeWeight: 2,
+        fillColor: '#f59e0b', fillOpacity: 0.05,
+      });
+    } catch (_) {}
   }
 
-  // Cancel any previous install session before starting a new one
-  _cancelActiveInstall();
+  let previewMarker = null;
+  let clickHandler = null;
 
-  _showToast('Tap inside the yellow circle to place your gold mine (within 5km of shop)', 'info');
-
-  let circle, clickHandler, previewMarker;
-  try {
-    circle = new google.maps.Circle({
-      center: { lat: shopLat, lng: shopLng },
-      radius: MINE_RADIUS_M,
-      map: _map,
-      strokeColor: '#f59e0b', strokeOpacity: 0.7, strokeWeight: 2,
-      fillColor: '#f59e0b', fillOpacity: 0.05,
-    });
-  } catch (e) {
-    _showToast('Failed to draw placement zone', 'error');
-    return;
-  }
-
-  if (typeof _map.addListener !== 'function') {
-    _showToast('Map API not ready — please reload', 'error');
-    circle.setMap(null);
-    return;
-  }
+  const cleanup = () => {
+    if (clickHandler) { google.maps.event.removeListener(clickHandler); clickHandler = null; }
+    circle?.setMap(null);
+    previewMarker?.setMap(null);
+  };
 
   clickHandler = _map.addListener('click', (e) => {
-    if (!e?.latLng) { _showToast('Could not read tap coordinates', 'warn'); return; }
+    // Remove listener immediately — prevents it from staying alive while dialog is open
+    if (clickHandler) { google.maps.event.removeListener(clickHandler); clickHandler = null; }
+    circle?.setMap(null);
+
     const lat = e.latLng.lat(), lng = e.latLng.lng();
-    const distM = _haversineM(lat, lng, shopLat, shopLng);
-    if (isNaN(distM) || distM > MINE_RADIUS_M) {
-      const label = isNaN(distM) ? '?' : `${(distM / 1000).toFixed(1)}km`;
-      _showToast(`Too far (${label}) — tap inside the yellow circle`, 'warn');
-      return; // keep listener active so user can try again
-    }
-    _cancelActiveInstall();
     try {
       previewMarker = new google.maps.Marker({
         position: { lat, lng }, map: _map,
@@ -271,12 +255,15 @@ export function promptInstallMine(storeId, shopLat, shopLng) {
         title: 'Install here?',
       });
     } catch (_) {}
+    const distM = (shopLat != null && shopLng != null) ? _haversineM(lat, lng, shopLat, shopLng) : null;
     _openInstallConfirm(storeId, lat, lng, distM, () => {
-      try { previewMarker?.setMap(null); } catch (_) {}
+      previewMarker?.setMap(null);
+      previewMarker = null;
     });
   });
 
-  _activeInstall = { clickHandler, circle, previewMarker: null };
+  // Clean up if shop modal closes before user taps
+  document.getElementById('btnCloseShopModal')?.addEventListener('click', cleanup, { once: true });
 }
 
 function _openInstallConfirm(storeId, lat, lng, distM, onDone) {
@@ -284,8 +271,8 @@ function _openInstallConfirm(storeId, lat, lng, distM, onDone) {
   if (!el) { _showToast('Install dialog missing — please reload', 'error'); return; }
   const locEl = el.querySelector('#gmInstallLoc');
   if (locEl) {
-    const distLabel = distM < 1000 ? `${Math.round(distM)}m` : `${(distM / 1000).toFixed(2)}km`;
-    locEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} · ${distLabel} from shop`;
+    const distLabel = distM == null ? '' : distM < 1000 ? ` · ${Math.round(distM)}m from shop` : ` · ${(distM / 1000).toFixed(2)}km from shop`;
+    locEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}${distLabel}`;
   }
   el.classList.add('open');
 
