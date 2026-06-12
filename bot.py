@@ -1,6 +1,8 @@
 import os
 import json
 import asyncio
+import random as _random
+import time as _time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
@@ -1636,6 +1638,102 @@ async def error_handler(_update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[ERROR] Unhandled: {context.error}")
 
 
+# ── 나무수확 생중계 ───────────────────────────────────────────────────────────────
+
+_NPC_NAMES = [
+    "Alex", "Mia", "Carlos", "Priya", "Lucas", "Yuki", "Omar", "Sofia",
+    "Jake", "Lena", "Raj", "Chloe", "Marco", "Aisha", "Tom", "Nora",
+    "Jinho", "Hana", "Victor", "Zara", "Ben", "Lily", "Diego", "Amara",
+    "Kevin", "Rina", "Sam", "Fatima", "Leo", "Nina", "Ethan", "Maya",
+    "Hassan", "Elena", "David", "Suki", "Paulo", "Ines", "Jin", "Aria",
+]
+
+_harvest_listener_start: float = 0.0
+
+
+async def _broadcast_harvest(app, name: str, gp: int, is_npc: bool = False):
+    if not GROUP_CHAT_ID:
+        return
+    if gp >= 200000:
+        tier = "🏆💰"
+    elif gp >= 100000:
+        tier = "🌟💰"
+    elif gp >= 50000:
+        tier = "✨💰"
+    else:
+        tier = "🌳"
+    label = "🤖 NPC" if is_npc else "🌍 Player"
+    text = (
+        f"{tier} <b>{name}</b> harvested a money tree!\n"
+        f"💰 <b>+{gp:,} GP</b>\n"
+        f"{label}"
+    )
+    try:
+        await app.bot.send_message(chat_id=GROUP_CHAT_ID, text=text, parse_mode="HTML")
+    except Exception as e:
+        print(f"[WARN] harvest broadcast failed: {e}")
+
+
+async def _npc_harvest_loop(app):
+    await asyncio.sleep(60)
+    while True:
+        try:
+            name = _random.choice(_NPC_NAMES)
+            gp   = round(_random.randint(15100, 350000) / 100) * 100
+            await _broadcast_harvest(app, name, gp, is_npc=True)
+        except Exception as e:
+            print(f"[WARN] NPC harvest loop error: {e}")
+        await asyncio.sleep(_random.uniform(180, 480))
+
+
+async def _handle_real_harvest(app, uid: str, gp: int):
+    if not (15100 <= gp <= 350000):
+        return
+    try:
+        snap = await _run(
+            lambda: _db.collection("battle_players").document(uid).get(timeout=10)
+        )
+        data = (snap.to_dict() or {}) if snap.exists else {}
+        name = data.get("displayName") or data.get("name") or "Player"
+    except Exception:
+        name = "Player"
+    await _broadcast_harvest(app, name, gp, is_npc=False)
+
+
+def _start_harvest_watcher(loop, app):
+    global _harvest_listener_start
+    _harvest_listener_start = _time.time()
+
+    def _callback(snapshots, changes, read_time):
+        for change in changes:
+            if change.type.name != "ADDED":
+                continue
+            data = change.document.to_dict() or {}
+            if data.get("type") != "harvest":
+                continue
+            created = data.get("createdAt")
+            if created:
+                try:
+                    if created.timestamp() < _harvest_listener_start:
+                        continue
+                except Exception:
+                    pass
+            gp  = data.get("harvesterGp", 0)
+            uid = data.get("uid", "")
+            if uid and gp:
+                asyncio.run_coroutine_threadsafe(
+                    _handle_real_harvest(app, uid, gp), loop
+                )
+
+    try:
+        _db.collection("money_tree_logs") \
+            .where("type", "==", "harvest") \
+            .on_snapshot(_callback)
+        print("[OK] Harvest watcher started")
+    except Exception as e:
+        print(f"[WARN] Harvest watcher failed to start: {e}")
+
+
 async def _post_init(application):
     global _bot_username
     try:
@@ -1654,6 +1752,11 @@ async def _post_init(application):
         )
     except Exception:
         pass
+    if GROUP_CHAT_ID:
+        loop = asyncio.get_running_loop()
+        asyncio.create_task(_npc_harvest_loop(application))
+        _executor.submit(_start_harvest_watcher, loop, application)
+        print("[OK] Tree harvest broadcast started")
 
 # ── 진입점 ────────────────────────────────────────────────────────────────────
 
