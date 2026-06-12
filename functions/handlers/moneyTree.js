@@ -454,17 +454,19 @@ async function useTreeBooster(uid, { treeId }) {
 async function harvestTree(uid, { treeId }) {
   if (!treeId) throw new HttpsError('invalid-argument', 'treeId is required.');
 
-  const [treeSnap, player, cfgSnap] = await Promise.all([
+  const [treeSnap, playerSnap, cfgSnap] = await Promise.all([
     db.collection('money_trees').doc(treeId).get(),
-    _validateGps(uid),
+    db.collection('battle_players').doc(uid).get(),
     CONFIG_REF.get(),
   ]);
   if (!treeSnap.exists) throw new HttpsError('not-found', 'Tree not found.');
   const tree = treeSnap.data();
   if (tree.ownerUid !== uid) throw new HttpsError('permission-denied', 'You can only harvest your own trees.');
+  if (!playerSnap.exists) throw new HttpsError('not-found', 'Player data not found.');
+  const player = playerSnap.data();
   const cfg  = { ...DEFAULTS, ...(cfgSnap.exists ? cfgSnap.data() : {}) };
 
-  // Owner can harvest from anywhere — distance check skipped for own trees
+  // Owner can harvest from anywhere — GPS age/distance checks skipped for own trees
   if ((player.harvestTickets ?? 0) < 1) throw new HttpsError('failed-precondition', 'You have no harvest tickets.');
 
   const treeValue = calcTreeValue(cfg.globalPlantCounter, tree.baseCounter, cfg.growthRate, cfg.maxTreeValue, tree.boostTotal);
