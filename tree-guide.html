@@ -13,11 +13,11 @@
   <meta property="og:site_name" content="JumpDAO" />
   <meta property="og:url" content="https://jump22.netlify.app/tree-guide.html" />
   <meta property="og:title" content="How to Plant Trees | JumpDAO — Grow & Earn TonCoin" />
-  <meta property="og:description" content="Plant virtual trees on the map, watch them grow, and exchange 500,000 GP for TonCoin. Start in under 2 minutes." />
+  <meta property="og:description" content="Plant virtual trees on the map, watch them grow, and exchange 500,000 GP for TonCoin (~$500 USD). Start in under 2 minutes." />
   <meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="How to Plant Trees | JumpDAO" />
-  <meta name="twitter:description" content="Plant virtual trees, grow GP, exchange for TonCoin. Step-by-step guide." />
+  <meta name="twitter:description" content="Plant virtual trees, grow GP, exchange for TonCoin (~$500 USD). Step-by-step guide." />
   <meta name="twitter:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -46,6 +46,38 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', sans-serif;
       min-height: 100vh;
       line-height: 1.6;
+    }
+
+    /* ── Lang Switcher ── */
+    #langSwitch {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 200;
+      display: flex;
+      gap: 3px;
+      background: rgba(13,17,23,.85);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      padding: 4px;
+      backdrop-filter: blur(8px);
+    }
+    #langSwitch button {
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    #langSwitch button.active {
+      background: rgba(34,197,94,.15);
+      border-color: rgba(34,197,94,.4);
+      color: #4ade80;
     }
 
     /* ── Hero ── */
@@ -100,7 +132,7 @@
     .hero p {
       color: #94a3b8;
       font-size: .95rem;
-      max-width: 400px;
+      max-width: 420px;
       margin: 0 auto 24px;
     }
     .cta-btn {
@@ -256,46 +288,25 @@
     }
     .step-hint-icon { flex-shrink: 0; font-size: 1rem; margin-top: -1px; }
 
-    /* Color themes per step group */
-    .step.green .step-num {
-      background: rgba(34,197,94,.12);
-      border-color: rgba(34,197,94,.4);
-      color: #4ade80;
-    }
+    .step.green .step-num  { background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.4);  color: #4ade80; }
     .step.green .step-line { --line-from: rgba(34,197,94,.3); }
-    .step.green .step-tag { background: rgba(34,197,94,.12); color: #4ade80; }
+    .step.green .step-tag  { background: rgba(34,197,94,.12);  color: #4ade80; }
 
-    .step.blue .step-num {
-      background: rgba(59,130,246,.12);
-      border-color: rgba(59,130,246,.4);
-      color: #60a5fa;
-    }
-    .step.blue .step-line { --line-from: rgba(59,130,246,.3); }
-    .step.blue .step-tag { background: rgba(59,130,246,.12); color: #60a5fa; }
+    .step.blue .step-num   { background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.4); color: #60a5fa; }
+    .step.blue .step-line  { --line-from: rgba(59,130,246,.3); }
+    .step.blue .step-tag   { background: rgba(59,130,246,.12); color: #60a5fa; }
 
-    .step.purple .step-num {
-      background: rgba(139,92,246,.12);
-      border-color: rgba(139,92,246,.4);
-      color: #a78bfa;
-    }
+    .step.purple .step-num  { background: rgba(139,92,246,.12); border-color: rgba(139,92,246,.4); color: #a78bfa; }
     .step.purple .step-line { --line-from: rgba(139,92,246,.3); }
-    .step.purple .step-tag { background: rgba(139,92,246,.12); color: #a78bfa; }
+    .step.purple .step-tag  { background: rgba(139,92,246,.12); color: #a78bfa; }
 
-    .step.amber .step-num {
-      background: rgba(245,158,11,.12);
-      border-color: rgba(245,158,11,.4);
-      color: #fbbf24;
-    }
+    .step.amber .step-num  { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.4); color: #fbbf24; }
     .step.amber .step-line { --line-from: rgba(245,158,11,.3); }
-    .step.amber .step-tag { background: rgba(245,158,11,.12); color: #fbbf24; }
+    .step.amber .step-tag  { background: rgba(245,158,11,.12); color: #fbbf24; }
 
-    .step.teal .step-num {
-      background: rgba(20,184,166,.12);
-      border-color: rgba(20,184,166,.4);
-      color: #2dd4bf;
-    }
-    .step.teal .step-line { --line-from: rgba(20,184,166,.3); }
-    .step.teal .step-tag { background: rgba(20,184,166,.12); color: #2dd4bf; }
+    .step.teal .step-num   { background: rgba(20,184,166,.12); border-color: rgba(20,184,166,.4); color: #2dd4bf; }
+    .step.teal .step-line  { --line-from: rgba(20,184,166,.3); }
+    .step.teal .step-tag   { background: rgba(20,184,166,.12); color: #2dd4bf; }
 
     /* ── Visual mock elements ── */
     .mock-btn {
@@ -311,17 +322,11 @@
       color: #e2e8f0;
       white-space: nowrap;
     }
-    .mock-btn.green { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.3); color: #4ade80; }
+    .mock-btn.green  { background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.3);  color: #4ade80; }
     .mock-btn.purple { background: rgba(139,92,246,.12); border-color: rgba(139,92,246,.3); color: #a78bfa; }
-    .mock-btn.amber { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.3); color: #fbbf24; }
+    .mock-btn.amber  { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.3); color: #fbbf24; }
 
-    .inline-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 10px;
-      align-items: center;
-    }
+    .inline-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
     .arrow-right { color: var(--muted); font-size: .9rem; }
 
     /* ── HUD Mock ── */
@@ -350,7 +355,7 @@
       box-shadow: 0 0 12px rgba(34,197,94,.2);
     }
     .hud-slot-label { font-size: 9px; color: var(--muted); text-transform: uppercase; }
-    .hud-slot-val { font-size: 1rem; font-weight: 800; color: #fff; }
+    .hud-slot-val   { font-size: 1rem; font-weight: 800; color: #fff; }
     .hud-slot.active .hud-slot-val { color: #4ade80; }
 
     /* ── Reward Section ── */
@@ -368,8 +373,8 @@
       text-align: center;
     }
     .reward-card .big { font-size: 2rem; margin-bottom: 6px; }
-    .reward-card h3 { font-size: .85rem; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
-    .reward-card p { font-size: .76rem; color: var(--muted); }
+    .reward-card h3   { font-size: .85rem; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+    .reward-card p    { font-size: .76rem; color: var(--muted); }
     .reward-card.highlight {
       border-color: rgba(245,158,11,.3);
       background: linear-gradient(145deg, rgba(245,158,11,.06), rgba(34,197,94,.04));
@@ -427,23 +432,9 @@
       padding: 32px 16px 48px;
       text-align: center;
     }
-    .bottom-cta h2 {
-      font-size: 1.3rem;
-      font-weight: 900;
-      color: #fff;
-      margin-bottom: 8px;
-    }
-    .bottom-cta p {
-      color: #64748b;
-      font-size: .85rem;
-      margin-bottom: 20px;
-    }
-    .btn-row {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
+    .bottom-cta h2 { font-size: 1.3rem; font-weight: 900; color: #fff; margin-bottom: 8px; }
+    .bottom-cta p  { color: #64748b; font-size: .85rem; margin-bottom: 20px; }
+    .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
     .btn {
       display: inline-flex;
       align-items: center;
@@ -456,7 +447,7 @@
       transition: opacity .2s, transform .15s;
     }
     .btn:hover { opacity: .85; transform: translateY(-1px); }
-    .btn-primary { background: linear-gradient(135deg, #16a34a, #22c55e); color: #fff; box-shadow: 0 4px 18px rgba(34,197,94,.3); }
+    .btn-primary   { background: linear-gradient(135deg, #16a34a, #22c55e); color: #fff; box-shadow: 0 4px 18px rgba(34,197,94,.3); }
     .btn-secondary { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: #e2e8f0; }
 
     /* ── Divider ── */
@@ -474,63 +465,58 @@
 </head>
 <body>
 
+  <!-- ── Language Switcher ── -->
+  <div id="langSwitch">
+    <button data-lang="en"  onclick="setLang('en')" >EN</button>
+    <button data-lang="ko"  onclick="setLang('ko')" >한국어</button>
+    <button data-lang="vi"  onclick="setLang('vi')" >VI</button>
+  </div>
+
   <!-- ── Hero ── -->
   <header class="hero">
     <div style="position:relative;z-index:1;">
-      <div class="hero-badge">🌳 Passive Income Guide</div>
+      <div class="hero-badge" data-i18n="hero_badge">🌳 Passive Income Guide</div>
       <span class="hero-icon">🌱</span>
-      <h1>Plant Trees.<br><span>Earn TonCoin.</span></h1>
-      <p>Buy virtual seedlings, plant them anywhere on the map, and harvest when they reach <strong style="color:#fbbf24;">500,000 GP</strong> — exchange for real TonCoin.</p>
-      <a href="https://t.me/jumpdao_eng" target="_blank" class="cta-btn">
-        <span>📱</span> Join & Start Now
+      <h1 data-i18n="hero_h1">Plant Trees.<br><span>Earn TonCoin.</span></h1>
+      <p data-i18n="hero_p">Buy virtual seedlings, plant them anywhere on the map, and harvest when they reach <strong style="color:#fbbf24;">500,000 GP</strong> — exchange for real TonCoin (~$500 USD).</p>
+      <a href="https://t.me/jumpdao_eng" target="_blank" class="cta-btn" data-i18n="hero_cta">
+        📱 Join &amp; Start Now
       </a>
     </div>
   </header>
 
   <!-- ── Reward Banner ── -->
   <div class="reward-banner">
-    <div class="rb-item">🌱 Buy seedlings → <span class="num">&nbsp;Plant on map</span></div>
-    <div class="rb-item">🌳 500,000 GP → <span class="num">&nbsp;1 TonCoin</span></div>
-    <div class="rb-item">💊 Boost with <span class="num">&nbsp;Fertilizer</span></div>
+    <div class="rb-item" data-i18n="rb1">🌱 Buy seedlings → <span class="num">&nbsp;Plant on map</span></div>
+    <div class="rb-item" data-i18n="rb2">🌳 500,000 GP → <span class="num">&nbsp;≈ $500 USD</span></div>
+    <div class="rb-item" data-i18n="rb3">💊 Boost with <span class="num">&nbsp;Fertilizer</span></div>
   </div>
 
   <!-- ── Steps ── -->
   <div class="section">
-    <p class="section-title">Step-by-step guide · 9 easy steps</p>
+    <p class="section-title" data-i18n="steps_title">Step-by-step guide · 9 easy steps</p>
     <div class="steps">
 
       <!-- Step 1 -->
       <div class="step green">
-        <div class="step-left">
-          <div class="step-num">1</div>
-          <div class="step-line"></div>
-        </div>
+        <div class="step-left"><div class="step-num">1</div><div class="step-line"></div></div>
         <div class="step-body">
-          <span class="step-tag">Telegram</span>
-          <div class="step-heading">Join the JumpDAO group</div>
-          <div class="step-desc">
-            Open Telegram and join the official group:
-            <div class="inline-row" style="margin-top:8px;">
-              <a href="https://t.me/jumpdao_eng" target="_blank" class="mock-btn green">📢 t.me/jumpdao_eng</a>
-            </div>
+          <span class="step-tag" data-i18n="s1_tag">Telegram</span>
+          <div class="step-heading" data-i18n="s1_heading">Join the JumpDAO group</div>
+          <div class="step-desc" data-i18n="s1_desc">Open Telegram and join the official group:
+            <div class="inline-row" style="margin-top:8px;"><a href="https://t.me/jumpdao_eng" target="_blank" class="mock-btn green">📢 t.me/jumpdao_eng</a></div>
           </div>
         </div>
       </div>
 
       <!-- Step 2 -->
       <div class="step green">
-        <div class="step-left">
-          <div class="step-num">2</div>
-          <div class="step-line"></div>
-        </div>
+        <div class="step-left"><div class="step-num">2</div><div class="step-line"></div></div>
         <div class="step-body">
-          <span class="step-tag">Telegram</span>
-          <div class="step-heading">Type /start in the group chat</div>
-          <div class="step-desc">
-            In the group chat message box, type and send:
-            <div class="inline-row" style="margin-top:8px;">
-              <code>/start</code>
-            </div>
+          <span class="step-tag" data-i18n="s2_tag">Telegram</span>
+          <div class="step-heading" data-i18n="s2_heading">Type /start in the group chat</div>
+          <div class="step-desc" data-i18n="s2_desc">In the group chat message box, type and send:
+            <div class="inline-row" style="margin-top:8px;"><code>/start</code></div>
             <br>This will surface the <strong>JumpDAO Bot</strong> in the chat.
           </div>
         </div>
@@ -538,42 +524,27 @@
 
       <!-- Step 3 -->
       <div class="step green">
-        <div class="step-left">
-          <div class="step-num">3</div>
-          <div class="step-line"></div>
-        </div>
+        <div class="step-left"><div class="step-num">3</div><div class="step-line"></div></div>
         <div class="step-body">
-          <span class="step-tag">Telegram Bot</span>
-          <div class="step-heading">Open the JumpDAO Bot</div>
-          <div class="step-desc">
-            Tap the <strong>Open JumpDAO Bot</strong> button that appears.<br>
+          <span class="step-tag" data-i18n="s3_tag">Telegram Bot</span>
+          <div class="step-heading" data-i18n="s3_heading">Open the JumpDAO Bot</div>
+          <div class="step-desc" data-i18n="s3_desc">Tap the <strong>Open JumpDAO Bot</strong> button that appears.<br>
             Once connected, look for the button in the bottom-left corner of the chat input bar.
-            <div class="inline-row" style="margin-top:8px;">
-              <span class="mock-btn green">🎮 GameHub</span>
-            </div>
+            <div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🎮 GameHub</span></div>
             <br>Tap it — you'll be auto-logged in and the game list will open.
           </div>
-          <div class="step-hint">
-            <span class="step-hint-icon">💡</span>
-            Auto-login happens automatically via your Telegram account — no password needed.
-          </div>
+          <div class="step-hint"><span class="step-hint-icon">💡</span><span data-i18n="s3_hint">Auto-login happens automatically via your Telegram account — no password needed.</span></div>
         </div>
       </div>
 
       <!-- Step 4 -->
       <div class="step blue">
-        <div class="step-left">
-          <div class="step-num">4</div>
-          <div class="step-line"></div>
-        </div>
+        <div class="step-left"><div class="step-num">4</div><div class="step-line"></div></div>
         <div class="step-body">
-          <span class="step-tag">Game</span>
-          <div class="step-heading">Select Hunt &amp; Hide</div>
-          <div class="step-desc">
-            From the game list, choose:
-            <div class="inline-row" style="margin-top:8px;">
-              <span class="mock-btn purple">🏹 Hunt &amp; Hide</span>
-            </div>
+          <span class="step-tag" data-i18n="s4_tag">Game</span>
+          <div class="step-heading" data-i18n="s4_heading">Select Hunt &amp; Hide</div>
+          <div class="step-desc" data-i18n="s4_desc">From the game list, choose:
+            <div class="inline-row" style="margin-top:8px;"><span class="mock-btn purple">🏹 Hunt &amp; Hide</span></div>
             <br>Then tap the <strong>expand icon</strong> (🗺 top-right) to go full screen — the map and shop panel will open.
           </div>
         </div>
@@ -581,19 +552,13 @@
 
       <!-- Step 5 -->
       <div class="step blue">
-        <div class="step-left">
-          <div class="step-num">5</div>
-          <div class="step-line"></div>
-        </div>
+        <div class="step-left"><div class="step-num">5</div><div class="step-line"></div></div>
         <div class="step-body">
-          <span class="step-tag">Shop</span>
-          <div class="step-heading">Open the 한라수목원 Potion Shop</div>
-          <div class="step-desc">
-            In the right panel, find the <strong>🌍 Virtual Explore</strong> section.<br>
+          <span class="step-tag" data-i18n="s5_tag">Shop</span>
+          <div class="step-heading" data-i18n="s5_heading">Open the 한라수목원 Potion Shop</div>
+          <div class="step-desc" data-i18n="s5_desc">In the right panel, find the <strong>🌍 Virtual Explore</strong> section.<br>
             Scroll the shop list and tap:
-            <div class="inline-row" style="margin-top:8px;">
-              <span class="mock-btn amber">🏪 한라수목원 약물상점</span>
-            </div>
+            <div class="inline-row" style="margin-top:8px;"><span class="mock-btn amber">🏪 한라수목원 약물상점</span></div>
             <br>Then tap the <strong>shop banner image</strong> to open the item store.
           </div>
         </div>
@@ -601,43 +566,30 @@
 
       <!-- Step 6 -->
       <div class="step amber">
-        <div class="step-left">
-          <div class="step-num">6</div>
-          <div class="step-line"></div>
-        </div>
+        <div class="step-left"><div class="step-num">6</div><div class="step-line"></div></div>
         <div class="step-body">
-          <span class="step-tag">Purchase</span>
-          <div class="step-heading">Buy 5 Seedlings</div>
-          <div class="step-desc">
-            In the shop, find the <strong>Seedling</strong> item.<br>
+          <span class="step-tag" data-i18n="s6_tag">Purchase</span>
+          <div class="step-heading" data-i18n="s6_heading">Buy 5 Seedlings</div>
+          <div class="step-desc" data-i18n="s6_desc">In the shop, find the <strong>Seedling</strong> item.<br>
             Enter <code>5</code> in the quantity field, then tap:
-            <div class="inline-row" style="margin-top:8px;">
-              <span class="mock-btn green">🛒 Buy</span>
-            </div>
+            <div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🛒 Buy</span></div>
           </div>
-          <div class="step-hint">
-            <span class="step-hint-icon">💡</span>
-            You need enough GP to buy. Each seedling costs GP — check the shop price before buying.
-          </div>
+          <div class="step-hint"><span class="step-hint-icon">💡</span><span data-i18n="s6_hint">You need enough GP to buy. Each seedling costs GP — check the shop price before buying.</span></div>
         </div>
       </div>
 
       <!-- Step 7 -->
       <div class="step amber">
-        <div class="step-left">
-          <div class="step-num">7</div>
-          <div class="step-line"></div>
-        </div>
+        <div class="step-left"><div class="step-num">7</div><div class="step-line"></div></div>
         <div class="step-body">
-          <span class="step-tag">Inventory</span>
-          <div class="step-heading">Confirm your Seed count</div>
-          <div class="step-desc">
-            After buying, look at the <strong>HUD bar</strong> at the very bottom of the screen.<br>
+          <span class="step-tag" data-i18n="s7_tag">Inventory</span>
+          <div class="step-heading" data-i18n="s7_heading">Confirm your Seed count</div>
+          <div class="step-desc" data-i18n="s7_desc">After buying, look at the <strong>HUD bar</strong> at the very bottom of the screen.<br>
             The leftmost slot should now show:
           </div>
           <div class="hud-mock">
             <div class="hud-slot active">
-              <div class="hud-slot-label">Seed</div>
+              <div class="hud-slot-label" data-i18n="hud_seed_label">Seed</div>
               <div class="hud-slot-val">5</div>
             </div>
             <div class="hud-slot">
@@ -648,42 +600,31 @@
               <div class="hud-slot-label">MP</div>
               <div class="hud-slot-val">🔵</div>
             </div>
-            <div style="font-size:.75rem;color:#64748b;margin-left:4px;">← Seed = 5 ✅</div>
+            <div style="font-size:.75rem;color:#64748b;margin-left:4px;" data-i18n="hud_seed_note">← Seed = 5 ✅</div>
           </div>
         </div>
       </div>
 
       <!-- Step 8 -->
       <div class="step purple">
-        <div class="step-left">
-          <div class="step-num">8</div>
-          <div class="step-line"></div>
-        </div>
+        <div class="step-left"><div class="step-num">8</div><div class="step-line"></div></div>
         <div class="step-body">
-          <span class="step-tag">Map</span>
-          <div class="step-heading">Move your character to open ground</div>
-          <div class="step-desc">
-            Tap on an <strong>open area on the map</strong> to walk your character there.<br>
+          <span class="step-tag" data-i18n="s8_tag">Map</span>
+          <div class="step-heading" data-i18n="s8_heading">Move your character to open ground</div>
+          <div class="step-desc" data-i18n="s8_desc">Tap on an <strong>open area on the map</strong> to walk your character there.<br>
             Choose a spacious location — trees grow better with room to breathe 🌿
           </div>
-          <div class="step-hint">
-            <span class="step-hint-icon">📍</span>
-            Any open location works. You can plant trees anywhere on the map, not just near a shop.
-          </div>
+          <div class="step-hint"><span class="step-hint-icon">📍</span><span data-i18n="s8_hint">Any open location works. You can plant trees anywhere on the map, not just near a shop.</span></div>
         </div>
       </div>
 
       <!-- Step 9 -->
       <div class="step teal">
-        <div class="step-left">
-          <div class="step-num">9</div>
-          <div class="step-line"></div>
-        </div>
+        <div class="step-left"><div class="step-num">9</div><div class="step-line"></div></div>
         <div class="step-body">
-          <span class="step-tag">Plant</span>
-          <div class="step-heading">Plant All — done! 🎉</div>
-          <div class="step-desc">
-            Tap the <strong>Seed</strong> slot in the bottom-left HUD.<br>
+          <span class="step-tag" data-i18n="s9_tag">Plant</span>
+          <div class="step-heading" data-i18n="s9_heading">Plant All — done! 🎉</div>
+          <div class="step-desc" data-i18n="s9_desc">Tap the <strong>Seed</strong> slot in the bottom-left HUD.<br>
             A planting panel will appear. Tap:
             <div class="inline-row" style="margin-top:8px;">
               <span class="mock-btn green">🌱 Plant Current Location</span>
@@ -692,10 +633,7 @@
             </div>
             <br>Wait a moment — all 5 trees will be planted at once on the map!
           </div>
-          <div class="step-hint">
-            <span class="step-hint-icon">✅</span>
-            Done! Your trees are now growing. Come back later to check their progress and harvest when ready.
-          </div>
+          <div class="step-hint"><span class="step-hint-icon">✅</span><span data-i18n="s9_hint">Done! Your trees are now growing. Come back later to check their progress and harvest when ready.</span></div>
         </div>
       </div>
 
@@ -705,24 +643,24 @@
   <!-- ── Rewards ── -->
   <div class="divider"></div>
   <div class="section" style="padding-top:32px;">
-    <p class="section-title">Rewards &amp; Growth</p>
+    <p class="section-title" data-i18n="rewards_title">Rewards &amp; Growth</p>
     <div class="reward-cards">
       <div class="reward-card">
         <div class="big">🌱→🌳</div>
-        <h3>Auto Growth</h3>
-        <p>Trees grow on their own — just leave them and check back.</p>
+        <h3 data-i18n="r1_h3">Auto Growth</h3>
+        <p data-i18n="r1_p">Trees grow on their own — just leave them and check back.</p>
       </div>
       <div class="reward-card">
         <div class="big">💊</div>
-        <h3>Fertilizer Boost</h3>
-        <p>Use fertilizer from the shop to speed up growth significantly.</p>
+        <h3 data-i18n="r2_h3">Fertilizer Boost</h3>
+        <p data-i18n="r2_p">Use fertilizer from the shop to speed up growth significantly.</p>
       </div>
       <div class="reward-card highlight">
         <div class="big">🪙</div>
-        <h3>Harvest &amp; Exchange</h3>
-        <p>When a tree reaches <strong style="color:#fbbf24;">500,000 GP</strong>, harvest it and exchange for <strong style="color:#60a5fa;">TonCoin</strong>. You can also do partial mid-growth harvests.</p>
+        <h3 data-i18n="r3_h3">Harvest &amp; Exchange</h3>
+        <p data-i18n="r3_p">When a tree reaches <strong style="color:#fbbf24;">500,000 GP</strong>, harvest it and exchange for <strong style="color:#60a5fa;">TonCoin</strong>. You can also do partial mid-growth harvests.</p>
         <div style="display:flex;justify-content:center;">
-          <span class="reward-pill">500,000 GP = 1 TonCoin 💎</span>
+          <span class="reward-pill" data-i18n="reward_pill">500,000 GP ≈ $500 USD in TonCoin 💎</span>
         </div>
       </div>
     </div>
@@ -731,51 +669,36 @@
   <!-- ── FAQ ── -->
   <div class="divider"></div>
   <div class="section" style="padding-top:32px;">
-    <p class="section-title">Frequently asked questions</p>
+    <p class="section-title" data-i18n="faq_title">Frequently asked questions</p>
     <div class="faq">
       <div class="faq-item">
         <details>
-          <summary class="faq-q">
-            Do I need to be near the tree to harvest it?
-            <span class="faq-icon">＋</span>
-          </summary>
-          <div class="faq-a">No — once planted, trees grow on their own. You can harvest from anywhere in the game as long as the tree has reached the required GP level.</div>
+          <summary class="faq-q"><span data-i18n="faq_q1">Do I need to be near the tree to harvest it?</span><span class="faq-icon">＋</span></summary>
+          <div class="faq-a" data-i18n="faq_a1">No — once planted, trees grow on their own. You can harvest from anywhere in the game as long as the tree has reached the required GP level.</div>
         </details>
       </div>
       <div class="faq-item">
         <details>
-          <summary class="faq-q">
-            How long does a tree take to grow to 500,000 GP?
-            <span class="faq-icon">＋</span>
-          </summary>
-          <div class="faq-a">Growth time varies based on the tree type and whether you apply fertilizer. Using fertilizer (💊 from the shop) can significantly reduce the time. Without it, trees grow steadily over several days.</div>
+          <summary class="faq-q"><span data-i18n="faq_q2">How long does a tree take to grow to 500,000 GP?</span><span class="faq-icon">＋</span></summary>
+          <div class="faq-a" data-i18n="faq_a2">Growth time varies based on the tree type and whether you apply fertilizer. Using fertilizer (💊 from the shop) can significantly reduce the time. Without it, trees grow steadily over several days.</div>
         </details>
       </div>
       <div class="faq-item">
         <details>
-          <summary class="faq-q">
-            Can I plant trees in multiple locations?
-            <span class="faq-icon">＋</span>
-          </summary>
-          <div class="faq-a">Yes! You can move your character to different spots on the map and plant batches of seedlings in multiple locations. Buy more seedlings and repeat the process.</div>
+          <summary class="faq-q"><span data-i18n="faq_q3">Can I plant trees in multiple locations?</span><span class="faq-icon">＋</span></summary>
+          <div class="faq-a" data-i18n="faq_a3">Yes! You can move your character to different spots on the map and plant batches of seedlings in multiple locations. Buy more seedlings and repeat the process.</div>
         </details>
       </div>
       <div class="faq-item">
         <details>
-          <summary class="faq-q">
-            What is GP and how do I get it to buy seedlings?
-            <span class="faq-icon">＋</span>
-          </summary>
-          <div class="faq-a">GP (Game Points) is the in-game currency. You earn GP by playing Hunt & Hide, finding treasure boxes, completing daily quests, and other game activities. You can also top up GP via the shop using Telegram Stars.</div>
+          <summary class="faq-q"><span data-i18n="faq_q4">What is GP and how do I get it to buy seedlings?</span><span class="faq-icon">＋</span></summary>
+          <div class="faq-a" data-i18n="faq_a4">GP (Game Points) is the in-game currency. You earn GP by playing Hunt &amp; Hide, finding treasure boxes, completing daily quests, and other game activities. You can also top up GP via the shop using Telegram Stars.</div>
         </details>
       </div>
       <div class="faq-item">
         <details>
-          <summary class="faq-q">
-            Can I harvest a tree before it hits 500,000 GP?
-            <span class="faq-icon">＋</span>
-          </summary>
-          <div class="faq-a">Yes — mid-growth harvests are possible. You will receive the current GP value of the tree at the time of harvest. Waiting until 500,000 GP maximizes your TonCoin return.</div>
+          <summary class="faq-q"><span data-i18n="faq_q5">Can I harvest a tree before it hits 500,000 GP?</span><span class="faq-icon">＋</span></summary>
+          <div class="faq-a" data-i18n="faq_a5">Yes — mid-growth harvests are possible. You will receive the current GP value of the tree at the time of harvest. Waiting until 500,000 GP maximizes your TonCoin return.</div>
         </details>
       </div>
     </div>
@@ -783,17 +706,201 @@
 
   <!-- ── Bottom CTA ── -->
   <div class="bottom-cta">
-    <h2>Ready to plant your first tree?</h2>
-    <p>Join the JumpDAO Telegram group and start earning today.</p>
+    <h2 data-i18n="cta_h2">Ready to plant your first tree?</h2>
+    <p data-i18n="cta_p">Join the JumpDAO Telegram group and start earning today.</p>
     <div class="btn-row">
-      <a href="https://t.me/jumpdao_eng" target="_blank" class="btn btn-primary">
-        📱 Join t.me/jumpdao_eng
-      </a>
-      <a href="/merchants.html" class="btn btn-secondary">
-        🎮 Open Game Hub
-      </a>
+      <a href="https://t.me/jumpdao_eng" target="_blank" class="btn btn-primary" data-i18n="btn_join">📱 Join t.me/jumpdao_eng</a>
+      <a href="/merchants.html" class="btn btn-secondary" data-i18n="btn_game">🎮 Open Game Hub</a>
     </div>
   </div>
 
+<script>
+const T = {
+  en: {
+    hero_badge: '🌳 Passive Income Guide',
+    hero_h1: 'Plant Trees.<br><span>Earn TonCoin.</span>',
+    hero_p: 'Buy virtual seedlings, plant them anywhere on the map, and harvest when they reach <strong style="color:#fbbf24;">500,000 GP</strong> — exchange for real TonCoin (~$500 USD).',
+    hero_cta: '📱 Join &amp; Start Now',
+    rb1: '🌱 Buy seedlings → <span class="num">&nbsp;Plant on map</span>',
+    rb2: '🌳 500,000 GP → <span class="num">&nbsp;≈ $500 USD</span>',
+    rb3: '💊 Boost with <span class="num">&nbsp;Fertilizer</span>',
+    steps_title: 'Step-by-step guide · 9 easy steps',
+    s1_tag: 'Telegram', s1_heading: 'Join the JumpDAO group',
+    s1_desc: 'Open Telegram and join the official group:<div class="inline-row" style="margin-top:8px;"><a href="https://t.me/jumpdao_eng" target="_blank" class="mock-btn green">📢 t.me/jumpdao_eng</a></div>',
+    s2_tag: 'Telegram', s2_heading: 'Type /start in the group chat',
+    s2_desc: 'In the group chat message box, type and send:<div class="inline-row" style="margin-top:8px;"><code>/start</code></div><br>This will surface the <strong>JumpDAO Bot</strong> in the chat.',
+    s3_tag: 'Telegram Bot', s3_heading: 'Open the JumpDAO Bot',
+    s3_desc: 'Tap the <strong>Open JumpDAO Bot</strong> button that appears.<br>Once connected, look for the button in the bottom-left corner of the chat input bar.<div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🎮 GameHub</span></div><br>Tap it — you\'ll be auto-logged in and the game list will open.',
+    s3_hint: 'Auto-login happens automatically via your Telegram account — no password needed.',
+    s4_tag: 'Game', s4_heading: 'Select Hunt &amp; Hide',
+    s4_desc: 'From the game list, choose:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn purple">🏹 Hunt &amp; Hide</span></div><br>Then tap the <strong>expand icon</strong> (🗺 top-right) to go full screen — the map and shop panel will open.',
+    s5_tag: 'Shop', s5_heading: 'Open the 한라수목원 Potion Shop',
+    s5_desc: 'In the right panel, find the <strong>🌍 Virtual Explore</strong> section.<br>Scroll the shop list and tap:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn amber">🏪 한라수목원 약물상점</span></div><br>Then tap the <strong>shop banner image</strong> to open the item store.',
+    s6_tag: 'Purchase', s6_heading: 'Buy 5 Seedlings',
+    s6_desc: 'In the shop, find the <strong>Seedling</strong> item.<br>Enter <code>5</code> in the quantity field, then tap:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🛒 Buy</span></div>',
+    s6_hint: 'You need enough GP to buy. Each seedling costs GP — check the shop price before buying.',
+    s7_tag: 'Inventory', s7_heading: 'Confirm your Seed count',
+    s7_desc: 'After buying, look at the <strong>HUD bar</strong> at the very bottom of the screen.<br>The leftmost slot should now show:',
+    hud_seed_label: 'Seed', hud_seed_note: '← Seed = 5 ✅',
+    s8_tag: 'Map', s8_heading: 'Move your character to open ground',
+    s8_desc: 'Tap on an <strong>open area on the map</strong> to walk your character there.<br>Choose a spacious location — trees grow better with room to breathe 🌿',
+    s8_hint: 'Any open location works. You can plant trees anywhere on the map, not just near a shop.',
+    s9_tag: 'Plant', s9_heading: 'Plant All — done! 🎉',
+    s9_desc: 'Tap the <strong>Seed</strong> slot in the bottom-left HUD.<br>A planting panel will appear. Tap:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🌱 Plant Current Location</span><span class="arrow-right">→</span><span class="mock-btn green">🌳 Plant All</span></div><br>Wait a moment — all 5 trees will be planted at once on the map!',
+    s9_hint: 'Done! Your trees are now growing. Come back later to check their progress and harvest when ready.',
+    rewards_title: 'Rewards &amp; Growth',
+    r1_h3: 'Auto Growth',       r1_p: 'Trees grow on their own — just leave them and check back.',
+    r2_h3: 'Fertilizer Boost',  r2_p: 'Use fertilizer from the shop to speed up growth significantly.',
+    r3_h3: 'Harvest &amp; Exchange',
+    r3_p: 'When a tree reaches <strong style="color:#fbbf24;">500,000 GP</strong>, harvest it and exchange for <strong style="color:#60a5fa;">TonCoin</strong>. You can also do partial mid-growth harvests.',
+    reward_pill: '500,000 GP ≈ $500 USD in TonCoin 💎',
+    faq_title: 'Frequently asked questions',
+    faq_q1: 'Do I need to be near the tree to harvest it?',
+    faq_a1: 'No — once planted, trees grow on their own. You can harvest from anywhere in the game as long as the tree has reached the required GP level.',
+    faq_q2: 'How long does a tree take to grow to 500,000 GP?',
+    faq_a2: 'Growth time varies based on the tree type and whether you apply fertilizer. Using fertilizer (💊 from the shop) can significantly reduce the time. Without it, trees grow steadily over several days.',
+    faq_q3: 'Can I plant trees in multiple locations?',
+    faq_a3: 'Yes! You can move your character to different spots on the map and plant batches of seedlings in multiple locations. Buy more seedlings and repeat the process.',
+    faq_q4: 'What is GP and how do I get it to buy seedlings?',
+    faq_a4: 'GP (Game Points) is the in-game currency. You earn GP by playing Hunt &amp; Hide, finding treasure boxes, completing daily quests, and other game activities. You can also top up GP via the shop using Telegram Stars.',
+    faq_q5: 'Can I harvest a tree before it hits 500,000 GP?',
+    faq_a5: 'Yes — mid-growth harvests are possible. You will receive the current GP value of the tree at the time of harvest. Waiting until 500,000 GP maximizes your TonCoin return.',
+    cta_h2: 'Ready to plant your first tree?',
+    cta_p:  'Join the JumpDAO Telegram group and start earning today.',
+    btn_join: '📱 Join t.me/jumpdao_eng', btn_game: '🎮 Open Game Hub',
+  },
+
+  ko: {
+    hero_badge: '🌳 패시브 인컴 가이드',
+    hero_h1: '나무를 심자.<br><span>TonCoin을 벌자.</span>',
+    hero_p: '가상 묘목을 구입하고 지도 어디에나 심어서, <strong style="color:#fbbf24;">500,000 GP</strong>에 도달하면 수확 — 약 <strong style="color:#fbbf24;">$500 USD</strong> 상당의 TonCoin으로 교환하세요.',
+    hero_cta: '📱 지금 참여하기',
+    rb1: '🌱 묘목 구입 → <span class="num">&nbsp;지도에 식재</span>',
+    rb2: '🌳 500,000 GP → <span class="num">&nbsp;≈ $500 USD</span>',
+    rb3: '💊 영양제로 <span class="num">&nbsp;성장 촉진</span>',
+    steps_title: '단계별 가이드 · 9단계',
+    s1_tag: '텔레그램', s1_heading: 'JumpDAO 그룹에 가입하기',
+    s1_desc: '텔레그램을 열고 공식 그룹에 가입하세요:<div class="inline-row" style="margin-top:8px;"><a href="https://t.me/jumpdao_eng" target="_blank" class="mock-btn green">📢 t.me/jumpdao_eng</a></div>',
+    s2_tag: '텔레그램', s2_heading: '그룹 채팅에서 /start 입력',
+    s2_desc: '그룹 채팅 입력창에 다음을 입력하고 전송하세요:<div class="inline-row" style="margin-top:8px;"><code>/start</code></div><br>그러면 채팅에 <strong>JumpDAO Bot</strong>이 표시됩니다.',
+    s3_tag: '텔레그램 봇', s3_heading: 'JumpDAO 봇 열기',
+    s3_desc: '표시된 <strong>Open JumpDAO Bot</strong> 버튼을 탭하세요.<br>연결되면 채팅 입력창 왼쪽 하단의 버튼을 찾으세요.<div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🎮 GameHub</span></div><br>탭하면 자동 로그인되어 게임 목록이 열립니다.',
+    s3_hint: '텔레그램 계정을 통해 자동 로그인됩니다 — 비밀번호 불필요.',
+    s4_tag: '게임', s4_heading: 'Hunt &amp; Hide 선택',
+    s4_desc: '게임 목록에서 선택하세요:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn purple">🏹 Hunt &amp; Hide</span></div><br>그런 다음 <strong>전체화면 아이콘</strong>(🗺 우측 상단)을 탭해 전체 화면으로 전환 — 지도와 상점 패널이 열립니다.',
+    s5_tag: '상점', s5_heading: '한라수목원 약물상점 열기',
+    s5_desc: '오른쪽 패널에서 <strong>🌍 Virtual Explore</strong> 섹션을 찾으세요.<br>상점 목록을 스크롤하여 탭:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn amber">🏪 한라수목원 약물상점</span></div><br>그런 다음 <strong>상점 배너 이미지</strong>를 탭해 아이템 상점을 여세요.',
+    s6_tag: '구매', s6_heading: '묘목 5개 구매',
+    s6_desc: '상점에서 <strong>묘목(Seedling)</strong> 아이템을 찾으세요.<br>수량 칸에 <code>5</code>를 입력한 후 탭:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🛒 Buy</span></div>',
+    s6_hint: '구매하려면 충분한 GP가 필요합니다. 구매 전 상점 가격을 확인하세요.',
+    s7_tag: '인벤토리', s7_heading: '씨앗 수량 확인',
+    s7_desc: '구매 후, 화면 맨 아래 <strong>HUD 바</strong>를 확인하세요.<br>맨 왼쪽 슬롯에 표시되어야 합니다:',
+    hud_seed_label: '씨앗', hud_seed_note: '← 씨앗 = 5 ✅',
+    s8_tag: '지도', s8_heading: '캐릭터를 넓은 공간으로 이동',
+    s8_desc: '지도에서 <strong>넓은 공간</strong>을 탭해 캐릭터를 이동시키세요.<br>여유 있는 위치 선택 — 나무는 공간이 있을 때 더 잘 자랍니다 🌿',
+    s8_hint: '어디든 가능합니다. 상점 근처가 아니어도 지도 어디에나 나무를 심을 수 있어요.',
+    s9_tag: '식재', s9_heading: 'Plant All — 완료! 🎉',
+    s9_desc: 'HUD 왼쪽 하단의 <strong>Seed</strong> 슬롯을 탭하세요.<br>식재 패널이 나타납니다. 탭:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🌱 현재 위치에 식재</span><span class="arrow-right">→</span><span class="mock-btn green">🌳 전부 심기</span></div><br>잠시 후 5그루 나무가 한꺼번에 지도에 심어집니다!',
+    s9_hint: '완료! 나무가 자라기 시작했습니다. 나중에 진행 상황을 확인하고 준비되면 수확하세요.',
+    rewards_title: '보상 &amp; 성장',
+    r1_h3: '자동 성장',     r1_p: '나무는 스스로 자랍니다 — 그냥 두고 나중에 확인하세요.',
+    r2_h3: '영양제 부스트', r2_p: '상점의 영양제(💊)를 사용하면 성장 속도가 크게 빨라집니다.',
+    r3_h3: '수확 &amp; 교환',
+    r3_p: '나무가 <strong style="color:#fbbf24;">500,000 GP</strong>에 도달하면 수확해서 <strong style="color:#60a5fa;">TonCoin</strong>으로 교환하세요. 중간 수확도 가능합니다.',
+    reward_pill: '500,000 GP ≈ $500 USD 상당 TonCoin 💎',
+    faq_title: '자주 묻는 질문',
+    faq_q1: '나무를 수확하려면 나무 근처에 있어야 하나요?',
+    faq_a1: '아니요 — 한 번 심으면 나무는 스스로 자랍니다. 나무가 필요한 GP 레벨에 도달하면 게임 어디서든 수확할 수 있습니다.',
+    faq_q2: '나무가 500,000 GP까지 자라는 데 얼마나 걸리나요?',
+    faq_a2: '성장 시간은 나무 종류와 영양제 사용 여부에 따라 다릅니다. 상점의 영양제(💊)를 사용하면 시간이 크게 단축됩니다. 사용하지 않아도 며칠에 걸쳐 꾸준히 성장합니다.',
+    faq_q3: '여러 위치에 나무를 심을 수 있나요?',
+    faq_a3: '네! 지도의 여러 장소로 캐릭터를 이동시켜 각 장소에 묘목 배치를 심을 수 있습니다. 묘목을 더 구매하고 과정을 반복하세요.',
+    faq_q4: 'GP란 무엇이고 묘목 구매를 위해 어떻게 얻나요?',
+    faq_a4: 'GP(게임 포인트)는 게임 내 화폐입니다. Hunt &amp; Hide, 보물 상자 찾기, 일일 퀘스트 등 다양한 게임 활동으로 얻을 수 있습니다. 텔레그램 스타를 이용해 상점에서 GP를 충전할 수도 있습니다.',
+    faq_q5: '500,000 GP에 도달하기 전에 수확할 수 있나요?',
+    faq_a5: '네 — 중간 수확이 가능합니다. 수확 시점의 현재 GP 가치를 받게 됩니다. 500,000 GP까지 기다리면 TonCoin 수익이 최대화됩니다.',
+    cta_h2: '첫 번째 나무를 심을 준비가 됐나요?',
+    cta_p:  'JumpDAO 텔레그램 그룹에 가입하고 오늘부터 수익을 시작하세요.',
+    btn_join: '📱 t.me/jumpdao_eng 가입', btn_game: '🎮 게임 허브 열기',
+  },
+
+  vi: {
+    hero_badge: '🌳 Hướng Dẫn Thu Nhập Thụ Động',
+    hero_h1: 'Trồng Cây.<br><span>Kiếm TonCoin.</span>',
+    hero_p: 'Mua cây giống ảo, trồng chúng ở bất kỳ đâu trên bản đồ, thu hoạch khi đạt <strong style="color:#fbbf24;">500,000 GP</strong> — đổi lấy TonCoin trị giá khoảng <strong style="color:#fbbf24;">$500 USD</strong>.',
+    hero_cta: '📱 Tham Gia Ngay',
+    rb1: '🌱 Mua cây giống → <span class="num">&nbsp;Trồng trên bản đồ</span>',
+    rb2: '🌳 500,000 GP → <span class="num">&nbsp;≈ $500 USD</span>',
+    rb3: '💊 Tăng tốc với <span class="num">&nbsp;Phân Bón</span>',
+    steps_title: 'Hướng dẫn từng bước · 9 bước đơn giản',
+    s1_tag: 'Telegram', s1_heading: 'Tham gia nhóm JumpDAO',
+    s1_desc: 'Mở Telegram và tham gia nhóm chính thức:<div class="inline-row" style="margin-top:8px;"><a href="https://t.me/jumpdao_eng" target="_blank" class="mock-btn green">📢 t.me/jumpdao_eng</a></div>',
+    s2_tag: 'Telegram', s2_heading: 'Gõ /start trong chat nhóm',
+    s2_desc: 'Trong ô nhập tin nhắn, gõ và gửi:<div class="inline-row" style="margin-top:8px;"><code>/start</code></div><br>Điều này sẽ hiện <strong>JumpDAO Bot</strong> trong chat.',
+    s3_tag: 'Bot Telegram', s3_heading: 'Mở JumpDAO Bot',
+    s3_desc: 'Nhấn nút <strong>Open JumpDAO Bot</strong> xuất hiện.<br>Sau khi kết nối, tìm nút ở góc dưới bên trái thanh nhập chat.<div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🎮 GameHub</span></div><br>Nhấn vào — bạn sẽ tự động đăng nhập và danh sách game sẽ mở.',
+    s3_hint: 'Đăng nhập tự động qua tài khoản Telegram — không cần mật khẩu.',
+    s4_tag: 'Game', s4_heading: 'Chọn Hunt &amp; Hide',
+    s4_desc: 'Từ danh sách game, chọn:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn purple">🏹 Hunt &amp; Hide</span></div><br>Sau đó nhấn <strong>biểu tượng mở rộng</strong> (🗺 trên cùng bên phải) để toàn màn hình — bản đồ và panel cửa hàng sẽ mở.',
+    s5_tag: 'Cửa hàng', s5_heading: 'Mở Cửa Hàng 한라수목원',
+    s5_desc: 'Trong panel bên phải, tìm phần <strong>🌍 Virtual Explore</strong>.<br>Cuộn danh sách cửa hàng và nhấn:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn amber">🏪 한라수목원 약물상점</span></div><br>Sau đó nhấn <strong>ảnh banner cửa hàng</strong> để mở cửa hàng vật phẩm.',
+    s6_tag: 'Mua hàng', s6_heading: 'Mua 5 Cây Giống',
+    s6_desc: 'Trong cửa hàng, tìm vật phẩm <strong>Seedling (Cây Giống)</strong>.<br>Nhập <code>5</code> vào ô số lượng, sau đó nhấn:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🛒 Buy</span></div>',
+    s6_hint: 'Bạn cần đủ GP để mua. Kiểm tra giá cửa hàng trước khi mua.',
+    s7_tag: 'Kho đồ', s7_heading: 'Xác nhận số lượng Hạt Giống',
+    s7_desc: 'Sau khi mua, nhìn vào <strong>thanh HUD</strong> ở cuối màn hình.<br>Ô ngoài cùng bên trái phải hiển thị:',
+    hud_seed_label: 'Hạt', hud_seed_note: '← Hạt = 5 ✅',
+    s8_tag: 'Bản đồ', s8_heading: 'Di chuyển nhân vật đến khu đất trống',
+    s8_desc: 'Nhấn vào <strong>khu vực trống trên bản đồ</strong> để di chuyển nhân vật.<br>Chọn vị trí rộng rãi — cây phát triển tốt hơn khi có không gian 🌿',
+    s8_hint: 'Bất kỳ vị trí trống nào đều được. Bạn có thể trồng cây ở bất kỳ đâu trên bản đồ.',
+    s9_tag: 'Trồng cây', s9_heading: 'Plant All — Xong! 🎉',
+    s9_desc: 'Nhấn ô <strong>Seed</strong> ở HUD góc dưới bên trái.<br>Panel trồng cây sẽ xuất hiện. Nhấn:<div class="inline-row" style="margin-top:8px;"><span class="mock-btn green">🌱 Trồng tại vị trí hiện tại</span><span class="arrow-right">→</span><span class="mock-btn green">🌳 Trồng tất cả</span></div><br>Chờ một chút — tất cả 5 cây sẽ được trồng cùng lúc trên bản đồ!',
+    s9_hint: 'Xong! Cây của bạn đang phát triển. Quay lại sau để kiểm tra và thu hoạch khi sẵn sàng.',
+    rewards_title: 'Phần Thưởng &amp; Tăng Trưởng',
+    r1_h3: 'Tự Động Phát Triển', r1_p: 'Cây phát triển tự nhiên — chỉ cần để yên và quay lại kiểm tra.',
+    r2_h3: 'Tăng Tốc Phân Bón',  r2_p: 'Dùng phân bón (💊) từ cửa hàng để tăng tốc độ phát triển đáng kể.',
+    r3_h3: 'Thu Hoạch &amp; Đổi Thưởng',
+    r3_p: 'Khi cây đạt <strong style="color:#fbbf24;">500,000 GP</strong>, thu hoạch và đổi lấy <strong style="color:#60a5fa;">TonCoin</strong>. Cũng có thể thu hoạch một phần giữa chừng.',
+    reward_pill: '500,000 GP ≈ $500 USD TonCoin 💎',
+    faq_title: 'Câu Hỏi Thường Gặp',
+    faq_q1: 'Tôi có cần ở gần cây để thu hoạch không?',
+    faq_a1: 'Không — sau khi trồng, cây tự phát triển. Bạn có thể thu hoạch từ bất kỳ đâu trong game miễn là cây đã đạt cấp GP yêu cầu.',
+    faq_q2: 'Cây mất bao lâu để đạt 500,000 GP?',
+    faq_a2: 'Thời gian phát triển tùy thuộc vào loại cây và có dùng phân bón không. Dùng phân bón (💊) từ cửa hàng có thể rút ngắn thời gian đáng kể. Không dùng thì cây vẫn phát triển đều đặn trong vài ngày.',
+    faq_q3: 'Tôi có thể trồng cây ở nhiều địa điểm không?',
+    faq_a3: 'Có! Bạn có thể di chuyển nhân vật đến các vị trí khác nhau và trồng từng lô hạt giống. Mua thêm hạt giống và lặp lại quá trình.',
+    faq_q4: 'GP là gì và làm sao để có GP mua hạt giống?',
+    faq_a4: 'GP (Game Points) là tiền tệ trong game. Bạn kiếm GP bằng cách chơi Hunt &amp; Hide, tìm hộp kho báu, hoàn thành nhiệm vụ hàng ngày và các hoạt động khác. Bạn cũng có thể nạp GP qua cửa hàng bằng Telegram Stars.',
+    faq_q5: 'Tôi có thể thu hoạch trước khi cây đạt 500,000 GP không?',
+    faq_a5: 'Có — thu hoạch giữa chừng là khả thi. Bạn sẽ nhận được giá trị GP hiện tại của cây tại thời điểm thu hoạch. Chờ đến 500,000 GP sẽ tối đa hóa TonCoin bạn nhận được.',
+    cta_h2: 'Sẵn sàng trồng cây đầu tiên chưa?',
+    cta_p:  'Tham gia nhóm Telegram JumpDAO và bắt đầu kiếm tiền ngay hôm nay.',
+    btn_join: '📱 Tham gia t.me/jumpdao_eng', btn_game: '🎮 Mở Game Hub',
+  }
+};
+
+function setLang(lang) {
+  if (!T[lang]) return;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (T[lang][k] !== undefined) el.innerHTML = T[lang][k];
+  });
+  document.querySelectorAll('#langSwitch button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+  document.documentElement.lang = lang;
+  try { localStorage.setItem('tg_lang', lang); } catch(_) {}
+}
+
+(function() {
+  let lang = 'en';
+  try { lang = localStorage.getItem('tg_lang') || lang; } catch(_) {}
+  if (!T[lang]) {
+    const bl = (navigator.language || 'en').slice(0, 2);
+    lang = bl === 'ko' ? 'ko' : bl === 'vi' ? 'vi' : 'en';
+  }
+  setLang(lang);
+})();
+</script>
 </body>
 </html>
