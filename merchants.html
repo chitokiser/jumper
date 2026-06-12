@@ -3404,7 +3404,7 @@
       <p style="font-size:13px;line-height:1.7;color:var(--gh-text);margin:0 0 14px;">
         처음 오신 분은 <strong style="color:var(--gh-gold);">게임코인</strong>이 필요합니다.<br>
         <span style="color:var(--gh-muted);font-size:12px;">
-          🌍 Start <strong style="color:var(--gh-gold);">Hunt &amp; Hide</strong> — warp to any shop and explore,
+          🌍 Start <strong style="color:var(--gh-gold);">JumpWorld</strong> — warp to any shop and explore,
           온체인 등록으로 <strong style="color:var(--gh-green);">1,000 GP 무상</strong> 수령 후
           다른 게임에 참여하세요.
         </span>
@@ -3419,7 +3419,7 @@
           border-radius:10px;padding:10px 4px;">
           <span style="font-size:22px;line-height:1;">🗺️</span>
           <span style="font-family:var(--gh-mono);font-size:8px;color:var(--gh-gold);letter-spacing:.08em;">STEP 1</span>
-          <span style="font-size:11px;font-weight:700;color:var(--gh-text);line-height:1.3;">Hunt<br>&amp; Hide</span>
+          <span style="font-size:11px;font-weight:700;color:var(--gh-gold);line-height:1.3;">Jump<br>World</span>
           <button onclick="ghEnterGame('treasure')" style="
             width:100%;margin-top:2px;padding:7px 2px;
             background:linear-gradient(135deg,#d97706,#f59e0b);
@@ -3504,26 +3504,36 @@
           </div>
         </div>
 
-        <!-- Card 1: Hunt & Hide -->
-        <div class="gh-card" onclick="ghEnterGame('treasure')">
-          <div class="gh-card-img" style="background:linear-gradient(135deg,#0a1f0a,#0d2d1a,#1a3d20);display:flex;align-items:center;justify-content:center;font-size:44px;position:relative;overflow:hidden;">
-            🗺️
-            <span style="position:absolute;bottom:6px;right:8px;font-size:24px;opacity:.75;">🏰</span>
-            <span style="position:absolute;top:8px;left:10px;font-size:18px;opacity:.5;">💎</span>
+        <!-- Card 1: JumpWorld (MAIN GAME) -->
+        <div class="gh-card" onclick="ghEnterGame('treasure')" style="
+          grid-column: 1 / -1;
+          border-color: rgba(245,158,11,.55);
+          box-shadow: 0 0 48px rgba(245,158,11,.14), 0 0 80px rgba(34,197,94,.06), inset 0 1px 0 rgba(245,158,11,.08);
+          background: linear-gradient(145deg,#0d1a0d,#101a10,#0d1117);
+          min-height: 190px;
+        ">
+          <div class="gh-card-img" style="background:linear-gradient(135deg,#051505,#081808,#0e2010);display:flex;align-items:center;justify-content:space-around;font-size:44px;position:relative;overflow:hidden;opacity:.22;padding:0 32px;">
+            🌍
+            <span style="font-size:36px;">💎</span>
+            <span style="font-size:40px;">🗺️</span>
+            <span style="font-size:36px;">🌱</span>
+            <span style="font-size:40px;">🏹</span>
+            <span style="font-size:36px;">🏆</span>
           </div>
-          <div class="gh-card-corner"></div>
-          <span class="gh-badge gh-badge-live">LIVE</span>
-          <div class="gh-card-body">
-            <div class="gh-card-name">Hunt<br>&amp; Hide</div>
-            <div class="gh-card-desc">// Warp · explore · hunt monsters<br>// Hide &amp; find treasures on the map</div>
+          <div class="gh-card-corner" style="border-color:rgba(245,158,11,.7);"></div>
+          <span class="gh-badge" style="background:linear-gradient(135deg,#92400e,#d97706,#f59e0b);color:#000;font-weight:900;letter-spacing:.06em;padding:3px 10px;font-size:9px;">★ MAIN GAME</span>
+          <span class="gh-badge gh-badge-live" style="top:26px;">LIVE</span>
+          <div class="gh-card-body" style="padding-bottom:10px;">
+            <div class="gh-card-name" style="font-size:1.45rem;color:#fbbf24;text-shadow:0 0 24px rgba(245,158,11,.35);">JumpWorld</div>
+            <div class="gh-card-desc">// Jump the world · hide &amp; find treasures<br>// Hunt monsters · plant &amp; harvest money trees</div>
             <div class="gh-card-reward">+120 GP / day</div>
             <div class="gh-card-players">
               <div class="gh-players-dot"></div>
-              <span id="ghP0">12,450명 플레이 중</span>
+              <span id="ghP0">12,450 playing</span>
             </div>
           </div>
           <div class="gh-card-foot">
-            <button class="gh-btn-play" onclick="event.stopPropagation();ghEnterGame('treasure')">▶ ENTER MAP</button>
+            <button class="gh-btn-play" style="background:linear-gradient(135deg,#92400e,#d97706,#f59e0b);color:#000;font-weight:900;" onclick="event.stopPropagation();ghEnterGame('treasure')">▶ ENTER JUMPWORLD</button>
             <button class="gh-btn-info" title="게임 정보" onclick="event.stopPropagation()">ℹ</button>
           </div>
         </div>
@@ -3777,9 +3787,9 @@
       memory_desc:   '// Card matching mini-game<br>// Faster = more GP',
       memory_login:  'Play without login',
       memory_btn:    '▶ PLAY',
-      treasure_name: 'Hunt<br>&amp; Hide',
-      treasure_desc: '// Warp · explore · hunt monsters<br>// Hide &amp; find treasures on the map',
-      treasure_btn:  '▶ ENTER MAP',
+      treasure_name: 'JumpWorld',
+      treasure_desc: '// Jump the world · hide &amp; find treasures<br>// Hunt monsters · plant &amp; harvest money trees',
+      treasure_btn:  '▶ ENTER JUMPWORLD',
       race_desc:     '// realtime 7-player race<br>// skill items &amp; traps',
       race_btn:      '▶ RACE NOW',
       conquest_name: 'Castle<br>Defense',
@@ -3839,9 +3849,9 @@
       memory_desc:   '// 카드 매칭 미니게임<br>// 빠를수록 더 많은 GP',
       memory_login:  '로그인 없이 플레이 가능',
       memory_btn:    '▶ PLAY',
-      treasure_name: 'Hunt<br>&amp; Hide',
-      treasure_desc: '// 워프 · 탐험 · 몬스터 사냥<br>// 지도에 보물 숨기기 &amp; 찾기',
-      treasure_btn:  '▶ ENTER MAP',
+      treasure_name: 'JumpWorld',
+      treasure_desc: '// 전 세계를 점프하고 보물을 숨기고 찾고<br>// 몬스터를 잡고 돈나무를 심고 수확한다',
+      treasure_btn:  '▶ JumpWorld 입장',
       race_desc:     '// 실시간 7인 레이스<br>// 스킬 아이템 &amp; 함정',
       race_btn:      '▶ RACE NOW',
       conquest_name: '몬스터<br>수성',
@@ -3901,9 +3911,9 @@
       memory_desc:   '// Mini-game ghép thẻ<br>// Nhanh hơn = nhiều GP hơn',
       memory_login:  'Chơi không cần đăng nhập',
       memory_btn:    '▶ CHƠI',
-      treasure_name: 'Hunt<br>&amp; Hide',
-      treasure_desc: '// Dịch chuyển · khám phá · săn quái<br>// Giấu &amp; tìm kho báu trên bản đồ',
-      treasure_btn:  '▶ VÀO BẢN ĐỒ',
+      treasure_name: 'JumpWorld',
+      treasure_desc: '// Nhảy khắp thế giới · ẩn &amp; tìm kho báu<br>// Săn quái vật · trồng &amp; thu hoạch cây tiền',
+      treasure_btn:  '▶ VÀO JUMPWORLD',
       race_desc:     '// Đua 7 người thời gian thực<br>// Vật phẩm kỹ năng &amp; bẫy',
       race_btn:      '▶ ĐUA NGAY',
       conquest_name: 'Phòng Thủ<br>Lâu Đài',
