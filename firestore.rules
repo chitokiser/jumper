@@ -606,6 +606,14 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
 
+    // ── 세션 관리 (중복 로그인 방지) ─────────────────────────────────
+    match /user_sessions/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+      allow list: if false;
+    }
+
     // ── 실시간 유저 위치 (100m 반경 표시용) ──────────────────────────
     match /user_locations/{uid} {
       allow read: if signedIn();

@@ -11,6 +11,13 @@
 - **bot.py (텔레그램 봇)** → Railway에서 실행 중 — 수정 후 Railway 재배포 필요
 - **game-server** → Railway에서 실행 중 (`cd game-server && railway up`)
 
+## ⚠️ 나무묘목(Money Tree) 절대 손대지 마라 (반복 발생 버그)
+- **merchants.js / moneytree.js / moneyTree.js(Functions) 수정 후 반드시 확인:** 묘목 심기 → 지도에 나무 표시 정상 여부
+- 묘목이 소모됐는데 나무가 안 보이면 유저 실제 손해 — 코드 한 줄 바꿔도 moneytree 플로우 전체 테스트 필수
+- `window.showToast = showToast;` (merchants.js 하단) — 의도적 노출, 절대 삭제 금지
+- `loadMoneyTreeMarkers` 는 심기 성공 후 즉시 호출됨 — 이 호출 체인 끊으면 나무 안 보임
+- moneytree 모듈은 Cloud Functions 전용 (`httpsCallable`) — 직접 Firestore 읽기 추가 금지
+
 ## ⚠️ 전체화면 모달 필수 규칙 (반복 발생 버그)
 - **모든 모달/오버레이는 반드시 `data-fs-modal` 속성 부착**
 - 전체화면 진입 시 `_moveModalsToFs()`가 이 속성을 가진 요소를 fullscreen 컨테이너로 이동

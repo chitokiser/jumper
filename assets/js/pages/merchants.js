@@ -5349,7 +5349,7 @@ function _startSessionGuard(uid) {
       );
       signOut(auth).finally(() => window.location.reload());
     }
-  });
+  }, () => {});
 }
 
 function _stopSessionGuard() {
