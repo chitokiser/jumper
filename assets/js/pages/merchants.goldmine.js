@@ -204,52 +204,24 @@ async function _deployMiners(mineId, count) {
 }
 
 // ── Install mine (called from shop modal "Install Gold Mine" button) ───────────
-const MINE_RADIUS_M = 5000;
-
-function _haversineM(lat1, lng1, lat2, lng2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
-    * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 export function promptInstallMine(storeId, shopLat, shopLng) {
-  if (!_map) { _showToast('Map not ready — please wait a moment', 'warn'); return; }
-
-  // Close shop modal so the map is visible and tappable
   document.getElementById('shopModal')?.classList.remove('open');
 
-  _showToast('Tap anywhere on the map to place your gold mine (within 5km of your shop)', 'info');
+  // Shop may not have lat/lng set — fall back to current GPS position
+  let lat = (shopLat != null && !isNaN(+shopLat)) ? +shopLat : null;
+  let lng = (shopLng != null && !isNaN(+shopLng)) ? +shopLng : null;
 
-  // Draw guidance circle if shop has valid coordinates
-  let circle = null;
-  if (shopLat != null && shopLng != null) {
-    try {
-      circle = new google.maps.Circle({
-        center: { lat: shopLat, lng: shopLng },
-        radius: MINE_RADIUS_M,
-        map: _map,
-        strokeColor: '#f59e0b', strokeOpacity: 0.7, strokeWeight: 2,
-        fillColor: '#f59e0b', fillOpacity: 0.05,
-      });
-    } catch (_) {}
+  if (lat == null || lng == null) {
+    const pos = _ctx?.gpsPos ?? _ctx?.lastPos;
+    if (!pos) {
+      _showToast('Location unavailable. Enable GPS or update shop location.', 'error');
+      return;
+    }
+    lat = pos.lat;
+    lng = pos.lng;
   }
 
-  let clickHandler = null;
-
-  const cleanup = () => {
-    if (clickHandler) { google.maps.event.removeListener(clickHandler); clickHandler = null; }
-    circle?.setMap(null);
-  };
-
-  clickHandler = _map.addListener('click', async (e) => {
-    cleanup();
-    const lat = e.latLng.lat(), lng = e.latLng.lng();
-    await _doInstall(storeId, lat, lng);
-  });
+  _doInstall(storeId, lat, lng);
 }
 
 function _showInstallSuccess(cost) {
@@ -273,16 +245,14 @@ function _showInstallSuccess(cost) {
 }
 
 async function _doInstall(storeId, lat, lng) {
+  if (!_fns) { _showToast('System not ready — refresh the page.', 'error'); return; }
   _showToast('Installing…', 'info');
-  console.warn('[GoldMine] _doInstall start', { storeId, lat, lng, uid: _uid, hasFns: !!_fns });
   try {
     const fn = httpsCallable(_fns, 'createGoldMine');
     const { data } = await fn({ storeId, lat, lng });
-    console.warn('[GoldMine] createGoldMine success', data);
     await loadGoldMineMarkers(lat, lng);
     _showInstallSuccess(data.installCost);
   } catch (e) {
-    console.error('[GoldMine] createGoldMine error', e);
     _showToast(e.message ?? 'Installation failed', 'error');
   }
 }

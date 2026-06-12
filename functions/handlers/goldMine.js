@@ -50,13 +50,12 @@ async function createGoldMine(uid, { storeId, lat, lng }) {
   if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found');
   const shop = shopSnap.data();
   if (shop.ownerUid !== uid) throw new HttpsError('permission-denied', 'You do not own this shop');
-  if (shop.lat == null || shop.lng == null)
-    throw new HttpsError('failed-precondition', 'Shop has no location set — update shop location in admin panel');
-
-  const distToShop = haversineM(lat, lng, shop.lat, shop.lng);
-  if (distToShop > MINE_RADIUS_M) {
-    throw new HttpsError('failed-precondition',
-      `Gold mine must be within 5km of your shop (${Math.round(distToShop / 100) / 10}km away)`);
+  if (shop.lat != null && shop.lng != null) {
+    const distToShop = haversineM(lat, lng, shop.lat, shop.lng);
+    if (distToShop > MINE_RADIUS_M) {
+      throw new HttpsError('failed-precondition',
+        `Gold mine must be within 5km of your shop (${Math.round(distToShop / 100) / 10}km away)`);
+    }
   }
 
   const playerGold = playerSnap.exists ? (playerSnap.data().gold ?? 0) : 0;
