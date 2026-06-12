@@ -200,18 +200,26 @@ async function _deployMiners(mineId, count) {
 
 // ── Install mine (called from shop modal "Install Gold Mine" button) ───────────
 export function promptInstallMine(storeId, shopLat, shopLng) {
-  _showToast('Tap anywhere on the map to place your gold mine (within 5km of your shop)');
+  if (!_map) { _showToast('Map not ready — please wait a moment', 'warn'); return; }
+  if (!shopLat || !shopLng) { _showToast('Shop location not set — cannot place gold mine', 'warn'); return; }
 
-  const circle = new google.maps.Circle({
-    center: { lat: shopLat, lng: shopLng },
-    radius: 5000,
-    map: _map,
-    strokeColor: '#f59e0b', strokeOpacity: 0.7, strokeWeight: 2,
-    fillColor: '#f59e0b', fillOpacity: 0.05,
-  });
+  _showToast('Tap anywhere on the map to place your gold mine (within 5km of your shop)', 'info');
 
-  let previewMarker = null;
-  const clickHandler = _map.addListener('click', (e) => {
+  let circle, clickHandler, previewMarker;
+  try {
+    circle = new google.maps.Circle({
+      center: { lat: shopLat, lng: shopLng },
+      radius: 5000,
+      map: _map,
+      strokeColor: '#f59e0b', strokeOpacity: 0.7, strokeWeight: 2,
+      fillColor: '#f59e0b', fillOpacity: 0.05,
+    });
+  } catch (e) {
+    _showToast('Failed to draw placement zone', 'error');
+    return;
+  }
+
+  clickHandler = _map.addListener('click', (e) => {
     const lat = e.latLng.lat(), lng = e.latLng.lng();
     previewMarker?.setMap(null);
     previewMarker = new google.maps.Marker({
@@ -268,5 +276,16 @@ function _fmtDist(m) {
 }
 
 function _showToast(msg, type = 'success') {
-  if (typeof window.showToast === 'function') window.showToast(msg, type);
+  if (typeof window.showToast === 'function') { window.showToast(msg, type); return; }
+  // fallback: reuse collectToast element (same pattern as moneytree module)
+  const COLORS = { success: '#15803d', error: '#b91c1c', warn: '#b45309', info: '#1d4ed8' };
+  const toast = document.getElementById('collectToast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.style.cssText = `display:block;position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
+    z-index:9999;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;
+    color:#fff;background:${COLORS[type] ?? COLORS.info};
+    box-shadow:0 4px 12px rgba(0,0,0,.4);white-space:nowrap;pointer-events:none;`;
+  clearTimeout(toast._gmTimer);
+  toast._gmTimer = setTimeout(() => { toast.style.display = 'none'; }, 3000);
 }
