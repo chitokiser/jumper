@@ -28,11 +28,14 @@ const CHARS = {
 };
 
 const CHAR_IDS = Object.keys(CHARS);
-const AI_POOLS = [
-  ['orc1','orc2','pirate1','zombie1'], ['knight1','knight2','zombie3','orc3'],
-  ['pirate2','pirate3','troll','villager3'],['knight3','orc2','zombie1','pirate1'],
-  ['troll','villager1','villager2','zombie3'],
-];
+
+function _randomAiPool() {
+  const result = [];
+  for (let i = 0; i < 4; i++) {
+    result.push(CHAR_IDS[Math.floor(Math.random() * CHAR_IDS.length)]);
+  }
+  return result;
+}
 const TEAM_LABELS = ['Team A','Team B','Team C','Team D','Team E','Team F'];
 const TEAM_COLORS = ['#e74c3c','#e67e22','#f1c40f','#27ae60','#2980b9','#8e44ad'];
 
@@ -143,16 +146,14 @@ function renderCharGrid() {
     const c = CHARS[id];
     const sel = _selectedChars.includes(id);
     const locked = _isGradeLocked(id);
-    const gradeColor = {S:'#ffd700',A:'#c0c0c0',B:'#cd7f32',C:'#8aaa4a',D:'#aaa'}[c.grade]||'#fff';
     const card = document.createElement('button');
     card.className = `char-card${sel?' selected':''}${locked?' grade-locked':''}`;
     card.dataset.id = id;
     card.disabled = locked && !sel;
     card.innerHTML = `
-      <div class="char-grade" style="color:${gradeColor}">${c.grade}</div>
       <div class="char-name">${c.name}</div>
       <div class="char-spd">⚡${c.speed}</div>
-      ${locked ? '<div class="grade-lock-msg">Limit 1</div>' : ''}`;
+      ${locked ? '<div class="grade-lock-msg">Taken</div>' : ''}`;
     card.addEventListener('click', () => toggleChar(id));
     grid.appendChild(card);
   });
@@ -177,7 +178,7 @@ function _renderTeamSlots() {
     const id = _selectedChars[i];
     const c  = id ? CHARS[id] : null;
     return `<div class="team-slot${c?' filled':''}">
-      ${c ? `<b>${c.grade}</b> ${c.name.slice(0,8)}` : `Runner ${i+1}`}
+      ${c ? c.name.slice(0,10) : `Runner ${i+1}`}
     </div>`;
   }).join('');
 
@@ -186,7 +187,7 @@ function _renderTeamSlots() {
     const g = teamGrade(_selectedChars, CHARS);
     const odds = GRADE_ODDS[g] || 2;
     const oddsEl = $('teamOdds');
-    if (oddsEl) oddsEl.textContent = `Team grade ${g} · 1st place payout ×${odds}`;
+    if (oddsEl) oddsEl.textContent = `Payout if 1st: ×${odds}`;
   }
 }
 
@@ -219,7 +220,7 @@ function buildTeams() {
   _teams.push(buildTeam(_selectedChars, CHARS, 'Team A', TEAM_COLORS[0], true));
   // AI 팀
   for (let i = 0; i < NUM_TEAMS - 1; i++) {
-    _teams.push(buildTeam(AI_POOLS[i % AI_POOLS.length], CHARS, TEAM_LABELS[i+1], TEAM_COLORS[i+1], false));
+    _teams.push(buildTeam(_randomAiPool(), CHARS, TEAM_LABELS[i+1], TEAM_COLORS[i+1], false));
   }
   // 스킬 쿨다운 초기화
   _teams[_playerTeamIdx].skillCd = {};
