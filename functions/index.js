@@ -2938,24 +2938,30 @@ exports.starsGrantProduct = onRequest(
 
 // Stars 관리자 통계
 exports.starsGetAdminStats = onCall(
+  { timeoutSeconds: 60 },
   wrapError(async (request) => {
-    requireAdmin(request);
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
     return starsH.getAdminStats();
   })
 );
 
 // Stars 상품 시드 (최초 1회)
 exports.starsSeedProducts = onCall(
+  { timeoutSeconds: 60 },
   wrapError(async (request) => {
-    requireAdmin(request);
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
     return starsH.seedProducts();
   })
 );
 
 // Stars 상품 추가/수정 (관리자)
 exports.starsUpsertProduct = onCall(
+  { timeoutSeconds: 60 },
   wrapError(async (request) => {
-    requireAdmin(request);
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
     return starsH.upsertProduct(request.data);
   })
 );

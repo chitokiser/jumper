@@ -314,6 +314,7 @@ async function plantSeedling(uid, { shopId }) {
   });
   return {
     ok: true, treeId: result.treeId,
+    lat: player.lat, lng: player.lng,
     lotteryNumber: result.assignedLottery,
     ticketGranted: result.ticketBonus > 0,
     lotteryTriggeredWin: !!lotteryWinnerUid,

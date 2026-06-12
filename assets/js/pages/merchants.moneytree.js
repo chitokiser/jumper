@@ -386,7 +386,9 @@ window._mtConfirmPlant = async function() {
     _showMtToast(msg, 'success');
     await refreshMoneyTreeInventory();
     const refPos = _ctx?.lastPos || _ctx?.gpsPos;
-    if (refPos) loadMoneyTreeMarkers(refPos.lat, refPos.lng);
+    const mapLat = refPos?.lat ?? data.lat;
+    const mapLng = refPos?.lng ?? data.lng;
+    if (mapLat != null && mapLng != null) loadMoneyTreeMarkers(mapLat, mapLng);
   } catch (e) {
     const msg = e?.message || 'Unknown error';
     if (msg.includes('5 km') || msg.includes('too far') || msg.includes('within')) {
@@ -427,7 +429,10 @@ window._mtPlantAll = async function() {
     _showMtToast(msg, 'success');
     await refreshMoneyTreeInventory();
     const refPos = _ctx?.lastPos || _ctx?.gpsPos;
-    if (refPos) loadMoneyTreeMarkers(refPos.lat, refPos.lng);
+    const firstTree = data.trees?.[0];
+    const mapLat = refPos?.lat ?? firstTree?.lat;
+    const mapLng = refPos?.lng ?? firstTree?.lng;
+    if (mapLat != null && mapLng != null) loadMoneyTreeMarkers(mapLat, mapLng);
   } catch (e) {
     const msg = e?.message || 'Plant failed';
     if (msg.includes('5 km') || msg.includes('within')) {
