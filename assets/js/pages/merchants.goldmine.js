@@ -219,6 +219,9 @@ function _haversineM(lat1, lng1, lat2, lng2) {
 export function promptInstallMine(storeId, shopLat, shopLng) {
   if (!_map) { _showToast('Map not ready — please wait a moment', 'warn'); return; }
 
+  // Close shop modal so the map is visible and tappable
+  document.getElementById('shopModal')?.classList.remove('open');
+
   _showToast('Tap anywhere on the map to place your gold mine (within 5km of your shop)', 'info');
 
   // Draw guidance circle if shop has valid coordinates
@@ -247,9 +250,6 @@ export function promptInstallMine(storeId, shopLat, shopLng) {
     const lat = e.latLng.lat(), lng = e.latLng.lng();
     await _doInstall(storeId, lat, lng);
   });
-
-  // Clean up if shop modal closes before user taps
-  document.getElementById('btnCloseShopModal')?.addEventListener('click', cleanup, { once: true });
 }
 
 function _showInstallSuccess(cost) {
