@@ -5613,3 +5613,5 @@ function _openOwnerItemEditor(shop) {
 }
 
 init();
+
+window.showToast = showToast;

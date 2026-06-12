@@ -233,68 +233,50 @@ export function promptInstallMine(storeId, shopLat, shopLng) {
     } catch (_) {}
   }
 
-  let previewMarker = null;
   let clickHandler = null;
 
   const cleanup = () => {
     if (clickHandler) { google.maps.event.removeListener(clickHandler); clickHandler = null; }
     circle?.setMap(null);
-    previewMarker?.setMap(null);
   };
 
-  clickHandler = _map.addListener('click', (e) => {
-    // Remove listener immediately — prevents it from staying alive while dialog is open
-    if (clickHandler) { google.maps.event.removeListener(clickHandler); clickHandler = null; }
-    circle?.setMap(null);
-
+  clickHandler = _map.addListener('click', async (e) => {
+    cleanup();
     const lat = e.latLng.lat(), lng = e.latLng.lng();
-    try {
-      previewMarker = new google.maps.Marker({
-        position: { lat, lng }, map: _map,
-        icon: { url: ICON_URL, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) },
-        title: 'Install here?',
-      });
-    } catch (_) {}
-    const distM = (shopLat != null && shopLng != null) ? _haversineM(lat, lng, shopLat, shopLng) : null;
-    _openInstallConfirm(storeId, lat, lng, distM, () => {
-      previewMarker?.setMap(null);
-      previewMarker = null;
-    });
+    await _doInstall(storeId, lat, lng);
   });
 
   // Clean up if shop modal closes before user taps
   document.getElementById('btnCloseShopModal')?.addEventListener('click', cleanup, { once: true });
 }
 
-function _openInstallConfirm(storeId, lat, lng, distM, onDone) {
+function _showInstallSuccess(cost) {
   const el = document.getElementById('gmInstallConfirm');
-  if (!el) { _showToast('Install dialog missing — please reload', 'error'); return; }
-  const locEl = el.querySelector('#gmInstallLoc');
-  if (locEl) {
-    const distLabel = distM == null ? '' : distM < 1000 ? ` · ${Math.round(distM)}m from shop` : ` · ${(distM / 1000).toFixed(2)}km from shop`;
-    locEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}${distLabel}`;
-  }
+  if (!el) return;
+  el.innerHTML = `
+    <div style="background:#111827;border:1px solid #16a34a;border-radius:16px;
+                width:min(320px,90vw);padding:24px;text-align:center">
+      <div style="font-size:40px;margin-bottom:12px">⛏</div>
+      <div style="font-size:16px;font-weight:700;color:#4ade80;margin-bottom:8px">Gold Mine Installed!</div>
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:20px">
+        Cost: <strong style="color:#fbbf24">${cost.toLocaleString()} GP</strong>
+      </div>
+      <button id="gmSuccessOkBtn"
+        style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;
+               border:none;border-radius:8px;padding:11px 32px;font-size:14px;
+               font-weight:700;cursor:pointer">OK</button>
+    </div>`;
   el.classList.add('open');
-
-  const confirmBtn = el.querySelector('#gmInstallConfirmBtn');
-  const cancelBtn  = el.querySelector('#gmInstallCancelBtn');
-
-  const close = () => el.classList.remove('open');
-
-  if (confirmBtn) confirmBtn.onclick = async () => {
-    close();
-    await _doInstall(storeId, lat, lng);
-    onDone();
-  };
-  if (cancelBtn) cancelBtn.onclick = () => { close(); onDone(); };
+  el.querySelector('#gmSuccessOkBtn').onclick = () => el.classList.remove('open');
 }
 
 async function _doInstall(storeId, lat, lng) {
+  _showToast('Installing…', 'info');
   try {
     const fn = httpsCallable(_fns, 'createGoldMine');
     const { data } = await fn({ storeId, lat, lng });
-    _showToast(`Gold mine installed! Spent ${data.installCost.toLocaleString()} GP`);
     await loadGoldMineMarkers();
+    _showInstallSuccess(data.installCost);
   } catch (e) {
     _showToast(e.message ?? 'Installation failed', 'error');
   }
