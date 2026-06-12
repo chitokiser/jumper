@@ -362,7 +362,14 @@ let _track = null, _player = null, _racers = [], _items = [];
 let _traps = [], _log = [], _finishOrder = [];
 let _raf = null, _lastTs = 0, _gameTs = 0;
 let _ended = false;
-let _gasLocked = false; // 가스 토글 상태
+let _tapBoost = 0;        // 0..1, tap 마다 증가, 매 프레임 감소
+const _tapTimes = [];     // nitro 감지용 최근 탭 타임스탬프
+let _nitroCooldown = 0;   // nitro 재사용 가능 시간 (ms)
+let _nitroBurst = 0;      // nitro 종료 시간 (ms)
+let _gasEl = null;        // btnGas DOM 캐시
+let _gasMeterEl = null;   // gasMeter DOM 캐시
+let _slipstream = false;  // 슬립스트림 활성 여부
+let _lastRivalAlert = 0;  // 라이벌 경고 타이머
 const _keys = {left:false, right:false, gas:false, brake:false};
 let _aiTimers = {};
 
@@ -585,8 +592,10 @@ function updateRacer(r, isPlayer) {
       r.lane += (Math.random()-0.5) * 0.05;
       r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane));
     } else {
-      // 가속: _keys.gas = true면 최대속도로, false면 0.55배
-      const targetSpeed = _keys.gas ? top : top * 0.55;
+      // 탭 부스트: tapFrac 0.35(정지)~1.0(최고속), nitro 활성 시 1.25배
+      const nitroActive = _nitroBurst > now;
+      const tapFrac = 0.35 + _tapBoost * 0.65;
+      const targetSpeed = nitroActive ? top * 1.25 : top * tapFrac;
       if (r.speed < targetSpeed) {
         r.speed = Math.min(r.speed + _gearAccel(r), targetSpeed);
       } else if (_keys.brake) {
@@ -595,6 +604,14 @@ function updateRacer(r, isPlayer) {
         r.speed = Math.max(0, r.speed - brakeForce);
       } else if (r.speed > targetSpeed) {
         r.speed = Math.max(targetSpeed, r.speed - ACCEL * 0.45);
+      }
+      // 슬립스트림: 전방 2세그 이내 같은 레인 레이서 뒤에서 드래프팅
+      if (!boosted && !lightning && !nitroActive) {
+        const slipR = _racers.find(n => !n.finished && n.pos > r.pos && n.pos - r.pos < 2.0 && Math.abs(n.lane - r.lane) < 0.5);
+        _slipstream = !!slipR;
+        if (slipR) r.speed = Math.min(top * 1.08, r.speed + ACCEL * 0.4);
+      } else {
+        _slipstream = false;
       }
 
       const steerInput = (_keys.right ? 1 : 0) - (_keys.left ? 1 : 0);
@@ -861,6 +878,20 @@ function loop(ts) {
   _lastTs = ts;
   _gameTs += dt;
 
+  // 탭 부스트 감소 + 버튼 미터 업데이트
+  if (_tapBoost > 0) {
+    _tapBoost = Math.max(0, _tapBoost - 0.008);
+    if (_gasMeterEl) _gasMeterEl.style.height = (_tapBoost * 100) + '%';
+  }
+  _keys.gas = _tapBoost > 0.02;
+  if (_gasEl) _gasEl.classList.toggle('nitro-burst', _nitroBurst > Date.now());
+
+  // 라이벌 추격 경고
+  if (_gameTs > 6000 && Date.now() - _lastRivalAlert > 4000 && _player?.currentRank > 3) {
+    const threat = _racers.find(r => !r.finished && _player.pos - r.pos > 0 && _player.pos - r.pos < 2.5);
+    if (threat) { _lastRivalAlert = Date.now(); addLog(`⚠️ ${threat.name.toUpperCase()} is right behind you!`); }
+  }
+
   updateRacer(_player, true);
   for (const r of _racers) { updateRacer(r, false); aiThink(r); }
   checkTraps(_player);
@@ -900,6 +931,8 @@ function renderHUD() {
   if ((_player.effects?.slowMax||0)>now3)    statusIcons.push('🕸️Web');
   if ((_player.effects?.boost||0)>now3)      statusIcons.push('⚡Boost');
   if ((_player.effects?.invincible||0)>now3) statusIcons.push('🛡️Shield');
+  if (_nitroBurst > now3)   statusIcons.push('🔥NITRO');
+  if (_slipstream)           statusIcons.push('🚀DRAFT');
   const stEl = $('statusTxt');
   if (stEl) stEl.textContent = statusIcons.join(' ');
 
@@ -980,7 +1013,8 @@ function startCountdown() {
   _items   = makeItems();
   _traps   = []; _log = []; _finishOrder = []; _ended = false;
   _gameTs  = 0;
-  _gasLocked = false; _keys.gas = false;
+  _tapBoost = 0; _tapTimes.length = 0; _nitroCooldown = 0; _nitroBurst = 0;
+  _keys.gas = false; _slipstream = false; _lastRivalAlert = 0;
 
   _player = makeRacer({id:'player',imgKey:'player',name:'Player',color:'#3b82f6',spd:1.0,skills:_selectedSkills},true);
   _racers = AI_DEFS.map(d=>makeRacer(d,false));
@@ -1041,7 +1075,7 @@ function initInput() {
     switch(e.key){
       case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); _keys.left=true;  break;
       case 'ArrowRight':case 'd': case 'D': e.preventDefault(); _keys.right=true; break;
-      case 'ArrowUp':   case 'w': case 'W': case ' ': e.preventDefault(); _keys.gas=true;   break;
+      case 'ArrowUp':   case 'w': case 'W': case ' ': e.preventDefault(); _tapBoost = Math.min(1.0, _tapBoost + 0.18); _keys.gas=true; break;
       case 'ArrowDown': case 's': case 'S': e.preventDefault(); _keys.brake=true; break;
     }
   });
@@ -1050,9 +1084,7 @@ function initInput() {
       case 'ArrowLeft': case 'a': case 'A': _keys.left=false;  break;
       case 'ArrowRight':case 'd': case 'D': _keys.right=false; break;
       case 'ArrowUp':   case 'w': case 'W': case ' ':
-        // 키보드 gas: gasLocked 아닐 때만 해제
-        if (!_gasLocked) _keys.gas=false;
-        break;
+        break; // gas decays via _tapBoost
       case 'ArrowDown': case 's': case 'S': _keys.brake=false; break;
     }
   });
@@ -1066,19 +1098,28 @@ function initInput() {
     document.addEventListener('mouseup', ()=>_keys[key]=false);
   }
 
-  // 가스: 터치 시 토글 (1번 → AUTO ON, 2번 → OFF)
-  const gasEl = $('btnGas');
-  if (gasEl) {
-    gasEl.addEventListener('touchstart', e => {
-      e.preventDefault();
-      _gasLocked = !_gasLocked;
-      _keys.gas = _gasLocked;
-      gasEl.classList.toggle('auto-on', _gasLocked);
-      gasEl.innerHTML = _gasLocked ? '▲<small>AUTO ●</small>' : '▲<small>GAS</small>';
-    }, {passive:false});
-    // 마우스: hold 동작
-    gasEl.addEventListener('mousedown', () => _keys.gas = true);
-    document.addEventListener('mouseup', () => { if (!_gasLocked) _keys.gas = false; });
+  // 가스: 탭할수록 속도↑, 방치하면 감소 / 1초 내 5회 탭 → 니트로 버스트
+  _gasEl = $('btnGas');
+  _gasMeterEl = $('gasMeter');
+  if (_gasEl) {
+    const _onGasTap = () => {
+      _tapBoost = Math.min(1.0, _tapBoost + 0.18);
+      _keys.gas = true;
+      _gasEl.classList.add('tapped');
+      setTimeout(() => _gasEl.classList.remove('tapped'), 100);
+      const now = Date.now();
+      _tapTimes.push(now);
+      while (_tapTimes.length && _tapTimes[0] < now - 1000) _tapTimes.shift();
+      if (_tapTimes.length >= 5 && now > _nitroCooldown) {
+        _nitroBurst = now + 1500;
+        _nitroCooldown = now + 6000;
+        _tapTimes.length = 0;
+        addLog('🔥 NITRO BURST! 5-tap combo!');
+        playBoost();
+      }
+    };
+    _gasEl.addEventListener('touchstart', e => { e.preventDefault(); _onGasTap(); }, {passive:false});
+    _gasEl.addEventListener('mousedown', _onGasTap);
   }
 }
 
