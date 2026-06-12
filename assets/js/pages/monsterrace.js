@@ -1015,6 +1015,9 @@ function startCountdown() {
   _gameTs  = 0;
   _tapBoost = 0; _tapTimes.length = 0; _nitroCooldown = 0; _nitroBurst = 0;
   _keys.gas = false; _slipstream = false; _lastRivalAlert = 0;
+  // 힌트: 레이스 시작 시 표시, 첫 탭에 숨김
+  const _hintEl = $('gasHint');
+  if (_hintEl) { _hintEl.classList.remove('hidden'); setTimeout(() => _hintEl.classList.add('hidden'), 7000); }
 
   _player = makeRacer({id:'player',imgKey:'player',name:'Player',color:'#3b82f6',spd:1.0,skills:_selectedSkills},true);
   _racers = AI_DEFS.map(d=>makeRacer(d,false));
@@ -1105,6 +1108,7 @@ function initInput() {
     const _onGasTap = () => {
       _tapBoost = Math.min(1.0, _tapBoost + 0.18);
       _keys.gas = true;
+      const _h = $('gasHint'); if (_h) _h.classList.add('hidden');
       _gasEl.classList.add('tapped');
       setTimeout(() => _gasEl.classList.remove('tapped'), 100);
       const now = Date.now();
