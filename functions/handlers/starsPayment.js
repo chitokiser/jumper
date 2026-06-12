@@ -220,10 +220,10 @@ const SEED_PRODUCTS = [
   { name:'Premium Membership (30 Days)', description:'⭐ Upgrade to Premium: daily 3,500 GP top-up + exclusive treasure boxes + Level 4 boost. Valid 30 days.', starsPrice:800, productType:'premium', grantValue:30, active:true },
   { name:'5,000 GP Package',     description:'5,000 Game Points credited instantly',                                 starsPrice:50,  productType:'gp',         grantValue:5000,  active:true },
   { name:'15,000 GP Package',    description:'15,000 Game Points — best value!',                                    starsPrice:130, productType:'gp',         grantValue:15000, active:true },
-  // 1 Star ≈ $0.013 → 130 GP  /  rate: 100 Stars = $1.30 = 13,000 GP
-  { name:'💰 13,000 GP',         description:'13,000 Game Points — 100 Stars ($1.30)',                                 starsPrice:100,  productType:'gp',        grantValue:13000,   active:true },
-  { name:'💰 130,000 GP',        description:'130,000 Game Points — 1,000 Stars ($13.00)',                            starsPrice:1000, productType:'gp',        grantValue:130000,  active:true },
-  { name:'💰 1,300,000 GP',      description:'1,300,000 Game Points — 10,000 Stars ($130.00)',                        starsPrice:10000,productType:'gp',        grantValue:1300000, active:true },
+  // rate: 100 Stars = 17,000 GP  /  1,000 Stars = 170,000 GP  /  10,000 Stars = 1,700,000 GP
+  { name:'💰 17,000 GP',         description:'17,000 Game Points — 100 Stars',                                        starsPrice:100,  productType:'gp',        grantValue:17000,   active:true },
+  { name:'💰 170,000 GP',        description:'170,000 Game Points — 1,000 Stars',                                     starsPrice:1000, productType:'gp',        grantValue:170000,  active:true },
+  { name:'💰 1,700,000 GP',      description:'1,700,000 Game Points — 10,000 Stars',                                  starsPrice:10000,productType:'gp',        grantValue:1700000, active:true },
   { name:'Treasure Box Key',     description:'One key to open a treasure box',                                      starsPrice:30,  productType:'key',         grantValue:1,     active:true },
   { name:'Random Box',           description:'A mystery box with random rewards',                                   starsPrice:80,  productType:'random_box',  grantValue:1,     active:true },
   { name:'Jump Token Package',   description:'100 JUMP tokens delivered to your wallet',                            starsPrice:200, productType:'jump_pkg',    grantValue:100,   active:true },
@@ -232,17 +232,25 @@ const SEED_PRODUCTS = [
 async function seedProducts() {
   const col = db.collection('stars_products');
   const snap = await col.get();
-  const existing = new Set(snap.docs.map(d => d.data().name));
+  const byName  = new Map(snap.docs.map(d => [d.data().name, d.ref]));
+  const byKey   = new Map(snap.docs.map(d => [`${d.data().starsPrice}_${d.data().productType}`, d.ref]));
   const batch = db.batch();
-  let added = 0;
+  let added = 0, updated = 0;
   SEED_PRODUCTS.forEach(p => {
-    if (!existing.has(p.name)) {
+    const key = `${p.starsPrice}_${p.productType}`;
+    if (byName.has(p.name)) {
+      batch.set(byName.get(p.name), { ...p, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      updated++;
+    } else if (byKey.has(key)) {
+      batch.set(byKey.get(key), { ...p, updatedAt: FieldValue.serverTimestamp() });
+      updated++;
+    } else {
       batch.set(col.doc(), { ...p, createdAt: FieldValue.serverTimestamp() });
       added++;
     }
   });
-  if (added > 0) await batch.commit();
-  return { seeded: added, skipped: SEED_PRODUCTS.length - added };
+  if (added + updated > 0) await batch.commit();
+  return { seeded: added, updated, skipped: SEED_PRODUCTS.length - added - updated };
 }
 
 async function upsertProduct(data) {
