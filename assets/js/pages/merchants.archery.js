@@ -2,9 +2,9 @@
 // 활쏘기 미니게임 — merchants.js에서 initArcheryGame()으로 초기화
 'use strict';
 
-const ENTRY_COST     = 100;
-const PAYOUT_RATE    = 0.6;   // house edge: player gets 60% of raw score (break-even ≈ 167 pts)
-const HOUSE_SPD_MULT = 1.1;   // monsters are 10% faster for house advantage
+const ENTRY_COST     = 50;
+const PAYOUT_RATE    = 2.0;   // beginner-friendly: raw score × 2 as coin payout
+const HOUSE_SPD_MULT = 0.75;  // slower monsters — easier to aim
 const MAX_ARROWS  = 20;
 const GAME_SEC    = 60;
 const GRAVITY     = 0.28;
@@ -13,10 +13,10 @@ const CANNON_HIT_RADIUS   = 30; // 플레이어 피격 판정 반경
 
 // [imgIdx, label, basePts, coinDrop, baseSpeed, baseSize, spawnWeight, rarity]
 const MDEFS = [
-  [0,  'Slime',          10,  0, 1.3, 64, 28, 'normal'],
-  [1,  'Goblin',         10,  0, 1.7, 58, 22, 'normal'],
-  [2,  'Skeleton',       10,  0, 1.5, 60, 20, 'normal'],
-  [3,  'Orc',            10,  0, 1.1, 74, 16, 'normal'],
+  [0,  'Slime',          20,  0, 1.3, 64, 28, 'normal'],
+  [1,  'Goblin',         20,  0, 1.7, 58, 22, 'normal'],
+  [2,  'Skeleton',       20,  0, 1.5, 60, 20, 'normal'],
+  [3,  'Orc',            20,  0, 1.1, 74, 16, 'normal'],
   [4,  'Spider',         30,  2, 2.4, 52,  5, 'rare'],
   [5,  'Zombie',         30,  2, 2.9, 48,  4, 'rare'],
   [6,  'Mage',           30,  2, 2.7, 54,  3, 'rare'],
@@ -98,7 +98,7 @@ class ArcheryGame {
   open() {
     if (this._running) return;
     if (!this._spend(ENTRY_COST)) {
-      this._pageToast('Not enough coins (Archery: 100 coins required)');
+      this._pageToast(`Not enough coins (Archery: ${ENTRY_COST} coins required)`);
       return;
     }
     this._modal.classList.remove('hidden');
@@ -130,7 +130,7 @@ class ArcheryGame {
     this._monsters   = [];
     this._flyArrows  = [];
     this._cannonballs = [];
-    this._cannonTimer = 120;
+    this._cannonTimer = 250;
     this._cannonFlash = 0;
     this._particles  = [];
     this._floats     = [];
@@ -154,7 +154,7 @@ class ArcheryGame {
     this._timer = setInterval(() => {
       if (!this._running) return;
       this._timeLeft--;
-      this._diff = 1 + (GAME_SEC - this._timeLeft) / GAME_SEC * 2;
+      this._diff = 1 + (GAME_SEC - this._timeLeft) / GAME_SEC * 1.0;
       this._hudTime.textContent = `TIME: ${this._timeLeft}`;
       if (this._timeLeft <= 0) this._end();
     }, 1000);
@@ -186,8 +186,8 @@ class ArcheryGame {
     this._spawnTick -= dt;
     if (this._spawnTick <= 0) {
       this._spawnMonster(W, H);
-      const base = Math.max(30, 100 - this._diff * 20);
-      this._spawnTick = base + Math.random() * 25;
+      const base = Math.max(50, 120 - this._diff * 15);
+      this._spawnTick = base + Math.random() * 30;
     }
 
     // 몬스터 이동 (좌우 + 사인파 상하)
@@ -218,7 +218,7 @@ class ArcheryGame {
     this._cannonTimer -= dt;
     if (this._cannonTimer <= 0) {
       this._spawnCannon(W, H);
-      const interval = Math.max(55, 160 - this._diff * 25);
+      const interval = Math.max(90, 220 - this._diff * 25);
       this._cannonTimer = interval + Math.random() * 50;
     }
 
@@ -694,7 +694,7 @@ class ArcheryGame {
       <div style="font-size:26px;color:#ffd700;font-weight:700;">SCORE: ${rawScore}</div>
       <div style="font-size:13px;color:#94a3b8;">Accuracy: ${acc}% &nbsp;|&nbsp; Best Combo: ×${this._maxCombo} &nbsp;|&nbsp; <span style="color:${cannonHits>0?'#f87171':'#94a3b8'}">💥 ${cannonHits} hits</span></div>
       <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px 22px;margin:4px 0;font-size:13px;line-height:1.9;text-align:right;min-width:200px;">
-        <div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#94a3b8;">Score × ${Math.round(PAYOUT_RATE * 100)}%</span><span>${rawScore} × ${PAYOUT_RATE} = ${scorePay} 🪙</span></div>
+        <div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#94a3b8;">Score × ${PAYOUT_RATE}×</span><span>${rawScore} × ${PAYOUT_RATE} = ${scorePay} 🪙</span></div>
         ${cannonPenRow}
         <div style="display:flex;justify-content:space-between;gap:20px;"><span style="color:#94a3b8;">Drop bonus</span><span>+${dropCoins} 🪙</span></div>
         <div style="display:flex;justify-content:space-between;gap:20px;color:#fbbf24;border-top:1px solid rgba(255,255,255,.15);padding-top:4px;"><span>Total earned</span><span style="font-weight:700;">${total} 🪙</span></div>
@@ -711,7 +711,7 @@ class ArcheryGame {
     res.querySelector('#archRetry').addEventListener('click', () => {
       res.remove();
       if (!this._spend(ENTRY_COST)) {
-        this._pageToast('Not enough coins (100 required)');
+        this._pageToast(`Not enough coins (${ENTRY_COST} required)`);
         this.close();
         return;
       }

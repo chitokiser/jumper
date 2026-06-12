@@ -3397,6 +3397,61 @@ export function forceWriteBattlePos(lat, lng) {
   return setDoc(doc(_ctx.db, 'battle_players', _ctx.uid), { lat, lng, updatedAt: serverTimestamp() }, { merge: true });
 }
 
+// ── 수역 감지 (Overpass API) ──────────────────────────────────────────────────
+const _wZoneCache = new Map(); // "lat3,lng3" → { ts, isWater }
+let _wLastCheckPos = null;
+let _wBannerEl = null;
+
+function _getWaterBanner() {
+  if (!_wBannerEl) {
+    _wBannerEl = document.createElement('div');
+    _wBannerEl.id = 'waterWarningBanner';
+    _wBannerEl.setAttribute('data-fs-modal', '');
+    _wBannerEl.style.cssText = [
+      'position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:9998;',
+      'background:rgba(7,60,180,.93);color:#fff;padding:10px 20px;border-radius:12px;',
+      'font:700 14px/1.5 sans-serif;pointer-events:none;text-align:center;',
+      'box-shadow:0 4px 18px rgba(0,0,0,.6);display:none;min-width:260px;',
+    ].join('');
+    _wBannerEl.innerHTML = '🌊 WARNING: You are in a water zone!' +
+      '<br><span style="font-weight:400;font-size:12px">Return to land to continue playing.</span>';
+    document.body.appendChild(_wBannerEl);
+  }
+  return _wBannerEl;
+}
+
+function _applyWaterState(isWater) {
+  if (_ctx) _ctx.onWater = !!isWater;
+  _getWaterBanner().style.display = isWater ? 'block' : 'none';
+}
+
+async function _checkWaterZone(lat, lng) {
+  // 30m 이내 이동 시 재조회 생략
+  if (_wLastCheckPos) {
+    const dlat = (lat - _wLastCheckPos.lat) * 111000;
+    const dlng = (lng - _wLastCheckPos.lng) * 111000 * Math.cos(lat * Math.PI / 180);
+    if (dlat * dlat + dlng * dlng < 900) return;
+  }
+  _wLastCheckPos = { lat, lng };
+
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+  const now = Date.now();
+  const hit = _wZoneCache.get(key);
+  if (hit && now - hit.ts < 300000) { _applyWaterState(hit.isWater); return; } // 5분 캐시
+
+  try {
+    const q = `[out:json][timeout:8];is_in(${lat},${lng})->.a;` +
+      `(area.a["natural"="water"];area.a["natural"="bay"];area.a["natural"="strait"];` +
+      `area.a["place"="ocean"];area.a["place"="sea"];area.a["landuse"="reservoir"];);out count;`;
+    const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const isWater = parseInt(data.elements?.[0]?.tags?.total ?? '0', 10) > 0;
+    _wZoneCache.set(key, { ts: now, isWater });
+    _applyWaterState(isWater);
+  } catch { /* API 실패 시 게임플레이 차단 안 함 */ }
+}
+
 // ── 백그라운드 근접 감지 + 전투 GPS 추적 ─────────────────────────────────────
 // onFirst: 첫 번째 위치 수신 시 한 번만 호출되는 콜백 (지도 이동 등)
 export function startWatchPosition(onFirst) {
@@ -3416,6 +3471,7 @@ export function startWatchPosition(onFirst) {
       _ctx.lastPos = { lat, lng, accuracy, heading };
       _ctx.gpsPos  = { lat, lng, accuracy, ts: Date.now() };
       updateMyLocation(lat, lng, accuracy, heading);
+      _checkWaterZone(lat, lng);
       // 첫 번째 위치 수신 — 지도 이동 콜백
       if (!_firstFired) { _firstFired = true; onFirst?.(lat, lng, accuracy, heading); }
       // GPS 쓰로틀: 5m 이상 이동 시만 근접 GS 존 재조회

@@ -258,7 +258,7 @@ function _drawPlayer(ctx, p, scale, ts) {
   _part(ctx,IMGS.p_bow1,   scale*.45, -scale*.2,  armRA*.6, sc*.8);
   _part(ctx,IMGS.p_legL,  -scale*.15,  scale*.8,  legLA, sc*.72);
   _part(ctx,IMGS.p_armL,  -scale*.35, -scale*.1,  armLA, sc*.75);
-  _part(ctx,IMGS.p_head,   0,         -scale*.95, 0,     sc*.62);
+  _part(ctx,IMGS.p_head,   0,         -scale*.90, 0,     sc*.44);
   _part(ctx,IMGS.p_handR,  scale*.55, -scale*.1,  armRA, sc*.50);
   _part(ctx,IMGS.p_handL, -scale*.50, -scale*.1,  armLA, sc*.50);
   ctx.restore();
@@ -290,7 +290,7 @@ function _drawMonster(ctx, m, scale, ts) {
   const frames=IMGS.m[spKey]?.[anim];
   const img=frames?.[Math.min(m.frame,(frames.length||1)-1)];
 
-  const dispH=m.def.sz*scale*4;
+  const dispH=m.def.sz*scale*8;
   const dispW=img?(img.naturalWidth/img.naturalHeight)*dispH:dispH;
   const dieAlpha=m.state==='die'?Math.max(0.1,1-(m.frame/((MSPRITE_DEFS[spKey]?.die?.length||6)-1))):1;
 
