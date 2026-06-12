@@ -48,6 +48,8 @@ import { initDailyArea, checkDailyProximity } from './merchants.daily.js';
 import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, toggleVirtualMode, setVirtualPos } from './merchants.virtual.js';
 import { initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers,
          renderMoneyTreeShopSection, openPlantModal } from './merchants.moneytree.js';
+import { initGoldMine, setGoldMineUid, loadGoldMineMarkers, openGoldMineModal,
+         promptInstallMine } from './merchants.goldmine.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -93,6 +95,7 @@ let _detectorBeepTimer    = null;   // setTimeout handle
 let _detectorNextInterval = 0;      // 다음 beep 간격(ms), 0=범위 밖
 let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
 let _mtMarkerLoadTs = 0;         // 돈나무 마커 마지막 로드 시각 (ms)
+let _gmMarkerLoadTs = 0;         // 금광 마커 마지막 로드 시각 (ms)
 let _userMapMarkers = [];        // google.maps.Marker[] — user face markers
 const _cfGetUserMarkers = httpsCallable(functions, 'getUserMarkers');
 let _gsMonsters     = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
@@ -1592,6 +1595,11 @@ async function checkProximity(lat, lng) {
     _mtMarkerLoadTs = Date.now();
     loadMoneyTreeMarkers(lat, lng);
   }
+  // 금광 마커: 120초마다 갱신
+  if (!_isAnonymous && Date.now() - _gmMarkerLoadTs > 120_000) {
+    _gmMarkerLoadTs = Date.now();
+    loadGoldMineMarkers();
+  }
 }
 
 async function tryCollect(box) {
@@ -2895,6 +2903,7 @@ async function init() {
     _userEmail   = user?.email       || null;
     _isAnonymous = user?.isAnonymous || false;
     _ctx.uid     = _uid;
+    setGoldMineUid(_uid);
 
     const loginOverlay = $('gameLoginOverlay');
     const gameToggle   = $('btnGameToggle');
@@ -3060,6 +3069,13 @@ async function init() {
 
     // 첫 방문 Virtual Mode 안내 (기존 guide tooltip)
     _initVirtualModeGuide();
+
+    // ── Gold Mine 초기화 ───────────────────────────────────────────────────
+    initGoldMine(_ctx, map, functions, _uid);
+    document.getElementById('btnCloseGoldMineModal')?.addEventListener('click', () => {
+      document.getElementById('goldMineModal')?.classList.remove('open');
+    });
+    loadGoldMineMarkers();
 
     // ── 돈나무 초기화 ──────────────────────────────────────────────────────
     initMoneyTree(_ctx, map, functions, {
@@ -4086,6 +4102,12 @@ function _renderShopModalBody() {
             📊 매출 실적 보기
           </button>
           <div id="shopSalesPanel" style="display:none;margin-top:8px"></div>
+          <button id="shopInstallMineBtn"
+            style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:none;
+                   font-weight:700;font-size:13px;cursor:pointer;
+                   background:linear-gradient(135deg,#78350f,#92400e);color:#fbbf24">
+            ⛏ Install Gold Mine
+          </button>
         </div>`;
       }
       // 상점 공격은 GPS 모드(실제 현장)에서만 가능
@@ -4198,6 +4220,12 @@ function _renderShopModalBody() {
 
   // 소유자 아이템 등록/수정
   $('shopEditItemsBtn')?.addEventListener('click', () => _openOwnerItemEditor(shop));
+
+  // Gold Mine 설치
+  $('shopInstallMineBtn')?.addEventListener('click', () => {
+    closeShopModal();
+    promptInstallMine(shop.id, shop.lat, shop.lng);
+  });
 }
 
 function closeShopModal() {

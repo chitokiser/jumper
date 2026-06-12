@@ -68,6 +68,7 @@ const gameRewardH            = require('./handlers/gameReward');
 const starsH                 = require('./handlers/starsPayment');
 const membershipH            = require('./handlers/membership');
 const moneyTreeH             = require('./handlers/moneyTree');
+const goldMineH              = require('./handlers/goldMine');
 const { requireAdmin, ADMIN_EMAILS } = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -3008,6 +3009,42 @@ exports.claimDailyItem = onCall(wrapError(async (request) => {
   if (!itemId) throw new HttpsError('invalid-argument', 'itemId required');
   return dailyAreaH.claimDailyItem(uid, itemId);
 }));
+
+// ── Gold Mine ──────────────────────────────────────────────────────────────────
+exports.createGoldMine = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await goldMineH.createGoldMine(uid, request.data ?? {});
+}));
+
+exports.addGoldMiners = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await goldMineH.addMiners(uid, request.data ?? {});
+}));
+
+exports.getMyGoldMines = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await goldMineH.getMyMines(uid);
+}));
+
+exports.getNearbyGoldMines = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await goldMineH.getNearbyMines(uid, request.data ?? {});
+}));
+
+exports.adminGetGoldMines = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await goldMineH.adminGetMines(uid);
+}));
+
+exports.adminSetGoldMineConfig = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await goldMineH.adminSetGoldMineConfig(uid, request.data ?? {});
+}));
+
+exports.processGoldMines = onSchedule(
+  { schedule: 'every 1 minutes', timeoutSeconds: 300 },
+  async () => { await goldMineH.processGoldMines(); }
+);
 
 // Affiliate 커미션 GP 환급 (bot.py 내부 호출)
 exports.starsRedeemCommission = onRequest(
