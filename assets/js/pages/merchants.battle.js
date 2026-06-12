@@ -838,6 +838,29 @@ function updateCombatHud() {
   updateExpBar();
 }
 
+// ── GP 실시간 리스너 ─────────────────────────────────────────────────────────
+let _gpUnsubscribe = null;
+
+function _startGpListener(uid) {
+  if (_gpUnsubscribe) return;
+  _gpUnsubscribe = onSnapshot(
+    doc(_ctx.db, 'battle_players', uid),
+    snap => {
+      if (!snap.exists()) return;
+      const gold = snap.data().gold ?? 0;
+      if (gold !== _player.gold) {
+        _player.gold = gold;
+        updateCombatHud();
+      }
+    }
+  );
+}
+
+export function stopGpListener() {
+  _gpUnsubscribe?.();
+  _gpUnsubscribe = null;
+}
+
 // ── 플레이어 상태 저장/로드 ───────────────────────────────────────────────────
 let _playerStateLastFetch = 0;
 const PLAYER_STATE_CACHE_MS = 30000; // 30초 TTL
@@ -845,6 +868,7 @@ const PLAYER_STATE_CACHE_MS = 30000; // 30초 TTL
 export async function loadPlayerState({ force = false } = {}) {
   const uid = _ctx?.uid;
   if (!uid) return;
+  _startGpListener(uid);
 
   const now = Date.now();
   if (!force && now - _playerStateLastFetch < PLAYER_STATE_CACHE_MS) return;

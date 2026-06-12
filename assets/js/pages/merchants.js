@@ -30,7 +30,7 @@ import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
          addPlayerGold, spendPlayerGold, addPlayerGsExp,
          getPlayerSnapshot, syncPlayerFromDungeon,
          spendPlayerMp, getPlayerMp, getPlayerMaxMp,
-         setSpawnPos, updateSpawnPos }
+         setSpawnPos, updateSpawnPos, stopGpListener }
   from './merchants.battle.js';
 import { initDungeonGame, openDungeonGame } from './merchants.dungeon.js';
 import { initGameServer, connectToGameServer, disconnectFromGameServer,
@@ -1262,6 +1262,7 @@ function startNearbyPlayers() {
   _pollNearbyPlayers();                                       // 즉시 1회
   _nearbyTimer = setInterval(_pollNearbyPlayers, LOC_POLL_INTERVAL);
   window.addEventListener('beforeunload', cleanupMyLocation);
+  window.addEventListener('beforeunload', stopGpListener);
 }
 
 function stopNearbyPlayers() {
@@ -1279,6 +1280,7 @@ function stopGame() {
   stopBattleLoop();
   stopWatchPosition();
   stopNearbyPlayers();
+  stopGpListener();
   cleanupMyLocation();
   hideMyMarker();
   _gameStarted = false;
