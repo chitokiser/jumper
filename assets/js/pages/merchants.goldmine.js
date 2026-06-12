@@ -10,6 +10,9 @@ let _uid  = null;
 let _markers = {};  // mineId → google.maps.Marker
 let _mines   = {};  // mineId → mine data
 
+// Active install session — ensures only one placement mode is active at a time
+let _activeInstall = null; // { clickHandler, circle, previewMarker, cleanup }
+
 const ICON_URL = '/assets/images/shops/gold.png';
 
 export function initGoldMine(ctx, map, functions, uid) {
@@ -75,9 +78,9 @@ function _fillModal(mine) {
   if (!body) return;
 
   const isOwner   = mine.owner_id === _uid;
-  const distLabel = mine.distM != null ? _fmtDist(mine.distM) : '';
-  const effPct    = mine.distM != null
-    ? Math.round((1 + Math.max(0, (5000 - mine.distM) / 5000)) * 100)
+  const distLabel = mine.shopDistM != null ? _fmtDist(mine.shopDistM) : '';
+  const effPct    = mine.shopDistM != null
+    ? Math.round((1 + Math.max(0, (5000 - mine.shopDistM) / 5000)) * 100)
     : 100;
   const rate = mine.miners_count > 0
     ? (mine.miners_count * 0.1 * (effPct / 100)).toFixed(2)
@@ -199,17 +202,43 @@ async function _deployMiners(mineId, count) {
 }
 
 // ── Install mine (called from shop modal "Install Gold Mine" button) ───────────
+const MINE_RADIUS_M = 5000;
+
+function _haversineM(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+    * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function _cancelActiveInstall() {
+  if (!_activeInstall) return;
+  const { clickHandler, circle, previewMarker } = _activeInstall;
+  try { google.maps.event.removeListener(clickHandler); } catch (_) {}
+  try { circle?.setMap(null); } catch (_) {}
+  try { previewMarker?.setMap(null); } catch (_) {}
+  _activeInstall = null;
+}
+
 export function promptInstallMine(storeId, shopLat, shopLng) {
   if (!_map) { _showToast('Map not ready — please wait a moment', 'warn'); return; }
-  if (!shopLat || !shopLng) { _showToast('Shop location not set — cannot place gold mine', 'warn'); return; }
+  if (shopLat == null || shopLng == null || typeof shopLat !== 'number' || typeof shopLng !== 'number') {
+    _showToast('Shop location not set — cannot place gold mine', 'warn'); return;
+  }
 
-  _showToast('Tap anywhere on the map to place your gold mine (within 5km of your shop)', 'info');
+  // Cancel any previous install session before starting a new one
+  _cancelActiveInstall();
+
+  _showToast('Tap inside the yellow circle to place your gold mine (within 5km of shop)', 'info');
 
   let circle, clickHandler, previewMarker;
   try {
     circle = new google.maps.Circle({
       center: { lat: shopLat, lng: shopLng },
-      radius: 5000,
+      radius: MINE_RADIUS_M,
       map: _map,
       strokeColor: '#f59e0b', strokeOpacity: 0.7, strokeWeight: 2,
       fillColor: '#f59e0b', fillOpacity: 0.05,
@@ -219,44 +248,58 @@ export function promptInstallMine(storeId, shopLat, shopLng) {
     return;
   }
 
+  if (typeof _map.addListener !== 'function') {
+    _showToast('Map API not ready — please reload', 'error');
+    circle.setMap(null);
+    return;
+  }
+
   clickHandler = _map.addListener('click', (e) => {
+    if (!e?.latLng) { _showToast('Could not read tap coordinates', 'warn'); return; }
     const lat = e.latLng.lat(), lng = e.latLng.lng();
-    previewMarker?.setMap(null);
-    previewMarker = new google.maps.Marker({
-      position: { lat, lng }, map: _map,
-      icon: { url: ICON_URL, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) },
-      title: 'Install here?',
-    });
-    _openInstallConfirm(storeId, lat, lng, () => {
-      google.maps.event.removeListener(clickHandler);
-      circle.setMap(null);
-      previewMarker?.setMap(null);
+    const distM = _haversineM(lat, lng, shopLat, shopLng);
+    if (isNaN(distM) || distM > MINE_RADIUS_M) {
+      const label = isNaN(distM) ? '?' : `${(distM / 1000).toFixed(1)}km`;
+      _showToast(`Too far (${label}) — tap inside the yellow circle`, 'warn');
+      return; // keep listener active so user can try again
+    }
+    _cancelActiveInstall();
+    try {
+      previewMarker = new google.maps.Marker({
+        position: { lat, lng }, map: _map,
+        icon: { url: ICON_URL, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) },
+        title: 'Install here?',
+      });
+    } catch (_) {}
+    _openInstallConfirm(storeId, lat, lng, distM, () => {
+      try { previewMarker?.setMap(null); } catch (_) {}
     });
   });
 
-  // Clean up if shop modal closes
-  document.getElementById('btnCloseShopModal')?.addEventListener('click', () => {
-    google.maps.event.removeListener(clickHandler);
-    circle.setMap(null);
-    previewMarker?.setMap(null);
-  }, { once: true });
+  _activeInstall = { clickHandler, circle, previewMarker: null };
 }
 
-function _openInstallConfirm(storeId, lat, lng, onDone) {
+function _openInstallConfirm(storeId, lat, lng, distM, onDone) {
   const el = document.getElementById('gmInstallConfirm');
-  if (!el) return;
+  if (!el) { _showToast('Install dialog missing — please reload', 'error'); return; }
   const locEl = el.querySelector('#gmInstallLoc');
-  if (locEl) locEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  if (locEl) {
+    const distLabel = distM < 1000 ? `${Math.round(distM)}m` : `${(distM / 1000).toFixed(2)}km`;
+    locEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} · ${distLabel} from shop`;
+  }
   el.classList.add('open');
 
-  el.querySelector('#gmInstallConfirmBtn').onclick = async () => {
-    el.classList.remove('open');
+  const confirmBtn = el.querySelector('#gmInstallConfirmBtn');
+  const cancelBtn  = el.querySelector('#gmInstallCancelBtn');
+
+  const close = () => el.classList.remove('open');
+
+  if (confirmBtn) confirmBtn.onclick = async () => {
+    close();
     await _doInstall(storeId, lat, lng);
     onDone();
   };
-  el.querySelector('#gmInstallCancelBtn').onclick = () => {
-    el.classList.remove('open');
-  };
+  if (cancelBtn) cancelBtn.onclick = () => { close(); onDone(); };
 }
 
 async function _doInstall(storeId, lat, lng) {

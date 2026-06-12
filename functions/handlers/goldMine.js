@@ -50,6 +50,8 @@ async function createGoldMine(uid, { storeId, lat, lng }) {
   if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found');
   const shop = shopSnap.data();
   if (shop.ownerUid !== uid) throw new HttpsError('permission-denied', 'You do not own this shop');
+  if (shop.lat == null || shop.lng == null)
+    throw new HttpsError('failed-precondition', 'Shop has no location set — update shop location in admin panel');
 
   const distToShop = haversineM(lat, lng, shop.lat, shop.lng);
   if (distToShop > MINE_RADIUS_M) {
@@ -190,6 +192,9 @@ async function getNearbyMines(uid, { lat, lng, radiusKm = 20 }) {
     const dist = haversineM(lat, lng, data.lat, data.lng);
     if (dist > radiusM) continue;
     const isOwner = data.owner_id === uid;
+    const shopDistM = (data.store_lat != null && data.store_lng != null)
+      ? Math.round(haversineM(data.lat, data.lng, data.store_lat, data.store_lng))
+      : null;
     mines.push({
       id:          d.id,
       owner_id:    data.owner_id,
@@ -202,7 +207,8 @@ async function getNearbyMines(uid, { lat, lng, radiusKm = 20 }) {
       total_gold:  (isOwner || data.deposit_revealed) ? data.total_gold  : null,
       remain_gold: (isOwner || data.deposit_revealed) ? data.remain_gold : null,
       isOwner,
-      distM: Math.round(dist),
+      distM:     Math.round(dist),
+      shopDistM,
     });
   }
   return { mines };
