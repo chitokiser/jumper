@@ -1683,7 +1683,7 @@ async def _npc_harvest_loop(app):
             await _broadcast_harvest(app, name, gp, is_npc=True)
         except Exception as e:
             print(f"[WARN] NPC harvest loop error: {e}")
-        await asyncio.sleep(_random.uniform(180, 480))
+        await asyncio.sleep(1800)
 
 
 async def _handle_real_harvest(app, uid: str, gp: int):
