@@ -339,19 +339,22 @@ async function plantBulkSeedlings(uid, { shopId }) {
   const seedCount = player.seedlings ?? 0;
   if (seedCount < 1) throw new HttpsError('failed-precondition', 'You have no seedlings.');
 
-  // 후보 위치: 중심 + 8방향 × 3링 = 25곳 (15m, 30m, 45m 간격)
-  const D = 0.000135; // ~15m
+  // 후보 위치: 묘목 수 × 1.5 버퍼로 링 수 동적 산출 (최소 3, 최대 12 → ~180m 반경)
+  const D = 0.000135; // ~15m per ring
   const DIRS = [[1,0],[0.707,0.707],[0,1],[-0.707,0.707],[-1,0],[-0.707,-0.707],[0,-1],[0.707,-0.707]];
+  const ringCount = Math.min(12, Math.max(3, Math.ceil(seedCount * 1.5 / 8)));
   const candidates = [
     { lat: player.lat, lng: player.lng },
-    ...DIRS.flatMap((_, i, arr) => [1, 2, 3].map(r => ({
-      lat: player.lat + arr[i][0] * D * r,
-      lng: player.lng + arr[i][1] * D * r,
-    }))),
+    ...DIRS.flatMap((d, i) =>
+      Array.from({ length: ringCount }, (_, ri) => ({
+        lat: player.lat + d[0] * D * (ri + 1),
+        lng: player.lng + d[1] * D * (ri + 1),
+      }))
+    ),
   ];
 
-  // 반경 ~60m 내 기존 나무 한 번에 조회
-  const margin = D * 5;
+  // 반경(링 수 + 2) × ~15m 내 기존 나무 조회
+  const margin = D * (ringCount + 2);
   const nearSnap = await db.collection('money_trees')
     .where('lat', '>=', player.lat - margin)
     .where('lat', '<=', player.lat + margin)
