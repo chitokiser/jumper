@@ -4268,10 +4268,17 @@ async function _loadShopSales(shopId) {
 
   try {
     const res = await httpsCallable(functions, 'getShopSales')({ shopId, limit: 20 });
-    const { sales, totalRevenue, totalSales, seedlingRevenue, seedlingCount, boosterRevenue, boosterCount } = res.data;
-    const mtRevenue = (seedlingRevenue || 0) + (boosterRevenue || 0);
-    const mtCount   = (seedlingCount  || 0) + (boosterCount  || 0);
-    const grandTotal = (totalRevenue || 0) + mtRevenue;
+    const { sales, totalRevenue, totalSales, seedlingRevenue, seedlingCount, boosterRevenue, boosterCount,
+            mineRevenue, mineCount, mineMiners } = res.data;
+    const mtRevenue  = (seedlingRevenue || 0) + (boosterRevenue || 0);
+    const mtCount    = (seedlingCount  || 0) + (boosterCount  || 0);
+    const grandTotal = (totalRevenue || 0) + mtRevenue + (mineRevenue || 0);
+    const mineCard   = (mineCount || 0) > 0 ? `
+          <div style="flex:1;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:8px;text-align:center">
+            <div style="color:#fcd34d;font-size:10px;margin-bottom:2px">⛏ 금광 채굴</div>
+            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(mineRevenue||0).toLocaleString()}</div>
+            <div style="color:#6b7280;font-size:10px">${mineMiners||0}명 채굴 중</div>
+          </div>` : '';
     let html = `
       <div style="background:rgba(255,255,255,.03);border:1px solid #1f2937;border-radius:10px;padding:12px">
         <div style="display:flex;gap:12px;margin-bottom:8px">
@@ -4284,22 +4291,23 @@ async function _loadShopSales(shopId) {
             <div style="color:#60a5fa;font-weight:700;font-size:18px">${((totalSales||0)+mtCount).toLocaleString()} 개</div>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <div style="flex:1;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px;text-align:center">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <div style="flex:1;min-width:80px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px;text-align:center">
             <div style="color:#34d399;font-size:10px;margin-bottom:2px">🛒 아이템 매출</div>
             <div style="color:#fbbf24;font-weight:700;font-size:14px">${(totalRevenue||0).toLocaleString()}</div>
             <div style="color:#6b7280;font-size:10px">${(totalSales||0).toLocaleString()} 개</div>
           </div>
-          <div style="flex:1;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:8px;text-align:center">
+          <div style="flex:1;min-width:80px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:8px;text-align:center">
             <div style="color:#6ee7b7;font-size:10px;margin-bottom:2px">🌱 묘목 매출</div>
             <div style="color:#fbbf24;font-weight:700;font-size:14px">${(seedlingRevenue||0).toLocaleString()}</div>
             <div style="color:#6b7280;font-size:10px">${(seedlingCount||0).toLocaleString()} 개</div>
           </div>
-          <div style="flex:1;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:8px;padding:8px;text-align:center">
+          <div style="flex:1;min-width:80px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:8px;padding:8px;text-align:center">
             <div style="color:#c4b5fd;font-size:10px;margin-bottom:2px">💊 영양제 매출</div>
             <div style="color:#fbbf24;font-weight:700;font-size:14px">${(boosterRevenue||0).toLocaleString()}</div>
             <div style="color:#6b7280;font-size:10px">${(boosterCount||0).toLocaleString()} 개</div>
           </div>
+          ${mineCard}
         </div>`;
     if (!sales.length) {
       html += `<div style="text-align:center;color:#6b7280;font-size:13px;padding:8px 0">판매 기록이 없습니다</div>`;

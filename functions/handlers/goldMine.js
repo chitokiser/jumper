@@ -1,5 +1,5 @@
 'use strict';
-
+// v2
 const admin = require('firebase-admin');
 const { HttpsError } = require('firebase-functions/v2/https');
 const { requireAdmin } = require('../wallet/admin');
@@ -275,6 +275,7 @@ async function processGoldMines() {
       remain_gold:       depleted ? 0 : newRemain,
       status:            depleted ? 'depleted' : 'active',
       last_processed_at: now,
+      total_earned:      admin.firestore.FieldValue.increment(Math.floor(mined)),
     };
     if (depleted) mineUpdate.miners_count = 0;
     batch.update(doc.ref, mineUpdate);

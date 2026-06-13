@@ -309,11 +309,16 @@ async function getShopSales(uid, { shopId, limit = 20 } = {}) {
     throw new HttpsError('permission-denied', '상점 소유자 또는 관리자만 조회할 수 있습니다');
 
   const safeLimit = Math.min(Math.max(1, Number(limit) || 20), 50);
-  const snap = await db.collection('shop_sales_logs')
-    .where('shopId', '==', shopId)
-    .orderBy('createdAt', 'desc')
-    .limit(safeLimit)
-    .get();
+  const [snap, mineSnap] = await Promise.all([
+    db.collection('shop_sales_logs')
+      .where('shopId', '==', shopId)
+      .orderBy('createdAt', 'desc')
+      .limit(safeLimit)
+      .get(),
+    db.collection('gold_mines')
+      .where('store_id', '==', shopId)
+      .get(),
+  ]);
 
   const sales = snap.docs.map(d => {
     const data = d.data();
@@ -329,6 +334,17 @@ async function getShopSales(uid, { shopId, limit = 20 } = {}) {
     };
   });
 
+  // 금광 수익 집계 (total_earned: processGoldMines 1분마다 누적)
+  let mineRevenue   = 0;
+  let mineCount     = 0;
+  let mineMiners    = 0;
+  for (const d of mineSnap.docs) {
+    const m = d.data();
+    mineRevenue += m.total_earned ?? 0;
+    mineCount++;
+    mineMiners += m.miners_count ?? 0;
+  }
+
   return {
     sales,
     totalRevenue:   shop.totalRevenue   ?? 0,
@@ -337,6 +353,9 @@ async function getShopSales(uid, { shopId, limit = 20 } = {}) {
     seedlingCount:   shop.seedlingCount  ?? 0,
     boosterRevenue:  shop.boosterRevenue ?? 0,
     boosterCount:    shop.boosterCount   ?? 0,
+    mineRevenue,
+    mineCount,
+    mineMiners,
     shopName:        shop.name,
   };
 }
