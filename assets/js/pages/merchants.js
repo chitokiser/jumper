@@ -3105,6 +3105,8 @@ async function init() {
       },
       isServerConnected: () => _gameStarted,
     });
+    // 식재 성공 후 폴링 타이머 리셋 — 즉시 다른 좌표로 덮어쓰는 race condition 방지
+    window.addEventListener('mt:planted', () => { _mtMarkerLoadTs = Date.now(); });
     window._mtOpenPlantFromMyTrees = () => {
       document.getElementById('mtMyTreesModal')?.classList.remove('open');
       // 상점 모달을 거치지 않은 경우 현재 위치에서 가장 가까운 상점 자동 선택

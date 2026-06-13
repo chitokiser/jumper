@@ -384,10 +384,17 @@ window._mtConfirmPlant = async function() {
     _showMtToast(msg, 'success');
     // Optimistic inventory decrement — background refresh syncs accurate count
     if (_inv) { _inv.seedlings = Math.max(0, (_inv.seedlings ?? 1) - 1); _updateHud(_inv); }
-    const refPos = _ctx?.lastPos || _ctx?.gpsPos;
-    const mapLat = refPos?.lat ?? data.lat;
-    const mapLng = refPos?.lng ?? data.lng;
-    if (mapLat != null && mapLng != null) loadMoneyTreeMarkers(mapLat, mapLng); // no await
+    // Immediate marker: render using server-returned coordinates (guaranteed correct position)
+    // New tree always starts at value=50, imageNum=1
+    if (data.lat != null && data.lng != null) {
+      _addTreeMarker({ treeId: data.treeId, lat: data.lat, lng: data.lng, imageNum: 1, value: 50, isOwn: true });
+    }
+    // Background refresh: use exact tree coords so getNearbyTrees query always includes this tree
+    // Dispatch event so merchant polling timer resets and doesn't race with this refresh
+    if (data.lat != null && data.lng != null) {
+      window.dispatchEvent(new CustomEvent('mt:planted', { detail: { lat: data.lat, lng: data.lng } }));
+      loadMoneyTreeMarkers(data.lat, data.lng); // no await
+    }
     refreshMoneyTreeInventory(); // background — no await
   } catch (e) {
     const msg = e?.message || 'Unknown error';
@@ -429,11 +436,21 @@ window._mtPlantAll = async function() {
     _showMtToast(msg, 'success');
     // Optimistic: clear all seedlings — background refresh syncs accurate count
     if (_inv) { _inv.seedlings = 0; _updateHud(_inv); }
+    // Immediate markers: render each planted tree directly from server data
+    (data.trees || []).forEach(t => {
+      if (t.lat != null && t.lng != null) {
+        _addTreeMarker({ treeId: t.treeId, lat: t.lat, lng: t.lng, imageNum: 1, value: 50, isOwn: true });
+      }
+    });
+    // Background refresh: center on user position (all bulk trees are nearby)
     const refPos = _ctx?.lastPos || _ctx?.gpsPos;
     const firstTree = data.trees?.[0];
     const mapLat = refPos?.lat ?? firstTree?.lat;
     const mapLng = refPos?.lng ?? firstTree?.lng;
-    if (mapLat != null && mapLng != null) loadMoneyTreeMarkers(mapLat, mapLng); // no await
+    if (mapLat != null && mapLng != null) {
+      window.dispatchEvent(new CustomEvent('mt:planted', { detail: { lat: mapLat, lng: mapLng } }));
+      loadMoneyTreeMarkers(mapLat, mapLng); // no await
+    }
     refreshMoneyTreeInventory(); // background — no await
   } catch (e) {
     const msg = e?.message || 'Plant failed';
