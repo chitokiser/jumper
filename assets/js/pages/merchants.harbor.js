@@ -16,7 +16,14 @@ const GRADE_COEFF   = [0, 10000, 50000, 100000, 200000, 400000, 800000, 1600000,
 const SEA_KEYWORDS  = [
   'sea', 'ocean', 'bay', 'gulf', 'strait', 'channel', 'sound', 'bight',
   'pacific', 'atlantic', 'indian', 'arctic', 'mediterranean', 'caribbean', 'aegean',
+  'south china', 'east sea', 'yellow sea', 'java sea', 'banda', 'celebes',
+  'sulu', 'coral', 'timor', 'arafura', 'flores', 'makassar', 'malacca',
+  'andaman', 'tonkin', 'bismarck', 'solomon', 'philippine', 'sibuyan',
 ];
+const SEA_NATURAL_TYPES = new Set([
+  'water', 'sea', 'bay', 'strait', 'gulf', 'ocean', 'channel', 'sound',
+  'inlet', 'fjord', 'lagoon', 'reef',
+]);
 
 let _fns     = null;
 let _map     = null;
@@ -368,6 +375,12 @@ async function _checkSeaZone(lat, lng) {
     });
     if (!res.ok) return false;
     const d = await res.json();
+    // "Unable to geocode" → open ocean with no land features
+    if (d.error) return true;
+    // OSM natural water body: class=natural, type=water/sea/bay/...
+    if (d.class === 'natural' && SEA_NATURAL_TYPES.has(d.type)) return true;
+    // Waterway/coastline
+    if (d.class === 'waterway') return true;
     const text = [
       d.display_name ?? '',
       d.type         ?? '',
