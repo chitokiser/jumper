@@ -100,6 +100,7 @@ let _walkRafId    = null;   // 걷기 requestAnimationFrame ID
 let _targetIndicator = null; // 클릭 목표 지점 시각화
 let _shops        = [];
 let _modalEl      = null;
+let _movementEnabled = true;
 
 // ── 초기화 ───────────────────────────────────────────────────────────────
 export function initVirtualMode(ctx, map, infoWindow, onModeChange, cbs = null) {
@@ -119,6 +120,7 @@ export function setVirtualPos(lat, lng) {
   _virtualPos = { lat, lng };
   _map?.panTo({ lat, lng });
 }
+export function setMovementEnabled(v) { _movementEnabled = v; }
 export function canCollectInVirtual(box) {
   if (!_active) return true;
   return !_isGpsOnly(box);
@@ -221,7 +223,7 @@ function _deactivate() {
 
 // ── 지도 탭 → 실제 캐릭터 걷기 이동 ──────────────────────────────────────
 function _onMapTap(lat, lng) {
-  if (!_active || !_warpShop) return;
+  if (!_active || !_warpShop || !_movementEnabled) return;
   if (_haversine(lat, lng, _warpShop.lat, _warpShop.lng) > WARP_RADIUS_M) {
     _showToast('⛔ You cannot move outside the 5km exploration radius around this shop.');
     return;

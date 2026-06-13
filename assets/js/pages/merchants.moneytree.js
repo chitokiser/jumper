@@ -263,15 +263,17 @@ window._mtBuySeedling = async function() {
   const qtyEl = document.getElementById('mtSeedQtyInput');
   const qty = Math.min(99, Math.max(1, parseInt(qtyEl?.value) || 1));
   const btn = document.getElementById('mtBuySeedlingBtn');
-  if (btn) btn.disabled = true;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
   try {
     const fn = httpsCallable(_functions, 'buySeedling');
     const { data } = await fn({ shopId: _activeShopId, qty });
-    _showMtToast(`🌱 Seedling x${data.qty} purchased! −${data.cost.toLocaleString()} GP`, 'success');
-    await refreshMoneyTreeInventory();
-    document.getElementById('mtInvSeedlings').textContent = _inv?.seedlings ?? 0;
+    // Optimistic update — accurate refresh runs in background
+    if (_inv) { _inv.seedlings = (_inv.seedlings ?? 0) + data.qty; _updateHud(_inv); }
+    document.getElementById('mtInvSeedlings').textContent = _inv?.seedlings ?? data.qty;
+    _showMtToast(`🌱 Seedling ×${data.qty} purchased! −${data.cost.toLocaleString()} GP`, 'success');
+    refreshMoneyTreeInventory(); // background — no await
   } catch (e) { _showMtToast(e?.message || 'Purchase failed', 'error'); }
-  finally { if (btn) btn.disabled = false; }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Buy'; } }
 };
 
 window._mtBoostQtyStep = function(delta) {
@@ -286,15 +288,16 @@ window._mtBuyBooster = async function() {
   const qtyEl = document.getElementById('mtBoostQtyInput');
   const qty = Math.min(99, Math.max(1, parseInt(qtyEl?.value) || 1));
   const btn = document.getElementById('mtBuyBoosterBtn');
-  if (btn) btn.disabled = true;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
   try {
     const fn = httpsCallable(_functions, 'buyTreeBooster');
     const { data } = await fn({ shopId: _activeShopId, qty });
-    _showMtToast(`💊 Booster x${data.qty} purchased! (-${data.cost.toLocaleString()} GP)`, 'success');
-    await refreshMoneyTreeInventory();
-    document.getElementById('mtInvBoosters').textContent = _inv?.treeBoosters ?? 0;
+    if (_inv) { _inv.treeBoosters = (_inv.treeBoosters ?? 0) + data.qty; _updateHud(_inv); }
+    document.getElementById('mtInvBoosters').textContent = _inv?.treeBoosters ?? data.qty;
+    _showMtToast(`💊 Booster ×${data.qty} purchased! −${data.cost.toLocaleString()} GP`, 'success');
+    refreshMoneyTreeInventory(); // background — no await
   } catch (e) { _showMtToast(e?.message || 'Purchase failed', 'error'); }
-  finally { if (btn) btn.disabled = false; }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Buy'; } }
 };
 
 // ── 내 나무 모달 ─────────────────────────────────────────────────────────────
@@ -366,8 +369,7 @@ window._mtConfirmPlant = async function() {
   if (!_functions) { _showMtToast('Functions not initialized. Please reload.', 'error'); return; }
   if (!_activeShopId) { _showMtToast('No shop selected. Walk near a shop and try again.', 'error'); return; }
   const btn = document.getElementById('mtPlantConfirmBtn');
-  if (btn) btn.disabled = true;
-  // 워프/GPS 모드 공통 — Firestore 위치 쓰기가 완료된 뒤 CF 호출 (race condition 방지)
+  if (btn) { btn.disabled = true; btn.textContent = 'Planting…'; }
   await _onEnsurePos?.();
   try {
     const fn = httpsCallable(_functions, 'plantSeedling');
@@ -380,11 +382,13 @@ window._mtConfirmPlant = async function() {
     const msg = `🌱 Planted! (${data.treeId})` + (extras.length ? ' · ' + extras.join(' · ') : '');
     playSound('plant_seedling');
     _showMtToast(msg, 'success');
-    await refreshMoneyTreeInventory();
+    // Optimistic inventory decrement — background refresh syncs accurate count
+    if (_inv) { _inv.seedlings = Math.max(0, (_inv.seedlings ?? 1) - 1); _updateHud(_inv); }
     const refPos = _ctx?.lastPos || _ctx?.gpsPos;
     const mapLat = refPos?.lat ?? data.lat;
     const mapLng = refPos?.lng ?? data.lng;
-    if (mapLat != null && mapLng != null) loadMoneyTreeMarkers(mapLat, mapLng);
+    if (mapLat != null && mapLng != null) loadMoneyTreeMarkers(mapLat, mapLng); // no await
+    refreshMoneyTreeInventory(); // background — no await
   } catch (e) {
     const msg = e?.message || 'Unknown error';
     if (msg.includes('5 km') || msg.includes('too far') || msg.includes('within')) {
@@ -397,7 +401,7 @@ window._mtConfirmPlant = async function() {
       _showMtToast(`Plant failed: ${msg}`, 'error');
     }
   } finally {
-    if (btn) btn.disabled = false;
+    if (btn) { btn.disabled = false; btn.textContent = '🌱 Plant 1'; }
   }
 };
 
@@ -423,12 +427,14 @@ window._mtPlantAll = async function() {
       : `🌳 All ${data.planted} seedling${data.planted > 1 ? 's' : ''} planted!`;
     playSound('plant_seedling');
     _showMtToast(msg, 'success');
-    await refreshMoneyTreeInventory();
+    // Optimistic: clear all seedlings — background refresh syncs accurate count
+    if (_inv) { _inv.seedlings = 0; _updateHud(_inv); }
     const refPos = _ctx?.lastPos || _ctx?.gpsPos;
     const firstTree = data.trees?.[0];
     const mapLat = refPos?.lat ?? firstTree?.lat;
     const mapLng = refPos?.lng ?? firstTree?.lng;
-    if (mapLat != null && mapLng != null) loadMoneyTreeMarkers(mapLat, mapLng);
+    if (mapLat != null && mapLng != null) loadMoneyTreeMarkers(mapLat, mapLng); // no await
+    refreshMoneyTreeInventory(); // background — no await
   } catch (e) {
     const msg = e?.message || 'Plant failed';
     if (msg.includes('5 km') || msg.includes('within')) {

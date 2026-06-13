@@ -2,6 +2,7 @@
 // Harbor + Trade Ship system — map markers, modals, CF calls
 
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { setMovementEnabled } from './merchants.virtual.js';
 
 const HARBOR_ICON   = '/assets/images/shops/dock.png';
 const SHIP_ICON     = '/assets/images/shops/ship2.png';
@@ -173,53 +174,55 @@ async function _doBuildShip(harborId) {
 // ── Install harbor (placement flow) ──────────────────────────────────────────
 export function promptInstallHarbor(shopId, shopLat, shopLng) {
   _cleanupInstall();
+  setMovementEnabled(false);
 
   const circle = new google.maps.Circle({
-    map:          _map,
-    center:       { lat: shopLat, lng: shopLng },
-    radius:       RADIUS_M,
-    fillColor:    '#0ea5e9',
-    fillOpacity:  0.06,
-    strokeColor:  '#0ea5e9',
+    map:           _map,
+    center:        { lat: shopLat, lng: shopLng },
+    radius:        RADIUS_M,
+    fillColor:     '#0ea5e9',
+    fillOpacity:   0.06,
+    strokeColor:   '#0ea5e9',
     strokeOpacity: 0.5,
-    strokeWeight: 1.5,
+    strokeWeight:  1.5,
   });
 
-  _showToast('Tap a sea location within 5km of the shop to place harbor. Tap elsewhere to cancel.', 'info');
+  const cancelBtn = document.createElement('button');
+  cancelBtn.id = 'harborInstallCancelBtn';
+  cancelBtn.textContent = '✕ Cancel';
+  cancelBtn.setAttribute('data-fs-modal', '');
+  cancelBtn.style.cssText = `position:fixed;bottom:140px;left:50%;transform:translateX(-50%);
+    z-index:9990;padding:10px 22px;border-radius:20px;border:none;
+    background:rgba(239,68,68,.9);color:#fff;font-size:13px;font-weight:700;
+    cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);white-space:nowrap;`;
+  cancelBtn.onclick = () => { _cleanupInstall(); _showToast('Harbor installation cancelled.', 'warn'); };
+  document.body.appendChild(cancelBtn);
 
-  const clickHandler = _map.addListener('click', async (e) => {
+  _showToast('Tap a sea location inside the blue circle to place harbor.', 'info');
+
+  const clickHandler = _map.addListener('click', (e) => {
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
-
     const dist = _distM(lat, lng, shopLat, shopLng);
     if (dist > RADIUS_M) {
-      _showToast(`Too far from shop (${Math.round(dist)}m). Must be within 5km.`, 'error');
+      _cleanupInstall();
+      _showToast('Too far from shop — cancelled. Re-open the shop to try again.', 'warn');
       return;
     }
-
-    _showToast('Checking sea zone…', 'info');
-    const isSea = await _checkSeaZone(lat, lng);
-    if (!isSea) {
-      _showToast('Not a sea zone. Try a point further into open water.', 'error');
-      return;
-    }
-
     _cleanupInstall();
     _showInstallConfirm(shopId, lat, lng);
   });
 
-  _activeInstall = {
-    clickHandler,
-    circle,
-    cleanup: _cleanupInstall,
-  };
+  _activeInstall = { clickHandler, circle, cancelBtn };
 }
 
 function _cleanupInstall() {
   if (!_activeInstall) return;
   google.maps.event.removeListener(_activeInstall.clickHandler);
   _activeInstall.circle?.setMap(null);
+  _activeInstall.cancelBtn?.remove();
   _activeInstall = null;
+  setMovementEnabled(true);
 }
 
 function _showInstallConfirm(shopId, lat, lng) {
@@ -232,7 +235,7 @@ function _showInstallConfirm(shopId, lat, lng) {
       <div style="font-size:16px;font-weight:700;color:#38bdf8;margin-bottom:8px">Install Harbor?</div>
       <div style="font-size:13px;color:#9ca3af;margin-bottom:20px;line-height:1.5">
         Cost: <strong style="color:#fbbf24">${HARBOR_COST.toLocaleString()} GP</strong><br>
-        <span style="font-size:11px">Location verified as sea zone</span>
+        <span style="font-size:11px">⚠️ Confirm this point is in sea / ocean</span>
       </div>
       <div style="display:flex;gap:10px">
         <button id="harborConfirmCancelBtn"
