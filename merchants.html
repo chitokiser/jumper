@@ -2471,30 +2471,10 @@
     </div>
   </div>
 
-  <!-- Gold Mine install confirm -->
+  <!-- Gold Mine install result — innerHTML injected by _showInstallSuccess() in merchants.goldmine.js -->
   <div id="gmInstallConfirm" data-fs-modal
     style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);
-           align-items:center;justify-content:center">
-    <div style="background:#111827;border:1px solid #d97706;border-radius:16px;
-                width:min(360px,95vw);padding:20px">
-      <div style="font-size:15px;font-weight:700;color:#fbbf24;margin-bottom:10px">⛏ Install Gold Mine?</div>
-      <div style="font-size:13px;color:#9ca3af;margin-bottom:6px">Location:</div>
-      <div id="gmInstallLoc" style="font-size:13px;color:#f3f4f6;margin-bottom:16px;
-                                     font-family:monospace"></div>
-      <div style="font-size:13px;color:#9ca3af;margin-bottom:16px">
-        Installation cost: <strong style="color:#fbbf24">100,000 GP</strong>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button id="gmInstallConfirmBtn"
-          style="flex:1;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;
-                 border:none;border-radius:8px;padding:11px;font-size:14px;
-                 font-weight:700;cursor:pointer">Install</button>
-        <button id="gmInstallCancelBtn"
-          style="flex:1;background:#1f2937;color:#9ca3af;border:1px solid #374151;
-                 border-radius:8px;padding:11px;font-size:14px;cursor:pointer">Cancel</button>
-      </div>
-    </div>
-  </div>
+           align-items:center;justify-content:center"></div>
 
   <!-- 튜토리얼 모달 -->
   <div id="tutModal" class="hidden" role="dialog" aria-modal="true" aria-label="게임 가이드">
