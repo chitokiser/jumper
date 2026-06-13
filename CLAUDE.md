@@ -26,6 +26,12 @@
 - `loadMoneyTreeMarkers` 는 심기 성공 후 즉시 호출됨 — 이 호출 체인 끊으면 나무 안 보임
 - moneytree 모듈은 Cloud Functions 전용 (`httpsCallable`) — 직접 Firestore 읽기 추가 금지
 - **`openPlantModal`에 `isServerConnected` / `_gameStarted` 조건 절대 추가 금지** — 나무 심기는 CF 전용 작업, 게임서버 연결과 무관. 이 체크가 3번 반복 삽입돼 매번 묘목 심기를 완전히 차단했음
+- **나무 심기 마커 표시 필수 순서** (이 순서 바꾸면 나무 안 보임):
+  1. CF 호출 전: `_addPendingPlantMarker(lat, lng)` — BOUNCE 애니메이션으로 심는 중 표시
+  2. CF 성공 후: `_removePendingPlantMarker()` → `_addTreeMarker(treeData, true)` — DROP 애니메이션으로 즉시 표시
+  3. 백그라운드: `loadMoneyTreeMarkers(data.lat, data.lng)` — CF 반환 좌표 사용 (lastPos/gpsPos 금지)
+  4. `window.dispatchEvent(new Event('mt:planted'))` — 폴링 타이머 리셋 (60초 레이스 컨디션 방지)
+- **`loadMoneyTreeMarkers` 호출 시 반드시 CF 반환 `data.lat, data.lng` 사용** — `_ctx.lastPos`/`_ctx.gpsPos` 사용 금지 (이동 중이면 좌표 불일치로 나무 로드 실패)
 
 ## ⚠️ 전체화면 모달 필수 규칙 (반복 발생 버그)
 - **모든 모달/오버레이는 반드시 `data-fs-modal` 속성 부착**
@@ -33,6 +39,12 @@
 - 없으면 전체화면에서 모달이 보이지 않음 (body에 고정되어 fullscreen 레이어 아래 숨겨짐)
 - `FS_MODALS` 배열(merchants.js)에 ID를 추가하거나 `data-fs-modal` 속성 둘 중 하나 필수
 - **동적으로 생성하는 모달도 예외 없이 적용**
+- **`document.getElementById('fullscreenContainer')` 절대 금지** — 이 ID는 존재하지 않음. 항상 null 반환 → body에 붙어 fullscreen에서 안 보임
+- **동적 모달 append 패턴 (필수)**:
+  ```js
+  (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(modal);
+  ```
+- `_moveModalsToFs()`는 fullscreenchange 이벤트에서만 실행됨 — **이미 fullscreen 상태에서 동적 생성된 모달은 위 패턴으로 직접 append해야 함**
 
 ---
 

@@ -15,6 +15,7 @@ let _cfg = null;
 let _inv = null;
 let _onEnsurePos = null;
 let _isServerConnected = null;
+let _pendingPlantMarker = null;
 
 const IMG_BASE = '/assets/images/tree/';
 
@@ -91,7 +92,32 @@ function _clearTreeMarkers() {
   _treeShadows = [];
 }
 
-function _addTreeMarker(tree) {
+function _addPendingPlantMarker(lat, lng) {
+  if (!_map || !window.google) return;
+  _removePendingPlantMarker();
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">' +
+    '<circle cx="16" cy="16" r="14" fill="#065f46" stroke="#34d399" stroke-width="2.5"/>' +
+    '<circle cx="16" cy="16" r="7" fill="#34d399" opacity="0.9"/>' +
+    '</svg>';
+  _pendingPlantMarker = new google.maps.Marker({
+    position: { lat, lng },
+    map: _map,
+    title: 'Planting…',
+    zIndex: 20,
+    animation: google.maps.Animation.BOUNCE,
+    icon: {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      scaledSize: new google.maps.Size(32, 32),
+      anchor: new google.maps.Point(16, 16),
+    },
+  });
+}
+
+function _removePendingPlantMarker() {
+  if (_pendingPlantMarker) { _pendingPlantMarker.setMap(null); _pendingPlantMarker = null; }
+}
+
+function _addTreeMarker(tree, animate) {
   if (!_map || !window.google) return;
   const shadow = new google.maps.Marker({
     position: { lat: tree.lat, lng: tree.lng },
@@ -113,6 +139,7 @@ function _addTreeMarker(tree) {
     icon,
     title: `🌳 ${tree.value.toLocaleString()} GP${tree.isOwn ? ' (My Tree)' : ''}`,
     zIndex: 5,
+    animation: animate ? google.maps.Animation.DROP : null,
   });
   marker.addListener('click', () => _onTreeMarkerClick(tree, marker));
   _treeMarkers.push(marker);
@@ -371,6 +398,9 @@ window._mtConfirmPlant = async function() {
   const btn = document.getElementById('mtPlantConfirmBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Planting…'; }
   await _onEnsurePos?.();
+  // Pending marker: show bouncing dot at approximate position while CF is in-flight
+  const approxPos = _ctx?.lastPos || _ctx?.gpsPos;
+  if (approxPos?.lat != null) _addPendingPlantMarker(approxPos.lat, approxPos.lng);
   try {
     const fn = httpsCallable(_functions, 'plantSeedling');
     const { data } = await fn({ shopId: _activeShopId });
@@ -382,12 +412,12 @@ window._mtConfirmPlant = async function() {
     const msg = `🌱 Planted! (${data.treeId})` + (extras.length ? ' · ' + extras.join(' · ') : '');
     playSound('plant_seedling');
     _showMtToast(msg, 'success');
+    _removePendingPlantMarker();
     // Optimistic inventory decrement — background refresh syncs accurate count
     if (_inv) { _inv.seedlings = Math.max(0, (_inv.seedlings ?? 1) - 1); _updateHud(_inv); }
-    // Immediate marker: render using server-returned coordinates (guaranteed correct position)
-    // New tree always starts at value=50, imageNum=1
+    // Immediate marker with DROP animation using server-confirmed coordinates
     if (data.lat != null && data.lng != null) {
-      _addTreeMarker({ treeId: data.treeId, lat: data.lat, lng: data.lng, imageNum: 1, value: 50, isOwn: true });
+      _addTreeMarker({ treeId: data.treeId, lat: data.lat, lng: data.lng, imageNum: 1, value: 50, isOwn: true }, true);
     }
     // Background refresh: use exact tree coords so getNearbyTrees query always includes this tree
     // Dispatch event so merchant polling timer resets and doesn't race with this refresh
@@ -407,6 +437,7 @@ window._mtConfirmPlant = async function() {
     } else {
       _showMtToast(`Plant failed: ${msg}`, 'error');
     }
+    _removePendingPlantMarker();
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🌱 Plant 1'; }
   }
@@ -424,10 +455,13 @@ window._mtPlantAll = async function() {
   if (allBtn)     allBtn.disabled = true;
 
   await _onEnsurePos?.();
+  const approxPos2 = _ctx?.lastPos || _ctx?.gpsPos;
+  if (approxPos2?.lat != null) _addPendingPlantMarker(approxPos2.lat, approxPos2.lng);
   try {
     _showMtToast(`🌱 Planting ${seeds} seedling${seeds > 1 ? 's' : ''}…`, 'info');
     const fn = httpsCallable(_functions, 'plantBulkSeedlings', { timeout: 300000 });
     const { data } = await fn({ shopId: _activeShopId });
+    _removePendingPlantMarker();
     document.getElementById('mtPlantModal')?.classList.remove('open');
     const msg = data.skipped > 0
       ? `🌳 Planted ${data.planted}/${seeds} — ${data.skipped} spot(s) blocked (10m rule).`
@@ -436,10 +470,10 @@ window._mtPlantAll = async function() {
     _showMtToast(msg, 'success');
     // Optimistic: clear all seedlings — background refresh syncs accurate count
     if (_inv) { _inv.seedlings = 0; _updateHud(_inv); }
-    // Immediate markers: render each planted tree directly from server data
+    // Immediate markers with DROP animation using server-confirmed coordinates
     (data.trees || []).forEach(t => {
       if (t.lat != null && t.lng != null) {
-        _addTreeMarker({ treeId: t.treeId, lat: t.lat, lng: t.lng, imageNum: 1, value: 50, isOwn: true });
+        _addTreeMarker({ treeId: t.treeId, lat: t.lat, lng: t.lng, imageNum: 1, value: 50, isOwn: true }, true);
       }
     });
     // Background refresh: center on user position (all bulk trees are nearby)
@@ -460,6 +494,7 @@ window._mtPlantAll = async function() {
     } else {
       _showMtToast(`Plant failed: ${msg}`, 'error');
     }
+    _removePendingPlantMarker();
   } finally {
     if (confirmBtn) confirmBtn.disabled = false;
     if (allBtn)     allBtn.disabled = false;
@@ -589,8 +624,7 @@ window._mtOpenConvertSv = function() {
         </button>
       </div>
     </div>`;
-  const fsContainer = document.getElementById('fullscreenContainer') || document.body;
-  fsContainer.appendChild(modal);
+  (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(modal);
 };
 
 window._mtConfirmConvertSv = async function() {
@@ -629,8 +663,7 @@ window._mtOpenMentees = async function() {
       </div>
       <div id="mtMenteeList" style="overflow-y:auto;flex:1;color:#9ca3af;text-align:center;padding:20px">Loading...</div>
     </div>`;
-  const fsContainer = document.getElementById('fullscreenContainer') || document.body;
-  fsContainer.appendChild(modal);
+  (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(modal);
 
   try {
     const fn = httpsCallable(_functions, 'getMyMentees');
