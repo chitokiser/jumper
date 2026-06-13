@@ -2,6 +2,8 @@
 // Gold Mine — map markers, modal UI, Cloud Function calls
 
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { isVirtualMode, getVirtualPos } from './merchants.virtual.js';
+import { initMiners, updateMiners, clearMiners } from './merchants.goldmine.miners.js';
 
 let _fns  = null;
 let _map  = null;
@@ -20,6 +22,7 @@ export function initGoldMine(ctx, map, functions, uid) {
   _map = map;
   _fns = functions;
   _uid = uid;
+  initMiners(map);
 }
 
 export function setGoldMineUid(uid) { _uid = uid; }
@@ -65,6 +68,7 @@ function _renderMarkers(mines) {
     marker.addListener('click', () => openGoldMineModal(mine.id));
     _markers[mine.id] = marker;
   }
+  updateMiners(mines);
 }
 
 // ── Gold Mine modal ───────────────────────────────────────────────────────────
@@ -205,9 +209,9 @@ async function _deployMiners(mineId, count) {
 
 // ── Install mine (called from shop modal "Install Gold Mine" button) ───────────
 // Only storeId needed — server reads shop lat/lng from Firestore directly
-export function promptInstallMine(storeId) {
+export function promptInstallMine(storeId, shopLat, shopLng) {
   document.getElementById('shopModal')?.classList.remove('open');
-  _doInstall(storeId);
+  _doInstall(storeId, shopLat, shopLng);
 }
 
 function _showInstallSuccess(cost) {
@@ -230,15 +234,20 @@ function _showInstallSuccess(cost) {
   el.querySelector('#gmSuccessOkBtn').onclick = () => el.classList.remove('open');
 }
 
-async function _doInstall(storeId) {
+async function _doInstall(storeId, shopLat, shopLng) {
   if (!_fns) { _showToast('System not ready — refresh the page.', 'error'); return; }
   _showToast('Installing…', 'info');
   try {
     const fn = httpsCallable(_fns, 'createGoldMine');
-    const { data } = await fn({ storeId });
+    const pos = _ctx?.gpsPos
+      ?? (isVirtualMode() ? getVirtualPos() : null)
+      ?? _ctx?.lastPos;
+    const lat = pos?.lat ?? shopLat ?? null;
+    const lng = pos?.lng ?? shopLng ?? null;
+    const { data } = await fn({ storeId, lat, lng });
     // CF returns lat/lng from shop's Firestore record — use for marker refresh
-    const refLat = data.lat ?? _ctx?.lastPos?.lat ?? _ctx?.gpsPos?.lat;
-    const refLng = data.lng ?? _ctx?.lastPos?.lng ?? _ctx?.gpsPos?.lng;
+    const refLat = data.lat ?? shopLat ?? _ctx?.lastPos?.lat ?? _ctx?.gpsPos?.lat;
+    const refLng = data.lng ?? shopLng ?? _ctx?.lastPos?.lng ?? _ctx?.gpsPos?.lng;
     await loadGoldMineMarkers(refLat, refLng);
     _showInstallSuccess(data.installCost);
   } catch (e) {
