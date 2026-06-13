@@ -23,14 +23,13 @@
 - **merchants.js / moneytree.js / moneyTree.js(Functions) 수정 후 반드시 확인:** 묘목 심기 → 지도에 나무 표시 정상 여부
 - 묘목이 소모됐는데 나무가 안 보이면 유저 실제 손해 — 코드 한 줄 바꿔도 moneytree 플로우 전체 테스트 필수
 - `window.showToast = showToast;` (merchants.js 하단) — 의도적 노출, 절대 삭제 금지
-- `loadMoneyTreeMarkers` 는 심기 성공 후 즉시 호출됨 — 이 호출 체인 끊으면 나무 안 보임
 - moneytree 모듈은 Cloud Functions 전용 (`httpsCallable`) — 직접 Firestore 읽기 추가 금지
 - **`openPlantModal`에 `isServerConnected` / `_gameStarted` 조건 절대 추가 금지** — 나무 심기는 CF 전용 작업, 게임서버 연결과 무관. 이 체크가 3번 반복 삽입돼 매번 묘목 심기를 완전히 차단했음
 - **나무 심기 마커 표시 필수 순서** (이 순서 바꾸면 나무 안 보임):
   1. CF 호출 전: `_addPendingPlantMarker(lat, lng)` — BOUNCE 애니메이션으로 심는 중 표시
   2. CF 성공 후: `_removePendingPlantMarker()` → `_addTreeMarker(treeData, true)` — DROP 애니메이션으로 즉시 표시
-  3. 백그라운드: `loadMoneyTreeMarkers(data.lat, data.lng)` — CF 반환 좌표 사용 (lastPos/gpsPos 금지)
-  4. `window.dispatchEvent(new Event('mt:planted'))` — 폴링 타이머 리셋 (60초 레이스 컨디션 방지)
+  3. `window.dispatchEvent(new Event('mt:planted'))` — 폴링 타이머 리셋
+- **심기 성공 후 `loadMoneyTreeMarkers` 즉시 호출 절대 금지** — `_clearTreeMarkers()`가 `await` 이후에 실행되어, CF call 중 이미 시작된 in-flight `loadMoneyTreeMarkers`가 완료될 때 immediate marker를 지운다. 근본 해결책: `_loadGen++` (plant 성공 시)로 stale fetch 결과 무시 + 60초 GPS 폴링으로 자연 새로고침
 - **`loadMoneyTreeMarkers` 호출 시 반드시 CF 반환 `data.lat, data.lng` 사용** — `_ctx.lastPos`/`_ctx.gpsPos` 사용 금지 (이동 중이면 좌표 불일치로 나무 로드 실패)
 
 ## ⚠️ 전체화면 모달 필수 규칙 (반복 발생 버그)
@@ -87,7 +86,7 @@
 ---
 
 ## 정회원
-- coop.html 10 HEX 결제 → 12개월 정회원
+- coop.html 10 HEX 결제 → 1개월 정회원
 - 정회원 전용 보물박스는 정회원만 획득 가능
 
 ---
@@ -135,7 +134,6 @@
 
 ## 언어 정책
 - **게임 내 안내·토스트·알림·버튼·모달 문구는 무조건 English** (주 사용자: 영어권)
-- 한국어·베트남어 병기 금지 — 게임 UI는 영어 단일
 - 관리자 페이지(admin/*)·CLAUDE.md·커밋 메시지는 한국어 허용
 - Cloud Functions 에러 메시지도 영어로 작성
 

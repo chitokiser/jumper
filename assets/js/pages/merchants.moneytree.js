@@ -16,6 +16,9 @@ let _inv = null;
 let _onEnsurePos = null;
 let _isServerConnected = null;
 let _pendingPlantMarker = null;
+// Incremented on every successful plant. loadMoneyTreeMarkers captures this at call time
+// and discards its results if the value changed while the fetch was in-flight (plant race condition).
+let _loadGen = 0;
 
 const IMG_BASE = '/assets/images/tree/';
 
@@ -65,9 +68,12 @@ function _updateHud(inv) {
 // ── 나무 마커 로드 ────────────────────────────────────────────────────────────
 export async function loadMoneyTreeMarkers(lat, lng) {
   if (!_map || !_functions) return;
+  const gen = _loadGen;
   try {
     const fn = httpsCallable(_functions, 'getNearbyTrees');
     const { data } = await fn({ lat, lng, radiusKm: 5 });
+    // Discard stale results if a plant completed while this fetch was in-flight
+    if (gen !== _loadGen) return;
     _clearTreeMarkers();
     (data.trees || []).forEach(_addTreeMarker);
   } catch (_) {}
@@ -417,15 +423,10 @@ window._mtConfirmPlant = async function() {
     if (_inv) { _inv.seedlings = Math.max(0, (_inv.seedlings ?? 1) - 1); _updateHud(_inv); }
     // Immediate marker with DROP animation using server-confirmed coordinates
     if (data.lat != null && data.lng != null) {
+      _loadGen++;  // invalidate any in-flight loadMoneyTreeMarkers so it won't clear this marker
       _addTreeMarker({ treeId: data.treeId, lat: data.lat, lng: data.lng, imageNum: 1, value: 50, isOwn: true }, true);
-    }
-    // Background refresh: use exact tree coords so getNearbyTrees query always includes this tree
-    // Dispatch event so merchant polling timer resets and doesn't race with this refresh
-    if (data.lat != null && data.lng != null) {
+      // Reset 60-second polling timer — next GPS-triggered load will include this tree
       window.dispatchEvent(new CustomEvent('mt:planted', { detail: { lat: data.lat, lng: data.lng } }));
-      // Delay 3s so Firestore propagates before getNearbyTrees query runs — avoids clearing
-      // the just-added immediate marker before the tree appears in the response
-      setTimeout(() => loadMoneyTreeMarkers(data.lat, data.lng), 3000);
     }
     refreshMoneyTreeInventory(); // background — no await
   } catch (e) {
@@ -473,19 +474,12 @@ window._mtPlantAll = async function() {
     // Optimistic: clear all seedlings — background refresh syncs accurate count
     if (_inv) { _inv.seedlings = 0; _updateHud(_inv); }
     // Immediate markers with DROP animation using server-confirmed coordinates
-    (data.trees || []).forEach(t => {
-      if (t.lat != null && t.lng != null) {
-        _addTreeMarker({ treeId: t.treeId, lat: t.lat, lng: t.lng, imageNum: 1, value: 50, isOwn: true }, true);
-      }
-    });
-    // Background refresh: center on user position (all bulk trees are nearby)
-    const refPos = _ctx?.lastPos || _ctx?.gpsPos;
-    const firstTree = data.trees?.[0];
-    const mapLat = refPos?.lat ?? firstTree?.lat;
-    const mapLng = refPos?.lng ?? firstTree?.lng;
-    if (mapLat != null && mapLng != null) {
-      window.dispatchEvent(new CustomEvent('mt:planted', { detail: { lat: mapLat, lng: mapLng } }));
-      setTimeout(() => loadMoneyTreeMarkers(mapLat, mapLng), 3000);
+    const planted = (data.trees || []).filter(t => t.lat != null && t.lng != null);
+    if (planted.length > 0) {
+      _loadGen++;  // invalidate any in-flight loadMoneyTreeMarkers
+      planted.forEach(t => _addTreeMarker({ treeId: t.treeId, lat: t.lat, lng: t.lng, imageNum: 1, value: 50, isOwn: true }, true));
+      const firstTree = planted[0];
+      window.dispatchEvent(new CustomEvent('mt:planted', { detail: { lat: firstTree.lat, lng: firstTree.lng } }));
     }
     refreshMoneyTreeInventory(); // background — no await
   } catch (e) {
