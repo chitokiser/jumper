@@ -11,6 +11,14 @@
 - **bot.py (텔레그램 봇)** → Railway에서 실행 중 — 수정 후 Railway 재배포 필요
 - **game-server** → Railway에서 실행 중 (`cd game-server && railway up`)
 
+## ⚠️ CF 에러 처리 — CORS 버그 방지 (반복 발생 패턴)
+- **Cloud Functions 핸들러에서 `throw new Error(...)` 절대 금지 — 반드시 `HttpsError` 사용**
+- 이유: Gen2 `onCall`은 `HttpsError`만 CORS 헤더를 포함한 응답으로 직렬화함. 일반 `Error`는 Cloud Run이 500을 직접 반환 → 브라우저에서 CORS 오류로 보임 (실제 원인 은닉)
+- import: `const { HttpsError } = require('firebase-functions/v2/https');`
+- 에러 코드 선택: `invalid-argument` (입력값 오류) / `failed-precondition` (GP 부족 등) / `already-exists` / `not-found` / `permission-denied`
+- 좌표 null 체크: `!lat` 금지 (lat=0 적도 실패) → `lat == null || lng == null` 사용
+- 에러 메시지는 영어로 작성 (CLAUDE.md 언어 정책)
+
 ## ⚠️ 나무묘목(Money Tree) 절대 손대지 마라 (반복 발생 버그)
 - **merchants.js / moneytree.js / moneyTree.js(Functions) 수정 후 반드시 확인:** 묘목 심기 → 지도에 나무 표시 정상 여부
 - 묘목이 소모됐는데 나무가 안 보이면 유저 실제 손해 — 코드 한 줄 바꿔도 moneytree 플로우 전체 테스트 필수

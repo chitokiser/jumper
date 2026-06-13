@@ -290,7 +290,37 @@ async function _claimMine(mineId) {
 // Only storeId needed — server reads shop lat/lng from Firestore directly
 export function promptInstallMine(storeId, shopLat, shopLng) {
   document.getElementById('shopModal')?.classList.remove('open');
-  _doInstall(storeId, shopLat, shopLng);
+  _showInstallConfirm(storeId, shopLat, shopLng);
+}
+
+function _showInstallConfirm(storeId, shopLat, shopLng) {
+  const el = document.getElementById('gmInstallConfirm');
+  if (!el) { _doInstall(storeId, shopLat, shopLng); return; }
+  el.innerHTML = `
+    <div style="background:#111827;border:1px solid #78350f;border-radius:16px;
+                width:min(320px,90vw);padding:24px;text-align:center">
+      <div style="font-size:40px;margin-bottom:12px">⛏</div>
+      <div style="font-size:16px;font-weight:700;color:#fbbf24;margin-bottom:8px">Install Gold Mine?</div>
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:20px">
+        Cost: <strong style="color:#fbbf24">100,000 GP</strong><br>
+        Mine will be placed at your shop location.
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button id="gmConfirmCancelBtn"
+          style="background:#374151;color:#f3f4f6;border:none;border-radius:8px;
+                 padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>
+        <button id="gmConfirmInstallBtn"
+          style="background:linear-gradient(135deg,#78350f,#92400e);color:#fbbf24;
+                 border:none;border-radius:8px;padding:10px 24px;font-size:14px;
+                 font-weight:700;cursor:pointer">Install</button>
+      </div>
+    </div>`;
+  el.classList.add('open');
+  el.querySelector('#gmConfirmCancelBtn').onclick = () => el.classList.remove('open');
+  el.querySelector('#gmConfirmInstallBtn').onclick = () => {
+    el.classList.remove('open');
+    _doInstall(storeId, shopLat, shopLng);
+  };
 }
 
 function _showInstallSuccess(cost) {

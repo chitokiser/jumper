@@ -3,6 +3,7 @@
 'use strict';
 
 const admin = require('firebase-admin');
+const { HttpsError } = require('firebase-functions/v2/https');
 const db    = admin.firestore();
 
 function haversineM(lat1, lng1, lat2, lng2) {
@@ -176,9 +177,9 @@ async function adminSetUserPlacePrices(data) {
 // ── 1. 오브젝트 배치 ──────────────────────────────────────────────────────────
 async function placeUserObject(uid, { itemKey, lat, lng }) {
   const def = CATALOG[itemKey];
-  if (!def)           throw new Error('유효하지 않은 아이템 키');
-  if (!lat || !lng)   throw new Error('좌표가 필요합니다');
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('유효하지 않은 좌표');
+  if (!def)                             throw new HttpsError('invalid-argument', 'Invalid item key');
+  if (lat == null || lng == null)       throw new HttpsError('invalid-argument', 'Coordinates required');
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new HttpsError('invalid-argument', 'Invalid coordinates');
 
   // Firestore 우선 가격 조회
   const price = await _getEffectivePrice(itemKey);
@@ -200,8 +201,8 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
       if (!aliasTypes.includes(s.type)) continue;
       const distM = haversineM(Number(lat), Number(lng), Number(s.lat), Number(s.lng));
       if (distM <= 5000) {
-        throw new Error(
-          `⛔ A "${s.type}" shop already exists within 5km: "${s.name || shopDoc.id}" (${Math.round(distM)}m away). ` +
+        throw new HttpsError('already-exists',
+          `A "${s.type}" shop already exists within 5km: "${s.name || shopDoc.id}" (${Math.round(distM)}m away). ` +
           `Only one shop per category is allowed within a 5km radius.`
         );
       }
@@ -221,7 +222,8 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
 
     const gold = bp.exists ? (bp.data().gold ?? 0) : 0;
     if (gold < price) {
-      throw new Error(`Not enough GP. Required: ${price.toLocaleString()} GP, Available: ${gold.toLocaleString()} GP`);
+      throw new HttpsError('failed-precondition',
+        `Not enough GP. Required: ${price.toLocaleString()} GP, Available: ${gold.toLocaleString()} GP`);
     }
     placeNo = (uSnap.data()?.placeCount ?? 0) + 1;
 
@@ -314,12 +316,12 @@ async function getMyPlacedObjects(uid) {
 
 // ── 3. 배치권 사용 ────────────────────────────────────────────────────────────
 async function useTicket(uid, { itemId, lat, lng }) {
-  if (!itemId || !String(itemId).startsWith('ticket_')) throw new Error('Invalid ticket item');
+  if (!itemId || !String(itemId).startsWith('ticket_')) throw new HttpsError('invalid-argument', 'Invalid ticket item');
   const catalogKey = String(itemId).replace(/^ticket_/, '');
   const def = CATALOG[catalogKey];
-  if (!def) throw new Error('Unknown ticket type: ' + catalogKey);
-  if (!lat || !lng) throw new Error('Coordinates required');
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('Invalid coordinates');
+  if (!def) throw new HttpsError('invalid-argument', 'Unknown ticket type: ' + catalogKey);
+  if (lat == null || lng == null) throw new HttpsError('invalid-argument', 'Coordinates required');
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new HttpsError('invalid-argument', 'Invalid coordinates');
 
   // 상점 배치권은 5km 중복 검사 동일 적용
   if (def.type === 'shop') {
@@ -335,8 +337,8 @@ async function useTicket(uid, { itemId, lat, lng }) {
       if (!aliasTypes.includes(s.type)) continue;
       const distM = haversineM(Number(lat), Number(lng), Number(s.lat), Number(s.lng));
       if (distM <= 5000) {
-        throw new Error(
-          `⛔ A "${s.type}" shop already exists within 5km: "${s.name || shopDoc.id}" (${Math.round(distM)}m away). ` +
+        throw new HttpsError('already-exists',
+          `A "${s.type}" shop already exists within 5km: "${s.name || shopDoc.id}" (${Math.round(distM)}m away). ` +
           `Only one shop per category is allowed within a 5km radius.`
         );
       }
@@ -353,13 +355,13 @@ async function useTicket(uid, { itemId, lat, lng }) {
     .where('itemId', '==', itemId)
     .limit(1)
     .get();
-  if (invSnap.empty) throw new Error('No placement ticket available: ' + itemId);
+  if (invSnap.empty) throw new HttpsError('failed-precondition', 'No placement ticket available: ' + itemId);
   const invDocRef = invSnap.docs[0].ref;
 
   let placeNo = 1;
   await db.runTransaction(async t => {
     const [invDoc, uSnap] = await Promise.all([t.get(invDocRef), t.get(userRef)]);
-    if (!invDoc.exists || (invDoc.data().count ?? 0) <= 0) throw new Error('Ticket not available');
+    if (!invDoc.exists || (invDoc.data().count ?? 0) <= 0) throw new HttpsError('failed-precondition', 'Ticket not available');
     placeNo = (uSnap.data()?.placeCount ?? 0) + 1;
     t.update(invDocRef, { count: admin.firestore.FieldValue.increment(-1) });
     t.set(userRef, { placeCount: placeNo }, { merge: true });
@@ -477,28 +479,28 @@ async function getMyUserMarker(uid) {
 }
 
 async function updateUserMarker(uid, { markerId, displayName, imageUrl, linkUrl }) {
-  if (!markerId) throw new Error('Marker ID required');
+  if (!markerId) throw new HttpsError('invalid-argument', 'Marker ID required');
   const ref  = db.collection('user_markers').doc(markerId);
   const snap = await ref.get();
   if (!snap.exists || snap.data().uid !== uid || !snap.data().active) {
-    throw new Error('Marker not found or access denied');
+    throw new HttpsError('not-found', 'Marker not found or access denied');
   }
   const updates = {};
-  if (imageUrl)    { try { new URL(imageUrl); } catch { throw new Error('Invalid image URL'); } updates.imageUrl = imageUrl; }
-  if (linkUrl)     { try { new URL(linkUrl);  } catch { throw new Error('Invalid link URL');  } updates.linkUrl  = linkUrl;  }
+  if (imageUrl)    { try { new URL(imageUrl); } catch { throw new HttpsError('invalid-argument', 'Invalid image URL'); } updates.imageUrl = imageUrl; }
+  if (linkUrl)     { try { new URL(linkUrl);  } catch { throw new HttpsError('invalid-argument', 'Invalid link URL');  } updates.linkUrl  = linkUrl;  }
   if (displayName) updates.displayName = String(displayName).trim().slice(0, 40);
-  if (!Object.keys(updates).length) throw new Error('Nothing to update');
+  if (!Object.keys(updates).length) throw new HttpsError('invalid-argument', 'Nothing to update');
   updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
   await ref.update(updates);
   return { updated: true };
 }
 
 async function deleteUserMarker(uid, { markerId }) {
-  if (!markerId) throw new Error('Marker ID required');
+  if (!markerId) throw new HttpsError('invalid-argument', 'Marker ID required');
   const ref  = db.collection('user_markers').doc(markerId);
   const snap = await ref.get();
   if (!snap.exists || snap.data().uid !== uid || !snap.data().active) {
-    throw new Error('Marker not found or access denied');
+    throw new HttpsError('not-found', 'Marker not found or access denied');
   }
   await ref.update({
     active:    false,
@@ -508,10 +510,10 @@ async function deleteUserMarker(uid, { markerId }) {
 }
 
 async function placeUserMarker(uid, { displayName, imageUrl, linkUrl, lat, lng }) {
-  if (!imageUrl || !linkUrl)         throw new Error('Image URL and link URL are required');
-  if (lat == null || lng == null)    throw new Error('Coordinates are required');
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('Invalid coordinates');
-  try { new URL(imageUrl); new URL(linkUrl); } catch { throw new Error('Invalid URL format'); }
+  if (!imageUrl || !linkUrl)         throw new HttpsError('invalid-argument', 'Image URL and link URL are required');
+  if (lat == null || lng == null)    throw new HttpsError('invalid-argument', 'Coordinates are required');
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new HttpsError('invalid-argument', 'Invalid coordinates');
+  try { new URL(imageUrl); new URL(linkUrl); } catch { throw new HttpsError('invalid-argument', 'Invalid URL format'); }
 
   const bpRef   = db.collection('battle_players').doc(uid);
   const userRef = db.collection('users').doc(uid);
@@ -526,7 +528,8 @@ async function placeUserMarker(uid, { displayName, imageUrl, linkUrl, lat, lng }
     const bp   = await t.get(bpRef);
     const gold = bp.exists ? (bp.data().gold ?? 0) : 0;
     if (gold < MARKER_GP_PRICE) {
-      throw new Error(`Not enough GP. Need ${MARKER_GP_PRICE.toLocaleString()}, have ${gold.toLocaleString()}.`);
+      throw new HttpsError('failed-precondition',
+        `Not enough GP. Need ${MARKER_GP_PRICE.toLocaleString()}, have ${gold.toLocaleString()}.`);
     }
     // Deduct full cost from buyer
     t.set(bpRef, { gold: admin.firestore.FieldValue.increment(-MARKER_GP_PRICE) }, { merge: true });

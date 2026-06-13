@@ -72,16 +72,10 @@ async function createGoldMine(uid, { storeId }) {
   const storeLat = typeof shop.lat === 'number' ? shop.lat : null;
   const storeLng = typeof shop.lng === 'number' ? shop.lng : null;
 
-  // 광부 애니메이션용: 상점으로부터 100~200m 랜덤 위치에 금광 배치
-  let mineLat = storeLat;
-  let mineLng = storeLng;
-  if (storeLat != null && storeLng != null) {
-    const distM  = 100 + Math.random() * 100; // 100~200m
-    const angle  = Math.random() * 2 * Math.PI;
-    const cosLat = Math.cos(storeLat * Math.PI / 180);
-    mineLat = +(storeLat + (distM * Math.cos(angle)) / 111320).toFixed(7);
-    mineLng = +(storeLng + (distM * Math.sin(angle)) / (111320 * cosLat)).toFixed(7);
-  }
+  // Mine placed at shop coords — miner animation handles the shop==mine case
+  // with a deterministic 15 m fallback path (see merchants.goldmine.miners.js MIN_DIST_M)
+  const mineLat = storeLat;
+  const mineLng = storeLng;
 
   const totalGold = Math.floor(10000 + Math.random() * (10000000 - 10000));
   const nowTs = admin.firestore.Timestamp.fromMillis(Date.now());
