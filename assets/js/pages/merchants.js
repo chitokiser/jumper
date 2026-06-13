@@ -531,7 +531,7 @@ function renderMarkers(list) {
       position: m._latLng, map,
       title: m.name || '',
       icon: { url: m.imageUrl || '/assets/images/jump/favicon.png',
-        scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) },
+        scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36) },
       zIndex: 10,
     });
     marker.addListener('click', () => {

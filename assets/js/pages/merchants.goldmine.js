@@ -57,8 +57,8 @@ function _renderMarkers(mines) {
       map: _map,
       icon: {
         url: ICON_URL,
-        scaledSize: new google.maps.Size(36, 36),
-        anchor: new google.maps.Point(18, 18),
+        scaledSize: new google.maps.Size(40, 40),
+        anchor: new google.maps.Point(20, 40),
       },
       title: mine.deposit_revealed
         ? `⛏ Gold Mine | ${mine.remain_gold?.toLocaleString()} left`
