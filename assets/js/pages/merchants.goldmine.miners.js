@@ -204,7 +204,7 @@ export function initMiners(map) {
       let lat, lng;
       if (this._state === 'mining') {
         // Stand 10 m toward the shop so the miner is visible in front of the mine icon
-        const OFFSET_M = 10;
+        const OFFSET_M = 1.5;
         const cosLat   = Math.cos(this._mineLat * Math.PI / 180);
         const dLatM    = (this._shopLat - this._mineLat) * 111320;
         const dLngM    = (this._shopLng - this._mineLng) * 111320 * cosLat;
