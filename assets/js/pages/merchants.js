@@ -49,7 +49,7 @@ import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, tog
 import { initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers,
          renderMoneyTreeShopSection, openPlantModal } from './merchants.moneytree.js';
 import { initGoldMine, setGoldMineUid, loadGoldMineMarkers, openGoldMineModal,
-         promptInstallMine } from './merchants.goldmine.js?v=7';
+         promptInstallMine } from './merchants.goldmine.js?v=9';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)

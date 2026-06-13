@@ -113,13 +113,15 @@ export function initMiners(map) {
       this._el = document.createElement('div');
       this._el.style.cssText =
         `position:absolute;width:${SPRITE_PX}px;height:${SPRITE_PX}px;` +
-        `pointer-events:none;transform-origin:center bottom;`;
+        `pointer-events:none;transform-origin:center bottom;will-change:transform;`;
       this._imgEl = document.createElement('img');
-      this._imgEl.style.cssText = `width:100%;height:100%;image-rendering:pixelated;`;
+      this._imgEl.style.cssText =
+        `width:100%;height:100%;image-rendering:pixelated;` +
+        `image-rendering:-webkit-optimize-contrast;image-rendering:crisp-edges;`;
       const frames = this._state === 'mining' ? _slashImgs : _walkImgs;
       this._imgEl.src = frames[this._frame % frames.length].src;
       this._el.appendChild(this._imgEl);
-      this.getPanes().overlayLayer.appendChild(this._el);
+      this.getPanes().markerLayer.appendChild(this._el);
       this._rafId = requestAnimationFrame(ts => this._tick(ts));
     }
 
@@ -201,8 +203,14 @@ export function initMiners(map) {
 
       let lat, lng;
       if (this._state === 'mining') {
-        lat = this._mineLat;
-        lng = this._mineLng;
+        // Stand 10 m toward the shop so the miner is visible in front of the mine icon
+        const OFFSET_M = 10;
+        const cosLat   = Math.cos(this._mineLat * Math.PI / 180);
+        const dLatM    = (this._shopLat - this._mineLat) * 111320;
+        const dLngM    = (this._shopLng - this._mineLng) * 111320 * cosLat;
+        const dist     = Math.sqrt(dLatM * dLatM + dLngM * dLngM) || 1;
+        lat = this._mineLat + (dLatM / dist) * OFFSET_M / 111320;
+        lng = this._mineLng + (dLngM / dist) * OFFSET_M / (111320 * cosLat);
       } else {
         lat = this._shopLat + (this._mineLat - this._shopLat) * this._t;
         lng = this._shopLng + (this._mineLng - this._shopLng) * this._t;

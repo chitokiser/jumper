@@ -348,10 +348,6 @@ function _renderMyTreeList(trees) {
 
 // ── 식재 버튼 (물약상점에서 호출) ────────────────────────────────────────────
 export function openPlantModal(shopId, shopData = null) {
-  if (_isServerConnected && !_isServerConnected()) {
-    _showMtToast('Connect to the game server first — tap ▶ Play to join.', 'error');
-    return;
-  }
   _activeShopId = shopId;
   if (shopData) _activeShopData = shopData;
   const modal = document.getElementById('mtPlantModal');

@@ -17,6 +17,7 @@
 - `window.showToast = showToast;` (merchants.js 하단) — 의도적 노출, 절대 삭제 금지
 - `loadMoneyTreeMarkers` 는 심기 성공 후 즉시 호출됨 — 이 호출 체인 끊으면 나무 안 보임
 - moneytree 모듈은 Cloud Functions 전용 (`httpsCallable`) — 직접 Firestore 읽기 추가 금지
+- **`openPlantModal`에 `isServerConnected` / `_gameStarted` 조건 절대 추가 금지** — 나무 심기는 CF 전용 작업, 게임서버 연결과 무관. 이 체크가 3번 반복 삽입돼 매번 묘목 심기를 완전히 차단했음
 
 ## ⚠️ 전체화면 모달 필수 규칙 (반복 발생 버그)
 - **모든 모달/오버레이는 반드시 `data-fs-modal` 속성 부착**
