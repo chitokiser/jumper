@@ -89,14 +89,31 @@ function _fillModal(mine) {
   const effPct    = mine.shopDistM != null
     ? Math.round((1 + Math.max(0, (5000 - mine.shopDistM) / 5000)) * 100)
     : 100;
-  const rate = mine.miners_count > 0
-    ? (mine.miners_count * 0.1 * (effPct / 100)).toFixed(2)
-    : '0.00';
+  const minersCount = mine.miners_count ?? 0;
+  const rate = minersCount > 0
+    ? (minersCount * 0.01 * (effPct / 100)).toFixed(3)
+    : '0.000';
   const depositTxt = mine.deposit_revealed ? mine.remain_gold?.toLocaleString() : '???';
   const totalTxt   = mine.deposit_revealed ? mine.total_gold?.toLocaleString()  : '???';
   const pct = (mine.deposit_revealed && mine.total_gold > 0)
     ? Math.round((mine.remain_gold / mine.total_gold) * 100) : null;
-  const slots = 100 - (mine.miners_count ?? 0);
+  const slots = 100 - minersCount;
+
+  // ROI calculation
+  const MINE_INSTALL_COST = 100000;
+  const MINER_COST        = 10000;
+  const totalInvested     = MINE_INSTALL_COST + MINER_COST * minersCount;
+  const dailyGP           = minersCount * 0.01 * 60 * 24 * (effPct / 100);
+  const breakEvenDays     = dailyGP > 0 ? Math.ceil(totalInvested / dailyGP) : null;
+
+  // Claim state
+  const pending      = Math.floor(mine.pending_gold ?? 0);
+  const lastClaimedMs = mine.last_claimed_at ?? 0;
+  const nowMs         = Date.now();
+  const claimReadyMs  = lastClaimedMs + 24 * 60 * 60 * 1000;
+  const canClaim      = isOwner && pending > 0 && nowMs >= claimReadyMs;
+  const msUntilClaim  = claimReadyMs - nowMs;
+  const hoursLeft     = msUntilClaim > 0 ? Math.ceil(msUntilClaim / 3600000) : 0;
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
@@ -116,7 +133,7 @@ function _fillModal(mine) {
         </div>
         <div>
           <div style="color:#6b7280;font-size:11px;margin-bottom:2px">Miners</div>
-          <div style="color:#f3f4f6;font-size:18px;font-weight:700">${mine.miners_count}/100</div>
+          <div style="color:#f3f4f6;font-size:18px;font-weight:700">${minersCount}/100</div>
         </div>
       </div>
 
@@ -131,12 +148,50 @@ function _fillModal(mine) {
           </div>
         </div>` : ''}
 
-      ${mine.miners_count > 0 ? `
+      ${minersCount > 0 ? `
         <div style="margin-top:10px;text-align:center;background:#111827;border-radius:8px;padding:8px">
           <div style="color:#6b7280;font-size:11px">Production rate</div>
-          <div style="color:#10b981;font-size:16px;font-weight:700">${rate} Gold/min</div>
+          <div style="color:#10b981;font-size:16px;font-weight:700">${rate} GP/min</div>
         </div>` : ''}
     </div>
+
+    ${isOwner ? `
+    <div style="background:#1f2937;border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:600;color:#9ca3af;margin-bottom:8px">Investment Summary</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+        <div style="color:#6b7280">Install cost</div>
+        <div style="color:#f3f4f6;text-align:right">${MINE_INSTALL_COST.toLocaleString()} GP</div>
+        <div style="color:#6b7280">Miner cost (${minersCount})</div>
+        <div style="color:#f3f4f6;text-align:right">${(MINER_COST * minersCount).toLocaleString()} GP</div>
+        <div style="color:#6b7280;border-top:1px solid #374151;padding-top:4px">Total invested</div>
+        <div style="color:#fbbf24;font-weight:700;text-align:right;border-top:1px solid #374151;padding-top:4px">${totalInvested.toLocaleString()} GP</div>
+        <div style="color:#6b7280">Daily earnings</div>
+        <div style="color:#10b981;text-align:right">${dailyGP > 0 ? dailyGP.toFixed(1) : '0'} GP/day</div>
+        <div style="color:#6b7280">Break-even</div>
+        <div style="color:#a78bfa;font-weight:600;text-align:right">${breakEvenDays != null ? breakEvenDays + ' days' : '—'}</div>
+      </div>
+    </div>` : ''}
+
+    ${isOwner ? `
+    <div style="background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.2);
+                border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:600;color:#fbbf24">Accumulated Gold</div>
+        <div style="font-size:18px;font-weight:700;color:#fbbf24">${pending.toLocaleString()} GP</div>
+      </div>
+      ${canClaim ? `
+        <button id="gmClaimBtn"
+          style="width:100%;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;
+                 border:none;border-radius:8px;padding:10px;font-size:14px;
+                 font-weight:700;cursor:pointer">Claim ${pending.toLocaleString()} GP</button>` :
+        pending > 0 ? `
+        <div style="text-align:center;color:#6b7280;font-size:12px;padding:4px">
+          Next claim in <strong style="color:#f3f4f6">${hoursLeft}h</strong>
+        </div>` : `
+        <div style="text-align:center;color:#6b7280;font-size:12px;padding:4px">
+          No gold yet — miners are working...
+        </div>`}
+    </div>` : ''}
 
     ${mine.status === 'depleted' ? `
       <div style="text-align:center;padding:10px;background:rgba(239,68,68,.1);
@@ -182,6 +237,10 @@ function _fillModal(mine) {
     const n = Math.max(1, Math.min(parseInt(inp?.value, 10) || 1, slots));
     await _deployMiners(mine.id, n);
   });
+
+  document.getElementById('gmClaimBtn')?.addEventListener('click', async () => {
+    await _claimMine(mine.id);
+  });
 }
 
 async function _deployMiners(mineId, count) {
@@ -205,6 +264,25 @@ async function _deployMiners(mineId, count) {
   } catch (e) {
     _showToast(e.message ?? 'Failed to deploy miners', 'error');
     if (btn) { btn.disabled = false; btn.textContent = 'Deploy'; }
+  }
+}
+
+async function _claimMine(mineId) {
+  const btn = document.getElementById('gmClaimBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const fn = httpsCallable(_fns, 'claimGoldMine');
+    const { data } = await fn({ mineId });
+    _mines[mineId] = {
+      ..._mines[mineId],
+      pending_gold:    0,
+      last_claimed_at: Date.now(),
+    };
+    _showToast(`Claimed ${data.claimed.toLocaleString()} GP!`);
+    _fillModal(_mines[mineId]);
+  } catch (e) {
+    _showToast(e.message ?? 'Claim failed', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = `Claim`; }
   }
 }
 

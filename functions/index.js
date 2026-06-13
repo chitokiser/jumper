@@ -3022,6 +3022,11 @@ exports.addGoldMiners = onCall(wrapError(async (request) => {
   return await goldMineH.addMiners(uid, request.data ?? {});
 }));
 
+exports.claimGoldMine = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await goldMineH.claimGoldMine(uid, request.data ?? {});
+}));
+
 exports.getMyGoldMines = onCall(wrapError(async (request) => {
   const uid = requireAuth(request);
   return await goldMineH.getMyMines(uid);

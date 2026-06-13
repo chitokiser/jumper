@@ -11,7 +11,8 @@ const DEFAULT_INSTALL_COST = 100000;
 const DEFAULT_MINER_COST   = 10000;
 const MAX_MINERS            = 100;
 const MINE_RADIUS_M         = 5000;
-const GOLD_PER_MINER_MIN    = 0.1;
+const GOLD_PER_MINER_MIN    = 0.01;
+const CLAIM_INTERVAL_MS     = 24 * 60 * 60 * 1000;
 
 function haversineM(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -68,10 +69,22 @@ async function createGoldMine(uid, { storeId }) {
   }
 
   // shop 위치를 서버에서 직접 사용 (클라이언트 전달 불필요)
-  const lat = typeof shop.lat === 'number' ? shop.lat : null;
-  const lng = typeof shop.lng === 'number' ? shop.lng : null;
+  const storeLat = typeof shop.lat === 'number' ? shop.lat : null;
+  const storeLng = typeof shop.lng === 'number' ? shop.lng : null;
+
+  // 광부 애니메이션용: 상점으로부터 100~200m 랜덤 위치에 금광 배치
+  let mineLat = storeLat;
+  let mineLng = storeLng;
+  if (storeLat != null && storeLng != null) {
+    const distM  = 100 + Math.random() * 100; // 100~200m
+    const angle  = Math.random() * 2 * Math.PI;
+    const cosLat = Math.cos(storeLat * Math.PI / 180);
+    mineLat = +(storeLat + (distM * Math.cos(angle)) / 111320).toFixed(7);
+    mineLng = +(storeLng + (distM * Math.sin(angle)) / (111320 * cosLat)).toFixed(7);
+  }
 
   const totalGold = Math.floor(10000 + Math.random() * (10000000 - 10000));
+  const nowTs = admin.firestore.Timestamp.fromMillis(Date.now());
   const now = admin.firestore.FieldValue.serverTimestamp();
   const batch = db.batch();
 
@@ -84,21 +97,23 @@ async function createGoldMine(uid, { storeId }) {
   batch.set(mineRef, {
     owner_id: uid,
     store_id: storeId,
-    store_lat: lat,
-    store_lng: lng,
-    lat,
-    lng,
+    store_lat: storeLat,
+    store_lng: storeLng,
+    lat: mineLat,
+    lng: mineLng,
     miners_count:     0,
     total_gold:       totalGold,
     remain_gold:      totalGold,
+    pending_gold:     0,
     status:           'active',
     deposit_revealed: false,
     created_at:       now,
     last_processed_at: now,
+    last_claimed_at:  nowTs,
   });
 
   await batch.commit();
-  return { ok: true, mineId: mineRef.id, installCost: cfg.installCost, lat, lng };
+  return { ok: true, mineId: mineRef.id, installCost: cfg.installCost, lat: mineLat, lng: mineLng };
 }
 
 // ── 광부 배치 ──────────────────────────────────────────────────────────────────
@@ -180,6 +195,8 @@ async function getMyMines(uid) {
       remain_gold:      data.deposit_revealed ? data.remain_gold : null,
       status:           data.status,
       deposit_revealed: data.deposit_revealed ?? false,
+      pending_gold:     data.pending_gold ?? 0,
+      last_claimed_at:  data.last_claimed_at?.toMillis?.() ?? 0,
       created_at: data.created_at?.toDate?.()?.toISOString?.() ?? null,
       last_processed_at: data.last_processed_at?.toDate?.()?.toISOString?.() ?? null,
     };
@@ -214,12 +231,44 @@ async function getNearbyMines(uid, { lat, lng, radiusKm = 20 }) {
       deposit_revealed: data.deposit_revealed ?? false,
       total_gold:  (isOwner || data.deposit_revealed) ? data.total_gold  : null,
       remain_gold: (isOwner || data.deposit_revealed) ? data.remain_gold : null,
+      pending_gold:    isOwner ? (data.pending_gold ?? 0) : null,
+      last_claimed_at: isOwner ? (data.last_claimed_at?.toMillis?.() ?? 0) : null,
       isOwner,
       distM:     Math.round(dist),
       shopDistM,
     });
   }
   return { mines };
+}
+
+// ── 채굴 수익 수령 ─────────────────────────────────────────────────────────────
+async function claimGoldMine(uid, { mineId }) {
+  if (!mineId) throw new HttpsError('invalid-argument', 'mineId is required');
+  const mineRef = db.collection('gold_mines').doc(mineId);
+  return await db.runTransaction(async tx => {
+    const snap = await tx.get(mineRef);
+    if (!snap.exists) throw new HttpsError('not-found', 'Mine not found');
+    const mine = snap.data();
+    if (mine.owner_id !== uid) throw new HttpsError('permission-denied', 'Not your mine');
+    const lastMs = mine.last_claimed_at?.toMillis?.() ?? 0;
+    const nowMs  = Date.now();
+    if ((nowMs - lastMs) < CLAIM_INTERVAL_MS) {
+      const hoursLeft = Math.ceil((lastMs + CLAIM_INTERVAL_MS - nowMs) / 3600000);
+      throw new HttpsError('failed-precondition', `Next claim available in ${hoursLeft}h`);
+    }
+    const pending = Math.floor(mine.pending_gold ?? 0);
+    if (pending <= 0) throw new HttpsError('failed-precondition', 'No gold accumulated yet');
+    const playerRef = db.collection('battle_players').doc(uid);
+    tx.update(mineRef, {
+      pending_gold:    0,
+      last_claimed_at: admin.firestore.Timestamp.fromMillis(nowMs),
+    });
+    tx.update(playerRef, {
+      gold:      admin.firestore.FieldValue.increment(pending),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { claimed: pending };
+  });
 }
 
 // ── 관리자: 전체 금광 조회 ─────────────────────────────────────────────────────
@@ -277,17 +326,11 @@ async function processGoldMines() {
       remain_gold:       depleted ? 0 : newRemain,
       status:            depleted ? 'depleted' : 'active',
       last_processed_at: now,
+      pending_gold:      admin.firestore.FieldValue.increment(Math.floor(mined)),
       total_earned:      admin.firestore.FieldValue.increment(Math.floor(mined)),
     };
     if (depleted) mineUpdate.miners_count = 0;
     batch.update(doc.ref, mineUpdate);
-    opCount++;
-
-    const ownerRef = db.collection('battle_players').doc(data.owner_id);
-    batch.set(ownerRef, {
-      gold:      admin.firestore.FieldValue.increment(Math.floor(mined)),
-      updatedAt: now,
-    }, { merge: true });
     opCount++;
 
     processed++;
@@ -302,6 +345,7 @@ async function processGoldMines() {
 module.exports = {
   createGoldMine,
   addMiners,
+  claimGoldMine,
   getMyMines,
   getNearbyMines,
   adminGetMines,
