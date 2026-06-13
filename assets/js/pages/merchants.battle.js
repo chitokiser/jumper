@@ -140,6 +140,7 @@ function _shopFlagFromCoords(lat, lng) {
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST      = 100;
 const SKILL_RANGE_M      = 40;
+const MONSTER_VIS_RANGE_M = 200;  // show monster image/animation when user within 200m
 const WIND_RANGE_M       = 30;
 const METEOR_RANGE_M     = 60;
 const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오브제 표시
@@ -1982,7 +1983,7 @@ function _refreshBattleVisibility(myLat, myLng) {
   }
   function showMonster(mob) {
     if (overview || !hasPos) return true;
-    const visRange = Math.max(SKILL_RANGE_M, (mob.detectRadius || 30) + 5);
+    const visRange = Math.max(MONSTER_VIS_RANGE_M, (mob.detectRadius || 30) + 5);
     return haversine(myLat, myLng, mob.lat, mob.lng) <= visRange;
   }
 
@@ -2009,10 +2010,9 @@ function _spawnMonsterMarker(mob) {
   const map = _ctx?.map;
   const infoWindow = _ctx?.infoWindow;
   if (!map || !mob.lat || !mob.lng) return;
-  // 플레이어 위치 기준 100m 밖이면 마커 숨김
   const myPos = _ctx?.lastPos;
   const overview = _ctx?.isAdmin || (_ctx?.map?.getZoom() ?? 18) <= OVERVIEW_ZOOM;
-  const visRange = Math.max(SKILL_RANGE_M, (mob.detectRadius || 30) + 5);
+  const visRange = Math.max(MONSTER_VIS_RANGE_M, (mob.detectRadius || 30) + 5);
   const startVisible = overview || !myPos || haversine(myPos.lat, myPos.lng, mob.lat, mob.lng) <= visRange;
 
   // ── 스프라이트 타입 (dragon 등) ─────────────────────────────────────────────

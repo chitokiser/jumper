@@ -4789,7 +4789,7 @@ function _makeUserNpcMarker(npc) {
   const title = _isAdmin
     ? `[ADMIN] ${titleBase} | ${npc.lat?.toFixed(6)}, ${npc.lng?.toFixed(6)}`
     : titleBase;
-  const SZ = 64;
+  const SZ = 44;
   const marker = new google.maps.Marker({
     position: { lat: npc.lat, lng: npc.lng },
     map: _ctx.map,

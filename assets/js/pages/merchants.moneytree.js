@@ -423,7 +423,9 @@ window._mtConfirmPlant = async function() {
     // Dispatch event so merchant polling timer resets and doesn't race with this refresh
     if (data.lat != null && data.lng != null) {
       window.dispatchEvent(new CustomEvent('mt:planted', { detail: { lat: data.lat, lng: data.lng } }));
-      loadMoneyTreeMarkers(data.lat, data.lng); // no await
+      // Delay 3s so Firestore propagates before getNearbyTrees query runs — avoids clearing
+      // the just-added immediate marker before the tree appears in the response
+      setTimeout(() => loadMoneyTreeMarkers(data.lat, data.lng), 3000);
     }
     refreshMoneyTreeInventory(); // background — no await
   } catch (e) {
@@ -483,7 +485,7 @@ window._mtPlantAll = async function() {
     const mapLng = refPos?.lng ?? firstTree?.lng;
     if (mapLat != null && mapLng != null) {
       window.dispatchEvent(new CustomEvent('mt:planted', { detail: { lat: mapLat, lng: mapLng } }));
-      loadMoneyTreeMarkers(mapLat, mapLng); // no await
+      setTimeout(() => loadMoneyTreeMarkers(mapLat, mapLng), 3000);
     }
     refreshMoneyTreeInventory(); // background — no await
   } catch (e) {

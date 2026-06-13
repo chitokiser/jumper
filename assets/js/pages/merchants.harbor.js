@@ -196,7 +196,7 @@ export function promptInstallHarbor(shopId, shopLat, shopLng) {
     background:rgba(239,68,68,.9);color:#fff;font-size:13px;font-weight:700;
     cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);white-space:nowrap;`;
   cancelBtn.onclick = () => { _cleanupInstall(); _showToast('Harbor installation cancelled.', 'warn'); };
-  document.body.appendChild(cancelBtn);
+  (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(cancelBtn);
 
   _showToast('Tap a sea location inside the blue circle to place harbor.', 'info');
 
@@ -228,6 +228,8 @@ function _cleanupInstall() {
 function _showInstallConfirm(shopId, lat, lng) {
   const el = document.getElementById('harborInstallConfirm');
   if (!el) return;
+  const fsRoot = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fsRoot && el.parentElement !== fsRoot) fsRoot.appendChild(el);
   el.innerHTML = `
     <div style="background:#111827;border:1px solid #0ea5e9;border-radius:16px;
                 width:min(340px,92vw);padding:24px;text-align:center">
