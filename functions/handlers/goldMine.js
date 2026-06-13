@@ -207,6 +207,8 @@ async function getNearbyMines(uid, { lat, lng, radiusKm = 20 }) {
       store_id:    data.store_id,
       lat:         data.lat,
       lng:         data.lng,
+      store_lat:   data.store_lat ?? data.lat,
+      store_lng:   data.store_lng ?? data.lng,
       miners_count:     data.miners_count ?? 0,
       status:           data.status,
       deposit_revealed: data.deposit_revealed ?? false,

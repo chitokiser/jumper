@@ -75,6 +75,7 @@ function _renderMarkers(mines) {
 export function openGoldMineModal(mineId) {
   const mine = _mines[mineId];
   if (!mine) return;
+  if ((mine.miners_count ?? 0) > 0) _playPickaxeSound();
   _fillModal(mine);
   document.getElementById('goldMineModal')?.classList.add('open');
 }
@@ -256,6 +257,38 @@ async function _doInstall(storeId, shopLat, shopLng) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function _playPickaxeSound() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const now  = ctx.currentTime;
+
+    // Metallic impact burst
+    const osc1  = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(900, now);
+    osc1.frequency.exponentialRampToValueAtTime(180, now + 0.08);
+    gain1.gain.setValueAtTime(0.35, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.18);
+
+    // Ringing overtone
+    const osc2  = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1400, now);
+    gain2.gain.setValueAtTime(0.15, now);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now);
+    osc2.stop(now + 0.4);
+  } catch (_) { /* audio not supported */ }
+}
+
 function _fmtDist(m) {
   return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
 }

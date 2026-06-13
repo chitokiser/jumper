@@ -1,11 +1,11 @@
 // assets/js/pages/merchants.goldmine.miners.js
-// Zombie Villager miner sprites walking on Google Maps OverlayView
+// Zombie Villager miner sprites — walk between mine and shop on Google Maps OverlayView
 
 const WALK_FRAMES = 24;
 const FRAME_MS    = 80;    // ms per sprite frame
-const WALK_DIST_M = 20;    // meters each way from mine center
-const WALK_DUR_S  = 9;     // seconds to traverse WALK_DIST_M
-const SPRITE_PX   = 36;    // display size px
+const SPRITE_PX   = 36;   // display size px
+const WALK_DUR_S  = 8;    // seconds to traverse the full path each way
+const MIN_DIST_M  = 15;   // minimum walk distance if mine == shop (same coords)
 
 const SPRITE_BASE =
   '/assets/images/villager/Zombie_Villager_1/PNG/PNG%20Sequences/Walking/0_Zombie_Villager_Walking_';
@@ -14,7 +14,7 @@ function _url(i) {
   return `${SPRITE_BASE}${String(i).padStart(3, '0')}.png`;
 }
 
-// Preload all frames once at module load
+// Preload all frames at module load
 const _imgs = Array.from({ length: WALK_FRAMES }, (_, i) => {
   const img = new Image();
   img.src = _url(i);
@@ -33,26 +33,59 @@ function _visibleCount(n) {
   return 1;
 }
 
+// Haversine distance in meters
+function _distM(lat1, lng1, lat2, lng2) {
+  const R    = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a    = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+    * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 let _map        = null;
 let _MinerClass = null;
-let _overlays   = {};   // mineId → MinerOverlay[]
+let _overlays   = {};  // mineId → MinerOverlay[]
 
 export function initMiners(map) {
   _map = map;
 
-  // Class defined here so google.maps.OverlayView is guaranteed loaded
   _MinerClass = class extends google.maps.OverlayView {
     constructor(mine, index) {
       super();
       this._mine  = mine;
       this._index = index;
 
-      // Unique walk direction per mine + miner index (prime-step spread)
-      const h = _hashId(mine.id);
-      this._angle   = ((h + index * 137) % 360) * Math.PI / 180;
-      this._t       = (index * 0.35) % 1;   // stagger start position
-      this._dir     = 1;
-      this._frame   = (index * 7) % WALK_FRAMES;
+      // Walk path: mine position → shop position
+      // If they're the same (< MIN_DIST_M apart), use a fallback direction offset
+      const dist = _distM(mine.lat, mine.lng,
+        mine.store_lat ?? mine.lat, mine.store_lng ?? mine.lng);
+
+      if (dist >= MIN_DIST_M) {
+        // Real shop at different location — walk that path
+        this._fromLat = mine.lat;
+        this._fromLng = mine.lng;
+        this._toLat   = mine.store_lat;
+        this._toLng   = mine.store_lng;
+      } else {
+        // Mine == shop: fabricate a short path in a deterministic direction
+        const h     = _hashId(mine.id);
+        const angle = ((h + index * 137) % 360) * Math.PI / 180;
+        const cosLat = Math.cos(mine.lat * Math.PI / 180);
+        const dLat   = (MIN_DIST_M * Math.cos(angle)) / 111320;
+        const dLng   = (MIN_DIST_M * Math.sin(angle)) / (111320 * cosLat);
+        this._fromLat = mine.lat;
+        this._fromLng = mine.lng;
+        this._toLat   = mine.lat + dLat;
+        this._toLng   = mine.lng + dLng;
+      }
+
+      // Stagger starting position along path so miners aren't all at the same spot
+      this._t   = (index * 0.4) % 1;
+      this._dir = index % 2 === 0 ? 1 : -1;
+
+      this._frame   = (index * 8) % WALK_FRAMES;
       this._frameMs = 0;
       this._lastTs  = null;
       this._rafId   = null;
@@ -79,10 +112,10 @@ export function initMiners(map) {
 
     onRemove() {
       cancelAnimationFrame(this._rafId);
-      this._rafId = null;
+      this._rafId  = null;
       this._el?.remove();
-      this._el   = null;
-      this._imgEl = null;
+      this._el     = null;
+      this._imgEl  = null;
     }
 
     _tick(ts) {
@@ -90,7 +123,7 @@ export function initMiners(map) {
       const dt = this._lastTs != null ? (ts - this._lastTs) / 1000 : 0;
       this._lastTs = ts;
 
-      // Advance walk position (0 → 1 → 0 loop)
+      // Advance along path
       this._t += this._dir * (dt / WALK_DUR_S);
       if (this._t >= 1) { this._t = 1; this._dir = -1; }
       if (this._t <= 0) { this._t = 0; this._dir = 1; }
@@ -103,8 +136,12 @@ export function initMiners(map) {
         if (this._imgEl) this._imgEl.src = _imgs[this._frame].src;
       }
 
-      // Flip horizontally when walking in reverse
-      this._el.style.transform = `scaleX(${this._dir > 0 ? 1 : -1})`;
+      // Flip sprite depending on walking direction along path
+      // dir=1 means mine→shop; flip based on whether shop is east or west of mine
+      const goingToShop = this._dir === 1;
+      const shopIsEast  = this._toLng > this._fromLng;
+      const facingRight = goingToShop ? shopIsEast : !shopIsEast;
+      this._el.style.transform = `scaleX(${facingRight ? 1 : -1})`;
 
       this._reposition();
       this._rafId = requestAnimationFrame(t => this._tick(t));
@@ -113,17 +150,12 @@ export function initMiners(map) {
     _reposition() {
       const proj = this.getProjection?.();
       if (!proj || !this._el) return;
-      const m = this._mine;
 
-      // Offset -WALK_DIST_M .. +WALK_DIST_M from mine center along unique angle
-      const offsetM = (this._t - 0.5) * 2 * WALK_DIST_M;
-      const cosLat  = Math.cos(m.lat * Math.PI / 180);
-      const dLat    = (offsetM * Math.cos(this._angle)) / 111320;
-      const dLng    = (offsetM * Math.sin(this._angle)) / (111320 * cosLat);
+      // Lerp between from and to positions
+      const lat = this._fromLat + (this._toLat - this._fromLat) * this._t;
+      const lng = this._fromLng + (this._toLng - this._fromLng) * this._t;
 
-      const pt = proj.fromLatLngToDivPixel(
-        new google.maps.LatLng(m.lat + dLat, m.lng + dLng)
-      );
+      const pt = proj.fromLatLngToDivPixel(new google.maps.LatLng(lat, lng));
       if (pt) {
         this._el.style.left = `${Math.round(pt.x - SPRITE_PX / 2)}px`;
         this._el.style.top  = `${Math.round(pt.y - SPRITE_PX)}px`;
@@ -138,7 +170,6 @@ export function updateMiners(mines) {
     mines.filter(m => m.status === 'active' && m.miners_count > 0).map(m => m.id)
   );
 
-  // Remove overlays for depleted / gone mines
   for (const id of Object.keys(_overlays)) {
     if (!activeIds.has(id)) {
       _overlays[id].forEach(o => o.setMap(null));
@@ -146,7 +177,6 @@ export function updateMiners(mines) {
     }
   }
 
-  // Create / adjust overlay count per active mine
   for (const mine of mines) {
     if (!activeIds.has(mine.id)) continue;
     const desired = _visibleCount(mine.miners_count);
