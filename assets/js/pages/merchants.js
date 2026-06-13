@@ -50,6 +50,8 @@ import { initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers,
          renderMoneyTreeShopSection, openPlantModal } from './merchants.moneytree.js';
 import { initGoldMine, setGoldMineUid, loadGoldMineMarkers, openGoldMineModal,
          promptInstallMine } from './merchants.goldmine.js?v=10';
+import { initHarbor, setHarborUid, loadHarborMarkers, promptInstallHarbor,
+         openHarborModal, openSvModal as openHarborSvModal } from './merchants.harbor.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -96,6 +98,7 @@ let _detectorNextInterval = 0;      // 다음 beep 간격(ms), 0=범위 밖
 let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
 let _mtMarkerLoadTs = 0;         // 돈나무 마커 마지막 로드 시각 (ms)
 let _gmMarkerLoadTs = 0;         // 금광 마커 마지막 로드 시각 (ms)
+let _hrMarkerLoadTs = 0;         // 항구 마커 마지막 로드 시각 (ms)
 let _userMapMarkers = [];        // google.maps.Marker[] — user face markers
 const _cfGetUserMarkers = httpsCallable(functions, 'getUserMarkers');
 let _gsMonsters     = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
@@ -1600,6 +1603,11 @@ async function checkProximity(lat, lng) {
     _gmMarkerLoadTs = Date.now();
     loadGoldMineMarkers(lat, lng);
   }
+  // 항구 마커: 180초마다 갱신
+  if (!_isAnonymous && Date.now() - _hrMarkerLoadTs > 180_000) {
+    _hrMarkerLoadTs = Date.now();
+    loadHarborMarkers(lat, lng);
+  }
 }
 
 async function tryCollect(box) {
@@ -2904,6 +2912,7 @@ async function init() {
     _isAnonymous = user?.isAnonymous || false;
     _ctx.uid     = _uid;
     setGoldMineUid(_uid);
+    setHarborUid(_uid);
 
     const loginOverlay = $('gameLoginOverlay');
     const gameToggle   = $('btnGameToggle');
@@ -3076,6 +3085,17 @@ async function init() {
       document.getElementById('goldMineModal')?.classList.remove('open');
     });
     loadGoldMineMarkers();
+
+    // ── Harbor 초기화 ──────────────────────────────────────────────────────
+    initHarbor(_ctx, map, functions, _uid);
+    document.getElementById('btnCloseHarborModal')?.addEventListener('click', () => {
+      document.getElementById('harborModal')?.classList.remove('open');
+    });
+    document.getElementById('btnCloseHarborSvModal')?.addEventListener('click', () => {
+      document.getElementById('harborSvModal')?.classList.remove('open');
+    });
+    document.getElementById('btnHarborSv')?.addEventListener('click', () => openHarborSvModal());
+    loadHarborMarkers();
 
     // ── 돈나무 초기화 ──────────────────────────────────────────────────────
     initMoneyTree(_ctx, map, functions, {
@@ -4127,6 +4147,16 @@ function _renderShopModalBody() {
     })()}
   </div>`;
 
+  // Harbor install button — visible to any logged-in user near a potion shop
+  if ((shop.type === 'potion' || shop.type === 'shop_potion') && _uid && !_isAnonymous) {
+    html += `<button id="shopInstallHarborBtn"
+      style="width:100%;margin-top:10px;padding:11px;border-radius:10px;border:none;
+             font-weight:700;font-size:13px;cursor:pointer;
+             background:linear-gradient(135deg,#0c4a6e,#075985);color:#38bdf8">
+      ⚓ Install Harbor — ${(100000).toLocaleString()} GP
+    </button>`;
+  }
+
   body.innerHTML = html;
 
   // 돈나무 묘목 판매 활성화된 상점: 돈나무 섹션 렌더링
@@ -4225,6 +4255,12 @@ function _renderShopModalBody() {
   $('shopInstallMineBtn')?.addEventListener('click', () => {
     closeShopModal();
     promptInstallMine(shop.id, shop.lat, shop.lng);
+  });
+
+  // Harbor 설치
+  $('shopInstallHarborBtn')?.addEventListener('click', () => {
+    closeShopModal();
+    promptInstallHarbor(shop.id, shop.lat, shop.lng);
   });
 }
 

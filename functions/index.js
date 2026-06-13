@@ -69,6 +69,7 @@ const starsH                 = require('./handlers/starsPayment');
 const membershipH            = require('./handlers/membership');
 const moneyTreeH             = require('./handlers/moneyTree');
 const goldMineH              = require('./handlers/goldMine');
+const harborH                = require('./handlers/harbor');
 const { requireAdmin, ADMIN_EMAILS } = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -3045,6 +3046,37 @@ exports.processGoldMines = onSchedule(
   { schedule: 'every 1 minutes', timeoutSeconds: 300 },
   async () => { await goldMineH.processGoldMines(); }
 );
+
+// ── Harbor ────────────────────────────────────────────────────────────────────
+exports.installHarbor = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await harborH.installHarbor(uid, request.data ?? {});
+}));
+
+exports.buildTradeShip = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await harborH.buildTradeShip(uid, request.data ?? {});
+}));
+
+exports.claimShipDividend = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await harborH.claimShipDividend(uid);
+}));
+
+exports.getNearbyHarbors = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await harborH.getNearbyHarbors(uid, request.data ?? {});
+}));
+
+exports.getMyShips = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await harborH.getMyShips(uid);
+}));
+
+exports.getHarborJackpot = onCall(wrapError(async (request) => {
+  requireAuth(request);
+  return await harborH.getHarborJackpot();
+}));
 
 // Affiliate 커미션 GP 환급 (bot.py 내부 호출)
 exports.starsRedeemCommission = onRequest(
