@@ -97,6 +97,7 @@ let _warpShop     = null;
 let _radiusCircle = null;
 let _mapClickLsn  = null;
 let _walkRafId    = null;   // 걷기 requestAnimationFrame ID
+let _targetIndicator = null; // 클릭 목표 지점 시각화
 let _shops        = [];
 let _modalEl      = null;
 
@@ -209,6 +210,7 @@ async function _activate(shop) {
 // ── 비활성화 ─────────────────────────────────────────────────────────────
 function _deactivate() {
   if (_walkRafId) { cancelAnimationFrame(_walkRafId); _walkRafId = null; }
+  _clearTargetIndicator();
   _active = false; _warpShop = null; _virtualPos = null;
   _radiusCircle?.setMap(null); _radiusCircle = null;
   if (_mapClickLsn) { google.maps.event.removeListener(_mapClickLsn); _mapClickLsn = null; }
@@ -225,12 +227,18 @@ function _onMapTap(lat, lng) {
     return;
   }
 
-  const from    = { ..._virtualPos };
+  const from = { ..._virtualPos };
   const moveDist = _haversine(from.lat, from.lng, lat, lng);
-  // 거리 비례 이동 시간 500ms ~ 2000ms
   const duration = Math.max(500, Math.min(moveDist / 25 * 1000, 2000));
 
+  _showTargetIndicator(lat, lng);
+  const heading = _calcBearing(from.lat, from.lng, lat, lng);
+  _ctx?.myLocationMarker?.setFacing?.(heading);
+  _ctx?.myLocationMarker?.setState?.('walk');
+
   _walkTo(from, { lat, lng }, duration, () => {
+    _clearTargetIndicator();
+    _ctx?.myLocationMarker?.setState?.('idle');
     _virtualPos = { lat, lng };
     _ctx._onVirtualMove?.(lat, lng);
   });
@@ -261,6 +269,48 @@ function _walkTo(from, target, duration, onDone) {
     }
   };
   _walkRafId = requestAnimationFrame(tick);
+}
+
+// ── 목표 지점 시각화 ─────────────────────────────────────────────────────
+function _showTargetIndicator(lat, lng) {
+  if (_targetIndicator) { _targetIndicator.setMap(null); _targetIndicator = null; }
+  _targetIndicator = new google.maps.Circle({
+    map: _map, center: { lat, lng }, radius: 3,
+    fillColor: '#fbbf24', fillOpacity: 0.95,
+    strokeColor: '#fff', strokeWeight: 2,
+    clickable: false, zIndex: 100,
+  });
+  const ring = new google.maps.Circle({
+    map: _map, center: { lat, lng }, radius: 1,
+    fillColor: '#fbbf24', fillOpacity: 0.35,
+    strokeColor: '#fbbf24', strokeWeight: 1.5,
+    clickable: false, zIndex: 99,
+  });
+  let r = 0;
+  const expand = () => {
+    r += 7;
+    if (!ring.getMap()) return;
+    ring.setRadius(r);
+    ring.setOptions({
+      fillOpacity:   Math.max(0, 0.35 - r / 60),
+      strokeOpacity: Math.max(0, 1 - r / 55),
+    });
+    if (r < 55) requestAnimationFrame(expand);
+    else ring.setMap(null);
+  };
+  requestAnimationFrame(expand);
+}
+
+function _clearTargetIndicator() {
+  if (_targetIndicator) { _targetIndicator.setMap(null); _targetIndicator = null; }
+}
+
+function _calcBearing(lat1, lng1, lat2, lng2) {
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180);
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180)
+    - Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
 // ── 워프 도착 링 효과 (Google Maps Circle 확장) ───────────────────────────

@@ -254,7 +254,21 @@ function _showInstallConfirm(shopId, lat, lng) {
       const fn = httpsCallable(_fns, 'installHarbor');
       const { data } = await fn({ shopId, lat, lng, seaZone: true });
       el.classList.remove('open');
-      await loadHarborMarkers(lat, lng);
+      // Immediately place marker — replaced by real data when background refresh completes
+      if (data.harborId && _map) {
+        const harborId = data.harborId;
+        _harbors[harborId] = { id: harborId, owner_id: _uid, lat, lng, ship_count: 0, status: 'active' };
+        const marker = new google.maps.Marker({
+          position: { lat, lng },
+          map: _map,
+          icon: { url: HARBOR_ICON, scaledSize: new google.maps.Size(40, 40), anchor: new google.maps.Point(20, 40) },
+          title: `⚓ Harbor | 0/${MAX_SHIPS} ships`,
+          zIndex: 55,
+        });
+        marker.addListener('click', () => openHarborModal(harborId));
+        _markers[harborId] = marker;
+      }
+      loadHarborMarkers(lat, lng); // background refresh — no await
       _showToast(`Harbor installed! Cost: ${data.cost.toLocaleString()} GP | Jackpot: ${data.newJackpot.toLocaleString()} GP`);
     } catch (e) {
       _showToast(e.message ?? 'Installation failed', 'error');
@@ -373,7 +387,8 @@ async function _checkSeaZone(lat, lng) {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'JumperDAO/1.0', 'Accept-Language': 'en' },
     });
-    if (!res.ok) return false;
+    // Rate-limited or unavailable — let the user proceed (CF doesn't independently verify)
+    if (!res.ok) return true;
     const d = await res.json();
     // "Unable to geocode" → open ocean with no land features
     if (d.error) return true;
@@ -390,7 +405,8 @@ async function _checkSeaZone(lat, lng) {
     ].join(' ').toLowerCase();
     return SEA_KEYWORDS.some(k => text.includes(k));
   } catch (_) {
-    return false;
+    // Network error — let the user proceed
+    return true;
   }
 }
 

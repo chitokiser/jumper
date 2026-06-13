@@ -354,10 +354,23 @@ async function _doInstall(storeId, shopLat, shopLng) {
     const lat = pos?.lat ?? shopLat ?? null;
     const lng = pos?.lng ?? shopLng ?? null;
     const { data } = await fn({ storeId, lat, lng });
-    // CF returns lat/lng from shop's Firestore record — use for marker refresh
+    // Immediately place marker — replaced by real data when background refresh completes
+    if (data.mineId && data.lat != null && data.lng != null && _map) {
+      const mineId = data.mineId;
+      _mines[mineId] = { id: mineId, lat: data.lat, lng: data.lng, owner_id: _uid, miners_count: 0, deposit_revealed: false };
+      const marker = new google.maps.Marker({
+        position: { lat: data.lat, lng: data.lng },
+        map: _map,
+        icon: { url: ICON_URL, scaledSize: new google.maps.Size(40, 40), anchor: new google.maps.Point(20, 40) },
+        title: '⛏ Gold Mine',
+        zIndex: 50,
+      });
+      marker.addListener('click', () => openGoldMineModal(mineId));
+      _markers[mineId] = marker;
+    }
     const refLat = data.lat ?? shopLat ?? _ctx?.lastPos?.lat ?? _ctx?.gpsPos?.lat;
     const refLng = data.lng ?? shopLng ?? _ctx?.lastPos?.lng ?? _ctx?.gpsPos?.lng;
-    await loadGoldMineMarkers(refLat, refLng);
+    loadGoldMineMarkers(refLat, refLng); // background refresh — no await
     _showInstallSuccess(data.installCost);
   } catch (e) {
     _showToast(e.message ?? 'Installation failed', 'error');
