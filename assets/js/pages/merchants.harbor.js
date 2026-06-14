@@ -330,7 +330,8 @@ async function _animateShipDeparture(harbor) {
     anchor: new google.maps.Point(sz / 2, sz / 2),
   });
 
-  let pos  = { lat: harbor.lat, lng: harbor.lng };
+  // Start 300 m into the sea so the ship never crosses the coastline/island at the harbor edge
+  let pos  = _destPoint(harbor.lat, harbor.lng, bearing, 300);
   let step = 0;
   const m  = new google.maps.Marker({
     position: pos, map: _map, icon: mkIcon(iconUrl, SZ_BIG),
@@ -357,14 +358,18 @@ async function _startHarborAnim(harbor) {
   const anim = { active: true, markers: [] };
   _animations[harbor.id] = anim;
 
-  const STEPS    = 100; // 100 × 20m × 100ms = 2km, 10s per leg
-  const STEP_MS  = 100;
-  const STEP_M   = 20;
-  const SEA_DIST = STEPS * STEP_M;
+  const STEPS      = 100; // 100 × 20m × 100ms = 2km, 10s per leg
+  const STEP_MS    = 100;
+  const STEP_M     = 20;
+  const SEA_OFFSET = 300;                    // skip 300 m at harbor edge to avoid coastline/islands
+  const SEA_DIST   = STEPS * STEP_M;        // 2 000 m animation range beyond the offset
 
   const bearing = (harbor.shop_lat != null && harbor.shop_lng != null)
     ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
     : Math.PI;
+
+  // Sea-side origin: 300 m out from the harbor marker into open water
+  const seaOrigin = _destPoint(harbor.lat, harbor.lng, bearing, SEA_OFFSET);
 
   // Single image: first sprite or fallback
   const img = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
@@ -390,9 +395,11 @@ async function _startHarborAnim(harbor) {
     const moveBr   = isDepart ? bearing : bearing + Math.PI;
     const iconUrl  = isDepart ? departIcon : arriveIcon;
 
+    // Both legs operate between seaOrigin (300 m out) and the far sea end (2 300 m out)
+    // — the ship never enters the 300 m coastal buffer where islands typically sit
     let pos = isDepart
-      ? { lat: harbor.lat, lng: harbor.lng }
-      : _destPoint(harbor.lat, harbor.lng, bearing, SEA_DIST);
+      ? { lat: seaOrigin.lat, lng: seaOrigin.lng }
+      : _destPoint(seaOrigin.lat, seaOrigin.lng, bearing, SEA_DIST);
 
     const m = new google.maps.Marker({
       position: pos, map: _map,
