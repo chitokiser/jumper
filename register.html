@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>로그인 / 회원가입 - Jump</title>
+  <title>Login / Sign Up - Jump</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -18,8 +18,8 @@
 
   <main class="page">
     <section class="panel">
-      <h1 class="title">로그인 / 회원가입</h1>
-      <p class="desc">소셜 계정으로 간편하게 시작하세요.</p>
+      <h1 class="title">Login / Sign Up</h1>
+      <p class="desc">Start easily with your social account.</p>
 
       <div id="regState" class="state"></div>
 
@@ -28,27 +28,27 @@
         <div class="social-login-list">
           <button class="btn-social btn-social--google" id="btnGoogleLogin" type="button">
             <span class="social-icon social-icon--google">G</span>
-            Google로 계속하기
+            Continue with Google
           </button>
           <button class="btn-social btn-social--facebook" id="btnFacebookLogin" type="button">
             <span class="social-icon social-icon--facebook">f</span>
-            Facebook으로 계속하기
+            Continue with Facebook
           </button>
           <button class="btn-social btn-social--apple" id="btnAppleLogin" type="button">
             <span class="social-icon social-icon--apple">&#63743;</span>
-            Apple로 계속하기
+            Continue with Apple
           </button>
         </div>
         <div id="socialMsg" class="auth-msg"></div>
 
-        <!-- 텔레그램 로그인 위젯 (Telegram 공식 버튼) -->
+        <!-- Telegram Login Widget -->
         <div style="margin-top:4px;display:flex;align-items:center;gap:10px;">
           <div style="flex:1;height:1px;background:#e5e7eb;"></div>
-          <span style="font-size:11px;color:#9ca3af;">또는</span>
+          <span style="font-size:11px;color:#9ca3af;">Or</span>
           <div style="flex:1;height:1px;background:#e5e7eb;"></div>
         </div>
         <div id="telegramWidgetWrap" style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:4px;">
-          <div style="font-size:12px;color:#6b7280;">텔레그램 계정으로 로그인</div>
+          <div style="font-size:12px;color:#6b7280;">Login with Telegram</div>
           <!-- Telegram이 이 <script> 위치에 로그인 버튼(iframe)을 렌더링함 -->
           <script
             async
@@ -60,86 +60,86 @@
             data-request-access="write">
           </script>
           <div id="tgAuthMsg" style="font-size:12px;color:#0088cc;display:none;">
-            ⏳ 인증 처리 중...
+            ⏳ Processing authentication...
           </div>
         </div>
       </div>
 
-      <!-- ── 이미 가입 완료 ── -->
+      <!-- ── Already Signed Up ── -->
       <div id="alreadyDone" style="display:none;" class="status-box">
         <div class="status-row">
-          <div class="k">가입 상태</div>
-          <div class="v" style="color:var(--accent);">가입 완료 ✓</div>
+          <div class="k">Registration Status</div>
+          <div class="v" style="color:var(--accent);">Completed ✓</div>
         </div>
         <div class="status-row" id="walletRow" style="display:none;">
-          <div class="k">수탁 지갑 주소</div>
+          <div class="k">Custodial Wallet Address</div>
           <div class="v mono" id="walletAddr">-</div>
         </div>
         <div class="status-row" id="onChainRow" style="display:none;">
-          <div class="k">온체인 등록</div>
+          <div class="k">On-Chain Registration</div>
           <div class="v" id="onChainStatus">-</div>
         </div>
-        <a href="/index.html" class="btn btn--primary" style="margin-top:16px;display:inline-block;">홈으로</a>
+        <a href="/index.html" class="btn btn--primary" style="margin-top:16px;display:inline-block;">Home</a>
       </div>
 
-      <!-- ── 가입 폼 (신규 사용자) ── -->
+      <!-- ── Registration Form (New User) ── -->
       <form class="form" id="regForm" style="display:none;" novalidate>
 
         <label class="field">
-          <span>이름 (실명) <em class="req">*</em></span>
-          <input type="text" id="userName" maxlength="30" placeholder="예: 홍길동" autocomplete="name" />
+          <span>Full Name <em class="req">*</em></span>
+          <input type="text" id="userName" maxlength="30" placeholder="Example: John Doe" autocomplete="name" />
         </label>
 
         <label class="field">
-          <span>휴대폰 번호 <em class="req">*</em></span>
-          <input type="tel" id="userPhone" maxlength="30" placeholder="예: +82 10 1234 5678 / +84 912 345 678" autocomplete="tel" />
+          <span>Phone Number <em class="req">*</em></span>
+          <input type="tel" id="userPhone" maxlength="30" placeholder="Example: +82 10 1234 5678 / +84 912 345 678" autocomplete="tel" />
         </label>
 
         <label class="field">
-          <span>추천인 지갑 주소
+          <span>Referrer Wallet Address
             <span style="display:inline-block;margin-left:6px;background:#fef3c7;color:#92400e;
                          font-size:0.72rem;font-weight:700;padding:1px 8px;border-radius:99px;vertical-align:middle;">
-              🎁 +1,000 게임코인
+              🎁 +1,000 Game Points
             </span>
           </span>
-          <input type="text" id="mentorAddress" maxlength="42" placeholder="추천인 지갑 주소 입력 (0xAbCd...)" autocomplete="off" spellcheck="false" />
+          <input type="text" id="mentorAddress" maxlength="42" placeholder="Enter referrer wallet address (0xAbCd...)" autocomplete="off" spellcheck="false" />
           <small class="help-text" style="color:#059669;font-weight:600;">
-            ✅ 추천인 주소를 입력하면 가입 즉시 게임코인 1,000 포인트 지급!
+            ✅ Enter a referrer wallet address to receive 1,000 Game Points immediately upon registration!
           </small>
-          <small class="help-text" style="margin-top:2px;">없으면 공란으로 두세요 (기본값 자동 적용)</small>
+          <small class="help-text" style="margin-top:2px;">Leave blank if you don't have one (default will be applied automatically)</small>
         </label>
 
-        <div class="reg-divider">이용 약관</div>
+        <div class="reg-divider">Terms of Service</div>
 
         <label class="check">
           <input type="checkbox" id="agreeTerms" />
           <span>
-            <a href="/what.html" target="_blank">이용약관</a> 및
-            <a href="/what.html" target="_blank">개인정보처리방침</a>에 동의합니다 <em class="req">*</em>
+            I agree to the <a href="/what.html" target="_blank">Terms of Service</a> and
+            <a href="/what.html" target="_blank">Privacy Policy</a> <em class="req">*</em>
           </span>
         </label>
 
         <label class="check">
           <input type="checkbox" id="agreeWallet" />
           <span>
-            서버 수탁 지갑(私有鍵 서버 보관) 생성 및 온체인 가입에 동의합니다 <em class="req">*</em>
+            I consent to creating a server custodial wallet (private key server storage) and on-chain registration <em class="req">*</em>
           </span>
         </label>
 
-        <!-- 진행 상황 -->
+        <!-- Progress -->
         <div id="stepBox" class="step-box" style="display:none;">
-          <div class="step" id="step1">① 정보 저장</div>
-          <div class="step" id="step2">② 수탁 지갑 생성</div>
-          <div class="step" id="step3">③ 온체인 등록</div>
+          <div class="step" id="step1">① Save Information</div>
+          <div class="step" id="step2">② Create Custodial Wallet</div>
+          <div class="step" id="step3">③ On-Chain Registration</div>
         </div>
 
         <div class="actions">
-          <button class="btn btn--primary" type="submit" id="btnRegister">가입 완료</button>
+          <button class="btn btn--primary" type="submit" id="btnRegister">Complete Registration</button>
         </div>
 
         <p class="hint">
-          수탁 지갑 생성과 온체인 회원 등록이 자동으로 진행됩니다.<br>
-          멘토 주소를 모르거나 없으면 기본 멘토 주소가 자동으로 입력됩니다.
+          Custodial wallet creation and on-chain registration will proceed automatically.<br>
+          If you don't have a referrer address, a default mentor address will be applied automatically.
         </p>
       </form>
     </section>

@@ -5,7 +5,8 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { setMovementEnabled } from './merchants.virtual.js';
 
 const HARBOR_ICON   = '/assets/images/shops/dock.png';
-const SHIP_ICON     = '/assets/images/shops/ship2.png';
+const SHIP_ICON     = '/assets/images/shops/ship2.png'; // side-view for UI
+const SHIP_ICON_MAP = '/assets/images/shops/ship.png';  // top-down for map animation
 const HARBOR_COST   = 100000;
 const SHIP_COST     = 10000;
 const MAX_SHIPS     = 10;
@@ -13,32 +14,75 @@ const RADIUS_M      = 5000;
 const CLAIM_ITVL_MS = 24 * 60 * 60 * 1000;
 const GRADE_COEFF   = [0, 10000, 50000, 100000, 200000, 400000, 800000, 1600000, 3200000, 6400000, 12800000];
 
-// Nominatim keywords for sea-zone detection (zoom=8)
+// Nominatim keywords — sea AND coastal features (harbors sit at water's edge)
 const SEA_KEYWORDS  = [
   'sea', 'ocean', 'bay', 'gulf', 'strait', 'channel', 'sound', 'bight',
   'pacific', 'atlantic', 'indian', 'arctic', 'mediterranean', 'caribbean', 'aegean',
   'south china', 'east sea', 'yellow sea', 'java sea', 'banda', 'celebes',
   'sulu', 'coral', 'timor', 'arafura', 'flores', 'makassar', 'malacca',
   'andaman', 'tonkin', 'bismarck', 'solomon', 'philippine', 'sibuyan',
+  'vinh', 'vịnh', 'halong', 'ha long', 'laut', 'mer ', 'meer', 'mar ', 'mare',
+  'bahia', 'baie', 'bucht', 'fjord', 'firth', 'manche', 'kanal',
+  // coastal landmarks
+  'coast', 'harbor', 'harbour', 'port', 'pier', 'marina', 'wharf', 'dock',
+  'jetty', 'waterfront', 'beach', 'shoreline', 'littoral', 'quay', 'cove',
 ];
 const SEA_NATURAL_TYPES = new Set([
   'water', 'sea', 'bay', 'strait', 'gulf', 'ocean', 'channel', 'sound',
-  'inlet', 'fjord', 'lagoon', 'reef',
+  'inlet', 'fjord', 'lagoon', 'reef', 'coastline', 'beach',  // beach = valid harbor edge
 ]);
+// OSM address keys that indicate a water body or coastal feature
+const SEA_ADDR_KEYS = new Set(['sea', 'ocean', 'bay', 'body_of_water', 'gulf', 'strait', 'harbour', 'marina', 'beach']);
+// Coastal man_made / amenity / leisure / landuse subtypes (valid harbor locations)
+const COASTAL_MAN_MADE = new Set(['pier', 'jetty', 'breakwater', 'groyne', 'harbour', 'dock', 'wharf', 'quay', 'seawall']);
+const COASTAL_AMENITY  = new Set(['ferry_terminal', 'boat_rental']);
+const COASTAL_LEISURE  = new Set(['marina', 'slipway', 'boat_storage']);
+const COASTAL_LANDUSE  = new Set(['port', 'harbour', 'dock']);
 
 let _fns     = null;
 let _map     = null;
 let _ctx     = null;
 let _uid     = null;
-let _markers = {};   // harborId → google.maps.Marker
-let _harbors = {};   // harborId → harbor data
+let _markers    = {};   // harborId → google.maps.Marker
+let _harbors    = {};   // harborId → harbor data
+let _animations = {};   // harborId → { active: bool, marker: Marker|null }
 let _activeInstall = null; // { clickHandler, circle, cleanup }
+
+// ── Zoom-responsive sizing ────────────────────────────────────────────────────
+function _harborSize(zoom) {
+  if (zoom >= 16) return 54;
+  if (zoom >= 14) return 44;
+  if (zoom >= 12) return 34;
+  if (zoom >= 10) return 24;
+  if (zoom >= 8)  return 16;
+  return 10;
+}
+function _shipAnimSize(zoom) {
+  if (zoom >= 16) return 52;
+  if (zoom >= 14) return 40;
+  if (zoom >= 12) return 30;
+  if (zoom >= 10) return 20;
+  if (zoom >= 8)  return 13;
+  return 8;
+}
+function _onZoomChanged() {
+  if (!_map) return;
+  const sz = _harborSize(_map.getZoom());
+  for (const marker of Object.values(_markers)) {
+    marker.setIcon({
+      url: HARBOR_ICON,
+      scaledSize: new google.maps.Size(sz, sz),
+      anchor: new google.maps.Point(sz / 2, sz),
+    });
+  }
+}
 
 export function initHarbor(ctx, map, functions, uid) {
   _ctx = ctx;
   _map = map;
   _fns = functions;
   _uid = uid;
+  map.addListener('zoom_changed', _onZoomChanged);
 }
 
 export function setHarborUid(uid) { _uid = uid; }
@@ -60,7 +104,12 @@ export async function loadHarborMarkers(centerLat, centerLng) {
 function _renderMarkers(harbors) {
   const incoming = new Set(harbors.map(h => h.id));
   for (const [id, marker] of Object.entries(_markers)) {
-    if (!incoming.has(id)) { marker.setMap(null); delete _markers[id]; delete _harbors[id]; }
+    if (!incoming.has(id)) {
+      marker.setMap(null);
+      delete _markers[id];
+      delete _harbors[id];
+      _stopHarborAnim(id);
+    }
   }
   for (const harbor of harbors) {
     _harbors[harbor.id] = harbor;
@@ -68,19 +117,21 @@ function _renderMarkers(harbors) {
       _markers[harbor.id].setPosition({ lat: harbor.lat, lng: harbor.lng });
       continue;
     }
+    const _sz = _harborSize(_map.getZoom());
     const marker = new google.maps.Marker({
       position: { lat: harbor.lat, lng: harbor.lng },
       map:      _map,
       icon: {
         url:        HARBOR_ICON,
-        scaledSize: new google.maps.Size(40, 40),
-        anchor:     new google.maps.Point(20, 40),
+        scaledSize: new google.maps.Size(_sz, _sz),
+        anchor:     new google.maps.Point(_sz / 2, _sz),
       },
       title:  `⚓ Harbor | ${harbor.ship_count}/${MAX_SHIPS} ships`,
       zIndex: 55,
     });
     marker.addListener('click', () => openHarborModal(harbor.id));
     _markers[harbor.id] = marker;
+    _startHarborAnim(harbor);
   }
 }
 
@@ -143,10 +194,19 @@ function _fillHarborModal(harbor) {
       <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Grade is revealed after building (random 1–10)</div>
       <div style="font-size:11px;color:#6b7280">Higher grade → larger daily dividend share from Harbor Jackpot</div>
     </div>
+
+    ${isOwn ? `<button id="harborDeleteBtn"
+        style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid rgba(239,68,68,.4);
+               background:rgba(239,68,68,.08);color:#f87171;font-size:13px;font-weight:600;cursor:pointer">
+        🗑 Delete Harbor
+      </button>` : ''}
   `;
 
   document.getElementById('harborBuildShipBtn')?.addEventListener('click', async () => {
     await _doBuildShip(harbor.id);
+  });
+  document.getElementById('harborDeleteBtn')?.addEventListener('click', () => {
+    _doDeleteHarbor(harbor.id);
   });
 }
 
@@ -162,12 +222,199 @@ async function _doBuildShip(harborId) {
       if (_markers[harborId]) _markers[harborId].setTitle(`⚓ Harbor | ${_harbors[harborId].ship_count}/${MAX_SHIPS} ships`);
     }
     _showToast(`Trade Ship built! Grade ${data.grade} — Cost: ${data.cost.toLocaleString()} GP`);
+    if (_harbors[harborId]) _animateShipDeparture(_harbors[harborId]);
     document.getElementById('harborModal')?.classList.remove('open');
     _fillHarborModal(_harbors[harborId]);
     document.getElementById('harborModal')?.classList.add('open');
   } catch (e) {
     _showToast(e.message ?? 'Failed to build ship', 'error');
     if (btn) { btn.disabled = false; btn.textContent = `⛵ Build Trade Ship — ${SHIP_COST.toLocaleString()} GP`; }
+  }
+}
+
+// ── Canvas image cache + rotation ─────────────────────────────────────────────
+const _imgCache = {};
+function _loadImg(url) {
+  return new Promise(r => {
+    if (_imgCache[url]) { r(_imgCache[url]); return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { _imgCache[url] = img; r(img); };
+    img.onerror = () => r(null);
+    img.src = url;
+  });
+}
+function _rotatedIconUrl(img, size, bearingRad) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.save();
+  ctx.translate(size / 2, size / 2);
+  ctx.rotate(bearingRad - Math.PI / 2); // ship.png faces East (right)
+  ctx.drawImage(img, -size / 2, -size / 2, size, size);
+  ctx.restore();
+  return c.toDataURL('image/png');
+}
+
+// ── Ship departure animation (one-shot on new ship built) ─────────────────────
+async function _animateShipDeparture(harbor) {
+  if (!_map) return;
+  const zoom    = _map.getZoom() ?? 14;
+  const SZ_BIG  = _shipAnimSize(zoom);
+  const SZ_SMALL = Math.max(4, Math.floor(SZ_BIG * 0.15));
+  const STEPS   = 10;
+  const STEP_MS = 1800;
+  const STEP_M  = 900;
+
+  const bearing = (harbor.shop_lat != null && harbor.shop_lng != null)
+    ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
+    : Math.PI;
+
+  const img     = await _loadImg(SHIP_ICON_MAP);
+  const iconUrl = img ? _rotatedIconUrl(img, 128, bearing) : SHIP_ICON_MAP;
+  const mkIcon  = sz => ({ url: iconUrl, scaledSize: new google.maps.Size(sz, sz),
+                            anchor: new google.maps.Point(sz / 2, sz / 2) });
+
+  let pos = { lat: harbor.lat, lng: harbor.lng };
+  let step = 0;
+  const m = new google.maps.Marker({ position: pos, map: _map, icon: mkIcon(SZ_BIG),
+                                      clickable: false, zIndex: 60 });
+  const tick = () => {
+    step++;
+    if (step > STEPS) { m.setMap(null); return; }
+    const t = step / STEPS;
+    const sz = Math.round(SZ_BIG + (SZ_SMALL - SZ_BIG) * t);
+    pos = _destPoint(pos.lat, pos.lng, bearing, STEP_M);
+    m.setPosition(pos); m.setOpacity(1 - t); m.setIcon(mkIcon(sz));
+    setTimeout(tick, STEP_MS);
+  };
+  setTimeout(tick, STEP_MS);
+}
+
+// ── Harbor ship loop animation (departure + arrival simultaneously) ────────────
+async function _startHarborAnim(harbor) {
+  if (_animations[harbor.id]?.active) return;
+  const anim = { active: true, markers: [] };
+  _animations[harbor.id] = anim;
+
+  const STEPS   = 10;
+  const STEP_MS = 1500;
+  const STEP_M  = 1400;
+
+  const bearing    = (harbor.shop_lat != null && harbor.shop_lng != null)
+    ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
+    : Math.PI;
+  const revBearing = bearing + Math.PI;
+
+  const img = await _loadImg(SHIP_ICON_MAP);
+  if (!anim.active) return;
+
+  function _ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+
+  // Build icon using current zoom; called at each leg start so zoom changes are respected
+  function mkIcon(url, sz) {
+    return { url, scaledSize: new google.maps.Size(sz, sz),
+             anchor: new google.maps.Point(sz / 2, sz / 2) };
+  }
+
+  function runLeg(isDepart, done) {
+    if (!anim.active || !_map) { done(); return; }
+    const zoom   = _map.getZoom() ?? 14;
+    const SZ_BIG  = _shipAnimSize(zoom);
+    const SZ_SMALL = Math.max(4, Math.floor(SZ_BIG * 0.13));
+    const moveBr = isDepart ? bearing : revBearing;
+    const iconUrl = img
+      ? _rotatedIconUrl(img, 128, isDepart ? bearing : revBearing)
+      : SHIP_ICON_MAP;
+
+    let pos = isDepart
+      ? { lat: harbor.lat, lng: harbor.lng }
+      : _destPoint(harbor.lat, harbor.lng, bearing, STEPS * STEP_M);
+
+    const m = new google.maps.Marker({
+      position: pos, map: _map,
+      icon: mkIcon(iconUrl, isDepart ? SZ_BIG : SZ_SMALL),
+      clickable: false, zIndex: 58,
+    });
+    m.setOpacity(isDepart ? 1 : 0.18);
+    anim.markers.push(m);
+
+    let step = 0;
+    const tick = () => {
+      if (!anim.active) { m.setMap(null); anim.markers = anim.markers.filter(x => x !== m); return; }
+      step++;
+      if (step > STEPS) {
+        m.setMap(null); anim.markers = anim.markers.filter(x => x !== m); done(); return;
+      }
+      const t   = _ease(step / STEPS);
+      const sz  = isDepart
+        ? Math.round(SZ_BIG   + (SZ_SMALL - SZ_BIG)  * t)
+        : Math.round(SZ_SMALL + (SZ_BIG  - SZ_SMALL)  * t);
+      pos = _destPoint(pos.lat, pos.lng, moveBr, STEP_M);
+      m.setPosition(pos);
+      m.setOpacity(isDepart ? (1 - t * 0.82) : (0.18 + t * 0.82));
+      m.setIcon(mkIcon(iconUrl, sz));
+      setTimeout(tick, STEP_MS);
+    };
+    setTimeout(tick, STEP_MS);
+  }
+
+  function loop() {
+    if (!anim.active) return;
+    // Run departure + arrival simultaneously — ships pass each other mid-sea
+    let d = false, a = false;
+    const check = () => { if (d && a && anim.active) setTimeout(loop, 3000); };
+    runLeg(true,  () => { d = true; check(); });
+    runLeg(false, () => { a = true; check(); });
+  }
+
+  loop();
+}
+
+function _stopHarborAnim(harborId) {
+  const anim = _animations[harborId];
+  if (!anim) return;
+  anim.active = false;
+  (anim.markers || []).forEach(m => m?.setMap(null));
+  anim.shipMarker?.setMap(null);
+  delete _animations[harborId];
+}
+
+function _bearing(lat1, lng1, lat2, lng2) {
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const y    = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180);
+  const x    = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180)
+              - Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
+  return Math.atan2(y, x);
+}
+
+function _destPoint(lat, lng, bearingRad, distM) {
+  const R   = 6371000;
+  const d   = distM / R;
+  const lat1 = lat * Math.PI / 180;
+  const lng1 = lng * Math.PI / 180;
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(bearingRad)
+  );
+  const lng2 = lng1 + Math.atan2(
+    Math.sin(bearingRad) * Math.sin(d) * Math.cos(lat1),
+    Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
+  );
+  return { lat: lat2 * 180 / Math.PI, lng: lng2 * 180 / Math.PI };
+}
+
+async function _doDeleteHarbor(harborId) {
+  if (!confirm('Delete this harbor? This cannot be undone. (Ships must have all expired first.)')) return;
+  try {
+    const fn = httpsCallable(_fns, 'deleteHarbor');
+    await fn({ harborId });
+    _showToast('Harbor deleted.');
+    _stopHarborAnim(harborId);
+    if (_markers[harborId]) { _markers[harborId].setMap(null); delete _markers[harborId]; }
+    delete _harbors[harborId];
+    document.getElementById('harborModal')?.classList.remove('open');
+  } catch (e) {
+    _showToast(e.message ?? 'Failed to delete harbor', 'error');
   }
 }
 
@@ -185,6 +432,7 @@ export function promptInstallHarbor(shopId, shopLat, shopLng) {
     strokeColor:   '#0ea5e9',
     strokeOpacity: 0.5,
     strokeWeight:  1.5,
+    clickable:     false,
   });
 
   const cancelBtn = document.createElement('button');
@@ -200,13 +448,19 @@ export function promptInstallHarbor(shopId, shopLat, shopLng) {
 
   _showToast('Tap a sea location inside the blue circle to place harbor.', 'info');
 
-  const clickHandler = _map.addListener('click', (e) => {
+  const clickHandler = _map.addListener('click', async (e) => {
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
     const dist = _distM(lat, lng, shopLat, shopLng);
     if (dist > RADIUS_M) {
       _cleanupInstall();
       _showToast('Too far from shop — cancelled. Re-open the shop to try again.', 'warn');
+      return;
+    }
+    _showToast('Checking location…', 'info');
+    const isSea = await _checkSeaZone(lat, lng);
+    if (!isSea) {
+      _showToast("⛔ Harbor must be placed on the coast or at sea. Tap near the water's edge.", 'warn');
       return;
     }
     _cleanupInstall();
@@ -237,7 +491,7 @@ function _showInstallConfirm(shopId, lat, lng) {
       <div style="font-size:16px;font-weight:700;color:#38bdf8;margin-bottom:8px">Install Harbor?</div>
       <div style="font-size:13px;color:#9ca3af;margin-bottom:20px;line-height:1.5">
         Cost: <strong style="color:#fbbf24">${HARBOR_COST.toLocaleString()} GP</strong><br>
-        <span style="font-size:11px">⚠️ Confirm this point is in sea / ocean</span>
+        <span style="font-size:11px">⚠️ Confirm this point is on the coast or at sea</span>
       </div>
       <div style="display:flex;gap:10px">
         <button id="harborConfirmCancelBtn"
@@ -266,7 +520,7 @@ function _showInstallConfirm(shopId, lat, lng) {
         const marker = new google.maps.Marker({
           position: { lat, lng },
           map: _map,
-          icon: { url: HARBOR_ICON, scaledSize: new google.maps.Size(40, 40), anchor: new google.maps.Point(20, 40) },
+          icon: { url: HARBOR_ICON, scaledSize: new google.maps.Size(_harborSize(_map?.getZoom() ?? 14), _harborSize(_map?.getZoom() ?? 14)), anchor: new google.maps.Point(_harborSize(_map?.getZoom() ?? 14) / 2, _harborSize(_map?.getZoom() ?? 14)) },
           title: `⚓ Harbor | 0/${MAX_SHIPS} ships`,
           zIndex: 55,
         });
@@ -385,34 +639,66 @@ function _renderSvBody(body, data) {
   });
 }
 
-// ── Sea zone detection via Nominatim ─────────────────────────────────────────
+// ── Coastal / sea zone detection via Nominatim ───────────────────────────────
+// Harbors sit at water's edge — accept pure sea AND coastal land features.
+// Only truly-inland OSM classes trigger an immediate rejection.
+const LAND_CLASSES = new Set(['highway', 'building', 'shop', 'railway']);
+
 async function _checkSeaZone(lat, lng) {
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=8&accept-language=en`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'JumperDAO/1.0', 'Accept-Language': 'en' },
-    });
-    // Rate-limited or unavailable — let the user proceed (CF doesn't independently verify)
-    if (!res.ok) return true;
-    const d = await res.json();
-    // "Unable to geocode" → open ocean with no land features
-    if (d.error) return true;
-    // OSM natural water body: class=natural, type=water/sea/bay/...
-    if (d.class === 'natural' && SEA_NATURAL_TYPES.has(d.type)) return true;
-    // Waterway/coastline
-    if (d.class === 'waterway') return true;
-    const text = [
-      d.display_name ?? '',
-      d.type         ?? '',
-      d.class        ?? '',
-      d.name         ?? '',
-      JSON.stringify(d.address ?? {}),
-    ].join(' ').toLowerCase();
-    return SEA_KEYWORDS.some(k => text.includes(k));
-  } catch (_) {
-    // Network error — let the user proceed
-    return true;
+  // Try 3 zoom levels: 10 (local) → 8 (regional) → 6 (continental)
+  for (const zoom of [10, 8, 6]) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=${zoom}&accept-language=en`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'JumperDAO/1.0', 'Accept-Language': 'en' },
+      });
+      if (!res.ok) return true; // rate-limited → allow
+      const d = await res.json();
+      if (d.error) return true; // open ocean / no feature
+
+      // ── Positive: sea / water body ──────────────────────────────────────────
+      if (d.class === 'natural' && SEA_NATURAL_TYPES.has(d.type)) return true;
+      if (d.class === 'place'   && (d.type === 'sea' || d.type === 'ocean')) return true;
+      if (d.class === 'waterway') return true;
+      // ── Positive: coastal infrastructure (piers, marinas, ports…) ───────────
+      if (d.class === 'man_made' && COASTAL_MAN_MADE.has(d.type)) return true;
+      if (d.class === 'amenity'  && COASTAL_AMENITY.has(d.type))  return true;
+      if (d.class === 'leisure'  && COASTAL_LEISURE.has(d.type))  return true;
+      if (d.class === 'landuse'  && COASTAL_LANDUSE.has(d.type))  return true;
+      // ── Positive: address contains a sea/harbour key ─────────────────────────
+      if (Object.keys(d.address ?? {}).some(k => SEA_ADDR_KEYS.has(k))) return true;
+      const text = [
+        d.display_name ?? '', d.type ?? '', d.class ?? '', d.name ?? '',
+        JSON.stringify(d.address ?? {}),
+      ].join(' ').toLowerCase();
+      if (SEA_KEYWORDS.some(k => text.includes(k))) return true;
+
+      // ── Definitive inland-only → reject immediately ──────────────────────────
+      // (highway, building, shop, railway — never coastal)
+      if (LAND_CLASSES.has(d.class)) return false;
+
+      // ── Ambiguous (amenity/man_made/landuse/place/boundary/…) → next zoom ───
+    } catch (_) {
+      return true; // network error → allow
+    }
   }
+
+  // All 3 Nominatim zooms were ambiguous.
+  // Final check: is there a sea coastline within 500m? (handles unmapped open ocean)
+  // "natural=coastline" in OSM is exclusively for ocean/sea shores — not river banks.
+  try {
+    const q = `[out:json][timeout:8];way["natural"="coastline"](around:500,${lat},${lng});out count;`;
+    const res = await fetch(
+      `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`,
+      { headers: { 'User-Agent': 'JumperDAO/1.0' } },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (parseInt(data.elements?.[0]?.tags?.total ?? '0', 10) > 0) return true;
+    }
+  } catch (_) { /* API failure → reject */ }
+
+  return false; // definitively not coastal
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

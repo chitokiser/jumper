@@ -270,6 +270,8 @@ async function getNearbyHarbors(uid, { lat, lng, radiusKm = 25 }) {
         shop_id:     h.shop_id,
         lat:         h.lat,
         lng:         h.lng,
+        shop_lat:    h.shop_lat ?? null,
+        shop_lng:    h.shop_lng ?? null,
         ship_count:  h.ship_count ?? 0,
         status:      h.status,
         created_at:  h.created_at?.toMillis?.() ?? null,
@@ -328,6 +330,35 @@ async function getHarborJackpot() {
   return { jackpot: jk.current, port: jk.port, ship: jk.ship, paid: jk.paid };
 }
 
+// ── Delete harbor (owner only, no active ships) ────────────────────────────────
+async function deleteHarbor(uid, { harborId }) {
+  if (!harborId) throw new HttpsError('invalid-argument', 'harborId is required');
+
+  const harborRef  = db.collection('harbors').doc(harborId);
+  const snap       = await harborRef.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Harbor not found');
+
+  const harbor = snap.data();
+  if (harbor.owner_id !== uid)     throw new HttpsError('permission-denied', 'You do not own this harbor');
+  if (harbor.status   !== 'active') throw new HttpsError('failed-precondition', 'Harbor is not active');
+
+  const nowMs     = Date.now();
+  const shipsSnap = await db.collection('trade_ships')
+    .where('harbor_id', '==', harborId)
+    .get();
+  const activeCount = shipsSnap.docs.filter(d => {
+    const s = d.data();
+    return s.status !== 'expired' && (s.expires_at?.toMillis?.() ?? 0) > nowMs;
+  }).length;
+  if (activeCount > 0) {
+    throw new HttpsError('failed-precondition',
+      `Cannot delete harbor with ${activeCount} active ship(s). Wait for all ships to expire first.`);
+  }
+
+  await harborRef.update({ status: 'deleted', deleted_at: admin.firestore.FieldValue.serverTimestamp() });
+  return { success: true };
+}
+
 module.exports = {
   installHarbor,
   buildTradeShip,
@@ -335,4 +366,5 @@ module.exports = {
   getNearbyHarbors,
   getMyShips,
   getHarborJackpot,
+  deleteHarbor,
 };

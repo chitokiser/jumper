@@ -1916,6 +1916,21 @@ function _makeShadowIcon(size) {
   };
 }
 
+// Ground shadow for bottom-anchored buildings: ellipse centered at the marker position (ground)
+function _makeShopShadowIcon(size) {
+  const sw = Math.round(size * 1.5);
+  const sh = 16;
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="' + sh + '">' +
+    '<defs><filter id="gsf"><feGaussianBlur stdDeviation="3"/></filter></defs>' +
+    '<ellipse cx="' + (sw / 2) + '" cy="' + (sh / 2) + '" rx="' + (sw / 2 - 2) + '" ry="' + (sh / 2 - 3) + '"' +
+    ' fill="rgba(0,0,0,0.30)" filter="url(#gsf)"/></svg>';
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(sw, sh),
+    anchor: new google.maps.Point(sw / 2, sh / 2),  // shadow center at position (= building base)
+  };
+}
+
 // Floating objects (dragon, Monster eyes) cast a smaller, lower-opacity shadow further below
 function _makeFloatingShadowIcon(size) {
   const sw = Math.round(size * 0.62);
@@ -3401,6 +3416,7 @@ export function forceWriteBattlePos(lat, lng) {
 const _wZoneCache = new Map(); // "lat3,lng3" → { ts, isWater }
 let _wLastCheckPos = null;
 let _wBannerEl = null;
+let _lastLandPos = null; // last Overpass-confirmed land position — character anchor while in water
 
 function _getWaterBanner() {
   if (!_wBannerEl) {
@@ -3423,10 +3439,24 @@ function _getWaterBanner() {
 function _applyWaterState(isWater) {
   if (_ctx) _ctx.onWater = !!isWater;
   _getWaterBanner().style.display = isWater ? 'block' : 'none';
+  if (!isWater && _wLastCheckPos) {
+    // Confirmed land position — save as anchor so we can snap back if water is detected
+    _lastLandPos = { lat: _wLastCheckPos.lat, lng: _wLastCheckPos.lng };
+  }
+  if (isWater && _lastLandPos) {
+    // Snap character marker back to last confirmed land position
+    updateMyLocation(_lastLandPos.lat, _lastLandPos.lng, 10, _ctx?.lastHeading ?? null);
+  }
 }
 
 async function _checkWaterZone(lat, lng) {
-  // 30m 이내 이동 시 재조회 생략
+  // 캐시 우선 (11m 격자 — 해안선 정밀도 확보)
+  const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  const now = Date.now();
+  const hit = _wZoneCache.get(key);
+  if (hit && now - hit.ts < 300000) { _applyWaterState(hit.isWater); return; } // 5분 캐시
+
+  // 캐시 미스 시에만 30m 스킵 (API 과다 호출 방지)
   if (_wLastCheckPos) {
     const dlat = (lat - _wLastCheckPos.lat) * 111000;
     const dlng = (lng - _wLastCheckPos.lng) * 111000 * Math.cos(lat * Math.PI / 180);
@@ -3434,22 +3464,58 @@ async function _checkWaterZone(lat, lng) {
   }
   _wLastCheckPos = { lat, lng };
 
-  const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
-  const now = Date.now();
-  const hit = _wZoneCache.get(key);
-  if (hit && now - hit.ts < 300000) { _applyWaterState(hit.isWater); return; } // 5분 캐시
-
   try {
-    const q = `[out:json][timeout:8];is_in(${lat},${lng})->.a;` +
-      `(area.a["natural"="water"];area.a["natural"="bay"];area.a["natural"="strait"];` +
-      `area.a["place"="ocean"];area.a["place"="sea"];area.a["landuse"="reservoir"];);out count;`;
-    const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    const isWater = parseInt(data.elements?.[0]?.tags?.total ?? '0', 10) > 0;
+    // ── 1차: Overpass is_in (OSM 폐곡선 수역 폴리곤) ────────────────────────
+    let isWater = false;
+    try {
+      const q = `[out:json][timeout:8];is_in(${lat},${lng})->.a;` +
+        `(area.a["natural"="water"];area.a["natural"="bay"];area.a["natural"="strait"];` +
+        `area.a["place"="ocean"];area.a["place"="sea"];area.a["landuse"="reservoir"];);out count;`;
+      const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+      if (res.ok) {
+        const data = await res.json();
+        isWater = parseInt(data.elements?.[0]?.tags?.total ?? '0', 10) > 0;
+      }
+    } catch { /* Overpass 실패 → Nominatim으로 보완 */ }
+
+    // ── 2차: Nominatim reverse geocode (Overpass false 또는 폴리곤 미맵핑 보완) ──
+    // 안다만해·통킹만 등 OSM 폐곡선 없는 바다에서 Overpass false → Nominatim이 정확히 잡음
+    if (!isWater) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=en`;
+        const nRes = await fetch(url, { headers: { 'User-Agent': 'JumperDAO/1.0', 'Accept-Language': 'en' } });
+        if (nRes.ok) {
+          const d = await nRes.json();
+          if (!d.error) {
+            const SEA_TYPES = new Set(['water','sea','bay','strait','gulf','ocean','channel','sound','inlet','fjord','lagoon','reef']);
+            if (d.class === 'natural' && SEA_TYPES.has(d.type)) isWater = true;
+            else if (d.class === 'place' && (d.type === 'sea' || d.type === 'ocean')) isWater = true;
+            else if (d.class === 'waterway') isWater = true;
+            if (!isWater) {
+              // display_name / address 에 바다 이름 포함 여부 (특정 명칭 위주로 false positive 방지)
+              const text = [d.display_name ?? '', d.name ?? '', JSON.stringify(d.address ?? {})].join(' ').toLowerCase();
+              const SEA_NAMES = [
+                'andaman sea','south china sea','east sea','yellow sea','java sea',
+                'gulf of thailand','gulf of tonkin','celebes sea','sulu sea',
+                'banda sea','timor sea','coral sea','arabian sea','bay of bengal',
+                'mediterranean sea','red sea','persian gulf','philippine sea',
+                'bismarck sea','solomon sea','sibuyan sea','flores sea',
+                'makassar strait','malacca strait','strait of malacca',
+                'vịnh hạ long','ha long bay','halong bay',
+              ];
+              if (SEA_NAMES.some(k => text.includes(k))) isWater = true;
+              // address 객체에 sea/ocean 키 존재 시
+              const addrKeys = Object.keys(d.address ?? {});
+              if (addrKeys.some(k => ['sea','ocean','bay','body_of_water','gulf','strait'].includes(k))) isWater = true;
+            }
+          }
+        }
+      } catch { /* Nominatim 실패 — isWater=false 유지 */ }
+    }
+
     _wZoneCache.set(key, { ts: now, isWater });
     _applyWaterState(isWater);
-  } catch { /* API 실패 시 게임플레이 차단 안 함 */ }
+  } catch { /* 전체 실패 시 게임플레이 차단 안 함 */ }
 }
 
 // ── 백그라운드 근접 감지 + 전투 GPS 추적 ─────────────────────────────────────
@@ -3470,7 +3536,12 @@ export function startWatchPosition(onFirst) {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
       _ctx.lastPos = { lat, lng, accuracy, heading };
       _ctx.gpsPos  = { lat, lng, accuracy, ts: Date.now() };
-      updateMyLocation(lat, lng, accuracy, heading);
+      // Don't move character into water — hold at last confirmed land position
+      if (_ctx.onWater && _lastLandPos) {
+        updateMyLocation(_lastLandPos.lat, _lastLandPos.lng, 10, _ctx.lastHeading ?? null);
+      } else {
+        updateMyLocation(lat, lng, accuracy, heading);
+      }
       _checkWaterZone(lat, lng);
       // 첫 번째 위치 수신 — 지도 이동 콜백
       if (!_firstFired) { _firstFired = true; onFirst?.(lat, lng, accuracy, heading); }
@@ -3617,7 +3688,8 @@ function _makeShopIcon(type, imageUrl) {
     shop_misc:    '/assets/images/shops/castle.png',
   };
   const url = imageUrl || TYPE_IMG[type] || '/assets/images/shops/arms.png';
-  return { url, scaledSize: new google.maps.Size(44, 44), anchor: new google.maps.Point(22, 22) };
+  // Bottom-center anchor so building stands on the ground, not floats at its center
+  return { url, scaledSize: new google.maps.Size(44, 44), anchor: new google.maps.Point(22, 44) };
 }
 
 function _makeShopHpBarIcon(hp, maxHp) {
@@ -3629,7 +3701,8 @@ function _makeShopHpBarIcon(hp, maxHp) {
   return {
     url: 'data:image/svg+xml,' + encodeURIComponent(svg),
     scaledSize: new google.maps.Size(W, H),
-    anchor:     new google.maps.Point(W / 2, -28),
+    // Building bottom is at position (anchor.y=44), top is 44px above → bar sits 3px above top
+    anchor:     new google.maps.Point(W / 2, H + 44 + 3),
   };
 }
 
@@ -3673,7 +3746,11 @@ function _renderShopMarker(shop) {
     _ctx._onShopClick?.(freshShop);
   });
 
-  _placeShadow(shop.id, shop.lat, shop.lng, 44, map, _shopShadows);
+  _shopShadows[shop.id] = new google.maps.Marker({
+    position: { lat: shop.lat, lng: shop.lng }, map,
+    icon: _makeShopShadowIcon(44),
+    zIndex: 1, clickable: false,
+  });
   _shopMarkers[shop.id] = marker;
 }
 

@@ -75,7 +75,7 @@ export async function loadMoneyTreeMarkers(lat, lng) {
     // Discard stale results if a plant completed while this fetch was in-flight
     if (gen !== _loadGen) return;
     _clearTreeMarkers();
-    (data.trees || []).forEach(_addTreeMarker);
+    (data.trees || []).forEach(t => _addTreeMarker(t));
   } catch (_) {}
 }
 

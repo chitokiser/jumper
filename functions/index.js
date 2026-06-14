@@ -3083,6 +3083,11 @@ exports.getHarborJackpot = onCall(wrapError(async (request) => {
   return await harborH.getHarborJackpot();
 }));
 
+exports.deleteHarbor = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await harborH.deleteHarbor(uid, request.data ?? {});
+}));
+
 // Affiliate 커미션 GP 환급 (bot.py 내부 호출)
 exports.starsRedeemCommission = onRequest(
   { cors: false, secrets: [telegramBotSecret], timeoutSeconds: 60 },

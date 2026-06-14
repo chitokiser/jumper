@@ -228,6 +228,15 @@
       ]
     },
     {
+      "collectionGroup": "trade_ships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "harbor_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "expires_at", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "harbors",
       "queryScope": "COLLECTION",
       "fields": [
