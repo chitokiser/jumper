@@ -272,13 +272,14 @@ function _loadImg(url) {
     img.src = url;
   });
 }
-function _rotatedIconUrl(img, size, bearingRad) {
+function _rotatedIconUrl(img, size, bearingRad, flipH = false) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
   ctx.save();
   ctx.translate(size / 2, size / 2);
   ctx.rotate(bearingRad - Math.PI / 2); // ship.png faces East (right)
+  if (flipH) ctx.scale(-1, 1);          // mirror bow direction without flipping upside-down
   ctx.drawImage(img, -size / 2, -size / 2, size, size);
   ctx.restore();
   return c.toDataURL('image/png');
@@ -358,9 +359,9 @@ async function _startHarborAnim(harbor) {
   const img = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
   if (!anim.active) return;
 
-  // Two pre-baked icons: bow toward sea (depart) and bow toward harbor (arrive)
-  const departIcon = img ? _rotatedIconUrl(img, 128, bearing)           : SHIP_ICON_MAP;
-  const arriveIcon = img ? _rotatedIconUrl(img, 128, bearing + Math.PI) : SHIP_ICON_MAP;
+  // Two pre-baked icons: bow toward sea (depart) and bow toward harbor (arrive via horizontal mirror)
+  const departIcon = img ? _rotatedIconUrl(img, 128, bearing)        : SHIP_ICON_MAP;
+  const arriveIcon = img ? _rotatedIconUrl(img, 128, bearing, true)  : SHIP_ICON_MAP;
 
   function _ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
   function mkIcon(url, sz) {
