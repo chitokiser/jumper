@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>지갑 관리 — Jump</title>
+  <title>Wallet Management — Jump</title>
   <link rel="stylesheet" href="/assets/css/pages/buggy.css" />
   <style>
     html, body { margin: 0; padding: 0; background: #fafaf9; min-height: 100dvh; }
@@ -111,25 +111,25 @@
 <body>
 
 <header class="wlt-header">
-  <button class="wlt-header-back" id="btnBack" aria-label="뒤로">&#8592;</button>
-  <h1>💳 지갑 관리</h1>
+  <button class="wlt-header-back" id="btnBack" aria-label="Back">&#8592;</button>
+  <h1>💳 Wallet Management</h1>
 </header>
 
 <div class="wlt-body">
 
-  <!-- HEX 잔액 -->
+  <!-- HEX Balance -->
   <div class="wlt-card">
-    <p class="wlt-card-title">HEX 잔액</p>
+    <p class="wlt-card-title">HEX Balance</p>
     <div id="walletSection">
-      <div class="wlt-spinner">불러오는 중...</div>
+      <div class="wlt-spinner">Loading...</div>
     </div>
   </div>
 
-  <!-- 버기카 이용내역 -->
+  <!-- Buggy Usage History -->
   <div class="wlt-card">
-    <p class="wlt-card-title">버기카 이용내역</p>
+    <p class="wlt-card-title">Buggy Usage History</p>
     <div id="rideHistorySection">
-      <div class="wlt-spinner">불러오는 중...</div>
+      <div class="wlt-spinner">Loading...</div>
     </div>
   </div>
 
@@ -177,7 +177,7 @@ function fmtVnd(n) { return `₫${Number(n || 0).toLocaleString()}`; }
 function renderWallet(data, walletAddr) {
   const sec = document.getElementById('walletSection');
   if (!walletAddr && !data) {
-    sec.innerHTML = `<div class="wlt-no-wallet"><div class="icon">💳</div>연동된 HEX 지갑이 없습니다.<br>관리자에게 문의하세요.</div>`;
+    sec.innerHTML = `<div class="wlt-no-wallet"><div class="icon">💳</div>No linked HEX wallet found.<br>Please contact admin.</div>`;
     return;
   }
 
