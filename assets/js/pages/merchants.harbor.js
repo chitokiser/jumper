@@ -311,27 +311,28 @@ async function _animateShipDeparture(harbor) {
   const zoom     = _map.getZoom() ?? 14;
   const SZ_BIG   = _shipAnimSize(zoom);
   const SZ_SMALL = Math.max(4, Math.floor(SZ_BIG * 0.15));
-  const STEPS    = 100;
+  const STEPS    = 80;
   const STEP_MS  = 100;
   const STEP_M   = 20;
 
-  const bearing = (harbor.shop_lat != null && harbor.shop_lng != null)
+  const bearing     = (harbor.shop_lat != null && harbor.shop_lng != null)
     ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
     : Math.PI;
+  // Move parallel to coastline (perpendicular to sea-facing bearing) — never crosses land/islands
+  const perpBearing = bearing + Math.PI / 2;
 
-  // Single frame: load first sprite or fallback
-  // sea to the East (right) → natural image; sea to the West (left) → flip
-  const img = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
-  const seaRight = Math.sin(bearing) >= 0;
-  const iconUrl = img ? _rotatedIconUrl(img, 128, !seaRight) : SHIP_ICON_MAP;
+  const img   = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
+  // Face the perpendicular travel direction (left or right along coast)
+  const flipH  = Math.sin(perpBearing) < 0;
+  const iconUrl = img ? _rotatedIconUrl(img, 128, flipH) : SHIP_ICON_MAP;
 
   const mkIcon = (url, sz) => ({
     url, scaledSize: new google.maps.Size(sz, sz),
     anchor: new google.maps.Point(sz / 2, sz / 2),
   });
 
-  // Start 300 m into the sea so the ship never crosses the coastline/island at the harbor edge
-  let pos  = _destPoint(harbor.lat, harbor.lng, bearing, 300);
+  // Begin 800 m out at sea (well past any nearshore islands), sail along the coast
+  let pos  = _destPoint(harbor.lat, harbor.lng, bearing, 800);
   let step = 0;
   const m  = new google.maps.Marker({
     position: pos, map: _map, icon: mkIcon(iconUrl, SZ_BIG),
@@ -343,7 +344,7 @@ async function _animateShipDeparture(harbor) {
     if (step > STEPS) { m.setMap(null); return; }
     const t  = ease(step / STEPS);
     const sz = Math.round(SZ_BIG + (SZ_SMALL - SZ_BIG) * t);
-    pos = _destPoint(pos.lat, pos.lng, bearing, STEP_M);
+    pos = _destPoint(pos.lat, pos.lng, perpBearing, STEP_M);
     m.setPosition(pos);
     m.setOpacity(1 - t);
     m.setIcon(mkIcon(iconUrl, sz));
@@ -352,35 +353,39 @@ async function _animateShipDeparture(harbor) {
   setTimeout(tick, STEP_MS);
 }
 
-// ── Harbor ship loop animation (departure + arrival simultaneously) ────────────
+// ── Harbor ship loop animation ─────────────────────────────────────────────────
+// Ships patrol parallel to the coastline at SEA_DEPTH distance from the harbor.
+// This guarantees they never cross any island between the harbor and open sea.
 async function _startHarborAnim(harbor) {
   if (_animations[harbor.id]?.active) return;
   const anim = { active: true, markers: [] };
   _animations[harbor.id] = anim;
 
-  const STEPS      = 100; // 100 × 20m × 100ms = 2km, 10s per leg
+  const STEPS      = 100;
   const STEP_MS    = 100;
   const STEP_M     = 20;
-  const SEA_OFFSET = 300;                    // skip 300 m at harbor edge to avoid coastline/islands
-  const SEA_DIST   = STEPS * STEP_M;        // 2 000 m animation range beyond the offset
+  const SEA_DEPTH  = 800;             // m into sea: patrol depth (past nearshore islands)
+  const PATROL_LEN = STEPS * STEP_M; // 2 000 m patrol range along the coast
 
-  const bearing = (harbor.shop_lat != null && harbor.shop_lng != null)
+  const bearing     = (harbor.shop_lat != null && harbor.shop_lng != null)
     ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
     : Math.PI;
+  // Perpendicular to the sea direction = parallel to the coastline
+  const perpBearing = bearing + Math.PI / 2;
 
-  // Sea-side origin: 300 m out from the harbor marker into open water
-  const seaOrigin = _destPoint(harbor.lat, harbor.lng, bearing, SEA_OFFSET);
+  // Patrol center sits 800 m out to sea from the harbor marker
+  const patrolCenter = _destPoint(harbor.lat, harbor.lng, bearing, SEA_DEPTH);
+  const halfLen      = PATROL_LEN / 2; // 1 000 m each side of center
 
-  // Single image: first sprite or fallback
   const img = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
   if (!anim.active) return;
 
-  // Two orientations only — no diagonal rotation, only horizontal mirror allowed
-  // sea to the East (right) → departure: natural; arrival: flipped
-  // sea to the West (left)  → departure: flipped; arrival: natural
-  const seaRight   = Math.sin(bearing) >= 0;
-  const departIcon = img ? _rotatedIconUrl(img, 128, !seaRight) : SHIP_ICON_MAP;
-  const arriveIcon = img ? _rotatedIconUrl(img, 128,  seaRight) : SHIP_ICON_MAP;
+  // Leg A goes in perpBearing direction, leg B goes the opposite way
+  const goEast     = Math.sin(perpBearing) >= 0; // perpBearing has positive East component?
+  const rightIcon  = img ? _rotatedIconUrl(img, 128, false) : SHIP_ICON_MAP; // face right
+  const leftIcon   = img ? _rotatedIconUrl(img, 128, true)  : SHIP_ICON_MAP; // face left
+  const departIcon = goEast ? rightIcon : leftIcon;
+  const arriveIcon = goEast ? leftIcon  : rightIcon;
 
   function _ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
   function mkIcon(url, sz) {
@@ -392,14 +397,14 @@ async function _startHarborAnim(harbor) {
     const zoom     = _map.getZoom() ?? 14;
     const SZ_BIG   = _shipAnimSize(zoom);
     const SZ_SMALL = Math.max(4, Math.floor(SZ_BIG * 0.13));
-    const moveBr   = isDepart ? bearing : bearing + Math.PI;
-    const iconUrl  = isDepart ? departIcon : arriveIcon;
+    // Leg A: move in perpBearing; Leg B: move in opposite
+    const moveBr  = isDepart ? perpBearing : perpBearing + Math.PI;
+    const iconUrl = isDepart ? departIcon  : arriveIcon;
 
-    // Both legs operate between seaOrigin (300 m out) and the far sea end (2 300 m out)
-    // — the ship never enters the 300 m coastal buffer where islands typically sit
+    // Start each leg from opposite ends of the patrol line
     let pos = isDepart
-      ? { lat: seaOrigin.lat, lng: seaOrigin.lng }
-      : _destPoint(seaOrigin.lat, seaOrigin.lng, bearing, SEA_DIST);
+      ? _destPoint(patrolCenter.lat, patrolCenter.lng, perpBearing + Math.PI, halfLen)
+      : _destPoint(patrolCenter.lat, patrolCenter.lng, perpBearing,           halfLen);
 
     const m = new google.maps.Marker({
       position: pos, map: _map,
