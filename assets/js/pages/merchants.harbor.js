@@ -288,14 +288,20 @@ function _rotatedIconUrl(img, size, flipH = false) {
   return c.toDataURL('image/png');
 }
 function _rotatedDockUrl(img, size, bearingRad) {
+  // No diagonal rotation — only horizontal mirror when sea is to the West (left)
+  const flipH = Math.sin(bearingRad) < 0;
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
-  ctx.save();
-  ctx.translate(size / 2, size / 2);
-  ctx.rotate(bearingRad - Math.PI / 2); // dock.png faces East by default
-  ctx.drawImage(img, -size / 2, -size / 2, size, size);
-  ctx.restore();
+  if (flipH) {
+    ctx.save();
+    ctx.translate(size, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, 0, 0, size, size);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, 0, 0, size, size);
+  }
   return c.toDataURL('image/png');
 }
 
