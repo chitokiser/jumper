@@ -308,7 +308,7 @@ async function processGoldMines() {
 
     const distM      = haversineM(data.lat, data.lng, data.store_lat, data.store_lng);
     const efficiency = calcEfficiency(distM);
-    const produced   = miners * GOLD_PER_MINER_MIN * efficiency;
+    const produced   = miners * GOLD_PER_MINER_MIN * 5 * efficiency;
     const remain     = data.remain_gold ?? 0;
     const mined      = Math.min(produced, remain);
     if (mined <= 0) continue;

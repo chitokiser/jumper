@@ -2468,32 +2468,26 @@ function renderVouchers() {
   }).join('');
 
   el.querySelectorAll('.btn-craft:not(:disabled)').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', () => withBtn(btn, async () => {
       const vid = btn.dataset.voucher;
-      btn.disabled = true; btn.textContent = _t('craft_processing');
-      try {
-        const res = await httpsCallable(functions, 'craftVoucher')({ voucherId: vid });
-        const reward = res.data.reward || '';
-        const gpGranted = res.data.gpGranted || 0;
-        if (reward.startsWith('weapon_')) {
-          equipWeapon(reward);
-          showInfoToast(_t('weapon_equip_craft', reward, getTotalAtk()));
-        } else if (reward.startsWith('armo_')) {
-          equipArmor(reward);
-          showInfoToast(_t('armor_equip_craft', reward, getDefense()));
-        }
-        if (gpGranted > 0) {
-          addPlayerGold(gpGranted); // immediate local update
-          showInfoToast(`🪙 +${gpGranted.toLocaleString()} GP rewarded!`);
-        }
-        const rewardDisp = gpGranted > 0 ? `+${gpGranted.toLocaleString()} GP` : reward;
-        alert(_t('craft_success', res.data.voucherName, rewardDisp));
-        await loadInventory({ force: true });
-      } catch (err) {
-        alert(_t('craft_failed', err.message || err));
-        btn.disabled = false; btn.textContent = _t('craft_btn');
+      const res = await httpsCallable(functions, 'craftVoucher')({ voucherId: vid });
+      const reward = res.data.reward || '';
+      const gpGranted = res.data.gpGranted || 0;
+      if (reward.startsWith('weapon_')) {
+        equipWeapon(reward);
+        showInfoToast(_t('weapon_equip_craft', reward, getTotalAtk()));
+      } else if (reward.startsWith('armo_')) {
+        equipArmor(reward);
+        showInfoToast(_t('armor_equip_craft', reward, getDefense()));
       }
-    });
+      if (gpGranted > 0) {
+        addPlayerGold(gpGranted);
+        showInfoToast(`🪙 +${gpGranted.toLocaleString()} GP rewarded!`);
+      }
+      const rewardDisp = gpGranted > 0 ? `+${gpGranted.toLocaleString()} GP` : reward;
+      alert(_t('craft_success', res.data.voucherName, rewardDisp));
+      await loadInventory({ force: true });
+    }).catch(err => alert(_t('craft_failed', err.message || err))));
   });
 }
 
@@ -4635,6 +4629,35 @@ function showToast(msg, type = 'info') {
   }, 2750);
 }
 
+// ── withBtn — disable button + show spinner while async op runs ───────────────
+function withBtn(btn, asyncFn) {
+  if (!btn || btn.dataset.pending) return Promise.resolve();
+  btn.dataset.pending = '1';
+  const orig = btn.innerHTML; const origD = btn.disabled;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span>';
+  return Promise.resolve().then(asyncFn).finally(() => {
+    delete btn.dataset.pending; btn.disabled = origD; btn.innerHTML = orig;
+  });
+}
+
+// ── page-wide pending overlay ─────────────────────────────────────────────────
+let _pendingOverlay = null;
+function showPendingOverlay(msg = 'Processing…') {
+  if (!_pendingOverlay) {
+    _pendingOverlay = document.createElement('div');
+    _pendingOverlay.id = 'gamePendingOverlay';
+    _pendingOverlay.setAttribute('data-fs-modal', '');
+    _pendingOverlay.innerHTML = '<div class="gpo-box"><div class="gpo-spin"></div><span class="gpo-msg"></span></div>';
+    document.body.appendChild(_pendingOverlay);
+  }
+  _pendingOverlay.querySelector('.gpo-msg').textContent = msg;
+  _pendingOverlay.classList.remove('hidden');
+}
+function hidePendingOverlay() {
+  _pendingOverlay?.classList.add('hidden');
+}
+
 // ── 트레져헌터 랭킹 ────────────────────────────────────────────────────────────
 let _hunterRankTab = 'monsters'; // 'monsters' | 'treasures'
 let _hunterRankCache = { monsters: null, treasures: null };
@@ -5660,4 +5683,7 @@ function _openOwnerItemEditor(shop) {
 
 init();
 
-window.showToast = showToast;
+window.showToast          = showToast;
+window.withBtn            = withBtn;
+window.showPendingOverlay = showPendingOverlay;
+window.hidePendingOverlay = hidePendingOverlay;

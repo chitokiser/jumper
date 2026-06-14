@@ -47,7 +47,6 @@ const coopH                  = require('./handlers/coop');
 const daoH                   = require('./handlers/dao');
 const treasureH              = require('./handlers/treasure');
 const communityH             = require('./handlers/community');
-const buggyH                 = require('./handlers/buggy');
 const supportChatH           = require('./handlers/supportChat');
 const shopH                  = require('./handlers/shop');
 const nfcH                   = require('./handlers/nfc');
@@ -2024,79 +2023,6 @@ exports.confirmVoucher = onCall(wrapError(async (req) => {
   return communityH.confirmVoucher(uid, req.data ?? {});
 }));
 
-// ════════════════════════════════════════════════════════════════════════════
-// 버기카 호출 서비스 (오션파크)
-// ════════════════════════════════════════════════════════════════════════════
-// requestRide: HEX 잔액 온체인 조회 필요 (adminKeySecret → getProvider 내부)
-exports.buggyRequestRide = onCall(
-  { secrets: [walletSecret, adminKeySecret] },
-  wrapError(async (req) => {
-    const uid = requireAuth(req);
-    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-    return buggyH.requestRide(uid, req.data ?? {});
-  })
-);
-exports.buggyCancelRide = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.cancelRide(uid, req.data ?? {});
-}));
-exports.buggyAcceptRide = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.acceptRide(uid, req.data ?? {});
-}));
-exports.buggyDriverArrive = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.driverArrive(uid, req.data ?? {});
-}));
-// startRide: 탑승 시작 전 HEX 잔액 재확인
-exports.buggyStartRide = onCall(
-  { secrets: [walletSecret, adminKeySecret] },
-  wrapError(async (req) => {
-    const uid = requireAuth(req);
-    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-    return buggyH.startRide(uid, req.data ?? {});
-  })
-);
-// endRide: HEX 온체인 결제 실행
-exports.buggyEndRide = onCall(
-  { secrets: [walletSecret, adminKeySecret] },
-  wrapError(async (req) => {
-    const uid = requireAuth(req);
-    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-    return buggyH.endRide(uid, req.data ?? {}, walletSecret.value());
-  })
-);
-exports.buggyUpdateDriverLocation = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.updateDriverLocation(uid, req.data ?? {});
-}));
-exports.buggySetDriverOnline = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.setDriverOnline(uid, req.data ?? {});
-}));
-exports.buggyAdminCreateDriver = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.adminCreateDriver(uid, req.data ?? {});
-}));
-exports.buggyAdminForceEnd = onCall(
-  { secrets: [walletSecret, adminKeySecret] },
-  wrapError(async (req) => {
-    const uid = requireAuth(req);
-    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-    return buggyH.adminForceEnd(uid, req.data ?? {}, walletSecret.value());
-  })
-);
-exports.buggyAdminSaveConfig = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.adminSaveConfig(uid, req.data ?? {});
-}));
-exports.buggyGetDriverEarnings = onCall(wrapError(async (req) => {
-  const uid = requireAuth(req);
-  return buggyH.getDriverEarnings(uid, req.data ?? {});
-}));
-exports.buggyGetConfig = onCall(wrapError(async (_req) => {
-  return buggyH.getConfig();
-}));
 
 // ════════════════════════════════════════════════════════════════════════════
 // 관리자: 회원 비활성화 / 재활성화
@@ -2749,7 +2675,7 @@ exports.broadcastGpEvent = onCall(
 
 // ── NPC 이벤트 스케줄러 (1분마다 체크 → 14~20분 랜덤 간격 발화) ────────────
 exports.npcEventScheduler = onSchedule(
-  { schedule: 'every 1 minutes', secrets: [telegramBotSecret, announceGroupSecret] },
+  { schedule: 'every 5 minutes', secrets: [telegramBotSecret, announceGroupSecret] },
   async () => {
     try {
       const result = await npcH.runNpcScheduler(
@@ -3048,7 +2974,7 @@ exports.adminSetGoldMineConfig = onCall(wrapError(async (request) => {
 }));
 
 exports.processGoldMines = onSchedule(
-  { schedule: 'every 1 minutes', timeoutSeconds: 300 },
+  { schedule: 'every 5 minutes', timeoutSeconds: 300 },
   async () => { await goldMineH.processGoldMines(); }
 );
 

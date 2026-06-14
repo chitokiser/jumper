@@ -6,7 +6,13 @@ import { setMovementEnabled } from './merchants.virtual.js';
 
 const HARBOR_ICON   = '/assets/images/shops/dock.png';
 const SHIP_ICON     = '/assets/images/shops/ship2.png'; // side-view for UI
-const SHIP_ICON_MAP = '/assets/images/shops/ship.png';  // top-down for map animation
+const SHIP_ICON_MAP = '/assets/images/shops/ship.png';  // top-down fallback
+const SHIP_SPRITES  = [
+  '/assets/images/shops/ship/1.png',
+  '/assets/images/shops/ship/2.png',
+  '/assets/images/shops/ship/3.png',
+  '/assets/images/shops/ship/4.png',
+];
 const HARBOR_COST   = 100000;
 const SHIP_COST     = 10000;
 const MAX_SHIPS     = 10;
@@ -47,6 +53,7 @@ let _markers    = {};   // harborId → google.maps.Marker
 let _harbors    = {};   // harborId → harbor data
 let _animations = {};   // harborId → { active: bool, marker: Marker|null }
 let _activeInstall = null; // { clickHandler, circle, cleanup }
+const _harborBearings = {}; // harborId → sea-facing bearing (radians)
 
 // ── Zoom-responsive sizing ────────────────────────────────────────────────────
 function _harborSize(zoom) {
@@ -67,13 +74,22 @@ function _shipAnimSize(zoom) {
 }
 function _onZoomChanged() {
   if (!_map) return;
-  const sz = _harborSize(_map.getZoom());
-  for (const marker of Object.values(_markers)) {
-    marker.setIcon({
-      url: HARBOR_ICON,
-      scaledSize: new google.maps.Size(sz, sz),
-      anchor: new google.maps.Point(sz / 2, sz),
-    });
+  const sz      = _harborSize(_map.getZoom());
+  const dockImg = _imgCache[HARBOR_ICON];
+  for (const [id, marker] of Object.entries(_markers)) {
+    if (dockImg) {
+      marker.setIcon({
+        url:        _rotatedDockUrl(dockImg, sz * 2, _harborBearings[id] ?? 0),
+        scaledSize: new google.maps.Size(sz, sz),
+        anchor:     new google.maps.Point(sz / 2, sz / 2),
+      });
+    } else {
+      marker.setIcon({
+        url:        HARBOR_ICON,
+        scaledSize: new google.maps.Size(sz, sz),
+        anchor:     new google.maps.Point(sz / 2, sz / 2),
+      });
+    }
   }
 }
 
@@ -83,6 +99,9 @@ export function initHarbor(ctx, map, functions, uid) {
   _fns = functions;
   _uid = uid;
   map.addListener('zoom_changed', _onZoomChanged);
+  // Preload all ship/dock images so rotated icons are ready immediately
+  _loadImg(HARBOR_ICON);
+  SHIP_SPRITES.forEach(url => _loadImg(url));
 }
 
 export function setHarborUid(uid) { _uid = uid; }
@@ -113,24 +132,38 @@ function _renderMarkers(harbors) {
   }
   for (const harbor of harbors) {
     _harbors[harbor.id] = harbor;
+    // Compute bearing from shop → harbor = direction toward sea
+    _harborBearings[harbor.id] = (harbor.shop_lat != null && harbor.shop_lng != null)
+      ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
+      : 0;
     if (_markers[harbor.id]) {
       _markers[harbor.id].setPosition({ lat: harbor.lat, lng: harbor.lng });
       continue;
     }
-    const _sz = _harborSize(_map.getZoom());
-    const marker = new google.maps.Marker({
+    const _sz     = _harborSize(_map.getZoom());
+    const dockImg = _imgCache[HARBOR_ICON];
+    const bearing = _harborBearings[harbor.id];
+    const marker  = new google.maps.Marker({
       position: { lat: harbor.lat, lng: harbor.lng },
       map:      _map,
-      icon: {
-        url:        HARBOR_ICON,
-        scaledSize: new google.maps.Size(_sz, _sz),
-        anchor:     new google.maps.Point(_sz / 2, _sz),
-      },
+      icon: dockImg
+        ? { url: _rotatedDockUrl(dockImg, _sz * 2, bearing), scaledSize: new google.maps.Size(_sz, _sz), anchor: new google.maps.Point(_sz / 2, _sz / 2) }
+        : { url: HARBOR_ICON, scaledSize: new google.maps.Size(_sz, _sz), anchor: new google.maps.Point(_sz / 2, _sz / 2) },
       title:  `⚓ Harbor | ${harbor.ship_count}/${MAX_SHIPS} ships`,
       zIndex: 55,
     });
     marker.addListener('click', () => openHarborModal(harbor.id));
     _markers[harbor.id] = marker;
+    // If dock image was still loading, apply rotated icon once it finishes
+    if (!dockImg) {
+      _loadImg(HARBOR_ICON).then(img => {
+        const m  = _markers[harbor.id];
+        if (!img || !m) return;
+        const sz = _harborSize(_map?.getZoom() ?? 14);
+        const br = _harborBearings[harbor.id] ?? 0;
+        m.setIcon({ url: _rotatedDockUrl(img, sz * 2, br), scaledSize: new google.maps.Size(sz, sz), anchor: new google.maps.Point(sz / 2, sz / 2) });
+      });
+    }
     _startHarborAnim(harbor);
   }
 }
@@ -212,11 +245,9 @@ function _fillHarborModal(harbor) {
 
 async function _doBuildShip(harborId) {
   const btn = document.getElementById('harborBuildShipBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Building…'; }
-  try {
+  await _withBtn(btn, async () => {
     const fn = httpsCallable(_fns, 'buildTradeShip');
     const { data } = await fn({ harborId });
-    // Update local cache
     if (_harbors[harborId]) {
       _harbors[harborId] = { ..._harbors[harborId], ship_count: (_harbors[harborId].ship_count ?? 0) + 1 };
       if (_markers[harborId]) _markers[harborId].setTitle(`⚓ Harbor | ${_harbors[harborId].ship_count}/${MAX_SHIPS} ships`);
@@ -226,10 +257,7 @@ async function _doBuildShip(harborId) {
     document.getElementById('harborModal')?.classList.remove('open');
     _fillHarborModal(_harbors[harborId]);
     document.getElementById('harborModal')?.classList.add('open');
-  } catch (e) {
-    _showToast(e.message ?? 'Failed to build ship', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = `⛵ Build Trade Ship — ${SHIP_COST.toLocaleString()} GP`; }
-  }
+  }).catch(e => _showToast(e.message ?? 'Failed to build ship', 'error'));
 }
 
 // ── Canvas image cache + rotation ─────────────────────────────────────────────
@@ -255,37 +283,57 @@ function _rotatedIconUrl(img, size, bearingRad) {
   ctx.restore();
   return c.toDataURL('image/png');
 }
+function _rotatedDockUrl(img, size, bearingRad) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.save();
+  ctx.translate(size / 2, size / 2);
+  ctx.rotate(bearingRad - Math.PI / 2); // dock.png faces East by default
+  ctx.drawImage(img, -size / 2, -size / 2, size, size);
+  ctx.restore();
+  return c.toDataURL('image/png');
+}
 
 // ── Ship departure animation (one-shot on new ship built) ─────────────────────
 async function _animateShipDeparture(harbor) {
   if (!_map) return;
-  const zoom    = _map.getZoom() ?? 14;
-  const SZ_BIG  = _shipAnimSize(zoom);
+  const zoom     = _map.getZoom() ?? 14;
+  const SZ_BIG   = _shipAnimSize(zoom);
   const SZ_SMALL = Math.max(4, Math.floor(SZ_BIG * 0.15));
-  const STEPS   = 10;
-  const STEP_MS = 1800;
-  const STEP_M  = 900;
+  const STEPS    = 100;
+  const STEP_MS  = 100;
+  const STEP_M   = 20;
 
   const bearing = (harbor.shop_lat != null && harbor.shop_lng != null)
     ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
     : Math.PI;
 
-  const img     = await _loadImg(SHIP_ICON_MAP);
+  // Single frame: load first sprite or fallback; rotate bow toward sea
+  const img = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
   const iconUrl = img ? _rotatedIconUrl(img, 128, bearing) : SHIP_ICON_MAP;
-  const mkIcon  = sz => ({ url: iconUrl, scaledSize: new google.maps.Size(sz, sz),
-                            anchor: new google.maps.Point(sz / 2, sz / 2) });
 
-  let pos = { lat: harbor.lat, lng: harbor.lng };
+  const mkIcon = (url, sz) => ({
+    url, scaledSize: new google.maps.Size(sz, sz),
+    anchor: new google.maps.Point(sz / 2, sz / 2),
+  });
+
+  let pos  = { lat: harbor.lat, lng: harbor.lng };
   let step = 0;
-  const m = new google.maps.Marker({ position: pos, map: _map, icon: mkIcon(SZ_BIG),
-                                      clickable: false, zIndex: 60 });
+  const m  = new google.maps.Marker({
+    position: pos, map: _map, icon: mkIcon(iconUrl, SZ_BIG),
+    clickable: false, zIndex: 60,
+  });
+  const ease = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   const tick = () => {
     step++;
     if (step > STEPS) { m.setMap(null); return; }
-    const t = step / STEPS;
+    const t  = ease(step / STEPS);
     const sz = Math.round(SZ_BIG + (SZ_SMALL - SZ_BIG) * t);
     pos = _destPoint(pos.lat, pos.lng, bearing, STEP_M);
-    m.setPosition(pos); m.setOpacity(1 - t); m.setIcon(mkIcon(sz));
+    m.setPosition(pos);
+    m.setOpacity(1 - t);
+    m.setIcon(mkIcon(iconUrl, sz));
     setTimeout(tick, STEP_MS);
   };
   setTimeout(tick, STEP_MS);
@@ -297,39 +345,39 @@ async function _startHarborAnim(harbor) {
   const anim = { active: true, markers: [] };
   _animations[harbor.id] = anim;
 
-  const STEPS   = 10;
-  const STEP_MS = 1500;
-  const STEP_M  = 1400;
+  const STEPS    = 100; // 100 × 20m × 100ms = 2km, 10s per leg
+  const STEP_MS  = 100;
+  const STEP_M   = 20;
+  const SEA_DIST = STEPS * STEP_M;
 
-  const bearing    = (harbor.shop_lat != null && harbor.shop_lng != null)
+  const bearing = (harbor.shop_lat != null && harbor.shop_lng != null)
     ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
     : Math.PI;
-  const revBearing = bearing + Math.PI;
 
-  const img = await _loadImg(SHIP_ICON_MAP);
+  // Single image: first sprite or fallback
+  const img = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
   if (!anim.active) return;
 
-  function _ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+  // Two pre-baked icons: bow toward sea (depart) and bow toward harbor (arrive)
+  const departIcon = img ? _rotatedIconUrl(img, 128, bearing)           : SHIP_ICON_MAP;
+  const arriveIcon = img ? _rotatedIconUrl(img, 128, bearing + Math.PI) : SHIP_ICON_MAP;
 
-  // Build icon using current zoom; called at each leg start so zoom changes are respected
+  function _ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
   function mkIcon(url, sz) {
-    return { url, scaledSize: new google.maps.Size(sz, sz),
-             anchor: new google.maps.Point(sz / 2, sz / 2) };
+    return { url, scaledSize: new google.maps.Size(sz, sz), anchor: new google.maps.Point(sz / 2, sz / 2) };
   }
 
   function runLeg(isDepart, done) {
     if (!anim.active || !_map) { done(); return; }
-    const zoom   = _map.getZoom() ?? 14;
-    const SZ_BIG  = _shipAnimSize(zoom);
+    const zoom     = _map.getZoom() ?? 14;
+    const SZ_BIG   = _shipAnimSize(zoom);
     const SZ_SMALL = Math.max(4, Math.floor(SZ_BIG * 0.13));
-    const moveBr = isDepart ? bearing : revBearing;
-    const iconUrl = img
-      ? _rotatedIconUrl(img, 128, isDepart ? bearing : revBearing)
-      : SHIP_ICON_MAP;
+    const moveBr   = isDepart ? bearing : bearing + Math.PI;
+    const iconUrl  = isDepart ? departIcon : arriveIcon;
 
     let pos = isDepart
       ? { lat: harbor.lat, lng: harbor.lng }
-      : _destPoint(harbor.lat, harbor.lng, bearing, STEPS * STEP_M);
+      : _destPoint(harbor.lat, harbor.lng, bearing, SEA_DIST);
 
     const m = new google.maps.Marker({
       position: pos, map: _map,
@@ -346,10 +394,10 @@ async function _startHarborAnim(harbor) {
       if (step > STEPS) {
         m.setMap(null); anim.markers = anim.markers.filter(x => x !== m); done(); return;
       }
-      const t   = _ease(step / STEPS);
-      const sz  = isDepart
+      const t  = _ease(step / STEPS);
+      const sz = isDepart
         ? Math.round(SZ_BIG   + (SZ_SMALL - SZ_BIG)  * t)
-        : Math.round(SZ_SMALL + (SZ_BIG  - SZ_SMALL)  * t);
+        : Math.round(SZ_SMALL + (SZ_BIG   - SZ_SMALL) * t);
       pos = _destPoint(pos.lat, pos.lng, moveBr, STEP_M);
       m.setPosition(pos);
       m.setOpacity(isDepart ? (1 - t * 0.82) : (0.18 + t * 0.82));
@@ -361,7 +409,6 @@ async function _startHarborAnim(harbor) {
 
   function loop() {
     if (!anim.active) return;
-    // Run departure + arrival simultaneously — ships pass each other mid-sea
     let d = false, a = false;
     const check = () => { if (d && a && anim.active) setTimeout(loop, 3000); };
     runLeg(true,  () => { d = true; check(); });
@@ -508,31 +555,31 @@ function _showInstallConfirm(shopId, lat, lng) {
   document.getElementById('harborConfirmCancelBtn').onclick = () => el.classList.remove('open');
   document.getElementById('harborConfirmOkBtn').onclick = async () => {
     const btn = document.getElementById('harborConfirmOkBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Installing…'; }
-    try {
+    await _withBtn(btn, async () => {
       const fn = httpsCallable(_fns, 'installHarbor');
       const { data } = await fn({ shopId, lat, lng, seaZone: true });
       el.classList.remove('open');
-      // Immediately place marker — replaced by real data when background refresh completes
       if (data.harborId && _map) {
         const harborId = data.harborId;
         _harbors[harborId] = { id: harborId, owner_id: _uid, lat, lng, ship_count: 0, status: 'active' };
-        const marker = new google.maps.Marker({
+        _harborBearings[harborId] = 0;
+        const _isz    = _harborSize(_map?.getZoom() ?? 14);
+        const dockImg = _imgCache[HARBOR_ICON];
+        const marker  = new google.maps.Marker({
           position: { lat, lng },
           map: _map,
-          icon: { url: HARBOR_ICON, scaledSize: new google.maps.Size(_harborSize(_map?.getZoom() ?? 14), _harborSize(_map?.getZoom() ?? 14)), anchor: new google.maps.Point(_harborSize(_map?.getZoom() ?? 14) / 2, _harborSize(_map?.getZoom() ?? 14)) },
+          icon: dockImg
+            ? { url: _rotatedDockUrl(dockImg, _isz * 2, 0), scaledSize: new google.maps.Size(_isz, _isz), anchor: new google.maps.Point(_isz / 2, _isz / 2) }
+            : { url: HARBOR_ICON, scaledSize: new google.maps.Size(_isz, _isz), anchor: new google.maps.Point(_isz / 2, _isz / 2) },
           title: `⚓ Harbor | 0/${MAX_SHIPS} ships`,
           zIndex: 55,
         });
         marker.addListener('click', () => openHarborModal(harborId));
         _markers[harborId] = marker;
       }
-      loadHarborMarkers(lat, lng); // background refresh — no await
+      loadHarborMarkers(lat, lng);
       _showToast(`Harbor installed! Cost: ${data.cost.toLocaleString()} GP | Jackpot: ${data.newJackpot.toLocaleString()} GP`);
-    } catch (e) {
-      _showToast(e.message ?? 'Installation failed', 'error');
-      if (btn) { btn.disabled = false; btn.textContent = 'Install'; }
-    }
+    }).catch(e => _showToast(e.message ?? 'Installation failed', 'error'));
   };
 }
 
@@ -622,8 +669,7 @@ function _renderSvBody(body, data) {
 
   document.getElementById('svClaimAllBtn')?.addEventListener('click', async () => {
     const btn = document.getElementById('svClaimAllBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Claiming…'; }
-    try {
+    await _withBtn(btn, async () => {
       const fn = httpsCallable(_fns, 'claimShipDividend');
       const { data: res } = await fn({});
       if (res.claimed > 0) {
@@ -632,10 +678,7 @@ function _renderSvBody(body, data) {
         _showToast(res.message ?? 'Nothing claimed', 'warn');
       }
       await _fillSvModal();
-    } catch (e) {
-      _showToast(e.message ?? 'Claim failed', 'error');
-      if (btn) { btn.disabled = false; btn.textContent = `⛵ Claim Dividends`; }
-    }
+    }).catch(e => _showToast(e.message ?? 'Claim failed', 'error'));
   });
 }
 
@@ -737,4 +780,17 @@ function _showToast(msg, type = 'success') {
     box-shadow:0 4px 12px rgba(0,0,0,.4);white-space:nowrap;pointer-events:none;`;
   clearTimeout(toast._hrTimer);
   toast._hrTimer = setTimeout(() => { toast.style.display = 'none'; }, 3500);
+}
+
+// ── _withBtn — disable + spinner for a button during an async op ──────────────
+function _withBtn(btn, asyncFn) {
+  if (typeof window.withBtn === 'function') return window.withBtn(btn, asyncFn);
+  if (!btn || btn.dataset.pending) return Promise.resolve();
+  btn.dataset.pending = '1';
+  const orig = btn.innerHTML; const origD = btn.disabled;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:_spin .55s linear infinite;vertical-align:middle"></span>';
+  return Promise.resolve().then(asyncFn).finally(() => {
+    delete btn.dataset.pending; btn.disabled = origD; btn.innerHTML = orig;
+  });
 }

@@ -234,3 +234,31 @@ textarea {
   }
 }
 
+/* ── pending / spinner states ────────────────────────────────────────────────── */
+@keyframes _spin { to { transform: rotate(360deg); } }
+.btn-spinner {
+  display: inline-block; vertical-align: middle;
+  width: 14px; height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: _spin .55s linear infinite;
+}
+#gamePendingOverlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,.48);
+  display: flex; align-items: center; justify-content: center;
+}
+#gamePendingOverlay.hidden { display: none !important; }
+.gpo-box {
+  background: #fff; border-radius: 16px; padding: 24px 32px;
+  display: flex; align-items: center; gap: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.32);
+  font-size: 15px; font-weight: 600; color: #1a2744;
+  max-width: min(320px, 90vw);
+}
+.gpo-spin {
+  width: 24px; height: 24px; flex-shrink: 0;
+  border: 3px solid var(--accent, #2563eb); border-top-color: transparent;
+  border-radius: 50%; animation: _spin .55s linear infinite;
+}
