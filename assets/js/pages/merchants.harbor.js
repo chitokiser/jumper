@@ -272,16 +272,19 @@ function _loadImg(url) {
     img.src = url;
   });
 }
-function _rotatedIconUrl(img, size, bearingRad, flipH = false) {
+function _rotatedIconUrl(img, size, flipH = false) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
-  ctx.save();
-  ctx.translate(size / 2, size / 2);
-  ctx.rotate(bearingRad - Math.PI / 2); // ship.png faces East (right)
-  if (flipH) ctx.scale(-1, 1);          // mirror bow direction without flipping upside-down
-  ctx.drawImage(img, -size / 2, -size / 2, size, size);
-  ctx.restore();
+  if (flipH) {
+    ctx.save();
+    ctx.translate(size, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, 0, 0, size, size);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, 0, 0, size, size);
+  }
   return c.toDataURL('image/png');
 }
 function _rotatedDockUrl(img, size, bearingRad) {
@@ -310,9 +313,11 @@ async function _animateShipDeparture(harbor) {
     ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
     : Math.PI;
 
-  // Single frame: load first sprite or fallback; rotate bow toward sea
+  // Single frame: load first sprite or fallback
+  // sea to the East (right) → natural image; sea to the West (left) → flip
   const img = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
-  const iconUrl = img ? _rotatedIconUrl(img, 128, bearing) : SHIP_ICON_MAP;
+  const seaRight = Math.sin(bearing) >= 0;
+  const iconUrl = img ? _rotatedIconUrl(img, 128, !seaRight) : SHIP_ICON_MAP;
 
   const mkIcon = (url, sz) => ({
     url, scaledSize: new google.maps.Size(sz, sz),
@@ -359,9 +364,12 @@ async function _startHarborAnim(harbor) {
   const img = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
   if (!anim.active) return;
 
-  // Two pre-baked icons: bow toward sea (depart) and bow toward harbor (arrive via horizontal mirror)
-  const departIcon = img ? _rotatedIconUrl(img, 128, bearing)        : SHIP_ICON_MAP;
-  const arriveIcon = img ? _rotatedIconUrl(img, 128, bearing, true)  : SHIP_ICON_MAP;
+  // Two orientations only — no diagonal rotation, only horizontal mirror allowed
+  // sea to the East (right) → departure: natural; arrival: flipped
+  // sea to the West (left)  → departure: flipped; arrival: natural
+  const seaRight   = Math.sin(bearing) >= 0;
+  const departIcon = img ? _rotatedIconUrl(img, 128, !seaRight) : SHIP_ICON_MAP;
+  const arriveIcon = img ? _rotatedIconUrl(img, 128,  seaRight) : SHIP_ICON_MAP;
 
   function _ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
   function mkIcon(url, sz) {
