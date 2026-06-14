@@ -311,7 +311,7 @@ async function _animateShipDeparture(harbor) {
   const zoom     = _map.getZoom() ?? 14;
   const SZ_BIG   = _shipAnimSize(zoom);
   const SZ_SMALL = Math.max(4, Math.floor(SZ_BIG * 0.15));
-  const STEPS    = 80;
+  const STEPS    = 50;
   const STEP_MS  = 120;
   const STEP_M   = 2;
 
@@ -331,8 +331,8 @@ async function _animateShipDeparture(harbor) {
     anchor: new google.maps.Point(sz / 2, sz / 2),
   });
 
-  // Begin 150 m out at sea, sail along the coast (small range keeps ship in water)
-  let pos  = _destPoint(harbor.lat, harbor.lng, bearing, 150);
+  // Start at harbor position — it is in the sea, so ship stays in water
+  let pos  = { lat: harbor.lat, lng: harbor.lng };
   let step = 0;
   const m  = new google.maps.Marker({
     position: pos, map: _map, icon: mkIcon(iconUrl, SZ_BIG),
@@ -361,21 +361,19 @@ async function _startHarborAnim(harbor) {
   const anim = { active: true, markers: [] };
   _animations[harbor.id] = anim;
 
-  const STEPS      = 100;
+  const STEPS      = 50;
   const STEP_MS    = 120;
-  const STEP_M     = 2;              // 2 m/tick → 200 m total, stays in water near harbor
-  const SEA_DEPTH  = 150;            // 150 m from harbor into sea (clear of coast, not too far)
-  const PATROL_LEN = STEPS * STEP_M; // 200 m patrol range along the coast
+  const STEP_M     = 2;             // 50 × 2 m = 100 m per leg
+  const halfLen    = 50;            // ±50 m around harbor — always in water
 
   const bearing     = (harbor.shop_lat != null && harbor.shop_lng != null)
     ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
     : Math.PI;
-  // Perpendicular to the sea direction = parallel to the coastline
   const perpBearing = bearing + Math.PI / 2;
 
-  // Patrol center sits 800 m out to sea from the harbor marker
-  const patrolCenter = _destPoint(harbor.lat, harbor.lng, bearing, SEA_DEPTH);
-  const halfLen      = PATROL_LEN / 2; // 1 000 m each side of center
+  // Harbor marker is placed in the sea — use it directly as patrol center.
+  // Any geometric "sea depth" offset risks landing on nearby islands or land.
+  const patrolCenter = { lat: harbor.lat, lng: harbor.lng };
 
   const img = (await _loadImg(SHIP_SPRITES[0])) ?? (await _loadImg(SHIP_ICON_MAP));
   if (!anim.active) return;
