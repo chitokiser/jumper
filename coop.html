@@ -4,20 +4,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>조합 전용몰 | JumpDAO — 정회원 전용 쇼핑몰</title>
-  <meta name="description" content="JumpDAO 정회원 전용 쇼핑몰. 10 HEX 납부 후 정회원 가입 시 프리미엄 상품과 보물박스 혜택을 누리세요." />
-  <meta name="keywords" content="JumpDAO조합, 정회원, HEX토큰, Web3쇼핑, 조합전용몰" />
+  <title>Member Mall | JumpDAO — Premium Member Exclusive Shopping</title>
+  <meta name="description" content="JumpDAO Member Mall - Exclusive shopping for premium members. Join with 10 HEX and enjoy premium products and treasure box benefits." />
+  <meta name="keywords" content="JumpDAO, member, HEX token, Web3 shopping, member mall" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://jump22.netlify.app/coop.html" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="JumpDAO" />
   <meta property="og:url" content="https://jump22.netlify.app/coop.html" />
-  <meta property="og:title" content="조합 전용몰 | JumpDAO — 정회원 전용 쇼핑몰" />
-  <meta property="og:description" content="JumpDAO 정회원 전용 쇼핑몰. 10 HEX 납부 후 정회원 가입 시 프리미엄 상품 혜택을 누리세요." />
+  <meta property="og:title" content="Member Mall | JumpDAO — Premium Member Exclusive" />
+  <meta property="og:description" content="JumpDAO Member Mall - Premium exclusive shopping. Join with 10 HEX and enjoy premium products." />
   <meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="조합 전용몰 | JumpDAO" />
-  <meta name="twitter:description" content="JumpDAO 정회원 전용 프리미엄 쇼핑몰." />
+  <meta name="twitter:title" content="Member Mall | JumpDAO" />
+  <meta name="twitter:description" content="JumpDAO Premium Member Exclusive Shopping Mall." />
   <meta name="twitter:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png" />
 
   <link rel="stylesheet" href="/assets/css/app.css" />
@@ -179,15 +179,15 @@
   <main class="page">
     <section class="hero">
       <div class="hero-inner">
-        <h1 class="hero-title">정회원 전용몰</h1>
-        <p class="hero-desc">JUMP정회원 쇼핑몰</p>
+        <h1 class="hero-title">Member Exclusive Mall</h1>
+        <p class="hero-desc">JUMP Member Shopping Mall</p>
       </div>
     </section>
 
     <section class="section">
 
-      <!-- 로딩 -->
-      <div id="coopLoading" class="help small" style="text-align:center; padding:24px 0;">로딩 중...</div>
+      <!-- Loading -->
+      <div id="coopLoading" class="help small" style="text-align:center; padding:24px 0;">Loading...</div>
 
       <!-- 메인 (비로그인·비소유자도 상품 열람 가능) -->
       <div id="coopMain" style="display:none;">
@@ -204,11 +204,11 @@
         <div id="coopJoinPanel" style="display:none;margin-bottom:28px;">
           <div class="coop-join-panel">
             <div class="icon">🏪</div>
-            <div class="title" id="coopJoinTitle">정회원 가입</div>
-            <div class="sub" id="coopJoinSub">아래 회비를 납부하면 전용몰 정회원이 됩니다.<br>회비 상당의 JUMP 토큰이 지급됩니다.</div>
+            <div class="title" id="coopJoinTitle">Member Registration</div>
+            <div class="sub" id="coopJoinSub">Pay the membership fee below to become a member of the exclusive mall.<br>JUMP tokens equivalent to the membership fee will be issued.</div>
             <div class="coop-join-fee" id="coopJoinFeeDisplay">-- HEX</div>
-            <div class="coop-join-fee-sub" id="coopJoinFeeNote">회비의 20%가 멘토에게 적립 · 1년 유효</div>
-            <button class="btn btn--primary" id="coopJoinBtn" type="button">회원 가입하기</button>
+            <div class="coop-join-fee-sub" id="coopJoinFeeNote">20% of membership fee goes to mentor · Valid for 1 year</div>
+            <button class="btn btn--primary" id="coopJoinBtn" type="button">Join as Member</button>
             <div id="coopJoinMsg" style="font-size:0.82rem;color:var(--danger,#ef4444);margin-top:10px;min-height:18px;"></div>
           </div>
         </div>
@@ -216,35 +216,35 @@
         <!-- 포인트 패널 (정회원만) -->
         <div class="coop-points-panel" id="coopPointsPanel" style="display:none;">
           <div class="coop-points-info">
-            <div class="coop-points-label">내 적립 포인트</div>
+            <div class="coop-points-label">My Earned Points</div>
             <div class="coop-points-amount" id="coopPointsAmount">0.0000 HEX</div>
-            <div class="coop-points-sub">구매 시 멘토 포인트가 적립됩니다 · HEX로 전환 가능</div>
+            <div class="coop-points-sub">Mentor points earned on purchases · Convertible to HEX</div>
           </div>
           <div class="coop-points-actions">
-            <button class="btn btn--sm btn--primary" id="coopConvertBtn" type="button" disabled>포인트 전환</button>
+            <button class="btn btn--sm btn--primary" id="coopConvertBtn" type="button" disabled>Convert Points</button>
           </div>
         </div>
 
         <div class="section-h" style="margin-bottom:12px;">
-          <span class="coop-badge" id="coopAccessBadge" style="display:none;">전용몰 회원</span>
+          <span class="coop-badge" id="coopAccessBadge" style="display:none;">Member</span>
           <span id="coopExpiryInfo" style="display:none;font-size:0.78rem;color:var(--muted,#6b7280);margin-left:10px;"></span>
         </div>
         <div id="coopGrid" class="coop-grid"></div>
         <div id="coopEmpty" class="help small" style="display:none; text-align:center; padding:32px 0;">
-          등록된 상품이 없습니다.
+          No products available.
         </div>
 
         <!-- 내 바우쳐 섹션 -->
         <div id="coopVoucherSection" style="display:none;margin-top:32px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <h3 style="margin:0;font-size:1rem;font-weight:700;color:var(--fg,#1f2937);">🎟 내 바우쳐</h3>
+            <h3 style="margin:0;font-size:1rem;font-weight:700;color:var(--fg,#1f2937);">🎟 My Vouchers</h3>
             <button type="button" id="coopBtnOpenVoucherOrder"
               style="background:#7c3aed;color:white;border:none;border-radius:10px;padding:8px 18px;font-size:13px;cursor:pointer;font-weight:600;box-shadow:0 2px 8px rgba(124,58,237,0.3);">
-              바우쳐 사용하기
+              Use Voucher
             </button>
           </div>
           <div id="coopVoucherList" style="font-size:0.85rem;color:var(--muted,#6b7280);min-height:32px;">
-            <span id="coopVoucherListMsg">바우쳐를 불러오는 중...</span>
+            <span id="coopVoucherListMsg">Loading vouchers...</span>
           </div>
         </div>
       </div>
@@ -256,7 +256,7 @@
   <div id="coopDetailModal" class="coop-detail-modal" style="display:none;" aria-modal="true" role="dialog">
     <div class="coop-detail-bd" id="coopDetailBd"></div>
     <div class="coop-detail-box">
-      <button class="coop-detail-close" id="coopDetailClose" type="button" aria-label="닫기">✕</button>
+      <button class="coop-detail-close" id="coopDetailClose" type="button" aria-label="Close">✕</button>
       <div id="coopDetailImg"></div>
       <div class="coop-detail-body">
         <div id="coopDetailBadge"></div>
