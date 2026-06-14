@@ -312,8 +312,8 @@ async function _animateShipDeparture(harbor) {
   const SZ_BIG   = _shipAnimSize(zoom);
   const SZ_SMALL = Math.max(4, Math.floor(SZ_BIG * 0.15));
   const STEPS    = 80;
-  const STEP_MS  = 100;
-  const STEP_M   = 20;
+  const STEP_MS  = 120;
+  const STEP_M   = 2;
 
   const bearing     = (harbor.shop_lat != null && harbor.shop_lng != null)
     ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
@@ -331,8 +331,8 @@ async function _animateShipDeparture(harbor) {
     anchor: new google.maps.Point(sz / 2, sz / 2),
   });
 
-  // Begin 800 m out at sea (well past any nearshore islands), sail along the coast
-  let pos  = _destPoint(harbor.lat, harbor.lng, bearing, 800);
+  // Begin 150 m out at sea, sail along the coast (small range keeps ship in water)
+  let pos  = _destPoint(harbor.lat, harbor.lng, bearing, 150);
   let step = 0;
   const m  = new google.maps.Marker({
     position: pos, map: _map, icon: mkIcon(iconUrl, SZ_BIG),
@@ -362,10 +362,10 @@ async function _startHarborAnim(harbor) {
   _animations[harbor.id] = anim;
 
   const STEPS      = 100;
-  const STEP_MS    = 100;
-  const STEP_M     = 20;
-  const SEA_DEPTH  = 800;             // m into sea: patrol depth (past nearshore islands)
-  const PATROL_LEN = STEPS * STEP_M; // 2 000 m patrol range along the coast
+  const STEP_MS    = 120;
+  const STEP_M     = 2;              // 2 m/tick → 200 m total, stays in water near harbor
+  const SEA_DEPTH  = 150;            // 150 m from harbor into sea (clear of coast, not too far)
+  const PATROL_LEN = STEPS * STEP_M; // 200 m patrol range along the coast
 
   const bearing     = (harbor.shop_lat != null && harbor.shop_lng != null)
     ? _bearing(harbor.shop_lat, harbor.shop_lng, harbor.lat, harbor.lng)
