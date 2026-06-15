@@ -4194,12 +4194,16 @@
     if (!muted) audio.play().catch(() => {});
   }
 
-  // 브라우저 autoplay 정책: 유저 인터랙션 후 시도
-  tryPlay();
-  // 최초 인터랙션(터치·클릭) 시 재시도 — autoplay 차단된 경우 대비
-  const resume = () => { tryPlay(); document.removeEventListener('click', resume, true); document.removeEventListener('touchstart', resume, true); };
-  document.addEventListener('click', resume, { capture: true, once: true });
-  document.addEventListener('touchstart', resume, { capture: true, once: true });
+  // Play Game 버튼을 눌러 진입한 경우 — 유저 인터랙션 컨텍스트 유효, 즉시 재생
+  if (sessionStorage.getItem('bgm_autostart') === '1') {
+    sessionStorage.removeItem('bgm_autostart');
+    tryPlay();
+  } else {
+    // 직접 URL 입력 또는 새로고침 — 첫 인터랙션 후 재생
+    const resume = () => { tryPlay(); };
+    document.addEventListener('click', resume, { capture: true, once: true });
+    document.addEventListener('touchstart', resume, { capture: true, once: true });
+  }
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation();

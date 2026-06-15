@@ -561,6 +561,10 @@
       });
       document.addEventListener('click', function(){ drop.hidden = true; });
     })();
+    // Play Game 버튼 클릭 시 BGM 시작 신호 — 브라우저 autoplay 정책 우회
+    document.querySelector('a.hero-cta-btn')?.addEventListener('click', function() {
+      sessionStorage.setItem('bgm_autostart', '1');
+    });
   </script>
 </body>
 </html>
