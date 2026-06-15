@@ -1920,15 +1920,16 @@ function _makeShadowIcon(size) {
 // Ground shadow for bottom-anchored buildings: ellipse centered at the marker position (ground)
 function _makeShopShadowIcon(size) {
   const sw = Math.round(size * 1.5);
-  const sh = 16;
+  const sh = 20;
+  const ry = sh / 2 - 3;
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="' + sh + '">' +
     '<defs><filter id="gsf"><feGaussianBlur stdDeviation="3"/></filter></defs>' +
-    '<ellipse cx="' + (sw / 2) + '" cy="' + (sh / 2) + '" rx="' + (sw / 2 - 2) + '" ry="' + (sh / 2 - 3) + '"' +
+    '<ellipse cx="' + (sw / 2) + '" cy="' + (sh / 2) + '" rx="' + (sw / 2 - 2) + '" ry="' + ry + '"' +
     ' fill="rgba(0,0,0,0.30)" filter="url(#gsf)"/></svg>';
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
     scaledSize: new google.maps.Size(sw, sh),
-    anchor: new google.maps.Point(sw / 2, sh / 2),  // shadow center at position (= building base)
+    anchor: new google.maps.Point(sw / 2, 0),  // shadow top at building base → full shadow below building
   };
 }
 
