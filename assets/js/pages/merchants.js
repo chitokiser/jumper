@@ -4153,6 +4153,43 @@ function _renderShopModalBody() {
     </button>`;
   }
 
+  // Weapon & armor jackpot dividend panel — owner only
+  if (isOwnerMe && shop.type === 'weapon_armor') {
+    const lotteryNum = shop.lotteryNumber ?? '?';
+    const lastClaimMs = shop.lastDividendAt?.seconds
+      ? shop.lastDividendAt.seconds * 1000
+      : (shop.lastDividendAt?.toMillis?.() ?? 0);
+    const cooldownMs  = 24 * 60 * 60 * 1000;
+    const inCooldown  = lastClaimMs > 0 && (Date.now() - lastClaimMs < cooldownMs);
+    const hoursLeft   = inCooldown ? Math.ceil((cooldownMs - (Date.now() - lastClaimMs)) / 3600000) : 0;
+    html += `<div id="wasDividendPanel"
+      style="margin-top:12px;padding:12px;border-radius:10px;
+             background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid #4c1d95">
+      <div style="color:#c4b5fd;font-size:11px;font-weight:700;margin-bottom:8px;letter-spacing:.5px">
+        ⚔️ WEAPON &amp; ARMOR JACKPOT
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="color:#a78bfa;font-size:12px">Lottery #</span>
+        <span style="color:#fff;font-weight:700;font-size:14px">${lotteryNum}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="color:#a78bfa;font-size:12px">Jackpot</span>
+        <span id="wasJackpotDisplay" style="color:#fbbf24;font-size:12px">Loading…</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <span style="color:#a78bfa;font-size:12px">Est. Dividend</span>
+        <span id="wasEstDividend" style="color:#34d399;font-size:12px">─</span>
+      </div>
+      <button id="wasClaimBtn" ${inCooldown ? 'disabled' : ''}
+        style="width:100%;padding:10px;border-radius:8px;border:none;font-weight:700;font-size:13px;
+               cursor:${inCooldown ? 'not-allowed' : 'pointer'};
+               background:${inCooldown ? '#374151' : 'linear-gradient(135deg,#7c3aed,#5b21b6)'};
+               color:${inCooldown ? '#6b7280' : '#fff'}">
+        ${inCooldown ? `⏳ Next claim in ${hoursLeft}h` : '💎 Claim Dividend'}
+      </button>
+    </div>`;
+  }
+
   body.innerHTML = html;
 
   // 돈나무 묘목 판매 활성화된 상점: 돈나무 섹션 렌더링
@@ -4258,6 +4295,36 @@ function _renderShopModalBody() {
     closeShopModal();
     promptInstallHarbor(shop.id, shop.lat, shop.lng);
   });
+
+  // Weapon & armor jackpot panel
+  if (isOwnerMe && shop.type === 'weapon_armor') {
+    httpsCallable(functions, 'getWeaponArmorJackpot')()
+      .then(({ data }) => {
+        const jackpotEl = $('wasJackpotDisplay');
+        const estEl     = $('wasEstDividend');
+        if (jackpotEl) jackpotEl.textContent = `🪙 ${(data.jackpot || 0).toLocaleString()} GP`;
+        if (estEl && data.jackpot && data.shopCount && shop.lotteryNumber) {
+          const est = Math.floor(data.jackpot / data.shopCount / shop.lotteryNumber);
+          estEl.textContent = `≈ ${est.toLocaleString()} GP`;
+        }
+      })
+      .catch(() => { const el = $('wasJackpotDisplay'); if (el) el.textContent = '─'; });
+
+    $('wasClaimBtn')?.addEventListener('click', () => {
+      const btn = $('wasClaimBtn');
+      withBtn(btn, async () => {
+        try {
+          const { data } = await httpsCallable(functions, 'claimWeaponArmorDividend')({ shopId: shop.id });
+          addPlayerGold(data.dividend);
+          showToast(`💎 Dividend claimed! +${data.dividend.toLocaleString()} GP`, 'success');
+          _shopCurrentData.lastDividendAt = { seconds: Math.floor(Date.now() / 1000) };
+          _renderShopModalBody();
+        } catch (e) {
+          showToast(e.message || 'Claim failed', 'error');
+        }
+      });
+    });
+  }
 }
 
 function closeShopModal() {

@@ -2137,6 +2137,14 @@ exports.buyShopItem = onCall(wrapError(async (req) => {
   return shopH.buyShopItem(requireAuth(req), req.data ?? {});
 }));
 
+exports.getWeaponArmorJackpot = onCall(wrapError(async () => {
+  return shopH.getWeaponArmorJackpot();
+}));
+
+exports.claimWeaponArmorDividend = onCall(wrapError(async (req) => {
+  return shopH.claimWeaponArmorDividend(requireAuth(req), req.data ?? {});
+}));
+
 exports.getShopSales = onCall(wrapError(async (req) => {
   return shopH.getShopSales(requireAuth(req), req.data ?? {});
 }));

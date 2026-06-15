@@ -135,6 +135,10 @@ const CATALOG = {
     price: 400000, type: 'shop', label: '방어구 상점',
     shopType: 'shop_weapon_armor', image: '/assets/images/shops/arms.png',
   },
+  shop_weapon_armor: {
+    price: 300000, type: 'shop', label: '무기&방어구 통합상점',
+    shopType: 'shop_weapon_armor', image: '/assets/images/shops/arms.png',
+  },
 };
 
 // ── 가격 조회 (Firestore 우선, 없으면 CATALOG 기본값) ─────────────────────────
@@ -280,14 +284,22 @@ async function placeUserObject(uid, { itemKey, lat, lng }) {
     // 5km 체크는 트랜잭션 전에 이미 완료됨
     // shop_potion → potion 등 정규화 (moneyTree CF 타입 체크와 일치)
     const normalizedShopType = def.shopType.replace(/^shop_/, '');
-    const ref = await db.collection('game_shops').add({
+    const shopDoc = {
       ...base,
       name:    `${nim} ${def.label}${placeNo}`,
       type:    normalizedShopType,
       image:   def.image ?? null,
       items:   [],
       sellsMt: normalizedShopType === 'potion',
-    });
+    };
+    if (normalizedShopType === 'weapon_armor') {
+      shopDoc.lotteryNumber = Math.ceil(Math.random() * 100);
+      await db.collection('config').doc('weaponArmorJackpot').set(
+        { totalRevenue: admin.firestore.FieldValue.increment(price), updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+    }
+    const ref = await db.collection('game_shops').add(shopDoc);
     docId = ref.id;
   }
 
@@ -400,11 +412,15 @@ async function useTicket(uid, { itemId, lat, lng }) {
     docId = ref.id;
   } else if (def.type === 'shop') {
     const normalizedShopType = def.shopType.replace(/^shop_/, '');
-    const ref = await db.collection('game_shops').add({
+    const ticketShopDoc = {
       ...base, name: `${nim} ${def.label}${placeNo}`,
       type: normalizedShopType, image: def.image ?? null,
       items: [], sellsMt: normalizedShopType === 'potion',
-    });
+    };
+    if (normalizedShopType === 'weapon_armor') {
+      ticketShopDoc.lotteryNumber = Math.ceil(Math.random() * 100);
+    }
+    const ref = await db.collection('game_shops').add(ticketShopDoc);
     docId = ref.id;
   }
 

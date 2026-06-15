@@ -2,7 +2,7 @@
 // 돈나무(Money Tree) 프론트엔드 모듈
 
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
-import { playSound } from './merchants.battle.js';
+import { playSound, addPlayerGold } from './merchants.battle.js';
 
 let _functions = null;
 let _map = null;
@@ -566,6 +566,7 @@ window._mtDoHarvest = async function(treeId) {
     const fn = httpsCallable(_functions, 'harvestTree');
     const { data } = await fn({ treeId });
     _showMtToast(`✅ Harvested! +${data.amount.toLocaleString()} GP · tax ${data.tax.toLocaleString()} GP`, 'success');
+    addPlayerGold(data.amount);
     await refreshMoneyTreeInventory();
     if (_ctx?.gpsPos) loadMoneyTreeMarkers(_ctx.gpsPos.lat, _ctx.gpsPos.lng);
   } catch (e) { _showMtToast(e?.message || 'Harvest failed', 'error'); }

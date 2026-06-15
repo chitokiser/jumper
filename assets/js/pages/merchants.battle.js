@@ -98,6 +98,7 @@ let _lastPosWriteAt       = 0;      // 위치 Firestore 저장 쓰로틀
 let _shops        = [];   // [{id, name, type, lat, lng, items, active}]
 let _shopMarkers   = {};   // { shopId: google.maps.Marker } — main icon
 let _shopHpMarkers = {};   // { shopId: google.maps.Marker } — HP bar overlay
+let _sellerMarkers = {};   // { shopId: google.maps.Marker } — seller NPC for weapon_armor shops
 let _monsterShadows = {};  // { id: Marker } 그림자
 let _towerShadows   = {};  // { id: Marker } 그림자
 let _shopShadows    = {};  // { id: Marker } 그림자
@@ -3710,6 +3711,7 @@ function _renderShopMarker(shop) {
   const map = _ctx?.map;
   if (!map || !shop.active) return;
   if (_shopMarkers[shop.id]) { _shopMarkers[shop.id].setMap(null); }
+  if (_sellerMarkers[shop.id]) { _sellerMarkers[shop.id].setMap(null); delete _sellerMarkers[shop.id]; }
   _dropShadow(shop.id, _shopShadows);
 
   const marker = new google.maps.Marker({
@@ -3752,6 +3754,22 @@ function _renderShopMarker(shop) {
     zIndex: 1, clickable: false,
   });
   _shopMarkers[shop.id] = marker;
+
+  // Weapon & armor shop: place seller NPC character in front of the shop
+  if (shop.type === 'weapon_armor') {
+    const sellerMarker = new google.maps.Marker({
+      position: { lat: shop.lat - 0.000055, lng: shop.lng },
+      map,
+      icon: {
+        url: '/assets/images/monsters/seller/_PNG/1/Seller_01_Animation_000.png',
+        scaledSize: new google.maps.Size(36, 46),
+        anchor: new google.maps.Point(18, 46),
+      },
+      zIndex: 52,
+      clickable: false,
+    });
+    _sellerMarkers[shop.id] = sellerMarker;
+  }
 }
 
 export async function loadShops() {
@@ -3761,9 +3779,11 @@ export async function loadShops() {
     _shops = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     Object.values(_shopMarkers).forEach(m => m.setMap(null));
     Object.values(_shopHpMarkers).forEach(m => m.setMap(null));
+    Object.values(_sellerMarkers).forEach(m => m.setMap(null));
     Object.values(_shopShadows).forEach(m => m.setMap(null));
     _shopMarkers = {};
     _shopHpMarkers = {};
+    _sellerMarkers = {};
     _shopShadows = {};
     if (_ctx?.map) {
       _shops.forEach(s => { if (s.active) _renderShopMarker(s); });
@@ -3812,6 +3832,7 @@ export async function deleteShop(shopId) {
   _shops = _shops.filter(s => s.id !== shopId);
   if (_shopMarkers[shopId]) { _shopMarkers[shopId].setMap(null); delete _shopMarkers[shopId]; }
   if (_shopHpMarkers[shopId]) { _shopHpMarkers[shopId].setMap(null); delete _shopHpMarkers[shopId]; }
+  if (_sellerMarkers[shopId]) { _sellerMarkers[shopId].setMap(null); delete _sellerMarkers[shopId]; }
   _dropShadow(shopId, _shopShadows);
 }
 

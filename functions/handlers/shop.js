@@ -291,9 +291,83 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {})
       );
     }
     tx.update(shopRef, shopUpdate);
+
+    // Weapon & armor jackpot: accumulate 100% of sale revenue
+    if (shop.type === 'weapon_armor') {
+      const jackpotRef = db.collection('config').doc('weaponArmorJackpot');
+      tx.set(jackpotRef, {
+        totalRevenue: admin.firestore.FieldValue.increment(totalCost),
+        updatedAt: now,
+      }, { merge: true });
+    }
   });
 
   return { ok: true, itemId, quantity: qty, totalCost, ownerShare };
+}
+
+// ── 무기&방어구 잭팟 조회 ────────────────────────────────────────────────────
+async function getWeaponArmorJackpot() {
+  const [jackpotSnap, shopsSnap] = await Promise.all([
+    db.collection('config').doc('weaponArmorJackpot').get(),
+    db.collection('game_shops').where('type', '==', 'weapon_armor').where('active', '==', true).get(),
+  ]);
+  const jackpot = jackpotSnap.exists ? (jackpotSnap.data().totalRevenue ?? 0) : 0;
+  return { jackpot, shopCount: shopsSnap.size };
+}
+
+// ── 무기&방어구 잭팟 배당 청구 ───────────────────────────────────────────────
+async function claimWeaponArmorDividend(uid, { shopId } = {}) {
+  if (!shopId) throw new HttpsError('invalid-argument', 'shopId is required');
+
+  const shopSnap = await db.collection('game_shops').doc(shopId).get();
+  if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found');
+  const shop = shopSnap.data();
+
+  if (shop.ownerUid !== uid)       throw new HttpsError('permission-denied', 'You do not own this shop');
+  if (shop.type !== 'weapon_armor') throw new HttpsError('invalid-argument', 'This shop is not a weapon & armor shop');
+  if (!shop.lotteryNumber)         throw new HttpsError('failed-precondition', 'This shop has no lottery number assigned');
+
+  const lastClaim = shop.lastDividendAt?.toMillis?.() ?? 0;
+  if (Date.now() - lastClaim < 24 * 60 * 60 * 1000) {
+    const next = new Date(lastClaim + 24 * 60 * 60 * 1000).toISOString();
+    throw new HttpsError('failed-precondition', `Dividend already claimed. Next available: ${next}`);
+  }
+
+  const [jackpotSnap, shopsSnap] = await Promise.all([
+    db.collection('config').doc('weaponArmorJackpot').get(),
+    db.collection('game_shops').where('type', '==', 'weapon_armor').where('active', '==', true).get(),
+  ]);
+
+  const jackpot   = jackpotSnap.exists ? (jackpotSnap.data().totalRevenue ?? 0) : 0;
+  const shopCount = shopsSnap.size;
+
+  if (jackpot <= 0)   throw new HttpsError('failed-precondition', 'Jackpot is currently empty');
+  if (shopCount === 0) throw new HttpsError('failed-precondition', 'No active weapon & armor shops found');
+
+  const dividend = Math.floor(jackpot / shopCount / shop.lotteryNumber);
+  if (dividend <= 0) throw new HttpsError('failed-precondition', 'Dividend is too small to claim (try again when jackpot grows)');
+
+  const shopRef    = db.collection('game_shops').doc(shopId);
+  const playerRef  = db.collection('battle_players').doc(uid);
+  const jackpotRef = db.collection('config').doc('weaponArmorJackpot');
+  const logRef     = db.collection('shop_dividend_logs').doc();
+  const ts         = admin.firestore.FieldValue.serverTimestamp();
+
+  await db.runTransaction(async (tx) => {
+    const pSnap = await tx.get(playerRef);
+    const currentGold = pSnap.exists ? (pSnap.data().gold ?? 0) : 0;
+
+    tx.set(playerRef,  { gold: currentGold + dividend, updatedAt: ts }, { merge: true });
+    tx.update(shopRef, { lastDividendAt: ts });
+    tx.set(jackpotRef, { totalRevenue: admin.firestore.FieldValue.increment(-dividend), updatedAt: ts }, { merge: true });
+    tx.set(logRef, {
+      shopId, ownerUid: uid, dividend,
+      jackpotAtTime: jackpot, shopCount, lotteryNumber: shop.lotteryNumber,
+      createdAt: ts,
+    });
+  });
+
+  return { ok: true, dividend, jackpot, shopCount, lotteryNumber: shop.lotteryNumber };
 }
 
 // ── 상점주인/관리자: 매출 실적 조회 ─────────────────────────────────────────
@@ -778,4 +852,6 @@ module.exports = {
   adminInitAllPlayers,
   ownerSaveShopItems,
   payWarpEntrance,
+  getWeaponArmorJackpot,
+  claimWeaponArmorDividend,
 };
