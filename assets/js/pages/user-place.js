@@ -44,10 +44,8 @@ const CATALOG = [
   { key: 'archer_tower', emoji: '🏹', label: 'Archer Tower',    desc: 'ATK 50 · radius 40m · HP 500',    price: 20000,  tag: 'tower' },
   { key: 'cannon_tower', emoji: '💣', label: 'Cannon Tower',    desc: 'ATK 120 · radius 35m · HP 1000',  price: 100000, tag: 'tower' },
   // Shops
-  { key: 'shop_potion',       emoji: '🧪',  label: 'Potion Shop',            desc: 'Sell potions & buff items',                     price: 600000, tag: 'shop' },
-  { key: 'shop_weapon',       emoji: '⚔️',  label: 'Weapon Shop',            desc: 'Sell weapon equipment',                         price: 400000, tag: 'shop' },
-  { key: 'shop_armor',        emoji: '🛡️',  label: 'Armor Shop',             desc: 'Sell armor equipment',                          price: 400000, tag: 'shop' },
-  { key: 'shop_weapon_armor', emoji: '⚔️🛡️', label: 'Weapon & Armor Shop',  desc: 'Weapon + armor · Daily jackpot dividends',      price: 300000, tag: 'shop' },
+  { key: 'shop_potion',       emoji: '🧪',   label: 'Potion Shop',           desc: 'Sell potions & buff items',                price: 600000, tag: 'shop' },
+  { key: 'shop_weapon_armor', emoji: '⚔️🛡️', label: 'Weapon & Armor Shop', desc: 'Weapon + armor · Daily jackpot dividends', price: 300000, tag: 'shop' },
 ];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────────

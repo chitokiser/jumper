@@ -127,14 +127,6 @@ const CATALOG = {
     price: 600000, type: 'shop', label: '약물상점',
     shopType: 'shop_potion', image: '/assets/images/shops/shop2.png',
   },
-  shop_weapon: {
-    price: 400000, type: 'shop', label: '무기상점',
-    shopType: 'shop_weapon_armor', image: '/assets/images/shops/arms.png',
-  },
-  shop_armor: {
-    price: 400000, type: 'shop', label: '방어구 상점',
-    shopType: 'shop_weapon_armor', image: '/assets/images/shops/arms.png',
-  },
   shop_weapon_armor: {
     price: 300000, type: 'shop', label: '무기&방어구 통합상점',
     shopType: 'shop_weapon_armor', image: '/assets/images/shops/arms.png',
