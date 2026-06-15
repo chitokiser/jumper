@@ -3714,6 +3714,7 @@ let _activeShopId    = null;
 let _shopCurrentData = null;
 let _shopSelectedItem = null;
 let _shopQty         = 1;
+let _waItemsCache    = null; // global weapon/armor catalog — null = not yet loaded
 const _nameCache     = new Map(); // uid → 표시 이름 캐시
 
 // ── 공격 모드 (10분) ─────────────────────────────────────────────────────────
@@ -3950,6 +3951,10 @@ function openShopModal(shop) {
   _renderShopModalBody();
   modal.classList.add('open');
 
+  if (shop.type === 'weapon_armor' && _waItemsCache === null) {
+    _fetchWaItems(shop.id);
+  }
+
   // 비동기 소유자 이름 조회 (내 상점이 아닌 경우만)
   const ownerUidForLookup = shop.ownerUid;
   if (ownerUidForLookup && ownerUidForLookup !== _uid && !shop.ownerName) {
@@ -3960,6 +3965,16 @@ function openShopModal(shop) {
       if (el) el.textContent = name;
     }).catch(() => {});
   }
+}
+
+async function _fetchWaItems(openedShopId) {
+  try {
+    const res = await httpsCallable(functions, 'getWeaponArmorItems')();
+    _waItemsCache = res.data.items || [];
+    if (_shopCurrentData?.id === openedShopId && _shopCurrentData.type === 'weapon_armor') {
+      _renderShopModalBody();
+    }
+  } catch(e) {}
 }
 
 function _renderShopModalBody() {
@@ -3973,7 +3988,8 @@ function _renderShopModalBody() {
   }
 
   const shop      = _shopCurrentData;
-  const items     = shop.items || [];
+  const isWa      = shop.type === 'weapon_armor';
+  const items     = isWa ? (_waItemsCache || []) : (shop.items || []);
   const playerGold = getPlayerGold();
   const sel       = _shopSelectedItem;
   const maxQty    = sel ? (sel.stock === -1 ? 99 : sel.stock) : 1;
@@ -3997,7 +4013,9 @@ function _renderShopModalBody() {
 
   // 아이템 목록
   if (!items.length) {
-    html += `<p style="color:#9ca3af;text-align:center;padding:16px 0">판매 중인 아이템이 없습니다</p>`;
+    html += isWa && _waItemsCache === null
+      ? `<p style="color:#9ca3af;text-align:center;padding:16px 0">⏳ Loading items...</p>`
+      : `<p style="color:#9ca3af;text-align:center;padding:16px 0">No items for sale</p>`;
   } else {
     items.forEach(it => {
       const soldOut    = it.stock === 0;
@@ -4106,12 +4124,12 @@ function _renderShopModalBody() {
             ⬆️ 레벨업 (Lv.${shop.level ?? 1} → ${(shop.level ?? 1) + 1})
             <span style="font-weight:400;opacity:.8">(💰 ${lvlCost.toLocaleString()} 골드)</span>
           </button>
-          <button id="shopEditItemsBtn"
+          ${shop.type !== 'weapon_armor' ? `<button id="shopEditItemsBtn"
             style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:none;
                    font-weight:700;font-size:13px;cursor:pointer;
                    background:linear-gradient(135deg,#0369a1,#0284c7);color:#fff;">
             📦 판매 아이템 등록/수정
-          </button>
+          </button>` : ''}
           <button id="shopSalesBtn"
             style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid #374151;
                    background:transparent;color:#9ca3af;font-size:13px;font-weight:600;cursor:pointer">
@@ -4494,8 +4512,16 @@ function openShopAdminModal(shop) {
   $('shopAdminShopName').value = shop.name;
   $('shopAdminShopType').value = _SHOP_TYPE_NORMALIZE[shop.type] || shop.type;
 
-  _renderShopAdminItems(shop.items || []);
-  modal.classList.add('open');
+  if (shop.type === 'weapon_armor' || shop.type === 'shop_weapon_armor') {
+    _renderShopAdminItems([]);
+    modal.classList.add('open');
+    httpsCallable(functions, 'getWeaponArmorItems')()
+      .then(res => _renderShopAdminItems(res.data.items || []))
+      .catch(() => {});
+  } else {
+    _renderShopAdminItems(shop.items || []);
+    modal.classList.add('open');
+  }
 }
 
 // 코드에 하드코딩된 아이템 (treasure_items 컬렉션에 없을 수 있는 것들)
@@ -4643,7 +4669,13 @@ $('btnShopAdminSave')?.addEventListener?.('click', async () => {
   }
 
   try {
-    await httpsCallable(functions, 'adminSaveShop')({ shopId, name, type, items, lat, lng });
+    if (type === 'weapon_armor') {
+      await httpsCallable(functions, 'adminSetWeaponArmorItems')({ items });
+      _waItemsCache = items;
+      await httpsCallable(functions, 'adminSaveShop')({ shopId, name, type, items: [], lat, lng });
+    } else {
+      await httpsCallable(functions, 'adminSaveShop')({ shopId, name, type, items, lat, lng });
+    }
     await loadShops();
     $('shopAdminModal')?.classList.remove('open');
     showToast(_t('shop_admin_saved'), 'success');

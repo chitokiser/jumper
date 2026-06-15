@@ -2145,6 +2145,14 @@ exports.claimWeaponArmorDividend = onCall(wrapError(async (req) => {
   return shopH.claimWeaponArmorDividend(requireAuth(req), req.data ?? {});
 }));
 
+exports.getWeaponArmorItems = onCall(wrapError(async () => {
+  return shopH.getWeaponArmorItems();
+}));
+
+exports.adminSetWeaponArmorItems = onCall(wrapError(async (req) => {
+  return shopH.adminSetWeaponArmorItems(requireAuth(req), req.data ?? {});
+}));
+
 exports.getShopSales = onCall(wrapError(async (req) => {
   return shopH.getShopSales(requireAuth(req), req.data ?? {});
 }));

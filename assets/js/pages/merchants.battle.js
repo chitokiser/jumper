@@ -3762,8 +3762,8 @@ function _renderShopMarker(shop) {
       map,
       icon: {
         url: '/assets/images/monsters/seller/_PNG/1/Seller_01_Animation_000.png',
-        scaledSize: new google.maps.Size(36, 46),
-        anchor: new google.maps.Point(18, 46),
+        scaledSize: new google.maps.Size(108, 138),
+        anchor: new google.maps.Point(54, 138),
       },
       zIndex: 52,
       clickable: false,

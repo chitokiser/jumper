@@ -192,10 +192,19 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {})
         `상점에서 너무 멀리 있습니다 (${Math.round(dist)}m). 1km 이내에서만 구매할 수 있습니다.`);
   }
 
-  const itemDef = (shop.items || []).find(it => it.itemId === itemId);
-  if (!itemDef) throw new HttpsError('not-found', '해당 아이템을 이 상점에서 판매하지 않습니다');
+  const waItemsRef = db.collection('config').doc('weaponArmorItems');
+  let waItems = null;
+  let itemDef;
+  if (shop.type === 'weapon_armor') {
+    const waSnap = await waItemsRef.get();
+    waItems = waSnap.exists ? (waSnap.data().items || []) : [];
+    itemDef = waItems.find(it => it.itemId === itemId);
+  } else {
+    itemDef = (shop.items || []).find(it => it.itemId === itemId);
+  }
+  if (!itemDef) throw new HttpsError('not-found', 'This item is not available in this shop');
   if (itemDef.stock !== -1 && itemDef.stock < qty)
-    throw new HttpsError('failed-precondition', `재고가 부족합니다 (남은 재고: ${itemDef.stock})`);
+    throw new HttpsError('failed-precondition', `Out of stock (remaining: ${itemDef.stock})`);
 
   const totalCost  = itemDef.price * qty;
   const ownerUid   = shop.ownerUid;
@@ -286,9 +295,17 @@ async function buyShopItem(uid, { shopId, itemId, quantity = 1, lat, lng } = {})
       totalSales:   admin.firestore.FieldValue.increment(qty),
     };
     if (itemDef.stock !== -1) {
-      shopUpdate.items = shop.items.map(it =>
-        it.itemId === itemId ? { ...it, stock: it.stock - qty } : it
-      );
+      if (shop.type === 'weapon_armor' && waItems) {
+        tx.update(waItemsRef, {
+          items: waItems.map(it =>
+            it.itemId === itemId ? { ...it, stock: Math.max(0, it.stock - qty) } : it
+          ),
+        });
+      } else {
+        shopUpdate.items = shop.items.map(it =>
+          it.itemId === itemId ? { ...it, stock: it.stock - qty } : it
+        );
+      }
     }
     tx.update(shopRef, shopUpdate);
 
@@ -782,6 +799,14 @@ async function ownerSaveShopItems(uid, { shopId, name, items = [], sellsMt } = {
   if (newName !== null && newName.length === 0)
     throw new HttpsError('invalid-argument', '상점 이름은 비워둘 수 없습니다');
 
+  // weapon_armor items are globally admin-managed via adminSetWeaponArmorItems
+  if (shop.type === 'weapon_armor') {
+    const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp(), sellsMt: false };
+    if (newName) update.name = newName;
+    await ref.update(update);
+    return { ok: true, count: 0 };
+  }
+
   // 아이템 유효성 검사
   for (const item of items) {
     if (!item.itemId || typeof item.itemId !== 'string')
@@ -838,6 +863,39 @@ async function ownerSaveShopItems(uid, { shopId, name, items = [], sellsMt } = {
   return { ok: true, count: cleanItems.length };
 }
 
+// ── Global weapon/armor item catalog ─────────────────────────────────────────
+async function getWeaponArmorItems() {
+  const snap = await db.collection('config').doc('weaponArmorItems').get();
+  return { items: snap.exists ? (snap.data().items || []) : [] };
+}
+
+async function adminSetWeaponArmorItems(uid, { items = [] } = {}) {
+  if (!(await isAdmin(uid)))
+    throw new HttpsError('permission-denied', 'Admin access required');
+  if (!Array.isArray(items))
+    throw new HttpsError('invalid-argument', 'items must be an array');
+  for (const item of items) {
+    if (!item.itemId || typeof item.itemId !== 'string')
+      throw new HttpsError('invalid-argument', 'Each item requires a string itemId');
+    if (!item.name || typeof item.name !== 'string')
+      throw new HttpsError('invalid-argument', 'Each item requires a string name');
+    if (typeof item.price !== 'number' || item.price < 0)
+      throw new HttpsError('invalid-argument', 'item.price must be a non-negative number');
+  }
+  const cleanItems = items.map(it => ({
+    itemId:      String(it.itemId).trim(),
+    name:        String(it.name).trim(),
+    price:       Math.round(Number(it.price)),
+    stock:       typeof it.stock === 'number' ? Math.floor(it.stock) : -1,
+    description: it.description ? String(it.description).trim() : '',
+  }));
+  await db.collection('config').doc('weaponArmorItems').set({
+    items: cleanItems,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true, count: cleanItems.length };
+}
+
 module.exports = {
   adminSaveShop,
   adminDeleteShop,
@@ -854,4 +912,6 @@ module.exports = {
   payWarpEntrance,
   getWeaponArmorJackpot,
   claimWeaponArmorDividend,
+  getWeaponArmorItems,
+  adminSetWeaponArmorItems,
 };
