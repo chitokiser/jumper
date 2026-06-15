@@ -4,7 +4,7 @@
 
 const admin = require('firebase-admin');
 const { HttpsError } = require('firebase-functions/v2/https');
-const { isAdminUid } = require('../wallet/admin');
+const { isAdminUid, requireAdmin } = require('../wallet/admin');
 
 const db = admin.firestore();
 
@@ -506,6 +506,29 @@ async function listTreasureComments({ npcId } = {}) {
   });
 }
 
+// ── Admin: force-delete NPC and its associated treasure ──────────────────────
+async function adminDeleteNpc(uid, { npcId } = {}) {
+  if (!npcId) throw new HttpsError('invalid-argument', 'npcId is required');
+  await requireAdmin(uid);
+
+  const npcRef  = db.collection('user_treasure_npcs').doc(npcId);
+  const npcSnap = await npcRef.get();
+  if (!npcSnap.exists) throw new HttpsError('not-found', 'NPC not found');
+
+  const npc = npcSnap.data();
+  await db.runTransaction(async tx => {
+    tx.update(npcRef, { status: 'admin_deleted', deleted_at: admin.firestore.FieldValue.serverTimestamp() });
+    if (npc.userTreasureId) {
+      tx.update(db.collection('user_treasures').doc(npc.userTreasureId), {
+        status: 'admin_deleted',
+        deleted_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+  });
+
+  return { ok: true };
+}
+
 module.exports = {
   registerUserTreasure,
   discoverUserTreasure,
@@ -517,4 +540,5 @@ module.exports = {
   addTreasureComment,
   deleteTreasureComment,
   listTreasureComments,
+  adminDeleteNpc,
 };

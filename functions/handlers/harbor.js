@@ -1,6 +1,7 @@
 'use strict';
 const admin = require('firebase-admin');
 const { HttpsError } = require('firebase-functions/v2/https');
+const { isAdminUid } = require('../wallet/admin');
 
 const db = admin.firestore();
 
@@ -330,7 +331,7 @@ async function getHarborJackpot() {
   return { jackpot: jk.current, port: jk.port, ship: jk.ship, paid: jk.paid };
 }
 
-// ── Delete harbor (owner only, no active ships) ────────────────────────────────
+// ── Delete harbor (owner or admin, no active ships) ────────────────────────────
 async function deleteHarbor(uid, { harborId }) {
   if (!harborId) throw new HttpsError('invalid-argument', 'harborId is required');
 
@@ -338,8 +339,10 @@ async function deleteHarbor(uid, { harborId }) {
   const snap       = await harborRef.get();
   if (!snap.exists) throw new HttpsError('not-found', 'Harbor not found');
 
-  const harbor = snap.data();
-  if (harbor.owner_id !== uid)     throw new HttpsError('permission-denied', 'You do not own this harbor');
+  const harbor  = snap.data();
+  const isAdmin = await isAdminUid(uid);
+  if (harbor.owner_id !== uid && !isAdmin)
+    throw new HttpsError('permission-denied', 'You do not own this harbor');
   if (harbor.status   !== 'active') throw new HttpsError('failed-precondition', 'Harbor is not active');
 
   const nowMs     = Date.now();

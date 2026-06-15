@@ -1895,7 +1895,7 @@ function _showArmorSlotPicker(itemId, defVal) {
         ${_t('cancel_btn')}
       </button>
     </div>`;
-  document.body.appendChild(modal);
+  (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(modal);
   modal.querySelectorAll('[data-slot]').forEach(btn => {
     btn.addEventListener('click', () => {
       equipArmorToSlot(btn.dataset.slot, itemId);
@@ -2584,7 +2584,7 @@ async function loadInventory({ force = false } = {}) {
 
   // 무기/방어구가 하나도 없으면 기본 장비 표시 (클라이언트 전용 — DB 미저장)
   const hasWeapon = Object.keys(_inventory).some(k => k.startsWith('weapon_'));
-  const hasArmor  = Object.keys(_inventory).some(k => k.startsWith('armo_'));
+  const hasArmor  = Object.keys(_inventory).some(k => ['armo_','helm_','ches_','legs_','glov_','boot_'].some(p => k.startsWith(p)));
   if (!hasWeapon) _inventory['weapon_100'] = (_inventory['weapon_100'] || 0) + 1;
   if (!hasArmor)  _inventory['armo_10']    = (_inventory['armo_10']    || 0) + 1;
 
@@ -4491,7 +4491,7 @@ async function _execShopBuy(shopId, itemId, itemName, price, qty) {
       shopId, itemId, quantity: qty,
     });
     closeShopModal();
-    await Promise.all([loadInventory({ force: true }), loadPlayerState({ force: true }), loadShops()]);
+    await Promise.all([loadInventory({ force: true }), loadShops()]);
     showToast(_t('shop_buy_ok', itemName), 'success');
   } catch (err) {
     addPlayerGold(total);
@@ -4997,8 +4997,20 @@ function showUserNpcInfo(npc) {
       : '거리 불명';
     adminRow.textContent = `📍 ${npc.lat?.toFixed(6)}, ${npc.lng?.toFixed(6)} | 현위치 ${dist} | id: ${npc.id}`;
     adminRow.classList.remove('hidden');
+    // Admin delete button
+    let adminDelBtn = document.getElementById('utNpcAdminDeleteBtn');
+    if (!adminDelBtn) {
+      adminDelBtn = document.createElement('button');
+      adminDelBtn.id = 'utNpcAdminDeleteBtn';
+      adminDelBtn.style.cssText = 'width:100%;margin-top:6px;padding:8px;border-radius:8px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#f87171;font-size:13px;font-weight:600;cursor:pointer;';
+      adminDelBtn.textContent = '🗑 Delete NPC (Admin)';
+      adminRow.after(adminDelBtn);
+    }
+    adminDelBtn.classList.remove('hidden');
+    adminDelBtn.onclick = () => _adminDeleteNpc(npc.id);
   } else if (adminRow) {
     adminRow.classList.add('hidden');
+    document.getElementById('utNpcAdminDeleteBtn')?.classList.add('hidden');
   }
   const storyEl = document.getElementById('utNpcStory');
   if (storyEl) storyEl.textContent = npc.story || '';
@@ -5031,6 +5043,28 @@ function showUserNpcInfo(npc) {
     _checkHintUnlockStatus(npc.id);
   }
   loadNpcComments(npc.id);
+}
+
+async function _adminDeleteNpc(npcId) {
+  if (!confirm('Delete this NPC and its treasure? This cannot be undone.')) return;
+  const btn = document.getElementById('utNpcAdminDeleteBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting...'; }
+  try {
+    await httpsCallable(functions, 'adminDeleteNpc')({ npcId });
+    document.getElementById('utNpcModal')?.classList.remove('open');
+    // Remove marker from map
+    if (_utNpcMarkers[npcId]) { _utNpcMarkers[npcId].setMap(null); delete _utNpcMarkers[npcId]; }
+    if (_utActualMarkers[npcId]) {
+      _utActualMarkers[npcId].marker?.setMap(null);
+      _utActualMarkers[npcId].line?.setMap(null);
+      delete _utActualMarkers[npcId];
+    }
+    _utNpcData = _utNpcData.filter(n => n.id !== npcId);
+    showToast('NPC deleted.');
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '🗑 Delete NPC (Admin)'; }
+    showToast(e.message || 'Delete failed', true);
+  }
 }
 
 function _utNpcMsg(text, isErr) {

@@ -2318,6 +2318,11 @@ exports.unlockHint = onCall(wrapError(async (req) => {
   return userTreasureH.unlockHint(uid, req.data ?? {});
 }));
 
+exports.adminDeleteNpc = onCall(wrapError(async (req) => {
+  const uid = requireAuth(req);
+  return userTreasureH.adminDeleteNpc(uid, req.data ?? {});
+}));
+
 // ════════════════════════════════════════════════════════════════════════════
 // 게임코인 ↔ JUMP 교환 (JumpAutoExchange 컨트랙트)
 // ════════════════════════════════════════════════════════════════════════════

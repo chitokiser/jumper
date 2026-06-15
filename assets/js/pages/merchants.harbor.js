@@ -228,7 +228,7 @@ function _fillHarborModal(harbor) {
       <div style="font-size:11px;color:#6b7280">Higher grade → larger daily dividend share from Harbor Jackpot</div>
     </div>
 
-    ${isOwn ? `<button id="harborDeleteBtn"
+    ${(isOwn || _ctx?.isAdmin) ? `<button id="harborDeleteBtn"
         style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid rgba(239,68,68,.4);
                background:rgba(239,68,68,.08);color:#f87171;font-size:13px;font-weight:600;cursor:pointer">
         🗑 Delete Harbor

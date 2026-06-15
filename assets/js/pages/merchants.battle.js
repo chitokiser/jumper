@@ -45,7 +45,7 @@ export function setGsMobsGetter(fn) { _gsMobsGetter = fn; }
 let _player       = { level:1, hp:1000, mp:1000, maxHp:1000, maxMp:1000, xp:0, gold:0, token:30,
                       weaponBonus:100,
                       equippedWeapon:'weapon_100',
-                      equippedHelmet:'armo_10', equippedChest:null, equippedLegs:null, equippedGloves:null, equippedBoots:null,
+                      equippedHelmet:null, equippedChest:null, equippedLegs:null, equippedGloves:null, equippedBoots:null,
                       gsExp:0, gsLevel:1, nextLevelExp:400000,
                       monstersKilled:0 };
 let _monsters     = [];        // [{id, name, lat, lng, hp, maxHp, atk, detectRadius, image, active, monsterType?}]
@@ -3755,21 +3755,6 @@ function _renderShopMarker(shop) {
   });
   _shopMarkers[shop.id] = marker;
 
-  // Weapon & armor shop: place seller NPC character in front of the shop
-  if (shop.type === 'weapon_armor') {
-    const sellerMarker = new google.maps.Marker({
-      position: { lat: shop.lat - 0.000055, lng: shop.lng },
-      map,
-      icon: {
-        url: '/assets/images/monsters/seller/_PNG/1/Seller_01_Animation_000.png',
-        scaledSize: new google.maps.Size(108, 138),
-        anchor: new google.maps.Point(54, 138),
-      },
-      zIndex: 52,
-      clickable: false,
-    });
-    _sellerMarkers[shop.id] = sellerMarker;
-  }
 }
 
 export async function loadShops() {
