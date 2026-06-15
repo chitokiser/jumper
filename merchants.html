@@ -2047,6 +2047,7 @@
             <button class="mg-popup-btn" id="miniGameDungeon">🏰 던전</button>
           </div>
         </div>
+        <button id="btnBgm" class="map-hud-btn" title="BGM On/Off">🎵</button>
         <button id="btnGameToggle" class="map-hud-btn" title="Connect to game server">▶</button>
         <div id="gsStatusBadge"></div>
         <div id="distPanel">
@@ -4168,6 +4169,47 @@
       });
     });
   });
+})();
+</script>
+
+<!-- BGM -->
+<audio id="bgmAudio" loop preload="auto" src="/assets/audio/bgm.mp3"></audio>
+<script>
+(function () {
+  const MUTE_KEY = 'bgm_muted';
+  const audio = document.getElementById('bgmAudio');
+  const btn   = document.getElementById('btnBgm');
+  if (!audio || !btn) return;
+
+  audio.volume = 0.35;
+  let muted = localStorage.getItem(MUTE_KEY) === '1';
+
+  function applyState() {
+    audio.muted = muted;
+    btn.textContent = muted ? '🔇' : '🎵';
+    btn.title = muted ? 'BGM Off — click to enable' : 'BGM On — click to mute';
+  }
+
+  function tryPlay() {
+    if (!muted) audio.play().catch(() => {});
+  }
+
+  // 브라우저 autoplay 정책: 유저 인터랙션 후 시도
+  tryPlay();
+  // 최초 인터랙션(터치·클릭) 시 재시도 — autoplay 차단된 경우 대비
+  const resume = () => { tryPlay(); document.removeEventListener('click', resume, true); document.removeEventListener('touchstart', resume, true); };
+  document.addEventListener('click', resume, { capture: true, once: true });
+  document.addEventListener('touchstart', resume, { capture: true, once: true });
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    muted = !muted;
+    localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+    applyState();
+    if (!muted && audio.paused) tryPlay();
+  });
+
+  applyState();
 })();
 </script>
 </body>
