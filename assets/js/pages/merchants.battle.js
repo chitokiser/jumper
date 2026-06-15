@@ -3352,6 +3352,7 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
       map, center: latLng, radius,
       fillColor: '#ff3300', fillOpacity: 0.07,
       strokeColor: '#ff6b00', strokeOpacity: 0.35, strokeWeight: 1,
+      clickable: false,
     });
   }
 
