@@ -831,7 +831,7 @@ async function ownerSaveShopItems(uid, { shopId, name, items = [], sellsMt } = {
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
   if (newName) update.name = newName;
-  if (sellsMt !== undefined) update.sellsMt = !!sellsMt;
+  if (sellsMt !== undefined) update.sellsMt = shop.type === 'weapon_armor' ? false : !!sellsMt;
 
   await ref.update(update);
 

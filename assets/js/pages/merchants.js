@@ -4118,12 +4118,12 @@ function _renderShopModalBody() {
             📊 매출 실적 보기
           </button>
           <div id="shopSalesPanel" style="display:none;margin-top:8px"></div>
-          <button id="shopInstallMineBtn"
+          ${shop.type !== 'weapon_armor' ? `<button id="shopInstallMineBtn"
             style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:none;
                    font-weight:700;font-size:13px;cursor:pointer;
                    background:linear-gradient(135deg,#78350f,#92400e);color:#fbbf24">
             ⛏ Install Gold Mine
-          </button>
+          </button>` : ''}
         </div>`;
       }
       // 상점 공격은 GPS 모드(실제 현장)에서만 가능
@@ -5618,12 +5618,12 @@ function _openOwnerItemEditor(shop) {
                  border-radius:8px;font-size:13px;cursor:pointer;margin-bottom:12px;">
           + 아이템 추가
         </button>
-        <label style="display:flex;align-items:center;gap:10px;padding:10px;
+        ${shop.type !== 'weapon_armor' ? `<label style="display:flex;align-items:center;gap:10px;padding:10px;
                       background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);
                       border-radius:8px;cursor:pointer;margin-bottom:12px;">
           <input type="checkbox" id="ownerSellsMtChk" style="width:16px;height:16px;cursor:pointer;accent-color:#22c55e;">
           <span style="font-size:13px;color:#e2e8f0;">🌱 돈나무 묘목 상품 판매 활성화</span>
-        </label>
+        </label>` : ''}
         <div id="ownerItemMsg" style="font-size:12px;min-height:16px;margin-bottom:8px;"></div>
         <button id="ownerItemSave"
           style="width:100%;padding:12px;background:linear-gradient(135deg,#0369a1,#0284c7);
