@@ -640,7 +640,7 @@ function attackBox(box, marker) {
   if (st.current <= 0) {
     // 박스 파괴!
     marker.setIcon({ url:'/assets/images/item/box.png',
-      scaledSize: new google.maps.Size(34,34), anchor: new google.maps.Point(17,17) });
+      scaledSize: new google.maps.Size(34,34), anchor: new google.maps.Point(17,34) });
     playSound('gold_drop');
     infoWindow.close();
     tryCollect(box);
@@ -698,7 +698,7 @@ function _makeBoxMarker(box, lat, lng, size, animate) {
     icon: {
       url: '/assets/images/item/box.png',
       scaledSize: new google.maps.Size(size, size),
-      anchor: new google.maps.Point(size / 2, size / 2),
+      anchor: new google.maps.Point(size / 2, size),
     },
     label: box.memberOnly ? { text: '👑', fontSize: '12px', className: 'box-member-label' } : undefined,
     opacity: active ? 1 : 0.35,
@@ -775,7 +775,7 @@ function _adminRevealNearbyHiddenBoxes(clickLat, clickLng) {
       icon: {
         url: '/assets/images/item/box.png',
         scaledSize: new google.maps.Size(32, 32),
-        anchor: new google.maps.Point(16, 16),
+        anchor: new google.maps.Point(16, 32),
       },
       opacity: 0.45,
       zIndex: 200,
@@ -1114,7 +1114,6 @@ function _renderGsMonster(monster) {
           playSound('melee_hit');
           animateArrow(myPos.lat, myPos.lng, mLat, mLng, '#f87171', () => {
             sendPlayerAttack(monsterId);
-            showFloat('⚔️', '#f87171', mLat, mLng);
           });
           if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type, null, { lat: mLat, lng: mLng });
         },
@@ -1160,7 +1159,6 @@ function _renderGsMonster(monster) {
     playSound('melee_hit');
     animateArrow(myPos.lat, myPos.lng, mLat, mLng, '#f87171', () => {
       sendPlayerAttack(monsterId);
-      showFloat('⚔️', '#f87171', mLat, mLng);
     });
     infoWindow?.close();
     if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m?.spawnId, type, marker);
@@ -1237,10 +1235,7 @@ async function _gsKeyDrop(monsterId) {
   for (const [keyId, keyDef] of Object.entries(_keyDefs)) {
     if (Math.random() < (keyDef.dropRate || 0)) {
       httpsCallable(functions, 'earnKey')({ keyId })
-        .then(res => {
-          showFloat(_t('float_key_drop', res.data?.keyName || keyDef.name || `Key #${keyId}`), '#fcd34d', lat, lng);
-          loadInventory();
-        })
+        .then(() => { loadInventory(); })
         .catch(err => console.warn('[earnKey GS]', err.message));
     }
   }
@@ -1580,7 +1575,7 @@ async function checkProximity(lat, lng) {
         box._marker.setIcon({
           url: '/assets/images/item/box.png',
           scaledSize: new google.maps.Size(inRange ? 30 : 20, inRange ? 30 : 20),
-          anchor: new google.maps.Point(inRange ? 15 : 10, inRange ? 15 : 10),
+          anchor: new google.maps.Point(inRange ? 15 : 10, inRange ? 30 : 20),
         });
         box._marker.setTitle(inRange
           ? _t('box_attack_title', box.name || _t('box_default_name'), getBoxHpState(box).current, maxHp)
@@ -2266,7 +2261,7 @@ function _addDropMarker(dropId, data) {
   const imgUrl = `/assets/images/item/${data.itemId}.png`;
   const img = new Image();
   img.onload = () => _buildDropMarker(dropId, data, label, {
-    url: imgUrl, scaledSize: new google.maps.Size(28, 28), anchor: new google.maps.Point(14, 14),
+    url: imgUrl, scaledSize: new google.maps.Size(28, 28), anchor: new google.maps.Point(14, 28),
   });
   img.onerror = () => _buildDropMarker(dropId, data, label, null);
   img.src = imgUrl;
@@ -4919,7 +4914,7 @@ function _makeUserNpcMarker(npc) {
     icon: {
       url: imgUrl,
       scaledSize: new google.maps.Size(SZ, SZ),
-      anchor: new google.maps.Point(SZ / 2, SZ / 2),
+      anchor: new google.maps.Point(SZ / 2, SZ),
     },
     zIndex: 50,
   });
@@ -4928,7 +4923,7 @@ function _makeUserNpcMarker(npc) {
     marker.setIcon({
       url: dataUrl,
       scaledSize: new google.maps.Size(SZ, SZ),
-      anchor: new google.maps.Point(SZ / 2, SZ / 2),
+      anchor: new google.maps.Point(SZ / 2, SZ),
     });
   });
   return marker;
@@ -5273,7 +5268,7 @@ function _utStartMapPick() {
     if (_utPickMarker) _utPickMarker.setMap(null);
     _utPickMarker = new google.maps.Marker({
       position: { lat, lng }, map,
-      icon: { url: '/assets/images/item/box.png', scaledSize: new google.maps.Size(32, 32), anchor: new google.maps.Point(16, 16) },
+      icon: { url: '/assets/images/item/box.png', scaledSize: new google.maps.Size(32, 32), anchor: new google.maps.Point(16, 32) },
       title: '보물 위치', zIndex: 99,
     });
 

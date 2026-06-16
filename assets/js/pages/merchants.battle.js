@@ -637,12 +637,11 @@ function dropGoldTokens(mob) {
     title: `💰 Coins ×${amount} — Tap to collect`,
     icon: { url: '/assets/images/item/coins.png',
             scaledSize: new google.maps.Size(28, 28),
-            anchor: new google.maps.Point(14, 14) },
+            anchor: new google.maps.Point(14, 28) },
     zIndex: 25,
   });
   const drop = { id, lat, lng, amount, marker };
   _goldDrops.push(drop);
-  showFloat(`💰×${amount}`, '#fbbf24', lat, lng);
   playSound('gold_drop');
 
   // 클릭으로도 바로 획득 가능
@@ -1172,9 +1171,8 @@ function takeDamage(rawAmount, sourceLat, sourceLng) {
   const myMark = _ctx?.myLocationMarker;
   const lat = sourceLat || (myMark ? myMark.getPosition().lat() : null);
   const lng = sourceLng || (myMark ? myMark.getPosition().lng() : null);
-  if (actual === 0) { if (lat && lng) showFloat('🛡0', '#6ee7b7', lat, lng); return; }
+  if (actual === 0) return;
   _player.hp = Math.max(0, _player.hp - actual);
-  if (lat && lng) showFloat(`-${actual}`, '#f87171', lat, lng);
   if (_player.hp <= 0) {
     _isDead = true;
     _player.hp = 0;
@@ -1353,16 +1351,13 @@ export function castLightning() {
   let hitCount = 0;
   for (const mob of inRangeMobs) {
     hitMonster(mob.id, getTotalAtk() * _player.level);
-    showFloat(`⚡-${getTotalAtk() * _player.level}`, '#facc15', mob.lat, mob.lng);
     hitCount++;
   }
   const gsDmg = Math.round(_player.level * 100 * GS_SKILL_MULT.lightning);
   for (const gsMob of gsTargets) {
-    showFloat(`⚡-${gsDmg}`, '#facc15', gsMob.lat, gsMob.lng);
     hitCount++;
   }
   _gsSkillCallback?.('lightning');
-  showFloat(_t('skill_lightning_hit', hitCount), '#facc15', anchor.lat, anchor.lng);
   _skillCd.lightning = Date.now() + SKILL_CD_MS.lightning;
   updateSkillBar();
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.lightning);
@@ -1400,18 +1395,15 @@ export function castIceFreeze() {
     const marker = _monsterMarkers[mob.id];
     if (marker) {
       marker.setIcon(getMonsterFrozenIcon());
-      setTimeout(() => { if (_monsterMarkers[mob.id]) _monsterMarkers[mob.id].setIcon(getMonsterIcon(mob.image)); }, SKILL_FREEZE_MS);
+      setTimeout(() => { if (_monsterMarkers[mob.id]) _monsterMarkers[mob.id].setIcon(getMonsterIcon(mob.image, mob.monsterType === 'dragon')); }, SKILL_FREEZE_MS);
     }
-    showFloat(_t('skill_freeze_single'), '#93c5fd', mob.lat, mob.lng);
     hitCount++;
   }
   const gsDmgIce = Math.round(_player.level * 100 * GS_SKILL_MULT.ice);
   for (const gsMob of gsTargets) {
-    showFloat(`❄-${gsDmgIce}`, '#93c5fd', gsMob.lat, gsMob.lng);
     hitCount++;
   }
   _gsSkillCallback?.('ice');
-  showFloat(_t('skill_freeze_multi', hitCount, SKILL_FREEZE_MS/1000), '#93c5fd', anchor.lat, anchor.lng);
   _skillCd.ice = Date.now() + SKILL_CD_MS.ice;
   updateSkillBar();
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.ice);
@@ -1445,16 +1437,13 @@ export function castFireStorm() {
   let hitCount = 0;
   for (const mob of inRangeMobs) {
     hitMonster(mob.id, getTotalAtk() * _player.level);
-    showFloat(`🔥-${getTotalAtk() * _player.level}`, '#f97316', mob.lat, mob.lng);
     hitCount++;
   }
   const gsDmgFire = Math.round(_player.level * 100 * GS_SKILL_MULT.fire);
   for (const gsMob of gsTargets) {
-    showFloat(`🔥-${gsDmgFire}`, '#f97316', gsMob.lat, gsMob.lng);
     hitCount++;
   }
   _gsSkillCallback?.('fire');
-  showFloat(_t('skill_fire_hit', hitCount), '#f97316', anchor.lat, anchor.lng);
   _skillCd.fire = Date.now() + SKILL_CD_MS.fire;
   updateSkillBar();
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.fire);
@@ -1488,16 +1477,13 @@ export function castWhirlwind() {
   let hitCount = 0;
   for (const mob of inRangeMobs) {
     hitMonster(mob.id, getTotalAtk() * _player.level);
-    showFloat(`🌪️-${getTotalAtk() * _player.level}`, '#6ee7b7', mob.lat, mob.lng);
     hitCount++;
   }
   const gsDmgWind = Math.round(_player.level * 100 * GS_SKILL_MULT.wind);
   for (const gsMob of gsTargets) {
-    showFloat(`🌪️-${gsDmgWind}`, '#6ee7b7', gsMob.lat, gsMob.lng);
     hitCount++;
   }
   _gsSkillCallback?.('wind');
-  showFloat(_t('skill_wind_hit', hitCount), '#6ee7b7', anchor.lat, anchor.lng);
   _skillCd.wind = Date.now() + SKILL_CD_MS.wind;
   updateSkillBar();
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.wind);
@@ -1531,16 +1517,13 @@ export function castMeteor() {
   let hitCount = 0;
   for (const mob of inRangeMobs) {
     hitMonster(mob.id, getTotalAtk() * _player.level);
-    showFloat(`☄️-${getTotalAtk() * _player.level}`, '#f97316', mob.lat, mob.lng);
     hitCount++;
   }
   const gsDmgMeteor = Math.round(_player.level * 100 * GS_SKILL_MULT.meteor);
   for (const gsMob of gsTargets) {
-    showFloat(`☄️-${gsDmgMeteor}`, '#f97316', gsMob.lat, gsMob.lng);
     hitCount++;
   }
   _gsSkillCallback?.('meteor');
-  showFloat(_t('skill_meteor_hit', hitCount), '#ea580c', anchor.lat, anchor.lng);
   _skillCd.meteor = Date.now() + SKILL_CD_MS.meteor;
   updateSkillBar();
   setTimeout(() => updateSkillBar(), SKILL_CD_MS.meteor);
@@ -1722,11 +1705,6 @@ export async function useReviveTicket() {
 
 function gainXp(amount) {
   _player.xp += amount;
-  const myMark = _ctx?.myLocationMarker;
-  if (myMark) {
-    const pos = myMark.getPosition();
-    showFloat(`+${amount} XP`, '#a78bfa', pos.lat(), pos.lng());
-  }
   updateCombatHud();
   savePlayerState();
 }
@@ -1825,7 +1803,7 @@ function renderDecoMarkers() {
     const marker = new google.maps.Marker({
       position: { lat: d.lat, lng: d.lng }, map: visible ? map : null,
       title: d.name || '',
-      icon: { url: d.imageUrl, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size/2, size/2) },
+      icon: { url: d.imageUrl, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size/2, size) },
       zIndex: 5,
     });
     marker.addListener('click', () => {
@@ -1917,22 +1895,6 @@ function _makeShadowIcon(size) {
   };
 }
 
-// Ground shadow for bottom-anchored buildings: ellipse centered at the marker position (ground)
-function _makeShopShadowIcon(size) {
-  const sw = Math.round(size * 1.5);
-  const sh = 20;
-  const ry = sh / 2 - 3;
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="' + sh + '">' +
-    '<defs><filter id="gsf"><feGaussianBlur stdDeviation="3"/></filter></defs>' +
-    '<ellipse cx="' + (sw / 2) + '" cy="' + (sh / 2) + '" rx="' + (sw / 2 - 2) + '" ry="' + ry + '"' +
-    ' fill="rgba(0,0,0,0.30)" filter="url(#gsf)"/></svg>';
-  return {
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(sw, sh),
-    anchor: new google.maps.Point(sw / 2, 0),  // shadow top at building base → full shadow below building
-  };
-}
-
 // Floating objects (dragon, Monster eyes) cast a smaller, lower-opacity shadow further below
 function _makeFloatingShadowIcon(size) {
   const sw = Math.round(size * 0.62);
@@ -1960,9 +1922,9 @@ function _dropShadow(id, reg) {
   if (reg[id]) { reg[id].setMap(null); delete reg[id]; }
 }
 
-function getMonsterIcon(image) {
+function getMonsterIcon(image, flying = false) {
   if (image && (image.startsWith('/') || image.startsWith('http'))) {
-    return { url: image, scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+    return { url: image, scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18, flying ? 18 : 36) };
   }
   const emoji = image || '🐉';
   const isEmoji = !image || image.length <= 4;
@@ -1973,19 +1935,19 @@ function getMonsterIcon(image) {
       <circle cx="18" cy="18" r="17" fill="rgba(220,38,38,0.85)" stroke="#fff" stroke-width="2"/>
       <text x="18" y="24" font-size="18" text-anchor="middle">${emoji}</text></svg>`;
     return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-             scaledSize: new google.maps.Size(36,46), anchor: new google.maps.Point(18,18) };
+             scaledSize: new google.maps.Size(36,46), anchor: new google.maps.Point(18, flying ? 18 : 46) };
   }
   // 이미 경로가 포함된 경우(assets/... 형태) 그대로 사용
   const imgPath = image.includes('/') ? `/${image}` : `/assets/images/monsters/${image}`;
   return { url: imgPath,
-           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18, flying ? 18 : 36) };
 }
 
 function getTowerIcon(image, type) {
   const isCannon = type === 'cannon';
   const defaultImg = isCannon ? '/assets/images/shops/tower2.png' : '/assets/images/shops/tower.png';
   const src = (image && image.startsWith('/')) ? image : defaultImg;
-  return { url: src, scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,19) };
+  return { url: src, scaledSize: new google.maps.Size(38,38), anchor: new google.maps.Point(19,38) };
 }
 
 // ── 마커 가시 범위 갱신 (GPS 이동 또는 줌 변경 시 호출) ──────────────────────
@@ -2064,8 +2026,6 @@ function _spawnMonsterMarker(mob) {
             animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
               isCrit ? '#ff6600' : '#fbbf24', () => {
                 hitMonster(mob.id, dmg);
-                showFloat(isCrit ? `💥${dmg}` : `-${dmg}`,
-                  isCrit ? '#ff6600' : '#fbbf24', mob.lat, mob.lng);
                 if (isCrit) showCriticalToast();
               }, _spr1?.getBowPixel?.());
             return;
@@ -2101,7 +2061,7 @@ function _spawnMonsterMarker(mob) {
   const marker = new google.maps.Marker({
     position: { lat: mob.lat, lng: mob.lng }, map: startVisible ? map : null,
     title: mob.name || _t('monster_default'),
-    icon: getMonsterIcon(mob.image),
+    icon: getMonsterIcon(mob.image, mob.monsterType === 'dragon'),
     zIndex: 50,
   });
   marker.addListener('click', () => {
@@ -2124,8 +2084,6 @@ function _spawnMonsterMarker(mob) {
         animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
           isCrit ? '#ff6600' : '#fbbf24', () => {
             hitMonster(mob.id, dmg);
-            showFloat(isCrit ? `💥${dmg}` : `-${dmg}`,
-              isCrit ? '#ff6600' : '#fbbf24', mob.lat, mob.lng);
             if (isCrit) showCriticalToast();
           }, _spr2?.getBowPixel?.());
         return;
@@ -2189,9 +2147,7 @@ function attackTower(tower, marker) {
   const dmg  = isCrit ? base * 2 : base;
   st.current = Math.max(0, st.current - dmg);
 
-  // 데미지 플로팅
   const pos = marker.getPosition();
-  showFloat(isCrit ? `💥 CRIT! -${dmg}` : `-${dmg}`, isCrit ? '#f97316' : '#ef4444', pos.lat(), pos.lng());
   const _sprT = _ctx?.myLocationMarker;
   if (_sprT) {
     const myPosT = _sprT.getPosition?.();
@@ -2609,14 +2565,12 @@ async function hitMonster(monsterId, damage) {
     _player.monstersKilled = (_player.monstersKilled || 0) + 1;
 
     playSound('monster_die');
-    showFloat(_t('float_kill'), '#fbbf24', mob.lat, mob.lng);
     gainXp(mob.dropExp || 20);
     dropGoldTokens(mob);
     // 마정석 랜덤 드랍 (30% 확률, 1~3개)
     if (Math.random() < 0.3) {
       const stones = Math.floor(Math.random() * 3) + 1;
       _player.token = (_player.token ?? 0) + stones;
-      showFloat(_t('float_magic_stone', stones), '#a78bfa', mob.lat, mob.lng);
       updateSkillBar();
       savePlayerState();
     }
@@ -2629,7 +2583,6 @@ async function hitMonster(monsterId, damage) {
           if (Math.random() < (keyDef.dropRate || 0) / 5) {
             httpsCallable(_ctx.functions, 'earnKey')({ keyId: keyDef.id })
               .then(res => {
-                showFloat(_t('float_key_drop', res.data?.keyName || `Key #${keyDef.id}`), '#fcd34d', mob.lat, mob.lng);
                 _ctx._onLoadInventory?.();
               })
               .catch(err => console.warn('[earnKey]', err.message));
@@ -2640,10 +2593,7 @@ async function hitMonster(monsterId, damage) {
     // 드래곤 처치 시 10% 확률로 부활권 드랍
     if (mob.monsterType === 'dragon' && Math.random() < 0.10) {
       httpsCallable(_ctx.functions, 'earnReviveTicket')()
-        .then(() => {
-          showFloat('🔮 Revive Ticket dropped!', '#a78bfa', mob.lat, mob.lng);
-          _ctx._onLoadInventory?.();
-        })
+        .then(() => { _ctx._onLoadInventory?.(); })
         .catch(err => console.warn('[earnReviveTicket]', err.message));
     }
     // FS 몬스터(goblin/orc)는 아이템 드랍 없음 — 아이템은 GS 서버 몬스터 전용
@@ -3576,7 +3526,6 @@ export function syncHpFromServer(remainHp, damage) {
   _player.hp = Math.max(0, remainHp);
   const myMark = _ctx?.myLocationMarker;
   const pos    = myMark?.getPosition();
-  if (pos && damage > 0) showFloat(`-${damage}`, '#f87171', pos.lat(), pos.lng());
   playSound('player_hit');
   updateCombatHud();
 }
@@ -3639,11 +3588,10 @@ export function spawnGsDrop(dropId, lat, lng, gold, onClaim) {
     title: `💰 Coins ×${gold} — Tap to collect`,
     icon: { url: '/assets/images/item/coins.png',
             scaledSize: new google.maps.Size(32, 32),
-            anchor: new google.maps.Point(16, 16) },
+            anchor: new google.maps.Point(16, 32) },
     zIndex: 26,
   });
   _gsDrops[dropId] = { marker, lat, lng, gold };
-  showFloat(`💰×${gold}`, '#fbbf24', lat, lng);
   playSound('gold_drop');
 
   marker.addListener('click', () => {
@@ -3750,11 +3698,6 @@ function _renderShopMarker(shop) {
     _ctx._onShopClick?.(freshShop);
   });
 
-  _shopShadows[shop.id] = new google.maps.Marker({
-    position: { lat: shop.lat, lng: shop.lng }, map,
-    icon: _makeShopShadowIcon(44),
-    zIndex: 1, clickable: false,
-  });
   _shopMarkers[shop.id] = marker;
 
 }
