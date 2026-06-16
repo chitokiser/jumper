@@ -2903,7 +2903,8 @@ export function enterAdminPlaceMode(type) {
       const validTypes = typeAliases[shopType] || [shopType];
 
       // 5km radius duplicate check — includes both admin and user-placed shop type strings
-      const conflict = _shops.find(s =>
+      // weapon_armor: 제한 없음 (여러 곳에 자유롭게 배치 가능, potion 상점과 동일 정책)
+      const conflict = shopType === 'weapon_armor' ? null : _shops.find(s =>
         s.active && validTypes.includes(s.type) &&
         haversine(lat, lng, s.lat, s.lng) <= 5000
       );
