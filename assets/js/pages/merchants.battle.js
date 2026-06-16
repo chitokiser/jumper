@@ -2245,7 +2245,6 @@ function createTowerMarker(tower, map, infoWindow) {
       infoWindow?.open(map, marker);
     }
   });
-  if (map && tower.id) _placeShadow(tower.id, tower.lat, tower.lng, 38, map, _towerShadows);
   return marker;
 }
 
