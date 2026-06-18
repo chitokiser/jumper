@@ -350,7 +350,7 @@ function _showInstallConfirm(storeId, shopLat, shopLng) {
       <div style="text-align:left;background:#1f2937;border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:#9ca3af;line-height:1.8">
         <div>💰 Install cost: <strong style="color:#fbbf24">100,000 GP</strong></div>
         <div>⛏ Mine will be placed near this Potion Shop</div>
-        <div>📊 Max <strong style="color:#f3f4f6">10 active mines</strong> per player</div>
+        <div>📊 Max <strong style="color:#f3f4f6">10 active mines</strong> per shop</div>
         <div style="margin-top:6px;padding-top:6px;border-top:1px solid #374151;color:#fca5a5">
           🏪 <strong style="color:#f87171">10% tax</strong> on all mined gold goes to the shop owner automatically
         </div>
