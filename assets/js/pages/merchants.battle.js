@@ -1668,7 +1668,7 @@ function getMonsterFrozenIcon() {
     <circle cx="18" cy="18" r="17" fill="rgba(147,197,253,0.9)" stroke="#bfdbfe" stroke-width="2"/>
     <text x="18" y="24" font-size="18" text-anchor="middle">❄</text></svg>`;
   return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,36) };
 }
 
 // ── 부활 아이템 ───────────────────────────────────────────────────────────────
@@ -2742,7 +2742,7 @@ export function startNearbyPlayersWatch() {
             icon: {
               url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
               scaledSize: new google.maps.Size(32, 32),
-              anchor:     new google.maps.Point(16, 16),
+              anchor:     new google.maps.Point(16, 32),
             },
           });
         }
@@ -3209,7 +3209,7 @@ function _makeDeathMarkerIcon() {
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
     scaledSize: new google.maps.Size(44, 44),
-    anchor:     new google.maps.Point(22, 22),
+    anchor:     new google.maps.Point(22, 44),
   };
 }
 
@@ -3265,7 +3265,7 @@ function makeLocationIcon(heading, isDead) {
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
     scaledSize: new google.maps.Size(48, 48),
-    anchor: new google.maps.Point(24, 24),
+    anchor: new google.maps.Point(24, 48),
   };
 }
 

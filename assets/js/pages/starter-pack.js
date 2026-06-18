@@ -161,7 +161,7 @@ function _renderMarkers() {
       icon: {
         url:        t.icon,
         scaledSize: new google.maps.Size(28, 28),
-        anchor:     new google.maps.Point(14, 14),
+        anchor:     new google.maps.Point(14, 28),
       },
       title:  t.label,
       zIndex: 5,
@@ -179,7 +179,7 @@ function _renderMarkers() {
       icon: {
         url:        m.img,
         scaledSize: new google.maps.Size(64, 64),
-        anchor:     new google.maps.Point(32, 32),
+        anchor:     new google.maps.Point(32, 64),
       },
       title:  m.label,
       zIndex: 6,

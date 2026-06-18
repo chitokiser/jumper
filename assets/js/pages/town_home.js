@@ -671,7 +671,7 @@ function makeSvgIcon(emoji, fillColor, size = 36) {
     <circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="${fillColor}" stroke="#fff" stroke-width="2"/>
     <text x="${size/2}" y="${size*0.68}" font-size="${size*0.5}" text-anchor="middle">${emoji}</text></svg>`;
   return { url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-           scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size/2, size/2) };
+           scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size/2, size) };
 }
 
 async function loadPlacesMap() {
@@ -739,8 +739,8 @@ async function loadPlacesMap() {
       const latLng = (typeof m.lat === "number" && typeof m.lng === "number") ? { lat: m.lat, lng: m.lng } : parseLatLng(m.gmap);
       if (!latLng) return;
       const icon = m.imageUrl
-        ? { url: m.imageUrl, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) }
-        : { url: "/assets/images/jump/favicon.png", scaledSize: new google.maps.Size(18, 18), anchor: new google.maps.Point(9, 9) };
+        ? { url: m.imageUrl, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36) }
+        : { url: "/assets/images/jump/favicon.png", scaledSize: new google.maps.Size(18, 18), anchor: new google.maps.Point(9, 18) };
       addMarker(latLng, icon,
         `<div style="max-width:240px;font-size:13px;line-height:1.5;">
           ${m.imageUrl ? `<img src="${escHtml(m.imageUrl)}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;">` : ""}

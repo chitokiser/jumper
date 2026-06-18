@@ -114,7 +114,7 @@ function _addPendingPlantMarker(lat, lng) {
     icon: {
       url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
       scaledSize: new google.maps.Size(32, 32),
-      anchor: new google.maps.Point(16, 16),
+      anchor: new google.maps.Point(16, 32),
     },
   });
 }

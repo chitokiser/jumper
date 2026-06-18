@@ -963,7 +963,7 @@ function getNearbyPlayerIcon(name) {
     <text x="18" y="23" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">${initials}</text>
   </svg>`;
   return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) };
+           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,36) };
 }
 
 // GPS 업데이트 시 호출 — 5초 rate-limit
@@ -1061,7 +1061,7 @@ function _gsMonsterIcon(state, hpPct) {
     <text x="18" y="24" font-size="16" text-anchor="middle">${emoji}</text>
   </svg>`;
   return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-           scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) };
+           scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36) };
 }
 
 // ── 게임 서버 몬스터 렌더링 ────────────────────────────────────────────────────

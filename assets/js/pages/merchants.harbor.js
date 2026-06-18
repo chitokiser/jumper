@@ -81,13 +81,13 @@ function _onZoomChanged() {
       marker.setIcon({
         url:        _rotatedDockUrl(dockImg, sz * 2, _harborBearings[id] ?? 0),
         scaledSize: new google.maps.Size(sz, sz),
-        anchor:     new google.maps.Point(sz / 2, sz / 2),
+        anchor:     new google.maps.Point(sz / 2, sz),
       });
     } else {
       marker.setIcon({
         url:        HARBOR_ICON,
         scaledSize: new google.maps.Size(sz, sz),
-        anchor:     new google.maps.Point(sz / 2, sz / 2),
+        anchor:     new google.maps.Point(sz / 2, sz),
       });
     }
   }
@@ -147,8 +147,8 @@ function _renderMarkers(harbors) {
       position: { lat: harbor.lat, lng: harbor.lng },
       map:      _map,
       icon: dockImg
-        ? { url: _rotatedDockUrl(dockImg, _sz * 2, bearing), scaledSize: new google.maps.Size(_sz, _sz), anchor: new google.maps.Point(_sz / 2, _sz / 2) }
-        : { url: HARBOR_ICON, scaledSize: new google.maps.Size(_sz, _sz), anchor: new google.maps.Point(_sz / 2, _sz / 2) },
+        ? { url: _rotatedDockUrl(dockImg, _sz * 2, bearing), scaledSize: new google.maps.Size(_sz, _sz), anchor: new google.maps.Point(_sz / 2, _sz) }
+        : { url: HARBOR_ICON, scaledSize: new google.maps.Size(_sz, _sz), anchor: new google.maps.Point(_sz / 2, _sz) },
       title:  `⚓ Harbor | ${harbor.ship_count}/${MAX_SHIPS} ships`,
       zIndex: 55,
     });
@@ -161,7 +161,7 @@ function _renderMarkers(harbors) {
         if (!img || !m) return;
         const sz = _harborSize(_map?.getZoom() ?? 14);
         const br = _harborBearings[harbor.id] ?? 0;
-        m.setIcon({ url: _rotatedDockUrl(img, sz * 2, br), scaledSize: new google.maps.Size(sz, sz), anchor: new google.maps.Point(sz / 2, sz / 2) });
+        m.setIcon({ url: _rotatedDockUrl(img, sz * 2, br), scaledSize: new google.maps.Size(sz, sz), anchor: new google.maps.Point(sz / 2, sz) });
       });
     }
     _startHarborAnim(harbor);
@@ -328,7 +328,7 @@ async function _animateShipDeparture(harbor) {
 
   const mkIcon = (url, sz) => ({
     url, scaledSize: new google.maps.Size(sz, sz),
-    anchor: new google.maps.Point(sz / 2, sz / 2),
+    anchor: new google.maps.Point(sz / 2, sz),
   });
 
   // Start at harbor position — it is in the sea, so ship stays in water
@@ -387,7 +387,7 @@ async function _startHarborAnim(harbor) {
 
   function _ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
   function mkIcon(url, sz) {
-    return { url, scaledSize: new google.maps.Size(sz, sz), anchor: new google.maps.Point(sz / 2, sz / 2) };
+    return { url, scaledSize: new google.maps.Size(sz, sz), anchor: new google.maps.Point(sz / 2, sz) };
   }
 
   function runLeg(isDepart, done) {
@@ -594,8 +594,8 @@ function _showInstallConfirm(shopId, lat, lng) {
           position: { lat, lng },
           map: _map,
           icon: dockImg
-            ? { url: _rotatedDockUrl(dockImg, _isz * 2, 0), scaledSize: new google.maps.Size(_isz, _isz), anchor: new google.maps.Point(_isz / 2, _isz / 2) }
-            : { url: HARBOR_ICON, scaledSize: new google.maps.Size(_isz, _isz), anchor: new google.maps.Point(_isz / 2, _isz / 2) },
+            ? { url: _rotatedDockUrl(dockImg, _isz * 2, 0), scaledSize: new google.maps.Size(_isz, _isz), anchor: new google.maps.Point(_isz / 2, _isz) }
+            : { url: HARBOR_ICON, scaledSize: new google.maps.Size(_isz, _isz), anchor: new google.maps.Point(_isz / 2, _isz) },
           title: `⚓ Harbor | 0/${MAX_SHIPS} ships`,
           zIndex: 55,
         });
