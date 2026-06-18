@@ -53,8 +53,8 @@ async function getConfig() {
 }
 
 // ── 금광 설치 ──────────────────────────────────────────────────────────────────
-// 포션상점 근처에만 설치 가능, 플레이어당 최대 10개
-async function createGoldMine(uid, { storeId }) {
+// 포션상점 근처에만 설치 가능, 상점당 최대 10개
+async function createGoldMine(uid, { storeId, lat, lng }) {
   if (!storeId) throw new HttpsError('invalid-argument', 'storeId is required');
 
   const [shopSnap, playerSnap, cfg] = await Promise.all([
@@ -92,6 +92,22 @@ async function createGoldMine(uid, { storeId }) {
   const storeLng    = typeof shop.lng === 'number' ? shop.lng : null;
   const shopOwnerId = shop.ownerUid ?? null;
 
+  // 플레이어 GPS 위치 사용 — 상점 좌표와 겹치지 않도록
+  // 제공된 lat/lng가 상점 반경 내에 있으면 그대로, 없으면 상점 기준 소폭 오프셋
+  let mineLat = (lat != null && lng != null) ? lat : storeLat;
+  let mineLng = (lat != null && lng != null) ? lng : storeLng;
+
+  // 상점 위치와 5m 이내로 겹칠 경우 20m 랜덤 오프셋 적용
+  if (storeLat != null && storeLng != null) {
+    const distToShop = haversineM(mineLat, mineLng, storeLat, storeLng);
+    if (distToShop < 5) {
+      const angle = Math.random() * Math.PI * 2;
+      const offsetM = 20;
+      mineLat = storeLat + (offsetM / 111320) * Math.cos(angle);
+      mineLng = storeLng + (offsetM / (111320 * Math.cos(storeLat * Math.PI / 180))) * Math.sin(angle);
+    }
+  }
+
   const totalGold = _rollDeposit();
   const nowTs = admin.firestore.Timestamp.fromMillis(Date.now());
   const now = admin.firestore.FieldValue.serverTimestamp();
@@ -109,8 +125,8 @@ async function createGoldMine(uid, { storeId }) {
     shop_owner_id: shopOwnerId,
     store_lat:     storeLat,
     store_lng:     storeLng,
-    lat:           storeLat,
-    lng:           storeLng,
+    lat:           mineLat,
+    lng:           mineLng,
     miners_count:     0,
     total_gold:       totalGold,
     remain_gold:      totalGold,
@@ -127,8 +143,8 @@ async function createGoldMine(uid, { storeId }) {
     ok: true,
     mineId:      mineRef.id,
     installCost: cfg.installCost,
-    lat:         storeLat,
-    lng:         storeLng,
+    lat:         mineLat,
+    lng:         mineLng,
     taxRate:     MINE_TAX_RATE,
   };
 }
