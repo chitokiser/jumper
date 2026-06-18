@@ -11,6 +11,12 @@
 - **bot.py (텔레그램 봇)** → Railway에서 실행 중 — 수정 후 Railway 재배포 필요
 - **game-server** → Railway에서 실행 중 (`cd game-server && railway up`)
 
+## ⚠️ 지도 마커 앵커 규칙 (반복 발생 버그)
+- **모든 지상 오브젝트(건물, 나무, 박스, 몬스터, 타워, NPC)는 반드시 bottom-center 앵커 사용**: `anchor: new google.maps.Point(w/2, h)`
+- **절대 center 앵커 `(w/2, h/2)` 사용 금지** — 오브젝트가 공중에 뜬 것처럼 보임
+- **예외**: 비행 유닛(dragon 등)만 center 앵커 허용 — `getMonsterIcon(image, flying)` 두 번째 인자로 구분
+- 나무묘목(`_TREE_ANCHOR_Y`)은 이미 bottom-anchored, 수정 금지
+
 ## ⚠️ CF 에러 처리 — CORS 버그 방지 (반복 발생 패턴)
 - **Cloud Functions 핸들러에서 `throw new Error(...)` 절대 금지 — 반드시 `HttpsError` 사용**
 - 이유: Gen2 `onCall`은 `HttpsError`만 CORS 헤더를 포함한 응답으로 직렬화함. 일반 `Error`는 Cloud Run이 500을 직접 반환 → 브라우저에서 CORS 오류로 보임 (실제 원인 은닉)
@@ -138,6 +144,16 @@
 - Cloud Functions 에러 메시지도 영어로 작성
 
 ---
+
+## ⚠️ 몬스터 브로드캐스트 — 반드시 배치(batch) 전송 (BGM·성능 버그 방지)
+- **worldEngine tick 루프에서 몬스터별 개별 `broadcastMonsterUpdate` 절대 금지**
+- 이유: 250마리 × 1회/초 = 250 socket.io emit/s → JS 메인스레드 포화 → Web Audio buffer underrun → BGM 끊김
+- **올바른 패턴**: 존 내 변경된 몬스터 전부 배열로 수집 후 `broadcastMonsterBatch(zoneId, updates)` 1회 호출
+- 이벤트명: `monster:batch_update` (S2C.MONSTER_BATCH_UPDATE)
+- 클라이언트: `_socket.on('monster:batch_update', list => list.forEach(m => _handlers?.onMonsterUpdate?.(m)))`
+- 전투 피격·리스폰 등 단건 이벤트는 기존 `broadcastMonsterUpdate` 유지 (개수가 적어 문제 없음)
+- **zone radiusM은 플레이어 존 배정 경계 — 스폰 포인트 좌표는 radiusM 외부에도 배치 가능**
+- 대규모 스폰 추가 시 해당 존의 radiusM을 커버 범위에 맞게 확장할 것
 
 ## 게임 서버
 - notify 이벤트 사용, i18n.ts MESSAGES 등록, snake_case 키

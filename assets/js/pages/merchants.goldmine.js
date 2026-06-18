@@ -224,6 +224,24 @@ function _fillModal(mine) {
       <div style="text-align:center;color:#6b7280;font-size:12px;padding:8px">
         Mine is at full capacity (100 miners)
       </div>` : ''}
+
+    ${isOwner ? `
+    <div style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);
+                border-radius:10px;padding:12px;margin-top:10px">
+      <div style="font-size:12px;font-weight:600;color:#f87171;margin-bottom:8px">Transfer Ownership</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:8px">
+        Enter the recipient's Player ID (UID). Ownership transfers immediately.
+      </div>
+      <div style="display:flex;gap:8px">
+        <input id="gmTransferUid" type="text" placeholder="Player ID"
+          style="flex:1;background:#111827;color:#f3f4f6;border:1px solid #374151;
+                 border-radius:6px;padding:8px 10px;font-size:13px">
+        <button id="gmTransferBtn"
+          style="background:linear-gradient(135deg,#991b1b,#7f1d1d);color:#fff;
+                 border:none;border-radius:6px;padding:8px 14px;font-size:13px;
+                 font-weight:700;cursor:pointer;white-space:nowrap">Transfer</button>
+      </div>
+    </div>` : ''}
   `;
 
   const inp = document.getElementById('gmMinerCount');
@@ -240,6 +258,13 @@ function _fillModal(mine) {
 
   document.getElementById('gmClaimBtn')?.addEventListener('click', async () => {
     await _claimMine(mine.id);
+  });
+
+  document.getElementById('gmTransferBtn')?.addEventListener('click', async () => {
+    const toUid = document.getElementById('gmTransferUid')?.value?.trim();
+    if (!toUid) { _showToast('Enter a Player ID', 'warn'); return; }
+    if (!confirm(`Transfer this gold mine to player "${toUid}"? This cannot be undone.`)) return;
+    await _transferMine(mine.id, toUid);
   });
 }
 
@@ -283,6 +308,23 @@ async function _claimMine(mineId) {
   } catch (e) {
     _showToast(e.message ?? 'Claim failed', 'error');
     if (btn) { btn.disabled = false; btn.textContent = `Claim`; }
+  }
+}
+
+async function _transferMine(mineId, toUid) {
+  const btn = document.getElementById('gmTransferBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const fn = httpsCallable(_fns, 'transferGoldMine');
+    const { data } = await fn({ mineId, toUid });
+    _showToast(`Mine transferred to ${data.displayName}!`);
+    // Remove from local cache — mine no longer belongs to current user
+    if (_markers[mineId]) { _markers[mineId].setMap(null); delete _markers[mineId]; }
+    delete _mines[mineId];
+    document.getElementById('goldMineModal')?.classList.remove('open');
+  } catch (e) {
+    _showToast(e.message ?? 'Transfer failed', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Transfer'; }
   }
 }
 

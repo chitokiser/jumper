@@ -227,7 +227,7 @@
 
     /* ── 상점 모달 ── */
     #shopModal.open, #shopAdminModal.open { display: flex !important; }
-    #goldMineModal.open, #gmInstallConfirm.open { display: flex !important; }
+    #goldMineModal.open, #gmInstallConfirm.open, #myIdModal.open { display: flex !important; }
     #harborModal.open, #harborSvModal.open, #harborInstallConfirm.open { display: flex !important; }
 
     /* ── 돈나무 모달 ── */
@@ -2032,6 +2032,7 @@
           <span class="gp-val" id="hudGpVal">–</span>
         </div>
         <a id="btnChargeGp" href="/exchange#hex-gp" class="map-hud-btn" title="Charge GP with HEX" style="font-size:10px;font-weight:800;color:#fbbf24;background:rgba(0,0,0,0.65);border:1.5px solid rgba(251,191,36,0.6);text-decoration:none;flex-direction:column;gap:1px;line-height:1.2;">⚡<span style="font-size:8px;">Charge</span></a>
+        <button id="btnMyId" class="map-hud-btn" title="My Player ID">👤</button>
         <button id="btnTutHelp" class="map-hud-btn" title="Hướng dẫn / 도움말">❓</button>
         <button id="btnInventory" class="map-hud-btn" title="Túi đồ" style="position:relative">🎒<span id="dropNearbyBadge" class="drop-nearby-badge hidden"></span></button>
         <button id="btnDetector" class="map-hud-btn" title="보물 탐지기 ON/OFF">📡</button>
@@ -2476,6 +2477,11 @@
 
   <!-- Gold Mine install result — innerHTML injected by _showInstallSuccess() in merchants.goldmine.js -->
   <div id="gmInstallConfirm" data-fs-modal
+    style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);
+           align-items:center;justify-content:center"></div>
+
+  <!-- ── My Player ID 모달 ── -->
+  <div id="myIdModal" data-fs-modal
     style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);
            align-items:center;justify-content:center"></div>
 

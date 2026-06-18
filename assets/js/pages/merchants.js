@@ -2868,6 +2868,7 @@ function initTutorial() {
   closeBtn?.addEventListener('click', closeTutorial);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeTutorial(); });
 
+  $('btnMyId')?.addEventListener('click', _openMyIdModal);
   $('btnTutHelp')?.addEventListener('click', openTutorial);
 
   // 첫 방문 시 자동 표시
@@ -4131,12 +4132,6 @@ function _renderShopModalBody() {
             📊 매출 실적 보기
           </button>
           <div id="shopSalesPanel" style="display:none;margin-top:8px"></div>
-          ${shop.type !== 'weapon_armor' ? `<button id="shopInstallMineBtn"
-            style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:none;
-                   font-weight:700;font-size:13px;cursor:pointer;
-                   background:linear-gradient(135deg,#78350f,#92400e);color:#fbbf24">
-            ⛏ Install Gold Mine
-          </button>` : ''}
         </div>`;
       }
       // 상점 공격은 GPS 모드(실제 현장)에서만 가능
@@ -4155,6 +4150,16 @@ function _renderShopModalBody() {
       </button>`;
     })()}
   </div>`;
+
+  // Gold Mine install button — visible to any logged-in user (non weapon_armor shops)
+  if (shop.type !== 'weapon_armor' && _uid && !_isAnonymous) {
+    html += `<button id="shopInstallMineBtn"
+      style="width:100%;margin-top:10px;padding:11px;border-radius:10px;border:none;
+             font-weight:700;font-size:13px;cursor:pointer;
+             background:linear-gradient(135deg,#78350f,#92400e);color:#fbbf24">
+      ⛏ Install Gold Mine — ${(100000).toLocaleString()} GP
+    </button>`;
+  }
 
   // Harbor install button — visible to any logged-in user near a potion shop
   if ((shop.type === 'potion' || shop.type === 'shop_potion') && _uid && !_isAnonymous) {
@@ -4700,6 +4705,50 @@ $('shopAdminShopType')?.addEventListener?.('change', () => {
     sel.innerHTML = _buildItemSelectOptions(cur, _getShopAdminType());
   });
 });
+
+// ── My Player ID modal ────────────────────────────────────────────────────────
+function _openMyIdModal() {
+  const modal = $('myIdModal');
+  if (!modal) return;
+  const uid  = _uid  ?? '—';
+  const name = _ctx?.displayName ?? _userEmail ?? '—';
+  modal.innerHTML = `
+    <div style="background:#111827;border:1px solid #374151;border-radius:16px;
+                width:min(320px,90vw);padding:24px;text-align:center">
+      <div style="font-size:36px;margin-bottom:10px">👤</div>
+      <div style="font-size:15px;font-weight:700;color:#f3f4f6;margin-bottom:4px">${escHtml(name)}</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:16px">Player Name</div>
+      <div style="background:#1f2937;border:1px solid #374151;border-radius:10px;padding:12px;margin-bottom:16px">
+        <div style="font-size:11px;color:#6b7280;margin-bottom:6px;font-weight:600;letter-spacing:.5px">PLAYER ID (UID)</div>
+        <div id="myIdText" style="font-size:13px;color:#fbbf24;font-weight:700;word-break:break-all;
+                                   letter-spacing:.5px;user-select:all">${escHtml(uid)}</div>
+      </div>
+      <button id="myIdCopyBtn"
+        style="width:100%;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:#fff;
+               border:none;border-radius:8px;padding:11px;font-size:14px;
+               font-weight:700;cursor:pointer;margin-bottom:8px">
+        📋 Copy Player ID
+      </button>
+      <button id="myIdCloseBtn"
+        style="width:100%;background:#1f2937;color:#9ca3af;border:1px solid #374151;
+               border-radius:8px;padding:10px;font-size:13px;cursor:pointer">
+        Close
+      </button>
+    </div>`;
+  modal.classList.add('open');
+  modal.querySelector('#myIdCopyBtn').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(uid);
+      const btn = modal.querySelector('#myIdCopyBtn');
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => { btn.innerHTML = '📋 Copy Player ID'; }, 2000);
+    } catch {
+      showToast('Copy failed — select the ID manually', 'warn');
+    }
+  };
+  modal.querySelector('#myIdCloseBtn').onclick = () => modal.classList.remove('open');
+  modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('open'); };
+}
 
 function showToast(msg, type = 'info') {
   const ICON = { success: '✅', error: '❌', warn: '⚠️', info: 'ℹ️' };

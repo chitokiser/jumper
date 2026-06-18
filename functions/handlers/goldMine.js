@@ -14,6 +14,19 @@ const MINE_RADIUS_M         = 5000;
 const GOLD_PER_MINER_MIN    = 0.01;
 const CLAIM_INTERVAL_MS     = 24 * 60 * 60 * 1000;
 
+// Deposit size distribution — biased toward small deposits to reduce profitability
+// 5%:10만~50만 | 50%:50만~100만 | 20%:100만~200만 | 10%:200만~400만 | 7%:400만~600만 | 5%:600만~800만 | 3%:800만~1000만
+function _rollDeposit() {
+  const r = Math.random() * 100;
+  if (r < 5)  return Math.floor(100000  + Math.random() * 400000);
+  if (r < 55) return Math.floor(500000  + Math.random() * 500000);
+  if (r < 75) return Math.floor(1000000 + Math.random() * 1000000);
+  if (r < 85) return Math.floor(2000000 + Math.random() * 2000000);
+  if (r < 92) return Math.floor(4000000 + Math.random() * 2000000);
+  if (r < 97) return Math.floor(6000000 + Math.random() * 2000000);
+  return Math.floor(8000000 + Math.random() * 2000000);
+}
+
 function haversineM(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -50,7 +63,6 @@ async function createGoldMine(uid, { storeId }) {
 
   if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found');
   const shop = shopSnap.data();
-  if (shop.ownerUid !== uid) throw new HttpsError('permission-denied', 'You do not own this shop');
 
   // 기존 활성 금광 있으면 중복 설치 방지
   const existingSnap = await db.collection('gold_mines')
@@ -77,7 +89,7 @@ async function createGoldMine(uid, { storeId }) {
   const mineLat = storeLat;
   const mineLng = storeLng;
 
-  const totalGold = Math.floor(10000 + Math.random() * (10000000 - 10000));
+  const totalGold = _rollDeposit();
   const nowTs = admin.firestore.Timestamp.fromMillis(Date.now());
   const now = admin.firestore.FieldValue.serverTimestamp();
   const batch = db.batch();
@@ -265,6 +277,33 @@ async function claimGoldMine(uid, { mineId }) {
   });
 }
 
+// ── 소유권 양도 ────────────────────────────────────────────────────────────────
+async function transferGoldMine(uid, { mineId, toUid }) {
+  if (!mineId) throw new HttpsError('invalid-argument', 'mineId is required');
+  if (!toUid)  throw new HttpsError('invalid-argument', 'toUid is required');
+  if (toUid === uid) throw new HttpsError('invalid-argument', 'Cannot transfer to yourself');
+
+  const [mineSnap, targetSnap] = await Promise.all([
+    db.collection('gold_mines').doc(mineId).get(),
+    db.collection('battle_players').doc(toUid).get(),
+  ]);
+
+  if (!mineSnap.exists) throw new HttpsError('not-found', 'Mine not found');
+  const mine = mineSnap.data();
+  if (mine.owner_id !== uid) throw new HttpsError('permission-denied', 'You do not own this mine');
+  if (!targetSnap.exists) throw new HttpsError('not-found', 'Recipient player not found');
+
+  const targetData = targetSnap.data();
+  const displayName = targetData.displayName ?? targetData.nickname ?? toUid;
+
+  await db.collection('gold_mines').doc(mineId).update({
+    owner_id:  toUid,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { ok: true, newOwner: toUid, displayName };
+}
+
 // ── 관리자: 전체 금광 조회 ─────────────────────────────────────────────────────
 async function adminGetMines(uid) {
   await requireAdmin(uid);
@@ -340,6 +379,7 @@ module.exports = {
   createGoldMine,
   addMiners,
   claimGoldMine,
+  transferGoldMine,
   getMyMines,
   getNearbyMines,
   adminGetMines,

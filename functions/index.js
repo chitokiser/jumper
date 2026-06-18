@@ -2974,6 +2974,11 @@ exports.claimGoldMine = onCall(wrapError(async (request) => {
   return await goldMineH.claimGoldMine(uid, request.data ?? {});
 }));
 
+exports.transferGoldMine = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await goldMineH.transferGoldMine(uid, request.data ?? {});
+}));
+
 exports.getMyGoldMines = onCall(wrapError(async (request) => {
   const uid = requireAuth(request);
   return await goldMineH.getMyMines(uid);
