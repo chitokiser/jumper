@@ -9,8 +9,8 @@ let _map = null;
 let _ctx = null;
 let _activeShopId = null;
 let _activeShopData = null;
-let _treeMarkers = [];
-let _treeShadows = [];
+let _treeMarkersById = {};  // treeId → { marker, shadow }
+let _loadingTrees = false;
 let _cfg = null;
 let _inv = null;
 let _onEnsurePos = null;
@@ -68,15 +68,23 @@ function _updateHud(inv) {
 // ── 나무 마커 로드 ────────────────────────────────────────────────────────────
 export async function loadMoneyTreeMarkers(lat, lng) {
   if (!_map || !_functions) return;
+  if (lat == null || lng == null) return;
+  if (_loadingTrees) return;  // prevent concurrent load → double-clear race
+  _loadingTrees = true;
   const gen = _loadGen;
   try {
     const fn = httpsCallable(_functions, 'getNearbyTrees');
     const { data } = await fn({ lat, lng, radiusKm: 5 });
-    // Discard stale results if a plant completed while this fetch was in-flight
-    if (gen !== _loadGen) return;
-    _clearTreeMarkers();
+    // Discard if a plant completed while this fetch was in-flight
+    if (gen !== _loadGen) { _loadingTrees = false; return; }
+    // Non-destructive diff-update: remove stale markers, add/update the rest
+    const incoming = new Set((data.trees || []).map(t => t.treeId));
+    for (const [id, { marker, shadow }] of Object.entries(_treeMarkersById)) {
+      if (!incoming.has(id)) { marker.setMap(null); shadow.setMap(null); delete _treeMarkersById[id]; }
+    }
     (data.trees || []).forEach(t => _addTreeMarker(t));
   } catch (_) {}
+  _loadingTrees = false;
 }
 
 function _makeTreeShadowIcon() {
@@ -92,10 +100,8 @@ function _makeTreeShadowIcon() {
 }
 
 function _clearTreeMarkers() {
-  _treeMarkers.forEach(m => m.setMap(null));
-  _treeMarkers = [];
-  _treeShadows.forEach(m => m.setMap(null));
-  _treeShadows = [];
+  Object.values(_treeMarkersById).forEach(({ marker, shadow }) => { marker.setMap(null); shadow.setMap(null); });
+  _treeMarkersById = {};
 }
 
 function _addPendingPlantMarker(lat, lng) {
@@ -125,6 +131,17 @@ function _removePendingPlantMarker() {
 
 function _addTreeMarker(tree, animate) {
   if (!_map || !window.google) return;
+  // Update in-place if marker already exists (imageNum/value may change as tree grows)
+  if (_treeMarkersById[tree.treeId]) {
+    const ex = _treeMarkersById[tree.treeId];
+    ex.marker.setIcon({
+      url: `${IMG_BASE}${tree.imageNum}.png`,
+      scaledSize: new google.maps.Size(40, 40),
+      anchor: new google.maps.Point(20, _TREE_ANCHOR_Y[tree.imageNum] ?? 39),
+    });
+    ex.marker.setTitle(`🌳 ${tree.value.toLocaleString()} GP${tree.isOwn ? ' (My Tree)' : ''}`);
+    return;
+  }
   const shadow = new google.maps.Marker({
     position: { lat: tree.lat, lng: tree.lng },
     map: _map,
@@ -132,8 +149,6 @@ function _addTreeMarker(tree, animate) {
     zIndex: 1,
     clickable: false,
   });
-  _treeShadows.push(shadow);
-
   const icon = {
     url: `${IMG_BASE}${tree.imageNum}.png`,
     scaledSize: new google.maps.Size(40, 40),
@@ -148,7 +163,7 @@ function _addTreeMarker(tree, animate) {
     animation: animate ? google.maps.Animation.DROP : null,
   });
   marker.addListener('click', () => _onTreeMarkerClick(tree, marker));
-  _treeMarkers.push(marker);
+  _treeMarkersById[tree.treeId] = { marker, shadow };
 }
 
 function _onTreeMarkerClick(tree, marker) {

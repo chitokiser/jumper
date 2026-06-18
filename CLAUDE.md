@@ -35,8 +35,20 @@
   1. CF 호출 전: `_addPendingPlantMarker(lat, lng)` — BOUNCE 애니메이션으로 심는 중 표시
   2. CF 성공 후: `_removePendingPlantMarker()` → `_addTreeMarker(treeData, true)` — DROP 애니메이션으로 즉시 표시
   3. `window.dispatchEvent(new Event('mt:planted'))` — 폴링 타이머 리셋
-- **심기 성공 후 `loadMoneyTreeMarkers` 즉시 호출 절대 금지** — `_clearTreeMarkers()`가 `await` 이후에 실행되어, CF call 중 이미 시작된 in-flight `loadMoneyTreeMarkers`가 완료될 때 immediate marker를 지운다. 근본 해결책: `_loadGen++` (plant 성공 시)로 stale fetch 결과 무시 + 60초 GPS 폴링으로 자연 새로고침
+- **심기 성공 후 `loadMoneyTreeMarkers` 즉시 호출 절대 금지** — `_loadGen++` (plant 성공 시)로 stale fetch 결과 무시 + 60초 GPS 폴링으로 자연 새로고침
 - **`loadMoneyTreeMarkers` 호출 시 반드시 CF 반환 `data.lat, data.lng` 사용** — `_ctx.lastPos`/`_ctx.gpsPos` 사용 금지 (이동 중이면 좌표 불일치로 나무 로드 실패)
+
+## ⚠️ 지도 마커 깜빡임 / 사라짐 방지 — diff-update 패턴 필수 (반복 발생 버그)
+- **`_clearAll → fetch → addAll` 패턴 절대 금지** — fetch 중 GPS 폴링이 두 번째 load를 트리거하면 두 번째 clear가 첫 번째 load 결과를 지운다 → 오브젝트 영구 소실
+- **올바른 패턴 (diff-update)**:
+  1. `_loadingXxx = true` 플래그로 동시 로드 차단
+  2. Fetch 완료 후 `incoming = new Set(results.map(r => r.id))`
+  3. 기존 마커 중 `incoming`에 없는 것만 제거 (`setMap(null)` + delete)
+  4. 새 항목만 추가 / 기존 항목은 in-place 업데이트 (icon·title만 교체)
+  5. `_loadingXxx = false`
+- **이 패턴이 적용된 파일**: `merchants.moneytree.js`(`_treeMarkersById`), `merchants.goldmine.js`(`_markers`)
+- **새 마커 시스템 추가 시** 반드시 동일한 diff-update 구조 사용. array 방식(`push` / `forEach setMap null`) 사용 금지
+- **좌표 null 체크 필수**: `loadXxxMarkers(lat, lng)` 진입 시 `if (lat == null || lng == null) return;`
 
 ## ⚠️ 전체화면 모달 필수 규칙 (반복 발생 버그)
 - **모든 모달/오버레이는 반드시 `data-fs-modal` 속성 부착**
