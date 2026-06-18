@@ -10,7 +10,7 @@
 const GAME_SERVER_URL =
   window.GAME_SERVER_URL ?? 'https://jumper-game-server-production.up.railway.app';
 
-// 존 설정 — defaultWorldData.ts와 좌표 동일하게 유지
+// 존 설정 — defaultWorldData.ts와 좌표/radiusM 동일하게 유지
 const ZONE_CONFIGS = [
   { zoneId: 'oceanpark-a', centerLat: 20.9716, centerLng: 105.9366, radiusM: 500 },
   { zoneId: 'oceanpark-b', centerLat: 20.9650, centerLng: 105.9420, radiusM: 500 },
@@ -138,7 +138,8 @@ export function connectToGameServer() {
 
   // S2C 이벤트
   _socket.on('zone:snapshot',     d => _handlers?.onZoneSnapshot?.(d));
-  _socket.on('monster:update',    d => _handlers?.onMonsterUpdate?.(d));
+  _socket.on('monster:update',       d => _handlers?.onMonsterUpdate?.(d));
+  _socket.on('monster:batch_update', list => list.forEach(m => _handlers?.onMonsterUpdate?.(m)));
   _socket.on('monster:died',      d => _handlers?.onMonsterDied?.(d));
   _socket.on('monster:respawned', d => _handlers?.onMonsterRespawned?.(d));
   _socket.on('player:hit',        d => _handlers?.onPlayerHit?.(d));

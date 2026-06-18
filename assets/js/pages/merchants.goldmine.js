@@ -421,7 +421,8 @@ async function _doInstall(storeId, shopLat, shopLng) {
     }
     const refLat = data.lat ?? shopLat ?? _ctx?.lastPos?.lat ?? _ctx?.gpsPos?.lat;
     const refLng = data.lng ?? shopLng ?? _ctx?.lastPos?.lng ?? _ctx?.gpsPos?.lng;
-    loadGoldMineMarkers(refLat, refLng); // background refresh — no await
+    // 3초 후 새로고침 — 즉시 호출하면 Firestore 인덱싱 전에 incoming에 없는 즉시 마커가 삭제됨
+    setTimeout(() => loadGoldMineMarkers(refLat, refLng), 3000);
     _showInstallSuccess(data.installCost);
   } catch (e) {
     _showToast(e.message ?? 'Installation failed', 'error');
