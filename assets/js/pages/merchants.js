@@ -4151,8 +4151,8 @@ function _renderShopModalBody() {
     })()}
   </div>`;
 
-  // Gold Mine install button — visible to any logged-in user (non weapon_armor shops)
-  if (shop.type !== 'weapon_armor' && _uid && !_isAnonymous) {
+  // Gold Mine install button — visible to any logged-in user near a Potion Shop
+  if ((shop.type === 'potion' || shop.type === 'shop_potion') && _uid && !_isAnonymous) {
     html += `<button id="shopInstallMineBtn"
       style="width:100%;margin-top:10px;padding:11px;border-radius:10px;border:none;
              font-weight:700;font-size:13px;cursor:pointer;

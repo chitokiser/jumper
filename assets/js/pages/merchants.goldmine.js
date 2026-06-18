@@ -91,7 +91,7 @@ function _fillModal(mine) {
     : 100;
   const minersCount = mine.miners_count ?? 0;
   const rate = minersCount > 0
-    ? (minersCount * 0.01 * (effPct / 100)).toFixed(3)
+    ? (minersCount * 0.01 * (effPct / 100) * 0.9).toFixed(3) // 90% after 10% tax
     : '0.000';
   const depositTxt = mine.deposit_revealed ? mine.remain_gold?.toLocaleString() : '???';
   const totalTxt   = mine.deposit_revealed ? mine.total_gold?.toLocaleString()  : '???';
@@ -99,11 +99,13 @@ function _fillModal(mine) {
     ? Math.round((mine.remain_gold / mine.total_gold) * 100) : null;
   const slots = 100 - minersCount;
 
-  // ROI calculation
+  // ROI calculation (mine owner keeps 90% after 10% shop owner tax)
   const MINE_INSTALL_COST = 100000;
   const MINER_COST        = 10000;
+  const TAX_RATE          = 0.10;
   const totalInvested     = MINE_INSTALL_COST + MINER_COST * minersCount;
-  const dailyGP           = minersCount * 0.01 * 60 * 24 * (effPct / 100);
+  const rawDailyGP        = minersCount * 0.01 * 60 * 24 * (effPct / 100);
+  const dailyGP           = rawDailyGP * (1 - TAX_RATE); // net after 10% tax
   const breakEvenDays     = dailyGP > 0 ? Math.ceil(totalInvested / dailyGP) : null;
 
   // Claim state
@@ -150,7 +152,7 @@ function _fillModal(mine) {
 
       ${minersCount > 0 ? `
         <div style="margin-top:10px;text-align:center;background:#111827;border-radius:8px;padding:8px">
-          <div style="color:#6b7280;font-size:11px">Production rate</div>
+          <div style="color:#6b7280;font-size:11px">Your net production rate (after 10% tax)</div>
           <div style="color:#10b981;font-size:16px;font-weight:700">${rate} GP/min</div>
         </div>` : ''}
     </div>
@@ -165,7 +167,9 @@ function _fillModal(mine) {
         <div style="color:#f3f4f6;text-align:right">${(MINER_COST * minersCount).toLocaleString()} GP</div>
         <div style="color:#6b7280;border-top:1px solid #374151;padding-top:4px">Total invested</div>
         <div style="color:#fbbf24;font-weight:700;text-align:right;border-top:1px solid #374151;padding-top:4px">${totalInvested.toLocaleString()} GP</div>
-        <div style="color:#6b7280">Daily earnings</div>
+        <div style="color:#6b7280">Shop owner tax</div>
+        <div style="color:#f87171;text-align:right">−10% auto</div>
+        <div style="color:#6b7280">Net daily earnings</div>
         <div style="color:#10b981;text-align:right">${dailyGP > 0 ? dailyGP.toFixed(1) : '0'} GP/day</div>
         <div style="color:#6b7280">Break-even</div>
         <div style="color:#a78bfa;font-weight:600;text-align:right">${breakEvenDays != null ? breakEvenDays + ' days' : '—'}</div>
@@ -340,12 +344,17 @@ function _showInstallConfirm(storeId, shopLat, shopLng) {
   if (!el) { _doInstall(storeId, shopLat, shopLng); return; }
   el.innerHTML = `
     <div style="background:#111827;border:1px solid #78350f;border-radius:16px;
-                width:min(320px,90vw);padding:24px;text-align:center">
+                width:min(340px,90vw);padding:24px;text-align:center">
       <div style="font-size:40px;margin-bottom:12px">⛏</div>
-      <div style="font-size:16px;font-weight:700;color:#fbbf24;margin-bottom:8px">Install Gold Mine?</div>
-      <div style="font-size:13px;color:#9ca3af;margin-bottom:20px">
-        Cost: <strong style="color:#fbbf24">100,000 GP</strong><br>
-        Mine will be placed at your shop location.
+      <div style="font-size:16px;font-weight:700;color:#fbbf24;margin-bottom:12px">Install Gold Mine?</div>
+      <div style="text-align:left;background:#1f2937;border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:#9ca3af;line-height:1.8">
+        <div>💰 Install cost: <strong style="color:#fbbf24">100,000 GP</strong></div>
+        <div>⛏ Mine will be placed near this Potion Shop</div>
+        <div>📊 Max <strong style="color:#f3f4f6">10 active mines</strong> per player</div>
+        <div style="margin-top:6px;padding-top:6px;border-top:1px solid #374151;color:#fca5a5">
+          🏪 <strong style="color:#f87171">10% tax</strong> on all mined gold goes to the shop owner automatically
+        </div>
+        <div style="color:#6b7280;font-size:11px;margin-top:4px">You keep <strong style="color:#10b981">90%</strong> of production</div>
       </div>
       <div style="display:flex;gap:10px;justify-content:center">
         <button id="gmConfirmCancelBtn"

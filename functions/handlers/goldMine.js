@@ -7,12 +7,14 @@ const { logger } = require('firebase-functions');
 
 const db = admin.firestore();
 
-const DEFAULT_INSTALL_COST = 100000;
-const DEFAULT_MINER_COST   = 10000;
-const MAX_MINERS            = 100;
-const MINE_RADIUS_M         = 5000;
-const GOLD_PER_MINER_MIN    = 0.01;
-const CLAIM_INTERVAL_MS     = 24 * 60 * 60 * 1000;
+const DEFAULT_INSTALL_COST  = 100000;
+const DEFAULT_MINER_COST    = 10000;
+const MAX_MINERS             = 100;
+const MAX_MINES_PER_PLAYER   = 10;
+const MINE_TAX_RATE          = 0.10;
+const MINE_RADIUS_M          = 5000;
+const GOLD_PER_MINER_MIN     = 0.01;
+const CLAIM_INTERVAL_MS      = 24 * 60 * 60 * 1000;
 
 // Deposit size distribution — biased toward small deposits to reduce profitability
 // 5%:10만~50만 | 50%:50만~100만 | 20%:100만~200만 | 10%:200만~400만 | 7%:400만~600만 | 5%:600만~800만 | 3%:800만~1000만
@@ -51,7 +53,7 @@ async function getConfig() {
 }
 
 // ── 금광 설치 ──────────────────────────────────────────────────────────────────
-// lat/lng은 클라이언트에서 받지 않음 — Firestore shop 데이터를 서버에서 직접 사용
+// 포션상점 근처에만 설치 가능, 플레이어당 최대 10개
 async function createGoldMine(uid, { storeId }) {
   if (!storeId) throw new HttpsError('invalid-argument', 'storeId is required');
 
@@ -64,14 +66,20 @@ async function createGoldMine(uid, { storeId }) {
   if (!shopSnap.exists) throw new HttpsError('not-found', 'Shop not found');
   const shop = shopSnap.data();
 
-  // 기존 활성 금광 있으면 중복 설치 방지
-  const existingSnap = await db.collection('gold_mines')
-    .where('store_id', '==', storeId)
+  // 포션상점 전용
+  const shopType = shop.type?.replace(/^shop_/, '') ?? '';
+  if (shopType !== 'potion') {
+    throw new HttpsError('failed-precondition', 'Gold mines can only be installed near a Potion Shop');
+  }
+
+  // 플레이어당 최대 10개
+  const myMinesSnap = await db.collection('gold_mines')
+    .where('owner_id', '==', uid)
     .where('status', '==', 'active')
-    .limit(1)
     .get();
-  if (!existingSnap.empty) {
-    throw new HttpsError('already-exists', 'This shop already has an active gold mine');
+  if (myMinesSnap.size >= MAX_MINES_PER_PLAYER) {
+    throw new HttpsError('failed-precondition',
+      `You already have ${MAX_MINES_PER_PLAYER} active gold mines (maximum allowed)`);
   }
 
   const playerGold = playerSnap.exists ? (playerSnap.data().gold ?? 0) : 0;
@@ -80,14 +88,9 @@ async function createGoldMine(uid, { storeId }) {
       `Not enough GP. Need ${cfg.installCost.toLocaleString()}, have ${playerGold.toLocaleString()}`);
   }
 
-  // shop 위치를 서버에서 직접 사용 (클라이언트 전달 불필요)
-  const storeLat = typeof shop.lat === 'number' ? shop.lat : null;
-  const storeLng = typeof shop.lng === 'number' ? shop.lng : null;
-
-  // Mine placed at shop coords — miner animation handles the shop==mine case
-  // with a deterministic 15 m fallback path (see merchants.goldmine.miners.js MIN_DIST_M)
-  const mineLat = storeLat;
-  const mineLng = storeLng;
+  const storeLat    = typeof shop.lat === 'number' ? shop.lat : null;
+  const storeLng    = typeof shop.lng === 'number' ? shop.lng : null;
+  const shopOwnerId = shop.ownerUid ?? null;
 
   const totalGold = _rollDeposit();
   const nowTs = admin.firestore.Timestamp.fromMillis(Date.now());
@@ -101,12 +104,13 @@ async function createGoldMine(uid, { storeId }) {
 
   const mineRef = db.collection('gold_mines').doc();
   batch.set(mineRef, {
-    owner_id: uid,
-    store_id: storeId,
-    store_lat: storeLat,
-    store_lng: storeLng,
-    lat: mineLat,
-    lng: mineLng,
+    owner_id:      uid,
+    store_id:      storeId,
+    shop_owner_id: shopOwnerId,
+    store_lat:     storeLat,
+    store_lng:     storeLng,
+    lat:           storeLat,
+    lng:           storeLng,
     miners_count:     0,
     total_gold:       totalGold,
     remain_gold:      totalGold,
@@ -119,7 +123,14 @@ async function createGoldMine(uid, { storeId }) {
   });
 
   await batch.commit();
-  return { ok: true, mineId: mineRef.id, installCost: cfg.installCost, lat: mineLat, lng: mineLng };
+  return {
+    ok: true,
+    mineId:      mineRef.id,
+    installCost: cfg.installCost,
+    lat:         storeLat,
+    lng:         storeLng,
+    taxRate:     MINE_TAX_RATE,
+  };
 }
 
 // ── 광부 배치 ──────────────────────────────────────────────────────────────────
@@ -323,6 +334,7 @@ async function adminSetGoldMineConfig(uid, { installCost, minerCost }) {
 }
 
 // ── 스케줄: 1분마다 채굴 처리 ─────────────────────────────────────────────────
+// 채굴량의 10%는 상점 주인에게 즉시 입금, 90%는 mine owner의 pending_gold
 async function processGoldMines() {
   const snap = await db.collection('gold_mines').where('status', '==', 'active').get();
   if (snap.empty) return { processed: 0 };
@@ -332,6 +344,7 @@ async function processGoldMines() {
   let opCount  = 0;
   let processed = 0;
   const now = admin.firestore.FieldValue.serverTimestamp();
+  const taxAccum = {}; // shopOwnerId → accumulated tax GP
 
   async function flush() {
     if (opCount === 0) return;
@@ -352,26 +365,49 @@ async function processGoldMines() {
     const mined      = Math.min(produced, remain);
     if (mined <= 0) continue;
 
-    const newRemain = remain - mined;
-    const depleted  = newRemain <= 0;
+    const newRemain  = remain - mined;
+    const depleted   = newRemain <= 0;
+    const totalMined = Math.floor(mined);
+    const taxAmount  = Math.floor(totalMined * MINE_TAX_RATE);
+    const ownerNet   = totalMined - taxAmount;
 
     const mineUpdate = {
       remain_gold:       depleted ? 0 : newRemain,
       status:            depleted ? 'depleted' : 'active',
       last_processed_at: now,
-      pending_gold:      admin.firestore.FieldValue.increment(Math.floor(mined)),
-      total_earned:      admin.firestore.FieldValue.increment(Math.floor(mined)),
+      pending_gold:      admin.firestore.FieldValue.increment(ownerNet),
+      total_earned:      admin.firestore.FieldValue.increment(totalMined),
     };
     if (depleted) mineUpdate.miners_count = 0;
     batch.update(doc.ref, mineUpdate);
     opCount++;
+
+    // 세금 적립 (mine owner와 다른 경우만)
+    const shopOwnerId = data.shop_owner_id;
+    if (shopOwnerId && shopOwnerId !== data.owner_id && taxAmount > 0) {
+      taxAccum[shopOwnerId] = (taxAccum[shopOwnerId] ?? 0) + taxAmount;
+    }
 
     processed++;
     if (opCount >= BATCH_LIMIT) await flush();
   }
 
   await flush();
-  logger.info('[processGoldMines] done', { processed });
+
+  // 상점 주인에게 세금 일괄 입금
+  const taxOwners = Object.keys(taxAccum);
+  if (taxOwners.length > 0) {
+    const taxBatch = db.batch();
+    for (const ownerId of taxOwners) {
+      taxBatch.update(db.collection('battle_players').doc(ownerId), {
+        gold:      admin.firestore.FieldValue.increment(taxAccum[ownerId]),
+        updatedAt: now,
+      });
+    }
+    await taxBatch.commit();
+  }
+
+  logger.info('[processGoldMines] done', { processed, taxOwners: taxOwners.length });
   return { processed };
 }
 
