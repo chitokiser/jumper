@@ -49,7 +49,7 @@ import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, tog
 import { initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers,
          renderMoneyTreeShopSection, openPlantModal } from './merchants.moneytree.js';
 import { initGoldMine, setGoldMineUid, loadGoldMineMarkers, openGoldMineModal,
-         promptInstallMine } from './merchants.goldmine.js?v=10';
+         promptInstallMine, openMyGoldMinesModal } from './merchants.goldmine.js?v=11';
 import { initHarbor, setHarborUid, loadHarborMarkers, promptInstallHarbor,
          openHarborModal, openSvModal as openHarborSvModal } from './merchants.harbor.js';
 
@@ -101,6 +101,7 @@ let _gmMarkerLoadTs = 0;         // 금광 마커 마지막 로드 시각 (ms)
 let _hrMarkerLoadTs = 0;         // 항구 마커 마지막 로드 시각 (ms)
 let _userMapMarkers = [];        // google.maps.Marker[] — user face markers
 const _cfGetUserMarkers = httpsCallable(functions, 'getUserMarkers');
+const _cfCollectGpJackpot = httpsCallable(functions, 'collectGpJackpotBox');
 let _gsMonsters     = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
 let _gsMarkers      = {};        // {monsterId: Marker} 게임 서버 몬스터 마커 (비-스프라이트)
 let _gsOverlays     = {};        // {monsterId: MonsterSpriteOverlay} 스프라이트 오버레이 (dragon 등)
@@ -314,6 +315,8 @@ const FS_MODALS = [
   'ownerItemModal',
   // 돈나무 모달
   'mtPlantModal', 'mtMyTreesModal', 'mtBoosterModal', 'mtTreeModal',
+  // 금광 모달
+  'gmMyMinesModal',
 ];
 
 // 풀스크린 컨테이너 밖에 있는 fixed 요소를 안으로 이동시키지 않으면
@@ -839,6 +842,123 @@ function _revealHiddenBox(box) {
   box._marker = marker;
   boxMarkers.push(marker);
   _placeBoxShadow(box.id, lat, lng, 38);
+}
+
+function _revealGpJackpotBox(box) {
+  if (box._marker) return;
+  const lat = Number(box.lat), lng = Number(box.lng);
+  _playFoundSound();
+
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);
+    background:linear-gradient(135deg,rgba(120,53,15,.95),rgba(180,83,9,.92));
+    color:#fef3c7;font-size:16px;font-weight:700;
+    padding:14px 28px;border-radius:12px;z-index:9999;pointer-events:none;
+    text-align:center;box-shadow:0 0 40px rgba(245,158,11,0.8);`;
+  el.textContent = '💰 GP Jackpot Found!';
+  (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+
+  const gpIcon = {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">' +
+      '<text y="40" font-size="40" text-anchor="middle" x="24">💰</text></svg>'
+    ),
+    scaledSize: new google.maps.Size(48, 48),
+    anchor: new google.maps.Point(24, 48),
+  };
+  const marker = new google.maps.Marker({
+    position: { lat, lng }, map,
+    title: `💰 GP Jackpot: ${box.name || 'Jackpot Box'}`,
+    icon: gpIcon,
+    animation: google.maps.Animation.BOUNCE,
+    zIndex: 50,
+  });
+  setTimeout(() => marker.setAnimation(null), 2200);
+  marker.addListener('click', () => tryCollectGpJackpot(box));
+  box._marker = marker;
+  boxMarkers.push(marker);
+  _placeBoxShadow(box.id, lat, lng, 48);
+}
+
+let _gpJackpotCollecting = new Set();
+
+async function tryCollectGpJackpot(box) {
+  if (_collectedBoxes.has(box.id)) return;
+  if (_gpJackpotCollecting.has(box.id)) return;
+  _gpJackpotCollecting.add(box.id);
+  _collectedBoxes.add(box.id);
+  try {
+    let claimLat, claimLng;
+    if (isVirtualMode()) {
+      // Proximity was already verified by checkProximity using virtual coords; use box position
+      claimLat = Number(box.lat);
+      claimLng = Number(box.lng);
+    } else {
+      const cached = _ctx?.gpsPos || _ctx?.lastPos;
+      if (!cached) {
+        _collectedBoxes.delete(box.id);
+        _gpJackpotCollecting.delete(box.id);
+        showToast('Move your character closer to the jackpot box.', 'warn');
+        return;
+      }
+      claimLat = cached.lat;
+      claimLng = cached.lng;
+    }
+    const result = await _cfCollectGpJackpot({
+      boxId: box.id,
+      userLat: claimLat,
+      userLng: claimLng,
+    });
+    const { prize, tierRank, remainingPool } = result.data;
+    _showGpJackpotPrizeModal(prize, tierRank, box.name || 'GP Jackpot');
+    httpsCallable(functions, 'broadcastGpEvent')({
+      game: 'gp_jackpot', amount: prize, label: `GP Jackpot Tier ${tierRank}`,
+    }).catch(() => {});
+  } catch (err) {
+    const code = err?.code || '';
+    if (code === 'already-exists' || (err.message || '').includes('already claimed')) {
+      showToast('🎯 You have already claimed this jackpot box.', 'info');
+    } else if ((err.message || '').includes('Too far')) {
+      _collectedBoxes.delete(box.id);
+      showToast('📍 Too far from the jackpot. Move closer and try again.', 'warn');
+    } else if ((err.message || '').includes('GP pool is empty')) {
+      showToast('⚠️ This jackpot box is empty.', 'warn');
+    } else {
+      _collectedBoxes.delete(box.id);
+      showToast(`❌ Jackpot error: ${err.message || 'Unknown error'}`, 'warn');
+    }
+  } finally {
+    _gpJackpotCollecting.delete(box.id);
+  }
+}
+
+const JACKPOT_TIER_LABELS = ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '5th', '6th', '7th'];
+
+function _showGpJackpotPrizeModal(prize, tierRank, boxName) {
+  playCollectSound();
+  const tierLabel = JACKPOT_TIER_LABELS[(tierRank || 1) - 1] || `${tierRank}th`;
+  const modal = document.createElement('div');
+  modal.setAttribute('data-fs-modal', '');
+  modal.style.cssText = `position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.72);z-index:10000;`;
+  modal.innerHTML = `
+    <div style="background:linear-gradient(160deg,#1c1007,#2d1a08);border:2px solid #f59e0b;
+      border-radius:20px;padding:32px 28px;text-align:center;max-width:320px;width:90%;
+      box-shadow:0 0 60px rgba(245,158,11,.5);">
+      <div style="font-size:48px;margin-bottom:8px;">💰</div>
+      <div style="font-size:13px;color:#fcd34d;font-weight:600;letter-spacing:.05em;margin-bottom:6px;">
+        GP JACKPOT — ${escHtml(boxName)}
+      </div>
+      <div style="font-size:22px;font-weight:800;color:#fbbf24;margin:12px 0 4px;">${tierLabel} Prize!</div>
+      <div style="font-size:36px;font-weight:900;color:#fef08a;margin:4px 0 16px;">+${prize.toLocaleString()} GP</div>
+      <div style="font-size:11px;color:#92400e;margin-bottom:20px;">GP has been added to your account.</div>
+      <button id="_gpJackpotClose" style="background:#f59e0b;color:#1c1007;border:none;border-radius:10px;
+        padding:10px 28px;font-size:15px;font-weight:800;cursor:pointer;">Collect!</button>
+    </div>`;
+  (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(modal);
+  modal.querySelector('#_gpJackpotClose').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
 
 function renderBoxMarkers() {
@@ -1552,6 +1672,20 @@ async function checkProximity(lat, lng) {
     if (_collectedBoxes.has(box.id)) continue;
     const dist = haversine(lat, lng, Number(box.lat), Number(box.lng));
     const maxHp = box.hp || 300;
+
+    // ── GP Jackpot 박스: reveal/claim 반경은 box.radius(최소 20m) ──
+    if (box.boxType === 'gp_jackpot') {
+      const jpRadius = Math.max(20, box.radius ?? 20);
+      if (dist <= jpRadius) {
+        if (!box._marker) _revealGpJackpotBox(box);
+      } else if (dist > jpRadius + 5 && box._marker) {
+        box._marker.setMap(null);
+        boxMarkers = boxMarkers.filter(m => m !== box._marker);
+        box._marker = null;
+        _dropBoxShadow(box.id);
+      }
+      continue;
+    }
 
     // ── 숨김 보물: 20m 내 진입 시 출현, 25m 밖 이탈 시 소멸 (히스테리시스) ──
     if (box.hiddenBox) {
@@ -3074,6 +3208,7 @@ async function init() {
     document.getElementById('btnCloseGoldMineModal')?.addEventListener('click', () => {
       document.getElementById('goldMineModal')?.classList.remove('open');
     });
+    window._gmOpenMyMines = () => openMyGoldMinesModal();
     loadGoldMineMarkers();
 
     // ── Harbor 초기화 ──────────────────────────────────────────────────────
@@ -5857,6 +5992,38 @@ function _openOwnerItemEditor(shop) {
     }
   };
 }
+
+// ── 좌표 점프 버튼 ──────────────────────────────────────────────────────────
+(function initCoordJump() {
+  const btn         = $('btnCoordJump');
+  const coordsInput = $('jumpCoords');
+  const latInput    = $('jumpLat');
+  const lngInput    = $('jumpLng');
+  if (!btn || !coordsInput) return;
+
+  function parseAndJump() {
+    const parts = coordsInput.value.split(',').map(s => parseFloat(s.trim()));
+    const lat = parts[0], lng = parts[1];
+    if (isNaN(lat) || isNaN(lng)) {
+      showToast('Enter coordinates like: 21.13070, 106.73020', 'warn');
+      return;
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      showToast('Coordinates out of valid range.', 'warn');
+      return;
+    }
+    latInput.value = lat;
+    lngInput.value = lng;
+    if (!isVirtualMode()) toggleVirtualMode();
+    setVirtualPos(lat, lng);
+    if (_ctx.map) { _ctx.map.panTo({ lat, lng }); _ctx.map.setZoom(18); }
+    checkProximity(lat, lng);
+    showToast(`Jumped to ${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'info');
+  }
+
+  btn.addEventListener('click', parseAndJump);
+  coordsInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') parseAndJump(); });
+})();
 
 init();
 

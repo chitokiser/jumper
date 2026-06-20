@@ -429,6 +429,129 @@ async function _doInstall(storeId, shopLat, shopLng) {
   }
 }
 
+// ── My Gold Mines panel ───────────────────────────────────────────────────────
+export async function openMyGoldMinesModal() {
+  const modal = document.getElementById('gmMyMinesModal');
+  if (!modal || !_fns || !_uid) return;
+  modal.classList.add('open');
+  _renderMyMinesList(null); // loading state
+  try {
+    const fn = httpsCallable(_fns, 'getMyGoldMines');
+    const { data } = await fn();
+    _renderMyMinesList(data.mines ?? []);
+  } catch (e) {
+    const list = document.getElementById('gmMyMinesList');
+    if (list) list.innerHTML = `<div style="color:#ef4444;text-align:center;padding:20px">${e.message}</div>`;
+  }
+}
+
+function _renderMyMinesList(mines) {
+  const list = document.getElementById('gmMyMinesList');
+  if (!list) return;
+  if (mines === null) {
+    list.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:20px">Loading...</div>';
+    return;
+  }
+  if (!mines.length) {
+    list.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:24px;line-height:1.6">No gold mines installed yet.<br>Find a Potion Shop and install a mine!</div>';
+    return;
+  }
+  list.innerHTML = mines.map(mine => {
+    const pending = Math.floor(mine.pending_gold ?? 0);
+    const lastClaimedMs = mine.last_claimed_at ?? 0;
+    const nowMs = Date.now();
+    const canClaim = pending > 0 && nowMs >= lastClaimedMs + 24 * 60 * 60 * 1000;
+    const hoursLeft = Math.ceil(Math.max(0, lastClaimedMs + 24 * 60 * 60 * 1000 - nowMs) / 3600000);
+    const isActive = mine.status !== 'depleted';
+    return `
+      <div style="padding:12px;border-radius:10px;border:1px solid #1f2937;background:rgba(255,255,255,.02);margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="font-size:26px">⛏</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span style="font-size:13px;font-weight:700;color:#fbbf24">Gold Mine</span>
+              <span style="font-size:10px;padding:2px 6px;border-radius:4px;
+                background:${isActive ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)'};
+                color:${isActive ? '#34d399' : '#f87171'};font-weight:600">
+                ${isActive ? 'Active' : 'Depleted'}
+              </span>
+            </div>
+            <div style="font-size:11px;color:#9ca3af">Miners: ${mine.miners_count ?? 0}/100</div>
+          </div>
+          <button onclick="window._gmJumpToMine(${mine.lat}, ${mine.lng})"
+            style="padding:5px 10px;border-radius:6px;border:1px solid #374151;background:transparent;
+                   color:#9ca3af;font-size:11px;cursor:pointer;white-space:nowrap">📍 Jump</button>
+        </div>
+        <div style="background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.15);
+                    border-radius:8px;padding:8px;margin-bottom:8px;
+                    display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:12px;color:#9ca3af">Accumulated GP</div>
+          <div style="font-size:16px;font-weight:700;color:#fbbf24">${pending.toLocaleString()}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          ${canClaim
+            ? `<button id="gmClaimListBtn_${mine.id}" onclick="window._gmClaimFromList('${mine.id}')"
+                 style="flex:1;padding:8px;border-radius:6px;border:none;
+                        background:linear-gradient(135deg,#d97706,#b45309);color:#fff;
+                        font-size:12px;font-weight:700;cursor:pointer">
+                 Claim ${pending.toLocaleString()} GP
+               </button>`
+            : pending > 0
+              ? `<div style="flex:1;text-align:center;font-size:11px;color:#6b7280;
+                             padding:8px;background:#1f2937;border-radius:6px">
+                   Next claim in <strong style="color:#f3f4f6">${hoursLeft}h</strong>
+                 </div>`
+              : `<div style="flex:1;text-align:center;font-size:11px;color:#6b7280;
+                             padding:8px;background:#1f2937;border-radius:6px">No gold yet</div>`}
+          <button onclick="window._gmTransferFromList('${mine.id}')"
+            style="padding:8px 12px;border-radius:6px;border:1px solid rgba(239,68,68,.3);
+                   background:rgba(239,68,68,.05);color:#f87171;
+                   font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Transfer</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window._gmJumpToMine = function(lat, lng) {
+  if (_map) { _map.panTo({ lat, lng }); _map.setZoom(18); }
+  document.getElementById('gmMyMinesModal')?.classList.remove('open');
+};
+
+window._gmClaimFromList = async function(mineId) {
+  const btn = document.getElementById(`gmClaimListBtn_${mineId}`);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const fn = httpsCallable(_fns, 'claimGoldMine');
+    const { data } = await fn({ mineId });
+    if (_mines[mineId]) { _mines[mineId].pending_gold = 0; _mines[mineId].last_claimed_at = Date.now(); }
+    _showToast(`Claimed ${data.claimed.toLocaleString()} GP!`);
+    openMyGoldMinesModal(); // refresh list
+  } catch (e) {
+    _showToast(e.message ?? 'Claim failed', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Claim'; }
+  }
+};
+
+window._gmTransferFromList = function(mineId) {
+  const toUid = prompt('Enter the Player ID of the recipient:')?.trim();
+  if (!toUid) return;
+  if (!confirm(`Transfer gold mine to player "${toUid}"? This cannot be undone.`)) return;
+  _doTransferFromList(mineId, toUid);
+};
+
+async function _doTransferFromList(mineId, toUid) {
+  try {
+    const fn = httpsCallable(_fns, 'transferGoldMine');
+    const { data } = await fn({ mineId, toUid });
+    _showToast(`Mine transferred to ${data.displayName}!`);
+    if (_markers[mineId]) { _markers[mineId].setMap(null); delete _markers[mineId]; }
+    delete _mines[mineId];
+    openMyGoldMinesModal(); // refresh list
+  } catch (e) {
+    _showToast(e.message ?? 'Transfer failed', 'error');
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function _playPickaxeSound() {
   try {

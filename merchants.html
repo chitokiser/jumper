@@ -227,7 +227,7 @@
 
     /* ── 상점 모달 ── */
     #shopModal.open, #shopAdminModal.open { display: flex !important; }
-    #goldMineModal.open, #gmInstallConfirm.open, #myIdModal.open { display: flex !important; }
+    #goldMineModal.open, #gmInstallConfirm.open, #myIdModal.open, #gmMyMinesModal.open { display: flex !important; }
     #harborModal.open, #harborSvModal.open, #harborInstallConfirm.open { display: flex !important; }
 
     /* ── 돈나무 모달 ── */
@@ -1888,6 +1888,12 @@
       <span class="skill-key"></span>
       <span class="skill-name" style="font-size:9px;line-height:1.1">Seed<br><span id="mtHudTickets" style="color:#fbbf24">0</span>🎟 <span id="mtHudBoosters" style="color:#a78bfa">0</span>💊</span>
     </div>
+    <!-- 내 금광 HUD -->
+    <div class="skill-slot" style="position:relative;" onclick="window._gmOpenMyMines && window._gmOpenMyMines()" title="My Gold Mines">
+      <button class="skill-btn" style="cursor:pointer;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.4)">⛏</button>
+      <span class="skill-key"></span>
+      <span class="skill-name" style="font-size:9px;line-height:1.1">Mines</span>
+    </div>
     <div class="skill-slot">
       <button class="skill-btn" id="skillBtn0" title="번개 (1) — MP 100">⚡</button>
       <div class="skill-cd-overlay" id="skillCd0" style="display:none;"></div>
@@ -2136,6 +2142,27 @@
           padding:3px 9px;border:1px solid rgba(99,102,241,.25);border-radius:14px;">
           내 지갑 →
         </a>
+      </div>
+
+      <!-- 좌표 점프 패널 -->
+      <div id="coordJumpPanel" style="
+        background:linear-gradient(135deg,#0f172a,#1e293b);
+        border:1px solid #334155;border-radius:12px;
+        padding:12px 14px;margin:10px 0;display:flex;
+        align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:#94a3b8;white-space:nowrap;">📍 Jump to:</span>
+        <input id="jumpCoords" type="text" placeholder="21.13070, 106.73020"
+          style="flex:1;min-width:160px;padding:7px 10px;background:#0f172a;
+            color:#e2e8f0;border:1px solid #475569;border-radius:8px;
+            font-size:13px;outline:none;font-family:monospace;" />
+        <input type="hidden" id="jumpLat" />
+        <input type="hidden" id="jumpLng" />
+        <button id="btnCoordJump" type="button" style="
+          background:#6366f1;color:#fff;border:none;border-radius:8px;
+          padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;
+          white-space:nowrap;">
+          ⚡ Jump
+        </button>
       </div>
 
       <!-- 필터 -->
@@ -2479,6 +2506,22 @@
   <div id="gmInstallConfirm" data-fs-modal
     style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);
            align-items:center;justify-content:center"></div>
+
+  <!-- ── My Gold Mines 모달 ── -->
+  <div id="gmMyMinesModal" data-fs-modal
+    style="display:none;position:fixed;inset:0;z-index:8200;background:rgba(0,0,0,.75);
+           align-items:flex-start;justify-content:center;padding-top:40px">
+    <div style="background:#111827;border-radius:16px;width:92%;max-width:380px;
+                border:1px solid #1f2937;max-height:80vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:14px 16px;border-bottom:1px solid #1f2937">
+        <span style="font-size:15px;font-weight:700;color:#fbbf24">⛏ My Gold Mines</span>
+        <button onclick="document.getElementById('gmMyMinesModal').classList.remove('open')"
+          style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;padding:2px 6px">✕</button>
+      </div>
+      <div id="gmMyMinesList" style="flex:1;overflow-y:auto;padding:12px"></div>
+    </div>
+  </div>
 
   <!-- ── My Player ID 모달 ── -->
   <div id="myIdModal" data-fs-modal
@@ -4178,6 +4221,38 @@
 })();
 </script>
 
+<!-- Floating Shortcut: BGM + Coord Jump -->
+<div id="floatShortcutPanel" data-fs-modal style="position:fixed;bottom:90px;right:16px;z-index:9200;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none;">
+  <button id="btnBgmFloat" title="BGM On/Off" style="pointer-events:all;
+    width:46px;height:46px;border-radius:50%;
+    background:rgba(15,23,42,.88);backdrop-filter:blur(8px);
+    border:1.5px solid rgba(99,102,241,.5);color:#fff;
+    font-size:20px;cursor:pointer;line-height:1;
+    box-shadow:0 4px 14px rgba(0,0,0,.5);display:flex;
+    align-items:center;justify-content:center;">🎵</button>
+  <button id="btnCoordJumpFloat" title="Jump to Coordinates" style="pointer-events:all;
+    width:46px;height:46px;border-radius:50%;
+    background:rgba(15,23,42,.88);backdrop-filter:blur(8px);
+    border:1.5px solid rgba(16,185,129,.5);color:#fff;
+    font-size:20px;cursor:pointer;line-height:1;
+    box-shadow:0 4px 14px rgba(0,0,0,.5);display:flex;
+    align-items:center;justify-content:center;">🗺️</button>
+</div>
+<div id="coordJumpPopup" data-fs-modal style="display:none;position:fixed;bottom:200px;right:16px;z-index:9201;
+  background:rgba(15,23,42,.96);backdrop-filter:blur(14px);
+  border:1px solid rgba(16,185,129,.4);border-radius:14px;
+  padding:14px 16px;width:260px;box-shadow:0 8px 28px rgba(0,0,0,.55);">
+  <div style="font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:8px;letter-spacing:.02em;">📍 JUMP TO LOCATION</div>
+  <input id="floatJumpCoordInput" type="text" placeholder="21.13070, 106.73020"
+    style="width:100%;box-sizing:border-box;padding:8px 10px;
+      background:#0f172a;color:#e2e8f0;border:1px solid #475569;
+      border-radius:8px;font-size:13px;outline:none;font-family:monospace;" />
+  <button id="btnFloatJumpGo" style="
+    width:100%;margin-top:8px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;
+    border:none;border-radius:8px;padding:9px;
+    font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;">⚡ Jump &amp; Hunt</button>
+</div>
+
 <!-- BGM -->
 <audio id="bgmAudio" loop preload="auto" src="/assets/audio/bgm.mp3"></audio>
 <script>
@@ -4220,6 +4295,96 @@
   });
 
   applyState();
+})();
+</script>
+
+<script>
+(function () {
+  /* ── BGM Float Button ──────────────────────────────────────── */
+  const btnBgmFloat = document.getElementById('btnBgmFloat');
+  const btnBgmMain  = document.getElementById('btnBgm');
+  const MUTE_KEY    = 'bgm_muted';
+
+  function syncBgmFloat() {
+    if (!btnBgmFloat) return;
+    const muted = localStorage.getItem(MUTE_KEY) === '1';
+    btnBgmFloat.textContent = muted ? '🔇' : '🎵';
+    btnBgmFloat.title = muted ? 'BGM Off — tap to enable' : 'BGM On — tap to mute';
+  }
+  syncBgmFloat();
+
+  if (btnBgmFloat) {
+    btnBgmFloat.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (btnBgmMain) {
+        btnBgmMain.click();
+      } else {
+        const muted = localStorage.getItem(MUTE_KEY) === '1';
+        localStorage.setItem(MUTE_KEY, muted ? '0' : '1');
+        const audio = document.getElementById('bgmAudio');
+        if (audio) { audio.muted = !muted; if (!muted && audio.paused) audio.play().catch(() => {}); }
+      }
+      setTimeout(syncBgmFloat, 20);
+    });
+  }
+  if (btnBgmMain) {
+    btnBgmMain.addEventListener('click', () => setTimeout(syncBgmFloat, 20));
+  }
+
+  /* ── Coord Jump Float Popup ────────────────────────────────── */
+  const btnJumpFloat = document.getElementById('btnCoordJumpFloat');
+  const popup        = document.getElementById('coordJumpPopup');
+  const jumpInput    = document.getElementById('floatJumpCoordInput');
+  const btnJumpGo    = document.getElementById('btnFloatJumpGo');
+
+  function showPopup(open) {
+    if (!popup) return;
+    popup.style.display = open ? 'block' : 'none';
+    if (open) {
+      const fsRoot = document.fullscreenElement || document.webkitFullscreenElement || document.body;
+      if (popup.parentElement !== fsRoot) fsRoot.appendChild(popup);
+      jumpInput?.focus();
+    }
+  }
+
+  if (btnJumpFloat) {
+    btnJumpFloat.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showPopup(popup.style.display === 'none' || popup.style.display === '');
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (popup && popup.style.display === 'block' &&
+        !popup.contains(e.target) && e.target !== btnJumpFloat) {
+      showPopup(false);
+    }
+  });
+
+  function doJump() {
+    if (!jumpInput) return;
+    const parts = jumpInput.value.split(',').map(s => parseFloat(s.trim()));
+    const lat = parts[0], lng = parts[1];
+    if (isNaN(lat) || isNaN(lng)) {
+      window.showToast?.('Enter coordinates like: 21.13070, 106.73020', 'warn');
+      return;
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      window.showToast?.('Coordinates out of valid range.', 'warn');
+      return;
+    }
+    const coordsEl = document.getElementById('jumpCoords');
+    if (coordsEl) coordsEl.value = `${lat}, ${lng}`;
+    const sLat = document.getElementById('jumpLat');
+    const sLng = document.getElementById('jumpLng');
+    if (sLat) sLat.value = lat;
+    if (sLng) sLng.value = lng;
+    document.getElementById('btnCoordJump')?.click();
+    showPopup(false);
+  }
+
+  if (btnJumpGo) btnJumpGo.addEventListener('click', doJump);
+  if (jumpInput) jumpInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doJump(); });
 })();
 </script>
 </body>
