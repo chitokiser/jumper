@@ -1847,6 +1847,10 @@ exports.collectTreasureBox = onCall(wrapError(async (req) => {
   return treasureH.collectTreasureBox(requireAuth(req), req.data ?? {});
 }));
 
+exports.collectGpJackpotBox = onCall(wrapError(async (req) => {
+  return treasureH.collectGpJackpotBox(requireAuth(req), req.data ?? {});
+}));
+
 exports.openTreasureBox = onCall(wrapError(async (req) => {
   return treasureH.openTreasureBox(requireAuth(req), req.data ?? {});
 }));

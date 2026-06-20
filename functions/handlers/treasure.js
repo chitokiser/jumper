@@ -467,33 +467,106 @@ async function adminSaveTreasureItem(adminUid, { itemId, name, image, descriptio
 // ── 관리자: 보물박스 저장 ─────────────────────────────────────────────────────
 async function adminSaveTreasureBox(adminUid, data = {}) {
   await requireAdmin(adminUid);
-  const { boxId, name, lat, lng, radius, scanRadius, startHour, endHour, itemPool, active, hp, memberOnly, hiddenBox, keyId, respawnIntervalMs, description } = data;
+  const { boxId, name, lat, lng, radius, scanRadius, startHour, endHour, itemPool, active, hp, memberOnly, hiddenBox, keyId, respawnIntervalMs, description, boxType, gpPool } = data;
   if (!lat || !lng) throw new HttpsError('invalid-argument', 'lat/lng가 필요합니다');
 
+  const isGpJackpot = boxType === 'gp_jackpot';
   const ref = boxId
     ? db.collection('treasure_boxes').doc(boxId)
     : db.collection('treasure_boxes').doc();
 
-  await ref.set({
+  const docData = {
     name:               name || '',
     description:        description || '',
     lat:                Number(lat),
     lng:                Number(lng),
-    radius:             Number(radius ?? 30),
+    radius:             isGpJackpot ? 20 : Number(radius ?? 30),
     scanRadius:         Number(scanRadius ?? 100),
     startHour:          Number(startHour ?? 0),
     endHour:            Number(endHour ?? 24),
-    itemPool:           itemPool || [],
+    itemPool:           isGpJackpot ? [] : (itemPool || []),
     hp:                 Number(hp ?? 300),
     respawnIntervalMs:  Number(respawnIntervalMs ?? 86400000),
     active:             active !== false,
     memberOnly:         memberOnly === true,
-    hiddenBox:          hiddenBox === true,
-    keyId:              (hiddenBox === true && keyId) ? String(keyId) : null,
+    hiddenBox:          isGpJackpot ? true : (hiddenBox === true),
+    keyId:              (!isGpJackpot && hiddenBox === true && keyId) ? String(keyId) : null,
     updatedAt:          admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
+  };
 
+  if (isGpJackpot) {
+    docData.boxType = 'gp_jackpot';
+    docData.gpPool  = Math.max(0, Math.floor(Number(gpPool ?? 0)));
+  }
+
+  await ref.set(docData, { merge: true });
   return { ok: true, boxId: ref.id };
+}
+
+// ── 유저: GP 잭팟 박스 수집 (영구 1회 수집, 확률 프리즈) ────────────────────────
+async function collectGpJackpotBox(uid, { boxId, userLat, userLng } = {}) {
+  if (!boxId) throw new HttpsError('invalid-argument', 'boxId is required');
+  if (userLat == null || userLng == null)
+    throw new HttpsError('invalid-argument', 'Location is required');
+
+  const boxSnap = await db.collection('treasure_boxes').doc(boxId).get();
+  if (!boxSnap.exists) throw new HttpsError('not-found', 'Treasure box not found');
+  const box = boxSnap.data();
+  if (!box.active) throw new HttpsError('failed-precondition', 'Treasure box is inactive');
+  if (box.boxType !== 'gp_jackpot') throw new HttpsError('invalid-argument', 'Not a GP Jackpot box');
+
+  const claimRadius = Math.max(20, Number(box.radius ?? 20));
+  const dist = haversine(userLat, userLng, box.lat, box.lng);
+  if (dist > claimRadius)
+    throw new HttpsError('failed-precondition', `Too far (${Math.round(dist)}m / ${claimRadius}m radius)`);
+
+  // Prize tier selection (outside tx — random pick doesn't depend on db state)
+  const TIERS = [
+    { divisor: 10, weight: 2 },
+    { divisor: 20, weight: 3 },
+    { divisor: 30, weight: 5 },
+    { divisor: 40, weight: 10 },
+    { divisor: 50, weight: 10 },
+    { divisor: 60, weight: 20 },
+    { divisor: 70, weight: 50 },
+  ];
+  let r = Math.random() * 100;
+  let tierIdx = TIERS.length - 1;
+  for (let i = 0; i < TIERS.length; i++) {
+    r -= TIERS[i].weight;
+    if (r <= 0) { tierIdx = i; break; }
+  }
+  const tier = TIERS[tierIdx];
+  const tierRank = tierIdx + 1;
+
+  const claimRef  = db.collection('gp_jackpot_claims').doc(`${uid}_${boxId}`);
+  const boxRef    = db.collection('treasure_boxes').doc(boxId);
+  const playerRef = db.collection('battle_players').doc(uid);
+
+  return await db.runTransaction(async (tx) => {
+    const [claimSnap, boxTxSnap] = await Promise.all([
+      tx.get(claimRef),
+      tx.get(boxRef),
+    ]);
+
+    if (claimSnap.exists)
+      throw new HttpsError('already-exists', 'You have already claimed this GP Jackpot box');
+
+    const gpPool = Math.floor(Number(boxTxSnap.data()?.gpPool ?? 0));
+    if (gpPool <= 0) throw new HttpsError('failed-precondition', 'GP Jackpot pool is empty');
+
+    const prize   = Math.max(1, Math.floor(gpPool / tier.divisor));
+    const newPool = Math.max(0, gpPool - prize);
+
+    tx.set(claimRef, {
+      uid, boxId, prize, tierRank,
+      claimedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    tx.update(boxRef, { gpPool: newPool, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    tx.set(playerRef, { gold: admin.firestore.FieldValue.increment(prize) }, { merge: true });
+
+    return { ok: true, prize, tierRank, remainingPool: newPool };
+  });
 }
 
 // ── 관리자: 열쇠 저장 ─────────────────────────────────────────────────────────
@@ -726,6 +799,7 @@ async function cleanupExpiredDrops() {
 
 module.exports = {
   collectTreasureBox,
+  collectGpJackpotBox,
   openTreasureBox,
   adminCollectTreasureBox,
   craftVoucher,

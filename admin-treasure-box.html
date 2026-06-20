@@ -66,6 +66,20 @@
     #formMsg { font-size: .82rem; min-height: 20px; margin-top: 8px; }
     .ok  { color: #15803d; } .err { color: #b91c1c; }
     .coord-display { font-size: .78rem; color: #6366f1; margin-top: 4px; font-weight: 600; }
+
+    /* GP Jackpot section */
+    #gpJackpotSection {
+      background: linear-gradient(135deg, #1a0f02, #2c1a0e);
+      border: 1.5px solid #f59e0b; border-radius: 10px;
+      padding: 14px; margin-bottom: 12px;
+    }
+    #gpJackpotSection .gp-label {
+      font-size: .78rem; font-weight: 700; color: #fbbf24; margin-bottom: 8px;
+    }
+    #gpJackpotSection .gp-pool-note {
+      font-size: .72rem; color: #92400e; margin-top: 4px;
+    }
+    .box-type-select { background: #f0f9ff; border-color: #6366f1 !important; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -88,6 +102,29 @@
         <input type="hidden" id="fBoxId" />
 
         <div class="form-group">
+          <label>Box Type</label>
+          <select id="fBoxType" class="box-type-select">
+            <option value="normal">📦 Normal Treasure Box</option>
+            <option value="gp_jackpot">💰 GP Jackpot Box (admin only)</option>
+          </select>
+        </div>
+
+        <!-- GP Jackpot Section (shown only when type = gp_jackpot) -->
+        <div id="gpJackpotSection" style="display:none;">
+          <div class="gp-label">💰 GP Jackpot Settings</div>
+          <div class="form-group" style="margin-bottom:6px;">
+            <label style="color:#fbbf24;">GP Pool (total GP in this box)</label>
+            <input id="fGpPool" type="number" value="10000" min="1" style="background:#2c1a0e;color:#fbbf24;border-color:#7a5c3a;" />
+          </div>
+          <div class="gp-pool-note">
+            ⚠️ Hidden box · 20m radius · 1 claim per user (permanent) · auto-forced
+          </div>
+          <div style="font-size:.72rem;color:#9ca3af;margin-top:6px;">
+            Prize tiers: 1st 1/10 (2%) · 2nd 1/20 (3%) · 3rd 1/30 (5%) · 4th 1/40 (10%) · 5th 1/50 (10%) · 6th 1/60 (20%) · 7th 1/70 (50%)
+          </div>
+        </div>
+
+        <div class="form-group">
           <label>Name</label>
           <input id="fName" type="text" placeholder="e.g. Ha Long Bay Chest #1" />
         </div>
@@ -97,11 +134,11 @@
         </div>
 
         <div class="form-group">
-          <label>GPS Coordinates <span id="coordDisplay" class="coord-display"></span></label>
-          <div class="form-row">
-            <input id="fLat" type="number" step="any" placeholder="Latitude" />
-            <input id="fLng" type="number" step="any" placeholder="Longitude" />
-          </div>
+          <label>GPS Coordinates <span style="font-size:.72rem;color:#64748b;font-weight:400;">(지도 클릭 또는 직접 입력)</span></label>
+          <input id="fCoords" type="text" placeholder="21.13070, 106.73020" style="font-family:monospace;" />
+          <input type="hidden" id="fLat" />
+          <input type="hidden" id="fLng" />
+          <div id="coordDisplay" class="coord-display"></div>
         </div>
 
         <div class="form-row">

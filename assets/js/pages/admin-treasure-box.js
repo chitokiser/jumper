@@ -12,33 +12,53 @@ const fnDelete = httpsCallable(functions, 'adminDeleteTreasureBox');
 const fnList   = httpsCallable(functions, 'adminListTreasureBoxes');
 
 // ── DOM 캐싱 ──────────────────────────────────────────────────────────────────
-const formTitle    = document.getElementById('formTitle');
-const fBoxId       = document.getElementById('fBoxId');
-const fName        = document.getElementById('fName');
-const fDesc        = document.getElementById('fDesc');
-const fLat         = document.getElementById('fLat');
-const fLng         = document.getElementById('fLng');
-const fRadius      = document.getElementById('fRadius');
-const fScanRadius  = document.getElementById('fScanRadius');
-const fStartHour   = document.getElementById('fStartHour');
-const fEndHour     = document.getElementById('fEndHour');
-const fHp          = document.getElementById('fHp');
-const fRespawn     = document.getElementById('fRespawn');
-const fActive      = document.getElementById('fActive');
-const fMemberOnly  = document.getElementById('fMemberOnly');
-const fHidden      = document.getElementById('fHidden');
-const saveBtn      = document.getElementById('saveBtn');
-const deleteBtn    = document.getElementById('deleteBtn');
-const resetBtn     = document.getElementById('resetBtn');
-const formMsg      = document.getElementById('formMsg');
-const coordDisplay = document.getElementById('coordDisplay');
-const boxTableBody = document.getElementById('boxTableBody');
+const formTitle      = document.getElementById('formTitle');
+const fBoxId         = document.getElementById('fBoxId');
+const fBoxType       = document.getElementById('fBoxType');
+const fGpPool        = document.getElementById('fGpPool');
+const gpJackpotSection = document.getElementById('gpJackpotSection');
+const fName          = document.getElementById('fName');
+const fDesc          = document.getElementById('fDesc');
+const fCoords        = document.getElementById('fCoords');
+const fLat           = document.getElementById('fLat');
+const fLng           = document.getElementById('fLng');
+const fRadius        = document.getElementById('fRadius');
+const fScanRadius    = document.getElementById('fScanRadius');
+const fStartHour     = document.getElementById('fStartHour');
+const fEndHour       = document.getElementById('fEndHour');
+const fHp            = document.getElementById('fHp');
+const fRespawn       = document.getElementById('fRespawn');
+const fActive        = document.getElementById('fActive');
+const fMemberOnly    = document.getElementById('fMemberOnly');
+const fHidden        = document.getElementById('fHidden');
+const saveBtn        = document.getElementById('saveBtn');
+const deleteBtn      = document.getElementById('deleteBtn');
+const resetBtn       = document.getElementById('resetBtn');
+const formMsg        = document.getElementById('formMsg');
+const coordDisplay   = document.getElementById('coordDisplay');
+const boxTableBody   = document.getElementById('boxTableBody');
 
 // ── 상태 ──────────────────────────────────────────────────────────────────────
 let boxes     = [];
 let mapMarkers = {};
 let pinMarker  = null;
 let map        = null;
+
+// ── Box Type toggle ────────────────────────────────────────────────────────────
+function _onBoxTypeChange() {
+  const isGp = fBoxType.value === 'gp_jackpot';
+  gpJackpotSection.style.display = isGp ? 'block' : 'none';
+  if (isGp) {
+    fRadius.value   = 5;
+    fHidden.checked = true;
+    fRadius.disabled  = true;
+    fHidden.disabled  = true;
+  } else {
+    fRadius.disabled  = false;
+    fHidden.disabled  = false;
+  }
+}
+fBoxType.addEventListener('change', _onBoxTypeChange);
 
 // ── Leaflet 맵 초기화 ─────────────────────────────────────────────────────────
 function initMap() {
@@ -55,9 +75,10 @@ function initMap() {
 }
 
 function setLatLng(lat, lng) {
-  fLat.value = lat.toFixed(6);
-  fLng.value = lng.toFixed(6);
-  coordDisplay.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  fLat.value    = lat.toFixed(6);
+  fLng.value    = lng.toFixed(6);
+  fCoords.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  coordDisplay.textContent = '';
 
   if (pinMarker) {
     pinMarker.setLatLng([lat, lng]);
@@ -144,22 +165,25 @@ function editBox(id) {
   const b = boxes.find(x => x.id === id);
   if (!b) return;
 
-  fBoxId.value       = b.id;
-  fName.value        = b.name || '';
-  fDesc.value        = b.description || '';
-  fLat.value         = b.lat ?? '';
-  fLng.value         = b.lng ?? '';
-  fRadius.value      = b.radius ?? 30;
-  fScanRadius.value  = b.scanRadius ?? 100;
-  fStartHour.value   = b.startHour ?? 0;
-  fEndHour.value     = b.endHour ?? 24;
-  fHp.value          = b.hp ?? 300;
-  fRespawn.value     = Math.round((b.respawnIntervalMs || 86400000) / 3600000);
-  fActive.checked    = b.active !== false;
+  fBoxId.value        = b.id;
+  fBoxType.value      = b.boxType === 'gp_jackpot' ? 'gp_jackpot' : 'normal';
+  fName.value         = b.name || '';
+  fDesc.value         = b.description || '';
+  fCoords.value       = `${(+b.lat).toFixed(6)}, ${(+b.lng).toFixed(6)}`;
+  fLat.value          = b.lat ?? '';
+  fLng.value          = b.lng ?? '';
+  fRadius.value       = b.radius ?? 30;
+  fScanRadius.value   = b.scanRadius ?? 100;
+  fStartHour.value    = b.startHour ?? 0;
+  fEndHour.value      = b.endHour ?? 24;
+  fHp.value           = b.hp ?? 300;
+  fRespawn.value      = Math.round((b.respawnIntervalMs || 86400000) / 3600000);
+  fActive.checked     = b.active !== false;
   fMemberOnly.checked = b.memberOnly === true;
-  fHidden.checked    = b.hiddenBox === true;
+  fHidden.checked     = b.hiddenBox === true;
+  fGpPool.value       = b.gpPool ?? 10000;
 
-  coordDisplay.textContent = `${(+b.lat).toFixed(5)}, ${(+b.lng).toFixed(5)}`;
+  _onBoxTypeChange();
 
   setLatLng(+b.lat, +b.lng);
   map.setView([+b.lat, +b.lng], 16);
@@ -171,20 +195,26 @@ function editBox(id) {
 }
 
 function resetForm() {
-  fBoxId.value      = '';
-  fName.value       = '';
-  fDesc.value       = '';
-  fLat.value        = '';
-  fLng.value        = '';
-  fRadius.value     = 30;
-  fScanRadius.value = 100;
-  fStartHour.value  = 0;
-  fEndHour.value    = 24;
-  fHp.value         = 300;
-  fRespawn.value    = 24;
-  fActive.checked   = true;
+  fBoxId.value        = '';
+  fBoxType.value      = 'normal';
+  fGpPool.value       = 10000;
+  fName.value         = '';
+  fDesc.value         = '';
+  fCoords.value       = '';
+  fLat.value          = '';
+  fLng.value          = '';
+  fRadius.value       = 30;
+  fScanRadius.value   = 100;
+  fStartHour.value    = 0;
+  fEndHour.value      = 24;
+  fHp.value           = 300;
+  fRespawn.value      = 24;
+  fActive.checked     = true;
   fMemberOnly.checked = false;
-  fHidden.checked   = false;
+  fHidden.checked     = false;
+  fRadius.disabled    = false;
+  fHidden.disabled    = false;
+  gpJackpotSection.style.display = 'none';
   coordDisplay.textContent = '';
   formTitle.textContent = '➕ New Treasure Box';
   deleteBtn.classList.add('hidden');
@@ -194,23 +224,25 @@ function resetForm() {
 
 // ── 저장 ─────────────────────────────────────────────────────────────────────
 async function saveBox() {
-  const lat = parseFloat(fLat.value);
-  const lng = parseFloat(fLng.value);
+  const parts = fCoords.value.split(',').map(s => parseFloat(s.trim()));
+  const lat = parts[0], lng = parts[1];
 
   if (!fName.value.trim()) return setMsg('Name is required.', true);
-  if (isNaN(lat) || isNaN(lng)) return setMsg('Click the map to set GPS coordinates.', true);
+  if (isNaN(lat) || isNaN(lng)) return setMsg('Enter coordinates (e.g. 21.13070, 106.73020) or click the map.', true);
 
   setMsg('Saving…');
   saveBtn.disabled = true;
 
+  const isGp = fBoxType.value === 'gp_jackpot';
+
   try {
-    await fnSave({
+    const payload = {
       boxId:             fBoxId.value || null,
       name:              fName.value.trim(),
       description:       fDesc.value.trim(),
       lat,
       lng,
-      radius:            Number(fRadius.value) || 30,
+      radius:            isGp ? 5 : (Number(fRadius.value) || 30),
       scanRadius:        Number(fScanRadius.value) || 100,
       startHour:         Number(fStartHour.value) || 0,
       endHour:           Number(fEndHour.value) || 24,
@@ -218,8 +250,11 @@ async function saveBox() {
       respawnIntervalMs: (Number(fRespawn.value) || 24) * 3600000,
       active:            fActive.checked,
       memberOnly:        fMemberOnly.checked,
-      hiddenBox:         fHidden.checked,
-    });
+      hiddenBox:         isGp ? true : fHidden.checked,
+      boxType:           isGp ? 'gp_jackpot' : 'normal',
+    };
+    if (isGp) payload.gpPool = Math.max(1, parseInt(fGpPool.value) || 10000);
+    await fnSave(payload);
     setMsg('Saved!');
     resetForm();
     await loadBoxes();
@@ -262,15 +297,14 @@ deleteBtn.addEventListener('click', () => {
 });
 resetBtn.addEventListener('click', resetForm);
 
-fLat.addEventListener('change', () => {
-  const lat = parseFloat(fLat.value);
-  const lng = parseFloat(fLng.value);
-  if (!isNaN(lat) && !isNaN(lng)) setLatLng(lat, lng);
-});
-fLng.addEventListener('change', () => {
-  const lat = parseFloat(fLat.value);
-  const lng = parseFloat(fLng.value);
-  if (!isNaN(lat) && !isNaN(lng)) setLatLng(lat, lng);
+fCoords.addEventListener('change', () => {
+  const parts = fCoords.value.split(',').map(s => parseFloat(s.trim()));
+  const lat = parts[0], lng = parts[1];
+  if (!isNaN(lat) && !isNaN(lng)) {
+    fLat.value = lat; fLng.value = lng;
+    setLatLng(lat, lng);
+    map.setView([lat, lng], 16);
+  }
 });
 
 // ── 인증 ─────────────────────────────────────────────────────────────────────
