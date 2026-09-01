@@ -391,7 +391,7 @@
                 desc: 'Premium traditional Korean Kimchi crafted daily in Hanoi. Fermented to perfection.',
                 address: 'My Dinh 1, Nam Tu Liem, Hanoi, Vietnam',
                 phone: '+84 123 456 789',
-                gmaps: 'https://maps.google.com/?q=My+Dinh+Hanoi',
+                website: 'https://www.facebook.com/daehankimchi',
                 detailUrl: '/kca_webzine.html?category=food',
                 img: 'https://images.unsplash.com/photo-1583224964978-225ddb3ea661?w=600&q=80'
             },
@@ -400,7 +400,6 @@
                 desc: 'Authentic Korean side dishes and meal kits. Taste the comfort of Korean home cooking.',
                 address: 'Keangnam Landmark 72, Hanoi',
                 phone: '+84 987 654 321',
-                gmaps: 'https://maps.google.com/?q=Keangnam+Landmark+72',
                 detailUrl: '/kca_webzine.html?category=food',
                 img: 'https://images.unsplash.com/photo-1544025162-8ba364edcc51?w=600&q=80'
             },
@@ -409,7 +408,7 @@
                 desc: 'Advanced K-Beauty treatments, facials, and authentic Korean skincare products.',
                 address: 'Trung Hoa Nhan Chinh, Cau Giay, Hanoi',
                 phone: '+84 234 567 890',
-                gmaps: 'https://maps.google.com/?q=Trung+Hoa+Nhan+Chinh',
+                website: 'https://www.instagram.com/',
                 detailUrl: '/kca_webzine.html?category=beauty',
                 img: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&q=80'
             },
@@ -418,7 +417,6 @@
                 desc: 'Your one-stop shop for Korean groceries, snacks, and daily necessities in Vietnam.',
                 address: 'Ocean Park, Gia Lam, Hanoi',
                 phone: '+84 345 678 901',
-                gmaps: 'https://maps.google.com/?q=Vinhomes+Ocean+Park',
                 detailUrl: '/kca_webzine.html?category=life',
                 img: 'https://images.unsplash.com/photo-1555899434-94d1368aa7af?w=600&q=80'
             },
@@ -427,7 +425,7 @@
                 desc: 'R&D center for combining traditional Korean fermentation with modern culinary science.',
                 address: 'Phuc Loc Distillery, Vietnam',
                 phone: '+84 000 111 222',
-                gmaps: 'https://maps.google.com/?q=Hanoi',
+                website: 'https://zentarolabs.com',
                 detailUrl: '/kca_webzine.html?category=food',
                 img: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=600&q=80'
             }
@@ -477,11 +475,12 @@
               </div>
               
               <div class="fm-card-actions">
+                ${m.website ? `<a href="${m.website}" target="_blank" rel="noopener noreferrer" class="fm-btn fm-btn-secondary" style="flex:0.8; font-size:1.2rem;" title="Visit Website">🌐</a>` : ''}
                 <button onclick="openMapModal('${m.name}', '${m.address}')" class="fm-btn fm-btn-secondary">
                   🗺️ Maps
                 </button>
                 <a href="${m.detailUrl}" class="fm-btn fm-btn-primary">
-                  📄 View Details
+                  📄 Details
                 </a>
               </div>
             </div>
