@@ -261,6 +261,79 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        /* ---------------- 지도 모달 스타일 ---------------- */
+        .map-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .map-modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .map-modal {
+            background: #1e293b;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .map-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .map-modal-close:hover {
+            background: #ef4444;
+        }
+
+        .map-modal-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #fcd34d;
+            padding-right: 30px;
+        }
+
+        .map-modal-address {
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            color: #94a3b8;
+        }
+
+        .map-iframe-container {
+            width: 100%;
+            height: 350px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0f172a;
+        }
+
         #siteFooter {
             margin-top: auto;
         }
@@ -294,6 +367,16 @@
 
     <div class="fm-grid" id="merchantsGrid">
         <!-- Rendered via JS -->
+    </div>
+
+    <!-- 지도 표시 모달 팝업 -->
+    <div class="map-modal-overlay" id="mapModalOverlay">
+        <div class="map-modal">
+            <button class="map-modal-close" onclick="closeMapModal()">✕</button>
+            <div class="map-modal-name" id="mapModalName">상점 이름</div>
+            <div class="map-modal-address" id="mapModalAddress">상점 주소</div>
+            <div class="map-iframe-container" id="mapIframeContainer"></div>
+        </div>
     </div>
 
     <!-- Footer -->
@@ -394,9 +477,9 @@
               </div>
               
               <div class="fm-card-actions">
-                <a href="${m.gmaps}" target="_blank" rel="noopener noreferrer" class="fm-btn fm-btn-secondary">
+                <button onclick="openMapModal('${m.name}', '${m.address}')" class="fm-btn fm-btn-secondary">
                   🗺️ Maps
-                </a>
+                </button>
                 <a href="${m.detailUrl}" class="fm-btn fm-btn-primary">
                   📄 View Details
                 </a>
@@ -406,6 +489,30 @@
         `;
             });
         }
+
+        // --- 지도 모달 제어 함수 ---
+        function openMapModal(name, address) {
+            document.getElementById('mapModalName').innerText = name;
+            document.getElementById('mapModalAddress').innerText = address;
+
+            // 무료 구글지도 iframe 호출 (API 키 필요 없음)
+            const mapHtml = `<iframe width="100%" height="100%" frameborder="0" style="border:0" 
+                src="https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=16&ie=UTF8&iwloc=&output=embed" allowfullscreen>
+            </iframe>`;
+
+            document.getElementById('mapIframeContainer').innerHTML = mapHtml;
+            document.getElementById('mapModalOverlay').classList.add('active');
+        }
+
+        function closeMapModal() {
+            document.getElementById('mapModalOverlay').classList.remove('active');
+            document.getElementById('mapIframeContainer').innerHTML = ''; // iframe 리소스 해제
+        }
+
+        // 배경 클릭 시 모달 닫기
+        document.getElementById('mapModalOverlay').addEventListener('click', function (e) {
+            if (e.target === this) closeMapModal();
+        });
 
         searchInput.addEventListener('input', (e) => {
             searchQuery = e.target.value.toLowerCase();
