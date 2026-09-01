@@ -101,18 +101,18 @@ function closeImgLightbox() {
 }
 
 function fmtHex(wei) {
-  return (Number(wei) / 1e18).toFixed(4) + ' HEX';
+  return (Number(wei) / 1e18).toFixed(4) + ' Point';
 }
 
 // FX 변환 헬퍼 — _fx 설정 후 사용
 function _krwPerHex()  { return _fx ? Number(_fx.fxKrwPerHexScaled) / _fx.fxScale : 0; }
 function _vndPerHex()  { return _fx ? Number(_fx.fxVndPerHexScaled) / _fx.fxScale : 0; }
 
-/** KRW 정수 → HEX 표시 */
+/** KRW 정수 → Point 표시 */
 function krwToHexDisplay(krw) {
   const r = _krwPerHex();
   if (!r) return '—';
-  return (krw / r).toFixed(4) + ' HEX';
+  return (krw / r).toFixed(4) + ' Point';
 }
 /** KRW 정수 → VND 표시 */
 function krwToVndDisplay(krw) {
@@ -120,13 +120,13 @@ function krwToVndDisplay(krw) {
   if (!krwR) return '—';
   return Math.round(krw * vndR / krwR).toLocaleString() + ' ₫';
 }
-/** HEX wei 문자열 → KRW 표시 */
+/** Point wei 문자열 → KRW 표시 */
 function hexWeiToKrw(weiStr) {
   const r = _krwPerHex();
   if (!r) return '—';
   return Math.round(Number(weiStr) / 1e18 * r).toLocaleString() + ' ₩';
 }
-/** HEX wei 문자열 → VND 표시 */
+/** Point wei 문자열 → VND 표시 */
 function hexWeiToVnd(weiStr) {
   const r = _vndPerHex();
   if (!r) return '—';
@@ -259,7 +259,7 @@ async function init(user) {
 function renderPointsPanel() {
   const hexAmt = Number(_pointsWei) / 1e18;
   el.pointsAmount.innerHTML =
-    `${hexAmt.toFixed(4)} HEX<br>` +
+    `${hexAmt.toFixed(4)} Point<br>` +
     `<small style="font-size:0.78rem;color:var(--muted,#6b7280);font-weight:400;">` +
     `${hexWeiToKrw(_pointsWei)} / ${hexWeiToVnd(_pointsWei)}` +
     `</small>`;
@@ -331,7 +331,7 @@ function renderCard(p) {
         ${typeBadge}
         <div class="coop-card-name">${escHtml(p.name)}</div>
         ${p.description ? `<div class="coop-card-desc">${escHtml(stripHtml(p.description))}</div>` : ''}
-        <div class="coop-card-price">${hexAmt} HEX</div>
+        <div class="coop-card-price">${hexAmt} Point</div>
         <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-top:2px;line-height:1.6;">
           ${priceKrw} &nbsp;·&nbsp; ${priceVnd}
         </div>
@@ -375,7 +375,7 @@ function showDetailModal(productId) {
 
   const hexAmtDet = p.hexPrice ? (Number(p.hexPrice) / 1e18).toFixed(4) : '—';
   el.detailPrice.innerHTML =
-    `${hexAmtDet} HEX` +
+    `${hexAmtDet} Point` +
     `<br><span style="font-size:0.82rem;color:var(--muted,#6b7280);font-weight:400;">` +
     `${hexWeiToKrw(p.hexPrice||'0')} &nbsp;·&nbsp; ${hexWeiToVnd(p.hexPrice||'0')}` +
     `</span>`;
@@ -492,9 +492,9 @@ async function handleBuy(productId) {
   const confirmHex = product.hexPrice ? (Number(product.hexPrice) / 1e18).toFixed(4) : '?';
   if (!confirm(
     `${product.name}\n` +
-    `가격: ${confirmHex} HEX\n` +
+    `가격: ${confirmHex} Point\n` +
     `      ${hexWeiToKrw(product.hexPrice||'0')} / ${hexWeiToVnd(product.hexPrice||'0')}\n` +
-    `(수탁 지갑 HEX로 결제됩니다)\n\n구매하시겠습니까?`
+    `(수탁 지갑 Point로 결제됩니다)\n\n구매하시겠습니까?`
   )) return;
 
   const btn = el.detailBuyBtn;
@@ -589,7 +589,7 @@ function showTreasurePackageModal(productId) {
       `[보물 패키지 구매 확인]\n\n` +
       `보물 이름: ${treasureName}\n` +
       `위치: ${lat.toFixed(5)}, ${lng.toFixed(5)}\n` +
-      `결제 금액: ${confirmHex} HEX\n` +
+      `결제 금액: ${confirmHex} Point\n` +
       `           ${hexWeiToKrw(product?.hexPrice||'0')} / ${hexWeiToVnd(product?.hexPrice||'0')}\n\n` +
       `보물박스 5개 + 숨겨진 박스 2개 + 몬스터 5마리 + 타워 1기가 생성됩니다.\n` +
       `(관리자 승인 후 활성화)\n\n구매하시겠습니까?`
@@ -638,7 +638,7 @@ function showDoneModal(d, isVoucher = false, isTreasure = false) {
     : '';
   el.doneKvs.innerHTML = `
     <div class="coop-modal-kv"><span class="k">상품명</span><span class="v">${escHtml(d.productName)}</span></div>
-    <div class="coop-modal-kv"><span class="k">결제금액</span><span class="v">${d.amountHex||'?'} HEX<br><small style="font-size:0.82rem;color:var(--muted,#6b7280);">${hexWeiToKrw(d.hexWei||'0')} / ${hexWeiToVnd(d.hexWei||'0')}</small></span></div>
+    <div class="coop-modal-kv"><span class="k">결제금액</span><span class="v">${d.amountHex||'?'} Point<br><small style="font-size:0.82rem;color:var(--muted,#6b7280);">${hexWeiToKrw(d.hexWei||'0')} / ${hexWeiToVnd(d.hexWei||'0')}</small></span></div>
     <div class="coop-modal-kv"><span class="k">TxHash</span><span class="v" style="font-size:0.75em;">${(d.txHash||'').slice(0,22)}…</span></div>
     ${voucherNote}${treasureNote}
   `;
@@ -659,7 +659,7 @@ el.joinBtn.addEventListener('click', async () => {
   const feeKrw = hexWeiToKrw(_membershipFeeWei);
   const feeVnd = hexWeiToVnd(_membershipFeeWei);
   if (!confirm(
-    `회비 ${feeHex} HEX를 납부하고 전용몰 회원이 됩니다.\n` +
+    `회비 ${feeHex} Point를 납부하고 전용몰 회원이 됩니다.\n` +
     `(약 ${feeKrw} / ${feeVnd})\n\n계속하시겠습니까?`
   )) return;
 
@@ -722,7 +722,7 @@ el.convertSubmit.addEventListener('click', async () => {
     closeConvertModal();
     const txHash = res.data?.txHash || '';
     alert(
-      `전환 완료! ${hexVal.toFixed(4)} HEX가 지급되었습니다.\n` +
+      `전환 완료! ${hexVal.toFixed(4)} Point가 지급되었습니다.\n` +
       `약 ${hexWeiToKrw(ptsWei)} / ${hexWeiToVnd(ptsWei)}\n` +
       `Tx: ${txHash.slice(0, 22)}…`
     );

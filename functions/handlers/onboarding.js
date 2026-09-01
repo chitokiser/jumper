@@ -264,7 +264,7 @@ async function getUserOnChainData(uid) {
   const hexContract = getHexContract(provider);
   const { fetchExchangeRates } = require('../wallet/exchange');
 
-  // 온체인 조회 + 환율 조회 + 지갑 HEX 잔액 병렬 실행
+  // 온체인 조회 + 환율 조회 + 지갑 Point 잔액 병렬 실행
   // members() 반환: (uint32 level, address mentor, uint256 exp, uint256 points, bool blocked)
   const [[level, mentor, exp, points, blocked], ratesResult, walletHexBal] =
     await Promise.all([
@@ -276,7 +276,7 @@ async function getUserOnChainData(uid) {
   const krwPerUsd = ratesResult?.krwPerUsd ?? null;
   const vndPerUsd = ratesResult?.vndPerUsd ?? null;
 
-  // HEX wei → 각 통화 환산 (환율 없으면 null)
+  // Point wei → 각 통화 환산 (환율 없으면 null)
   const hexToKrw = (wei) => {
     if (!krwPerUsd) return null;
     return Math.round(parseFloat(ethers.formatEther(wei)) * krwPerUsd);
@@ -301,13 +301,13 @@ async function getUserOnChainData(uid) {
     exp:     expNum,
     requiredExp,
     blocked,
-    // 포인트 (HEX wei 단위)
+    // 포인트 (Point wei 단위)
     pointWei:     points.toString(),
     pointDisplay: parseFloat(ethers.formatEther(points)).toFixed(4),
     pointKrw:     hexToKrw(points),
     pointVnd:     hexToVnd(points),
     pointUsd:     hexToUsd(points),
-    // 수탁 지갑 실제 HEX 잔액 (P2P 수령 포함)
+    // 수탁 지갑 실제 Point 잔액 (P2P 수령 포함)
     walletHexWei:     walletHexBal.toString(),
     walletHexDisplay: parseFloat(ethers.formatEther(walletHexBal)).toFixed(4),
     walletHexKrw:     hexToKrw(walletHexBal),

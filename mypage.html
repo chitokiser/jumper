@@ -692,183 +692,117 @@
         </div>
       </section>
 
-      <!-- 수탁 지갑 -->
-      <section class="panel mp-section collapsible">
-        <div class="mp-section-head">
-          <h2 class="mp-section-title" data-i18n="section_wallet">수탁 지갑</h2>
-          <div style="display:flex; gap:6px;">
-            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;"
-              data-i18n="btn_metamask">MetaMask 연결</button>
-            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;"
-              data-i18n="btn_create_wallet">지갑 생성</button>
-          </div>
-        </div>
+      <div class="mp-section-head">
+        <h2 class="mp-section-title" data-i18n="section_wallet">내 지갑 정보</h2>
+      </div>
 
-        <div id="walletInfo">
-          <div class="mp-kv" style="align-items:flex-start;">
-            <span class="k" data-i18n="label_wallet_addr">지갑 주소</span>
-            <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
-              <span class="mono" id="walletAddress"
-                style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
-              <button id="btnCopyWallet" type="button" title="주소 복사" style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
+      <div id="walletInfo">
+        <div class="mp-kv" style="align-items:flex-start;">
+          <span class="k" data-i18n="label_wallet_addr">지갑 주소</span>
+          <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
+            <span class="mono" id="walletAddress"
+              style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
+            <button id="btnCopyWallet" type="button" title="주소 복사" style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
                        background:var(--surface,#fff); border:1px solid var(--border,#e5e7eb);
                        border-radius:20px; cursor:pointer; color:var(--muted,#6b7280); white-space:nowrap;">
-                <span data-i18n="btn_copy">📋 복사</span>
-              </button>
-            </span>
-          </div>
-          <div class="mp-kv">
-            <span class="k" data-i18n="label_onchain">온체인 등록</span>
-            <span class="v" id="onChainStatus">조회 중...</span>
-          </div>
-          <div class="mp-kv" id="levelRow" style="display:none;">
-            <span class="k" data-i18n="label_level">레벨</span>
-            <span class="v" id="levelDisplay">-</span>
-          </div>
-          <div class="mp-kv" id="expRow" style="display:none;">
-            <span class="k" data-i18n="label_exp">경험치 (EXP)</span>
-            <span class="v"><span id="expDisplay">-</span></span>
-          </div>
-          <div id="expBarRow" style="display:none; padding:2px 0 10px 0;">
-            <div style="background:#e5e7eb; border-radius:99px; height:8px; overflow:hidden;">
-              <div id="expBarFill"
-                style="background:var(--accent,#7c3aed); height:100%; width:0%; border-radius:99px; transition:width .4s;">
-              </div>
+              <span data-i18n="btn_copy">📋 복사</span>
+            </button>
+          </span>
+        </div>
+        <div class="mp-kv">
+          <span class="k" data-i18n="label_onchain">온체인 등록</span>
+          <span class="v" id="onChainStatus">조회 중...</span>
+        </div>
+        <div class="mp-kv" id="levelRow" style="display:none;">
+          <span class="k" data-i18n="label_level">레벨</span>
+          <span class="v" id="levelDisplay">-</span>
+        </div>
+        <div class="mp-kv" id="expRow" style="display:none;">
+          <span class="k" data-i18n="label_exp">경험치 (EXP)</span>
+          <span class="v"><span id="expDisplay">-</span></span>
+        </div>
+        <div id="expBarRow" style="display:none; padding:2px 0 10px 0;">
+          <div style="background:#e5e7eb; border-radius:99px; height:8px; overflow:hidden;">
+            <div id="expBarFill"
+              style="background:var(--accent,#7c3aed); height:100%; width:0%; border-radius:99px; transition:width .4s;">
             </div>
-            <small class="muted" id="expRequired" style="font-size:0.78em;"></small>
           </div>
-          <div class="mp-kv" id="levelUpRow" style="display:none;">
-            <span class="k"></span>
-            <span class="v">
-              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">레벨업 가능!
-                →</button>
-            </span>
-          </div>
-          <!-- 온체인 경험치 동기화 상태 -->
-          <div class="mp-kv hidden" id="onChainSyncRow" style="align-items:flex-start;padding:4px 0 8px;">
-            <span class="k" style="font-size:12px;color:#6b7280;">온체인 저장</span>
-            <span class="v" id="onChainSyncStatus" style="flex:1;"></span>
-          </div>
-          <div class="mp-kv" id="paymentBalanceRow" style="display:none; padding-top:10px;">
-            <span class="k" data-i18n="label_payment_balance" style="color:var(--text, #111); font-weight: 700;">Payment
-              Balance (VND)</span>
-            <span class="v accent" style="font-size: 1.15rem; font-weight: 800;" id="paymentBalanceDisplay">-</span>
-          </div>
-          <div class="mp-kv" id="pointRow" style="display:none;">
-            <span class="k" data-i18n="label_point">K-CULTURE Point</span>
-            <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap; color: #7c3aed;">
-              <span id="pointDisplay">-</span>
-              <!-- <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">Payment로 전환</button> -->
-            </span>
-          </div>
-          <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
+          <small class="muted" id="expRequired" style="font-size:0.78em;"></small>
+        </div>
+        <div class="mp-kv" id="levelUpRow" style="display:none;">
+          <span class="k"></span>
+          <span class="v">
+            <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">레벨업 가능!
+              →</button>
+          </span>
+        </div>
+        <!-- 온체인 경험치 동기화 상태 -->
+        <div class="mp-kv hidden" id="onChainSyncRow" style="align-items:flex-start;padding:4px 0 8px;">
+          <span class="k" style="font-size:12px;color:#6b7280;">온체인 저장</span>
+          <span class="v" id="onChainSyncStatus" style="flex:1;"></span>
+        </div>
+        <div class="mp-kv" id="paymentBalanceRow" style="display:none; padding-top:10px;">
+          <span class="k" data-i18n="label_payment_balance" style="color:var(--text, #111); font-weight: 700;">Payment
+            Balance (VND)</span>
+          <span class="v accent" style="font-size: 1.15rem; font-weight: 800;" id="paymentBalanceDisplay">-</span>
+        </div>
+        <div class="mp-kv" id="pointRow" style="display:none;">
+          <span class="k" data-i18n="label_point">K-CULTURE Point</span>
+          <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap; color: #7c3aed;">
+            <span id="pointDisplay">-</span>
+            <!-- <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">Payment로 전환</button> -->
+          </span>
+        </div>
+        <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
 
-          <div class="mp-kv" id="mentorAddrRow" style="display:none;">
-            <span class="k" data-i18n="label_my_mentor">나의 멘토</span>
-            <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
-          </div>
-
-          <!-- Legacy Wallet Rows for Admin/Legacy Uses -->
-          <div class="mp-kv" id="walletHexRow" style="display:none; opacity: 0.5;">
-            <span class="k" data-i18n="label_hex_balance">Legacy HEX</span>
-            <span class="v accent" id="walletHexDisplay">-</span>
-          </div>
-          <div class="mp-kv" id="walletJumpRow" style="display:none; opacity: 0.5;">
-            <span class="k" data-i18n="label_jump_balance">Legacy JUMP</span>
-            <span class="v accent" id="walletJumpDisplay">-</span>
-          </div>
-          <div class="mp-kv" id="walletJumpStakedRow" style="display:none; opacity: 0.5;">
-            <span class="k" data-i18n="label_jump_staked">Legacy Staked</span>
-            <span class="v accent" id="walletJumpStakedDisplay">-</span>
-          </div>
+        <div class="mp-kv" id="mentorAddrRow" style="display:none;">
+          <span class="k" data-i18n="label_my_mentor">나의 멘토</span>
+          <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
         </div>
 
-        <!-- 개인지갑(MetaMask)으로 잘못 등록된 경우 경고 -->
-        <div id="metamaskWarning"
-          style="display:none; background:#fff3cd; border-left:4px solid #f59e0b; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:0.88em;">
-          <strong>⚠️ 개인 지갑이 연결되어 있습니다.</strong><br>
-          현재 MetaMask 주소가 등록되어 있어 플랫폼 결제·포인트 기능을 사용할 수 없습니다.<br>
-          아래 <strong>지갑 생성</strong> 버튼을 눌러 수탁 지갑으로 전환해 주세요.
+        <!-- Legacy Wallet Rows for Admin/Legacy Uses -->
+        <div class="mp-kv" id="walletHexRow" style="display:none; opacity: 0.5;">
+          <span class="k" data-i18n="label_hex_balance">Legacy Point</span>
+          <span class="v accent" id="walletHexDisplay">-</span>
         </div>
+        <div class="mp-kv" id="walletJumpRow" style="display:none; opacity: 0.5;">
+          <span class="k" data-i18n="label_jump_balance">Legacy JUMP</span>
+          <span class="v accent" id="walletJumpDisplay">-</span>
+        </div>
+        <div class="mp-kv" id="walletJumpStakedRow" style="display:none; opacity: 0.5;">
+          <span class="k" data-i18n="label_jump_staked">Legacy Staked</span>
+          <span class="v accent" id="walletJumpStakedDisplay">-</span>
+        </div>
+      </div>
 
-        <div id="noWallet" style="display:none;">
-          <p class="hint">
-            수탁 지갑이 아직 없습니다.<br>
-            멘토 지갑 주소를 입력한 후 지갑을 생성하세요.
-          </p>
-          <label class="field" style="margin-top:10px;">
-            <span><span data-i18n="label_mentor_addr_field">멘토 지갑 주소</span> <em class="req">*</em></span>
-            <input type="text" id="createWalletMentorAddr" maxlength="42" placeholder="0x..."
-              style="font-family:monospace;" />
-          </label>
-        </div>
 
-        <!-- 멘토 등록 요청 (온체인 등록 완료 후 멘토 없을 때) -->
-        <div id="mentorRequestBox" style="display:none;" class="mp-action-box">
-          <p class="hint">
-            <strong>멘토를 등록하세요.</strong><br>
-            멘토가 연결되어야 가맹점 결제 시 경험치(EXP)와 포인트를 받을 수 있습니다.<br>
-            <small class="muted">요청 접수 후 관리자가 확인하여 연결해 드립니다.</small>
-          </p>
-          <label class="field">
-            <span><span data-i18n="label_mentor_email">멘토 이메일</span> <em class="req">*</em></span>
-            <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
-          </label>
-          <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">멘토 등록
-            요청</button>
-          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);"
-            data-i18n="mentor_req_done">✓ 요청이 접수되었습니다. 관리자 확인 후 반영됩니다.</p>
-        </div>
 
-        <!-- 온체인 미등록 시 등록 버튼 -->
-        <div id="onChainRegBox" style="display:none;" class="mp-action-box">
-          <p class="hint">
-            온체인 미등록 상태입니다.<br>
-            멘토 지갑 주소를 입력하면 경험치(EXP)와 포인트를 받을 수 있습니다.
-          </p>
-          <label class="field">
-            <span><span data-i18n="label_mentor_addr_field">멘토 지갑 주소</span> <em class="req">*</em></span>
-            <input type="text" id="mentorAddrInput" maxlength="42" placeholder="0x..." style="font-family:monospace;" />
-          </label>
-          <button class="btn btn--primary" id="btnRegisterOnChain" type="button" data-i18n="btn_register_onchain">온체인
-            등록</button>
-        </div>
-      </section>
-
-      <!-- 개인 지갑 HEX 이체 (레벨 4 이상) -->
-      <section class="panel mp-section collapsible is-collapsed" id="hexTransferSection" style="display:none;">
-        <div class="mp-section-head">
-          <h2 class="mp-section-title" data-i18n="section_hex_transfer">HEX 개인 지갑 이체 <span
-              style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
-        </div>
-        <p class="hint" style="margin-bottom:12px;">
-          수탁 지갑의 HEX를 외부 개인 지갑으로 직접 전송합니다.<br>
-          <small class="muted">레벨 4 이상 회원만 사용 가능합니다. 잔액 전액 또는 원하는 수량을 이체할 수 있습니다.</small>
+      <!-- 멘토 등록 요청 (온체인 등록 완료 후 멘토 없을 때) -->
+      <div id="mentorRequestBox" style="display:none;" class="mp-action-box">
+        <p class="hint">
+          <strong>멘토를 등록하세요.</strong><br>
+          멘토가 연결되어야 가맹점 결제 시 경험치(EXP)와 포인트를 받을 수 있습니다.<br>
+          <small class="muted">요청 접수 후 관리자가 확인하여 연결해 드립니다.</small>
         </p>
-        <form id="hexTransferForm" class="form" style="margin-top:0;">
-          <label class="field">
-            <span><span data-i18n="label_to_wallet">수령 지갑 주소</span> <em class="req">*</em></span>
-            <input type="text" id="hexTransferTo" maxlength="42" placeholder="0x..." style="font-family:monospace;" />
-          </label>
-          <label class="field">
-            <span data-i18n="label_transfer_amt">이체 수량 (HEX)</span>
-            <input type="number" id="hexTransferAmount" min="0" step="any" placeholder="비워 놓으면 전액 이체됨" />
-          </label>
-          <div class="mp-kv" style="margin-bottom:10px;">
-            <span class="k">보유 HEX</span>
-            <span class="v accent" id="hexTransferBalance">-</span>
-          </div>
-          <div class="actions">
-            <button class="btn btn--primary" type="submit" id="btnHexTransfer" data-i18n="btn_transfer_hex">이체</button>
-          </div>
-        </form>
-        <div id="hexTransferResult" class="mp-result-box" style="display:none;"></div>
+        <label class="field">
+          <span><span data-i18n="label_mentor_email">멘토 이메일</span> <em class="req">*</em></span>
+          <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
+        </label>
+        <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">멘토 등록
+          요청</button>
+        <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);" data-i18n="mentor_req_done">
+          ✓ 요청이 접수되었습니다. 관리자 확인 후 반영됩니다.</p>
+      </div>
+
+
       </section>
+
+
 
       <!-- 원화 충전 -->
       <section class="panel mp-section collapsible is-collapsed" id="hex-topup">
         <div class="mp-section-head">
-          <h2 class="mp-section-title" data-i18n="section_deposit">HEX 충전 (원화)</h2>
+          <h2 class="mp-section-title" data-i18n="section_deposit">Point 충전 (원화)</h2>
         </div>
 
         <!-- 입금 계좌 안내 (항상 표시) -->
@@ -917,7 +851,7 @@
           <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolderVnd">-</span></div>
           <div class="mp-kv"><span class="k">금액</span><span class="v" id="drAmount">-</span></div>
           <div class="mp-kv"><span class="k">충전 금액</span><span class="v accent" id="drHex">-</span></div>
-          <p class="hint mp-warn" data-i18n="deposit_warn">입금자명을 정확히 입력하세요. 관리자 확인 후 HEX 토큰이 수탁 지갑으로 지급됩니다.</p>
+          <p class="hint mp-warn" data-i18n="deposit_warn">입금자명을 정확히 입력하세요. 관리자 확인 후 Point 포인트이 수탁 지갑으로 지급됩니다.</p>
         </div>
       </section>
 
@@ -929,7 +863,7 @@
         </div>
         <p class="hint" style="margin-bottom:12px;">
           가맹점을 방문하여 현장에서 결제할 때 사용합니다.<br>
-          <small class="muted">결제 시 수탁 지갑의 HEX가 사용됩니다. (온체인 결제)</small>
+          <small class="muted">결제 시 수탁 지갑의 Point가 사용됩니다. (온체인 결제)</small>
         </p>
         <form id="merchantPayForm" class="form" style="margin-top:0;">
           <label class="field">
@@ -990,7 +924,7 @@
           <div>
             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">포인트란?</dt>
             <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">내 하위 회원이 가맹점에서 결제할 때 수수료 일부가 멘토(나)에게
-              포인트로 적립됩니다. 포인트는 HEX 토큰으로 전환할 수 있습니다.</dd>
+              포인트로 적립됩니다. 포인트는 Point 포인트으로 전환할 수 있습니다.</dd>
           </div>
           <div>
             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">경험치 (EXP)</dt>
@@ -1000,7 +934,7 @@
           <div>
             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">레벨 & 레벨업</dt>
             <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">
-              레벨이 높을수록 포인트 → HEX 전환 시 더 많이 받습니다.<br>
+              레벨이 높을수록 포인트 → Point 전환 시 더 많이 받습니다.<br>
               <strong>전환량 = 포인트 × 레벨 ÷ 10</strong><br>
               레벨업 필요 EXP = 현재레벨² × 10,000<br>
               <span style="font-size:0.9em;">Lv.1→2: 10,000 EXP &nbsp;·&nbsp; Lv.2→3: 40,000 EXP &nbsp;·&nbsp; Lv.3→4:
@@ -1071,9 +1005,9 @@
             <div class="mp-stat-sub" id="jackpotTotalCount"></div>
           </div>
           <div class="mp-stat-card" style="border-color:rgba(124,58,237,.35);background:rgba(124,58,237,.08);">
-            <div class="mp-stat-label" data-i18n="jackpot_stat_redeemable">HEX 전환 가능 포인트</div>
+            <div class="mp-stat-label" data-i18n="jackpot_stat_redeemable">Point 전환 가능 포인트</div>
             <div class="mp-stat-value" id="jackpotRedeemable" style="color:#a78bfa;">-</div>
-            <div class="mp-stat-sub" data-i18n="jackpot_stat_min">10 HEX 이상 시 전환 가능</div>
+            <div class="mp-stat-sub" data-i18n="jackpot_stat_min">10 Point 이상 시 전환 가능</div>
           </div>
         </div>
         <div id="jackpotHistList" class="mp-table-wrap">
@@ -1209,7 +1143,7 @@
                 </div>
                 <div id="vbStep3" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
                   <span id="vbStep3Icon" style="font-size:1rem;">⏳</span> <span id="vbStep3Label"
-                    data-i18n="burn_step3_onchain">HEX 환급 처리 중</span>
+                    data-i18n="burn_step3_onchain">Point 환급 처리 중</span>
                 </div>
                 <div id="vbStep4" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
                   <span id="vbStep4Icon" style="font-size:1rem;">⏳</span> <span id="vbStep4Label"

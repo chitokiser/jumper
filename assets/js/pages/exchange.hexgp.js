@@ -1,5 +1,5 @@
 // /assets/js/pages/exchange.hexgp.js
-// HEX → GameCoin (GP) 교환 탭
+// Point → GameCoin (GP) 교환 탭
 
 import { auth, functions } from '../firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -27,7 +27,7 @@ async function loadStatus() {
     _status   = res.data;
     const rate = Number(_status.gpPerHex || 1000);
     setText('hgGpPerHex', rate.toLocaleString() + ' GP');
-    setText('hgHexBal',   fmtHex(_status.userHexBalance || '0') + ' HEX');
+    setText('hgHexBal',   fmtHex(_status.userHexBalance || '0') + ' Point');
     setText('hgGpBal',    Number(_status.userGold || 0).toLocaleString());
     _updatePreview();
   } catch (err) {
@@ -59,13 +59,13 @@ function bindHexGp() {
   btn.onclick = async () => {
     const input  = $('hgHexInput');
     const hexVal = parseFloat(input?.value);
-    if (!hexVal || hexVal <= 0) { setText('hgStatus', 'Enter HEX amount'); return; }
+    if (!hexVal || hexVal <= 0) { setText('hgStatus', 'Enter Point amount'); return; }
 
     const rate   = Number(_status?.gpPerHex || 1000);
     const gpAmt  = Math.floor(hexVal * rate);
     const hexWei = BigInt(Math.round(hexVal * 1e18)).toString();
 
-    if (!confirm(`Convert ${hexVal} HEX → ${gpAmt.toLocaleString()} GP?\nThis cannot be undone.`)) return;
+    if (!confirm(`Convert ${hexVal} Point → ${gpAmt.toLocaleString()} GP?\nThis cannot be undone.`)) return;
 
     btn.disabled    = true;
     btn.textContent = 'Processing…';
@@ -83,7 +83,7 @@ function bindHexGp() {
       setText('hgStatus', 'Failed: ' + (err.message || String(err)));
     } finally {
       btn.disabled    = false;
-      btn.textContent = 'Convert HEX → GP';
+      btn.textContent = 'Convert Point → GP';
     }
   };
 }

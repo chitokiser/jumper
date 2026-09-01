@@ -29,7 +29,7 @@ function showProof(method) {
   const m = String(method || "card").toLowerCase();
   const card = $("proofCard");
   const fiat = $("proofFiat");
-  const hex = $("proofUsdt"); // 기존 ID 유지: UI 텍스트는 HEX로 변경
+  const hex = $("proofUsdt"); // 기존 ID 유지: UI 텍스트는 Point로 변경
 
   if (card) card.style.display = m === "card" ? "block" : "none";
   if (fiat) fiat.style.display = m === "fiat" ? "block" : "none";
@@ -66,7 +66,7 @@ function getProofFromUI() {
       txHash: ($("usdtTxHash")?.value || "").trim(),
       from: ($("usdtFrom")?.value || "").trim(),
       amount: ($("usdtAmount")?.value || "").trim(),
-      currency: ($("usdtCurrency")?.value || "HEX").trim(),
+      currency: ($("usdtCurrency")?.value || "Point").trim(),
     },
   };
 }
@@ -113,7 +113,7 @@ function applyProofToUI(o) {
   fill("usdtTxHash", ph.txHash ?? legacyHex.txHash ?? "");
   fill("usdtFrom", ph.from ?? legacyHex.from ?? "");
   fill("usdtAmount", ph.amount ?? legacyHex.amount ?? "");
-  fill("usdtCurrency", ph.currency ?? legacyHex.currency ?? "HEX");
+  fill("usdtCurrency", ph.currency ?? legacyHex.currency ?? "Point");
 }
 
 function tsToLocalText(ts) {
@@ -148,7 +148,7 @@ function applyAutoDefaultsFromOrder(o) {
   // 결제하기 단계에서 입력/선택한 값(날짜/금액/방법)을 결제증빙 폼으로 자동 반영
   const payMethod = String(o?.payment || o?.payMethod || "card").toLowerCase();
   const total = (o?.price != null && o?.price !== "") ? o.price : o.amount;
-  const currency = o?.currency || (payMethod === "hex" || payMethod === "usdt" ? "HEX" : "KRW");
+  const currency = o?.currency || (payMethod === "hex" || payMethod === "usdt" ? "Point" : "KRW");
 
   // 날짜: 결제일시 입력칸이 있는 카드 모드에 우선 반영 (없으면 createdAt/updatedAt)
   const paidAtText =
@@ -169,7 +169,7 @@ function applyAutoDefaultsFromOrder(o) {
   } else {
     // hex/usdt
     setIfEmpty("usdtAmount", total ?? "");
-    setIfEmpty("usdtCurrency", currency || "HEX");
+    setIfEmpty("usdtCurrency", currency || "Point");
   }
 }
 

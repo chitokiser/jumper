@@ -248,9 +248,9 @@ const MESSAGES = {
   member_only_box_title: { en: '👑 Members-Only Treasure Box',
                            ko: '👑 정회원 전용 보물박스',
                            vi: '👑 Hộp kho báu dành riêng hội viên' },
-  member_only_box_desc:  { en: 'Pay 10 HEX at coop.html to<br>become a CoopMall member.',
-                           ko: 'coop.html에서 10 HEX를 지불하고<br>CoopMall 정회원에 가입하세요.',
-                           vi: 'Vào coop.html, trả 10 HEX để<br>trở thành hội viên CoopMall.' },
+  member_only_box_desc:  { en: 'Pay 10 Point at coop.html to<br>become a CoopMall member.',
+                           ko: 'coop.html에서 10 Point를 지불하고<br>CoopMall 정회원에 가입하세요.',
+                           vi: 'Vào coop.html, trả 10 Point để<br>trở thành hội viên CoopMall.' },
 
   // ── 게임 서버 연결 상태 ───────────────────────────────────────────────────────
   gs_connecting:         { en: 'Connecting...',            ko: '연결 중...',              vi: 'Đang kết nối...' },

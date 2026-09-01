@@ -1,7 +1,7 @@
 # FX / 금액 표시 헬퍼
 
 ## 표시 원칙
-금액은 항상 KRW / VND / HEX 세 가지를 모두 표시한다.
+금액은 항상 KRW / VND / Point 세 가지를 모두 표시한다.
 패턴: `[krwStr, vndStr, hexStr].filter(Boolean).join(' / ')`
 
 ## 프론트엔드 헬퍼 (coop.js 등에 정의)
@@ -28,7 +28,7 @@ function hexWeiToVnd(weiStr, rates) {
 const { fetchExchangeRates } = require('../wallet/exchange');
 // → { krwPerUsd, vndPerUsd }
 
-// KRW → HEX wei
+// KRW → Point wei
 const { krwToHexWei } = require('../wallet/chain');
 // krwToHexWei(krwAmount, usdKrwRate) → BigInt wei
 
@@ -43,7 +43,7 @@ const vnd = Math.round((amountKrw / rates.krwPerUsd) * rates.vndPerUsd);
 ```js
 const krwStr = `${(d.amountKrw || 0).toLocaleString()}원`;
 const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}동` : '';
-const hexStr = `${d.amountHex || '?'} HEX`;
+const hexStr = `${d.amountHex || '?'} Point`;
 const amountDisp = [krwStr, vndStr, hexStr].filter(Boolean).join(' / ');
 ```
 

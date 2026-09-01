@@ -31,7 +31,7 @@ function setStatus(id, msg, type = '') {
 }
 
 function fmtHex(weiStr) {
-  try { return (Number(BigInt(weiStr)) / 1e18).toFixed(4) + ' HEX'; }
+  try { return (Number(BigInt(weiStr)) / 1e18).toFixed(4) + ' Point'; }
   catch { return weiStr; }
 }
 
@@ -61,7 +61,7 @@ async function loadStats() {
     if ($('statFxVnd')) $('statFxVnd').textContent = vndRate ? Math.round(vndRate).toLocaleString() + ' ₫' : '미설정';
 
     setStatus('statsStatus', '');
-    // 환율 로드 완료 → HEX 필드에 값이 있으면 VND 재계산
+    // 환율 로드 완료 → Point 필드에 값이 있으면 VND 재계산
     const hexInput = $('inputHexPrice');
     if (hexInput?.value) hexInput.dispatchEvent(new Event('input'));
   } catch (err) {
@@ -72,7 +72,7 @@ async function loadStats() {
 function bindStats() {
   $('btnRefreshStats').onclick = loadStats;
 
-  // HEX 인출
+  // Point 인출
   $('btnWithdrawHexMax').onclick = () => {
     if (!_stats) return;
     $('inputWithdrawHex').value = (Number(BigInt(_stats.withdrawableHex)) / 1e18).toFixed(4);
@@ -88,7 +88,7 @@ function bindStats() {
       const fn = httpsCallable(functions, 'coopAdminWithdrawHex');
       const res = await fn({ amountWei });
       const txHash = res.data?.txHash || '';
-      setStatus('withdrawHexStatus', `완료! ${hexVal.toFixed(4)} HEX 인출됨. Tx: ${txHash.slice(0,18)}…`, 'ok');
+      setStatus('withdrawHexStatus', `완료! ${hexVal.toFixed(4)} Point 인출됨. Tx: ${txHash.slice(0,18)}…`, 'ok');
       $('inputWithdrawHex').value = '';
       await loadStats();
     } catch (err) {
@@ -160,7 +160,7 @@ function bindStats() {
       const tx = await coopMall.setMembershipFee(feeWei);
       setStatus('setFeeStatus', `Tx 전송됨: ${tx.hash.slice(0,18)}… 확인 대기 중`);
       await tx.wait();
-      setStatus('setFeeStatus', `회비 변경 완료 → ${hexVal.toFixed(4)} HEX`, 'ok');
+      setStatus('setFeeStatus', `회비 변경 완료 → ${hexVal.toFixed(4)} Point`, 'ok');
       $('inputSetFee').value = '';
       await loadStats();
     } catch (err) {
@@ -248,7 +248,7 @@ function renderProductTable(products) {
         <td style="text-align:center;"><input type="checkbox" class="chk-product" data-id="${p.id}" /></td>
         <td>${imgHtml}</td>
         <td>${typeBadge} <strong>${esc(p.name)}</strong>${p.description ? `<br><span style="font-size:0.78rem;color:#888;">${esc(stripTags(p.description)).slice(0,40)}${stripTags(p.description).length>40?'…':''}</span>` : ''}</td>
-        <td>${fmtHexShort(p.hexPrice||'0')} HEX<br><span style="font-size:0.75rem;color:#6b7280;">${hexWeiToKrw(p.hexPrice||'0')} &nbsp;·&nbsp; ${hexWeiToVnd(p.hexPrice||'0')}</span></td>
+        <td>${fmtHexShort(p.hexPrice||'0')} Point<br><span style="font-size:0.75rem;color:#6b7280;">${hexWeiToKrw(p.hexPrice||'0')} &nbsp;·&nbsp; ${hexWeiToVnd(p.hexPrice||'0')}</span></td>
         <td>${stockTxt}</td>
         <td>${badge}</td>
         <td style="white-space:nowrap;">
@@ -362,7 +362,7 @@ function bindProductForm() {
     const burnFeeBps  = type === 'voucher' ? parseInt($('inputBurnFeeBps')?.value || '0', 10) : 0;
 
     if (!name) { setStatus('productFormStatus', '상품명을 입력하세요', 'err'); return; }
-    if (!hexFloat || hexFloat <= 0) { setStatus('productFormStatus', 'HEX 가격을 입력하세요', 'err'); return; }
+    if (!hexFloat || hexFloat <= 0) { setStatus('productFormStatus', 'Point 가격을 입력하세요', 'err'); return; }
     const hexPrice = BigInt(Math.round(hexFloat * 1e14)) * 10000n;  // float → wei (1e18)
 
     btn.disabled = true;
@@ -391,14 +391,14 @@ function bindProductForm() {
     });
   });
 
-  // HEX 입력 → KRW/VND 미리보기
+  // Point 입력 → KRW/VND 미리보기
   $('inputHexPrice')?.addEventListener('input', () => {
     const hexVal = parseFloat($('inputHexPrice').value);
     const preview = $('pricePreview');
     const krwRate = _krwPerHex();
     const vndRate = _vndPerHex();
     if (!hexVal || hexVal <= 0) { preview?.classList.remove('active'); return; }
-    if ($('prevHex')) $('prevHex').textContent = hexVal.toFixed(4) + ' HEX';
+    if ($('prevHex')) $('prevHex').textContent = hexVal.toFixed(4) + ' Point';
     if (!krwRate || !vndRate) {
       const msg = _stats !== null ? '환율 미설정' : '환율 로딩 중...';
       if ($('prevKrw')) $('prevKrw').textContent = msg;
@@ -521,7 +521,7 @@ function renderOrderTable(orders) {
       ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('ko-KR')
       : '—';
     const hexAmt = o.hexWei
-      ? (Number(BigInt(o.hexWei)) / 1e18).toFixed(4) + ' HEX'
+      ? (Number(BigInt(o.hexWei)) / 1e18).toFixed(4) + ' Point'
       : '—';
     const statusClass = `os-${o.status || 'confirmed'}`;
     const statusLabel = ORDER_STATUS_LABELS[o.status] || o.status || '—';
@@ -540,7 +540,7 @@ function renderOrderTable(orders) {
         <td style="white-space:nowrap;font-size:0.8rem;">${date}</td>
         <td><strong>${esc(o.productName || '—')}</strong>${noteHtml}</td>
         <td style="font-size:0.75rem;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(o.uid || '')}">${esc((o.uid || '').slice(0, 12))}…</td>
-        <td style="white-space:nowrap;">${o.hexWei ? fmtHexShort(o.hexWei) + ' HEX<br><span style="font-size:0.75rem;color:#6b7280;">' + hexWeiToVnd(o.hexWei) + '</span>' : '—'}</td>
+        <td style="white-space:nowrap;">${o.hexWei ? fmtHexShort(o.hexWei) + ' Point<br><span style="font-size:0.75rem;color:#6b7280;">' + hexWeiToVnd(o.hexWei) + '</span>' : '—'}</td>
         <td style="white-space:nowrap;font-size:0.8rem;">${hexAmt}</td>
         <td><span class="ac-order-status ${statusClass}">${statusLabel}</span></td>
         <td style="white-space:nowrap;">${actionBtns}</td>
@@ -611,7 +611,7 @@ function krwToVnd(krw) {
 }
 function krwToHex(krw) {
   const r = _krwPerHex(); if (!r) return '—';
-  return (krw / r).toFixed(4) + ' HEX';
+  return (krw / r).toFixed(4) + ' Point';
 }
 function vndToKrw(vnd) {
   const kr = _krwPerHex(), vr = _vndPerHex();
@@ -653,7 +653,7 @@ function renderVoucherTemplates(templates) {
         <div class="ac-voucher-card-title">${t.description || '(내용 없음)'} ${badge}</div>
         <div class="ac-voucher-card-meta">
           사용처: ${t.usagePlace || '—'}<br>
-          가격: ${fmtHexShort(t.hexPrice)} HEX &nbsp;·&nbsp; ${hexWeiToKrw(t.hexPrice)} &nbsp;·&nbsp; ${hexWeiToVnd(t.hexPrice)}<br>
+          가격: ${fmtHexShort(t.hexPrice)} Point &nbsp;·&nbsp; ${hexWeiToKrw(t.hexPrice)} &nbsp;·&nbsp; ${hexWeiToVnd(t.hexPrice)}<br>
           소각 수수료: ${(t.burnFeeBps / 100).toFixed(1)}%
         </div>
         <div class="ac-voucher-card-actions">
@@ -725,7 +725,7 @@ function bindVoucherForm() {
     const imageUrl    = $('voucherImageUrl').value.trim();
 
     if (!hexPrice || !description || !usagePlace) {
-      setStatus('voucherFormStatus', 'HEX 가격, 바우처 내용, 사용처는 필수입니다.', 'err');
+      setStatus('voucherFormStatus', 'Point 가격, 바우처 내용, 사용처는 필수입니다.', 'err');
       return;
     }
     if (burnFeeBps < 0 || burnFeeBps > 10000) {

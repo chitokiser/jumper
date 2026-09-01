@@ -1,5 +1,5 @@
 // functions/wallet/exchange.js
-// KRW / USD / VND 환율 조회 + HEX wei 변환
+// KRW / USD / VND 환율 조회 + Point wei 변환
 // Primary: open.er-api.com (무료, 키 불필요)
 // Fallback: exchangerate.host
 
@@ -70,7 +70,7 @@ async function fetchExchangeRates() {
 // ────────────────────────────────────────────────
 
 /**
- * KRW → HEX wei  (1 HEX = 1 USD 가정, 18 decimals)
+ * KRW → Point wei  (1 Point = 1 USD 가정, 18 decimals)
  * hexWei = floor(krwAmount / krwPerUsd) * 1e18
  *
  * BigInt 사용: 정수 계산으로 정밀도 손실 방지

@@ -37,13 +37,13 @@ async function fetchRates() {
   return _fxCache;
 }
 
-// VND → HEX wei (18 decimals)
+// VND → Point wei (18 decimals)
 function vndToHexWei(vndAmount, usdVnd) {
-  // VND → USD → HEX
-  // hexPriceWei: 1 JUMP 가격 (wei), 여기서는 1 HEX = 1 USD 기준 스케일 사용
-  // 실제로는 HEX 자체가 USD 연동 토큰이므로: VND / usdVnd = USD 환산
+  // VND → USD → Point
+  // hexPriceWei: 1 JUMP 가격 (wei), 여기서는 1 Point = 1 USD 기준 스케일 사용
+  // 실제로는 Point 자체가 USD 연동 포인트이므로: VND / usdVnd = USD 환산
   const usdAmt    = vndAmount / usdVnd;            // USD
-  const hexAmount = usdAmt;                        // 1 HEX ≒ 1 USD (HEX 기준)
+  const hexAmount = usdAmt;                        // 1 Point ≒ 1 USD (Point 기준)
   // wei = hexAmount * 1e18
   const weiBig = BigInt(Math.round(hexAmount * 1e12)) * BigInt(1_000_000);
   return weiBig;
@@ -105,18 +105,18 @@ async function buyEventVoucher(uid, { eventId }, masterSecret) {
 
   if (!walletData?.encryptedKey) throw new Error('수탁 지갑이 없습니다');
 
-  // 5. VND → HEX wei 환산
+  // 5. VND → Point wei 환산
   const rates  = await fetchRates();
   const hexWei = vndToHexWei(event.voucherPrice, rates.usdVnd || 25000);
 
-  // 6. HEX 잔액 확인
+  // 6. Point 잔액 확인
   const provider = getProvider();
   const hexRead  = getHexContract(provider);
   const hexBal   = await hexRead.balanceOf(address);
   if (hexBal < hexWei) {
     const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
     const need = parseFloat(ethers.formatEther(hexWei)).toFixed(4);
-    throw new Error(`HEX 잔액 부족. 필요: ${need} HEX, 보유: ${have} HEX`);
+    throw new Error(`Point 잔액 부족. 필요: ${need} Point, 보유: ${have} Point`);
   }
 
   // 7. BNB 가스비 보충
@@ -129,7 +129,7 @@ async function buyEventVoucher(uid, { eventId }, masterSecret) {
     await fundTx.wait();
   }
 
-  // 8. HEX 전송 (수탁 지갑 → 관리자 지갑)
+  // 8. Point 전송 (수탁 지갑 → 관리자 지갑)
   const privateKey = decrypt(walletData.encryptedKey, masterSecret);
   const signer     = walletFromKey(privateKey, provider);
   const hexSigned  = getHexContract(signer);

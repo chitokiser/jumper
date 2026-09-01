@@ -56,9 +56,9 @@ role 판정은 오직 아래 로직만 사용합니다.
 
 필요해지면 다시 살릴 수 있지만, 현재 운영 흐름에서는 사용하지 않습니다.
 
-## 5) K-CULTURE ALLIANCE 소개
+## 5) K-MOA 소개
 
-K-CULTURE ALLIANCE는 현실 세계를 기반으로 하는 Web3 보물찾기 플랫폼이다.
+K-MOA는 현실 세계를 기반으로 하는 Web3 보물찾기 플랫폼이다.
 
 유저들은:
 
@@ -112,25 +112,25 @@ K-CULTURE ALLIANCE는 현실 세계를 기반으로 하는 Web3 보물찾기 플
 
 ---
 
-# 게임코인과 JUMP 토큰
+# 게임코인과 JUMP 포인트
 
 유저가 게임 내에서 획득한 게임코인은:
 
-→ JUMP 토큰으로 교환 가능하다.
+→ JUMP 포인트으로 교환 가능하다.
 
 JUMP는 단순 게임코인이 아니라:
 
-# K-CULTURE ALLIANCE의 지분(Share) 토큰
+# K-MOA의 지분(Share) 포인트
 
 역할을 한다.
 
 ---
 
-# JUMP 토큰 보유 혜택
+# JUMP 포인트 보유 혜택
 
-JUMP 토큰을 보유하면:
+JUMP 포인트을 보유하면:
 
-* K-CULTURE ALLIANCE 주주로 인정
+* K-MOA 주주로 인정
 * 특별 혜택 제공
 * 플랫폼 주요 혜택 참여 가능
 * 플랫폼 수익 배당 참여 가능
@@ -139,14 +139,14 @@ JUMP 토큰을 보유하면:
 
 # 플랫폼 수익 배당
 
-K-CULTURE ALLIANCE 플랫폼에서 발생한 수익은
+K-MOA 플랫폼에서 발생한 수익은
 매주 정산되어
 
-JUMP 토큰 보유량 비율에 따라 배당된다.
+JUMP 포인트 보유량 비율에 따라 배당된다.
 
 ---
 
-# K-CULTURE ALLIANCE 수익 구조
+# K-MOA 수익 구조
 
 플랫폼 수익 예시:
 
@@ -154,16 +154,16 @@ JUMP 토큰 보유량 비율에 따라 배당된다.
 * 상점 판매 수수료
 * 정회원 회비
 * NPC 힌트 사용료
-* JUMP 토큰 판매 수수료
+* JUMP 포인트 판매 수수료
 * 배너 광고 수익
 * 기타 플랫폼 수익
 
 ---
 
-# HEX 토큰
+# Point 포인트
 
-K-CULTURE ALLIANCE 플랫폼의 모든 결제는
-HEX 토큰 기반으로 이루어진다.
+K-MOA 플랫폼의 모든 결제는
+Point 포인트 기반으로 이루어진다.
 
 예:
 
@@ -177,21 +177,21 @@ HEX 토큰 기반으로 이루어진다.
 
 ---
 
-# HEX 교환
+# Point 교환
 
-HEX는 아래 사이트에서 교환 가능하다:
+Point는 아래 사이트에서 교환 가능하다:
 
-[HEX DAO Exchange](https://hexdao.netlify.app/?utm_source=chatgpt.com)
+[Point DAO Exchange](https://hexdao.netlify.app/?utm_source=chatgpt.com)
 
 기준:
 
-* 1 HEX = 1 USDT
+* 1 Point = 1 USDT
 
 ---
 
-# K-CULTURE ALLIANCE 핵심 개념
+# K-MOA 핵심 개념
 
-K-CULTURE ALLIANCE는:
+K-MOA는:
 
 * 현실 세계 탐험
 * 위치 기반 게임

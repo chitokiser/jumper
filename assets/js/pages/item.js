@@ -613,7 +613,7 @@ function updatePayUI({ booking, unitPrice }){
     const total = nights > 0 ? (u * nights) : 0;
     totalEl.textContent = `${fmtMoney(total)} 원`;
     breakEl.textContent = nights > 0
-      ? `1박당 ${fmtMoney(u)}원 × ${nights}박 = ${fmtMoney(total)}원 → HEX 자동 환산`
+      ? `1박당 ${fmtMoney(u)}원 × ${nights}박 = ${fmtMoney(total)}원 → Point 자동 환산`
       : "체크인/체크아웃을 선택하세요";
     return;
   }
@@ -621,8 +621,8 @@ function updatePayUI({ booking, unitPrice }){
   // 단일/요일고정
   totalEl.textContent = `${fmtMoney(u)} 원`;
   breakEl.textContent = (Number.isFinite(people) && people > 1)
-    ? `기본 금액 ${fmtMoney(u)}원 (인원 ${people}명) → HEX 자동 환산`
-    : "현재 환율 기준 HEX로 자동 환산됩니다";
+    ? `기본 금액 ${fmtMoney(u)}원 (인원 ${people}명) → Point 자동 환산`
+    : "현재 환율 기준 Point로 자동 환산됩니다";
 }
 
 function pickNextDateByWeekdays(weekdays, startISO){
@@ -843,7 +843,7 @@ function bindOrder({ itemId, itemTitle, ownerUid, status, price, user, booking }
   const hint = $("#orderHint");
   const mini = $("#orderMini");
 
-  if (mini) mini.textContent = "HEX 토큰 결제 전용 · 원화 기준 자동 환산";
+  if (mini) mini.textContent = "Point 포인트 결제 전용 · 원화 기준 자동 환산";
 
   if (!user) {
     if (form) form.style.display = "none";
@@ -897,7 +897,7 @@ function bindOrder({ itemId, itemTitle, ownerUid, status, price, user, booking }
     }
   }
 
-  // ── HEX 결제 ──────────────────────────────────────
+  // ── Point 결제 ──────────────────────────────────────
   const btnHexPay  = $("#btnHexPay");
   const hexPayInfo = $("#hexPayInfo");
 
@@ -921,11 +921,11 @@ function bindOrder({ itemId, itemTitle, ownerUid, status, price, user, booking }
       const n = nightsBetween(startDate, endDate);
       const total = n > 0 ? u * n : 0;
       hexPayInfo.textContent = total > 0
-        ? `HEX 즉시결제 예상 금액: ${fmtMoney(total)} KRW (현재 환율로 HEX 자동 환산)`
+        ? `Point 즉시결제 예상 금액: ${fmtMoney(total)} KRW (현재 환율로 Point 자동 환산)`
         : "체크인/체크아웃 날짜를 선택하세요.";
     } else {
       hexPayInfo.textContent = u > 0
-        ? `HEX 즉시결제 예상 금액: ${fmtMoney(u)} KRW (현재 환율로 HEX 자동 환산)`
+        ? `Point 즉시결제 예상 금액: ${fmtMoney(u)} KRW (현재 환율로 Point 자동 환산)`
         : "금액 정보가 없습니다.";
     }
     hexPayInfo.style.display = "block";
@@ -960,14 +960,14 @@ function bindOrder({ itemId, itemTitle, ownerUid, status, price, user, booking }
       const nights = mode === "date_range" ? nightsBetween(s, e) : 0;
       const total  = mode === "date_range" ? (Number(price) * nights) : Number(price);
       const confirm_msg =
-        `HEX 즉시결제를 진행합니다.\n` +
-        `금액: ${fmtMoney(total)} KRW (현재 환율로 HEX 자동 환산)\n` +
-        `수탁 지갑 HEX 잔액에서 차감됩니다.\n\n계속하시겠습니까?`;
+        `Point 즉시결제를 진행합니다.\n` +
+        `금액: ${fmtMoney(total)} KRW (현재 환율로 Point 자동 환산)\n` +
+        `수탁 지갑 Point 잔액에서 차감됩니다.\n\n계속하시겠습니까?`;
       if (!confirm(confirm_msg)) return;
 
       try {
         btnHexPay.disabled = true;
-        setOrderState("HEX 결제 처리 중... (온체인 서명, 잠시 기다려 주세요)");
+        setOrderState("Point 결제 처리 중... (온체인 서명, 잠시 기다려 주세요)");
 
         const callFn = httpsCallable(functions, "payProductWithHex");
         const result = await callFn({
@@ -995,8 +995,8 @@ function bindOrder({ itemId, itemTitle, ownerUid, status, price, user, booking }
       } catch (e) {
         console.error(e);
         const msg = e?.message || String(e);
-        setOrderState("HEX 결제 실패: " + msg);
-        alert("HEX 결제 실패:\n" + msg);
+        setOrderState("Point 결제 실패: " + msg);
+        alert("Point 결제 실패:\n" + msg);
       } finally {
         btnHexPay.disabled = false;
       }

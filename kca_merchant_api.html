@@ -113,12 +113,12 @@
 
     <div class="container">
         <h1>KCA Merchant API</h1>
-        <p class="subtitle">가맹점(외부 웹사이트)에서 KCA 회원 지갑 연동 및 HEX 토큰/포인트 결제를 처리하기 위한 가이드</p>
+        <p class="subtitle">가맹점(외부 웹사이트)에서 KCA 회원 지갑 연동 및 Point 포인트/포인트 결제를 처리하기 위한 가이드</p>
 
         <div class="api-card">
             <h3 class="api-title"><span class="method">GET</span> 유저 지갑 및 잔액 조회 (Wallet Info)</h3>
-            <div class="desc">가맹점 웹사이트에 KCA 회원이 연동 로그인을 완료한 후, 해당 유저의 UID를 바탕으로 현재 KCA 포인트, VND 잔액, 그리고 연동된 온체인 지갑의 HEX
-                토큰 잔액을 조회합니다.</div>
+            <div class="desc">가맹점 웹사이트에 KCA 회원이 연동 로그인을 완료한 후, 해당 유저의 UID를 바탕으로 현재 KCA 포인트, VND 잔액, 그리고 연동된 온체인 지갑의 Point
+                포인트 잔액을 조회합니다.</div>
             <div class="endpoint">https://us-central1-&lt;PROJECT_ID&gt;.cloudfunctions.net/api/v1/wallet/{uid}</div>
             <h4>헤더 (Headers)</h4>
             <pre><code>Authorization: Bearer &lt;MERCHANT_API_KEY&gt;</code></pre>
@@ -136,8 +136,8 @@
         </div>
 
         <div class="api-card">
-            <h3 class="api-title"><span class="method post">POST</span> 가맹점 결제 요청 (Payment / HEX Token)</h3>
-            <div class="desc">KCA 포인트나 HEX 토큰을 사용하여 가맹점 웹사이트의 결제를 승인하고 차감하는 엔드포인트입니다. 결제 트랜잭션은 Firebase Cloud Functions를
+            <h3 class="api-title"><span class="method post">POST</span> 가맹점 결제 요청 (Payment / Point Token)</h3>
+            <div class="desc">KCA 포인트나 Point 포인트을 사용하여 가맹점 웹사이트의 결제를 승인하고 차감하는 엔드포인트입니다. 결제 트랜잭션은 Firebase Cloud Functions를
                 통해 원자적(Atomic)으로 처리됩니다.</div>
             <div class="endpoint">https://us-central1-&lt;PROJECT_ID&gt;.cloudfunctions.net/api/v1/wallet/pay</div>
             <h4>헤더 (Headers)</h4>
@@ -147,7 +147,7 @@ Content-Type: application/json</code></pre>
             <pre><code>{
   "uid": "user_firebase_uid_1234",
   "merchantId": "merchant_store_01",
-  "currency": "HEX", // 지원 통화: "HEX", "POINT", "VND"
+  "currency": "Point", // 지원 통화: "Point", "POINT", "VND"
   "amount": 500,
   "orderId": "merchant_order_88219"
 }</code></pre>
@@ -157,18 +157,18 @@ Content-Type: application/json</code></pre>
   "transactionId": "tx_abc123456",
   "receipt": {
     "paidAmount": 500,
-    "currency": "HEX",
+    "currency": "Point",
     "remainingBalance": "1000.00",
     "timestamp": "2026-09-01T15:20:00Z"
   }
 }</code></pre>
 
-            <h4 style="color: #ef4444; margin-top: 20px;">⚠️ 가맹점 결제 수수료 안내 (HEX / 포인트)</h4>
+            <h4 style="color: #ef4444; margin-top: 20px;">⚠️ 가맹점 결제 수수료 안내 (Point / 포인트)</h4>
             <div class="desc"
                 style="color: #cbd5e1; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
-                고객이 <strong>HEX 토큰</strong>이나 KCA 포인트로 결제를 진행할 경우, 가맹점은 추후 정산 시 <strong>플랫폼 기본 수수료(Platform Fee, 기본
+                고객이 <strong>Point 포인트</strong>이나 KCA 포인트로 결제를 진행할 경우, 가맹점은 추후 정산 시 <strong>플랫폼 기본 수수료(Platform Fee, 기본
                     5~10% 내외)</strong>를 제한 금액을 정산받게 됩니다.<br><br>
-                * 온체인 스마트 컨트랙트(DAO Vault)를 통해 직접 이체되는 HEX의 경우 가스비(Gas) 외에 KCA DAO 정책에 따른 자동 수수료 차감이 발생할 수 있습니다.<br>
+                * 온체인 스마트 컨트랙트(DAO Vault)를 통해 직접 이체되는 Point의 경우 가스비(Gas) 외에 KCA DAO 정책에 따른 자동 수수료 차감이 발생할 수 있습니다.<br>
                 * 오프체인(Firebase)에서 처리되는 포인트 결제는 정산일에 수수료가 일괄 공제됩니다.
             </div>
         </div>
@@ -202,7 +202,7 @@ exports.kcaMerchantApi = functions.https.onRequest(async (req, res) => {
     const pointBal = kcbSnap.exists ? kcbSnap.data().pointBalance || 0 : 0;
     const payBal = kcbSnap.exists ? kcbSnap.data().paymentBalanceVnd || 0 : 0;
     
-    // HEX 토큰 및 온체인 연동 지갑 정보 조회 (예시)
+    // Point 포인트 및 온체인 연동 지갑 정보 조회 (예시)
     const userSnap = await db.collection("users").doc(uid).get();
     const hexBal = userSnap.exists ? userSnap.data().hexBalance || 0 : 0;
     const wallet = userSnap.exists ? userSnap.data().walletAddress || null : null;
@@ -216,7 +216,7 @@ exports.kcaMerchantApi = functions.https.onRequest(async (req, res) => {
   // POST: 결제 차감 로직 (Transaction 필요)
   if (req.method === "POST" && req.path === "/wallet/pay") {
     const { uid, merchantId, currency, amount } = req.body;
-    // ... [Firestore 트랜잭션을 통한 포인트/HEX 차감 및 가맹점 정산 테이블(merchant_settlements) 기록 로직]
+    // ... [Firestore 트랜잭션을 통한 포인트/Point 차감 및 가맹점 정산 테이블(merchant_settlements) 기록 로직]
     return res.json({ success: true, transactionId: "tx_mocked", receipt: { paidAmount: amount, currency } });
   }
 

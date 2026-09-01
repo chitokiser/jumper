@@ -22,7 +22,7 @@
     <section class="section">
       <div class="page-h">
         <h1 class="page-title">관리자 승인</h1>
-        <p class="page-desc">판매회원신청 / 놀거리 승인 처리 &nbsp;|&nbsp; <a href="/admin_jackpot.html" style="color:#6366f1;font-weight:700;">🎰 잭팟 인출 관리</a> &nbsp;|&nbsp; <a href="/admin_nfc.html" style="color:#0891b2;font-weight:700;">📡 NFC 보물 관리</a> &nbsp;|&nbsp; <a href="/admin_exchange.html" style="color:#f59e0b;font-weight:700;">💱 토큰거래소 관리</a> &nbsp;|&nbsp; <a href="/admin_stars.html" style="color:#f59e0b;font-weight:700;">⭐ Stars · NPC 관리</a> &nbsp;|&nbsp; <a href="/admin-treasure-box.html" style="color:#10b981;font-weight:700;">📦 보물박스 생성</a></p>
+        <p class="page-desc">판매회원신청 / 놀거리 승인 처리 &nbsp;|&nbsp; <a href="/admin_jackpot.html" style="color:#6366f1;font-weight:700;">🎰 잭팟 인출 관리</a> &nbsp;|&nbsp; <a href="/admin_nfc.html" style="color:#0891b2;font-weight:700;">📡 NFC 보물 관리</a> &nbsp;|&nbsp; <a href="/admin_exchange.html" style="color:#f59e0b;font-weight:700;">💱 포인트 거래소 관리</a> &nbsp;|&nbsp; <a href="/admin_stars.html" style="color:#f59e0b;font-weight:700;">⭐ Stars · NPC 관리</a> &nbsp;|&nbsp; <a href="/admin-treasure-box.html" style="color:#10b981;font-weight:700;">📦 보물박스 생성</a></p>
       </div>
 
       <div class="panel">
@@ -33,7 +33,7 @@
               <button class="btn btn-sm" id="btnTabMerchants" type="button">가맹점 관리</button>
               <button class="btn btn-sm" id="btnTabItems" type="button">상품 승인</button>
               <button class="btn btn-sm" id="btnTabDeposits" type="button">입금 승인</button>
-              <button class="btn btn-sm" id="btnTabHex" type="button">HEX 관리</button>
+              <button class="btn btn-sm" id="btnTabHex" type="button">Point 관리</button>
               <button class="btn btn-sm" id="btnTabMembers" type="button">멤버 관리</button>
               <button class="btn btn-sm" id="btnTabDao" type="button">DAO 승인</button>
               <button class="btn btn-sm" id="btnTabTreasure" type="button">🎁 보물찾기</button>
@@ -98,7 +98,7 @@
             <div id="depositList" class="list"></div>
           </div>
 
-          <!-- ── HEX 관리 탭 ── -->
+          <!-- ── Point 관리 탭 ── -->
           <div id="tabHex" style="display:none;">
 
             <!-- 컨트랙트 현황 -->
@@ -113,29 +113,29 @@
               </div>
             </div>
 
-            <!-- 컨트랙트 HEX 충전 -->
+            <!-- 컨트랙트 Point 충전 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">컨트랙트 HEX 충전 (관리자 지갑 → jumpPlatform)</div>
+              <div class="muted">컨트랙트 Point 충전 (관리자 지갑 → jumpPlatform)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                충전 승인(adminCreditHex)에 필요한 HEX를 컨트랙트 풀에 보충합니다.<br>
+                충전 승인(adminCreditHex)에 필요한 Point를 컨트랙트 풀에 보충합니다.<br>
                 ⚠ 아래 <strong>무한 Approve</strong>가 먼저 실행되어 있어야 합니다.
               </p>
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                 <input type="number" id="inputOwnerDepositHex" class="select" style="flex:1; min-width:140px;"
-                  placeholder="HEX 수량 (예: 100)" min="0.0001" step="0.0001" />
+                  placeholder="Point 수량 (예: 100)" min="0.0001" step="0.0001" />
                 <button class="btn btn-sm" id="btnOwnerDepositHex" type="button">컨트랙트 충전</button>
               </div>
             </div>
 
-            <!-- HEX Approve -->
+            <!-- Point Approve -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">관리자 지갑 → jumpPlatform HEX 승인 (creditPoints 사전 조건)</div>
+              <div class="muted">관리자 지갑 → jumpPlatform Point 승인 (creditPoints 사전 조건)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <div class="kv">
-                <div class="k">현재 HEX Allowance</div>
+                <div class="k">현재 Point Allowance</div>
                 <div class="v" id="hexAllowanceDisplay">조회 중...</div>
               </div>
               <div class="row-actions" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
@@ -150,16 +150,16 @@
 
             <!-- P2P 수령 기록 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">P2P HEX 수령 기록 (외부→수탁 지갑 직접 전송)</div>
+              <div class="muted">P2P Point 수령 기록 (외부→수탁 지갑 직접 전송)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <div style="display:flex; gap:8px; align-items:center;">
                 <input type="text" id="inputP2pTxHash" class="select" style="flex:1; font-family:monospace; font-size:12px;"
-                  placeholder="0x... (HEX Transfer 트랜잭션 해시)" />
+                  placeholder="0x... (Point Transfer 트랜잭션 해시)" />
                 <button class="btn btn-sm" id="btnRecordP2p" type="button">P2P 기록</button>
               </div>
               <p class="muted" style="font-size:12px; margin-top:8px;">
-                외부 지갑 → 수탁 지갑으로 직접 전송된 HEX의 txHash를 입력하면<br>
+                외부 지갑 → 수탁 지갑으로 직접 전송된 Point의 txHash를 입력하면<br>
                 거래 내역에 등록되고 마이페이지 잔액이 업데이트됩니다.
               </p>
             </div>

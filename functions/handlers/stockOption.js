@@ -1,5 +1,5 @@
 // functions/handlers/stockOption.js
-// K-Culture Alliance 스톡옵션 바우처 — 관리자가 공개 오퍼링 발행, 유저가 HEX로 구매
+// K-Culture Alliance 스톡옵션 바우처 — 관리자가 공개 오퍼링 발행, 유저가 Point로 구매
 'use strict';
 
 const admin  = require('firebase-admin');
@@ -45,15 +45,15 @@ function getStockOptionContract(signerOrProvider) {
 // ── 1. 관리자: 스톡옵션 공개 오퍼링 등록 (Firestore만, 유저가 구매 가능) ────
 async function adminCreateOffering(uid, {
   name, description,
-  strikePrice,      // 행사 가격 HEX (float, 예: 10.5)
-  voucherPrice,     // 바우처 가격 HEX (float, 예: 5)
+  strikePrice,      // 행사 가격 Point (float, 예: 10.5)
+  voucherPrice,     // 바우처 가격 Point (float, 예: 5)
   jumpPerVoucher,   // 바우처 1장당 JUMP 수량 (정수)
   totalVouchers,    // 발행 수량
   maturityDays,     // 만기까지 일수
   stakeRequired,    // 구매 자격: 최소 스테이킹 JUMP (0 = 제한 없음)
 }) {
   if (!name)                             throw new Error('오퍼링 이름을 입력하세요');
-  if (!strikePrice || strikePrice <= 0)  throw new Error('행사 가격을 입력하세요 (HEX/JUMP)');
+  if (!strikePrice || strikePrice <= 0)  throw new Error('행사 가격을 입력하세요 (Point/JUMP)');
   if (!voucherPrice || voucherPrice < 0) throw new Error('바우처 가격을 입력하세요');
   if (!jumpPerVoucher || jumpPerVoucher <= 0) throw new Error('바우처당 JUMP 수량을 입력하세요');
   if (!totalVouchers || totalVouchers <= 0)   throw new Error('발행 수량을 입력하세요');
@@ -112,7 +112,7 @@ async function adminGetAllVouchers() {
   return { vouchers: snap.docs.map(d => ({ id: d.id, ...d.data() })) };
 }
 
-// ── 4. 유저: 스톡옵션 바우처 구매 (수탁지갑 HEX → JumpBank + 컨트랙트 발행) ─
+// ── 4. 유저: 스톡옵션 바우처 구매 (수탁지갑 Point → JumpBank + 컨트랙트 발행) ─
 async function buyStockOptionVoucher(uid, { offeringId }, masterSecret) {
   if (!offeringId) throw new Error('offeringId가 필요합니다');
 
@@ -145,14 +145,14 @@ async function buyStockOptionVoucher(uid, { offeringId }, masterSecret) {
   const signer     = walletFromKey(privateKey, provider);
   const hexSigned  = getHexContract(signer);
 
-  // HEX 잔액 확인
+  // Point 잔액 확인
   const voucherPriceWei = BigInt(offering.voucherPriceWei);
   if (voucherPriceWei > 0n) {
     const hexBal = await hexSigned.balanceOf(walletData.address);
     if (hexBal < voucherPriceWei) {
       const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
       const need = parseFloat(ethers.formatEther(voucherPriceWei)).toFixed(4);
-      throw new Error(`HEX 잔액 부족. 필요: ${need} HEX, 보유: ${have} HEX`);
+      throw new Error(`Point 잔액 부족. 필요: ${need} Point, 보유: ${have} Point`);
     }
 
     // BNB 가스비 보충
@@ -163,7 +163,7 @@ async function buyStockOptionVoucher(uid, { offeringId }, masterSecret) {
       await fundTx.wait();
     }
 
-    // 구매 HEX → JumpBank
+    // 구매 Point → JumpBank
     const gasLimitHex = await estimateGasWithBuffer(hexSigned, 'transfer', [JUMPBANK_ADDRESS, voucherPriceWei]);
     const hexTx       = await hexSigned.transfer(JUMPBANK_ADDRESS, voucherPriceWei, { gasLimit: gasLimitHex });
     await hexTx.wait();
@@ -178,7 +178,7 @@ async function buyStockOptionVoucher(uid, { offeringId }, masterSecret) {
   const jumpPerVoucher  = BigInt(offering.jumpPerVoucher);
 
   // 관리자가 유저 주소를 소유자로 해서 바우처 생성
-  // admin HEX approve (발행 비용 strikePrice * jumpAmount → JumpBank는 컨트랙트 내부 처리)
+  // admin Point approve (발행 비용 strikePrice * jumpAmount → JumpBank는 컨트랙트 내부 처리)
   const purchaseCost = strikePriceWei * jumpPerVoucher;
   if (purchaseCost > 0n) {
     const allowance = await adminHex.allowance(adminWallet.address, CONTRACT_ADDRESS);
@@ -294,12 +294,12 @@ async function exerciseStockOption(uid, { voucherId, amount }, masterSecret) {
   const amountBN       = BigInt(Math.round(amount));
   const hexCost        = strikePriceWei * amountBN;
 
-  // HEX 잔액 확인
+  // Point 잔액 확인
   const hexBal = await hexSigned.balanceOf(walletData.address);
   if (hexBal < hexCost) {
     const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
     const need = parseFloat(ethers.formatEther(hexCost)).toFixed(4);
-    throw new Error(`HEX 잔액 부족. 필요: ${need} HEX, 보유: ${have} HEX`);
+    throw new Error(`Point 잔액 부족. 필요: ${need} Point, 보유: ${have} Point`);
   }
 
   // BNB 가스비 보충
@@ -310,7 +310,7 @@ async function exerciseStockOption(uid, { voucherId, amount }, masterSecret) {
     await fundTx.wait();
   }
 
-  // HEX approve to contract
+  // Point approve to contract
   const allowance = await hexSigned.allowance(walletData.address, CONTRACT_ADDRESS);
   if (allowance < hexCost) {
     const approveTx = await hexSigned.approve(CONTRACT_ADDRESS, hexCost, { gasLimit: 80000n });

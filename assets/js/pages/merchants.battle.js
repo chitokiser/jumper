@@ -622,7 +622,7 @@ function animateCannonShot(fromLat, fromLng, toLat, toLng, onHit) {
   }, 580);
 }
 
-// ── 황금토큰 드랍 ─────────────────────────────────────────────────────────────
+// ── 황금포인트 드랍 ─────────────────────────────────────────────────────────────
 function dropGoldTokens(mob) {
   if (!window.google?.maps || !_ctx?.map) return;
   const map = _ctx.map;

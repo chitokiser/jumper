@@ -116,7 +116,7 @@ const OPBNB_TX = 'https://mainnet.opbnbscan.com/tx/';
 function renderCoopOrderCard(o) {
   const title     = o.productName || '(상품명 없음)';
   const typeLabel = COOP_TYPE_LABEL[o.type] || (o.type || '');
-  const hexPrice  = o.hexPrice != null ? `${o.hexPrice} HEX` : '';
+  const hexPrice  = o.hexPrice != null ? `${o.hexPrice} Point` : '';
   const when      = fmtTs(o.createdAt);
   const txHash    = o.txHash || '';
   const pkgId     = o.packageId || '';

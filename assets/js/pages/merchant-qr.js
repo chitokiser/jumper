@@ -195,7 +195,7 @@ function bindQrForm(merchantId, merchantName) {
   });
 }
 
-// ── HEX 변환 ──────────────────────────────────────────
+// ── Point 변환 ──────────────────────────────────────────
 function weiToHex(weiStr) {
   if (!weiStr) return null;
   try {

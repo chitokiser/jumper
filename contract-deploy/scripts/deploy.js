@@ -15,7 +15,7 @@ async function main() {
   }
 
   // ── 생성자 인자 ──────────────────────────────────
-  const JUMP_TOKEN   = '0xA3C35c52446C133b7211A743c6D47470D1385601'; // JUMP 토큰 (0 decimals)
+  const JUMP_TOKEN   = '0xA3C35c52446C133b7211A743c6D47470D1385601'; // JUMP 포인트 (0 decimals)
   const OPERATOR     = deployer.address;                              // 어드민 지갑 = operator
   const COIN_PER_JUMP = 100n;                                         // 게임코인 100개 = JUMP 1개
   // ─────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 // functions/handlers/exchange.js
-// JUMP 토큰 거래소 — 구매/판매/스테이킹/배당
+// JUMP 포인트 거래소 — 구매/판매/스테이킹/배당
 
 'use strict';
 
@@ -106,7 +106,7 @@ async function getJumpBankStatus(uid) {
     ? bankHexBal / effStakedBig / divisorBig
     : 0n;
 
-  // KRW/VND 가격 계산: 1 HEX = 1 USDT 기준 실시간 환율 적용
+  // KRW/VND 가격 계산: 1 Point = 1 USDT 기준 실시간 환율 적용
   const priceUsdt = Number(BigInt(price.toString())) / 1e18;
   const priceKrw  = usdKrwRate > 0 ? Math.round(priceUsdt * usdKrwRate) : 0;
   const priceVnd  = usdVndRate > 0 ? Math.round(priceUsdt * usdVndRate) : 0;
@@ -149,7 +149,7 @@ async function getJumpBankStatus(uid) {
 }
 
 // ─────────────────────────────────────────────
-// 2. JUMP 구매 (HEX → JUMP)
+// 2. JUMP 구매 (Point → JUMP)
 // ─────────────────────────────────────────────
 async function buyJumpToken(uid, jumpAmount, masterSecret) {
   if (!jumpAmount || Number(jumpAmount) <= 0) throw new Error('구매 수량을 입력하세요');
@@ -167,15 +167,15 @@ async function buyJumpToken(uid, jumpAmount, masterSecret) {
   const hexCost = price * amountBig;
   const maxPay  = (hexCost * 101n) / 100n; // 1% 슬리피지
 
-  // HEX 잔액 확인
+  // Point 잔액 확인
   const hexBal = await hexToken.balanceOf(address);
   if (hexBal < hexCost) {
     throw new Error(
-      `HEX 잔액 부족. 필요: ${ethers.formatEther(hexCost)} HEX, 보유: ${ethers.formatEther(hexBal)} HEX`
+      `Point 잔액 부족. 필요: ${ethers.formatEther(hexCost)} Point, 보유: ${ethers.formatEther(hexBal)} Point`
     );
   }
 
-  // HEX approve (MaxUint256)
+  // Point approve (MaxUint256)
   const hexAllowance = await hexToken.allowance(address, ADDRESSES.jumpBank);
   if (hexAllowance < hexCost) {
     const approveTx = await hexToken.approve(ADDRESSES.jumpBank, ethers.MaxUint256);
@@ -204,7 +204,7 @@ async function buyJumpToken(uid, jumpAmount, masterSecret) {
 }
 
 // ─────────────────────────────────────────────
-// 3. JUMP 판매 (JUMP → HEX)
+// 3. JUMP 판매 (JUMP → Point)
 // ─────────────────────────────────────────────
 async function sellJumpToken(uid, jumpAmount, masterSecret) {
   if (!jumpAmount || Number(jumpAmount) <= 0) throw new Error('판매 수량을 입력하세요');
@@ -313,7 +313,7 @@ async function unstakeJumpToken(uid, masterSecret) {
 }
 
 // ─────────────────────────────────────────────
-// 6. 배당 청구 (HEX 수령)
+// 6. 배당 청구 (Point 수령)
 // ─────────────────────────────────────────────
 async function claimJumpDividend(uid, masterSecret) {
   const { signer, address } = await getCustodialSigner(uid, masterSecret);
@@ -343,7 +343,7 @@ async function claimJumpDividend(uid, masterSecret) {
 
 // ─────────────────────────────────────────────
 // 7. 스왑 환율 조회 (Firestore exchange_config/swap_rates)
-//    hex_ton rate: 1 HEX = 1 USD → rate = 1 / TON_USD (라이브 계산)
+//    hex_ton rate: 1 Point = 1 USD → rate = 1 / TON_USD (라이브 계산)
 // ─────────────────────────────────────────────
 async function getSwapRates() {
   const snap = await db.collection('exchange_config').doc('swap_rates').get();
@@ -353,7 +353,7 @@ async function getSwapRates() {
     hex_ton:       { fee: 1,          enabled: true  },
   };
 
-  // hex_ton: 라이브 TON 시세로 rate 계산 (1 HEX = 1 USD)
+  // hex_ton: 라이브 TON 시세로 rate 계산 (1 Point = 1 USD)
   if (data.hex_ton?.enabled !== false) {
     try {
       const tonH   = require('./tonExchange');
@@ -562,7 +562,7 @@ async function requestTonCoinSwap(uid, { direction, amount, tonAddress }) {
 }
 
 // ─────────────────────────────────────────────
-// 10. HEX ↔ TON 교환 — 완전 자동 처리
+// 10. Point ↔ TON 교환 — 완전 자동 처리
 // ─────────────────────────────────────────────
 async function requestHexTonSwap(uid, { direction, amount, tonAddress, masterSecret }) {
   if (!['hex_to_ton', 'ton_to_hex'].includes(direction))
@@ -571,9 +571,9 @@ async function requestHexTonSwap(uid, { direction, amount, tonAddress, masterSec
 
   const ratesSnap = await db.collection('exchange_config').doc('swap_rates').get();
   const cfg = ratesSnap.data()?.hex_ton || {};
-  if (cfg.enabled === false) throw new Error('HEX↔TON 교환이 현재 비활성화되어 있습니다');
+  if (cfg.enabled === false) throw new Error('Point↔TON 교환이 현재 비활성화되어 있습니다');
 
-  // 1 HEX = 1 USD → rate = 1 / TON_USD (라이브)
+  // 1 Point = 1 USD → rate = 1 / TON_USD (라이브)
   const tonH   = require('./tonExchange');
   const tonUsd = await tonH.getTonUsdPrice();
   const rate   = 1 / tonUsd;
@@ -581,7 +581,7 @@ async function requestHexTonSwap(uid, { direction, amount, tonAddress, masterSec
   const fromAmount = Number(amount);
 
   if (direction === 'hex_to_ton') {
-    // ── HEX → TON ──────────────────────────────────
+    // ── Point → TON ──────────────────────────────────
     const grossTon  = fromAmount * rate;
     const feeAmount = grossTon * feePct;
     const toAmount  = grossTon - feeAmount;
@@ -589,14 +589,14 @@ async function requestHexTonSwap(uid, { direction, amount, tonAddress, masterSec
     if (!tonAddress?.trim()) throw new Error('TON 수령 주소를 입력하세요');
     if (toAmount < 0.001) throw new Error('교환 TON 수량이 너무 적습니다 (최소 0.001 TON)');
 
-    // 1) 유저 수탁지갑에서 HEX → 관리자 opBNB 지갑으로 이체
+    // 1) 유저 수탁지갑에서 Point → 관리자 opBNB 지갑으로 이체
     const { signer, address: userAddr } = await getCustodialSigner(uid, masterSecret);
     const hexToken   = getHexContract(signer);
     const hexWei     = BigInt(Math.floor(fromAmount * 1e18));
     const adminAddr  = getAdminWallet().address;
 
     const bal = await hexToken.balanceOf(userAddr);
-    if (bal < hexWei) throw new Error(`HEX 잔액 부족 (필요: ${fromAmount} HEX)`);
+    if (bal < hexWei) throw new Error(`Point 잔액 부족 (필요: ${fromAmount} Point)`);
 
     const gasEst = await estimateGasWithBuffer(hexToken, 'transfer', [adminAddr, hexWei]);
     const hexTx  = await hexToken.transfer(adminAddr, hexWei, { gasLimit: gasEst });
@@ -627,7 +627,7 @@ async function requestHexTonSwap(uid, { direction, amount, tonAddress, masterSec
     return { swapId: swapRef.id, direction, fromAmount, toAmount, feeAmount, rate, status: 'completed', tonTxHash };
 
   } else {
-    // ── TON → HEX ──────────────────────────────────
+    // ── TON → Point ──────────────────────────────────
     const grossHex  = fromAmount / rate;
     const feeAmount = grossHex * feePct;
     const toAmount  = grossHex - feeAmount;
@@ -654,11 +654,11 @@ async function requestHexTonSwap(uid, { direction, amount, tonAddress, masterSec
     const userAddr = userSnap.data()?.wallet?.address;
     if (!userAddr) throw new Error('수탁 지갑이 없습니다');
 
-    // 3) 관리자 opBNB 지갑 → 유저 수탁지갑으로 ERC-20 HEX 직접 이체
+    // 3) 관리자 opBNB 지갑 → 유저 수탁지갑으로 ERC-20 Point 직접 이체
     const adminW   = getAdminWallet();
     const hexToken = getHexContract(adminW);
     const adminBal = await hexToken.balanceOf(adminW.address);
-    if (adminBal < hexWei) throw new Error(`관리자 HEX 잔액 부족 (보유: ${(Number(adminBal) / 1e18).toFixed(4)} HEX)`);
+    if (adminBal < hexWei) throw new Error(`관리자 Point 잔액 부족 (보유: ${(Number(adminBal) / 1e18).toFixed(4)} Point)`);
     const gasEst   = await estimateGasWithBuffer(hexToken, 'transfer', [userAddr, hexWei]);
     const creditTx = await hexToken.transfer(userAddr, hexWei, { gasLimit: gasEst });
     await creditTx.wait();

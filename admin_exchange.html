@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>토큰거래소 관리 - K-CULTURE ALLIANCE Admin</title>
+  <title>포인트 거래소 관리 - K-MOA Admin</title>
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
@@ -165,7 +165,7 @@
 
   <main class="page">
     <div class="adex-wrap">
-      <h1 class="adex-title">토큰거래소 관리</h1>
+      <h1 class="adex-title">포인트 거래소 관리</h1>
       <p class="adex-sub">환율 설정 · 교환쌍 활성화 · 거래내역 조회</p>
 
       <div id="adexState" class="adex-state">권한 확인 중...</div>
@@ -175,9 +175,9 @@
         <div class="adex-card-title"><span class="dot"></span> 환율 설정</div>
         <div class="rate-grid">
 
-          <!-- HEX ↔ JUMP -->
+          <!-- Point ↔ JUMP -->
           <div class="rate-item">
-            <div class="rate-pair">HEX ↔ JUMP</div>
+            <div class="rate-pair">Point ↔ JUMP</div>
             <div class="rate-field">
               <div class="rate-label">환율 (컨트랙트 자동 결정)</div>
               <input class="rate-input" id="rateHexJump" value="컨트랙트" disabled />
@@ -227,11 +227,11 @@
             <div class="rate-status" id="statusTonCoin"></div>
           </div>
 
-          <!-- HEX ↔ TON -->
+          <!-- Point ↔ TON -->
           <div class="rate-item">
-            <div class="rate-pair">HEX ↔ TON</div>
+            <div class="rate-pair">Point ↔ TON</div>
             <div class="rate-field">
-              <div class="rate-label">환율 (TON / HEX)</div>
+              <div class="rate-label">환율 (TON / Point)</div>
               <input type="number" class="rate-input" id="rateHexTon" placeholder="0.02" min="0.0001" step="0.0001" />
             </div>
             <div class="rate-field">
@@ -256,10 +256,10 @@
           <input type="text" id="adexFilterUid" class="adex-input" placeholder="유저ID 검색" style="width:200px;" />
           <select id="adexFilterPair" class="adex-select">
             <option value="">전체 교환</option>
-            <option value="hex_jump">HEX ↔ JUMP</option>
+            <option value="hex_jump">Point ↔ JUMP</option>
             <option value="jump_gamecoin">JUMP ↔ 게임코인</option>
             <option value="ton_gamecoin">TON ↔ 게임코인</option>
-            <option value="hex_ton">HEX ↔ TON</option>
+            <option value="hex_ton">Point ↔ TON</option>
           </select>
           <select id="adexFilterStatus" class="adex-select">
             <option value="">전체 상태</option>
@@ -320,10 +320,10 @@
             </select>
             <select id="utxTypeFilter" class="adex-select">
               <option value="">전체 종류</option>
-              <option value="hex_jump">HEX ↔ JUMP</option>
+              <option value="hex_jump">Point ↔ JUMP</option>
               <option value="jump_gamecoin">JUMP ↔ 게임코인</option>
               <option value="ton_gamecoin">TON ↔ 게임코인</option>
-              <option value="hex_ton">HEX ↔ TON</option>
+              <option value="hex_ton">Point ↔ TON</option>
             </select>
             <span id="utxCount" style="font-size:11px;color:#475569;margin-left:auto;"></span>
           </div>
@@ -373,11 +373,11 @@
     }
 
     const PAIR_LABELS = {
-      buyJump:'HEX → JUMP', sellJump:'JUMP → HEX',
+      buyJump:'Point → JUMP', sellJump:'JUMP → Point',
       stakeJump:'JUMP 스테이킹', unstakeJump:'JUMP 언스테이킹', claimDividend:'배당 청구',
       buyJumpWithCoins:'게임코인 → JUMP', sellJumpForCoins:'JUMP → 게임코인',
       swap_ton_to_coin:'TON → 게임코인', swap_coin_to_ton:'게임코인 → TON',
-      swap_hex_to_ton:'HEX → TON', swap_ton_to_hex:'TON → HEX',
+      swap_hex_to_ton:'Point → TON', swap_ton_to_hex:'TON → Point',
     };
     const STATUS_CLS = { completed:'ok', pending:'pending', failed:'fail' };
 
@@ -704,7 +704,7 @@
         const pair = PAIR_MAP_REV[tx.type] || 'other';
         byType[pair] = (byType[pair] || 0) + 1;
       });
-      const pairLabel = { hex_jump:'HEX↔JUMP', jump_gamecoin:'JUMP↔GP', ton_gamecoin:'TON↔GP', hex_ton:'HEX↔TON', other:'기타' };
+      const pairLabel = { hex_jump:'Point↔JUMP', jump_gamecoin:'JUMP↔GP', ton_gamecoin:'TON↔GP', hex_ton:'Point↔TON', other:'기타' };
       let html = `<div class="utx-stat-chip"><span class="lbl">총 거래</span><span class="val">${total}건</span></div>`;
       Object.entries(byType).forEach(([k, v]) => {
         html += `<div class="utx-stat-chip"><span class="lbl">${pairLabel[k]||k}</span><span class="val">${v}건</span></div>`;

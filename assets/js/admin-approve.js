@@ -154,7 +154,7 @@ function kvGrid(uid, v) {
     ["카카오", v.kakao || v.kakaoId],
     ["국가/지역", v.country || v.region],
     ["활동지역", v.area],
-    ["지갑주소(HEX 정산)", v.walletAddress || v.profile?.walletAddress],
+    ["지갑주소(Point 정산)", v.walletAddress || v.profile?.walletAddress],
     ["소개", v.bio || v.intro],
     ["포트폴리오", v.portfolio || v.site],
     ["SNS", v.sns],
@@ -821,19 +821,19 @@ async function loadContractStatus() {
       <div class="k">컨트랙트 주소</div>
       <div class="v" style="font-family:monospace;font-size:12px;word-break:break-all;">${esc(d.contractAddress)}</div>
 
-      <div class="k">컨트랙트 HEX 잔액</div>
+      <div class="k">컨트랙트 Point 잔액</div>
       <div class="v accent">${esc(d.contractHexDisplay)}${esc(fmtKrw(d.contractHexKrw))}</div>
 
       <div class="k">관리자 지갑 주소</div>
       <div class="v" style="font-family:monospace;font-size:12px;word-break:break-all;">${esc(d.adminAddress)}</div>
 
-      <div class="k">관리자 HEX 잔액</div>
+      <div class="k">관리자 Point 잔액</div>
       <div class="v">${esc(d.adminHexDisplay)}${esc(fmtKrw(d.adminHexKrw))}</div>
 
       <div class="k">관리자 BNB 잔액 (가스)</div>
       <div class="v">${esc(d.adminBnbDisplay)}</div>
 
-      <div class="k">HEX Allowance</div>
+      <div class="k">Point Allowance</div>
       <div class="v ${d.isMaxUint ? "accent" : ""}">${esc(d.ownerHexAllowanceDisplay)}</div>
 
       <div class="k">환율 (KRW/USD)</div>
@@ -845,7 +845,7 @@ async function loadContractStatus() {
   }
 }
 
-// ── HEX 관리 탭 ──────────────────────────────────────────────────────────
+// ── Point 관리 탭 ──────────────────────────────────────────────────────────
 
 async function checkHexAllowance() {
   if (hexAllowanceDisplay) hexAllowanceDisplay.textContent = "조회 중...";
@@ -867,22 +867,22 @@ async function checkHexAllowance() {
 async function execApproveHex() {
   if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
   const ok = confirm(
-    "jumpPlatform 컨트랙트에 HEX 무한 승인(MaxUint256)을 실행합니다.\n" +
+    "jumpPlatform 컨트랙트에 Point 무한 승인(MaxUint256)을 실행합니다.\n" +
     "이 작업은 관리자 지갑에서 서명됩니다. 계속하시겠습니까?"
   );
   if (!ok) return;
 
-  setState("HEX approve 실행 중…");
+  setState("Point approve 실행 중…");
   try {
     const fn = httpsCallable(functions, "adminApproveHex");
     const res = await fn({ amountWei: null });
-    alert("HEX approve 완료!\ntxHash: " + (res.data.txHash || "").slice(0, 22) + "…");
+    alert("Point approve 완료!\ntxHash: " + (res.data.txHash || "").slice(0, 22) + "…");
     await checkHexAllowance();
-    setState("HEX approve 완료");
+    setState("Point approve 완료");
   } catch (err) {
-    setState("HEX approve 실패");
+    setState("Point approve 실패");
     console.error("execApproveHex:", err);
-    alert("HEX approve 실패: " + err.message);
+    alert("Point approve 실패: " + err.message);
   }
 }
 
@@ -1813,7 +1813,7 @@ async function recordP2pTransferAction() {
     const d   = res.data;
     const krwStr = d.amountKrw ? " ≈ " + d.amountKrw.toLocaleString() + "원" : "";
     alert(
-      `P2P 기록 완료!\n수신 UID: ${d.uid}\n금액: ${d.amountHex} HEX${krwStr}\n발신: ${(d.from || "").slice(0, 20)}…`
+      `P2P 기록 완료!\n수신 UID: ${d.uid}\n금액: ${d.amountHex} Point${krwStr}\n발신: ${(d.from || "").slice(0, 20)}…`
     );
     if ($("inputP2pTxHash")) $("inputP2pTxHash").value = "";
     setState("P2P 기록 완료");
@@ -1824,20 +1824,20 @@ async function recordP2pTransferAction() {
   }
 }
 
-// ── 컨트랙트 HEX 충전 ─────────────────────────────────────────────────────
+// ── 컨트랙트 Point 충전 ─────────────────────────────────────────────────────
 
 async function execOwnerDepositHex() {
   if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
   const input     = $("inputOwnerDepositHex");
   const amountHex = parseFloat(input?.value || "0");
-  if (!amountHex || amountHex <= 0) { alert("충전할 HEX 수량을 입력하세요."); return; }
+  if (!amountHex || amountHex <= 0) { alert("충전할 Point 수량을 입력하세요."); return; }
 
-  // HEX → wei (18 decimals)
+  // Point → wei (18 decimals)
   const amountWei = (BigInt(Math.round(amountHex * 1e9)) * BigInt(1e9)).toString();
 
-  if (!confirm(`${amountHex} HEX를 jumpPlatform 컨트랙트에 충전합니다.\n계속하시겠습니까?`)) return;
+  if (!confirm(`${amountHex} Point를 jumpPlatform 컨트랙트에 충전합니다.\n계속하시겠습니까?`)) return;
 
-  setState("컨트랙트 HEX 충전 중…");
+  setState("컨트랙트 Point 충전 중…");
   try {
     const fn  = httpsCallable(functions, "adminOwnerDepositHex");
     const res = await fn({ amountWei });
@@ -1851,7 +1851,7 @@ async function execOwnerDepositHex() {
   }
 }
 
-// HEX 관리 버튼
+// Point 관리 버튼
 $("btnRefreshContractStatus")?.addEventListener("click", () => loadContractStatus());
 $("btnOwnerDepositHex")?.addEventListener("click", () => execOwnerDepositHex());
 $("btnCheckAllowance")?.addEventListener("click", () => checkHexAllowance());

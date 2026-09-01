@@ -112,7 +112,7 @@ async function loadAdminOfferings() {
         <div style="flex:1;min-width:180px;">
           <div style="font-weight:700;">${escHtml(o.name)}</div>
           <div style="font-size:0.78rem;color:var(--muted);">
-            행사가 ${o.strikePrice} HEX/JUMP · 구매가 ${o.voucherPrice} HEX · ${o.jumpPerVoucher} JUMP/장 · 만기 ${o.maturityDays}일
+            행사가 ${o.strikePrice} Point/JUMP · 구매가 ${o.voucherPrice} Point · ${o.jumpPerVoucher} JUMP/장 · 만기 ${o.maturityDays}일
           </div>
           <div style="font-size:0.78rem;color:var(--muted);">판매 ${o.soldVouchers||0}/${o.totalVouchers} · ${o.active?'활성':'종료'}</div>
         </div>
@@ -170,11 +170,11 @@ async function loadPublicOfferings() {
           <div style="padding:14px 16px;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
               <div><div style="font-size:0.72rem;color:var(--muted);">바우처 가격</div>
-                   <div style="font-weight:700;font-size:1rem;color:#1d4ed8;">${o.voucherPrice} HEX</div></div>
+                   <div style="font-weight:700;font-size:1rem;color:#1d4ed8;">${o.voucherPrice} Point</div></div>
               <div><div style="font-size:0.72rem;color:var(--muted);">JUMP 수량</div>
                    <div style="font-weight:700;font-size:1rem;">${o.jumpPerVoucher} JUMP</div></div>
               <div><div style="font-size:0.72rem;color:var(--muted);">행사 가격</div>
-                   <div style="font-weight:600;">${o.strikePrice} HEX/JUMP</div></div>
+                   <div style="font-weight:600;">${o.strikePrice} Point/JUMP</div></div>
               <div><div style="font-size:0.72rem;color:var(--muted);">만기일</div>
                    <div style="font-weight:600;">${matDate}</div></div>
             </div>
@@ -205,9 +205,9 @@ function openBuyModal(o) {
   const modal = $('soBuyModal');
   if (!modal) return;
   document.getElementById('soBuyOfferingName').textContent = o.name;
-  document.getElementById('soBuyPrice').textContent        = `${o.voucherPrice} HEX`;
+  document.getElementById('soBuyPrice').textContent        = `${o.voucherPrice} Point`;
   document.getElementById('soBuyJump').textContent         = `${o.jumpPerVoucher} JUMP`;
-  document.getElementById('soBuyStrike').textContent       = `${o.strikePrice} HEX/JUMP`;
+  document.getElementById('soBuyStrike').textContent       = `${o.strikePrice} Point/JUMP`;
   document.getElementById('soBuyMaturity').textContent     = fmtDate(o.maturityDate);
   const stakeEl = document.getElementById('soBuyStakeReq');
   if (stakeEl) {
@@ -227,7 +227,7 @@ async function handleBuyVoucher() {
   const btn   = $('btnSoBuyConfirm');
   if (!o) return;
 
-  if (!confirm(`"${o.name}" 바우처를 ${o.voucherPrice} HEX로 구매하시겠습니까?\n(수탁 지갑 HEX로 결제됩니다)`)) return;
+  if (!confirm(`"${o.name}" 바우처를 ${o.voucherPrice} Point로 구매하시겠습니까?\n(수탁 지갑 Point로 결제됩니다)`)) return;
 
   btn.disabled = true; btn.textContent = '처리 중...';
   setMsg(msgEl, '', true);
@@ -289,7 +289,7 @@ async function loadMyVouchers() {
           <div style="padding:14px 16px;">
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
               <div><div style="font-size:0.72rem;color:var(--muted);">행사 가격</div>
-                   <div style="font-weight:600;">${v.strikePrice} HEX</div></div>
+                   <div style="font-weight:600;">${v.strikePrice} Point</div></div>
               <div><div style="font-size:0.72rem;color:var(--muted);">행사 완료</div>
                    <div style="font-weight:600;color:#7c3aed;">${v.exercisedAmount||0} JUMP</div></div>
               <div><div style="font-size:0.72rem;color:var(--muted);">잔여</div>
@@ -329,7 +329,7 @@ function openExecModal(v, remaining) {
   const modal = $('soExecuteModal');
   if (!modal) return;
   document.getElementById('soExecVoucherId').textContent  = `#${v.voucherId}`;
-  document.getElementById('soExecStrike').textContent     = `${v.strikePrice} HEX/JUMP`;
+  document.getElementById('soExecStrike').textContent     = `${v.strikePrice} Point/JUMP`;
   document.getElementById('soExecRemaining').textContent  = `${remaining} JUMP`;
   const inp = document.getElementById('soExecAmount');
   if (inp) { inp.value = ''; inp.max = remaining; }
@@ -348,7 +348,7 @@ async function handleExercise() {
   if (amount > _execRemaining)       { setMsg(msgEl, `잔여 수량(${_execRemaining} JUMP) 초과`, false); return; }
 
   const hexCost = (v.strikePrice * amount).toFixed(4);
-  if (!confirm(`${amount} JUMP 행사\n결제 금액: ${hexCost} HEX (수탁 지갑)\n계속하시겠습니까?`)) return;
+  if (!confirm(`${amount} JUMP 행사\n결제 금액: ${hexCost} Point (수탁 지갑)\n계속하시겠습니까?`)) return;
 
   btn.disabled = true; btn.textContent = '처리 중...';
   setMsg(msgEl, '⏳ 수탁 지갑에서 처리 중...', true);

@@ -129,10 +129,10 @@ async function requestDeposit(uid, { amountKrw, depositorName, bank }) {
  * 1. 관리자 권한 확인
  * 2. 실시간 환율 조회 → hexAmountWei 계산
  * 3. creditPoints() 호출 (관리자 지갑이 msg.sender=owner)
- *    → HEX transferFrom(owner → contract) + user.pointWei 증가
+ *    → Point transferFrom(owner → contract) + user.pointWei 증가
  * 4. Firestore 상태 업데이트
  *
- * 사전 조건: 관리자 지갑이 HEX.approve(jumpPlatform, 충분한 금액)을 미리 실행했어야 함
+ * 사전 조건: 관리자 지갑이 Point.approve(jumpPlatform, 충분한 금액)을 미리 실행했어야 함
  *
  * @param {string} adminUid  - 관리자 Firebase UID
  * @param {string} refCode   - 승인할 입금 참조코드
@@ -220,7 +220,7 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
   });
 
   try {
-    // ── Step 1: HEX approve (필요 시 자동) → ownerDepositHex ──
+    // ── Step 1: Point approve (필요 시 자동) → ownerDepositHex ──
     try {
       const hexContract = getHexContract(adminWallet);
 
@@ -236,7 +236,7 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
       const depTx       = await platformDep.ownerDepositHex(hexAmountWei, { gasLimit: depGasLimit });
       await depTx.wait();
     } catch (depositErr) {
-      throw new Error(`관리자→컨트랙트 HEX 이체 실패 (ownerDepositHex): ${depositErr.message}`);
+      throw new Error(`관리자→컨트랙트 Point 이체 실패 (ownerDepositHex): ${depositErr.message}`);
     }
 
     // ── 온체인 adminCreditHex 호출 ──
@@ -291,7 +291,7 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
     return {
       success:    true,
       txHash:     receipt.hash,
-      hexDisplay: parseFloat(ethers.formatEther(hexAmountWei)).toFixed(4) + ' HEX',
+      hexDisplay: parseFloat(ethers.formatEther(hexAmountWei)).toFixed(4) + ' Point',
       usdAmount,
       vndAmount,
       vndDisplay: vndAmount.toLocaleString() + ' VND',
@@ -362,7 +362,7 @@ async function getDepositHistory(uid) {
       refCode:     data.refCode,
       amountKrw:   data.amountKrw,
       hexDisplay:  data.hexAmountWei
-        ? parseFloat(ethers.formatEther(data.hexAmountWei)).toFixed(4) + ' HEX'
+        ? parseFloat(ethers.formatEther(data.hexAmountWei)).toFixed(4) + ' Point'
         : '-',
       usdAmount:   data.usdAmount ?? null,
       vndAmount:   data.vndAmount ?? null,

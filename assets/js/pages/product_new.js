@@ -292,7 +292,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
         return;
       }
       if (!Number.isFinite(hexFloat) || hexFloat <= 0) {
-        alert("HEX 가격을 올바르게 입력해 주세요.");
+        alert("Point 가격을 올바르게 입력해 주세요.");
         return;
       }
       const hexPriceWei = BigInt(Math.round(hexFloat * 1e14)) * 10000n;
@@ -323,7 +323,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
         priceKrw,
         priceVnd,
         price: priceKrw,           // 기존 코드 호환
-        currency: "HEX",
+        currency: "Point",
         desc,
 
         includes,

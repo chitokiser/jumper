@@ -5,7 +5,7 @@ const path = require('path');
 
 const PRIVATE_KEY = process.env.ADMIN_PK;
 const RPC_URL     = 'https://opbnb-mainnet-rpc.bnbchain.org';
-const HEX_TOKEN   = '0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464';
+const Point_TOKEN   = '0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464';
 const JUMP_TOKEN  = '0xA3C35c52446C133b7211A743c6D47470D1385601';
 
 async function main() {
@@ -23,7 +23,7 @@ async function main() {
 
   const factory  = new ethers.ContractFactory(artifact.abi, artifact.bytecode, wallet);
   console.log('Deploying K-Culture AllianceStockOption...');
-  const contract = await factory.deploy(HEX_TOKEN, JUMP_TOKEN);
+  const contract = await factory.deploy(Point_TOKEN, JUMP_TOKEN);
   console.log('Tx hash:', contract.deploymentTransaction()?.hash);
   await contract.waitForDeployment();
 

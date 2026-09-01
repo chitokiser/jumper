@@ -129,7 +129,7 @@ async function supportProposal(uid, { proposalId }) {
   const wallet = await getUserWallet(uid);
   const staked = await getStaked(wallet);
 
-  if (staked < 1) throw new Error('JUMP 토큰을 스테이킹해야 지지할 수 있습니다');
+  if (staked < 1) throw new Error('JUMP 포인트을 스테이킹해야 지지할 수 있습니다');
 
   const proposalRef = db.collection('dao_proposals').doc(proposalId);
   const supportRef  = proposalRef.collection('supporters').doc(uid);
@@ -179,7 +179,7 @@ async function voteProposal(uid, { proposalId, vote }) {
   const wallet = await getUserWallet(uid);
   const staked = await getStaked(wallet);
 
-  if (staked < MIN_VOTE) throw new Error('JUMP 토큰 1개 이상 스테이킹 필요합니다');
+  if (staked < MIN_VOTE) throw new Error('JUMP 포인트 1개 이상 스테이킹 필요합니다');
 
   const proposalRef = db.collection('dao_proposals').doc(proposalId);
   const voteRef     = proposalRef.collection('votes').doc(uid);

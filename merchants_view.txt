@@ -2981,7 +2981,7 @@ function openInventory() {
   const tokenEl = document.getElementById('invToken');
   if (goldEl)  goldEl.textContent  = getPlayerGold();
   if (tokenEl) tokenEl.textContent = getPlayerToken();
-  // Firestore에서 최신 골드/토큰 동기화 (상점 판매 수익 반영)
+  // Firestore에서 최신 골드/포인트 동기화 (상점 판매 수익 반영)
   loadPlayerState().then(() => {
     if (goldEl)  goldEl.textContent  = getPlayerGold();
     if (tokenEl) tokenEl.textContent = getPlayerToken();

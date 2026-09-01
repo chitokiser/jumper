@@ -48,12 +48,12 @@ function renderProfile(userData, fireUser) {
 }
 
 // ── 친구 초대 QR ──────────────────────────────────────────────────────────────
-function renderReferralSection(walletAddress) {
+function renderReferralSection(uid) {
   const section = $('referralSection');
-  if (!section || !walletAddress) return;
+  if (!section || !uid) return;
   section.style.display = '';
 
-  const inviteUrl = `${location.origin}/register.html?mentor=${encodeURIComponent(walletAddress)}`;
+  const inviteUrl = `${location.origin}/register.html?mentor=${encodeURIComponent(uid)}`;
   const linkEl = $('referralLink');
   const qrWrap = $('referralQrWrap');
   const copyBtn = $('btnCopyReferral');
@@ -96,78 +96,32 @@ function renderReferralSection(walletAddress) {
 }
 
 function renderWallet(userData) {
-  const addr = userData?.wallet?.address;
-  const isMetaMask = userData?.wallet?.type === "metamask" || (addr && !userData?.wallet?.encryptedKey);
-
-  if (!addr) {
-    show("noWallet", true);
-    show("walletInfo", false);
-    show("btnCreateWallet", true);
-    show("btnConnectMetaMask", false);
-    setText("onChainStatus", "-");
-    return;
-  }
-
-  show("noWallet", false);
-  show("walletInfo", true);
+  // 수탁 지갑 기능 완전 제거
+  show("walletInfo", false);
+  show("btnCreateWallet", false);
   show("btnConnectMetaMask", false);
-  show("metamaskWarning", isMetaMask);
-  show("btnCreateWallet", isMetaMask);
-  if (!isMetaMask) show("btnCreateWallet", false);
-  setText("walletAddress", addr);
+  show("noWallet", false);
 }
 
 async function loadOnChainData(uid) {
-  const addr = (await getDoc(doc(db, "users", uid))).data()?.wallet?.address;
-  if (!addr) return;
-
-  setText("onChainStatus", _t('status_loading'));
+  // 온체인 연동 완전히 제거 - 순수 파이어베이스에서 필요한 정보만 로드
+  show("walletHexRow", false);
+  show("onChainRegBox", false);
+  setText("onChainStatus", "활성화 됨 (Firebase)");
+  $("onChainStatus").style.color = "var(--accent)";
 
   try {
-    const getMyOnChain = httpsCallable(functions, "getMyOnChain");
-    const res = await getMyOnChain();
-    const d = res.data;
-
-    if (d.level > 0) {
-      setText("onChainStatus", _t('status_registered'));
-      $("onChainStatus").style.color = "var(--accent)";
+    const bpSnap = await getDoc(doc(db, 'battle_players', uid));
+    if (bpSnap.exists()) {
+      const bp = bpSnap.data();
+      const displayExp = typeof bp.gsExp === 'number' ? bp.gsExp : 0;
+      const displayLevel = typeof bp.gsLevel === 'number' ? bp.gsLevel : 0;
+      const displayRequired = Math.pow(displayLevel + 1, 2) * 100_000;
 
       show("levelRow", true);
-      show("pointRow", true);
-
-      const fmtBalance = (krw, usd, vnd, hex) => {
-        if (krw == null) return (hex || "0") + " HEX";
-        const parts = [Number(krw).toLocaleString() + "\uC6D0"];
-        if (usd != null) parts.push("$" + Number(usd).toFixed(2));
-        if (vnd != null) parts.push(Number(vnd).toLocaleString() + " VND");
-        return parts.join(" / ");
-      };
-
-      setText("levelDisplay", "Lv." + d.level);
-      setText("pointDisplay", fmtBalance(d.pointKrw, d.pointUsd, d.pointVnd, d.pointDisplay));
-      _pointHexAmount = Number(d.pointDisplay || 0);
-
+      setText("levelDisplay", "Lv." + displayLevel);
       show("expRow", true);
       show("expBarRow", true);
-
-      // 게임화면과 동일한 gsExp를 Firestore에서 읽어 표시 (싱크 맞춤)
-      let displayExp = d.exp;
-      let displayRequired = d.requiredExp;
-      try {
-        const bpSnap = await getDoc(doc(db, 'battle_players', uid));
-        if (bpSnap.exists()) {
-          const bp = bpSnap.data();
-          const gsExp = typeof bp.gsExp === 'number' ? bp.gsExp : d.exp;
-          const gsLevel = typeof bp.gsLevel === 'number' ? bp.gsLevel : d.level;
-          const nextLvExp = Math.pow(gsLevel + 1, 2) * 100_000;
-          displayExp = gsExp;
-          displayRequired = nextLvExp;
-          if (gsLevel > 0) setText("levelDisplay", "Lv." + Math.max(d.level, gsLevel));
-
-          // 온체인 동기화 상태 표시
-          _renderOnChainSyncStatus(bp, uid);
-        }
-      } catch (_) { /* fallback: onChain 값 사용 */ }
 
       const expPct = displayRequired > 0
         ? Math.min(100, Math.round((displayExp / displayRequired) * 100))
@@ -185,90 +139,10 @@ async function loadOnChainData(uid) {
           ? _t('exp_remain', remain.toLocaleString())
           : _t('exp_can_levelup');
       }
-
-      show("levelUpRow", displayExp >= displayRequired);
-
-      const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
-      const isZeroMentor = !d.mentor || d.mentor === ZERO_ADDR;
-      show("mentorAddrRow", true);
-
-      let mentorText = _t('mentor_not_linked');
-      if (!isZeroMentor) {
-        try {
-          const mentorSnap = await getDocs(
-            query(collection(db, "mentors"), where("address", "==", d.mentor), limit(1))
-          );
-          mentorText = !mentorSnap.empty
-            ? (mentorSnap.docs[0].data()?.email || d.mentor)
-            : d.mentor.slice(0, 6) + "..." + d.mentor.slice(-4);
-        } catch {
-          mentorText = d.mentor.slice(0, 6) + "..." + d.mentor.slice(-4);
-        }
-      }
-
-      const mentorEl = $("mentorAddrDisplay");
-      if (mentorEl) {
-        mentorEl.textContent = mentorText;
-        const isEmail = mentorText.includes("@");
-        mentorEl.classList.toggle("mono", !isEmail);
-        mentorEl.style.fontSize = isEmail ? "0.95em" : "0.78em";
-      }
-
-      show("mentorNotice", isZeroMentor);
-      show("mentorRequestBox", isZeroMentor);
-
-      const walletHexBig = BigInt(d.walletHexWei || "0");
-      show("walletHexRow", walletHexBig > 0n);
-      if (walletHexBig > 0n) {
-        setText("walletHexDisplay", fmtBalance(d.walletHexKrw, d.walletHexUsd, d.walletHexVnd, d.walletHexDisplay));
-      }
-
-      // JUMP 토큰 잔액 조회
-      try {
-        const getJumpStatus = httpsCallable(functions, "getJumpBankStatus");
-        const jr = await getJumpStatus();
-        const jd = jr.data;
-        const jumpBal = Number(jd.jumpBalance || 0);
-        const jumpStaked = Number(jd.staked || 0);
-        show("walletJumpRow", jumpBal > 0);
-        if (jumpBal > 0) setText("walletJumpDisplay", jumpBal.toLocaleString() + " JUMP");
-        show("walletJumpStakedRow", jumpStaked > 0);
-        if (jumpStaked > 0) setText("walletJumpStakedDisplay", jumpStaked.toLocaleString() + " JUMP");
-      } catch (je) {
-        console.warn("getJumpBankStatus:", je.message);
-      }
-
-      show("onChainRegBox", false);
-    } else {
-      setText("onChainStatus", _t('status_not_registered'));
-      $("onChainStatus").style.color = "var(--muted)";
-      show("onChainRegBox", true);
-      // 기존 멘토 주소 자동 입력 (이전 컨트랙트에서 가져옴)
-      try {
-        const prevMentor = (await getDoc(doc(db, "users", uid))).data()?.onChain?.mentorAddress;
-        const inputEl = $("mentorAddrInput");
-        if (prevMentor && inputEl && !inputEl.value) {
-          inputEl.value = prevMentor;
-        }
-      } catch (_) { }
+      show("levelUpRow", false); // 렙업도 오프체인 전환 전까지 숨김
     }
   } catch (err) {
-    console.warn("getMyOnChain failed:", err.message);
-    try {
-      const cached = (await getDoc(doc(db, "users", uid))).data()?.onChain;
-      if (cached?.registered) {
-        setText("onChainStatus", "\uB4F1\uB85D \uC644\uB8CC \u2713");
-        $("onChainStatus").style.color = "var(--accent)";
-        show("onChainRegBox", false);
-      } else {
-        setText("onChainStatus", _t('status_not_registered'));
-        $("onChainStatus").style.color = "var(--muted)";
-        show("onChainRegBox", true);
-      }
-    } catch {
-      setText("onChainStatus", _t('status_error'));
-      $("onChainStatus").style.color = "var(--muted)";
-    }
+    console.error("Firebase status load failed", err);
   }
 }
 
@@ -423,7 +297,7 @@ function renderTxItem({ label, icon, dir, amountHex, dateStr, txHash, statusBadg
   const amtSign = dir === "income" ? "+" : dir === "expense" ? "−" : "";
   const amtClass = dir === "income" ? "income" : dir === "expense" ? "expense" : dir;
   const amtText = amountHex > 0
-    ? `${amtSign}${amountHex.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX`
+    ? `${amtSign}${amountHex.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} Point`
     : "-";
   const hashHtml = txHash
     ? `<div class="tx-hash">${txHash.slice(0, 10)}...${txHash.slice(-6)}</div>`
@@ -521,12 +395,12 @@ async function loadMenteeIncome(_uid) {
         </div>
         <div class="mi-summary-card" style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border-color:#d8b4fe;">
           <div class="mi-summary-label">${_t('mi_total_earning')}</div>
-          <div class="mi-summary-val" style="color:#7c3aed;">${totalEarning.toFixed(4)} HEX</div>
+          <div class="mi-summary-val" style="color:#7c3aed;">${totalEarning.toFixed(4)} Point</div>
           <div class="mi-summary-sub">${_t('mi_fee_note')}</div>
         </div>
         <div class="mi-summary-card" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#93c5fd;">
           <div class="mi-summary-label">${_t('mi_points_balance')}</div>
-          <div class="mi-summary-val" style="color:#1d4ed8;">${myPointsHex.toFixed(6)} HEX</div>
+          <div class="mi-summary-val" style="color:#1d4ed8;">${myPointsHex.toFixed(6)} Point</div>
           <div class="mi-summary-sub">${_t('mi_onchain_realtime')}</div>
         </div>
       `;
@@ -565,7 +439,7 @@ async function loadMenteeIncome(_uid) {
             <div class="mi-mentee-addr">${addrShort} · ${_t('mi_join_short', regDate)}</div>
           </div>
           <div class="mi-mentee-total">
-            <div class="mi-mentee-total-val">${m.myEstimatedEarningHex > 0 ? m.myEstimatedEarningHex.toFixed(6) + " HEX" : "-"}</div>
+            <div class="mi-mentee-total-val">${m.myEstimatedEarningHex > 0 ? m.myEstimatedEarningHex.toFixed(6) + " Point" : "-"}</div>
             <div class="mi-mentee-total-label">${_t('mi_cumulative_earn')}</div>
           </div>
         </div>
@@ -633,7 +507,7 @@ async function loadCoopOrders(uid) {
       return `<tr>
         <td style="font-size:0.82em;">${date}</td>
         <td>${o.productName || '-'} <span style="font-size:0.7em;background:#f3e8ff;color:#7c3aed;padding:1px 5px;border-radius:8px;font-weight:600;">${typeLbl}</span></td>
-        <td style="text-align:right;font-weight:600;color:#dc2626;">${hexAmt} HEX</td>
+        <td style="text-align:right;font-weight:600;color:#dc2626;">${hexAmt} Point</td>
         <td style="text-align:center;">${txLink}</td>
       </tr>`;
     }).join('');
@@ -690,10 +564,10 @@ async function loadJackpotHistory(uid) {
     const redeemableEl = $("jackpotRedeemable");
 
     if (statRow) statRow.style.display = "";
-    if (totalHexEl) totalHexEl.textContent = totalHex + " HEX";
+    if (totalHexEl) totalHexEl.textContent = totalHex + " Point";
     if (totalCountEl) totalCountEl.textContent = _t('jackpot_total_count', totalCount);
     if (redeemableEl) {
-      redeemableEl.textContent = _pointHexAmount.toFixed(4) + " HEX";
+      redeemableEl.textContent = _pointHexAmount.toFixed(4) + " Point";
       redeemableEl.style.color = _pointHexAmount >= 10 ? "#a78bfa" : "var(--muted)";
     }
 
@@ -712,7 +586,7 @@ async function loadJackpotHistory(uid) {
       let ptsLine = '';
       if (onchainPtsWei > 0n) {
         const ptsHex = (Number(onchainPtsWei) / 1e18).toFixed(6);
-        ptsLine = `<span class="jp-onchain-badge">${_t('jp_onchain_badge')}</span> ${ptsHex} HEX ${_t('jp_pts_label')}`;
+        ptsLine = `<span class="jp-onchain-badge">${_t('jp_onchain_badge')}</span> ${ptsHex} Point ${_t('jp_pts_label')}`;
       }
 
       const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || _t('jackpot_item_reward');
@@ -765,7 +639,7 @@ async function loadJackpotHistory(uid) {
             let ptsLine = '';
             if (onchainPtsWei > 0n) {
               const ptsHex = (Number(onchainPtsWei) / 1e18).toFixed(6);
-              ptsLine = `<span class="jp-onchain-badge">${_t('jp_onchain_badge')}</span> ${ptsHex} HEX ${_t('jp_pts_label')}`;
+              ptsLine = `<span class="jp-onchain-badge">${_t('jp_onchain_badge')}</span> ${ptsHex} Point ${_t('jp_pts_label')}`;
             }
             const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || _t('jackpot_item_reward');
             const el = document.createElement('div');
@@ -791,10 +665,10 @@ async function loadJackpotHistory(uid) {
           const totalCountEl2 = $("jackpotTotalCount");
           const redeemableEl2 = $("jackpotRedeemable");
           if (statRow2) statRow2.style.display = "";
-          if (totalHexEl2) totalHexEl2.textContent = (Number(totalWei2) / 1e18).toFixed(4) + " HEX";
+          if (totalHexEl2) totalHexEl2.textContent = (Number(totalWei2) / 1e18).toFixed(4) + " Point";
           if (totalCountEl2) totalCountEl2.textContent = _t('jackpot_total_count', docs.length);
           if (redeemableEl2) {
-            redeemableEl2.textContent = _pointHexAmount.toFixed(4) + " HEX";
+            redeemableEl2.textContent = _pointHexAmount.toFixed(4) + " Point";
             redeemableEl2.style.color = _pointHexAmount >= 10 ? "#a78bfa" : "var(--muted)";
           }
         }
@@ -872,7 +746,7 @@ async function loadTxHistory(uid, _walletAddress) {
     else if (t.dir === "expense") { totalExpense += t.amountHex; expenseCount++; }
   });
 
-  const fmtSum = (v) => v.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) + " HEX";
+  const fmtSum = (v) => v.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) + " Point";
 
   const summary = $("txSummary");
   if (summary) {
@@ -896,189 +770,11 @@ function formatWei(weiStr) {
   }
 }
 
-function bindCreateWallet() {
-  const btn = $("btnCreateWallet");
-  if (!btn) return;
-
-  btn.onclick = async () => {
-    const mentorAddress = String($("createWalletMentorAddr")?.value || "").trim();
-    if (mentorAddress && !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
-      alert("\uBA58\uD1A0 \uC9C0\uAC11 \uC8FC\uC18C\uB97C \uC62C\uBC14\uB974\uAC8C \uC785\uB825\uD558\uC138\uC694.\n\uC608: 0x\uB85C \uC2DC\uC791\uD558\uB294 42\uC790\uB9AC \uC8FC\uC18C");
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = "\uC0DD\uC131 \uC911...";
-    try {
-      const createWalletFn = httpsCallable(functions, "createWallet");
-      const res = await createWalletFn({ mentorAddress });
-      setText("walletAddress", res.data?.address || "…");
-      show("noWallet", false);
-      show("walletInfo", true);
-      show("metamaskWarning", false);
-      btn.style.display = "none";
-      alert(_t('alert_wallet_created'));
-    } catch (err) {
-      alert("\uC9C0\uAC11 \uC0DD\uC131 \uC2E4\uD328: " + err.message);
-      btn.disabled = false;
-      btn.textContent = "\uC9C0\uAC11 \uC0DD\uC131";
-    }
-  };
-}
-
-function bindConnectMetaMask(uid) {
-  const btn = $("btnConnectMetaMask");
-  if (!btn) return;
-
-  // window.ethereum 없음 → 모바일/데스크톱 분기
-  if (!window.ethereum) {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      // 모바일: MetaMask 앱 인앱 브라우저로 딥링크 유도
-      const deepLink = "https://metamask.app.link/dapp/" +
-        location.host + location.pathname + location.search;
-      btn.style.display = "";
-      btn.textContent = _t('mm_open_app');
-      btn.onclick = () => { location.href = deepLink; };
-    } else {
-      // 데스크톱: MetaMask 미설치
-      btn.style.display = "";
-      btn.textContent = _t('mm_install');
-      btn.onclick = () => {
-        window.open("https://metamask.io/download/", "_blank");
-      };
-    }
-    return;
-  }
-
-  // window.ethereum 있음 (MetaMask 인앱 브라우저 or 확장 프로그램)
-  btn.style.display = "";
-  btn.onclick = async () => {
-    btn.disabled = true;
-    btn.textContent = _t('mm_connecting');
-    try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      const address = accounts[0];
-
-      const msg = `Jump Platform 지갑 연결 확인\nUID: ${uid}`;
-      const msgHex = "0x" + Array.from(new TextEncoder().encode(msg))
-        .map((b) => b.toString(16).padStart(2, "0")).join("");
-      await window.ethereum.request({ method: "personal_sign", params: [msgHex, address] });
-
-      await setDoc(doc(db, "users", uid), { wallet: { address, type: "metamask" } }, { merge: true });
-
-      setText("walletAddress", address);
-      show("noWallet", false);
-      show("walletInfo", true);
-      show("btnCreateWallet", false);
-      show("btnConnectMetaMask", false);
-      loadOnChainData(uid);
-    } catch (err) {
-      if (err.code === 4001) {
-        alert(_t('mm_cancel'));
-      } else {
-        alert(_t('mm_error', err.message));
-      }
-      btn.disabled = false;
-      btn.textContent = _t('btn_metamask');
-    }
-  };
-}
-
-function bindLevelUp(uid) {
-  const btn = $("btnLevelUp");
-  if (!btn || btn._bound) return;
-  btn._bound = true;
-
-  btn.onclick = async () => {
-    if (!confirm(_t('alert_levelup_confirm'))) return;
-
-    btn.disabled = true;
-    btn.textContent = "\uCC98\uB9AC \uC911...";
-    try {
-      const fn = httpsCallable(functions, "requestLevelUp");
-      const res = await fn();
-      alert(_t('alert_levelup_done', res.data.newLevel));
-      await loadOnChainData(uid);
-    } catch (err) {
-      alert(_t('alert_levelup_error', err.message));
-      btn.disabled = false;
-      btn.textContent = "Level Up";
-    }
-  };
-}
-
-function bindRedeemPoints(uid) {
-  const btn = $("btnRedeemPoints");
-  if (!btn || btn._bound) return;
-  btn._bound = true;
-
-  btn.onclick = async () => {
-    const resultBox = $("redeemPointsResult");
-
-    if (_pointHexAmount < 10) {
-      if (resultBox) {
-        resultBox.style.display = "";
-        resultBox.innerHTML = `<p style="margin:0;font-size:0.85rem;color:var(--muted);">${_t('redeem_not_enough', _pointHexAmount.toFixed(4))}</p>`;
-      }
-      return;
-    }
-
-    if (!confirm(_t('redeem_confirm'))) return;
-
-    btn.disabled = true;
-    btn.textContent = _t('redeem_loading');
-    if (resultBox) resultBox.style.display = "none";
-
-    try {
-      const fn = httpsCallable(functions, "redeemPoints");
-      const res = await fn();
-      const d = res.data;
-      if (resultBox) {
-        resultBox.style.display = "";
-        resultBox.innerHTML = `
-          <div class="mp-kv"><span class="k">${_t('redeem_result_amount')}</span><span class="v accent">${d.amountHex} HEX</span></div>
-          <div class="mp-kv"><span class="k">${_t('pay_result_tx')}</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
-          <p class="hint" style="color:var(--accent);margin-top:6px;">${_t('redeem_done')}</p>
-        `;
-      }
-      loadOnChainData(uid);
-    } catch (err) {
-      alert(_t('redeem_error', err.message));
-    } finally {
-      btn.disabled = false;
-      btn.textContent = _t('redeem_btn');
-    }
-  };
-}
-
-function bindOnChainRegister(uid) {
-  const btn = $("btnRegisterOnChain");
-  if (!btn) return;
-
-  btn.onclick = async () => {
-    const mentorAddress = String($("mentorAddrInput")?.value || "").trim();
-    if (mentorAddress && !/^0x[0-9a-fA-F]{40}$/i.test(mentorAddress)) {
-      alert("\uBA58\uD1A0 \uC9C0\uAC11 \uC8FC\uC18C\uB97C \uC62C\uBC14\uB974\uAC8C \uC785\uB825\uD558\uC138\uC694.\n\uC608: 0x\uB85C \uC2DC\uC791\uD558\uB294 42\uC790\uB9AC \uC8FC\uC18C");
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = "\uB4F1\uB85D \uC911...";
-    try {
-      const registerMember = httpsCallable(functions, "registerMember");
-      await registerMember({ mentorAddress });
-      show("onChainRegBox", false);
-      setText("onChainStatus", _t('status_registered'));
-      $("onChainStatus").style.color = "var(--accent)";
-      await loadOnChainData(uid);
-    } catch (err) {
-      alert("\uC628\uCCB4\uC778 \uB4F1\uB85D \uC2E4\uD328: " + err.message);
-      btn.disabled = false;
-      btn.textContent = "\uB4F1\uB85D";
-    }
-  };
-}
+function bindCreateWallet() { }
+function bindConnectMetaMask(uid) { }
+function bindLevelUp(uid) { }
+function bindRedeemPoints(uid) { }
+function bindOnChainRegister(uid) { }
 
 function bindDepositForm() {
   const form = $("depositForm");
@@ -1244,7 +940,7 @@ function showJackpotResult(d) {
     const lines = [];
     if (hasOnchainJackpot) {
       const ptsHex = (Number(jackpotPtsWei) / 1e18).toFixed(6);
-      lines.push(`<div class="jm-item">🪙 ${_t('jm_jackpot_pts')} <b>+${ptsHex} HEX</b></div>`);
+      lines.push(`<div class="jm-item">🪙 ${_t('jm_jackpot_pts')} <b>+${ptsHex} Point</b></div>`);
     }
     if (d.potionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b></div>`);
     if (d.mpPotionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/mp.png" style="width:22px;height:22px;"> ${_t('item_mp_potion')} <b>+${d.mpPotionsAdded}</b></div>`);
@@ -1319,27 +1015,19 @@ function bindMerchantPay(uid, _walletAddress) {
       : { merchantId: Number(merchantId), amountKrw: amount, currency: "KRW" };
 
     try {
-      const payFn = httpsCallable(functions, "payMerchantHex");
+      const payFn = httpsCallable(functions, "payMerchantFirebase");
       const res = await payFn(payload);
       const d = res.data;
 
       const krwStr = `${(d.amountKrw || 0).toLocaleString()}${_t('krw_unit')}`;
       const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}${_t('vnd_unit')}` : '';
-      const hexStr = `${d.amountHex} HEX`;
-      const amountDisp = [krwStr, vndStr, hexStr].filter(Boolean).join(' / ');
+      const amountDisp = [krwStr, vndStr].filter(Boolean).join(' / ');
 
       if (resultBox) {
-        const jackpotPtsWei = BigInt(d.onchainJackpotPointsWei || '0');
-        const jackpotLine = jackpotPtsWei > 0n
-          ? `<div class="mp-kv mp-kv--jackpot"><span class="k">🪙 ${_t('jackpot_inline')}</span><span class="v" style="color:#7c3aed;font-size:12px;white-space:nowrap;">+${(Number(jackpotPtsWei) / 1e18).toFixed(4)} HEX</span></div>`
-          : '';
-
         resultBox.style.display = "";
         resultBox.innerHTML = `
           <div class="mp-kv"><span class="k">${_t('pay_result_merchant')}</span><span class="v">${d.merchantName || ""}</span></div>
           <div class="mp-kv"><span class="k">${_t('pay_result_amount')}</span><span class="v accent">${amountDisp}</span></div>
-          ${jackpotLine}
-          <div class="mp-kv"><span class="k">${_t('pay_result_tx')}</span><span class="v mono" style="font-size:0.8em;">${(d.txHash || "").slice(0, 20)}...</span></div>
           <p class="hint" style="color:var(--accent); margin-top:6px;">${_t('pay_done')}</p>
           ${buildMypageDropHtml(d)}
         `;
@@ -1663,7 +1351,7 @@ onAuthReady(async (ctx) => {
 
     renderProfile(data, user);
     renderWallet(data);
-    renderReferralSection(walletAddress);
+    renderReferralSection(user.uid);
     bindCreateWallet();
     bindConnectMetaMask(user.uid);
     bindOnChainRegister(user.uid);

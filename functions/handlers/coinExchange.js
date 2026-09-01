@@ -1,5 +1,5 @@
 // functions/handlers/coinExchange.js
-// 게임코인(gold) ↔ JUMP 토큰 양방향 교환
+// 게임코인(gold) ↔ JUMP 포인트 양방향 교환
 // JumpAutoExchange 컨트랙트 + Firebase Firestore 연동
 
 'use strict';
@@ -275,7 +275,7 @@ async function listCoinExchanges({ direction, limit: lim = 50 } = {}) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 4. HEX → GameCoin(GP) 현황 조회
+// 4. Point → GameCoin(GP) 현황 조회
 // ─────────────────────────────────────────────────────────────
 async function getHexGpStatus(uid) {
   const bpSnap = await db.collection('battle_players').doc(uid).get();
@@ -300,12 +300,12 @@ async function getHexGpStatus(uid) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 5. HEX → GameCoin(GP) 전환
+// 5. Point → GameCoin(GP) 전환
 //
 // 흐름:
-//   1) 유저 수탁 지갑 HEX 잔액 확인
+//   1) 유저 수탁 지갑 Point 잔액 확인
 //   2) Firestore config/exchange.gpPerHex 비율 조회
-//   3) 유저 수탁 지갑 → admin 지갑 HEX transfer
+//   3) 유저 수탁 지갑 → admin 지갑 Point transfer
 //   4) battle_players.gold += gpAmount
 //   5) hex_gp_exchanges 기록
 // ─────────────────────────────────────────────────────────────
@@ -319,12 +319,12 @@ async function hexToGp(uid, hexWei, masterSecret) {
 
   const hexBal = await getHexContract(provider).balanceOf(address);
   if (hexBal < hexAmt)
-    throw new HttpsError('failed-precondition', 'Insufficient HEX balance');
+    throw new HttpsError('failed-precondition', 'Insufficient Point Balance');
 
   const cfgSnap  = await db.collection('config').doc('exchange').get();
   const gpPerHex = cfgSnap.exists ? Number(cfgSnap.data().gpPerHex || 1000) : 1000;
   if (gpPerHex <= 0)
-    throw new HttpsError('failed-precondition', 'HEX→GP conversion is currently disabled');
+    throw new HttpsError('failed-precondition', 'Point→GP conversion is currently disabled');
 
   const gpAmount = Math.floor(Number(hexAmt) / 1e18 * gpPerHex);
   if (gpAmount <= 0)

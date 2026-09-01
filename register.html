@@ -1,6 +1,7 @@
 <!-- /register.html -->
 <!doctype html>
 <html lang="ko">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,6 +14,7 @@
 
   <script src="/assets/js/partials.js" defer></script>
 </head>
+
 <body>
   <div id="siteHeader"></div>
 
@@ -47,18 +49,13 @@
           <span style="font-size:11px;color:#9ca3af;">Or</span>
           <div style="flex:1;height:1px;background:#e5e7eb;"></div>
         </div>
-        <div id="telegramWidgetWrap" style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:4px;">
+        <div id="telegramWidgetWrap"
+          style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:4px;">
           <div style="font-size:12px;color:#6b7280;">Login with Telegram</div>
           <!-- Telegram이 이 <script> 위치에 로그인 버튼(iframe)을 렌더링함 -->
-          <script
-            async
-            src="https://telegram.org/js/telegram-widget.js?22"
-            data-telegram-login="k-culture_game_bot"
-            data-size="large"
-            data-radius="8"
-            data-onauth="window.__onTgWidgetAuth(user)"
-            data-request-access="write">
-          </script>
+          <script async src="https://telegram.org/js/telegram-widget.js?22" data-telegram-login="k-culture_game_bot"
+            data-size="large" data-radius="8" data-onauth="window.__onTgWidgetAuth(user)" data-request-access="write">
+            </script>
           <div id="tgAuthMsg" style="font-size:12px;color:#0088cc;display:none;">
             ⏳ Processing authentication...
           </div>
@@ -70,14 +67,6 @@
         <div class="status-row">
           <div class="k">Registration Status</div>
           <div class="v" style="color:var(--accent);">Completed ✓</div>
-        </div>
-        <div class="status-row" id="walletRow" style="display:none;">
-          <div class="k">Custodial Wallet Address</div>
-          <div class="v mono" id="walletAddr">-</div>
-        </div>
-        <div class="status-row" id="onChainRow" style="display:none;">
-          <div class="k">On-Chain Registration</div>
-          <div class="v" id="onChainStatus">-</div>
         </div>
         <a href="/index.html" class="btn btn--primary" style="margin-top:16px;display:inline-block;">Home</a>
       </div>
@@ -92,21 +81,23 @@
 
         <label class="field">
           <span>Phone Number <em class="req">*</em></span>
-          <input type="tel" id="userPhone" maxlength="30" placeholder="Example: +82 10 1234 5678 / +84 912 345 678" autocomplete="tel" />
+          <input type="tel" id="userPhone" maxlength="30" placeholder="Example: +82 10 1234 5678 / +84 912 345 678"
+            autocomplete="tel" />
         </label>
 
         <label class="field">
-          <span>Referrer Wallet Address
+          <span>Referrer ID (UID)
             <span style="display:inline-block;margin-left:6px;background:#fef3c7;color:#92400e;
                          font-size:0.72rem;font-weight:700;padding:1px 8px;border-radius:99px;vertical-align:middle;">
-              🎁 +1,000 Game Points
+              🎁 +1,000 Points
             </span>
           </span>
-          <input type="text" id="mentorAddress" maxlength="42" placeholder="Enter referrer wallet address (0xAbCd...)" autocomplete="off" spellcheck="false" />
+          <input type="text" id="mentorAddress" maxlength="42" placeholder="Enter referrer UID" autocomplete="off"
+            spellcheck="false" />
           <small class="help-text" style="color:#059669;font-weight:600;">
-            ✅ Enter a referrer wallet address to receive 1,000 Game Points immediately upon registration!
+            ✅ Enter a referrer UID to receive 1,000 Points immediately upon registration!
           </small>
-          <small class="help-text" style="margin-top:2px;">Leave blank if you don't have one (default will be applied automatically)</small>
+          <small class="help-text" style="margin-top:2px;">Leave blank if you don't have one.</small>
         </label>
 
         <div class="reg-divider">Terms of Service</div>
@@ -119,28 +110,14 @@
           </span>
         </label>
 
-        <label class="check">
-          <input type="checkbox" id="agreeWallet" />
-          <span>
-            I consent to creating a server custodial wallet (private key server storage) and on-chain registration <em class="req">*</em>
-          </span>
-        </label>
-
-        <!-- Progress -->
         <div id="stepBox" class="step-box" style="display:none;">
-          <div class="step" id="step1">① Save Information</div>
-          <div class="step" id="step2">② Create Custodial Wallet</div>
-          <div class="step" id="step3">③ On-Chain Registration</div>
+          <div class="step" id="step1">Saving Information...</div>
         </div>
 
         <div class="actions">
           <button class="btn btn--primary" type="submit" id="btnRegister">Complete Registration</button>
         </div>
 
-        <p class="hint">
-          Custodial wallet creation and on-chain registration will proceed automatically.<br>
-          If you don't have a referrer address, a default mentor address will be applied automatically.
-        </p>
       </form>
     </section>
   </main>
@@ -150,4 +127,5 @@
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/pages/register.js"></script>
 </body>
+
 </html>

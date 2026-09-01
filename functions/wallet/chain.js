@@ -1,5 +1,5 @@
 // functions/wallet/chain.js
-// ethers.js v6 – opBNB RPC 연결 + jumpPlatform / HEX 컨트랙트 핼퍼
+// ethers.js v6 – opBNB RPC 연결 + jumpPlatform / Point 컨트랙트 핼퍼
 
 'use strict';
 
@@ -11,8 +11,8 @@ const { ethers } = require('ethers');
 const RPC_URL = process.env.OPBNB_RPC || 'https://opbnb-mainnet-rpc.bnbchain.org';
 
 const ADDRESSES = {
-  jumpToken:    '0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464',  // HEX (플랫폼 포인트 토큰, 18 decimals)
-  jumpJump:     '0xA3C35c52446C133b7211A743c6D47470D1385601',  // JUMP 거래 토큰 (0 decimals)
+  jumpToken:    '0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464',  // Point (플랫폼 포인트 포인트, 18 decimals)
+  jumpJump:     '0xA3C35c52446C133b7211A743c6D47470D1385601',  // JUMP 거래 포인트 (0 decimals)
   jumpBank:     '0x16752f8948ff2caA02e756c7C8fF0E04887A3a0E',  // 거래소 컨트랙트
   jumpTreasury: '0xe1f4cDc794D22C23fa47E768dD86Ad09aeEb0312',  // 거버넌스
   jumpPlatform: '0x4d83A7764428fd1c116062aBb60c329E0E29f490',
@@ -25,13 +25,13 @@ const PLATFORM_ABI = [
   // 가입
   'function register(address mentorAddr) external',
 
-  // 관리자: KRW 입금 후 HEX 지급 (transfer to user)
+  // 관리자: KRW 입금 후 Point 지급 (transfer to user)
   'function adminCreditHex(address user, uint256 hexWei, bytes32 ref) external',
 
   // 조회: 멤버 정보 (public mapping auto-getter)
   'function members(address) external view returns (uint32 level, address mentor, uint256 exp, uint256 points, bool blocked)',
 
-  // 조회: HEX 잔액 + 온체인 FX 환산 (display-only)
+  // 조회: Point 잔액 + 온체인 FX 환산 (display-only)
   'function getUserValueScaled(address user) external view returns (uint256 hexBalWei, uint256 krwValueScaled, uint256 usdValueScaled, uint256 vndValueScaled, uint32 scale)',
 
   // 조회: 레벨업 필요 EXP
@@ -91,7 +91,7 @@ const PLATFORM_ABI = [
   'event OwnershipTransferred(address indexed from, address indexed to)',
 ];
 
-const HEX_ABI = [
+const Point_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function allowance(address owner, address spender) external view returns (uint256)',
   'function balanceOf(address account) external view returns (uint256)',
@@ -99,7 +99,7 @@ const HEX_ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 value)',
 ];
 
-// JUMP 토큰 ABI (ERC20, 0 decimals)
+// JUMP 포인트 ABI (ERC20, 0 decimals)
 const JUMP_TOKEN_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function allowance(address owner, address spender) external view returns (uint256)',
@@ -241,7 +241,7 @@ function getPlatformContract(signerOrProvider) {
 }
 
 function getHexContract(signerOrProvider) {
-  return new ethers.Contract(ADDRESSES.jumpToken, HEX_ABI, signerOrProvider);
+  return new ethers.Contract(ADDRESSES.jumpToken, Point_ABI, signerOrProvider);
 }
 
 function getJumpTokenContract(signerOrProvider) {

@@ -329,7 +329,7 @@ exports.linkMentor = onRequest(
       return;
     }
     try {
-      // Firebase Auth 토큰 검증
+      // Firebase Auth 포인트 검증
       const authHeader = req.headers.authorization || '';
       if (!authHeader.startsWith('Bearer ')) {
         res.status(401).json({ error: '로그인이 필요합니다' });
@@ -339,7 +339,7 @@ exports.linkMentor = onRequest(
       try {
         decoded = await admin.auth().verifyIdToken(authHeader.slice(7));
       } catch (_) {
-        res.status(401).json({ error: '인증 토큰이 유효하지 않습니다' });
+        res.status(401).json({ error: '인증 포인트이 유효하지 않습니다' });
         return;
       }
 
@@ -466,7 +466,7 @@ exports.buyProduct = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 10. 인출 – payableWei → HEX 전송 (수탁 지갑 서명)
+// 10. 인출 – payableWei → Point 전송 (수탁 지갑 서명)
 //     클라이언트: httpsCallable(functions, 'withdraw')({ amountWei: '1000000000000000000' })
 //     { amountWei: 'all' } 이면 전액 인출
 // ════════════════════════════════════════════════════════════════════════════
@@ -482,8 +482,8 @@ exports.withdraw = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 11. 관리자: HEX approve 실행 (최초 1회 필수)
-//     jumpPlatform이 owner 지갑에서 HEX를 끌어올 수 있도록
+// 11. 관리자: Point approve 실행 (최초 1회 필수)
+//     jumpPlatform이 owner 지갑에서 Point를 끌어올 수 있도록
 //     클라이언트: httpsCallable(functions, 'adminApproveHex')({ amountWei: null })
 //     amountWei: null → MaxUint256 (무한 승인)
 // ════════════════════════════════════════════════════════════════════════════
@@ -499,7 +499,7 @@ exports.adminApproveHex = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 12. 관리자: HEX allowance 조회
+// 12. 관리자: Point allowance 조회
 //     클라이언트: httpsCallable(functions, 'adminCheckAllowance')()
 // ════════════════════════════════════════════════════════════════════════════
 exports.adminCheckAllowance = onCall(
@@ -525,7 +525,7 @@ exports.adminGetContractStatus = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 14. 관리자: P2P HEX 전송 기록 (txHash로 수동 등록)
+// 14. 관리자: P2P Point 전송 기록 (txHash로 수동 등록)
 //     클라이언트: httpsCallable(functions, 'adminRecordP2pTransfer')({ txHash: '0x...' })
 // ════════════════════════════════════════════════════════════════════════════
 exports.adminRecordP2pTransfer = onCall(
@@ -540,8 +540,8 @@ exports.adminRecordP2pTransfer = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 15. 유저: P2P 수령 HEX → pointWei 합산 (수탁 지갑 전용)
-//     수탁 지갑 HEX → 관리자 지갑 → creditPoints → pointWei 증가
+// 15. 유저: P2P 수령 Point → pointWei 합산 (수탁 지갑 전용)
+//     수탁 지갑 Point → 관리자 지갑 → creditPoints → pointWei 증가
 //     클라이언트: httpsCallable(functions, 'mergeWalletHexToPoints')()
 // ════════════════════════════════════════════════════════════════════════════
 exports.mergeWalletHexToPoints = onCall(
@@ -556,7 +556,7 @@ exports.mergeWalletHexToPoints = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 16-A. 유저: 멘토 포인트 → HEX 전환 (최소 100,000 VND 상당 ≈ 4 HEX)
+// 16-A. 유저: 멘토 포인트 → Point 전환 (최소 100,000 VND 상당 ≈ 4 Point)
 //       클라이언트: httpsCallable(functions, 'redeemPoints')()
 // ════════════════════════════════════════════════════════════════════════════
 exports.redeemPoints = onCall(
@@ -790,8 +790,8 @@ exports.getMenteeIncome = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 19. 관리자: jumpPlatform 컨트랙트에 HEX 충전
-//     - 관리자 지갑 HEX → ownerDepositHex() → 컨트랙트 HEX 풀 증가
+// 19. 관리자: jumpPlatform 컨트랙트에 Point 충전
+//     - 관리자 지갑 Point → ownerDepositHex() → 컨트랙트 Point 풀 증가
 //     - 사전 조건: adminApproveHex (무한 approve) 완료 상태
 //     클라이언트: httpsCallable(functions, 'adminOwnerDepositHex')({ amountWei: '1000000000000000000' })
 // ════════════════════════════════════════════════════════════════════════════
@@ -811,11 +811,10 @@ exports.adminOwnerDepositHex = onCall(
 
 // ════════════════════════════════════════════════════════════════════════════
 // 20. 가맹점 오프라인 결제
-//     - 수탁 지갑 HEX → approve → jumpPlatform.payMerchantHex(merchantId, amountWei)
-//     클라이언트: httpsCallable(functions, 'payMerchantHex')({ merchantId: 1, amountKrw: 50000 })
+//     - 순수 파이어베이스 지갑 트랜잭션 (수수료 및 멘토/잭팟 분배 포함)
+//     클라이언트: httpsCallable(functions, 'payMerchantFirebase')({ merchantId: 1, amountKrw: 50000 })
 // ════════════════════════════════════════════════════════════════════════════
-exports.payMerchantHex = onCall(
-  { secrets: [walletSecret, adminKeySecret] },
+exports.payMerchantFirebase = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const { merchantId, amountKrw, amountVnd, currency = 'KRW' } = request.data ?? {};
@@ -830,19 +829,18 @@ exports.payMerchantHex = onCall(
         throw new HttpsError('invalid-argument', '최소 결제 금액은 1,000원입니다');
     }
 
-    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-    const result = await txH.payMerchantHexOnChain(
-      uid, Number(merchantId), amountKrw ? Number(amountKrw) : 0, walletSecret.value(),
+    const result = await txH.payMerchantFirebase(
+      uid, Number(merchantId), amountKrw ? Number(amountKrw) : 0,
       { currency: cur, amountVnd: amountVnd ? Number(amountVnd) : undefined }
     );
-    logger.info('payMerchantHex', { uid, merchantId, amountKrw, amountVnd, currency: cur, txHash: result.txHash });
+    logger.info('payMerchantFirebase', { uid, merchantId, amountKrw, amountVnd, currency: cur, amountVndCharged: result.amountVnd });
     return result;
   })
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 21. 상품 HEX 즉시결제 (유저 수탁 지갑)
-//     - 상품 가격(KRW/VND/USD) → 현재 환율로 HEX wei 환산
+// 21. 상품 Point 즉시결제 (유저 수탁 지갑)
+//     - 상품 가격(KRW/VND/USD) → 현재 환율로 Point wei 환산
 //     - approve → payMerchantHex (가맹점) 또는 직접 transfer (비가맹점)
 //     - 주문 자동 confirmed 처리
 //     클라이언트: httpsCallable(functions, 'payProductWithHex')({ itemId, date, people, phone, ... })
@@ -877,7 +875,7 @@ exports.getJumpBankStatus = onCall(
   })
 );
 
-// JUMP 구매 (HEX → JUMP)
+// JUMP 구매 (Point → JUMP)
 exports.buyJumpToken = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
@@ -890,7 +888,7 @@ exports.buyJumpToken = onCall(
   })
 );
 
-// JUMP 판매 (JUMP → HEX)
+// JUMP 판매 (JUMP → Point)
 exports.sellJumpToken = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
@@ -927,7 +925,7 @@ exports.unstakeJumpToken = onCall(
   })
 );
 
-// 배당 청구 (HEX 수령)
+// 배당 청구 (Point 수령)
 exports.claimJumpDividend = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
@@ -938,7 +936,7 @@ exports.claimJumpDividend = onCall(
   })
 );
 
-// ── 토큰거래소 — 스왑 환율 / 거래내역 / TON·HEX 교환 ──────────────────────────
+// ── 포인트 거래소 — 스왑 환율 / 거래내역 / TON·Point 교환 ──────────────────────────
 
 // 스왑 환율 조회 (전체 사용자)
 exports.getSwapRates = onCall(
@@ -969,7 +967,7 @@ exports.requestTonCoinSwap = onCall(
   })
 );
 
-// HEX ↔ TON 교환 신청
+// Point ↔ TON 교환 신청
 exports.requestHexTonSwap = onCall(
   { secrets: [walletSecret, adminKeySecret, tonPrivKeySecret, tonCenterKeySecret] },
   wrapError(async (request) => {
@@ -1028,7 +1026,7 @@ exports.processTonSwaps = onSchedule(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 레벨4+ HEX → 개인 지갑 이체
+// 레벨4+ Point → 개인 지갑 이체
 //    클라이언트: httpsCallable(functions, 'transferHexToPersonal')({ toAddress, amountWei })
 //    amountWei: wei 단위 문자열 또는 "all" (전액)
 // ════════════════════════════════════════════════════════════════════════════
@@ -1361,7 +1359,7 @@ exports.getExchangeRates = onCall(
   wrapError(async (_request) => {
     const { fetchExchangeRates } = require('./wallet/exchange');
     const rates = await fetchExchangeRates();
-    // 1 HEX = 1 USD peg
+    // 1 Point = 1 USD peg
     const krwPerHex = rates.krwPerUsd;
     const vndPerHex = rates.vndPerUsd;
     logger.info('[getExchangeRates]', { krwPerHex, vndPerHex, source: rates.source });
@@ -1410,7 +1408,7 @@ exports.externalApi = onRequest(
 
     const path = req.path.replace(/^\//, '');
 
-    // ── API 키 검증 (verifyUser / signMessage는 사용자 토큰 기반이라 제외) ──
+    // ── API 키 검증 (verifyUser / signMessage는 사용자 포인트 기반이라 제외) ──
     const publicPaths = ['verifyUser', 'signMessage']; // signTransaction은 내부에서 별도 API 키 검증
     if (!publicPaths.includes(path)) {
       const providedKey =
@@ -1533,7 +1531,7 @@ exports.externalApi = onRequest(
         return;
       }
 
-      // ── 4: 유저 토큰으로 지갑 주소 확인 POST /verifyUser ──────────
+      // ── 4: 유저 포인트으로 지갑 주소 확인 POST /verifyUser ──────────
       // 파트너 API 키 불필요. 유저가 직접 자신의 Firebase ID Token을 보냄.
       // 파트너 사이트: 유저 Google 로그인 → ID Token → 이 엔드포인트 호출
       if (req.method === 'POST' && path === 'verifyUser') {
@@ -1546,7 +1544,7 @@ exports.externalApi = onRequest(
         try {
           decoded = await admin.auth().verifyIdToken(userToken);
         } catch (_) {
-          res.status(401).json({ ok: false, error: '유효하지 않은 사용자 토큰입니다' });
+          res.status(401).json({ ok: false, error: '유효하지 않은 사용자 포인트입니다' });
           return;
         }
         const userSnap = await db.collection('users').doc(decoded.uid).get();
@@ -1573,7 +1571,7 @@ exports.externalApi = onRequest(
       }
 
       // ── 5: 메시지 서명 위임 POST /signMessage ──────────────────────
-      // 파트너 API 키 + 유저 토큰 모두 필요.
+      // 파트너 API 키 + 유저 포인트 모두 필요.
       // 파트너가 특정 메시지를 수탁 지갑으로 서명 요청 (EIP-191 개인 서명).
       // 보안: 서명 가능 메시지는 100자 이내 평문만 허용 (임의 트랜잭션 불가).
       if (req.method === 'POST' && path === 'signMessage') {
@@ -1593,7 +1591,7 @@ exports.externalApi = onRequest(
         try {
           decoded = await admin.auth().verifyIdToken(userToken);
         } catch (_) {
-          res.status(401).json({ ok: false, error: '유효하지 않은 사용자 토큰입니다' });
+          res.status(401).json({ ok: false, error: '유효하지 않은 사용자 포인트입니다' });
           return;
         }
 
@@ -1641,7 +1639,7 @@ exports.externalApi = onRequest(
           return;
         }
 
-        // ② 유저 토큰 검증
+        // ② 유저 포인트 검증
         const userToken = (req.headers['x-user-token'] || req.body?.idToken || req.body?.userToken || '');
         if (!userToken) {
           res.status(400).json({ ok: false, error: 'idToken 필드가 필요합니다' });
@@ -1651,7 +1649,7 @@ exports.externalApi = onRequest(
         try {
           decoded = await admin.auth().verifyIdToken(userToken);
         } catch (_) {
-          res.status(401).json({ ok: false, error: '유효하지 않은 사용자 토큰입니다' });
+          res.status(401).json({ ok: false, error: '유효하지 않은 사용자 포인트입니다' });
           return;
         }
 
@@ -2374,7 +2372,7 @@ exports.sellJumpForCoins = onCall(
   })
 );
 
-// HEX → GP 현황 조회
+// Point → GP 현황 조회
 exports.getHexGpStatus = onCall(
   { secrets: [adminKeySecret] },
   wrapError(async (req) => {
@@ -2384,7 +2382,7 @@ exports.getHexGpStatus = onCall(
   })
 );
 
-// HEX → GP 전환
+// Point → GP 전환
 exports.hexToGp = onCall(
   { secrets: [walletSecret, adminKeySecret] },
   wrapError(async (req) => {
@@ -2898,7 +2896,7 @@ exports.starsGrantProduct = onRequest(
 exports.adminRegisterSelf = onCall(wrapError(async (request) => {
   const uid = requireAuth(request);
 
-  // JWT 토큰 이메일 우선, 없으면 Admin SDK 조회
+  // JWT 포인트 이메일 우선, 없으면 Admin SDK 조회
   let email = request.auth?.token?.email?.toLowerCase();
   if (!email) {
     try {
@@ -3068,7 +3066,7 @@ exports.starsRedeemCommission = onRequest(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// [K-CULTURE ALLIANCE] Ledger & Merchant Reward Engine
+// [K-MOA] Ledger & Merchant Reward Engine
 // ════════════════════════════════════════════════════════════════════════════
 
 exports.apiTransferPoints = onCall(wrapError(async (request) => {

@@ -57,13 +57,13 @@
         ? "/register.html?mentor=" + encodeURIComponent(mentor)
         : "/register.html";
 
-      document.title = "🏆 JUMP 잭팟 " + hex + " HEX 당첨!";
+      document.title = "🏆 JUMP 잭팟 " + hex + " Point 당첨!";
 
       document.getElementById("cardInner").innerHTML = `
         <div class="badge">🎰 JUMP MERCHANT PAY JACKPOT</div>
         <img class="logo" src="/assets/images/jump/logo2.png" alt="JUMP" />
         <div class="headline">잭팟 당첨!</div>
-        <div class="amount">${hex} HEX</div>
+        <div class="amount">${hex} Point</div>
         <div class="fiat">≈ ${krw} KRW / ${vnd} VND</div>
         <hr>
         <div class="kv"><span class="k">👤 당첨자</span><span class="v" style="font-family:monospace;font-size:12px;">${addr}</span></div>
@@ -84,7 +84,7 @@
         if (navigator.share) {
           try {
             await navigator.share({
-              title: "🏆 잭팟 당첨! " + hex + " HEX",
+              title: "🏆 잭팟 당첨! " + hex + " Point",
               text: "≈ " + krw + " KRW / " + vnd + " VND · " + merchant,
               url: shareUrl,
             });

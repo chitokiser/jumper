@@ -1,5 +1,5 @@
 // /assets/js/pages/exchange.js
-// 토큰거래소 — HEX↔JUMP 거래 + 차트 (스왑 추가분은 exchange.swap.js)
+// 포인트 거래소 — Point↔JUMP 거래 + 차트 (스왑 추가분은 exchange.swap.js)
 
 import { auth, functions } from '../firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
@@ -15,7 +15,7 @@ function setText(id, v) {
   if (el) el.textContent = v;
 }
 
-/** HEX wei (18 decimals) 숫자를 최대 6자리 */
+/** Point wei (18 decimals) 숫자를 최대 6자리 */
 function fmtHex(wei) {
   if (!wei || wei === '0') return '0';
   const n = Number(BigInt(wei)) / 1e18;
@@ -85,7 +85,7 @@ function updateChartHeader(prices) {
 
   const last  = prices[prices.length - 1];
   const first = prices[0];
-  priceEl.textContent = last.toFixed(6) + ' HEX';
+  priceEl.textContent = last.toFixed(6) + ' Point';
   priceEl.className   = 'ex-ticker-price';   // 기본 색
 
   if (changeEl && first > 0) {
@@ -137,7 +137,7 @@ function renderChart(pricesRaw) {
     type: 'candlestick',
     data: {
       datasets: [{
-        label: 'JUMP/HEX',
+        label: 'JUMP/Point',
         data:  visData,
         color: {
           up:        'rgba(38,166,154,0.9)',
@@ -232,7 +232,7 @@ async function loadStatus() {
     const actLabel = { 0: '미등록', 1: '구매', 2: '구매+배당', 3: '완료' };
 
     // 현재가격 ROI = (price - BASE_PRICE) / BASE_PRICE × 100
-    // BASE_PRICE = 0.01 HEX = 1e16 wei
+    // BASE_PRICE = 0.01 Point = 1e16 wei
     const BASE    = 10000000000000000n;
     const priceBI = BigInt(_status.price || '0');
     const roiPct  = priceBI > BASE
@@ -320,7 +320,7 @@ async function loadStatus() {
       renderChart(_status.chart);
     }
 
-    // HEX 잔액을 스왑 패널에 동기화
+    // Point 잔액을 스왑 패널에 동기화
     if (window.__updateSwapHexBal) window.__updateSwapHexBal(fmtHex(_status.hexBalance));
 
     setText('exState', '');
@@ -362,7 +362,7 @@ function bindBuy() {
     const krwCost = amount * Number(_status.priceKrw || 0);
     const vndCost = amount * Number(_status.priceVnd || 0);
     previewEl.innerHTML =
-      `필요 HEX: <strong>${fmtHex(hexCost.toString())}</strong>` +
+      `필요 Point: <strong>${fmtHex(hexCost.toString())}</strong>` +
       (krwCost > 0 ? `<br>약 <strong>${krwCost.toLocaleString()}</strong>원` + (vndCost > 0 ? ` / <strong>${vndCost.toLocaleString()}</strong>동` : '') : '');
     previewEl.style.display = '';
   });
@@ -374,17 +374,17 @@ function bindBuy() {
       const hexCost = BigInt(_status.price) * BigInt(amount);
       const hexBal  = BigInt(_status.hexBalance || '0');
       if (hexBal < hexCost) {
-        alert(`HEX 잔액 부족\n필요: ${fmtHex(hexCost.toString())} HEX\n보유: ${fmtHex(_status.hexBalance)} HEX`);
+        alert(`Point 잔액 부족\n필요: ${fmtHex(hexCost.toString())} Point\n보유: ${fmtHex(_status.hexBalance)} Point`);
         return;
       }
-      if (!confirm(`JUMP ${amount}개 구매\n필요 HEX: ${fmtHex(hexCost.toString())}\n진행하시겠습니까?`)) return;
+      if (!confirm(`JUMP ${amount}개 구매\n필요 Point: ${fmtHex(hexCost.toString())}\n진행하시겠습니까?`)) return;
     }
     setLoading('btnBuy', true, '구매');
     setStatus('buyStatus', '처리 중...');
     try {
       const fn  = httpsCallable(functions, 'buyJumpToken');
       const res = await fn({ jumpAmount: amount });
-      setStatus('buyStatus', `완료! JUMP: ${fmtJump(res.data.jumpAmount)} / 사용 HEX: ${fmtHex(res.data.hexCost)}`);
+      setStatus('buyStatus', `완료! JUMP: ${fmtJump(res.data.jumpAmount)} / 사용 Point: ${fmtHex(res.data.hexCost)}`);
       await loadStatus();
     } catch (err) {
       setStatus('buyStatus', '실패: ' + (err.message || String(err)), true);
@@ -480,13 +480,13 @@ function bindClaim() {
     if (_status && BigInt(_status.pendingDividend || '0') === 0n) {
       alert('클레임할 배당이 없습니다'); return;
     }
-    if (!confirm(`배당 ${fmtHex(_status?.pendingDividend || '0')} HEX를 클레임합니다\n진행하시겠습니까?`)) return;
+    if (!confirm(`배당 ${fmtHex(_status?.pendingDividend || '0')} Point를 클레임합니다\n진행하시겠습니까?`)) return;
     setLoading('btnClaim', true, '클레임');
     setStatus('claimStatus', '처리 중...');
     try {
       const fn  = httpsCallable(functions, 'claimJumpDividend');
       const res = await fn();
-      setStatus('claimStatus', `완료! 수령 HEX: ${fmtHex(res.data.hexAmount)}`);
+      setStatus('claimStatus', `완료! 수령 Point: ${fmtHex(res.data.hexAmount)}`);
       await loadStatus();
     } catch (err) {
       setStatus('claimStatus', '실패: ' + (err.message || String(err)), true);

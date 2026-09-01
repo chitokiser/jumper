@@ -62,7 +62,7 @@
     .ac-form-full { grid-column: 1 / -1; }
     .ac-form-actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 4px; }
 
-    /* HEX 가격 미리보기 */
+    /* Point 가격 미리보기 */
     .ac-price-preview { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; font-size: 0.83rem; color: #065f46; display: none; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
     .ac-price-preview.active { display: flex; }
     .ac-price-preview span { white-space: nowrap; }
@@ -120,11 +120,11 @@
           </div>
           <div class="ac-stats-grid">
             <div class="ac-stat-card">
-              <div class="ac-stat-label">HEX 잔고</div>
+              <div class="ac-stat-label">포인트 잔고</div>
               <div class="ac-stat-value" id="statHexBal">—</div>
             </div>
             <div class="ac-stat-card">
-              <div class="ac-stat-label">인출 가능 HEX</div>
+              <div class="ac-stat-label">인출 가능 Point</div>
               <div class="ac-stat-value" id="statWithdrawable">—</div>
               <div class="ac-stat-sub">(총 적립 − 총 포인트 준비금)</div>
             </div>
@@ -145,7 +145,7 @@
               <div class="ac-stat-value" id="statMentorBps">—</div>
             </div>
             <div class="ac-stat-card">
-              <div class="ac-stat-label">환율 (1 HEX)</div>
+              <div class="ac-stat-label">환율 (1 Point)</div>
               <div class="ac-stat-value" id="statFxKrw">—</div>
               <div class="ac-stat-sub" id="statFxVnd">—</div>
             </div>
@@ -154,12 +154,12 @@
         </div>
       </section>
 
-      <!-- HEX 인출 -->
+      <!-- Point 인출 -->
       <section class="section">
         <div class="ac-section">
-          <div class="ac-section-title">HEX 인출 (관리자 지갑으로)</div>
+          <div class="ac-section-title">Point 인출 (관리자 지갑으로)</div>
           <div class="ac-withdraw-row">
-            <input type="number" id="inputWithdrawHex" placeholder="HEX 수량 (예: 1.5)" step="0.0001" min="0" />
+            <input type="number" id="inputWithdrawHex" placeholder="Point 수량 (예: 1.5)" step="0.0001" min="0" />
             <button class="ac-btn ac-btn-primary" id="btnWithdrawHex" type="button">인출</button>
             <button class="ac-btn ac-btn-ghost" id="btnWithdrawHexMax" type="button">최대</button>
           </div>
@@ -189,7 +189,7 @@
             <span id="connectedWalletLabel" style="font-size:0.8rem;color:#6b7280;margin-left:8px;"></span>
           </div>
           <div class="ac-row">
-            <span class="ac-label">회비 (HEX)</span>
+            <span class="ac-label">회비 (Point)</span>
             <input type="number" id="inputSetFee" class="ac-input" min="0" step="0.0001" placeholder="예: 10" style="max-width:140px;" />
             <button class="ac-btn ac-btn-primary" id="btnSetFee" type="button">변경</button>
           </div>
@@ -227,12 +227,12 @@
               <input type="text" id="inputName" placeholder="상품명" />
             </div>
             <div class="ac-form-field">
-              <label>HEX 가격 *</label>
-              <input type="number" id="inputHexPrice" placeholder="HEX 수량 (예: 1.5)" step="0.0001" min="0" />
+              <label>Point 가격 *</label>
+              <input type="number" id="inputHexPrice" placeholder="Point 수량 (예: 1.5)" step="0.0001" min="0" />
             </div>
             <div class="ac-form-full">
               <div class="ac-price-preview" id="pricePreview">
-                <span>HEX: <strong id="prevHex">—</strong></span>
+                <span>Point: <strong id="prevHex">—</strong></span>
                 <span>KRW: <strong id="prevKrw">—</strong></span>
                 <span>VND: <strong id="prevVnd">—</strong></span>
               </div>
@@ -323,7 +323,7 @@
                   <th>상품명</th>
                   <th>구매자</th>
                   <th>VND</th>
-                  <th>HEX</th>
+                  <th>Point</th>
                   <th>상태</th>
                   <th>상태 변경</th>
                 </tr>
@@ -348,7 +348,7 @@
           <form id="voucherForm" autocomplete="off">
             <div class="ac-form-grid">
               <div class="ac-form-field">
-                <label for="voucherHexPrice">HEX 가격 (wei)</label>
+                <label for="voucherHexPrice">Point 가격 (wei)</label>
                 <input type="text" id="voucherHexPrice" class="ac-input" placeholder="예: 1000000000000000000" />
               </div>
               <div class="ac-form-field">

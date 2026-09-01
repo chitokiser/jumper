@@ -13,7 +13,7 @@ const { ethers } = require('ethers');
 
 // ── 체인 설정 ─────────────────────────────────────────────────────────
 const RPC_URL         = 'https://opbnb-mainnet-rpc.bnbchain.org';
-const HEX_ADDRESS     = '0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464'; // HEX 토큰
+const Point_ADDRESS     = '0x41F2Ea9F4eF7c4E35ba1a8438fC80937eD4E5464'; // Point 포인트
 const JUMP_BANK_ADDR  = '0x16752f8948ff2caA02e756c7C8fF0E04887A3a0E'; // jumpBank
 
 // ── 컨트랙트 바이트코드 + ABI ─────────────────────────────────────────
@@ -30,10 +30,10 @@ const ABI = [
   'function ownerDepositHex(uint256 amountWei) external',
   'function owner() external view returns (address)',
 
-  // HEX approve
+  // Point approve
 ];
 
-const HEX_ABI = [
+const Point_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function allowance(address owner, address spender) external view returns (uint256)',
   'function balanceOf(address account) external view returns (uint256)',
@@ -54,7 +54,7 @@ async function main() {
 
   const provider  = new ethers.JsonRpcProvider(RPC_URL);
   const wallet    = new ethers.Wallet(privateKey, provider);
-  const hexToken  = new ethers.Contract(HEX_ADDRESS, HEX_ABI, wallet);
+  const hexToken  = new ethers.Contract(Point_ADDRESS, Point_ABI, wallet);
 
   console.log('\n📋 배포 정보');
   console.log('  배포자(owner)  :', wallet.address);
@@ -62,8 +62,8 @@ async function main() {
   const bnbBal = await provider.getBalance(wallet.address);
   const hexBal = await hexToken.balanceOf(wallet.address);
   console.log('  BNB 잔액       :', ethers.formatEther(bnbBal), 'BNB');
-  console.log('  HEX 잔액       :', ethers.formatEther(hexBal), 'HEX');
-  console.log('  hexToken       :', HEX_ADDRESS);
+  console.log('  Point 잔액       :', ethers.formatEther(hexBal), 'Point');
+  console.log('  hexToken       :', Point_ADDRESS);
   console.log('  bootstrapMentor:', wallet.address, '(배포자 = 부트스트랩 멘토)');
   console.log('  jumpBank       :', JUMP_BANK_ADDR);
 
@@ -74,7 +74,7 @@ async function main() {
   console.log('\n🚀 [1/4] 컨트랙트 배포 중...');
   const factory  = new ethers.ContractFactory(ABI, BYTECODE, wallet);
   const contract = await factory.deploy(
-    HEX_ADDRESS,     // hexToken
+    Point_ADDRESS,     // hexToken
     wallet.address,  // bootstrapMentor (배포자)
     JUMP_BANK_ADDR,  // jumpBank
   );
@@ -92,14 +92,14 @@ async function main() {
     3000,           // mentorShareBps   30%
     3000,           // jackpotShareBps  30%
     3000,           // uplineReserveBps 30%
-    ethers.parseEther('100'), // taxThresholdWei  100 HEX
+    ethers.parseEther('100'), // taxThresholdWei  100 Point
   );
   await tx2.wait();
   console.log('  ✅ setParams 완료');
 
-  // ── 3. HEX approve + ownerDepositHex ─────────────────────────────
-  console.log('\n💰 [3/4] HEX approve → ownerDepositHex...');
-  const depositAmount = ethers.parseEther('800'); // 800 HEX 충전 (조정 가능)
+  // ── 3. Point approve + ownerDepositHex ─────────────────────────────
+  console.log('\n💰 [3/4] Point approve → ownerDepositHex...');
+  const depositAmount = ethers.parseEther('800'); // 800 Point 충전 (조정 가능)
   const allowance = await hexToken.allowance(wallet.address, newAddr);
   if (allowance < depositAmount) {
     const approveTx = await hexToken.approve(newAddr, ethers.MaxUint256);
@@ -108,7 +108,7 @@ async function main() {
   }
   const depositTx = await contract.ownerDepositHex(depositAmount);
   await depositTx.wait();
-  console.log('  ✅ ownerDepositHex', ethers.formatEther(depositAmount), 'HEX 충전 완료');
+  console.log('  ✅ ownerDepositHex', ethers.formatEther(depositAmount), 'Point 충전 완료');
 
   // ── 4. approveHex.js용 — 관리자 → 플랫폼 approve ─────────────────
   // (adminCreditHex 호출 시 필요한 별도 approve는 approveHex.js에서 처리)

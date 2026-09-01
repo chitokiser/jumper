@@ -22,7 +22,7 @@ const { requireAdmin } = require('../wallet/admin');
 const db = admin.firestore();
 
 // ─────────────────────────────────────────────
-// 환율 (KRW → HEX wei)
+// 환율 (KRW → Point wei)
 // ─────────────────────────────────────────────
 let _fxCache = { rate: 0, ts: 0 };
 const FX_TTL_MS = 600_000;
@@ -120,7 +120,7 @@ async function buyCoopProduct(uid, { productId }, masterSecret) {
   if (hexBal < hexWei) {
     const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
     const need = parseFloat(ethers.formatEther(hexWei)).toFixed(4);
-    throw new Error(`HEX 잔액 부족. 필요: ${need} HEX, 보유: ${have} HEX`);
+    throw new Error(`Point 잔액 부족. 필요: ${need} Point, 보유: ${have} Point`);
   }
 
   // BNB 가스비 보충
@@ -133,7 +133,7 @@ async function buyCoopProduct(uid, { productId }, masterSecret) {
     await fundTx.wait();
   }
 
-  // HEX 전송 (수탁 지갑 → 관리자 지갑)
+  // Point 전송 (수탁 지갑 → 관리자 지갑)
   const privateKey = decrypt(walletData.encryptedKey, masterSecret);
   const signer     = walletFromKey(privateKey, provider);
   const hexSigned  = getHexContract(signer);
@@ -215,10 +215,10 @@ async function adminSaveCoopProduct(uid, data) {
   await requireAdmin(uid);
   const { id, type, name, description, hexPrice, imageUrl, stock, active, burnFeeBps } = data;
   if (!name || !String(name).trim()) throw new Error('상품명이 필요합니다');
-  if (!hexPrice) throw new Error('HEX 가격이 필요합니다');
+  if (!hexPrice) throw new Error('Point 가격이 필요합니다');
   let hexPriceBig;
-  try { hexPriceBig = BigInt(hexPrice); } catch { throw new Error('유효하지 않은 HEX 가격 (wei 문자열)'); }
-  if (hexPriceBig <= 0n) throw new Error('HEX 가격은 0보다 커야 합니다');
+  try { hexPriceBig = BigInt(hexPrice); } catch { throw new Error('유효하지 않은 Point 가격 (wei 문자열)'); }
+  if (hexPriceBig <= 0n) throw new Error('Point 가격은 0보다 커야 합니다');
   const stockNum = Number(stock);
   if (!Number.isFinite(stockNum) || stockNum < -1) throw new Error('유효하지 않은 재고 (-1=무제한)');
   const VALID_TYPES = ['general', 'voucher', 'treasure_package'];
@@ -317,7 +317,7 @@ async function coopJoinMall(uid, masterSecret) {
   if (hexBal < fee) {
     const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
     const need = parseFloat(ethers.formatEther(fee)).toFixed(4);
-    throw new Error(`HEX 잔액 부족. 필요: ${need} HEX, 보유: ${have} HEX`);
+    throw new Error(`Point 잔액 부족. 필요: ${need} Point, 보유: ${have} Point`);
   }
 
   const adminWallet = getAdminWallet();
@@ -416,7 +416,7 @@ async function coopBuyOnChain(uid, { productId }, masterSecret) {
   if (hexBal < hexWei) {
     const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
     const need = parseFloat(ethers.formatEther(hexWei)).toFixed(4);
-    throw new Error(`HEX 잔액 부족. 필요: ${need} HEX, 보유: ${have} HEX`);
+    throw new Error(`Point 잔액 부족. 필요: ${need} Point, 보유: ${have} Point`);
   }
 
   const adminWallet = getAdminWallet();
@@ -548,7 +548,7 @@ async function coopBuyTreasurePackage(uid, { productId, treasureName, lat, lng, 
   if (hexBal < hexWei) {
     const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
     const need = parseFloat(ethers.formatEther(hexWei)).toFixed(4);
-    throw new Error(`HEX 잔액 부족. 필요: ${need} HEX, 보유: ${have} HEX`);
+    throw new Error(`Point 잔액 부족. 필요: ${need} Point, 보유: ${have} Point`);
   }
 
   const adminWallet = getAdminWallet();
@@ -738,7 +738,7 @@ async function getRandomAutoReferrer() {
 }
 
 // ─────────────────────────────────────────────
-// 9. CoopMall 포인트 → HEX 전환
+// 9. CoopMall 포인트 → Point 전환
 // ─────────────────────────────────────────────
 async function coopConvertPoints(uid, { ptsWei }, masterSecret) {
   if (!ptsWei || BigInt(ptsWei) <= 0n) throw new Error('전환할 포인트를 입력하세요');
@@ -834,7 +834,7 @@ async function coopAdminGetStats(uid) {
     fxKrwPerHexScaled: fxKrw.toString(),
     fxVndPerHexScaled: fxVnd.toString(),
     fxScale:           Number(fxScale),
-    // 1 HEX = 1 USD 가정 — 온체인 환율 미설정 시 fallback
+    // 1 Point = 1 USD 가정 — 온체인 환율 미설정 시 fallback
     fxKrwPerHexFallback: fxRates?.krwPerUsd || 0,
     fxVndPerHexFallback: fxRates?.vndPerUsd || 0,
   };
@@ -859,7 +859,7 @@ async function coopAdminUpdateOrder(uid, { orderId, status, note }) {
 }
 
 // ─────────────────────────────────────────────
-// 12. 관리자: HEX 인출
+// 12. 관리자: Point 인출
 // ─────────────────────────────────────────────
 async function coopAdminWithdrawHex(uid, { amountWei }) {
   await requireAdmin(uid);
@@ -1043,7 +1043,7 @@ async function coopBuyVoucher(uid, { templateId }, masterSecret) {
   if (hexBal < hexPrice) {
     const have = parseFloat(ethers.formatEther(hexBal)).toFixed(4);
     const need = parseFloat(ethers.formatEther(hexPrice)).toFixed(4);
-    throw new Error(`HEX 잔액 부족. 필요: ${need} HEX, 보유: ${have} HEX`);
+    throw new Error(`Point 잔액 부족. 필요: ${need} Point, 보유: ${have} Point`);
   }
 
   const adminWallet = getAdminWallet();
@@ -1298,9 +1298,9 @@ async function coopTransferVoucher(uid, { docId, voucherId, toAddress, sourceCol
 }
 
 // ─────────────────────────────────────────────
-// 20. 유저: 바우처 소각 → HEX 환급
-//     - 온체인 NFT 바우처: burnVoucher() 호출 (컨트랙트가 HEX 반환)
-//     - 상품 바우처: admin 지갑에서 직접 HEX 전송
+// 20. 유저: 바우처 소각 → Point 환급
+//     - 온체인 NFT 바우처: burnVoucher() 호출 (컨트랙트가 Point 반환)
+//     - 상품 바우처: admin 지갑에서 직접 Point 전송
 // ─────────────────────────────────────────────
 async function coopBurnVoucher(uid, { docId, voucherId, sourceCollection }, masterSecret) {
   // ── 커뮤니티 행사 바우처: 구매 금액(hexWei) 환급 후 소각 ─────────
@@ -1342,7 +1342,7 @@ async function coopBurnVoucher(uid, { docId, voucherId, sourceCollection }, mast
     return { docId, txHash: null, hexRefund: '0' };
   }
 
-  // ── 게임 바우처 (treasure_voucher_logs): HEX 환급 없이 소각 ───────
+  // ── 게임 바우처 (treasure_voucher_logs): Point 환급 없이 소각 ───────
   if (sourceCollection === 'treasure_voucher_logs' && docId) {
     const ref  = db.collection('treasure_voucher_logs').doc(docId);
     const snap = await ref.get();
@@ -1365,7 +1365,7 @@ async function coopBurnVoucher(uid, { docId, voucherId, sourceCollection }, mast
   const provider    = getProvider();
   const adminWallet = getAdminWallet();
 
-  // ── 상품 바우처: admin 지갑 → 유저 지갑 HEX 직접 전송 ────────────
+  // ── 상품 바우처: admin 지갑 → 유저 지갑 Point 직접 전송 ────────────
   if (!voucherId && docId) {
     // coopVouchers 먼저 조회, 없으면 coopOrders fallback
     let data, docRef, isOrderSource = false;
@@ -1401,12 +1401,12 @@ async function coopBurnVoucher(uid, { docId, voucherId, sourceCollection }, mast
     const refund     = hexWei - fee;
     if (refund <= 0n) throw new Error('환급 금액이 없습니다');
 
-    // admin 지갑 HEX 잔액 확인
+    // admin 지갑 Point 잔액 확인
     const hexToken = getHexContract(adminWallet);
     const adminBal = await hexToken.balanceOf(adminWallet.address);
-    if (adminBal < refund) throw new Error('관리자 지갑 HEX 잔액 부족 — 관리자에게 문의하세요');
+    if (adminBal < refund) throw new Error('관리자 지갑 Point 잔액 부족 — 관리자에게 문의하세요');
 
-    // HEX 전송
+    // Point 전송
     const transferTx = await hexToken.transfer(walletData.address, refund, { gasLimit: 80000n });
     const receipt    = await transferTx.wait();
 

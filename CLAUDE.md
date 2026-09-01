@@ -2,7 +2,7 @@
 
 ## 필수
 - 수정 전 파일 전체 Read 필수
-- 가격 표시: KRW / VND / HEX 동시
+- 가격 표시: KRW / VND / Point 동시
 - pending changes 10개↑ → git push
 - 변경 20개↑ → git push + `cd game-server && railway up`
 - Functions 배포: `firebase deploy --only functions` (단일 함수 배포 금지)
@@ -74,8 +74,8 @@
 
 ## 블록체인
 - opBNB Mainnet / ethers.js v6
-- HEX = 플랫폼 포인트 (18dec), JUMP = 거래토큰 (0dec), BNB = gas
-- 가격 입력은 HEX 기준, 환율 하드코딩 금지 (Firestore 또는 컨트랙트 조회)
+- Point = 플랫폼 포인트 (18dec), JUMP = 거래포인트 (0dec), BNB = gas
+- 가격 입력은 Point 기준, 환율 하드코딩 금지 (Firestore 또는 컨트랙트 조회)
 
 ---
 
@@ -104,7 +104,7 @@
 ---
 
 ## 정회원
-- coop.html 10 HEX 결제 → 1개월 정회원
+- coop.html 10 Point 결제 → 1개월 정회원
 - 정회원 전용 보물박스는 정회원만 획득 가능
 
 ---
@@ -175,7 +175,7 @@
 
 ## SEO (공개 페이지 전부)
 - title / description / og / twitter 메타 필수
-- title 형식: `"페이지명 | K-CULTURE ALLIANCE — 부제"`
+- title 형식: `"페이지명 | K-MOA — 부제"`
 - canonical URL 필수, sitemap.xml에 admin/* 제외
 
 ---

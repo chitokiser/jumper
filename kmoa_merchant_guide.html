@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-MOA Merchant Developer Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.6);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #fcd34d;
+            --primary: #3b82f6;
+            --danger: #ef4444;
+            --code-bg: #020617;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 50px 20px;
+        }
+
+        h1 {
+            color: var(--accent);
+            font-size: 2.8rem;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.15rem;
+            margin-bottom: 60px;
+        }
+
+        h2 {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 12px;
+            margin-top: 40px;
+            color: #fff;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card.highlight {
+            border-color: rgba(252, 211, 77, 0.3);
+            background: rgba(252, 211, 77, 0.03);
+        }
+
+        .endpoint {
+            display: inline-block;
+            background: #1e293b;
+            color: #bae6fd;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            margin: 12px 0;
+            word-break: break-all;
+        }
+
+        .method {
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-right: 12px;
+        }
+
+        .method.post {
+            background: #10b981;
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 20px;
+            border-radius: 8px;
+            color: #a5b4fc;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.95rem;
+        }
+
+        code {
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .step-list {
+            margin: 0;
+            padding-left: 20px;
+            color: var(--text-muted);
+        }
+
+        .step-list li {
+            margin-bottom: 12px;
+        }
+
+        .step-list strong {
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>K-MOA Merchant API Guide</h1>
+        <p class="subtitle">제휴 웹사이트(Zentaro, 반찬나라 등) 개발자를 위한 K-MOA 인증 및 결제 연동 가이드</p>
+
+        <div class="card highlight">
+            <h2 style="margin-top:0; border:none; color: var(--accent);">🛠 연동을 위해 K-MOA 측에 요청해야 할 2가지</h2>
+            <p style="color: var(--text-muted); margin-top: 0;">개발자는 연동을 시작하기 전, K-MOA 본사 운영팀으로부터 아래 정보를 발급받아 환경 변수에
+                등록해야 합니다.</p>
+            <ul class="step-list">
+                <li><strong>Merchant ID (가맹점 고유 식별자):</strong> 결제 대금 정산의 기준이 되는 상점 고유 ID (예:
+                    <code>store_zentaro_01</code>)</li>
+                <li><strong>Merchant API Secret:</strong> API 서버 간 통신 시 헤더에 담아야 하는 인증 암호 (예:
+                    <code>Bearer sk_kmoa_...</code>)</li>
+            </ul>
+        </div>
+
+        <h2>1. 아키텍처 개요 (No Web3)</h2>
+        <div class="card">
+            <p style="margin-top:0; color: var(--text-muted);">
+                K-MOA는 더 이상 복잡한 지갑 주소나 온체인 트랜잭션을 사용하지 않습니다. 모든 유저는 Firebase Auth의 고유 <strong>UID</strong>로 식별되며, 유저의 포인트
+                잔액 및 결제 트랜잭션은 100% Firebase Firestore 기반으로 실시간(0.1초 이내) 원자적 처리됩니다.<br><br>
+                고객이 제휴 사이트에서 결제를 요청할 때, 아래의 REST API를 호출하여 고객의 UID와 차감할 금액(VND)을 전달하면 K-MOA 서버가 알아서 수수료 분배와 정산을 처리합니다.
+            </p>
+        </div>
+
+        <h2>2. REST API 레퍼런스</h2>
+
+        <div class="card">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <span class="method">GET</span>
+                <strong style="font-size: 1.25rem;">회원 포인트 조회</strong>
+            </div>
+            <p style="color: var(--text-muted); margin-top: 0;">유저의 UID를 쏴주면 현재 결제 가능한 K-MOA 포인트를 반환합니다.</p>
+            <div class="endpoint">https://us-central1-&lt;PROJECT_ID&gt;.cloudfunctions.net/api/v1/wallet/{uid}</div>
+
+            <p style="margin-bottom:4px;"><strong>요청 헤더 (Headers)</strong></p>
+            <pre><code>Authorization: Bearer &lt;MERCHANT_API_SECRET&gt;</code></pre>
+
+            <p style="margin-bottom:4px;"><strong>응답 예시 (200 OK)</strong></p>
+            <pre><code>{
+  "success": true,
+  "data": {
+    "uid": "firebase_uid_12345",
+    "vndBalance": 500000,    // 베트남동 기준 충전(결제 가능) 잔액
+    "kcaPoints": 1250        // 리워드 게임 포인트
+  }
+}</code></pre>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <span class="method post">POST</span>
+                <strong style="font-size: 1.25rem;">가맹점 포인트 결제 승인</strong>
+            </div>
+            <p style="color: var(--text-muted); margin-top: 0;">해당 UID 유저의 K-MOA 포인트 잔고에서 금액을 차감하고, 가맹점의 정산 대금표에 기록합니다.
+            </p>
+            <div class="endpoint">https://us-central1-&lt;PROJECT_ID&gt;.cloudfunctions.net/api/v1/wallet/pay</div>
+
+            <p style="margin-bottom:4px;"><strong>요청 헤더 (Headers)</strong></p>
+            <pre><code>Authorization: Bearer &lt;MERCHANT_API_SECRET&gt;
+Content-Type: application/json</code></pre>
+
+            <p style="margin-bottom:4px;"><strong>요청 바디 (Request Body)</strong></p>
+            <pre><code>{
+  "uid": "firebase_uid_12345",   // 결제를 요청한 유저 UID
+  "merchantId": "store_zentaro_01", // 발급받은 가맹점 고유 ID
+  "amount": 100000,              // 결제 금액 (VND 기준 숫자)
+  "orderId": "your_order_88291"  // 제휴사 측 고유 주문 번호 (선택)
+}</code></pre>
+
+            <p style="margin-bottom:4px;"><strong>응답 예시 (200 OK)</strong></p>
+            <pre><code>{
+  "success": true,
+  "transactionId": "tx_abc123456",
+  "receipt": {
+    "paidAmount": 100000,
+    "remainingBalance": 400000,
+    "timestamp": "2026-09-01T20:30:00Z"
+  }
+}</code></pre>
+        </div>
+
+        <h2>3. 🚀 마케팅: 제휴사 추천인 자동 가입 링크</h2>
+        <div class="card">
+            <p style="color: var(--text-muted); margin-top: 0;">제휴 사이트 홈페이지에서 유저를 K-MOA로 보낼 때, 제휴사를
+                <strong>추천인(Mentor)</strong>으로 자동 등록시킬 수 있습니다. 고객이 아래 링크로 가입하면 즉시 보너스 포인트가 지급되며 가맹점과 강력하게 연동됩니다.</p>
+            <pre><code>&lt;!-- 파라미터 mentor=제휴사UID 를 활용하세요 --&gt;
+&lt;a href="https://[K-MOA 도메인]/register.html?mentor=store_zentaro_01" target="_blank"&gt;
+  K-MOA 멤버십 가입하고 1,000 포인트 받기!
+&lt;/a&gt;</code></pre>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

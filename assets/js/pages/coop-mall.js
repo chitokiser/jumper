@@ -1,4 +1,4 @@
-// coop-mall.js: 조합 폐쇄몰 메인 로직 (회원 인증, 상품목록, HEX 결제)
+// coop-mall.js: 조합 폐쇄몰 메인 로직 (회원 인증, 상품목록, Point 결제)
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
@@ -27,7 +27,7 @@ async function loadProducts() {
   // 임시 더미 데이터
   return [
     { id: "p1", name: "조합 한정 상품1", priceHex: "10", desc: "회원만 구매 가능" },
-    { id: "p2", name: "조합 한정 상품2", priceHex: "25", desc: "HEX로만 결제 가능" }
+    { id: "p2", name: "조합 한정 상품2", priceHex: "25", desc: "Point로만 결제 가능" }
   ];
 }
 
@@ -37,13 +37,13 @@ function renderProducts(products) {
     <div class="product-card">
       <h3>${p.name}</h3>
       <p>${p.desc}</p>
-      <div>가격: <b>${p.priceHex} HEX</b></div>
-      <button class="btn btn--primary" onclick="window.buyProduct('${p.id}')">HEX 결제</button>
+      <div>가격: <b>${p.priceHex} Point</b></div>
+      <button class="btn btn--primary" onclick="window.buyProduct('${p.id}')">Point 결제</button>
     </div>
   `).join("");
 }
 
-// HEX 결제 (스마트컨트랙트 연동)
+// Point 결제 (스마트컨트랙트 연동)
 window.buyProduct = async function(productId) {
   coopMallNotice.style.display = "block";
   coopMallNotice.textContent = "결제 처리 중...";

@@ -367,7 +367,7 @@ async function renderVoucherBox(d) {
         buyBtn.textContent = '처리 중...';
         try {
           const res = await fnBuyVoucher({ eventId: d.id });
-          alert(`✅ 구매 완료!\n${res.data.amountHex} HEX 결제\nTxHash: ${res.data.txHash}`);
+          alert(`✅ 구매 완료!\n${res.data.amountHex} Point 결제\nTxHash: ${res.data.txHash}`);
           renderVoucherBox(d);
         } catch (err) {
           alert('구매 오류: ' + (err.message || err));

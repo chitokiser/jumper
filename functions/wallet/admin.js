@@ -4,7 +4,7 @@
 // 아래 네 가지 중 하나라도 해당하면 관리자로 인정:
 //   1) users/{uid}.isAdmin === true
 //   2) admins/{uid} 문서 존재
-//   3) JWT 토큰에 포함된 이메일 직접 체크 (tokenEmail)
+//   3) JWT 포인트에 포함된 이메일 직접 체크 (tokenEmail)
 //   4) Firebase Auth Admin SDK 이메일 조회
 
 'use strict';
@@ -39,7 +39,7 @@ async function requireAdmin(uid, tokenEmail) {
   const adminSnap = await db.collection('admins').doc(uid).get();
   if (adminSnap.exists) return;
 
-  // 3) JWT 토큰 이메일 직접 체크 (Teleport custom token 포함)
+  // 3) JWT 포인트 이메일 직접 체크 (Teleport custom token 포함)
   if (tokenEmail && ADMIN_EMAILS.includes(tokenEmail.toLowerCase())) return;
 
   // 4) Firebase Auth Admin SDK로 이메일 조회

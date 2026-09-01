@@ -34,7 +34,7 @@ function escHtml(s) {
 function formatHexForUi(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return "-";
-  return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })} HEX`;
+  return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })} Point`;
 }
 
 function formatCount(v) {
@@ -61,27 +61,27 @@ async function getFxRates() {
 }
 
 function fmtJackpotHex(hexVal) {
-  return `${hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} HEX`;
+  return `${hexVal.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} Point`;
 }
 
 function setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, rewardText }) {
-  const valueEl   = $("jackpotDisplayValue");
-  const fiatEl    = $("jackpotFiatValue");
+  const valueEl = $("jackpotDisplayValue");
+  const fiatEl = $("jackpotFiatValue");
   const updatedEl = $("jackpotUpdated");
-  const winnerEl  = $("jackpotWinnerCount");
+  const winnerEl = $("jackpotWinnerCount");
   const highestEl = $("jackpotHighestWin");
 
-  if (valueEl)   valueEl.textContent   = valueText   || "-";
-  if (fiatEl)    fiatEl.textContent    = fiatText    || "";
-  if (updatedEl) updatedEl.innerHTML   = `<span class="jackpot-dot"></span>${escHtml(updatedText || "")}`;
-  if (winnerEl)  winnerEl.textContent  = winnerCountText || "-";
-  if (highestEl) highestEl.textContent = rewardText  || _t('item_jackpot');
+  if (valueEl) valueEl.textContent = valueText || "-";
+  if (fiatEl) fiatEl.textContent = fiatText || "";
+  if (updatedEl) updatedEl.innerHTML = `<span class="jackpot-dot"></span>${escHtml(updatedText || "")}`;
+  if (winnerEl) winnerEl.textContent = winnerCountText || "-";
+  if (highestEl) highestEl.textContent = rewardText || _t('item_jackpot');
 }
 
 // 컨트랙트에서 직접 jackpotAccWei 조회 (eth_call, 라이브러리 불필요)
 const JACKPOT_CONTRACT = "0x4d83A7764428fd1c116062aBb60c329E0E29f490";
-const JACKPOT_RPC      = "https://opbnb-mainnet-rpc.bnbchain.org";
-const JACKPOT_ACC_SEL  = "0x84eba628"; // keccak256("jackpotAccWei()")[:4]
+const JACKPOT_RPC = "https://opbnb-mainnet-rpc.bnbchain.org";
+const JACKPOT_ACC_SEL = "0x84eba628"; // keccak256("jackpotAccWei()")[:4]
 
 async function fetchJackpotAccWeiOnChain() {
   const res = await fetch(JACKPOT_RPC, {
@@ -115,29 +115,29 @@ async function loadJackpotStats() {
     _fxCache = fx;
 
     // 누적 잭팟 금액: 온체인 직접 조회 우선, 캐시 폴백
-    const weiStr  = cfg.jackpotAccWei || "0";
-    const weiVal  = onChainWei !== null ? onChainWei : BigInt(weiStr);
-    const hexVal  = Number(weiVal) / 1e18;
-    const krwStr  = Math.round(hexVal * fx.krw).toLocaleString("ko-KR");
-    const vndStr  = Math.round(hexVal * fx.vnd).toLocaleString("ko-KR");
+    const weiStr = cfg.jackpotAccWei || "0";
+    const weiVal = onChainWei !== null ? onChainWei : BigInt(weiStr);
+    const hexVal = Number(weiVal) / 1e18;
+    const krwStr = Math.round(hexVal * fx.krw).toLocaleString("ko-KR");
+    const vndStr = Math.round(hexVal * fx.vnd).toLocaleString("ko-KR");
 
     const count = winsSnap.size;
     const now = new Date();
     setJackpotUi({
-      valueText:       hexVal > 0 ? fmtJackpotHex(hexVal) : "0 HEX",
-      fiatText:        hexVal > 0 ? _t('fiat_approx', krwStr, vndStr) : _t('fiat_no_jackpot'),
-      updatedText:     _t('time_basis', now.toLocaleTimeString([], { hour12: false })),
+      valueText: hexVal > 0 ? `${vndStr} VND` : "0 VND",
+      fiatText: hexVal > 0 ? _t('fiat_approx', fmtJackpotHex(hexVal), krwStr + " KRW") : _t('fiat_no_jackpot'),
+      updatedText: _t('time_basis', now.toLocaleTimeString([], { hour12: false })),
       winnerCountText: count > 0 ? `${count.toLocaleString()}명` : "-",
-      rewardText:      _t('item_jackpot'),
+      rewardText: _t('item_jackpot'),
     });
   } catch (e) {
     console.warn("loadJackpotStats failed:", e);
     setJackpotUi({
-      valueText:       "-",
-      fiatText:        "",
-      updatedText:     _t('jackpot_error'),
+      valueText: "-",
+      fiatText: "",
+      updatedText: _t('jackpot_error'),
       winnerCountText: "-",
-      rewardText:      _t('item_jackpot'),
+      rewardText: _t('item_jackpot'),
     });
   }
 }
@@ -170,15 +170,15 @@ async function loadJackpotWinners() {
       const createdAt = r.createdAt?.toDate ? r.createdAt.toDate() : null;
       const dateStr = createdAt
         ? createdAt.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) +
-          " " +
-          createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
+        " " +
+        createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
         : "-";
       const items = [];
       const ptsWei = BigInt(r.onchainJackpotPointsWei || "0");
       if (ptsWei > 0n) items.push(`🪙 ${(Number(ptsWei) / 1e18).toFixed(6)} ${_t('hex_points')}`);
-      if ((r.potionCount   || 0) > 0) items.push(_t('red_potion', r.potionCount));
+      if ((r.potionCount || 0) > 0) items.push(_t('red_potion', r.potionCount));
       if ((r.mpPotionCount || 0) > 0) items.push(_t('mp_potion', r.mpPotionCount));
-      if ((r.reviveAdded   || 0) > 0) items.push(_t('revive', r.reviveAdded));
+      if ((r.reviveAdded || 0) > 0) items.push(_t('revive', r.reviveAdded));
       const ptsWeiForVal = BigInt(r.onchainJackpotPointsWei || "0");
       const hexVal = Number(ptsWeiForVal) / 1e18;
       winners.push({
@@ -408,7 +408,7 @@ function openShareModal(winner) {
         useCORS: true,
         backgroundColor: null,
         logging: false,
-        ignoreElements: (el) => ["jpShareImg","jpShareClose","jpShareKakao","jpShareX","jpShareFb","jpShareTg","jpShareLine","jpShareCopy","jpShareCloseBtn"].includes(el.id),
+        ignoreElements: (el) => ["jpShareImg", "jpShareClose", "jpShareKakao", "jpShareX", "jpShareFb", "jpShareTg", "jpShareLine", "jpShareCopy", "jpShareCloseBtn"].includes(el.id),
       });
       const url = URL.createObjectURL(await new Promise(r => canvas.toBlob(r, "image/png")));
       const a = document.createElement("a");
@@ -662,16 +662,18 @@ function parseLatLng(gmapUrl) {
       const m2 = q.match(/^(-?\d+\.\d+),(-?\d+\.\d+)$/);
       if (m2) return { lat: parseFloat(m2[1]), lng: parseFloat(m2[2]) };
     }
-  } catch {}
+  } catch { }
   return null;
 }
 
 function makeSvgIcon(emoji, fillColor, size = 36) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="${fillColor}" stroke="#fff" stroke-width="2"/>
-    <text x="${size/2}" y="${size*0.68}" font-size="${size*0.5}" text-anchor="middle">${emoji}</text></svg>`;
-  return { url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-           scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size/2, size) };
+    <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 1}" fill="${fillColor}" stroke="#fff" stroke-width="2"/>
+    <text x="${size / 2}" y="${size * 0.68}" font-size="${size * 0.5}" text-anchor="middle">${emoji}</text></svg>`;
+  return {
+    url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size / 2, size)
+  };
 }
 
 async function loadPlacesMap() {
@@ -723,11 +725,11 @@ async function loadPlacesMap() {
         `<div style="max-width:240px;font-size:13px;line-height:1.5;">
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name || "")}</div>
           ${p.type ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ""}
-          ${p.area    ? `<div style="color:#6b7280;">${_t('area_label')} ${escHtml(p.area)}</div>` : ""}
+          ${p.area ? `<div style="color:#6b7280;">${_t('area_label')} ${escHtml(p.area)}</div>` : ""}
           ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ""}
-          ${p.phone   ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
-          ${p.note    ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ""}
-          ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;">${_t('view_map')}</a>` : ""}
+          ${p.phone ? `<div style="color:#374151;">${escHtml(p.phone)}</div>` : ""}
+          ${p.note ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ""}
+          ${p.gmap ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;">${_t('view_map')}</a>` : ""}
         </div>`);
     });
 
@@ -745,11 +747,11 @@ async function loadPlacesMap() {
         `<div style="max-width:240px;font-size:13px;line-height:1.5;">
           ${m.imageUrl ? `<img src="${escHtml(m.imageUrl)}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;">` : ""}
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(m.name || _t('merchant_name_fallback'))}</div>
-          ${m.career      ? `<div style="color:#f59e0b;font-size:12px;">${escHtml(m.career)}</div>` : ""}
-          ${m.region      ? `<div style="color:#6b7280;">📍 ${escHtml(m.region)}</div>` : ""}
-          ${m.phone       ? `<div style="color:#374151;">📞 ${escHtml(m.phone)}</div>` : ""}
+          ${m.career ? `<div style="color:#f59e0b;font-size:12px;">${escHtml(m.career)}</div>` : ""}
+          ${m.region ? `<div style="color:#6b7280;">📍 ${escHtml(m.region)}</div>` : ""}
+          ${m.phone ? `<div style="color:#374151;">📞 ${escHtml(m.phone)}</div>` : ""}
           ${m.description ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(m.description)}</div>` : ""}
-          ${m.gmap        ? `<a href="${escHtml(m.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">${_t('view_map')} →</a>` : ""}
+          ${m.gmap ? `<a href="${escHtml(m.gmap)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">${_t('view_map')} →</a>` : ""}
         </div>`, 10);
     });
 
@@ -928,17 +930,23 @@ async function loadUsedMarketPreview() {
   }
 }
 async function loadSponsorBannersFromDb() {
-  try {
-    const snap = await getDocs(query(collection(db, "sponsorBanners"), limit(20)));
-    const rows = [];
-    snap.forEach((d) => rows.push({ id: d.id, ...d.data() }));
-    return rows
-      .filter((x) => x.active !== false)
-      .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-  } catch (e) {
-    console.warn("loadSponsorBannersFromDb failed:", e);
-    return [];
-  }
+  return [
+    {
+      id: '1', title: 'Zentaro', subtitle: 'K-Culture Flavour Portal',
+      linkUrl: 'https://zentaro.netlify.app/', active: true, sortOrder: 1,
+      imageUrl: '/assets/images/jump/logo2.png'
+    },
+    {
+      id: '2', title: '반찬나라', subtitle: 'K-Food Market',
+      linkUrl: 'https://banchannara.netlify.app/', active: true, sortOrder: 2,
+      imageUrl: '/assets/images/jump/logo2.png'
+    },
+    {
+      id: '3', title: '대한김치', subtitle: 'Premium Korean Kimchi',
+      linkUrl: 'https://daehankimchi.netlify.app/', active: true, sortOrder: 3,
+      imageUrl: '/assets/images/jump/logo2.png'
+    }
+  ];
 }
 
 function sponsorSlideHtml(row, idx) {

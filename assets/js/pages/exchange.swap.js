@@ -1,5 +1,5 @@
 // /assets/js/pages/exchange.swap.js
-// TON↔GameCoin / HEX↔TON 스왑 + 거래내역
+// TON↔GameCoin / Point↔TON 스왑 + 거래내역
 // TON은 기존 tonExchange 핸들러 (tonGetPrice/tonDepositVerify/tonWithdrawRequest) 사용
 
 import { auth, db, functions } from '../firebase-init.js';
@@ -98,7 +98,7 @@ window.__swapRatesLoad = () => {
 };
 
 // ─────────────────────────────────────────────────
-// 스왑 환율 (HEX↔TON용)
+// 스왑 환율 (Point↔TON용)
 // ─────────────────────────────────────────────────
 async function loadSwapRates(force = false) {
   if (!force && _ratesCache && Date.now() - _ratesAt < 30_000) return _ratesCache;
@@ -113,7 +113,7 @@ async function loadSwapRates(force = false) {
 }
 function applyHexTonRate() {
   const ht = _ratesCache?.hex_ton || {};
-  setText('htRateDisplay', ht.enabled !== false ? `1 HEX = ${ht.rate ?? 0.02} TON` : '현재 비활성화');
+  setText('htRateDisplay', ht.enabled !== false ? `1 Point = ${ht.rate ?? 0.02} TON` : '현재 비활성화');
   setText('htFeeDisplay',  `${ht.fee ?? 1}%`);
 }
 
@@ -189,7 +189,7 @@ function _updateTcUI(wallet) {
     if (sendBtn)    sendBtn.style.display = '';
     if (infoEl)     infoEl.style.display = '';
     if (addrEl)     addrEl.textContent = short;
-    // HEX↔TON 패널 TON 수령 주소 자동 입력
+    // Point↔TON 패널 TON 수령 주소 자동 입력
     const htAddr = $('htTonAddr');
     if (htAddr && !htAddr.value) htAddr.value = uq;
   } else {
@@ -359,7 +359,7 @@ function bindTonWithdraw(coinBal) {
 }
 
 // ─────────────────────────────────────────────────
-// HEX↔TON 스왑 (관리자 배치 처리)
+// Point↔TON 스왑 (관리자 배치 처리)
 // ─────────────────────────────────────────────────
 let _htDir = 'hex_to_ton';
 
@@ -374,7 +374,7 @@ function bindHexTonSwap() {
     _htDir = dir;
     dirBuy?.classList.toggle('active',  dir === 'hex_to_ton');
     dirSell?.classList.toggle('active', dir === 'ton_to_hex');
-    if (lbl) lbl.textContent = dir === 'hex_to_ton' ? '보낼 HEX 수량' : '보낼 TON 수량';
+    if (lbl) lbl.textContent = dir === 'hex_to_ton' ? '보낼 Point 수량' : '보낼 TON 수량';
     if (inp) { inp.value = ''; if (preview) preview.style.display = 'none'; }
   }
   dirBuy?.addEventListener('click',  () => setDir('hex_to_ton'));
@@ -393,7 +393,7 @@ function bindHexTonSwap() {
       preview.innerHTML = `받을 TON: <strong>${recv.toFixed(4)}</strong>${usdV}<br>수수료: ${(gross * fee).toFixed(4)} TON`;
     } else {
       const gross = amt / rate, recv = gross * (1 - fee);
-      preview.innerHTML = `받을 HEX: <strong>${recv.toFixed(4)}</strong><br>수수료: ${(gross * fee).toFixed(4)} HEX`;
+      preview.innerHTML = `받을 Point: <strong>${recv.toFixed(4)}</strong><br>수수료: ${(gross * fee).toFixed(4)} Point`;
     }
     preview.style.display = '';
   });
@@ -401,7 +401,7 @@ function bindHexTonSwap() {
   $('btnHtSwap')?.addEventListener('click', async () => {
     const rates = await loadSwapRates();
     const cfg   = rates.hex_ton || {};
-    if (cfg.enabled === false) { alert('HEX↔TON 교환이 현재 비활성화되어 있습니다.'); return; }
+    if (cfg.enabled === false) { alert('Point↔TON 교환이 현재 비활성화되어 있습니다.'); return; }
     const tonAddr = $('htTonAddr')?.value.trim() || '';
     const amt     = parseFloat($('htAmount')?.value || '0');
     if (!amt || amt <= 0) { alert('수량을 입력하세요'); return; }
@@ -410,11 +410,11 @@ function bindHexTonSwap() {
     const fee  = Number(cfg.fee  ?? 1) / 100;
 
     if (_htDir === 'hex_to_ton') {
-      // ── HEX → TON: 즉시 자동 처리 ──
+      // ── Point → TON: 즉시 자동 처리 ──
       if (!isValidTonAddr(tonAddr)) { alert('TON 수령 주소를 입력하세요 (EQ... 또는 UQ...)'); return; }
       const recv = (amt * rate * (1 - fee)).toFixed(4);
       setLoading('btnHtSwap', true, '교환 처리 중...');
-      setStatus('htStatus', 'HEX 이체 중...');
+      setStatus('htStatus', 'Point 이체 중...');
       try {
         const fn  = httpsCallable(functions, 'requestHexTonSwap');
         const res = await fn({ direction: 'hex_to_ton', amount: amt, tonAddress: tonAddr });
@@ -431,7 +431,7 @@ function bindHexTonSwap() {
       }
 
     } else {
-      // ── TON → HEX: TonConnect 전송 후 자동 HEX 적립 ──
+      // ── TON → Point: TonConnect 전송 후 자동 Point 적립 ──
       if (!_tc) { alert('TON 지갑을 먼저 연결하세요'); return; }
       if (!_tonInfo?.adminWallet) { alert('관리자 지갑 정보 로딩 중입니다. 잠시 후 다시 시도하세요.'); return; }
 
@@ -451,16 +451,16 @@ function bindHexTonSwap() {
           messages: [{ address: _tonInfo.adminWallet, amount: String(tonNano) }],
         });
 
-        setStatus('htStatus', 'TON 전송 완료! HEX 적립 중...');
+        setStatus('htStatus', 'TON 전송 완료! Point 적립 중...');
         const fn  = httpsCallable(functions, 'requestHexTonSwap');
         const res = await fn({ direction: 'ton_to_hex', amount: amt, senderAddress: senderAddr, tonNano, sentAt });
         const d   = res.data;
         setStatus('htStatus',
-          `✅ 교환 완료! HEX ${Number(d.toAmount).toFixed(4)} 적립됨<br>` +
+          `✅ 교환 완료! Point ${Number(d.toAmount).toFixed(4)} 적립됨<br>` +
           `TxHash: ${d.hexTxHash ? d.hexTxHash.slice(0, 16) + '…' : '처리 중'}`);
         if ($('htAmount')) $('htAmount').value = '';
         if ($('htPreview')) $('htPreview').style.display = 'none';
-        // HEX 잔액 새로고침
+        // Point 잔액 새로고침
         if (window.__loadStatus) window.__loadStatus();
       } catch (err) {
         const msg = err.message || String(err);
@@ -480,11 +480,11 @@ function bindHexTonSwap() {
 // 거래내역
 // ─────────────────────────────────────────────────
 const PAIR_LABELS = {
-  buyJump:'HEX → JUMP', sellJump:'JUMP → HEX',
+  buyJump:'Point → JUMP', sellJump:'JUMP → Point',
   stakeJump:'JUMP 스테이킹', unstakeJump:'JUMP 언스테이킹', claimDividend:'배당 청구',
   buyJumpWithCoins:'GameCoin → JUMP', sellJumpForCoins:'JUMP → GameCoin',
   swap_ton_to_coin:'TON → GameCoin', swap_coin_to_ton:'GameCoin → TON',
-  swap_hex_to_ton:'HEX → TON', swap_ton_to_hex:'TON → HEX',
+  swap_hex_to_ton:'Point → TON', swap_ton_to_hex:'TON → Point',
 };
 const STATUS_INFO = {
   completed:['ok','완료'], pending:['pending','처리중'], failed:['fail','실패'],

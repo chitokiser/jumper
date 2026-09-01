@@ -9,7 +9,7 @@ CoopMall 주소: Firestore coopConfig/main.contractAddress (하드코딩 금지)
 주요 함수:
 - `pay(hexWei)` — 상품 구매, 멘토 포인트 자동 적립
 - `burnVoucher(voucherId, hexWei, burnFeeBps)` — 바우처 소각 (멘토 포인트 없음)
-- `convertPoints(points)` — 포인트 → HEX 전환
+- `convertPoints(points)` — 포인트 → Point 전환
 - `grantEligibility(addr)` — 관리자 전용
 
 ## 결제 경로

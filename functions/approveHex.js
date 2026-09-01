@@ -1,6 +1,6 @@
 /**
  * approveHex.js
- * 관리자 지갑으로 jumpPlatform 컨트랙트에 HEX 무한 승인 (최초 1회)
+ * 관리자 지갑으로 jumpPlatform 컨트랙트에 Point 무한 승인 (최초 1회)
  *
  * 실행: ADMIN_PRIVATE_KEY=0x... node approveHex.js
  */
@@ -9,10 +9,10 @@
 const { ethers } = require('ethers');
 
 const RPC_URL      = 'https://opbnb-mainnet-rpc.bnbchain.org';
-const HEX_ADDRESS  = '0xA3C35c52446C133b7211A743c6D47470D1385601';
+const Point_ADDRESS  = '0xA3C35c52446C133b7211A743c6D47470D1385601';
 const PLATFORM_ADDR= '0x4d83A7764428fd1c116062aBb60c329E0E29f490';
 
-const HEX_ABI = [
+const Point_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function allowance(address owner, address spender) external view returns (uint256)',
   'function balanceOf(address account) external view returns (uint256)',
@@ -28,7 +28,7 @@ async function main() {
 
   const provider   = new ethers.JsonRpcProvider(RPC_URL);
   const wallet     = new ethers.Wallet(privateKey, provider);
-  const hexContract= new ethers.Contract(HEX_ADDRESS, HEX_ABI, wallet);
+  const hexContract= new ethers.Contract(Point_ADDRESS, Point_ABI, wallet);
 
   console.log('관리자 지갑:', wallet.address);
 
@@ -36,20 +36,20 @@ async function main() {
   const bnbBal = await provider.getBalance(wallet.address);
   console.log('BNB 잔액:  ', ethers.formatEther(bnbBal), 'BNB');
 
-  // HEX 잔액 확인
+  // Point 잔액 확인
   const hexBal = await hexContract.balanceOf(wallet.address);
-  console.log('HEX 잔액:  ', ethers.formatEther(hexBal), 'HEX');
+  console.log('Point 잔액:  ', ethers.formatEther(hexBal), 'Point');
 
   // 현재 allowance 확인
   const current = await hexContract.allowance(wallet.address, PLATFORM_ADDR);
-  console.log('현재 Allowance:', ethers.formatEther(current), 'HEX');
+  console.log('현재 Allowance:', ethers.formatEther(current), 'Point');
 
   if (current === ethers.MaxUint256) {
     console.log('✅ 이미 무한 Approve 상태입니다. 별도 작업 불필요.');
     return;
   }
 
-  console.log('\nHEX.approve(jumpPlatform, MaxUint256) 실행 중...');
+  console.log('\nPoint.approve(jumpPlatform, MaxUint256) 실행 중...');
   const tx = await hexContract.approve(PLATFORM_ADDR, ethers.MaxUint256);
   console.log('트랜잭션 전송됨:', tx.hash);
 

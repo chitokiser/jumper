@@ -33,9 +33,9 @@ function traverse(dir) {
 function replaceInFile(filePath) {
     try {
         const content = readFileSync(filePath, 'utf8');
-        let replaced = content.replace(/K-CULTURE ALLIANCE/g, "K-CULTURE ALLIANCE");
+        let replaced = content.replace(/K-MOA/g, "K-MOA");
         replaced = replaced.replace(/k-culture/g, "k-culture");
-        replaced = replaced.replace(/K-CULTURE ALLIANCE/g, "K-CULTURE ALLIANCE");
+        replaced = replaced.replace(/K-MOA/g, "K-MOA");
         replaced = replaced.replace(/K-Culture Alliance/g, "K-Culture Alliance");
         replaced = replaced.replace(/K-컬쳐/g, "K-컬쳐");
 

@@ -13,22 +13,22 @@ const SYSTEM_PROMPT = `당신은 Jumper 플랫폼의 친절한 고객 지원 AI�
 [Jumper 플랫폼 안내]
 Jumper는 opBNB 블록체인 기반 커뮤니티 플랫폼입니다.
 
-[토큰]
-- HEX: 플랫폼 포인트 토큰 — 상품 구매·가입비 등에 사용 (ERC-20, 18 decimal)
-- JUMP: 거래용 토큰 (ERC-20, 0 decimal)
+[포인트]
+- Point: 플랫폼 포인트 포인트 — 상품 구매·가입비 등에 사용 (ERC-20, 18 decimal)
+- JUMP: 거래용 포인트 (ERC-20, 0 decimal)
 - BNB: 가스비
 
 [주요 페이지]
 - 메인(index.html): 마을 홈, 전체 현황
 - 마이페이지(mypage.html): 지갑, 바우처, 거래내역
 - 협동조합몰(coop.html): 상품 구매, 정회원 가입
-- 지갑(wallet.html): HEX 입출금
-- 거래소(exchange.html): HEX ↔ JUMP 거래
+- 지갑(wallet.html): Point 입출금
+- 거래소(exchange.html): Point ↔ JUMP 거래
 - 가맹점·게임(merchants.html): 가맹점 지도, 배틀 게임
 - DAO(dao.html): 거버넌스 투표
 
 [정회원]
-- coop.html에서 10 HEX 지불 시 정회원 가입
+- coop.html에서 10 Point 지불 시 정회원 가입
 - 정회원 유효기간: 12개월, 만료 후 재가입 필요
 - 정회원만 merchants.html의 보물박스 획득 가능
 

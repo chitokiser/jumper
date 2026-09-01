@@ -4,20 +4,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Member Mall | K-CULTURE ALLIANCE — Premium Member Exclusive Shopping</title>
-  <meta name="description" content="K-CULTURE ALLIANCE Member Mall - Exclusive shopping for premium members. Join with 10 HEX and enjoy premium products and treasure box benefits." />
-  <meta name="keywords" content="K-CULTURE ALLIANCE, member, HEX token, Web3 shopping, member mall" />
+  <title>Member Mall | K-MOA — Premium Member Exclusive Shopping</title>
+  <meta name="description" content="K-MOA Member Mall - Exclusive shopping for premium members. Join with 10 Point and enjoy premium products and treasure box benefits." />
+  <meta name="keywords" content="K-MOA, member, Point token, Web3 shopping, member mall" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://jump22.netlify.app/coop.html" />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="K-CULTURE ALLIANCE" />
+  <meta property="og:site_name" content="K-MOA" />
   <meta property="og:url" content="https://jump22.netlify.app/coop.html" />
-  <meta property="og:title" content="Member Mall | K-CULTURE ALLIANCE — Premium Member Exclusive" />
-  <meta property="og:description" content="K-CULTURE ALLIANCE Member Mall - Premium exclusive shopping. Join with 10 HEX and enjoy premium products." />
+  <meta property="og:title" content="Member Mall | K-MOA — Premium Member Exclusive" />
+  <meta property="og:description" content="K-MOA Member Mall - Premium exclusive shopping. Join with 10 Point and enjoy premium products." />
   <meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Member Mall | K-CULTURE ALLIANCE" />
-  <meta name="twitter:description" content="K-CULTURE ALLIANCE Premium Member Exclusive Shopping Mall." />
+  <meta name="twitter:title" content="Member Mall | K-MOA" />
+  <meta name="twitter:description" content="K-MOA Premium Member Exclusive Shopping Mall." />
   <meta name="twitter:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png" />
 
   <link rel="stylesheet" href="/assets/css/app.css" />
@@ -206,7 +206,7 @@
             <div class="icon">🏪</div>
             <div class="title" id="coopJoinTitle">Member Registration</div>
             <div class="sub" id="coopJoinSub">Pay the membership fee below to become a member of the exclusive mall.<br>JUMP tokens equivalent to the membership fee will be issued.</div>
-            <div class="coop-join-fee" id="coopJoinFeeDisplay">-- HEX</div>
+            <div class="coop-join-fee" id="coopJoinFeeDisplay">-- Point</div>
             <div class="coop-join-fee-sub" id="coopJoinFeeNote">20% of membership fee goes to mentor · Valid for 1 year</div>
             <button class="btn btn--primary" id="coopJoinBtn" type="button">Join as Member</button>
             <div id="coopJoinMsg" style="font-size:0.82rem;color:var(--danger,#ef4444);margin-top:10px;min-height:18px;"></div>
@@ -217,8 +217,8 @@
         <div class="coop-points-panel" id="coopPointsPanel" style="display:none;">
           <div class="coop-points-info">
             <div class="coop-points-label">My Earned Points</div>
-            <div class="coop-points-amount" id="coopPointsAmount">0.0000 HEX</div>
-            <div class="coop-points-sub">Mentor points earned on purchases · Convertible to HEX</div>
+            <div class="coop-points-amount" id="coopPointsAmount">0.0000 Point</div>
+            <div class="coop-points-sub">Mentor points earned on purchases · Convertible to Point</div>
           </div>
           <div class="coop-points-actions">
             <button class="btn btn--sm btn--primary" id="coopConvertBtn" type="button" disabled>Convert Points</button>
@@ -287,13 +287,13 @@
     <div class="coop-modal-bd" id="coopConvertBd"></div>
     <div class="coop-modal-box">
       <div class="coop-modal-icon">💎</div>
-      <div class="coop-modal-title">포인트 → HEX 전환</div>
+      <div class="coop-modal-title">포인트 → Point 전환</div>
       <p style="font-size:0.85rem;color:var(--muted);margin:0 0 16px;">
-        보유 포인트: <strong id="coopConvertAvail">0.0000 HEX</strong>
+        보유 포인트: <strong id="coopConvertAvail">0.0000 Point</strong>
       </p>
       <div style="display:flex;gap:8px;margin-bottom:12px;">
         <input type="number" id="coopConvertInput" step="0.0001" min="0"
-          placeholder="전환할 금액 (HEX)" style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;" />
+          placeholder="전환할 금액 (Point)" style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;" />
         <button class="btn btn--sm" id="coopConvertAll" type="button">전액</button>
       </div>
       <p style="font-size:0.78rem;color:var(--muted);margin:0 0 16px;">전환 시 금액의 1/2이 상위 멘토에게 포인트로 적립됩니다.</p>

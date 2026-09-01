@@ -20,7 +20,7 @@ const _HDR_T = {
     hdr_kculture: 'K-CULTURE', hdr_food: '🍲 Food', hdr_life: '🛍️ Life', hdr_beauty: '💅 Beauty', hdr_travel: '✈️ Travel', hdr_experience: '🎭 Experience',
     hdr_merchants: 'Find Merchants', hdr_events: 'Events', hdr_community: 'Community',
     hdr_signup: 'Sign Up', hdr_my_services: 'My Services', hdr_wallet: 'My Wallet',
-    hdr_exchange: 'Token Exchange', hdr_used: 'Used Market', hdr_mall: 'Member Mall',
+    hdr_exchange: 'Point Exchange', hdr_used: 'Used Market', hdr_mall: 'Member Mall',
     hdr_orders: 'My Orders', hdr_sales: 'Sales Center',
     hdr_merchant_reg: 'Register Merchant', hdr_homestay_new: 'New Homestay',
     hdr_product_add: 'Add Product', hdr_my_products: 'My Products',
@@ -36,7 +36,7 @@ const _HDR_T = {
     hdr_kculture: 'K-CULTURE', hdr_food: '🍲 푸드', hdr_life: '🛍️ 라이프', hdr_beauty: '💅 뷰티/의료', hdr_travel: '✈️ 여행/숙박', hdr_experience: '🎭 체험/로컬',
     hdr_merchants: '가맹점 찾기', hdr_events: '진행중 이벤트', hdr_community: '거주민 커뮤니티',
     hdr_signup: '회원가입', hdr_my_services: '내 서비스', hdr_wallet: '내지갑',
-    hdr_exchange: '토큰거래소', hdr_used: '중고거래', hdr_mall: '회원전용몰',
+    hdr_exchange: '포인트 거래소', hdr_used: '중고거래', hdr_mall: '회원전용몰',
     hdr_orders: '내 주문', hdr_sales: '판매센터',
     hdr_merchant_reg: '가맹점 등록', hdr_homestay_new: '홈스테이 신규생성',
     hdr_product_add: '상품 추가', hdr_my_products: '내 상품관리',
@@ -67,22 +67,17 @@ window.addEventListener('lang:change', applyHeaderI18n);
 function _mountHdrLang() {
   const container = document.getElementById('hdrLangSwitcher');
   if (!container) return;
-  const LANGS = ['vi', 'en', 'ko'];
-  const FLAGS = { vi: '🇻🇳', en: '🇬🇧', ko: '🇰🇷' };
+  const LANGS = ['ko', 'vi', 'en'];
+  const LABELS = { vi: 'VIE', en: 'ENG', ko: 'KOR' };
   const saved = localStorage.getItem('town_lang');
   let cur = LANGS.includes(saved) ? saved : 'ko';
-
-  function syncDesktop(lang) {
-    container.querySelectorAll('[data-hdr-lang]').forEach(function (b) {
-      b.classList.toggle('is-active', b.dataset.hdrLang === lang);
-    });
-  }
 
   function applyLang(lang) {
     cur = lang;
     localStorage.setItem('town_lang', lang);
-    syncDesktop(lang);
-    cycleBtn.textContent = FLAGS[lang];
+    if (cycleBtn) {
+      cycleBtn.textContent = LABELS[lang];
+    }
     window.dispatchEvent(new CustomEvent('lang:change', { detail: { lang: lang } }));
     if (typeof window.setMerchantsLang === 'function') {
       window.setMerchantsLang(lang);
@@ -93,33 +88,24 @@ function _mountHdrLang() {
     }
   }
 
-  syncDesktop(cur);
-
-  // Mobile: single flag button that cycles through languages
+  // Single button that cycles through languages
   const cycleBtn = document.createElement('button');
-  cycleBtn.className = 'hdr-lang-cycle';
-  cycleBtn.textContent = FLAGS[cur];
+  cycleBtn.className = 'hdr-lang-btn is-active';
+  cycleBtn.style.cursor = 'pointer';
+  cycleBtn.textContent = LABELS[cur];
   cycleBtn.title = 'Change language';
   container.appendChild(cycleBtn);
+
   cycleBtn.addEventListener('click', function () {
     const next = LANGS[(LANGS.indexOf(cur) + 1) % LANGS.length];
     applyLang(next);
-  });
-
-  // Desktop: click on individual flag buttons
-  container.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-hdr-lang]');
-    if (!btn) return;
-    var lang = btn.dataset.hdrLang;
-    if (!LANGS.includes(lang)) return;
-    applyLang(lang);
   });
 }
 
 const _FTR_T = {
   vi: {
     ftr_about_title: 'Giới thiệu',
-    ftr_about_link: 'Giới thiệu K-CULTURE ALLIANCE',
+    ftr_about_link: 'Giới thiệu K-MOA',
     ftr_member_title: 'Hướng dẫn hội viên',
     ftr_register: 'Đăng ký cửa hàng',
     ftr_token_trade: 'Giao dịch token',
@@ -134,11 +120,11 @@ const _FTR_T = {
   },
   en: {
     ftr_about_title: 'About',
-    ftr_about_link: 'About K-CULTURE ALLIANCE',
+    ftr_about_link: 'About K-MOA',
     ftr_member_title: 'Member Guide',
     ftr_register: 'Merchant Registration',
-    ftr_token_trade: 'Token Trade',
-    ftr_exchange_link: 'Our Token Exchange',
+    ftr_token_trade: 'Point Trade',
+    ftr_exchange_link: 'Our Point Exchange',
     ftr_support_title: 'Support',
     ftr_faq: 'FAQ',
     ftr_partner: 'Partner / Listing Inquiry',
@@ -149,11 +135,11 @@ const _FTR_T = {
   },
   ko: {
     ftr_about_title: '소개',
-    ftr_about_link: 'K-CULTURE ALLIANCE 소개',
+    ftr_about_link: 'K-MOA 소개',
     ftr_member_title: '멤버 안내',
     ftr_register: '가맹점 등록',
-    ftr_token_trade: '토큰 거래',
-    ftr_exchange_link: '우리들의 토큰거래소',
+    ftr_token_trade: '포인트 거래',
+    ftr_exchange_link: '우리들의 포인트 거래소',
     ftr_support_title: '고객 문의',
     ftr_faq: '자주 묻는 질문',
     ftr_partner: '제휴/입점 문의',
