@@ -224,6 +224,19 @@ exports.kcaMerchantApi = functions.https.onRequest(async (req, res) => {
 });</code></pre>
         </div>
 
+        <div class="api-card" style="border-color: #38bdf8; background: rgba(56, 189, 248, 0.05);">
+            <h3 class="api-title" style="color: #38bdf8;">👥 가맹점 추천인 자동 연동 (신규 회원 유치)</h3>
+            <div class="desc">가맹점의 홈페이지(웹사이트)를 통해 유입된 신규 고객이 KCA 플랫폼에 가입할 때, 가맹점의 지갑 주소가 <strong>추천인(Mentor)으로 자동
+                    입력</strong>되게 하려면 회원가입 URL에 <code>?mentor=</code> 파라미터를 추가하여 링크를 걸어주시면 됩니다.</div>
+            <h4>홈페이지 삽입용 HTML 추천 가입 링크 예시</h4>
+            <pre><code style="color: #cbd5e1;">&lt;!-- 가맹점의 이더리움(EVM) 지갑 주소가 0x123...abc 인 경우 --&gt;
+&lt;a href="https://jump22.netlify.app/register.html?mentor=0x1234567890abcdef1234567890abcdef12345678" target="_blank"&gt;
+  KCA 멤버십 가입하고 혜택 받기
+&lt;/a&gt;</code></pre>
+            <div class="desc" style="margin-top: 15px;">위 링크를 타고 들어온 회원은 가입 시 "추천인 지갑주소" 칸이 자동으로 채워지며, 가입 완료 시 가맹점에게도 추천
+                보너스(동반 성장) 혜택이 지급될 수 있습니다.</div>
+        </div>
+
     </div>
 </body>
 
