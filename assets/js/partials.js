@@ -1,9 +1,8 @@
 ﻿// /assets/js/partials.js
 const _HDR_T = {
   vi: {
-    hdr_explore: 'Khám phá', hdr_treasure: 'Tìm kho báu', hdr_stay: 'Chỗ nghỉ',
-    hdr_sights: 'Điểm tham quan', hdr_food: 'Ẩm thực', hdr_shopping: 'Mua sắm',
-    hdr_benefits: 'Quyền lợi Jump', hdr_limousine: 'Jump Limousine', hdr_dao: 'Biểu quyết DAO', hdr_games: '🎮 Trò chơi', hdr_monster_race: '🛹 Monster Race', hdr_bow: '🏹 Bắn cung', hdr_memory: '🃏 Ghi nhớ tốc độ', hdr_monster_defense: '🏰 Thủ thành quái vật',
+    hdr_kculture: 'K-CULTURE', hdr_food: '🍲 Ẩm thực', hdr_life: '🛍️ Đời sống', hdr_beauty: '💅 Làm đẹp', hdr_travel: '✈️ Du lịch', hdr_experience: '🎭 Trải nghiệm',
+    hdr_merchants: 'Tìm kiếm 가맹점', hdr_events: 'Sự kiện', hdr_community: 'Cộng đồng',
     hdr_signup: 'Đăng ký', hdr_my_services: 'Dịch vụ của tôi', hdr_wallet: 'Ví của tôi',
     hdr_exchange: 'Sàn Token', hdr_used: 'Chợ đồ cũ', hdr_mall: 'Cửa hàng hội viên',
     hdr_orders: 'Đơn hàng của tôi', hdr_sales: 'Trung tâm bán hàng',
@@ -18,9 +17,8 @@ const _HDR_T = {
     hdr_member_join: 'Đăng ký hội viên', hdr_login: 'Đăng nhập', hdr_logout: 'Đăng xuất',
   },
   en: {
-    hdr_explore: 'Explore', hdr_treasure: 'Treasure Hunt', hdr_stay: 'Stay',
-    hdr_sights: 'Sights', hdr_food: 'Food', hdr_shopping: 'Shopping',
-    hdr_benefits: 'Jump Benefits', hdr_limousine: 'Jump Limousine', hdr_dao: 'DAO Vote', hdr_games: '🎮 Games', hdr_monster_race: '🛹 Monster Race', hdr_bow: '🏹 Archery', hdr_memory: '🃏 Speed Memory', hdr_monster_defense: '🏰 Monster Defense',
+    hdr_kculture: 'K-CULTURE', hdr_food: '🍲 Food', hdr_life: '🛍️ Life', hdr_beauty: '💅 Beauty', hdr_travel: '✈️ Travel', hdr_experience: '🎭 Experience',
+    hdr_merchants: 'Find Merchants', hdr_events: 'Events', hdr_community: 'Community',
     hdr_signup: 'Sign Up', hdr_my_services: 'My Services', hdr_wallet: 'My Wallet',
     hdr_exchange: 'Token Exchange', hdr_used: 'Used Market', hdr_mall: 'Member Mall',
     hdr_orders: 'My Orders', hdr_sales: 'Sales Center',
@@ -35,9 +33,8 @@ const _HDR_T = {
     hdr_member_join: 'Join Member', hdr_login: 'Login', hdr_logout: 'Logout',
   },
   ko: {
-    hdr_explore: '탐색', hdr_treasure: '보물찾기', hdr_stay: '잠자리',
-    hdr_sights: '볼거리', hdr_food: '먹거리', hdr_shopping: '살거리',
-    hdr_benefits: 'Jump혜택', hdr_limousine: '점프리무진', hdr_dao: 'DAO 의결', hdr_games: '🎮 게임', hdr_monster_race: '🛹 몬스터 레이스', hdr_bow: '🏹 활쏘기', hdr_memory: '🃏 스피드 기억력', hdr_monster_defense: '🏰 몬스터수성',
+    hdr_kculture: 'K-CULTURE', hdr_food: '🍲 푸드', hdr_life: '🛍️ 라이프', hdr_beauty: '💅 뷰티/의료', hdr_travel: '✈️ 여행/숙박', hdr_experience: '🎭 체험/로컬',
+    hdr_merchants: '가맹점 찾기', hdr_events: '진행중 이벤트', hdr_community: '거주민 커뮤니티',
     hdr_signup: '회원가입', hdr_my_services: '내 서비스', hdr_wallet: '내지갑',
     hdr_exchange: '토큰거래소', hdr_used: '중고거래', hdr_mall: '회원전용몰',
     hdr_orders: '내 주문', hdr_sales: '판매센터',
@@ -62,7 +59,7 @@ function applyHeaderI18n() {
       const key = el.dataset.hdrI18n;
       el.textContent = (tbl && tbl[key]) || (_HDR_T.en[key]) || key;
     });
-  } catch (e) {}
+  } catch (e) { }
 }
 window.applyHeaderI18n = applyHeaderI18n;
 window.addEventListener('lang:change', applyHeaderI18n);
@@ -76,7 +73,7 @@ function _mountHdrLang() {
   let cur = LANGS.includes(saved) ? saved : 'ko';
 
   function syncDesktop(lang) {
-    container.querySelectorAll('[data-hdr-lang]').forEach(function(b) {
+    container.querySelectorAll('[data-hdr-lang]').forEach(function (b) {
       b.classList.toggle('is-active', b.dataset.hdrLang === lang);
     });
   }
@@ -104,13 +101,13 @@ function _mountHdrLang() {
   cycleBtn.textContent = FLAGS[cur];
   cycleBtn.title = 'Change language';
   container.appendChild(cycleBtn);
-  cycleBtn.addEventListener('click', function() {
+  cycleBtn.addEventListener('click', function () {
     const next = LANGS[(LANGS.indexOf(cur) + 1) % LANGS.length];
     applyLang(next);
   });
 
   // Desktop: click on individual flag buttons
-  container.addEventListener('click', function(e) {
+  container.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-hdr-lang]');
     if (!btn) return;
     var lang = btn.dataset.hdrLang;
@@ -121,49 +118,49 @@ function _mountHdrLang() {
 
 const _FTR_T = {
   vi: {
-    ftr_about_title:    'Giới thiệu',
-    ftr_about_link:     'Giới thiệu JumpDAO',
-    ftr_member_title:   'Hướng dẫn hội viên',
-    ftr_register:       'Đăng ký cửa hàng',
-    ftr_token_trade:    'Giao dịch token',
-    ftr_exchange_link:  'Sàn giao dịch của chúng ta',
-    ftr_support_title:  'Hỗ trợ khách hàng',
-    ftr_faq:            'Câu hỏi thường gặp',
-    ftr_partner:        'Liên hệ đối tác / nhập điểm',
-    ftr_chat_btn:       '💬 Hỏi đáp 1:1',
-    ftr_chat_title:     '💬 Hỏi đáp 1:1',
+    ftr_about_title: 'Giới thiệu',
+    ftr_about_link: 'Giới thiệu K-CULTURE ALLIANCE',
+    ftr_member_title: 'Hướng dẫn hội viên',
+    ftr_register: 'Đăng ký cửa hàng',
+    ftr_token_trade: 'Giao dịch token',
+    ftr_exchange_link: 'Sàn giao dịch của chúng ta',
+    ftr_support_title: 'Hỗ trợ khách hàng',
+    ftr_faq: 'Câu hỏi thường gặp',
+    ftr_partner: 'Liên hệ đối tác / nhập điểm',
+    ftr_chat_btn: '💬 Hỏi đáp 1:1',
+    ftr_chat_title: '💬 Hỏi đáp 1:1',
     ftr_chat_placeholder: 'Nhập tin nhắn...',
-    ftr_chat_send:      'Gửi',
+    ftr_chat_send: 'Gửi',
   },
   en: {
-    ftr_about_title:    'About',
-    ftr_about_link:     'About JumpDAO',
-    ftr_member_title:   'Member Guide',
-    ftr_register:       'Merchant Registration',
-    ftr_token_trade:    'Token Trade',
-    ftr_exchange_link:  'Our Token Exchange',
-    ftr_support_title:  'Support',
-    ftr_faq:            'FAQ',
-    ftr_partner:        'Partner / Listing Inquiry',
-    ftr_chat_btn:       '💬 1:1 Chat',
-    ftr_chat_title:     '💬 1:1 Chat',
+    ftr_about_title: 'About',
+    ftr_about_link: 'About K-CULTURE ALLIANCE',
+    ftr_member_title: 'Member Guide',
+    ftr_register: 'Merchant Registration',
+    ftr_token_trade: 'Token Trade',
+    ftr_exchange_link: 'Our Token Exchange',
+    ftr_support_title: 'Support',
+    ftr_faq: 'FAQ',
+    ftr_partner: 'Partner / Listing Inquiry',
+    ftr_chat_btn: '💬 1:1 Chat',
+    ftr_chat_title: '💬 1:1 Chat',
     ftr_chat_placeholder: 'Enter message...',
-    ftr_chat_send:      'Send',
+    ftr_chat_send: 'Send',
   },
   ko: {
-    ftr_about_title:    '소개',
-    ftr_about_link:     'JumpDAO 소개',
-    ftr_member_title:   '멤버 안내',
-    ftr_register:       '가맹점 등록',
-    ftr_token_trade:    '토큰 거래',
-    ftr_exchange_link:  '우리들의 토큰거래소',
-    ftr_support_title:  '고객 문의',
-    ftr_faq:            '자주 묻는 질문',
-    ftr_partner:        '제휴/입점 문의',
-    ftr_chat_btn:       '💬 1:1 채팅 문의',
-    ftr_chat_title:     '💬 1:1 채팅 문의',
+    ftr_about_title: '소개',
+    ftr_about_link: 'K-CULTURE ALLIANCE 소개',
+    ftr_member_title: '멤버 안내',
+    ftr_register: '가맹점 등록',
+    ftr_token_trade: '토큰 거래',
+    ftr_exchange_link: '우리들의 토큰거래소',
+    ftr_support_title: '고객 문의',
+    ftr_faq: '자주 묻는 질문',
+    ftr_partner: '제휴/입점 문의',
+    ftr_chat_btn: '💬 1:1 채팅 문의',
+    ftr_chat_title: '💬 1:1 채팅 문의',
     ftr_chat_placeholder: '메시지를 입력하세요...',
-    ftr_chat_send:      '전송',
+    ftr_chat_send: '전송',
   },
 };
 
@@ -180,7 +177,7 @@ function applyFooterI18n() {
       const key = el.dataset.ftrI18nPh;
       el.placeholder = (tbl && tbl[key]) || (_FTR_T.en[key]) || key;
     });
-  } catch (e) {}
+  } catch (e) { }
 }
 window.applyFooterI18n = applyFooterI18n;
 window.addEventListener('lang:change', applyFooterI18n);

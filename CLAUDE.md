@@ -175,7 +175,7 @@
 
 ## SEO (공개 페이지 전부)
 - title / description / og / twitter 메타 필수
-- title 형식: `"페이지명 | JumpDAO — 부제"`
+- title 형식: `"페이지명 | K-CULTURE ALLIANCE — 부제"`
 - canonical URL 필수, sitemap.xml에 admin/* 제외
 
 ---

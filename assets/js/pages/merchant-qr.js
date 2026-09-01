@@ -34,7 +34,7 @@ async function loadRates() {
       _rates = { krwPerUsd: d.rates.KRW, vndPerUsd: d.rates.VND };
       return _rates;
     }
-  } catch (_) {}
+  } catch (_) { }
   _rates = { krwPerUsd: 1350, vndPerUsd: 25400 }; // 기본값 fallback
   return _rates;
 }
@@ -99,7 +99,17 @@ async function initPage(uid) {
 
   // 화면 표시
   setText("qrMerchantName", merchantName);
-  setText("qrMerchantId", String(merchantId));
+
+  // 실시간 K-Culture Balance & Payment Balance 모니터링
+  const merchantRef = doc(db, "k_culture_balances", String(merchantId));
+  onSnapshot(merchantRef, (snap) => {
+    if (snap.exists()) {
+      const { paymentBalanceVnd = 0, pointBalance = 0 } = snap.data();
+      setText("qrMerchantPaymentBal", paymentBalanceVnd.toLocaleString("ko-KR") + " VND");
+      setText("qrMerchantPointBal", pointBalance.toLocaleString("ko-KR") + " P");
+    }
+  });
+
   show("mainPanel", true);
 
   // 폼 바인딩
@@ -113,10 +123,10 @@ function bindQrForm(merchantId, merchantName) {
 
   // 환산 표시 업데이트 함수
   async function updateConvert() {
-    const isVnd   = form.querySelector("input[name='qrCurrency']:checked")?.value === "VND";
+    const isVnd = form.querySelector("input[name='qrCurrency']:checked")?.value === "VND";
     const inputEl = $("qrAmount");
-    const convEl  = $("qrAmountConvert");
-    const krwEl   = $("qrAmountKrw");
+    const convEl = $("qrAmountConvert");
+    const krwEl = $("qrAmountKrw");
     if (!convEl || !krwEl) return;
 
     if (!isVnd) { convEl.style.display = "none"; return; }
@@ -132,17 +142,17 @@ function bindQrForm(merchantId, merchantName) {
 
   // 통화 UI 적용 함수
   function applyCurrency(currency) {
-    const isVnd   = currency === "VND";
+    const isVnd = currency === "VND";
     const labelEl = $("qrAmountLabel");
-    const helpEl  = $("qrAmountHelp");
+    const helpEl = $("qrAmountHelp");
     const inputEl = $("qrAmount");
-    if (labelEl)  labelEl.textContent  = isVnd ? "결제 금액 (동, VND)" : "결제 금액 (원, KRW)";
-    if (helpEl)   helpEl.textContent   = isVnd ? "최소 10,000동 이상 입력해 주세요." : "최소 1,000원 이상 입력해 주세요.";
+    if (labelEl) labelEl.textContent = isVnd ? "결제 금액 (동, VND)" : "결제 금액 (원, KRW)";
+    if (helpEl) helpEl.textContent = isVnd ? "최소 10,000동 이상 입력해 주세요." : "최소 1,000원 이상 입력해 주세요.";
     if (inputEl) {
-      inputEl.min         = isVnd ? "10000" : "1000";
-      inputEl.step        = isVnd ? "1000"  : "100";
+      inputEl.min = isVnd ? "10000" : "1000";
+      inputEl.step = isVnd ? "1000" : "100";
       inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
-      inputEl.value       = "";
+      inputEl.value = "";
     }
     form.querySelectorAll("input[name='qrCurrency']").forEach((r) => {
       r.checked = r.value === currency;
@@ -171,14 +181,14 @@ function bindQrForm(merchantId, merchantName) {
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
-    const currency  = form.querySelector("input[name='qrCurrency']:checked")?.value || "KRW";
+    const currency = form.querySelector("input[name='qrCurrency']:checked")?.value || "KRW";
     const amountRaw = $("qrAmount")?.value || "";
-    const amount    = Number(amountRaw);
+    const amount = Number(amountRaw);
 
     if (currency === "VND") {
       if (!amount || amount < 10000) { alert("최소 10,000동 이상 입력해 주세요."); return; }
     } else {
-      if (!amount || amount < 1000)  { alert("최소 1,000원 이상 입력해 주세요."); return; }
+      if (!amount || amount < 1000) { alert("최소 1,000원 이상 입력해 주세요."); return; }
     }
 
     generateQr(merchantId, merchantName, amount, currency);
@@ -191,45 +201,45 @@ function weiToHex(weiStr) {
   try {
     const n = BigInt(weiStr);
     const whole = n / 10n ** 18n;
-    const frac  = n % 10n ** 18n;
+    const frac = n % 10n ** 18n;
     return Number(whole) + Number(frac) / 1e18;
   } catch (_) { return null; }
 }
 
 // ── 입금 내역 상태 ─────────────────────────────────────
-let _receiptTotalHex = 0;
-let _receiptCount    = 0;
+let _receiptTotalVnd = 0;
+let _receiptCount = 0;
 
 function resetReceipts() {
-  _receiptTotalHex = 0;
-  _receiptCount    = 0;
+  _receiptTotalVnd = 0;
+  _receiptCount = 0;
   const list = $("receiptList");
   if (list) list.innerHTML = "";
   show("receiptWaiting", true);
-  setText("receiptTotal", "합계: 0 HEX");
+  setText("receiptTotal", "합계: 0 VND");
 }
 
 function addReceiptItem(data, isNew = false) {
-  const hexVal = weiToHex(data.netAmountWei) ?? weiToHex(data.amountWei) ?? Number(data.amountHex || 0);
-  if (!hexVal) return;
+  const vndVal = data.amountVnd || (data.amountKrw ? vndToKrw(data.amountKrw, _rates || { krwPerUsd: 1350, vndPerUsd: 25400 }) : 0);
+  if (!vndVal) return;
 
-  _receiptTotalHex += hexVal;
-  _receiptCount    += 1;
+  _receiptTotalVnd += vndVal;
+  _receiptCount += 1;
 
   // 대기 안내 숨기기
   show("receiptWaiting", false);
 
   // 합계 갱신
-  setText("receiptTotal", `합계: ${_receiptTotalHex.toFixed(4)} HEX`);
+  setText("receiptTotal", `합계: ${_receiptTotalVnd.toLocaleString("ko-KR")} VND`);
 
   // 시각 포맷
-  const ts   = data.createdAt?.toDate?.() ?? new Date();
+  const ts = data.createdAt?.toDate?.() ?? new Date();
   const time = ts.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
   // 법정화폐 표시
-  const cur       = data.currency || "KRW";
-  const fiatAmt   = cur === "VND" ? data.amountVnd : data.amountKrw;
-  const fiatDisp  = fiatAmt
+  const cur = data.currency || "KRW";
+  const fiatAmt = cur === "VND" ? data.amountVnd : data.amountKrw;
+  const fiatDisp = fiatAmt
     ? (cur === "VND" ? `${Number(fiatAmt).toLocaleString()}동` : `${Number(fiatAmt).toLocaleString()}원`)
     : "";
 
@@ -239,8 +249,8 @@ function addReceiptItem(data, isNew = false) {
   item.innerHTML = `
     <div class="ri-icon">${isNew ? "✅" : "💳"}</div>
     <div class="ri-body">
-      <div class="ri-hex">+${hexVal.toFixed(4)} HEX</div>
-      ${fiatDisp ? `<div class="ri-fiat">${fiatDisp}</div>` : ""}
+      <div class="ri-hex">+${vndVal.toLocaleString("ko-KR")} VND</div>
+      ${fiatDisp ? `<div class="ri-fiat">결제: ${fiatDisp}</div>` : ""}
     </div>
     <div class="ri-time">${time}</div>
   `;
@@ -316,9 +326,9 @@ function listenPayments(amount, currency = "KRW") {
   // uid 필터를 포함해야 Firestore 보안 규칙(resource.data.uid == request.auth.uid) 통과
   const q = query(
     collection(db, "transactions"),
-    where("uid",        "==", _currentUid),
-    where("type",       "==", "merchant_income"),
-    where("createdAt",  ">=", since),
+    where("uid", "==", _currentUid),
+    where("type", "==", "merchant_income"),
+    where("createdAt", ">=", since),
     orderBy("createdAt", "desc"),
   );
 
@@ -375,13 +385,13 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
     "text-align:center", "min-width:260px", "animation:fadeInDown .3s ease",
   ].join(";");
 
-  const potions = Math.floor(parseFloat(netHex) || 0);
+  const vndVal = data.amountVnd || (expectedAmount ? (cur === "VND" ? expectedAmount : vndToKrw(expectedAmount, _rates)) : 0);
+
   el.innerHTML = `
     <div style="font-size:2rem;margin-bottom:4px;">✅</div>
     <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">결제 완료!</div>
-    <div style="font-size:0.95rem;opacity:.9;">${amountDisp} 수령</div>
-    <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">${netHex} HEX</div>
-    ${potions > 0 ? `<div style="font-size:0.9rem;margin-top:8px;background:rgba(255,255,255,.18);border-radius:8px;padding:6px 12px;">💊 빨간약 <b>${potions}개</b> 인벤토리에 추가됨!</div>` : ""}
+    <div style="font-size:0.95rem;opacity:.9;">고객 명의로 ${amountDisp} 결제됨</div>
+    <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">정산 금액: ${vndVal.toLocaleString("ko-KR")} VND</div>
     <button onclick="document.getElementById('paymentAlert').remove()"
       style="margin-top:10px;background:rgba(255,255,255,.2);border:none;color:#fff;
              border-radius:6px;padding:4px 16px;cursor:pointer;font-size:0.85rem;">닫기</button>
@@ -390,7 +400,7 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
   document.body.appendChild(el);
 
   // 소리 (지원 시)
-  try { new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA==").play().catch(() => {}); } catch (_) {}
+  try { new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA==").play().catch(() => { }); } catch (_) { }
 
   // 10초 후 자동 제거
   setTimeout(() => { document.getElementById("paymentAlert")?.remove(); }, 10000);

@@ -1,6 +1,7 @@
 ﻿<!-- /mypage.html -->
 <!doctype html>
 <html lang="ko">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -25,7 +26,11 @@
       align-items: center;
       justify-content: center;
     }
-    #qrScanOverlay.active { display: flex; }
+
+    #qrScanOverlay.active {
+      display: flex;
+    }
+
     .qr-video-wrap {
       position: relative;
       width: 100%;
@@ -33,114 +38,599 @@
       aspect-ratio: 1 / 1;
       overflow: hidden;
     }
-    #qrVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    #qrVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
     .qr-frame-mask {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       pointer-events: none;
     }
+
     .qr-frame {
-      width: 62%; aspect-ratio: 1 / 1;
+      width: 62%;
+      aspect-ratio: 1 / 1;
       border: 3px solid #a78bfa;
       border-radius: 14px;
-      box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
     }
+
     .qr-scan-line {
-      position: absolute; width: 62%; height: 2px;
+      position: absolute;
+      width: 62%;
+      height: 2px;
       background: linear-gradient(90deg, transparent, #7c3aed, transparent);
       animation: qrScan 2s ease-in-out infinite;
     }
-    @keyframes qrScan { 0%,100%{top:19%} 50%{top:81%} }
+
+    @keyframes qrScan {
+
+      0%,
+      100% {
+        top: 19%
+      }
+
+      50% {
+        top: 81%
+      }
+    }
 
     /* ── 잭팟 결과 모달 ── */
-    #jackpotModal{display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;}
-    #jackpotModal.active{display:flex;animation:jmFadeIn .3s ease;}
-    @keyframes jmFadeIn{from{opacity:0}to{opacity:1}}
-    .jm-box{background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:20px;padding:20px 18px;text-align:center;max-width:320px;width:100%;box-shadow:0 0 60px rgba(124,58,237,.6);animation:jmPop .5s cubic-bezier(.17,.67,.35,1.3);}
-    @keyframes jmPop{0%{transform:scale(.6);opacity:0;}70%{transform:scale(1.05);}100%{transform:scale(1);opacity:1;}}
-    .jm-emoji{font-size:2.2rem;animation:jmEmoji 1s ease-in-out infinite alternate;}
-    @keyframes jmEmoji{0%{transform:scale(1) rotate(-8deg);}100%{transform:scale(1.2) rotate(8deg);}}
-    .jm-title{font-size:1rem;font-weight:900;color:#fde68a;letter-spacing:.05em;margin:8px 0 4px;text-shadow:0 0 20px rgba(253,230,138,.5);}
-    .jm-desc{font-size:0.78rem;color:#c4b5fd;margin-bottom:12px;}
-    .jm-items{background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;margin-bottom:12px;text-align:left;}
-    .jm-item{font-size:0.82rem;color:#fff;margin:3px 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-    .jm-item b{color:#fef08a;}
-    .jm-close{background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:8px 24px;font-size:0.88rem;font-weight:700;cursor:pointer;transition:background .15s;}
-    .jm-close:hover{background:#6d28d9;}
+    #jackpotModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(0, 0, 0, .7);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #jackpotModal.active {
+      display: flex;
+      animation: jmFadeIn .3s ease;
+    }
+
+    @keyframes jmFadeIn {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    .jm-box {
+      background: linear-gradient(135deg, #1e1b4b, #312e81);
+      border-radius: 20px;
+      padding: 20px 18px;
+      text-align: center;
+      max-width: 320px;
+      width: 100%;
+      box-shadow: 0 0 60px rgba(124, 58, 237, .6);
+      animation: jmPop .5s cubic-bezier(.17, .67, .35, 1.3);
+    }
+
+    @keyframes jmPop {
+      0% {
+        transform: scale(.6);
+        opacity: 0;
+      }
+
+      70% {
+        transform: scale(1.05);
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .jm-emoji {
+      font-size: 2.2rem;
+      animation: jmEmoji 1s ease-in-out infinite alternate;
+    }
+
+    @keyframes jmEmoji {
+      0% {
+        transform: scale(1) rotate(-8deg);
+      }
+
+      100% {
+        transform: scale(1.2) rotate(8deg);
+      }
+    }
+
+    .jm-title {
+      font-size: 1rem;
+      font-weight: 900;
+      color: #fde68a;
+      letter-spacing: .05em;
+      margin: 8px 0 4px;
+      text-shadow: 0 0 20px rgba(253, 230, 138, .5);
+    }
+
+    .jm-desc {
+      font-size: 0.78rem;
+      color: #c4b5fd;
+      margin-bottom: 12px;
+    }
+
+    .jm-items {
+      background: rgba(255, 255, 255, .08);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    .jm-item {
+      font-size: 0.82rem;
+      color: #fff;
+      margin: 3px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .jm-item b {
+      color: #fef08a;
+    }
+
+    .jm-close {
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 24px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .jm-close:hover {
+      background: #6d28d9;
+    }
+
     /* ── 아이템 드롭 박스 ── */
-    .drop-box{margin-top:10px;background:rgba(251,191,36,.12);border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;}
-    .drop-box-title{font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px;}
-    .drop-item{font-size:14px;margin:3px 0;display:flex;align-items:center;gap:6px;}
+    .drop-box {
+      margin-top: 10px;
+      background: rgba(251, 191, 36, .12);
+      border: 1.5px solid #f59e0b;
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+
+    .drop-box-title {
+      font-size: 12px;
+      color: #92400e;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .drop-item {
+      font-size: 14px;
+      margin: 3px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
 
     /* ── 거래 내역 리디자인 ── */
-    .tx-summary{display:flex;gap:10px;margin-bottom:16px;}
-    .tx-summary-card{flex:1;padding:14px 16px;border-radius:14px;text-align:center;}
-    .tx-summary-card.income{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;}
-    .tx-summary-card.expense{background:linear-gradient(135deg,#fff1f2,#fee2e2);border:1.5px solid #fca5a5;}
-    .tx-summary-label{font-size:0.72rem;color:#64748b;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px;}
-    .tx-summary-amount{font-size:1.05rem;font-weight:900;letter-spacing:-.01em;}
-    .tx-summary-amount.income{color:#15803d;}
-    .tx-summary-amount.expense{color:#dc2626;}
-    .tx-summary-sub{font-size:0.7rem;color:#94a3b8;margin-top:3px;}
-    .tx-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--border,#e2e8f0);background:#fff;margin-bottom:8px;transition:box-shadow .15s,transform .1s;cursor:default;}
-    .tx-item:hover{box-shadow:0 3px 12px rgba(0,0,0,.07);transform:translateY(-1px);}
-    .tx-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
-    .tx-icon.income{background:#dcfce7;}
-    .tx-icon.expense{background:#fee2e2;}
-    .tx-icon.pending{background:#fef3c7;}
-    .tx-icon.rejected{background:#f1f5f9;}
-    .tx-body{flex:1;min-width:0;}
-    .tx-label{font-size:0.88rem;font-weight:700;color:#1e293b;margin-bottom:2px;}
-    .tx-date{font-size:0.72rem;color:#94a3b8;}
-    .tx-hash{font-family:monospace;font-size:0.68rem;color:#cbd5e1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
-    .tx-right{text-align:right;flex-shrink:0;}
-    .tx-amount{font-size:0.95rem;font-weight:800;white-space:nowrap;}
-    .tx-amount.income{color:#15803d;}
-    .tx-amount.expense{color:#dc2626;}
-    .tx-amount.pending{color:#d97706;}
-    .tx-amount.rejected{color:#94a3b8;}
-    .tx-status-badge{display:inline-block;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:99px;margin-top:3px;}
-    .tx-status-badge.paid{background:#dcfce7;color:#15803d;}
-    .tx-status-badge.requested{background:#fef3c7;color:#92400e;}
-    .tx-status-badge.rejected{background:#f1f5f9;color:#64748b;}
-    .tx-status-badge.approved{background:#dbeafe;color:#1d4ed8;}
-    .tx-empty{text-align:center;padding:32px 16px;color:#94a3b8;font-size:0.88rem;}
+    .tx-summary {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .tx-summary-card {
+      flex: 1;
+      padding: 14px 16px;
+      border-radius: 14px;
+      text-align: center;
+    }
+
+    .tx-summary-card.income {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1.5px solid #86efac;
+    }
+
+    .tx-summary-card.expense {
+      background: linear-gradient(135deg, #fff1f2, #fee2e2);
+      border: 1.5px solid #fca5a5;
+    }
+
+    .tx-summary-label {
+      font-size: 0.72rem;
+      color: #64748b;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .tx-summary-amount {
+      font-size: 1.05rem;
+      font-weight: 900;
+      letter-spacing: -.01em;
+    }
+
+    .tx-summary-amount.income {
+      color: #15803d;
+    }
+
+    .tx-summary-amount.expense {
+      color: #dc2626;
+    }
+
+    .tx-summary-sub {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: 3px;
+    }
+
+    .tx-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border, #e2e8f0);
+      background: #fff;
+      margin-bottom: 8px;
+      transition: box-shadow .15s, transform .1s;
+      cursor: default;
+    }
+
+    .tx-item:hover {
+      box-shadow: 0 3px 12px rgba(0, 0, 0, .07);
+      transform: translateY(-1px);
+    }
+
+    .tx-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .tx-icon.income {
+      background: #dcfce7;
+    }
+
+    .tx-icon.expense {
+      background: #fee2e2;
+    }
+
+    .tx-icon.pending {
+      background: #fef3c7;
+    }
+
+    .tx-icon.rejected {
+      background: #f1f5f9;
+    }
+
+    .tx-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tx-label {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 2px;
+    }
+
+    .tx-date {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+
+    .tx-hash {
+      font-family: monospace;
+      font-size: 0.68rem;
+      color: #cbd5e1;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 160px;
+    }
+
+    .tx-right {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .tx-amount {
+      font-size: 0.95rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tx-amount.income {
+      color: #15803d;
+    }
+
+    .tx-amount.expense {
+      color: #dc2626;
+    }
+
+    .tx-amount.pending {
+      color: #d97706;
+    }
+
+    .tx-amount.rejected {
+      color: #94a3b8;
+    }
+
+    .tx-status-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 99px;
+      margin-top: 3px;
+    }
+
+    .tx-status-badge.paid {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .tx-status-badge.requested {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .tx-status-badge.rejected {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .tx-status-badge.approved {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .tx-empty {
+      text-align: center;
+      padding: 32px 16px;
+      color: #94a3b8;
+      font-size: 0.88rem;
+    }
 
     /* ── 멘티 수익 분석 ── */
-    .mi-summary-card{flex:1;min-width:120px;padding:14px 16px;border-radius:14px;text-align:center;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;}
-    .mi-summary-label{font-size:0.7rem;color:#64748b;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px;}
-    .mi-summary-val{font-size:1.05rem;font-weight:900;color:#15803d;}
-    .mi-summary-sub{font-size:0.7rem;color:#94a3b8;margin-top:3px;}
-    .mi-mentee-card{border:1.5px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;background:#fff;transition:box-shadow .15s;}
-    .mi-mentee-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.07);}
-    .mi-mentee-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;}
-    .mi-mentee-name{font-size:0.92rem;font-weight:700;color:#1e293b;}
-    .mi-mentee-addr{font-size:0.72rem;color:#94a3b8;font-family:monospace;margin-top:2px;}
-    .mi-mentee-total{text-align:right;}
-    .mi-mentee-total-val{font-size:1rem;font-weight:800;color:#7c3aed;}
-    .mi-mentee-total-label{font-size:0.68rem;color:#a78bfa;margin-top:1px;}
-    .mi-stat-row{display:flex;gap:8px;flex-wrap:wrap;}
-    .mi-stat{flex:1;min-width:80px;padding:8px 10px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;text-align:center;}
-    .mi-stat-val{font-size:0.88rem;font-weight:700;color:#334155;}
-    .mi-stat-label{font-size:0.65rem;color:#94a3b8;margin-top:2px;}
-    .mi-tx-row{font-size:0.78rem;color:#64748b;padding:5px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:8px;}
-    .mi-tx-row:last-child{border-bottom:none;}
-    .mi-tx-amt{font-weight:700;color:#7c3aed;white-space:nowrap;}
-    .mi-empty{text-align:center;padding:28px 16px;color:#94a3b8;font-size:0.88rem;}
+    .mi-summary-card {
+      flex: 1;
+      min-width: 120px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      text-align: center;
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1.5px solid #86efac;
+    }
+
+    .mi-summary-label {
+      font-size: 0.7rem;
+      color: #64748b;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .mi-summary-val {
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: #15803d;
+    }
+
+    .mi-summary-sub {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: 3px;
+    }
+
+    .mi-mentee-card {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      background: #fff;
+      transition: box-shadow .15s;
+    }
+
+    .mi-mentee-card:hover {
+      box-shadow: 0 3px 12px rgba(0, 0, 0, .07);
+    }
+
+    .mi-mentee-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .mi-mentee-name {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .mi-mentee-addr {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-family: monospace;
+      margin-top: 2px;
+    }
+
+    .mi-mentee-total {
+      text-align: right;
+    }
+
+    .mi-mentee-total-val {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #7c3aed;
+    }
+
+    .mi-mentee-total-label {
+      font-size: 0.68rem;
+      color: #a78bfa;
+      margin-top: 1px;
+    }
+
+    .mi-stat-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mi-stat {
+      flex: 1;
+      min-width: 80px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      text-align: center;
+    }
+
+    .mi-stat-val {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .mi-stat-label {
+      font-size: 0.65rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .mi-tx-row {
+      font-size: 0.78rem;
+      color: #64748b;
+      padding: 5px 0;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .mi-tx-row:last-child {
+      border-bottom: none;
+    }
+
+    .mi-tx-amt {
+      font-weight: 700;
+      color: #7c3aed;
+      white-space: nowrap;
+    }
+
+    .mi-empty {
+      text-align: center;
+      padding: 28px 16px;
+      color: #94a3b8;
+      font-size: 0.88rem;
+    }
 
     /* ── 잭팟 당첨 내역 ── */
-    .jp-hist-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;border:1.5px solid #e9d5ff;background:linear-gradient(135deg,#faf5ff,#f3e8ff);margin-bottom:8px;}
-    .jp-hist-icon{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
-    .jp-hist-body{flex:1;min-width:0;}
-    .jp-hist-title{font-size:0.88rem;font-weight:700;color:#3b0764;margin-bottom:2px;}
-    .jp-hist-sub{font-size:0.75rem;color:#7c3aed;margin-bottom:3px;}
-    .jp-hist-date{font-size:0.7rem;color:#a78bfa;}
-    .jp-hist-pts{font-size:0.95rem;font-weight:800;color:#6d28d9;text-align:right;white-space:nowrap;}
-    .jp-hist-empty{text-align:center;padding:32px 16px;color:#a78bfa;font-size:0.88rem;}
-    .jp-onchain-badge{display:inline-block;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:99px;background:#ede9fe;color:#5b21b6;margin-left:4px;vertical-align:middle;}
+    .jp-hist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1.5px solid #e9d5ff;
+      background: linear-gradient(135deg, #faf5ff, #f3e8ff);
+      margin-bottom: 8px;
+    }
 
+    .jp-hist-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .jp-hist-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .jp-hist-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #3b0764;
+      margin-bottom: 2px;
+    }
+
+    .jp-hist-sub {
+      font-size: 0.75rem;
+      color: #7c3aed;
+      margin-bottom: 3px;
+    }
+
+    .jp-hist-date {
+      font-size: 0.7rem;
+      color: #a78bfa;
+    }
+
+    .jp-hist-pts {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #6d28d9;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .jp-hist-empty {
+      text-align: center;
+      padding: 32px 16px;
+      color: #a78bfa;
+      font-size: 0.88rem;
+    }
+
+    .jp-onchain-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 99px;
+      background: #ede9fe;
+      color: #5b21b6;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
   </style>
 </head>
+
 <body>
   <div id="siteHeader"></div>
 
@@ -177,7 +667,8 @@
       </div>
 
       <!-- 멘토 연결 안내 배너 -->
-      <div id="mentorNotice" class="panel mp-section" style="display:none; border-left:4px solid var(--accent); background:var(--surface2,#f9f5ff);">
+      <div id="mentorNotice" class="panel mp-section"
+        style="display:none; border-left:4px solid var(--accent); background:var(--surface2,#f9f5ff);">
         <p style="margin:0; font-size:0.95em;">
           <strong>⚠️ 멘토 연결 필요</strong> —
           가맹점 결제 시 <b>경험치(EXP)</b>와 <b>포인트</b>를 받으려면 멘토가 연결되어 있어야 합니다.
@@ -192,9 +683,12 @@
           <a href="/register.html" class="btn btn--sm" data-i18n="btn_edit">수정</a>
         </div>
         <div class="mp-kv-list" id="profileInfo">
-          <div class="mp-kv"><span class="k" data-i18n="label_name">이름</span><span class="v" id="infoName">-</span></div>
-          <div class="mp-kv"><span class="k" data-i18n="label_email">이메일</span><span class="v" id="infoEmail">-</span></div>
-          <div class="mp-kv"><span class="k" data-i18n="label_phone">전화번호</span><span class="v" id="infoPhone">-</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_name">이름</span><span class="v" id="infoName">-</span>
+          </div>
+          <div class="mp-kv"><span class="k" data-i18n="label_email">이메일</span><span class="v" id="infoEmail">-</span>
+          </div>
+          <div class="mp-kv"><span class="k" data-i18n="label_phone">전화번호</span><span class="v" id="infoPhone">-</span>
+          </div>
         </div>
       </section>
 
@@ -203,8 +697,10 @@
         <div class="mp-section-head">
           <h2 class="mp-section-title" data-i18n="section_wallet">수탁 지갑</h2>
           <div style="display:flex; gap:6px;">
-            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;" data-i18n="btn_metamask">MetaMask 연결</button>
-            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;" data-i18n="btn_create_wallet">지갑 생성</button>
+            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;"
+              data-i18n="btn_metamask">MetaMask 연결</button>
+            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;"
+              data-i18n="btn_create_wallet">지갑 생성</button>
           </div>
         </div>
 
@@ -212,9 +708,9 @@
           <div class="mp-kv" style="align-items:flex-start;">
             <span class="k" data-i18n="label_wallet_addr">지갑 주소</span>
             <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
-              <span class="mono" id="walletAddress" style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
-              <button id="btnCopyWallet" type="button" title="주소 복사"
-                style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
+              <span class="mono" id="walletAddress"
+                style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
+              <button id="btnCopyWallet" type="button" title="주소 복사" style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
                        background:var(--surface,#fff); border:1px solid var(--border,#e5e7eb);
                        border-radius:20px; cursor:pointer; color:var(--muted,#6b7280); white-space:nowrap;">
                 <span data-i18n="btn_copy">📋 복사</span>
@@ -235,14 +731,17 @@
           </div>
           <div id="expBarRow" style="display:none; padding:2px 0 10px 0;">
             <div style="background:#e5e7eb; border-radius:99px; height:8px; overflow:hidden;">
-              <div id="expBarFill" style="background:var(--accent,#7c3aed); height:100%; width:0%; border-radius:99px; transition:width .4s;"></div>
+              <div id="expBarFill"
+                style="background:var(--accent,#7c3aed); height:100%; width:0%; border-radius:99px; transition:width .4s;">
+              </div>
             </div>
             <small class="muted" id="expRequired" style="font-size:0.78em;"></small>
           </div>
           <div class="mp-kv" id="levelUpRow" style="display:none;">
             <span class="k"></span>
             <span class="v">
-              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">레벨업 가능! →</button>
+              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">레벨업 가능!
+                →</button>
             </span>
           </div>
           <!-- 온체인 경험치 동기화 상태 -->
@@ -250,34 +749,43 @@
             <span class="k" style="font-size:12px;color:#6b7280;">온체인 저장</span>
             <span class="v" id="onChainSyncStatus" style="flex:1;"></span>
           </div>
+          <div class="mp-kv" id="paymentBalanceRow" style="display:none; padding-top:10px;">
+            <span class="k" data-i18n="label_payment_balance" style="color:var(--text, #111); font-weight: 700;">Payment
+              Balance (VND)</span>
+            <span class="v accent" style="font-size: 1.15rem; font-weight: 800;" id="paymentBalanceDisplay">-</span>
+          </div>
           <div class="mp-kv" id="pointRow" style="display:none;">
-            <span class="k" data-i18n="label_point">포인트(hex로 변경가능)</span>
-            <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="k" data-i18n="label_point">K-CULTURE Point</span>
+            <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap; color: #7c3aed;">
               <span id="pointDisplay">-</span>
-              <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">HEX로 전환</button>
+              <!-- <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">Payment로 전환</button> -->
             </span>
           </div>
           <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
+
           <div class="mp-kv" id="mentorAddrRow" style="display:none;">
             <span class="k" data-i18n="label_my_mentor">나의 멘토</span>
             <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
           </div>
-          <div class="mp-kv" id="walletHexRow" style="display:none;">
-            <span class="k" data-i18n="label_hex_balance">보유 HEX</span>
+
+          <!-- Legacy Wallet Rows for Admin/Legacy Uses -->
+          <div class="mp-kv" id="walletHexRow" style="display:none; opacity: 0.5;">
+            <span class="k" data-i18n="label_hex_balance">Legacy HEX</span>
             <span class="v accent" id="walletHexDisplay">-</span>
           </div>
-          <div class="mp-kv" id="walletJumpRow" style="display:none;">
-            <span class="k" data-i18n="label_jump_balance">보유 JUMP</span>
+          <div class="mp-kv" id="walletJumpRow" style="display:none; opacity: 0.5;">
+            <span class="k" data-i18n="label_jump_balance">Legacy JUMP</span>
             <span class="v accent" id="walletJumpDisplay">-</span>
           </div>
-          <div class="mp-kv" id="walletJumpStakedRow" style="display:none;">
-            <span class="k" data-i18n="label_jump_staked">스테이킹 JUMP</span>
+          <div class="mp-kv" id="walletJumpStakedRow" style="display:none; opacity: 0.5;">
+            <span class="k" data-i18n="label_jump_staked">Legacy Staked</span>
             <span class="v accent" id="walletJumpStakedDisplay">-</span>
           </div>
         </div>
 
         <!-- 개인지갑(MetaMask)으로 잘못 등록된 경우 경고 -->
-        <div id="metamaskWarning" style="display:none; background:#fff3cd; border-left:4px solid #f59e0b; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:0.88em;">
+        <div id="metamaskWarning"
+          style="display:none; background:#fff3cd; border-left:4px solid #f59e0b; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:0.88em;">
           <strong>⚠️ 개인 지갑이 연결되어 있습니다.</strong><br>
           현재 MetaMask 주소가 등록되어 있어 플랫폼 결제·포인트 기능을 사용할 수 없습니다.<br>
           아래 <strong>지갑 생성</strong> 버튼을 눌러 수탁 지갑으로 전환해 주세요.
@@ -290,8 +798,8 @@
           </p>
           <label class="field" style="margin-top:10px;">
             <span><span data-i18n="label_mentor_addr_field">멘토 지갑 주소</span> <em class="req">*</em></span>
-            <input type="text" id="createWalletMentorAddr" maxlength="42"
-              placeholder="0x..." style="font-family:monospace;" />
+            <input type="text" id="createWalletMentorAddr" maxlength="42" placeholder="0x..."
+              style="font-family:monospace;" />
           </label>
         </div>
 
@@ -306,8 +814,10 @@
             <span><span data-i18n="label_mentor_email">멘토 이메일</span> <em class="req">*</em></span>
             <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
           </label>
-          <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">멘토 등록 요청</button>
-          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);" data-i18n="mentor_req_done">✓ 요청이 접수되었습니다. 관리자 확인 후 반영됩니다.</p>
+          <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">멘토 등록
+            요청</button>
+          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);"
+            data-i18n="mentor_req_done">✓ 요청이 접수되었습니다. 관리자 확인 후 반영됩니다.</p>
         </div>
 
         <!-- 온체인 미등록 시 등록 버튼 -->
@@ -318,17 +828,18 @@
           </p>
           <label class="field">
             <span><span data-i18n="label_mentor_addr_field">멘토 지갑 주소</span> <em class="req">*</em></span>
-            <input type="text" id="mentorAddrInput" maxlength="42"
-              placeholder="0x..." style="font-family:monospace;" />
+            <input type="text" id="mentorAddrInput" maxlength="42" placeholder="0x..." style="font-family:monospace;" />
           </label>
-          <button class="btn btn--primary" id="btnRegisterOnChain" type="button" data-i18n="btn_register_onchain">온체인 등록</button>
+          <button class="btn btn--primary" id="btnRegisterOnChain" type="button" data-i18n="btn_register_onchain">온체인
+            등록</button>
         </div>
       </section>
 
       <!-- 개인 지갑 HEX 이체 (레벨 4 이상) -->
       <section class="panel mp-section collapsible is-collapsed" id="hexTransferSection" style="display:none;">
         <div class="mp-section-head">
-          <h2 class="mp-section-title" data-i18n="section_hex_transfer">HEX 개인 지갑 이체 <span style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
+          <h2 class="mp-section-title" data-i18n="section_hex_transfer">HEX 개인 지갑 이체 <span
+              style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
         </div>
         <p class="hint" style="margin-bottom:12px;">
           수탁 지갑의 HEX를 외부 개인 지갑으로 직접 전송합니다.<br>
@@ -337,13 +848,11 @@
         <form id="hexTransferForm" class="form" style="margin-top:0;">
           <label class="field">
             <span><span data-i18n="label_to_wallet">수령 지갑 주소</span> <em class="req">*</em></span>
-            <input type="text" id="hexTransferTo" maxlength="42"
-              placeholder="0x..." style="font-family:monospace;" />
+            <input type="text" id="hexTransferTo" maxlength="42" placeholder="0x..." style="font-family:monospace;" />
           </label>
           <label class="field">
             <span data-i18n="label_transfer_amt">이체 수량 (HEX)</span>
-            <input type="number" id="hexTransferAmount" min="0" step="any"
-              placeholder="비워 놓으면 전액 이체됨" />
+            <input type="number" id="hexTransferAmount" min="0" step="any" placeholder="비워 놓으면 전액 이체됨" />
           </label>
           <div class="mp-kv" style="margin-bottom:10px;">
             <span class="k">보유 HEX</span>
@@ -364,14 +873,19 @@
 
         <!-- 입금 계좌 안내 (항상 표시) -->
         <div class="mp-result-box" style="margin-bottom:14px;">
-          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:var(--accent);" data-i18n="label_kr_account">🇰🇷 한국 계좌 (KRW 입금)</div>
+          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:var(--accent);"
+            data-i18n="label_kr_account">🇰🇷 한국 계좌 (KRW 입금)</div>
           <div class="mp-kv"><span class="k" data-i18n="label_bank">은행</span><span class="v">하나은행</span></div>
-          <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span class="v mono">381. 19. 03076. 2</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span class="v mono">381. 19.
+              03076. 2</span></div>
           <div class="mp-kv"><span class="k" data-i18n="label_account_holder">예금주</span><span class="v">오용진</span></div>
-          <div style="margin:10px 0 8px; font-size:0.82em; font-weight:700; color:#0ea5e9;" data-i18n="label_vn_account">🇻🇳 베트남 계좌 (VND 입금)</div>
+          <div style="margin:10px 0 8px; font-size:0.82em; font-weight:700; color:#0ea5e9;"
+            data-i18n="label_vn_account">🇻🇳 베트남 계좌 (VND 입금)</div>
           <div class="mp-kv"><span class="k" data-i18n="label_bank">은행</span><span class="v">TECHCOM BANK</span></div>
-          <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span class="v mono">19037852768012</span></div>
-          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">예금주</span><span class="v">신헌철 (SHIN HEON CHEOL)</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span
+              class="v mono">19037852768012</span></div>
+          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">예금주</span><span class="v">신헌철 (SHIN HEON
+              CHEOL)</span></div>
         </div>
 
         <form id="depositForm" class="form" style="margin-top:0;">
@@ -390,8 +904,10 @@
 
         <!-- 충전 요청 결과 -->
         <div id="depositResult" class="mp-result-box" style="display:none;">
-          <div class="mp-kv"><span class="k" data-i18n="label_ref_code">참조코드</span><span class="v mono" id="drRefCode">-</span></div>
-          <div style="margin:10px 0 6px; font-size:0.82em; font-weight:700; color:var(--accent);">🇰🇷 한국 계좌 (KRW 입금)</div>
+          <div class="mp-kv"><span class="k" data-i18n="label_ref_code">참조코드</span><span class="v mono"
+              id="drRefCode">-</span></div>
+          <div style="margin:10px 0 6px; font-size:0.82em; font-weight:700; color:var(--accent);">🇰🇷 한국 계좌 (KRW 입금)
+          </div>
           <div class="mp-kv"><span class="k">입금 은행</span><span class="v" id="drBank">-</span></div>
           <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono" id="drAccount">-</span></div>
           <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolder">-</span></div>
@@ -423,22 +939,28 @@
             </select>
           </label>
           <div class="field">
-            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;" data-i18n="label_currency">통화 선택</span>
+            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;"
+              data-i18n="label_currency">통화 선택</span>
             <div class="curr-seg">
-              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyVND" value="VND" checked /><span>🇻🇳 VND (동)</span></label>
-              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyKRW" value="KRW" /><span>🇰🇷 KRW (원)</span></label>
+              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyVND" value="VND"
+                  checked /><span>🇻🇳 VND (동)</span></label>
+              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyKRW"
+                  value="KRW" /><span>🇰🇷 KRW (원)</span></label>
             </div>
             <input type="hidden" id="merchantPayCurrency" value="VND" />
           </div>
           <label class="field">
-            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_vnd">결제 금액 (동 VND) <em class="req">*</em></span>
+            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_vnd">결제 금액 (동 VND) <em
+                class="req">*</em></span>
             <input type="number" id="merchantPayAmount" min="10000" step="1000" placeholder="예: 200000" />
           </label>
           <div class="actions">
             <button class="btn btn--primary" type="submit" id="btnMerchantPay" data-i18n="btn_pay">결제</button>
           </div>
         </form>
-        <div id="qrResultState" style="display:none;margin:8px 0;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;font-size:0.88rem;color:#166534;"></div>
+        <div id="qrResultState"
+          style="display:none;margin:8px 0;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;font-size:0.88rem;color:#166534;">
+        </div>
         <div id="merchantPayResult" class="mp-result-box" style="display:none;"></div>
       </section>
 
@@ -460,16 +982,20 @@
         </div>
         <dl style="margin:0; display:grid; gap:10px;">
           <div>
-            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">멘토 등록 (필수)</dt>
-            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">온체인 등록 시 멘토 주소를 입력해야 합니다. 멘토 없이 등록하면 기본 멘토로 연결되어 경험치·포인트 적립이 되지 않을 수 있습니다.</dd>
+            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">멘토 등록 (필수)
+            </dt>
+            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">온체인 등록 시 멘토 주소를 입력해야 합니다. 멘토 없이 등록하면 기본
+              멘토로 연결되어 경험치·포인트 적립이 되지 않을 수 있습니다.</dd>
           </div>
           <div>
             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">포인트란?</dt>
-            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">내 하위 회원이 가맹점에서 결제할 때 수수료 일부가 멘토(나)에게 포인트로 적립됩니다. 포인트는 HEX 토큰으로 전환할 수 있습니다.</dd>
+            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">내 하위 회원이 가맹점에서 결제할 때 수수료 일부가 멘토(나)에게
+              포인트로 적립됩니다. 포인트는 HEX 토큰으로 전환할 수 있습니다.</dd>
           </div>
           <div>
             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">경험치 (EXP)</dt>
-            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">내가 가맹점에서 결제할 때 수수료에 비례해 경험치가 쌓입니다. 경험치로 레벨업을 할 수 있습니다.</dd>
+            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">내가 가맹점에서 결제할 때 수수료에 비례해 경험치가 쌓입니다. 경험치로
+              레벨업을 할 수 있습니다.</dd>
           </div>
           <div>
             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">레벨 & 레벨업</dt>
@@ -477,7 +1003,8 @@
               레벨이 높을수록 포인트 → HEX 전환 시 더 많이 받습니다.<br>
               <strong>전환량 = 포인트 × 레벨 ÷ 10</strong><br>
               레벨업 필요 EXP = 현재레벨² × 10,000<br>
-              <span style="font-size:0.9em;">Lv.1→2: 10,000 EXP &nbsp;·&nbsp; Lv.2→3: 40,000 EXP &nbsp;·&nbsp; Lv.3→4: 90,000 EXP</span>
+              <span style="font-size:0.9em;">Lv.1→2: 10,000 EXP &nbsp;·&nbsp; Lv.2→3: 40,000 EXP &nbsp;·&nbsp; Lv.3→4:
+                90,000 EXP</span>
             </dd>
           </div>
         </dl>
@@ -519,13 +1046,13 @@
           </p>
           <div id="referralQrWrap" style="margin:0 auto 14px;width:fit-content;"></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-            <input id="referralLink" type="text" readonly
-              style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border,#e5e7eb);
+            <input id="referralLink" type="text" readonly style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border,#e5e7eb);
                      border-radius:8px;font-size:0.78rem;background:var(--surface2,#f9fafb);
                      color:var(--muted,#6b7280);cursor:text;" />
             <button id="btnCopyReferral" class="btn btn--sm btn--primary" type="button">🔗 링크 복사</button>
           </div>
-          <p id="referralCopyMsg" style="font-size:0.8rem;color:var(--accent,#7c3aed);min-height:18px;text-align:center;"></p>
+          <p id="referralCopyMsg"
+            style="font-size:0.8rem;color:var(--accent,#7c3aed);min-height:18px;text-align:center;"></p>
         </div>
       </section>
 
@@ -536,7 +1063,8 @@
           <button class="btn btn--sm" id="btnRefreshJackpotHist" type="button" data-i18n="btn_refresh">새로고침</button>
         </div>
         <!-- 잭팟 통계 카드 -->
-        <div id="jackpotStatRow" class="mp-kv-grid" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div id="jackpotStatRow" class="mp-kv-grid"
+          style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
           <div class="mp-stat-card">
             <div class="mp-stat-label" data-i18n="jackpot_stat_total">누적 잭팟 당첨</div>
             <div class="mp-stat-value" id="jackpotTotalHex">-</div>
@@ -603,44 +1131,67 @@
 
           <!-- 내 주소 QR 버튼 + 패널 -->
           <div style="margin-bottom:12px;">
-            <button id="btnVwShowQr" type="button" style="width:100%;padding:11px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.92rem;font-weight:600;cursor:pointer;">
+            <button id="btnVwShowQr" type="button"
+              style="width:100%;padding:11px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.92rem;font-weight:600;cursor:pointer;">
               <span data-i18n="btn_show_qr">📲 내 수탁 지갑 주소 QR 보기</span>
             </button>
           </div>
-          <div id="vwMyQrPanel" style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-bottom:14px;text-align:center;">
-            <div style="font-weight:700;font-size:0.9rem;margin-bottom:10px;" data-i18n="voucher_wallet_title">내 수탁 지갑 주소 (상대방에게 보여주세요)</div>
+          <div id="vwMyQrPanel"
+            style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-bottom:14px;text-align:center;">
+            <div style="font-weight:700;font-size:0.9rem;margin-bottom:10px;" data-i18n="voucher_wallet_title">내 수탁 지갑
+              주소 (상대방에게 보여주세요)</div>
             <canvas id="vwQrCanvas" style="display:block;margin:0 auto 10px;border-radius:8px;"></canvas>
-            <div id="vwWalletAddr" style="font-size:0.72rem;color:var(--muted,#6b7280);word-break:break-all;margin-bottom:10px;font-family:monospace;"></div>
+            <div id="vwWalletAddr"
+              style="font-size:0.72rem;color:var(--muted,#6b7280);word-break:break-all;margin-bottom:10px;font-family:monospace;">
+            </div>
             <div style="display:flex;gap:8px;justify-content:center;">
-              <button id="btnVwCopyAddr" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;" data-i18n="btn_copy_addr">주소 복사</button>
-              <button id="btnVwHideQr" type="button" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;" data-i18n="btn_hide_qr">닫기</button>
+              <button id="btnVwCopyAddr"
+                style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;"
+                data-i18n="btn_copy_addr">주소 복사</button>
+              <button id="btnVwHideQr" type="button"
+                style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;"
+                data-i18n="btn_hide_qr">닫기</button>
             </div>
           </div>
 
           <!-- 바우처 카드 그리드 -->
-          <div id="voucherCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:4px;"></div>
-          <p id="voucherCardEmpty" class="hint" style="display:none;text-align:center;padding:16px 0;" data-i18n="voucher_empty">보유한 바우처가 없습니다.</p>
-          <p id="voucherCardLoading" class="hint" style="text-align:center;padding:12px 0;" data-i18n="voucher_loading">불러오는 중...</p>
+          <div id="voucherCardGrid"
+            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:4px;">
+          </div>
+          <p id="voucherCardEmpty" class="hint" style="display:none;text-align:center;padding:16px 0;"
+            data-i18n="voucher_empty">보유한 바우처가 없습니다.</p>
+          <p id="voucherCardLoading" class="hint" style="text-align:center;padding:12px 0;" data-i18n="voucher_loading">
+            불러오는 중...</p>
 
           <!-- 이체 모달 (inline) -->
-          <div id="voucherTransferPanel" style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-top:14px;">
+          <div id="voucherTransferPanel"
+            style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-top:14px;">
             <div style="font-weight:700;margin-bottom:10px;" data-i18n="transfer_title">바우처 이체</div>
             <div style="font-size:0.83rem;color:var(--muted,#6b7280);margin-bottom:8px;">
               바우처 <strong id="vtVoucherId"></strong>을(를) 이체할 지갑 주소를 입력하세요.
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;">
-              <input type="text" id="vtToAddress" placeholder="0x..." style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.88rem;" />
-              <button id="btnVwQrScan" type="button" style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:0.82rem;cursor:pointer;white-space:nowrap;" data-i18n="btn_qr_scan_addr">📷 스캔</button>
+              <input type="text" id="vtToAddress" placeholder="0x..."
+                style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.88rem;" />
+              <button id="btnVwQrScan" type="button"
+                style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:0.82rem;cursor:pointer;white-space:nowrap;"
+                data-i18n="btn_qr_scan_addr">📷 스캔</button>
             </div>
             <div style="display:flex;gap:8px;">
-              <button id="btnVtConfirm" style="flex:1;padding:9px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;" data-i18n="btn_transfer_confirm">이체 확인</button>
-              <button id="btnVtCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;" data-i18n="btn_cancel">취소</button>
+              <button id="btnVtConfirm"
+                style="flex:1;padding:9px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;"
+                data-i18n="btn_transfer_confirm">이체 확인</button>
+              <button id="btnVtCancel"
+                style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;"
+                data-i18n="btn_cancel">취소</button>
             </div>
-            <div id="vtStatus" style="font-size:0.82rem;margin-top:6px;min-height:18px;color:var(--muted,#6b7280);"></div>
+            <div id="vtStatus" style="font-size:0.82rem;margin-top:6px;min-height:18px;color:var(--muted,#6b7280);">
+            </div>
           </div>
 
           <!-- 소각 확인 패널 (inline) -->
-          <div id="voucherBurnPanel" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin-top:14px;">
+          <div id="voucherBurnPanel"
+            style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin-top:14px;">
             <div style="font-weight:700;margin-bottom:8px;" data-i18n="burn_title">🔥 바우처 소각</div>
             <div style="font-size:0.83rem;color:#92400e;margin-bottom:12px;" id="vbInfo"></div>
 
@@ -649,25 +1200,34 @@
               <div style="font-size:0.8rem;color:#78350f;margin-bottom:8px;font-weight:600;">처리 진행 중...</div>
               <div style="display:flex;flex-direction:column;gap:6px;">
                 <div id="vbStep1" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
-                  <span id="vbStep1Icon" style="font-size:1rem;">⏳</span> <span id="vbStep1Label" data-i18n="burn_step1">소각 요청 전송 중</span>
+                  <span id="vbStep1Icon" style="font-size:1rem;">⏳</span> <span id="vbStep1Label"
+                    data-i18n="burn_step1">소각 요청 전송 중</span>
                 </div>
                 <div id="vbStep2" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
-                  <span id="vbStep2Icon" style="font-size:1rem;">⏳</span> <span id="vbStep2Label" data-i18n="burn_step2_onchain">스마트 컨트랙트 실행 중</span>
+                  <span id="vbStep2Icon" style="font-size:1rem;">⏳</span> <span id="vbStep2Label"
+                    data-i18n="burn_step2_onchain">스마트 컨트랙트 실행 중</span>
                 </div>
                 <div id="vbStep3" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
-                  <span id="vbStep3Icon" style="font-size:1rem;">⏳</span> <span id="vbStep3Label" data-i18n="burn_step3_onchain">HEX 환급 처리 중</span>
+                  <span id="vbStep3Icon" style="font-size:1rem;">⏳</span> <span id="vbStep3Label"
+                    data-i18n="burn_step3_onchain">HEX 환급 처리 중</span>
                 </div>
                 <div id="vbStep4" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
-                  <span id="vbStep4Icon" style="font-size:1rem;">⏳</span> <span id="vbStep4Label" data-i18n="burn_step4">완료 확인</span>
+                  <span id="vbStep4Icon" style="font-size:1rem;">⏳</span> <span id="vbStep4Label"
+                    data-i18n="burn_step4">완료 확인</span>
                 </div>
               </div>
             </div>
 
             <div id="vbButtons" style="display:flex;gap:8px;">
-              <button id="btnVbConfirm" style="flex:1;padding:9px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;" data-i18n="burn_confirm_btn">소각 확인</button>
-              <button id="btnVbCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;" data-i18n="btn_cancel">취소</button>
+              <button id="btnVbConfirm"
+                style="flex:1;padding:9px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;"
+                data-i18n="burn_confirm_btn">소각 확인</button>
+              <button id="btnVbCancel"
+                style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;"
+                data-i18n="btn_cancel">취소</button>
             </div>
-            <div id="vbStatus" style="font-size:0.84rem;margin-top:10px;min-height:20px;font-weight:500;text-align:center;"></div>
+            <div id="vbStatus"
+              style="font-size:0.84rem;margin-top:10px;min-height:20px;font-weight:500;text-align:center;"></div>
           </div>
 
         </div>
@@ -689,12 +1249,10 @@
         <div class="qr-scan-line"></div>
       </div>
     </div>
-    <p id="qrScanState"
-       style="color:#fff; font-size:0.95rem; margin:16px 16px 0; text-align:center; max-width:320px;">
+    <p id="qrScanState" style="color:#fff; font-size:0.95rem; margin:16px 16px 0; text-align:center; max-width:320px;">
       <span data-i18n="qr_hint">QR 코드를 사각형 안에 맞춰주세요</span>
     </p>
-    <button id="btnCloseQr" type="button"
-            style="margin-top:20px; padding:11px 36px; background:#7c3aed; color:#fff;
+    <button id="btnCloseQr" type="button" style="margin-top:20px; padding:11px 36px; background:#7c3aed; color:#fff;
                    border:none; border-radius:10px; font-size:1rem; cursor:pointer; font-weight:600;">
       <span data-i18n="btn_hide_qr">닫기</span>
     </button>
@@ -704,4 +1262,5 @@
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/pages/mypage.js"></script>
 </body>
+
 </html>

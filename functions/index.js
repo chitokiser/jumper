@@ -18,57 +18,59 @@
 const admin = require('firebase-admin');
 const { onDocumentWritten, onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
-const { onSchedule }         = require('firebase-functions/v2/scheduler');
-const { defineSecret }       = require('firebase-functions/params');
-const { logger }             = require('firebase-functions');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { defineSecret } = require('firebase-functions/params');
+const { logger } = require('firebase-functions');
 
 admin.initializeApp();
 const db = admin.firestore();
 
 // ── Firebase Secret Manager ──────────────────────────────────────────────────
-const walletSecret        = defineSecret('WALLET_MASTER_SECRET');
-const adminKeySecret      = defineSecret('ADMIN_PRIVATE_KEY');
-const extApiSecret        = defineSecret('PARTNER_API_KEY');
-const geminiSecret        = defineSecret('GEMINI_API_KEY');
-const exchangeAddrSecret  = defineSecret('JUMP_AUTO_EXCHANGE_ADDRESS');
-const telegramBotSecret   = defineSecret('TELEGRAM_BOT_TOKEN');
+const walletSecret = defineSecret('WALLET_MASTER_SECRET');
+const adminKeySecret = defineSecret('ADMIN_PRIVATE_KEY');
+const extApiSecret = defineSecret('PARTNER_API_KEY');
+const geminiSecret = defineSecret('GEMINI_API_KEY');
+const exchangeAddrSecret = defineSecret('JUMP_AUTO_EXCHANGE_ADDRESS');
+const telegramBotSecret = defineSecret('TELEGRAM_BOT_TOKEN');
 const announceGroupSecret = defineSecret('ANNOUNCE_GROUP_ID'); // GP 생중계 그룹 채팅 ID
-const tonMnemonicSecret   = defineSecret('TON_WALLET_MNEMONIC');
-const tonDepositSecret    = defineSecret('TON_DEPOSIT_ADDRESS');
-const tonCenterKeySecret  = defineSecret('TON_CENTER_API_KEY');
-const tonPrivKeySecret    = defineSecret('TON_PRIVATE_KEY');
+const tonMnemonicSecret = defineSecret('TON_WALLET_MNEMONIC');
+const tonDepositSecret = defineSecret('TON_DEPOSIT_ADDRESS');
+const tonCenterKeySecret = defineSecret('TON_CENTER_API_KEY');
+const tonPrivKeySecret = defineSecret('TON_PRIVATE_KEY');
 
 // ── 핸들러 ───────────────────────────────────────────────────────────────────
-const onboarding             = require('./handlers/onboarding');
-const depositH               = require('./handlers/deposit');
-const txH                    = require('./handlers/transaction');
-const exchangeH              = require('./handlers/exchange');
-const coopH                  = require('./handlers/coop');
-const daoH                   = require('./handlers/dao');
-const treasureH              = require('./handlers/treasure');
-const communityH             = require('./handlers/community');
-const supportChatH           = require('./handlers/supportChat');
-const shopH                  = require('./handlers/shop');
-const nfcH                   = require('./handlers/nfc');
-const tutorialH              = require('./handlers/tutorial');
-const slotH                  = require('./handlers/slot');
-const userTreasureH          = require('./handlers/userTreasure');
-const coinExchangeH          = require('./handlers/coinExchange');
-const rankingsH              = require('./handlers/rankings');
-const stockOptionH           = require('./handlers/stockOption');
-const starterH               = require('./handlers/starter');
-const dailyAreaH             = require('./handlers/dailyArea');
-const npcH                   = require('./handlers/npcSystem');
-const userPlaceH             = require('./handlers/userPlace');
-const expSyncH               = require('./handlers/expSync');
-const telegramH              = require('./handlers/telegram');
-const tonPaymentH            = require('./handlers/tonPayment');
-const gameRewardH            = require('./handlers/gameReward');
-const starsH                 = require('./handlers/starsPayment');
-const membershipH            = require('./handlers/membership');
-const moneyTreeH             = require('./handlers/moneyTree');
-const goldMineH              = require('./handlers/goldMine');
-const harborH                = require('./handlers/harbor');
+const onboarding = require('./handlers/onboarding');
+const depositH = require('./handlers/deposit');
+const txH = require('./handlers/transaction');
+const exchangeH = require('./handlers/exchange');
+const coopH = require('./handlers/coop');
+const daoH = require('./handlers/dao');
+const treasureH = require('./handlers/treasure');
+const communityH = require('./handlers/community');
+const supportChatH = require('./handlers/supportChat');
+const shopH = require('./handlers/shop');
+const nfcH = require('./handlers/nfc');
+const tutorialH = require('./handlers/tutorial');
+const slotH = require('./handlers/slot');
+const userTreasureH = require('./handlers/userTreasure');
+const coinExchangeH = require('./handlers/coinExchange');
+const rankingsH = require('./handlers/rankings');
+const stockOptionH = require('./handlers/stockOption');
+const starterH = require('./handlers/starter');
+const dailyAreaH = require('./handlers/dailyArea');
+const npcH = require('./handlers/npcSystem');
+const userPlaceH = require('./handlers/userPlace');
+const expSyncH = require('./handlers/expSync');
+const telegramH = require('./handlers/telegram');
+const tonPaymentH = require('./handlers/tonPayment');
+const gameRewardH = require('./handlers/gameReward');
+const starsH = require('./handlers/starsPayment');
+const membershipH = require('./handlers/membership');
+const moneyTreeH = require('./handlers/moneyTree');
+const goldMineH = require('./handlers/goldMine');
+const harborH = require('./handlers/harbor');
+const ledgerH = require('./handlers/ledger');
+const merchantRewardH = require('./handlers/merchantReward');
 const { requireAdmin, ADMIN_EMAILS } = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -103,7 +105,7 @@ function wrapError(fn) {
 exports.createWallet = onCall(
   { secrets: [walletSecret, adminKeySecret], timeoutSeconds: 300 },
   wrapError(async (request) => {
-    const uid           = requireAuth(request);
+    const uid = requireAuth(request);
     const mentorAddress = request.data?.mentorAddress ?? null;
     process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
     const result = await onboarding.createCustodialWallet(uid, walletSecret.value(), mentorAddress);
@@ -133,7 +135,7 @@ exports.adminSelfOnboard = onCall(
 //    클라이언트: httpsCallable(functions, 'claimGameReward')({ gameType:'memory', amount:300 })
 // ════════════════════════════════════════════════════════════════════════════
 exports.claimGameReward = onCall(wrapError(async (request) => {
-  const uid      = requireAuth(request);
+  const uid = requireAuth(request);
   const { gameType, amount } = request.data ?? {};
   return await gameRewardH.claimGameReward(uid, gameType, amount);
 }));
@@ -143,7 +145,7 @@ exports.claimGameReward = onCall(wrapError(async (request) => {
 //    클라이언트: httpsCallable(functions, 'payGameEntry')({ gameKey:'memoryEntry' })
 // ════════════════════════════════════════════════════════════════════════════
 exports.payGameEntry = onCall(wrapError(async (request) => {
-  const uid      = requireAuth(request);
+  const uid = requireAuth(request);
   const { gameKey } = request.data ?? {};
   return await gameRewardH.payGameEntry(uid, gameKey);
 }));
@@ -302,7 +304,7 @@ exports.plantBulkSeedlings = onCall(
 exports.registerMember = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
-    const uid           = requireAuth(request);
+    const uid = requireAuth(request);
     const mentorAddress = request.data?.mentorAddress ?? null;
     const result = await onboarding.registerOnChain(uid, mentorAddress, walletSecret.value());
     logger.info('registerMember', { uid, mentorAddress, txHash: result.txHash });
@@ -454,7 +456,7 @@ exports.requestLevelUp = onCall(
 exports.buyProduct = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
-    const uid       = requireAuth(request);
+    const uid = requireAuth(request);
     const productId = request.data?.productId;
     if (!productId) throw new HttpsError('invalid-argument', 'productId가 필요합니다');
     const result = await txH.buyProduct(uid, Number(productId), walletSecret.value());
@@ -471,7 +473,7 @@ exports.buyProduct = onCall(
 exports.withdraw = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
-    const uid       = requireAuth(request);
+    const uid = requireAuth(request);
     const amountWei = request.data?.amountWei ?? 'all';
     const result = await txH.withdrawPayable(uid, amountWei, walletSecret.value());
     logger.info('withdraw', { uid, amountWei, txHash: result.txHash });
@@ -584,8 +586,8 @@ exports.registerMerchant = onCall(
     // 온체인 metadataURI: compact JSON (가스 절약)
     const metadataURI = JSON.stringify({
       n: name,
-      r: region  || '',
-      c: career  || '',
+      r: region || '',
+      c: career || '',
       d: (description || '').slice(0, 120),
     });
 
@@ -734,11 +736,11 @@ exports.adminGetUserInfo = onCall(
     const fsData = fsSnap.exists ? fsSnap.data() : {};
     return {
       uid,
-      email:         authUser.email || null,
-      name:          fsData.name    || null,
+      email: authUser.email || null,
+      name: fsData.name || null,
       walletAddress: fsData.wallet?.address || null,
-      blacklisted:   !!fsData.blacklisted,
-      authDisabled:  !!authUser.disabled,
+      blacklisted: !!fsData.blacklisted,
+      authDisabled: !!authUser.disabled,
     };
   })
 );
@@ -879,7 +881,7 @@ exports.getJumpBankStatus = onCall(
 exports.buyJumpToken = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
-    const uid        = requireAuth(request);
+    const uid = requireAuth(request);
     const jumpAmount = request.data?.jumpAmount;
     if (!jumpAmount) throw new HttpsError('invalid-argument', 'jumpAmount가 필요합니다');
     const result = await exchangeH.buyJumpToken(uid, jumpAmount, walletSecret.value());
@@ -892,7 +894,7 @@ exports.buyJumpToken = onCall(
 exports.sellJumpToken = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
-    const uid        = requireAuth(request);
+    const uid = requireAuth(request);
     const jumpAmount = request.data?.jumpAmount;
     if (!jumpAmount) throw new HttpsError('invalid-argument', 'jumpAmount가 필요합니다');
     const result = await exchangeH.sellJumpToken(uid, jumpAmount, walletSecret.value());
@@ -905,7 +907,7 @@ exports.sellJumpToken = onCall(
 exports.stakeJumpToken = onCall(
   { secrets: [walletSecret] },
   wrapError(async (request) => {
-    const uid        = requireAuth(request);
+    const uid = requireAuth(request);
     const jumpAmount = request.data?.jumpAmount;
     if (!jumpAmount) throw new HttpsError('invalid-argument', 'jumpAmount가 필요합니다');
     const result = await exchangeH.stakeJumpToken(uid, jumpAmount, walletSecret.value());
@@ -972,8 +974,8 @@ exports.requestHexTonSwap = onCall(
   { secrets: [walletSecret, adminKeySecret, tonPrivKeySecret, tonCenterKeySecret] },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    process.env.ADMIN_PRIVATE_KEY  = adminKeySecret.value();
-    process.env.TON_PRIVATE_KEY    = tonPrivKeySecret.value();
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    process.env.TON_PRIVATE_KEY = tonPrivKeySecret.value();
     process.env.TON_CENTER_API_KEY = tonCenterKeySecret.value();
     const { direction, amount, tonAddress, senderAddress, tonNano, sentAt } = request.data || {};
     const result = await exchangeH.requestHexTonSwap(uid, {
@@ -1002,9 +1004,9 @@ exports.getPlatformTonInfo = onCall(
   { secrets: [tonMnemonicSecret, tonDepositSecret, tonCenterKeySecret] },
   wrapError(async (request) => {
     requireAuth(request);
-    process.env.TON_WALLET_MNEMONIC   = tonMnemonicSecret.value();
-    process.env.TON_DEPOSIT_ADDRESS   = tonDepositSecret.value();
-    process.env.TON_CENTER_API_KEY    = tonCenterKeySecret.value();
+    process.env.TON_WALLET_MNEMONIC = tonMnemonicSecret.value();
+    process.env.TON_DEPOSIT_ADDRESS = tonDepositSecret.value();
+    process.env.TON_CENTER_API_KEY = tonCenterKeySecret.value();
     return await tonPaymentH.getPlatformTonInfo();
   })
 );
@@ -1013,12 +1015,12 @@ exports.getPlatformTonInfo = onCall(
 exports.processTonSwaps = onSchedule(
   {
     schedule: 'every 2 minutes',
-    secrets:  [tonMnemonicSecret, tonDepositSecret, tonCenterKeySecret],
+    secrets: [tonMnemonicSecret, tonDepositSecret, tonCenterKeySecret],
   },
   async () => {
     process.env.TON_WALLET_MNEMONIC = tonMnemonicSecret.value();
     process.env.TON_DEPOSIT_ADDRESS = tonDepositSecret.value();
-    process.env.TON_CENTER_API_KEY  = tonCenterKeySecret.value();
+    process.env.TON_CENTER_API_KEY = tonCenterKeySecret.value();
     logger.info('[processTonSwaps] 스케줄 실행');
     await tonPaymentH.processTonSwaps();
     logger.info('[processTonSwaps] 완료');
@@ -1055,33 +1057,33 @@ exports.aggregateItemReviews = onDocumentWritten(
   async (event) => {
     const itemId = event.params.itemId;
     const before = event.data?.before?.data() || null;
-    const after  = event.data?.after?.data()  || null;
+    const after = event.data?.after?.data() || null;
     if (!before && !after) return;
 
     const bRating = before?.rating != null ? Number(before.rating) : 0;
-    const aRating = after?.rating  != null ? Number(after.rating)  : 0;
+    const aRating = after?.rating != null ? Number(after.rating) : 0;
     const itemRef = db.collection('items').doc(itemId);
 
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(itemRef);
-      const cur  = snap.exists ? snap.data() : {};
+      const cur = snap.exists ? snap.data() : {};
 
       let count = Number(cur.reviewCount || 0);
-      let sum   = Number(cur.reviewSum   || 0);
+      let sum = Number(cur.reviewSum || 0);
 
-      if      (!before && after)  { count += 1; sum += aRating; }
-      else if (before  && !after) { count = Math.max(0, count - 1); sum -= bRating; }
-      else if (before  && after)  { sum += aRating - bRating; }
+      if (!before && after) { count += 1; sum += aRating; }
+      else if (before && !after) { count = Math.max(0, count - 1); sum -= bRating; }
+      else if (before && after) { sum += aRating - bRating; }
 
       if (!Number.isFinite(count) || count < 0) count = 0;
-      if (!Number.isFinite(sum)   || sum   < 0) sum   = 0;
+      if (!Number.isFinite(sum) || sum < 0) sum = 0;
 
       const avg = count ? Math.round((sum / count) * 10) / 10 : 0;
 
       tx.set(itemRef, {
-        reviewCount:     count,
-        reviewSum:       sum,
-        reviewAvg:       avg,
+        reviewCount: count,
+        reviewSum: sum,
+        reviewAvg: avg,
         reviewUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
     });
@@ -1183,7 +1185,7 @@ exports.coopBuyTreasurePackage = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const { productId, treasureName, lat, lng, npcImageUrl } = request.data ?? {};
-    if (!productId)    throw new HttpsError('invalid-argument', 'productId가 필요합니다');
+    if (!productId) throw new HttpsError('invalid-argument', 'productId가 필요합니다');
     if (!treasureName) throw new HttpsError('invalid-argument', '보물 이름이 필요합니다');
     if (lat == null || lng == null) throw new HttpsError('invalid-argument', '위치 정보가 필요합니다');
     process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
@@ -1486,8 +1488,8 @@ exports.externalApi = onRequest(
           ok: true,
           data: {
             walletAddress,
-            level:     data?.onChain?.level     ?? null,
-            mentor:    data?.onChain?.mentor     ?? null,
+            level: data?.onChain?.level ?? null,
+            mentor: data?.onChain?.mentor ?? null,
             createdAt: data?.createdAt?.toDate?.()?.toISOString?.() ?? null,
           },
         });
@@ -1517,9 +1519,9 @@ exports.externalApi = onRequest(
               return {
                 email: emailStr,
                 walletAddress,
-                level:  data?.onChain?.level  ?? null,
+                level: data?.onChain?.level ?? null,
                 mentor: data?.onChain?.mentor ?? null,
-                found:  !!walletAddress,
+                found: !!walletAddress,
               };
             } catch (_) {
               return { email: emailStr, walletAddress: null, level: null, mentor: null, found: false };
@@ -1562,8 +1564,8 @@ exports.externalApi = onRequest(
           ok: true,
           data: {
             walletAddress,
-            level:     data?.onChain?.level  ?? null,
-            mentor:    data?.onChain?.mentor ?? null,
+            level: data?.onChain?.level ?? null,
+            mentor: data?.onChain?.mentor ?? null,
             createdAt: data?.createdAt?.toDate?.()?.toISOString?.() ?? null,
           },
         });
@@ -1576,7 +1578,7 @@ exports.externalApi = onRequest(
       // 보안: 서명 가능 메시지는 100자 이내 평문만 허용 (임의 트랜잭션 불가).
       if (req.method === 'POST' && path === 'signMessage') {
         const userToken = (req.headers['x-user-token'] || req.body?.userToken || req.body?.idToken || '');
-        const message   = String(req.body?.message || '').trim();
+        const message = String(req.body?.message || '').trim();
 
         if (!userToken) {
           res.status(400).json({ ok: false, error: 'idToken(또는 userToken) 필드가 필요합니다' });
@@ -1723,28 +1725,28 @@ exports.externalApi = onRequest(
           const contract = new ethers.Contract(tx.to, tx.abi, signer);
           const args = Array.isArray(tx.args) ? tx.args : [];
           const overrides = {};
-          if (tx.value)    overrides.value    = BigInt(tx.value);
+          if (tx.value) overrides.value = BigInt(tx.value);
           if (tx.gasLimit) overrides.gasLimit = BigInt(tx.gasLimit);
           txResponse = await contract[tx.method](...args, ...(Object.keys(overrides).length ? [overrides] : []));
         }
 
         // ⑥ Firestore 감사 로그
         await db.collection('partner_tx_logs').add({
-          uid:         decoded.uid,
+          uid: decoded.uid,
           walletAddress,
-          txType:      tx.type,
-          txHash:      txResponse.hash,
-          to:          tx.to || null,
-          createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+          txType: tx.type,
+          txHash: txResponse.hash,
+          to: tx.to || null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         logger.info('signTransaction', { uid: decoded.uid, walletAddress, txType: tx.type, txHash: txResponse.hash });
         res.json({
           ok: true,
           data: {
-            txHash:  txResponse.hash,
-            from:    walletAddress,
-            txType:  tx.type,
+            txHash: txResponse.hash,
+            from: walletAddress,
+            txType: tx.type,
           },
         });
         return;
@@ -2302,9 +2304,9 @@ exports.addTreasureComment = onCall(wrapError(async (req) => {
 }));
 
 exports.deleteTreasureComment = onCall(wrapError(async (req) => {
-  const uid     = requireAuth(req);
-  let isAdmin   = false;
-  try { await requireAdmin(uid); isAdmin = true; } catch (_) {}
+  const uid = requireAuth(req);
+  let isAdmin = false;
+  try { await requireAdmin(uid); isAdmin = true; } catch (_) { }
   return userTreasureH.deleteTreasureComment(uid, req.data ?? {}, isAdmin);
 }));
 
@@ -2336,7 +2338,7 @@ exports.getCoinExchangeStatus = onCall(
   { secrets: [adminKeySecret, exchangeAddrSecret] },
   wrapError(async (req) => {
     const uid = requireAuth(req);
-    process.env.ADMIN_PRIVATE_KEY          = adminKeySecret.value();
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
     process.env.JUMP_AUTO_EXCHANGE_ADDRESS = exchangeAddrSecret.value();
     return coinExchangeH.getCoinExchangeStatus(uid);
   })
@@ -2349,7 +2351,7 @@ exports.buyJumpWithCoins = onCall(
     const uid = requireAuth(req);
     const { coinAmount } = req.data ?? {};
     if (!coinAmount) throw new HttpsError('invalid-argument', 'coinAmount가 필요합니다');
-    process.env.ADMIN_PRIVATE_KEY          = adminKeySecret.value();
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
     process.env.JUMP_AUTO_EXCHANGE_ADDRESS = exchangeAddrSecret.value();
     const result = await coinExchangeH.buyJumpWithCoins(uid, coinAmount, walletSecret.value());
     logger.info('buyJumpWithCoins', { uid, coinAmount, jumpAmount: result.jumpAmount, txHash: result.txHash });
@@ -2364,7 +2366,7 @@ exports.sellJumpForCoins = onCall(
     const uid = requireAuth(req);
     const { jumpAmount } = req.data ?? {};
     if (!jumpAmount) throw new HttpsError('invalid-argument', 'jumpAmount가 필요합니다');
-    process.env.ADMIN_PRIVATE_KEY          = adminKeySecret.value();
+    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
     process.env.JUMP_AUTO_EXCHANGE_ADDRESS = exchangeAddrSecret.value();
     const result = await coinExchangeH.sellJumpForCoins(uid, jumpAmount, walletSecret.value());
     logger.info('sellJumpForCoins', { uid, jumpAmount, coinAmount: result.coinAmount, txHash: result.txHash });
@@ -2625,15 +2627,15 @@ exports.requestOnChainLevelSync = onCall(
 //           (값: Telegram 그룹/채널 chat_id, 예: -1001234567890)
 // ════════════════════════════════════════════════════════════════════════════
 const _GAME_LABELS = {
-  relay:          '🏃 Sprint Relay',
-  conquest:       '🏰 Monster Siege',
-  dungeon:        '⚔️ Dungeon',
-  archery:        '🏹 Archery',
-  memory:         '🧠 Memory Game',
-  treasure:       '💎 Treasure Hunt',
-  monsterrace:    '🐉 Monster Race',
-  treasure_hide:  '📦 Treasure Hidden',
-  treasure_find:  '🏆 Treasure Found',
+  relay: '🏃 Sprint Relay',
+  conquest: '🏰 Monster Siege',
+  dungeon: '⚔️ Dungeon',
+  archery: '🏹 Archery',
+  memory: '🧠 Memory Game',
+  treasure: '💎 Treasure Hunt',
+  monsterrace: '🐉 Monster Race',
+  treasure_hide: '📦 Treasure Hidden',
+  treasure_find: '🏆 Treasure Found',
   treasure_issue: '🎁 Treasure Issued',
 };
 // 유저별 마지막 브로드캐스트 시각 (인스턴스 내 캐시, 이벤트 종류별 15초 쿨다운)
@@ -2655,15 +2657,15 @@ exports.broadcastGpEvent = onCall(
     if (!chatId) return { ok: false };
 
     // 쿨다운: 이벤트 종류별 독립 키 (treasure 이벤트 15초, GP 이벤트 30초)
-    const cdKey  = `${uid}:${game}`;
-    const cdMs   = isTreasureEvent ? 15000 : 30000;
-    const now    = Date.now();
+    const cdKey = `${uid}:${game}`;
+    const cdMs = isTreasureEvent ? 15000 : 30000;
+    const now = Date.now();
     if (now - (_broadcastCooldown.get(cdKey) || 0) < cdMs) return { ok: false };
     _broadcastCooldown.set(cdKey, now);
 
     try {
       const snap = await db.collection('battle_players').doc(uid).get();
-      const d    = snap.data() || {};
+      const d = snap.data() || {};
       let name = d.displayName || d.name;
       if (!name) {
         const uSnap = await db.collection('users').doc(uid).get();
@@ -2689,7 +2691,7 @@ exports.broadcastGpEvent = onCall(
       const ok = await telegramH.sendTelegramMessage(telegramBotSecret.value(), chatId, msg);
       logger.info('[broadcastGpEvent] result', { ok });
       // 실제 유저 이벤트 발생 → NPC 스케줄러 지연 트리거
-      if (ok) npcH.markRealUserEvent().catch(() => {});
+      if (ok) npcH.markRealUserEvent().catch(() => { });
       return { ok };
     } catch (e) {
       logger.warn('[broadcastGpEvent] error', e?.message);
@@ -2757,10 +2759,10 @@ exports.tonDepositVerify = onCall(
   { secrets: [tonDepositSecret] },
   wrapError(async (request) => {
     process.env.TON_DEPOSIT_ADDRESS = tonDepositSecret.value();
-    const uid    = requireAuth(request);
+    const uid = requireAuth(request);
     const { txHash } = request.data ?? {};
     if (!txHash) throw new HttpsError('invalid-argument', 'txHash가 필요합니다');
-    const tonH  = require('./handlers/tonExchange');
+    const tonH = require('./handlers/tonExchange');
     const result = await tonH.verifyDeposit(txHash, uid);
     logger.info('tonDepositVerify', { uid, txHash, gamecoin: result.gamecoin });
     return result;
@@ -2777,7 +2779,7 @@ exports.tonDepositAuto = onCall(
     if (!senderAddress) throw new HttpsError('invalid-argument', 'senderAddress가 필요합니다');
     if (!tonNano || tonNano <= 0) throw new HttpsError('invalid-argument', 'tonNano가 필요합니다');
     if (!sentAt) throw new HttpsError('invalid-argument', 'sentAt이 필요합니다');
-    const tonH   = require('./handlers/tonExchange');
+    const tonH = require('./handlers/tonExchange');
     const result = await tonH.verifyDepositAuto(senderAddress, Number(tonNano), Number(sentAt), uid);
     logger.info('tonDepositAuto', { uid, senderAddress, tonNano, gamecoin: result.gamecoin });
     return result;
@@ -2795,9 +2797,9 @@ exports.tonWithdrawRequest = onCall(
     const gp = Number(gamecoin);
     if (gp < 10000)
       throw new HttpsError('invalid-argument', '최소 출금은 10,000 GP 입니다');
-    process.env.TON_PRIVATE_KEY    = tonPrivKeySecret.value();
+    process.env.TON_PRIVATE_KEY = tonPrivKeySecret.value();
     process.env.TON_CENTER_API_KEY = tonCenterKeySecret.value();
-    const tonH   = require('./handlers/tonExchange');
+    const tonH = require('./handlers/tonExchange');
     const result = await tonH.requestWithdraw(gp, walletAddress, uid);
     logger.info('tonWithdrawRequest', { uid, gamecoin: gp, tonAmount: result.tonAmount, txHash: result.txHash });
     return result;
@@ -2807,7 +2809,7 @@ exports.tonWithdrawRequest = onCall(
 // 내 TON 거래 내역 조회
 exports.tonGetTransactions = onCall(
   wrapError(async (request) => {
-    const uid  = requireAuth(request);
+    const uid = requireAuth(request);
     const tonH = require('./handlers/tonExchange');
     return tonH.getMyTransactions(uid, 30);
   })
@@ -2902,7 +2904,7 @@ exports.adminRegisterSelf = onCall(wrapError(async (request) => {
     try {
       const record = await admin.auth().getUser(uid);
       email = record.email?.toLowerCase();
-    } catch (_) {}
+    } catch (_) { }
   }
 
   if (!email || !ADMIN_EMAILS.includes(email)) {
@@ -3064,4 +3066,47 @@ exports.starsRedeemCommission = onRequest(
     }
   }
 );
+
+// ════════════════════════════════════════════════════════════════════════════
+// [K-CULTURE ALLIANCE] Ledger & Merchant Reward Engine
+// ════════════════════════════════════════════════════════════════════════════
+
+exports.apiTransferPoints = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { receiverUid, amount } = request.data ?? {};
+  return await ledgerH.transferPoints(uid, receiverUid, Number(amount));
+}));
+
+exports.apiProcessQrPayment = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { merchantId, amountKrw } = request.data ?? {};
+  return await merchantRewardH.processQrPayment(uid, merchantId, Number(amountKrw));
+}));
+
+exports.apiAdminSetMerchantRewardPolicy = onCall(wrapError(async (request) => {
+  const adminUid = requireAuth(request);
+  await requireAdmin(adminUid);
+  const { merchantId, merchantFeeRate, customerRewardRate } = request.data ?? {};
+  return await merchantRewardH.adminSetMerchantRewardPolicy(adminUid, merchantId, {
+    merchantFeeRate: Number(merchantFeeRate),
+    customerRewardRate: Number(customerRewardRate)
+  });
+}));
+
+// Admin manual ledger adjustments
+exports.apiAdminAdjustLedger = onCall(wrapError(async (request) => {
+  const adminUid = requireAuth(request);
+  await requireAdmin(adminUid);
+  const { targetUid, type, pointAmount, paymentKrwAmount, paymentVndAmount, source, referenceId } = request.data ?? {};
+  return await ledgerH.processLedgerTransaction({
+    uid: targetUid,
+    type: type || 'ADMIN_ADJUSTMENT',
+    pointAmount: Number(pointAmount || 0),
+    paymentKrwAmount: Number(paymentKrwAmount || 0),
+    paymentVndAmount: Number(paymentVndAmount || 0),
+    source: source || `admin_${adminUid}`,
+    referenceId: referenceId
+  });
+}));
+
 

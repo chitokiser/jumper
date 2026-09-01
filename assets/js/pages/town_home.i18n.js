@@ -4,7 +4,7 @@ const TRANSLATIONS = {
     page_title: 'Công viên Đại dương - Nơi bắt đầu cuộc phiêu lưu',
     hero_title: 'Di chuyển là tài sản',
     hero_desc: 'Từ thời đại xem quảng cáo, sang thời đại di chuyển tìm kho báu',
-    hero_sub: 'Thực tế chính là bản đồ game — JumpDAO',
+    hero_sub: 'Thực tế chính là bản đồ game — K-CULTURE ALLIANCE',
     notice_section: 'Thông báo',
     notice_more: 'Xem thêm',
     notice_help: 'Chỉ quản trị viên mới có thể đăng thông báo.',
@@ -21,6 +21,10 @@ const TRANSLATIONS = {
     wallet_sub: 'Số dư HEX · Thanh toán · Quét QR',
     exchange_label: 'Sàn giao dịch',
     exchange_sub: 'Mua · Bán JUMP · Stake',
+    events_label: 'Sự kiện K-Culture',
+    events_sub: 'Khuyến mãi & Mã giảm giá',
+    community_label: 'Cộng đồng',
+    community_sub: 'Địa điểm địa phương & Diễn đàn',
     treasure_label: 'Tìm kho báu',
     treasure_sub: 'Giấu kho báu · Tìm kiếm · Hộp kho báu',
     sponsor_section: 'Banner tài trợ',
@@ -101,8 +105,8 @@ const TRANSLATIONS = {
     participate_now: '👇 Tham gia JUMP ngay',
     hexdao_title: 'Sàn giao dịch HEX DAO',
     hexdao_sub: 'Đến sàn giao dịch token của chúng ta',
-    jumpdao_title: 'Cửa hàng hội viên JumpDAO',
-    jumpdao_sub: 'Khám phá quyền lợi dành riêng cho cộng đồng',
+    k-culture_title: 'Cửa hàng hội viên K-CULTURE ALLIANCE',
+    k-culture_sub: 'Khám phá quyền lợi dành riêng cho cộng đồng',
     used_market_title: 'Mở sàn hàng cũ hội viên',
     used_market_sub: 'Mua bán nhanh chóng như Karrot',
     treasure_hide_title: '🗝️ Giấu kho báu của bạn',
@@ -116,7 +120,7 @@ const TRANSLATIONS = {
     page_title: 'Ocean Park - Where Adventure Begins',
     hero_title: 'Your Footsteps Build the Economy',
     hero_desc: 'From the age of watching ads, to the age of moving for treasure',
-    hero_sub: 'The real world is the game map — JumpDAO',
+    hero_sub: 'The real world is the game map — K-CULTURE ALLIANCE',
     notice_section: 'Notices',
     notice_more: 'More',
     notice_help: 'Only administrators can post notices.',
@@ -133,6 +137,10 @@ const TRANSLATIONS = {
     wallet_sub: 'HEX Balance · Pay · Scan QR',
     exchange_label: 'Token Exchange',
     exchange_sub: 'Buy · Sell JUMP · Staking',
+    events_label: 'K-Culture Events',
+    events_sub: 'Coupons & Special Promos',
+    community_label: 'Community',
+    community_sub: 'Local Spots & Forums',
     treasure_label: 'Treasure Hunt',
     treasure_sub: 'Hide Treasure · Explore · Treasure Box',
     sponsor_section: 'Sponsor Banner',
@@ -213,8 +221,8 @@ const TRANSLATIONS = {
     participate_now: '👇 Join JUMP now',
     hexdao_title: 'HEX DAO Exchange',
     hexdao_sub: 'Go to our token exchange',
-    jumpdao_title: 'JumpDAO Member Mall',
-    jumpdao_sub: 'Exclusive benefits for community members',
+    k-culture_title: 'K-CULTURE ALLIANCE Member Mall',
+    k-culture_sub: 'Exclusive benefits for community members',
     used_market_title: 'Member Used Market Open',
     used_market_sub: 'Buy and sell as easy as Carrot',
     treasure_hide_title: '🗝️ Hide Your Treasure',
@@ -228,7 +236,7 @@ const TRANSLATIONS = {
     page_title: '모험이 시작되는 오션파크',
     hero_title: '이동이 곧 자산이다',
     hero_desc: '광고를 보는 시대에서, 보물을 찾아 움직이는 시대로',
-    hero_sub: '현실이 곧 게임맵이다 — JumpDAO',
+    hero_sub: '현실이 곧 게임맵이다 — K-CULTURE ALLIANCE',
     notice_section: '공지사항',
     notice_more: '더보기',
     notice_help: '공지사항은 관리자만 작성할 수 있습니다.',
@@ -245,6 +253,10 @@ const TRANSLATIONS = {
     wallet_sub: 'HEX 잔고 · 결제 · QR 스캔',
     exchange_label: '토큰 거래소',
     exchange_sub: 'JUMP 매수 · 매도 · 스테이킹',
+    events_label: 'K-Culture 이벤트',
+    events_sub: '쿠폰 및 특별 할인',
+    community_label: '커뮤니티',
+    community_sub: '로컬 핫플 리뷰 및 포럼',
     treasure_label: '보물찾기 · 숨기기',
     treasure_sub: '내 보물 숨기기 · 지도 탐험 · 보물박스',
     sponsor_section: '스폰서 배너',
@@ -325,8 +337,8 @@ const TRANSLATIONS = {
     participate_now: '👇 JUMP 지금 참여하기',
     hexdao_title: 'HEX DAO 거래소',
     hexdao_sub: '우리들의 토큰거래소 바로가기',
-    jumpdao_title: 'JumpDAO 정회원전용몰',
-    jumpdao_sub: '교민 네트워크 전용 혜택을 확인해보세요',
+    k-culture_title: 'K-CULTURE ALLIANCE 정회원전용몰',
+    k-culture_sub: '교민 네트워크 전용 혜택을 확인해보세요',
     used_market_title: '회원간 중고거래 오픈',
     used_market_sub: '당근처럼 쉽고 빠르게 사고팔기',
     treasure_hide_title: '🗝️ 내 보물을 지도에 숨겨보세요',
@@ -346,14 +358,14 @@ let _lang = DEFAULT_LANG;
 export function getCurrentLang() { return _lang; }
 
 export function _t(key, ...args) {
-  const t = TRANSLATIONS['en'];
+  const t = TRANSLATIONS[_lang] || TRANSLATIONS['en'];
   let s = (t && t[key]) || key;
   args.forEach((a, i) => { s = s.replace(`{${i}}`, a); });
   return s;
 }
 
 export function applyLang(lang) {
-  lang = 'en';
+  if (!SUPPORTED_LANGS.includes(lang)) lang = DEFAULT_LANG;
   _lang = lang;
   localStorage.setItem(STORAGE_KEY, lang);
   document.documentElement.lang = lang;

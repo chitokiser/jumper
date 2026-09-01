@@ -533,7 +533,7 @@ window._gmClaimFromList = async function(mineId) {
 };
 
 window._gmTransferFromList = function(mineId) {
-  const toUid = prompt('Enter the Player ID of the recipient:')?.trim();
+  const toUid = prompt('Please enter the UID to transfer:')?.trim();
   if (!toUid) return;
   if (!confirm(`Transfer gold mine to player "${toUid}"? This cannot be undone.`)) return;
   _doTransferFromList(mineId, toUid);

@@ -2,7 +2,7 @@
 // 가맹점 지도 + 보물찾기 시스템
 
 import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js';
-import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
+import { isTelegramMiniApp, loginWithTelegram, loginWithTelegramWidget } from '/assets/js/telegram-auth.js';
 import { esc } from '/assets/js/esc.js';
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
          setDoc, deleteDoc, serverTimestamp, onSnapshot }
@@ -45,7 +45,7 @@ import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterA
   from './starter-pack.js';
 import { initUserPlace } from './user-place.js';
 import { initDailyArea, checkDailyProximity } from './merchants.daily.js';
-import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, toggleVirtualMode, setVirtualPos } from './merchants.virtual.js';
+import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, toggleVirtualMode, showShopList, deactivateVirtualMode, setVirtualPos, activateAtPos, setMovementEnabled } from './merchants.virtual.js';
 import { initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers,
          renderMoneyTreeShopSection, openPlantModal } from './merchants.moneytree.js';
 import { initGoldMine, setGoldMineUid, loadGoldMineMarkers, openGoldMineModal,
@@ -442,6 +442,73 @@ function initMap() {
     if (!_isAdmin) return;
     const lat = e.latLng.lat(), lng = e.latLng.lng();
     _adminRevealNearbyHiddenBoxes(lat, lng);
+  });
+
+  // 지도 클릭 점프: 상점 5km 이내 클릭 시 즉시 워프 옵션
+  map.addListener('click', e => {
+    if (_isAdmin) return;
+    _tryMapJump(e.latLng.lat(), e.latLng.lng());
+  });
+}
+
+// ── 지도 클릭 즉시 점프 ──────────────────────────────────────────────────────
+let _jumpCloseListener = null;
+
+function _tryMapJump(lat, lng) {
+  const shops = getShops().filter(s => s.active && s.lat && s.lng);
+  if (!shops.length) return;
+
+  let nearest = null, nearestDist = Infinity;
+  for (const s of shops) {
+    const d = haversine(lat, lng, s.lat, s.lng);
+    if (d < 5000 && d < nearestDist) { nearest = s; nearestDist = d; }
+  }
+  if (!nearest) return;
+
+  // virtual 모드에서 팝업 표시 중 walk 애니메이션 억제
+  setMovementEnabled(false);
+  if (_jumpCloseListener) { google.maps.event.removeListener(_jumpCloseListener); _jumpCloseListener = null; }
+
+  const distTxt = nearestDist < 1000
+    ? `${Math.round(nearestDist)}m`
+    : `${(nearestDist / 1000).toFixed(1)}km`;
+  const myPos = _ctx.lastPos;
+  const distKm = myPos ? haversine(myPos.lat, myPos.lng, nearest.lat, nearest.lng) / 1000 : 0;
+  const mpCost = Math.round((100 + distKm) / 10);
+
+  const shopId = nearest.id;
+  const jLat = lat, jLng = lng;
+  window.__mapJump = async () => {
+    if (_jumpCloseListener) { google.maps.event.removeListener(_jumpCloseListener); _jumpCloseListener = null; }
+    infoWindow.close();
+    setMovementEnabled(true);
+    const shop = getShops().find(s => s.id === shopId);
+    if (!shop) { showToast('Shop not found — please try again.', 'error'); return; }
+    await activateAtPos(shop, jLat, jLng);
+    // 실패 시에도 movement는 이미 re-enabled 상태 → _activate 내부 toast가 이유 설명
+  };
+
+  infoWindow.setContent(`
+    <div style="font-size:13px;padding:4px 2px;min-width:190px;line-height:1.6;">
+      <div style="font-weight:700;margin-bottom:4px;">⚡ Jump here?</div>
+      <div style="color:#64748b;font-size:11px;margin-bottom:2px;">
+        Nearest shop: <b>${escHtml(nearest.name)}</b>
+      </div>
+      <div style="color:#64748b;font-size:11px;margin-bottom:8px;">
+        ${distTxt} from here &middot; 💙${mpCost} + 💰10 GP
+      </div>
+      <button onclick="window.__mapJump()"
+        style="width:100%;padding:7px 0;background:#7c3aed;color:#fff;border:none;
+               border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+        ⚡ Jump
+      </button>
+    </div>`);
+  infoWindow.setPosition({ lat, lng });
+  infoWindow.open(map);
+
+  _jumpCloseListener = infoWindow.addListener('closeclick', () => {
+    setMovementEnabled(true);
+    _jumpCloseListener = null;
   });
 }
 
@@ -3012,6 +3079,45 @@ function initTutorial() {
 }
 
 // ── 메인 ────────────────────────────────────────────────────────────────────
+
+// ── [KCA] K-Food 웹진 연동 (Zentaro API) ──────────────────────────────────
+async function _loadKFoodWebzine() {
+  const container = document.createElement('div');
+  container.className = 'kca-webzine-container';
+  container.style.cssText = 'padding:16px; margin: 16px 0; background:rgba(0,0,0,0.4); border-radius:12px; border:1px solid rgba(255,100,50,0.3);';
+  container.innerHTML = '<h3 style="color:#fcd34d; margin-bottom:12px; font-weight:700;">🔥 K-Food DNA & Webzine</h3><div id="webzineList" style="display:flex; gap:12px; overflow-x:auto; padding-bottom:8px;"></div>';
+  
+  const grid = document.getElementById('mcGrid');
+  if (grid) {
+    grid.parentNode.insertBefore(container, grid);
+  }
+
+  try {
+    const listEl = document.getElementById('webzineList');
+    listEl.innerHTML = '<span style="color:#aaa;">웹진 로딩 중...</span>';
+    
+    // Zentaro 프로젝트 API (포트 3000 가정)
+    const res = await fetch('http://localhost:3000/api/webzine-post');
+    if (!res.ok) throw new Error('API fetch failed');
+    const posts = await res.json();
+    
+    if (posts && posts.length > 0) {
+      listEl.innerHTML = posts.map(p => `
+        <div style="min-width:200px; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; display:inline-block; vertical-align:top;">
+          <h4 style="margin:0 0 6px 0; font-size:14px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.titleKo || p.titleEn}</h4>
+          <p style="margin:0; font-size:11px; color:#aaa; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${(p.contentHtmlKo || p.contentHtmlEn || '').replace(/<[^>]*>?/gm, '')}</p>
+        </div>
+      `).join('');
+    } else {
+      listEl.innerHTML = '<span style="color:#aaa;">현재 발행된 웹진이 없습니다.</span>';
+    }
+  } catch(e) {
+    console.warn('Webzine load error:', e);
+    const listEl = document.getElementById('webzineList');
+    if (listEl) listEl.innerHTML = '<span style="color:#f87171; font-size:12px;">오프라인 모드: 웹진 서버(Zentaro)에 연결할 수 없습니다. 포트(3000)를 확인해주세요.</span>';
+  }
+}
+
 async function init() {
   // battle 모듈 초기화 (ctx와 callbacks 연결)
   initBattle(_ctx, {
@@ -3146,6 +3252,24 @@ async function init() {
     allMerchants.push({ id: d.id, ...m, _latLng: latLng });
   });
   allMerchants.sort((a, b) => (b._latLng ? 1 : 0) - (a._latLng ? 1 : 0));
+
+  // KCA: URL 쿼리 파라미터(type) 기반 카테고리 필터링
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterType = urlParams.get('type');
+  
+  if (filterType) {
+    allMerchants = allMerchants.filter(m => {
+      const typeStr = (m.type || '').toLowerCase();
+      const catStr = (m.category || '').toLowerCase();
+      const target = filterType.toLowerCase();
+      return typeStr === target || catStr === target || typeStr.includes(target) || catStr.includes(target);
+    });
+  }
+
+  // 필터가 'food'일 경우 상단에 K-Food 웹진 렌더링
+  if (filterType === 'food') {
+    _loadKFoodWebzine();
+  }
 
   // 지도 + 카드 즉시 표시
   if (window.google?.maps) {
@@ -3299,9 +3423,25 @@ async function init() {
         console.warn('[TG auth]', err?.message || err);
       });
     }
+  } else {
+    // 일반 브라우저: Telegram Login Widget 표시
+    const w = $('tgWidgetWrap');
+    if (w) w.style.display = 'flex';
   }
 
-  // 텔레그램 로그인 버튼 핸들러
+  // Telegram Login Widget 콜백 (일반 브라우저용)
+  window.__onTgWidgetAuth = async (userData) => {
+    const msg = $('tgOverlayMsg');
+    if (msg) msg.style.display = 'block';
+    try {
+      await loginWithTelegramWidget(userData);
+    } catch (e) {
+      if (msg) msg.style.display = 'none';
+      showToast('Telegram login failed: ' + (e?.message || 'Unknown error'), 'error');
+    }
+  };
+
+  // 텔레그램 로그인 버튼 핸들러 (Mini App 전용)
   $('btnOverlayTelegram')?.addEventListener('click', async () => {
     const btn = $('btnOverlayTelegram');
     if (btn) { btn.textContent = 'Authenticating…'; btn.disabled = true; }
@@ -3310,7 +3450,7 @@ async function init() {
       if (!result) throw new Error('Telegram authentication failed');
     } catch (e) {
       if (btn) { btn.textContent = '📱 Sign in with Telegram'; btn.disabled = false; }
-      alert('Telegram login error: ' + (e?.message || 'Unknown error'));
+      showToast('Telegram login error: ' + (e?.message || 'Unknown error'), 'error');
     }
   });
 
@@ -3335,18 +3475,23 @@ async function init() {
   // 버튼 이벤트
   $('btnInventory')?.addEventListener('click', openInventory);
   $('btnVirtualMode')?.addEventListener('click', () => {
-    if (isVirtualMode()) {
-      // Virtual ON 상태: 재워프(새 상점 선택) 허용 — 게임 서버 상태 무관
-      toggleVirtualMode(); // 먼저 Off
-      setTimeout(() => toggleVirtualMode(), 50); // 즉시 새 선택 모달 열기
-      return;
-    }
-    // Virtual OFF 상태: GPS 게임 중이면 차단
-    if (_gameStarted) {
+    // GPS 게임 중이고 Virtual OFF 상태면 차단
+    if (_gameStarted && !isVirtualMode()) {
       showToast('⛔ Stop the game first (■) before using Virtual Explore.', 'warn');
       return;
     }
-    toggleVirtualMode();
+    showShopList(); // 항상 상점 목록만 표시
+  });
+  $('btnModeToggle')?.addEventListener('click', () => {
+    if (isVirtualMode()) {
+      deactivateVirtualMode(); // Jump → GPS
+    } else {
+      if (_gameStarted) {
+        showToast('⛔ Stop the game first (■) before switching to Jump Mode.', 'warn');
+        return;
+      }
+      showShopList(); // GPS → Jump: 상점 선택 후 진입
+    }
   });
   $('btnDetector')?.addEventListener('click', () => {
     const btn = $('btnDetector');

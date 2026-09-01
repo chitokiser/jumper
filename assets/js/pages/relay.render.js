@@ -349,7 +349,7 @@ export function renderRace(ctx, teams, now, dt) {
   if (!_trackCache) _trackCache = buildTrackCache(CW, CH);
   ctx.drawImage(_trackCache, 0, 0);
 
-  // 잔디 중앙 JumpDAO 로고
+  // 잔디 중앙 K-CULTURE ALLIANCE 로고
   if (_logoImg?.complete && _logoImg.naturalWidth > 0) {
     const lw = 72;
     const lh = lw * (_logoImg.naturalHeight / _logoImg.naturalWidth);

@@ -1,6 +1,7 @@
 <!-- /admin_stats.html -->
 <!doctype html>
 <html lang="ko">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -17,6 +18,7 @@
   <script type="module" src="/assets/js/firebase-init.js"></script>
   <script type="module" src="/assets/js/firestore-bridge.js"></script>
 </head>
+
 <body>
   <div id="siteHeader"></div>
 
@@ -52,28 +54,61 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" style="margin-top:20px;">
         <div class="ph">
-          <h2 class="pt">카테고리 분포</h2>
-          <span class="pm" id="catHint"></span>
+          <h2 class="pt">플랫폼 통합 메트릭 (Platform)</h2>
+          <span class="pm">K-Culture 전체 생태계 유동성</span>
         </div>
-        <div id="catList" class="list"></div>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="k">총 결제 잔고 (Payment Balance)</div>
+            <div class="v" id="kTotalPaymentVnd">-</div>
+            <div class="s">가맹점 및 고객 예치금 (VND)</div>
+          </div>
+          <div class="kpi">
+            <div class="k">총 리워드 포인트 (K-CULTURE Point)</div>
+            <div class="v" id="kTotalPoint">-</div>
+            <div class="s">발행된 전체 리워드</div>
+          </div>
+        </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" style="margin-top:20px;">
         <div class="ph">
-          <h2 class="pt">결제방법 분포</h2>
-          <span class="pm" id="payHint"></span>
+          <h2 class="pt">가맹점 메트릭 (Merchant)</h2>
+          <span class="pm">등록된 파일럿 가맹점 현황</span>
         </div>
-        <div id="payList" class="list"></div>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="k">활성 가맹점 수</div>
+            <div class="v" id="kTotalMerchants">-</div>
+            <div class="s">K-CULTURE 등록 가맹점</div>
+          </div>
+          <div class="kpi">
+            <div class="k">가맹점 보유 잔고 합계</div>
+            <div class="v" id="kMerchantPaymentVnd">-</div>
+            <div class="s">가맹점 정산 대기액 (VND)</div>
+          </div>
+        </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" style="margin-top:20px;">
         <div class="ph">
-          <h2 class="pt">가이드 리더보드</h2>
-          <span class="pm">공개상품/리뷰수 기반</span>
+          <h2 class="pt">고객 메트릭 (Customer)</h2>
+          <span class="pm">플랫폼 실사용자 현황</span>
         </div>
-        <div id="guideList" class="list"></div>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="k">활성 고객 수</div>
+            <div class="v" id="kTotalCustomers">-</div>
+            <div class="s">K-CULTURE 참여 고객</div>
+          </div>
+          <div class="kpi">
+            <div class="k">고객 보유 포인트 합계</div>
+            <div class="v" id="kCustomerPoint">-</div>
+            <div class="s">사용 가능한 고객 포인트</div>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -83,4 +118,5 @@
   <script type="module" src="/assets/js/pages/admin_stats.js"></script>
   <script type="module" src="/assets/js/header-auth.js"></script>
 </body>
+
 </html>

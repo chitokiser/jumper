@@ -54,10 +54,10 @@ function renderReferralSection(walletAddress) {
   section.style.display = '';
 
   const inviteUrl = `${location.origin}/register.html?mentor=${encodeURIComponent(walletAddress)}`;
-  const linkEl    = $('referralLink');
-  const qrWrap    = $('referralQrWrap');
-  const copyBtn   = $('btnCopyReferral');
-  const copyMsg   = $('referralCopyMsg');
+  const linkEl = $('referralLink');
+  const qrWrap = $('referralQrWrap');
+  const copyBtn = $('btnCopyReferral');
+  const copyMsg = $('referralCopyMsg');
 
   if (linkEl) linkEl.value = inviteUrl;
 
@@ -157,10 +157,10 @@ async function loadOnChainData(uid) {
         const bpSnap = await getDoc(doc(db, 'battle_players', uid));
         if (bpSnap.exists()) {
           const bp = bpSnap.data();
-          const gsExp   = typeof bp.gsExp   === 'number' ? bp.gsExp   : d.exp;
+          const gsExp = typeof bp.gsExp === 'number' ? bp.gsExp : d.exp;
           const gsLevel = typeof bp.gsLevel === 'number' ? bp.gsLevel : d.level;
           const nextLvExp = Math.pow(gsLevel + 1, 2) * 100_000;
-          displayExp      = gsExp;
+          displayExp = gsExp;
           displayRequired = nextLvExp;
           if (gsLevel > 0) setText("levelDisplay", "Lv." + Math.max(d.level, gsLevel));
 
@@ -228,8 +228,8 @@ async function loadOnChainData(uid) {
         const getJumpStatus = httpsCallable(functions, "getJumpBankStatus");
         const jr = await getJumpStatus();
         const jd = jr.data;
-        const jumpBal    = Number(jd.jumpBalance    || 0);
-        const jumpStaked = Number(jd.staked         || 0);
+        const jumpBal = Number(jd.jumpBalance || 0);
+        const jumpStaked = Number(jd.staked || 0);
         show("walletJumpRow", jumpBal > 0);
         if (jumpBal > 0) setText("walletJumpDisplay", jumpBal.toLocaleString() + " JUMP");
         show("walletJumpStakedRow", jumpStaked > 0);
@@ -250,7 +250,7 @@ async function loadOnChainData(uid) {
         if (prevMentor && inputEl && !inputEl.value) {
           inputEl.value = prevMentor;
         }
-      } catch (_) {}
+      } catch (_) { }
     }
   } catch (err) {
     console.warn("getMyOnChain failed:", err.message);
@@ -269,6 +269,30 @@ async function loadOnChainData(uid) {
       setText("onChainStatus", _t('status_error'));
       $("onChainStatus").style.color = "var(--muted)";
     }
+  }
+}
+
+async function loadKCultureBalances(uid) {
+  try {
+    const kcbSnap = await getDoc(doc(db, "k_culture_balances", uid));
+    show("paymentBalanceRow", true);
+    show("pointRow", true);
+    if (kcbSnap.exists()) {
+      const d = kcbSnap.data();
+      const pointBal = d.pointBalance || 0;
+      const payBal = d.paymentBalanceVnd || 0;
+
+      const elPoint = $("pointDisplay");
+      const elPay = $("paymentBalanceDisplay");
+
+      if (elPoint) elPoint.textContent = pointBal.toLocaleString("ko-KR") + " P";
+      if (elPay) elPay.textContent = payBal.toLocaleString("ko-KR") + " VND";
+    } else {
+      if ($("pointDisplay")) $("pointDisplay").textContent = "0 P";
+      if ($("paymentBalanceDisplay")) $("paymentBalanceDisplay").textContent = "0 VND";
+    }
+  } catch (err) {
+    console.error("Failed to load K-CULTURE balances:", err);
   }
 }
 
@@ -291,10 +315,10 @@ async function loadDepositHistory(uid) {
     }
 
     const statusLabel = {
-      pending:    { text: _t('status_pending'),  color: "#f59e0b" },
-      processing: { text: _t('status_processing'),  color: "#3b82f6" },
-      approved:   { text: _t('status_approved'), color: "#10b981" },
-      rejected:   { text: _t('status_rejected'),  color: "#ef4444" },
+      pending: { text: _t('status_pending'), color: "#f59e0b" },
+      processing: { text: _t('status_processing'), color: "#3b82f6" },
+      approved: { text: _t('status_approved'), color: "#10b981" },
+      rejected: { text: _t('status_rejected'), color: "#ef4444" },
     };
 
     const rows = snap.docs.map((d) => {
@@ -377,21 +401,21 @@ async function loadMentees() {
 }
 
 const TX_CONFIG = {
-  buy:             { labelKey: 'tx_buy',            dir: "income",  icon: "💰" },
-  credit:          { labelKey: 'tx_credit',          dir: "income",  icon: "⭐" },
-  p2p:             { labelKey: 'tx_p2p',             dir: "income",  icon: "📥" },
-  p2p_merge:       { labelKey: 'tx_p2p_merge',       dir: "income",  icon: "📥" },
-  withdraw:        { labelKey: 'tx_withdraw',        dir: "expense", icon: "📤" },
-  pay_merchant:    { labelKey: 'tx_pay_merchant',    dir: "expense", icon: "🛒" },
-  merchant_income: { labelKey: 'tx_merchant_income', dir: "income",  icon: "🏪" },
+  buy: { labelKey: 'tx_buy', dir: "income", icon: "💰" },
+  credit: { labelKey: 'tx_credit', dir: "income", icon: "⭐" },
+  p2p: { labelKey: 'tx_p2p', dir: "income", icon: "📥" },
+  p2p_merge: { labelKey: 'tx_p2p_merge', dir: "income", icon: "📥" },
+  withdraw: { labelKey: 'tx_withdraw', dir: "expense", icon: "📤" },
+  pay_merchant: { labelKey: 'tx_pay_merchant', dir: "expense", icon: "🛒" },
+  merchant_income: { labelKey: 'tx_merchant_income', dir: "income", icon: "🏪" },
 };
 
 function txAmountHex(tx) {
-  if (tx.amountHex)    return Number(tx.amountHex);
+  if (tx.amountHex) return Number(tx.amountHex);
   // merchant_income 은 순수익(netAmountWei) 우선 표시
   if (tx.netAmountWei) return Number(formatWei(tx.netAmountWei));
-  if (tx.amountWei)    return Number(formatWei(tx.amountWei));
-  if (tx.priceWei)     return Number(formatWei(tx.priceWei));
+  if (tx.amountWei) return Number(formatWei(tx.amountWei));
+  if (tx.priceWei) return Number(formatWei(tx.priceWei));
   return 0;
 }
 
@@ -424,7 +448,7 @@ function renderTxItem({ label, icon, dir, amountHex, dateStr, txHash, statusBadg
 
 // ── 멘티 수익 분석 ─────────────────────────────────────────────────────────
 const JACKPOT_CONTRACT = "0x4d83A7764428fd1c116062aBb60c329E0E29f490";
-const OPBNB_RPC        = "https://opbnb-mainnet-rpc.bnbchain.org";
+const OPBNB_RPC = "https://opbnb-mainnet-rpc.bnbchain.org";
 
 async function fetchMemberPoints(address) {
   try {
@@ -451,9 +475,9 @@ async function fetchMemberPoints(address) {
 }
 
 async function loadMenteeIncome(_uid) {
-  const section  = $("menteeIncomeSection");
+  const section = $("menteeIncomeSection");
   const summaryEl = $("menteeIncomeSummary");
-  const listEl   = $("menteeIncomeList");
+  const listEl = $("menteeIncomeList");
   if (!listEl) return;
 
   listEl.innerHTML = `<p class="hint">${_t('mi_loading')}</p>`;
@@ -528,7 +552,7 @@ async function loadMenteeIncome(_uid) {
         return `
           <div class="mi-tx-row">
             <span>${dateStr}</span>
-            <span class="mi-tx-amt">${_t('mi_tx_row', (t.amountHex||0).toFixed(4), earning>0?earning.toFixed(6):"?")}</span>
+            <span class="mi-tx-amt">${_t('mi_tx_row', (t.amountHex || 0).toFixed(4), earning > 0 ? earning.toFixed(6) : "?")}</span>
           </div>`;
       }).join("") || `<div class="mi-tx-row"><span>${_t('mi_tx_no_data')}</span></div>`;
 
@@ -582,7 +606,7 @@ async function loadMenteeIncome(_uid) {
 
 async function loadCoopOrders(uid) {
   const section = $('coopOrderSection');
-  const listEl  = $('coopOrderList');
+  const listEl = $('coopOrderList');
   if (!listEl) return;
 
   try {
@@ -600,10 +624,10 @@ async function loadCoopOrders(uid) {
     const TYPE_LABEL = { membership: '정회원', voucher: '바우처', general: '일반' };
     const rows = snap.docs.map((d) => {
       const o = d.data();
-      const hexAmt  = (Number(BigInt(o.hexWei || '0')) / 1e18).toFixed(4);
-      const date    = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleString('ko-KR') : '-';
+      const hexAmt = (Number(BigInt(o.hexWei || '0')) / 1e18).toFixed(4);
+      const date = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleString('ko-KR') : '-';
       const typeLbl = TYPE_LABEL[o.type] || o.type || '일반';
-      const txLink  = o.txHash
+      const txLink = o.txHash
         ? `<a href="https://opbnb.bscscan.com/tx/${o.txHash}" target="_blank" rel="noopener" style="font-size:0.72em;color:var(--accent);">TX ↗</a>`
         : '';
       return `<tr>
@@ -629,7 +653,7 @@ async function loadCoopOrders(uid) {
 }
 
 async function loadJackpotHistory(uid) {
-  const wrap    = $("jackpotHistList");
+  const wrap = $("jackpotHistList");
   const section = $("jackpotHistSection");
   if (!wrap) return;
 
@@ -680,9 +704,9 @@ async function loadJackpotHistory(uid) {
       const dateStr = ts ? ts.toLocaleString("ko-KR") : "-";
 
       const items = [];
-      if ((v.potionCount    || 0) > 0) items.push(`${_t('item_potion')} +${v.potionCount}`);
-      if ((v.mpPotionCount  || 0) > 0) items.push(`${_t('item_mp_potion')} +${v.mpPotionCount}`);
-      if ((v.reviveAdded    || 0) > 0) items.push(`${_t('item_revive')} +${v.reviveAdded}`);
+      if ((v.potionCount || 0) > 0) items.push(`${_t('item_potion')} +${v.potionCount}`);
+      if ((v.mpPotionCount || 0) > 0) items.push(`${_t('item_mp_potion')} +${v.mpPotionCount}`);
+      if ((v.reviveAdded || 0) > 0) items.push(`${_t('item_revive')} +${v.reviveAdded}`);
 
       const onchainPtsWei = BigInt(v.onchainJackpotPointsWei || '0');
       let ptsLine = '';
@@ -734,9 +758,9 @@ async function loadJackpotHistory(uid) {
             const ts = v.createdAt?.toDate ? v.createdAt.toDate() : null;
             const dateStr = ts ? ts.toLocaleString("ko-KR") : "-";
             const items = [];
-            if ((v.potionCount   || 0) > 0) items.push(`${_t('item_potion')} +${v.potionCount}`);
+            if ((v.potionCount || 0) > 0) items.push(`${_t('item_potion')} +${v.potionCount}`);
             if ((v.mpPotionCount || 0) > 0) items.push(`${_t('item_mp_potion')} +${v.mpPotionCount}`);
-            if ((v.reviveAdded   || 0) > 0) items.push(`${_t('item_revive')} +${v.reviveAdded}`);
+            if ((v.reviveAdded || 0) > 0) items.push(`${_t('item_revive')} +${v.reviveAdded}`);
             const onchainPtsWei = BigInt(v.onchainJackpotPointsWei || '0');
             let ptsLine = '';
             if (onchainPtsWei > 0n) {
@@ -1165,7 +1189,7 @@ async function loadMerchantsForSelect() {
     }
 
     sel.innerHTML =
-`<option value="">${_t('merchant_select_placeholder')}</option>` +
+      `<option value="">${_t('merchant_select_placeholder')}</option>` +
       list.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
   } catch (err) {
     sel.innerHTML = `<option value="">${_t('merchant_load_error')}</option>`;
@@ -1175,19 +1199,19 @@ async function loadMerchantsForSelect() {
 
 function buildMypageDropHtml(d) {
   const items = [];
-  if (d.potionsAdded   > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b>`);
+  if (d.potionsAdded > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b>`);
   if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_mp_potion')} <b>+${d.mpPotionsAdded}</b>`);
-  if (d.reviveAdded    > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_revive')} <b>+${d.reviveAdded}</b>`);
+  if (d.reviveAdded > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_revive')} <b>+${d.reviveAdded}</b>`);
   if (!items.length) return '';
   return `
     <div class="drop-box">
       <div class="drop-box-title">${_t('item_drop_title')}</div>
-      ${items.map(i=>`<div class="drop-item">${i}</div>`).join('')}
+      ${items.map(i => `<div class="drop-item">${i}</div>`).join('')}
     </div>`;
 }
 
 function showJackpotResult(d) {
-  const modal   = $("jackpotModal");
+  const modal = $("jackpotModal");
   if (!modal) return;
 
   const hasItems = (d.potionsAdded > 0) || (d.mpPotionsAdded > 0) || (d.reviveAdded > 0);
@@ -1197,23 +1221,23 @@ function showJackpotResult(d) {
 
   const emojiEl = $("jmEmoji");
   const titleEl = $("jmTitle");
-  const descEl  = $("jmDesc");
+  const descEl = $("jmDesc");
   const itemsEl = $("jmItems");
   const closeBtn = $("jmCloseBtn");
 
   if (d.isJackpot) {
     if (emojiEl) emojiEl.textContent = "🎉";
     if (titleEl) titleEl.textContent = "JACKPOT!! 🎰";
-    if (descEl)  descEl.textContent  = _t('jm_jackpot_desc');
+    if (descEl) descEl.textContent = _t('jm_jackpot_desc');
   } else if (hasOnchainJackpot) {
     if (emojiEl) emojiEl.textContent = "🪙";
     if (titleEl) { titleEl.textContent = _t('jm_onchain_title'); titleEl.style.color = "#fde68a"; }
     const ptsHex = (Number(jackpotPtsWei) / 1e18).toFixed(6);
-    if (descEl)  descEl.textContent  = _t('jm_onchain_desc', ptsHex);
+    if (descEl) descEl.textContent = _t('jm_onchain_desc', ptsHex);
   } else {
     if (emojiEl) emojiEl.textContent = "🎁";
     if (titleEl) { titleEl.textContent = _t('jm_item_title'); titleEl.style.color = "#fef08a"; }
-    if (descEl)  descEl.textContent  = _t('jm_item_desc');
+    if (descEl) descEl.textContent = _t('jm_item_desc');
   }
 
   if (itemsEl) {
@@ -1222,9 +1246,9 @@ function showJackpotResult(d) {
       const ptsHex = (Number(jackpotPtsWei) / 1e18).toFixed(6);
       lines.push(`<div class="jm-item">🪙 ${_t('jm_jackpot_pts')} <b>+${ptsHex} HEX</b></div>`);
     }
-    if (d.potionsAdded   > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b></div>`);
+    if (d.potionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b></div>`);
     if (d.mpPotionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/mp.png" style="width:22px;height:22px;"> ${_t('item_mp_potion')} <b>+${d.mpPotionsAdded}</b></div>`);
-    if (d.reviveAdded    > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:22px;height:22px;"> ${_t('item_revive')} <b>+${d.reviveAdded}</b></div>`);
+    if (d.reviveAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:22px;height:22px;"> ${_t('item_revive')} <b>+${d.reviveAdded}</b></div>`);
     itemsEl.innerHTML = lines.join('');
     itemsEl.style.display = lines.length ? '' : 'none';
   }
@@ -1249,13 +1273,13 @@ function bindMerchantPay(uid, _walletAddress) {
       const isVnd = r.value === "VND";
       const labelEl = $("merchantPayAmountLabel");
       const inputEl = $("merchantPayAmount");
-      const hidden  = $("merchantPayCurrency");
+      const hidden = $("merchantPayCurrency");
       if (labelEl) labelEl.textContent = isVnd ? _t('label_pay_amount_vnd') : _t('label_pay_amount_krw');
       if (inputEl) {
-        inputEl.min         = isVnd ? "10000" : "1000";
-        inputEl.step        = isVnd ? "1000"  : "100";
+        inputEl.min = isVnd ? "10000" : "1000";
+        inputEl.step = isVnd ? "1000" : "100";
         inputEl.placeholder = isVnd ? _t('placeholder_vnd_amount') : _t('placeholder_krw_amount');
-        inputEl.value       = "";
+        inputEl.value = "";
       }
       if (hidden) hidden.value = r.value;
     });
@@ -1264,11 +1288,11 @@ function bindMerchantPay(uid, _walletAddress) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const merchantId = $("merchantPaySelect")?.value;
-    const amount     = Number($("merchantPayAmount")?.value);
-    const currency   = $("merchantPayCurrency")?.value || "VND";
-    const isVnd      = currency === "VND";
-    const btn        = $("btnMerchantPay");
-    const resultBox  = $("merchantPayResult");
+    const amount = Number($("merchantPayAmount")?.value);
+    const currency = $("merchantPayCurrency")?.value || "VND";
+    const isVnd = currency === "VND";
+    const btn = $("btnMerchantPay");
+    const resultBox = $("merchantPayResult");
 
     if (!merchantId) {
       alert(_t('merchant_select_error'));
@@ -1278,7 +1302,7 @@ function bindMerchantPay(uid, _walletAddress) {
     if (isVnd) {
       if (!amount || amount < 10000) { alert(_t('pay_vnd_min_error')); return; }
     } else {
-      if (!amount || amount < 1000)  { alert(_t('pay_krw_min_error')); return; }
+      if (!amount || amount < 1000) { alert(_t('pay_krw_min_error')); return; }
     }
 
     const confirmMsg = isVnd
@@ -1362,7 +1386,7 @@ function parseQrPayload(raw) {
       amount: Number(j.amount || j.krw || j.vnd || 0) || null,
       currency: String(j.currency || "").toUpperCase() || null,
     };
-  } catch {}
+  } catch { }
 
   try {
     const u = new URL(text);
@@ -1372,7 +1396,7 @@ function parseQrPayload(raw) {
       amount: Number(u.searchParams.get("amount") || 0) || null,
       currency: String(u.searchParams.get("currency") || "").toUpperCase() || null,
     };
-  } catch {}
+  } catch { }
 
   const mId =
     /merchantId\s*[:=]\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1] ||
@@ -1394,11 +1418,11 @@ function showQrResult(msg, isError) {
 
 async function applyQrResult(payload) {
   if (!payload) return false;
-  const sel          = $("merchantPaySelect");
-  const amountInput  = $("merchantPayAmount");
+  const sel = $("merchantPaySelect");
+  const amountInput = $("merchantPayAmount");
   const currencyHidden = $("merchantPayCurrency");
-  const radioVnd     = $("merchantPayCurrencyVND");
-  const radioKrw     = $("merchantPayCurrencyKRW");
+  const radioVnd = $("merchantPayCurrencyVND");
+  const radioKrw = $("merchantPayCurrencyKRW");
 
   // ── 금액 즉시 반영 ──
   if (payload.amount && amountInput) {
@@ -1416,8 +1440,8 @@ async function applyQrResult(payload) {
     const isVnd = cur === "VND";
     if (labelEl) labelEl.textContent = isVnd ? _t('label_pay_amount_vnd') : _t('label_pay_amount_krw');
     if (inputEl) {
-      inputEl.min         = isVnd ? "10000" : "1000";
-      inputEl.step        = isVnd ? "1000"  : "100";
+      inputEl.min = isVnd ? "10000" : "1000";
+      inputEl.step = isVnd ? "1000" : "100";
       inputEl.placeholder = isVnd ? _t('placeholder_vnd_amount') : _t('placeholder_krw_amount');
     }
   }
@@ -1521,7 +1545,7 @@ function bindQrScan() {
               await onDetected(codes[0].rawValue);
               return;
             }
-          } catch {}
+          } catch { }
           detecting = false;
           __qrRaf = requestAnimationFrame(detectTick);
         };
@@ -1663,6 +1687,7 @@ onAuthReady(async (ctx) => {
       }
     })();
 
+    loadKCultureBalances(user.uid);
     loadOnChainData(user.uid);
     loadDepositHistory(user.uid);
     loadMentees();
@@ -1698,24 +1723,24 @@ onAuthReady(async (ctx) => {
 // 바우처 지갑
 // ─────────────────────────────────────────────────────────
 (function initVoucherWallet() {
-  const grid        = $('voucherCardGrid');
-  const emptyEl     = $('voucherCardEmpty');
-  const loadingEl   = $('voucherCardLoading');
+  const grid = $('voucherCardGrid');
+  const emptyEl = $('voucherCardEmpty');
+  const loadingEl = $('voucherCardLoading');
   const transferPanel = $('voucherTransferPanel');
-  const burnPanel     = $('voucherBurnPanel');
-  const vwMyQrPanel  = $('vwMyQrPanel');
-  const vwQrCanvas   = $('vwQrCanvas');
+  const burnPanel = $('voucherBurnPanel');
+  const vwMyQrPanel = $('vwMyQrPanel');
+  const vwQrCanvas = $('vwQrCanvas');
   const vwWalletAddr = $('vwWalletAddr');
   const btnVwCopyAddr = $('btnVwCopyAddr');
-  const btnVwShowQr  = $('btnVwShowQr');
-  const btnVwHideQr  = $('btnVwHideQr');
+  const btnVwShowQr = $('btnVwShowQr');
+  const btnVwHideQr = $('btnVwHideQr');
 
   if (!grid) return;  // 섹션이 없으면 건너뜀
 
-  let _pendingVoucherId  = null;
-  let _pendingDocId      = null;
+  let _pendingVoucherId = null;
+  let _pendingDocId = null;
   let _pendingCollection = null;
-  let _pendingHexPrice   = null;
+  let _pendingHexPrice = null;
 
   // ── 내 지갑 QR 렌더 ─────────────────────────────────────────────────────
   let _myWalletAddress = null;
@@ -1790,9 +1815,9 @@ onAuthReady(async (ctx) => {
   if (btnVwQrScan) {
     btnVwQrScan.addEventListener('click', async () => {
       const overlay = $('qrScanOverlay');
-      const video   = $('qrVideo');
-      const canvas  = $('qrCanvas');
-      const state   = $('qrScanState');
+      const video = $('qrVideo');
+      const canvas = $('qrCanvas');
+      const state = $('qrScanState');
       if (!overlay || !video || !canvas) return;
 
       // 기존 스캔 중지 후 재시작
@@ -1828,7 +1853,7 @@ onAuthReady(async (ctx) => {
             try {
               const codes = await bd.detect(video);
               if (codes.length > 0) { onWalletDetected(codes[0].rawValue); return; }
-            } catch {}
+            } catch { }
             detecting = false;
             __qrRaf = requestAnimationFrame(detectTick);
           };
@@ -1906,16 +1931,16 @@ onAuthReady(async (ctx) => {
       const imgTag = imgSrc
         ? `<img src="${imgSrc}" alt="${_t('voucher_default_name')}" style="width:100%;height:110px;object-fit:cover;display:block;background:#f3f4f6;" onerror="this.style.display='none'">`
         : `<div style="width:100%;height:60px;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.4rem;">🎫</div>`;
-      const isGameVoucher      = v.source === 'game';
-      const isProductVoucher   = v.source === 'product';
+      const isGameVoucher = v.source === 'game';
+      const isProductVoucher = v.source === 'product';
       const isCommunityVoucher = v.source === 'community';
       // 온체인 바우처는 voucherId(숫자), 나머지는 docId(Firestore 문서 ID) 사용
-      const vid   = (isProductVoucher || isGameVoucher || isCommunityVoucher) ? null : v.voucherId;
+      const vid = (isProductVoucher || isGameVoucher || isCommunityVoucher) ? null : v.voucherId;
       const docId = v.id;
-      const col   = isGameVoucher      ? 'treasure_voucher_logs'
-                  : isCommunityVoucher ? 'community_event_vouchers'
-                  : 'coop';
-      const hp    = v.hexPrice ?? '0';
+      const col = isGameVoucher ? 'treasure_voucher_logs'
+        : isCommunityVoucher ? 'community_event_vouchers'
+          : 'coop';
+      const hp = v.hexPrice ?? '0';
       const refundWei = (!isGameVoucher && hp !== '0')
         ? String(BigInt(hp) - BigInt(hp) * BigInt(v.burnFeeBps ?? 0) / BigInt(10000))
         : '0';
@@ -1924,8 +1949,8 @@ onAuthReady(async (ctx) => {
       const sourceBadge = isGameVoucher
         ? `<span style="font-size:0.7rem;background:#d1fae5;color:#065f46;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">${_t('voucher_game_badge')}</span>`
         : isCommunityVoucher
-        ? `<span style="font-size:0.7rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">행사</span>`
-        : `<span style="font-size:0.7rem;background:#ede9fe;color:#5b21b6;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">${_t('voucher_shop_badge')}</span>`;
+          ? `<span style="font-size:0.7rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">행사</span>`
+          : `<span style="font-size:0.7rem;background:#ede9fe;color:#5b21b6;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:5px;">${_t('voucher_shop_badge')}</span>`;
 
       // 가격 영역
       let priceHtml;
@@ -1976,8 +2001,8 @@ onAuthReady(async (ctx) => {
     // 이체 버튼
     grid.querySelectorAll('[data-action="transfer"]').forEach(btn => {
       btn.addEventListener('click', () => {
-        _pendingDocId      = btn.dataset.docid || null;
-        _pendingVoucherId  = btn.dataset.vid ? Number(btn.dataset.vid) : null;
+        _pendingDocId = btn.dataset.docid || null;
+        _pendingVoucherId = btn.dataset.vid ? Number(btn.dataset.vid) : null;
         _pendingCollection = btn.dataset.collection || null;
         const label = _pendingVoucherId ? `#${_pendingVoucherId}` : (_pendingDocId ? _pendingDocId.slice(0, 8) + '…' : '?');
         if ($('vtVoucherId')) $('vtVoucherId').textContent = label;
@@ -1992,11 +2017,11 @@ onAuthReady(async (ctx) => {
     // 소각 버튼
     grid.querySelectorAll('[data-action="burn"]').forEach(btn => {
       btn.addEventListener('click', () => {
-        _pendingDocId      = btn.dataset.docid || null;
-        _pendingVoucherId  = btn.dataset.vid ? Number(btn.dataset.vid) : null;
+        _pendingDocId = btn.dataset.docid || null;
+        _pendingVoucherId = btn.dataset.vid ? Number(btn.dataset.vid) : null;
         _pendingCollection = btn.dataset.collection || null;
-        _pendingHexPrice   = btn.dataset.hexPrice ?? '0';
-        const hp  = _pendingHexPrice;
+        _pendingHexPrice = btn.dataset.hexPrice ?? '0';
+        const hp = _pendingHexPrice;
         const bps = Number(btn.dataset.burnFeeBps ?? 0);
         const isGame = _pendingCollection === 'treasure_voucher_logs'
           || (_pendingCollection === 'community_event_vouchers' && (!hp || hp === '0'));
@@ -2005,7 +2030,7 @@ onAuthReady(async (ctx) => {
           if (isGame) {
             $('vbInfo').innerHTML = _t('burn_game_info', label);
           } else {
-            const fee    = BigInt(hp) * BigInt(bps) / BigInt(10000);
+            const fee = BigInt(hp) * BigInt(bps) / BigInt(10000);
             const refund = BigInt(hp) - fee;
             const refundKrw = hexWeiToKrwStr(String(refund));
             const refundVnd = hexWeiToVndStr(String(refund));
@@ -2065,15 +2090,15 @@ onAuthReady(async (ctx) => {
     try {
       const fn = httpsCallable(functions, 'coopTransferVoucher');
       await fn({
-        docId:            _pendingDocId     || undefined,
-        voucherId:        _pendingVoucherId ?? undefined,
+        docId: _pendingDocId || undefined,
+        voucherId: _pendingVoucherId ?? undefined,
         toAddress,
         sourceCollection: _pendingCollection || undefined,
       });
       setVtStatus(_t('transfer_done'), true);
       transferPanel.style.display = 'none';
-      _pendingVoucherId  = null;
-      _pendingDocId      = null;
+      _pendingVoucherId = null;
+      _pendingDocId = null;
       _pendingCollection = null;
       await loadMyVouchers();
     } catch (err) {
@@ -2085,24 +2110,24 @@ onAuthReady(async (ctx) => {
 
   $('btnVtCancel')?.addEventListener('click', () => {
     transferPanel.style.display = 'none';
-    _pendingVoucherId  = null;
-    _pendingDocId      = null;
+    _pendingVoucherId = null;
+    _pendingDocId = null;
     _pendingCollection = null;
-    _pendingHexPrice   = null;
+    _pendingHexPrice = null;
   });
 
   // 소각 확인
   $('btnVbConfirm')?.addEventListener('click', async () => {
     if (!_pendingDocId && _pendingVoucherId === null) return;
-    const btn      = $('btnVbConfirm');
+    const btn = $('btnVbConfirm');
     const cancelBtn = $('btnVbCancel');
-    const stepsEl  = $('vbSteps');
+    const stepsEl = $('vbSteps');
     const buttonsEl = $('vbButtons');
 
     // 단계 아이콘 갱신 헬퍼
     const stepState = (n, state) => {
       const icon = $(`vbStep${n}Icon`);
-      const row  = $(`vbStep${n}`);
+      const row = $(`vbStep${n}`);
       if (!icon || !row) return;
       const map = { wait: ['⏳', '#9ca3af'], active: ['🔄', '#d97706'], done: ['✅', '#16a34a'], error: ['❌', '#ef4444'] };
       const [emoji, color] = map[state] || map.wait;
@@ -2139,8 +2164,8 @@ onAuthReady(async (ctx) => {
       }
 
       await fn({
-        docId:            _pendingDocId     || undefined,
-        voucherId:        _pendingVoucherId ?? undefined,
+        docId: _pendingDocId || undefined,
+        voucherId: _pendingVoucherId ?? undefined,
         sourceCollection: _pendingCollection || undefined,
       });
 
@@ -2156,10 +2181,10 @@ onAuthReady(async (ctx) => {
       setTimeout(async () => {
         burnPanel.style.display = 'none';
         if (stepsEl) stepsEl.style.display = 'none';
-        _pendingVoucherId  = null;
-        _pendingDocId      = null;
+        _pendingVoucherId = null;
+        _pendingDocId = null;
         _pendingCollection = null;
-        _pendingHexPrice   = null;
+        _pendingHexPrice = null;
         await loadMyVouchers();
       }, 1800);
     } catch (err) {
@@ -2178,10 +2203,10 @@ onAuthReady(async (ctx) => {
 
   $('btnVbCancel')?.addEventListener('click', () => {
     burnPanel.style.display = 'none';
-    _pendingVoucherId  = null;
-    _pendingDocId      = null;
+    _pendingVoucherId = null;
+    _pendingDocId = null;
     _pendingCollection = null;
-    _pendingHexPrice   = null;
+    _pendingHexPrice = null;
   });
 
   // 섹션 열릴 때 첫 로드
@@ -2241,16 +2266,16 @@ onAuthReady(async (ctx) => {
 // ── 온체인 경험치 동기화 상태 UI ────────────────────────────────────────────────
 // 레벨업 → Firestore 플래그 → 6시간 배치 또는 수동 동기화 → adminSetLevel() 1tx
 function _renderOnChainSyncStatus(bp, uid) {
-  const row       = document.getElementById('onChainSyncRow');
+  const row = document.getElementById('onChainSyncRow');
   const container = document.getElementById('onChainSyncStatus');
   if (!row || !container) return;
   row.classList.remove('hidden');
 
-  const pending      = bp.pendingOnChainSync === true;
+  const pending = bp.pendingOnChainSync === true;
   const pendingLevel = bp.pendingOnChainLevel || null;
   const onChainLevel = bp.onChainLevel || null;
-  const lastSyncAt   = bp.lastOnChainSyncAt?.toDate?.() || null;
-  const lastTxHash   = bp.lastOnChainSyncTxHash || null;
+  const lastSyncAt = bp.lastOnChainSyncAt?.toDate?.() || null;
+  const lastTxHash = bp.lastOnChainSyncTxHash || null;
 
   let statusHtml;
   if (pending && pendingLevel) {
@@ -2288,7 +2313,7 @@ function _renderOnChainSyncStatus(bp, uid) {
     manualBtn.disabled = true;
     manualBtn.textContent = '동기화 중…';
     try {
-      const fn  = httpsCallable(functions, 'requestOnChainLevelSync');
+      const fn = httpsCallable(functions, 'requestOnChainLevelSync');
       const res = await fn();
       if (res.data?.already) {
         manualBtn.textContent = '대기 없음';

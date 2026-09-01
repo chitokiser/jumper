@@ -56,9 +56,9 @@ role 판정은 오직 아래 로직만 사용합니다.
 
 필요해지면 다시 살릴 수 있지만, 현재 운영 흐름에서는 사용하지 않습니다.
 
-## 5) JumpDAO 소개
+## 5) K-CULTURE ALLIANCE 소개
 
-JumpDAO는 현실 세계를 기반으로 하는 Web3 보물찾기 플랫폼이다.
+K-CULTURE ALLIANCE는 현실 세계를 기반으로 하는 Web3 보물찾기 플랫폼이다.
 
 유저들은:
 
@@ -120,7 +120,7 @@ JumpDAO는 현실 세계를 기반으로 하는 Web3 보물찾기 플랫폼이�
 
 JUMP는 단순 게임코인이 아니라:
 
-# JumpDAO의 지분(Share) 토큰
+# K-CULTURE ALLIANCE의 지분(Share) 토큰
 
 역할을 한다.
 
@@ -130,7 +130,7 @@ JUMP는 단순 게임코인이 아니라:
 
 JUMP 토큰을 보유하면:
 
-* JumpDAO 주주로 인정
+* K-CULTURE ALLIANCE 주주로 인정
 * 특별 혜택 제공
 * 플랫폼 주요 혜택 참여 가능
 * 플랫폼 수익 배당 참여 가능
@@ -139,14 +139,14 @@ JUMP 토큰을 보유하면:
 
 # 플랫폼 수익 배당
 
-JumpDAO 플랫폼에서 발생한 수익은
+K-CULTURE ALLIANCE 플랫폼에서 발생한 수익은
 매주 정산되어
 
 JUMP 토큰 보유량 비율에 따라 배당된다.
 
 ---
 
-# JumpDAO 수익 구조
+# K-CULTURE ALLIANCE 수익 구조
 
 플랫폼 수익 예시:
 
@@ -162,7 +162,7 @@ JUMP 토큰 보유량 비율에 따라 배당된다.
 
 # HEX 토큰
 
-JumpDAO 플랫폼의 모든 결제는
+K-CULTURE ALLIANCE 플랫폼의 모든 결제는
 HEX 토큰 기반으로 이루어진다.
 
 예:
@@ -189,9 +189,9 @@ HEX는 아래 사이트에서 교환 가능하다:
 
 ---
 
-# JumpDAO 핵심 개념
+# K-CULTURE ALLIANCE 핵심 개념
 
-JumpDAO는:
+K-CULTURE ALLIANCE는:
 
 * 현실 세계 탐험
 * 위치 기반 게임

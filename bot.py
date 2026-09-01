@@ -659,7 +659,7 @@ async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
             label = f"{emoji} {p['name']} — {p['starsPrice']} ⭐"
             keyboard.append([InlineKeyboardButton(label, callback_data=f"stars_buy_{p['id']}")])
         await update.message.reply_text(
-            "⭐ *JumpDAO Stars Shop*\n\n"
+            "⭐ *K-CULTURE ALLIANCE Stars Shop*\n\n"
             "Select a product to purchase with Telegram Stars:",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
@@ -839,7 +839,7 @@ async def cmd_affiliate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         gp_from_redeem = pending * 100
 
         lines = [
-            "🤝 *JumpDAO Affiliate Program*\n",
+            "🤝 *K-CULTURE ALLIANCE Affiliate Program*\n",
             f"🔗 Your invite link:\n`{link}`\n",
             "📊 *Stats*",
             f"• Wallet referrals: *{stats['gp_referral_count']}* friends → *{stats['gp_earned']:,} GP* earned",
@@ -879,7 +879,7 @@ async def cb_affiliate_dashboard(update: Update, context: ContextTypes.DEFAULT_T
         pending  = stats["pending_commission"]
         gp_from_redeem = pending * 100
         lines = [
-            "🤝 *JumpDAO Affiliate Program*\n",
+            "🤝 *K-CULTURE ALLIANCE Affiliate Program*\n",
             f"🔗 Your invite link:\n`{link}`\n",
             "📊 *Stats*",
             f"• Wallet referrals: *{stats['gp_referral_count']}* friends → *{stats['gp_earned']:,} GP* earned",
@@ -1005,7 +1005,7 @@ async def cb_stars_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 callback_data=f"stars_buy_{p['id']}"
             )])
         await q.message.reply_text(
-            "⭐ *JumpDAO Stars Shop*\n\nSelect a product to purchase with Telegram Stars:",
+            "⭐ *K-CULTURE ALLIANCE Stars Shop*\n\nSelect a product to purchase with Telegram Stars:",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
@@ -1148,10 +1148,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # 그룹에서는 web_app 버튼이 BadRequest를 유발하므로 DM 유도 메시지만 전송
             bot_name = _bot_username or context.bot.username or (await context.bot.get_me()).username
             keyboard = [[
-                InlineKeyboardButton("🎮 Open JumpDAO Bot", url=f"https://t.me/{bot_name}?start=hi"),
+                InlineKeyboardButton("🎮 Open K-CULTURE ALLIANCE Bot", url=f"https://t.me/{bot_name}?start=hi"),
             ]]
             await update.message.reply_text(
-                "*JumpDAO*\n\n"
+                "*K-CULTURE ALLIANCE*\n\n"
                 "A verified game hub where\n"
                 "Game Points ⇔ Toncoin & USDT can be exchanged.\n\n"
                 "👇 Tap below to start in a private chat!",
@@ -1172,7 +1172,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("💰 Charge GP", callback_data="charge_gp"),
              InlineKeyboardButton("⭐ Stars Shop", callback_data="stars_shop")],
             [InlineKeyboardButton("💱 TON → GP Rate", callback_data="show_rate")],
-            [InlineKeyboardButton("💬 Join Official Community", url="https://t.me/jumpdao_eng")],
+            [InlineKeyboardButton("💬 Join Official Community", url="https://t.me/k-culture_eng")],
             [InlineKeyboardButton(f"🔗 Invite Friends to Group → +{GROUP_INVITE_GP} GP/person", callback_data="group_invite_link")],
             [
                 _game("🗺️ Treasure Hunt",  "treasure.html"),
@@ -1186,7 +1186,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [_game("🏰 Monster Defense", "conquest.html")],
         ]
         await update.message.reply_text(
-            "*JumpDAO*\n\n"
+            "*K-CULTURE ALLIANCE*\n\n"
             "A verified game hub where\n"
             "Game Points ⇔ Toncoin & USDT can be exchanged.",
             parse_mode="Markdown",
@@ -1465,7 +1465,7 @@ async def on_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Tap below to start! 👇"
         )
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("🎮 Start JumpDAO", url=f"https://t.me/{bot_name}?start=hi")
+            InlineKeyboardButton("🎮 Start K-CULTURE ALLIANCE", url=f"https://t.me/{bot_name}?start=hi")
         ]]) if bot_name else None
         await context.bot.send_message(chat_id=GROUP_CHAT_ID, text=welcome,
                                        parse_mode="HTML", reply_markup=kb,
@@ -1479,7 +1479,7 @@ async def on_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bot_name = _bot_username or context.bot.username or ""
             dm_text = (
                 f"🎁 <b>You received +100 GP Airdrop!</b>\n\n"
-                f"Welcome to JumpDAO Community!\n"
+                f"Welcome to K-CULTURE ALLIANCE Community!\n"
                 f"100 GP has been added to your account.\n\n"
                 f"<b>Earn even more:</b>\n"
                 f"📝 Register → <b>+1,000 GP</b> bonus\n"
@@ -1488,7 +1488,7 @@ async def on_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Tap below to get started! 👇"
             )
             kb_dm = InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎮 Start JumpDAO", url=f"https://t.me/{bot_name}?start=hi")
+                InlineKeyboardButton("🎮 Start K-CULTURE ALLIANCE", url=f"https://t.me/{bot_name}?start=hi")
             ]]) if bot_name else None
             await context.bot.send_message(
                 chat_id=new_member.id,

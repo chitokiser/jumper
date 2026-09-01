@@ -132,7 +132,11 @@ export function toggleVirtualMode() {
     _deactivate();
     return;
   }
-  // 항상 최신 상점 목록을 Firestore에서 재로드 후 모달 표시
+  showShopList();
+}
+
+/** 상점 목록 모달만 열기 (모드 전환 없이) */
+export function showShopList() {
   _showToast('Loading shops…');
   _loadShops().then(() => {
     if (_shops.length === 0) {
@@ -141,6 +145,11 @@ export function toggleVirtualMode() {
     }
     _showShopSelector();
   });
+}
+
+/** Virtual 모드 강제 비활성화 (GPS 모드로 전환) */
+export function deactivateVirtualMode() {
+  if (_active) _deactivate();
 }
 
 // ── MP 비용 ──────────────────────────────────────────────────────────────
@@ -152,14 +161,15 @@ function _calcMpCost(shop) {
 }
 
 // ── 워프 활성화 ──────────────────────────────────────────────────────────
-async function _activate(shop) {
+// targetPos: 특정 좌표로 즉시 점프 (null이면 500m 외곽 스폰)
+async function _activate(shop, targetPos = null) {
   // MP 차감
   const mpCost = _calcMpCost(shop);
   if (_cbs) {
     const cur = _cbs.getMp();
     if (cur < mpCost) {
       _showToast(`💙 Not enough MP (need ${mpCost} / have ${cur})`);
-      return;
+      return false;
     }
     _cbs.spendMp(mpCost);
   }
@@ -170,13 +180,12 @@ async function _activate(shop) {
   } catch (e) {
     if (e?.message?.includes('Not enough GP')) {
       _showToast('💰 Not enough GP — warp entrance fee is 10 GP.');
-      return;
+      return false;
     }
     // shop has no owner or other non-critical error → proceed
   }
 
-  // 500m 외곽 스폰
-  const spawnPos = _offsetPos(shop.lat, shop.lng, SPAWN_OFFSET_M, Math.random() * 360);
+  const spawnPos = targetPos ?? _offsetPos(shop.lat, shop.lng, SPAWN_OFFSET_M, Math.random() * 360);
 
   _active = true;
   _warpShop = shop;
@@ -185,8 +194,8 @@ async function _activate(shop) {
   // _ctx.lastPos를 가상 위치로 설정 → 게임 서버·보물·몬스터 모두 이 위치 기준
   _cbs?.moveMarker(spawnPos.lat, spawnPos.lng);
 
-  _map.panTo({ lat: shop.lat, lng: shop.lng });
-  _map.setZoom(15);
+  _map.panTo({ lat: spawnPos.lat, lng: spawnPos.lng });
+  _map.setZoom(targetPos ? 17 : 15);
 
   // 5km 탐험 반경 원
   _radiusCircle?.setMap(null);
@@ -206,7 +215,14 @@ async function _activate(shop) {
 
   _onModeChange?.(true, shop);
   _updateBtn(true);
-  _showToast(`🌍 Warped to ${shop.name}!${_cbs ? ` 💙-${mpCost}` : ''} Tap the map to move.`);
+  const verb = targetPos ? '⚡ Jumped to' : '🌍 Warped to';
+  _showToast(`${verb} ${shop.name}!${_cbs ? ` 💙-${mpCost}` : ''} Tap the map to move.`);
+  return true;
+}
+
+// 지도 클릭 지점으로 즉시 점프 (외부에서 호출)
+export async function activateAtPos(shop, lat, lng) {
+  return _activate(shop, { lat, lng });
 }
 
 // ── 비활성화 ─────────────────────────────────────────────────────────────
@@ -464,12 +480,23 @@ function _buildModal() {
 // ── 버튼 상태 ────────────────────────────────────────────────────────────
 function _updateBtn(on) {
   const btn = document.getElementById('btnVirtualMode');
-  if (!btn) return;
-  btn.textContent      = on ? '🌍' : '🌍';
-  btn.title            = on ? 'Virtual Mode ON — switch to GPS mode' : 'Virtual Explore — warp to a shop';
-  btn.style.background = on ? '#7c3aed' : '';
-  btn.style.color      = on ? '#fff' : '';
-  btn.style.boxShadow  = on ? '0 0 10px #7c3aed88' : '';
+  if (btn) {
+    btn.title            = on ? 'Browse shops / re-warp to another shop' : 'Browse shops — warp to a shop';
+    btn.style.background = on ? '#7c3aed' : '';
+    btn.style.color      = on ? '#fff' : '';
+    btn.style.boxShadow  = on ? '0 0 10px #7c3aed88' : '';
+  }
+  const modeBtn = document.getElementById('btnModeToggle');
+  if (modeBtn) {
+    const icon = modeBtn.querySelector('.mode-icon');
+    const label = modeBtn.querySelector('.mode-label');
+    if (icon) icon.textContent  = on ? '🎮' : '📍';
+    if (label) label.textContent = on ? 'Jump' : 'GPS';
+    modeBtn.title            = on ? 'Jump Mode — tap to switch to GPS Mode' : 'GPS Mode — tap to switch to Jump Mode';
+    modeBtn.style.background = on ? '#7c3aed' : '';
+    modeBtn.style.color      = on ? '#fff' : '';
+    modeBtn.style.boxShadow  = on ? '0 0 10px #7c3aed88' : '';
+  }
 }
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────

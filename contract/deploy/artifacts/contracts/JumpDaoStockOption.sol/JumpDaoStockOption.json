@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-artifact-1",
-  "contractName": "JumpDaoStockOption",
-  "sourceName": "contracts/JumpDaoStockOption.sol",
+  "contractName": "K-Culture AllianceStockOption",
+  "sourceName": "contracts/K-Culture AllianceStockOption.sol",
   "abi": [
     {
       "inputs": [
@@ -290,7 +290,7 @@
               "type": "bool"
             }
           ],
-          "internalType": "struct JumpDaoStockOption.OptionVoucher",
+          "internalType": "struct K-Culture AllianceStockOption.OptionVoucher",
           "name": "",
           "type": "tuple"
         }

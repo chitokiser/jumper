@@ -18,11 +18,11 @@ async function main() {
   const balance = await provider.getBalance(wallet.address);
   console.log('BNB Balance:', ethers.formatEther(balance), 'BNB\n');
 
-  const artifactPath = path.join(__dirname, '../artifacts/contracts/JumpDaoStockOption.sol/JumpDaoStockOption.json');
+  const artifactPath = path.join(__dirname, '../artifacts/contracts/K-Culture AllianceStockOption.sol/K-Culture AllianceStockOption.json');
   const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
 
   const factory  = new ethers.ContractFactory(artifact.abi, artifact.bytecode, wallet);
-  console.log('Deploying JumpDaoStockOption...');
+  console.log('Deploying K-Culture AllianceStockOption...');
   const contract = await factory.deploy(HEX_TOKEN, JUMP_TOKEN);
   console.log('Tx hash:', contract.deploymentTransaction()?.hash);
   await contract.waitForDeployment();

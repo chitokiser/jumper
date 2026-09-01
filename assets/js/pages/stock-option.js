@@ -1,5 +1,5 @@
 // /assets/js/pages/stock-option.js
-// JumpDao 스톡옵션 바우처 — 수탁지갑 기반 (행사 탭과 동일 방식)
+// K-Culture Alliance 스톡옵션 바우처 — 수탁지갑 기반 (행사 탭과 동일 방식)
 
 import { functions } from '../firebase-init.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';

@@ -1,6 +1,7 @@
 <!-- /merchant-qr.html -->
 <!doctype html>
 <html lang="ko">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -27,6 +28,7 @@
       margin: 0 auto;
       text-align: center;
     }
+
     .qr-canvas-wrap {
       display: flex;
       justify-content: center;
@@ -38,43 +40,66 @@
       margin: 16px auto;
       width: fit-content;
     }
+
     .qr-canvas-wrap canvas {
       display: block;
       border-radius: 4px;
     }
+
     .qr-amount-label {
       font-size: 1.4rem;
       font-weight: 700;
       color: var(--accent, #7c3aed);
       margin: 8px 0 4px;
     }
+
     .qr-merchant-name {
       font-size: 1.05rem;
       font-weight: 600;
       margin-bottom: 4px;
     }
+
     .qr-hint {
       font-size: 0.82rem;
       color: var(--muted, #6b7280);
       margin-top: 8px;
     }
+
     .btn-download {
       margin-top: 12px;
       background: var(--surface, #f3f4f6);
       color: var(--text, #111);
       border: 1px solid var(--border, #e5e7eb);
     }
+
     .btn-download:hover {
       background: var(--border, #e5e7eb);
     }
+
     @keyframes fadeInDown {
-      from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
     }
+
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
     }
+
     .receipt-item {
       display: flex;
       align-items: center;
@@ -86,18 +111,48 @@
       font-size: 0.88rem;
       animation: fadeIn .3s ease;
     }
+
     .receipt-item.new-item {
       border-color: #16a34a;
       background: #f0fdf4;
     }
-    .receipt-item .ri-icon { font-size: 1.3rem; flex-shrink:0; }
-    .receipt-item .ri-body { flex: 1; }
-    .receipt-item .ri-hex  { font-weight: 700; color: var(--accent,#7c3aed); font-size:0.95rem; }
-    .receipt-item .ri-fiat { color: var(--muted,#6b7280); font-size:0.8rem; }
-    .receipt-item .ri-time { font-size:0.75rem; color: var(--muted,#6b7280); flex-shrink:0; }
+
+    .receipt-item .ri-icon {
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .receipt-item .ri-body {
+      flex: 1;
+    }
+
+    .receipt-item .ri-hex {
+      font-weight: 700;
+      color: var(--accent, #7c3aed);
+      font-size: 0.95rem;
+    }
+
+    .receipt-item .ri-fiat {
+      color: var(--muted, #6b7280);
+      font-size: 0.8rem;
+    }
+
+    .receipt-item .ri-time {
+      font-size: 0.75rem;
+      color: var(--muted, #6b7280);
+      flex-shrink: 0;
+    }
+
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-6px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(-6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
   </style>
 </head>
@@ -135,9 +190,13 @@
             <span class="k">가맹점</span>
             <span class="v" id="qrMerchantName" style="font-weight:700;">로딩 중...</span>
           </div>
+          <div class="mp-kv" style="margin-bottom:8px;">
+            <span class="k">Payment Balance</span>
+            <span class="v" id="qrMerchantPaymentBal" style="font-weight:700; color:var(--accent);">0 VND</span>
+          </div>
           <div class="mp-kv" style="margin-bottom:20px;">
-            <span class="k">가맹점 ID</span>
-            <span class="v mono" id="qrMerchantId">-</span>
+            <span class="k">K-CULTURE Reward</span>
+            <span class="v" id="qrMerchantPointBal" style="font-weight:700; color:#7c3aed;">0 P</span>
           </div>
 
           <!-- 금액 입력 -->
@@ -159,18 +218,11 @@
 
             <label class="field">
               <span class="label" id="qrAmountLabel">결제 금액 (원)</span>
-              <input
-                class="input"
-                id="qrAmount"
-                type="number"
-                min="1000"
-                step="100"
-                placeholder="예: 30000"
-                required
-              />
+              <input class="input" id="qrAmount" type="number" min="1000" step="100" placeholder="예: 30000" required />
               <div class="help" id="qrAmountHelp">최소 1,000원 이상 입력해 주세요.</div>
               <!-- VND 입력 시 KRW 환산 표시 -->
-              <div id="qrAmountConvert" style="display:none; margin-top:6px; padding:6px 10px;
+              <div id="qrAmountConvert"
+                style="display:none; margin-top:6px; padding:6px 10px;
                    background:var(--surface,#f9fafb); border-radius:8px; font-size:0.85rem; color:var(--muted,#6b7280);">
                 ≈ <span id="qrAmountKrw">-</span>원 (KRW)
               </div>
@@ -201,11 +253,14 @@
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
               <h3 style="margin:0; font-size:1rem; font-weight:700;">입금 내역</h3>
               <span style="display:flex; align-items:center; gap:6px;">
-                <span id="receiptListeningDot" style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block;animation:pulse 1.4s infinite;"></span>
-                <span id="receiptTotal" style="font-size:0.9rem; color:var(--accent,#7c3aed); font-weight:600;">합계: 0 HEX</span>
+                <span id="receiptListeningDot"
+                  style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block;animation:pulse 1.4s infinite;"></span>
+                <span id="receiptTotal" style="font-size:0.9rem; color:var(--accent,#7c3aed); font-weight:600;">합계: 0
+                  VND</span>
               </span>
             </div>
-            <div id="receiptWaiting" style="text-align:center; padding:24px 0; color:var(--muted,#6b7280); font-size:0.9rem;">
+            <div id="receiptWaiting"
+              style="text-align:center; padding:24px 0; color:var(--muted,#6b7280); font-size:0.9rem;">
               <div style="font-size:1.8rem; margin-bottom:6px;">⏳</div>
               결제 대기 중...
             </div>
@@ -221,4 +276,5 @@
 
   <script type="module" src="/assets/js/pages/merchant-qr.js"></script>
 </body>
+
 </html>

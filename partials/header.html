@@ -3,12 +3,7 @@
   <div class="hdr-inner">
 
     <a class="brand" href="/index.html" aria-label="Jumper">
-      <img
-        src="/assets/images/jump/logo2.png"
-        alt="jump"
-        class="brand-logo"
-        onerror="this.style.display='none';"
-      />
+      <img src="/assets/images/jump/logo2.png" alt="jump" class="brand-logo" onerror="this.style.display='none';" />
     </a>
 
     <button class="burger" id="btnBurger" type="button" aria-label="menu" aria-expanded="false">
@@ -16,61 +11,80 @@
     </button>
 
     <nav class="nav" id="hdrNav">
-      <div class="nav-group" id="navGroupExplore">
-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_explore">Khám phá</button>
+      <div class="nav-group" id="navGroupKCulture">
+        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
+          data-hdr-i18n="hdr_kculture">K-CULTURE</button>
         <div class="nav-group-menu">
-          <div class="nav-sub-group" id="navSubGames">
-            <button class="nav-sub-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_games">🎮 Games</button>
-            <div class="nav-sub-menu">
-              <a id="navMerchantsMap" href="/merchants.html" data-hdr-i18n="hdr_treasure">Treasure Hunt</a>
-              <a id="navMonsterRace" href="/monsterrace.html" data-hdr-i18n="hdr_monster_race">🛹 Monster Race</a>
-              <a id="navBow" href="/bow.html" data-hdr-i18n="hdr_bow">🏹 Archery</a>
-              <a id="navMemory" href="/memory.html" data-hdr-i18n="hdr_memory">🃏 Speed Memory</a>
-              <a id="navConquest" href="/conquest.html" data-hdr-i18n="hdr_monster_defense">🏰 Monster Defense</a>
-            </div>
-          </div>
-          <a id="navHomestay" href="/homestay.html" data-hdr-i18n="hdr_stay">Homestay</a>
-          <a id="navWhat" href="/what.html#sectionPlay" data-hdr-i18n="hdr_sights">Sights</a>
-          <a id="navFood" href="/what.html#sectionFood" data-hdr-i18n="hdr_food">Food</a>
-          <a id="navShop" href="/what.html#sectionShop" data-hdr-i18n="hdr_shopping">Shopping</a>
-          <a id="navCommunity" href="/community.html" data-hdr-i18n="hdr_benefits">JUMP Token Staking Benefits</a>
-          <a id="navDao" href="/dao.html" data-hdr-i18n="hdr_dao">DAO Voting</a>
+          <a id="navFood" href="/merchants.html?type=food" data-hdr-i18n="hdr_food">🍲 Food</a>
+          <a id="navLife" href="/merchants.html?type=life" data-hdr-i18n="hdr_life">🛍️ Life</a>
+          <a id="navBeauty" href="/merchants.html?type=beauty" data-hdr-i18n="hdr_beauty">💅 Beauty</a>
+          <a id="navTravel" href="/merchants.html?type=travel" data-hdr-i18n="hdr_travel">✈️ Travel</a>
+          <a id="navExperience" href="/merchants.html?type=experience" data-hdr-i18n="hdr_experience">🎭 Experience</a>
         </div>
+      </div>
+      <div class="nav-group">
+        <a href="/merchants.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
+          data-hdr-i18n="hdr_merchants">Find Merchants</a>
+      </div>
+      <div class="nav-group">
+        <a href="/events.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
+          data-hdr-i18n="hdr_events">Events</a>
+      </div>
+      <div class="nav-group">
+        <a href="/community.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
+          data-hdr-i18n="hdr_community">Community</a>
       </div>
 
       <div class="nav-group" data-role="user guide merchant admin" id="navGroupMy">
-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_my_services">Dịch vụ của tôi</button>
+        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
+          data-hdr-i18n="hdr_my_services">Dịch vụ của tôi</button>
         <div class="nav-group-menu">
-          <a id="navMyPage" href="/mypage.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_wallet">My Wallet</a>
-          <a id="navExchange" href="/exchange.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_exchange">JUMP Exchange</a>
-          <a id="navCoop" href="/coop.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_mall">Member Mall</a>
-          <a id="navOrders" href="/orders.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_orders">My Orders</a>
+          <a id="navMyPage" href="/mypage.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_wallet">My
+            Wallet</a>
+          <a id="navExchange" href="/exchange.html" data-role="user guide merchant admin"
+            data-hdr-i18n="hdr_exchange">JUMP Exchange</a>
+          <a id="navCoop" href="/coop.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_mall">Member
+            Mall</a>
+          <a id="navOrders" href="/orders.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_orders">My
+            Orders</a>
         </div>
       </div>
 
       <div class="nav-group" data-role="guide merchant admin" id="navGroupFamily">
-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_sales">Trung tâm bán hàng</button>
+        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
+          data-hdr-i18n="hdr_sales">Trung tâm bán hàng</button>
         <div class="nav-group-menu">
-          <a id="navFamily" href="/family-register.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_merchant_reg">Register Store</a>
-          <a id="navHomestayNew" href="/homestay_new.html" data-role="guide merchant admin" data-hdr-i18n="hdr_homestay_new">Create Homestay</a>
-          <a id="navProductNew" href="/product_new.html" data-role="guide merchant admin" data-hdr-i18n="hdr_product_add">Add Product</a>
-          <a id="navMyProducts" href="/my_products.html" data-role="guide merchant admin" data-hdr-i18n="hdr_my_products">Manage Products</a>
+          <a id="navFamily" href="/family-register.html" data-role="user guide merchant admin"
+            data-hdr-i18n="hdr_merchant_reg">Register Store</a>
+          <a id="navHomestayNew" href="/homestay_new.html" data-role="guide merchant admin"
+            data-hdr-i18n="hdr_homestay_new">Create Homestay</a>
+          <a id="navProductNew" href="/product_new.html" data-role="guide merchant admin"
+            data-hdr-i18n="hdr_product_add">Add Product</a>
+          <a id="navMyProducts" href="/my_products.html" data-role="guide merchant admin"
+            data-hdr-i18n="hdr_my_products">Manage Products</a>
           <a id="navQrPay" href="/merchant-qr.html" data-role="merchant admin" data-hdr-i18n="hdr_qr_pay">QR Payment</a>
         </div>
       </div>
 
       <div class="nav-group" data-role="admin" id="navGroupAdmin">
-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_admin">Quản trị</button>
+        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
+          data-hdr-i18n="hdr_admin">Quản trị</button>
         <div class="nav-group-menu">
           <a href="/debug.html" data-role="admin" data-hdr-i18n="hdr_debug">Debug Check</a>
           <a href="/admin_coop.html" data-role="admin" data-hdr-i18n="hdr_coop_admin">Manage Cooperative</a>
           <a id="navAdmin" href="/admin.html" data-role="admin" data-hdr-i18n="hdr_approval">Approve/Manage Products</a>
-          <a id="navAdminOrders" href="/admin_orders.html" data-role="admin" data-hdr-i18n="hdr_order_admin">Manage Orders</a>
-          <a id="navAdminSettlement" href="/admin_settlement.html" data-role="admin" data-hdr-i18n="hdr_settlement">Manage Settlement</a>
-          <a id="navAdminNotices" href="/admin_notices.html" data-role="admin" data-hdr-i18n="hdr_notice_admin">Manage Announcements</a>
-          <a id="navAdminPlaces" href="/admin_places.html" data-role="admin" data-hdr-i18n="hdr_places">Register Locations</a>
-          <a id="navAdminBanners" href="/admin_banners.html" data-role="admin" data-hdr-i18n="hdr_banners">Manage Banners</a>
-          <a id="navAdminJackpot" href="/admin_jackpot.html" data-role="admin" data-hdr-i18n="hdr_jackpot">Manage Jackpot</a>
+          <a id="navAdminOrders" href="/admin_orders.html" data-role="admin" data-hdr-i18n="hdr_order_admin">Manage
+            Orders</a>
+          <a id="navAdminSettlement" href="/admin_settlement.html" data-role="admin"
+            data-hdr-i18n="hdr_settlement">Manage Settlement</a>
+          <a id="navAdminNotices" href="/admin_notices.html" data-role="admin" data-hdr-i18n="hdr_notice_admin">Manage
+            Announcements</a>
+          <a id="navAdminPlaces" href="/admin_places.html" data-role="admin" data-hdr-i18n="hdr_places">Register
+            Locations</a>
+          <a id="navAdminBanners" href="/admin_banners.html" data-role="admin" data-hdr-i18n="hdr_banners">Manage
+            Banners</a>
+          <a id="navAdminJackpot" href="/admin_jackpot.html" data-role="admin" data-hdr-i18n="hdr_jackpot">Manage
+            Jackpot</a>
           <a id="navAdminBuggy" href="/buggy-admin.html" data-role="admin" data-hdr-i18n="hdr_buggy">Manage Buggy</a>
         </div>
       </div>
@@ -85,8 +99,10 @@
         <button class="hdr-lang-btn" data-hdr-lang="ko" title="한국어">🇰🇷</button>
       </div>
       <span class="role-badge" id="roleBadge" style="display:none;"></span>
-      <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">👑 Member</span>
-      <a class="member-join-link" id="memberJoinLink" href="/coop.html" style="display:none;" data-hdr-i18n="hdr_member_join">Join Member</a>
+      <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">👑
+        Member</span>
+      <a class="member-join-link" id="memberJoinLink" href="/coop.html" style="display:none;"
+        data-hdr-i18n="hdr_member_join">Join Member</a>
       <span class="user-badge" id="userBadge" style="display:none;" title=""></span>
 
       <a class="btn" id="btnLogin" href="/register.html" data-hdr-i18n="hdr_login">Login</a>

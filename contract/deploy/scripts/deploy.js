@@ -12,13 +12,13 @@ async function main() {
   const balance = await ethers.provider.getBalance(deployer.address);
   console.log("BNB Balance:", ethers.formatEther(balance), "BNB");
 
-  console.log("\nDeploying JumpDaoStockOption...");
-  const Factory  = await ethers.getContractFactory("JumpDaoStockOption");
+  console.log("\nDeploying K-Culture AllianceStockOption...");
+  const Factory  = await ethers.getContractFactory("K-Culture AllianceStockOption");
   const contract = await Factory.deploy(HEX_TOKEN, JUMP_TOKEN);
   await contract.waitForDeployment();
 
   const address = await contract.getAddress();
-  console.log("\n✅ JumpDaoStockOption deployed to:", address);
+  console.log("\n✅ K-Culture AllianceStockOption deployed to:", address);
   console.log("🔗 Explorer: https://opbnb.bscscan.com/address/" + address);
   console.log("\n📋 Constructor args:");
   console.log("  hexToken :", HEX_TOKEN);

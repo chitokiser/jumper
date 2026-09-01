@@ -1,0 +1,15 @@
+  allMerchants = [];
+  merchantSnap?.forEach(d => {
+    const m = d.data();
+    if (m.active === false) return;
+    const latLng = (m.lat && m.lng) ? { lat: m.lat, lng: m.lng } : parseLatLng(m.gmap);
+    allMerchants.push({ id: d.id, ...m, _latLng: latLng });
+  });
+  allMerchants.sort((a, b) => (b._latLng ? 1 : 0) - (a._latLng ? 1 : 0));
+
+  // 지도 + 카드 즉시 표시
+  if (window.google?.maps) {
+    initMap();
+    showDeathMarkerIfDead(); // 사망 상태 재접속 시 해골 마커 표시
+    renderMarkers(allMerchants);
+    renderBoxMarkers();
