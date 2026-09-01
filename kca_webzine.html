@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-CULTURE Webzine | KCA</title>
+    <link rel="stylesheet" href="/assets/css/index.css">
+    <link rel="stylesheet" href="/assets/css/header.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .webzine-hero {
+            position: relative;
+            padding: 120px 20px 80px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(88, 28, 135, 0.95) 0%, rgba(30, 58, 138, 0.95) 100%),
+                url('https://images.unsplash.com/photo-1615560416965-0a9e70198e3b?w=1600&q=80') center/cover;
+            overflow: hidden;
+        }
+
+        .webzine-hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: linear-gradient(to top, #0f172a, transparent);
+        }
+
+        .webzine-hero h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 900;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #fcd34d, #f87171);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            position: relative;
+            z-index: 10;
+        }
+
+        .webzine-hero p {
+            font-size: 1.25rem;
+            color: #cbd5e1;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+        }
+
+        .cat-filter-tabs {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 20px;
+            margin: 0 auto;
+            max-width: 1180px;
+            width: 100%;
+            box-sizing: border-box;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .cat-filter-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cat-tab {
+            padding: 10px 24px;
+            border-radius: 999px;
+            background: rgba(30, 41, 59, 0.7);
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: 0.3s;
+        }
+
+        .cat-tab.active {
+            background: #fcd34d;
+            color: #0f172a;
+            border-color: #fcd34d;
+            box-shadow: 0 4px 15px rgba(252, 211, 77, 0.4);
+        }
+
+        .webzine-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            max-width: 1180px;
+            margin: 20px auto 80px;
+            padding: 0 20px;
+            flex: 1;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .wz-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .wz-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            border-color: rgba(252, 211, 77, 0.3);
+        }
+
+        .wz-img {
+            height: 200px;
+            background: #334155;
+            position: relative;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .wz-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(15, 23, 42, 0.8);
+            color: #fcd34d;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            backdrop-filter: blur(4px);
+        }
+
+        .wz-body {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .wz-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .wz-desc {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .wz-footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 15px;
+        }
+
+        .wz-author {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .wz-date {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        #siteFooter {
+            margin-top: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div id="siteHeaderContainer">
+        <div id="siteHeader"></div>
+    </div>
+
+    <section class="webzine-hero">
+        <h1>K-CULTURE WEBZINE</h1>
+        <p>Discover the finest details of Korean culture in Vietnam — Foods, Lifestyle, Beauty & Travel. Experience the
+            taste DNA of Zentaro.</p>
+    </section>
+
+    <div class="cat-filter-tabs" id="catFilterTabs">
+        <button class="cat-tab active" data-cat="all">All</button>
+        <button class="cat-tab" data-cat="food">🍲 K-Food / Zentaro</button>
+        <button class="cat-tab" data-cat="life">🛍️ Lifestyle</button>
+        <button class="cat-tab" data-cat="beauty">💅 Beauty & Wellness</button>
+        <button class="cat-tab" data-cat="travel">✈️ Travel</button>
+    </div>
+
+    <div class="webzine-grid" id="webzineGrid">
+        <!-- Rendered via JS -->
+    </div>
+
+    <!-- Footer -->
+    <div id="siteFooter"></div>
+
+    <script src="/assets/js/partials.js"></script>
+    <script>
+        const DUMMY_POSTS = [
+            { id: 1, category: 'food', title: 'The Secret DNA of K-Food: Fermentation', desc: 'Dive deep into the biology and flavor profiling of authentic Kimchi with Zentaro Flavor Analyzer.', author: 'Zentaro Lab', date: '2026-09-01', img: 'https://images.unsplash.com/photo-1583224964978-225ddb3ea661?w=600&q=80' },
+            { id: 2, category: 'food', title: 'Top 5 Authentic K-BBQ Spots in Hanoi', desc: 'A curated list of the absolute best Korean barbecue restaurants in the My Dinh district.', author: 'KCA Editor', date: '2026-08-28', img: 'https://images.unsplash.com/photo-1544025162-8ba364edcc51?w=600&q=80' },
+            { id: 3, category: 'beauty', title: 'Why K-Beauty Skincare Routines Work', desc: 'Understanding the 10-step Korean skincare phenomenon and how to adapt it in a tropical climate.', author: 'Beauty Insider', date: '2026-08-20', img: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&q=80' },
+            { id: 4, category: 'life', title: 'Life in My Dinh: The Korean Expats Hub', desc: "Exploring the vibrant community, markets, and cultural exchange happening in Hanoi's K-Town.", author: 'KCA Community', date: '2026-08-15', img: 'https://images.unsplash.com/photo-1555899434-94d1368aa7af?w=600&q=80' },
+            { id: 5, category: 'travel', title: 'A Quick Guide to K-Culture Events in Vietnam', desc: 'From K-Pop concerts to food festivals, here is your calendar for the upcoming season.', author: 'Event Radar', date: '2026-08-10', img: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&q=80' },
+            { id: 6, category: 'food', title: 'Zentaro R&D: Perfecting the Rice Wine', desc: 'The science behind the traditional brewing techniques merged with modern flavor extraction.', author: 'Master Brewer', date: '2026-08-01', img: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=600&q=80' }
+        ];
+
+        const grid = document.getElementById('webzineGrid');
+        const tabs = document.querySelectorAll('.cat-tab');
+
+        function renderPosts(category) {
+            grid.innerHTML = '';
+            const filtered = category === 'all' ? DUMMY_POSTS : DUMMY_POSTS.filter(p => p.category === category);
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 60px; color:#94a3b8; font-size:1.1rem; border:1px dashed rgba(255,255,255,0.1); border-radius: 16px;">Coming soon! 🚀</div>';
+                return;
+            }
+
+            filtered.forEach(p => {
+                const catLabel = p.category.toUpperCase();
+                grid.innerHTML += `
+          <a class="wz-card" href="javascript:alert('Fetching article ID: ${p.id} from Zentaro API...')">
+            <div class="wz-img" style="background-image: url('${p.img}')">
+              <span class="wz-badge">${catLabel}</span>
+            </div>
+            <div class="wz-body">
+              <h2 class="wz-title">${p.title}</h2>
+              <p class="wz-desc">${p.desc}</p>
+              <div class="wz-footer">
+                <span class="wz-author">${p.author}</span>
+                <span class="wz-date">${p.date}</span>
+              </div>
+            </div>
+          </a>
+        `;
+            });
+        }
+
+        // handle initial query string
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialCat = urlParams.get('category') || 'all';
+
+        tabs.forEach(t => {
+            if (t.dataset.cat === initialCat) t.classList.add('active');
+            else t.classList.remove('active');
+
+            t.addEventListener('click', () => {
+                tabs.forEach(btn => btn.classList.remove('active'));
+                t.classList.add('active');
+                const newCat = t.dataset.cat;
+
+                // Update URL cleanly
+                const newUrl = window.location.pathname + (newCat === 'all' ? '' : `?category=${newCat}`);
+                window.history.replaceState({}, '', newUrl);
+
+                renderPosts(newCat);
+            });
+        });
+
+        renderPosts(initialCat);
+    </script>
+</body>
+
+</html>

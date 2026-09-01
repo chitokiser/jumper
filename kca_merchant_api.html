@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KCA Merchant Open API Guide</title>
+    <link rel="stylesheet" href="/assets/css/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            color: #fcd34d;
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 1.1rem;
+            margin-bottom: 50px;
+        }
+
+        .api-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+
+        .api-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+            margin-top: 0;
+        }
+
+        .method {
+            background: #3b82f6;
+            color: #fff;
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 800;
+        }
+
+        .method.post {
+            background: #10b981;
+        }
+
+        .endpoint {
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            background: #1e293b;
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-bottom: 16px;
+            word-break: break-all;
+        }
+
+        h4 {
+            color: #f8fafc;
+            font-size: 1rem;
+            margin-bottom: 8px;
+            margin-top: 24px;
+        }
+
+        pre {
+            background: #020617;
+            padding: 16px;
+            border-radius: 8px;
+            color: #a5b4fc;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        code {
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .desc {
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>KCA Merchant API</h1>
+        <p class="subtitle">가맹점(외부 웹사이트)에서 KCA 회원 지갑 연동 및 HEX 토큰/포인트 결제를 처리하기 위한 가이드</p>
+
+        <div class="api-card">
+            <h3 class="api-title"><span class="method">GET</span> 유저 지갑 및 잔액 조회 (Wallet Info)</h3>
+            <div class="desc">가맹점 웹사이트에 KCA 회원이 연동 로그인을 완료한 후, 해당 유저의 UID를 바탕으로 현재 KCA 포인트, VND 잔액, 그리고 연동된 온체인 지갑의 HEX
+                토큰 잔액을 조회합니다.</div>
+            <div class="endpoint">https://us-central1-&lt;PROJECT_ID&gt;.cloudfunctions.net/api/v1/wallet/{uid}</div>
+            <h4>헤더 (Headers)</h4>
+            <pre><code>Authorization: Bearer &lt;MERCHANT_API_KEY&gt;</code></pre>
+            <h4>응답 (Response) - 200 OK</h4>
+            <pre><code>{
+  "success": true,
+  "data": {
+    "uid": "user_firebase_uid_1234",
+    "kcaPoints": 12500,
+    "vndBalance": 500000,
+    "hexTokenBalance": "1500.00",
+    "onChainWalletAddress": "0x1234abc..."
+  }
+}</code></pre>
+        </div>
+
+        <div class="api-card">
+            <h3 class="api-title"><span class="method post">POST</span> 가맹점 결제 요청 (Payment / HEX Token)</h3>
+            <div class="desc">KCA 포인트나 HEX 토큰을 사용하여 가맹점 웹사이트의 결제를 승인하고 차감하는 엔드포인트입니다. 결제 트랜잭션은 Firebase Cloud Functions를
+                통해 원자적(Atomic)으로 처리됩니다.</div>
+            <div class="endpoint">https://us-central1-&lt;PROJECT_ID&gt;.cloudfunctions.net/api/v1/wallet/pay</div>
+            <h4>헤더 (Headers)</h4>
+            <pre><code>Authorization: Bearer &lt;MERCHANT_API_KEY&gt;
+Content-Type: application/json</code></pre>
+            <h4>요청 본문 (Request Body)</h4>
+            <pre><code>{
+  "uid": "user_firebase_uid_1234",
+  "merchantId": "merchant_store_01",
+  "currency": "HEX", // 지원 통화: "HEX", "POINT", "VND"
+  "amount": 500,
+  "orderId": "merchant_order_88219"
+}</code></pre>
+            <h4>응답 (Response) - 200 OK</h4>
+            <pre><code>{
+  "success": true,
+  "transactionId": "tx_abc123456",
+  "receipt": {
+    "paidAmount": 500,
+    "currency": "HEX",
+    "remainingBalance": "1000.00",
+    "timestamp": "2026-09-01T15:20:00Z"
+  }
+}</code></pre>
+        </div>
+
+        <div class="api-card" style="border-color: #fcd34d; background: rgba(252,211,77,0.05);">
+            <h3 class="api-title" style="color: #fcd34d;">💡 Backend Setup (개발자용)</h3>
+            <div class="desc">위 API가 정상적으로 동작하려면 Firebase Cloud Functions 환경에 아래 코드를 추가하여 배포해야 합니다.</div>
+            <h4>Cloud Functions (Node.js) 통합 소스 코드</h4>
+            <pre><code style="color: #cbd5e1;">// functions/handlers/merchantApi.js 의 예시 구조
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+
+exports.kcaMerchantApi = functions.https.onRequest(async (req, res) => {
+  // CORS 처리
+  res.set("Access-Control-Allow-Origin", "*");
+  if (req.method === "OPTIONS") return res.status(204).send("");
+
+  // 간이 API 키 검증 (가맹점 식별용)
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer YOUR_SECRET_MERCHANT_KEY")) {
+    return res.status(403).json({ success: false, error: "Unauthorized" });
+  }
+
+  // GET: 지갑 조회 로직
+  if (req.method === "GET" && req.path.startsWith("/wallet/")) {
+    const uid = req.path.split("/").pop();
+    const db = admin.firestore();
+    
+    // KCA 포인트, 결제 대금 조회
+    const kcbSnap = await db.collection("k_culture_balances").doc(uid).get();
+    const pointBal = kcbSnap.exists ? kcbSnap.data().pointBalance || 0 : 0;
+    const payBal = kcbSnap.exists ? kcbSnap.data().paymentBalanceVnd || 0 : 0;
+    
+    // HEX 토큰 및 온체인 연동 지갑 정보 조회 (예시)
+    const userSnap = await db.collection("users").doc(uid).get();
+    const hexBal = userSnap.exists ? userSnap.data().hexBalance || 0 : 0;
+    const wallet = userSnap.exists ? userSnap.data().walletAddress || null : null;
+
+    return res.json({
+      success: true,
+      data: { uid, kcaPoints: pointBal, vndBalance: payBal, hexTokenBalance: hexBal, onChainWalletAddress: wallet }
+    });
+  }
+  
+  // POST: 결제 차감 로직 (Transaction 필요)
+  if (req.method === "POST" && req.path === "/wallet/pay") {
+    const { uid, merchantId, currency, amount } = req.body;
+    // ... [Firestore 트랜잭션을 통한 포인트/HEX 차감 및 가맹점 정산 테이블(merchant_settlements) 기록 로직]
+    return res.json({ success: true, transactionId: "tx_mocked", receipt: { paidAmount: amount, currency } });
+  }
+
+  res.status(404).send("Not Found");
+});</code></pre>
+        </div>
+
+    </div>
+</body>
+
+</html>

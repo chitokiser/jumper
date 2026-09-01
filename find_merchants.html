@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Merchants | K-CULTURE ALLIANCE</title>
+    <link rel="stylesheet" href="/assets/css/index.css">
+    <link rel="stylesheet" href="/assets/css/header.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .fm-hero {
+            position: relative;
+            padding: 120px 20px 80px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 58, 138, 0.85)),
+                url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1600&q=80') center/cover;
+        }
+
+        .fm-hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: linear-gradient(to top, #0f172a, transparent);
+        }
+
+        .fm-hero h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 900;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #38bdf8, #fcd34d);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            position: relative;
+            z-index: 10;
+        }
+
+        .fm-hero p {
+            font-size: 1.25rem;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+        }
+
+        .fm-toolbar {
+            max-width: 1180px;
+            margin: -30px auto 40px;
+            padding: 0 20px;
+            position: relative;
+            z-index: 20;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .fm-search {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .fm-search input {
+            width: 100%;
+            padding: 16px 20px 16px 50px;
+            border-radius: 999px;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f8fafc;
+            font-size: 16px;
+            outline: none;
+            box-sizing: border-box;
+            backdrop-filter: blur(10px);
+            transition: 0.3s;
+        }
+
+        .fm-search input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+        }
+
+        .fm-search::before {
+            content: '🔍';
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+        }
+
+        .fm-categories {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            flex: 2;
+        }
+
+        .fm-categories::-webkit-scrollbar {
+            display: none;
+        }
+
+        .fm-cat-btn {
+            padding: 12px 24px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(30, 41, 59, 0.7);
+            color: #cbd5e1;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: 0.3s;
+        }
+
+        .fm-cat-btn.active {
+            background: #38bdf8;
+            color: #0f172a;
+            border-color: #38bdf8;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .fm-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            max-width: 1180px;
+            margin: 0 auto 80px;
+            padding: 0 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .fm-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: 0.3s;
+            position: relative;
+        }
+
+        .fm-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(56, 189, 248, 0.3);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .fm-card-img {
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .fm-card-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(56, 189, 248, 0.9);
+            color: #0f172a;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .fm-card-body {
+            padding: 24px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .fm-card-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 0 8px;
+        }
+
+        .fm-card-desc {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .fm-card-info {
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .fm-info-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+        }
+
+        .fm-info-icon {
+            opacity: 0.7;
+        }
+
+        .fm-card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+        }
+
+        .fm-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+            transition: 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .fm-btn-primary {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+
+        .fm-btn-primary:hover {
+            background: #0ea5e9;
+        }
+
+        .fm-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f8fafc;
+        }
+
+        .fm-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #siteFooter {
+            margin-top: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div id="siteHeaderContainer">
+        <div id="siteHeader"></div>
+    </div>
+
+    <section class="fm-hero">
+        <h1>Find Merchants</h1>
+        <p>Discover trusted K-Culture Alliance partners. Find delicious food, great lifestyle stores, and special
+            services.</p>
+    </section>
+
+    <div class="fm-toolbar">
+        <div class="fm-search">
+            <input type="text" id="searchInput" placeholder="Search merchants by name or location...">
+        </div>
+        <div class="fm-categories" id="catFilter">
+            <button class="fm-cat-btn active" data-cat="all">All Partners</button>
+            <button class="fm-cat-btn" data-cat="food">🍲 Food & Dining</button>
+            <button class="fm-cat-btn" data-cat="life">🛒 Lifestyle</button>
+            <button class="fm-cat-btn" data-cat="beauty">💆 Beauty</button>
+        </div>
+    </div>
+
+    <div class="fm-grid" id="merchantsGrid">
+        <!-- Rendered via JS -->
+    </div>
+
+    <!-- Footer -->
+    <div id="siteFooter"></div>
+
+    <script src="/assets/js/partials.js"></script>
+    <script>
+        // Dummy Data - To be replaced by Firebase in production
+        const MERCHANTS_DATA = [
+            {
+                id: 'm1', category: 'food', name: 'Daehan Kimchi (대한김치)',
+                desc: 'Premium traditional Korean Kimchi crafted daily in Hanoi. Fermented to perfection.',
+                address: 'My Dinh 1, Nam Tu Liem, Hanoi, Vietnam',
+                phone: '+84 123 456 789',
+                gmaps: 'https://maps.google.com/?q=My+Dinh+Hanoi',
+                detailUrl: '/kca_webzine.html?category=food',
+                img: 'https://images.unsplash.com/photo-1583224964978-225ddb3ea661?w=600&q=80'
+            },
+            {
+                id: 'm2', category: 'food', name: 'Banchan Nara (반찬나라)',
+                desc: 'Authentic Korean side dishes and meal kits. Taste the comfort of Korean home cooking.',
+                address: 'Keangnam Landmark 72, Hanoi',
+                phone: '+84 987 654 321',
+                gmaps: 'https://maps.google.com/?q=Keangnam+Landmark+72',
+                detailUrl: '/kca_webzine.html?category=food',
+                img: 'https://images.unsplash.com/photo-1544025162-8ba364edcc51?w=600&q=80'
+            },
+            {
+                id: 'm3', category: 'beauty', name: 'Seoul Glow Clinic',
+                desc: 'Advanced K-Beauty treatments, facials, and authentic Korean skincare products.',
+                address: 'Trung Hoa Nhan Chinh, Cau Giay, Hanoi',
+                phone: '+84 234 567 890',
+                gmaps: 'https://maps.google.com/?q=Trung+Hoa+Nhan+Chinh',
+                detailUrl: '/kca_webzine.html?category=beauty',
+                img: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&q=80'
+            },
+            {
+                id: 'm4', category: 'life', name: 'K-Mart Superstore',
+                desc: 'Your one-stop shop for Korean groceries, snacks, and daily necessities in Vietnam.',
+                address: 'Ocean Park, Gia Lam, Hanoi',
+                phone: '+84 345 678 901',
+                gmaps: 'https://maps.google.com/?q=Vinhomes+Ocean+Park',
+                detailUrl: '/kca_webzine.html?category=life',
+                img: 'https://images.unsplash.com/photo-1555899434-94d1368aa7af?w=600&q=80'
+            },
+            {
+                id: 'm5', category: 'food', name: 'Zentaro Flavor Lab',
+                desc: 'R&D center for combining traditional Korean fermentation with modern culinary science.',
+                address: 'Phuc Loc Distillery, Vietnam',
+                phone: '+84 000 111 222',
+                gmaps: 'https://maps.google.com/?q=Hanoi',
+                detailUrl: '/kca_webzine.html?category=food',
+                img: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=600&q=80'
+            }
+        ];
+
+        const grid = document.getElementById('merchantsGrid');
+        const searchInput = document.getElementById('searchInput');
+        const catBtns = document.querySelectorAll('.fm-cat-btn');
+
+        let currentCat = 'all';
+        let searchQuery = '';
+
+        function renderCards() {
+            grid.innerHTML = '';
+
+            const filtered = MERCHANTS_DATA.filter(m => {
+                const matchCat = currentCat === 'all' || m.category === currentCat;
+                const matchSearch = m.name.toLowerCase().includes(searchQuery) || m.address.toLowerCase().includes(searchQuery);
+                return matchCat && matchSearch;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 60px; color:#94a3b8; font-size:1.1rem; border:1px dashed rgba(255,255,255,0.1); border-radius: 16px;">No merchants found.</div>';
+                return;
+            }
+
+            filtered.forEach(m => {
+                const catLabel = m.category.toUpperCase();
+                grid.innerHTML += `
+          <div class="fm-card">
+            <div class="fm-card-img" style="background-image: url('${m.img}')">
+              <span class="fm-card-badge">${catLabel}</span>
+            </div>
+            <div class="fm-card-body">
+              <h3 class="fm-card-title">${m.name}</h3>
+              <p class="fm-card-desc">${m.desc}</p>
+              
+              <div class="fm-card-info">
+                <div class="fm-info-row">
+                  <span class="fm-info-icon">📍</span>
+                  <span>${m.address}</span>
+                </div>
+                <div class="fm-info-row">
+                  <span class="fm-info-icon">📞</span>
+                  <span>${m.phone}</span>
+                </div>
+              </div>
+              
+              <div class="fm-card-actions">
+                <a href="${m.gmaps}" target="_blank" rel="noopener noreferrer" class="fm-btn fm-btn-secondary">
+                  🗺️ Maps
+                </a>
+                <a href="${m.detailUrl}" class="fm-btn fm-btn-primary">
+                  📄 View Details
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+            });
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            renderCards();
+        });
+
+        catBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                catBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentCat = btn.dataset.cat;
+                renderCards();
+            });
+        });
+
+        // Initial render
+        renderCards();
+    </script>
+</body>
+
+</html>

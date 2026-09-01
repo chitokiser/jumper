@@ -4,5 +4,8 @@
   },
   "devDependencies": {
     "playwright": "^1.60.0"
+  },
+  "scripts": {
+    "dev": "serve . -p 8080"
   }
 }

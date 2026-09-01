@@ -4,45 +4,39 @@
 import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js';
 import { isTelegramMiniApp, loginWithTelegram, loginWithTelegramWidget } from '/assets/js/telegram-auth.js';
 import { esc } from '/assets/js/esc.js';
-import {
-  collection, getDocs, doc, getDoc, query, where, orderBy, limit,
-  setDoc, deleteDoc, serverTimestamp, onSnapshot
-}
-  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { collection, getDocs, doc, getDoc, query, where, orderBy, limit,
+         setDoc, deleteDoc, serverTimestamp, onSnapshot }
+                          from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged, signInWithPopup, signInAnonymously, signOut, linkWithPopup }
-  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+                          from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable }
-  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
-import {
-  initBattle, loadBattleData, loadDecorations, loadPlayerState,
-  startBattleLoop, stopBattleLoop, startWatchPosition, startSharedSync,
-  enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
-  healHp, healMp, playSound, showFloat, animateArrow,
-  castLightning, castIceFreeze, castFireStorm, castWhirlwind, castMeteor, castHeal,
-  setGsSkillCallback, setGsMobsGetter,
-  useReviveTicket, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
-  syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
-  spawnGsDrop, removeGsDrop,
-  equipWeapon, equipArmor, equipArmorToSlot, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
-  getEquippedWeapon, getEquippedArmor, getEquippedArmorSlots,
-  updateMyLocation, showDeathMarkerIfDead, hideMyMarker, forceWriteBattlePos,
-  loadShops, getShops, deleteShop, checkShopProximity, updateShopHpMarker,
-  clearTutorialBoxes, checkTutorialProximity,
-  clearTrialMonsters,
-  onPlayerExp, onPlayerLevelUp,
-  addPlayerGold, spendPlayerGold, addPlayerGsExp,
-  getPlayerSnapshot, syncPlayerFromDungeon,
-  spendPlayerMp, getPlayerMp, getPlayerMaxMp,
-  setSpawnPos, updateSpawnPos, stopGpListener
-}
+                          from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { initBattle, loadBattleData, loadDecorations, loadPlayerState,
+         startBattleLoop, stopBattleLoop, startWatchPosition, startSharedSync,
+         enterAdminPlaceMode, exitAdminPlaceMode, toggleTowerRanges,
+         healHp, healMp, playSound, showFloat, animateArrow,
+         castLightning, castIceFreeze, castFireStorm, castWhirlwind, castMeteor, castHeal,
+         setGsSkillCallback, setGsMobsGetter,
+         useReviveTicket, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
+         syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
+         spawnGsDrop, removeGsDrop,
+         equipWeapon, equipArmor, equipArmorToSlot, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
+         getEquippedWeapon, getEquippedArmor, getEquippedArmorSlots,
+         updateMyLocation, showDeathMarkerIfDead, hideMyMarker, forceWriteBattlePos,
+         loadShops, getShops, deleteShop, checkShopProximity, updateShopHpMarker,
+         clearTutorialBoxes, checkTutorialProximity,
+         clearTrialMonsters,
+         onPlayerExp, onPlayerLevelUp,
+         addPlayerGold, spendPlayerGold, addPlayerGsExp,
+         getPlayerSnapshot, syncPlayerFromDungeon,
+         spendPlayerMp, getPlayerMp, getPlayerMaxMp,
+         setSpawnPos, updateSpawnPos, stopGpListener }
   from './merchants.battle.js';
 import { initDungeonGame, openDungeonGame } from './merchants.dungeon.js';
-import {
-  initGameServer, connectToGameServer, disconnectFromGameServer,
-  isGameServerConnected, sendPlayerLocation,
-  sendPlayerAttack, sendPlayerRevive, sendPlayerSkill, sendDropCollect,
-  gsAdminDeleteSpawn, gsAdminKillMonster
-}
+import { initGameServer, connectToGameServer, disconnectFromGameServer,
+         isGameServerConnected, sendPlayerLocation,
+         sendPlayerAttack, sendPlayerRevive, sendPlayerSkill, sendDropCollect,
+         gsAdminDeleteSpawn, gsAdminKillMonster }
   from './merchants.gameserver.js';
 import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
   from './merchants.monster-sprite.js';
@@ -52,18 +46,12 @@ import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterA
 import { initUserPlace } from './user-place.js';
 import { initDailyArea, checkDailyProximity } from './merchants.daily.js';
 import { initVirtualMode, isVirtualMode, getVirtualPos, canCollectInVirtual, toggleVirtualMode, showShopList, deactivateVirtualMode, setVirtualPos, activateAtPos, setMovementEnabled } from './merchants.virtual.js';
-import {
-  initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers,
-  renderMoneyTreeShopSection, openPlantModal
-} from './merchants.moneytree.js';
-import {
-  initGoldMine, setGoldMineUid, loadGoldMineMarkers, openGoldMineModal,
-  promptInstallMine, openMyGoldMinesModal
-} from './merchants.goldmine.js?v=11';
-import {
-  initHarbor, setHarborUid, loadHarborMarkers, promptInstallHarbor,
-  openHarborModal, openSvModal as openHarborSvModal
-} from './merchants.harbor.js';
+import { initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers,
+         renderMoneyTreeShopSection, openPlantModal } from './merchants.moneytree.js';
+import { initGoldMine, setGoldMineUid, loadGoldMineMarkers, openGoldMineModal,
+         promptInstallMine, openMyGoldMinesModal } from './merchants.goldmine.js?v=11';
+import { initHarbor, setHarborUid, loadHarborMarkers, promptInstallHarbor,
+         openHarborModal, openSvModal as openHarborSvModal } from './merchants.harbor.js';
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -80,81 +68,81 @@ setGsMobsGetter(() => _gsMonsters);
 const $ = id => document.getElementById(id);
 
 // ── 상태 ────────────────────────────────────────────────────────────────────
-let allMerchants = [];
-let allPlaces = [];     // places 컬렉션
-let map = null;
-let infoWindow = null;
-let markers = [];
-let placeMarkers = [];
-let treasureBoxes = [];     // [{id, lat, lng, startHour, endHour, itemPool, active, name}]
-let boxMarkers = [];
-let boxShadows = {};     // { box.id: google.maps.Marker }
-let _uid = null;   // 로그인 유저 UID
-let _userEmail = null;   // 로그인 유저 이메일
-let _isAdmin = false;  // 관리자 여부
-let _isAnonymous = false;  // 익명 계정 여부
-let _inventory = {};     // {itemId: count}
-let _boxInventory = [];     // [{boxId, boxName, hiddenBox, keyId}]  미개봉 박스
-let _items = {};     // {itemId: {name, image, description}}
-let _keyDefs = {};     // {keyId: {name, image, dropRate}} — treasure_keys
-let _vouchers = [];
+let allMerchants    = [];
+let allPlaces       = [];     // places 컬렉션
+let map             = null;
+let infoWindow      = null;
+let markers         = [];
+let placeMarkers    = [];
+let treasureBoxes   = [];     // [{id, lat, lng, startHour, endHour, itemPool, active, name}]
+let boxMarkers      = [];
+let boxShadows      = {};     // { box.id: google.maps.Marker }
+let _uid            = null;   // 로그인 유저 UID
+let _userEmail      = null;   // 로그인 유저 이메일
+let _isAdmin        = false;  // 관리자 여부
+let _isAnonymous    = false;  // 익명 계정 여부
+let _inventory      = {};     // {itemId: count}
+let _boxInventory   = [];     // [{boxId, boxName, hiddenBox, keyId}]  미개봉 박스
+let _items          = {};     // {itemId: {name, image, description}}
+let _keyDefs        = {};     // {keyId: {name, image, dropRate}} — treasure_keys
+let _vouchers          = [];
 let _purchasedVouchers = new Set(); // 이미 구매 완료된 voucherId
 let _collectedBoxes = new Set(); // 이 세션에서 이미 수집한 box ID
-let _boxHpState = {};        // {boxId: {current, max}} 클라이언트 HP 추적
-let _boxAtkCd = {};        // {boxId: true} 공격 쿨다운
-let _nearbyMarkers = {};        // {uid: Marker} 주변 유저 마커
-let _nearbyTimer = null;      // setInterval handle (10초 폴링)
-let _detectorActive = false;  // 보물 탐지기 ON/OFF
-let _detectorBeepTimer = null;   // setTimeout handle
+let _boxHpState     = {};        // {boxId: {current, max}} 클라이언트 HP 추적
+let _boxAtkCd       = {};        // {boxId: true} 공격 쿨다운
+let _nearbyMarkers  = {};        // {uid: Marker} 주변 유저 마커
+let _nearbyTimer    = null;      // setInterval handle (10초 폴링)
+let _detectorActive       = false;  // 보물 탐지기 ON/OFF
+let _detectorBeepTimer    = null;   // setTimeout handle
 let _detectorNextInterval = 0;      // 다음 beep 간격(ms), 0=범위 밖
-let _locWriteTs = 0;         // 마지막 위치 기록 시각 (ms)
+let _locWriteTs     = 0;         // 마지막 위치 기록 시각 (ms)
 let _mtMarkerLoadTs = 0;         // 돈나무 마커 마지막 로드 시각 (ms)
 let _gmMarkerLoadTs = 0;         // 금광 마커 마지막 로드 시각 (ms)
 let _hrMarkerLoadTs = 0;         // 항구 마커 마지막 로드 시각 (ms)
 let _userMapMarkers = [];        // google.maps.Marker[] — user face markers
 const _cfGetUserMarkers = httpsCallable(functions, 'getUserMarkers');
 const _cfCollectGpJackpot = httpsCallable(functions, 'collectGpJackpotBox');
-let _gsMonsters = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
-let _gsMarkers = {};        // {monsterId: Marker} 게임 서버 몬스터 마커 (비-스프라이트)
-let _gsOverlays = {};        // {monsterId: MonsterSpriteOverlay} 스프라이트 오버레이 (dragon 등)
-let _droppedItems = {};        // {dropId: dropData} 바닥에 버려진 아이템
-let _dropMarkers = {};        // {dropId: google.maps.Marker} 드랍 마커
+let _gsMonsters     = {};        // {monsterId: MonsterInstance} 게임 서버 몬스터
+let _gsMarkers      = {};        // {monsterId: Marker} 게임 서버 몬스터 마커 (비-스프라이트)
+let _gsOverlays     = {};        // {monsterId: MonsterSpriteOverlay} 스프라이트 오버레이 (dragon 등)
+let _droppedItems   = {};        // {dropId: dropData} 바닥에 버려진 아이템
+let _dropMarkers    = {};        // {dropId: google.maps.Marker} 드랍 마커
 let _dropsUnsubscribe = null;    // onSnapshot 해제 함수
 let _alertedDropIds = new Set(); // 이미 알림을 보낸 dropId (중복 방지)
-let _utNpcMarkers = {};        // {npcId: google.maps.Marker} 사용자 보물 NPC 마커 (map에 등록된 것만)
+let _utNpcMarkers    = {};        // {npcId: google.maps.Marker} 사용자 보물 NPC 마커 (map에 등록된 것만)
 let _utActualMarkers = {};        // {npcId: {marker, line}} 실제 보물 위치 마커+선 (관리자/소유자 전용)
-let _utNpcData = [];        // 서버에서 받은 전체 NPC 데이터 배열 (위치 기반 proximity 계산용)
-let _utCurrentNpc = null;      // 현재 선택된 사용자 보물 NPC
-let _hintUnlocked = false;     // 현재 NPC 힌트 잠금 해제 여부
-let _myVoucherLogs = [];        // coopGetMyVouchers 결과 (바우쳐 사용 모달용)
+let _utNpcData       = [];        // 서버에서 받은 전체 NPC 데이터 배열 (위치 기반 proximity 계산용)
+let _utCurrentNpc   = null;      // 현재 선택된 사용자 보물 NPC
+let _hintUnlocked   = false;     // 현재 NPC 힌트 잠금 해제 여부
+let _myVoucherLogs  = [];        // coopGetMyVouchers 결과 (바우쳐 사용 모달용)
 
 // ── 공유 컨텍스트 (battle 모듈과 공유) ───────────────────────────────────────
 const _ctx = {
-  map: null,   // initMap() 후 설정
-  infoWindow: null,   // initMap() 후 설정
+  map:                 null,   // initMap() 후 설정
+  infoWindow:          null,   // initMap() 후 설정
   db,
   functions,
-  uid: null,   // auth 후 설정
-  isAdmin: false,
-  displayName: null,   // auth 후 설정 — 마커 폼 기본값에 사용
-  myLocationMarker: null,   // battle이 쓰고 core가 읽음
+  uid:                 null,   // auth 후 설정
+  isAdmin:             false,
+  displayName:         null,   // auth 후 설정 — 마커 폼 기본값에 사용
+  myLocationMarker:    null,   // battle이 쓰고 core가 읽음
   myLocationAccCircle: null,
-  locationWatchId: null,
-  totalDist: 0,
-  lastDistPos: null,
-  lastHeading: null,
-  lastSpeedPos: null,
-  lastPos: null,
+  locationWatchId:     null,
+  totalDist:           0,
+  lastDistPos:         null,
+  lastHeading:         null,
+  lastSpeedPos:        null,
+  lastPos:             null,
 };
 
 // ── 라이트박스 ───────────────────────────────────────────────────────────────
 (function initLightbox() {
   const overlay = document.getElementById('lb-overlay');
-  const img = document.getElementById('lb-img');
+  const img     = document.getElementById('lb-img');
   const closeBtn = document.getElementById('lb-close');
   if (!overlay) return;
 
-  window.openLightbox = function (src, alt) {
+  window.openLightbox = function(src, alt) {
     img.src = src;
     img.alt = alt || '';
     overlay.classList.add('lb-open');
@@ -173,7 +161,7 @@ const _ctx = {
 
 // ── 유틸 ────────────────────────────────────────────────────────────────────
 function escHtml(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function parseLatLng(gmapUrl) {
@@ -182,7 +170,7 @@ function parseLatLng(gmapUrl) {
     const m1 = gmapUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
     if (m1) return { lat: parseFloat(m1[1]), lng: parseFloat(m1[2]) };
     const url = new URL(gmapUrl);
-    const q = url.searchParams.get('q');
+    const q   = url.searchParams.get('q');
     if (q) {
       const m2 = q.match(/^(-?\d+\.\d+),(-?\d+\.\d+)$/);
       if (m2) return { lat: parseFloat(m2[1]), lng: parseFloat(m2[2]) };
@@ -195,25 +183,25 @@ function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const toRad = d => d * Math.PI / 180;
   const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 const _FLAG_BOXES_MC = [
-  { f: '🇻🇳', la: [8.1, 23.4], lo: [102.1, 109.5] }, { f: '🇹🇭', la: [5.6, 20.5], lo: [97.3, 105.7] },
-  { f: '🇰🇭', la: [10.4, 14.7], lo: [102.3, 107.6] }, { f: '🇱🇦', la: [13.9, 22.5], lo: [100.1, 107.7] },
-  { f: '🇲🇾', la: [0.8, 7.4], lo: [99.6, 119.3] }, { f: '🇸🇬', la: [1.1, 1.5], lo: [103.6, 104.1] },
-  { f: '🇮🇩', la: [-11.0, 5.9], lo: [95.0, 141.0] }, { f: '🇵🇭', la: [4.6, 21.1], lo: [116.9, 126.6] },
-  { f: '🇲🇲', la: [9.8, 28.5], lo: [92.2, 101.2] }, { f: '🇰🇷', la: [33.1, 38.6], lo: [124.6, 130.0] },
-  { f: '🇯🇵', la: [24.0, 45.5], lo: [122.9, 153.0] }, { f: '🇹🇼', la: [21.9, 25.3], lo: [119.9, 122.1] },
-  { f: '🇭🇰', la: [22.1, 22.6], lo: [113.8, 114.5] }, { f: '🇨🇳', la: [18.0, 53.6], lo: [73.5, 135.1] },
-  { f: '🇮🇳', la: [6.7, 35.5], lo: [68.1, 97.4] }, { f: '🇦🇪', la: [22.6, 26.1], lo: [51.6, 56.4] },
-  { f: '🇹🇷', la: [35.8, 42.1], lo: [26.0, 44.8] }, { f: '🇬🇧', la: [49.9, 60.9], lo: [-8.6, 1.8] },
-  { f: '🇫🇷', la: [41.3, 51.1], lo: [-5.1, 9.6] }, { f: '🇩🇪', la: [47.3, 55.1], lo: [5.9, 15.0] },
-  { f: '🇮🇹', la: [36.7, 47.1], lo: [6.6, 18.5] }, { f: '🇪🇸', la: [36.0, 43.8], lo: [-9.3, 4.3] },
-  { f: '🇷🇺', la: [41.2, 81.9], lo: [19.6, 190.0] }, { f: '🇦🇺', la: [-43.7, -10.7], lo: [113.3, 153.6] },
-  { f: '🇺🇸', la: [24.5, 49.4], lo: [-125.0, -66.9] }, { f: '🇨🇦', la: [41.7, 83.1], lo: [-141.0, -52.6] },
-  { f: '🇧🇷', la: [-33.7, 5.3], lo: [-73.9, -34.8] }, { f: '🇦🇷', la: [-55.1, -21.8], lo: [-73.6, -53.6] },
+  {f:'🇻🇳',la:[8.1,23.4], lo:[102.1,109.5]},{f:'🇹🇭',la:[5.6,20.5], lo:[97.3,105.7]},
+  {f:'🇰🇭',la:[10.4,14.7],lo:[102.3,107.6]},{f:'🇱🇦',la:[13.9,22.5],lo:[100.1,107.7]},
+  {f:'🇲🇾',la:[0.8,7.4],  lo:[99.6,119.3]}, {f:'🇸🇬',la:[1.1,1.5],  lo:[103.6,104.1]},
+  {f:'🇮🇩',la:[-11.0,5.9],lo:[95.0,141.0]}, {f:'🇵🇭',la:[4.6,21.1], lo:[116.9,126.6]},
+  {f:'🇲🇲',la:[9.8,28.5], lo:[92.2,101.2]}, {f:'🇰🇷',la:[33.1,38.6],lo:[124.6,130.0]},
+  {f:'🇯🇵',la:[24.0,45.5],lo:[122.9,153.0]},{f:'🇹🇼',la:[21.9,25.3],lo:[119.9,122.1]},
+  {f:'🇭🇰',la:[22.1,22.6],lo:[113.8,114.5]},{f:'🇨🇳',la:[18.0,53.6],lo:[73.5,135.1]},
+  {f:'🇮🇳',la:[6.7,35.5], lo:[68.1,97.4]},  {f:'🇦🇪',la:[22.6,26.1],lo:[51.6,56.4]},
+  {f:'🇹🇷',la:[35.8,42.1],lo:[26.0,44.8]},  {f:'🇬🇧',la:[49.9,60.9],lo:[-8.6,1.8]},
+  {f:'🇫🇷',la:[41.3,51.1],lo:[-5.1,9.6]},   {f:'🇩🇪',la:[47.3,55.1],lo:[5.9,15.0]},
+  {f:'🇮🇹',la:[36.7,47.1],lo:[6.6,18.5]},   {f:'🇪🇸',la:[36.0,43.8],lo:[-9.3,4.3]},
+  {f:'🇷🇺',la:[41.2,81.9],lo:[19.6,190.0]}, {f:'🇦🇺',la:[-43.7,-10.7],lo:[113.3,153.6]},
+  {f:'🇺🇸',la:[24.5,49.4],lo:[-125.0,-66.9]},{f:'🇨🇦',la:[41.7,83.1],lo:[-141.0,-52.6]},
+  {f:'🇧🇷',la:[-33.7,5.3],lo:[-73.9,-34.8]},{f:'🇦🇷',la:[-55.1,-21.8],lo:[-73.6,-53.6]},
 ];
 function _flagFromCoords(lat, lng) {
   if (lat == null || lng == null) return '🌍';
@@ -334,7 +322,7 @@ const FS_MODALS = [
 // 풀스크린 컨테이너 밖에 있는 fixed 요소를 안으로 이동시키지 않으면
 // Fullscreen API 환경에서 body에 남은 position:fixed 요소는 화면에서 사라짐.
 function _moveModalsToFs() {
-  const fs = document.fullscreenElement || document.webkitFullscreenElement;
+  const fs   = document.fullscreenElement || document.webkitFullscreenElement;
   const dest = fs || document.body;
 
   // 1) 정적 목록
@@ -368,7 +356,7 @@ function _moveModalsToFs() {
     else document.querySelector('.mc-map-wrap')?.appendChild(bo);
   }
 }
-document.addEventListener('fullscreenchange', _moveModalsToFs);
+document.addEventListener('fullscreenchange',       _moveModalsToFs);
 document.addEventListener('webkitfullscreenchange', _moveModalsToFs);
 
 // ── 지도 초기화 ──────────────────────────────────────────────────────────────
@@ -382,7 +370,7 @@ function initMap() {
     zoomControl: false,
     gestureHandling: 'greedy',
     styles: [
-      { featureType: 'poi', elementType: 'all', stylers: [{ visibility: 'off' }] },
+      { featureType: 'poi',   elementType: 'all', stylers: [{ visibility: 'off' }] },
       { featureType: 'transit', elementType: 'all', stylers: [{ visibility: 'off' }] },
     ],
   });
@@ -586,13 +574,13 @@ function renderPlaceMarkers() {
       }
       infoWindow.setContent(`
         <div style="max-width:240px;font-size:13px;line-height:1.5;">
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name || '')}</div>
-          ${p.type ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ''}
-          ${p.area ? `<div style="color:#6b7280;">${_t('place_area')}: ${escHtml(p.area)}</div>` : ''}
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(p.name||'')}</div>
+          ${p.type    ? `<div style="color:#7c3aed;margin-bottom:2px;">${escHtml(p.type)}</div>` : ''}
+          ${p.area    ? `<div style="color:#6b7280;">${_t('place_area')}: ${escHtml(p.area)}</div>` : ''}
           ${p.address ? `<div style="color:#374151;">${escHtml(p.address)}</div>` : ''}
-          ${p.phone ? `<div style="color:#374151;">📞 ${escHtml(p.phone)}</div>` : ''}
-          ${p.note ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ''}
-          ${p.gmap ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener"
+          ${p.phone   ? `<div style="color:#374151;">📞 ${escHtml(p.phone)}</div>` : ''}
+          ${p.note    ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(p.note)}</div>` : ''}
+          ${p.gmap    ? `<a href="${escHtml(p.gmap)}" target="_blank" rel="noopener"
              style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">${_t('gmap_link')}</a>` : ''}
         </div>`);
       infoWindow.open(map, marker);
@@ -615,10 +603,8 @@ function renderMarkers(list) {
     const marker = new google.maps.Marker({
       position: m._latLng, map,
       title: m.name || '',
-      icon: {
-        url: m.imageUrl || '/assets/images/jump/favicon.png',
-        scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36)
-      },
+      icon: { url: m.imageUrl || '/assets/images/jump/favicon.png',
+        scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36) },
       zIndex: 10,
     });
     marker.addListener('click', () => {
@@ -628,14 +614,10 @@ function renderMarkers(list) {
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(m.name)}</div>
           ${m.career ? `<div style="color:#f59e0b;font-size:12px;">${escHtml(m.career)}</div>` : ''}
           ${m.region ? `<div style="color:#6b7280;">📍 ${escHtml(m.region)}</div>` : ''}
-          ${m.phone ? `<div style="color:#374151;">📞 ${escHtml(m.phone)}</div>` : ''}
+          ${m.phone  ? `<div style="color:#374151;">📞 ${escHtml(m.phone)}</div>` : ''}
           ${m.description ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(m.description)}</div>` : ''}
-          <div style="margin-top:10px; display:flex; gap:8px;">
-            ${m.gmap ? `<a href="${escHtml(m.gmap)}" target="_blank" rel="noopener"
-               style="display:inline-block;padding:4px 10px;border-radius:4px;background:#3b82f6;color:white;font-size:11px;font-weight:600;text-decoration:none;">🗺️ Maps</a>` : ''}
-            <a href="/kca_webzine.html?category=food" target="_blank"
-               style="display:inline-block;padding:4px 10px;border-radius:4px;background:#fcd34d;color:#1e3a8a;font-size:11px;font-weight:700;text-decoration:none;">📄 View Details</a>
-          </div>
+          ${m.gmap ? `<a href="${escHtml(m.gmap)}" target="_blank" rel="noopener"
+             style="display:inline-block;margin-top:6px;color:#2563eb;font-size:12px;">${_t('gmap_link')}</a>` : ''}
         </div>`);
       infoWindow.open(map, marker);
       document.querySelectorAll('.mc-card').forEach(el => el.style.borderColor = '');
@@ -659,7 +641,7 @@ function getBoxHpState(box) {
 
 // ── 보물박스 정보 InfoWindow ──────────────────────────────────────────────────
 function showBoxInfo(box, marker, dist) {
-  const h = `${String(box.startHour ?? 0).padStart(2, '0')}:00~${String(box.endHour ?? 24).padStart(2, '0')}:00`;
+  const h = `${String(box.startHour ?? 0).padStart(2,'0')}:00~${String(box.endHour ?? 24).padStart(2,'0')}:00`;
   const active = isBoxActive(box);
   const st = getBoxHpState(box);
   const hpPct = Math.max(0, (st.current / st.max) * 100);
@@ -683,9 +665,9 @@ function showBoxInfo(box, marker, dist) {
 
   infoWindow.setContent(`
     <div style="font-size:13px;line-height:1.7;min-width:190px;">
-      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🎁 ${escHtml(box.name || _t('box_default_name'))}${memberBadge}</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🎁 ${escHtml(box.name||_t('box_default_name'))}${memberBadge}</div>
       <div style="color:#888;font-size:12px;">${_t('box_appears')}: ${h}</div>
-      <div style="color:${active ? '#16a34a' : '#dc2626'};font-weight:600;">${active ? _t('box_active') : _t('box_inactive')}</div>
+      <div style="color:${active?'#16a34a':'#dc2626'};font-weight:600;">${active?_t('box_active'):_t('box_inactive')}</div>
       ${active && !alreadyCollected ? `
         <div style="margin:6px 0 3px;display:flex;align-items:center;gap:6px;">
           <span style="font-size:11px;color:#888;min-width:20px;">HP</span>
@@ -723,14 +705,12 @@ function attackBox(box, marker) {
     hp: st.current, maxHp: st.max, type: 'box',
     isDead: st.current <= 0,
     ...(st.current <= 0 ? { deadAt: serverTimestamp() } : {}),
-  }, { merge: true }).catch(() => { });
+  }, { merge: true }).catch(() => {});
 
   if (st.current <= 0) {
     // 박스 파괴!
-    marker.setIcon({
-      url: '/assets/images/item/box.png',
-      scaledSize: new google.maps.Size(34, 34), anchor: new google.maps.Point(17, 34)
-    });
+    marker.setIcon({ url:'/assets/images/item/box.png',
+      scaledSize: new google.maps.Size(34,34), anchor: new google.maps.Point(17,34) });
     playSound('gold_drop');
     infoWindow.close();
     tryCollect(box);
@@ -749,7 +729,7 @@ function attackBox(box, marker) {
         </div>
         <span style="font-size:11px;color:#374151;min-width:60px;text-align:right;">${st.current}/${st.max}</span>
       </div>
-      <div style="color:${isCrit ? '#f97316' : '#ef4444'};font-weight:700;font-size:13px;">${isCrit ? '💥 CRITICAL! ' : '💥 '}-${dmg}</div>
+      <div style="color:${isCrit?'#f97316':'#ef4444'};font-weight:700;font-size:13px;">${isCrit?'💥 CRITICAL! ':'💥 '}-${dmg}</div>
       <div style="font-size:11px;color:#555;margin-top:4px;">${_t('box_attack_hint')}</div>
     </div>`);
   infoWindow.open(map, marker);
@@ -883,15 +863,15 @@ function _adminRevealNearbyHiddenBoxes(clickLat, clickLng) {
 
 function _adminShowHiddenBoxInfo(box, marker) {
   const keyName = box.keyId ? (_keyDefs[box.keyId]?.name || box.keyId) : '없음';
-  const active = isBoxActive(box);
-  const st = getBoxHpState(box);
+  const active  = isBoxActive(box);
+  const st      = getBoxHpState(box);
   infoWindow.setContent(`
     <div style="font-size:12px;line-height:1.8;min-width:200px;">
-      <div style="font-weight:700;font-size:13px;color:#7c3aed;margin-bottom:4px;">🕵️ [숨김] ${escHtml(box.name || '보물박스')}</div>
+      <div style="font-weight:700;font-size:13px;color:#7c3aed;margin-bottom:4px;">🕵️ [숨김] ${escHtml(box.name||'보물박스')}</div>
       <div>위치: ${Number(box.lat).toFixed(6)}, ${Number(box.lng).toFixed(6)}</div>
       <div>필요 열쇠: <b>${escHtml(keyName)}</b></div>
       <div>정회원 전용: ${box.memberOnly ? '✅' : '❌'}</div>
-      <div>활성: ${active ? '✅' : `❌ (${box.startHour || '?'}~${box.endHour || '?'}시)`}</div>
+      <div>활성: ${active ? '✅' : `❌ (${box.startHour||'?'}~${box.endHour||'?'}시)`}</div>
       <div>HP: ${st.current} / ${box.hp || 300}</div>
       <button onclick="window.__adminHiddenBoxDelete('${box.id}')"
         style="margin-top:6px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑️ 삭제</button>
@@ -1001,7 +981,7 @@ async function tryCollectGpJackpot(box) {
     _showGpJackpotPrizeModal(prize, tierRank, box.name || 'GP Jackpot');
     httpsCallable(functions, 'broadcastGpEvent')({
       game: 'gp_jackpot', amount: prize, label: `GP Jackpot Tier ${tierRank}`,
-    }).catch(() => { });
+    }).catch(() => {});
   } catch (err) {
     const code = err?.code || '';
     if (code === 'already-exists' || (err.message || '').includes('already claimed')) {
@@ -1085,16 +1065,13 @@ function renderCards(list) {
     el.dataset.id = m.id;
     el.innerHTML = `
       <div class="mc-card-name">${escHtml(m.name || _t('no_name_label'))}${m._latLng ? '<span class="mc-badge-map">Map</span>' : ''}</div>
-      ${m.career ? `<div class="mc-card-career">${escHtml(m.career)}</div>` : ''}
-      ${m.region ? `<div class="mc-card-region">📍 ${escHtml(m.region)}</div>` : ''}
-      ${m.phone ? `<div class="mc-card-phone">📞 ${escHtml(m.phone)}</div>` : ''}
+      ${m.career  ? `<div class="mc-card-career">${escHtml(m.career)}</div>` : ''}
+      ${m.region  ? `<div class="mc-card-region">📍 ${escHtml(m.region)}</div>` : ''}
+      ${m.phone   ? `<div class="mc-card-phone">📞 ${escHtml(m.phone)}</div>` : ''}
       ${m.description ? `<div class="mc-card-desc">${escHtml(m.description)}</div>` : ''}
-      <div style="display:flex; gap:10px; margin-top:8px;">
-        ${m._latLng
-        ? `<a class="mc-card-gmap" href="${escHtml(m.gmap || '')}" target="_blank" rel="noopener" style="flex:1;text-align:center;background:rgba(59,130,246,0.1);color:#3b82f6;border-radius:6px;padding:8px;font-weight:bold;text-decoration:none;">🗺️ Maps</a>`
-        : `<div class="mc-card-no-map" style="flex:1;text-align:center;">${_t('no_map_label')}</div>`}
-        <a href="/kca_webzine.html?category=food" target="_blank" style="flex:1;text-align:center;background:rgba(252,211,77,0.1);color:#f59e0b;border-radius:6px;padding:8px;font-weight:bold;text-decoration:none;">📄 Details</a>
-      </div>`;
+      ${m._latLng
+        ? `<a class="mc-card-gmap" href="${escHtml(m.gmap||'')}" target="_blank" rel="noopener">${_t('gmap_link')}</a>`
+        : `<div class="mc-card-no-map">${_t('no_map_label')}</div>`}`;
     if (m._latLng) {
       el.addEventListener('click', e => {
         if (e.target.tagName === 'A') return;
@@ -1111,7 +1088,7 @@ function renderCards(list) {
 $('mcSearch').addEventListener('input', () => {
   const q = $('mcSearch').value.trim().toLowerCase();
   const filtered = q ? allMerchants.filter(m =>
-    [m.name, m.career, m.region, m.description].some(v => (v || '').toLowerCase().includes(q))) : allMerchants;
+    [m.name, m.career, m.region, m.description].some(v => (v||'').toLowerCase().includes(q))) : allMerchants;
   renderCards(filtered);
   renderMarkers(filtered);
 });
@@ -1128,10 +1105,10 @@ function updateDistDisplay() {
 }
 
 // ── 주변 유저 실시간 표시 (100m 이내) ────────────────────────────────────────
-const NEARBY_RADIUS_M = 100;
+const NEARBY_RADIUS_M    = 100;
 const LOC_WRITE_INTERVAL = 5000;   // 5초마다 위치 쓰기
-const LOC_STALE_MS = 30000;  // 30초 이상 미업데이트 시 마커 제거
-const LOC_POLL_INTERVAL = 30000;  // 30초마다 근처 유저 폴링
+const LOC_STALE_MS       = 30000;  // 30초 이상 미업데이트 시 마커 제거
+const LOC_POLL_INTERVAL  = 30000;  // 30초마다 근처 유저 폴링
 
 // ── Geohash 인라인 구현 (CDN 불필요) ─────────────────────────────────────────
 const _GH32 = '0123456789bcdefghjkmnpqrstuvwxyz';
@@ -1142,7 +1119,7 @@ function _ghEncode(lat, lng, precision) {
   while (hash.length < precision) {
     const mid = even ? (mnLng + mxLng) / 2 : (mnLat + mxLat) / 2;
     if (even) { if (lng >= mid) { v = v * 2 + 1; mnLng = mid; } else { v *= 2; mxLng = mid; } }
-    else { if (lat >= mid) { v = v * 2 + 1; mnLat = mid; } else { v *= 2; mxLat = mid; } }
+    else       { if (lat >= mid) { v = v * 2 + 1; mnLat = mid; } else { v *= 2; mxLat = mid; } }
     even = !even;
     if (++bits === 5) { hash += _GH32[v]; v = 0; bits = 0; }
   }
@@ -1172,10 +1149,8 @@ function getNearbyPlayerIcon(name) {
     <circle cx="18" cy="18" r="17" fill="rgba(59,130,246,0.9)" stroke="#fff" stroke-width="2"/>
     <text x="18" y="23" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">${initials}</text>
   </svg>`;
-  return {
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36)
-  };
+  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+           scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,36) };
 }
 
 // GPS 업데이트 시 호출 — 5초 rate-limit
@@ -1265,17 +1240,15 @@ const GS_MONSTER_ATTACK_RANGE_M = 40;
 
 // ── 게임 서버 몬스터 — SVG 마커 아이콘 (비-스프라이트 타입용) ─────────────────
 function _gsMonsterIcon(state, hpPct) {
-  const dead = state === 'dead' || state === 'respawning';
+  const dead  = state === 'dead' || state === 'respawning';
   const color = dead ? '#6b7280' : hpPct > 0.5 ? '#ef4444' : hpPct > 0.2 ? '#f97316' : '#dc2626';
   const emoji = dead ? '💀' : '👾';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
     <circle cx="18" cy="18" r="17" fill="${color}" stroke="#fff" stroke-width="2" opacity="${dead ? 0.4 : 0.9}"/>
     <text x="18" y="24" font-size="16" text-anchor="middle">${emoji}</text>
   </svg>`;
-  return {
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36)
-  };
+  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+           scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36) };
 }
 
 // ── 게임 서버 몬스터 렌더링 ────────────────────────────────────────────────────
@@ -1289,7 +1262,7 @@ function _renderGsMonster(monster) {
   // dead 상태 → 렌더링 생략, 기존 오버레이/마커 정리
   if (state === 'dead') {
     if (_gsOverlays[monsterId]) { _gsOverlays[monsterId].setMap(null); delete _gsOverlays[monsterId]; }
-    if (_gsMarkers[monsterId]) { _gsMarkers[monsterId].setMap(null); delete _gsMarkers[monsterId]; }
+    if (_gsMarkers[monsterId])  { _gsMarkers[monsterId].setMap(null);  delete _gsMarkers[monsterId];  }
     delete _gsMonsters[monsterId];
     return;
   }
@@ -1342,7 +1315,7 @@ function _renderGsMonster(monster) {
 
   // ── SVG 마커 타입 (goblin, orc 등) ─────────────────────────────────────────
   const hpPct = maxHp > 0 ? hp / maxHp : 1;
-  const pos = { lat, lng };
+  const pos   = { lat, lng };
   const label = `👾 ${type} HP:${hp}/${maxHp}`;
 
   if (_gsMarkers[monsterId]) {
@@ -1418,7 +1391,7 @@ function _showGsMonsterAdminMenu(monsterId, spawnId, type, anchor, pos) {
 window.__gsAdminAttackTest = (monsterId) => {
   infoWindow?.close();
   sendPlayerAttack(monsterId);
-  console.log('[GS AdminTest] attack →', monsterId.slice(0, 8));
+  console.log('[GS AdminTest] attack →', monsterId.slice(0,8));
 };
 
 window.__gsAdminKill = async (monsterId) => {
@@ -1439,7 +1412,7 @@ window.__gsAdminDelSpawn = async (spawnId) => {
 };
 
 async function _gsKeyDrop(monsterId) {
-  const mob = _gsMonsters[monsterId];
+  const mob   = _gsMonsters[monsterId];
   const myUid = _uid;
   if (!myUid || !mob) return;
   if (!Object.keys(_keyDefs).length) await loadKeyDefs();
@@ -1525,7 +1498,7 @@ function _panToMyLocation() {
     (pos) => {
       const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
       _ctx.lastPos = { lat, lng, accuracy, heading: heading ?? null };
-      _ctx.gpsPos = { lat, lng, accuracy, ts: Date.now() };
+      _ctx.gpsPos  = { lat, lng, accuracy, ts: Date.now() };
       updateMyLocation(lat, lng, accuracy, heading ?? null);
       if (_ctx.map) { _ctx.map.panTo({ lat, lng }); _ctx.map.setZoom(17); }
       if (btn) btn.textContent = '📍';
@@ -1546,7 +1519,7 @@ function showMyLocation() {
     return;
   }
 
-  const btn = $('btnMyLocation');
+  const btn       = $('btnMyLocation');
   const toggleBtn = $('btnGameToggle');
 
   preloadSpriteImages();
@@ -1619,10 +1592,10 @@ async function _signInAnonymous() {
   const deviceId = _getDeviceId();
   try {
     const cred = await signInAnonymously(auth);
-    const uid = cred.user.uid;
+    const uid  = cred.user.uid;
 
     // 이 기기의 계정 등록 확인
-    const devRef = doc(db, 'device_accounts', deviceId);
+    const devRef  = doc(db, 'device_accounts', deviceId);
     const devSnap = await getDoc(devRef);
 
     if (devSnap.exists()) {
@@ -1640,7 +1613,7 @@ async function _signInAnonymous() {
     } else {
       // 신규 기기 → 기기 등록 + 사용자 프로필 생성
       const guestNum = Math.floor(Math.random() * 90000) + 10000;
-      const userRef = doc(db, 'users', uid);
+      const userRef  = doc(db, 'users', uid);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
         await setDoc(userRef, {
@@ -1689,7 +1662,7 @@ function _detectorBeep() {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.12);
     setTimeout(() => ctx.close(), 500);
-  } catch (e) { }
+  } catch(e) {}
 }
 
 function _scheduleNextBeep() {
@@ -1858,7 +1831,7 @@ async function tryCollect(box) {
     }
     renderBoxInventory();
     // 보물 발견 생중계
-    httpsCallable(functions, 'broadcastGpEvent')({ game: 'treasure_find', amount: 0, label: d.boxName || 'Treasure Box' }).catch(() => { });
+    httpsCallable(functions, 'broadcastGpEvent')({ game: 'treasure_find', amount: 0, label: d.boxName || 'Treasure Box' }).catch(() => {});
   } catch (err) {
     const msg = err.message || '';
     if (msg.includes('먼저 인벤토리')) {
@@ -1903,7 +1876,7 @@ function playCollectSound() {
     const ctx = new AC();
     const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
     notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
+      const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -1945,14 +1918,14 @@ function playOpenBoxSound() {
     const AC = window.AudioContext || /** @type {any} */(window).webkitAudioContext;
     const ctx = new AC();
     const hits = [
-      { freq: 120, type: 'triangle', t: 0, dur: 0.18, vol: 0.5 },
-      { freq: 200, type: 'sine', t: 0.05, dur: 0.12, vol: 0.3 },
-      { freq: 880, type: 'sine', t: 0.20, dur: 0.15, vol: 0.3 },
-      { freq: 1320, type: 'sine', t: 0.32, dur: 0.18, vol: 0.25 },
-      { freq: 1760, type: 'sine', t: 0.44, dur: 0.22, vol: 0.2 },
+      { freq: 120, type: 'triangle', t: 0,    dur: 0.18, vol: 0.5 },
+      { freq: 200, type: 'sine',     t: 0.05, dur: 0.12, vol: 0.3 },
+      { freq: 880, type: 'sine',     t: 0.20, dur: 0.15, vol: 0.3 },
+      { freq: 1320,type: 'sine',     t: 0.32, dur: 0.18, vol: 0.25 },
+      { freq: 1760,type: 'sine',     t: 0.44, dur: 0.22, vol: 0.2 },
     ];
     hits.forEach(({ freq, type, t, dur, vol }) => {
-      const osc = ctx.createOscillator();
+      const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
       osc.type = type; osc.frequency.value = freq;
@@ -2048,9 +2021,9 @@ function renderBoxInventory() {
   _boxInventory.forEach(item => {
     const { boxId, boxName, hiddenBox, keyId } = item;
     const needsKey = hiddenBox && keyId;
-    const hasKey = needsKey && (_inventory[`key_${keyId}`] || 0) > 0;
-    const locked = needsKey && !hasKey;
-    const keyName = needsKey ? (_keyDefs[keyId]?.name || `Key #${keyId}`) : null;
+    const hasKey   = needsKey && (_inventory[`key_${keyId}`] || 0) > 0;
+    const locked   = needsKey && !hasKey;
+    const keyName  = needsKey ? (_keyDefs[keyId]?.name || `Key #${keyId}`) : null;
     const slot = document.createElement('div');
     slot.className = 'box-inv-slot' + (locked ? ' locked' : (hasKey ? ' has-key' : ''));
     const _bName = boxName || _t('box_default_name2');
@@ -2077,10 +2050,10 @@ function renderBoxInventory() {
 // ── 인벤토리 렌더링 (4×5 = 20 슬롯) ────────────────────────────────────────
 const ARMOR_SLOT_META = {
   helmet: { label: _t('slot_helmet'), icon: '🪖' },
-  chest: { label: _t('slot_chest'), icon: '🛡' },
-  legs: { label: _t('slot_legs'), icon: '🦵' },
+  chest:  { label: _t('slot_chest'),  icon: '🛡' },
+  legs:   { label: _t('slot_legs'),   icon: '🦵' },
   gloves: { label: _t('slot_gloves'), icon: '🥊' },
-  boots: { label: _t('slot_boots'), icon: '👟' },
+  boots:  { label: _t('slot_boots'),  icon: '👟' },
 };
 
 function _defValFromId(itemId) {
@@ -2096,10 +2069,10 @@ function _showArmorSlotPicker(itemId, defVal) {
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;';
   const slotList = [
     { key: 'helmet', icon: '🪖', label: _t('slot_helmet') },
-    { key: 'chest', icon: '🛡', label: _t('slot_chest') },
-    { key: 'legs', icon: '🦵', label: _t('slot_legs') },
+    { key: 'chest',  icon: '🛡', label: _t('slot_chest') },
+    { key: 'legs',   icon: '🦵', label: _t('slot_legs') },
     { key: 'gloves', icon: '🥊', label: _t('slot_gloves') },
-    { key: 'boots', icon: '👟', label: _t('slot_boots') },
+    { key: 'boots',  icon: '👟', label: _t('slot_boots') },
   ];
   modal.innerHTML = `
     <div style="background:#1a0a00;border:2px solid #c9a870;border-radius:12px;padding:20px;max-width:300px;width:90%;text-align:center;">
@@ -2135,8 +2108,8 @@ function _showArmorSlotPicker(itemId, defVal) {
 function _updateEquipStats() {
   const statsEl = $('invEquipStats');
   if (!statsEl) return;
-  const wId = getEquippedWeapon();
-  const wNum = wId ? String(wId).replace('weapon_', '') : null;
+  const wId   = getEquippedWeapon();
+  const wNum  = wId ? String(wId).replace('weapon_', '') : null;
   const slots = getEquippedArmorSlots();
 
   const weaponCard = wNum
@@ -2211,14 +2184,14 @@ function renderInventory() {
     });
 
   // 스킬바 약 뱃지 업데이트
-  const potBadge = $('skillPotionBadge');
-  const potBtn = $('skillBtnPotion');
+  const potBadge   = $('skillPotionBadge');
+  const potBtn     = $('skillBtnPotion');
   const mpPotBadge = $('skillMpPotionBadge');
-  const mpPotBtn = $('skillBtnMpPotion');
-  if (potBadge) potBadge.textContent = (_inventory['potion_red'] || 0) > 0 ? String(_inventory['potion_red']) : '';
-  if (potBtn) potBtn.disabled = (_inventory['potion_red'] || 0) <= 0;
-  if (mpPotBadge) mpPotBadge.textContent = (_inventory['potion_mp'] || 0) > 0 ? String(_inventory['potion_mp']) : '';
-  if (mpPotBtn) mpPotBtn.disabled = (_inventory['potion_mp'] || 0) <= 0;
+  const mpPotBtn   = $('skillBtnMpPotion');
+  if (potBadge)   potBadge.textContent   = (_inventory['potion_red'] || 0) > 0 ? String(_inventory['potion_red']) : '';
+  if (potBtn)     potBtn.disabled        = (_inventory['potion_red'] || 0) <= 0;
+  if (mpPotBadge) mpPotBadge.textContent = (_inventory['potion_mp']  || 0) > 0 ? String(_inventory['potion_mp'])  : '';
+  if (mpPotBtn)   mpPotBtn.disabled      = (_inventory['potion_mp']  || 0) <= 0;
 
   grid.innerHTML = '';
   for (let i = 0; i < SLOTS; i++) {
@@ -2276,18 +2249,18 @@ function renderInventory() {
           renderInventory();
           showInfoToast(_t('equip_weapon_toast', num, getTotalAtk()));
         });
-      } else if (['helm_', 'ches_', 'legs_', 'glov_', 'boot_', 'armo_'].some(p => String(itemId).startsWith(p))) {
+      } else if (['helm_','ches_','legs_','glov_','boot_','armo_'].some(p => String(itemId).startsWith(p))) {
         // ── 방어구 (4슬롯) ───────────────────────────────────────────────────
         const defVal = String(itemId).match(/(\d+)$/)?.[1] || '0';
         const armorSlots = getEquippedArmorSlots();
         const isEquipped = Object.values(armorSlots).includes(itemId);
         const folder = Math.floor(parseInt(defVal) / 10);
         const slotMeta = Object.entries(ARMOR_SLOT_META).find(([s]) =>
-        ({ helmet: 'helm_', chest: 'ches_', legs: 'legs_', gloves: 'glov_', boots: 'boot_' }[s] &&
-          String(itemId).startsWith({ helmet: 'helm_', chest: 'ches_', legs: 'legs_', gloves: 'glov_', boots: 'boot_' }[s]))
+          ({ helmet:'helm_', chest:'ches_', legs:'legs_', gloves:'glov_', boots:'boot_' }[s] &&
+           String(itemId).startsWith({ helmet:'helm_', chest:'ches_', legs:'legs_', gloves:'glov_', boots:'boot_' }[s]))
         );
         const slotLabel = slotMeta ? slotMeta[1].label : _t('equip_armor_label');
-        const slotIcon = slotMeta ? slotMeta[1].icon : '🛡';
+        const slotIcon  = slotMeta ? slotMeta[1].icon  : '🛡';
         slot.title = _t('armor_slot_title', defVal);
         slot.style.cursor = 'pointer';
         if (isEquipped) slot.classList.add('equipped');
@@ -2516,7 +2489,7 @@ function _buildDropMarker(dropId, data, label, icon) {
     const dead = isPlayerDead();
     infoWin.setContent(`<div class="drop-marker-label">📦 ${escHtml(label)}` +
       (dead ? '<br><span style="color:#ef4444;font-size:11px;">💀 Revive first to pick up items (within 30m)</span>' :
-        `<br><button onclick="window._pickupDrop('${escHtml(dropId)}')" style="margin-top:4px;padding:2px 8px;background:#7a3a00;color:#fff;border:none;border-radius:4px;cursor:pointer">${_t('pickup_btn_label')}</button>`) +
+              `<br><button onclick="window._pickupDrop('${escHtml(dropId)}')" style="margin-top:4px;padding:2px 8px;background:#7a3a00;color:#fff;border:none;border-radius:4px;cursor:pointer">${_t('pickup_btn_label')}</button>`) +
       '</div>');
     infoWin.open(_ctx.map, marker);
   });
@@ -2563,7 +2536,7 @@ function _dropAlertSound() {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     // 두 음 연속: 탐지기(880Hz)와 구별되는 밝은 상승 톤
     [[660, 0], [880, 0.1]].forEach(([freq, delay]) => {
-      const osc = ctx.createOscillator();
+      const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -2576,7 +2549,7 @@ function _dropAlertSound() {
       osc.stop(ctx.currentTime + delay + 0.2);
     });
     setTimeout(() => ctx.close(), 600);
-  } catch (e) { }
+  } catch(e) {}
 }
 
 function _updateDropNearbyBadge(count) {
@@ -2630,7 +2603,7 @@ function _checkDropProximity(lat, lng) {
 
   // 토스트: 여러 개면 대표 1개만 표시
   const first = newAlerts[0];
-  const meta = _items[first.data.itemId] || {};
+  const meta  = _items[first.data.itemId] || {};
   const label = meta.name || ('#' + first.data.itemId);
   const extra = newAlerts.length > 1 ? ` and ${newAlerts.length - 1} more` : '';
   showToast(_t('drop_nearby_toast', label + extra), 'info');
@@ -2650,8 +2623,8 @@ function renderVouchers() {
     let metCount = 0, totalRatio = 0;
     for (const r of requirements) {
       const isGold = r.type === 'gold' || r.itemId === 'coin';
-      const have = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
-      const ratio = r.count > 0 ? Math.min(have / r.count, 1) : 1;
+      const have   = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
+      const ratio  = r.count > 0 ? Math.min(have / r.count, 1) : 1;
       totalRatio += ratio;
       if (ratio >= 1) metCount++;
     }
@@ -2662,10 +2635,10 @@ function renderVouchers() {
   el.innerHTML = vouchersSorted.map(({ v, requirements, metCount, pct, canCraft }) => {
     const reqs = (v.requirements || []).map(r => {
       const isGold = r.type === 'gold' || r.itemId === 'coin';
-      const have = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
-      const label = isGold ? _t('coin_label') : escHtml(_items[String(r.itemId)]?.name || '#' + r.itemId);
-      const ok = have >= r.count;
-      return `<span style="color:${ok ? '#86efac' : '#fca5a5'}">${label} ×${r.count} (${_t('have_label', have)})</span>`;
+      const have   = isGold ? getPlayerGold() : (_inventory[String(r.itemId)] || 0);
+      const label  = isGold ? _t('coin_label') : escHtml(_items[String(r.itemId)]?.name || '#' + r.itemId);
+      const ok     = have >= r.count;
+      return `<span style="color:${ok?'#86efac':'#fca5a5'}">${label} ×${r.count} (${_t('have_label', have)})</span>`;
     }).join(' + ');
     const progressBar = requirements.length > 0 ? `
       <div class="voucher-progress-wrap">
@@ -2684,7 +2657,7 @@ function renderVouchers() {
         <div class="voucher-reqs">${reqs}</div>
         ${progressBar}
         <div class="voucher-reward">${_t('craft_reward_label', escHtml(v.reward || _t('default_voucher_reward')))}</div>
-        <button class="btn-craft" data-voucher="${escHtml(v.id)}" ${canCraft ? '' : 'disabled'}>
+        <button class="btn-craft" data-voucher="${escHtml(v.id)}" ${canCraft?'':'disabled'}>
           ${canCraft ? _t('craft_btn') : _t('craft_insufficient')}
         </button>
       </div>`;
@@ -2807,9 +2780,9 @@ async function loadInventory({ force = false } = {}) {
 
   // 무기/방어구가 하나도 없으면 기본 장비 표시 (클라이언트 전용 — DB 미저장)
   const hasWeapon = Object.keys(_inventory).some(k => k.startsWith('weapon_'));
-  const hasArmor = Object.keys(_inventory).some(k => ['armo_', 'helm_', 'ches_', 'legs_', 'glov_', 'boot_'].some(p => k.startsWith(p)));
+  const hasArmor  = Object.keys(_inventory).some(k => ['armo_','helm_','ches_','legs_','glov_','boot_'].some(p => k.startsWith(p)));
   if (!hasWeapon) _inventory['weapon_100'] = (_inventory['weapon_100'] || 0) + 1;
-  if (!hasArmor) _inventory['armo_10'] = (_inventory['armo_10'] || 0) + 1;
+  if (!hasArmor)  _inventory['armo_10']    = (_inventory['armo_10']    || 0) + 1;
 
   _boxInventory = [];
   if (boxRes.ok) boxRes.v.forEach(d => {
@@ -2863,26 +2836,26 @@ function renderExchangeSection() {
     const reqs = v.requirements || [];
 
     // 서버와 동일: gold 요건 합계 + minCoins = 실제 필요 코인
-    const goldInReqs = reqs.filter(r => r.type === 'gold' || r.itemId === 'coin')
-      .reduce((s, r) => s + (r.count || 0), 0);
+    const goldInReqs    = reqs.filter(r => r.type === 'gold' || r.itemId === 'coin')
+                              .reduce((s, r) => s + (r.count || 0), 0);
     const totalGoldNeed = goldInReqs + (v.minCoins || 0);
-    const itemReqs = reqs.filter(r => r.type !== 'gold' && r.itemId !== 'coin');
+    const itemReqs      = reqs.filter(r => r.type !== 'gold' && r.itemId !== 'coin');
 
     let totalRatio = 0;
-    let reqCount = 0;
+    let reqCount   = 0;
 
     // 아이템 요건 칩 (비코인)
     const chips = itemReqs.map(r => {
-      const have = _inventory[String(r.itemId)] || 0;
-      const need = r.count || 1;
+      const have  = _inventory[String(r.itemId)] || 0;
+      const need  = r.count || 1;
       const ratio = Math.min(1, have / need);
       totalRatio += ratio; reqCount++;
 
-      const meta = _items[String(r.itemId)];
-      const label = escHtml(meta?.name || ('#' + r.itemId));
+      const meta   = _items[String(r.itemId)];
+      const label  = escHtml(meta?.name || ('#' + r.itemId));
       const _imgM = meta?.image || '';
       const imgSrc = _imgM ? (_imgM.startsWith('/') || _imgM.startsWith('http') ? _imgM : `/assets/images/item/${escHtml(_imgM)}`) : '';
-      const cls = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
+      const cls    = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(${have}/${need})</small>` : '';
       const imgTag = imgSrc
         ? `<img src="${imgSrc}" alt="" onerror="this.style.display='none'">`
@@ -2893,10 +2866,10 @@ function renderExchangeSection() {
     // 코인 합계 칩 (goldReqs + minCoins를 합산해 1개로 표시 — 서버 로직과 일치)
     const coinChip = (() => {
       if (!totalGoldNeed) return '';
-      const have = getPlayerGold();
+      const have  = getPlayerGold();
       const ratio = Math.min(1, have / totalGoldNeed);
       totalRatio += ratio; reqCount++;
-      const cls = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
+      const cls   = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(${have}/${totalGoldNeed})</small>` : '';
       return `<span class="exc-req-chip ${cls}">${_t('coin_chip', totalGoldNeed)}${haveStr}</span>`;
     })();
@@ -2904,10 +2877,10 @@ function renderExchangeSection() {
     // 레벨 조건 칩
     const levelChip = (() => {
       if (!v.minLevel) return '';
-      const have = getPlayerLevel();
-      const ok = have >= v.minLevel;
+      const have  = getPlayerLevel();
+      const ok    = have >= v.minLevel;
       totalRatio += ok ? 1 : Math.min(1, have / v.minLevel); reqCount++;
-      const cls = !_uid ? 'no-data' : ok ? 'ok' : 'lack';
+      const cls   = !_uid ? 'no-data' : ok ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(LV.${have})</small>` : '';
       return `<span class="exc-req-chip ${cls}">${_t('level_chip', v.minLevel)}${haveStr}</span>`;
     })();
@@ -2916,18 +2889,18 @@ function renderExchangeSection() {
     const stoneChip = (() => {
       const cost = v.magicStoneCost || 0;
       if (!cost) return '';
-      const have = getPlayerToken();
+      const have  = getPlayerToken();
       const ratio = Math.min(1, have / cost);
       totalRatio += ratio; reqCount++;
-      const cls = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
+      const cls   = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(${have}/${cost})</small>` : '';
       return `<span class="exc-req-chip ${cls}">${_t('magic_stone_chip', cost)}${haveStr}</span>`;
     })();
 
     const allChips = chips + coinChip + stoneChip + levelChip;
 
-    const pct = reqCount > 0 ? Math.round(totalRatio / reqCount * 100) : 0;
-    const canDo = _uid
+    const pct    = reqCount > 0 ? Math.round(totalRatio / reqCount * 100) : 0;
+    const canDo  = _uid
       && (totalGoldNeed === 0 || getPlayerGold() >= totalGoldNeed)
       && itemReqs.every(r => (_inventory[String(r.itemId)] || 0) >= r.count)
       && (!(v.magicStoneCost || 0) || getPlayerToken() >= v.magicStoneCost)
@@ -2948,15 +2921,15 @@ function renderExchangeSection() {
     return `
       <div class="exc-card">
         ${imgUrl
-        ? `<div class="exc-card-img-wrap">
+          ? `<div class="exc-card-img-wrap">
                <img src="${escHtml(imgUrl)}" alt="${escHtml(v.name)}" class="lb-trigger"
                  onclick="openLightbox(this.src,this.alt)"
                  onerror="this.parentNode.innerHTML='<span class=exc-card-img-fallback>🎟</span>'">
              </div>`
-        : `<div class="exc-card-img-wrap">
+          : `<div class="exc-card-img-wrap">
                <span class="exc-card-img-fallback">🎟</span>
              </div>`
-      }
+        }
         <div class="exc-card-banner">
           <div class="exc-card-reward">${escHtml(v.reward || _t('default_reward_label'))}</div>
           <div class="exc-card-name">${escHtml(v.name)}</div>
@@ -3004,15 +2977,15 @@ function openInventory() {
   $('invModal').classList.add('open');
   _updateEquipStats();
   loadInventory();
-  const goldEl = document.getElementById('invGold');
+  const goldEl  = document.getElementById('invGold');
   const tokenEl = document.getElementById('invToken');
-  if (goldEl) goldEl.textContent = getPlayerGold();
+  if (goldEl)  goldEl.textContent  = getPlayerGold();
   if (tokenEl) tokenEl.textContent = getPlayerToken();
   // Firestore에서 최신 골드/토큰 동기화 (상점 판매 수익 반영)
   loadPlayerState().then(() => {
-    if (goldEl) goldEl.textContent = getPlayerGold();
+    if (goldEl)  goldEl.textContent  = getPlayerGold();
     if (tokenEl) tokenEl.textContent = getPlayerToken();
-  }).catch(() => { });
+  }).catch(() => {});
 }
 function closeInventory() { $('invModal').classList.remove('open'); }
 
@@ -3028,15 +3001,15 @@ const TUT_STEPS = [
 ];
 
 function initTutorial() {
-  const modal = $('tutModal');
-  const header = $('tutHeader');
-  const icon = $('tutIcon');
+  const modal    = $('tutModal');
+  const header   = $('tutHeader');
+  const icon     = $('tutIcon');
   const stepTitle = $('tutStepTitle');
-  const stepBody = $('tutStepBody');
-  const dotsWrap = $('tutDots');
-  const prevBtn = $('tutPrev');
-  const nextBtn = $('tutNext');
-  const closeBtn = $('tutClose');
+  const stepBody  = $('tutStepBody');
+  const dotsWrap  = $('tutDots');
+  const prevBtn   = $('tutPrev');
+  const nextBtn   = $('tutNext');
+  const closeBtn  = $('tutClose');
   if (!modal) return;
 
   let currentStep = 0;
@@ -3044,10 +3017,10 @@ function initTutorial() {
   function renderStep(idx) {
     const step = TUT_STEPS[idx];
     const total = TUT_STEPS.length;
-    if (header) header.textContent = `${_t('tut_title')} (${idx + 1}/${total})`;
-    if (icon) icon.textContent = step.icon;
+    if (header)    header.textContent   = `${_t('tut_title')} (${idx + 1}/${total})`;
+    if (icon)      icon.textContent     = step.icon;
     if (stepTitle) stepTitle.textContent = _t(step.titleKey);
-    if (stepBody) stepBody.textContent = _t(step.bodyKey);
+    if (stepBody)  stepBody.textContent  = _t(step.bodyKey);
 
     if (dotsWrap) {
       dotsWrap.innerHTML = '';
@@ -3061,7 +3034,7 @@ function initTutorial() {
 
     if (prevBtn) {
       prevBtn.textContent = _t('tut_prev');
-      prevBtn.disabled = idx === 0;
+      prevBtn.disabled    = idx === 0;
     }
     if (nextBtn) {
       const isLast = idx === total - 1;
@@ -3077,7 +3050,7 @@ function initTutorial() {
 
   function closeTutorial() {
     modal.classList.add('hidden');
-    try { localStorage.setItem(TUT_KEY, '1'); } catch (_) { }
+    try { localStorage.setItem(TUT_KEY, '1'); } catch (_) {}
   }
 
   prevBtn?.addEventListener('click', () => {
@@ -3102,7 +3075,7 @@ function initTutorial() {
   // 첫 방문 시 자동 표시
   try {
     if (!localStorage.getItem(TUT_KEY)) openTutorial();
-  } catch (_) { }
+  } catch (_) {}
 }
 
 // ── 메인 ────────────────────────────────────────────────────────────────────
@@ -3113,7 +3086,7 @@ async function _loadKFoodWebzine() {
   container.className = 'kca-webzine-container';
   container.style.cssText = 'padding:16px; margin: 16px 0; background:rgba(0,0,0,0.4); border-radius:12px; border:1px solid rgba(255,100,50,0.3);';
   container.innerHTML = '<h3 style="color:#fcd34d; margin-bottom:12px; font-weight:700;">🔥 K-Food DNA & Webzine</h3><div id="webzineList" style="display:flex; gap:12px; overflow-x:auto; padding-bottom:8px;"></div>';
-
+  
   const grid = document.getElementById('mcGrid');
   if (grid) {
     grid.parentNode.insertBefore(container, grid);
@@ -3122,12 +3095,12 @@ async function _loadKFoodWebzine() {
   try {
     const listEl = document.getElementById('webzineList');
     listEl.innerHTML = '<span style="color:#aaa;">웹진 로딩 중...</span>';
-
+    
     // Zentaro 프로젝트 API (포트 3000 가정)
     const res = await fetch('http://localhost:3000/api/webzine-post');
     if (!res.ok) throw new Error('API fetch failed');
     const posts = await res.json();
-
+    
     if (posts && posts.length > 0) {
       listEl.innerHTML = posts.map(p => `
         <div style="min-width:200px; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; display:inline-block; vertical-align:top;">
@@ -3138,7 +3111,7 @@ async function _loadKFoodWebzine() {
     } else {
       listEl.innerHTML = '<span style="color:#aaa;">현재 발행된 웹진이 없습니다.</span>';
     }
-  } catch (e) {
+  } catch(e) {
     console.warn('Webzine load error:', e);
     const listEl = document.getElementById('webzineList');
     if (listEl) listEl.innerHTML = '<span style="color:#f87171; font-size:12px;">오프라인 모드: 웹진 서버(Zentaro)에 연결할 수 없습니다. 포트(3000)를 확인해주세요.</span>';
@@ -3149,12 +3122,12 @@ async function init() {
   // battle 모듈 초기화 (ctx와 callbacks 연결)
   initBattle(_ctx, {
     onCheckProximity: checkProximity,
-    onLoadInventory: loadInventory,
+    onLoadInventory:  loadInventory,
     onUpdateDistDisplay: updateDistDisplay,
   });
 
   // 상점 콜백 등록
-  _ctx._onShopNear = (shop) => openShopModal(shop);
+  _ctx._onShopNear  = (shop) => openShopModal(shop);
   _ctx._onShopClick = (shop) => {
     if (_isAdmin) { openShopAdminModal(shop); return; }
     // 공격 모드 중 → 마커 탭으로도 바로 공격
@@ -3164,22 +3137,22 @@ async function init() {
 
   // Auth 리스너 (비동기 — 블로킹 없음)
   onAuthStateChanged(auth, async user => {
-    _uid = user?.uid || null;
-    _userEmail = user?.email || null;
+    _uid         = user?.uid         || null;
+    _userEmail   = user?.email       || null;
     _isAnonymous = user?.isAnonymous || false;
-    _ctx.uid = _uid;
+    _ctx.uid     = _uid;
     setGoldMineUid(_uid);
     setHarborUid(_uid);
 
     const loginOverlay = $('gameLoginOverlay');
-    const gameToggle = $('btnGameToggle');
+    const gameToggle   = $('btnGameToggle');
 
     if (_uid) {
       // 로그인됨 → 다중 기기 방지 세션 등록
       _startSessionGuard(_uid);
       // 오버레이 숨김
       if (loginOverlay) loginOverlay.style.display = 'none';
-      if (gameToggle) gameToggle.disabled = false;
+      if (gameToggle)   gameToggle.disabled = false;
 
       _isAdmin = false;
       _ctx.isAdmin = false;
@@ -3222,13 +3195,13 @@ async function init() {
             setDoc(doc(db, 'battle_players', _uid), {
               displayName,
               photoURL: user?.photoURL || null,
-            }, { merge: true }).catch(() => { });
+            }, { merge: true }).catch(() => {});
           }
         }
         renderExchangeSection();
         showDeathMarkerIfDead();
         // 돈나무 인벤토리 HUD
-        if (!_isAnonymous) refreshMoneyTreeInventory().catch(() => { });
+        if (!_isAnonymous) refreshMoneyTreeInventory().catch(() => {});
         // 로그인 완료 후 워프모드 자동 시작 시도 (지도가 먼저 준비된 경우 여기서 실행)
         _maybeAutoStartVirtualMode();
       });
@@ -3239,7 +3212,7 @@ async function init() {
       _stopSessionGuard();
       // 비로그인 → 오버레이 표시
       if (loginOverlay) loginOverlay.style.display = 'flex';
-      if (gameToggle) gameToggle.disabled = true;
+      if (gameToggle)   gameToggle.disabled = true;
       _isAdmin = false;
       _ctx.isAdmin = false;
       _renderAnonBadge(false);
@@ -3283,7 +3256,7 @@ async function init() {
   // KCA: URL 쿼리 파라미터(type) 기반 카테고리 필터링
   const urlParams = new URLSearchParams(window.location.search);
   const filterType = urlParams.get('type');
-
+  
   if (filterType) {
     allMerchants = allMerchants.filter(m => {
       const typeStr = (m.type || '').toLowerCase();
@@ -3325,9 +3298,9 @@ async function init() {
         if (pos) checkProximity(pos.lat, pos.lng);
       }
     }, {
-      spendMp: (amount) => spendPlayerMp(amount),
-      getMp: () => getPlayerMp(),
-      getMaxMp: () => getPlayerMaxMp(),
+      spendMp:    (amount) => spendPlayerMp(amount),
+      getMp:      ()       => getPlayerMp(),
+      getMaxMp:   ()       => getPlayerMaxMp(),
       // 실제 플레이어 마커를 가상 위치로 이동 + _ctx.lastPos 동기화
       moveMarker: (lat, lng) => {
         _ctx.lastPos = { lat, lng, accuracy: 10, heading: null };
@@ -3571,8 +3544,8 @@ async function init() {
   // ── 바우쳐 서비스 주문 모달 ──────────────────────────────────────────────────
   async function _openVoucherOrderModal() {
     if (!_uid) { alert('Login required'); return; }
-    const modal = $('voucherOrderModal');
-    const sel = $('voVoucherSel');
+    const modal  = $('voucherOrderModal');
+    const sel    = $('voVoucherSel');
     const status = $('voStatus');
     if (modal) modal.classList.remove('hidden');
     if (sel) sel.innerHTML = '<option value="">Loading...</option>';
@@ -3615,10 +3588,10 @@ async function init() {
   });
 
   $('btnSubmitVoucherOrder')?.addEventListener('click', async () => {
-    const btn = $('btnSubmitVoucherOrder');
-    const sel = $('voVoucherSel');
+    const btn    = $('btnSubmitVoucherOrder');
+    const sel    = $('voVoucherSel');
     const status = $('voStatus');
-    const idx = parseInt(sel?.value ?? '', 10);
+    const idx    = parseInt(sel?.value ?? '', 10);
     if (isNaN(idx) || !_myVoucherLogs[idx]) {
       if (status) { status.style.color = '#ef4444'; status.textContent = 'Please select a voucher'; }
       return;
@@ -3639,12 +3612,12 @@ async function init() {
     if (status) { status.style.color = '#6b7280'; status.textContent = ''; }
     try {
       const params = {
-        docId: voucher.id || null,
+        docId:           voucher.id || null,
         sourceCollection: voucher.source === 'game' ? 'treasure_voucher_logs' : null,
-        voucherId: voucher.voucherId != null ? voucher.voucherId : undefined,
-        requestedName: $('voName')?.value?.trim() || '',
+        voucherId:       voucher.voucherId != null ? voucher.voucherId : undefined,
+        requestedName:   $('voName')?.value?.trim() || '',
         latLng,
-        imageUrl: $('voImageUrl')?.value?.trim() || '',
+        imageUrl:        $('voImageUrl')?.value?.trim() || '',
       };
       const res = await httpsCallable(functions, 'submitVoucherOrder')(params);
       if (status) { status.style.color = '#22c55e'; status.textContent = `✅ Order complete! (Order ID: ${res.data.orderId?.slice(0, 8)}…)`; }
@@ -3658,21 +3631,21 @@ async function init() {
 
   // 관리자 전투 배치 패널 버튼
   $('btnPlaceMonster')?.addEventListener('click', () => enterAdminPlaceMode('monster'));
-  $('btnPlaceDragon')?.addEventListener('click', () => enterAdminPlaceMode('dragon'));
-  $('btnPlaceOrc')?.addEventListener('click', () => enterAdminPlaceMode('orc'));
-  $('btnPlaceOrc2')?.addEventListener('click', () => enterAdminPlaceMode('orc2'));
-  $('btnPlaceOrc3')?.addEventListener('click', () => enterAdminPlaceMode('orc3'));
-  $('btnPlacePirate')?.addEventListener('click', () => enterAdminPlaceMode('pirate'));
+  $('btnPlaceDragon')?.addEventListener('click',  () => enterAdminPlaceMode('dragon'));
+  $('btnPlaceOrc')?.addEventListener('click',     () => enterAdminPlaceMode('orc'));
+  $('btnPlaceOrc2')?.addEventListener('click',    () => enterAdminPlaceMode('orc2'));
+  $('btnPlaceOrc3')?.addEventListener('click',    () => enterAdminPlaceMode('orc3'));
+  $('btnPlacePirate')?.addEventListener('click',  () => enterAdminPlaceMode('pirate'));
   $('btnPlacePirate2')?.addEventListener('click', () => enterAdminPlaceMode('pirate2'));
-  $('btnPlacePirate3')?.addEventListener('click', () => enterAdminPlaceMode('pirate3'));
-  $('btnPlaceZombie1')?.addEventListener('click', () => enterAdminPlaceMode('zombie1'));
-  $('btnPlaceZombie3')?.addEventListener('click', () => enterAdminPlaceMode('zombie3'));
+  $('btnPlacePirate3')?.addEventListener('click',  () => enterAdminPlaceMode('pirate3'));
+  $('btnPlaceZombie1')?.addEventListener('click',  () => enterAdminPlaceMode('zombie1'));
+  $('btnPlaceZombie3')?.addEventListener('click',  () => enterAdminPlaceMode('zombie3'));
   $('btnPlaceArcherTower')?.addEventListener('click', () => enterAdminPlaceMode('archer_tower'));
   $('btnPlaceCannonTower')?.addEventListener('click', () => enterAdminPlaceMode('cannon_tower'));
-  $('btnPlaceDeco')?.addEventListener('click', () => enterAdminPlaceMode('deco'));
+  $('btnPlaceDeco')?.addEventListener('click',    () => enterAdminPlaceMode('deco'));
   $('btnPlaceShopWeapon')?.addEventListener('click', () => enterAdminPlaceMode('shop_weapon_armor'));
   $('btnPlaceShopPotion')?.addEventListener('click', () => enterAdminPlaceMode('shop_potion'));
-  $('btnPlaceShopMisc')?.addEventListener('click', () => enterAdminPlaceMode('shop_misc'));
+  $('btnPlaceShopMisc')?.addEventListener('click',   () => enterAdminPlaceMode('shop_misc'));
   $('btnGiveRevive')?.addEventListener('click', async () => {
     const targetUid = prompt('부활권 지급할 UID (비우면 본인):', _uid || '') || _uid;
     if (!targetUid) return;
@@ -3692,7 +3665,7 @@ async function init() {
     if (!count || count < 1) return;
     try {
       const res = await httpsCallable(functions, 'adminGivePotion')({ targetUid, count });
-      alert(`✅ ${targetUid.slice(0, 8)}… 에게 빨간약 ${res.data.given}병 지급 완료`);
+      alert(`✅ ${targetUid.slice(0,8)}… 에게 빨간약 ${res.data.given}병 지급 완료`);
       if (targetUid === _uid) await loadInventory({ force: true });
     } catch (err) { alert('실패: ' + err.message); }
   });
@@ -3703,7 +3676,7 @@ async function init() {
     const mode = modeRaw?.trim() === 'add' ? 'add' : 'set';
     const gold = parseInt(prompt(`${mode === 'add' ? '추가할' : '설정할'} GP 금액:`, '0') || '0');
     if (isNaN(gold) || gold < 0) { alert('유효하지 않은 금액'); return; }
-    if (!confirm(`UID: ${targetUid.slice(0, 12)}…\n${mode === 'add' ? `+${gold.toLocaleString()} GP 추가` : `GP → ${gold.toLocaleString()} 으로 설정`}\n\n진행하겠습니까?`)) return;
+    if (!confirm(`UID: ${targetUid.slice(0,12)}…\n${mode === 'add' ? `+${gold.toLocaleString()} GP 추가` : `GP → ${gold.toLocaleString()} 으로 설정`}\n\n진행하겠습니까?`)) return;
     try {
       const res = await httpsCallable(functions, 'adminSetGold')({ targetUid: targetUid.trim(), gold, mode });
       alert(`✅ 완료\n현재 GP: ${res.data.gold.toLocaleString()}`);
@@ -3718,7 +3691,7 @@ async function init() {
       alert(`✅ ${res.data.processed}명 초기화 완료`);
     } catch (err) { alert('실패: ' + err.message); }
   });
-  $('btnCancelPlace')?.addEventListener('click', exitAdminPlaceMode);
+  $('btnCancelPlace')?.addEventListener('click',  exitAdminPlaceMode);
   $('btnToggleTowerRange')?.addEventListener('click', toggleTowerRanges);
 
   // 스킬 버튼
@@ -3733,13 +3706,13 @@ async function init() {
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
 
   initDungeonGame({
-    onSpendGold: (amount) => spendPlayerGold(amount),
-    onAddGold: (amount) => addPlayerGold(amount),
-    onPlaySound: (type) => playSound(type),
-    getInventory: () => ({ ..._inventory }),
-    getPlayerSnapshot: () => getPlayerSnapshot(),
-    onSyncPlayer: (state) => syncPlayerFromDungeon(state),
-    onUseItem: (itemId, cnt = 1) => {
+    onSpendGold:      (amount)        => spendPlayerGold(amount),
+    onAddGold:        (amount)        => addPlayerGold(amount),
+    onPlaySound:      (type)          => playSound(type),
+    getInventory:     ()              => ({ ..._inventory }),
+    getPlayerSnapshot: ()             => getPlayerSnapshot(),
+    onSyncPlayer:     (state)         => syncPlayerFromDungeon(state),
+    onUseItem:    (itemId, cnt=1) => {
       const cur = _inventory[itemId] || 0;
       if (cur < cnt) return false;
       const remaining = cur - cnt;
@@ -3749,10 +3722,10 @@ async function init() {
       return true;
     },
     onExit: () => {
-      try { document.getElementById('ghFloatBtn')?.style && (document.getElementById('ghFloatBtn').style.display = 'flex'); } catch { }
+      try { document.getElementById('ghFloatBtn')?.style && (document.getElementById('ghFloatBtn').style.display = 'flex'); } catch {}
     },
     onDungeonEnd: ({ gp }) => {
-      httpsCallable(functions, 'broadcastGpEvent')({ game: 'dungeon', amount: gp }).catch(() => { });
+      httpsCallable(functions, 'broadcastGpEvent')({ game: 'dungeon', amount: gp }).catch(() => {});
     },
   });
 
@@ -3806,7 +3779,7 @@ async function init() {
 
   initGameServer(_ctx, {
     onStateChange: (state) => {
-      const btn = $('btnGameToggle');
+      const btn   = $('btnGameToggle');
       const badge = $('gsStatusBadge');
       if (!btn) return;
       btn.classList.remove('gs-connecting', 'gs-connected', 'gs-error');
@@ -3834,37 +3807,37 @@ async function init() {
         stopGame();         // GPS·전투루프·주변유저 정지 및 재접속 허용
       }
     },
-    onError: (msg) => console.warn('[GS]', msg),
-    onZoneSnapshot: (data) => {
+    onError:           (msg) => console.warn('[GS]', msg),
+    onZoneSnapshot:    (data) => {
       // 기존 마커/오버레이 전체 제거
       Object.keys(_gsMarkers).forEach(id => { _gsMarkers[id].setMap(null); delete _gsMarkers[id]; });
       Object.keys(_gsOverlays).forEach(id => { _gsOverlays[id]?.setMap(null); delete _gsOverlays[id]; });
       _gsMonsters = {};
       data.monsters?.forEach(m => _renderGsMonster(m));
     },
-    onMonsterUpdate: (m) => _renderGsMonster(m),
-    onMonsterDied: (d) => _removeGsMonster(d.monsterId),
+    onMonsterUpdate:    (m) => _renderGsMonster(m),
+    onMonsterDied:      (d) => _removeGsMonster(d.monsterId),
     onMonsterRespawned: (m) => _renderGsMonster(m),
-    onDropSpawned: (d) => spawnGsDrop(d.dropId, d.lat, d.lng, d.gold ?? d.count, () => sendDropCollect(d.dropId)),
-    onDropRemoved: (d) => removeGsDrop(d.dropId),
-    onDropCollected: (d) => { /* gold already added in spawnGsDrop click handler */ },
-    onPlayerHit: (data) => {
+    onDropSpawned:   (d)    => spawnGsDrop(d.dropId, d.lat, d.lng, d.gold ?? d.count, () => sendDropCollect(d.dropId)),
+    onDropRemoved:   (d)   => removeGsDrop(d.dropId),
+    onDropCollected: (d)   => { /* gold already added in spawnGsDrop click handler */ },
+    onPlayerHit:    (data) => {
       const _gsKind = String(_gsMonsters[data.monsterId]?.type || '').replace(/\d+$/, '');
-      const _gsAtk = (_gsKind === 'dragon') ? 'monster_atk_dragon'
-        : (_gsKind === 'orc') ? 'monster_atk_orc'
-          : (_gsKind === 'pirate') ? 'monster_atk_pirate'
-            : 'monster_atk';
+      const _gsAtk  = (_gsKind === 'dragon') ? 'monster_atk_dragon'
+                    : (_gsKind === 'orc')    ? 'monster_atk_orc'
+                    : (_gsKind === 'pirate') ? 'monster_atk_pirate'
+                    : 'monster_atk';
       playSound(_gsAtk);
       syncHpFromServer(data.remainHp, data.damage);
     },
-    onPlayerDied: () => {
+    onPlayerDied:    ()     => {
       syncDeathFromServer();
       ['utNpcModal', 'utRegModal', 'utMyModal'].forEach(id => document.getElementById(id)?.classList.remove('open'));
     },
     onPlayerRevived: (data) => syncReviveFromServer(data.hp),
-    onPlayerExp: (d) => onPlayerExp(d),
-    onPlayerLevelUp: (d) => onPlayerLevelUp(d),
-    onNotify: (d) => { if (d?.msg) showToast(d.msg); },
+    onPlayerExp:     (d)    => onPlayerExp(d),
+    onPlayerLevelUp: (d)    => onPlayerLevelUp(d),
+    onNotify:        (d)    => { if (d?.msg) showToast(d.msg); },
   });
 
   // WS 이벤트를 못 받은 경우 관리자 스폰 후 강제 렌더링
@@ -3928,12 +3901,12 @@ function _getUserFaceMarkerOverlayClass() {
   _UserFaceMarkerOverlayClass = class extends google.maps.OverlayView {
     constructor(data) {
       super();
-      this._d = data;
+      this._d   = data;
       this._div = null;
     }
     onAdd() {
       const { displayName, imageUrl, linkUrl } = this._d;
-      const SZ = 54;
+      const SZ  = 54;
       const div = document.createElement('div');
       div.style.cssText = 'position:absolute;cursor:pointer;text-align:center;z-index:150;';
 
@@ -3942,15 +3915,15 @@ function _getUserFaceMarkerOverlayClass() {
         border:3px solid #ffd700;box-sizing:border-box;overflow:hidden;
         background:#7c3aed;box-shadow:0 2px 10px rgba(0,0,0,.5);`;
       const img = document.createElement('img');
-      img.src = imageUrl;
-      img.alt = '';
+      img.src           = imageUrl;
+      img.alt           = '';
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-      img.onerror = () => { img.style.display = 'none'; };
+      img.onerror       = () => { img.style.display = 'none'; };
       ring.appendChild(img);
       div.appendChild(ring);
 
       const lbl = document.createElement('div');
-      lbl.textContent = displayName;
+      lbl.textContent   = displayName;
       lbl.style.cssText = `margin-top:2px;font-size:10px;font-weight:700;color:#fff;
         text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap;
         max-width:72px;overflow:hidden;text-overflow:ellipsis;`;
@@ -3985,7 +3958,7 @@ function _getUserFaceMarkerOverlayClass() {
       const SZ = 54;
       const pt = proj.fromLatLngToDivPixel(new google.maps.LatLng(this._d.lat, this._d.lng));
       this._div.style.left = `${pt.x - SZ / 2}px`;
-      this._div.style.top = `${pt.y - SZ / 2}px`;
+      this._div.style.top  = `${pt.y - SZ / 2}px`;
     }
     onRemove() {
       this._div?.remove();
@@ -4013,12 +3986,12 @@ async function loadUserMapMarkers() {
 }
 
 // ── 상점 모달 (유저용) ────────────────────────────────────────────────────────
-let _activeShopId = null;
+let _activeShopId    = null;
 let _shopCurrentData = null;
 let _shopSelectedItem = null;
-let _shopQty = 1;
-let _waItemsCache = null; // global weapon/armor catalog — null = not yet loaded
-const _nameCache = new Map(); // uid → 표시 이름 캐시
+let _shopQty         = 1;
+let _waItemsCache    = null; // global weapon/armor catalog — null = not yet loaded
+const _nameCache     = new Map(); // uid → 표시 이름 캐시
 
 // ── 공격 모드 (10분) ─────────────────────────────────────────────────────────
 let _attackMode = null; // { shopId, shop, expiresAt, timerId, countdownId }
@@ -4026,7 +3999,7 @@ let _attackMode = null; // { shopId, shop, expiresAt, timerId, countdownId }
 function _enterAttackMode(shop) {
   if (_attackMode) _exitAttackMode();
   const expiresAt = Date.now() + 10 * 60 * 1000;
-  const timerId = setTimeout(_exitAttackMode, 10 * 60 * 1000);
+  const timerId   = setTimeout(_exitAttackMode, 10 * 60 * 1000);
   _attackMode = { shopId: shop.id, shop: { ...shop }, expiresAt, timerId, countdownId: null };
   _renderAttackPanel();
   _attackMode.countdownId = setInterval(_updateAttackPanelTimer, 1000);
@@ -4076,7 +4049,7 @@ function _refreshAttackPanel() {
   const panel = document.getElementById('shopAttackPanel');
   if (!panel || !_attackMode) return;
   const { shop } = _attackMode;
-  const hp = shop.hp ?? '?';
+  const hp    = shop.hp    ?? '?';
   const maxHp = shop.maxHp ?? '?';
   const hpPct = (shop.maxHp && shop.hp != null) ? Math.max(0, Math.round(shop.hp / shop.maxHp * 100)) : 100;
   panel.innerHTML = `
@@ -4119,10 +4092,10 @@ function _updateAttackPanelHp(newHp) {
   if (!_attackMode) return;
   _attackMode.shop.hp = newHp;
   const maxHp = _attackMode.shop.maxHp ?? newHp;
-  const pct = maxHp > 0 ? Math.max(0, Math.round(newHp / maxHp * 100)) : 0;
-  const hpEl = document.getElementById('atkPanelHp');
+  const pct   = maxHp > 0 ? Math.max(0, Math.round(newHp / maxHp * 100)) : 0;
+  const hpEl  = document.getElementById('atkPanelHp');
   const barEl = document.getElementById('atkPanelHpBar');
-  if (hpEl) hpEl.textContent = `${newHp} / ${maxHp}`;
+  if (hpEl)  hpEl.textContent  = `${newHp} / ${maxHp}`;
   if (barEl) barEl.style.width = `${pct}%`;
   updateShopHpMarker(_attackMode.shop.id, newHp);
 }
@@ -4230,10 +4203,10 @@ function openShopModal(shop) {
     }
   }
 
-  _activeShopId = shop.id;
-  _shopCurrentData = shop;
+  _activeShopId     = shop.id;
+  _shopCurrentData  = shop;
   _shopSelectedItem = null;
-  _shopQty = 1;
+  _shopQty          = 1;
   const modal = $('shopModal');
   if (!modal) return;
 
@@ -4266,7 +4239,7 @@ function openShopModal(shop) {
       _shopCurrentData.ownerName = name;
       const el = document.getElementById('shopOwnerNameEl');
       if (el) el.textContent = name;
-    }).catch(() => { });
+    }).catch(() => {});
   }
 }
 
@@ -4277,7 +4250,7 @@ async function _fetchWaItems(openedShopId) {
     if (_shopCurrentData?.id === openedShopId && _shopCurrentData.type === 'weapon_armor') {
       _renderShopModalBody();
     }
-  } catch (e) { }
+  } catch(e) {}
 }
 
 function _renderShopModalBody() {
@@ -4290,17 +4263,17 @@ function _renderShopModalBody() {
     document.head.appendChild(s);
   }
 
-  const shop = _shopCurrentData;
-  const isWa = shop.type === 'weapon_armor';
-  const items = isWa ? (_waItemsCache || []) : (shop.items || []);
+  const shop      = _shopCurrentData;
+  const isWa      = shop.type === 'weapon_armor';
+  const items     = isWa ? (_waItemsCache || []) : (shop.items || []);
   const playerGold = getPlayerGold();
-  const sel = _shopSelectedItem;
-  const maxQty = sel ? (sel.stock === -1 ? 99 : sel.stock) : 1;
-  const total = sel ? sel.price * _shopQty : 0;
-  const canBuy = !!sel && playerGold >= total;
+  const sel       = _shopSelectedItem;
+  const maxQty    = sel ? (sel.stock === -1 ? 99 : sel.stock) : 1;
+  const total     = sel ? sel.price * _shopQty : 0;
+  const canBuy    = !!sel && playerGold >= total;
 
   // 상점 정보 헤더 (소유자 + 보유 골드)
-  const ownerUid = shop.ownerUid || '';
+  const ownerUid  = shop.ownerUid || '';
   const isOwnerMe = ownerUid && ownerUid === _uid;
   const ownerDisp = isOwnerMe ? '👑 나' : (shop.ownerName ? escHtml(shop.ownerName) : (ownerUid ? ownerUid.slice(0, 8) + '…' : '─'));
   let html = `<div style="padding-bottom:10px;border-bottom:1px solid #1f2937;margin-bottom:10px">
@@ -4321,7 +4294,7 @@ function _renderShopModalBody() {
       : `<p style="color:#9ca3af;text-align:center;padding:16px 0">No items for sale</p>`;
   } else {
     items.forEach(it => {
-      const soldOut = it.stock === 0;
+      const soldOut    = it.stock === 0;
       const isSelected = sel?.itemId === it.itemId;
       html += `<div class="shop-item-row" data-item-id="${escHtml(it.itemId)}"
         style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;
@@ -4391,15 +4364,15 @@ function _renderShopModalBody() {
     </button>
     ${(() => {
       const isOwn = shop.ownerUid && shop.ownerUid === _uid;
-      const hp = shop.hp ?? shop.maxHp ?? 0;
+      const hp    = shop.hp    ?? shop.maxHp ?? 0;
       const maxHp = shop.maxHp ?? 0;
       if (isOwn) {
-        const missing = Math.max(0, maxHp - hp);
-        const cost = missing; // 1 골드 / 1 HP
-        const hpPct = maxHp > 0 ? Math.round(hp / maxHp * 100) : 100;
+        const missing   = Math.max(0, maxHp - hp);
+        const cost      = missing; // 1 골드 / 1 HP
+        const hpPct     = maxHp > 0 ? Math.round(hp / maxHp * 100) : 100;
         const canRepair = missing > 0 && playerGold >= cost;
-        const lvlCost = (shop.level ?? 1) * (shop.level ?? 1) * 10000;
-        const canLvlUp = playerGold >= lvlCost;
+        const lvlCost   = (shop.level ?? 1) * (shop.level ?? 1) * 10000;
+        const canLvlUp  = playerGold >= lvlCost;
         return `<div style="margin-top:10px;padding:10px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid #1f2937">
           <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;margin-bottom:5px">
             <span>🏠 내 상점 HP</span>
@@ -4484,9 +4457,9 @@ function _renderShopModalBody() {
     const lastClaimMs = shop.lastDividendAt?.seconds
       ? shop.lastDividendAt.seconds * 1000
       : (shop.lastDividendAt?.toMillis?.() ?? 0);
-    const cooldownMs = 24 * 60 * 60 * 1000;
-    const inCooldown = lastClaimMs > 0 && (Date.now() - lastClaimMs < cooldownMs);
-    const hoursLeft = inCooldown ? Math.ceil((cooldownMs - (Date.now() - lastClaimMs)) / 3600000) : 0;
+    const cooldownMs  = 24 * 60 * 60 * 1000;
+    const inCooldown  = lastClaimMs > 0 && (Date.now() - lastClaimMs < cooldownMs);
+    const hoursLeft   = inCooldown ? Math.ceil((cooldownMs - (Date.now() - lastClaimMs)) / 3600000) : 0;
     html += `<div id="wasDividendPanel"
       style="margin-top:12px;padding:12px;border-radius:10px;
              background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid #4c1d95">
@@ -4533,7 +4506,7 @@ function _renderShopModalBody() {
           });
         }
       })
-      .catch(() => { });
+      .catch(() => {});
   }
 
   // 아이템 행 클릭 → 선택
@@ -4552,11 +4525,11 @@ function _renderShopModalBody() {
     const inp = $('shopQtyInput');
     if (!inp || !sel) return;
     const mq = sel.stock === -1 ? 99 : sel.stock;
-    const v = Math.max(1, Math.min(parseInt(inp.value, 10) || 1, mq));
+    const v  = Math.max(1, Math.min(parseInt(inp.value, 10) || 1, mq));
     _shopQty = v; inp.value = v;
-    const tot = sel.price * v;
+    const tot  = sel.price * v;
     const gold = getPlayerGold();
-    const ok = gold >= tot;
+    const ok   = gold >= tot;
     const totEl = $('shopTotalAmount');
     if (totEl) totEl.textContent = `💰 ${tot.toLocaleString()} ${_t('shop_gold_label')}`;
     const btn = $('shopBuyBtn');
@@ -4626,7 +4599,7 @@ function _renderShopModalBody() {
     httpsCallable(functions, 'getWeaponArmorJackpot')()
       .then(({ data }) => {
         const jackpotEl = $('wasJackpotDisplay');
-        const estEl = $('wasEstDividend');
+        const estEl     = $('wasEstDividend');
         if (jackpotEl) jackpotEl.textContent = `🪙 ${(data.jackpot || 0).toLocaleString()} GP`;
         if (estEl && data.jackpot && data.shopCount && shop.lotteryNumber) {
           const est = Math.floor(data.jackpot / data.shopCount / shop.lotteryNumber);
@@ -4654,10 +4627,10 @@ function _renderShopModalBody() {
 
 function closeShopModal() {
   $('shopModal')?.classList.remove('open');
-  _activeShopId = null;
-  _shopCurrentData = null;
+  _activeShopId     = null;
+  _shopCurrentData  = null;
   _shopSelectedItem = null;
-  _shopQty = 1;
+  _shopQty          = 1;
 }
 
 async function _resolveUserName(uid) {
@@ -4665,7 +4638,7 @@ async function _resolveUserName(uid) {
   if (_nameCache.has(uid)) return _nameCache.get(uid);
   try {
     const snap = await getDoc(doc(db, 'users', uid));
-    const d = snap.exists() ? snap.data() : {};
+    const d    = snap.exists() ? snap.data() : {};
     const name = d.name || d.displayName || d.nickname || null;
     _nameCache.set(uid, name);
     return name;
@@ -4677,7 +4650,7 @@ async function _resolveUserName(uid) {
 
 async function _loadShopSales(shopId) {
   const panel = document.getElementById('shopSalesPanel');
-  const btn = document.getElementById('shopSalesBtn');
+  const btn   = document.getElementById('shopSalesBtn');
   if (!panel) return;
 
   if (!panel.style.display || panel.style.display === 'none') {
@@ -4693,15 +4666,15 @@ async function _loadShopSales(shopId) {
   try {
     const res = await httpsCallable(functions, 'getShopSales')({ shopId, limit: 20 });
     const { sales, totalRevenue, totalSales, seedlingRevenue, seedlingCount, boosterRevenue, boosterCount,
-      mineRevenue, mineCount, mineMiners } = res.data;
-    const mtRevenue = (seedlingRevenue || 0) + (boosterRevenue || 0);
-    const mtCount = (seedlingCount || 0) + (boosterCount || 0);
+            mineRevenue, mineCount, mineMiners } = res.data;
+    const mtRevenue  = (seedlingRevenue || 0) + (boosterRevenue || 0);
+    const mtCount    = (seedlingCount  || 0) + (boosterCount  || 0);
     const grandTotal = (totalRevenue || 0) + mtRevenue + (mineRevenue || 0);
-    const mineCard = (mineCount || 0) > 0 ? `
+    const mineCard   = (mineCount || 0) > 0 ? `
           <div style="flex:1;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:8px;text-align:center">
             <div style="color:#fcd34d;font-size:10px;margin-bottom:2px">⛏ 금광 채굴</div>
-            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(mineRevenue || 0).toLocaleString()}</div>
-            <div style="color:#6b7280;font-size:10px">${mineMiners || 0}명 채굴 중</div>
+            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(mineRevenue||0).toLocaleString()}</div>
+            <div style="color:#6b7280;font-size:10px">${mineMiners||0}명 채굴 중</div>
           </div>` : '';
     let html = `
       <div style="background:rgba(255,255,255,.03);border:1px solid #1f2937;border-radius:10px;padding:12px">
@@ -4712,24 +4685,24 @@ async function _loadShopSales(shopId) {
           </div>
           <div style="flex:1;background:#1f2937;border-radius:8px;padding:10px;text-align:center">
             <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">총 판매 수량</div>
-            <div style="color:#60a5fa;font-weight:700;font-size:18px">${((totalSales || 0) + mtCount).toLocaleString()} 개</div>
+            <div style="color:#60a5fa;font-weight:700;font-size:18px">${((totalSales||0)+mtCount).toLocaleString()} 개</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
           <div style="flex:1;min-width:80px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px;text-align:center">
             <div style="color:#34d399;font-size:10px;margin-bottom:2px">🛒 아이템 매출</div>
-            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(totalRevenue || 0).toLocaleString()}</div>
-            <div style="color:#6b7280;font-size:10px">${(totalSales || 0).toLocaleString()} 개</div>
+            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(totalRevenue||0).toLocaleString()}</div>
+            <div style="color:#6b7280;font-size:10px">${(totalSales||0).toLocaleString()} 개</div>
           </div>
           <div style="flex:1;min-width:80px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:8px;text-align:center">
             <div style="color:#6ee7b7;font-size:10px;margin-bottom:2px">🌱 묘목 매출</div>
-            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(seedlingRevenue || 0).toLocaleString()}</div>
-            <div style="color:#6b7280;font-size:10px">${(seedlingCount || 0).toLocaleString()} 개</div>
+            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(seedlingRevenue||0).toLocaleString()}</div>
+            <div style="color:#6b7280;font-size:10px">${(seedlingCount||0).toLocaleString()} 개</div>
           </div>
           <div style="flex:1;min-width:80px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:8px;padding:8px;text-align:center">
             <div style="color:#c4b5fd;font-size:10px;margin-bottom:2px">💊 영양제 매출</div>
-            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(boosterRevenue || 0).toLocaleString()}</div>
-            <div style="color:#6b7280;font-size:10px">${(boosterCount || 0).toLocaleString()} 개</div>
+            <div style="color:#fbbf24;font-weight:700;font-size:14px">${(boosterRevenue||0).toLocaleString()}</div>
+            <div style="color:#6b7280;font-size:10px">${(boosterCount||0).toLocaleString()} 개</div>
           </div>
           ${mineCard}
         </div>`;
@@ -4738,7 +4711,7 @@ async function _loadShopSales(shopId) {
     } else {
       html += `<div style="font-size:11px;color:#6b7280;margin-bottom:6px">최근 판매 내역 (최대 20건)</div>`;
       sales.forEach(s => {
-        const dt = s.createdAt ? new Date(s.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '─';
+        const dt = s.createdAt ? new Date(s.createdAt).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '─';
         html += `<div style="display:flex;align-items:center;justify-content:space-between;
                               padding:7px 0;border-bottom:1px solid #1f2937;font-size:12px">
           <div style="flex:1;min-width:0">
@@ -4746,8 +4719,8 @@ async function _loadShopSales(shopId) {
             <div style="color:#6b7280;margin-top:2px">${dt} · ×${s.qty}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:10px">
-            <div style="color:#fbbf24;font-weight:700">+${(s.ownerShare || 0).toLocaleString()} G</div>
-            <div style="color:#4b5563;font-size:11px">합계 ${(s.totalCost || 0).toLocaleString()}</div>
+            <div style="color:#fbbf24;font-weight:700">+${(s.ownerShare||0).toLocaleString()} G</div>
+            <div style="color:#4b5563;font-size:11px">합계 ${(s.totalCost||0).toLocaleString()}</div>
           </div>
         </div>`;
       });
@@ -4760,7 +4733,7 @@ async function _loadShopSales(shopId) {
 }
 
 async function _execLevelUpShop(shop) {
-  const lvl = shop.level ?? 1;
+  const lvl     = shop.level ?? 1;
   const lvlCost = lvl * lvl * 10000;
   if (!confirm(`🏪 ${escHtml(shop.name)} 레벨업\nLv.${lvl} → Lv.${lvl + 1}\n💰 ${lvlCost.toLocaleString()} 골드 차감\n진행하시겠습니까?`)) return;
   try {
@@ -4815,7 +4788,7 @@ function openShopAdminModal(shop) {
   if (!modal) return;
 
   $('shopAdminModalTitle').textContent = `${_t('shop_admin_title')}: ${shop.name}`;
-  $('shopAdminShopId').value = shop.id;
+  $('shopAdminShopId').value   = shop.id;
   $('shopAdminShopName').value = shop.name;
   $('shopAdminShopType').value = _SHOP_TYPE_NORMALIZE[shop.type] || shop.type;
 
@@ -4824,7 +4797,7 @@ function openShopAdminModal(shop) {
     modal.classList.add('open');
     httpsCallable(functions, 'getWeaponArmorItems')()
       .then(res => _renderShopAdminItems(res.data.items || []))
-      .catch(() => { });
+      .catch(() => {});
   } else {
     _renderShopAdminItems(shop.items || []);
     modal.classList.add('open');
@@ -4833,8 +4806,8 @@ function openShopAdminModal(shop) {
 
 // 코드에 하드코딩된 아이템 (treasure_items 컬렉션에 없을 수 있는 것들)
 const KNOWN_ITEMS = {
-  potion_red: { name: '빨간 약 (HP +100)', type: 'potion' },
-  potion_mp: { name: '마나 물약 (MP 전체회복)', type: 'potion' },
+  potion_red:    { name: '빨간 약 (HP +100)', type: 'potion' },
+  potion_mp:     { name: '마나 물약 (MP 전체회복)', type: 'potion' },
   revive_ticket: { name: '부활 티켓', type: 'misc' },
 };
 
@@ -4858,9 +4831,9 @@ function _buildItemCatalog() {
 function _buildItemSelectOptions(currentItemId, shopType) {
   const catalog = _buildItemCatalog();
   const PREFIX_MAP = {
-    potion: ['potion_', 'revive_'],
+    potion:       ['potion_', 'revive_'],
     weapon_armor: ['weapon_', 'armor_', 'armo_', 'helm_', 'legs_', 'glov_', 'boot_', 'ches_', 'sword_', 'bow_', 'shield_'],
-    misc: [],
+    misc:         [],
   };
   const prefixes = PREFIX_MAP[_SHOP_TYPE_NORMALIZE[shopType] || shopType] || [];
 
@@ -4894,7 +4867,7 @@ function _makeItemRow(it, idx) {
     <input type="number" class="sad-stock" value="${it?.stock ?? -1}"          placeholder="-1=무한"    style="${s}" min="-1">
     <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:13px">✕</button>`;
 
-  const sel = div.querySelector('.sad-itemid');
+  const sel  = div.querySelector('.sad-itemid');
   const nameInput = div.querySelector('.sad-name');
 
   // KNOWN_ITEMS has canonical names — always override stored names for these items
@@ -4925,9 +4898,9 @@ function _collectShopAdminItems() {
   const items = [];
   for (const row of rows) {
     const itemId = row.querySelector('.sad-itemid')?.value?.trim();
-    const name = row.querySelector('.sad-name')?.value?.trim();
-    const price = Number(row.querySelector('.sad-price')?.value);
-    const stock = Number(row.querySelector('.sad-stock')?.value ?? -1);
+    const name   = row.querySelector('.sad-name')?.value?.trim();
+    const price  = Number(row.querySelector('.sad-price')?.value);
+    const stock  = Number(row.querySelector('.sad-stock')?.value ?? -1);
     if (!itemId || !name || isNaN(price)) continue;
     items.push({ itemId, name, price, stock });
   }
@@ -4942,20 +4915,20 @@ $('btnShopAdminAddItem')?.addEventListener?.('click', () => {
 });
 
 $('btnShopAdminSave')?.addEventListener?.('click', async () => {
-  const shopId = $('shopAdminShopId')?.value;
-  const name = $('shopAdminShopName')?.value?.trim();
-  const type = $('shopAdminShopType')?.value;
-  const items = _collectShopAdminItems();
+  const shopId   = $('shopAdminShopId')?.value;
+  const name     = $('shopAdminShopName')?.value?.trim();
+  const type     = $('shopAdminShopType')?.value;
+  const items    = _collectShopAdminItems();
   if (!name) { alert('Please enter a shop name.'); return; }
 
   // 5km radius duplicate check — covers admin ('potion') and user-placed ('shop_potion') type aliases
   const _shopTypeAliases = {
-    weapon_armor: ['weapon_armor', 'shop_weapon_armor'],
-    shop_weapon_armor: ['weapon_armor', 'shop_weapon_armor'],
-    potion: ['potion', 'shop_potion'],
-    shop_potion: ['potion', 'shop_potion'],
-    misc: ['misc', 'shop_misc'],
-    shop_misc: ['misc', 'shop_misc'],
+    weapon_armor:       ['weapon_armor', 'shop_weapon_armor'],
+    shop_weapon_armor:  ['weapon_armor', 'shop_weapon_armor'],
+    potion:             ['potion', 'shop_potion'],
+    shop_potion:        ['potion', 'shop_potion'],
+    misc:               ['misc', 'shop_misc'],
+    shop_misc:          ['misc', 'shop_misc'],
   };
   const _validTypes = _shopTypeAliases[type] || [type];
   const shopData = getShops().find(s => s.id === shopId);
@@ -5017,7 +4990,7 @@ $('shopAdminShopType')?.addEventListener?.('change', () => {
 function _openMyIdModal() {
   const modal = $('myIdModal');
   if (!modal) return;
-  const uid = _uid ?? '—';
+  const uid  = _uid  ?? '—';
   const name = _ctx?.displayName ?? _userEmail ?? '—';
   modal.innerHTML = `
     <div style="background:#111827;border:1px solid #374151;border-radius:16px;
@@ -5059,7 +5032,7 @@ function _openMyIdModal() {
 
 function showToast(msg, type = 'info') {
   const ICON = { success: '✅', error: '❌', warn: '⚠️', info: 'ℹ️' };
-  const BG = { success: '#15803d', error: '#b91c1c', warn: '#b45309', info: '#1d4ed8' };
+  const BG   = { success: '#15803d', error: '#b91c1c', warn: '#b45309', info: '#1d4ed8' };
   const el = document.createElement('div');
   el.className = 'game-toast';
   el.innerHTML = `<span style="font-size:15px;flex-shrink:0;line-height:1.2">${ICON[type] || ICON.info}</span>` +
@@ -5197,7 +5170,7 @@ async function loadUserTreasureNpcs() {
     // 기존 마커 제거
     Object.values(_utNpcMarkers).forEach(m => m.setMap(null));
     Object.values(_utActualMarkers).forEach(({ marker, line }) => { marker.setMap(null); line?.setMap(null); });
-    _utNpcMarkers = {};
+    _utNpcMarkers    = {};
     _utActualMarkers = {};
     _utNpcData = npcs;
     _updateTreasureOnMapCount(); // 유저 숨김 보물 포함해서 재집계
@@ -5598,10 +5571,10 @@ function _utSetPickedCoords(lat, lng) {
   _utPickedLat = lat;
   _utPickedLng = lng;
   const hidden = document.getElementById('utRegCoords');
-  const text = document.getElementById('utRegCoordsText');
+  const text   = document.getElementById('utRegCoordsText');
   if (hidden) hidden.value = `${lat}, ${lng}`;
-  if (text) text.textContent = `📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-  if (text) text.style.color = '#059669';
+  if (text)   text.textContent = `📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  if (text)   text.style.color = '#059669';
 }
 
 function _utStartMapPick() {
@@ -5683,12 +5656,12 @@ function _utRegMsg(text, isErr) {
 
 async function registerTreasure() {
   const activeTypeBtn = document.querySelector('.ut-reg-type-btn.active');
-  const type = activeTypeBtn?.dataset.type || 'item';
-  const itemId = document.getElementById('utRegItemSel')?.value || null;
-  const count = parseInt(document.getElementById('utRegCount')?.value || '1', 10);
+  const type    = activeTypeBtn?.dataset.type || 'item';
+  const itemId  = document.getElementById('utRegItemSel')?.value || null;
+  const count   = parseInt(document.getElementById('utRegCount')?.value || '1', 10);
   const radiusM = parseInt(document.getElementById('utRegRadius')?.value || '5', 10);
-  const hint = document.getElementById('utRegHint')?.value?.trim();
-  const story = document.getElementById('utRegStory')?.value?.trim();
+  const hint    = document.getElementById('utRegHint')?.value?.trim();
+  const story   = document.getElementById('utRegStory')?.value?.trim();
   const comment = document.getElementById('utRegComment')?.value?.trim();
   const lat = _utPickedLat, lng = _utPickedLng;
   if (!lat || !lng) { _utRegMsg('지도에서 보물 위치를 먼저 선택하세요.', true); return; }
@@ -5723,7 +5696,7 @@ async function registerTreasure() {
 }
 
 async function openMyTreasuresModal() {
-  const modal = document.getElementById('utMyModal');
+  const modal  = document.getElementById('utMyModal');
   if (!modal) return;
   const listEl = document.getElementById('utMyList');
   if (listEl) listEl.innerHTML = '<p style="color:#aaa">불러오는 중...</p>';
@@ -5738,7 +5711,7 @@ async function openMyTreasuresModal() {
     const statusLabel = { active: '활성', found: '발견됨', cancelled: '취소됨', expired: '만료' };
     listEl.innerHTML = items.map(t => {
       const reward = t.type === 'item' ? `아이템 ×${t.itemCount}` : `${t.itemCount} 코인`;
-      const label = statusLabel[t.status] || t.status;
+      const label  = statusLabel[t.status] || t.status;
       const hasCoords = t.lat != null && t.lng != null;
       return `<div class="ut-my-item">` +
         `<span class="ut-my-status ut-status-${t.status}">${label}</span>` +
@@ -5823,7 +5796,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── 사용자 보물 이벤트 ────────────────────────────────────────────────────────
   const utNpcModal = document.getElementById('utNpcModal');
   const utRegModal = document.getElementById('utRegModal');
-  const utMyModal = document.getElementById('utMyModal');
+  const utMyModal  = document.getElementById('utMyModal');
 
   document.getElementById('btnRegisterTreasure')
     ?.addEventListener('click', openMyTreasuresModal);
@@ -5835,7 +5808,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ?.addEventListener('click', e => { e.stopPropagation(); utMyModal?.classList.remove('open'); });
   utNpcModal?.addEventListener('click', e => { if (e.target === utNpcModal) utNpcModal.classList.remove('open'); });
   utRegModal?.addEventListener('click', e => { if (e.target === utRegModal) utRegModal.classList.remove('open'); });
-  utMyModal?.addEventListener('click', e => { if (e.target === utMyModal) utMyModal.classList.remove('open'); });
+  utMyModal?.addEventListener('click',  e => { if (e.target === utMyModal)  utMyModal.classList.remove('open'); });
   document.getElementById('btnDiscoverTreasure')
     ?.addEventListener('click', () => { if (_utCurrentNpc) discoverTreasure(_utCurrentNpc.id); });
   document.getElementById('btnUnlockHint')
@@ -5889,7 +5862,7 @@ function _startSessionGuard(uid) {
     sessionId: _SESSION_ID,
     startedAt: serverTimestamp(),
     ua: navigator.userAgent.slice(0, 120),
-  }, { merge: true }).catch(() => { });
+  }, { merge: true }).catch(() => {});
   // 다른 기기에서 로그인하면 sessionId가 바뀜 → 강제 로그아웃
   _sessionGuardUnsub = onSnapshot(ref, (snap) => {
     if (!snap.exists()) return;
@@ -5902,7 +5875,7 @@ function _startSessionGuard(uid) {
       );
       signOut(auth).finally(() => window.location.reload());
     }
-  }, () => { });
+  }, () => {});
 }
 
 function _stopSessionGuard() {
@@ -5936,7 +5909,7 @@ function _initVirtualModeGuide() {
     if (!rect.width) return;
 
     // 버튼 기준 오른쪽 정렬, 버튼 바로 위에 배치
-    const right = Math.max(4, window.innerWidth - rect.right);
+    const right  = Math.max(4, window.innerWidth  - rect.right);
     const bottom = Math.max(4, window.innerHeight - rect.top + 12);
 
     const el = document.createElement('div');
@@ -5993,7 +5966,7 @@ function _initVirtualModeGuide() {
     function dismiss() {
       el.remove();
       btn.classList.remove('vg-glow');
-      try { localStorage.setItem(KEY, '1'); } catch { }
+      try { localStorage.setItem(KEY, '1'); } catch {}
     }
 
     el.addEventListener('click', dismiss);
@@ -6058,25 +6031,25 @@ function _openOwnerItemEditor(shop) {
 
   modal.style.display = 'flex';
 
-  const list = document.getElementById('ownerItemList');
-  const msg = document.getElementById('ownerItemMsg');
-  const addBtn = document.getElementById('ownerItemAddRow');
+  const list    = document.getElementById('ownerItemList');
+  const msg     = document.getElementById('ownerItemMsg');
+  const addBtn  = document.getElementById('ownerItemAddRow');
   const saveBtn = document.getElementById('ownerItemSave');
   const closeBtn = document.getElementById('ownerItemClose');
 
   // 카테고리별 아이템 접두사 필터
   const PREFIXES = {
-    potion: ['potion_', 'revive_'],
-    weapon_armor: ['weapon_', 'armor_', 'armo_', 'helm_', 'legs_', 'glov_', 'boot_', 'sword_', 'bow_', 'shield_', 'ches_'],
-    misc: [],
-    shop_potion: ['potion_', 'revive_'],
+    potion:            ['potion_', 'revive_'],
+    weapon_armor:      ['weapon_', 'armor_', 'armo_', 'helm_', 'legs_', 'glov_', 'boot_', 'sword_', 'bow_', 'shield_', 'ches_'],
+    misc:              [],
+    shop_potion:       ['potion_', 'revive_'],
     shop_weapon_armor: ['weapon_', 'armor_', 'armo_', 'helm_', 'legs_', 'glov_', 'boot_', 'sword_', 'bow_', 'shield_', 'ches_'],
-    shop_misc: [],
+    shop_misc:         [],
   };
-  const shopType = shop.type || 'misc';
-  const prefixes = PREFIXES[shopType] || [];
-  const catalog = _buildItemCatalog();
-  const filtered = Object.entries(catalog).filter(([id]) =>
+  const shopType  = shop.type || 'misc';
+  const prefixes  = PREFIXES[shopType] || [];
+  const catalog   = _buildItemCatalog();
+  const filtered  = Object.entries(catalog).filter(([id]) =>
     !prefixes.length || prefixes.some(p => id.startsWith(p))
   );
 
@@ -6125,7 +6098,7 @@ function _openOwnerItemEditor(shop) {
     for (const row of rows) {
       const itemId = row.querySelector('select')?.value?.trim();
       if (!itemId) continue;
-      const name = catalog[itemId]?.name || itemId;
+      const name  = catalog[itemId]?.name || itemId;
       const price = Number(row.querySelectorAll('input')[0]?.value ?? 0);
       const stock = Number(row.querySelectorAll('input')[1]?.value ?? -1);
       if (isNaN(price) || price < 0) { msg.style.color = '#ef4444'; msg.textContent = `가격 오류: ${itemId}`; saveBtn.disabled = false; return; }
@@ -6167,10 +6140,10 @@ function _openOwnerItemEditor(shop) {
 
 // ── 좌표 점프 버튼 ──────────────────────────────────────────────────────────
 (function initCoordJump() {
-  const btn = $('btnCoordJump');
+  const btn         = $('btnCoordJump');
   const coordsInput = $('jumpCoords');
-  const latInput = $('jumpLat');
-  const lngInput = $('jumpLng');
+  const latInput    = $('jumpLat');
+  const lngInput    = $('jumpLng');
   if (!btn || !coordsInput) return;
 
   function parseAndJump() {
@@ -6199,7 +6172,7 @@ function _openOwnerItemEditor(shop) {
 
 init();
 
-window.showToast = showToast;
-window.withBtn = withBtn;
+window.showToast          = showToast;
+window.withBtn            = withBtn;
 window.showPendingOverlay = showPendingOverlay;
 window.hidePendingOverlay = hidePendingOverlay;
