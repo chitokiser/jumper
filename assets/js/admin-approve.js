@@ -708,7 +708,7 @@ async function loadSystemTotalKm() {
     const snap = await getDocs(collection(db, 'users'));
     let total = 0;
     snap.forEach(d => { total += Number(d.data().pointBalanceVnd || 0); });
-    el.textContent = total.toLocaleString() + ' KM';
+    el.textContent = total.toLocaleString() + ' 원 (' + total.toLocaleString() + ' KM) / 약 ' + Math.floor(total * 18.84).toLocaleString() + ' VND';
   } catch (err) {
     el.textContent = '오류 발생';
     console.error(err);
@@ -798,7 +798,7 @@ async function loadApprovedDeposits() {
     const q = query(
       collection(db, "deposits"),
       where("status", "==", "approved"),
-      orderBy("approvedAt", "desc"),
+      orderBy("requestedAt", "desc"),
       limit(50)
     );
     const snap = await getDocs(q);
@@ -821,7 +821,8 @@ async function loadApprovedDeposits() {
         <details class="expander" data-ref="${esc(refCode)}">
           <summary>
             <div class="sum-left">
-              <div class="sum-title">${esc(v.depositorName || "-")}</div>
+              <div class="sum-title">입금자: ${esc(v.depositorName || "-")}</div>
+              <div class="sum-sub" style="color:#d97706; font-weight:bold;">승인 계좌: ${esc(v.bank || "IM뱅크(기본)")}</div>
               <div class="sum-sub">${esc(refCode)} · ${esc(dateStr)}</div>
             </div>
             <div class="sum-right">
