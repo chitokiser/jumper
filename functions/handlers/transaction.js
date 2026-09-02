@@ -626,11 +626,11 @@ async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW
       throw new Error('가맹점 소유자의 UID 정보가 없습니다.');
     }
     const merchantOwnerRef = db.collection('users').doc(merchantOwnerUid);
-    const merchantBalanceRef = db.collection('k_culture_balances').doc(String(merchantId));
+    // merchantBalanceRef removed, sending directly to owner's pointBalanceVnd
 
     const [ownerSnap, balanceSnap] = await Promise.all([
       tx.get(merchantOwnerRef),
-      tx.get(merchantBalanceRef)
+      // old balance ref removed
     ]);
 
     // 구매자의 멘토/그랜드멘토 정보
