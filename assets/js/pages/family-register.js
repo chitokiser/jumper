@@ -67,11 +67,13 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
   const btnToggle  = $("btnToggleMerchantEdit");
   const btnSave    = $("btnSaveMerchantEdit");
   const btnCancel  = $("btnCancelMerchantEdit");
+  const inputName   = $("editMerchantName");
   const inputCareer = $("editMerchantCareer");
   const inputRegion = $("editMerchantRegion");
   const inputDesc   = $("editMerchantDesc");
 
   btnToggle?.addEventListener("click", () => {
+    if (inputName)   inputName.value   = merchantData.name || merchantName || "";
     if (inputCareer) inputCareer.value = merchantData.career || "";
     if (inputRegion) inputRegion.value = merchantData.region || "";
     if (inputDesc)   inputDesc.value   = merchantData.description || "";
@@ -87,10 +89,15 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
 
   btnSave?.addEventListener("click", async () => {
     if (!_merchantDocId) return;
+    const name   = (inputName?.value   || "").trim();
     const career = (inputCareer?.value || "").trim();
     const region = (inputRegion?.value || "").trim();
     const desc   = (inputDesc?.value   || "").trim();
 
+    if (!name) {
+      if (editMsg) { editMsg.textContent = "가게명/상호를 입력해 주세요."; editMsg.style.color = "var(--danger, #e53e3e)"; }
+      return;
+    }
     if (!career) {
       if (editMsg) { editMsg.textContent = "업종/카테고리를 입력해 주세요."; editMsg.style.color = "var(--danger, #e53e3e)"; }
       return;
@@ -104,12 +111,15 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
     if (editMsg) editMsg.textContent = "";
 
     try {
-      await updateDoc(doc(db, "merchants", _merchantDocId), {
+      await updateDoc(doc(db, "merchants", _merchantDocId), { name,
         career, region, description: desc, updatedAt: serverTimestamp(),
       });
+      merchantData.name = name;
+      merchantName = name;
       merchantData.career = career;
       merchantData.region = region;
       merchantData.description = desc;
+      if (nameEl)   nameEl.textContent   = name   || "-";
       if (careerEl) careerEl.textContent = career || "-";
       if (regionEl) regionEl.textContent = region || "-";
       if (descEl)   descEl.textContent   = desc   || "-";

@@ -87,7 +87,11 @@
         <button class="btn" id="btnToggleMerchantEdit" type="button" style="margin-top:12px;">✏️ 정보 수정</button>
 
         <div id="merchantEditForm" style="display:none; margin-top:16px; border-top:1px solid var(--border,#e5e7eb); padding-top:14px;">
-          <p style="font-weight:600; margin-bottom:10px;">업종/카테고리 · 활동지역 · 소개 수정</p>
+          <p style="font-weight:600; margin-bottom:10px;">상호 · 업종 · 활동지역 · 소개 수정</p>
+          <label class="field">
+            <span>상호 / 가게명 <em class="req">*</em></span>
+            <input type="text" id="editMerchantName" maxlength="50" />
+          </label>
           <label class="field">
             <span>업종 / 카테고리 <em class="req">*</em></span>
             <input type="text" id="editMerchantCareer" maxlength="80" />
