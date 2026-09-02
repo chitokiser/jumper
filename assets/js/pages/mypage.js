@@ -160,12 +160,12 @@ async function loadKCultureBalances(uid) {
       const elPay = $("paymentBalanceDisplay");
 
       // Set up realtime snapshot listener for automatic balance updates
-      import("https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js").then(({ doc, onSnapshot }) => {
-        onSnapshot(doc(db, "users", uid), (snap) => {
+      import("https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js").then((fStore) => {
+        fStore.onSnapshot(fStore.doc(db, "users", uid), (snap) => {
           if (!snap.exists()) return;
           const updatedD = snap.data();
           const pBal = updatedD.pointBalance || 0;
-          const kBal = updatedD.pointBalanceVnd || 0; // Migrated to function conceptually as KRW
+          const kBal = updatedD.pointBalanceVnd || 0;
           if (elPoint) {
             const btnHtml = `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 포인트(Point)를 머니로 전환</button>`;
             if (!elPoint.innerHTML.includes("btnExchangePoint")) {
@@ -176,14 +176,14 @@ async function loadKCultureBalances(uid) {
             }
           }
           if (elPay) {
-            elPay.innerHTML = `<span>${kBal.toLocaleString("ko-KR")} KRW</span>` +
+            elPay.innerHTML = `<span>${kBal.toLocaleString("ko-KR")} KM</span>` +
               `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(K-MOA 가맹점 전용 머니)</div>`;
           }
         });
-      });
+      }).catch(err => console.error(err));
 
       if (elPoint) {
-        elPoint.innerHTML = `<span style="font-size:1.6rem;">${pointBal.toLocaleString("ko-KR")} P</span>` +
+        elPoint.innerHTML = `<span id="ptSpan" style="font-size:1.6rem;">${pointBal.toLocaleString("ko-KR")} P</span>` +
           `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>`;
         setTimeout(() => {
           const btnExc = document.getElementById("btnExchangePoint");
@@ -212,12 +212,14 @@ async function loadKCultureBalances(uid) {
           }
         }, 100);
       }
+      // elPay Render
       if (elPay) {
-        // elPay is now dynamically handled by onSnapshot above
+        elPay.innerHTML = `<span id="paySpan">${payBal.toLocaleString("ko-KR")} KM</span>` +
+          `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(K-MOA 가맹점 전용 머니)</div>`;
       }
     } else {
       if ($("pointDisplay")) $("pointDisplay").textContent = "0 P";
-      if ($("paymentBalanceDisplay")) $("paymentBalanceDisplay").textContent = "0 VND";
+      if ($("paymentBalanceDisplay")) $("paymentBalanceDisplay").textContent = "0 KM";
     }
   } catch (err) {
     console.error("Failed to load K-CULTURE balances:", err);
