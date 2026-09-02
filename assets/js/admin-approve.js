@@ -700,7 +700,23 @@ async function editMerchantInfo(mid, career, region, description) {
 
 // ── 입금 승인 탭 ──────────────────────────────────────────────────────────
 
+async function loadSystemTotalKm() {
+  const el = document.getElementById('sysTotalKm');
+  if (!el) return;
+  try {
+    el.textContent = '지갑 전체 스캔 중...';
+    const snap = await getDocs(collection(db, 'users'));
+    let total = 0;
+    snap.forEach(d => { total += Number(d.data().pointBalanceVnd || 0); });
+    el.textContent = total.toLocaleString() + ' KM';
+  } catch (err) {
+    el.textContent = '오류 발생';
+    console.error(err);
+  }
+}
+
 async function loadDeposits() {
+  loadSystemTotalKm();
   if (!depositList) return;
   depositList.innerHTML = "";
   setState("입금 대기 목록 로딩중…");
@@ -856,6 +872,7 @@ async function approveDepositAction(refCode) {
       `승인 완료!\n충전된 금액: ${d.hexDisplay}\nVND 환산: ${(d.vndAmount || 0).toLocaleString()} VND`
     );
     await loadDeposits();
+    await loadApprovedDeposits();
   } catch (err) {
     setState("승인 실패");
     console.error("approveDeposit:", err);
