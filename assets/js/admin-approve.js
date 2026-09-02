@@ -1635,14 +1635,16 @@ btnReloadMerchants?.addEventListener("click", () => loadMerchants());
 btnReloadItems?.addEventListener("click", () =>
   loadItemsByStatus(selItemStatus?.value || "pending")
 );
-btnReloadDeposits?.addEventListener("click", () => loadDeposits());
+btnReloadDeposits?.addEventListener("click", () => { loadDeposits(); loadApprovedDeposits(); });
+const btnReloadApprovedDeposits = $("btnReloadApprovedDeposits");
+btnReloadApprovedDeposits?.addEventListener("click", () => loadApprovedDeposits());
 selItemStatus?.addEventListener("change", () => loadItemsByStatus(selItemStatus.value));
 
 // 탭 전환
 btnTabGuides?.addEventListener("click", () => { showTab("guides"); loadGuideApplications(); });
 btnTabMerchants?.addEventListener("click", () => { showTab("merchants"); loadMerchants(); });
 btnTabItems?.addEventListener("click", () => { showTab("items"); loadItemsByStatus(selItemStatus?.value || "pending"); });
-btnTabDeposits?.addEventListener("click", () => { showTab("deposits"); loadDeposits(); });
+btnTabDeposits?.addEventListener("click", () => { showTab("deposits"); loadDeposits(); loadApprovedDeposits(); });
 btnTabHex?.addEventListener("click", () => { showTab("hex"); loadContractStatus(); checkHexAllowance(); });
 btnTabMembers?.addEventListener("click", () => { showTab("members"); loadUsersList(); });
 btnTabDao?.addEventListener("click", () => { showTab("dao"); loadDaoProposals(); });
