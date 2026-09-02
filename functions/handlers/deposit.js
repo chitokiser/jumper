@@ -1,32 +1,6 @@
-// functions/handlers/deposit.js
-// 원화(KRW) 입금 요청 → 관리자 확인 → 온체인 creditPoints 동기화
-//
-// 전체 흐름:
-//  A) 유저: requestDeposit()   → Firestore에 pending 문서 생성 + 입금 안내 반환
-//  B) 관리자: approveDeposit() → 환율 조회 → creditPoints() 온체인 호출 → approved
-//  C) 조회: listPendingDeposits() → 관리자 대시보드용
-
 'use strict';
 
 const admin = require('firebase-admin');
-const { ethers } = require('ethers');
-const {
-  ADDRESSES,
-  getAdminWallet,
-  getProvider,
-  getPlatformContract,
-  getHexContract,
-  walletFromKey,
-  estimateGasWithBuffer,
-} = require('../wallet/chain');
-const {
-  fetchExchangeRates,
-  krwToHexWei,
-  krwToUsd,
-  krwToVnd,
-  toSnapshotScaled,
-} = require('../wallet/exchange');
-const { decrypt } = require('../wallet/crypto');
 const { requireAdmin } = require('../wallet/admin');
 
 const db = admin.firestore();
@@ -44,21 +18,8 @@ const BANK_INFO_VND = {
   holder: '신헌철 (SHIN HEON CHEOL)',
 };
 
-const MIN_KRW = 10_000;  // 최소 충전 금액
+const MIN_KRW = 10_000;
 
-// ────────────────────────────────────────────────
-// A. 유저: 입금 요청 생성
-// ────────────────────────────────────────────────
-
-/**
- * requestDeposit
- * - 고유 refCode 발급 → Firestore deposits/{refCode} 저장 → 입금 안내 반환
- * - refCode는 온체인 중복 방지(usedTopupRef)에도 사용됨
- *
- * @param {string} uid
- * @param {{ amountKrw: number, depositorName: string, bank?: string }} params
- * @returns {{ refCode, amountKrw, bankInfo, estimatedHex, estimatedVnd, estimatedUsd }}
- */
 async function requestDeposit(uid, payload) {
   const { amountKrw, amountVnd, currency, depositorName, bank } = payload;
   let amount = 0;
@@ -79,20 +40,10 @@ async function requestDeposit(uid, payload) {
     throw new Error('입금자명(2자 이상)을 입력해주세요');
   }
 
-  // 수탁 지갑 확인
   const userSnap = await db.collection('users').doc(uid).get();
-  const address = userSnap.data()?.wallet?.address;
-  if (!address) {
-    throw new Error('수탁 지갑이 없습니다. 먼저 회원가입을 완료해주세요');
-  }
+  const address = userSnap.data()?.wallet?.address || '-';
 
-  // 현재 환율 조회 (표시용)
-  let rates = null;
-  try { rates = await fetchExchangeRates(); } catch (_) { /* 비필수 */ }
-
-  // 고유 refCode (온체인 bytes32 해시 키로도 활용)
   const refCode = `DEP-${uid.slice(0, 8).toUpperCase()}-${Date.now()}`;
-  const refHash = ethers.id(refCode); // keccak256 → bytes32
 
   const depositData = {
     uid,
@@ -101,31 +52,20 @@ async function requestDeposit(uid, payload) {
     currency: currency || "KRW",
     bank: bank || (currency === 'VND' ? BANK_INFO_VND.bank : BANK_INFO.bank),
     refCode,
-    refHash,       // 온체인과 동일 값 (감사 목적)
     status: 'pending',
     requestedAt: admin.firestore.FieldValue.serverTimestamp(),
-    rateAtRequest: rates
-      ? { krwPerUsd: rates.krwPerUsd, vndPerUsd: rates.vndPerUsd, source: rates.source }
-      : null,
+    rateAtRequest: null,
   };
 
   if (currency === "VND") {
     depositData.amountVnd = amount;
-    // 환율을 사용하여 원화 가치 (Point 지급량) 계산
-    depositData.amountKrw = rates ? Math.floor(amount / rates.vndPerUsd * rates.krwPerUsd) : 0;
+    depositData.amountKrw = Math.floor(amount / 18.84); // VND to KRW estimate if VND was still used
   } else {
     depositData.amountKrw = amount;
-    depositData.amountVnd = rates ? Math.floor(amount / rates.krwPerUsd * rates.vndPerUsd) : 0;
+    depositData.amountVnd = Math.floor(amount * 18.84);
   }
 
   await db.collection('deposits').doc(refCode).set(depositData);
-
-  // 응답 조립
-  const estimatedHex = rates
-    ? parseFloat(ethers.formatEther(krwToHexWei(depositData.amountKrw, rates.krwPerUsd))).toFixed(4)
-    : '환율 조회 실패';
-  const estimatedUsd = rates ? krwToUsd(depositData.amountKrw, rates.krwPerUsd) : null;
-  const estimatedVnd = depositData.amountVnd ? depositData.amountVnd.toLocaleString() + ' VND' : '환율 조회 실패';
 
   return {
     refCode,
@@ -134,211 +74,66 @@ async function requestDeposit(uid, payload) {
     bankInfo: BANK_INFO,
     bankInfoVnd: BANK_INFO_VND,
     instruction: `입금자명을 "${depositorName.trim()}"으로 정확히 입력하세요. 참조코드: ${refCode}`,
-    estimatedHex,
-    estimatedUsd,
-    estimatedVnd,
+    estimatedHex: depositData.amountKrw + ' KM', // For backward compat
+    estimatedUsd: null,
+    estimatedVnd: depositData.amountVnd ? depositData.amountVnd.toLocaleString() + ' VND' : null,
   };
 }
 
-// ────────────────────────────────────────────────
-// B. 관리자: 입금 승인 + 온체인 동기화
-// ────────────────────────────────────────────────
-
-/**
- * approveDeposit
- * 1. 관리자 권한 확인
- * 2. 실시간 환율 조회 → hexAmountWei 계산
- * 3. creditPoints() 호출 (관리자 지갑이 msg.sender=owner)
- *    → Point transferFrom(owner → contract) + user.pointWei 증가
- * 4. Firestore 상태 업데이트
- *
- * 사전 조건: 관리자 지갑이 Point.approve(jumpPlatform, 충분한 금액)을 미리 실행했어야 함
- *
- * @param {string} adminUid  - 관리자 Firebase UID
- * @param {string} refCode   - 승인할 입금 참조코드
- * @param {number|null} overrideKrwRate - 수동 환율 지정 (null이면 자동)
- * @returns {{ success, txHash, hexDisplay, usdAmount, vndAmount }}
- */
 async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterSecret = null) {
-  // ── 관리자 확인 (users.isAdmin / admins 컬렉션 / 이메일 허용목록 순) ──
   await requireAdmin(adminUid);
-
-  // ── 입금 문서 조회 ──
   const depositRef = db.collection('deposits').doc(refCode);
-  const depositSnap = await depositRef.get();
-  if (!depositSnap.exists) throw new Error('입금 요청을 찾을 수 없습니다');
-
-  const dep = depositSnap.data();
-  if (dep.status !== 'pending') {
-    throw new Error(`이미 처리된 요청입니다 (상태: ${dep.status})`);
-  }
-
-  // ── 온체인 멤버 등록 확인 + 미등록 시 자동 등록 ──────────────────────
-  const adminWallet = getAdminWallet();
-  const platformView = getPlatformContract(getProvider());
-  const [memberLevel] = await platformView.members(dep.userAddress);
-  const alreadyMember = Number(memberLevel) > 0;
-
-  if (!alreadyMember) {
-    // MetaMask 연결 지갑은 encryptedKey가 없으므로 서버에서 대신 등록 불가
-    const userSnap = await db.collection('users').doc(dep.uid).get();
-    const walletData = userSnap.data()?.wallet;
-
-    if (!walletData?.encryptedKey) {
-      throw new Error(
-        '온체인 미등록 상태입니다. 마이페이지 → "온체인 등록" 버튼을 먼저 눌러주세요.'
-      );
-    }
-    if (!masterSecret) {
-      throw new Error(
-        '[서버 설정 오류] masterSecret 없음. approveDeposit Cloud Function에 WALLET_MASTER_SECRET Secret을 추가하세요.'
-      );
-    }
-
-    // 1) 수탁 지갑에 가스비 BNB 소량 전송 (opBNB 가스비 충분)
-    const fundTx = await adminWallet.sendTransaction({
-      to: dep.userAddress,
-      value: ethers.parseEther('0.0001'),
-    });
-    await fundTx.wait();
-
-    // 2) 수탁 지갑으로 register(ZeroAddress)
-    const privateKey = decrypt(walletData.encryptedKey, masterSecret);
-    const userSigner = walletFromKey(privateKey, getProvider());
-    const userPlatform = getPlatformContract(userSigner);
-    const regGasLimit = await estimateGasWithBuffer(userPlatform, 'register', [ethers.ZeroAddress]);
-    const regTx = await userPlatform.register(ethers.ZeroAddress, { gasLimit: regGasLimit });
-    await regTx.wait();
-
-    // 3) Firestore 온체인 등록 상태 기록
-    await db.collection('users').doc(dep.uid).set({
-      onChain: {
-        registered: true,
-        registeredAt: admin.firestore.FieldValue.serverTimestamp(),
-        mentorAddress: ethers.ZeroAddress,
-        txHash: regTx.hash,
-        autoRegistered: true,
-      },
-    }, { merge: true });
-  }
-
-  // ── 환율 조회 ──
-  const rates = await fetchExchangeRates();
-  const krwPerUsd = overrideKrwRate || rates.krwPerUsd;
-
-  const hexAmountWei = krwToHexWei(dep.amountKrw, krwPerUsd);
-  const usdAmount = krwToUsd(dep.amountKrw, krwPerUsd);
-  const vndAmount = krwToVnd(dep.amountKrw, krwPerUsd, rates.vndPerUsd);
-  const usdKrwScaled = toSnapshotScaled(krwPerUsd);
-  const refBytes32 = ethers.id(refCode); // keccak256
-
-  // ── 이중 승인 방지: 먼저 processing 상태로 변경 ──
-  await depositRef.update({
-    status: 'processing',
-    processingAt: admin.firestore.FieldValue.serverTimestamp(),
-    processingBy: adminUid,
-  });
 
   try {
-    // ── Step 1: Point approve (필요 시 자동) → ownerDepositHex ──
-    try {
-      const hexContract = getHexContract(adminWallet);
+    const depositData = await db.runTransaction(async (t) => {
+      const depositSnap = await t.get(depositRef);
+      if (!depositSnap.exists) throw new Error('입금 요청을 찾을 수 없습니다');
 
-      // allowance 부족 시 MaxUint256 approve (관리자 지갑 → jumpPlatform)
-      const allowance = await hexContract.allowance(adminWallet.address, ADDRESSES.jumpPlatform);
-      if (allowance < hexAmountWei) {
-        const approveTx = await hexContract.approve(ADDRESSES.jumpPlatform, ethers.MaxUint256);
-        await approveTx.wait();
+      const dep = depositSnap.data();
+      if (dep.status !== 'pending' && dep.status !== 'processing') {
+        throw new Error(`이미 처리된 요청입니다 (상태: ${dep.status})`);
       }
 
-      const platformDep = getPlatformContract(adminWallet);
-      const depGasLimit = await estimateGasWithBuffer(platformDep, 'ownerDepositHex', [hexAmountWei]);
-      const depTx = await platformDep.ownerDepositHex(hexAmountWei, { gasLimit: depGasLimit });
-      await depTx.wait();
-    } catch (depositErr) {
-      throw new Error(`관리자→컨트랙트 Point 이체 실패 (ownerDepositHex): ${depositErr.message}`);
-    }
+      // 유저 잔고(포인트) 업데이트 - KRW 입금액을 KM으로 추가
+      const userRef = db.collection('users').doc(dep.uid);
+      const userSnap = await t.get(userRef);
+      const userData = userSnap.exists ? userSnap.data() : {};
+      const currentPointVnd = Number(userData.pointBalanceVnd || 0);
+      const addKm = Number(dep.amountKrw || 0);
 
-    // ── 온체인 adminCreditHex 호출 ──
-    let receipt;
-    try {
-      const platform = getPlatformContract(adminWallet);
+      t.update(userRef, { pointBalanceVnd: currentPointVnd + addKm });
 
-      const gasLimit = await estimateGasWithBuffer(platform, 'adminCreditHex', [
-        dep.userAddress,
-        hexAmountWei,
-        refBytes32,
-      ]);
+      // 입금 승인 처리
+      const approvedData = {
+        status: 'approved',
+        approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+        approvedBy: adminUid,
+        rateAtApproval: overrideKrwRate ? { krwPerUsd: overrideKrwRate } : { note: '1:1 KRW to KM' }
+      };
+      t.update(depositRef, approvedData);
 
-      const tx = await platform.adminCreditHex(
-        dep.userAddress,
-        hexAmountWei,
-        refBytes32,
-        { gasLimit }
-      );
-      receipt = await tx.wait();
-    } catch (creditErr) {
-      throw new Error(`포인트 지급 실패 (adminCreditHex): ${creditErr.message}`);
-    }
-
-    // ── Firestore 완료 처리 ──
-    await depositRef.update({
-      status: 'approved',
-      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
-      approvedBy: adminUid,
-      hexAmountWei: hexAmountWei.toString(),
-      usdAmount,
-      vndAmount,
-      rateAtApproval: {
-        krwPerUsd,
-        vndPerUsd: rates.vndPerUsd,
-        usdKrwScaled,
-        source: rates.source,
-      },
-      txHash: receipt.hash,
+      return { addKm, usdAmount: 0, vndAmount: dep.amountVnd || 0 };
     });
-
-    // ── 유저 문서 미러 업데이트 (UI 빠른 표시용) ──
-    await db.collection('users').doc(dep.uid).set({
-      balanceMirror: {
-        lastTopupAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastTopupKrw: dep.amountKrw,
-        lastTopupHex: hexAmountWei.toString(),
-        lastTopupTx: receipt.hash,
-      },
-    }, { merge: true });
 
     return {
       success: true,
-      txHash: receipt.hash,
-      hexDisplay: parseFloat(ethers.formatEther(hexAmountWei)).toFixed(4) + ' Point',
-      usdAmount,
-      vndAmount,
-      vndDisplay: vndAmount.toLocaleString() + ' VND',
+      txHash: 'FIREBASE_NATIVE',
+      hexDisplay: depositData.addKm.toLocaleString() + ' KM',
+      usdAmount: depositData.usdAmount,
+      vndAmount: depositData.vndAmount,
+      vndDisplay: depositData.vndAmount.toLocaleString() + ' VND(추산)',
     };
-
   } catch (err) {
-    // 실패 시 pending 으로 롤백
+    if (err.message.includes('이미 처리된 요청')) throw err;
     await depositRef.update({
       status: 'pending',
-      processingAt: admin.firestore.FieldValue.delete(),
-      processingBy: admin.firestore.FieldValue.delete(),
       lastError: err.message,
       lastErrorAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-    throw new Error(`온체인 creditPoints 실패: ${err.message}`);
+    throw new Error(`Firebase 내부 자산 충전 실패: ${err.message}`);
   }
 }
 
-// ────────────────────────────────────────────────
-// C. 관리자 대시보드: 대기중 입금 목록
-// ────────────────────────────────────────────────
-
-/**
- * listPendingDeposits
- * @param {string} adminUid
- * @returns {Array<Object>}
- */
 async function listPendingDeposits(adminUid) {
   await requireAdmin(adminUid);
 
@@ -363,12 +158,6 @@ async function listPendingDeposits(adminUid) {
   });
 }
 
-/**
- * getDepositHistory
- * 특정 유저의 충전 내역
- * @param {string} uid
- * @returns {Array<Object>}
- */
 async function getDepositHistory(uid) {
   const snap = await db.collection('deposits')
     .where('uid', '==', uid)
@@ -381,9 +170,7 @@ async function getDepositHistory(uid) {
     return {
       refCode: data.refCode,
       amountKrw: data.amountKrw,
-      hexDisplay: data.hexAmountWei
-        ? parseFloat(ethers.formatEther(data.hexAmountWei)).toFixed(4) + ' Point'
-        : '-',
+      hexDisplay: data.amountKrw ? data.amountKrw.toLocaleString() + ' KM' : '-',
       usdAmount: data.usdAmount ?? null,
       vndAmount: data.vndAmount ?? null,
       status: data.status,

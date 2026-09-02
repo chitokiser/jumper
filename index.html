@@ -1565,6 +1565,15 @@
     document.querySelector('a.hero-cta-btn')?.addEventListener('click', function () {
       sessionStorage.setItem('bgm_autostart', '1');
     });
+
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('ServiceWorker registered:', reg.scope))
+          .catch(err => console.error('ServiceWorker registration failed:', err));
+      });
+    }
   </script>
 </body>
 

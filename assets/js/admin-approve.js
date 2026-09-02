@@ -819,7 +819,7 @@ async function loadApprovedDeposits() {
               <div class="k">refCode</div><div class="v">${esc(refCode)}</div>
               <div class="k">입금자명</div><div class="v">${esc(v.depositorName || "-")}</div>
               ${v.amountVnd ? `<div class="k">입금액 (VND)</div><div class="v accent">${esc(v.amountVnd.toLocaleString())} VND</div>` : `<div class="k">입금액 (KRW)</div><div class="v accent">${esc((v.amountKrw || 0).toLocaleString())} 원</div>`}
-              <div class="k">환산 기준 (KRW)</div><div class="v" style="font-weight:700; color:#1d4ed8;">${esc((v.amountKrw || 0).toLocaleString())} 머니/포인트 충전됨</div>
+              <div class="k">승인 처분(KM)</div><div class="v" style="font-weight:700; color:#1d4ed8;">${esc((v.amountKrw || 0).toLocaleString())} KM 머니 충전됨</div>
               <div class="k">지갑 주소</div><div class="v" style="word-break:break-all; font-family:monospace; font-size:12px;">${esc(v.userAddress || "-")}</div>
               <div class="k">승인일</div><div class="v" style="color:#059669; font-weight:700;">${esc(dateStr)}</div>
               <div class="k">상태</div><div class="v">${esc(v.status || "-")}</div>
@@ -844,16 +844,16 @@ async function approveDepositAction(refCode) {
     ? `\n수동 환율: ₩${overrideKrwRate.toLocaleString()}/USD`
     : "\n환율: 자동 조회";
 
-  const ok = confirm(`[${refCode}]\n입금을 승인하고 온체인 포인트를 적립하시겠습니까?${rateMsg}`);
+  const ok = confirm(`[${refCode}]\n입금을 승인하고 Firebase DB 시스템에 잔액(KM)을 충전하시겠습니까?${rateMsg}`);
   if (!ok) return;
 
-  setState("creditPoints 호출 중…");
+  setState("내부 DB 승인 처리 중…");
   try {
     const fn = httpsCallable(functions, "approveDeposit");
     const res = await fn({ refCode, overrideKrwRate });
     const d = res.data;
     alert(
-      `승인 완료!\n적립: ${d.hexDisplay}\nUSD: $${d.usdAmount}\nVND: ${(d.vndAmount || 0).toLocaleString()} VND\ntxHash: ${(d.txHash || "").slice(0, 22)}…`
+      `승인 완료!\n충전된 금액: ${d.hexDisplay}\nVND 환산: ${(d.vndAmount || 0).toLocaleString()} VND`
     );
     await loadDeposits();
   } catch (err) {
