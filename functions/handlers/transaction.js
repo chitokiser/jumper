@@ -5,6 +5,7 @@ const crypto = require('crypto');
 'use strict';
 
 const admin = require('firebase-admin');
+const functions = require('firebase-functions');
 const { ethers } = require('ethers');
 const { decrypt } = require('../wallet/crypto');
 const {

@@ -159,6 +159,29 @@ async function loadKCultureBalances(uid) {
       const elPoint = $("pointDisplay");
       const elPay = $("paymentBalanceDisplay");
 
+      // Set up realtime snapshot listener for automatic balance updates
+      import("https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js").then(({ doc, onSnapshot }) => {
+        onSnapshot(doc(db, "users", uid), (snap) => {
+          if (!snap.exists()) return;
+          const updatedD = snap.data();
+          const pBal = updatedD.pointBalance || 0;
+          const kBal = updatedD.pointBalanceVnd || 0; // Migrated to function conceptually as KRW
+          if (elPoint) {
+            const btnHtml = `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 포인트(Point)를 머니로 전환</button>`;
+            if (!elPoint.innerHTML.includes("btnExchangePoint")) {
+              elPoint.innerHTML = `<span id="ptSpan" style="font-size:1.6rem;">${pBal.toLocaleString("ko-KR")} P</span>` + btnHtml;
+            } else {
+              const ptSpan = elPoint.querySelector("span");
+              if (ptSpan) ptSpan.textContent = pBal.toLocaleString("ko-KR") + " P";
+            }
+          }
+          if (elPay) {
+            elPay.innerHTML = `<span>${kBal.toLocaleString("ko-KR")} KRW</span>` +
+              `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(K-MOA 가맹점 전용 머니)</div>`;
+          }
+        });
+      });
+
       if (elPoint) {
         elPoint.innerHTML = `<span style="font-size:1.6rem;">${pointBal.toLocaleString("ko-KR")} P</span>` +
           `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>`;
@@ -171,14 +194,14 @@ async function loadKCultureBalances(uid) {
                 const bpSnap = await getDoc(doc(db, "battle_players", uid));
                 const lv = bpSnap.exists() ? Math.max(1, bpSnap.data().gsLevel || 1) : 1;
                 const expectedVnd = Math.floor(pointBal * lv / 10);
-                const ok = confirm(`현재 회원님의 레벨은 Lv.${lv} 입니다.\n보유하신 ${pointBal.toLocaleString()} 포인트를 전환하면\n${expectedVnd.toLocaleString()} VND (법정화폐 잔고)로 전환됩니다.\n전환하시겠습니까?`);
+                const ok = confirm(`현재 회원님의 레벨은 Lv.${lv} 입니다.\n보유하신 ${pointBal.toLocaleString()} 포인트를 전환하면\n${expectedVnd.toLocaleString()} KRW (결제 머니)로 전환됩니다.\n전환하시겠습니까?`);
                 if (!ok) return;
                 btnExc.disabled = true;
                 btnExc.textContent = "처리 중...";
                 const { httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-functions.js");
                 const fn = httpsCallable(functions, "exchangePointsToFiat");
                 const res = await fn({ amount: pointBal });
-                alert(`성공적으로 전환되었습니다!\n잔고: ${res.data.convertedVnd.toLocaleString()} VND 추가됨`);
+                alert(`성공적으로 전환되었습니다!\n잔고: ${res.data.convertedVnd.toLocaleString()} KRW 추가됨`);
                 location.reload();
               } catch (err) {
                 alert("전환 실패: " + err.message);
@@ -190,9 +213,7 @@ async function loadKCultureBalances(uid) {
         }, 100);
       }
       if (elPay) {
-        const krwTotal = Math.round(payBal / 18.5);
-        elPay.innerHTML = `<span>${payBal.toLocaleString("ko-KR")} VND</span>` +
-          `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(≈ ${krwTotal.toLocaleString("ko-KR")} KRW)</div>`;
+        // elPay is now dynamically handled by onSnapshot above
       }
     } else {
       if ($("pointDisplay")) $("pointDisplay").textContent = "0 P";

@@ -1,0 +1,35 @@
+2026-09-02T09:38:03.554691Z I processtonswaps: [processTonSwaps] 완료
+2026-09-02T09:38:05.496842Z I cleanupexpireddrops: 
+2026-09-02T09:38:10.014949Z I getmenteeincome: 
+2026-09-02T09:38:10.017440Z I getmymentees: 
+2026-09-02T09:38:10.226804Z I getmymentees: 
+2026-09-02T09:38:10.230698Z I getmenteeincome: 
+2026-09-02T09:38:10.234559Z D getmymentees: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-09-02T09:38:10.237423Z D getmenteeincome: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-09-02T09:38:47.198806Z I paymerchantfirebase: 
+2026-09-02T09:38:47.427758Z I paymerchantfirebase: 
+2026-09-02T09:38:47.437185Z D paymerchantfirebase: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-09-02T09:38:48.904650Z I paymerchantfirebase: {"message":"payMerchantFirebase","amountVndCharged":500000,"currency":"VND","merchantId":2,"uid":"aovjkF5ft8WG6yR6OgJcvuZCWSq1","amountVnd":500000}
+2026-09-02T09:39:03.765746Z I processgoldmines: 
+2026-09-02T09:39:06.445446Z I processgoldmines: {"processed":36,"taxOwners":3,"message":"[processGoldMines] done"}
+2026-09-02T09:40:07.202722Z I getmymentees: 
+2026-09-02T09:40:07.202761Z I getmenteeincome: 
+2026-09-02T09:40:07.414104Z I getmymentees: 
+2026-09-02T09:40:07.415232Z I getmenteeincome: 
+2026-09-02T09:40:07.419214Z D getmymentees: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-09-02T09:40:07.420906Z D getmenteeincome: {"verifications":{"app":"MISSING","auth":"VALID"},"message":"Callable request verification passed"}
+2026-09-02T09:40:17.261685Z I processtonswaps: 
+2026-09-02T09:40:17.278563Z I processtonswaps: [processTonSwaps] 스케줄 실행
+2026-09-02T09:40:17.523758Z I processtonswaps: [processTonSwaps] 완료
+2026-09-02T09:41:11.341946Z I getmenteeincome: 
+2026-09-02T09:41:11.635876Z I getmenteeincome: 
+2026-09-02T09:41:11.642604Z D getmenteeincome: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-09-02T09:41:21.082842Z I getmymentees: 
+2026-09-02T09:41:21.249571Z I getmenteeincome: 
+2026-09-02T09:41:21.302880Z I getmymentees: 
+2026-09-02T09:41:21.308275Z D getmymentees: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-09-02T09:41:21.450047Z I getmenteeincome: 
+2026-09-02T09:41:21.455158Z D getmenteeincome: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-09-02T09:41:23.885497Z I getmymentees: 
+2026-09-02T09:41:23.886022Z I getmenteeincome: 
+2026-09-02T09:41:23.891054Z D getmymentees: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}

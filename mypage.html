@@ -829,13 +829,7 @@
           <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span class="v mono">381. 19.
               03076. 2</span></div>
           <div class="mp-kv"><span class="k" data-i18n="label_account_holder">예금주</span><span class="v">오용진</span></div>
-          <div style="margin:10px 0 8px; font-size:0.82em; font-weight:700; color:#0ea5e9;"
-            data-i18n="label_vn_account">🇻🇳 베트남 계좌 (VND 입금)</div>
-          <div class="mp-kv"><span class="k" data-i18n="label_bank">은행</span><span class="v">TECHCOM BANK</span></div>
-          <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span
-              class="v mono">19037852768012</span></div>
-          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">예금주</span><span class="v">신헌철 (SHIN HEON
-              CHEOL)</span></div>
+          
         </div>
 
         <form id="depositForm" class="form" style="margin-top:0;">
@@ -861,10 +855,7 @@
           <div class="mp-kv"><span class="k">입금 은행</span><span class="v" id="drBank">-</span></div>
           <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono" id="drAccount">-</span></div>
           <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolder">-</span></div>
-          <div style="margin:10px 0 6px; font-size:0.82em; font-weight:700; color:#0ea5e9;">🇻🇳 베트남 계좌 (VND 입금)</div>
-          <div class="mp-kv"><span class="k">입금 은행</span><span class="v" id="drBankVnd">-</span></div>
-          <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono" id="drAccountVnd">-</span></div>
-          <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolderVnd">-</span></div>
+          
           <div class="mp-kv"><span class="k">금액</span><span class="v" id="drAmount">-</span></div>
           <div class="mp-kv"><span class="k">충전 금액</span><span class="v accent" id="drHex">-</span></div>
           <p class="hint mp-warn" data-i18n="deposit_warn">입금자명을 정확히 입력하세요. 관리자 확인 후 Point 포인트이 수탁 지갑으로 지급됩니다.</p>
@@ -888,21 +879,10 @@
               <option value="">불러오는 중...</option>
             </select>
           </label>
-          <div class="field">
-            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;"
-              data-i18n="label_currency">통화 선택</span>
-            <div class="curr-seg">
-              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyVND" value="VND"
-                  checked /><span>🇻🇳 VND (동)</span></label>
-              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyKRW"
-                  value="KRW" /><span>🇰🇷 KRW (원)</span></label>
-            </div>
-            <input type="hidden" id="merchantPayCurrency" value="VND" />
-          </div>
+          <label class="field"><input type="hidden" id="merchantPayCurrency" value="KRW" /></label>
           <label class="field">
-            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_vnd">결제 금액 (동 VND) <em
-                class="req">*</em></span>
-            <input type="number" id="merchantPayAmount" min="10000" step="1000" placeholder="예: 200000" />
+            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_krw">결제 금액 (원 KRW) <em class="req">*</em></span>
+            <input type="number" id="merchantPayAmount" min="1000" step="100" placeholder="예: 5000" />
           </label>
           <div class="actions">
             <button class="btn btn--primary" type="submit" id="btnMerchantPay" data-i18n="btn_pay">결제</button>
