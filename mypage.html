@@ -691,27 +691,34 @@
           <div class="mp-kv"><span class="k" data-i18n="label_phone">전화번호</span><span class="v" id="infoPhone">-</span>
           </div>
         </div>
-      
+
         <!-- 💸 프리미엄 머니 & 포인트 현황 카드 💸 -->
-        <div style="display:flex; gap:12px; margin: 20px 0 0 0;">
-          
+        <div style="display:flex; gap:12px; margin: 20px 0 0 0; flex-wrap:wrap; justify-content:center;">
+
           <!-- 머니 (Money) 카드 -->
-          <div id="paymentBalanceRow" style="display:none; flex:1; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #86efac; border-radius: 16px; padding: 20px 16px; box-shadow: 0 4px 12px rgba(21,128,61,0.12); text-align:center;">
-            <div data-i18n="label_payment_balance" style="font-size:0.85rem; color:#15803d; font-weight:800; display:flex; align-items:center; justify-content:center; gap:4px; margin-bottom:12px;">
+          <div id="paymentBalanceRow"
+            style="display:none; flex:1; min-width: 280px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #86efac; border-radius: 16px; padding: 20px 16px; box-shadow: 0 4px 12px rgba(21,128,61,0.12); text-align:center;">
+            <div data-i18n="label_payment_balance"
+              style="font-size:0.85rem; color:#15803d; font-weight:800; display:flex; align-items:center; justify-content:center; gap:4px; margin-bottom:12px;">
               <span>💵 내 머니 (Money)</span>
             </div>
-            <div id="paymentBalanceDisplay" style="font-size:1.45rem; font-weight:900; color:#166534; letter-spacing:-0.5px; line-height:1.2;">
+            <div id="paymentBalanceDisplay"
+              style="font-size:1.45rem; font-weight:900; color:#166534; letter-spacing:-0.5px; line-height:1.2;">
               -
             </div>
-            <div style="font-size:0.72rem; color:#15803d; margin-top:10px; opacity:0.8; font-weight:700;">가맹점 결제 가능 잔고</div>
+            <div style="font-size:0.72rem; color:#15803d; margin-top:10px; opacity:0.8; font-weight:700;">가맹점 결제 가능 잔고
+            </div>
           </div>
 
           <!-- 포인트 (Point) 카드 -->
-          <div id="pointRow" style="display:none; flex:1; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1.5px solid #d8b4fe; border-radius: 16px; padding: 20px 16px; box-shadow: 0 4px 12px rgba(124,58,237,0.12); text-align:center;">
-            <div data-i18n="label_point" style="font-size:0.85rem; color:#6d28d9; font-weight:800; display:flex; align-items:center; justify-content:center; gap:4px; margin-bottom:12px;">
+          <div id="pointRow"
+            style="display:none; flex:1; min-width: 280px; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1.5px solid #d8b4fe; border-radius: 16px; padding: 20px 16px; box-shadow: 0 4px 12px rgba(124,58,237,0.12); text-align:center;">
+            <div data-i18n="label_point"
+              style="font-size:0.85rem; color:#6d28d9; font-weight:800; display:flex; align-items:center; justify-content:center; gap:4px; margin-bottom:12px;">
               <span>✨ 잔여 포인트 (Point)</span>
             </div>
-            <div id="pointDisplay" style="font-size:1.15rem; font-weight:800; color:#4c1d95; line-height:1.2; display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <div id="pointDisplay"
+              style="font-size:1.15rem; font-weight:800; color:#4c1d95; line-height:1.2; display:flex; flex-direction:column; align-items:center; gap:8px;">
               -
             </div>
           </div>
@@ -769,7 +776,7 @@
           <span class="k" style="font-size:12px;color:#6b7280;">온체인 저장</span>
           <span class="v" id="onChainSyncStatus" style="flex:1;"></span>
         </div>
-        
+
 
         <div class="mp-kv" id="mentorAddrRow" style="display:none;">
           <span class="k" data-i18n="label_my_mentor">나의 멘토</span>
@@ -829,12 +836,13 @@
           <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span class="v mono">381. 19.
               03076. 2</span></div>
           <div class="mp-kv"><span class="k" data-i18n="label_account_holder">예금주</span><span class="v">오용진</span></div>
-          
+
         </div>
 
         <form id="depositForm" class="form" style="margin-top:0;">
           <label class="field">
-            <span><span id="labelDepositAmount" data-i18n="label_deposit_amt">충전 금액 (원)</span> <em class="req">*</em></span>
+            <span><span id="labelDepositAmount" data-i18n="label_deposit_amt">충전 금액 (원)</span> <em
+                class="req">*</em></span>
             <input type="number" id="depositAmount" min="10000" step="1000" placeholder="최소 10,000" />
           </label>
           <label class="field">
@@ -855,7 +863,7 @@
           <div class="mp-kv"><span class="k">입금 은행</span><span class="v" id="drBank">-</span></div>
           <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono" id="drAccount">-</span></div>
           <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolder">-</span></div>
-          
+
           <div class="mp-kv"><span class="k">금액</span><span class="v" id="drAmount">-</span></div>
           <div class="mp-kv"><span class="k">충전 금액</span><span class="v accent" id="drHex">-</span></div>
           <p class="hint mp-warn" data-i18n="deposit_warn">입금자명을 정확히 입력하세요. 관리자 확인 후 Point 포인트이 수탁 지갑으로 지급됩니다.</p>
@@ -881,7 +889,8 @@
           </label>
           <label class="field"><input type="hidden" id="merchantPayCurrency" value="KRW" /></label>
           <label class="field">
-            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_krw">결제 금액 (원 KRW) <em class="req">*</em></span>
+            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_krw">결제 금액 (원 KRW) <em
+                class="req">*</em></span>
             <input type="number" id="merchantPayAmount" min="1000" step="100" placeholder="예: 5000" />
           </label>
           <div class="actions">
