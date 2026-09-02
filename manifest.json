@@ -1,0 +1,23 @@
+{
+    "name": "K-MOA",
+    "short_name": "K-MOA",
+    "description": "K-MOA 베트남 교민과 가맹점의 상생 네트워크",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#3b82f6",
+    "icons": [
+        {
+            "src": "/assets/images/jump/mlogo.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/assets/images/jump/mlogo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
