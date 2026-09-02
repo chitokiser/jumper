@@ -1,10 +1,11 @@
-﻿<!-- /admin.html -->
+<!-- /admin.html -->
 <!doctype html>
 <html lang="ko">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>愿由ъ옄 ?뱀씤</title>
+  <title>관리자 승인</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -16,38 +17,44 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="manifest" href="/manifest.json">
 </head>
+
 <body>
   <div id="siteHeader"></div>
 
   <main class="page">
     <section class="section">
       <div class="page-h">
-        <h1 class="page-title">愿由ъ옄 ?뱀씤</h1>
-        <p class="page-desc">?먮ℓ?뚯썝?좎껌 / ?嫄곕━ ?뱀씤 泥섎━ &nbsp;|&nbsp; <a href="/admin_jackpot.html" style="color:#6366f1;font-weight:700;">?렟 ??뙚 ?몄텧 愿由?/a> &nbsp;|&nbsp; <a href="/admin_nfc.html" style="color:#0891b2;font-weight:700;">?뱻 NFC 蹂대Ъ 愿由?/a> &nbsp;|&nbsp; <a href="/admin_exchange.html" style="color:#f59e0b;font-weight:700;">?뮦 ?ъ씤??嫄곕옒??愿由?/a> &nbsp;|&nbsp; <a href="/admin_stars.html" style="color:#f59e0b;font-weight:700;">狩?Stars 쨌 NPC 愿由?/a> &nbsp;|&nbsp; <a href="/admin-treasure-box.html" style="color:#10b981;font-weight:700;">?벀 蹂대Ъ諛뺤뒪 ?앹꽦</a></p>
+        <h1 class="page-title">관리자 승인</h1>
+        <p class="page-desc">판매회원신청 / 놀거리 승인 처리 &nbsp;|&nbsp; <a href="/admin_jackpot.html"
+            style="color:#6366f1;font-weight:700;">🎰 잭팟 인출 관리</a> &nbsp;|&nbsp; <a href="/admin_nfc.html"
+            style="color:#0891b2;font-weight:700;">📡 NFC 보물 관리</a> &nbsp;|&nbsp; <a href="/admin_exchange.html"
+            style="color:#f59e0b;font-weight:700;">💱 포인트 거래소 관리</a> &nbsp;|&nbsp; <a href="/admin_stars.html"
+            style="color:#f59e0b;font-weight:700;">⭐ Stars · NPC 관리</a> &nbsp;|&nbsp; <a href="/admin-treasure-box.html"
+            style="color:#10b981;font-weight:700;">📦 보물박스 생성</a></p>
       </div>
 
       <div class="panel">
         <div class="panel-h">
           <div class="toolbar">
             <div class="tabs">
-              <button class="btn btn-sm" id="btnTabGuides" type="button">?먮ℓ?뚯썝 ?좎껌</button>
-              <button class="btn btn-sm" id="btnTabMerchants" type="button">媛留뱀젏 愿由?/button>
-              <button class="btn btn-sm" id="btnTabItems" type="button">?곹뭹 ?뱀씤</button>
-              <button class="btn btn-sm" id="btnTabDeposits" type="button">?낃툑 ?뱀씤</button>
-              <button class="btn btn-sm" id="btnTabHex" type="button">Point 愿由?/button>
-              <button class="btn btn-sm" id="btnTabMembers" type="button">硫ㅻ쾭 愿由?/button>
-              <button class="btn btn-sm" id="btnTabDao" type="button">DAO ?뱀씤</button>
-              <button class="btn btn-sm" id="btnTabTreasure" type="button">?럞 蹂대Ъ李얘린</button>
-              <button class="btn btn-sm" id="btnTabChat" type="button">?뮠 梨꾪똿</button>
-              <button class="btn btn-sm" id="btnTabShops" type="button">?룵 ?곸젏 愿由?/button>
+              <button class="btn btn-sm" id="btnTabGuides" type="button">판매회원 신청</button>
+              <button class="btn btn-sm" id="btnTabMerchants" type="button">가맹점 관리</button>
+              <button class="btn btn-sm" id="btnTabItems" type="button">상품 승인</button>
+              <button class="btn btn-sm" id="btnTabDeposits" type="button">입금 승인</button>
+              <button class="btn btn-sm" id="btnTabHex" type="button">Point 관리</button>
+              <button class="btn btn-sm" id="btnTabMembers" type="button">멤버 관리</button>
+              <button class="btn btn-sm" id="btnTabDao" type="button">DAO 승인</button>
+              <button class="btn btn-sm" id="btnTabTreasure" type="button">🎁 보물찾기</button>
+              <button class="btn btn-sm" id="btnTabChat" type="button">💬 채팅</button>
+              <button class="btn btn-sm" id="btnTabShops" type="button">🏪 상점 관리</button>
             </div>
 
             <div class="toolbar-right">
-              <button class="btn btn-sm" id="btnReloadGuides" type="button">?덈줈怨좎묠</button>
-              <button class="btn btn-sm" id="btnReloadMerchants" type="button" style="display:none;">?덈줈怨좎묠</button>
+              <button class="btn btn-sm" id="btnReloadGuides" type="button">새로고침</button>
+              <button class="btn btn-sm" id="btnReloadMerchants" type="button" style="display:none;">새로고침</button>
 
               <div class="field" id="itemsFilter">
-                <label class="muted" for="selItemStatus">?곹깭</label>
+                <label class="muted" for="selItemStatus">상태</label>
                 <select id="selItemStatus" class="select">
                   <option value="pending">pending</option>
                   <option value="draft">draft</option>
@@ -55,278 +62,286 @@
                 </select>
               </div>
 
-              <button class="btn btn-sm" id="btnReloadItems" type="button">?덈줈怨좎묠</button>
-              <button class="btn btn-sm" id="btnReloadDeposits" type="button" style="display:none;">?덈줈怨좎묠</button>
+              <button class="btn btn-sm" id="btnReloadItems" type="button">새로고침</button>
+              <button class="btn btn-sm" id="btnReloadDeposits" type="button" style="display:none;">새로고침</button>
             </div>
           </div>
 
-          <div id="adminState" class="state">濡쒕뵫...</div>
+          <div id="adminState" class="state">로딩...</div>
         </div>
 
         <div class="panel-b">
           <div id="tabGuides">
             <div class="list-head">
-              <div class="muted">guideApplications 紐⑸줉(?좎껌??</div>
+              <div class="muted">guideApplications 목록(신청자)</div>
             </div>
             <div id="guideList" class="list"></div>
           </div>
 
-          <!-- ?? 媛留뱀젏 愿由????? -->
+          <!-- ── 가맹점 관리 탭 ── -->
           <div id="tabMerchants" style="display:none;">
             <div class="list-head">
-              <div class="muted">merchants 而щ젆??(?먮ℓ?뚯썝 ?깅줉 ?꾪솴)</div>
+              <div class="muted">merchants 컬렉션 (판매회원 등록 현황)</div>
             </div>
             <div id="merchantList" class="list"></div>
           </div>
 
           <div id="tabItems" style="display:none;">
             <div class="list-head">
-              <div class="muted">items ?뱀씤(?곹깭蹂?</div>
+              <div class="muted">items 승인(상태별)</div>
             </div>
             <div id="itemList" class="list"></div>
           </div>
 
-          <!-- ?? ?낃툑 ?뱀씤 ???? -->
+          <!-- ── 입금 승인 탭 ── -->
           <div id="tabDeposits" style="display:none;">
-            <div class="list-head">
-              <div class="muted">?湲곗쨷 ?낃툑 ?붿껌 (pending / processing)</div>
+
+            <div class="card" style="margin-bottom:16px; border:2px solid #ef4444; background:#fef2f2;">
+              <div class="kv">
+                <div class="k" style="color:#b91c1c; font-weight:bold; padding:4px 0;">🔥 시스템 KM 유통 총량 (보안 무결성 감사)</div>
+                <div class="v" id="sysTotalKm" style="font-size:16px; font-weight:900; color:#b91c1c;">로딩 중...</div>
+              </div>
             </div>
-            <!-- ?섏쑉 ?섎룞 吏??(?좏깮) -->
+            <div class="list-head">
+              <div class="muted">대기중 입금 요청 (pending / processing)</div>
+            </div>
+            <!-- 환율 수동 지정 (선택) -->
             <div class="field" style="display:flex; gap:8px; align-items:center; padding:8px 0 12px;">
-              <label class="muted" for="inputKrwRate" style="white-space:nowrap;">?섏쑉 ?섎룞 吏??(KRW/USD, 鍮꾩썙?먮㈃ ?먮룞)</label>
-              <input type="number" id="inputKrwRate" class="select" style="width:120px;" placeholder="?? 1380" min="900" max="2000" step="0.01" />
+              <label class="muted" for="inputKrwRate" style="white-space:nowrap;">환율 수동 지정 (KRW/USD, 비워두면 자동)</label>
+              <input type="number" id="inputKrwRate" class="select" style="width:120px;" placeholder="예: 1380" min="900"
+                max="2000" step="0.01" />
             </div>
             <div id="depositList" class="list"></div>
-              
-              <div class="list-head" style="margin-top:24px; border-top:1px solid #e2e8f0; padding-top:16px;">
-                <div class="muted" style="color:#15803d; font-weight:700;">?윟 ?뱀씤 ?꾨즺 ?댁뿭 (理쒓렐 50嫄?</div>
-                <button class="btn btn-sm" id="btnReloadApprovedDeposits" type="button">?덈줈怨좎묠</button>
-              </div>
-              <div id="depositApprovedList" class="list"></div>
+
+            <div class="list-head" style="margin-top:24px; border-top:1px solid #e2e8f0; padding-top:16px;">
+              <div class="muted" style="color:#15803d; font-weight:700;">🟢 승인 완료 내역 (최근 50건)</div>
+              <button class="btn btn-sm" id="btnReloadApprovedDeposits" type="button">새로고침</button>
+            </div>
+            <div id="depositApprovedList" class="list"></div>
           </div>
 
-          <!-- ?? Point 愿由????? -->
+          <!-- ── Point 관리 탭 ── -->
           <div id="tabHex" style="display:none;">
 
-            <!-- 而⑦듃?숉듃 ?꾪솴 -->
+            <!-- 컨트랙트 현황 -->
             <div class="list-head" style="margin-top:8px;">
-              <div class="muted">jumpPlatform 而⑦듃?숉듃 ?꾪솴</div>
-              <button class="btn btn-sm" id="btnRefreshContractStatus" type="button">?덈줈怨좎묠</button>
+              <div class="muted">jumpPlatform 컨트랙트 현황</div>
+              <button class="btn btn-sm" id="btnRefreshContractStatus" type="button">새로고침</button>
             </div>
             <div class="card" style="margin-top:4px;" id="contractStatusCard">
               <div class="kv" id="contractStatusGrid">
-                <div class="k">?곹깭</div>
-                <div class="v" id="contractStatusMsg">議고쉶 以?..</div>
+                <div class="k">상태</div>
+                <div class="v" id="contractStatusMsg">조회 중...</div>
               </div>
             </div>
 
-            <!-- 而⑦듃?숉듃 Point 異⑹쟾 -->
+            <!-- 컨트랙트 Point 충전 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">而⑦듃?숉듃 Point 異⑹쟾 (愿由ъ옄 吏媛???jumpPlatform)</div>
+              <div class="muted">컨트랙트 Point 충전 (관리자 지갑 → jumpPlatform)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                異⑹쟾 ?뱀씤(adminCreditHex)???꾩슂??Point瑜?而⑦듃?숉듃 ???蹂댁땐?⑸땲??<br>
-                ???꾨옒 <strong>臾댄븳 Approve</strong>媛 癒쇱? ?ㅽ뻾?섏뼱 ?덉뼱???⑸땲??
+                충전 승인(adminCreditHex)에 필요한 Point를 컨트랙트 풀에 보충합니다.<br>
+                ⚠ 아래 <strong>무한 Approve</strong>가 먼저 실행되어 있어야 합니다.
               </p>
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                 <input type="number" id="inputOwnerDepositHex" class="select" style="flex:1; min-width:140px;"
-                  placeholder="Point ?섎웾 (?? 100)" min="0.0001" step="0.0001" />
-                <button class="btn btn-sm" id="btnOwnerDepositHex" type="button">而⑦듃?숉듃 異⑹쟾</button>
+                  placeholder="Point 수량 (예: 100)" min="0.0001" step="0.0001" />
+                <button class="btn btn-sm" id="btnOwnerDepositHex" type="button">컨트랙트 충전</button>
               </div>
             </div>
 
             <!-- Point Approve -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">愿由ъ옄 吏媛???jumpPlatform Point ?뱀씤 (creditPoints ?ъ쟾 議곌굔)</div>
+              <div class="muted">관리자 지갑 → jumpPlatform Point 승인 (creditPoints 사전 조건)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <div class="kv">
-                <div class="k">?꾩옱 Point Allowance</div>
-                <div class="v" id="hexAllowanceDisplay">議고쉶 以?..</div>
+                <div class="k">현재 Point Allowance</div>
+                <div class="v" id="hexAllowanceDisplay">조회 중...</div>
               </div>
               <div class="row-actions" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="btn btn-sm" id="btnCheckAllowance" type="button">Allowance 議고쉶</button>
-                <button class="btn btn-sm" id="btnApproveHex" type="button">臾댄븳 Approve (MaxUint256)</button>
+                <button class="btn btn-sm" id="btnCheckAllowance" type="button">Allowance 조회</button>
+                <button class="btn btn-sm" id="btnApproveHex" type="button">무한 Approve (MaxUint256)</button>
               </div>
               <p class="muted" style="font-size:12px; margin-top:8px;">
-                ??理쒖큹 1???먮뒗 allowance ?뚯쭊 ???ㅽ뻾?섏꽭??<br>
-                ???묒뾽 ?놁씠??<code>creditPoints</code>媛 ?ㅽ뙣?⑸땲??
+                ⚠ 최초 1회 또는 allowance 소진 시 실행하세요.<br>
+                이 작업 없이는 <code>creditPoints</code>가 실패합니다.
               </p>
             </div>
 
-            <!-- P2P ?섎졊 湲곕줉 -->
+            <!-- P2P 수령 기록 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">P2P Point ?섎졊 湲곕줉 (?몃??믪닔??吏媛?吏곸젒 ?꾩넚)</div>
+              <div class="muted">P2P Point 수령 기록 (외부→수탁 지갑 직접 전송)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="inputP2pTxHash" class="select" style="flex:1; font-family:monospace; font-size:12px;"
-                  placeholder="0x... (Point Transfer ?몃옖??뀡 ?댁떆)" />
-                <button class="btn btn-sm" id="btnRecordP2p" type="button">P2P 湲곕줉</button>
+                <input type="text" id="inputP2pTxHash" class="select"
+                  style="flex:1; font-family:monospace; font-size:12px;" placeholder="0x... (Point Transfer 트랜잭션 해시)" />
+                <button class="btn btn-sm" id="btnRecordP2p" type="button">P2P 기록</button>
               </div>
               <p class="muted" style="font-size:12px; margin-top:8px;">
-                ?몃? 吏媛????섑긽 吏媛묒쑝濡?吏곸젒 ?꾩넚??Point??txHash瑜??낅젰?섎㈃<br>
-                嫄곕옒 ?댁뿭???깅줉?섍퀬 留덉씠?섏씠吏 ?붿븸???낅뜲?댄듃?⑸땲??
+                외부 지갑 → 수탁 지갑으로 직접 전송된 Point의 txHash를 입력하면<br>
+                거래 내역에 등록되고 마이페이지 잔액이 업데이트됩니다.
               </p>
             </div>
           </div>
 
-          <!-- ?? 硫ㅻ쾭 愿由????? -->
+          <!-- ── 멤버 관리 탭 ── -->
           <div id="tabMembers" style="display:none;">
 
-            <!-- ?뚯썝 紐⑸줉 -->
+            <!-- 회원 목록 -->
             <div class="list-head" style="margin-top:8px;">
-              <div class="muted">媛???뚯썝 紐⑸줉</div>
+              <div class="muted">가입 회원 목록</div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <input type="text" id="inputUserSearch" class="select" style="width:160px;" placeholder="?대쫫쨌?대찓?셋??좎?紐?寃??>
+                <input type="text" id="inputUserSearch" class="select" style="width:160px;"
+                  placeholder="이름·이메일·@유저명 검색">
                 <select id="selUserFilter" class="select">
-                  <option value="all">?꾩껜</option>
-                  <option value="telegram">?벑 ?붾젅洹몃옩</option>
-                  <option value="member">?몣 ?뺥쉶??/option>
-                  <option value="blacklisted">??釉붾옓由ъ뒪??/option>
+                  <option value="all">전체</option>
+                  <option value="telegram">📱 텔레그램</option>
+                  <option value="member">👑 정회원</option>
+                  <option value="blacklisted">⛔ 블랙리스트</option>
                 </select>
                 <select id="selUserSort" class="select">
-                  <option value="date_desc">媛?낆씪 理쒖떊??/option>
-                  <option value="date_asc">媛?낆씪 ?ㅻ옒?쒖닚</option>
-                  <option value="seen_desc">理쒓렐 ?묒냽??/option>
-                  <option value="name_asc">?대쫫 媛?섎떎??/option>
+                  <option value="date_desc">가입일 최신순</option>
+                  <option value="date_asc">가입일 오래된순</option>
+                  <option value="seen_desc">최근 접속순</option>
+                  <option value="name_asc">이름 가나다순</option>
                 </select>
-                <button class="btn btn-sm" id="btnReloadUsers" type="button">?덈줈怨좎묠</button>
+                <button class="btn btn-sm" id="btnReloadUsers" type="button">새로고침</button>
               </div>
             </div>
             <div id="userList" class="list" style="margin-top:8px;"></div>
             <hr style="margin:20px 0;border:none;border-top:1px solid var(--border,#e2e8f0);">
 
-            <!-- 愿由ъ옄 ????⑤낫??-->
+            <!-- 관리자 셀프 온보딩 -->
             <div class="list-head" style="margin-top:8px;">
-              <div class="muted">愿由ъ옄 吏媛??곌껐 (adminSelfOnboard)</div>
+              <div class="muted">관리자 지갑 연결 (adminSelfOnboard)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                ADMIN_PRIVATE_KEY 吏媛묒쓣 ??怨꾩젙(Firestore users)???곌껐?⑸땲??<br>
-                硫섑떚 紐⑸줉 議고쉶瑜??꾪빐 <strong>癒쇱? 1???ㅽ뻾</strong>?댁빞 ?⑸땲??
+                ADMIN_PRIVATE_KEY 지갑을 내 계정(Firestore users)에 연결합니다.<br>
+                멘티 목록 조회를 위해 <strong>먼저 1회 실행</strong>해야 합니다.
               </p>
-              <button class="btn btn-sm" id="btnAdminSelfOnboard" type="button">愿由ъ옄 吏媛??곌껐 ?ㅽ뻾</button>
+              <button class="btn btn-sm" id="btnAdminSelfOnboard" type="button">관리자 지갑 연결 실행</button>
               <div id="adminSelfOnboardResult" style="display:none; margin-top:10px; font-size:13px;"></div>
             </div>
 
-            <!-- ?⑥껜??吏媛??곌껐 (onlyOwner ?묒뾽 怨듯넻) -->
+            <!-- 온체인 지갑 연결 (onlyOwner 작업 공통) -->
             <div class="list-head" style="margin-top:8px;">
-              <div class="muted">?⑥껜??吏媛??곌껐 (Rabby / MetaMask)</div>
+              <div class="muted">온체인 지갑 연결 (Rabby / MetaMask)</div>
             </div>
             <div class="card" style="margin-top:4px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-              <button class="btn btn-sm" id="btnConnectOwnerWallet" type="button">?쫲 吏媛??곌껐</button>
+              <button class="btn btn-sm" id="btnConnectOwnerWallet" type="button">🦊 지갑 연결</button>
               <span id="ownerWalletLabel" style="font-size:12px; color:var(--muted);"></span>
             </div>
 
-            <!-- ?⑥껜??硫섑넗 ?쇨큵 蹂寃?-->
+            <!-- 온체인 멘토 일괄 변경 -->
             <div class="list-head" style="margin-top:8px;">
-              <div class="muted">?⑥껜??硫섑넗 ?쇨큵 蹂寃?(adminChangeMentor)</div>
+              <div class="muted">온체인 멘토 일괄 변경 (adminChangeMentor)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                ?⑥껜???깅줉???좎??ㅼ쓽 硫섑넗 二쇱냼瑜??쇨큵 蹂寃쏀빀?덈떎.<br>
-                ??而⑦듃?숉듃 onlyOwner ?⑥닔 ?몄텧 ??媛?ㅻ퉬媛 諛쒖깮?⑸땲??
+                온체인 등록된 유저들의 멘토 주소를 일괄 변경합니다.<br>
+                ⚠ 컨트랙트 onlyOwner 함수 호출 — 가스비가 발생합니다.
               </p>
               <div class="kv" style="margin-bottom:10px;">
-                <div class="k">??硫섑넗 二쇱냼</div>
+                <div class="k">새 멘토 주소</div>
                 <div class="v">
                   <input type="text" id="inputNewMentorAddr" class="select"
-                    style="width:100%; font-family:monospace; font-size:12px;"
-                    placeholder="0x... (硫섑넗 吏媛?二쇱냼)" />
+                    style="width:100%; font-family:monospace; font-size:12px;" placeholder="0x... (멘토 지갑 주소)" />
                 </div>
-                <div class="k">???UID<br><span style="font-size:10px; color:var(--muted);">(鍮꾩슦硫??꾩껜)</span></div>
+                <div class="k">대상 UID<br><span style="font-size:10px; color:var(--muted);">(비우면 전체)</span></div>
                 <div class="v">
                   <textarea id="inputTargetUids" class="select"
                     style="width:100%; height:60px; font-size:12px; resize:vertical;"
-                    placeholder="uid1&#10;uid2&#10;uid3 (以꾨컮轅덉쑝濡?援щ텇, 鍮꾩슦硫??꾩껜 ?깅줉 ?좎? ???"></textarea>
+                    placeholder="uid1&#10;uid2&#10;uid3 (줄바꿈으로 구분, 비우면 전체 등록 유저 대상)"></textarea>
                 </div>
               </div>
-              <button class="btn btn-sm" id="btnBulkChangeMentor" type="button">硫섑넗 ?쇨큵 蹂寃??ㅽ뻾</button>
+              <button class="btn btn-sm" id="btnBulkChangeMentor" type="button">멘토 일괄 변경 실행</button>
               <div id="bulkMentorResult" style="display:none; margin-top:10px; font-size:13px;"></div>
             </div>
 
-            <!-- 釉붾옓由ъ뒪??愿由?-->
+            <!-- 블랙리스트 관리 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">釉붾옓由ъ뒪???깅줉 / ?댁젣</div>
+              <div class="muted">블랙리스트 등록 / 해제</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                ?대찓???먮뒗 UID濡??좎?瑜?寃?됲븳 ??釉붾옓由ъ뒪???깅줉 ?먮뒗 ?댁젣?⑸땲??<br>
-                ?깅줉 ??Firebase 濡쒓렇??利됱떆 李⑤떒 + ?⑥껜??寃곗젣 李⑤떒.<br>
-                ?댁젣 ??濡쒓렇??諛?寃곗젣 利됱떆 蹂듭썝?⑸땲??
+                이메일 또는 UID로 유저를 검색한 후 블랙리스트 등록 또는 해제합니다.<br>
+                등록 시 Firebase 로그인 즉시 차단 + 온체인 결제 차단.<br>
+                해제 시 로그인 및 결제 즉시 복원됩니다.
               </p>
               <div class="kv" style="margin-bottom:10px;">
-                <div class="k">?대찓???먮뒗 UID</div>
+                <div class="k">이메일 또는 UID</div>
                 <div class="v" style="display:flex;gap:6px;">
-                  <input type="text" id="inputBlacklistUser" class="select"
-                    style="flex:1;" placeholder="user@example.com ?먮뒗 Firebase UID" />
-                  <button class="btn btn-sm" id="btnBlacklistSearch" type="button">議고쉶</button>
+                  <input type="text" id="inputBlacklistUser" class="select" style="flex:1;"
+                    placeholder="user@example.com 또는 Firebase UID" />
+                  <button class="btn btn-sm" id="btnBlacklistSearch" type="button">조회</button>
                 </div>
               </div>
-              <!-- 議고쉶 寃곌낵 -->
-              <div id="blacklistUserInfo" style="display:none; margin-bottom:12px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; font-size:13px;">
+              <!-- 조회 결과 -->
+              <div id="blacklistUserInfo"
+                style="display:none; margin-bottom:12px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; font-size:13px;">
               </div>
               <div style="display:flex; gap:8px;">
                 <button class="btn btn-sm" id="btnBlacklistAdd" type="button"
-                  style="display:none; background:#dc2626; color:#fff; border-color:#dc2626;">釉붾옓由ъ뒪???깅줉</button>
+                  style="display:none; background:#dc2626; color:#fff; border-color:#dc2626;">블랙리스트 등록</button>
                 <button class="btn btn-sm" id="btnBlacklistRemove" type="button"
-                  style="display:none; background:#16a34a; color:#fff; border-color:#16a34a;">釉붾옓由ъ뒪???댁젣</button>
+                  style="display:none; background:#16a34a; color:#fff; border-color:#16a34a;">블랙리스트 해제</button>
               </div>
               <div id="blacklistResult" style="display:none; margin-top:10px; font-size:13px;"></div>
             </div>
 
-            <!-- ?좎? ?덈꺼 ?ㅼ젙 -->
+            <!-- 유저 레벨 설정 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">?좎? ?⑥껜???덈꺼 ?ㅼ젙 (adminSetLevel)</div>
+              <div class="muted">유저 온체인 레벨 설정 (adminSetLevel)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                ?대찓???먮뒗 UID濡??좎?瑜?李얠븘 ?⑥껜???덈꺼??蹂寃쏀빀?덈떎.<br>
-                ??而⑦듃?숉듃 onlyOwner ?⑥닔 ?몄텧 ??媛?ㅻ퉬媛 諛쒖깮?⑸땲??
+                이메일 또는 UID로 유저를 찾아 온체인 레벨을 변경합니다.<br>
+                ⚠ 컨트랙트 onlyOwner 함수 호출 — 가스비가 발생합니다.
               </p>
               <div class="kv" style="margin-bottom:10px;">
-                <div class="k">?대찓???먮뒗 UID</div>
+                <div class="k">이메일 또는 UID</div>
                 <div class="v">
-                  <input type="text" id="inputSetLevelUser" class="select"
-                    style="width:100%;"
-                    placeholder="user@example.com ?먮뒗 Firebase UID" />
+                  <input type="text" id="inputSetLevelUser" class="select" style="width:100%;"
+                    placeholder="user@example.com 또는 Firebase UID" />
                 </div>
-                <div class="k">?덈꺼 (1~10)</div>
+                <div class="k">레벨 (1~10)</div>
                 <div class="v">
-                  <input type="number" id="inputSetLevel" class="select"
-                    style="width:80px;" min="1" max="10" step="1" value="4" />
+                  <input type="number" id="inputSetLevel" class="select" style="width:80px;" min="1" max="10" step="1"
+                    value="4" />
                 </div>
               </div>
-              <button class="btn btn-sm" id="btnSetUserLevel" type="button">?덈꺼 ?ㅼ젙 ?ㅽ뻾</button>
+              <button class="btn btn-sm" id="btnSetUserLevel" type="button">레벨 설정 실행</button>
               <div id="setLevelResult" style="display:none; margin-top:10px; font-size:13px;"></div>
             </div>
           </div>
 
-          <!-- ?? DAO ?뱀씤 ???? -->
+          <!-- ── DAO 승인 탭 ── -->
           <div id="tabDao" style="display:none;">
             <div class="list-head">
-              <div class="muted">?뱀씤 ?湲?DAO ?덇굔 (status: pending_admin)</div>
-              <button class="btn btn-sm" id="btnReloadDao" type="button">?덈줈怨좎묠</button>
+              <div class="muted">승인 대기 DAO 안건 (status: pending_admin)</div>
+              <button class="btn btn-sm" id="btnReloadDao" type="button">새로고침</button>
             </div>
             <div id="daoApproveList" class="list"></div>
           </div>
 
-          <!-- ?? 蹂대Ъ李얘린 愿由????? -->
+          <!-- ── 보물찾기 관리 탭 ── -->
           <div id="tabTreasure" style="display:none;">
 
-            <!-- ?뷂툘 臾닿린 ?깅줉 -->
+            <!-- ⚔️ 무기 등록 -->
             <div class="list-head" style="margin-top:8px;">
-              <div class="muted">?뷂툘 臾닿린 ?깅줉 (weapon_N ??treasure_items)</div>
+              <div class="muted">⚔️ 무기 등록 (weapon_N → treasure_items)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px;margin:0 0 10px;">
-                ?뚯씪: <code>assets/images/weapon/{怨듦꺽??.png</code> ??議댁옱?댁빞 ?⑸땲??<br>
-                ?꾩씠??ID???먮룞?쇰줈 <code>weapon_{怨듦꺽??</code> ?쇰줈 ?ㅼ젙?⑸땲??
+                파일: <code>assets/images/weapon/{공격력}.png</code> 이 존재해야 합니다.<br>
+                아이템 ID는 자동으로 <code>weapon_{공격력}</code> 으로 설정됩니다.
               </p>
               <div class="kv" style="margin-bottom:8px;">
-                <div class="k">異붽? 怨듦꺽??(?レ옄)</div>
+                <div class="k">추가 공격력 (숫자)</div>
                 <div class="v">
                   <select id="wBonusSelect" class="select" style="width:120px;">
                     <option value="50">50</option>
@@ -335,28 +350,31 @@
                     <option value="125">125</option>
                     <option value="150">150</option>
                   </select>
-                  <span class="muted" style="font-size:12px;margin-left:8px;">珥앷났寃⑸젰 = 100 + ?좏깮媛?/span>
+                  <span class="muted" style="font-size:12px;margin-left:8px;">총공격력 = 100 + 선택값</span>
                 </div>
-                <div class="k">臾닿린 ?대쫫</div>
-                <div class="v"><input type="text" id="wName" class="select" style="width:100%;" placeholder="?? 媛뺤쿋寃, 留덈쾿吏?≪씠"></div>
-                <div class="k">誘몃━蹂닿린</div>
-                <div class="v"><img id="wPreview" src="" alt="" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;background:#1a0e06;border-radius:6px;display:none;"></div>
+                <div class="k">무기 이름</div>
+                <div class="v"><input type="text" id="wName" class="select" style="width:100%;"
+                    placeholder="예: 강철검, 마법지팡이"></div>
+                <div class="k">미리보기</div>
+                <div class="v"><img id="wPreview" src="" alt=""
+                    style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;background:#1a0e06;border-radius:6px;display:none;">
+                </div>
               </div>
-              <button class="btn btn-sm" id="btnSaveWeapon" type="button">?뷂툘 臾닿린 ???/button>
+              <button class="btn btn-sm" id="btnSaveWeapon" type="button">⚔️ 무기 저장</button>
               <span id="wSaveResult" style="font-size:13px;margin-left:10px;"></span>
             </div>
 
-            <!-- ?썳 諛⑹뼱援??깅줉 -->
+            <!-- 🛡 방어구 등록 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">?썳 諛⑹뼱援??깅줉 (armo_N ??treasure_items)</div>
+              <div class="muted">🛡 방어구 등록 (armo_N → treasure_items)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px;margin:0 0 10px;">
-                ?뚯씪: <code>assets/images/armo/{?대뜑}/{諛⑹뼱??.png</code> ??議댁옱?댁빞 ?⑸땲??<br>
-                ?꾩씠??ID???먮룞?쇰줈 <code>armo_{諛⑹뼱??</code> ?쇰줈 ?ㅼ젙?⑸땲??
+                파일: <code>assets/images/armo/{폴더}/{방어력}.png</code> 이 존재해야 합니다.<br>
+                아이템 ID는 자동으로 <code>armo_{방어력}</code> 으로 설정됩니다.
               </p>
               <div class="kv" style="margin-bottom:8px;">
-                <div class="k">諛⑹뼱??(?レ옄)</div>
+                <div class="k">방어력 (숫자)</div>
                 <div class="v">
                   <select id="aBonusSelect" class="select" style="width:120px;">
                     <option value="10" selected>10</option>
@@ -370,285 +388,336 @@
                     <option value="23">23</option>
                     <option value="24">24</option>
                   </select>
-                  <span class="muted" style="font-size:12px;margin-left:8px;">紐ъ뒪???쇳빐 媛먯냼??/span>
+                  <span class="muted" style="font-size:12px;margin-left:8px;">몬스터 피해 감소량</span>
                 </div>
-                <div class="k">諛⑹뼱援??대쫫</div>
-                <div class="v"><input type="text" id="aName" class="select" style="width:100%;" placeholder="?? 媛二??щĸ, 泥좉컩??></div>
-                <div class="k">誘몃━蹂닿린</div>
-                <div class="v"><img id="aPreview" src="" alt="" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;background:#1a0e06;border-radius:6px;display:none;"></div>
+                <div class="k">방어구 이름</div>
+                <div class="v"><input type="text" id="aName" class="select" style="width:100%;"
+                    placeholder="예: 가죽 헬멧, 철갑옷"></div>
+                <div class="k">미리보기</div>
+                <div class="v"><img id="aPreview" src="" alt=""
+                    style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;background:#1a0e06;border-radius:6px;display:none;">
+                </div>
               </div>
-              <button class="btn btn-sm" id="btnSaveArmor" type="button">?썳 諛⑹뼱援????/button>
+              <button class="btn btn-sm" id="btnSaveArmor" type="button">🛡 방어구 저장</button>
               <span id="aSaveResult" style="font-size:13px;margin-left:10px;"></span>
             </div>
 
-            <!-- ?럞 ?좎? 吏곸젒 吏湲?-->
+            <!-- 🎁 유저 직접 지급 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">?럞 ?좎??먭쾶 ?꾩씠??吏곸젒 吏湲?(adminGrantItem)</div>
+              <div class="muted">🎁 유저에게 아이템 직접 지급 (adminGrantItem)</div>
             </div>
             <div class="card" style="margin-top:4px;">
               <div class="kv" style="margin-bottom:8px;">
-                <div class="k">?좎? ?대찓???먮뒗 UID</div>
-                <div class="v"><input type="text" id="grantTarget" class="select" style="width:100%;" placeholder="user@example.com ?먮뒗 Firebase UID"></div>
-                <div class="k">?꾩씠??ID</div>
+                <div class="k">유저 이메일 또는 UID</div>
+                <div class="v"><input type="text" id="grantTarget" class="select" style="width:100%;"
+                    placeholder="user@example.com 또는 Firebase UID"></div>
+                <div class="k">아이템 ID</div>
                 <div class="v">
-                  <input type="text" id="grantItemId" class="select" style="width:100%;" placeholder="?? weapon_100, armo_10, potion_red">
-                  <div class="muted" style="font-size:11px;margin-top:3px;">weapon_50, weapon_75, weapon_100, weapon_125, weapon_150 / armo_10~14, armo_20~24</div>
+                  <input type="text" id="grantItemId" class="select" style="width:100%;"
+                    placeholder="예: weapon_100, armo_10, potion_red">
+                  <div class="muted" style="font-size:11px;margin-top:3px;">weapon_50, weapon_75, weapon_100,
+                    weapon_125, weapon_150 / armo_10~14, armo_20~24</div>
                 </div>
-                <div class="k">?섎웾</div>
-                <div class="v"><input type="number" id="grantCount" class="select" style="width:80px;" value="1" min="1" step="1"></div>
+                <div class="k">수량</div>
+                <div class="v"><input type="number" id="grantCount" class="select" style="width:80px;" value="1" min="1"
+                    step="1"></div>
               </div>
-              <button class="btn btn-sm" id="btnGrantItem" type="button">?럞 吏湲??ㅽ뻾</button>
+              <button class="btn btn-sm" id="btnGrantItem" type="button">🎁 지급 실행</button>
               <span id="grantResult" style="font-size:13px;margin-left:10px;"></span>
             </div>
 
-            <!-- ?꾩씠???깅줉 -->
+            <!-- 아이템 등록 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">?㎥ 湲고? ?꾩씠???깅줉/?섏젙 (treasure_items)</div>
-              <button class="btn btn-sm" id="btnReloadTItems" type="button">?덈줈怨좎묠</button>
+              <div class="muted">🧩 기타 아이템 등록/수정 (treasure_items)</div>
+              <button class="btn btn-sm" id="btnReloadTItems" type="button">새로고침</button>
             </div>
             <div class="card" style="margin-top:4px;">
               <div class="kv" style="margin-bottom:8px;">
-                <div class="k">?꾩씠??ID</div>
-                <div class="v"><input type="text" id="tItemId" class="select" style="width:160px;" placeholder="?? weapon_50, armo_10, 1"></div>
-                <div class="k">?대쫫</div>
-                <div class="v"><input type="text" id="tItemName" class="select" style="width:100%;" placeholder="?? ?⑷툑?댁뇿"></div>
-                <div class="k">?대?吏 ?뚯씪紐?/div>
-                <div class="v"><input type="text" id="tItemImage" class="select" style="width:100%;" placeholder="?? key.png (assets/images/items/ 寃쎈줈)"></div>
-                <div class="k">?ㅻ챸</div>
-                <div class="v"><input type="text" id="tItemDesc" class="select" style="width:100%;" placeholder="?좏깮 ?ы빆"></div>
+                <div class="k">아이템 ID</div>
+                <div class="v"><input type="text" id="tItemId" class="select" style="width:160px;"
+                    placeholder="예: weapon_50, armo_10, 1"></div>
+                <div class="k">이름</div>
+                <div class="v"><input type="text" id="tItemName" class="select" style="width:100%;"
+                    placeholder="예: 황금열쇠"></div>
+                <div class="k">이미지 파일명</div>
+                <div class="v"><input type="text" id="tItemImage" class="select" style="width:100%;"
+                    placeholder="예: key.png (assets/images/items/ 경로)"></div>
+                <div class="k">설명</div>
+                <div class="v"><input type="text" id="tItemDesc" class="select" style="width:100%;" placeholder="선택 사항">
+                </div>
               </div>
-              <button class="btn btn-sm" id="btnSaveTreasureItem" type="button">?꾩씠?????/button>
+              <button class="btn btn-sm" id="btnSaveTreasureItem" type="button">아이템 저장</button>
             </div>
             <div id="treasureItemList" class="list" style="margin-top:8px;"></div>
 
-            <!-- 蹂대Ъ諛뺤뒪 ?깅줉 -->
+            <!-- 보물박스 등록 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">?벀 蹂대Ъ諛뺤뒪 ?깅줉/?섏젙 (treasure_boxes)</div>
-              <button class="btn btn-sm" id="btnReloadTBoxes" type="button">?덈줈怨좎묠</button>
+              <div class="muted">📦 보물박스 등록/수정 (treasure_boxes)</div>
+              <button class="btn btn-sm" id="btnReloadTBoxes" type="button">새로고침</button>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                醫뚰몴: ?꾨옒 吏?꾨? ?대┃?섎㈃ ?먮룞 ?낅젰?⑸땲??(?먮뒗 吏곸젒 ?낅젰)<br>
-                ?꾩씠??? ?덉떆: <code>[{"itemId":"1","weight":10},{"itemId":"2","weight":5}]</code>
+                좌표: 아래 지도를 클릭하면 자동 입력됩니다 (또는 직접 입력)<br>
+                아이템 풀 예시: <code>[{"itemId":"1","weight":10},{"itemId":"2","weight":5}]</code>
               </p>
               <div class="kv" style="margin-bottom:8px;">
-                <div class="k">諛뺤뒪 ID (?섏젙 ??</div>
-                <div class="v"><input type="text" id="tBoxId" class="select" style="width:100%;" placeholder="鍮꾩슦硫??좉퇋 ?앹꽦"></div>
-                <div class="k">諛뺤뒪 ?대쫫</div>
-                <div class="v"><input type="text" id="tBoxName" class="select" style="width:100%;" placeholder="?? 媛뺣궓 蹂대Ъ?곸옄"></div>
-                <div class="k">醫뚰몴</div>
+                <div class="k">박스 ID (수정 시)</div>
+                <div class="v"><input type="text" id="tBoxId" class="select" style="width:100%;"
+                    placeholder="비우면 신규 생성"></div>
+                <div class="k">박스 이름</div>
+                <div class="v"><input type="text" id="tBoxName" class="select" style="width:100%;"
+                    placeholder="예: 강남 보물상자"></div>
+                <div class="k">좌표</div>
                 <div class="v">
-                  <input type="text" id="tBoxCoords" class="select" style="width:100%;" placeholder="?? 20.948991, 105.974279">
+                  <input type="text" id="tBoxCoords" class="select" style="width:100%;"
+                    placeholder="예: 20.948991, 105.974279">
                   <div id="tBoxCoordsPreview" style="font-size:11px;color:var(--muted);margin-top:3px;"></div>
-                  <div id="tBoxMapPreview" style="height:220px;margin-top:6px;border-radius:6px;overflow:hidden;border:1px solid #334155;display:none;"></div>
+                  <div id="tBoxMapPreview"
+                    style="height:220px;margin-top:6px;border-radius:6px;overflow:hidden;border:1px solid #334155;display:none;">
+                  </div>
                 </div>
-                <div class="k">?쒖옉 ?쒓컙 (0~23)</div>
-                <div class="v"><input type="number" id="tBoxStartHour" class="select" style="width:80px;" value="0" min="0" max="23"></div>
-                <div class="k">醫낅즺 ?쒓컙 (0~24)</div>
-                <div class="v"><input type="number" id="tBoxEndHour" class="select" style="width:80px;" value="24" min="0" max="24"></div>
-                <div class="k">?꾩씠???</div>
+                <div class="k">시작 시간 (0~23)</div>
+                <div class="v"><input type="number" id="tBoxStartHour" class="select" style="width:80px;" value="0"
+                    min="0" max="23"></div>
+                <div class="k">종료 시간 (0~24)</div>
+                <div class="v"><input type="number" id="tBoxEndHour" class="select" style="width:80px;" value="24"
+                    min="0" max="24"></div>
+                <div class="k">아이템 풀</div>
                 <div class="v">
                   <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
                     <select id="tBoxItemSelect" class="select" style="flex:1;">
-                      <option value="">?꾩씠???좏깮...</option>
+                      <option value="">아이템 선택...</option>
                     </select>
-                    <input type="number" id="tBoxItemWeight" class="select" style="width:70px;" value="10" min="1" step="1" title="媛以묒튂(?뺣쪧)">
-                    <button type="button" id="tBoxItemAdd" class="btn btn-sm">+ 異붽?</button>
+                    <input type="number" id="tBoxItemWeight" class="select" style="width:70px;" value="10" min="1"
+                      step="1" title="가중치(확률)">
+                    <button type="button" id="tBoxItemAdd" class="btn btn-sm">+ 추가</button>
                   </div>
                   <div id="tBoxItemPoolDisplay" style="margin-bottom:6px;"></div>
-                  <textarea id="tBoxItemPool" class="select" style="width:100%;height:52px;font-family:monospace;font-size:11px;resize:none;color:#94a3b8;background:#f8fafc;" readonly placeholder="(?꾩뿉???꾩씠?쒖쓣 異붽??섏꽭??"></textarea>
+                  <textarea id="tBoxItemPool" class="select"
+                    style="width:100%;height:52px;font-family:monospace;font-size:11px;resize:none;color:#94a3b8;background:#f8fafc;"
+                    readonly placeholder="(위에서 아이템을 추가하세요)"></textarea>
                 </div>
-                <div class="k">?쒖꽦??/div>
+                <div class="k">활성화</div>
                 <div class="v">
                   <select id="tBoxActive" class="select">
-                    <option value="true">?쒖꽦</option>
-                    <option value="false">鍮꾪솢??/option>
+                    <option value="true">활성</option>
+                    <option value="false">비활성</option>
                   </select>
                 </div>
-                <div class="k">?뺥쉶???꾩슜</div>
+                <div class="k">정회원 전용</div>
                 <div class="v">
                   <select id="tBoxMemberOnly" class="select">
-                    <option value="false">?쇰컲 怨듦컻</option>
-                    <option value="true">?뺥쉶???꾩슜</option>
+                    <option value="false">일반 공개</option>
+                    <option value="true">정회원 전용</option>
                   </select>
                 </div>
-                <div class="k">?대┃ ?띾뱷 嫄곕━ (m)</div>
+                <div class="k">클릭 획득 거리 (m)</div>
                 <div class="v">
-                  <input type="number" id="tBoxClaimRadius" class="select" style="width:100px;" value="30" min="5" max="5000" step="5">
-                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">?뚮젅?댁뼱媛 ??嫄곕━(m) ?대궡濡??묎렐?댁빞 蹂대Ъ???띾뱷?????덉뒿?덈떎. ?щ（?쨌?대룞 以??띾뱷 ???ш쾶 ?ㅼ젙?섏꽭??(?? 500~2000m).</div>
+                  <input type="number" id="tBoxClaimRadius" class="select" style="width:100px;" value="30" min="5"
+                    max="5000" step="5">
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">플레이어가 이 거리(m) 이내로 접근해야 보물을 획득할 수 있습니다.
+                    크루저·이동 중 획득 시 크게 설정하세요 (예: 500~2000m).</div>
                 </div>
-                <div class="k">AR ?ㅼ틪 嫄곕━ (m)</div>
+                <div class="k">AR 스캔 거리 (m)</div>
                 <div class="v">
-                  <input type="number" id="tBoxScanRadius" class="select" style="width:100px;" value="100" min="10" max="5000" step="10">
-                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">AR 移대찓???ㅼ틦?덉뿉????嫄곕━(m) ?대궡 蹂대Ъ留??쒖떆?⑸땲??</div>
+                  <input type="number" id="tBoxScanRadius" class="select" style="width:100px;" value="100" min="10"
+                    max="5000" step="10">
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">AR 카메라 스캐너에서 이 거리(m) 이내 보물만 표시됩니다.
+                  </div>
                 </div>
-                <div class="k">?④? 蹂대Ъ</div>
+                <div class="k">숨김 보물</div>
                 <div class="v">
                   <select id="tBoxHiddenBox" class="select">
-                    <option value="false">?쇰컲 (??긽 ?쒖떆)</option>
-                    <option value="true">?④? (5m ?묎렐 ??異쒗쁽)</option>
+                    <option value="false">일반 (항상 표시)</option>
+                    <option value="true">숨김 (5m 접근 시 출현)</option>
                   </select>
-                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">?④? ?ㅼ젙 ??吏?꾩뿉 留덉빱媛 ?쒖떆?섏? ?딅떎媛 ?뚮젅?댁뼱媛 5m ?대궡濡??묎렐???뚮쭔 ?섑??⑸땲??</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">숨김 설정 시 지도에 마커가 표시되지 않다가 플레이어가 5m 이내로
+                    접근할 때만 나타납니다.</div>
                 </div>
-                <div class="k" id="tBoxKeyIdRow" style="display:none;">?댁뇿 Key ID</div>
+                <div class="k" id="tBoxKeyIdRow" style="display:none;">열쇠 Key ID</div>
                 <div class="v" id="tBoxKeyIdVal" style="display:none;">
-                  <input type="text" id="tBoxKeyId" class="select" style="width:100%;" placeholder="?? 1001 (鍮꾩슦硫??댁뇿 遺덊븘??">
-                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">?④? 蹂대Ъ諛뺤뒪瑜??????꾩슂???댁뇿 ID. 紐ъ뒪??泥섏튂 ???쒕뜡 ?쒕엻?⑸땲??</div>
+                  <input type="text" id="tBoxKeyId" class="select" style="width:100%;"
+                    placeholder="예: 1001 (비우면 열쇠 불필요)">
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px;">숨김 보물박스를 열 때 필요한 열쇠 ID. 몬스터 처치 시 랜덤
+                    드랍됩니다.</div>
                 </div>
               </div>
-              <button class="btn btn-sm" id="btnSaveTreasureBox" type="button">諛뺤뒪 ???/button>
+              <button class="btn btn-sm" id="btnSaveTreasureBox" type="button">박스 저장</button>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
-              <input type="text" id="tBoxSearch" class="select" style="flex:1;min-width:140px;" placeholder="?대쫫쨌ID 寃??>
+              <input type="text" id="tBoxSearch" class="select" style="flex:1;min-width:140px;" placeholder="이름·ID 검색">
               <select id="tBoxSortSel" class="select" style="width:130px;">
-                <option value="name">?대쫫??/option>
-                <option value="active">?쒖꽦 ?곗꽑</option>
-                <option value="member">?뺥쉶???곗꽑</option>
-                <option value="scan">?ㅼ틪嫄곕━ ????/option>
+                <option value="name">이름순</option>
+                <option value="active">활성 우선</option>
+                <option value="member">정회원 우선</option>
+                <option value="scan">스캔거리 큰 순</option>
               </select>
               <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;">
-                <input type="checkbox" id="tBoxFilterActive"> ?쒖꽦留?
+                <input type="checkbox" id="tBoxFilterActive"> 활성만
               </label>
             </div>
             <div id="treasureBoxList" class="list" style="margin-top:8px;"></div>
-            <div id="treasureBoxPager" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:8px;"></div>
+            <div id="treasureBoxPager"
+              style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:8px;"></div>
 
-            <!-- ?댁뇿 ?깅줉 -->
+            <!-- 열쇠 등록 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">?뵎 ?댁뇿 ?깅줉/?섏젙 (treasure_keys)</div>
-              <button class="btn btn-sm" id="btnReloadTKeys" type="button">?덈줈怨좎묠</button>
+              <div class="muted">🔑 열쇠 등록/수정 (treasure_keys)</div>
+              <button class="btn btn-sm" id="btnReloadTKeys" type="button">새로고침</button>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                紐ъ뒪??泥섏튂 ???쒕뜡 ?뺣쪧濡??쒕엻?섎뒗 ?댁뇿瑜?愿由ы빀?덈떎. ?④? 蹂대Ъ諛뺤뒪? Key ID瑜?留욎텛?몄슂.
+                몬스터 처치 시 랜덤 확률로 드랍되는 열쇠를 관리합니다. 숨김 보물박스와 Key ID를 맞추세요.
               </p>
               <div class="kv" style="margin-bottom:8px;">
                 <div class="k">Key ID</div>
-                <div class="v"><input type="text" id="tKeyId" class="select" style="width:100%;" placeholder="?? 1001"></div>
-                <div class="k">?댁뇿 ?대쫫</div>
-                <div class="v"><input type="text" id="tKeyName" class="select" style="width:100%;" placeholder="?? ?⑷툑 ?댁뇿"></div>
-                <div class="k">?쒕엻 ?뺣쪧 (0~1)</div>
-                <div class="v"><input type="number" id="tKeyDropRate" class="select" style="width:100%;" min="0" max="1" step="0.01" value="0.1" placeholder="?? 0.1 = 10%"></div>
-                <div class="k">?쒖꽦??/div>
+                <div class="v"><input type="text" id="tKeyId" class="select" style="width:100%;" placeholder="예: 1001">
+                </div>
+                <div class="k">열쇠 이름</div>
+                <div class="v"><input type="text" id="tKeyName" class="select" style="width:100%;"
+                    placeholder="예: 황금 열쇠"></div>
+                <div class="k">드랍 확률 (0~1)</div>
+                <div class="v"><input type="number" id="tKeyDropRate" class="select" style="width:100%;" min="0" max="1"
+                    step="0.01" value="0.1" placeholder="예: 0.1 = 10%"></div>
+                <div class="k">활성화</div>
                 <div class="v">
                   <select id="tKeyActive" class="select">
-                    <option value="true">?쒖꽦</option>
-                    <option value="false">鍮꾪솢??/option>
+                    <option value="true">활성</option>
+                    <option value="false">비활성</option>
                   </select>
                 </div>
               </div>
-              <button class="btn btn-sm" id="btnSaveTreasureKey" type="button">?댁뇿 ???/button>
+              <button class="btn btn-sm" id="btnSaveTreasureKey" type="button">열쇠 저장</button>
             </div>
             <div id="treasureKeyList" class="list" style="margin-top:8px;"></div>
 
-            <!-- 諛붿슦泥??깅줉 -->
+            <!-- 바우처 등록 -->
             <div class="list-head" style="margin-top:16px;">
-              <div class="muted">?렅 諛붿슦泥??깅줉/?섏젙 (treasure_vouchers)</div>
-              <button class="btn btn-sm" id="btnReloadTVouchers" type="button">?덈줈怨좎묠</button>
+              <div class="muted">🎟 바우처 등록/수정 (treasure_vouchers)</div>
+              <button class="btn btn-sm" id="btnReloadTVouchers" type="button">새로고침</button>
             </div>
             <div class="card" style="margin-top:4px;">
               <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                ?꾩슂 ?щ즺 ?덉떆: <code>[{"itemId":"1","count":3},{"itemId":"2","count":1}]</code>
+                필요 재료 예시: <code>[{"itemId":"1","count":3},{"itemId":"2","count":1}]</code>
               </p>
               <div class="kv" style="margin-bottom:8px;">
-                <div class="k">諛붿슦泥?ID (?섏젙 ??</div>
-                <div class="v"><input type="text" id="tVoucherId" class="select" style="width:100%;" placeholder="鍮꾩슦硫??좉퇋 ?앹꽦"></div>
-                <div class="k">諛붿슦泥??대쫫</div>
-                <div class="v"><input type="text" id="tVoucherName" class="select" style="width:100%;" placeholder="?? 10% ?좎씤 荑좏룿"></div>
-                <div class="k">?꾩슂 ?щ즺 (JSON)</div>
-                <div class="v"><textarea id="tVoucherReqs" class="select" style="width:100%; height:70px; font-family:monospace; font-size:12px; resize:vertical;" placeholder='[{"itemId":"1","count":3},{"itemId":"2","count":1}]'></textarea></div>
-                <div class="k">蹂댁긽 ?댁슜 (?띿뒪???꾩씠?쏧D)</div>
-                <div class="v"><input type="text" id="tVoucherReward" class="select" style="width:100%;" placeholder="?? weapon_125 / 媛留뱀젏 10% ?좎씤 荑좏룿 吏湲?></div>
-                <div class="k" style="color:#fbbf24;font-weight:700;">?첌 GP 蹂댁긽 理쒖넖媛?/div>
-                <div class="v"><input type="number" id="tVoucherGpMin" class="select" style="width:100%;" min="0" step="100" placeholder="0 = GP 蹂댁긽 ?놁쓬 (?? 500)"></div>
-                <div class="k" style="color:#fbbf24;font-weight:700;">?첌 GP 蹂댁긽 理쒕뙎媛?/div>
+                <div class="k">바우처 ID (수정 시)</div>
+                <div class="v"><input type="text" id="tVoucherId" class="select" style="width:100%;"
+                    placeholder="비우면 신규 생성"></div>
+                <div class="k">바우처 이름</div>
+                <div class="v"><input type="text" id="tVoucherName" class="select" style="width:100%;"
+                    placeholder="예: 10% 할인 쿠폰"></div>
+                <div class="k">필요 재료 (JSON)</div>
+                <div class="v"><textarea id="tVoucherReqs" class="select"
+                    style="width:100%; height:70px; font-family:monospace; font-size:12px; resize:vertical;"
+                    placeholder='[{"itemId":"1","count":3},{"itemId":"2","count":1}]'></textarea></div>
+                <div class="k">보상 내용 (텍스트/아이템ID)</div>
+                <div class="v"><input type="text" id="tVoucherReward" class="select" style="width:100%;"
+                    placeholder="예: weapon_125 / 가맹점 10% 할인 쿠폰 지급"></div>
+                <div class="k" style="color:#fbbf24;font-weight:700;">🪙 GP 보상 최솟값</div>
+                <div class="v"><input type="number" id="tVoucherGpMin" class="select" style="width:100%;" min="0"
+                    step="100" placeholder="0 = GP 보상 없음 (예: 500)"></div>
+                <div class="k" style="color:#fbbf24;font-weight:700;">🪙 GP 보상 최댓값</div>
                 <div class="v">
-                  <input type="number" id="tVoucherGpMax" class="select" style="width:100%;" min="0" step="100" placeholder="0 = GP 蹂댁긽 ?놁쓬 (?? 1000)">
-                  <div style="font-size:11px;color:#6b7280;margin-top:3px;">GP 理쒖넖媛?&gt; 0 ?대㈃ 議고빀 利됱떆 ?쒕뜡 GP 吏湲?(?⑥껜???놁쓬)</div>
+                  <input type="number" id="tVoucherGpMax" class="select" style="width:100%;" min="0" step="100"
+                    placeholder="0 = GP 보상 없음 (예: 1000)">
+                  <div style="font-size:11px;color:#6b7280;margin-top:3px;">GP 최솟값 &gt; 0 이면 조합 즉시 랜덤 GP 지급 (온체인 없음)
+                  </div>
                 </div>
-                <div class="k">?대?吏 ?뚯씪紐?/div>
-                <div class="v"><input type="text" id="tVoucherImage" class="select" style="width:100%;" placeholder="?? voucher_discount.png (assets/images/vouchers/ 寃쎈줈)"></div>
-                <div class="k">理쒖냼 肄붿씤 (minCoins)</div>
-                <div class="v"><input type="number" id="tVoucherMinCoins" class="select" style="width:100%;" min="0" step="1" placeholder="0 = ?쒗븳 ?놁쓬"></div>
-                <div class="k">理쒖냼 ?덈꺼 (minLevel)</div>
-                <div class="v"><input type="number" id="tVoucherMinLevel" class="select" style="width:100%;" min="0" step="1" placeholder="0 = ?쒗븳 ?놁쓬"></div>
-                <div class="k">?쒖꽦??/div>
+                <div class="k">이미지 파일명</div>
+                <div class="v"><input type="text" id="tVoucherImage" class="select" style="width:100%;"
+                    placeholder="예: voucher_discount.png (assets/images/vouchers/ 경로)"></div>
+                <div class="k">최소 코인 (minCoins)</div>
+                <div class="v"><input type="number" id="tVoucherMinCoins" class="select" style="width:100%;" min="0"
+                    step="1" placeholder="0 = 제한 없음"></div>
+                <div class="k">최소 레벨 (minLevel)</div>
+                <div class="v"><input type="number" id="tVoucherMinLevel" class="select" style="width:100%;" min="0"
+                    step="1" placeholder="0 = 제한 없음"></div>
+                <div class="k">활성화</div>
                 <div class="v">
                   <select id="tVoucherActive" class="select">
-                    <option value="true">?쒖꽦</option>
-                    <option value="false">鍮꾪솢??/option>
+                    <option value="true">활성</option>
+                    <option value="false">비활성</option>
                   </select>
                 </div>
               </div>
-              <button class="btn btn-sm" id="btnSaveVoucher" type="button">諛붿슦泥????/button>
+              <button class="btn btn-sm" id="btnSaveVoucher" type="button">바우처 저장</button>
             </div>
             <div id="voucherMgmtList" class="list" style="margin-top:8px;"></div>
 
           </div>
 
-          <!-- ?? ?룵 ?곸젏 愿由????? -->
+          <!-- ── 🏪 상점 관리 탭 ── -->
           <div id="tabShops" style="display:none;">
 
-            <!-- ?곸젏 ?앹꽦/?섏젙 ??-->
+            <!-- 상점 생성/수정 폼 -->
             <div class="list-head" style="margin-top:8px;">
-              <div class="muted">?룵 ?곸젏 ?앹꽦 / ?섏젙 (game_shops)</div>
-              <button class="btn btn-sm" id="btnReloadShops" type="button">紐⑸줉 ?덈줈怨좎묠</button>
+              <div class="muted">🏪 상점 생성 / 수정 (game_shops)</div>
+              <button class="btn btn-sm" id="btnReloadShops" type="button">목록 새로고침</button>
             </div>
             <div class="card" style="margin-top:4px;">
               <div class="kv" style="margin-bottom:8px;">
-                <div class="k">?곸젏 ID (?섏젙 ??</div>
-                <div class="v"><input type="text" id="shopId" class="select" style="width:100%;" placeholder="鍮꾩슦硫??좉퇋 ?앹꽦"></div>
-                <div class="k">?곸젏 ?대쫫</div>
-                <div class="v"><input type="text" id="shopName" class="select" style="width:100%;" placeholder="?? ?⑹궗??臾닿린??></div>
-                <div class="k">?뚯쑀??UID</div>
-                <div class="v"><input type="text" id="shopOwnerUid" class="select" style="width:100%;" placeholder="鍮꾩슦硫?愿由ъ옄 UID"></div>
-                <div class="k">?곸젏 ???/div>
+                <div class="k">상점 ID (수정 시)</div>
+                <div class="v"><input type="text" id="shopId" class="select" style="width:100%;"
+                    placeholder="비우면 신규 생성"></div>
+                <div class="k">상점 이름</div>
+                <div class="v"><input type="text" id="shopName" class="select" style="width:100%;"
+                    placeholder="예: 용사의 무기점"></div>
+                <div class="k">소유자 UID</div>
+                <div class="v"><input type="text" id="shopOwnerUid" class="select" style="width:100%;"
+                    placeholder="비우면 관리자 UID"></div>
+                <div class="k">상점 타입</div>
                 <div class="v">
                   <select id="shopType" class="select">
-                    <option value="weapon_armor">臾닿린/諛⑹뼱援?/option>
-                    <option value="potion">?ъ뀡</option>
-                    <option value="misc">湲고?</option>
+                    <option value="weapon_armor">무기/방어구</option>
+                    <option value="potion">포션</option>
+                    <option value="misc">기타</option>
                   </select>
                 </div>
-                <div class="k">醫뚰몴</div>
-                <div class="v"><input type="text" id="shopCoords" class="select" style="width:100%;" placeholder="?? 20.948991, 105.974279"></div>
-                <div class="k">?덈꺼 (珥덇린)</div>
-                <div class="v"><input type="number" id="shopLevel" class="select" style="width:80px;" value="1" min="1" max="100"></div>
-                <div class="k">?대?吏 URL</div>
-                <div class="v"><input type="text" id="shopImageUrl" class="select" style="width:100%;" placeholder="https://... ?먮뒗 鍮꾩썙?먭린"></div>
-                <div class="k">?쒖꽦??/div>
+                <div class="k">좌표</div>
+                <div class="v"><input type="text" id="shopCoords" class="select" style="width:100%;"
+                    placeholder="예: 20.948991, 105.974279"></div>
+                <div class="k">레벨 (초기)</div>
+                <div class="v"><input type="number" id="shopLevel" class="select" style="width:80px;" value="1" min="1"
+                    max="100"></div>
+                <div class="k">이미지 URL</div>
+                <div class="v"><input type="text" id="shopImageUrl" class="select" style="width:100%;"
+                    placeholder="https://... 또는 비워두기"></div>
+                <div class="k">활성화</div>
                 <div class="v">
                   <select id="shopActive" class="select">
-                    <option value="true">?쒖꽦</option>
-                    <option value="false">鍮꾪솢??/option>
+                    <option value="true">활성</option>
+                    <option value="false">비활성</option>
                   </select>
                 </div>
-                <div class="k">?먮ℓ ?꾩씠??(JSON)</div>
+                <div class="k">판매 아이템 (JSON)</div>
                 <div class="v">
-                  <textarea id="shopItems" class="select" style="width:100%;height:80px;font-family:monospace;font-size:11px;resize:vertical;"
-                    placeholder='[{"itemId":"weapon_100","name":"媛뺤쿋寃","price":500},{"itemId":"potion_red","name":"鍮④컙?ъ뀡","price":100}]'></textarea>
-                  <div class="muted" style="font-size:11px;margin-top:3px;">?뺤떇: [{"itemId":"...","name":"...","price":怨⑤뱶?섎웾}]</div>
+                  <textarea id="shopItems" class="select"
+                    style="width:100%;height:80px;font-family:monospace;font-size:11px;resize:vertical;"
+                    placeholder='[{"itemId":"weapon_100","name":"강철검","price":500},{"itemId":"potion_red","name":"빨간포션","price":100}]'></textarea>
+                  <div class="muted" style="font-size:11px;margin-top:3px;">형식:
+                    [{"itemId":"...","name":"...","price":골드수량}]</div>
                 </div>
               </div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <button class="btn btn-sm" id="btnSaveShop" type="button">?뮶 ?곸젏 ???/button>
-                <button class="btn btn-sm" id="btnClearShopForm" type="button">珥덇린??/button>
+                <button class="btn btn-sm" id="btnSaveShop" type="button">💾 상점 저장</button>
+                <button class="btn btn-sm" id="btnClearShopForm" type="button">초기화</button>
                 <span id="shopSaveResult" style="font-size:13px;margin-left:4px;"></span>
               </div>
             </div>
 
-            <!-- ?곸젏 紐⑸줉 -->
+            <!-- 상점 목록 -->
             <div id="shopList" class="list" style="margin-top:12px;"></div>
 
-            <!-- ?묐룄 ?ㅼ씠?쇰줈洹몄슜 ?④? ?곸뿭 -->
+            <!-- 양도 다이얼로그용 숨김 영역 -->
             <div id="shopTransferSection" style="display:none;margin-top:16px;">
               <div class="card">
-                <div class="muted" style="font-size:13px;margin-bottom:8px;">?곸젏 ?묐룄 ???대찓???낅젰</div>
+                <div class="muted" style="font-size:13px;margin-bottom:8px;">상점 양도 — 이메일 입력</div>
                 <div style="display:flex;gap:8px;align-items:center;">
-                  <input type="text" id="shopTransferEmail" class="select" style="flex:1;" placeholder="?묐룄諛쏆쓣 ?좎? ?대찓??>
+                  <input type="text" id="shopTransferEmail" class="select" style="flex:1;" placeholder="양도받을 유저 이메일">
                   <input type="hidden" id="shopTransferTargetId">
-                  <button class="btn btn-sm" id="btnConfirmTransfer" type="button">?묐룄 ?뺤씤</button>
-                  <button class="btn btn-sm" id="btnCancelTransfer" type="button">痍⑥냼</button>
+                  <button class="btn btn-sm" id="btnConfirmTransfer" type="button">양도 확인</button>
+                  <button class="btn btn-sm" id="btnCancelTransfer" type="button">취소</button>
                 </div>
                 <span id="shopTransferResult" style="font-size:13px;margin-top:6px;display:block;"></span>
               </div>
@@ -656,22 +725,27 @@
 
           </div>
 
-          <!-- ?? 1:1 梨꾪똿 愿由????? -->
+          <!-- ── 1:1 채팅 관리 탭 ── -->
           <div id="tabChat" style="display:none;">
             <div class="list-head" style="align-items:center;">
-              <div class="muted">1:1 怨좉컼 梨꾪똿</div>
+              <div class="muted">1:1 고객 채팅</div>
               <div style="display:flex;gap:8px;align-items:center;">
-                <span id="adminOnlineLabel">?뵶 ?ㅽ봽?쇱씤</span>
-                <button class="btn btn-sm" id="btnToggleAdminOnline" type="button">?⑤씪???꾪솚</button>
+                <span id="adminOnlineLabel">🔴 오프라인</span>
+                <button class="btn btn-sm" id="btnToggleAdminOnline" type="button">온라인 전환</button>
               </div>
             </div>
             <div style="display:flex;gap:12px;margin-top:8px;">
-              <div id="chatSessionList" style="width:200px;min-width:160px;border-right:1px solid #e2e8f0;padding-right:12px;max-height:500px;overflow-y:auto;"></div>
+              <div id="chatSessionList"
+                style="width:200px;min-width:160px;border-right:1px solid #e2e8f0;padding-right:12px;max-height:500px;overflow-y:auto;">
+              </div>
               <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
-                <div id="adminChatMessages" style="height:350px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:8px;"></div>
+                <div id="adminChatMessages"
+                  style="height:350px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:8px;">
+                </div>
                 <form id="adminChatForm" style="display:flex;gap:8px;">
-                  <input type="text" id="adminChatInput" class="select" style="flex:1;" placeholder="?듭옣 硫붿떆吏 ?낅젰..." autocomplete="off" maxlength="500" />
-                  <button class="btn btn-sm" type="submit">?꾩넚</button>
+                  <input type="text" id="adminChatInput" class="select" style="flex:1;" placeholder="답장 메시지 입력..."
+                    autocomplete="off" maxlength="500" />
+                  <button class="btn btn-sm" type="submit">전송</button>
                 </form>
                 <div id="adminChatTarget" class="muted" style="font-size:12px;"></div>
               </div>
@@ -688,8 +762,8 @@
   <dialog id="dlgDetail" class="dlg">
     <div class="dlg-box">
       <div class="dlg-h">
-        <div class="dlg-title" id="dlgTitle">?곸꽭</div>
-        <button class="btn btn-sm" id="dlgClose" type="button">?リ린</button>
+        <div class="dlg-title" id="dlgTitle">상세</div>
+        <button class="btn btn-sm" id="dlgClose" type="button">닫기</button>
       </div>
       <pre class="dlg-pre" id="dlgBody"></pre>
     </div>
@@ -698,25 +772,33 @@
   <dialog id="dlgMerchantEdit" class="dlg">
     <div class="dlg-box" style="min-width:340px;max-width:480px;">
       <div class="dlg-h">
-        <div class="dlg-title">媛留뱀젏 ?뺣낫 ?섏젙</div>
-        <button class="btn btn-sm" id="dlgMerchantEditClose" type="button">?リ린</button>
+        <div class="dlg-title">가맹점 정보 수정</div>
+        <button class="btn btn-sm" id="dlgMerchantEditClose" type="button">닫기</button>
       </div>
       <form id="frmMerchantEdit" style="display:flex;flex-direction:column;gap:14px;padding:16px 0 4px;">
         <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:13px;font-weight:600;color:#374151;">?낆쥌/移댄뀒怨좊━</label>
-          <input id="meCareer" type="text" class="input" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;" placeholder="?? ?앹쓬猷? IT?쒕퉬????>
+          <label style="font-size:13px;font-weight:600;color:#374151;">업종/카테고리</label>
+          <input id="meCareer" type="text" class="input"
+            style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;"
+            placeholder="예: 식음료, IT서비스 …">
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:13px;font-weight:600;color:#374151;">?쒕룞 吏??/label>
-          <input id="meRegion" type="text" class="input" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;" placeholder="?? ?쒖슱 媛뺣궓, ?섎끂????>
+          <label style="font-size:13px;font-weight:600;color:#374151;">활동 지역</label>
+          <input id="meRegion" type="text" class="input"
+            style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;"
+            placeholder="예: 서울 강남, 하노이 …">
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:13px;font-weight:600;color:#374151;">?뚭컻/?곸꽭</label>
-          <textarea id="meDesc" rows="4" class="input" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;resize:vertical;" placeholder="媛留뱀젏 ?뚭컻 臾멸뎄瑜??낅젰?섏꽭??"></textarea>
+          <label style="font-size:13px;font-weight:600;color:#374151;">소개/상세</label>
+          <textarea id="meDesc" rows="4" class="input"
+            style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;resize:vertical;"
+            placeholder="가맹점 소개 문구를 입력하세요."></textarea>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
-          <button type="button" id="dlgMerchantEditCancel" class="btn btn-sm" style="background:#f3f4f6;color:#374151;border-color:#d1d5db;">痍⑥냼</button>
-          <button type="submit" id="dlgMerchantEditSave" class="btn btn-sm" style="background:var(--accent,#2563eb);color:#fff;border-color:var(--accent,#2563eb);">???/button>
+          <button type="button" id="dlgMerchantEditCancel" class="btn btn-sm"
+            style="background:#f3f4f6;color:#374151;border-color:#d1d5db;">취소</button>
+          <button type="submit" id="dlgMerchantEditSave" class="btn btn-sm"
+            style="background:var(--accent,#2563eb);color:#fff;border-color:var(--accent,#2563eb);">저장</button>
         </div>
       </form>
     </div>
@@ -727,4 +809,5 @@
   <script type="module" src="/assets/js/admin-support-chat.js"></script>
   <script type="module" src="/assets/js/admin_shops.js"></script>
 </body>
+
 </html>
