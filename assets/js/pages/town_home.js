@@ -78,32 +78,14 @@ function setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, rewar
   if (highestEl) highestEl.textContent = rewardText || _t('item_jackpot');
 }
 
-// 컨트랙트에서 직접 jackpotAccWei 조회 (eth_call, 라이브러리 불필요)
-const JACKPOT_CONTRACT = "0x4d83A7764428fd1c116062aBb60c329E0E29f490";
-const JACKPOT_RPC = "https://opbnb-mainnet-rpc.bnbchain.org";
-const JACKPOT_ACC_SEL = "0x84eba628"; // keccak256("jackpotAccWei()")[:4]
-
-async function fetchJackpotAccWeiOnChain() {
-  const res = await fetch(JACKPOT_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0", id: 1,
-      method: "eth_call",
-      params: [{ to: JACKPOT_CONTRACT, data: JACKPOT_ACC_SEL }, "latest"],
-    }),
-  });
-  const json = await res.json();
-  if (!json.result || json.result === "0x") return 0n;
-  return BigInt(json.result);
-}
+// 컨트랙트 강제 조회 제거 (Web3 의존성 삭제)
+// 순수 Firebase 기반 제로섬 경제 적용
 
 async function loadJackpotStats() {
   try {
-    const [configSnap, winsSnap, onChainWei] = await Promise.all([
+    const [configSnap, winsSnap] = await Promise.all([
       getDoc(doc(db, "jackpot_config", "current")),
-      getDocs(query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(100))),
-      fetchJackpotAccWeiOnChain().catch(() => null),
+      getDocs(query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(100)))
     ]);
 
     // FX 환율: jackpot_config 캐시 우선, 없으면 폴백
@@ -114,18 +96,17 @@ async function loadJackpotStats() {
     };
     _fxCache = fx;
 
-    // 누적 잭팟 금액: 온체인 직접 조회 우선, 캐시 폴백
-    const weiStr = cfg.jackpotAccWei || "0";
-    const weiVal = onChainWei !== null ? onChainWei : BigInt(weiStr);
-    const hexVal = Number(weiVal) / 1e18;
-    const krwStr = Math.round(hexVal * fx.krw).toLocaleString("ko-KR");
-    const vndStr = Math.round(hexVal * fx.vnd).toLocaleString("ko-KR");
+    // 누적 잭팟 금액: Firebase 순수 데이터 우선 (잭팟 누적금 VND)
+    const jackpotVnd = Number(cfg.jackpotAccVnd || 0);
+
+    const vndStr = jackpotVnd.toLocaleString("ko-KR");
+    const krwStr = Math.round(jackpotVnd / 18.84).toLocaleString("ko-KR"); // 대략적인 환산 렌더링용
 
     const count = winsSnap.size;
     const now = new Date();
     setJackpotUi({
-      valueText: hexVal > 0 ? `${vndStr} VND` : "0 VND",
-      fiatText: hexVal > 0 ? _t('fiat_approx', fmtJackpotHex(hexVal), krwStr + " KRW") : _t('fiat_no_jackpot'),
+      valueText: jackpotVnd > 0 ? `${vndStr} KM` : "0 KM",
+      fiatText: jackpotVnd > 0 ? _t('fiat_approx', "0 KM", krwStr + " KRW") : _t('fiat_no_jackpot'),
       updatedText: _t('time_basis', now.toLocaleTimeString([], { hour12: false })),
       winnerCountText: count > 0 ? `${count.toLocaleString()}명` : "-",
       rewardText: _t('item_jackpot'),
