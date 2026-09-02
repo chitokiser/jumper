@@ -96,7 +96,7 @@ function renderReferralSection(uid) {
 }
 
 function renderWallet(userData) {
-  // 수탁 지갑 기능 완전 제거
+  // 포인트 계좌 기능 완전 제거
   show("walletInfo", false);
   show("btnCreateWallet", false);
   show("btnConnectMetaMask", false);
@@ -104,7 +104,7 @@ function renderWallet(userData) {
 }
 
 async function loadOnChainData(uid) {
-  // 온체인 연동 완전히 제거 - 순수 파이어베이스에서 필요한 정보만 로드
+  // 서비스 연동 완전히 제거 - 순수 파이어베이스에서 필요한 정보만 로드
   show("walletHexRow", false);
   show("onChainRegBox", false);
   setText("onChainStatus", "활성화 됨 (Firebase)");
@@ -425,7 +425,7 @@ async function loadMenteeIncome(_uid) {
       return;
     }
 
-    // 내 온체인 포인트 잔액
+    // 내 서비스 포인트 잔액
     let myPointsWei = 0n;
     if (myAddress) myPointsWei = await fetchMemberPoints(myAddress);
     const myPointsHex = Number(myPointsWei) / 1e18;
@@ -1740,7 +1740,7 @@ onAuthReady(async (ctx) => {
       const isGameVoucher = v.source === 'game';
       const isProductVoucher = v.source === 'product';
       const isCommunityVoucher = v.source === 'community';
-      // 온체인 바우처는 voucherId(숫자), 나머지는 docId(Firestore 문서 ID) 사용
+      // 서비스 바우처는 voucherId(숫자), 나머지는 docId(Firestore 문서 ID) 사용
       const vid = (isProductVoucher || isGameVoucher || isCommunityVoucher) ? null : v.voucherId;
       const docId = v.id;
       const col = isGameVoucher ? 'treasure_voucher_logs'
@@ -1950,7 +1950,7 @@ onAuthReady(async (ctx) => {
     setVbStatus('');
     [1, 2, 3, 4].forEach(n => stepState(n, 'wait'));
 
-    // community 바우처는 hexPrice > 0 이면 온체인 환급 흐름 (product와 동일)
+    // community 바우처는 hexPrice > 0 이면 서비스 환급 흐름 (product와 동일)
     const isGameBurnFlow = _pendingCollection === 'treasure_voucher_logs'
       || (_pendingCollection === 'community_event_vouchers' && (!_pendingHexPrice || _pendingHexPrice === '0'));
     let progressTimer = null;
@@ -2069,7 +2069,7 @@ onAuthReady(async (ctx) => {
   };
 })();
 
-// ── 온체인 경험치 동기화 상태 UI ────────────────────────────────────────────────
+// ── 서비스 경험치 동기화 상태 UI ────────────────────────────────────────────────
 // 레벨업 → Firestore 플래그 → 6시간 배치 또는 수동 동기화 → adminSetLevel() 1tx
 function _renderOnChainSyncStatus(bp, uid) {
   const row = document.getElementById('onChainSyncRow');
@@ -2103,11 +2103,11 @@ function _renderOnChainSyncStatus(bp, uid) {
     const txShort = lastTxHash ? lastTxHash.slice(0, 10) + '…' : '';
     statusHtml = `
       <span style="background:#10b981;color:#fff;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;">
-        ✅ 온체인 Lv.${onChainLevel} 동기화됨
+        ✅ 서비스 Lv.${onChainLevel} 동기화됨
       </span>
       <span style="font-size:11px;color:#9ca3af;margin-left:6px;">${syncStr}${txShort ? ' · ' + txShort : ''}</span>`;
   } else {
-    statusHtml = `<span style="font-size:11px;color:#6b7280;">온체인 레벨 미기록 (레벨업 후 자동 저장)</span>`;
+    statusHtml = `<span style="font-size:11px;color:#6b7280;">서비스 레벨 미기록 (레벨업 후 자동 저장)</span>`;
   }
 
   container.innerHTML = statusHtml;

@@ -662,7 +662,7 @@
       <div id="noProfilePanel" style="display:none;" class="panel mp-section">
         <h2 class="mp-section-title" data-i18n="no_profile_title">회원가입이 필요합니다</h2>
         <p class="hint" style="margin:8px 0 16px;">
-          수탁 지갑 생성 및 서비스 이용을 위해 먼저 회원가입을 완료해 주세요.
+          계정 생성 및 서비스 이용을 위해 먼저 회원가입을 완료해 주세요.
         </p>
         <a href="/register.html" class="btn btn--primary" data-i18n="btn_register">회원가입 하러 가기</a>
       </div>
@@ -728,12 +728,12 @@
       </section>
 
       <div class="mp-section-head">
-        <h2 class="mp-section-title" data-i18n="section_wallet">내 지갑 정보</h2>
+        <h2 class="mp-section-title" data-i18n="section_wallet">내 멤버십 정보</h2>
       </div>
 
       <div id="walletInfo">
         <div class="mp-kv" style="align-items:flex-start;">
-          <span class="k" data-i18n="label_wallet_addr">지갑 주소</span>
+          <span class="k" data-i18n="label_wallet_addr">멤버십 주소</span>
           <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
             <span class="mono" id="walletAddress"
               style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
@@ -745,7 +745,7 @@
           </span>
         </div>
         <div class="mp-kv">
-          <span class="k" data-i18n="label_onchain">온체인 등록</span>
+          <span class="k" data-i18n="label_onchain">앱 서비스 등록</span>
           <span class="v" id="onChainStatus">조회 중...</span>
         </div>
         <div class="mp-kv" id="levelRow" style="display:none;">
@@ -800,7 +800,7 @@
 
 
 
-      <!-- 멘토 등록 요청 (온체인 등록 완료 후 멘토 없을 때) -->
+      <!-- 멘토 등록 요청 (앱 서비스 등록 완료 후 멘토 없을 때) -->
       <div id="mentorRequestBox" style="display:none;" class="mp-action-box">
         <p class="hint">
           <strong>멘토를 등록하세요.</strong><br>
@@ -866,7 +866,7 @@
 
           <div class="mp-kv"><span class="k">금액</span><span class="v" id="drAmount">-</span></div>
           <div class="mp-kv"><span class="k">충전 금액</span><span class="v accent" id="drHex">-</span></div>
-          <p class="hint mp-warn" data-i18n="deposit_warn">입금자명을 정확히 입력하세요. 관리자 확인 후 Point 포인트이 수탁 지갑으로 지급됩니다.</p>
+          <p class="hint mp-warn" data-i18n="deposit_warn">입금자명을 정확히 입력하세요. 관리자 확인 후 Point 포인트이 내 정보로 지급됩니다.</p>
         </div>
       </section>
 
@@ -878,7 +878,7 @@
         </div>
         <p class="hint" style="margin-bottom:12px;">
           가맹점을 방문하여 현장에서 결제할 때 사용합니다.<br>
-          <small class="muted">결제 시 수탁 지갑의 Point가 사용됩니다. (온체인 결제)</small>
+          <small class="muted">결제 시 가맹점 전용 잔고가 사용됩니다. (인앱 자동 결제)</small>
         </p>
         <form id="merchantPayForm" class="form" style="margin-top:0;">
           <label class="field">
@@ -923,7 +923,7 @@
           <div>
             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">멘토 등록 (필수)
             </dt>
-            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">온체인 등록 시 멘토 주소를 입력해야 합니다. 멘토 없이 등록하면 기본
+            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">앱 서비스 등록 시 멘토 주소를 입력해야 합니다. 멘토 없이 등록하면 기본
               멘토로 연결되어 경험치·포인트 적립이 되지 않을 수 있습니다.</dd>
           </div>
           <div>
@@ -1072,7 +1072,7 @@
           <div style="margin-bottom:12px;">
             <button id="btnVwShowQr" type="button"
               style="width:100%;padding:11px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.92rem;font-weight:600;cursor:pointer;">
-              <span data-i18n="btn_show_qr">📲 내 수탁 지갑 주소 QR 보기</span>
+              <span data-i18n="btn_show_qr">📲 내 수탁 멤버십 주소 QR 보기</span>
             </button>
           </div>
           <div id="vwMyQrPanel"
@@ -1107,7 +1107,7 @@
             style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-top:14px;">
             <div style="font-weight:700;margin-bottom:10px;" data-i18n="transfer_title">바우처 이체</div>
             <div style="font-size:0.83rem;color:var(--muted,#6b7280);margin-bottom:8px;">
-              바우처 <strong id="vtVoucherId"></strong>을(를) 이체할 지갑 주소를 입력하세요.
+              바우처 <strong id="vtVoucherId"></strong>을(를) 이체할 멤버십 주소를 입력하세요.
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;">
               <input type="text" id="vtToAddress" placeholder="0x..."
