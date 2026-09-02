@@ -98,10 +98,15 @@ function initSocialButtons() {
 }
 
 // ── 이미 가입한 경우 표시 ──────────────────────────
+// ── 이미 가입한 경우 표시 (그리고 리다이렉트) ────────────
 function showAlreadyDone(userData) {
   show("authSection", false);
   show("alreadyDone", true);
   show("regForm", false);
+  // 이미 가입된 계정이면 마이페이지로 즉시 리다이렉트
+  setTimeout(() => {
+    location.replace("/mypage.html");
+  }, 1000);
 }
 
 // ── 가입 실행 ──────────────────────────────────────
