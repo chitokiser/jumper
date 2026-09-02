@@ -160,35 +160,40 @@ async function loadKCultureBalances(uid) {
       const elPay = $("paymentBalanceDisplay");
 
       if (elPoint) {
-  elPoint.innerHTML = pointBal.toLocaleString("ko-KR") + " P " + `<button id="btnExchangePoint" class="btn btn--sm" style="margin-left:10px; padding:4px 8px; font-size:0.75rem; background:#3b82f6; color:#fff; border:none; outline:none;">💸 포인트 전환</button>`;
-  setTimeout(() => {
-    const btnExc = document.getElementById("btnExchangePoint");
-    if (btnExc) {
-      btnExc.addEventListener("click", async () => {
-        try {
-          const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js");
-          const bpSnap = await getDoc(doc(db, "battle_players", uid));
-          const lv = bpSnap.exists() ? Math.max(1, bpSnap.data().gsLevel || 1) : 1;
-          const expectedVnd = Math.floor(pointBal * lv / 10);
-          const ok = confirm(`현재 회원님의 레벨은 Lv.${lv} 입니다.\n보유하신 ${pointBal.toLocaleString()} 포인트를 전환하면\n${expectedVnd.toLocaleString()} VND (법정화폐 잔고)로 전환됩니다.\n전환하시겠습니까?`);
-          if (!ok) return;
-          btnExc.disabled = true;
-          btnExc.textContent = "처리 중...";
-          const { httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-functions.js");
-          const fn = httpsCallable(functions, "exchangePointsToFiat");
-          const res = await fn({ amount: pointBal });
-          alert(`성공적으로 전환되었습니다!\n잔고: ${res.data.convertedVnd.toLocaleString()} VND 추가됨`);
-          location.reload();
-        } catch (err) {
-          alert("전환 실패: " + err.message);
-          btnExc.disabled = false;
-          btnExc.textContent = "💸 포인트 전환";
-        }
-      });
-    }
-  }, 100);
-}
-      if (elPay) { const krwTotal = Math.round(payBal / 18.5); elPay.textContent = payBal.toLocaleString("ko-KR") + " VND (≈ " + krwTotal.toLocaleString("ko-KR") + " KRW)"; }
+        elPoint.innerHTML = `<span style="font-size:1.6rem;">${pointBal.toLocaleString("ko-KR")} P</span>` +
+          `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>`;
+        setTimeout(() => {
+          const btnExc = document.getElementById("btnExchangePoint");
+          if (btnExc) {
+            btnExc.addEventListener("click", async () => {
+              try {
+                const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js");
+                const bpSnap = await getDoc(doc(db, "battle_players", uid));
+                const lv = bpSnap.exists() ? Math.max(1, bpSnap.data().gsLevel || 1) : 1;
+                const expectedVnd = Math.floor(pointBal * lv / 10);
+                const ok = confirm(`현재 회원님의 레벨은 Lv.${lv} 입니다.\n보유하신 ${pointBal.toLocaleString()} 포인트를 전환하면\n${expectedVnd.toLocaleString()} VND (법정화폐 잔고)로 전환됩니다.\n전환하시겠습니까?`);
+                if (!ok) return;
+                btnExc.disabled = true;
+                btnExc.textContent = "처리 중...";
+                const { httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-functions.js");
+                const fn = httpsCallable(functions, "exchangePointsToFiat");
+                const res = await fn({ amount: pointBal });
+                alert(`성공적으로 전환되었습니다!\n잔고: ${res.data.convertedVnd.toLocaleString()} VND 추가됨`);
+                location.reload();
+              } catch (err) {
+                alert("전환 실패: " + err.message);
+                btnExc.disabled = false;
+                btnExc.textContent = "💸 포인트 전환";
+              }
+            });
+          }
+        }, 100);
+      }
+      if (elPay) {
+        const krwTotal = Math.round(payBal / 18.5);
+        elPay.innerHTML = `<span>${payBal.toLocaleString("ko-KR")} VND</span>` +
+          `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(≈ ${krwTotal.toLocaleString("ko-KR")} KRW)</div>`;
+      }
     } else {
       if ($("pointDisplay")) $("pointDisplay").textContent = "0 P";
       if ($("paymentBalanceDisplay")) $("paymentBalanceDisplay").textContent = "0 VND";
