@@ -39,39 +39,39 @@ const adminState = $("adminState");
 const guideList = $("guideList");
 const itemList = $("itemList");
 
-const btnReloadGuides   = $("btnReloadGuides");
-const btnReloadItems    = $("btnReloadItems");
+const btnReloadGuides = $("btnReloadGuides");
+const btnReloadItems = $("btnReloadItems");
 const btnReloadDeposits = $("btnReloadDeposits");
-const selItemStatus     = $("selItemStatus");
+const selItemStatus = $("selItemStatus");
 
-const btnTabGuides     = $("btnTabGuides");
-const btnTabMerchants  = $("btnTabMerchants");
-const btnTabItems      = $("btnTabItems");
-const btnTabDeposits   = $("btnTabDeposits");
-const btnTabHex        = $("btnTabHex");
-const btnTabMembers    = $("btnTabMembers");
-const btnTabDao        = $("btnTabDao");
-const btnTabTreasure   = $("btnTabTreasure");
-const btnTabChat       = $("btnTabChat");
-const btnTabShops      = $("btnTabShops");
-const tabGuides        = $("tabGuides");
-const tabMerchants     = $("tabMerchants");
-const tabItems         = $("tabItems");
-const tabDeposits      = $("tabDeposits");
-const tabHex           = $("tabHex");
-const tabMembers       = $("tabMembers");
-const tabDao           = $("tabDao");
-const tabTreasure      = $("tabTreasure");
-const tabChat          = $("tabChat");
-const tabShops         = $("tabShops");
-const daoApproveList   = $("daoApproveList");
-const btnReloadDao     = $("btnReloadDao");
-const itemsFilter      = $("itemsFilter");
-const merchantList     = $("merchantList");
+const btnTabGuides = $("btnTabGuides");
+const btnTabMerchants = $("btnTabMerchants");
+const btnTabItems = $("btnTabItems");
+const btnTabDeposits = $("btnTabDeposits");
+const btnTabHex = $("btnTabHex");
+const btnTabMembers = $("btnTabMembers");
+const btnTabDao = $("btnTabDao");
+const btnTabTreasure = $("btnTabTreasure");
+const btnTabChat = $("btnTabChat");
+const btnTabShops = $("btnTabShops");
+const tabGuides = $("tabGuides");
+const tabMerchants = $("tabMerchants");
+const tabItems = $("tabItems");
+const tabDeposits = $("tabDeposits");
+const tabHex = $("tabHex");
+const tabMembers = $("tabMembers");
+const tabDao = $("tabDao");
+const tabTreasure = $("tabTreasure");
+const tabChat = $("tabChat");
+const tabShops = $("tabShops");
+const daoApproveList = $("daoApproveList");
+const btnReloadDao = $("btnReloadDao");
+const itemsFilter = $("itemsFilter");
+const merchantList = $("merchantList");
 const btnReloadMerchants = $("btnReloadMerchants");
-const depositList      = $("depositList");
+const depositList = $("depositList");
 const hexAllowanceDisplay = $("hexAllowanceDisplay");
-const userList         = $("userList");
+const userList = $("userList");
 
 const dlg = $("dlgDetail");
 const dlgTitle = $("dlgTitle");
@@ -80,7 +80,7 @@ const dlgClose = $("dlgClose");
 
 let isAdminUser = false;
 
-function qs(name){
+function qs(name) {
   return new URLSearchParams(location.search).get(name);
 }
 
@@ -317,11 +317,10 @@ async function loadItemsByStatus(status) {
             <span class="badge">status: ${esc(v.status || "-")}</span>
             <button class="btn btn-sm" type="button" data-act="viewItem" data-id="${esc(id)}">상세(JSON)</button>
             <a class="btn btn-sm" href="/product_edit.html?id=${esc(id)}&from=admin" target="_blank" rel="noopener">수정</a>
-            ${
-              (status === "pending" && isAdminUser)
-                ? `<button class="btn btn-sm" type="button" data-act="approveItem" data-id="${esc(id)}">승인</button>`
-                : ""
-            }
+            ${(status === "pending" && isAdminUser)
+        ? `<button class="btn btn-sm" type="button" data-act="approveItem" data-id="${esc(id)}">승인</button>`
+        : ""
+      }
           </div>
         </summary>
         <div class="expander-body">
@@ -394,7 +393,7 @@ async function loadMerchants() {
     try {
       const userSnap = await getDoc(doc(db, "users", uid));
       if (userSnap.exists()) emailMap[uid] = userSnap.data().email || "";
-    } catch (_) {}
+    } catch (_) { }
   }));
 
   setState(`가맹점 ${snap.size}건`);
@@ -426,7 +425,7 @@ async function loadMerchants() {
             <button class="btn btn-sm" type="button" data-act="viewMerchant" data-mid="${esc(mid)}">상세(JSON)</button>
             ${isAdminUser ? `
               <button class="btn btn-sm" type="button" data-act="renameMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || '')}">✏️ 이름변경</button>
-              <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career||'')}" data-region="${esc(v.region||'')}" data-desc="${esc(v.description||'')}">📝 정보수정</button>
+              <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career || '')}" data-region="${esc(v.region || '')}" data-desc="${esc(v.description || '')}">📝 정보수정</button>
               ${dormantBtn}
               <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
               <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:${v.gmap ? '#fef3c7' : '#f3f4f6'};color:${v.gmap ? '#92400e' : '#6b7280'};">🗺️ ${v.gmap ? "지도수정" : "지도등록"}</button>
@@ -455,7 +454,7 @@ async function loadMerchants() {
           ${isAdminUser ? `
           <div class="row-actions">
             <button class="btn btn-sm" type="button" data-act="renameMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || '')}">✏️ 이름변경</button>
-            <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career||'')}" data-region="${esc(v.region||'')}" data-desc="${esc(v.description||'')}">📝 정보수정</button>
+            <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career || '')}" data-region="${esc(v.region || '')}" data-desc="${esc(v.description || '')}">📝 정보수정</button>
             ${dormantBtn}
             <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
             <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:#fef3c7;color:#92400e;">🗺️ 지도 URL 설정</button>
@@ -490,7 +489,7 @@ async function approveMerchant(mid, currentFeeBps) {
 
   setState("수수료 설정 중…");
   try {
-    const fn  = httpsCallable(functions, "adminSetMerchantFee");
+    const fn = httpsCallable(functions, "adminSetMerchantFee");
     const res = await fn({ merchantId: Number(mid), feeBps });
     alert(`설정 완료!\nmerchantId: ${res.data.merchantId}\n수수료: ${res.data.feeBps / 100}%\ntxHash: ${(res.data.txHash || "").slice(0, 22)}…`);
     await loadMerchants();
@@ -640,18 +639,18 @@ async function toggleMerchantDormant(mid, isDormant) {
 async function editMerchantInfo(mid, career, region, description) {
   if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
 
-  const dlgEdit   = $("dlgMerchantEdit");
-  const inCareer  = $("meCareer");
-  const inRegion  = $("meRegion");
-  const inDesc    = $("meDesc");
-  const btnClose  = $("dlgMerchantEditClose");
+  const dlgEdit = $("dlgMerchantEdit");
+  const inCareer = $("meCareer");
+  const inRegion = $("meRegion");
+  const inDesc = $("meDesc");
+  const btnClose = $("dlgMerchantEditClose");
   const btnCancel = $("dlgMerchantEditCancel");
-  const form      = $("frmMerchantEdit");
+  const form = $("frmMerchantEdit");
   if (!dlgEdit || !inCareer || !inRegion || !inDesc || !form) return;
 
   inCareer.value = career;
   inRegion.value = region;
-  inDesc.value   = description;
+  inDesc.value = description;
 
   dlgEdit.showModal();
   inCareer.focus();
@@ -736,30 +735,31 @@ async function loadDeposits() {
         <details class="expander" data-ref="${esc(refCode)}">
           <summary>
             <div class="sum-left">
-              <div class="sum-title">${esc(v.depositorName || "-")} · ${esc((v.amountKrw || 0).toLocaleString())}원</div>
+              <div class="sum-title">${esc(v.depositorName || "-")}</div>
               <div class="sum-sub">${esc(refCode)} · ${esc(dateStr)}</div>
             </div>
             <div class="sum-right">
+              ${v.amountVnd ? `<div style="font-size:12px; font-weight:800; color:#0ea5e9;">${esc(v.amountVnd.toLocaleString())} VND</div>` : `<div style="font-size:12px; font-weight:800; color:#15803d;">${esc((v.amountKrw || 0).toLocaleString())}원</div>`}
               ${statusBadge}
               <button class="btn btn-sm" type="button" data-act="viewDeposit" data-ref="${esc(refCode)}">상세</button>
               <button class="btn btn-sm" type="button" data-act="approveDeposit" data-ref="${esc(refCode)}"
-                ${v.status === "processing" ? "disabled" : ""}>승인 (creditPoints)</button>
+                ${v.status === "processing" ? "disabled" : ""}>승인</button>
             </div>
           </summary>
           <div class="expander-body">
             <div class="kv">
               <div class="k">refCode</div><div class="v">${esc(refCode)}</div>
               <div class="k">입금자명</div><div class="v">${esc(v.depositorName || "-")}</div>
-              <div class="k">금액 (KRW)</div><div class="v">${esc((v.amountKrw || 0).toLocaleString())}원</div>
+              ${v.amountVnd ? `<div class="k">입금액 (VND)</div><div class="v accent">${esc(v.amountVnd.toLocaleString())} VND</div>` : `<div class="k">입금액 (KRW)</div><div class="v accent">${esc((v.amountKrw || 0).toLocaleString())} 원</div>`}
               <div class="k">지갑 주소</div><div class="v" style="word-break:break-all; font-family:monospace; font-size:12px;">${esc(v.userAddress || "-")}</div>
               <div class="k">은행</div><div class="v">${esc(v.bank || "-")}</div>
               <div class="k">신청일</div><div class="v">${esc(dateStr)}</div>
               <div class="k">상태</div><div class="v">${esc(v.status || "-")}</div>
-              ${v.rateAtRequest ? `<div class="k">신청 시 환율</div><div class="v">₩${esc(String(v.rateAtRequest.krwPerUsd || "-"))}/USD</div>` : ""}
+              ${v.rateAtRequest ? `<div class="k">신청 시 환율</div><div class="v">₩${esc(String(v.rateAtRequest.krwPerUsd || "-"))}/USD, ₫${esc(String(v.rateAtRequest.vndPerUsd || "-"))}/USD</div>` : ""}
             </div>
             <div class="row-actions">
               <button class="btn btn-sm" type="button" data-act="approveDeposit" data-ref="${esc(refCode)}"
-                ${v.status === "processing" ? "disabled" : ""}>승인 (creditPoints)</button>
+                ${v.status === "processing" ? "disabled" : ""}>승인 (관리자 권한)</button>
             </div>
           </div>
         </details>
@@ -770,6 +770,68 @@ async function loadDeposits() {
     setState("로딩 실패: " + err.message);
     depositList.innerHTML = `<p class="muted">오류: ${esc(err.message)}</p>`;
     console.error("loadDeposits:", err);
+  }
+}
+
+async function loadApprovedDeposits() {
+  const approvedList = $("depositApprovedList");
+  if (!approvedList) return;
+  approvedList.innerHTML = '<p class="muted" style="padding:12px 0;">완료 내역 로딩중...</p>';
+
+  try {
+    const q = query(
+      collection(db, "deposits"),
+      where("status", "==", "approved"),
+      orderBy("approvedAt", "desc"),
+      limit(50)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      approvedList.innerHTML = '<p class="muted" style="padding:12px 0;">승인 완료된 내역이 없습니다.</p>';
+      return;
+    }
+
+    approvedList.innerHTML = "";
+    snap.forEach((d) => {
+      const v = d.data();
+      const refCode = v.refCode || d.id;
+      const dateStr = v.approvedAt?.seconds
+        ? new Date(v.approvedAt.seconds * 1000).toLocaleString("ko")
+        : (v.requestedAt?.seconds ? new Date(v.requestedAt.seconds * 1000).toLocaleString("ko") : "-");
+      const statusBadge = '<span class="badge" style="background:#dcfce7; color:#15803d;">완료</span>';
+
+      const el = cardWrap(`
+        <details class="expander" data-ref="${esc(refCode)}">
+          <summary>
+            <div class="sum-left">
+              <div class="sum-title">${esc(v.depositorName || "-")}</div>
+              <div class="sum-sub">${esc(refCode)} · ${esc(dateStr)}</div>
+            </div>
+            <div class="sum-right">
+              ${v.amountVnd ? `<div style="font-size:12px; font-weight:800; color:#0ea5e9;">${esc(v.amountVnd.toLocaleString())} VND</div>` : `<div style="font-size:12px; font-weight:800; color:#15803d;">${esc((v.amountKrw || 0).toLocaleString())}원</div>`}
+              ${statusBadge}
+              <button class="btn btn-sm" type="button" data-act="viewDeposit" data-ref="${esc(refCode)}">상세</button>
+            </div>
+          </summary>
+          <div class="expander-body">
+            <div class="kv">
+              <div class="k">refCode</div><div class="v">${esc(refCode)}</div>
+              <div class="k">입금자명</div><div class="v">${esc(v.depositorName || "-")}</div>
+              ${v.amountVnd ? `<div class="k">입금액 (VND)</div><div class="v accent">${esc(v.amountVnd.toLocaleString())} VND</div>` : `<div class="k">입금액 (KRW)</div><div class="v accent">${esc((v.amountKrw || 0).toLocaleString())} 원</div>`}
+              <div class="k">환산 기준 (KRW)</div><div class="v" style="font-weight:700; color:#1d4ed8;">${esc((v.amountKrw || 0).toLocaleString())} 머니/포인트 충전됨</div>
+              <div class="k">지갑 주소</div><div class="v" style="word-break:break-all; font-family:monospace; font-size:12px;">${esc(v.userAddress || "-")}</div>
+              <div class="k">승인일</div><div class="v" style="color:#059669; font-weight:700;">${esc(dateStr)}</div>
+              <div class="k">상태</div><div class="v">${esc(v.status || "-")}</div>
+            </div>
+          </div>
+        </details>
+      `);
+      approvedList.appendChild(el);
+    });
+  } catch (err) {
+    approvedList.innerHTML = `<p class="muted">오류: ${esc(err.message)}</p>`;
+    console.error("loadApprovedDeposits:", err);
   }
 }
 
@@ -811,9 +873,9 @@ async function loadContractStatus() {
   grid.innerHTML = '<div class="k">상태</div><div class="v" id="contractStatusMsg">조회 중...</div>';
 
   try {
-    const fn  = httpsCallable(functions, "adminGetContractStatus");
+    const fn = httpsCallable(functions, "adminGetContractStatus");
     const res = await fn();
-    const d   = res.data;
+    const d = res.data;
 
     const fmtKrw = (krw) => krw != null ? " ≈ " + krw.toLocaleString() + "원" : "";
 
@@ -914,7 +976,7 @@ async function loadDaoProposals() {
       return tb - ta;
     });
     docs.forEach((d) => {
-      const v  = d.data();
+      const v = d.data();
       const id = d.id;
       const dateStr = v.createdAt?.seconds
         ? new Date(v.createdAt.seconds * 1000).toLocaleString("ko")
@@ -967,7 +1029,7 @@ async function approveDaoProposal(id) {
 
   setState("DAO 안건 승인 중…");
   try {
-    const fn  = httpsCallable(functions, "daoAdminApproveProposal");
+    const fn = httpsCallable(functions, "daoAdminApproveProposal");
     await fn({ proposalId: id });
     alert("승인 완료. 심의 단계로 전환되었습니다.");
     await loadDaoProposals();
@@ -986,7 +1048,7 @@ async function rejectDaoProposal(id) {
 
   setState("DAO 안건 반려 중…");
   try {
-    const fn  = httpsCallable(functions, "daoAdminRejectProposal");
+    const fn = httpsCallable(functions, "daoAdminRejectProposal");
     await fn({ proposalId: id, reason });
     alert("반려 처리되었습니다.");
     await loadDaoProposals();
@@ -1002,7 +1064,7 @@ daoApproveList?.addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
   const act = btn.dataset.act;
-  const id  = btn.dataset.id;
+  const id = btn.dataset.id;
   try {
     if (act === "approveDao") {
       await approveDaoProposal(id);
@@ -1023,10 +1085,10 @@ btnReloadDao?.addEventListener("click", () => loadDaoProposals());
 
 // ── 회원 목록 ─────────────────────────────────────────────────────────────
 
-let _allUsers    = [];
-let _userSearch  = "";
-let _userFilter  = "all";
-let _userSort    = "date_desc";
+let _allUsers = [];
+let _userSearch = "";
+let _userFilter = "all";
+let _userSort = "date_desc";
 let _userSearchTimer = null;
 
 async function loadUsersList() {
@@ -1053,18 +1115,18 @@ async function loadUsersList() {
 function renderUsersList() {
   if (!userList) return;
   const today = new Date().toISOString().slice(0, 10);
-  const srch  = _userSearch.toLowerCase();
+  const srch = _userSearch.toLowerCase();
 
   const filtered = _allUsers.filter(u => {
     if (srch) {
       const hit = (u.name || "").toLowerCase().includes(srch) ||
-                  (u.displayName || "").toLowerCase().includes(srch) ||
-                  (u.email || "").toLowerCase().includes(srch) ||
-                  (u.username ? ("@" + u.username).toLowerCase().includes(srch) : false);
+        (u.displayName || "").toLowerCase().includes(srch) ||
+        (u.email || "").toLowerCase().includes(srch) ||
+        (u.username ? ("@" + u.username).toLowerCase().includes(srch) : false);
       if (!hit) return false;
     }
-    if (_userFilter === "telegram")    return u.source === "telegram";
-    if (_userFilter === "member")      return !!(u.coopMemberUntil && u.coopMemberUntil > today);
+    if (_userFilter === "telegram") return u.source === "telegram";
+    if (_userFilter === "member") return !!(u.coopMemberUntil && u.coopMemberUntil > today);
     if (_userFilter === "blacklisted") return !!u.blacklisted;
     return true;
   });
@@ -1074,9 +1136,9 @@ function renderUsersList() {
   const _seen = u => u.lastSeenAt?.seconds ?? _ts(u);
   const _name = u => (u.name || u.displayName || "").toLowerCase();
   filtered.sort((a, b) => {
-    if (_userSort === "date_asc")  return _ts(a) - _ts(b);
+    if (_userSort === "date_asc") return _ts(a) - _ts(b);
     if (_userSort === "seen_desc") return _seen(b) - _seen(a);
-    if (_userSort === "name_asc")  return _name(a).localeCompare(_name(b), "ko");
+    if (_userSort === "name_asc") return _name(a).localeCompare(_name(b), "ko");
     return _ts(b) - _ts(a); // date_desc (기본)
   });
 
@@ -1094,37 +1156,37 @@ function renderUsersList() {
   }
 
   const html = filtered.map(u => {
-    const uid      = u._id;
-    const name     = esc(u.name || u.displayName || "(이름없음)");
-    const email    = esc(u.email || "-");
-    const wallet   = u.wallet?.address
+    const uid = u._id;
+    const name = esc(u.name || u.displayName || "(이름없음)");
+    const email = esc(u.email || "-");
+    const wallet = u.wallet?.address
       ? esc(u.wallet.address.slice(0, 6) + "…" + u.wallet.address.slice(-4))
       : "-";
-    const role     = u.role || "user";
+    const role = u.role || "user";
     const isMember = !!(u.coopMemberUntil && u.coopMemberUntil > today);
-    const isBlack  = !!u.blacklisted;
-    const isTg     = u.source === "telegram";
+    const isBlack = !!u.blacklisted;
+    const isTg = u.source === "telegram";
 
-    const dateVal  = u.createdAt?.seconds ?? u.registeredAt?.seconds ?? null;
-    const dateStr  = dateVal ? new Date(dateVal * 1000).toLocaleDateString("ko") : "-";
-    const seenVal  = u.lastSeenAt?.seconds ?? null;
-    const seenStr  = seenVal ? new Date(seenVal * 1000).toLocaleString("ko") : null;
+    const dateVal = u.createdAt?.seconds ?? u.registeredAt?.seconds ?? null;
+    const dateStr = dateVal ? new Date(dateVal * 1000).toLocaleDateString("ko") : "-";
+    const seenVal = u.lastSeenAt?.seconds ?? null;
+    const seenStr = seenVal ? new Date(seenVal * 1000).toLocaleString("ko") : null;
 
     const roleBadge = role === "admin"
       ? '<span class="badge" style="background:#7c3aed;color:#fff;">관리자</span>'
       : role === "guide"
         ? '<span class="badge" style="background:#0284c7;color:#fff;">판매회원</span>'
         : '';
-    const tgBadge    = isTg
+    const tgBadge = isTg
       ? '<span class="badge" style="background:#229ed9;color:#fff;">📱 텔레그램</span>'
       : '';
     const memberBadge = isMember
       ? '<span class="badge" style="background:#16a34a;color:#fff;">👑 정회원</span>'
       : '';
-    const blackBadge  = isBlack
+    const blackBadge = isBlack
       ? '<span class="badge" style="background:#dc2626;color:#fff;">⛔ 차단</span>'
       : '';
-    const memberExp   = isMember
+    const memberExp = isMember
       ? `<div class="muted" style="font-size:11px;">정회원 만료: ${esc(u.coopMemberUntil)}</div>`
       : '';
     const tgInfo = isTg
@@ -1155,7 +1217,7 @@ function renderUsersList() {
   userList.querySelectorAll("[data-act='viewUser']").forEach(btn => {
     btn.addEventListener("click", () => {
       const uid = btn.dataset.uid;
-      const u   = _allUsers.find(x => x._id === uid);
+      const u = _allUsers.find(x => x._id === uid);
       if (!u) return;
       const { _id, ...data } = u;
       openDialog(`회원 상세 — ${u.name || u.displayName || u.email || uid}`, { uid: _id, ...data });
@@ -1177,15 +1239,15 @@ async function showGpHistory(uid, userName) {
   document.getElementById("gpHistoryModal")?.remove();
 
   const TYPE_COLOR = {
-    game:       "#3b82f6",
-    topup:      "#16a34a",
-    bonus:      "#f59e0b",
+    game: "#3b82f6",
+    topup: "#16a34a",
+    bonus: "#f59e0b",
     membership: "#8b5cf6",
   };
   const TYPE_ICON = {
-    game:       "🎮",
-    topup:      "🎁",
-    bonus:      "⭐",
+    game: "🎮",
+    topup: "🎁",
+    bonus: "⭐",
     membership: "👑",
   };
 
@@ -1217,8 +1279,8 @@ async function showGpHistory(uid, userName) {
   const body = modal.querySelector("#gpHistoryBody");
 
   try {
-    const fn   = httpsCallable(functions, "adminGetUserGpHistory");
-    const res  = await fn({ targetUid: uid });
+    const fn = httpsCallable(functions, "adminGetUserGpHistory");
+    const res = await fn({ targetUid: uid });
     const data = res.data;
 
     if (!data?.history?.length) {
@@ -1253,7 +1315,7 @@ async function showGpHistory(uid, userName) {
     // 내역 테이블
     html += data.history.map(r => {
       const color = TYPE_COLOR[r.type] || "#6b7280";
-      const icon  = TYPE_ICON[r.type]  || "•";
+      const icon = TYPE_ICON[r.type] || "•";
       const gpStr = r.gp > 0
         ? `<span style="font-weight:700;color:${color};">+${r.gp.toLocaleString()} GP</span>`
         : `<span style="color:#9ca3af;font-size:11px;">(GP 없음)</span>`;
@@ -1312,13 +1374,13 @@ function showGpChargeModal(uid, userName) {
             style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;
               font-size:15px;font-weight:700;box-sizing:border-box;">
           <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-            ${[1000,5000,10000,50000,100000].map(v =>
-              `<button class="gp-preset" data-v="${v}"
+            ${[1000, 5000, 10000, 50000, 100000].map(v =>
+    `<button class="gp-preset" data-v="${v}"
                 style="padding:4px 10px;border:1px solid #d97706;border-radius:6px;background:#fffbeb;
                   color:#b45309;font-size:11px;font-weight:700;cursor:pointer;">
                 +${v.toLocaleString()}
               </button>`
-            ).join("")}
+  ).join("")}
           </div>
         </div>
         <div style="margin-bottom:16px;">
@@ -1363,9 +1425,9 @@ function showGpChargeModal(uid, userName) {
   // 충전 실행
   modal.querySelector("#gpChargeConfirm").addEventListener("click", async () => {
     const amount = parseInt(modal.querySelector("#gpChargeAmount").value);
-    const note   = modal.querySelector("#gpChargeNote").value.trim();
-    const resEl  = modal.querySelector("#gpChargeResult");
-    const btn    = modal.querySelector("#gpChargeConfirm");
+    const note = modal.querySelector("#gpChargeNote").value.trim();
+    const resEl = modal.querySelector("#gpChargeResult");
+    const btn = modal.querySelector("#gpChargeConfirm");
 
     if (!amount || amount < 1) {
       resEl.style.cssText = "display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:12px;";
@@ -1397,9 +1459,9 @@ function showGpChargeModal(uid, userName) {
 
 {
   const inputSearch = $("inputUserSearch");
-  const selFilter   = $("selUserFilter");
-  const selSort     = $("selUserSort");
-  const btnReload   = $("btnReloadUsers");
+  const selFilter = $("selUserFilter");
+  const selSort = $("selUserSort");
+  const btnReload = $("btnReloadUsers");
 
   inputSearch?.addEventListener("input", () => {
     clearTimeout(_userSearchTimer);
@@ -1425,34 +1487,34 @@ function showGpChargeModal(uid, userName) {
 // ── 탭 전환 ──────────────────────────────────────────────────────────────
 
 function showTab(which) {
-  if (tabGuides)    tabGuides.style.display    = which === "guides"    ? "" : "none";
+  if (tabGuides) tabGuides.style.display = which === "guides" ? "" : "none";
   if (tabMerchants) tabMerchants.style.display = which === "merchants" ? "" : "none";
-  if (tabItems)     tabItems.style.display     = which === "items"     ? "" : "none";
-  if (tabDeposits)  tabDeposits.style.display  = which === "deposits"  ? "" : "none";
-  if (tabHex)       tabHex.style.display       = which === "hex"       ? "" : "none";
-  if (tabMembers)   tabMembers.style.display   = which === "members"   ? "" : "none";
-  if (tabDao)       tabDao.style.display       = which === "dao"       ? "" : "none";
-  if (tabTreasure)  tabTreasure.style.display  = which === "treasure"  ? "" : "none";
-  if (tabChat)      tabChat.style.display      = which === "chat"      ? "" : "none";
-  if (tabShops)     tabShops.style.display     = which === "shops"     ? "" : "none";
+  if (tabItems) tabItems.style.display = which === "items" ? "" : "none";
+  if (tabDeposits) tabDeposits.style.display = which === "deposits" ? "" : "none";
+  if (tabHex) tabHex.style.display = which === "hex" ? "" : "none";
+  if (tabMembers) tabMembers.style.display = which === "members" ? "" : "none";
+  if (tabDao) tabDao.style.display = which === "dao" ? "" : "none";
+  if (tabTreasure) tabTreasure.style.display = which === "treasure" ? "" : "none";
+  if (tabChat) tabChat.style.display = which === "chat" ? "" : "none";
+  if (tabShops) tabShops.style.display = which === "shops" ? "" : "none";
 
   // 툴바 부속 요소 가시성
-  if (itemsFilter)       itemsFilter.style.display       = which === "items"     ? "" : "none";
-  if (btnReloadGuides)   btnReloadGuides.style.display   = which === "guides"    ? "" : "none";
-  if (btnReloadMerchants)btnReloadMerchants.style.display= which === "merchants" ? "" : "none";
-  if (btnReloadItems)    btnReloadItems.style.display    = which === "items"     ? "" : "none";
-  if (btnReloadDeposits) btnReloadDeposits.style.display = which === "deposits"  ? "" : "none";
+  if (itemsFilter) itemsFilter.style.display = which === "items" ? "" : "none";
+  if (btnReloadGuides) btnReloadGuides.style.display = which === "guides" ? "" : "none";
+  if (btnReloadMerchants) btnReloadMerchants.style.display = which === "merchants" ? "" : "none";
+  if (btnReloadItems) btnReloadItems.style.display = which === "items" ? "" : "none";
+  if (btnReloadDeposits) btnReloadDeposits.style.display = which === "deposits" ? "" : "none";
 
-  btnTabGuides?.classList.toggle("is-active",    which === "guides");
+  btnTabGuides?.classList.toggle("is-active", which === "guides");
   btnTabMerchants?.classList.toggle("is-active", which === "merchants");
-  btnTabItems?.classList.toggle("is-active",     which === "items");
-  btnTabDeposits?.classList.toggle("is-active",  which === "deposits");
-  btnTabHex?.classList.toggle("is-active",       which === "hex");
-  btnTabMembers?.classList.toggle("is-active",   which === "members");
-  btnTabDao?.classList.toggle("is-active",       which === "dao");
-  btnTabTreasure?.classList.toggle("is-active",  which === "treasure");
-  btnTabChat?.classList.toggle("is-active",      which === "chat");
-  btnTabShops?.classList.toggle("is-active",     which === "shops");
+  btnTabItems?.classList.toggle("is-active", which === "items");
+  btnTabDeposits?.classList.toggle("is-active", which === "deposits");
+  btnTabHex?.classList.toggle("is-active", which === "hex");
+  btnTabMembers?.classList.toggle("is-active", which === "members");
+  btnTabDao?.classList.toggle("is-active", which === "dao");
+  btnTabTreasure?.classList.toggle("is-active", which === "treasure");
+  btnTabChat?.classList.toggle("is-active", which === "chat");
+  btnTabShops?.classList.toggle("is-active", which === "shops");
 }
 
 async function checkAdmin(user) {
@@ -1477,7 +1539,7 @@ async function bootAdmin(user) {
 
   setState("관리자 로그인 확인됨");
   // deep-link 지원: /admin.html?tab=items&status=pending
-  const tab    = (qs("tab") || "guides").toLowerCase();
+  const tab = (qs("tab") || "guides").toLowerCase();
   const status = (qs("status") || "").toLowerCase();
   if (status && selItemStatus) {
     const ok = Array.from(selItemStatus.options || []).some(
@@ -1580,17 +1642,17 @@ $("btnAdminSelfOnboard")?.addEventListener("click", async () => {
   resultBox.style.display = "none";
 
   try {
-    const fn  = httpsCallable(functions, "adminSelfOnboard");
+    const fn = httpsCallable(functions, "adminSelfOnboard");
     const res = await fn();
-    const d   = res.data;
+    const d = res.data;
     resultBox.style.display = "";
     resultBox.innerHTML = `
       <div style="color:var(--accent); font-weight:600;">✓ 완료</div>
       <div>주소: <span style="font-family:monospace;font-size:12px;">${esc(d.address)}</span></div>
       <div>레벨: ${esc(String(d.level))}</div>
-      ${d.txHash ? `<div>txHash: <span style="font-family:monospace;font-size:12px;">${esc(d.txHash.slice(0,30))}…</span></div>` : "<div>이미 등록됨 (신규 tx 없음)</div>"}
+      ${d.txHash ? `<div>txHash: <span style="font-family:monospace;font-size:12px;">${esc(d.txHash.slice(0, 30))}…</span></div>` : "<div>이미 등록됨 (신규 tx 없음)</div>"}
     `;
-    setState(`관리자 지갑 연결 완료 — ${(d.address || "").slice(0,10)}…`);
+    setState(`관리자 지갑 연결 완료 — ${(d.address || "").slice(0, 10)}…`);
   } catch (err) {
     alert("실패: " + (err.message || String(err)));
     setState("관리자 지갑 연결 실패");
@@ -1609,7 +1671,7 @@ $("btnConnectOwnerWallet")?.addEventListener("click", async () => {
     _ownerSigner = await provider.getSigner();
     const addr = await _ownerSigner.getAddress();
     const label = $("ownerWalletLabel");
-    if (label) label.textContent = `연결됨: ${addr.slice(0,6)}…${addr.slice(-4)}`;
+    if (label) label.textContent = `연결됨: ${addr.slice(0, 6)}…${addr.slice(-4)}`;
     $("btnConnectOwnerWallet").textContent = "✅ 연결됨";
   } catch (err) {
     alert("지갑 연결 실패: " + (err.message || ""));
@@ -1630,7 +1692,7 @@ $("btnBulkChangeMentor")?.addEventListener("click", async () => {
     : null;
 
   const targetLabel = targetUids ? `${targetUids.length}명` : "전체 온체인 등록 유저";
-  if (!confirm(`멘토를 ${mentorAddress.slice(0,8)}...로 변경합니다.\n대상: ${targetLabel}\n\n계속하시겠습니까?`)) return;
+  if (!confirm(`멘토를 ${mentorAddress.slice(0, 8)}...로 변경합니다.\n대상: ${targetLabel}\n\n계속하시겠습니까?`)) return;
 
   const btn = $("btnBulkChangeMentor");
   const resultBox = $("bulkMentorResult");
@@ -1640,7 +1702,7 @@ $("btnBulkChangeMentor")?.addEventListener("click", async () => {
 
   try {
     // Cloud Function으로 Firestore에서 대상 주소 목록만 조회
-    const fn  = httpsCallable(functions, "adminGetMentorTargets");
+    const fn = httpsCallable(functions, "adminGetMentorTargets");
     const res = await fn({ targetUids });
     const targets = res.data.targets;  // [{ uid, address }]
 
@@ -1698,11 +1760,11 @@ $("btnSetUserLevel")?.addEventListener("click", async () => {
 
   try {
     // Cloud Function으로 uid/이메일 → 지갑 주소 조회
-    const fn  = httpsCallable(functions, "adminLookupUserAddress");
+    const fn = httpsCallable(functions, "adminLookupUserAddress");
     const res = await fn({ emailOrUid });
     const { uid, address } = res.data;
 
-    if (!confirm(`[${uid}]\n주소: ${address.slice(0,10)}…\n온체인 레벨을 ${level}로 설정합니다.\n계속하시겠습니까?`)) {
+    if (!confirm(`[${uid}]\n주소: ${address.slice(0, 10)}…\n온체인 레벨을 ${level}로 설정합니다.\n계속하시겠습니까?`)) {
       btn.disabled = false;
       btn.textContent = "레벨 설정 실행";
       return;
@@ -1783,7 +1845,7 @@ merchantList?.addEventListener("click", async (e) => {
 depositList?.addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
-  const act     = btn.dataset.act;
+  const act = btn.dataset.act;
   const refCode = btn.dataset.ref;
   try {
     if (act === "approveDeposit") {
@@ -1808,9 +1870,9 @@ async function recordP2pTransferAction() {
 
   setState("P2P 거래 기록 중…");
   try {
-    const fn  = httpsCallable(functions, "adminRecordP2pTransfer");
+    const fn = httpsCallable(functions, "adminRecordP2pTransfer");
     const res = await fn({ txHash });
-    const d   = res.data;
+    const d = res.data;
     const krwStr = d.amountKrw ? " ≈ " + d.amountKrw.toLocaleString() + "원" : "";
     alert(
       `P2P 기록 완료!\n수신 UID: ${d.uid}\n금액: ${d.amountHex} Point${krwStr}\n발신: ${(d.from || "").slice(0, 20)}…`
@@ -1828,7 +1890,7 @@ async function recordP2pTransferAction() {
 
 async function execOwnerDepositHex() {
   if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
-  const input     = $("inputOwnerDepositHex");
+  const input = $("inputOwnerDepositHex");
   const amountHex = parseFloat(input?.value || "0");
   if (!amountHex || amountHex <= 0) { alert("충전할 Point 수량을 입력하세요."); return; }
 
@@ -1839,7 +1901,7 @@ async function execOwnerDepositHex() {
 
   setState("컨트랙트 Point 충전 중…");
   try {
-    const fn  = httpsCallable(functions, "adminOwnerDepositHex");
+    const fn = httpsCallable(functions, "adminOwnerDepositHex");
     const res = await fn({ amountWei });
     alert(`충전 완료!\n${res.data.amountDisplay}\ntxHash: ${(res.data.txHash || "").slice(0, 22)}…`);
     await loadContractStatus();
@@ -1864,8 +1926,8 @@ $("btnRecordP2p")?.addEventListener("click", () => recordP2pTransferAction());
 let _boxItemPool = [];  // 현재 편집 중인 item pool
 
 // 보물박스 목록 상태
-let _allBoxes  = [];
-let _boxPage   = 0;
+let _allBoxes = [];
+let _boxPage = 0;
 const BOX_PAGE_SIZE = 20;
 
 function syncItemPoolTextarea() {
@@ -1925,7 +1987,7 @@ async function loadTreasureItemsList() {
       </div>
       <button class="btn btn-sm" data-act="editItem"
         data-id="${esc(d.id)}" data-name="${esc(r.name)}"
-        data-image="${esc(r.image||"")}" data-desc="${esc(r.description||"")}">수정</button>
+        data-image="${esc(r.image || "")}" data-desc="${esc(r.description || "")}">수정</button>
       <button class="btn btn-sm" data-act="deleteItem"
         data-id="${esc(d.id)}" data-name="${esc(r.name)}"
         style="background:#ef4444;color:#fff;">삭제</button>
@@ -1933,10 +1995,10 @@ async function loadTreasureItemsList() {
   }).join("");
   el.querySelectorAll("[data-act='editItem']").forEach(btn => {
     btn.addEventListener("click", () => {
-      $("tItemId").value    = btn.dataset.id;
-      $("tItemName").value  = btn.dataset.name;
+      $("tItemId").value = btn.dataset.id;
+      $("tItemName").value = btn.dataset.name;
       $("tItemImage").value = btn.dataset.image;
-      $("tItemDesc").value  = btn.dataset.desc;
+      $("tItemDesc").value = btn.dataset.desc;
     });
   });
   el.querySelectorAll("[data-act='deleteItem']").forEach(btn => {
@@ -1961,7 +2023,7 @@ async function loadTreasureBoxesList() {
 }
 
 function _getFilteredBoxes() {
-  const q   = ($("tBoxSearch")?.value || "").trim().toLowerCase();
+  const q = ($("tBoxSearch")?.value || "").trim().toLowerCase();
   const srt = $("tBoxSortSel")?.value || "name";
   const activeOnly = $("tBoxFilterActive")?.checked;
   let list = _allBoxes.filter(b => {
@@ -1972,7 +2034,7 @@ function _getFilteredBoxes() {
   list.sort((a, b) => {
     if (srt === "active") return (b.active !== false ? 1 : 0) - (a.active !== false ? 1 : 0);
     if (srt === "member") return (b.memberOnly ? 1 : 0) - (a.memberOnly ? 1 : 0);
-    if (srt === "scan")   return (b.scanRadius ?? 100) - (a.scanRadius ?? 100);
+    if (srt === "scan") return (b.scanRadius ?? 100) - (a.scanRadius ?? 100);
     return (a.name || "").localeCompare(b.name || "");
   });
   return list;
@@ -1986,31 +2048,31 @@ function _fillBoxForm(b, keepId) {
   if (prev) { prev.textContent = b.lat ? `위도 ${Number(b.lat).toFixed(6)}, 경도 ${Number(b.lng).toFixed(6)}` : ""; prev.style.color = "#16a34a"; }
   _updateBoxMap(b.lat && b.lng ? { lat: Number(b.lat), lng: Number(b.lng) } : null);
   if ($("tBoxStartHour")) $("tBoxStartHour").value = b.startHour ?? 0;
-  if ($("tBoxEndHour"))   $("tBoxEndHour").value   = b.endHour   ?? 24;
+  if ($("tBoxEndHour")) $("tBoxEndHour").value = b.endHour ?? 24;
   _boxItemPool = Array.isArray(b.itemPool)
     ? b.itemPool.map(e => (typeof e === 'string' ? { itemId: e, weight: 1 } : e))
     : [];
   renderItemPool();
-  if ($("tBoxActive"))      $("tBoxActive").value      = String(b.active !== false);
-  if ($("tBoxMemberOnly"))  $("tBoxMemberOnly").value  = String(b.memberOnly === true);
-  if ($("tBoxHiddenBox"))   $("tBoxHiddenBox").value   = String(b.hiddenBox === true);
-  if ($("tBoxKeyId"))       $("tBoxKeyId").value       = b.keyId || "";
-  if ($("tBoxClaimRadius")) $("tBoxClaimRadius").value = b.radius     ?? 30;
-  if ($("tBoxScanRadius"))  $("tBoxScanRadius").value  = b.scanRadius ?? 100;
+  if ($("tBoxActive")) $("tBoxActive").value = String(b.active !== false);
+  if ($("tBoxMemberOnly")) $("tBoxMemberOnly").value = String(b.memberOnly === true);
+  if ($("tBoxHiddenBox")) $("tBoxHiddenBox").value = String(b.hiddenBox === true);
+  if ($("tBoxKeyId")) $("tBoxKeyId").value = b.keyId || "";
+  if ($("tBoxClaimRadius")) $("tBoxClaimRadius").value = b.radius ?? 30;
+  if ($("tBoxScanRadius")) $("tBoxScanRadius").value = b.scanRadius ?? 100;
   const kRow = $("tBoxKeyIdRow"), kVal = $("tBoxKeyIdVal");
   if (kRow && kVal) { const show = b.hiddenBox === true; kRow.style.display = show ? "" : "none"; kVal.style.display = show ? "" : "none"; }
 }
 
 function renderBoxPage() {
-  const el    = $("treasureBoxList");
+  const el = $("treasureBoxList");
   const pager = $("treasureBoxPager");
   if (!el) return;
 
-  const filtered   = _getFilteredBoxes();
-  const total      = filtered.length;
+  const filtered = _getFilteredBoxes();
+  const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / BOX_PAGE_SIZE));
   _boxPage = Math.min(_boxPage, totalPages - 1);
-  const pageItems  = filtered.slice(_boxPage * BOX_PAGE_SIZE, (_boxPage + 1) * BOX_PAGE_SIZE);
+  const pageItems = filtered.slice(_boxPage * BOX_PAGE_SIZE, (_boxPage + 1) * BOX_PAGE_SIZE);
 
   if (!pageItems.length) {
     el.innerHTML = "<div class='muted'>해당 조건의 박스 없음</div>";
@@ -2023,7 +2085,7 @@ function renderBoxPage() {
     return `<div class="card" style="display:flex;gap:12px;align-items:center;">
       <div style="flex:1;min-width:0;">
         <strong>${esc(b.name || "(이름없음)")}</strong>
-        <span class="muted" style="font-size:12px;margin-left:6px;">${active ? "✅ 활성" : "❌ 비활성"}${b.memberOnly ? " · 👑 정회원" : ""}${b.hiddenBox ? " · 🔮 숨김" : ""}${b.keyId ? ` · 🔑 Key ${esc(String(b.keyId))}` : ""} · ${(b.lat||0).toFixed(5)}, ${(b.lng||0).toFixed(5)} · ${b.startHour ?? 0}:00~${b.endHour ?? 24}:00</span>
+        <span class="muted" style="font-size:12px;margin-left:6px;">${active ? "✅ 활성" : "❌ 비활성"}${b.memberOnly ? " · 👑 정회원" : ""}${b.hiddenBox ? " · 🔮 숨김" : ""}${b.keyId ? ` · 🔑 Key ${esc(String(b.keyId))}` : ""} · ${(b.lat || 0).toFixed(5)}, ${(b.lng || 0).toFixed(5)} · ${b.startHour ?? 0}:00~${b.endHour ?? 24}:00</span>
         <div class="muted" style="font-size:11px;font-family:monospace;overflow:hidden;text-overflow:ellipsis;">${esc(b.id)}</div>
       </div>
       <button class="btn btn-sm" data-act="copyBox"   data-id="${esc(b.id)}" title="이 박스를 복사해 새 박스로 등록">복사</button>
@@ -2057,7 +2119,7 @@ function renderBoxPage() {
 
   if (pager) {
     const start = _boxPage * BOX_PAGE_SIZE + 1;
-    const end   = Math.min((_boxPage + 1) * BOX_PAGE_SIZE, total);
+    const end = Math.min((_boxPage + 1) * BOX_PAGE_SIZE, total);
     pager.innerHTML = `
       <button class="btn btn-sm" id="tBoxPrevPage" ${_boxPage === 0 ? "disabled" : ""}>◀</button>
       <span style="font-size:12px;">${start}–${end} / 총 ${total}개</span>
@@ -2089,33 +2151,33 @@ async function loadVouchersList() {
       const s = await getDoc(doc(db, "treasure_vouchers", btn.dataset.id));
       if (!s.exists()) return;
       const r = s.data();
-      $("tVoucherId").value        = btn.dataset.id;
-      $("tVoucherName").value      = r.name   || "";
-      $("tVoucherReqs").value      = JSON.stringify(r.requirements || [], null, 2);
-      $("tVoucherReward").value    = r.reward || "";
-      $("tVoucherGpMin").value     = r.gpRewardMin || 0;
-      $("tVoucherGpMax").value     = r.gpRewardMax || 0;
-      $("tVoucherImage").value     = r.image  || "";
-      $("tVoucherMinCoins").value  = r.minCoins || 0;
-      $("tVoucherMinLevel").value  = r.minLevel || 0;
-      $("tVoucherActive").value    = String(r.active !== false);
+      $("tVoucherId").value = btn.dataset.id;
+      $("tVoucherName").value = r.name || "";
+      $("tVoucherReqs").value = JSON.stringify(r.requirements || [], null, 2);
+      $("tVoucherReward").value = r.reward || "";
+      $("tVoucherGpMin").value = r.gpRewardMin || 0;
+      $("tVoucherGpMax").value = r.gpRewardMax || 0;
+      $("tVoucherImage").value = r.image || "";
+      $("tVoucherMinCoins").value = r.minCoins || 0;
+      $("tVoucherMinLevel").value = r.minLevel || 0;
+      $("tVoucherActive").value = String(r.active !== false);
     });
   });
 }
 
 $("btnSaveTreasureItem")?.addEventListener("click", async () => {
   const itemId = $("tItemId")?.value.trim();
-  const name   = $("tItemName")?.value.trim();
+  const name = $("tItemName")?.value.trim();
   if (!itemId || !name) return alert("아이템 ID와 이름은 필수입니다.");
   try {
     await httpsCallable(functions, "adminSaveTreasureItem")({
       itemId,
       name,
-      image:       $("tItemImage")?.value.trim() || `${itemId}.png`,
-      description: $("tItemDesc")?.value.trim()  || "",
+      image: $("tItemImage")?.value.trim() || `${itemId}.png`,
+      description: $("tItemDesc")?.value.trim() || "",
     });
     alert("아이템 저장 완료!");
-    ["tItemId","tItemName","tItemImage","tItemDesc"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    ["tItemId", "tItemName", "tItemImage", "tItemDesc"].forEach(id => { const e = $(`${id}`); if (e) e.value = ""; });
     await loadTreasureItemsList();
   } catch (err) { alert("오류: " + (err.message || err)); }
 });
@@ -2141,7 +2203,7 @@ function _updateBoxMap(c) {
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(_boxMap);
     _boxMarker = L.marker([c.lat, c.lng]).addTo(_boxMap);
     // 지도 클릭 → 좌표 자동 입력
-    _boxMap.on('click', function(e) {
+    _boxMap.on('click', function (e) {
       const lat = parseFloat(e.latlng.lat.toFixed(7));
       const lng = parseFloat(e.latlng.lng.toFixed(7));
       _boxMarker.setLatLng([lat, lng]);
@@ -2196,32 +2258,32 @@ $("btnSaveTreasureBox")?.addEventListener("click", async () => {
   const itemPool = _boxItemPool.slice();
   try {
     const res = await httpsCallable(functions, "adminSaveTreasureBox")({
-      boxId:     $("tBoxId")?.value.trim() || undefined,
-      name:      $("tBoxName")?.value.trim() || "",
+      boxId: $("tBoxId")?.value.trim() || undefined,
+      name: $("tBoxName")?.value.trim() || "",
       lat: coords.lat, lng: coords.lng,
       startHour: Number($("tBoxStartHour")?.value) || 0,
-      endHour:   Number($("tBoxEndHour")?.value)   || 24,
+      endHour: Number($("tBoxEndHour")?.value) || 24,
       itemPool,
-      active:      $("tBoxActive")?.value === "true",
-      memberOnly:  $("tBoxMemberOnly")?.value === "true",
-      hiddenBox:   $("tBoxHiddenBox")?.value === "true",
-      keyId:       $("tBoxKeyId")?.value.trim() || null,
-      radius:      Number($("tBoxClaimRadius")?.value) || 30,
-      scanRadius:  Number($("tBoxScanRadius")?.value)  || 100,
+      active: $("tBoxActive")?.value === "true",
+      memberOnly: $("tBoxMemberOnly")?.value === "true",
+      hiddenBox: $("tBoxHiddenBox")?.value === "true",
+      keyId: $("tBoxKeyId")?.value.trim() || null,
+      radius: Number($("tBoxClaimRadius")?.value) || 30,
+      scanRadius: Number($("tBoxScanRadius")?.value) || 100,
     });
     alert(`박스 저장 완료!\nboxId: ${res.data.boxId}`);
     _boxItemPool = [];
     renderItemPool();
-    ["tBoxId","tBoxName","tBoxCoords","tBoxKeyId"].forEach(id => { const e=$(id); if(e) e.value=""; });
+    ["tBoxId", "tBoxName", "tBoxCoords", "tBoxKeyId"].forEach(id => { const e = $(id); if (e) e.value = ""; });
     const prev = $("tBoxCoordsPreview"); if (prev) prev.textContent = "";
     _updateBoxMap(null);
-    if ($("tBoxStartHour"))   $("tBoxStartHour").value   = "0";
-    if ($("tBoxEndHour"))     $("tBoxEndHour").value     = "24";
-    if ($("tBoxActive"))      $("tBoxActive").value      = "true";
-    if ($("tBoxMemberOnly"))  $("tBoxMemberOnly").value  = "false";
-    if ($("tBoxHiddenBox"))   $("tBoxHiddenBox").value   = "false";
+    if ($("tBoxStartHour")) $("tBoxStartHour").value = "0";
+    if ($("tBoxEndHour")) $("tBoxEndHour").value = "24";
+    if ($("tBoxActive")) $("tBoxActive").value = "true";
+    if ($("tBoxMemberOnly")) $("tBoxMemberOnly").value = "false";
+    if ($("tBoxHiddenBox")) $("tBoxHiddenBox").value = "false";
     if ($("tBoxClaimRadius")) $("tBoxClaimRadius").value = "30";
-    if ($("tBoxScanRadius"))  $("tBoxScanRadius").value  = "100";
+    if ($("tBoxScanRadius")) $("tBoxScanRadius").value = "100";
     const kRow = $("tBoxKeyIdRow"), kVal = $("tBoxKeyIdVal");
     if (kRow) kRow.style.display = "none"; if (kVal) kVal.style.display = "none";
     await loadTreasureBoxesList();
@@ -2232,30 +2294,30 @@ $("btnSaveVoucher")?.addEventListener("click", async () => {
   const name = $("tVoucherName")?.value.trim();
   if (!name) return alert("바우처 이름은 필수입니다.");
   let requirements = [];
-  try   { requirements = JSON.parse($("tVoucherReqs")?.value || "[]"); }
+  try { requirements = JSON.parse($("tVoucherReqs")?.value || "[]"); }
   catch { return alert('재료 JSON 오류\n예: [{"itemId":"1","count":3}]'); }
-  const minCoins   = parseInt($("tVoucherMinCoins")?.value || "0", 10) || 0;
-  const minLevel   = parseInt($("tVoucherMinLevel")?.value || "0", 10) || 0;
+  const minCoins = parseInt($("tVoucherMinCoins")?.value || "0", 10) || 0;
+  const minLevel = parseInt($("tVoucherMinLevel")?.value || "0", 10) || 0;
   const gpRewardMin = parseInt($("tVoucherGpMin")?.value || "0", 10) || 0;
   const gpRewardMax = Math.max(gpRewardMin, parseInt($("tVoucherGpMax")?.value || "0", 10) || 0);
   if (gpRewardMin > 0 && gpRewardMax < gpRewardMin)
     return alert("GP 최댓값은 최솟값보다 크거나 같아야 합니다.");
   try {
     const res = await httpsCallable(functions, "adminSaveVoucher")({
-      voucherId:    $("tVoucherId")?.value.trim() || undefined,
+      voucherId: $("tVoucherId")?.value.trim() || undefined,
       name,
       requirements,
-      reward:       $("tVoucherReward")?.value.trim() || "",
+      reward: $("tVoucherReward")?.value.trim() || "",
       gpRewardMin,
       gpRewardMax,
-      image:        $("tVoucherImage")?.value.trim()  || "",
+      image: $("tVoucherImage")?.value.trim() || "",
       minCoins,
       minLevel,
       active: $("tVoucherActive")?.value === "true",
     });
     const gpInfo = gpRewardMin > 0 ? ` (GP 보상: ${gpRewardMin}~${gpRewardMax})` : "";
     alert(`바우처 저장 완료!\nvoucherId: ${res.data.voucherId}${gpInfo}`);
-    ["tVoucherId","tVoucherName","tVoucherReqs","tVoucherReward","tVoucherGpMin","tVoucherGpMax","tVoucherImage","tVoucherMinCoins","tVoucherMinLevel"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    ["tVoucherId", "tVoucherName", "tVoucherReqs", "tVoucherReward", "tVoucherGpMin", "tVoucherGpMax", "tVoucherImage", "tVoucherMinCoins", "tVoucherMinLevel"].forEach(id => { const e = $(`${id}`); if (e) e.value = ""; });
     if ($("tVoucherActive")) $("tVoucherActive").value = "true";
     await loadVouchersList();
   } catch (err) { alert("오류: " + (err.message || err)); }
@@ -2272,7 +2334,7 @@ async function loadTreasureKeysList() {
     return `<div class="card" style="display:flex;gap:12px;align-items:center;">
       <div style="flex:1;">
         <strong>🔑 ${esc(r.name || "(이름없음)")}</strong>
-        <span class="muted" style="font-size:12px;margin-left:6px;">Key ID: ${esc(d.id)} · 드랍율: ${((r.dropRate||0)*100).toFixed(1)}% · ${r.active !== false ? "✅ 활성" : "❌ 비활성"}</span>
+        <span class="muted" style="font-size:12px;margin-left:6px;">Key ID: ${esc(d.id)} · 드랍율: ${((r.dropRate || 0) * 100).toFixed(1)}% · ${r.active !== false ? "✅ 활성" : "❌ 비활성"}</span>
       </div>
       <button class="btn btn-sm" data-act="editKey" data-id="${esc(d.id)}">수정</button>
       <button class="btn btn-sm" data-act="deleteKey" data-id="${esc(d.id)}" style="color:var(--danger,#e53e3e);">비활성화</button>
@@ -2283,10 +2345,10 @@ async function loadTreasureKeysList() {
       const s = await getDoc(doc(db, "treasure_keys", btn.dataset.id));
       if (!s.exists()) return;
       const r = s.data();
-      if ($("tKeyId"))       $("tKeyId").value       = btn.dataset.id;
-      if ($("tKeyName"))     $("tKeyName").value     = r.name  || "";
+      if ($("tKeyId")) $("tKeyId").value = btn.dataset.id;
+      if ($("tKeyName")) $("tKeyName").value = r.name || "";
       if ($("tKeyDropRate")) $("tKeyDropRate").value = r.dropRate ?? 0.1;
-      if ($("tKeyActive"))   $("tKeyActive").value   = String(r.active !== false);
+      if ($("tKeyActive")) $("tKeyActive").value = String(r.active !== false);
     });
   });
   el.querySelectorAll("[data-act='deleteKey']").forEach(btn => {
@@ -2308,14 +2370,14 @@ $("btnSaveTreasureKey")?.addEventListener("click", async () => {
   try {
     await httpsCallable(functions, "adminSaveTreasureKey")({
       keyId,
-      name:     $("tKeyName")?.value.trim()  || "",
+      name: $("tKeyName")?.value.trim() || "",
       dropRate,
-      active:   $("tKeyActive")?.value !== "false",
+      active: $("tKeyActive")?.value !== "false",
     });
     alert("열쇠 저장 완료!");
-    ["tKeyId","tKeyName"].forEach(id => { const e=$(`${id}`); if(e) e.value=""; });
+    ["tKeyId", "tKeyName"].forEach(id => { const e = $(`${id}`); if (e) e.value = ""; });
     if ($("tKeyDropRate")) $("tKeyDropRate").value = "0.1";
-    if ($("tKeyActive"))   $("tKeyActive").value   = "true";
+    if ($("tKeyActive")) $("tKeyActive").value = "true";
     await loadTreasureKeysList();
   } catch (err) { alert("오류: " + (err.message || err)); }
 });
@@ -2329,13 +2391,13 @@ $("tBoxHiddenBox")?.addEventListener("change", () => {
   if (!isHidden && $("tBoxKeyId")) $("tBoxKeyId").value = "";
 });
 
-$("btnReloadTItems")?.addEventListener("click",    () => loadTreasureItemsList());
-$("btnReloadTBoxes")?.addEventListener("click",    () => loadTreasureBoxesList());
-$("tBoxSearch")?.addEventListener("input",  () => { _boxPage = 0; renderBoxPage(); });
+$("btnReloadTItems")?.addEventListener("click", () => loadTreasureItemsList());
+$("btnReloadTBoxes")?.addEventListener("click", () => loadTreasureBoxesList());
+$("tBoxSearch")?.addEventListener("input", () => { _boxPage = 0; renderBoxPage(); });
 $("tBoxSortSel")?.addEventListener("change", () => { _boxPage = 0; renderBoxPage(); });
 $("tBoxFilterActive")?.addEventListener("change", () => { _boxPage = 0; renderBoxPage(); });
 $("btnReloadTVouchers")?.addEventListener("click", () => loadVouchersList());
-$("btnReloadTKeys")?.addEventListener("click",     () => loadTreasureKeysList());
+$("btnReloadTKeys")?.addEventListener("click", () => loadTreasureKeysList());
 btnTabTreasure?.addEventListener("click", () => {
   showTab("treasure");
   _initBoxMapDefault();
@@ -2350,7 +2412,7 @@ btnTabShops?.addEventListener("click", () => { showTab("shops"); window._adminLo
 // ── 무기 등록 ──────────────────────────────────────────────────────────────────
 function updateWeaponPreview() {
   const bonus = $("wBonusSelect")?.value;
-  const img   = $("wPreview");
+  const img = $("wPreview");
   if (!img || !bonus) return;
   img.src = `/assets/images/weapon/${bonus}.png`;
   img.style.display = "";
@@ -2360,18 +2422,18 @@ $("wBonusSelect")?.addEventListener("change", updateWeaponPreview);
 updateWeaponPreview();
 
 $("btnSaveWeapon")?.addEventListener("click", async () => {
-  const bonus  = $("wBonusSelect")?.value;
-  const name   = $("wName")?.value.trim();
+  const bonus = $("wBonusSelect")?.value;
+  const name = $("wName")?.value.trim();
   const result = $("wSaveResult");
   if (!name) { alert("무기 이름을 입력하세요."); return; }
   try {
     if (result) { result.textContent = "저장 중..."; result.style.color = ""; }
     await httpsCallable(functions, "adminSaveTreasureItem")({
-      itemId:      `weapon_${bonus}`,
+      itemId: `weapon_${bonus}`,
       name,
-      image:       `${bonus}.png`,
+      image: `${bonus}.png`,
       description: `추가공격력 +${bonus} (총공격력 ${100 + parseInt(bonus)})`,
-      category:    "weapon",
+      category: "weapon",
     });
     if (result) { result.textContent = `✅ weapon_${bonus} 저장 완료`; result.style.color = "#16a34a"; }
     if ($("wName")) $("wName").value = "";
@@ -2383,8 +2445,8 @@ $("btnSaveWeapon")?.addEventListener("click", async () => {
 
 // ── 방어구 등록 ────────────────────────────────────────────────────────────────
 function updateArmorPreview() {
-  const def    = $("aBonusSelect")?.value;
-  const img    = $("aPreview");
+  const def = $("aBonusSelect")?.value;
+  const img = $("aPreview");
   if (!img || !def) return;
   const folder = Math.floor(parseInt(def) / 10);
   img.src = `/assets/images/armo/${folder}/${def}.png`;
@@ -2395,20 +2457,20 @@ $("aBonusSelect")?.addEventListener("change", updateArmorPreview);
 updateArmorPreview();
 
 $("btnSaveArmor")?.addEventListener("click", async () => {
-  const def    = $("aBonusSelect")?.value;
-  const name   = $("aName")?.value.trim();
+  const def = $("aBonusSelect")?.value;
+  const name = $("aName")?.value.trim();
   const result = $("aSaveResult");
   const folder = Math.floor(parseInt(def) / 10);
   if (!name) { alert("방어구 이름을 입력하세요."); return; }
   try {
     if (result) { result.textContent = "저장 중..."; result.style.color = ""; }
     await httpsCallable(functions, "adminSaveTreasureItem")({
-      itemId:      `armo_${def}`,
+      itemId: `armo_${def}`,
       name,
-      image:       `armo_${def}.png`,
+      image: `armo_${def}.png`,
       description: `방어력 ${def} (몬스터 피해 -${def})`,
-      category:    "armor",
-      armoFolder:  folder,
+      category: "armor",
+      armoFolder: folder,
     });
     if (result) { result.textContent = `✅ armo_${def} 저장 완료`; result.style.color = "#16a34a"; }
     if ($("aName")) $("aName").value = "";
@@ -2420,18 +2482,18 @@ $("btnSaveArmor")?.addEventListener("click", async () => {
 
 // ── 유저 직접 지급 ─────────────────────────────────────────────────────────────
 $("btnGrantItem")?.addEventListener("click", async () => {
-  const target  = $("grantTarget")?.value.trim();
-  const itemId  = $("grantItemId")?.value.trim();
-  const count   = parseInt($("grantCount")?.value) || 1;
-  const result  = $("grantResult");
+  const target = $("grantTarget")?.value.trim();
+  const itemId = $("grantItemId")?.value.trim();
+  const count = parseInt($("grantCount")?.value) || 1;
+  const result = $("grantResult");
   if (!target) { alert("유저 이메일 또는 UID를 입력하세요."); return; }
   if (!itemId) { alert("아이템 ID를 입력하세요."); return; }
   if (!confirm(`${target} 에게\n${itemId} × ${count}개\n지급하시겠습니까?`)) return;
   try {
     if (result) { result.textContent = "처리 중..."; result.style.color = ""; }
-    const isUid   = !target.includes("@");
+    const isUid = !target.includes("@");
     const payload = isUid
-      ? { targetUid: target,   itemId, count }
+      ? { targetUid: target, itemId, count }
       : { targetEmail: target, itemId, count };
     const res = await httpsCallable(functions, "adminGrantItem")(payload);
     if (result) {
@@ -2447,12 +2509,12 @@ $("btnGrantItem")?.addEventListener("click", async () => {
 {
   let _blacklistTargetUid = null;
 
-  const inputEl    = $("inputBlacklistUser");
-  const infoBox    = $("blacklistUserInfo");
-  const resultBox  = $("blacklistResult");
-  const btnSearch  = $("btnBlacklistSearch");
-  const btnAdd     = $("btnBlacklistAdd");
-  const btnRemove  = $("btnBlacklistRemove");
+  const inputEl = $("inputBlacklistUser");
+  const infoBox = $("blacklistUserInfo");
+  const resultBox = $("blacklistResult");
+  const btnSearch = $("btnBlacklistSearch");
+  const btnAdd = $("btnBlacklistAdd");
+  const btnRemove = $("btnBlacklistRemove");
 
   function showBlacklistInfo(data) {
     if (!infoBox) return;
@@ -2462,15 +2524,15 @@ $("btnGrantItem")?.addEventListener("click", async () => {
       <div><strong>${esc(data.name || "-")}</strong> &nbsp;
         <span style="font-size:12px; color:#64748b;">${esc(data.email || "-")}</span>
         ${isBlocked
-          ? '<span style="margin-left:8px;padding:2px 8px;border-radius:99px;background:#fee2e2;color:#dc2626;font-size:11px;font-weight:700;">블랙리스트</span>'
-          : '<span style="margin-left:8px;padding:2px 8px;border-radius:99px;background:#dcfce7;color:#16a34a;font-size:11px;font-weight:700;">정상</span>'}
+        ? '<span style="margin-left:8px;padding:2px 8px;border-radius:99px;background:#fee2e2;color:#dc2626;font-size:11px;font-weight:700;">블랙리스트</span>'
+        : '<span style="margin-left:8px;padding:2px 8px;border-radius:99px;background:#dcfce7;color:#16a34a;font-size:11px;font-weight:700;">정상</span>'}
       </div>
       <div style="margin-top:4px; font-size:12px; color:#94a3b8;">
         UID: ${esc(data.uid || "-")}<br>
         지갑: <span style="font-family:monospace;">${esc(data.walletAddress || "없음")}</span>
       </div>`;
-    if (btnAdd)    btnAdd.style.display    = isBlocked ? "none" : "";
-    if (btnRemove) btnRemove.style.display = isBlocked ? ""     : "none";
+    if (btnAdd) btnAdd.style.display = isBlocked ? "none" : "";
+    if (btnRemove) btnRemove.style.display = isBlocked ? "" : "none";
   }
 
   btnSearch?.addEventListener("click", async () => {
@@ -2480,16 +2542,16 @@ $("btnGrantItem")?.addEventListener("click", async () => {
 
     btnSearch.disabled = true;
     btnSearch.textContent = "조회 중...";
-    if (infoBox)   infoBox.style.display = "none";
+    if (infoBox) infoBox.style.display = "none";
     if (resultBox) resultBox.style.display = "none";
-    if (btnAdd)    btnAdd.style.display = "none";
+    if (btnAdd) btnAdd.style.display = "none";
     if (btnRemove) btnRemove.style.display = "none";
     _blacklistTargetUid = null;
 
     try {
-      const fn  = httpsCallable(functions, "adminGetUserInfo");
+      const fn = httpsCallable(functions, "adminGetUserInfo");
       const res = await fn({ emailOrUid });
-      const d   = res.data;
+      const d = res.data;
       _blacklistTargetUid = d.uid;
       showBlacklistInfo(d);
     } catch (err) {
@@ -2511,9 +2573,9 @@ $("btnGrantItem")?.addEventListener("click", async () => {
     if (resultBox) resultBox.style.display = "none";
 
     try {
-      const fn  = httpsCallable(functions, "adminSetBlacklist");
+      const fn = httpsCallable(functions, "adminSetBlacklist");
       const res = await fn({ emailOrUid: _blacklistTargetUid, blocked });
-      const d   = res.data;
+      const d = res.data;
       if (resultBox) {
         resultBox.style.display = "";
         resultBox.innerHTML = `
@@ -2533,7 +2595,7 @@ $("btnGrantItem")?.addEventListener("click", async () => {
     }
   }
 
-  btnAdd?.addEventListener("click",    () => doBlacklist(true));
+  btnAdd?.addEventListener("click", () => doBlacklist(true));
   btnRemove?.addEventListener("click", () => doBlacklist(false));
 }
 

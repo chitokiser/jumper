@@ -97,6 +97,12 @@
               <input type="number" id="inputKrwRate" class="select" style="width:120px;" placeholder="예: 1380" min="900" max="2000" step="0.01" />
             </div>
             <div id="depositList" class="list"></div>
+              
+              <div class="list-head" style="margin-top:24px; border-top:1px solid #e2e8f0; padding-top:16px;">
+                <div class="muted" style="color:#15803d; font-weight:700;">🟢 승인 완료 내역 (최근 50건)</div>
+                <button class="btn btn-sm" id="btnReloadApprovedDeposits" type="button">새로고침</button>
+              </div>
+              <div id="depositApprovedList" class="list"></div>
           </div>
 
           <!-- ── Point 관리 탭 ── -->

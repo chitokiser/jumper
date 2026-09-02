@@ -8,7 +8,7 @@
 
 'use strict';
 
-const admin  = require('firebase-admin');
+const admin = require('firebase-admin');
 const { ethers } = require('ethers');
 const {
   ADDRESSES,
@@ -33,15 +33,15 @@ const db = admin.firestore();
 
 // 은행 계좌 정보
 const BANK_INFO = {
-  bank:    'IM뱅크',
+  bank: 'IM뱅크',
   account: '253-08-000869-7',
-  holder:  '신헌철',
+  holder: '신헌철',
 };
 
 const BANK_INFO_VND = {
-  bank:    'TECHCOM BANK',
+  bank: 'TECHCOM BANK',
   account: '19037852768012',
-  holder:  '신헌철 (SHIN HEON CHEOL)',
+  holder: '신헌철 (SHIN HEON CHEOL)',
 };
 
 const MIN_KRW = 10_000;  // 최소 충전 금액
@@ -59,19 +59,29 @@ const MIN_KRW = 10_000;  // 최소 충전 금액
  * @param {{ amountKrw: number, depositorName: string, bank?: string }} params
  * @returns {{ refCode, amountKrw, bankInfo, estimatedHex, estimatedVnd, estimatedUsd }}
  */
-async function requestDeposit(uid, { amountKrw, depositorName, bank }) {
-  // 입력 검증
-  const amount = Math.floor(Number(amountKrw));
-  if (!amount || amount < MIN_KRW) {
-    throw new Error(`최소 충전 금액은 ${MIN_KRW.toLocaleString()}원입니다`);
+async function requestDeposit(uid, payload) {
+  const { amountKrw, amountVnd, currency, depositorName, bank } = payload;
+  let amount = 0;
+
+  if (currency === "VND") {
+    amount = Math.floor(Number(amountVnd));
+    if (!amount || amount < 200000) {
+      throw new Error(`최소 충전 금액은 200,000 VND 입니다`);
+    }
+  } else {
+    amount = Math.floor(Number(amountKrw));
+    if (!amount || amount < MIN_KRW) {
+      throw new Error(`최소 충전 금액은 ${MIN_KRW.toLocaleString()}원입니다`);
+    }
   }
+
   if (!depositorName || depositorName.trim().length < 2) {
     throw new Error('입금자명(2자 이상)을 입력해주세요');
   }
 
   // 수탁 지갑 확인
   const userSnap = await db.collection('users').doc(uid).get();
-  const address  = userSnap.data()?.wallet?.address;
+  const address = userSnap.data()?.wallet?.address;
   if (!address) {
     throw new Error('수탁 지갑이 없습니다. 먼저 회원가입을 완료해주세요');
   }
@@ -81,39 +91,49 @@ async function requestDeposit(uid, { amountKrw, depositorName, bank }) {
   try { rates = await fetchExchangeRates(); } catch (_) { /* 비필수 */ }
 
   // 고유 refCode (온체인 bytes32 해시 키로도 활용)
-  const refCode   = `DEP-${uid.slice(0, 8).toUpperCase()}-${Date.now()}`;
-  const refHash   = ethers.id(refCode); // keccak256 → bytes32
+  const refCode = `DEP-${uid.slice(0, 8).toUpperCase()}-${Date.now()}`;
+  const refHash = ethers.id(refCode); // keccak256 → bytes32
 
-  await db.collection('deposits').doc(refCode).set({
+  const depositData = {
     uid,
-    userAddress:   address,
-    amountKrw:     amount,
+    userAddress: address,
     depositorName: depositorName.trim(),
-    bank:          bank || BANK_INFO.bank,
+    currency: currency || "KRW",
+    bank: bank || (currency === 'VND' ? BANK_INFO_VND.bank : BANK_INFO.bank),
     refCode,
     refHash,       // 온체인과 동일 값 (감사 목적)
-    status:        'pending',
-    requestedAt:   admin.firestore.FieldValue.serverTimestamp(),
+    status: 'pending',
+    requestedAt: admin.firestore.FieldValue.serverTimestamp(),
     rateAtRequest: rates
       ? { krwPerUsd: rates.krwPerUsd, vndPerUsd: rates.vndPerUsd, source: rates.source }
       : null,
-  });
+  };
+
+  if (currency === "VND") {
+    depositData.amountVnd = amount;
+    // 환율을 사용하여 원화 가치 (Point 지급량) 계산
+    depositData.amountKrw = rates ? Math.floor(amount / rates.vndPerUsd * rates.krwPerUsd) : 0;
+  } else {
+    depositData.amountKrw = amount;
+    depositData.amountVnd = rates ? Math.floor(amount / rates.krwPerUsd * rates.vndPerUsd) : 0;
+  }
+
+  await db.collection('deposits').doc(refCode).set(depositData);
 
   // 응답 조립
   const estimatedHex = rates
-    ? parseFloat(ethers.formatEther(krwToHexWei(amount, rates.krwPerUsd))).toFixed(4)
+    ? parseFloat(ethers.formatEther(krwToHexWei(depositData.amountKrw, rates.krwPerUsd))).toFixed(4)
     : '환율 조회 실패';
-  const estimatedUsd = rates ? krwToUsd(amount, rates.krwPerUsd) : null;
-  const estimatedVnd = rates
-    ? krwToVnd(amount, rates.krwPerUsd, rates.vndPerUsd).toLocaleString() + ' VND'
-    : '환율 조회 실패';
+  const estimatedUsd = rates ? krwToUsd(depositData.amountKrw, rates.krwPerUsd) : null;
+  const estimatedVnd = depositData.amountVnd ? depositData.amountVnd.toLocaleString() + ' VND' : '환율 조회 실패';
 
   return {
     refCode,
-    amountKrw:     amount,
-    bankInfo:      BANK_INFO,
-    bankInfoVnd:   BANK_INFO_VND,
-    instruction:   `입금자명을 "${depositorName.trim()}"으로 정확히 입력하세요. 참조코드: ${refCode}`,
+    amountKrw: depositData.amountKrw,
+    amountVnd: currency === "VND" ? amount : null,
+    bankInfo: BANK_INFO,
+    bankInfoVnd: BANK_INFO_VND,
+    instruction: `입금자명을 "${depositorName.trim()}"으로 정확히 입력하세요. 참조코드: ${refCode}`,
     estimatedHex,
     estimatedUsd,
     estimatedVnd,
@@ -144,7 +164,7 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
   await requireAdmin(adminUid);
 
   // ── 입금 문서 조회 ──
-  const depositRef  = db.collection('deposits').doc(refCode);
+  const depositRef = db.collection('deposits').doc(refCode);
   const depositSnap = await depositRef.get();
   if (!depositSnap.exists) throw new Error('입금 요청을 찾을 수 없습니다');
 
@@ -154,14 +174,14 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
   }
 
   // ── 온체인 멤버 등록 확인 + 미등록 시 자동 등록 ──────────────────────
-  const adminWallet  = getAdminWallet();
+  const adminWallet = getAdminWallet();
   const platformView = getPlatformContract(getProvider());
   const [memberLevel] = await platformView.members(dep.userAddress);
   const alreadyMember = Number(memberLevel) > 0;
 
   if (!alreadyMember) {
     // MetaMask 연결 지갑은 encryptedKey가 없으므로 서버에서 대신 등록 불가
-    const userSnap   = await db.collection('users').doc(dep.uid).get();
+    const userSnap = await db.collection('users').doc(dep.uid).get();
     const walletData = userSnap.data()?.wallet;
 
     if (!walletData?.encryptedKey) {
@@ -177,26 +197,26 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
 
     // 1) 수탁 지갑에 가스비 BNB 소량 전송 (opBNB 가스비 충분)
     const fundTx = await adminWallet.sendTransaction({
-      to:    dep.userAddress,
+      to: dep.userAddress,
       value: ethers.parseEther('0.0001'),
     });
     await fundTx.wait();
 
     // 2) 수탁 지갑으로 register(ZeroAddress)
-    const privateKey   = decrypt(walletData.encryptedKey, masterSecret);
-    const userSigner   = walletFromKey(privateKey, getProvider());
+    const privateKey = decrypt(walletData.encryptedKey, masterSecret);
+    const userSigner = walletFromKey(privateKey, getProvider());
     const userPlatform = getPlatformContract(userSigner);
-    const regGasLimit  = await estimateGasWithBuffer(userPlatform, 'register', [ethers.ZeroAddress]);
-    const regTx        = await userPlatform.register(ethers.ZeroAddress, { gasLimit: regGasLimit });
+    const regGasLimit = await estimateGasWithBuffer(userPlatform, 'register', [ethers.ZeroAddress]);
+    const regTx = await userPlatform.register(ethers.ZeroAddress, { gasLimit: regGasLimit });
     await regTx.wait();
 
     // 3) Firestore 온체인 등록 상태 기록
     await db.collection('users').doc(dep.uid).set({
       onChain: {
-        registered:     true,
-        registeredAt:   admin.firestore.FieldValue.serverTimestamp(),
-        mentorAddress:  ethers.ZeroAddress,
-        txHash:         regTx.hash,
+        registered: true,
+        registeredAt: admin.firestore.FieldValue.serverTimestamp(),
+        mentorAddress: ethers.ZeroAddress,
+        txHash: regTx.hash,
         autoRegistered: true,
       },
     }, { merge: true });
@@ -206,15 +226,15 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
   const rates = await fetchExchangeRates();
   const krwPerUsd = overrideKrwRate || rates.krwPerUsd;
 
-  const hexAmountWei      = krwToHexWei(dep.amountKrw, krwPerUsd);
-  const usdAmount         = krwToUsd(dep.amountKrw, krwPerUsd);
-  const vndAmount         = krwToVnd(dep.amountKrw, krwPerUsd, rates.vndPerUsd);
-  const usdKrwScaled      = toSnapshotScaled(krwPerUsd);
-  const refBytes32        = ethers.id(refCode); // keccak256
+  const hexAmountWei = krwToHexWei(dep.amountKrw, krwPerUsd);
+  const usdAmount = krwToUsd(dep.amountKrw, krwPerUsd);
+  const vndAmount = krwToVnd(dep.amountKrw, krwPerUsd, rates.vndPerUsd);
+  const usdKrwScaled = toSnapshotScaled(krwPerUsd);
+  const refBytes32 = ethers.id(refCode); // keccak256
 
   // ── 이중 승인 방지: 먼저 processing 상태로 변경 ──
   await depositRef.update({
-    status:       'processing',
+    status: 'processing',
     processingAt: admin.firestore.FieldValue.serverTimestamp(),
     processingBy: adminUid,
   });
@@ -233,7 +253,7 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
 
       const platformDep = getPlatformContract(adminWallet);
       const depGasLimit = await estimateGasWithBuffer(platformDep, 'ownerDepositHex', [hexAmountWei]);
-      const depTx       = await platformDep.ownerDepositHex(hexAmountWei, { gasLimit: depGasLimit });
+      const depTx = await platformDep.ownerDepositHex(hexAmountWei, { gasLimit: depGasLimit });
       await depTx.wait();
     } catch (depositErr) {
       throw new Error(`관리자→컨트랙트 Point 이체 실패 (ownerDepositHex): ${depositErr.message}`);
@@ -263,9 +283,9 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
 
     // ── Firestore 완료 처리 ──
     await depositRef.update({
-      status:       'approved',
-      approvedAt:   admin.firestore.FieldValue.serverTimestamp(),
-      approvedBy:   adminUid,
+      status: 'approved',
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      approvedBy: adminUid,
       hexAmountWei: hexAmountWei.toString(),
       usdAmount,
       vndAmount,
@@ -281,16 +301,16 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
     // ── 유저 문서 미러 업데이트 (UI 빠른 표시용) ──
     await db.collection('users').doc(dep.uid).set({
       balanceMirror: {
-        lastTopupAt:   admin.firestore.FieldValue.serverTimestamp(),
-        lastTopupKrw:  dep.amountKrw,
-        lastTopupHex:  hexAmountWei.toString(),
-        lastTopupTx:   receipt.hash,
+        lastTopupAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastTopupKrw: dep.amountKrw,
+        lastTopupHex: hexAmountWei.toString(),
+        lastTopupTx: receipt.hash,
       },
     }, { merge: true });
 
     return {
-      success:    true,
-      txHash:     receipt.hash,
+      success: true,
+      txHash: receipt.hash,
       hexDisplay: parseFloat(ethers.formatEther(hexAmountWei)).toFixed(4) + ' Point',
       usdAmount,
       vndAmount,
@@ -300,11 +320,11 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
   } catch (err) {
     // 실패 시 pending 으로 롤백
     await depositRef.update({
-      status:         'pending',
-      processingAt:   admin.firestore.FieldValue.delete(),
-      processingBy:   admin.firestore.FieldValue.delete(),
-      lastError:      err.message,
-      lastErrorAt:    admin.firestore.FieldValue.serverTimestamp(),
+      status: 'pending',
+      processingAt: admin.firestore.FieldValue.delete(),
+      processingBy: admin.firestore.FieldValue.delete(),
+      lastError: err.message,
+      lastErrorAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     throw new Error(`온체인 creditPoints 실패: ${err.message}`);
   }
@@ -331,14 +351,14 @@ async function listPendingDeposits(adminUid) {
   return snap.docs.map((d) => {
     const data = d.data();
     return {
-      refCode:       data.refCode,
-      uid:           data.uid,
-      userAddress:   data.userAddress,
-      amountKrw:     data.amountKrw,
+      refCode: data.refCode,
+      uid: data.uid,
+      userAddress: data.userAddress,
+      amountKrw: data.amountKrw,
       depositorName: data.depositorName,
-      bank:          data.bank,
-      status:        data.status,
-      requestedAt:   data.requestedAt?.toDate?.()?.toISOString?.() ?? null,
+      bank: data.bank,
+      status: data.status,
+      requestedAt: data.requestedAt?.toDate?.()?.toISOString?.() ?? null,
     };
   });
 }
@@ -359,17 +379,17 @@ async function getDepositHistory(uid) {
   return snap.docs.map((d) => {
     const data = d.data();
     return {
-      refCode:     data.refCode,
-      amountKrw:   data.amountKrw,
-      hexDisplay:  data.hexAmountWei
+      refCode: data.refCode,
+      amountKrw: data.amountKrw,
+      hexDisplay: data.hexAmountWei
         ? parseFloat(ethers.formatEther(data.hexAmountWei)).toFixed(4) + ' Point'
         : '-',
-      usdAmount:   data.usdAmount ?? null,
-      vndAmount:   data.vndAmount ?? null,
-      status:      data.status,
-      txHash:      data.txHash ?? null,
+      usdAmount: data.usdAmount ?? null,
+      vndAmount: data.vndAmount ?? null,
+      status: data.status,
+      txHash: data.txHash ?? null,
       requestedAt: data.requestedAt?.toDate?.()?.toISOString?.() ?? null,
-      approvedAt:  data.approvedAt?.toDate?.()?.toISOString?.() ?? null,
+      approvedAt: data.approvedAt?.toDate?.()?.toISOString?.() ?? null,
     };
   });
 }

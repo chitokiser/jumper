@@ -813,39 +813,95 @@ function bindDepositForm() {
   const form = $("depositForm");
   if (!form) return;
 
+  // 통화 선택 라디오 버튼 이벤트
+  const radios = document.getElementsByName("depositCurrencyRadio");
+  const currencyHidden = $("depositCurrency");
+  const accKRW = $("depositAccountKRW");
+  const accVND = $("depositAccountVND");
+  const amountInput = $("depositAmount");
+  const labelAmount = $("labelDepositAmount");
+
+  if (radios.length > 0) {
+    radios.forEach(r => {
+      r.addEventListener("change", (e) => {
+        if (!e.target.checked) return;
+        const cur = e.target.value;
+        if (currencyHidden) currencyHidden.value = cur;
+
+        if (cur === "VND") {
+          if (accKRW) accKRW.style.display = "none";
+          if (accVND) accVND.style.display = "block";
+          if (labelAmount) labelAmount.textContent = "충전 금액 (동)";
+          if (amountInput) {
+            amountInput.min = "200000";
+            amountInput.step = "10000";
+            amountInput.placeholder = "최소 200,000 VND";
+            amountInput.value = "";
+          }
+        } else {
+          if (accKRW) accKRW.style.display = "block";
+          if (accVND) accVND.style.display = "none";
+          if (labelAmount) labelAmount.textContent = "충전 금액 (원)";
+          if (amountInput) {
+            amountInput.min = "10000";
+            amountInput.step = "1000";
+            amountInput.placeholder = "최소 10,000원";
+            amountInput.value = "";
+          }
+        }
+      });
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const amountKrw = Number($("depositAmount")?.value);
+    const amountVal = Number(amountInput?.value);
+    const currency = currencyHidden?.value || "KRW";
     const depositorName = String($("depositorName")?.value || "").trim();
     const btn = $("btnDeposit");
 
-    if (!amountKrw || amountKrw < 10000) {
-      alert(_t('deposit_min_error'));
-      return;
+    if (currency === "VND") {
+      if (!amountVal || amountVal < 200000) { alert("최소 충전 금액은 200,000 VND 입니다."); return; }
+    } else {
+      if (!amountVal || amountVal < 10000) { alert(_t('deposit_min_error') || "최소 충전 금액은 10,000원 입니다."); return; }
     }
+
     if (!depositorName) {
-      alert(_t('deposit_name_error'));
+      alert(_t('deposit_name_error') || "입금자명을 입력해주세요.");
       return;
     }
 
     btn.disabled = true;
-    btn.textContent = _t('deposit_loading');
+    btn.textContent = _t('deposit_loading') || "진행중...";
 
     try {
+      const payload = currency === "VND"
+        ? { amountVnd: amountVal, currency: "VND", depositorName }
+        : { amountKrw: amountVal, currency: "KRW", depositorName };
+
       const requestDeposit = httpsCallable(functions, "requestDeposit");
-      const res = await requestDeposit({ amountKrw, depositorName });
+      const res = await requestDeposit(payload);
       const d = res.data;
 
       show("depositResult", true);
       setText("drRefCode", d.refCode);
-      setText("drBank", d.bankInfo?.bank || "-");
-      setText("drAccount", d.bankInfo?.account || "-");
-      setText("drHolder", d.bankInfo?.holder || "-");
-      setText("drAmount", (d.amountKrw || 0).toLocaleString() + "\uC6D0");
 
-      const drParts = [(d.amountKrw || 0).toLocaleString() + "\uC6D0"];
+      if (currency === "VND") {
+        setText("drBankVnd", d.bankInfoVnd?.bank || "-");
+        setText("drAccountVnd", d.bankInfoVnd?.account || "-");
+        setText("drHolderVnd", d.bankInfoVnd?.holder || "-");
+        setText("drAmount", (d.amountVnd || 0).toLocaleString() + " VND");
+      } else {
+        setText("drBank", d.bankInfo?.bank || "-");
+        setText("drAccount", d.bankInfo?.account || "-");
+        setText("drHolder", d.bankInfo?.holder || "-");
+        setText("drAmount", (d.amountKrw || 0).toLocaleString() + " 원");
+      }
+
+      const drParts = [];
+      if (d.amountKrw) drParts.push((d.amountKrw || 0).toLocaleString() + "원");
+      if (d.amountVnd) drParts.push((d.amountVnd || 0).toLocaleString() + " VND");
       if (d.estimatedUsd != null) drParts.push("$" + Number(d.estimatedUsd).toFixed(2));
-      if (d.estimatedVnd) drParts.push(d.estimatedVnd);
       setText("drHex", drParts.join(" / "));
 
       form.reset();
@@ -856,10 +912,10 @@ function bindDepositForm() {
       const histEl = $("depositHistory");
       if (histEl) histEl.closest("section")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
-      alert(_t('deposit_error_alert', err.message));
+      alert((_t('deposit_error_alert') || "Error: ") + err.message);
     } finally {
       btn.disabled = false;
-      btn.textContent = _t('deposit_btn_after');
+      btn.textContent = _t('deposit_btn_after') || "충전 요청";
     }
   });
 }
