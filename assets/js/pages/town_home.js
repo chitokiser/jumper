@@ -96,17 +96,17 @@ async function loadJackpotStats() {
     };
     _fxCache = fx;
 
-    // 누적 잭팟 금액: Firebase 순수 데이터 우선 (잭팟 누적금 VND)
-    const jackpotVnd = Number(cfg.jackpotAccVnd || 0);
+    // 누적 잭팟 금액: Firebase 순수 데이터 우선 (잭팟 누적 포인트)
+    const jackpotPoints = Number(cfg.jackpotAccPoints || 0);
 
-    const vndStr = jackpotVnd.toLocaleString("ko-KR");
-    const krwStr = Math.round(jackpotVnd / 18.84).toLocaleString("ko-KR"); // 대략적인 환산 렌더링용
+    const ptsStr = Math.round(jackpotPoints).toLocaleString("ko-KR");
+    const krwStr = Math.round(jackpotPoints * 10).toLocaleString("ko-KR"); // 대략 1 포인트 = 10원 (추정 렌더링)
 
     const count = winsSnap.size;
     const now = new Date();
     setJackpotUi({
-      valueText: jackpotVnd > 0 ? `${vndStr} KM` : "0 KM",
-      fiatText: jackpotVnd > 0 ? _t('fiat_approx', "0 KM", krwStr + " KRW") : _t('fiat_no_jackpot'),
+      valueText: jackpotPoints > 0 ? `${ptsStr} Point` : "0 Point",
+      fiatText: jackpotPoints > 0 ? _t('fiat_approx', `${ptsStr} Point`, krwStr + " KRW") : _t('fiat_no_jackpot'),
       updatedText: _t('time_basis', now.toLocaleTimeString([], { hour12: false })),
       winnerCountText: count > 0 ? `${count.toLocaleString()}명` : "-",
       rewardText: _t('item_jackpot'),
