@@ -1145,6 +1145,12 @@ async function applyQrResult(payload) {
   const radioVnd = $("merchantPayCurrencyVND");
   const radioKrw = $("merchantPayCurrencyKRW");
 
+  // 스캔 시 무조건 결제 섹션 펼치기
+  const merchantPaySection = $("merchantPaySection");
+  if (merchantPaySection) {
+    merchantPaySection.classList.remove("is-collapsed");
+  }
+
   // ── 금액 즉시 반영 ──
   if (payload.amount && amountInput) {
     amountInput.value = String(Math.round(payload.amount));
