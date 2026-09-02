@@ -1,0 +1,626 @@
+﻿commit f9cff1cfb3ba4bc6db742aecae85cf5299ebc5fd
+Author: daguri <daguri75@gmail.com>
+Date:   Tue Sep 1 20:47:01 2026 +0700
+
+    chore: K-MOA rebranding, removed on-chain & HEX dependencies, added merchant API guide
+
+diff --git a/partials/header.html b/partials/header.html
+index 62abe2b..9440c11 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -2,7 +2,7 @@
+ <header class="top-header top-header--sleek" id="siteHeaderBar">
+   <div class="hdr-inner">
+ 
+-    <a class="brand" href="/" aria-label="K-CULTURE ALLIANCE">
++    <a class="brand" href="/" aria-label="K-MOA">
+       <img src="/assets/images/jump/logo2.png" alt="KCA" class="brand-logo" onerror="this.style.display='none';" />
+     </a>
+ 
+@@ -12,26 +12,23 @@
+ 
+     <nav class="nav" id="hdrNav">
+       <div class="nav-group">
+-        <a href="/kca_webzine.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
++        <a href="/kca_webzine.html" class="nav-group-title" style="text-decoration:none;"
+           data-hdr-i18n="hdr_kculture">K-CULTURE</a>
+       </div>
+       <div class="nav-group">
+-        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
++        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none;"
+           data-hdr-i18n="hdr_merchants">Find Merchants</a>
+       </div>
+       <div class="nav-group" data-role="user guide merchant admin">
+-        <a href="/mypage.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
+-          data-hdr-i18n="hdr_mypage">My Page</a>
++        <a href="/mypage.html" class="nav-group-title" style="text-decoration:none;" data-hdr-i18n="mypage">My Page</a>
+       </div>
+     </nav>
+ 
+     <div class="hdr-nav-backdrop" id="hdrNavBackdrop" hidden></div>
+ 
+     <div class="hdr-right">
+-      <div class="hdr-lang" id="hdrLangSwitcher">
+-        <button class="hdr-lang-btn" data-hdr-lang="vi" title="Ti梳퓆g Vi沼뇍">?눤?눛</button>
+-        <button class="hdr-lang-btn" data-hdr-lang="en" title="English">?눐?눉</button>
+-        <button class="hdr-lang-btn" data-hdr-lang="ko" title="?쒓뎅??>?눖?눟</button>
++      <div class="hdr-lang" id="hdrLangSwitcher"
++        style="display:flex; gap:8px; align-items:center; color:#94a3b8; font-size:0.85rem; font-weight:600; margin-right:10px;">
+       </div>
+       <span class="role-badge" id="roleBadge" style="display:none;"></span>
+       <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">?몣
+
+commit a776e541302b9c34eefde911c9bdb4a08a40dc92
+Author: daguri <daguri75@gmail.com>
+Date:   Tue Sep 1 17:21:50 2026 +0700
+
+    style: simplify top header menu to 3 core links
+
+diff --git a/partials/header.html b/partials/header.html
+index 92634f0..62abe2b 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -11,83 +11,17 @@
+     </button>
+ 
+     <nav class="nav" id="hdrNav">
+-      <div class="nav-group" id="navGroupKCulture">
+-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
+-          data-hdr-i18n="hdr_kculture">K-CULTURE</button>
+-        <div class="nav-group-menu">
+-          <a id="navFood" href="/kca_webzine.html?category=food" data-hdr-i18n="hdr_food">?뜴 Food</a>
+-          <a id="navLife" href="/kca_webzine.html?category=life" data-hdr-i18n="hdr_life">?썚截?Life</a>
+-          <a id="navBeauty" href="/kca_webzine.html?category=beauty" data-hdr-i18n="hdr_beauty">?뭶 Beauty</a>
+-          <a id="navTravel" href="/kca_webzine.html?category=travel" data-hdr-i18n="hdr_travel">?덌툘 Travel</a>
+-          <a id="navExperience" href="/kca_webzine.html?category=experience" data-hdr-i18n="hdr_experience">?렚
+-            Experience</a>
+-        </div>
++      <div class="nav-group">
++        <a href="/kca_webzine.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
++          data-hdr-i18n="hdr_kculture">K-CULTURE</a>
+       </div>
+       <div class="nav-group">
+         <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
+           data-hdr-i18n="hdr_merchants">Find Merchants</a>
+       </div>
+-      <div class="nav-group">
+-        <a href="/events.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
+-          data-hdr-i18n="hdr_events">Events</a>
+-      </div>
+-      <div class="nav-group">
+-        <a href="/community.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
+-          data-hdr-i18n="hdr_community">Community</a>
+-      </div>
+-
+-      <div class="nav-group" data-role="user guide merchant admin" id="navGroupMy">
+-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
+-          data-hdr-i18n="hdr_my_services">D沼땉h v沼?c沼쬪 t척i</button>
+-        <div class="nav-group-menu">
+-          <a id="navMyPage" href="/mypage.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_wallet">My
+-            Wallet</a>
+-          <a id="navExchange" href="/exchange.html" data-role="user guide merchant admin"
+-            data-hdr-i18n="hdr_exchange">JUMP Exchange</a>
+-          <a id="navCoop" href="/coop.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_mall">Member
+-            Mall</a>
+-          <a id="navOrders" href="/orders.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_orders">My
+-            Orders</a>
+-        </div>
+-      </div>
+-
+-      <div class="nav-group" data-role="guide merchant admin" id="navGroupFamily">
+-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
+-          data-hdr-i18n="hdr_sales">Trung t창m b찼n h횪ng</button>
+-        <div class="nav-group-menu">
+-          <a id="navFamily" href="/family-register.html" data-role="user guide merchant admin"
+-            data-hdr-i18n="hdr_merchant_reg">Register Store</a>
+-          <a id="navHomestayNew" href="/homestay_new.html" data-role="guide merchant admin"
+-            data-hdr-i18n="hdr_homestay_new">Create Homestay</a>
+-          <a id="navProductNew" href="/product_new.html" data-role="guide merchant admin"
+-            data-hdr-i18n="hdr_product_add">Add Product</a>
+-          <a id="navMyProducts" href="/my_products.html" data-role="guide merchant admin"
+-            data-hdr-i18n="hdr_my_products">Manage Products</a>
+-          <a id="navQrPay" href="/merchant-qr.html" data-role="merchant admin" data-hdr-i18n="hdr_qr_pay">QR Payment</a>
+-        </div>
+-      </div>
+-
+-      <div class="nav-group" data-role="admin" id="navGroupAdmin">
+-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
+-          data-hdr-i18n="hdr_admin">Qu梳즢 tr沼?/button>
+-        <div class="nav-group-menu">
+-          <a href="/debug.html" data-role="admin" data-hdr-i18n="hdr_debug">Debug Check</a>
+-          <a href="/admin_coop.html" data-role="admin" data-hdr-i18n="hdr_coop_admin">Manage Cooperative</a>
+-          <a id="navAdmin" href="/admin.html" data-role="admin" data-hdr-i18n="hdr_approval">Approve/Manage Products</a>
+-          <a id="navAdminOrders" href="/admin_orders.html" data-role="admin" data-hdr-i18n="hdr_order_admin">Manage
+-            Orders</a>
+-          <a id="navAdminSettlement" href="/admin_settlement.html" data-role="admin"
+-            data-hdr-i18n="hdr_settlement">Manage Settlement</a>
+-          <a id="navAdminNotices" href="/admin_notices.html" data-role="admin" data-hdr-i18n="hdr_notice_admin">Manage
+-            Announcements</a>
+-          <a id="navAdminPlaces" href="/admin_places.html" data-role="admin" data-hdr-i18n="hdr_places">Register
+-            Locations</a>
+-          <a id="navAdminBanners" href="/admin_banners.html" data-role="admin" data-hdr-i18n="hdr_banners">Manage
+-            Banners</a>
+-          <a id="navAdminJackpot" href="/admin_jackpot.html" data-role="admin" data-hdr-i18n="hdr_jackpot">Manage
+-            Jackpot</a>
+-          <a id="navAdminBuggy" href="/buggy-admin.html" data-role="admin" data-hdr-i18n="hdr_buggy">Manage Buggy</a>
+-        </div>
++      <div class="nav-group" data-role="user guide merchant admin">
++        <a href="/mypage.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
++          data-hdr-i18n="hdr_mypage">My Page</a>
+       </div>
+     </nav>
+ 
+
+commit 5becb244953d8f01481bfd1982228b6534495a19
+Author: daguri <daguri75@gmail.com>
+Date:   Tue Sep 1 16:40:16 2026 +0700
+
+    fix: change merchants nav link back to find_merchants.html
+
+diff --git a/partials/header.html b/partials/header.html
+index 1623426..92634f0 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -24,7 +24,7 @@
+         </div>
+       </div>
+       <div class="nav-group">
+-        <a href="/merchants.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
++        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
+           data-hdr-i18n="hdr_merchants">Find Merchants</a>
+       </div>
+       <div class="nav-group">
+
+commit 07e8a0ed5018e3e302fda78ffe7400c23a3d176c
+Author: daguri <daguri75@gmail.com>
+Date:   Tue Sep 1 16:31:02 2026 +0700
+
+    fix: KCA API docs, merchant map info UI, mobile nav block issue
+
+diff --git a/partials/header.html b/partials/header.html
+index 0805fec..1623426 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -2,8 +2,8 @@
+ <header class="top-header top-header--sleek" id="siteHeaderBar">
+   <div class="hdr-inner">
+ 
+-    <a class="brand" href="/index.html" aria-label="Jumper">
+-      <img src="/assets/images/jump/logo2.png" alt="jump" class="brand-logo" onerror="this.style.display='none';" />
++    <a class="brand" href="/" aria-label="K-CULTURE ALLIANCE">
++      <img src="/assets/images/jump/logo2.png" alt="KCA" class="brand-logo" onerror="this.style.display='none';" />
+     </a>
+ 
+     <button class="burger" id="btnBurger" type="button" aria-label="menu" aria-expanded="false">
+@@ -15,11 +15,12 @@
+         <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
+           data-hdr-i18n="hdr_kculture">K-CULTURE</button>
+         <div class="nav-group-menu">
+-          <a id="navFood" href="/merchants.html?type=food" data-hdr-i18n="hdr_food">?뜴 Food</a>
+-          <a id="navLife" href="/merchants.html?type=life" data-hdr-i18n="hdr_life">?썚截?Life</a>
+-          <a id="navBeauty" href="/merchants.html?type=beauty" data-hdr-i18n="hdr_beauty">?뭶 Beauty</a>
+-          <a id="navTravel" href="/merchants.html?type=travel" data-hdr-i18n="hdr_travel">?덌툘 Travel</a>
+-          <a id="navExperience" href="/merchants.html?type=experience" data-hdr-i18n="hdr_experience">?렚 Experience</a>
++          <a id="navFood" href="/kca_webzine.html?category=food" data-hdr-i18n="hdr_food">?뜴 Food</a>
++          <a id="navLife" href="/kca_webzine.html?category=life" data-hdr-i18n="hdr_life">?썚截?Life</a>
++          <a id="navBeauty" href="/kca_webzine.html?category=beauty" data-hdr-i18n="hdr_beauty">?뭶 Beauty</a>
++          <a id="navTravel" href="/kca_webzine.html?category=travel" data-hdr-i18n="hdr_travel">?덌툘 Travel</a>
++          <a id="navExperience" href="/kca_webzine.html?category=experience" data-hdr-i18n="hdr_experience">?렚
++            Experience</a>
+         </div>
+       </div>
+       <div class="nav-group">
+
+commit 93d4dfd4615379ae22283582694352fc2249d19c
+Author: daguri <daguri75@gmail.com>
+Date:   Tue Sep 1 15:32:37 2026 +0700
+
+    feat: KCA Webzine integration, category filter & Overview documentation
+
+diff --git a/partials/header.html b/partials/header.html
+index 66cb2e1..0805fec 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -3,12 +3,7 @@
+   <div class="hdr-inner">
+ 
+     <a class="brand" href="/index.html" aria-label="Jumper">
+-      <img
+-        src="/assets/images/jump/logo2.png"
+-        alt="jump"
+-        class="brand-logo"
+-        onerror="this.style.display='none';"
+-      />
++      <img src="/assets/images/jump/logo2.png" alt="jump" class="brand-logo" onerror="this.style.display='none';" />
+     </a>
+ 
+     <button class="burger" id="btnBurger" type="button" aria-label="menu" aria-expanded="false">
+@@ -16,61 +11,80 @@
+     </button>
+ 
+     <nav class="nav" id="hdrNav">
+-      <div class="nav-group" id="navGroupExplore">
+-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_explore">Kh찼m ph찼</button>
++      <div class="nav-group" id="navGroupKCulture">
++        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
++          data-hdr-i18n="hdr_kculture">K-CULTURE</button>
+         <div class="nav-group-menu">
+-          <div class="nav-sub-group" id="navSubGames">
+-            <button class="nav-sub-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_games">?렜 Games</button>
+-            <div class="nav-sub-menu">
+-              <a id="navMerchantsMap" href="/merchants.html" data-hdr-i18n="hdr_treasure">Treasure Hunt</a>
+-              <a id="navMonsterRace" href="/monsterrace.html" data-hdr-i18n="hdr_monster_race">?쎒 Monster Race</a>
+-              <a id="navBow" href="/bow.html" data-hdr-i18n="hdr_bow">?뤉 Archery</a>
+-              <a id="navMemory" href="/memory.html" data-hdr-i18n="hdr_memory">?깗 Speed Memory</a>
+-              <a id="navConquest" href="/conquest.html" data-hdr-i18n="hdr_monster_defense">?룿 Monster Defense</a>
+-            </div>
+-          </div>
+-          <a id="navHomestay" href="/homestay.html" data-hdr-i18n="hdr_stay">Homestay</a>
+-          <a id="navWhat" href="/what.html#sectionPlay" data-hdr-i18n="hdr_sights">Sights</a>
+-          <a id="navFood" href="/what.html#sectionFood" data-hdr-i18n="hdr_food">Food</a>
+-          <a id="navShop" href="/what.html#sectionShop" data-hdr-i18n="hdr_shopping">Shopping</a>
+-          <a id="navCommunity" href="/community.html" data-hdr-i18n="hdr_benefits">JUMP Token Staking Benefits</a>
+-          <a id="navDao" href="/dao.html" data-hdr-i18n="hdr_dao">DAO Voting</a>
++          <a id="navFood" href="/merchants.html?type=food" data-hdr-i18n="hdr_food">?뜴 Food</a>
++          <a id="navLife" href="/merchants.html?type=life" data-hdr-i18n="hdr_life">?썚截?Life</a>
++          <a id="navBeauty" href="/merchants.html?type=beauty" data-hdr-i18n="hdr_beauty">?뭶 Beauty</a>
++          <a id="navTravel" href="/merchants.html?type=travel" data-hdr-i18n="hdr_travel">?덌툘 Travel</a>
++          <a id="navExperience" href="/merchants.html?type=experience" data-hdr-i18n="hdr_experience">?렚 Experience</a>
+         </div>
+       </div>
++      <div class="nav-group">
++        <a href="/merchants.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
++          data-hdr-i18n="hdr_merchants">Find Merchants</a>
++      </div>
++      <div class="nav-group">
++        <a href="/events.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
++          data-hdr-i18n="hdr_events">Events</a>
++      </div>
++      <div class="nav-group">
++        <a href="/community.html" class="nav-group-title" style="text-decoration:none; color:inherit;"
++          data-hdr-i18n="hdr_community">Community</a>
++      </div>
+ 
+       <div class="nav-group" data-role="user guide merchant admin" id="navGroupMy">
+-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_my_services">D沼땉h v沼?c沼쬪 t척i</button>
++        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
++          data-hdr-i18n="hdr_my_services">D沼땉h v沼?c沼쬪 t척i</button>
+         <div class="nav-group-menu">
+-          <a id="navMyPage" href="/mypage.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_wallet">My Wallet</a>
+-          <a id="navExchange" href="/exchange.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_exchange">JUMP Exchange</a>
+-          <a id="navCoop" href="/coop.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_mall">Member Mall</a>
+-          <a id="navOrders" href="/orders.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_orders">My Orders</a>
++          <a id="navMyPage" href="/mypage.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_wallet">My
++            Wallet</a>
++          <a id="navExchange" href="/exchange.html" data-role="user guide merchant admin"
++            data-hdr-i18n="hdr_exchange">JUMP Exchange</a>
++          <a id="navCoop" href="/coop.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_mall">Member
++            Mall</a>
++          <a id="navOrders" href="/orders.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_orders">My
++            Orders</a>
+         </div>
+       </div>
+ 
+       <div class="nav-group" data-role="guide merchant admin" id="navGroupFamily">
+-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_sales">Trung t창m b찼n h횪ng</button>
++        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
++          data-hdr-i18n="hdr_sales">Trung t창m b찼n h횪ng</button>
+         <div class="nav-group-menu">
+-          <a id="navFamily" href="/family-register.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_merchant_reg">Register Store</a>
+-          <a id="navHomestayNew" href="/homestay_new.html" data-role="guide merchant admin" data-hdr-i18n="hdr_homestay_new">Create Homestay</a>
+-          <a id="navProductNew" href="/product_new.html" data-role="guide merchant admin" data-hdr-i18n="hdr_product_add">Add Product</a>
+-          <a id="navMyProducts" href="/my_products.html" data-role="guide merchant admin" data-hdr-i18n="hdr_my_products">Manage Products</a>
++          <a id="navFamily" href="/family-register.html" data-role="user guide merchant admin"
++            data-hdr-i18n="hdr_merchant_reg">Register Store</a>
++          <a id="navHomestayNew" href="/homestay_new.html" data-role="guide merchant admin"
++            data-hdr-i18n="hdr_homestay_new">Create Homestay</a>
++          <a id="navProductNew" href="/product_new.html" data-role="guide merchant admin"
++            data-hdr-i18n="hdr_product_add">Add Product</a>
++          <a id="navMyProducts" href="/my_products.html" data-role="guide merchant admin"
++            data-hdr-i18n="hdr_my_products">Manage Products</a>
+           <a id="navQrPay" href="/merchant-qr.html" data-role="merchant admin" data-hdr-i18n="hdr_qr_pay">QR Payment</a>
+         </div>
+       </div>
+ 
+       <div class="nav-group" data-role="admin" id="navGroupAdmin">
+-        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_admin">Qu梳즢 tr沼?/button>
++        <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false"
++          data-hdr-i18n="hdr_admin">Qu梳즢 tr沼?/button>
+         <div class="nav-group-menu">
+           <a href="/debug.html" data-role="admin" data-hdr-i18n="hdr_debug">Debug Check</a>
+           <a href="/admin_coop.html" data-role="admin" data-hdr-i18n="hdr_coop_admin">Manage Cooperative</a>
+           <a id="navAdmin" href="/admin.html" data-role="admin" data-hdr-i18n="hdr_approval">Approve/Manage Products</a>
+-          <a id="navAdminOrders" href="/admin_orders.html" data-role="admin" data-hdr-i18n="hdr_order_admin">Manage Orders</a>
+-          <a id="navAdminSettlement" href="/admin_settlement.html" data-role="admin" data-hdr-i18n="hdr_settlement">Manage Settlement</a>
+-          <a id="navAdminNotices" href="/admin_notices.html" data-role="admin" data-hdr-i18n="hdr_notice_admin">Manage Announcements</a>
+-          <a id="navAdminPlaces" href="/admin_places.html" data-role="admin" data-hdr-i18n="hdr_places">Register Locations</a>
+-          <a id="navAdminBanners" href="/admin_banners.html" data-role="admin" data-hdr-i18n="hdr_banners">Manage Banners</a>
+-          <a id="navAdminJackpot" href="/admin_jackpot.html" data-role="admin" data-hdr-i18n="hdr_jackpot">Manage Jackpot</a>
++          <a id="navAdminOrders" href="/admin_orders.html" data-role="admin" data-hdr-i18n="hdr_order_admin">Manage
++            Orders</a>
++          <a id="navAdminSettlement" href="/admin_settlement.html" data-role="admin"
++            data-hdr-i18n="hdr_settlement">Manage Settlement</a>
++          <a id="navAdminNotices" href="/admin_notices.html" data-role="admin" data-hdr-i18n="hdr_notice_admin">Manage
++            Announcements</a>
++          <a id="navAdminPlaces" href="/admin_places.html" data-role="admin" data-hdr-i18n="hdr_places">Register
++            Locations</a>
++          <a id="navAdminBanners" href="/admin_banners.html" data-role="admin" data-hdr-i18n="hdr_banners">Manage
++            Banners</a>
++          <a id="navAdminJackpot" href="/admin_jackpot.html" data-role="admin" data-hdr-i18n="hdr_jackpot">Manage
++            Jackpot</a>
+           <a id="navAdminBuggy" href="/buggy-admin.html" data-role="admin" data-hdr-i18n="hdr_buggy">Manage Buggy</a>
+         </div>
+       </div>
+@@ -85,12 +99,14 @@
+         <button class="hdr-lang-btn" data-hdr-lang="ko" title="?쒓뎅??>?눖?눟</button>
+       </div>
+       <span class="role-badge" id="roleBadge" style="display:none;"></span>
+-      <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">?몣 Member</span>
+-      <a class="member-join-link" id="memberJoinLink" href="/coop.html" style="display:none;" data-hdr-i18n="hdr_member_join">Join Member</a>
++      <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">?몣
++        Member</span>
++      <a class="member-join-link" id="memberJoinLink" href="/coop.html" style="display:none;"
++        data-hdr-i18n="hdr_member_join">Join Member</a>
+       <span class="user-badge" id="userBadge" style="display:none;" title=""></span>
+ 
+       <a class="btn" id="btnLogin" href="/register.html" data-hdr-i18n="hdr_login">Login</a>
+       <button class="btn" id="btnLogout" type="button" style="display:none;" data-hdr-i18n="hdr_logout">Logout</button>
+     </div>
+   </div>
+-</header>
++</header>
+\ No newline at end of file
+
+commit 846ce7f8aae549c95285a7cc85fa62e6c623f31e
+Author: daguri <daguri75@gmail.com>
+Date:   Sun Jun 14 08:11:03 2026 +0700
+
+    feat: translate Korean UI text to English in key game pages
+    
+    - Translate index.html: title, meta descriptions, OG tags, FAQ schema, all visible UI text
+    - Translate register.html: login/signup form labels, placeholders, instructions
+    - Translate partials/header.html: navigation menu items, buttons (all menu items)
+    - Translate partials/footer.html: footer links, about section, community section, chat widget
+    - Translate town.html: page title, headings, descriptions
+    - Translate treasure.html: meta tags, OG tags, schema data
+    - Translate faq.html: meta tags, FAQ schema questions and answers
+    
+    All user-facing English text now consistent. Korean text accessible via browser translation.
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/partials/header.html b/partials/header.html
+index 74eb5b4..66cb2e1 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -20,58 +20,58 @@
+         <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_explore">Kh찼m ph찼</button>
+         <div class="nav-group-menu">
+           <div class="nav-sub-group" id="navSubGames">
+-            <button class="nav-sub-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_games">?렜 寃뚯엫</button>
++            <button class="nav-sub-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_games">?렜 Games</button>
+             <div class="nav-sub-menu">
+-              <a id="navMerchantsMap" href="/merchants.html" data-hdr-i18n="hdr_treasure">蹂대Ъ李얘린</a>
++              <a id="navMerchantsMap" href="/merchants.html" data-hdr-i18n="hdr_treasure">Treasure Hunt</a>
+               <a id="navMonsterRace" href="/monsterrace.html" data-hdr-i18n="hdr_monster_race">?쎒 Monster Race</a>
+-              <a id="navBow" href="/bow.html" data-hdr-i18n="hdr_bow">?뤉 ?쒖룜湲?/a>
+-              <a id="navMemory" href="/memory.html" data-hdr-i18n="hdr_memory">?깗 ?ㅽ뵾??湲곗뼲??/a>
+-              <a id="navConquest" href="/conquest.html" data-hdr-i18n="hdr_monster_defense">?룿 紐ъ뒪?곗닔??/a>
++              <a id="navBow" href="/bow.html" data-hdr-i18n="hdr_bow">?뤉 Archery</a>
++              <a id="navMemory" href="/memory.html" data-hdr-i18n="hdr_memory">?깗 Speed Memory</a>
++              <a id="navConquest" href="/conquest.html" data-hdr-i18n="hdr_monster_defense">?룿 Monster Defense</a>
+             </div>
+           </div>
+-          <a id="navHomestay" href="/homestay.html" data-hdr-i18n="hdr_stay">?좎옄由?/a>
+-          <a id="navWhat" href="/what.html#sectionPlay" data-hdr-i18n="hdr_sights">蹂쇨굅由?/a>
+-          <a id="navFood" href="/what.html#sectionFood" data-hdr-i18n="hdr_food">癒밴굅由?/a>
+-          <a id="navShop" href="/what.html#sectionShop" data-hdr-i18n="hdr_shopping">?닿굅由?/a>
+-          <a id="navCommunity" href="/community.html" data-hdr-i18n="hdr_benefits">JumpToken ?ㅽ뀒?댄궧 ?쒗깮</a>
+-          <a id="navDao" href="/dao.html" data-hdr-i18n="hdr_dao">DAO ?섍껐</a>
++          <a id="navHomestay" href="/homestay.html" data-hdr-i18n="hdr_stay">Homestay</a>
++          <a id="navWhat" href="/what.html#sectionPlay" data-hdr-i18n="hdr_sights">Sights</a>
++          <a id="navFood" href="/what.html#sectionFood" data-hdr-i18n="hdr_food">Food</a>
++          <a id="navShop" href="/what.html#sectionShop" data-hdr-i18n="hdr_shopping">Shopping</a>
++          <a id="navCommunity" href="/community.html" data-hdr-i18n="hdr_benefits">JUMP Token Staking Benefits</a>
++          <a id="navDao" href="/dao.html" data-hdr-i18n="hdr_dao">DAO Voting</a>
+         </div>
+       </div>
+ 
+       <div class="nav-group" data-role="user guide merchant admin" id="navGroupMy">
+         <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_my_services">D沼땉h v沼?c沼쬪 t척i</button>
+         <div class="nav-group-menu">
+-          <a id="navMyPage" href="/mypage.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_wallet">V챠 c沼쬪 t척i</a>
+-          <a id="navExchange" href="/exchange.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_exchange">S횪n giao d沼땉h Jump</a>
+-          <a id="navCoop" href="/coop.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_mall">C沼춁 h횪ng h沼셢 vi챗n</a>
+-          <a id="navOrders" href="/orders.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_orders">휂퉤n h횪ng c沼쬪 t척i</a>
++          <a id="navMyPage" href="/mypage.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_wallet">My Wallet</a>
++          <a id="navExchange" href="/exchange.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_exchange">JUMP Exchange</a>
++          <a id="navCoop" href="/coop.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_mall">Member Mall</a>
++          <a id="navOrders" href="/orders.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_orders">My Orders</a>
+         </div>
+       </div>
+ 
+       <div class="nav-group" data-role="guide merchant admin" id="navGroupFamily">
+         <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_sales">Trung t창m b찼n h횪ng</button>
+         <div class="nav-group-menu">
+-          <a id="navFamily" href="/family-register.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_merchant_reg">휂훱ng k첵 c沼춁 h횪ng</a>
+-          <a id="navHomestayNew" href="/homestay_new.html" data-role="guide merchant admin" data-hdr-i18n="hdr_homestay_new">T梳죓 homestay m沼쌻</a>
+-          <a id="navProductNew" href="/product_new.html" data-role="guide merchant admin" data-hdr-i18n="hdr_product_add">Th챗m s梳즢 ph梳쯯</a>
+-          <a id="navMyProducts" href="/my_products.html" data-role="guide merchant admin" data-hdr-i18n="hdr_my_products">Qu梳즢 l첵 s梳즢 ph梳쯯</a>
+-          <a id="navQrPay" href="/merchant-qr.html" data-role="merchant admin" data-hdr-i18n="hdr_qr_pay">Thanh to찼n QR</a>
++          <a id="navFamily" href="/family-register.html" data-role="user guide merchant admin" data-hdr-i18n="hdr_merchant_reg">Register Store</a>
++          <a id="navHomestayNew" href="/homestay_new.html" data-role="guide merchant admin" data-hdr-i18n="hdr_homestay_new">Create Homestay</a>
++          <a id="navProductNew" href="/product_new.html" data-role="guide merchant admin" data-hdr-i18n="hdr_product_add">Add Product</a>
++          <a id="navMyProducts" href="/my_products.html" data-role="guide merchant admin" data-hdr-i18n="hdr_my_products">Manage Products</a>
++          <a id="navQrPay" href="/merchant-qr.html" data-role="merchant admin" data-hdr-i18n="hdr_qr_pay">QR Payment</a>
+         </div>
+       </div>
+ 
+       <div class="nav-group" data-role="admin" id="navGroupAdmin">
+         <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_admin">Qu梳즢 tr沼?/button>
+         <div class="nav-group-menu">
+-          <a href="/debug.html" data-role="admin" data-hdr-i18n="hdr_debug">Ki沼긩 tra debug</a>
+-          <a href="/admin_coop.html" data-role="admin" data-hdr-i18n="hdr_coop_admin">Qu梳즢 l첵 h沼즤 t찼c x찾</a>
+-          <a id="navAdmin" href="/admin.html" data-role="admin" data-hdr-i18n="hdr_approval">Duy沼뇍/Qu梳즢 l첵 SP</a>
+-          <a id="navAdminOrders" href="/admin_orders.html" data-role="admin" data-hdr-i18n="hdr_order_admin">Qu梳즢 l첵 휃퉤n h횪ng</a>
+-          <a id="navAdminSettlement" href="/admin_settlement.html" data-role="admin" data-hdr-i18n="hdr_settlement">Qu梳즢 l첵 thanh to찼n</a>
+-          <a id="navAdminNotices" href="/admin_notices.html" data-role="admin" data-hdr-i18n="hdr_notice_admin">Qu梳즢 l첵 th척ng b찼o</a>
+-          <a id="navAdminPlaces" href="/admin_places.html" data-role="admin" data-hdr-i18n="hdr_places">휂훱ng k첵 휃沼땇 휃i沼긩</a>
+-          <a id="navAdminBanners" href="/admin_banners.html" data-role="admin" data-hdr-i18n="hdr_banners">Qu梳즢 l첵 banner</a>
+-          <a id="navAdminJackpot" href="/admin_jackpot.html" data-role="admin" data-hdr-i18n="hdr_jackpot">Qu梳즢 l첵 r첬t jackpot</a>
+-          <a id="navAdminBuggy" href="/buggy-admin.html" data-role="admin" data-hdr-i18n="hdr_buggy">Qu梳즢 l첵 xe buggy</a>
++          <a href="/debug.html" data-role="admin" data-hdr-i18n="hdr_debug">Debug Check</a>
++          <a href="/admin_coop.html" data-role="admin" data-hdr-i18n="hdr_coop_admin">Manage Cooperative</a>
++          <a id="navAdmin" href="/admin.html" data-role="admin" data-hdr-i18n="hdr_approval">Approve/Manage Products</a>
++          <a id="navAdminOrders" href="/admin_orders.html" data-role="admin" data-hdr-i18n="hdr_order_admin">Manage Orders</a>
++          <a id="navAdminSettlement" href="/admin_settlement.html" data-role="admin" data-hdr-i18n="hdr_settlement">Manage Settlement</a>
++          <a id="navAdminNotices" href="/admin_notices.html" data-role="admin" data-hdr-i18n="hdr_notice_admin">Manage Announcements</a>
++          <a id="navAdminPlaces" href="/admin_places.html" data-role="admin" data-hdr-i18n="hdr_places">Register Locations</a>
++          <a id="navAdminBanners" href="/admin_banners.html" data-role="admin" data-hdr-i18n="hdr_banners">Manage Banners</a>
++          <a id="navAdminJackpot" href="/admin_jackpot.html" data-role="admin" data-hdr-i18n="hdr_jackpot">Manage Jackpot</a>
++          <a id="navAdminBuggy" href="/buggy-admin.html" data-role="admin" data-hdr-i18n="hdr_buggy">Manage Buggy</a>
+         </div>
+       </div>
+     </nav>
+@@ -85,12 +85,12 @@
+         <button class="hdr-lang-btn" data-hdr-lang="ko" title="?쒓뎅??>?눖?눟</button>
+       </div>
+       <span class="role-badge" id="roleBadge" style="display:none;"></span>
+-      <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">?몣 H沼셢 vi챗n ch챠nh</span>
+-      <a class="member-join-link" id="memberJoinLink" href="/coop.html" style="display:none;" data-hdr-i18n="hdr_member_join">휂훱ng k첵 h沼셢 vi챗n</a>
++      <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">?몣 Member</span>
++      <a class="member-join-link" id="memberJoinLink" href="/coop.html" style="display:none;" data-hdr-i18n="hdr_member_join">Join Member</a>
+       <span class="user-badge" id="userBadge" style="display:none;" title=""></span>
+ 
+-      <a class="btn" id="btnLogin" href="/register.html" data-hdr-i18n="hdr_login">휂훱ng nh梳춑</a>
+-      <button class="btn" id="btnLogout" type="button" style="display:none;" data-hdr-i18n="hdr_logout">휂훱ng xu梳쩿</button>
++      <a class="btn" id="btnLogin" href="/register.html" data-hdr-i18n="hdr_login">Login</a>
++      <button class="btn" id="btnLogout" type="button" style="display:none;" data-hdr-i18n="hdr_logout">Logout</button>
+     </div>
+   </div>
+ </header>
+
+commit f66cf8a42d354f3bf1fce2135e9c2fcd4f1646a3
+Author: daguri <daguri75@gmail.com>
+Date:   Mon Jun 1 19:25:57 2026 +0700
+
+    feat: ?ㅻ퉬 寃뚯엫 ?쒕툕硫붾돱쨌蹂댁븞 媛뺥솕쨌?덇컻 媛쒖꽑쨌紐ъ뒪??留덉빱 ?뺣?
+    
+    nav
+    - ?먯깋 > ?렜 寃뚯엫 ?쒕툕硫붾돱 異붽? (蹂대Ъ李얘린/紐ъ뒪?곕젅?댁뒪/?쒖룜湲??ㅽ뵾?쒓린?듬젰/紐ъ뒪?곗닔??
+    - header-auth.js: nav-sub-group ?대┃ ?몃뱾??異붽?
+    - index.html ?덉뼱濡?3踰꾪듉 ??[寃뚯엫?섍린] ?쒕∼?ㅼ슫 ?듯빀
+    
+    security
+    - HTML ?몃씪??window.firebaseConfig ?쒓굅 (bow/conquest/memory/monsterrace)
+    - esc.js 異붽? ??XSS escapeHtml 怨듯넻 ?좏떥
+    - 13媛??뚯씪 innerHTML ${err.message} / ${user.displayName} / ${data.ownerName} ?댁뒪耳?댄봽 ?곸슜
+    - CLAUDE.md API ???몄텧 湲덉? 洹쒖튃 異붽?
+    
+    feat
+    - conquest ?덇컻 ?④낵: fillRect+4px blur ??destination-out ?먰삎+40px+ blur+wisp ?좊땲硫붿씠??    - 泥댄뿕 紐ъ뒪??NPC) 留덉빱 ?ш린 34px ??64px
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/partials/header.html b/partials/header.html
+index 2f6b723..74eb5b4 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -19,16 +19,22 @@
+       <div class="nav-group" id="navGroupExplore">
+         <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_explore">Kh찼m ph찼</button>
+         <div class="nav-group-menu">
+-          <a id="navMerchantsMap" href="/merchants.html" data-hdr-i18n="hdr_treasure">蹂대Ъ李얘린</a>
++          <div class="nav-sub-group" id="navSubGames">
++            <button class="nav-sub-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_games">?렜 寃뚯엫</button>
++            <div class="nav-sub-menu">
++              <a id="navMerchantsMap" href="/merchants.html" data-hdr-i18n="hdr_treasure">蹂대Ъ李얘린</a>
++              <a id="navMonsterRace" href="/monsterrace.html" data-hdr-i18n="hdr_monster_race">?쎒 Monster Race</a>
++              <a id="navBow" href="/bow.html" data-hdr-i18n="hdr_bow">?뤉 ?쒖룜湲?/a>
++              <a id="navMemory" href="/memory.html" data-hdr-i18n="hdr_memory">?깗 ?ㅽ뵾??湲곗뼲??/a>
++              <a id="navConquest" href="/conquest.html" data-hdr-i18n="hdr_monster_defense">?룿 紐ъ뒪?곗닔??/a>
++            </div>
++          </div>
+           <a id="navHomestay" href="/homestay.html" data-hdr-i18n="hdr_stay">?좎옄由?/a>
+           <a id="navWhat" href="/what.html#sectionPlay" data-hdr-i18n="hdr_sights">蹂쇨굅由?/a>
+           <a id="navFood" href="/what.html#sectionFood" data-hdr-i18n="hdr_food">癒밴굅由?/a>
+           <a id="navShop" href="/what.html#sectionShop" data-hdr-i18n="hdr_shopping">?닿굅由?/a>
+           <a id="navCommunity" href="/community.html" data-hdr-i18n="hdr_benefits">JumpToken ?ㅽ뀒?댄궧 ?쒗깮</a>
+           <a id="navDao" href="/dao.html" data-hdr-i18n="hdr_dao">DAO ?섍껐</a>
+-          <a id="navMonsterRace" href="/monsterrace.html" data-hdr-i18n="hdr_monster_race">?쎒 Monster Race</a>
+-          <a id="navBow" href="/bow.html" data-hdr-i18n="hdr_bow">?뤉 ?쒖룜湲?/a>
+-          <a id="navMemory" href="/memory.html" data-hdr-i18n="hdr_memory">?깗 ?ㅽ뵾??湲곗뼲??/a>
+         </div>
+       </div>
+ 
+
+commit a1cb1196b29eb405fd2c8c4b6de873a4bda8b882
+Author: daguri <daguri75@gmail.com>
+Date:   Sun May 31 15:21:34 2026 +0700
+
+    2026053107
+
+diff --git a/partials/header.html b/partials/header.html
+index 2e714df..2f6b723 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -28,6 +28,7 @@
+           <a id="navDao" href="/dao.html" data-hdr-i18n="hdr_dao">DAO ?섍껐</a>
+           <a id="navMonsterRace" href="/monsterrace.html" data-hdr-i18n="hdr_monster_race">?쎒 Monster Race</a>
+           <a id="navBow" href="/bow.html" data-hdr-i18n="hdr_bow">?뤉 ?쒖룜湲?/a>
++          <a id="navMemory" href="/memory.html" data-hdr-i18n="hdr_memory">?깗 ?ㅽ뵾??湲곗뼲??/a>
+         </div>
+       </div>
+ 
+
+commit 4c3721f89a1f755456d4cfadb19c7d71d41edc79
+Author: daguri <daguri75@gmail.com>
+Date:   Sun May 31 14:29:22 2026 +0700
+
+    2026053104
+
+diff --git a/partials/header.html b/partials/header.html
+index ded2ade..2e714df 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -27,6 +27,7 @@
+           <a id="navCommunity" href="/community.html" data-hdr-i18n="hdr_benefits">JumpToken ?ㅽ뀒?댄궧 ?쒗깮</a>
+           <a id="navDao" href="/dao.html" data-hdr-i18n="hdr_dao">DAO ?섍껐</a>
+           <a id="navMonsterRace" href="/monsterrace.html" data-hdr-i18n="hdr_monster_race">?쎒 Monster Race</a>
++          <a id="navBow" href="/bow.html" data-hdr-i18n="hdr_bow">?뤉 ?쒖룜湲?/a>
+         </div>
+       </div>
+ 
+
+commit eba187f4ce6c3fc3ff6b00efef1e9389736c7e09
+Author: daguri <daguri75@gmail.com>
+Date:   Sun May 31 13:53:20 2026 +0700
+
+    2026053102
+
+diff --git a/partials/header.html b/partials/header.html
+index 9943d45..ded2ade 100644
+--- a/partials/header.html
++++ b/partials/header.html
+@@ -19,14 +19,13 @@
+       <div class="nav-group" id="navGroupExplore">
+         <button class="nav-group-title" type="button" aria-haspopup="true" aria-expanded="false" data-hdr-i18n="hdr_explore">Kh찼m ph찼</button>
+         <div class="nav-group-menu">
+-          <a id="navMerchantsMap" href="/merchants.html" data-hdr-i18n="hdr_treasure">T챙m kho b찼u</a>
+-          <a id="navHomestay" href="/homestay.html" data-hdr-i18n="hdr_stay">Ch沼?ngh沼?/a>
+-          <a id="navWhat" href="/what.html#sectionPlay" data-hdr-i18n="hdr_sights">휂i沼긩 tham quan</a>
+-          <a id="navFood" href="/what.html#sectionFood" data-hdr-i18n="hdr_food">梳쮕 th沼켧</a>
+-          <a id="navShop" href="/what.html#sectionShop" data-hdr-i18n="hdr_shopping">Mua s梳칖</a>
+-          <a id="navCommunity" href="/community.html" data-hdr-i18n="hdr_benefits">Quy沼걆 l沼즜 Jump</a>
+-          <a id="navBuggy" href="/buggy.html" data-hdr-i18n="hdr_limousine">Jump Limousine</a>
+-          <a id="navDao" href="/dao.html" data-hdr-i18n="hdr_dao">Bi沼긳 quy梳퓍 DAO</a>
++          <a id="navMerchantsMap" href="/merchants.html" data-hdr-i18n="hdr_treasure">蹂대Ъ李얘린</a>
++          <a id="navHomestay" href="/homestay.html" data-hdr-i18n="hdr_stay">?좎옄由?/a>
++          <a id="navWhat" href="/what.html#sectionPlay" data-hdr-i18n="hdr_sights">蹂쇨굅由?/a>
++          <a id="navFood" href="/what.html#sectionFood" data-hdr-i18n="hdr_food">癒밴굅由?/a>
++          <a id="navShop" href="/what.html#sectionShop" data-hdr-i18n="hdr_shopping">?닿굅由?/a>
++          <a id="navCommunity" href="/community.html" data-hdr-i18n="hdr_benefits">JumpToken ?ㅽ뀒?댄궧 ?쒗깮</a>
++          <a id="navDao" href="/dao.html" data-hdr-i18n="hdr_dao">DAO ?섍껐</a>
+           <a id="navMonsterRace" href="/monsterrace.html" data-hdr-i18n="hdr_monster_race">?쎒 Monster Race</a>
+         </div>
+       </div>

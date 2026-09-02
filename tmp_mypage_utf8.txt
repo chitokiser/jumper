@@ -1,0 +1,2313 @@
+﻿commit f9cff1cfb3ba4bc6db742aecae85cf5299ebc5fd
+Author: daguri <daguri75@gmail.com>
+Date:   Tue Sep 1 20:47:01 2026 +0700
+
+    chore: K-MOA rebranding, removed on-chain & HEX dependencies, added merchant API guide
+
+diff --git a/mypage.html b/mypage.html
+index cea39b8..a7fed30 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -692,183 +692,117 @@
+         </div>
+       </section>
+ 
+-      <!-- ?섑긽 吏媛?-->
+-      <section class="panel mp-section collapsible">
+-        <div class="mp-section-head">
+-          <h2 class="mp-section-title" data-i18n="section_wallet">?섑긽 吏媛?/h2>
+-          <div style="display:flex; gap:6px;">
+-            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;"
+-              data-i18n="btn_metamask">MetaMask ?곌껐</button>
+-            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;"
+-              data-i18n="btn_create_wallet">吏媛??앹꽦</button>
+-          </div>
+-        </div>
++      <div class="mp-section-head">
++        <h2 class="mp-section-title" data-i18n="section_wallet">??吏媛??뺣낫</h2>
++      </div>
+ 
+-        <div id="walletInfo">
+-          <div class="mp-kv" style="align-items:flex-start;">
+-            <span class="k" data-i18n="label_wallet_addr">吏媛?二쇱냼</span>
+-            <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
+-              <span class="mono" id="walletAddress"
+-                style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
+-              <button id="btnCopyWallet" type="button" title="二쇱냼 蹂듭궗" style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
++      <div id="walletInfo">
++        <div class="mp-kv" style="align-items:flex-start;">
++          <span class="k" data-i18n="label_wallet_addr">吏媛?二쇱냼</span>
++          <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
++            <span class="mono" id="walletAddress"
++              style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
++            <button id="btnCopyWallet" type="button" title="二쇱냼 蹂듭궗" style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
+                        background:var(--surface,#fff); border:1px solid var(--border,#e5e7eb);
+                        border-radius:20px; cursor:pointer; color:var(--muted,#6b7280); white-space:nowrap;">
+-                <span data-i18n="btn_copy">?뱥 蹂듭궗</span>
+-              </button>
+-            </span>
+-          </div>
+-          <div class="mp-kv">
+-            <span class="k" data-i18n="label_onchain">?⑥껜???깅줉</span>
+-            <span class="v" id="onChainStatus">議고쉶 以?..</span>
+-          </div>
+-          <div class="mp-kv" id="levelRow" style="display:none;">
+-            <span class="k" data-i18n="label_level">?덈꺼</span>
+-            <span class="v" id="levelDisplay">-</span>
+-          </div>
+-          <div class="mp-kv" id="expRow" style="display:none;">
+-            <span class="k" data-i18n="label_exp">寃쏀뿕移?(EXP)</span>
+-            <span class="v"><span id="expDisplay">-</span></span>
+-          </div>
+-          <div id="expBarRow" style="display:none; padding:2px 0 10px 0;">
+-            <div style="background:#e5e7eb; border-radius:99px; height:8px; overflow:hidden;">
+-              <div id="expBarFill"
+-                style="background:var(--accent,#7c3aed); height:100%; width:0%; border-radius:99px; transition:width .4s;">
+-              </div>
++              <span data-i18n="btn_copy">?뱥 蹂듭궗</span>
++            </button>
++          </span>
++        </div>
++        <div class="mp-kv">
++          <span class="k" data-i18n="label_onchain">?⑥껜???깅줉</span>
++          <span class="v" id="onChainStatus">議고쉶 以?..</span>
++        </div>
++        <div class="mp-kv" id="levelRow" style="display:none;">
++          <span class="k" data-i18n="label_level">?덈꺼</span>
++          <span class="v" id="levelDisplay">-</span>
++        </div>
++        <div class="mp-kv" id="expRow" style="display:none;">
++          <span class="k" data-i18n="label_exp">寃쏀뿕移?(EXP)</span>
++          <span class="v"><span id="expDisplay">-</span></span>
++        </div>
++        <div id="expBarRow" style="display:none; padding:2px 0 10px 0;">
++          <div style="background:#e5e7eb; border-radius:99px; height:8px; overflow:hidden;">
++            <div id="expBarFill"
++              style="background:var(--accent,#7c3aed); height:100%; width:0%; border-radius:99px; transition:width .4s;">
+             </div>
+-            <small class="muted" id="expRequired" style="font-size:0.78em;"></small>
+-          </div>
+-          <div class="mp-kv" id="levelUpRow" style="display:none;">
+-            <span class="k"></span>
+-            <span class="v">
+-              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">?덈꺼??媛??
+-                ??/button>
+-            </span>
+-          </div>
+-          <!-- ?⑥껜??寃쏀뿕移??숆린???곹깭 -->
+-          <div class="mp-kv hidden" id="onChainSyncRow" style="align-items:flex-start;padding:4px 0 8px;">
+-            <span class="k" style="font-size:12px;color:#6b7280;">?⑥껜?????/span>
+-            <span class="v" id="onChainSyncStatus" style="flex:1;"></span>
+-          </div>
+-          <div class="mp-kv" id="paymentBalanceRow" style="display:none; padding-top:10px;">
+-            <span class="k" data-i18n="label_payment_balance" style="color:var(--text, #111); font-weight: 700;">Payment
+-              Balance (VND)</span>
+-            <span class="v accent" style="font-size: 1.15rem; font-weight: 800;" id="paymentBalanceDisplay">-</span>
+-          </div>
+-          <div class="mp-kv" id="pointRow" style="display:none;">
+-            <span class="k" data-i18n="label_point">K-CULTURE Point</span>
+-            <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap; color: #7c3aed;">
+-              <span id="pointDisplay">-</span>
+-              <!-- <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">Payment濡??꾪솚</button> -->
+-            </span>
+-          </div>
+-          <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
+-
+-          <div class="mp-kv" id="mentorAddrRow" style="display:none;">
+-            <span class="k" data-i18n="label_my_mentor">?섏쓽 硫섑넗</span>
+-            <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
+-          </div>
+-
+-          <!-- Legacy Wallet Rows for Admin/Legacy Uses -->
+-          <div class="mp-kv" id="walletHexRow" style="display:none; opacity: 0.5;">
+-            <span class="k" data-i18n="label_hex_balance">Legacy HEX</span>
+-            <span class="v accent" id="walletHexDisplay">-</span>
+-          </div>
+-          <div class="mp-kv" id="walletJumpRow" style="display:none; opacity: 0.5;">
+-            <span class="k" data-i18n="label_jump_balance">Legacy JUMP</span>
+-            <span class="v accent" id="walletJumpDisplay">-</span>
+-          </div>
+-          <div class="mp-kv" id="walletJumpStakedRow" style="display:none; opacity: 0.5;">
+-            <span class="k" data-i18n="label_jump_staked">Legacy Staked</span>
+-            <span class="v accent" id="walletJumpStakedDisplay">-</span>
+           </div>
++          <small class="muted" id="expRequired" style="font-size:0.78em;"></small>
+         </div>
+-
+-        <!-- 媛쒖씤吏媛?MetaMask)?쇰줈 ?섎せ ?깅줉??寃쎌슦 寃쎄퀬 -->
+-        <div id="metamaskWarning"
+-          style="display:none; background:#fff3cd; border-left:4px solid #f59e0b; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:0.88em;">
+-          <strong>?좑툘 媛쒖씤 吏媛묒씠 ?곌껐?섏뼱 ?덉뒿?덈떎.</strong><br>
+-          ?꾩옱 MetaMask 二쇱냼媛 ?깅줉?섏뼱 ?덉뼱 ?뚮옯??寃곗젣쨌?ъ씤??湲곕뒫???ъ슜?????놁뒿?덈떎.<br>
+-          ?꾨옒 <strong>吏媛??앹꽦</strong> 踰꾪듉???뚮윭 ?섑긽 吏媛묒쑝濡??꾪솚??二쇱꽭??
++        <div class="mp-kv" id="levelUpRow" style="display:none;">
++          <span class="k"></span>
++          <span class="v">
++            <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">?덈꺼??媛??
++              ??/button>
++          </span>
+         </div>
+-
+-        <div id="noWallet" style="display:none;">
+-          <p class="hint">
+-            ?섑긽 吏媛묒씠 ?꾩쭅 ?놁뒿?덈떎.<br>
+-            硫섑넗 吏媛?二쇱냼瑜??낅젰????吏媛묒쓣 ?앹꽦?섏꽭??
+-          </p>
+-          <label class="field" style="margin-top:10px;">
+-            <span><span data-i18n="label_mentor_addr_field">硫섑넗 吏媛?二쇱냼</span> <em class="req">*</em></span>
+-            <input type="text" id="createWalletMentorAddr" maxlength="42" placeholder="0x..."
+-              style="font-family:monospace;" />
+-          </label>
++        <!-- ?⑥껜??寃쏀뿕移??숆린???곹깭 -->
++        <div class="mp-kv hidden" id="onChainSyncRow" style="align-items:flex-start;padding:4px 0 8px;">
++          <span class="k" style="font-size:12px;color:#6b7280;">?⑥껜?????/span>
++          <span class="v" id="onChainSyncStatus" style="flex:1;"></span>
+         </div>
+-
+-        <!-- 硫섑넗 ?깅줉 ?붿껌 (?⑥껜???깅줉 ?꾨즺 ??硫섑넗 ?놁쓣 ?? -->
+-        <div id="mentorRequestBox" style="display:none;" class="mp-action-box">
+-          <p class="hint">
+-            <strong>硫섑넗瑜??깅줉?섏꽭??</strong><br>
+-            硫섑넗媛 ?곌껐?섏뼱??媛留뱀젏 寃곗젣 ??寃쏀뿕移?EXP)? ?ъ씤?몃? 諛쏆쓣 ???덉뒿?덈떎.<br>
+-            <small class="muted">?붿껌 ?묒닔 ??愿由ъ옄媛 ?뺤씤?섏뿬 ?곌껐???쒕┰?덈떎.</small>
+-          </p>
+-          <label class="field">
+-            <span><span data-i18n="label_mentor_email">硫섑넗 ?대찓??/span> <em class="req">*</em></span>
+-            <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
+-          </label>
+-          <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">硫섑넗 ?깅줉
+-            ?붿껌</button>
+-          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);"
+-            data-i18n="mentor_req_done">???붿껌???묒닔?섏뿀?듬땲?? 愿由ъ옄 ?뺤씤 ??諛섏쁺?⑸땲??</p>
++        <div class="mp-kv" id="paymentBalanceRow" style="display:none; padding-top:10px;">
++          <span class="k" data-i18n="label_payment_balance" style="color:var(--text, #111); font-weight: 700;">Payment
++            Balance (VND)</span>
++          <span class="v accent" style="font-size: 1.15rem; font-weight: 800;" id="paymentBalanceDisplay">-</span>
++        </div>
++        <div class="mp-kv" id="pointRow" style="display:none;">
++          <span class="k" data-i18n="label_point">K-CULTURE Point</span>
++          <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap; color: #7c3aed;">
++            <span id="pointDisplay">-</span>
++            <!-- <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">Payment濡??꾪솚</button> -->
++          </span>
+         </div>
++        <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
+ 
+-        <!-- ?⑥껜??誘몃벑濡????깅줉 踰꾪듉 -->
+-        <div id="onChainRegBox" style="display:none;" class="mp-action-box">
+-          <p class="hint">
+-            ?⑥껜??誘몃벑濡??곹깭?낅땲??<br>
+-            硫섑넗 吏媛?二쇱냼瑜??낅젰?섎㈃ 寃쏀뿕移?EXP)? ?ъ씤?몃? 諛쏆쓣 ???덉뒿?덈떎.
+-          </p>
+-          <label class="field">
+-            <span><span data-i18n="label_mentor_addr_field">硫섑넗 吏媛?二쇱냼</span> <em class="req">*</em></span>
+-            <input type="text" id="mentorAddrInput" maxlength="42" placeholder="0x..." style="font-family:monospace;" />
+-          </label>
+-          <button class="btn btn--primary" id="btnRegisterOnChain" type="button" data-i18n="btn_register_onchain">?⑥껜??-            ?깅줉</button>
++        <div class="mp-kv" id="mentorAddrRow" style="display:none;">
++          <span class="k" data-i18n="label_my_mentor">?섏쓽 硫섑넗</span>
++          <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
+         </div>
+-      </section>
+ 
+-      <!-- 媛쒖씤 吏媛?HEX ?댁껜 (?덈꺼 4 ?댁긽) -->
+-      <section class="panel mp-section collapsible is-collapsed" id="hexTransferSection" style="display:none;">
+-        <div class="mp-section-head">
+-          <h2 class="mp-section-title" data-i18n="section_hex_transfer">HEX 媛쒖씤 吏媛??댁껜 <span
+-              style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
++        <!-- Legacy Wallet Rows for Admin/Legacy Uses -->
++        <div class="mp-kv" id="walletHexRow" style="display:none; opacity: 0.5;">
++          <span class="k" data-i18n="label_hex_balance">Legacy Point</span>
++          <span class="v accent" id="walletHexDisplay">-</span>
+         </div>
+-        <p class="hint" style="margin-bottom:12px;">
+-          ?섑긽 吏媛묒쓽 HEX瑜??몃? 媛쒖씤 吏媛묒쑝濡?吏곸젒 ?꾩넚?⑸땲??<br>
+-          <small class="muted">?덈꺼 4 ?댁긽 ?뚯썝留??ъ슜 媛?ν빀?덈떎. ?붿븸 ?꾩븸 ?먮뒗 ?먰븯???섎웾???댁껜?????덉뒿?덈떎.</small>
++        <div class="mp-kv" id="walletJumpRow" style="display:none; opacity: 0.5;">
++          <span class="k" data-i18n="label_jump_balance">Legacy JUMP</span>
++          <span class="v accent" id="walletJumpDisplay">-</span>
++        </div>
++        <div class="mp-kv" id="walletJumpStakedRow" style="display:none; opacity: 0.5;">
++          <span class="k" data-i18n="label_jump_staked">Legacy Staked</span>
++          <span class="v accent" id="walletJumpStakedDisplay">-</span>
++        </div>
++      </div>
++
++
++
++      <!-- 硫섑넗 ?깅줉 ?붿껌 (?⑥껜???깅줉 ?꾨즺 ??硫섑넗 ?놁쓣 ?? -->
++      <div id="mentorRequestBox" style="display:none;" class="mp-action-box">
++        <p class="hint">
++          <strong>硫섑넗瑜??깅줉?섏꽭??</strong><br>
++          硫섑넗媛 ?곌껐?섏뼱??媛留뱀젏 寃곗젣 ??寃쏀뿕移?EXP)? ?ъ씤?몃? 諛쏆쓣 ???덉뒿?덈떎.<br>
++          <small class="muted">?붿껌 ?묒닔 ??愿由ъ옄媛 ?뺤씤?섏뿬 ?곌껐???쒕┰?덈떎.</small>
+         </p>
+-        <form id="hexTransferForm" class="form" style="margin-top:0;">
+-          <label class="field">
+-            <span><span data-i18n="label_to_wallet">?섎졊 吏媛?二쇱냼</span> <em class="req">*</em></span>
+-            <input type="text" id="hexTransferTo" maxlength="42" placeholder="0x..." style="font-family:monospace;" />
+-          </label>
+-          <label class="field">
+-            <span data-i18n="label_transfer_amt">?댁껜 ?섎웾 (HEX)</span>
+-            <input type="number" id="hexTransferAmount" min="0" step="any" placeholder="鍮꾩썙 ?볦쑝硫??꾩븸 ?댁껜?? />
+-          </label>
+-          <div class="mp-kv" style="margin-bottom:10px;">
+-            <span class="k">蹂댁쑀 HEX</span>
+-            <span class="v accent" id="hexTransferBalance">-</span>
+-          </div>
+-          <div class="actions">
+-            <button class="btn btn--primary" type="submit" id="btnHexTransfer" data-i18n="btn_transfer_hex">?댁껜</button>
+-          </div>
+-        </form>
+-        <div id="hexTransferResult" class="mp-result-box" style="display:none;"></div>
++        <label class="field">
++          <span><span data-i18n="label_mentor_email">硫섑넗 ?대찓??/span> <em class="req">*</em></span>
++          <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
++        </label>
++        <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">硫섑넗 ?깅줉
++          ?붿껌</button>
++        <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);" data-i18n="mentor_req_done">
++          ???붿껌???묒닔?섏뿀?듬땲?? 愿由ъ옄 ?뺤씤 ??諛섏쁺?⑸땲??</p>
++      </div>
++
++
+       </section>
+ 
++
++
+       <!-- ?먰솕 異⑹쟾 -->
+       <section class="panel mp-section collapsible is-collapsed" id="hex-topup">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title" data-i18n="section_deposit">HEX 異⑹쟾 (?먰솕)</h2>
++          <h2 class="mp-section-title" data-i18n="section_deposit">Point 異⑹쟾 (?먰솕)</h2>
+         </div>
+ 
+         <!-- ?낃툑 怨꾩쥖 ?덈궡 (??긽 ?쒖떆) -->
+@@ -917,7 +851,7 @@
+           <div class="mp-kv"><span class="k">?덇툑二?/span><span class="v" id="drHolderVnd">-</span></div>
+           <div class="mp-kv"><span class="k">湲덉븸</span><span class="v" id="drAmount">-</span></div>
+           <div class="mp-kv"><span class="k">異⑹쟾 湲덉븸</span><span class="v accent" id="drHex">-</span></div>
+-          <p class="hint mp-warn" data-i18n="deposit_warn">?낃툑?먮챸???뺥솗???낅젰?섏꽭?? 愿由ъ옄 ?뺤씤 ??HEX ?좏겙???섑긽 吏媛묒쑝濡?吏湲됰맗?덈떎.</p>
++          <p class="hint mp-warn" data-i18n="deposit_warn">?낃툑?먮챸???뺥솗???낅젰?섏꽭?? 愿由ъ옄 ?뺤씤 ??Point ?ъ씤?몄씠 ?섑긽 吏媛묒쑝濡?吏湲됰맗?덈떎.</p>
+         </div>
+       </section>
+ 
+@@ -929,7 +863,7 @@
+         </div>
+         <p class="hint" style="margin-bottom:12px;">
+           媛留뱀젏??諛⑸Ц?섏뿬 ?꾩옣?먯꽌 寃곗젣?????ъ슜?⑸땲??<br>
+-          <small class="muted">寃곗젣 ???섑긽 吏媛묒쓽 HEX媛 ?ъ슜?⑸땲?? (?⑥껜??寃곗젣)</small>
++          <small class="muted">寃곗젣 ???섑긽 吏媛묒쓽 Point媛 ?ъ슜?⑸땲?? (?⑥껜??寃곗젣)</small>
+         </p>
+         <form id="merchantPayForm" class="form" style="margin-top:0;">
+           <label class="field">
+@@ -990,7 +924,7 @@
+           <div>
+             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">?ъ씤?몃??</dt>
+             <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">???섏쐞 ?뚯썝??媛留뱀젏?먯꽌 寃곗젣?????섏닔猷??쇰?媛 硫섑넗(???먭쾶
+-              ?ъ씤?몃줈 ?곷┰?⑸땲?? ?ъ씤?몃뒗 HEX ?좏겙?쇰줈 ?꾪솚?????덉뒿?덈떎.</dd>
++              ?ъ씤?몃줈 ?곷┰?⑸땲?? ?ъ씤?몃뒗 Point ?ъ씤?몄쑝濡??꾪솚?????덉뒿?덈떎.</dd>
+           </div>
+           <div>
+             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">寃쏀뿕移?(EXP)</dt>
+@@ -1000,7 +934,7 @@
+           <div>
+             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">?덈꺼 & ?덈꺼??/dt>
+             <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">
+-              ?덈꺼???믪쓣?섎줉 ?ъ씤????HEX ?꾪솚 ????留롮씠 諛쏆뒿?덈떎.<br>
++              ?덈꺼???믪쓣?섎줉 ?ъ씤????Point ?꾪솚 ????留롮씠 諛쏆뒿?덈떎.<br>
+               <strong>?꾪솚??= ?ъ씤??횞 ?덈꺼 첨 10</strong><br>
+               ?덈꺼???꾩슂 EXP = ?꾩옱?덈꺼짼 횞 10,000<br>
+               <span style="font-size:0.9em;">Lv.1??: 10,000 EXP &nbsp;쨌&nbsp; Lv.2??: 40,000 EXP &nbsp;쨌&nbsp; Lv.3??:
+@@ -1071,9 +1005,9 @@
+             <div class="mp-stat-sub" id="jackpotTotalCount"></div>
+           </div>
+           <div class="mp-stat-card" style="border-color:rgba(124,58,237,.35);background:rgba(124,58,237,.08);">
+-            <div class="mp-stat-label" data-i18n="jackpot_stat_redeemable">HEX ?꾪솚 媛???ъ씤??/div>
++            <div class="mp-stat-label" data-i18n="jackpot_stat_redeemable">Point ?꾪솚 媛???ъ씤??/div>
+             <div class="mp-stat-value" id="jackpotRedeemable" style="color:#a78bfa;">-</div>
+-            <div class="mp-stat-sub" data-i18n="jackpot_stat_min">10 HEX ?댁긽 ???꾪솚 媛??/div>
++            <div class="mp-stat-sub" data-i18n="jackpot_stat_min">10 Point ?댁긽 ???꾪솚 媛??/div>
+           </div>
+         </div>
+         <div id="jackpotHistList" class="mp-table-wrap">
+@@ -1209,7 +1143,7 @@
+                 </div>
+                 <div id="vbStep3" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+                   <span id="vbStep3Icon" style="font-size:1rem;">??/span> <span id="vbStep3Label"
+-                    data-i18n="burn_step3_onchain">HEX ?섍툒 泥섎━ 以?/span>
++                    data-i18n="burn_step3_onchain">Point ?섍툒 泥섎━ 以?/span>
+                 </div>
+                 <div id="vbStep4" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+                   <span id="vbStep4Icon" style="font-size:1rem;">??/span> <span id="vbStep4Label"
+
+commit 93d4dfd4615379ae22283582694352fc2249d19c
+Author: daguri <daguri75@gmail.com>
+Date:   Tue Sep 1 15:32:37 2026 +0700
+
+    feat: KCA Webzine integration, category filter & Overview documentation
+
+diff --git a/mypage.html b/mypage.html
+index e036504..cea39b8 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -1,6 +1,7 @@
+ 癤?!-- /mypage.html -->
+ <!doctype html>
+ <html lang="ko">
++
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1" />
+@@ -25,7 +26,11 @@
+       align-items: center;
+       justify-content: center;
+     }
+-    #qrScanOverlay.active { display: flex; }
++
++    #qrScanOverlay.active {
++      display: flex;
++    }
++
+     .qr-video-wrap {
+       position: relative;
+       width: 100%;
+@@ -33,114 +38,599 @@
+       aspect-ratio: 1 / 1;
+       overflow: hidden;
+     }
+-    #qrVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
++
++    #qrVideo {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
+     .qr-frame-mask {
+-      position: absolute; inset: 0;
+-      display: flex; align-items: center; justify-content: center;
++      position: absolute;
++      inset: 0;
++      display: flex;
++      align-items: center;
++      justify-content: center;
+       pointer-events: none;
+     }
++
+     .qr-frame {
+-      width: 62%; aspect-ratio: 1 / 1;
++      width: 62%;
++      aspect-ratio: 1 / 1;
+       border: 3px solid #a78bfa;
+       border-radius: 14px;
+-      box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
++      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+     }
++
+     .qr-scan-line {
+-      position: absolute; width: 62%; height: 2px;
++      position: absolute;
++      width: 62%;
++      height: 2px;
+       background: linear-gradient(90deg, transparent, #7c3aed, transparent);
+       animation: qrScan 2s ease-in-out infinite;
+     }
+-    @keyframes qrScan { 0%,100%{top:19%} 50%{top:81%} }
++
++    @keyframes qrScan {
++
++      0%,
++      100% {
++        top: 19%
++      }
++
++      50% {
++        top: 81%
++      }
++    }
+ 
+     /* ?? ??뙚 寃곌낵 紐⑤떖 ?? */
+-    #jackpotModal{display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;}
+-    #jackpotModal.active{display:flex;animation:jmFadeIn .3s ease;}
+-    @keyframes jmFadeIn{from{opacity:0}to{opacity:1}}
+-    .jm-box{background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:20px;padding:20px 18px;text-align:center;max-width:320px;width:100%;box-shadow:0 0 60px rgba(124,58,237,.6);animation:jmPop .5s cubic-bezier(.17,.67,.35,1.3);}
+-    @keyframes jmPop{0%{transform:scale(.6);opacity:0;}70%{transform:scale(1.05);}100%{transform:scale(1);opacity:1;}}
+-    .jm-emoji{font-size:2.2rem;animation:jmEmoji 1s ease-in-out infinite alternate;}
+-    @keyframes jmEmoji{0%{transform:scale(1) rotate(-8deg);}100%{transform:scale(1.2) rotate(8deg);}}
+-    .jm-title{font-size:1rem;font-weight:900;color:#fde68a;letter-spacing:.05em;margin:8px 0 4px;text-shadow:0 0 20px rgba(253,230,138,.5);}
+-    .jm-desc{font-size:0.78rem;color:#c4b5fd;margin-bottom:12px;}
+-    .jm-items{background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;margin-bottom:12px;text-align:left;}
+-    .jm-item{font-size:0.82rem;color:#fff;margin:3px 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+-    .jm-item b{color:#fef08a;}
+-    .jm-close{background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:8px 24px;font-size:0.88rem;font-weight:700;cursor:pointer;transition:background .15s;}
+-    .jm-close:hover{background:#6d28d9;}
++    #jackpotModal {
++      display: none;
++      position: fixed;
++      inset: 0;
++      z-index: 2000;
++      background: rgba(0, 0, 0, .7);
++      align-items: center;
++      justify-content: center;
++      padding: 20px;
++    }
++
++    #jackpotModal.active {
++      display: flex;
++      animation: jmFadeIn .3s ease;
++    }
++
++    @keyframes jmFadeIn {
++      from {
++        opacity: 0
++      }
++
++      to {
++        opacity: 1
++      }
++    }
++
++    .jm-box {
++      background: linear-gradient(135deg, #1e1b4b, #312e81);
++      border-radius: 20px;
++      padding: 20px 18px;
++      text-align: center;
++      max-width: 320px;
++      width: 100%;
++      box-shadow: 0 0 60px rgba(124, 58, 237, .6);
++      animation: jmPop .5s cubic-bezier(.17, .67, .35, 1.3);
++    }
++
++    @keyframes jmPop {
++      0% {
++        transform: scale(.6);
++        opacity: 0;
++      }
++
++      70% {
++        transform: scale(1.05);
++      }
++
++      100% {
++        transform: scale(1);
++        opacity: 1;
++      }
++    }
++
++    .jm-emoji {
++      font-size: 2.2rem;
++      animation: jmEmoji 1s ease-in-out infinite alternate;
++    }
++
++    @keyframes jmEmoji {
++      0% {
++        transform: scale(1) rotate(-8deg);
++      }
++
++      100% {
++        transform: scale(1.2) rotate(8deg);
++      }
++    }
++
++    .jm-title {
++      font-size: 1rem;
++      font-weight: 900;
++      color: #fde68a;
++      letter-spacing: .05em;
++      margin: 8px 0 4px;
++      text-shadow: 0 0 20px rgba(253, 230, 138, .5);
++    }
++
++    .jm-desc {
++      font-size: 0.78rem;
++      color: #c4b5fd;
++      margin-bottom: 12px;
++    }
++
++    .jm-items {
++      background: rgba(255, 255, 255, .08);
++      border-radius: 10px;
++      padding: 10px 14px;
++      margin-bottom: 12px;
++      text-align: left;
++    }
++
++    .jm-item {
++      font-size: 0.82rem;
++      color: #fff;
++      margin: 3px 0;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      flex-wrap: wrap;
++    }
++
++    .jm-item b {
++      color: #fef08a;
++    }
++
++    .jm-close {
++      background: #7c3aed;
++      color: #fff;
++      border: none;
++      border-radius: 10px;
++      padding: 8px 24px;
++      font-size: 0.88rem;
++      font-weight: 700;
++      cursor: pointer;
++      transition: background .15s;
++    }
++
++    .jm-close:hover {
++      background: #6d28d9;
++    }
++
+     /* ?? ?꾩씠???쒕∼ 諛뺤뒪 ?? */
+-    .drop-box{margin-top:10px;background:rgba(251,191,36,.12);border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;}
+-    .drop-box-title{font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px;}
+-    .drop-item{font-size:14px;margin:3px 0;display:flex;align-items:center;gap:6px;}
++    .drop-box {
++      margin-top: 10px;
++      background: rgba(251, 191, 36, .12);
++      border: 1.5px solid #f59e0b;
++      border-radius: 10px;
++      padding: 10px 14px;
++    }
++
++    .drop-box-title {
++      font-size: 12px;
++      color: #92400e;
++      font-weight: 700;
++      margin-bottom: 6px;
++    }
++
++    .drop-item {
++      font-size: 14px;
++      margin: 3px 0;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
+ 
+     /* ?? 嫄곕옒 ?댁뿭 由щ뵒?먯씤 ?? */
+-    .tx-summary{display:flex;gap:10px;margin-bottom:16px;}
+-    .tx-summary-card{flex:1;padding:14px 16px;border-radius:14px;text-align:center;}
+-    .tx-summary-card.income{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;}
+-    .tx-summary-card.expense{background:linear-gradient(135deg,#fff1f2,#fee2e2);border:1.5px solid #fca5a5;}
+-    .tx-summary-label{font-size:0.72rem;color:#64748b;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px;}
+-    .tx-summary-amount{font-size:1.05rem;font-weight:900;letter-spacing:-.01em;}
+-    .tx-summary-amount.income{color:#15803d;}
+-    .tx-summary-amount.expense{color:#dc2626;}
+-    .tx-summary-sub{font-size:0.7rem;color:#94a3b8;margin-top:3px;}
+-    .tx-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--border,#e2e8f0);background:#fff;margin-bottom:8px;transition:box-shadow .15s,transform .1s;cursor:default;}
+-    .tx-item:hover{box-shadow:0 3px 12px rgba(0,0,0,.07);transform:translateY(-1px);}
+-    .tx-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+-    .tx-icon.income{background:#dcfce7;}
+-    .tx-icon.expense{background:#fee2e2;}
+-    .tx-icon.pending{background:#fef3c7;}
+-    .tx-icon.rejected{background:#f1f5f9;}
+-    .tx-body{flex:1;min-width:0;}
+-    .tx-label{font-size:0.88rem;font-weight:700;color:#1e293b;margin-bottom:2px;}
+-    .tx-date{font-size:0.72rem;color:#94a3b8;}
+-    .tx-hash{font-family:monospace;font-size:0.68rem;color:#cbd5e1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
+-    .tx-right{text-align:right;flex-shrink:0;}
+-    .tx-amount{font-size:0.95rem;font-weight:800;white-space:nowrap;}
+-    .tx-amount.income{color:#15803d;}
+-    .tx-amount.expense{color:#dc2626;}
+-    .tx-amount.pending{color:#d97706;}
+-    .tx-amount.rejected{color:#94a3b8;}
+-    .tx-status-badge{display:inline-block;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:99px;margin-top:3px;}
+-    .tx-status-badge.paid{background:#dcfce7;color:#15803d;}
+-    .tx-status-badge.requested{background:#fef3c7;color:#92400e;}
+-    .tx-status-badge.rejected{background:#f1f5f9;color:#64748b;}
+-    .tx-status-badge.approved{background:#dbeafe;color:#1d4ed8;}
+-    .tx-empty{text-align:center;padding:32px 16px;color:#94a3b8;font-size:0.88rem;}
++    .tx-summary {
++      display: flex;
++      gap: 10px;
++      margin-bottom: 16px;
++    }
++
++    .tx-summary-card {
++      flex: 1;
++      padding: 14px 16px;
++      border-radius: 14px;
++      text-align: center;
++    }
++
++    .tx-summary-card.income {
++      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
++      border: 1.5px solid #86efac;
++    }
++
++    .tx-summary-card.expense {
++      background: linear-gradient(135deg, #fff1f2, #fee2e2);
++      border: 1.5px solid #fca5a5;
++    }
++
++    .tx-summary-label {
++      font-size: 0.72rem;
++      color: #64748b;
++      font-weight: 700;
++      letter-spacing: .04em;
++      text-transform: uppercase;
++      margin-bottom: 5px;
++    }
++
++    .tx-summary-amount {
++      font-size: 1.05rem;
++      font-weight: 900;
++      letter-spacing: -.01em;
++    }
++
++    .tx-summary-amount.income {
++      color: #15803d;
++    }
++
++    .tx-summary-amount.expense {
++      color: #dc2626;
++    }
++
++    .tx-summary-sub {
++      font-size: 0.7rem;
++      color: #94a3b8;
++      margin-top: 3px;
++    }
++
++    .tx-item {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 12px 14px;
++      border-radius: 14px;
++      border: 1px solid var(--border, #e2e8f0);
++      background: #fff;
++      margin-bottom: 8px;
++      transition: box-shadow .15s, transform .1s;
++      cursor: default;
++    }
++
++    .tx-item:hover {
++      box-shadow: 0 3px 12px rgba(0, 0, 0, .07);
++      transform: translateY(-1px);
++    }
++
++    .tx-icon {
++      width: 40px;
++      height: 40px;
++      border-radius: 12px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1.1rem;
++      flex-shrink: 0;
++    }
++
++    .tx-icon.income {
++      background: #dcfce7;
++    }
++
++    .tx-icon.expense {
++      background: #fee2e2;
++    }
++
++    .tx-icon.pending {
++      background: #fef3c7;
++    }
++
++    .tx-icon.rejected {
++      background: #f1f5f9;
++    }
++
++    .tx-body {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .tx-label {
++      font-size: 0.88rem;
++      font-weight: 700;
++      color: #1e293b;
++      margin-bottom: 2px;
++    }
++
++    .tx-date {
++      font-size: 0.72rem;
++      color: #94a3b8;
++    }
++
++    .tx-hash {
++      font-family: monospace;
++      font-size: 0.68rem;
++      color: #cbd5e1;
++      margin-top: 2px;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++      max-width: 160px;
++    }
++
++    .tx-right {
++      text-align: right;
++      flex-shrink: 0;
++    }
++
++    .tx-amount {
++      font-size: 0.95rem;
++      font-weight: 800;
++      white-space: nowrap;
++    }
++
++    .tx-amount.income {
++      color: #15803d;
++    }
++
++    .tx-amount.expense {
++      color: #dc2626;
++    }
++
++    .tx-amount.pending {
++      color: #d97706;
++    }
++
++    .tx-amount.rejected {
++      color: #94a3b8;
++    }
++
++    .tx-status-badge {
++      display: inline-block;
++      font-size: 0.65rem;
++      font-weight: 700;
++      padding: 2px 7px;
++      border-radius: 99px;
++      margin-top: 3px;
++    }
++
++    .tx-status-badge.paid {
++      background: #dcfce7;
++      color: #15803d;
++    }
++
++    .tx-status-badge.requested {
++      background: #fef3c7;
++      color: #92400e;
++    }
++
++    .tx-status-badge.rejected {
++      background: #f1f5f9;
++      color: #64748b;
++    }
++
++    .tx-status-badge.approved {
++      background: #dbeafe;
++      color: #1d4ed8;
++    }
++
++    .tx-empty {
++      text-align: center;
++      padding: 32px 16px;
++      color: #94a3b8;
++      font-size: 0.88rem;
++    }
+ 
+     /* ?? 硫섑떚 ?섏씡 遺꾩꽍 ?? */
+-    .mi-summary-card{flex:1;min-width:120px;padding:14px 16px;border-radius:14px;text-align:center;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;}
+-    .mi-summary-label{font-size:0.7rem;color:#64748b;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px;}
+-    .mi-summary-val{font-size:1.05rem;font-weight:900;color:#15803d;}
+-    .mi-summary-sub{font-size:0.7rem;color:#94a3b8;margin-top:3px;}
+-    .mi-mentee-card{border:1.5px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;background:#fff;transition:box-shadow .15s;}
+-    .mi-mentee-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.07);}
+-    .mi-mentee-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;}
+-    .mi-mentee-name{font-size:0.92rem;font-weight:700;color:#1e293b;}
+-    .mi-mentee-addr{font-size:0.72rem;color:#94a3b8;font-family:monospace;margin-top:2px;}
+-    .mi-mentee-total{text-align:right;}
+-    .mi-mentee-total-val{font-size:1rem;font-weight:800;color:#7c3aed;}
+-    .mi-mentee-total-label{font-size:0.68rem;color:#a78bfa;margin-top:1px;}
+-    .mi-stat-row{display:flex;gap:8px;flex-wrap:wrap;}
+-    .mi-stat{flex:1;min-width:80px;padding:8px 10px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;text-align:center;}
+-    .mi-stat-val{font-size:0.88rem;font-weight:700;color:#334155;}
+-    .mi-stat-label{font-size:0.65rem;color:#94a3b8;margin-top:2px;}
+-    .mi-tx-row{font-size:0.78rem;color:#64748b;padding:5px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:8px;}
+-    .mi-tx-row:last-child{border-bottom:none;}
+-    .mi-tx-amt{font-weight:700;color:#7c3aed;white-space:nowrap;}
+-    .mi-empty{text-align:center;padding:28px 16px;color:#94a3b8;font-size:0.88rem;}
++    .mi-summary-card {
++      flex: 1;
++      min-width: 120px;
++      padding: 14px 16px;
++      border-radius: 14px;
++      text-align: center;
++      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
++      border: 1.5px solid #86efac;
++    }
++
++    .mi-summary-label {
++      font-size: 0.7rem;
++      color: #64748b;
++      font-weight: 700;
++      letter-spacing: .04em;
++      text-transform: uppercase;
++      margin-bottom: 5px;
++    }
++
++    .mi-summary-val {
++      font-size: 1.05rem;
++      font-weight: 900;
++      color: #15803d;
++    }
++
++    .mi-summary-sub {
++      font-size: 0.7rem;
++      color: #94a3b8;
++      margin-top: 3px;
++    }
++
++    .mi-mentee-card {
++      border: 1.5px solid #e2e8f0;
++      border-radius: 14px;
++      padding: 14px 16px;
++      margin-bottom: 10px;
++      background: #fff;
++      transition: box-shadow .15s;
++    }
++
++    .mi-mentee-card:hover {
++      box-shadow: 0 3px 12px rgba(0, 0, 0, .07);
++    }
++
++    .mi-mentee-head {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 8px;
++      margin-bottom: 10px;
++    }
++
++    .mi-mentee-name {
++      font-size: 0.92rem;
++      font-weight: 700;
++      color: #1e293b;
++    }
++
++    .mi-mentee-addr {
++      font-size: 0.72rem;
++      color: #94a3b8;
++      font-family: monospace;
++      margin-top: 2px;
++    }
++
++    .mi-mentee-total {
++      text-align: right;
++    }
++
++    .mi-mentee-total-val {
++      font-size: 1rem;
++      font-weight: 800;
++      color: #7c3aed;
++    }
++
++    .mi-mentee-total-label {
++      font-size: 0.68rem;
++      color: #a78bfa;
++      margin-top: 1px;
++    }
++
++    .mi-stat-row {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .mi-stat {
++      flex: 1;
++      min-width: 80px;
++      padding: 8px 10px;
++      border-radius: 10px;
++      background: #f8fafc;
++      border: 1px solid #e2e8f0;
++      text-align: center;
++    }
++
++    .mi-stat-val {
++      font-size: 0.88rem;
++      font-weight: 700;
++      color: #334155;
++    }
++
++    .mi-stat-label {
++      font-size: 0.65rem;
++      color: #94a3b8;
++      margin-top: 2px;
++    }
++
++    .mi-tx-row {
++      font-size: 0.78rem;
++      color: #64748b;
++      padding: 5px 0;
++      border-bottom: 1px solid #f1f5f9;
++      display: flex;
++      justify-content: space-between;
++      gap: 8px;
++    }
++
++    .mi-tx-row:last-child {
++      border-bottom: none;
++    }
++
++    .mi-tx-amt {
++      font-weight: 700;
++      color: #7c3aed;
++      white-space: nowrap;
++    }
++
++    .mi-empty {
++      text-align: center;
++      padding: 28px 16px;
++      color: #94a3b8;
++      font-size: 0.88rem;
++    }
+ 
+     /* ?? ??뙚 ?뱀꺼 ?댁뿭 ?? */
+-    .jp-hist-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;border:1.5px solid #e9d5ff;background:linear-gradient(135deg,#faf5ff,#f3e8ff);margin-bottom:8px;}
+-    .jp-hist-icon{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+-    .jp-hist-body{flex:1;min-width:0;}
+-    .jp-hist-title{font-size:0.88rem;font-weight:700;color:#3b0764;margin-bottom:2px;}
+-    .jp-hist-sub{font-size:0.75rem;color:#7c3aed;margin-bottom:3px;}
+-    .jp-hist-date{font-size:0.7rem;color:#a78bfa;}
+-    .jp-hist-pts{font-size:0.95rem;font-weight:800;color:#6d28d9;text-align:right;white-space:nowrap;}
+-    .jp-hist-empty{text-align:center;padding:32px 16px;color:#a78bfa;font-size:0.88rem;}
+-    .jp-onchain-badge{display:inline-block;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:99px;background:#ede9fe;color:#5b21b6;margin-left:4px;vertical-align:middle;}
++    .jp-hist-item {
++      display: flex;
++      align-items: flex-start;
++      gap: 12px;
++      padding: 12px 14px;
++      border-radius: 14px;
++      border: 1.5px solid #e9d5ff;
++      background: linear-gradient(135deg, #faf5ff, #f3e8ff);
++      margin-bottom: 8px;
++    }
++
++    .jp-hist-icon {
++      width: 40px;
++      height: 40px;
++      border-radius: 12px;
++      background: linear-gradient(135deg, #7c3aed, #4f46e5);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1.2rem;
++      flex-shrink: 0;
++    }
++
++    .jp-hist-body {
++      flex: 1;
++      min-width: 0;
++    }
+ 
++    .jp-hist-title {
++      font-size: 0.88rem;
++      font-weight: 700;
++      color: #3b0764;
++      margin-bottom: 2px;
++    }
++
++    .jp-hist-sub {
++      font-size: 0.75rem;
++      color: #7c3aed;
++      margin-bottom: 3px;
++    }
++
++    .jp-hist-date {
++      font-size: 0.7rem;
++      color: #a78bfa;
++    }
++
++    .jp-hist-pts {
++      font-size: 0.95rem;
++      font-weight: 800;
++      color: #6d28d9;
++      text-align: right;
++      white-space: nowrap;
++    }
++
++    .jp-hist-empty {
++      text-align: center;
++      padding: 32px 16px;
++      color: #a78bfa;
++      font-size: 0.88rem;
++    }
++
++    .jp-onchain-badge {
++      display: inline-block;
++      font-size: 0.62rem;
++      font-weight: 700;
++      padding: 2px 6px;
++      border-radius: 99px;
++      background: #ede9fe;
++      color: #5b21b6;
++      margin-left: 4px;
++      vertical-align: middle;
++    }
+   </style>
+ </head>
++
+ <body>
+   <div id="siteHeader"></div>
+ 
+@@ -177,7 +667,8 @@
+       </div>
+ 
+       <!-- 硫섑넗 ?곌껐 ?덈궡 諛곕꼫 -->
+-      <div id="mentorNotice" class="panel mp-section" style="display:none; border-left:4px solid var(--accent); background:var(--surface2,#f9f5ff);">
++      <div id="mentorNotice" class="panel mp-section"
++        style="display:none; border-left:4px solid var(--accent); background:var(--surface2,#f9f5ff);">
+         <p style="margin:0; font-size:0.95em;">
+           <strong>?좑툘 硫섑넗 ?곌껐 ?꾩슂</strong> ??           媛留뱀젏 寃곗젣 ??<b>寃쏀뿕移?EXP)</b>? <b>?ъ씤??/b>瑜?諛쏆쑝?ㅻ㈃ 硫섑넗媛 ?곌껐?섏뼱 ?덉뼱???⑸땲??
+@@ -192,9 +683,12 @@
+           <a href="/register.html" class="btn btn--sm" data-i18n="btn_edit">?섏젙</a>
+         </div>
+         <div class="mp-kv-list" id="profileInfo">
+-          <div class="mp-kv"><span class="k" data-i18n="label_name">?대쫫</span><span class="v" id="infoName">-</span></div>
+-          <div class="mp-kv"><span class="k" data-i18n="label_email">?대찓??/span><span class="v" id="infoEmail">-</span></div>
+-          <div class="mp-kv"><span class="k" data-i18n="label_phone">?꾪솕踰덊샇</span><span class="v" id="infoPhone">-</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_name">?대쫫</span><span class="v" id="infoName">-</span>
++          </div>
++          <div class="mp-kv"><span class="k" data-i18n="label_email">?대찓??/span><span class="v" id="infoEmail">-</span>
++          </div>
++          <div class="mp-kv"><span class="k" data-i18n="label_phone">?꾪솕踰덊샇</span><span class="v" id="infoPhone">-</span>
++          </div>
+         </div>
+       </section>
+ 
+@@ -203,8 +697,10 @@
+         <div class="mp-section-head">
+           <h2 class="mp-section-title" data-i18n="section_wallet">?섑긽 吏媛?/h2>
+           <div style="display:flex; gap:6px;">
+-            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;" data-i18n="btn_metamask">MetaMask ?곌껐</button>
+-            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;" data-i18n="btn_create_wallet">吏媛??앹꽦</button>
++            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;"
++              data-i18n="btn_metamask">MetaMask ?곌껐</button>
++            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;"
++              data-i18n="btn_create_wallet">吏媛??앹꽦</button>
+           </div>
+         </div>
+ 
+@@ -212,9 +708,9 @@
+           <div class="mp-kv" style="align-items:flex-start;">
+             <span class="k" data-i18n="label_wallet_addr">吏媛?二쇱냼</span>
+             <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
+-              <span class="mono" id="walletAddress" style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
+-              <button id="btnCopyWallet" type="button" title="二쇱냼 蹂듭궗"
+-                style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
++              <span class="mono" id="walletAddress"
++                style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
++              <button id="btnCopyWallet" type="button" title="二쇱냼 蹂듭궗" style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
+                        background:var(--surface,#fff); border:1px solid var(--border,#e5e7eb);
+                        border-radius:20px; cursor:pointer; color:var(--muted,#6b7280); white-space:nowrap;">
+                 <span data-i18n="btn_copy">?뱥 蹂듭궗</span>
+@@ -235,14 +731,17 @@
+           </div>
+           <div id="expBarRow" style="display:none; padding:2px 0 10px 0;">
+             <div style="background:#e5e7eb; border-radius:99px; height:8px; overflow:hidden;">
+-              <div id="expBarFill" style="background:var(--accent,#7c3aed); height:100%; width:0%; border-radius:99px; transition:width .4s;"></div>
++              <div id="expBarFill"
++                style="background:var(--accent,#7c3aed); height:100%; width:0%; border-radius:99px; transition:width .4s;">
++              </div>
+             </div>
+             <small class="muted" id="expRequired" style="font-size:0.78em;"></small>
+           </div>
+           <div class="mp-kv" id="levelUpRow" style="display:none;">
+             <span class="k"></span>
+             <span class="v">
+-              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">?덈꺼??媛?? ??/button>
++              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">?덈꺼??媛??
++                ??/button>
+             </span>
+           </div>
+           <!-- ?⑥껜??寃쏀뿕移??숆린???곹깭 -->
+@@ -250,34 +749,43 @@
+             <span class="k" style="font-size:12px;color:#6b7280;">?⑥껜?????/span>
+             <span class="v" id="onChainSyncStatus" style="flex:1;"></span>
+           </div>
++          <div class="mp-kv" id="paymentBalanceRow" style="display:none; padding-top:10px;">
++            <span class="k" data-i18n="label_payment_balance" style="color:var(--text, #111); font-weight: 700;">Payment
++              Balance (VND)</span>
++            <span class="v accent" style="font-size: 1.15rem; font-weight: 800;" id="paymentBalanceDisplay">-</span>
++          </div>
+           <div class="mp-kv" id="pointRow" style="display:none;">
+-            <span class="k" data-i18n="label_point">?ъ씤??hex濡?蹂寃쎄???</span>
+-            <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
++            <span class="k" data-i18n="label_point">K-CULTURE Point</span>
++            <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap; color: #7c3aed;">
+               <span id="pointDisplay">-</span>
+-              <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">HEX濡??꾪솚</button>
++              <!-- <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">Payment濡??꾪솚</button> -->
+             </span>
+           </div>
+           <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
++
+           <div class="mp-kv" id="mentorAddrRow" style="display:none;">
+             <span class="k" data-i18n="label_my_mentor">?섏쓽 硫섑넗</span>
+             <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
+           </div>
+-          <div class="mp-kv" id="walletHexRow" style="display:none;">
+-            <span class="k" data-i18n="label_hex_balance">蹂댁쑀 HEX</span>
++
++          <!-- Legacy Wallet Rows for Admin/Legacy Uses -->
++          <div class="mp-kv" id="walletHexRow" style="display:none; opacity: 0.5;">
++            <span class="k" data-i18n="label_hex_balance">Legacy HEX</span>
+             <span class="v accent" id="walletHexDisplay">-</span>
+           </div>
+-          <div class="mp-kv" id="walletJumpRow" style="display:none;">
+-            <span class="k" data-i18n="label_jump_balance">蹂댁쑀 JUMP</span>
++          <div class="mp-kv" id="walletJumpRow" style="display:none; opacity: 0.5;">
++            <span class="k" data-i18n="label_jump_balance">Legacy JUMP</span>
+             <span class="v accent" id="walletJumpDisplay">-</span>
+           </div>
+-          <div class="mp-kv" id="walletJumpStakedRow" style="display:none;">
+-            <span class="k" data-i18n="label_jump_staked">?ㅽ뀒?댄궧 JUMP</span>
++          <div class="mp-kv" id="walletJumpStakedRow" style="display:none; opacity: 0.5;">
++            <span class="k" data-i18n="label_jump_staked">Legacy Staked</span>
+             <span class="v accent" id="walletJumpStakedDisplay">-</span>
+           </div>
+         </div>
+ 
+         <!-- 媛쒖씤吏媛?MetaMask)?쇰줈 ?섎せ ?깅줉??寃쎌슦 寃쎄퀬 -->
+-        <div id="metamaskWarning" style="display:none; background:#fff3cd; border-left:4px solid #f59e0b; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:0.88em;">
++        <div id="metamaskWarning"
++          style="display:none; background:#fff3cd; border-left:4px solid #f59e0b; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:0.88em;">
+           <strong>?좑툘 媛쒖씤 吏媛묒씠 ?곌껐?섏뼱 ?덉뒿?덈떎.</strong><br>
+           ?꾩옱 MetaMask 二쇱냼媛 ?깅줉?섏뼱 ?덉뼱 ?뚮옯??寃곗젣쨌?ъ씤??湲곕뒫???ъ슜?????놁뒿?덈떎.<br>
+           ?꾨옒 <strong>吏媛??앹꽦</strong> 踰꾪듉???뚮윭 ?섑긽 吏媛묒쑝濡??꾪솚??二쇱꽭??
+@@ -290,8 +798,8 @@
+           </p>
+           <label class="field" style="margin-top:10px;">
+             <span><span data-i18n="label_mentor_addr_field">硫섑넗 吏媛?二쇱냼</span> <em class="req">*</em></span>
+-            <input type="text" id="createWalletMentorAddr" maxlength="42"
+-              placeholder="0x..." style="font-family:monospace;" />
++            <input type="text" id="createWalletMentorAddr" maxlength="42" placeholder="0x..."
++              style="font-family:monospace;" />
+           </label>
+         </div>
+ 
+@@ -306,8 +814,10 @@
+             <span><span data-i18n="label_mentor_email">硫섑넗 ?대찓??/span> <em class="req">*</em></span>
+             <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
+           </label>
+-          <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">硫섑넗 ?깅줉 ?붿껌</button>
+-          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);" data-i18n="mentor_req_done">???붿껌???묒닔?섏뿀?듬땲?? 愿由ъ옄 ?뺤씤 ??諛섏쁺?⑸땲??</p>
++          <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">硫섑넗 ?깅줉
++            ?붿껌</button>
++          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);"
++            data-i18n="mentor_req_done">???붿껌???묒닔?섏뿀?듬땲?? 愿由ъ옄 ?뺤씤 ??諛섏쁺?⑸땲??</p>
+         </div>
+ 
+         <!-- ?⑥껜??誘몃벑濡????깅줉 踰꾪듉 -->
+@@ -318,17 +828,18 @@
+           </p>
+           <label class="field">
+             <span><span data-i18n="label_mentor_addr_field">硫섑넗 吏媛?二쇱냼</span> <em class="req">*</em></span>
+-            <input type="text" id="mentorAddrInput" maxlength="42"
+-              placeholder="0x..." style="font-family:monospace;" />
++            <input type="text" id="mentorAddrInput" maxlength="42" placeholder="0x..." style="font-family:monospace;" />
+           </label>
+-          <button class="btn btn--primary" id="btnRegisterOnChain" type="button" data-i18n="btn_register_onchain">?⑥껜???깅줉</button>
++          <button class="btn btn--primary" id="btnRegisterOnChain" type="button" data-i18n="btn_register_onchain">?⑥껜??+            ?깅줉</button>
+         </div>
+       </section>
+ 
+       <!-- 媛쒖씤 吏媛?HEX ?댁껜 (?덈꺼 4 ?댁긽) -->
+       <section class="panel mp-section collapsible is-collapsed" id="hexTransferSection" style="display:none;">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title" data-i18n="section_hex_transfer">HEX 媛쒖씤 吏媛??댁껜 <span style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
++          <h2 class="mp-section-title" data-i18n="section_hex_transfer">HEX 媛쒖씤 吏媛??댁껜 <span
++              style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
+         </div>
+         <p class="hint" style="margin-bottom:12px;">
+           ?섑긽 吏媛묒쓽 HEX瑜??몃? 媛쒖씤 吏媛묒쑝濡?吏곸젒 ?꾩넚?⑸땲??<br>
+@@ -337,13 +848,11 @@
+         <form id="hexTransferForm" class="form" style="margin-top:0;">
+           <label class="field">
+             <span><span data-i18n="label_to_wallet">?섎졊 吏媛?二쇱냼</span> <em class="req">*</em></span>
+-            <input type="text" id="hexTransferTo" maxlength="42"
+-              placeholder="0x..." style="font-family:monospace;" />
++            <input type="text" id="hexTransferTo" maxlength="42" placeholder="0x..." style="font-family:monospace;" />
+           </label>
+           <label class="field">
+             <span data-i18n="label_transfer_amt">?댁껜 ?섎웾 (HEX)</span>
+-            <input type="number" id="hexTransferAmount" min="0" step="any"
+-              placeholder="鍮꾩썙 ?볦쑝硫??꾩븸 ?댁껜?? />
++            <input type="number" id="hexTransferAmount" min="0" step="any" placeholder="鍮꾩썙 ?볦쑝硫??꾩븸 ?댁껜?? />
+           </label>
+           <div class="mp-kv" style="margin-bottom:10px;">
+             <span class="k">蹂댁쑀 HEX</span>
+@@ -364,14 +873,19 @@
+ 
+         <!-- ?낃툑 怨꾩쥖 ?덈궡 (??긽 ?쒖떆) -->
+         <div class="mp-result-box" style="margin-bottom:14px;">
+-          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:var(--accent);" data-i18n="label_kr_account">?눖?눟 ?쒓뎅 怨꾩쥖 (KRW ?낃툑)</div>
++          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:var(--accent);"
++            data-i18n="label_kr_account">?눖?눟 ?쒓뎅 怨꾩쥖 (KRW ?낃툑)</div>
+           <div class="mp-kv"><span class="k" data-i18n="label_bank">???/span><span class="v">?섎굹???/span></div>
+-          <div class="mp-kv"><span class="k" data-i18n="label_account_no">怨꾩쥖踰덊샇</span><span class="v mono">381. 19. 03076. 2</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_account_no">怨꾩쥖踰덊샇</span><span class="v mono">381. 19.
++              03076. 2</span></div>
+           <div class="mp-kv"><span class="k" data-i18n="label_account_holder">?덇툑二?/span><span class="v">?ㅼ슜吏?/span></div>
+-          <div style="margin:10px 0 8px; font-size:0.82em; font-weight:700; color:#0ea5e9;" data-i18n="label_vn_account">?눤?눛 踰좏듃??怨꾩쥖 (VND ?낃툑)</div>
++          <div style="margin:10px 0 8px; font-size:0.82em; font-weight:700; color:#0ea5e9;"
++            data-i18n="label_vn_account">?눤?눛 踰좏듃??怨꾩쥖 (VND ?낃툑)</div>
+           <div class="mp-kv"><span class="k" data-i18n="label_bank">???/span><span class="v">TECHCOM BANK</span></div>
+-          <div class="mp-kv"><span class="k" data-i18n="label_account_no">怨꾩쥖踰덊샇</span><span class="v mono">19037852768012</span></div>
+-          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">?덇툑二?/span><span class="v">?좏뿄泥?(SHIN HEON CHEOL)</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_account_no">怨꾩쥖踰덊샇</span><span
++              class="v mono">19037852768012</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">?덇툑二?/span><span class="v">?좏뿄泥?(SHIN HEON
++              CHEOL)</span></div>
+         </div>
+ 
+         <form id="depositForm" class="form" style="margin-top:0;">
+@@ -390,8 +904,10 @@
+ 
+         <!-- 異⑹쟾 ?붿껌 寃곌낵 -->
+         <div id="depositResult" class="mp-result-box" style="display:none;">
+-          <div class="mp-kv"><span class="k" data-i18n="label_ref_code">李몄“肄붾뱶</span><span class="v mono" id="drRefCode">-</span></div>
+-          <div style="margin:10px 0 6px; font-size:0.82em; font-weight:700; color:var(--accent);">?눖?눟 ?쒓뎅 怨꾩쥖 (KRW ?낃툑)</div>
++          <div class="mp-kv"><span class="k" data-i18n="label_ref_code">李몄“肄붾뱶</span><span class="v mono"
++              id="drRefCode">-</span></div>
++          <div style="margin:10px 0 6px; font-size:0.82em; font-weight:700; color:var(--accent);">?눖?눟 ?쒓뎅 怨꾩쥖 (KRW ?낃툑)
++          </div>
+           <div class="mp-kv"><span class="k">?낃툑 ???/span><span class="v" id="drBank">-</span></div>
+           <div class="mp-kv"><span class="k">怨꾩쥖踰덊샇</span><span class="v mono" id="drAccount">-</span></div>
+           <div class="mp-kv"><span class="k">?덇툑二?/span><span class="v" id="drHolder">-</span></div>
+@@ -423,22 +939,28 @@
+             </select>
+           </label>
+           <div class="field">
+-            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;" data-i18n="label_currency">?듯솕 ?좏깮</span>
++            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;"
++              data-i18n="label_currency">?듯솕 ?좏깮</span>
+             <div class="curr-seg">
+-              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyVND" value="VND" checked /><span>?눤?눛 VND (??</span></label>
+-              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyKRW" value="KRW" /><span>?눖?눟 KRW (??</span></label>
++              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyVND" value="VND"
++                  checked /><span>?눤?눛 VND (??</span></label>
++              <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyKRW"
++                  value="KRW" /><span>?눖?눟 KRW (??</span></label>
+             </div>
+             <input type="hidden" id="merchantPayCurrency" value="VND" />
+           </div>
+           <label class="field">
+-            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_vnd">寃곗젣 湲덉븸 (??VND) <em class="req">*</em></span>
++            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_vnd">寃곗젣 湲덉븸 (??VND) <em
++                class="req">*</em></span>
+             <input type="number" id="merchantPayAmount" min="10000" step="1000" placeholder="?? 200000" />
+           </label>
+           <div class="actions">
+             <button class="btn btn--primary" type="submit" id="btnMerchantPay" data-i18n="btn_pay">寃곗젣</button>
+           </div>
+         </form>
+-        <div id="qrResultState" style="display:none;margin:8px 0;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;font-size:0.88rem;color:#166534;"></div>
++        <div id="qrResultState"
++          style="display:none;margin:8px 0;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;font-size:0.88rem;color:#166534;">
++        </div>
+         <div id="merchantPayResult" class="mp-result-box" style="display:none;"></div>
+       </section>
+ 
+@@ -460,16 +982,20 @@
+         </div>
+         <dl style="margin:0; display:grid; gap:10px;">
+           <div>
+-            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">硫섑넗 ?깅줉 (?꾩닔)</dt>
+-            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">?⑥껜???깅줉 ??硫섑넗 二쇱냼瑜??낅젰?댁빞 ?⑸땲?? 硫섑넗 ?놁씠 ?깅줉?섎㈃ 湲곕낯 硫섑넗濡??곌껐?섏뼱 寃쏀뿕移샕룻룷?명듃 ?곷┰???섏? ?딆쓣 ???덉뒿?덈떎.</dd>
++            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">硫섑넗 ?깅줉 (?꾩닔)
++            </dt>
++            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">?⑥껜???깅줉 ??硫섑넗 二쇱냼瑜??낅젰?댁빞 ?⑸땲?? 硫섑넗 ?놁씠 ?깅줉?섎㈃ 湲곕낯
++              硫섑넗濡??곌껐?섏뼱 寃쏀뿕移샕룻룷?명듃 ?곷┰???섏? ?딆쓣 ???덉뒿?덈떎.</dd>
+           </div>
+           <div>
+             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">?ъ씤?몃??</dt>
+-            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">???섏쐞 ?뚯썝??媛留뱀젏?먯꽌 寃곗젣?????섏닔猷??쇰?媛 硫섑넗(???먭쾶 ?ъ씤?몃줈 ?곷┰?⑸땲?? ?ъ씤?몃뒗 HEX ?좏겙?쇰줈 ?꾪솚?????덉뒿?덈떎.</dd>
++            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">???섏쐞 ?뚯썝??媛留뱀젏?먯꽌 寃곗젣?????섏닔猷??쇰?媛 硫섑넗(???먭쾶
++              ?ъ씤?몃줈 ?곷┰?⑸땲?? ?ъ씤?몃뒗 HEX ?좏겙?쇰줈 ?꾪솚?????덉뒿?덈떎.</dd>
+           </div>
+           <div>
+             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">寃쏀뿕移?(EXP)</dt>
+-            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">?닿? 媛留뱀젏?먯꽌 寃곗젣?????섏닔猷뚯뿉 鍮꾨???寃쏀뿕移섍? ?볦엯?덈떎. 寃쏀뿕移섎줈 ?덈꺼?낆쓣 ?????덉뒿?덈떎.</dd>
++            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">?닿? 媛留뱀젏?먯꽌 寃곗젣?????섏닔猷뚯뿉 鍮꾨???寃쏀뿕移섍? ?볦엯?덈떎. 寃쏀뿕移섎줈
++              ?덈꺼?낆쓣 ?????덉뒿?덈떎.</dd>
+           </div>
+           <div>
+             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">?덈꺼 & ?덈꺼??/dt>
+@@ -477,7 +1003,8 @@
+               ?덈꺼???믪쓣?섎줉 ?ъ씤????HEX ?꾪솚 ????留롮씠 諛쏆뒿?덈떎.<br>
+               <strong>?꾪솚??= ?ъ씤??횞 ?덈꺼 첨 10</strong><br>
+               ?덈꺼???꾩슂 EXP = ?꾩옱?덈꺼짼 횞 10,000<br>
+-              <span style="font-size:0.9em;">Lv.1??: 10,000 EXP &nbsp;쨌&nbsp; Lv.2??: 40,000 EXP &nbsp;쨌&nbsp; Lv.3??: 90,000 EXP</span>
++              <span style="font-size:0.9em;">Lv.1??: 10,000 EXP &nbsp;쨌&nbsp; Lv.2??: 40,000 EXP &nbsp;쨌&nbsp; Lv.3??:
++                90,000 EXP</span>
+             </dd>
+           </div>
+         </dl>
+@@ -519,13 +1046,13 @@
+           </p>
+           <div id="referralQrWrap" style="margin:0 auto 14px;width:fit-content;"></div>
+           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+-            <input id="referralLink" type="text" readonly
+-              style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border,#e5e7eb);
++            <input id="referralLink" type="text" readonly style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border,#e5e7eb);
+                      border-radius:8px;font-size:0.78rem;background:var(--surface2,#f9fafb);
+                      color:var(--muted,#6b7280);cursor:text;" />
+             <button id="btnCopyReferral" class="btn btn--sm btn--primary" type="button">?뵕 留곹겕 蹂듭궗</button>
+           </div>
+-          <p id="referralCopyMsg" style="font-size:0.8rem;color:var(--accent,#7c3aed);min-height:18px;text-align:center;"></p>
++          <p id="referralCopyMsg"
++            style="font-size:0.8rem;color:var(--accent,#7c3aed);min-height:18px;text-align:center;"></p>
+         </div>
+       </section>
+ 
+@@ -536,7 +1063,8 @@
+           <button class="btn btn--sm" id="btnRefreshJackpotHist" type="button" data-i18n="btn_refresh">?덈줈怨좎묠</button>
+         </div>
+         <!-- ??뙚 ?듦퀎 移대뱶 -->
+-        <div id="jackpotStatRow" class="mp-kv-grid" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
++        <div id="jackpotStatRow" class="mp-kv-grid"
++          style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+           <div class="mp-stat-card">
+             <div class="mp-stat-label" data-i18n="jackpot_stat_total">?꾩쟻 ??뙚 ?뱀꺼</div>
+             <div class="mp-stat-value" id="jackpotTotalHex">-</div>
+@@ -603,44 +1131,67 @@
+ 
+           <!-- ??二쇱냼 QR 踰꾪듉 + ?⑤꼸 -->
+           <div style="margin-bottom:12px;">
+-            <button id="btnVwShowQr" type="button" style="width:100%;padding:11px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.92rem;font-weight:600;cursor:pointer;">
++            <button id="btnVwShowQr" type="button"
++              style="width:100%;padding:11px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.92rem;font-weight:600;cursor:pointer;">
+               <span data-i18n="btn_show_qr">?벒 ???섑긽 吏媛?二쇱냼 QR 蹂닿린</span>
+             </button>
+           </div>
+-          <div id="vwMyQrPanel" style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-bottom:14px;text-align:center;">
+-            <div style="font-weight:700;font-size:0.9rem;margin-bottom:10px;" data-i18n="voucher_wallet_title">???섑긽 吏媛?二쇱냼 (?곷?諛⑹뿉寃?蹂댁뿬二쇱꽭??</div>
++          <div id="vwMyQrPanel"
++            style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-bottom:14px;text-align:center;">
++            <div style="font-weight:700;font-size:0.9rem;margin-bottom:10px;" data-i18n="voucher_wallet_title">???섑긽 吏媛?+              二쇱냼 (?곷?諛⑹뿉寃?蹂댁뿬二쇱꽭??</div>
+             <canvas id="vwQrCanvas" style="display:block;margin:0 auto 10px;border-radius:8px;"></canvas>
+-            <div id="vwWalletAddr" style="font-size:0.72rem;color:var(--muted,#6b7280);word-break:break-all;margin-bottom:10px;font-family:monospace;"></div>
++            <div id="vwWalletAddr"
++              style="font-size:0.72rem;color:var(--muted,#6b7280);word-break:break-all;margin-bottom:10px;font-family:monospace;">
++            </div>
+             <div style="display:flex;gap:8px;justify-content:center;">
+-              <button id="btnVwCopyAddr" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;" data-i18n="btn_copy_addr">二쇱냼 蹂듭궗</button>
+-              <button id="btnVwHideQr" type="button" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;" data-i18n="btn_hide_qr">?リ린</button>
++              <button id="btnVwCopyAddr"
++                style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;"
++                data-i18n="btn_copy_addr">二쇱냼 蹂듭궗</button>
++              <button id="btnVwHideQr" type="button"
++                style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;"
++                data-i18n="btn_hide_qr">?リ린</button>
+             </div>
+           </div>
+ 
+           <!-- 諛붿슦泥?移대뱶 洹몃━??-->
+-          <div id="voucherCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:4px;"></div>
+-          <p id="voucherCardEmpty" class="hint" style="display:none;text-align:center;padding:16px 0;" data-i18n="voucher_empty">蹂댁쑀??諛붿슦泥섍? ?놁뒿?덈떎.</p>
+-          <p id="voucherCardLoading" class="hint" style="text-align:center;padding:12px 0;" data-i18n="voucher_loading">遺덈윭?ㅻ뒗 以?..</p>
++          <div id="voucherCardGrid"
++            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:4px;">
++          </div>
++          <p id="voucherCardEmpty" class="hint" style="display:none;text-align:center;padding:16px 0;"
++            data-i18n="voucher_empty">蹂댁쑀??諛붿슦泥섍? ?놁뒿?덈떎.</p>
++          <p id="voucherCardLoading" class="hint" style="text-align:center;padding:12px 0;" data-i18n="voucher_loading">
++            遺덈윭?ㅻ뒗 以?..</p>
+ 
+           <!-- ?댁껜 紐⑤떖 (inline) -->
+-          <div id="voucherTransferPanel" style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-top:14px;">
++          <div id="voucherTransferPanel"
++            style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-top:14px;">
+             <div style="font-weight:700;margin-bottom:10px;" data-i18n="transfer_title">諛붿슦泥??댁껜</div>
+             <div style="font-size:0.83rem;color:var(--muted,#6b7280);margin-bottom:8px;">
+               諛붿슦泥?<strong id="vtVoucherId"></strong>??瑜? ?댁껜??吏媛?二쇱냼瑜??낅젰?섏꽭??
+             </div>
+             <div style="display:flex;gap:6px;margin-bottom:8px;">
+-              <input type="text" id="vtToAddress" placeholder="0x..." style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.88rem;" />
+-              <button id="btnVwQrScan" type="button" style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:0.82rem;cursor:pointer;white-space:nowrap;" data-i18n="btn_qr_scan_addr">?벜 ?ㅼ틪</button>
++              <input type="text" id="vtToAddress" placeholder="0x..."
++                style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.88rem;" />
++              <button id="btnVwQrScan" type="button"
++                style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:0.82rem;cursor:pointer;white-space:nowrap;"
++                data-i18n="btn_qr_scan_addr">?벜 ?ㅼ틪</button>
+             </div>
+             <div style="display:flex;gap:8px;">
+-              <button id="btnVtConfirm" style="flex:1;padding:9px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;" data-i18n="btn_transfer_confirm">?댁껜 ?뺤씤</button>
+-              <button id="btnVtCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;" data-i18n="btn_cancel">痍⑥냼</button>
++              <button id="btnVtConfirm"
++                style="flex:1;padding:9px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;"
++                data-i18n="btn_transfer_confirm">?댁껜 ?뺤씤</button>
++              <button id="btnVtCancel"
++                style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;"
++                data-i18n="btn_cancel">痍⑥냼</button>
++            </div>
++            <div id="vtStatus" style="font-size:0.82rem;margin-top:6px;min-height:18px;color:var(--muted,#6b7280);">
+             </div>
+-            <div id="vtStatus" style="font-size:0.82rem;margin-top:6px;min-height:18px;color:var(--muted,#6b7280);"></div>
+           </div>
+ 
+           <!-- ?뚭컖 ?뺤씤 ?⑤꼸 (inline) -->
+-          <div id="voucherBurnPanel" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin-top:14px;">
++          <div id="voucherBurnPanel"
++            style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin-top:14px;">
+             <div style="font-weight:700;margin-bottom:8px;" data-i18n="burn_title">?뵦 諛붿슦泥??뚭컖</div>
+             <div style="font-size:0.83rem;color:#92400e;margin-bottom:12px;" id="vbInfo"></div>
+ 
+@@ -649,25 +1200,34 @@
+               <div style="font-size:0.8rem;color:#78350f;margin-bottom:8px;font-weight:600;">泥섎━ 吏꾪뻾 以?..</div>
+               <div style="display:flex;flex-direction:column;gap:6px;">
+                 <div id="vbStep1" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep1Icon" style="font-size:1rem;">??/span> <span id="vbStep1Label" data-i18n="burn_step1">?뚭컖 ?붿껌 ?꾩넚 以?/span>
++                  <span id="vbStep1Icon" style="font-size:1rem;">??/span> <span id="vbStep1Label"
++                    data-i18n="burn_step1">?뚭컖 ?붿껌 ?꾩넚 以?/span>
+                 </div>
+                 <div id="vbStep2" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep2Icon" style="font-size:1rem;">??/span> <span id="vbStep2Label" data-i18n="burn_step2_onchain">?ㅻ쭏??而⑦듃?숉듃 ?ㅽ뻾 以?/span>
++                  <span id="vbStep2Icon" style="font-size:1rem;">??/span> <span id="vbStep2Label"
++                    data-i18n="burn_step2_onchain">?ㅻ쭏??而⑦듃?숉듃 ?ㅽ뻾 以?/span>
+                 </div>
+                 <div id="vbStep3" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep3Icon" style="font-size:1rem;">??/span> <span id="vbStep3Label" data-i18n="burn_step3_onchain">HEX ?섍툒 泥섎━ 以?/span>
++                  <span id="vbStep3Icon" style="font-size:1rem;">??/span> <span id="vbStep3Label"
++                    data-i18n="burn_step3_onchain">HEX ?섍툒 泥섎━ 以?/span>
+                 </div>
+                 <div id="vbStep4" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep4Icon" style="font-size:1rem;">??/span> <span id="vbStep4Label" data-i18n="burn_step4">?꾨즺 ?뺤씤</span>
++                  <span id="vbStep4Icon" style="font-size:1rem;">??/span> <span id="vbStep4Label"
++                    data-i18n="burn_step4">?꾨즺 ?뺤씤</span>
+                 </div>
+               </div>
+             </div>
+ 
+             <div id="vbButtons" style="display:flex;gap:8px;">
+-              <button id="btnVbConfirm" style="flex:1;padding:9px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;" data-i18n="burn_confirm_btn">?뚭컖 ?뺤씤</button>
+-              <button id="btnVbCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;" data-i18n="btn_cancel">痍⑥냼</button>
++              <button id="btnVbConfirm"
++                style="flex:1;padding:9px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;"
++                data-i18n="burn_confirm_btn">?뚭컖 ?뺤씤</button>
++              <button id="btnVbCancel"
++                style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;"
++                data-i18n="btn_cancel">痍⑥냼</button>
+             </div>
+-            <div id="vbStatus" style="font-size:0.84rem;margin-top:10px;min-height:20px;font-weight:500;text-align:center;"></div>
++            <div id="vbStatus"
++              style="font-size:0.84rem;margin-top:10px;min-height:20px;font-weight:500;text-align:center;"></div>
+           </div>
+ 
+         </div>
+@@ -689,12 +1249,10 @@
+         <div class="qr-scan-line"></div>
+       </div>
+     </div>
+-    <p id="qrScanState"
+-       style="color:#fff; font-size:0.95rem; margin:16px 16px 0; text-align:center; max-width:320px;">
++    <p id="qrScanState" style="color:#fff; font-size:0.95rem; margin:16px 16px 0; text-align:center; max-width:320px;">
+       <span data-i18n="qr_hint">QR 肄붾뱶瑜??ш컖???덉뿉 留욎떠二쇱꽭??/span>
+     </p>
+-    <button id="btnCloseQr" type="button"
+-            style="margin-top:20px; padding:11px 36px; background:#7c3aed; color:#fff;
++    <button id="btnCloseQr" type="button" style="margin-top:20px; padding:11px 36px; background:#7c3aed; color:#fff;
+                    border:none; border-radius:10px; font-size:1rem; cursor:pointer; font-weight:600;">
+       <span data-i18n="btn_hide_qr">?リ린</span>
+     </button>
+@@ -704,4 +1262,5 @@
+   <script type="module" src="/assets/js/header-auth.js"></script>
+   <script type="module" src="/assets/js/pages/mypage.js"></script>
+ </body>
+-</html>
++
++</html>
+\ No newline at end of file
+
+commit 8d6efcd6fbcaf668bc2288ffa965cb607018cdf1
+Author: daguri <daguri75@gmail.com>
+Date:   Thu Jun 11 20:18:57 2026 +0700
+
+    fix: ?붾젅洹몃옩 Mini App ?먮룞 濡쒓렇??+ ?좎? 留덉빱 ??젣 湲곕뒫
+    
+    - firebase-init.js: Telegram context 媛먯? ??browserSessionPersistence ?꾪솚
+      ??IndexedDB async write race ???sessionStorage ?ъ슜?쇰줈 telegram.html?뭢erchants.html 由щ떎?대젆?????몄쬆 ?좎?
+    - merchants.js: Telegram ?먮룞 濡쒓렇???ㅽ뙣 ??踰꾪듉???먮윭 ?쒖떆 (silent failure ?쒓굅)
+    - user-place.js: ?좎? 留덉빱 ??젣 踰꾪듉(btnMarkerFormDelete) ?몃뱾??+ displayName ?몄쭛 濡쒖쭅 媛쒖꽑
+    - functions/handlers/userPlace.js: deleteUserMarker CF ?몃뱾??異붽?
+    - functions/index.js: deleteUserMarker / deleteUserMarkerAdmin exports 異붽?
+    - exchange.html + exchange.hexgp.js + coinExchange.js: HEX?봆P 援먰솚 ?섏씠吏 ?좉퇋
+    - mypage.html/mypage.js: 留덉씠?섏씠吏 ?뚰룺 媛쒖꽑
+    - bot.py: 遊??낅뜲?댄듃
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/mypage.html b/mypage.html
+index 8e075b1..e036504 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -357,7 +357,7 @@
+       </section>
+ 
+       <!-- ?먰솕 異⑹쟾 -->
+-      <section class="panel mp-section collapsible is-collapsed">
++      <section class="panel mp-section collapsible is-collapsed" id="hex-topup">
+         <div class="mp-section-head">
+           <h2 class="mp-section-title" data-i18n="section_deposit">HEX 異⑹쟾 (?먰솕)</h2>
+         </div>
+
+commit 85d513c823a45f7a39d82b02a81ad5eb1291834f
+Author: daguri <daguri75@gmail.com>
+Date:   Sun May 31 09:37:19 2026 +0700
+
+    feat: 寃뚯엫 寃쏀뿕移??⑥껜??諛곗튂 ?숆린????媛??理쒖냼???ㅺ퀎
+    
+    - expSync.js: ?덈꺼???뚮옒洹?媛먯? ??adminSetLevel() 1tx (?덈꺼 ?щ윭踰??щ젮??1tx)
+    - index.js: scheduledExpSync(6?쒓컙) + requestOnChainLevelSync(?섎룞, 24h 荑⑤떎??
+    - merchants.battle.js: onPlayerLevelUp/addPlayerGsExp ??pendingOnChainSync ?뚮옒洹?湲곕줉
+    - mypage.html/js: ?숆린???곹깭 ?쒖떆(?湲곗쨷/?꾨즺) + ?섎룞 ?숆린??踰꾪듉
+
+diff --git a/mypage.html b/mypage.html
+index d541d63..8e075b1 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -245,6 +245,11 @@
+               <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">?덈꺼??媛?? ??/button>
+             </span>
+           </div>
++          <!-- ?⑥껜??寃쏀뿕移??숆린???곹깭 -->
++          <div class="mp-kv hidden" id="onChainSyncRow" style="align-items:flex-start;padding:4px 0 8px;">
++            <span class="k" style="font-size:12px;color:#6b7280;">?⑥껜?????/span>
++            <span class="v" id="onChainSyncStatus" style="flex:1;"></span>
++          </div>
+           <div class="mp-kv" id="pointRow" style="display:none;">
+             <span class="k" data-i18n="label_point">?ъ씤??hex濡?蹂寃쎄???</span>
+             <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+
+commit 50a32c7841244188827c687f37b61bfeb58d500e
+Author: daguri <daguri75@gmail.com>
+Date:   Fri May 29 16:19:38 2026 +0700
+
+    feat: mypage 移쒓뎄 珥덈??섍린 ??媛쒖씤 QR쨌珥덈?留곹겕 ?앹꽦 (register?mentor=<吏媛묒＜??)
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/mypage.html b/mypage.html
+index 7064f0a..d541d63 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -503,6 +503,27 @@
+         </div>
+       </section>
+ 
++      <!-- 移쒓뎄 珥덈??섍린 -->
++      <section class="panel mp-section collapsible is-collapsed" id="referralSection" style="display:none;">
++        <div class="mp-section-head">
++          <h2 class="mp-section-title">?뫁 移쒓뎄 珥덈??섍린</h2>
++        </div>
++        <div style="padding:4px 0 16px;">
++          <p class="hint" style="margin-bottom:14px;line-height:1.6;">
++            ?꾨옒 QR肄붾뱶 ?먮뒗 珥덈? 留곹겕濡?媛?낇븯硫??먮룞?쇰줈 <strong>?섏쓽 硫섑떚</strong>媛 ?⑸땲??
++          </p>
++          <div id="referralQrWrap" style="margin:0 auto 14px;width:fit-content;"></div>
++          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
++            <input id="referralLink" type="text" readonly
++              style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border,#e5e7eb);
++                     border-radius:8px;font-size:0.78rem;background:var(--surface2,#f9fafb);
++                     color:var(--muted,#6b7280);cursor:text;" />
++            <button id="btnCopyReferral" class="btn btn--sm btn--primary" type="button">?뵕 留곹겕 蹂듭궗</button>
++          </div>
++          <p id="referralCopyMsg" style="font-size:0.8rem;color:var(--accent,#7c3aed);min-height:18px;text-align:center;"></p>
++        </div>
++      </section>
++
+       <!-- ??뙚 ?뱀꺼 ?댁뿭 -->
+       <section class="panel mp-section collapsible is-collapsed" id="jackpotHistSection" style="display:none;">
+         <div class="mp-section-head">
+
+commit 8ad60a8a195280ecb7fc3f5de99df07cade62e5c
+Author: daguri <daguri75@gmail.com>
+Date:   Thu May 28 11:36:34 2026 +0700
+
+    2026052801
+
+diff --git a/mypage.html b/mypage.html
+index 613ac01..7064f0a 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -552,6 +552,19 @@
+       </section>
+ 
+ 
++      <!-- CoopMall 援щℓ ?댁뿭 -->
++      <section class="panel mp-section collapsible is-collapsed" id="coopOrderSection" style="display:none;">
++        <div class="mp-section-head">
++          <h2 class="mp-section-title">?썚截?CoopMall 援щℓ ?댁뿭</h2>
++          <button class="btn btn--sm" id="btnRefreshCoopOrders" type="button">?덈줈怨좎묠</button>
++        </div>
++        <div class="mp-section-body">
++          <div id="coopOrderList" class="mp-table-wrap">
++            <p class="hint muted">遺덈윭?ㅻ뒗 以?..</p>
++          </div>
++        </div>
++      </section>
++
+       <!-- ?????????????????????????????????????????????????????????????????
+            ??諛붿슦泥?吏媛?            ????????????????????????????????????????????????????????????????? -->
+
+commit 0fbdd2baefcf2aecf5bab2acaa27a09d544c70cc
+Author: daguri <daguri75@gmail.com>
+Date:   Mon May 25 09:40:19 2026 +0700
+
+    feat: ?몄뼱 援?린 踰꾪듉 ?ㅻ뜑???듯빀 ??紐⑤뱺 ?섏씠吏 怨듭쑀 + town_lang ???듭씪
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/mypage.html b/mypage.html
+index d83459f..613ac01 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -139,11 +139,6 @@
+     .jp-hist-empty{text-align:center;padding:32px 16px;color:#a78bfa;font-size:0.88rem;}
+     .jp-onchain-badge{display:inline-block;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:99px;background:#ede9fe;color:#5b21b6;margin-left:4px;vertical-align:middle;}
+ 
+-    /* ?? ?몄뼱 ?꾪솚 ?? */
+-    .mp-lang-switcher{display:flex;gap:6px;justify-content:flex-end;padding:8px 16px 0;}
+-    .mp-lang-btn{padding:3px 6px;border:1px solid var(--border,#e5e7eb);border-radius:8px;background:transparent;font-size:1.3rem;line-height:1;cursor:pointer;transition:all .15s;}
+-    .mp-lang-btn:hover{background:var(--accent-light,#ede9fe);border-color:var(--accent,#7c3aed);transform:scale(1.15);}
+-    .mp-lang-btn.active{border-color:var(--accent,#7c3aed);box-shadow:0 0 6px rgba(124,58,237,.45);transform:scale(1.1);}
+   </style>
+ </head>
+ <body>
+@@ -160,8 +155,6 @@
+     </div>
+   </div>
+ 
+-  <div id="mpLangSwitcher" class="mp-lang-switcher"></div>
+-
+   <main class="page">
+ 
+     <!-- ?? 濡쒓렇???꾩슂 ?? -->
+
+commit 857c0fbb0f5c81eca1446a5f8a7f229d724b41dc
+Author: daguri <daguri75@gmail.com>
+Date:   Mon May 25 09:32:38 2026 +0700
+
+    style: index/mypage ?몄뼱 踰꾪듉??援?린 ?대え吏濡?援먯껜 (?눤?눛/?눐?눉/?눖?눟)
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/mypage.html b/mypage.html
+index 404e65f..d83459f 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -141,8 +141,9 @@
+ 
+     /* ?? ?몄뼱 ?꾪솚 ?? */
+     .mp-lang-switcher{display:flex;gap:6px;justify-content:flex-end;padding:8px 16px 0;}
+-    .mp-lang-btn{padding:4px 12px;border:1px solid var(--border,#e5e7eb);border-radius:20px;background:transparent;font-size:0.78rem;font-weight:600;cursor:pointer;color:var(--muted,#6b7280);transition:all .15s;}
+-    .mp-lang-btn.active{background:var(--accent,#7c3aed);color:#fff;border-color:var(--accent,#7c3aed);}
++    .mp-lang-btn{padding:3px 6px;border:1px solid var(--border,#e5e7eb);border-radius:8px;background:transparent;font-size:1.3rem;line-height:1;cursor:pointer;transition:all .15s;}
++    .mp-lang-btn:hover{background:var(--accent-light,#ede9fe);border-color:var(--accent,#7c3aed);transform:scale(1.15);}
++    .mp-lang-btn.active{border-color:var(--accent,#7c3aed);box-shadow:0 0 6px rgba(124,58,237,.45);transform:scale(1.1);}
+   </style>
+ </head>
+ <body>
+
+commit 9dc10433f215f0154a3116d047b1b7681c1a5f5b
+Author: daguri <daguri75@gmail.com>
+Date:   Thu May 21 09:43:04 2026 +0700
+
+    feat: mypage ?꾩껜 ko/en/vi 3媛쒓뎅??i18n) 吏??    
+    - mypage.i18n.js ?좉퇋 ?앹꽦: _t(), initLang(), renderLangSwitcher() ?쒓났
+    - mypage.js ?꾩껜 ?쒓뎅???섎뱶肄붾뵫 ??_t() ?ㅻ줈 援먯껜
+      - 嫄곕옒?댁뿭 TX_CONFIG labelKey 蹂??      - ??뙚/?꾩씠??鍮④컙?승룸쭏踰뺤빟쨌遺?쒓텒) ?쒖떆
+      - ?붿빟 移대뱶, MI stat, 諛붿슦泥?移대뱶, ?뚭컖 ?④퀎 ?덉씠釉?      - QR ?ㅼ틪 ?곹깭 硫붿떆吏, 移대찓???ㅻ쪟, 媛留뱀젏 寃곗젣 寃곌낵
+      - ?듯솕 ?⑥쐞(????, ?섏닔猷??쒖떆, ??뙚 ?몃씪???덉씠釉?    - mypage.html ?몄뼱 ?ㅼ쐞泥?UI 異붽?
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/mypage.html b/mypage.html
+index 8d17fd7..404e65f 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -138,6 +138,11 @@
+     .jp-hist-pts{font-size:0.95rem;font-weight:800;color:#6d28d9;text-align:right;white-space:nowrap;}
+     .jp-hist-empty{text-align:center;padding:32px 16px;color:#a78bfa;font-size:0.88rem;}
+     .jp-onchain-badge{display:inline-block;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:99px;background:#ede9fe;color:#5b21b6;margin-left:4px;vertical-align:middle;}
++
++    /* ?? ?몄뼱 ?꾪솚 ?? */
++    .mp-lang-switcher{display:flex;gap:6px;justify-content:flex-end;padding:8px 16px 0;}
++    .mp-lang-btn{padding:4px 12px;border:1px solid var(--border,#e5e7eb);border-radius:20px;background:transparent;font-size:0.78rem;font-weight:600;cursor:pointer;color:var(--muted,#6b7280);transition:all .15s;}
++    .mp-lang-btn.active{background:var(--accent,#7c3aed);color:#fff;border-color:var(--accent,#7c3aed);}
+   </style>
+ </head>
+ <body>
+@@ -150,17 +155,19 @@
+       <div class="jm-title" id="jmTitle">JACKPOT!!</div>
+       <div class="jm-desc" id="jmDesc"></div>
+       <div class="jm-items" id="jmItems"></div>
+-      <button class="jm-close" id="jmCloseBtn">?뺤씤</button>
++      <button class="jm-close" id="jmCloseBtn" data-i18n="jm_confirm">?뺤씤</button>
+     </div>
+   </div>
+ 
++  <div id="mpLangSwitcher" class="mp-lang-switcher"></div>
++
+   <main class="page">
+ 
+     <!-- ?? 濡쒓렇???꾩슂 ?? -->
+     <section class="panel" id="needLoginPanel" style="display:none;">
+-      <h1 class="title">留덉씠?섏씠吏</h1>
+-      <p class="desc">濡쒓렇?몄씠 ?꾩슂?⑸땲??</p>
+-      <button class="btn btn--primary" id="btnLoginPage" type="button">援ш? 濡쒓렇??/button>
++      <h1 class="title" data-i18n="page_title">留덉씠?섏씠吏</h1>
++      <p class="desc" data-i18n="need_login_desc">濡쒓렇?몄씠 ?꾩슂?⑸땲??</p>
++      <button class="btn btn--primary" id="btnLoginPage" type="button" data-i18n="btn_login">援ш? 濡쒓렇??/button>
+     </section>
+ 
+     <!-- ?? 硫붿씤 肄섑뀗痢??? -->
+@@ -168,11 +175,11 @@
+ 
+       <!-- ?뚯썝媛??誘몄셿猷??덈궡 -->
+       <div id="noProfilePanel" style="display:none;" class="panel mp-section">
+-        <h2 class="mp-section-title">?뚯썝媛?낆씠 ?꾩슂?⑸땲??/h2>
++        <h2 class="mp-section-title" data-i18n="no_profile_title">?뚯썝媛?낆씠 ?꾩슂?⑸땲??/h2>
+         <p class="hint" style="margin:8px 0 16px;">
+           ?섑긽 吏媛??앹꽦 諛??쒕퉬???댁슜???꾪빐 癒쇱? ?뚯썝媛?낆쓣 ?꾨즺??二쇱꽭??
+         </p>
+-        <a href="/register.html" class="btn btn--primary">?뚯썝媛???섎윭 媛湲?/a>
++        <a href="/register.html" class="btn btn--primary" data-i18n="btn_register">?뚯썝媛???섎윭 媛湲?/a>
+       </div>
+ 
+       <!-- 硫섑넗 ?곌껐 ?덈궡 諛곕꼫 -->
+@@ -187,49 +194,49 @@
+       <!-- 湲곕낯 ?뺣낫 -->
+       <section class="panel mp-section collapsible">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">???뺣낫</h2>
+-          <a href="/register.html" class="btn btn--sm">?섏젙</a>
++          <h2 class="mp-section-title" data-i18n="section_profile">???뺣낫</h2>
++          <a href="/register.html" class="btn btn--sm" data-i18n="btn_edit">?섏젙</a>
+         </div>
+         <div class="mp-kv-list" id="profileInfo">
+-          <div class="mp-kv"><span class="k">?대쫫</span><span class="v" id="infoName">-</span></div>
+-          <div class="mp-kv"><span class="k">?대찓??/span><span class="v" id="infoEmail">-</span></div>
+-          <div class="mp-kv"><span class="k">?꾪솕踰덊샇</span><span class="v" id="infoPhone">-</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_name">?대쫫</span><span class="v" id="infoName">-</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_email">?대찓??/span><span class="v" id="infoEmail">-</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_phone">?꾪솕踰덊샇</span><span class="v" id="infoPhone">-</span></div>
+         </div>
+       </section>
+ 
+       <!-- ?섑긽 吏媛?-->
+       <section class="panel mp-section collapsible">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">?섑긽 吏媛?/h2>
++          <h2 class="mp-section-title" data-i18n="section_wallet">?섑긽 吏媛?/h2>
+           <div style="display:flex; gap:6px;">
+-            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;">MetaMask ?곌껐</button>
+-            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;">吏媛??앹꽦</button>
++            <button class="btn btn--sm" id="btnConnectMetaMask" type="button" style="display:none;" data-i18n="btn_metamask">MetaMask ?곌껐</button>
++            <button class="btn btn--sm" id="btnCreateWallet" type="button" style="display:none;" data-i18n="btn_create_wallet">吏媛??앹꽦</button>
+           </div>
+         </div>
+ 
+         <div id="walletInfo">
+           <div class="mp-kv" style="align-items:flex-start;">
+-            <span class="k">吏媛?二쇱냼</span>
++            <span class="k" data-i18n="label_wallet_addr">吏媛?二쇱냼</span>
+             <span class="v" style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
+               <span class="mono" id="walletAddress" style="word-break:break-all; font-size:0.82em; flex:1; min-width:0;">-</span>
+               <button id="btnCopyWallet" type="button" title="二쇱냼 蹂듭궗"
+                 style="display:none; flex-shrink:0; padding:3px 10px; font-size:0.78em;
+                        background:var(--surface,#fff); border:1px solid var(--border,#e5e7eb);
+                        border-radius:20px; cursor:pointer; color:var(--muted,#6b7280); white-space:nowrap;">
+-                ?뱥 蹂듭궗
++                <span data-i18n="btn_copy">?뱥 蹂듭궗</span>
+               </button>
+             </span>
+           </div>
+           <div class="mp-kv">
+-            <span class="k">?⑥껜???깅줉</span>
++            <span class="k" data-i18n="label_onchain">?⑥껜???깅줉</span>
+             <span class="v" id="onChainStatus">議고쉶 以?..</span>
+           </div>
+           <div class="mp-kv" id="levelRow" style="display:none;">
+-            <span class="k">?덈꺼</span>
++            <span class="k" data-i18n="label_level">?덈꺼</span>
+             <span class="v" id="levelDisplay">-</span>
+           </div>
+           <div class="mp-kv" id="expRow" style="display:none;">
+-            <span class="k">寃쏀뿕移?(EXP)</span>
++            <span class="k" data-i18n="label_exp">寃쏀뿕移?(EXP)</span>
+             <span class="v"><span id="expDisplay">-</span></span>
+           </div>
+           <div id="expBarRow" style="display:none; padding:2px 0 10px 0;">
+@@ -241,31 +248,31 @@
+           <div class="mp-kv" id="levelUpRow" style="display:none;">
+             <span class="k"></span>
+             <span class="v">
+-              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button">?덈꺼??媛?? ??/button>
++              <button class="btn btn--primary btn--sm" id="btnLevelUp" type="button" data-i18n="btn_level_up">?덈꺼??媛?? ??/button>
+             </span>
+           </div>
+           <div class="mp-kv" id="pointRow" style="display:none;">
+-            <span class="k">?ъ씤??hex濡?蹂寃쎄???</span>
++            <span class="k" data-i18n="label_point">?ъ씤??hex濡?蹂寃쎄???</span>
+             <span class="v accent" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+               <span id="pointDisplay">-</span>
+-              <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button">HEX濡??꾪솚</button>
++              <button class="btn btn--primary btn--sm" id="btnRedeemPoints" type="button" data-i18n="btn_redeem">HEX濡??꾪솚</button>
+             </span>
+           </div>
+           <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
+           <div class="mp-kv" id="mentorAddrRow" style="display:none;">
+-            <span class="k">?섏쓽 硫섑넗</span>
++            <span class="k" data-i18n="label_my_mentor">?섏쓽 硫섑넗</span>
+             <span class="v mono" id="mentorAddrDisplay" style="font-size:0.78em; word-break:break-all;">-</span>
+           </div>
+           <div class="mp-kv" id="walletHexRow" style="display:none;">
+-            <span class="k">蹂댁쑀 HEX</span>
++            <span class="k" data-i18n="label_hex_balance">蹂댁쑀 HEX</span>
+             <span class="v accent" id="walletHexDisplay">-</span>
+           </div>
+           <div class="mp-kv" id="walletJumpRow" style="display:none;">
+-            <span class="k">蹂댁쑀 JUMP</span>
++            <span class="k" data-i18n="label_jump_balance">蹂댁쑀 JUMP</span>
+             <span class="v accent" id="walletJumpDisplay">-</span>
+           </div>
+           <div class="mp-kv" id="walletJumpStakedRow" style="display:none;">
+-            <span class="k">?ㅽ뀒?댄궧 JUMP</span>
++            <span class="k" data-i18n="label_jump_staked">?ㅽ뀒?댄궧 JUMP</span>
+             <span class="v accent" id="walletJumpStakedDisplay">-</span>
+           </div>
+         </div>
+@@ -283,7 +290,7 @@
+             硫섑넗 吏媛?二쇱냼瑜??낅젰????吏媛묒쓣 ?앹꽦?섏꽭??
+           </p>
+           <label class="field" style="margin-top:10px;">
+-            <span>硫섑넗 吏媛?二쇱냼 <em class="req">*</em></span>
++            <span><span data-i18n="label_mentor_addr_field">硫섑넗 吏媛?二쇱냼</span> <em class="req">*</em></span>
+             <input type="text" id="createWalletMentorAddr" maxlength="42"
+               placeholder="0x..." style="font-family:monospace;" />
+           </label>
+@@ -297,11 +304,11 @@
+             <small class="muted">?붿껌 ?묒닔 ??愿由ъ옄媛 ?뺤씤?섏뿬 ?곌껐???쒕┰?덈떎.</small>
+           </p>
+           <label class="field">
+-            <span>硫섑넗 ?대찓??<em class="req">*</em></span>
++            <span><span data-i18n="label_mentor_email">硫섑넗 ?대찓??/span> <em class="req">*</em></span>
+             <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
+           </label>
+-          <button class="btn btn--primary" id="btnMentorRequest" type="button">硫섑넗 ?깅줉 ?붿껌</button>
+-          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);">???붿껌???묒닔?섏뿀?듬땲?? 愿由ъ옄 ?뺤씤 ??諛섏쁺?⑸땲??</p>
++          <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">硫섑넗 ?깅줉 ?붿껌</button>
++          <p class="hint muted" id="mentorReqDone" style="display:none; color:var(--accent);" data-i18n="mentor_req_done">???붿껌???묒닔?섏뿀?듬땲?? 愿由ъ옄 ?뺤씤 ??諛섏쁺?⑸땲??</p>
+         </div>
+ 
+         <!-- ?⑥껜??誘몃벑濡????깅줉 踰꾪듉 -->
+@@ -311,18 +318,18 @@
+             硫섑넗 吏媛?二쇱냼瑜??낅젰?섎㈃ 寃쏀뿕移?EXP)? ?ъ씤?몃? 諛쏆쓣 ???덉뒿?덈떎.
+           </p>
+           <label class="field">
+-            <span>硫섑넗 吏媛?二쇱냼 <em class="req">*</em></span>
++            <span><span data-i18n="label_mentor_addr_field">硫섑넗 吏媛?二쇱냼</span> <em class="req">*</em></span>
+             <input type="text" id="mentorAddrInput" maxlength="42"
+               placeholder="0x..." style="font-family:monospace;" />
+           </label>
+-          <button class="btn btn--primary" id="btnRegisterOnChain" type="button">?⑥껜???깅줉</button>
++          <button class="btn btn--primary" id="btnRegisterOnChain" type="button" data-i18n="btn_register_onchain">?⑥껜???깅줉</button>
+         </div>
+       </section>
+ 
+       <!-- 媛쒖씤 吏媛?HEX ?댁껜 (?덈꺼 4 ?댁긽) -->
+       <section class="panel mp-section collapsible is-collapsed" id="hexTransferSection" style="display:none;">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">HEX 媛쒖씤 吏媛??댁껜 <span style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
++          <h2 class="mp-section-title" data-i18n="section_hex_transfer">HEX 媛쒖씤 吏媛??댁껜 <span style="font-size:0.78em; color:var(--accent); font-weight:500;">Lv.4+</span></h2>
+         </div>
+         <p class="hint" style="margin-bottom:12px;">
+           ?섑긽 吏媛묒쓽 HEX瑜??몃? 媛쒖씤 吏媛묒쑝濡?吏곸젒 ?꾩넚?⑸땲??<br>
+@@ -330,12 +337,12 @@
+         </p>
+         <form id="hexTransferForm" class="form" style="margin-top:0;">
+           <label class="field">
+-            <span>?섎졊 吏媛?二쇱냼 <em class="req">*</em></span>
++            <span><span data-i18n="label_to_wallet">?섎졊 吏媛?二쇱냼</span> <em class="req">*</em></span>
+             <input type="text" id="hexTransferTo" maxlength="42"
+               placeholder="0x..." style="font-family:monospace;" />
+           </label>
+           <label class="field">
+-            <span>?댁껜 ?섎웾 (HEX)</span>
++            <span data-i18n="label_transfer_amt">?댁껜 ?섎웾 (HEX)</span>
+             <input type="number" id="hexTransferAmount" min="0" step="any"
+               placeholder="鍮꾩썙 ?볦쑝硫??꾩븸 ?댁껜?? />
+           </label>
+@@ -344,7 +351,7 @@
+             <span class="v accent" id="hexTransferBalance">-</span>
+           </div>
+           <div class="actions">
+-            <button class="btn btn--primary" type="submit" id="btnHexTransfer">?댁껜</button>
++            <button class="btn btn--primary" type="submit" id="btnHexTransfer" data-i18n="btn_transfer_hex">?댁껜</button>
+           </div>
+         </form>
+         <div id="hexTransferResult" class="mp-result-box" style="display:none;"></div>
+@@ -353,38 +360,38 @@
+       <!-- ?먰솕 異⑹쟾 -->
+       <section class="panel mp-section collapsible is-collapsed">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">HEX 異⑹쟾 (?먰솕)</h2>
++          <h2 class="mp-section-title" data-i18n="section_deposit">HEX 異⑹쟾 (?먰솕)</h2>
+         </div>
+ 
+         <!-- ?낃툑 怨꾩쥖 ?덈궡 (??긽 ?쒖떆) -->
+         <div class="mp-result-box" style="margin-bottom:14px;">
+-          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:var(--accent);">?눖?눟 ?쒓뎅 怨꾩쥖 (KRW ?낃툑)</div>
+-          <div class="mp-kv"><span class="k">???/span><span class="v">?섎굹???/span></div>
+-          <div class="mp-kv"><span class="k">怨꾩쥖踰덊샇</span><span class="v mono">381. 19. 03076. 2</span></div>
+-          <div class="mp-kv"><span class="k">?덇툑二?/span><span class="v">?ㅼ슜吏?/span></div>
+-          <div style="margin:10px 0 8px; font-size:0.82em; font-weight:700; color:#0ea5e9;">?눤?눛 踰좏듃??怨꾩쥖 (VND ?낃툑)</div>
+-          <div class="mp-kv"><span class="k">???/span><span class="v">TECHCOM BANK</span></div>
+-          <div class="mp-kv"><span class="k">怨꾩쥖踰덊샇</span><span class="v mono">19037852768012</span></div>
+-          <div class="mp-kv"><span class="k">?덇툑二?/span><span class="v">?좏뿄泥?(SHIN HEON CHEOL)</span></div>
++          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:var(--accent);" data-i18n="label_kr_account">?눖?눟 ?쒓뎅 怨꾩쥖 (KRW ?낃툑)</div>
++          <div class="mp-kv"><span class="k" data-i18n="label_bank">???/span><span class="v">?섎굹???/span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_account_no">怨꾩쥖踰덊샇</span><span class="v mono">381. 19. 03076. 2</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">?덇툑二?/span><span class="v">?ㅼ슜吏?/span></div>
++          <div style="margin:10px 0 8px; font-size:0.82em; font-weight:700; color:#0ea5e9;" data-i18n="label_vn_account">?눤?눛 踰좏듃??怨꾩쥖 (VND ?낃툑)</div>
++          <div class="mp-kv"><span class="k" data-i18n="label_bank">???/span><span class="v">TECHCOM BANK</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_account_no">怨꾩쥖踰덊샇</span><span class="v mono">19037852768012</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">?덇툑二?/span><span class="v">?좏뿄泥?(SHIN HEON CHEOL)</span></div>
+         </div>
+ 
+         <form id="depositForm" class="form" style="margin-top:0;">
+           <label class="field">
+-            <span>異⑹쟾 湲덉븸 (?? <em class="req">*</em></span>
++            <span><span data-i18n="label_deposit_amt">異⑹쟾 湲덉븸 (??</span> <em class="req">*</em></span>
+             <input type="number" id="depositAmount" min="10000" step="1000" placeholder="理쒖냼 10,000?? />
+           </label>
+           <label class="field">
+-            <span>?낃툑?먮챸 <em class="req">*</em></span>
++            <span><span data-i18n="label_depositor">?낃툑?먮챸</span> <em class="req">*</em></span>
+             <input type="text" id="depositorName" maxlength="20" placeholder="?? ?띻만?? />
+           </label>
+           <div class="actions">
+-            <button class="btn btn--primary" type="submit" id="btnDeposit">異⑹쟾 ?붿껌</button>
++            <button class="btn btn--primary" type="submit" id="btnDeposit" data-i18n="btn_deposit">異⑹쟾 ?붿껌</button>
+           </div>
+         </form>
+ 
+         <!-- 異⑹쟾 ?붿껌 寃곌낵 -->
+         <div id="depositResult" class="mp-result-box" style="display:none;">
+-          <div class="mp-kv"><span class="k">李몄“肄붾뱶</span><span class="v mono" id="drRefCode">-</span></div>
++          <div class="mp-kv"><span class="k" data-i18n="label_ref_code">李몄“肄붾뱶</span><span class="v mono" id="drRefCode">-</span></div>
+           <div style="margin:10px 0 6px; font-size:0.82em; font-weight:700; color:var(--accent);">?눖?눟 ?쒓뎅 怨꾩쥖 (KRW ?낃툑)</div>
+           <div class="mp-kv"><span class="k">?낃툑 ???/span><span class="v" id="drBank">-</span></div>
+           <div class="mp-kv"><span class="k">怨꾩쥖踰덊샇</span><span class="v mono" id="drAccount">-</span></div>
+@@ -395,15 +402,15 @@
+           <div class="mp-kv"><span class="k">?덇툑二?/span><span class="v" id="drHolderVnd">-</span></div>
+           <div class="mp-kv"><span class="k">湲덉븸</span><span class="v" id="drAmount">-</span></div>
+           <div class="mp-kv"><span class="k">異⑹쟾 湲덉븸</span><span class="v accent" id="drHex">-</span></div>
+-          <p class="hint mp-warn">?낃툑?먮챸???뺥솗???낅젰?섏꽭?? 愿由ъ옄 ?뺤씤 ??HEX ?좏겙???섑긽 吏媛묒쑝濡?吏湲됰맗?덈떎.</p>
++          <p class="hint mp-warn" data-i18n="deposit_warn">?낃툑?먮챸???뺥솗???낅젰?섏꽭?? 愿由ъ옄 ?뺤씤 ??HEX ?좏겙???섑긽 吏媛묒쑝濡?吏湲됰맗?덈떎.</p>
+         </div>
+       </section>
+ 
+       <!-- 媛留뱀젏 吏곸젒 寃곗젣 (?ㅽ봽?쇱씤) -->
+       <section class="panel mp-section collapsible is-collapsed" id="merchantPaySection">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">媛留뱀젏 吏곸젒 寃곗젣</h2>
+-          <button class="btn btn--sm" id="btnQrScan" type="button">?벜 QR ?ㅼ틪</button>
++          <h2 class="mp-section-title" data-i18n="section_merchant_pay">媛留뱀젏 吏곸젒 寃곗젣</h2>
++          <button class="btn btn--sm" id="btnQrScan" type="button" data-i18n="btn_qr_scan">?벜 QR ?ㅼ틪</button>
+         </div>
+         <p class="hint" style="margin-bottom:12px;">
+           媛留뱀젏??諛⑸Ц?섏뿬 ?꾩옣?먯꽌 寃곗젣?????ъ슜?⑸땲??<br>
+@@ -411,13 +418,13 @@
+         </p>
+         <form id="merchantPayForm" class="form" style="margin-top:0;">
+           <label class="field">
+-            <span>媛留뱀젏 ?좏깮 <em class="req">*</em></span>
++            <span><span data-i18n="label_select_merchant">媛留뱀젏 ?좏깮</span> <em class="req">*</em></span>
+             <select id="merchantPaySelect">
+               <option value="">遺덈윭?ㅻ뒗 以?..</option>
+             </select>
+           </label>
+           <div class="field">
+-            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;">?듯솕 ?좏깮</span>
++            <span style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;display:block;" data-i18n="label_currency">?듯솕 ?좏깮</span>
+             <div class="curr-seg">
+               <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyVND" value="VND" checked /><span>?눤?눛 VND (??</span></label>
+               <label><input type="radio" name="merchantPayCurrencyRadio" id="merchantPayCurrencyKRW" value="KRW" /><span>?눖?눟 KRW (??</span></label>
+@@ -425,11 +432,11 @@
+             <input type="hidden" id="merchantPayCurrency" value="VND" />
+           </div>
+           <label class="field">
+-            <span id="merchantPayAmountLabel">寃곗젣 湲덉븸 (??VND) <em class="req">*</em></span>
++            <span id="merchantPayAmountLabel" data-i18n="label_pay_amount_vnd">寃곗젣 湲덉븸 (??VND) <em class="req">*</em></span>
+             <input type="number" id="merchantPayAmount" min="10000" step="1000" placeholder="?? 200000" />
+           </label>
+           <div class="actions">
+-            <button class="btn btn--primary" type="submit" id="btnMerchantPay">寃곗젣</button>
++            <button class="btn btn--primary" type="submit" id="btnMerchantPay" data-i18n="btn_pay">寃곗젣</button>
+           </div>
+         </form>
+         <div id="qrResultState" style="display:none;margin:8px 0;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;font-size:0.88rem;color:#166534;"></div>
+@@ -439,18 +446,18 @@
+       <!-- 異⑹쟾 ?댁뿭 -->
+       <section class="panel mp-section collapsible is-collapsed">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">異⑹쟾 ?댁뿭</h2>
+-          <button class="btn btn--sm" id="btnRefreshDeposits" type="button">?덈줈怨좎묠</button>
++          <h2 class="mp-section-title" data-i18n="section_deposit_hist">異⑹쟾 ?댁뿭</h2>
++          <button class="btn btn--sm" id="btnRefreshDeposits" type="button" data-i18n="btn_refresh">?덈줈怨좎묠</button>
+         </div>
+         <div id="depositHistory" class="mp-table-wrap">
+-          <p class="hint">遺덈윭?ㅻ뒗 以?..</p>
++          <p class="hint" data-i18n="mentee_loading">遺덈윭?ㅻ뒗 以?..</p>
+         </div>
+       </section>
+ 
+       <!-- ?ъ씤??쨌 ?덈꺼 ?덈궡 -->
+       <section class="panel mp-section collapsible is-collapsed">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">?ъ씤??쨌 ?덈꺼 ?덈궡</h2>
++          <h2 class="mp-section-title" data-i18n="section_guide">?ъ씤??쨌 ?덈꺼 ?덈궡</h2>
+         </div>
+         <dl style="margin:0; display:grid; gap:10px;">
+           <div>
+@@ -480,73 +487,73 @@
+       <!-- ?섏쓽 硫섑떚 紐⑸줉 -->
+       <section class="panel mp-section collapsible is-collapsed" id="menteeSection" style="display:none;">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">?섏쓽 硫섑떚</h2>
+-          <button class="btn btn--sm" id="btnRefreshMentees" type="button">?덈줈怨좎묠</button>
++          <h2 class="mp-section-title" data-i18n="section_mentee">?섏쓽 硫섑떚</h2>
++          <button class="btn btn--sm" id="btnRefreshMentees" type="button" data-i18n="btn_refresh">?덈줈怨좎묠</button>
+         </div>
+         <div id="menteeList" class="mp-table-wrap">
+-          <p class="hint">遺덈윭?ㅻ뒗 以?..</p>
++          <p class="hint" data-i18n="mentee_loading">遺덈윭?ㅻ뒗 以?..</p>
+         </div>
+       </section>
+ 
+       <!-- 硫섑떚 ?섏씡 遺꾩꽍 -->
+       <section class="panel mp-section collapsible is-collapsed" id="menteeIncomeSection" style="display:none;">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">?뮥 硫섑떚 ?섏씡 遺꾩꽍</h2>
+-          <button class="btn btn--sm" id="btnRefreshMenteeIncome" type="button">?덈줈怨좎묠</button>
++          <h2 class="mp-section-title" data-i18n="section_mentee_income">?뮥 硫섑떚 ?섏씡 遺꾩꽍</h2>
++          <button class="btn btn--sm" id="btnRefreshMenteeIncome" type="button" data-i18n="btn_refresh">?덈줈怨좎묠</button>
+         </div>
+         <!-- ?붿빟 移대뱶 -->
+         <div id="menteeIncomeSummary" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;"></div>
+         <!-- 硫섑떚蹂??곸꽭 -->
+         <div id="menteeIncomeList" class="mp-table-wrap">
+-          <p class="hint">遺덈윭?ㅻ뒗 以?..</p>
++          <p class="hint" data-i18n="mi_loading">遺덈윭?ㅻ뒗 以?..</p>
+         </div>
+       </section>
+ 
+       <!-- ??뙚 ?뱀꺼 ?댁뿭 -->
+       <section class="panel mp-section collapsible is-collapsed" id="jackpotHistSection" style="display:none;">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">?렟 ??뙚 ?뱀꺼 ?댁뿭</h2>
+-          <button class="btn btn--sm" id="btnRefreshJackpotHist" type="button">?덈줈怨좎묠</button>
++          <h2 class="mp-section-title" data-i18n="section_jackpot">?렟 ??뙚 ?뱀꺼 ?댁뿭</h2>
++          <button class="btn btn--sm" id="btnRefreshJackpotHist" type="button" data-i18n="btn_refresh">?덈줈怨좎묠</button>
+         </div>
+         <!-- ??뙚 ?듦퀎 移대뱶 -->
+         <div id="jackpotStatRow" class="mp-kv-grid" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+           <div class="mp-stat-card">
+-            <div class="mp-stat-label">?꾩쟻 ??뙚 ?뱀꺼</div>
++            <div class="mp-stat-label" data-i18n="jackpot_stat_total">?꾩쟻 ??뙚 ?뱀꺼</div>
+             <div class="mp-stat-value" id="jackpotTotalHex">-</div>
+             <div class="mp-stat-sub" id="jackpotTotalCount"></div>
+           </div>
+           <div class="mp-stat-card" style="border-color:rgba(124,58,237,.35);background:rgba(124,58,237,.08);">
+-            <div class="mp-stat-label">HEX ?꾪솚 媛???ъ씤??/div>
++            <div class="mp-stat-label" data-i18n="jackpot_stat_redeemable">HEX ?꾪솚 媛???ъ씤??/div>
+             <div class="mp-stat-value" id="jackpotRedeemable" style="color:#a78bfa;">-</div>
+-            <div class="mp-stat-sub">10 HEX ?댁긽 ???꾪솚 媛??/div>
++            <div class="mp-stat-sub" data-i18n="jackpot_stat_min">10 HEX ?댁긽 ???꾪솚 媛??/div>
+           </div>
+         </div>
+         <div id="jackpotHistList" class="mp-table-wrap">
+-          <p class="hint">遺덈윭?ㅻ뒗 以?..</p>
++          <p class="hint" data-i18n="jackpot_loading">遺덈윭?ㅻ뒗 以?..</p>
+         </div>
+       </section>
+ 
+       <!-- 嫄곕옒 ?댁뿭 (?⑥껜?? -->
+       <section class="panel mp-section collapsible is-collapsed" id="txSection" style="display:none;">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">嫄곕옒 ?댁뿭</h2>
+-          <button class="btn btn--sm" id="btnRefreshTx" type="button">?덈줈怨좎묠</button>
++          <h2 class="mp-section-title" data-i18n="section_tx">嫄곕옒 ?댁뿭</h2>
++          <button class="btn btn--sm" id="btnRefreshTx" type="button" data-i18n="btn_refresh">?덈줈怨좎묠</button>
+         </div>
+         <!-- ?섏엯 / 吏異??붿빟 -->
+         <div id="txSummary" class="tx-summary" style="display:none;">
+           <div class="tx-summary-card income">
+-            <div class="tx-summary-label">珥??섏엯</div>
++            <div class="tx-summary-label" data-i18n="tx_total_income">珥??섏엯</div>
+             <div class="tx-summary-amount income" id="txTotalIncome">-</div>
+             <div class="tx-summary-sub" id="txTotalIncomeCount"></div>
+           </div>
+           <div class="tx-summary-card expense">
+-            <div class="tx-summary-label">珥?吏異?/div>
++            <div class="tx-summary-label" data-i18n="tx_total_expense">珥?吏異?/div>
+             <div class="tx-summary-amount expense" id="txTotalExpense">-</div>
+             <div class="tx-summary-sub" id="txTotalExpenseCount"></div>
+           </div>
+         </div>
+         <div id="txHistory" class="mp-table-wrap">
+-          <p class="hint">遺덈윭?ㅻ뒗 以?..</p>
++          <p class="hint" data-i18n="status_loading">遺덈윭?ㅻ뒗 以?..</p>
+         </div>
+       </section>
+ 
+@@ -556,7 +563,7 @@
+            ????????????????????????????????????????????????????????????????? -->
+       <section class="panel mp-section collapsible is-collapsed" id="voucherWalletSection">
+         <div class="mp-section-head">
+-          <h2 class="mp-section-title">??諛붿슦泥?吏媛?/h2>
++          <h2 class="mp-section-title" data-i18n="section_voucher">??諛붿슦泥?吏媛?/h2>
+           <span class="mp-section-arrow">??/span>
+         </div>
+         <div class="mp-section-body">
+@@ -564,44 +571,44 @@
+           <!-- ??二쇱냼 QR 踰꾪듉 + ?⑤꼸 -->
+           <div style="margin-bottom:12px;">
+             <button id="btnVwShowQr" type="button" style="width:100%;padding:11px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.92rem;font-weight:600;cursor:pointer;">
+-              ?벒 ???섑긽 吏媛?二쇱냼 QR 蹂닿린
++              <span data-i18n="btn_show_qr">?벒 ???섑긽 吏媛?二쇱냼 QR 蹂닿린</span>
+             </button>
+           </div>
+           <div id="vwMyQrPanel" style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-bottom:14px;text-align:center;">
+-            <div style="font-weight:700;font-size:0.9rem;margin-bottom:10px;">???섑긽 吏媛?二쇱냼 (?곷?諛⑹뿉寃?蹂댁뿬二쇱꽭??</div>
++            <div style="font-weight:700;font-size:0.9rem;margin-bottom:10px;" data-i18n="voucher_wallet_title">???섑긽 吏媛?二쇱냼 (?곷?諛⑹뿉寃?蹂댁뿬二쇱꽭??</div>
+             <canvas id="vwQrCanvas" style="display:block;margin:0 auto 10px;border-radius:8px;"></canvas>
+             <div id="vwWalletAddr" style="font-size:0.72rem;color:var(--muted,#6b7280);word-break:break-all;margin-bottom:10px;font-family:monospace;"></div>
+             <div style="display:flex;gap:8px;justify-content:center;">
+-              <button id="btnVwCopyAddr" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;">二쇱냼 蹂듭궗</button>
+-              <button id="btnVwHideQr" type="button" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;">?リ린</button>
++              <button id="btnVwCopyAddr" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;" data-i18n="btn_copy_addr">二쇱냼 蹂듭궗</button>
++              <button id="btnVwHideQr" type="button" style="padding:6px 18px;border:1px solid var(--border,#e5e7eb);border-radius:6px;font-size:0.82rem;cursor:pointer;background:transparent;" data-i18n="btn_hide_qr">?リ린</button>
+             </div>
+           </div>
+ 
+           <!-- 諛붿슦泥?移대뱶 洹몃━??-->
+           <div id="voucherCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:4px;"></div>
+-          <p id="voucherCardEmpty" class="hint" style="display:none;text-align:center;padding:16px 0;">蹂댁쑀??諛붿슦泥섍? ?놁뒿?덈떎.</p>
+-          <p id="voucherCardLoading" class="hint" style="text-align:center;padding:12px 0;">遺덈윭?ㅻ뒗 以?..</p>
++          <p id="voucherCardEmpty" class="hint" style="display:none;text-align:center;padding:16px 0;" data-i18n="voucher_empty">蹂댁쑀??諛붿슦泥섍? ?놁뒿?덈떎.</p>
++          <p id="voucherCardLoading" class="hint" style="text-align:center;padding:12px 0;" data-i18n="voucher_loading">遺덈윭?ㅻ뒗 以?..</p>
+ 
+           <!-- ?댁껜 紐⑤떖 (inline) -->
+           <div id="voucherTransferPanel" style="display:none;background:var(--surface2,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:16px;margin-top:14px;">
+-            <div style="font-weight:700;margin-bottom:10px;">諛붿슦泥??댁껜</div>
++            <div style="font-weight:700;margin-bottom:10px;" data-i18n="transfer_title">諛붿슦泥??댁껜</div>
+             <div style="font-size:0.83rem;color:var(--muted,#6b7280);margin-bottom:8px;">
+               諛붿슦泥?<strong id="vtVoucherId"></strong>??瑜? ?댁껜??吏媛?二쇱냼瑜??낅젰?섏꽭??
+             </div>
+             <div style="display:flex;gap:6px;margin-bottom:8px;">
+               <input type="text" id="vtToAddress" placeholder="0x..." style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.88rem;" />
+-              <button id="btnVwQrScan" type="button" style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:0.82rem;cursor:pointer;white-space:nowrap;">?벜 ?ㅼ틪</button>
++              <button id="btnVwQrScan" type="button" style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:0.82rem;cursor:pointer;white-space:nowrap;" data-i18n="btn_qr_scan_addr">?벜 ?ㅼ틪</button>
+             </div>
+             <div style="display:flex;gap:8px;">
+-              <button id="btnVtConfirm" style="flex:1;padding:9px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">?댁껜 ?뺤씤</button>
+-              <button id="btnVtCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;">痍⑥냼</button>
++              <button id="btnVtConfirm" style="flex:1;padding:9px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;" data-i18n="btn_transfer_confirm">?댁껜 ?뺤씤</button>
++              <button id="btnVtCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;" data-i18n="btn_cancel">痍⑥냼</button>
+             </div>
+             <div id="vtStatus" style="font-size:0.82rem;margin-top:6px;min-height:18px;color:var(--muted,#6b7280);"></div>
+           </div>
+ 
+           <!-- ?뚭컖 ?뺤씤 ?⑤꼸 (inline) -->
+           <div id="voucherBurnPanel" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin-top:14px;">
+-            <div style="font-weight:700;margin-bottom:8px;">?뵦 諛붿슦泥??뚭컖</div>
++            <div style="font-weight:700;margin-bottom:8px;" data-i18n="burn_title">?뵦 諛붿슦泥??뚭컖</div>
+             <div style="font-size:0.83rem;color:#92400e;margin-bottom:12px;" id="vbInfo"></div>
+ 
+             <!-- 吏꾪뻾 ?④퀎 (?뚭컖 以묒뿉留??쒖떆) -->
+@@ -609,23 +616,23 @@
+               <div style="font-size:0.8rem;color:#78350f;margin-bottom:8px;font-weight:600;">泥섎━ 吏꾪뻾 以?..</div>
+               <div style="display:flex;flex-direction:column;gap:6px;">
+                 <div id="vbStep1" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep1Icon" style="font-size:1rem;">??/span> <span id="vbStep1Label">?뚭컖 ?붿껌 ?꾩넚 以?/span>
++                  <span id="vbStep1Icon" style="font-size:1rem;">??/span> <span id="vbStep1Label" data-i18n="burn_step1">?뚭컖 ?붿껌 ?꾩넚 以?/span>
+                 </div>
+                 <div id="vbStep2" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep2Icon" style="font-size:1rem;">??/span> <span id="vbStep2Label">?ㅻ쭏??而⑦듃?숉듃 ?ㅽ뻾 以?/span>
++                  <span id="vbStep2Icon" style="font-size:1rem;">??/span> <span id="vbStep2Label" data-i18n="burn_step2_onchain">?ㅻ쭏??而⑦듃?숉듃 ?ㅽ뻾 以?/span>
+                 </div>
+                 <div id="vbStep3" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep3Icon" style="font-size:1rem;">??/span> <span id="vbStep3Label">HEX ?섍툒 泥섎━ 以?/span>
++                  <span id="vbStep3Icon" style="font-size:1rem;">??/span> <span id="vbStep3Label" data-i18n="burn_step3_onchain">HEX ?섍툒 泥섎━ 以?/span>
+                 </div>
+                 <div id="vbStep4" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep4Icon" style="font-size:1rem;">??/span> <span id="vbStep4Label">?꾨즺 ?뺤씤</span>
++                  <span id="vbStep4Icon" style="font-size:1rem;">??/span> <span id="vbStep4Label" data-i18n="burn_step4">?꾨즺 ?뺤씤</span>
+                 </div>
+               </div>
+             </div>
+ 
+             <div id="vbButtons" style="display:flex;gap:8px;">
+-              <button id="btnVbConfirm" style="flex:1;padding:9px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">?뚭컖 ?뺤씤</button>
+-              <button id="btnVbCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;">痍⑥냼</button>
++              <button id="btnVbConfirm" style="flex:1;padding:9px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;" data-i18n="burn_confirm_btn">?뚭컖 ?뺤씤</button>
++              <button id="btnVbCancel" style="padding:9px 16px;border:1px solid var(--border,#e5e7eb);border-radius:7px;cursor:pointer;background:transparent;" data-i18n="btn_cancel">痍⑥냼</button>
+             </div>
+             <div id="vbStatus" style="font-size:0.84rem;margin-top:10px;min-height:20px;font-weight:500;text-align:center;"></div>
+           </div>
+@@ -651,12 +658,12 @@
+     </div>
+     <p id="qrScanState"
+        style="color:#fff; font-size:0.95rem; margin:16px 16px 0; text-align:center; max-width:320px;">
+-      QR 肄붾뱶瑜??ш컖???덉뿉 留욎떠二쇱꽭??+      <span data-i18n="qr_hint">QR 肄붾뱶瑜??ш컖???덉뿉 留욎떠二쇱꽭??/span>
+     </p>
+     <button id="btnCloseQr" type="button"
+             style="margin-top:20px; padding:11px 36px; background:#7c3aed; color:#fff;
+                    border:none; border-radius:10px; font-size:1rem; cursor:pointer; font-weight:600;">
+-      ?リ린
++      <span data-i18n="btn_hide_qr">?リ린</span>
+     </button>
+   </div>
+ 
+
+commit 93615f68d885fe8b102e9ff26fca93c789fb36b1
+Author: daguri <daguri75@gmail.com>
+Date:   Mon May 4 20:13:52 2026 +0700
+
+    fix: 寃뚯엫 諛붿슦泥??뚭컖 UI ???④퀎 ?덉씠釉?援먯껜, ??대㉧ 誘몄쟻?? ?꾨즺 硫붿떆吏 遺꾨━
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/mypage.html b/mypage.html
+index af48960..8d17fd7 100644
+--- a/mypage.html
++++ b/mypage.html
+@@ -609,16 +609,16 @@
+               <div style="font-size:0.8rem;color:#78350f;margin-bottom:8px;font-weight:600;">泥섎━ 吏꾪뻾 以?..</div>
+               <div style="display:flex;flex-direction:column;gap:6px;">
+                 <div id="vbStep1" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep1Icon" style="font-size:1rem;">??/span> ?뚭컖 ?붿껌 ?꾩넚 以?+                  <span id="vbStep1Icon" style="font-size:1rem;">??/span> <span id="vbStep1Label">?뚭컖 ?붿껌 ?꾩넚 以?/span>
+                 </div>
+                 <div id="vbStep2" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep2Icon" style="font-size:1rem;">??/span> ?ㅻ쭏??而⑦듃?숉듃 ?ㅽ뻾 以?+                  <span id="vbStep2Icon" style="font-size:1rem;">??/span> <span id="vbStep2Label">?ㅻ쭏??而⑦듃?숉듃 ?ㅽ뻾 以?/span>
+                 </div>
+                 <div id="vbStep3" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep3Icon" style="font-size:1rem;">??/span> HEX ?섍툒 泥섎━ 以?+                  <span id="vbStep3Icon" style="font-size:1rem;">??/span> <span id="vbStep3Label">HEX ?섍툒 泥섎━ 以?/span>
+                 </div>
+                 <div id="vbStep4" style="display:flex;align-items:center;gap:8px;font-size:0.83rem;color:#9ca3af;">
+-                  <span id="vbStep4Icon" style="font-size:1rem;">??/span> ?꾨즺 ?뺤씤
++                  <span id="vbStep4Icon" style="font-size:1rem;">??/span> <span id="vbStep4Label">?꾨즺 ?뺤씤</span>
+                 </div>
+               </div>
+             </div>

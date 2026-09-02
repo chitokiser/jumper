@@ -22,9 +22,6 @@
       <div class="nav-group" data-role="user guide merchant admin">
         <a href="/mypage.html" class="nav-group-title" style="text-decoration:none;" data-hdr-i18n="mypage">My Page</a>
       </div>
-      <div class="nav-group" data-role="merchant admin">
-        <a href="/merchant-qr.html" class="nav-group-title" style="text-decoration:none;">QR 결제받기</a>
-      </div>
       <div class="nav-group" data-role="admin">
         <a href="/admin.html" class="nav-group-title" style="text-decoration:none;">관리자 모드</a>
       </div>
@@ -34,17 +31,4 @@
 
     <div class="hdr-right">
       <div class="hdr-lang" id="hdrLangSwitcher"
-        style="display:flex; gap:8px; align-items:center; color:#94a3b8; font-size:0.85rem; font-weight:600; margin-right:10px;">
-      </div>
-      <span class="role-badge" id="roleBadge" style="display:none;"></span>
-      <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">👑
-        Member</span>
-      <a class="member-join-link" id="memberJoinLink" href="/coop.html" style="display:none;"
-        data-hdr-i18n="hdr_member_join">Join Member</a>
-      <span class="user-badge" id="userBadge" style="display:none;" title=""></span>
-
-      <a class="btn" id="btnLogin" href="/register.html" data-hdr-i18n="hdr_login">Login</a>
-      <button class="btn" id="btnLogout" type="button" style="display:none;" data-hdr-i18n="hdr_logout">Logout</button>
-    </div>
-  </div>
-</header>
+        style="display:flex; gap:8px; align-items:center; color:#94a3b8; font-size

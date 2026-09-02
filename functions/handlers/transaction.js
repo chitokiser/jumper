@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 // functions/handlers/transaction.js
 // 수탁 지갑 서명 트랜잭션: 구매(buy) / 인출(withdraw) / 관리자 Point 사전 approve
 
@@ -599,9 +600,11 @@ async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW
     const userRef = db.collection('users').doc(uid);
     const merchantRef = db.collection('merchants').doc(String(merchantId));
 
-    const [userSnap, merchantSnap] = await Promise.all([
+    const buyerBpRef = db.collection('battle_players').doc(uid);
+    const [userSnap, merchantSnap, bpSnap] = await Promise.all([
       tx.get(userRef),
       tx.get(merchantRef),
+      tx.get(buyerBpRef),
     ]);
 
     if (!userSnap.exists) throw new Error('유저 정보를 찾을 수 없습니다.');
@@ -660,6 +663,14 @@ async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW
     // 수수료 계산
     const feeBps = Number(merchant.feeBps || 0);
     const feeVnd = Math.round((paymentVnd * feeBps) / 10000);
+    // EXP
+    let currentExp = typeof bpSnap !== 'undefined' && bpSnap.exists ? Number(bpSnap.data().gsExp || 0) : 0;
+    let currentLevel = typeof bpSnap !== 'undefined' && bpSnap.exists ? Math.max(1, Number(bpSnap.data().gsLevel || 1)) : 1;
+    let earnedExp = feeVnd; 
+    currentExp += earnedExp;
+    let requiredExp = Math.pow(currentLevel, 2) * 10000;
+    while (currentExp >= requiredExp) { currentLevel++; requiredExp = Math.pow(currentLevel, 2) * 10000; }
+    tx.set(buyerBpRef, { gsExp: currentExp, gsLevel: currentLevel, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     const netVnd = paymentVnd - feeVnd;
 
     // 수수료 분배 체계
@@ -733,9 +744,7 @@ async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW
 
     // 4. 멘토 1대 지급
     if (mentorBonusVnd > 0 && mentorSnap && mentorSnap.exists) {
-      tx.update(mentorRef, {
-        pointBalanceVnd: Number(mentorSnap.data().pointBalanceVnd || 0) + mentorBonusVnd
-      });
+      tx.update(mentorRef, { pointBalance: admin.firestore.FieldValue.increment(mentorBonusVnd) });
       tx.set(db.collection('transactions').doc(), {
         uid: mentorUid,
         sourceUid: uid,
@@ -748,9 +757,7 @@ async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW
 
     // 5. 그랜드 멘토 2대 지급
     if (grandMentorBonusVnd > 0 && grandMentorSnap && grandMentorSnap.exists) {
-      tx.update(grandMentorRef, {
-        pointBalanceVnd: Number(grandMentorSnap.data().pointBalanceVnd || 0) + grandMentorBonusVnd
-      });
+      tx.update(grandMentorRef, { pointBalance: admin.firestore.FieldValue.increment(grandMentorBonusVnd) });
       tx.set(db.collection('transactions').doc(), {
         uid: grandMentorUid,
         sourceUid: uid,
@@ -1320,7 +1327,30 @@ async function redeemPoints(uid, masterSecret) {
   return { success: true, txHash: receipt.hash, amountHex };
 }
 
+
+const exchangePointsToFiat = functions.region('asia-northeast3').https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', '로그인이 필요합니다.');
+  const uid = context.auth.uid;
+  const { amount } = data;
+  if (!amount || amount <= 0) throw new functions.https.HttpsError('invalid-argument', '유효량이 아닙니다.');
+  return await db.runTransaction(async (tx) => {
+    const userRef = db.collection('users').doc(uid);
+    const bpRef = db.collection('battle_players').doc(uid);
+    const [userSnap, bpSnap] = await Promise.all([tx.get(userRef), tx.get(bpRef)]);
+    if (!userSnap.exists) throw new functions.https.HttpsError('not-found', 'not found');
+    const user = userSnap.data();
+    const currentPoints = Number(user.pointBalance || 0);
+    if (currentPoints < amount) throw new functions.https.HttpsError('failed-precondition', '잔고 부족');
+    const level = bpSnap.exists ? Math.max(1, Number(bpSnap.data().gsLevel || 1)) : 1;
+    const convertedVnd = Math.floor((amount * level) / 10);
+    tx.update(userRef, { pointBalance: admin.firestore.FieldValue.increment(-amount), pointBalanceVnd: admin.firestore.FieldValue.increment(convertedVnd) });
+    tx.set(db.collection('transactions').doc(), { uid, type: 'point_exchange', convertedFromPoints: amount, amountVnd: convertedVnd, levelApplied: level, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    return { success: true, convertedVnd, remainingPoints: currentPoints - amount };
+  });
+});
+
 module.exports = {
+  exchangePointsToFiat,
   buyProduct,
   withdrawPayable,
   requestLevelUp,
