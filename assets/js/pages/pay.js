@@ -113,8 +113,13 @@ async function init() {
       const btn = $("btnLogin");
       if (btn) {
         btn.onclick = async () => {
-          try { await login(); } catch (e) { console.warn(e); }
-          // watchAuth → page reload 후 재진입
+          try {
+            await login();
+            // 로그인 완료되면 페이지 새로고침하여 결제 패널 표시 (파라미터 유지됨)
+            location.reload();
+          } catch (e) {
+            console.warn(e);
+          }
         };
       }
       return;
@@ -138,7 +143,14 @@ async function init() {
       show("needLoginPanel", true);
       const btn = $("btnLogin");
       if (btn) {
-        btn.onclick = async () => { try { await login(); } catch (e) { console.warn(e); } };
+        btn.onclick = async () => {
+          try {
+            await login();
+            location.reload();
+          } catch (e) {
+            console.warn(e);
+          }
+        };
       }
     }
   }, 4000);
