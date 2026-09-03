@@ -105,8 +105,8 @@ async function loadJackpotStats() {
     const count = winsSnap.size;
     const now = new Date();
     setJackpotUi({
-      valueText: jackpotPoints > 0 ? `${ptsStr} Point` : "0 Point",
-      fiatText: jackpotPoints > 0 ? _t('fiat_approx', `${ptsStr} Point`, krwStr + " KRW") : _t('fiat_no_jackpot'),
+      valueText: jackpotPoints > 0 ? `${ptsStr} KM` : "0 KM",
+      fiatText: jackpotPoints > 0 ? _t('fiat_approx', `${ptsStr} KM`, ptsStr + " VND") : _t('fiat_no_jackpot'),
       updatedText: _t('time_basis', now.toLocaleTimeString([], { hour12: false })),
       winnerCountText: count > 0 ? `${count.toLocaleString()}명` : "-",
       rewardText: _t('item_jackpot'),
