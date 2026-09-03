@@ -129,7 +129,7 @@ function bindQrForm(merchantId, merchantName) {
 
   // 환산 표시 업데이트 함수
   async function updateConvert() {
-    const isVnd = form.querySelector("input[name='qrCurrency']:checked")?.value === "VND";
+    const isVnd = true;
     const inputEl = $("qrAmount");
     const convEl = $("qrAmountConvert");
     const krwEl = $("qrAmountKrw");

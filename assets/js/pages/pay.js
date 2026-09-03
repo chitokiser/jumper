@@ -1,5 +1,5 @@
 // /assets/js/pages/pay.js
-// 가맹점 QR 결제 — 고객 결제 확인 페이지
+// 가맹점 KM 결제 — 고객 결제 확인 페이지
 
 import { onAuthReady } from "../auth.js";
 import { login } from "../auth.js";
@@ -77,7 +77,7 @@ async function loadMerchant() {
   document.title = `${merchantName} 결제 확인 | Jump`;
 
   let amountStr = isVnd
-    ? `${amount.toLocaleString()}동 (VND)`
+    ? `${amount.toLocaleString()}KM`
     : `${amount.toLocaleString()}원 (KRW)`;
   ["payMerchantNameLogin", "payMerchantNameReg", "payMerchantName"].forEach((id) => setText(id, merchantName));
   ["payAmountLogin", "payAmountReg", "payAmountDisp"].forEach((id) => setText(id, amountStr));
@@ -162,7 +162,7 @@ function bindPayButton() {
   if (!btn) return;
 
   const amountConfirmStr = isVnd
-    ? `${amount.toLocaleString()}동 (VND)`
+    ? `${amount.toLocaleString()}KM`
     : `${amount.toLocaleString()}원 (KRW)`;
 
   btn.onclick = async () => {

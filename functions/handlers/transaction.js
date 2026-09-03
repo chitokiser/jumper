@@ -574,18 +574,14 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
   if (!amountVnd || Number(amountVnd) < 10000) throw new Error('최소 결제 금액은 10000 KM (VND)입니다.');
   
   const finalVnd = Math.round(Number(amountVnd));
-  const finalKrw = Math.round(Number(amountKrw || (finalVnd / 18))); // fallback roughly 18 VND per KRW just in case
+  const finalKrw = Math.round(Number(amountKrw || (finalVnd / 18)));
 
-  // Idempotency Check
   const txHash = reqId ? 'TX_' + reqId : 'TX_' + Date.now() + '_' + Math.floor(Math.random()*10000);
   
   return await db.runTransaction(async (tx) => {
-    // Check if txHash already exists to prevent double payment
     const checkTxRef = db.collection('transactions').doc(txHash);
     const existingTx = await tx.get(checkTxRef);
-    if (existingTx.exists) {
-      throw new Error('이미 처리된 결제 요청입니다. (Double payment prevented)');
-    }
+    if (existingTx.exists) throw new Error('이미 처리된 결제 요청입니다. (Double payment prevented)');
 
     const userRef = db.collection('users').doc(uid);
     const merchantRef = db.collection('merchants').doc(String(merchantId));
@@ -607,7 +603,6 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     const merchantOwnerRef = db.collection('users').doc(merchantOwnerUid);
     const [ownerSnap] = await Promise.all([tx.get(merchantOwnerRef)]);
     
-    // Mentor Logic
     const mentorUid = userData.mentorUid || null;
     let grandMentorUid = null;
     let mentorRef = null, grandMentorRef = null;
@@ -625,7 +620,6 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
       }
     }
 
-    // Fee Calculation based on VND
     const feeBps = Number(merchant.feeBps || 0);
     const feeVnd = Math.round((finalVnd * feeBps) / 10000);
     const netVnd = finalVnd - feeVnd;
@@ -653,16 +647,15 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     }
     if (remainingVnd !== 0) platformBonusVnd += remainingVnd;
 
-    // Jackpot Logic
     const gsLevel = typeof bpSnap !== 'undefined' && bpSnap.exists ? Math.max(1, Number(bpSnap.data().gsLevel || 1)) : 1;
     const randomValue = Math.floor(Math.random() * 10000);
-    const winThreshold = gsLevel * 100; // 1% per level
+    const winThreshold = gsLevel * 100;
     const isWinner = randomValue < winThreshold;
     
     let jackpotRewardVnd = 0;
     if (isWinner) {
       jackpotRewardVnd = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
-      tx.set(jackpotRef, { jackpotAccVnd: jackpotBonusVnd, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // reset
+      tx.set(jackpotRef, { jackpotAccVnd: jackpotBonusVnd, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
       tx.set(db.collection('jackpot_wins').doc(txHash), { uid, userName: userData.name || userData.kakaoId || 'User', amountVnd: jackpotRewardVnd, amountKrw: jackpotRewardVnd, timestamp: admin.firestore.FieldValue.serverTimestamp(), txHash });
     } else {
       if (jackpotBonusVnd > 0) {
@@ -670,21 +663,16 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
       }
     }
 
-    // Write Jackpot Round state for UI (Requires matching wei representation for slot UI check > 0n)
     tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner, randomValue, finalWinWei: jackpotRewardVnd > 0 ? "1000000000000000000" : "0", timestamp: admin.firestore.FieldValue.serverTimestamp() });
-
     tx.update(userRef, { pointBalanceVnd: userBalanceVnd - finalVnd + jackpotRewardVnd });
     
     const txBase = { createdAt: admin.firestore.FieldValue.serverTimestamp(), currency: 'VND', amountKrw: finalKrw, amountVnd: finalVnd, merchantId: Number(merchantId), merchantName: merchant.name || '', txHash };
-    
-    // Create the master transaction with doc ID = txHash to prevent double payments
     tx.set(checkTxRef, { ...txBase, uid, type: 'pay_merchant' });
-
+    
     const currentMerchantBal = ownerSnap.exists ? Number(ownerSnap.data().pointBalanceVnd || 0) : 0;
     tx.set(merchantOwnerRef, { pointBalanceVnd: currentMerchantBal + netVnd }, { merge: true });
     tx.set(db.collection('transactions').doc(), { ...txBase, uid: merchantOwnerUid, buyerUid: uid, type: 'merchant_income', netAmountVnd: netVnd, feeAmountVnd: feeVnd, feeBps });
 
-    // Ledger for mentors
     if (mentorBonusVnd > 0 && mentorSnap && mentorSnap.exists) {
       tx.update(mentorRef, { pointBalanceVnd: admin.firestore.FieldValue.increment(mentorBonusVnd) });
       tx.set(db.collection('transactions').doc(), { ...txBase, uid: mentorUid, sourceUid: uid, type: 'mentor_bonus_tier1', amountVnd: mentorBonusVnd, amountKrw: mentorBonusVnd });
@@ -699,10 +687,6 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     
     return { txHash, isJackpot: isWinner, amountHex: finalVnd, amountKrw: finalKrw, amountVnd: finalVnd, merchantName: merchant.name || '' };
   });
-}
-;
-  });
-  return result;
 }
 
 // ────────────────────────────────────────────────
