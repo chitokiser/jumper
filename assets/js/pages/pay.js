@@ -176,8 +176,8 @@ function bindPayButton() {
     try {
       const payFn = httpsCallable(functions, "payMerchantFirebase");
       const payload = isVnd
-        ? { merchantId: Number(merchantId), amountVnd: Number(amountVnd), currency: "VND" }
-        : { merchantId: Number(merchantId), amountKrw: Number(amountKrw) };
+        ? { merchantId: Number(merchantId), amountVnd: Number(amountVnd), currency: "VND", reqId: orderId }
+        : { merchantId: Number(merchantId), amountKrw: Number(amountKrw), reqId: orderId };
       const res = await payFn(payload);
       const d = res.data;
 

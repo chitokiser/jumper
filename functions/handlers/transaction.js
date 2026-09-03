@@ -568,24 +568,25 @@ async function adminSetMerchantFeeOnChain(merchantId, feeBps) {
  * @param {string} masterSecret - WALLET_MASTER_SECRET
  * @returns {{ txHash, amountHex, amountKrw, merchantName }}
  */
-async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW', amountVnd } = {}) {
+async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND', amountKrw, reqId } = {}) {
   const db = admin.firestore();
-  const { fetchExchangeRates } = require('../wallet/exchange');
-  const rates = await fetchExchangeRates();
   
-  let finalKrw = 0; let finalVnd = 0;
-  if (currency === 'VND' && amountVnd) {
-    finalVnd = Number(amountVnd);
-    finalKrw = Math.round((finalVnd / rates.vndPerUsd) * rates.krwPerUsd);
-  } else {
-    finalKrw = Number(amountKrw);
-    finalVnd = Math.round((finalKrw / rates.krwPerUsd) * rates.vndPerUsd);
-  }
-  if (finalKrw < 10) throw new Error('결제 금액오류');
+  if (!amountVnd || Number(amountVnd) < 10000) throw new Error('최소 결제 금액은 10000 KM (VND)입니다.');
+  
+  const finalVnd = Math.round(Number(amountVnd));
+  const finalKrw = Math.round(Number(amountKrw || (finalVnd / 18))); // fallback roughly 18 VND per KRW just in case
 
-  const txHash = 'TX_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+  // Idempotency Check
+  const txHash = reqId ? 'TX_' + reqId : 'TX_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+  
+  return await db.runTransaction(async (tx) => {
+    // Check if txHash already exists to prevent double payment
+    const checkTxRef = db.collection('transactions').doc(txHash);
+    const existingTx = await tx.get(checkTxRef);
+    if (existingTx.exists) {
+      throw new Error('이미 처리된 결제 요청입니다. (Double payment prevented)');
+    }
 
-  const result = await db.runTransaction(async (tx) => {
     const userRef = db.collection('users').doc(uid);
     const merchantRef = db.collection('merchants').doc(String(merchantId));
     const buyerBpRef = db.collection('battle_players').doc(uid);
@@ -597,8 +598,8 @@ async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW
     
     if (!userSnap.exists) throw new Error('유저 정보 없음');
     const userData = userSnap.data();
-    const userBalanceKrw = Number(userData.pointBalanceVnd || 0); 
-    if (userBalanceKrw < finalKrw) throw new Error('잔액이 부족합니다.');
+    const userBalanceVnd = Number(userData.pointBalanceVnd || 0); 
+    if (userBalanceVnd < finalVnd) throw new Error('잔액이 부족합니다.');
     
     const merchant = merchantSnap.data();
     if (!merchant || merchant.active === false) throw new Error('비활성 가맹점입니다.');
@@ -624,34 +625,33 @@ async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW
       }
     }
 
-    // Fee Calculation
+    // Fee Calculation based on VND
     const feeBps = Number(merchant.feeBps || 0);
-    const feeKrw = Math.round((finalKrw * feeBps) / 10000);
-    const netKrw = finalKrw - feeKrw;
+    const feeVnd = Math.round((finalVnd * feeBps) / 10000);
+    const netVnd = finalVnd - feeVnd;
 
-    let mentorBonusKrw = 0;
-    let grandMentorBonusKrw = 0;
-    let jackpotBonusKrw = Math.round(feeKrw * 0.30);
-    let platformBonusKrw = Math.round(feeKrw * 0.40);
+    let mentorBonusVnd = 0;
+    let grandMentorBonusVnd = 0;
+    let jackpotBonusVnd = Math.round(feeVnd * 0.30);
+    let platformBonusVnd = Math.round(feeVnd * 0.40);
 
-    let remainingKrw = feeKrw - jackpotBonusKrw - platformBonusKrw;
+    let remainingVnd = feeVnd - jackpotBonusVnd - platformBonusVnd;
 
     if (mentorSnap && mentorSnap.exists) {
-      mentorBonusKrw = Math.round(feeKrw * 0.20);
-      remainingKrw -= mentorBonusKrw;
+      mentorBonusVnd = Math.round(feeVnd * 0.20);
+      remainingVnd -= mentorBonusVnd;
     } else {
-      platformBonusKrw += Math.round(feeKrw * 0.20);
-      remainingKrw -= Math.round(feeKrw * 0.20);
+      platformBonusVnd += Math.round(feeVnd * 0.20);
+      remainingVnd -= Math.round(feeVnd * 0.20);
     }
     if (grandMentorSnap && grandMentorSnap.exists) {
-      grandMentorBonusKrw = Math.round(feeKrw * 0.10);
-      remainingKrw -= grandMentorBonusKrw;
+      grandMentorBonusVnd = Math.round(feeVnd * 0.10);
+      remainingVnd -= grandMentorBonusVnd;
     } else {
-      platformBonusKrw += Math.round(feeKrw * 0.10);
-      remainingKrw -= Math.round(feeKrw * 0.10);
+      platformBonusVnd += Math.round(feeVnd * 0.10);
+      remainingVnd -= Math.round(feeVnd * 0.10);
     }
-    if (remainingKrw !== 0) platformBonusKrw += remainingKrw;
-
+    if (remainingVnd !== 0) platformBonusVnd += remainingVnd;
 
     // Jackpot Logic
     const gsLevel = typeof bpSnap !== 'undefined' && bpSnap.exists ? Math.max(1, Number(bpSnap.data().gsLevel || 1)) : 1;
@@ -659,44 +659,48 @@ async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW
     const winThreshold = gsLevel * 100; // 1% per level
     const isWinner = randomValue < winThreshold;
     
-    let jackpotReward = 0;
+    let jackpotRewardVnd = 0;
     if (isWinner) {
-      jackpotReward = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
-      tx.set(jackpotRef, { jackpotAccVnd: jackpotBonusKrw, updatedAt: admin.firestore.FieldValue.serverTimestamp() }); // reset
-      tx.set(db.collection('jackpot_wins').doc(txHash), { uid, userName: userData.name || userData.kakaoId || 'User', amountVnd: jackpotReward, amountKrw: jackpotReward, timestamp: admin.firestore.FieldValue.serverTimestamp(), txHash });
+      jackpotRewardVnd = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
+      tx.set(jackpotRef, { jackpotAccVnd: jackpotBonusVnd, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // reset
+      tx.set(db.collection('jackpot_wins').doc(txHash), { uid, userName: userData.name || userData.kakaoId || 'User', amountVnd: jackpotRewardVnd, amountKrw: jackpotRewardVnd, timestamp: admin.firestore.FieldValue.serverTimestamp(), txHash });
     } else {
-      if (jackpotBonusKrw > 0) {
-        tx.set(jackpotRef, { jackpotAccVnd: admin.firestore.FieldValue.increment(jackpotBonusKrw), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      if (jackpotBonusVnd > 0) {
+        tx.set(jackpotRef, { jackpotAccVnd: admin.firestore.FieldValue.increment(jackpotBonusVnd), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
       }
     }
 
-    // Write Jackpot Round state for UI
-    tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner, randomValue, finalWinWei: String(jackpotReward) + "000000000000000000", timestamp: admin.firestore.FieldValue.serverTimestamp() });
+    // Write Jackpot Round state for UI (Requires matching wei representation for slot UI check > 0n)
+    tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner, randomValue, finalWinWei: jackpotRewardVnd > 0 ? "1000000000000000000" : "0", timestamp: admin.firestore.FieldValue.serverTimestamp() });
 
-    tx.update(userRef, { pointBalanceVnd: userBalanceKrw - finalKrw + jackpotReward });
+    tx.update(userRef, { pointBalanceVnd: userBalanceVnd - finalVnd + jackpotRewardVnd });
     
-    const txBase = { createdAt: admin.firestore.FieldValue.serverTimestamp(), currency: 'KRW', amountKrw: finalKrw, amountVnd: finalVnd, merchantId: Number(merchantId), merchantName: merchant.name || '', txHash };
+    const txBase = { createdAt: admin.firestore.FieldValue.serverTimestamp(), currency: 'VND', amountKrw: finalKrw, amountVnd: finalVnd, merchantId: Number(merchantId), merchantName: merchant.name || '', txHash };
     
-    tx.set(db.collection('transactions').doc(), { ...txBase, uid, type: 'pay_merchant' });
+    // Create the master transaction with doc ID = txHash to prevent double payments
+    tx.set(checkTxRef, { ...txBase, uid, type: 'pay_merchant' });
 
     const currentMerchantBal = ownerSnap.exists ? Number(ownerSnap.data().pointBalanceVnd || 0) : 0;
-    tx.set(merchantOwnerRef, { pointBalanceVnd: currentMerchantBal + netKrw }, { merge: true });
-    tx.set(db.collection('transactions').doc(), { ...txBase, uid: merchantOwnerUid, buyerUid: uid, type: 'merchant_income', netAmountVnd: netKrw, feeAmountVnd: feeKrw, feeBps });
+    tx.set(merchantOwnerRef, { pointBalanceVnd: currentMerchantBal + netVnd }, { merge: true });
+    tx.set(db.collection('transactions').doc(), { ...txBase, uid: merchantOwnerUid, buyerUid: uid, type: 'merchant_income', netAmountVnd: netVnd, feeAmountVnd: feeVnd, feeBps });
 
     // Ledger for mentors
-    if (mentorBonusKrw > 0 && mentorSnap && mentorSnap.exists) {
-      tx.update(mentorRef, { pointBalanceVnd: admin.firestore.FieldValue.increment(mentorBonusKrw) });
-      tx.set(db.collection('transactions').doc(), { ...txBase, uid: mentorUid, sourceUid: uid, type: 'mentor_bonus_tier1', amountVnd: mentorBonusKrw, amountKrw: mentorBonusKrw });
+    if (mentorBonusVnd > 0 && mentorSnap && mentorSnap.exists) {
+      tx.update(mentorRef, { pointBalanceVnd: admin.firestore.FieldValue.increment(mentorBonusVnd) });
+      tx.set(db.collection('transactions').doc(), { ...txBase, uid: mentorUid, sourceUid: uid, type: 'mentor_bonus_tier1', amountVnd: mentorBonusVnd, amountKrw: mentorBonusVnd });
     }
-    if (grandMentorBonusKrw > 0 && grandMentorSnap && grandMentorSnap.exists) {
-      tx.update(grandMentorRef, { pointBalanceVnd: admin.firestore.FieldValue.increment(grandMentorBonusKrw) });
-      tx.set(db.collection('transactions').doc(), { ...txBase, uid: grandMentorUid, sourceUid: uid, type: 'mentor_bonus_tier2', amountVnd: grandMentorBonusKrw, amountKrw: grandMentorBonusKrw });
+    if (grandMentorBonusVnd > 0 && grandMentorSnap && grandMentorSnap.exists) {
+      tx.update(grandMentorRef, { pointBalanceVnd: admin.firestore.FieldValue.increment(grandMentorBonusVnd) });
+      tx.set(db.collection('transactions').doc(), { ...txBase, uid: grandMentorUid, sourceUid: uid, type: 'mentor_bonus_tier2', amountVnd: grandMentorBonusVnd, amountKrw: grandMentorBonusVnd });
     }
-    if (platformBonusKrw > 0) {
-      tx.set(db.collection('platform_config').doc('revenue'), { totalRevenueVnd: admin.firestore.FieldValue.increment(platformBonusKrw), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    if (platformBonusVnd > 0) {
+      tx.set(db.collection('platform_config').doc('revenue'), { totalRevenueVnd: admin.firestore.FieldValue.increment(platformBonusVnd), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     }
     
-    return { txHash, isJackpot: isWinner, amountHex: finalKrw, amountKrw: finalKrw, amountVnd: finalVnd, merchantName: merchant.name || '' };
+    return { txHash, isJackpot: isWinner, amountHex: finalVnd, amountKrw: finalKrw, amountVnd: finalVnd, merchantName: merchant.name || '' };
+  });
+}
+;
   });
   return result;
 }

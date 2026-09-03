@@ -808,8 +808,8 @@ exports.payMerchantFirebase = onCall(
     }
 
     const result = await txH.payMerchantFirebase(
-      uid, Number(merchantId), amountKrw ? Number(amountKrw) : 0,
-      { currency: cur, amountVnd: amountVnd ? Number(amountVnd) : undefined }
+      uid, Number(merchantId), amountVnd ? Number(amountVnd) : 0,
+      { currency: cur, amountKrw: amountKrw ? Number(amountKrw) : undefined, reqId: request.data.reqId }
     );
     logger.info('payMerchantFirebase', { uid, merchantId, amountKrw, amountVnd, currency: cur, amountVndCharged: result.amountVnd });
     return result;
