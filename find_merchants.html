@@ -1,536 +1,553 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Find Merchants | K-MOA</title>
-    <link rel="stylesheet" href="/assets/css/index.css">
-    <link rel="stylesheet" href="/assets/css/header.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    <style>
-        body {
-            background: #0f172a;
-            color: #e2e8f0;
-            font-family: 'Outfit', sans-serif;
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="/assets/images/jump/favicon.png" />
+  <title>Treasure Hunt | K-MOA — Location-based TON·USDT Coin Rewards</title>
+  <meta name="description" content="K-MOA Treasure Hunt — Discover hidden treasures with AR scanner! Earn Game Points and exchange for Toncoin·USDT rewards. K-MOA Treasure Hunt: find treasures, earn rewards, exchange for Toncoin & USDT." />
+  <meta name="keywords" content="treasure hunt, AR treasure hunt, K-MOA, k-culture, location-based game, treasure box, game points, Game Points, TON rewards, Toncoin Rewards, USDT rewards, USDT Rewards, Toncoin, coin game, verified coin game, Web3 game, M2E, Monster Racing, Speed Memory, Archery, Monster Defense" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://jump22.netlify.app/treasure.html" />
+  <link rel="alternate" hreflang="ko" href="https://jump22.netlify.app/treasure.html"/>
+  <link rel="alternate" hreflang="en" href="https://jump22.netlify.app/treasure.html"/>
+  <link rel="alternate" hreflang="x-default" href="https://jump22.netlify.app/treasure.html"/>
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="K-MOA" />
+  <meta property="og:url" content="https://jump22.netlify.app/treasure.html" />
+  <meta property="og:title" content="Treasure Hunt | K-MOA — TON·USDT Coin Rewards" />
+  <meta property="og:description" content="Discover treasures with AR → Earn Game Points → Exchange for Toncoin·USDT! K-MOA Treasure Hunt: find hidden treasures, earn Game Points, get Toncoin & USDT Rewards." />
+  <meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Treasure Hunt | K-MOA" />
+  <meta name="twitter:description" content="Discover treasures with AR → Earn Game Points → Get Toncoin·USDT Rewards. K-MOA Treasure Hunt." />
+  <meta name="twitter:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Treasure Hunt — K-MOA",
+    "alternateName": ["Treasure Hunt", "AR Treasure Hunt", "K-MOA Treasure Hunt"],
+    "url": "https://jump22.netlify.app/treasure.html",
+    "description": "K-MOA Treasure Hunt — Discover hidden treasures with AR scanner, earn Game Points, exchange for Toncoin Rewards & USDT Rewards.",
+    "genre": ["Adventure", "Location-based"],
+    "gamePlatform": "Web",
+    "applicationCategory": "GameApplication",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+    "publisher": {"@type": "Organization", "name": "K-MOA", "url": "https://jump22.netlify.app/"},
+    "inLanguage": ["ko", "en", "vi"]
+  }
+  </script>
 
-        .fm-hero {
-            position: relative;
-            padding: 120px 20px 80px;
-            text-align: center;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 58, 138, 0.85)),
-                url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1600&q=80') center/cover;
-        }
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-        .fm-hero::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 80px;
-            background: linear-gradient(to top, #0f172a, transparent);
-        }
+  <!-- Google Fonts: Cinzel Decorative (fantasy headings) + Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet" />
 
-        .fm-hero h1 {
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            font-weight: 900;
-            margin-bottom: 20px;
-            background: linear-gradient(to right, #38bdf8, #fcd34d);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            position: relative;
-            z-index: 10;
-        }
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <style>
+    /* ── Base ──────────────────────────────────────────────────────────── */
+    body { font-family: 'Noto Sans KR', sans-serif; background: #080614; color: #fff; }
+    /* 헤더 다크 오버라이드 */
+    .top-header { --hdr-fill: rgba(8,6,20,.85); --hdr-fill-2: rgba(8,6,20,.92); --hdr-text: #fde68a; --hdr-text-2: #f59e0b; --hdr-line: rgba(245,158,11,.2); }
+    .font-fantasy  { font-family: 'Cinzel Decorative', serif; }
+    .font-cinzel   { font-family: 'Cinzel', serif; }
 
-        .fm-hero p {
-            font-size: 1.25rem;
-            color: #94a3b8;
-            max-width: 600px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 10;
-        }
+    /* ── Gold gradient text ──────────────────────────────────────────── */
+    .text-gold {
+      background: linear-gradient(135deg, #c8922a 0%, #fde68a 40%, #f59e0b 70%, #b45309 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
 
-        .fm-toolbar {
-            max-width: 1180px;
-            margin: -30px auto 40px;
-            padding: 0 20px;
-            position: relative;
-            z-index: 20;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-        }
+    /* ── Shimmer button ──────────────────────────────────────────────── */
+    .btn-gold {
+      background: linear-gradient(90deg, #92400e, #f59e0b, #fde68a, #f59e0b, #92400e);
+      background-size: 250% 100%;
+      animation: shimmer 3s linear infinite;
+      color: #1c0f00;
+      font-weight: 700;
+      font-family: 'Cinzel', serif;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 0% 0; }
+      100% { background-position: 250% 0; }
+    }
 
-        .fm-search {
-            flex: 1;
-            min-width: 250px;
-            position: relative;
-        }
+    /* ── Floating animation ──────────────────────────────────────────── */
+    .float-anim { animation: float 5s ease-in-out infinite; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-14px); }
+    }
 
-        .fm-search input {
-            width: 100%;
-            padding: 16px 20px 16px 50px;
-            border-radius: 999px;
-            background: rgba(30, 41, 59, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #f8fafc;
-            font-size: 16px;
-            outline: none;
-            box-sizing: border-box;
-            backdrop-filter: blur(10px);
-            transition: 0.3s;
-        }
+    /* ── Glow pulse ──────────────────────────────────────────────────── */
+    .glow-gold { animation: glow 3s ease-in-out infinite; }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 24px rgba(245,158,11,.35), 0 0 60px rgba(245,158,11,.12); }
+      50%       { box-shadow: 0 0 48px rgba(245,158,11,.65), 0 0 120px rgba(245,158,11,.25); }
+    }
 
-        .fm-search input:focus {
-            border-color: #38bdf8;
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
-        }
+    /* ── Sparkle dots ────────────────────────────────────────────────── */
+    .sparkle { position: absolute; border-radius: 50%; background: #fde68a; animation: spark 4s ease-in-out infinite; pointer-events: none; }
+    @keyframes spark {
+      0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+      50%       { opacity: .9; transform: scale(1) rotate(180deg); }
+    }
 
-        .fm-search::before {
-            content: '🔍';
-            position: absolute;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 18px;
-        }
+    /* ── Star twinkle ────────────────────────────────────────────────── */
+    .star { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; animation: twinkle 3s ease-in-out infinite; }
+    @keyframes twinkle {
+      0%, 100% { opacity: .1; } 50% { opacity: .8; }
+    }
 
-        .fm-categories {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            scrollbar-width: none;
-            flex: 2;
-        }
+    /* ── Scroll fade-in ──────────────────────────────────────────────── */
+    .fade-in { opacity: 0; transform: translateY(28px); transition: opacity .7s ease, transform .7s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
 
-        .fm-categories::-webkit-scrollbar {
-            display: none;
-        }
+    /* ── Card hover ──────────────────────────────────────────────────── */
+    .card-hover { transition: transform .3s ease, box-shadow .3s ease; }
+    .card-hover:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(245,158,11,.22); }
 
-        .fm-cat-btn {
-            padding: 12px 24px;
-            border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(30, 41, 59, 0.7);
-            color: #cbd5e1;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: 0.3s;
-        }
+    /* ── Divider ─────────────────────────────────────────────────────── */
+    .divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, rgba(245,158,11,.5), transparent); margin: 0 40px; }
 
-        .fm-cat-btn.active {
-            background: #38bdf8;
-            color: #0f172a;
-            border-color: #38bdf8;
-            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
-        }
+    /* ── Hero BG ─────────────────────────────────────────────────────── */
+    .hero-bg {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245,158,11,.18) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(120,40,0,.25) 0%, transparent 60%),
+        linear-gradient(180deg, #080614 0%, #12082a 50%, #080614 100%);
+    }
 
-        .fm-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 24px;
-            max-width: 1180px;
-            margin: 0 auto 80px;
-            padding: 0 20px;
-            width: 100%;
-            box-sizing: border-box;
-        }
+    /* ── Stats ───────────────────────────────────────────────────────── */
+    .stat-num { font-family: 'Cinzel', serif; font-size: 1.6rem; font-weight: 700; }
 
-        .fm-card {
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            transition: 0.3s;
-            position: relative;
-        }
+    /* ── Reward badge ────────────────────────────────────────────────── */
+    .reward-badge {
+      position: absolute; top: -10px; right: -10px;
+      background: linear-gradient(135deg, #7c3aed, #4c1d95);
+      font-size: .6rem; font-family: 'Cinzel', serif;
+      padding: 3px 8px; border-radius: 999px; letter-spacing: .08em;
+    }
 
-        .fm-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(56, 189, 248, 0.3);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
-        }
-
-        .fm-card-img {
-            height: 200px;
-            background-size: cover;
-            background-position: center;
-            position: relative;
-        }
-
-        .fm-card-badge {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            background: rgba(56, 189, 248, 0.9);
-            color: #0f172a;
-            font-size: 12px;
-            font-weight: 800;
-            padding: 4px 10px;
-            border-radius: 6px;
-        }
-
-        .fm-card-body {
-            padding: 24px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .fm-card-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #fff;
-            margin: 0 0 8px;
-        }
-
-        .fm-card-desc {
-            font-size: 0.95rem;
-            color: #94a3b8;
-            line-height: 1.5;
-            margin-bottom: 20px;
-        }
-
-        .fm-card-info {
-            margin-bottom: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .fm-info-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            font-size: 0.9rem;
-            color: #cbd5e1;
-        }
-
-        .fm-info-icon {
-            opacity: 0.7;
-        }
-
-        .fm-card-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: auto;
-        }
-
-        .fm-btn {
-            flex: 1;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            text-align: center;
-            text-decoration: none;
-            transition: 0.2s;
-            cursor: pointer;
-            border: none;
-        }
-
-        .fm-btn-primary {
-            background: #38bdf8;
-            color: #0f172a;
-        }
-
-        .fm-btn-primary:hover {
-            background: #0ea5e9;
-        }
-
-        .fm-btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: #f8fafc;
-        }
-
-        .fm-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* ---------------- 지도 모달 스타일 ---------------- */
-        .map-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(5px);
-            z-index: 9999;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .map-modal-overlay.active {
-            display: flex;
-            opacity: 1;
-        }
-
-        .map-modal {
-            background: #1e293b;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 600px;
-            padding: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-        }
-
-        .map-modal-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: #fff;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            font-size: 1.2rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .map-modal-close:hover {
-            background: #ef4444;
-        }
-
-        .map-modal-name {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-            color: #fcd34d;
-            padding-right: 30px;
-        }
-
-        .map-modal-address {
-            font-size: 0.9rem;
-            margin-bottom: 15px;
-            color: #94a3b8;
-        }
-
-        .map-iframe-container {
-            width: 100%;
-            height: 350px;
-            border-radius: 12px;
-            overflow: hidden;
-            background: #0f172a;
-        }
-
-        #siteFooter {
-            margin-top: auto;
-        }
-    </style>
+    /* ── Parchment texture on map ────────────────────────────────────── */
+    .map-frame {
+      border: 2px solid rgba(245,158,11,.4);
+      border-radius: 16px;
+      box-shadow: inset 0 0 60px rgba(0,0,0,.5), 0 0 0 1px rgba(245,158,11,.15);
+    }
+  </style>
   <link rel="manifest" href="/manifest.json">
 </head>
 
-<body>
+<body class="hero-bg min-h-screen">
 
-    <!-- Header -->
-    <div id="siteHeaderContainer">
-        <div id="siteHeader"></div>
+  <div id="siteHeader"></div>
+  <script src="/assets/js/partials.js" defer></script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 1 — HERO
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="relative min-h-screen flex flex-col items-center justify-center px-4 pt-20 pb-12 overflow-hidden">
+
+    <!-- Background stars -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div class="star" style="top:8%;left:12%;animation-delay:.2s"></div>
+      <div class="star" style="top:15%;left:73%;animation-delay:.9s"></div>
+      <div class="star" style="top:25%;left:42%;animation-delay:1.7s"></div>
+      <div class="star" style="top:35%;left:88%;animation-delay:.5s"></div>
+      <div class="star" style="top:55%;left:5%;animation-delay:2.1s"></div>
+      <div class="star" style="top:70%;left:60%;animation-delay:1.3s"></div>
+      <div class="star" style="top:80%;left:25%;animation-delay:.7s"></div>
+      <div class="star" style="top:90%;left:82%;animation-delay:2.4s"></div>
+      <div class="sparkle" style="width:7px;height:7px;top:18%;left:8%;animation-delay:0s"></div>
+      <div class="sparkle" style="width:5px;height:5px;top:45%;left:92%;animation-delay:1.2s"></div>
+      <div class="sparkle" style="width:8px;height:8px;top:72%;left:14%;animation-delay:2.3s"></div>
+      <div class="sparkle" style="width:6px;height:6px;top:30%;left:78%;animation-delay:.6s"></div>
     </div>
 
-    <section class="fm-hero">
-        <h1>Find Merchants</h1>
-        <p>Discover trusted K-Culture Alliance partners. Find delicious food, great lifestyle stores, and special
-            services.</p>
-    </section>
+    <!-- Badge -->
+    <div class="relative z-10 mb-5 flex items-center gap-2 fade-in" style="transition-delay:.1s">
+      <span class="text-yellow-500/60 text-base">⚔️</span>
+      <p class="font-cinzel text-yellow-400/80 text-xs tracking-[.25em] uppercase" data-i18n="hero_sub"></p>
+      <span class="text-yellow-500/60 text-base">⚔️</span>
+    </div>
 
-    <div class="fm-toolbar">
-        <div class="fm-search">
-            <input type="text" id="searchInput" placeholder="Search merchants by name or location...">
+    <!-- Title -->
+    <div class="relative z-10 text-center mb-4 fade-in" style="transition-delay:.2s">
+      <div class="font-cinzel text-yellow-400/50 text-sm sm:text-base tracking-[.35em] uppercase mb-1" data-i18n="hero_eyebrow"></div>
+      <h1 class="font-fantasy text-gold text-5xl sm:text-6xl md:text-7xl leading-none tracking-wide" data-i18n="hero_title"></h1>
+    </div>
+
+    <!-- Description -->
+    <p class="relative z-10 text-center text-amber-200/70 text-sm sm:text-base max-w-md mx-auto mb-8 leading-relaxed fade-in" style="transition-delay:.3s" data-i18n="hero_desc"></p>
+
+    <!-- MAP IMAGE -->
+    <div class="relative z-10 w-full max-w-xl mx-auto mb-10 float-anim fade-in" style="transition-delay:.35s">
+      <div class="map-frame glow-gold overflow-hidden">
+        <img src="/assets/images/ui/map.png" alt="Treasure Map" class="w-full h-auto object-cover block" loading="eager" />
+      </div>
+      <!-- Corner emojis -->
+      <span class="absolute -top-4 -left-4 text-3xl select-none" aria-hidden="true">✨</span>
+      <span class="absolute -top-4 -right-4 text-3xl select-none" aria-hidden="true">✨</span>
+      <span class="absolute -bottom-4 -left-4 text-2xl select-none" aria-hidden="true">🪙</span>
+      <span class="absolute -bottom-4 -right-4 text-2xl select-none" aria-hidden="true">🪙</span>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="relative z-10 flex flex-wrap justify-center gap-8 mb-10 fade-in" style="transition-delay:.4s">
+      <div class="text-center">
+        <div id="stat-users" class="stat-num text-gold">—</div>
+        <div class="text-amber-200/50 text-xs font-cinzel tracking-wider" data-i18n="stat1"></div>
+      </div>
+      <div class="w-px bg-yellow-500/20 self-stretch"></div>
+      <div class="text-center">
+        <div id="stat-treasure" class="stat-num text-gold">—</div>
+        <div class="text-amber-200/50 text-xs font-cinzel tracking-wider" data-i18n="stat2"></div>
+      </div>
+      <div class="w-px bg-yellow-500/20 self-stretch"></div>
+      <div class="text-center">
+        <div class="stat-num text-gold">∞</div>
+        <div class="text-amber-200/50 text-xs font-cinzel tracking-wider" data-i18n="stat3"></div>
+      </div>
+    </div>
+
+    <!-- CTA Buttons -->
+    <div class="relative z-10 flex flex-col sm:flex-row gap-3 w-full max-w-sm mx-auto fade-in" style="transition-delay:.45s">
+      <a href="/merchants.html" class="btn-gold flex-1 text-center py-4 px-6 rounded-xl text-sm shadow-xl hover:scale-105 transition-transform" data-i18n="btn_explore"></a>
+      <a href="/register.html" class="flex-1 text-center py-4 px-6 rounded-xl font-bold font-cinzel text-yellow-400 text-sm border border-yellow-500/60 bg-yellow-500/5 hover:bg-yellow-500/15 hover:scale-105 transition-all" data-i18n="btn_register"></a>
+    </div>
+    <!-- AR Scan -->
+    <a href="/ar-scan.html" class="relative z-10 mt-5 flex items-center gap-2 justify-center px-8 py-3 rounded-2xl border border-amber-500/50 bg-amber-900/20 hover:bg-amber-800/35 text-amber-300 text-sm font-bold transition-all hover:scale-105 active:scale-95 fade-in" style="transition-delay:.5s">
+      📷 AR Treasure Scanner
+    </a>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 2 — HOW TO PLAY
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="py-20 px-4 max-w-4xl mx-auto">
+    <div class="text-center mb-12 fade-in">
+      <div class="font-cinzel text-yellow-500/50 text-xs tracking-[.3em] uppercase mb-3" data-i18n="how_eyebrow"></div>
+      <h2 class="font-fantasy text-gold text-3xl sm:text-4xl" data-i18n="how_title"></h2>
+      <p class="text-amber-200/50 text-sm mt-3" data-i18n="how_sub"></p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-5">
+      <!-- Step 1: AR 스캐너 실행 -->
+      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-6 text-center backdrop-blur-sm">
+        <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
+        <div class="text-4xl mb-4">📷</div>
+        <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step1_label"></div>
+        <h3 class="font-bold text-white text-sm mb-2" data-i18n="step1_title"></h3>
+        <p class="text-amber-200/55 text-xs leading-relaxed" data-i18n="step1_desc"></p>
+      </div>
+      <!-- Step 2: 접근 후 획득 -->
+      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-6 text-center backdrop-blur-sm" style="transition-delay:.08s">
+        <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
+        <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
+        <div class="text-4xl mb-4">🎯</div>
+        <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step2_label"></div>
+        <h3 class="font-bold text-white text-sm mb-2" data-i18n="step2_title"></h3>
+        <p class="text-amber-200/55 text-xs leading-relaxed" data-i18n="step2_desc"></p>
+      </div>
+      <!-- Step 3: 몬스터 처치 → 열쇠 (숨김 박스) -->
+      <div class="card-hover fade-in relative bg-white/[.04] border border-yellow-500/15 rounded-2xl p-6 text-center backdrop-blur-sm" style="transition-delay:.16s">
+        <div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-yellow-500/5 to-transparent pointer-events-none"></div>
+        <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
+        <div class="text-4xl mb-4">🗝️</div>
+        <div class="font-cinzel text-yellow-500/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step3_label"></div>
+        <h3 class="font-bold text-white text-sm mb-2" data-i18n="step3_title"></h3>
+        <p class="text-amber-200/55 text-xs leading-relaxed" data-i18n="step3_desc"></p>
+      </div>
+      <!-- Step 4: 인벤토리에서 박스 개봉 → 경품 -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-emerald-500/8 to-transparent border border-emerald-500/25 rounded-2xl p-6 text-center backdrop-blur-sm" style="transition-delay:.24s">
+        <div class="hidden sm:block absolute -left-4 top-1/2 -translate-y-1/2 text-yellow-500/30 text-xl">›</div>
+        <div class="text-4xl mb-4">🎁</div>
+        <div class="font-cinzel text-emerald-400/60 text-[.65rem] tracking-[.3em] uppercase mb-2" data-i18n="step4_label"></div>
+        <h3 class="font-bold text-white text-sm mb-2" data-i18n="step4_title"></h3>
+        <p class="text-amber-200/55 text-xs leading-relaxed" data-i18n="step4_desc"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 관광지 특별 구역 배너 ────────────────────────────────────────────── -->
+  <section class="py-4 px-4 max-w-3xl mx-auto fade-in">
+    <div class="bg-sky-500/8 border border-sky-400/30 rounded-2xl p-5 sm:p-7 flex gap-4 items-start">
+      <div class="text-4xl shrink-0 mt-0.5">⛵</div>
+      <div>
+        <div class="font-cinzel text-sky-400/70 text-[.65rem] tracking-[.3em] uppercase mb-1" data-i18n="tourist_eyebrow"></div>
+        <h3 class="font-bold text-sky-200 text-sm sm:text-base mb-2" data-i18n="tourist_title"></h3>
+        <p class="text-sky-200/60 text-xs sm:text-sm leading-relaxed" data-i18n="tourist_desc"></p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 2.5 — 경품 지급 프로세스
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="py-10 px-4 max-w-3xl mx-auto fade-in">
+    <div class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 sm:p-8">
+      <div class="text-center mb-6">
+        <div class="font-cinzel text-amber-400/70 text-xs tracking-[.3em] uppercase mb-2" data-i18n="prize_eyebrow"></div>
+        <h3 class="font-fantasy text-gold text-xl sm:text-2xl" data-i18n="prize_title"></h3>
+      </div>
+      <!-- 플로우 -->
+      <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-6 text-xs sm:text-sm">
+        <div class="flex flex-col items-center gap-1 bg-white/5 rounded-xl px-4 py-3">
+          <span class="text-2xl">📷</span>
+          <span class="text-amber-200/70 font-cinzel" data-i18n="prize_flow1"></span>
         </div>
-        <div class="fm-categories" id="catFilter">
-            <button class="fm-cat-btn active" data-cat="all">All Partners</button>
-            <button class="fm-cat-btn" data-cat="food">🍲 Food & Dining</button>
-            <button class="fm-cat-btn" data-cat="life">🛒 Lifestyle</button>
-            <button class="fm-cat-btn" data-cat="beauty">💆 Beauty</button>
+        <span class="text-amber-500 text-lg">→</span>
+        <div class="flex flex-col items-center gap-1 bg-white/5 rounded-xl px-4 py-3">
+          <span class="text-2xl">📦</span>
+          <span class="text-amber-200/70 font-cinzel" data-i18n="prize_flow2"></span>
         </div>
-    </div>
-
-    <div class="fm-grid" id="merchantsGrid">
-        <!-- Rendered via JS -->
-    </div>
-
-    <!-- 지도 표시 모달 팝업 -->
-    <div class="map-modal-overlay" id="mapModalOverlay">
-        <div class="map-modal">
-            <button class="map-modal-close" onclick="closeMapModal()">✕</button>
-            <div class="map-modal-name" id="mapModalName">상점 이름</div>
-            <div class="map-modal-address" id="mapModalAddress">상점 주소</div>
-            <div class="map-iframe-container" id="mapIframeContainer"></div>
+        <span class="text-amber-500 text-lg">→</span>
+        <div class="flex flex-col items-center gap-1 bg-white/5 rounded-xl px-4 py-3">
+          <span class="text-2xl">🔓</span>
+          <span class="text-amber-200/70 font-cinzel" data-i18n="prize_flow3"></span>
         </div>
+        <span class="text-amber-500 text-lg">→</span>
+        <div class="flex flex-col items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3">
+          <span class="text-2xl">🎉</span>
+          <span class="text-emerald-300 font-bold font-cinzel" data-i18n="prize_flow4"></span>
+        </div>
+      </div>
+      <!-- 포인트 목록 -->
+      <ul class="space-y-2 text-xs sm:text-sm text-amber-200/60 max-w-xl mx-auto">
+        <li class="flex gap-2"><span class="text-amber-400 shrink-0">✦</span><span data-i18n="prize_note1"></span></li>
+        <li class="flex gap-2"><span class="text-amber-400 shrink-0">✦</span><span data-i18n="prize_note2"></span></li>
+        <li class="flex gap-2"><span class="text-amber-400 shrink-0">✦</span><span data-i18n="prize_note3"></span></li>
+        <li class="flex gap-2"><span class="text-purple-400 shrink-0">👑</span><span data-i18n="prize_note4"></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 3 — LEGENDARY REWARDS
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="py-20 px-4 max-w-4xl mx-auto">
+    <div class="text-center mb-12 fade-in">
+      <div class="font-cinzel text-yellow-500/50 text-xs tracking-[.3em] uppercase mb-3" data-i18n="rewards_eyebrow"></div>
+      <h2 class="font-fantasy text-gold text-3xl sm:text-4xl" data-i18n="rewards_title"></h2>
+      <p class="text-amber-200/50 text-sm mt-3" data-i18n="rewards_sub"></p>
     </div>
 
-    <!-- Footer -->
-    <div id="siteFooter"></div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
+      <!-- VIP Voucher -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-yellow-500/10 via-yellow-500/5 to-transparent border border-yellow-500/25 rounded-2xl p-5 sm:p-6 text-center">
+        <div class="text-4xl sm:text-5xl mb-4">🏆</div>
+        <div class="font-bold text-white text-sm mb-1" data-i18n="reward1_name"></div>
+        <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward1_desc"></div>
+      </div>
+      <!-- Points -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/25 rounded-2xl p-5 sm:p-6 text-center" style="transition-delay:.08s">
+        <span class="reward-badge text-purple-200" data-i18n="badge_rare"></span>
+        <div class="text-4xl sm:text-5xl mb-4">💠</div>
+        <div class="font-bold text-white text-sm mb-1" data-i18n="reward2_name"></div>
+        <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward2_desc"></div>
+      </div>
+      <!-- Rare Items -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-blue-500/10 via-blue-500/5 to-transparent border border-blue-500/25 rounded-2xl p-5 sm:p-6 text-center" style="transition-delay:.16s">
+        <div class="text-4xl sm:text-5xl mb-4">⚔️</div>
+        <div class="font-bold text-white text-sm mb-1" data-i18n="reward3_name"></div>
+        <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward3_desc"></div>
+      </div>
+      <!-- Jackpot -->
+      <div class="card-hover fade-in relative bg-gradient-to-b from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/25 rounded-2xl p-5 sm:p-6 text-center" style="transition-delay:.24s">
+        <span class="reward-badge text-emerald-200" data-i18n="badge_jackpot"></span>
+        <div class="text-4xl sm:text-5xl mb-4">🌟</div>
+        <div class="font-bold text-white text-sm mb-1" data-i18n="reward4_name"></div>
+        <div class="text-amber-200/50 text-xs leading-relaxed" data-i18n="reward4_desc"></div>
+      </div>
+    </div>
+  </section>
 
-    <script src="/assets/js/partials.js"></script>
-    <script>
-        // Dummy Data - To be replaced by Firebase in production
-        const MERCHANTS_DATA = [
-            {
-                id: 'm1', category: 'food', name: 'Daehan Kimchi (대한김치)',
-                desc: 'Premium traditional Korean Kimchi crafted daily in Hanoi. Fermented to perfection.',
-                address: 'My Dinh 1, Nam Tu Liem, Hanoi, Vietnam',
-                phone: '+84 123 456 789',
-                website: 'https://www.facebook.com/daehankimchi',
-                detailUrl: '/kca_webzine.html?category=food',
-                img: 'https://images.unsplash.com/photo-1583224964978-225ddb3ea661?w=600&q=80'
-            },
-            {
-                id: 'm2', category: 'food', name: 'Banchan Nara (반찬나라)',
-                desc: 'Authentic Korean side dishes and meal kits. Taste the comfort of Korean home cooking.',
-                address: 'Keangnam Landmark 72, Hanoi',
-                phone: '+84 987 654 321',
-                detailUrl: '/kca_webzine.html?category=food',
-                img: 'https://images.unsplash.com/photo-1544025162-8ba364edcc51?w=600&q=80'
-            },
-            {
-                id: 'm3', category: 'beauty', name: 'Seoul Glow Clinic',
-                desc: 'Advanced K-Beauty treatments, facials, and authentic Korean skincare products.',
-                address: 'Trung Hoa Nhan Chinh, Cau Giay, Hanoi',
-                phone: '+84 234 567 890',
-                website: 'https://www.instagram.com/',
-                detailUrl: '/kca_webzine.html?category=beauty',
-                img: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&q=80'
-            },
-            {
-                id: 'm4', category: 'life', name: 'K-Mart Superstore',
-                desc: 'Your one-stop shop for Korean groceries, snacks, and daily necessities in Vietnam.',
-                address: 'Ocean Park, Gia Lam, Hanoi',
-                phone: '+84 345 678 901',
-                detailUrl: '/kca_webzine.html?category=life',
-                img: 'https://images.unsplash.com/photo-1555899434-94d1368aa7af?w=600&q=80'
-            },
-            {
-                id: 'm5', category: 'food', name: 'Zentaro Flavor Lab',
-                desc: 'R&D center for combining traditional Korean fermentation with modern culinary science.',
-                address: 'Phuc Loc Distillery, Vietnam',
-                phone: '+84 000 111 222',
-                website: 'https://zentarolabs.com',
-                detailUrl: '/kca_webzine.html?category=food',
-                img: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=600&q=80'
-            }
-        ];
+  <hr class="divider" />
 
-        const grid = document.getElementById('merchantsGrid');
-        const searchInput = document.getElementById('searchInput');
-        const catBtns = document.querySelectorAll('.fm-cat-btn');
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECTION 5 — FINAL CTA
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="py-24 px-4 text-center relative overflow-hidden fade-in">
+    <div class="absolute inset-0 pointer-events-none" aria-hidden="true"
+      style="background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(245,158,11,.12) 0%, transparent 70%)"></div>
 
-        let currentCat = 'all';
-        let searchQuery = '';
+    <div class="relative z-10">
+      <div class="text-5xl mb-5">🏴‍☠️</div>
+      <h2 class="font-fantasy text-gold text-3xl sm:text-4xl md:text-5xl mb-4" data-i18n="cta_title"></h2>
+      <p class="text-amber-200/60 text-sm sm:text-base mb-10 max-w-md mx-auto" data-i18n="cta_desc"></p>
 
-        function renderCards() {
-            grid.innerHTML = '';
+      <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-lg mx-auto">
+        <a href="/merchants.html" class="btn-gold py-4 px-8 rounded-xl text-sm shadow-2xl hover:scale-105 transition-transform" data-i18n="btn_explore"></a>
+        <a href="/mypage.html#wallet" class="py-4 px-8 rounded-xl font-bold font-cinzel text-yellow-400 text-sm border border-yellow-500/50 bg-yellow-500/5 hover:bg-yellow-500/15 hover:scale-105 transition-all" data-i18n="btn_wallet"></a>
+        <a href="/register.html" class="py-4 px-8 rounded-xl font-bold font-cinzel text-amber-200/70 text-sm border border-white/15 bg-white/[.03] hover:bg-white/[.07] hover:scale-105 transition-all" data-i18n="btn_register"></a>
+      </div>
+    </div>
+  </section>
 
-            const filtered = MERCHANTS_DATA.filter(m => {
-                const matchCat = currentCat === 'all' || m.category === currentCat;
-                const matchSearch = m.name.toLowerCase().includes(searchQuery) || m.address.toLowerCase().includes(searchQuery);
-                return matchCat && matchSearch;
-            });
+  <!-- ── Footer ──────────────────────────────────────────────────────── -->
+  <footer class="py-8 text-center border-t border-yellow-500/10">
+    <div class="flex flex-wrap justify-center gap-4 text-xs text-amber-200/30 mb-2">
+      <a href="/merchants.html" class="hover:text-yellow-400 transition-colors font-cinzel" data-i18n="nav_merchants"></a>
+      <span>·</span>
+      <a href="/register.html" class="hover:text-yellow-400 transition-colors font-cinzel" data-i18n="nav_register"></a>
+      <span>·</span>
+      <a href="/mypage.html#wallet" class="hover:text-yellow-400 transition-colors font-cinzel" data-i18n="nav_wallet"></a>
+    </div>
+    <p class="text-amber-200/20 text-xs">© 2025 JUMP Platform</p>
+  </footer>
 
-            if (filtered.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 60px; color:#94a3b8; font-size:1.1rem; border:1px dashed rgba(255,255,255,0.1); border-radius: 16px;">No merchants found.</div>';
-                return;
-            }
 
-            filtered.forEach(m => {
-                const catLabel = m.category.toUpperCase();
-                grid.innerHTML += `
-          <div class="fm-card">
-            <div class="fm-card-img" style="background-image: url('${m.img}')">
-              <span class="fm-card-badge">${catLabel}</span>
-            </div>
-            <div class="fm-card-body">
-              <h3 class="fm-card-title">${m.name}</h3>
-              <p class="fm-card-desc">${m.desc}</p>
-              
-              <div class="fm-card-info">
-                <div class="fm-info-row">
-                  <span class="fm-info-icon">📍</span>
-                  <span>${m.address}</span>
-                </div>
-                <div class="fm-info-row">
-                  <span class="fm-info-icon">📞</span>
-                  <span>${m.phone}</span>
-                </div>
-              </div>
-              
-              <div class="fm-card-actions">
-                ${m.website ? `<a href="${m.website}" target="_blank" rel="noopener noreferrer" class="fm-btn fm-btn-secondary" style="flex:0.8; font-size:1.2rem;" title="Visit Website">🌐</a>` : ''}
-                <button onclick="openMapModal('${m.name}', '${m.address}')" class="fm-btn fm-btn-secondary">
-                  🗺️ Maps
-                </button>
-                <a href="${m.detailUrl}" class="fm-btn fm-btn-primary">
-                  📄 Details
-                </a>
-              </div>
-            </div>
-          </div>
-        `;
-            });
-        }
+  <script type="module">
+    // ── Firebase 실시간 통계 ──────────────────────────────────────────────────────
+    import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+    import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+    import { firebaseConfig } from '/assets/js/firebase-config.js';
 
-        // --- 지도 모달 제어 함수 ---
-        function openMapModal(name, address) {
-            document.getElementById('mapModalName').innerText = name;
-            document.getElementById('mapModalAddress').innerText = address;
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
 
-            // 무료 구글지도 iframe 호출 (API 키 필요 없음)
-            const mapHtml = `<iframe width="100%" height="100%" frameborder="0" style="border:0" 
-                src="https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=16&ie=UTF8&iwloc=&output=embed" allowfullscreen>
-            </iframe>`;
+    const elUsers    = document.getElementById('stat-users');
+    const elTreasure = document.getElementById('stat-treasure');
 
-            document.getElementById('mapIframeContainer').innerHTML = mapHtml;
-            document.getElementById('mapModalOverlay').classList.add('active');
-        }
+    onSnapshot(doc(db, 'treasure_stats', 'global'), (snap) => {
+      const data = snap.exists() ? snap.data() : {};
+      if (elUsers)    elUsers.textContent    = ((data.participants || 0) + 10000).toLocaleString() + '+';
+      if (elTreasure) elTreasure.textContent = (data.foundCount || 0).toLocaleString();
+    }, () => {
+      if (elUsers)    elUsers.textContent    = '10,000+';
+      if (elTreasure) elTreasure.textContent = '0';
+    });
 
-        function closeMapModal() {
-            document.getElementById('mapModalOverlay').classList.remove('active');
-            document.getElementById('mapIframeContainer').innerHTML = ''; // iframe 리소스 해제
-        }
+    // ── i18n ────────────────────────────────────────────────────────────────────
+    const MESSAGES = {
+      // Hero
+      hero_eyebrow:    { ko: 'FIND THE', en: 'FIND THE', vi: 'TÌM' },
+      hero_sub:        { ko: '전설의 모험이 시작된다', en: 'The legendary adventure begins', vi: 'Cuộc phiêu lưu huyền thoại bắt đầu' },
+      hero_title:      { ko: 'HIDDEN TREASURE', en: 'HIDDEN TREASURE', vi: 'KHO BÁU ẨN GIẤU' },
+      hero_desc:       { ko: '모험이 당신을 부르고 있습니다. 보물은 진짜입니다.\nNPC의 단서를 쫓아 숨겨진 보물을 찾아내고 전설적인 보상을 손에 넣으세요.', en: 'The adventure is calling. The treasure is real.\nFollow the NPC clues, hunt down hidden treasure, and claim legendary rewards.', vi: 'Cuộc phiêu lưu đang gọi bạn. Kho báu là thật.\nTheo dấu gợi ý NPC, săn tìm kho báu ẩn và giành phần thưởng huyền thoại.' },
 
-        // 배경 클릭 시 모달 닫기
-        document.getElementById('mapModalOverlay').addEventListener('click', function (e) {
-            if (e.target === this) closeMapModal();
-        });
+      // Stats
+      stat1:           { ko: '탐험가 참여', en: 'EXPLORERS JOINED', vi: 'THÁM HIỂM VIÊN' },
+      stat2:           { ko: '오늘 발견된 보물', en: 'TREASURES TODAY', vi: 'KHO BÁU HÔM NAY' },
+      stat3:           { ko: '전설적 보상', en: 'LEGENDARY REWARDS', vi: 'PHẦN THƯỞNG' },
 
-        searchInput.addEventListener('input', (e) => {
-            searchQuery = e.target.value.toLowerCase();
-            renderCards();
-        });
+      // Buttons
+      btn_explore:     { ko: '🗺️ 탐험 시작하기', en: '🗺️ Start Exploring', vi: '🗺️ Bắt đầu khám phá' },
+      btn_register:    { ko: '⚔️ 모험가 등록', en: '⚔️ Register Now', vi: '⚔️ Đăng ký ngay' },
+      btn_wallet:      { ko: '💰 내 지갑 보기', en: '💰 View My Wallet', vi: '💰 Xem ví của tôi' },
 
-        catBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                catBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentCat = btn.dataset.cat;
-                renderCards();
-            });
-        });
+      // How to play
+      how_eyebrow:     { ko: 'QUEST GUIDE', en: 'QUEST GUIDE', vi: 'HƯỚNG DẪN' },
+      how_title:       { ko: '보물 찾는 법', en: 'How to Find Treasure', vi: 'Cách tìm kho báu' },
+      how_sub:         { ko: 'AR 스캐너로 보물을 발견하고 인벤토리에서 경품을 받으세요', en: 'Discover treasure with AR scanner and claim prizes from your inventory', vi: 'Khám phá kho báu bằng AR và nhận phần thưởng từ kho đồ' },
+      step1_label:     { ko: 'STEP 01', en: 'STEP 01', vi: 'BƯỚC 01' },
+      step1_title:     { ko: 'AR 스캐너 활성화', en: 'Activate AR Scanner', vi: 'Kích hoạt AR Scanner' },
+      step1_desc:      { ko: '앱에서 AR 스캐너를 실행하세요. 카메라로 현실 공간을 비추면 숨겨진 보물박스가 나타납니다.', en: 'Launch the AR scanner in the app. Point your camera at the real world to reveal hidden treasure boxes.', vi: 'Mở AR scanner trong ứng dụng. Hướng camera vào thực tế để khám phá các hộp kho báu ẩn.' },
+      step2_label:     { ko: 'STEP 02', en: 'STEP 02', vi: 'BƯỚC 02' },
+      step2_title:     { ko: '30m 이내 접근 후 획득', en: 'Approach within 30m & Claim', vi: 'Tiếp cận 30m & Thu thập' },
+      step2_desc:      { ko: 'AR로 발견한 보물에 실제 30m 이내로 이동하면 획득 버튼이 활성화됩니다. 현장에서 직접 보물박스를 수집하세요.', en: 'Move within 30 m of the discovered treasure in the real world to activate the claim button. Collect the box on-site.', vi: 'Di chuyển đến trong vòng 30 m của kho báu trong thực tế để kích hoạt nút thu thập.' },
+      step3_label:     { ko: 'STEP 03', en: 'STEP 03', vi: 'BƯỚC 03' },
+      step3_title:     { ko: '몬스터 처치 → 열쇠 획득', en: 'Defeat Monster → Get Key', vi: 'Tiêu diệt quái → Nhận chìa khóa' },
+      step3_desc:      { ko: '숨김 보물박스는 주변 몬스터를 처치해야 열쇠를 드롭합니다. 열쇠를 획득한 뒤 보물상자를 여세요!', en: 'Hidden treasure boxes require you to defeat nearby monsters to drop a key. Claim the key, then open the chest!', vi: 'Hộp kho báu ẩn yêu cầu tiêu diệt quái vật gần đó để nhận chìa khóa. Lấy chìa khóa rồi mở rương!' },
+      step4_label:     { ko: 'STEP 04', en: 'STEP 04', vi: 'BƯỚC 04' },
+      step4_title:     { ko: '인벤토리에서 박스 개봉 → 경품', en: 'Open Box in Inventory → Prize', vi: 'Mở hộp trong kho đồ → Phần thưởng' },
+      step4_desc:      { ko: '획득한 박스는 인벤토리에 보관됩니다. 인벤토리에서 박스를 개봉하면 즉시 경품(Point·아이템·바우처)이 지급됩니다.', en: 'Collected boxes are stored in your inventory. Open the box there to instantly receive your prize — Point, items, or vouchers.', vi: 'Hộp đã thu thập được lưu trong kho đồ. Mở hộp để nhận ngay phần thưởng — Point, vật phẩm hoặc voucher.' },
 
-        // Initial render
-        renderCards();
-    </script>
+      // Tourist zone
+      tourist_eyebrow: { ko: '관광지 특별 구역', en: 'TOURIST ZONE', vi: 'KHU VỰC DU LỊCH' },
+      tourist_title:   { ko: '스쳐 지나가는 관광지 — AR 스캔으로 최대 1km 획득', en: 'Passing Tourist Spots — Claim up to 1 km via AR Scan', vi: 'Điểm du lịch thoáng qua — Thu thập trong vòng 1 km bằng AR' },
+      tourist_desc:    { ko: '하롱베이처럼 짧게 머무는 관광지로 지정된 구역에서는 AR 스캔으로 최대 1km 거리에서도 보물박스를 획득할 수 있습니다. 크루즈나 버스 투어 중에도 놓치지 마세요!', en: 'At designated tourist zones — like Ha Long Bay — where visits are brief, you can claim treasure boxes from up to 1 km away using the AR scanner. Don\'t miss out even on a cruise or bus tour!', vi: 'Tại các khu du lịch thoáng qua như Vịnh Hạ Long, bạn có thể thu thập hộp kho báu trong phạm vi 1 km bằng AR scanner. Đừng bỏ lỡ dù đang trên tàu du lịch hay xe buýt tham quan!' },
+
+      // Prize distribution process
+      prize_eyebrow:   { ko: '경품 지급 프로세스', en: 'PRIZE DISTRIBUTION', vi: 'QUY TRÌNH PHẦN THƯỞNG' },
+      prize_title:     { ko: '보물 획득부터 경품까지', en: 'From Discovery to Prize', vi: 'Từ khám phá đến phần thưởng' },
+      prize_flow1:     { ko: 'AR 스캔', en: 'AR Scan', vi: 'AR Scan' },
+      prize_flow2:     { ko: '인벤토리 보관', en: 'Stored in Inventory', vi: 'Lưu vào kho đồ' },
+      prize_flow3:     { ko: '박스 개봉', en: 'Open Box', vi: 'Mở hộp' },
+      prize_flow4:     { ko: '경품 즉시 지급 🎉', en: 'Prize Instantly Delivered 🎉', vi: 'Nhận phần thưởng ngay 🎉' },
+      prize_note1:     { ko: '보물박스는 수집 즉시 인벤토리에 저장되며 언제든지 개봉 가능합니다.', en: 'Treasure boxes are saved to your inventory upon collection and can be opened any time.', vi: 'Hộp kho báu được lưu vào kho đồ ngay khi thu thập và có thể mở bất kỳ lúc nào.' },
+      prize_note2:     { ko: '박스 개봉 시 포인트, 희귀 아이템, VIP 바우처, 잭팟 중 하나가 무작위로 지급됩니다.', en: 'Opening a box randomly awards Points, rare items, VIP vouchers, or a jackpot prize.', vi: 'Mở hộp sẽ nhận ngẫu nhiên điểm Point, vật phẩm hiếm, voucher VIP hoặc jackpot.' },
+      prize_note3:     { ko: '같은 보물박스는 24시간 후 재수집 가능합니다. 매일 새로운 경품 기회!', en: 'The same treasure box can be recollected after 24 hours — a fresh prize chance every day!', vi: 'Hộp kho báu có thể thu thập lại sau 24 giờ — cơ hội phần thưởng mới mỗi ngày!' },
+      prize_note4:     { ko: '정회원은 가맹점 독점 보물박스에 접근할 수 있으며 더 높은 잭팟 확률을 제공합니다.', en: 'Premium members gain access to exclusive merchant boxes with higher jackpot odds.', vi: 'Thành viên chính thức có thêm hộp độc quyền tại cửa hàng với tỷ lệ jackpot cao hơn.' },
+
+      // Rewards
+      rewards_eyebrow: { ko: 'LEGENDARY LOOT', en: 'LEGENDARY LOOT', vi: 'CHIẾN LỢI PHẨM' },
+      rewards_title:   { ko: '전설적 보상', en: 'Legendary Rewards', vi: 'Phần thưởng huyền thoại' },
+      rewards_sub:     { ko: '전설의 모험가만이 이 보물들을 손에 넣을 수 있습니다', en: 'Only legendary adventurers can claim these treasures', vi: 'Chỉ những nhà thám hiểm huyền thoại mới có thể giành được những phần thưởng này' },
+      badge_rare:      { ko: 'RARE', en: 'RARE', vi: 'HIẾM' },
+      badge_jackpot:   { ko: 'JACKPOT', en: 'JACKPOT', vi: 'JACKPOT' },
+      reward1_name:    { ko: 'VIP 바우처', en: 'VIP Vouchers', vi: 'Voucher VIP' },
+      reward1_desc:    { ko: '독점 할인 & 특별 혜택', en: 'Exclusive discounts & perks', vi: 'Giảm giá độc quyền & ưu đãi' },
+      reward2_name:    { ko: '포인트', en: 'Points', vi: 'Điểm Point' },
+      reward2_desc:    { ko: '온체인 포인트 즉시 지급', en: 'On-chain Points delivered instantly', vi: 'Điểm Point on-chain được trao ngay lập tức' },
+      reward3_name:    { ko: '전투 아이템', en: 'Battle Items', vi: 'Vật phẩm chiến đấu' },
+      reward3_desc:    { ko: '무기·방어구·강화 아이템', en: 'Weapons, armor & power-up items', vi: 'Vũ khí, giáp & vật phẩm tăng cường' },
+      reward4_name:    { ko: '잭팟 Point', en: 'Jackpot Point', vi: 'Jackpot Point' },
+      reward4_desc:    { ko: '대형 Point 온체인 잭팟', en: 'Massive on-chain Point jackpots', vi: 'Jackpot Point on-chain khổng lồ' },
+
+      // Premium member
+      member_eyebrow:  { ko: 'PREMIUM', en: 'PREMIUM', vi: 'CAO CẤP' },
+      member_title:    { ko: '정회원의 특권', en: 'Premium Member Benefits', vi: 'Đặc quyền thành viên chính thức' },
+      member_benefit1: { ko: '10 Point를 납부하면 정회원이 됩니다. 가입 후 12개월간 정회원 혜택이 유지됩니다.', en: 'Pay 10 Point to become a premium member. Benefits last for 12 months after joining.', vi: 'Đóng 10 Point để trở thành thành viên chính thức. Quyền lợi duy trì 12 tháng sau khi gia nhập.' },
+      member_benefit2: { ko: '정회원만 가맹점에서 독점 보물 박스를 발행하고 관리할 수 있습니다.', en: 'Only premium members can issue and manage exclusive treasure boxes at merchants.', vi: 'Chỉ thành viên chính thức mới có thể phát hành và quản lý hộp kho báu độc quyền tại cửa hàng.' },
+      member_benefit3: { ko: '12개월 만료 후에는 재가입을 통해 혜택을 연장할 수 있습니다.', en: 'After 12 months, renew your membership to continue enjoying the benefits.', vi: 'Sau 12 tháng, gia hạn thành viên để tiếp tục hưởng quyền lợi.' },
+
+      // Final CTA
+      cta_title:       { ko: '모험을 시작할\n준비가 됐나요?', en: 'Ready for the\nAdventure?', vi: 'Sẵn sàng cho\ncuộc phiêu lưu?' },
+      cta_desc:        { ko: '지금 탐험가로 등록하고 전설적인 보물을 찾아보세요. 한정 기간 이벤트 진행 중!', en: 'Register as an explorer now and hunt for legendary treasures. Limited time event!', vi: 'Đăng ký thám hiểm ngay và săn kho báu huyền thoại. Sự kiện có thời hạn!' },
+
+      // Footer nav
+      nav_merchants:   { ko: '가맹점', en: 'Merchants', vi: 'Cửa hàng' },
+      nav_register:    { ko: '회원가입', en: 'Register', vi: 'Đăng ký' },
+      nav_wallet:      { ko: '내 지갑', en: 'My Wallet', vi: 'Ví của tôi' },
+    };
+
+    const LANGS = ['ko', 'en', 'vi'];
+    let lang = localStorage.getItem('town_lang') || 'en';
+
+    function _t(key) {
+      const e = MESSAGES[key];
+      if (!e) return key;
+      return e[lang] ?? e['ko'] ?? key;
+    }
+
+    function applyLang() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = _t(el.dataset.i18n);
+      });
+      document.documentElement.lang = lang;
+    }
+
+    // 헤더 lang:change 이벤트와 동기화
+    window.addEventListener('lang:change', function(e) {
+      const newLang = e.detail && e.detail.lang;
+      if (newLang && LANGS.includes(newLang)) {
+        lang = newLang;
+        applyLang();
+      }
+    });
+
+    // ── Scroll fade-in ────────────────────────────────────────────────────────
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.fade-in').forEach(el => io.observe(el));
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    applyLang();
+  </script>
 </body>
-
 </html>
