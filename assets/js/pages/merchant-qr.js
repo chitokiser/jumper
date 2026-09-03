@@ -17,7 +17,6 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
-import { onSnapshot, doc } from \'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js\';
 function show(id, on) {
   const el = $(id);
   if (el) el.style.display = on ? "" : "none";
@@ -103,6 +102,10 @@ async function initPage(uid) {
 
   // 실시간 K-Culture Balance & Payment Balance 모니터링
   const merchantRef = doc(db, "k_culture_balances", String(merchantId));
+  onSnapshot(doc(db, "users", uid), (docS) => { 
+    const el = document.getElementById("merchBal"); 
+    if(el && docS.exists()) el.textContent = Number(docS.data().pointBalanceVnd || 0).toLocaleString() + " KM"; 
+  });
   onSnapshot(merchantRef, (snap) => {
     if (snap.exists()) {
       const { paymentBalanceVnd = 0, pointBalance = 0 } = snap.data();
