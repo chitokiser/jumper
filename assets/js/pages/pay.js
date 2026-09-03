@@ -181,7 +181,7 @@ function bindPayButton() {
       const res = await payFn(payload);
       const d = res.data;
 
-      // 완료 패널 표시
+      try { const topArr = document.querySelectorAll('.info-header span, .head-coins span'); topArr.forEach(el => { if(el.textContent.includes(\'KM\')||el.textContent.includes(\'원\')) { const currentStr = el.textContent.replace(/[^0-9]/g, \'\'); if(currentStr) { el.textContent = (Number(currentStr) - (d.amountKrw || 0)).toLocaleString() + \' KM\'; } } }); } catch(e){} // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
 

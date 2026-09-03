@@ -17,6 +17,7 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
+import { onSnapshot, doc } from \'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js\';
 function show(id, on) {
   const el = $(id);
   if (el) el.style.display = on ? "" : "none";

@@ -1,0 +1,20 @@
+ *
+ * @param {number} merchantId
+ * @param {number} feeBps  - 0~10000 (basis points)
+ * @returns {{ txHash, merchantId, feeBps }}
+ */
+async function adminSetMerchantFeeOnChain(merchantId, feeBps) {
+  const adminWallet = getAdminWallet();
+  const platform = getPlatformContract(adminWallet);
+
+  const gasLimit = await estimateGasWithBuffer(platform, 'adminUpdateMerchantFee', [merchantId, feeBps]);
+  const tx = await platform.adminUpdateMerchantFee(merchantId, feeBps, { gasLimit });
+  const receipt = await tx.wait();
+
+  // Firestore 동기화
+  await db.collection('merchants').doc(String(merchantId)).update({
+    feeBps,
+    approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { txHash: receipt.hash, merchantId, feeBps };

@@ -1,0 +1,16 @@
+611: if (!userSnap.exists) throw new Error('유저 정보를 찾을 수 없습니다.');
+620: if (!merchantSnap.exists) throw new Error(`가맹점 ID ${merchantId}를 찾을 수 없습니다.`);
+631: const [ownerSnap, balanceSnap] = await Promise.all([
+645: if (mentorSnap.exists) {
+657: const jackpotVnd = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
+662: const platformVnd = platformSnap.exists ? Number(platformSnap.data().totalRevenueVnd || 0) : 0;
+668: let currentExp = typeof bpSnap !== 'undefined' && bpSnap.exists ? Number(bpSnap.data().gsExp || 0) : 0;
+669: let currentLevel = typeof bpSnap !== 'undefined' && bpSnap.exists ? Math.max(1, Number(bpSnap.data().gsLevel || 1)) : 1;
+685: if (mentorSnap && mentorSnap.exists) {
+693: if (grandMentorSnap && grandMentorSnap.exists) {
+730: const currentMerchantBal = balanceSnap.exists ? Number(balanceSnap.data().paymentBalanceVnd || 0) : 0;
+747: if (mentorBonusVnd > 0 && mentorSnap && mentorSnap.exists) {
+760: if (grandMentorBonusVnd > 0 && grandMentorSnap && grandMentorSnap.exists) {
+897: if (!itemSnap.exists) throw new Error('상품이 존재하지 않습니다.');
+1341: if (!userSnap.exists) throw new functions.https.HttpsError('not-found', 'not found');
+1345: const level = bpSnap.exists ? Math.max(1, Number(bpSnap.data().gsLevel || 1)) : 1;

@@ -109,6 +109,10 @@ async function run() {
         await deleteCollection('transactions');
         console.log('Purging jackpot_transactions...');
         await deleteCollection('jackpot_transactions');
+        console.log('Purging jackpot_wins...');
+        await deleteCollection('jackpot_wins');
+        console.log('Purging deposits...');
+        await deleteCollection('deposits');
         console.log('Purging k_culture_balances...');
         await deleteCollection('k_culture_balances');
         console.log('Purging admin_deposits...');
