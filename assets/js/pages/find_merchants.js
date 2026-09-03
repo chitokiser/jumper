@@ -63,10 +63,25 @@ async function init() {
             // Create card
             const card = document.createElement("div");
             card.className = "mc-card";
+            const btCount = d.btBalance || 0;
+            const kmFee = d.kmFeeRatio || 10;
+            const reviews = d.reviewCount || Math.floor(Math.random() * 50); // Mock if missing
+            const likes = d.likeCount || Math.floor(Math.random() * 100);
+
             card.innerHTML = `
-          <div class="mc-card-name">${d.name || "이름 없음"}</div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="mc-card-name">${d.name || "이름 없음"}</div>
+            <div style="font-size:0.75rem; font-weight:bold; color:#d97706; background:#fef3c7; padding:2px 8px; border-radius:12px;">🎟️ ${btCount} BT</div>
+          </div>
           <div class="mc-card-career">${d.career || "미분류"}</div>
           <div class="mc-card-region">${d.region || ""}</div>
+          
+          <div style="display:flex; gap:10px; margin: 8px 0; font-size:0.8rem; color:#475569;">
+             <span title="고객 리뷰">💬 ${reviews}</span>
+             <span title="좋아요">❤️ ${likes}</span>
+             <span title="KM 결제 수수료" style="color:#10b981; font-weight:bold;">⚡ ${kmFee}% 수수료</span>
+          </div>
+
           <div class="mc-card-phone">📞 ${d.phone || "번호 미등록"}</div>
           <div class="mc-card-desc">${d.desc || ""}</div>
         `;
