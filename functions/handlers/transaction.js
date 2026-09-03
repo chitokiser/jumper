@@ -545,14 +545,619 @@ async function registerMerchantOnChain(uid, metadataURI, merchantData, masterSec
  */
 async function adminSetMerchantFeeOnChain(merchantId, feeBps) {
   const db = admin.firestore();
-  
   await db.collection('merchants').doc(String(merchantId)).set({
     feeBps: Number(feeBps),
     approvedAt: admin.firestore.FieldValue.serverTimestamp(),
     active: true
   }, { merge: true });
-
   return { txHash: 'FIREBASE_NATIVE', merchantId, feeBps };
+}
+
+// ────────────────────────────────────────────────
+// 가맹점 오프라인 결제 (수탁 지갑 → payMerchantHex)
+// ────────────────────────────────────────────────
+
+/**
+ * payMerchantHexOnChain
+ * 유저 수탁 지갑의 Point로 jumpPlatform.payMerchantHex() 호출
+ * 흐름: KRW → Point wei 환산 → approve → payMerchantHex
+ *
+ * @param {string} uid          - Firebase Auth UID
+ * @param {number} merchantId   - 가맹점 ID (온체인)
+ * @param {number} amountKrw    - 결제 원화 금액
+ * @param {string} masterSecret - WALLET_MASTER_SECRET
+ * @returns {{ txHash, amountHex, amountKrw, merchantName }}
+ */
+async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW', amountVnd } = {}) {
+  const db = admin.firestore();
+  const { fetchExchangeRates } = require('../wallet/exchange');
+  const rates = await fetchExchangeRates();
+  let finalKrw = 0; let finalVnd = 0;
+  if (currency === 'VND' && amountVnd) {
+    finalVnd = Number(amountVnd);
+    finalKrw = Math.round((finalVnd / rates.vndPerUsd) * rates.krwPerUsd);
+  } else {
+    finalKrw = Number(amountKrw);
+    finalVnd = Math.round((finalKrw / rates.krwPerUsd) * rates.vndPerUsd);
+  }
+  if (finalKrw < 10) throw new Error('결제 금액오류');
+  const result = await db.runTransaction(async (tx) => {
+    const userRef = db.collection('users').doc(uid);
+    const merchantRef = db.collection('merchants').doc(String(merchantId));
+    const buyerBpRef = db.collection('battle_players').doc(uid);
+    const [userSnap, merchantSnap, bpSnap] = await Promise.all([ tx.get(userRef), tx.get(merchantRef), tx.get(buyerBpRef) ]);
+    if (!userSnap.exists) throw new Error('유저 정보 없음');
+    const userData = userSnap.data();
+    const userBalanceKrw = Number(userData.pointBalanceVnd || 0); 
+    if (userBalanceKrw < finalKrw) throw new Error('잔액이 부족합니다.');
+    const merchant = merchantSnap.data();
+    if (!merchant || merchant.active === false) throw new Error('비활성 가맹점입니다.');
+    let merchantOwnerUid = merchant.ownerUid;
+    const merchantOwnerRef = db.collection('users').doc(merchantOwnerUid);
+    const [ownerSnap] = await Promise.all([tx.get(merchantOwnerRef)]);
+    
+    // Fee Calculation
+    const feeBps = Number(merchant.feeBps || 0);
+    const feeKrw = Math.round((finalKrw * feeBps) / 10000);
+    const netKrw = finalKrw - feeKrw;
+
+    let mentorBonusKrw = Math.round(feeKrw * 0.20);
+    let grandMentorBonusKrw = Math.round(feeKrw * 0.10);
+    let jackpotBonusKrw = Math.round(feeKrw * 0.30);
+    let platformBonusKrw = feeKrw - jackpotBonusKrw - mentorBonusKrw - grandMentorBonusKrw;
+
+    tx.update(userRef, { pointBalanceVnd: userBalanceKrw - finalKrw });
+    
+    const txBase = { createdAt: admin.firestore.FieldValue.serverTimestamp(), currency: 'KRW', amountKrw: finalKrw, amountVnd: finalVnd, merchantId: Number(merchantId), merchantName: merchant.name || '' };
+    tx.set(db.collection('transactions').doc(), { ...txBase, uid, type: 'pay_merchant' });
+
+    const currentMerchantBal = ownerSnap.exists ? Number(ownerSnap.data().pointBalanceVnd || 0) : 0;
+    tx.set(merchantOwnerRef, { pointBalanceVnd: currentMerchantBal + netKrw }, { merge: true });
+    tx.set(db.collection('transactions').doc(), { ...txBase, uid: merchantOwnerUid, buyerUid: uid, type: 'merchant_income', netAmountVnd: netKrw, feeAmountVnd: feeKrw, feeBps });
+
+    if (jackpotBonusKrw > 0) {
+      tx.set(db.collection('jackpot_config').doc('current'), { jackpotAccVnd: admin.firestore.FieldValue.increment(jackpotBonusKrw), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    }
+    if (platformBonusKrw > 0) {
+      tx.set(db.collection('platform_config').doc('revenue'), { totalRevenueVnd: admin.firestore.FieldValue.increment(platformBonusKrw), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    }
+    return { txHash: 'FIREBASE_NATIVE', amountHex: finalKrw, amountKrw: finalKrw, amountVnd: finalVnd, merchantName: merchant.name || '' };
+  });
+  return result;
+}
+
+// ────────────────────────────────────────────────
+// 관리자: 컨트랙트에 Point 충전 (ownerDepositHex)
+// ────────────────────────────────────────────────
+
+/**
+ * adminOwnerDepositHex
+ * 관리자 지갑 Point → jumpPlatform 컨트랙트로 충전
+ * 사전 조건: Point.approve(platform, amount) 완료 상태 (무한 approve 권장)
+ *
+ * @param {string} amountWeiStr - 충전할 Point (wei 단위 문자열)
+ * @returns {{ txHash, amountDisplay }}
+ */
+async function adminOwnerDepositHex(amountWeiStr) {
+  const adminWallet = getAdminWallet();
+  const provider = getProvider();
+  const hexContract = getHexContract(provider);
+  const platform = getPlatformContract(adminWallet);
+
+  const amount = BigInt(amountWeiStr);
+  if (amount <= 0n) throw new Error('충전 금액이 0입니다');
+
+  // ── 사전 진단: 잔액 / allowance 확인 ──
+  const [hexBal, allowance] = await Promise.all([
+    hexContract.balanceOf(adminWallet.address),
+    hexContract.allowance(adminWallet.address, ADDRESSES.jumpPlatform),
+  ]);
+
+  if (hexBal < amount) {
+    throw new Error(
+      `관리자 서버지갑(${adminWallet.address}) Point 잔액 부족.\n` +
+      `보유: ${ethers.formatEther(hexBal)} Point, 필요: ${ethers.formatEther(amount)} Point.\n` +
+      `이 주소로 Point를 송금하거나 ADMIN_PRIVATE_KEY를 Point 보유 지갑으로 변경하세요.`
+    );
+  }
+  if (allowance < amount) {
+    throw new Error(
+      `관리자 서버지갑(${adminWallet.address})의 jumpPlatform Approve가 부족합니다.\n` +
+      `현재 allowance: ${ethers.formatEther(allowance)} Point.\n` +
+      `관리자 페이지 → "무한 Approve" 버튼을 다시 실행하세요.`
+    );
+  }
+
+  const gasLimit = await estimateGasWithBuffer(platform, 'ownerDepositHex', [amount]);
+  const tx = await platform.ownerDepositHex(amount, { gasLimit });
+  const receipt = await tx.wait();
+
+  return {
+    txHash: receipt.hash,
+    amountDisplay: parseFloat(ethers.formatEther(amount)).toFixed(4) + ' Point',
+    adminAddress: adminWallet.address,
+  };
+}
+
+// ────────────────────────────────────────────────
+// 상품 Point 즉시결제 (수탁 지갑 → 판매자)
+// ────────────────────────────────────────────────
+
+/**
+ * payProductWithHex
+ * Firestore 상품(items/{itemId})을 유저의 수탁 지갑 Point로 즉시 구매
+ * 흐름: 가격 조회 → Point 환산 → BNB 가스 보충 → approve → payMerchantHex (또는 직접 전송) → 주문 생성
+ *
+ * @param {string} uid
+ * @param {object} params - { itemId, date, startDate, endDate, people, phone, memo, bookingMode }
+ * @param {string} masterSecret
+ * @returns {{ orderId, txHash, hexAmountDisplay, totalPrice, currency }}
+ */
+async function payProductWithHex(uid, params, masterSecret) {
+  const { itemId, date, startDate, endDate, people, phone, memo, bookingMode } = params || {};
+
+  // 1. 유저 지갑 조회
+  const userSnap = await db.collection('users').doc(uid).get();
+  const userData = userSnap.data() || {};
+  const walletData = userData.wallet;
+  if (!walletData?.encryptedKey) throw new Error('수탁 지갑이 없습니다. 먼저 지갑을 생성하세요.');
+
+  // 2. 상품 조회
+  const itemSnap = await db.collection('items').doc(itemId).get();
+  if (!itemSnap.exists) throw new Error('상품이 존재하지 않습니다.');
+  const item = itemSnap.data();
+  if (!['published', 'approved'].includes(item.status)) throw new Error('구매 불가능한 상품입니다.');
+
+  const ownerUid = item.ownerUid || item.guideUid || '';
+  if (ownerUid === uid) throw new Error('본인 상품은 구매할 수 없습니다.');
+
+  // 3. 금액 계산
+  const unitPrice = Number(item.price || item.amount || 0);
+  const currency = String(item.currency || 'KRW').toUpperCase();
+  const bMode = String(bookingMode || item.booking?.mode || 'date_single');
+
+  let nights = 0;
+  if (bMode === 'date_range' && startDate && endDate) {
+    nights = Math.floor((new Date(endDate) - new Date(startDate)) / 86400000);
+    if (nights < 0) nights = 0;
+  }
+  const totalPrice = bMode === 'date_range' ? unitPrice * nights : unitPrice;
+  if (totalPrice <= 0) throw new Error('결제 금액이 0입니다. 날짜와 금액을 확인하세요.');
+
+  // 4. 환율 조회 + Point wei 변환 (1 Point = 1 USD)
+  const { fetchExchangeRates, krwToHexWei } = require('../wallet/exchange');
+  const rates = await fetchExchangeRates();
+
+  let hexWei;
+  if (currency === 'VND') {
+    const vndScaled = BigInt(Math.round(totalPrice * 10000));
+    const rateScaled = BigInt(Math.round(rates.vndPerUsd * 10000));
+    hexWei = (vndScaled * (10n ** 18n)) / rateScaled;
+  } else if (currency === 'USD') {
+    hexWei = BigInt(Math.round(totalPrice * 1e6)) * (10n ** 12n);
+  } else {
+    hexWei = krwToHexWei(totalPrice, rates.krwPerUsd); // KRW (default)
+  }
+  if (hexWei <= 0n) throw new Error('환산된 Point 금액이 0입니다.');
+
+  // 5. 지갑 Point 잔액 확인
+  const provider = getProvider();
+  const hexRead = getHexContract(provider);
+  const walletBal = await hexRead.balanceOf(walletData.address);
+  if (walletBal < hexWei) {
+    const have = parseFloat(ethers.formatEther(walletBal)).toFixed(4);
+    const need = parseFloat(ethers.formatEther(hexWei)).toFixed(4);
+    throw new Error(`Point 잔액 부족. 보유: ${have} Point, 필요: ${need} Point (약 ${totalPrice.toLocaleString()} ${currency})`);
+  }
+
+  // 6. BNB 가스비 보충 (필요 시)
+  const bnbBal = await provider.getBalance(walletData.address);
+  if (bnbBal < ethers.parseEther('0.0001')) {
+    const adminWallet = getAdminWallet();
+    const fundTx = await adminWallet.sendTransaction({
+      to: walletData.address, value: ethers.parseEther('0.0002'),
+    });
+    await fundTx.wait();
+  }
+
+  // 7. 판매자 정보 조회
+  const sellerSnap = await db.collection('users').doc(ownerUid).get();
+  const sellerData = sellerSnap.data() || {};
+  const sellerMerchantId = sellerData.merchantId != null ? Number(sellerData.merchantId) : null;
+  const sellerAddress = sellerData.wallet?.address;
+
+  // 8. 수탁 지갑 서명자 생성
+  const privateKey = decrypt(walletData.encryptedKey, masterSecret);
+  const signer = walletFromKey(privateKey, provider);
+  const hexSigned = getHexContract(signer);
+  const platform = getPlatformContract(signer);
+
+  let txHash;
+  if (sellerMerchantId !== null) {
+    // 판매자가 가맹점 등록: payMerchantHex (수수료·멘토 분배 포함)
+    const approveTx = await hexSigned.approve(ADDRESSES.jumpPlatform, hexWei);
+    await approveTx.wait();
+    const gasLimit = await estimateGasWithBuffer(platform, 'payMerchantHex', [sellerMerchantId, hexWei]);
+    const tx = await platform.payMerchantHex(sellerMerchantId, hexWei, { gasLimit });
+    const receipt = await tx.wait();
+    txHash = receipt.hash;
+  } else if (sellerAddress) {
+    // 판매자 가맹점 미등록: 직접 Point 전송
+    const gasLimit = await estimateGasWithBuffer(hexSigned, 'transfer', [sellerAddress, hexWei]);
+    const tx = await hexSigned.transfer(sellerAddress, hexWei, { gasLimit });
+    const receipt = await tx.wait();
+    txHash = receipt.hash;
+  } else {
+    throw new Error('판매자의 지갑 정보가 없습니다. 판매자가 지갑을 먼저 생성해야 합니다.');
+  }
+
+  // 9. 주문 생성 (confirmed)
+  const now = new Date();
+  const settlementMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const firstImg = (() => {
+    const imgs = item.images || [];
+    const f = imgs[0];
+    if (!f) return '';
+    return typeof f === 'string' ? f : (f.url || f.src || '');
+  })();
+
+  const orderRef = await db.collection('orders').add({
+    itemId,
+    itemTitle: item.title || '',
+    itemThumb: firstImg,
+
+    ownerUid,
+    guideUid: ownerUid,
+
+    buyerUid: uid,
+    buyerEmail: userData.email || '',
+    buyerPhone: String(phone || '').trim(),
+
+    bookingMode: bMode,
+    date: String(date || '').trim(),
+    startDate: String(startDate || '').trim(),
+    endDate: String(endDate || '').trim(),
+    nights,
+    people: Number(people) || 1,
+    memo: String(memo || '').trim(),
+
+    unitPrice,
+    amount: totalPrice,
+    price: totalPrice,
+    currency,
+
+    hexAmountWei: hexWei.toString(),
+    hexAmountDisplay: parseFloat(ethers.formatEther(hexWei)).toFixed(4) + ' Point',
+    rateAtPayment: {
+      krwPerUsd: rates.krwPerUsd,
+      vndPerUsd: rates.vndPerUsd,
+      source: rates.source,
+    },
+
+    payment: 'points',
+    payMethod: 'points',
+    status: 'confirmed',
+    paymentStatus: 'confirmed',
+    settlementMonth,
+
+    txHash,
+    paidAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // 10. 거래 로그
+  await db.collection('transactions').add({
+    uid,
+    userAddress: walletData.address,
+    type: 'pay_product',
+    itemId,
+    orderId: orderRef.id,
+    merchantId: sellerMerchantId,
+    amountWei: hexWei.toString(),
+    amountHex: parseFloat(ethers.formatEther(hexWei)).toFixed(4),
+    amountKrw: currency === 'KRW' ? totalPrice : null,
+    amountVnd: currency === 'VND' ? totalPrice : null,
+    txHash,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return {
+    orderId: orderRef.id,
+    txHash,
+    hexAmountDisplay: parseFloat(ethers.formatEther(hexWei)).toFixed(4) + ' Point',
+    totalPrice,
+    currency,
+    rateSource: rates.source,
+  };
+}
+
+// ────────────────────────────────────────────────
+// 관리자: 멘티 멘토 일괄 변경 (adminChangeMentor)
+// ────────────────────────────────────────────────
+
+/**
+ * adminBulkChangeMentor
+ * 온체인 등록된 유저들의 mentor를 일괄 변경
+ * - Firestore users 컬렉션에서 onChain.registered=true 유저 목록 조회
+ * - 각 유저 주소에 대해 platform.adminChangeMentor(userAddr, newMentor) 호출
+ * - Firestore onChain.mentorAddress 동기화
+ *
+ * @param {string} newMentorAddress - 새 멘토 지갑 주소
+ * @param {string[]} [targetUids]   - 특정 uid 목록 (없으면 전체 등록 유저)
+ * @returns {{ success, updated, skipped, failed }}
+ */
+async function adminBulkChangeMentor(newMentorAddress, targetUids = null) {
+  if (!ethers.isAddress(newMentorAddress)) throw new Error('유효하지 않은 멘토 주소입니다');
+
+  const adminWallet = getAdminWallet();
+  const platform = getPlatformContract(adminWallet);
+
+  // 대상 유저 조회
+  let usersSnap;
+  if (targetUids && targetUids.length > 0) {
+    const docs = await Promise.all(
+      targetUids.map(uid => db.collection('users').doc(uid).get())
+    );
+    usersSnap = { docs };
+  } else {
+    usersSnap = await db.collection('users')
+      .where('onChain.registered', '==', true)
+      .get();
+  }
+
+  const results = { updated: [], skipped: [], failed: [] };
+
+  for (const doc of usersSnap.docs) {
+    const uid = doc.id;
+    const data = doc.data() || {};
+    const address = data.wallet?.address;
+
+    if (!address) { results.skipped.push({ uid, reason: '지갑 없음' }); continue; }
+    if (!data.onChain?.registered) { results.skipped.push({ uid, reason: '온체인 미등록' }); continue; }
+    if (address.toLowerCase() === newMentorAddress.toLowerCase()) {
+      results.skipped.push({ uid, reason: '본인은 자기 멘토 불가' }); continue;
+    }
+
+    try {
+      // 현재 온체인 mentor 확인
+      const [, currentMentor] = await platform.members(address);
+      if (currentMentor.toLowerCase() === newMentorAddress.toLowerCase()) {
+        results.skipped.push({ uid, reason: '이미 해당 멘토' }); continue;
+      }
+
+      const gasLimit = await estimateGasWithBuffer(platform, 'adminChangeMentor', [address, newMentorAddress]);
+      const tx = await platform.adminChangeMentor(address, newMentorAddress, { gasLimit });
+      await tx.wait();
+
+      // Firestore 동기화
+      await db.collection('users').doc(uid).update({
+        'onChain.mentorAddress': newMentorAddress,
+      });
+
+      results.updated.push({ uid, address });
+    } catch (err) {
+      results.failed.push({ uid, address, error: err.message });
+    }
+  }
+
+  return {
+    success: results.failed.length === 0,
+    updated: results.updated.length,
+    skipped: results.skipped.length,
+    failed: results.failed.length,
+    details: results,
+  };
+}
+
+// ────────────────────────────────────────────────
+// 관리자: 특정 유저 레벨 설정 (adminSetLevel)
+// ────────────────────────────────────────────────
+
+/**
+ * adminSetUserLevel
+ * 이메일 또는 uid로 유저를 찾아 온체인 레벨 설정
+ *
+ * @param {string} emailOrUid - 유저 이메일 또는 Firebase UID
+ * @param {number} level      - 설정할 레벨 (1~10)
+ * @returns {{ uid, address, level, txHash }}
+ */
+async function adminSetUserLevel(emailOrUid, level) {
+  if (!Number.isInteger(level) || level < 1 || level > 10) {
+    throw new Error('레벨은 1~10 사이 정수여야 합니다');
+  }
+
+  // uid 또는 이메일로 유저 조회
+  let uid, address;
+  const db = admin.firestore();
+
+  // 이메일처럼 보이면 이메일로 조회
+  if (emailOrUid.includes('@')) {
+    const snap = await db.collection('users')
+      .where('email', '==', emailOrUid.toLowerCase().trim())
+      .limit(1).get();
+    if (snap.empty) throw new Error(`유저를 찾을 수 없습니다: ${emailOrUid}`);
+    uid = snap.docs[0].id;
+    address = snap.docs[0].data()?.wallet?.address;
+  } else {
+    uid = emailOrUid;
+    const snap = await db.collection('users').doc(uid).get();
+    if (!snap.exists) throw new Error(`유저를 찾을 수 없습니다: ${uid}`);
+    address = snap.data()?.wallet?.address;
+  }
+
+  if (!address) throw new Error('해당 유저에게 지갑이 없습니다');
+
+  const adminWallet = getAdminWallet();
+  const platform = getPlatformContract(adminWallet);
+
+  const gasLimit = await estimateGasWithBuffer(platform, 'adminSetLevel', [address, level]);
+  const tx = await platform.adminSetLevel(address, level, { gasLimit });
+  const receipt = await tx.wait();
+
+  return { uid, address, level, txHash: receipt.hash };
+}
+
+// ────────────────────────────────────────────────
+// 레벨4+ Point → 개인 지갑 이체
+// ────────────────────────────────────────────────
+
+/**
+ * transferHexToPersonal
+ * 레벨 4 이상 유저: 수탁 지갑의 Point를 외부(개인) 지갑으로 직접 전송
+ *
+ * @param {string} uid          - Firebase Auth UID
+ * @param {string} toAddress    - 수령 지갑 주소 (0x...)
+ * @param {string} amountWeiStr - 이체 금액 wei 문자열 또는 "all"
+ * @param {string} masterSecret - WALLET_MASTER_SECRET
+ * @returns {{ txHash, amountHex, toAddress }}
+ */
+async function transferHexToPersonal(uid, toAddress, amountWeiStr, masterSecret) {
+  if (!ethers.isAddress(toAddress)) throw new Error('유효하지 않은 지갑 주소입니다');
+
+  const userSnap = await db.collection('users').doc(uid).get();
+  const walletData = userSnap.data()?.wallet;
+  if (!walletData?.encryptedKey) throw new Error('수탁 지갑이 없습니다');
+
+  // 온체인 레벨 확인 (레벨 4 이상만 허용)
+  const provider = getProvider();
+  const platform = getPlatformContract(provider);
+  const [levelVal] = await platform.members(walletData.address);
+  const level = Number(levelVal);
+  if (level < 4) {
+    throw new Error(`레벨 4 이상만 개인 지갑 이체가 가능합니다. (현재 레벨: ${level})`);
+  }
+
+  // Point 잔액 확인
+  const hexRead = getHexContract(provider);
+  const hexBal = await hexRead.balanceOf(walletData.address);
+
+  const amount = amountWeiStr === 'all' ? hexBal : BigInt(amountWeiStr);
+  if (amount <= 0n) throw new Error('이체 금액이 0입니다');
+  if (hexBal < amount) {
+    throw new Error(
+      `Point 잔액 부족. 보유: ${parseFloat(ethers.formatEther(hexBal)).toFixed(4)} Point, ` +
+      `요청: ${parseFloat(ethers.formatEther(amount)).toFixed(4)} Point`
+    );
+  }
+
+  // BNB 가스비 부족 시 소액 보충
+  const adminWallet = getAdminWallet();
+  const bnbBal = await provider.getBalance(walletData.address);
+  if (bnbBal < ethers.parseEther('0.00005')) {
+    const fundTx = await adminWallet.sendTransaction({
+      to: walletData.address, value: ethers.parseEther('0.0001'),
+    });
+    await fundTx.wait();
+  }
+
+  // Point 전송
+  const privateKey = decrypt(walletData.encryptedKey, masterSecret);
+  const signer = walletFromKey(privateKey, provider);
+  const hexSigned = getHexContract(signer);
+  const gasLimit = await estimateGasWithBuffer(hexSigned, 'transfer', [toAddress, amount]);
+  const tx = await hexSigned.transfer(toAddress, amount, { gasLimit });
+  const receipt = await tx.wait();
+
+  const amountHex = parseFloat(ethers.formatEther(amount)).toFixed(4);
+
+  await db.collection('transactions').add({
+    uid,
+    userAddress: walletData.address,
+    type: 'hex_transfer',
+    toAddress,
+    amountWei: amount.toString(),
+    amountHex,
+    txHash: receipt.hash,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { txHash: receipt.hash, amountHex, toAddress };
+}
+
+/**
+ * redeemPoints
+ * 멘토 포인트(pointWei) → Point로 전환 (mentorWithdrawPoints 호출)
+ * 최소 전환: 100,000 VND 상당 (≈ 4 Point)
+ *
+ * @param {string} uid          - Firebase Auth UID
+ * @param {string} masterSecret - WALLET_MASTER_SECRET
+ * @returns {{ txHash, amountHex, amountVnd }}
+ */
+async function redeemPoints(uid, masterSecret) {
+  const userSnap = await db.collection('users').doc(uid).get();
+  const walletData = userSnap.data()?.wallet;
+  if (!walletData?.encryptedKey) throw new Error('수탁 지갑이 없습니다');
+
+  const provider = getProvider();
+  const platform = getPlatformContract(provider);
+
+  // 포인트 잔액 조회
+  const [, , , points] = await platform.members(walletData.address);
+  if (points === 0n) throw new Error('전환할 포인트가 없습니다');
+
+  // 최소 전환 금액 체크 (100,000 VND 상당 ≈ 4 Point)
+  const MIN_Point_WEI = ethers.parseEther('4');
+  if (points < MIN_Point_WEI) {
+    throw new Error(
+      `최소 전환 금액은 4 Point(≈ 100,000 VND)입니다. 현재: ${parseFloat(ethers.formatEther(points)).toFixed(4)} Point`
+    );
+  }
+
+  // BNB 가스비 부족 시 보충
+  const adminWallet = getAdminWallet();
+  const bnbBal = await provider.getBalance(walletData.address);
+  if (bnbBal < ethers.parseEther('0.00005')) {
+    const fundTx = await adminWallet.sendTransaction({
+      to: walletData.address, value: ethers.parseEther('0.0001'),
+    });
+    await fundTx.wait();
+  }
+
+  // 수탁 지갑 서명으로 mentorWithdrawPoints 호출
+  const privateKey = decrypt(walletData.encryptedKey, masterSecret);
+  const userSigner = walletFromKey(privateKey, provider);
+  const platformUser = getPlatformContract(userSigner);
+  const gasLimit = await estimateGasWithBuffer(platformUser, 'mentorWithdrawPoints', [points]);
+  const tx = await platformUser.mentorWithdrawPoints(points, { gasLimit });
+  const receipt = await tx.wait();
+
+  const amountHex = parseFloat(ethers.formatEther(points)).toFixed(4);
+
+  // Firestore 기록
+  await db.collection('transactions').add({
+    uid,
+    userAddress: walletData.address,
+    type: 'redeem_points',
+    amountWei: points.toString(),
+    amountHex,
+    txHash: receipt.hash,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { success: true, txHash: receipt.hash, amountHex };
+}
+
+
+const exchangePointsToFiat = functions.region('asia-northeast3').https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', '로그인이 필요합니다.');
+  const uid = context.auth.uid;
+  const { amount } = data;
+  if (!amount || amount <= 0) throw new functions.https.HttpsError('invalid-argument', '유효량이 아닙니다.');
+  return await db.runTransaction(async (tx) => {
+    const userRef = db.collection('users').doc(uid);
+    const bpRef = db.collection('battle_players').doc(uid);
+    const [userSnap, bpSnap] = await Promise.all([tx.get(userRef), tx.get(bpRef)]);
+    if (!userSnap.exists) throw new functions.https.HttpsError('not-found', 'not found');
+    const user = userSnap.data();
+    const currentPoints = Number(user.pointBalance || 0);
+    if (currentPoints < amount) throw new functions.https.HttpsError('failed-precondition', '잔고 부족');
+    const level = bpSnap.exists ? Math.max(1, Number(bpSnap.data().gsLevel || 1)) : 1;
+    const convertedVnd = Math.floor((amount * level) / 10);
+    tx.update(userRef, { pointBalance: admin.firestore.FieldValue.increment(-amount), pointBalanceVnd: admin.firestore.FieldValue.increment(convertedVnd) });
+    tx.set(db.collection('transactions').doc(), { uid, type: 'point_exchange', convertedFromPoints: amount, amountVnd: convertedVnd, levelApplied: level, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    return { success: true, convertedVnd, remainingPoints: currentPoints - amount };
+  });
 });
 
 module.exports = {

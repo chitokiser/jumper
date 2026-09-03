@@ -604,40 +604,18 @@ exports.registerMerchant = onCall(
 //     클라이언트: httpsCallable(functions, 'adminSetMerchantFee')({ merchantId, feeBps })
 // ════════════════════════════════════════════════════════════════════════════
 exports.adminSetMerchantFee = onCall(
-  { secrets: [adminKeySecret] },
   wrapError(async (request) => {
     requireAuth(request);
     const { merchantId, feeBps } = request.data ?? {};
-    if (merchantId == null) throw new HttpsError('invalid-argument', 'merchantId가 필요합니다');
-    const bps = feeBps != null ? Number(feeBps) : 1000;
-    if (!Number.isFinite(bps) || bps < 0 || bps > 3000)
-      throw new HttpsError('invalid-argument', 'feeBps는 0~3000(최대 30%) 사이여야 합니다');
-
-    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
+    if (merchantId == null) throw new HttpsError('invalid-argument', 'merchantId 누락');
+    const bps = feeBps !== undefined ? Number(feeBps) : 1000;
+    if (!Number.isFinite(bps) || bps < 0 || bps > 10000)
+      throw new HttpsError('invalid-argument', 'feeBps 오류');
     const result = await txH.adminSetMerchantFeeOnChain(Number(merchantId), bps);
     logger.info('adminSetMerchantFee', result);
     return result;
   })
 );
-
-// ════════════════════════════════════════════════════════════════════════════
-// 17-b. 관리자: 온체인 멘토 일괄 변경
-//       클라이언트: httpsCallable(functions, 'adminBulkChangeMentor')({ mentorAddress, targetUids? })
-// ════════════════════════════════════════════════════════════════════════════
-exports.adminBulkChangeMentor = onCall(
-  { secrets: [adminKeySecret] },
-  wrapError(async (request) => {
-    const uid = requireAuth(request);
-    await requireAdmin(uid);
-    const { mentorAddress, targetUids } = request.data ?? {};
-    if (!mentorAddress) throw new HttpsError('invalid-argument', 'mentorAddress가 필요합니다');
-    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-    const result = await txH.adminBulkChangeMentor(mentorAddress, targetUids || null);
-    logger.info('adminBulkChangeMentor', { mentorAddress, ...result });
-    return result;
-  })
-);
-
 // ════════════════════════════════════════════════════════════════════════════
 // 17-c. 관리자: 멘토 일괄변경 대상 주소 조회 (Rabby 서명용 — 온체인 tx 없음)
 //       클라이언트: httpsCallable(functions, 'adminGetMentorTargets')({ targetUids? })
