@@ -184,6 +184,7 @@ function bindPayButton() {
       try { const topArr = document.querySelectorAll('.info-header span, .head-coins span'); topArr.forEach(el => { if(el.textContent.includes(\'KM\')||el.textContent.includes(\'원\')) { const currentStr = el.textContent.replace(/[^0-9]/g, \'\'); if(currentStr) { el.textContent = (Number(currentStr) - (d.amountKrw || 0)).toLocaleString() + \' KM\'; } } }); } catch(e){} // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
+      watchJackpotResult(d.txHash);
 
       const krwStr = `${(d.amountKrw || 0).toLocaleString()}원`;
       const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}동` : '';
