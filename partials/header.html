@@ -2,9 +2,12 @@
 <header class="top-header top-header--sleek" id="siteHeaderBar">
   <div class="hdr-inner">
 
-    <a class="brand" href="/" aria-label="K-MOA" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
-      <img src="/assets/images/jump/logo2.png" alt="K-MOA" class="brand-logo" onerror="this.src='/assets/images/jump/favicon.png';" style="max-height: 32px; display: block;" />
-      <span style="font-weight: 900; font-size: 1.2rem; background: linear-gradient(to right, #facc15, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">K-MOA</span>
+    <a class="brand" href="/" aria-label="K-MOA"
+      style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+      <img src="/assets/images/jump/logo2.png" alt="K-MOA" class="brand-logo"
+        onerror="this.src='/assets/images/jump/favicon.png';" style="max-height: 32px; display: block;" />
+      <span
+        style="font-weight: 900; font-size: 1.2rem; background: linear-gradient(to right, #facc15, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">K-MOA</span>
     </a>
 
     <button class="burger" id="btnBurger" type="button" aria-label="menu" aria-expanded="false">
@@ -13,46 +16,52 @@
 
     <nav class="nav" id="hdrNav">
       <!-- 🚀 빠른 실행 (Quick Actions) -->
-      
-      <div class="nav-group">
-        <a href="/kca_webzine.html" class="nav-group-title" style="text-decoration:none;"
-          data-hdr-i18n="hdr_kculture">K-CULTURE</a>
-      </div>
-      <div class="nav-group">
-        <a href="/merchants.html" class="nav-group-title" style="text-decoration:none;">🎮 게임하기</a>
-      </div>
-      <div class="nav-group">
-        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none;">🗺️ 가맹점 찾기 (Find Merchants)</a>
-      </div>
-      <div class="nav-group" data-role="user guide merchant admin">
-        <a href="/mypage.html" class="nav-group-title" style="text-decoration:none;" data-hdr-i18n="mypage">My Page</a>
-      </div>
-      <div class="nav-group" data-role="merchant admin">
-        <a href="/merchant-qr.html" class="nav-group-title" style="text-decoration:none;">QR 결제받기</a>
-      </div>
-      <div class="nav-group" data-role="admin">
-        <a href="/admin.html" class="nav-group-title" style="text-decoration:none;">관리자 모드</a>
-      </div>
-    </nav>
 
-    <div class="hdr-nav-backdrop" id="hdrNavBackdrop" hidden></div>
+      <nav class="nav" id="hdrNav">
+        <div class="nav-group">
+          <a href="/kca_webzine.html" class="nav-group-title" style="text-decoration:none;"
+            data-hdr-i18n="hdr_kculture">K-CULTURE</a>
+        </div>
+        <div class="nav-group">
+          <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none;">🗺️ 지도(Map)</a>
+        </div>
 
-    <div class="hdr-right">
-      
-      
+        <!-- 드롭다운: 서비스 (로그인 사용자용 메뉴 모음) -->
+        <div class="nav-group dropdown-group">
+          <button type="button" class="nav-group-title dropdown-toggle"
+            style="background:none;border:none;cursor:pointer;font:inherit;display:flex;align-items:center;gap:4px;color:rgba(26,39,68,.9);font-weight:700;">
+            내 서비스 <span style="font-size:0.75em;opacity:0.6;">▼</span>
+          </button>
+          <div class="dropdown-menu">
+            <a href="/mypage.html" data-role="user guide merchant admin">내 정보 (My Page)</a>
+            <a href="/merchants.html">🎮 게임하기 (Games)</a>
+            <a href="/merchant-qr.html" data-role="merchant admin">가맹점 결제받기 (QR)</a>
+            <a href="/family-register.html">가맹점(Family) 신청</a>
+            <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0;" />
+            <a href="/admin.html" data-role="admin">관리자 모드 (Admin)</a>
+          </div>
+        </div>
+      </nav>
 
-      <div class="hdr-lang" id="hdrLangSwitcher"
-        style="display:flex; gap:8px; align-items:center; color:#94a3b8; font-size:0.85rem; font-weight:600; margin-right:10px;">
+      <div class="hdr-nav-backdrop" id="hdrNavBackdrop" hidden></div>
+
+      <div class="hdr-right">
+
+
+
+        <div class="hdr-lang" id="hdrLangSwitcher"
+          style="display:flex; gap:8px; align-items:center; color:#94a3b8; font-size:0.85rem; font-weight:600; margin-right:10px;">
+        </div>
+        <span class="role-badge" id="roleBadge" style="display:none;"></span>
+        <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">👑
+          Member</span>
+        <a class="member-join-link" id="memberJoinLink" href="/coop.html" style="display:none;"
+          data-hdr-i18n="hdr_member_join">Join Member</a>
+        <span class="user-badge" id="userBadge" style="display:none;" title=""></span>
+
+        <a class="btn" id="btnLogin" href="/register.html" data-hdr-i18n="hdr_login">Login</a>
+        <button class="btn" id="btnLogout" type="button" style="display:none;"
+          data-hdr-i18n="hdr_logout">Logout</button>
       </div>
-      <span class="role-badge" id="roleBadge" style="display:none;"></span>
-      <span class="member-badge" id="memberBadge" style="display:none;" data-hdr-i18n="hdr_member_badge">👑
-        Member</span>
-      <a class="member-join-link" id="memberJoinLink" href="/coop.html" style="display:none;"
-        data-hdr-i18n="hdr_member_join">Join Member</a>
-      <span class="user-badge" id="userBadge" style="display:none;" title=""></span>
-
-      <a class="btn" id="btnLogin" href="/register.html" data-hdr-i18n="hdr_login">Login</a>
-      <button class="btn" id="btnLogout" type="button" style="display:none;" data-hdr-i18n="hdr_logout">Logout</button>
-    </div>
   </div>
 </header>

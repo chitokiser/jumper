@@ -755,67 +755,73 @@ async function loadTxHistory(uid, _walletAddress) {
       orderBy("createdAt", "desc"),
       limit(30)
     );
-    const snap = await getDocs(q);
-    snap.forEach((d) => {
-      const tx = d.data();
-      const cfg = TX_CONFIG[tx.type] || { labelKey: null, label: tx.type, dir: "expense", icon: "📋" };
 
-      // merchant_income: 가맹점명 + 수수료 정보를 label에 포함
-      let label = cfg.labelKey ? _t(cfg.labelKey) : cfg.label;
-      if (tx.type === "merchant_income" && tx.merchantName) {
-        const feePct = tx.feeBps != null ? ` (${_t('fee_pct', (tx.feeBps / 100).toFixed(0))})` : "";
-        label = `🏪 ${tx.merchantName}${feePct}`;
-      }
-      if (tx.type === "pay_merchant" && tx.merchantName) {
-        label = `🛒 ${tx.merchantName}`;
-      }
+    import("https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js").then((fStore) => {
+      fStore.onSnapshot(q, (snap) => {
+        const unified = [];
+        snap.forEach((d) => {
+          const tx = d.data();
+          const cfg = TX_CONFIG[tx.type] || { labelKey: null, label: tx.type, dir: "expense", icon: "📋" };
 
-      unified.push({
-        sortTs: tx.createdAt?.toDate ? tx.createdAt.toDate().getTime() : 0,
-        label,
-        icon: cfg.icon,
-        dir: cfg.dir,
-        amountHex: txAmountHex(tx),
-        dateStr: tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleString("ko-KR") : "-",
-        txHash: tx.txHash || null,
-        statusBadge: null,
+          let label = cfg.labelKey ? _t(cfg.labelKey) : cfg.label;
+          if (tx.type === "merchant_income" && tx.merchantName) {
+            const feePct = tx.feeBps != null ? ` (${_t('fee_pct', (tx.feeBps / 100).toFixed(0))})` : "";
+            label = `🏪 ${tx.merchantName}${feePct}`;
+          }
+          if (tx.type === "pay_merchant" && tx.merchantName) {
+            label = `🛒 ${tx.merchantName}`;
+          }
+
+          unified.push({
+            sortTs: tx.createdAt?.toDate ? tx.createdAt.toDate().getTime() : 0,
+            label,
+            icon: cfg.icon,
+            dir: cfg.dir,
+            amountHex: txAmountHex(tx),
+            dateStr: tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleString("ko-KR") : "-",
+            txHash: tx.txHash || null,
+            statusBadge: null,
+          });
+        });
+
+        if (unified.length === 0) {
+          if (section) section.style.display = "none";
+          return;
+        }
+
+        unified.sort((a, b) => b.sortTs - a.sortTs);
+        show("txSection", true);
+
+        let totalIncome = 0, totalExpense = 0, incomeCount = 0, expenseCount = 0;
+        unified.forEach((t) => {
+          if (t.dir === "income") { totalIncome += t.amountHex; incomeCount++; }
+          else if (t.dir === "expense") { totalExpense += t.amountHex; expenseCount++; }
+        });
+
+        const fmtSum = (v) => v.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) + " Point";
+
+        const summary = $("txSummary");
+        if (summary) {
+          summary.style.display = "";
+          const el = (id) => document.getElementById(id);
+          if (el("txTotalIncome")) el("txTotalIncome").textContent = "+" + fmtSum(totalIncome);
+          if (el("txTotalExpense")) el("txTotalExpense").textContent = "−" + fmtSum(totalExpense);
+          if (el("txTotalIncomeCount")) el("txTotalIncomeCount").textContent = incomeCount + _t('mi_payments_label');
+          if (el("txTotalExpenseCount")) el("txTotalExpenseCount").textContent = expenseCount + _t('mi_payments_label');
+        }
+
+        wrap.innerHTML = unified.map(renderTxItem).join("");
+      }, (err) => {
+        console.warn("loadTxHistory onSnapshot error:", err.message);
+        wrap.innerHTML = `<p class="hint muted">${_t('status_loading')} failed.</p>`;
       });
     });
   } catch (err) {
-    console.warn("loadTxHistory Firestore:", err.message);
+    console.warn("loadTxHistory try block:", err.message);
   }
-
-  if (unified.length === 0) {
-    if (section) section.style.display = "none";
-    return;
-  }
-
-  // 날짜 내림차순 정렬
-  unified.sort((a, b) => b.sortTs - a.sortTs);
-
-  show("txSection", true);
-
-  // 수입 / 지출 합계
-  let totalIncome = 0, totalExpense = 0, incomeCount = 0, expenseCount = 0;
-  unified.forEach((t) => {
-    if (t.dir === "income") { totalIncome += t.amountHex; incomeCount++; }
-    else if (t.dir === "expense") { totalExpense += t.amountHex; expenseCount++; }
-  });
-
-  const fmtSum = (v) => v.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) + " Point";
-
-  const summary = $("txSummary");
-  if (summary) {
-    summary.style.display = "";
-    const el = (id) => document.getElementById(id);
-    if (el("txTotalIncome")) el("txTotalIncome").textContent = "+" + fmtSum(totalIncome);
-    if (el("txTotalExpense")) el("txTotalExpense").textContent = "−" + fmtSum(totalExpense);
-    if (el("txTotalIncomeCount")) el("txTotalIncomeCount").textContent = incomeCount + _t('mi_payments_label');
-    if (el("txTotalExpenseCount")) el("txTotalExpenseCount").textContent = expenseCount + _t('mi_payments_label');
-  }
-
-  wrap.innerHTML = unified.map(renderTxItem).join("");
 }
+
+
 
 function formatWei(weiStr) {
   try {

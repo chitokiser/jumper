@@ -418,6 +418,7 @@ async function loadMerchants() {
           <div class="sum-left">
             <div class="sum-title">${esc(v.name || "(이름없음)")} · ID: ${esc(mid)}</div>
             <div class="sum-sub">${esc([v.career, v.region, ownerEmail || ("uid:" + (v.ownerUid || "-"))].filter(Boolean).join(" · "))}</div>
+            <div class="sum-sub">BT 잔여량: <b style="color:#d946ef;">${v.btBalance || 0} BT</b></div>
           </div>
           <div class="sum-right">
             ${dormantBadge}
@@ -428,6 +429,7 @@ async function loadMerchants() {
               <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career || '')}" data-region="${esc(v.region || '')}" data-desc="${esc(v.description || '')}">📝 정보수정</button>
               ${dormantBtn}
               <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
+              <button class="btn btn-sm" type="button" data-act="chargeBt" data-mid="${esc(mid)}">🎟️ BT 충전</button>
               <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:${v.gmap ? '#fef3c7' : '#f3f4f6'};color:${v.gmap ? '#92400e' : '#6b7280'};">🗺️ ${v.gmap ? "지도수정" : "지도등록"}</button>
               <button class="btn btn-sm" type="button" data-act="setMerchantImage" data-mid="${esc(mid)}" data-imageurl="${esc(v.imageUrl || '')}" style="background:${v.imageUrl ? '#ede9fe' : '#f3f4f6'};color:${v.imageUrl ? '#5b21b6' : '#6b7280'};">🖼️ ${v.imageUrl ? "이미지수정" : "이미지등록"}</button>
             ` : ""}
@@ -1827,7 +1829,26 @@ merchantList?.addEventListener("click", async (e) => {
       await editMerchantInfo(mid, btn.dataset.career || "", btn.dataset.region || "", btn.dataset.desc || "");
     } else if (act === "toggleDormant") {
       await toggleMerchantDormant(mid, btn.dataset.dormant === "1");
-    } else if (act === "approveMerchant") {
+    } else 
+    if (act === "chargeBt") {
+      e.preventDefault();
+      const mid = btn.dataset.mid;
+      const amtStr = prompt("충전할 BT 개수를 입력하세요 (숫자만, 차감은 마이너스 입력):");
+      if (!amtStr) return;
+      const amt = Number(amtStr);
+      if (!amt || isNaN(amt)) { alert("올바른 숫자를 입력하세요."); return; }
+      
+      try {
+        const fn = httpsCallable(functions, "adminChargeBt");
+        await fn({ merchantId: Number(mid), amount: amt });
+        alert(amt + " BT가 성공적으로 충전되었습니다.");
+        loadMerchants();
+      } catch (err) {
+        alert("충전 실패: " + err.message);
+      }
+      return;
+    }
+    if (act === "approveMerchant") {
       await approveMerchant(mid, Number(btn.dataset.feebps) || 0);
     } else if (act === "setMerchantGmap") {
       await setMerchantGmap(mid, btn.dataset.gmap || "");

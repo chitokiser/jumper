@@ -111,7 +111,8 @@ async function initPage(uid) {
       if (snap.exists()) {
         const { pointBalanceVnd = 0 } = snap.data();
         setText("qrMerchantPaymentBal", pointBalanceVnd.toLocaleString("ko-KR") + " KM (결제대금)");
-        setText("qrMerchantPointBal", pointBalanceVnd.toLocaleString("ko-KR") + " KM (포인트)");
+        setText("qrMerchantPointBal", (snap.data().pointBalance || 0).toLocaleString("ko-KR") + " P");
+        setText("qrMerchantBtBal", (snap.data().btBalance || 0).toLocaleString("ko-KR") + " BT");
       }
     });
   }
@@ -184,6 +185,46 @@ function bindQrForm(merchantId, merchantName) {
   // 금액 입력 시 환산 표시
   $("qrAmount")?.addEventListener("input", updateConvert);
 
+  
+  const modePay = $("modePay");
+  const modeBt = $("modeBt");
+  const btCalcResult = $("qrBtCalcResult");
+  const btCountText = $("qrBtCount");
+
+  function getBtAmount(amount, currency) {
+    let vnd = amount;
+    if (currency === "KRW") vnd = amount * 20; // 대략 1원=20동
+    if (vnd >= 1000000) return 5;
+    if (vnd >= 500000) return 3;
+    if (vnd >= 300000) return 2;
+    if (vnd >= 100000) return 1;
+    return 0;
+  }
+
+  function updateModeAndBt() {
+    const isBt = modeBt?.checked;
+    const amount = Number($("qrAmount")?.value || 0);
+    const currency = form.querySelector("input[name='qrCurrency']:checked")?.value || "KRW";
+
+    if (isBt && amount > 0) {
+      if (btCalcResult) btCalcResult.style.display = "";
+      if (btCountText) btCountText.textContent = getBtAmount(amount, currency) + " 장";
+    } else {
+      if (btCalcResult) btCalcResult.style.display = "none";
+    }
+    
+    // 모드에 따라 버튼 텍스트 변경
+    const btnGen = $("btnGenQr");
+    if (btnGen) {
+       btnGen.textContent = isBt ? "BT 무료 보상 QR 생성" : "결제 QR 생성";
+    }
+  }
+
+  modePay?.addEventListener("change", updateModeAndBt);
+  modeBt?.addEventListener("change", updateModeAndBt);
+  $("qrAmount")?.addEventListener("input", updateModeAndBt);
+  form.querySelectorAll("input[name='qrCurrency']").forEach(r => r.addEventListener("change", updateModeAndBt));
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
@@ -197,7 +238,9 @@ function bindQrForm(merchantId, merchantName) {
       if (!amount || amount < 1000) { alert("최소 1,000원 이상 입력해 주세요."); return; }
     }
 
-    generateQr(merchantId, merchantName, amount, currency);
+    
+    const mode = form.querySelector("input[name='qrMode']:checked")?.value || "pay";
+    generateQr(merchantId, merchantName, amount, currency, mode);
   });
 }
 
@@ -270,14 +313,20 @@ function addReceiptItem(data, isNew = false) {
 }
 
 // ── QR 생성 ────────────────────────────────────────────
-function generateQr(merchantId, merchantName, amount, currency = "KRW") {
+function generateQr(merchantId, merchantName, amount, currency = "KRW", mode = "pay") {
   const canvas = $("qrCanvas");
   if (!canvas) return;
 
   const PROD_ORIGIN = "https://kmoa.netlify.app";
   const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const baseOrigin = isLocal ? PROD_ORIGIN : location.origin;
-  const url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
+  
+  let url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
+  if (mode === "bt") {
+    const btTokens = getBtAmount(amount, currency);
+    url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btTokens}&nonce=${Date.now()}`;
+  }
+  
 
   // qrcode.js (CDN) API
   /* global QRCode */

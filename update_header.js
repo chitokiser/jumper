@@ -1,31 +1,33 @@
 const fs = require('fs');
+let b = fs.readFileSync('partials/header.html', 'utf8');
 
-const path = 'partials/header.html';
-let html = fs.readFileSync(path, 'utf8');
+// The original block looks like:
+/*
+      <div class="nav-group">
+        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none;"
+          data-hdr-i18n="hdr_merchants">Find Merchants</a>
+      </div>
+*/
 
-const target = `<nav class="nav" id="hdrNav">`;
+b = b.replace(
+  '<div class="nav-group">\r\n        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none;"\r\n          data-hdr-i18n="hdr_merchants">Find Merchants</a>\r\n      </div>',
+  `<div class="nav-group">
+        <a href="/merchants.html" class="nav-group-title" style="text-decoration:none;">🎮 게임하기</a>
+      </div>
+      <div class="nav-group">
+        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none;">🗺️ 가맹점 찾기 (Find Merchants)</a>
+      </div>`
+);
 
-const injection = `<nav class="nav" id="hdrNav">
-      <!-- 🚀 빠른 실행 (Quick Actions) -->
-      <div class="nav-group" data-role="user merchant guide admin" style="background:#f8fafc; border-radius:12px; padding:12px; margin-bottom:12px;">
-        <div style="font-size:0.75rem; color:#64748b; font-weight:700; margin-bottom:10px;">⚡ 빠른 실행</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <a href="/mypage.html#merchantPaySection" style="text-align:center; background:#ffedd5; color:#ea580c; border-radius:8px; padding:10px 4px; text-decoration:none; font-weight:700; font-size:0.85rem; display:flex; flex-direction:column; align-items:center; gap:4px;">
-            <span style="font-size:1.4rem;">📷</span>결제하기
-          </a>
-          <a href="/mypage.html#hex-topup" style="text-align:center; background:#dcfce7; color:#166534; border-radius:8px; padding:10px 4px; text-decoration:none; font-weight:700; font-size:0.85rem; display:flex; flex-direction:column; align-items:center; gap:4px;">
-            <span style="font-size:1.4rem;">💵</span>머니 충전
-          </a>
-          <a href="/merchant-qr.html" style="text-align:center; background:#dbeafe; color:#1d4ed8; border-radius:8px; padding:10px 4px; text-decoration:none; font-weight:700; font-size:0.85rem; display:flex; flex-direction:column; align-items:center; gap:4px; grid-column:span 2;">
-            <span style="font-size:1.4rem;">📲</span>내 QR로 결제받기 (P2P/가맹)
-          </a>
-        </div>
-      </div>`;
+b = b.replace(
+  '<div class="nav-group">\n        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none;"\n          data-hdr-i18n="hdr_merchants">Find Merchants</a>\n      </div>',
+  `<div class="nav-group">
+        <a href="/merchants.html" class="nav-group-title" style="text-decoration:none;">🎮 게임하기</a>
+      </div>
+      <div class="nav-group">
+        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none;">🗺️ 가맹점 찾기 (Find Merchants)</a>
+      </div>`
+);
 
-if (html.includes(target)) {
-    html = html.replace(target, injection);
-    fs.writeFileSync(path, html, 'utf8');
-    console.log("Header injected successfully!");
-} else {
-    console.log("Could not find <nav> tag in header.html");
-}
+fs.writeFileSync('partials/header.html', b, 'utf8');
+console.log("Updated header.html");

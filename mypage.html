@@ -822,33 +822,32 @@
 
 
 
-      <!-- 원화 충전 -->
+      <!-- VND 충전 -->
       <section class="panel mp-section collapsible is-collapsed" id="hex-topup">
         <div class="mp-section-head">
-          <h2 class="mp-section-title" data-i18n="section_deposit">Point 충전 (원화)</h2>
+          <h2 class="mp-section-title" data-i18n="section_deposit">포인트 충전 (VND)</h2>
         </div>
 
         <!-- 입금 계좌 안내 (항상 표시) -->
-        <div class="mp-result-box" style="margin-bottom:14px;">
-          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:var(--accent);"
-            data-i18n="label_kr_account">🇰🇷 한국 계좌 (KRW 입금)</div>
-          <div class="mp-kv"><span class="k" data-i18n="label_bank">은행</span><span class="v">하나은행</span></div>
-          <div class="mp-kv"><span class="k" data-i18n="label_account_no">계좌번호</span><span class="v mono">381. 19.
-              03076. 2</span></div>
-          <div class="mp-kv"><span class="k" data-i18n="label_account_holder">예금주</span><span class="v">오용진</span></div>
-
+        <div class="mp-result-box" style="margin-bottom:14px; background:#f0fdf4; border-color:#86efac;">
+          <div style="margin:0 0 8px; font-size:0.82em; font-weight:700; color:#15803d;">🇻🇳 베트남 지정 계좌 (VND 전용)</div>
+          <div class="mp-kv"><span class="k">은행 (Bank)</span><span class="v">MB Bank</span></div>
+          <div class="mp-kv"><span class="k">계좌번호 (Account)</span><span class="v mono">0123 456 789</span></div>
+          <div class="mp-kv"><span class="k">예금주 (Name)</span><span class="v">K MOA VINA</span></div>
+          <div style="font-size:0.75rem; color:#dc2626; margin-top:8px; font-weight:700;">※ 불법 환치기 방지를 위해 대한민국 계좌(KRW)
+            입금을 절대 받지 않습니다. 오직 VND 베트남 계좌만 사용 가능합니다.</div>
         </div>
 
         <form id="depositForm" class="form" style="margin-top:0;">
           <label class="field">
-            <span><span id="labelDepositAmount" data-i18n="label_deposit_amt">충전 금액 (원)</span> <em
-                class="req">*</em></span>
-            <input type="number" id="depositAmount" min="10000" step="1000" placeholder="최소 10,000" />
+            <span>충전 금액 (VND) <em class="req">*</em></span>
+            <input type="number" id="depositAmount" min="200000" step="50000" placeholder="최소 200,000 VND" required />
           </label>
           <label class="field">
-            <span><span data-i18n="label_depositor">입금자명</span> <em class="req">*</em></span>
-            <input type="text" id="depositorName" maxlength="20" placeholder="예: 홍길동" />
+            <span>입금자명 <em class="req">*</em></span>
+            <input type="text" id="depositorName" maxlength="20" placeholder="통장에 찍히는 이름 입력" required />
           </label>
+          <input type="hidden" id="depositCurrency" value="VND" />
           <div class="actions">
             <button class="btn btn--primary" type="submit" id="btnDeposit" data-i18n="btn_deposit">충전 요청</button>
           </div>
@@ -858,15 +857,13 @@
         <div id="depositResult" class="mp-result-box" style="display:none;">
           <div class="mp-kv"><span class="k" data-i18n="label_ref_code">참조코드</span><span class="v mono"
               id="drRefCode">-</span></div>
-          <div style="margin:10px 0 6px; font-size:0.82em; font-weight:700; color:var(--accent);">🇰🇷 한국 계좌 (KRW 입금)
-          </div>
-          <div class="mp-kv"><span class="k">입금 은행</span><span class="v" id="drBank">-</span></div>
-          <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono" id="drAccount">-</span></div>
-          <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolder">-</span></div>
+          <div style="margin:10px 0 6px; font-size:0.82em; font-weight:700; color:var(--accent);">🇻🇳 베트남 송금 계좌</div>
+          <div class="mp-kv"><span class="k">입금 은행</span><span class="v" id="drBank">MB Bank</span></div>
+          <div class="mp-kv"><span class="k">계좌번호</span><span class="v mono" id="drAccount">0123 456 789</span></div>
+          <div class="mp-kv"><span class="k">예금주</span><span class="v" id="drHolder">K MOA VINA</span></div>
 
           <div class="mp-kv"><span class="k">금액</span><span class="v" id="drAmount">-</span></div>
-          <div class="mp-kv"><span class="k">충전 금액</span><span class="v accent" id="drHex">-</span></div>
-          <p class="hint mp-warn" data-i18n="deposit_warn">입금자명을 정확히 입력하세요. 관리자 확인 후 Point 포인트이 내 정보로 지급됩니다.</p>
+          <p class="hint mp-warn">실제 스마트폰 뱅킹 수취인 명의와 일치하게 입금해주세요. 입금 확인 후 내 정보에 충전됩니다.</p>
         </div>
       </section>
 
@@ -923,7 +920,8 @@
           <div>
             <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">멘토 등록 (필수)
             </dt>
-            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">앱 서비스 등록 시 멘토 주소를 입력해야 합니다. 멘토 없이 등록하면 기본
+            <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">앱 서비스 등록 시 멘토 주소를 입력해야 합니다. 멘토 없이 등록하면
+              기본
               멘토로 연결되어 경험치·포인트 적립이 되지 않을 수 있습니다.</dd>
           </div>
           <div>

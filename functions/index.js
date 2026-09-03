@@ -3086,3 +3086,17 @@ exports.apiAdminAdjustLedger = onCall(wrapError(async (request) => {
 }));
 
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// 99. 관리자: 가맹점에 BT 충전
+// ════════════════════════════════════════════════════════════════════════════
+exports.adminChargeBt = onCall(
+  wrapError(async (request) => {
+    const adminUid = requireAuth(request);
+    await requireAdmin(adminUid);
+    const { merchantId, amount } = request.data ?? {};
+    if (!merchantId || !amount) throw new HttpsError('invalid-argument', 'merchantId와 amount가 필요합니다.');
+    
+    return await txH.adminChargeBt(adminUid, Number(merchantId), Number(amount));
+  })
+);

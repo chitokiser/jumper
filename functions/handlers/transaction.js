@@ -570,14 +570,14 @@ async function adminSetMerchantFeeOnChain(merchantId, feeBps) {
  */
 async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND', amountKrw, reqId } = {}) {
   const db = admin.firestore();
-  
+
   if (!amountVnd || Number(amountVnd) < 10000) throw new Error('최소 결제 금액은 10000 KM (VND)입니다.');
-  
+
   const finalVnd = Math.round(Number(amountVnd));
   const finalKrw = Math.round(Number(amountKrw || (finalVnd / 18)));
 
-  const txHash = reqId ? 'TX_' + reqId : 'TX_' + Date.now() + '_' + Math.floor(Math.random()*10000);
-  
+  const txHash = reqId ? 'TX_' + reqId : 'TX_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+
   return await db.runTransaction(async (tx) => {
     const checkTxRef = db.collection('transactions').doc(txHash);
     const existingTx = await tx.get(checkTxRef);
@@ -587,22 +587,22 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     const merchantRef = db.collection('merchants').doc(String(merchantId));
     const buyerBpRef = db.collection('battle_players').doc(uid);
     const jackpotRef = db.collection('jackpot_config').doc('current');
-    
-    const [userSnap, merchantSnap, bpSnap, jackpotSnap] = await Promise.all([ 
-      tx.get(userRef), tx.get(merchantRef), tx.get(buyerBpRef), tx.get(jackpotRef) 
+
+    const [userSnap, merchantSnap, bpSnap, jackpotSnap] = await Promise.all([
+      tx.get(userRef), tx.get(merchantRef), tx.get(buyerBpRef), tx.get(jackpotRef)
     ]);
-    
+
     if (!userSnap.exists) throw new Error('유저 정보 없음');
     const userData = userSnap.data();
-    const userBalanceVnd = Number(userData.pointBalanceVnd || 0); 
+    const userBalanceVnd = Number(userData.pointBalanceVnd || 0);
     if (userBalanceVnd < finalVnd) throw new Error('잔액이 부족합니다.');
-    
+
     const merchant = merchantSnap.data();
     if (!merchant || merchant.active === false) throw new Error('비활성 가맹점입니다.');
     let merchantOwnerUid = merchant.ownerUid;
     const merchantOwnerRef = db.collection('users').doc(merchantOwnerUid);
     const [ownerSnap] = await Promise.all([tx.get(merchantOwnerRef)]);
-    
+
     const mentorUid = userData.mentorUid || null;
     let grandMentorUid = null;
     let mentorRef = null, grandMentorRef = null;
@@ -620,7 +620,7 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
       }
     }
 
-    const feeBps = Number(merchant.feeBps || 0);
+    const feeBps = Number(merchant.feeBps) > 0 ? Number(merchant.feeBps) : 1000; // Default to 10%
     const feeVnd = Math.round((finalVnd * feeBps) / 10000);
     const netVnd = finalVnd - feeVnd;
 
@@ -651,10 +651,11 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     const randomValue = Math.floor(Math.random() * 10000);
     const winThreshold = gsLevel * 100;
     const isWinner = randomValue < winThreshold;
-    
+
     let jackpotRewardVnd = 0;
     if (isWinner) {
       jackpotRewardVnd = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
+      // When jackpot is won, reset it with current transaction's bonus, but use set to not increment the past total
       tx.set(jackpotRef, { jackpotAccVnd: jackpotBonusVnd, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
       tx.set(db.collection('jackpot_wins').doc(txHash), { uid, userName: userData.name || userData.kakaoId || 'User', amountVnd: jackpotRewardVnd, amountKrw: jackpotRewardVnd, timestamp: admin.firestore.FieldValue.serverTimestamp(), txHash });
     } else {
@@ -665,10 +666,10 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
 
     tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner, randomValue, finalWinWei: jackpotRewardVnd > 0 ? "1000000000000000000" : "0", timestamp: admin.firestore.FieldValue.serverTimestamp() });
     tx.update(userRef, { pointBalanceVnd: userBalanceVnd - finalVnd + jackpotRewardVnd });
-    
+
     const txBase = { createdAt: admin.firestore.FieldValue.serverTimestamp(), currency: 'VND', amountKrw: finalKrw, amountVnd: finalVnd, merchantId: Number(merchantId), merchantName: merchant.name || '', txHash };
     tx.set(checkTxRef, { ...txBase, uid, type: 'pay_merchant' });
-    
+
     const currentMerchantBal = ownerSnap.exists ? Number(ownerSnap.data().pointBalanceVnd || 0) : 0;
     tx.set(merchantOwnerRef, { pointBalanceVnd: currentMerchantBal + netVnd }, { merge: true });
     tx.set(db.collection('transactions').doc(), { ...txBase, uid: merchantOwnerUid, buyerUid: uid, type: 'merchant_income', netAmountVnd: netVnd, feeAmountVnd: feeVnd, feeBps });
@@ -684,7 +685,7 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     if (platformBonusVnd > 0) {
       tx.set(db.collection('platform_config').doc('revenue'), { totalRevenueVnd: admin.firestore.FieldValue.increment(platformBonusVnd), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     }
-    
+
     return { txHash, isJackpot: isWinner, amountHex: finalVnd, amountKrw: finalKrw, amountVnd: finalVnd, merchantName: merchant.name || '' };
   });
 }
@@ -1242,4 +1243,26 @@ module.exports = {
   adminSetUserLevel,
   transferHexToPersonal,
   redeemPoints,
+};
+
+
+exports.adminChargeBt = async function (adminUid, merchantId, amount) {
+  const db = admin.firestore();
+  const merchRef = db.collection('merchants').doc(String(merchantId));
+
+  await db.runTransaction(async (t) => {
+    const snap = await t.get(merchRef);
+    if (!snap.exists) throw new Error('가맹점이 없습니다.');
+    const newBal = (Number(snap.data().btBalance) || 0) + amount;
+    t.set(merchRef, { btBalance: newBal }, { merge: true });
+
+    t.set(db.collection('bt_transactions').doc(), {
+      type: 'admin_charge',
+      merchantId,
+      amount,
+      adminUid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  });
+  return { success: true };
 };

@@ -94,25 +94,28 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
         throw new Error(`이미 처리된 요청입니다 (상태: ${dep.status})`);
       }
 
-      // 유저 잔고(포인트) 업데이트 - KRW 입금액을 KM으로 추가
+      // 유저 잔고(포인트) 업데이트
+      // KM (VND) 잔고 추가
       const userRef = db.collection('users').doc(dep.uid);
       const userSnap = await t.get(userRef);
       const userData = userSnap.exists ? userSnap.data() : {};
       const currentPointVnd = Number(userData.pointBalanceVnd || 0);
-      const addKm = Number(dep.amountKrw || 0);
 
-      t.update(userRef, { pointBalanceVnd: currentPointVnd + addKm });
+      // 베트남 동(VND) 전용 플랫폼이므로 amountVnd를 KM으로 충전. 없으면 KRW에서 18.84를 곱함.
+      const addKmVnd = Number(dep.amountVnd || Math.floor((dep.amountKrw || 0) * 18.84));
+
+      t.update(userRef, { pointBalanceVnd: currentPointVnd + addKmVnd });
 
       // 입금 승인 처리
       const approvedData = {
         status: 'approved',
         approvedAt: admin.firestore.FieldValue.serverTimestamp(),
         approvedBy: adminUid,
-        rateAtApproval: overrideKrwRate ? { krwPerUsd: overrideKrwRate } : { note: '1:1 KRW to KM' }
+        rateAtApproval: overrideKrwRate ? { krwPerUsd: overrideKrwRate } : { note: 'VND to KM' }
       };
       t.update(depositRef, approvedData);
 
-      return { addKm, usdAmount: 0, vndAmount: dep.amountVnd || 0 };
+      return { addKm: addKmVnd, usdAmount: 0, vndAmount: dep.amountVnd || addKmVnd };
     });
 
     return {

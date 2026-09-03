@@ -8108,50 +8108,7 @@
     font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;">⚡ K-MOA &amp; Hunt</button>
   </div>
 
-  <!-- BGM -->
-  <audio id="bgmAudio" loop preload="auto" src="/assets/audio/bgm.mp3"></audio>
-  <script>
-    (function () {
-      const MUTE_KEY = 'bgm_muted';
-      const audio = document.getElementById('bgmAudio');
-      const btn = document.getElementById('btnBgm');
-      if (!audio || !btn) return;
-
-      audio.volume = 0.35;
-      let muted = localStorage.getItem(MUTE_KEY) === '1';
-
-      function applyState() {
-        audio.muted = muted;
-        btn.textContent = muted ? '🔇' : '🎵';
-        btn.title = muted ? 'BGM Off — click to enable' : 'BGM On — click to mute';
-      }
-
-      function tryPlay() {
-        if (!muted) audio.play().catch(() => { });
-      }
-
-      // Play Game 버튼을 눌러 진입한 경우 — 유저 인터랙션 컨텍스트 유효, 즉시 재생
-      if (sessionStorage.getItem('bgm_autostart') === '1') {
-        sessionStorage.removeItem('bgm_autostart');
-        tryPlay();
-      } else {
-        // 직접 URL 입력 또는 새로고침 — 첫 인터랙션 후 재생
-        const resume = () => { tryPlay(); };
-        document.addEventListener('click', resume, { capture: true, once: true });
-        document.addEventListener('touchstart', resume, { capture: true, once: true });
-      }
-
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        muted = !muted;
-        localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
-        applyState();
-        if (!muted && audio.paused) tryPlay();
-      });
-
-      applyState();
-    })();
-  </script>
+  <!-- BGM REMOVED -->
 
   <script>
     (function () {
