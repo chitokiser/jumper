@@ -116,7 +116,7 @@
   function registerSw() {
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("/sw.js").catch(() => { });
     });
   }
 
@@ -147,6 +147,13 @@
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredPrompt = e;
+
+      const btnHeaderInstall = document.getElementById("btnInstallApp");
+      if (btnHeaderInstall) {
+        btnHeaderInstall.style.display = "inline-block";
+        btnHeaderInstall.addEventListener("click", openInstall);
+      }
+
       ensureInstallStyles();
       if (!sheet) {
         sheet = makeSheet("홈 화면에 추가", "한 번 설치하면 앱처럼 빠르게 실행할 수 있어요.", openInstall, dismiss, "추가하기");
@@ -165,21 +172,43 @@
 
   function bootIosGuide() {
     if (!isIosSafari()) return;
-    if (localStorage.getItem(IOS_DISMISS_KEY) === "1") return;
+
+    // Always show header button on iOS if possible
+    const btnHeaderInstall = document.getElementById("btnInstallApp");
+
+    if (localStorage.getItem(IOS_DISMISS_KEY) === "1") {
+      if (btnHeaderInstall) {
+        btnHeaderInstall.style.display = "inline-block";
+        btnHeaderInstall.addEventListener("click", () => {
+          localStorage.removeItem(IOS_DISMISS_KEY);
+          bootIosGuide(); // Re-trigger the bottom sheet
+        });
+      }
+      return;
+    }
 
     ensureInstallStyles();
-    const sheet = makeSheet(
-      "홈 화면에 추가",
-      "Safari 공유 버튼(□↑)을 누른 뒤 '홈 화면에 추가'를 선택해 주세요.",
-      () => {
-        localStorage.setItem(IOS_DISMISS_KEY, "1");
-        sheet.remove();
-      },
-      () => localStorage.setItem(IOS_DISMISS_KEY, "1"),
-      "확인"
-    );
-  }
 
+    const showGuide = () => {
+      if (document.querySelector(".pwa-install-sheet")) return; // already showing
+      const sheet = makeSheet(
+        "홈 화면에 추가",
+        "Safari 공유 버튼(□↑)을 누른 뒤 '홈 화면에 추가'를 선택해 주세요.",
+        () => {
+          localStorage.setItem(IOS_DISMISS_KEY, "1");
+          sheet.remove();
+        },
+        () => localStorage.setItem(IOS_DISMISS_KEY, "1"),
+        "확인"
+      );
+    };
+
+    if (btnHeaderInstall) {
+      btnHeaderInstall.style.display = "inline-block";
+      btnHeaderInstall.addEventListener("click", showGuide);
+    }
+    showGuide();
+  }
   registerSw();
   bootAndroidInstallPrompt();
   bootIosGuide();
