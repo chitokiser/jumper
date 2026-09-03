@@ -97,7 +97,7 @@ async function loadJackpotStats() {
     _fxCache = fx;
 
     // 누적 잭팟 금액: Firebase 순수 데이터 우선 (잭팟 누적 포인트)
-    const jackpotPoints = Number(cfg.jackpotAccPoints || 0);
+    const jackpotPoints = Number(cfg.jackpotAccVnd || 0);
 
     const ptsStr = Math.round(jackpotPoints).toLocaleString("ko-KR");
     const krwStr = Math.round(jackpotPoints * 10).toLocaleString("ko-KR"); // 대략 1 포인트 = 10원 (추정 렌더링)

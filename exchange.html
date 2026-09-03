@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>포인트 거래소 | K-MOA — Point·JUMP·TON 다중 포인트 교환</title>
+  <title>포인트 거래소 | K-MOA — Point·K-MOA·TON 다중 포인트 교환</title>
   <meta name="description" content="K-MOA 포인트 거래소. Point ↔ JUMP, JUMP ↔ 게임코인, TON ↔ 게임코인, Point ↔ TON 실시간 교환. opBNB 블록체인 기반 안전한 탈중앙화 거래." />
   <meta name="keywords" content="포인트 거래소, Point포인트교환, JUMP포인트, TON교환, opBNB거래소, Web3거래" />
   <meta name="robots" content="index, follow" />
@@ -477,7 +477,7 @@
             <div class="ex-ticker-row1">
               <div class="ex-ticker-symbol">
                 <div class="sym-name">JUMP / Point</div>
-                <div class="sym-sub">Jump Point Exchange</div>
+                <div class="sym-sub">K-MOA Point Exchange</div>
               </div>
               <div class="ex-divider"></div>
               <div class="ex-ticker-price" id="chartCurrentPrice">–</div>
@@ -490,7 +490,7 @@
               <div class="ex-ticker-stat"><div class="st-lbl">ROI</div><div class="st-val" id="tickerRoi">–</div></div>
               <div class="ex-ticker-stat"><div class="st-lbl">원화/Token</div><div class="st-val" id="tickerKrw">–</div></div>
               <div class="ex-ticker-stat"><div class="st-lbl">계약 Point</div><div class="st-val" id="tickerBankHex">–</div></div>
-              <div class="ex-ticker-stat"><div class="st-lbl">계약 JUMP</div><div class="st-val" id="tickerBankJump">–</div></div>
+              <div class="ex-ticker-stat"><div class="st-lbl">계약 JUMP</div><div class="st-val" id="tickerBankK-MOA">–</div></div>
               <div class="ex-ticker-stat"><div class="st-lbl">거래 상태</div><div class="st-val" id="tickerAct">–</div></div>
             </div>
           </div>
@@ -584,7 +584,7 @@
             <div class="ex-info-title">시장 정보</div>
             <div class="ex-info-grid">
               <div class="ex-info-box"><div class="ex-info-lbl">계약 포인트 잔고</div><div class="ex-info-val" id="exBankHex">–</div></div>
-              <div class="ex-info-box"><div class="ex-info-lbl">계약 포인트 잔고</div><div class="ex-info-val" id="exBankJump">–</div></div>
+              <div class="ex-info-box"><div class="ex-info-lbl">계약 포인트 잔고</div><div class="ex-info-val" id="exBankK-MOA">–</div></div>
               <div class="ex-info-box"><div class="ex-info-lbl">현재가격 ROI</div><div class="ex-info-val" id="exPriceRoi">–</div></div>
               <div class="ex-info-box"><div class="ex-info-lbl">현재가 (Point/Token)</div><div class="ex-info-val" id="exPrice">–</div></div>
               <div class="ex-info-box"><div class="ex-info-lbl">현재가 (원화/Token)</div><div class="ex-info-val" id="exPriceKrw">–</div><div class="ex-info-sub" id="exUsdKrw"></div></div>
@@ -624,7 +624,7 @@
               <div class="ex-info-box"><div class="ex-info-lbl">교환 비율</div><div class="ex-info-val" id="ceRate">–</div><div class="ex-info-sub">게임코인 → JUMP</div></div>
               <div class="ex-info-box"><div class="ex-info-lbl">컨트랙트 JUMP 잔고</div><div class="ex-info-val" id="ceContractBal">–</div></div>
               <div class="ex-info-box"><div class="ex-info-lbl">내 게임코인 (Gold)</div><div class="ex-info-val" id="ceUserGold">–</div></div>
-              <div class="ex-info-box"><div class="ex-info-lbl">내 JUMP 잔액</div><div class="ex-info-val" id="ceUserJump">–</div></div>
+              <div class="ex-info-box"><div class="ex-info-lbl">내 JUMP 잔액</div><div class="ex-info-val" id="ceUserK-MOA">–</div></div>
               <div class="ex-info-box"><div class="ex-info-lbl">교환 활성화</div><div class="ex-info-val" id="ceSaleEnabled">–</div></div>
               <div class="ex-info-box" style="grid-column:1/-1"><div class="ex-info-lbl">내 수탁 지갑 주소 (JUMP 입금 주소)</div><div class="ex-info-val" id="ceWalletAddr" style="font-size:11px;word-break:break-all;font-family:monospace">–</div></div>
             </div>
@@ -638,7 +638,7 @@
               </div>
               <div class="ce-panel">
                 <div class="ex-info-title ce-panel-title sell">JUMP → 게임코인 변환</div>
-                <div class="ex-field"><div class="ex-field-lbl">판매할 JUMP 수량</div><input type="number" id="ceSellJump" placeholder="0" min="1" step="1" /></div>
+                <div class="ex-field"><div class="ex-field-lbl">판매할 JUMP 수량</div><input type="number" id="ceSellK-MOA" placeholder="0" min="1" step="1" /></div>
                 <div class="ex-preview-box" id="ceSellPreview"></div>
                 <button class="ex-action-btn sell" id="btnCeSell" type="button">변환</button>
                 <div class="ex-status" id="ceSellStatus"></div>

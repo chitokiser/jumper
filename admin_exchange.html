@@ -181,13 +181,13 @@
             <div class="rate-pair">Point ↔ JUMP</div>
             <div class="rate-field">
               <div class="rate-label">환율 (컨트랙트 자동 결정)</div>
-              <input class="rate-input" id="rateHexJump" value="컨트랙트" disabled />
+              <input class="rate-input" id="rateHexK-MOA" value="컨트랙트" disabled />
             </div>
             <div class="rate-toggle">
-              <input type="checkbox" id="enabledHexJump" checked disabled />
-              <label for="enabledHexJump">항상 활성화 (컨트랙트 상태에 따름)</label>
+              <input type="checkbox" id="enabledHexK-MOA" checked disabled />
+              <label for="enabledHexK-MOA">항상 활성화 (컨트랙트 상태에 따름)</label>
             </div>
-            <div class="rate-status" id="statusHexJump" style="color:#334155;">컨트랙트 관리</div>
+            <div class="rate-status" id="statusHexK-MOA" style="color:#334155;">컨트랙트 관리</div>
           </div>
 
           <!-- JUMP ↔ 게임코인 -->
@@ -374,8 +374,8 @@
     }
 
     const PAIR_LABELS = {
-      buyJump:'Point → JUMP', sellJump:'JUMP → Point',
-      stakeJump:'JUMP 스테이킹', unstakeJump:'JUMP 언스테이킹', claimDividend:'배당 청구',
+      buyK-MOA:'Point → JUMP', sellK-MOA:'JUMP → Point',
+      stakeK-MOA:'JUMP 스테이킹', unstakeK-MOA:'JUMP 언스테이킹', claimDividend:'배당 청구',
       buyJumpWithCoins:'게임코인 → JUMP', sellJumpForCoins:'JUMP → 게임코인',
       swap_ton_to_coin:'TON → 게임코인', swap_coin_to_ton:'게임코인 → TON',
       swap_hex_to_ton:'Point → TON', swap_ton_to_hex:'TON → Point',
@@ -445,7 +445,7 @@
       const statusFilter = $('adexFilterStatus')?.value       || '';
 
       const pairMap = {
-        hex_jump:      ['buyJump','sellJump'],
+        hex_jump:      ['buyK-MOA','sellK-MOA'],
         jump_gamecoin: ['buyJumpWithCoins','sellJumpForCoins'],
         ton_gamecoin:  ['swap_ton_to_coin','swap_coin_to_ton'],
         hex_ton:       ['swap_hex_to_ton','swap_ton_to_hex'],
@@ -568,8 +568,8 @@
     // ══════════════════════════════════════════════════════
 
     const PAIR_MAP_REV = {
-      buyJump:'hex_jump', sellJump:'hex_jump',
-      stakeJump:'hex_jump', unstakeJump:'hex_jump', claimDividend:'hex_jump',
+      buyK-MOA:'hex_jump', sellK-MOA:'hex_jump',
+      stakeK-MOA:'hex_jump', unstakeK-MOA:'hex_jump', claimDividend:'hex_jump',
       buyJumpWithCoins:'jump_gamecoin', sellJumpForCoins:'jump_gamecoin',
       swap_ton_to_coin:'ton_gamecoin', swap_coin_to_ton:'ton_gamecoin',
       swap_hex_to_ton:'hex_ton', swap_ton_to_hex:'hex_ton',

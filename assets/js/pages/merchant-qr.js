@@ -101,18 +101,20 @@ async function initPage(uid) {
   setText("qrMerchantName", merchantName);
 
   // 실시간 K-Culture Balance & Payment Balance 모니터링
-  const merchantRef = doc(db, "k_culture_balances", String(merchantId));
+  const mOwner = (await getDoc(doc(db, "merchants", String(merchantId)))).data()?.ownerUid;
   onSnapshot(doc(db, "users", uid), (docS) => { 
     const el = document.getElementById("merchBal"); 
     if(el && docS.exists()) el.textContent = Number(docS.data().pointBalanceVnd || 0).toLocaleString() + " KM"; 
   });
-  onSnapshot(merchantRef, (snap) => {
-    if (snap.exists()) {
-      const { paymentBalanceVnd = 0, pointBalance = 0 } = snap.data();
-      setText("qrMerchantPaymentBal", paymentBalanceVnd.toLocaleString("ko-KR") + " VND");
-      setText("qrMerchantPointBal", pointBalance.toLocaleString("ko-KR") + " P");
-    }
-  });
+  if (mOwner) {
+    onSnapshot(doc(db, "users", mOwner), (snap) => {
+      if (snap.exists()) {
+        const { pointBalanceVnd = 0 } = snap.data();
+        setText("qrMerchantPaymentBal", pointBalanceVnd.toLocaleString("ko-KR") + " KM (결제대금)");
+        setText("qrMerchantPointBal", pointBalanceVnd.toLocaleString("ko-KR") + " KM (포인트)");
+      }
+    });
+  }
 
   show("mainPanel", true);
 

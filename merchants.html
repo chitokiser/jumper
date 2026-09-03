@@ -5157,7 +5157,7 @@
         <button id="btnRegisterTreasure" class="map-hud-btn" title="내 보물 숨기기 / 내 보물 목록">📍</button>
         <button id="btnUserPlaceShop" class="map-hud-btn" title="배치 상점 — GP로 보물/몬스터/타워 배치">🏪</button>
         <button id="btnVirtualMode" class="map-hud-btn" title="Browse shops — warp to a shop">🌍</button>
-        <button id="btnModeToggle" class="map-hud-btn" title="GPS Mode — tap to switch to Jump Mode"
+        <button id="btnModeToggle" class="map-hud-btn" title="GPS Mode — tap to switch to K-MOA Mode"
           style="font-size:10px;font-weight:800;flex-direction:column;gap:1px;line-height:1.2;"><span
             class="mode-icon">📍</span><span class="mode-label" style="font-size:8px;">GPS</span></button>
         <button id="btnHarborSv" class="map-hud-btn" title="Trade Ships — View ships &amp; claim dividends">⛵</button>
@@ -5270,17 +5270,17 @@
         border:1px solid #334155;border-radius:12px;
         padding:12px 14px;margin:10px 0;display:flex;
         align-items:center;gap:8px;flex-wrap:wrap;">
-        <span style="font-size:13px;color:#94a3b8;white-space:nowrap;">📍 Jump to:</span>
+        <span style="font-size:13px;color:#94a3b8;white-space:nowrap;">📍 K-MOA to:</span>
         <input id="jumpCoords" type="text" placeholder="21.13070, 106.73020" style="flex:1;min-width:160px;padding:7px 10px;background:#0f172a;
             color:#e2e8f0;border:1px solid #475569;border-radius:8px;
             font-size:13px;outline:none;font-family:monospace;" />
         <input type="hidden" id="jumpLat" />
         <input type="hidden" id="jumpLng" />
-        <button id="btnCoordJump" type="button" style="
+        <button id="btnCoordK-MOA" type="button" style="
           background:#6366f1;color:#fff;border:none;border-radius:8px;
           padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;
           white-space:nowrap;">
-          ⚡ Jump
+          ⚡ K-MOA
         </button>
       </div>
 
@@ -6091,7 +6091,7 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════════
-     GAME HUB PORTAL — Jump22 통합 런처
+     GAME HUB PORTAL — K-MOA22 통합 런처
 ══════════════════════════════════════════════════════════════════ -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
@@ -7364,7 +7364,7 @@
               <span style="font-size:22px;line-height:1;">🗺️</span>
               <span style="font-family:var(--gh-mono);font-size:8px;color:var(--gh-gold);letter-spacing:.08em;">STEP
                 1</span>
-              <span style="font-size:11px;font-weight:700;color:var(--gh-gold);line-height:1.3;">Jump<br>World</span>
+              <span style="font-size:11px;font-weight:700;color:var(--gh-gold);line-height:1.3;">K-MOA<br>World</span>
               <button onclick="ghEnterGame('treasure')" style="
             width:100%;margin-top:2px;padding:7px 2px;
             background:linear-gradient(135deg,#d97706,#f59e0b);
@@ -7480,7 +7480,7 @@
               <div class="gh-card-body" style="padding-bottom:10px;">
                 <div class="gh-card-name"
                   style="font-size:1.45rem;color:#fbbf24;text-shadow:0 0 24px rgba(245,158,11,.35);">JumpWorld</div>
-                <div class="gh-card-desc">// Jump the world · hide &amp; find treasures<br>// Hunt monsters · plant
+                <div class="gh-card-desc">// K-MOA the world · hide &amp; find treasures<br>// Hunt monsters · plant
                   &amp; harvest money trees</div>
                 <div class="gh-card-reward">+120 GP / day</div>
                 <div class="gh-card-players">
@@ -7743,7 +7743,7 @@
         en: {
           tab_games: '🎮 Games',
           tab_ton: '💎 TON Exchange',
-          onboard_title: 'Welcome to Jump22',
+          onboard_title: 'Welcome to K-MOA22',
           onboard_sub: 'Turn on GPS → Treasure Hunt → Earn GP → Exchange tokens',
           onboard_btn: '▶ Start',
           section_games: '// game_universe',
@@ -7753,7 +7753,7 @@
           memory_login: 'Play without login',
           memory_btn: '▶ PLAY',
           treasure_name: 'JumpWorld',
-          treasure_desc: '// Jump the world · hide &amp; find treasures<br>// Hunt monsters · plant &amp; harvest money trees',
+          treasure_desc: '// K-MOA the world · hide &amp; find treasures<br>// Hunt monsters · plant &amp; harvest money trees',
           treasure_btn: '▶ ENTER JUMPWORLD',
           race_desc: '// realtime 7-player race<br>// skill items &amp; traps',
           race_btn: '▶ RACE NOW',
@@ -7800,7 +7800,7 @@
         ko: {
           tab_games: '🎮 게임',
           tab_ton: '💎 TON 교환',
-          onboard_title: 'Jump22에 오신 것을 환영합니다',
+          onboard_title: 'K-MOA22에 오신 것을 환영합니다',
           onboard_sub: 'GPS 켜고 보물찾기부터 시작 → 게임코인 획득 → 포인트 교환',
           onboard_btn: '▶ 시작하기',
           section_games: '// game_universe',
@@ -7862,7 +7862,7 @@
         vi: {
           tab_games: '🎮 Trò chơi',
           tab_ton: '💎 Đổi TON',
-          onboard_title: 'Chào mừng đến Jump22',
+          onboard_title: 'Chào mừng đến K-MOA22',
           onboard_sub: 'Bật GPS → Tìm kho báu → Kiếm GP → Đổi token',
           onboard_btn: '▶ Bắt đầu',
           section_games: '// game_universe',
@@ -8075,7 +8075,7 @@
     })();
   </script>
 
-  <!-- Floating Shortcut: BGM + Coord Jump -->
+  <!-- Floating Shortcut: BGM + Coord K-MOA -->
   <div id="floatShortcutPanel" data-fs-modal
     style="position:fixed;bottom:90px;left:16px;z-index:9200;display:flex;flex-direction:column;gap:8px;align-items:flex-start;pointer-events:none;">
     <button id="btnBgmFloat" title="BGM On/Off" style="pointer-events:all;
@@ -8085,7 +8085,7 @@
     font-size:20px;cursor:pointer;line-height:1;
     box-shadow:0 4px 14px rgba(0,0,0,.5);display:flex;
     align-items:center;justify-content:center;">🎵</button>
-    <button id="btnCoordJumpFloat" title="Jump to Coordinates" style="pointer-events:all;
+    <button id="btnCoordJumpFloat" title="K-MOA to Coordinates" style="pointer-events:all;
     width:46px;height:46px;border-radius:50%;
     background:rgba(15,23,42,.88);backdrop-filter:blur(8px);
     border:1.5px solid rgba(16,185,129,.5);color:#fff;
@@ -8105,7 +8105,7 @@
     <button id="btnFloatJumpGo" style="
     width:100%;margin-top:8px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;
     border:none;border-radius:8px;padding:9px;
-    font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;">⚡ Jump &amp; Hunt</button>
+    font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;">⚡ K-MOA &amp; Hunt</button>
   </div>
 
   <!-- BGM -->
@@ -8186,7 +8186,7 @@
         btnBgmMain.addEventListener('click', () => setTimeout(syncBgmFloat, 20));
       }
 
-      /* ── Coord Jump Float Popup ────────────────────────────────── */
+      /* ── Coord K-MOA Float Popup ────────────────────────────────── */
       const btnJumpFloat = document.getElementById('btnCoordJumpFloat');
       const popup = document.getElementById('coordJumpPopup');
       const jumpInput = document.getElementById('floatJumpCoordInput');
@@ -8216,7 +8216,7 @@
         }
       });
 
-      function doJump() {
+      function doK-MOA() {
         if (!jumpInput) return;
         const parts = jumpInput.value.split(',').map(s => parseFloat(s.trim()));
         const lat = parts[0], lng = parts[1];
@@ -8234,12 +8234,12 @@
         const sLng = document.getElementById('jumpLng');
         if (sLat) sLat.value = lat;
         if (sLng) sLng.value = lng;
-        document.getElementById('btnCoordJump')?.click();
+        document.getElementById('btnCoordK-MOA')?.click();
         showPopup(false);
       }
 
-      if (btnJumpGo) btnJumpGo.addEventListener('click', doJump);
-      if (jumpInput) jumpInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doJump(); });
+      if (btnJumpGo) btnJumpGo.addEventListener('click', doK-MOA);
+      if (jumpInput) jumpInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doK-MOA(); });
     })();
   </script>
 </body>

@@ -5,7 +5,6 @@
 const admin = require('firebase-admin');
 const { HttpsError } = require('firebase-functions/v2/https');
 const { requireAdmin } = require('../wallet/admin');
-const { getProvider, getCoopMallContract } = require('../wallet/chain');
 
 const db = admin.firestore();
 
@@ -15,9 +14,9 @@ function haversine(lat1, lng1, lat2, lng2) {
   const toRad = d => d * Math.PI / 180;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat/2)**2
-    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // ── 가중 랜덤 아이템 선택 ──────────────────────────────────────────────────────
@@ -68,7 +67,7 @@ async function earnKey(uid, { keyId } = {}) {
 
 // ── 유저: 보물박스 수집 (GPS 근접 → 박스를 인벤토리에 저장, 미개봉) ──────────
 async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
-  if (!boxId)        throw new HttpsError('invalid-argument', 'boxId가 필요합니다');
+  if (!boxId) throw new HttpsError('invalid-argument', 'boxId가 필요합니다');
   if (userLat == null || userLng == null)
     throw new HttpsError('invalid-argument', '위치 정보가 필요합니다');
 
@@ -76,7 +75,7 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   const boxSnap = await db.collection('treasure_boxes').doc(boxId).get();
   if (!boxSnap.exists) throw new HttpsError('not-found', '보물박스를 찾을 수 없습니다');
   const box = boxSnap.data();
-  if (!box.active)   throw new HttpsError('failed-precondition', '비활성 보물박스입니다');
+  if (!box.active) throw new HttpsError('failed-precondition', '비활성 보물박스입니다');
 
   // 시간 범위 확인
   if (!isInTimeRange(box.startHour ?? 0, box.endHour ?? 24))
@@ -91,7 +90,7 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   // 리스폰 기반 수집 제한 (같은 사람은 리스폰 전까지 재수집 불가)
   const respawnMs = box.respawnIntervalMs || 86400000; // 기본 24시간
   const invBoxKey = `${uid}_${boxId}`;
-  const logRef  = db.collection('treasure_logs').doc(invBoxKey);
+  const logRef = db.collection('treasure_logs').doc(invBoxKey);
   const logSnap = await logRef.get();
   if (logSnap.exists) {
     const lastMs = logSnap.data().collectedAt?.toMillis?.() || 0;
@@ -99,21 +98,19 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
     if (remainMs > 0) {
       const remainMin = Math.ceil(remainMs / 60000);
       throw new HttpsError('already-exists',
-        `이미 획득한 보물박스입니다. ${remainMin >= 60 ? Math.ceil(remainMin/60) + '시간' : remainMin + '분'} 후 다시 시도하세요`,
+        `이미 획득한 보물박스입니다. ${remainMin >= 60 ? Math.ceil(remainMin / 60) + '시간' : remainMin + '분'} 후 다시 시도하세요`,
         { respawnRemainingMs: remainMs }
       );
     }
   }
 
-  // 정회원 전용 박스: CoopMall 멤버십 확인
+  // 정회원 전용 박스: Firebase Role 기반 확인
   if (box.memberOnly) {
     const userSnap = await db.collection('users').doc(uid).get();
-    const walletAddress = userSnap.data()?.wallet?.address;
-    if (!walletAddress) throw new HttpsError('failed-precondition', '수탁 지갑이 없습니다');
-    const provider = getProvider();
-    const coopMall = getCoopMallContract(provider);
-    const info = await coopMall.getUserInfo(walletAddress);
-    if (!info.member) throw new HttpsError('permission-denied', '정회원 전용 보물박스입니다. CoopMall 정회원 가입 후 이용하세요.');
+    const role = userSnap.data()?.role;
+    if (role !== 'member' && role !== 'admin') {
+      throw new HttpsError('permission-denied', '정회원 전용 보물박스입니다. 정회원 가입 후 이용하세요.');
+    }
   }
 
   const itemPool = box.itemPool || [];
@@ -129,11 +126,11 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   await db.runTransaction(async (tx) => {
     tx.set(invBoxRef, {
       uid, boxId,
-      boxName:   box.name      || '',
+      boxName: box.name || '',
       itemPool,
       dropCount: box.dropCount || 1,
       hiddenBox: box.hiddenBox === true,
-      keyId:     box.keyId     || null,
+      keyId: box.keyId || null,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     tx.set(logRef, {
@@ -147,13 +144,13 @@ async function collectTreasureBox(uid, { boxId, userLat, userLng } = {}) {
   const statsRef = db.collection('treasure_stats').doc('global');
   const statsUpdate = { foundCount: admin.firestore.FieldValue.increment(1) };
   if (isFirstEver) statsUpdate.participants = admin.firestore.FieldValue.increment(1);
-  statsRef.set(statsUpdate, { merge: true }).catch(() => {});
+  statsRef.set(statsUpdate, { merge: true }).catch(() => { });
 
   // 플레이어 보물 수집 카운터 + 코인 보상
   const coinReward = box.coinReward > 0 ? box.coinReward : 0;
   const playerUpdate = { treasuresFound: admin.firestore.FieldValue.increment(1) };
   if (coinReward > 0) playerUpdate.gold = admin.firestore.FieldValue.increment(coinReward);
-  db.collection('battle_players').doc(uid).set(playerUpdate, { merge: true }).catch(() => {});
+  db.collection('battle_players').doc(uid).set(playerUpdate, { merge: true }).catch(() => { });
 
   return { ok: true, boxName: box.name || '보물박스', coinReward };
 }
@@ -181,7 +178,7 @@ async function adminCollectTreasureBox(adminUid, { boxId } = {}) {
     if (remainMs > 0) {
       const remainMin = Math.ceil(remainMs / 60000);
       throw new HttpsError('already-exists',
-        `이미 획득한 보물박스입니다. ${remainMin >= 60 ? Math.ceil(remainMin/60) + '시간' : remainMin + '분'} 후 다시 시도하세요`,
+        `이미 획득한 보물박스입니다. ${remainMin >= 60 ? Math.ceil(remainMin / 60) + '시간' : remainMin + '분'} 후 다시 시도하세요`,
         { respawnRemainingMs: remainMs }
       );
     }
@@ -195,11 +192,11 @@ async function adminCollectTreasureBox(adminUid, { boxId } = {}) {
   await db.runTransaction(async (tx) => {
     tx.set(invBoxRef, {
       uid: adminUid, boxId,
-      boxName:   box.name      || '',
+      boxName: box.name || '',
       itemPool,
       dropCount: box.dropCount || 1,
       hiddenBox: box.hiddenBox === true,
-      keyId:     box.keyId     || null,
+      keyId: box.keyId || null,
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     tx.set(logRef, {
@@ -241,7 +238,7 @@ async function openTreasureBox(uid, { boxId } = {}) {
   // dropCount만큼 랜덤 아이템 선택
   const dropCount = Math.max(1, invBox.dropCount || 1);
   const droppedIds = Array.from({ length: dropCount }, () => pickWeightedItem(itemPool));
-  const uniqueIds  = [...new Set(droppedIds)];
+  const uniqueIds = [...new Set(droppedIds)];
 
   // 아이템 정보 조회 (유니크 ID만)
   const itemDataMap = {};
@@ -258,7 +255,7 @@ async function openTreasureBox(uid, { boxId } = {}) {
   await db.runTransaction(async (tx) => {
     // ── 모든 읽기 ──────────────────────────────────────────────────────────────
     const keySnap2 = keyInvRef ? await tx.get(keyInvRef) : null;
-    const invRefs  = uniqueIds.map(id => db.collection('treasure_inventory').doc(`${uid}_${id}`));
+    const invRefs = uniqueIds.map(id => db.collection('treasure_inventory').doc(`${uid}_${id}`));
     const invSnaps = await Promise.all(invRefs.map(ref => tx.get(ref)));
 
     // ── 검증 ──────────────────────────────────────────────────────────────────
@@ -287,15 +284,15 @@ async function openTreasureBox(uid, { boxId } = {}) {
   const firstId = droppedIds[0];
   return {
     ok: true,
-    items:     droppedIds.map(id => ({
-      itemId:    String(id),
-      itemName:  itemDataMap[id]?.name  || `아이템 #${id}`,
+    items: droppedIds.map(id => ({
+      itemId: String(id),
+      itemName: itemDataMap[id]?.name || `아이템 #${id}`,
       itemImage: itemDataMap[id]?.image || `${id}.png`,
     })),
-    itemId:    String(firstId),
-    itemName:  itemDataMap[firstId]?.name  || `아이템 #${firstId}`,
+    itemId: String(firstId),
+    itemName: itemDataMap[firstId]?.name || `아이템 #${firstId}`,
     itemImage: itemDataMap[firstId]?.image || `${firstId}.png`,
-    keyId:     needKey ? String(invBox.keyId) : null,
+    keyId: needKey ? String(invBox.keyId) : null,
   };
 }
 
@@ -312,7 +309,7 @@ async function craftVoucher(uid, { voucherId } = {}) {
   const goldReqs = reqs.filter(r => r.type === 'gold' || r.itemId === 'coin');
   const itemReqs = reqs.filter(r => r.type !== 'gold' && r.itemId !== 'coin');
   const goldNeeded = goldReqs.reduce((s, r) => s + (r.count || 0), 0)
-                   + (voucher.minCoins || 0);
+    + (voucher.minCoins || 0);
 
   // 보상 아이템 ID 미리 결정 (트랜잭션 밖에서 계산)
   const rewardItemId = (voucher.reward || '').trim();
@@ -339,7 +336,7 @@ async function craftVoucher(uid, { voucherId } = {}) {
     if (goldNeeded > 0 || magicStoneCost > 0 || gpGranted > 0) {
       playerRef = db.collection('battle_players').doc(uid);
       const pSnap = await tx.get(playerRef);
-      currentGold  = pSnap.exists ? (pSnap.data().gold  || 0) : 0;
+      currentGold = pSnap.exists ? (pSnap.data().gold || 0) : 0;
       currentToken = pSnap.exists ? (pSnap.data().token || 0) : 0;
       if (currentGold < goldNeeded)
         throw new HttpsError('failed-precondition',
@@ -350,7 +347,7 @@ async function craftVoucher(uid, { voucherId } = {}) {
     }
 
     // 3) 재료 아이템 잔액
-    const invRefs  = itemReqs.map(r => db.collection('treasure_inventory').doc(`${uid}_${r.itemId}`));
+    const invRefs = itemReqs.map(r => db.collection('treasure_inventory').doc(`${uid}_${r.itemId}`));
     const invSnaps = await Promise.all(invRefs.map(ref => tx.get(ref)));
     for (let i = 0; i < itemReqs.length; i++) {
       const have = invSnaps[i].exists ? (invSnaps[i].data().count || 0) : 0;
@@ -373,8 +370,8 @@ async function craftVoucher(uid, { voucherId } = {}) {
     if (goldNeeded > 0 || magicStoneCost > 0 || gpGranted > 0) {
       const upd = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
       const finalGold = currentGold - goldNeeded + gpGranted;
-      upd.gold  = finalGold;
-      if (magicStoneCost > 0)  upd.token = currentToken - magicStoneCost;
+      upd.gold = finalGold;
+      if (magicStoneCost > 0) upd.token = currentToken - magicStoneCost;
       tx.update(playerRef, upd);
     }
 
@@ -390,10 +387,10 @@ async function craftVoucher(uid, { voucherId } = {}) {
     // 바우처 지급 기록
     tx.set(db.collection('treasure_voucher_logs').doc(), {
       uid, voucherId,
-      voucherName: voucher.name  || '',
-      reward:      voucher.reward || '',
-      image:       voucher.image  || '',
-      craftedAt:   admin.firestore.FieldValue.serverTimestamp(),
+      voucherName: voucher.name || '',
+      reward: voucher.reward || '',
+      image: voucher.image || '',
+      craftedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     // 중복 구매 방지 마커
@@ -476,27 +473,27 @@ async function adminSaveTreasureBox(adminUid, data = {}) {
     : db.collection('treasure_boxes').doc();
 
   const docData = {
-    name:               name || '',
-    description:        description || '',
-    lat:                Number(lat),
-    lng:                Number(lng),
-    radius:             isGpJackpot ? 20 : Number(radius ?? 30),
-    scanRadius:         Number(scanRadius ?? 100),
-    startHour:          Number(startHour ?? 0),
-    endHour:            Number(endHour ?? 24),
-    itemPool:           isGpJackpot ? [] : (itemPool || []),
-    hp:                 Number(hp ?? 300),
-    respawnIntervalMs:  Number(respawnIntervalMs ?? 86400000),
-    active:             active !== false,
-    memberOnly:         memberOnly === true,
-    hiddenBox:          isGpJackpot ? true : (hiddenBox === true),
-    keyId:              (!isGpJackpot && hiddenBox === true && keyId) ? String(keyId) : null,
-    updatedAt:          admin.firestore.FieldValue.serverTimestamp(),
+    name: name || '',
+    description: description || '',
+    lat: Number(lat),
+    lng: Number(lng),
+    radius: isGpJackpot ? 20 : Number(radius ?? 30),
+    scanRadius: Number(scanRadius ?? 100),
+    startHour: Number(startHour ?? 0),
+    endHour: Number(endHour ?? 24),
+    itemPool: isGpJackpot ? [] : (itemPool || []),
+    hp: Number(hp ?? 300),
+    respawnIntervalMs: Number(respawnIntervalMs ?? 86400000),
+    active: active !== false,
+    memberOnly: memberOnly === true,
+    hiddenBox: isGpJackpot ? true : (hiddenBox === true),
+    keyId: (!isGpJackpot && hiddenBox === true && keyId) ? String(keyId) : null,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
   if (isGpJackpot) {
     docData.boxType = 'gp_jackpot';
-    docData.gpPool  = Math.max(0, Math.floor(Number(gpPool ?? 0)));
+    docData.gpPool = Math.max(0, Math.floor(Number(gpPool ?? 0)));
   }
 
   await ref.set(docData, { merge: true });
@@ -539,8 +536,8 @@ async function collectGpJackpotBox(uid, { boxId, userLat, userLng } = {}) {
   const tier = TIERS[tierIdx];
   const tierRank = tierIdx + 1;
 
-  const claimRef  = db.collection('gp_jackpot_claims').doc(`${uid}_${boxId}`);
-  const boxRef    = db.collection('treasure_boxes').doc(boxId);
+  const claimRef = db.collection('gp_jackpot_claims').doc(`${uid}_${boxId}`);
+  const boxRef = db.collection('treasure_boxes').doc(boxId);
   const playerRef = db.collection('battle_players').doc(uid);
 
   return await db.runTransaction(async (tx) => {
@@ -555,7 +552,7 @@ async function collectGpJackpotBox(uid, { boxId, userLat, userLng } = {}) {
     const gpPool = Math.floor(Number(boxTxSnap.data()?.gpPool ?? 0));
     if (gpPool <= 0) throw new HttpsError('failed-precondition', 'GP Jackpot pool is empty');
 
-    const prize   = Math.max(1, Math.floor(gpPool / tier.divisor));
+    const prize = Math.max(1, Math.floor(gpPool / tier.divisor));
     const newPool = Math.max(0, gpPool - prize);
 
     tx.set(claimRef, {
@@ -576,9 +573,9 @@ async function adminSaveTreasureKey(adminUid, data = {}) {
   if (!keyId) throw new HttpsError('invalid-argument', 'keyId가 필요합니다');
 
   await db.collection('treasure_keys').doc(String(keyId)).set({
-    name:     name || `열쇠 #${keyId}`,
+    name: name || `열쇠 #${keyId}`,
     dropRate: Number(dropRate ?? 0.1),
-    active:   active !== false,
+    active: active !== false,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
@@ -613,7 +610,7 @@ async function adminListTreasureBoxes(adminUid) {
 async function adminSaveVoucher(adminUid, data = {}) {
   await requireAdmin(adminUid);
   const { voucherId, name, requirements, reward, image, active, minCoins, minLevel,
-          gpRewardMin, gpRewardMax } = data;
+    gpRewardMin, gpRewardMax } = data;
   if (!name) throw new HttpsError('invalid-argument', 'name이 필요합니다');
 
   const gpMin = Math.max(0, Math.floor(Number(gpRewardMin) || 0));
@@ -626,14 +623,14 @@ async function adminSaveVoucher(adminUid, data = {}) {
   await ref.set({
     name,
     requirements: requirements || [],
-    reward:       reward || '',
-    gpRewardMin:  gpMin,
-    gpRewardMax:  gpMax,
-    image:        image  || '',
-    minCoins:     Number(minCoins) || 0,
-    minLevel:     Number(minLevel) || 0,
-    active:       active !== false,
-    updatedAt:    admin.firestore.FieldValue.serverTimestamp(),
+    reward: reward || '',
+    gpRewardMin: gpMin,
+    gpRewardMax: gpMax,
+    image: image || '',
+    minCoins: Number(minCoins) || 0,
+    minLevel: Number(minLevel) || 0,
+    active: active !== false,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
   return { ok: true, voucherId: ref.id };
