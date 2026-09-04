@@ -85,14 +85,17 @@ async function loadMerchant() {
   ["payAmountLogin", "payAmountReg", "payAmountDisp"].forEach((id) => setText(id, amountStr));
   setText("payHeroDesc", `${merchantName} — ${amountStr}`);
 
-  // VND인 경우 KRW 환산 표시
+  // VND인 경우 KRW 환산 표시 제거하고 무료 보상 강조
   if (isVnd) {
-    fetchRates().then((rates) => {
-      const krw = Math.round((amount / rates.vndPerUsd) * rates.krwPerUsd).toLocaleString();
-      const withKrw = `${amount.toLocaleString()}동 ≈ ${krw}원`;
-      ["payAmountLogin", "payAmountReg", "payAmountDisp"].forEach((id) => setText(id, withKrw));
-      setText("payHeroDesc", `${merchantName} — ${withKrw}`);
-    });
+    const withKrw = `${amount.toLocaleString()} VND 결제 → 무료 보상 (${bt} BT)`;
+    ["payAmountLogin", "payAmountReg", "payAmountDisp"].forEach((id) => setText(id, withKrw));
+    setText("payHeroDesc", `${merchantName} — ${withKrw}`);
+
+    const btn = document.getElementById("btnPay");
+    if (btn) btn.textContent = "무료 BT 보상받기";
+
+    const title = document.querySelector(".pay-hero-title");
+    if (title) title.textContent = "보상 티켓 수령";
   }
 }
 

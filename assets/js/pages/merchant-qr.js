@@ -190,6 +190,16 @@ function bindQrForm(merchantId, merchantName) {
     const amount = Number($("qrAmount")?.value || 0);
     const currency = form.querySelector("input[name='qrCurrency']:checked")?.value || "KRW";
 
+    const labelEl = $("qrAmountLabel");
+    const helpEl = $("qrAmountHelp");
+    if (isBt) {
+      if (labelEl) labelEl.textContent = "완료된 결제 금액 (VND)";
+      if (helpEl) helpEl.textContent = "고객이 타 수단으로 결제한 금액을 입력하면 비례하여 BT 무료 보상이 생성됩니다.";
+    } else {
+      if (labelEl) labelEl.textContent = "결제 청구 금액 (동, VND)";
+      if (helpEl) helpEl.textContent = "최소 10,000동 이상 입력해 주세요.";
+    }
+
     if (isBt && amount > 0) {
       if (btCalcResult) btCalcResult.style.display = "";
       if (btCountText) btCountText.textContent = getBtAmount(amount, currency) + " 장";
@@ -200,7 +210,7 @@ function bindQrForm(merchantId, merchantName) {
     // 모드에 따라 버튼 텍스트 변경
     const btnGen = $("btnGenQr");
     if (btnGen) {
-      btnGen.textContent = isBt ? "BT 무료 보상 QR 생성" : "결제 QR 생성";
+      btnGen.textContent = isBt ? "무료 BT 보상 QR 발급" : "결제 QR 생성";
     }
   }
 
