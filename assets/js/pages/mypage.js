@@ -6,6 +6,7 @@ import { esc } from '/assets/js/esc.js';
 import { onAuthReady } from "../auth.js";
 import { db, functions, auth } from "/assets/js/firebase-init.js";
 import { login } from "../auth.js";
+import { initSlot } from "/assets/js/jackpot-anim.js";
 
 import {
   doc,
@@ -296,10 +297,37 @@ async function loadKCultureBalances(uid) {
           btnUseBt.disabled = true;
           btnUseBt.textContent = "사용 중...";
           try {
+            // Show spinning animation overlay
+            const overlay = document.createElement("div");
+            overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;";
+            document.body.appendChild(overlay);
+
+            const animBox = document.createElement("div");
+            animBox.style.cssText = "background:#1e293b;border:2px solid #3b82f6;padding:30px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,0.5);text-align:center;min-width:280px;color:white;";
+            const titleEl = document.createElement("div");
+            titleEl.innerHTML = "<h3 style='margin:0 0 15px;color:#60a5fa;'>🎰 잭팟 굴리기...</h3>";
+            animBox.appendChild(titleEl);
+
+            const slotContainer = document.createElement("div");
+            slotContainer.style.marginBottom = "15px";
+            animBox.appendChild(slotContainer);
+            overlay.appendChild(animBox);
+
+            const slot = initSlot(slotContainer);
+
             const api = httpsCallable(functions, "consumeUserBtFirebase");
             const res = await api({ btToUse: numToUse });
-            showJackpotResult(res.data);
-            loadJackpotHistory(uid);
+
+            const d = res.data;
+            const isWin = d.pointsEarned > 0 || d.isJackpot;
+
+            slot.stop(d.randomValue || 13, isWin, () => {
+              setTimeout(() => {
+                document.body.removeChild(overlay);
+                showJackpotResult(d);
+                loadJackpotHistory(uid);
+              }, 1500);
+            });
           } catch (e) {
             alert("사용 실패: " + (e.message || "서버 오류가 발생했습니다."));
           } finally {
@@ -1149,7 +1177,7 @@ function showJackpotResult(d) {
   if (itemsEl) {
     const lines = [];
     if (hasJackpot && jackpotKM > 0) {
-      lines.push(`<div class="jm-item">🪙 ${_t('jm_jackpot_pts')} <b>+${jackpotKM.toLocaleString()} KM</b></div>`);
+      lines.push(`<div class="jm-item" style="font-size:1.4rem; color:#fde047; font-weight:800; margin: 15px 0;">✨ 잭팟 달성! <br><span style="color:#fff; font-size:2rem;">+${jackpotKM.toLocaleString()} KM</span> (Point) 지급 완료</div>`);
     }
     if (d.potionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b></div>`);
     if (d.mpPotionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/mp.png" style="width:22px;height:22px;"> ${_t('item_mp_potion')} <b>+${d.mpPotionsAdded}</b></div>`);
