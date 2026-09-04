@@ -1396,9 +1396,10 @@ async function consumeUserBtFirebase(data, context) {
 
       if (i === 0) firstGrade = grade;
 
-      let reward = Math.floor(currentJackpotPool / grade);
-      if (reward <= 0 && currentJackpotPool > 0) reward = 1;
-      if (reward < 0) reward = 0;
+      // BT 1장당 10만동 결제분으로 간주하여 가상의 수수료(10,000)를 적용합니다.
+      let virtualFee = 10000;
+      let reward = Math.floor((virtualFee + currentJackpotPool) / grade) + Math.floor(virtualFee / grade);
+      if (reward <= 0) reward = 1;
 
       totalJackpotReward += reward;
       currentJackpotPool -= reward;

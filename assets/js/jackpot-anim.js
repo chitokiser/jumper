@@ -9,7 +9,7 @@ function pad(n) {
 let _ctx = null;
 function getAudioCtx() {
   if (!_ctx) {
-    try { _ctx = new (window.AudioContext || window["webkitAudioContext"])(); } catch (_) {}
+    try { _ctx = new (window.AudioContext || window["webkitAudioContext"])(); } catch (_) { }
   }
   if (_ctx && _ctx.state === "suspended") _ctx.resume();
   return _ctx;
@@ -19,7 +19,7 @@ function getAudioCtx() {
 function _unlockAudio() {
   getAudioCtx();
 }
-document.addEventListener("click",      _unlockAudio, { once: true, capture: true });
+document.addEventListener("click", _unlockAudio, { once: true, capture: true });
 document.addEventListener("touchstart", _unlockAudio, { once: true, capture: true });
 
 /**
@@ -52,45 +52,44 @@ function playTone(freq, vol, dur, type = "sine", when = 0) {
 
 /** 스핀 중 틱 사운드 (카지노 드럼 느낌) */
 function playSpinTick() {
-  playTone(420, 0.08, 0.04, "square");
+  playTone(420, 0.4, 0.05, "square");
+  if (navigator.vibrate) navigator.vibrate(15);
 }
 
 /** 슬로우다운 클릭: 단계가 올라갈수록 더 낮고 묵직하게 */
 function playSlowClick(stepIndex) {
-  // stepIndex 0~7 → freq 380→160, vol 0.10→0.18
   const freq = 380 - stepIndex * 28;
-  const vol  = 0.10 + stepIndex * 0.01;
-  playTone(freq, vol, 0.07 + stepIndex * 0.015, "triangle");
+  const vol = 0.4 + stepIndex * 0.05;
+  playTone(freq, vol, 0.1, "triangle");
+  if (navigator.vibrate) navigator.vibrate(30);
 }
 
 /** 최종 번호 착지 '쿵' 소리 */
 function playLand() {
-  playTone(110, 0.35, 0.25, "sine");
-  // 약간 뒤에 고음 레이어 추가 → 금속성 느낌
-  playTone(440, 0.12, 0.12, "triangle", getAudioCtx()?.currentTime + 0.03);
+  playTone(110, 0.8, 0.35, "sine");
+  playTone(880, 0.4, 0.2, "triangle", getAudioCtx()?.currentTime + 0.03);
+  if (navigator.vibrate) navigator.vibrate([80, 50, 150]);
 }
 
-/** 당첨 팡파레 (C4-E4-G4-C5 아르페지오) */
+/** 당첨 팡파레 */
 function playWinFanfare() {
   const ctx = getAudioCtx();
   if (!ctx) return;
-  const notes = [261.63, 329.63, 392.00, 523.25];
+  const notes = [261.63, 329.63, 392.00, 523.25, 1046.5];
   notes.forEach((f, i) => {
-    const t = ctx.currentTime + i * 0.13;
-    playTone(f, 0.28, 0.35, "sine", t);
+    const t = ctx.currentTime + i * 0.15;
+    playTone(f, 0.6, 0.4, "sine", t);
   });
-  // 반짝이는 고음 꼬리
-  setTimeout(() => {
-    playTone(1046.5, 0.15, 0.4, "sine");
-  }, notes.length * 130 + 80);
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
 }
 
-/** 꽝 사운드 (내림 두 음) */
+/** 꽝 사운드 */
 function playLoseTone() {
   const ctx = getAudioCtx();
   if (!ctx) return;
-  playTone(220, 0.20, 0.30, "sawtooth");
-  playTone(164.81, 0.18, 0.40, "sawtooth", ctx.currentTime + 0.22);
+  playTone(220, 0.8, 0.4, "sawtooth");
+  playTone(164.81, 0.8, 0.5, "sawtooth", ctx.currentTime + 0.25);
+  if (navigator.vibrate) navigator.vibrate([300, 100, 500]);
 }
 
 // ── 슬롯머신 초기화 ───────────────────────────────────────────────────────────
@@ -117,9 +116,9 @@ export function initSlot(waitEl) {
   `;
   waitEl.style.cssText = "";
 
-  const numEl  = waitEl.querySelector(".jp-drum-num");
-  const subEl  = waitEl.querySelector(".jp-slot-sub");
-  const barEl  = waitEl.querySelector(".jp-slot-bar-inner");
+  const numEl = waitEl.querySelector(".jp-drum-num");
+  const subEl = waitEl.querySelector(".jp-slot-sub");
+  const barEl = waitEl.querySelector(".jp-slot-bar-inner");
 
   // 빠른 스핀 + 틱 사운드
   let spinTickCount = 0;
@@ -145,7 +144,7 @@ export function initSlot(waitEl) {
 
       // 슬로우다운 단계: [딜레이ms, 랜덤범위]
       const steps = [
-        [70,  4000],
+        [70, 4000],
         [110, 2000],
         [160, 900],
         [220, 380],
@@ -169,7 +168,7 @@ export function initSlot(waitEl) {
           playLand();
           setTimeout(() => {
             if (isWin) playWinFanfare();
-            else       playLoseTone();
+            else playLoseTone();
           }, 200);
 
           setTimeout(() => onDone && onDone(), 750);
