@@ -174,6 +174,7 @@ function bindPayButton() {
     if (stateEl) { stateEl.textContent = "블록체인 처리 중입니다. 잠시 기다려 주세요..."; stateEl.style.display = ""; }
 
     try {
+      const orderId = String(Date.now());
       const payFn = httpsCallable(functions, "payMerchantFirebase");
       const payload = isVnd
         ? { merchantId: Number(merchantId), amountVnd: Number(amountVnd), currency: "VND", reqId: orderId }
