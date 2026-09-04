@@ -146,25 +146,36 @@ async function loadJackpotWinners() {
     const winners = [];
     snap.forEach((d) => {
       const r = d.data();
-      const addr = String(r.userAddress || "");
-      const addrShort = addr.length > 8 ? addr.slice(0, 6) + "..." + addr.slice(-4) : addr || "-";
-      const createdAt = r.createdAt?.toDate ? r.createdAt.toDate() : null;
+      let displayName = r.userName || r.userAddress || "-";
+      if (displayName.length > 10 && displayName.startsWith('0x')) {
+        displayName = displayName.slice(0, 6) + "..." + displayName.slice(-4);
+      }
+
+      const ts = r.timestamp || r.createdAt;
+      const createdAt = ts?.toDate ? ts.toDate() : null;
       const dateStr = createdAt
         ? createdAt.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) +
         " " +
         createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
         : "-";
+
       const items = [];
+      const amountKM = Number(r.amountVnd || r.amountKrw || 0);
       const ptsWei = BigInt(r.onchainJackpotPointsWei || "0");
-      if (ptsWei > 0n) items.push(`🪙 ${(Number(ptsWei) / 1e18).toFixed(6)} ${_t('hex_points')}`);
+      if (amountKM > 0) items.push(`🪙 ${amountKM.toLocaleString()} KM`);
+      else if (ptsWei > 0n) items.push(`🪙 ${(Number(ptsWei) / 1e18).toFixed(6)} Point`);
+
       if ((r.potionCount || 0) > 0) items.push(_t('red_potion', r.potionCount));
       if ((r.mpPotionCount || 0) > 0) items.push(_t('mp_potion', r.mpPotionCount));
       if ((r.reviveAdded || 0) > 0) items.push(_t('revive', r.reviveAdded));
-      const ptsWeiForVal = BigInt(r.onchainJackpotPointsWei || "0");
-      const hexVal = Number(ptsWeiForVal) / 1e18;
+
+      let hexVal = 0;
+      if (amountKM > 0) hexVal = amountKM;
+      else if (ptsWei > 0n) hexVal = Number(ptsWei) / 1e18;
+
       winners.push({
-        addrShort,
-        merchantName: r.merchantName || `가맹점 #${r.merchantId ?? ""}`,
+        addrShort: displayName,
+        merchantName: r.merchantName || `가맹점 #${r.merchantId || ""}`,
         dateStr,
         itemsStr: items.join(" / ") || _t('item'),
         hexVal,
@@ -436,9 +447,11 @@ async function loadRankings() {
   try {
     const fn = httpsCallable(functions, 'getHomeRankings');
     const res = await fn();
-    const { treasureRanking = [], jumpRanking = [] } = res.data || {};
+    const { treasureRanking = [], pointRanking = [] } = res.data || {};
     renderRankingList(treasureEl, treasureRanking, (r) => `${Number(r.treasuresFound).toLocaleString()}${_t('ranking_found_suffix')}`);
-    renderRankingList(jumpEl, jumpRanking, (r) => `${Number(r.jumpBalance).toLocaleString()} JUMP`);
+
+    // Render pointRanking into the same element previously used for jumpRanking
+    renderRankingList(jumpEl, pointRanking, (r) => `${Number(r.pointBalance).toLocaleString()} Points`);
   } catch (e) {
     console.warn('loadRankings failed:', e);
     const errHtml = `<div class="ranking-empty">${_t('ranking_error')}</div>`;

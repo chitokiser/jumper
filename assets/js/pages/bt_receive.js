@@ -79,8 +79,8 @@ async function loadMerchant() {
   document.title = `${merchantName} 결제 확인 | Jump`;
 
   let amountStr = isVnd
-    ? `${amount.toLocaleString()}KM`
-    : `${amount.toLocaleString()}원 (KRW)`;
+    ? `${bt} BT 수령`
+    : `${bt} BT 수령`;
   ["payMerchantNameLogin", "payMerchantNameReg", "payMerchantName"].forEach((id) => setText(id, merchantName));
   ["payAmountLogin", "payAmountReg", "payAmountDisp"].forEach((id) => setText(id, amountStr));
   setText("payHeroDesc", `${merchantName} — ${amountStr}`);
@@ -181,10 +181,9 @@ function bindPayButton() {
       const res = await payFn(payload);
       const d = res.data;
 
-      try { const topArr = document.querySelectorAll('.info-header span, .head-coins span'); topArr.forEach(el => { if(el.textContent.includes(\'KM\')||el.textContent.includes(\'원\')) { const currentStr = el.textContent.replace(/[^0-9]/g, \'\'); if(currentStr) { el.textContent = (Number(currentStr) - (d.amountKrw || 0)).toLocaleString() + \' KM\'; } } }); } catch(e){} // 완료 패널 표시
+      // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
-      watchJackpotResult(d.txHash);
 
       const krwStr = `${(d.amountKrw || 0).toLocaleString()}원`;
       const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}동` : '';
@@ -195,7 +194,11 @@ function bindPayButton() {
         resultEl.innerHTML = `
           <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d.merchantName || merchantName}</span></div>
           <div class="mp-kv"><span class="k">결제 금액</span><span class="v">${paidAmountStr}</span></div>
-          ${buildDropHtml(d)}
+          <div style="margin-top:16px; background:#fef3c7; border:2px solid #f59e0b; padding:12px; border-radius:12px; text-align:center;">
+             <h3 style="color:#d97706; margin-bottom:8px;">🎟️ 보너스 티켓 수령 완료!</h3>
+             <p style="font-size:0.9rem; color:#92400e;">획득한 BT는 <b>마이페이지 (내 정보)</b>에서 확인하고 잭팟 굴리기에 사용할 수 있습니다!</p>
+             <a href="/mypage.html" class="btn btn--sm" style="margin-top:10px; background:#f59e0b; color:#fff; border:none; padding:8px 20px; font-weight:700; text-decoration:none; display:inline-block; border-radius:8px;">마이페이지로 이동</a>
+          </div>
         `;
       }
     } catch (err) {
@@ -209,99 +212,14 @@ function bindPayButton() {
 
 // ── 결제 아이템 드롭 표시 ──────────────────────────────
 function buildDropHtml(d) {
-  const items = [];
-  if (d.potionsAdded > 0) items.push(`<img src="/assets/images/item/hp.png"   style="width:28px;height:28px;vertical-align:middle;"> 빨간약 <b>+${d.potionsAdded}</b>`);
-  if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png"   style="width:28px;height:28px;vertical-align:middle;"> 마법약 <b>+${d.mpPotionsAdded}</b>`);
-  if (d.reviveAdded > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:28px;height:28px;vertical-align:middle;"> 부활권 <b>+${d.reviveAdded}</b>`);
-  if (!items.length) return '';
-  const jackpotBanner = d.isJackpot
-    ? `<div style="text-align:center;font-size:1.2em;font-weight:800;color:#f59e0b;margin-bottom:6px;letter-spacing:2px;">🎰 JACKPOT!! 🎰</div>`
-    : '';
-  return `
-    <div style="margin-top:10px;background:rgba(251,191,36,.12);border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;">
-      ${jackpotBanner}
-      <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px;">🎁 득템!</div>
-      ${items.map(i => `<div style="font-size:14px;margin:3px 0;">${i}</div>`).join('')}
-    </div>`;
+  return '';
 }
 
-// ── 잭팟 결과 감시 ────────────────────────────────────
-function weiToHex(weiStr, decimals = 18) {
-  const wei = BigInt(weiStr || "0");
-  const d = BigInt(decimals);
-  const whole = wei / 10n ** d;
-  const frac = (wei % 10n ** d).toString().padStart(decimals, "0").slice(0, 4).replace(/0+$/, "");
-  return frac ? `${whole}.${frac}` : `${whole}`;
-}
-
+// ── 잭팟 결과 감시 제거 ────────────────────────────────────
 function watchJackpotResult(txHash) {
+  // 옮겨짐: 이제 여기서 잭팟 애니메이션을 하지 않고 모두 마이페이지에서 수동 처리합니다.
   const box = $("jackpotResultBox");
-  if (!box || !txHash) return;
-  box.style.display = "";
-
-  // 슬롯머신 시작
-  const slot = initSlot($("jpWaiting"));
-
-  let unsub = null;
-  let retryTimer = null;
-  let giveupTimer = null;
-  let revealed = false;
-
-  const cleanup = () => {
-    if (unsub) { unsub(); unsub = null; }
-    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-    if (giveupTimer) { clearTimeout(giveupTimer); giveupTimer = null; }
-  };
-
-  const reveal = (data) => {
-    if (revealed) return;
-    revealed = true;
-    cleanup();
-    const isWin = data.isWinner && BigInt(data.finalWinWei || "0") > 0n;
-    slot.stop(data.randomValue ?? 0, isWin, () => {
-      show("jpWaiting", false);
-      if (isWin) {
-        setText("jpWinAmount", `${weiToHex(data.finalWinWei)} Point`);
-        show("jpWin", true);
-      } else {
-        const el = $("jpNoWinRand");
-        if (el) el.textContent = `랜덤 번호: ${data.randomValue ?? 0} / 9999`;
-        show("jpNoWin", true);
-      }
-    });
-  };
-
-  // 30초 후: 수동 재확인 버튼
-  retryTimer = setTimeout(async () => {
-    retryTimer = null;
-    const snap = await getDoc(doc(db, "jackpot_rounds", txHash));
-    if (snap.exists()) { reveal(snap.data()); return; }
-    const waitEl = $("jpWaiting");
-    if (waitEl) waitEl.insertAdjacentHTML("beforeend",
-      `<br><button onclick="window.__jpRetry&&window.__jpRetry()" style="margin-top:8px;padding:5px 14px;border:1px solid #c4b5fd;border-radius:8px;background:#f5f3ff;color:#7c3aed;font-size:0.82rem;cursor:pointer;">결과 다시 확인</button>`
-    );
-    window.__jpRetry = async () => {
-      const s = await getDoc(doc(db, "jackpot_rounds", txHash));
-      if (s.exists()) reveal(s.data());
-    };
-  }, 30000);
-
-  // 120초 후: 최종 안내
-  giveupTimer = setTimeout(() => {
-    if (revealed) return;
-    cleanup();
-    const waitEl = $("jpWaiting");
-    if (waitEl) waitEl.innerHTML = `<div style="padding:12px;color:#94a3b8;font-size:0.82rem;">잭팟 결과는 마이페이지에서 확인하세요</div>`;
-  }, 120000);
-
-  unsub = onSnapshot(
-    doc(db, "jackpot_rounds", txHash),
-    (snap) => { if (snap.exists()) reveal(snap.data()); },
-    (err) => {
-      cleanup();
-      console.warn("jackpot onSnapshot error:", err.code);
-    }
-  );
+  if (box) box.style.display = "none";
 }
 
 // ── 시작 ─────────────────────────────────────────────

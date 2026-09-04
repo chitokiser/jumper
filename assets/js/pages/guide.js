@@ -3,16 +3,16 @@ import { db } from "../auth.js";
 import { onAuthReady, login } from "../auth.js";
 import { doc, getDoc, setDoc, serverTimestamp } from "../firestore-bridge.js";
 
-function $(id){ return document.getElementById(id); }
-function show(el, on){ if(!el) return; el.style.display = on ? "" : "none"; }
+function $(id) { return document.getElementById(id); }
+function show(el, on) { if (!el) return; el.style.display = on ? "" : "none"; }
 
-async function loadApplication(uid){
+async function loadApplication(uid) {
   const ref = doc(db, "guideApplications", uid);
   const snap = await getDoc(ref);
   return snap.exists() ? (snap.data() || {}) : null;
 }
 
-async function submitApplication(uid, payload){
+async function submitApplication(uid, payload) {
   const ref = doc(db, "guideApplications", uid);
   await setDoc(ref, {
     uid,
@@ -23,12 +23,12 @@ async function submitApplication(uid, payload){
   }, { merge: true });
 }
 
-function setState(msg){
+function setState(msg) {
   const el = $("applyState");
-  if(el) el.textContent = msg || "";
+  if (el) el.textContent = msg || "";
 }
 
-onAuthReady(async ({ loggedIn, role, user })=>{
+onAuthReady(async ({ loggedIn, role, user }) => {
   const guestSection = $("guestSection");
   const applySection = $("applySection");
   const approvedSection = $("approvedSection");
@@ -41,15 +41,15 @@ onAuthReady(async ({ loggedIn, role, user })=>{
   show(pendingBox, false);
 
   // 게스트
-  if(!loggedIn){
+  if (!loggedIn) {
     show(guestSection, true);
     const btn = $("btnLoginHere");
-    if(btn) btn.onclick = ()=> login();
+    if (btn) btn.onclick = () => location.href = "/register.html";
     return;
   }
 
   // 이미 guide/admin이면 승인 완료 화면
-  if(role === "guide" || role === "admin"){
+  if (role === "guide" || role === "admin") {
     show(approvedSection, true);
     return;
   }
@@ -58,32 +58,32 @@ onAuthReady(async ({ loggedIn, role, user })=>{
   show(applySection, true);
 
   // 기존 신청 상태 확인
-  try{
+  try {
     const app = await loadApplication(user.uid);
-    if(app && app.status === "pending"){
+    if (app && app.status === "pending") {
       show(pendingBox, true);
       // 입력값 채우기(있으면)
-      if(app.name) $("fName").value = app.name;
-      if(app.phone) $("fPhone").value = app.phone;
-      if(app.region) $("fRegion").value = app.region;
-      if(app.exp) $("fExp").value = app.exp;
-      if(app.bio) $("fBio").value = app.bio;
+      if (app.name) $("fName").value = app.name;
+      if (app.phone) $("fPhone").value = app.phone;
+      if (app.region) $("fRegion").value = app.region;
+      if (app.exp) $("fExp").value = app.exp;
+      if (app.bio) $("fBio").value = app.bio;
     }
-  }catch(e){
+  } catch (e) {
     console.warn(e);
   }
 
   const form = $("applyForm");
-  if(!form) return;
+  if (!form) return;
 
-  form.addEventListener("submit", async (ev)=>{
+  form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     setState("");
 
     const btn = $("btnSubmit");
-    if(btn) btn.disabled = true;
+    if (btn) btn.disabled = true;
 
-    try{
+    try {
       const payload = {
         name: ($("fName").value || "").trim(),
         phone: ($("fPhone").value || "").trim(),
@@ -92,7 +92,7 @@ onAuthReady(async ({ loggedIn, role, user })=>{
         bio: ($("fBio").value || "").trim(),
       };
 
-      if(!payload.name || !payload.region){
+      if (!payload.name || !payload.region) {
         alert("가이드명/활동 지역은 필수입니다.");
         return;
       }
@@ -100,11 +100,11 @@ onAuthReady(async ({ loggedIn, role, user })=>{
       await submitApplication(user.uid, payload);
       show(pendingBox, true);
       setState("신청이 접수되었습니다.");
-    }catch(err){
+    } catch (err) {
       console.error(err);
       alert("신청 저장 실패: " + (err?.message || String(err)));
-    }finally{
-      if(btn) btn.disabled = false;
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 });

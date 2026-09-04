@@ -821,6 +821,20 @@ exports.payMerchantFirebase = onCall(
   })
 );
 
+exports.receiveBtQrFirebase = onCall(
+  wrapError(async (request) => {
+    requireAuth(request);
+    return await txH.receiveBtQrFirebase(request.data, { auth: request.auth });
+  })
+);
+
+exports.consumeUserBtFirebase = onCall(
+  wrapError(async (request) => {
+    requireAuth(request);
+    return await txH.consumeUserBtFirebase(request.data, { auth: request.auth });
+  })
+);
+
 // ════════════════════════════════════════════════════════════════════════════
 // 21. 상품 Point 즉시결제 (유저 수탁 지갑)
 //     - 상품 가격(KRW/VND/USD) → 현재 환율로 Point wei 환산

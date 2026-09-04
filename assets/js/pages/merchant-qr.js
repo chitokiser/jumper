@@ -58,7 +58,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
   if (!loggedIn) {
     show("needLoginPanel", true);
     const btn = $("btnLogin");
-    if (btn) btn.onclick = async () => { try { await login(); } catch (e) { console.warn(e); } };
+    if (btn) btn.onclick = () => { location.href = "/register.html"; };
     return;
   }
 
@@ -78,7 +78,7 @@ setTimeout(() => {
   if (!_authDone) {
     show("needLoginPanel", true);
     const btn = $("btnLogin");
-    if (btn) btn.onclick = async () => { try { await login(); } catch (e) { console.warn(e); } };
+    if (btn) btn.onclick = () => { location.href = "/register.html"; };
   }
 }, 4000);
 
@@ -158,40 +158,21 @@ function bindQrForm(merchantId, merchantName) {
     krwEl.textContent = vndToKrw(val, rates).toLocaleString();
   }
 
-  // 통화 UI 적용 함수
-  function applyCurrency(currency) {
-    const isVnd = currency === "VND";
-    const labelEl = $("qrAmountLabel");
-    const helpEl = $("qrAmountHelp");
-    const inputEl = $("qrAmount");
-    if (labelEl) labelEl.textContent = isVnd ? "결제 금액 (동, VND)" : "결제 금액 (원, KRW)";
-    if (helpEl) helpEl.textContent = isVnd ? "최소 10,000동 이상 입력해 주세요." : "최소 1,000원 이상 입력해 주세요.";
-    if (inputEl) {
-      inputEl.min = isVnd ? "10000" : "1000";
-      inputEl.step = isVnd ? "1000" : "100";
-      inputEl.placeholder = isVnd ? "예: 200000" : "예: 30000";
+  // 통화 UI: 무조건 VND
+  const labelEl = $("qrAmountLabel");
+  const helpEl = $("qrAmountHelp");
+  const inputEl = $("qrAmount");
+  if (labelEl) labelEl.textContent = "결제 금액 (동, VND)";
+  if (helpEl) helpEl.textContent = "최소 10,000동 이상 입력해 주세요.";
+  if (inputEl) {
+    if (!inputEl.value) { // 초기 세팅 시에만
+      inputEl.min = "10000";
+      inputEl.step = "1000";
+      inputEl.placeholder = "예: 200000";
       inputEl.value = "";
     }
-    form.querySelectorAll("input[name='qrCurrency']").forEach((r) => {
-      r.checked = r.value === currency;
-    });
-    updateConvert();
   }
-
-  // 저장된 통화 복원
-  const savedCurrency = localStorage.getItem(`merchant_currency_${merchantId}`);
-  if (savedCurrency === "VND" || savedCurrency === "KRW") {
-    applyCurrency(savedCurrency);
-  }
-
-  // 통화 전환 시 레이블/플레이스홀더 업데이트 + 저장
-  form.querySelectorAll("input[name='qrCurrency']").forEach((radio) => {
-    radio.addEventListener("change", () => {
-      if (!radio.checked) return;
-      localStorage.setItem(`merchant_currency_${merchantId}`, radio.value);
-      applyCurrency(radio.value);
-    });
-  });
+  updateConvert();
 
   // 금액 입력 시 환산 표시
   $("qrAmount")?.addEventListener("input", updateConvert);
@@ -226,20 +207,15 @@ function bindQrForm(merchantId, merchantName) {
   modePay?.addEventListener("change", updateModeAndBt);
   modeBt?.addEventListener("change", updateModeAndBt);
   $("qrAmount")?.addEventListener("input", updateModeAndBt);
-  form.querySelectorAll("input[name='qrCurrency']").forEach(r => r.addEventListener("change", updateModeAndBt));
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
-    const currency = form.querySelector("input[name='qrCurrency']:checked")?.value || "KRW";
+    const currency = "VND";
     const amountRaw = $("qrAmount")?.value || "";
     const amount = Number(amountRaw);
 
-    if (currency === "VND") {
-      if (!amount || amount < 10000) { alert("최소 10,000동 이상 입력해 주세요."); return; }
-    } else {
-      if (!amount || amount < 1000) { alert("최소 1,000원 이상 입력해 주세요."); return; }
-    }
+    if (!amount || amount < 10000) { alert("최소 10,000동 이상 입력해 주세요."); return; }
 
 
     const mode = form.querySelector("input[name='qrMode']:checked")?.value || "pay";

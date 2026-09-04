@@ -39,10 +39,10 @@ function setStep(id, status) {
 // ── 이미 등록된 가맹점 표시 ──────────────────────
 function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
   show("alreadyMerchantPanel", true);
-  const idEl   = $("existingMerchantId");
-  const feeEl  = $("existingFeeBps");
+  const idEl = $("existingMerchantId");
+  const feeEl = $("existingFeeBps");
   const nameEl = $("existingMerchantName");
-  if (idEl)   idEl.textContent  = String(merchantId);
+  if (idEl) idEl.textContent = String(merchantId);
   if (nameEl) nameEl.textContent = merchantName || "-";
   if (feeEl) {
     if (feeBps != null) {
@@ -57,42 +57,42 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
   _merchantDocId = merchantData.merchantDocId;
   const careerEl = $("existingMerchantCareer");
   const regionEl = $("existingMerchantRegion");
-  const descEl   = $("existingMerchantDesc");
+  const descEl = $("existingMerchantDesc");
   if (careerEl) careerEl.textContent = merchantData.career || "-";
   if (regionEl) regionEl.textContent = merchantData.region || "-";
-  if (descEl)   descEl.textContent   = merchantData.description || "-";
+  if (descEl) descEl.textContent = merchantData.description || "-";
 
-  const editForm   = $("merchantEditForm");
-  const editMsg    = $("editMerchantMsg");
-  const btnToggle  = $("btnToggleMerchantEdit");
-  const btnSave    = $("btnSaveMerchantEdit");
-  const btnCancel  = $("btnCancelMerchantEdit");
-  const inputName   = $("editMerchantName");
+  const editForm = $("merchantEditForm");
+  const editMsg = $("editMerchantMsg");
+  const btnToggle = $("btnToggleMerchantEdit");
+  const btnSave = $("btnSaveMerchantEdit");
+  const btnCancel = $("btnCancelMerchantEdit");
+  const inputName = $("editMerchantName");
   const inputCareer = $("editMerchantCareer");
   const inputRegion = $("editMerchantRegion");
-  const inputDesc   = $("editMerchantDesc");
+  const inputDesc = $("editMerchantDesc");
 
   btnToggle?.addEventListener("click", () => {
-    if (inputName)   inputName.value   = merchantData.name || merchantName || "";
+    if (inputName) inputName.value = merchantData.name || merchantName || "";
     if (inputCareer) inputCareer.value = merchantData.career || "";
     if (inputRegion) inputRegion.value = merchantData.region || "";
-    if (inputDesc)   inputDesc.value   = merchantData.description || "";
-    if (editForm)    editForm.style.display = "";
-    if (btnToggle)   btnToggle.style.display = "none";
+    if (inputDesc) inputDesc.value = merchantData.description || "";
+    if (editForm) editForm.style.display = "";
+    if (btnToggle) btnToggle.style.display = "none";
   });
 
   btnCancel?.addEventListener("click", () => {
-    if (editForm)  editForm.style.display = "none";
+    if (editForm) editForm.style.display = "none";
     if (btnToggle) btnToggle.style.display = "";
-    if (editMsg)   editMsg.textContent = "";
+    if (editMsg) editMsg.textContent = "";
   });
 
   btnSave?.addEventListener("click", async () => {
     if (!_merchantDocId) return;
-    const name   = (inputName?.value   || "").trim();
+    const name = (inputName?.value || "").trim();
     const career = (inputCareer?.value || "").trim();
     const region = (inputRegion?.value || "").trim();
-    const desc   = (inputDesc?.value   || "").trim();
+    const desc = (inputDesc?.value || "").trim();
 
     if (!name) {
       if (editMsg) { editMsg.textContent = "가게명/상호를 입력해 주세요."; editMsg.style.color = "var(--danger, #e53e3e)"; }
@@ -111,7 +111,8 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
     if (editMsg) editMsg.textContent = "";
 
     try {
-      await updateDoc(doc(db, "merchants", _merchantDocId), { name,
+      await updateDoc(doc(db, "merchants", _merchantDocId), {
+        name,
         career, region, description: desc, updatedAt: serverTimestamp(),
       });
       merchantData.name = name;
@@ -119,15 +120,15 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
       merchantData.career = career;
       merchantData.region = region;
       merchantData.description = desc;
-      if (nameEl)   nameEl.textContent   = name   || "-";
+      if (nameEl) nameEl.textContent = name || "-";
       if (careerEl) careerEl.textContent = career || "-";
       if (regionEl) regionEl.textContent = region || "-";
-      if (descEl)   descEl.textContent   = desc   || "-";
+      if (descEl) descEl.textContent = desc || "-";
       if (editMsg) { editMsg.textContent = "저장되었습니다."; editMsg.style.color = "var(--accent)"; }
       setTimeout(() => {
-        if (editForm)  editForm.style.display = "none";
+        if (editForm) editForm.style.display = "none";
         if (btnToggle) btnToggle.style.display = "";
-        if (editMsg)   editMsg.textContent = "";
+        if (editMsg) editMsg.textContent = "";
       }, 1200);
     } catch (err) {
       console.error("editMerchantInfo:", err);
@@ -150,15 +151,15 @@ function showDone(merchantId, txHash) {
 
 // ── 온체인 등록 실행 ─────────────────────────────
 async function doRegisterMerchant() {
-  const name    = String($("merchantName")?.value    || "").trim();
-  const career  = String($("merchantCareer")?.value  || "").trim();
-  const region  = String($("merchantRegion")?.value  || "").trim();
-  const detail  = String($("merchantDetail")?.value  || "").trim();
-  const phone   = String($("merchantPhone")?.value   || "").trim();
+  const name = String($("merchantName")?.value || "").trim();
+  const career = String($("merchantCareer")?.value || "").trim();
+  const region = String($("merchantRegion")?.value || "").trim();
+  const detail = String($("merchantDetail")?.value || "").trim();
+  const phone = String($("merchantPhone")?.value || "").trim();
   const kakaoId = String($("merchantKakaoId")?.value || "").trim();
-  const gmap    = String($("merchantGmap")?.value    || "").trim();
+  const gmap = String($("merchantGmap")?.value || "").trim();
 
-  if (!name)   throw new Error("가게명을 입력해 주세요.");
+  if (!name) throw new Error("가게명을 입력해 주세요.");
   if (!career) throw new Error("업종/카테고리를 입력해 주세요.");
   if (!region) throw new Error("활동 지역을 입력해 주세요.");
 
@@ -220,8 +221,8 @@ function showMentorMsg(msg, kind) {
   el.style.display = "";
   el.style.color =
     kind === "danger" ? "rgba(255,77,109,.95)" :
-    kind === "ok"     ? "var(--accent)"        :
-                        "var(--muted)";
+      kind === "ok" ? "var(--accent)" :
+        "var(--muted)";
 }
 
 async function initMentorLink(email) {
@@ -232,10 +233,10 @@ async function initMentorLink(email) {
   try {
     const snap = await getDoc(doc(db, "mentors", email.toLowerCase()));
     if (snap.exists()) {
-      const addr   = snap.data()?.address || "";
-      const box    = $("mentorCurrentBox");
+      const addr = snap.data()?.address || "";
+      const box = $("mentorCurrentBox");
       const addrEl = $("mentorCurrentAddr");
-      if (box)    box.style.display = "";
+      if (box) box.style.display = "";
       if (addrEl) addrEl.textContent = addr;
     }
   } catch (_) { /* 읽기 실패 무시 */ }
@@ -267,10 +268,10 @@ async function initMentorLink(email) {
     btn.textContent = "서명 중...";
 
     try {
-      const accounts  = await window.ethereum.request({ method: "eth_requestAccounts" });
-      const address   = accounts[0];
-      const msg       = `Jump Platform 멘토 등록\nEmail: ${email.toLowerCase()}`;
-      const msgHex    = "0x" + Array.from(new TextEncoder().encode(msg))
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const address = accounts[0];
+      const msg = `Jump Platform 멘토 등록\nEmail: ${email.toLowerCase()}`;
+      const msgHex = "0x" + Array.from(new TextEncoder().encode(msg))
         .map((b) => b.toString(16).padStart(2, "0")).join("");
       const signature = await window.ethereum.request({
         method: "personal_sign",
@@ -278,21 +279,21 @@ async function initMentorLink(email) {
       });
 
       const idToken = await auth.currentUser.getIdToken();
-      const region  = "us-central1";
+      const region = "us-central1";
       const project = app.options.projectId;
-      const fnUrl   = `https://${region}-${project}.cloudfunctions.net/linkMentor`;
+      const fnUrl = `https://${region}-${project}.cloudfunctions.net/linkMentor`;
 
       const resp = await fetch(fnUrl, {
-        method:  "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
-        body:    JSON.stringify({ address, signature }),
+        body: JSON.stringify({ address, signature }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "서버 오류");
 
-      const box    = $("mentorCurrentBox");
+      const box = $("mentorCurrentBox");
       const addrEl = $("mentorCurrentAddr");
-      if (box)    box.style.display = "";
+      if (box) box.style.display = "";
       if (addrEl) addrEl.textContent = address;
       showMentorMsg("등록 완료! 신규 사용자가 이 이메일을 멘토로 입력할 수 있습니다.", "ok");
       btn.textContent = "등록 완료 ✓";
@@ -343,7 +344,7 @@ async function _initForUser(ctx) {
             description: mData?.description || "",
           };
         }
-      } catch (_) {}
+      } catch (_) { }
       showAlreadyMerchant(userData.merchantId, feeBps, merchantName, merchantData);
       initMentorLink(user.email);
       return;
@@ -376,7 +377,13 @@ function _showNeedLogin() {
   const btn = $("btnLogin");
   if (btn) {
     btn.onclick = async () => {
-      try { await login(); } catch (e) { console.warn(e); }
+      try {
+        await login();
+      } catch (e) {
+        console.warn(e);
+        if (e.code === 'auth/inapp-browser') alert('인앱 브라우저에서는 소셜 로그인이 차단됩니다. 기본 브라우저로 열어 주세요.');
+        else alert('로그인 실패: ' + (e.message || e.code));
+      }
       // watchAuth가 로그인 완료를 감지해서 자동으로 폼을 표시합니다.
     };
   }

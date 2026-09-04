@@ -127,7 +127,7 @@ function initNavGroups() {
     if (!btn) return;
 
     btn.addEventListener("click", (e) => {
-      const menu = g.querySelector(".nav-group-menu");
+      const menu = g.querySelector(".nav-group-menu, .dropdown-menu");
       if (!menu) return; // 하위 메뉴가 없다면 버튼이 아닌 링크이므로 일반 이동 허용
       e.preventDefault();
       e.stopPropagation();

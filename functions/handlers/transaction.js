@@ -579,7 +579,7 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
 
   const txHash = reqId ? 'TX_' + reqId : 'TX_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
 
-  return await db.runTransaction(async (tx) => {
+  const result = await db.runTransaction(async (tx) => {
     const checkTxRef = db.collection('transactions').doc(txHash);
     const existingTx = await tx.get(checkTxRef);
     if (existingTx.exists) throw new Error('이미 처리된 결제 요청입니다. (Double payment prevented)');
@@ -648,25 +648,20 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     }
     if (remainingVnd !== 0) platformBonusVnd += remainingVnd;
 
-    const gsLevel = typeof bpSnap !== 'undefined' && bpSnap.exists ? Math.max(1, Number(bpSnap.data().gsLevel || 1)) : 1;
-    const randomValue = Math.floor(Math.random() * 10000);
-    const winThreshold = gsLevel * 100;
-    const isWinner = randomValue < winThreshold;
+    let currentJackpotPool = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
+    currentJackpotPool += jackpotBonusVnd; // 결제로 발생한 잭팟 기여금을 즉시 풀에 합산 후 추첨
 
-    let jackpotRewardVnd = 0;
-    if (isWinner) {
-      jackpotRewardVnd = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
-      // When jackpot is won, reset it with current transaction's bonus, but use set to not increment the past total
-      tx.set(jackpotRef, { jackpotAccVnd: jackpotBonusVnd, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-      tx.set(db.collection('jackpot_wins').doc(txHash), { uid, userName: userData.name || userData.kakaoId || 'User', amountVnd: jackpotRewardVnd, amountKrw: jackpotRewardVnd, timestamp: admin.firestore.FieldValue.serverTimestamp(), txHash });
-    } else {
-      if (jackpotBonusVnd > 0) {
-        tx.set(jackpotRef, { jackpotAccVnd: admin.firestore.FieldValue.increment(jackpotBonusVnd), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-      }
-    }
+    const numBtEquivalent = Math.floor(finalVnd / 10000);
 
-    tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner, randomValue, finalWinWei: jackpotRewardVnd > 0 ? "1000000000000000000" : "0", timestamp: admin.firestore.FieldValue.serverTimestamp() });
-    tx.update(userRef, { pointBalanceVnd: userBalanceVnd - finalVnd + jackpotRewardVnd });
+    // 업데이트 적용
+    tx.set(jackpotRef, { jackpotAccVnd: currentJackpotPool, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+
+    // 포인트(Point)와 BT 누적
+    // 멘토 보상은 Point로 줍니다
+    tx.update(userRef, {
+      pointBalanceVnd: userBalanceVnd - finalVnd,
+      btBalance: admin.firestore.FieldValue.increment(numBtEquivalent)
+    });
 
     const txBase = { createdAt: admin.firestore.FieldValue.serverTimestamp(), currency: 'VND', amountKrw: finalKrw, amountVnd: finalVnd, merchantId: Number(merchantId), merchantName: merchant.name || '', txHash };
     tx.set(checkTxRef, { ...txBase, uid, type: 'pay_merchant' });
@@ -687,7 +682,13 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
       tx.set(db.collection('platform_config').doc('revenue'), { totalRevenueVnd: admin.firestore.FieldValue.increment(platformBonusVnd), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     }
 
-    const payResult = { txHash, isJackpot: isWinner, amountHex: finalVnd, amountKrw: finalKrw, amountVnd: finalVnd, merchantName: merchant.name || '' };
+    const payResult = {
+      txHash,
+      issuedBt: numBtEquivalent,
+      merchantName: merchant.name || 'Merchant',
+      amountVnd: finalVnd,
+      amountKrw: finalKrw
+    };
     return payResult;
   });
 
@@ -1245,7 +1246,7 @@ async function receiveBtQrFirebase(uid, data) {
 
   const db = admin.firestore();
 
-  return await db.runTransaction(async (tx) => {
+  const btResult = await db.runTransaction(async (tx) => {
     // 1. Transaction Check
     const checkTxRef = db.collection('transactions').doc(txHash || String(nonce));
     const existingTx = await tx.get(checkTxRef);
@@ -1265,26 +1266,77 @@ async function receiveBtQrFirebase(uid, data) {
     // 3. Deduct Merchant BT Balance
     const merchData = merchSnap.data() || {};
     const merchBtBal = Number(merchData.btBalance) || 0;
-    if (merchBtBal < numBt) throw new Error('가맹점의 BT 잔고가 부족합니다.');
+    if (merchBtBal - numBt < 50) throw new Error('가맹점 BT 보유량은 최소 50장을 유지해야 합니다. (BT 충전이 필요합니다.)');
     tx.set(merchRef, { btBalance: merchBtBal - numBt }, { merge: true });
 
     // 4. BT Reward Algorithm 
     let currentJackpotPool = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
-    
-    // Compute exact amount logic
-    const amountVal = Number(amount) || 0;
-    const finalVnd = currency === 'KRW' ? amountVal * 20 : amountVal;
-    
-    // feeVnd for algorithm equivalent
-    const feeBps = Number(merchData.feeBps) > 0 ? Number(merchData.feeBps) : 1000; 
-    let feeVnd = Math.round((finalVnd * feeBps) / 10000);
+
+    // Update DB
+    tx.set(jackpotRef, { jackpotAccVnd: currentJackpotPool, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+
+    // BT 적립만 진행 (아이템, 잭팟 당첨은 BT를 소모해서 별도로 진행)
+    tx.update(userRef, {
+      btBalance: admin.firestore.FieldValue.increment(numBt)
+    });
+
+    const merchName = merchData.name || '';
+    tx.set(checkTxRef, {
+      uid, type: 'receive_bt', merchantId: Number(merchantId), merchantName: merchName,
+      bt: numBt,
+      amountVnd: 0, amountKrw: 0,
+      txHash, createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    const btResult = {
+      success: true,
+      txHash,
+      btReceived: numBt,
+      merchantName: merchName,
+    };
+    return btResult;
+  });
+
+  // EXP 부여: BT 1개당 100 EXP (트랜잭션 외부)
+  try {
+    const btExpAmt = numBt * 100;
+    if (btExpAmt > 0) await expH.grantExp(uid, btExpAmt, 'bt');
+  } catch (_) { /* EXP 실패해도 BT 수령 영향 없음 */ }
+
+  return btResult;
+}
+
+async function consumeUserBtFirebase(data, context) {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', '로그인 필요');
+  const db = admin.firestore();
+  const uid = context.auth.uid;
+  const numBt = Number(data.btToUse || 1);
+  if (!numBt || numBt <= 0) throw new functions.https.HttpsError('invalid-argument', '잘못된 BT 수량');
+
+  const jackpotRef = db.collection('platform_config').doc('jackpot');
+  const userRef = db.collection('users').doc(uid);
+  const bpRef = db.collection('battle_players').doc(uid);
+
+  const txHash = 'CONSUME_BT_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+  return db.runTransaction(async (tx) => {
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists) throw new functions.https.HttpsError('not-found', '유저 없음');
+    const userData = userSnap.data();
+    const currentBt = Number(userData.btBalance || 0);
+
+    if (currentBt < numBt) {
+      throw new functions.https.HttpsError('failed-precondition', '잔여 보너스티켓(BT)이 부족합니다.');
+    }
+
+    const jackpotSnap = await tx.get(jackpotRef);
+    let currentJackpotPool = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
 
     let totalJackpotReward = 0;
     let potionsAdded = 0, mpPotionsAdded = 0, reviveAdded = 0;
     let firstGrade = 0;
 
     for (let i = 0; i < numBt; i++) {
-      // Items 
       const rItem = Math.random();
       if (rItem < 0.2) potionsAdded++;
       else if (rItem < 0.3) mpPotionsAdded++;
@@ -1302,35 +1354,29 @@ async function receiveBtQrFirebase(uid, data) {
 
       if (i === 0) firstGrade = grade;
 
-      // Ensure payout algorithm is used to guarantee jackpot 
-      // Formula: [(수수료금액+잭팟자금풀) / 그레이드] + [수수료 금액 /그레이드]
-      let reward = Math.floor((feeVnd + currentJackpotPool) / grade) + Math.floor(feeVnd / grade);
-      
-      // Cap at pool + fee combined
-      if (reward > currentJackpotPool + feeVnd) reward = currentJackpotPool + feeVnd;
+      let reward = Math.floor(currentJackpotPool / grade);
+      if (reward <= 0 && currentJackpotPool > 0) reward = 1;
       if (reward < 0) reward = 0;
+      if (reward > currentJackpotPool) reward = currentJackpotPool;
 
       totalJackpotReward += reward;
-
-      // Deduct from pool linearly across ticket loops, but only what comes from the pool
-      let poolDeduction = reward - Math.floor(feeVnd / grade);
-      if(poolDeduction > 0) currentJackpotPool -= poolDeduction; 
+      currentJackpotPool -= reward;
     }
 
     if (currentJackpotPool < 0) currentJackpotPool = 0;
 
-    // 5. Update DB
+    // 업데이트
     tx.set(jackpotRef, { jackpotAccVnd: currentJackpotPool, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    
+
     if (totalJackpotReward > 0) {
-      tx.set(db.collection('jackpot_wins').doc(txHash), { uid, userName: userData.name || userData.kakaoId || 'User', amountVnd: totalJackpotReward, amountKrw: totalJackpotReward, grade: firstGrade, btUsed: numBt, timestamp: admin.firestore.FieldValue.serverTimestamp(), txHash });
+      tx.set(db.collection('jackpot_wins').doc(txHash), { uid, userName: userData.name || userData.kakaoId || 'User', amountVnd: totalJackpotReward, amountKrw: totalJackpotReward, grade: firstGrade, btUsed: numBt, createdAt: admin.firestore.FieldValue.serverTimestamp(), txHash });
     }
 
     const finalWinWeiAmt = (BigInt(totalJackpotReward) * 1000000000000000000n).toString();
-    tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner: totalJackpotReward > 0, randomValue: firstGrade, finalWinWei: finalWinWeiAmt, btUsed: numBt, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+    tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner: totalJackpotReward > 0, randomValue: firstGrade, finalWinWei: finalWinWeiAmt, btUsed: numBt, createdAt: admin.firestore.FieldValue.serverTimestamp() });
 
     if (potionsAdded > 0 || mpPotionsAdded > 0 || reviveAdded > 0) {
-      tx.set(db.collection('battle_players').doc(uid), {
+      tx.set(bpRef, {
         potions: admin.firestore.FieldValue.increment(potionsAdded),
         mpPotions: admin.firestore.FieldValue.increment(mpPotionsAdded),
         reviveTickets: admin.firestore.FieldValue.increment(reviveAdded)
@@ -1338,44 +1384,26 @@ async function receiveBtQrFirebase(uid, data) {
     }
 
     tx.update(userRef, {
-      btBalance: admin.firestore.FieldValue.increment(numBt),
+      btBalance: admin.firestore.FieldValue.increment(-numBt),
       pointBalance: admin.firestore.FieldValue.increment(totalJackpotReward)
     });
 
-    const merchName = merchData.name || '';
-    tx.set(checkTxRef, {
-      uid, type: 'receive_bt', merchantId: Number(merchantId), merchantName: merchName,
-      bt: numBt, jackpotRewardVnd: totalJackpotReward,
-      amountVnd: 0, amountKrw: 0, // IMPORTANT: 0 to prevent UI subtracting
-      potionsAdded, mpPotionsAdded, reviveAdded,
-      txHash, createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    const btResult = {
+    return {
       success: true,
       txHash,
       isJackpot: totalJackpotReward > 0,
-      amountVnd: 0, amountKrw: 0,
       pointsEarned: totalJackpotReward,
-      btReceived: numBt,
-      merchantName: merchName,
+      jackpotAmountVnd: totalJackpotReward,
+      btUsed: numBt,
       potionsAdded, mpPotionsAdded, reviveAdded,
       randomValue: firstGrade
     };
-    return btResult;
   });
-
-  // EXP 부여: BT 1개당 100 EXP (트랜잭션 외부)
-  try {
-    const btExpAmt = numBt * 100;
-    if (btExpAmt > 0) await expH.grantExp(uid, btExpAmt, 'bt');
-  } catch (_) { /* EXP 실패해도 BT 수령 영향 없음 */ }
-
-  return btResult;
 }
 
 module.exports = {
   receiveBtQrFirebase,
+  consumeUserBtFirebase,
 
   exchangePointsToFiat,
   buyProduct,

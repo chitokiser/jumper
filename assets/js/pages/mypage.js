@@ -18,6 +18,7 @@ import {
   limit,
   getDocs,
   serverTimestamp,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
@@ -185,37 +186,47 @@ async function loadKCultureBalances(uid) {
     const userSnap = await getDoc(doc(db, "users", uid));
     show("paymentBalanceRow", true);
     show("pointRow", true);
+    show("btRow", true); // 추가된 BT 카드 보이기
+
     if (userSnap.exists()) {
       const d = userSnap.data();
       const pointBal = d.pointBalance || 0;
       const payBal = d.pointBalanceVnd || 0;
+      const btBal = d.btBalance || 0;
 
       const elPoint = $("pointDisplay");
       const elPay = $("paymentBalanceDisplay");
+      const elBt = $("btDisplay");
 
-      // Set up realtime snapshot listener for automatic balance updates
-      import("https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js").then((fStore) => {
-        fStore.onSnapshot(fStore.doc(db, "users", uid), (snap) => {
-          if (!snap.exists()) return;
-          const updatedD = snap.data();
-          const pBal = updatedD.pointBalance || 0;
-          const kBal = updatedD.pointBalanceVnd || 0;
-          if (elPoint) {
-            const btnHtml = `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 포인트(Point)를 머니로 전환</button>`;
-            if (!elPoint.innerHTML.includes("btnExchangePoint")) {
-              elPoint.innerHTML = `<span id="ptSpan" style="font-size:1.6rem;">${pBal.toLocaleString("ko-KR")} P</span>` + btnHtml;
-            } else {
-              const ptSpan = elPoint.querySelector("span");
-              if (ptSpan) ptSpan.textContent = pBal.toLocaleString("ko-KR") + " P";
-            }
-          }
-          if (elPay) {
-            elPay.innerHTML = `<span>${kBal.toLocaleString("ko-KR")} KM</span>` +
-              `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(K-MOA 가맹점 전용 머니)</div>`;
-          }
-        });
-      }).catch(err => console.error(err));
+      // 실시간 업데이트
+      onSnapshot(doc(db, "users", uid), (snap) => {
+        if (!snap.exists()) return;
+        const updatedD = snap.data();
+        const pBal = updatedD.pointBalance || 0;
+        const kBal = updatedD.pointBalanceVnd || 0;
+        const bBal = updatedD.btBalance || 0;
 
+        if (elPoint) {
+          const btnHtml = `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>`;
+          if (!elPoint.innerHTML.includes("btnExchangePoint")) {
+            elPoint.innerHTML = `<span id="ptSpan" style="font-size:1.6rem;">${pBal.toLocaleString("ko-KR")} P</span>` + btnHtml;
+          } else {
+            const ptSpan = elPoint.querySelector("span");
+            if (ptSpan) ptSpan.textContent = pBal.toLocaleString("ko-KR") + " P";
+          }
+        }
+        if (elPay) {
+          elPay.innerHTML = `<span>${kBal.toLocaleString("ko-KR")} KM</span>` +
+            `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(K-MOA 가맹점 전용 머니)</div>`;
+        }
+        if (elBt) {
+          elBt.innerHTML = `<span id="btSpan" style="font-size:1.6rem;">${bBal.toLocaleString("ko-KR")} BT</span>`;
+        }
+      }, (err) => {
+        console.error("onSnapshot error:", err);
+      });
+
+      // 포인트 전환 바인딩
       if (elPoint) {
         elPoint.innerHTML = `<span id="ptSpan" style="font-size:1.6rem;">${pointBal.toLocaleString("ko-KR")} P</span>` +
           `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>`;
@@ -226,7 +237,6 @@ async function loadKCultureBalances(uid) {
               try {
                 const bpSnap = await getDoc(doc(db, "battle_players", uid));
                 const lv = bpSnap.exists() ? Math.max(1, bpSnap.data().gsLevel || 1) : 1;
-                // users.gsLevel 우선
                 const userSnap2 = await getDoc(doc(db, "users", uid));
                 const level = Math.max(1, Number(userSnap2.exists() ? (userSnap2.data().gsLevel || lv) : lv));
                 const currentPoints = userSnap2.exists() ? Number(userSnap2.data().pointBalance || 0) : pointBal;
@@ -236,47 +246,73 @@ async function loadKCultureBalances(uid) {
                   alert("전환할 포인트가 없습니다.");
                   return;
                 }
-                const ok = confirm(
-                  `현재 레벨: Lv.${level}\n` +
-                  `보유 포인트: ${currentPoints.toLocaleString()} P\n` +
-                  `전환 후 KM 머니: +${expectedKm.toLocaleString()} KM\n\n` +
-                  `전환 공식: 포인트 × Lv.${level} ÷ 10\n` +
-                  `전환하시겠습니까?`
-                );
+                const ok = confirm(`현재 레벨: Lv.${level}\n보유 포인트: ${currentPoints.toLocaleString()} P\n전환 후 KM 머니: +${expectedKm.toLocaleString()} KM\n\n전환 공식: 포인트 × Lv.${level} ÷ 10\n전환하시겠습니까?`);
                 if (!ok) return;
 
                 btnExc.disabled = true;
                 btnExc.textContent = "처리 중...";
-
                 const fn = httpsCallable(functions, "exchangePointsToFiat");
                 const res = await fn({ amount: currentPoints });
-
-                alert(
-                  `✅ 전환 완료!\n` +
-                  `사용 포인트: ${res.data.usedPoints.toLocaleString()} P\n` +
-                  `추가된 KM 머니: +${res.data.convertedVnd.toLocaleString()} KM`
-                );
-                // 잔고 새로고침 (reload 대신 함수 재호출)
+                alert(`✅ 전환 완료!\n사용 포인트: ${res.data.usedPoints.toLocaleString()} P\n추가된 KM 머니: +${res.data.convertedVnd.toLocaleString()} KM`);
                 await loadKCultureBalances(uid);
                 await loadOnChainData(uid);
               } catch (err) {
                 alert("전환 실패: " + (err.message || "서버 오류"));
-                const b = document.getElementById("btnExchangePoint");
-                if (b) { b.disabled = false; b.textContent = "💸 머니(Money)로 전환"; }
+                btnExc.disabled = false;
+                btnExc.textContent = "💸 머니(Money)로 전환";
               }
             });
           }
         }, 100);
-
       }
-      // elPay Render
+
       if (elPay) {
-        elPay.innerHTML = `<span id="paySpan">${payBal.toLocaleString("ko-KR")} KM</span>` +
+        elPay.innerHTML = `<span>${payBal.toLocaleString("ko-KR")} KM</span>` +
           `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(K-MOA 가맹점 전용 머니)</div>`;
       }
+
+      if (elBt) {
+        elBt.innerHTML = `<span id="btSpan" style="font-size:1.6rem;">${btBal.toLocaleString("ko-KR")} BT</span>`;
+      }
+
+      // BT 사용하기 바인딩
+      const btnUseBt = $("btnUseBt");
+      if (btnUseBt) {
+        btnUseBt.onclick = async () => {
+          const userSnap3 = await getDoc(doc(db, "users", uid));
+          const currentBt = userSnap3.exists() ? Number(userSnap3.data().btBalance || 0) : 0;
+          if (currentBt <= 0) {
+            alert("보유한 BT가 없습니다. 가맹점에서 결제하여 획득해보세요!");
+            return;
+          }
+          const numInput = prompt(`몇 장을 사용하시겠습니까?\n(보유: ${currentBt} BT)`, "1");
+          if (!numInput) return;
+          const numToUse = Number(numInput);
+          if (isNaN(numToUse) || numToUse <= 0 || numToUse > currentBt) {
+            alert("유효한 수량을 입력하세요.");
+            return;
+          }
+
+          btnUseBt.disabled = true;
+          btnUseBt.textContent = "사용 중...";
+          try {
+            const api = httpsCallable(functions, "consumeUserBtFirebase");
+            const res = await api({ btToUse: numToUse });
+            showJackpotResult(res.data);
+            loadJackpotHistory(uid);
+          } catch (e) {
+            alert("사용 실패: " + (e.message || "서버 오류가 발생했습니다."));
+          } finally {
+            btnUseBt.disabled = false;
+            btnUseBt.textContent = "사용하기 (잭팟 굴리기)";
+          }
+        };
+      }
+
     } else {
       if ($("pointDisplay")) $("pointDisplay").textContent = "0 P";
       if ($("paymentBalanceDisplay")) $("paymentBalanceDisplay").textContent = "0 KM";
+      if ($("btDisplay")) $("btDisplay").textContent = "0 BT";
     }
   } catch (err) {
     console.error("Failed to load K-CULTURE balances:", err);
@@ -813,65 +849,63 @@ async function loadTxHistory(uid, _walletAddress) {
       limit(30)
     );
 
-    import("https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js").then((fStore) => {
-      fStore.onSnapshot(q, (snap) => {
-        const unified = [];
-        snap.forEach((d) => {
-          const tx = d.data();
-          const cfg = TX_CONFIG[tx.type] || { labelKey: null, label: tx.type, dir: "expense", icon: "📋" };
+    onSnapshot(q, (snap) => {
+      const unified = [];
+      snap.forEach((d) => {
+        const tx = d.data();
+        const cfg = TX_CONFIG[tx.type] || { labelKey: null, label: tx.type, dir: "expense", icon: "📋" };
 
-          let label = cfg.labelKey ? _t(cfg.labelKey) : cfg.label;
-          if (tx.type === "merchant_income" && tx.merchantName) {
-            const feePct = tx.feeBps != null ? ` (${_t('fee_pct', (tx.feeBps / 100).toFixed(0))})` : "";
-            label = `🏪 ${tx.merchantName}${feePct}`;
-          }
-          if (tx.type === "pay_merchant" && tx.merchantName) {
-            label = `🛒 ${tx.merchantName}`;
-          }
-
-          unified.push({
-            sortTs: tx.createdAt?.toDate ? tx.createdAt.toDate().getTime() : 0,
-            label,
-            icon: cfg.icon,
-            dir: cfg.dir,
-            amountHex: txAmountHex(tx),
-            dateStr: tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleString("ko-KR") : "-",
-            txHash: tx.txHash || null,
-            statusBadge: null,
-          });
-        });
-
-        if (unified.length === 0) {
-          if (section) section.style.display = "none";
-          return;
+        let label = cfg.labelKey ? _t(cfg.labelKey) : cfg.label;
+        if (tx.type === "merchant_income" && tx.merchantName) {
+          const feePct = tx.feeBps != null ? ` (${_t('fee_pct', (tx.feeBps / 100).toFixed(0))})` : "";
+          label = `🏪 ${tx.merchantName}${feePct}`;
+        }
+        if (tx.type === "pay_merchant" && tx.merchantName) {
+          label = `🛒 ${tx.merchantName}`;
         }
 
-        unified.sort((a, b) => b.sortTs - a.sortTs);
-        show("txSection", true);
-
-        let totalIncome = 0, totalExpense = 0, incomeCount = 0, expenseCount = 0;
-        unified.forEach((t) => {
-          if (t.dir === "income") { totalIncome += t.amountHex; incomeCount++; }
-          else if (t.dir === "expense") { totalExpense += t.amountHex; expenseCount++; }
+        unified.push({
+          sortTs: tx.createdAt?.toDate ? tx.createdAt.toDate().getTime() : 0,
+          label,
+          icon: cfg.icon,
+          dir: cfg.dir,
+          amountHex: txAmountHex(tx),
+          dateStr: tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleString("ko-KR") : "-",
+          txHash: tx.txHash || null,
+          statusBadge: null,
         });
-
-        const fmtSum = (v) => v.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) + " Point";
-
-        const summary = $("txSummary");
-        if (summary) {
-          summary.style.display = "";
-          const el = (id) => document.getElementById(id);
-          if (el("txTotalIncome")) el("txTotalIncome").textContent = "+" + fmtSum(totalIncome);
-          if (el("txTotalExpense")) el("txTotalExpense").textContent = "−" + fmtSum(totalExpense);
-          if (el("txTotalIncomeCount")) el("txTotalIncomeCount").textContent = incomeCount + _t('mi_payments_label');
-          if (el("txTotalExpenseCount")) el("txTotalExpenseCount").textContent = expenseCount + _t('mi_payments_label');
-        }
-
-        wrap.innerHTML = unified.map(renderTxItem).join("");
-      }, (err) => {
-        console.warn("loadTxHistory onSnapshot error:", err.message);
-        wrap.innerHTML = `<p class="hint muted">${_t('status_loading')} failed.</p>`;
       });
+
+      if (unified.length === 0) {
+        if (section) section.style.display = "none";
+        return;
+      }
+
+      unified.sort((a, b) => b.sortTs - a.sortTs);
+      show("txSection", true);
+
+      let totalIncome = 0, totalExpense = 0, incomeCount = 0, expenseCount = 0;
+      unified.forEach((t) => {
+        if (t.dir === "income") { totalIncome += t.amountHex; incomeCount++; }
+        else if (t.dir === "expense") { totalExpense += t.amountHex; expenseCount++; }
+      });
+
+      const fmtSum = (v) => v.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) + " Point";
+
+      const summary = $("txSummary");
+      if (summary) {
+        summary.style.display = "";
+        const el = (id) => document.getElementById(id);
+        if (el("txTotalIncome")) el("txTotalIncome").textContent = "+" + fmtSum(totalIncome);
+        if (el("txTotalExpense")) el("txTotalExpense").textContent = "−" + fmtSum(totalExpense);
+        if (el("txTotalIncomeCount")) el("txTotalIncomeCount").textContent = incomeCount + _t('mi_payments_label');
+        if (el("txTotalExpenseCount")) el("txTotalExpenseCount").textContent = expenseCount + _t('mi_payments_label');
+      }
+
+      wrap.innerHTML = unified.map(renderTxItem).join("");
+    }, (err) => {
+      console.warn("loadTxHistory onSnapshot error:", err.message);
+      wrap.innerHTML = `<p class="hint muted">${_t('status_loading')} failed.</p>`;
     });
   } catch (err) {
     console.warn("loadTxHistory try block:", err.message);
@@ -1070,13 +1104,14 @@ async function loadMerchantsForSelect() {
 
 function buildMypageDropHtml(d) {
   const items = [];
+  if (d.issuedBt > 0) items.push(`🎟️ 보너스 티켓 <b>+${d.issuedBt}장</b><div style="font-size:11px;color:#92400e;margin-top:2px;">(내 정보 탭에서 사용 가능)</div>`);
   if (d.potionsAdded > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b>`);
   if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_mp_potion')} <b>+${d.mpPotionsAdded}</b>`);
   if (d.reviveAdded > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:24px;height:24px;vertical-align:middle;"> ${_t('item_revive')} <b>+${d.reviveAdded}</b>`);
   if (!items.length) return '';
   return `
     <div class="drop-box">
-      <div class="drop-box-title">${_t('item_drop_title')}</div>
+      <div class="drop-box-title">🎁 혜택 지급 완료</div>
       ${items.map(i => `<div class="drop-item">${i}</div>`).join('')}
     </div>`;
 }
@@ -1086,9 +1121,10 @@ function showJackpotResult(d) {
   if (!modal) return;
 
   const hasItems = (d.potionsAdded > 0) || (d.mpPotionsAdded > 0) || (d.reviveAdded > 0);
-  const jackpotPtsWei = BigInt(d.onchainJackpotPointsWei || '0');
-  const hasOnchainJackpot = jackpotPtsWei > 0n;
-  if (!d.isJackpot && !hasItems && !hasOnchainJackpot) return;
+  const jackpotKM = Number(d.jackpotAmountVnd || d.pointsEarned || 0);
+  const hasJackpot = jackpotKM > 0 || d.isJackpot;
+
+  if (!hasJackpot && !hasItems) return;
 
   const emojiEl = $("jmEmoji");
   const titleEl = $("jmTitle");
@@ -1100,11 +1136,10 @@ function showJackpotResult(d) {
     if (emojiEl) emojiEl.textContent = "🎉";
     if (titleEl) titleEl.textContent = "JACKPOT!! 🎰";
     if (descEl) descEl.textContent = _t('jm_jackpot_desc');
-  } else if (hasOnchainJackpot) {
+  } else if (hasJackpot) {
     if (emojiEl) emojiEl.textContent = "🪙";
     if (titleEl) { titleEl.textContent = _t('jm_onchain_title'); titleEl.style.color = "#fde68a"; }
-    const ptsHex = (Number(jackpotPtsWei) / 1e18).toFixed(6);
-    if (descEl) descEl.textContent = _t('jm_onchain_desc', ptsHex);
+    if (descEl) descEl.textContent = "가맹점 결제 보상 당첨!";
   } else {
     if (emojiEl) emojiEl.textContent = "🎁";
     if (titleEl) { titleEl.textContent = _t('jm_item_title'); titleEl.style.color = "#fef08a"; }
@@ -1113,9 +1148,8 @@ function showJackpotResult(d) {
 
   if (itemsEl) {
     const lines = [];
-    if (hasOnchainJackpot) {
-      const ptsHex = (Number(jackpotPtsWei) / 1e18).toFixed(6);
-      lines.push(`<div class="jm-item">🪙 ${_t('jm_jackpot_pts')} <b>+${ptsHex} Point</b></div>`);
+    if (hasJackpot && jackpotKM > 0) {
+      lines.push(`<div class="jm-item">🪙 ${_t('jm_jackpot_pts')} <b>+${jackpotKM.toLocaleString()} KM</b></div>`);
     }
     if (d.potionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b></div>`);
     if (d.mpPotionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/mp.png" style="width:22px;height:22px;"> ${_t('item_mp_potion')} <b>+${d.mpPotionsAdded}</b></div>`);
@@ -1137,31 +1171,12 @@ function bindMerchantPay(uid, _walletAddress) {
   if (!form || form._bound) return;
   form._bound = true;
 
-  // 통화 변경 시 레이블/min/placeholder 업데이트
-  form.querySelectorAll("input[name='merchantPayCurrencyRadio']").forEach((r) => {
-    r.addEventListener("change", () => {
-      if (!r.checked) return;
-      const isVnd = r.value === "VND";
-      const labelEl = $("merchantPayAmountLabel");
-      const inputEl = $("merchantPayAmount");
-      const hidden = $("merchantPayCurrency");
-      if (labelEl) labelEl.textContent = isVnd ? _t('label_pay_amount_vnd') : _t('label_pay_amount_krw');
-      if (inputEl) {
-        inputEl.min = isVnd ? "10000" : "1000";
-        inputEl.step = isVnd ? "1000" : "100";
-        inputEl.placeholder = isVnd ? _t('placeholder_vnd_amount') : _t('placeholder_krw_amount');
-        inputEl.value = "";
-      }
-      if (hidden) hidden.value = r.value;
-    });
-  });
+
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const merchantId = $("merchantPaySelect")?.value;
     const amount = Number($("merchantPayAmount")?.value);
-    const currency = $("merchantPayCurrency")?.value || "VND";
-    const isVnd = currency === "VND";
     const btn = $("btnMerchantPay");
     const resultBox = $("merchantPayResult");
 
@@ -1170,33 +1185,23 @@ function bindMerchantPay(uid, _walletAddress) {
       return;
     }
 
-    if (isVnd) {
-      if (!amount || amount < 10000) { alert(_t('pay_vnd_min_error')); return; }
-    } else {
-      if (!amount || amount < 1000) { alert(_t('pay_krw_min_error')); return; }
-    }
+    if (!amount || amount < 10000) { alert(_t('pay_vnd_min_error')); return; }
 
-    const confirmMsg = isVnd
-      ? _t('pay_confirm_vnd', amount.toLocaleString())
-      : _t('pay_confirm_krw', amount.toLocaleString());
+    const confirmMsg = _t('pay_confirm_vnd', amount.toLocaleString());
     if (!confirm(confirmMsg)) return;
 
     btn.disabled = true;
     btn.textContent = _t('pay_loading');
     if (resultBox) resultBox.style.display = "none";
 
-    const payload = isVnd
-      ? { merchantId: Number(merchantId), amountVnd: amount, currency: "VND" }
-      : { merchantId: Number(merchantId), amountKrw: amount, currency: "KRW" };
+    const payload = { merchantId: Number(merchantId), amountVnd: amount, currency: "VND" };
 
     try {
       const payFn = httpsCallable(functions, "payMerchantFirebase");
       const res = await payFn(payload);
       const d = res.data;
 
-      const krwStr = `${(d.amountKrw || 0).toLocaleString()}${_t('krw_unit')}`;
-      const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}${_t('vnd_unit')}` : '';
-      const amountDisp = [krwStr, vndStr].filter(Boolean).join(' / ');
+      const amountDisp = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()} KM` : '';
 
       if (resultBox) {
         resultBox.style.display = "";
@@ -1298,21 +1303,15 @@ async function applyQrResult(payload) {
     amountInput.value = String(Math.round(payload.amount));
   }
 
-  // ── 통화 즉시 반영 ──
-  if (payload.currency) {
-    const cur = payload.currency === "KRW" ? "KRW" : "VND";
-    if (currencyHidden) currencyHidden.value = cur;
-    if (cur === "KRW" && radioKrw) radioKrw.checked = true;
-    if (cur === "VND" && radioVnd) radioVnd.checked = true;
-    const labelEl = $("merchantPayAmountLabel");
-    const inputEl = amountInput;
-    const isVnd = cur === "VND";
-    if (labelEl) labelEl.textContent = isVnd ? _t('label_pay_amount_vnd') : _t('label_pay_amount_krw');
-    if (inputEl) {
-      inputEl.min = isVnd ? "10000" : "1000";
-      inputEl.step = isVnd ? "1000" : "100";
-      inputEl.placeholder = isVnd ? _t('placeholder_vnd_amount') : _t('placeholder_krw_amount');
-    }
+  // ── 통화는 오직 VND ──
+  // QR에 다른 통화(KRW)가 있더라도 무시하고 VND로 고정
+  const labelEl = $("merchantPayAmountLabel");
+  const inputEl = amountInput;
+  if (labelEl) labelEl.textContent = "결제 금액 (VND)";
+  if (inputEl) {
+    inputEl.min = "10000";
+    inputEl.step = "1000";
+    inputEl.placeholder = "예: 20000";
   }
 
   // ── 가맹점 매칭 ──
@@ -1388,6 +1387,16 @@ function bindQrScan() {
 
       const onDetected = async (raw) => {
         if (__qrRaf) { cancelAnimationFrame(__qrRaf); __qrRaf = 0; }
+
+        // ── BT 모드 QR (보너스 티켓) 감지 시, 바로 리다이렉트 ──
+        if (raw.includes('bt_receive.html')) {
+          if (state) state.textContent = "보너스 티켓 수령 페이지로 이동합니다...";
+          setTimeout(() => {
+            location.href = raw;
+          }, 300);
+          return;
+        }
+
         const payload = parseQrPayload(raw);
         console.log("[QR] raw:", raw, "parsed:", JSON.stringify(payload));
         if (state) state.textContent = _t('qr_recognized', raw.slice(0, 60), payload?.merchantId || "");
@@ -1497,12 +1506,8 @@ onAuthReady(async (ctx) => {
     show("needLoginPanel", true);
     const btn = $("btnLoginPage");
     if (btn) {
-      btn.onclick = async () => {
-        try {
-          await login();
-        } catch (e) {
-          console.warn(e);
-        }
+      btn.onclick = () => {
+        location.href = "/register.html";
       };
     }
     return;
