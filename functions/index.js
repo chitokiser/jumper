@@ -282,10 +282,14 @@ exports.convertSvToGp = onCall(wrapError(async (request) => {
   return await moneyTreeH.convertSvToGp(uid, { amount });
 }));
 
-exports.getMyMentees = onCall(wrapError(async (request) => {
-  const uid = requireAuth(request);
-  return await moneyTreeH.getMyMentees(uid);
-}));
+exports.getMyMentees = onCall(
+  { timeoutSeconds: 120 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    // onboarding.getMyMentees: mentorEmail/mentorUid/onChain.mentorAddress multi-query + on-chain supplement
+    return await onboarding.getMyMentees(uid);
+  })
+);
 
 exports.plantBulkSeedlings = onCall(
   { timeoutSeconds: 300 },
@@ -383,11 +387,12 @@ exports.getMyOnChain = onCall(
 exports.requestDeposit = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    const { amountKrw, depositorName, bank } = request.data ?? {};
-    if (!amountKrw) throw new HttpsError('invalid-argument', 'amountKrw가 필요합니다');
+    const { amountKrw, amountVnd, currency, depositorName, bank } = request.data ?? {};
+    // VND or KRW both valid - handler validates internally
+    if (!amountKrw && !amountVnd) throw new HttpsError('invalid-argument', 'amountKrw 또는 amountVnd가 필요합니다');
     if (!depositorName) throw new HttpsError('invalid-argument', 'depositorName이 필요합니다');
-    const result = await depositH.requestDeposit(uid, { amountKrw, depositorName, bank });
-    logger.info('requestDeposit', { uid, amountKrw, refCode: result.refCode });
+    const result = await depositH.requestDeposit(uid, { amountKrw, amountVnd, currency, depositorName, bank });
+    logger.info('requestDeposit', { uid, amountKrw, amountVnd, currency, refCode: result.refCode });
     return result;
   })
 );
@@ -3096,7 +3101,130 @@ exports.adminChargeBt = onCall(
     await requireAdmin(adminUid);
     const { merchantId, amount } = request.data ?? {};
     if (!merchantId || !amount) throw new HttpsError('invalid-argument', 'merchantId와 amount가 필요합니다.');
-    
+
     return await txH.adminChargeBt(adminUid, Number(merchantId), Number(amount));
+  })
+);
+
+// ── 임시: 회원 데이터 초기화 (테스트용, 사용 후 제거) ──
+exports.adminResetAllMembers = onCall(
+  { timeoutSeconds: 300 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    await requireAdmin(uid);
+
+    const ADMIN_EMAIL = 'daguri75@gmail.com';
+    const BATCH = 400;
+
+    async function delCol(col) {
+      let n = 0;
+      while (true) {
+        const snap = await db.collection(col).limit(BATCH).get();
+        if (snap.empty) break;
+        const batch = db.batch();
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        n += snap.docs.length;
+      }
+      return n;
+    }
+
+    // users 초기화
+    const usersSnap = await db.collection('users').get();
+    let uReset = 0;
+    for (let i = 0; i < usersSnap.docs.length; i += BATCH) {
+      const batch = db.batch();
+      for (const d of usersSnap.docs.slice(i, i + BATCH)) {
+        if (d.data().email === ADMIN_EMAIL || d.id === uid) continue;
+        batch.update(d.ref, { pointBalanceVnd: 0, pointBalance: 0, btBalance: 0, gsExp: 0, gsLevel: 1 });
+        uReset++;
+      }
+      await batch.commit();
+    }
+
+    // battle_players 초기화
+    const bpSnap = await db.collection('battle_players').get();
+    let bpReset = 0;
+    for (let i = 0; i < bpSnap.docs.length; i += BATCH) {
+      const batch = db.batch();
+      for (const d of bpSnap.docs.slice(i, i + BATCH)) {
+        if (d.id === uid) continue;
+        batch.update(d.ref, { gsExp: 0, gsLevel: 1, gold: 0, btBalance: 0, potions: 0, mpPotions: 0, reviveTickets: 0 });
+        bpReset++;
+      }
+      await batch.commit();
+    }
+
+    // 컬렉션 삭제
+    const deposits = await delCol('deposits');
+    const txns = await delCol('transactions');
+    const expLogs = await delCol('exp_logs');
+    const refs = await delCol('membership_referrals');
+    const jpWins = await delCol('jackpot_wins');
+    const jpRounds = await delCol('jackpot_rounds');
+
+    // 잭팟 풀 초기화
+    await db.collection('jackpot_config').doc('current').set({ jackpotAccVnd: 0, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+
+    logger.info('adminResetAllMembers', { uReset, bpReset, deposits, txns });
+    return { success: true, usersReset: uReset, bpReset, deposits, txns, expLogs, refs, jpWins, jpRounds };
+  })
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 회원 탈퇴 (deleteMyAccount)
+// - Firestore: users / battle_players / 연관 컬렉션 전체 삭제
+// - Firebase Auth 계정 삭제 → 재로그인 시 신규 회원가입 플로우 진행
+// 클라이언트: httpsCallable(functions, 'deleteMyAccount')({ reason: '...' })
+// ════════════════════════════════════════════════════════════════════════════
+exports.deleteMyAccount = onCall(
+  { timeoutSeconds: 60 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const reason = request.data?.reason || '';
+
+    // 헬퍼: 특정 필드로 컬렉션 내 문서 일괄 삭제
+    async function deleteWhere(col, field, value) {
+      const snap = await db.collection(col).where(field, '==', value).limit(200).get();
+      if (snap.empty) return 0;
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      return snap.size;
+    }
+
+    // 1. Firestore 문서 삭제
+    const userRef = db.collection('users').doc(uid);
+    const bpRef = db.collection('battle_players').doc(uid);
+
+    // 병렬 삭제 (단건 문서)
+    await Promise.all([
+      userRef.delete(),
+      bpRef.delete(),
+    ]);
+
+    // uid 필드 기반 컬렉션 삭제
+    await Promise.all([
+      deleteWhere('deposits', 'uid', uid),
+      deleteWhere('transactions', 'uid', uid),
+      deleteWhere('exp_logs', 'uid', uid),
+      deleteWhere('jackpot_wins', 'uid', uid),
+      deleteWhere('membership_referrals', 'uid', uid),
+      deleteWhere('bt_rewards', 'uid', uid),
+      deleteWhere('mentor_requests', 'menteeUid', uid),
+    ]);
+
+    // 탈퇴 로그 기록 (uid 삭제 전이므로 별도 컬렉션에 보관)
+    await db.collection('withdrawal_logs').add({
+      uid,
+      reason: reason.slice(0, 200),
+      deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // 2. Firebase Auth 계정 삭제 (마지막 — 이후 요청 불가)
+    await admin.auth().deleteUser(uid);
+
+    logger.info('deleteMyAccount completed', { uid });
+    return { success: true };
   })
 );

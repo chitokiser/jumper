@@ -111,40 +111,74 @@ async function loadOnChainData(uid) {
   $("onChainStatus").style.color = "var(--accent)";
 
   try {
-    const bpSnap = await getDoc(doc(db, 'battle_players', uid));
-    if (bpSnap.exists()) {
-      const bp = bpSnap.data();
-      const displayExp = typeof bp.gsExp === 'number' ? bp.gsExp : 0;
-      const displayLevel = typeof bp.gsLevel === 'number' ? bp.gsLevel : 0;
-      const displayRequired = Math.pow(Math.max(1, typeof bp.gsLevel === "number" ? bp.gsLevel : 1), 2) * 10000;
+    // users와 battle_players 동시 조회 (users가 우선)
+    const [userSnap, bpSnap] = await Promise.all([
+      getDoc(doc(db, 'users', uid)),
+      getDoc(doc(db, 'battle_players', uid)),
+    ]);
 
-      show("levelRow", true);
-      setText("levelDisplay", "Lv." + displayLevel);
-      show("expRow", true);
-      show("expBarRow", true);
+    const userData = userSnap.exists() ? userSnap.data() : {};
+    const bpData = bpSnap.exists() ? bpSnap.data() : {};
 
-      const expPct = displayRequired > 0
-        ? Math.min(100, Math.round((displayExp / displayRequired) * 100))
-        : 0;
+    // users.gsExp/gsLevel 우선, 없으면 battle_players 참조
+    const displayExp = Number(userData.gsExp ?? bpData.gsExp ?? 0);
+    const displayLevel = Math.max(1, Number(userData.gsLevel ?? bpData.gsLevel ?? 1));
+    const required = displayLevel * displayLevel * 10000;
 
-      setText("expDisplay", `${displayExp.toLocaleString()} / ${displayRequired.toLocaleString()}`);
-
-      const barFill = $("expBarFill");
-      if (barFill) barFill.style.width = expPct + "%";
-
-      const expReqEl = $("expRequired");
-      if (expReqEl) {
-        const remain = Math.max(0, displayRequired - displayExp);
-        expReqEl.textContent = remain > 0
-          ? _t('exp_remain', remain.toLocaleString())
-          : _t('exp_can_levelup');
-      }
-      show("levelUpRow", false); // 렙업도 오프체인 전환 전까지 숨김
+    // 기존 walletInfo 행 (하위 호환)
+    show("levelRow", true);
+    setText("levelDisplay", "Lv." + displayLevel);
+    show("expRow", true);
+    show("expBarRow", true);
+    setText("expDisplay", `${displayExp.toLocaleString()} / ${required.toLocaleString()}`);
+    const barFill = $("expBarFill");
+    if (barFill) barFill.style.width = (required > 0 ? Math.min(100, Math.round(displayExp / required * 100)) : 0) + "%";
+    const expReqEl = $("expRequired");
+    if (expReqEl) {
+      const remain = Math.max(0, required - displayExp);
+      expReqEl.textContent = remain > 0 ? `다음 레벨까지 ${remain.toLocaleString()} EXP` : '레벨업 가능!';
     }
+    show("levelUpRow", false);
+
+    // ── 새 EXP 카드 렌더링 ──────────────────────────────────────
+    const card = $("expLevelCard");
+    if (card) {
+      card.style.display = "";
+
+      const pct = required > 0 ? Math.min(100, Math.round(displayExp / required * 100)) : 0;
+      const remain = Math.max(0, required - displayExp);
+
+      // 레벨 배지
+      const badge = $("expLevelBadge");
+      if (badge) badge.textContent = displayLevel;
+
+      // 레벨 칭호
+      const TITLES = ["", "입문자", "초보자", "수련생", "숙련자", "고수", "달인", "영웅", "전설", "챔피언", "마스터"];
+      const titleEl = $("expLevelTitle");
+      if (titleEl) titleEl.textContent = TITLES[displayLevel] || `Lv.${displayLevel}`;
+
+      // 다음 레벨까지 EXP
+      const nextEl = $("expToNextLevel");
+      if (nextEl) nextEl.textContent = remain > 0 ? `${remain.toLocaleString()} EXP` : "레벨업 가능! 🎉";
+
+      // 프로그레스 바
+      const barNew = $("expBarFillNew");
+      if (barNew) setTimeout(() => { barNew.style.width = pct + "%"; }, 100);
+
+      // 진행 라벨
+      const progLabel = $("expProgressLabel");
+      if (progLabel) progLabel.textContent = `${displayExp.toLocaleString()} / ${required.toLocaleString()} EXP`;
+
+      // KM 전환 비율 힌트
+      const convRate = $("expConversionRate");
+      if (convRate) convRate.textContent = `포인트 × ${displayLevel} ÷ 10`;
+    }
+
   } catch (err) {
     console.error("Firebase status load failed", err);
   }
 }
+
 
 async function loadKCultureBalances(uid) {
   try {
@@ -1504,8 +1538,31 @@ onAuthReady(async (ctx) => {
     loadDepositHistory(user.uid);
     loadMentees();
 
-    loadTxHistory(user.uid, walletAddress);
-    loadJackpotHistory(user.uid);
+    // ── 잔고 새로고침 버튼 ──────────────────────────────────────────────────
+    const btnRefreshInfo = $('btnRefreshInfo');
+    if (btnRefreshInfo) {
+      btnRefreshInfo.addEventListener('click', async (e) => {
+        e.stopPropagation(); // 아코디언 토글 방지
+        btnRefreshInfo.disabled = true;
+        btnRefreshInfo.style.opacity = '0.6';
+        btnRefreshInfo.innerHTML = '<span style="display:inline-block;animation:spin .7s linear infinite;">🔄</span> 갱신 중…';
+        try {
+          await Promise.all([
+            loadKCultureBalances(user.uid),
+            loadOnChainData(user.uid),
+          ]);
+          btnRefreshInfo.innerHTML = '✅ 완료';
+        } catch (_) {
+          btnRefreshInfo.innerHTML = '❌ 실패';
+        } finally {
+          setTimeout(() => {
+            btnRefreshInfo.disabled = false;
+            btnRefreshInfo.style.opacity = '1';
+            btnRefreshInfo.innerHTML = '🔄 새로고침';
+          }, 1500);
+        }
+      });
+    }
 
     const btnRefresh = $("btnRefreshDeposits");
     if (btnRefresh) btnRefresh.onclick = () => loadDepositHistory(user.uid);
@@ -2073,6 +2130,81 @@ onAuthReady(async (ctx) => {
       if (msg) { msg.style.display = ""; msg.textContent = _t('cache_error', err.message); }
     }
   };
+})();
+
+
+// ── 회원 탈퇴 ────────────────────────────────────────────────────────────────
+(function bindWithdrawal() {
+  const section = $('withdrawalSection');
+  const checkbox = $('withdrawalConfirmCheck');
+  const btn = $('btnWithdrawal');
+  const statusEl = $('withdrawalStatus');
+  const reasonEl = $('withdrawalReason');
+  if (!section || !checkbox || !btn) return;
+
+  // 아코디언 토글
+  section.querySelector('.mp-section-head')?.addEventListener('click', () => {
+    section.classList.toggle('is-collapsed');
+  });
+
+  // 체크박스 → 버튼 활성화
+  checkbox.addEventListener('change', () => {
+    if (checkbox.checked) {
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    } else {
+      btn.style.opacity = '0.4';
+      btn.style.pointerEvents = 'none';
+    }
+  });
+
+  // 탈퇴 버튼 클릭
+  btn.addEventListener('click', async () => {
+    if (!checkbox.checked) return;
+
+    // 2차 확인 다이얼로그
+    const confirmed = window.confirm(
+      '⚠️ 최종 확인\n\n' +
+      '탈퇴 시 아래 데이터가 모두 삭제됩니다:\n' +
+      '  • 포인트 잔고 / KM 머니\n' +
+      '  • 보너스 티켓(BT)\n' +
+      '  • EXP · 레벨\n' +
+      '  • 나의 멘티 연결 관계 (멘티들의 멘토 해제)\n' +
+      '  • 모든 충전 · 결제 · 잭팟 내역\n\n' +
+      '복구할 수 없습니다. 정말로 탈퇴하시겠습니까?'
+    );
+    if (!confirmed) return;
+
+    btn.disabled = true;
+    btn.textContent = '탈퇴 처리 중…';
+    if (statusEl) statusEl.textContent = '';
+
+    try {
+      const fn = httpsCallable(functions, 'deleteMyAccount');
+      await fn({ reason: reasonEl?.value?.trim() || '' });
+
+      if (statusEl) {
+        statusEl.style.color = '#15803d';
+        statusEl.textContent = '✅ 탈퇴가 완료되었습니다. 잠시 후 메인 페이지로 이동합니다.';
+      }
+
+      // 로그아웃 후 홈으로 이동
+      setTimeout(async () => {
+        try {
+          const { signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
+          await signOut(auth);
+        } catch (_) { /* auth 모듈 실패 시 무시 */ }
+        location.href = '/';
+      }, 2500);
+
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '🗑️ 회원 탈퇴하기';
+      if (statusEl) {
+        statusEl.textContent = '❌ 탈퇴 실패: ' + (err.message || '서버 오류');
+      }
+    }
+  });
 })();
 
 // ── 서비스 경험치 동기화 상태 UI ────────────────────────────────────────────────

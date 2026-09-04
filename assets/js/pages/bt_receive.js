@@ -30,6 +30,8 @@ function setText(id, val) {
 const params = new URLSearchParams(location.search);
 const merchantId = Number(params.get("merchant"));
 const amount = Number(params.get("amount"));
+const bt = Number(params.get("bt"));
+const nonce = params.get("nonce");
 const currency = (params.get("currency") || "VND").toUpperCase();
 
 const isVnd = currency === "VND";
@@ -166,43 +168,27 @@ function bindPayButton() {
     : `${amount.toLocaleString()}원 (KRW)`;
 
   btn.onclick = async () => {
-    if (!confirm(`${merchantName}에 ${amountConfirmStr}을 결제하시겠습니까?\n(수탁 지갑 Point로 결제됩니다)`)) return;
+    if (!confirm(`${merchantName} 가맹점으로부터 ${bt} BT를 수령하시겠습니까?`)) return;
 
     btn.disabled = true;
-    btn.textContent = "결제 중...";
+    btn.textContent = "티켓 수령 중...";
     const stateEl = $("payState");
-    if (stateEl) { stateEl.textContent = "블록체인 처리 중입니다. 잠시 기다려 주세요..."; stateEl.style.display = ""; }
+    if (stateEl) { stateEl.textContent = "티켓을 적립하고 있습니다..."; stateEl.style.display = ""; }
 
     try {
-      const payFn = httpsCallable(functions, "payMerchantFirebase");
-      const payload = isVnd
-        ? { merchantId: Number(merchantId), amountVnd: Number(amountVnd), currency: "VND", reqId: orderId }
-        : { merchantId: Number(merchantId), amountKrw: Number(amountKrw), reqId: orderId };
+      const payFn = httpsCallable(functions, "receiveBtQrFirebase");
+      const payload = { merchantId, amount, currency, bt, txHash: String(nonce), nonce };
       const res = await payFn(payload);
       const d = res.data;
 
-      try { 
-  const topArr = document.querySelectorAll('.info-header span, .head-coins span, .head-point span, [data-point="true"]'); 
-  topArr.forEach(el => { 
-    if(el.textContent.includes('KM')||el.textContent.includes('원')) { 
-      const currentStr = el.textContent.replace(/[^0-9]/g, ''); 
-      if(currentStr) { el.textContent = (Number(currentStr) - (d.amountKrw || 0)).toLocaleString() + ' KM'; }
-    }
-  });
-  // Update Point specifically
-  const pointEl = document.querySelector('[data-point="true"]') || document.querySelector('.head-point span') || document.querySelector('.info-header [data-hdr-i18n="hdr_member_badge"]'); 
-  // It might be hard to find exact point element class, let's just reload auth.js stats!
-  if (window.loadMyBalances) {
-      window.loadMyBalances();
-  }
-} catch(e){} // 완료 패널 표시
+      try { const topArr = document.querySelectorAll('.info-header span, .head-coins span'); topArr.forEach(el => { if(el.textContent.includes(\'KM\')||el.textContent.includes(\'원\')) { const currentStr = el.textContent.replace(/[^0-9]/g, \'\'); if(currentStr) { el.textContent = (Number(currentStr) - (d.amountKrw || 0)).toLocaleString() + \' KM\'; } } }); } catch(e){} // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
       watchJackpotResult(d.txHash);
 
       const krwStr = `${(d.amountKrw || 0).toLocaleString()}원`;
       const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}동` : '';
-      const paidAmountStr = [krwStr, vndStr].filter(Boolean).join(' / ');
+      let paidAmountStr = [krwStr, vndStr].filter(Boolean).join(" / "); paidAmountStr += ` (수령 BT: ${bt} BT)`;
 
       const resultEl = $("payResult");
       if (resultEl) {
@@ -214,9 +200,9 @@ function bindPayButton() {
       }
     } catch (err) {
       if (stateEl) stateEl.style.display = "none";
-      alert("결제 실패: " + (err?.message || "서버 오류가 발생했습니다."));
+      alert("수령 실패: " + (err?.message || "서버 오류가 발생했습니다."));
       btn.disabled = false;
-      btn.textContent = "결제하기";
+      btn.textContent = "수령하기";
     }
   };
 }
@@ -224,8 +210,6 @@ function bindPayButton() {
 // ── 결제 아이템 드롭 표시 ──────────────────────────────
 function buildDropHtml(d) {
   const items = [];
-
-  if (d.pointsEarned > 0) items.push(`<div style="font-size:1.1em; color:#7c3aed;">✨ 리워드 <b>+${d.pointsEarned.toLocaleString()} Point</b> 추가!</div>`);
   if (d.potionsAdded > 0) items.push(`<img src="/assets/images/item/hp.png"   style="width:28px;height:28px;vertical-align:middle;"> 빨간약 <b>+${d.potionsAdded}</b>`);
   if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png"   style="width:28px;height:28px;vertical-align:middle;"> 마법약 <b>+${d.mpPotionsAdded}</b>`);
   if (d.reviveAdded > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:28px;height:28px;vertical-align:middle;"> 부활권 <b>+${d.reviveAdded}</b>`);

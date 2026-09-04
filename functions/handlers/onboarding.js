@@ -3,7 +3,7 @@
 
 'use strict';
 
-const admin  = require('firebase-admin');
+const admin = require('firebase-admin');
 const { ethers } = require('ethers');
 const { encrypt, decrypt } = require('../wallet/crypto');
 const {
@@ -53,14 +53,14 @@ async function createWalletAndBonus(uid, masterSecret, mentorAddress) {
   }
 
   const userRef = db.collection('users').doc(uid);
-  const snap    = await userRef.get();
+  const snap = await userRef.get();
 
   // 멱등: 수탁 지갑이 이미 있으면 그대로 반환
   if (snap.exists && snap.data()?.wallet?.address && snap.data()?.wallet?.encryptedKey) {
     return { address: snap.data().wallet.address, created: false, joinBonus: false };
   }
 
-  const wallet       = ethers.Wallet.createRandom();
+  const wallet = ethers.Wallet.createRandom();
   const encryptedKey = encrypt(wallet.privateKey, masterSecret);
 
   await userRef.set({
@@ -69,11 +69,11 @@ async function createWalletAndBonus(uid, masterSecret, mentorAddress) {
 
   let joinBonus = false;
   try {
-    const today     = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
-    const userNow   = await userRef.get();
+    const today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+    const userNow = await userRef.get();
     const coopUntil = (userNow.data() || {}).coopMemberUntil || '';
     const isPremium = !!(coopUntil && coopUntil >= today);
-    const bpUpdate  = { uid, gold: admin.firestore.FieldValue.increment(1000), joinBonusAt: admin.firestore.FieldValue.serverTimestamp() };
+    const bpUpdate = { uid, gold: admin.firestore.FieldValue.increment(1000), joinBonusAt: admin.firestore.FieldValue.serverTimestamp() };
     if (isPremium) { bpUpdate.level = 4; bpUpdate.pendingOnChainSync = true; bpUpdate.pendingOnChainLevel = 4; }
     await db.collection('battle_players').doc(uid).set(bpUpdate, { merge: true });
     joinBonus = true;
@@ -91,22 +91,22 @@ async function registerOnChainBackground(uid, mentorAddress, masterSecret) {
   if (!mentorAddress || !ethers.isAddress(mentorAddress)) {
     mentorAddress = DEFAULT_MENTOR_ADDRESS;
   }
-  const userRef    = db.collection('users').doc(uid);
-  const snap       = await userRef.get();
+  const userRef = db.collection('users').doc(uid);
+  const snap = await userRef.get();
   const walletData = snap.data()?.wallet;
   if (!walletData?.encryptedKey) throw new Error('지갑 없음');
 
-  const privateKey  = decrypt(walletData.encryptedKey, masterSecret);
-  const provider    = getProvider();
+  const privateKey = decrypt(walletData.encryptedKey, masterSecret);
+  const provider = getProvider();
   const adminWallet = getAdminWallet();
 
   const fundTx = await adminWallet.sendTransaction({ to: walletData.address, value: ethers.parseEther('0.0001') });
   await fundTx.wait();
 
-  const signer   = walletFromKey(privateKey, provider);
+  const signer = walletFromKey(privateKey, provider);
   const platform = getPlatformContract(signer);
   const gasLimit = await estimateGasWithBuffer(platform, 'register', [mentorAddress]);
-  const regTx    = await platform.register(mentorAddress, { gasLimit });
+  const regTx = await platform.register(mentorAddress, { gasLimit });
   await regTx.wait();
 
   await userRef.set({
@@ -135,15 +135,15 @@ async function registerOnChain(uid, mentorAddress, masterSecret) {
   }
 
   // 수탁 지갑 정보 조회
-  const userSnap   = await db.collection('users').doc(uid).get();
+  const userSnap = await db.collection('users').doc(uid).get();
   const walletData = userSnap.data()?.wallet;
   if (!walletData?.encryptedKey) {
     throw new Error('수탁 지갑이 없습니다. 먼저 지갑을 생성해주세요 (createWallet 호출)');
   }
 
   // 이미 가입했는지 확인 (체인이 진실 — Firestore 캐시는 무시)
-  const providerCheck  = getProvider();
-  const platformCheck  = getPlatformContract(providerCheck);
+  const providerCheck = getProvider();
+  const platformCheck = getPlatformContract(providerCheck);
   const [currentLevel] = await platformCheck.members(walletData.address);
   if (Number(currentLevel) > 0) {
     // 체인에 이미 등록 → Firestore가 stale이면 동기화
@@ -156,28 +156,28 @@ async function registerOnChain(uid, mentorAddress, masterSecret) {
 
   // 수탁 지갑으로 서명
   const privateKey = decrypt(walletData.encryptedKey, masterSecret);
-  const provider   = getProvider();
-  const signer     = walletFromKey(privateKey, provider);
-  const platform   = getPlatformContract(signer);
+  const provider = getProvider();
+  const signer = walletFromKey(privateKey, provider);
+  const platform = getPlatformContract(signer);
 
   // 가스 추정 + 10% 여유
   const gasLimit = await estimateGasWithBuffer(platform, 'register', [mentorAddress]);
-  const tx       = await platform.register(mentorAddress, { gasLimit });
-  const receipt  = await tx.wait();
+  const tx = await platform.register(mentorAddress, { gasLimit });
+  const receipt = await tx.wait();
 
   // Firestore 업데이트
   await db.collection('users').doc(uid).set({
     onChain: {
-      registered:    true,
-      registeredAt:  admin.firestore.FieldValue.serverTimestamp(),
+      registered: true,
+      registeredAt: admin.firestore.FieldValue.serverTimestamp(),
       mentorAddress,
-      txHash:        receipt.hash,
+      txHash: receipt.hash,
     },
   }, { merge: true });
 
   return {
-    txHash:        receipt.hash,
-    address:       walletData.address,
+    txHash: receipt.hash,
+    address: walletData.address,
     mentorAddress,
   };
 }
@@ -223,7 +223,7 @@ async function registerMentor(email, address, signature) {
   const provider = getProvider();
   const platform = getPlatformContract(provider);
   // members() 반환: (level, mentor, exp, points, blocked)
-  const [level]  = await platform.members(address);
+  const [level] = await platform.members(address);
 
   if (Number(level) < 4) {
     throw new Error(
@@ -233,9 +233,9 @@ async function registerMentor(email, address, signature) {
 
   // DB 저장
   await db.collection('mentors').doc(normalEmail).set({
-    email:      normalEmail,
+    email: normalEmail,
     address,
-    level:      Number(level),
+    level: Number(level),
     verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -256,11 +256,11 @@ async function registerMentor(email, address, signature) {
  */
 async function getUserOnChainData(uid) {
   const userSnap = await db.collection('users').doc(uid).get();
-  const address  = userSnap.data()?.wallet?.address;
+  const address = userSnap.data()?.wallet?.address;
   if (!address) throw new Error('수탁 지갑이 없습니다');
 
-  const provider    = getProvider();
-  const platform    = getPlatformContract(provider);
+  const provider = getProvider();
+  const platform = getPlatformContract(provider);
   const hexContract = getHexContract(provider);
   const { fetchExchangeRates } = require('../wallet/exchange');
 
@@ -290,29 +290,29 @@ async function getUserOnChainData(uid) {
   };
 
   // EXP는 wei 단위가 아닌 순수 카운터 (fee / 1e16)
-  const expNum      = Number(exp);
-  const levelNum    = Number(level);
+  const expNum = Number(exp);
+  const levelNum = Number(level);
   const requiredExp = levelNum > 0 ? levelNum * levelNum * 10000 : 10000;
 
   return {
     address,
-    level:   levelNum,
+    level: levelNum,
     mentor,
-    exp:     expNum,
+    exp: expNum,
     requiredExp,
     blocked,
     // 포인트 (Point wei 단위)
-    pointWei:     points.toString(),
+    pointWei: points.toString(),
     pointDisplay: parseFloat(ethers.formatEther(points)).toFixed(4),
-    pointKrw:     hexToKrw(points),
-    pointVnd:     hexToVnd(points),
-    pointUsd:     hexToUsd(points),
+    pointKrw: hexToKrw(points),
+    pointVnd: hexToVnd(points),
+    pointUsd: hexToUsd(points),
     // 수탁 지갑 실제 Point 잔액 (P2P 수령 포함)
-    walletHexWei:     walletHexBal.toString(),
+    walletHexWei: walletHexBal.toString(),
     walletHexDisplay: parseFloat(ethers.formatEther(walletHexBal)).toFixed(4),
-    walletHexKrw:     hexToKrw(walletHexBal),
-    walletHexUsd:     hexToUsd(walletHexBal),
-    walletHexVnd:     hexToVnd(walletHexBal),
+    walletHexKrw: hexToKrw(walletHexBal),
+    walletHexUsd: hexToUsd(walletHexBal),
+    walletHexVnd: hexToVnd(walletHexBal),
     krwPerUsd,
     vndPerUsd,
   };
@@ -335,70 +335,86 @@ async function getUserOnChainData(uid) {
 async function getMyMentees(uid) {
   const userSnap = await db.collection('users').doc(uid).get();
   const userData = userSnap.data() || {};
-  const myAddress = userData?.wallet?.address;
-  if (!myAddress) return { mentees: [], myAddress: null };
-
-  const myChecksumAddr = ethers.getAddress(myAddress);
-  const myLowerAddr    = myChecksumAddr.toLowerCase();
+  const myAddress = userData?.wallet?.address || null;
+  const myChecksumAddr = myAddress ? ethers.getAddress(myAddress) : null;
+  const myLowerAddr = myAddress ? myChecksumAddr.toLowerCase() : null;
+  const myEmail = userData.email || '';
 
   const provider = getProvider();
   const platform = getPlatformContract(provider);
 
-  // ── 1. Firestore에서 onChain.mentorAddress == myAddress 인 사용자 조회
-  // (등록 시 저장되므로 블록 범위 제한 없이 전체 조회 가능)
-  const [fsSnapLower, fsSnapChecksum] = await Promise.all([
-    db.collection('users').where('onChain.mentorAddress', '==', myLowerAddr).get(),
-    db.collection('users').where('onChain.mentorAddress', '==', myChecksumAddr).get(),
-  ]);
+  const queryPromises = [];
+  if (myLowerAddr) queryPromises.push(db.collection('users').where('onChain.mentorAddress', '==', myLowerAddr).get());
+  if (myChecksumAddr) queryPromises.push(db.collection('users').where('onChain.mentorAddress', '==', myChecksumAddr).get());
+  if (myEmail) {
+    queryPromises.push(db.collection('users').where('mentorAddressInput', '==', myEmail).get());
+    queryPromises.push(db.collection('users').where('mentorEmail', '==', myEmail).get());
+  }
+  queryPromises.push(db.collection('users').where('mentorUid', '==', uid).get()); // Just in case mentorUid is used
+
+  const results = await Promise.all(queryPromises);
 
   const menteeAddrSet = new Set();
-  const addrToDoc     = {};
+  const addrToDoc = {};
+  const menteeDocs = []; // Also keep track of doc even if no wallet address
 
-  [...fsSnapLower.docs, ...fsSnapChecksum.docs].forEach((d) => {
-    const walletAddr = d.data()?.wallet?.address;
-    if (!walletAddr) return;
-    try {
-      const cs = ethers.getAddress(walletAddr);
-      if (!menteeAddrSet.has(cs)) {
-        menteeAddrSet.add(cs);
-        addrToDoc[cs.toLowerCase()] = d;
-      }
-    } catch (_) {}
+  results.forEach(snap => {
+    snap.docs.forEach((d) => {
+      menteeDocs.push(d); // store all matched mentees
+      const walletAddr = d.data()?.wallet?.address;
+      if (!walletAddr) return;
+      try {
+        const cs = ethers.getAddress(walletAddr);
+        if (!menteeAddrSet.has(cs)) {
+          menteeAddrSet.add(cs);
+          addrToDoc[cs.toLowerCase()] = d;
+        }
+      } catch (_) { }
+    });
   });
 
   // ── 2. 온체인 이벤트 스캔 (Firestore 미등록 케이스 보완, 최근 490,000 블록)
   const latest = await provider.getBlockNumber();
-  const CHUNK  = 49000;
+  const CHUNK = 49000;
 
-  for (let from = Math.max(0, latest - CHUNK * 10); from <= latest; from += CHUNK) {
-    const to = Math.min(from + CHUNK - 1, latest);
-    try {
-      const filter = platform.filters.Registered(null, myChecksumAddr);
-      const logs   = await platform.queryFilter(filter, from, to);
-      logs.forEach((log) => menteeAddrSet.add(ethers.getAddress(log.args.user)));
-    } catch (_) { /* 범위 오류 시 skip */ }
+  if (myChecksumAddr) {
+    for (let from = Math.max(0, latest - CHUNK * 10); from <= latest; from += CHUNK) {
+      const to = Math.min(from + CHUNK - 1, latest);
+      try {
+        const filter = platform.filters.Registered(null, myChecksumAddr);
+        const logs = await platform.queryFilter(filter, from, to);
+        logs.forEach((log) => menteeAddrSet.add(ethers.getAddress(log.args.user)));
+      } catch (_) { /* 범위 오류 시 skip */ }
+    }
   }
-
-  if (menteeAddrSet.size === 0) return { mentees: [], myAddress: myChecksumAddr };
 
   // ── 3. 현재 온체인 members(address).mentor 확인 — 멘토가 바뀐 주소 제거
   const currentMentees = [];
   await Promise.all([...menteeAddrSet].map(async (addr) => {
     try {
-      const m = await platform.members(addr);
-      if (ethers.getAddress(m.mentor) === myChecksumAddr) {
-        currentMentees.push(addr);
+      if (myChecksumAddr) {
+        const m = await platform.members(addr);
+        if (ethers.getAddress(m.mentor) === myChecksumAddr) {
+          currentMentees.push(addr);
+        }
       }
-    } catch (_) {}
+    } catch (_) { }
   }));
 
-  if (currentMentees.length === 0) return { mentees: [], myAddress: myChecksumAddr };
+  menteeDocs.forEach(d => {
+    const addr = d.data()?.wallet?.address;
+    if (!addr || !currentMentees.includes(ethers.getAddress(addr))) {
+      if (d.data().mentorAddressInput === myEmail || d.data().mentorEmail === myEmail || d.data().mentorUid === uid) {
+        if (addr) currentMentees.push(ethers.getAddress(addr));
+        addrToDoc[addr ? addr.toLowerCase() : d.id] = d;
+      }
+    }
+  });
 
   // ── 4. Firestore users 에서 wallet.address 기준으로 uid/name 보완
-  // (addrToDoc에 없는 주소만 추가 조회)
   const missingAddrs = currentMentees.filter((a) => !addrToDoc[a.toLowerCase()]);
   if (missingAddrs.length > 0) {
-    const missingLower    = missingAddrs.map((a) => a.toLowerCase());
+    const missingLower = missingAddrs.map((a) => a.toLowerCase());
     const missingChecksum = missingAddrs.map((a) => ethers.getAddress(a));
     const [snapL, snapC] = await Promise.all([
       db.collection('users').where('wallet.address', 'in', missingLower.slice(0, 30)).get(),
@@ -410,15 +426,32 @@ async function getMyMentees(uid) {
     });
   }
 
-  const mentees = currentMentees.map((addr) => {
+  const mentees = [];
+  const processedUids = new Set();
+
+  currentMentees.forEach((addr) => {
     const fsDoc = addrToDoc[addr.toLowerCase()];
-    const data  = fsDoc?.data() || {};
-    return {
-      uid:          fsDoc?.id || null,
-      name:         data.name || addr.slice(0, 6) + '...' + addr.slice(-4),
-      address:      addr,
-      registeredAt: data.onChain?.registeredAt?.toMillis?.() ?? null,
-    };
+    if (fsDoc) processedUids.add(fsDoc.id);
+    const data = fsDoc?.data() || {};
+    mentees.push({
+      uid: fsDoc?.id || null,
+      name: data.name || addr.slice(0, 6) + '...' + addr.slice(-4),
+      address: addr,
+      registeredAt: data.onChain?.registeredAt?.toMillis?.() ?? data.registeredAt?.toMillis?.() ?? null,
+    });
+  });
+
+  menteeDocs.forEach(d => {
+    if (!processedUids.has(d.id)) {
+      processedUids.add(d.id);
+      const data = d.data() || {};
+      mentees.push({
+        uid: d.id,
+        name: data.name || (data.email ? data.email.split('@')[0] : '유저'),
+        address: null,
+        registeredAt: data.registeredAt?.toMillis?.() ?? null,
+      });
+    }
   });
 
   return { mentees, myAddress: myChecksumAddr };
@@ -438,10 +471,10 @@ async function getMyMentees(uid) {
  * @returns {{ address, level, txHash }}
  */
 async function adminSelfOnboard(uid) {
-  const adminWallet   = getAdminWallet();
-  const address       = adminWallet.address;
-  const provider      = getProvider();
-  const platformView  = getPlatformContract(provider);
+  const adminWallet = getAdminWallet();
+  const address = adminWallet.address;
+  const provider = getProvider();
+  const platformView = getPlatformContract(provider);
 
   // 온체인 등록 여부 확인
   const [level] = await platformView.members(address);
@@ -463,10 +496,10 @@ async function adminSelfOnboard(uid) {
       type: 'admin',
     },
     onChain: {
-      registered:    true,
-      registeredAt:  admin.firestore.FieldValue.serverTimestamp(),
+      registered: true,
+      registeredAt: admin.firestore.FieldValue.serverTimestamp(),
       mentorAddress: ethers.ZeroAddress,
-      txHash:        txHash || 'already-registered',
+      txHash: txHash || 'already-registered',
       autoRegistered: true,
     },
   }, { merge: true });
@@ -514,24 +547,24 @@ async function getMenteeIncome(uid) {
   const menteeMap = {};
   mentees.forEach((m) => {
     menteeMap[m.uid] = {
-      uid:          m.uid,
-      name:         m.name,
-      address:      m.address,
+      uid: m.uid,
+      name: m.name,
+      address: m.address,
       registeredAt: m.registeredAt,
-      txCount:      0,
+      txCount: 0,
       totalAmountHex: 0,
       myEstimatedEarningHex: 0,
-      recentTxs:    [],
+      recentTxs: [],
     };
   });
 
   for (const tx of allTxDocs) {
     const entry = menteeMap[tx.uid];
     if (!entry) continue;
-    const hex    = Number(tx.amountHex) || 0;
+    const hex = Number(tx.amountHex) || 0;
     const feeBps = Number(merchantFeeMap[tx.merchantId] ?? tx.feeBps ?? 0);
     const feeHex = hex * (feeBps / 10000);
-    const myEst  = feeHex * MENTOR_SHARE;
+    const myEst = feeHex * MENTOR_SHARE;
     entry.txCount++;
     entry.totalAmountHex += hex;
     entry.myEstimatedEarningHex += myEst;
@@ -565,7 +598,7 @@ async function getMenteeIncome(uid) {
     const mentorBps = Number(order.mentorRewardBps ?? 0);
     if (mentorBps === 0) continue;
     const hexAmt = Number(BigInt(order.hexWei || '0')) / 1e18;
-    const myEst  = hexAmt * (mentorBps / 10000);
+    const myEst = hexAmt * (mentorBps / 10000);
     entry.txCount++;
     entry.totalAmountHex += hexAmt;
     entry.myEstimatedEarningHex += myEst;
@@ -625,7 +658,7 @@ async function adminSetBlacklist(emailOrUid, blocked) {
   if (walletAddress) {
     try {
       const adminWallet = getAdminWallet();
-      const platform    = getPlatformContract(adminWallet);
+      const platform = getPlatformContract(adminWallet);
       const checksumAddr = ethers.getAddress(walletAddress);
       const gasLimit = await estimateGasWithBuffer(platform, 'adminSetBlocked', [checksumAddr, blocked]);
       const tx = await platform.adminSetBlocked(checksumAddr, blocked, { gasLimit });
@@ -639,14 +672,14 @@ async function adminSetBlacklist(emailOrUid, blocked) {
         blocked,
         error: chainErr.message,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }
 
   return {
     uid,
     email: userData.email || null,
-    name:  userData.name  || null,
+    name: userData.name || null,
     walletAddress: walletAddress || null,
     blocked,
     txHash,

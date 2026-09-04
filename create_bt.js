@@ -1,0 +1,25 @@
+const fs = require('fs');
+let html = fs.readFileSync('pay.html', 'utf8');
+html = html.replace(/<h1 class="hero-title">결제 확인<\/h1>/, '<h1 class="hero-title">보너스 티켓 (BT) 수령</h1>');
+html = html.replace(/<p class="hero-desc" id="payHeroDesc">가맹점 QR 결제<\/p>/, '<p class="hero-desc" id="payHeroDesc">가맹점이 발급한 무료 티켓을 받아보세요.</p>');
+html = html.replace(/결제 링크/g, '링크');
+html = html.replace(/결제하려면/g, '수령하려면');
+html = html.replace(/구글 로그인 후 결제/, '구글 로그인 후 수령');
+html = html.replace(/수탁 지갑 Point로 결제됩니다./, '보너스 티켓(BT)이 즉시 적립됩니다.');
+html = html.replace(/<button class="btn btn-pay" id="btnPay" type="button">결제하기<\/button>/, '<button class="btn btn-pay" id="btnPay" type="button" style="background:#f59e0b; border-color:#d97706; color:#fff">티켓 수령하기</button>');
+html = html.replace(/✅/, '🎟️');
+html = html.replace(/결제 완료!/, '수령 완료!');
+html = html.replace(/<script type="module" src="\/assets\/js\/pages\/pay.js"><\/script>/, '<script type="module" src="/assets/js/pages/bt_receive.js"></script>');
+html = html.replace(/<div id="jackpotResultBox"[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/, '');
+fs.writeFileSync('bt_receive.html', html, 'utf8');
+
+let js = fs.readFileSync('assets/js/pages/pay.js', 'utf8');
+js = js.replace(/payMerchantFirebase/g, 'receiveBtQrFirebase');
+js = js.replace(/const amountDisp = .*/g, 'const amountDisp = Number(params.get("bt") || 0) + " BT";');
+js = js.replace(/결제가 완료되었습니다./g, 'BT 수령이 완료되었습니다.');
+js = js.replace(/에러가 발생했습니다./g, '수령 중 에러가 발생했습니다.');
+js = js.replace(/결제가 진행 중입니다\.\.\./g, '티켓을 수령하는 중입니다...');
+js = js.replace(/const amount = params.get\("amount"\);/, 'const amount = params.get("amount");\n  const bt = params.get("bt");\n  const nonce = params.get("nonce");');
+js = js.replace(/receiveBtQrFirebase\(\{([\s\S]*?)\}\)/g, 'receiveBtQrFirebase({ $1, bt: Number(new URLSearchParams(window.location.search).get("bt")), nonce: new URLSearchParams(window.location.search).get("nonce") })');
+fs.writeFileSync('assets/js/pages/bt_receive.js', js, 'utf8');
+console.log('done');

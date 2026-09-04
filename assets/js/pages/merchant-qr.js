@@ -191,15 +191,7 @@ function bindQrForm(merchantId, merchantName) {
   const btCalcResult = $("qrBtCalcResult");
   const btCountText = $("qrBtCount");
 
-  function getBtAmount(amount, currency) {
-    let vnd = amount;
-    if (currency === "KRW") vnd = amount * 20; // 대략 1원=20동
-    if (vnd >= 1000000) return 5;
-    if (vnd >= 500000) return 3;
-    if (vnd >= 300000) return 2;
-    if (vnd >= 100000) return 1;
-    return 0;
-  }
+  
 
   function updateModeAndBt() {
     const isBt = modeBt?.checked;
@@ -460,3 +452,14 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
   // 10초 후 자동 제거
   setTimeout(() => { document.getElementById("paymentAlert")?.remove(); }, 10000);
 }
+
+
+function getBtAmount(amount, currency) {
+    let vnd = amount;
+    if (currency === "KRW") vnd = amount * 20; // 대략 1원=20동
+    if (vnd >= 1000000) return 5;
+    if (vnd >= 500000) return 3;
+    if (vnd >= 300000) return 2;
+    if (vnd >= 100000) return 1;
+    return 0;
+  }

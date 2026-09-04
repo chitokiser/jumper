@@ -1,4 +1,5 @@
 'use strict';
+const expH = require('./exp');
 const admin = require('firebase-admin');
 const db    = admin.firestore();
 
@@ -176,6 +177,9 @@ async function processReferralReward(referrerUid, newUserUid) {
     status:      'rewarded',
     createdAt:   admin.firestore.FieldValue.serverTimestamp(),
   });
+
+  // EXP 부여: 추천인에게 1,000 EXP
+  try { await expH.grantExp(referrerUid, 1000, 'referral'); } catch (_) {}
 
   return { gpRewarded: REFERRAL_GP };
 }
