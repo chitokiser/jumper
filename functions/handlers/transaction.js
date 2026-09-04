@@ -681,7 +681,7 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner: totalJackpotReward > 0, randomValue: grade, finalWinWei: finalWinWeiAmt, btUsed: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() });
 
     tx.update(userRef, {
-      pointBalanceVnd: userBalanceVnd - finalVnd + totalJackpotReward,
+      pointBalanceVnd: userBalanceVnd - finalVnd,
       pointBalance: admin.firestore.FieldValue.increment(totalJackpotReward)
     });
 
