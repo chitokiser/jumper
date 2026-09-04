@@ -3106,6 +3106,70 @@ exports.adminChargeBt = onCall(
   })
 );
 
+// ════════════════════════════════════════════════════════════════════════════
+// 포인트 → KM(머니) 전환
+// 공식: 전환 KM = floor(보유 포인트 × gsLevel ÷ 10)
+// 전체 포인트 소진, pointBalance → 0, pointBalanceVnd += 전환 KM
+// 클라이언트: httpsCallable(functions, 'exchangePointsToFiat')({ amount: N })
+// ════════════════════════════════════════════════════════════════════════════
+exports.exchangePointsToFiat = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const requestedAmount = Number(request.data?.amount ?? 0);
+
+    const userRef = db.collection('users').doc(uid);
+    const bpRef = db.collection('battle_players').doc(uid);
+
+    let convertedVnd = 0;
+    let usedPoints = 0;
+
+    await db.runTransaction(async (tx) => {
+      const [userSnap, bpSnap] = await Promise.all([tx.get(userRef), tx.get(bpRef)]);
+
+      if (!userSnap.exists) throw new HttpsError('not-found', '유저 정보를 찾을 수 없습니다.');
+
+      const userData = userSnap.data();
+      const bpData = bpSnap.exists ? bpSnap.data() : {};
+
+      const pointBal = Number(userData.pointBalance ?? 0);
+      const level = Math.max(1, Number(userData.gsLevel ?? bpData.gsLevel ?? 1));
+      const currentKm = Number(userData.pointBalanceVnd ?? 0);
+
+      // 전환할 포인트 결정 (요청 금액 or 전체 잔고 중 작은 값)
+      usedPoints = requestedAmount > 0 ? Math.min(requestedAmount, pointBal) : pointBal;
+      if (usedPoints <= 0) throw new HttpsError('failed-precondition', '전환할 포인트가 없습니다.');
+
+      // 전환 공식: 포인트 × 레벨 ÷ 10
+      convertedVnd = Math.floor(usedPoints * level / 10);
+      if (convertedVnd <= 0) throw new HttpsError('failed-precondition', '전환 금액이 0입니다. 레벨을 올려주세요.');
+
+      tx.update(userRef, {
+        pointBalance: pointBal - usedPoints,
+        pointBalanceVnd: currentKm + convertedVnd,
+        lastPointExchangeAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // 전환 내역 기록
+      const logRef = db.collection('transactions').doc();
+      tx.set(logRef, {
+        uid,
+        type: 'POINT_TO_KM',
+        pointUsed: usedPoints,
+        convertedKm: convertedVnd,
+        level,
+        balanceBefore: pointBal,
+        balanceAfter: pointBal - usedPoints,
+        kmBefore: currentKm,
+        kmAfter: currentKm + convertedVnd,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    logger.info('exchangePointsToFiat', { uid, usedPoints, convertedVnd });
+    return { success: true, usedPoints, convertedVnd };
+  })
+);
+
 // ── 임시: 회원 데이터 초기화 (테스트용, 사용 후 제거) ──
 exports.adminResetAllMembers = onCall(
   { timeoutSeconds: 300 },

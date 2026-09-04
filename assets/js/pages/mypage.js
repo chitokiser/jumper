@@ -224,27 +224,50 @@ async function loadKCultureBalances(uid) {
           if (btnExc) {
             btnExc.addEventListener("click", async () => {
               try {
-                const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js");
                 const bpSnap = await getDoc(doc(db, "battle_players", uid));
                 const lv = bpSnap.exists() ? Math.max(1, bpSnap.data().gsLevel || 1) : 1;
-                const expectedVnd = Math.floor(pointBal * lv / 10);
-                const ok = confirm(`현재 회원님의 레벨은 Lv.${lv} 입니다.\n보유하신 ${pointBal.toLocaleString()} 포인트를 전환하면\n${expectedVnd.toLocaleString()} KRW (결제 머니)로 전환됩니다.\n전환하시겠습니까?`);
+                // users.gsLevel 우선
+                const userSnap2 = await getDoc(doc(db, "users", uid));
+                const level = Math.max(1, Number(userSnap2.exists() ? (userSnap2.data().gsLevel || lv) : lv));
+                const currentPoints = userSnap2.exists() ? Number(userSnap2.data().pointBalance || 0) : pointBal;
+                const expectedKm = Math.floor(currentPoints * level / 10);
+
+                if (currentPoints <= 0) {
+                  alert("전환할 포인트가 없습니다.");
+                  return;
+                }
+                const ok = confirm(
+                  `현재 레벨: Lv.${level}\n` +
+                  `보유 포인트: ${currentPoints.toLocaleString()} P\n` +
+                  `전환 후 KM 머니: +${expectedKm.toLocaleString()} KM\n\n` +
+                  `전환 공식: 포인트 × Lv.${level} ÷ 10\n` +
+                  `전환하시겠습니까?`
+                );
                 if (!ok) return;
+
                 btnExc.disabled = true;
                 btnExc.textContent = "처리 중...";
-                const { httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-functions.js");
+
                 const fn = httpsCallable(functions, "exchangePointsToFiat");
-                const res = await fn({ amount: pointBal });
-                alert(`성공적으로 전환되었습니다!\n잔고: ${res.data.convertedVnd.toLocaleString()} KRW 추가됨`);
-                location.reload();
+                const res = await fn({ amount: currentPoints });
+
+                alert(
+                  `✅ 전환 완료!\n` +
+                  `사용 포인트: ${res.data.usedPoints.toLocaleString()} P\n` +
+                  `추가된 KM 머니: +${res.data.convertedVnd.toLocaleString()} KM`
+                );
+                // 잔고 새로고침 (reload 대신 함수 재호출)
+                await loadKCultureBalances(uid);
+                await loadOnChainData(uid);
               } catch (err) {
-                alert("전환 실패: " + err.message);
-                btnExc.disabled = false;
-                btnExc.textContent = "💸 포인트 전환";
+                alert("전환 실패: " + (err.message || "서버 오류"));
+                const b = document.getElementById("btnExchangePoint");
+                if (b) { b.disabled = false; b.textContent = "💸 머니(Money)로 전환"; }
               }
             });
           }
         }, 100);
+
       }
       // elPay Render
       if (elPay) {
