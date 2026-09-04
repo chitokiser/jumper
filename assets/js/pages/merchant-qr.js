@@ -101,21 +101,32 @@ async function initPage(uid) {
   setText("qrMerchantName", merchantName);
 
   // 실시간 K-Culture Balance & Payment Balance 모니터링
-  const mOwner = (await getDoc(doc(db, "merchants", String(merchantId)))).data()?.ownerUid;
-  onSnapshot(doc(db, "users", uid), (docS) => { 
-    const el = document.getElementById("merchBal"); 
-    if(el && docS.exists()) el.textContent = Number(docS.data().pointBalanceVnd || 0).toLocaleString() + " KM"; 
+  onSnapshot(doc(db, "users", uid), (docS) => {
+    const el = document.getElementById("merchBal");
+    if (el && docS.exists()) el.textContent = Number(docS.data().pointBalanceVnd || 0).toLocaleString() + " KM";
   });
+
+  // ── 가맹점 BT 잔고: merchants/{merchantId}.btBalance 실시간 조회 ──
+  // (adminChargeBt가 저장하는 위치와 동일해야 함)
+  onSnapshot(doc(db, "merchants", String(merchantId)), (mSnap2) => {
+    if (mSnap2.exists()) {
+      const btBal = Number(mSnap2.data().btBalance || 0);
+      setText("qrMerchantBtBal", btBal.toLocaleString("ko-KR") + " BT");
+    }
+  });
+
+  // 가맹점주 KM/포인트 잔고 (merchant owner)
+  const mOwner = mSnap.exists() ? mSnap.data()?.ownerUid : null;
   if (mOwner) {
     onSnapshot(doc(db, "users", mOwner), (snap) => {
       if (snap.exists()) {
         const { pointBalanceVnd = 0 } = snap.data();
         setText("qrMerchantPaymentBal", pointBalanceVnd.toLocaleString("ko-KR") + " KM (결제대금)");
         setText("qrMerchantPointBal", (snap.data().pointBalance || 0).toLocaleString("ko-KR") + " P");
-        setText("qrMerchantBtBal", (snap.data().btBalance || 0).toLocaleString("ko-KR") + " BT");
       }
     });
   }
+
 
   show("mainPanel", true);
 
@@ -185,13 +196,13 @@ function bindQrForm(merchantId, merchantName) {
   // 금액 입력 시 환산 표시
   $("qrAmount")?.addEventListener("input", updateConvert);
 
-  
+
   const modePay = $("modePay");
   const modeBt = $("modeBt");
   const btCalcResult = $("qrBtCalcResult");
   const btCountText = $("qrBtCount");
 
-  
+
 
   function updateModeAndBt() {
     const isBt = modeBt?.checked;
@@ -204,11 +215,11 @@ function bindQrForm(merchantId, merchantName) {
     } else {
       if (btCalcResult) btCalcResult.style.display = "none";
     }
-    
+
     // 모드에 따라 버튼 텍스트 변경
     const btnGen = $("btnGenQr");
     if (btnGen) {
-       btnGen.textContent = isBt ? "BT 무료 보상 QR 생성" : "결제 QR 생성";
+      btnGen.textContent = isBt ? "BT 무료 보상 QR 생성" : "결제 QR 생성";
     }
   }
 
@@ -230,7 +241,7 @@ function bindQrForm(merchantId, merchantName) {
       if (!amount || amount < 1000) { alert("최소 1,000원 이상 입력해 주세요."); return; }
     }
 
-    
+
     const mode = form.querySelector("input[name='qrMode']:checked")?.value || "pay";
     generateQr(merchantId, merchantName, amount, currency, mode);
   });
@@ -312,13 +323,13 @@ function generateQr(merchantId, merchantName, amount, currency = "KRW", mode = "
   const PROD_ORIGIN = "https://kmoa.netlify.app";
   const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const baseOrigin = isLocal ? PROD_ORIGIN : location.origin;
-  
+
   let url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
   if (mode === "bt") {
     const btTokens = getBtAmount(amount, currency);
     url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btTokens}&nonce=${Date.now()}`;
   }
-  
+
 
   // qrcode.js (CDN) API
   /* global QRCode */
@@ -455,11 +466,11 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
 
 
 function getBtAmount(amount, currency) {
-    let vnd = amount;
-    if (currency === "KRW") vnd = amount * 20; // 대략 1원=20동
-    if (vnd >= 1000000) return 5;
-    if (vnd >= 500000) return 3;
-    if (vnd >= 300000) return 2;
-    if (vnd >= 100000) return 1;
-    return 0;
-  }
+  let vnd = amount;
+  if (currency === "KRW") vnd = amount * 20; // 대략 1원=20동
+  if (vnd >= 1000000) return 5;
+  if (vnd >= 500000) return 3;
+  if (vnd >= 300000) return 2;
+  if (vnd >= 100000) return 1;
+  return 0;
+}
