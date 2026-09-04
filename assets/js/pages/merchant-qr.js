@@ -188,7 +188,7 @@ function bindQrForm(merchantId, merchantName) {
   function updateModeAndBt() {
     const isBt = modeBt?.checked;
     const amount = Number($("qrAmount")?.value || 0);
-    const currency = form.querySelector("input[name='qrCurrency']:checked")?.value || "KRW";
+    const currency = "VND";
 
     const labelEl = $("qrAmountLabel");
     const helpEl = $("qrAmountHelp");
@@ -275,7 +275,7 @@ function addReceiptItem(data, isNew = false) {
   const time = ts.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
   // 법정화폐 표시
-  const cur = data.currency || "KRW";
+  const cur = data.currency || "VND";
   const fiatAmt = cur === "VND" ? data.amountVnd : data.amountKrw;
   const fiatDisp = fiatAmt
     ? (cur === "VND" ? `${Number(fiatAmt).toLocaleString()}동` : `${Number(fiatAmt).toLocaleString()}원`)
