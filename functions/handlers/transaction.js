@@ -693,11 +693,11 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     tx.set(db.collection('transactions').doc(), { ...txBase, uid: merchantOwnerUid, buyerUid: uid, type: 'merchant_income', netAmountVnd: netVnd, feeAmountVnd: feeVnd, feeBps });
 
     if (mentorBonusVnd > 0 && mentorSnap && mentorSnap.exists) {
-      tx.update(mentorRef, { pointBalanceVnd: admin.firestore.FieldValue.increment(mentorBonusVnd) });
+      tx.update(mentorRef, { pointBalance: admin.firestore.FieldValue.increment(mentorBonusVnd) });
       tx.set(db.collection('transactions').doc(), { ...txBase, uid: mentorUid, sourceUid: uid, type: 'mentor_bonus_tier1', amountVnd: mentorBonusVnd, amountKrw: mentorBonusVnd });
     }
     if (grandMentorBonusVnd > 0 && grandMentorSnap && grandMentorSnap.exists) {
-      tx.update(grandMentorRef, { pointBalanceVnd: admin.firestore.FieldValue.increment(grandMentorBonusVnd) });
+      tx.update(grandMentorRef, { pointBalance: admin.firestore.FieldValue.increment(grandMentorBonusVnd) });
       tx.set(db.collection('transactions').doc(), { ...txBase, uid: grandMentorUid, sourceUid: uid, type: 'mentor_bonus_tier2', amountVnd: grandMentorBonusVnd, amountKrw: grandMentorBonusVnd });
     }
     if (platformBonusVnd > 0) {
