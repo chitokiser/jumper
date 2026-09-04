@@ -651,13 +651,39 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     let currentJackpotPool = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
     currentJackpotPool += jackpotBonusVnd; // 결제로 발생한 잭팟 기여금을 즉시 풀에 합산 후 추첨
 
-    // 업데이트 적용
+    // 즉석 결제 잭팟 돌리기
+    let totalJackpotReward = 0;
+    const r_grade = Math.random() * 100;
+    let grade = 0;
+    if (r_grade < 0.1) grade = Math.floor(Math.random() * (200 - 100 + 1)) + 100;
+    else if (r_grade < 0.6) grade = Math.floor(Math.random() * (500 - 201 + 1)) + 201;
+    else if (r_grade < 2.6) grade = Math.floor(Math.random() * (1000 - 501 + 1)) + 501;
+    else if (r_grade < 12.6) grade = Math.floor(Math.random() * (3000 - 1001 + 1)) + 1001;
+    else if (r_grade < 37.6) grade = Math.floor(Math.random() * (5000 - 3001 + 1)) + 3001;
+    else if (r_grade < 72.6) grade = Math.floor(Math.random() * (8000 - 5001 + 1)) + 5001;
+    else grade = Math.floor(Math.random() * (10000 - 8001 + 1)) + 8001;
+
+    let reward = Math.floor(currentJackpotPool / grade);
+    if (reward <= 0 && currentJackpotPool > 0) reward = 1;
+    if (reward < 0) reward = 0;
+    if (reward > currentJackpotPool) reward = currentJackpotPool;
+
+    totalJackpotReward = reward;
+    currentJackpotPool -= reward;
+    if (currentJackpotPool < 0) currentJackpotPool = 0;
+
     tx.set(jackpotRef, { jackpotAccVnd: currentJackpotPool, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
 
-    // 포인트(Point) 누적
-    // 멘토 보상은 Point로 줍니다
+    if (totalJackpotReward > 0) {
+      tx.set(db.collection('jackpot_wins').doc(txHash), { uid, userName: userData.name || userData.kakaoId || 'User', amountVnd: totalJackpotReward, amountKrw: totalJackpotReward, grade: grade, btUsed: 0, createdAt: admin.firestore.FieldValue.serverTimestamp(), txHash });
+    }
+
+    const finalWinWeiAmt = (BigInt(totalJackpotReward) * 1000000000000000000n).toString();
+    tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner: totalJackpotReward > 0, randomValue: grade, finalWinWei: finalWinWeiAmt, btUsed: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+
     tx.update(userRef, {
-      pointBalanceVnd: userBalanceVnd - finalVnd
+      pointBalanceVnd: userBalanceVnd - finalVnd + totalJackpotReward,
+      pointBalance: admin.firestore.FieldValue.increment(totalJackpotReward)
     });
 
     const txBase = { createdAt: admin.firestore.FieldValue.serverTimestamp(), currency: 'VND', amountKrw: finalKrw, amountVnd: finalVnd, merchantId: Number(merchantId), merchantName: merchant.name || '', txHash };
@@ -684,7 +710,9 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
       issuedBt: 0,
       merchantName: merchant.name || 'Merchant',
       amountVnd: finalVnd,
-      amountKrw: finalKrw
+      amountKrw: finalKrw,
+      pointsEarned: totalJackpotReward,
+      isJackpot: totalJackpotReward > 0
     };
     return payResult;
   });
