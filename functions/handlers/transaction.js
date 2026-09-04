@@ -655,18 +655,17 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     let totalJackpotReward = 0;
     const r_grade = Math.random() * 100;
     let grade = 0;
-    if (r_grade < 0.1) grade = Math.floor(Math.random() * (200 - 100 + 1)) + 100;
-    else if (r_grade < 0.6) grade = Math.floor(Math.random() * (500 - 201 + 1)) + 201;
-    else if (r_grade < 2.6) grade = Math.floor(Math.random() * (1000 - 501 + 1)) + 501;
-    else if (r_grade < 12.6) grade = Math.floor(Math.random() * (3000 - 1001 + 1)) + 1001;
-    else if (r_grade < 37.6) grade = Math.floor(Math.random() * (5000 - 3001 + 1)) + 3001;
-    else if (r_grade < 72.6) grade = Math.floor(Math.random() * (8000 - 5001 + 1)) + 5001;
-    else grade = Math.floor(Math.random() * (10000 - 8001 + 1)) + 8001;
+    if (r_grade < 0.1) grade = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
+    else if (r_grade < 0.6) grade = Math.floor(Math.random() * (50 - 21 + 1)) + 21;
+    else if (r_grade < 2.6) grade = Math.floor(Math.random() * (100 - 51 + 1)) + 51;
+    else if (r_grade < 12.6) grade = Math.floor(Math.random() * (300 - 101 + 1)) + 101;
+    else if (r_grade < 37.6) grade = Math.floor(Math.random() * (500 - 301 + 1)) + 301;
+    else if (r_grade < 72.6) grade = Math.floor(Math.random() * (800 - 501 + 1)) + 501;
+    else grade = Math.floor(Math.random() * (1000 - 801 + 1)) + 801;
 
-    let reward = Math.floor(currentJackpotPool / grade);
-    if (reward <= 0 && currentJackpotPool > 0) reward = 1;
+    let reward = Math.floor((feeVnd + currentJackpotPool) / grade) + Math.floor(feeVnd / grade);
+    if (reward <= 0 && (feeVnd > 0 || currentJackpotPool > 0)) reward = 1;
     if (reward < 0) reward = 0;
-    if (reward > currentJackpotPool) reward = currentJackpotPool;
 
     totalJackpotReward = reward;
     currentJackpotPool -= reward;
@@ -1387,20 +1386,19 @@ async function consumeUserBtFirebase(data, context) {
 
       const r_grade = Math.random() * 100;
       let grade = 0;
-      if (r_grade < 0.1) grade = Math.floor(Math.random() * (200 - 100 + 1)) + 100;
-      else if (r_grade < 0.6) grade = Math.floor(Math.random() * (500 - 201 + 1)) + 201;
-      else if (r_grade < 2.6) grade = Math.floor(Math.random() * (1000 - 501 + 1)) + 501;
-      else if (r_grade < 12.6) grade = Math.floor(Math.random() * (3000 - 1001 + 1)) + 1001;
-      else if (r_grade < 37.6) grade = Math.floor(Math.random() * (5000 - 3001 + 1)) + 3001;
-      else if (r_grade < 72.6) grade = Math.floor(Math.random() * (8000 - 5001 + 1)) + 5001;
-      else grade = Math.floor(Math.random() * (10000 - 8001 + 1)) + 8001;
+      if (r_grade < 0.1) grade = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
+      else if (r_grade < 0.6) grade = Math.floor(Math.random() * (50 - 21 + 1)) + 21;
+      else if (r_grade < 2.6) grade = Math.floor(Math.random() * (100 - 51 + 1)) + 51;
+      else if (r_grade < 12.6) grade = Math.floor(Math.random() * (300 - 101 + 1)) + 101;
+      else if (r_grade < 37.6) grade = Math.floor(Math.random() * (500 - 301 + 1)) + 301;
+      else if (r_grade < 72.6) grade = Math.floor(Math.random() * (800 - 501 + 1)) + 501;
+      else grade = Math.floor(Math.random() * (1000 - 801 + 1)) + 801;
 
       if (i === 0) firstGrade = grade;
 
       let reward = Math.floor(currentJackpotPool / grade);
       if (reward <= 0 && currentJackpotPool > 0) reward = 1;
       if (reward < 0) reward = 0;
-      if (reward > currentJackpotPool) reward = currentJackpotPool;
 
       totalJackpotReward += reward;
       currentJackpotPool -= reward;
