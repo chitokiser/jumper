@@ -469,10 +469,6 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
 
 function getBtAmount(amount, currency) {
   let vnd = amount;
-  if (currency === "KRW") vnd = amount * 20; // 대략 1원=20동
-  if (vnd >= 1000000) return 5;
-  if (vnd >= 500000) return 3;
-  if (vnd >= 300000) return 2;
-  if (vnd >= 100000) return 1;
-  return 0;
+  if (currency === "KRW") vnd = amount * 18;
+  return Math.floor(vnd / 100000);
 }

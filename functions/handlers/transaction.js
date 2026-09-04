@@ -1432,12 +1432,7 @@ async function createBtRewardSession(uid, data) {
   const merchData = merchSnap.data() || {};
   if (merchData.active === false) throw new Error('가맹점이 비활성화 상태입니다.');
 
-  let btAmount = 0;
-  if (amount >= 1000000) btAmount = 5;
-  else if (amount >= 500000) btAmount = 3;
-  else if (amount >= 300000) btAmount = 2;
-  else if (amount >= 100000) btAmount = 1;
-  else btAmount = 0;
+  const btAmount = Math.floor(amount / 100000);
 
   if (btAmount <= 0) throw new Error('BT 발행 조건 미달입니다.');
 
