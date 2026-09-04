@@ -681,7 +681,7 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
 
     const payResult = {
       txHash,
-      issuedBt: numBtEquivalent,
+      issuedBt: 0,
       merchantName: merchant.name || 'Merchant',
       amountVnd: finalVnd,
       amountKrw: finalKrw
