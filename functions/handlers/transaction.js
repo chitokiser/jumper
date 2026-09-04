@@ -1432,14 +1432,17 @@ async function createBtRewardSession(uid, data) {
   const merchData = merchSnap.data() || {};
   if (merchData.active === false) throw new Error('가맹점이 비활성화 상태입니다.');
 
-  const btAmount = Math.floor(amount / 100000);
-
+  let btAmount = Math.floor(amount / 100000);
   if (btAmount <= 0) throw new Error('BT 발행 조건 미달입니다.');
 
   // Validate merchant's BT balance
   const merchBtBal = Number(merchData.btBalance || 0);
-  if (merchBtBal - btAmount < 50) {
-    throw new Error('가맹점 BT 보유량은 최소 50장을 유지해야 합니다. (BT 충전이 필요합니다.)');
+  if (merchBtBal <= 0) {
+    throw new Error('가맹점 BT 잔고가 0장입니다. (BT 충전이 필요합니다.)');
+  }
+
+  if (btAmount > merchBtBal) {
+    btAmount = merchBtBal; // 가진 모든 BT 지급
   }
 
   const rewardId = 'RW_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
