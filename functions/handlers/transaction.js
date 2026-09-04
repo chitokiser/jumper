@@ -651,16 +651,13 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     let currentJackpotPool = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
     currentJackpotPool += jackpotBonusVnd; // 결제로 발생한 잭팟 기여금을 즉시 풀에 합산 후 추첨
 
-    const numBtEquivalent = Math.floor(finalVnd / 10000);
-
     // 업데이트 적용
     tx.set(jackpotRef, { jackpotAccVnd: currentJackpotPool, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
 
-    // 포인트(Point)와 BT 누적
+    // 포인트(Point) 누적
     // 멘토 보상은 Point로 줍니다
     tx.update(userRef, {
-      pointBalanceVnd: userBalanceVnd - finalVnd,
-      btBalance: admin.firestore.FieldValue.increment(numBtEquivalent)
+      pointBalanceVnd: userBalanceVnd - finalVnd
     });
 
     const txBase = { createdAt: admin.firestore.FieldValue.serverTimestamp(), currency: 'VND', amountKrw: finalKrw, amountVnd: finalVnd, merchantId: Number(merchantId), merchantName: merchant.name || '', txHash };
@@ -1240,66 +1237,84 @@ const exchangePointsToFiat = functions.region('asia-northeast3').https.onCall(as
 // BT 보상 알고리즘 (receiveBtQrFirebase)
 // ────────────────────────────────────────────────
 async function receiveBtQrFirebase(uid, data) {
-  const { merchantId, amount, currency, bt, txHash, nonce } = data;
-  const numBt = Number(bt);
-  if (!merchantId || !numBt || numBt <= 0) throw new Error('유효하지 않은 요청입니다.');
+  // Backward compatibility: if data provides rewardId, use it. Otherwise, return polite error telling them to generate a new QR.
+  const { rewardId, merchantId, bt, nonce } = data;
+  if (!rewardId) {
+    if (merchantId && bt && nonce) {
+      throw new Error('이전 버전의 QR 코드입니다. 가맹점에서 QR을 다시 생성해 주세요.');
+    }
+    throw new Error('유효하지 않은 요청입니다.');
+  }
 
   const db = admin.firestore();
 
   const btResult = await db.runTransaction(async (tx) => {
-    // 1. Transaction Check
-    const checkTxRef = db.collection('transactions').doc(txHash || String(nonce));
+    // 1. Reward Session 검증
+    const rewardRef = db.collection('bt_rewards').doc(rewardId);
+    const rewardSnap = await tx.get(rewardRef);
+    if (!rewardSnap.exists) throw new Error('존재하지 않는 QR 보상입니다.');
+
+    const rwData = rewardSnap.data();
+    if (rwData.status !== 'pending') throw new Error('이미 사용된 QR 코드입니다.');
+    if (rwData.expiresAt.toMillis() < Date.now()) {
+      tx.update(rewardRef, { status: 'expired' });
+      throw new Error('QR 보상 유효기간(10분)이 지났습니다.');
+    }
+
+    // 2. 비정상적인 중복 요청 이중 검증
+    const checkTxRef = db.collection('transactions').doc('RW_CLAIM_' + rewardId);
     const existingTx = await tx.get(checkTxRef);
     if (existingTx.exists) throw new Error('이미 수령한 티켓입니다.');
 
-    // 2. Fetch Entities
+    const merchIdStr = String(rwData.merchantId);
+    const numBt = Number(rwData.btAmount || 0);
+    if (numBt <= 0) throw new Error('BT 수량이 0인 보상입니다.');
+
+    // 3. Fetch Entities
     const userRef = db.collection('users').doc(uid);
-    const merchRef = db.collection('merchants').doc(String(merchantId));
-    const jackpotRef = db.collection('jackpot_config').doc('current');
+    const merchRef = db.collection('merchants').doc(merchIdStr);
 
-    const [userSnap, merchSnap, jackpotSnap] = await Promise.all([
-      tx.get(userRef), tx.get(merchRef), tx.get(jackpotRef)
+    const [userSnap, merchSnap] = await Promise.all([
+      tx.get(userRef), tx.get(merchRef)
     ]);
-    if (!userSnap.exists) throw new Error('유저 정보가 없습니다.');
-    const userData = userSnap.data();
 
-    // 3. Deduct Merchant BT Balance
+    if (!userSnap.exists) throw new Error('유저 정보가 없습니다.');
+    if (!merchSnap.exists) throw new Error('가맹점 정보가 없습니다.');
+
+    // 4. Deduct Merchant BT Balance
     const merchData = merchSnap.data() || {};
     const merchBtBal = Number(merchData.btBalance) || 0;
-    if (merchBtBal - numBt < 50) throw new Error('가맹점 BT 보유량은 최소 50장을 유지해야 합니다. (BT 충전이 필요합니다.)');
+    if (merchBtBal < numBt) throw new Error('가맹점의 BT 잔고가 부족하여 지급할 수 없습니다.');
+
     tx.set(merchRef, { btBalance: merchBtBal - numBt }, { merge: true });
 
-    // 4. BT Reward Algorithm 
-    let currentJackpotPool = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
-
-    // Update DB
-    tx.set(jackpotRef, { jackpotAccVnd: currentJackpotPool, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-
-    // BT 적립만 진행 (아이템, 잭팟 당첨은 BT를 소모해서 별도로 진행)
+    // 5. Update User BT
     tx.update(userRef, {
       btBalance: admin.firestore.FieldValue.increment(numBt)
     });
 
-    const merchName = merchData.name || '';
+    // 6. Update Reward Session & Transactions
+    tx.update(rewardRef, { status: 'claimed', claimedBy: uid, claimedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+    const merchName = merchData.name || rwData.merchantName || '';
     tx.set(checkTxRef, {
-      uid, type: 'receive_bt', merchantId: Number(merchantId), merchantName: merchName,
-      bt: numBt,
-      amountVnd: 0, amountKrw: 0,
-      txHash, createdAt: admin.firestore.FieldValue.serverTimestamp()
+      uid, type: 'receive_bt', merchantId: Number(rwData.merchantId), merchantName: merchName,
+      bt: numBt, amountVnd: rwData.amountVnd || 0,
+      rewardId, createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    const btResult = {
+    return {
       success: true,
-      txHash,
+      txHash: checkTxRef.id,
       btReceived: numBt,
       merchantName: merchName,
+      amountVnd: rwData.amountVnd || 0,
     };
-    return btResult;
   });
 
   // EXP 부여: BT 1개당 100 EXP (트랜잭션 외부)
   try {
-    const btExpAmt = numBt * 100;
+    const btExpAmt = btResult.btReceived * 100;
     if (btExpAmt > 0) await expH.grantExp(uid, btExpAmt, 'bt');
   } catch (_) { /* EXP 실패해도 BT 수령 영향 없음 */ }
 
@@ -1401,7 +1416,59 @@ async function consumeUserBtFirebase(data, context) {
   });
 }
 
+async function createBtRewardSession(uid, data) {
+  const { amount } = data; // VND
+  if (!amount || amount < 100000) throw new Error('BT 발행 가능한 최소 결제 금액은 100,000동 이상입니다.');
+
+  const db = admin.firestore();
+
+  const userSnap = await db.collection('users').doc(uid).get();
+  if (!userSnap.exists) throw new Error('가맹점(유저) 정보가 없습니다.');
+  const merchantId = userSnap.data().merchantId;
+  if (!merchantId) throw new Error('판매회원으로 등록된 가맹점이 아닙니다.');
+
+  const merchSnap = await db.collection('merchants').doc(String(merchantId)).get();
+  if (!merchSnap.exists) throw new Error('가맹점 등록 정보가 존재하지 않습니다.');
+  const merchData = merchSnap.data() || {};
+  if (merchData.active === false) throw new Error('가맹점이 비활성화 상태입니다.');
+
+  let btAmount = 0;
+  if (amount >= 1000000) btAmount = 5;
+  else if (amount >= 500000) btAmount = 3;
+  else if (amount >= 300000) btAmount = 2;
+  else if (amount >= 100000) btAmount = 1;
+  else btAmount = 0;
+
+  if (btAmount <= 0) throw new Error('BT 발행 조건 미달입니다.');
+
+  // Validate merchant's BT balance
+  const merchBtBal = Number(merchData.btBalance || 0);
+  if (merchBtBal - btAmount < 50) {
+    throw new Error('가맹점 BT 보유량은 최소 50장을 유지해야 합니다. (BT 충전이 필요합니다.)');
+  }
+
+  const rewardId = 'RW_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+
+  // 10분 만료
+  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000);
+
+  await db.collection('bt_rewards').doc(rewardId).set({
+    rewardId,
+    merchantId,
+    merchantName: merchData.name || '가맹점',
+    merchantOwnerUid: uid,
+    amountVnd: amount,
+    btAmount,
+    status: 'pending', // pending | claimed | expired
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt,
+  });
+
+  return { rewardId, btAmount, merchantId, expiresAt: expiresAt.toMillis() };
+}
+
 module.exports = {
+  createBtRewardSession,
   receiveBtQrFirebase,
   consumeUserBtFirebase,
 

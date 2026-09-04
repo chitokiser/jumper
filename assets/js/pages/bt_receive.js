@@ -177,7 +177,10 @@ function bindPayButton() {
 
     try {
       const payFn = httpsCallable(functions, "receiveBtQrFirebase");
-      const payload = { merchantId, amount, currency, bt, txHash: String(nonce), nonce };
+      const payload = {
+        rewardId: params.get("rewardId"),
+        merchantId, amount, currency, bt, txHash: String(nonce), nonce
+      };
       const res = await payFn(payload);
       const d = res.data;
 

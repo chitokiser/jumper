@@ -292,7 +292,7 @@ function addReceiptItem(data, isNew = false) {
 }
 
 // ── QR 생성 ────────────────────────────────────────────
-function generateQr(merchantId, merchantName, amount, currency = "KRW", mode = "pay") {
+async function generateQr(merchantId, merchantName, amount, currency = "KRW", mode = "pay") {
   const canvas = $("qrCanvas");
   if (!canvas) return;
 
@@ -302,10 +302,26 @@ function generateQr(merchantId, merchantName, amount, currency = "KRW", mode = "
 
   let url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
   if (mode === "bt") {
-    const btTokens = getBtAmount(amount, currency);
-    url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btTokens}&nonce=${Date.now()}`;
-  }
+    // Generate reward session on the server
+    const btnGen = $("btnGenQr");
+    if (btnGen) { btnGen.disabled = true; btnGen.textContent = "QR 생성 중..."; }
 
+    try {
+      const { httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js");
+      const { functions } = await import("/assets/js/firebase-init.js");
+      const createSession = httpsCallable(functions, "createBtRewardSession");
+      const res = await createSession({ amount });
+      const { rewardId, btAmount } = res.data;
+
+      url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btAmount}&rewardId=${rewardId}&nonce=${Date.now()}`;
+      setText("qrCardAmount", `BT 보상 (${btAmount}장)`);
+    } catch (err) {
+      if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT 무료 보상 QR 생성"; }
+      alert("BT QR 생성 오류: " + (err?.message || "서버 통신 실패"));
+      return;
+    }
+    if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT 무료 보상 QR 생성"; }
+  }
 
   // qrcode.js (CDN) API
   /* global QRCode */

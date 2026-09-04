@@ -824,7 +824,14 @@ exports.payMerchantFirebase = onCall(
 exports.receiveBtQrFirebase = onCall(
   wrapError(async (request) => {
     requireAuth(request);
-    return await txH.receiveBtQrFirebase(request.data, { auth: request.auth });
+    return await txH.receiveBtQrFirebase(request.auth.uid, request.data);
+  })
+);
+
+exports.createBtRewardSession = onCall(
+  wrapError(async (request) => {
+    requireAuth(request);
+    return await txH.createBtRewardSession(request.auth.uid, request.data);
   })
 );
 
