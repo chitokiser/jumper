@@ -404,14 +404,22 @@
 
     <script type="module">
         import { db } from '/assets/js/firestore-bridge.js';
-        import { collection, query, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+        import { collection, query, orderBy, limit, getDocs, doc, getDoc, updateDoc, increment, addDoc, serverTimestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
         import { functions } from '/assets/js/firebase-init.js';
         import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
-        // Header 임시 로드
-        fetch('/partials/header.html').then(r => r.text()).then(html => {
-            document.getElementById('header-placeholder').innerHTML = html;
-        });
+        const urlParams = new URLSearchParams(window.location.search);
+        const specificId = urlParams.get('id');
+        const isWhitelabel = urlParams.get('whitelabel') === 'true';
+
+        // Header / Footer 임시 로드 (화이트라벨 모드 시 숨김 처리)
+        if (!isWhitelabel) {
+            fetch('/partials/header.html').then(r => r.text()).then(html => {
+                document.getElementById('header-placeholder').innerHTML = html;
+            });
+        } else {
+            document.getElementById('header-placeholder').style.display = 'none';
+        }
 
         const container = document.getElementById('webzine-container');
         const loading = document.getElementById('loading-spinner');
@@ -529,6 +537,49 @@
                 randomImgUrl = fallbackImages[safeIdx];
             }
 
+            let shareBoxHtml = '';
+            let returnBtnHtml = '';
+
+            // 화이트라벨(민감 가맹점) 모드일 때는 K-MOA 특정 문구 "포인트 받으세요!"와 메인으로 돌아가는 버튼을 안 보이게 숨김
+            if (!isWhitelabel) {
+                shareBoxHtml = `
+                    <div class="share-box mt-5" style="border-top:2px solid #f3f4f6; padding-top:2rem;">
+                      <div class="share-title" style="font-size:1.1rem; font-weight:700;">💖 이 기사가 마음에 드셨나요? 친구들에게 공유하고 포인트 받으세요! (1000P 지급)</div>
+                      <div class="share-buttons" style="display:flex; flex-wrap:wrap; gap:12px; margin-top:20px;">
+                        <button class="btn-share share-native" onclick="window.nativeShare('${id}', '${shareTitle}', '${shareUrl}')" title="기타 미디어 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#007bff; font-size:1.2rem;"><i class="fa-solid fa-share-nodes"></i></button>
+                        <button class="btn-share share-kakao" onclick="window.shareKakao('${id}', '${shareTitle}', '${shareUrl}')" title="카카오톡 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:#3a2929; background:#FEE500; font-size:1.2rem;"><i class="fa-solid fa-comment"></i></button>
+                        <button class="btn-share share-facebook" onclick="window.recordShare('${id}', 'facebook'); window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent('${shareUrl}'))" title="페이스북 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#1877f2; font-size:1.2rem;"><i class="fa-brands fa-facebook-f"></i></button>
+                        <button class="btn-share share-link" onclick="window.copyLink('${id}', '${shareUrl}')" title="링크 복사" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#6c757d; font-size:1.2rem;"><i class="fa-solid fa-link"></i></button>
+                      </div>
+                    </div>
+                `;
+                returnBtnHtml = `
+                    <div class="text-center mt-5">
+                       <a href="/kca_webzine.html" class="btn btn-outline-secondary px-4 py-2" style="border-radius:20px; font-weight:600;"><i class="fa-solid fa-list me-2"></i>목록으로 돌아가기</a>
+                    </div>
+                `;
+            } else {
+                // 화이트라벨 모드용 깔끔한 공유 기능 
+                shareBoxHtml = `
+                    <div class="share-box mt-5" style="border-top:1px solid #eee; padding-top:2rem;">
+                      <div class="share-title text-muted fw-bold">공유하기</div>
+                      <div class="share-buttons" style="display:flex; gap:12px; margin-top:15px;">
+                        <button class="btn-share share-link" onclick="window.copyLink('${id}', '${shareUrl}')" title="링크 복사" style="width:40px; height:40px; border-radius:50%; border:none; color:white; background:#6c757d; font-size:1rem;"><i class="fa-solid fa-link"></i></button>
+                        <button class="btn-share share-native" onclick="window.nativeShare('${id}', '${shareTitle}', '${shareUrl}')" title="공유하기" style="width:40px; height:40px; border-radius:50%; border:none; color:white; background:#007bff; font-size:1rem;"><i class="fa-solid fa-share-nodes"></i></button>
+                      </div>
+                    </div>
+                `;
+            }
+
+            // 좋아요 & 댓글 UI
+            const reactionsHtml = `
+                <div class="d-flex align-items-center gap-2 mt-5">
+                    <button class="btn btn-outline-danger rounded-pill px-4" onclick="window.likeArticle('${id}')">
+                        <i class="fa-solid fa-heart me-1"></i> <span id="like-count-${id}">${data.likeCount || 0}</span>
+                    </button>
+                </div>
+            `;
+
             articleEl.innerHTML = `
         <div class="webzine-detail-header">
             <div class="merchant-badge mb-3 d-inline-block" style="font-size:1.1rem; padding:8px 16px;"><i class="fa-solid fa-store me-2"></i>${data.merchantName || '제휴점'}</div>
@@ -543,42 +594,29 @@
               ${data.webzineBody || data.webzineContent || '기사 내용이 없습니다.'}
             </div>
 
-            <div class="share-box mt-5" style="border-top:2px solid #f3f4f6; padding-top:2rem;">
-              <div class="share-title" style="font-size:1.1rem; font-weight:700;">💖 이 기사가 마음에 드셨나요? 친구들에게 공유하고 포인트 받으세요! (1000P 지급)</div>
-              <div class="share-buttons" style="display:flex; flex-wrap:wrap; gap:12px; margin-top:20px;">
-                <button class="btn-share share-native" onclick="window.nativeShare('${id}', '${shareTitle}', '${shareUrl}')" title="기타 미디어 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#007bff; font-size:1.2rem;">
-                  <i class="fa-solid fa-share-nodes"></i>
-                </button>
-                <button class="btn-share share-kakao" onclick="window.shareKakao('${id}', '${shareTitle}', '${shareUrl}')" title="카카오톡 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:#3a2929; background:#FEE500; font-size:1.2rem;">
-                  <i class="fa-solid fa-comment"></i>
-                </button>
-                <button class="btn-share share-tiktok" onclick='window.openShortsModal("${id}", ${shortsJson}, "tiktok")' title="틱톡 전용 텍스트 복사" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#000; box-shadow:1px 1px 0 #00f0ff, -1px -1px 0 #ff0050; font-size:1.2rem;">
-                  <i class="fa-brands fa-tiktok"></i>
-                </button>
-                <button class="btn-share share-instagram" onclick='window.openShortsModal("${id}", ${shortsJson}, "instagram")' title="인스타그램 텍스트 복사" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); font-size:1.2rem;">
-                  <i class="fa-brands fa-instagram"></i>
-                </button>
-                <button class="btn-share share-facebook" onclick="window.recordShare('${id}', 'facebook'); window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent('${shareUrl}'))" title="페이스북 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#1877f2; font-size:1.2rem;">
-                  <i class="fa-brands fa-facebook-f"></i>
-                </button>
-                <button class="btn-share share-twitter" onclick="window.recordShare('${id}', 'twitter'); window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent('${shareTitle}')+'&url='+encodeURIComponent('${shareUrl}'))" title="X 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#000; font-size:1.2rem;">
-                  <i class="fa-brands fa-x-twitter"></i>
-                </button>
-                <button class="btn-share share-telegram" onclick="window.recordShare('${id}', 'telegram'); window.open('https://t.me/share/url?url='+encodeURIComponent('${shareUrl}')+'&text='+encodeURIComponent('${shareTitle}'))" title="텔레그램 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#0088cc; font-size:1.2rem;">
-                  <i class="fa-brands fa-telegram"></i>
-                </button>
-                <button class="btn-share share-link" onclick="window.copyLink('${id}', '${shareUrl}')" title="링크 복사" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#6c757d; font-size:1.2rem;">
-                  <i class="fa-solid fa-link"></i>
-                </button>
-              </div>
-            </div>
-            <div class="text-center mt-5">
-               <a href="/kca_webzine.html" class="btn btn-outline-secondary px-4 py-2" style="border-radius:20px; font-weight:600;"><i class="fa-solid fa-list me-2"></i>목록으로 돌아가기</a>
-            </div>
+            ${reactionsHtml}
+            ${shareBoxHtml}
+            ${returnBtnHtml}
         </div>
       `;
             container.appendChild(articleEl);
         }
+
+        // --- 좋아요 반응 처리 기능 ---
+        window.likeArticle = async function (webzineId) {
+            try {
+                const docRef = doc(db, 'kca_webzine', webzineId);
+                await updateDoc(docRef, {
+                    likeCount: increment(1)
+                });
+                const countSpan = document.getElementById(`like-count-${webzineId}`);
+                if (countSpan) countSpan.innerText = parseInt(countSpan.innerText) + 1;
+                // 하트 애니메이션이나 알림
+            } catch (err) {
+                console.error('좋아요 실패:', err);
+                alert("처리 중 오류가 발생했습니다.");
+            }
+        };
 
         // 보상 지급 호출 함수
         window.recordShare = async function (webzineId, platform) {
@@ -665,10 +703,7 @@
             });
         });
 
-        // URL 파라미터로 단일 기사만 불러올 경우 처리
-        const urlParams = new URLSearchParams(window.location.search);
-        const specificId = urlParams.get('id');
-
+        // 하단 specificId 체크문 (위에서 선언됨)
         if (specificId) {
             import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js').then((module) => {
                 const getDoc = module.getDoc;

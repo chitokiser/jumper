@@ -104,14 +104,19 @@ K-MOA 관리자에서 [AI 기사 쓰기]를 통해 멋지게 완성된 나의 �
       "excerpt": "최근 한류의 열풍과 더불어 K-푸드가 큰 사랑을 받고 있습니다. 그 중에서도 한국의 소울푸드인 김치를 전문적으로...",
       "thumbnailUrl": "https://loremflickr.com/800/600/kimchi?lock=153",
       "viewCount": 0,
+      "likeCount": 15,
+      "shareCount": 4,
       "readUrl": "https://kmoa.netlify.app/kca_webzine.html?id=docId_8x2c9",
+      "whitelabelUrl": "https://kmoa.netlify.app/kca_webzine.html?id=docId_8x2c9&whitelabel=true",
       "publishedAt": "2026-09-05T15:20:00.000Z"
     }
   ]
 }
 ```
 
-*(💡 `excerpt`로 홈페이지에서 한 줄 요약 프리뷰를 보여주고, 사용자가 클릭하면 바로 `readUrl`을 띄워 아름다운 AI 기사 전체 화면으로 이동시키면 완벽합니다!)*
+### 🎯 API 활용 및 "화이트라벨(무상표)" 모드 적용 팁
+- **소비자 반응 확인:** 새롭게 추가된 `likeCount` (좋아요) 및 `shareCount` (공유 횟수) 데이터를 통해, 기사에 대한 소비자들의 실제 반응을 가맹점 홈페이지에서 자체적으로 통계/표출할 수 있습니다.
+- **K-MOA 흔적 지우기 (Whitelabel 모드):** API 응답값에 포함된 `whitelabelUrl`을 홈페이지 프레임(iframe)이나 버튼 링크로 연결해보세요. 접속 시 K-MOA 로고, 상단 메뉴, 그리고 "포인트 지급" 같은 특정 플랫폼 문구가 전부 감쪽같이 숨겨집니다. 오직 순수한 가맹점 브랜드 매거진으로만 보이게 되어, 브랜드 독립성에 민감한 점주님들도 안심하고 사용할 수 있습니다.
 
 ---
 ### 🔒 에러(오류) 처리 가이드

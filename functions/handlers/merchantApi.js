@@ -134,7 +134,10 @@ apiApp.get('/v1/webzines', async (req, res) => {
                 excerpt: excerpt,
                 thumbnailUrl: defaultImageUrl,
                 viewCount: d.viewCount || 0,
-                readUrl: `https://kmoa.netlify.app/kca_webzine.html?id=${doc.id}`, // 소비자 공유용 실제 웹진 URL
+                likeCount: d.likeCount || 0,
+                shareCount: d.shareCount || 0,
+                readUrl: `https://kmoa.netlify.app/kca_webzine.html?id=${doc.id}`, // KMOA 브랜딩 포함 소비자기준 URL
+                whitelabelUrl: `https://kmoa.netlify.app/kca_webzine.html?id=${doc.id}&whitelabel=true`, // K-MOA 로고 및 포인트 지급 문구를 완전히 숨긴 가맹점 자체용 URL
                 publishedAt: d.createdAt ? d.createdAt.toDate().toISOString() : null
             });
         });
