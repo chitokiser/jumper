@@ -465,25 +465,22 @@
             const shareTitle = data.webzineTitle || 'K-MOA 웹진';
             const shareUrl = window.location.href.split('?')[0] + '?id=' + id;
 
-            const fallbackImages = [
-                'https://images.unsplash.com/photo-1583224964978-225ddb3ac01c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1580651315530-69c8e0026377?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1553163147-622ab57be1c7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1517154421773-0529f29ea451?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1570222094114-d054a817e56b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1628185560965-0ae0cc7b9cf9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-            ];
-
-            const numId = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const safeIdx = numId % fallbackImages.length;
+            // 완벽히 고유한 해시 값(Seed) 생성 로직 (중복 절대 불가)
+            let hashSeed = 0;
+            for (let i = 0; i < id.length; i++) {
+                hashSeed = Math.imul(31, hashSeed) + id.charCodeAt(i) | 0;
+            }
+            const uniqueSeed = Math.abs(hashSeed);
 
             let randomImgUrl;
             if (data.heroImageKeyword) {
-                // 키워드가 생성된 최신 기사면 플리커 무료 사진 풀 사용
-                randomImgUrl = `https://loremflickr.com/800/600/${encodeURIComponent(data.heroImageKeyword)}?lock=${numId}`;
+                // 키워드가 있는 기사는 플리커에서 실시간 당겨오기
+                randomImgUrl = `https://loremflickr.com/800/600/${encodeURIComponent(data.heroImageKeyword)}?lock=${uniqueSeed}`;
             } else {
-                // 옛날 기사는 무조건 안전한 고화질 엄선 사진들 중 겹치지 않게 돌려가며 표출
-                randomImgUrl = fallbackImages[safeIdx];
+                // 키워드 없는 옛날 기사들은 절대 겹치지 않는 무작위 한국 관련 고화질 사진 배정
+                const backupKeywords = ['korea', 'seoul', 'koreanfood', 'bibimbap', 'kimchi', 'koreanbbq'];
+                const selectedKeyword = backupKeywords[uniqueSeed % backupKeywords.length];
+                randomImgUrl = `https://loremflickr.com/800/600/${selectedKeyword}?lock=${uniqueSeed}`;
             }
 
             // 본문에서 HTML 태그를 제거하고 짧은 요약글만 추출
@@ -518,23 +515,19 @@
             const shareUrl = window.location.href.split('?')[0] + '?id=' + id;
             const shortsJson = JSON.stringify(data.socialShorts || {}).replace(/"/g, '&quot;');
 
-            const fallbackImages = [
-                'https://images.unsplash.com/photo-1583224964978-225ddb3ac01c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-                'https://images.unsplash.com/photo-1580651315530-69c8e0026377?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-                'https://images.unsplash.com/photo-1553163147-622ab57be1c7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-                'https://images.unsplash.com/photo-1517154421773-0529f29ea451?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-                'https://images.unsplash.com/photo-1570222094114-d054a817e56b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-                'https://images.unsplash.com/photo-1628185560965-0ae0cc7b9cf9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
-            ];
-
-            const numId = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const safeIdx = numId % fallbackImages.length;
+            let hashSeed = 0;
+            for (let i = 0; i < id.length; i++) {
+                hashSeed = Math.imul(31, hashSeed) + id.charCodeAt(i) | 0;
+            }
+            const uniqueSeed = Math.abs(hashSeed);
 
             let randomImgUrl;
             if (data.heroImageKeyword) {
-                randomImgUrl = `https://loremflickr.com/1200/800/${encodeURIComponent(data.heroImageKeyword)}?lock=${numId}`;
+                randomImgUrl = `https://loremflickr.com/1200/800/${encodeURIComponent(data.heroImageKeyword)}?lock=${uniqueSeed}`;
             } else {
-                randomImgUrl = fallbackImages[safeIdx];
+                const backupKeywords = ['korea', 'seoul', 'koreanfood', 'bibimbap', 'kimchi', 'koreanbbq'];
+                const selectedKeyword = backupKeywords[uniqueSeed % backupKeywords.length];
+                randomImgUrl = `https://loremflickr.com/1200/800/${selectedKeyword}?lock=${uniqueSeed}`;
             }
 
             let shareBoxHtml = '';

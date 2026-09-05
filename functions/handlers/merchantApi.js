@@ -118,11 +118,20 @@ apiApp.get('/v1/webzines', async (req, res) => {
             const d = doc.data();
 
             // 이미지 추출 로직 (본 예시에서는 프론트와 유사하게 keyword 또는 배열 방식 적용)
-            const keyword = d.heroImageKeyword ? encodeURIComponent(d.heroImageKeyword) : 'korean';
-            const seed = doc.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const defaultImageUrl = d.heroImageKeyword
-                ? `https://loremflickr.com/800/600/${keyword}?lock=${seed}`
-                : `https://images.unsplash.com/photo-1583224964978-225ddb3ac01c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80`; // 안전 썸네일 폴백 방어
+            let hashSeed = 0;
+            for (let i = 0; i < doc.id.length; i++) {
+                hashSeed = Math.imul(31, hashSeed) + doc.id.charCodeAt(i) | 0;
+            }
+            const uniqueSeed = Math.abs(hashSeed);
+
+            let defaultImageUrl;
+            if (d.heroImageKeyword) {
+                defaultImageUrl = `https://loremflickr.com/800/600/${encodeURIComponent(d.heroImageKeyword)}?lock=${uniqueSeed}`;
+            } else {
+                const backupKeywords = ['korea', 'seoul', 'koreanfood', 'bibimbap', 'kimchi', 'koreanbbq'];
+                const selectedKeyword = backupKeywords[uniqueSeed % backupKeywords.length];
+                defaultImageUrl = `https://loremflickr.com/800/600/${selectedKeyword}?lock=${uniqueSeed}`;
+            }
 
             // 본문 요약
             const plainText = (d.webzineBody || d.webzineContent || '').replace(/<[^>]+>/g, '');
