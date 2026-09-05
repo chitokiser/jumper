@@ -73,16 +73,13 @@ async function init() {
             const emailHtml = d.email ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">?됵툘 ${d.email}</div>` : '';
 
             card.innerHTML = `
-          <div class="mc-card-inner">
+          <div class="mc-card-hero">
               <div class="mc-card-badge">??? ${btCount} BT</div>
-              
-              <div class="mc-card-header-inner">
-                  <img src="${logoUrl}" alt="${d.name}" class="mc-card-logo">
-                  <div>
-                      <div class="mc-card-name">${d.name || "이름 없음"}</div>
-                      <div class="mc-card-career">${d.career || "미분류"} <span class="mc-card-region">${d.region || ""}</span></div>
-                  </div>
-              </div>
+              <img src="${logoUrl}" alt="${d.name}" class="mc-card-hero-img">
+          </div>
+          <div class="mc-card-inner">
+              <div class="mc-card-name">${d.name || "이름 없음"}</div>
+              <div class="mc-card-career">${d.career || "미분류"} <span class="mc-card-region">${d.region || ""}</span></div>
               
               <div class="mc-card-stats">
                  <span title="고객 리뷰">?? ${reviews}</span>
@@ -144,4 +141,5 @@ if (document.readyState === "loading") {
 } else {
     init();
 }
+
 
