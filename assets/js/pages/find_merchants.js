@@ -42,7 +42,7 @@ async function init() {
             disableDefaultUI: false,
         });
     } else {
-        if (mapEl) mapEl.innerHTML = "ì§€ë„ ì •ë³´ë¥¼ ë¶ˆëŸ¬ì˜¬ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.";
+        if (mapEl) mapEl.innerHTML = "ì§€???•ë³´ë¥?ë¶ˆëŸ¬?????†ìŠµ?ˆë‹¤.";
     }
 
     try {
@@ -51,7 +51,7 @@ async function init() {
         const grid = $("merchantGrid");
 
         if (snap.empty) {
-            grid.innerHTML = "<div style='color:#888; font-size:0.9rem; padding: 20px;'>ë“±ë¡ëœ ê°€ë§¹ì ì´ ì—†ìŠµë‹ˆë‹¤.</div>";
+            grid.innerHTML = "<div style='color:#888; font-size:0.9rem; padding: 20px;'>?±ë¡??ê°€ë§¹ì ???†ìŠµ?ˆë‹¤.</div>";
             return;
         }
 
@@ -69,36 +69,44 @@ async function init() {
             const likes = d.likeCount || Math.floor(Math.random() * 100);
 
             const logoUrl = d.logoUrl || d.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=150&h=150&q=80";
-            const websiteHtml = d.website ? `<a href="${d.website}" target="_blank" onclick="event.stopPropagation()" style="color:#2563eb; text-decoration:none;"><i class="fa-solid fa-globe me-1"></i> í™ˆí˜ì´ì§€ ë°©ë¬¸</a>` : '';
-            const emailHtml = d.email ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">âœ‰ï¸ ${d.email}</div>` : '';
+            const websiteHtml = d.website ? `<a href="${d.website}" target="_blank" onclick="event.stopPropagation()" style="color:#2563eb; text-decoration:none;"><i class="fa-solid fa-globe me-1"></i> ?ˆí˜?´ì? ë°©ë¬¸</a>` : '';
+            const emailHtml = d.email ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">?‰ï¸ ${d.email}</div>` : '';
 
             card.innerHTML = `
-          <div style="display:flex; gap:16px; align-items:flex-start;">
-              <img src="${logoUrl}" alt="${d.name}" style="width:64px; height:64px; border-radius:12px; object-fit:cover; border:1px solid #eee; flex-shrink:0;">
-              <div style="flex-grow:1;">
-                  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <div class="mc-card-name" style="font-size:1.1rem; color:#111827;">${d.name || "ì´ë¦„ ì—†ìŒ"}</div>
-                    <div style="font-size:0.75rem; font-weight:bold; color:#d97706; background:#fef3c7; padding:4px 8px; border-radius:12px; white-space:nowrap;">ğŸŸï¸ ${btCount} BT</div>
+          <div class="mc-card-inner">
+              <div class="mc-card-badge">??? ${btCount} BT</div>
+              
+              <div class="mc-card-header-inner">
+                  <img src="${logoUrl}" alt="${d.name}" class="mc-card-logo">
+                  <div>
+                      <div class="mc-card-name">${d.name || "ÀÌ¸§ ¾øÀ½"}</div>
+                      <div class="mc-card-career">${d.career || "¹ÌºĞ·ù"} <span class="mc-card-region">${d.region || ""}</span></div>
                   </div>
-                  <div class="mc-card-career" style="font-weight:600;">${d.career || "ë¯¸ë¶„ë¥˜"} <span style="font-weight:normal; margin-left:4px;" class="mc-card-region">${d.region || ""}</span></div>
               </div>
-          </div>
-          
-          <div style="display:flex; gap:12px; margin: 12px 0; font-size:0.85rem; color:#475569; background:#f8fafc; padding:8px 12px; border-radius:8px;">
-             <span title="ê³ ê° ë¦¬ë·°">ğŸ’¬ ${reviews}</span>
-             <span title="ì¢‹ì•„ìš”">â¤ï¸ ${likes}</span>
-             <span title="KM ê²°ì œ ìˆ˜ìˆ˜ë£Œ" style="color:#10b981; font-weight:bold;">âš¡ ${kmFee}% ì ë¦½</span>
-          </div>
+              
+              <div class="mc-card-stats">
+                 <span title="°í°´ ¸®ºä">?? ${reviews}</span>
+                 <span title="ÁÁ¾Æ¿ä">?? ${likes}</span>
+                 <span title="KM °áÁ¦ ¼ö¼ö·á" style="color:#10b981; font-weight:bold;">? ${kmFee}% Àû¸³</span>
+              </div>
 
-          <div style="margin-top: 10px;">
-              <div class="mc-card-phone" style="font-weight:500;">ğŸ“ ${d.phone || "ë²ˆí˜¸ ë¯¸ë“±ë¡"}</div>
-              ${emailHtml}
-          </div>
-          
-          <div class="mc-card-desc" style="line-height:1.4; margin-top:10px;">${d.desc || ""}</div>
-          
-          <div style="margin-top: 14px; font-size:0.9rem;">
-             ${websiteHtml}
+              <div style="margin-top: 10px;">
+                  <div class="mc-card-info-row">
+                     <i class="fa-solid fa-phone" style="width:16px; text-align:center; color:#94a3b8;"></i> 
+                     <span style="font-weight:600; color:#334155;">${d.phone || "¹øÈ£ ¹Ìµî·Ï"}</span>
+                  </div>
+                  ${d.email ? `<div class="mc-card-info-row"><i class="fa-solid fa-envelope" style="width:16px; text-align:center; color:#94a3b8;"></i> <span>${d.email}</span></div>` : ''}
+              </div>
+              
+              <div class="mc-card-desc">${d.desc || "°¡¸ÍÁ¡ ¼³¸íÀÌ ¾ø½À´Ï´Ù."}</div>
+              
+              ${d.website ? `
+              <div class="mc-card-footer">
+                 <a href="${d.website}" target="_blank" onclick="event.stopPropagation()" class="mc-link-btn">
+                    <i class="fa-solid fa-globe"></i> È¨ÆäÀÌÁö ¹æ¹®
+                 </a>
+              </div>
+              ` : ''}
           </div>
         `;
 
@@ -127,7 +135,7 @@ async function init() {
         }
     } catch (err) {
         console.error("Error fetching merchants:", err);
-        $("merchantGrid").innerHTML = "<div style='color:#e53e3e; font-size:0.9rem; padding: 20px;'>ê°€ë§¹ì  ë°ì´í„°ë¥¼ ë¶ˆëŸ¬ì˜¤ëŠ”ë° ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤: " + err.message + "</div>";
+        $("merchantGrid").innerHTML = "<div style='color:#e53e3e; font-size:0.9rem; padding: 20px;'>ê°€ë§¹ì  ?°ì´?°ë? ë¶ˆëŸ¬?¤ëŠ”???¤íŒ¨?ˆìŠµ?ˆë‹¤: " + err.message + "</div>";
     }
 }
 
@@ -136,3 +144,4 @@ if (document.readyState === "loading") {
 } else {
     init();
 }
+
