@@ -68,22 +68,38 @@ async function init() {
             const reviews = d.reviewCount || Math.floor(Math.random() * 50); // Mock if missing
             const likes = d.likeCount || Math.floor(Math.random() * 100);
 
+            const logoUrl = d.logoUrl || d.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=150&h=150&q=80";
+            const websiteHtml = d.website ? `<a href="${d.website}" target="_blank" onclick="event.stopPropagation()" style="color:#2563eb; text-decoration:none;"><i class="fa-solid fa-globe me-1"></i> 홈페이지 방문</a>` : '';
+            const emailHtml = d.email ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">✉️ ${d.email}</div>` : '';
+
             card.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-            <div class="mc-card-name">${d.name || "이름 없음"}</div>
-            <div style="font-size:0.75rem; font-weight:bold; color:#d97706; background:#fef3c7; padding:2px 8px; border-radius:12px;">🎟️ ${btCount} BT</div>
+          <div style="display:flex; gap:16px; align-items:flex-start;">
+              <img src="${logoUrl}" alt="${d.name}" style="width:64px; height:64px; border-radius:12px; object-fit:cover; border:1px solid #eee; flex-shrink:0;">
+              <div style="flex-grow:1;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div class="mc-card-name" style="font-size:1.1rem; color:#111827;">${d.name || "이름 없음"}</div>
+                    <div style="font-size:0.75rem; font-weight:bold; color:#d97706; background:#fef3c7; padding:4px 8px; border-radius:12px; white-space:nowrap;">🎟️ ${btCount} BT</div>
+                  </div>
+                  <div class="mc-card-career" style="font-weight:600;">${d.career || "미분류"} <span style="font-weight:normal; margin-left:4px;" class="mc-card-region">${d.region || ""}</span></div>
+              </div>
           </div>
-          <div class="mc-card-career">${d.career || "미분류"}</div>
-          <div class="mc-card-region">${d.region || ""}</div>
           
-          <div style="display:flex; gap:10px; margin: 8px 0; font-size:0.8rem; color:#475569;">
+          <div style="display:flex; gap:12px; margin: 12px 0; font-size:0.85rem; color:#475569; background:#f8fafc; padding:8px 12px; border-radius:8px;">
              <span title="고객 리뷰">💬 ${reviews}</span>
              <span title="좋아요">❤️ ${likes}</span>
-             <span title="KM 결제 수수료" style="color:#10b981; font-weight:bold;">⚡ ${kmFee}% 수수료</span>
+             <span title="KM 결제 수수료" style="color:#10b981; font-weight:bold;">⚡ ${kmFee}% 적립</span>
           </div>
 
-          <div class="mc-card-phone">📞 ${d.phone || "번호 미등록"}</div>
-          <div class="mc-card-desc">${d.desc || ""}</div>
+          <div style="margin-top: 10px;">
+              <div class="mc-card-phone" style="font-weight:500;">📞 ${d.phone || "번호 미등록"}</div>
+              ${emailHtml}
+          </div>
+          
+          <div class="mc-card-desc" style="line-height:1.4; margin-top:10px;">${d.desc || ""}</div>
+          
+          <div style="margin-top: 14px; font-size:0.9rem;">
+             ${websiteHtml}
+          </div>
         `;
 
             // Add marker if coordinates exist
