@@ -476,59 +476,25 @@ async function requestLevelUp(uid, masterSecret) {
  * @returns {{ txHash, merchantId }}
  */
 async function registerMerchantOnChain(uid, metadataURI, merchantData, masterSecret) {
-  const userSnap = await db.collection('users').doc(uid).get();
-  const walletData = userSnap.data()?.wallet;
-  if (!walletData?.encryptedKey) throw new Error('수탁 지갑이 없습니다. 먼저 지갑을 생성해 주세요.');
+  // onChain removed as per user request
+  const merchantId = Math.floor(Date.now() / 1000); 
 
-  // onlyMember 조건 사전 확인
-  const provider = getProvider();
-  const platform = getPlatformContract(provider);
-  const [level, , , , blocked] = await platform.members(walletData.address);
-  if (Number(level) === 0) throw new Error('온체인 회원 등록이 필요합니다. 마이페이지에서 먼저 온체인 등록을 완료해 주세요.');
-  if (blocked) throw new Error('차단된 계정입니다. 관리자에게 문의하세요.');
-
-  // 수탁 지갑으로 registerMerchant 호출
-  const privateKey = decrypt(walletData.encryptedKey, masterSecret);
-  const signer = walletFromKey(privateKey, provider);
-  const platformSigner = getPlatformContract(signer);
-
-  const gasLimit = await estimateGasWithBuffer(platformSigner, 'registerMerchant', [metadataURI]);
-  const tx = await platformSigner.registerMerchant(metadataURI, { gasLimit });
-  const receipt = await tx.wait();
-
-  // MerchantRegistered 이벤트에서 merchantId 파싱
-  const iface = platformSigner.interface;
-  let merchantId = null;
-  for (const log of receipt.logs) {
-    try {
-      const parsed = iface.parseLog(log);
-      if (parsed?.name === 'MerchantRegistered') {
-        merchantId = Number(parsed.args.merchantId);
-        break;
-      }
-    } catch { /* 다른 이벤트 로그 무시 */ }
-  }
-  if (merchantId === null) throw new Error('merchantId 파싱 실패: MerchantRegistered 이벤트를 찾을 수 없습니다');
-
-  // Firestore 저장 (merchants/{merchantId})
   await db.collection('merchants').doc(String(merchantId)).set({
     merchantId,
     ownerUid: uid,
-    ownerAddress: walletData.address,
+    ownerAddress: "offchain-" + uid,
     ...merchantData,
-    feeBps: 0,   // 관리자가 이후 1000 (10%) 으로 설정
+    feeBps: 0,
     active: true,
-    txHash: receipt.hash,
+    txHash: "offchain",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  // 유저 문서에 merchantId 기록
   await db.collection('users').doc(uid).set({
-    merchantId,
-    merchantRegisteredAt: admin.firestore.FieldValue.serverTimestamp(),
+    merchantId
   }, { merge: true });
 
-  return { txHash: receipt.hash, merchantId };
+  return { txHash: "offchain", merchantId };
 }
 
 // ────────────────────────────────────────────────

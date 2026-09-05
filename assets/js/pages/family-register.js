@@ -1,5 +1,5 @@
 // /assets/js/pages/family-register.js
-// 판매회원 등록: 온체인 registerMerchant + Firestore 저장
+// 판매회원 등록: 가맹점 등록 + Firestore 저장
 
 import { watchAuth, login } from "../auth.js";
 import { app, auth, db, functions } from "/assets/js/firebase-init.js";
@@ -174,7 +174,7 @@ async function doRegisterMerchant() {
     setStep("step1", "done");
   } catch (err) {
     setStep("step1", "error");
-    throw new Error(err?.message || "온체인 등록 실패");
+    throw new Error(err?.message || "가맹점 등록 실패");
   }
 
   // ② Firestore 저장은 Cloud Function 내부에서 완료됨
@@ -195,7 +195,7 @@ function bindForm() {
     if (btn) { btn.disabled = true; btn.textContent = "등록 중..."; }
 
     try {
-      setState("온체인 등록 중...");
+      setState("가맹점 등록 중...");
       const { txHash, merchantId } = await doRegisterMerchant();
       setState("등록 완료!");
       showDone(merchantId, txHash);
@@ -350,12 +350,7 @@ async function _initForUser(ctx) {
       return;
     }
 
-    // ④ 온체인 등록 미완료
-    if (!userData?.onChain?.registered) {
-      setState("온체인 회원 등록이 필요합니다.");
-      show("needOnChainPanel", true);
-      return;
-    }
+    
 
     // ⑤ 폼 표시
     setState("");
