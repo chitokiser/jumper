@@ -420,13 +420,15 @@ async function loadMerchants() {
             <div class="sum-sub">${esc([v.career, v.region, ownerEmail || ("uid:" + (v.ownerUid || "-"))].filter(Boolean).join(" · "))}</div>
             <div class="sum-sub">BT 잔여량: <b style="color:#d946ef;">${v.btBalance || 0} BT</b></div>
           </div>
+            <div class="sum-sub">BT 잔여량: <b style="color:#d946ef;">${v.btBalance || 0} BT</b></div>
+          </div>
           <div class="sum-right">
             ${dormantBadge}
             ${feeBadge}
             <button class="btn btn-sm" type="button" data-act="viewMerchant" data-mid="${esc(mid)}">상세(JSON)</button>
             ${isAdminUser ? `
               <button class="btn btn-sm" type="button" data-act="renameMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || '')}">✏️ 이름변경</button>
-              <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career || '')}" data-region="${esc(v.region || '')}" data-desc="${esc(v.description || '')}">📝 정보수정</button>
+              <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career || '')}" data-region="${esc(v.region || '')}" data-desc="${esc(v.description || '')}" data-note="${esc(v.note || '')}" data-website="${esc(v.website || '')}">📝 정보수정</button>
               ${dormantBtn}
               <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
               <button class="btn btn-sm" type="button" data-act="chargeBt" data-mid="${esc(mid)}">🎟️ BT 충전</button>
@@ -446,6 +448,8 @@ async function loadMerchants() {
             <div class="k">전화</div><div class="v">${esc(fmt(v.phone))}</div>
             <div class="k">카카오ID</div><div class="v">${esc(fmt(v.kakaoId))}</div>
             <div class="k">활성 여부</div><div class="v">${isDormant ? "😴 휴면" : v.active === false ? "비활성" : "활성"}</div>
+            <div class="k">관리자 메모</div><div class="v">${esc(fmt(v.note))}</div>
+            <div class="k">홈페이지/SNS</div><div class="v">${esc(fmt(v.website))}</div>
             <div class="k">수수료 (feeBps)</div><div class="v">${esc(fmt(feeBps))} bps = ${feeBps / 100}%</div>
             <div class="k">ownerUid</div><div class="v" style="word-break:break-all;">${esc(fmt(v.ownerUid))}</div>
             <div class="k">ownerAddress</div><div class="v" style="font-family:monospace;font-size:12px;word-break:break-all;">${esc(fmt(v.ownerAddress))}</div>
@@ -456,7 +460,7 @@ async function loadMerchants() {
           ${isAdminUser ? `
           <div class="row-actions">
             <button class="btn btn-sm" type="button" data-act="renameMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || '')}">✏️ 이름변경</button>
-            <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career || '')}" data-region="${esc(v.region || '')}" data-desc="${esc(v.description || '')}">📝 정보수정</button>
+            <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career || '')}" data-region="${esc(v.region || '')}" data-desc="${esc(v.description || '')}" data-note="${esc(v.note || '')}" data-website="${esc(v.website || '')}">📝 정보수정</button>
             ${dormantBtn}
             <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
             <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:#fef3c7;color:#92400e;">🗺️ 지도 URL 설정</button>
@@ -638,13 +642,15 @@ async function toggleMerchantDormant(mid, isDormant) {
   }
 }
 
-async function editMerchantInfo(mid, career, region, description) {
+async function editMerchantInfo(mid, career, region, description, note, website) {
   if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
 
   const dlgEdit = $("dlgMerchantEdit");
   const inCareer = $("meCareer");
   const inRegion = $("meRegion");
   const inDesc = $("meDesc");
+  const inNote = $("meNote");
+  const inWebsite = $("meWebsite");
   const btnClose = $("dlgMerchantEditClose");
   const btnCancel = $("dlgMerchantEditCancel");
   const form = $("frmMerchantEdit");
@@ -653,6 +659,8 @@ async function editMerchantInfo(mid, career, region, description) {
   inCareer.value = career;
   inRegion.value = region;
   inDesc.value = description;
+  if (inNote) inNote.value = note;
+  if (inWebsite) inWebsite.value = website;
 
   dlgEdit.showModal();
   inCareer.focus();
@@ -669,13 +677,15 @@ async function editMerchantInfo(mid, career, region, description) {
       const c = inCareer.value.trim();
       const r = inRegion.value.trim();
       const d = inDesc.value.trim();
+      const n = inNote ? inNote.value.trim() : "";
+      const w = inWebsite ? inWebsite.value.trim() : "";
       cleanup();
       dlgEdit.close();
-      if (c === career && r === region && d === description) { resolve(); return; }
+      if (c === career && r === region && d === description && n === note && w === website) { resolve(); return; }
       try {
         setState("가맹점 정보 수정 중…");
         await updateDoc(doc(db, "merchants", mid), {
-          career: c, region: r, description: d, updatedAt: serverTimestamp(),
+          career: c, region: r, description: d, note: n, website: w, updatedAt: serverTimestamp(),
         });
         alert("정보가 수정되었습니다.");
         await loadMerchants();
@@ -1826,28 +1836,28 @@ merchantList?.addEventListener("click", async (e) => {
     if (act === "renameMerchant") {
       await renameMerchant(mid, btn.dataset.name || "");
     } else if (act === "editMerchantInfo") {
-      await editMerchantInfo(mid, btn.dataset.career || "", btn.dataset.region || "", btn.dataset.desc || "");
+      await editMerchantInfo(mid, btn.dataset.career || "", btn.dataset.region || "", btn.dataset.desc || "", btn.dataset.note || "", btn.dataset.website || "");
     } else if (act === "toggleDormant") {
       await toggleMerchantDormant(mid, btn.dataset.dormant === "1");
-    } else 
-    if (act === "chargeBt") {
-      e.preventDefault();
-      const mid = btn.dataset.mid;
-      const amtStr = prompt("충전할 BT 개수를 입력하세요 (숫자만, 차감은 마이너스 입력):");
-      if (!amtStr) return;
-      const amt = Number(amtStr);
-      if (!amt || isNaN(amt)) { alert("올바른 숫자를 입력하세요."); return; }
-      
-      try {
-        const fn = httpsCallable(functions, "adminChargeBt");
-        await fn({ merchantId: Number(mid), amount: amt });
-        alert(amt + " BT가 성공적으로 충전되었습니다.");
-        loadMerchants();
-      } catch (err) {
-        alert("충전 실패: " + err.message);
+    } else
+      if (act === "chargeBt") {
+        e.preventDefault();
+        const mid = btn.dataset.mid;
+        const amtStr = prompt("충전할 BT 개수를 입력하세요 (숫자만, 차감은 마이너스 입력):");
+        if (!amtStr) return;
+        const amt = Number(amtStr);
+        if (!amt || isNaN(amt)) { alert("올바른 숫자를 입력하세요."); return; }
+
+        try {
+          const fn = httpsCallable(functions, "adminChargeBt");
+          await fn({ merchantId: Number(mid), amount: amt });
+          alert(amt + " BT가 성공적으로 충전되었습니다.");
+          loadMerchants();
+        } catch (err) {
+          alert("충전 실패: " + err.message);
+        }
+        return;
       }
-      return;
-    }
     if (act === "approveMerchant") {
       await approveMerchant(mid, Number(btn.dataset.feebps) || 0);
     } else if (act === "setMerchantGmap") {

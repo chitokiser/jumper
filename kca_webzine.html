@@ -1,301 +1,693 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>K-CULTURE Webzine | KCA</title>
-    <link rel="stylesheet" href="/assets/css/index.css">
-    <link rel="stylesheet" href="/assets/css/header.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>K-MOA 웹진 | 한국문화와 함께하는 특별한 장소</title>
+
+    <link rel="icon" type="image/png" href="/assets/images/jump/favicon.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/assets/css/app.css" />
+    <link rel="stylesheet" href="/assets/css/header.css" />
+    <link rel="stylesheet" href="/assets/css/footer.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- 카카오톡 공유 SDK -->
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.6.0/kakao.min.js"></script>
+    <script>
+        if (!Kakao.isInitialized()) {
+            Kakao.init('81ae2bc13f9f3dbd9eaaf9cddecc0da8'); // placeholder, can be updated
+        }
+    </script>
+
     <style>
         body {
-            background: #0f172a;
-            color: #e2e8f0;
-            font-family: 'Outfit', sans-serif;
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            background-color: #f8f9fa;
         }
 
-        .webzine-hero {
-            position: relative;
-            padding: 120px 20px 80px;
+        .webzine-header {
+            background: linear-gradient(135deg, #111 0%, #333 100%);
+            color: white;
+            padding: 60px 20px;
             text-align: center;
-            background: linear-gradient(135deg, rgba(88, 28, 135, 0.95) 0%, rgba(30, 58, 138, 0.95) 100%),
-                url('https://images.unsplash.com/photo-1615560416965-0a9e70198e3b?w=1600&q=80') center/cover;
-            overflow: hidden;
+            margin-top: 60px;
         }
 
-        .webzine-hero::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 80px;
-            background: linear-gradient(to top, #0f172a, transparent);
-        }
-
-        .webzine-hero h1 {
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            font-weight: 900;
-            margin-bottom: 20px;
-            background: linear-gradient(to right, #fcd34d, #f87171);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            position: relative;
-            z-index: 10;
-        }
-
-        .webzine-hero p {
-            font-size: 1.25rem;
-            color: #cbd5e1;
-            max-width: 600px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 10;
-        }
-
-        .cat-filter-tabs {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            padding: 20px;
-            margin: 0 auto;
-            max-width: 1180px;
-            width: 100%;
-            box-sizing: border-box;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-
-        .cat-filter-tabs::-webkit-scrollbar {
-            display: none;
-        }
-
-        .cat-tab {
-            padding: 10px 24px;
-            border-radius: 999px;
-            background: rgba(30, 41, 59, 0.7);
-            color: #94a3b8;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 700;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            cursor: pointer;
-            white-space: nowrap;
-            transition: 0.3s;
-        }
-
-        .cat-tab.active {
-            background: #fcd34d;
-            color: #0f172a;
-            border-color: #fcd34d;
-            box-shadow: 0 4px 15px rgba(252, 211, 77, 0.4);
-        }
-
-        .webzine-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 24px;
-            max-width: 1180px;
-            margin: 20px auto 80px;
-            padding: 0 20px;
-            flex: 1;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .wz-card {
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s;
-            display: flex;
-            flex-direction: column;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .wz-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
-            border-color: rgba(252, 211, 77, 0.3);
-        }
-
-        .wz-img {
-            height: 200px;
-            background: #334155;
-            position: relative;
-            background-size: cover;
-            background-position: center;
-        }
-
-        .wz-badge {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            background: rgba(15, 23, 42, 0.8);
-            color: #fcd34d;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 700;
-            backdrop-filter: blur(4px);
-        }
-
-        .wz-body {
-            padding: 20px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .wz-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #f8fafc;
+        .webzine-header h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
             margin-bottom: 10px;
+        }
+
+        .webzine-header p {
+            color: #aaa;
+            font-size: 1.1rem;
+        }
+
+        .article-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            border: none;
+            overflow: hidden;
+            margin-bottom: 30px;
+            transition: transform 0.2s;
+        }
+
+        .article-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .article-cover {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            background: #eee;
+        }
+
+        .article-body {
+            padding: 30px;
+        }
+
+        .article-title {
+            font-weight: 800;
+            font-size: 1.6rem;
+            color: #111;
+            margin-bottom: 15px;
             line-height: 1.4;
         }
 
-        .wz-desc {
-            font-size: 0.95rem;
-            color: #94a3b8;
-            line-height: 1.6;
+        .article-meta {
+            font-size: 0.9rem;
+            color: #888;
             margin-bottom: 20px;
+        }
+
+        .article-content {
+            font-size: 1.05rem;
+            color: #444;
+            line-height: 1.8;
+        }
+
+        .article-content h2,
+        .article-content h3 {
+            font-weight: 700;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            color: #111;
+        }
+
+        .sponsor-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f7ff;
+            border-left: 4px solid #007bff;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .sponsor-box strong {
+            color: #007bff;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* SNS Share Section */
+        .share-section {
+            margin-top: 40px;
+            padding-top: 25px;
+            border-top: 1px solid #eee;
+        }
+
+        .share-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #555;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .share-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-share {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #fff;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-share:hover {
+            transform: scale(1.1);
+            color: #fff;
+        }
+
+        .share-kakao {
+            background-color: #FEE500;
+            color: #000;
+        }
+
+        .share-kakao:hover {
+            background-color: #FFD400;
+            color: #000;
+        }
+
+        .share-facebook {
+            background-color: #1877F2;
+        }
+
+        .share-twitter {
+            background-color: #000000;
+        }
+
+        .share-telegram {
+            background-color: #229ED9;
+        }
+
+        .share-link {
+            background-color: #6c757d;
+        }
+
+        .share-native {
+            background-color: #007bff;
+        }
+
+        .share-instagram {
+            background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+        }
+
+        .shorts-modal .modal-content {
+            border-radius: 16px;
+            border: none;
+        }
+
+        .shorts-textarea {
+            width: 100%;
+            height: 120px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            font-size: 0.95rem;
+            color: #444;
+            resize: none;
+            background: #f9f9f9;
+            margin-bottom: 10px;
+        }
+
+        .btn-copy {
+            font-weight: 600;
+            border-radius: 8px;
+        }
+
+        /* Premium AI Article Typography & Layout */
+        .article-content {
+            margin-top: 20px;
+            line-height: 1.8;
+            color: #374151;
+            font-size: 1.05rem;
+        }
+
+        .article-content h1 {
+            font-size: 1.5rem !important;
+            font-weight: 800;
+            color: #111827;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f3f4f6;
+            padding-bottom: 8px;
+        }
+
+        .article-content h2 {
+            font-size: 1.3rem !important;
+            font-weight: 700;
+            color: #1f2937;
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+
+        .article-content h3 {
+            font-size: 1.15rem !important;
+            font-weight: 700;
+            color: #374151;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .article-content p {
+            margin-bottom: 16px;
+            letter-spacing: -0.01em;
+        }
+
+        .article-content strong {
+            color: #f43f5e;
+            font-weight: 700;
+        }
+
+        .webzine-card {
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .webzine-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .webzine-card-img {
+            width: 100%;
+            height: 240px;
+            object-fit: cover;
+        }
+
+        .webzine-card-body {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .webzine-card-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #111827;
+            margin-bottom: 12px;
+            line-height: 1.4;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
-            line-clamp: 3;
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
-        .wz-footer {
-            margin-top: auto;
+        .webzine-card-excerpt {
+            font-size: 0.95rem;
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            flex-grow: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .webzine-card-footer {
+            border-top: 1px solid #f3f4f6;
+            padding-top: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            padding-top: 15px;
-        }
-
-        .wz-author {
-            font-size: 13px;
-            color: #64748b;
-            font-weight: 600;
-        }
-
-        .wz-date {
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        #siteFooter {
             margin-top: auto;
         }
+
+        .btn-read-more {
+            background: #111827;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-read-more:hover {
+            background: #374151;
+            color: white;
+        }
+
+        .webzine-detail-header {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto 40px;
+        }
+
+        .webzine-detail-img {
+            width: 100%;
+            max-height: 500px;
+            object-fit: cover;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .webzine-detail-content-wrap {
+            max-width: 760px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+        }
     </style>
-  <link rel="manifest" href="/manifest.json">
 </head>
 
 <body>
 
-    <!-- Header -->
-    <div id="siteHeaderContainer">
-        <div id="siteHeader"></div>
+    <!-- Header Placeholder -->
+    <div id="header-placeholder"></div>
+
+    <div class="webzine-header">
+        <div class="container">
+            <h1>K-Culture Webzine</h1>
+            <p>한국 문화의 매력, 그리고 현지의 숨은 명소를 발견하세요.</p>
+        </div>
     </div>
 
-    <section class="webzine-hero">
-        <h1>K-CULTURE WEBZINE</h1>
-        <p>Discover the finest details of Korean culture in Vietnam — Foods, Lifestyle, Beauty & Travel. Experience the
-            taste DNA of Zentaro.</p>
-    </section>
-
-    <div class="cat-filter-tabs" id="catFilterTabs">
-        <button class="cat-tab active" data-cat="all">All</button>
-        <button class="cat-tab" data-cat="food">🍲 K-Food / Zentaro</button>
-        <button class="cat-tab" data-cat="life">🛍️ Lifestyle</button>
-        <button class="cat-tab" data-cat="beauty">💅 Beauty & Wellness</button>
-        <button class="cat-tab" data-cat="travel">✈️ Travel</button>
+    <div class="container py-5" id="webzine-container">
+        <div class="text-center py-5" id="loading-spinner">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3 text-muted">최신 웹진을 불러오는 중입니다...</p>
+        </div>
     </div>
 
-    <div class="webzine-grid" id="webzineGrid">
-        <!-- Rendered via JS -->
+    <!-- Social Shorts Modal -->
+    <div class="modal fade shorts-modal" id="socialShortsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="socialShortsTitle">SNS 공유용 텍스트 복사</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">이 글을 공유할 때 아래 최적화된 텍스트를 함께 붙여넣어 보세요!</p>
+                    <textarea class="shorts-textarea" id="shortsTextarea" readonly></textarea>
+                    <button class="btn btn-primary w-100 btn-copy" id="btnCopyShorts">
+                        <i class="fa-regular fa-copy me-2"></i>텍스트 복사하기
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Footer -->
-    <div id="siteFooter"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
-    <script src="/assets/js/partials.js"></script>
-    <script>
-        const DUMMY_POSTS = [
-            { id: 1, category: 'food', title: 'The Secret DNA of K-Food: Fermentation', desc: 'Dive deep into the biology and flavor profiling of authentic Kimchi with Zentaro Flavor Analyzer.', author: 'Zentaro Lab', date: '2026-09-01', img: 'https://images.unsplash.com/photo-1583224964978-225ddb3ea661?w=600&q=80' },
-            { id: 2, category: 'food', title: 'Top 5 Authentic K-BBQ Spots in Hanoi', desc: 'A curated list of the absolute best Korean barbecue restaurants in the My Dinh district.', author: 'KCA Editor', date: '2026-08-28', img: 'https://images.unsplash.com/photo-1544025162-8ba364edcc51?w=600&q=80' },
-            { id: 3, category: 'beauty', title: 'Why K-Beauty Skincare Routines Work', desc: 'Understanding the 10-step Korean skincare phenomenon and how to adapt it in a tropical climate.', author: 'Beauty Insider', date: '2026-08-20', img: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&q=80' },
-            { id: 4, category: 'life', title: 'Life in My Dinh: The Korean Expats Hub', desc: "Exploring the vibrant community, markets, and cultural exchange happening in Hanoi's K-Town.", author: 'KCA Community', date: '2026-08-15', img: 'https://images.unsplash.com/photo-1555899434-94d1368aa7af?w=600&q=80' },
-            { id: 5, category: 'travel', title: 'A Quick Guide to K-Culture Events in Vietnam', desc: 'From K-Pop concerts to food festivals, here is your calendar for the upcoming season.', author: 'Event Radar', date: '2026-08-10', img: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&q=80' },
-            { id: 6, category: 'food', title: 'Zentaro R&D: Perfecting the Rice Wine', desc: 'The science behind the traditional brewing techniques merged with modern flavor extraction.', author: 'Master Brewer', date: '2026-08-01', img: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=600&q=80' }
-        ];
+    <script type="module">
+        import { db } from '/assets/js/firestore-bridge.js';
+        import { collection, query, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+        import { functions } from '/assets/js/firebase-init.js';
+        import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
-        const grid = document.getElementById('webzineGrid');
-        const tabs = document.querySelectorAll('.cat-tab');
+        // Header 임시 로드
+        fetch('/partials/header.html').then(r => r.text()).then(html => {
+            document.getElementById('header-placeholder').innerHTML = html;
+        });
 
-        function renderPosts(category) {
-            grid.innerHTML = '';
-            const filtered = category === 'all' ? DUMMY_POSTS : DUMMY_POSTS.filter(p => p.category === category);
+        const container = document.getElementById('webzine-container');
+        const loading = document.getElementById('loading-spinner');
+        let currentSocialShorts = null;
 
-            if (filtered.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 60px; color:#94a3b8; font-size:1.1rem; border:1px dashed rgba(255,255,255,0.1); border-radius: 16px;">Coming soon! 🚀</div>';
-                return;
+        let articlesWrapper = document.getElementById('articles-grid');
+        async function loadWebzines() {
+            try {
+                const snap = await getDocs(
+                    query(collection(db, 'kca_webzine'), orderBy('createdAt', 'desc'), limit(12))
+                );
+
+                loading.style.display = 'none';
+
+                if (snap.empty) {
+                    container.innerHTML = `<div class="text-center text-muted py-5">아직 발행된 기사가 없습니다.</div>`;
+                    return;
+                }
+
+                if (!articlesWrapper) {
+                    articlesWrapper = document.createElement('div');
+                    articlesWrapper.className = 'row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4';
+                    articlesWrapper.id = 'articles-grid';
+                    container.appendChild(articlesWrapper);
+                }
+
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    renderArticleCard(docSnap.id, data);
+                });
+            } catch (err) {
+                console.error(err);
+                loading.innerHTML = `<p class="text-danger">웹진 데이터를 불러오는데 실패했습니다.</p>`;
+            }
+        }
+
+        // --- 목록 보기용 (카드 뷰) ---
+        function renderArticleCard(id, data) {
+            const date = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : '방금 전';
+            const articleEl = document.createElement('div');
+            articleEl.className = 'col';
+
+            const shareTitle = data.webzineTitle || 'K-MOA 웹진';
+            const shareUrl = window.location.href.split('?')[0] + '?id=' + id;
+
+            const fallbackImages = [
+                'https://images.unsplash.com/photo-1583224964978-225ddb3ac01c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1580651315530-69c8e0026377?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1553163147-622ab57be1c7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1517154421773-0529f29ea451?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1570222094114-d054a817e56b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1628185560965-0ae0cc7b9cf9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+            ];
+
+            const numId = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const safeIdx = numId % fallbackImages.length;
+
+            let randomImgUrl;
+            if (data.heroImageKeyword) {
+                // 키워드가 생성된 최신 기사면 플리커 무료 사진 풀 사용
+                randomImgUrl = `https://loremflickr.com/800/600/${encodeURIComponent(data.heroImageKeyword)}?lock=${numId}`;
+            } else {
+                // 옛날 기사는 무조건 안전한 고화질 엄선 사진들 중 겹치지 않게 돌려가며 표출
+                randomImgUrl = fallbackImages[safeIdx];
             }
 
-            filtered.forEach(p => {
-                const catLabel = p.category.toUpperCase();
-                grid.innerHTML += `
-          <a class="wz-card" href="javascript:alert('Fetching article ID: ${p.id} from Zentaro API...')">
-            <div class="wz-img" style="background-image: url('${p.img}')">
-              <span class="wz-badge">${catLabel}</span>
+            // 본문에서 HTML 태그를 제거하고 짧은 요약글만 추출
+            const rawBody = data.webzineBody || data.webzineContent || '기사 내용이 없습니다.';
+            const plainText = rawBody.replace(/<[^>]+>/g, '');
+            const excerpt = plainText.substring(0, 100) + (plainText.length > 100 ? '...' : '');
+
+            articleEl.innerHTML = `
+        <div class="webzine-card">
+          <img src="${randomImgUrl}" class="webzine-card-img" alt="Article image" loading="lazy">
+          <div class="webzine-card-body">
+            <div class="merchant-badge mb-2"><i class="fa-solid fa-store me-2"></i>${data.merchantName || '제휴점'}</div>
+            <h5 class="webzine-card-title">${data.webzineTitle}</h5>
+            <div class="text-muted mb-3 small"><i class="fa-regular fa-calendar me-1"></i> ${date}</div>
+            <div class="webzine-card-excerpt">${excerpt}</div>
+            <div class="webzine-card-footer">
+              <span class="text-primary fw-bold small"><i class="fa-solid fa-gem me-1"></i>공유 1000P</span>
+              <a href="${shareUrl}" class="btn-read-more">기사 읽기 & 공유</a>
             </div>
-            <div class="wz-body">
-              <h2 class="wz-title">${p.title}</h2>
-              <p class="wz-desc">${p.desc}</p>
-              <div class="wz-footer">
-                <span class="wz-author">${p.author}</span>
-                <span class="wz-date">${p.date}</span>
+          </div>
+        </div>
+      `;
+            articlesWrapper.appendChild(articleEl);
+        }
+
+        // --- 상세 보기용 ---
+        function renderArticleDetail(id, data) {
+            const date = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : '방금 전';
+            const articleEl = document.createElement('div');
+
+            const shareTitle = data.webzineTitle || 'K-MOA 웹진';
+            const shareUrl = window.location.href.split('?')[0] + '?id=' + id;
+            const shortsJson = JSON.stringify(data.socialShorts || {}).replace(/"/g, '&quot;');
+
+            const fallbackImages = [
+                'https://images.unsplash.com/photo-1583224964978-225ddb3ac01c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1580651315530-69c8e0026377?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1553163147-622ab57be1c7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1517154421773-0529f29ea451?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1570222094114-d054a817e56b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1628185560965-0ae0cc7b9cf9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
+            ];
+
+            const numId = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const safeIdx = numId % fallbackImages.length;
+
+            let randomImgUrl;
+            if (data.heroImageKeyword) {
+                randomImgUrl = `https://loremflickr.com/1200/800/${encodeURIComponent(data.heroImageKeyword)}?lock=${numId}`;
+            } else {
+                randomImgUrl = fallbackImages[safeIdx];
+            }
+
+            articleEl.innerHTML = `
+        <div class="webzine-detail-header">
+            <div class="merchant-badge mb-3 d-inline-block" style="font-size:1.1rem; padding:8px 16px;"><i class="fa-solid fa-store me-2"></i>${data.merchantName || '제휴점'}</div>
+            <h1 class="fw-bold mb-4" style="font-size:2.5rem; color:#111827;">${shareTitle}</h1>
+            <div class="text-muted" style="font-size:1.1rem;"><i class="fa-regular fa-calendar me-1"></i> 발행일: ${date}</div>
+        </div>
+        
+        <img src="${randomImgUrl}" class="webzine-detail-img" alt="Article image">
+        
+        <div class="webzine-detail-content-wrap">
+            <div class="article-content">
+              ${data.webzineBody || data.webzineContent || '기사 내용이 없습니다.'}
+            </div>
+
+            <div class="share-box mt-5" style="border-top:2px solid #f3f4f6; padding-top:2rem;">
+              <div class="share-title" style="font-size:1.1rem; font-weight:700;">💖 이 기사가 마음에 드셨나요? 친구들에게 공유하고 포인트 받으세요! (1000P 지급)</div>
+              <div class="share-buttons" style="display:flex; flex-wrap:wrap; gap:12px; margin-top:20px;">
+                <button class="btn-share share-native" onclick="window.nativeShare('${id}', '${shareTitle}', '${shareUrl}')" title="기타 미디어 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#007bff; font-size:1.2rem;">
+                  <i class="fa-solid fa-share-nodes"></i>
+                </button>
+                <button class="btn-share share-kakao" onclick="window.shareKakao('${id}', '${shareTitle}', '${shareUrl}')" title="카카오톡 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:#3a2929; background:#FEE500; font-size:1.2rem;">
+                  <i class="fa-solid fa-comment"></i>
+                </button>
+                <button class="btn-share share-tiktok" onclick='window.openShortsModal("${id}", ${shortsJson}, "tiktok")' title="틱톡 전용 텍스트 복사" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#000; box-shadow:1px 1px 0 #00f0ff, -1px -1px 0 #ff0050; font-size:1.2rem;">
+                  <i class="fa-brands fa-tiktok"></i>
+                </button>
+                <button class="btn-share share-instagram" onclick='window.openShortsModal("${id}", ${shortsJson}, "instagram")' title="인스타그램 텍스트 복사" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); font-size:1.2rem;">
+                  <i class="fa-brands fa-instagram"></i>
+                </button>
+                <button class="btn-share share-facebook" onclick="window.recordShare('${id}', 'facebook'); window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent('${shareUrl}'))" title="페이스북 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#1877f2; font-size:1.2rem;">
+                  <i class="fa-brands fa-facebook-f"></i>
+                </button>
+                <button class="btn-share share-twitter" onclick="window.recordShare('${id}', 'twitter'); window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent('${shareTitle}')+'&url='+encodeURIComponent('${shareUrl}'))" title="X 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#000; font-size:1.2rem;">
+                  <i class="fa-brands fa-x-twitter"></i>
+                </button>
+                <button class="btn-share share-telegram" onclick="window.recordShare('${id}', 'telegram'); window.open('https://t.me/share/url?url='+encodeURIComponent('${shareUrl}')+'&text='+encodeURIComponent('${shareTitle}'))" title="텔레그램 공유" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#0088cc; font-size:1.2rem;">
+                  <i class="fa-brands fa-telegram"></i>
+                </button>
+                <button class="btn-share share-link" onclick="window.copyLink('${id}', '${shareUrl}')" title="링크 복사" style="width:50px; height:50px; border-radius:50%; border:none; color:white; background:#6c757d; font-size:1.2rem;">
+                  <i class="fa-solid fa-link"></i>
+                </button>
               </div>
             </div>
-          </a>
-        `;
+            <div class="text-center mt-5">
+               <a href="/kca_webzine.html" class="btn btn-outline-secondary px-4 py-2" style="border-radius:20px; font-weight:600;"><i class="fa-solid fa-list me-2"></i>목록으로 돌아가기</a>
+            </div>
+        </div>
+      `;
+            container.appendChild(articleEl);
+        }
+
+        // 보상 지급 호출 함수
+        window.recordShare = async function (webzineId, platform) {
+            try {
+                const claimWebzineShareReward = httpsCallable(functions, 'claimWebzineShareReward');
+                const res = await claimWebzineShareReward({ webzineId, platform });
+                if (res.data && res.data.success) {
+                    alert(`🎉 공유 감사합니다! 기본 포인트 ${res.data.reward}P가 적립되었습니다.`);
+                }
+            } catch (err) {
+                console.log('포인트 지급 스킵:', err.message);
+            }
+        }
+
+        // 네이티브 Web Share
+        window.nativeShare = function (id, title, url) {
+            if (navigator.share) {
+                navigator.share({
+                    title: title,
+                    text: 'K-MOA 웹진에서 흥미로운 기사를 발견했어요!',
+                    url: url
+                }).then(() => window.recordShare(id, 'native')).catch((error) => console.log('공유 실패', error));
+            } else {
+                alert("이 브라우저에서는 공유 기능이 지원되지 않습니다.");
+            }
+        }
+
+        // 카카오톡 공유
+        window.shareKakao = function (id, title, url) {
+            if (window.Kakao && Kakao.isInitialized()) {
+                Kakao.Share.sendDefault({
+                    objectType: 'feed',
+                    content: {
+                        title: title,
+                        description: 'K-MOA 웹진 - 현지의 K-Culture 정보와 혜택을 한눈에!',
+                        imageUrl: 'https://kmoa.netlify.app/assets/images/jump/logo512.png',
+                        link: { mobileWebUrl: url, webUrl: url },
+                    },
+                    buttons: [
+                        { title: '웹진 보러가기', link: { mobileWebUrl: url, webUrl: url } },
+                    ],
+                });
+                window.recordShare(id, 'kakao');
+            } else {
+                alert("카카오톡SDK 초기화 오류");
+            }
+        }
+
+        // 링크 복사
+        window.copyLink = function (id, url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('링크가 복사되었습니다!');
+                window.recordShare(id, 'link');
             });
         }
 
-        // handle initial query string
-        const urlParams = new URLSearchParams(window.location.search);
-        const initialCat = urlParams.get('category') || 'all';
+        // 소셜 숏폼 모달
+        const shortsModalEl = new bootstrap.Modal(document.getElementById('socialShortsModal'));
+        const shortsTextarea = document.getElementById('shortsTextarea');
+        let currentShareId = null;
 
-        tabs.forEach(t => {
-            if (t.dataset.cat === initialCat) t.classList.add('active');
-            else t.classList.remove('active');
+        window.openShortsModal = function (id, shortsData, type) {
+            currentShareId = id;
+            let text = "즐거운 웹진 기사를 확인해보세요!";
+            let typeName = "SNS 공유용";
+            if (shortsData) {
+                if (type === 'instagram' && shortsData.instagram) { text = shortsData.instagram; typeName = "📷 인스타그램용"; }
+                else if (type === 'twitter' && shortsData.twitter) { text = shortsData.twitter; typeName = "트위터용"; }
+                else if (type === 'threads' && shortsData.threads) { text = shortsData.threads; typeName = "스레드용"; }
+                else if (type === 'tiktok' && shortsData.tiktok) { text = shortsData.tiktok; typeName = "🎵 틱톡 캡션용"; }
+            }
 
-            t.addEventListener('click', () => {
-                tabs.forEach(btn => btn.classList.remove('active'));
-                t.classList.add('active');
-                const newCat = t.dataset.cat;
+            shortsTextarea.value = text;
+            document.getElementById('socialShortsTitle').innerText = `${typeName} 텍스트 복사`;
+            shortsModalEl.show();
+        }
 
-                // Update URL cleanly
-                const newUrl = window.location.pathname + (newCat === 'all' ? '' : `?category=${newCat}`);
-                window.history.replaceState({}, '', newUrl);
-
-                renderPosts(newCat);
+        document.getElementById('btnCopyShorts').addEventListener('click', () => {
+            shortsTextarea.select();
+            navigator.clipboard.writeText(shortsTextarea.value).then(() => {
+                alert('텍스트가 성공적으로 복사되었습니다! SNS 앱을 열고 붙여넣기 해주세요.\n\n앱으로 이동 시 사진과 함께 웹진 주소(URL)를 올려주시면 더욱 좋습니다.');
+                shortsModalEl.hide();
+                if (currentShareId) window.recordShare(currentShareId, 'social_shorts');
             });
         });
 
-        renderPosts(initialCat);
+        // URL 파라미터로 단일 기사만 불러올 경우 처리
+        const urlParams = new URLSearchParams(window.location.search);
+        const specificId = urlParams.get('id');
+
+        if (specificId) {
+            import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js').then((module) => {
+                const getDoc = module.getDoc;
+                const docRef = module.doc;
+                getDoc(docRef(db, 'kca_webzine', specificId)).then(docSnap => {
+                    loading.style.display = 'none';
+                    if (docSnap.exists()) {
+                        renderArticleDetail(docSnap.id, docSnap.data());
+                    } else {
+                        container.innerHTML = `<div class="text-center text-muted py-5">해당 기사를 찾을 수 없습니다.</div>`;
+                    }
+                }).catch(err => {
+                    console.error(err);
+                    loading.innerHTML = `< p class="text-danger" > 기사를 불러오는데 실패했습니다.</p >`;
+                });
+            });
+        } else {
+            loadWebzines();
+        }
     </script>
 </body>
 

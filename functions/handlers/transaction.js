@@ -711,7 +711,8 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
       amountVnd: finalVnd,
       amountKrw: finalKrw,
       pointsEarned: totalJackpotReward,
-      isJackpot: totalJackpotReward > 0
+      isJackpot: totalJackpotReward > 0,
+      grade: grade
     };
     return payResult;
   });

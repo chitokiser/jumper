@@ -58,6 +58,7 @@ const rankingsH = require('./handlers/rankings');
 const stockOptionH = require('./handlers/stockOption');
 const starterH = require('./handlers/starter');
 const dailyAreaH = require('./handlers/dailyArea');
+const webzineH = require('./handlers/webzine');
 const npcH = require('./handlers/npcSystem');
 const userPlaceH = require('./handlers/userPlace');
 const expSyncH = require('./handlers/expSync');
@@ -71,6 +72,7 @@ const goldMineH = require('./handlers/goldMine');
 const harborH = require('./handlers/harbor');
 const ledgerH = require('./handlers/ledger');
 const merchantRewardH = require('./handlers/merchantReward');
+const merchantApiApp = require('./handlers/merchantApi');
 const { requireAdmin, ADMIN_EMAILS } = require('./wallet/admin');
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -797,7 +799,34 @@ exports.adminOwnerDepositHex = onCall(
 //     - 순수 파이어베이스 지갑 트랜잭션 (수수료 및 멘토/잭팟 분배 포함)
 //     클라이언트: httpsCallable(functions, 'payMerchantFirebase')({ merchantId: 1, amountKrw: 50000 })
 // ════════════════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════════════════
+// 19-B. 웹진 기사 생성 (AI)
+//     클라이언트: httpsCallable(functions, 'buildWebzineContent')({ merchantId: 1 })
+// ════════════════════════════════════════════════════════════════════════════
+exports.buildWebzineContent = onCall(
+  { timeoutSeconds: 60 },
+  wrapError(async (request) => {
+    const adminUid = requireAuth(request);
+    await requireAdmin(adminUid);
+    return await webzineH.buildWebzineContent(adminUid, request.data ?? {}, process.env.GEMINI_API_KEY);
+  })
+);
+
+
+exports.claimWebzineShareReward = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await webzineH.claimWebzineShareReward(uid, request.data ?? {});
+}));
+
+exports.adminGrantWebzineBonus = onCall(wrapError(async (request) => {
+  const adminUid = requireAuth(request);
+  await requireAdmin(adminUid);
+  return await webzineH.adminGrantWebzineBonus(adminUid, request.data ?? {});
+}));
+
 exports.payMerchantFirebase = onCall(
+
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const { merchantId, amountKrw, amountVnd, currency = 'KRW' } = request.data ?? {};
@@ -2089,11 +2118,10 @@ exports.adminToggleMerchant = onCall(wrapError(async (req) => {
 // ════════════════════════════════════════════════════════════════════════════
 exports.onSupportChatMessage = onDocumentCreated(
   {
-    document: 'support_chats/{uid}/messages/{msgId}',
-    secrets: [geminiSecret],
+    document: 'support_chats/{uid}/messages/{msgId}'
   },
   async (event) => {
-    await supportChatH.onNewSupportMessage(event, geminiSecret.value());
+    await supportChatH.onNewSupportMessage(event, process.env.GEMINI_API_KEY);
   }
 );
 
@@ -3313,3 +3341,5 @@ exports.deleteMyAccount = onCall(
     return { success: true };
   })
 );
+
+exports.merchantApi = onRequest({ cors: true }, merchantApiApp);

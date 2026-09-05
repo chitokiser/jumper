@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>K-MOA 웹진 관리자 (AI 기사 발행기)</title>
+
+    <link rel="stylesheet" href="/assets/css/app.css" />
+    <link rel="stylesheet" href="/assets/css/header.css" />
+    <link rel="stylesheet" href="/assets/css/footer.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+    <link rel="icon" type="image/png" href="/assets/images/jump/favicon.png">
+
+    <script src="/assets/js/partials.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
+    <script src="/assets/js/firebase-init.js"></script>
+
+    <style>
+        .panel {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #fff;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .merchant-item {
+            padding: 12px;
+            border: 1px solid #eee;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .merchant-info {
+            flex: 1;
+        }
+
+        .merchant-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .ai-btn {
+            background: #6366f1;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: bold;
+        }
+
+        .ai-btn:hover {
+            background: #4f46e5;
+        }
+
+        .ai-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .webzine-item {
+            padding: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            background: #fafafa;
+        }
+
+        .webzine-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #111;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="siteHeader"></div>
+
+    <main class="page">
+        <section class="section">
+            <div class="page-h">
+                <h1 class="page-title">매거진/웹진 관리 (AI 발행기)</h1>
+                <p class="page-desc">가맹점 마케팅 지원을 위해 AI가 기사와 SNS 배포용 텍스트를 기획합니다.</p>
+            </div>
+
+            <div class="panel">
+                <h3 style="margin-top:0;">1. 새로 생성하기 (대상 가맹점 선택)</h3>
+                <p class="muted">가맹점 리스트 (Firebase merchants 컬렉션 연동)</p>
+                <div id="merchantListDiv" style="max-height:300px; overflow-y:auto; margin-top:16px;">
+                    로딩 중...
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3 style="margin-top:0;">2. 관리자 보너스 포인트 지급 (웹진 공유 우수자)</h3>
+                <p class="muted">웹진 주소와 해시태그를 활용해 홍보를 잘 해준 유저에게 추가 포인트를 지급합니다.</p>
+                <div style="display:flex; gap:10px; margin-top:16px; align-items:center; flex-wrap:wrap;">
+                    <input type="text" id="targetUidInput" class="input" placeholder="대상 유저 ID (UID) 또는 이메일"
+                        style="width:250px;">
+                    <input type="number" id="bonusAmountInput" class="input" placeholder="지급액 (예: 5000)"
+                        style="width:150px;">
+                    <input type="text" id="targetWebzineId" class="input" placeholder="홍보한 웹진 ID (선택)"
+                        style="width:200px;">
+                </div>
+                <div style="margin-top:10px;">
+                    <input type="text" id="bonusNoteInput" class="input" placeholder="지급 사유 메모 (예: 틱톡 영상 10만뷰 달성)"
+                        style="width:620px;">
+                    <button id="btnGrantBonus" class="ai-btn" style="background:#10b981; margin-left:10px;">포인트
+                        쏘기</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3 style="margin-top:0;">3. 발행된 기사 초안 목록 (kca_webzine)</h3>
+                <button id="btnReloadWebzines" class="ai-btn" style="margin-bottom:16px; background:#475569;"><i
+                        class="fa fa-refresh"></i> 새로고침</button>
+                <div id="webzineListDiv"></div>
+            </div>
+
+        </section>
+    </main>
+
+    <div id="siteFooter"></div>
+
+    <script type="module">
+        import { db, functions, auth } from '/assets/js/firebase-init.js';
+        import { doc, getDoc, collection, getDocs, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+        import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+        import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+
+        let isAdmin = false;
+        let currentUserUid = null;
+
+        async function checkAdmin(user) {
+            try {
+                if (user.email === 'daguri75@gmail.com') return true;
+                const snap = await getDoc(doc(db, 'admins', user.uid));
+                return snap.exists();
+            } catch (e) { return false; }
+        }
+
+        onAuthStateChanged(auth, async user => {
+            if (!user) {
+                alert('로그인 후 이용 가능합니다.');
+                location.href = '/login.html';
+                return;
+            }
+            currentUserUid = user.uid;
+            isAdmin = await checkAdmin(user);
+            if (!isAdmin) {
+                alert('관리자 권한이 없습니다.');
+                location.href = '/';
+                return;
+            }
+
+            loadMerchants();
+            loadWebzines();
+        });
+
+        async function loadMerchants() {
+            const div = document.getElementById('merchantListDiv');
+            div.innerHTML = '로딩 중...';
+            try {
+                const snap = await getDocs(query(collection(db, 'merchants'), limit(30)));
+                if (snap.empty) {
+                    div.innerHTML = '가맹점이 없습니다.';
+                    return;
+                }
+                let html = '';
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    html += `
+                <div class="merchant-item">
+                    <div class="merchant-info">
+                        <div class="merchant-name">${data.name}</div>
+                        <div class="muted" style="font-size:0.9rem;">${data.region || '지역 미상'} | ${data.career || '업종 미상'}</div>
+                    </div>
+                    <button class="ai-btn btn-generate" data-id="${docSnap.id}"><i class="fa-solid fa-wand-magic-sparkles"></i> AI로 기사 쓰기</button>
+                </div>`;
+                });
+                div.innerHTML = html;
+
+                document.querySelectorAll('.btn-generate').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const mId = e.currentTarget.getAttribute('data-id');
+                        await generateWebzine(mId, e.currentTarget);
+                    });
+                });
+            } catch (e) {
+                console.error(e);
+                div.innerHTML = '불러오기 실패';
+            }
+        }
+
+        async function generateWebzine(merchantId, btnEl) {
+            if (!confirm('이 가맹점 정보를 바탕으로 AI 마케팅 기사를 1건 자동 생성하시겠습니까? (Gemini-2.5-Flash 이용)')) return;
+
+            const originalText = btnEl.innerHTML;
+            btnEl.innerText = 'AI가 생각중입니다...';
+            btnEl.disabled = true;
+
+            try {
+                const buildWebzineContent = httpsCallable(functions, 'buildWebzineContent');
+                await buildWebzineContent({ merchantId });
+                alert('기사가 성공적으로 생성되었습니다!');
+                loadWebzines();
+            } catch (err) {
+                console.error(err);
+                alert('생성 실패: ' + err.message);
+            } finally {
+                btnEl.innerHTML = originalText;
+                btnEl.disabled = false;
+            }
+        }
+
+        async function loadWebzines() {
+            const div = document.getElementById('webzineListDiv');
+            div.innerHTML = '로딩 중...';
+            try {
+                const snap = await getDocs(query(collection(db, 'kca_webzine'), orderBy('createdAt', 'desc'), limit(20)));
+                if (snap.empty) {
+                    div.innerHTML = '기록 없음.';
+                    return;
+                }
+                let html = '';
+                snap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    html += `
+                <div class="webzine-item">
+                    <div class="webzine-title">${d.webzineTitle}</div>
+                    <div style="font-size:0.9rem; color:#666; margin-bottom:12px;">제공: ${d.merchantName} | 작성일: ${new Date(d.createdAt?.seconds * 1000).toLocaleString() || '방금'} | 공유된 횟수: ${d.shareCount || 0}</div>
+                    <a href="/kca_webzine.html?id=${docSnap.id}" target="_blank" class="ai-btn" style="background:#22c55e; text-decoration:none;">사용자 화면에서 미리보기</a>
+                </div>
+                `;
+                });
+                div.innerHTML = html;
+            } catch (e) { console.error(e); div.innerHTML = '불러오기 실패'; }
+        }
+
+        document.getElementById('btnReloadWebzines').addEventListener('click', loadWebzines);
+
+        // 포인트 지급
+        document.getElementById('btnGrantBonus').addEventListener('click', async () => {
+            const target = document.getElementById('targetUidInput').value.trim();
+            const amount = Number(document.getElementById('bonusAmountInput').value);
+            const webzineId = document.getElementById('targetWebzineId').value.trim();
+            const note = document.getElementById('bonusNoteInput').value.trim();
+
+            if (!target || !amount) return alert('대상 유저와 금액을 입력하세요.');
+            if (!confirm(`[${target}]님에게 뽀너스 ${amount}P를 지급하겠습니까?`)) return;
+
+            try {
+                // 이메일이면 UID로 변환
+                let finalUid = target;
+                if (target.includes('@')) {
+                    // Firebase Auth나 컬렉션 쿼리 대신 단순 처리
+                    // (관리자 기능이므로 어드민이 정확한 UID를 넣는게 베스트지만, 편의를 위해 users 컬렉션 검색)
+                    const { where } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+                    const emailQ = query(collection(db, 'users'), where('email', '==', target));
+                    const snap = await getDocs(emailQ);
+                    if (snap.empty) throw new Error('해당 이메일 유저를 찾을 수 없음');
+                    finalUid = snap.docs[0].id;
+                }
+
+                const adminGrantWebzineBonus = httpsCallable(functions, 'adminGrantWebzineBonus');
+                const res = await adminGrantWebzineBonus({ targetUid: finalUid, amount, webzineId, note });
+                if (res.data.success) {
+                    alert('지급 완료!');
+                    document.getElementById('bonusAmountInput').value = '';
+                    document.getElementById('targetWebzineId').value = '';
+                    document.getElementById('bonusNoteInput').value = '';
+                }
+            } catch (e) {
+                console.error(e);
+                alert('지급 실패: ' + e.message);
+            }
+        });
+    </script>
+</body>
+
+</html>

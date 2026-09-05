@@ -304,6 +304,12 @@ service cloud.firestore {
       allow create, update, delete: if false; // Cloud Functions only
     }
 
+    // kca_webzine (AI 마케팅 웹진)
+    match /kca_webzine/{docId} {
+      allow read: if true;
+      allow write: if false; // Cloud Functions only
+    }
+
     // merchants (merchants/{merchantId})
     match /merchants/{merchantId} {
       allow get, list: if true;

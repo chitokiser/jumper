@@ -4,7 +4,7 @@
 
 'use strict';
 
-const admin   = require('firebase-admin');
+const admin = require('firebase-admin');
 const { ethers } = require('ethers');
 const { HttpsError } = require('firebase-functions/v2/https');
 const { decrypt } = require('../wallet/crypto');
@@ -29,8 +29,8 @@ async function getCustodialSigner(uid, masterSecret) {
   if (!walletData?.encryptedKey)
     throw new HttpsError('failed-precondition', '수탁 지갑이 없습니다. 먼저 지갑을 생성하세요.');
   const privateKey = decrypt(walletData.encryptedKey, masterSecret);
-  const provider   = getProvider();
-  const signer     = walletFromKey(privateKey, provider);
+  const provider = getProvider();
+  const signer = walletFromKey(privateKey, provider);
   return { signer, address: walletData.address };
 }
 
@@ -38,8 +38,8 @@ async function getCustodialSigner(uid, masterSecret) {
 // 교환 비율 + 컨트랙트 잔고 조회
 // ─────────────────────────────────────────────────────────────
 async function getCoinExchangeStatus(uid) {
-  const provider  = getProvider();
-  const exchange  = getJumpAutoExchangeContract(provider);
+  const provider = getProvider();
+  const exchange = getJumpAutoExchangeContract(provider);
 
   const [coinPerJump, saleEnabled, contractBalance] = await Promise.all([
     exchange.coinPerJump(),
@@ -49,26 +49,26 @@ async function getCoinExchangeStatus(uid) {
 
   // 유저 게임코인 조회
   const bpSnap = await db.collection('battle_players').doc(uid).get();
-  const gold   = bpSnap.exists ? (bpSnap.data().gold || 0) : 0;
+  const gold = bpSnap.exists ? (bpSnap.data().gold || 0) : 0;
 
   // 유저 JUMP 온체인 잔액
-  const snap       = await db.collection('users').doc(uid).get();
-  const rawAddr    = snap.data()?.wallet?.address || '';
-  const address    = ethers.isAddress(rawAddr) ? rawAddr : null;
-  const jumpBal    = address
+  const snap = await db.collection('users').doc(uid).get();
+  const rawAddr = snap.data()?.wallet?.address || '';
+  const address = ethers.isAddress(rawAddr) ? rawAddr : null;
+  const jumpBal = address
     ? await getJumpTokenContract(provider).balanceOf(address)
     : 0n;
 
   const rateNum = Number(coinPerJump);
 
   return {
-    coinPerJump:         rateNum,
-    saleEnabled:         Boolean(saleEnabled),
+    coinPerJump: rateNum,
+    saleEnabled: Boolean(saleEnabled),
     contractJumpBalance: contractBalance.toString(),
-    userGold:            gold,
-    userJumpBalance:     jumpBal.toString(),
-    walletAddress:       address,
-    maxBuyableJump:      rateNum > 0 ? Math.floor(gold / rateNum) : 0,
+    userGold: gold,
+    userJumpBalance: jumpBal.toString(),
+    walletAddress: address,
+    maxBuyableJump: rateNum > 0 ? Math.floor(gold / rateNum) : 0,
   };
 }
 
@@ -90,8 +90,8 @@ async function buyJumpWithCoins(uid, coinAmount, masterSecret) {
   // 유저 지갑 주소 확인
   const { address } = await getCustodialSigner(uid, masterSecret);
 
-  const provider  = getProvider();
-  const exchange  = getJumpAutoExchangeContract(provider);
+  const provider = getProvider();
+  const exchange = getJumpAutoExchangeContract(provider);
 
   // 교환 활성 여부 + 비율 조회
   const [saleEnabled, coinPerJump] = await Promise.all([
@@ -100,7 +100,7 @@ async function buyJumpWithCoins(uid, coinAmount, masterSecret) {
   ]);
   if (!saleEnabled) throw new HttpsError('failed-precondition', '현재 교환이 비활성화 상태입니다');
 
-  const rateNum  = Number(coinPerJump);
+  const rateNum = Number(coinPerJump);
   if (rateNum === 0) throw new HttpsError('internal', '교환 비율이 설정되지 않았습니다');
 
   const jumpAmount = Math.floor(coins / rateNum);
@@ -120,7 +120,7 @@ async function buyJumpWithCoins(uid, coinAmount, masterSecret) {
     if (gold < coins)
       throw new HttpsError('failed-precondition', `게임코인 부족 (보유: ${gold}, 필요: ${coins})`);
     tx.set(bpRef, {
-      gold:      admin.firestore.FieldValue.increment(-coins),
+      gold: admin.firestore.FieldValue.increment(-coins),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
   });
@@ -128,15 +128,15 @@ async function buyJumpWithCoins(uid, coinAmount, masterSecret) {
   // 온체인 JUMP 전송
   let receipt;
   try {
-    const adminWallet  = getAdminWallet();
-    const exchangeAdm  = getJumpAutoExchangeContract(adminWallet);
-    const gasLimit     = await estimateGasWithBuffer(exchangeAdm, 'purchaseJumpFor', [address, BigInt(coins)]);
-    const tx           = await exchangeAdm.purchaseJumpFor(address, BigInt(coins), { gasLimit });
-    receipt            = await tx.wait();
+    const adminWallet = getAdminWallet();
+    const exchangeAdm = getJumpAutoExchangeContract(adminWallet);
+    const gasLimit = await estimateGasWithBuffer(exchangeAdm, 'purchaseJumpFor', [address, BigInt(coins)]);
+    const tx = await exchangeAdm.purchaseJumpFor(address, BigInt(coins), { gasLimit });
+    receipt = await tx.wait();
   } catch (err) {
     // 온체인 실패 → gold 복원
     await bpRef.set({
-      gold:      admin.firestore.FieldValue.increment(coins),
+      gold: admin.firestore.FieldValue.increment(coins),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
     throw new HttpsError('internal', `온체인 처리 실패: ${err.message}`);
@@ -146,20 +146,20 @@ async function buyJumpWithCoins(uid, coinAmount, masterSecret) {
   await db.collection('jump_coin_exchanges').add({
     uid,
     walletAddress: address,
-    direction:     'buy',      // 게임코인 → JUMP
-    coinAmount:    coins,
+    direction: 'buy',      // 게임코인 → JUMP
+    coinAmount: coins,
     jumpAmount,
-    coinPerJump:   rateNum,
-    txHash:        receipt.hash,
-    createdAt:     admin.firestore.FieldValue.serverTimestamp(),
+    coinPerJump: rateNum,
+    txHash: receipt.hash,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   return {
-    ok:         true,
-    direction:  'buy',
+    ok: true,
+    direction: 'buy',
     coinAmount: coins,
     jumpAmount,
-    txHash:     receipt.hash,
+    txHash: receipt.hash,
   };
 }
 
@@ -179,8 +179,8 @@ async function sellJumpForCoins(uid, jumpAmount, masterSecret) {
     throw new HttpsError('invalid-argument', '교환할 JUMP 수량을 입력하세요');
 
   const { signer, address } = await getCustodialSigner(uid, masterSecret);
-  const provider  = getProvider();
-  const exchange  = getJumpAutoExchangeContract(provider);
+  const provider = getProvider();
+  const exchange = getJumpAutoExchangeContract(provider);
   const jumpToken = getJumpTokenContract(signer);
 
   // 교환 활성 여부 + 비율 조회
@@ -190,7 +190,7 @@ async function sellJumpForCoins(uid, jumpAmount, masterSecret) {
   ]);
   if (!saleEnabled) throw new HttpsError('failed-precondition', '현재 교환이 비활성화 상태입니다');
 
-  const rateNum    = Number(coinPerJump);
+  const rateNum = Number(coinPerJump);
   const coinAmount = jump * rateNum;
 
   // JUMP 잔액 확인
@@ -200,7 +200,7 @@ async function sellJumpForCoins(uid, jumpAmount, masterSecret) {
 
   // approve (수탁 지갑 signer로)
   const exchangeAddr = getJumpAutoExchangeContract(provider).target;
-  const allowance    = await jumpToken.allowance(address, exchangeAddr);
+  const allowance = await jumpToken.allowance(address, exchangeAddr);
   if (allowance < BigInt(jump)) {
     const approveTx = await jumpToken.approve(exchangeAddr, ethers.MaxUint256);
     await approveTx.wait();
@@ -209,18 +209,18 @@ async function sellJumpForCoins(uid, jumpAmount, masterSecret) {
   // 온체인: 어드민 지갑으로 sellJumpForCoins 호출
   let receipt;
   try {
-    const adminWallet  = getAdminWallet();
-    const exchangeAdm  = getJumpAutoExchangeContract(adminWallet);
-    const gasLimit     = await estimateGasWithBuffer(exchangeAdm, 'sellJumpForCoins', [address, BigInt(jump)]);
-    const tx           = await exchangeAdm.sellJumpForCoins(address, BigInt(jump), { gasLimit });
-    receipt            = await tx.wait();
+    const adminWallet = getAdminWallet();
+    const exchangeAdm = getJumpAutoExchangeContract(adminWallet);
+    const gasLimit = await estimateGasWithBuffer(exchangeAdm, 'sellJumpForCoins', [address, BigInt(jump)]);
+    const tx = await exchangeAdm.sellJumpForCoins(address, BigInt(jump), { gasLimit });
+    receipt = await tx.wait();
   } catch (err) {
     throw new HttpsError('internal', `온체인 처리 실패: ${err.message}`);
   }
 
   // Firestore gold 지급
   await db.collection('battle_players').doc(uid).set({
-    gold:      admin.firestore.FieldValue.increment(coinAmount),
+    gold: admin.firestore.FieldValue.increment(coinAmount),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
@@ -228,20 +228,20 @@ async function sellJumpForCoins(uid, jumpAmount, masterSecret) {
   await db.collection('jump_coin_exchanges').add({
     uid,
     walletAddress: address,
-    direction:     'sell',     // JUMP → 게임코인
-    jumpAmount:    jump,
+    direction: 'sell',     // JUMP → 게임코인
+    jumpAmount: jump,
     coinAmount,
-    coinPerJump:   rateNum,
-    txHash:        receipt.hash,
-    createdAt:     admin.firestore.FieldValue.serverTimestamp(),
+    coinPerJump: rateNum,
+    txHash: receipt.hash,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   return {
-    ok:         true,
-    direction:  'sell',
+    ok: true,
+    direction: 'sell',
     jumpAmount: jump,
     coinAmount,
-    txHash:     receipt.hash,
+    txHash: receipt.hash,
   };
 }
 
@@ -261,15 +261,15 @@ async function listCoinExchanges({ direction, limit: lim = 50 } = {}) {
   return snap.docs.map(d => {
     const r = d.data();
     return {
-      id:            d.id,
-      uid:           r.uid,
+      id: d.id,
+      uid: r.uid,
       walletAddress: r.walletAddress,
-      direction:     r.direction,
-      coinAmount:    r.coinAmount,
-      jumpAmount:    r.jumpAmount,
-      coinPerJump:   r.coinPerJump,
-      txHash:        r.txHash,
-      createdAt:     r.createdAt?.toMillis() ?? null,
+      direction: r.direction,
+      coinAmount: r.coinAmount,
+      jumpAmount: r.jumpAmount,
+      coinPerJump: r.coinPerJump,
+      txHash: r.txHash,
+      createdAt: r.createdAt?.toMillis() ?? null,
     };
   });
 }
@@ -279,23 +279,20 @@ async function listCoinExchanges({ direction, limit: lim = 50 } = {}) {
 // ─────────────────────────────────────────────────────────────
 async function getHexGpStatus(uid) {
   const bpSnap = await db.collection('battle_players').doc(uid).get();
-  const gold   = bpSnap.exists ? (bpSnap.data().gold || 0) : 0;
+  const gold = bpSnap.exists ? (bpSnap.data().gold || 0) : 0;
 
-  const snap    = await db.collection('users').doc(uid).get();
-  const rawAddr = snap.data()?.wallet?.address || '';
-  const provider = getProvider();
-  const hexBal  = ethers.isAddress(rawAddr)
-    ? await getHexContract(provider).balanceOf(rawAddr)
-    : 0n;
+  const snap = await db.collection('users').doc(uid).get();
+  const userData = snap.exists ? snap.data() : {};
+  const pointBalance = Number(userData.pointBalance || 0);
 
-  const cfgSnap  = await db.collection('config').doc('exchange').get();
-  const gpPerHex = cfgSnap.exists ? (cfgSnap.data().gpPerHex || 1000) : 1000;
+  const cfgSnap = await db.collection('config').doc('exchange').get();
+  const gpPerHex = cfgSnap.exists ? (cfgSnap.data().gpPerHex || 1) : 1;
 
   return {
-    userHexBalance: hexBal.toString(),
-    userGold:       gold,
+    userHexBalance: pointBalance,
+    userGold: gold,
     gpPerHex,
-    walletAddress:  ethers.isAddress(rawAddr) ? rawAddr : null,
+    walletAddress: userData.wallet?.address || null,
   };
 }
 
@@ -309,55 +306,55 @@ async function getHexGpStatus(uid) {
 //   4) battle_players.gold += gpAmount
 //   5) hex_gp_exchanges 기록
 // ─────────────────────────────────────────────────────────────
-async function hexToGp(uid, hexWei, masterSecret) {
-  const hexAmt = BigInt(hexWei);
-  if (hexAmt <= 0n)
-    throw new HttpsError('invalid-argument', 'hexWei must be a positive integer string');
+async function hexToGp(uid, pointAmount, masterSecret) {
+  const pAmt = Number(pointAmount);
+  if (!pAmt || pAmt <= 0)
+    throw new HttpsError('invalid-argument', 'pointAmount must be a positive number');
 
-  const { signer, address } = await getCustodialSigner(uid, masterSecret);
-  const provider = getProvider();
+  const bpRef = db.collection('battle_players').doc(uid);
+  const userRef = db.collection('users').doc(uid);
 
-  const hexBal = await getHexContract(provider).balanceOf(address);
-  if (hexBal < hexAmt)
-    throw new HttpsError('failed-precondition', 'Insufficient Point Balance');
-
-  const cfgSnap  = await db.collection('config').doc('exchange').get();
-  const gpPerHex = cfgSnap.exists ? Number(cfgSnap.data().gpPerHex || 1000) : 1000;
+  const cfgSnap = await db.collection('config').doc('exchange').get();
+  const gpPerHex = cfgSnap.exists ? Number(cfgSnap.data().gpPerHex || 1) : 1;
   if (gpPerHex <= 0)
     throw new HttpsError('failed-precondition', 'Point→GP conversion is currently disabled');
 
-  const gpAmount = Math.floor(Number(hexAmt) / 1e18 * gpPerHex);
+  const gpAmount = Math.floor(pAmt * gpPerHex);
   if (gpAmount <= 0)
     throw new HttpsError('invalid-argument', 'Amount too small — results in 0 GP');
 
-  const adminAddr = getAdminWallet().address;
-  const hexToken  = getHexContract(signer);
+  let txHash = 'fiat_' + Date.now();
 
-  let receipt;
   try {
-    const gasEst = await hexToken.transfer.estimateGas(adminAddr, hexAmt);
-    const tx     = await hexToken.transfer(adminAddr, hexAmt, { gasLimit: gasEst * 12n / 10n });
-    receipt      = await tx.wait();
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const data = snap.exists ? snap.data() : {};
+      const bal = Number(data.pointBalance || 0);
+      if (bal < pAmt) throw new Error('Insufficient Point Balance');
+
+      tx.update(userRef, {
+        pointBalance: admin.firestore.FieldValue.increment(-pAmt)
+      });
+      tx.set(bpRef, {
+        gold: admin.firestore.FieldValue.increment(gpAmount),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      const recordRef = db.collection('hex_gp_exchanges').doc();
+      tx.set(recordRef, {
+        uid,
+        pointAmount: pAmt,
+        gpAmount,
+        gpPerHex,
+        txHash: txHash,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
   } catch (err) {
-    throw new HttpsError('internal', `On-chain transfer failed: ${err.message}`);
+    throw new HttpsError('internal', `Database transaction failed: ${err.message}`);
   }
 
-  await db.collection('battle_players').doc(uid).set({
-    gold:      admin.firestore.FieldValue.increment(gpAmount),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
-
-  await db.collection('hex_gp_exchanges').add({
-    uid,
-    walletAddress: address,
-    hexWei:        hexAmt.toString(),
-    gpAmount,
-    gpPerHex,
-    txHash:        receipt.hash,
-    createdAt:     admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  return { ok: true, gpAmount, txHash: receipt.hash };
+  return { ok: true, gpAmount, txHash: txHash };
 }
 
 module.exports = {

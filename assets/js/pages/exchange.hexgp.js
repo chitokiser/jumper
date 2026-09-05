@@ -3,7 +3,7 @@
 
 import { auth, functions } from '../firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { httpsCallable }      from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -12,23 +12,23 @@ function setText(id, v) {
   if (el) el.textContent = v;
 }
 
-function fmtHex(wei) {
-  if (!wei || wei === '0') return '0';
-  return (Number(BigInt(wei)) / 1e18).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+function fmtHex(val) {
+  if (!val || val === '0') return '0';
+  return Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
 }
 
 let _status = null;
-let _bound  = false;
+let _bound = false;
 
 async function loadStatus() {
   try {
-    const fn  = httpsCallable(functions, 'getHexGpStatus');
+    const fn = httpsCallable(functions, 'getHexGpStatus');
     const res = await fn();
-    _status   = res.data;
-    const rate = Number(_status.gpPerHex || 1000);
+    _status = res.data;
+    const rate = Number(_status.gpPerHex || 1);
     setText('hgGpPerHex', rate.toLocaleString() + ' GP');
-    setText('hgHexBal',   fmtHex(_status.userHexBalance || '0') + ' Point');
-    setText('hgGpBal',    Number(_status.userGold || 0).toLocaleString());
+    setText('hgHexBal', fmtHex(_status.userHexBalance || '0') + ' KM (Point)');
+    setText('hgGpBal', Number(_status.userGold || 0).toLocaleString());
     _updatePreview();
   } catch (err) {
     setText('hgStatus', 'Load failed: ' + (err.message || String(err)));
@@ -36,14 +36,14 @@ async function loadStatus() {
 }
 
 function _updatePreview() {
-  const input   = $('hgHexInput');
+  const input = $('hgHexInput');
   const preview = $('hgPreview');
   if (!input || !preview) return;
   const hexVal = parseFloat(input.value);
   if (!hexVal || hexVal <= 0 || !_status) { preview.style.display = 'none'; return; }
-  const rate  = Number(_status.gpPerHex || 1000);
+  const rate = Number(_status.gpPerHex || 1);
   const gpAmt = Math.floor(hexVal * rate);
-  preview.innerHTML  = `You'll receive: <strong>${gpAmt.toLocaleString()} GP</strong>`;
+  preview.innerHTML = `You'll receive: <strong>${gpAmt.toLocaleString()} GP</strong>`;
   preview.style.display = '';
 }
 
@@ -57,23 +57,22 @@ function bindHexGp() {
   if (!btn) return;
 
   btn.onclick = async () => {
-    const input  = $('hgHexInput');
-    const hexVal = parseFloat(input?.value);
-    if (!hexVal || hexVal <= 0) { setText('hgStatus', 'Enter Point amount'); return; }
+    const input = $('hgHexInput');
+    const pointAmount = parseFloat(input?.value);
+    if (!pointAmount || pointAmount <= 0) { setText('hgStatus', 'Enter Point amount'); return; }
 
-    const rate   = Number(_status?.gpPerHex || 1000);
-    const gpAmt  = Math.floor(hexVal * rate);
-    const hexWei = BigInt(Math.round(hexVal * 1e18)).toString();
+    const rate = Number(_status?.gpPerHex || 1);
+    const gpAmt = Math.floor(pointAmount * rate);
 
-    if (!confirm(`Convert ${hexVal} Point → ${gpAmt.toLocaleString()} GP?\nThis cannot be undone.`)) return;
+    if (!confirm(`Convert ${pointAmount} KM → ${gpAmt.toLocaleString()} GP?\nThis cannot be undone.`)) return;
 
-    btn.disabled    = true;
+    btn.disabled = true;
     btn.textContent = 'Processing…';
     setText('hgStatus', 'Processing…');
 
     try {
-      const fn  = httpsCallable(functions, 'hexToGp');
-      const res = await fn({ hexWei });
+      const fn = httpsCallable(functions, 'hexToGp');
+      const res = await fn({ pointAmount });
       setText('hgStatus', `Done! +${Number(res.data.gpAmount).toLocaleString()} GP received`);
       if (input) input.value = '';
       const preview = $('hgPreview');
@@ -82,7 +81,7 @@ function bindHexGp() {
     } catch (err) {
       setText('hgStatus', 'Failed: ' + (err.message || String(err)));
     } finally {
-      btn.disabled    = false;
+      btn.disabled = false;
       btn.textContent = 'Convert Point → GP';
     }
   };
