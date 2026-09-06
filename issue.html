@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>대한김치 API 키 발급기</title>
+</head>
+
+<body>
+    <h1>대한김치(ID: 2) API 키 발급 중...</h1>
+    <div id="status"></div>
+    <script type="module">
+        import { db } from "/assets/js/firebase-init.js";
+        import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+        async function issue() {
+            const status = document.getElementById("status");
+            try {
+                const apiKey = "moa-merch-4900c6d440dc5419"; // User already used this key in Zentaro, let's keep it consistent
+                const merchantId = "2"; // Daehan Kimchi
+
+                // 1. api_keys 컬렉션에 등록
+                await setDoc(doc(db, "api_keys", apiKey), {
+                    merchantId: merchantId,
+                    merchantName: "대한김치",
+                    active: true,
+                    createdAt: new Date()
+                });
+
+                // 2. merchants/2 에 apiKey 기록
+                await setDoc(doc(db, "merchants", merchantId), {
+                    apiKey: apiKey
+                }, { merge: true });
+
+                status.innerHTML = `<h2 style="color:green;">성공적으로 発급되었습니다!</h2><p>API Key: <b>${apiKey}</b></p>`;
+            } catch (e) {
+                status.innerHTML = `<h2 style="color:red;">오류 발생: ${e.message}</h2>`;
+            }
+        }
+        issue();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,154 @@
+commit 7bdfb67a7842228aa2f3c927b5bc0fe45f80c599
+Author: daguri <daguri75@gmail.com>
+Date:   Sat Sep 5 15:58:39 2026 +0700
+
+    Update find_merchants card to have a 16:4 top banner logo with object-fit contain
+
+diff --git a/assets/js/pages/find_merchants.js b/assets/js/pages/find_merchants.js
+index 51d3061..8f684aa 100644
+--- a/assets/js/pages/find_merchants.js
++++ b/assets/js/pages/find_merchants.js
+@@ -73,16 +73,13 @@ async function init() {
+             const emailHtml = d.email ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">?됵툘 ${d.email}</div>` : '';
+ 
+             card.innerHTML = `
+-          <div class="mc-card-inner">
++          <div class="mc-card-hero">
+               <div class="mc-card-badge">??? ${btCount} BT</div>
+-              
+-              <div class="mc-card-header-inner">
+-                  <img src="${logoUrl}" alt="${d.name}" class="mc-card-logo">
+-                  <div>
+-                      <div class="mc-card-name">${d.name || "이름 없음"}</div>
+-                      <div class="mc-card-career">${d.career || "미분류"} <span class="mc-card-region">${d.region || ""}</span></div>
+-                  </div>
+-              </div>
++              <img src="${logoUrl}" alt="${d.name}" class="mc-card-hero-img">
++          </div>
++          <div class="mc-card-inner">
++              <div class="mc-card-name">${d.name || "이름 없음"}</div>
++              <div class="mc-card-career">${d.career || "미분류"} <span class="mc-card-region">${d.region || ""}</span></div>
+               
+               <div class="mc-card-stats">
+                  <span title="고객 리뷰">?? ${reviews}</span>
+@@ -145,3 +142,4 @@ if (document.readyState === "loading") {
+     init();
+ }
+ 
++
+diff --git a/find_merchants.html b/find_merchants.html
+index e1d678f..33817b9 100644
+--- a/find_merchants.html
++++ b/find_merchants.html
+@@ -79,31 +79,53 @@
+       border-color: rgba(245, 158, 11, 0.3);
+     }
+     
+-    .mc-card-inner {
+-      padding: 24px;
++    .mc-card-hero {
+       position: relative;
++      width: 100%;
++      aspect-ratio: 16/4.5;
++      background-color: #f1f5f9;
++      border-bottom: 1px solid #e2e8f0;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      overflow: hidden;
+     }
+ 
+-    .mc-card-header-inner {
+-      display: flex;
+-      gap: 16px;
+-      align-items: flex-start;
+-      margin-bottom: 4px;
++    .mc-card-hero-img {
++      width: 100%;
++      height: 100%;
++      object-fit: contain;
++      padding: 12px;
++      transition: transform 0.3s ease;
+     }
+ 
+-    .mc-card-logo {
+-      width: 60px;
+-      height: 60px;
++    .mc-card:hover .mc-card-hero-img {
++      transform: scale(1.05);
++    }
++
++    .mc-card-badge {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      font-size: 0.75rem;
++      font-weight: 800;
++      color: #b45309;
++      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
++      padding: 6px 12px;
+       border-radius: 12px;
+-      object-fit: cover;
+-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+-      border: 1px solid #f1f5f9;
+-      flex-shrink: 0;
++      white-space: nowrap;
++      box-shadow: 0 2px 4px rgba(245,158,11,0.2);
++      z-index: 10;
++    }
++    
++    .mc-card-inner {
++      padding: 24px;
++      position: relative;
+     }
+ 
+     .mc-card-name {
+       font-weight: 800;
+-      font-size: 1.15rem;
++      font-size: 1.25rem;
+       color: #0f172a;
+       letter-spacing: -0.3px;
+       margin-bottom: 2px;
+@@ -122,20 +144,6 @@
+       margin-left: 6px;
+     }
+ 
+-    .mc-card-badge {
+-      position: absolute;
+-      top: 16px;
+-      right: 16px;
+-      font-size: 0.75rem;
+-      font-weight: 800;
+-      color: #b45309;
+-      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+-      padding: 4px 10px;
+-      border-radius: 12px;
+-      white-space: nowrap;
+-      box-shadow: 0 2px 4px rgba(245,158,11,0.2);
+-    }
+-
+     .mc-card-stats {
+       display: flex;
+       gap: 12px;
+@@ -161,7 +169,7 @@
+     .mc-card-desc {
+       font-size: 0.85rem;
+       color: #64748b;
+-      margin-top: 12px;
++      margin-top: 16px;
+       line-height: 1.5;
+       display: -webkit-box;
+       -webkit-line-clamp: 2;
+@@ -185,6 +193,7 @@
+       text-decoration: none;
+       transition: color 0.2s;
+     }
++    
+     .mc-link-btn:hover {
+       color: #1e40af;
+       text-decoration: underline;
+@@ -216,3 +225,4 @@
+ 
+ </html>
+ 
++

@@ -1,0 +1,59 @@
+// /assets/js/pages/mypage.js
+// MyPage: profile / wallet / on-chain status / deposit & payment history
+
+import { _t, initLang, renderLangSwitcher } from './mypage.i18n.js';
+import { esc } from '/assets/js/esc.js';
+import { onAuthReady } from "../auth.js";
+import { db, functions, auth } from "/assets/js/firebase-init.js";
+import { login } from "../auth.js";
+import { initSlot } from "/assets/js/jackpot-anim.js";
+
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  serverTimestamp,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
+
+const $ = (id) => document.getElementById(id);
+
+let _pointHexAmount = 0; // loadOnChainData에서 갱신, bindRedeemPoints에서 참조
+
+function show(id, on) {
+  const el = $(id);
+  if (!el) return;
+  el.style.display = on ? "" : "none";
+  // 아코디언 섹션이 처음 표시될 때 자동 펼치기
+  if (on && el.classList.contains('collapsible')) {
+    el.classList.remove('is-collapsed');
+  }
+}
+
+function setText(id, val) {
+  const el = $(id);
+  if (el) el.textContent = val != null ? String(val) : "-";
+}
+
+function renderProfile(userData, fireUser) {
+  setText("infoName", userData?.name || "-");
+  setText("infoEmail", fireUser?.email || userData?.email || "-");
+  setText("infoPhone", userData?.phone || "-");
+}
+
+// ── 친구 초대 QR ──────────────────────────────────────────────────────────────
+function renderReferralSection(uid) {
+  const section = $('referralSection');
+  if (!section || !uid) return;
+  section.style.display = '';
+
+  const inviteUrl = `${location.origin}/register.html?mentor=${encodeURIComponent(uid)}`;
+  const linkEl = $('referralLink');

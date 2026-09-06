@@ -3343,3 +3343,5 @@ exports.deleteMyAccount = onCall(
 );
 
 exports.merchantApi = onRequest({ cors: true }, merchantApiApp);
+
+exports.merchantSendBtDirect = onCall(wrapError(require('./handlers/merchantReward').merchantSendBtDirect));

@@ -1,0 +1,37 @@
+escription: mData?.description || "",
+          };
+        }
+      } catch (_) { }
+      showAlreadyMerchant(userData.merchantId, feeBps, merchantName, merchantData);
+      initMentorLink(user.email);
+      return;
+    }
+
+    // ④ 온체인 등록 미완료
+    if (!userData?.onChain?.registered) {
+      setState("온체인 회원 등록이 필요합니다.");
+      show("needOnChainPanel", true);
+      return;
+    }
+
+    // ⑤ 폼 표시
+    setState("");
+    show("merchantForm", true);
+    bindForm();
+    initMentorLink(user.email);
+
+  } catch (err) {
+    console.error(err);
+    setState("오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.");
+    show("merchantForm", true);
+    bindForm();
+  }
+}
+
+function _showNeedLogin() {
+  setState("로그인이 필요합니다.");
+  show("needLoginPanel", true);
+  const btn = $("btnLogin");
+  if (btn) {
+    btn.onclick = async () => {
+ 
