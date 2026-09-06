@@ -427,21 +427,23 @@ async function loadMentees() {
       return;
     }
 
-    const rows = mentees.map((m) => {
-      const addrShort = m.address ? m.address.slice(0, 6) + "..." + m.address.slice(-4) : "-";
-      const dateStr = m.registeredAt ? new Date(m.registeredAt).toLocaleDateString("ko") : "-";
+    const rows = mentees.map(m => {
+      const addr = m.walletAddress ? m.walletAddress.substring(0,6) + "..." + m.walletAddress.slice(-4) : "";
+      const dateStr = m.registeredAt ? new Date(m.registeredAt).toLocaleDateString() : "";
+      const earned = m.generatedForMentor || 0;
       return `
-        <div class="mp-hist-row">
-          <div class="mp-hist-main">
-            <span style="font-weight:600;">${m.name}</span>
-            <span class="mono muted" style="font-size:0.82em;">${addrShort}</span>
-          </div>
-          <div class="mp-hist-detail">
-            <span class="muted" style="font-size:0.85em;">${_t('mentee_join_date')} ${dateStr}</span>
-          </div>
+      <div class="fx-row align-center justify-between" style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;">
+        <div class="fx-col gap-1">
+          <span style="font-weight:600;">${m.name}</span>
+          <span class="mono muted" style="font-size:0.82em;">${addr} | ${dateStr}</span>
         </div>
-      `;
+        <div class="text-right">
+          <span style="font-weight:600; color:var(--primary-color);">+${earned.toLocaleString()} P</span>
+          <div style="font-size:0.75rem; color:#888;">지급 누적</div>
+        </div>
+      </div>`;
     }).join("");
+
 
     wrap.innerHTML = `<p class="hint muted" style="margin-bottom:8px;">${_t('mentee_count', mentees.length)}</p>` + rows;
   } catch (err) {
