@@ -333,20 +333,15 @@ async function getUserOnChainData(uid) {
  * @returns {{ mentees: Array, myAddress: string|null }}
  */
 async function getMyMentees(uid) {
-  // 1. Fetch from Firestore purely
   const userSnap = await db.collection('users').doc(uid).get();
   const myAddress = userSnap.data()?.wallet?.address || null;
 
-  // Find mentees where mentorUid == uid
   const querySnap = await db.collection('users').where('mentorUid', '==', uid).limit(100).get();
-  
   const menteeMap = {};
   
   await Promise.all(querySnap.docs.map(async (docSnap) => {
     const data = docSnap.data();
     const menteeUid = docSnap.id;
-    
-    // Also fetch their battle_players doc to get 'generatedForMentor'
     const bpSnap = await db.collection('battle_players').doc(menteeUid).get();
     const earned = bpSnap.exists ? (bpSnap.data().generatedForMentor || 0) : 0;
     
@@ -359,91 +354,8 @@ async function getMyMentees(uid) {
     };
   }));
 
-  // Sort by generated points (highest first)
   const sortedMentees = Object.values(menteeMap).sort((a, b) => b.generatedForMentor - a.generatedForMentor);
-
   return { mentees: sortedMentees, myAddress };
 }
 
-/**
- * adminSetBlacklist
- * 유저를 블랙리스트에 등록(blocked=true) 또는 해제(blocked=false).
- * 1) Firebase Auth disabled 설정 → 즉시 로그인 차단/허용
- * 2) 온체인 adminSetBlocked(address, bool) 호출 → 결제 차단/허용
- * 3) Firestore users.blacklisted 필드 기록
- *
- * @param {string}  emailOrUid - 이메일 또는 Firebase UID
- * @param {boolean} blocked    - true: 블랙리스트 등록, false: 해제
- */
-async function adminSetBlacklist(emailOrUid, blocked) {
-  // 1. UID 조회
-  let uid;
-  const isEmail = emailOrUid.includes('@');
-  if (isEmail) {
-    const userRecord = await admin.auth().getUserByEmail(emailOrUid);
-    uid = userRecord.uid;
-  } else {
-    uid = emailOrUid;
-    await admin.auth().getUser(uid); // 존재 확인
-  }
 
-  // 2. Firestore users 문서에서 지갑 주소 조회
-  const userSnap = await db.collection('users').doc(uid).get();
-  if (!userSnap.exists) throw new Error(`유저를 찾을 수 없습니다: ${uid}`);
-  const userData = userSnap.data() || {};
-  const walletAddress = userData?.wallet?.address;
-
-  // 3. Firebase Auth disabled 설정 (로그인 즉시 차단/허용)
-  await admin.auth().updateUser(uid, { disabled: blocked });
-
-  // 4. Firestore blacklisted 필드 기록
-  await db.collection('users').doc(uid).update({
-    blacklisted: blocked,
-    blacklistedAt: blocked ? admin.firestore.FieldValue.serverTimestamp() : null,
-  });
-
-  // 5. 온체인 adminSetBlocked (지갑이 있을 때만)
-  let txHash = null;
-  if (walletAddress) {
-    try {
-      const adminWallet = getAdminWallet();
-      const platform = getPlatformContract(adminWallet);
-      const checksumAddr = ethers.getAddress(walletAddress);
-      const gasLimit = await estimateGasWithBuffer(platform, 'adminSetBlocked', [checksumAddr, blocked]);
-      const tx = await platform.adminSetBlocked(checksumAddr, blocked, { gasLimit });
-      const receipt = await tx.wait();
-      txHash = receipt.hash;
-    } catch (chainErr) {
-      // 온체인 실패해도 Auth/Firestore는 이미 적용됨 — 경고만 기록
-      admin.firestore().collection('admin_logs').add({
-        type: 'adminSetBlacklist_chainError',
-        uid,
-        blocked,
-        error: chainErr.message,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      }).catch(() => { });
-    }
-  }
-
-  return {
-    uid,
-    email: userData.email || null,
-    name: userData.name || null,
-    walletAddress: walletAddress || null,
-    blocked,
-    txHash,
-  };
-}
-
-module.exports = {
-  createCustodialWallet,
-  createWalletAndBonus,
-  registerOnChainBackground,
-  registerOnChain,
-  registerMentor,
-  getUserOnChainData,
-  getMyMentees,
-  getMenteeIncome,
-  adminSelfOnboard,
-  adminSetBlacklist,
-};
