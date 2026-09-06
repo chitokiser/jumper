@@ -379,7 +379,7 @@ async function loadDepositHistory(uid) {
         : "-";
 
       const amountParts = [];
-      if (data.amountKrw) amountParts.push((data.amountKrw || 0).toLocaleString() + _t('krw_unit'));
+      if (data.amountVnd) amountParts.push((data.amountVnd || 0).toLocaleString() + " VND");
       if (data.vndAmount) amountParts.push(Number(data.vndAmount).toLocaleString() + " VND");
       if (!amountParts.length) amountParts.push("-");
       const amountStr = amountParts.join(" / ");
@@ -1025,7 +1025,7 @@ function bindDepositForm() {
     try {
       const payload = currency === "VND"
         ? { amountVnd: amountVal, currency: "VND", depositorName }
-        : { amountKrw: amountVal, currency: "KRW", depositorName };
+        : { amountVnd: amountVal, currency: "VND", depositorName };
 
       const requestDeposit = httpsCallable(functions, "requestDeposit");
       const res = await requestDeposit(payload);
@@ -1047,7 +1047,7 @@ function bindDepositForm() {
       }
 
       const drParts = [];
-      if (d.amountKrw) drParts.push((d.amountKrw || 0).toLocaleString() + "원");
+      
       if (d.amountVnd) drParts.push((d.amountVnd || 0).toLocaleString() + " VND");
       if (d.estimatedUsd != null) drParts.push("$" + Number(d.estimatedUsd).toFixed(2));
       setText("drHex", drParts.join(" / "));
