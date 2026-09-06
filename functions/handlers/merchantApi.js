@@ -50,7 +50,7 @@ apiApp.get('/v1/balance', async (req, res) => {
             merchantId: req.merchantId,
             merchantName: data.name || '알 수 없음',
             balance: {
-                points: data.points || 0, // K-MOA 충전 포인트 (VND 환산 등)
+                points: data.points || 0, // Platform 충전 포인트 (VND 환산 등)
                 bt: data.btBalance || 0   // 가맹점 인벤토리 내 BT 잔여량
             }
         });
@@ -146,7 +146,7 @@ apiApp.get('/v1/webzines', async (req, res) => {
                 likeCount: d.likeCount || 0,
                 shareCount: d.shareCount || 0,
                 readUrl: `https://kmoa.netlify.app/kca_webzine.html?id=${doc.id}`, // KMOA 브랜딩 포함 소비자기준 URL
-                whitelabelUrl: `https://kmoa.netlify.app/kca_webzine.html?id=${doc.id}&whitelabel=true`, // K-MOA 로고 및 포인트 지급 문구를 완전히 숨긴 가맹점 자체용 URL
+                whitelabelUrl: `https://kmoa.netlify.app/kca_webzine.html?id=${doc.id}&whitelabel=true`, // Platform 로고 및 포인트 지급 문구를 완전히 숨긴 가맹점 자체용 URL
                 publishedAt: d.createdAt ? d.createdAt.toDate().toISOString() : null
             });
         });
