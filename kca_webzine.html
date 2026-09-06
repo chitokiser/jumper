@@ -475,12 +475,12 @@
             let randomImgUrl;
             if (data.heroImageKeyword) {
                 // 키워드가 있는 기사는 플리커에서 실시간 당겨오기
-                randomImgUrl = `https://loremflickr.com/800/600/${encodeURIComponent(data.heroImageKeyword)}?lock=${uniqueSeed}`;
+                randomImgUrl = `https://picsum.photos/seed/${uniqueSeed}/800/600`;
             } else {
                 // 키워드 없는 옛날 기사들은 절대 겹치지 않는 무작위 한국 관련 고화질 사진 배정
                 const backupKeywords = ['korea', 'seoul', 'koreanfood', 'bibimbap', 'kimchi', 'koreanbbq'];
                 const selectedKeyword = backupKeywords[uniqueSeed % backupKeywords.length];
-                randomImgUrl = `https://loremflickr.com/800/600/${selectedKeyword}?lock=${uniqueSeed}`;
+                randomImgUrl = `https://picsum.photos/seed/${uniqueSeed}/800/600`;
             }
 
             // 본문에서 HTML 태그를 제거하고 짧은 요약글만 추출
@@ -523,11 +523,11 @@
 
             let randomImgUrl;
             if (data.heroImageKeyword) {
-                randomImgUrl = `https://loremflickr.com/1200/800/${encodeURIComponent(data.heroImageKeyword)}?lock=${uniqueSeed}`;
+                randomImgUrl = `https://picsum.photos/seed/${uniqueSeed}/1200/800`;
             } else {
                 const backupKeywords = ['korea', 'seoul', 'koreanfood', 'bibimbap', 'kimchi', 'koreanbbq'];
                 const selectedKeyword = backupKeywords[uniqueSeed % backupKeywords.length];
-                randomImgUrl = `https://loremflickr.com/1200/800/${selectedKeyword}?lock=${uniqueSeed}`;
+                randomImgUrl = `https://picsum.photos/seed/${uniqueSeed}/1200/800`;
             }
 
             let shareBoxHtml = '';
