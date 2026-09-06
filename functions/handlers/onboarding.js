@@ -333,6 +333,7 @@ async function getUserOnChainData(uid) {
  * @returns {{ mentees: Array, myAddress: string|null }}
  */
 async function getMyMentees(uid) {
+  const db = admin.firestore();
   const userSnap = await db.collection('users').doc(uid).get();
   const myAddress = userSnap.data()?.wallet?.address || null;
 
@@ -358,4 +359,239 @@ async function getMyMentees(uid) {
   return { mentees: sortedMentees, myAddress };
 }
 
+/**
+ * adminSelfOnboard
+ * 관리자 계정(daguri75 등)을 ADMIN_PRIVATE_KEY 지갑 주소로 연결
+ * - 온체인 미등록이면 register(ZeroAddress) 호출
+ * - Firestore에 wallet.address + wallet.type='admin' 저장
+ *
+ * @param {string} uid - 관리자 Firebase UID
+ * @returns {{ address, level, txHash }}
+ */
+async function adminSelfOnboard(uid) {
+  const adminWallet = getAdminWallet();
+  const address = adminWallet.address;
+  const provider = getProvider();
+  const platformView = getPlatformContract(provider);
 
+  // 온체인 등록 여부 확인
+  const [level] = await platformView.members(address);
+
+  let txHash = null;
+  if (Number(level) === 0) {
+    // 미등록이면 관리자 키로 직접 register()
+    const platformSigned = getPlatformContract(adminWallet);
+    const gasLimit = await estimateGasWithBuffer(platformSigned, 'register', [ethers.ZeroAddress]);
+    const tx = await platformSigned.register(ethers.ZeroAddress, { gasLimit });
+    const receipt = await tx.wait();
+    txHash = receipt.hash;
+  }
+
+  // Firestore 업데이트: wallet.type='admin' 으로 표시
+  await db.collection('users').doc(uid).set({
+    wallet: {
+      address,
+      type: 'admin',
+    },
+    onChain: {
+      registered: true,
+      registeredAt: admin.firestore.FieldValue.serverTimestamp(),
+      mentorAddress: ethers.ZeroAddress,
+      txHash: txHash || 'already-registered',
+      autoRegistered: true,
+    },
+  }, { merge: true });
+
+  return { address, level: Number(level) || 1, txHash };
+}
+
+/**
+ * getMenteeIncome
+ * 멘토(uid)의 멘티 목록을 조회하고, 각 멘티의 pay_merchant 거래내역을 집계하여 반환.
+ * Admin SDK로 transactions 컬렉션 조회 (클라이언트 권한 제한 우회).
+ *
+ * @param {string} uid - 멘토의 Firebase Auth UID
+ * @returns {{ mentees: Array, myAddress: string|null }}
+ */
+async function getMenteeIncome(uid) {
+  const { mentees, myAddress } = await getMyMentees(uid);
+  if (!mentees || mentees.length === 0) return { mentees: [], myAddress };
+
+  // 멘티 uid 목록으로 transactions 집계 (최대 30개씩 in 쿼리)
+  const menteeUids = mentees.map((m) => m.uid).filter(Boolean);
+  const chunks = [];
+  for (let i = 0; i < menteeUids.length; i += 30) chunks.push(menteeUids.slice(i, i + 30));
+
+  const allTxDocs = [];
+  await Promise.all(chunks.map(async (chunk) => {
+    const snap = await db.collection('transactions')
+      .where('uid', 'in', chunk)
+      .where('type', '==', 'pay_merchant')
+      .orderBy('createdAt', 'desc')
+      .limit(500)
+      .get();
+    snap.docs.forEach((d) => allTxDocs.push(d.data()));
+  }));
+
+  // pay_merchant transactions에는 feeBps가 없음 → merchantId로 merchants에서 조회
+  const merchantIds = [...new Set(allTxDocs.map((t) => t.merchantId).filter(Boolean))];
+  const merchantFeeMap = {};
+  await Promise.all(merchantIds.map(async (mid) => {
+    const snap = await db.collection('merchants').doc(String(mid)).get();
+    merchantFeeMap[mid] = snap.exists ? (snap.data().feeBps ?? 0) : 0;
+  }));
+
+  const MENTOR_SHARE = 0.30;
+  const menteeMap = {};
+  mentees.forEach((m) => {
+    menteeMap[m.uid] = {
+      uid: m.uid,
+      name: m.name,
+      address: m.address,
+      registeredAt: m.registeredAt,
+      txCount: 0,
+      totalAmountHex: 0,
+      myEstimatedEarningHex: 0,
+      recentTxs: [],
+    };
+  });
+
+  for (const tx of allTxDocs) {
+    const entry = menteeMap[tx.uid];
+    if (!entry) continue;
+    const hex = Number(tx.amountHex) || 0;
+    const feeBps = Number(merchantFeeMap[tx.merchantId] ?? tx.feeBps ?? 0);
+    const feeHex = hex * (feeBps / 10000);
+    const myEst = feeHex * MENTOR_SHARE;
+    entry.txCount++;
+    entry.totalAmountHex += hex;
+    entry.myEstimatedEarningHex += myEst;
+    if (entry.recentTxs.length < 5) {
+      entry.recentTxs.push({
+        amountHex: hex,
+        feeBps,
+        myEst,
+        createdAt: tx.createdAt?.toMillis?.() ?? null,
+        merchantId: tx.merchantId ?? null,
+      });
+    }
+  }
+
+  // CoopMall 구매 내역에서 멘토 수당 집계
+  const allCoopOrders = [];
+  await Promise.all(chunks.map(async (chunk) => {
+    const snap = await db.collection('coopOrders')
+      .where('uid', 'in', chunk)
+      .where('status', '==', 'confirmed')
+      .orderBy('createdAt', 'desc')
+      .limit(200)
+      .get();
+    snap.docs.forEach((d) => allCoopOrders.push(d.data()));
+  }));
+
+  for (const order of allCoopOrders) {
+    const entry = menteeMap[order.uid];
+    if (!entry) continue;
+    if (order.type === 'membership') continue;
+    const mentorBps = Number(order.mentorRewardBps ?? 0);
+    if (mentorBps === 0) continue;
+    const hexAmt = Number(BigInt(order.hexWei || '0')) / 1e18;
+    const myEst = hexAmt * (mentorBps / 10000);
+    entry.txCount++;
+    entry.totalAmountHex += hexAmt;
+    entry.myEstimatedEarningHex += myEst;
+    if (entry.recentTxs.length < 5) {
+      entry.recentTxs.push({
+        amountHex: hexAmt,
+        feeBps: mentorBps,
+        myEst,
+        createdAt: order.createdAt?.toMillis?.() ?? null,
+        label: `CoopMall: ${order.productName || ''}`,
+      });
+    }
+  }
+
+  return { mentees: Object.values(menteeMap), myAddress };
+}
+
+/**
+ * adminSetBlacklist
+ * 유저를 블랙리스트에 등록(blocked=true) 또는 해제(blocked=false).
+ * 1) Firebase Auth disabled 설정 → 즉시 로그인 차단/허용
+ * 2) 온체인 adminSetBlocked(address, bool) 호출 → 결제 차단/허용
+ * 3) Firestore users.blacklisted 필드 기록
+ *
+ * @param {string}  emailOrUid - 이메일 또는 Firebase UID
+ * @param {boolean} blocked    - true: 블랙리스트 등록, false: 해제
+ */
+async function adminSetBlacklist(emailOrUid, blocked) {
+  // 1. UID 조회
+  let uid;
+  const isEmail = emailOrUid.includes('@');
+  if (isEmail) {
+    const userRecord = await admin.auth().getUserByEmail(emailOrUid);
+    uid = userRecord.uid;
+  } else {
+    uid = emailOrUid;
+    await admin.auth().getUser(uid); // 존재 확인
+  }
+
+  // 2. Firestore users 문서에서 지갑 주소 조회
+  const userSnap = await db.collection('users').doc(uid).get();
+  if (!userSnap.exists) throw new Error(`유저를 찾을 수 없습니다: ${uid}`);
+  const userData = userSnap.data() || {};
+  const walletAddress = userData?.wallet?.address;
+
+  // 3. Firebase Auth disabled 설정 (로그인 즉시 차단/허용)
+  await admin.auth().updateUser(uid, { disabled: blocked });
+
+  // 4. Firestore blacklisted 필드 기록
+  await db.collection('users').doc(uid).update({
+    blacklisted: blocked,
+    blacklistedAt: blocked ? admin.firestore.FieldValue.serverTimestamp() : null,
+  });
+
+  // 5. 온체인 adminSetBlocked (지갑이 있을 때만)
+  let txHash = null;
+  if (walletAddress) {
+    try {
+      const adminWallet = getAdminWallet();
+      const platform = getPlatformContract(adminWallet);
+      const checksumAddr = ethers.getAddress(walletAddress);
+      const gasLimit = await estimateGasWithBuffer(platform, 'adminSetBlocked', [checksumAddr, blocked]);
+      const tx = await platform.adminSetBlocked(checksumAddr, blocked, { gasLimit });
+      const receipt = await tx.wait();
+      txHash = receipt.hash;
+    } catch (chainErr) {
+      // 온체인 실패해도 Auth/Firestore는 이미 적용됨 — 경고만 기록
+      admin.firestore().collection('admin_logs').add({
+        type: 'adminSetBlacklist_chainError',
+        uid,
+        blocked,
+        error: chainErr.message,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      }).catch(() => { });
+    }
+  }
+
+  return {
+    uid,
+    email: userData.email || null,
+    name: userData.name || null,
+    walletAddress: walletAddress || null,
+    blocked,
+    txHash,
+  };
+}
+
+module.exports = {
+  createCustodialWallet,
+  createWalletAndBonus,
+  registerOnChainBackground,
+  registerOnChain,
+  registerMentor,
+  getUserOnChainData,
+  getMyMentees,
+  adminSelfOnboard,
+  adminSetBlacklist,
+};
