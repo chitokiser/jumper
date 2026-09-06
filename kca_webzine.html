@@ -472,62 +472,14 @@
             }
             const uniqueSeed = Math.abs(hashSeed);
 
-            let randomImgUrl;
+                                    let randomImgUrl;
             if (data.heroImageKeyword) {
-                // 키워드가 있는 기사는 플리커에서 실시간 당겨오기
-                randomImgUrl = `https://picsum.photos/seed/${uniqueSeed}/800/600`;
+                let kw = encodeURIComponent(data.heroImageKeyword);
+                randomImgUrl = `https://image.pollinations.io/prompt/${kw},korea,professional,photography?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
             } else {
-                // 키워드 없는 옛날 기사들은 절대 겹치지 않는 무작위 한국 관련 고화질 사진 배정
-                const backupKeywords = ['korea', 'seoul', 'koreanfood', 'bibimbap', 'kimchi', 'koreanbbq'];
-                const selectedKeyword = backupKeywords[uniqueSeed % backupKeywords.length];
-                randomImgUrl = `https://picsum.photos/seed/${uniqueSeed}/800/600`;
-            }
-
-            // 본문에서 HTML 태그를 제거하고 짧은 요약글만 추출
-            const rawBody = data.webzineBody || data.webzineContent || '기사 내용이 없습니다.';
-            const plainText = rawBody.replace(/<[^>]+>/g, '');
-            const excerpt = plainText.substring(0, 100) + (plainText.length > 100 ? '...' : '');
-
-            articleEl.innerHTML = `
-        <div class="webzine-card">
-          <img src="${randomImgUrl}" class="webzine-card-img" alt="Article image" loading="lazy">
-          <div class="webzine-card-body">
-            <div class="merchant-badge mb-2"><i class="fa-solid fa-store me-2"></i>${data.merchantName || '제휴점'}</div>
-            <h5 class="webzine-card-title">${data.webzineTitle}</h5>
-            <div class="text-muted mb-3 small"><i class="fa-regular fa-calendar me-1"></i> ${date}</div>
-            <div class="webzine-card-excerpt">${excerpt}</div>
-            <div class="webzine-card-footer">
-              <span class="text-primary fw-bold small"><i class="fa-solid fa-gem me-1"></i>공유 1000P</span>
-              <a href="${shareUrl}" class="btn-read-more">기사 읽기 & 공유</a>
-            </div>
-          </div>
-        </div>
-      `;
-            articlesWrapper.appendChild(articleEl);
-        }
-
-        // --- 상세 보기용 ---
-        function renderArticleDetail(id, data) {
-            const date = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : '방금 전';
-            const articleEl = document.createElement('div');
-
-            const shareTitle = data.webzineTitle || 'K-MOA 웹진';
-            const shareUrl = window.location.href.split('?')[0] + '?id=' + id;
-            const shortsJson = JSON.stringify(data.socialShorts || {}).replace(/"/g, '&quot;');
-
-            let hashSeed = 0;
-            for (let i = 0; i < id.length; i++) {
-                hashSeed = Math.imul(31, hashSeed) + id.charCodeAt(i) | 0;
-            }
-            const uniqueSeed = Math.abs(hashSeed);
-
-            let randomImgUrl;
-            if (data.heroImageKeyword) {
-                randomImgUrl = `https://picsum.photos/seed/${uniqueSeed}/1200/800`;
-            } else {
-                const backupKeywords = ['korea', 'seoul', 'koreanfood', 'bibimbap', 'kimchi', 'koreanbbq'];
-                const selectedKeyword = backupKeywords[uniqueSeed % backupKeywords.length];
-                randomImgUrl = `https://picsum.photos/seed/${uniqueSeed}/1200/800`;
+                const backupKeywords = ['seoul city view', 'korean food', 'bibimbap', 'kimchi', 'korean palace'];
+                const selectedKeyword = encodeURIComponent(backupKeywords[uniqueSeed % backupKeywords.length]);
+                randomImgUrl = `https://image.pollinations.io/prompt/${selectedKeyword},korea,professional,photography?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
             }
 
             let shareBoxHtml = '';
