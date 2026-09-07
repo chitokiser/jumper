@@ -15,6 +15,14 @@
   <script src="/assets/js/partials.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 
+  <script>
+    // 화이트라벨(API/iframe 연동) 모드일 경우 K-MOA 자체 헤더/푸터 등 GNB를 숨김 처리
+    if (new URLSearchParams(window.location.search).get('whitelabel') === 'true') {
+      document.documentElement.classList.add('whitelabel-mode');
+      document.write('<style>#siteHeader, #siteFooter, .bottom-nav { display: none !important; } body { padding-top: 0 !important; margin-top: 0 !important; }</style>');
+    }
+  </script>
+
   <style>
     #qrScanOverlay {
       display: none;
