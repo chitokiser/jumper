@@ -62,39 +62,46 @@ fBoxType.addEventListener('change', _onBoxTypeChange);
 
 // ── Leaflet 맵 초기화 ─────────────────────────────────────────────────────────
 function initMap() {
-  map = L.map('map').setView([21.0285, 105.8542], 13); // 하노이 기본
+  const defaultPos = [21.0285, 105.8542];
+  map = L.map('map').setView(defaultPos, 14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  map.on('click', e => {
-    const { lat, lng } = e.latlng;
-    setLatLng(lat, lng);
+  pinMarker = L.marker(defaultPos, {
+    draggable: true,
+    icon: L.divIcon({ html: '🎯', iconSize: [30, 30], className: '' })
+  }).addTo(map);
+
+  pinMarker.on('dragend', e => {
+    const p = e.target.getLatLng();
+    valLat.value = p.lat.toFixed(6);
+    valLng.value = p.lng.toFixed(6);
   });
-}
 
-function setLatLng(lat, lng) {
-  fLat.value    = lat.toFixed(6);
-  fLng.value    = lng.toFixed(6);
-  fCoords.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-  coordDisplay.textContent = '';
-
-  if (pinMarker) {
-    pinMarker.setLatLng([lat, lng]);
-  } else {
-    pinMarker = L.marker([lat, lng], {
-      draggable: true,
-      icon: L.divIcon({ html: '📍', iconSize: [30, 30], iconAnchor: [15, 30], className: '' }),
-    }).addTo(map);
-    pinMarker.on('dragend', e => {
-      const p = e.target.getLatLng();
-      setLatLng(p.lat, p.lng);
-    });
+  // 유저 현재 위치 (GPS) 가져와서 지도 중심 맞추기
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const userLat = pos.coords.latitude;
+      const userLng = pos.coords.longitude;
+      const userPos = [userLat, userLng];
+      
+      map.setView(userPos, 16); // 내 위치로 이동 및 줌인
+      pinMarker.setLatLng(userPos); // 과녁(저장포인트)을 내 위치로
+      valLat.value = userLat.toFixed(6);
+      valLng.value = userLng.toFixed(6);
+      
+      // 내 위치 파란 마커 추가
+      L.marker(userPos, {
+        icon: L.divIcon({ html: '🔵', iconSize: [20, 20], className: 'animate-bounce' })
+      }).addTo(map).bindPopup("Current GPS").openPopup();
+      
+    }, (err) => {
+      console.warn("GPS failed", err);
+    }, { enableHighAccuracy: true });
   }
 }
 
-// ── 보물상자 목록 로드 ────────────────────────────────────────────────────────
 async function loadBoxes() {
   boxTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#94a3b8">Loading...</td></tr>';
 
