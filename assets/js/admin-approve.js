@@ -389,10 +389,15 @@ async function loadMerchants() {
 
   const ownerUids = [...new Set(docs.map(d => d.data.ownerUid).filter(Boolean))];
   const emailMap = {};
+  const btMap = {};
   await Promise.all(ownerUids.map(async uid => {
     try {
       const userSnap = await getDoc(doc(db, "users", uid));
-      if (userSnap.exists()) emailMap[uid] = userSnap.data().email || "";
+      if (userSnap.exists()) {
+        const ud = userSnap.data();
+        emailMap[uid] = ud.email || "";
+        btMap[uid] = ud.btBalance || 0;
+      }
     } catch (_) { }
   }));
 
@@ -418,9 +423,9 @@ async function loadMerchants() {
           <div class="sum-left">
             <div class="sum-title">${esc(v.name || "(이름없음)")} · ID: ${esc(mid)}</div>
             <div class="sum-sub">${esc([v.career, v.region, ownerEmail || ("uid:" + (v.ownerUid || "-"))].filter(Boolean).join(" · "))}</div>
-            <div class="sum-sub">BT 잔여량: <b style="color:#d946ef;">${v.btBalance || 0} BT</b></div>
+            <div class="sum-sub">BT 잔여량: <b style="color:#d946ef;">${btMap[v.ownerUid] ?? v.btBalance ?? 0} BT</b></div>
           </div>
-            <div class="sum-sub">BT 잔여량: <b style="color:#d946ef;">${v.btBalance || 0} BT</b></div>
+            <div class="sum-sub">BT 잔여량: <b style="color:#d946ef;">${btMap[v.ownerUid] ?? v.btBalance ?? 0} BT</b></div>
           </div>
           <div class="sum-right">
             ${dormantBadge}

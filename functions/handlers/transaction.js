@@ -1281,6 +1281,10 @@ async function receiveBtQrFirebase(uid, data) {
     if (merchBtBal < numBt) throw new Error('가맹점의 BT 잔고가 부족하여 지급할 수 없습니다.');
 
     tx.set(merchRef, { btBalance: merchBtBal - numBt }, { merge: true });
+    if (merchData.ownerUid) {
+      const ownerRef = db.collection('users').doc(merchData.ownerUid);
+      tx.update(ownerRef, { btBalance: admin.firestore.FieldValue.increment(-numBt) });
+    }
 
     // 5. Update User BT
     tx.update(userRef, {
@@ -1492,8 +1496,15 @@ exports.adminChargeBt = async function (adminUid, merchantId, amount) {
   await db.runTransaction(async (t) => {
     const snap = await t.get(merchRef);
     if (!snap.exists) throw new Error('가맹점이 없습니다.');
-    const newBal = (Number(snap.data().btBalance) || 0) + amount;
-    t.set(merchRef, { btBalance: newBal }, { merge: true });
+    const mData = snap.data();
+    
+    // User BT Sync
+    if (mData.ownerUid) {
+      const ownerRef = db.collection('users').doc(mData.ownerUid);
+      t.update(ownerRef, { btBalance: admin.firestore.FieldValue.increment(amount) });
+    }
+
+    t.update(merchRef, { btBalance: admin.firestore.FieldValue.increment(amount) });
 
     t.set(db.collection('bt_transactions').doc(), {
       type: 'admin_charge',
