@@ -446,18 +446,36 @@
                     container.appendChild(articlesWrapper);
                 }
 
-                snap.forEach(docSnap => {
+                // Pexels 이미지를 순차적으로 가져오기 위해 for...of 사용
+                for (const docSnap of snap.docs) {
                     const data = docSnap.data();
-                    renderArticleCard(docSnap.id, data);
-                });
+                    await renderArticleCard(docSnap.id, data);
+                }
             } catch (err) {
                 console.error(err);
                 loading.innerHTML = `<p class="text-danger">웹진 데이터를 불러오는데 실패했습니다.</p>`;
             }
         }
 
+        const PEXELS_API_KEY = 'vYbEIfjKDbCgOqhWPRQfEDKEniGvjOn4f1DtwlLuA0O6IAlxVX0DruZC';
+        async function fetchHighQualityImage(keyword, seed) {
+            try {
+                const page = 1 + (seed % 10);
+                const query = keyword || "korean food culture";
+                const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=15&page=${page}&orientation=landscape`, {
+                    headers: { 'Authorization': PEXELS_API_KEY }
+                });
+                const json = await res.json();
+                if (json && json.photos && json.photos.length > 0) {
+                    const idx = seed % json.photos.length;
+                    return json.photos[idx].src.large2x || json.photos[idx].src.large;
+                }
+            } catch (e) { console.error('Image api error', e); }
+            return 'https://images.unsplash.com/photo-1548174542-02cd7aeaf492?auto=format&fit=crop&q=80&w=800'; // ultimate fallback
+        }
+
         // --- 목록 보기용 (카드 뷰) ---
-        function renderArticleCard(id, data) {
+        async function renderArticleCard(id, data) {
             const date = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : '방금 전';
             const articleEl = document.createElement('div');
             articleEl.className = 'col';
@@ -471,17 +489,9 @@
             }
             const uniqueSeed = Math.abs(hashSeed);
 
-            let randomImgUrl;
-            // 너무 과도한 프롬프트는 오히려 이미지를 망치므로 핵심 키워드만 사용하고 flux-realism 모델을 강제합니다.
-            const modelParams = '&model=flux&enhance=true';
-            if (data.heroImageKeyword) {
-                let kw = encodeURIComponent(data.heroImageKeyword + " professional photography, highly realistic");
-                randomImgUrl = `https://image.pollinations.ai/prompt/${kw}?width=500&height=350&nologo=true&seed=${uniqueSeed}${modelParams}`;
-            } else {
-                const backupKeywords = ['Seoul city night view', 'Authentic Korean traditional food', 'Korean palace', 'Modern Seoul architecture'];
-                const selectedKeyword = encodeURIComponent(backupKeywords[uniqueSeed % backupKeywords.length] + " professional photography, highly realistic");
-                randomImgUrl = `https://image.pollinations.ai/prompt/${selectedKeyword}?width=500&height=350&nologo=true&seed=${uniqueSeed}${modelParams}`;
-            }
+            const backupKeywords = ['Seoul city night view', 'Authentic Korean food', 'Korean palace', 'Modern Seoul architecture'];
+            let kw = data.heroImageKeyword || backupKeywords[uniqueSeed % backupKeywords.length];
+            let randomImgUrl = await fetchHighQualityImage(kw, uniqueSeed);
 
             let targetUrl = `?id=${id}`;
             if (isWhitelabel) { targetUrl += `&whitelabel=true`; }
@@ -510,7 +520,7 @@
         }
 
         // --- 상세 보기용 (디테일 뷰) ---
-        function renderArticleDetail(id, data) {
+        async function renderArticleDetail(id, data) {
             const date = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : '방금 전';
 
             const shareTitle = data.webzineTitle || 'K-MOA 웹진';
@@ -524,16 +534,9 @@
             }
             const uniqueSeed = Math.abs(hashSeed);
 
-            let randomImgUrl;
-            const modelParams = '&model=flux&enhance=true';
-            if (data.heroImageKeyword) {
-                let kw = encodeURIComponent(data.heroImageKeyword + " professional photography, highly realistic");
-                randomImgUrl = `https://image.pollinations.ai/prompt/${kw}?width=1200&height=800&nologo=true&seed=${uniqueSeed}${modelParams}`;
-            } else {
-                const backupKeywords = ['Seoul city night view', 'Authentic Korean traditional food', 'Korean palace', 'Modern Seoul architecture'];
-                const selectedKeyword = encodeURIComponent(backupKeywords[uniqueSeed % backupKeywords.length] + " professional photography, highly realistic");
-                randomImgUrl = `https://image.pollinations.ai/prompt/${selectedKeyword}?width=1200&height=800&nologo=true&seed=${uniqueSeed}${modelParams}`;
-            }
+            const backupKeywords = ['Seoul city night view', 'Authentic Korean traditional food', 'Korean palace', 'Modern Seoul architecture'];
+            let kw = data.heroImageKeyword || backupKeywords[uniqueSeed % backupKeywords.length];
+            let randomImgUrl = await fetchHighQualityImage(kw, uniqueSeed);
 
             let shareBoxHtml = '';
             let returnBtnHtml = '';
