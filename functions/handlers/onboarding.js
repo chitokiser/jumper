@@ -339,13 +339,13 @@ async function getMyMentees(uid) {
 
   const querySnap = await db.collection('users').where('mentorUid', '==', uid).limit(100).get();
   const menteeMap = {};
-  
+
   await Promise.all(querySnap.docs.map(async (docSnap) => {
     const data = docSnap.data();
     const menteeUid = docSnap.id;
     const bpSnap = await db.collection('battle_players').doc(menteeUid).get();
     const earned = bpSnap.exists ? (bpSnap.data().generatedForMentor || 0) : 0;
-    
+
     menteeMap[menteeUid] = {
       uid: menteeUid,
       name: data.displayName || data.name || data.email?.split('@')[0] || '익명',
@@ -592,6 +592,7 @@ module.exports = {
   registerMentor,
   getUserOnChainData,
   getMyMentees,
+  getMenteeIncome,
   adminSelfOnboard,
   adminSetBlacklist,
 };

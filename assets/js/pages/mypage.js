@@ -193,7 +193,17 @@ async function loadKCultureBalances(uid) {
       const d = userSnap.data();
       const pointBal = d.pointBalance || 0;
       const payBal = d.pointBalanceVnd || 0;
-      const btBal = d.btBalance || 0;
+      let btBal = d.btBalance || 0;
+
+      const isMerchantOwner = !!d.merchantId;
+      let mRef = null;
+      if (isMerchantOwner) {
+        mRef = doc(db, "merchants", String(d.merchantId));
+        const mSnap = await getDoc(mRef);
+        if (mSnap.exists()) {
+          btBal = mSnap.data().btBalance || btBal;
+        }
+      }
 
       const elPoint = $("pointDisplay");
       const elPay = $("paymentBalanceDisplay");
@@ -205,7 +215,19 @@ async function loadKCultureBalances(uid) {
         const updatedD = snap.data();
         const pBal = updatedD.pointBalance || 0;
         const kBal = updatedD.pointBalanceVnd || 0;
-        const bBal = updatedD.btBalance || 0;
+        let bBal = updatedD.btBalance || 0;
+
+        // If Merchant, we assume another listener or initial fetch will handle BT, 
+        // but let's safely fetch it so it's accurate on user update as well.
+        if (isMerchantOwner && mRef) {
+          getDoc(mRef).then(mS => {
+            if (mS.exists()) bBal = mS.data().btBalance || bBal;
+            if (elBt) {
+              const btSpan = elBt.querySelector("#btSpan");
+              if (btSpan) btSpan.textContent = bBal.toLocaleString("ko-KR") + " BT";
+            }
+          });
+        }
 
         if (elPoint) {
           const btnHtml = `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>`;
@@ -281,7 +303,11 @@ async function loadKCultureBalances(uid) {
       if (btnUseBt) {
         btnUseBt.onclick = async () => {
           const userSnap3 = await getDoc(doc(db, "users", uid));
-          const currentBt = userSnap3.exists() ? Number(userSnap3.data().btBalance || 0) : 0;
+          let currentBt = userSnap3.exists() ? Number(userSnap3.data().btBalance || 0) : 0;
+          if (isMerchantOwner && mRef) {
+            const mS = await getDoc(mRef);
+            if (mS.exists()) currentBt = mS.data().btBalance || currentBt;
+          }
           if (currentBt <= 0) {
             alert("보유한 BT가 없습니다. 가맹점에서 결제하여 획득해보세요!");
             return;
@@ -428,7 +454,7 @@ async function loadMentees() {
     }
 
     const rows = mentees.map(m => {
-      const addr = m.walletAddress ? m.walletAddress.substring(0,6) + "..." + m.walletAddress.slice(-4) : "";
+      const addr = m.walletAddress ? m.walletAddress.substring(0, 6) + "..." + m.walletAddress.slice(-4) : "";
       const dateStr = m.registeredAt ? new Date(m.registeredAt).toLocaleDateString() : "";
       const earned = m.generatedForMentor || 0;
       return `
@@ -1049,7 +1075,7 @@ function bindDepositForm() {
       }
 
       const drParts = [];
-      
+
       if (d.amountVnd) drParts.push((d.amountVnd || 0).toLocaleString() + " VND");
       if (d.estimatedUsd != null) drParts.push("$" + Number(d.estimatedUsd).toFixed(2));
       setText("drHex", drParts.join(" / "));
