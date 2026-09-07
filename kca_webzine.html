@@ -463,7 +463,7 @@
             articleEl.className = 'col';
 
             const shareTitle = data.webzineTitle || 'K-MOA 웹진';
-            
+
             // 완벽히 고유한 해시 값(Seed) 생성 로직 (중복 절대 불가)
             let hashSeed = 0;
             for (let i = 0; i < id.length; i++) {
@@ -474,13 +474,13 @@
             let randomImgUrl;
             if (data.heroImageKeyword) {
                 let kw = encodeURIComponent(data.heroImageKeyword);
-                randomImgUrl = `https://image.pollinations.io/prompt/${kw},korea,professional,photography?width=500&height=350&nologo=true&seed=${uniqueSeed}`;
+                randomImgUrl = `https://image.pollinations.ai/prompt/${kw},korea,professional,photography?width=500&height=350&nologo=true&seed=${uniqueSeed}`;
             } else {
                 const backupKeywords = ['seoul city view', 'korean food', 'bibimbap', 'kimchi', 'korean palace'];
                 const selectedKeyword = encodeURIComponent(backupKeywords[uniqueSeed % backupKeywords.length]);
-                randomImgUrl = `https://image.pollinations.io/prompt/${selectedKeyword},korea,professional,photography?width=500&height=350&nologo=true&seed=${uniqueSeed}`;
+                randomImgUrl = `https://image.pollinations.ai/prompt/${selectedKeyword},korea,professional,photography?width=500&height=350&nologo=true&seed=${uniqueSeed}`;
             }
-            
+
             let targetUrl = `?id=${id}`;
             if (isWhitelabel) { targetUrl += `&whitelabel=true`; }
 
@@ -510,10 +510,10 @@
         // --- 상세 보기용 (디테일 뷰) ---
         function renderArticleDetail(id, data) {
             const date = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : '방금 전';
-            
+
             const shareTitle = data.webzineTitle || 'K-MOA 웹진';
             let shareUrl = window.location.href.split('?')[0] + '?id=' + id;
-            if(isWhitelabel) shareUrl += '&whitelabel=true';
+            if (isWhitelabel) shareUrl += '&whitelabel=true';
 
             // 완벽히 고유한 해시 값(Seed) 생성 로직 (중복 절대 불가)
             let hashSeed = 0;
@@ -525,11 +525,11 @@
             let randomImgUrl;
             if (data.heroImageKeyword) {
                 let kw = encodeURIComponent(data.heroImageKeyword);
-                randomImgUrl = `https://image.pollinations.io/prompt/${kw},korea,professional,photography?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
+                randomImgUrl = `https://image.pollinations.ai/prompt/${kw},korea,professional,photography?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
             } else {
                 const backupKeywords = ['seoul city view', 'korean food', 'bibimbap', 'kimchi', 'korean palace'];
                 const selectedKeyword = encodeURIComponent(backupKeywords[uniqueSeed % backupKeywords.length]);
-                randomImgUrl = `https://image.pollinations.io/prompt/${selectedKeyword},korea,professional,photography?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
+                randomImgUrl = `https://image.pollinations.ai/prompt/${selectedKeyword},korea,professional,photography?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
             }
 
             let shareBoxHtml = '';
