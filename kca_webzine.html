@@ -472,13 +472,14 @@
             const uniqueSeed = Math.abs(hashSeed);
 
             let randomImgUrl;
+            const qualityPrompt = ',masterpiece,high-end photography,8k resolution,cinematic lighting,photorealistic,vibrant colors,highly detailed';
             if (data.heroImageKeyword) {
-                let kw = encodeURIComponent(data.heroImageKeyword);
-                randomImgUrl = `https://image.pollinations.ai/prompt/${kw},korea,professional,photography?width=500&height=350&nologo=true&seed=${uniqueSeed}`;
+                let kw = encodeURIComponent(data.heroImageKeyword + qualityPrompt);
+                randomImgUrl = `https://image.pollinations.ai/prompt/${kw}?width=500&height=350&nologo=true&seed=${uniqueSeed}`;
             } else {
-                const backupKeywords = ['seoul city view', 'korean food', 'bibimbap', 'kimchi', 'korean palace'];
-                const selectedKeyword = encodeURIComponent(backupKeywords[uniqueSeed % backupKeywords.length]);
-                randomImgUrl = `https://image.pollinations.ai/prompt/${selectedKeyword},korea,professional,photography?width=500&height=350&nologo=true&seed=${uniqueSeed}`;
+                const backupKeywords = ['seoul city night view', 'premium korean traditional food', 'korean palace cinematic', 'modern seoul architecture'];
+                const selectedKeyword = encodeURIComponent(backupKeywords[uniqueSeed % backupKeywords.length] + qualityPrompt);
+                randomImgUrl = `https://image.pollinations.ai/prompt/${selectedKeyword}?width=500&height=350&nologo=true&seed=${uniqueSeed}`;
             }
 
             let targetUrl = `?id=${id}`;
@@ -523,13 +524,14 @@
             const uniqueSeed = Math.abs(hashSeed);
 
             let randomImgUrl;
+            const qualityPrompt = ',masterpiece,high-end photography,8k resolution,cinematic lighting,photorealistic,vibrant colors,highly detailed';
             if (data.heroImageKeyword) {
-                let kw = encodeURIComponent(data.heroImageKeyword);
-                randomImgUrl = `https://image.pollinations.ai/prompt/${kw},korea,professional,photography?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
+                let kw = encodeURIComponent(data.heroImageKeyword + qualityPrompt);
+                randomImgUrl = `https://image.pollinations.ai/prompt/${kw}?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
             } else {
-                const backupKeywords = ['seoul city view', 'korean food', 'bibimbap', 'kimchi', 'korean palace'];
-                const selectedKeyword = encodeURIComponent(backupKeywords[uniqueSeed % backupKeywords.length]);
-                randomImgUrl = `https://image.pollinations.ai/prompt/${selectedKeyword},korea,professional,photography?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
+                const backupKeywords = ['seoul city night view', 'premium korean traditional food', 'korean palace cinematic', 'modern seoul architecture'];
+                const selectedKeyword = encodeURIComponent(backupKeywords[uniqueSeed % backupKeywords.length] + qualityPrompt);
+                randomImgUrl = `https://image.pollinations.ai/prompt/${selectedKeyword}?width=1200&height=800&nologo=true&seed=${uniqueSeed}`;
             }
 
             let shareBoxHtml = '';
