@@ -235,7 +235,7 @@ function getAudio() {
 }
 
 // 소나 핑 — 거리가 가까울수록 고음·짧은 간격, 획득범위 내엔 더블핑
-function playSonarPing(dist, claimR) {
+function playSonarPing(dist, claimR) { return; // OPTIMIZED OUT
   try {
     const ctx = getAudio();
     const inClaim = dist <= claimR;
@@ -431,8 +431,8 @@ function renderAR(ts) {
     arCtx.globalAlpha = pulse;
     arCtx.strokeStyle = ringColor;
     arCtx.lineWidth = inClaimRange ? 3 : 1.5;
-    arCtx.shadowColor = ringColor;
-    arCtx.shadowBlur = 8;
+    // arCtx.shadowColor optimized out;
+    // arCtx.shadowBlur optimized out;
     arCtx.beginPath();
     arCtx.arc(screenX, screenY, size * 0.72, 0, Math.PI * 2);
     arCtx.stroke();
@@ -453,10 +453,7 @@ function renderAR(ts) {
       const aimPulse = 0.55 + 0.45 * Math.sin(now * 4);
       arCtx.save();
       arCtx.globalAlpha = aimPulse * 0.6;
-      const grad = arCtx.createRadialGradient(screenX, screenY, size*0.2, screenX, screenY, size*1.1);
-      grad.addColorStop(0, glowColor);
-      grad.addColorStop(1, 'transparent');
-      arCtx.fillStyle = grad;
+      arCtx.fillStyle = glowColor;
       arCtx.beginPath();
       arCtx.arc(screenX, screenY, size*1.1, 0, Math.PI*2);
       arCtx.fill();
@@ -476,8 +473,8 @@ function renderAR(ts) {
     // 보물상자 이미지
     arCtx.save();
     arCtx.globalAlpha = inClaimRange ? 1 : 0.65;
-    arCtx.shadowColor = glowColor;
-    arCtx.shadowBlur = 10;
+    // arCtx.shadowColor optimized out;
+    // arCtx.shadowBlur optimized out;
     if (chestImg.complete && chestImg.naturalWidth > 0) {
       arCtx.drawImage(chestImg, screenX - size/2, screenY - size/2, size, size);
     } else {
@@ -522,7 +519,7 @@ function renderAR(ts) {
   drawCrosshair(W, H, aimed);
 
   // 획득 가능 보물이 화면에 있으면 가장자리 비네트
-  if (claimableVisible > 0) drawVignette(W, H, now);
+  // Vignette optimized out
 
   // ── 레이더 범위 배지 (우측 상단) ─────────────────────────────────────────────
   {
