@@ -1,0 +1,139 @@
+
+    // ── Firebase 실시간 통계 ──────────────────────────────────────────────────────
+    import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+    import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+    import { firebaseConfig } from '/assets/js/firebase-config.js';
+
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    const elUsers    = document.getElementById('stat-users');
+    const elTreasure = document.getElementById('stat-treasure');
+
+    onSnapshot(doc(db, 'treasure_stats', 'global'), (snap) => {
+      const data = snap.exists() ? snap.data() : {};
+      if (elUsers)    elUsers.textContent    = ((data.participants || 0) + 10000).toLocaleString() + '+';
+      if (elTreasure) elTreasure.textContent = (data.foundCount || 0).toLocaleString();
+    }, () => {
+      if (elUsers)    elUsers.textContent    = '10,000+';
+      if (elTreasure) elTreasure.textContent = '0';
+    });
+
+    // ── i18n ────────────────────────────────────────────────────────────────────
+    const MESSAGES = {
+      // Hero
+      hero_eyebrow:    { ko: 'FIND THE', en: 'FIND THE', vi: 'TÌM' },
+      hero_sub:        { ko: '전설의 모험이 시작된다', en: 'The legendary adventure begins', vi: 'Cuộc phiêu lưu huyền thoại bắt đầu' },
+      hero_title:      { ko: 'HIDDEN TREASURE', en: 'HIDDEN TREASURE', vi: 'KHO BÁU ẨN GIẤU' },
+      hero_desc:       { ko: '모험이 당신을 부르고 있습니다. 보물은 진짜입니다.\nNPC의 단서를 쫓아 숨겨진 보물을 찾아내고 전설적인 보상을 손에 넣으세요.', en: 'The adventure is calling. The treasure is real.\nFollow the NPC clues, hunt down hidden treasure, and claim legendary rewards.', vi: 'Cuộc phiêu lưu đang gọi bạn. Kho báu là thật.\nTheo dấu gợi ý NPC, săn tìm kho báu ẩn và giành phần thưởng huyền thoại.' },
+
+      // Stats
+      stat1:           { ko: '탐험가 참여', en: 'EXPLORERS JOINED', vi: 'THÁM HIỂM VIÊN' },
+      stat2:           { ko: '오늘 발견된 보물', en: 'TREASURES TODAY', vi: 'KHO BÁU HÔM NAY' },
+      stat3:           { ko: '전설적 보상', en: 'LEGENDARY REWARDS', vi: 'PHẦN THƯỞNG' },
+
+      // Buttons
+      btn_explore:     { ko: '🗺️ 탐험 시작하기', en: '🗺️ Start Exploring', vi: '🗺️ Bắt đầu khám phá' },
+      btn_register:    { ko: '⚔️ 모험가 등록', en: '⚔️ Register Now', vi: '⚔️ Đăng ký ngay' },
+      btn_wallet:      { ko: '💰 내 지갑 보기', en: '💰 View My Wallet', vi: '💰 Xem ví của tôi' },
+
+      // How to play
+      how_eyebrow:     { ko: 'QUEST GUIDE', en: 'QUEST GUIDE', vi: 'HƯỚNG DẪN' },
+      how_title:       { ko: '보물 찾는 법', en: 'How to Find Treasure', vi: 'Cách tìm kho báu' },
+      how_sub:         { ko: 'AR 스캐너로 보물을 발견하고 인벤토리에서 경품을 받으세요', en: 'Discover treasure with AR scanner and claim prizes from your inventory', vi: 'Khám phá kho báu bằng AR và nhận phần thưởng từ kho đồ' },
+      step1_label:     { ko: 'STEP 01', en: 'STEP 01', vi: 'BƯỚC 01' },
+      step1_title:     { ko: 'AR 스캐너 활성화', en: 'Activate AR Scanner', vi: 'Kích hoạt AR Scanner' },
+      step1_desc:      { ko: '앱에서 AR 스캐너를 실행하세요. 카메라로 현실 공간을 비추면 숨겨진 보물박스가 나타납니다.', en: 'Launch the AR scanner in the app. Point your camera at the real world to reveal hidden treasure boxes.', vi: 'Mở AR scanner trong ứng dụng. Hướng camera vào thực tế để khám phá các hộp kho báu ẩn.' },
+      step2_label:     { ko: 'STEP 02', en: 'STEP 02', vi: 'BƯỚC 02' },
+      step2_title:     { ko: '30m 이내 접근 후 획득', en: 'Approach within 30m & Claim', vi: 'Tiếp cận 30m & Thu thập' },
+      step2_desc:      { ko: 'AR로 발견한 보물에 실제 30m 이내로 이동하면 획득 버튼이 활성화됩니다. 현장에서 직접 보물박스를 수집하세요.', en: 'Move within 30 m of the discovered treasure in the real world to activate the claim button. Collect the box on-site.', vi: 'Di chuyển đến trong vòng 30 m của kho báu trong thực tế để kích hoạt nút thu thập.' },
+      step3_label:     { ko: 'STEP 03', en: 'STEP 03', vi: 'BƯỚC 03' },
+      step3_title:     { ko: '몬스터 처치 → 열쇠 획득', en: 'Defeat Monster → Get Key', vi: 'Tiêu diệt quái → Nhận chìa khóa' },
+      step3_desc:      { ko: '숨김 보물박스는 주변 몬스터를 처치해야 열쇠를 드롭합니다. 열쇠를 획득한 뒤 보물상자를 여세요!', en: 'Hidden treasure boxes require you to defeat nearby monsters to drop a key. Claim the key, then open the chest!', vi: 'Hộp kho báu ẩn yêu cầu tiêu diệt quái vật gần đó để nhận chìa khóa. Lấy chìa khóa rồi mở rương!' },
+      step4_label:     { ko: 'STEP 04', en: 'STEP 04', vi: 'BƯỚC 04' },
+      step4_title:     { ko: '인벤토리에서 박스 개봉 → 경품', en: 'Open Box in Inventory → Prize', vi: 'Mở hộp trong kho đồ → Phần thưởng' },
+      step4_desc:      { ko: '획득한 박스는 인벤토리에 보관됩니다. 인벤토리에서 박스를 개봉하면 즉시 경품(Point·아이템·바우처)이 지급됩니다.', en: 'Collected boxes are stored in your inventory. Open the box there to instantly receive your prize — Point, items, or vouchers.', vi: 'Hộp đã thu thập được lưu trong kho đồ. Mở hộp để nhận ngay phần thưởng — Point, vật phẩm hoặc voucher.' },
+
+      // Tourist zone
+      tourist_eyebrow: { ko: '관광지 특별 구역', en: 'TOURIST ZONE', vi: 'KHU VỰC DU LỊCH' },
+      tourist_title:   { ko: '스쳐 지나가는 관광지 — AR 스캔으로 최대 1km 획득', en: 'Passing Tourist Spots — Claim up to 1 km via AR Scan', vi: 'Điểm du lịch thoáng qua — Thu thập trong vòng 1 km bằng AR' },
+      tourist_desc:    { ko: '하롱베이처럼 짧게 머무는 관광지로 지정된 구역에서는 AR 스캔으로 최대 1km 거리에서도 보물박스를 획득할 수 있습니다. 크루즈나 버스 투어 중에도 놓치지 마세요!', en: 'At designated tourist zones — like Ha Long Bay — where visits are brief, you can claim treasure boxes from up to 1 km away using the AR scanner. Don\'t miss out even on a cruise or bus tour!', vi: 'Tại các khu du lịch thoáng qua như Vịnh Hạ Long, bạn có thể thu thập hộp kho báu trong phạm vi 1 km bằng AR scanner. Đừng bỏ lỡ dù đang trên tàu du lịch hay xe buýt tham quan!' },
+
+      // Prize distribution process
+      prize_eyebrow:   { ko: '경품 지급 프로세스', en: 'PRIZE DISTRIBUTION', vi: 'QUY TRÌNH PHẦN THƯỞNG' },
+      prize_title:     { ko: '보물 획득부터 경품까지', en: 'From Discovery to Prize', vi: 'Từ khám phá đến phần thưởng' },
+      prize_flow1:     { ko: 'AR 스캔', en: 'AR Scan', vi: 'AR Scan' },
+      prize_flow2:     { ko: '인벤토리 보관', en: 'Stored in Inventory', vi: 'Lưu vào kho đồ' },
+      prize_flow3:     { ko: '박스 개봉', en: 'Open Box', vi: 'Mở hộp' },
+      prize_flow4:     { ko: '경품 즉시 지급 🎉', en: 'Prize Instantly Delivered 🎉', vi: 'Nhận phần thưởng ngay 🎉' },
+      prize_note1:     { ko: '보물박스는 수집 즉시 인벤토리에 저장되며 언제든지 개봉 가능합니다.', en: 'Treasure boxes are saved to your inventory upon collection and can be opened any time.', vi: 'Hộp kho báu được lưu vào kho đồ ngay khi thu thập và có thể mở bất kỳ lúc nào.' },
+      prize_note2:     { ko: '박스 개봉 시 포인트, 희귀 아이템, VIP 바우처, 잭팟 중 하나가 무작위로 지급됩니다.', en: 'Opening a box randomly awards Points, rare items, VIP vouchers, or a jackpot prize.', vi: 'Mở hộp sẽ nhận ngẫu nhiên điểm Point, vật phẩm hiếm, voucher VIP hoặc jackpot.' },
+      prize_note3:     { ko: '같은 보물박스는 24시간 후 재수집 가능합니다. 매일 새로운 경품 기회!', en: 'The same treasure box can be recollected after 24 hours — a fresh prize chance every day!', vi: 'Hộp kho báu có thể thu thập lại sau 24 giờ — cơ hội phần thưởng mới mỗi ngày!' },
+      prize_note4:     { ko: '정회원은 가맹점 독점 보물박스에 접근할 수 있으며 더 높은 잭팟 확률을 제공합니다.', en: 'Premium members gain access to exclusive merchant boxes with higher jackpot odds.', vi: 'Thành viên chính thức có thêm hộp độc quyền tại cửa hàng với tỷ lệ jackpot cao hơn.' },
+
+      // Rewards
+      rewards_eyebrow: { ko: 'LEGENDARY LOOT', en: 'LEGENDARY LOOT', vi: 'CHIẾN LỢI PHẨM' },
+      rewards_title:   { ko: '전설적 보상', en: 'Legendary Rewards', vi: 'Phần thưởng huyền thoại' },
+      rewards_sub:     { ko: '전설의 모험가만이 이 보물들을 손에 넣을 수 있습니다', en: 'Only legendary adventurers can claim these treasures', vi: 'Chỉ những nhà thám hiểm huyền thoại mới có thể giành được những phần thưởng này' },
+      badge_rare:      { ko: 'RARE', en: 'RARE', vi: 'HIẾM' },
+      badge_jackpot:   { ko: 'JACKPOT', en: 'JACKPOT', vi: 'JACKPOT' },
+      reward1_name:    { ko: 'VIP 바우처', en: 'VIP Vouchers', vi: 'Voucher VIP' },
+      reward1_desc:    { ko: '독점 할인 & 특별 혜택', en: 'Exclusive discounts & perks', vi: 'Giảm giá độc quyền & ưu đãi' },
+      reward2_name:    { ko: '포인트', en: 'Points', vi: 'Điểm Point' },
+      reward2_desc:    { ko: '온체인 포인트 즉시 지급', en: 'On-chain Points delivered instantly', vi: 'Điểm Point on-chain được trao ngay lập tức' },
+      reward3_name:    { ko: '전투 아이템', en: 'Battle Items', vi: 'Vật phẩm chiến đấu' },
+      reward3_desc:    { ko: '무기·방어구·강화 아이템', en: 'Weapons, armor & power-up items', vi: 'Vũ khí, giáp & vật phẩm tăng cường' },
+      reward4_name:    { ko: '잭팟 Point', en: 'Jackpot Point', vi: 'Jackpot Point' },
+      reward4_desc:    { ko: '대형 Point 온체인 잭팟', en: 'Massive on-chain Point jackpots', vi: 'Jackpot Point on-chain khổng lồ' },
+
+      // Premium member
+      member_eyebrow:  { ko: 'PREMIUM', en: 'PREMIUM', vi: 'CAO CẤP' },
+      member_title:    { ko: '정회원의 특권', en: 'Premium Member Benefits', vi: 'Đặc quyền thành viên chính thức' },
+      member_benefit1: { ko: '10 Point를 납부하면 정회원이 됩니다. 가입 후 12개월간 정회원 혜택이 유지됩니다.', en: 'Pay 10 Point to become a premium member. Benefits last for 12 months after joining.', vi: 'Đóng 10 Point để trở thành thành viên chính thức. Quyền lợi duy trì 12 tháng sau khi gia nhập.' },
+      member_benefit2: { ko: '정회원만 가맹점에서 독점 보물 박스를 발행하고 관리할 수 있습니다.', en: 'Only premium members can issue and manage exclusive treasure boxes at merchants.', vi: 'Chỉ thành viên chính thức mới có thể phát hành và quản lý hộp kho báu độc quyền tại cửa hàng.' },
+      member_benefit3: { ko: '12개월 만료 후에는 재가입을 통해 혜택을 연장할 수 있습니다.', en: 'After 12 months, renew your membership to continue enjoying the benefits.', vi: 'Sau 12 tháng, gia hạn thành viên để tiếp tục hưởng quyền lợi.' },
+
+      // Final CTA
+      cta_title:       { ko: '모험을 시작할\n준비가 됐나요?', en: 'Ready for the\nAdventure?', vi: 'Sẵn sàng cho\ncuộc phiêu lưu?' },
+      cta_desc:        { ko: '지금 탐험가로 등록하고 전설적인 보물을 찾아보세요. 한정 기간 이벤트 진행 중!', en: 'Register as an explorer now and hunt for legendary treasures. Limited time event!', vi: 'Đăng ký thám hiểm ngay và săn kho báu huyền thoại. Sự kiện có thời hạn!' },
+
+      // Footer nav
+      nav_merchants:   { ko: '가맹점', en: 'Merchants', vi: 'Cửa hàng' },
+      nav_register:    { ko: '회원가입', en: 'Register', vi: 'Đăng ký' },
+      nav_wallet:      { ko: '내 지갑', en: 'My Wallet', vi: 'Ví của tôi' },
+    };
+
+    const LANGS = ['ko', 'en', 'vi'];
+    let lang = localStorage.getItem('town_lang') || 'en';
+
+    function _t(key) {
+      const e = MESSAGES[key];
+      if (!e) return key;
+      return e[lang] ?? e['ko'] ?? key;
+    }
+
+    function applyLang() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = _t(el.dataset.i18n);
+      });
+      document.documentElement.lang = lang;
+    }
+
+    // 헤더 lang:change 이벤트와 동기화
+    window.addEventListener('lang:change', function(e) {
+      const newLang = e.detail && e.detail.lang;
+      if (newLang && LANGS.includes(newLang)) {
+        lang = newLang;
+        applyLang();
+      }
+    });
+
+    // ── Scroll fade-in ────────────────────────────────────────────────────────
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.fade-in').forEach(el => io.observe(el));
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    applyLang();
+  

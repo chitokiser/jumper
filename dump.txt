@@ -1,34 +1,46 @@
-﻿<!-- /partials/header.html -->
-<header class="top-header top-header--sleek" id="siteHeaderBar">
-  <div class="hdr-inner">
+async function login(){
+  // 카카오톡/인스타/페북 인앱 브라우저에서는 Google OAuth가 403(disallowed_useragent)로 차단될 수 있음
+  if(isInAppBrowser()){
+    const err = new Error("Google login blocked in in-app browser");
+    err.code = "auth/inapp-browser";
+    throw err;
+  }
 
-    <a class="brand" href="/" aria-label="K-MOA">
-      <img src="/assets/images/jump/logo2.png" alt="KCA" class="brand-logo" onerror="this.style.display='none';" />
-    </a>
+  try{
+    await signInWithPopup(auth, googleProvider);
+  }catch(e){
+    const code = e?.code || "";
+    // 사용자가 직접 팝업 창을 닫은 경우 → 재시도 안 함
+    if(code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request"){
+      return;
+    }
+    // auth/unauthorized-domain, auth/popup-blocked 은 그대로 throw해서 호출자가 처리
+    // (unauthorized-domain은 redirect도 실패하므로 폴백 불필요)
+    // web-storage-unsupported 등 완전 미지원 환경만 redirect 시도
+    const redirectLike =
+      code === "auth/operation-not-supported-in-this-environment" ||
+      code === "auth/web-storage-unsupported";
+    if(redirectLike){
+      await signInWithRedirect(auth, googleProvider);
+      return;
+    }
+    throw e;
+  }
+}
 
-    <button class="burger" id="btnBurger" type="button" aria-label="menu" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
-
-    <nav class="nav" id="hdrNav">
-      <div class="nav-group">
-        <a href="/kca_webzine.html" class="nav-group-title" style="text-decoration:none;"
-          data-hdr-i18n="hdr_kculture">K-CULTURE</a>
-      </div>
-      <div class="nav-group">
-        <a href="/find_merchants.html" class="nav-group-title" style="text-decoration:none;"
-          data-hdr-i18n="hdr_merchants">Find Merchants</a>
-      </div>
-      <div class="nav-group" data-role="user guide merchant admin">
-        <a href="/mypage.html" class="nav-group-title" style="text-decoration:none;" data-hdr-i18n="mypage">My Page</a>
-      </div>
-      <div class="nav-group" data-role="admin">
-        <a href="/admin.html" class="nav-group-title" style="text-decoration:none;">관리자 모드</a>
-      </div>
-    </nav>
-
-    <div class="hdr-nav-backdrop" id="hdrNavBackdrop" hidden></div>
-
-    <div class="hdr-right">
-      <div class="hdr-lang" id="hdrLangSwitcher"
-        style="display:flex; gap:8px; align-items:center; color:#94a3b8; font-size
+async function _signInWithProvider(provider){
+  if(isInAppBrowser()){
+    const err = new Error("Social login blocked in in-app browser");
+    err.code = "auth/inapp-browser";
+    throw err;
+  }
+  try{
+    await signInWithPopup(auth, provider);
+  }catch(e){
+    const code = e?.code || "";
+    if(code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+    const redirectLike =
+      code === "auth/operation-not-supported-in-this-environment" ||
+      code === "auth/web-storage-unsupported";
+    if(redirectLike){
+      await 

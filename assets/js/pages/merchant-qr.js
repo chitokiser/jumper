@@ -1,5 +1,5 @@
 // /assets/js/pages/merchant-qr.js
-// ê°€ë§¹ì ??QR ì½”ë“œ ?ì„± ?˜ì´ì§€
+// ê°€ë§¹ì QR ì½”ë“œ ?ï¿½ì„± ?ï¿½ì´ì§€
 
 import { onAuthReady } from "../auth.js";
 import { login } from "../auth.js";
@@ -24,7 +24,7 @@ function show(id, on) {
   if (el) el.style.display = on ? "" : "none";
 }
 
-// ?€?€ ?˜ìœ¨ (?œì‹œ ?„ìš©) ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// ?ï¿½?ï¿½ ?ï¿½ìœ¨ (?ï¿½ì‹œ ?ï¿½ìš©) ?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½
 let _rates = null; // { krwPerUsd, vndPerUsd }
 
 async function loadRates() {
@@ -37,7 +37,7 @@ async function loadRates() {
       return _rates;
     }
   } catch (_) { }
-  _rates = { krwPerUsd: 1350, vndPerUsd: 25400 }; // ê¸°ë³¸ê°?fallback
+  _rates = { krwPerUsd: 1350, vndPerUsd: 25400 }; // ê¸°ë³¸ï¿½?fallback
   return _rates;
 }
 
@@ -50,7 +50,7 @@ function setText(id, val) {
   if (el) el.textContent = val != null ? String(val) : "-";
 }
 
-// ?€?€ ì§„ì…???€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// ?ï¿½?ï¿½ ì§„ì…?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½
 let _authDone = false;
 let _currentUid = null;
 
@@ -65,7 +65,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
   }
 
   if (role !== "merchant" && role !== "admin") {
-    alert("ê°€ë§¹ì  ê³„ì •ë§??´ìš© ê°€?¥í•©?ˆë‹¤.");
+    alert("ê°€ë§¹ì  ê³„ì •ë§Œ ì´ìš© ê°€ëŠ¥í•©ë‹ˆë‹¤.");
     location.href = "/family-register.html";
     return;
   }
@@ -75,7 +75,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
   await initPage(user.uid);
 });
 
-// 4ì´??´ë‚´ ë¡œê·¸???†ìœ¼ë©?ë¡œê·¸???ˆë‚´
+// 4ï¿½ï¿½ë‚´ ë¡œê·¸?ï¿½ìœ¼ï¿½?ë¡œê·¸?ï¿½ë‚´
 setTimeout(() => {
   if (!_authDone) {
     show("needLoginPanel", true);
@@ -84,9 +84,9 @@ setTimeout(() => {
   }
 }, 4000);
 
-// ?€?€ ?˜ì´ì§€ ì´ˆê¸°???€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// ?ï¿½?ï¿½ ?ï¿½ì´ì§€ ì´ˆê¸°?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½
 async function initPage(uid) {
-  // ? ì? ë¬¸ì„œ?ì„œ merchantId ì¡°íšŒ
+  // ?ï¿½ï¿½? ë¬¸ì„œ?ï¿½ì„œ merchantId ì¡°íšŒ
   const userSnap = await getDoc(doc(db, "users", uid));
   const merchantId = userSnap.data()?.merchantId;
 
@@ -95,21 +95,21 @@ async function initPage(uid) {
     return;
   }
 
-  // ê°€ë§¹ì  ?•ë³´ ì¡°íšŒ
+  // ê°€ë§¹ì  ?ï¿½ë³´ ì¡°íšŒ
   const mSnap = await getDoc(doc(db, "merchants", String(merchantId)));
   const merchantName = mSnap.exists() ? (mSnap.data()?.name || "ê°€ë§¹ì ") : "ê°€ë§¹ì ";
 
-  // ?”ë©´ ?œì‹œ
+  // ?ï¿½ë©´ ?ï¿½ì‹œ
   setText("qrMerchantName", merchantName);
 
-  // ?¤ì‹œê°?K-Culture Balance & Payment Balance ëª¨ë‹ˆ?°ë§
+  // ?ï¿½ì‹œï¿½?K-Culture Balance & Payment Balance ëª¨ë‹ˆ?ï¿½ë§
   onSnapshot(doc(db, "users", uid), (docS) => {
     const el = document.getElementById("merchBal");
     if (el && docS.exists()) el.textContent = Number(docS.data().pointBalanceVnd || 0).toLocaleString() + " KM";
   });
 
-  // ?€?€ ê°€ë§¹ì  BT ?”ê³ : merchants/{merchantId}.btBalance ?¤ì‹œê°?ì¡°íšŒ ?€?€
-  // (adminChargeBtê°€ ?€?¥í•˜???„ì¹˜?€ ?™ì¼?´ì•¼ ??
+  // ?ï¿½?ï¿½ ê°€ë§¹ì  BT ?ï¿½ê³ : merchants/{merchantId}.btBalance ?ï¿½ì‹œï¿½?ì¡°íšŒ ?ï¿½?ï¿½
+  // (adminChargeBtê°€ ?ï¿½?ï¿½í•˜?ï¿½ì¹˜?ï¿½ ?ï¿½ì¼?ï¿½ì•¼ 
   onSnapshot(doc(db, "merchants", String(merchantId)), (mSnap2) => {
     if (mSnap2.exists()) {
       const btBal = Number(mSnap2.data().btBalance || 0);
@@ -117,13 +117,13 @@ async function initPage(uid) {
     }
   });
 
-  // ê°€ë§¹ì ì£?KM/?¬ì¸???”ê³  (merchant owner)
+  // ê°€ë§¹ì ï¿½?KM/?ï¿½ì¸?ï¿½ê³  (merchant owner)
   const mOwner = mSnap.exists() ? mSnap.data()?.ownerUid : null;
   if (mOwner) {
     onSnapshot(doc(db, "users", mOwner), (snap) => {
       if (snap.exists()) {
         const { pointBalanceVnd = 0 } = snap.data();
-        setText("qrMerchantPaymentBal", pointBalanceVnd.toLocaleString("ko-KR") + " KM (ê²°ì œ?€ê¸?");
+        setText("qrMerchantPaymentBal", pointBalanceVnd.toLocaleString("ko-KR") + " KM (ê²°ì œìš©)");
         setText("qrMerchantPointBal", (snap.data().pointBalance || 0).toLocaleString("ko-KR") + " P");
       }
     });
@@ -132,16 +132,16 @@ async function initPage(uid) {
 
   show("mainPanel", true);
 
-  // ??ë°”ì¸??
+  // ë°”ì¸
   bindQrForm(merchantId, merchantName);
 }
 
-// ?€?€ QR ??ë°”ì¸???€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// ?ï¿½?ï¿½ QR ë°”ì¸?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½
 function bindQrForm(merchantId, merchantName) {
   const form = $("qrForm");
   if (!form) return;
 
-  // ?˜ì‚° ?œì‹œ ?…ë°?´íŠ¸ ?¨ìˆ˜
+  // ?ï¿½ì‚° ?ï¿½ì‹œ ?ï¿½ë°?ï¿½íŠ¸ ?ï¿½ìˆ˜
   async function updateConvert() {
     const isVnd = true;
     const inputEl = $("qrAmount");
@@ -155,28 +155,28 @@ function bindQrForm(merchantId, merchantName) {
     if (!val || val <= 0) { convEl.style.display = "none"; return; }
 
     convEl.style.display = "";
-    krwEl.textContent = "ê³„ì‚° ì¤?..";
+    krwEl.textContent = "ê³„ì‚° ï¿½?..";
     const rates = await loadRates();
     krwEl.textContent = vndToKrw(val, rates).toLocaleString();
   }
 
-  // ?µí™” UI: ë¬´ì¡°ê±?VND
+  // ?ï¿½í™” UI: ë¬´ì¡°ï¿½?VND
   const labelEl = $("qrAmountLabel");
   const helpEl = $("qrAmountHelp");
   const inputEl = $("qrAmount");
-  if (labelEl) labelEl.textContent = "ê²°ì œ ê¸ˆì•¡ (?? VND)";
-  if (helpEl) helpEl.textContent = "ìµœì†Œ 10,000???´ìƒ ?…ë ¥??ì£¼ì„¸??";
+  if (labelEl) labelEl.textContent = "ê²°ì œ ê¸ˆì•¡ (ë‹¨ìœ„ VND)";
+  if (helpEl) helpEl.textContent = "ìµœì†Œ 10,000 VND ì´ìƒ ì…ë ¥í•´ì£¼ì„¸ìš”.";
   if (inputEl) {
-    if (!inputEl.value) { // ì´ˆê¸° ?¸íŒ… ?œì—ë§?
+    if (!inputEl.value) { // ì´ˆê¸° ?ï¿½íŒ… ?ï¿½ì—ï¿½?
       inputEl.min = "10000";
       inputEl.step = "1000";
-      inputEl.placeholder = "?? 200000";
+      inputEl.placeholder = "ì˜ˆ: 200000";
       inputEl.value = "";
     }
   }
   updateConvert();
 
-  // ê¸ˆì•¡ ?…ë ¥ ???˜ì‚° ?œì‹œ
+  // ê¸ˆì•¡ ?ï¿½ë ¥ ?ï¿½ì‚° ?ï¿½ì‹œ
   $("qrAmount")?.addEventListener("input", updateConvert);
 
 
@@ -195,24 +195,24 @@ function bindQrForm(merchantId, merchantName) {
     const labelEl = $("qrAmountLabel");
     const helpEl = $("qrAmountHelp");
     if (isBt) {
-      if (labelEl) labelEl.textContent = "?„ë£Œ??ê²°ì œ ê¸ˆì•¡ (VND)";
-      if (helpEl) helpEl.textContent = "ê³ ê°???€ ?˜ë‹¨?¼ë¡œ ê²°ì œ??ê¸ˆì•¡???…ë ¥?˜ë©´ ë¹„ë??˜ì—¬ BT ë¬´ë£Œ ë³´ìƒ???ì„±?©ë‹ˆ??";
+      if (labelEl) labelEl.textContent = "ë¬´ë£Œ BT ë³´ìƒ ê¸°ì¤€ê¸ˆì•¡ (VND)";
+      if (helpEl) helpEl.textContent = "ê³ ê°ì´ íƒ€ ìˆ˜ë‹¨ìœ¼ë¡œ ê²°ì œí•œ ê¸ˆì•¡ì„ ì…ë ¥í•˜ë©´ ë¹„ë¡€í•˜ì—¬ BT ë¬´ë£Œ ë³´ìƒ QRì´ ìƒì„±ë©ë‹ˆë‹¤.";
     } else {
-      if (labelEl) labelEl.textContent = "ê²°ì œ ì²?µ¬ ê¸ˆì•¡ (?? VND)";
-      if (helpEl) helpEl.textContent = "ìµœì†Œ 10,000???´ìƒ ?…ë ¥??ì£¼ì„¸??";
+      if (labelEl) labelEl.textContent = "ì•±ê²°ì œ ë°›ì„ ê¸ˆì•¡ (ë‹¨ìœ„ VND)";
+      if (helpEl) helpEl.textContent = "ìµœì†Œ 10,000 VND ì´ìƒ ì…ë ¥í•´ì£¼ì„¸ìš”.";
     }
 
     if (isBt && amount > 0) {
       if (btCalcResult) btCalcResult.style.display = "";
-      if (btCountText) btCountText.textContent = getBtAmount(amount, currency) + " ??;
+      if (btCountText) btCountText.textContent = getBtAmount(amount, currency) + " ì¥";
     } else {
       if (btCalcResult) btCalcResult.style.display = "none";
     }
 
-    // ëª¨ë“œ???°ë¼ ë²„íŠ¼ ?ìŠ¤??ë³€ê²?
+    // ëª¨ë“œ?ï¿½ë¼ ë²„íŠ¼ ?ï¿½ìŠ¤ë³€ï¿½?
     const btnGen = $("btnGenQr");
     if (btnGen) {
-      btnGen.textContent = isBt ? "ë¬´ë£Œ BT ë³´ìƒ QR ë°œê¸‰" : "ê²°ì œ QR ?ì„±";
+      btnGen.textContent = isBt ? "ë¬´ë£Œ BT ë³´ìƒ QR ë°œê¸‰" : "ê²°ì œ QR ?ï¿½ì„±";
     }
   }
 
@@ -227,7 +227,7 @@ function bindQrForm(merchantId, merchantName) {
     const amountRaw = $("qrAmount")?.value || "";
     const amount = Number(amountRaw);
 
-    if (!amount || amount < 10000) { alert("ìµœì†Œ 10,000???´ìƒ ?…ë ¥??ì£¼ì„¸??"); return; }
+    if (!amount || amount < 10000) { alert("ìµœì†Œ 10,000 VND ì´ìƒ ì…ë ¥í•´ ì£¼ì„¸ìš”."); return; }
 
 
     const mode = form.querySelector("input[name='qrMode']:checked")?.value || "pay";
@@ -235,7 +235,7 @@ function bindQrForm(merchantId, merchantName) {
   });
 }
 
-// ?€?€ Point ë³€???€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// ?ï¿½?ï¿½ Point ë³€?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½
 function weiToHex(weiStr) {
   if (!weiStr) return null;
   try {
@@ -246,7 +246,7 @@ function weiToHex(weiStr) {
   } catch (_) { return null; }
 }
 
-// ?€?€ ?…ê¸ˆ ?´ì—­ ?íƒœ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// ?ï¿½?ï¿½ ?ï¿½ê¸ˆ ?ï¿½ì—­ ?ï¿½íƒœ ?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½
 let _receiptTotalVnd = 0;
 let _receiptCount = 0;
 
@@ -256,7 +256,7 @@ function resetReceipts() {
   const list = $("receiptList");
   if (list) list.innerHTML = "";
   show("receiptWaiting", true);
-  setText("receiptTotal", "?©ê³„: 0 VND");
+  setText("receiptTotal", "?ï¿½ê³„: 0 VND");
 }
 
 function addReceiptItem(data, isNew = false) {
@@ -266,28 +266,28 @@ function addReceiptItem(data, isNew = false) {
   _receiptTotalVnd += vndVal;
   _receiptCount += 1;
 
-  // ?€ê¸??ˆë‚´ ?¨ê¸°ê¸?
+  // ?ï¿½ï¿½ï¿½ë‚´ ?ï¿½ê¸°ï¿½?
   show("receiptWaiting", false);
 
-  // ?©ê³„ ê°±ì‹ 
-  setText("receiptTotal", `?©ê³„: ${_receiptTotalVnd.toLocaleString("ko-KR")} VND`);
+  // ?ï¿½ê³„ ê°±ì‹ 
+  setText("receiptTotal", `?ï¿½ê³„: ${_receiptTotalVnd.toLocaleString("ko-KR")} VND`);
 
-  // ?œê° ?¬ë§·
-  const ts = data.createdAt?.toDate?.() ?? new Date();
+  // ?ï¿½ê° ?ï¿½ë§·
+  const ts = data.createdAt?.toDate?.()  new Date();
   const time = ts.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-  // ë²•ì •?”í ?œì‹œ
+  // ë²•ì •?ï¿½í ?ï¿½ì‹œ
   const cur = data.currency || "VND";
   const fiatAmt = cur === "VND" ? data.amountVnd : data.amountKrw;
   const fiatDisp = fiatAmt
-    ? (cur === "VND" ? `${Number(fiatAmt).toLocaleString()}?? : `${Number(fiatAmt).toLocaleString()}??)
+    ? (cur === "VND" ? `${Number(fiatAmt).toLocaleString()}ì›` : `${Number(fiatAmt).toLocaleString()}ì›`)
     : "";
 
-  // ì¹´ë“œ ?ì„±
+  // ì¹´ë“œ ?ï¿½ì„±
   const item = document.createElement("div");
   item.className = `receipt-item${isNew ? " new-item" : ""}`;
   item.innerHTML = `
-    <div class="ri-icon">${isNew ? "?? : "?’³"}</div>
+    <div class="ri-icon">${isNew ? "ì‹ ê·œ" : "ê³¼ê±°"}</div>
     <div class="ri-body">
       <div class="ri-hex">+${vndVal.toLocaleString("ko-KR")} VND</div>
       ${fiatDisp ? `<div class="ri-fiat">ê²°ì œ: ${fiatDisp}</div>` : ""}
@@ -295,15 +295,15 @@ function addReceiptItem(data, isNew = false) {
     <div class="ri-time">${time}</div>
   `;
 
-  // ìµœì‹  ??ª©??ë§???
+  // ìµœì‹  ï¿½ï¿½ï¿½?
   const list = $("receiptList");
   if (list) list.prepend(item);
 
-  // new ?¤í??¼ì? 5ì´????´ì œ
+  // new ?ï¿½ï¿½ï¿½ï¿½? 5ï¿½ï¿½ì œ
   if (isNew) setTimeout(() => item.classList.remove("new-item"), 5000);
 }
 
-// ?€?€ QR ?ì„± ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// ?ï¿½?ï¿½ QR ?ï¿½ì„± ?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½
 async function generateQr(merchantId, merchantName, amount, currency = "KRW", mode = "pay") {
   const canvas = $("qrCanvas");
   if (!canvas) return;
@@ -316,7 +316,7 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
   if (mode === "bt") {
     // Generate reward session on the server
     const btnGen = $("btnGenQr");
-    if (btnGen) { btnGen.disabled = true; btnGen.textContent = "QR ?ì„± ì¤?.."; }
+    if (btnGen) { btnGen.disabled = true; btnGen.textContent = "QR ?ï¿½ì„± ï¿½?.."; }
 
     try {
       const createSession = httpsCallable(functions, "createBtRewardSession");
@@ -324,33 +324,33 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
       const { rewardId, btAmount } = res.data;
 
       url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btAmount}&rewardId=${rewardId}&nonce=${Date.now()}`;
-      setText("qrCardAmount", `BT ë³´ìƒ (${btAmount}??`);
+      setText("qrCardAmount", `BT ë³´ìƒ (${btAmount}ì¥)`);
     } catch (err) {
-      if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT ë¬´ë£Œ ë³´ìƒ QR ?ì„±"; }
-      alert("BT QR ?ì„± ?¤ë¥˜: " + (err?.message || "?œë²„ ?µì‹  ?¤íŒ¨"));
+      if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT ë¬´ë£Œ ë³´ìƒ QR ?ï¿½ì„±"; }
+      alert("BT QR ìƒì„± ì˜¤ë¥˜: " + (err?.message || "ì„œë²„ í†µì‹  ì‹¤íŒ¨"));
       return;
     }
-    if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT ë¬´ë£Œ ë³´ìƒ QR ?ì„±"; }
+    if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT ë¬´ë£Œ ë³´ìƒ QR ?ï¿½ì„±"; }
   }
 
   // qrcode.js (CDN) API
   /* global QRCode */
   QRCode.toCanvas(canvas, url, { width: 280, margin: 2, color: { dark: "#1a1a2e", light: "#ffffff" } }, (err) => {
     if (err) {
-      console.error("QR ?ì„± ?¤ë¥˜:", err);
-      alert("QR ?ì„±???¤íŒ¨?ˆìŠµ?ˆë‹¤.");
+      console.error("QR ?ï¿½ì„± ?ï¿½ë¥˜:", err);
+      alert("QR ìƒì„±ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
       return;
     }
 
-    // ì¹´ë“œ ?•ë³´ ?…ë°?´íŠ¸
+    // ì¹´ë“œ ?ï¿½ë³´ ?ï¿½ë°?ï¿½íŠ¸
     const amountDisp = currency === "VND"
-      ? `${amount.toLocaleString()}??(VND)`
-      : `${amount.toLocaleString()}??(KRW)`;
+      ? `${amount.toLocaleString()}ì›(VND)`
+      : `${amount.toLocaleString()}ì›(KRW)`;
     setText("qrCardMerchant", merchantName);
     setText("qrCardAmount", amountDisp);
     show("qrSection", true);
 
-    // ?¤ìš´ë¡œë“œ ë²„íŠ¼
+    // ?ï¿½ìš´ë¡œë“œ ë²„íŠ¼
     const btnDl = $("btnDownloadQr");
     if (btnDl) {
       btnDl.onclick = () => {
@@ -361,29 +361,29 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
       };
     }
 
-    // ?…ê¸ˆ ?•ì¸ ?¨ë„ ?œì‹œ (ë¦¬ì…‹ ??
+    // ?ï¿½ê¸ˆ ?ï¿½ì¸ ?ï¿½ë„ ?ï¿½ì‹œ (ë¦¬ì…‹ 
     resetReceipts();
     show("receiptSection", true);
 
-    // ?ì„±??QR ?ì—­?¼ë¡œ ?¤í¬ë¡?
+    // ?ï¿½ì„±QR ?ï¿½ì—­?ï¿½ë¡œ ?ï¿½í¬ï¿½?
     $("qrSection")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
-    // ?¤ì‹œê°?ê²°ì œ ê°ì? ?œì‘
+    // ?ï¿½ì‹œï¿½?ê²°ì œ ê°ï¿½? ?ï¿½ì‘
     listenPayments(amount, currency);
   });
 }
 
-// ?€?€ ?¤ì‹œê°?ê²°ì œ ê°ì? ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// ?ï¿½?ï¿½ ?ï¿½ì‹œï¿½?ê²°ì œ ê°ï¿½? ?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½
 let _unsubscribe = null;
 
 function listenPayments(amount, currency = "KRW") {
-  // ?´ì „ ë¦¬ìŠ¤???´ì œ
+  // ?ï¿½ì „ ë¦¬ìŠ¤?ï¿½ì œ
   if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
 
-  // QR ?ì„± ?œê° ê¸°ì? ???´í›„ ?„ì°©?˜ëŠ” ê²°ì œë§?ê°ì?
+  // QR ?ï¿½ì„± ?ï¿½ê° ê¸°ï¿½? ?ï¿½í›„ ?ï¿½ì°©?ï¿½ëŠ” ê²°ì œï¿½?ê°ï¿½?
   const since = Timestamp.now();
 
-  // uid ?„í„°ë¥??¬í•¨?´ì•¼ Firestore ë³´ì•ˆ ê·œì¹™(resource.data.uid == request.auth.uid) ?µê³¼
+  // uid ?ï¿½í„°ï¿½ï¿½í•¨?ï¿½ì•¼ Firestore ë³´ì•ˆ ê·œì¹™(resource.data.uid == request.auth.uid) ?ï¿½ê³¼
   const q = query(
     collection(db, "transactions"),
     where("uid", "==", _currentUid),
@@ -401,9 +401,9 @@ function listenPayments(amount, currency = "KRW") {
     });
   }, (err) => {
     console.error("listenPayments error:", err);
-    // ?¸ë±??ë¯¸ìƒ????fallback ??type ?„í„° ?†ì´ ?¬ì‹œ??
+    // ?ï¿½ë±ë¯¸ìƒfallback type ?ï¿½í„° ?ï¿½ì´ ?ï¿½ì‹œ
     if (err?.code === "failed-precondition" || err?.message?.includes("index")) {
-      console.warn("?¸ë±??ë¯¸ì?ë¹???type ?„í„° ?†ì´ fallback ë¦¬ìŠ¤??);
+      console.warn("ì¸ë±ìŠ¤ ë¯¸ìƒì„± ì‹œ fallback ë¦¬ìŠ¤íŠ¸ (type í•„í„° ì—†ì´ í‘œì‹œ)");
       const q2 = query(
         collection(db, "transactions"),
         where("uid", "==", _currentUid),
@@ -424,7 +424,7 @@ function listenPayments(amount, currency = "KRW") {
 }
 
 function showPaymentAlert(data, expectedAmount, currency = "KRW") {
-  // ê¸°ì¡´ ?Œë¦¼ ?œê±°
+  // ê¸°ì¡´ ?ï¿½ë¦¼ ?ï¿½ê±°
   document.getElementById("paymentAlert")?.remove();
 
   const netHex = data.netAmountWei
@@ -433,8 +433,8 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
 
   const cur = data.currency || currency;
   const amountDisp = cur === "VND"
-    ? `${(data.amountVnd || expectedAmount || 0).toLocaleString()}??
-    : `${(data.amountKrw || expectedAmount || 0).toLocaleString()}??;
+    ? `${(data.amountVnd || expectedAmount || 0).toLocaleString()}ì›`
+    : `${(data.amountKrw || expectedAmount || 0).toLocaleString()}ì›`;
 
   const el = document.createElement("div");
   el.id = "paymentAlert";
@@ -448,21 +448,21 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
   const vndVal = data.amountVnd || (expectedAmount ? (cur === "VND" ? expectedAmount : vndToKrw(expectedAmount, _rates)) : 0);
 
   el.innerHTML = `
-    <div style="font-size:2rem;margin-bottom:4px;">??/div>
-    <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">ê²°ì œ ?„ë£Œ!</div>
-    <div style="font-size:0.95rem;opacity:.9;">ê³ ê° ëª…ì˜ë¡?${amountDisp} ê²°ì œ??/div>
-    <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">?•ì‚° ê¸ˆì•¡: ${vndVal.toLocaleString("ko-KR")} VND</div>
+    <div style="font-size:2rem;margin-bottom:4px;">ì™„ë£Œ</div>
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">ê²°ì œ ?ï¿½ë£Œ!</div>
+    <div style="font-size:0.95rem;opacity:.9;">ê³ ê° ëª…ì˜ï¿½?${amountDisp} ê²°ì œì™„ë£Œ</div>
+    <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">?ï¿½ì‚° ê¸ˆì•¡: ${vndVal.toLocaleString("ko-KR")} VND</div>
     <button onclick="document.getElementById('paymentAlert').remove()"
       style="margin-top:10px;background:rgba(255,255,255,.2);border:none;color:#fff;
-             border-radius:6px;padding:4px 16px;cursor:pointer;font-size:0.85rem;">?«ê¸°</button>
+             border-radius:6px;padding:4px 16px;cursor:pointer;font-size:0.85rem;">?ï¿½ê¸°</button>
   `;
 
   document.body.appendChild(el);
 
-  // ?Œë¦¬ (ì§€????
+  // ?ï¿½ë¦¬ (ì§€
   try { new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA==").play().catch(() => { }); } catch (_) { }
 
-  // 10ì´????ë™ ?œê±°
+  // 10ï¿½ï¿½ë™ ?ï¿½ê±°
   setTimeout(() => { document.getElementById("paymentAlert")?.remove(); }, 10000);
 }
 
@@ -474,38 +474,37 @@ function getBtAmount(amount, currency) {
 }
 
 
-// ?€?€ ?ê²© ?°ê²° ?€?€ //
+// ì›ê²© ì „ì†¡ ë²„íŠ¼
 const btnRemoteBtSend = $("btnRemoteBtSend");
 if (btnRemoteBtSend) {
   btnRemoteBtSend.onclick = async () => {
     const email = $("remoteUserEmail")?.value.trim();
     const amountVal = Number($("remoteVndAmount")?.value);
     const resBox = $("remoteBtResult");
-    if (!email) return alert("ê³ ê° ?´ë©”?¼ì„ ?…ë ¥?˜ì„¸??");
-    if (!amountVal || amountVal < 10000) return alert("ê²°ì œ ê¸ˆì•¡?€ ìµœì†Œ 10,000 VND ?´ìƒ?´ì–´???©ë‹ˆ??");
+    if (!email) return alert("ê³ ê° ì´ë©”ì¼ì„ ì…ë ¥í•´ ì£¼ì„¸ìš”.");
+    if (!amountVal || amountVal < 10000) return alert("ê²°ì œ ê¸ˆì•¡ì€ ìµœì†Œ 10,000 VND ì´ìƒì´ì–´ì•¼ í•©ë‹ˆë‹¤.");
 
     try {
       btnRemoteBtSend.disabled = true;
-      btnRemoteBtSend.textContent = "?„ì†¡ ì¤?..";
-      
-      
+      btnRemoteBtSend.textContent = "ì „ì†¡ ì¤‘...";
 
-      const fn = httpsCallable(functions, "merchantSendBtDirect");
-      const res = await fn({ customerEmail: email, amountVnd: amountVal });
+      const merchantSendBtDirect = httpsCallable(functions, "merchantSendBtDirect");
+      const res = await merchantSendBtDirect({ customerEmail: email, amountVnd: amountVal });
+
       if (resBox) {
         resBox.style.color = "blue";
-        resBox.innerHTML = `?„ì†¡ ?±ê³µ! ${res.data.customerEmail}?˜ì—ê²?${res.data.btIssued} BTê°€ ì§€ê¸‰ë˜?ˆìŠµ?ˆë‹¤.`;
+        resBox.innerHTML = `ì „ì†¡ ì„±ê³µ! ${res.data.customerEmail}ë‹˜ì—ê²Œ ${res.data.btIssued} BTê°€ ì§€ê¸‰ë˜ì—ˆìŠµë‹ˆë‹¤.`;
       }
-      $("remoteUserEmail").value = "";
-      $("remoteVndAmount").value = "";
+      if ($("remoteUserEmail")) $("remoteUserEmail").value = "";
+      if ($("remoteVndAmount")) $("remoteVndAmount").value = "";
     } catch (err) {
       if (resBox) {
         resBox.style.color = "red";
-        resBox.innerText = "?¤ë¥˜: " + err.message;
+        resBox.innerText = "ì˜¤ë¥˜: " + (err.message || "ì•Œ ìˆ˜ ì—†ëŠ” ì˜¤ë¥˜");
       }
     } finally {
       btnRemoteBtSend.disabled = false;
-      btnRemoteBtSend.innerHTML = `<i class="fa-solid fa-gift me-2"></i>BT ?„ì†¡?˜ê¸°`;
+      btnRemoteBtSend.innerHTML = `<i class="fa-solid fa-gift me-2"></i>BT ì „ì†¡í•˜ê¸°`;
     }
   };
 }

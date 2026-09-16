@@ -1,0 +1,8 @@
+exports.checkKey = onRequest({ cors: true }, async (req, res) => {
+try {
+const admin = require('firebase-admin');
+const db = admin.firestore();
+const snap = await db.collection('merchants').where('apiKey', '==', 'moa-merch-5e516c7d164218f4').get();
+res.json({ empty: snap.empty, size: snap.size });
+} catch(err) { res.status(500).send(err.message); }
+});

@@ -1,0 +1,101 @@
+async function getMyMentees(uid) {
+  const userSnap = await admin.firestore().collection('users').doc(uid).get();
+  const myAddress = userSnap.data()?.wallet?.address || null;
+
+  const querySnap = await admin.firestore().collection('users').where('mentorUid', '==', uid).limit(100).get();
+  const menteeMap = {};
+  
+  await Promise.all(querySnap.docs.map(async (docSnap) => {
+    const data = docSnap.data();
+    const menteeUid = docSnap.id;
+    const bpSnap = await admin.firestore().collection('battle_players').doc(menteeUid).get();
+    const earned = bpSnap.exists ? (bpSnap.data().generatedForMentor || 0) : 0;
+    
+    menteeMap[menteeUid] = {
+      uid: menteeUid,
+      name: data.displayName || data.name || data.email?.split('@')[0] || '익명',
+      address: data.wallet?.address || '',
+      registeredAt: data.createdAt ? data.createdAt.toMillis() : Date.now(),
+      generatedForMentor: earned
+    };
+  }));
+
+  const sortedMentees = Object.values(menteeMap).sort((a, b) => b.generatedForMentor - a.generatedForMentor);
+  return { mentees: sortedMentees, myAddress };
+}
+
+/**
+ * getMenteeIncome
+ * 멘토(uid)의 멘티 목록을 조회하고, 각 멘티의 pay_merchant 거래내역을 집계하여 반환.
+ * Admin SDK로 transactions 컬렉션 조회 (클라이언트 권한 제한 우회).
+ *
+ * @param {string} uid - 멘토의 Firebase Auth UID
+ * @returns {{ mentees: Array, myAddress: string|null }}
+ */
+async function getMenteeIncome(uid) {
+  const { mentees, myAddress } = await getMyMentees(uid);
+  if (!mentees || mentees.length === 0) return { mentees: [], myAddress };
+
+  // 멘티 uid 목록으로 transactions 집계 (최대 30개씩 in 쿼리)
+  const menteeUids = mentees.map((m) => m.uid).filter(Boolean);
+  const chunks = [];
+  for (let i = 0; i < menteeUids.length; i += 30) chunks.push(menteeUids.slice(i, i + 30));
+
+  const allTxDocs = [];
+  await Promise.all(chunks.map(async (chunk) => {
+    const snap = await db.collection('transactions')
+      .where('uid', 'in', chunk)
+      .where('type', '==', 'pay_merchant')
+      .orderBy('createdAt', 'desc')
+      .limit(500)
+      .get();
+    snap.docs.forEach((d) => allTxDocs.push(d.data()));
+  }));
+
+  // pay_merchant transactions에는 feeBps가 없음 → merchantId로 merchants에서 조회
+  const merchantIds = [...new Set(allTxDocs.map((t) => t.merchantId).filter(Boolean))];
+  const merchantFeeMap = {};
+  await Promise.all(merchantIds.map(async (mid) => {
+    const snap = await db.collection('merchants').doc(String(mid)).get();
+    merchantFeeMap[mid] = snap.exists ? (snap.data().feeBps ?? 0) : 0;
+  }));
+
+  const MENTOR_SHARE = 0.30;
+  const menteeMap = {};
+  mentees.forEach((m) => {
+    menteeMap[m.uid] = {
+      uid: m.uid,
+      name: m.name,
+      address: m.address,
+      registeredAt: m.registeredAt,
+      txCount: 0,
+      totalAmountHex: 0,
+      myEstimatedEarningHex: 0,
+      recentTxs: [],
+    };
+  });
+
+  for (const tx of allTxDocs) {
+    const entry = menteeMap[tx.uid];
+    if (!entry) continue;
+    const hex = Number(tx.amountHex) || 0;
+    const feeBps = Number(merchantFeeMap[tx.merchantId] ?? tx.feeBps ?? 0);
+    const feeHex = hex * (feeBps / 10000);
+    const myEst = feeHex * MENTOR_SHARE;
+    entry.txCount++;
+    entry.totalAmountHex += hex;
+    entry.myEstimatedEarningHex += myEst;
+    if (entry.recentTxs.length < 5) {
+      entry.recentTxs.push({
+        amountHex: hex,
+        feeBps,
+        myEst,
+        createdAt: tx.createdAt?.toMillis?.() ?? null,
+        merchantId: tx.merchantId ?? null,
+      });
+    }
+  }
+
+  // CoopMall 구매 내역에서 멘토 수당 집계
+  const allCoopOrders = [];
+  await Promise.all(chunks.map(asy

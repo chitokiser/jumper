@@ -1,0 +1,35 @@
+function initMap() {
+  map = L.map('map').setView([21.0285, 105.8542], 13); // 하노이 기본
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  map.on('click', e => {
+    const { lat, lng } = e.latlng;
+    setLatLng(lat, lng);
+  });
+}
+
+function setLatLng(lat, lng) {
+  fLat.value    = lat.toFixed(6);
+  fLng.value    = lng.toFixed(6);
+  fCoords.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  coordDisplay.textContent = '';
+
+  if (pinMarker) {
+    pinMarker.setLatLng([lat, lng]);
+  } else {
+    pinMarker = L.marker([lat, lng], {
+      draggable: true,
+      icon: L.divIcon({ html: '📍', iconSize: [30, 30], iconAnchor: [15, 30], className: '' }),
+    }).addTo(map);
+    pinMarker.on('dragend', e => {
+      const p = e.target.getLatLng();
+      setLatLng(p.lat, p.lng);
+    });
+  }
+}
+
+// ── 보물상자 목록 로드 ────────────────────────────────────────────────────────
+async function loadBoxes

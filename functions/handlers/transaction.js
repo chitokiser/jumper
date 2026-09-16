@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+﻿const crypto = require('crypto');
 // functions/handlers/transaction.js
 // 수탁 지갑 서명 트랜잭션: 구매(buy) / 인출(withdraw) / 관리자 Point 사전 approve
 
@@ -1416,7 +1416,7 @@ async function consumeUserBtFirebase(data, context) {
 
 async function createBtRewardSession(uid, data) {
   const { amount } = data; // VND
-  if (!amount || amount < 100000) throw new Error('BT 발행 가능한 최소 결제 금액은 100,000동 이상입니다.');
+  if (!amount || amount < 10000) throw new Error('BT 발행 가능한 최소 결제 금액은 10,000동 이상입니다.');
 
   const db = admin.firestore();
 
@@ -1430,7 +1430,7 @@ async function createBtRewardSession(uid, data) {
   const merchData = merchSnap.data() || {};
   if (merchData.active === false) throw new Error('가맹점이 비활성화 상태입니다.');
 
-  let btAmount = Math.floor(amount / 100000);
+  let btAmount = Math.floor(amount / 10000);
   if (btAmount <= 0) throw new Error('BT 발행 조건 미달입니다.');
 
   // Validate merchant's BT balance
@@ -1463,7 +1463,7 @@ async function createBtRewardSession(uid, data) {
   return { rewardId, btAmount, merchantId, expiresAt: expiresAt.toMillis() };
 }
 
-module.exports = {
+module.exports = { adminChargeBt,
   createBtRewardSession,
   receiveBtQrFirebase,
   consumeUserBtFirebase,
@@ -1489,7 +1489,7 @@ module.exports = {
 };
 
 
-exports.adminChargeBt = async function (adminUid, merchantId, amount) {
+async function adminChargeBt (adminUid, merchantId, amount) {
   const db = admin.firestore();
   const merchRef = db.collection('merchants').doc(String(merchantId));
 

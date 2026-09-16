@@ -1,0 +1,11 @@
+async function receiveBtQrFirebase(uid, data) {
+  // Backward compatibility: if data provides rewardId, use it. Otherwise, return polite error telling them to generate a new QR.
+  const { rewardId, merchantId, bt, nonce } = data;
+  if (!rewardId) {
+    if (merchantId && bt && nonce) {
+      throw new Error('이전 버전의 QR 코드입니다. 가맹점에서 QR을 다시 생성해 주세요.');
+    }
+    throw new Error('유효하지 않은 요청입니다.');
+  }
+
+  const db = admin.fir

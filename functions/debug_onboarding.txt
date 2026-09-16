@@ -1,0 +1,45 @@
+vndPerUsd,
+  };
+}
+
+// ────────────────────────────────────────────────
+// 나의 멘티 목록 조회
+// ────────────────────────────────────────────────
+
+/**
+ * getMyMentees
+ * 1) Firestore onChain.mentorAddress 기준으로 멘티 주소 수집 (과거 전체 포함)
+ * 2) 온체인 Registered 이벤트 최근 490,000 블록 스캔으로 보완
+ * 3) members(address).mentor 재확인으로 멘토 변경 케이스 제거
+ * 4) Firestore users 에서 uid/name 보완
+ *
+ * @param {string} uid - Firebase Auth UID
+ * @returns {{ mentees: Array, myAddress: string|null }}
+ */
+async function getMyMentees(uid) {
+  const userSnap = await db.collection('users').doc(uid).get();
+  const myAddress = userSnap.data()?.wallet?.address || null;
+
+  const querySnap = await db.collection('users').where('mentorUid', '==', uid).limit(100).get();
+  const menteeMap = {};
+  
+  await Promise.all(querySnap.docs.map(async (docSnap) => {
+    const data = docSnap.data();
+    const menteeUid = docSnap.id;
+    const bpSnap = await db.collection('battle_players').doc(menteeUid).get();
+    const earned = bpSnap.exists ? (bpSnap.data().generatedForMentor || 0) : 0;
+    
+    menteeMap[menteeUid] = {
+      uid: menteeUid,
+      name: data.displayName || data.name || data.email?.split('@')[0] || '익명',
+      address: data.wallet?.address || '',
+      registeredAt: data.createdAt ? data.createdAt.toMillis() : Date.now(),
+      generatedForMentor: earned
+    };
+  }));
+
+  const sortedMentees = Object.values(menteeMap).sort((a, b) => b.generatedForMentor - a.generatedForMentor);
+  return { mentees: sortedMentees, myAddress };
+}
+
+

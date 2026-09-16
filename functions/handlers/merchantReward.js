@@ -1,4 +1,4 @@
-// functions/handlers/merchantReward.js
+﻿// functions/handlers/merchantReward.js
 'use strict';
 
 const admin = require('firebase-admin');
@@ -118,13 +118,13 @@ async function processQrPayment(customerUid, merchantId, amountKrw) {
     return { success: true, orderId, amountKrw, customerRewardPoints, merchantName: merchantData.name };
 }
 
-module.exports = {
+module.exports = { merchantSendBtDirect,
     adminSetMerchantRewardPolicy,
     processQrPayment
 };
 
 
-exports.merchantSendBtDirect = async function(data, context) {
+async function merchantSendBtDirect(data, context) {
     if (!context.auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     const merchantUid = context.auth.uid;
     const { customerEmail, amountVnd } = data;

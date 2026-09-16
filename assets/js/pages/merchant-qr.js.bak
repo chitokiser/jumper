@@ -1,0 +1,511 @@
+// /assets/js/pages/merchant-qr.js
+// 가맹점??QR 코드 ?�성 ?�이지
+
+import { onAuthReady } from "../auth.js";
+import { login } from "../auth.js";
+import { db } from "/assets/js/firebase-init.js";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  Timestamp,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
+import { functions } from "/assets/js/firebase-init.js";
+
+const $ = (id) => document.getElementById(id);
+
+function show(id, on) {
+  const el = $(id);
+  if (el) el.style.display = on ? "" : "none";
+}
+
+// ?�?� ?�율 (?�시 ?�용) ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+let _rates = null; // { krwPerUsd, vndPerUsd }
+
+async function loadRates() {
+  if (_rates) return _rates;
+  try {
+    const r = await fetch("https://open.er-api.com/v6/latest/USD");
+    const d = await r.json();
+    if (d.result === "success" && d.rates?.KRW && d.rates?.VND) {
+      _rates = { krwPerUsd: d.rates.KRW, vndPerUsd: d.rates.VND };
+      return _rates;
+    }
+  } catch (_) { }
+  _rates = { krwPerUsd: 1350, vndPerUsd: 25400 }; // 기본�?fallback
+  return _rates;
+}
+
+function vndToKrw(vnd, rates) {
+  return Math.round((vnd / rates.vndPerUsd) * rates.krwPerUsd);
+}
+
+function setText(id, val) {
+  const el = $(id);
+  if (el) el.textContent = val != null ? String(val) : "-";
+}
+
+// ?�?� 진입???�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+let _authDone = false;
+let _currentUid = null;
+
+onAuthReady(async ({ loggedIn, role, user }) => {
+  if (_authDone) return;
+
+  if (!loggedIn) {
+    show("needLoginPanel", true);
+    const btn = $("btnLogin");
+    if (btn) btn.onclick = () => { location.href = "/register.html"; };
+    return;
+  }
+
+  if (role !== "merchant" && role !== "admin") {
+    alert("가맹점 계정만 이용 가능합니다.");
+    location.href = "/family-register.html";
+    return;
+  }
+
+  _authDone = true;
+  _currentUid = user.uid;
+  await initPage(user.uid);
+});
+
+// 4�??�내 로그???�으�?로그???�내
+setTimeout(() => {
+  if (!_authDone) {
+    show("needLoginPanel", true);
+    const btn = $("btnLogin");
+    if (btn) btn.onclick = () => { location.href = "/register.html"; };
+  }
+}, 4000);
+
+// ?�?� ?�이지 초기???�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+async function initPage(uid) {
+  // ?��? 문서?�서 merchantId 조회
+  const userSnap = await getDoc(doc(db, "users", uid));
+  const merchantId = userSnap.data()?.merchantId;
+
+  if (merchantId == null) {
+    show("needMerchantPanel", true);
+    return;
+  }
+
+  // 가맹점 ?�보 조회
+  const mSnap = await getDoc(doc(db, "merchants", String(merchantId)));
+  const merchantName = mSnap.exists() ? (mSnap.data()?.name || "가맹점") : "가맹점";
+
+  // ?�면 ?�시
+  setText("qrMerchantName", merchantName);
+
+  // ?�시�?K-Culture Balance & Payment Balance 모니?�링
+  onSnapshot(doc(db, "users", uid), (docS) => {
+    const el = document.getElementById("merchBal");
+    if (el && docS.exists()) el.textContent = Number(docS.data().pointBalanceVnd || 0).toLocaleString() + " KM";
+  });
+
+  // ?�?� 가맹점 BT ?�고: merchants/{merchantId}.btBalance ?�시�?조회 ?�?�
+  // (adminChargeBt가 ?�?�하???�치?� ?�일?�야 ??
+  onSnapshot(doc(db, "merchants", String(merchantId)), (mSnap2) => {
+    if (mSnap2.exists()) {
+      const btBal = Number(mSnap2.data().btBalance || 0);
+      setText("qrMerchantBtBal", btBal.toLocaleString("ko-KR") + " BT");
+    }
+  });
+
+  // 가맹점�?KM/?�인???�고 (merchant owner)
+  const mOwner = mSnap.exists() ? mSnap.data()?.ownerUid : null;
+  if (mOwner) {
+    onSnapshot(doc(db, "users", mOwner), (snap) => {
+      if (snap.exists()) {
+        const { pointBalanceVnd = 0 } = snap.data();
+    setText("qrMerchantPaymentBal", pointBalanceVnd.toLocaleString("ko-KR") + " KM (결제용)");
+        setText("qrMerchantPointBal", (snap.data().pointBalance || 0).toLocaleString("ko-KR") + " P");
+      }
+    });
+  }
+
+
+  show("mainPanel", true);
+
+  // ??바인??
+  bindQrForm(merchantId, merchantName);
+}
+
+// ?�?� QR ??바인???�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+function bindQrForm(merchantId, merchantName) {
+  const form = $("qrForm");
+  if (!form) return;
+
+  // ?�산 ?�시 ?�데?�트 ?�수
+  async function updateConvert() {
+    const isVnd = true;
+    const inputEl = $("qrAmount");
+    const convEl = $("qrAmountConvert");
+    const krwEl = $("qrAmountKrw");
+    if (!convEl || !krwEl) return;
+
+    if (!isVnd) { convEl.style.display = "none"; return; }
+
+    const val = Number(inputEl?.value);
+    if (!val || val <= 0) { convEl.style.display = "none"; return; }
+
+    convEl.style.display = "";
+    krwEl.textContent = "계산 �?..";
+    const rates = await loadRates();
+    krwEl.textContent = vndToKrw(val, rates).toLocaleString();
+  }
+
+  // ?�화 UI: 무조�?VND
+  const labelEl = $("qrAmountLabel");
+  const helpEl = $("qrAmountHelp");
+  const inputEl = $("qrAmount");
+        if (labelEl) labelEl.textContent = "결제 금액 (단위 VND)";
+        if (helpEl) helpEl.textContent = "최소 10,000 VND 이상 입력해주세요.";
+  if (inputEl) {
+    if (!inputEl.value) { // 초기 ?�팅 ?�에�?
+      inputEl.min = "10000";
+      inputEl.step = "1000";
+      inputEl.placeholder = "예: 200000";
+      inputEl.value = "";
+    }
+  }
+  updateConvert();
+
+  // 금액 ?�력 ???�산 ?�시
+  $("qrAmount")?.addEventListener("input", updateConvert);
+
+
+  const modePay = $("modePay");
+  const modeBt = $("modeBt");
+  const btCalcResult = $("qrBtCalcResult");
+  const btCountText = $("qrBtCount");
+
+
+
+  function updateModeAndBt() {
+    const isBt = modeBt?.checked;
+    const amount = Number($("qrAmount")?.value || 0);
+    const currency = "VND";
+
+    const labelEl = $("qrAmountLabel");
+    const helpEl = $("qrAmountHelp");
+    if (isBt) {
+        if (labelEl) labelEl.textContent = "무료 BT 보상 기준금액 (VND)";
+        if (helpEl) helpEl.textContent = "고객이 타 수단으로 결제한 금액을 입력하면 비례하여 BT 무료 보상 QR이 생성됩니다.";
+    } else {
+        if (labelEl) labelEl.textContent = "앱결제 받을 금액 (단위 VND)";
+        if (helpEl) helpEl.textContent = "최소 10,000 VND 이상 입력해주세요.";
+    }
+
+    if (isBt && amount > 0) {
+      if (btCalcResult) btCalcResult.style.display = "";
+      if (btCountText) btCountText.textContent = getBtAmount(amount, currency) + " 장";
+    } else {
+      if (btCalcResult) btCalcResult.style.display = "none";
+    }
+
+    // 모드???�라 버튼 ?�스??변�?
+    const btnGen = $("btnGenQr");
+    if (btnGen) {
+      btnGen.textContent = isBt ? "무료 BT 보상 QR 발급" : "결제 QR ?�성";
+    }
+  }
+
+  modePay?.addEventListener("change", updateModeAndBt);
+  modeBt?.addEventListener("change", updateModeAndBt);
+  $("qrAmount")?.addEventListener("input", updateModeAndBt);
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const currency = "VND";
+    const amountRaw = $("qrAmount")?.value || "";
+    const amount = Number(amountRaw);
+
+      if (!amount || amount < 10000) { alert("최소 10,000 VND 이상 입력해 주세요."); return; }
+
+
+    const mode = form.querySelector("input[name='qrMode']:checked")?.value || "pay";
+    generateQr(merchantId, merchantName, amount, currency, mode);
+  });
+}
+
+// ?�?� Point 변???�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+function weiToHex(weiStr) {
+  if (!weiStr) return null;
+  try {
+    const n = BigInt(weiStr);
+    const whole = n / 10n ** 18n;
+    const frac = n % 10n ** 18n;
+    return Number(whole) + Number(frac) / 1e18;
+  } catch (_) { return null; }
+}
+
+// ?�?� ?�금 ?�역 ?�태 ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+let _receiptTotalVnd = 0;
+let _receiptCount = 0;
+
+function resetReceipts() {
+  _receiptTotalVnd = 0;
+  _receiptCount = 0;
+  const list = $("receiptList");
+  if (list) list.innerHTML = "";
+  show("receiptWaiting", true);
+  setText("receiptTotal", "?�계: 0 VND");
+}
+
+function addReceiptItem(data, isNew = false) {
+  const vndVal = data.amountVnd || (data.amountKrw ? vndToKrw(data.amountKrw, _rates || { krwPerUsd: 1350, vndPerUsd: 25400 }) : 0);
+  if (!vndVal) return;
+
+  _receiptTotalVnd += vndVal;
+  _receiptCount += 1;
+
+  // ?��??�내 ?�기�?
+  show("receiptWaiting", false);
+
+  // ?�계 갱신
+  setText("receiptTotal", `?�계: ${_receiptTotalVnd.toLocaleString("ko-KR")} VND`);
+
+  // ?�각 ?�맷
+  const ts = data.createdAt?.toDate?.() ?? new Date();
+  const time = ts.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+  // 법정?�폐 ?�시
+  const cur = data.currency || "VND";
+  const fiatAmt = cur === "VND" ? data.amountVnd : data.amountKrw;
+  const fiatDisp = fiatAmt
+    ? (cur === "VND" ? `${Number(fiatAmt).toLocaleString()}원` : `${Number(fiatAmt).toLocaleString()}원`)
+    : "";
+
+  // 카드 ?�성
+  const item = document.createElement("div");
+  item.className = `receipt-item${isNew ? " new-item" : ""}`;
+  item.innerHTML = `
+    <div class="ri-icon">${isNew ? "신규" : "과거"}</div>
+    <div class="ri-body">
+      <div class="ri-hex">+${vndVal.toLocaleString("ko-KR")} VND</div>
+      ${fiatDisp ? `<div class="ri-fiat">결제: ${fiatDisp}</div>` : ""}
+    </div>
+    <div class="ri-time">${time}</div>
+  `;
+
+  // 최신 ??��??�???
+  const list = $("receiptList");
+  if (list) list.prepend(item);
+
+  // new ?��??��? 5�????�제
+  if (isNew) setTimeout(() => item.classList.remove("new-item"), 5000);
+}
+
+// ?�?� QR ?�성 ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+async function generateQr(merchantId, merchantName, amount, currency = "KRW", mode = "pay") {
+  const canvas = $("qrCanvas");
+  if (!canvas) return;
+
+  const PROD_ORIGIN = "https://kmoa.netlify.app";
+  const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  const baseOrigin = isLocal ? PROD_ORIGIN : location.origin;
+
+  let url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
+  if (mode === "bt") {
+    // Generate reward session on the server
+    const btnGen = $("btnGenQr");
+    if (btnGen) { btnGen.disabled = true; btnGen.textContent = "QR ?�성 �?.."; }
+
+    try {
+      const createSession = httpsCallable(functions, "createBtRewardSession");
+      const res = await createSession({ amount });
+      const { rewardId, btAmount } = res.data;
+
+      url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btAmount}&rewardId=${rewardId}&nonce=${Date.now()}`;
+      setText("qrCardAmount", `BT 보상 (${btAmount}장)`);
+    } catch (err) {
+      if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT 무료 보상 QR ?�성"; }
+        alert("BT QR 생성 오류: " + (err?.message || "서버 통신 실패"));
+      return;
+    }
+    if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT 무료 보상 QR ?�성"; }
+  }
+
+  // qrcode.js (CDN) API
+  /* global QRCode */
+  QRCode.toCanvas(canvas, url, { width: 280, margin: 2, color: { dark: "#1a1a2e", light: "#ffffff" } }, (err) => {
+    if (err) {
+      console.error("QR ?�성 ?�류:", err);
+        alert("QR 생성에 실패했습니다.");
+      return;
+    }
+
+    // 카드 ?�보 ?�데?�트
+    const amountDisp = currency === "VND"
+      ? `${amount.toLocaleString()}원(VND)`
+      : `${amount.toLocaleString()}원(KRW)`;
+    setText("qrCardMerchant", merchantName);
+    setText("qrCardAmount", amountDisp);
+    show("qrSection", true);
+
+    // ?�운로드 버튼
+    const btnDl = $("btnDownloadQr");
+    if (btnDl) {
+      btnDl.onclick = () => {
+        const link = document.createElement("a");
+        link.download = `qr-${merchantId}-${amount}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      };
+    }
+
+    // ?�금 ?�인 ?�널 ?�시 (리셋 ??
+    resetReceipts();
+    show("receiptSection", true);
+
+    // ?�성??QR ?�역?�로 ?�크�?
+    $("qrSection")?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    // ?�시�?결제 감�? ?�작
+    listenPayments(amount, currency);
+  });
+}
+
+// ?�?� ?�시�?결제 감�? ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+let _unsubscribe = null;
+
+function listenPayments(amount, currency = "KRW") {
+  // ?�전 리스???�제
+  if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
+
+  // QR ?�성 ?�각 기�? ???�후 ?�착?�는 결제�?감�?
+  const since = Timestamp.now();
+
+  // uid ?�터�??�함?�야 Firestore 보안 규칙(resource.data.uid == request.auth.uid) ?�과
+  const q = query(
+    collection(db, "transactions"),
+    where("uid", "==", _currentUid),
+    where("type", "==", "merchant_income"),
+    where("createdAt", ">=", since),
+    orderBy("createdAt", "desc"),
+  );
+
+  _unsubscribe = onSnapshot(q, (snap) => {
+    snap.docChanges().forEach((change) => {
+      if (change.type !== "added") return;
+      const d = change.doc.data();
+      addReceiptItem(d, true);
+      showPaymentAlert(d, amount, currency);
+    });
+  }, (err) => {
+    console.error("listenPayments error:", err);
+    // ?�덱??미생????fallback ??type ?�터 ?�이 ?�시??
+    if (err?.code === "failed-precondition" || err?.message?.includes("index")) {
+console.warn("인덱스 미생성 시 fallback 리스트 (type 필터 없이 표시)");
+      const q2 = query(
+        collection(db, "transactions"),
+        where("uid", "==", _currentUid),
+        where("createdAt", ">=", since),
+        orderBy("createdAt", "desc"),
+      );
+      _unsubscribe = onSnapshot(q2, (snap) => {
+        snap.docChanges().forEach((change) => {
+          if (change.type !== "added") return;
+          const d = change.doc.data();
+          if (d.type !== "merchant_income") return;
+          addReceiptItem(d, true);
+          showPaymentAlert(d, amount, currency);
+        });
+      }, (err2) => console.error("listenPayments fallback error:", err2));
+    }
+  });
+}
+
+function showPaymentAlert(data, expectedAmount, currency = "KRW") {
+  // 기존 ?�림 ?�거
+  document.getElementById("paymentAlert")?.remove();
+
+  const netHex = data.netAmountWei
+    ? parseFloat((BigInt(data.netAmountWei) / 10n ** 14n) / 10000).toFixed(4)
+    : data.amountHex || "?";
+
+  const cur = data.currency || currency;
+  const amountDisp = cur === "VND"
+    ? `${(data.amountVnd || expectedAmount || 0).toLocaleString()}원`
+    : `${(data.amountKrw || expectedAmount || 0).toLocaleString()}원`;
+
+  const el = document.createElement("div");
+  el.id = "paymentAlert";
+  el.style.cssText = [
+    "position:fixed", "top:80px", "left:50%", "transform:translateX(-50%)",
+    "background:#16a34a", "color:#fff", "border-radius:12px",
+    "padding:18px 28px", "z-index:9999", "box-shadow:0 4px 24px rgba(0,0,0,.3)",
+    "text-align:center", "min-width:260px", "animation:fadeInDown .3s ease",
+  ].join(";");
+
+  const vndVal = data.amountVnd || (expectedAmount ? (cur === "VND" ? expectedAmount : vndToKrw(expectedAmount, _rates)) : 0);
+
+  el.innerHTML = `
+    <div style="font-size:2rem;margin-bottom:4px;">완료</div>
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">결제 ?�료!</div>
+    <div style="font-size:0.95rem;opacity:.9;">고객 명의�?${amountDisp} 결제완료</div>
+    <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">?�산 금액: ${vndVal.toLocaleString("ko-KR")} VND</div>
+    <button onclick="document.getElementById('paymentAlert').remove()"
+      style="margin-top:10px;background:rgba(255,255,255,.2);border:none;color:#fff;
+             border-radius:6px;padding:4px 16px;cursor:pointer;font-size:0.85rem;">?�기</button>
+  `;
+
+  document.body.appendChild(el);
+
+  // ?�리 (지????
+  try { new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA==").play().catch(() => { }); } catch (_) { }
+
+  // 10�????�동 ?�거
+  setTimeout(() => { document.getElementById("paymentAlert")?.remove(); }, 10000);
+}
+
+
+function getBtAmount(amount, currency) {
+  let vnd = amount;
+  if (currency === "KRW") vnd = amount * 18;
+  return Math.floor(vnd / 100000);
+}
+
+
+// ?�?� ?�격 ?�결 ?�?� //
+const btnRemoteBtSend = $("btnRemoteBtSend");
+if (btnRemoteBtSend) {
+  btnRemoteBtSend.onclick = async () => {
+    const email = $("remoteUserEmail")?.value.trim();
+    const amountVal = Number($("remoteVndAmount")?.value);
+    const resBox = $("remoteBtResult");
+    if (!email) return alert("고객 이메일을 입력해 주세요.");
+    if (!amountVal || amountVal < 10000) return alert("결제 금액은 최소 10,000 VND 이상이어야 합니다.");
+
+    try {
+      btnRemoteBtSend.disabled = true;
+      btnRemoteBtSend.textContent = "?�송 �?..";
+      
+      
+
+      const fn = httpsCallable(functions, "merchantSendBtDirect");
+      const res = await fn({ customerEmail: email, amountVnd: amountVal });
+      if (resBox) {
+        resBox.style.color = "blue";
+        resBox.innerHTML = `?�송 ?�공! ${res.data.customerEmail}?�에�?${res.data.btIssued} BT가 지급되?�습?�다.`;
+      }
+      $("remoteUserEmail").value = "";
+      $("remoteVndAmount").value = "";
+    } catch (err) {
+      if (resBox) {
+        resBox.style.color = "red";
+        resBox.innerText = "?�류: " + err.message;
+      }
+    } finally {
+      btnRemoteBtSend.disabled = false;
+      btnRemoteBtSend.innerHTML = `<i class="fa-solid fa-gift me-2"></i>BT ?�송?�기`;
+    }
+  };
+}
