@@ -36,7 +36,7 @@ const newLogic = `async function payMerchantFirebase(uid, merchantId, amountKrw,
     if (!userSnap.exists) throw new Error('유저 정보를 찾을 수 없습니다.');
     const userData = userSnap.data();
 
-    // In K-MOA, pointBalanceVnd stores KM(KRW) natively.
+    // In BestClub, pointBalanceVnd stores KM(KRW) natively.
     const userBalanceKrw = Number(userData.pointBalanceVnd || 0); 
     if (userBalanceKrw < finalKrw) {
       throw new Error(\`잔액이 부족합니다. (내 지갑: \${userBalanceKrw.toLocaleString()} KM, 결제요청: \${finalKrw.toLocaleString()} KM / 약 \${finalVnd.toLocaleString()} VND)\`);

@@ -1,7 +1,7 @@
 {
-    "name": "K-MOA",
-    "short_name": "K-MOA",
-    "description": "K-MOA 베트남 교민과 가맹점의 상생 네트워크",
+    "name": "BestClub",
+    "short_name": "BestClub",
+    "description": "BestClub 베트남 교민과 가맹점의 상생 네트워크",
     "start_url": "/index.html",
     "display": "standalone",
     "background_color": "#ffffff",

@@ -22,7 +22,11 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 
-admin.initializeApp();
+if (!process.env.K_SERVICE && !process.env.FUNCTIONS_EMULATOR) {
+  admin.initializeApp({ projectId: "jumper-b15aa" });
+} else {
+  admin.initializeApp();
+}
 const db = admin.firestore();
 
 // ── Firebase Secret Manager ──────────────────────────────────────────────────
@@ -58,7 +62,7 @@ const rankingsH = require('./handlers/rankings');
 const stockOptionH = require('./handlers/stockOption');
 const starterH = require('./handlers/starter');
 const dailyAreaH = require('./handlers/dailyArea');
-const webzineH = require('./handlers/webzine');
+
 const npcH = require('./handlers/npcSystem');
 const userPlaceH = require('./handlers/userPlace');
 const expSyncH = require('./handlers/expSync');
@@ -799,31 +803,6 @@ exports.adminOwnerDepositHex = onCall(
 //     - 순수 파이어베이스 지갑 트랜잭션 (수수료 및 멘토/잭팟 분배 포함)
 //     클라이언트: httpsCallable(functions, 'payMerchantFirebase')({ merchantId: 1, amountKrw: 50000 })
 // ════════════════════════════════════════════════════════════════════════════
-
-// ════════════════════════════════════════════════════════════════════════════
-// 19-B. 웹진 기사 생성 (AI)
-//     클라이언트: httpsCallable(functions, 'buildWebzineContent')({ merchantId: 1 })
-// ════════════════════════════════════════════════════════════════════════════
-exports.buildWebzineContent = onCall(
-  { timeoutSeconds: 60 },
-  wrapError(async (request) => {
-    const adminUid = requireAuth(request);
-    await requireAdmin(adminUid);
-    return await webzineH.buildWebzineContent(adminUid, request.data ?? {}, process.env.GEMINI_API_KEY);
-  })
-);
-
-
-exports.claimWebzineShareReward = onCall(wrapError(async (request) => {
-  const uid = requireAuth(request);
-  return await webzineH.claimWebzineShareReward(uid, request.data ?? {});
-}));
-
-exports.adminGrantWebzineBonus = onCall(wrapError(async (request) => {
-  const adminUid = requireAuth(request);
-  await requireAdmin(adminUid);
-  return await webzineH.adminGrantWebzineBonus(adminUid, request.data ?? {});
-}));
 
 exports.payMerchantFirebase = onCall(
 
@@ -3098,7 +3077,7 @@ exports.starsRedeemCommission = onRequest(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// [K-MOA] Ledger & Merchant Reward Engine
+// [BestClub] Ledger & Merchant Reward Engine
 // ════════════════════════════════════════════════════════════════════════════
 
 exports.apiTransferPoints = onCall(wrapError(async (request) => {
@@ -3348,33 +3327,33 @@ exports.merchantSendBtDirect = onCall(wrapError(require('./handlers/merchantRewa
 
 
 exports.tempIssueKey = onRequest({ cors: true }, async (req, res) => {
-    try {
-        const admin = require('firebase-admin');
-        const db = admin.firestore();
-        const crypto = require('crypto');
-        
-        // 새로 발급 (주인이 바뀜)
-        const newApiKey = "moa-merch-" + crypto.randomBytes(8).toString('hex');
-        const merchantId = "2"; // 대한김치
-        
-        await db.collection('api_keys').doc(newApiKey).set({
-            merchantId,
-            merchantName: "대한김치",
-            active: true,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        
-        await db.collection('merchants').doc(merchantId).set({
-            apiKey: newApiKey
-        }, { merge: true });
-        
-        res.status(200).send(`
+  try {
+    const admin = require('firebase-admin');
+    const db = admin.firestore();
+    const crypto = require('crypto');
+
+    // 새로 발급 (주인이 바뀜)
+    const newApiKey = "moa-merch-" + crypto.randomBytes(8).toString('hex');
+    const merchantId = "2"; // 대한김치
+
+    await db.collection('api_keys').doc(newApiKey).set({
+      merchantId,
+      merchantName: "대한김치",
+      active: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    await db.collection('merchants').doc(merchantId).set({
+      apiKey: newApiKey
+    }, { merge: true });
+
+    res.status(200).send(`
             <h1>✅ 대한김치(ID: 2) 신규 API 키 발급 완료</h1>
             <p>가맹점 주인이 변경되어 새롭게 발급한 안전한 전용 API 키입니다.</p>
             <h2 style="color: blue;">${newApiKey}</h2>
             <p>이 키를 복사해서 새로운 가맹점주(대한김치 관리자)에게 전달해주세요.</p>
         `);
-    } catch(err) {
-        res.status(500).send("에러: " + err.message);
-    }
+  } catch (err) {
+    res.status(500).send("에러: " + err.message);
+  }
 });

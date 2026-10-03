@@ -4,9 +4,9 @@ const fs = require('fs');
 let header = fs.readFileSync('partials/header.html', 'utf8');
 
 const logoRegex = /<a class="brand"[\s\S]*?<\/a>/;
-const newLogo = `<a class="brand" href="/" aria-label="K-MOA" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
-      <img src="/assets/images/jump/logo2.png" alt="K-MOA" class="brand-logo" onerror="this.src='/assets/images/jump/favicon.png';" style="max-height: 32px; display: block;" />
-      <span style="font-weight: 900; font-size: 1.2rem; background: linear-gradient(to right, #facc15, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">K-MOA</span>
+const newLogo = `<a class="brand" href="/" aria-label="BestClub" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+      <img src="/assets/images/jump/logo2.png" alt="BestClub" class="brand-logo" onerror="this.src='/assets/images/jump/favicon.png';" style="max-height: 32px; display: block;" />
+      <span style="font-weight: 900; font-size: 1.2rem; background: linear-gradient(to right, #facc15, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">BestClub</span>
     </a>`;
 header = header.replace(logoRegex, newLogo);
 

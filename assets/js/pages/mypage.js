@@ -97,90 +97,7 @@ function renderReferralSection(uid) {
   }, { once: true });
 }
 
-function renderWallet(userData) {
-  // 포인트 계좌 기능 완전 제거
-  show("walletInfo", false);
-  show("btnCreateWallet", false);
-  show("btnConnectMetaMask", false);
-  show("noWallet", false);
-}
-
-async function loadOnChainData(uid) {
-  // 서비스 연동 완전히 제거 - 순수 파이어베이스에서 필요한 정보만 로드
-  show("walletHexRow", false);
-  show("onChainRegBox", false);
-  setText("onChainStatus", "활성화 됨 (Firebase)");
-  $("onChainStatus").style.color = "var(--accent)";
-
-  try {
-    // users와 battle_players 동시 조회 (users가 우선)
-    const [userSnap, bpSnap] = await Promise.all([
-      getDoc(doc(db, 'users', uid)),
-      getDoc(doc(db, 'battle_players', uid)),
-    ]);
-
-    const userData = userSnap.exists() ? userSnap.data() : {};
-    const bpData = bpSnap.exists() ? bpSnap.data() : {};
-
-    // users.gsExp/gsLevel 우선, 없으면 battle_players 참조
-    const displayExp = Number(userData.gsExp ?? bpData.gsExp ?? 0);
-    const displayLevel = Math.max(1, Number(userData.gsLevel ?? bpData.gsLevel ?? 1));
-    const required = displayLevel * displayLevel * 10000;
-
-    // 기존 walletInfo 행 (하위 호환)
-    show("levelRow", true);
-    setText("levelDisplay", "Lv." + displayLevel);
-    show("expRow", true);
-    show("expBarRow", true);
-    setText("expDisplay", `${displayExp.toLocaleString()} / ${required.toLocaleString()}`);
-    const barFill = $("expBarFill");
-    if (barFill) barFill.style.width = (required > 0 ? Math.min(100, Math.round(displayExp / required * 100)) : 0) + "%";
-    const expReqEl = $("expRequired");
-    if (expReqEl) {
-      const remain = Math.max(0, required - displayExp);
-      expReqEl.textContent = remain > 0 ? `다음 레벨까지 ${remain.toLocaleString()} EXP` : '레벨업 가능!';
-    }
-    show("levelUpRow", false);
-
-    // ── 새 EXP 카드 렌더링 ──────────────────────────────────────
-    const card = $("expLevelCard");
-    if (card) {
-      card.style.display = "";
-
-      const pct = required > 0 ? Math.min(100, Math.round(displayExp / required * 100)) : 0;
-      const remain = Math.max(0, required - displayExp);
-
-      // 레벨 배지
-      const badge = $("expLevelBadge");
-      if (badge) badge.textContent = displayLevel;
-
-      // 레벨 칭호
-      const TITLES = ["", "입문자", "초보자", "수련생", "숙련자", "고수", "달인", "영웅", "전설", "챔피언", "마스터"];
-      const titleEl = $("expLevelTitle");
-      if (titleEl) titleEl.textContent = TITLES[displayLevel] || `Lv.${displayLevel}`;
-
-      // 다음 레벨까지 EXP
-      const nextEl = $("expToNextLevel");
-      if (nextEl) nextEl.textContent = remain > 0 ? `${remain.toLocaleString()} EXP` : "레벨업 가능! 🎉";
-
-      // 프로그레스 바
-      const barNew = $("expBarFillNew");
-      if (barNew) setTimeout(() => { barNew.style.width = pct + "%"; }, 100);
-
-      // 진행 라벨
-      const progLabel = $("expProgressLabel");
-      if (progLabel) progLabel.textContent = `${displayExp.toLocaleString()} / ${required.toLocaleString()} EXP`;
-
-      // KM 전환 비율 힌트
-      const convRate = $("expConversionRate");
-      if (convRate) convRate.textContent = `포인트 × ${displayLevel} ÷ 10`;
-    }
-
-  } catch (err) {
-    console.error("Firebase status load failed", err);
-  }
-}
-
+function renderWallet(d) { }
 
 async function loadKCultureBalances(uid) {
   try {
@@ -239,8 +156,8 @@ async function loadKCultureBalances(uid) {
           }
         }
         if (elPay) {
-          elPay.innerHTML = `<span>${kBal.toLocaleString("ko-KR")} KM</span>` +
-            `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(K-MOA 가맹점 전용 머니)</div>`;
+          elPay.innerHTML = `<span>${kBal.toLocaleString("ko-KR")} BM</span>` +
+            `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(BEST CLUB MONEY)</div>`;
         }
         if (elBt) {
           elBt.innerHTML = `<span id="btSpan" style="font-size:1.6rem;">${bBal.toLocaleString("ko-KR")} BT</span>`;
@@ -269,16 +186,15 @@ async function loadKCultureBalances(uid) {
                   alert("전환할 포인트가 없습니다.");
                   return;
                 }
-                const ok = confirm(`현재 레벨: Lv.${level}\n보유 포인트: ${currentPoints.toLocaleString()} P\n전환 후 KM 머니: +${expectedKm.toLocaleString()} KM\n\n전환 공식: 포인트 × Lv.${level} ÷ 10\n전환하시겠습니까?`);
+                const ok = confirm(`현재 레벨: Lv.${level}\n보유 포인트: ${currentPoints.toLocaleString()} P\n전환 후 BM 머니: +${expectedKm.toLocaleString()} BM\n\n전환 공식: 포인트 × Lv.${level} ÷ 10\n전환하시겠습니까?`);
                 if (!ok) return;
 
                 btnExc.disabled = true;
                 btnExc.textContent = "처리 중...";
                 const fn = httpsCallable(functions, "exchangePointsToFiat");
                 const res = await fn({ amount: currentPoints });
-                alert(`✅ 전환 완료!\n사용 포인트: ${res.data.usedPoints.toLocaleString()} P\n추가된 KM 머니: +${res.data.convertedVnd.toLocaleString()} KM`);
+                alert(`✅ 전환 완료!\n사용 포인트: ${res.data.usedPoints.toLocaleString()} P\n추가된 BM 머니: +${res.data.convertedVnd.toLocaleString()} BM`);
                 await loadKCultureBalances(uid);
-                await loadOnChainData(uid);
               } catch (err) {
                 alert("전환 실패: " + (err.message || "서버 오류"));
                 btnExc.disabled = false;
@@ -290,8 +206,8 @@ async function loadKCultureBalances(uid) {
       }
 
       if (elPay) {
-        elPay.innerHTML = `<span>${payBal.toLocaleString("ko-KR")} KM</span>` +
-          `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(K-MOA 가맹점 전용 머니)</div>`;
+        elPay.innerHTML = `<span>${payBal.toLocaleString("ko-KR")} BM</span>` +
+          `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(BEST CLUB MONEY)</div>`;
       }
 
       if (elBt) {
@@ -365,7 +281,7 @@ async function loadKCultureBalances(uid) {
 
     } else {
       if ($("pointDisplay")) $("pointDisplay").textContent = "0 P";
-      if ($("paymentBalanceDisplay")) $("paymentBalanceDisplay").textContent = "0 KM";
+      if ($("paymentBalanceDisplay")) $("paymentBalanceDisplay").textContent = "0 BM";
       if ($("btDisplay")) $("btDisplay").textContent = "0 BT";
     }
   } catch (err) {
@@ -1245,9 +1161,9 @@ function playUltimateJackpotEffect(amount) {
     const update = () => {
       current += step;
       if (current >= amount) {
-        textEl.textContent = `+${amount.toLocaleString()} KM`;
+        textEl.textContent = `+${amount.toLocaleString()} BM`;
       } else {
-        textEl.textContent = `+${Math.floor(current).toLocaleString()} KM`;
+        textEl.textContent = `+${Math.floor(current).toLocaleString()} BM`;
         requestAnimationFrame(update);
       }
     };
@@ -1260,8 +1176,8 @@ function showJackpotResult(d) {
   if (!modal) return;
 
   const hasItems = (d.potionsAdded > 0) || (d.mpPotionsAdded > 0) || (d.reviveAdded > 0);
-  const jackpotKM = Number(d.jackpotAmountVnd || d.pointsEarned || 0);
-  const hasJackpot = jackpotKM > 0 || d.isJackpot;
+  const jackpotBM = Number(d.jackpotAmountVnd || d.pointsEarned || 0);
+  const hasJackpot = jackpotBM > 0 || d.isJackpot;
 
   if (!hasJackpot && !hasItems) return;
 
@@ -1287,9 +1203,9 @@ function showJackpotResult(d) {
 
   if (itemsEl) {
     const lines = [];
-    if (hasJackpot && jackpotKM > 0) {
-      lines.push(`<div class="jm-item" style="font-size:1.4rem; color:#fde047; font-weight:800; margin: 15px 0;">✨ 잭팟 달성! <br><span id="jackpotAmountText" style="color:#fff; font-size:2.5rem; text-shadow:0 0 20px rgba(253,224,71,0.8); display:inline-block; font-variant-numeric:tabular-nums;">+${jackpotKM.toLocaleString()} KM</span> <br>(Point) 지급 완료</div>`);
-      setTimeout(() => playUltimateJackpotEffect(jackpotKM), 150);
+    if (hasJackpot && jackpotBM > 0) {
+      lines.push(`<div class="jm-item" style="font-size:1.4rem; color:#fde047; font-weight:800; margin: 15px 0;">✨ 잭팟 달성! <br><span id="jackpotAmountText" style="color:#fff; font-size:2.5rem; text-shadow:0 0 20px rgba(253,224,71,0.8); display:inline-block; font-variant-numeric:tabular-nums;">+${jackpotBM.toLocaleString()} BM</span> <br>(Point) 지급 완료</div>`);
+      setTimeout(() => playUltimateJackpotEffect(jackpotBM), 150);
     }
     if (d.potionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/hp.png" style="width:22px;height:22px;"> ${_t('item_potion')} <b>+${d.potionsAdded}</b></div>`);
     if (d.mpPotionsAdded > 0) lines.push(`<div class="jm-item"><img src="/assets/images/item/mp.png" style="width:22px;height:22px;"> ${_t('item_mp_potion')} <b>+${d.mpPotionsAdded}</b></div>`);
@@ -1474,7 +1390,7 @@ function bindMerchantPay(uid, _walletAddress) {
         await playGradeSlotAnimation(d.grade);
       }
 
-      const amountDisp = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()} KM` : '';
+      const amountDisp = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()} BM` : '';
 
       if (resultBox) {
         resultBox.style.display = "";
@@ -1490,7 +1406,7 @@ function bindMerchantPay(uid, _walletAddress) {
       showJackpotResult(d);
       loadTxHistory(uid);
       loadJackpotHistory(uid);
-      loadOnChainData(uid);
+
     } catch (err) {
       alert(_t('pay_error', err.message));
     } finally {
@@ -1807,7 +1723,7 @@ onAuthReady(async (ctx) => {
     const snap = await getDoc(doc(db, "users", user.uid));
     const data = snap.exists() ? snap.data() : {};
 
-    if (!data.name) {
+    if (!snap.exists() && ctx.role !== 'admin') {
       show("noProfilePanel", true);
       return;
     }
@@ -1841,7 +1757,7 @@ onAuthReady(async (ctx) => {
     })();
 
     loadKCultureBalances(user.uid);
-    loadOnChainData(user.uid);
+
     loadDepositHistory(user.uid);
     loadMentees();
 
@@ -2473,7 +2389,7 @@ onAuthReady(async (ctx) => {
     const confirmed = window.confirm(
       '⚠️ 최종 확인\n\n' +
       '탈퇴 시 아래 데이터가 모두 삭제됩니다:\n' +
-      '  • 포인트 잔고 / KM 머니\n' +
+      '  • 포인트 잔고 / BM 머니\n' +
       '  • 보너스 티켓(BT)\n' +
       '  • EXP · 레벨\n' +
       '  • 나의 멘티 연결 관계 (멘티들의 멘토 해제)\n' +

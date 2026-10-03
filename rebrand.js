@@ -27,8 +27,8 @@ walkSync(directory, (filePath) => {
     let content = fs.readFileSync(filePath, 'utf8');
     let originalContent = content;
 
-    // 1. Rebrand K-MOA to K-MOA
-    content = content.replace(/K-MOA/g, 'K-MOA');
+    // 1. Rebrand BestClub to BestClub
+    content = content.replace(/BestClub/g, 'BestClub');
 
     // 2. Remove obsolete marketing text exactly (Korean)
     content = content.replace(//g, '');

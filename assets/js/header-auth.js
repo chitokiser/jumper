@@ -294,13 +294,21 @@ async function bindHeader() {
   show(btnLogout, false);
 
   watchAuth(({ loggedIn, role, profile, user }) => {
-    show(btnLogin, !loggedIn);
-    show(btnLogout, loggedIn);
-    applyRoleToMenu(role || (loggedIn ? "user" : "guest"));
-    applyUserBadge(loggedIn ? profile : null);
+    const isFullyRegistered = loggedIn && role !== "guest";
+    show(btnLogin, !isFullyRegistered);
+    show(btnLogout, isFullyRegistered);
+    applyRoleToMenu(role || (isFullyRegistered ? "user" : "guest"));
+    applyUserBadge(isFullyRegistered ? profile : null);
 
     if (!loggedIn) { applyMemberBadge(false); applyMemberJoinLink(false); }
-    if (loggedIn && profile?.uid) { checkMembership(profile.uid); }
+    if (loggedIn && profile?.uid) {
+      if (role === "admin") {
+        applyMemberBadge(true);
+        applyMemberJoinLink(false);
+      } else {
+        checkMembership(profile.uid);
+      }
+    }
 
     if (loggedIn && user) {
       notifyOpenerIfPopup(user, role, profile);

@@ -1,10 +1,11 @@
 <!-- /family-register.html -->
 <!doctype html>
 <html lang="ko">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>가맹점 등록 - K-MOA</title>
+  <title>가맹점 등록 - BestClub</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -14,6 +15,7 @@
   <script src="/assets/js/partials.js" defer></script>
   <link rel="manifest" href="/manifest.json">
 </head>
+
 <body>
   <div id="siteHeader"></div>
 
@@ -24,7 +26,7 @@
       <h1 class="title">가맹점 등록</h1>
       <p class="desc">
         홈스테이·체험·여행·클래스·가맹점 등 판매 서비스가 있다면 가맹점으로 참여할 수 있습니다.<br>
-        <strong>모든 결제는 Point 포인트으로만 받습니다.</strong>
+        <strong>가맹점은 고객으로부터 BM 결제로만 수익을 창출합니다.</strong>
       </p>
 
       <div id="applyState" class="state">로딩...</div>
@@ -44,7 +46,7 @@
         <a href="/register.html" class="btn btn--primary" style="margin-top:12px; display:inline-block;">회원가입 하러 가기</a>
       </div>
 
-      
+
 
       <!-- ④ 이미 등록된 판매자 -->
       <div id="alreadyMerchantPanel" style="display:none;" class="status-box">
@@ -79,7 +81,8 @@
 
         <button class="btn" id="btnToggleMerchantEdit" type="button" style="margin-top:12px;">✏️ 정보 수정</button>
 
-        <div id="merchantEditForm" style="display:none; margin-top:16px; border-top:1px solid var(--border,#e5e7eb); padding-top:14px;">
+        <div id="merchantEditForm"
+          style="display:none; margin-top:16px; border-top:1px solid var(--border,#e5e7eb); padding-top:14px;">
           <p style="font-weight:600; margin-bottom:10px;">상호 · 업종 · 활동지역 · 소개 수정</p>
           <label class="field">
             <span>상호 / 가게명 <em class="req">*</em></span>
@@ -108,10 +111,11 @@
       <!-- ⑤ 판매회원 등록 폼 -->
       <form id="merchantForm" style="display:none;" class="form" novalidate>
 
-        <div style="background:var(--surface2,#f9f5ff); border-left:4px solid var(--accent,#7c3aed); border-radius:6px; padding:10px 14px; margin-bottom:16px; font-size:0.88em;">
+        <div
+          style="background:var(--surface2,#f9f5ff); border-left:4px solid var(--accent,#7c3aed); border-radius:6px; padding:10px 14px; margin-bottom:16px; font-size:0.88em;">
           <strong>결제 방식 안내</strong><br>
-          모든 상품 결제는 <strong>Point 포인트</strong>으로만 받습니다.<br>
-          등록 즉시 가맹점이 생성되며, 초기 수수료(10%)는 관리자가 설정합니다.
+          가맹점은 고객으로부터 <strong>BM 결제</strong>를 받게 됩니다.<br>
+          등록 즉시 가맹점이 생성되며, BM 결제 수수료는 사전 협의된 내용에 따라 관리자가 설정합니다.
         </div>
 
         <label class="field">
@@ -175,11 +179,11 @@
         </div>
         <div class="status-row">
           <div class="k">수수료율</div>
-          <div class="v">0% → 관리자 승인 후 <strong>10%</strong> 적용 예정</div>
+          <div class="v">사전 협의 내용에 따라 <strong>관리자 설정 적용</strong></div>
         </div>
         <div class="status-row">
           <div class="k">결제 방식</div>
-          <div class="v">Point 포인트 전용</div>
+          <div class="v">BM 전용 결제</div>
         </div>
         <p class="hint" style="margin-top:10px;">
           가맹점 ID를 기록해 두세요. 고객 결제 시 이 ID로 결제가 이루어집니다.
@@ -198,4 +202,5 @@
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/pages/family-register.js"></script>
 </body>
+
 </html>

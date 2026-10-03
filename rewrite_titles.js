@@ -27,7 +27,7 @@ merchQr = merchQr.replace(/const merchantRef = doc\(db, "k_culture_balances", St
 fs.writeFileSync('assets/js/pages/merchant-qr.js', merchQr, 'utf8');
 console.log('Fixed merchant-qr.js');
 
-// 3. Fix HTML Titles replacing "Jump" and "Ocean Park" with "K-MOA"
+// 3. Fix HTML Titles replacing "Jump" and "Ocean Park" with "BestClub"
 function walkHtml(dir) {
     fs.readdirSync(dir).forEach(f => {
         const d = path.join(dir, f);
@@ -37,16 +37,16 @@ function walkHtml(dir) {
             let content = fs.readFileSync(d, 'utf8');
             let changed = false;
             if (content.includes('Jump')) {
-                content = content.replace(/Jump([^eA-Za-z])/g, 'K-MOA$1').replace(/Jump<\//g, 'K-MOA</');
+                content = content.replace(/Jump([^eA-Za-z])/g, 'BestClub$1').replace(/Jump<\//g, 'BestClub</');
                 changed = true;
             }
             // Also specifically fix any raw title matches
             if (content.match(/<title>.*Jump.*<\/title>/i)) {
-                content = content.replace(/(<title>.*)Jump(.*<\/title>)/ig, '$1K-MOA$2');
+                content = content.replace(/(<title>.*)Jump(.*<\/title>)/ig, '$1BestClub$2');
                 changed = true;
             }
             if (content.match(/<title>.*Ocean Park.*<\/title>/i)) {
-                content = content.replace(/(<title>.*)Ocean Park(.*<\/title>)/ig, '$1K-MOA$2');
+                content = content.replace(/(<title>.*)Ocean Park(.*<\/title>)/ig, '$1BestClub$2');
                 changed = true;
             }
             if (changed) {

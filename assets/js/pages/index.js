@@ -487,7 +487,7 @@ async function loadJackpotRanking() {
     snap.forEach(docS => {
       const d = docS.data();
       const amount = (d.amountVnd || 0).toLocaleString();
-      const rawName = d.userName || 'K-MOA User';
+      const rawName = d.userName || 'BestClub User';
       const name = rawName.length > 2 ? rawName.substring(0, 1) + '*' + rawName.substring(2) : rawName.substring(0, 1) + '*';
       const date = d.timestamp ? new Date(d.timestamp.seconds * 1000).toLocaleDateString() : '';
       

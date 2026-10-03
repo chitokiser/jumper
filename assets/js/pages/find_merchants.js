@@ -3,44 +3,19 @@ import { collection, getDocs, query, where } from "https://www.gstatic.com/fireb
 
 const $ = id => document.getElementById(id);
 let map = null;
-let markers = [];
-
-async function loadMapScript() {
-    let apiKey = window.__mapsKey || "";
-    if (!apiKey) {
-        try {
-            const sysSnap = await getDocs(collection(db, "sys"));
-            sysSnap.forEach(doc => {
-                if (doc.id === "config" && doc.data().mapsKey) apiKey = doc.data().mapsKey;
-            });
-        } catch (e) {
-            console.warn("Failed to fetch sys/config mapsKey:", e);
-        }
-    }
-
-    // Fallback key (from index.html)
-    if (!apiKey) {
-        apiKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";
-    }
-
-    return new Promise(resolve => {
-        window.__findMerchantMapCb = () => resolve(true);
-        const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=__findMerchantMapCb&language=ko`;
-        document.head.appendChild(script);
-    });
-}
 
 async function init() {
     const mapEl = $("merchantMap");
-    const loaded = await loadMapScript();
 
-    if (loaded) {
-        map = new google.maps.Map(mapEl, {
-            center: { lat: 21.0285, lng: 105.8542 }, // Default to Hanoi
-            zoom: 12,
-            disableDefaultUI: false,
-        });
+    // Initialize Leaflet map
+    if (mapEl && typeof L !== "undefined") {
+        mapEl.innerHTML = ""; // Clear loading text
+        map = L.map(mapEl).setView([21.0285, 105.8542], 12); // Default to Hanoi
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
     } else {
         if (mapEl) mapEl.innerHTML = "지도 정보를 불러올 수 없습니다.";
     }
@@ -55,7 +30,7 @@ async function init() {
             return;
         }
 
-        const bounds = map ? new google.maps.LatLngBounds() : null;
+        const bounds = map ? L.latLngBounds() : null;
 
         snap.forEach(docSnap => {
             const d = docSnap.data();
@@ -69,8 +44,6 @@ async function init() {
             const likes = d.likeCount || Math.floor(Math.random() * 100);
 
             const logoUrl = d.logoUrl || d.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=150&h=150&q=80";
-            const websiteHtml = d.website ? `<a href="${d.website}" target="_blank" onclick="event.stopPropagation()" style="color:#2563eb; text-decoration:none;"><i class="fa-solid fa-globe me-1"></i> 웹사이트 방문</a>` : '';
-            const emailHtml = d.email ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">✉️ ${d.email}</div>` : '';
 
             card.innerHTML = `
           <div class="mc-card-hero">
@@ -95,7 +68,7 @@ async function init() {
                   ${d.email ? `<div class="mc-card-info-row"><i class="fa-solid fa-envelope" style="width:16px; text-align:center; color:#94a3b8;"></i> <span>${d.email}</span></div>` : ''}
               </div>
               
-              <div class="mc-card-desc">${d.desc || "상세 설명이 없습니다."}</div>
+              <div class="mc-card-desc">${d.desc || d.description || "상세 설명이 없습니다."}</div>
               
               ${d.website ? `
               <div class="mc-card-footer">
@@ -109,17 +82,12 @@ async function init() {
 
             // Add marker if coordinates exist
             if (d.lat && d.lng && map) {
-                const pos = { lat: Number(d.lat), lng: Number(d.lng) };
-                const marker = new google.maps.Marker({
-                    position: pos,
-                    map: map,
-                    title: d.name
-                });
+                const pos = [Number(d.lat), Number(d.lng)];
+                const marker = L.marker(pos).addTo(map).bindPopup(`<b>${d.name || "가맹점"}</b>`);
                 bounds.extend(pos);
 
                 card.onclick = () => {
-                    map.setCenter(pos);
-                    map.setZoom(15);
+                    map.setView(pos, 15);
                     window.scrollTo({ top: mapEl.offsetTop - 120, behavior: "smooth" });
                 };
             }
@@ -127,8 +95,8 @@ async function init() {
             grid.appendChild(card);
         });
 
-        if (map && bounds && !bounds.isEmpty()) {
-            map.fitBounds(bounds);
+        if (map && bounds && bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] });
         }
     } catch (err) {
         console.error("Error fetching merchants:", err);
@@ -141,5 +109,3 @@ if (document.readyState === "loading") {
 } else {
     init();
 }
-
-

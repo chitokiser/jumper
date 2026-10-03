@@ -31,8 +31,7 @@
             style="color:#0891b2;font-weight:700;">📡 NFC 보물 관리</a> &nbsp;|&nbsp; <a href="/admin_exchange.html"
             style="color:#f59e0b;font-weight:700;">💱 포인트 거래소 관리</a> &nbsp;|&nbsp; <a href="/admin_stars.html"
             style="color:#f59e0b;font-weight:700;">⭐ Stars · NPC 관리</a> &nbsp;|&nbsp; <a href="/admin-treasure-box.html"
-            style="color:#10b981;font-weight:700;">📦 보물박스 생성</a> &nbsp;|&nbsp; <a href="/admin_webzine.html"
-            style="color:#e11d48;font-weight:700;">📰 매거진 AI 발행</a></p>
+            style="color:#10b981;font-weight:700;">📦 보물박스 생성</a></p>
       </div>
 
       <div class="panel">
@@ -100,7 +99,8 @@
 
             <div class="card" style="margin-bottom:16px; border:2px solid #ef4444; background:#fef2f2;">
               <div class="kv">
-                <div class="k" style="color:#b91c1c; font-weight:bold; padding:4px 0;">🔥 K-moa 선불전자지급수단 발행잔액 모니터링 (등록
+                <div class="k" style="color:#b91c1c; font-weight:bold; padding:4px 0;">🔥 BestClub 선불전자지급수단 발행잔액 모니터링
+                  (등록
                   면제 한도: 30억원)</div>
                 <div class="v" id="sysTotalKm" style="font-size:16px; font-weight:900; color:#b91c1c;">로딩 중...</div>
               </div>
@@ -217,109 +217,6 @@
             <div id="userList" class="list" style="margin-top:8px;"></div>
             <hr style="margin:20px 0;border:none;border-top:1px solid var(--border,#e2e8f0);">
 
-            <!-- 관리자 셀프 온보딩 -->
-            <div class="list-head" style="margin-top:8px;">
-              <div class="muted">관리자 지갑 연결 (adminSelfOnboard)</div>
-            </div>
-            <div class="card" style="margin-top:4px;">
-              <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                ADMIN_PRIVATE_KEY 지갑을 내 계정(Firestore users)에 연결합니다.<br>
-                멘티 목록 조회를 위해 <strong>먼저 1회 실행</strong>해야 합니다.
-              </p>
-              <button class="btn btn-sm" id="btnAdminSelfOnboard" type="button">관리자 지갑 연결 실행</button>
-              <div id="adminSelfOnboardResult" style="display:none; margin-top:10px; font-size:13px;"></div>
-            </div>
-
-            <!-- 온체인 지갑 연결 (onlyOwner 작업 공통) -->
-            <div class="list-head" style="margin-top:8px;">
-              <div class="muted">온체인 지갑 연결 (Rabby / MetaMask)</div>
-            </div>
-            <div class="card" style="margin-top:4px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-              <button class="btn btn-sm" id="btnConnectOwnerWallet" type="button">🦊 지갑 연결</button>
-              <span id="ownerWalletLabel" style="font-size:12px; color:var(--muted);"></span>
-            </div>
-
-            <!-- 온체인 멘토 일괄 변경 -->
-            <div class="list-head" style="margin-top:8px;">
-              <div class="muted">온체인 멘토 일괄 변경 (adminChangeMentor)</div>
-            </div>
-            <div class="card" style="margin-top:4px;">
-              <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                온체인 등록된 유저들의 멘토 주소를 일괄 변경합니다.<br>
-                ⚠ 컨트랙트 onlyOwner 함수 호출 — 가스비가 발생합니다.
-              </p>
-              <div class="kv" style="margin-bottom:10px;">
-                <div class="k">새 멘토 주소</div>
-                <div class="v">
-                  <input type="text" id="inputNewMentorAddr" class="select"
-                    style="width:100%; font-family:monospace; font-size:12px;" placeholder="0x... (멘토 지갑 주소)" />
-                </div>
-                <div class="k">대상 UID<br><span style="font-size:10px; color:var(--muted);">(비우면 전체)</span></div>
-                <div class="v">
-                  <textarea id="inputTargetUids" class="select"
-                    style="width:100%; height:60px; font-size:12px; resize:vertical;"
-                    placeholder="uid1&#10;uid2&#10;uid3 (줄바꿈으로 구분, 비우면 전체 등록 유저 대상)"></textarea>
-                </div>
-              </div>
-              <button class="btn btn-sm" id="btnBulkChangeMentor" type="button">멘토 일괄 변경 실행</button>
-              <div id="bulkMentorResult" style="display:none; margin-top:10px; font-size:13px;"></div>
-            </div>
-
-            <!-- 블랙리스트 관리 -->
-            <div class="list-head" style="margin-top:16px;">
-              <div class="muted">블랙리스트 등록 / 해제</div>
-            </div>
-            <div class="card" style="margin-top:4px;">
-              <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                이메일 또는 UID로 유저를 검색한 후 블랙리스트 등록 또는 해제합니다.<br>
-                등록 시 Firebase 로그인 즉시 차단 + 온체인 결제 차단.<br>
-                해제 시 로그인 및 결제 즉시 복원됩니다.
-              </p>
-              <div class="kv" style="margin-bottom:10px;">
-                <div class="k">이메일 또는 UID</div>
-                <div class="v" style="display:flex;gap:6px;">
-                  <input type="text" id="inputBlacklistUser" class="select" style="flex:1;"
-                    placeholder="user@example.com 또는 Firebase UID" />
-                  <button class="btn btn-sm" id="btnBlacklistSearch" type="button">조회</button>
-                </div>
-              </div>
-              <!-- 조회 결과 -->
-              <div id="blacklistUserInfo"
-                style="display:none; margin-bottom:12px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; font-size:13px;">
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button class="btn btn-sm" id="btnBlacklistAdd" type="button"
-                  style="display:none; background:#dc2626; color:#fff; border-color:#dc2626;">블랙리스트 등록</button>
-                <button class="btn btn-sm" id="btnBlacklistRemove" type="button"
-                  style="display:none; background:#16a34a; color:#fff; border-color:#16a34a;">블랙리스트 해제</button>
-              </div>
-              <div id="blacklistResult" style="display:none; margin-top:10px; font-size:13px;"></div>
-            </div>
-
-            <!-- 유저 레벨 설정 -->
-            <div class="list-head" style="margin-top:16px;">
-              <div class="muted">유저 온체인 레벨 설정 (adminSetLevel)</div>
-            </div>
-            <div class="card" style="margin-top:4px;">
-              <p class="muted" style="font-size:12px; margin:0 0 10px;">
-                이메일 또는 UID로 유저를 찾아 온체인 레벨을 변경합니다.<br>
-                ⚠ 컨트랙트 onlyOwner 함수 호출 — 가스비가 발생합니다.
-              </p>
-              <div class="kv" style="margin-bottom:10px;">
-                <div class="k">이메일 또는 UID</div>
-                <div class="v">
-                  <input type="text" id="inputSetLevelUser" class="select" style="width:100%;"
-                    placeholder="user@example.com 또는 Firebase UID" />
-                </div>
-                <div class="k">레벨 (1~10)</div>
-                <div class="v">
-                  <input type="number" id="inputSetLevel" class="select" style="width:80px;" min="1" max="10" step="1"
-                    value="4" />
-                </div>
-              </div>
-              <button class="btn btn-sm" id="btnSetUserLevel" type="button">레벨 설정 실행</button>
-              <div id="setLevelResult" style="display:none; margin-top:10px; font-size:13px;"></div>
-            </div>
           </div>
 
           <!-- ── DAO 승인 탭 ── -->

@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>마이페이지 - K-MOA</title>
+  <title>마이페이지 - BestClub</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -16,7 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 
   <script>
-    // 화이트라벨(API/iframe 연동) 모드일 경우 K-MOA 자체 헤더/푸터 등 GNB를 숨김 처리
+    // 화이트라벨(API/iframe 연동) 모드일 경우 BestClub 자체 헤더/푸터 등 GNB를 숨김 처리
     if (new URLSearchParams(window.location.search).get('whitelabel') === 'true') {
       document.documentElement.classList.add('whitelabel-mode');
       document.write('<style>#siteHeader, #siteFooter, .bottom-nav { display: none !important; } body { padding-top: 0 !important; margin-top: 0 !important; }</style>');
@@ -823,11 +823,11 @@
             </div>
           </div>
 
-          <!-- KM 전환비율 -->
+          <!-- BM 전환비율 -->
           <div id="expConversionHint"
             style="margin-top:12px;background:rgba(253,230,138,0.1);border:1px solid rgba(253,230,138,0.25);border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:8px;">
             <span style="font-size:1rem;">⚡</span>
-            <span style="font-size:0.78rem;color:#fde68a;">포인트 → KM 전환 비율: <b id="expConversionRate"
+            <span style="font-size:0.78rem;color:#fde68a;">포인트 → BM 전환 비율: <b id="expConversionRate"
                 style="color:#fff;">레벨 × ÷ 10</b></span>
           </div>
         </div>
@@ -984,7 +984,7 @@
         </div>
         <p class="hint" style="margin-bottom:12px;">
           가맹점을 방문하여 현장에서 결제할 때 사용합니다.<br>
-          <small class="muted">결제 시 KM(동 포인트) 전용 잔고가 사용됩니다. (최소 10,000 VND)</small>
+          <small class="muted">결제 시 BM(동 포인트) 전용 잔고가 사용됩니다. (최소 10,000 VND)</small>
         </p>
         <form id="merchantPayForm" class="form" style="margin-top:0;">
           <label class="field">
@@ -1296,7 +1296,7 @@
               🚨 탈퇴 전 반드시 확인하세요!
             </div>
             <ul style="margin:0; padding-left:18px; font-size:0.84rem; color:#7f1d1d; line-height:2;">
-              <li>💰 <strong>포인트 잔고 · KM 머니</strong> — 즉시 소멸, 환불 불가</li>
+              <li>💰 <strong>포인트 잔고 · BM 머니</strong> — 즉시 소멸, 환불 불가</li>
               <li>⭐ <strong>EXP · 레벨</strong> — 모두 삭제</li>
               <li>🎫 <strong>보너스 티켓(BT) 잔고</strong> — 즉시 소멸</li>
               <li>👥 <strong>나의 멘티 연결 관계</strong> — 멘티들의 멘토가 해제됨<br>

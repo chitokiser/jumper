@@ -105,7 +105,7 @@ function _mountHdrLang() {
 const _FTR_T = {
   vi: {
     ftr_about_title: 'Giới thiệu',
-    ftr_about_link: 'Giới thiệu K-MOA',
+    ftr_about_link: 'Giới thiệu BestClub',
     ftr_member_title: 'Hướng dẫn hội viên',
     ftr_register: 'Đăng ký cửa hàng',
     ftr_token_trade: 'Giao dịch token',
@@ -120,7 +120,7 @@ const _FTR_T = {
   },
   en: {
     ftr_about_title: 'About',
-    ftr_about_link: 'About K-MOA',
+    ftr_about_link: 'About BestClub',
     ftr_member_title: 'Member Guide',
     ftr_register: 'Merchant Registration',
     ftr_token_trade: 'Point Trade',
@@ -135,7 +135,7 @@ const _FTR_T = {
   },
   ko: {
     ftr_about_title: '소개',
-    ftr_about_link: 'K-MOA 소개',
+    ftr_about_link: 'BestClub 소개',
     ftr_member_title: '멤버 안내',
     ftr_register: '가맹점 등록',
     ftr_token_trade: '포인트 거래',

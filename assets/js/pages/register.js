@@ -117,7 +117,8 @@ async function doRegister(uid, user) {
   const agreeTerms = Boolean($("agreeTerms")?.checked);
 
   if (!name) throw new Error("이름을 입력해 주세요.");
-  if (!phone || !isValidPhone(phone)) throw new Error("올바른 휴대폰 번호를 입력해 주세요.");
+  if (!phone || !isValidPhone(phone)) throw new Error("올바른 휴대전화 번호를 입력해 주세요.");
+  if (!mentorAddress) throw new Error("추천인 이메일을 반드시 입력해 주세요.");
   if (!agreeTerms) throw new Error("이용약관에 동의해 주세요.");
 
   show("stepBox", true);
@@ -191,7 +192,7 @@ async function _initForUser(user) {
     const data = snap.exists() ? snap.data() : null;
 
     // 정보가 이미 저장되었다면 가입이 완료된 계정
-    if (data?.agreeTerms) {
+    if (data) {
       setState("이미 가입된 계정입니다.");
       showAlreadyDone(data);
       return;
@@ -201,7 +202,7 @@ async function _initForUser(user) {
     show("authSection", false);
     show("regForm", true);
 
-    const DEFAULT_MENTOR = "";
+    const DEFAULT_MENTOR = "daguri75@gmail.com";
     const mentorEl = $("mentorAddress");
     if (mentorEl && !mentorEl.value) {
       const urlMentor = new URLSearchParams(location.search).get("mentor") || "";

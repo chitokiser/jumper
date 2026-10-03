@@ -1463,30 +1463,7 @@ async function createBtRewardSession(uid, data) {
   return { rewardId, btAmount, merchantId, expiresAt: expiresAt.toMillis() };
 }
 
-module.exports = { adminChargeBt,
-  createBtRewardSession,
-  receiveBtQrFirebase,
-  consumeUserBtFirebase,
 
-  exchangePointsToFiat,
-  buyProduct,
-  withdrawPayable,
-  requestLevelUp,
-  registerMerchantOnChain,
-  adminSetMerchantFeeOnChain,
-  adminApproveHex,
-  adminCheckAllowance,
-  adminGetContractStatus,
-  adminRecordP2pTransfer,
-  mergeWalletHexToPoints,
-  payMerchantFirebase,
-  adminOwnerDepositHex,
-  payProductWithHex,
-  adminBulkChangeMentor,
-  adminSetUserLevel,
-  transferHexToPersonal,
-  redeemPoints,
-};
 
 
 async function adminChargeBt (adminUid, merchantId, amount) {
@@ -1515,4 +1492,30 @@ async function adminChargeBt (adminUid, merchantId, amount) {
     });
   });
   return { success: true };
+};
+
+
+module.exports = {
+  adminChargeBt,
+  createBtRewardSession,
+  receiveBtQrFirebase,
+  consumeUserBtFirebase,
+  exchangePointsToFiat,
+  buyProduct,
+  withdrawPayable,
+  requestLevelUp,
+  registerMerchantOnChain,
+  adminSetMerchantFeeOnChain,
+  adminApproveHex,
+  adminCheckAllowance,
+  adminGetContractStatus,
+  adminRecordP2pTransfer,
+  mergeWalletHexToPoints,
+  payMerchantFirebase,
+  adminOwnerDepositHex,
+  payProductWithHex,
+  adminBulkChangeMentor,
+  adminSetUserLevel,
+  transferHexToPersonal,
+  redeemPoints,
 };

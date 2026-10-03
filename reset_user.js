@@ -55,7 +55,7 @@ async function deleteDoc(collectionPath, docId) {
 
 async function main() {
     console.log(`\n========================================`);
-    console.log(` K-MOA 계정 초기화 스크립트`);
+    console.log(` BestClub 계정 초기화 스크립트`);
     console.log(` 대상: ${TARGET_EMAIL}`);
     console.log(`========================================\n`);
 

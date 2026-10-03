@@ -336,9 +336,17 @@ async function getMyMentees(uid) {
   const db = admin.firestore();
   const userSnap = await db.collection('users').doc(uid).get();
   const myAddress = userSnap.data()?.wallet?.address || null;
+  const myEmail = userSnap.data()?.email || '';
 
-  const querySnap = await db.collection('users').where('mentorUid', '==', uid).limit(100).get();
   const menteeMap = {};
+  if (!myEmail) {
+    return { mentees: [], myAddress };
+  }
+
+  const querySnap = await db.collection('users')
+    .where('mentorAddressInput', '==', myEmail)
+    .limit(100)
+    .get();
 
   await Promise.all(querySnap.docs.map(async (docSnap) => {
     const data = docSnap.data();

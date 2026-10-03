@@ -38,7 +38,7 @@ async function deleteCollection(colName) {
 
 async function main() {
     console.log('='.repeat(60));
-    console.log('K-MOA 회원 데이터 초기화');
+    console.log('BestClub 회원 데이터 초기화');
     console.log(`유지 계정: ${ADMIN_EMAIL}`);
     console.log('='.repeat(60));
 

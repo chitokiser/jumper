@@ -1,4 +1,4 @@
-# K-MOA UI Design Rules & Expectations
+# BestClub UI Design Rules & Expectations
 1. QR Payment & BT Rewards UI
 - NEVER display BT Reward scanning as a 'Payment'. It should be completely rewritten to emphasize 'Free Reward (무료 보상)'.
 - NEVER hardcode KRW as the default currency when calculating BT or payment. Always use VND.

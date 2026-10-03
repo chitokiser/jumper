@@ -5,7 +5,7 @@ const heroContentRegex = /<div class="town-hero-inner hero-content">[\s\S]*?<\/d
 const newHeroContent = `<div class="town-hero-inner hero-content">
       <h1 class="town-title"
         style="font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 900; background: linear-gradient(to right, #facc15, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));">
-        K-MOA ALLIANCE
+        BestClub ALLIANCE
       </h1>
       <p class="town-subtitle"
         style="font-size: clamp(1rem, 2.5vw, 1.4rem); color: #fff; max-width: 600px; margin: 0 auto 30px auto; line-height: 1.6; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">

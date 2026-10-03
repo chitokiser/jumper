@@ -1,0 +1,1 @@
+{"type":"service_account","project_id":"jumper-b15aa","private_key_id":"123","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDhg\n-----END PRIVATE KEY-----\n","client_email":"foo@jumper-b15aa.iam.gserviceaccount.com","client_id":"123"}

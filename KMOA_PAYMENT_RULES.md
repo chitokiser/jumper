@@ -1,4 +1,4 @@
-# K-MOA 결제 및 리워드 알고리즘 규칙 명세
+# BestClub 결제 및 리워드 알고리즘 규칙 명세
 
 ## 1. 결제 트랜잭션 (payMerchantFirebase)
 - 유저가 가맹점 QR을 스캔하여 보유한 **KM 머니(`pointBalanceVnd`)** 로 결제를 수행.
