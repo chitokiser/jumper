@@ -273,7 +273,7 @@ function addReceiptItem(data, isNew = false) {
   setText("receiptTotal", `?�계: ${_receiptTotalVnd.toLocaleString("ko-KR")} VND`);
 
   // ?�각 ?�맷
-  const ts = data.createdAt?.toDate?.()  new Date();
+  const ts = data.createdAt?.toDate?.() || new Date();
   const time = ts.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
   // 법정?�폐 ?�시
