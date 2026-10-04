@@ -6,7 +6,7 @@ const CORE_ASSETS = [
   "/manifest.json",
   "/assets/css/app.css",
   "/assets/css/header.css",
-  "/assets/images/jump/mlogo.png"
+  "/assets/images/jump/logo2.png"
 ];
 
 self.addEventListener("install", (event) => {

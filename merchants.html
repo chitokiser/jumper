@@ -6116,7 +6116,7 @@
 
     /* ── 오버레이 기반 ── */
     #gameHub {
-      position: fixed; padding-top: 60px;
+      position: fixed; padding-top: 60px; padding-top: 60px;
       inset: 0;
       z-index: 9500;
       background: var(--gh-bg);
@@ -7266,6 +7266,7 @@
   <!-- Game Hub HTML -->
   <div id="gameHub">
 <button id="floatingGhCloseBtn" style="position:absolute; top:70px; right:20px; z-index:9999; background:rgba(0,0,0,0.5); color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:bold;">&times; Close Hub</button>
+<button id="floatingGhCloseBtn" style="position:absolute; top:70px; right:20px; z-index:9999; background:rgba(0,0,0,0.5); color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:bold;">&times; Close Hub</button>
     <!-- Header -->
     <header class="gh-header">
       <div class="gh-logo">
@@ -7621,6 +7622,7 @@
       }
 
       document.getElementById('ghCloseBtn')?.addEventListener('click', hideHub);
+document.getElementById('floatingGhCloseBtn')?.addEventListener('click', hideHub);
 document.getElementById('floatingGhCloseBtn')?.addEventListener('click', hideHub);
       document.getElementById('ghFloatBtn')?.addEventListener('click', showHub);
 
