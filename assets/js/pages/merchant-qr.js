@@ -308,7 +308,7 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
   const canvas = $("qrCanvas");
   if (!canvas) return;
 
-  const PROD_ORIGIN = "https://kmoa.netlify.app";
+  const PROD_ORIGIN = "https://bestclubvn.netlify.app";
   const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const baseOrigin = isLocal ? PROD_ORIGIN : location.origin;
 

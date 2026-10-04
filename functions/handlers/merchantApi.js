@@ -145,8 +145,8 @@ apiApp.get('/v1/webzines', async (req, res) => {
                 viewCount: d.viewCount || 0,
                 likeCount: d.likeCount || 0,
                 shareCount: d.shareCount || 0,
-                readUrl: `https://kmoa.netlify.app/kca_webzine.html?id=${doc.id}`, // BestClub 브랜딩 포함 소비자기준 URL
-                whitelabelUrl: `https://kmoa.netlify.app/kca_webzine.html?id=${doc.id}&whitelabel=true`, // Platform 로고 및 포인트 지급 문구를 완전히 숨긴 가맹점 자체용 URL
+                readUrl: `https://bestclubvn.netlify.app/kca_webzine.html?id=${doc.id}`, // BestClub 브랜딩 포함 소비자기준 URL
+                whitelabelUrl: `https://bestclubvn.netlify.app/kca_webzine.html?id=${doc.id}&whitelabel=true`, // Platform 로고 및 포인트 지급 문구를 완전히 숨긴 가맹점 자체용 URL
                 publishedAt: d.createdAt ? d.createdAt.toDate().toISOString() : null
             });
         });
