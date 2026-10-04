@@ -149,7 +149,7 @@ async function merchantSendBtDirect(data, context) {
     }
     
     // 3. Process exactly like receiveBtQrFirebase
-    const btAmountToGive = Math.floor(amountVnd / 10000);
+    const btAmountToGive = Math.floor(amountVnd / 100000);
     if (btAmountToGive < 1) {
         throw new HttpsError('invalid-argument', '10,000 VND 미만은 BT를 지급할 수 없습니다.');
     }

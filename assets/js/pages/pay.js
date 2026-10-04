@@ -77,7 +77,7 @@ async function loadMerchant() {
   document.title = `${merchantName} 결제 확인 | Jump`;
 
   let amountStr = isVnd
-    ? `${amount.toLocaleString()}KM`
+    ? `${amount.toLocaleString()}BM`
     : `${amount.toLocaleString()}원 (KRW)`;
   ["payMerchantNameLogin", "payMerchantNameReg", "payMerchantName"].forEach((id) => setText(id, merchantName));
   ["payAmountLogin", "payAmountReg", "payAmountDisp"].forEach((id) => setText(id, amountStr));
@@ -186,12 +186,12 @@ function playUltimateJackpotEffect(amount) {
         const gain = ctx.createGain();
         osc.connect(gain); gain.connect(ctx.destination);
         osc.type = "sine";
-        osc.frequency.setValueAtTime(1500 + Math.random()*1000, ctx.currentTime);
+        osc.frequency.setValueAtTime(1500 + Math.random() * 1000, ctx.currentTime);
         gain.gain.setValueAtTime(0.08, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
         osc.start(); osc.stop(ctx.currentTime + 0.1);
-      } catch(e){}
-    }, i * 50 + Math.random()*20);
+      } catch (e) { }
+    }, i * 50 + Math.random() * 20);
   }
   setTimeout(() => {
     if (ctx.state === 'suspended') ctx.resume();
@@ -205,7 +205,7 @@ function playUltimateJackpotEffect(amount) {
         gain.gain.setValueAtTime(0.1, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.5);
         osc.start(); osc.stop(ctx.currentTime + 2.5);
-      } catch(e){}
+      } catch (e) { }
     });
   }, 400);
 
@@ -221,10 +221,10 @@ function playUltimateJackpotEffect(amount) {
     const update = () => {
       current += step;
       if (current >= amount) {
-         textEl.textContent = `+${amount.toLocaleString()} KM`;
+        textEl.textContent = `+${amount.toLocaleString()} KM`;
       } else {
-         textEl.textContent = `+${Math.floor(current).toLocaleString()} KM`;
-         requestAnimationFrame(update);
+        textEl.textContent = `+${Math.floor(current).toLocaleString()} KM`;
+        requestAnimationFrame(update);
       }
     };
     requestAnimationFrame(update);
@@ -265,36 +265,36 @@ function playGradeSlotAnimation(grade) {
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
-    try { audioCtx = new AudioContext(); } catch(e) {}
+    try { audioCtx = new AudioContext(); } catch (e) { }
     const playTick = () => {
-      if(!audioCtx) return;
-      if(audioCtx.state === 'suspended') audioCtx.resume();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
       try {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.type = "sine"; osc.frequency.setValueAtTime(700 + Math.random()*300, audioCtx.currentTime);
+        osc.type = "sine"; osc.frequency.setValueAtTime(700 + Math.random() * 300, audioCtx.currentTime);
         gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
         osc.start(); osc.stop(audioCtx.currentTime + 0.05);
-      } catch(e){}
+      } catch (e) { }
     };
     const playWin = () => {
-      if(!audioCtx) return;
-      if(audioCtx.state === 'suspended') audioCtx.resume();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
       try {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain); gain.connect(audioCtx.destination);
         osc.type = "triangle";
         osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime+0.1);
-        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime+0.2);
-        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime+0.3);
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
+        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.3);
         gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
         osc.start(); osc.stop(audioCtx.currentTime + 1.2);
-      } catch(e){}
+      } catch (e) { }
     };
     let duration = 2500; let start = Date.now(); let tickSpeed = 50;
     const runSlot = () => {
@@ -308,7 +308,7 @@ function playGradeSlotAnimation(grade) {
         setTimeout(runSlot, tickSpeed);
       } else {
         numDisplay.textContent = grade;
-        numDisplay.style.color = "#4ade80"; 
+        numDisplay.style.color = "#4ade80";
         numDisplay.style.textShadow = "0 0 25px rgba(74,222,128,0.9)";
         numDisplay.style.animation = "slotPulse 0.4s ease 2";
         sub.innerHTML = `잭팟 등급 <b style="color:#fff;font-size:1.2em;">1/${grade}</b> 확정!`;
@@ -334,7 +334,7 @@ function bindPayButton() {
   if (!btn) return;
 
   const amountConfirmStr = isVnd
-    ? `${amount.toLocaleString()}KM`
+    ? `${amount.toLocaleString()}BM`
     : `${amount.toLocaleString()}원 (KRW)`;
 
   btn.onclick = async () => {
@@ -354,21 +354,21 @@ function bindPayButton() {
       const res = await payFn(payload);
       const d = res.data;
 
-      try { 
-  const topArr = document.querySelectorAll('.info-header span, .head-coins span, .head-point span, [data-point="true"]'); 
-  topArr.forEach(el => { 
-    if(el.textContent.includes('KM')||el.textContent.includes('원')) { 
-      const currentStr = el.textContent.replace(/[^0-9]/g, ''); 
-      if(currentStr) { el.textContent = (Number(currentStr) - (d.amountKrw || 0)).toLocaleString() + ' KM'; }
-    }
-  });
-  // Update Point specifically
-  const pointEl = document.querySelector('[data-point="true"]') || document.querySelector('.head-point span') || document.querySelector('.info-header [data-hdr-i18n="hdr_member_badge"]'); 
-  // It might be hard to find exact point element class, let's just reload auth.js stats!
-  if (window.loadMyBalances) {
-      window.loadMyBalances();
-  }
-} catch(e){} // 완료 패널 표시
+      try {
+        const topArr = document.querySelectorAll('.info-header span, .head-coins span, .head-point span, [data-point="true"]');
+        topArr.forEach(el => {
+          if (el.textContent.includes('KM') || el.textContent.includes('원')) {
+            const currentStr = el.textContent.replace(/[^0-9]/g, '');
+            if (currentStr) { el.textContent = (Number(currentStr) - (d.amountKrw || 0)).toLocaleString() + ' BM'; }
+          }
+        });
+        // Update Point specifically
+        const pointEl = document.querySelector('[data-point="true"]') || document.querySelector('.head-point span') || document.querySelector('.info-header [data-hdr-i18n="hdr_member_badge"]');
+        // It might be hard to find exact point element class, let's just reload auth.js stats!
+        if (window.loadMyBalances) {
+          window.loadMyBalances();
+        }
+      } catch (e) { } // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
       const jpBox = $("jackpotResultBox"); if (jpBox) jpBox.style.display = "none"; const jpWait = $("jpWaiting"); if (jpWait) jpWait.style.display = "none"; watchJackpotResult(d.txHash);
@@ -401,12 +401,12 @@ function bindPayButton() {
 function buildDropHtml(d) {
   const items = [];
   if (d.pointsEarned > 0) {
-     items.push(`<div style="font-size:1.3em; color:#fff; font-weight:800; background:linear-gradient(135deg,#eab308,#d97706); padding:10px; border-radius:8px; text-shadow:0 0 10px rgba(0,0,0,0.3); text-align:center;box-shadow:0 4px 15px rgba(234,179,8,0.4); border: 2px solid #fef08a;">🎉 리워드 당첨! <br><span id="jackpotAmountText" style="font-size:2.4em; display:block; margin-top:5px; font-variant-numeric:tabular-nums; color:#fff; text-shadow:0 0 20px #ea1;">+${d.pointsEarned.toLocaleString()} KM</span></div>`);
+    items.push(`<div style="font-size:1.3em; color:#fff; font-weight:800; background:linear-gradient(135deg,#eab308,#d97706); padding:10px; border-radius:8px; text-shadow:0 0 10px rgba(0,0,0,0.3); text-align:center;box-shadow:0 4px 15px rgba(234,179,8,0.4); border: 2px solid #fef08a;">🎉 리워드 당첨! <br><span id="jackpotAmountText" style="font-size:2.4em; display:block; margin-top:5px; font-variant-numeric:tabular-nums; color:#fff; text-shadow:0 0 20px #ea1;">+${d.pointsEarned.toLocaleString()} KM</span></div>`);
   }
   if (d.potionsAdded > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:28px;height:28px;vertical-align:middle;"> 빨간약 <b>+${d.potionsAdded}</b>`);
   if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png" style="width:28px;height:28px;vertical-align:middle;"> 마법약 <b>+${d.mpPotionsAdded}</b>`);
   if (d.reviveAdded > 0) items.push(`<img src="/assets/images/item/revive_ticket.png" onerror="this.src='/assets/images/item/hp.png'" style="width:28px;height:28px;vertical-align:middle;"> 부활권 <b>+${d.reviveAdded}</b>`);
-  
+
   if (!items.length) return '';
   return `<div style="margin-top:14px;background:rgba(251,191,36,.12);border:1.5px solid #f59e0b;border-radius:15px;padding:14px;box-shadow:inset 0 0 20px rgba(251,191,36,0.1);"><div style="font-size:13px;color:#92400e;font-weight:900;margin-bottom:10px;text-align:center;">🎁 지급 내역</div>${items.map(i => `<div style="font-size:15px;margin:6px 0;">${i}</div>`).join('')}</div>`;
 }

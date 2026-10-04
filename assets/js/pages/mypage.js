@@ -1161,9 +1161,9 @@ function playUltimateJackpotEffect(amount) {
     const update = () => {
       current += step;
       if (current >= amount) {
-        textEl.textContent = `+${amount.toLocaleString()} BM`;
+        textEl.textContent = `+${amount.toLocaleString()} point`;
       } else {
-        textEl.textContent = `+${Math.floor(current).toLocaleString()} BM`;
+        textEl.textContent = `+${Math.floor(current).toLocaleString()} point`;
         requestAnimationFrame(update);
       }
     };
