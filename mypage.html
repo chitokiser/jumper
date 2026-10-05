@@ -1,18 +1,17 @@
-﻿<!-- /mypage.html -->
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>마이페이지 - BestClub</title>
 
-  <link rel="stylesheet" href="/assets/css/app.css" />
-  <link rel="stylesheet" href="/assets/css/header.css" />
-  <link rel="stylesheet" href="/assets/css/pages/apply-guide.css" />
-  <link rel="stylesheet" href="/assets/css/pages/mypage.css" />
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link rel="stylesheet" href="/assets/css/header.css">
+  <link rel="stylesheet" href="/assets/css/pages/apply-guide.css">
+  <link rel="stylesheet" href="/assets/css/pages/mypage.css">
 
-  <script src="/assets/js/partials.js" defer></script>
+  <script src="/assets/js/partials.js" defer=""></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 
   <script>
@@ -641,7 +640,10 @@
 </head>
 
 <body>
+
+
   <div id="siteHeader"></div>
+
 
   <!-- 잭팟 결과 모달 -->
   <div id="jackpotModal">
@@ -724,6 +726,29 @@
             <div style="font-size:0.72rem; color:#15803d; margin-top:10px; opacity:0.8; font-weight:700;">가맹점 결제 가능 잔고
             </div>
           </div>
+          <!-- GP to Point Conversion -->
+          <div id="gpConverterRow"
+            style="flex:1; min-width: 280px; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1.5px solid #fcd34d; border-radius: 16px; padding: 20px 16px; box-shadow: 0 4px 12px rgba(245,158,11,0.12); text-align:center;">
+            <div
+              style="font-size:0.85rem; color:#b45309; font-weight:800; display:flex; align-items:center; justify-content:center; gap:4px; margin-bottom:12px;">
+              <span>🎮 내 게임 GP 환전</span>
+            </div>
+            <div id="gpUserLevelDisplay" style="font-size:0.85rem; font-weight:700; color:#b45309; margin-bottom: 4px;">
+              Level: 1
+            </div>
+            <div id="gpBalanceDisplay"
+              style="font-size:1.45rem; font-weight:900; color:#92400e; letter-spacing:-0.5px; line-height:1.2; margin-bottom: 8px;">
+              0 GP
+            </div>
+            <div style="font-size:0.75rem; color:#b45309; margin-bottom: 12px;">
+              전환 공식: (GP × 현재 레벨) / 10 = Point
+            </div>
+            <button id="btnConvertGpToPoint"
+              style="background:#f59e0b; color:#fff; border:none; padding:8px 20px; border-radius:8px; font-weight:700; cursor:pointer;">
+              전환하기 (최소 10 GP 이상)
+            </button>
+          </div>
+
 
           <!-- 포인트 (Point) 카드 -->
           <div id="pointRow"
@@ -918,7 +943,7 @@
         </p>
         <label class="field">
           <span><span data-i18n="label_mentor_email">멘토 이메일</span> <em class="req">*</em></span>
-          <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com" />
+          <input type="email" id="mentorReqEmail" maxlength="80" placeholder="mentor@gmail.com">
         </label>
         <button class="btn btn--primary" id="btnMentorRequest" type="button" data-i18n="btn_mentor_request">멘토 등록
           요청</button>
@@ -927,7 +952,7 @@
       </div>
 
 
-      </section>
+
 
 
 
@@ -950,13 +975,13 @@
         <form id="depositForm" class="form" style="margin-top:0;">
           <label class="field">
             <span>충전 금액 (VND) <em class="req">*</em></span>
-            <input type="number" id="depositAmount" min="200000" step="50000" placeholder="최소 200,000 VND" required />
+            <input type="number" id="depositAmount" min="200000" step="50000" placeholder="최소 200,000 VND" required="">
           </label>
           <label class="field">
             <span>입금자명 <em class="req">*</em></span>
-            <input type="text" id="depositorName" maxlength="20" placeholder="통장에 찍히는 이름 입력" required />
+            <input type="text" id="depositorName" maxlength="20" placeholder="통장에 찍히는 이름 입력" required="">
           </label>
-          <input type="hidden" id="depositCurrency" value="VND" />
+          <input type="hidden" id="depositCurrency" value="VND">
           <div class="actions">
             <button class="btn btn--primary" type="submit" id="btnDeposit" data-i18n="btn_deposit">충전 요청</button>
           </div>
@@ -993,10 +1018,10 @@
               <option value="">불러오는 중...</option>
             </select>
           </label>
-          <input type="hidden" id="merchantPayCurrency" value="VND" />
+          <input type="hidden" id="merchantPayCurrency" value="VND">
           <label class="field">
             <span id="merchantPayAmountLabel">결제 금액 (VND) <em class="req">*</em></span>
-            <input type="number" id="merchantPayAmount" min="10000" step="1000" placeholder="예: 20000" />
+            <input type="number" id="merchantPayAmount" min="10000" step="1000" placeholder="예: 20000">
           </label>
           <div class="actions">
             <button class="btn btn--primary" type="submit" id="btnMerchantPay" data-i18n="btn_pay">결제</button>
@@ -1043,7 +1068,8 @@
               레벨업을 할 수 있습니다.</dd>
           </div>
           <div>
-            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">레벨 & 레벨업</dt>
+            <dt style="font-weight:600; font-size:0.9em; color:var(--accent,#7c3aed); margin-bottom:2px;">레벨 &amp; 레벨업
+            </dt>
             <dd style="margin:0; font-size:0.88em; color:var(--muted,#6b7280);">
               레벨이 높을수록 포인트 → Point 전환 시 더 많이 받습니다.<br>
               <strong>전환량 = 포인트 × 레벨 ÷ 10</strong><br>
@@ -1091,9 +1117,9 @@
           </p>
           <div id="referralQrWrap" style="margin:0 auto 14px;width:fit-content;"></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-            <input id="referralLink" type="text" readonly style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border,#e5e7eb);
+            <input id="referralLink" type="text" readonly="" style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border,#e5e7eb);
                      border-radius:8px;font-size:0.78rem;background:var(--surface2,#f9fafb);
-                     color:var(--muted,#6b7280);cursor:text;" />
+                     color:var(--muted,#6b7280);cursor:text;">
             <button id="btnCopyReferral" class="btn btn--sm btn--primary" type="button">🔗 링크 복사</button>
           </div>
           <p id="referralCopyMsg"
@@ -1217,7 +1243,7 @@
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;">
               <input type="text" id="vtToAddress" placeholder="0x..."
-                style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.88rem;" />
+                style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.88rem;">
               <button id="btnVwQrScan" type="button"
                 style="padding:8px 12px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:0.82rem;cursor:pointer;white-space:nowrap;"
                 data-i18n="btn_qr_scan_addr">📷 스캔</button>
@@ -1310,11 +1336,11 @@
           <label class="field" style="margin-bottom:12px;">
             <span style="font-size:0.85rem; color:#7f1d1d; font-weight:600;">탈퇴 사유 (선택)</span>
             <input type="text" id="withdrawalReason" maxlength="100" placeholder="탈퇴 이유를 입력하세요 (선택 사항)"
-              style="border-color:#fca5a5;" />
+              style="border-color:#fca5a5;">
           </label>
 
           <label style="display:flex; align-items:flex-start; gap:10px; margin-bottom:16px; cursor:pointer;">
-            <input type="checkbox" id="withdrawalConfirmCheck" style="margin-top:3px; flex-shrink:0;" />
+            <input type="checkbox" id="withdrawalConfirmCheck" style="margin-top:3px; flex-shrink:0;">
             <span style="font-size:0.85rem; color:#7f1d1d; font-weight:700; line-height:1.5;">
               위 내용을 모두 확인했습니다.<br>
               <span style="font-weight:400;">포인트·머니·멘티 연결 등 모든 데이터가 삭제되며 복구할 수 없습니다.</span>
@@ -1341,7 +1367,7 @@
   <!-- QR 스캔 카메라 오버레이 -->
   <div id="qrScanOverlay" role="dialog" aria-label="QR 스캔">
     <div class="qr-video-wrap">
-      <video id="qrVideo" autoplay playsinline muted></video>
+      <video id="qrVideo" autoplay="" playsinline="" muted=""></video>
       <canvas id="qrCanvas" style="display:none;"></canvas>
       <div class="qr-frame-mask">
         <div class="qr-frame"></div>
@@ -1360,6 +1386,8 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/pages/mypage.js"></script>
+
+
 </body>
 
 </html>

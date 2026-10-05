@@ -6,67 +6,67 @@ import { db, functions } from '/assets/js/firebase-init.js';
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
-const WARP_RADIUS_M  = 5000;
+const WARP_RADIUS_M = 5000;
 const SPAWN_OFFSET_M = 550;
-const BASE_MP_COST   = 100;
+const BASE_MP_COST = 100;
 
 // ── 국기 이모지 (좌표 바운딩 박스 기반 — API 불필요, 즉시 표시) ───────────────
 // 순서 중요: 작고 구체적인 나라를 먼저, 겹치는 큰 나라를 나중에
 const _COUNTRY_BOXES = [
   // 동남아
-  { f:'🇻🇳', n:'Vietnam',     lat:[8.1,23.4],   lng:[102.1,109.5] },
-  { f:'🇹🇭', n:'Thailand',    lat:[5.6,20.5],   lng:[97.3,105.7] },
-  { f:'🇰🇭', n:'Cambodia',    lat:[10.4,14.7],  lng:[102.3,107.6] },
-  { f:'🇱🇦', n:'Laos',        lat:[13.9,22.5],  lng:[100.1,107.7] },
-  { f:'🇲🇾', n:'Malaysia',    lat:[0.8,7.4],    lng:[99.6,119.3] },
-  { f:'🇸🇬', n:'Singapore',   lat:[1.1,1.5],    lng:[103.6,104.1] },
-  { f:'🇮🇩', n:'Indonesia',   lat:[-11.0,5.9],  lng:[95.0,141.0] },
-  { f:'🇵🇭', n:'Philippines', lat:[4.6,21.1],   lng:[116.9,126.6] },
-  { f:'🇲🇲', n:'Myanmar',     lat:[9.8,28.5],   lng:[92.2,101.2] },
+  { f: '🇻🇳', n: 'Vietnam', lat: [8.1, 23.4], lng: [102.1, 109.5] },
+  { f: '🇹🇭', n: 'Thailand', lat: [5.6, 20.5], lng: [97.3, 105.7] },
+  { f: '🇰🇭', n: 'Cambodia', lat: [10.4, 14.7], lng: [102.3, 107.6] },
+  { f: '🇱🇦', n: 'Laos', lat: [13.9, 22.5], lng: [100.1, 107.7] },
+  { f: '🇲🇾', n: 'Malaysia', lat: [0.8, 7.4], lng: [99.6, 119.3] },
+  { f: '🇸🇬', n: 'Singapore', lat: [1.1, 1.5], lng: [103.6, 104.1] },
+  { f: '🇮🇩', n: 'Indonesia', lat: [-11.0, 5.9], lng: [95.0, 141.0] },
+  { f: '🇵🇭', n: 'Philippines', lat: [4.6, 21.1], lng: [116.9, 126.6] },
+  { f: '🇲🇲', n: 'Myanmar', lat: [9.8, 28.5], lng: [92.2, 101.2] },
   // 동아시아
-  { f:'🇰🇷', n:'S.Korea',     lat:[33.1,38.6],  lng:[124.6,130.0] },
-  { f:'🇯🇵', n:'Japan',       lat:[24.0,45.5],  lng:[122.9,153.0] },
-  { f:'🇹🇼', n:'Taiwan',      lat:[21.9,25.3],  lng:[119.9,122.1] },
-  { f:'🇭🇰', n:'HongKong',    lat:[22.1,22.6],  lng:[113.8,114.5] },
-  { f:'🇲🇴', n:'Macao',       lat:[22.1,22.2],  lng:[113.5,113.6] },
-  { f:'🇨🇳', n:'China',       lat:[18.0,53.6],  lng:[73.5,135.1] },
-  { f:'🇲🇳', n:'Mongolia',    lat:[41.6,52.2],  lng:[87.7,119.9] },
+  { f: '🇰🇷', n: 'S.Korea', lat: [33.1, 38.6], lng: [124.6, 130.0] },
+  { f: '🇯🇵', n: 'Japan', lat: [24.0, 45.5], lng: [122.9, 153.0] },
+  { f: '🇹🇼', n: 'Taiwan', lat: [21.9, 25.3], lng: [119.9, 122.1] },
+  { f: '🇭🇰', n: 'HongKong', lat: [22.1, 22.6], lng: [113.8, 114.5] },
+  { f: '🇲🇴', n: 'Macao', lat: [22.1, 22.2], lng: [113.5, 113.6] },
+  { f: '🇨🇳', n: 'China', lat: [18.0, 53.6], lng: [73.5, 135.1] },
+  { f: '🇲🇳', n: 'Mongolia', lat: [41.6, 52.2], lng: [87.7, 119.9] },
   // 남아시아
-  { f:'🇮🇳', n:'India',       lat:[6.7,35.5],   lng:[68.1,97.4] },
-  { f:'🇳🇵', n:'Nepal',       lat:[26.3,30.4],  lng:[80.1,88.2] },
-  { f:'🇧🇩', n:'Bangladesh',  lat:[20.6,26.6],  lng:[88.0,92.7] },
-  { f:'🇵🇰', n:'Pakistan',    lat:[23.6,37.1],  lng:[60.9,77.8] },
+  { f: '🇮🇳', n: 'India', lat: [6.7, 35.5], lng: [68.1, 97.4] },
+  { f: '🇳🇵', n: 'Nepal', lat: [26.3, 30.4], lng: [80.1, 88.2] },
+  { f: '🇧🇩', n: 'Bangladesh', lat: [20.6, 26.6], lng: [88.0, 92.7] },
+  { f: '🇵🇰', n: 'Pakistan', lat: [23.6, 37.1], lng: [60.9, 77.8] },
   // 중동
-  { f:'🇦🇪', n:'UAE',         lat:[22.6,26.1],  lng:[51.6,56.4] },
-  { f:'🇸🇦', n:'Saudi',       lat:[16.3,32.2],  lng:[36.5,55.7] },
-  { f:'🇹🇷', n:'Turkey',      lat:[35.8,42.1],  lng:[26.0,44.8] },
+  { f: '🇦🇪', n: 'UAE', lat: [22.6, 26.1], lng: [51.6, 56.4] },
+  { f: '🇸🇦', n: 'Saudi', lat: [16.3, 32.2], lng: [36.5, 55.7] },
+  { f: '🇹🇷', n: 'Turkey', lat: [35.8, 42.1], lng: [26.0, 44.8] },
   // 유럽
-  { f:'🇬🇧', n:'UK',          lat:[49.9,60.9],  lng:[-8.6,1.8] },
-  { f:'🇫🇷', n:'France',      lat:[41.3,51.1],  lng:[-5.1,9.6] },
-  { f:'🇩🇪', n:'Germany',     lat:[47.3,55.1],  lng:[5.9,15.0] },
-  { f:'🇮🇹', n:'Italy',       lat:[36.7,47.1],  lng:[6.6,18.5] },
-  { f:'🇪🇸', n:'Spain',       lat:[36.0,43.8],  lng:[-9.3,4.3] },
-  { f:'🇵🇹', n:'Portugal',    lat:[36.8,42.2],  lng:[-9.5,-6.2] },
-  { f:'🇳🇱', n:'Netherlands', lat:[50.8,53.5],  lng:[3.4,7.2] },
-  { f:'🇧🇪', n:'Belgium',     lat:[49.5,51.5],  lng:[2.5,6.4] },
-  { f:'🇨🇭', n:'Switzerland', lat:[45.8,47.8],  lng:[5.9,10.5] },
-  { f:'🇦🇹', n:'Austria',     lat:[46.4,49.0],  lng:[9.5,17.2] },
-  { f:'🇵🇱', n:'Poland',      lat:[49.0,54.8],  lng:[14.1,24.2] },
-  { f:'🇷🇺', n:'Russia',      lat:[41.2,81.9],  lng:[19.6,190.0] },
-  { f:'🇺🇦', n:'Ukraine',     lat:[44.4,52.4],  lng:[22.1,40.2] },
+  { f: '🇬🇧', n: 'UK', lat: [49.9, 60.9], lng: [-8.6, 1.8] },
+  { f: '🇫🇷', n: 'France', lat: [41.3, 51.1], lng: [-5.1, 9.6] },
+  { f: '🇩🇪', n: 'Germany', lat: [47.3, 55.1], lng: [5.9, 15.0] },
+  { f: '🇮🇹', n: 'Italy', lat: [36.7, 47.1], lng: [6.6, 18.5] },
+  { f: '🇪🇸', n: 'Spain', lat: [36.0, 43.8], lng: [-9.3, 4.3] },
+  { f: '🇵🇹', n: 'Portugal', lat: [36.8, 42.2], lng: [-9.5, -6.2] },
+  { f: '🇳🇱', n: 'Netherlands', lat: [50.8, 53.5], lng: [3.4, 7.2] },
+  { f: '🇧🇪', n: 'Belgium', lat: [49.5, 51.5], lng: [2.5, 6.4] },
+  { f: '🇨🇭', n: 'Switzerland', lat: [45.8, 47.8], lng: [5.9, 10.5] },
+  { f: '🇦🇹', n: 'Austria', lat: [46.4, 49.0], lng: [9.5, 17.2] },
+  { f: '🇵🇱', n: 'Poland', lat: [49.0, 54.8], lng: [14.1, 24.2] },
+  { f: '🇷🇺', n: 'Russia', lat: [41.2, 81.9], lng: [19.6, 190.0] },
+  { f: '🇺🇦', n: 'Ukraine', lat: [44.4, 52.4], lng: [22.1, 40.2] },
   // 오세아니아
-  { f:'🇦🇺', n:'Australia',   lat:[-43.7,-10.7],lng:[113.3,153.6] },
-  { f:'🇳🇿', n:'NewZealand',  lat:[-46.6,-34.4],lng:[166.4,178.6] },
+  { f: '🇦🇺', n: 'Australia', lat: [-43.7, -10.7], lng: [113.3, 153.6] },
+  { f: '🇳🇿', n: 'NewZealand', lat: [-46.6, -34.4], lng: [166.4, 178.6] },
   // 아메리카
-  { f:'🇺🇸', n:'USA',         lat:[24.5,49.4],  lng:[-125.0,-66.9] },
-  { f:'🇨🇦', n:'Canada',      lat:[41.7,83.1],  lng:[-141.0,-52.6] },
-  { f:'🇲🇽', n:'Mexico',      lat:[14.5,32.7],  lng:[-118.4,-86.7] },
-  { f:'🇧🇷', n:'Brazil',      lat:[-33.7,5.3],  lng:[-73.9,-34.8] },
-  { f:'🇦🇷', n:'Argentina',   lat:[-55.1,-21.8],lng:[-73.6,-53.6] },
+  { f: '🇺🇸', n: 'USA', lat: [24.5, 49.4], lng: [-125.0, -66.9] },
+  { f: '🇨🇦', n: 'Canada', lat: [41.7, 83.1], lng: [-141.0, -52.6] },
+  { f: '🇲🇽', n: 'Mexico', lat: [14.5, 32.7], lng: [-118.4, -86.7] },
+  { f: '🇧🇷', n: 'Brazil', lat: [-33.7, 5.3], lng: [-73.9, -34.8] },
+  { f: '🇦🇷', n: 'Argentina', lat: [-55.1, -21.8], lng: [-73.6, -53.6] },
   // 아프리카
-  { f:'🇿🇦', n:'S.Africa',    lat:[-34.8,-22.1],lng:[16.5,32.9] },
-  { f:'🇪🇬', n:'Egypt',       lat:[22.0,31.7],  lng:[24.7,37.1] },
-  { f:'🇳🇬', n:'Nigeria',     lat:[4.3,13.9],   lng:[2.7,14.7] },
+  { f: '🇿🇦', n: 'S.Africa', lat: [-34.8, -22.1], lng: [16.5, 32.9] },
+  { f: '🇪🇬', n: 'Egypt', lat: [22.0, 31.7], lng: [24.7, 37.1] },
+  { f: '🇳🇬', n: 'Nigeria', lat: [4.3, 13.9], lng: [2.7, 14.7] },
 ];
 
 function _shopFlag(lat, lng) {
@@ -87,19 +87,19 @@ function _isGpsOnly(box) {
 }
 
 // ── 상태 ─────────────────────────────────────────────────────────────────
-let _active       = false;
-let _ctx          = null;
-let _map          = null;
+let _active = false;
+let _ctx = null;
+let _map = null;
 let _onModeChange = null;
-let _cbs          = null;   // { spendMp, getMp, getMaxMp, moveMarker, hideMarker }
-let _virtualPos   = null;   // { lat, lng } — 현재 가상 위치
-let _warpShop     = null;
+let _cbs = null;   // { spendMp, getMp, getMaxMp, moveMarker, hideMarker }
+let _virtualPos = null;   // { lat, lng } — 현재 가상 위치
+let _warpShop = null;
 let _radiusCircle = null;
-let _mapClickLsn  = null;
-let _walkRafId    = null;   // 걷기 requestAnimationFrame ID
+let _mapClickLsn = null;
+let _walkRafId = null;   // 걷기 requestAnimationFrame ID
 let _targetIndicator = null; // 클릭 목표 지점 시각화
-let _shops        = [];
-let _modalEl      = null;
+let _shops = [];
+let _modalEl = null;
 let _movementEnabled = true;
 
 // ── 초기화 ───────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ export function initVirtualMode(ctx, map, infoWindow, onModeChange, cbs = null) 
 
 export function isVirtualMode() { return _active; }
 export function getVirtualPos() { return _virtualPos; }
-export function getWarpShop()   { return _warpShop; }
+export function getWarpShop() { return _warpShop; }
 /** Force-set the virtual position (e.g. on auto-revive warp-back). */
 export function setVirtualPos(lat, lng) {
   if (!_active || !lat || !lng) return;
@@ -128,6 +128,10 @@ export function canCollectInVirtual(box) {
 
 // ── 모드 토글 ────────────────────────────────────────────────────────────
 export function toggleVirtualMode() {
+  if (!_ctx || !_ctx.isAdmin) {
+    if (window.ToastUtils) window.ToastUtils.showError('Admin Only: Jump (Virtual Explore) mode is disabled for users.');
+    return;
+  }
   if (_active) {
     _deactivate();
     return;
@@ -137,6 +141,10 @@ export function toggleVirtualMode() {
 
 /** 상점 목록 모달만 열기 (모드 전환 없이) */
 export function showShopList() {
+  if (!_ctx || !_ctx.isAdmin) {
+    if (window.ToastUtils) window.ToastUtils.showError('Admin Only: Jump (Virtual Explore) mode is disabled for users.');
+    return;
+  }
   _showToast('Loading shops…');
   _loadShops().then(() => {
     if (_shops.length === 0) {
@@ -269,7 +277,7 @@ function _walkTo(from, target, duration, onDone) {
 
   const tick = (now) => {
     const raw = (now - start) / duration;
-    const t   = Math.min(raw, 1);
+    const t = Math.min(raw, 1);
     // ease-in-out quad
     const e = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
     const pos = {
@@ -310,7 +318,7 @@ function _showTargetIndicator(lat, lng) {
     if (!ring.getMap()) return;
     ring.setRadius(r);
     ring.setOptions({
-      fillOpacity:   Math.max(0, 0.35 - r / 60),
+      fillOpacity: Math.max(0, 0.35 - r / 60),
       strokeOpacity: Math.max(0, 1 - r / 55),
     });
     if (r < 55) requestAnimationFrame(expand);
@@ -367,21 +375,21 @@ async function _loadShops() {
 function _showShopSelector() {
   if (!_modalEl) return;
   const myPos = _ctx.lastPos;
-  const curMp = _cbs ? _cbs.getMp()    : Infinity;
+  const curMp = _cbs ? _cbs.getMp() : Infinity;
   const maxMp = _cbs ? _cbs.getMaxMp() : Infinity;
 
   const rows = _shops.map(s => {
-    const dist    = myPos ? _haversine(myPos.lat, myPos.lng, s.lat, s.lng) : null;
+    const dist = myPos ? _haversine(myPos.lat, myPos.lng, s.lat, s.lng) : null;
     const distTxt = dist !== null
       ? (dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`)
       : 'Unknown dist.';
-    const mpCost    = myPos
+    const mpCost = myPos
       ? Math.round((BASE_MP_COST + _haversine(myPos.lat, myPos.lng, s.lat, s.lng) / 1000) / 10)
       : Math.round(BASE_MP_COST / 10);
     const canAfford = curMp >= mpCost;
     const typeLabel = s.type === 'weapon_armor' ? '⚔️' : s.type === 'potion' ? '🧪' : '🛒';
-    const flag      = _shopFlag(s.lat, s.lng);
-    const rivals    = _shops.filter(o =>
+    const flag = _shopFlag(s.lat, s.lng);
+    const rivals = _shops.filter(o =>
       o.id !== s.id && o.type === s.type && _haversine(s.lat, s.lng, o.lat, o.lng) <= 5000
     ).length;
     const badge = rivals > 0
@@ -403,13 +411,13 @@ function _showShopSelector() {
     ? `<div class="vm-mp-bar-wrap">
         <div class="vm-mp-label">💙 ${curMp} / ${maxMp} MP</div>
         <div class="vm-mp-track">
-          <div class="vm-mp-fill" style="width:${Math.max(0,Math.min(100,(curMp/maxMp)*100)).toFixed(1)}%"></div>
+          <div class="vm-mp-fill" style="width:${Math.max(0, Math.min(100, (curMp / maxMp) * 100)).toFixed(1)}%"></div>
         </div>
       </div>`
     : '';
 
   _modalEl.querySelector('#vmShopList').innerHTML = rows;
-  _modalEl.querySelector('#vmMpBar').innerHTML    = mpBar;
+  _modalEl.querySelector('#vmMpBar').innerHTML = mpBar;
   _modalEl.classList.remove('hidden');
   _modalEl.classList.add('vm-open');
 
@@ -481,21 +489,21 @@ function _buildModal() {
 function _updateBtn(on) {
   const btn = document.getElementById('btnVirtualMode');
   if (btn) {
-    btn.title            = on ? 'Browse shops / re-warp to another shop' : 'Browse shops — warp to a shop';
+    btn.title = on ? 'Browse shops / re-warp to another shop' : 'Browse shops — warp to a shop';
     btn.style.background = on ? '#7c3aed' : '';
-    btn.style.color      = on ? '#fff' : '';
-    btn.style.boxShadow  = on ? '0 0 10px #7c3aed88' : '';
+    btn.style.color = on ? '#fff' : '';
+    btn.style.boxShadow = on ? '0 0 10px #7c3aed88' : '';
   }
   const modeBtn = document.getElementById('btnModeToggle');
   if (modeBtn) {
     const icon = modeBtn.querySelector('.mode-icon');
     const label = modeBtn.querySelector('.mode-label');
-    if (icon) icon.textContent  = on ? '🎮' : '📍';
+    if (icon) icon.textContent = on ? '🎮' : '📍';
     if (label) label.textContent = on ? 'Jump' : 'GPS';
-    modeBtn.title            = on ? 'Jump Mode — tap to switch to GPS Mode' : 'GPS Mode — tap to switch to Jump Mode';
+    modeBtn.title = on ? 'Jump Mode — tap to switch to GPS Mode' : 'GPS Mode — tap to switch to Jump Mode';
     modeBtn.style.background = on ? '#7c3aed' : '';
-    modeBtn.style.color      = on ? '#fff' : '';
-    modeBtn.style.boxShadow  = on ? '0 0 10px #7c3aed88' : '';
+    modeBtn.style.color = on ? '#fff' : '';
+    modeBtn.style.boxShadow = on ? '0 0 10px #7c3aed88' : '';
   }
 }
 
@@ -503,15 +511,15 @@ function _updateBtn(on) {
 function _haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000, r = Math.PI / 180;
   const dLat = (lat2 - lat1) * r, dLng = (lng2 - lng1) * r;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*r)*Math.cos(lat2*r)*Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function _offsetPos(lat, lng, distM, bearingDeg) {
   const R = 6371000, d = distM / R, b = bearingDeg * Math.PI / 180;
   const φ1 = lat * Math.PI / 180, λ1 = lng * Math.PI / 180;
-  const φ2 = Math.asin(Math.sin(φ1)*Math.cos(d) + Math.cos(φ1)*Math.sin(d)*Math.cos(b));
-  const λ2 = λ1 + Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(φ1), Math.cos(d)-Math.sin(φ1)*Math.sin(φ2));
+  const φ2 = Math.asin(Math.sin(φ1) * Math.cos(d) + Math.cos(φ1) * Math.sin(d) * Math.cos(b));
+  const λ2 = λ1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(φ1), Math.cos(d) - Math.sin(φ1) * Math.sin(φ2));
   return { lat: φ2 * 180 / Math.PI, lng: λ2 * 180 / Math.PI };
 }
 

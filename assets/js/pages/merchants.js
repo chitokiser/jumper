@@ -467,8 +467,8 @@ function initMap() {
 let _jumpCloseListener = null;
 
 function _tryMapJump(lat, lng) {
-  const shops = getShops().filter(s => s.active && s.lat && s.lng);
-  if (!shops.length) return;
+  if (window.ToastUtils) window.ToastUtils.showInfo('오프라인 점프 불가: 현재 GPS 모드 전용으로 동작 중입니다.');
+  return;
 
   let nearest = null, nearestDist = Infinity;
   for (const s of shops) {

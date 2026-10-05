@@ -1,0 +1,1 @@
+const fs = require('fs'); const lines = fs.readFileSync('merchants.html', 'utf8').split('\n'); lines.forEach((l, i) => { if (/게임.?허브|온체인|USDT|TON|지갑/i.test(l)) { console.log(i+1 + ': ' + l.trim()); } });

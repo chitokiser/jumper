@@ -477,7 +477,7 @@ async function requestLevelUp(uid, masterSecret) {
  */
 async function registerMerchantOnChain(uid, metadataURI, merchantData, masterSecret) {
   // onChain removed as per user request
-  const merchantId = Math.floor(Date.now() / 1000); 
+  const merchantId = Math.floor(Date.now() / 1000);
 
   await db.collection('merchants').doc(String(merchantId)).set({
     merchantId,
@@ -1401,6 +1401,13 @@ async function consumeUserBtFirebase(data, context) {
       pointBalance: admin.firestore.FieldValue.increment(totalJackpotReward)
     });
 
+    if (userData.merchantId) {
+      const merchRef = db.collection('merchants').doc(String(userData.merchantId));
+      tx.update(merchRef, {
+        btBalance: admin.firestore.FieldValue.increment(-numBt)
+      });
+    }
+
     return {
       success: true,
       txHash,
@@ -1466,7 +1473,7 @@ async function createBtRewardSession(uid, data) {
 
 
 
-async function adminChargeBt (adminUid, merchantId, amount) {
+async function adminChargeBt(adminUid, merchantId, amount) {
   const db = admin.firestore();
   const merchRef = db.collection('merchants').doc(String(merchantId));
 
@@ -1474,7 +1481,7 @@ async function adminChargeBt (adminUid, merchantId, amount) {
     const snap = await t.get(merchRef);
     if (!snap.exists) throw new Error('가맹점이 없습니다.');
     const mData = snap.data();
-    
+
     // User BT Sync
     if (mData.ownerUid) {
       const ownerRef = db.collection('users').doc(mData.ownerUid);
