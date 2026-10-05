@@ -291,15 +291,22 @@ window.addEventListener('lang:change', applyFooterI18n);
 
     const url = abs(urlPath);
     const reqUrl = url + (url.includes("?") ? "&" : "?") + "_pv=" + Date.now();
-    const res = await fetch(reqUrl, { cache: "no-store" });
-    if (!res.ok) throw new Error(`partial load failed: ${urlPath} (${res.status})`);
+    try {
+      const res = await fetch(reqUrl, { cache: "no-store" });
+      if (!res.ok) throw new Error(`partial load failed: ${urlPath} (${res.status})`);
 
-    // Force UTF-8 decoding to prevent mojibake when hosting sends wrong charset.
-    const buf = await res.arrayBuffer();
-    let html = new TextDecoder("utf-8").decode(buf);
-    html = html.replace(/^\uFEFF/, "");
-    el.innerHTML = html;
-    return true;
+      // Force UTF-8 decoding to prevent mojibake when hosting sends wrong charset.
+      const buf = await res.arrayBuffer();
+      let html = new TextDecoder("utf-8").decode(buf);
+      html = html.replace(/^\uFEFF/, "");
+      el.innerHTML = html;
+      el.style.display = 'block'; // Ensure visibility
+      return true;
+    } catch (e) {
+      console.warn("loadInto error:", e);
+      el.innerHTML = `<div style="background:red;color:white;padding:10px;">Header Error: ${e.message}</div>`;
+      return false;
+    }
   }
 
   async function mount() {

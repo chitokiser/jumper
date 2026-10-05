@@ -294,32 +294,37 @@ async function bindHeader() {
   show(btnLogout, false);
 
   watchAuth(({ loggedIn, role, profile, user }) => {
-    const isFullyRegistered = loggedIn && role !== "guest";
-    show(btnLogin, !isFullyRegistered);
-    show(btnLogout, isFullyRegistered);
-    applyRoleToMenu(role || (isFullyRegistered ? "user" : "guest"));
-    applyUserBadge(isFullyRegistered ? profile : null);
+    try {
+      const isFullyRegistered = loggedIn && role !== "guest";
+      show(btnLogin, !isFullyRegistered);
+      show(btnLogout, isFullyRegistered);
+      applyRoleToMenu(role || (isFullyRegistered ? "user" : "guest"));
+      applyUserBadge(isFullyRegistered ? profile : null);
 
-    if (!loggedIn) { applyMemberBadge(false); applyMemberJoinLink(false); }
-    if (loggedIn && profile?.uid) {
-      if (role === "admin") {
-        applyMemberBadge(true);
-        applyMemberJoinLink(false);
-      } else {
-        checkMembership(profile.uid);
+      if (!loggedIn) { applyMemberBadge(false); applyMemberJoinLink(false); }
+      if (loggedIn && profile?.uid) {
+        if (role === "admin") {
+          applyMemberBadge(true);
+          applyMemberJoinLink(false);
+        } else {
+          checkMembership(profile.uid);
+        }
       }
-    }
 
-    if (loggedIn && user) {
-      notifyOpenerIfPopup(user, role, profile);
-      return;
-    }
+      if (loggedIn && user) {
+        notifyOpenerIfPopup(user, role, profile);
+        return;
+      }
 
-    if (loggedIn && role === "user" && profile?.uid) {
-      checkRegistration(profile.uid);
+      if (loggedIn && role === "user" && profile?.uid) {
+        checkRegistration(profile.uid);
+      }
+    } catch (e) {
+      console.error("watchAuth Error:", e);
     }
   });
 }
+
 
 async function checkRegistration(uid) {
   try {
