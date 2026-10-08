@@ -831,6 +831,11 @@ service cloud.firestore {
     match /aiInsights/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
 
     // ?낅Т 諛?蹂닿퀬 ?쒖뒪??(Task Management System)
+    match /system_branding/{tenantId} {
+      allow read: if isAuthenticated();
+      allow write: if isCEO();
+    }
+
     match /tasks/{taskId} {
       allow read: if isCEO() 
         || (isAuthenticated() && getUserData().role == 'TEAM_LEADER' && resource.data.teamId == getUserData().teamId)
