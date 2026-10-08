@@ -117,7 +117,10 @@ async function loadKCultureBalances(uid) {
 
       const isMerchantOwner = !!d.merchantId;
       let mRef = null;
+      
       if (isMerchantOwner) {
+        show("aiErpBannerOption", true); // Show the SaaS ERP Banner
+    
         mRef = doc(db, "merchants", String(d.merchantId));
         const mSnap = await getDoc(mRef);
         if (mSnap.exists()) {
