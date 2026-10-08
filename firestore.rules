@@ -1,4 +1,4 @@
-// /firestore.rules
+﻿// /firestore.rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -7,7 +7,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // ??곸겫????李???봔?紐꾨뮞?紐껋삫??
+    // ??怨멸껀?????筌???遊붋?筌뤾쑬裕?筌뤾퍔???
     function isOperatorEmail() {
       return signedIn()
         && (request.auth.token.email is string)
@@ -22,7 +22,7 @@ service cloud.firestore {
         );
     }
 
-    // orders ??ｊ탷?癒?퐣筌??怨뺣뮉 ?닌됤꼻??揶쎛??諭??癒?젟
+    // orders ??節딇꺑????ｇ춯???⑤베裕???뚮맍瑗???띠럾????獄??????
     function isOrderBuyer() {
       return signedIn()
         && (resource.data.buyerUid is string)
@@ -35,7 +35,7 @@ service cloud.firestore {
         && resource.data.guideUid == request.auth.uid;
     }
 
-    // ?닌됤꼻?癒? ??륁젟 揶쎛?館釉???? "野껉퀣?ｏ쭩?명뒅 ?袁⑹뒠"??곗쨮 ??쀫립
+    // ??뚮맍瑗??? ??瑜곸젧 ?띠럾??繞③뇡???? "?롪퍒??節륁??紐낅뭶 ?熬곣뫗????怨쀬Ŧ ???ル┰
     function buyerPayProofUpdateOnly() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return changed.hasOnly(["proof","paymentStatus","payProofUpdatedAt"]);
@@ -47,38 +47,38 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // ?⑤벊???鍮?notices)
+    // ??ㅻ쾴?????notices)
     match /notices/{noticeId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // 揶쎛??諭???????醫롪퍕??(guideApplications/{uid})
+    // ?띠럾????獄????????ル―???(guideApplications/{uid})
     match /guideApplications/{uid} {
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow list: if isAdmin();
 
       allow create: if signedIn() && request.auth.uid == uid;
 
-      // ??FIX: ?온?귐딆쁽???諭??獄쏆꼶??筌ｌ꼶?곭몴??袁る퉸 update 揶쎛?館鍮????      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      // ??FIX: ??㉱?洹먮봿????獄????꾩룇瑗??嶺뚳퐣瑗?怨?ご??熬곥굥??update ?띠럾??繞③뜮????      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
 
       allow delete: if isAdmin();
     }
 
-    // 揶쎛??諭??袁⑥쨮??(guides/{uid})
+    // ?띠럾????獄??熬곣뫁夷??(guides/{uid})
     match /guides/{uid} {
       allow get: if isAdmin()
                 || (signedIn() && request.auth.uid == uid)
                 || (resource.data.approved == true);
       allow list: if isAdmin();
 
-      // ??FIX: ?諭?????온?귐딆쁽揶쎛 guides/{uid}????밴쉐??곷튊 ??롫뮉 ?냈??곷뮞揶쎛 筌띾‘??      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      // ??FIX: ?獄???????㉱?洹먮봿?썸뤆?쎛 guides/{uid}????諛댁뎽??怨룻뒍 ??濡ル츎 ??댟??怨룸츩?띠럾? 嶺뚮씭???      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
 
       allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow delete: if false;
     }
 
-    // ?怨밸?(items)
+    // ??⑤갭?(items)
     match /items/{itemId} {
 
       function isOwner() {
@@ -111,7 +111,7 @@ service cloud.firestore {
       }
     }
 
-    // ?귐됰윮 (SSOT)
+    // ?洹먮맧??(SSOT)
     match /reviews/{orderId} {
 
       function orderExistsAndMine() {
@@ -160,7 +160,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 雅뚯눖揆(orders)
+    // ?낅슣?뽪룇(orders)
     match /orders/{orderId} {
       allow get: if isAdmin() || isOrderBuyer() || isOrderGuide();
       allow list: if signedIn();
@@ -197,14 +197,14 @@ service cloud.firestore {
 
     // users/{uid}
     match /users/{uid} {
-      // ??FIX: ?온?귐딆쁽 ?諭????role/profile???節뚮선?????嚥?admin create/update ??됱뒠
+      // ??FIX: ??㉱?洹먮봿???獄?????role/profile???影??꽑???????admin create/update ???깅뮔
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
 
       allow list, delete: if isAdmin();
 
-      // 체험 탭 — 개인 맵 아이템 (본인만 읽기/쓰기, 최대 50개는 클라이언트 제한)
+      // 泥댄뿕 ????媛쒖씤 留??꾩씠??(蹂몄씤留??쎄린/?곌린, 理쒕? 50媛쒕뒗 ?대씪?댁뼵???쒗븳)
       match /myMap/{docId} {
         allow read, write: if signedIn() && request.auth.uid == uid;
       }
@@ -223,7 +223,7 @@ service cloud.firestore {
       }
     }
 
-    // (??뉕탢?? settlementRuns
+    // (???뺥깴?? settlementRuns
     match /settlementRuns/{ym} {
       allow get: if isAdmin() || signedIn();
       allow list: if isAdmin();
@@ -256,12 +256,12 @@ service cloud.firestore {
     }
 
     // ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-    // ??묎맒??筌왖揶????醫됲뇣 ?뚎됱젂??    // 筌뤴뫀諭??怨뚮┛??Cloud Functions(Admin SDK)??筌ｌ꼶?????????곷섧??write ?븍뜇肉
+    // ??臾롫쭜??嶺뚯솘???????ル맪????롫맩???    // 嶺뚮ㅄ維獄???⑤슢???Cloud Functions(Admin SDK)??嶺뚳퐣瑗??????????怨룹꽘??write ?釉띾쐡?됀
     // ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
-    // ?癒곗넅 ?겸뫗???遺욧퍕 (deposits/{refCode})
-    // - ?醫?: ?癒?뻿???遺욧퍕筌???꾨┛ 揶쎛??    // - ?온?귐딆쁽: ?袁⑷퍥 ??꾨┛
-    // - ?怨뚮┛: Cloud Functions筌?(?????곷섧??筌욊낯???怨뚮┛ ?븍뜇肉)
+    // ??믨퀣???寃몃쳴????븐슙??(deposits/{refCode})
+    // - ???: ???六????븐슙?뺟춯???袁ⓥ뵛 ?띠럾???    // - ??㉱?洹먮봿?? ?熬곣뫕????袁ⓥ뵛
+    // - ??⑤슢?? Cloud Functions嶺?(??????怨룹꽘??嶺뚯쉳?????⑤슢???釉띾쐡?됀)
     match /deposits/{refCode} {
       allow get: if isAdmin()
         || (signedIn()
@@ -273,7 +273,7 @@ service cloud.firestore {
             && resource.data.uid is string
             && resource.data.uid == request.auth.uid);
 
-      allow create, update, delete: if false; // Cloud Functions(Admin SDK) ?袁⑹뒠
+      allow create, update, delete: if false; // Cloud Functions(Admin SDK) ?熬곣뫗??
     }
 
         // mentors (mentors/{email})
@@ -282,7 +282,7 @@ service cloud.firestore {
       allow create, update, delete: if false; // Cloud Functions only
     }
 
-    // mentorRequests — 멘토 연결 요청
+    // mentorRequests ??硫섑넗 ?곌껐 ?붿껌
     match /mentorRequests/{uid} {
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow list: if isAdmin();
@@ -304,7 +304,7 @@ service cloud.firestore {
       allow create, update, delete: if false; // Cloud Functions only
     }
 
-    // kca_webzine (AI 마케팅 웹진)
+    // kca_webzine (AI 留덉????뱀쭊)
     match /kca_webzine/{docId} {
       allow read: if true;
       allow write: if false; // Cloud Functions only
@@ -354,19 +354,19 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // jackpot rounds (공개 통계 조회용)
+    // jackpot rounds (怨듦컻 ?듦퀎 議고쉶??
     match /jackpot_rounds/{roundId} {
       allow get, list: if true;
       allow create, update, delete: if false;
     }
 
-    // jackpot wins — 아이템 잭팟 당첨 기록 (공개 읽기)
+    // jackpot wins ???꾩씠????뙚 ?뱀꺼 湲곕줉 (怨듦컻 ?쎄린)
     match /jackpot_wins/{docId} {
       allow get, list: if true;
       allow create, update, delete: if false; // Cloud Functions only
     }
 
-    // jackpot config — 잭팟 누적금액 캐시 (공개 읽기)
+    // jackpot config ????뙚 ?꾩쟻湲덉븸 罹먯떆 (怨듦컻 ?쎄린)
     match /jackpot_config/{docId} {
       allow get, list: if true;
       allow create, update, delete: if false; // Cloud Functions only
@@ -383,24 +383,24 @@ service cloud.firestore {
             && resource.data.sellerUid == request.auth.uid);
     }
 
-    // ohlc (HEX/KRW 캔들 차트 데이터) — 공개 읽기
+    // ohlc (HEX/KRW 罹붾뱾 李⑦듃 ?곗씠?? ??怨듦컻 ?쎄린
     match /ohlc/{docId} {
       allow get, list: if true;
       allow create, update, delete: if false;
     }
 
 
-    // ── 보물찾기 시스템 ────────────────────────────────────────────
+    // ?? 蹂대Ъ李얘린 ?쒖뒪??????????????????????????????????????????????
     match /treasure_items/{docId} {
-      allow get, list: if true;           // 아이템 정보 공개
+      allow get, list: if true;           // ?꾩씠???뺣낫 怨듦컻
       allow write: if false;              // Cloud Function only
     }
     match /treasure_keys/{docId} {
-      allow get, list: if true;           // 열쇠 정의 공개 (클라이언트 드랍률 표시용)
+      allow get, list: if true;           // ?댁뇿 ?뺤쓽 怨듦컻 (?대씪?댁뼵???쒕엻瑜??쒖떆??
       allow write: if false;              // Cloud Function only
     }
     match /treasure_boxes/{docId} {
-      allow get, list: if true;           // 박스 위치 공개 (지도 표시)
+      allow get, list: if true;           // 諛뺤뒪 ?꾩튂 怨듦컻 (吏???쒖떆)
       allow write: if false;
     }
     match /treasure_inventory/{docId} {
@@ -441,13 +441,13 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
       allow write: if false;
     }
-    // 바닥 드랍 — 로그인 유저 누구나 읽기, 쓰기는 서버 전용
+    // 諛붾떏 ?쒕엻 ??濡쒓렇???좎? ?꾧뎄???쎄린, ?곌린???쒕쾭 ?꾩슜
     match /dropped_items/{docId} {
       allow get, list: if signedIn();
       allow write: if false;
     }
 
-    // ── 위치 기반 전투 시스템 ─────────────────────────────────────
+    // ?? ?꾩튂 湲곕컲 ?꾪닾 ?쒖뒪???????????????????????????????????????
     match /battle_monsters/{docId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
@@ -462,8 +462,8 @@ service cloud.firestore {
     }
     match /battle_players/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
-      allow list: if true; // 랭킹 공개 (Hunter Ranking)
-      // gold 필드는 Cloud Functions(Admin SDK)만 변경 가능 — 클라이언트 직접 쓰기 금지
+      allow list: if true; // ??궧 怨듦컻 (Hunter Ranking)
+      // gold ?꾨뱶??Cloud Functions(Admin SDK)留?蹂寃?媛?????대씪?댁뼵??吏곸젒 ?곌린 湲덉?
       allow create: if signedIn() && request.auth.uid == uid
         && !request.resource.data.keys().hasAny(['gold']);
       allow update: if signedIn() && request.auth.uid == uid
@@ -471,8 +471,8 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ── Zen Spark 커뮤니티 게시판 ────────────────────────────────────
-    // 인증은 앱(Jump ID) 레벨에서 처리 — Firestore는 필드 존재/구조만 검증
+    // ?? Zen Spark 而ㅻ??덊떚 寃뚯떆??????????????????????????????????????
+    // ?몄쬆? ??Jump ID) ?덈꺼?먯꽌 泥섎━ ??Firestore???꾨뱶 議댁옱/援ъ“留?寃利?
     match /community_posts/{postId} {
       allow read: if true;
       allow create: if request.resource.data.authorId is string
@@ -481,24 +481,24 @@ service cloud.firestore {
       allow delete: if true;
     }
 
-    // ── 소셜 커뮤니티 (community_events) ─────────────────────────────
+    // ?? ?뚯뀥 而ㅻ??덊떚 (community_events) ?????????????????????????????
     match /community_events/{eventId} {
-      allow get, list: if true;                        // 누구나 읽기
-      allow create: if isAdmin();                      // 관리자만 등록
+      allow get, list: if true;                        // ?꾧뎄???쎄린
+      allow create: if isAdmin();                      // 愿由ъ옄留??깅줉
       allow update, delete: if isAdmin()
         || (signedIn() && resource.data.authorUid == request.auth.uid);
 
-      // 평점(후기) 서브컬렉션 — 문서 ID = uid (1인 1후기), 관리자는 자유 ID
+      // ?됱젏(?꾧린) ?쒕툕而щ젆????臾몄꽌 ID = uid (1??1?꾧린), 愿由ъ옄???먯쑀 ID
       match /reviews/{reviewId} {
         allow get, list: if true;
-        allow create: if isAdmin()             // 관리자: 원하는 이름·ID로 자유 등록
+        allow create: if isAdmin()             // 愿由ъ옄: ?먰븯???대쫫쨌ID濡??먯쑀 ?깅줉
           || (signedIn()
-              && reviewId == request.auth.uid  // 일반 유저: 본인 uid로만
+              && reviewId == request.auth.uid  // ?쇰컲 ?좎?: 蹂몄씤 uid濡쒕쭔
               && !exists(/databases/$(database)/documents/community_events/$(eventId)/reviews/$(request.auth.uid)));
         allow update, delete: if isAdmin();
       }
 
-      // 댓글 서브컬렉션
+      // ?볤? ?쒕툕而щ젆??
       match /comments/{commentId} {
         allow get, list: if true;
         allow create: if signedIn();
@@ -507,7 +507,7 @@ service cloud.firestore {
       }
     }
 
-    // 커뮤니티 행사 바우처 (community_event_vouchers/{uid_eventId})
+    // 而ㅻ??덊떚 ?됱궗 諛붿슦泥?(community_event_vouchers/{uid_eventId})
     match /community_event_vouchers/{docId} {
       allow get: if signedIn()
         && (resource.data.uid == request.auth.uid || isAdmin());
@@ -515,7 +515,7 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
 
-    // 바우처 정산 (community_voucher_settlements/{docId})
+    // 諛붿슦泥??뺤궛 (community_voucher_settlements/{docId})
     match /community_voucher_settlements/{docId} {
       allow get: if isAdmin()
         || (signedIn() && resource.data.sellerUid == request.auth.uid);
@@ -524,8 +524,8 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
 
-    // ── 버기카 호출 서비스 ────────────────────────────────────────────
-    // 등록된 기사 여부 확인
+    // ?? 踰꾧린移??몄텧 ?쒕퉬??????????????????????????????????????????????
+    // ?깅줉??湲곗궗 ?щ? ?뺤씤
     function isRegisteredDriver() {
       return signedIn()
         && exists(/databases/$(database)/documents/buggy_drivers/$(request.auth.uid));
@@ -536,7 +536,7 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
     match /buggy_rides/{rideId} {
-      // 본인 호출, 배정된 기사, 등록 기사(searching 수신용), 관리자
+      // 蹂몄씤 ?몄텧, 諛곗젙??湲곗궗, ?깅줉 湲곗궗(searching ?섏떊??, 愿由ъ옄
       allow get: if isAdmin()
         || isRegisteredDriver()
         || (signedIn() && (resource.data.userId == request.auth.uid || resource.data.driverId == request.auth.uid));
@@ -552,8 +552,8 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
     match /buggy_driver_locations/{driverUid} {
-      allow get, list: if signedIn();                              // 탑승자도 실시간 위치 조회
-      allow write: if signedIn() && request.auth.uid == driverUid; // 기사 본인 직접 write
+      allow get, list: if signedIn();                              // ?묒듅?먮룄 ?ㅼ떆媛??꾩튂 議고쉶
+      allow write: if signedIn() && request.auth.uid == driverUid; // 湲곗궗 蹂몄씤 吏곸젒 write
     }
     match /buggy_transactions/{docId} {
       allow get: if isAdmin()
@@ -576,12 +576,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── DAO 의결 시스템 ────────────────────────────────────────────
-    // 안건 목록·상세: 누구나 읽기 가능
-    // 등록·지지·투표·댓글: Cloud Function 서버 사이드 처리 (직접 쓰기 불가)
+    // ?? DAO ?섍껐 ?쒖뒪??????????????????????????????????????????????
+    // ?덇굔 紐⑸줉쨌?곸꽭: ?꾧뎄???쎄린 媛??
+    // ?깅줉쨌吏吏쨌?ы몴쨌?볤?: Cloud Function ?쒕쾭 ?ъ씠??泥섎━ (吏곸젒 ?곌린 遺덇?)
     match /dao_proposals/{proposalId} {
       allow get, list: if true;
-      allow write: if false; // Cloud Function만 쓰기 가능
+      allow write: if false; // Cloud Function留??곌린 媛??
 
       match /supporters/{uid} {
         allow get: if signedIn() && request.auth.uid == uid;
@@ -599,20 +599,20 @@ service cloud.firestore {
       }
     }
 
-    // ── 게임 상점 (game_shops) ───────────────────────────────────────
+    // ?? 寃뚯엫 ?곸젏 (game_shops) ???????????????????????????????????????
     match /game_shops/{shopId} {
-      allow get, list: if true;                        // 지도 표시용 공개 읽기
-      allow create, update, delete: if isAdmin();      // 관리자만 배치/수정/삭제
+      allow get, list: if true;                        // 吏???쒖떆??怨듦컻 ?쎄린
+      allow create, update, delete: if isAdmin();      // 愿由ъ옄留?諛곗튂/?섏젙/??젣
     }
 
-    // ── 상점 판매 로그 (shop_sales_logs) ─────────────────────────────
+    // ?? ?곸젏 ?먮ℓ 濡쒓렇 (shop_sales_logs) ?????????????????????????????
     match /shop_sales_logs/{docId} {
       allow get, list: if isAdmin()
         || (signedIn() && resource.data.ownerUid == request.auth.uid);
       allow write: if false; // Cloud Function only
     }
 
-    // ── 세션 관리 (중복 로그인 방지) ─────────────────────────────────
+    // ?? ?몄뀡 愿由?(以묐났 濡쒓렇??諛⑹?) ?????????????????????????????????
     match /user_sessions/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow create, update: if signedIn() && request.auth.uid == uid;
@@ -620,19 +620,19 @@ service cloud.firestore {
       allow list: if false;
     }
 
-    // ── 실시간 유저 위치 (100m 반경 표시용) ──────────────────────────
+    // ?? ?ㅼ떆媛??좎? ?꾩튂 (100m 諛섍꼍 ?쒖떆?? ??????????????????????????
     match /user_locations/{uid} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
-    // ── 공유 전투 HP 상태 (클라이언트 쓰기 허용) ───────────────────────────────
+    // ?? 怨듭쑀 ?꾪닾 HP ?곹깭 (?대씪?댁뼵???곌린 ?덉슜) ???????????????????????????????
     match /battle_hp/{docId} {
       allow read: if signedIn();
       allow write: if signedIn();
     }
 
-    // ── 1:1 고객 채팅 ────────────────────────────────────────────
+    // ?? 1:1 怨좉컼 梨꾪똿 ????????????????????????????????????????????
     match /admin_status/{docId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
@@ -654,45 +654,45 @@ service cloud.firestore {
       }
     }
 
-    // ── 기기 1계정 매핑 (익명 로그인용) ──────────────────────────────────────
+    // ?? 湲곌린 1怨꾩젙 留ㅽ븨 (?듬챸 濡쒓렇?몄슜) ??????????????????????????????????????
     match /device_accounts/{deviceId} {
-      // deviceId는 클라이언트 생성 랜덤 UUID — 추측 불가이므로 공개 읽기 허용
+      // deviceId???대씪?댁뼵???앹꽦 ?쒕뜡 UUID ??異붿륫 遺덇??대?濡?怨듦컻 ?쎄린 ?덉슜
       allow get: if true;
-      // 자신의 uid로만 생성 가능, 수정/삭제 불가
+      // ?먯떊??uid濡쒕쭔 ?앹꽦 媛?? ?섏젙/??젣 遺덇?
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
-    // ── NFC 보물 태그 시스템 ──────────────────────────────────────────────
-    // 태그 공개 정보 (위치·메시지 등) — 로그인 유저 누구나 읽기, 쓰기는 Cloud Function 전용
+    // ?? NFC 蹂대Ъ ?쒓렇 ?쒖뒪????????????????????????????????????????????????
+    // ?쒓렇 怨듦컻 ?뺣낫 (?꾩튂쨌硫붿떆吏 ?? ??濡쒓렇???좎? ?꾧뎄???쎄린, ?곌린??Cloud Function ?꾩슜
     match /nfc_tags/{tagId} {
-      allow get: if true;              // QR 스캔 시 비로그인도 태그 공개 정보 조회 가능
+      allow get: if true;              // QR ?ㅼ틪 ??鍮꾨줈洹몄씤???쒓렇 怨듦컻 ?뺣낫 議고쉶 媛??
       allow list: if isAdmin();
-      allow write: if false;           // Cloud Function only (adminSaveNfcTag 등)
+      allow write: if false;           // Cloud Function only (adminSaveNfcTag ??
     }
 
-    // 수령 기록 — 본인 기록만 읽기, 쓰기는 Cloud Function 전용
+    // ?섎졊 湲곕줉 ??蹂몄씤 湲곕줉留??쎄린, ?곌린??Cloud Function ?꾩슜
     match /nfc_claims/{docId} {
       allow get, list: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid);
       allow write: if false;            // Cloud Function only (claimNfcTreasure)
     }
 
-    // ── 신규 유저 온보딩 튜토리얼 박스 ───────────────────────────────────────
-    // 본인 데이터만 읽기 가능, 쓰기는 Cloud Function 전용
+    // ?? ?좉퇋 ?좎? ?⑤낫???쒗넗由ъ뼹 諛뺤뒪 ???????????????????????????????????????
+    // 蹂몄씤 ?곗씠?곕쭔 ?쎄린 媛?? ?곌린??Cloud Function ?꾩슜
     match /tutorial_boxes/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list: if isAdmin();
       allow write: if false; // Cloud Function only (initTutorialBoxes, claimTutorialBox)
     }
 
-    // ── 슬롯 머신 잭팟 풀 ────────────────────────────────────────────────────
+    // ?? ?щ’ 癒몄떊 ??뙚 ? ????????????????????????????????????????????????????
     match /slot_config/{docId} {
       allow read: if true;
       allow write: if false; // Cloud Function only
     }
 
-    // 사용자 보물 (실제 좌표 비공개 — Cloud Function만 접근)
+    // ?ъ슜??蹂대Ъ (?ㅼ젣 醫뚰몴 鍮꾧났媛???Cloud Function留??묎렐)
     match /user_treasures/{docId} {
       allow read: if signedIn() && (
         resource.data.ownerId == request.auth.uid || isAdmin()
@@ -700,19 +700,19 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
 
-    // 사용자 보물 NPC (맵 표시용 — 좌표 공개, 보물 좌표 제외)
+    // ?ъ슜??蹂대Ъ NPC (留??쒖떆????醫뚰몴 怨듦컻, 蹂대Ъ 醫뚰몴 ?쒖쇅)
     match /user_treasure_npcs/{docId} {
       allow read: if true;
       allow write: if false; // Cloud Function only
     }
 
-    // 보물 패키지 (구매자 생성 — Cloud Function only write, 공개 읽기)
+    // 蹂대Ъ ?⑦궎吏 (援щℓ???앹꽦 ??Cloud Function only write, 怨듦컻 ?쎄린)
     match /coopTreasurePackages/{docId} {
       allow read: if true;
       allow write: if false; // Cloud Function only
     }
 
-    // 패키지 댓글 (누구나 작성, 본인·관리자만 삭제)
+    // ?⑦궎吏 ?볤? (?꾧뎄???묒꽦, 蹂몄씤쨌愿由ъ옄留???젣)
     match /packageComments/{docId} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
@@ -720,9 +720,9 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // ── 스톡옵션 바우처 ─────────────────────────────────────────────────────
+    // ?? ?ㅽ넚?듭뀡 諛붿슦泥??????????????????????????????????????????????????????
     match /stockOptionVouchers/{docId} {
-      allow get, list: if signedIn();          // 본인 바우처 조회 (Cloud Function 통해 필터)
+      allow get, list: if signedIn();          // 蹂몄씤 諛붿슦泥?議고쉶 (Cloud Function ?듯빐 ?꾪꽣)
       allow write: if false;                   // Cloud Function only
     }
     match /voucherTransfers/{docId} {
@@ -734,22 +734,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── Telegram Stars 정회원 시스템 ──────────────────────────────────────────
+    // ?? Telegram Stars ?뺥쉶???쒖뒪????????????????????????????????????????????
 
-    // 가격 설정 — 로그인 유저 읽기, 관리자만 쓰기
+    // 媛寃??ㅼ젙 ??濡쒓렇???좎? ?쎄린, 愿由ъ옄留??곌린
     match /membership_config/{docId} {
       allow get, list: if signedIn();
       allow write: if false; // Cloud Function only (adminSetMembershipPrice)
     }
 
-    // 결제 기록 — 본인 읽기, CF만 쓰기
+    // 寃곗젣 湲곕줉 ??蹂몄씤 ?쎄린, CF留??곌린
     match /membership_payments/{docId} {
       allow get, list: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid);
-      allow write: if false; // Cloud Function only (bot.py → firebase-admin)
+      allow write: if false; // Cloud Function only (bot.py ??firebase-admin)
     }
 
-    // 초대 기록 — 본인 읽기, CF만 쓰기
+    // 珥덈? 湲곕줉 ??蹂몄씤 ?쎄린, CF留??곌린
     match /membership_referrals/{docId} {
       allow get, list: if isAdmin()
         || (signedIn() && (
@@ -759,30 +759,121 @@ service cloud.firestore {
       allow write: if false; // Cloud Function only
     }
 
-    // 대기 중 초대 — bot.py(firebase-admin)가 씀, 본인 읽기
+    // ?湲?以?珥덈? ??bot.py(firebase-admin)媛 ?, 蹂몄씤 ?쎄린
     match /pending_referrals/{docId} {
       allow get: if signedIn() && request.auth.uid == docId;
       allow list: if isAdmin();
       allow write: if false; // Cloud Function only
     }
 
-    // NPC 캐릭터 — 누구나 읽기, 관리자만 쓰기
+    // NPC 罹먮┃?????꾧뎄???쎄린, 愿由ъ옄留??곌린
     match /npc_characters/{docId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // NPC 스케줄러 상태 — 관리자 읽기, Cloud Function 쓰기(admin SDK)
+    // NPC ?ㅼ?以꾨윭 ?곹깭 ??愿由ъ옄 ?쎄린, Cloud Function ?곌린(admin SDK)
     match /system/{docId} {
       allow read: if isAdmin();
       allow write: if false;
     }
+
+        // ------ BEST ERP SAAS RULES ------
+
+    function isAuthenticated() { 
+      return request.auth != null; 
+    }
+
+    function getUserData() {
+      let docPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(docPath) ? get(docPath).data : {"role": "EMPLOYEE"};
+    }
+
+    // CEO ?먮뒗 理쒓퀬愿由ъ옄 ?뺤씤 (daguri75@gmail.com? 臾댁“嫄??곸슜)
+    function isCEO() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'daguri75@gmail.com' ||
+        getUserData().role == 'SUPER_ADMIN' || 
+        getUserData().role == 'CEO'
+      );
+    }
+    
+    // ?쇰컲 吏곸썝/愿由ъ옄 ?댁긽 (?곌린 沅뚰븳??
+    function isStaff() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'daguri75@gmail.com' ||
+        getUserData().role in ['SUPER_ADMIN', 'CEO', 'ADMIN', 'STAFF']
+      );
+    }
+
+    // 湲곕낯?곸쑝濡?CEO??紐⑤뱺 而щ젆?섏뿉???쎄린/?곌린/??젣 ?꾨꼍??沅뚰븳??媛吏?    
+
+    // ?쇰컲 吏곸썝(Staff) ?댁긽??沅뚰븳
+    match /materials/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+    match /suppliers/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+    match /priceHistory/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+    match /externalPrices/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+    
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      // ?먯떊 ?뺣낫 ?섏젙 ?덉슜 ?먮뒗 CEO
+      allow write: if request.auth.uid == userId || isCEO();
+    }
+    
+    match /projects/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+    match /purchaseRequests/{document=**} { allow read: if isAuthenticated(); allow write: if isAuthenticated(); }
+    
+    // ?덈줈 ?ㅺ퀎??AI 寃쎌쁺李몃え???듯빀 DB Rules
+    match /employees/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+    match /clients/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+    match /contacts/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+    match /siteLogs/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+    match /aiInsights/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
+
+    // ?낅Т 諛?蹂닿퀬 ?쒖뒪??(Task Management System)
+    match /tasks/{taskId} {
+      allow read: if isCEO() 
+        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER' && resource.data.teamId == getUserData().teamId)
+        || (isAuthenticated() && resource.data.assignedTo == request.auth.token.email);
+      allow write: if isCEO() 
+        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER' && resource.data.teamId == getUserData().teamId)
+        || (isAuthenticated() && resource.data.assignedTo == request.auth.token.email);
+    }
+
+    match /task_reports/{reportId} {
+      allow read: if isCEO() 
+        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER')
+        || (isAuthenticated() && resource.data.submittedBy == request.auth.uid);
+      allow write: if isCEO() 
+        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER')
+        || (isAuthenticated() && request.resource.data.submittedBy == request.auth.uid);
+    }
+
+    match /task_comments/{commentId} {
+      allow read: if isCEO() 
+        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER')
+        || (isAuthenticated());
+      allow write: if isCEO() 
+        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER')
+        || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+    }
+
+    match /task_attachments/{attachmentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /task_logs/{logId} {
+      allow read, write: if isAuthenticated();
+    }
+      // ------ END BEST ERP SAAS RULES ------
 
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
+
 
 
 
