@@ -117,7 +117,8 @@ async function doRegister(uid, user) {
   const agreeTerms = Boolean($("agreeTerms")?.checked);
 
   if (!name) throw new Error("이름을 입력해 주세요.");
-  if (!phone || !isValidPhone(phone)) throw new Error("올바른 휴대전화 번호를 입력해 주세요.");
+  // Phone is now optional per user request
+    // if (!phone || !isValidPhone(phone)) throw new Error('올바른 휴대전화 번호를 입력해 주세요');
   if (!mentorAddress) throw new Error("추천인 이메일을 반드시 입력해 주세요.");
   if (!agreeTerms) throw new Error("이용약관에 동의해 주세요.");
 
