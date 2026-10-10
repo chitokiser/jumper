@@ -221,18 +221,29 @@ $("btnCheckout").addEventListener("click", async () => {
     $("cartModal").innerHTML = `
       <div style="background:white; padding:24px; border-radius:12px; max-width:400px; width:90%; position:relative;">
         <h3 style="margin-top:0; color:#4f46e5; font-size:1.4rem; text-align:center;">주문 접수 완료</h3>
-        <p style="text-align:center; font-size:0.95rem; color:#4b5563; margin-bottom:20px;">결제를 완료해야 상품이 제공됩니다.<br/>아래 QR을 스캔하여 머니로 결제하거나,<br/>버튼을 눌러 바로 결제하세요.</p>
+        <p style="text-align:center; font-size:0.95rem; color:#4b5563; margin-bottom:20px;">
+          결제 방식을 선택해주세요.<br/>원하시는 방식을 통해 총 <strong style="color:#ef4444">${totalAmount.toLocaleString()} VND</strong>를 결제해 주시기 바랍니다.
+        </p>
         
-        <div style="text-align:center; border:2px dashed #d1d5db; border-radius:12px; padding:16px; margin-bottom:20px; background:#f9fafb;">
-          <img src="${qrImage}" alt="결제 QR 코드" style="width:200px; height:200px; border-radius:8px;" />
-          <div style="margin-top:12px; font-weight:bold; font-size:1.1rem; color:#1f2937;">총 결제금액: ${totalAmount.toLocaleString()} VND</div>
-        </div>
-        
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          <a href="${paymentUrl}" class="btn btn--primary" style="text-align:center; padding:12px; border-radius:8px; text-decoration:none;">💳 스마트폰에서 바로 머니 결제하기</a>
+        <div style="display:flex; flex-direction:column; gap:16px;">
           
-          <div style="font-size:0.85rem; color:#6b7280; text-align:center; margin-top:8px; padding:8px; background:#f3f4f6; border-radius:6px;">
-            머니 대신 가맹점 계좌로 직접 송금하셨다면,<br/>결제 페이지에서 송금을 알리거나 가맹점에 승인을 요청하세요. 가맹점이 결제 확인을 완료하면 최종 주문 처리가 완료됩니다.
+          <div style="border:1px solid #d1d5db; border-radius:8px; padding:16px;">
+            <h4 style="margin:0 0 12px 0; color:#1f2937; font-size:1.1rem;">결제방식 1. 내 지갑 BM으로 결제</h4>
+            <div style="text-align:center;">
+              <img src="${qrImage}" alt="BM 결제 QR" style="width:150px; height:150px; border-radius:8px; display:inline-block; margin-bottom:8px;" />
+              <p style="font-size:0.85rem; color:#6b7280; margin:0 0 12px 0; line-height:1.4;">PC 이용 시 폰으로 위 QR을 스캔하세요.<br/>모바일 기기라면 아래 버튼을 눌러 바로 결제하세요.</p>
+              <a href="${paymentUrl}" class="btn btn--primary" style="display:block; text-align:center; padding:10px; border-radius:8px; text-decoration:none;">💳 스마트폰에서 바로 BM 결제하기</a>
+            </div>
+          </div>
+
+          <div style="border:1px solid #d1d5db; border-radius:8px; padding:16px;">
+            <h4 style="margin:0 0 12px 0; color:#1f2937; font-size:1.1rem;">결제방식 2. 계좌 자동이체</h4>
+            <p style="font-size:0.9rem; color:#4b5563; margin:0 0 12px 0; line-height:1.4;">
+              가맹점 고유 계좌번호로 이체합니다.<br/>계좌 이체 후 <strong>가맹점 직원이 확인하여 주문을 승인</strong>해 주면 최종적으로 주문이 완료 처리됩니다.
+            </p>
+            <div style="background:#f3f4f6; color:#374151; font-size:0.85rem; padding:8px; border-radius:6px; text-align:center;">
+              (송금 후 가맹점 관리자에게 결제 확인을 요청하세요)
+            </div>
           </div>
           
           <button type="button" class="btn" onclick="location.reload()" style="background:#e5e7eb; color:#374151; width:100%; padding:12px; border-radius:8px; margin-top:8px;">닫기 및 쇼핑 계속하기</button>

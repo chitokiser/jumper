@@ -338,7 +338,7 @@ function bindPayButton() {
     : `${amount.toLocaleString()}원 (KRW)`;
 
   btn.onclick = async () => {
-    if (!confirm(`${merchantName}에 ${amountConfirmStr}을 결제하시겠습니까?\n(수탁 지갑 Point로 결제됩니다)`)) return;
+    if (!confirm(`${merchantName}에 ${amountConfirmStr}을 결제하시겠습니까?\n(내 보유 BM에서 결제됩니다)`)) return;
 
     btn.disabled = true;
     btn.textContent = "결제 중...";
