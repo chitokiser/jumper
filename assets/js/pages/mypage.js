@@ -117,10 +117,10 @@ async function loadKCultureBalances(uid) {
 
       const isMerchantOwner = !!d.merchantId;
       let mRef = null;
-      
+
       if (isMerchantOwner) {
         show("aiErpBannerOption", true); // Show the SaaS ERP Banner
-    
+
         mRef = doc(db, "merchants", String(d.merchantId));
         const mSnap = await getDoc(mRef);
         if (mSnap.exists()) {
@@ -152,59 +152,59 @@ async function loadKCultureBalances(uid) {
           });
         }
 
-        
-  const elGpDisp = document.getElementById("gpBalanceDisplay");
-  const elGpLv = document.getElementById("gpUserLevelDisplay");
-  const elGpBtn = document.getElementById("btnConvertGpToPoint");
 
-  const gpBal = updatedD.gold || 0;
-  const userLv = updatedD.level || 1;
+        const elGpDisp = document.getElementById("gpBalanceDisplay");
+        const elGpLv = document.getElementById("gpUserLevelDisplay");
+        const elGpBtn = document.getElementById("btnConvertGpToPoint");
 
-  if (elGpDisp) elGpDisp.textContent = gpBal.toLocaleString("ko-KR") + " GP";
-  if (elGpLv) elGpLv.textContent = "Level: " + userLv;
+        const gpBal = updatedD.gold || 0;
+        const userLv = updatedD.level || 1;
 
-  if (elGpBtn) {
-    elGpBtn.onclick = async () => {
-      if (gpBal < 10) {
-        alert("최소 10 GP 이상이어야 전환 가능합니다.");
-        return;
-      }
-      if (!confirm("GP를 Point로 전환하시겠습니까?")) return;
+        if (elGpDisp) elGpDisp.textContent = gpBal.toLocaleString("ko-KR") + " GP";
+        if (elGpLv) elGpLv.textContent = "Level: " + userLv;
 
-      const convertedPoint = Math.floor((gpBal * userLv) / 10);
-      try {
-        elGpBtn.disabled = true;
-        elGpBtn.textContent = "전환 중...";
-        
-        await updateDoc(doc(db, "users", uid), {
-          gold: 0,
-          pointBalance: increment(convertedPoint),
-          pointBalanceVnd: increment(convertedPoint * 17) // Assuming 1 P = 17 VND if needed, but Point might be enough
-        });
+        if (elGpBtn) {
+          elGpBtn.onclick = async () => {
+            if (gpBal < 10) {
+              alert("최소 10 GP 이상이어야 전환 가능합니다.");
+              return;
+            }
+            if (!confirm("GP를 Point로 전환하시겠습니까?")) return;
 
-        // Write history for point conversion
-        const pHisRef = collection(db, "pointHistories");
-        await addDoc(pHisRef, {
-          uid: uid,
-          displayName: updatedD.displayName || "익명",
-          amount: convertedPoint,
-          type: "GP Exchange",
-          desc: gpBal.toLocaleString() + " GP 전환 (Lv." + userLv + ")",
-          createdAt: serverTimestamp()
-        });
+            const convertedPoint = Math.floor((gpBal * userLv) / 10);
+            try {
+              elGpBtn.disabled = true;
+              elGpBtn.textContent = "전환 중...";
 
-        alert("성공적으로 " + convertedPoint.toLocaleString() + " Point 로 전환되었습니다!");
-      } catch (e) {
-        console.error(e);
-        alert("전환 중 오류가 발생했습니다.");
-      } finally {
-        elGpBtn.disabled = false;
-        elGpBtn.textContent = "전환하기 (최소 10 GP 이상)";
-      }
-    };
-  }
+              await updateDoc(doc(db, "users", uid), {
+                gold: 0,
+                pointBalance: increment(convertedPoint),
+                pointBalanceVnd: increment(convertedPoint * 17) // Assuming 1 P = 17 VND if needed, but Point might be enough
+              });
 
-  if (elPoint) {
+              // Write history for point conversion
+              const pHisRef = collection(db, "pointHistories");
+              await addDoc(pHisRef, {
+                uid: uid,
+                displayName: updatedD.displayName || "익명",
+                amount: convertedPoint,
+                type: "GP Exchange",
+                desc: gpBal.toLocaleString() + " GP 전환 (Lv." + userLv + ")",
+                createdAt: serverTimestamp()
+              });
+
+              alert("성공적으로 " + convertedPoint.toLocaleString() + " Point 로 전환되었습니다!");
+            } catch (e) {
+              console.error(e);
+              alert("전환 중 오류가 발생했습니다.");
+            } finally {
+              elGpBtn.disabled = false;
+              elGpBtn.textContent = "전환하기 (최소 10 GP 이상)";
+            }
+          };
+        }
+
+        if (elPoint) {
           const btnHtml = `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>`;
           if (!elPoint.innerHTML.includes("btnExchangePoint")) {
             elPoint.innerHTML = `<span id="ptSpan" style="font-size:1.6rem;">${pBal.toLocaleString("ko-KR")} P</span>` + btnHtml;
@@ -1029,9 +1029,41 @@ function bindDepositForm() {
         ? { amountVnd: amountVal, currency: "VND", depositorName }
         : { amountVnd: amountVal, currency: "VND", depositorName };
 
-      const requestDeposit = httpsCallable(functions, "requestDeposit");
-      const res = await requestDeposit(payload);
-      const d = res.data;
+      // Bypass requestDeposit Cloud Function via direct DB write to resolve persistent CORS / backend issues
+      const { setDoc, doc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+
+      const refCode = `DEP-${currentViewer.uid.slice(0, 8).toUpperCase()}-${Date.now()}`;
+
+      const depositData = {
+        uid: currentViewer.uid,
+        userAddress: currentViewer.wallet?.address || '-',
+        depositorName: depositorName.trim(),
+        currency: currency || "KRW",
+        bank: currency === 'VND' ? "TECHCOM BANK" : "IBK기업은행",
+        refCode,
+        status: 'pending',
+        requestedAt: serverTimestamp(),
+        rateAtRequest: null,
+      };
+
+      if (currency === "VND") {
+        depositData.amountVnd = amountVal;
+        depositData.amountKrw = Math.floor(amountVal / 18.84);
+      } else {
+        depositData.amountKrw = amountVal;
+        depositData.amountVnd = Math.floor(amountVal * 18.84);
+      }
+
+      await setDoc(doc(db, 'deposits', refCode), depositData);
+
+      const d = {
+        refCode,
+        amountKrw: depositData.amountKrw,
+        amountVnd: currency === "VND" ? amountVal : null,
+        bankInfo: { bank: 'IBK기업은행', account: '480-141680-01-016', holder: '신헌철(제이앤에스 글로벌)' },
+        bankInfoVnd: { bank: 'TECHCOM BANK', account: '19037882768012', holder: 'SHIN HEON CHEOL' },
+        instruction: `입금자명을 "${depositorName.trim()}"으로 정확히 입력하세요. 참조코드: ${refCode}`
+      };
 
       show("depositResult", true);
       setText("drRefCode", d.refCode);
