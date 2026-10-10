@@ -1032,11 +1032,14 @@ function bindDepositForm() {
       // Bypass requestDeposit Cloud Function via direct DB write to resolve persistent CORS / backend issues
       const { setDoc, doc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
 
-      const refCode = `DEP-${currentViewer.uid.slice(0, 8).toUpperCase()}-${Date.now()}`;
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("로그인이 필요합니다.");
+
+      const refCode = `DEP-${currentUser.uid.slice(0, 8).toUpperCase()}-${Date.now()}`;
 
       const depositData = {
-        uid: currentViewer.uid,
-        userAddress: currentViewer.wallet?.address || '-',
+        uid: currentUser.uid,
+        userAddress: '-',
         depositorName: depositorName.trim(),
         currency: currency || "KRW",
         bank: currency === 'VND' ? "TECHCOM BANK" : "IBK기업은행",
