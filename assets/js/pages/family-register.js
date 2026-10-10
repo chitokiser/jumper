@@ -1,4 +1,4 @@
-// /assets/js/pages/family-register.js
+﻿// /assets/js/pages/family-register.js
 // 판매회원 등록: 가맹점 등록 + Firestore 저장
 
 import { watchAuth, login } from "../auth.js";
@@ -164,23 +164,44 @@ async function doRegisterMerchant() {
   if (!region) throw new Error("활동 지역을 입력해 주세요.");
 
   show("stepBox", true);
-
-  // ① 온체인 등록 (Cloud Function → 수탁 지갑 서명 → registerMerchant)
   setStep("step1", "doing");
-  let result;
+  setStep("step2", "doing");
+
+  const user = auth.currentUser;
+  if (!user) throw new Error("로그인이 필요합니다.");
+
+  const merchantId = String(Math.floor(Date.now() / 1000));
+
   try {
-    const registerFn = httpsCallable(functions, "registerMerchant");
-    result = await registerFn({ name, description: detail, phone, kakaoId, region, career, gmap });
+    const { setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+    await setDoc(doc(db, 'merchants', merchantId), {
+      merchantId: Number(merchantId),
+      ownerUid: user.uid,
+      name,
+      career,
+      region,
+      description: detail,
+      phone,
+      kakaoId,
+      gmap,
+      feeBps: 0,
+      active: true,
+      txHash: 'offchain',
+      createdAt: serverTimestamp()
+    });
+
+    await updateDoc(doc(db, 'users', user.uid), {
+      merchantId: Number(merchantId)
+    });
+
     setStep("step1", "done");
+    setStep("step2", "done");
+    return { txHash: 'local-ERP-sync', merchantId };
   } catch (err) {
     setStep("step1", "error");
-    throw new Error(err?.message || "가맹점 등록 실패");
+    setStep("step2", "error");
+    throw new Error(err?.message || "가맹점 등록 중 오류가 발생했습니다.");
   }
-
-  // ② Firestore 저장은 Cloud Function 내부에서 완료됨
-  setStep("step2", "done");
-
-  return result.data; // { txHash, merchantId }
 }
 
 // ── 폼 바인딩 ───────────────────────────────────
@@ -350,7 +371,7 @@ async function _initForUser(ctx) {
       return;
     }
 
-    
+
 
     // ⑤ 폼 표시
     setState("");

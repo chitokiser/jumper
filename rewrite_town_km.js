@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let content = fs.readFileSync('assets/js/pages/town_home.js', 'utf8');
 
 // Replace formatHexForUi

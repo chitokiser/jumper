@@ -1,4 +1,4 @@
-// /assets/js/pages/homestay.js
+﻿// /assets/js/pages/homestay.js
 // 홈스테이 목록: published items 중 category=hotel/homestay/guesthouse 만 표시
 // NOTE: 리뷰/별점 SSOT는 top-level reviews 컬렉션
 

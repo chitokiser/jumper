@@ -1,4 +1,4 @@
-// /assets/js/admin-support-chat.js
+﻿// /assets/js/admin-support-chat.js
 import {
   collection, doc, addDoc, onSnapshot, orderBy, query,
   serverTimestamp, setDoc, updateDoc,

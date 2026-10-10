@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 async function check() {

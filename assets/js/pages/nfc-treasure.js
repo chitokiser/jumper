@@ -1,4 +1,4 @@
-// /assets/js/pages/nfc-treasure.js
+﻿// /assets/js/pages/nfc-treasure.js
 // NFC 보물 감지 — 유저 페이지
 
 import { auth, functions } from '../firebase-init.js';

@@ -1,4 +1,4 @@
-// /assets/js/pages/product_new.js
+﻿// /assets/js/pages/product_new.js
 // 가이드 상품 등록 (입력 안되는 문제 해결 + 운영용 UX)
 //
 // 원인/해결

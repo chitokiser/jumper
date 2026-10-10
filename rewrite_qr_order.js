@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let content = fs.readFileSync('assets/js/pages/merchant-qr.js', 'utf8');
 
 content = content.replace(/qrUrl = baseUrl \+ \`\?mid=\$\{merchantId\}&amountVnd=\$\{val\}\`;/g, 'qrUrl = baseUrl + `?mid=${merchantId}&amountVnd=${val}&orderId=${Date.now()}`;');

@@ -35,7 +35,7 @@ function statusText(s) {
 function getThumb(post) {
   if (Array.isArray(post?.imageUrls) && post.imageUrls.length) return post.imageUrls[0];
   if (post?.imageUrl) return post.imageUrl;
-  return "/assets/images/jump/BI.png";
+  return "/assets/images/jump/logo2.png";
 }
 
 let ALL = [];

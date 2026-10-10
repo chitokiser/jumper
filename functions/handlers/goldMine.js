@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 // v2
 const admin = require('firebase-admin');
 const { HttpsError } = require('firebase-functions/v2/https');

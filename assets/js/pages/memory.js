@@ -1,4 +1,4 @@
-// memory.js — 스피드 기억력 게임 (4×6, 20회 오답 게임오버, 2초 타이머)
+﻿// memory.js — 스피드 기억력 게임 (4×6, 20회 오답 게임오버, 2초 타이머)
 import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { esc } from '/assets/js/esc.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';

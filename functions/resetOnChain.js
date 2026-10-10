@@ -1,4 +1,4 @@
-/**
+﻿/**
  * resetOnChain.js
  * 모든 사용자의 onChain 필드를 초기화한다.
  * → 다음 접속 시 신규 jumpPlatform 컨트랙트에 재등록 유도

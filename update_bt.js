@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 // 1. Update merchant-qr.html
 let html = fs.readFileSync('merchant-qr.html', 'utf8');

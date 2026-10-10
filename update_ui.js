@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 let headerCode = fs.readFileSync('partials/header.html', 'utf8');
 headerCode = headerCode.replace('🗺️ 지도(Map)', '가맹점');

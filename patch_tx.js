@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let content = fs.readFileSync('functions/handlers/transaction.js', 'utf8');
 
 // Remove existing module.exports block

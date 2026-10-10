@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let lines = fs.readFileSync('functions/index.js', 'utf8').split('\n');
 
 const i = lines.findIndex(l => l.includes('exports.adminSetMerchantFee = onCall('));

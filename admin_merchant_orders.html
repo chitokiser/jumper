@@ -1,0 +1,45 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>가맹점 주문 관리 (BestERP) - BestClub</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+
+  <script src="/assets/js/partials.js" defer></script>
+  <link rel="manifest" href="/manifest.json">
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1 class="title">가맹점 주문 관리 (BestERP)</h1>
+        <div>
+          <button id="btnRefresh" class="btn">🔄 새로고침</button>
+        </div>
+      </div>
+      
+      <div id="adminMerchantRow" style="display:none; margin:16px 0;">
+        <label><div class="muted" style="color:#ef4444;font-weight:bold;">가맹점 선택 (수퍼관리자 전용)</div>
+          <select id="pMerchantId" class="input" style="width:100%; border:1px solid #ef4444; padding:8px; background:#fff5f5;">
+            <option value="">= 조회 중... =</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="orderState" class="hint">주문 내역을 불러오는 중...</div>
+      
+      <!-- 주문 리스트 출력 영역 -->
+      <div id="orderList" style="display:grid; gap:16px; margin-top:20px;"></div>
+    </section>
+  </main>
+  
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/pages/admin_merchant_orders.js"></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-// merchants.dungeon.map.js — 던전 맵 그리드 + A* 경로탐색
+﻿// merchants.dungeon.map.js — 던전 맵 그리드 + A* 경로탐색
 
 export const WORLD_W  = 500;
 export const WORLD_H  = 500;

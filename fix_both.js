@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 // 1. Fix transaction.js merchant deposit bug
 let txjs = fs.readFileSync('functions/handlers/transaction.js', 'utf8');

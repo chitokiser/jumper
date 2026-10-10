@@ -1,4 +1,4 @@
-// functions/handlers/tonPayment.js
+﻿// functions/handlers/tonPayment.js
 // TON 네트워크 연동 — 입금 감지 자동처리 + TON 자동 송금
 // @ton/ton 패키지는 무겁기 때문에 지연 로딩 (배포 타임아웃 방지)
 

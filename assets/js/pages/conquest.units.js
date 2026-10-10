@@ -1,4 +1,4 @@
-// conquest.units.js — 유닛 정의 · 스프라이트 · AI (도로 경로 이동)
+﻿// conquest.units.js — 유닛 정의 · 스프라이트 · AI (도로 경로 이동)
 import { getMonsterPath, snapToRoad, CX, CY } from './conquest.path.js';
 const B = '/assets/images';
 

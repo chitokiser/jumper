@@ -1,4 +1,4 @@
-// /assets/js/pages/town_home.i18n.js
+﻿// /assets/js/pages/town_home.i18n.js
 const TRANSLATIONS = {
   vi: {
     page_title: 'Công viên Đại dương - Nơi bắt đầu cuộc phiêu lưu',

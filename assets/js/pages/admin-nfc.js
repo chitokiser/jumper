@@ -1,4 +1,4 @@
-// /assets/js/pages/admin-nfc.js
+﻿// /assets/js/pages/admin-nfc.js
 // NFC 보물 태그 관리자 페이지
 
 import { auth, db, functions } from '../firebase-init.js';

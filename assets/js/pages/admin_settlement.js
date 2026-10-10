@@ -1,4 +1,4 @@
-// /assets/js/pages/admin_settlement.js
+﻿// /assets/js/pages/admin_settlement.js
 // 관리자용 가맹점 매출 현황
 // - orders.status: confirmed | paid | settled 주문을 가맹점(guideUid/ownerUid)별로 집계
 // - settlements 컬렉션 불사용 (락 기능 제거)

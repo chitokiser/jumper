@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 // starsPayment.js — Telegram Stars 결제 처리 및 상품 지급
 
 const admin = require('firebase-admin');

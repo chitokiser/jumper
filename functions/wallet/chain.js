@@ -1,4 +1,4 @@
-// functions/wallet/chain.js
+﻿// functions/wallet/chain.js
 // ethers.js v6 – opBNB RPC 연결 + jumpPlatform / Point 컨트랙트 핼퍼
 
 'use strict';

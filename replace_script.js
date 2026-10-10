@@ -1,4 +1,4 @@
-const { readdirSync, lstatSync, readFileSync, writeFileSync } = require('fs');
+﻿const { readdirSync, lstatSync, readFileSync, writeFileSync } = require('fs');
 const { join, extname } = require('path');
 
 const directory = 'c:\\Users\\Asus\\Desktop\\project\\jumper\\jumper_v10';

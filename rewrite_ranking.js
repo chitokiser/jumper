@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let html = fs.readFileSync('index.html', 'utf8');
 
 const rankingRegex = /<h2 class="section-title" data-i18n="sec_ranking">[\s\S]*?<!-- ── 인기 가맹점\/아이템 ── -->/i;

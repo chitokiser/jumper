@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const content = fs.readFileSync('index.js', 'utf8');
 
 const regexes = [

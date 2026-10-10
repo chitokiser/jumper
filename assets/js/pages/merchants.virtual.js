@@ -1,4 +1,4 @@
-// merchants.virtual.js — Virtual Explore Mode
+﻿// merchants.virtual.js — Virtual Explore Mode
 // GPS OFF 상태에서 상점 워프 → 실제 플레이어 마커를 목표 위치로 이동
 // 이후 ▶(플레이) 버튼으로 게임 서버 연결 → 워프 위치 기준 탐험·몬스터 사냥
 

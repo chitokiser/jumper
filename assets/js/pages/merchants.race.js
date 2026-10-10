@@ -1,4 +1,4 @@
-// /assets/js/pages/merchants.race.js
+﻿// /assets/js/pages/merchants.race.js
 // 몬스터 레이스 베팅 미니게임
 
 // baseSpd는 trait 보너스를 포함한 평균속도가 1.00이 되도록 역산해 정규화:

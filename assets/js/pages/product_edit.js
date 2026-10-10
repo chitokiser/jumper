@@ -1,4 +1,4 @@
-// /assets/js/pages/product_edit.js
+﻿// /assets/js/pages/product_edit.js
 // 상품 수정: 20장 이미지 + 포함/불포함/준비물(배열 저장) 통합
 
 import { db, onAuthReady } from "../auth.js";

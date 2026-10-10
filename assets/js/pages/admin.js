@@ -1,4 +1,4 @@
-// /assets/js/pages/admin.js
+﻿// /assets/js/pages/admin.js
 import { onAuthReady } from "../auth.js";
 import { isAdmin } from "../roles.js";
 import { approveGuide, rejectGuide } from "../admin-approve.js";

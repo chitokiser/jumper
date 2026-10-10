@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const admin = require('firebase-admin');
 const { FieldValue } = require('firebase-admin/firestore');

@@ -1,4 +1,4 @@
-// assets/js/pages/merchants.goldmine.miners.js
+﻿// assets/js/pages/merchants.goldmine.miners.js
 // Zombie Villager miners: walk shop→mine, slash at mine, walk back — repeat
 
 const WALK_FRAMES  = 24;

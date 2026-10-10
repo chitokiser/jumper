@@ -1,4 +1,4 @@
-// /assets/js/pages/guide_settlement.js
+﻿// /assets/js/pages/guide_settlement.js
 // 가이드 정산
 // - 미락: orders에서 해당 월( settlementMonth ) confirmed 주문으로 미리보기
 // - 락: settlements/{ym} + settlements/{ym}/guides/{uid} 스냅샷 표시

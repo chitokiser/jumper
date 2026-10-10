@@ -1,4 +1,4 @@
-// /assets/js/pages/index.lib.js
+﻿// /assets/js/pages/index.lib.js
 // (중요) index 페이지 렌더/로딩 공통 유틸
 
 export function esc(s) {

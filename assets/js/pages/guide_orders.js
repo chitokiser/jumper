@@ -1,4 +1,4 @@
-// /assets/js/pages/guide_orders.js
+﻿// /assets/js/pages/guide_orders.js
 // 가이드 주문관리 (임시 결제완료 패치)
 // - 기존 설계: admin 결제확인(confirmed) 시 guideOrders/{guideUid}/orders 로 미러링 후 가이드가 그 컬렉션을 조회
 // - 문제: 현재 firestore.rules에는 guideOrders 규칙이 없어(기본 deny) 미러링/조회가 모두 실패합니다.

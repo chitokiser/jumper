@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let html = fs.readFileSync('index.html', 'utf8');
 
 const heroContentRegex = /<div class="town-hero-inner hero-content">[\s\S]*?<\/div>\s*<style>/i;

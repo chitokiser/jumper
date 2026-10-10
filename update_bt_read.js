@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let code = fs.readFileSync('assets/js/pages/merchant-qr.js', 'utf8');
 
 const regex = /onSnapshot\(doc\(db, "users", mOwner\), \(snap\) => \{[\s\S]*?qrMerchantBtBal[\s\S]*?\}\);/;

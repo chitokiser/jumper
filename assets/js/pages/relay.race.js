@@ -1,4 +1,4 @@
-// relay.race.js — 릴레이 레이스 물리 · AI · 이벤트 시스템
+﻿// relay.race.js — 릴레이 레이스 물리 · AI · 이벤트 시스템
 
 export const LEGS      = 4;
 export const LEG_DIST  = 100;   // 한 선수 달리기 거리 (단위)

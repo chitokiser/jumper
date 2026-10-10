@@ -1,4 +1,4 @@
-// monsterrace.render.js — 카트라이더 렌더러 (이미지 스프라이트)
+﻿// monsterrace.render.js — 카트라이더 렌더러 (이미지 스프라이트)
 import { tickParticles, drawParticles } from './monsterrace.fx.js';
 
 export const SEGS       = 300;

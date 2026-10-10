@@ -1,4 +1,4 @@
-// /assets/js/pages/my_products.js
+﻿// /assets/js/pages/my_products.js
 import { db, onAuthReady } from "../auth.js";
 import { collection, query, where, getDocs } from "../firestore-bridge.js";
 

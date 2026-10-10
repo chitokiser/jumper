@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 let js = fs.readFileSync('assets/js/pages/admin_stats.js', 'utf8');
 

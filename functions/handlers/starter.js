@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // starter.js — 초보자 체험 패키지
 // 클라이언트가 로컬에서 생성 → 획득 결과만 서버 저장

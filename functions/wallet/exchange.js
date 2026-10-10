@@ -1,4 +1,4 @@
-// functions/wallet/exchange.js
+﻿// functions/wallet/exchange.js
 // KRW / USD / VND 환율 조회 + Point wei 변환
 // Primary: open.er-api.com (무료, 키 불필요)
 // Fallback: exchangerate.host

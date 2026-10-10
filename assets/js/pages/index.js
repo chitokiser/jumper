@@ -1,4 +1,4 @@
-// /assets/js/pages/index.js
+﻿// /assets/js/pages/index.js
 // 홈(공개 상품): published items 로드 + KPI/랭킹/리더보드 렌더
 // 중요: Firestore 복합 인덱스 없이 동작하도록 orderBy 제거, 프론트에서 정렬
 // NOTE: 리뷰/별점의 SSOT는 top-level reviews 컬렉션입니다.

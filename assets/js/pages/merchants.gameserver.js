@@ -1,4 +1,4 @@
-// assets/js/pages/merchants.gameserver.js
+﻿// assets/js/pages/merchants.gameserver.js
 // game-server WebSocket 클라이언트
 //
 // 의존: Socket.io CDN — merchants.html에 아래 태그 필요

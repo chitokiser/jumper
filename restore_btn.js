@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const cheerio = require('cheerio');
 
 const html = fs.readFileSync('merchants.html', 'utf8');

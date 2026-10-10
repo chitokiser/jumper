@@ -1,4 +1,4 @@
-/**
+﻿/**
  * approveHex.js
  * 관리자 지갑으로 jumpPlatform 컨트랙트에 Point 무한 승인 (최초 1회)
  *

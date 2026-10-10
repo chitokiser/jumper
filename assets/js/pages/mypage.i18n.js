@@ -1,4 +1,4 @@
-// assets/js/pages/mypage.i18n.js
+﻿// assets/js/pages/mypage.i18n.js
 // ko / en / vi 다국어 지원
 
 'use strict';

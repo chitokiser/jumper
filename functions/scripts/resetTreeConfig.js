@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 // Run: node functions/scripts/resetTreeConfig.js
 // Resets Firestore system_config/money_tree to correct values (no extra zeros)
 

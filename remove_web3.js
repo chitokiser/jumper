@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let html = fs.readFileSync('mypage.html', 'utf8');
 
 html = html.replace(/온체인 결제/g, '인앱 자동 결제');

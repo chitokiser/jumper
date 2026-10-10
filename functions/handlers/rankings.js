@@ -1,4 +1,4 @@
-// functions/handlers/rankings.js
+﻿// functions/handlers/rankings.js
 'use strict';
 
 const admin = require('firebase-admin');

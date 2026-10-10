@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+﻿const admin = require('firebase-admin');
 
 // 서비스 어카운트 JSON을 불러와 강력한 인증으로 에러 100% 방지
 const serviceAccount = require('./service_account.json');

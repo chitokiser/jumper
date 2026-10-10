@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+﻿const admin = require('firebase-admin');
 var serviceAccount = require("./jumper-b15aa-firebase-adminsdk-h4wcb-6eaf43b171.json");
 
 if (!admin.apps.length) {

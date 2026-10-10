@@ -1,4 +1,4 @@
-// /assets/js/firestore-bridge.js
+﻿// /assets/js/firestore-bridge.js
 // Firestore 모듈 브릿지
 // - firebase-init.js는 app/auth/db의 단일 진실 원천(SSOT)
 // - pages/* 에서는 여기서 db + Firestore 함수들을 import 해서 사용

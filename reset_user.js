@@ -1,4 +1,4 @@
-/**
+﻿/**
  * reset_user.js
  * 특정 계정(hexdao722@gmail.com)을 완전 초기화 → 멘토 선택 회원가입 재테스트용
  *

@@ -1,4 +1,4 @@
-// assets/js/pages/merchants.player-sprite.js
+﻿// assets/js/pages/merchants.player-sprite.js
 // Spriter SCML skeletal animation for the player character on Google Maps
 
 const SCML_URL = '/assets/images/monsters/1/1.scml';

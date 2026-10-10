@@ -1,0 +1,53 @@
+﻿<!-- coop-mall.html: 조합 폐쇄몰 메인 페이지 (회원만 접근 가능) -->
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>회원 전용몰</title>
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/pages/products.css" />
+  <script src="/assets/js/partials.js" defer></script>
+  <link rel="manifest" href="/manifest.json">
+</head>
+
+<body>
+  <div id="siteHeader"></div>
+  <main class="page">
+    <section class="panel coop-mall-section">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1 class="title">가맹점 상품&amp;서비스 모음</h1>
+        <button id="btnShowCart" class="btn btn--primary" style="font-weight:bold;">🛒 장바구니 <span id="cartBadge"
+            style="background:#ef4444;border-radius:10px;padding:2px 8px;font-size:0.8rem;margin-left:4px;">0</span></button>
+      </div>
+      <div id="coopMallNotice" class="hint" style="display:none;"></div>
+      <div id="coopMallProducts" class="product-list"
+        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top:20px;">
+      </div>
+    </section>
+
+    <!-- 장바구니 모달 -->
+    <div id="cartModal" class="modal"
+      style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+      <div class="modal-content panel"
+        style="background:#fff; width:90%; max-width:500px; padding: 20px; max-height:80vh; overflow-y:auto; border-radius:8px;">
+        <h3 style="margin-top:0;">🛒 내 장바구니</h3>
+        <div id="cartList" style="display:grid;gap:12px;margin:16px 0;">장바구니가 비어 있습니다.</div>
+        <div
+          style="text-align:right; font-weight:bold; font-size:1.2rem; margin-bottom:16px; padding-top:16px; border-top:2px solid #eee;">
+          총 결제금액: <span id="cartTotal" style="color:#ef4444;">0</span> VND
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button type="button" class="btn btn--primary" id="btnCheckout">주문하기</button>
+          <button type="button" class="btn" id="btnCloseCart">닫기</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="siteFooter"></div>
+  <script type="module" src="/assets/js/pages/coop-mall.js"></script>
+</body>
+
+</html>

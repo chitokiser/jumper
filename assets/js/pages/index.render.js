@@ -1,4 +1,4 @@
-// /assets/js/pages/index.render.js
+﻿// /assets/js/pages/index.render.js
 import { $, n, fmt2 } from "./index.lib.js";
 import { matchSearch, sortItems, cardHTML, rankRowHTML, leadRowHTML, fmt1 } from "./index.lib.js";
 

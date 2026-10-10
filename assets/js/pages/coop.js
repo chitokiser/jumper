@@ -1,4 +1,4 @@
-// /assets/js/pages/coop.js
+﻿// /assets/js/pages/coop.js
 // 조합 전용몰 — CoopMall 스마트컨트랙트 기반
 
 import { auth, functions } from '../firebase-init.js';

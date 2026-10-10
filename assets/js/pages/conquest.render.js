@@ -1,4 +1,4 @@
-// conquest.render.js — 렌더링 (카메라·성·안개·유닛·POI·타워)
+﻿// conquest.render.js — 렌더링 (카메라·성·안개·유닛·POI·타워)
 import {
   worldToScreen, getScale, getVisibleRect, getRevealAnims,
   WX, WY,

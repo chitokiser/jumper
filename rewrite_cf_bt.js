@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 let index = fs.readFileSync('functions/index.js', 'utf8');
 

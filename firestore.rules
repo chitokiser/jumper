@@ -1,4 +1,4 @@
-﻿// /firestore.rules
+// /firestore.rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -313,7 +313,8 @@ service cloud.firestore {
     // merchants (merchants/{merchantId})
     match /merchants/{merchantId} {
       allow get, list: if true;
-      allow create, delete: if false; // Cloud Functions only
+      allow create: if request.auth != null;
+      allow delete: if false; // Cloud Functions only
       allow update: if isAdmin()
         || (signedIn()
             && resource.data.ownerUid is string
@@ -876,9 +877,49 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
-  }
-}
+  
+    // ====== MULTI-TENANT RESTAURANT SAAS RULES ======
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.email == 'daguri75@gmail.com';
+    }
 
+    function belongsToTenant(tenantId) {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        getUserData().tenant_id == tenantId ||
+        getUserData().merchantId == tenantId ||
+        request.auth.uid == tenantId
+      );
+    }
 
+    match /stores/{storeId} {
+      allow read: if true; 
+      allow write: if belongsToTenant(storeId);
+    }
 
+    match /menus/{menuId} {
+      allow read: if true; 
+      allow update, delete: if belongsToTenant(resource.data.tenantId);
+      allow create: if belongsToTenant(request.resource.data.tenantId);
+    }
 
+    match /orders/{orderId} {
+      allow read: if isSuperAdmin() || (isAuthenticated() && (resource.data.userId == request.auth.uid || belongsToTenant(resource.data.tenantId)));
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if belongsToTenant(resource.data.tenantId);
+      allow delete: if isSuperAdmin();
+    }
+      // --- 상품 연동 (BestERP/홈페이지) 컬렉션 ---
+      match /merchant_products/{productId} {
+        allow read: if true;
+        allow create: if isAdmin() || isAuthenticated();
+        allow update, delete: if isAdmin() || isAuthenticated();
+      }
+
+      match /merchant_orders/{orderId} {
+        allow read: if isAdmin() || isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update, delete: if isAdmin() || isAuthenticated();
+      }
+  } // End of match /databases/{database}/documents
+} // End of service cloud.firestore

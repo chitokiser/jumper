@@ -1,4 +1,4 @@
-// /assets/js/pages/merchants.memory.js
+﻿// /assets/js/pages/merchants.memory.js
 // 기억력 게임 (Memory Match) — merchants.js에서 initMemoryGame()으로 초기화
 'use strict';
 

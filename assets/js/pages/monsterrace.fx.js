@@ -1,4 +1,4 @@
-// monsterrace.fx.js — 파티클 이펙트 (스파크 / 드리프트 스모크)
+﻿// monsterrace.fx.js — 파티클 이펙트 (스파크 / 드리프트 스모크)
 const _pts = [];
 
 export function addSparks(trackPos, lane, impact) {

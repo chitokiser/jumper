@@ -1,4 +1,4 @@
-// functions/handlers/coop.js
+﻿// functions/handlers/coop.js
 // 조합전용몰 — 접근 확인 / 상품 목록 / 구매 / 관리자 설정
 
 'use strict';

@@ -1,4 +1,4 @@
-// functions/handlers/shop.js
+﻿// functions/handlers/shop.js
 // 게임 내 상점 시스템 (소유/공격/점령/레벨업/양도)
 'use strict';
 

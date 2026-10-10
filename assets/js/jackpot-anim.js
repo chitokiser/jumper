@@ -1,4 +1,4 @@
-// /assets/js/jackpot-anim.js
+﻿// /assets/js/jackpot-anim.js
 // 잭팟 슬롯머신 애니메이션 공유 모듈
 
 function pad(n) {

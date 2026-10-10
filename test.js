@@ -1,1 +1,1 @@
-const fs = require('fs'); const lines = fs.readFileSync('merchants.html', 'utf8').split('\n'); lines.forEach((l, i) => { if (/°ÔÀÓ.?Çãºê|¿ÂÃ¼ÀÎ|USDT|TON|Áö°©/i.test(l)) { console.log(i+1 + ': ' + l.trim()); } });
+ï»¿const fs = require('fs'); const lines = fs.readFileSync('merchants.html', 'utf8').split('\n'); lines.forEach((l, i) => { if (/ï¿½ï¿½ï¿½ï¿½.?ï¿½ï¿½ï¿½|ï¿½ï¿½Ã¼ï¿½ï¿½|USDT|TON|ï¿½ï¿½ï¿½ï¿½/i.test(l)) { console.log(i+1 + ': ' + l.trim()); } });

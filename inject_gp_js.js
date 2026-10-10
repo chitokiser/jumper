@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const cheerio = require('cheerio');
 
 let js = fs.readFileSync('assets/js/pages/mypage.js', 'utf8');

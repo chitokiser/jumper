@@ -1,4 +1,4 @@
-// monsterrace.js — Monster Skate Race 게임 로직
+﻿// monsterrace.js — Monster Skate Race 게임 로직
 import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { esc } from '/assets/js/esc.js';
 import { addSparks, addSmoke, resetParticles } from './monsterrace.fx.js';

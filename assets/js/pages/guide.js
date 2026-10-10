@@ -1,4 +1,4 @@
-// /assets/js/pages/guide.js
+﻿// /assets/js/pages/guide.js
 import { db } from "../auth.js";
 import { onAuthReady, login } from "../auth.js";
 import { doc, getDoc, setDoc, serverTimestamp } from "../firestore-bridge.js";

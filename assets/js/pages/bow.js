@@ -1,4 +1,4 @@
-// bow.js — 활쏘기 몬스터 사냥 미니게임
+﻿// bow.js — 활쏘기 몬스터 사냥 미니게임
 import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { esc } from '/assets/js/esc.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';

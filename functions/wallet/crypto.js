@@ -1,4 +1,4 @@
-// functions/wallet/crypto.js
+﻿// functions/wallet/crypto.js
 // AES-256-GCM 암호화/복호화 – 수탁 지갑 private key 보호용
 // Firebase Secret Manager에 저장된 WALLET_MASTER_SECRET을 키 소재로 사용
 

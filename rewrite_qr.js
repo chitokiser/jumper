@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let lines = fs.readFileSync('assets/js/pages/merchant-qr.js', 'utf8').split('\n');
 const s = lines.findIndex(l => l.includes('onSnapshot(merchantRef, (snap) => {'));
 if (s > -1) {

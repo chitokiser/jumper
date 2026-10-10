@@ -1,4 +1,4 @@
-// /assets/js/admin_shops.js
+﻿// /assets/js/admin_shops.js
 // 관리자 게임 패널 — 상점 관리 탭
 'use strict';
 

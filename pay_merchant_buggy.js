@@ -1,4 +1,4 @@
-
+﻿
 /**
  * payMerchantHexOnChain
  * 유저 수탁 지갑의 Point로 jumpPlatform.payMerchantHex() 호출
@@ -202,4 +202,4 @@ async function payMerchantFirebase(uid, merchantId, amountKrw, { currency = 'KRW
     }
 
     // 6. 잭팟 업데이트
-    if (jackpotBonusVnd > 0) {
+    if (jackpotBonusVnd > 0) {

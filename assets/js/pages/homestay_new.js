@@ -1,4 +1,4 @@
-// /assets/js/pages/homestay_new.js
+﻿// /assets/js/pages/homestay_new.js
 // homestay_new.html에서 홈스테이 기본값 세팅(기존 product_new.js 재사용)
 
 function setValue(id, value) {

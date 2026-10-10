@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 // npcSystem.js — 가상 유저 50명 이벤트 브로드캐스터 (17±3분 랜덤 주기)
 
 const admin = require('firebase-admin');

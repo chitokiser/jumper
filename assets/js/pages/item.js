@@ -1,4 +1,4 @@
-// /assets/js/pages/item.js
+﻿// /assets/js/pages/item.js
 import { onAuthReady } from "../auth.js";
 import { auth, db, functions } from "/assets/js/firebase-init.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";

@@ -1,4 +1,4 @@
-// relay.sound.js — 이어달리기 전용 Web Audio 사운드 시스템
+﻿// relay.sound.js — 이어달리기 전용 Web Audio 사운드 시스템
 
 let _ac = null;
 

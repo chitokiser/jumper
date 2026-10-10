@@ -1,4 +1,4 @@
-// /assets/js/pages/homestay.rooms.js
+﻿// /assets/js/pages/homestay.rooms.js
 // 객실 사진관: 메인 1장 + 썸네일 여러 장 + 썸네일 여러 장씩 넘김
 
 const $ = (id) => document.getElementById(id);

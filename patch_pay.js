@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const file = 'assets/js/pages/pay.js';
 let content = fs.readFileSync(file, 'utf8');
 

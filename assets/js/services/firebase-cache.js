@@ -1,4 +1,4 @@
-// /assets/js/services/firebase-cache.js
+﻿// /assets/js/services/firebase-cache.js
 // 세션 내 Firestore 중복 읽기를 방지하는 TTL 캐시
 
 const _cache = new Map();

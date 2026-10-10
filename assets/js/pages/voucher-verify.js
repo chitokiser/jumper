@@ -1,4 +1,4 @@
-// /assets/js/pages/voucher-verify.js
+﻿// /assets/js/pages/voucher-verify.js
 // 바우처 QR 확인 페이지 — 판매자 사용 확인 + 정산 안내
 
 import { esc } from '/assets/js/esc.js';

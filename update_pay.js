@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let payCode = fs.readFileSync('assets/js/pages/pay.js', 'utf8');
 
 const regex = /try\s*\{\s*const topArr = document\.querySelectorAll\('.info-header span, \.head-coins span'\);.*?catch\(e\)\{\}\s*\/\/\s*완료 패널 표시/;

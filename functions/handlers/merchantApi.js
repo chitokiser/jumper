@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const express = require('express');
 const cors = require('cors');
@@ -97,69 +97,6 @@ apiApp.get('/v1/members', async (req, res) => {
     } catch (err) {
         console.error(err);
         return res.status(500).json({ success: false, error: '회원 DB 조회 중 오류가 발생했습니다.' });
-    }
-});
-
-// ────────────────────────────────────────────────────────
-// 3. [해당 가맹점 관련 웹진(기사) 조회 API]
-// ────────────────────────────────────────────────────────
-apiApp.get('/v1/webzines', async (req, res) => {
-    try {
-        const limitCount = parseInt(req.query.limit) || 20;
-
-        const snap = await req.db.collection('kca_webzine')
-            .where('merchantId', '==', req.merchantId)
-            .orderBy('createdAt', 'desc')
-            .limit(limitCount)
-            .get();
-
-        const webzines = [];
-        snap.forEach(doc => {
-            const d = doc.data();
-
-            // 이미지 추출 로직 (본 예시에서는 프론트와 유사하게 keyword 또는 배열 방식 적용)
-            let hashSeed = 0;
-            for (let i = 0; i < doc.id.length; i++) {
-                hashSeed = Math.imul(31, hashSeed) + doc.id.charCodeAt(i) | 0;
-            }
-            const uniqueSeed = Math.abs(hashSeed);
-
-            let defaultImageUrl;
-            if (d.heroImageKeyword) {
-                defaultImageUrl = `https://loremflickr.com/800/600/${encodeURIComponent(d.heroImageKeyword)}?lock=${uniqueSeed}`;
-            } else {
-                const backupKeywords = ['korea', 'seoul', 'koreanfood', 'bibimbap', 'kimchi', 'koreanbbq'];
-                const selectedKeyword = backupKeywords[uniqueSeed % backupKeywords.length];
-                defaultImageUrl = `https://loremflickr.com/800/600/${selectedKeyword}?lock=${uniqueSeed}`;
-            }
-
-            // 본문 요약
-            const plainText = (d.webzineBody || d.webzineContent || '').replace(/<[^>]+>/g, '');
-            const excerpt = plainText.substring(0, 150) + (plainText.length > 150 ? '...' : '');
-
-            webzines.push({
-                webzineId: doc.id,
-                title: d.webzineTitle,
-                excerpt: excerpt,
-                thumbnailUrl: defaultImageUrl,
-                viewCount: d.viewCount || 0,
-                likeCount: d.likeCount || 0,
-                shareCount: d.shareCount || 0,
-                readUrl: `https://bestclubvn.netlify.app/kca_webzine.html?id=${doc.id}`, // BestClub 브랜딩 포함 소비자기준 URL
-                whitelabelUrl: `https://bestclubvn.netlify.app/kca_webzine.html?id=${doc.id}&whitelabel=true`, // Platform 로고 및 포인트 지급 문구를 완전히 숨긴 가맹점 자체용 URL
-                publishedAt: d.createdAt ? d.createdAt.toDate().toISOString() : null
-            });
-        });
-
-        return res.json({
-            success: true,
-            merchantId: req.merchantId,
-            webzineCount: webzines.length,
-            webzines: webzines
-        });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ success: false, error: '웹진 조회 중 오류가 발생했습니다.' });
     }
 });
 

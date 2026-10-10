@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 // dailyArea.js — 유저 첫 입장 위치 기준 보물박스 15 + 몬스터 15 (24h 리셋)
 
 const admin = require('firebase-admin');

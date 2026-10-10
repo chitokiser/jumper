@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let file = fs.readFileSync('index.js', 'utf8');
 
 // Strip out the corrupted buildWebzineContent attempts

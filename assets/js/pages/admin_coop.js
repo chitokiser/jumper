@@ -1,4 +1,4 @@
-// /assets/js/pages/admin_coop.js
+﻿// /assets/js/pages/admin_coop.js
 // 조합전용몰 관리자 페이지
 
 import { auth, db, functions } from '../firebase-init.js';

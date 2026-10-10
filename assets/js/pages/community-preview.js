@@ -1,4 +1,4 @@
-// /assets/js/pages/community-preview.js
+﻿// /assets/js/pages/community-preview.js
 // index.html 소셜 커뮤니티 미리보기 (최대 4개)
 
 import { getApps, initializeApp }
@@ -54,7 +54,7 @@ function buildCard(d) {
   const status = getStatus(d);
   const card = document.createElement('a');
   card.className = 'comm-preview-card';
-  card.href = '/community.html';
+  card.href = '/events.html';
 
   // 썸네일
   if (d.photoUrl) {

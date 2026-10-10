@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 const mypage = fs.readFileSync('mypage.html', 'utf8');
 const lines = mypage.split('\n');

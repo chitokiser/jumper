@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
 // 1. Fix town_home.js (jackpotAccPoints -> jackpotAccVnd)

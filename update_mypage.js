@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let html = fs.readFileSync('mypage.html', 'utf8');
 
 const regex = /<div class="mp-kv" id="paymentBalanceRow"[\s\S]*?<div id="redeemPointsResult" class="mp-result-box"/m;

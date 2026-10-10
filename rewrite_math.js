@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let text = fs.readFileSync('functions/handlers/transaction.js', 'utf8');
 const startMatch = 'async function payMerchantFirebase(uid, merchantId, amountKrw, { currency';
 const endMatch = 'return result;\n}';

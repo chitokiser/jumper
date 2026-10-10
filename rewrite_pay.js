@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let c = fs.readFileSync('assets/js/pages/pay.js', 'utf8');
 c = c.replace(/show\("payPanel", false\);\s*show\("donePanel", true\);/,
     'show("payPanel", false);\n      show("donePanel", true);\n      watchJackpotResult(d.txHash);');

@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 const files = ['merchants.html', 'merchants.js', 'merchants.battle.js'];
 

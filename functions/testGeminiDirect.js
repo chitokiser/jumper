@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 async function check() {
     const envText = fs.readFileSync('.env', 'utf8');

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * reset_members.js
  * Firebase CLI 인증(Application Default Credentials) 사용 - service-account.json 불필요
  * 실행: node reset_members.js

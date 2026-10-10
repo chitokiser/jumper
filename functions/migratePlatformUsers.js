@@ -1,4 +1,4 @@
-/**
+﻿/**
  * migratePlatformUsers.js
  * 기존 사용자들을 신규 jumpPlatform 컨트랙트에 일괄 재등록한다.
  *

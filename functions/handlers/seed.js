@@ -1,4 +1,4 @@
-// functions/handlers/seed.js
+﻿// functions/handlers/seed.js
 // 관리자 전용 — 각종 랭킹 더미 데이터 100개 삽입
 'use strict';
 

@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let payjs = fs.readFileSync('assets/js/pages/pay.js', 'utf8');
 
 // Replace VND variables with KRW

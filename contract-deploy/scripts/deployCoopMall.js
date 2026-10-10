@@ -1,4 +1,4 @@
-// scripts/deployCoopMall.js
+﻿// scripts/deployCoopMall.js
 // CoopMall v4 — opBNB Mainnet 배포
 
 const { ethers } = require('hardhat');

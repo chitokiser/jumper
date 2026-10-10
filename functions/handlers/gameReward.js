@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 // gameReward.js — 게임 GP 보상/참가비 서버사이드 처리 (클라이언트 신뢰 불가)
 const admin = require('firebase-admin');
 const db    = admin.firestore();

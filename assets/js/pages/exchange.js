@@ -1,4 +1,4 @@
-// /assets/js/pages/exchange.js
+﻿// /assets/js/pages/exchange.js
 // 포인트 거래소 — Point↔JUMP 거래 + 차트 (스왑 추가분은 exchange.swap.js)
 
 import { auth, functions } from '../firebase-init.js';

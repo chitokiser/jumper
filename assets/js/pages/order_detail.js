@@ -1,4 +1,4 @@
-// /assets/js/pages/order_detail.js
+﻿// /assets/js/pages/order_detail.js
 // 주문 상세 + 결제/증빙 제출
 // - 구매자 또는 관리자만 조회 가능
 // - 구매자는 결제증빙 관련 필드만 업데이트(권한 충돌 방지)

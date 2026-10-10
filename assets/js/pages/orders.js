@@ -1,4 +1,4 @@
-// /assets/js/pages/orders.js
+﻿// /assets/js/pages/orders.js
 // NOTE: Firestore 복합 인덱스 없이 동작하도록 where + orderBy 조합을 제거했습니다.
 //       정렬은 클라이언트에서 createdAt 기준으로 처리합니다.
 

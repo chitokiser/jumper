@@ -1,4 +1,4 @@
-// /assets/js/pages/mypage.js
+﻿// /assets/js/pages/mypage.js
 // MyPage: profile / wallet / on-chain status / deposit & payment history
 
 import { _t, initLang, renderLangSwitcher } from './mypage.i18n.js';

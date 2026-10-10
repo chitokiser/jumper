@@ -1,4 +1,4 @@
-// functions/index.js
+﻿// functions/index.js
 // Firebase Cloud Functions 진입점 – 수탁형 지갑 + 기존 리뷰 집계
 //
 // ──────────────────────────────────────────────────────
@@ -312,7 +312,7 @@ exports.plantBulkSeedlings = onCall(
 //    mentorAddress 필수 — 없으면 에러
 // ════════════════════════════════════════════════════════════════════════════
 exports.registerMember = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const mentorAddress = request.data?.mentorAddress ?? null;
@@ -451,7 +451,7 @@ exports.listPendingDeposits = onCall(
 //    클라이언트: httpsCallable(functions, 'requestLevelUp')()
 // ════════════════════════════════════════════════════════════════════════════
 exports.requestLevelUp = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const result = await txH.requestLevelUp(uid, walletSecret.value());
@@ -465,7 +465,7 @@ exports.requestLevelUp = onCall(
 //    클라이언트: httpsCallable(functions, 'buyProduct')({ productId: 1 })
 // ════════════════════════════════════════════════════════════════════════════
 exports.buyProduct = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const productId = request.data?.productId;
@@ -482,7 +482,7 @@ exports.buyProduct = onCall(
 //     { amountWei: 'all' } 이면 전액 인출
 // ════════════════════════════════════════════════════════════════════════════
 exports.withdraw = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const amountWei = request.data?.amountWei ?? 'all';
@@ -588,7 +588,7 @@ exports.redeemPoints = onCall(
 //     클라이언트: httpsCallable(functions, 'registerMerchant')({ name, description, phone, kakaoId, region, career })
 // ════════════════════════════════════════════════════════════════════════════
 exports.registerMerchant = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const { name, description, phone, kakaoId, region, career, gmap } = request.data ?? {};
@@ -889,7 +889,7 @@ exports.getJumpBankStatus = onCall(
 
 // JUMP 구매 (Point → JUMP)
 exports.buyJumpToken = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const jumpAmount = request.data?.jumpAmount;
@@ -902,7 +902,7 @@ exports.buyJumpToken = onCall(
 
 // JUMP 판매 (JUMP → Point)
 exports.sellJumpToken = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const jumpAmount = request.data?.jumpAmount;
@@ -915,7 +915,7 @@ exports.sellJumpToken = onCall(
 
 // JUMP 스테이킹
 exports.stakeJumpToken = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const jumpAmount = request.data?.jumpAmount;
@@ -928,7 +928,7 @@ exports.stakeJumpToken = onCall(
 
 // JUMP 언스테이킹 (120일 락)
 exports.unstakeJumpToken = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const result = await exchangeH.unstakeJumpToken(uid, walletSecret.value());
@@ -939,7 +939,7 @@ exports.unstakeJumpToken = onCall(
 
 // 배당 청구 (Point 수령)
 exports.claimJumpDividend = onCall(
-  { secrets: [walletSecret] },
+  { secrets: [walletSecret], cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const result = await exchangeH.claimJumpDividend(uid, walletSecret.value());
@@ -3357,3 +3357,38 @@ exports.tempIssueKey = onRequest({ cors: true }, async (req, res) => {
     res.status(500).send("에러: " + err.message);
   }
 });
+
+
+// ????????????????????????????????????????????????????????????????????????????
+// BestClubVN ���� �÷��� ���� API (BestERP & ���ѱ�ġ ������ REST API)
+// ????????????????????????????????????????????????????????????????????????????
+const commonApiH = require('./handlers/commonApi');
+const productApiH = require('./handlers/merchantProductApi');
+const orderApiH = require('./handlers/merchantOrderApi');
+exports.integrationApi = onRequest(
+  { secrets: [extApiSecret], cors: true }, 
+  async (req, res) => {
+    if (extApiSecret.value()) {
+      process.env.PARTNER_API_KEY = extApiSecret.value();
+    }
+    const path = req.path;
+    if (req.method === 'GET' && path.match(/^\/v1\/members/)) {
+      return commonApiH.getMember(req, res);
+    }
+    if (req.method === 'POST' && path.match(/^\/v1\/points\/transaction/)) {
+      return commonApiH.handleTransaction(req, res);
+    }
+    // Products API
+      let match;
+      if (req.method === 'POST' && path === '/v1/products') return productApiH.createProduct(req, res);
+      if (req.method === 'PATCH' && (match = path.match(/^\/v1\/products\/([^\/]+)$/))) return productApiH.updateProduct(req, res, match[1]);
+      if (req.method === 'POST' && (match = path.match(/^\/v1\/products\/([^\/]+)\/publish$/))) return productApiH.publishProduct(req, res, match[1]);
+      if (req.method === 'GET' && (match = path.match(/^\/v1\/storefronts\/([^\/]+)\/products$/))) return productApiH.getStorefrontProducts(req, res, match[1]);
+      if (req.method === 'GET' && (match = path.match(/^\/v1\/products\/([^\/]+)$/))) return productApiH.getProductDetail(req, res, match[1]);
+      
+      // Orders API
+      if (req.method === 'POST' && path === '/v1/orders') return orderApiH.createOrder(req, res);
+      
+      return res.status(404).json({ success: false, error: 'Endpoint not found' });
+  }
+);

@@ -1,4 +1,4 @@
-// relay.render.js — 이어달리기 렌더링 v2 (대형 트랙·원근·불꽃·바통)
+﻿// relay.render.js — 이어달리기 렌더링 v2 (대형 트랙·원근·불꽃·바통)
 import { LEG_DIST, LEGS } from './relay.race.js';
 
 export const CW = 360, CH = 380;

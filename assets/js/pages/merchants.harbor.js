@@ -1,4 +1,4 @@
-// assets/js/pages/merchants.harbor.js
+﻿// assets/js/pages/merchants.harbor.js
 // Harbor + Trade Ship system — map markers, modals, CF calls
 
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';

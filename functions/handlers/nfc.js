@@ -1,4 +1,4 @@
-// functions/handlers/nfc.js
+﻿// functions/handlers/nfc.js
 // NFC 보물 태그 시스템
 'use strict';
 

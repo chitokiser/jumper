@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 // 1. Fix header.html
 let header = fs.readFileSync('partials/header.html', 'utf8');

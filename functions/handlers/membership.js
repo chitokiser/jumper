@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const expH = require('./exp');
 const admin = require('firebase-admin');
 const db    = admin.firestore();

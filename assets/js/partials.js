@@ -36,7 +36,7 @@ const _HDR_T = {
     hdr_kculture: 'K-CULTURE', hdr_food: '🍲 푸드', hdr_life: '🛍️ 라이프', hdr_beauty: '💅 뷰티/의료', hdr_travel: '✈️ 여행/숙박', hdr_experience: '🎭 체험/로컬',
     hdr_merchants: '가맹점 찾기', hdr_events: '진행중 이벤트', hdr_community: '거주민 커뮤니티',
     hdr_signup: '회원가입', hdr_my_services: '내 서비스', hdr_wallet: '내지갑',
-    hdr_exchange: '포인트 거래소', hdr_used: '중고거래', hdr_mall: '회원전용몰', hdr_play: '🎮 게임하기',
+    hdr_exchange: '포인트 거래소', hdr_used: '중고거래', hdr_mall: '가맹점상품&서비스모음', hdr_play: '🎮 게임하기',
     hdr_orders: '내 주문', hdr_sales: '판매센터',
     hdr_merchant_reg: '가맹점 등록', hdr_homestay_new: '홈스테이 신규생성',
     hdr_product_add: '상품 추가', hdr_my_products: '내 상품관리',

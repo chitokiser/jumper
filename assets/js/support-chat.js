@@ -1,4 +1,4 @@
-// /assets/js/support-chat.js
+﻿// /assets/js/support-chat.js
 import { watchAuth } from "/assets/js/auth.js";
 import {
   collection, doc, addDoc, onSnapshot, orderBy, query,

@@ -1,4 +1,4 @@
-// /assets/js/pages/admin_orders.js
+﻿// /assets/js/pages/admin_orders.js
 // 관리자 주문관리
 // 임시 결제완료(=결제확인) 처리 패치
 // 흐름

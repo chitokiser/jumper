@@ -1,4 +1,4 @@
-// /assets/js/pages/merchant-qr.js
+﻿// /assets/js/pages/merchant-qr.js
 // 가맹점QR 코드 ?�성 ?�이지
 
 import { onAuthReady } from "../auth.js";

@@ -1,4 +1,4 @@
-// functions/handlers/tonExchange.js
+﻿// functions/handlers/tonExchange.js
 // TON ↔ GameCoin 교환 처리 (자동 출금)
 // 입금: TON → 관리자 지갑 → TonCenter TX 검증 → DB GameCoin 적립
 // 출금: GameCoin ≥ 10,000 → 자동 TON 송금 (@ton/ton SDK)

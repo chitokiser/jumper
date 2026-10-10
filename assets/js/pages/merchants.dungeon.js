@@ -1,4 +1,4 @@
-// merchants.dungeon.js — v7 hardcore (z-index fix, 3x monsters, zoom, shake, lighting)
+﻿// merchants.dungeon.js — v7 hardcore (z-index fix, 3x monsters, zoom, shake, lighting)
 import { db, auth } from '/assets/js/firebase-init.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {

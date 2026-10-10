@@ -1,4 +1,4 @@
-// assets/js/pages/merchants.i18n.js
+﻿// assets/js/pages/merchants.i18n.js
 // ko / en / vi 다국어 지원 — window.LANG 으로 언어 선택 (기본: en)
 
 'use strict';

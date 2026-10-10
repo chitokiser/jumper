@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 // functions/handlers/slot.js
 
 const admin      = require('firebase-admin');

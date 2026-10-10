@@ -1,4 +1,4 @@
-// /assets/js/pages/user-place.js
+﻿// /assets/js/pages/user-place.js
 // 유저 배치 상점 — GP로 보물박스 / 몬스터 / 아쳐타워를 지도에 배치
 
 import { functions } from '/assets/js/firebase-init.js';

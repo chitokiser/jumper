@@ -1,4 +1,4 @@
-// /assets/js/pages/merchants.monster-grid.js
+﻿// /assets/js/pages/merchants.monster-grid.js
 // 공간 분할 그리드 — O(1) 셀 조회로 근접 몬스터만 처리
 //
 // CELL_DEG = 0.0009 ≈ 위도 기준 100m 크기의 셀

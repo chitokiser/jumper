@@ -1,4 +1,4 @@
-// deploy-ethers.js — ethers.js 직접 배포 (Hardhat 없이)
+﻿// deploy-ethers.js — ethers.js 직접 배포 (Hardhat 없이)
 const { ethers } = require('ethers');
 const fs = require('fs');
 const path = require('path');

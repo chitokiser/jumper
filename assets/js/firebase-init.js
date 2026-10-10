@@ -1,4 +1,4 @@
-// /assets/js/firebase-init.js
+﻿// /assets/js/firebase-init.js
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider,

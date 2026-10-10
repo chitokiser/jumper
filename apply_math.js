@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 
 const file = 'functions/handlers/transaction.js';
 let content = fs.readFileSync(file, 'utf8');

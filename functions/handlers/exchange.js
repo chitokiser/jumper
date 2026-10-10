@@ -1,4 +1,4 @@
-// functions/handlers/exchange.js
+﻿// functions/handlers/exchange.js
 // JUMP 포인트 거래소 — 구매/판매/스테이킹/배당
 
 'use strict';

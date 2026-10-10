@@ -1,4 +1,4 @@
-// conquest.audio.js — 메인 보물찾기 게임(merchants.battle.js)과 동일한 Web Audio 사운드 패턴
+﻿// conquest.audio.js — 메인 보물찾기 게임(merchants.battle.js)과 동일한 Web Audio 사운드 패턴
 let _audioCtx = null;
 function getAC() {
   if (!_audioCtx || _audioCtx.state === 'closed')

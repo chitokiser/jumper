@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let js = fs.readFileSync('functions/handlers/transaction.js', 'utf8');
 
 const s1 = `tx.set(checkTxRef, { ...txBase, uid, type: 'pay_merchant' });`;

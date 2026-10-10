@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let file = fs.readFileSync('index.js', 'utf8');
 file = file.replace("const geminiSecret = defineSecret('GEMINI_API_KEY');\n", "");
 file = file.replace("{ secrets: [geminiSecret], timeoutSeconds: 60 }", "{ timeoutSeconds: 60 }");

@@ -1,4 +1,4 @@
-// /assets/js/pages/debug.js
+﻿// /assets/js/pages/debug.js
 import { onAuthReady } from "../auth.js";
 import { db } from "../firebase-init.js";
 

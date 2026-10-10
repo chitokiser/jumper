@@ -1,4 +1,4 @@
-// functions/handlers/community.js
+﻿// functions/handlers/community.js
 // 소셜 커뮤니티 행사 바우처 구매
 
 'use strict';

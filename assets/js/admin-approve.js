@@ -1,4 +1,4 @@
-// /assets/js/admin-approve.js
+﻿// /assets/js/admin-approve.js
 import { onAuthReady } from "/assets/js/auth.js";
 import {
   collection,

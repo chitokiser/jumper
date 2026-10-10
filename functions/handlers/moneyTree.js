@@ -1,4 +1,4 @@
-// functions/handlers/moneyTree.js
+﻿// functions/handlers/moneyTree.js
 // 돈나무(Money Tree) 수동형 수익 시스템
 'use strict';
 

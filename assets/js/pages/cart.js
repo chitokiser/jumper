@@ -1,4 +1,4 @@
-// /assets/js/pages/cart.js
+﻿// /assets/js/pages/cart.js
 import { onAuthReady } from "../auth.js";
 import { db } from "/assets/js/firebase-init.js";
 

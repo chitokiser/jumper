@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let b = fs.readFileSync('partials/header.html', 'utf8');
 
 // The original block looks like:

@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let js = fs.readFileSync('assets/js/pages/index.js', 'utf8');
 
 // Replace renderCategoryRanking and renderGuideLeaderboard logic

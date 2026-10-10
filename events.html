@@ -1,17 +1,18 @@
-<!-- /community.html -->
+﻿<!-- /events.html -->
 <!doctype html>
 <html lang="ko">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>커뮤니티 혜택 | BestClub — BestClub 정회원 특권</title>
+  <title>이벤트 | BestClub</title>
   <meta name="description" content="정회원만의 특별 혜택. 가맹점 할인, 보물박스 보너스, DAO 투표권, 조합 전용몰 이용까지 BestClub 커뮤니티에 합류하세요." />
   <meta name="keywords" content=" BestClub커뮤니티, 포인트보유혜택, Web3커뮤니티, 가맹점할인" />
   <meta name="robots" content="index, follow" />
-  <link rel="canonical" href="https://bestclubvn.netlify.app/community.html" />
+  <link rel="canonical" href="https://bestclubvn.netlify.app/events.html" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="BestClub" />
-  <meta property="og:url" content="https://bestclubvn.netlify.app/community.html" />
+  <meta property="og:url" content="https://bestclubvn.netlify.app/events.html" />
   <meta property="og:title" content="커뮤니티 혜택 | BestClub — JUMP 포인트 보유자 특권" />
   <meta property="og:description" content="정회원만의 특별 혜택. 가맹점 할인, 보물박스 보너스, DAO 투표권까지." />
   <meta property="og:image" content="https://bestclubvn.netlify.app/assets/images/jump/logo2.png" />
@@ -23,11 +24,12 @@
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
-  <link rel="stylesheet" href="/assets/css/pages/community.css" />
+  <link rel="stylesheet" href="/assets/css/pages/events.css" />
 
   <script src="/assets/js/partials.js" defer></script>
   <link rel="manifest" href="/manifest.json">
 </head>
+
 <body>
   <div id="siteHeader"></div>
 
@@ -35,20 +37,19 @@
 
     <!-- ── 헤더 ── -->
     <div class="comm-header">
-      <h1>정회원 혜택</h1>
-      <p>ZTARO를 스테이킹하고 헤택을 받으세요</p>
+      <h1>진행 중인 이벤트</h1>
+      <p>BestClub의 다양한 온오프라인 이벤트에 참여하세요!</p>
     </div>
 
     <!-- ── 목록 뷰 ── -->
     <div id="commListView">
 
       <!-- 상위 탭 (행사 / 스톡옵션) -->
-      <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:2px solid var(--border,#e5e7eb);padding-bottom:0;">
-        <button id="btnTabEvents" type="button"
-          style="padding:8px 18px;font-size:0.9rem;font-weight:700;border:none;background:none;cursor:pointer;
+      <div
+        style="display:none;gap:8px;margin-bottom:16px;border-bottom:2px solid var(--border,#e5e7eb);padding-bottom:0;">
+        <button id="btnTabEvents" type="button" style="padding:8px 18px;font-size:0.9rem;font-weight:700;border:none;background:none;cursor:pointer;
                  border-bottom:3px solid #7c3aed;color:#7c3aed;margin-bottom:-2px;">🗓 행사</button>
-        <button id="btnTabStockOption" type="button"
-          style="padding:8px 18px;font-size:0.9rem;font-weight:700;border:none;background:none;cursor:pointer;
+        <button id="btnTabStockOption" type="button" style="padding:8px 18px;font-size:0.9rem;font-weight:700;border:none;background:none;cursor:pointer;
                  border-bottom:3px solid transparent;color:var(--muted,#6b7280);margin-bottom:-2px;">📈 스톡옵션</button>
       </div>
 
@@ -123,7 +124,8 @@
                 style="width:100%;padding:7px 10px;border:1px solid #4b5563;border-radius:8px;background:#111827;color:#f9fafb;font-size:0.85rem;box-sizing:border-box;" />
             </div>
             <div class="comm-star-row" id="myStars" data-val="0"></div>
-            <textarea class="comm-review-input" id="myReviewInput" placeholder="후기를 작성해 주세요 (선택)..." rows="3"></textarea>
+            <textarea class="comm-review-input" id="myReviewInput" placeholder="후기를 작성해 주세요 (선택)..."
+              rows="3"></textarea>
             <button class="btn btn--primary btn--sm" id="btnSubmitReview">후기 등록</button>
           </div>
           <div class="comm-avg-row" id="avgRatingRow"></div>
@@ -228,10 +230,12 @@
         <label class="comm-label" style="margin-top:14px;">사용 가능 판매자 (가맹점 선택)</label>
         <div id="fldSellersLoading" style="font-size:0.82rem;color:var(--muted,#6b7280);">가맹점 목록 불러오는 중...</div>
         <div id="fldSellersWrap" class="comm-sellers-check-wrap" style="display:none;"></div>
-        <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-top:2px;">📍 선택 시 해당 가맹점에서만 바우처 사용 가능 / 미선택 시 제한 없음</div>
+        <div style="font-size:0.78rem;color:var(--muted,#6b7280);margin-top:2px;">📍 선택 시 해당 가맹점에서만 바우처 사용 가능 / 미선택 시 제한
+          없음</div>
 
         <label class="comm-label">행사 내용 <span class="req">*</span></label>
-        <textarea class="comm-input comm-textarea" id="fldEventContent" placeholder="행사 내용을 작성하세요..." rows="5" maxlength="3000"></textarea>
+        <textarea class="comm-input comm-textarea" id="fldEventContent" placeholder="행사 내용을 작성하세요..." rows="5"
+          maxlength="3000"></textarea>
 
         <div id="commModalError" class="comm-error" style="display:none;"></div>
       </div>
@@ -249,7 +253,8 @@
 
     <!-- ── 관리자 패널: 배치 상점 가격 편집 ─────────────────────────── -->
     <div id="soAdminPanel" style="display:none;margin-bottom:28px;">
-      <div style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px;">
+      <div
+        style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px;">
         <div style="font-size:0.88rem;font-weight:700;margin-bottom:12px;">🏪 배치 상점 GP 가격 편집</div>
         <div id="placePriceEditorWrap">
           <div style="color:var(--muted);font-size:0.85rem;">로딩 중...</div>
@@ -258,7 +263,8 @@
 
       <h3 style="font-size:1rem;font-weight:700;margin:0 0 14px;">🔑 관리자 — 스톡옵션 오퍼링 발행</h3>
 
-      <div style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+      <div
+        style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
         <div style="font-size:0.85rem;font-weight:600;margin-bottom:12px;">📋 새 오퍼링 등록</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
           <div style="grid-column:1/-1;">
@@ -272,7 +278,8 @@
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
           <div>
-            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">바우처 가격 (Point) * <span style="color:#9ca3af;font-weight:400;">— 취득 시 지불</span></label>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">바우처 가격 (Point) * <span
+                style="color:#9ca3af;font-weight:400;">— 취득 시 지불</span></label>
             <input id="soVoucherPrice" type="number" step="0.0001" min="0" placeholder="예: 5"
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
@@ -282,7 +289,8 @@
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
           <div>
-            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">행사 가격 (Point/JUMP) *</label>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">행사 가격 (Point/JUMP)
+              *</label>
             <input id="soStrikePrice" type="number" step="0.0001" min="0" placeholder="예: 10.5"
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
@@ -297,7 +305,8 @@
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
           <div>
-            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">스테이킹 조건 (JUMP) <span style="color:#9ca3af;font-weight:400;">0 = 제한 없음</span></label>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:4px;">스테이킹 조건 (JUMP) <span
+                style="color:#9ca3af;font-weight:400;">0 = 제한 없음</span></label>
             <input id="soStakeRequired" type="number" min="0" step="1" placeholder="예: 1000"
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box;" />
           </div>
@@ -306,7 +315,8 @@
           유저가 바우처 가격(Point) 지불 → 바우처 지갑 보관 → 만기 후 행사 or 양도 가능
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <button id="btnSoCreateOffering" type="button" class="btn btn--primary" style="padding:9px 20px;">오퍼링 발행</button>
+          <button id="btnSoCreateOffering" type="button" class="btn btn--primary" style="padding:9px 20px;">오퍼링
+            발행</button>
           <div id="soCreateMsg" style="font-size:0.82rem;min-height:20px;flex:1;"></div>
         </div>
       </div>
@@ -316,7 +326,9 @@
           <div style="font-size:0.85rem;font-weight:600;">📊 전체 오퍼링 목록</div>
           <button id="btnSoRefreshAdmin" type="button" class="btn btn--ghost btn--sm">새로고침</button>
         </div>
-        <div id="soAdminOfferingList"><div style="color:var(--muted);font-size:0.85rem;">불러오는 중...</div></div>
+        <div id="soAdminOfferingList">
+          <div style="color:var(--muted);font-size:0.85rem;">불러오는 중...</div>
+        </div>
       </div>
     </div>
 
@@ -326,7 +338,8 @@
         <h3 style="font-size:1rem;font-weight:700;margin:0;">📈 스톡옵션 바우처 구매</h3>
         <button id="btnSoRefreshMarket" type="button" class="btn btn--ghost btn--sm">새로고침</button>
       </div>
-      <div id="soOfferingList" style="display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));"></div>
+      <div id="soOfferingList" style="display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));">
+      </div>
       <div id="soOfferingEmpty" style="display:none;text-align:center;padding:32px 0;color:var(--muted);">
         현재 구매 가능한 스톡옵션이 없습니다.
       </div>
@@ -338,7 +351,8 @@
         <h3 style="font-size:1rem;font-weight:700;margin:0;">🎟 내 스톡옵션 바우처</h3>
         <button id="btnSoRefreshUser" type="button" class="btn btn--ghost btn--sm">새로고침</button>
       </div>
-      <div id="soUserVoucherList" style="display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));"></div>
+      <div id="soUserVoucherList"
+        style="display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));"></div>
       <div id="soUserEmpty" style="display:none;text-align:center;padding:32px 0;color:var(--muted);">
         보유 중인 스톡옵션 바우처가 없습니다.
       </div>
@@ -346,11 +360,14 @@
   </div><!-- /stockOptionView -->
 
   <!-- 구매 모달 -->
-  <div id="soBuyModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
-    <div style="background:var(--surface,#fff);border-radius:16px;width:min(420px,94vw);padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.3);">
+  <div id="soBuyModal"
+    style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+    <div
+      style="background:var(--surface,#fff);border-radius:16px;width:min(420px,94vw);padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.3);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h3 style="margin:0;font-size:1rem;">🛒 스톡옵션 구매</h3>
-        <button id="btnSoBuyClose" type="button" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted);">✕</button>
+        <button id="btnSoBuyClose" type="button"
+          style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted);">✕</button>
       </div>
       <div style="font-weight:700;font-size:1.05rem;margin-bottom:14px;" id="soBuyOfferingName"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
@@ -371,19 +388,25 @@
           <div id="soBuyMaturity" style="font-weight:600;"></div>
         </div>
       </div>
-      <div id="soBuyStakeReq" style="display:none;padding:8px 12px;background:#fef3c7;border-radius:8px;font-size:0.82rem;color:#92400e;font-weight:600;margin-bottom:10px;"></div>
-      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;">수탁 지갑 Point로 결제됩니다. 만기 후 권리행사 또는 제3자 양도 가능합니다.</div>
+      <div id="soBuyStakeReq"
+        style="display:none;padding:8px 12px;background:#fef3c7;border-radius:8px;font-size:0.82rem;color:#92400e;font-weight:600;margin-bottom:10px;">
+      </div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;">수탁 지갑 Point로 결제됩니다. 만기 후 권리행사 또는 제3자 양도
+        가능합니다.</div>
       <div id="soBuyMsg" style="font-size:0.82rem;min-height:20px;margin-bottom:12px;"></div>
-      <button id="btnSoBuyConfirm" type="button" class="btn btn--primary" style="width:100%;padding:12px;font-size:0.95rem;">🛒 구매하기</button>
+      <button id="btnSoBuyConfirm" type="button" class="btn btn--primary"
+        style="width:100%;padding:12px;font-size:0.95rem;">🛒 구매하기</button>
     </div>
   </div>
 
   <!-- 권리행사 모달 -->
-  <div id="soExecuteModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+  <div id="soExecuteModal"
+    style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
     <div style="background:#1a0e06;border:1px solid #7c3aed;border-radius:16px;width:min(420px,94vw);padding:24px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
         <h3 style="margin:0;color:#fef3c7;font-size:1rem;">⚡ 권리행사 — 바우처 <span id="soExecVoucherId"></span></h3>
-        <button id="btnSoExecClose" type="button" style="background:none;border:none;color:#9ca3af;font-size:1.3rem;cursor:pointer;">✕</button>
+        <button id="btnSoExecClose" type="button"
+          style="background:none;border:none;color:#9ca3af;font-size:1.3rem;cursor:pointer;">✕</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
         <div style="background:rgba(124,58,237,.12);border-radius:8px;padding:10px;">
@@ -408,11 +431,13 @@
   </div>
 
   <!-- 양도 모달 -->
-  <div id="soTransferModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+  <div id="soTransferModal"
+    style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
     <div style="background:#0d1117;border:1px solid #059669;border-radius:16px;width:min(400px,94vw);padding:24px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
         <h3 style="margin:0;color:#ecfdf5;font-size:1rem;">🔄 바우처 양도 — <span id="soTransferVoucherId"></span></h3>
-        <button id="btnSoTransferClose" type="button" style="background:none;border:none;color:#9ca3af;font-size:1.3rem;cursor:pointer;">✕</button>
+        <button id="btnSoTransferClose" type="button"
+          style="background:none;border:none;color:#9ca3af;font-size:1.3rem;cursor:pointer;">✕</button>
       </div>
       <label style="font-size:0.82rem;color:#d1d5db;display:block;margin-bottom:6px;">받는 지갑 주소 *</label>
       <input id="soTransferTo" type="text" placeholder="0x..." maxlength="42"
@@ -430,7 +455,8 @@
 
   <div id="siteFooter"></div>
 
-  <script type="module" src="/assets/js/pages/community.js"></script>
+  <script type="module" src="/assets/js/pages/events.js"></script>
   <script type="module" src="/assets/js/header-auth.js"></script>
 </body>
+
 </html>

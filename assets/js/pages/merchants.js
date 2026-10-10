@@ -1,4 +1,4 @@
-// /assets/js/pages/merchants.js
+﻿// /assets/js/pages/merchants.js
 // 가맹점 지도 + 보물찾기 시스템
 
 import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js';
@@ -633,8 +633,7 @@ function renderMarkers(list) {
           <div style="margin-top:10px; display:flex; gap:8px;">
             ${m.gmap ? `<a href="${escHtml(m.gmap)}" target="_blank" rel="noopener"
                style="display:inline-block;padding:4px 10px;border-radius:4px;background:#3b82f6;color:white;font-size:11px;font-weight:600;text-decoration:none;">🗺️ Maps</a>` : ''}
-            <a href="/kca_webzine.html?category=food" target="_blank"
-               style="display:inline-block;padding:4px 10px;border-radius:4px;background:#fcd34d;color:#1e3a8a;font-size:11px;font-weight:700;text-decoration:none;">📄 View Details</a>
+
           </div>
         </div>`);
       infoWindow.open(map, marker);
@@ -1093,7 +1092,7 @@ function renderCards(list) {
         ${m._latLng
         ? `<a class="mc-card-gmap" href="${escHtml(m.gmap || '')}" target="_blank" rel="noopener" style="flex:1;text-align:center;background:rgba(59,130,246,0.1);color:#3b82f6;border-radius:6px;padding:8px;font-weight:bold;text-decoration:none;">🗺️ Maps</a>`
         : `<div class="mc-card-no-map" style="flex:1;text-align:center;">${_t('no_map_label')}</div>`}
-        <a href="/kca_webzine.html?category=food" target="_blank" style="flex:1;text-align:center;background:rgba(252,211,77,0.1);color:#f59e0b;border-radius:6px;padding:8px;font-weight:bold;text-decoration:none;">📄 Details</a>
+        
       </div>`;
     if (m._latLng) {
       el.addEventListener('click', e => {

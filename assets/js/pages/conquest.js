@@ -1,4 +1,4 @@
-// conquest.js — Monster Frontier 메인 (수성전: 성 외부 공격, 도로 이동)
+﻿// conquest.js — Monster Frontier 메인 (수성전: 성 외부 공격, 도로 이동)
 import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';

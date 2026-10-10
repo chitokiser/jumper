@@ -1,4 +1,4 @@
-// /assets/js/pages/apply-guide.js
+﻿// /assets/js/pages/apply-guide.js
 import { onAuthReady } from "../auth.js";
 import { db } from "/assets/js/firebase-init.js";
 import { withdrawApplication } from "../admin-approve.js";

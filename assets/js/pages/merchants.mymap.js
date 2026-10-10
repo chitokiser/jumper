@@ -1,4 +1,4 @@
-// /assets/js/pages/merchants.mymap.js
+﻿// /assets/js/pages/merchants.mymap.js
 // 체험용 개인 맵 — users/{uid}/myMap 서브컬렉션 저장, 본인만 표시
 // 설계: Cloud Function 불필요, 직접 Firestore 읽기/쓰기, 최대 50개 제한
 

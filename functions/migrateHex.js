@@ -1,4 +1,4 @@
-/**
+﻿/**
  * migrateHex.js
  * 구 jumpPlatform 컨트랙트에서 Point를 인출한다.
  *

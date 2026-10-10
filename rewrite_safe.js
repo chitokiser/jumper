@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let lines = fs.readFileSync('functions/handlers/transaction.js', 'utf8').split('\n');
 
 const s1 = lines.findIndex(l => l.includes('async function adminSetMerchantFeeOnChain'));

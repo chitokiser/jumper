@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let payJs = fs.readFileSync('assets/js/pages/pay.js', 'utf8');
 
 // Parse orderId in pay.js

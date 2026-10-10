@@ -1,4 +1,4 @@
-// /assets/js/auth.js
+﻿// /assets/js/auth.js
 // Firebase Auth + 역할(role) 판정 + 공통 헬퍼
 
 import { auth, googleProvider, facebookProvider, appleProvider, db } from "/assets/js/firebase-init.js";

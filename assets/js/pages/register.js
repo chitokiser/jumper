@@ -1,4 +1,4 @@
-// /assets/js/pages/register.js
+﻿// /assets/js/pages/register.js
 // 회원가입: 소셜 로그인(Google/Facebook/Apple) → 정보 저장 → 수탁 지갑 생성 → 온체인 등록
 
 import { watchAuth, login, loginWithFacebook, loginWithApple } from "../auth.js";

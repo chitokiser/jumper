@@ -1,4 +1,4 @@
-// /assets/js/firebase-config.js
+﻿// /assets/js/firebase-config.js
 
 
 export const firebaseConfig = {

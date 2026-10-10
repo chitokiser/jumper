@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let html = fs.readFileSync('family-register.html', 'utf8');
 
 html = html.replace(

@@ -1,4 +1,4 @@
-// /assets/js/pages/merchants.slot.js
+﻿// /assets/js/pages/merchants.slot.js
 // 슬롯 머신 미니게임 — merchants.js에서 initSlotMachine()으로 초기화
 'use strict';
 

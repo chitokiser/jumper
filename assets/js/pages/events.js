@@ -1,4 +1,4 @@
-// /assets/js/pages/community.js
+﻿// /assets/js/pages/community.js
 // 소셜 커뮤니티 – 행사 목록 / 상세 / 평점 / 댓글
 
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';

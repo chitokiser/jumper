@@ -4,7 +4,7 @@ import { db } from "/assets/js/firebase-init.js";
 import {
   doc,
   getDoc,
-  updateDoc,
+  updateDoc, deleteDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -42,7 +42,7 @@ function getImages(post) {
   }
   if (post?.imageUrl) arr.push(String(post.imageUrl).trim());
   const uniq = [...new Set(arr)].filter(Boolean).slice(0, 4);
-  return uniq.length ? uniq : ["/assets/images/jump/BI.png"];
+  return uniq.length ? uniq : ["/assets/images/jump/logo2.png"];
 }
 
 const postId = new URLSearchParams(location.search).get("id") || "";
@@ -50,7 +50,7 @@ let viewer = null;
 let postData = null;
 
 function isOwnerPost() {
-  return !!(viewer?.uid && postData?.sellerUid && viewer.uid === postData.sellerUid);
+  if (!viewer?.uid) return false; if (viewer.email === "daguri75@gmail.com") return true; return !!(postData?.sellerUid && viewer.uid === postData.sellerUid);
 }
 
 function fillEditForm(post) {
@@ -215,3 +215,6 @@ $("dThumbs")?.addEventListener("click", (e) => {
   document.querySelectorAll(".um-thumb-btn").forEach((x) => x.classList.remove("is-active"));
   btn.classList.add("is-active");
 });
+
+  btnDeletePost?.addEventListener('click', async () => { if (!postId || !isOwnerPost()) return; if (!confirm('게시글을 삭제하시겠습니까?')) return; try { await deleteDoc(doc(db, 'usedMarketPosts', postId)); alert('삭제되었습니다.'); location.href='/used.html'; } catch(err) { alert('삭제 실패: '+err.message); } });
+

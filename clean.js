@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const cheerio = require('cheerio');
 
 const filePath = 'merchants.html';

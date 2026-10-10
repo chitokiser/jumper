@@ -1,4 +1,4 @@
-// bow.render.js — 활쏘기 렌더링 · 파티클 · 화면흔들림 (9:16 세로 전용)
+﻿// bow.render.js — 활쏘기 렌더링 · 파티클 · 화면흔들림 (9:16 세로 전용)
 
 export const LW = 360, LH = 640;
 export const AX = LW/2, AY = LH - 60;

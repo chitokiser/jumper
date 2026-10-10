@@ -104,7 +104,7 @@ onAuthReady(({ loggedIn, user }) => {
 
   if (!loggedIn || !user) {
     alert("로그인이 필요합니다.");
-    location.href = "/used-market.html";
+    location.href = "/used.html";
     return;
   }
 

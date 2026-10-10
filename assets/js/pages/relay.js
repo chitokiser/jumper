@@ -1,4 +1,4 @@
-// relay.js — 이어달리기 메인 컨트롤러
+﻿// relay.js — 이어달리기 메인 컨트롤러
 import { db, auth, functions } from '/assets/js/firebase-init.js';
 import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';

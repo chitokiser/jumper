@@ -1,4 +1,4 @@
-// /assets/js/pages/ar-scan.js
+﻿// /assets/js/pages/ar-scan.js
 // AR 보물 스캐너 — treasure_boxes + user_treasure_npcs
 
 import { auth, db, functions } from '../firebase-init.js';

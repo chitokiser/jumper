@@ -1,4 +1,4 @@
-// functions/handlers/stockOption.js
+﻿// functions/handlers/stockOption.js
 // K-Culture Alliance 스톡옵션 바우처 — 관리자가 공개 오퍼링 발행, 유저가 Point로 구매
 'use strict';
 

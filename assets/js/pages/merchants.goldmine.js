@@ -1,4 +1,4 @@
-// assets/js/pages/merchants.goldmine.js
+﻿// assets/js/pages/merchants.goldmine.js
 // Gold Mine — map markers, modal UI, Cloud Function calls
 
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';

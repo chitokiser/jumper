@@ -1,4 +1,4 @@
-// assets/js/pages/merchants.ton.js
+﻿// assets/js/pages/merchants.ton.js
 // TON Connect UI + GameCoin 교환 패널 프론트엔드
 // Firebase Functions: tonGetPrice / tonDepositVerify / tonWithdrawRequest / tonGetTransactions
 

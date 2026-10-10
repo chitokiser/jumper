@@ -1,4 +1,4 @@
-// /assets/js/pages/admin_notices.js
+﻿// /assets/js/pages/admin_notices.js
 // 공지관리: 관리자만 작성/수정/삭제 가능
 
 import { auth, db } from "/assets/js/auth.js";

@@ -1,4 +1,4 @@
-// functions/wallet/admin.js
+﻿// functions/wallet/admin.js
 // 관리자 권한 확인 헬퍼 (deposit.js / transaction.js 공용)
 //
 // 아래 네 가지 중 하나라도 해당하면 관리자로 인정:

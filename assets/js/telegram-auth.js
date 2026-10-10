@@ -1,4 +1,4 @@
-// /assets/js/telegram-auth.js
+﻿// /assets/js/telegram-auth.js
 // Telegram Mini App 인증 모듈
 //
 // 사용법:

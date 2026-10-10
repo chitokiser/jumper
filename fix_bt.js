@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let js = fs.readFileSync('assets/js/pages/bt_receive.js', 'utf8');
 
 js = js.replace(/const amount = Number\(params.get\(\"amount\"\)\);/, 'const amount = Number(params.get(\"amount\"));\nconst bt = Number(params.get(\"bt\"));\nconst nonce = params.get(\"nonce\");');

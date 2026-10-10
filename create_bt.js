@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let html = fs.readFileSync('pay.html', 'utf8');
 html = html.replace(/<h1 class="hero-title">결제 확인<\/h1>/, '<h1 class="hero-title">보너스 티켓 (BT) 수령</h1>');
 html = html.replace(/<p class="hero-desc" id="payHeroDesc">가맹점 QR 결제<\/p>/, '<p class="hero-desc" id="payHeroDesc">가맹점이 발급한 무료 티켓을 받아보세요.</p>');

@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
 const historyDir = 'C:\\Users\\Asus\\AppData\\Roaming\\Code\\User\\History';

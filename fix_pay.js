@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let js = fs.readFileSync('assets/js/pages/pay.js', 'utf8');
 
 const search = '  if (d.potionsAdded > 0) items.push';

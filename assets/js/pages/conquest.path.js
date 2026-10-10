@@ -1,4 +1,4 @@
-// conquest.path.js — 맵 이미지 기반 하드코딩 경로 (AI 생성 금지)
+﻿// conquest.path.js — 맵 이미지 기반 하드코딩 경로 (AI 생성 금지)
 // 이미지 분석: 성벽 3800-6200, 직선 4방향 도로, 각 모서리 스폰
 
 export const CX = 5000, CY = 5000;

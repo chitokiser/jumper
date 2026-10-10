@@ -1,4 +1,4 @@
-// merchants.dungeon.render.js — v7 (2x player, lighting, screenshake, zoom, enhanced effects)
+﻿// merchants.dungeon.render.js — v7 (2x player, lighting, screenshake, zoom, enhanced effects)
 import { GRID_W, GRID_H, CELL, WORLD_W, WORLD_H } from './merchants.dungeon.map.js';
 
 // ── 스프라이트 캐시 ───────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-require('@nomicfoundation/hardhat-toolbox');
+﻿require('@nomicfoundation/hardhat-toolbox');
 require('dotenv').config();
 
 const ADMIN_PRIVATE_KEY = process.env.ADMIN_PRIVATE_KEY || '';

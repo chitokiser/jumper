@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let h = fs.readFileSync('index.html', 'utf8');
 
 // The file has a massive block of space in the middle of <meta name="keywords" ...>

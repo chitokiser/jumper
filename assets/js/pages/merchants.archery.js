@@ -1,4 +1,4 @@
-// assets/js/pages/merchants.archery.js
+﻿// assets/js/pages/merchants.archery.js
 // 활쏘기 미니게임 — merchants.js에서 initArcheryGame()으로 초기화
 'use strict';
 

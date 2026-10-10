@@ -1,4 +1,4 @@
-// /assets/js/pages/stock-option.js
+﻿// /assets/js/pages/stock-option.js
 // K-Culture Alliance 스톡옵션 바우처 — 수탁지갑 기반 (행사 탭과 동일 방식)
 
 import { functions } from '../firebase-init.js';

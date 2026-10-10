@@ -1,4 +1,4 @@
-// /assets/js/pages/exchange.hexgp.js
+﻿// /assets/js/pages/exchange.hexgp.js
 // Point → GameCoin (GP) 교환 탭
 
 import { auth, functions } from '../firebase-init.js';

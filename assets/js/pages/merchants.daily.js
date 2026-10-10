@@ -1,4 +1,4 @@
-// merchants.daily.js — 일일 구역 (보물박스 15 + 몬스터 15 / 24h 리셋)
+﻿// merchants.daily.js — 일일 구역 (보물박스 15 + 몬스터 15 / 24h 리셋)
 // 실제 게임과 동일: 20m 근접 → 클릭 공격 → HP 0 → GP 수령
 import { db, functions } from '/assets/js/firebase-init.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';

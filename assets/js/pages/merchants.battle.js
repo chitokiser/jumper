@@ -1,4 +1,4 @@
-// /assets/js/pages/merchants.battle.js
+﻿// /assets/js/pages/merchants.battle.js
 // 위치 기반 전투 시스템 (merchants.js에서 분리)
 // ctx 객체를 통해 core와 공유 상태를 교환한다.
 

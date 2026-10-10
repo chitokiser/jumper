@@ -1,4 +1,4 @@
-// functions/handlers/treasure.js
+﻿// functions/handlers/treasure.js
 // 보물찾기 시스템
 'use strict';
 

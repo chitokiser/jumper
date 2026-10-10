@@ -1,4 +1,4 @@
-// /assets/js/pages/town_home.hero.js
+﻿// /assets/js/pages/town_home.hero.js
 // 이미지 슬라이드쇼 히어로 – IntersectionObserver로 뷰포트 밖에서는 정지 (성능 최적화)
 
 (function () {

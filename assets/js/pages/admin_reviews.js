@@ -1,4 +1,4 @@
-// /assets/js/pages/admin_reviews.js
+﻿// /assets/js/pages/admin_reviews.js
 // NOTE: Firestore 복합 인덱스 없이 동작하도록(특히 where+orderBy) 필터 쿼리를 단순화했습니다.
 //       기본 목록은 orderBy(createdAt) 사용(단일 필드 정렬이라 인덱스 불필요)
 //       itemId/guideUid 필터가 걸리면 where만 사용하고, 정렬은 클라이언트에서 처리합니다.

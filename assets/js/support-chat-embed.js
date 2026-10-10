@@ -1,4 +1,4 @@
-// /assets/js/support-chat-embed.js
+﻿// /assets/js/support-chat-embed.js
 // 외부 사이트 embed용 독립형 채팅 위젯
 // 사전 조건: window.__jumpChat = { db: Firestore인스턴스, auth: Auth인스턴스 }
 

@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 let html = fs.readFileSync('mypage.html', 'utf8');
 
 // Remove Vietnam Account

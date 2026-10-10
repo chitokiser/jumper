@@ -1,0 +1,95 @@
+﻿<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>가맹점 상품 관리 - BestERP</title>
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <script src="/assets/js/partials.js" defer></script>
+  <link rel="manifest" href="/manifest.json">
+</head>
+
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-h">
+        <div class="panel-title">가맹점 상품 관리 (BestERP)</div>
+        <div class="panel-actions">
+          <button class="btn btn--primary" id="btnCreateProduct" type="button">+ 상품 등록</button>
+        </div>
+      </div>
+
+      <div id="productState" class="state" style="padding: 20px; font-weight: bold;">조회 중...</div>
+      <div id="productList" class="grid" style="display:grid;gap:12px;margin-top:16px;"></div>
+    </section>
+
+    <!-- 상품 등록/수정 모달 -->
+    <div id="productModal" class="modal"
+      style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+      <div class="modal-content panel" style="background:#fff; width:90%; max-width:500px; padding: 20px;">
+        <h3 id="modalTitle" style="margin-top:0;">상품 등록</h3>
+        <form id="productForm" style="display:grid;gap:12px;">
+
+          <div id="adminMerchantRow" style="display:none;">
+            <label>
+              <div class="muted" style="color:#ef4444;font-weight:bold;">가맹점 선택 (수퍼관리자 전용)</div>
+              <select id="pMerchantId" class="input"
+                style="width:100%; border:1px solid #ef4444; padding:8px; background:#fff5f5;">
+                <option value="">= 가맹점 불러오는 중... =</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            <div class="muted">상품분류</div>
+
+            <select id="pType" class="input" style="width:100%; border:1px solid #ccc; padding:8px;">
+              <option value="physical_product">일반 실물 상품</option>
+              <option value="menu">메뉴 (음식)</option>
+              <option value="service">서비스</option>
+              <option value="booking">예약형</option>
+            </select>
+          </label>
+          <label>
+            <div class="muted">상품 이름</div><input id="pName" class="input"
+              style="width:100%; border:1px solid #ccc; padding:8px;" required />
+          </label>
+          <label>
+            <div class="muted">대표 이미지 URL (선택)</div><input id="pImg" type="url" class="input"
+              style="width:100%; border:1px solid #ccc; padding:8px;" placeholder="https://..." />
+          </label>
+          <label>
+            <div class="muted">설명</div><textarea id="pDesc" class="textarea" rows="3"
+              style="width:100%; border:1px solid #ccc; padding:8px;"></textarea>
+          </label>
+          <label>
+            <div class="muted">가격 (VND)</div><input id="pPrice" type="number" class="input"
+              style="width:100%; border:1px solid #ccc; padding:8px;" required />
+          </label>
+          <label>
+            <div class="muted">상태</div>
+            <select id="pStatus" class="input" style="width:100%; border:1px solid #ccc; padding:8px;">
+              <option value="draft">임시저장 (비공개)</option>
+              <option value="published">판매 공개 (홈페이지 즉시 노출)</option>
+              <option value="sold_out">품절</option>
+            </select>
+          </label>
+
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+            <button type="submit" class="btn btn--primary" id="btnSaveProduct">저장</button>
+            <button type="button" class="btn" id="btnCloseModal">취소</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <div id="siteFooter"></div>
+  <script type="module" src="/assets/js/pages/admin_merchant_products.js"></script>
+</body>
+
+</html>

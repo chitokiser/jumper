@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const file = 'functions/handlers/transaction.js';
 let lines = fs.readFileSync(file, 'utf8').split('\n');
 // find the index of "const admin = require('firebase-admin');"

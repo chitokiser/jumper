@@ -1,4 +1,4 @@
-// functions/handlers/coinExchange.js
+﻿// functions/handlers/coinExchange.js
 // 게임코인(gold) ↔ JUMP 포인트 양방향 교환
 // JumpAutoExchange 컨트랙트 + Firebase Firestore 연동
 

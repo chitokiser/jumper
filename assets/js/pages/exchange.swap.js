@@ -1,4 +1,4 @@
-// /assets/js/pages/exchange.swap.js
+﻿// /assets/js/pages/exchange.swap.js
 // TON↔GameCoin / Point↔TON 스왑 + 거래내역
 // TON은 기존 tonExchange 핸들러 (tonGetPrice/tonDepositVerify/tonWithdrawRequest) 사용
 

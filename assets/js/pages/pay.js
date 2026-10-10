@@ -1,4 +1,4 @@
-// /assets/js/pages/pay.js
+﻿// /assets/js/pages/pay.js
 // 가맹점 KM 결제 — 고객 결제 확인 페이지
 
 import { onAuthReady } from "../auth.js";
