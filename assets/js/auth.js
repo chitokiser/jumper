@@ -123,37 +123,15 @@ export async function getUserRole(uid, email) {
     return "admin";
   }
 
-  // 1) admins
-  try {
-    const aRef = doc(db, "admins", uid);
-    const aSnap = await getDoc(aRef);
-    if (aSnap.exists()) {
-      const data = aSnap.data() || {};
-      return data.role || "admin";
-    }
-  } catch (e) {
-    console.warn("admins read failed:", e?.code || e?.message || e);
-  }
-
-  // 2) guides/{uid} (승인된 가이드는 role=guide)
-  try {
-    const gRef = doc(db, "guides", uid);
-    const gSnap = await getDoc(gRef);
-    if (gSnap.exists()) {
-      const g = gSnap.data() || {};
-      if (g.approved === true) return "guide";
-    }
-  } catch (e) {
-    console.warn("guides read failed:", e?.code || e?.message || e);
-  }
-
-  // 3) users + merchant 체크
+  // 1) users + merchant 최우선 체크 (가맹점이 관리자 권한을 얻는 버그 방지)
   try {
     const uRef = doc(db, "users", uid);
     const uSnap = await getDoc(uRef);
     if (uSnap.exists()) {
       const u = uSnap.data() || {};
-      // 3-a) 가맹점 체크 (등록 완료 = active !== false)
+
+      // 1-a) 가맹점 체크 (등록 완료 = active !== false)
+      // 가맹점은 최우선적으로 'merchant' 역할을 반환하여, admins/guides 문서가 있더라도 관리자로 오인되지 않게 함
       if (u.merchantId != null) {
         try {
           const mRef = doc(db, "merchants", String(u.merchantId));
@@ -166,14 +144,51 @@ export async function getUserRole(uid, email) {
           console.warn("merchant read failed:", me?.code || me?.message || me);
         }
       }
-      // 3-b) users.role 필드
-      if (typeof u.role === "string" && u.role) return u.role;
 
-      // 문서가 존재하면 최소한 user 권한을 가짐
+      // 만약 명시적인 admin이나 CEO 권한이 users 에 바로 있다면
+      if (typeof u.role === "string" && (u.role === "admin" || u.role === "SUPER_ADMIN" || u.role === "CEO")) {
+        return u.role;
+      }
+    }
+  } catch (e) {
+    console.warn("users read check failed:", e?.code || e?.message || e);
+  }
+
+  // 2) admins 문서 체크 (기존 레거시)
+  try {
+    const aRef = doc(db, "admins", uid);
+    const aSnap = await getDoc(aRef);
+    if (aSnap.exists()) {
+      const data = aSnap.data() || {};
+      return data.role || "admin";
+    }
+  } catch (e) {
+    console.warn("admins read failed:", e?.code || e?.message || e);
+  }
+
+  // 3) guides/{uid} (승인된 가이드는 role=guide)
+  try {
+    const gRef = doc(db, "guides", uid);
+    const gSnap = await getDoc(gRef);
+    if (gSnap.exists()) {
+      const g = gSnap.data() || {};
+      if (g.approved === true) return "guide";
+    }
+  } catch (e) {
+    console.warn("guides read failed:", e?.code || e?.message || e);
+  }
+
+  // 4) 최종적으로 users 컬렉션 한 번 더 체크해서 기본 role이나 user 반환
+  try {
+    const uRef = doc(db, "users", uid);
+    const uSnap = await getDoc(uRef);
+    if (uSnap.exists()) {
+      const u = uSnap.data() || {};
+      if (typeof u.role === "string" && u.role) return u.role;
       return "user";
     }
   } catch (e) {
-    console.warn("users read failed:", e?.code || e?.message || e);
+    console.warn("users fallback read failed:", e?.code || e?.message || e);
   }
 
   // 데이터베이스에 문서가 전혀 없는 경우 guest
