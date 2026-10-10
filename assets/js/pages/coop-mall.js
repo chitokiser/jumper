@@ -179,7 +179,7 @@ function renderCartModal() {
 // 4. 결제(주문) API 호출
 $("btnCheckout").addEventListener("click", async () => {
   if (cart.length === 0) return;
-  if (!confirm("장바구니 상품들을 주문하시겠습니까? (자동 결제 및 원장 등록)")) return;
+  if (!confirm("장바구니 상품들을 주문하시겠습니까? (결제 QR이 생성됩니다)")) return;
 
   const targetMerchantId = cart[0].merchant_id;
   const itemsPayload = cart.map(c => ({
@@ -209,15 +209,39 @@ $("btnCheckout").addEventListener("click", async () => {
       updated_at: serverTimestamp()
     });
 
-    alert("주문이 성공적으로 완료되었습니다! (주문번호: " + docRef.id + ")");
-    // 장바구니 비우기
+    // 주문 성공 후 장바구니 비우기
     cart = [];
     saveCartToStorage();
     updateCartBadge();
-    $("cartModal").style.display = "none";
+
+    // 결제 QR 렌더링
+    const paymentUrl = window.location.origin + `/pay.html?merchant=${targetMerchantId}&amount=${totalAmount}&currency=VND&orderId=${docRef.id}`;
+    const qrImage = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(paymentUrl)}`;
+
+    $("cartModal").innerHTML = `
+      <div style="background:white; padding:24px; border-radius:12px; max-width:400px; width:90%; position:relative;">
+        <h3 style="margin-top:0; color:#4f46e5; font-size:1.4rem; text-align:center;">주문 접수 완료</h3>
+        <p style="text-align:center; font-size:0.95rem; color:#4b5563; margin-bottom:20px;">결제를 완료해야 상품이 제공됩니다.<br/>아래 QR을 스캔하여 머니로 결제하거나,<br/>버튼을 눌러 바로 결제하세요.</p>
+        
+        <div style="text-align:center; border:2px dashed #d1d5db; border-radius:12px; padding:16px; margin-bottom:20px; background:#f9fafb;">
+          <img src="${qrImage}" alt="결제 QR 코드" style="width:200px; height:200px; border-radius:8px;" />
+          <div style="margin-top:12px; font-weight:bold; font-size:1.1rem; color:#1f2937;">총 결제금액: ${totalAmount.toLocaleString()} VND</div>
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <a href="${paymentUrl}" class="btn btn--primary" style="text-align:center; padding:12px; border-radius:8px; text-decoration:none;">💳 스마트폰에서 바로 머니 결제하기</a>
+          
+          <div style="font-size:0.85rem; color:#6b7280; text-align:center; margin-top:8px; padding:8px; background:#f3f4f6; border-radius:6px;">
+            머니 대신 가맹점 계좌로 직접 송금하셨다면,<br/>결제 페이지에서 송금을 알리거나 가맹점에 승인을 요청하세요. 가맹점이 결제 확인을 완료하면 최종 주문 처리가 완료됩니다.
+          </div>
+          
+          <button type="button" class="btn" onclick="location.reload()" style="background:#e5e7eb; color:#374151; width:100%; padding:12px; border-radius:8px; margin-top:8px;">닫기 및 쇼핑 계속하기</button>
+        </div>
+      </div>
+    `;
+
   } catch (err) {
     alert("처리 에러: " + err.message);
-  } finally {
     btn.disabled = false;
     btn.textContent = "주문하기";
   }
