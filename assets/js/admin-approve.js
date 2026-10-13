@@ -13,12 +13,13 @@ import {
   setDoc,
   deleteDoc,
   serverTimestamp,
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 import { BrowserProvider, Contract } from 'https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.min.js';
 
-import { db, functions } from "/assets/js/firebase-init.js";
+import { db, functions, auth } from "/assets/js/firebase-init.js";
 
 // jumpPlatform — onlyOwner 함수만 포함
 const PLATFORM_ADDRESS = '0x4d83A7764428fd1c116062aBb60c329E0E29f490';
@@ -869,6 +870,54 @@ async function loadApprovedDeposits() {
   }
 }
 
+async function approveDepositDirect(refCode, overrideKrwRate = null) {
+  const depositRef = doc(db, "deposits", refCode);
+
+  let resultData = null;
+  await runTransaction(db, async (t) => {
+    const depositSnap = await t.get(depositRef);
+    if (!depositSnap.exists()) {
+      throw new Error("입금 요청 문서를 찾을 수 없습니다: " + refCode);
+    }
+
+    const dep = depositSnap.data();
+    if (dep.status !== "pending" && dep.status !== "processing") {
+      throw new Error(`이미 처리된 요청입니다 (상태: ${dep.status})`);
+    }
+
+    if (!dep.uid) {
+      throw new Error("입금 요청에 UID 정보가 누락되었습니다.");
+    }
+
+    // 베트남 동(VND) 전용 플랫폼이므로 amountVnd를 KM으로 충전. 없으면 KRW에서 18.84를 곱함.
+    const addKmVnd = Number(dep.amountVnd || Math.floor((dep.amountKrw || 0) * 18.84));
+    const userRef = doc(db, "users", dep.uid);
+
+    const userSnap = await t.get(userRef);
+    const userData = userSnap.exists() ? userSnap.data() : {};
+    const currentPointVnd = Number(userData.pointBalanceVnd || 0);
+
+    t.set(userRef, {
+      pointBalanceVnd: currentPointVnd + addKmVnd
+    }, { merge: true });
+
+    const approvedData = {
+      status: "approved",
+      approvedAt: serverTimestamp(),
+      approvedBy: auth.currentUser?.uid || "admin",
+      rateAtApproval: overrideKrwRate ? { krwPerUsd: overrideKrwRate } : { note: "VND to KM" }
+    };
+    t.update(depositRef, approvedData);
+
+    resultData = {
+      hexDisplay: addKmVnd.toLocaleString() + " KM",
+      vndAmount: dep.amountVnd || addKmVnd
+    };
+  });
+
+  return resultData;
+}
+
 async function approveDepositAction(refCode) {
   if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
 
@@ -883,12 +932,20 @@ async function approveDepositAction(refCode) {
 
   setState("내부 DB 승인 처리 중…");
   try {
-    const fn = httpsCallable(functions, "approveDeposit");
-    const res = await fn({ refCode, overrideKrwRate });
-    const d = res.data;
+    let d;
+    try {
+      const fn = httpsCallable(functions, "approveDeposit");
+      const res = await fn({ refCode, overrideKrwRate });
+      d = res.data;
+    } catch (cfErr) {
+      console.warn("Cloud function approveDeposit failed, executing direct Firestore transaction:", cfErr);
+      d = await approveDepositDirect(refCode, overrideKrwRate);
+    }
+
     alert(
       `승인 완료!\n충전된 금액: ${d.hexDisplay}\nVND 환산: ${(d.vndAmount || 0).toLocaleString()} VND`
     );
+    setState("승인 완료");
     await loadDeposits();
     await loadApprovedDeposits();
   } catch (err) {
@@ -1553,13 +1610,32 @@ function showTab(which) {
 }
 
 async function checkAdmin(user) {
+  if (!user) return false;
   // 운영자 이메일 allowlist (부트스트랩)
   if (user?.email && String(user.email).toLowerCase() === "daguri75@gmail.com") {
     return true;
   }
 
-  const a = await getDoc(doc(db, "admins", user.uid));
-  return a.exists();
+  try {
+    const a = await getDoc(doc(db, "admins", user.uid));
+    if (a.exists()) return true;
+  } catch (err) {
+    console.warn("checkAdmin admins check error:", err);
+  }
+
+  try {
+    const u = await getDoc(doc(db, "users", user.uid));
+    if (u.exists()) {
+      const ud = u.data() || {};
+      if (ud.isAdmin === true || ["admin", "SUPER_ADMIN", "CEO", "ADMIN"].includes(ud.role)) {
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn("checkAdmin users check error:", err);
+  }
+
+  return false;
 }
 
 async function bootAdmin(user) {

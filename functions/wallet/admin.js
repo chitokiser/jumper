@@ -29,18 +29,20 @@ function _permDenied() {
 async function requireAdmin(uid, tokenEmail) {
   if (!uid) throw _permDenied();
 
+  // 1) JWT / tokenEmail 직접 체크 (빠른 경로)
+  if (tokenEmail && ADMIN_EMAILS.includes(tokenEmail.toLowerCase())) return;
+
   const db = admin.firestore();
 
-  // 1) users/{uid}.isAdmin
+  // 2) users/{uid} 문서의 isAdmin 플래그 또는 role 체크
   const userSnap = await db.collection('users').doc(uid).get();
-  if (userSnap.data()?.isAdmin === true) return;
+  const uData = userSnap.data();
+  if (uData?.isAdmin === true) return;
+  if (['admin', 'SUPER_ADMIN', 'CEO', 'ADMIN'].includes(uData?.role)) return;
 
-  // 2) admins/{uid} 문서 존재
+  // 3) admins/{uid} 문서 존재
   const adminSnap = await db.collection('admins').doc(uid).get();
   if (adminSnap.exists) return;
-
-  // 3) JWT 포인트 이메일 직접 체크 (Teleport custom token 포함)
-  if (tokenEmail && ADMIN_EMAILS.includes(tokenEmail.toLowerCase())) return;
 
   // 4) Firebase Auth Admin SDK로 이메일 조회
   try {

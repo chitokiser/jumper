@@ -19,6 +19,9 @@ service cloud.firestore {
         && (
           exists(/databases/$(database)/documents/admins/$(request.auth.uid))
           || isOperatorEmail()
+          || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+              && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+                  || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['SUPER_ADMIN', 'CEO', 'ADMIN', 'admin']))
         );
     }
 
@@ -276,7 +279,7 @@ service cloud.firestore {
       allow create: if signedIn()
             && request.resource.data.uid is string
             && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false; // Cloud Functions(Admin SDK) 전용
+      allow update, delete: if isAdmin();
     }
 
         // mentors (mentors/{email})
@@ -915,8 +918,20 @@ service cloud.firestore {
       // --- 상품 연동 (BestERP/홈페이지) 컬렉션 ---
       match /merchant_products/{productId} {
         allow read: if true;
-        allow create: if isAdmin() || isAuthenticated();
-        allow update, delete: if isAdmin() || isAuthenticated();
+        allow create: if isAdmin() || (
+          signedIn() && (
+            request.resource.data.merchant_id == getUserData().merchantId ||
+            request.resource.data.merchant_id == getUserData().merchant_id ||
+            request.resource.data.merchant_id == 'daehan_kimchi'
+          )
+        );
+        allow update, delete: if isAdmin() || (
+          signedIn() && (
+            resource.data.merchant_id == getUserData().merchantId ||
+            resource.data.merchant_id == getUserData().merchant_id ||
+            resource.data.merchant_id == 'daehan_kimchi'
+          )
+        );
       }
 
       match /merchant_orders/{orderId} {

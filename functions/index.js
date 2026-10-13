@@ -420,16 +420,15 @@ exports.getDepositHistory = onCall(
 //    overrideKrwRate: 수동 환율 지정 (null이면 자동 조회)
 // ════════════════════════════════════════════════════════════════════════════
 exports.approveDeposit = onCall(
-  { secrets: [adminKeySecret, walletSecret] },
+  { secrets: [adminKeySecret, walletSecret], cors: true },
   wrapError(async (request) => {
     const adminUid = requireAuth(request);
     const { refCode, overrideKrwRate } = request.data ?? {};
     if (!refCode) throw new HttpsError('invalid-argument', 'refCode가 필요합니다');
 
     // Secret을 process.env에 주입 (chain.js의 getAdminWallet()이 읽음)
-    process.env.ADMIN_PRIVATE_KEY = adminKeySecret.value();
-
-    const result = await depositH.approveDeposit(adminUid, refCode, overrideKrwRate ?? null, walletSecret.value());
+    const tokenEmail = request.auth?.token?.email || null;
+    const result = await depositH.approveDeposit(adminUid, refCode, overrideKrwRate ?? null, walletSecret.value(), tokenEmail);
     logger.info('approveDeposit', { adminUid, refCode, txHash: result.txHash });
     return result;
   })
@@ -3366,7 +3365,7 @@ const commonApiH = require('./handlers/commonApi');
 const productApiH = require('./handlers/merchantProductApi');
 const orderApiH = require('./handlers/merchantOrderApi');
 exports.integrationApi = onRequest(
-  { secrets: [extApiSecret], cors: true }, 
+  { secrets: [extApiSecret], cors: true },
   async (req, res) => {
     if (extApiSecret.value()) {
       process.env.PARTNER_API_KEY = extApiSecret.value();
@@ -3379,16 +3378,16 @@ exports.integrationApi = onRequest(
       return commonApiH.handleTransaction(req, res);
     }
     // Products API
-      let match;
-      if (req.method === 'POST' && path === '/v1/products') return productApiH.createProduct(req, res);
-      if (req.method === 'PATCH' && (match = path.match(/^\/v1\/products\/([^\/]+)$/))) return productApiH.updateProduct(req, res, match[1]);
-      if (req.method === 'POST' && (match = path.match(/^\/v1\/products\/([^\/]+)\/publish$/))) return productApiH.publishProduct(req, res, match[1]);
-      if (req.method === 'GET' && (match = path.match(/^\/v1\/storefronts\/([^\/]+)\/products$/))) return productApiH.getStorefrontProducts(req, res, match[1]);
-      if (req.method === 'GET' && (match = path.match(/^\/v1\/products\/([^\/]+)$/))) return productApiH.getProductDetail(req, res, match[1]);
-      
-      // Orders API
-      if (req.method === 'POST' && path === '/v1/orders') return orderApiH.createOrder(req, res);
-      
-      return res.status(404).json({ success: false, error: 'Endpoint not found' });
+    let match;
+    if (req.method === 'POST' && path === '/v1/products') return productApiH.createProduct(req, res);
+    if (req.method === 'PATCH' && (match = path.match(/^\/v1\/products\/([^\/]+)$/))) return productApiH.updateProduct(req, res, match[1]);
+    if (req.method === 'POST' && (match = path.match(/^\/v1\/products\/([^\/]+)\/publish$/))) return productApiH.publishProduct(req, res, match[1]);
+    if (req.method === 'GET' && (match = path.match(/^\/v1\/storefronts\/([^\/]+)\/products$/))) return productApiH.getStorefrontProducts(req, res, match[1]);
+    if (req.method === 'GET' && (match = path.match(/^\/v1\/products\/([^\/]+)$/))) return productApiH.getProductDetail(req, res, match[1]);
+
+    // Orders API
+    if (req.method === 'POST' && path === '/v1/orders') return orderApiH.createOrder(req, res);
+
+    return res.status(404).json({ success: false, error: 'Endpoint not found' });
   }
 );

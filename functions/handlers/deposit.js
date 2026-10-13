@@ -80,8 +80,8 @@ async function requestDeposit(uid, payload) {
   };
 }
 
-async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterSecret = null) {
-  await requireAdmin(adminUid);
+async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterSecret = null, tokenEmail = null) {
+  await requireAdmin(adminUid, tokenEmail);
   const depositRef = db.collection('deposits').doc(refCode);
 
   try {
@@ -104,7 +104,7 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
       // 베트남 동(VND) 전용 플랫폼이므로 amountVnd를 KM으로 충전. 없으면 KRW에서 18.84를 곱함.
       const addKmVnd = Number(dep.amountVnd || Math.floor((dep.amountKrw || 0) * 18.84));
 
-      t.update(userRef, { pointBalanceVnd: currentPointVnd + addKmVnd });
+      t.set(userRef, { pointBalanceVnd: currentPointVnd + addKmVnd }, { merge: true });
 
       // 입금 승인 처리
       const approvedData = {
