@@ -1,4 +1,4 @@
-﻿// /assets/js/pwa-install.js
+// /assets/js/pwa-install.js
 (() => {
   const DISMISS_KEY = "jumper_pwa_install_dismissed_v1";
   const IOS_DISMISS_KEY = "jumper_ios_install_dismissed_v1";
@@ -96,9 +96,14 @@
     const wrap = document.createElement("div");
     wrap.className = "pwa-install-sheet";
     wrap.innerHTML = `
-      <p class="pwa-install-title">${title}</p>
-      <p class="pwa-install-sub">${sub}</p>
-      <div class="pwa-install-row" style="margin-top:10px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+        <img src="/assets/images/jump/mlogo.png" alt="BestClub App" style="width:44px; height:44px; border-radius:10px; box-shadow:0 3px 8px rgba(0,0,0,0.12); flex-shrink:0; object-fit:cover;">
+        <div style="flex:1; min-width:0;">
+          <p class="pwa-install-title" style="margin:0; font-size:14px; font-weight:800; color:#0f172a;">${title}</p>
+          <p class="pwa-install-sub" style="margin:3px 0 0; font-size:12px; color:#64748b; line-height:1.4;">${sub}</p>
+        </div>
+      </div>
+      <div class="pwa-install-row">
         <button class="pwa-install-btn ghost" type="button" data-act="dismiss">닫기</button>
         <button class="pwa-install-btn primary" type="button" data-act="primary">${primaryText}</button>
       </div>

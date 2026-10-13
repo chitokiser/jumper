@@ -1,4 +1,4 @@
-﻿// functions/index.js
+// functions/index.js
 // Firebase Cloud Functions 진입점 – 수탁형 지갑 + 기존 리뷰 집계
 //
 // ──────────────────────────────────────────────────────
@@ -804,7 +804,7 @@ exports.adminOwnerDepositHex = onCall(
 // ════════════════════════════════════════════════════════════════════════════
 
 exports.payMerchantFirebase = onCall(
-
+  { cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const { merchantId, amountKrw, amountVnd, currency = 'KRW' } = request.data ?? {};
@@ -829,6 +829,7 @@ exports.payMerchantFirebase = onCall(
 );
 
 exports.receiveBtQrFirebase = onCall(
+  { cors: true },
   wrapError(async (request) => {
     requireAuth(request);
     return await txH.receiveBtQrFirebase(request.auth.uid, request.data);
@@ -836,6 +837,7 @@ exports.receiveBtQrFirebase = onCall(
 );
 
 exports.createBtRewardSession = onCall(
+  { cors: true },
   wrapError(async (request) => {
     requireAuth(request);
     return await txH.createBtRewardSession(request.auth.uid, request.data);
@@ -843,6 +845,7 @@ exports.createBtRewardSession = onCall(
 );
 
 exports.consumeUserBtFirebase = onCall(
+  { cors: true },
   wrapError(async (request) => {
     requireAuth(request);
     return await txH.consumeUserBtFirebase(request.data, { auth: request.auth });
@@ -3391,3 +3394,45 @@ exports.integrationApi = onRequest(
     return res.status(404).json({ success: false, error: 'Endpoint not found' });
   }
 );
+
+// ── Webzine AI Content Generator API ──────────────────────────────────────────
+const webzineH = require('./handlers/webzine');
+exports.buildWebzineContent = onCall({ cors: true }, async (request) => {
+  return webzineH.buildWebzineContent(request.data, request.auth);
+});
+
+// ── Event Coupon & Voucher System API ──────────────────────────────────────────
+const couponH = require('./handlers/coupon');
+
+exports.purchaseOrIssueCoupon = onCall({ cors: true }, async (request) => {
+  const uid = requireAuth(request);
+  return couponH.purchaseOrIssueCoupon(uid, request.data);
+});
+
+exports.redeemCouponOffline = onCall({ cors: true }, async (request) => {
+  const uid = requireAuth(request);
+  return couponH.redeemCouponOffline(uid, request.data);
+});
+
+exports.createCouponCampaign = onCall({ cors: true }, async (request) => {
+  const uid = requireAuth(request);
+  return couponH.createCouponCampaign(uid, request.data);
+});
+
+exports.updateCouponCampaign = onCall({ cors: true }, async (request) => {
+  const uid = requireAuth(request);
+  return couponH.updateCouponCampaign(uid, request.data);
+});
+
+exports.toggleCouponCampaignStatus = onCall({ cors: true }, async (request) => {
+  const uid = requireAuth(request);
+  return couponH.toggleCouponCampaignStatus(uid, request.data);
+});
+
+exports.deleteCouponCampaign = onCall({ cors: true }, async (request) => {
+  const uid = requireAuth(request);
+  return couponH.deleteCouponCampaign(uid, request.data);
+});
+
+
+

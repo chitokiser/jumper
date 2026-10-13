@@ -323,10 +323,12 @@ service cloud.firestore {
       allow delete: if false; // Cloud Functions only
       allow update: if isAdmin()
         || (signedIn()
-            && resource.data.ownerUid is string
-            && resource.data.ownerUid == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['career', 'region', 'description', 'updatedAt']));
+            && (
+              (resource.data.ownerUid is string && resource.data.ownerUid == request.auth.uid)
+              || request.auth.uid == merchantId
+              || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                  && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.merchantId == merchantId)
+            ));
     }
 
     // places (places/{placeId})
@@ -361,22 +363,25 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // jackpot rounds (怨듦컻 ?듦퀎 議고쉶??
+    // jackpot rounds (공개 통계 조회용)
     match /jackpot_rounds/{roundId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
     }
 
-    // jackpot wins ???꾩씠????뙚 ?뱀꺼 湲곕줉 (怨듦컻 ?쎄린)
+    // jackpot wins (공개 읽기 및 당첨 기록 생성)
     match /jackpot_wins/{docId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // Cloud Functions only
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
     }
 
-    // jackpot config ????뙚 ?꾩쟻湲덉븸 罹먯떆 (怨듦컻 ?쎄린)
+    // jackpot config (누적금액 캐시 및 갱신)
     match /jackpot_config/{docId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // Cloud Functions only
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
     }
 // used market posts
     match /usedMarketPosts/{postId} {
@@ -938,6 +943,29 @@ service cloud.firestore {
         allow read: if isAdmin() || isAuthenticated();
         allow create: if isAuthenticated();
         allow update, delete: if isAdmin() || isAuthenticated();
+      }
+
+      // --- 베스트 매거진 (Webzine) 컬렉션 ---
+      match /webzine_articles/{articleId} {
+        allow read: if true;
+        allow create, update, delete: if signedIn();
+      }
+
+      // --- 이벤트 쿠폰 & 바우쳐 컬렉션 ---
+      match /coupon_campaigns/{campaignId} {
+        allow read: if true;
+        allow create, update, delete: if signedIn();
+      }
+
+      match /user_coupons/{userCouponId} {
+        allow read: if signedIn();
+        allow create: if signedIn();
+        allow update, delete: if signedIn();
+      }
+
+      match /coupon_redemptions/{redemptionId} {
+        allow read: if signedIn();
+        allow create, update: if signedIn();
       }
   } // End of match /databases/{database}/documents
 } // End of service cloud.firestore

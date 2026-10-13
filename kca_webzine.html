@@ -1,0 +1,215 @@
+<!-- /kca_webzine.html -->
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="/assets/images/jump/mlogo.png">
+  <link rel="shortcut icon" href="/assets/images/jump/mlogo.png">
+  <link rel="apple-touch-icon" href="/assets/images/jump/mlogo.png">
+  <link rel="manifest" href="/manifest.json">
+  <title>베스트 매거진 (BestClub Webzine) — K-컬처 & 하노이 라이프스타일 매거진</title>
+  <meta name="description"
+    content="베스트클럽 웹진: K-푸드, K-POP, K-뷰티, 하노이·베트남 생활 정보 및 공식 가맹점 연계 콘텐츠 기반 라이프스타일 매거진." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="BestClub Webzine" />
+  <meta property="og:title" content="베스트 매거진 | 콘텐츠로 만나는 K-컬처와 가맹점 이야기" />
+  <meta property="og:description" content="단순 광고를 넘어선 고품격 콘텐츠 미디어. 하노이와 K-컬처의 매력, 그리고 베스트클럽 가맹점 혜택을 전합니다." />
+  <meta property="og:image" content="https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=1200&q=80" />
+
+  <!-- 스타일시트 -->
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/pages/kca_webzine.css" />
+</head>
+
+<body class="webzine-body">
+
+  <!-- 사이트 탑 네비게이션 헤더 -->
+  <div id="siteHeader"></div>
+
+  <main class="wz-container">
+
+    <!-- 매거진 상단 헤더 -->
+    <header class="wz-header">
+      <div class="wz-badge-pill">
+        <span>✨</span> BEST CLUB EDITORIAL MEDIA
+      </div>
+      <h1 class="wz-title">베스트 <span>매거진</span></h1>
+      <p class="wz-subtitle">
+        K-컬처와 하노이의 다채로운 이야기, 그리고 베스트클럽 공식 가맹점이 함께 전하는 신뢰할 수 있는 라이프스타일 큐레이션입니다.
+      </p>
+    </header>
+
+    <!-- 카테고리 탭 바 -->
+    <nav class="wz-tabs" id="categoryTabs" aria-label="매거진 카테고리">
+      <button class="wz-tab-btn active" data-cat="all" type="button">전체 보기</button>
+      <button class="wz-tab-btn" data-cat="K-푸드" type="button">🍗 K-푸드</button>
+      <button class="wz-tab-btn" data-cat="K-POP" type="button">🎵 K-POP</button>
+      <button class="wz-tab-btn" data-cat="K-뷰티" type="button">💄 K-뷰티</button>
+      <button class="wz-tab-btn" data-cat="K-드라마" type="button">🎬 K-드라마</button>
+      <button class="wz-tab-btn" data-cat="K-여행" type="button">✈️ K-여행</button>
+      <button class="wz-tab-btn" data-cat="한국 생활문화" type="button">🍙 한국 생활문화</button>
+      <button class="wz-tab-btn" data-cat="하노이 라이프" type="button">🏙️ 하노이 라이프</button>
+      <button class="wz-tab-btn" data-cat="베트남 생활정보" type="button">📋 베트남 생활정보</button>
+      <button class="wz-tab-btn" data-cat="베트남 뉴스" type="button">📰 베트남 뉴스</button>
+      <button class="wz-tab-btn" data-cat="경제/트렌드" type="button">📈 경제/트렌드</button>
+      <button class="wz-tab-btn" data-cat="문화/생활" type="button">☕ 문화/생활</button>
+    </nav>
+
+    <!-- 피처드 리드 스토리 (Featured Lead Story) -->
+    <section id="featuredStorySection">
+      <div id="featuredStoryLoading" style="text-align:center; padding:40px; color:#94a3b8;">
+        기사를 불러오는 중입니다...
+      </div>
+      <div id="featuredStory"></div>
+    </section>
+
+    <!-- 일반 기사 그리드 -->
+    <section>
+      <div class="wz-grid-header">
+        <h2 class="wz-grid-title">
+          <span>📚</span> 최신 매거진 아티클
+        </h2>
+        <span id="articleCountBadge" style="font-size:0.85rem; font-weight:700; color:#64748b; background:#e2e8f0; padding:4px 10px; border-radius:99px;">
+          0개의 아티클
+        </span>
+      </div>
+
+      <div class="wz-article-grid" id="articleGrid">
+        <!-- JS로 동적 생성 -->
+      </div>
+    </section>
+
+    <!-- 매거진 하단 제휴 / 입점 안내 배너 -->
+    <aside style="background:linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color:#fff; border-radius:20px; padding:36px 30px; text-align:center; margin-top:30px; box-shadow:0 10px 25px rgba(49,46,129,0.2);">
+      <span style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:99px; font-size:0.8rem; font-weight:700; letter-spacing:0.04em;">PARTNERSHIP & MEDIA</span>
+      <h3 style="font-size:1.6rem; font-weight:800; margin:14px 0 8px;">베스트 매거진에 가맹점 스토리를 싣고 싶으신가요?</h3>
+      <p style="color:#c7d2fe; max-width:600px; margin:0 auto 20px; font-size:0.95rem; line-height:1.6;">
+        AI 저널리즘 엔진을 통해 귀사의 매장을 K-컬처 콘텐츠와 결합하여 매거진과 SNS에 자연스럽게 홍보해 드립니다.
+      </p>
+      <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+        <a href="/family-register.html" style="background:#f59e0b; color:#fff; padding:10px 20px; border-radius:10px; text-decoration:none; font-weight:700;">가맹점 입점 신청</a>
+        <a href="/admin_webzine.html" id="btnAdminCmsLink" style="background:rgba(255,255,255,0.15); color:#fff; padding:10px 20px; border-radius:10px; text-decoration:none; font-weight:700; border:1px solid rgba(255,255,255,0.2);">✍️ 관리자 웹진 발행 CMS</a>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ── 기사 상세 읽기 모달 (Full Reader View) ── -->
+  <div class="wz-modal" id="articleModal" aria-modal="true" role="dialog" aria-hidden="true">
+    <div class="wz-modal-card">
+      <button class="wz-modal-close-btn" id="modalCloseBtn" type="button" aria-label="닫기">×</button>
+
+      <div class="wz-modal-hero-wrap">
+        <img src="" alt="" class="wz-modal-hero-img" id="mHeroImg" />
+      </div>
+
+      <div class="wz-modal-content">
+        <div class="wz-detail-cat" id="mCat">K-푸드</div>
+        <h1 class="wz-detail-title" id="mTitle">기사 제목</h1>
+        <div class="wz-detail-sub" id="mSub">기사 부제목</div>
+
+        <div class="wz-detail-meta">
+          <div style="display:flex; gap:14px; align-items:center;">
+            <span id="mAuthor">✍️ 베스트클럽 에디토리얼 팀</span>
+            <span id="mDate">📅 2026. 10. 13</span>
+            <span id="mReadTime">⏱️ 3분 읽기</span>
+          </div>
+          <div class="wz-share-actions">
+            <button class="wz-share-btn" id="btnCopyArticleUrl" type="button">🔗 링크 복사</button>
+            <button class="wz-share-btn" id="btnOpenSnsModal" type="button" style="background:#ede9fe; color:#7c3aed; border-color:#c4b5fd;">📱 SNS 배포 텍스트</button>
+          </div>
+        </div>
+
+        <!-- 본문 마크다운 HTML -->
+        <article class="wz-article-body" id="mBody">
+          <!-- 기사 내용 -->
+        </article>
+
+        <!-- 🌟 핵심: 가맹점 연계 공식 배너 (Merchant Callout) 🌟 -->
+        <div class="wz-merchant-box" id="mMerchantBox">
+          <div class="wz-merchant-badge">
+            <span>🏪</span> 기사 제공 | 베스트 클럽 공식 가맹점
+          </div>
+          <div class="wz-merchant-head">
+            <div>
+              <h3 class="wz-merchant-name" id="mMerchName">대한김치 & 치킨</h3>
+              <p class="wz-merchant-desc" id="mMerchDesc">하노이 미딩 한인타운에서 정통 한국의 맛과 정성을 전하는 대표 가맹점</p>
+            </div>
+            <span id="mMerchCatBadge" style="background:#f59e0b; color:#fff; font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:99px;">K-푸드</span>
+          </div>
+
+          <div class="wz-merchant-details">
+            <div><span>📍 주소:</span> <span id="mMerchAddr">하노이 미딩 송다 한인타운</span></div>
+            <div><span>📞 전화:</span> <span id="mMerchPhone">024-3787-8899</span></div>
+            <div><span>⏰ 영업시간:</span> <span id="mMerchHours">매일 10:30 ~ 23:00</span></div>
+            <div><span>🍗 대표메뉴:</span> <span id="mMerchMenu">한국식 바삭 후라이드 & 양념치킨</span></div>
+          </div>
+
+          <div class="wz-merchant-benefit">
+            <span>🎁</span>
+            <span id="mMerchBenefit">베스트클럽 결제 시 5% 즉시 포인트 페이백 + 잭팟 보너스티켓(BT) 즉시 발급!</span>
+          </div>
+
+          <div class="wz-merchant-cta-row">
+            <a href="/pay.html" id="mMerchPayLink" class="wz-btn-pay">📷 매장 방문 결제 & 포인트 받기</a>
+            <a href="tel:02437878899" id="mMerchTelLink" class="wz-btn-call">📞 매장 전화 걸기</a>
+          </div>
+        </div>
+
+        <!-- SNS 숏폼 텍스트 세트 (인스타 / X / 스레드 / 페이스북) -->
+        <div class="wz-sns-box" id="mSnsBox">
+          <div class="wz-sns-title">
+            <span>📲</span> SNS 자동 배포 숏폼 세트 (Instagram · X · Threads · Facebook)
+          </div>
+
+          <div class="wz-sns-item">
+            <div class="wz-sns-head">
+              <span class="wz-sns-label">📸 Instagram 피드/릴스 캡션</span>
+              <button class="wz-btn-copy" data-target="snsInsta" type="button">복사하기</button>
+            </div>
+            <div class="wz-sns-text" id="snsInsta">-</div>
+          </div>
+
+          <div class="wz-sns-item">
+            <div class="wz-sns-head">
+              <span class="wz-sns-label">🐦 X (구 트위터) 숏폼</span>
+              <button class="wz-btn-copy" data-target="snsX" type="button">복사하기</button>
+            </div>
+            <div class="wz-sns-text" id="snsX">-</div>
+          </div>
+
+          <div class="wz-sns-item">
+            <div class="wz-sns-head">
+              <span class="wz-sns-label">🧵 Threads 대화형 문구</span>
+              <button class="wz-btn-copy" data-target="snsThreads" type="button">복사하기</button>
+            </div>
+            <div class="wz-sns-text" id="snsThreads">-</div>
+          </div>
+
+          <div class="wz-sns-item">
+            <div class="wz-sns-head">
+              <span class="wz-sns-label">📘 Facebook 카드뉴스 요약</span>
+              <button class="wz-btn-copy" data-target="snsFb" type="button">복사하기</button>
+            </div>
+            <div class="wz-sns-text" id="snsFb">-</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 푸터 -->
+  <div id="siteFooter"></div>
+
+  <!-- 자바스크립트 모듈 로드 -->
+  <script type="module" src="/assets/js/partials.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/kca_webzine.js"></script>
+</body>
+
+</html>

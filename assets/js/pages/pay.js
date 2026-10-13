@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/pay.js
+// /assets/js/pages/pay.js
 // 가맹점 KM 결제 — 고객 결제 확인 페이지
 
 import { onAuthReady } from "../auth.js";
@@ -9,6 +9,8 @@ import {
   doc,
   getDoc,
   onSnapshot,
+  updateDoc,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import {
   httpsCallable,
@@ -31,6 +33,7 @@ const params = new URLSearchParams(location.search);
 const merchantId = Number(params.get("merchant"));
 const amount = Number(params.get("amount"));
 const currency = (params.get("currency") || "VND").toUpperCase();
+const orderIdParam = params.get("orderId");
 
 const isVnd = currency === "VND";
 
@@ -368,7 +371,25 @@ function bindPayButton() {
         if (window.loadMyBalances) {
           window.loadMyBalances();
         }
-      } catch (e) { } // 완료 패널 표시
+      } catch (e) { } 
+
+      // 가맹점 주문 연동 시 주문 상태 업데이트
+      if (orderIdParam) {
+        try {
+          await updateDoc(doc(db, "merchant_orders", orderIdParam), {
+            status: "payment_confirmed",
+            payment_status: "paid",
+            payment_method: "bm_wallet",
+            paid_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            txHash: d.txHash || ""
+          });
+        } catch (mErr) {
+          console.warn("merchant_orders update error:", mErr);
+        }
+      }
+
+      // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
       const jpBox = $("jackpotResultBox"); if (jpBox) jpBox.style.display = "none"; const jpWait = $("jpWaiting"); if (jpWait) jpWait.style.display = "none"; watchJackpotResult(d.txHash);

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 
 <head>
@@ -635,6 +635,172 @@
       margin-left: 4px;
       vertical-align: middle;
     }
+
+    /* ── 내 쿠폰·바우쳐 스타일 ── */
+    .mycoupon-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mycoupon-tab {
+      padding: 7px 16px;
+      border-radius: 99px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      color: #64748b;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mycoupon-tab:hover {
+      background: #f1f5f9;
+      color: #334155;
+    }
+    .mycoupon-tab.active {
+      background: #7c3aed;
+      color: #ffffff;
+      border-color: #7c3aed;
+      box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+    }
+    .my-coupon-card {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1.5px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+    }
+    .my-coupon-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+    .my-coupon-img-wrap {
+      width: 100%;
+      height: 140px;
+      position: relative;
+      background: #f1f5f9;
+      overflow: hidden;
+    }
+    .my-coupon-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .my-coupon-badge-issuer {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+      color: #f8fafc;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+    }
+    .my-coupon-badge-type {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #7c3aed;
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .my-coupon-content {
+      padding: 14px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .my-coupon-title {
+      font-size: 0.98rem;
+      font-weight: 800;
+      color: #1e293b;
+      margin: 0 0 6px 0;
+      line-height: 1.35;
+    }
+    .my-coupon-issuer {
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .my-coupon-price-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      background: #f8fafc;
+      border-radius: 8px;
+    }
+    .my-coupon-price {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #7c3aed;
+    }
+    .my-coupon-price.free {
+      color: #10b981;
+    }
+    .my-coupon-info-list {
+      font-size: 0.75rem;
+      color: #64748b;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .my-coupon-actions {
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px dashed #e2e8f0;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .status-pill {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 99px;
+      text-transform: uppercase;
+    }
+    .status-pill.available {
+      background: #dcfce7;
+      color: #15803d;
+    }
+    .status-pill.used {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+    .status-pill.expired {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .status-pill.cancelled {
+      background: #f3f4f6;
+      color: #9ca3af;
+    }
+    @keyframes modalPop {
+      0% { transform: scale(0.92); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
   </style>
   <link rel="manifest" href="/manifest.json">
 </head>
@@ -707,6 +873,12 @@
           </div>
           <div class="mp-kv"><span class="k" data-i18n="label_phone">전화번호</span><span class="v" id="infoPhone">-</span>
           </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <a href="/mall.html" class="btn btn--sm" style="flex:1; min-width:130px; text-align:center; text-decoration:none; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:700; padding:8px 12px; border-radius:8px;">🛍️ 공식 쇼핑몰</a>
+          <a href="/orders.html" class="btn btn--sm" style="flex:1; min-width:130px; text-align:center; text-decoration:none; background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700; padding:8px 12px; border-radius:8px;">📦 주문·구매 내역</a>
+          <a href="#couponsSection" class="btn btn--sm" style="flex:1; min-width:130px; text-align:center; text-decoration:none; background:#fdf4ff; color:#9333ea; border:1px solid #f0abfc; font-weight:700; padding:8px 12px; border-radius:8px;">🎟️ 내 쿠폰·바우쳐</a>
         </div>
 
         <!-- 💸 프리미엄 머니 & 포인트 현황 카드 💸 -->
@@ -860,6 +1032,60 @@
         <div id="redeemPointsResult" class="mp-result-box" style="display:none;margin-top:6px;"></div>
       </section>
 
+      <!-- ── 내 쿠폰·바우쳐 (BM 이벤트 쿠폰 / 바우쳐) ── -->
+      <section class="panel mp-section collapsible" id="couponsSection">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">🎟️ 내 쿠폰·바우쳐</h2>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <a href="/events.html" class="btn btn--sm" style="background:#7c3aed; color:#fff; text-decoration:none; font-weight:700; padding:5px 12px; border-radius:8px; font-size:0.8rem;">+ 이벤트 라운지</a>
+            <button id="btnRefreshCoupons" type="button" class="btn btn--sm" style="background:none; border:1.5px solid #7c3aed; color:#7c3aed; font-weight:700; padding:4px 8px; border-radius:8px; cursor:pointer; font-size:0.8rem;">🔄 새로고침</button>
+          </div>
+        </div>
+
+        <!-- 가맹점 직원/관리자 전용: 현장 쿠폰 검증 & 오프라인 사용 승인 바 -->
+        <div id="merchantRedeemTool" style="display:none; background: linear-gradient(135deg, #f5f3ff, #ede9fe); border: 1.5px dashed #8b5cf6; border-radius: 12px; padding: 14px 16px; margin: 4px 0 16px 0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+            <div style="font-size:0.88rem; font-weight:800; color:#5b21b6; display:flex; align-items:center; gap:6px;">
+              <span>🏪</span> <span>가맹점 현장 쿠폰·바우쳐 사용 승인</span>
+              <span id="merchantStaffRoleBadge" style="font-size:0.7rem; background:#7c3aed; color:#fff; padding:2px 6px; border-radius:99px; font-weight:700;">가맹점 전용</span>
+            </div>
+            <span style="font-size:0.75rem; color:#6b7280;">고객의 12자리 코드 입력 또는 QR 스캔</span>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <select id="staffMerchantSelect" style="display:none; padding:8px 10px; border:1px solid #c4b5fd; border-radius:8px; font-size:0.85rem; background:#fff; font-weight:600;">
+              <option value="">가맹점 선택...</option>
+            </select>
+            <input type="text" id="staffCouponCodeInput" placeholder="쿠폰 번호 (예: BC-XXXX-XXXX-XXXX)" style="flex:1; min-width:200px; padding:8px 12px; border:1.5px solid #c4b5fd; border-radius:8px; font-size:0.88rem; font-family:monospace; text-transform:uppercase;">
+            <button type="button" id="btnStaffRedeemScan" class="btn btn--sm" style="background:#4b5563; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">📷 QR 스캔</button>
+            <button type="button" id="btnStaffRedeemSubmit" class="btn btn--sm" style="background:#7c3aed; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer;">승인 및 사용 처리</button>
+          </div>
+          <div id="staffRedeemMsg" style="font-size:0.82rem; margin-top:6px; min-height:18px;"></div>
+        </div>
+
+        <!-- 5.1 탭 구성 -->
+        <div class="mycoupon-tabs" style="margin-bottom:16px;">
+          <button type="button" class="mycoupon-tab active" data-status="all">전체 <span id="cntAll">(0)</span></button>
+          <button type="button" class="mycoupon-tab" data-status="available">사용 가능 <span id="cntAvailable">(0)</span></button>
+          <button type="button" class="mycoupon-tab" data-status="used">사용 완료 <span id="cntUsed">(0)</span></button>
+          <button type="button" class="mycoupon-tab" data-status="expired">기간 만료 <span id="cntExpired">(0)</span></button>
+          <button type="button" class="mycoupon-tab" data-status="cancelled">취소 <span id="cntCancelled">(0)</span></button>
+        </div>
+
+        <!-- 5.2 보유 카드 그리드 -->
+        <div id="myCouponsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+          <!-- 동적 카드 렌더링 -->
+        </div>
+
+        <div id="myCouponsEmpty" style="display:none; text-align:center; padding:36px 16px; background:#f8fafc; border-radius:12px; border:1px dashed #cbd5e1; margin-top:8px;">
+          <div style="font-size:2rem; margin-bottom:8px;">🎟️</div>
+          <div style="font-weight:700; color:#475569; font-size:0.95rem; margin-bottom:4px;" id="myCouponsEmptyText">보유한 쿠폰·바우쳐가 없습니다.</div>
+          <p style="font-size:0.82rem; color:#94a3b8; margin-bottom:14px;">이벤트 라운지에서 BM으로 할인권이나 바우쳐를 발급받아 보세요!</p>
+          <a href="/events.html" class="btn btn--sm" style="background:#7c3aed; color:#fff; text-decoration:none; font-weight:700; padding:8px 18px; border-radius:8px; display:inline-block;">이벤트 라운지 가기</a>
+        </div>
+        <div id="myCouponsLoading" style="text-align:center; padding:24px 0; color:#6b7280; font-size:0.88rem;">
+          <span style="display:inline-block; animation:spin .7s linear infinite;">🔄</span> 쿠폰 및 바우쳐를 불러오는 중...
+        </div>
+      </section>
 
       <div class="mp-section-head">
         <h2 class="mp-section-title" data-i18n="section_wallet">내 멤버십 정보</h2>
@@ -1389,6 +1615,51 @@
                    border:none; border-radius:10px; font-size:1rem; cursor:pointer; font-weight:600;">
       <span data-i18n="btn_hide_qr">닫기</span>
     </button>
+  </div>
+
+  <!-- 쿠폰·바우쳐 사용 (QR / 바코드) 모달 -->
+  <div id="couponQrModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.7); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#fff; width:100%; max-width:420px; border-radius:20px; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.3); animation:modalPop 0.25s ease-out; position:relative;">
+      <!-- 헤더 -->
+      <div style="background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; padding:18px 20px; display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <span id="qrModalTypeBadge" style="display:inline-block; background:rgba(255,255,255,0.25); color:#fff; font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:6px; margin-bottom:6px;">이벤트 쿠폰</span>
+          <h3 id="qrModalTitle" style="margin:0; font-size:1.15rem; font-weight:800; line-height:1.3; color:#fff;">상품명</h3>
+        </div>
+        <button type="button" id="btnCouponQrClose" style="background:rgba(255,255,255,0.2); border:none; color:#fff; width:30px; height:30px; border-radius:50%; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+      </div>
+
+      <div style="padding:20px; text-align:center;">
+        <!-- QR 코드 렌더링 영역 -->
+        <div style="background:#f8fafc; border:2px dashed #cbd5e1; border-radius:16px; padding:16px; display:inline-block; margin:0 auto 12px; box-shadow:inset 0 2px 4px rgba(0,0,0,0.02);">
+          <div id="couponQrCanvasWrap" style="display:flex; justify-content:center; align-items:center; min-height:180px; min-width:180px;"></div>
+        </div>
+
+        <!-- 12자리 쿠폰 번호 -->
+        <div style="margin-bottom:12px;">
+          <div style="font-size:0.75rem; color:#64748b; font-weight:600; margin-bottom:3px;">쿠폰 코드 / 사용 번호</div>
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span id="qrModalCode" style="font-family:monospace; font-size:1.2rem; font-weight:900; color:#1e1b4b; letter-spacing:1px; background:#f1f5f9; padding:6px 14px; border-radius:8px; border:1px solid #cbd5e1;">BC-0000-0000-0000</span>
+            <button type="button" id="btnCopyCouponCode" style="padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-size:0.8rem; font-weight:700; color:#475569;">📋 복사</button>
+          </div>
+          <span id="couponCodeCopyDone" style="font-size:0.75rem; color:#10b981; display:none;">✓ 복사되었습니다</span>
+        </div>
+
+        <!-- 상세 정보 안내 박스 -->
+        <div style="background:#f8fafc; border-radius:12px; padding:12px; text-align:left; font-size:0.8rem; color:#475569; margin-bottom:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8;">발행처:</span> <b id="qrModalIssuer">-</b></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8;">사용처:</span> <b id="qrModalMerchants">-</b></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8;">사용만료일:</span> <b id="qrModalExpiry" style="color:#dc2626;">-</b></div>
+          <div style="border-top:1px dashed #e2e8f0; margin-top:4px; padding-top:4px; font-size:0.75rem; color:#64748b;" id="qrModalTerms"></div>
+        </div>
+
+        <p style="font-size:0.75rem; color:#94a3b8; margin:0 0 16px; line-height:1.4;">
+          가맹점 직원에게 위 QR 또는 12자리 코드를 제시해 주시면 직원이 확인 후 사용 처리를 진행합니다.
+        </p>
+
+        <button type="button" id="btnCouponQrConfirmClose" class="btn btn--primary" style="width:100%; padding:10px; font-weight:700; border-radius:10px;">확인 완료</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>

@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/mypage.js
+// /assets/js/pages/mypage.js
 // MyPage: profile / wallet / on-chain status / deposit & payment history
 
 import { _t, initLang, renderLangSwitcher } from './mypage.i18n.js';
@@ -102,6 +102,157 @@ function renderReferralSection(uid) {
 
 function renderWallet(d) { }
 
+async function consumeBtClientFallback(uid, numBt, isMerchantOwner, mRef) {
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
+  const userData = userSnap.data() || {};
+  let currentBt = Number(userData.btBalance || 0);
+  let merchantData = null;
+
+  if (isMerchantOwner && mRef) {
+    try {
+      const mS = await getDoc(mRef);
+      if (mS.exists()) {
+        merchantData = mS.data();
+        currentBt = Number(merchantData.btBalance || currentBt);
+      }
+    } catch (e) {
+      console.warn("getDoc mRef failed:", e);
+    }
+  }
+
+  if (currentBt < numBt) {
+    throw new Error("잔여 보너스티켓(BT)이 부족합니다.");
+  }
+
+  let currentJackpotPool = 500000;
+  try {
+    const jpSnap = await getDoc(doc(db, "jackpot_config", "current"));
+    if (jpSnap.exists()) {
+      currentJackpotPool = Number(jpSnap.data().jackpotAccVnd || jpSnap.data().pool || 500000);
+    }
+  } catch (_) {}
+
+  let totalJackpotReward = 0;
+  let potionsAdded = 0, mpPotionsAdded = 0, reviveAdded = 0;
+  let firstGrade = 0;
+
+  for (let i = 0; i < numBt; i++) {
+    const rItem = Math.random();
+    if (rItem < 0.2) potionsAdded++;
+    else if (rItem < 0.3) mpPotionsAdded++;
+    else if (rItem < 0.35) reviveAdded++;
+
+    const r_grade = Math.random() * 100;
+    let grade = 0;
+    if (r_grade < 0.1) grade = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
+    else if (r_grade < 0.6) grade = Math.floor(Math.random() * (50 - 21 + 1)) + 21;
+    else if (r_grade < 2.6) grade = Math.floor(Math.random() * (100 - 51 + 1)) + 51;
+    else if (r_grade < 12.6) grade = Math.floor(Math.random() * (300 - 101 + 1)) + 101;
+    else if (r_grade < 37.6) grade = Math.floor(Math.random() * (500 - 301 + 1)) + 301;
+    else if (r_grade < 72.6) grade = Math.floor(Math.random() * (800 - 501 + 1)) + 501;
+    else grade = Math.floor(Math.random() * (1000 - 801 + 1)) + 801;
+
+    if (i === 0) firstGrade = grade;
+
+    // BT 1장당 10,000 가상 수수료 기준 잭팟 분배 계산
+    let virtualFee = 10000;
+    let reward = Math.floor((virtualFee + currentJackpotPool) / grade) + Math.floor(virtualFee / grade);
+    if (reward <= 0) reward = 1;
+
+    totalJackpotReward += reward;
+    currentJackpotPool = Math.max(0, currentJackpotPool - reward);
+  }
+
+  const txHash = 'CONSUME_BT_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  const newBt = Math.max(0, currentBt - numBt);
+
+  // 1. 유저 BT 차감 및 획득 포인트 적립
+  await updateDoc(userRef, {
+    btBalance: newBt,
+    pointBalance: increment(totalJackpotReward),
+    updatedAt: serverTimestamp()
+  });
+
+  // 2. 가맹점주인 경우 가맹점 BT 동기화 차감
+  if (isMerchantOwner && mRef) {
+    try {
+      await updateDoc(mRef, {
+        btBalance: newBt,
+        updatedAt: serverTimestamp()
+      });
+    } catch (mErr) {
+      console.warn("Failed to update merchant btBalance:", mErr);
+    }
+  }
+
+  // 3. 배틀 플레이어 아이템 지급 시도
+  if (potionsAdded > 0 || mpPotionsAdded > 0 || reviveAdded > 0) {
+    try {
+      const bpRef = doc(db, "battle_players", uid);
+      await setDoc(bpRef, {
+        potions: increment(potionsAdded),
+        mpPotions: increment(mpPotionsAdded),
+        reviveTickets: increment(reviveAdded),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (_) {}
+  }
+
+  // 4. jackpot_wins 컬렉션에 당첨 기록 생성 (index.html 메인 최근 당첨자 및 마이페이지 기록용)
+  const displayName = userData.name || userData.displayName || (userData.email ? userData.email.split('@')[0] : '회원');
+  const merchantName = (merchantData && (merchantData.name || merchantData.merchantName)) || userData.merchantName || '대한김치';
+  const merchantId = userData.merchantId || (merchantData ? merchantData.id : 'daehan_kimchi');
+
+  const winDoc = {
+    uid,
+    userName: displayName,
+    userAddress: userData.walletAddress || '',
+    merchantName: merchantName,
+    merchantId: merchantId,
+    amountVnd: totalJackpotReward,
+    amountKrw: totalJackpotReward,
+    pointsEarned: totalJackpotReward,
+    grade: firstGrade,
+    btUsed: numBt,
+    potionCount: potionsAdded,
+    mpPotionCount: mpPotionsAdded,
+    reviveAdded: reviveAdded,
+    createdAt: serverTimestamp(),
+    timestamp: serverTimestamp(),
+    txHash
+  };
+
+  try {
+    await setDoc(doc(db, "jackpot_wins", txHash), winDoc);
+  } catch (winErr) {
+    console.error("Failed to write jackpot_wins doc:", winErr);
+  }
+
+  // 5. jackpot_config 누적 잭팟 갱신
+  try {
+    await setDoc(doc(db, "jackpot_config", "current"), {
+      jackpotAccVnd: Math.max(100000, currentJackpotPool),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (_) {}
+
+  return {
+    success: true,
+    txHash,
+    isJackpot: totalJackpotReward > 0,
+    pointsEarned: totalJackpotReward,
+    jackpotAmountVnd: totalJackpotReward,
+    btUsed: numBt,
+    remainingBt: newBt,
+    potionsAdded,
+    mpPotionsAdded,
+    reviveAdded,
+    randomValue: firstGrade || Math.floor(Math.random() * 900) + 100
+  };
+}
+
 async function loadKCultureBalances(uid) {
   try {
     const userSnap = await getDoc(doc(db, "users", uid));
@@ -140,16 +291,24 @@ async function loadKCultureBalances(uid) {
         const kBal = updatedD.pointBalanceVnd || 0;
         let bBal = updatedD.btBalance || 0;
 
-        // If Merchant, we assume another listener or initial fetch will handle BT, 
-        // but let's safely fetch it so it's accurate on user update as well.
+        const updateBtDom = (val) => {
+          if (elBt) {
+            const btSpan = elBt.querySelector("#btSpan");
+            if (btSpan) btSpan.textContent = val.toLocaleString("ko-KR") + " BT";
+            else elBt.innerHTML = `<span id="btSpan" style="font-size:1.6rem;">${val.toLocaleString("ko-KR")} BT</span>`;
+          }
+        };
+
         if (isMerchantOwner && mRef) {
           getDoc(mRef).then(mS => {
-            if (mS.exists()) bBal = mS.data().btBalance || bBal;
-            if (elBt) {
-              const btSpan = elBt.querySelector("#btSpan");
-              if (btSpan) btSpan.textContent = bBal.toLocaleString("ko-KR") + " BT";
-            }
+            if (mS.exists()) bBal = mS.data().btBalance ?? bBal;
+            updateBtDom(bBal);
+          }).catch(e => {
+            console.warn("getDoc mRef in listener failed:", e);
+            updateBtDom(bBal);
           });
+        } else {
+          updateBtDom(bBal);
         }
 
 
@@ -217,9 +376,6 @@ async function loadKCultureBalances(uid) {
           elPay.innerHTML = `<span>${kBal.toLocaleString("ko-KR")} BM</span>` +
             `<div style="font-size:0.8rem; color:#15803d; opacity:0.8; margin-top:2px;">(BEST CLUB MONEY)</div>`;
         }
-        if (elBt) {
-          elBt.innerHTML = `<span id="btSpan" style="font-size:1.6rem;">${bBal.toLocaleString("ko-KR")} BT</span>`;
-        }
       }, (err) => {
         console.error("onSnapshot error:", err);
       });
@@ -249,9 +405,21 @@ async function loadKCultureBalances(uid) {
 
                 btnExc.disabled = true;
                 btnExc.textContent = "처리 중...";
-                const fn = httpsCallable(functions, "exchangePointsToFiat");
-                const res = await fn({ amount: currentPoints });
-                alert(`✅ 전환 완료!\n사용 포인트: ${res.data.usedPoints.toLocaleString()} P\n추가된 BM 머니: +${res.data.convertedVnd.toLocaleString()} BM`);
+                let resData;
+                try {
+                  const fn = httpsCallable(functions, "exchangePointsToFiat");
+                  const res = await fn({ amount: currentPoints });
+                  resData = res.data;
+                } catch (fnErr) {
+                  console.warn("exchangePointsToFiat failed, fallback to client update:", fnErr);
+                  await updateDoc(doc(db, "users", uid), {
+                    pointBalance: increment(-currentPoints),
+                    pointBalanceVnd: increment(expectedKm),
+                    updatedAt: serverTimestamp()
+                  });
+                  resData = { usedPoints: currentPoints, convertedVnd: expectedKm };
+                }
+                alert(`✅ 전환 완료!\n사용 포인트: ${resData.usedPoints.toLocaleString()} P\n추가된 BM 머니: +${resData.convertedVnd.toLocaleString()} BM`);
                 await loadKCultureBalances(uid);
               } catch (err) {
                 alert("전환 실패: " + (err.message || "서버 오류"));
@@ -296,9 +464,10 @@ async function loadKCultureBalances(uid) {
 
           btnUseBt.disabled = true;
           btnUseBt.textContent = "사용 중...";
+          let overlay = null;
           try {
             // Show spinning animation overlay
-            const overlay = document.createElement("div");
+            overlay = document.createElement("div");
             overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;";
             document.body.appendChild(overlay);
 
@@ -315,20 +484,34 @@ async function loadKCultureBalances(uid) {
 
             const slot = initSlot(slotContainer);
 
-            const api = httpsCallable(functions, "consumeUserBtFirebase");
-            const res = await api({ btToUse: numToUse });
+            let d;
+            try {
+              const api = httpsCallable(functions, "consumeUserBtFirebase");
+              const res = await api({ btToUse: numToUse });
+              d = res.data;
+            } catch (fnErr) {
+              console.warn("consumeUserBtFirebase cloud function failed, using client fallback:", fnErr);
+              d = await consumeBtClientFallback(uid, numToUse, isMerchantOwner, mRef);
+            }
 
-            const d = res.data;
             const isWin = d.pointsEarned > 0 || d.isJackpot;
 
             slot.stop(d.randomValue || 13, isWin, () => {
-              setTimeout(() => {
-                document.body.removeChild(overlay);
+              const remainingBt = (d && d.remainingBt !== undefined) ? d.remainingBt : Math.max(0, currentBt - numToUse);
+              const btSpanEl = $("btSpan");
+              if (btSpanEl) btSpanEl.textContent = `${remainingBt.toLocaleString("ko-KR")} BT`;
+              const btDisplayEl = $("btDisplay");
+              if (btDisplayEl && !btSpanEl) btDisplayEl.innerHTML = `<span id="btSpan" style="font-size:1.6rem;">${remainingBt.toLocaleString("ko-KR")} BT</span>`;
+
+              setTimeout(async () => {
+                if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
                 showJackpotResult(d);
-                loadJackpotHistory(uid);
+                try { loadJackpotHistory(uid); } catch (_) {}
+                await loadKCultureBalances(uid);
               }, 1500);
             });
           } catch (e) {
+            if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
             alert("사용 실패: " + (e.message || "서버 오류가 발생했습니다."));
           } finally {
             btnUseBt.disabled = false;
@@ -1670,6 +1853,15 @@ function bindQrScan() {
       const onDetected = async (raw) => {
         if (__qrRaf) { cancelAnimationFrame(__qrRaf); __qrRaf = 0; }
 
+        // ── 가맹점 직원 현장 쿠폰 스캔 타겟 지원 ──
+        if (typeof window.__qrScanCouponTarget === 'function') {
+          const cb = window.__qrScanCouponTarget;
+          window.__qrScanCouponTarget = null;
+          cb(raw.trim());
+          stopQrScan();
+          return;
+        }
+
         // ── BT 모드 QR (보너스 티켓) 감지 시, 바로 리다이렉트 ──
         if (raw.includes('bt_receive.html')) {
           if (state) state.textContent = "보너스 티켓 수령 페이지로 이동합니다...";
@@ -1775,6 +1967,395 @@ function initAccordion() {
       section.classList.toggle('is-collapsed');
     });
   });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 내 쿠폰·바우쳐 (BM 기반 이벤트 쿠폰 / 바우쳐)
+// ─────────────────────────────────────────────────────────────────
+let _myCouponsList = [];
+let _currentCouponTab = 'all';
+
+function formatCouponDate(val) {
+  if (!val) return '-';
+  if (val.toDate) return val.toDate().toLocaleDateString('ko-KR');
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('ko-KR');
+}
+
+function renderCouponCards(coupons) {
+  const grid = $('myCouponsGrid');
+  const empty = $('myCouponsEmpty');
+  const emptyText = $('myCouponsEmptyText');
+  if (!grid || !empty) return;
+
+  grid.innerHTML = '';
+
+  // 탭 상태 필터링
+  const now = Date.now();
+  const filtered = coupons.filter(item => {
+    let effectiveStatus = item.status || 'available';
+    const expireTime = item.expiresAt?.toMillis ? item.expiresAt.toMillis() : new Date(item.expiresAt || 0).getTime();
+    if (effectiveStatus === 'available' && expireTime && now > expireTime) {
+      effectiveStatus = 'expired';
+    }
+
+    if (_currentCouponTab === 'all') return true;
+    return effectiveStatus === _currentCouponTab;
+  });
+
+  if (filtered.length === 0) {
+    empty.style.display = 'block';
+    if (emptyText) {
+      const tabNames = { all: '보유한', available: '사용 가능한', used: '사용 완료된', expired: '기간 만료된', cancelled: '취소된' };
+      emptyText.textContent = `${tabNames[_currentCouponTab] || ''} 쿠폰·바우쳐가 없습니다.`;
+    }
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  filtered.forEach(c => {
+    let effectiveStatus = c.status || 'available';
+    const expireTime = c.expiresAt?.toMillis ? c.expiresAt.toMillis() : new Date(c.expiresAt || 0).getTime();
+    if (effectiveStatus === 'available' && expireTime && now > expireTime) {
+      effectiveStatus = 'expired';
+    }
+
+    const card = document.createElement('div');
+    card.className = 'my-coupon-card';
+
+    const isVoucher = (c.campaignType || '').toUpperCase() === 'VOUCHER';
+    const typeLabel = isVoucher ? '바우쳐' : '이벤트 쿠폰';
+    const issuerBadge = c.issuerBadge || (c.issuerType === 'PLATFORM' ? 'SUPER ADMIN' : '가맹점');
+    const priceBM = Number(c.purchasePriceBM || 0);
+    const priceText = priceBM === 0 ? '무료 발급 (0 BM)' : `${priceBM.toLocaleString()} BM`;
+    const isFree = priceBM === 0;
+
+    const issuedDateStr = formatCouponDate(c.issuedAt);
+    const expireDateStr = formatCouponDate(c.expiresAt);
+
+    // 사용처
+    let merchantsText = '전 가맹점 사용 가능';
+    if (Array.isArray(c.applicableMerchantIds) && !c.applicableMerchantIds.includes('all')) {
+      merchantsText = c.applicableMerchantIds.join(', ');
+    } else if (c.merchantId && c.merchantId !== 'all') {
+      merchantsText = c.merchantId;
+    }
+
+    let statusPillHtml = '';
+    let actionBtnHtml = '';
+
+    if (effectiveStatus === 'available') {
+      statusPillHtml = `<span class="status-pill available">사용 가능</span>`;
+      actionBtnHtml = `<button type="button" class="btn btn--primary btn--sm btn-open-coupon-qr" style="font-weight:700; padding:6px 14px; border-radius:8px;" data-id="${c.id}">사용하기 (QR)</button>`;
+    } else if (effectiveStatus === 'used') {
+      statusPillHtml = `<span class="status-pill used">사용 완료</span>`;
+      const redeemedDate = c.redeemedAt ? formatCouponDate(c.redeemedAt) : '';
+      actionBtnHtml = `<span style="font-size:0.75rem; color:#64748b; font-weight:600;">${redeemedDate ? redeemedDate + ' 사용됨' : '사용 완료'}</span>`;
+    } else if (effectiveStatus === 'expired') {
+      statusPillHtml = `<span class="status-pill expired">기간 만료</span>`;
+      actionBtnHtml = `<span style="font-size:0.75rem; color:#dc2626; font-weight:600;">유효기간 종료</span>`;
+    } else {
+      statusPillHtml = `<span class="status-pill cancelled">취소</span>`;
+      actionBtnHtml = `<span style="font-size:0.75rem; color:#9ca3af; font-weight:600;">발급 취소</span>`;
+    }
+
+    const fallbackImg = isVoucher
+      ? 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80'
+      : 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&auto=format&fit=crop&q=80';
+    const imgSrc = c.imageUrl || fallbackImg;
+
+    card.innerHTML = `
+      <div class="my-coupon-img-wrap">
+        <img src="${imgSrc}" alt="${esc(c.title || '')}" class="my-coupon-img" onerror="this.src='${fallbackImg}';">
+        <span class="my-coupon-badge-issuer">${esc(issuerBadge)}</span>
+        <span class="my-coupon-badge-type">${typeLabel}</span>
+      </div>
+      <div class="my-coupon-content">
+        <h4 class="my-coupon-title">${esc(c.title || '쿠폰 상품')}</h4>
+        <div class="my-coupon-issuer">
+          <span>발행처:</span> <b>${esc(c.issuerNameSnapshot || c.issuerId || '플랫폼')}</b>
+        </div>
+        <div class="my-coupon-price-row">
+          <span style="font-size:0.75rem; color:#64748b; font-weight:600;">결제/발급 금액</span>
+          <span class="my-coupon-price ${isFree ? 'free' : ''}">${priceText}</span>
+        </div>
+        <div class="my-coupon-info-list">
+          <div>📅 <b>발급일:</b> ${issuedDateStr}</div>
+          <div>⏳ <b>만료일:</b> <span style="color:#e11d48; font-weight:700;">${expireDateStr}</span></div>
+          <div>🏪 <b>사용처:</b> ${esc(merchantsText)}</div>
+          <div style="font-family:monospace; font-size:0.8rem; background:#f1f5f9; padding:2px 6px; border-radius:4px; display:inline-block; width:fit-content; margin-top:2px;">
+            코드: <b>${esc(c.couponCode || '-')}</b>
+          </div>
+        </div>
+        <div class="my-coupon-actions">
+          ${statusPillHtml}
+          <div style="margin-left:auto;">${actionBtnHtml}</div>
+        </div>
+      </div>
+    `;
+
+    // 사용하기 클릭 시 모달 열기
+    const btnUse = card.querySelector('.btn-open-coupon-qr');
+    if (btnUse) {
+      btnUse.addEventListener('click', () => openCouponQrModal(c, merchantsText, expireDateStr));
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+function updateCouponTabCounts(coupons) {
+  const now = Date.now();
+  let cntAll = coupons.length;
+  let cntAvailable = 0;
+  let cntUsed = 0;
+  let cntExpired = 0;
+  let cntCancelled = 0;
+
+  coupons.forEach(c => {
+    let s = c.status || 'available';
+    const expireTime = c.expiresAt?.toMillis ? c.expiresAt.toMillis() : new Date(c.expiresAt || 0).getTime();
+    if (s === 'available' && expireTime && now > expireTime) {
+      s = 'expired';
+    }
+
+    if (s === 'available') cntAvailable++;
+    else if (s === 'used') cntUsed++;
+    else if (s === 'expired') cntExpired++;
+    else if (s === 'cancelled') cntCancelled++;
+  });
+
+  if ($('cntAll')) $('cntAll').textContent = `(${cntAll})`;
+  if ($('cntAvailable')) $('cntAvailable').textContent = `(${cntAvailable})`;
+  if ($('cntUsed')) $('cntUsed').textContent = `(${cntUsed})`;
+  if ($('cntExpired')) $('cntExpired').textContent = `(${cntExpired})`;
+  if ($('cntCancelled')) $('cntCancelled').textContent = `(${cntCancelled})`;
+}
+
+function openCouponQrModal(coupon, merchantsText, expireDateStr) {
+  const modal = $('couponQrModal');
+  if (!modal) return;
+
+  const isVoucher = (coupon.campaignType || '').toUpperCase() === 'VOUCHER';
+  if ($('qrModalTypeBadge')) $('qrModalTypeBadge').textContent = isVoucher ? '바우쳐' : '이벤트 쿠폰';
+  if ($('qrModalTitle')) $('qrModalTitle').textContent = coupon.title || '-';
+  if ($('qrModalCode')) $('qrModalCode').textContent = coupon.couponCode || '-';
+  if ($('qrModalIssuer')) $('qrModalIssuer').textContent = coupon.issuerNameSnapshot || coupon.issuerId || '플랫폼';
+  if ($('qrModalMerchants')) $('qrModalMerchants').textContent = merchantsText;
+  if ($('qrModalExpiry')) $('qrModalExpiry').textContent = expireDateStr;
+  if ($('qrModalTerms')) $('qrModalTerms').textContent = coupon.terms ? `조건: ${coupon.terms}` : '사용 조건: 현장 주문/결제 시 제시';
+
+  const canvasWrap = $('couponQrCanvasWrap');
+  if (canvasWrap) {
+    canvasWrap.innerHTML = '';
+    const code = coupon.couponCode || 'INVALID';
+    if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+      const canvas = document.createElement('canvas');
+      window.QRCode.toCanvas(canvas, code, { width: 190, margin: 1, color: { dark: '#1e1b4b', light: '#ffffff' } }, (err) => {
+        if (!err) canvasWrap.appendChild(canvas);
+        else canvasWrap.textContent = code;
+      });
+    } else {
+      import('https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm').then(mod => {
+        const canvas = document.createElement('canvas');
+        mod.default.toCanvas(canvas, code, { width: 190, margin: 1 }, () => {
+          canvasWrap.appendChild(canvas);
+        });
+      }).catch(() => {
+        canvasWrap.textContent = code;
+      });
+    }
+  }
+
+  // 모달 복사 버튼
+  const btnCopy = $('btnCopyCouponCode');
+  const copyDone = $('couponCodeCopyDone');
+  if (btnCopy) {
+    btnCopy.onclick = () => {
+      navigator.clipboard.writeText(coupon.couponCode || '').then(() => {
+        if (copyDone) {
+          copyDone.style.display = 'inline';
+          setTimeout(() => { copyDone.style.display = 'none'; }, 2000);
+        }
+      });
+    };
+  }
+
+  // 닫기 버튼
+  const close = () => { modal.style.display = 'none'; };
+  if ($('btnCouponQrClose')) $('btnCouponQrClose').onclick = close;
+  if ($('btnCouponQrConfirmClose')) $('btnCouponQrConfirmClose').onclick = close;
+  modal.onclick = (e) => { if (e.target === modal) close(); };
+
+  modal.style.display = 'flex';
+}
+
+async function loadMyCouponsData(uid) {
+  const loading = $('myCouponsLoading');
+  const empty = $('myCouponsEmpty');
+  if (loading) loading.style.display = 'block';
+  if (empty) empty.style.display = 'none';
+
+  try {
+    const q = query(
+      collection(db, 'user_coupons'),
+      where('userId', '==', uid)
+    );
+    const snap = await getDocs(q);
+    const list = [];
+    snap.forEach(docSnap => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+
+    list.sort((a, b) => {
+      const ta = a.issuedAt?.toMillis ? a.issuedAt.toMillis() : new Date(a.issuedAt || 0).getTime();
+      const tb = b.issuedAt?.toMillis ? b.issuedAt.toMillis() : new Date(b.issuedAt || 0).getTime();
+      return tb - ta;
+    });
+
+    _myCouponsList = list;
+    updateCouponTabCounts(_myCouponsList);
+    renderCouponCards(_myCouponsList);
+  } catch (err) {
+    console.error('loadMyCouponsData error:', err);
+    if (empty) {
+      empty.style.display = 'block';
+      if ($('myCouponsEmptyText')) $('myCouponsEmptyText').textContent = '쿠폰 목록을 불러오는 중 오류가 발생했습니다.';
+    }
+  } finally {
+    if (loading) loading.style.display = 'none';
+  }
+}
+
+async function initMyCoupons(user, userData) {
+  const section = $('couponsSection');
+  if (!section || !user) return;
+
+  // 1. 탭 이벤트 바인딩
+  document.querySelectorAll('.mycoupon-tab').forEach(tabBtn => {
+    tabBtn.addEventListener('click', () => {
+      document.querySelectorAll('.mycoupon-tab').forEach(b => {
+        b.classList.remove('active');
+        b.style.background = '#f1f5f9';
+        b.style.color = '#475569';
+      });
+      tabBtn.classList.add('active');
+      tabBtn.style.background = '#7c3aed';
+      tabBtn.style.color = '#ffffff';
+
+      _currentCouponTab = tabBtn.dataset.status || 'all';
+      renderCouponCards(_myCouponsList);
+    });
+  });
+
+  // 2. 새로고침 버튼
+  const btnRefresh = $('btnRefreshCoupons');
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      btnRefresh.disabled = true;
+      btnRefresh.style.opacity = '0.6';
+      await loadMyCouponsData(user.uid);
+      btnRefresh.disabled = false;
+      btnRefresh.style.opacity = '1';
+    });
+  }
+
+  // 3. 가맹점 현장 승인 도구 바인딩 (관리자 또는 가맹점주)
+  const isSuperAdmin = ['daguri75@gmail.com'].includes(user.email) || userData.role === 'SUPER_ADMIN' || userData.role === 'admin';
+  const isMerchantOwner = !!userData.merchantId;
+
+  const toolBox = $('merchantRedeemTool');
+  if (toolBox && (isSuperAdmin || isMerchantOwner)) {
+    toolBox.style.display = 'block';
+    const roleBadge = $('merchantStaffRoleBadge');
+    const merchantSelect = $('staffMerchantSelect');
+    if (roleBadge) {
+      const mLabel = userData.merchantId === 1791605366 ? 'BEST WINNER' : (userData.merchantName || userData.merchantId);
+      roleBadge.textContent = isSuperAdmin ? '수퍼 어드민' : `가맹점 점주 (${mLabel})`;
+    }
+
+    if (isSuperAdmin && merchantSelect) {
+      merchantSelect.style.display = 'inline-block';
+      try {
+        const mSnap = await getDocs(collection(db, 'merchants'));
+        merchantSelect.innerHTML = '<option value="">가맹점 선택...</option>';
+        mSnap.forEach(d => {
+          const m = d.data();
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.textContent = `${m.name || d.id} (${d.id})`;
+          merchantSelect.appendChild(opt);
+        });
+      } catch (mErr) {
+        console.warn('load merchants for staff redeem error:', mErr);
+      }
+    }
+
+    const btnSubmit = $('btnStaffRedeemSubmit');
+    const codeInput = $('staffCouponCodeInput');
+    const msgEl = $('staffRedeemMsg');
+
+    if (btnSubmit && codeInput) {
+      btnSubmit.addEventListener('click', async () => {
+        const rawCode = (codeInput.value || '').trim().toUpperCase();
+        if (!rawCode) {
+          if (msgEl) { msgEl.style.color = '#dc2626'; msgEl.textContent = '쿠폰 코드를 입력해 주세요.'; }
+          return;
+        }
+
+        let targetMerchantId = isMerchantOwner ? String(userData.merchantId) : (merchantSelect?.value || '');
+        if (!targetMerchantId) {
+          if (msgEl) { msgEl.style.color = '#dc2626'; msgEl.textContent = '가맹점을 선택해 주세요.'; }
+          return;
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = '승인 처리 중...';
+        if (msgEl) { msgEl.style.color = '#7c3aed'; msgEl.textContent = '서버에서 쿠폰 유효성 검증 및 사용 처리 중...'; }
+
+        try {
+          const fn = httpsCallable(functions, 'redeemCouponOffline');
+          const res = await fn({ couponCode: rawCode, merchantId: targetMerchantId });
+          const d = res.data || {};
+          if (msgEl) {
+            msgEl.style.color = '#15803d';
+            msgEl.textContent = `✅ [사용 완료] "${d.title || rawCode}" 쿠폰이 정상 승인되었습니다. (승인번호: ${d.redemptionId || '-'})`;
+          }
+          codeInput.value = '';
+          await loadMyCouponsData(user.uid);
+          loadKCultureBalances(user.uid);
+        } catch (err) {
+          if (msgEl) {
+            msgEl.style.color = '#dc2626';
+            msgEl.textContent = `❌ 사용 실패: ${err.message || '서버 오류'}`;
+          }
+        } finally {
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = '승인 및 사용 처리';
+        }
+      });
+    }
+
+    // QR 스캔 버튼
+    const btnScan = $('btnStaffRedeemScan');
+    if (btnScan) {
+      btnScan.addEventListener('click', () => {
+        const openCamera = $('btnQrScan');
+        if (openCamera) {
+          window.__qrScanCouponTarget = (code) => {
+            if (codeInput) codeInput.value = code;
+            if (msgEl) { msgEl.style.color = '#15803d'; msgEl.textContent = `QR 스캔 성공: ${code}`; }
+          };
+          openCamera.click();
+        }
+      });
+    }
+  }
+
+  // 4. 초기 데이터 로드
+  await loadMyCouponsData(user.uid);
 }
 
 onAuthReady(async (ctx) => {
@@ -1899,6 +2480,9 @@ onAuthReady(async (ctx) => {
     loadCoopOrders(user.uid);
     const btnRefreshCoopOrders = $("btnRefreshCoopOrders");
     if (btnRefreshCoopOrders) btnRefreshCoopOrders.onclick = () => loadCoopOrders(user.uid);
+
+    // ── 내 쿠폰·바우쳐 초기화 ──
+    initMyCoupons(user, data);
   } catch (err) {
     console.error("\uB9C8\uC774\uD398\uC774\uC9C0 \uCD08\uAE30\uD654 \uC2E4\uD328", err);
   }

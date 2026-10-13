@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/town_home.js
+// /assets/js/pages/town_home.js
 import { _t, initLang } from "./town_home.i18n.js";
 import { auth, db } from "/assets/js/auth.js";
 import { functions } from "/assets/js/firebase-init.js";
@@ -13,6 +13,7 @@ import {
   orderBy,
   limit,
   getDocs,
+  onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 // ── 가맹점 캐시 (세션 내 1회만 fetch) ────────────────────────────────────────
@@ -134,99 +135,117 @@ let _userLevel = 0;
 let _userWalletAddr = "";
 let _jackpotWinners = [];
 
+function renderWinnersList(snap) {
+  const wrap = $("jackpotWinnersList");
+  if (!wrap) return;
+
+  const winners = [];
+  snap.forEach((d) => {
+    const r = d.data();
+    let displayName = r.userName || r.userAddress || "-";
+    if (displayName.length > 10 && displayName.startsWith('0x')) {
+      displayName = displayName.slice(0, 6) + "..." + displayName.slice(-4);
+    }
+
+    const ts = r.timestamp || r.createdAt;
+    const createdAt = ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : null);
+    const dateStr = createdAt
+      ? createdAt.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) +
+      " " +
+      createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
+      : "-";
+
+    const items = [];
+    const amountKM = Number(r.amountVnd || r.amountKrw || r.pointsEarned || 0);
+    const ptsWei = BigInt(r.onchainJackpotPointsWei || "0");
+    if (amountKM > 0) items.push(`🪙 ${amountKM.toLocaleString()} Point`);
+    else if (ptsWei > 0n) items.push(`🪙 ${(Number(ptsWei) / 1e18).toFixed(6)} Point`);
+
+    if ((r.potionCount || 0) > 0) items.push(_t('red_potion', r.potionCount));
+    if ((r.mpPotionCount || 0) > 0) items.push(_t('mp_potion', r.mpPotionCount));
+    if ((r.reviveAdded || 0) > 0) items.push(_t('revive', r.reviveAdded));
+
+    let hexVal = 0;
+    if (amountKM > 0) hexVal = amountKM;
+    else if (ptsWei > 0n) hexVal = Number(ptsWei) / 1e18;
+
+    winners.push({
+      addrShort: displayName,
+      merchantName: r.merchantName || `가맹점 #${r.merchantId || ""}`,
+      dateStr,
+      itemsStr: items.join(" / ") || _t('item'),
+      hexVal,
+      _ts: createdAt ? createdAt.getTime() : 0,
+    });
+  });
+
+  _jackpotWinners = winners;
+
+  if (!winners.length) {
+    wrap.innerHTML = `<p class="jp-winners-empty">${_t('no_winners')}</p>`;
+    return;
+  }
+
+  const INITIAL_SHOW = 5;
+  const makeRow = (w, i) => `
+    <div class="jp-winner-row${i === 0 ? " jp-winner-top" : ""}">
+      <div class="jp-winner-info">
+        <div class="jp-winner-amount">${i === 0 ? "&#x1F3C6; " : "&#x1F381; "}${escHtml(w.itemsStr)}</div>
+        <div class="jp-winner-meta">
+          <span class="jp-winner-tag">&#x1F464; ${escHtml(w.addrShort)}</span>
+          <span class="jp-winner-tag">&#x1F3EA; ${escHtml(w.merchantName)}</span>
+          <span class="jp-winner-tag">&#x1F4C5; ${escHtml(w.dateStr)}</span>
+        </div>
+      </div>
+      <button class="jp-share-btn" data-win-idx="${i}" type="button">${_t('share')}</button>
+    </div>`;
+
+  const visibleRows = winners.slice(0, INITIAL_SHOW).map(makeRow).join("");
+  const hiddenRows = winners.length > INITIAL_SHOW
+    ? `<div id="jpWinnersHidden" style="display:none;">${winners.slice(INITIAL_SHOW).map(makeRow).join("")}</div>
+       <button class="jp-winners-more-btn" id="jpWinnersMoreBtn" type="button">${_t('more_winners', winners.length - INITIAL_SHOW)}</button>`
+    : "";
+
+  wrap.innerHTML = visibleRows + hiddenRows;
+
+  const moreBtn = $("jpWinnersMoreBtn");
+  if (moreBtn) {
+    moreBtn.onclick = () => {
+      $("jpWinnersHidden").style.display = "";
+      moreBtn.style.display = "none";
+    };
+  }
+
+  wrap.onclick = (e) => {
+    const btn = e.target.closest(".jp-share-btn");
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.winIdx, 10);
+    if (Number.isFinite(idx) && _jackpotWinners[idx]) {
+      openShareModal(_jackpotWinners[idx]);
+    }
+  };
+}
+
 async function loadJackpotWinners() {
   const wrap = $("jackpotWinnersList");
   if (!wrap) return;
 
   try {
-    const snap = await getDocs(
-      query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(50))
+    const q = query(
+      collection(db, "jackpot_wins"),
+      orderBy("createdAt", "desc"),
+      limit(50)
     );
 
-    const winners = [];
-    snap.forEach((d) => {
-      const r = d.data();
-      let displayName = r.userName || r.userAddress || "-";
-      if (displayName.length > 10 && displayName.startsWith('0x')) {
-        displayName = displayName.slice(0, 6) + "..." + displayName.slice(-4);
-      }
-
-      const ts = r.timestamp || r.createdAt;
-      const createdAt = ts?.toDate ? ts.toDate() : null;
-      const dateStr = createdAt
-        ? createdAt.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) +
-        " " +
-        createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
-        : "-";
-
-      const items = [];
-      const amountKM = Number(r.amountVnd || r.amountKrw || 0);
-      const ptsWei = BigInt(r.onchainJackpotPointsWei || "0");
-      if (amountKM > 0) items.push(`🪙 ${amountKM.toLocaleString()} Point`);
-      else if (ptsWei > 0n) items.push(`🪙 ${(Number(ptsWei) / 1e18).toFixed(6)} Point`);
-
-      if ((r.potionCount || 0) > 0) items.push(_t('red_potion', r.potionCount));
-      if ((r.mpPotionCount || 0) > 0) items.push(_t('mp_potion', r.mpPotionCount));
-      if ((r.reviveAdded || 0) > 0) items.push(_t('revive', r.reviveAdded));
-
-      let hexVal = 0;
-      if (amountKM > 0) hexVal = amountKM;
-      else if (ptsWei > 0n) hexVal = Number(ptsWei) / 1e18;
-
-      winners.push({
-        addrShort: displayName,
-        merchantName: r.merchantName || `가맹점 #${r.merchantId || ""}`,
-        dateStr,
-        itemsStr: items.join(" / ") || _t('item'),
-        hexVal,
-        _ts: createdAt ? createdAt.getTime() : 0,
+    onSnapshot(q, (snap) => {
+      renderWinnersList(snap);
+      try { loadJackpotStats(); } catch (_) {}
+    }, (err) => {
+      console.warn("jackpot_wins onSnapshot error, falling back to getDocs:", err);
+      getDocs(q).then(renderWinnersList).catch((e) => {
+        console.warn("loadJackpotWinners getDocs failed:", e);
+        wrap.innerHTML = `<p class="jp-winners-empty">${_t('winners_load_error')}</p>`;
       });
-    });
-
-    _jackpotWinners = winners;
-
-    if (!winners.length) {
-      wrap.innerHTML = `<p class="jp-winners-empty">${_t('no_winners')}</p>`;
-      return;
-    }
-
-    const INITIAL_SHOW = 5;
-    const makeRow = (w, i) => `
-      <div class="jp-winner-row${i === 0 ? " jp-winner-top" : ""}">
-        <div class="jp-winner-info">
-          <div class="jp-winner-amount">${i === 0 ? "&#x1F3C6; " : "&#x1F381; "}${escHtml(w.itemsStr)}</div>
-          <div class="jp-winner-meta">
-            <span class="jp-winner-tag">&#x1F464; ${escHtml(w.addrShort)}</span>
-            <span class="jp-winner-tag">&#x1F3EA; ${escHtml(w.merchantName)}</span>
-            <span class="jp-winner-tag">&#x1F4C5; ${escHtml(w.dateStr)}</span>
-          </div>
-        </div>
-        <button class="jp-share-btn" data-win-idx="${i}" type="button">${_t('share')}</button>
-      </div>`;
-
-    const visibleRows = winners.slice(0, INITIAL_SHOW).map(makeRow).join("");
-    const hiddenRows = winners.length > INITIAL_SHOW
-      ? `<div id="jpWinnersHidden" style="display:none;">${winners.slice(INITIAL_SHOW).map(makeRow).join("")}</div>
-         <button class="jp-winners-more-btn" id="jpWinnersMoreBtn" type="button">${_t('more_winners', winners.length - INITIAL_SHOW)}</button>`
-      : "";
-
-    wrap.innerHTML = visibleRows + hiddenRows;
-
-    const moreBtn = $("jpWinnersMoreBtn");
-    if (moreBtn) {
-      moreBtn.onclick = () => {
-        $("jpWinnersHidden").style.display = "";
-        moreBtn.style.display = "none";
-      };
-    }
-
-    wrap.addEventListener("click", (e) => {
-      const btn = e.target.closest(".jp-share-btn");
-      if (!btn) return;
-      const idx = parseInt(btn.dataset.winIdx, 10);
-      if (Number.isFinite(idx) && _jackpotWinners[idx]) {
-        openShareModal(_jackpotWinners[idx]);
-      }
     });
   } catch (err) {
     console.warn("loadJackpotWinners failed:", err);

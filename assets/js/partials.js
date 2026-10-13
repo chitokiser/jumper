@@ -1,4 +1,4 @@
-﻿// /assets/js/partials.js
+// /assets/js/partials.js
 const _HDR_T = {
   vi: {
     hdr_kculture: 'K-CULTURE', hdr_food: '🍲 Ẩm thực', hdr_life: '🛍️ Đời sống', hdr_beauty: '💅 Làm đẹp', hdr_travel: '✈️ Du lịch', hdr_experience: '🎭 Trải nghiệm',
@@ -237,7 +237,7 @@ window.addEventListener('lang:change', applyFooterI18n);
       if (!document.querySelector('link[rel="apple-touch-icon"]')) {
         const a = document.createElement("link");
         a.rel = "apple-touch-icon";
-        a.href = "/assets/images/jump/favicon.png";
+        a.href = "/assets/images/jump/mlogo.png";
         document.head.appendChild(a);
       }
     } catch (e) {

@@ -1,12 +1,13 @@
-﻿const CACHE_NAME = "kmoa-app-v9999999993";
+const CACHE_NAME = "kmoa-app-v9999999994";
 
 const CORE_ASSETS = [
   "/",
   "/index.html",
   "/manifest.json",
+  "/manifest.webmanifest",
   "/assets/css/app.css",
   "/assets/css/header.css",
-  "/assets/images/jump/logo2.png"
+  "/assets/images/jump/mlogo.png"
 ];
 
 self.addEventListener("install", (event) => {

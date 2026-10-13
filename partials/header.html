@@ -1,4 +1,4 @@
-﻿<!-- /partials/header.html -->
+<!-- /partials/header.html -->
 <header class="top-header top-header--sleek" id="siteHeaderBar">
   <div class="hdr-inner">
 
@@ -14,7 +14,12 @@
 
     <nav class="nav" id="hdrNav">
 
-
+      <!-- 베스트 매거진 상단 탑 메뉴 링크 -->
+      <a href="/kca_webzine.html" class="nav-item-link"
+        style="display:flex; align-items:center; gap:6px; color:rgba(26,39,68,.9); font-weight:700; text-decoration:none; padding:8px 12px; border-radius:8px; transition:all 0.2s;"
+        onmouseover="this.style.background='rgba(99,102,241,0.08)'" onmouseout="this.style.background='transparent'">
+        <span>📖</span> <span>베스트 매거진</span>
+      </a>
 
       <div class="nav-group dropdown-group">
         <button type="button" class="nav-group-title dropdown-toggle"
@@ -22,6 +27,7 @@
           탐색 (Explore) <span style="font-size:0.75em;opacity:0.6;">▼</span>
         </button>
         <div class="dropdown-menu nav-group-menu">
+          <a href="/kca_webzine.html" data-role="user guide merchant admin">📖 베스트 매거진 (Webzine)</a>
           <a href="/find_merchants.html" data-hdr-i18n="hdr_merchants" data-role="user guide merchant admin">가맹점 찾기</a>
           <a href="/events.html" data-hdr-i18n="hdr_events" data-role="user guide merchant admin">이벤트</a>
 
@@ -40,6 +46,8 @@
         </button>
         <div class="dropdown-menu nav-group-menu">
           <a href="/mypage.html" data-role="user guide merchant admin">내 정보 (My Page)</a>
+          <a href="/mypage.html#couponsSection" data-role="user guide merchant admin">🎟️ 내 쿠폰·바우쳐 (Coupons)</a>
+          <a href="/orders.html" data-role="user guide merchant admin">📦 내 주문·구매 내역 (Orders)</a>
           <a href="/mypage.html#merchantPaySection" data-role="user guide merchant admin">📷 가맹점 결제하기 (QR스캔)</a>
           <a href="/merchants.html">🎮 게임하기 (Games)</a>
           <a href="/merchant-qr.html" data-role="merchant admin">가맹점 결제받기 (QR)</a>
@@ -47,6 +55,7 @@
           <a href="/admin_merchant_products.html" data-role="merchant admin">📦 가맹점 상품 관리</a>
           <a href="/family-register.html">가맹점(Family) 신청</a>
           <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0;" />
+          <a href="/admin_webzine.html" data-role="admin">✍️ 웹진 발행 CMS</a>
           <a href="/admin.html" data-role="admin">관리자 모드 (Admin)</a>
         </div>
       </div>

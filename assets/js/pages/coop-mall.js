@@ -1,4 +1,4 @@
-﻿import { app } from "../firebase-init.js";
+import { app } from "../firebase-init.js";
 import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { onAuthReady } from "../auth.js";
 
@@ -7,21 +7,138 @@ const $ = (id) => document.getElementById(id);
 
 let currentViewer = null;
 let cart = []; // 장바구니 아이템 담는 배열
+let rawProducts = [];
+let selectedMerchantFilter = "all";
+
+// 가맹점 식별 및 별칭 매핑
+let merchantMap = {
+  "1791002036": "대한김치",
+  "daehan_kimchi": "대한김치",
+  "1791605366": "베스트위너",
+  "bestwinner": "베스트위너"
+};
+
+const KNOWN_MERCHANT_ALIASES = {
+  "daehan_kimchi": ["1791002036", "daehan_kimchi"],
+  "1791002036": ["1791002036", "daehan_kimchi"],
+  "bestwinner": ["1791605366", "bestwinner", "best_winner"],
+  "1791605366": ["1791605366", "bestwinner", "best_winner"]
+};
+
+// XSS 방지 헬퍼
+function esc(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+// 가맹점 이름 해결 헬퍼
+function resolveMerchantName(merchantId, explicitName) {
+  if (explicitName) return explicitName;
+  const mIdStr = String(merchantId || "").trim();
+  if (merchantMap[mIdStr]) return merchantMap[mIdStr];
+  if (mIdStr === "daehan_kimchi" || mIdStr === "1791002036") return "대한김치";
+  if (mIdStr === "bestwinner" || mIdStr === "1791605366") return "베스트위너";
+  return mIdStr || "제휴 가맹점";
+}
+
+// 가맹점 필터 매칭
+function matchesMerchant(productMerchantId, filterTarget) {
+  if (!filterTarget || filterTarget === "all") return true;
+  const pStr = String(productMerchantId || "").trim();
+  const fStr = String(filterTarget || "").trim();
+  if (pStr === fStr) return true;
+
+  const aliases = KNOWN_MERCHANT_ALIASES[fStr] || [fStr];
+  return aliases.some(a => String(a).trim() === pStr);
+}
 
 onAuthReady(async ({ loggedIn, user }) => {
-  if (!loggedIn) {
-    window.location.href = "/login.html";
-    return;
+  if (loggedIn) {
+    currentViewer = user;
   }
-  currentViewer = user;
   loadCartFromStorage();
+  await loadMerchants();
   await loadProducts();
 });
 
-// 1. 서버(Firestore)에서 공개된 상품(published) 전부 긁어오기
+// 가맹점 마스터 목록 로드
+async function loadMerchants() {
+  try {
+    const snap = await getDocs(collection(db, "merchants"));
+    const filterBar = $("merchantFilterBar");
+
+    snap.forEach(d => {
+      const data = d.data();
+      const id = String(d.id);
+      const name = data.name || data.merchantName || id;
+      merchantMap[id] = name;
+      if (data.merchantId) merchantMap[String(data.merchantId)] = name;
+    });
+
+    if (filterBar) {
+      // 고유 가맹점 목록 구성
+      const uniqueMerchants = [
+        { id: "1791002036", name: "대한김치" },
+        { id: "1791605366", name: "베스트위너" }
+      ];
+
+      snap.forEach(d => {
+        const id = String(d.id);
+        const name = d.data()?.name || id;
+        if (!uniqueMerchants.some(m => m.id === id || matchesMerchant(id, m.id))) {
+          uniqueMerchants.push({ id, name });
+        }
+      });
+
+      let buttonsHtml = `
+        <span style="font-size:0.85rem; font-weight:bold; color:#475569; margin-right:4px;">🏪 가맹점별 모아보기:</span>
+        <button type="button" class="btn btn--sm btn--primary filter-btn" data-merchant="all" style="border-radius:99px; font-weight:600;">전체 보기</button>
+      `;
+
+      uniqueMerchants.forEach(m => {
+        buttonsHtml += `
+          <button type="button" class="btn btn--sm filter-btn" data-merchant="${esc(m.id)}" style="background:#fff; color:#334155; border:1px solid #cbd5e1; border-radius:99px; font-weight:600;">
+            🏪 ${esc(m.name)}
+          </button>
+        `;
+      });
+
+      filterBar.innerHTML = buttonsHtml;
+
+      // 필터 버튼 클릭 이벤트
+      filterBar.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedMerchantFilter = btn.getAttribute("data-merchant");
+
+          filterBar.querySelectorAll(".filter-btn").forEach(b => {
+            b.className = "btn btn--sm filter-btn";
+            b.style.background = "#fff";
+            b.style.color = "#334155";
+            b.style.border = "1px solid #cbd5e1";
+          });
+
+          btn.className = "btn btn--sm btn--primary filter-btn";
+          btn.style.background = "";
+          btn.style.color = "";
+          btn.style.border = "";
+
+          renderProductsList();
+        });
+      });
+    }
+  } catch (err) {
+    console.warn("가맹점 마스터 로드 실패:", err);
+  }
+}
+
+// 1. 서버(Firestore)에서 공개된 상품(published) 로드
 async function loadProducts() {
   const listEl = $("coopMallProducts");
-  listEl.innerHTML = "상품을 불러오는 중...";
+  listEl.innerHTML = "<div class='hint' style='grid-column: 1 / -1; text-align:center; padding:30px;'>상품을 불러오는 중...</div>";
 
   try {
     const q = query(
@@ -31,62 +148,103 @@ async function loadProducts() {
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      listEl.innerHTML = "<div class='hint'>현재 판매 중인 상품이 없습니다.</div>";
+      listEl.innerHTML = "<div class='hint' style='grid-column: 1 / -1; text-align:center; padding:30px;'>현재 판매 중인 가맹점 상품이 없습니다.</div>";
       return;
     }
 
-    let docs = [];
-    snap.forEach(d => docs.push({ id: d.id, data: d.data() }));
-    docs.sort((a, b) => {
-      const timeA = a.data.created_at?.toMillis() || 0;
-      const timeB = b.data.created_at?.toMillis() || 0;
+    rawProducts = [];
+    snap.forEach(d => rawProducts.push({ id: d.id, data: d.data() }));
+    rawProducts.sort((a, b) => {
+      const timeA = a.data.created_at?.toMillis?.() || (a.data.created_at?.seconds ? a.data.created_at.seconds * 1000 : 0);
+      const timeB = b.data.created_at?.toMillis?.() || (b.data.created_at?.seconds ? b.data.created_at.seconds * 1000 : 0);
       return timeB - timeA;
     });
 
-    let html = "";
-    docs.forEach(docSnap => {
-      const data = docSnap.data;
-      html += `
-                <div class="panel" style="padding:16px; border:1px solid #e5e7eb; border-radius:12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display:flex; flex-direction:column; justify-content:space-between;">
-                    <div>
-                        ${data.image_url ? `<img src="${data.image_url}" style="width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:12px;" />` : ""}
-                        <div style="font-weight:bold; font-size:1.2rem; color:#1f2937;">${data.product_name}</div>
-                        <div style="color:#6b7280; font-size:0.85rem; margin-top:4px;">${data.description || ""}</div>
-                    </div>
-                    <div style="margin-top:16px; border-top:1px solid #f3f4f6; padding-top:12px; text-align:right;">
-                        <span style="font-size:1.3rem; font-weight:800; color:#ef4444;">${Number(data.price).toLocaleString()} <span style="font-size:0.9rem;">VND</span></span>
-                        <div style="margin-top:8px;">
-                            <button class="btn btn--primary" style="width:100%; border-radius:8px;" data-action="add-cart" 
-                                data-id="${docSnap.id}" 
-                                data-merchant="${data.merchant_id}"
-                                data-name="${data.product_name}" 
-                                data-price="${data.price}">
-                                🛒 장바구니 담기
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-    });
-    listEl.innerHTML = html;
-
-    // 장바구니 닫기 이벤트 바인딩
-    listEl.querySelectorAll("button[data-action='add-cart']").forEach(btn => {
-      btn.addEventListener("click", () => {
-        addToCart({
-          id: btn.getAttribute("data-id"),
-          merchant_id: btn.getAttribute("data-merchant"),
-          name: btn.getAttribute("data-name"),
-          price: Number(btn.getAttribute("data-price")),
-          qty: 1
-        });
-      });
-    });
-
+    renderProductsList();
   } catch (err) {
-    listEl.innerHTML = `<div class='hint' style='color:red;'>에러 발생: ${err.message}</div>`;
+    listEl.innerHTML = `<div class='hint' style='grid-column: 1 / -1; color:red;'>상품 목록 로드 실패: ${err.message}</div>`;
     console.error(err);
   }
+}
+
+// 상품 카드 목록 렌더링
+function renderProductsList() {
+  const listEl = $("coopMallProducts");
+  listEl.innerHTML = "";
+
+  const filtered = rawProducts.filter(item => {
+    return matchesMerchant(item.data.merchant_id, selectedMerchantFilter);
+  });
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = "<div class='hint' style='grid-column: 1 / -1; text-align:center; padding:40px;'>해당 가맹점에서 현재 등록된 공개 상품이 없습니다.</div>";
+    return;
+  }
+
+  let html = "";
+  filtered.forEach(docSnap => {
+    const data = docSnap.data;
+    const merchantName = resolveMerchantName(data.merchant_id, data.merchant_name);
+
+    const pTypeMap = {
+      physical_product: "일반상품",
+      menu: "메뉴(음식)",
+      service: "서비스",
+      booking: "예약형"
+    };
+    const typeLabel = pTypeMap[data.product_type] || "";
+
+    html += `
+      <div class="panel product-card" style="padding:16px; border:1px solid #e2e8f0; border-radius:14px; background:#fff; box-shadow: 0 4px 12px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between; transition: transform 0.2s, box-shadow 0.2s;">
+          <div>
+              <!-- 🏪 가맹점 뱃지 (어디 가맹점 상품인지 명확하게 표기) -->
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span class="merchant-badge" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.83rem; font-weight:700; padding:4px 10px; border-radius:99px; box-shadow:0 1px 2px rgba(37,99,235,0.08);">
+                      <span style="font-size:0.95rem;">🏪</span>
+                      <span>${esc(merchantName)}</span>
+                  </span>
+                  ${typeLabel ? `<span style="font-size:0.75rem; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:6px; font-weight:600;">${esc(typeLabel)}</span>` : ''}
+              </div>
+
+              ${data.image_url ? `<img src="${esc(data.image_url)}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:12px;" onerror="this.style.display='none';" />` : ""}
+              
+              <div style="font-weight:700; font-size:1.15rem; color:#1e293b; line-height:1.35; margin-bottom:6px;">${esc(data.product_name)}</div>
+              <div style="color:#64748b; font-size:0.85rem; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${esc(data.description || "")}</div>
+          </div>
+
+          <div style="margin-top:16px; border-top:1px solid #f1f5f9; padding-top:12px; text-align:right;">
+              <div style="font-size:1.35rem; font-weight:800; color:#ef4444; margin-bottom:10px;">
+                  ${Number(data.price || 0).toLocaleString()} <span style="font-size:0.85rem; font-weight:700; color:#64748b;">VND</span>
+              </div>
+              <div>
+                  <button class="btn btn--primary" style="width:100%; border-radius:10px; font-weight:700; padding:10px;" data-action="add-cart" 
+                      data-id="${esc(docSnap.id)}" 
+                      data-merchant="${esc(data.merchant_id)}"
+                      data-merchant-name="${esc(merchantName)}"
+                      data-name="${esc(data.product_name)}" 
+                      data-price="${data.price}">
+                      🛒 장바구니 담기
+                  </button>
+              </div>
+          </div>
+      </div>
+    `;
+  });
+  listEl.innerHTML = html;
+
+  // 장바구니 담기 버튼 바인딩
+  listEl.querySelectorAll("button[data-action='add-cart']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      addToCart({
+        id: btn.getAttribute("data-id"),
+        merchant_id: btn.getAttribute("data-merchant"),
+        merchant_name: btn.getAttribute("data-merchant-name"),
+        name: btn.getAttribute("data-name"),
+        price: Number(btn.getAttribute("data-price")),
+        qty: 1
+      });
+    });
+  });
 }
 
 // 2. 장바구니 로직 구현
@@ -97,18 +255,27 @@ function saveCartToStorage() {
 function loadCartFromStorage() {
   const saved = localStorage.getItem("jumper_cart");
   if (saved) {
-    cart = JSON.parse(saved);
+    try {
+      cart = JSON.parse(saved);
+    } catch (_) {
+      cart = [];
+    }
   }
   updateCartBadge();
 }
 
 function updateCartBadge() {
   const totalQty = cart.reduce((acc, item) => acc + item.qty, 0);
-  $("cartBadge").textContent = totalQty;
+  if ($("cartBadge")) $("cartBadge").textContent = totalQty;
 }
 
 function addToCart(item) {
-  if (!currentViewer) return alert("로그인이 필요합니다.");
+  if (!currentViewer) {
+    if (confirm("장바구니를 이용하려면 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?")) {
+      window.location.href = "/login.html";
+    }
+    return;
+  }
 
   // 동일 상품 있으면 수량만 증가
   const existing = cart.find(c => c.id === item.id);
@@ -120,10 +287,13 @@ function addToCart(item) {
   saveCartToStorage();
   updateCartBadge();
 
-  // 톡 튀는 UI 효과 (옵션)
+  // 톡 튀는 UI 효과
   const badge = $("cartBadge");
-  badge.style.transform = "scale(1.5)";
-  setTimeout(() => badge.style.transform = "scale(1)", 200);
+  if (badge) {
+    badge.style.transform = "scale(1.4)";
+    setTimeout(() => badge.style.transform = "scale(1)", 200);
+  }
+  alert(`🛒 [${item.merchant_name}] "${item.name}" 상품이 장바구니에 담겼습니다!`);
 }
 
 // 3. 모달 팝업 렌더링
@@ -138,7 +308,7 @@ $("btnCloseCart").addEventListener("click", () => {
 function renderCartModal() {
   const listEl = $("cartList");
   if (cart.length === 0) {
-    listEl.innerHTML = "<div class='muted'>장바구니가 비어 있습니다.</div>";
+    listEl.innerHTML = "<div class='muted' style='text-align:center; padding:20px;'>장바구니가 비어 있습니다.</div>";
     $("cartTotal").textContent = "0";
     $("btnCheckout").disabled = true;
     return;
@@ -149,16 +319,19 @@ function renderCartModal() {
   cart.forEach((c, index) => {
     total += (c.price * c.qty);
     html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f3f4f6; padding-bottom:8px;">
-                <div>
-                   <div style="font-weight:bold;">${c.name}</div>
-                   <div style="font-size:0.85rem; color:#6b7280;">${Number(c.price).toLocaleString()} VND x ${c.qty}개</div>
-                </div>
-                <div>
-                   <button class="btn btn--sm" data-action="remove-cart" data-index="${index}" style="background:#ef4444; color:white; border:none; padding:4px 8px;">제외</button>
-                </div>
-            </div>
-        `;
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding:10px 0;">
+          <div>
+             <div style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1d4ed8; padding:1px 7px; border-radius:99px; font-weight:700; margin-bottom:3px;">
+                🏪 ${esc(c.merchant_name || '가맹점')}
+             </div>
+             <div style="font-weight:700; font-size:1rem; color:#1e293b;">${esc(c.name)}</div>
+             <div style="font-size:0.85rem; color:#64748b; margin-top:2px;">${Number(c.price).toLocaleString()} VND x ${c.qty}개</div>
+          </div>
+          <div>
+             <button class="btn btn--sm" data-action="remove-cart" data-index="${index}" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:4px 8px; border-radius:6px;">제외</button>
+          </div>
+      </div>
+    `;
   });
   listEl.innerHTML = html;
   $("cartTotal").textContent = total.toLocaleString();
@@ -179,6 +352,11 @@ function renderCartModal() {
 // 4. 결제(주문) API 호출
 $("btnCheckout").addEventListener("click", async () => {
   if (cart.length === 0) return;
+  if (!currentViewer) {
+    alert("주문을 진행하려면 먼저 로그인해 주세요.");
+    window.location.href = "/login.html";
+    return;
+  }
   if (!confirm("장바구니 상품들을 주문하시겠습니까? (결제 QR이 생성됩니다)")) return;
 
   const targetMerchantId = cart[0].merchant_id;
@@ -186,7 +364,8 @@ $("btnCheckout").addEventListener("click", async () => {
     product_id: c.id,
     name: c.name,
     price: c.price,
-    qty: c.qty
+    qty: c.qty,
+    merchant_name: c.merchant_name
   }));
 
   let totalAmount = 0;
@@ -201,10 +380,10 @@ $("btnCheckout").addEventListener("click", async () => {
 
     // 가맹점 계좌 정보 조회
     let merchantInfo = {
-      name: "가맹점",
+      name: cart[0].merchant_name || "가맹점",
       bank_name: "신한베트남은행 (Shinhan Bank VN)",
       account_no: "700-012-345678",
-      account_holder: "BESTCLUB / 대한김치"
+      account_holder: "BESTCLUB / " + (cart[0].merchant_name || "가맹점")
     };
 
     try {
@@ -244,10 +423,11 @@ $("btnCheckout").addEventListener("click", async () => {
     const qrBackupUrl = `https://quickchart.io/qr?size=200&text=${encodeURIComponent(paymentUrl)}`;
 
     $("cartModal").innerHTML = `
-      <div style="background:white; padding:24px; border-radius:12px; max-width:440px; width:92%; max-height:90vh; overflow-y:auto; position:relative; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+      <div style="background:white; padding:24px; border-radius:14px; max-width:440px; width:92%; max-height:90vh; overflow-y:auto; position:relative; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
         <h3 style="margin-top:0; color:#4f46e5; font-size:1.4rem; text-align:center;">주문 접수 완료</h3>
         <p style="text-align:center; font-size:0.95rem; color:#4b5563; margin-bottom:16px;">
-          결제 방식을 선택해주세요.<br/>원하시는 방식을 통해 총 <strong style="color:#ef4444; font-size:1.1rem;">${totalAmount.toLocaleString()} VND</strong>를 결제해 주시기 바랍니다.
+          가맹점: <strong style="color:#2563eb;">${esc(merchantInfo.name)}</strong><br/>
+          총 결제금액: <strong style="color:#ef4444; font-size:1.15rem;">${totalAmount.toLocaleString()} VND</strong>
         </p>
         
         <div style="display:flex; flex-direction:column; gap:16px;">
@@ -297,7 +477,8 @@ $("btnCheckout").addEventListener("click", async () => {
             </div>
           </div>
           
-          <button type="button" class="btn" onclick="location.reload()" style="background:#f3f4f6; color:#374151; width:100%; padding:12px; border-radius:8px; margin-top:4px; border:1px solid #e5e7eb;">닫기 및 쇼핑 계속하기</button>
+          <a href="/orders.html" class="btn" style="display:block; text-align:center; background:#10b981; color:#fff; width:100%; padding:12px; border-radius:8px; margin-top:6px; text-decoration:none; font-weight:700; box-sizing:border-box;">📦 내 주문·구매 내역 확인하기</a>
+          <button type="button" class="btn" onclick="location.reload()" style="background:#f3f4f6; color:#374151; width:100%; padding:10px; border-radius:8px; margin-top:4px; border:1px solid #e5e7eb;">닫기 및 쇼핑 계속하기</button>
         </div>
       </div>
     `;

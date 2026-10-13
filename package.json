@@ -5,7 +5,8 @@
     "jimp": "^1.6.0"
   },
   "devDependencies": {
-    "playwright": "^1.60.0"
+    "playwright": "^1.60.0",
+    "serve": "^14.2.6"
   },
   "scripts": {
     "dev": "serve . -p 8080"

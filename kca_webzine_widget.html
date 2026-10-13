@@ -1,0 +1,438 @@
+<!-- /kca_webzine_widget.html - BestClub Webzine Embeddable Widget for Merchant Websites -->
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BestClub Webzine Widget</title>
+  <style>
+    :root {
+      --wz-theme: #7c3aed;
+      --wz-theme-light: #ede9fe;
+      --wz-bg: #ffffff;
+      --wz-card-bg: #ffffff;
+      --wz-text: #0f172a;
+      --wz-sub: #475569;
+      --wz-muted: #94a3b8;
+      --wz-border: #e2e8f0;
+    }
+
+    body[data-mode="dark"] {
+      --wz-bg: #0f172a;
+      --wz-card-bg: #1e293b;
+      --wz-text: #f8fafc;
+      --wz-sub: #cbd5e1;
+      --wz-muted: #64748b;
+      --wz-border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--wz-bg);
+      color: var(--wz-text);
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+      padding: 14px;
+      line-height: 1.5;
+    }
+
+    .widget-wrap {
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* 위젯 헤더 */
+    .widget-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--wz-border);
+    }
+
+    .widget-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .widget-logo-badge {
+      background: var(--wz-theme);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    .widget-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--wz-text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .widget-more-link {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--wz-theme);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    /* ── 레이아웃 1: 카드형 (Card Grid) ── */
+    .layout-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .w-card {
+      background: var(--wz-card-bg);
+      border: 1px solid var(--wz-border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .w-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .w-card-thumb {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      background: #e2e8f0;
+      display: block;
+    }
+
+    .w-card-body {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .w-card-cat {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--wz-theme);
+      margin-bottom: 4px;
+    }
+
+    .w-card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.35;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .w-card-desc {
+      font-size: 0.82rem;
+      color: var(--wz-sub);
+      line-height: 1.45;
+      margin-bottom: 10px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .w-card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.74rem;
+      color: var(--wz-muted);
+      border-top: 1px solid var(--wz-border);
+      padding-top: 8px;
+    }
+
+    /* ── 레이아웃 2: 배너형 (Horizontal Banner) ── */
+    .layout-banner {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .w-banner-item {
+      display: flex;
+      gap: 12px;
+      background: var(--wz-card-bg);
+      border: 1px solid var(--wz-border);
+      border-radius: 12px;
+      padding: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .w-banner-item:hover {
+      background: var(--wz-theme-light);
+      border-color: var(--wz-theme);
+    }
+
+    .w-banner-thumb {
+      width: 90px;
+      height: 65px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .w-banner-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .w-banner-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .w-banner-desc {
+      font-size: 0.78rem;
+      color: var(--wz-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── 레이아웃 3: 피드형 (Feed Featured) ── */
+    .layout-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .w-feed-lead {
+      background: var(--wz-card-bg);
+      border: 1px solid var(--wz-border);
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .w-feed-lead-img {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      display: block;
+    }
+
+    .w-feed-lead-body {
+      padding: 16px;
+    }
+
+    .w-feed-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .w-feed-desc {
+      font-size: 0.88rem;
+      color: var(--wz-sub);
+      line-height: 1.5;
+    }
+
+    .w-sponsor-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #fffbeb;
+      color: #b45309;
+      border: 1px solid #fde68a;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="widget-wrap" id="widgetContainer">
+    <div class="widget-hdr" id="widgetHeader">
+      <div class="widget-brand">
+        <span class="widget-logo-badge" id="badgeLogo">BESTCLUB</span>
+        <h3 class="widget-title" id="widgetTitle">📖 베스트 매거진</h3>
+      </div>
+      <a href="/kca_webzine.html" target="_blank" class="widget-more-link" id="linkMore">
+        전체 보기 &rarr;
+      </a>
+    </div>
+
+    <!-- 기사 컨테이너 -->
+    <div id="articlesList">
+      <div style="text-align:center; padding:30px; color:var(--wz-muted); font-size:0.85rem;">
+        기사를 불러오는 중입니다...
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from "/assets/js/auth.js";
+    import {
+      collection,
+      getDocs,
+      query,
+      orderBy,
+      limit
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import { WEBZINE_20_ARTICLES } from "/assets/js/pages/webzine-seed-data.js";
+
+    // 1. URL 파라미터 파싱
+    const params = new URLSearchParams(window.location.search);
+    const targetMerchantId = params.get("merchant") || "";
+    const themeColor = params.get("theme") || "#7c3aed";
+    const layout = params.get("layout") || "card"; // card, banner, feed
+    const mode = params.get("mode") || "light";    // light, dark
+    const hideHeader = params.get("header") === "0";
+    const articleCount = parseInt(params.get("count") || "4", 10);
+
+    // 2. 테마 및 모드 적용
+    if (mode === "dark") {
+      document.body.setAttribute("data-mode", "dark");
+    }
+    if (themeColor) {
+      document.documentElement.style.setProperty("--wz-theme", themeColor);
+      document.documentElement.style.setProperty("--wz-theme-light", themeColor + "15");
+    }
+    if (hideHeader) {
+      const hdr = document.getElementById("widgetHeader");
+      if (hdr) hdr.style.display = "none";
+    }
+
+    // 3. 기사 로드 및 필터링
+    async function loadWidgetArticles() {
+      const container = document.getElementById("articlesList");
+      let allArticles = [...WEBZINE_20_ARTICLES];
+
+      try {
+        const q = query(collection(db, "webzine_articles"), orderBy("createdAt", "desc"), limit(30));
+        const snap = await getDocs(q);
+        const fsArticles = [];
+        snap.forEach(d => fsArticles.push({ id: d.id, ...d.data() }));
+        if (fsArticles.length > 0) {
+          const fsIds = new Set(fsArticles.map(a => a.id));
+          allArticles = [...fsArticles, ...WEBZINE_20_ARTICLES.filter(a => !fsIds.has(a.id))];
+        }
+      } catch (e) {
+        console.warn("Widget firestore load fallback to preset:", e);
+      }
+
+      // 특정 가맹점 필터링 (가맹점 기사 우선)
+      let filtered = allArticles;
+      if (targetMerchantId && targetMerchantId !== "all") {
+        const merchantMatches = allArticles.filter(a =>
+          String(a.merchantInfo?.id) === String(targetMerchantId) ||
+          String(a.merchant_id) === String(targetMerchantId)
+        );
+        // 가맹점 기사가 있으면 그것을 우선 배치, 부족하면 일반 기사로 채움
+        const otherMatches = allArticles.filter(a => !merchantMatches.includes(a));
+        filtered = [...merchantMatches, ...otherMatches];
+
+        // 가맹점 이름 헤더에 표시
+        if (merchantMatches.length > 0 && merchantMatches[0].merchantInfo?.name) {
+          const tEl = document.getElementById("widgetTitle");
+          if (tEl) tEl.innerHTML = `<span>📖</span> ${merchantMatches[0].merchantInfo.name} 매거진 스토리`;
+        }
+      }
+
+      const displayList = filtered.slice(0, articleCount);
+
+      // 4. 레이아웃에 따른 HTML 렌더링
+      if (layout === "banner") {
+        container.className = "layout-banner";
+        container.innerHTML = displayList.map(a => `
+          <a class="w-banner-item" href="/kca_webzine.html?article=${a.id}" target="_blank">
+            <img class="w-banner-thumb" src="${a.thumbnailUrl || 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=400&q=80'}" alt="${a.title}" loading="lazy" />
+            <div class="w-banner-info">
+              <div class="w-card-cat">${a.category || 'K-컬처'}</div>
+              <div class="w-banner-title">${a.title}</div>
+              <div class="w-banner-desc">${a.summary || a.subtitle || ''}</div>
+            </div>
+          </a>
+        `).join("");
+      } else if (layout === "feed") {
+        container.className = "layout-feed";
+        const lead = displayList[0];
+        const rest = displayList.slice(1);
+        let html = `
+          <a class="w-feed-lead" href="/kca_webzine.html?article=${lead.id}" target="_blank">
+            <img class="w-feed-lead-img" src="${lead.thumbnailUrl || 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=800&q=80'}" alt="${lead.title}" />
+            <div class="w-feed-lead-body">
+              <div class="w-card-cat">${lead.category || 'FEATURED'} · ${lead.readTime || '3분 읽기'}</div>
+              <div class="w-feed-title">${lead.title}</div>
+              <div class="w-feed-desc">${lead.summary || lead.subtitle || ''}</div>
+              <div class="w-sponsor-tag">🏪 기사 제공 | ${lead.merchantInfo?.name || '베스트클럽 공식 가맹점'}</div>
+            </div>
+          </a>
+        `;
+        if (rest.length > 0) {
+          html += `<div class="layout-card" style="margin-top:10px;">` + rest.map(a => renderCardHtml(a)).join("") + `</div>`;
+        }
+        container.innerHTML = html;
+      } else {
+        // 기본 카드 그리드
+        container.className = "layout-card";
+        container.innerHTML = displayList.map(a => renderCardHtml(a)).join("");
+      }
+    }
+
+    function renderCardHtml(a) {
+      return `
+        <a class="w-card" href="/kca_webzine.html?article=${a.id}" target="_blank">
+          <img class="w-card-thumb" src="${a.thumbnailUrl || 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80'}" alt="${a.title}" loading="lazy" />
+          <div class="w-card-body">
+            <div class="w-card-cat">${a.category || 'K-컬처'}</div>
+            <div class="w-card-title">${a.title}</div>
+            <div class="w-card-desc">${a.summary || a.subtitle || ''}</div>
+            <div class="w-card-foot">
+              <span>${a.readTime || '3분 읽기'}</span>
+              <span>${a.merchantInfo?.name ? '협찬 | ' + a.merchantInfo.name : '베스트클럽'}</span>
+            </div>
+          </div>
+        </a>
+      `;
+    }
+
+    loadWidgetArticles();
+  </script>
+</body>
+
+</html>

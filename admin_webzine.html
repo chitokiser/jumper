@@ -1,0 +1,460 @@
+<!-- /admin_webzine.html -->
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="/assets/images/jump/mlogo.png">
+  <link rel="shortcut icon" href="/assets/images/jump/mlogo.png">
+  <link rel="apple-touch-icon" href="/assets/images/jump/mlogo.png">
+  <link rel="manifest" href="/manifest.json">
+  <title>베스트 매거진 퍼블리싱 CMS (관리자) — BestClub</title>
+
+  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/header.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+
+  <style>
+    body {
+      background: #f8fafc;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+    }
+    .admin-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 80px;
+    }
+    .cms-header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+      color: #fff;
+      border-radius: 20px;
+      padding: 32px 36px;
+      margin-bottom: 28px;
+      box-shadow: 0 10px 25px rgba(49, 46, 129, 0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .cms-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin: 0 0 6px;
+    }
+    .cms-desc {
+      color: #c7d2fe;
+      font-size: 0.95rem;
+      margin: 0;
+    }
+    .cms-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    }
+    .cms-card-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      display: block;
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+    textarea.form-control {
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    .btn-ai-gen {
+      background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+      color: #fff;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 6px 18px rgba(124, 58, 237, 0.3);
+      transition: all 0.2s;
+      width: 100%;
+      justify-content: center;
+    }
+    .btn-ai-gen:hover {
+      filter: brightness(1.08);
+      transform: translateY(-2px);
+    }
+    .btn-publish {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #fff;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 6px 18px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s;
+      width: 100%;
+      justify-content: center;
+    }
+    .btn-publish:hover {
+      filter: brightness(1.08);
+      transform: translateY(-2px);
+    }
+    .thumb-picker {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 6px 0 10px;
+    }
+    .thumb-opt {
+      width: 100px;
+      height: 64px;
+      border-radius: 8px;
+      object-fit: cover;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .thumb-opt.selected {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.3);
+      transform: scale(1.05);
+    }
+    .table-custom {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .table-custom th {
+      background: #f1f5f9;
+      padding: 12px 14px;
+      text-align: left;
+      font-weight: 700;
+      color: #475569;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .table-custom td {
+      padding: 14px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="siteHeader"></div>
+
+  <main class="admin-container">
+
+    <div class="cms-header">
+      <div>
+        <h1 class="cms-title">✍️ 베스트 매거진 퍼블리싱 CMS</h1>
+        <p class="cms-desc">
+          가맹점 DB 정보를 연동하여 AI 기사 생성 및 인스타/X 숏폼 SNS 콘텐츠를 즉시 발행합니다.
+        </p>
+      </div>
+      <div>
+        <a href="/kca_webzine.html" target="_blank" style="background:#fff; color:#1e1b4b; text-decoration:none; padding:10px 18px; border-radius:10px; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+          <span>📖</span> 웹진 바로보기
+        </a>
+      </div>
+    </div>
+
+    <!-- 권한 안내 뱃지 -->
+    <div id="authStatusBanner" style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:14px 20px; margin-bottom:24px; font-size:0.92rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+      <div id="authStatusText" style="display:flex; align-items:center; gap:8px; font-weight:600; color:#475569;">
+        <span>⏳</span> 관리자 권한을 확인하고 있습니다...
+      </div>
+    </div>
+
+    <!-- 권한 부족 시 차단 안내 카드 -->
+    <div id="accessDeniedCard" style="display:none; background:#fef2f2; border:2px solid #fecaca; border-radius:18px; padding:36px 28px; text-align:center; margin-bottom:30px;">
+      <span style="font-size:3rem; display:block; margin-bottom:12px;">🚫</span>
+      <h2 style="font-size:1.4rem; font-weight:800; color:#991b1b; margin:0 0 10px;">최고 관리자(SUPER ADMIN) 전용 페이지입니다</h2>
+      <p style="color:#b91c1c; font-size:0.95rem; max-width:540px; margin:0 auto 20px; line-height:1.6;">
+        현재 로그인된 계정은 웹진 기사 발행 권한이 없습니다.<br>
+        베스트 매거진 기사 생성 및 퍼블리싱은 시스템 최고 관리자 계정만 가능합니다.
+      </p>
+      <a href="/kca_webzine.html" style="background:#dc2626; color:#fff; text-decoration:none; padding:10px 22px; border-radius:10px; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+        📖 베스트 매거진으로 이동
+      </a>
+    </div>
+
+    <!-- CMS 작업 영역 (권한 있을 때만 노출/활성화) -->
+    <div id="cmsMainContent">
+
+      <!-- AI 자동 생성 패널 -->
+      <section class="cms-card">
+        <h2 class="cms-card-title"><span>🤖</span> 1. AI 가맹점 기사 자동 생성기</h2>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+          
+          <div class="form-group">
+            <label class="form-label" for="selMerchant">연동 가맹점 선택 (실제 merchants DB)</label>
+            <select id="selMerchant" class="form-control">
+              <option value="">== 실제 가맹점을 불러오는 중... ==</option>
+            </select>
+          </div>
+
+        <div class="form-group">
+          <label class="form-label" for="selCategory">기사 카테고리</label>
+          <select id="selCategory" class="form-control">
+            <option value="K-푸드">🍗 K-푸드 (음식/맛집)</option>
+            <option value="K-POP">🎵 K-POP (공연/문화)</option>
+            <option value="K-뷰티">💄 K-뷰티 (스킨케어/미용)</option>
+            <option value="K-드라마">🎬 K-드라마 (콘텐츠)</option>
+            <option value="하노이 라이프">🏙️ 하노이 라이프 (생활/명소)</option>
+            <option value="베트남 뉴스">📰 베트남 뉴스 (이슈)</option>
+            <option value="문화/생활">☕ 문화/생활 (교민 소식)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="inpTopic">주제/아이디어 (선택)</label>
+          <input id="inpTopic" type="text" class="form-control" placeholder="예: 하노이에서 즐기는 한국식 치킨 문화" />
+        </div>
+
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="inpKeywords">핵심 키워드 / 매장 특징</label>
+        <input id="inpKeywords" type="text" class="form-control" placeholder="예: 겉바속촉, 정통 한국 레시피, 미딩 한인타운, 5% 페이백" />
+      </div>
+
+      <button id="btnAiGenerate" class="btn-ai-gen" type="button">
+        <span>✨</span> AI 기사 & SNS 숏폼 원클릭 생성하기
+      </button>
+    </section>
+
+    <!-- 기사 검수 & 에디터 패널 -->
+    <section class="cms-card" id="editorSection">
+      <h2 class="cms-card-title"><span>📝</span> 2. 기사 검수 및 퍼블리싱 에디터</h2>
+
+      <div class="form-group">
+        <label class="form-label" for="edTitle">기사 제목</label>
+        <input id="edTitle" type="text" class="form-control" placeholder="기사 제목을 입력하세요" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edSubtitle">부제목</label>
+        <input id="edSubtitle" type="text" class="form-control" placeholder="기사 부제목을 입력하세요" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edSummary">요약문 (Lead)</label>
+        <textarea id="edSummary" class="form-control" style="min-height:70px;" placeholder="2~3문장 요약"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">썸네일 이미지 선택 (클릭 시 적용)</label>
+        <div class="thumb-picker" id="thumbPicker">
+          <!-- 추천 썸네일들 -->
+        </div>
+        <input id="edThumbUrl" type="text" class="form-control" placeholder="썸네일 이미지 URL 직접 입력" style="margin-top:6px;" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edContent">기사 본문 (마크다운 / HTML)</label>
+        <textarea id="edContent" class="form-control" style="min-height:240px;" placeholder="소제목(###)과 문단으로 구성된 본문"></textarea>
+      </div>
+
+      <!-- SNS 숏폼 텍스트 편집 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:18px; margin-bottom:20px;">
+        <h3 style="font-size:1.05rem; font-weight:800; margin:0 0 12px; color:#334155;">📲 SNS 자동 배포용 텍스트 세트</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div>
+            <label class="form-label">📸 Instagram 캡션</label>
+            <textarea id="edSnsInsta" class="form-control" style="min-height:90px;"></textarea>
+          </div>
+          <div>
+            <label class="form-label">🐦 X (트위터) 숏폼</label>
+            <textarea id="edSnsX" class="form-control" style="min-height:90px;"></textarea>
+          </div>
+          <div>
+            <label class="form-label">🧵 Threads 문구</label>
+            <textarea id="edSnsThreads" class="form-control" style="min-height:90px;"></textarea>
+          </div>
+          <div>
+            <label class="form-label">📘 Facebook 요약</label>
+            <textarea id="edSnsFb" class="form-control" style="min-height:90px;"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnPublishArticle" class="btn-publish" type="button">
+        <span>🚀</span> 베스트 매거진에 즉시 발행하기 (Publish)
+      </button>
+    </section>
+
+    <!-- 발행된 기사 관리 목록 -->
+    <section class="cms-card">
+      <h2 class="cms-card-title"><span>📋</span> 3. 발행된 웹진 기사 목록</h2>
+      <div style="overflow-x:auto;">
+        <table class="table-custom">
+          <thead>
+            <tr>
+              <th>썸네일</th>
+              <th>제목</th>
+              <th>카테고리</th>
+              <th>연동 가맹점</th>
+              <th>발행일</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="articlesTableBody">
+            <tr>
+              <td colspan="6" style="text-align:center; color:#94a3b8; padding:30px;">
+                기사 목록을 불러오는 중입니다...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    <!-- 가맹점 자체 홈페이지 디자인 커스터마이징 & 임베드 도구 -->
+    <section class="cms-card" id="embedToolSection">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+        <h2 class="cms-card-title" style="margin:0;"><span>🎨</span> 4. 가맹점 자체 홈페이지 디자인 커스터마이징 &amp; 연동</h2>
+        <span style="background:#ede9fe; color:#7c3aed; font-size:0.8rem; font-weight:700; padding:4px 12px; border-radius:99px;">
+          가맹점 사이트 원클릭 임베드 SDK
+        </span>
+      </div>
+      <p style="color:#64748b; font-size:0.92rem; margin-bottom:20px; line-height:1.5;">
+        가맹점 자체 홈페이지(쇼핑몰, 블로그, 브랜드 사이트)에 맞게 <strong>브랜드 테마 컬러, 레이아웃, 다크/라이트 모드</strong>를 자유롭게 커스터마이징하고 반응형 임베드 코드를 생성하여 연동할 수 있습니다.
+      </p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:20px;">
+        
+        <div class="form-group">
+          <label class="form-label" for="embedSelMerchant">연동 대상 가맹점</label>
+          <select id="embedSelMerchant" class="form-control">
+            <option value="">== 가맹점을 선택해 주세요 ==</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="embedThemeColor">브랜드 테마 컬러</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="color" id="embedColorPicker" value="#7c3aed" style="width:44px; height:40px; padding:2px; border-radius:8px; border:1px solid #cbd5e1; cursor:pointer;" />
+            <input type="text" id="embedColorText" class="form-control" value="#7c3aed" style="flex:1;" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="embedLayout">레이아웃 스타일</label>
+          <select id="embedLayout" class="form-control">
+            <option value="card">격자 카드형 (Card Grid)</option>
+            <option value="banner">가로 배너 리스트형 (Horizontal Banner)</option>
+            <option value="feed">리드 스토리 피드형 (Lead Story Feed)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="embedMode">컬러 테마 모드</label>
+          <select id="embedMode" class="form-control">
+            <option value="light">라이트 모드 (Light Mode)</option>
+            <option value="dark">다크 모드 (Dark Mode)</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- 추천 테마 컬러 프리셋 칩 -->
+      <div style="margin-bottom:20px;">
+        <span style="font-size:0.82rem; font-weight:700; color:#64748b; margin-right:8px;">추천 컬러 프리셋:</span>
+        <button type="button" class="btn-color-preset" data-color="#7c3aed" style="background:#7c3aed; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer; margin-right:4px;">퍼플</button>
+        <button type="button" class="btn-color-preset" data-color="#e11d48" style="background:#e11d48; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer; margin-right:4px;">레드</button>
+        <button type="button" class="btn-color-preset" data-color="#f59e0b" style="background:#f59e0b; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer; margin-right:4px;">골드/치킨</button>
+        <button type="button" class="btn-color-preset" data-color="#2563eb" style="background:#2563eb; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer; margin-right:4px;">블루</button>
+        <button type="button" class="btn-color-preset" data-color="#10b981" style="background:#10b981; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer; margin-right:4px;">에메랄드</button>
+        <button type="button" class="btn-color-preset" data-color="#0f172a" style="background:#0f172a; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer;">차콜 블랙</button>
+      </div>
+
+      <!-- 실시간 미리보기 (Live Preview) -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:18px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:0.95rem; font-weight:800; color:#334155; margin:0;">👁️ 실시간 위젯 미리보기 (Live Preview)</h3>
+          <a id="btnOpenWidgetNewTab" href="#" target="_blank" style="font-size:0.8rem; font-weight:700; color:#7c3aed; text-decoration:none;">
+            새 창에서 전체보기 ↗
+          </a>
+        </div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden;">
+          <iframe id="embedPreviewIframe" src="/kca_webzine_widget.html" style="width:100%; height:460px; border:none; display:block;"></iframe>
+        </div>
+      </div>
+
+      <!-- 생성된 임베드 코드 (가맹점 복사용) -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+        
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label class="form-label" style="margin:0;">1) 표준 반응형 &lt;iframe&gt; 코드</label>
+            <button id="btnCopyIframeCode" type="button" style="background:#ede9fe; color:#7c3aed; border:none; padding:3px 10px; border-radius:6px; font-size:0.78rem; font-weight:700; cursor:pointer;">
+              코드 복사 📋
+            </button>
+          </div>
+          <textarea id="codeIframeText" class="form-control" style="min-height:95px; font-family:monospace; font-size:0.8rem; background:#f8fafc;" readonly></textarea>
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label class="form-label" style="margin:0;">2) 경량 JavaScript 위젯 SDK 태그</label>
+            <button id="btnCopyJsCode" type="button" style="background:#ede9fe; color:#7c3aed; border:none; padding:3px 10px; border-radius:6px; font-size:0.78rem; font-weight:700; cursor:pointer;">
+              태그 복사 📋
+            </button>
+          </div>
+          <textarea id="codeJsText" class="form-control" style="min-height:95px; font-family:monospace; font-size:0.8rem; background:#f8fafc;" readonly></textarea>
+        </div>
+
+      </div>
+
+    </section>
+    </div>
+
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module" src="/assets/js/partials.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <script type="module" src="/assets/js/pages/admin_webzine.js"></script>
+</body>
+
+</html>

@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 
 <head>
@@ -17,7 +17,7 @@
 
   <main class="page">
     <section class="panel">
-      <div class="panel-h" style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="panel-h" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <div>
           <div class="panel-title">가맹점 상품 관리 (BestERP)</div>
           <div id="merchantInfoBadge" style="margin-top:4px; font-size:0.85rem; color:#64748b;">가맹점 계정 확인 중...</div>
@@ -29,6 +29,34 @@
         </div>
       </div>
 
+      <!-- 탭 및 가맹점 선택 필터 바 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-top:16px; padding:12px 16px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="tabMerchantProducts" class="btn btn--sm btn--primary" style="font-weight:600;">📦 BestERP 상품 (카탈로그)</button>
+          <button type="button" id="tabItemsProducts" class="btn btn--sm" style="background:#fff; color:#475569; border:1px solid #cbd5e1; font-weight:600;">🧳 기존 등록 상품/투어 (items)</button>
+        </div>
+
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:600; color:#334155;">
+            <span>🏪 가맹점:</span>
+            <select id="filterMerchantSelect" class="input" style="padding:6px 10px; font-size:0.85rem; min-width:200px; background:#fff; border:1px solid #94a3b8; border-radius:6px; font-weight:bold;">
+              <option value="all">== 전체 가맹점 (모든 상품) ==</option>
+            </select>
+          </label>
+
+          <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:600; color:#334155;">
+            <span>상태:</span>
+            <select id="filterStatusSelect" class="input" style="padding:6px 10px; font-size:0.85rem; background:#fff; border:1px solid #cbd5e1; border-radius:6px;">
+              <option value="all">전체 상태</option>
+              <option value="published">판매 공개중</option>
+              <option value="draft">임시저장 (비공개)</option>
+              <option value="sold_out">품절</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div id="productStatsSummary" style="margin-top:12px; font-size:0.85rem; color:#64748b; font-weight:500;"></div>
       <div id="productState" class="state" style="padding: 20px; font-weight: bold;">조회 중...</div>
       <div id="productList" class="grid" style="display:grid;gap:12px;margin-top:16px;"></div>
     </section>

@@ -1,4 +1,4 @@
-﻿<!-- coop-mall.html: 조합 폐쇄몰 메인 페이지 (회원만 접근 가능) -->
+<!-- coop-mall.html: 조합 폐쇄몰 메인 페이지 (회원만 접근 가능) -->
 <!doctype html>
 <html lang="ko">
 
@@ -18,12 +18,22 @@
   <div id="siteHeader"></div>
   <main class="page">
     <section class="panel coop-mall-section">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1 class="title">가맹점 상품&amp;서비스 모음</h1>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <h1 class="title" style="margin-bottom:4px;">가맹점 상품 &amp; 서비스 모음</h1>
+          <p style="margin:0; font-size:0.9rem; color:#64748b;">공식 가맹점의 검증된 상품을 BestClub에서 편리하게 주문하세요.</p>
+        </div>
         <button id="btnShowCart" class="btn btn--primary" style="font-weight:bold;">🛒 장바구니 <span id="cartBadge"
             style="background:#ef4444;border-radius:10px;padding:2px 8px;font-size:0.8rem;margin-left:4px;">0</span></button>
       </div>
-      <div id="coopMallNotice" class="hint" style="display:none;"></div>
+
+      <!-- 가맹점별 모아보기 필터 바 -->
+      <div id="merchantFilterBar" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; padding:10px 14px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0; align-items:center;">
+        <span style="font-size:0.85rem; font-weight:bold; color:#475569; margin-right:4px;">🏪 가맹점별 모아보기:</span>
+        <button type="button" class="btn btn--sm btn--primary filter-btn" data-merchant="all" style="border-radius:99px; font-weight:600;">전체 보기</button>
+      </div>
+
+      <div id="coopMallNotice" class="hint" style="display:none; margin-top:12px;"></div>
       <div id="coopMallProducts" class="product-list"
         style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top:20px;">
       </div>
