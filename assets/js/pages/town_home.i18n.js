@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/town_home.i18n.js
+// /assets/js/pages/town_home.i18n.js
 const TRANSLATIONS = {
   vi: {
     page_title: 'Công viên Đại dương - Nơi bắt đầu cuộc phiêu lưu',
@@ -23,8 +23,8 @@ const TRANSLATIONS = {
     exchange_sub: 'Mua · Bán JUMP · Stake',
     events_label: 'Sự kiện K-Culture',
     events_sub: 'Khuyến mãi & Mã giảm giá',
-    community_label: 'Cộng đồng',
-    community_sub: 'Địa điểm địa phương & Diễn đàn',
+    community_label: 'Sản phẩm & Dịch vụ Cửa hàng',
+    community_sub: 'Cửa hàng chính thức · Mua sắm & Đặt hàng',
     treasure_label: 'Tìm kho báu',
     treasure_sub: 'Giấu kho báu · Tìm kiếm · Hộp kho báu',
     sponsor_section: 'Banner tài trợ',
@@ -139,8 +139,8 @@ const TRANSLATIONS = {
     exchange_sub: 'Buy · Sell JUMP · Staking',
     events_label: 'K-Culture Events',
     events_sub: 'Coupons & Special Promos',
-    community_label: 'Community',
-    community_sub: 'Local Spots & Forums',
+    community_label: 'Merchant Products & Services',
+    community_sub: 'Official Mall · Order & Delivery',
     treasure_label: 'Treasure Hunt',
     treasure_sub: 'Hide Treasure · Explore · Treasure Box',
     sponsor_section: 'Sponsor Banner',
@@ -255,8 +255,8 @@ const TRANSLATIONS = {
     exchange_sub: 'JUMP 매수 · 매도 · 스테이킹',
     events_label: 'K-Culture 이벤트',
     events_sub: '쿠폰 및 특별 할인',
-    community_label: '커뮤니티',
-    community_sub: '로컬 핫플 리뷰 및 포럼',
+    community_label: '가맹점 상품&서비스모음',
+    community_sub: '공식 가맹점 쇼핑몰 · 주문 및 배송',
     treasure_label: '보물찾기 · 숨기기',
     treasure_sub: '내 보물 숨기기 · 지도 탐험 · 보물박스',
     sponsor_section: '스폰서 배너',
