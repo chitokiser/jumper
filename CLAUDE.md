@@ -595,5 +595,21 @@ npm run serve
 
 ---
 
+# 17. 가맹점 홈페이지(Merchant Channel)의 BestClub DB 직접 연동 원칙
+
+## 17.1 대원칙: "가맹점 홈페이지의 모든 DB는 BESTCLUB에서 가져온다"
+- 가맹점 홈페이지(BEST WINNER, 대한김치, 백제갈비 등)는 **독자적인 로컬 DB나 별개 백엔드를 구축하지 않으며**, 모든 데이터(가맹점 프로필, 상품 카탈로그, 회원 인증, 지갑 잔액, 주문, 결제, 쿠폰, 웹진)를 **BestClub 중앙 Firebase(`jumper-b15aa`)에서 직접 실시간 연동**한다.
+- 상세 개발 가이드 및 표준 구현 코드는 [`docs/가맹점_홈페이지_개발가이드.md`](file:///c:/Users/Asus/Desktop/project/jumper/jumper_v10/docs/가맹점_홈페이지_개발가이드.md)를 참조한다.
+
+## 17.2 6대 핵심 연동 컬렉션
+1. **가맹점 프로필:** `merchants/{merchantId}` (상호명, 로고, 주소, 연락처, BT 잔액, 정산 대기금)
+2. **상품 카탈로그:** `merchant_products` (`merchant_id == MY_ID && sale_status == 'published'`)
+3. **통합 회원 & BM 지갑:** `users/{uid}` (BestClub 단일 계정 로그인, `pointBalanceVnd`(BM), `btBalance`(BT), `pointBalance`(Point))
+4. **주문 및 결제:** `merchant_orders` (BM 결제, 10% 수수료 분배, 90% 가맹점 매출 적립, 100,000 VND당 1 BT 지급)
+5. **쿠폰 & 바우쳐:** `user_coupons` (해당 가맹점 적용 가능 쿠폰 조회 및 주문 결제 시 차감/사용)
+6. **가맹점 웹진 위젯:** `kca_webzine_widget.html` iframe 또는 `webzine-widget.js` 임베드
+
+---
+
 *이 문서는 BestClubVN 프로젝트(`jumper_v10`)의 최우선 개발 가이드입니다.*  
 *작업 전 반드시 본 문서를 숙지하고, 정책이나 로직이 변경될 경우 반드시 본 문서를 함께 갱신합니다.*
