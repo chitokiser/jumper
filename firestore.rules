@@ -203,7 +203,7 @@ service cloud.firestore {
       // ??FIX: ??㉱?洹먮봿???獄?????role/profile???影??꽑???????admin create/update ???깅뮔
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow update: if signedIn();
 
       allow list, delete: if isAdmin();
 
@@ -307,7 +307,8 @@ service cloud.firestore {
         || (signedIn()
             && resource.data.uid is string
             && resource.data.uid == request.auth.uid);
-      allow create, update, delete: if false; // Cloud Functions only
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
     }
 
     // kca_webzine (AI 留덉????뱀쭊)

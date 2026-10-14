@@ -3,11 +3,13 @@
 
 import { onAuthReady } from "../auth.js";
 import { login } from "../auth.js";
-import { db, functions } from "/assets/js/firebase-init.js";
+import { auth, db, functions } from "/assets/js/firebase-init.js";
 import { initSlot } from "/assets/js/jackpot-anim.js";
 import {
   doc,
   getDoc,
+  setDoc,
+  runTransaction,
   onSnapshot,
   updateDoc,
   serverTimestamp,
@@ -364,6 +366,82 @@ function playGradeSlotAnimation(grade) {
   });
 }
 
+// ── 클라이언트 Firestore 직통 결제 폴백 ──────────────────
+async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant) {
+  const userRef = doc(db, "users", uid);
+  const merchantOwnerUid = merchant.ownerUid || merchant.ownerId || merchant.userId || merchant.uid || uid;
+  const isSelfPay = (merchantOwnerUid === uid);
+  const merchantOwnerRef = doc(db, "users", merchantOwnerUid);
+  const txHash = "TX_FB_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+  const checkTxRef = doc(db, "transactions", txHash);
+
+  const feeBps = Number(merchant.feeBps) > 0 ? Number(merchant.feeBps) : 1000;
+  const feeVnd = Math.round((finalVnd * feeBps) / 10000);
+  const netVnd = finalVnd - feeVnd;
+
+  await runTransaction(db, async (tx) => {
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists()) throw new Error("회원 정보를 찾을 수 없습니다.");
+    const uData = userSnap.data();
+    const curBal = Number(uData.pointBalanceVnd ?? uData.paymentBalance ?? uData.bmBalance ?? 0);
+    if (curBal < finalVnd) {
+      throw new Error(`보유 BM 잔액이 부족합니다. (현재 보유: ${curBal.toLocaleString()} BM, 필요: ${finalVnd.toLocaleString()} BM)`);
+    }
+
+    if (isSelfPay) {
+      tx.update(userRef, {
+        pointBalanceVnd: curBal - feeVnd
+      });
+    } else {
+      const ownerSnap = await tx.get(merchantOwnerRef);
+      const ownerBal = (ownerSnap && ownerSnap.exists()) ? Number(ownerSnap.data().pointBalanceVnd || 0) : 0;
+      tx.update(userRef, {
+        pointBalanceVnd: curBal - finalVnd
+      });
+      tx.set(merchantOwnerRef, {
+        pointBalanceVnd: ownerBal + netVnd
+      }, { merge: true });
+    }
+
+    // 구매자 결제 기록
+    tx.set(checkTxRef, {
+      createdAt: serverTimestamp(),
+      currency: "VND",
+      amountVnd: finalVnd,
+      amountKrw: Math.round(finalVnd / 18),
+      merchantId: Number(merchantId),
+      merchantName: merchant.name || "",
+      txHash,
+      uid,
+      type: "pay_merchant"
+    });
+
+    // 가맹점 정산 수입 기록 (merchant-qr.js 수신 감지용)
+    const incomeTxRef = doc(db, "transactions", "TX_INC_" + Date.now() + "_" + Math.floor(Math.random() * 10000));
+    tx.set(incomeTxRef, {
+      createdAt: serverTimestamp(),
+      currency: "VND",
+      amountVnd: finalVnd,
+      netAmountVnd: netVnd,
+      feeAmountVnd: feeVnd,
+      merchantId: Number(merchantId),
+      merchantName: merchant.name || "",
+      txHash,
+      uid: merchantOwnerUid,
+      buyerUid: uid,
+      type: "merchant_income"
+    });
+  });
+
+  return {
+    txHash,
+    merchantName: merchant.name || "",
+    amountVnd: finalVnd,
+    amountKrw: Math.round(finalVnd / 18),
+    pointsEarned: 0
+  };
+}
+
 // ── 결제 버튼 바인딩 ──────────────────────────────────
 
 function bindPayButton() {
@@ -384,12 +462,23 @@ function bindPayButton() {
 
     try {
       const orderId = String(Date.now());
-      const payFn = httpsCallable(functions, "payMerchantFirebase");
-      const payload = isVnd
-        ? { merchantId: Number(merchantId), amountVnd: Number(amountVnd), currency: "VND", reqId: orderId }
-        : { merchantId: Number(merchantId), amountKrw: Number(amountKrw), reqId: orderId };
-      const res = await payFn(payload);
-      const d = res.data;
+      let d = null;
+      try {
+        const payFn = httpsCallable(functions, "payMerchantFirebase");
+        const payload = isVnd
+          ? { merchantId: Number(merchantId), amountVnd: Number(amountVnd), currency: "VND", reqId: orderId }
+          : { merchantId: Number(merchantId), amountKrw: Number(amountKrw), reqId: orderId };
+        const res = await payFn(payload);
+        d = res.data;
+      } catch (cfErr) {
+        console.warn("[Cloud Function Call Failed -> Trying Direct Firestore Fallback]", cfErr);
+        const user = auth.currentUser;
+        if (!user) throw cfErr;
+        const mSnap = await getDoc(doc(db, "merchants", String(merchantId)));
+        const mData = mSnap.data() || { name: merchantName };
+        const finalVnd = isVnd ? Number(amountVnd) : Math.round(Number(amountKrw) * 18);
+        d = await executePaymentClientFallback(user.uid, merchantId, finalVnd, mData);
+      }
 
       try {
         const topArr = document.querySelectorAll('.info-header span, .head-coins span, .head-point span, [data-point="true"]');
