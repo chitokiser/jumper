@@ -1069,25 +1069,42 @@ async function loadUsedMarketPreview() {
 }
 const DEFAULT_SEED_BANNERS = [
   {
+    id: "coupon_k1",
+    isCoupon: true,
+    badge: "BEST WINNER",
+    title: "k1 방수제 20% 할인권",
+    subtitle: "k1 방수제 구매 시 제출하시면 20% 즉시 할인 (10,000 BM)",
+    linkUrl: "/events.html",
+    active: true,
+    sortOrder: -100,
+    imageUrl: "https://bestwinnervn.com/images/waterproofing/k1_overview_product.png",
+  },
+  {
     id: "1",
-    title: "Zentaro (젠타로)",
-    subtitle: "K-Culture Flavour Portal & Dining",
-    linkUrl: "https://zentaro.netlify.app/",
+    isCoupon: false,
+    badge: "SPONSOR",
+    title: "HEX P2P거래소",
+    subtitle: "HEX토큰 KRW&VND P2P 거래",
+    linkUrl: "https://vetdao.netlify.app/index.html",
     active: true,
     sortOrder: 1,
-    imageUrl: "/assets/images/jump/logo2.png",
+    imageUrl: "https://vetdao.netlify.app/assets/img/vet.png",
   },
   {
     id: "2",
-    title: "반찬나라 (Banchan)",
-    subtitle: "정통 한국 반찬 & 프리미엄 K-Food",
-    linkUrl: "https://banchannara.netlify.app/",
+    isCoupon: false,
+    badge: "SPONSOR",
+    title: "Zentaro (젠타로)",
+    subtitle: "K-Culture Flavour Portal & Dining",
+    linkUrl: "https://zentaro.netlify.app/",
     active: true,
     sortOrder: 2,
     imageUrl: "/assets/images/jump/logo2.png",
   },
   {
     id: "3",
+    isCoupon: false,
+    badge: "SPONSOR",
     title: "대한김치 (Daehan)",
     subtitle: "100% 핸드메이드 숙성 프리미엄 김치",
     linkUrl: "https://daehankimchi.netlify.app/",
@@ -1111,17 +1128,20 @@ async function loadSponsorBannersFromDb() {
 function sponsorSlideHtml(row, idx) {
   const title = escHtml(row.title || "스폰서");
   const subtitle = escHtml(row.subtitle || "");
-  const imageUrl = escHtml(row.imageUrl || "/assets/images/jump/BI.png");
-  const linkUrl = escHtml(row.linkUrl || "/");
+  const imageUrl = escHtml(row.imageUrl || "/assets/images/jump/logo2.png");
+  const linkUrl = escHtml(row.linkUrl || "/events.html");
   const activeClass = idx === 0 ? " is-active" : "";
   const isExternal = String(linkUrl).startsWith("http");
+  const isCoupon = !!row.isCoupon;
+  const badgeText = escHtml(row.badge || (isCoupon ? "COUPON" : "SPONSOR"));
+  const badgeClass = isCoupon ? "sponsor-card-badge--coupon" : "sponsor-card-badge--ad";
 
   return `
     <a class="sponsor-slide${activeClass}" data-idx="${idx}" href="${linkUrl}" ${isExternal ? 'target="_blank" rel="noopener"' : ""}>
       <div class="sponsor-card-inner">
         <div class="sponsor-card-media">
-          <img class="sponsor-slide-logo" src="${imageUrl}" alt="${title}" loading="lazy" onerror="this.src='/assets/images/jump/BI.png'" />
-          <span class="sponsor-card-badge">SPONSOR</span>
+          <img class="sponsor-slide-logo" src="${imageUrl}" alt="${title}" loading="lazy" onerror="this.src='/assets/images/jump/logo2.png'" />
+          <span class="sponsor-card-badge ${badgeClass}">${badgeText}</span>
         </div>
         <div class="sponsor-slide-copy">
           <strong class="sponsor-title">${title}</strong>
@@ -1154,7 +1174,7 @@ async function initSponsorRotator() {
 
     function renderDots() {
       dotsWrap.innerHTML = slides
-        .map((_, i) => `<button type="button" class="sponsor-dot ${i === idx ? "is-active" : ""}" data-idx="${i}" aria-label="${_t('sponsor_dot', i + 1)}"></button>`)
+        .map((_, i) => `<span class="sponsor-dot ${i === idx ? "is-active" : ""}" data-idx="${i}" role="button" tabindex="0" aria-label="${_t('sponsor_dot', i + 1)}"></span>`)
         .join("");
     }
 
@@ -1177,9 +1197,9 @@ async function initSponsorRotator() {
     }
 
     dotsWrap.onclick = (e) => {
-      const btn = e.target.closest(".sponsor-dot");
-      if (!btn) return;
-      const next = Number(btn.dataset.idx);
+      const dot = e.target.closest(".sponsor-dot");
+      if (!dot) return;
+      const next = Number(dot.dataset.idx);
       if (Number.isFinite(next)) show(next);
     };
 
@@ -1195,16 +1215,56 @@ async function initSponsorRotator() {
 
   renderAllSlides(banners);
 
-  // 2) 백그라운드 Firestore 최신 스폰서 배너 조회 & 갱신
+  // 2) 백그라운드에서 이벤트 쿠폰·바우처(coupon_campaigns) + 스폰서 배너(sponsorBanners) 통합 조회
   try {
-    const snap = await getDocs(query(collection(db, "sponsorBanners")));
     const rows = [];
-    snap.forEach((d) => {
-      const data = d.data() || {};
-      if (data.active !== false) {
-        rows.push({ id: d.id, ...data });
-      }
-    });
+
+    // 2-a) 활성화된 이벤트 쿠폰 & 바우처 가져오기
+    try {
+      const cSnap = await getDocs(query(collection(db, "coupon_campaigns"), where("status", "==", "active")));
+      cSnap.forEach((d) => {
+        const c = d.data() || {};
+        const priceStr = Number(c.priceBM || 0) > 0 ? `${Number(c.priceBM).toLocaleString()} BM` : "무료 발급";
+        const discountDesc = c.discountValue ? `[${c.discountValue}] ` : "";
+        rows.push({
+          id: `coupon_${d.id}`,
+          campaignId: d.id,
+          isCoupon: true,
+          badge: c.issuerBadge || (c.campaignType === "VOUCHER" ? "VOUCHER" : "COUPON"),
+          title: c.title || "이벤트 쿠폰",
+          subtitle: `${discountDesc}${c.description || ""} · ${priceStr}`,
+          imageUrl: c.imageUrl || "https://bestwinnervn.com/images/waterproofing/k1_overview_product.png",
+          linkUrl: `/events.html`,
+          sortOrder: -100, // 최우선 노출
+          active: true,
+        });
+      });
+    } catch (ce) {
+      console.warn("fetch coupon_campaigns note:", ce?.message || ce);
+    }
+
+    // 2-b) 제휴 스폰서 배너 가져오기
+    try {
+      const snap = await getDocs(query(collection(db, "sponsorBanners")));
+      snap.forEach((d) => {
+        const data = d.data() || {};
+        if (data.active !== false) {
+          rows.push({
+            id: d.id,
+            isCoupon: false,
+            badge: "SPONSOR",
+            title: data.title || "스폰서",
+            subtitle: data.subtitle || "",
+            imageUrl: data.imageUrl || "/assets/images/jump/logo2.png",
+            linkUrl: data.linkUrl || "/",
+            sortOrder: Number(data.sortOrder || 0),
+            active: true,
+          });
+        }
+      });
+    } catch (be) {
+      console.warn("fetch sponsorBanners note:", be?.message || be);
+    }
 
     if (rows.length > 0) {
       rows.sort((a, b) => {

@@ -318,10 +318,18 @@
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.5px;
-  padding: 1px 6px;
+  padding: 1px 7px;
   border-radius: 999px;
-  box-shadow: 0 2px 4px rgba(29, 78, 216, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
   white-space: nowrap;
+}
+.sponsor-card-badge--ad {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
+}
+.sponsor-card-badge--coupon {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  color: #ffffff;
 }
 .sponsor-slide-copy {
   flex: 1 1 auto;
@@ -371,21 +379,36 @@
   align-items: center;
   gap: 6px;
   margin-top: 10px;
+  height: 10px;
+  min-height: 10px;
+  max-height: 10px;
 }
 .sponsor-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  border: 0;
-  background: #cbd5e1;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  padding: 0;
+  display: inline-block !important;
+  width: 7px !important;
+  height: 7px !important;
+  min-width: 7px !important;
+  max-width: 24px !important;
+  min-height: 7px !important;
+  max-height: 7px !important;
+  border-radius: 999px !important;
+  border: none !important;
+  outline: none !important;
+  background: #cbd5e1 !important;
+  cursor: pointer !important;
+  transition: all 0.25s ease !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+  flex: 0 0 auto !important;
+  box-sizing: border-box !important;
 }
 .sponsor-dot.is-active {
-  width: 22px;
-  background: #2563eb;
-  border-radius: 999px;
+  width: 22px !important;
+  min-width: 22px !important;
+  background: #2563eb !important;
+  border-radius: 999px !important;
 }
 @media (max-width: 640px) {
   .sponsor-rotator { height: 94px; border-radius: 14px; }
