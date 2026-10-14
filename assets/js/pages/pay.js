@@ -107,7 +107,9 @@ async function init() {
     return; // 이미 invalidPanel 표시됨
   }
 
-  onAuthReady(({ loggedIn, role }) => {
+  let _userBmBalance = 0;
+
+  onAuthReady(({ loggedIn, role, user }) => {
     if (_authDone) return;
     _authDone = true;
 
@@ -118,7 +120,6 @@ async function init() {
         btn.onclick = async () => {
           try {
             await login();
-            // 로그인 완료되면 페이지 새로고침하여 결제 패널 표시 (파라미터 유지됨)
             location.reload();
           } catch (e) {
             console.warn(e);
@@ -134,8 +135,41 @@ async function init() {
       return;
     }
 
-    // 정상 사용자 → 결제 패널 표시
+    // 정상 사용자 → 결제 패널 표시 및 실시간 잔액 감시
     show("payPanel", true);
+
+    if (user?.uid) {
+      onSnapshot(doc(db, "users", user.uid), (snap) => {
+        if (!snap.exists()) return;
+        const uData = snap.data() || {};
+        const curBalance = Number(uData.pointBalanceVnd ?? uData.paymentBalance ?? uData.bmBalance ?? 0);
+        _userBmBalance = curBalance;
+
+        const balEl = $("myBmBalanceText");
+        if (balEl) balEl.textContent = `${curBalance.toLocaleString()} BM`;
+
+        const shortageEl = $("balanceShortageMsg");
+        const btn = $("btnPay");
+        const requiredAmount = isVnd ? amount : Math.round(amount * 18);
+
+        if (curBalance < requiredAmount) {
+          if (shortageEl) shortageEl.style.display = "";
+          if (btn && btn.textContent !== "결제 중...") {
+            btn.disabled = true;
+            btn.style.opacity = "0.6";
+            btn.textContent = "보유 BM 잔액 부족";
+          }
+        } else {
+          if (shortageEl) shortageEl.style.display = "none";
+          if (btn && btn.textContent !== "결제 중...") {
+            btn.disabled = false;
+            btn.style.opacity = "";
+            btn.textContent = "결제하기";
+          }
+        }
+      });
+    }
+
     bindPayButton();
   });
 
@@ -411,7 +445,12 @@ function bindPayButton() {
       }
     } catch (err) {
       if (stateEl) stateEl.style.display = "none";
-      alert("결제 실패: " + (err?.message || "서버 오류가 발생했습니다."));
+      console.error("[Pay Error]", err);
+      let errMsg = err?.details || err?.message || "서버 오류가 발생했습니다.";
+      if (typeof errMsg === "string" && (errMsg.toLowerCase().includes("billing is disabled") || errMsg.toLowerCase() === "internal")) {
+        errMsg = "Firebase Cloud Function 결제 계정(Billing) 비활성화 또는 서버 일시적 오류입니다.\n(Google Cloud Console에서 프로젝트의 Blaze 플랜 / Billing 활성 상태를 확인해 주세요.)";
+      }
+      alert("결제 실패: " + errMsg);
       btn.disabled = false;
       btn.textContent = "결제하기";
     }

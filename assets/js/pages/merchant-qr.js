@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/merchant-qr.js
+// /assets/js/pages/merchant-qr.js
 // 가맹점QR 코드 ?�성 ?�이지
 
 import { onAuthReady } from "../auth.js";
@@ -308,9 +308,7 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
   const canvas = $("qrCanvas");
   if (!canvas) return;
 
-  const PROD_ORIGIN = "https://bestclubvn.netlify.app";
-  const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-  const baseOrigin = isLocal ? PROD_ORIGIN : location.origin;
+  const baseOrigin = location.origin;
 
   let url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
   if (mode === "bt") {
@@ -344,11 +342,17 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
 
     // 카드 ?�보 ?�데?�트
     const amountDisp = currency === "VND"
-      ? `${amount.toLocaleString()}원(VND)`
-      : `${amount.toLocaleString()}원(KRW)`;
+      ? `${amount.toLocaleString()} BM`
+      : `${amount.toLocaleString()}원 (KRW)`;
     setText("qrCardMerchant", merchantName);
     setText("qrCardAmount", amountDisp);
     show("qrSection", true);
+
+    const btnTest = $("btnTestPayLink");
+    if (btnTest) {
+      btnTest.href = url;
+      btnTest.style.display = "block";
+    }
 
     // ?�운로드 버튼
     const btnDl = $("btnDownloadQr");

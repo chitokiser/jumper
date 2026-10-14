@@ -97,9 +97,10 @@ function wrapError(fn) {
     } catch (err) {
       logger.error('[Functions Error]', err);
       if (err instanceof HttpsError) throw err;
-      // 핸들러가 _err()로 던진 경우 httpCode를 그대로 사용
-      const code = err.httpCode || 'internal';
-      throw new HttpsError(code, err.message || '서버 오류');
+      // 핸들러가 _err()로 던진 경우 httpCode를 사용하고,
+      // 일반 에러는 'internal'로 마스킹되는 것을 방지하기 위해 'failed-precondition'을 기본값으로 사용
+      const code = err.httpCode || 'failed-precondition';
+      throw new HttpsError(code, err.message || '서버 오류가 발생했습니다.');
     }
   };
 }
@@ -807,23 +808,30 @@ exports.payMerchantFirebase = onCall(
   { cors: true },
   wrapError(async (request) => {
     const uid = requireAuth(request);
-    const { merchantId, amountKrw, amountVnd, currency = 'KRW' } = request.data ?? {};
+    const { merchantId, amountKrw, amountVnd, currency = 'VND' } = request.data ?? {};
     if (merchantId == null) throw new HttpsError('invalid-argument', 'merchantId가 필요합니다');
 
     const cur = String(currency).toUpperCase();
+    let finalVnd = 0;
+    let finalKrw = 0;
+
     if (cur === 'VND') {
-      if (!amountVnd || Number(amountVnd) < 10000)
-        throw new HttpsError('invalid-argument', 'VND 최소 결제 금액은 10,000동입니다');
+      finalVnd = Number(amountVnd || amountKrw || 0);
+      if (finalVnd < 10000)
+        throw new HttpsError('invalid-argument', 'VND(BM) 최소 결제 금액은 10,000 BM입니다');
+      finalKrw = amountKrw ? Number(amountKrw) : Math.round(finalVnd / 18);
     } else {
-      if (!amountKrw || Number(amountKrw) < 1000)
+      finalKrw = Number(amountKrw || 0);
+      if (finalKrw < 1000)
         throw new HttpsError('invalid-argument', '최소 결제 금액은 1,000원입니다');
+      finalVnd = Number(amountVnd || Math.round(finalKrw * 18));
     }
 
     const result = await txH.payMerchantFirebase(
-      uid, Number(merchantId), amountVnd ? Number(amountVnd) : 0,
-      { currency: cur, amountKrw: amountKrw ? Number(amountKrw) : undefined, reqId: request.data.reqId }
+      uid, Number(merchantId), finalVnd,
+      { currency: cur, amountKrw: finalKrw, reqId: request.data?.reqId }
     );
-    logger.info('payMerchantFirebase', { uid, merchantId, amountKrw, amountVnd, currency: cur, amountVndCharged: result.amountVnd });
+    logger.info('payMerchantFirebase', { uid, merchantId, amountKrw: finalKrw, amountVnd: finalVnd, currency: cur, amountVndCharged: result.amountVnd });
     return result;
   })
 );

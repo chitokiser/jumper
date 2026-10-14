@@ -28,8 +28,8 @@ async function createOrder(req, res) {
                 if (!pSnap.exists) throw new Error('존재하지 않는 상품이 포함되어 있습니다.');
                 const p = pSnap.data();
                 
-                if (p.sale_status !== 'published') throw new Error(\[\] 상품은 현재 판매 중지 또는 미공개 상태입니다.\);
-                if (p.merchant_id !== merchant_id) throw new Error(\[\] 타 가맹점 상품을 섞어서 스푸핑할 수 없습니다.\);
+                if (p.sale_status !== 'published') throw new Error(`[${p.product_name || ''}] 상품은 현재 판매 중지 또는 미공개 상태입니다.`);
+                if (p.merchant_id !== merchant_id) throw new Error('타 가맹점 상품을 섞어서 주문할 수 없습니다.');
                 
                 let finalItemPrice = Number(p.price) || 0;
                 
@@ -43,7 +43,7 @@ async function createOrder(req, res) {
                 // 재고 검증
                 if (p.inventory_managed) {
                     if (Number(p.inventory_stock) < Number(item.qty)) {
-                        throw new Error(\[\] 재고가 부족합니다 (남은 수량: \)\);
+                        throw new Error(`[${p.product_name || ''}] 재고가 부족합니다 (남은 수량: ${p.inventory_stock})`);
                     }
                     // 임시 재고 감소 이력은 트랜잭션 종료 시 update 처리 (간단 구현)
                     t.update(pSnap.ref, { inventory_stock: admin.firestore.FieldValue.increment(-Number(item.qty)) });
