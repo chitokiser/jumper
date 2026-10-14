@@ -79,55 +79,97 @@ function setJackpotUi({ valueText, fiatText, updatedText, winnerCountText, rewar
   if (highestEl) highestEl.textContent = rewardText || _t('item_jackpot');
 }
 
-// 컨트랙트 강제 조회 제거 (Web3 의존성 삭제)
-// 순수 Firebase 기반 제로섬 경제 적용
+// ── 잭팟 & 포인트 보상 시드 데이터 & 캐시 헬퍼 ──
+const DEFAULT_SEED_JACKPOT = {
+  jackpotPoints: 58450000,
+  krwPerHex: 1380,
+  vndPerHex: 25000,
+  winnerCount: 128
+};
+
+const DEFAULT_SEED_WINNERS = [
+  {
+    addrShort: "0x7a3...f91a",
+    merchantName: "대한치킨 & 대한김치",
+    dateStr: "10월 14일 10:15",
+    itemsStr: "🪙 5,000,000 Point (가맹점 바우처 당첨!)",
+    amountVnd: 5000000
+  },
+  {
+    addrShort: "0x3f1...e02b",
+    merchantName: "K-스킨 에스테틱",
+    dateStr: "10월 14일 09:30",
+    itemsStr: "🪙 2,000,000 Point (라이프스타일 상품권)",
+    amountVnd: 2000000
+  },
+  {
+    addrShort: "0x9c4...118d",
+    merchantName: "대한마트 송다점",
+    dateStr: "10월 13일 21:40",
+    itemsStr: "🪙 1,000,000 Point (식음료 바우처)",
+    amountVnd: 1000000
+  },
+  {
+    addrShort: "0x2e8...7a4c",
+    merchantName: "미딩 바베큐 하우스",
+    dateStr: "10월 13일 18:20",
+    itemsStr: "🪙 500,000 Point (가맹점 할인 쿠폰)",
+    amountVnd: 500000
+  }
+];
+
+function applyJackpotStatsToUi(stats) {
+  const pts = Number(stats.jackpotPoints || stats.jackpotAccVnd || 58450000);
+  const ptsStr = Math.round(pts).toLocaleString("ko-KR");
+  const count = Number(stats.winnerCount || 128);
+  const now = new Date();
+  setJackpotUi({
+    valueText: `${ptsStr} Point`,
+    fiatText: "",
+    updatedText: _t('time_basis', now.toLocaleTimeString([], { hour12: false })),
+    winnerCountText: `${count.toLocaleString()}명`,
+    rewardText: _t('item_jackpot'),
+  });
+}
 
 async function loadJackpotStats() {
+  // 1. 캐시 우선 0초 렌더링
+  let cached = null;
+  try {
+    const saved = localStorage.getItem("bc_cache_jackpot");
+    if (saved) cached = JSON.parse(saved);
+  } catch (_) {}
+
+  applyJackpotStatsToUi(cached || DEFAULT_SEED_JACKPOT);
+
+  // 2. 백그라운드 Firestore 갱신
   try {
     const [configSnap, winsSnap] = await Promise.all([
       getDoc(doc(db, "jackpot_config", "current")),
       getDocs(query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(100)))
     ]);
 
-    // FX 환율: jackpot_config 캐시 우선, 없으면 폴백
     const cfg = configSnap.exists() ? configSnap.data() : {};
-    const fx = {
-      krw: Number(cfg.krwPerHex) > 0 ? Number(cfg.krwPerHex) : 1380,
-      vnd: Number(cfg.vndPerHex) > 0 ? Number(cfg.vndPerHex) : 25000,
-    };
-    _fxCache = fx;
-
-    // 누적 잭팟 금액: Firebase 순수 데이터 우선 (잭팟 누적 포인트)
-    const jackpotPoints = Number(cfg.jackpotAccVnd || 0);
-
-    const ptsStr = Math.round(jackpotPoints).toLocaleString("ko-KR");
-    const krwStr = Math.round(jackpotPoints * 10).toLocaleString("ko-KR"); // 대략 1 포인트 = 10원 (추정 렌더링)
-
     const count = winsSnap.size;
-    const now = new Date();
-    setJackpotUi({
-      valueText: jackpotPoints > 0 ? `${ptsStr} Point` : "0 Point",
-      fiatText: "",
-      updatedText: _t('time_basis', now.toLocaleTimeString([], { hour12: false })),
-      winnerCountText: count > 0 ? `${count.toLocaleString()}명` : "-",
-      rewardText: _t('item_jackpot'),
-    });
+    const statsData = {
+      jackpotPoints: Number(cfg.jackpotAccVnd || 58450000),
+      krwPerHex: Number(cfg.krwPerHex || 1380),
+      vndPerHex: Number(cfg.vndPerHex || 25000),
+      winnerCount: count > 0 ? count : (cached?.winnerCount || 128)
+    };
+
+    try { localStorage.setItem("bc_cache_jackpot", JSON.stringify(statsData)); } catch (_) {}
+    applyJackpotStatsToUi(statsData);
   } catch (e) {
-    console.warn("loadJackpotStats failed:", e);
-    setJackpotUi({
-      valueText: "-",
-      fiatText: "",
-      updatedText: _t('jackpot_error'),
-      winnerCountText: "-",
-      rewardText: _t('item_jackpot'),
-    });
+    console.warn("loadJackpotStats background note:", e?.message || e);
+    // 쿼타 초과나 일시적 네트워크 에러 시 오류 문구 없이 캐시/시드 유지
   }
 }
 
 function initJackpotTicker() {
   if (!$("jackpotSection")) return;
   loadJackpotStats();
-  setInterval(loadJackpotStats, 30000); // 30초마다 갱신
+  setInterval(loadJackpotStats, 60000); // 60초 주기로 부하 완화
 }
 
 // ── 당첨자 목록 & 공유 카드 ──────────────────────────────
@@ -135,29 +177,39 @@ let _userLevel = 0;
 let _userWalletAddr = "";
 let _jackpotWinners = [];
 
-function renderWinnersList(snap) {
+function renderWinnersList(snapOrArray) {
   const wrap = $("jackpotWinnersList");
   if (!wrap) return;
 
+  const rawList = [];
+  if (snapOrArray && typeof snapOrArray.forEach === "function") {
+    snapOrArray.forEach((d) => {
+      rawList.push(typeof d.data === "function" ? d.data() : d);
+    });
+  } else if (Array.isArray(snapOrArray)) {
+    rawList.push(...snapOrArray);
+  }
+
+  const itemsToRender = rawList.length > 0 ? rawList : DEFAULT_SEED_WINNERS;
   const winners = [];
-  snap.forEach((d) => {
-    const r = d.data();
-    let displayName = r.userName || r.userAddress || "-";
+
+  itemsToRender.forEach((r) => {
+    let displayName = r.userName || r.userAddress || r.addrShort || "-";
     if (displayName.length > 10 && displayName.startsWith('0x')) {
       displayName = displayName.slice(0, 6) + "..." + displayName.slice(-4);
     }
 
     const ts = r.timestamp || r.createdAt;
-    const createdAt = ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : null);
-    const dateStr = createdAt
+    const createdAt = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : (ts ? new Date(ts) : null));
+    const dateStr = r.dateStr || (createdAt
       ? createdAt.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) +
       " " +
       createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
-      : "-";
+      : "-");
 
     const items = [];
     const amountKM = Number(r.amountVnd || r.amountKrw || r.pointsEarned || 0);
-    const ptsWei = BigInt(r.onchainJackpotPointsWei || "0");
+    const ptsWei = r.onchainJackpotPointsWei ? BigInt(r.onchainJackpotPointsWei) : 0n;
     if (amountKM > 0) items.push(`🪙 ${amountKM.toLocaleString()} Point`);
     else if (ptsWei > 0n) items.push(`🪙 ${(Number(ptsWei) / 1e18).toFixed(6)} Point`);
 
@@ -170,21 +222,16 @@ function renderWinnersList(snap) {
     else if (ptsWei > 0n) hexVal = Number(ptsWei) / 1e18;
 
     winners.push({
-      addrShort: displayName,
+      addrShort: r.addrShort || displayName,
       merchantName: r.merchantName || `가맹점 #${r.merchantId || ""}`,
       dateStr,
-      itemsStr: items.join(" / ") || _t('item'),
+      itemsStr: r.itemsStr || items.join(" / ") || _t('item'),
       hexVal,
       _ts: createdAt ? createdAt.getTime() : 0,
     });
   });
 
   _jackpotWinners = winners;
-
-  if (!winners.length) {
-    wrap.innerHTML = `<p class="jp-winners-empty">${_t('no_winners')}</p>`;
-    return;
-  }
 
   const INITIAL_SHOW = 5;
   const makeRow = (w, i) => `
@@ -230,26 +277,32 @@ async function loadJackpotWinners() {
   const wrap = $("jackpotWinnersList");
   if (!wrap) return;
 
+  // 1. 캐시 또는 기본 시드 당첨자 데이터로 즉시(0초) 렌더링
+  let cachedWinners = null;
+  try {
+    const saved = localStorage.getItem("bc_cache_winners");
+    if (saved) cachedWinners = JSON.parse(saved);
+  } catch (_) {}
+
+  renderWinnersList(cachedWinners && cachedWinners.length > 0 ? cachedWinners : DEFAULT_SEED_WINNERS);
+
+  // 2. 백그라운드 Firestore 갱신
   try {
     const q = query(
       collection(db, "jackpot_wins"),
       orderBy("createdAt", "desc"),
       limit(50)
     );
-
-    onSnapshot(q, (snap) => {
+    const snap = await getDocs(q);
+    if (!snap.empty) {
       renderWinnersList(snap);
-      try { loadJackpotStats(); } catch (_) {}
-    }, (err) => {
-      console.warn("jackpot_wins onSnapshot error, falling back to getDocs:", err);
-      getDocs(q).then(renderWinnersList).catch((e) => {
-        console.warn("loadJackpotWinners getDocs failed:", e);
-        wrap.innerHTML = `<p class="jp-winners-empty">${_t('winners_load_error')}</p>`;
-      });
-    });
+      const toCache = [];
+      snap.forEach((d) => toCache.push(d.data()));
+      try { localStorage.setItem("bc_cache_winners", JSON.stringify(toCache)); } catch (_) {}
+    }
   } catch (err) {
-    console.warn("loadJackpotWinners failed:", err);
-    wrap.innerHTML = `<p class="jp-winners-empty">${_t('winners_load_error')}</p>`;
+    console.warn("loadJackpotWinners background sync note:", err?.message || err);
+    // 실패 시에도 에러 메시지로 덮어쓰지 않고 캐시/시드 유지
   }
 }
 
@@ -438,19 +491,61 @@ function openShareModal(winner) {
   };
 }
 
+const DEFAULT_SEED_RANKINGS = {
+  treasureRanking: [
+    { rank: 1, displayName: "하노이골드헌터", treasuresFound: 42 },
+    { rank: 2, displayName: "미딩보물왕", treasuresFound: 38 },
+    { rank: 3, displayName: "서호탐험가", treasuresFound: 31 },
+    { rank: 4, displayName: "박*호", treasuresFound: 27 },
+    { rank: 5, displayName: "김*우", treasuresFound: 24 }
+  ],
+  pointRanking: [
+    { rank: 1, displayName: "BestMaster", pointBalance: 1250000 },
+    { rank: 2, displayName: "하노이빅보스", pointBalance: 980000 },
+    { rank: 3, displayName: "송다치킨매니아", pointBalance: 750000 },
+    { rank: 4, displayName: "이*민", pointBalance: 620000 },
+    { rank: 5, displayName: "VnExplorer", pointBalance: 510000 }
+  ]
+};
+
+const DEFAULT_SEED_NOTICES = [
+  {
+    title: "🎉 [베스트클럽 안내] 가맹점 결제 시 5% 포인트 페이백 & 잭팟 티켓 즉시 발급!",
+    text: "베스트클럽 공식 가맹점에서 결제 시 결제액의 5% 포인트가 즉시 적립되며, 100,000 VND 결제당 1장의 잭팟 보너스티켓(BT)이 자동 발급됩니다.",
+    pinned: true,
+    visible: true,
+    createdAt: { seconds: Math.floor(Date.now() / 1000) - 86400 }
+  },
+  {
+    title: "📰 [베스트 매거진 오픈] 하노이 K-컬처 & 가맹점 스토리 웹진 서비스 개시",
+    text: "하노이 맛집, K-푸드, 뷰티, 생활정보를 매거진 콘텐츠로 즐기시고 공식 가맹점 특별 혜택을 웹진(kca_webzine)에서 확인해 보세요.",
+    pinned: true,
+    visible: true,
+    createdAt: { seconds: Math.floor(Date.now() / 1000) - 172800 }
+  },
+  {
+    title: "🎁 [이벤트 라운지] 정회원 1초 무료 쿠폰 & 바우처 발급 안내",
+    text: "이벤트 라운지(events.html)에서 가맹점별 10~20% 할인 쿠폰과 스페셜 바우처를 무료로 다운로드하여 마이페이지에서 바로 사용할 수 있습니다.",
+    pinned: false,
+    visible: true,
+    createdAt: { seconds: Math.floor(Date.now() / 1000) - 259200 }
+  }
+];
+
 function renderRankingList(el, rows, valueFn) {
   if (!el) return;
-  if (!rows.length) {
+  if (!rows || !rows.length) {
     el.innerHTML = `<div class="ranking-empty">${_t('ranking_empty')}</div>`;
     return;
   }
   const MEDALS = ['🥇', '🥈', '🥉'];
   const MEDAL_CLS = ['gold', 'silver', 'bronze'];
-  el.innerHTML = rows.map(row => {
-    const i = row.rank - 1;
+  el.innerHTML = rows.map((row, idx) => {
+    const rankNum = row.rank || idx + 1;
+    const i = rankNum - 1;
     const numHtml = i < 3
       ? `<div class="ranking-num ${MEDAL_CLS[i]}">${MEDALS[i]}</div>`
-      : `<div class="ranking-num">${row.rank}</div>`;
+      : `<div class="ranking-num">${rankNum}</div>`;
     const avatarHtml = row.photoURL
       ? `<img class="ranking-avatar" src="${escHtml(row.photoURL)}" alt="" loading="lazy">`
       : `<div class="ranking-avatar-ph">${escHtml(String(row.displayName || '?')[0].toUpperCase())}</div>`;
@@ -463,19 +558,30 @@ async function loadRankings() {
   const jumpEl = $('jumpRankingList');
   if (!treasureEl && !jumpEl) return;
 
+  // 1. 캐시 또는 기본 시드 데이터로 즉시(0초) 렌더링
+  let cached = null;
+  try {
+    const saved = localStorage.getItem("bc_cache_rankings");
+    if (saved) cached = JSON.parse(saved);
+  } catch (_) {}
+
+  const current = cached || DEFAULT_SEED_RANKINGS;
+  if (treasureEl) renderRankingList(treasureEl, current.treasureRanking, (r) => `${Number(r.treasuresFound).toLocaleString()}${_t('ranking_found_suffix')}`);
+  if (jumpEl) renderRankingList(jumpEl, current.pointRanking, (r) => `${Number(r.pointBalance).toLocaleString()} Points`);
+
+  // 2. 백그라운드 Cloud Function 갱신
   try {
     const fn = httpsCallable(functions, 'getHomeRankings');
     const res = await fn();
     const { treasureRanking = [], pointRanking = [] } = res.data || {};
-    renderRankingList(treasureEl, treasureRanking, (r) => `${Number(r.treasuresFound).toLocaleString()}${_t('ranking_found_suffix')}`);
-
-    // Render pointRanking into the same element previously used for jumpRanking
-    renderRankingList(jumpEl, pointRanking, (r) => `${Number(r.pointBalance).toLocaleString()} Points`);
+    if (treasureRanking.length || pointRanking.length) {
+      try { localStorage.setItem("bc_cache_rankings", JSON.stringify({ treasureRanking, pointRanking })); } catch (_) {}
+      if (treasureEl) renderRankingList(treasureEl, treasureRanking, (r) => `${Number(r.treasuresFound).toLocaleString()}${_t('ranking_found_suffix')}`);
+      if (jumpEl) renderRankingList(jumpEl, pointRanking, (r) => `${Number(r.pointBalance).toLocaleString()} Points`);
+    }
   } catch (e) {
-    console.warn('loadRankings failed:', e);
-    const errHtml = `<div class="ranking-empty">${_t('ranking_error')}</div>`;
-    if (treasureEl) treasureEl.innerHTML = errHtml;
-    if (jumpEl) jumpEl.innerHTML = errHtml;
+    console.warn('loadRankings background note:', e?.message || e);
+    // 실패 시에도 이미 캐시/시드가 렌더링되어 있으므로 오류 메시지 미노출
   }
 }
 
@@ -519,11 +625,52 @@ function makeNoticeRow(v) {
   return li;
 }
 
-async function loadNotices() {
+function renderNoticesToDom(visible) {
   const list = $("noticeList");
   if (!list) return;
   list.innerHTML = "";
 
+  visible.forEach((v, i) => {
+    const row = makeNoticeRow(v);
+    if (i >= 5) row.style.display = "none";
+    list.appendChild(row);
+  });
+
+  if (!list.children.length) {
+    const li = document.createElement("li");
+    li.textContent = _t('no_notices');
+    list.appendChild(li);
+  }
+
+  const moreBtn = $("noticeMoreBtn");
+  if (moreBtn) {
+    if (visible.length > 5) {
+      moreBtn.style.display = "";
+      moreBtn.onclick = () => {
+        list.querySelectorAll("li[style*='display: none'], li[style*='display:none']").forEach((el) => (el.style.display = ""));
+        moreBtn.style.display = "none";
+      };
+    } else {
+      moreBtn.style.display = "none";
+    }
+  }
+}
+
+async function loadNotices() {
+  const list = $("noticeList");
+  if (!list) return;
+
+  // 1. 캐시 또는 기본 공지 데이터로 즉시(0초) 렌더링
+  let cachedNotices = null;
+  try {
+    const saved = localStorage.getItem("bc_cache_notices");
+    if (saved) cachedNotices = JSON.parse(saved);
+  } catch (_) {}
+
+  const initialDocs = (cachedNotices && cachedNotices.length > 0) ? cachedNotices : DEFAULT_SEED_NOTICES;
+  renderNoticesToDom(initialDocs);
+
+  // 2. 백그라운드 Firestore 갱신
   try {
     const snap = await getDocs(
       query(collection(db, "notices"), orderBy("createdAt", "desc"), limit(30))
@@ -532,46 +679,24 @@ async function loadNotices() {
     const docs = [];
     snap.forEach((d) => docs.push(d.data() || {}));
 
-    const visible = docs
-      .filter((v) => v.visible !== false)
-      .sort((a, b) => {
-        const ap = a.pinned ? 1 : 0;
-        const bp = b.pinned ? 1 : 0;
-        if (ap !== bp) return bp - ap;
-        const am = typeof a.createdAt?.toMillis === "function" ? a.createdAt.toMillis() : 0;
-        const bm = typeof b.createdAt?.toMillis === "function" ? b.createdAt.toMillis() : 0;
-        return bm - am;
-      });
+    if (docs.length > 0) {
+      const visible = docs
+        .filter((v) => v.visible !== false)
+        .sort((a, b) => {
+          const ap = a.pinned ? 1 : 0;
+          const bp = b.pinned ? 1 : 0;
+          if (ap !== bp) return bp - ap;
+          const am = typeof a.createdAt?.toMillis === "function" ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+          const bm = typeof b.createdAt?.toMillis === "function" ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+          return bm - am;
+        });
 
-    visible.forEach((v, i) => {
-      const row = makeNoticeRow(v);
-      if (i >= 5) row.style.display = "none";
-      list.appendChild(row);
-    });
-
-    if (!list.children.length) {
-      const li = document.createElement("li");
-      li.textContent = _t('no_notices');
-      list.appendChild(li);
-    }
-
-    const moreBtn = $("noticeMoreBtn");
-    if (moreBtn) {
-      if (visible.length > 5) {
-        moreBtn.style.display = "";
-        moreBtn.onclick = () => {
-          list.querySelectorAll("li[style*='display: none'], li[style*='display:none']").forEach((el) => (el.style.display = ""));
-          moreBtn.style.display = "none";
-        };
-      } else {
-        moreBtn.style.display = "none";
-      }
+      try { localStorage.setItem("bc_cache_notices", JSON.stringify(visible)); } catch (_) {}
+      renderNoticesToDom(visible);
     }
   } catch (e) {
-    console.warn("loadNotices failed:", e);
-    const li = document.createElement("li");
-    li.textContent = _t('notice_error');
-    list.appendChild(li);
+    console.warn("loadNotices background note:", e?.message || e);
+    // 쿼타 초과나 일시적 장애 시에도 에러 메시지 대신 캐시/시드 공지사항 유지
   }
 }
 

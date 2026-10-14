@@ -383,6 +383,13 @@ service cloud.firestore {
       allow create, update: if signedIn();
       allow delete: if isAdmin();
     }
+
+    // jackpot stats (공개 통계 조회용)
+    match /jackpot_stats/{docId} {
+      allow get, list: if true;
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
 // used market posts
     match /usedMarketPosts/{postId} {
       allow get, list: if true;
@@ -884,10 +891,6 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
       // ------ END BEST ERP SAAS RULES ------
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
   
     // ====== MULTI-TENANT RESTAURANT SAAS RULES ======
     function isSuperAdmin() {

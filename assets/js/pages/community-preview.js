@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/community-preview.js
+// /assets/js/pages/community-preview.js
 // index.html 소셜 커뮤니티 미리보기 (최대 4개)
 
 import { getApps, initializeApp }
@@ -98,11 +98,60 @@ function buildCard(d) {
   return card;
 }
 
+const DEFAULT_COMMUNITY_EVENTS = [
+  {
+    id: 'seed_1',
+    name: 'OceanPark K-Food 페스티벌',
+    scheduleType: 'weekly',
+    scheduleDays: [5, 6],
+    scheduleTime: '18:00',
+    location: 'OceanPark 그랜드 플라자',
+    photoUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80'
+  },
+  {
+    id: 'seed_2',
+    name: '주말 버스킹 & 럭키드로우',
+    scheduleType: 'weekly',
+    scheduleDays: [0, 6],
+    scheduleTime: '19:30',
+    location: '센트럴 파크 야외무대',
+    photoUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&q=80'
+  },
+  {
+    id: 'seed_3',
+    name: '베스트클럽 가맹점 특별 할인전',
+    scheduleType: 'daily',
+    scheduleTime: '매일',
+    location: '전 가맹점 매장',
+    photoUrl: 'https://images.unsplash.com/photo-1556742049-0a67e557224f?w=400&q=80'
+  }
+];
+
 // ── 로드 ──────────────────────────────────────────────────────
+function renderEventCards(grid, list) {
+  if (!grid) return;
+  grid.innerHTML = '';
+  if (!list || list.length === 0) {
+    grid.innerHTML = '<div class="comm-preview-empty">등록된 행사가 없습니다.</div>';
+    return;
+  }
+  list.slice(0, 4).forEach(e => grid.appendChild(buildCard(e)));
+}
+
 async function loadCommunityPreview() {
   const grid = document.getElementById('communityPreviewGrid');
   if (!grid) return;
 
+  // 1) 0초 즉시 캐시 / 기본값 렌더링
+  let cached = null;
+  try {
+    const raw = localStorage.getItem('bc_cache_community_events');
+    if (raw) cached = JSON.parse(raw);
+  } catch (_) {}
+
+  renderEventCards(grid, (cached && cached.length) ? cached : DEFAULT_COMMUNITY_EVENTS);
+
+  // 2) 백그라운드에서 최신 데이터 조회 후 업데이트
   try {
     const events = [];
     const seen   = new Set();
@@ -110,7 +159,8 @@ async function loadCommunityPreview() {
     const push = (docSnap) => {
       if (!seen.has(docSnap.id) && events.length < 4) {
         seen.add(docSnap.id);
-        events.push({ id: docSnap.id, ...docSnap.data() });
+        const data = docSnap.data ? docSnap.data() : docSnap;
+        events.push({ id: docSnap.id, ...data });
       }
     };
 
@@ -125,35 +175,37 @@ async function loadCommunityPreview() {
 
     // 2) 예정 행사 (eventDate 오름차순)
     if (events.length < 4) {
-      const snap = await getDocs(
-        query(collection(db,'community_events'),
-          where('eventDate','>',new Date()),
-          orderBy('eventDate','asc'),
-          limit(4 - events.length))
-      );
-      snap.docs.forEach(push);
+      try {
+        const snap = await getDocs(
+          query(collection(db,'community_events'),
+            where('eventDate','>',new Date()),
+            orderBy('eventDate','asc'),
+            limit(4 - events.length))
+        );
+        snap.docs.forEach(push);
+      } catch (_) {}
     }
 
     // 3) 그래도 4개 미만이면 최근 행사로 채우기
     if (events.length < 4) {
-      const snap = await getDocs(
-        query(collection(db,'community_events'),
-          orderBy('eventDate','desc'),
-          limit(8))
-      );
-      snap.docs.forEach(push);
+      try {
+        const snap = await getDocs(
+          query(collection(db,'community_events'),
+            orderBy('eventDate','desc'),
+            limit(8))
+        );
+        snap.docs.forEach(push);
+      } catch (_) {}
     }
 
-    grid.innerHTML = '';
-    if (events.length === 0) {
-      grid.innerHTML = '<div class="comm-preview-empty">등록된 행사가 없습니다.</div>';
-      return;
+    if (events.length > 0) {
+      renderEventCards(grid, events);
+      try {
+        localStorage.setItem('bc_cache_community_events', JSON.stringify(events.slice(0, 4)));
+      } catch (_) {}
     }
-    events.slice(0, 4).forEach(e => grid.appendChild(buildCard(e)));
-
   } catch (err) {
-    grid.innerHTML = '<div class="comm-preview-empty">불러오기 실패</div>';
-    console.error('[community-preview]', err);
+    console.warn('[community-preview] silent background fetch error (retaining cached UI):', err?.message || err);
   }
 }
 

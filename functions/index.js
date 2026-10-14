@@ -2423,7 +2423,7 @@ exports.listCoinExchanges = onCall(
 
 // ── 홈 랭킹 ──────────────────────────────────────────────────────────────────
 exports.getHomeRankings = onCall(
-  { region: 'us-central1', timeoutSeconds: 60 },
+  { region: 'us-central1', timeoutSeconds: 60, cors: true },
   wrapError(async () => rankingsH.getHomeRankings())
 );
 
