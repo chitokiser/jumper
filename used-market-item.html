@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -23,12 +23,14 @@
     <section class="panel" style="margin-top:14px;">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
         <a class="btn" href="/used.html">목록으로</a>
-        <div id="umOwnerTools" style="display:none;gap:8px;flex-wrap:wrap;">
-          <button class="btn" id="btnEditToggle" type="button">내용 수정</button>
+        <div id="umOwnerTools" style="display:none;gap:8px;flex-wrap:wrap;align-items:center;">
+          <span id="umSuperAdminPill" style="display:none;font-size:12px;font-weight:700;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;padding:4px 10px;border-radius:999px;">🛡️ 수퍼어드민 권한</span>
+          <button class="btn" id="btnEditToggle" type="button">내용 수정/보완</button>
+          <button class="btn" id="btnOnSale" type="button">판매중 전환</button>
           <button class="btn" id="btnReserved" type="button">예약중 전환</button>
           <button class="btn" id="btnSold" type="button">판매완료 전환</button>
-            <button class="btn" id="btnDeletePost" type="button" style="background:#ef4444;color:#fff;border-color:#ef4444;">삭제</button>
-          <button class="btn" id="btnOnSale" type="button">판매중 전환</button>
+          <button class="btn" id="btnHidden" type="button" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">숨김 전환</button>
+          <button class="btn" id="btnDeletePost" type="button" style="background:#ef4444;color:#fff;border-color:#ef4444;font-weight:700;">삭제</button>
         </div>
       </div>
 
@@ -51,8 +53,17 @@
         <section id="dDesc" class="um-desc"></section>
 
         <section id="umEditPanel" class="panel um-edit-panel" style="display:none;">
-          <h3 style="margin:0 0 8px;">게시글 수정</h3>
+          <h3 style="margin:0 0 8px;">게시글 수정 및 보완</h3>
           <form id="umEditForm" style="display:grid;gap:10px;">
+            <label>
+              <div class="muted">판매 상태</div>
+              <select id="eStatus" class="select" style="width:100%; font-weight:700;">
+                <option value="on_sale">🟢 판매중 (on_sale)</option>
+                <option value="reserved">🟡 예약중 (reserved)</option>
+                <option value="sold">⚪ 판매완료 (sold)</option>
+                <option value="hidden">🔴 숨김 / 블라인드 (hidden)</option>
+              </select>
+            </label>
             <label><div class="muted">제목</div><input id="eTitle" class="input" maxlength="80" required /></label>
             <label><div class="muted">가격 (원)</div><input id="ePrice" class="input" type="number" min="0" step="1000" required /></label>
             <label><div class="muted">지역</div><input id="eRegion" class="input" maxlength="40" required /></label>
@@ -65,10 +76,17 @@
                 <input id="eImage3" class="input" placeholder="https://..." />
                 <input id="eImage4" class="input" placeholder="https://..." />
               </div>
+              <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                <label class="btn btn--sm" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:6px 12px; font-weight:600;">
+                  📷 내 기기에서 새 사진 업로드
+                  <input id="eImageFiles" type="file" accept="image/*" multiple style="display:none;" />
+                </label>
+                <span id="eUploadStatus" style="font-size:12px; color:#2563eb;"></span>
+              </div>
             </div>
-            <label><div class="muted">설명</div><textarea id="eDesc" class="textarea" rows="8" maxlength="2000" required></textarea></label>
+            <label><div class="muted">설명</div><textarea id="eDesc" class="textarea" rows="8" maxlength="3000" required></textarea></label>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <button class="btn btn--primary" id="btnEditSave" type="submit">수정 저장</button>
+              <button class="btn btn--primary" id="btnEditSave" type="submit" style="font-weight:700;">수정 저장</button>
               <button class="btn" id="btnEditCancel" type="button">취소</button>
               <span id="eMsg" class="muted"></span>
             </div>

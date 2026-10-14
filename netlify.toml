@@ -115,3 +115,9 @@
   from = "/mall"
   to = "/mall.html"
   status = 200
+
+[[redirects]]
+  from = "/used"
+  to = "/used.html"
+  status = 200
+

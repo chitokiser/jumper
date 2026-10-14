@@ -1,4 +1,4 @@
-﻿/* /assets/css/pages/used_market.css */
+/* /assets/css/pages/used_market.css */
 
 .um-head {
   margin-top: 14px;
@@ -41,6 +41,35 @@
   box-shadow: var(--shadow);
   text-decoration: none;
   color: var(--text);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.um-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.08);
+}
+
+.um-card.is-hidden {
+  opacity: 0.85;
+  border-style: dashed;
+  border-color: #f87171;
+  background: #fffafa;
+}
+
+.um-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.um-thumb-wrap {
+  position: relative;
+  width: 100%;
 }
 
 .um-thumb {
@@ -51,8 +80,19 @@
   background: #eef2ff;
 }
 
+.um-thumb-wrap .um-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
 .um-body {
   padding: 10px 11px 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .um-title {
@@ -73,10 +113,21 @@
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  margin-top: auto;
+}
+
+.um-seller-tag {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .um-price {
   margin-top: 6px;
+  margin-bottom: 4px;
   font-size: 15px;
   font-weight: 800;
 }
@@ -93,6 +144,229 @@
 .um-badge.on_sale { background: #dcfce7; color: #166534; }
 .um-badge.reserved { background: #fef3c7; color: #92400e; }
 .um-badge.sold { background: #e5e7eb; color: #374151; }
+.um-badge.hidden { background: #fee2e2; color: #991b1b; }
+
+/* ── 수퍼어드민 카드 하단 관리 바 ── */
+.um-card-admin {
+  border-top: 1px solid var(--line2);
+  background: #f8fafc;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.um-admin-status-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.um-admin-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.um-admin-status-select {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 3px 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+}
+
+.um-admin-status-select[data-status="on_sale"] {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.um-admin-status-select[data-status="reserved"] {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+
+.um-admin-status-select[data-status="sold"] {
+  color: #374151;
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.um-admin-status-select[data-status="hidden"] {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.um-admin-btn-group {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-um-edit {
+  flex: 1;
+  font-size: 11px;
+  padding: 4px 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: background 0.1s;
+}
+
+.btn-um-edit:hover {
+  background: #dbeafe;
+}
+
+.btn-um-delete {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #fee2e2;
+  color: #ef4444;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: background 0.1s;
+}
+
+.btn-um-delete:hover {
+  background: #fecaca;
+}
+
+/* ── 어드민 수정 모달 ── */
+.um-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+
+.um-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.um-modal-card {
+  position: relative;
+  z-index: 10000;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: umModalIn 0.2s ease-out;
+}
+
+@keyframes umModalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.um-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line2);
+}
+
+.um-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.um-modal-close:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
+
+.um-modal-body {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.um-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.um-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.um-img-preview-item {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #f1f5f9;
+}
+
+.um-img-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── 토스트 알림 ── */
+.um-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 11000;
+  background: #1e293b;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.2s ease;
+}
+
+.um-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 .um-upload-preview {
   display: grid;

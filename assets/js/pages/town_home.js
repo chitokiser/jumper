@@ -1052,7 +1052,10 @@ async function loadUsedMarketPreview() {
   try {
     const snap = await getDocs(query(collection(db, "usedMarketPosts"), orderBy("createdAt", "desc"), limit(8)));
     const list = [];
-    snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+    snap.forEach((d) => {
+      const data = d.data();
+      if (data.status !== "hidden") list.push({ id: d.id, ...data });
+    });
 
     if (!list.length) {
       if (state) state.textContent = _t('no_used');
