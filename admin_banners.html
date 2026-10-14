@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>배너관리 - BestCluber</title>
+  <title>스폰서 배너 관리 (수퍼어드민) - BestCluber</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -22,65 +22,104 @@
   <main class="page">
     <section class="section">
       <div class="section-h">
-        <h2 class="section-title">배너관리</h2>
+        <h2 class="section-title">스폰서 배너 관리 (Super Admin)</h2>
       </div>
 
       <div class="panel ab-panel">
         <div class="ab-top">
           <div class="ab-state" id="abState">권한 확인 중...</div>
           <div class="ab-actions">
-            <a class="btn btn--ghost btn--sm" href="/index.html">홈으로</a>
+            <a class="btn btn--ghost btn--sm" href="/admin.html">관리자 홈</a>
+            <a class="btn btn--ghost btn--sm" href="/index.html">메인 홈으로</a>
           </div>
         </div>
 
-        <form id="bannerForm" class="ab-form" autocomplete="off">
-          <div class="ab-row">
-            <label class="ab-label" for="bnTitle">제목</label>
-            <input class="ab-input" id="bnTitle" type="text" maxlength="80" required placeholder="예: Point DAO 거래소" />
-          </div>
-
-          <div class="ab-row">
-            <label class="ab-label" for="bnSubtitle">부제목</label>
-            <input class="ab-input" id="bnSubtitle" type="text" maxlength="120" placeholder="예: 우리들의 포인트 거래소 바로가기" />
-          </div>
-
-          <div class="ab-row">
-            <label class="ab-label" for="bnImageUrl">이미지 URL</label>
-            <input class="ab-input" id="bnImageUrl" type="url" required placeholder="https://..." />
-          </div>
-
-          <div class="ab-row">
-            <label class="ab-label" for="bnLinkUrl">링크 URL</label>
-            <input class="ab-input" id="bnLinkUrl" type="text" required placeholder="/used.html 또는 https://..." />
-          </div>
-
-          <div class="ab-grid">
+        <div class="ab-form-layout">
+          <!-- 등록 / 수정 폼 -->
+          <form id="bannerForm" class="ab-form" autocomplete="off">
             <div class="ab-row">
-              <label class="ab-label" for="bnSort">정렬순서</label>
-              <input class="ab-input" id="bnSort" type="number" min="0" step="1" value="0" />
+              <label class="ab-label" for="bnTitle">배너 제목 *</label>
+              <input class="ab-input" id="bnTitle" type="text" maxlength="80" required placeholder="예: 대한김치 (Daehan Kimchi)" />
             </div>
+
             <div class="ab-row">
-              <label class="ab-label" for="bnActive">노출</label>
-              <select class="ab-select" id="bnActive">
-                <option value="1">노출</option>
-                <option value="0">숨김</option>
-              </select>
+              <label class="ab-label" for="bnSubtitle">부제목 / 설명</label>
+              <input class="ab-input" id="bnSubtitle" type="text" maxlength="120" placeholder="예: 100% 핸드메이드 숙성 프리미엄 김치" />
+            </div>
+
+            <div class="ab-row">
+              <label class="ab-label" for="bnImageUrl">배너 이미지 (모바일 카드 로고/썸네일) *</label>
+              <div class="ab-file-row">
+                <input class="ab-input" id="bnImageUrl" type="url" required placeholder="https://... 또는 우측 파일 선택" />
+                <label class="btn btn--sm btn--ghost ab-file-btn" for="bnImageFile">
+                  📁 파일 업로드
+                </label>
+                <input type="file" id="bnImageFile" accept="image/*" style="display:none;" />
+              </div>
+              <div id="uploadStatus" style="font-size:11.5px; color:#2563eb; display:none;">이미지 업로드 중...</div>
+            </div>
+
+            <div class="ab-row">
+              <label class="ab-label" for="bnLinkUrl">클릭 시 이동 링크 URL *</label>
+              <input class="ab-input" id="bnLinkUrl" type="text" required placeholder="/merchants.html 또는 https://..." />
+            </div>
+
+            <div class="ab-grid">
+              <div class="ab-row">
+                <label class="ab-label" for="bnSort">정렬 순서 (낮을수록 먼저)</label>
+                <input class="ab-input" id="bnSort" type="number" min="0" step="1" value="0" />
+              </div>
+              <div class="ab-row">
+                <label class="ab-label" for="bnActive">노출 상태</label>
+                <select class="ab-select" id="bnActive">
+                  <option value="1">노출 (ON)</option>
+                  <option value="0">숨김 (OFF)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="ab-btns">
+              <button class="btn btn--primary" type="submit" id="btnBnSave">배너 등록 저장</button>
+              <button class="btn btn--ghost" type="button" id="btnBnReset">입력 초기화</button>
+            </div>
+
+            <div class="ab-help" id="abHelp"></div>
+          </form>
+
+          <!-- 실시간 모바일 카드 미리보기 -->
+          <div class="ab-preview-container">
+            <div class="ab-preview-label">
+              <span>📱</span>
+              <span>모바일 카드 실시간 미리보기 (Mobile Card Size)</span>
+            </div>
+            <div class="ab-mobile-card-mockup" id="previewMobileCard">
+              <div class="sponsor-card-inner">
+                <div class="sponsor-card-media">
+                  <img id="prevImg" class="sponsor-slide-logo" src="/assets/images/jump/BI.png" alt="미리보기" />
+                  <span class="sponsor-card-badge">SPONSOR</span>
+                </div>
+                <div class="sponsor-slide-copy">
+                  <strong id="prevTitle" class="sponsor-title">배너 제목</strong>
+                  <span id="prevSub" class="sponsor-sub">배너 부제목 및 상세 설명이 여기에 표시됩니다.</span>
+                </div>
+                <div class="sponsor-card-arrow">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="ab-preview-hint">
+              * 홈 화면(index.html) 스폰서 배너 영역에 위와 동일한 모바일 카드 규격으로 자동 순환 표시됩니다.
             </div>
           </div>
-
-          <div class="ab-btns">
-            <button class="btn btn--primary" type="submit" id="btnBnSave">저장</button>
-            <button class="btn btn--ghost" type="button" id="btnBnReset">초기화</button>
-          </div>
-
-          <div class="ab-help" id="abHelp"></div>
-        </form>
+        </div>
 
         <div class="ab-divider"></div>
 
         <div class="ab-list-head">
-          <div class="ab-list-title">배너 목록</div>
-          <div class="ab-list-help">노출 ON + 정렬순서 기준으로 홈에 표시됩니다.</div>
+          <div class="ab-list-title">등록된 스폰서 배너 목록</div>
+          <div class="ab-list-help">노출 ON 및 정렬 순서대로 홈 화면에 실시간 노출됩니다.</div>
         </div>
 
         <ol class="ab-list" id="bannerList"></ol>

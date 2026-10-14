@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/admin_banners.js
+// /assets/js/pages/admin_banners.js
 import { auth, db } from "/assets/js/auth.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
@@ -12,9 +12,15 @@ import {
   deleteDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import {
+  getStorage,
+  ref as sRef,
+  uploadBytes,
+  getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
 
+const storage = getStorage();
 const $ = (id) => document.getElementById(id);
-const OPERATOR_EMAILS = new Set(["daguri75@gmail.com"]);
 let editingId = "";
 
 function setState(msg) {
@@ -26,7 +32,7 @@ function setHelp(msg, warn = false) {
   const el = $("abHelp");
   if (!el) return;
   el.textContent = msg || "";
-  el.style.color = warn ? "#b91c1c" : "var(--muted)";
+  el.style.color = warn ? "#ef4444" : "#10b981";
 }
 
 function setFormEnabled(enabled) {
@@ -51,15 +57,46 @@ function esc(s) {
     .replaceAll("'", "&#039;");
 }
 
-async function isAdmin(uid, email) {
-  const em = String(email || "").toLowerCase().trim();
-  if (em && OPERATOR_EMAILS.has(em)) return true;
-  if (!uid) return false;
+async function checkSuperAdmin(user) {
+  if (!user) return false;
+  const email = String(user.email || "").toLowerCase().trim();
+  if (email === "hexttokenopbnb@gmail.com") return false;
+  if (email === "daguri75@gmail.com") return true;
+
   try {
-    const snap = await getDoc(doc(db, "admins", uid));
-    return snap.exists();
-  } catch {
-    return false;
+    const aSnap = await getDoc(doc(db, "admins", user.uid));
+    if (aSnap.exists()) return true;
+  } catch (_) {}
+
+  try {
+    const uSnap = await getDoc(doc(db, "users", user.uid));
+    if (uSnap.exists()) {
+      const ud = uSnap.data() || {};
+      if (ud.isAdmin === true || ["SUPER_ADMIN", "CEO", "ADMIN", "admin"].includes(ud.role)) {
+        return true;
+      }
+    }
+  } catch (_) {}
+
+  return false;
+}
+
+function updateLivePreview() {
+  const title = sanitize($("bnTitle")?.value) || "배너 제목";
+  const sub = sanitize($("bnSubtitle")?.value) || "배너 부제목 및 상세 설명이 여기에 표시됩니다.";
+  const imgUrl = sanitize($("bnImageUrl")?.value) || "/assets/images/jump/BI.png";
+
+  const prevTitle = $("prevTitle");
+  const prevSub = $("prevSub");
+  const prevImg = $("prevImg");
+
+  if (prevTitle) prevTitle.textContent = title;
+  if (prevSub) prevSub.textContent = sub;
+  if (prevImg) {
+    prevImg.src = imgUrl;
+    prevImg.onerror = () => {
+      prevImg.src = "/assets/images/jump/BI.png";
+    };
   }
 }
 
@@ -78,42 +115,54 @@ function resetForm() {
   editingId = "";
   const form = $("bannerForm");
   form?.reset();
-  $("bnSort").value = "0";
-  $("bnActive").value = "1";
+  if ($("bnSort")) $("bnSort").value = "0";
+  if ($("bnActive")) $("bnActive").value = "1";
   const saveBtn = $("btnBnSave");
-  if (saveBtn) saveBtn.textContent = "저장";
+  if (saveBtn) saveBtn.textContent = "배너 등록 저장";
   setHelp("");
+  updateLivePreview();
 }
 
 function fillForm(row) {
   editingId = row.id;
-  $("bnTitle").value = row.title || "";
-  $("bnSubtitle").value = row.subtitle || "";
-  $("bnImageUrl").value = row.imageUrl || "";
-  $("bnLinkUrl").value = row.linkUrl || "";
-  $("bnSort").value = Number(row.sortOrder || 0);
-  $("bnActive").value = row.active === false ? "0" : "1";
+  if ($("bnTitle")) $("bnTitle").value = row.title || "";
+  if ($("bnSubtitle")) $("bnSubtitle").value = row.subtitle || "";
+  if ($("bnImageUrl")) $("bnImageUrl").value = row.imageUrl || "";
+  if ($("bnLinkUrl")) $("bnLinkUrl").value = row.linkUrl || "";
+  if ($("bnSort")) $("bnSort").value = Number(row.sortOrder || 0);
+  if ($("bnActive")) $("bnActive").value = row.active === false ? "0" : "1";
   const saveBtn = $("btnBnSave");
-  if (saveBtn) saveBtn.textContent = "수정 저장";
+  if (saveBtn) saveBtn.textContent = "수정사항 저장";
+  setHelp("배너 수정 모드", false);
+  updateLivePreview();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function cardHtml(row) {
   const active = row.active !== false;
+  const title = esc(row.title || "제목 없음");
+  const sub = esc(row.subtitle || "부제목 없음");
+  const img = esc(row.imageUrl || "/assets/images/jump/BI.png");
+  const link = esc(row.linkUrl || "-");
+  const sort = Number(row.sortOrder || 0);
+
   return `
     <li class="ab-item" data-id="${esc(row.id)}">
-      <div class="ab-item-top">
-        <div>
-          <div class="ab-item-title">${esc(row.title || "제목 없음")}</div>
-          <div class="ab-item-sub">${esc(row.subtitle || "")}</div>
+      <div class="ab-item-row">
+        <img class="ab-item-thumb" src="${img}" alt="${title}" onerror="this.src='/assets/images/jump/BI.png'" />
+        <div class="ab-item-info">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="ab-item-title">${title}</div>
+            <span class="ab-badge ${active ? "on" : "off"}">${active ? "노출 중" : "숨김"}</span>
+          </div>
+          <div class="ab-item-sub">${sub}</div>
+          <div class="ab-item-meta">🔗 ${link} | 🔢 순서: ${sort}</div>
         </div>
-        <span class="ab-badge ${active ? "on" : "off"}">${active ? "노출" : "숨김"}</span>
       </div>
-      <img class="ab-thumb" src="${esc(row.imageUrl || "/assets/images/jump/BI.png")}" alt="banner" />
-      <div class="ab-item-meta">링크: ${esc(row.linkUrl || "-")} | 정렬: ${Number(row.sortOrder || 0)}</div>
       <div class="ab-item-actions">
-        <button class="btn btn--sm" type="button" data-act="edit">수정</button>
-        <button class="btn btn--sm" type="button" data-act="toggle">${active ? "숨김" : "노출"}</button>
-        <button class="btn btn--sm" type="button" data-act="delete">삭제</button>
+        <button class="btn btn--sm" type="button" data-act="edit">✏️ 수정</button>
+        <button class="btn btn--sm btn--ghost" type="button" data-act="toggle">${active ? "👁️ 숨김" : "👁️ 노출"}</button>
+        <button class="btn btn--sm" type="button" data-act="delete" style="color:#ef4444; border-color:#fca5a5;">🗑️ 삭제</button>
       </div>
     </li>`;
 }
@@ -121,7 +170,7 @@ function cardHtml(row) {
 async function loadList() {
   const listEl = $("bannerList");
   if (!listEl) return;
-  listEl.innerHTML = "";
+  listEl.innerHTML = "<li style='color:#94a3b8;'>배너 목록 불러오는 중...</li>";
 
   try {
     const snap = await getDocs(query(collection(db, "sponsorBanners")));
@@ -130,14 +179,50 @@ async function loadList() {
     sortBanners(rows);
 
     if (!rows.length) {
-      listEl.innerHTML = "<li>등록된 배너가 없습니다.</li>";
+      listEl.innerHTML = "<li style='color:#94a3b8; padding:20px; text-align:center;'>등록된 스폰서 배너가 없습니다.</li>";
       return;
     }
 
     listEl.innerHTML = rows.map(cardHtml).join("");
   } catch (e) {
-    console.warn(e);
-    listEl.innerHTML = "<li>목록을 불러오지 못했습니다.</li>";
+    console.warn("loadList error:", e);
+    listEl.innerHTML = "<li style='color:#ef4444;'>목록을 불러오지 못했습니다.</li>";
+  }
+}
+
+async function handleFileUpload(ev) {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+
+  const statusEl = $("uploadStatus");
+  if (statusEl) {
+    statusEl.style.display = "block";
+    statusEl.textContent = `이미지 업로드 중... (${Math.round(file.size / 1024)} KB)`;
+  }
+
+  try {
+    const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = `sponsor-banners/${Date.now()}_${cleanName}`;
+    const fileRef = sRef(storage, filePath);
+
+    await uploadBytes(fileRef, file, { contentType: file.type });
+    const downloadUrl = await getDownloadURL(fileRef);
+
+    if ($("bnImageUrl")) {
+      $("bnImageUrl").value = downloadUrl;
+      updateLivePreview();
+    }
+    if (statusEl) {
+      statusEl.textContent = "✅ 이미지 업로드 완료!";
+      statusEl.style.color = "#10b981";
+      setTimeout(() => (statusEl.style.display = "none"), 3000);
+    }
+  } catch (err) {
+    console.error("image upload error:", err);
+    if (statusEl) {
+      statusEl.textContent = `❌ 업로드 실패: ${err.message || err}`;
+      statusEl.style.color = "#ef4444";
+    }
   }
 }
 
@@ -151,7 +236,7 @@ async function saveBanner(ev, user) {
   const active = $("bnActive")?.value !== "0";
 
   if (!title || !imageUrl || !linkUrl) {
-    setHelp("제목/이미지URL/링크URL은 필수입니다.", true);
+    setHelp("제목, 이미지 URL, 링크 URL은 필수 항목입니다.", true);
     return;
   }
 
@@ -169,21 +254,25 @@ async function saveBanner(ev, user) {
   try {
     if (editingId) {
       await updateDoc(doc(db, "sponsorBanners", editingId), payload);
-      setHelp("수정 완료");
+      setHelp("✅ 배너가 성공적으로 수정되었습니다.");
     } else {
       await addDoc(collection(db, "sponsorBanners"), {
         ...payload,
         createdAt: serverTimestamp(),
         createdBy: user?.uid || "",
       });
-      setHelp("등록 완료");
+      setHelp("✅ 새 스폰서 배너가 등록되었습니다.");
     }
+
+    try {
+      localStorage.removeItem("bc_cache_sponsor_banners");
+    } catch (_) {}
 
     resetForm();
     await loadList();
   } catch (e) {
-    console.warn(e);
-    setHelp("저장 실패: 권한 또는 규칙을 확인하세요.", true);
+    console.warn("saveBanner error:", e);
+    setHelp("저장 실패: 권한 또는 네트워크를 확인하세요.", true);
   }
 }
 
@@ -196,9 +285,14 @@ async function onListClick(ev) {
   const act = btn.dataset.act;
 
   if (act === "delete") {
-    if (!confirm("배너를 삭제할까요?")) return;
-    await deleteDoc(doc(db, "sponsorBanners", id));
-    await loadList();
+    if (!confirm("이 스폰서 배너를 삭제하시겠습니까?")) return;
+    try {
+      await deleteDoc(doc(db, "sponsorBanners", id));
+      try { localStorage.removeItem("bc_cache_sponsor_banners"); } catch (_) {}
+      await loadList();
+    } catch (err) {
+      alert("삭제 실패: " + (err.message || err));
+    }
     return;
   }
 
@@ -212,34 +306,47 @@ async function onListClick(ev) {
   }
 
   if (act === "toggle") {
-    await updateDoc(doc(db, "sponsorBanners", id), {
-      active: row.active === false,
-      updatedAt: serverTimestamp(),
-    });
-    await loadList();
+    try {
+      await updateDoc(doc(db, "sponsorBanners", id), {
+        active: row.active === false,
+        updatedAt: serverTimestamp(),
+      });
+      try { localStorage.removeItem("bc_cache_sponsor_banners"); } catch (_) {}
+      await loadList();
+    } catch (err) {
+      alert("상태 변경 실패: " + (err.message || err));
+    }
   }
 }
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    setState("로그인이 필요합니다.");
+    setState("🔒 로그인이 필요합니다.");
     setFormEnabled(false);
     return;
   }
 
-  const admin = await isAdmin(user.uid, user.email);
-  if (!admin) {
-    setState("관리자 권한이 없습니다.");
+  const isSuper = await checkSuperAdmin(user);
+  if (!isSuper) {
+    setState("⛔ 수퍼 어드민 권한이 필요합니다.");
     setFormEnabled(false);
+    setHelp("이 페이지는 최고 관리자(Super Admin)만 접근할 수 있습니다.", true);
     return;
   }
 
-  setState("관리자 모드");
+  setState(`👑 수퍼 어드민 인증됨 (${user.email || user.uid})`);
   setFormEnabled(true);
 
   $("btnBnReset")?.addEventListener("click", resetForm);
   $("bannerForm")?.addEventListener("submit", (e) => saveBanner(e, user));
   $("bannerList")?.addEventListener("click", onListClick);
+  $("bnImageFile")?.addEventListener("change", handleFileUpload);
 
+  // 실시간 미리보기 바인딩
+  $("bnTitle")?.addEventListener("input", updateLivePreview);
+  $("bnSubtitle")?.addEventListener("input", updateLivePreview);
+  $("bnImageUrl")?.addEventListener("input", updateLivePreview);
+
+  updateLivePreview();
   await loadList();
 });

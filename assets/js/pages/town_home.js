@@ -1067,24 +1067,45 @@ async function loadUsedMarketPreview() {
     if (state) state.textContent = _t('used_error');
   }
 }
+const DEFAULT_SEED_BANNERS = [
+  {
+    id: "1",
+    title: "Zentaro (젠타로)",
+    subtitle: "K-Culture Flavour Portal & Dining",
+    linkUrl: "https://zentaro.netlify.app/",
+    active: true,
+    sortOrder: 1,
+    imageUrl: "/assets/images/jump/logo2.png",
+  },
+  {
+    id: "2",
+    title: "반찬나라 (Banchan)",
+    subtitle: "정통 한국 반찬 & 프리미엄 K-Food",
+    linkUrl: "https://banchannara.netlify.app/",
+    active: true,
+    sortOrder: 2,
+    imageUrl: "/assets/images/jump/logo2.png",
+  },
+  {
+    id: "3",
+    title: "대한김치 (Daehan)",
+    subtitle: "100% 핸드메이드 숙성 프리미엄 김치",
+    linkUrl: "https://daehankimchi.netlify.app/",
+    active: true,
+    sortOrder: 3,
+    imageUrl: "/assets/images/jump/logo2.png",
+  },
+];
+
 async function loadSponsorBannersFromDb() {
-  return [
-    {
-      id: '1', title: 'Zentaro', subtitle: 'K-Culture Flavour Portal',
-      linkUrl: 'https://zentaro.netlify.app/', active: true, sortOrder: 1,
-      imageUrl: '/assets/images/jump/logo2.png'
-    },
-    {
-      id: '2', title: '반찬나라', subtitle: 'K-Food Market',
-      linkUrl: 'https://banchannara.netlify.app/', active: true, sortOrder: 2,
-      imageUrl: '/assets/images/jump/logo2.png'
-    },
-    {
-      id: '3', title: '대한김치', subtitle: 'Premium Korean Kimchi',
-      linkUrl: 'https://daehankimchi.netlify.app/', active: true, sortOrder: 3,
-      imageUrl: '/assets/images/jump/logo2.png'
+  try {
+    const raw = localStorage.getItem("bc_cache_sponsor_banners");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
     }
-  ];
+  } catch (_) {}
+  return DEFAULT_SEED_BANNERS;
 }
 
 function sponsorSlideHtml(row, idx) {
@@ -1093,69 +1114,138 @@ function sponsorSlideHtml(row, idx) {
   const imageUrl = escHtml(row.imageUrl || "/assets/images/jump/BI.png");
   const linkUrl = escHtml(row.linkUrl || "/");
   const activeClass = idx === 0 ? " is-active" : "";
+  const isExternal = String(linkUrl).startsWith("http");
 
   return `
-    <a class="sponsor-slide${activeClass}" data-idx="${idx}" href="${linkUrl}" ${String(linkUrl).startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>
-      <img class="sponsor-slide-logo" src="${imageUrl}" alt="${title}" />
-      <div class="sponsor-slide-copy">
-        <strong>${title}</strong>
-        <span>${subtitle}</span>
+    <a class="sponsor-slide${activeClass}" data-idx="${idx}" href="${linkUrl}" ${isExternal ? 'target="_blank" rel="noopener"' : ""}>
+      <div class="sponsor-card-inner">
+        <div class="sponsor-card-media">
+          <img class="sponsor-slide-logo" src="${imageUrl}" alt="${title}" loading="lazy" onerror="this.src='/assets/images/jump/BI.png'" />
+          <span class="sponsor-card-badge">SPONSOR</span>
+        </div>
+        <div class="sponsor-slide-copy">
+          <strong class="sponsor-title">${title}</strong>
+          <span class="sponsor-sub">${subtitle}</span>
+        </div>
+        <div class="sponsor-card-arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </div>
       </div>
     </a>`;
 }
+
 async function initSponsorRotator() {
   const root = $("sponsorRotator");
   const dotsWrap = $("sponsorDots");
   if (!root || !dotsWrap) return;
 
-  const dbRows = await loadSponsorBannersFromDb();
-  if (dbRows.length) {
-    root.innerHTML = dbRows.map((r, i) => sponsorSlideHtml(r, i)).join("");
+  // 1) 0초 즉시 캐시/시드 배너 렌더링
+  let banners = await loadSponsorBannersFromDb();
+  function renderAllSlides(list) {
+    if (!list || !list.length) return;
+    root.innerHTML = list.map((r, i) => sponsorSlideHtml(r, i)).join("");
+    const slides = Array.from(root.querySelectorAll(".sponsor-slide"));
+    if (!slides.length) return;
+
+    let idx = 0;
+    let timer = null;
+
+    function renderDots() {
+      dotsWrap.innerHTML = slides
+        .map((_, i) => `<button type="button" class="sponsor-dot ${i === idx ? "is-active" : ""}" data-idx="${i}" aria-label="${_t('sponsor_dot', i + 1)}"></button>`)
+        .join("");
+    }
+
+    function show(next) {
+      idx = ((next % slides.length) + slides.length) % slides.length;
+      slides.forEach((el, i) => el.classList.toggle("is-active", i === idx));
+      dotsWrap.querySelectorAll(".sponsor-dot").forEach((el, i) => el.classList.toggle("is-active", i === idx));
+    }
+
+    function start() {
+      stop();
+      if (slides.length > 1) {
+        timer = setInterval(() => show(idx + 1), 4000);
+      }
+    }
+
+    function stop() {
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    dotsWrap.onclick = (e) => {
+      const btn = e.target.closest(".sponsor-dot");
+      if (!btn) return;
+      const next = Number(btn.dataset.idx);
+      if (Number.isFinite(next)) show(next);
+    };
+
+    root.onmouseenter = stop;
+    root.onmouseleave = start;
+    root.onfocusin = stop;
+    root.onfocusout = start;
+
+    renderDots();
+    show(0);
+    start();
   }
 
-  const slides = Array.from(root.querySelectorAll(".sponsor-slide"));
-  if (!slides.length) return;
+  renderAllSlides(banners);
 
-  let idx = 0;
-  let timer = null;
+  // 2) 백그라운드 Firestore 최신 스폰서 배너 조회 & 갱신
+  try {
+    const snap = await getDocs(query(collection(db, "sponsorBanners")));
+    const rows = [];
+    snap.forEach((d) => {
+      const data = d.data() || {};
+      if (data.active !== false) {
+        rows.push({ id: d.id, ...data });
+      }
+    });
 
-  function renderDots() {
-    dotsWrap.innerHTML = slides
-      .map((_, i) => `<button type="button" class="sponsor-dot ${i === idx ? "is-active" : ""}" data-idx="${i}" aria-label="${_t('sponsor_dot', i + 1)}"></button>`)
-      .join("");
+    if (rows.length > 0) {
+      rows.sort((a, b) => {
+        const aa = Number(a.sortOrder || 0);
+        const bb = Number(b.sortOrder || 0);
+        return aa - bb;
+      });
+      try {
+        localStorage.setItem("bc_cache_sponsor_banners", JSON.stringify(rows));
+      } catch (_) {}
+      renderAllSlides(rows);
+    }
+  } catch (err) {
+    console.warn("initSponsorRotator background fetch:", err?.message || err);
   }
 
-  function show(next) {
-    idx = ((next % slides.length) + slides.length) % slides.length;
-    slides.forEach((el, i) => el.classList.toggle("is-active", i === idx));
-    dotsWrap.querySelectorAll(".sponsor-dot").forEach((el, i) => el.classList.toggle("is-active", i === idx));
-  }
-
-  function start() {
-    stop();
-    timer = setInterval(() => show(idx + 1), 4000);
-  }
-
-  function stop() {
-    if (timer) clearInterval(timer);
-    timer = null;
-  }
-
-  dotsWrap.addEventListener("click", (e) => {
-    const btn = e.target.closest(".sponsor-dot");
-    if (!btn) return;
-    const next = Number(btn.dataset.idx);
-    if (Number.isFinite(next)) show(next);
+  // 3) 수퍼어드민 접속 시 홈 화면에서 바로 배너 관리로 이동하는 버튼 노출
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+    try {
+      const email = (user.email || "").toLowerCase().trim();
+      let isSuper = email === "daguri75@gmail.com";
+      if (!isSuper) {
+        const aSnap = await getDoc(doc(db, "admins", user.uid));
+        if (aSnap.exists()) isSuper = true;
+      }
+      if (!isSuper) {
+        const uSnap = await getDoc(doc(db, "users", user.uid));
+        if (uSnap.exists()) {
+          const ud = uSnap.data() || {};
+          if (ud.isAdmin === true || ["SUPER_ADMIN", "CEO", "ADMIN", "admin"].includes(ud.role)) {
+            isSuper = true;
+          }
+        }
+      }
+      if (isSuper) {
+        const btn = $("btnAdminBannerManage");
+        if (btn) btn.style.display = "inline-flex";
+      }
+    } catch (_) {}
   });
-
-  root.addEventListener("mouseenter", stop);
-  root.addEventListener("mouseleave", start);
-  root.addEventListener("focusin", stop);
-  root.addEventListener("focusout", start);
-
-  renderDots();
-  show(0);
-  start();
 }
 function initUISlider() {
   // 기존 슬라이더 섹션이 없으면 아무 작업 안함
