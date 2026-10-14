@@ -736,3 +736,561 @@ body.webzine-body {
     padding: 20px 16px;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   ✨ BESTwinnner_web 분석 기반 신규 확장 스타일
+   ───────────────────────────────────────────────────────────── */
+
+/* ── 1. 실시간 하노이 날씨 · 대기질 · 환율 브리핑 바 ── */
+.wz-live-briefing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--wz-border);
+  border-radius: 999px;
+  box-shadow: var(--wz-shadow-sm);
+}
+
+.wz-live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.83rem;
+  color: var(--wz-text-sub);
+  background: #f1f5f9;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+}
+
+.wz-live-icon {
+  font-size: 1rem;
+}
+
+.wz-live-label {
+  font-weight: 600;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.wz-live-chip strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.wz-aqi-good {
+  color: #059669 !important;
+}
+.wz-aqi-warn {
+  color: #d97706 !important;
+}
+.wz-aqi-bad {
+  color: #dc2626 !important;
+}
+
+.wz-live-btn-bank {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+}
+
+.wz-live-btn-bank:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+  background: linear-gradient(135deg, #6d28d9 0%, #4338ca 100%);
+}
+
+/* ── 2. 통합 키워드 검색창 ── */
+.wz-search-container {
+  max-width: 680px;
+  margin: 0 auto 20px;
+}
+
+.wz-search-box {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid var(--wz-border);
+  border-radius: 999px;
+  padding: 8px 18px;
+  box-shadow: var(--wz-shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.wz-search-box:focus-within {
+  border-color: var(--wz-accent);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.wz-search-icon {
+  font-size: 1.1rem;
+  margin-right: 10px;
+  color: #94a3b8;
+}
+
+.wz-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  color: #0f172a;
+  background: transparent;
+}
+
+.wz-search-clear-btn {
+  background: #e2e8f0;
+  color: #64748b;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wz-search-clear-btn:hover {
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
+/* ── 3. 카드 인터랙션 배지 (좋아요 & 댓글 카운트) ── */
+.wz-card-meta-interactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.wz-btn-like {
+  background: #fff;
+  border: 1px solid #fecdd3;
+  color: #e11d48 !important;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+
+.wz-btn-like.liked {
+  background: #ffe4e6;
+  border-color: #f43f5e;
+  color: #be123c !important;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.2);
+}
+
+/* ── 4. 기사 상세 3단계 심층 분석 브리핑 ── */
+.wz-structured-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+
+.wz-sb-item {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+}
+
+.wz-sb-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wz-sb-why {
+  color: #d97706;
+}
+
+.wz-sb-impact {
+  color: #0284c7;
+}
+
+.wz-sb-action {
+  color: #059669;
+}
+
+.wz-sb-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #334155;
+  line-height: 1.55;
+}
+
+/* ── 5. BestClub 공식 이벤트 라운지 퀵 배너 ── */
+.wz-event-quick-banner {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 28px 0;
+  box-shadow: 0 8px 20px rgba(49, 46, 129, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wz-event-quick-badge {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.wz-event-quick-info h4 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.wz-event-quick-info p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #c7d2fe;
+  line-height: 1.45;
+}
+
+.wz-event-quick-btn {
+  background: #f59e0b;
+  color: #0f172a;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.wz-event-quick-btn:hover {
+  background: #fbbf24;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+}
+
+/* ── 6. 실시간 SNS 다이렉트 공유 바 ── */
+.wz-direct-share-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin: 20px 0;
+}
+
+.wz-direct-share-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.wz-direct-share-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wz-share-pill-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wz-share-fb {
+  background: rgba(24, 119, 242, 0.12);
+  color: #1877f2;
+  border-color: rgba(24, 119, 242, 0.3);
+}
+.wz-share-fb:hover {
+  background: #1877f2;
+  color: #fff;
+}
+
+.wz-share-zalo {
+  background: rgba(0, 104, 255, 0.12);
+  color: #0068ff;
+  border-color: rgba(0, 104, 255, 0.3);
+}
+.wz-share-zalo:hover {
+  background: #0068ff;
+  color: #fff;
+}
+
+.wz-share-kakao {
+  background: rgba(254, 229, 0, 0.25);
+  color: #3c1e1e;
+  border-color: rgba(254, 229, 0, 0.6);
+}
+.wz-share-kakao:hover {
+  background: #fee500;
+}
+
+.wz-share-copy {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+.wz-share-copy:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* ── 7. 교민 독자 한줄 댓글 박스 ── */
+.wz-comments-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 22px;
+  margin-top: 24px;
+}
+
+.wz-comments-head {
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.wz-comments-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-right: 4px;
+}
+
+.wz-comment-item {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.wz-comment-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+}
+
+.wz-comment-author {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.wz-comment-time {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.wz-comment-body {
+  font-size: 0.88rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.wz-comment-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.wz-comment-form input {
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.wz-comment-form input:focus {
+  border-color: var(--wz-accent);
+}
+
+#mCommentAuthor {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+#mCommentText {
+  flex: 1;
+}
+
+.wz-btn-comment-submit {
+  background: var(--wz-accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 0 18px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.wz-btn-comment-submit:hover {
+  background: #6d28d9;
+}
+
+/* ── 8. 은행 예금 금리 비교 & 계산기 모달 ── */
+.wz-bank-modal-card {
+  max-width: 780px !important;
+}
+
+.wz-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 24px;
+}
+
+.wz-rates-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.wz-rates-table th,
+.wz-rates-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.wz-rates-table th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #475569;
+}
+
+.wz-highlight-row {
+  background: rgba(124, 58, 237, 0.03);
+}
+
+.wz-calc-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.wz-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.wz-calc-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.wz-calc-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  background: #ffffff;
+}
+
+.wz-calc-result-panel {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.wz-calc-res-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wz-calc-res-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .wz-live-briefing {
+    border-radius: 20px;
+    padding: 10px 14px;
+  }
+  .wz-event-quick-banner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .wz-comment-form {
+    flex-direction: column;
+  }
+  #mCommentAuthor {
+    width: 100%;
+  }
+  .wz-btn-comment-submit {
+    padding: 10px;
+  }
+  .wz-calc-grid,
+  .wz-calc-result-panel {
+    grid-template-columns: 1fr;
+  }
+}
+

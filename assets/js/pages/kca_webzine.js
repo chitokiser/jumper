@@ -16,6 +16,69 @@ const $ = (id) => document.getElementById(id);
 
 let _allArticles = [];
 let _activeCategory = "all";
+let _searchQuery = "";
+let _currentArticleId = null;
+
+/**
+ * 기사 좋아요(Like) 영속 헬퍼
+ */
+function getArticleLikes(articleId) {
+  const saved = localStorage.getItem("wz_likes_" + articleId);
+  if (saved !== null) return parseInt(saved, 10) || 0;
+  let hash = 0;
+  for (let i = 0; i < articleId.length; i++) hash += articleId.charCodeAt(i);
+  const initialLikes = 18 + (hash % 28);
+  localStorage.setItem("wz_likes_" + articleId, initialLikes);
+  return initialLikes;
+}
+
+function isArticleLiked(articleId) {
+  return localStorage.getItem("wz_liked_" + articleId) === "true";
+}
+
+function toggleArticleLike(articleId) {
+  const liked = !isArticleLiked(articleId);
+  let count = getArticleLikes(articleId);
+  count = liked ? count + 1 : Math.max(0, count - 1);
+  localStorage.setItem("wz_liked_" + articleId, liked ? "true" : "false");
+  localStorage.setItem("wz_likes_" + articleId, count);
+  return { liked, count };
+}
+
+/**
+ * 기사 독자 댓글(Comments) 영속 헬퍼
+ */
+function getArticleComments(articleId) {
+  const saved = localStorage.getItem("wz_comments_" + articleId);
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) {}
+  }
+  const initialComments = [
+    {
+      author: "하노이 미딩 교민",
+      text: "유용한 정보 감사드립니다! 주말에 가맹점 방문해서 포인트 혜택 받아봐야겠네요.",
+      time: "2시간 전"
+    },
+    {
+      author: "박*호 (주재원)",
+      text: "베스트클럽 웹진 큐레이션 덕분에 현지 생활 꿀팁 많이 얻어갑니다 👍",
+      time: "방금 전"
+    }
+  ];
+  localStorage.setItem("wz_comments_" + articleId, JSON.stringify(initialComments));
+  return initialComments;
+}
+
+function addArticleComment(articleId, author, text) {
+  const list = getArticleComments(articleId);
+  list.unshift({
+    author: author || "익명 독자",
+    text: text,
+    time: "방금 전"
+  });
+  localStorage.setItem("wz_comments_" + articleId, JSON.stringify(list));
+  return list;
+}
 
 /**
  * 기본 시드 아티클 (최초 방문 시에도 풍성한 볼거리 제공)
@@ -198,9 +261,23 @@ function renderArticles() {
   const countBadge = $("articleCountBadge");
   if (!featEl || !gridEl) return;
 
-  const filtered = _activeCategory === "all"
+  // 1. 카테고리 필터링
+  let filtered = _activeCategory === "all"
     ? _allArticles
     : _allArticles.filter((a) => a.category === _activeCategory);
+
+  // 2. 통합 키워드 검색 필터링 (제목, 부제목, 본문, 가맹점명, 태그)
+  if (_searchQuery) {
+    const q = _searchQuery.toLowerCase().trim();
+    filtered = filtered.filter((a) => {
+      const t = (a.title || "").toLowerCase();
+      const sub = (a.subtitle || a.summary || "").toLowerCase();
+      const body = (a.content || "").toLowerCase();
+      const mName = (a.merchantInfo?.name || "").toLowerCase();
+      const mAddr = (a.merchantInfo?.address || a.merchantInfo?.region || "").toLowerCase();
+      return t.includes(q) || sub.includes(q) || body.includes(q) || mName.includes(q) || mAddr.includes(q);
+    });
+  }
 
   if (countBadge) {
     countBadge.textContent = `${filtered.length}개의 아티클`;
@@ -209,15 +286,17 @@ function renderArticles() {
   if (filtered.length === 0) {
     featEl.innerHTML = "";
     gridEl.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:60px 20px; color:#94a3b8; background:#fff; border-radius:16px;">
-      <span style="font-size:2rem; display:block; margin-bottom:10px;">📰</span>
-      해당 카테고리에 등록된 기사가 아직 없습니다.<br>
-      <span style="font-size:0.85rem; color:#64748b;">관리자 CMS에서 AI 기사를 생성해 보세요!</span>
+      <span style="font-size:2rem; display:block; margin-bottom:10px;">🔍</span>
+      ${_searchQuery ? `<strong>"${_searchQuery}"</strong> 키워드에 해당하는 기사를 찾을 수 없습니다.<br><button type="button" onclick="document.getElementById('wzSearchClearBtn')?.click()" style="margin-top:12px; background:#7c3aed; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer;">검색어 초기화</button>` : '해당 카테고리에 등록된 기사가 아직 없습니다.'}
     </div>`;
     return;
   }
 
   // 1. 피처드 리드 스토리
   const lead = filtered[0];
+  const leadLikes = getArticleLikes(lead.id);
+  const leadComments = getArticleComments(lead.id);
+
   featEl.innerHTML = `
     <article class="wz-featured" data-article-id="${lead.id}">
       <div class="wz-featured-media">
@@ -232,9 +311,15 @@ function renderArticles() {
         </div>
         <h2 class="wz-featured-title">${lead.title}</h2>
         <p class="wz-featured-desc">${lead.summary || lead.subtitle || ''}</p>
-        <div class="wz-featured-sponsor">
-          <span>🏪</span>
-          <span>기사 제공 | <strong>${lead.merchantInfo?.name || '베스트클럽 공식 가맹점'}</strong></span>
+        <div class="wz-featured-sponsor" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <span>🏪</span>
+            <span>기사 제공 | <strong>${lead.merchantInfo?.name || '베스트클럽 공식 가맹점'}</strong></span>
+          </div>
+          <div class="wz-card-meta-interactions">
+            <span>❤️ ${leadLikes}</span>
+            <span>💬 ${leadComments.length}</span>
+          </div>
         </div>
       </div>
     </article>
@@ -247,22 +332,209 @@ function renderArticles() {
     return;
   }
 
-  gridEl.innerHTML = restArticles.map((a) => `
-    <article class="wz-card" data-article-id="${a.id}">
-      <div class="wz-card-thumb-wrap">
-        <img class="wz-card-thumb" src="${a.thumbnailUrl || 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=800&q=80'}" alt="${a.title}" loading="lazy" />
-      </div>
-      <div class="wz-card-body">
-        <div class="wz-card-cat">${a.category || 'K-컬처'}</div>
-        <h3 class="wz-card-title">${a.title}</h3>
-        <p class="wz-card-summary">${a.summary || a.subtitle || ''}</p>
-        <div class="wz-card-footer">
-          <span>${a.readTime || '2분 읽기'} · ${a.author || '에디토리얼'}</span>
-          <span class="wz-card-sponsor-badge">협찬 | ${a.merchantInfo?.name ? a.merchantInfo.name.slice(0, 8) : '공식가맹점'}</span>
+  gridEl.innerHTML = restArticles.map((a) => {
+    const likes = getArticleLikes(a.id);
+    const comments = getArticleComments(a.id);
+    return `
+      <article class="wz-card" data-article-id="${a.id}">
+        <div class="wz-card-thumb-wrap">
+          <img class="wz-card-thumb" src="${a.thumbnailUrl || 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=800&q=80'}" alt="${a.title}" loading="lazy" />
         </div>
+        <div class="wz-card-body">
+          <div class="wz-card-cat">${a.category || 'K-컬처'}</div>
+          <h3 class="wz-card-title">${a.title}</h3>
+          <p class="wz-card-summary">${a.summary || a.subtitle || ''}</p>
+          <div class="wz-card-footer">
+            <span>${a.readTime || '2분 읽기'} · ${a.author || '에디토리얼'}</span>
+            <div class="wz-card-meta-interactions">
+              <span>❤️ ${likes}</span>
+              <span>💬 ${comments.length}</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+/**
+ * 실시간 하노이 날씨 · 대기질(AQI) · 환율(KRW/VND/USD) 로더
+ */
+async function initLiveBriefing() {
+  // 1. 하노이 실시간 날씨 (Open-Meteo 무료 API)
+  try {
+    const res = await fetch(
+      "https://api.open-meteo.com/v1/forecast?latitude=21.0285&longitude=105.8542&current=temperature_2m,relative_humidity_2m,precipitation,weather_code&timezone=Asia%2FBangkok"
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const c = data.current || {};
+      const temp = Math.round(c.temperature_2m ?? 29);
+      const hum = Math.round(c.relative_humidity_2m ?? 75);
+      let desc = "구름 조금";
+      if (c.weather_code === 0) desc = "맑음";
+      else if (c.weather_code >= 61) desc = "비";
+      else if (c.weather_code >= 1 && c.weather_code <= 3) desc = "구름 조금";
+
+      const el = $("liveWeatherText");
+      if (el) el.textContent = `${temp}°C · ${desc} (습도 ${hum}%)`;
+    }
+  } catch (err) {
+    console.warn("Live weather fetch note:", err?.message || err);
+  }
+
+  // 2. 하노이 대기질 AQI (Open-Meteo Air Quality API)
+  try {
+    const res = await fetch(
+      "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=21.0285&longitude=105.8542&current=us_aqi,pm2_5&timezone=Asia%2FBangkok"
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const c = data.current || {};
+      const aqi = Math.round(c.us_aqi ?? 68);
+      const pm25 = Math.round(c.pm2_5 ?? 28);
+      const el = $("liveAqiText");
+      if (el) {
+        let statusText = "보통";
+        let statusCls = "wz-aqi-good";
+        if (aqi <= 50) {
+          statusText = "좋음";
+          statusCls = "wz-aqi-good";
+        } else if (aqi <= 100) {
+          statusText = "보통";
+          statusCls = "wz-aqi-warn";
+        } else {
+          statusText = "나쁨 (마스크 착용 권장)";
+          statusCls = "wz-aqi-bad";
+        }
+        el.className = statusCls;
+        el.textContent = `${aqi} ${statusText} (초미세먼지 ${pm25}µg)`;
+      }
+    }
+  } catch (err) {
+    console.warn("Live AQI fetch note:", err?.message || err);
+  }
+
+  // 3. 실시간 외환 환율 (ER-API)
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/USD");
+    if (res.ok) {
+      const data = await res.json();
+      const rates = data.rates || {};
+      const usdVnd = rates.VND ? Math.round(rates.VND) : 25420;
+      const usdKrw = rates.KRW ? Math.round(rates.KRW) : 1372;
+      const krw1000Vnd = Math.round((usdVnd / usdKrw) * 1000);
+      const el = $("liveFxText");
+      if (el) {
+        el.textContent = `1,000 KRW = ${krw1000Vnd.toLocaleString()} VND | 1 USD = ${usdVnd.toLocaleString()} VND`;
+      }
+    }
+  } catch (err) {
+    console.warn("Exchange rate fetch note:", err?.message || err);
+  }
+}
+
+/**
+ * 베트남 주요 은행 예금 금리 및 실시간 이자 계산기
+ */
+const VIETNAM_BANK_RATES = {
+  shinhan: { name: "신한베트남 (Shinhan Bank Vietnam)", 1: 3.2, 6: 4.8, 12: 5.6 },
+  woori: { name: "우리베트남 (Woori Bank Vietnam)", 1: 3.1, 6: 4.7, 12: 5.5 },
+  vcb: { name: "Vietcombank (비엣콤뱅크)", 1: 2.8, 6: 4.2, 12: 5.0 },
+  bidv: { name: "BIDV (베트남투자개발은행)", 1: 3.0, 6: 4.4, 12: 5.2 }
+};
+
+function updateBankCalculation() {
+  const amountInput = $("calcDepositAmount");
+  const bankSelect = $("calcBankSelect");
+  const periodSelect = $("calcPeriodSelect");
+  if (!amountInput || !bankSelect || !periodSelect) return;
+
+  const principal = parseFloat(amountInput.value) || 0;
+  const bankKey = bankSelect.value || "shinhan";
+  const months = parseInt(periodSelect.value, 10) || 12;
+
+  const bank = VIETNAM_BANK_RATES[bankKey] || VIETNAM_BANK_RATES.shinhan;
+  const annualRate = bank[months] || 5.6;
+
+  // 베트남 개인 은행 정기예금 이자소득세는 0%(비과세)
+  const interest = Math.round(principal * (annualRate / 100) * (months / 12));
+  const totalPayout = principal + interest;
+
+  if ($("resRateText")) $("resRateText").textContent = `${annualRate.toFixed(1)}%`;
+  if ($("resInterestText")) $("resInterestText").textContent = `+${interest.toLocaleString()} VND`;
+  if ($("resTotalText")) $("resTotalText").textContent = `${totalPayout.toLocaleString()} VND`;
+
+  if ($("calcAmountKor")) {
+    const approxKrw = Math.round(principal / 18.5);
+    const manWon = (approxKrw / 10000).toFixed(0);
+    $("calcAmountKor").textContent = `${principal.toLocaleString()} VND (약 ${Number(manWon).toLocaleString()}만 원)`;
+  }
+}
+
+function initBankCalculator() {
+  const btnOpen = $("btnOpenBankCalc");
+  const modal = $("bankRateModal");
+  const btnClose = $("modalBankCloseBtn");
+
+  if (btnOpen && modal) {
+    btnOpen.onclick = () => {
+      modal.classList.add("active");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+      updateBankCalculation();
+    };
+  }
+
+  const closeBankModal = () => {
+    if (modal) {
+      modal.classList.remove("active");
+      modal.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    }
+  };
+
+  if (btnClose) btnClose.onclick = closeBankModal;
+  if (modal) {
+    modal.onclick = (e) => {
+      if (e.target === modal) closeBankModal();
+    };
+  }
+
+  $("calcDepositAmount")?.addEventListener("input", updateBankCalculation);
+  $("calcBankSelect")?.addEventListener("change", updateBankCalculation);
+  $("calcPeriodSelect")?.addEventListener("change", updateBankCalculation);
+}
+
+/**
+ * 독자 댓글 렌더링
+ */
+function renderModalComments(articleId) {
+  const listEl = $("mCommentsList");
+  const badgeEl = $("mCommentCountBadge");
+  if (!listEl) return;
+
+  const comments = getArticleComments(articleId);
+  if (badgeEl) badgeEl.textContent = String(comments.length);
+
+  if (comments.length === 0) {
+    listEl.innerHTML = `<div style="text-align:center; padding:18px; color:#94a3b8; font-size:0.85rem;">첫 번째 독자 한줄 생각을 남겨보세요!</div>`;
+    return;
+  }
+
+  listEl.innerHTML = comments
+    .map(
+      (c) => `
+    <div class="wz-comment-item">
+      <div class="wz-comment-meta">
+        <span class="wz-comment-author">👤 ${c.author || "익명 독자"}</span>
+        <span class="wz-comment-time">${c.time || "방금 전"}</span>
       </div>
-    </article>
-  `).join("");
+      <div class="wz-comment-body">${c.text}</div>
+    </div>
+  `
+    )
+    .join("");
 }
 
 /**
@@ -272,10 +544,11 @@ function openArticleDetail(articleId) {
   const article = _allArticles.find((a) => a.id === articleId);
   if (!article) return;
 
+  _currentArticleId = articleId;
   const modal = $("articleModal");
   if (!modal) return;
 
-  // 기본 정보 바인딩
+  // 기본 메타 정보 바인딩
   if ($("mHeroImg")) $("mHeroImg").src = article.thumbnailUrl || "";
   if ($("mCat")) $("mCat").textContent = article.category || "K-컬처";
   if ($("mTitle")) $("mTitle").textContent = article.title;
@@ -283,6 +556,37 @@ function openArticleDetail(articleId) {
   if ($("mAuthor")) $("mAuthor").textContent = `✍️ ${article.author || "베스트클럽 에디토리얼 팀"}`;
   if ($("mDate")) $("mDate").textContent = `📅 ${article.dateStr || "2026. 10. 13"}`;
   if ($("mReadTime")) $("mReadTime").textContent = `⏱️ ${article.readTime || "3분 읽기"}`;
+
+  // 좋아요 버튼 상태 동기화
+  const likeBtn = $("mBtnLike");
+  const likeCountEl = $("mLikeCount");
+  const likeIconEl = $("mLikeIcon");
+  if (likeBtn && likeCountEl) {
+    const isLiked = isArticleLiked(articleId);
+    const count = getArticleLikes(articleId);
+    likeCountEl.textContent = String(count);
+    if (likeIconEl) likeIconEl.textContent = isLiked ? "❤️" : "🤍";
+    if (isLiked) likeBtn.classList.add("liked");
+    else likeBtn.classList.remove("liked");
+  }
+
+  // 💡 3단계 심층 분석 브리핑 바인딩 (Why it matters · Expat Impact · Action Checklist)
+  if ($("sbWhyText")) {
+    $("sbWhyText").textContent =
+      article.whyItMatters ||
+      article.summary ||
+      "하노이 현지 교민과 방문객에게 새로운 라이프스타일 경험과 베스트클럽 우수 가맹점 혜택을 제공합니다.";
+  }
+  if ($("sbImpactText")) {
+    $("sbImpactText").textContent =
+      article.impactOnExpats ||
+      "미딩, 쭝화 등 주요 교민 상권에서 신뢰할 수 있는 정품 K-콘텐츠와 식음료 문화를 바로 누릴 수 있습니다.";
+  }
+  if ($("sbActionText")) {
+    $("sbActionText").textContent =
+      article.actionRequired ||
+      "매장 방문 시 베스트클럽 결제를 통해 5% 즉시 포인트 페이백과 잭팟 보너스티켓(BT)을 챙기세요.";
+  }
 
   // 본문 HTML 바인딩
   const bodyHtml = parseMarkdownToHtml(article.content);
@@ -306,12 +610,21 @@ function openArticleDetail(articleId) {
     $("mMerchTelLink").href = `tel:${(m.phone || "02437878899").replace(/[^0-9]/g, "")}`;
   }
 
+  // 댓글 리스트 바인딩
+  renderModalComments(articleId);
+
   // SNS 숏폼 텍스트 바인딩
   const sns = article.sns || {};
   if ($("snsInsta")) $("snsInsta").textContent = sns.instagram || `${article.title}\n\n#베스트클럽 #${article.category}`;
   if ($("snsX")) $("snsX").textContent = sns.x || `${article.title} - 베스트 매거진 기사 확인하기`;
   if ($("snsThreads")) $("snsThreads").textContent = sns.threads || `${article.title}\n\n여러분의 생각은 어떠신가요? 댓글로 공유해 주세요!`;
   if ($("snsFb")) $("snsFb").textContent = sns.facebook || `${article.title}\n${article.summary}`;
+
+  // URL 파라미터 딥링크 반영 (?article=...)
+  try {
+    const newUrl = `${window.location.pathname}?article=${encodeURIComponent(articleId)}`;
+    window.history.replaceState({ articleId }, "", newUrl);
+  } catch (e) {}
 
   modal.classList.add("active");
   modal.setAttribute("aria-hidden", "false");
@@ -327,13 +640,41 @@ function closeArticleDetail() {
   modal.classList.remove("active");
   modal.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
+  _currentArticleId = null;
+
+  // URL 파라미터 복구
+  try {
+    window.history.replaceState({}, "", window.location.pathname);
+  } catch (e) {}
 }
 
 /**
  * 이벤트 리스너 바인딩
  */
 function initEvents() {
-  // 카테고리 탭 클릭
+  // 1. 키워드 검색 통합 이벤트
+  const searchInput = $("wzSearchInput");
+  const clearBtn = $("wzSearchClearBtn");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      _searchQuery = searchInput.value;
+      if (clearBtn) {
+        clearBtn.style.display = _searchQuery.trim().length > 0 ? "flex" : "none";
+      }
+      renderArticles();
+    });
+  }
+  if (clearBtn && searchInput) {
+    clearBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      _searchQuery = "";
+      clearBtn.style.display = "none";
+      renderArticles();
+      searchInput.focus();
+    });
+  }
+
+  // 2. 카테고리 탭 클릭
   const tabWrap = $("categoryTabs");
   if (tabWrap) {
     tabWrap.addEventListener("click", (e) => {
@@ -346,7 +687,7 @@ function initEvents() {
     });
   }
 
-  // 피처드 및 카드 클릭 시 상세 모달
+  // 3. 피처드 및 카드 클릭 시 상세 모달
   document.addEventListener("click", (e) => {
     const card = e.target.closest(".wz-card, .wz-featured");
     if (card && card.dataset.articleId) {
@@ -354,7 +695,7 @@ function initEvents() {
     }
   });
 
-  // 모달 닫기 버튼 및 배경 클릭
+  // 4. 모달 닫기 버튼 및 배경 클릭
   const closeBtn = $("modalCloseBtn");
   if (closeBtn) closeBtn.addEventListener("click", closeArticleDetail);
 
@@ -366,22 +707,93 @@ function initEvents() {
   }
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeArticleDetail();
+    if (e.key === "Escape") {
+      closeArticleDetail();
+      const bankModal = $("bankRateModal");
+      if (bankModal && bankModal.classList.contains("active")) {
+        bankModal.classList.remove("active");
+        document.body.style.overflow = "";
+      }
+    }
   });
 
-  // 링크 복사
-  const btnCopyUrl = $("btnCopyArticleUrl");
-  if (btnCopyUrl) {
-    btnCopyUrl.onclick = () => {
-      navigator.clipboard.writeText(window.location.href).then(() => {
-        alert("기사 링크가 클립보드에 복사되었습니다! 친구나 SNS에 공유해 보세요.");
-      }).catch(() => {
-        alert("링크 복사 완료: " + window.location.href);
-      });
+  // 5. 좋아요 버튼 토글
+  const btnLike = $("mBtnLike");
+  if (btnLike) {
+    btnLike.onclick = () => {
+      if (!_currentArticleId) return;
+      const res = toggleArticleLike(_currentArticleId);
+      if ($("mLikeCount")) $("mLikeCount").textContent = String(res.count);
+      if ($("mLikeIcon")) $("mLikeIcon").textContent = res.liked ? "❤️" : "🤍";
+      if (res.liked) btnLike.classList.add("liked");
+      else btnLike.classList.remove("liked");
+      renderArticles(); // 메인 피드/카드 카운트도 갱신
     };
   }
 
-  // SNS 배포 텍스트 스크롤
+  // 6. 독자 댓글 등록 폼
+  const commentForm = $("mCommentForm");
+  if (commentForm) {
+    commentForm.onsubmit = (e) => {
+      e.preventDefault();
+      if (!_currentArticleId) return;
+      const author = $("mCommentAuthor")?.value.trim();
+      const text = $("mCommentText")?.value.trim();
+      if (!text) return;
+
+      addArticleComment(_currentArticleId, author, text);
+      renderModalComments(_currentArticleId);
+      renderArticles(); // 메인 카운터 갱신
+
+      if ($("mCommentText")) $("mCommentText").value = "";
+    };
+  }
+
+  // 7. 실시간 SNS 다이렉트 공유 버튼 핸들러
+  const getShareUrl = () => {
+    const baseUrl = window.location.origin.includes("localhost")
+      ? window.location.origin
+      : "https://bestclubvn.netlify.app";
+    return `${baseUrl}/kca_webzine.html?article=${encodeURIComponent(_currentArticleId || "")}`;
+  };
+
+  const getArticleTitle = () => {
+    const a = _allArticles.find((art) => art.id === _currentArticleId);
+    return a ? a.title : "베스트 매거진";
+  };
+
+  $("btnDirectFb")?.addEventListener("click", () => {
+    const url = encodeURIComponent(getShareUrl());
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank");
+  });
+
+  $("btnDirectZalo")?.addEventListener("click", () => {
+    window.open("https://chat.zalo.me/", "_blank");
+  });
+
+  $("btnDirectKakao")?.addEventListener("click", () => {
+    const shareUrl = getShareUrl();
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert("카카오톡 공유 링크가 복사되었습니다! 카카오톡 채팅창에 붙여넣기(Ctrl+V) 하세요.");
+    });
+  });
+
+  const handleCopyLink = () => {
+    const shareUrl = getShareUrl();
+    navigator.clipboard
+      .writeText(shareUrl)
+      .then(() => {
+        alert("기사 고유 링크가 클립보드에 복사되었습니다! 친구나 단톡방에 공유해 보세요.\n" + shareUrl);
+      })
+      .catch(() => {
+        alert("링크 복사 완료: " + shareUrl);
+      });
+  };
+
+  $("btnDirectCopy")?.addEventListener("click", handleCopyLink);
+  $("btnCopyArticleUrl")?.addEventListener("click", handleCopyLink);
+
+  // 8. SNS 배포 텍스트 스크롤
   const btnOpenSns = $("btnOpenSnsModal");
   if (btnOpenSns) {
     btnOpenSns.onclick = () => {
@@ -390,7 +802,7 @@ function initEvents() {
     };
   }
 
-  // SNS 텍스트 개별 복사 버튼
+  // 9. SNS 텍스트 개별 복사 버튼
   document.addEventListener("click", (e) => {
     const copyBtn = e.target.closest(".wz-btn-copy");
     if (!copyBtn) return;
@@ -401,15 +813,36 @@ function initEvents() {
     navigator.clipboard.writeText(textEl.textContent.trim()).then(() => {
       const orig = copyBtn.textContent;
       copyBtn.textContent = "복사됨! ✅";
-      setTimeout(() => { copyBtn.textContent = orig; }, 1500);
+      setTimeout(() => {
+        copyBtn.textContent = orig;
+      }, 1500);
     });
   });
+}
+
+/**
+ * 딥링크 체크 (?article=...)
+ */
+function checkDeepLink() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const deepArticleId = params.get("article");
+    if (deepArticleId) {
+      setTimeout(() => {
+        openArticleDetail(deepArticleId);
+      }, 100);
+    }
+  } catch (e) {}
 }
 
 // ── 초기화 실행 ──
 function boot() {
   initEvents();
-  loadWebzineArticles();
+  initLiveBriefing();
+  initBankCalculator();
+  loadWebzineArticles().then(() => {
+    checkDeepLink();
+  });
 }
 
 if (document.readyState === "loading") {
@@ -417,3 +850,4 @@ if (document.readyState === "loading") {
 } else {
   boot();
 }
+

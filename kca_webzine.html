@@ -41,7 +41,38 @@
       <p class="wz-subtitle">
         K-컬처와 하노이의 다채로운 이야기, 그리고 베스트클럽 공식 가맹점이 함께 전하는 신뢰할 수 있는 라이프스타일 큐레이션입니다.
       </p>
+
+      <!-- 🌤️ 실시간 하노이 날씨 · 대기질 · 환율 브리핑 바 & 금융 위젯 -->
+      <div class="wz-live-briefing" id="wzLiveBriefing">
+        <div class="wz-live-chip" id="wzChipWeather" title="Open-Meteo 실시간 하노이 기상 관측">
+          <span class="wz-live-icon">🌤️</span>
+          <span class="wz-live-label">하노이 날씨</span>
+          <strong id="liveWeatherText">29°C · 구름 조금 (습도 75%)</strong>
+        </div>
+        <div class="wz-live-chip" id="wzChipAqi" title="하노이 실시간 대기질 지수 (AQI)">
+          <span class="wz-live-icon">🍃</span>
+          <span class="wz-live-label">대기질 AQI</span>
+          <strong id="liveAqiText" class="wz-aqi-good">68 보통 (초미세먼지 28µg)</strong>
+        </div>
+        <div class="wz-live-chip" id="wzChipFx" title="실시간 외환 환율 (ER-API)">
+          <span class="wz-live-icon">💱</span>
+          <span class="wz-live-label">실시간 환율</span>
+          <strong id="liveFxText">1,000 KRW = 18,520 VND | 1 USD = 25,420 VND</strong>
+        </div>
+        <button type="button" class="wz-live-btn-bank" id="btnOpenBankCalc" title="베트남 주요 은행 예금 금리 비교 및 이자 계산기">
+          <span>🏦</span> 은행 예금 금리 계산기
+        </button>
+      </div>
     </header>
+
+    <!-- 🔍 실시간 기사 통합 검색창 -->
+    <div class="wz-search-container">
+      <div class="wz-search-box">
+        <span class="wz-search-icon">🔍</span>
+        <input type="text" id="wzSearchInput" class="wz-search-input" placeholder="키워드 검색 (치킨, 삼겹살, 비자, 미딩, 뷰티, 환율, 할인 등)..." autocomplete="off" />
+        <button type="button" id="wzSearchClearBtn" class="wz-search-clear-btn" style="display:none;" aria-label="검색어 초기화">✕</button>
+      </div>
+    </div>
 
     <!-- 카테고리 탭 바 -->
     <nav class="wz-tabs" id="categoryTabs" aria-label="매거진 카테고리">
@@ -119,8 +150,27 @@
             <span id="mReadTime">⏱️ 3분 읽기</span>
           </div>
           <div class="wz-share-actions">
+            <button class="wz-share-btn wz-btn-like" id="mBtnLike" type="button" title="기사 추천 / 좋아요">
+              <span id="mLikeIcon">🤍</span> <span id="mLikeCount">0</span>
+            </button>
             <button class="wz-share-btn" id="btnCopyArticleUrl" type="button">🔗 링크 복사</button>
             <button class="wz-share-btn" id="btnOpenSnsModal" type="button" style="background:#ede9fe; color:#7c3aed; border-color:#c4b5fd;">📱 SNS 배포 텍스트</button>
+          </div>
+        </div>
+
+        <!-- 💡 3단계 심층 분석 브리핑 (Why it matters · Expat Impact · Action Checklist) -->
+        <div class="wz-structured-box" id="mStructuredBox">
+          <div class="wz-sb-item" id="sbWhyBox">
+            <h4 class="wz-sb-title wz-sb-why"><span>⚡</span> 왜 중요한가? (Why it matters)</h4>
+            <p id="sbWhyText" class="wz-sb-desc">주요 정책 개편과 트렌드 변화에 따른 핵심 요약입니다.</p>
+          </div>
+          <div class="wz-sb-item" id="sbImpactBox">
+            <h4 class="wz-sb-title wz-sb-impact"><span>🏙️</span> 교민 &amp; 고객에게 어떤 영향이 있나? (Impact)</h4>
+            <p id="sbImpactText" class="wz-sb-desc">하노이 교민 및 주재원 라이프스타일과 직결되는 실질적 파급 효과입니다.</p>
+          </div>
+          <div class="wz-sb-item" id="sbActionBox">
+            <h4 class="wz-sb-title wz-sb-action"><span>✅</span> 무엇을 준비해야 하나? (Action Checklist)</h4>
+            <p id="sbActionText" class="wz-sb-desc">방문 전 사전 확인, 가맹점 포인트 페이백 활용 꿀팁입니다.</p>
           </div>
         </div>
 
@@ -128,6 +178,27 @@
         <article class="wz-article-body" id="mBody">
           <!-- 기사 내용 -->
         </article>
+
+        <!-- 🎁 BestClub 공식 이벤트 & 바우처 라운지 실시간 연결 배너 -->
+        <div class="wz-event-quick-banner">
+          <div class="wz-event-quick-info">
+            <span class="wz-event-quick-badge">✨ BEST CLUB 공식 이벤트 라운지 실시간 연결</span>
+            <h4>가맹점 특별 할인 쿠폰 &amp; 바우처 1초 무료 발급</h4>
+            <p>회원이라면 클릭 1번에 무료 쿠폰 받고, 매장 방문 결제 시 5% 포인트 페이백 &amp; 잭팟 보너스티켓(BT) 혜택을 즉시 누리세요!</p>
+          </div>
+          <a href="/events.html" class="wz-event-quick-btn">무료 쿠폰 받으러 가기 →</a>
+        </div>
+
+        <!-- 📲 원클릭 실시간 SNS 다이렉트 공유 바 -->
+        <div class="wz-direct-share-box">
+          <span class="wz-direct-share-title">📲 실시간 다이렉트 공유:</span>
+          <div class="wz-direct-share-btns">
+            <button type="button" class="wz-share-pill-btn wz-share-fb" id="btnDirectFb">📘 Facebook 공유</button>
+            <button type="button" class="wz-share-pill-btn wz-share-zalo" id="btnDirectZalo">💬 Zalo 공유</button>
+            <button type="button" class="wz-share-pill-btn wz-share-kakao" id="btnDirectKakao">🟡 카카오톡 전달</button>
+            <button type="button" class="wz-share-pill-btn wz-share-copy" id="btnDirectCopy">🔗 고유링크 복사</button>
+          </div>
+        </div>
 
         <!-- 🌟 핵심: 가맹점 연계 공식 배너 (Merchant Callout) 🌟 -->
         <div class="wz-merchant-box" id="mMerchantBox">
@@ -158,6 +229,25 @@
             <a href="/pay.html" id="mMerchPayLink" class="wz-btn-pay">📷 매장 방문 결제 & 포인트 받기</a>
             <a href="tel:02437878899" id="mMerchTelLink" class="wz-btn-call">📞 매장 전화 걸기</a>
           </div>
+        </div>
+
+        <!-- 💬 교민 & 독자 한줄 생각 / 댓글 섹션 -->
+        <div class="wz-comments-box" id="mCommentsBox">
+          <div class="wz-comments-head">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span>💬</span>
+              <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#0f172a;">교민 &amp; 독자 실시간 생각</h3>
+              <span class="wz-badge-pill" id="mCommentCountBadge" style="margin:0; padding:2px 10px; font-size:0.75rem;">0</span>
+            </div>
+          </div>
+          <div class="wz-comments-list" id="mCommentsList">
+            <!-- Dynamic Comments -->
+          </div>
+          <form class="wz-comment-form" id="mCommentForm">
+            <input type="text" id="mCommentAuthor" placeholder="닉네임 (예: 미딩교민)" maxlength="20" required />
+            <input type="text" id="mCommentText" placeholder="기사에 대한 소감이나 유용한 가맹점 꿀팁을 남겨주세요..." maxlength="200" required />
+            <button type="submit" class="wz-btn-comment-submit">등록</button>
+          </form>
         </div>
 
         <!-- SNS 숏폼 텍스트 세트 (인스타 / X / 스레드 / 페이스북) -->
@@ -196,6 +286,118 @@
               <button class="wz-btn-copy" data-target="snsFb" type="button">복사하기</button>
             </div>
             <div class="wz-sns-text" id="snsFb">-</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 🏦 베트남 은행 예금 금리 비교 & 이자 계산기 모달 ── -->
+  <div class="wz-modal" id="bankRateModal" aria-modal="true" role="dialog" aria-hidden="true">
+    <div class="wz-modal-card wz-bank-modal-card">
+      <button class="wz-modal-close-btn" id="modalBankCloseBtn" type="button" aria-label="닫기">×</button>
+
+      <div class="wz-modal-content">
+        <div class="wz-badge-pill" style="margin-bottom:8px;">
+          <span>🏦</span> VIETNAM BANKING &amp; FINANCE
+        </div>
+        <h2 class="wz-detail-title" style="font-size:1.6rem; margin-bottom:6px;">베트남 주요 은행 예금 금리 비교 &amp; 이자 계산기</h2>
+        <p class="wz-detail-sub" style="margin-bottom:20px;">
+          하노이 교민 및 주재원을 위한 신한베트남, 우리베트남, Vietcombank, BIDV 정기예금 금리(비과세 0%) 및 만기 이자 실시간 계산기입니다.
+        </p>
+
+        <!-- 금리 비교 테이블 -->
+        <div class="wz-table-wrap">
+          <table class="wz-rates-table">
+            <thead>
+              <tr>
+                <th>은행명</th>
+                <th>1개월</th>
+                <th>6개월</th>
+                <th>12개월(1년)</th>
+                <th>특징 / 혜택</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="wz-highlight-row">
+                <td><strong>🔵 신한베트남 (Shinhan)</strong></td>
+                <td>3.2%</td>
+                <td>4.8%</td>
+                <td><strong style="color:#7c3aed;">5.6%</strong></td>
+                <td>한국어 창구 &amp; SOL 뱅킹 편리</td>
+              </tr>
+              <tr class="wz-highlight-row">
+                <td><strong>🔷 우리베트남 (Woori)</strong></td>
+                <td>3.1%</td>
+                <td>4.7%</td>
+                <td><strong style="color:#7c3aed;">5.5%</strong></td>
+                <td>모바일 가입 시 우대 금리</td>
+              </tr>
+              <tr>
+                <td><strong>🟢 Vietcombank (국영)</strong></td>
+                <td>2.8%</td>
+                <td>4.2%</td>
+                <td>5.0%</td>
+                <td>베트남 최대 국영 은행</td>
+              </tr>
+              <tr>
+                <td><strong>🟦 BIDV (국영)</strong></td>
+                <td>3.0%</td>
+                <td>4.4%</td>
+                <td>5.2%</td>
+                <td>지점망 및 자산 규모 1위</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 실시간 이자 계산기 폼 -->
+        <div class="wz-calc-box">
+          <h3 style="margin:0 0 14px; font-size:1.15rem; font-weight:800; color:#0f172a;">
+            🧮 만기 예금 이자 즉시 계산
+          </h3>
+          <div class="wz-calc-grid">
+            <div>
+              <label for="calcDepositAmount" class="wz-calc-label">예치 금액 (VND):</label>
+              <input type="number" id="calcDepositAmount" class="wz-calc-input" value="100000000" step="10000000" min="1000000" />
+              <div id="calcAmountKor" style="font-size:0.8rem; color:#64748b; margin-top:4px;">100,000,000 VND (약 540만 원)</div>
+            </div>
+            <div>
+              <label for="calcBankSelect" class="wz-calc-label">은행 선택:</label>
+              <select id="calcBankSelect" class="wz-calc-input">
+                <option value="shinhan" selected>신한베트남 (연 5.6% / 12개월)</option>
+                <option value="woori">우리베트남 (연 5.5% / 12개월)</option>
+                <option value="vcb">Vietcombank (연 5.0% / 12개월)</option>
+                <option value="bidv">BIDV (연 5.2% / 12개월)</option>
+              </select>
+            </div>
+            <div>
+              <label for="calcPeriodSelect" class="wz-calc-label">예치 기간:</label>
+              <select id="calcPeriodSelect" class="wz-calc-input">
+                <option value="1">1개월</option>
+                <option value="6">6개월</option>
+                <option value="12" selected>12개월 (1년)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="wz-calc-result-panel">
+            <div class="wz-calc-res-item">
+              <span class="wz-calc-res-sub">적용 연이율:</span>
+              <strong id="resRateText" style="color:#7c3aed; font-size:1.2rem;">5.6%</strong>
+            </div>
+            <div class="wz-calc-res-item">
+              <span class="wz-calc-res-sub">만기 수령 세후 이자 (0% 비과세):</span>
+              <strong id="resInterestText" style="color:#059669; font-size:1.25rem;">+5,600,000 VND</strong>
+            </div>
+            <div class="wz-calc-res-item">
+              <span class="wz-calc-res-sub">원금 + 이자 총 수령액:</span>
+              <strong id="resTotalText" style="color:#0f172a; font-size:1.4rem;">105,600,000 VND</strong>
+            </div>
+          </div>
+          <div style="font-size:0.78rem; color:#94a3b8; margin-top:10px;">
+            * 베트남 현행 세법상 개인의 은행 정기예금 이자소득세는 0%(완전 비과세)입니다. 금리는 공시 시점에 따라 변경될 수 있습니다.
           </div>
         </div>
 
