@@ -1,4 +1,4 @@
-﻿// /assets/js/support-chat.js
+// /assets/js/support-chat.js
 import { watchAuth } from "/assets/js/auth.js";
 import {
   collection, doc, addDoc, onSnapshot, orderBy, query,
@@ -76,37 +76,44 @@ function setup() {
     _unsubMsgs?.();
     _unsubMsgs = null;
 
-    const chatRef = doc(db, "support_chats", user.uid);
-    const snap = await getDoc(chatRef);
-    if (!snap.exists()) {
-      await setDoc(chatRef, {
-        uid: user.uid,
-        displayName: user.displayName || "",
-        email: user.email || "",
-        lastMessage: "",
-        lastAt: serverTimestamp(),
-        hasUnread: false,
-      });
-    }
-
-    _unsubMsgs = onSnapshot(
-      query(collection(db, "support_chats", user.uid, "messages"), orderBy("createdAt", "asc")),
-      (snap) => {
-        if (msgs) renderMsgs(snap.docs, msgs);
-        _unreadRefs = snap.docs
-          .filter(d => d.data().sender === "admin" && !d.data().readByUser)
-          .map(d => d.ref);
-
-        if (_unreadRefs.length > 0 && !_isOpen) {
-          btnOpen.dataset.badge = _unreadRefs.length > 9 ? "9+" : String(_unreadRefs.length);
-          btnOpen.classList.add("has-badge");
-        } else {
-          clearBadge(btnOpen);
-        }
-
-        if (_isOpen && _unreadRefs.length > 0) markRead();
+    try {
+      const chatRef = doc(db, "support_chats", user.uid);
+      const snap = await getDoc(chatRef);
+      if (!snap.exists()) {
+        await setDoc(chatRef, {
+          uid: user.uid,
+          displayName: user.displayName || "",
+          email: user.email || "",
+          lastMessage: "",
+          lastAt: serverTimestamp(),
+          hasUnread: false,
+        });
       }
-    );
+
+      _unsubMsgs = onSnapshot(
+        query(collection(db, "support_chats", user.uid, "messages"), orderBy("createdAt", "asc")),
+        (snap) => {
+          if (msgs) renderMsgs(snap.docs, msgs);
+          _unreadRefs = snap.docs
+            .filter(d => d.data().sender === "admin" && !d.data().readByUser)
+            .map(d => d.ref);
+
+          if (_unreadRefs.length > 0 && !_isOpen) {
+            btnOpen.dataset.badge = _unreadRefs.length > 9 ? "9+" : String(_unreadRefs.length);
+            btnOpen.classList.add("has-badge");
+          } else {
+            clearBadge(btnOpen);
+          }
+
+          if (_isOpen && _unreadRefs.length > 0) markRead();
+        },
+        (err) => {
+          console.warn("[support-chat] onSnapshot error:", err?.message || err);
+        }
+      );
+    } catch (err) {
+      console.warn("[support-chat] chat init error:", err?.message || err);
+    }
   });
 }
 

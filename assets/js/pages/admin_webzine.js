@@ -494,7 +494,7 @@ function initEvents() {
 /**
  * 초기화 및 권한 제어
  */
-document.addEventListener("DOMContentLoaded", () => {
+function boot() {
   initEvents();
 
   onAuthReady(async ({ loggedIn, role, user, profile }) => {
@@ -557,4 +557,10 @@ document.addEventListener("DOMContentLoaded", () => {
     renderThumbnailPicker("K-푸드");
     loadPublishedArticles();
   });
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot);
+} else {
+  boot();
+}

@@ -142,32 +142,50 @@ async function loadWebzineArticles() {
 
   // 1. 대기 시간 0초(Zero Latency): 프리셋 20개 기사로 즉각 화면 렌더링
   if (_allArticles.length === 0) {
-    _allArticles = [...WEBZINE_20_ARTICLES];
+    _allArticles = Array.isArray(WEBZINE_20_ARTICLES) && WEBZINE_20_ARTICLES.length > 0
+      ? [...WEBZINE_20_ARTICLES]
+      : [...DEFAULT_PRESET_ARTICLES];
   }
   if (featLoading) featLoading.style.display = "none";
   renderArticles();
 
   // 2. 백그라운드에서 Firestore 최신 기사 동기화
   try {
-    const q = query(
-      collection(db, "webzine_articles"),
-      orderBy("createdAt", "desc"),
-      limit(50)
-    );
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      const q = query(
+        collection(db, "webzine_articles"),
+        orderBy("createdAt", "desc"),
+        limit(50)
+      );
+      snap = await getDocs(q);
+    } catch (orderErr) {
+      console.warn("webzine_articles orderBy query failed, trying plain getDocs:", orderErr?.message || orderErr);
+      snap = await getDocs(collection(db, "webzine_articles"));
+    }
+
     const firestoreArticles = [];
-    snap.forEach((d) => {
-      firestoreArticles.push({ id: d.id, ...d.data() });
-    });
+    if (snap && !snap.empty) {
+      snap.forEach((d) => {
+        firestoreArticles.push({ id: d.id, ...d.data() });
+      });
+    }
 
     if (firestoreArticles.length > 0) {
+      firestoreArticles.sort((a, b) => {
+        const timeA = a.createdAt?.seconds || (typeof a.createdAt === "number" ? a.createdAt : 0);
+        const timeB = b.createdAt?.seconds || (typeof b.createdAt === "number" ? b.createdAt : 0);
+        return timeB - timeA;
+      });
       const fsIds = new Set(firestoreArticles.map((a) => a.id));
       const presetsToAdd = WEBZINE_20_ARTICLES.filter((a) => !fsIds.has(a.id));
       _allArticles = [...firestoreArticles, ...presetsToAdd];
       renderArticles();
     }
   } catch (err) {
-    console.warn("webzine_articles background sync note:", err);
+    console.warn("webzine_articles background sync note:", err?.message || err);
+  } finally {
+    if (featLoading) featLoading.style.display = "none";
   }
 }
 
@@ -389,7 +407,13 @@ function initEvents() {
 }
 
 // ── 초기화 실행 ──
-document.addEventListener("DOMContentLoaded", () => {
+function boot() {
   initEvents();
   loadWebzineArticles();
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot);
+} else {
+  boot();
+}
