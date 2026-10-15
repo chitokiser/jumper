@@ -100,8 +100,6 @@ let _shopMarkers   = {};   // { shopId: google.maps.Marker } — main icon
 let _shopHpMarkers = {};   // { shopId: google.maps.Marker } — HP bar overlay
 let _sellerMarkers = {};   // { shopId: google.maps.Marker } — seller NPC for weapon_armor shops
 let _monsterShadows = {};  // { id: Marker } 그림자
-let _towerShadows   = {};  // { id: Marker } 그림자
-let _shopShadows    = {};  // { id: Marker } 그림자
 const SHOP_RANGE_M = 20;
 const SHOP_EXIT_M  = 30;
 const SHOP_ICONS  = { weapon_armor: '⚔️', potion: '🧪', misc: '🛍️' };
@@ -1977,7 +1975,6 @@ function _refreshBattleVisibility(myLat, myLng) {
     if (!tower.lat || !tower.lng) continue;
     const towerVis = show(tower.lat, tower.lng);
     _towerMarkers[tower.id]?.setMap(towerVis ? map : null);
-    _towerShadows[tower.id]?.setMap(towerVis ? map : null);
   }
   for (const d of _decoMarkers) {
     if (!d.lat || !d.lng || !d.marker) continue;
@@ -2176,7 +2173,6 @@ function attackTower(tower, marker) {
     // 타워 파괴
     marker.setMap(null);
     delete _towerMarkers[tower.id];
-    _dropShadow(tower.id, _towerShadows);
     infoWindow?.close();
     showFloat(_t('tower_destroyed'), '#f97316', pos.lat(), pos.lng());
     playSound('gold_drop');
@@ -2253,8 +2249,7 @@ function renderTowerMarkers() {
   const infoWindow = _ctx?.infoWindow;
   Object.values(_towerMarkers).forEach(m => m.setMap(null));
   Object.values(_towerRanges).forEach(c => c.setMap(null));
-  Object.values(_towerShadows).forEach(m => m.setMap(null));
-  _towerMarkers = {}; _towerRanges = {}; _towerShadows = {};
+  _towerMarkers = {}; _towerRanges = {};
   const myPos = _ctx?.lastPos;
   for (const tower of _towers) {
     if (!tower.lat || !tower.lng) continue;
@@ -2658,7 +2653,6 @@ function _onTowerHpChange(towerId, data) {
   if (!tower) return;
   if (data.isDead) {
     if (_towerMarkers[towerId]) { _towerMarkers[towerId].setMap(null); delete _towerMarkers[towerId]; }
-    _dropShadow(towerId, _towerShadows);
     delete _towerHpState[towerId];
     if (!_towerRespawn[towerId]) {
       const elapsed   = Date.now() - (data.deadAt?.toMillis?.() || Date.now());
@@ -3183,7 +3177,6 @@ window.__deleteBattleObj = async (type, id) => {
       _towers = _towers.filter(t => t.id !== id);
       if (_towerMarkers[id])  { _towerMarkers[id].setMap(null);  delete _towerMarkers[id]; }
       if (_towerRanges[id])   { _towerRanges[id].setMap(null);   delete _towerRanges[id]; }
-      _dropShadow(id, _towerShadows);
     }
     _ctx?.infoWindow?.close();
   } catch (err) { alert('Delete failed: ' + err.message); }
@@ -3662,7 +3655,6 @@ function _renderShopMarker(shop) {
   if (!map || !shop.active) return;
   if (_shopMarkers[shop.id]) { _shopMarkers[shop.id].setMap(null); }
   if (_sellerMarkers[shop.id]) { _sellerMarkers[shop.id].setMap(null); delete _sellerMarkers[shop.id]; }
-  _dropShadow(shop.id, _shopShadows);
 
   const marker = new google.maps.Marker({
     position: { lat: shop.lat, lng: shop.lng },
@@ -3710,11 +3702,9 @@ export async function loadShops() {
     Object.values(_shopMarkers).forEach(m => m.setMap(null));
     Object.values(_shopHpMarkers).forEach(m => m.setMap(null));
     Object.values(_sellerMarkers).forEach(m => m.setMap(null));
-    Object.values(_shopShadows).forEach(m => m.setMap(null));
     _shopMarkers = {};
     _shopHpMarkers = {};
     _sellerMarkers = {};
-    _shopShadows = {};
     if (_ctx?.map) {
       _shops.forEach(s => { if (s.active) _renderShopMarker(s); });
     } else {
@@ -3763,7 +3753,6 @@ export async function deleteShop(shopId) {
   if (_shopMarkers[shopId]) { _shopMarkers[shopId].setMap(null); delete _shopMarkers[shopId]; }
   if (_shopHpMarkers[shopId]) { _shopHpMarkers[shopId].setMap(null); delete _shopHpMarkers[shopId]; }
   if (_sellerMarkers[shopId]) { _sellerMarkers[shopId].setMap(null); delete _sellerMarkers[shopId]; }
-  _dropShadow(shopId, _shopShadows);
 }
 
 let _lastNearShopId = null;

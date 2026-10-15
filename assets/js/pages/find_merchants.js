@@ -56,8 +56,8 @@ function initMap() {
         zoomControl: true
     });
 
-    // Google Maps Roadmap tile layer (Zero billing error, high definition)
-    roadmapLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ko&gl=VN", {
+    // Google Maps Roadmap tile layer (Zero billing error, high definition, building shadows off)
+    roadmapLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&apistyle=s.t:14%7Cp.v:off&x={x}&y={y}&z={z}&hl=ko&gl=VN", {
         maxZoom: 20,
         subdomains: ["0", "1", "2", "3"],
         attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'

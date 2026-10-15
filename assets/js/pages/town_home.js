@@ -839,6 +839,20 @@ async function loadPlacesMap() {
       streetViewControl: false,
       fullscreenControl: true,
       gestureHandling: 'greedy',
+      tilt: 0,
+      heading: 0,
+      rotateControl: false,
+      renderingType: google.maps.RenderingType?.RASTER || 'RASTER',
+      styles: [
+        { featureType: 'poi', elementType: 'all', stylers: [{ visibility: 'off' }] },
+        { featureType: 'transit', elementType: 'all', stylers: [{ visibility: 'off' }] },
+        { featureType: 'landscape.man_made', elementType: 'all', stylers: [{ visibility: 'off' }] },
+        { featureType: 'landscape.man_made.building', elementType: 'all', stylers: [{ visibility: 'off' }] },
+      ],
+    });
+    if (typeof map.setTilt === 'function') map.setTilt(0);
+    map.addListener('tilt_changed', () => {
+      if (map.getTilt && map.getTilt() !== 0) map.setTilt(0);
     });
 
     const bounds = new google.maps.LatLngBounds();
