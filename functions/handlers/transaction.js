@@ -677,8 +677,32 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     const finalWinWeiAmt = (BigInt(safeJackpotReward) * 1000000000000000000n).toString();
     tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner: safeJackpotReward > 0, randomValue: grade, finalWinWei: finalWinWeiAmt, btUsed: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() });
 
-    const txBase = { createdAt: admin.firestore.FieldValue.serverTimestamp(), currency: 'VND', amountKrw: finalKrw, amountVnd: finalVnd, merchantId: Number(merchantId), merchantName: merchant.name || '', txHash };
+    // [BT 제로섬 보존 법칙 - 절대 무한 발행 불가]
+    // 10만 동당 1 BT 요청이나, 반드시 가맹점의 잔여 btBalance 내에서만 차감 지급.
+    const merchBt = Number(merchant.btBalance || 0);
+    const maxBtRequested = Math.floor(finalVnd / 100000);
+    const actualBt = Math.min(maxBtRequested, Math.max(0, merchBt));
+
+    const txBase = {
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      currency: 'VND',
+      amountKrw: finalKrw,
+      amountVnd: finalVnd,
+      merchantId: Number(merchantId),
+      merchantName: merchant.name || '',
+      issuedBt: actualBt,
+      requestedBt: maxBtRequested,
+      txHash
+    };
     tx.set(checkTxRef, { ...txBase, uid, type: 'pay_merchant' });
+
+    // 가맹점 BT 원자적 차감
+    if (actualBt > 0) {
+      tx.update(merchantRef, {
+        btBalance: admin.firestore.FieldValue.increment(-actualBt),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
 
     if (isSelfPay) {
       // 본인 가맹점 셀프 테스트 결제: 동일 문서 다중 쓰기 충돌 방지
@@ -687,12 +711,21 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
         pointBalance: admin.firestore.FieldValue.increment(safeJackpotReward)
       });
     } else {
-      tx.update(userRef, {
+      const userUpdate = {
         pointBalanceVnd: userBalanceVnd - finalVnd,
         pointBalance: admin.firestore.FieldValue.increment(safeJackpotReward)
-      });
+      };
+      if (actualBt > 0) {
+        userUpdate.btBalance = admin.firestore.FieldValue.increment(actualBt);
+      }
+      tx.update(userRef, userUpdate);
+
       const currentMerchantBal = (ownerSnap && ownerSnap.exists) ? Number(ownerSnap.data().pointBalanceVnd || 0) : 0;
-      tx.set(merchantOwnerRef, { pointBalanceVnd: currentMerchantBal + netVnd }, { merge: true });
+      const ownerUpdate = { pointBalanceVnd: currentMerchantBal + netVnd };
+      if (actualBt > 0) {
+        ownerUpdate.btBalance = admin.firestore.FieldValue.increment(-actualBt);
+      }
+      tx.set(merchantOwnerRef, ownerUpdate, { merge: true });
     }
 
     tx.set(db.collection('transactions').doc(), { ...txBase, uid: merchantOwnerUid, buyerUid: uid, type: 'merchant_income', netAmountVnd: netVnd, feeAmountVnd: feeVnd, feeBps });
@@ -711,7 +744,8 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
 
     const payResult = {
       txHash,
-      issuedBt: 0,
+      issuedBt: actualBt,
+      requestedBt: maxBtRequested,
       merchantName: merchant.name || 'Merchant',
       amountVnd: finalVnd,
       amountKrw: finalKrw,

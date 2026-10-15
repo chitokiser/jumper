@@ -198,9 +198,45 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
 | **마법약** | 10% | `mpPotions` |
 | **부활권** | 5% | `reviveTickets` |
 
-### 5) BT (Bonus Ticket) 지급 흐름 (Q6 반영)
-1. **공급:** 최고관리자(Super Admin)가 각 가맹점 계정으로 BT를 사전에 일괄 충전/이체해 둠 (`adminChargeBt`).
-2. **지급:** 가맹점에서 고객이 결제할 때 (**100,000 VND당 1 BT**), 가맹점의 `btBalance`에서 원자적으로 차감되고 고객의 `btBalance`로 즉시 이체됨.
+### 5) BT (Bonus Ticket) 제로섬 보존 법칙 및 지급 원칙 (★ 절대 위반 금지)
+> **[CRITICAL ZERO-SUM CONSERVATION LAW - 절대 무한 발행 불가]**  
+> **BT는 허공에서 신규 생성(Minting)되는 가상 포인트가 아닙니다.**  
+> 소비자가 결제로 받는 모든 BT는 반드시 **가맹점의 잔여 BT 재고(`merchants/{merchantId}.btBalance` 및 `users/{merchantOwnerUid}.btBalance`)에서 즉시 1:1로 원자적 차감**되어야 하며, **가맹점 차감 없는 소비자 BT 단독 증액은 엄격히 차단**됩니다.
+
+1. **공급 (Supply):**
+   - 최고관리자(Super Admin)만이 각 가맹점 계정으로 BT를 사전에 공식 일괄 충전/이체합니다 (`adminChargeBt`).
+   - 충전 시 `merchants/{merchantId}.btBalance`와 가맹점주 `users/{ownerUid}.btBalance`가 동시에 1:1 증액됩니다.
+2. **지급 한도 계산 (Inventory Cap):**
+   - 결제 금액 **100,000 VND당 1 BT** 기준:
+     $$\text{maxBtRequested} = \left\lfloor \frac{\text{finalVnd}}{100,000} \right\rfloor$$
+   - **가맹점 보유 잔여량 한도(Inventory Cap) 필수 적용:**
+     $$\text{actualBt} = \min\left(\text{maxBtRequested},\; \max(0, \text{merchantBt})\right)$$
+   - **가맹점 잔여 BT 고갈 시 처리:**
+     - 가맹점 `btBalance <= 0`인 경우: 소비자에게 **0 BT 지급** (`actualBt = 0`). 잔여량이 없으면 단 1장의 BT도 발행되지 않습니다.
+     - 가맹점 잔여 BT가 부족한 경우(예: 30만 동 결제로 3장 요청했으나 가맹점 잔여가 1장인 경우): 오직 보유 잔여 수량인 1장만 차감 및 지급됩니다. 가맹점 잔고는 절대 음수(`< 0`)가 될 수 없습니다.
+3. **원자적 동시 차감 및 이체 (Atomic Zero-Sum Transaction):**
+   - 결제 실행 트랜잭션(`runTransaction`) 내에서 단일 원자성으로 수행되어야 합니다:
+     ```javascript
+     // 1) 가맹점 공용 문서 BT 차감
+     if (actualBt > 0) {
+       tx.update(merchantRef, {
+         btBalance: increment(-actualBt),
+         updatedAt: serverTimestamp()
+       });
+       // 2) 가맹점 대표자 계정 BT 동시 차감 (셀프 결제가 아닌 경우)
+       if (!isSelfPay) {
+         tx.set(merchantOwnerRef, {
+           btBalance: increment(-actualBt)
+         }, { merge: true });
+       }
+       // 3) 소비자 계정 BT 적립 (차감된 수량과 정확히 1:1 일치)
+       tx.update(userRef, {
+         btBalance: increment(actualBt)
+       });
+     }
+     ```
+   - **총량 보존 공식:** $\Delta \text{Customer BT} + \Delta \text{Merchant BT} = +\text{actualBt} + (-\text{actualBt}) \equiv 0$
+
 
 ---
 
@@ -610,6 +646,64 @@ npm run serve
 6. **가맹점 웹진 위젯:** `kca_webzine_widget.html` iframe 또는 `webzine-widget.js` 임베드
 
 ---
+
+# Gemini Context & Safety Guidelines
+
+## 1. Core Principles (코드 보존 원칙)
+- **No Silent Truncation**: 기존 코드를 `// ... existing code ...`, `/* rest of code unchanged */` 등의 주석으로 임의 생략하지 마세요. 전체 파일을 다시 쓸 필요가 없다면 반드시 변경된 블록만 제공하거나 표준 Unified Diff(`diff -u`) 포맷으로 출력하세요.
+- **Scope Isolation**: 사용자가 명시적으로 수정을 요구한 파일, 클래스, 함수 블록 외에는 절대 임의로 리팩터링하거나 구조를 바꾸지 마세요.
+- **Interface Stability**: 공개 API(Export된 함수, 클래스 메서드 시그니처, 인터페이스, 타입 정의)를 변경할 때는 반드시 사용자에게 변경 이유와 영향 범위를 먼저 고지하고 확인을 받으세요.
+- **Fail-Safe Editing**: 단일 파일이 500줄을 초과하는 경우, 파일 전체를 다시 쓰지 말고 수정 대상 함수 단위로 타겟팅하여 코드 조각만 반환하세요.
+
+---
+
+## 2. Code Modification Workflow (수정 작업 절차)
+AI는 코드 변경 요청을 처리할 때 다음 단계를 엄격히 준수합니다.
+
+1. **Impact Check (영향 분석)**: 수정할 로직이 호출되는 위치와 관련 타입/스키마 의존성을 먼저 명시합니다.
+2. **Targeted Diffs (부분 변경 제안)**:
+   - 교체 전 코드(Before)와 교체 후 코드(After)를 명확히 구분하여 표기합니다.
+   - 예시:
+     ```typescript
+     // [REPLACE TARGET: calculateDiscount in src/services/pricing.ts]
+     // --- Before ---
+     // const discount = total * 0.1;
+     // --- After ---
+     const discount = total * (user.isVip ? 0.2 : 0.1);
+     ```
+3. **Non-destructive Fixes**: 기존 유효성 검사, 에러 핸들링, 로깅 코드를 유지합니다.
+
+---
+
+## 3. Architecture & Tech Stack Constraints
+- **Primary Language / Runtime**: TypeScript 5.x / Node.js 20 LTS
+- **Architecture Pattern**: 도메인 주도 계층형 아키텍처 (Controller -> Service -> Repository)
+  - Controller 레이어에 비즈니스 로직을 직접 구현하지 마세요.
+  - 데이터베이스 직접 호출(쿼리)은 오직 Repository 계층에서만 허용됩니다.
+- **Type Safety**:
+  - `any` 타입의 사용을 엄격히 금지합니다.
+  - 타입 단언(`as unknown as Type`) 대신 Type Guard 함수 또는 Zod 스키마 검증을 사용하세요.
+- **Environment Variables**: 민감 정보(API 키, 토큰, DB 접속 URL)를 하드코딩하지 말고 반드시 `process.env` 또는 Config 서비스를 통하도록 작성하세요.
+
+---
+
+## 4. File-Handling & Large Codebase Rules
+- **Do Not Ingest Bloat**:
+  - `node_modules/`, `dist/`, `build/`, `.git/`, 자동 생성된 스키마/마이그레이션 덤프 파일은 컨텍스트 분석 대상에서 제외합니다.
+  - 로그 파일(`.log`), 환경 설정 파일(`.env*`)의 내용을 임의로 읽거나 출력하지 마세요.
+- **Dependency Hygiene**:
+  - 새로운 외부 패키지(`npm install`)를 임의로 추가하지 마세요.
+  - 반드시 표준 내장 모듈이나 프로젝트의 `package.json`에 이미 설치된 의존성을 최우선으로 활용하세요.
+
+---
+
+## 5. Output Verification Checklist
+응답을 마무리하기 전 다음 항목을 자체 점검하세요:
+- [ ] 요청받지 않은 다른 함수나 변수가 삭제/수정되지 않았는가?
+- [ ] 기존 임포트(`import/export`) 구문이 손실되지 않고 정상 유지되었는가?
+- [ ] 널 체크(Null check) 및 런타임 예외 처리가 기존보다 약화되지 않았는가?
+- [ ] 생략 표시(`...`) 없이 적용 대상 코드만 완결된 형태로 제공되었는가?
+
 
 *이 문서는 BestClubVN 프로젝트(`jumper_v10`)의 최우선 개발 가이드입니다.*  
 *작업 전 반드시 본 문서를 숙지하고, 정책이나 로직이 변경될 경우 반드시 본 문서를 함께 갱신합니다.*

@@ -201,7 +201,7 @@ service cloud.firestore {
     // users/{uid}
     match /users/{uid} {
       // ??FIX: ??㉱?洹먮봿???獄?????role/profile???影??꽑???????admin create/update ???깅뮔
-      allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow get: if signedIn();
       allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow update: if signedIn();
 
@@ -329,6 +329,7 @@ service cloud.firestore {
               || request.auth.uid == merchantId
               || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
                   && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.merchantId == merchantId)
+              || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['btBalance', 'updatedAt']))
             ));
     }
 

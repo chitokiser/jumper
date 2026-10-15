@@ -370,6 +370,7 @@ function playGradeSlotAnimation(grade) {
 // ── 클라이언트 Firestore 직통 결제 폴백 ──────────────────
 async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant) {
   const userRef = doc(db, "users", uid);
+  const merchantRef = doc(db, "merchants", String(merchantId));
   const merchantOwnerUid = merchant.ownerUid || merchant.ownerId || merchant.userId || merchant.uid || uid;
   const isSelfPay = (merchantOwnerUid === uid);
   const merchantOwnerRef = doc(db, "users", merchantOwnerUid);
@@ -398,6 +399,9 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
     if (curBal < finalVnd) {
       throw new Error(`보유 BM 잔액이 부족합니다. (현재 보유: ${curBal.toLocaleString()} BM, 필요: ${finalVnd.toLocaleString()} BM)`);
     }
+
+    const merchSnap = await tx.get(merchantRef);
+    const merchBt = merchSnap.exists() ? Number(merchSnap.data().btBalance || 0) : 0;
 
     const jackpotSnap = await tx.get(jackpotRef);
     let currentJackpotPool = jackpotSnap.exists() ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
@@ -428,7 +432,12 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
 
     const cashbackPoint = Math.floor(finalVnd * 0.05);
     const totalPointsEarned = safeJackpotReward + cashbackPoint;
-    const issuedBt = Math.floor(finalVnd / 100000);
+
+    // [BT 제로섬 보존 법칙 - 무한 발행 절대 방지]
+    // 10만 동당 1 BT 기준이나, 가맹점의 실제 잔여 BT(merchBt) 범위 내에서만 지급.
+    // 가맹점의 btBalance가 차감되지 않은 상태에서 소비자의 BT가 늘어나는 것은 절대 불가!
+    const maxBtRequested = Math.floor(finalVnd / 100000);
+    const actualBt = Math.min(maxBtRequested, Math.max(0, merchBt));
     const payExp = Math.floor(finalVnd / 1000);
 
     const rRed = Math.random();
@@ -474,12 +483,22 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
       });
     }
 
+    // 가맹점 BT 원자적 차감 (가맹점 보유 잔여량 차감)
+    if (actualBt > 0) {
+      tx.update(merchantRef, {
+        btBalance: increment(-actualBt),
+        updatedAt: serverTimestamp()
+      });
+    }
+
     const userUpdate = {
       pointBalanceVnd: isSelfPay ? (curBal - feeVnd) : (curBal - finalVnd),
       pointBalance: increment(totalPointsEarned),
-      btBalance: increment(issuedBt),
       gsExp: increment(payExp)
     };
+    if (actualBt > 0) {
+      userUpdate.btBalance = increment(actualBt);
+    }
     if (potionsAdded > 0) userUpdate.potions = increment(potionsAdded);
     if (mpPotionsAdded > 0) userUpdate.mpPotions = increment(mpPotionsAdded);
     if (reviveAdded > 0) userUpdate.reviveTickets = increment(reviveAdded);
@@ -488,9 +507,13 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
 
     if (!isSelfPay) {
       const ownerBal = (ownerSnap && ownerSnap.exists()) ? Number(ownerSnap.data().pointBalanceVnd || 0) : 0;
-      tx.set(merchantOwnerRef, {
+      const ownerUpdate = {
         pointBalanceVnd: ownerBal + netVnd
-      }, { merge: true });
+      };
+      if (actualBt > 0) {
+        ownerUpdate.btBalance = increment(-actualBt);
+      }
+      tx.set(merchantOwnerRef, ownerUpdate, { merge: true });
     }
 
     if (potionsAdded > 0 || mpPotionsAdded > 0 || reviveAdded > 0) {
@@ -514,6 +537,8 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
       uid,
       type: "pay_merchant",
       pointsEarned: totalPointsEarned,
+      issuedBt: actualBt,
+      requestedBt: maxBtRequested,
       grade
     });
 
@@ -540,7 +565,8 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
       pointsEarned: totalPointsEarned,
       isJackpot: totalPointsEarned > 0,
       grade: grade,
-      issuedBt: issuedBt,
+      issuedBt: actualBt,
+      requestedBt: maxBtRequested,
       payExp: payExp,
       potionsAdded,
       mpPotionsAdded,
@@ -659,7 +685,13 @@ function buildDropHtml(d) {
     items.push(`<div style="font-size:1.3em; color:#fff; font-weight:800; background:linear-gradient(135deg,#eab308,#d97706); padding:10px; border-radius:8px; text-shadow:0 0 10px rgba(0,0,0,0.3); text-align:center;box-shadow:0 4px 15px rgba(234,179,8,0.4); border: 2px solid #fef08a;">🎉 리워드 당첨! <br><span id="jackpotAmountText" style="font-size:2.4em; display:block; margin-top:5px; font-variant-numeric:tabular-nums; color:#fff; text-shadow:0 0 20px #ea1;">+${d.pointsEarned.toLocaleString()} Point</span></div>`);
   }
   if (d.issuedBt > 0) {
-    items.push(`🎟️ 보너스티켓(BT) <b>+${d.issuedBt}장</b>`);
+    if (d.requestedBt && d.requestedBt > d.issuedBt) {
+      items.push(`🎟️ 보너스티켓(BT) <b>+${d.issuedBt}장</b> <span style="font-size:12px;color:#d97706;display:block;">(가맹점 보유 잔여 한도로 ${d.requestedBt}장 중 ${d.issuedBt}장만 지급되었습니다.)</span>`);
+    } else {
+      items.push(`🎟️ 보너스티켓(BT) <b>+${d.issuedBt}장</b>`);
+    }
+  } else if (d.requestedBt > 0) {
+    items.push(`<div style="font-size:12px;color:#b91c1c;background:#fee2e2;padding:6px 10px;border-radius:6px;border:1px solid #fca5a5;">⚠️ 가맹점의 보유 BT 소진으로 보너스티켓(BT)이 지급되지 않았습니다.</div>`);
   }
   if (d.payExp > 0) {
     items.push(`⭐ 경험치 <b>+${d.payExp.toLocaleString()} EXP</b>`);
