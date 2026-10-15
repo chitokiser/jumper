@@ -13,6 +13,7 @@ import {
   onSnapshot,
   updateDoc,
   serverTimestamp,
+  increment,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import {
   httpsCallable,
@@ -260,9 +261,9 @@ function playUltimateJackpotEffect(amount) {
     const update = () => {
       current += step;
       if (current >= amount) {
-        textEl.textContent = `+${amount.toLocaleString()} KM`;
+        textEl.textContent = `+${amount.toLocaleString()} Point`;
       } else {
-        textEl.textContent = `+${Math.floor(current).toLocaleString()} KM`;
+        textEl.textContent = `+${Math.floor(current).toLocaleString()} Point`;
         requestAnimationFrame(update);
       }
     };
@@ -372,14 +373,24 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
   const merchantOwnerUid = merchant.ownerUid || merchant.ownerId || merchant.userId || merchant.uid || uid;
   const isSelfPay = (merchantOwnerUid === uid);
   const merchantOwnerRef = doc(db, "users", merchantOwnerUid);
+  const jackpotRef = doc(db, "jackpot_config", "current");
+  const bpRef = doc(db, "battle_players", uid);
+
   const txHash = "TX_FB_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
   const checkTxRef = doc(db, "transactions", txHash);
+  const roundRef = doc(db, "jackpot_rounds", txHash);
+  const winRef = doc(db, "jackpot_wins", txHash);
+  const incomeTxRef = doc(db, "transactions", "TX_INC_" + Date.now() + "_" + Math.floor(Math.random() * 10000));
 
   const feeBps = Number(merchant.feeBps) > 0 ? Number(merchant.feeBps) : 1000;
   const feeVnd = Math.round((finalVnd * feeBps) / 10000);
   const netVnd = finalVnd - feeVnd;
+  const jackpotBonusVnd = Math.round(feeVnd * 0.30);
+
+  let payResult = null;
 
   await runTransaction(db, async (tx) => {
+    // 1. ALL READS FIRST
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists()) throw new Error("회원 정보를 찾을 수 없습니다.");
     const uData = userSnap.data();
@@ -388,18 +399,106 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
       throw new Error(`보유 BM 잔액이 부족합니다. (현재 보유: ${curBal.toLocaleString()} BM, 필요: ${finalVnd.toLocaleString()} BM)`);
     }
 
-    if (isSelfPay) {
-      tx.update(userRef, {
-        pointBalanceVnd: curBal - feeVnd
+    const jackpotSnap = await tx.get(jackpotRef);
+    let currentJackpotPool = jackpotSnap.exists() ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
+
+    let ownerSnap = null;
+    if (!isSelfPay) {
+      ownerSnap = await tx.get(merchantOwnerRef);
+    }
+
+    // 2. CALCULATIONS
+    currentJackpotPool += jackpotBonusVnd; // 결제로 발생한 잭팟 기여금을 즉시 풀에 합산 후 추첨
+
+    const r_grade = Math.random() * 100;
+    let grade = 0;
+    if (r_grade < 0.1) grade = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
+    else if (r_grade < 0.6) grade = Math.floor(Math.random() * (50 - 21 + 1)) + 21;
+    else if (r_grade < 2.6) grade = Math.floor(Math.random() * (100 - 51 + 1)) + 51;
+    else if (r_grade < 12.6) grade = Math.floor(Math.random() * (300 - 101 + 1)) + 101;
+    else if (r_grade < 37.6) grade = Math.floor(Math.random() * (500 - 301 + 1)) + 301;
+    else if (r_grade < 72.6) grade = Math.floor(Math.random() * (800 - 501 + 1)) + 501;
+    else grade = Math.floor(Math.random() * (1000 - 801 + 1)) + 801;
+
+    let reward = Math.floor((feeVnd + currentJackpotPool) / grade) + Math.floor(feeVnd / grade);
+    if (reward <= 0 && (feeVnd > 0 || currentJackpotPool > 0)) reward = 1;
+    if (reward < 0) reward = 0;
+    const safeJackpotReward = Math.max(0, Math.floor(Number(reward) || 0));
+    currentJackpotPool = Math.max(0, currentJackpotPool - safeJackpotReward);
+
+    const cashbackPoint = Math.floor(finalVnd * 0.05);
+    const totalPointsEarned = safeJackpotReward + cashbackPoint;
+    const issuedBt = Math.floor(finalVnd / 100000);
+    const payExp = Math.floor(finalVnd / 1000);
+
+    const rRed = Math.random();
+    const rMp = Math.random();
+    const rRevive = Math.random();
+    const potionsAdded = rRed < 0.20 ? 1 : 0;
+    const mpPotionsAdded = rMp < 0.10 ? 1 : 0;
+    const reviveAdded = rRevive < 0.05 ? 1 : 0;
+
+    // 3. ALL WRITES
+    tx.set(jackpotRef, {
+      jackpotAccVnd: currentJackpotPool,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    const finalWinWeiAmt = (BigInt(totalPointsEarned) * 1000000000000000000n).toString();
+    tx.set(roundRef, {
+      isWinner: totalPointsEarned > 0,
+      randomValue: grade,
+      finalWinWei: finalWinWeiAmt,
+      btUsed: 0,
+      createdAt: serverTimestamp()
+    });
+
+    if (totalPointsEarned > 0) {
+      const displayName = uData.name || uData.nickname || (uData.email ? uData.email.split('@')[0] : 'User');
+      tx.set(winRef, {
+        uid,
+        userName: displayName,
+        userAddress: uData.walletAddress || '',
+        merchantName: merchant.name || '',
+        merchantId: Number(merchantId),
+        amountVnd: totalPointsEarned,
+        amountKrw: totalPointsEarned,
+        pointsEarned: totalPointsEarned,
+        grade: grade,
+        btUsed: 0,
+        potionCount: potionsAdded,
+        mpPotionCount: mpPotionsAdded,
+        reviveAdded: reviveAdded,
+        createdAt: serverTimestamp(),
+        txHash
       });
-    } else {
-      const ownerSnap = await tx.get(merchantOwnerRef);
+    }
+
+    const userUpdate = {
+      pointBalanceVnd: isSelfPay ? (curBal - feeVnd) : (curBal - finalVnd),
+      pointBalance: increment(totalPointsEarned),
+      btBalance: increment(issuedBt),
+      gsExp: increment(payExp)
+    };
+    if (potionsAdded > 0) userUpdate.potions = increment(potionsAdded);
+    if (mpPotionsAdded > 0) userUpdate.mpPotions = increment(mpPotionsAdded);
+    if (reviveAdded > 0) userUpdate.reviveTickets = increment(reviveAdded);
+
+    tx.update(userRef, userUpdate);
+
+    if (!isSelfPay) {
       const ownerBal = (ownerSnap && ownerSnap.exists()) ? Number(ownerSnap.data().pointBalanceVnd || 0) : 0;
-      tx.update(userRef, {
-        pointBalanceVnd: curBal - finalVnd
-      });
       tx.set(merchantOwnerRef, {
         pointBalanceVnd: ownerBal + netVnd
+      }, { merge: true });
+    }
+
+    if (potionsAdded > 0 || mpPotionsAdded > 0 || reviveAdded > 0) {
+      tx.set(bpRef, {
+        potions: increment(potionsAdded),
+        mpPotions: increment(mpPotionsAdded),
+        reviveTickets: increment(reviveAdded),
+        updatedAt: serverTimestamp()
       }, { merge: true });
     }
 
@@ -413,11 +512,12 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
       merchantName: merchant.name || "",
       txHash,
       uid,
-      type: "pay_merchant"
+      type: "pay_merchant",
+      pointsEarned: totalPointsEarned,
+      grade
     });
 
     // 가맹점 정산 수입 기록 (merchant-qr.js 수신 감지용)
-    const incomeTxRef = doc(db, "transactions", "TX_INC_" + Date.now() + "_" + Math.floor(Math.random() * 10000));
     tx.set(incomeTxRef, {
       createdAt: serverTimestamp(),
       currency: "VND",
@@ -431,15 +531,24 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
       buyerUid: uid,
       type: "merchant_income"
     });
+
+    payResult = {
+      txHash,
+      merchantName: merchant.name || "",
+      amountVnd: finalVnd,
+      amountKrw: Math.round(finalVnd / 18),
+      pointsEarned: totalPointsEarned,
+      isJackpot: totalPointsEarned > 0,
+      grade: grade,
+      issuedBt: issuedBt,
+      payExp: payExp,
+      potionsAdded,
+      mpPotionsAdded,
+      reviveAdded
+    };
   });
 
-  return {
-    txHash,
-    merchantName: merchant.name || "",
-    amountVnd: finalVnd,
-    amountKrw: Math.round(finalVnd / 18),
-    pointsEarned: 0
-  };
+  return payResult;
 }
 
 // ── 결제 버튼 바인딩 ──────────────────────────────────
@@ -515,7 +624,7 @@ function bindPayButton() {
       // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
-      const jpBox = $("jackpotResultBox"); if (jpBox) jpBox.style.display = "none"; const jpWait = $("jpWaiting"); if (jpWait) jpWait.style.display = "none"; watchJackpotResult(d.txHash);
+      watchJackpotResult(d.txHash);
 
       const krwStr = `${(d.amountKrw || 0).toLocaleString()}원`;
       const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}동` : '';
@@ -528,9 +637,6 @@ function bindPayButton() {
           <div class="mp-kv"><span class="k">결제 금액</span><span class="v">${paidAmountStr}</span></div>
           ${buildDropHtml(d)}
         `;
-      }
-      if (d.pointsEarned > 0) {
-        setTimeout(() => playUltimateJackpotEffect(d.pointsEarned), 100);
       }
     } catch (err) {
       if (stateEl) stateEl.style.display = "none";
@@ -550,7 +656,13 @@ function bindPayButton() {
 function buildDropHtml(d) {
   const items = [];
   if (d.pointsEarned > 0) {
-    items.push(`<div style="font-size:1.3em; color:#fff; font-weight:800; background:linear-gradient(135deg,#eab308,#d97706); padding:10px; border-radius:8px; text-shadow:0 0 10px rgba(0,0,0,0.3); text-align:center;box-shadow:0 4px 15px rgba(234,179,8,0.4); border: 2px solid #fef08a;">🎉 리워드 당첨! <br><span id="jackpotAmountText" style="font-size:2.4em; display:block; margin-top:5px; font-variant-numeric:tabular-nums; color:#fff; text-shadow:0 0 20px #ea1;">+${d.pointsEarned.toLocaleString()} KM</span></div>`);
+    items.push(`<div style="font-size:1.3em; color:#fff; font-weight:800; background:linear-gradient(135deg,#eab308,#d97706); padding:10px; border-radius:8px; text-shadow:0 0 10px rgba(0,0,0,0.3); text-align:center;box-shadow:0 4px 15px rgba(234,179,8,0.4); border: 2px solid #fef08a;">🎉 리워드 당첨! <br><span id="jackpotAmountText" style="font-size:2.4em; display:block; margin-top:5px; font-variant-numeric:tabular-nums; color:#fff; text-shadow:0 0 20px #ea1;">+${d.pointsEarned.toLocaleString()} Point</span></div>`);
+  }
+  if (d.issuedBt > 0) {
+    items.push(`🎟️ 보너스티켓(BT) <b>+${d.issuedBt}장</b>`);
+  }
+  if (d.payExp > 0) {
+    items.push(`⭐ 경험치 <b>+${d.payExp.toLocaleString()} EXP</b>`);
   }
   if (d.potionsAdded > 0) items.push(`<img src="/assets/images/item/hp.png" style="width:28px;height:28px;vertical-align:middle;"> 빨간약 <b>+${d.potionsAdded}</b>`);
   if (d.mpPotionsAdded > 0) items.push(`<img src="/assets/images/item/mp.png" style="width:28px;height:28px;vertical-align:middle;"> 마법약 <b>+${d.mpPotionsAdded}</b>`);
@@ -576,6 +688,7 @@ function watchJackpotResult(txHash) {
 
   // 슬롯머신 시작
   const slot = initSlot($("jpWaiting"));
+  const startTime = Date.now();
 
   let unsub = null;
   let retryTimer = null;
@@ -593,17 +706,31 @@ function watchJackpotResult(txHash) {
     revealed = true;
     cleanup();
     const isWin = data.isWinner && BigInt(data.finalWinWei || "0") > 0n;
-    slot.stop(data.randomValue ?? 0, isWin, () => {
-      show("jpWaiting", false);
-      if (isWin) {
-        setText("jpWinAmount", `${weiToHex(data.finalWinWei)} Point`);
-        show("jpWin", true);
-      } else {
-        const el = $("jpNoWinRand");
-        if (el) el.textContent = `랜덤 번호: ${data.randomValue ?? 0} / 9999`;
-        show("jpNoWin", true);
-      }
-    });
+
+    // 슬롯 회전감을 충분히 느낄 수 있도록 최소 1.5초 스핀 후 감속 정지
+    const elapsed = Date.now() - startTime;
+    const waitTime = Math.max(0, 1500 - elapsed);
+
+    setTimeout(() => {
+      slot.stop(data.randomValue ?? 0, isWin, () => {
+        show("jpWaiting", false);
+        if (isWin) {
+          const winAmt = Number(weiToHex(data.finalWinWei));
+          setText("jpWinAmount", `+${winAmt.toLocaleString()} Point`);
+          const titleEl = box.querySelector(".jp-win-title");
+          if (titleEl) {
+            titleEl.textContent = `🎉 잭팟 당첨! (행운 등급: 1/${data.randomValue})`;
+          }
+          show("jpWin", true);
+          // 축하 콘페티 및 사운드 폭발
+          playUltimateJackpotEffect(winAmt);
+        } else {
+          const el = $("jpNoWinRand");
+          if (el) el.textContent = `추첨 번호: ${data.randomValue ?? 0} / 9999`;
+          show("jpNoWin", true);
+        }
+      });
+    }, waitTime);
   };
 
   // 30초 후: 수동 재확인 버튼
