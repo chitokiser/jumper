@@ -31,12 +31,10 @@ import {
   clearTrialMonsters,
   onPlayerExp, onPlayerLevelUp,
   addPlayerGold, spendPlayerGold, addPlayerGsExp,
-  getPlayerSnapshot, syncPlayerFromDungeon,
   spendPlayerMp, getPlayerMp, getPlayerMaxMp,
   setSpawnPos, updateSpawnPos, stopGpListener
 }
   from './merchants.battle.js';
-import { initDungeonGame, openDungeonGame } from './merchants.dungeon.js';
 import {
   initGameServer, connectToGameServer, disconnectFromGameServer,
   isGameServerConnected, sendPlayerLocation,
@@ -316,7 +314,7 @@ function _exitFullscreen() {
 // 새 모달 추가 시: HTML에 data-fs-modal 속성만 붙이면 자동 이동
 const FS_MODALS = [
   'invModal', 'shopModal', 'shopAdminModal', 'itemReveal', 'collectToast', 'criticalToast',
-  'skillTargetModal', 'slotModal', 'memoryGameModal', 'archeryModal', 'raceModal', 'dungeonModal',
+  'skillTargetModal',
   'utNpcModal', 'utRegModal', 'utMyModal',
   'userPlacePanel', 'userPlaceConfirmModal', 'userPlaceBanner', 'btnUserPlaceCancelMode',
   'soBuyModal', 'soExecuteModal', 'soTransferModal',
@@ -3730,54 +3728,6 @@ async function init() {
   $('skillBtnHeal')?.addEventListener('click', castHeal);
   $('skillBtnMpPotion')?.addEventListener('click', useMpPotion);
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
-
-  initDungeonGame({
-    onSpendGold: (amount) => spendPlayerGold(amount),
-    onAddGold: (amount) => addPlayerGold(amount),
-    onPlaySound: (type) => playSound(type),
-    getInventory: () => ({ ..._inventory }),
-    getPlayerSnapshot: () => getPlayerSnapshot(),
-    onSyncPlayer: (state) => syncPlayerFromDungeon(state),
-    onUseItem: (itemId, cnt = 1) => {
-      const cur = _inventory[itemId] || 0;
-      if (cur < cnt) return false;
-      const remaining = cur - cnt;
-      if (remaining <= 0) delete _inventory[itemId];
-      else _inventory[itemId] = remaining;
-      updateInventoryBar?.();
-      return true;
-    },
-    onExit: () => {
-      try { document.getElementById('ghFloatBtn')?.style && (document.getElementById('ghFloatBtn').style.display = 'flex'); } catch { }
-    },
-    onDungeonEnd: ({ gp }) => {
-      httpsCallable(functions, 'broadcastGpEvent')({ game: 'dungeon', amount: gp }).catch(() => { });
-    },
-  });
-
-  // 미니게임 버튼 — 팝업 서브메뉴
-  (function () {
-    const popup = $('miniGamePopup');
-    $('skillBtnMiniGame')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      popup?.classList.toggle('hidden');
-    });
-    $('miniGameDungeon')?.addEventListener('click', () => {
-      popup?.classList.add('hidden');
-      // ── 던전 진입 사전 안내 ────────────────────────────────────────────
-      if (!_gameStarted) {
-        showToast('📍 먼저 게임 시작 버튼(▶)을 눌러 보물찾기를 시작하세요!', 'warn');
-        return;
-      }
-      if (isPlayerDead()) {
-        showToast('💀 사망 상태입니다. 부활 아이템을 사용하거나 부활 지점으로 이동하세요.', 'warn');
-        return;
-      }
-      openDungeonGame();
-    });
-    // 팝업 외부 클릭 시 닫기
-    document.addEventListener('click', () => popup?.classList.add('hidden'));
-  })();
 
   // 키보드 단축키 1-9
   document.addEventListener('keydown', (e) => {
