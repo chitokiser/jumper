@@ -949,6 +949,17 @@ service cloud.firestore {
         allow update, delete: if isAdmin() || isAuthenticated();
       }
 
+      // --- 잭팟 라운드 & 당첨 컬렉션 ---
+      match /jackpot_rounds/{roundId} {
+        allow read: if true;
+        allow create, update: if signedIn();
+      }
+
+      match /jackpot_wins/{winId} {
+        allow read: if true;
+        allow create, update: if signedIn();
+      }
+
       // --- 베스트 매거진 (Webzine) 컬렉션 ---
       match /webzine_articles/{articleId} {
         allow read: if true;
