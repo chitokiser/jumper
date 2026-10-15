@@ -1,8 +1,7 @@
-﻿// assets/js/pages/merchants.goldmine.js
+// assets/js/pages/merchants.goldmine.js
 // Gold Mine — map markers, modal UI, Cloud Function calls
 
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
-import { isVirtualMode, getVirtualPos } from './merchants.virtual.js';
 import { initMiners, updateMiners, clearMiners } from './merchants.goldmine.miners.js';
 
 let _fns  = null;
@@ -399,9 +398,7 @@ async function _doInstall(storeId, shopLat, shopLng) {
   _showToast('Installing…', 'info');
   try {
     const fn = httpsCallable(_fns, 'createGoldMine');
-    const pos = _ctx?.gpsPos
-      ?? (isVirtualMode() ? getVirtualPos() : null)
-      ?? _ctx?.lastPos;
+    const pos = _ctx?.gpsPos ?? _ctx?.lastPos;
     const lat = pos?.lat ?? shopLat ?? null;
     const lng = pos?.lng ?? shopLng ?? null;
     const { data } = await fn({ storeId, lat, lng });

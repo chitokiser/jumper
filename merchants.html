@@ -3560,7 +3560,7 @@
         
         
         <button id="btnHarborSv" class="map-hud-btn" title="Trade Ships — View ships &amp; claim dividends">⛵</button>
-        <button id="btnVirtualMode" class="map-hud-btn" title="Browse shops — warp to a shop" style="display:none;">🌍</button><button id="btnModeToggle" class="map-hud-btn" title="GPS Mode" style="display:none;font-size:10px;font-weight:800;flex-direction:column;line-height:1.2;color:#ef4444;"><span style="font-size:14px;margin-bottom:-2px;">📍</span>GPS</button><button id="btnFullscreen" class="map-hud-btn" title="Toàn màn hình">⛶</button>
+        <button id="btnFullscreen" class="map-hud-btn" title="Toàn màn hình">⛶</button>
         <button id="btnBgm" class="map-hud-btn" title="BGM On/Off">🎵</button>
         <button id="btnGameToggle" class="map-hud-btn" title="Connect to game server">▶</button>
         <div id="gsStatusBadge"></div>
@@ -3645,11 +3645,7 @@
           <span id="mcPlayerGp" style="font-size:12px;font-weight:800;color:#fbbf24;">— GP</span>
         </div>
         <div style="flex:1;"></div>
-        
       </div>
-
-      <!-- 좌표 점프 패널 -->
-      
 
       <!-- 카테고리 탭 (모바일 최적화 메뉴) -->
       <style>
@@ -4451,61 +4447,6 @@
       if (btnBgmMain) {
         btnBgmMain.addEventListener('click', () => setTimeout(syncBgmFloat, 20));
       }
-
-      /* ── Coord BestClub Float Popup ────────────────────────────────── */
-      const btnJumpFloat = document.getElementById('btnCoordJumpFloat');
-      const popup = document.getElementById('coordJumpPopup');
-      const jumpInput = document.getElementById('floatJumpCoordInput');
-      const btnJumpGo = document.getElementById('btnFloatJumpGo');
-
-      function showPopup(open) {
-        if (!popup) return;
-        popup.style.display = open ? 'block' : 'none';
-        if (open) {
-          const fsRoot = document.fullscreenElement || document.webkitFullscreenElement || document.body;
-          if (popup.parentElement !== fsRoot) fsRoot.appendChild(popup);
-          jumpInput?.focus();
-        }
-      }
-
-      if (btnJumpFloat) {
-        btnJumpFloat.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showPopup(popup.style.display === 'none' || popup.style.display === '');
-        });
-      }
-
-      document.addEventListener('click', (e) => {
-        if (popup && popup.style.display === 'block' &&
-          !popup.contains(e.target) && e.target !== btnJumpFloat) {
-          showPopup(false);
-        }
-      });
-
-      function doBestClub() {
-        if (!jumpInput) return;
-        const parts = jumpInput.value.split(',').map(s => parseFloat(s.trim()));
-        const lat = parts[0], lng = parts[1];
-        if (isNaN(lat) || isNaN(lng)) {
-          window.showToast?.('Enter coordinates like: 21.13070, 106.73020', 'warn');
-          return;
-        }
-        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-          window.showToast?.('Coordinates out of valid range.', 'warn');
-          return;
-        }
-        const coordsEl = document.getElementById('jumpCoords');
-        if (coordsEl) coordsEl.value = `${lat}, ${lng}`;
-        const sLat = document.getElementById('jumpLat');
-        const sLng = document.getElementById('jumpLng');
-        if (sLat) sLat.value = lat;
-        if (sLng) sLng.value = lng;
-        document.getElementById('btnCoordBestClub')?.click();
-        showPopup(false);
-      }
-
-      if (btnJumpGo) btnJumpGo.addEventListener('click', doBestClub);
-      if (jumpInput) jumpInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doBestClub(); });
     })();
   </script>
 
