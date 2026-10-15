@@ -3,21 +3,66 @@ import { collection, getDocs, query, where } from "https://www.gstatic.com/fireb
 
 const $ = id => document.getElementById(id);
 let map = null;
+let infoWindow = null;
+const markers = [];
+
+function loadGoogleMapsScript() {
+    return new Promise((resolve, reject) => {
+        if (window.google?.maps) return resolve();
+        window.__findMerchantMapCb = () => resolve();
+        const apiKey = window.__mapsKey || "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";
+        const script = document.createElement("script");
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=__findMerchantMapCb&language=ko&region=VN`;
+        script.async = true;
+        script.onerror = () => reject(new Error("구글 지도 스크립트 로드에 실패했습니다."));
+        document.head.appendChild(script);
+    });
+}
+
+function parseCoords(d) {
+    if (d.lat && d.lng && !isNaN(d.lat) && !isNaN(d.lng)) {
+        return { lat: Number(d.lat), lng: Number(d.lng) };
+    }
+    const gUrl = d.gmapUrl || d.mapUrl || d.gmap || "";
+    if (typeof gUrl === "string") {
+        const m1 = gUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (m1) return { lat: parseFloat(m1[1]), lng: parseFloat(m1[2]) };
+        const m2 = gUrl.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+        if (m2) return { lat: parseFloat(m2[1]), lng: parseFloat(m2[2]) };
+    }
+    return null;
+}
 
 async function init() {
     const mapEl = $("merchantMap");
+    if (mapEl) {
+        mapEl.innerHTML = "<div style='display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-weight:600;'>구글 지도를 불러오는 중입니다...</div>";
+    }
 
-    // Initialize Leaflet map
-    if (mapEl && typeof L !== "undefined") {
-        mapEl.innerHTML = ""; // Clear loading text
-        map = L.map(mapEl).setView([21.0285, 105.8542], 12); // Default to Hanoi
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-    } else {
-        if (mapEl) mapEl.innerHTML = "지도 정보를 불러올 수 없습니다.";
+    try {
+        await loadGoogleMapsScript();
+        if (mapEl) {
+            mapEl.innerHTML = "";
+            mapEl.style.display = "block";
+            map = new google.maps.Map(mapEl, {
+                center: { lat: 21.005, lng: 105.775 }, // Centered on Hanoi region
+                zoom: 12,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: true,
+                zoomControl: true,
+                styles: [
+                    { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+                    { featureType: "transit", elementType: "labels.icon", stylers: [{ visibility: "off" }] }
+                ]
+            });
+            infoWindow = new google.maps.InfoWindow();
+        }
+    } catch (mapErr) {
+        console.error("Google Maps failed to load:", mapErr);
+        if (mapEl) {
+            mapEl.innerHTML = `<div style='display:flex;align-items:center;justify-content:center;height:100%;color:#ef4444;font-weight:600;'>구글 지도를 불러올 수 없습니다. (${mapErr.message})</div>`;
+        }
     }
 
     try {
@@ -30,7 +75,8 @@ async function init() {
             return;
         }
 
-        const bounds = map ? L.latLngBounds() : null;
+        const bounds = map ? new google.maps.LatLngBounds() : null;
+        let validCoordsCount = 0;
 
         snap.forEach(docSnap => {
             const d = docSnap.data();
@@ -39,8 +85,8 @@ async function init() {
             const card = document.createElement("div");
             card.className = "mc-card";
             const btCount = d.btBalance || 0;
-            const kmFee = d.kmFeeRatio || 10;
-            const reviews = d.reviewCount || Math.floor(Math.random() * 50); // Mock if missing
+            const kmFee = d.feeBps ? (d.feeBps / 100) : (d.kmFeeRatio || 10);
+            const reviews = d.reviewCount || Math.floor(Math.random() * 50);
             const likes = d.likeCount || Math.floor(Math.random() * 100);
 
             const logoUrl = d.logoUrl || d.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=150&h=150&q=80";
@@ -80,23 +126,53 @@ async function init() {
           </div>
         `;
 
-            // Add marker if coordinates exist
-            if (d.lat && d.lng && map) {
-                const pos = [Number(d.lat), Number(d.lng)];
-                const marker = L.marker(pos).addTo(map).bindPopup(`<b>${d.name || "가맹점"}</b>`);
-                bounds.extend(pos);
+            // Add Google Maps marker if coordinates exist
+            const pos = parseCoords(d);
+            if (pos && map) {
+                const marker = new google.maps.Marker({
+                    position: pos,
+                    map: map,
+                    title: d.name || "가맹점",
+                    animation: google.maps.Animation.DROP
+                });
+                markers.push(marker);
+
+                const infoHtml = `
+                  <div style="padding:10px;font-family:sans-serif;max-width:240px;line-height:1.4;">
+                    <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:4px;">${d.name || "가맹점"}</div>
+                    <div style="font-size:12px;color:#f59e0b;font-weight:700;margin-bottom:6px;">🎟️ ${btCount} BT 보유</div>
+                    <div style="font-size:12px;color:#64748b;margin-bottom:8px;">${d.career || ""} · ${d.region || ""}</div>
+                    ${d.phone ? `<div style="font-size:12px;color:#334155;margin-bottom:8px;">📞 ${d.phone}</div>` : ""}
+                    ${d.website ? `<a href="${d.website}" target="_blank" style="display:inline-block;padding:5px 10px;background:#7c3aed;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;">홈페이지 방문 →</a>` : ""}
+                  </div>
+                `;
+
+                marker.addListener("click", () => {
+                    infoWindow.setContent(infoHtml);
+                    infoWindow.open(map, marker);
+                });
 
                 card.onclick = () => {
-                    map.setView(pos, 15);
-                    window.scrollTo({ top: mapEl.offsetTop - 120, behavior: "smooth" });
+                    map.panTo(pos);
+                    map.setZoom(16);
+                    infoWindow.setContent(infoHtml);
+                    infoWindow.open(map, marker);
+                    window.scrollTo({ top: mapEl.offsetTop - 100, behavior: "smooth" });
                 };
+
+                bounds.extend(pos);
+                validCoordsCount++;
             }
 
             grid.appendChild(card);
         });
 
-        if (map && bounds && bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [50, 50] });
+        if (map && bounds && validCoordsCount > 0) {
+            map.fitBounds(bounds);
+            const listener = google.maps.event.addListener(map, "idle", () => {
+                if (map.getZoom() > 16) map.setZoom(16);
+                google.maps.event.removeListener(listener);
+            });
         }
     } catch (err) {
         console.error("Error fetching merchants:", err);
