@@ -438,6 +438,7 @@ async function loadMerchants() {
               <button class="btn btn-sm" type="button" data-act="chargeBt" data-mid="${esc(mid)}">🎟️ BT 충전</button>
               <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:${v.gmap ? '#fef3c7' : '#f3f4f6'};color:${v.gmap ? '#92400e' : '#6b7280'};">🗺️ ${v.gmap ? "지도수정" : "지도등록"}</button>
               <button class="btn btn-sm" type="button" data-act="setMerchantImage" data-mid="${esc(mid)}" data-imageurl="${esc(v.imageUrl || '')}" style="background:${v.imageUrl ? '#ede9fe' : '#f3f4f6'};color:${v.imageUrl ? '#5b21b6' : '#6b7280'};">🖼️ ${v.imageUrl ? "이미지수정" : "이미지등록"}</button>
+              <button class="btn btn-sm" type="button" data-act="deleteMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || mid)}" style="background:#ef4444;color:#fff;border-color:#ef4444;">🗑️ 가맹점 삭제</button>
             ` : ""}
           </div>
         </summary>
@@ -469,6 +470,7 @@ async function loadMerchants() {
             <button class="btn btn-sm" type="button" data-act="approveMerchant" data-mid="${esc(mid)}" data-feebps="${feeBps}">수수료 설정</button>
             <button class="btn btn-sm" type="button" data-act="setMerchantGmap" data-mid="${esc(mid)}" data-gmap="${esc(v.gmap || '')}" style="background:#fef3c7;color:#92400e;">🗺️ 지도 URL 설정</button>
             <button class="btn btn-sm" type="button" data-act="setMerchantImage" data-mid="${esc(mid)}" data-imageurl="${esc(v.imageUrl || '')}" style="background:#ede9fe;color:#5b21b6;">🖼️ 이미지 URL 설정</button>
+            <button class="btn btn-sm" type="button" data-act="deleteMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || mid)}" style="background:#ef4444;color:#fff;border-color:#ef4444;">🗑️ 가맹점 삭제</button>
           </div>` : ""}
         </div>
       </details>
@@ -509,11 +511,15 @@ async function approveMerchant(mid, currentFeeBps) {
 
     for (const tId of targetIds) {
       try {
-        await setDoc(doc(db, "merchants", tId), {
-          feeBps: Number(feeBps),
-          approvedAt: serverTimestamp(),
-          active: true
-        }, { merge: true });
+        const mRef = doc(db, "merchants", tId);
+        const mSnap = await getDoc(mRef);
+        if (mSnap.exists() || tId === cleanMid) {
+          await setDoc(mRef, {
+            feeBps: Number(feeBps),
+            approvedAt: serverTimestamp(),
+            active: true
+          }, { merge: true });
+        }
       } catch (e) {
         console.warn("Direct merchant fee update warning:", tId, e);
       }
@@ -534,6 +540,25 @@ async function approveMerchant(mid, currentFeeBps) {
     setState("수수료 설정 실패");
     console.error("approveMerchant:", err);
     alert("수수료 설정 실패: " + (err.message || String(err)));
+  }
+}
+
+async function deleteMerchant(mid, name) {
+  if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+  const cleanMid = String(mid || "").trim();
+  const ok = confirm(`정말 가맹점 [${name}] (ID: ${cleanMid})을(를) 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`);
+  if (!ok) return;
+
+  setState("가맹점 삭제 중…");
+  try {
+    await deleteDoc(doc(db, "merchants", cleanMid));
+    setState("가맹점 삭제 완료");
+    alert(`가맹점 [${name}] (ID: ${cleanMid})이(가) 정상적으로 삭제되었습니다.`);
+    await loadMerchants();
+  } catch (err) {
+    setState("가맹점 삭제 실패");
+    console.error("deleteMerchant:", err);
+    alert("가맹점 삭제 실패: " + (err.message || String(err)));
   }
 }
 
@@ -2044,6 +2069,8 @@ merchantList?.addEventListener("click", async (e) => {
         }
       }
       openDialog("가맹점 상세 (JSON)", { merchantId: mid, ...mData, _ownerProfile: ownerProfile });
+    } else if (act === "deleteMerchant") {
+      await deleteMerchant(mid, btn.dataset.name || mid);
     }
   } catch (err) {
     console.error(err);
