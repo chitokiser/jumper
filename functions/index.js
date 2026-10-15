@@ -618,11 +618,12 @@ exports.adminSetMerchantFee = onCall(
   wrapError(async (request) => {
     requireAuth(request);
     const { merchantId, feeBps } = request.data ?? {};
-    if (merchantId == null) throw new HttpsError('invalid-argument', 'merchantId 누락');
+    if (merchantId == null || String(merchantId).trim() === '') throw new HttpsError('invalid-argument', 'merchantId 누락');
     const bps = feeBps !== undefined ? Number(feeBps) : 1000;
     if (!Number.isFinite(bps) || bps < 0 || bps > 10000)
       throw new HttpsError('invalid-argument', 'feeBps 오류');
-    const result = await txH.adminSetMerchantFeeOnChain(Number(merchantId), bps);
+    const mId = isNaN(Number(merchantId)) || String(merchantId).trim() === '' ? String(merchantId).trim() : Number(merchantId);
+    const result = await txH.adminSetMerchantFeeOnChain(mId, bps);
     logger.info('adminSetMerchantFee', result);
     return result;
   })
@@ -3138,9 +3139,10 @@ exports.adminChargeBt = onCall(
     const adminUid = requireAuth(request);
     await requireAdmin(adminUid);
     const { merchantId, amount } = request.data ?? {};
-    if (!merchantId || !amount) throw new HttpsError('invalid-argument', 'merchantId와 amount가 필요합니다.');
+    if (merchantId == null || String(merchantId).trim() === '' || !amount) throw new HttpsError('invalid-argument', 'merchantId와 amount가 필요합니다.');
 
-    return await txH.adminChargeBt(adminUid, Number(merchantId), Number(amount));
+    const mId = isNaN(Number(merchantId)) || String(merchantId).trim() === '' ? String(merchantId).trim() : Number(merchantId);
+    return await txH.adminChargeBt(adminUid, mId, Number(amount));
   })
 );
 

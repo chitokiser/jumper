@@ -512,11 +512,21 @@ async function registerMerchantOnChain(uid, metadataURI, merchantData, masterSec
  */
 async function adminSetMerchantFeeOnChain(merchantId, feeBps) {
   const db = admin.firestore();
-  await db.collection('merchants').doc(String(merchantId)).set({
-    feeBps: Number(feeBps),
-    approvedAt: admin.firestore.FieldValue.serverTimestamp(),
-    active: true
-  }, { merge: true });
+  const mIdStr = String(merchantId || '').trim();
+  const targets = [mIdStr];
+  if (mIdStr === "bestwinner") targets.push("1791605366");
+  else if (mIdStr === "1791605366") targets.push("bestwinner");
+  else if (mIdStr === "daehan_kimchi") targets.push("1791002036");
+  else if (mIdStr === "1791002036") targets.push("daehan_kimchi");
+
+  for (const tId of targets) {
+    if (!tId) continue;
+    await db.collection('merchants').doc(tId).set({
+      feeBps: Number(feeBps),
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      active: true
+    }, { merge: true });
+  }
   return { txHash: 'FIREBASE_NATIVE', merchantId, feeBps };
 }
 
@@ -1504,25 +1514,44 @@ async function createBtRewardSession(uid, data) {
 
 async function adminChargeBt(adminUid, merchantId, amount) {
   const db = admin.firestore();
-  const merchRef = db.collection('merchants').doc(String(merchantId));
+  const mIdStr = String(merchantId || '').trim();
+  let merchRef = db.collection('merchants').doc(mIdStr);
+  let snap = await merchRef.get();
+
+  // Alias lookup if not found
+  if (!snap.exists) {
+    if (mIdStr === "bestwinner") {
+      merchRef = db.collection('merchants').doc("1791605366");
+      snap = await merchRef.get();
+    } else if (mIdStr === "1791605366") {
+      merchRef = db.collection('merchants').doc("bestwinner");
+      snap = await merchRef.get();
+    } else if (mIdStr === "daehan_kimchi") {
+      merchRef = db.collection('merchants').doc("1791002036");
+      snap = await merchRef.get();
+    } else if (mIdStr === "1791002036") {
+      merchRef = db.collection('merchants').doc("daehan_kimchi");
+      snap = await merchRef.get();
+    }
+  }
 
   await db.runTransaction(async (t) => {
-    const snap = await t.get(merchRef);
-    if (!snap.exists) throw new Error('가맹점이 없습니다.');
-    const mData = snap.data();
+    const curSnap = await t.get(merchRef);
+    if (!curSnap.exists) throw new Error('가맹점이 없습니다.');
+    const mData = curSnap.data();
 
     // User BT Sync
     if (mData.ownerUid) {
       const ownerRef = db.collection('users').doc(mData.ownerUid);
-      t.update(ownerRef, { btBalance: admin.firestore.FieldValue.increment(amount) });
+      t.update(ownerRef, { btBalance: admin.firestore.FieldValue.increment(Number(amount)) });
     }
 
-    t.update(merchRef, { btBalance: admin.firestore.FieldValue.increment(amount) });
+    t.update(merchRef, { btBalance: admin.firestore.FieldValue.increment(Number(amount)) });
 
     t.set(db.collection('bt_transactions').doc(), {
       type: 'admin_charge',
-      merchantId,
-      amount,
+      merchantId: String(merchantId),
+      amount: Number(amount),
       adminUid,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
