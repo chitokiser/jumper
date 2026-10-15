@@ -1,4 +1,4 @@
-﻿<!-- /family-register.html -->
+<!-- /family-register.html -->
 <!doctype html>
 <html lang="ko">
 
@@ -75,15 +75,19 @@
           <div class="k">소개/상세</div>
           <div class="v" id="existingMerchantDesc" style="white-space:pre-wrap;">-</div>
         </div>
+        <div class="status-row">
+          <div class="k">🎟️ 1 BT 지급 기준</div>
+          <div class="v" id="existingBtPerVnd" style="font-weight:700; color:#d97706;">100,000 VND당 1장</div>
+        </div>
         <p class="hint" style="margin-top:8px;">
-          고객이 결제 시 이 가맹점 ID를 사용합니다. 수수료율은 관리자가 설정합니다.
+          고객이 결제 시 이 가맹점 ID를 사용합니다. 수수료율은 관리자가 설정하며, BT 지급 기준금액은 가맹점주가 자유롭게 변경할 수 있습니다.
         </p>
 
         <button class="btn" id="btnToggleMerchantEdit" type="button" style="margin-top:12px;">✏️ 정보 수정</button>
 
         <div id="merchantEditForm"
           style="display:none; margin-top:16px; border-top:1px solid var(--border,#e5e7eb); padding-top:14px;">
-          <p style="font-weight:600; margin-bottom:10px;">상호 · 업종 · 활동지역 · 소개 수정</p>
+          <p style="font-weight:600; margin-bottom:10px;">상호 · 업종 · 활동지역 · 소개 · BT 지급기준 수정</p>
           <label class="field">
             <span>상호 / 가게명 <em class="req">*</em></span>
             <input type="text" id="editMerchantName" maxlength="50" />
@@ -99,6 +103,11 @@
           <label class="field">
             <span>소개 / 상세</span>
             <textarea id="editMerchantDesc" rows="4" maxlength="600"></textarea>
+          </label>
+          <label class="field">
+            <span>🎟️ 1 BT 지급 기준 결제금액 (VND)</span>
+            <input type="number" id="editBtPerVnd" min="1000" step="10000" placeholder="100000" />
+            <small class="hint" style="color:#a16207;">고객 결제 시 BT 1장을 지급할 기준금액 (기본: 100,000 VND)</small>
           </label>
           <div id="editMerchantMsg" style="font-size:0.85em; min-height:1.2em; margin-bottom:8px;"></div>
           <div style="display:flex; gap:8px;">
@@ -152,6 +161,12 @@
           <span>구글 지도 링크 <small>(선택)</small></span>
           <input type="url" id="merchantGmap" maxlength="500" placeholder="https://maps.google.com/..." />
           <span class="help">링크를 입력하면 우림마을 지도에 가게 위치가 표시됩니다.</span>
+        </label>
+
+        <label class="field">
+          <span>🎟️ 1 BT 지급 기준 결제금액 (VND) <small>(선택)</small></span>
+          <input type="number" id="merchantBtPerVnd" min="1000" step="10000" placeholder="100000" value="100000" />
+          <span class="help">고객이 결제 시 BT 1장을 지급할 기준금액 (기본: 100,000 VND당 1 BT)</span>
         </label>
 
         <!-- 진행 단계 -->

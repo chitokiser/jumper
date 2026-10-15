@@ -114,6 +114,7 @@ async function init() {
             const card = document.createElement("div");
             card.className = "mc-card";
             const btCount = d.btBalance || 0;
+            const btPerVnd = Math.max(1000, Number(d.btPerVnd || d.btGrantThresholdVnd || 100000));
             const kmFee = d.feeBps ? (d.feeBps / 100) : (d.kmFeeRatio || 10);
             const reviews = d.reviewCount || Math.floor(Math.random() * 50);
             const likes = d.likeCount || Math.floor(Math.random() * 100);
@@ -122,7 +123,7 @@ async function init() {
 
             card.innerHTML = `
           <div class="mc-card-hero">
-              <div class="mc-card-badge">🎟️ ${btCount} BT</div>
+              <div class="mc-card-badge">🎟️ ${btCount} BT <span style="font-size:10px;opacity:0.85;">(${btPerVnd.toLocaleString()}đ당 1장)</span></div>
               <img src="${logoUrl}" alt="${d.name}" class="mc-card-hero-img">
           </div>
           <div class="mc-card-inner">
@@ -131,7 +132,7 @@ async function init() {
               
               <div class="mc-card-stats">
                  <span title="고객 리뷰">💬 ${reviews}</span>
-                 <span title="좋아요">❤️ ${likes}</span>
+                 <span title="BT 지급 기준" style="color:#d97706; font-weight:bold;">🎟️ ${btPerVnd.toLocaleString()}đ당 1 BT</span>
                  <span title="BM 결제 수수료" style="color:#10b981; font-weight:bold;">⚡ ${kmFee}% 수수료</span>
               </div>
 
@@ -170,6 +171,7 @@ async function init() {
                     </div>
                     <div class="gmap-popup-body">
                       <div class="gmap-popup-meta">${d.career || ""} · ${d.region || ""}</div>
+                      <div style="font-size:11px;color:#d97706;font-weight:700;margin-bottom:6px;">🎟️ ${btPerVnd.toLocaleString()} VND 결제당 1 BT 지급</div>
                       ${d.phone ? `<div class="gmap-popup-row"><i class="fa-solid fa-phone" style="color:#64748b;"></i> <a href="tel:${d.phone}">${d.phone}</a></div>` : ""}
                       <div class="gmap-popup-actions">
                         ${d.website ? `<a href="${d.website}" target="_blank" class="gmap-btn-link"><i class="fa-solid fa-globe"></i> 홈피</a>` : ""}

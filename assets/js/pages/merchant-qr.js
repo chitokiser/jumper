@@ -7,6 +7,9 @@ import { db } from "/assets/js/firebase-init.js";
 import {
   doc,
   getDoc,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
   collection,
   query,
   where,
@@ -108,14 +111,90 @@ async function initPage(uid) {
     if (el && docS.exists()) el.textContent = Number(docS.data().pointBalanceVnd || 0).toLocaleString() + " BM";
   });
 
-  // ── 가맹점 BT 재고: merchants/{merchantId}.btBalance 실시간 조회 ──
+  // ── 가맹점 BT 재고 및 지급 기준금액(btPerVnd) 실시간 조회 ──
   // (adminChargeBt가 반영하는 위치와 동일해야 함) 
+  let _merchantBtPerVnd = 100000;
+
   onSnapshot(doc(db, "merchants", String(merchantId)), (mSnap2) => {
     if (mSnap2.exists()) {
-      const btBal = Number(mSnap2.data().btBalance || 0);
+      const data = mSnap2.data() || {};
+      const btBal = Number(data.btBalance || 0);
       setText("qrMerchantBtBal", btBal.toLocaleString("ko-KR") + " BT");
+
+      _merchantBtPerVnd = Math.max(1000, Number(data.btPerVnd || data.btGrantThresholdVnd || 100000));
+      setText("qrMerchantBtPerVnd", `${_merchantBtPerVnd.toLocaleString("ko-KR")} VND당 1장`);
     }
   });
+
+  // ── 가맹점 BT 1장 지급 기준금액 설정 바인딩 ──
+  const btnToggleBtSetting = $("btnToggleBtSetting");
+  const btSettingBox = $("btSettingBox");
+  const inputBtPerVnd = $("inputBtPerVnd");
+  const btnSaveBtPerVnd = $("btnSaveBtPerVnd");
+  const btSettingMsg = $("btSettingMsg");
+
+  if (btnToggleBtSetting && btSettingBox) {
+    btnToggleBtSetting.onclick = () => {
+      const isHidden = btSettingBox.style.display === "none";
+      btSettingBox.style.display = isHidden ? "block" : "none";
+      btnToggleBtSetting.textContent = isHidden ? "닫기" : "기준 변경";
+      if (isHidden && inputBtPerVnd) inputBtPerVnd.value = _merchantBtPerVnd;
+    };
+  }
+
+  document.querySelectorAll(".btn-bt-preset").forEach((btn) => {
+    btn.onclick = () => {
+      if (inputBtPerVnd) inputBtPerVnd.value = btn.dataset.val;
+    };
+  });
+
+  if (btnSaveBtPerVnd) {
+    btnSaveBtPerVnd.onclick = async () => {
+      const val = Number(inputBtPerVnd?.value);
+      if (!val || val < 1000) {
+        if (btSettingMsg) {
+          btSettingMsg.textContent = "최소 1,000 VND 이상 입력해 주세요.";
+          btSettingMsg.style.color = "#dc2626";
+        }
+        return;
+      }
+
+      btnSaveBtPerVnd.disabled = true;
+      btnSaveBtPerVnd.textContent = "저장 중...";
+      if (btSettingMsg) btSettingMsg.textContent = "";
+
+      try {
+        await updateDoc(doc(db, "merchants", String(merchantId)), {
+          btPerVnd: val,
+          updatedAt: serverTimestamp()
+        });
+        _merchantBtPerVnd = val;
+        setText("qrMerchantBtPerVnd", `${val.toLocaleString("ko-KR")} VND당 1장`);
+        if (btSettingMsg) {
+          btSettingMsg.textContent = `✅ 기준이 ${val.toLocaleString("ko-KR")} VND당 1장으로 저장되었습니다!`;
+          btSettingMsg.style.color = "#16a34a";
+        }
+        setTimeout(() => {
+          if (btSettingBox) btSettingBox.style.display = "none";
+          if (btnToggleBtSetting) btnToggleBtSetting.textContent = "기준 변경";
+          if (btSettingMsg) btSettingMsg.textContent = "";
+        }, 1500);
+
+        // QR 계산 결과 즉시 재계산
+        const ev = new Event("input");
+        $("qrAmount")?.dispatchEvent(ev);
+      } catch (err) {
+        console.error("btPerVnd save error:", err);
+        if (btSettingMsg) {
+          btSettingMsg.textContent = "저장 실패: " + err.message;
+          btSettingMsg.style.color = "#dc2626";
+        }
+      } finally {
+        btnSaveBtPerVnd.disabled = false;
+        btnSaveBtPerVnd.textContent = "저장";
+      }
+    };
+  }
 
   // 가맹점주 BM/포인트 잔고 (merchant owner)
   const mOwner = mSnap.exists() ? mSnap.data()?.ownerUid : null;
@@ -129,11 +208,10 @@ async function initPage(uid) {
     });
   }
 
-
   show("mainPanel", true);
 
   // 바인
-  bindQrForm(merchantId, merchantName);
+  bindQrForm(merchantId, merchantName, () => _merchantBtPerVnd);
 }
 
 // ── QR 바인딩 ─────────────────────────────────────────
@@ -204,7 +282,9 @@ function bindQrForm(merchantId, merchantName) {
 
     if (isBt && amount > 0) {
       if (btCalcResult) btCalcResult.style.display = "";
-      if (btCountText) btCountText.textContent = getBtAmount(amount, currency) + " 장";
+      const count = getBtAmount(amount, currency);
+      const rate = Math.max(1000, Number(_merchantBtPerVnd || 100000));
+      if (btCountText) btCountText.textContent = `${count} 장 (${rate.toLocaleString()} VND당 1장)`;
     } else {
       if (btCalcResult) btCalcResult.style.display = "none";
     }
@@ -474,7 +554,8 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
 function getBtAmount(amount, currency) {
   let vnd = amount;
   if (currency === "KRW") vnd = amount * 18;
-  return Math.floor(vnd / 100000);
+  const rate = Math.max(1000, Number(_merchantBtPerVnd || 100000));
+  return Math.floor(vnd / rate);
 }
 
 

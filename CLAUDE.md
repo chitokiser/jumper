@@ -106,7 +106,7 @@ Firebase Authentication + Cloud Functions
 | **BM (VND)** | 현금성 결제/정산 재화<br>(표기 단위: VND, UI 표기: `BM`) | - 플랫폼 내 유일한 현금성 결제·정산 재화.<br>- 기존의 KM 및 `pointBalanceVnd`는 BM으로 완전 대체·정리.<br>- 가맹점 정산은 향후 USDT 기반으로 일괄 처리 예정. |
 | **Point** | 비현금성 리워드<br>(표기 단위: `Point`, 필드: `users.pointBalance`) | - 보상, 캐시백(5%), 잭팟 당첨, BT 룰렛 등으로 획득하는 비현금성 리워드.<br>- Point를 BM 또는 법정화폐와 동일한 가치로 직접 간주하지 않음.<br>- **BM 전환 공식:** `floor(보유 Point × (gsLevel / 10))` |
 | **GP (Game Point)** | 게임 전용 포인트<br>(표기 단위: `GP`) | - 플랫폼 내 게임 콘텐츠(배틀, 퀘스트 등)를 통해 획득하는 전용 포인트.<br>- 게임 내에서 사용되며 Point로 전환 가능.<br>- **Point 전환 공식:** `floor(보유 GP × (gsLevel / 10))` |
-| **BT (Bonus Ticket)** | 보너스 티켓 수량<br>(표기 단위: `BT`, 필드: `btBalance`) | - **발급 규정:** 가맹점에서 **100,000 VND 결제당 1 BT** 지급 (`Math.floor(amount / 100000)`).<br>- **사용처:** 인터랙티브 룰렛을 돌려 등급 기반 Point를 획득하는 전용 티켓. |
+| **BT (Bonus Ticket)** | 보너스 티켓 수량<br>(표기 단위: `BT`, 필드: `btBalance`) | - **발급 규정:** 가맹점 주가 설정한 **지급 기준금액(`btPerVnd`, 기본 100,000 VND) 결제당 1 BT** 지급 (`Math.floor(amount / btPerVnd)`).<br>- **사용처:** 인터랙티브 룰렛을 돌려 등급 기반 Point를 획득하는 전용 티켓. |
 
 ## 3.2 유저 레벨 및 경험치(EXP) 정책
 
@@ -206,9 +206,9 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
 1. **공급 (Supply):**
    - 최고관리자(Super Admin)만이 각 가맹점 계정으로 BT를 사전에 공식 일괄 충전/이체합니다 (`adminChargeBt`).
    - 충전 시 `merchants/{merchantId}.btBalance`와 가맹점주 `users/{ownerUid}.btBalance`가 동시에 1:1 증액됩니다.
-2. **지급 한도 계산 (Inventory Cap):**
-   - 결제 금액 **100,000 VND당 1 BT** 기준:
-     $$\text{maxBtRequested} = \left\lfloor \frac{\text{finalVnd}}{100,000} \right\rfloor$$
+2. **지급 한도 계산 (Inventory Cap & Custom Rate):**
+   - 가맹점 주가 설정한 **지급 기준금액(`btPerVnd`, 기본 100,000 VND)당 1 BT** 기준:
+     $$\text{maxBtRequested} = \left\lfloor \frac{\text{finalVnd}}{\text{btPerVnd}} \right\rfloor$$
    - **가맹점 보유 잔여량 한도(Inventory Cap) 필수 적용:**
      $$\text{actualBt} = \min\left(\text{maxBtRequested},\; \max(0, \text{merchantBt})\right)$$
    - **가맹점 잔여 BT 고갈 시 처리:**

@@ -678,9 +678,10 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     tx.set(db.collection('jackpot_rounds').doc(txHash), { isWinner: safeJackpotReward > 0, randomValue: grade, finalWinWei: finalWinWeiAmt, btUsed: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() });
 
     // [BT 제로섬 보존 법칙 - 절대 무한 발행 불가]
-    // 10만 동당 1 BT 요청이나, 반드시 가맹점의 잔여 btBalance 내에서만 차감 지급.
+    // 가맹점 주가 설정한 결제금액(btPerVnd)당 1 BT 요청하나, 반드시 가맹점의 잔여 btBalance 내에서만 차감 지급.
     const merchBt = Number(merchant.btBalance || 0);
-    const maxBtRequested = Math.floor(finalVnd / 100000);
+    const btPerVnd = Math.max(1000, Number(merchant.btPerVnd || merchant.btGrantThresholdVnd || 100000));
+    const maxBtRequested = Math.floor(finalVnd / btPerVnd);
     const actualBt = Math.min(maxBtRequested, Math.max(0, merchBt));
 
     const txBase = {
@@ -692,6 +693,7 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
       merchantName: merchant.name || '',
       issuedBt: actualBt,
       requestedBt: maxBtRequested,
+      btPerVnd,
       txHash
     };
     tx.set(checkTxRef, { ...txBase, uid, type: 'pay_merchant' });
@@ -1510,8 +1512,9 @@ async function createBtRewardSession(uid, data) {
   const merchData = merchSnap.data() || {};
   if (merchData.active === false) throw new Error('가맹점이 비활성화 상태입니다.');
 
-  let btAmount = Math.floor(amount / 100000);
-  if (btAmount <= 0) throw new Error('BT 발행 조건 미달입니다.');
+  const btPerVnd = Math.max(1000, Number(merchData.btPerVnd || merchData.btGrantThresholdVnd || 100000));
+  let btAmount = Math.floor(amount / btPerVnd);
+  if (btAmount <= 0) throw new Error(`BT 발행 조건 미달입니다. (${btPerVnd.toLocaleString()} VND당 1 BT)`);
 
   // Validate merchant's BT balance
   const merchBtBal = Number(merchData.btBalance || 0);

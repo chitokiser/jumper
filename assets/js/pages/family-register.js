@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/family-register.js
+// /assets/js/pages/family-register.js
 // 판매회원 등록: 가맹점 등록 + Firestore 저장
 
 import { watchAuth, login } from "../auth.js";
@@ -58,9 +58,11 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
   const careerEl = $("existingMerchantCareer");
   const regionEl = $("existingMerchantRegion");
   const descEl = $("existingMerchantDesc");
+  const btPerVndEl = $("existingBtPerVnd");
   if (careerEl) careerEl.textContent = merchantData.career || "-";
   if (regionEl) regionEl.textContent = merchantData.region || "-";
   if (descEl) descEl.textContent = merchantData.description || "-";
+  if (btPerVndEl) btPerVndEl.textContent = `${Number(merchantData.btPerVnd || 100000).toLocaleString()} VND당 1장`;
 
   const editForm = $("merchantEditForm");
   const editMsg = $("editMerchantMsg");
@@ -71,12 +73,14 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
   const inputCareer = $("editMerchantCareer");
   const inputRegion = $("editMerchantRegion");
   const inputDesc = $("editMerchantDesc");
+  const inputBtPerVnd = $("editBtPerVnd");
 
   btnToggle?.addEventListener("click", () => {
     if (inputName) inputName.value = merchantData.name || merchantName || "";
     if (inputCareer) inputCareer.value = merchantData.career || "";
     if (inputRegion) inputRegion.value = merchantData.region || "";
     if (inputDesc) inputDesc.value = merchantData.description || "";
+    if (inputBtPerVnd) inputBtPerVnd.value = merchantData.btPerVnd || 100000;
     if (editForm) editForm.style.display = "";
     if (btnToggle) btnToggle.style.display = "none";
   });
@@ -93,6 +97,7 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
     const career = (inputCareer?.value || "").trim();
     const region = (inputRegion?.value || "").trim();
     const desc = (inputDesc?.value || "").trim();
+    const btPerVnd = Math.max(1000, Number(inputBtPerVnd?.value || 100000));
 
     if (!name) {
       if (editMsg) { editMsg.textContent = "가게명/상호를 입력해 주세요."; editMsg.style.color = "var(--danger, #e53e3e)"; }
@@ -113,17 +118,19 @@ function showAlreadyMerchant(merchantId, feeBps, merchantName, merchantData) {
     try {
       await updateDoc(doc(db, "merchants", _merchantDocId), {
         name,
-        career, region, description: desc, updatedAt: serverTimestamp(),
+        career, region, description: desc, btPerVnd, updatedAt: serverTimestamp(),
       });
       merchantData.name = name;
       merchantName = name;
       merchantData.career = career;
       merchantData.region = region;
       merchantData.description = desc;
+      merchantData.btPerVnd = btPerVnd;
       if (nameEl) nameEl.textContent = name || "-";
       if (careerEl) careerEl.textContent = career || "-";
       if (regionEl) regionEl.textContent = region || "-";
       if (descEl) descEl.textContent = desc || "-";
+      if (btPerVndEl) btPerVndEl.textContent = `${btPerVnd.toLocaleString()} VND당 1장`;
       if (editMsg) { editMsg.textContent = "저장되었습니다."; editMsg.style.color = "var(--accent)"; }
       setTimeout(() => {
         if (editForm) editForm.style.display = "none";
@@ -172,6 +179,8 @@ async function doRegisterMerchant() {
 
   const merchantId = String(Math.floor(Date.now() / 1000));
 
+  const btPerVnd = Math.max(1000, Number($("merchantBtPerVnd")?.value || 100000));
+
   try {
     const { setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
     await setDoc(doc(db, 'merchants', merchantId), {
@@ -184,6 +193,7 @@ async function doRegisterMerchant() {
       phone,
       kakaoId,
       gmap,
+      btPerVnd,
       feeBps: 0,
       active: true,
       txHash: 'offchain',
@@ -363,6 +373,7 @@ async function _initForUser(ctx) {
             career: mData?.career || "",
             region: mData?.region || "",
             description: mData?.description || "",
+            btPerVnd: mData?.btPerVnd || 100000,
           };
         }
       } catch (_) { }

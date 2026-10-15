@@ -446,8 +446,7 @@ function renderMerchantPaymentCard(p) {
   const amountVnd = Number(p.amountVnd || 0);
   const amountKrw = Number(p.amountKrw || Math.round(amountVnd / 18));
   const pointsEarned = Number(p.pointsEarned || 0);
-  const grade = p.grade;
-  const issuedBt = Math.floor(amountVnd / 100000);
+  const issuedBt = p.issuedBt !== undefined ? Number(p.issuedBt) : Math.floor(amountVnd / (p.btPerVnd || 100000));
   const payExp = Math.floor(amountVnd / 1000);
 
   const rewardBadges = [];

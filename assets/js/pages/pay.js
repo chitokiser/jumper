@@ -89,6 +89,15 @@ async function loadMerchant() {
   ["payAmountLogin", "payAmountReg", "payAmountDisp"].forEach((id) => setText(id, amountStr));
   setText("payHeroDesc", `${merchantName} — ${amountStr}`);
 
+  // 가맹점 설정에 따른 BT 보너스 안내
+  const btPerVnd = Math.max(1000, Number(data.btPerVnd || data.btGrantThresholdVnd || 100000));
+  const expectedBt = Math.floor((isVnd ? amount : Math.round(amount * 18)) / btPerVnd);
+  const btNoticeEl = $("payBtNotice");
+  if (btNoticeEl) {
+    btNoticeEl.innerHTML = `🎟️ <strong>${expectedBt}장</strong> BT 보너스 지급 예정 <span style="font-size:0.75rem; color:#a16207;">(${btPerVnd.toLocaleString()} VND당 1 BT)</span>`;
+    btNoticeEl.style.display = "";
+  }
+
   // VND인 경우 KRW 환산 표시
   if (isVnd) {
     fetchRates().then((rates) => {
@@ -401,7 +410,8 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
     }
 
     const merchSnap = await tx.get(merchantRef);
-    const merchBt = merchSnap.exists() ? Number(merchSnap.data().btBalance || 0) : 0;
+    const mData = merchSnap.exists() ? (merchSnap.data() || {}) : {};
+    const merchBt = Number(mData.btBalance || 0);
 
     const jackpotSnap = await tx.get(jackpotRef);
     let currentJackpotPool = jackpotSnap.exists() ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
@@ -434,9 +444,10 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
     const totalPointsEarned = safeJackpotReward + cashbackPoint;
 
     // [BT 제로섬 보존 법칙 - 무한 발행 절대 방지]
-    // 10만 동당 1 BT 기준이나, 가맹점의 실제 잔여 BT(merchBt) 범위 내에서만 지급.
+    // 가맹점 주가 설정한 결제금액(btPerVnd)당 1 BT 기준이나, 가맹점의 실제 잔여 BT(merchBt) 범위 내에서만 지급.
     // 가맹점의 btBalance가 차감되지 않은 상태에서 소비자의 BT가 늘어나는 것은 절대 불가!
-    const maxBtRequested = Math.floor(finalVnd / 100000);
+    const btPerVnd = Math.max(1000, Number(mData.btPerVnd || mData.btGrantThresholdVnd || 100000));
+    const maxBtRequested = Math.floor(finalVnd / btPerVnd);
     const actualBt = Math.min(maxBtRequested, Math.max(0, merchBt));
     const payExp = Math.floor(finalVnd / 1000);
 

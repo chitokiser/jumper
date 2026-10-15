@@ -1,4 +1,4 @@
-﻿// functions/handlers/merchantReward.js
+// functions/handlers/merchantReward.js
 'use strict';
 
 const admin = require('firebase-admin');
@@ -148,10 +148,14 @@ async function merchantSendBtDirect(data, context) {
         throw new HttpsError('permission-denied', '가맹점이 아닙니다.');
     }
     
+    const mDoc = await db.collection('merchants').doc(String(merchantId)).get();
+    const mData = mDoc.exists ? mDoc.data() : {};
+    const btPerVnd = Math.max(1000, Number(mData.btPerVnd || mData.btGrantThresholdVnd || 100000));
+    
     // 3. Process exactly like receiveBtQrFirebase
-    const btAmountToGive = Math.floor(amountVnd / 100000);
+    const btAmountToGive = Math.floor(amountVnd / btPerVnd);
     if (btAmountToGive < 1) {
-        throw new HttpsError('invalid-argument', '10,000 VND 미만은 BT를 지급할 수 없습니다.');
+        throw new HttpsError('invalid-argument', `결제 금액이 BT 지급 기준(${btPerVnd.toLocaleString()} VND) 미만입니다.`);
     }
 
     // Wrap in transaction
