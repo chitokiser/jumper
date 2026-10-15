@@ -3,21 +3,9 @@ import { collection, getDocs, query, where } from "https://www.gstatic.com/fireb
 
 const $ = id => document.getElementById(id);
 let map = null;
-let infoWindow = null;
+let roadmapLayer = null;
+let satelliteLayer = null;
 const markers = [];
-
-function loadGoogleMapsScript() {
-    return new Promise((resolve, reject) => {
-        if (window.google?.maps) return resolve();
-        window.__findMerchantMapCb = () => resolve();
-        const apiKey = window.__mapsKey || "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";
-        const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=__findMerchantMapCb&language=ko&region=VN`;
-        script.async = true;
-        script.onerror = () => reject(new Error("구글 지도 스크립트 로드에 실패했습니다."));
-        document.head.appendChild(script);
-    });
-}
 
 function parseCoords(d) {
     if (d.lat && d.lng && !isNaN(d.lat) && !isNaN(d.lng)) {
@@ -33,50 +21,91 @@ function parseCoords(d) {
     return null;
 }
 
-async function init() {
-    const mapEl = $("merchantMap");
-    if (mapEl) {
-        mapEl.innerHTML = "<div style='display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-weight:600;'>구글 지도를 불러오는 중입니다...</div>";
-    }
+function createGmapPin(logoUrl, name) {
+    const initial = (name || "가").charAt(0);
+    const content = logoUrl
+        ? `<img src="${logoUrl}" alt="${name}" onerror="this.onerror=null;this.parentElement.innerHTML='${initial}'">`
+        : `<span>${initial}</span>`;
 
-    try {
-        await loadGoogleMapsScript();
-        if (mapEl) {
-            mapEl.innerHTML = "";
-            mapEl.style.display = "block";
-            map = new google.maps.Map(mapEl, {
-                center: { lat: 21.005, lng: 105.775 }, // Centered on Hanoi region
-                zoom: 12,
-                mapTypeControl: false,
-                streetViewControl: false,
-                fullscreenControl: true,
-                zoomControl: true,
-                styles: [
-                    { featureType: "poi.business", stylers: [{ visibility: "off" }] },
-                    { featureType: "transit", elementType: "labels.icon", stylers: [{ visibility: "off" }] }
-                ]
-            });
-            infoWindow = new google.maps.InfoWindow();
-        }
-    } catch (mapErr) {
-        console.error("Google Maps failed to load:", mapErr);
-        if (mapEl) {
-            mapEl.innerHTML = `<div style='display:flex;align-items:center;justify-content:center;height:100%;color:#ef4444;font-weight:600;'>구글 지도를 불러올 수 없습니다. (${mapErr.message})</div>`;
-        }
+    return L.divIcon({
+        className: "custom-gmap-pin-wrap",
+        html: `
+            <div class="custom-gmap-pin">
+                <svg class="pin-svg" viewBox="0 0 38 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 0C8.5 0 0 8.5 0 19C0 32 19 48 19 48C19 48 38 32 38 19C38 8.5 29.5 0 19 0Z" fill="#EA4335"/>
+                    <circle cx="19" cy="18" r="14" fill="#B3261E"/>
+                    <circle cx="19" cy="18" r="11" fill="#FFFFFF"/>
+                </svg>
+                <div class="pin-badge">${content}</div>
+            </div>
+        `,
+        iconSize: [38, 48],
+        iconAnchor: [19, 48],
+        popupAnchor: [0, -46]
+    });
+}
+
+function initMap() {
+    const mapEl = $("merchantMap");
+    if (!mapEl || !window.L) return;
+
+    // Center on Hanoi region
+    map = L.map("merchantMap", {
+        center: [21.005, 105.775],
+        zoom: 12,
+        zoomControl: true
+    });
+
+    // Google Maps Roadmap tile layer (Zero billing error, high definition)
+    roadmapLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ko&gl=VN", {
+        maxZoom: 20,
+        subdomains: ["0", "1", "2", "3"],
+        attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+    }).addTo(map);
+
+    // Google Maps Satellite (Hybrid) tile layer
+    satelliteLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&hl=ko&gl=VN", {
+        maxZoom: 20,
+        subdomains: ["0", "1", "2", "3"],
+        attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+    });
+
+    // Layer switch controls
+    const btnRoadmap = $("btnRoadmap");
+    const btnSatellite = $("btnSatellite");
+
+    if (btnRoadmap && btnSatellite) {
+        btnRoadmap.addEventListener("click", () => {
+            if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+            if (!map.hasLayer(roadmapLayer)) map.addLayer(roadmapLayer);
+            btnRoadmap.classList.add("active");
+            btnSatellite.classList.remove("active");
+        });
+
+        btnSatellite.addEventListener("click", () => {
+            if (map.hasLayer(roadmapLayer)) map.removeLayer(roadmapLayer);
+            if (!map.hasLayer(satelliteLayer)) map.addLayer(satelliteLayer);
+            btnSatellite.classList.add("active");
+            btnRoadmap.classList.remove("active");
+        });
     }
+}
+
+async function init() {
+    initMap();
 
     try {
         const q = query(collection(db, "merchants"), where("active", "==", true));
         const snap = await getDocs(q);
         const grid = $("merchantGrid");
+        const mapEl = $("merchantMap");
 
         if (snap.empty) {
             grid.innerHTML = "<div style='color:#888; font-size:0.9rem; padding: 20px;'>등록된 가맹점이 없습니다.</div>";
             return;
         }
 
-        const bounds = map ? new google.maps.LatLngBounds() : null;
-        let validCoordsCount = 0;
+        const validLatLngs = [];
 
         snap.forEach(docSnap => {
             const d = docSnap.data();
@@ -116,63 +145,63 @@ async function init() {
               
               <div class="mc-card-desc">${d.desc || d.description || "상세 설명이 없습니다."}</div>
               
-              ${d.website ? `
-              <div class="mc-card-footer">
+              <div class="mc-card-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                 ${d.website ? `
                  <a href="${d.website}" target="_blank" onclick="event.stopPropagation()" class="mc-link-btn">
-                    <i class="fa-solid fa-globe"></i> 홈페이지 방문
-                 </a>
+                    <i class="fa-solid fa-globe"></i> 홈페이지
+                 </a>` : '<span></span>'}
+                 <span style="font-size:12px; color:#ea4335; font-weight:700;"><i class="fa-solid fa-location-dot"></i> 지도에서 보기</span>
               </div>
-              ` : ''}
           </div>
         `;
 
-            // Add Google Maps marker if coordinates exist
+            // Add marker if coordinates exist
             const pos = parseCoords(d);
             if (pos && map) {
-                const marker = new google.maps.Marker({
-                    position: pos,
-                    map: map,
-                    title: d.name || "가맹점",
-                    animation: google.maps.Animation.DROP
-                });
+                const markerIcon = createGmapPin(d.logoUrl || d.imageUrl, d.name);
+                const marker = L.marker([pos.lat, pos.lng], { icon: markerIcon }).addTo(map);
                 markers.push(marker);
 
-                const infoHtml = `
-                  <div style="padding:10px;font-family:sans-serif;max-width:240px;line-height:1.4;">
-                    <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:4px;">${d.name || "가맹점"}</div>
-                    <div style="font-size:12px;color:#f59e0b;font-weight:700;margin-bottom:6px;">🎟️ ${btCount} BT 보유</div>
-                    <div style="font-size:12px;color:#64748b;margin-bottom:8px;">${d.career || ""} · ${d.region || ""}</div>
-                    ${d.phone ? `<div style="font-size:12px;color:#334155;margin-bottom:8px;">📞 ${d.phone}</div>` : ""}
-                    ${d.website ? `<a href="${d.website}" target="_blank" style="display:inline-block;padding:5px 10px;background:#7c3aed;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;">홈페이지 방문 →</a>` : ""}
+                const popupHtml = `
+                  <div class="gmap-popup-card">
+                    <div class="gmap-popup-header">
+                      <div class="gmap-popup-name" title="${d.name || "가맹점"}">${d.name || "가맹점"}</div>
+                      <div class="gmap-popup-bt">🎟️ ${btCount} BT</div>
+                    </div>
+                    <div class="gmap-popup-body">
+                      <div class="gmap-popup-meta">${d.career || ""} · ${d.region || ""}</div>
+                      ${d.phone ? `<div class="gmap-popup-row"><i class="fa-solid fa-phone" style="color:#64748b;"></i> <a href="tel:${d.phone}">${d.phone}</a></div>` : ""}
+                      <div class="gmap-popup-actions">
+                        ${d.website ? `<a href="${d.website}" target="_blank" class="gmap-btn-link"><i class="fa-solid fa-globe"></i> 홈피</a>` : ""}
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=${pos.lat},${pos.lng}" target="_blank" class="gmap-btn-nav"><i class="fa-solid fa-diamond-turn-right"></i> 길찾기</a>
+                      </div>
+                    </div>
                   </div>
                 `;
 
-                marker.addListener("click", () => {
-                    infoWindow.setContent(infoHtml);
-                    infoWindow.open(map, marker);
-                });
+                marker.bindPopup(popupHtml, { maxWidth: 280, minWidth: 240 });
 
+                // Card click interaction
                 card.onclick = () => {
-                    map.panTo(pos);
-                    map.setZoom(16);
-                    infoWindow.setContent(infoHtml);
-                    infoWindow.open(map, marker);
-                    window.scrollTo({ top: mapEl.offsetTop - 100, behavior: "smooth" });
+                    map.flyTo([pos.lat, pos.lng], 16, { duration: 0.8 });
+                    setTimeout(() => {
+                        marker.openPopup();
+                    }, 850);
+                    if (mapEl) {
+                        const top = mapEl.getBoundingClientRect().top + window.pageYOffset - 80;
+                        window.scrollTo({ top, behavior: "smooth" });
+                    }
                 };
 
-                bounds.extend(pos);
-                validCoordsCount++;
+                validLatLngs.push([pos.lat, pos.lng]);
             }
 
             grid.appendChild(card);
         });
 
-        if (map && bounds && validCoordsCount > 0) {
-            map.fitBounds(bounds);
-            const listener = google.maps.event.addListener(map, "idle", () => {
-                if (map.getZoom() > 16) map.setZoom(16);
-                google.maps.event.removeListener(listener);
-            });
+        // Fit map to show all markers
+        if (map && validLatLngs.length > 0) {
+            map.fitBounds(L.latLngBounds(validLatLngs), { padding: [50, 50], maxZoom: 15 });
         }
     } catch (err) {
         console.error("Error fetching merchants:", err);

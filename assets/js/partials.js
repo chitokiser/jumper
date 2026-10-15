@@ -220,6 +220,13 @@ window.addEventListener('lang:change', applyFooterI18n);
         document.head.appendChild(t);
       }
 
+      if (!document.querySelector('meta[name="mobile-web-app-capable"]')) {
+        const m = document.createElement("meta");
+        m.name = "mobile-web-app-capable";
+        m.content = "yes";
+        document.head.appendChild(m);
+      }
+
       if (!document.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
         const c = document.createElement("meta");
         c.name = "apple-mobile-web-app-capable";

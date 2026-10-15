@@ -5,12 +5,18 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>가맹점 찾기 | BestClub</title>
+  <meta name="mobile-web-app-capable" content="yes" />
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
-  <script>window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";</script>
+  <!-- Leaflet for crisp Google Maps tile rendering with zero billing error popups -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
+    /* Suppress Google Maps API billing error popup dialog if loaded */
+    .gm-err-container, .gm-err-content, .dismissButton { display: none !important; }
+
     .mc-wrap {
       max-width: 1100px;
       margin: 0 auto;
@@ -36,21 +42,218 @@
     .mc-map-wrap {
       position: relative;
       height: 420px;
-      border-radius: 10px;
+      border-radius: 12px;
       overflow: hidden;
-      border: 1px solid #e0e0e0;
-      margin-bottom: 16px;
-      background: #f3f4f6;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 20px;
+      background: #f8fafc;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
     }
 
     #merchantMap {
       width: 100%;
       height: 100%;
+      z-index: 1;
+    }
+
+    /* Google Maps Layer Switcher */
+    .map-type-switch {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1000;
+      display: flex;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 3px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      gap: 3px;
+    }
+
+    .map-type-btn {
+      border: none;
+      background: transparent;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .map-type-btn:hover {
+      color: #1e293b;
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .map-type-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    }
+
+    /* Custom Google Maps Red Pin */
+    .custom-gmap-pin {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.9rem;
-      color: #888;
+      cursor: pointer;
+      filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .custom-gmap-pin:hover {
+      transform: scale(1.18) translateY(-4px);
+    }
+
+    .custom-gmap-pin .pin-svg {
+      width: 38px;
+      height: 48px;
+      display: block;
+    }
+
+    .custom-gmap-pin .pin-badge {
+      position: absolute;
+      top: 7px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #ea4335;
+      overflow: hidden;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+    }
+
+    .custom-gmap-pin .pin-badge img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Sleek Google Maps Popup Card */
+    .leaflet-popup-content-wrapper {
+      padding: 0 !important;
+      border-radius: 12px !important;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2) !important;
+      overflow: hidden !important;
+      border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    }
+
+    .leaflet-popup-content {
+      margin: 0 !important;
+      line-height: 1.4 !important;
+    }
+
+    .gmap-popup-card {
+      width: 250px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .gmap-popup-header {
+      padding: 12px 14px 10px;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .gmap-popup-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: #ffffff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 155px;
+    }
+
+    .gmap-popup-bt {
+      font-size: 11px;
+      font-weight: 800;
+      color: #fef08a;
+      background: rgba(234, 179, 8, 0.25);
+      padding: 2px 7px;
+      border-radius: 8px;
+      border: 1px solid rgba(234, 179, 8, 0.4);
+      white-space: nowrap;
+    }
+
+    .gmap-popup-body {
+      padding: 12px 14px;
+      background: #ffffff;
+      font-size: 12px;
+    }
+
+    .gmap-popup-meta {
+      color: #64748b;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .gmap-popup-row {
+      color: #334155;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gmap-popup-row a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .gmap-popup-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .gmap-btn-link, .gmap-btn-nav {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .gmap-btn-link {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .gmap-btn-link:hover {
+      background: #e2e8f0;
+    }
+
+    .gmap-btn-nav {
+      background: #ea4335;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(234, 67, 53, 0.3);
+    }
+
+    .gmap-btn-nav:hover {
+      background: #dc2626;
     }
 
     .mc-grid {
@@ -203,7 +406,7 @@
   <script src="/assets/js/partials.js" defer></script>
   <script type="module" src="/assets/js/firebase-init.js"></script>
   <script type="module" src="/assets/js/header-auth.js"></script>
-  <script type="module" src="/assets/js/pages/find_merchants.js?v=3"></script>
+  <script type="module" src="/assets/js/pages/find_merchants.js?v=4"></script>
   <link rel='manifest' href='/manifest.json'>
 </head>
 
@@ -216,7 +419,11 @@
         <p class="text-sm text-gray-500 mb-6">BestClub 혜택을 누릴 수 있는 제휴점을 확인하세요.</p>
       </div>
       <div class="mc-map-wrap">
-        <div id="merchantMap">지도 로딩 중...</div>
+        <div id="merchantMap"></div>
+        <div class="map-type-switch" id="mapTypeSwitch">
+          <button type="button" class="map-type-btn active" id="btnRoadmap"><i class="fa-solid fa-map"></i> Google 지도</button>
+          <button type="button" class="map-type-btn" id="btnSatellite"><i class="fa-solid fa-satellite"></i> 위성</button>
+        </div>
       </div>
       <div class="mc-grid" id="merchantGrid"></div>
     </div>
