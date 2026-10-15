@@ -1263,12 +1263,16 @@
       </p>
       <div class="hero-actions" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
         <a class="btn hero-cta-btn" href="/mypage.html#merchantPaySection"
-            style="background: linear-gradient(135deg, #10b981, #059669); color: white; border:none; padding: 14px 28px; font-weight: 700; border-radius: 99px; transition: all 0.3s ease; cursor: pointer; box-shadow: 0 4px 15px rgba(16, 185, 127, 0.4); display:flex; align-items:center; gap:8px;">
-            <span style="font-size:1.2rem;">💰</span> 머니 충전하기
-          </a>
-          <a class="btn hero-cta-btn" href="/merchant-qr.html"
+          style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border:none; padding: 14px 28px; font-weight: 700; border-radius: 99px; transition: all 0.3s ease; cursor: pointer; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.2rem;">💳</span> 결제하기
+        </a>
+        <a class="btn hero-cta-btn" href="/mypage.html#hex-topup"
+          style="background: linear-gradient(135deg, #10b981, #059669); color: white; border:none; padding: 14px 28px; font-weight: 700; border-radius: 99px; transition: all 0.3s ease; cursor: pointer; box-shadow: 0 4px 15px rgba(16, 185, 127, 0.4); display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.2rem;">💰</span> 머니 충전하기
+        </a>
+        <a class="btn hero-cta-btn" href="/merchant-qr.html"
           style="background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; border:none; padding: 14px 28px; font-weight: 700; border-radius: 99px; transition: all 0.3s ease; cursor: pointer; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4); display:flex; align-items:center; gap:8px;">
-          <span style="font-size:1.2rem;">�</span> 결제 QR 생성
+          <span style="font-size:1.2rem;">📱</span> 결제 QR 생성
         </a>
         <a class="btn hero-cta-btn" href="/mypage.html"
           style="background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 14px 28px; font-weight: 700; border-radius: 99px; backdrop-filter: blur(10px); transition: all 0.3s ease; cursor: pointer; display:flex; align-items:center; gap:8px;">
@@ -1277,25 +1281,14 @@
       </div>
     </div>
     <style>
+      .hero-cta-btn {
+        transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+      }
       .hero-cta-btn:hover {
         transform: translateY(-4px) scale(1.05);
-      }
-
-      .hero-cta-btn:nth-child(1):hover {
-        box-shadow: 0 15px 35px rgba(124, 58, 237, 0.6);
-      }
-
-      .hero-cta-btn:nth-child(2):hover {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.4);
-      }
-
-      .hero-cta-btn:nth-child(3):hover {
-        background: rgba(250, 204, 21, 0.1);
-        border-color: #fef08a;
+        filter: brightness(1.1);
       }
     </style>
-    </div>
   </section>
 
   <!-- 슬로건 스크롤 띠 (SEO 노출 + 감성 전달) -->

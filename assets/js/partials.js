@@ -289,6 +289,15 @@ window.addEventListener('lang:change', applyFooterI18n);
     const el = document.getElementById(id);
     if (!el) return false;
 
+    if (window.location.protocol === 'file:') {
+      const isFooter = id === 'siteFooter';
+      el.innerHTML = `<div style="background:#dc2626;color:white;padding:12px 18px;border-radius:8px;margin:12px auto;max-width:960px;font-size:14px;line-height:1.6;box-shadow:0 4px 6px rgba(0,0,0,0.15);">
+        ⚠️ <strong>${isFooter ? '푸터' : '헤더'} 로드 실패 (file:// 프로토콜)</strong>: 브라우저 보안 정책(CORS)으로 인해 직접 파일을 열면 헤더와 푸터 템플릿(fetch)을 불러올 수 없습니다.<br>
+        💡 <strong>해결 방법</strong>: <strong>Live Server</strong>(Go Live)를 실행하시거나, 터미널에서 <code>npm run dev</code>를 실행한 후 <strong>http://localhost:8080</strong>으로 접속해 주세요.
+      </div>`;
+      return false;
+    }
+
     const url = abs(urlPath);
     const reqUrl = url + (url.includes("?") ? "&" : "?") + "_pv=" + Date.now();
     try {
@@ -304,7 +313,8 @@ window.addEventListener('lang:change', applyFooterI18n);
       return true;
     } catch (e) {
       console.warn("loadInto error:", e);
-      el.innerHTML = `<div style="background:red;color:white;padding:10px;">Header Error: ${e.message}</div>`;
+      const label = id === 'siteFooter' ? 'Footer' : 'Header';
+      el.innerHTML = `<div style="background:red;color:white;padding:10px;">${label} Error: ${e.message}</div>`;
       return false;
     }
   }
