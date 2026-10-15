@@ -548,7 +548,7 @@ async function adminSetMerchantFeeOnChain(merchantId, feeBps) {
 async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND', amountKrw, reqId } = {}) {
   const db = admin.firestore();
 
-  if (!amountVnd || Number(amountVnd) < 10000) throw new Error('최소 결제 금액은 10000 KM (VND)입니다.');
+  if (!amountVnd || Number(amountVnd) < 10000) throw new Error('최소 결제 금액은 10000 BM (VND)입니다.');
 
   const finalVnd = Math.round(Number(amountVnd));
   const finalKrw = Math.round(Number(amountKrw || (finalVnd / 18)));

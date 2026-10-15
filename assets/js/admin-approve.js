@@ -776,7 +776,7 @@ async function loadSystemTotalKm() {
     const snap = await getDocs(collection(db, 'users'));
     let total = 0;
     snap.forEach(d => { total += Number(d.data().pointBalanceVnd || 0); });
-    el.textContent = total.toLocaleString() + ' 원 (' + total.toLocaleString() + ' KM) / 약 ' + Math.floor(total * 18.84).toLocaleString() + ' VND';
+    el.textContent = total.toLocaleString() + ' BM (' + Math.floor(total / 18).toLocaleString() + ' 원)';
   } catch (err) {
     el.textContent = '오류 발생';
     console.error(err);
@@ -904,7 +904,7 @@ async function loadApprovedDeposits() {
               <div class="k">refCode</div><div class="v">${esc(refCode)}</div>
               <div class="k">입금자명</div><div class="v">${esc(v.depositorName || "-")}</div>
               ${v.amountVnd ? `<div class="k">입금액 (VND)</div><div class="v accent">${esc(v.amountVnd.toLocaleString())} VND</div>` : `<div class="k">입금액 (KRW)</div><div class="v accent">${esc((v.amountKrw || 0).toLocaleString())} 원</div>`}
-              <div class="k">승인 처분(KM)</div><div class="v" style="font-weight:700; color:#1d4ed8;">${esc((v.amountKrw || 0).toLocaleString())} KM 머니 충전됨</div>
+              <div class="k">승인 처분(BM)</div><div class="v" style="font-weight:700; color:#1d4ed8;">${esc(((v.amountVnd || v.amountKrw || 0)).toLocaleString())} BM 충전됨</div>
               <div class="k">지갑 주소</div><div class="v" style="word-break:break-all; font-family:monospace; font-size:12px;">${esc(v.userAddress || "-")}</div>
               <div class="k">승인일</div><div class="v" style="color:#059669; font-weight:700;">${esc(dateStr)}</div>
               <div class="k">상태</div><div class="v">${esc(v.status || "-")}</div>
@@ -939,7 +939,7 @@ async function approveDepositDirect(refCode, overrideKrwRate = null) {
       throw new Error("입금 요청에 UID 정보가 누락되었습니다.");
     }
 
-    // 베트남 동(VND) 전용 플랫폼이므로 amountVnd를 KM으로 충전. 없으면 KRW에서 18.84를 곱함.
+    // 베트남 동(VND) 전용 플랫폼이므로 amountVnd를 BM으로 충전. 없으면 KRW에서 18.84를 곱함.
     const addKmVnd = Number(dep.amountVnd || Math.floor((dep.amountKrw || 0) * 18.84));
     const userRef = doc(db, "users", dep.uid);
 
@@ -955,12 +955,12 @@ async function approveDepositDirect(refCode, overrideKrwRate = null) {
       status: "approved",
       approvedAt: serverTimestamp(),
       approvedBy: auth.currentUser?.uid || "admin",
-      rateAtApproval: overrideKrwRate ? { krwPerUsd: overrideKrwRate } : { note: "VND to KM" }
+      rateAtApproval: overrideKrwRate ? { krwPerUsd: overrideKrwRate } : { note: "VND to BM" }
     };
     t.update(depositRef, approvedData);
 
     resultData = {
-      hexDisplay: addKmVnd.toLocaleString() + " KM",
+      hexDisplay: addKmVnd.toLocaleString() + " BM",
       vndAmount: dep.amountVnd || addKmVnd
     };
   });
@@ -977,7 +977,7 @@ async function approveDepositAction(refCode) {
     ? `\n수동 환율: ₩${overrideKrwRate.toLocaleString()}/USD`
     : "\n환율: 자동 조회";
 
-  const ok = confirm(`[${refCode}]\n입금을 승인하고 Firebase DB 시스템에 잔액(KM)을 충전하시겠습니까?${rateMsg}`);
+  const ok = confirm(`[${refCode}]\n입금을 승인하고 Firebase DB 시스템에 잔액(BM)을 충전하시겠습니까?${rateMsg}`);
   if (!ok) return;
 
   setState("내부 DB 승인 처리 중…");

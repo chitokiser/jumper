@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/exchange.hexgp.js
+// /assets/js/pages/exchange.hexgp.js
 // Point → GameCoin (GP) 교환 탭
 
 import { auth, functions } from '../firebase-init.js';
@@ -27,7 +27,7 @@ async function loadStatus() {
     _status = res.data;
     const rate = Number(_status.gpPerHex || 1);
     setText('hgGpPerHex', rate.toLocaleString() + ' GP');
-    setText('hgHexBal', fmtHex(_status.userHexBalance || '0') + ' KM (Point)');
+    setText('hgHexBal', fmtHex(_status.userHexBalance || '0') + ' BM (Point)');
     setText('hgGpBal', Number(_status.userGold || 0).toLocaleString());
     _updatePreview();
   } catch (err) {
@@ -64,7 +64,7 @@ function bindHexGp() {
     const rate = Number(_status?.gpPerHex || 1);
     const gpAmt = Math.floor(pointAmount * rate);
 
-    if (!confirm(`Convert ${pointAmount} KM → ${gpAmt.toLocaleString()} GP?\nThis cannot be undone.`)) return;
+    if (!confirm(`Convert ${pointAmount} BM → ${gpAmt.toLocaleString()} GP?\nThis cannot be undone.`)) return;
 
     btn.disabled = true;
     btn.textContent = 'Processing…';

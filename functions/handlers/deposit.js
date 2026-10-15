@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const admin = require('firebase-admin');
 const { requireAdmin } = require('../wallet/admin');
@@ -74,7 +74,7 @@ async function requestDeposit(uid, payload) {
     bankInfo: BANK_INFO,
     bankInfoVnd: BANK_INFO_VND,
     instruction: `입금자명을 "${depositorName.trim()}"으로 정확히 입력하세요. 참조코드: ${refCode}`,
-    estimatedHex: depositData.amountKrw + ' KM', // For backward compat
+    estimatedHex: depositData.amountKrw + ' BM', // For backward compat
     estimatedUsd: null,
     estimatedVnd: depositData.amountVnd ? depositData.amountVnd.toLocaleString() + ' VND' : null,
   };
@@ -95,13 +95,13 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
       }
 
       // 유저 잔고(포인트) 업데이트
-      // KM (VND) 잔고 추가
+      // BM (VND) 잔고 추가
       const userRef = db.collection('users').doc(dep.uid);
       const userSnap = await t.get(userRef);
       const userData = userSnap.exists ? userSnap.data() : {};
       const currentPointVnd = Number(userData.pointBalanceVnd || 0);
 
-      // 베트남 동(VND) 전용 플랫폼이므로 amountVnd를 KM으로 충전. 없으면 KRW에서 18.84를 곱함.
+      // 베트남 동(VND) 전용 플랫폼이므로 amountVnd를 BM으로 충전. 없으면 KRW에서 18.84를 곱함.
       const addKmVnd = Number(dep.amountVnd || Math.floor((dep.amountKrw || 0) * 18.84));
 
       t.set(userRef, { pointBalanceVnd: currentPointVnd + addKmVnd }, { merge: true });
@@ -111,7 +111,7 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
         status: 'approved',
         approvedAt: admin.firestore.FieldValue.serverTimestamp(),
         approvedBy: adminUid,
-        rateAtApproval: overrideKrwRate ? { krwPerUsd: overrideKrwRate } : { note: 'VND to KM' }
+        rateAtApproval: overrideKrwRate ? { krwPerUsd: overrideKrwRate } : { note: 'VND to BM' }
       };
       t.update(depositRef, approvedData);
 
@@ -121,7 +121,7 @@ async function approveDeposit(adminUid, refCode, overrideKrwRate = null, masterS
     return {
       success: true,
       txHash: 'FIREBASE_NATIVE',
-      hexDisplay: depositData.addKm.toLocaleString() + ' KM',
+      hexDisplay: depositData.addKm.toLocaleString() + ' BM',
       usdAmount: depositData.usdAmount,
       vndAmount: depositData.vndAmount,
       vndDisplay: depositData.vndAmount.toLocaleString() + ' VND(추산)',
@@ -173,7 +173,7 @@ async function getDepositHistory(uid) {
     return {
       refCode: data.refCode,
       amountKrw: data.amountKrw,
-      hexDisplay: data.amountKrw ? data.amountKrw.toLocaleString() + ' KM' : '-',
+      hexDisplay: data.amountKrw ? data.amountKrw.toLocaleString() + ' BM' : '-',
       usdAmount: data.usdAmount ?? null,
       vndAmount: data.vndAmount ?? null,
       status: data.status,

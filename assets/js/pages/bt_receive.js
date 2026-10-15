@@ -1,5 +1,5 @@
-﻿// /assets/js/pages/pay.js
-// 가맹점 KM 결제 — 고객 결제 확인 페이지
+// /assets/js/pages/bt_receive.js
+// 가맹점 BM 결제 — 고객 결제 확인 페이지
 
 import { onAuthReady } from "../auth.js";
 import { login } from "../auth.js";
@@ -167,7 +167,7 @@ function bindPayButton() {
   if (!btn) return;
 
   const amountConfirmStr = isVnd
-    ? `${amount.toLocaleString()}KM`
+    ? `${amount.toLocaleString()} BM`
     : `${amount.toLocaleString()}원 (KRW)`;
 
   btn.onclick = async () => {

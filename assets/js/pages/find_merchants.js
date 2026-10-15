@@ -1,4 +1,4 @@
-﻿import { db } from "../firebase-init.js";
+import { db } from "../firebase-init.js";
 import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
@@ -57,7 +57,7 @@ async function init() {
               <div class="mc-card-stats">
                  <span title="고객 리뷰">💬 ${reviews}</span>
                  <span title="좋아요">❤️ ${likes}</span>
-                 <span title="KM 결제 수수료" style="color:#10b981; font-weight:bold;">⚡ ${kmFee}% 수수료</span>
+                 <span title="BM 결제 수수료" style="color:#10b981; font-weight:bold;">⚡ ${kmFee}% 수수료</span>
               </div>
 
               <div style="margin-top: 10px;">

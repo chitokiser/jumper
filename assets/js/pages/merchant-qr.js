@@ -105,7 +105,7 @@ async function initPage(uid) {
   // 실시간 K-Culture Balance & Payment Balance 모니터링
   onSnapshot(doc(db, "users", uid), (docS) => {
     const el = document.getElementById("merchBal");
-    if (el && docS.exists()) el.textContent = Number(docS.data().pointBalanceVnd || 0).toLocaleString() + " KM";
+    if (el && docS.exists()) el.textContent = Number(docS.data().pointBalanceVnd || 0).toLocaleString() + " BM";
   });
 
   // ── 가맹점 BT 재고: merchants/{merchantId}.btBalance 실시간 조회 ──
@@ -117,13 +117,13 @@ async function initPage(uid) {
     }
   });
 
-  // 가맹점주 KM/포인트 잔고 (merchant owner)
+  // 가맹점주 BM/포인트 잔고 (merchant owner)
   const mOwner = mSnap.exists() ? mSnap.data()?.ownerUid : null;
   if (mOwner) {
     onSnapshot(doc(db, "users", mOwner), (snap) => {
       if (snap.exists()) {
         const { pointBalanceVnd = 0 } = snap.data();
-        setText("qrMerchantPaymentBal", pointBalanceVnd.toLocaleString("ko-KR") + " KM (결제용)");
+        setText("qrMerchantPaymentBal", pointBalanceVnd.toLocaleString("ko-KR") + " BM (결제용)");
         setText("qrMerchantPointBal", (snap.data().pointBalance || 0).toLocaleString("ko-KR") + " P");
       }
     });
@@ -437,8 +437,8 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
 
   const cur = data.currency || currency;
   const amountDisp = cur === "VND"
-    ? `${(data.amountVnd || expectedAmount || 0).toLocaleString()}원`
-    : `${(data.amountKrw || expectedAmount || 0).toLocaleString()}원`;
+    ? `${(data.amountVnd || expectedAmount || 0).toLocaleString()} BM`
+    : `${(data.amountKrw || expectedAmount || 0).toLocaleString()}원 (KRW)`;
 
   const el = document.createElement("div");
   el.id = "paymentAlert";
@@ -455,7 +455,7 @@ function showPaymentAlert(data, expectedAmount, currency = "KRW") {
     <div style="font-size:2rem;margin-bottom:4px;">✅</div>
     <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">결제 완료!</div>
     <div style="font-size:0.95rem;opacity:.9;">고객 명의로 ${amountDisp} 결제완료</div>
-    <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">정산 금액: ${vndVal.toLocaleString("ko-KR")} VND</div>
+    <div style="font-size:0.8rem;opacity:.7;margin-top:4px;">정산 금액: ${vndVal.toLocaleString("ko-KR")} BM</div>
     <button onclick="document.getElementById('paymentAlert').remove()"
       style="margin-top:10px;background:rgba(255,255,255,.2);border:none;color:#fff;
              border-radius:6px;padding:4px 16px;cursor:pointer;font-size:0.85rem;">닫기</button>

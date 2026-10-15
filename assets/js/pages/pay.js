@@ -1,5 +1,5 @@
 // /assets/js/pages/pay.js
-// 가맹점 KM 결제 — 고객 결제 확인 페이지
+// 가맹점 BM 결제 — 고객 결제 확인 페이지
 
 import { onAuthReady } from "../auth.js";
 import { login } from "../auth.js";
@@ -618,7 +618,7 @@ function bindPayButton() {
       try {
         const topArr = document.querySelectorAll('.info-header span, .head-coins span, .head-point span, [data-point="true"]');
         topArr.forEach(el => {
-          if (el.textContent.includes('KM') || el.textContent.includes('원')) {
+          if (el.textContent.includes('BM') || el.textContent.includes('KM') || el.textContent.includes('원')) {
             const currentStr = el.textContent.replace(/[^0-9]/g, '');
             if (currentStr) { el.textContent = (Number(currentStr) - (d.amountKrw || 0)).toLocaleString() + ' BM'; }
           }

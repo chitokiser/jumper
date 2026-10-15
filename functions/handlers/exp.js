@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 /**
  * functions/handlers/exp.js
  *
@@ -11,7 +11,7 @@
  *   - 전환량 = 포인트 × gsLevel ÷ 10  (열람용, 변환 시 사용)
  *
  * EXP 획득 기준:
- *   - KM 결제: 100,000 VND / 1,000 = 100 EXP
+ *   - BM 결제: 100,000 VND / 1,000 = 100 EXP
  *   - BT 수령: BT 1개당 100 EXP
  *   - 추천인으로 가입: 1,000 EXP (추천인에게)
  */

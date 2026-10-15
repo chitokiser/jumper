@@ -3147,9 +3147,9 @@ exports.adminChargeBt = onCall(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// 포인트 → KM(머니) 전환
-// 공식: 전환 KM = floor(보유 포인트 × gsLevel ÷ 10)
-// 전체 포인트 소진, pointBalance → 0, pointBalanceVnd += 전환 KM
+// 포인트 → BM(머니) 전환
+// 공식: 전환 BM = floor(보유 포인트 × gsLevel ÷ 10)
+// 전체 포인트 소진, pointBalance → 0, pointBalanceVnd += 전환 BM
 // 클라이언트: httpsCallable(functions, 'exchangePointsToFiat')({ amount: N })
 // ════════════════════════════════════════════════════════════════════════════
 exports.exchangePointsToFiat = onCall(
