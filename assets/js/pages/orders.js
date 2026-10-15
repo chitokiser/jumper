@@ -438,38 +438,131 @@ function bindMerchantOrderActions() {
   });
 }
 
-// ── 가맹점 주문 로드 ──────────────────────────────────────
+// ── 가맹점 매장·QR 결제 카드 렌더링 ──────────────────────────
+function renderMerchantPaymentCard(p) {
+  const mName = p.merchantName || "가맹점";
+  const txHash = p.txHash || p.id || "";
+  const when = fmtTs(p.createdAt || p.created_at);
+  const amountVnd = Number(p.amountVnd || 0);
+  const amountKrw = Number(p.amountKrw || Math.round(amountVnd / 18));
+  const pointsEarned = Number(p.pointsEarned || 0);
+  const grade = p.grade;
+  const issuedBt = Math.floor(amountVnd / 100000);
+  const payExp = Math.floor(amountVnd / 1000);
+
+  const rewardBadges = [];
+  if (pointsEarned > 0) {
+    rewardBadges.push(`<span class="chip" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:700;">🎉 리워드 +${pointsEarned.toLocaleString()} Point${grade ? ` (1/${grade})` : ''}</span>`);
+  }
+  if (issuedBt > 0) {
+    rewardBadges.push(`<span class="chip" style="background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe; font-weight:700;">🎟️ BT +${issuedBt}장</span>`);
+  }
+  if (payExp > 0) {
+    rewardBadges.push(`<span class="chip" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700;">⭐ +${payExp.toLocaleString()} EXP</span>`);
+  }
+
+  const payAgainUrl = p.merchantId
+    ? `/pay.html?merchant=${encodeURIComponent(p.merchantId)}&amount=10000&currency=VND`
+    : '/merchants.html';
+
+  return `
+    <article class="morder-card" data-payment-hash="${esc(txHash)}" style="border-left: 4px solid #10b981;">
+      <div class="morder-header">
+        <div class="morder-merchant-info">
+          <span class="morder-merchant-badge" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;">💳 현장·QR 결제</span>
+          <span style="font-weight:800; font-size:1.05rem; color:#1e293b; margin-left:6px;">🏪 ${esc(mName)}</span>
+          ${txHash ? `<span class="morder-id" style="font-size:0.75rem;">#${esc(txHash.slice(0, 16))}</span>` : ''}
+        </div>
+        <div class="morder-date">${esc(when)}</div>
+      </div>
+
+      <div class="morder-status-row">
+        <span class="chip chip--ok" style="font-weight:700; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">✅ BM 결제 완료</span>
+        <span class="chip" style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; font-size:0.78rem;">지갑 잔액 차감 완료</span>
+      </div>
+
+      <div class="morder-info-banner success" style="margin: 4px 0 8px 0;">
+        ✅ 가맹점에서 BM 결제가 정상 처리되었습니다.
+      </div>
+
+      ${rewardBadges.length ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin: 4px 0 10px 0;">${rewardBadges.join('')}</div>` : ''}
+
+      <div class="morder-total-bar">
+        <span class="morder-total-label">총 결제 금액</span>
+        <span class="morder-total-val" style="color:#7c3aed;">
+          ${amountVnd.toLocaleString()} BM
+          <span style="font-size:0.82rem; font-weight:500; color:#64748b; margin-left:4px;">(${amountVnd.toLocaleString()} VND / 약 ${amountKrw.toLocaleString()}원)</span>
+        </span>
+      </div>
+
+      <div class="morder-actions">
+        <a href="${payAgainUrl}" class="btn btn--sm btn-ghost" style="text-decoration:none; padding:8px 14px; border-radius:8px;">
+          🏪 가맹점 다시 결제
+        </a>
+      </div>
+    </article>
+  `;
+}
+
+// ── 가맹점 주문 및 결제 내역 로드 ──────────────────────────
 async function loadMerchantOrders(uid) {
   merchantOrdersList.innerHTML = "";
-  setState("가맹점 상품 주문 내역을 불러오는 중...");
+  setState("가맹점 주문 및 결제 내역을 불러오는 중...");
 
   try {
-    const q = query(
-      collection(db, "merchant_orders"),
-      where("buyer_uid", "==", uid),
-      limit(100)
-    );
+    const [mOrdersSnap, txSnap] = await Promise.all([
+      getDocs(query(
+        collection(db, "merchant_orders"),
+        where("buyer_uid", "==", uid),
+        limit(100)
+      )).catch((err) => {
+        console.warn("merchant_orders query error:", err);
+        return { forEach: () => {} };
+      }),
+      getDocs(query(
+        collection(db, "transactions"),
+        where("uid", "==", uid),
+        limit(100)
+      )).catch((err) => {
+        console.warn("transactions query error:", err);
+        return { forEach: () => {} };
+      })
+    ]);
 
-    const snap = await getDocs(q);
-    const rows = [];
-    snap.forEach((d) => {
+    const orderRows = [];
+    mOrdersSnap.forEach((d) => {
       const data = d.data();
-      rows.push({
+      orderRows.push({
         id: d.id,
+        _kind: "order",
         ...data,
         _t: toMs(data.created_at || data.createdAt)
       });
     });
 
-    rows.sort((a, b) => (b._t || 0) - (a._t || 0));
+    const paymentRows = [];
+    txSnap.forEach((d) => {
+      const data = d.data();
+      if (data.type === "pay_merchant") {
+        paymentRows.push({
+          id: d.id,
+          _kind: "payment",
+          ...data,
+          _t: toMs(data.createdAt || data.created_at)
+        });
+      }
+    });
 
-    if (!rows.length) {
+    const allRows = [...orderRows, ...paymentRows];
+    allRows.sort((a, b) => (b._t || 0) - (a._t || 0));
+
+    if (!allRows.length) {
       setState("");
       merchantOrdersList.innerHTML = `
         <div class="empty" style="text-align:center; padding:40px 20px; background:#fff; border:1px dashed #cbd5e1; border-radius:14px;">
           <div style="font-size:2.4rem; margin-bottom:12px;">🛍️</div>
-          <h3 style="margin:0 0 8px 0; color:#1e293b; font-size:1.15rem;">주문한 상품이 없습니다.</h3>
-          <p style="color:#64748b; font-size:0.9rem; margin:0 0 16px 0;">BestClub 공식 쇼핑몰에서 베트남 엄선 가맹점 상품을 주문해 보세요!</p>
+          <h3 style="margin:0 0 8px 0; color:#1e293b; font-size:1.15rem;">주문 및 결제 내역이 없습니다.</h3>
+          <p style="color:#64748b; font-size:0.9rem; margin:0 0 16px 0;">가맹점 QR 결제 및 BestClub 공식 쇼핑몰 상품을 이용해 보세요!</p>
           <a href="/mall.html" class="btn btn--primary" style="display:inline-block; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:700;">🛍️ 쇼핑몰 구경하러 가기</a>
         </div>
       `;
@@ -477,11 +570,49 @@ async function loadMerchantOrders(uid) {
     }
 
     setState("");
-    merchantOrdersList.innerHTML = rows.map(renderMerchantOrderCard).join("");
+
+    function renderRowCards(list) {
+      return list.map((r) => {
+        if (r._kind === "payment") return renderMerchantPaymentCard(r);
+        return renderMerchantOrderCard(r);
+      }).join("");
+    }
+
+    merchantOrdersList.innerHTML = `
+      <div class="order-filter-bar" style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
+        <button type="button" class="btn-filter-pill active" data-filter="all">전체 내역 (${allRows.length})</button>
+        <button type="button" class="btn-filter-pill" data-filter="payment">💳 매장·QR 결제 (${paymentRows.length})</button>
+        <button type="button" class="btn-filter-pill" data-filter="order">📦 쇼핑몰 배송 주문 (${orderRows.length})</button>
+      </div>
+      <div id="mordersItemsContainer" style="display:flex; flex-direction:column; gap:16px;">
+        ${renderRowCards(allRows)}
+      </div>
+    `;
+
     bindMerchantOrderActions();
+
+    const pills = merchantOrdersList.querySelectorAll(".btn-filter-pill");
+    const container = $("mordersItemsContainer");
+    pills.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        pills.forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        const filter = btn.getAttribute("data-filter");
+        let filtered = allRows;
+        if (filter === "payment") filtered = allRows.filter((r) => r._kind === "payment");
+        else if (filter === "order") filtered = allRows.filter((r) => r._kind === "order");
+
+        if (!filtered.length) {
+          container.innerHTML = `<div class="empty" style="text-align:center; padding:30px; background:#fff; border-radius:12px; color:#64748b;">선택한 내역이 없습니다.</div>`;
+        } else {
+          container.innerHTML = renderRowCards(filtered);
+          bindMerchantOrderActions();
+        }
+      });
+    });
   } catch (err) {
     console.error("loadMerchantOrders error:", err);
-    setState("가맹점 주문을 불러오지 못했습니다: " + err.message, "bad");
+    setState("가맹점 주문 및 결제 내역을 불러오지 못했습니다: " + err.message, "bad");
   }
 }
 
@@ -741,7 +872,11 @@ btnReload?.addEventListener("click", reload);
 
 onAuthReady(async () => {
   try {
-    setTab("merchant");
+    const urlTab = new URLSearchParams(location.search).get("tab");
+    if (urlTab === "coop") setTab("coop");
+    else if (urlTab === "orders") setTab("orders");
+    else if (urlTab === "reviews") setTab("reviews");
+    else setTab("merchant");
     await reload();
   } catch (e) {
     setState("권한 또는 네트워크 문제로 데이터를 읽지 못했습니다.", "bad");

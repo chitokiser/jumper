@@ -647,6 +647,8 @@ const TX_CONFIG = {
 };
 
 function txAmountHex(tx) {
+  if (tx.amountVnd != null && Number(tx.amountVnd) > 0) return Number(tx.amountVnd);
+  if (tx.amountKrw != null && Number(tx.amountKrw) > 0) return Number(tx.amountKrw);
   if (tx.amountHex) return Number(tx.amountHex);
   // merchant_income 은 순수익(netAmountWei) 우선 표시
   if (tx.netAmountWei) return Number(formatWei(tx.netAmountWei));
@@ -655,11 +657,12 @@ function txAmountHex(tx) {
   return 0;
 }
 
-function renderTxItem({ label, icon, dir, amountHex, dateStr, txHash, statusBadge }) {
+function renderTxItem({ label, icon, dir, amountHex, dateStr, txHash, statusBadge, unit }) {
   const amtSign = dir === "income" ? "+" : dir === "expense" ? "−" : "";
   const amtClass = dir === "income" ? "income" : dir === "expense" ? "expense" : dir;
+  const curr = unit || "Point";
   const amtText = amountHex > 0
-    ? `${amtSign}${amountHex.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} Point`
+    ? `${amtSign}${amountHex.toLocaleString("ko-KR", { maximumFractionDigits: 4 })} ${curr}`
     : "-";
   const hashHtml = txHash
     ? `<div class="tx-hash">${txHash.slice(0, 10)}...${txHash.slice(-6)}</div>`
@@ -1077,12 +1080,15 @@ async function loadTxHistory(uid, _walletAddress) {
           label = `🛒 ${tx.merchantName}`;
         }
 
+        const isBm = (tx.currency === "VND" || tx.amountVnd != null || tx.type === "pay_merchant" || tx.type === "merchant_income");
+        const unit = isBm ? "BM" : "Point";
         unified.push({
           sortTs: tx.createdAt?.toDate ? tx.createdAt.toDate().getTime() : 0,
           label,
           icon: cfg.icon,
           dir: cfg.dir,
           amountHex: txAmountHex(tx),
+          unit,
           dateStr: tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleString("ko-KR") : "-",
           txHash: tx.txHash || null,
           statusBadge: null,
