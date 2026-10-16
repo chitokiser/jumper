@@ -391,7 +391,7 @@ class MonsterRace {
     this._updateBetUI();
 
     const timerEl = document.getElementById('raceBetTimer');
-    timerEl.textContent = `⏱ ${this._secsLeft}초`;
+    timerEl.textContent = `⏱ ${this._secsLeft}s`;
     timerEl.style.color = '#fbbf24';
 
     this._betTimer = setInterval(() => {

@@ -74,8 +74,8 @@ export function connectToGameServer() {
 
   const io = window.io;
   if (!io) {
-    console.error('[GS] Socket.io 미로드 — CDN 태그 확인');
-    _handlers?.onError?.('Socket.io 미로드');
+    console.error('[GS] Socket.io not loaded — check CDN script');
+    _handlers?.onError?.('Socket.io not loaded');
     return;
   }
 
@@ -133,7 +133,7 @@ export function connectToGameServer() {
 
   _socket.on('reconnect_failed', () => {
     _setState('error');
-    _handlers?.onError?.('서버 연결 실패 (재시도 초과)');
+    _handlers?.onError?.('Server connection failed (retry limit exceeded)');
   });
 
   // S2C 이벤트
@@ -206,9 +206,9 @@ async function _adminFetch(method, path, body) {
   try {
     res = await fetch(url, opts);
   } catch (netErr) {
-    // 네트워크 오류 (CORS 포함)
-    console.error('[GS Admin] fetch 실패:', url, netErr);
-    throw new Error(`네트워크 오류 — 게임서버 미배포 또는 CORS 차단\n(${netErr.message})`);
+    // Network error (including CORS)
+    console.error('[GS Admin] fetch failed:', url, netErr);
+    throw new Error(`Network error — Game server not deployed or CORS blocked\n(${netErr.message})`);
   }
   const text = await res.text();
   let json;

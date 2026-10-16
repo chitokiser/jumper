@@ -4100,10 +4100,10 @@ let _trialMonsters = []; // [{id, lat, lng, imgIdx, name, hp, maxHp, marker, def
 
 // 몬스터 종류 (활쏘기 게임 이미지 1~6만 사용)
 const _TRIAL_MON_DEFS = [
-  { imgIdx: 0, name: '슬라임',   nameEn: 'Slime',    nameVi: 'Slime',    hp: 1, reward: 30  },
-  { imgIdx: 1, name: '고블린',   nameEn: 'Goblin',   nameVi: 'Goblin',   hp: 2, reward: 50  },
-  { imgIdx: 2, name: '스켈레톤', nameEn: 'Skeleton', nameVi: 'Bộ xương', hp: 2, reward: 50  },
-  { imgIdx: 3, name: '오크',     nameEn: 'Orc',      nameVi: 'Orc',      hp: 3, reward: 80  },
+  { imgIdx: 0, name: 'Slime',    nameEn: 'Slime',    nameVi: 'Slime',    hp: 1, reward: 30  },
+  { imgIdx: 1, name: 'Goblin',   nameEn: 'Goblin',   nameVi: 'Goblin',   hp: 2, reward: 50  },
+  { imgIdx: 2, name: 'Skeleton', nameEn: 'Skeleton', nameVi: 'Bộ xương', hp: 2, reward: 50  },
+  { imgIdx: 3, name: 'Orc',      nameEn: 'Orc',      nameVi: 'Orc',      hp: 3, reward: 80  },
 ];
 
 function _trialMonName(def) {

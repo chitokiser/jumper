@@ -799,7 +799,7 @@ function _adminRevealNearbyHiddenBoxes(clickLat, clickLng) {
     const lat = Number(box.lat), lng = Number(box.lng);
     const ghost = new google.maps.Marker({
       position: { lat, lng }, map,
-      title: `[관리자] 숨김: ${box.name || '보물박스'}`,
+      title: `[Admin] Hidden: ${box.name || 'Treasure Box'}`,
       icon: {
         url: '/assets/images/item/box.png',
         scaledSize: new google.maps.Size(32, 32),
@@ -813,40 +813,40 @@ function _adminRevealNearbyHiddenBoxes(clickLat, clickLng) {
     _adminShowHiddenBoxInfo(box, ghost);
   }
   if (!found) {
-    infoWindow.setContent('<div style="font-size:12px;color:#888;padding:4px;">100m 내 숨겨진 보물박스 없음</div>');
+    infoWindow.setContent('<div style="font-size:12px;color:#888;padding:4px;">No hidden treasure boxes within 100m</div>');
     infoWindow.setPosition({ lat: clickLat, lng: clickLng });
     infoWindow.open(map);
   }
 }
 
 function _adminShowHiddenBoxInfo(box, marker) {
-  const keyName = box.keyId ? (_keyDefs[box.keyId]?.name || box.keyId) : '없음';
+  const keyName = box.keyId ? (_keyDefs[box.keyId]?.name || box.keyId) : 'None';
   const active = isBoxActive(box);
   const st = getBoxHpState(box);
   infoWindow.setContent(`
     <div style="font-size:12px;line-height:1.8;min-width:200px;">
-      <div style="font-weight:700;font-size:13px;color:#7c3aed;margin-bottom:4px;">🕵️ [숨김] ${escHtml(box.name || '보물박스')}</div>
-      <div>위치: ${Number(box.lat).toFixed(6)}, ${Number(box.lng).toFixed(6)}</div>
-      <div>필요 열쇠: <b>${escHtml(keyName)}</b></div>
-      <div>정회원 전용: ${box.memberOnly ? '✅' : '❌'}</div>
-      <div>활성: ${active ? '✅' : `❌ (${box.startHour || '?'}~${box.endHour || '?'}시)`}</div>
+      <div style="font-weight:700;font-size:13px;color:#7c3aed;margin-bottom:4px;">🕵️ [Hidden] ${escHtml(box.name || 'Treasure Box')}</div>
+      <div>Location: ${Number(box.lat).toFixed(6)}, ${Number(box.lng).toFixed(6)}</div>
+      <div>Required Key: <b>${escHtml(keyName)}</b></div>
+      <div>Members Only: ${box.memberOnly ? '✅' : '❌'}</div>
+      <div>Active: ${active ? '✅' : `❌ (${box.startHour || '?'}:00 ~ ${box.endHour || '?'}:00)`}</div>
       <div>HP: ${st.current} / ${box.hp || 300}</div>
       <button onclick="window.__adminHiddenBoxDelete('${box.id}')"
-        style="margin-top:6px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑️ 삭제</button>
+        style="margin-top:6px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">🗑️ Delete</button>
     </div>`);
   infoWindow.open(map, marker);
 }
 
 window.__adminHiddenBoxDelete = async (boxId) => {
   if (!_isAdmin) return;
-  if (!confirm('이 숨김 보물박스를 삭제하시겠습니까?')) return;
+  if (!confirm('Delete this hidden treasure box?')) return;
   try {
     await deleteDoc(doc(db, 'treasure_boxes', boxId));
     treasureBoxes = treasureBoxes.filter(b => b.id !== boxId);
     if (_adminGhostMarkers[boxId]) { _adminGhostMarkers[boxId].setMap(null); delete _adminGhostMarkers[boxId]; }
     infoWindow.close();
-    alert('삭제 완료');
-  } catch (err) { alert('삭제 오류: ' + err.message); }
+    alert('Deleted successfully');
+  } catch (err) { alert('Delete error: ' + err.message); }
 };
 
 function _revealHiddenBox(box) {
@@ -1168,7 +1168,7 @@ function updateNearbyMarkers(snap) {
         infoWindow?.setContent(`
           <div style="font-size:13px;line-height:1.7;">
             <b>👤 ${escHtml(data.name)}</b>
-            <div style="font-size:11px;color:#888;margin-top:2px;">거리 ${Math.round(dist)}m</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">Distance ${Math.round(dist)}m</div>
           </div>`);
         infoWindow?.open(map, marker);
       });
@@ -1323,15 +1323,15 @@ function _showGsMonsterAdminMenu(monsterId, spawnId, type, anchor, pos) {
       <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
         <button onclick="window.__gsAdminAttackTest('${monsterId}')"
           style="flex:1;min-width:60px;padding:3px 0;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
-          ⚔ 테스트공격
+          ⚔ Test Attack
         </button>
         <button onclick="window.__gsAdminKill('${monsterId}')"
           style="flex:1;min-width:60px;padding:3px 0;background:#f97316;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
-          💀 강제사망
+          💀 Force Kill
         </button>
         <button onclick="window.__gsAdminDelSpawn('${spawnId}')"
           style="flex:1;min-width:60px;padding:3px 0;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">
-          🗑 스폰삭제
+          🗑 Delete Spawn
         </button>
       </div>
     </div>`;
@@ -1356,17 +1356,17 @@ window.__gsAdminKill = async (monsterId) => {
   try {
     await gsAdminKillMonster(monsterId);
     infoWindow?.close();
-  } catch (e) { alert('강제사망 오류: ' + e.message); }
+  } catch (e) { alert('Force kill error: ' + e.message); }
 };
 
 window.__gsAdminDelSpawn = async (spawnId) => {
-  if (!spawnId || spawnId === 'undefined') { alert('spawnId 없음'); return; }
-  if (!confirm(`스폰 [${spawnId}] 삭제?\n해당 스폰의 모든 몬스터가 즉시 제거됩니다.`)) return;
+  if (!spawnId || spawnId === 'undefined') { alert('No spawnId'); return; }
+  if (!confirm(`Delete spawn [${spawnId}]?\nAll monsters from this spawn will be removed immediately.`)) return;
   try {
     const r = await gsAdminDeleteSpawn(spawnId);
-    alert(`✅ 삭제 완료 (인스턴스 ${r.instancesRemoved}개 제거)`);
+    alert(`✅ Deleted (${r.instancesRemoved} instances removed)`);
     infoWindow?.close();
-  } catch (e) { alert('삭제 오류: ' + e.message); }
+  } catch (e) { alert('Delete error: ' + e.message); }
 };
 
 async function _gsKeyDrop(monsterId) {
@@ -2086,8 +2086,8 @@ function _updateEquipStats() {
       ${weaponCard}
       ${armorCards}
       <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#c9a870;margin-top:4px;width:100%;">
-        <span>⚔️ 총공격력: <b style="color:#ffd700;">${getTotalAtk()}</b></span>
-        <span>🛡 방어력: <b style="color:#60a5fa;">${getDefense()}</b></span>
+        <span>⚔️ Total Attack: <b style="color:#ffd700;">${getTotalAtk()}</b></span>
+        <span>🛡 Defense: <b style="color:#60a5fa;">${getDefense()}</b></span>
       </div>
     </div>`;
 
@@ -2587,7 +2587,7 @@ function renderVouchers() {
           <div class="voucher-progress-fill" style="width:${pct}%"></div>
         </div>
         <div class="voucher-progress-text">
-          <span class="vp-met">${metCount}/${requirements.length} 재료 충족</span>
+          <span class="vp-met">${metCount}/${requirements.length} Materials Met</span>
           <span>${pct}%</span>
         </div>
       </div>` : '';
@@ -3035,7 +3035,7 @@ async function _loadKFoodWebzine() {
 
   try {
     const listEl = document.getElementById('webzineList');
-    listEl.innerHTML = '<span style="color:#aaa;">웹진 로딩 중...</span>';
+    listEl.innerHTML = '<span style="color:#aaa;">Loading webzine...</span>';
 
     // Zentaro 프로젝트 API (포트 3000 가정)
     const res = await fetch('http://localhost:3000/api/webzine-post');
@@ -3050,12 +3050,12 @@ async function _loadKFoodWebzine() {
         </div>
       `).join('');
     } else {
-      listEl.innerHTML = '<span style="color:#aaa;">현재 발행된 웹진이 없습니다.</span>';
+      listEl.innerHTML = '<span style="color:#aaa;">No webzines published yet.</span>';
     }
   } catch (e) {
     console.warn('Webzine load error:', e);
     const listEl = document.getElementById('webzineList');
-    if (listEl) listEl.innerHTML = '<span style="color:#f87171; font-size:12px;">오프라인 모드: 웹진 서버(Zentaro)에 연결할 수 없습니다. 포트(3000)를 확인해주세요.</span>';
+    if (listEl) listEl.innerHTML = '<span style="color:#f87171; font-size:12px;">Offline Mode: Cannot connect to webzine server.</span>';
   }
 }
 
@@ -3535,49 +3535,49 @@ async function init() {
   $('btnPlaceShopPotion')?.addEventListener('click', () => enterAdminPlaceMode('shop_potion'));
   $('btnPlaceShopMisc')?.addEventListener('click', () => enterAdminPlaceMode('shop_misc'));
   $('btnGiveRevive')?.addEventListener('click', async () => {
-    const targetUid = prompt('부활권 지급할 UID (비우면 본인):', _uid || '') || _uid;
+    const targetUid = prompt('UID to grant Revive Tickets (leave empty for self):', _uid || '') || _uid;
     if (!targetUid) return;
-    const count = parseInt(prompt('지급 수량:', '10000') || '10000');
+    const count = parseInt(prompt('Grant Quantity:', '10000') || '10000');
     if (!count || count < 1) return;
     try {
       const res = await httpsCallable(functions, 'adminGiveRevive')({ targetUid, count });
-      alert(`✅ 부활권 ${res.data.given}장 지급 완료`);
+      alert(`✅ Granted ${res.data.given} Revive Tickets`);
       if (targetUid === _uid) await loadInventory({ force: true });
-    } catch (err) { alert('실패: ' + err.message); }
+    } catch (err) { alert('Failed: ' + err.message); }
   });
 
   $('btnGivePotion')?.addEventListener('click', async () => {
-    const targetUid = prompt('빨간약 지급할 UID (비우면 본인):', _uid || '') || _uid;
+    const targetUid = prompt('UID to grant HP Potions (leave empty for self):', _uid || '') || _uid;
     if (!targetUid) return;
-    const count = parseInt(prompt('지급 수량:', '5') || '5');
+    const count = parseInt(prompt('Grant Quantity:', '5') || '5');
     if (!count || count < 1) return;
     try {
       const res = await httpsCallable(functions, 'adminGivePotion')({ targetUid, count });
-      alert(`✅ ${targetUid.slice(0, 8)}… 에게 빨간약 ${res.data.given}병 지급 완료`);
+      alert(`✅ Granted ${res.data.given} HP Potions to ${targetUid.slice(0, 8)}…`);
       if (targetUid === _uid) await loadInventory({ force: true });
-    } catch (err) { alert('실패: ' + err.message); }
+    } catch (err) { alert('Failed: ' + err.message); }
   });
   $('btnSetGold')?.addEventListener('click', async () => {
-    const targetUid = prompt('GP를 수정할 유저 UID:', '') || '';
+    const targetUid = prompt('User UID to modify GP:', '') || '';
     if (!targetUid.trim()) return;
-    const modeRaw = prompt('모드: set(덮어쓰기) / add(추가)', 'set');
+    const modeRaw = prompt('Mode: set / add', 'set');
     const mode = modeRaw?.trim() === 'add' ? 'add' : 'set';
-    const gold = parseInt(prompt(`${mode === 'add' ? '추가할' : '설정할'} GP 금액:`, '0') || '0');
-    if (isNaN(gold) || gold < 0) { alert('유효하지 않은 금액'); return; }
-    if (!confirm(`UID: ${targetUid.slice(0, 12)}…\n${mode === 'add' ? `+${gold.toLocaleString()} GP 추가` : `GP → ${gold.toLocaleString()} 으로 설정`}\n\n진행하겠습니까?`)) return;
+    const gold = parseInt(prompt(`GP amount to ${mode === 'add' ? 'add' : 'set'}:`, '0') || '0');
+    if (isNaN(gold) || gold < 0) { alert('Invalid amount'); return; }
+    if (!confirm(`UID: ${targetUid.slice(0, 12)}…\n${mode === 'add' ? `+${gold.toLocaleString()} GP` : `Set GP → ${gold.toLocaleString()}`}\n\nProceed?`)) return;
     try {
       const res = await httpsCallable(functions, 'adminSetGold')({ targetUid: targetUid.trim(), gold, mode });
-      alert(`✅ 완료\n현재 GP: ${res.data.gold.toLocaleString()}`);
+      alert(`✅ Done\nCurrent GP: ${res.data.gold.toLocaleString()}`);
       if (targetUid === _uid) loadPlayerState({ force: true });
-    } catch (err) { alert('실패: ' + err.message); }
+    } catch (err) { alert('Failed: ' + err.message); }
   });
 
   $('btnAdminInitAllPlayers')?.addEventListener('click', async () => {
-    if (!confirm('모든 유저에게 스타터 팩을 초기화하시겠습니까?\n(이미 더 많이 가진 유저는 영향 없음)')) return;
+    if (!confirm('Reset starter pack for all users?\n(Users who already have more will not be affected)')) return;
     try {
       const res = await httpsCallable(functions, 'adminInitAllPlayers')();
-      alert(`✅ ${res.data.processed}명 초기화 완료`);
-    } catch (err) { alert('실패: ' + err.message); }
+      alert(`✅ Reset completed for ${res.data.processed} users`);
+    } catch (err) { alert('Failed: ' + err.message); }
   });
   $('btnCancelPlace')?.addEventListener('click', exitAdminPlaceMode);
   $('btnToggleTowerRange')?.addEventListener('click', toggleTowerRanges);
@@ -3883,7 +3883,7 @@ function _refreshAttackPanel() {
   const hpPct = (shop.maxHp && shop.hp != null) ? Math.max(0, Math.round(shop.hp / shop.maxHp * 100)) : 100;
   panel.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <span style="color:#fca5a5;font-weight:700;font-size:14px">⚔️ 공격 중 — ${escHtml(shop.name)}</span>
+      <span style="color:#fca5a5;font-weight:700;font-size:14px">⚔️ Attacking — ${escHtml(shop.name)}</span>
       <button id="atkPanelExit" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1">✕</button>
     </div>
     <div style="margin-bottom:12px">
@@ -3899,7 +3899,7 @@ function _refreshAttackPanel() {
         style="flex:1;padding:13px;border-radius:10px;border:none;font-weight:700;font-size:16px;cursor:pointer;
                background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;
                box-shadow:0 3px 12px rgba(220,38,38,.4);letter-spacing:.3px">
-        ⚔️ 공격
+        ⚔️ Attack
       </button>
       <span id="atkPanelTimer" style="color:#6b7280;font-size:13px;min-width:44px;text-align:center"></span>
     </div>`;
@@ -3944,7 +3944,7 @@ function _startShopAtkCd(sec) {
       clearInterval(_shopAtkCdTimer);
       _shopAtkCdTimer = null;
       btn.disabled = false;
-      btn.textContent = '⚔️ 공격';
+      btn.textContent = '⚔️ Attack';
     } else {
       btn.textContent = `⚔️ ${left}s`;
     }
@@ -3954,7 +3954,7 @@ function _startShopAtkCd(sec) {
 async function _doAttackShop(shop) {
   if (!shop) return;
   if (!_uid || _isAnonymous) {
-    showFloat(_t('login_required') || '로그인 필요', '#ef4444', shop.lat, shop.lng);
+    showFloat('Login Required', '#ef4444', shop.lat, shop.lng);
     return;
   }
   const btn = $('atkPanelBtn');
@@ -3971,23 +3971,23 @@ async function _doAttackShop(shop) {
     _updateAttackPanelHp(newHp);
     if (conquered) {
       playSound('monster_die');
-      showFloat(`👑 정복! ${shopName}`, '#facc15', shop.lat, shop.lng);
+      showFloat(`👑 Conquered! ${shopName}`, '#facc15', shop.lat, shop.lng);
       _exitAttackMode();
     } else {
       showFloat(`-${atk} HP`, '#f87171', shop.lat, shop.lng);
     }
   } catch (e) {
     const msg = e?.message || '';
-    const cdMatch = msg.match(/(\d+)초 남음/);
+    const cdMatch = msg.match(/(\d+)(?:초 남음|s remaining)/);
     if (cdMatch) {
       const remSec = Number(cdMatch[1]);
       _startShopAtkCd(remSec);
-      showFloat(`⏳ ${remSec}초`, '#94a3b8', shop.lat, shop.lng);
+      showFloat(`⏳ ${remSec}s`, '#94a3b8', shop.lat, shop.lng);
     } else if (msg.includes('자신의 상점')) {
-      showFloat('자신의 상점은 공격 불가', '#94a3b8', shop.lat, shop.lng);
+      showFloat('Cannot attack own shop', '#94a3b8', shop.lat, shop.lng);
       _exitAttackMode();
     } else {
-      showFloat('공격 실패', '#ef4444', shop.lat, shop.lng);
+      showFloat('Attack failed', '#ef4444', shop.lat, shop.lng);
     }
   }
 }
@@ -3996,15 +3996,15 @@ async function _execRepairShop(shop) {
   const missing = Math.max(0, (shop.maxHp ?? 0) - (shop.hp ?? shop.maxHp ?? 0));
   if (!missing) return;
   const cost = missing;
-  if (!confirm(`HP ${missing.toLocaleString()} 수리 → 💰 ${cost.toLocaleString()} 골드 차감\n진행하시겠습니까?`)) return;
+  if (!confirm(`Repair ${missing.toLocaleString()} HP → Deduct 💰 ${cost.toLocaleString()} Gold\nProceed?`)) return;
   try {
     const res = await httpsCallable(functions, 'repairShop')({ shopId: shop.id });
     const { repairHp, cost: paid, newHp } = res.data;
     closeShopModal();
     await Promise.all([loadPlayerState({ force: true }), loadShops()]);
-    showToast(`🔧 수리 완료 (+${repairHp.toLocaleString()} HP, -💰${paid.toLocaleString()})`, 'success');
+    showToast(`🔧 Repaired (+${repairHp.toLocaleString()} HP, -💰${paid.toLocaleString()} Gold)`, 'success');
   } catch (e) {
-    showToast(e?.message || '수리 실패', 'error');
+    showToast(e?.message || 'Repair failed', 'error');
   }
 }
 
@@ -4029,7 +4029,7 @@ function openShopModal(shop) {
   const modal = $('shopModal');
   if (!modal) return;
 
-  const typeLabelMap = { weapon_armor: '⚔️ 무기/방어구', potion: '🧪 약물', misc: '🛍️ 잡템' };
+  const typeLabelMap = { weapon_armor: '⚔️ Weapon / Armor', potion: '🧪 Potions', misc: '🛍️ Misc Items' };
   const shopFlag = _flagFromCoords(shop.lat, shop.lng);
   $('shopModalTitle').textContent = `${shopFlag} ${shop.name} (${typeLabelMap[shop.type] || shop.type})`;
 
@@ -4094,14 +4094,14 @@ function _renderShopModalBody() {
   // 상점 정보 헤더 (소유자 + 보유 골드)
   const ownerUid = shop.ownerUid || '';
   const isOwnerMe = ownerUid && ownerUid === _uid;
-  const ownerDisp = isOwnerMe ? '👑 나' : (shop.ownerName ? escHtml(shop.ownerName) : (ownerUid ? ownerUid.slice(0, 8) + '…' : '─'));
+  const ownerDisp = isOwnerMe ? '👑 Me' : (shop.ownerName ? escHtml(shop.ownerName) : (ownerUid ? ownerUid.slice(0, 8) + '…' : '─'));
   let html = `<div style="padding-bottom:10px;border-bottom:1px solid #1f2937;margin-bottom:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <span style="color:#9ca3af;font-size:12px">🏪 소유자</span>
+      <span style="color:#9ca3af;font-size:12px">🏪 Owner</span>
       <span id="shopOwnerNameEl" style="color:${isOwnerMe ? '#60a5fa' : '#d1d5db'};font-size:12px;font-weight:600">${ownerDisp}</span>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <span style="color:#9ca3af;font-size:12px">보유 골드</span>
+      <span style="color:#9ca3af;font-size:12px">Owned Gold</span>
       <span style="color:#fbbf24;font-weight:700;font-size:14px">💰 ${playerGold.toLocaleString()}</span>
     </div>
   </div>`;
@@ -4131,7 +4131,7 @@ function _renderShopModalBody() {
           <div style="font-size:12px;margin-top:3px;color:#fbbf24">
             💰 ${it.price.toLocaleString()} ${_t('shop_gold_label')}
             <span style="color:#6b7280;margin-left:6px">
-              ${it.stock === -1 ? '∞ 무제한' : `재고 ${it.stock}`}
+              ${it.stock === -1 ? '∞ Unlimited' : `Stock: ${it.stock}`}
             </span>
           </div>
         </div>
@@ -4143,7 +4143,7 @@ function _renderShopModalBody() {
   // 하단: 수량 / 합계 / 구매 버튼
   html += `<div style="border-top:1px solid #1f2937;margin-top:12px;padding-top:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <span style="color:#9ca3af;font-size:13px">구매 수량</span>
+      <span style="color:#9ca3af;font-size:13px">Quantity</span>
       <div style="display:flex;align-items:center;gap:10px">
         <button id="shopQtyMinus"
           style="width:30px;height:30px;border-radius:8px;border:1px solid #374151;
@@ -4166,7 +4166,7 @@ function _renderShopModalBody() {
       </div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <span style="color:#9ca3af;font-size:13px">합계</span>
+      <span style="color:#9ca3af;font-size:13px">Total</span>
       <span id="shopTotalAmount" style="color:#fbbf24;font-weight:700;font-size:16px">
         ${sel ? `💰 ${total.toLocaleString()} ${_t('shop_gold_label')}` : '─'}
       </span>
@@ -4179,7 +4179,7 @@ function _renderShopModalBody() {
              color:${canBuy ? '#fff' : '#6b7280'};
              box-shadow:${canBuy ? '0 3px 12px rgba(37,99,235,.4)' : 'none'}"
       ${canBuy ? '' : 'disabled'}>
-      ${!sel ? '아이템을 선택하세요' : !canBuy ? '💸 골드가 부족합니다' : '🛒 구매하기'}
+      ${!sel ? 'Select an item' : !canBuy ? '💸 Not enough gold' : '🛒 Buy Now'}
     </button>
     ${(() => {
       const isOwn = shop.ownerUid && shop.ownerUid === _uid;
@@ -4194,7 +4194,7 @@ function _renderShopModalBody() {
         const canLvlUp = playerGold >= lvlCost;
         return `<div style="margin-top:10px;padding:10px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid #1f2937">
           <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;margin-bottom:5px">
-            <span>🏠 내 상점 HP</span>
+            <span>🏠 My Shop HP</span>
             <span style="color:${hpPct < 50 ? '#ef4444' : '#10b981'};font-weight:600">${hp.toLocaleString()} / ${maxHp.toLocaleString()}</span>
           </div>
           <div style="background:#374151;border-radius:4px;height:6px;margin-bottom:8px;overflow:hidden">
@@ -4206,9 +4206,9 @@ function _renderShopModalBody() {
                        cursor:${canRepair ? 'pointer' : 'not-allowed'};
                        background:${canRepair ? 'linear-gradient(135deg,#059669,#047857)' : '#1f2937'};
                        color:${canRepair ? '#fff' : '#6b7280'}">
-                🔧 전체 수리 <span style="font-weight:400;opacity:.8">(💰 ${cost.toLocaleString()} 골드)</span>
+                🔧 Full Repair <span style="font-weight:400;opacity:.8">(💰 ${cost.toLocaleString()} Gold)</span>
               </button>`
-            : `<div style="text-align:center;color:#10b981;font-size:12px;font-weight:600">✅ HP 최대</div>`
+            : `<div style="text-align:center;color:#10b981;font-size:12px;font-weight:600">✅ Max HP</div>`
           }
           <button id="shopLevelUpBtn" ${canLvlUp ? '' : 'disabled'}
             style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:none;
@@ -4216,19 +4216,19 @@ function _renderShopModalBody() {
                    cursor:${canLvlUp ? 'pointer' : 'not-allowed'};
                    background:${canLvlUp ? 'linear-gradient(135deg,#7c3aed,#6d28d9)' : '#1f2937'};
                    color:${canLvlUp ? '#fff' : '#6b7280'}">
-            ⬆️ 레벨업 (Lv.${shop.level ?? 1} → ${(shop.level ?? 1) + 1})
-            <span style="font-weight:400;opacity:.8">(💰 ${lvlCost.toLocaleString()} 골드)</span>
+            ⬆️ Level Up (Lv.${shop.level ?? 1} → ${(shop.level ?? 1) + 1})
+            <span style="font-weight:400;opacity:.8">(💰 ${lvlCost.toLocaleString()} Gold)</span>
           </button>
           ${shop.type !== 'weapon_armor' ? `<button id="shopEditItemsBtn"
             style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:none;
                    font-weight:700;font-size:13px;cursor:pointer;
                    background:linear-gradient(135deg,#0369a1,#0284c7);color:#fff;">
-            📦 판매 아이템 등록/수정
+            📦 Edit Items for Sale
           </button>` : ''}
           <button id="shopSalesBtn"
             style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid #374151;
                    background:transparent;color:#9ca3af;font-size:13px;font-weight:600;cursor:pointer">
-            📊 매출 실적 보기
+            📊 View Sales Performance
           </button>
           <div id="shopSalesPanel" style="display:none;margin-top:8px"></div>
         </div>`;
@@ -4238,7 +4238,7 @@ function _renderShopModalBody() {
                font-weight:700;font-size:14px;cursor:pointer;
                background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;
                box-shadow:0 3px 12px rgba(220,38,38,.35)">
-        ⚔️ 공격하기 <span style="font-weight:400;font-size:12px;opacity:.8">(HP ${hp.toLocaleString()}/${maxHp.toLocaleString()})</span>
+        ⚔️ Attack Shop <span style="font-weight:400;font-size:12px;opacity:.8">(HP ${hp.toLocaleString()}/${maxHp.toLocaleString()})</span>
       </button>`;
     })()}
   </div>`;
@@ -4351,7 +4351,7 @@ function _renderShopModalBody() {
       btn.style.background = ok ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#1f2937';
       btn.style.color = ok ? '#fff' : '#6b7280';
       btn.style.boxShadow = ok ? '0 3px 12px rgba(37,99,235,.4)' : 'none';
-      btn.textContent = ok ? '🛒 구매하기' : '💸 골드가 부족합니다';
+      btn.textContent = ok ? '🛒 Buy Now' : '💸 Not enough gold';
     }
     const mi = $('shopQtyMinus');
     if (mi) { mi.disabled = v <= 1; mi.style.color = v <= 1 ? '#4b5563' : '#f3f4f6'; mi.style.cursor = v <= 1 ? 'not-allowed' : 'pointer'; }
@@ -4467,11 +4467,11 @@ async function _loadShopSales(shopId) {
 
   if (!panel.style.display || panel.style.display === 'none') {
     panel.style.display = 'block';
-    panel.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:12px 0">로딩 중…</div>';
-    if (btn) btn.textContent = '📊 매출 실적 닫기';
+    panel.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:12px 0">Loading…</div>';
+    if (btn) btn.textContent = '📊 Close Sales Performance';
   } else {
     panel.style.display = 'none';
-    if (btn) btn.textContent = '📊 매출 실적 보기';
+    if (btn) btn.textContent = '📊 View Sales Performance';
     return;
   }
 
@@ -4484,44 +4484,44 @@ async function _loadShopSales(shopId) {
     const grandTotal = (totalRevenue || 0) + mtRevenue + (mineRevenue || 0);
     const mineCard = (mineCount || 0) > 0 ? `
           <div style="flex:1;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:8px;text-align:center">
-            <div style="color:#fcd34d;font-size:10px;margin-bottom:2px">⛏ 금광 채굴</div>
+            <div style="color:#fcd34d;font-size:10px;margin-bottom:2px">⛏ Gold Mining</div>
             <div style="color:#fbbf24;font-weight:700;font-size:14px">${(mineRevenue || 0).toLocaleString()}</div>
-            <div style="color:#6b7280;font-size:10px">${mineMiners || 0}명 채굴 중</div>
+            <div style="color:#6b7280;font-size:10px">${mineMiners || 0} miners active</div>
           </div>` : '';
     let html = `
       <div style="background:rgba(255,255,255,.03);border:1px solid #1f2937;border-radius:10px;padding:12px">
         <div style="display:flex;gap:12px;margin-bottom:8px">
           <div style="flex:1;background:#1f2937;border-radius:8px;padding:10px;text-align:center">
-            <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">총 수익 (합계)</div>
+            <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">Total Revenue</div>
             <div style="color:#fbbf24;font-weight:700;font-size:18px">💰 ${grandTotal.toLocaleString()}</div>
           </div>
           <div style="flex:1;background:#1f2937;border-radius:8px;padding:10px;text-align:center">
-            <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">총 판매 수량</div>
-            <div style="color:#60a5fa;font-weight:700;font-size:18px">${((totalSales || 0) + mtCount).toLocaleString()} 개</div>
+            <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">Total Units Sold</div>
+            <div style="color:#60a5fa;font-weight:700;font-size:18px">${((totalSales || 0) + mtCount).toLocaleString()} items</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
           <div style="flex:1;min-width:80px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px;text-align:center">
-            <div style="color:#34d399;font-size:10px;margin-bottom:2px">🛒 아이템 매출</div>
+            <div style="color:#34d399;font-size:10px;margin-bottom:2px">🛒 Item Sales</div>
             <div style="color:#fbbf24;font-weight:700;font-size:14px">${(totalRevenue || 0).toLocaleString()}</div>
-            <div style="color:#6b7280;font-size:10px">${(totalSales || 0).toLocaleString()} 개</div>
+            <div style="color:#6b7280;font-size:10px">${(totalSales || 0).toLocaleString()} items</div>
           </div>
           <div style="flex:1;min-width:80px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:8px;text-align:center">
-            <div style="color:#6ee7b7;font-size:10px;margin-bottom:2px">🌱 묘목 매출</div>
+            <div style="color:#6ee7b7;font-size:10px;margin-bottom:2px">🌱 Seedling Sales</div>
             <div style="color:#fbbf24;font-weight:700;font-size:14px">${(seedlingRevenue || 0).toLocaleString()}</div>
-            <div style="color:#6b7280;font-size:10px">${(seedlingCount || 0).toLocaleString()} 개</div>
+            <div style="color:#6b7280;font-size:10px">${(seedlingCount || 0).toLocaleString()} items</div>
           </div>
           <div style="flex:1;min-width:80px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:8px;padding:8px;text-align:center">
-            <div style="color:#c4b5fd;font-size:10px;margin-bottom:2px">💊 영양제 매출</div>
+            <div style="color:#c4b5fd;font-size:10px;margin-bottom:2px">💊 Booster Sales</div>
             <div style="color:#fbbf24;font-weight:700;font-size:14px">${(boosterRevenue || 0).toLocaleString()}</div>
-            <div style="color:#6b7280;font-size:10px">${(boosterCount || 0).toLocaleString()} 개</div>
+            <div style="color:#6b7280;font-size:10px">${(boosterCount || 0).toLocaleString()} items</div>
           </div>
           ${mineCard}
         </div>`;
     if (!sales.length) {
-      html += `<div style="text-align:center;color:#6b7280;font-size:13px;padding:8px 0">판매 기록이 없습니다</div>`;
+      html += `<div style="text-align:center;color:#6b7280;font-size:13px;padding:8px 0">No sales history yet</div>`;
     } else {
-      html += `<div style="font-size:11px;color:#6b7280;margin-bottom:6px">최근 판매 내역 (최대 20건)</div>`;
+      html += `<div style="font-size:11px;color:#6b7280;margin-bottom:6px">Recent Sales (Up to 20)</div>`;
       sales.forEach(s => {
         const dt = s.createdAt ? new Date(s.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '─';
         html += `<div style="display:flex;align-items:center;justify-content:space-between;
@@ -4532,7 +4532,7 @@ async function _loadShopSales(shopId) {
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:10px">
             <div style="color:#fbbf24;font-weight:700">+${(s.ownerShare || 0).toLocaleString()} G</div>
-            <div style="color:#4b5563;font-size:11px">합계 ${(s.totalCost || 0).toLocaleString()}</div>
+            <div style="color:#4b5563;font-size:11px">Total: ${(s.totalCost || 0).toLocaleString()}</div>
           </div>
         </div>`;
       });
@@ -4540,21 +4540,21 @@ async function _loadShopSales(shopId) {
     html += `</div>`;
     panel.innerHTML = html;
   } catch (err) {
-    panel.innerHTML = `<div style="color:#ef4444;font-size:13px;text-align:center;padding:10px">${escHtml(err.message || '조회 실패')}</div>`;
+    panel.innerHTML = `<div style="color:#ef4444;font-size:13px;text-align:center;padding:10px">${escHtml(err.message || 'Failed to load')}</div>`;
   }
 }
 
 async function _execLevelUpShop(shop) {
   const lvl = shop.level ?? 1;
   const lvlCost = lvl * lvl * 10000;
-  if (!confirm(`🏪 ${escHtml(shop.name)} 레벨업\nLv.${lvl} → Lv.${lvl + 1}\n💰 ${lvlCost.toLocaleString()} 골드 차감\n진행하시겠습니까?`)) return;
+  if (!confirm(`🏪 Level up ${escHtml(shop.name)}\nLv.${lvl} → Lv.${lvl + 1}\n💰 Deduct ${lvlCost.toLocaleString()} Gold\nProceed?`)) return;
   try {
     const res = await httpsCallable(functions, 'levelUpShop')({ shopId: shop.id });
     closeShopModal();
     await Promise.all([loadPlayerState({ force: true }), loadShops()]);
-    showToast(`⬆️ 레벨업 완료! Lv.${res.data.newLevel} (Max HP ${res.data.newMaxHp.toLocaleString()})`, 'success');
+    showToast(`⬆️ Level up complete! Lv.${res.data.newLevel} (Max HP ${res.data.newMaxHp.toLocaleString()})`, 'success');
   } catch (err) {
-    showToast(err.message || '레벨업 실패', 'error');
+    showToast(err.message || 'Level up failed', 'error');
   }
 }
 
@@ -4614,9 +4614,9 @@ function openShopAdminModal(shop) {
 
 // 코드에 하드코딩된 아이템 (treasure_items 컬렉션에 없을 수 있는 것들)
 const KNOWN_ITEMS = {
-  potion_red: { name: '빨간 약 (HP +100)', type: 'potion' },
-  potion_mp: { name: '마나 물약 (MP 전체회복)', type: 'potion' },
-  revive_ticket: { name: '부활 티켓', type: 'misc' },
+  potion_red: { name: 'HP Potion (HP +100)', type: 'potion' },
+  potion_mp: { name: 'MP Potion (Full MP Restore)', type: 'potion' },
+  revive_ticket: { name: 'Revive Ticket', type: 'misc' },
 };
 
 function _getShopAdminType() {
@@ -4656,7 +4656,7 @@ function _buildItemSelectOptions(currentItemId, shopType) {
   });
 
   const noSel = currentItemId ? '' : ' selected';
-  return `<option value=""${noSel}>-- 아이템 선택 --</option>` + options.join('');
+  return `<option value=""${noSel}>-- Select Item --</option>` + options.join('');
 }
 
 function _makeItemRow(it, idx) {
@@ -4670,9 +4670,9 @@ function _makeItemRow(it, idx) {
     <select class="sad-itemid" style="${s}">
       ${_buildItemSelectOptions(it?.itemId || '', shopType)}
     </select>
-    <input type="text"   class="sad-name"  value="${escHtml(it?.name || '')}"  placeholder="표시 이름" style="${s}">
+    <input type="text"   class="sad-name"  value="${escHtml(it?.name || '')}"  placeholder="Display Name" style="${s}">
     <input type="number" class="sad-price" value="${it?.price ?? 100}"         placeholder="100"        style="${s}" min="0">
-    <input type="number" class="sad-stock" value="${it?.stock ?? -1}"          placeholder="-1=무한"    style="${s}" min="-1">
+    <input type="number" class="sad-stock" value="${it?.stock ?? -1}"          placeholder="-1=Infinite"    style="${s}" min="-1">
     <button onclick="this.closest('.shop-admin-item-row').remove()" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 6px;cursor:pointer;font-size:13px">✕</button>`;
 
   const sel = div.querySelector('.sad-itemid');
@@ -4773,12 +4773,12 @@ $('btnShopAdminSave')?.addEventListener?.('click', async () => {
 $('btnShopAdminDelete')?.addEventListener?.('click', async () => {
   const shopId = $('shopAdminShopId')?.value;
   if (!shopId) return;
-  if (!confirm('상점을 삭제하시겠습니까?')) return;
+  if (!confirm('Delete this shop?')) return;
   try {
     await deleteShop(shopId);
     $('shopAdminModal')?.classList.remove('open');
     showToast(_t('shop_admin_deleted'), 'success');
-  } catch (err) { alert('삭제 실패: ' + err.message); }
+  } catch (err) { alert('Delete failed: ' + err.message); }
 });
 
 $('btnCloseShopModal')?.addEventListener?.('click', closeShopModal);
@@ -5039,7 +5039,7 @@ function _circularIcon(src, size) {
 
 function _makeUserNpcMarker(npc) {
   const imgUrl = npc.npcImageUrl || `/assets/images/npc/npc${npc.npcImageNum || 1}.png`;
-  const titleBase = (npc.ownerName || '?') + '의 보물';
+  const titleBase = (npc.ownerName || '?') + "'s Treasure";
   const title = _isAdmin
     ? `[ADMIN] ${titleBase} | ${npc.lat?.toFixed(6)}, ${npc.lng?.toFixed(6)}`
     : titleBase;
@@ -5067,7 +5067,7 @@ function _makeUserNpcMarker(npc) {
 }
 
 function _makeActualTreasureMarker(npc) {
-  const label = npc.ownerName ? `📍 ${npc.ownerName}의 실제 보물` : '📍 실제 보물 위치';
+  const label = npc.ownerName ? `📍 ${npc.ownerName}'s Actual Treasure` : '📍 Actual Treasure Location';
   // 별 모양 마커
   const marker = new google.maps.Marker({
     position: { lat: npc.treasureLat, lng: npc.treasureLng },
@@ -5126,8 +5126,8 @@ function showUserNpcInfo(npc) {
     }
     const dist = (_ctx.gpsPos || _ctx.lastPos)
       ? Math.round(haversine((_ctx.gpsPos || _ctx.lastPos).lat, (_ctx.gpsPos || _ctx.lastPos).lng, npc.lat, npc.lng)) + 'm'
-      : '거리 불명';
-    adminRow.textContent = `📍 ${npc.lat?.toFixed(6)}, ${npc.lng?.toFixed(6)} | 현위치 ${dist} | id: ${npc.id}`;
+      : 'Distance unknown';
+    adminRow.textContent = `📍 ${npc.lat?.toFixed(6)}, ${npc.lng?.toFixed(6)} | Current ${dist} | id: ${npc.id}`;
     adminRow.classList.remove('hidden');
     // Admin delete button
     let adminDelBtn = document.getElementById('utNpcAdminDeleteBtn');
@@ -5153,11 +5153,11 @@ function showUserNpcInfo(npc) {
   if (storyWrap) storyWrap.classList.toggle('hidden', !npc.story);
   if (commentWrap) commentWrap.classList.toggle('hidden', !npc.comment);
   const rewardTypeEl = document.getElementById('utNpcRewardType');
-  if (rewardTypeEl) rewardTypeEl.textContent = npc.type === 'item' ? '아이템' : '코인';
+  if (rewardTypeEl) rewardTypeEl.textContent = npc.type === 'item' ? 'Item' : 'Coins';
   const rewardValEl = document.getElementById('utNpcRewardVal');
   if (rewardValEl) rewardValEl.textContent = npc.type === 'item' ? `×${npc.itemCount}` : `${npc.itemCount}`;
   const radiusEl = document.getElementById('utNpcRadius');
-  if (radiusEl) radiusEl.textContent = `발견 반경: ${npc.radiusM}m`;
+  if (radiusEl) radiusEl.textContent = `Discovery Radius: ${npc.radiusM}m`;
   // 자기 보물이면 발견하기 버튼 숨김
   const discoverBtn = document.getElementById('btnDiscoverTreasure');
   if (discoverBtn) discoverBtn.classList.toggle('hidden', npc.ownerId === _uid);
@@ -5251,7 +5251,7 @@ async function unlockHintAction() {
 function _renderCommentText(text) {
   const escaped = escHtml(text);
   return escaped.replace(/(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp))(?:\s|$)/gi,
-    (_, url) => `<img class="comment-img" src="${url}" alt="이미지" onclick="openLightbox('${url}','')"> `);
+    (_, url) => `<img class="comment-img" src="${url}" alt="Image" onclick="openLightbox('${url}','')"> `);
 }
 
 async function discoverTreasure(npcId) {
@@ -5274,15 +5274,15 @@ async function discoverTreasure(npcId) {
       delete _utNpcMarkers[npcId];
     }
     _utNpcData = _utNpcData.filter(n => n.id !== npcId);
-    const reward = data.type === 'item' ? `아이템 ×${data.itemCount}` : `${data.itemCount} 코인`;
+    const reward = data.type === 'item' ? `Item ×${data.itemCount}` : `${data.itemCount} Coins`;
     const toast = document.getElementById('collectToast');
     if (toast) {
-      toast.innerHTML = `🎉 보물 발견!<br><small>${esc(data.ownerName)}님의 보물 · ${esc(reward)}</small>`;
+      toast.innerHTML = `🎉 Treasure Discovered!<br><small>${esc(data.ownerName)}'s Treasure · ${esc(reward)}</small>`;
       toast.classList.remove('hidden');
       setTimeout(() => toast.classList.add('hidden'), 4000);
     }
   } catch (e) {
-    _utNpcMsg('⚠️ ' + (e.message || '보물 발견 실패'), true);
+    _utNpcMsg('⚠️ ' + (e.message || 'Failed to discover treasure'), true);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = origTxt; }
   }
@@ -5293,37 +5293,37 @@ async function discoverTreasure(npcId) {
 async function loadNpcComments(npcId) {
   const listEl = document.getElementById('utNpcCommentList');
   if (!listEl) return;
-  listEl.innerHTML = '<div class="ut-npc-comment-empty">로딩 중…</div>';
+  listEl.innerHTML = '<div class="ut-npc-comment-empty">Loading…</div>';
   try {
     const { data } = await httpsCallable(functions, 'listTreasureComments')({ npcId });
     const comments = Array.isArray(data) ? data : [];
     if (!comments.length) {
-      listEl.innerHTML = '<div class="ut-npc-comment-empty">댓글이 없습니다. 첫 번째 댓글을 남겨보세요!</div>';
+      listEl.innerHTML = '<div class="ut-npc-comment-empty">No comments yet. Leave the first comment!</div>';
       return;
     }
     listEl.innerHTML = comments.map(c => {
       const canDel = (c.uid === _uid || _isAdmin) && _uid;
       const dateStr = c.createdAt ? new Date(c.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
       return `<div class="ut-npc-comment-item" data-cid="${c.id}">
-        <div class="ut-npc-comment-author">${escHtml(c.displayName || '익명')} <span style="color:#6b7280;font-weight:400">${dateStr}</span></div>
+        <div class="ut-npc-comment-author">${escHtml(c.displayName || 'Anonymous')} <span style="color:#6b7280;font-weight:400">${dateStr}</span></div>
         <div class="ut-npc-comment-text">${_renderCommentText(c.text)}</div>
-        ${canDel ? `<button class="ut-npc-comment-del" data-cid="${c.id}" title="삭제">✕</button>` : ''}
+        ${canDel ? `<button class="ut-npc-comment-del" data-cid="${c.id}" title="Delete">✕</button>` : ''}
       </div>`;
     }).join('');
     listEl.querySelectorAll('.ut-npc-comment-del').forEach(btn => {
       btn.addEventListener('click', () => deleteNpcComment(npcId, btn.dataset.cid));
     });
   } catch (e) {
-    listEl.innerHTML = `<div class="ut-npc-comment-empty" style="color:#f87171">댓글 로드 실패</div>`;
+    listEl.innerHTML = `<div class="ut-npc-comment-empty" style="color:#f87171">Failed to load comments</div>`;
   }
 }
 
 async function submitNpcComment() {
   const npc = _utCurrentNpc;
   if (!npc) return;
-  if (!_uid) { _utNpcMsg('댓글을 달려면 로그인하세요.', true); return; }
+  if (!_uid) { _utNpcMsg('Please log in to leave a comment.', true); return; }
   if (!_hintUnlocked && npc.ownerId !== _uid) {
-    _utNpcMsg('댓글을 달려면 먼저 힌트를 잠금 해제하세요. (10 Coin)', true);
+    _utNpcMsg('Unlock the hint first to leave a comment (10 Coins).', true);
     return;
   }
   const input = document.getElementById('utNpcCommentInput');
@@ -5336,7 +5336,7 @@ async function submitNpcComment() {
     if (input) input.value = '';
     loadNpcComments(npc.id);
   } catch (e) {
-    _utNpcMsg('⚠️ ' + (e.message || '댓글 전송 실패'), true);
+    _utNpcMsg('⚠️ ' + (e.message || 'Failed to send comment'), true);
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -5347,7 +5347,7 @@ async function deleteNpcComment(npcId, commentId) {
     await httpsCallable(functions, 'deleteTreasureComment')({ npcId, commentId });
     loadNpcComments(npcId);
   } catch (e) {
-    _utNpcMsg('⚠️ ' + (e.message || '삭제 실패'), true);
+    _utNpcMsg('⚠️ ' + (e.message || 'Delete failed'), true);
   }
 }
 
@@ -5373,7 +5373,7 @@ function _utStartMapPick() {
 
   const banner = document.getElementById('userPlaceBanner');
   const cancelBtn = document.getElementById('btnUserPlaceCancelMode');
-  if (banner) { banner.textContent = '📍 보물을 숨길 위치를 지도에서 클릭하세요'; banner.style.display = 'block'; }
+  if (banner) { banner.textContent = '📍 Click on map to select treasure location'; banner.style.display = 'block'; }
   if (cancelBtn) cancelBtn.style.display = 'inline-block';
 
   // 기존 마커 제거
@@ -5388,7 +5388,7 @@ function _utStartMapPick() {
     _utPickMarker = new google.maps.Marker({
       position: { lat, lng }, map,
       icon: { url: '/assets/images/item/box.png', scaledSize: new google.maps.Size(32, 32), anchor: new google.maps.Point(16, 32) },
-      title: '보물 위치', zIndex: 99,
+      title: 'Treasure Location', zIndex: 99,
     });
 
     // 리스너 정리 & 배너 숨김
@@ -5418,13 +5418,13 @@ function openRegisterTreasureModal(skipPickReset = false) {
   // 아이템 목록
   const sel = document.getElementById('utRegItemSel');
   if (sel) {
-    sel.innerHTML = '<option value="">-- 아이템 선택 --</option>';
+    sel.innerHTML = '<option value="">-- Select Item --</option>';
     Object.entries(_inventory)
       .filter(([, cnt]) => cnt > 0)
       .forEach(([itemId, cnt]) => {
         const opt = document.createElement('option');
         opt.value = itemId;
-        opt.textContent = `${itemId} (보유: ${cnt})`;
+        opt.textContent = `${itemId} (Owned: ${cnt})`;
         sel.appendChild(opt);
       });
   }
@@ -5454,12 +5454,12 @@ async function registerTreasure() {
   const story = document.getElementById('utRegStory')?.value?.trim();
   const comment = document.getElementById('utRegComment')?.value?.trim();
   const lat = _utPickedLat, lng = _utPickedLng;
-  if (!lat || !lng) { _utRegMsg('지도에서 보물 위치를 먼저 선택하세요.', true); return; }
-  if (!hint || hint.length < 5) { _utRegMsg('힌트는 5자 이상 입력하세요.', true); return; }
-  if (type === 'item' && !itemId) { _utRegMsg('아이템을 선택하세요.', true); return; }
+  if (!lat || !lng) { _utRegMsg('Please select a location on the map first.', true); return; }
+  if (!hint || hint.length < 5) { _utRegMsg('Hint must be at least 5 characters.', true); return; }
+  if (type === 'item' && !itemId) { _utRegMsg('Please select an item.', true); return; }
   const btn = document.getElementById('btnUtRegSubmit');
   if (btn) btn.disabled = true;
-  _utRegMsg('등록 중…');
+  _utRegMsg('Registering…');
   try {
     await httpsCallable(functions, 'registerUserTreasure')(
       { type, itemId, itemCount: count, lat, lng, hint, story, comment, radiusM }
@@ -5469,17 +5469,17 @@ async function registerTreasure() {
     if (_utPickMarker) { _utPickMarker.setMap(null); _utPickMarker = null; }
     _utPickedLat = null; _utPickedLng = null;
     const coordsText = document.getElementById('utRegCoordsText');
-    if (coordsText) { coordsText.textContent = '위치 미선택'; coordsText.style.color = ''; }
+    if (coordsText) { coordsText.textContent = 'No location selected'; coordsText.style.color = ''; }
     const toast = document.getElementById('collectToast');
     if (toast) {
-      toast.innerHTML = '✅ 보물이 숨겨졌습니다! NPC가 근처에 자동 생성됩니다.';
+      toast.innerHTML = '✅ Treasure hidden! NPC automatically created nearby.';
       toast.classList.remove('hidden');
       setTimeout(() => toast.classList.add('hidden'), 3500);
     }
     loadUserTreasureNpcs();
     loadPlayerState().then(() => renderInventory());
   } catch (e) {
-    _utRegMsg('⚠️ ' + (e.message || '등록 실패'), true);
+    _utRegMsg('⚠️ ' + (e.message || 'Registration failed'), true);
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -5489,27 +5489,27 @@ async function openMyTreasuresModal() {
   const modal = document.getElementById('utMyModal');
   if (!modal) return;
   const listEl = document.getElementById('utMyList');
-  if (listEl) listEl.innerHTML = '<p style="color:#aaa">불러오는 중...</p>';
+  if (listEl) listEl.innerHTML = '<p style="color:#aaa">Loading...</p>';
   modal.classList.add('open');
   try {
     const { data } = await httpsCallable(functions, 'getMyUserTreasures')();
     const items = Array.isArray(data) ? data : [];
     if (!items.length) {
-      listEl.innerHTML = '<p style="color:#aaa">숨긴 보물이 없습니다.</p>';
+      listEl.innerHTML = '<p style="color:#aaa">No hidden treasures yet.</p>';
       return;
     }
-    const statusLabel = { active: '활성', found: '발견됨', cancelled: '취소됨', expired: '만료' };
+    const statusLabel = { active: 'Active', found: 'Discovered', cancelled: 'Cancelled', expired: 'Expired' };
     listEl.innerHTML = items.map(t => {
-      const reward = t.type === 'item' ? `아이템 ×${t.itemCount}` : `${t.itemCount} 코인`;
+      const reward = t.type === 'item' ? `Item ×${t.itemCount}` : `${t.itemCount} Coins`;
       const label = statusLabel[t.status] || t.status;
       const hasCoords = t.lat != null && t.lng != null;
       return `<div class="ut-my-item">` +
         `<span class="ut-my-status ut-status-${t.status}">${label}</span>` +
         `<span>${reward}</span>` +
         (hasCoords
-          ? `<button class="ut-my-locate" data-lat="${t.lat}" data-lng="${t.lng}" title="지도에서 보기">📍</button>` : '') +
+          ? `<button class="ut-my-locate" data-lat="${t.lat}" data-lng="${t.lng}" title="View on Map">📍</button>` : '') +
         (t.status === 'active'
-          ? `<button class="ut-my-cancel" data-id="${t.id}">취소</button>` : '') +
+          ? `<button class="ut-my-cancel" data-id="${t.id}">Cancel</button>` : '') +
         `</div>`;
     }).join('');
     listEl.querySelectorAll('.ut-my-locate').forEach(btn => {
@@ -5527,7 +5527,7 @@ async function openMyTreasuresModal() {
       btn.addEventListener('click', () => cancelTreasure(btn.dataset.id));
     });
   } catch (e) {
-    if (listEl) listEl.innerHTML = `<p style="color:#f88">오류: ${e.message}</p>`;
+    if (listEl) listEl.innerHTML = `<p style="color:#f88">Error: ${e.message}</p>`;
   }
 }
 
@@ -5535,14 +5535,14 @@ async function cancelTreasure(treasureId) {
   const listEl = document.getElementById('utMyList');
   if (!listEl) return;
   const prev = listEl.innerHTML;
-  listEl.innerHTML = '<p style="color:#aaa;text-align:center;padding:12px">취소 중…</p>';
+  listEl.innerHTML = '<p style="color:#aaa;text-align:center;padding:12px">Cancelling…</p>';
   try {
     await httpsCallable(functions, 'cancelUserTreasure')({ treasureId });
     openMyTreasuresModal();
     loadUserTreasureNpcs();
   } catch (e) {
     listEl.innerHTML = prev;
-    listEl.insertAdjacentHTML('afterbegin', `<p style="color:#f87171;font-size:12px;padding:6px 0">⚠️ ${e.message || '취소 실패'}</p>`);
+    listEl.insertAdjacentHTML('afterbegin', `<p style="color:#f87171;font-size:12px;padding:6px 0">⚠️ ${e.message || 'Cancellation failed'}</p>`);
   }
 }
 
@@ -5615,9 +5615,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnUtRegGps')
     ?.addEventListener('click', () => {
       const pos = _ctx.gpsPos || _ctx.lastPos;
-      if (!pos) { _utRegMsg('📡 GPS 신호 대기 중... 게임을 먼저 시작하세요.', true); return; }
+      if (!pos) { _utRegMsg('📡 Waiting for GPS signal... Please start the game first.', true); return; }
       _utSetPickedCoords(pos.lat, pos.lng);
-      _utRegMsg(`📍 현재 위치 적용됨`, false);
+      _utRegMsg(`📍 Current location applied`, false);
     });
   document.querySelectorAll('.ut-reg-type-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -5687,33 +5687,33 @@ function _openOwnerItemEditor(shop) {
       <div style="background:#111827;border:1px solid #374151;border-radius:14px;
                   padding:20px;width:380px;max-width:95vw;flex-shrink:0;margin:auto 0;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <div style="color:#e2e8f0;font-weight:800;font-size:15px;">📦 상점 관리</div>
+          <div style="color:#e2e8f0;font-weight:800;font-size:15px;">📦 Shop Management</div>
           <button id="ownerItemClose" style="background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;">✕</button>
         </div>
         <div style="margin-bottom:12px;">
-          <div style="font-size:11px;color:#94a3b8;margin-bottom:5px;">상점 이름</div>
-          <input id="ownerShopName" type="text" maxlength="30" placeholder="상점 이름"
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:5px;">Shop Name</div>
+          <input id="ownerShopName" type="text" maxlength="30" placeholder="Shop Name"
             style="width:100%;background:#0f172a;color:#e5e7eb;border:1px solid #374151;
                    border-radius:8px;padding:9px 12px;font-size:13px;box-sizing:border-box;"/>
         </div>
-        <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">판매 아이템</div>
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">Items for Sale</div>
         <div id="ownerItemList" style="margin-bottom:12px;"></div>
         <button id="ownerItemAddRow"
           style="width:100%;padding:9px;background:#1e293b;color:#94a3b8;border:1px dashed #334155;
                  border-radius:8px;font-size:13px;cursor:pointer;margin-bottom:12px;">
-          + 아이템 추가
+          + Add Item
         </button>
         ${shop.type !== 'weapon_armor' ? `<label style="display:flex;align-items:center;gap:10px;padding:10px;
                       background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);
                       border-radius:8px;cursor:pointer;margin-bottom:12px;">
           <input type="checkbox" id="ownerSellsMtChk" style="width:16px;height:16px;cursor:pointer;accent-color:#22c55e;">
-          <span style="font-size:13px;color:#e2e8f0;">🌱 돈나무 묘목 상품 판매 활성화</span>
+          <span style="font-size:13px;color:#e2e8f0;">🌱 Enable Money Tree Seedling Sales</span>
         </label>` : ''}
         <div id="ownerItemMsg" style="font-size:12px;min-height:16px;margin-bottom:8px;"></div>
         <button id="ownerItemSave"
           style="width:100%;padding:12px;background:linear-gradient(135deg,#0369a1,#0284c7);
                  color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
-          💾 저장
+          💾 Save
         </button>
       </div>`;
     (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(modal);
@@ -5758,10 +5758,10 @@ function _openOwnerItemEditor(shop) {
       return `<option value="${escHtml(id)}"${sel}>${escHtml(d.name)} (${escHtml(id)})</option>`;
     }).join('');
     div.innerHTML = `
-      <select style="${S}"><option value="">-- 아이템 선택 --</option>${opts}</select>
-      <input type="number" placeholder="가격" value="${it?.price ?? 100}" min="0"
+      <select style="${S}"><option value="">-- Select Item --</option>${opts}</select>
+      <input type="number" placeholder="Price" value="${it?.price ?? 100}" min="0"
              style="${S}">
-      <input type="number" placeholder="-1=무한" value="${it?.stock ?? -1}" min="-1"
+      <input type="number" placeholder="-1=Infinite" value="${it?.stock ?? -1}" min="-1"
              style="${S}">
       <button style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 6px;cursor:pointer;font-size:13px;">✕</button>`;
     div.querySelector('button').addEventListener('click', () => div.remove());
@@ -5785,7 +5785,7 @@ function _openOwnerItemEditor(shop) {
   closeBtn.onclick = () => { modal.style.display = 'none'; };
 
   saveBtn.onclick = async () => {
-    msg.style.color = '#6b7280'; msg.textContent = '저장 중…';
+    msg.style.color = '#6b7280'; msg.textContent = 'Saving…';
     saveBtn.disabled = true;
 
     const rows = list.querySelectorAll('div');
@@ -5796,19 +5796,19 @@ function _openOwnerItemEditor(shop) {
       const name = catalog[itemId]?.name || itemId;
       const price = Number(row.querySelectorAll('input')[0]?.value ?? 0);
       const stock = Number(row.querySelectorAll('input')[1]?.value ?? -1);
-      if (isNaN(price) || price < 0) { msg.style.color = '#ef4444'; msg.textContent = `가격 오류: ${itemId}`; saveBtn.disabled = false; return; }
+      if (isNaN(price) || price < 0) { msg.style.color = '#ef4444'; msg.textContent = `Price error: ${itemId}`; saveBtn.disabled = false; return; }
       items.push({ itemId, name, price, stock });
     }
 
     try {
       const newName = document.getElementById('ownerShopName')?.value?.trim() || null;
       if (newName !== null && newName.length === 0) {
-        msg.style.color = '#ef4444'; msg.textContent = '상점 이름을 입력하세요';
+        msg.style.color = '#ef4444'; msg.textContent = 'Please enter shop name';
         saveBtn.disabled = false; return;
       }
       const sellsMt = document.getElementById('ownerSellsMtChk')?.checked ?? !!shop.sellsMt;
       await httpsCallable(functions, 'ownerSaveShopItems')({ shopId: shop.id, name: newName, items, sellsMt });
-      msg.style.color = '#22c55e'; msg.textContent = `✅ 저장 완료`;
+      msg.style.color = '#22c55e'; msg.textContent = `✅ Saved successfully`;
       // _shopCurrentData 즉시 갱신 — 다음 편집 시 최신 아이템 목록·이름 반영
       if (_shopCurrentData && _shopCurrentData.id === shop.id) {
         _shopCurrentData.items = items;
@@ -5826,7 +5826,7 @@ function _openOwnerItemEditor(shop) {
       await loadShops();
       setTimeout(() => { modal.style.display = 'none'; }, 1200);
     } catch (e) {
-      msg.style.color = '#ef4444'; msg.textContent = '오류: ' + (e.message || e);
+      msg.style.color = '#ef4444'; msg.textContent = 'Error: ' + (e.message || e);
     } finally {
       saveBtn.disabled = false;
     }

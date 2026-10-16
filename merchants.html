@@ -24,20 +24,20 @@
     .gm-style-cc { display: none !important; }
     .dismissButton { display: none !important; }
   </style>
-  <title>보물 지도 · 숨기기 | BestClub — 위치기반 보물 게임</title>
-  <meta name="description" content="내 보물을 지도에 숨겨 다른 유저가 찾게 하세요. 베트남 여행 중 즐기는 위치기반 보물 게임 — BestClub.">
-  <meta name="keywords" content="K-컬쳐, BestClub, k-culture, 위치기반게임, 보물찾기">
+  <title>Treasure Map | BestClub — Location-Based Treasure Game</title>
+  <meta name="description" content="Hide your treasure on the map for other users to discover. Location-based treasure game — BestClub.">
+  <meta name="keywords" content="BestClub, location-based game, treasure hunt, RPG">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://jump22.netlify.app/merchants.html">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="BestClub">
   <meta property="og:url" content="https://jump22.netlify.app/merchants.html">
-  <meta property="og:title" content="보물 지도 · 숨기기 | BestClub — 위치기반 보물 게임">
-  <meta property="og:description" content="내 보물을 지도에 숨겨 다른 유저가 찾게 하세요. 베트남 여행 중 즐기는 위치기반 보물 게임 — BestClub.">
+  <meta property="og:title" content="Treasure Map | BestClub — Location-Based Treasure Game">
+  <meta property="og:description" content="Hide your treasure on the map for other users to discover. Location-based treasure game — BestClub.">
   <meta property="og:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="보물 숨기기 | BestClub 위치기반 보물 게임">
-  <meta name="twitter:description" content="내 보물을 지도에 숨겨 다른 유저에게 발견 미션을. 베트남 여행 필수 앱 BestClub.">
+  <meta name="twitter:title" content="Treasure Map | BestClub Location-Based Treasure Game">
+  <meta name="twitter:description" content="Hide your treasure on the map for other users to discover. BestClub.">
   <meta name="twitter:image" content="https://jump22.netlify.app/assets/images/jump/logo2.png">
 
   <link rel="stylesheet" href="/assets/css/app.css">
@@ -3122,7 +3122,7 @@
     }
 
     /* ═══════════════════════════════════
-     단순명료 디자인 오버라이드
+     Clean Design Override
   ═══════════════════════════════════ */
 
     /* 래퍼 */
@@ -3373,7 +3373,7 @@
 
   <script>
     window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";
-    window.LANG = (localStorage.getItem('town_lang') || 'en');
+    window.LANG = 'en';
     function setMerchantsLang(lang) {
       localStorage.setItem('town_lang', lang);
       location.reload();
@@ -3444,62 +3444,62 @@
       <span class="skill-name" style="font-size:9px;line-height:1.1">Mines</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn0" title="번개 (1) — MP 100">⚡</button>
+      <button class="skill-btn" id="skillBtn0" title="Lightning (1) — MP 100">⚡</button>
       <div class="skill-cd-overlay" id="skillCd0" style="display:none;"></div>
       <span class="skill-key">1</span>
-      <span class="skill-name">번개</span>
+      <span class="skill-name">Lightning</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn1" title="얼음 (2) — MP 100">❄️</button>
+      <button class="skill-btn" id="skillBtn1" title="Ice (2) — MP 100">❄️</button>
       <div class="skill-cd-overlay" id="skillCd1" style="display:none;"></div>
       <span class="skill-key">2</span>
-      <span class="skill-name">얼음</span>
+      <span class="skill-name">Ice</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn2" title="불꽃 (3) — MP 100">🔥</button>
+      <button class="skill-btn" id="skillBtn2" title="Fire (3) — MP 100">🔥</button>
       <div class="skill-cd-overlay" id="skillCd2" style="display:none;"></div>
       <span class="skill-key">3</span>
-      <span class="skill-name">불꽃</span>
+      <span class="skill-name">Fire</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn3" title="회오리 (4) — MP 100 · 반경 30m">🌪️</button>
+      <button class="skill-btn" id="skillBtn3" title="Whirlwind (4) — MP 100 · Radius 30m">🌪️</button>
       <div class="skill-cd-overlay" id="skillCd3" style="display:none;"></div>
       <span class="skill-key">4</span>
-      <span class="skill-name">회오리</span>
+      <span class="skill-name">Whirlwind</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtn4" title="유성 (5) — MP 100 · 반경 60m · 3.0× · 쿨 40초">☄️</button>
+      <button class="skill-btn" id="skillBtn4" title="Meteor (5) — MP 100 · Radius 60m · 3.0× · CD 40s">☄️</button>
       <div class="skill-cd-overlay" id="skillCd4" style="display:none;"></div>
       <span class="skill-key">5</span>
-      <span class="skill-name">유성</span>
+      <span class="skill-name">Meteor</span>
     </div>
     <div class="skill-slot" style="position:relative;">
-      <button class="skill-btn" id="skillBtnPotion" title="빨간약 (6) — HP +100">
-        <img src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="빨간약">
+      <button class="skill-btn" id="skillBtnPotion" title="HP Potion (6) — HP +100">
+        <img src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="HP Potion">
       </button>
       <span class="skill-badge" id="skillPotionBadge"></span>
       <span class="skill-key">6</span>
-      <span class="skill-name">빨간약</span>
+      <span class="skill-name">HP Potion</span>
     </div>
     <div class="skill-slot">
-      <button class="skill-btn" id="skillBtnHeal" title="힐 (7) — MP 100 소모 · HP 레벨×100 회복 · 30초 쿨">💚</button>
+      <button class="skill-btn" id="skillBtnHeal" title="Heal (7) — MP 100 · HP Lv×100 · CD 30s">💚</button>
       <div class="skill-cd-overlay" id="skillCdHeal" style="display:none;"></div>
       <span class="skill-key">7</span>
-      <span class="skill-name">힐</span>
+      <span class="skill-name">Heal</span>
     </div>
     <div class="skill-slot" style="position:relative;">
-      <button class="skill-btn" id="skillBtnMpPotion" title="파란약 (8) — MP 회복">
-        <img src="/assets/images/item/mp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="파란약">
+      <button class="skill-btn" id="skillBtnMpPotion" title="MP Potion (8) — Restore MP">
+        <img src="/assets/images/item/mp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="MP Potion">
       </button>
       <span class="skill-badge" id="skillMpPotionBadge"></span>
       <span class="skill-key">8</span>
-      <span class="skill-name">파란약</span>
+      <span class="skill-name">MP Potion</span>
     </div>
     <div class="skill-slot" style="position:relative;">
-      <button class="skill-btn" id="skillBtnMagicStone" title="마정석 (9) — MP +100">💎</button>
+      <button class="skill-btn" id="skillBtnMagicStone" title="Magic Stone (9) — MP +100">💎</button>
       <span class="skill-badge" id="skillMagicStoneBadge"></span>
       <span class="skill-key">9</span>
-      <span class="skill-name">마정석</span>
+      <span class="skill-name">Magic Stone</span>
     </div>
   </div>
 
@@ -3507,28 +3507,28 @@
     <div class="mc-wrap">
 
       <div class="mc-hd">
-        <h1>🗺️ 보물 지도</h1>
-        <p>몬스터를 물리치고 아이템을 모으세요 · 물약은 상점에서 구입</p>
+        <h1>🗺️ Treasure Map</h1>
+        <p>Defeat monsters &amp; collect items · Buy potions at shops</p>
         <div id="treasureStatsBanner">
           <div class="tsb-card">
             <span class="tsb-icon">👥</span>
             <div class="tsb-info">
               <span class="tsb-value" id="tsbParticipants">…</span>
-              <span class="tsb-label">보물 참여자 수</span>
+              <span class="tsb-label">Treasure Hunters</span>
             </div>
           </div>
           <div class="tsb-card">
             <span class="tsb-icon">🎁</span>
             <div class="tsb-info">
               <span class="tsb-value" id="tsbFound">…</span>
-              <span class="tsb-label">찾은 보물 개수</span>
+              <span class="tsb-label">Treasures Found</span>
             </div>
           </div>
           <div class="tsb-card">
             <span class="tsb-icon">🗺️</span>
             <div class="tsb-info">
               <span class="tsb-value" id="tsbOnMap">…</span>
-              <span class="tsb-label">현재 맵 보물 수</span>
+              <span class="tsb-label">Active Treasures</span>
             </div>
           </div>
         </div>
@@ -3545,22 +3545,22 @@
       <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 -->
       <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;align-items:center;max-height:calc(100vh - 80px);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;">
         <!-- GP 배지: 상단 고정 -->
-        <div id="hudGpBadge" title="게임코인 (GP)">
+        <div id="hudGpBadge" title="Game Points (GP)">
           <span class="gp-icon">💰</span>
           <span class="gp-val" id="hudGpVal">–</span>
         </div>
         <a id="btnChargeGp" href="/exchange#hex-gp" class="map-hud-btn" title="Charge GP with Point" style="font-size:10px;font-weight:800;color:#fbbf24;background:rgba(0,0,0,0.65);border:1.5px solid rgba(251,191,36,0.6);text-decoration:none;flex-direction:column;gap:1px;line-height:1.2;">⚡<span style="font-size:8px;">Charge</span></a>
         <button id="btnMyId" class="map-hud-btn" title="My Player ID">👤</button>
-        <button id="btnTutHelp" class="map-hud-btn" title="Hướng dẫn / 도움말">❓</button>
+        <button id="btnTutHelp" class="map-hud-btn" title="Game Guide">❓</button>
         <button id="btnInventory" class="map-hud-btn" title="Túi đồ" style="position:relative">🎒<span id="dropNearbyBadge" class="drop-nearby-badge hidden"></span></button>
-        <button id="btnDetector" class="map-hud-btn" title="보물 탐지기 ON/OFF">📡</button>
+        <button id="btnDetector" class="map-hud-btn" title="Treasure Detector ON/OFF">📡</button>
         <button id="btnArScan" class="map-hud-btn" title="AR Treasure Scanner">📷</button>
-        <button id="btnRegisterTreasure" class="map-hud-btn" title="내 보물 숨기기 / 내 보물 목록">📍</button>
-        <button id="btnUserPlaceShop" class="map-hud-btn" title="배치 상점 — GP로 보물/몬스터/타워 배치">🏪</button>
+        <button id="btnRegisterTreasure" class="map-hud-btn" title="Hide Treasure / My Treasures">📍</button>
+        <button id="btnUserPlaceShop" class="map-hud-btn" title="Placement Shop — Place items with GP">🏪</button>
         
         
         <button id="btnHarborSv" class="map-hud-btn" title="Trade Ships — View ships &amp; claim dividends">⛵</button>
-        <button id="btnFullscreen" class="map-hud-btn" title="Toàn màn hình">⛶</button>
+        <button id="btnFullscreen" class="map-hud-btn" title="Fullscreen">⛶</button>
         <button id="btnBgm" class="map-hud-btn" title="BGM On/Off">🎵</button>
         <button id="btnGameToggle" class="map-hud-btn" title="Connect to game server">▶</button>
         <div id="gsStatusBadge"></div>
@@ -3575,53 +3575,49 @@
       <div id="adminBattlePanel">
         <!-- 좌표 검색 — 항상 고정 표시 -->
         <div style="display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.15);flex-shrink:0;">
-          <input id="abCoordInput" type="text" placeholder="위도, 경도" autocomplete="off" style="flex:1;min-width:0;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.45);color:#fff;font-size:11px;outline:none;">
-          <button id="abCoordGo" title="이동" style="padding:4px 7px;border-radius:5px;border:none;background:#2563eb;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap;">📍
-            이동</button>
-          <button id="abCoordClear" title="마커 삭제" style="padding:4px 6px;border-radius:5px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:11px;cursor:pointer;">✕</button>
+          <input id="abCoordInput" type="text" placeholder="Lat, Lng" autocomplete="off" style="flex:1;min-width:0;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.45);color:#fff;font-size:11px;outline:none;">
+          <button id="abCoordGo" title="Go" style="padding:4px 7px;border-radius:5px;border:none;background:#2563eb;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap;">📍 Go</button>
+          <button id="abCoordClear" title="Clear Marker" style="padding:4px 6px;border-radius:5px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:11px;cursor:pointer;">✕</button>
         </div>
         <!-- 스크롤 가능한 버튼 영역 -->
         <div id="abPanelBody">
-          <div class="ab-title">⚔️ Bố trí chiến đấu</div>
-          <button class="ab-btn" id="btnPlaceMonster">👾 Thêm quái vật</button>
-          <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 Đặt rồng</button>
-          <button class="ab-btn" id="btnPlaceOrc" style="color:#16a34a;font-weight:700;">🐗 Đặt orc</button>
-          <button class="ab-btn" id="btnPlaceOrc2" style="color:#15803d;font-weight:700;">🗡️ Đặt orc2</button>
-          <button class="ab-btn" id="btnPlaceOrc3" style="color:#065f46;font-weight:700;">⚔️ Đặt orc3</button>
-          <button class="ab-btn" id="btnPlacePirate" style="color:#b45309;font-weight:700;">🏴‍☠️ Đặt cướp biển</button>
-          <button class="ab-btn" id="btnPlacePirate2" style="color:#92400e;font-weight:700;">🗡 Đặt cướp biển2</button>
-          <button class="ab-btn" id="btnPlacePirate3" style="color:#78350f;font-weight:700;">💀 Đặt cướp biển3</button>
+          <div class="ab-title">⚔️ Battle Setup</div>
+          <button class="ab-btn" id="btnPlaceMonster">👾 Add Monster</button>
+          <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 Place Dragon</button>
+          <button class="ab-btn" id="btnPlaceOrc" style="color:#16a34a;font-weight:700;">🐗 Place Orc</button>
+          <button class="ab-btn" id="btnPlaceOrc2" style="color:#15803d;font-weight:700;">🗡️ Place Orc 2</button>
+          <button class="ab-btn" id="btnPlaceOrc3" style="color:#065f46;font-weight:700;">⚔️ Place Orc 3</button>
+          <button class="ab-btn" id="btnPlacePirate" style="color:#b45309;font-weight:700;">🏴‍☠️ Place Pirate</button>
+          <button class="ab-btn" id="btnPlacePirate2" style="color:#92400e;font-weight:700;">🗡 Place Pirate 2</button>
+          <button class="ab-btn" id="btnPlacePirate3" style="color:#78350f;font-weight:700;">💀 Place Pirate 3</button>
           <button class="ab-btn" id="btnPlaceZombie1" style="color:#4ade80;font-weight:700;">🧟 Zombie1</button>
           <button class="ab-btn" id="btnPlaceZombie3" style="color:#86efac;font-weight:700;">🧟 Zombie3</button>
-          <button class="ab-btn" id="btnPlaceArcherTower">🏹 Tháp cung thủ</button>
-          <button class="ab-btn" id="btnPlaceCannonTower">💣 Tháp đại bác</button>
-          <button class="ab-btn" id="btnPlaceDeco">🎨 Đặt trang trí</button>
+          <button class="ab-btn" id="btnPlaceArcherTower">🏹 Archer Tower</button>
+          <button class="ab-btn" id="btnPlaceCannonTower">💣 Cannon Tower</button>
+          <button class="ab-btn" id="btnPlaceDeco">🎨 Place Deco</button>
           <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
-          <div style="color:#9ca3af;font-size:10px;text-align:center;margin-bottom:2px">🏪 Cửa hàng</div>
-          <button class="ab-btn" id="btnPlaceShopWeapon" style="color:#fbbf24;">⚔️ Đặt c/hàng vũ khí</button>
-          <button class="ab-btn" id="btnPlaceShopPotion" style="color:#86efac;">🧪 Đặt c/hàng thuốc</button>
-          <button class="ab-btn" id="btnPlaceShopMisc" style="color:#c4b5fd;">🛍️ Đặt c/hàng linh tinh</button>
-          <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ Hủy bố trí</button>
-          <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 Hiện phạm vi</button>
-          <button class="ab-btn" id="btnSetGold" style="margin-top:4px;color:#fbbf24;font-weight:700;">💰 GP
-            설정/지급</button>
-          <button class="ab-btn" id="btnGivePotion" style="color:#fca5a5;">💊 Cấp thuốc đỏ</button>
-          <button class="ab-btn" id="btnGiveRevive" style="color:#a78bfa;">🪄 Cấp thẻ hồi sinh</button>
+          <div style="color:#9ca3af;font-size:10px;text-align:center;margin-bottom:2px">🏪 Shops</div>
+          <button class="ab-btn" id="btnPlaceShopWeapon" style="color:#fbbf24;">⚔️ Weapon Shop</button>
+          <button class="ab-btn" id="btnPlaceShopPotion" style="color:#86efac;">🧪 Potion Shop</button>
+          <button class="ab-btn" id="btnPlaceShopMisc" style="color:#c4b5fd;">🛍️ Misc Shop</button>
+          <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ Cancel Placement</button>
+          <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 Tower Ranges</button>
+          <button class="ab-btn" id="btnSetGold" style="margin-top:4px;color:#fbbf24;font-weight:700;">💰 Set/Grant GP</button>
+          <button class="ab-btn" id="btnGivePotion" style="color:#fca5a5;">💊 Grant HP Potion</button>
+          <button class="ab-btn" id="btnGiveRevive" style="color:#a78bfa;">🪄 Grant Revive Ticket</button>
           <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
-          <button class="ab-btn" id="btnAdminInitAllPlayers" style="color:#fbbf24;font-weight:700;">🎁 모든 유저 스타터
-            초기화</button>
+          <button class="ab-btn" id="btnAdminInitAllPlayers" style="color:#fbbf24;font-weight:700;">🎁 Reset All Starters</button>
 
           <!-- GS Spawn list (game server realtime) -->
           <div id="gsSpawnListWrap" style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-              <span class="ab-title" style="border:none;margin:0;padding:0">🗡 Danh sách GS Spawn</span>
+              <span class="ab-title" style="border:none;margin:0;padding:0">🗡 GS Spawn List</span>
               <button id="btnRefreshGsSpawns" style="background:none;border:none;color:#6ee7b7;cursor:pointer;font-size:11px;padding:0;">↺</button>
             </div>
-            <div id="gsSpawnList" style="color:#6b7280;font-size:10px;">Kết nối máy chủ rồi nhấn ↺</div>
+            <div id="gsSpawnList" style="color:#6b7280;font-size:10px;">Connect to server and tap ↺</div>
           </div>
 
-          <button class="ab-btn" id="btnMonsterStatModal" style="margin-top:4px;color:#a78bfa;font-weight:600;">📊 몬스터
-            스탯 설정</button>
+          <button class="ab-btn" id="btnMonsterStatModal" style="margin-top:4px;color:#a78bfa;font-weight:600;">📊 Monster Stats</button>
         </div>
       </div>
 
@@ -3710,19 +3706,19 @@
 
       <!-- 필터 -->
       <div class="mc-filter">
-        <input type="text" id="mcSearch" placeholder="Tìm kiếm tên đại lý, ngành nghề, khu vực…">
+        <input type="text" id="mcSearch" placeholder="Search merchant name, category, region…">
         <span class="mc-count" id="mcCount"></span>
       </div>
 
       <!-- 카드 목록 -->
       <div class="mc-grid" id="mcGrid">
-        <p class="mc-state">Đang tải...</p>
+        <p class="mc-state">Loading...</p>
       </div>
 
       <!-- 바우쳐 사용하기 버튼 -->
       <div style="margin:16px 0 8px;text-align:right;">
         <button type="button" id="btnOpenVoucherOrderMap" style="background:#7c3aed;color:white;border:none;border-radius:10px;padding:9px 20px;font-size:14px;cursor:pointer;font-weight:600;box-shadow:0 2px 8px rgba(124,58,237,0.35);">
-          🎟 바우쳐 사용하기
+          🎟 Use Voucher
         </button>
       </div>
 
@@ -3730,13 +3726,13 @@
       <div class="exc-section" id="excSection">
         <div class="exc-header" id="excToggleBtn">
           <div class="exc-header-left">
-            <h2 class="exc-title">🎟 바우쳐교환</h2>
-            <p class="exc-desc">보물을 모아 상품권과 교환하세요</p>
+            <h2 class="exc-title">🎟 Voucher Exchange</h2>
+            <p class="exc-desc">Collect treasures and exchange for gift vouchers</p>
           </div>
           <span class="exc-toggle-icon">▼</span>
         </div>
         <div class="exc-grid hidden" id="excGrid">
-          <div class="exc-loading">Đang tải...</div>
+          <div class="exc-loading">Loading...</div>
         </div>
       </div>
 
@@ -3806,7 +3802,7 @@
       <div style="padding:12px;border-top:1px solid #1f2937">
         <button onclick="window._mtOpenPlantFromMyTrees &amp;&amp; window._mtOpenPlantFromMyTrees()" style="width:100%;padding:11px;border-radius:8px;border:none;
                  background:linear-gradient(135deg,#059669,#047857);color:#fff;
-                 font-weight:700;font-size:13px;cursor:pointer">🌱 현재 위치에 식재</button>
+                 font-weight:700;font-size:13px;cursor:pointer">🌱 Plant at Current Location</button>
       </div>
     </div>
   </div>
@@ -3846,14 +3842,14 @@
         <div>
           <div style="font-size:11px;color:#6b7280" id="mtTreeId"></div>
           <div style="font-size:16px;font-weight:700;color:#fbbf24" id="mtTreeValue"></div>
-          <div style="font-size:12px;color:#9ca3af">소유: <span id="mtTreeOwner"></span></div>
+          <div style="font-size:12px;color:#9ca3af">Owner: <span id="mtTreeOwner"></span></div>
         </div>
       </div>
       <div style="display:flex;gap:8px">
         <button id="mtBtnBoost" onclick="window._mtDoBoost &amp;&amp; window._mtDoBoost(this.dataset.treeid)" style="flex:1;padding:10px;border-radius:8px;border:none;font-weight:700;font-size:12px;
-                 cursor:pointer;background:#7c3aed;color:#fff">💊 영양제</button>
+                 cursor:pointer;background:#7c3aed;color:#fff">💊 Fertilizer</button>
         <button id="mtBtnHarvest" onclick="window._mtDoHarvest &amp;&amp; window._mtDoHarvest(this.dataset.treeid)" style="flex:1;padding:10px;border-radius:8px;border:none;font-weight:700;font-size:12px;
-                 cursor:pointer;background:#059669;color:#fff">🌾 수확</button>
+                 cursor:pointer;background:#059669;color:#fff">🌾 Harvest</button>
         <button onclick="document.getElementById('mtTreeModal').classList.remove('open')" style="padding:10px 12px;border-radius:8px;border:1px solid #374151;background:transparent;
                  color:#9ca3af;font-size:12px;font-weight:600;cursor:pointer">✕</button>
       </div>
@@ -3874,10 +3870,10 @@
   <!-- 아이템 획득 오버레이 -->
   <div id="itemReveal">
     <div class="item-reveal-panel">
-      <div class="item-reveal-title">✨ Nhận vật phẩm!</div>
+      <div class="item-reveal-title">✨ Item Obtained!</div>
       <img id="itemRevealImg" class="item-reveal-img lb-trigger" src="" alt="" onclick="if(this.src)openLightbox(this.src,this.alt)" onerror="this.style.display='none'">
       <div class="item-reveal-name" id="itemRevealName"></div>
-      <button class="btn-reveal-close" id="btnRevealClose">Xác nhận</button>
+      <button class="btn-reveal-close" id="btnRevealClose">Confirm</button>
     </div>
   </div>
 
@@ -3885,40 +3881,39 @@
   <div id="invModal">
     <div class="inv-panel">
       <div class="inv-header">
-        🎒 Túi đồ
+        🎒 Backpack
         <button class="inv-close" id="btnCloseInv">✕</button>
       </div>
       <div class="inv-body">
         <!-- Xu / Đá phép -->
         <div class="inv-wallet" id="invWallet" style="display:flex;gap:18px;align-items:center;padding:8px 12px;background:#1a0e06;border:1px solid #5c3a1e;border-radius:10px;margin-bottom:10px;font-size:0.92rem;font-weight:600;">
-          <span style="color:#c9a870;">💰 Xu: <span id="invGold" style="color:#ffd700;">0</span></span>
-          <span style="color:#c9a870;">💎 Đá phép: <span id="invToken" style="color:#a78bfa;">0</span></span>
+          <span style="color:#c9a870;">💰 Gold: <span id="invGold" style="color:#ffd700;">0</span></span>
+          <span style="color:#c9a870;">💎 Magic Stone: <span id="invToken" style="color:#a78bfa;">0</span></span>
         </div>
 
         <!-- Hộp kho báu chưa mở -->
-        <div class="inv-craft-title" style="padding-top:0;border-top:none;">📦 Hộp kho báu chưa mở</div>
+        <div class="inv-craft-title" style="padding-top:0;border-top:none;">📦 Unopened Treasure Boxes</div>
         <div id="boxInvList">
-          <div class="voucher-empty">Đang tải...</div>
+          <div class="voucher-empty">Loading...</div>
         </div>
 
         <!-- Chỉ số trang bị -->
         <div class="inv-equip-stats" id="invEquipStats"></div>
 
         <!-- 4×5 slots -->
-        <div class="inv-craft-title">🎒 Vật phẩm đã thu thập (nhấn vũ khí/giáp để trang bị)</div>
+        <div class="inv-craft-title">🎒 Collected Items (Tap weapon/armor to equip)</div>
         <div class="inv-grid" id="invGrid"></div>
 
         <!-- Tổng hợp phiếu -->
-        <div class="inv-craft-title">⚗️ Tổng hợp vật phẩm</div>
+        <div class="inv-craft-title">⚗️ Item Synthesis / Crafting</div>
         <div id="voucherList">
-          <div class="voucher-empty">Đang tải công thức...</div>
+          <div class="voucher-empty">Loading recipes...</div>
         </div>
 
         <!-- Phiếu đang có -->
         <div class="inv-craft-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span>🎟 Phiếu đang có</span>
-          <button type="button" id="btnOpenVoucherOrder" style="background:#7c3aed;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">바우쳐
-            사용하기</button>
+          <span>🎟 Owned Vouchers</span>
+          <button type="button" id="btnOpenVoucherOrder" style="background:#7c3aed;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">Use Voucher</button>
         </div>
         <div id="myVoucherList">
           <div class="voucher-empty">Đang tải...</div>
@@ -3931,34 +3926,33 @@
   <div id="voucherOrderModal" class="hidden" style="position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;">
     <div style="background:#1a0e06;border:1px solid #92400e;border-radius:16px;width:min(460px,95vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #451a03;">
-        <h3 style="margin:0;font-size:16px;color:#fcd34d;">🎟 바우쳐 사용하기</h3>
+        <h3 style="margin:0;font-size:16px;color:#fcd34d;">🎟 Use Voucher</h3>
         <button type="button" id="btnCloseVoucherOrder" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;" onclick="document.getElementById('voucherOrderModal').classList.add('hidden')">✕</button>
       </div>
       <div style="flex:1;overflow-y:auto;padding:16px;">
         <div style="margin-bottom:14px;">
-          <label style="display:block;font-size:13px;color:#d97706;margin-bottom:6px;">사용할 바우쳐</label>
+          <label style="display:block;font-size:13px;color:#d97706;margin-bottom:6px;">Voucher to Use</label>
           <select id="voVoucherSel" style="width:100%;background:#111827;color:#f3f4f6;border:1px solid #374151;border-radius:8px;padding:8px 10px;font-size:13px;box-sizing:border-box;">
-            <option value="">로딩 중...</option>
+            <option value="">Loading...</option>
           </select>
         </div>
         <div style="margin-bottom:14px;">
-          <label style="display:block;font-size:13px;color:#d97706;margin-bottom:6px;">원하는 이름 <span style="color:#6b7280;">(해당사항 없으면 공란)</span></label>
-          <input type="text" id="voName" placeholder="예: 황금 드래곤" style="width:100%;box-sizing:border-box;background:#111827;color:#f3f4f6;border:1px solid #374151;border-radius:8px;padding:8px 10px;font-size:13px;">
+          <label style="display:block;font-size:13px;color:#d97706;margin-bottom:6px;">Desired Name <span style="color:#6b7280;">(Leave blank if none)</span></label>
+          <input type="text" id="voName" placeholder="e.g. Golden Dragon" style="width:100%;box-sizing:border-box;background:#111827;color:#f3f4f6;border:1px solid #374151;border-radius:8px;padding:8px 10px;font-size:13px;">
         </div>
         <div style="margin-bottom:14px;">
-          <label style="display:block;font-size:13px;color:#d97706;margin-bottom:6px;">설치 위치 <span style="color:#ef4444;">*</span></label>
+          <label style="display:block;font-size:13px;color:#d97706;margin-bottom:6px;">Placement Location <span style="color:#ef4444;">*</span></label>
           <div style="display:flex;gap:6px;">
-            <input type="text" id="voLatLng" placeholder="예: 21.110101, 106.393556" style="flex:1;box-sizing:border-box;background:#111827;color:#f3f4f6;border:1px solid #374151;border-radius:8px;padding:8px 10px;font-size:13px;">
+            <input type="text" id="voLatLng" placeholder="e.g. 21.110101, 106.393556" style="flex:1;box-sizing:border-box;background:#111827;color:#f3f4f6;border:1px solid #374151;border-radius:8px;padding:8px 10px;font-size:13px;">
             <button type="button" id="btnVoGps" style="background:#1e40af;color:white;border:none;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;white-space:nowrap;">📍
               GPS</button>
           </div>
         </div>
         <div style="margin-bottom:20px;">
-          <label style="display:block;font-size:13px;color:#d97706;margin-bottom:6px;">원하는 이미지 URL <span style="color:#6b7280;">(해당사항 없으면 공란)</span></label>
+          <label style="display:block;font-size:13px;color:#d97706;margin-bottom:6px;">Desired Image URL <span style="color:#6b7280;">(Optional)</span></label>
           <input type="text" id="voImageUrl" placeholder="https://..." style="width:100%;box-sizing:border-box;background:#111827;color:#f3f4f6;border:1px solid #374151;border-radius:8px;padding:8px 10px;font-size:13px;">
         </div>
-        <button type="button" id="btnSubmitVoucherOrder" style="width:100%;background:#7c3aed;color:white;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">주문
-          제출</button>
+        <button type="button" id="btnSubmitVoucherOrder" style="width:100%;background:#7c3aed;color:white;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Submit Order</button>
         <div id="voStatus" style="margin-top:10px;text-align:center;font-size:13px;color:#6b7280;min-height:18px;">
         </div>
       </div>
@@ -3969,10 +3963,9 @@
   <div id="shopModal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
     <div style="background:#111827;border:1px solid #374151;border-radius:16px;width:min(420px,95vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1f2937">
-        <h3 id="shopModalTitle" style="margin:0;font-size:16px;color:#f3f4f6">상점</h3>
+        <h3 id="shopModalTitle" style="margin:0;font-size:16px;color:#f3f4f6">Shop</h3>
         <div style="display:flex;gap:8px;align-items:center">
-          <button id="shopModalAdminBtn" style="display:none;background:#1e40af;color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">⚙️
-            설정</button>
+          <button id="shopModalAdminBtn" style="display:none;background:#1e40af;color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">⚙️ Settings</button>
           <button id="btnCloseShopModal" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;line-height:1">✕</button>
         </div>
       </div>
@@ -3984,45 +3977,42 @@
   <div id="shopAdminModal" style="display:none;position:fixed;inset:0;z-index:8100;background:rgba(0,0,0,.8);align-items:center;justify-content:center;">
     <div style="background:#0f172a;border:1px solid #1e40af;border-radius:16px;width:min(540px,97vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e3a5f">
-        <h3 id="shopAdminModalTitle" style="margin:0;font-size:15px;color:#93c5fd">상점 설정</h3>
+        <h3 id="shopAdminModalTitle" style="margin:0;font-size:15px;color:#93c5fd">Shop Settings</h3>
         <button id="btnCloseShopAdminModal" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;line-height:1">✕</button>
       </div>
       <div style="flex:1;overflow-y:auto;padding:14px 16px">
         <input type="hidden" id="shopAdminShopId">
         <div style="margin-bottom:10px">
-          <label style="display:block;color:#9ca3af;font-size:12px;margin-bottom:4px">상점 이름</label>
+          <label style="display:block;color:#9ca3af;font-size:12px;margin-bottom:4px">Shop Name</label>
           <input type="text" id="shopAdminShopName" style="width:100%;background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:8px 10px;box-sizing:border-box">
         </div>
         <div style="margin-bottom:12px">
-          <label style="display:block;color:#9ca3af;font-size:12px;margin-bottom:4px">상점 타입</label>
+          <label style="display:block;color:#9ca3af;font-size:12px;margin-bottom:4px">Shop Type</label>
           <select id="shopAdminShopType" style="width:100%;background:#1a1a1a;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:8px 10px;box-sizing:border-box">
-            <option value="weapon_armor">⚔️ 무기/방어구</option>
-            <option value="potion">🧪 약물</option>
-            <option value="misc">🛍️ 잡템</option>
+            <option value="weapon_armor">⚔️ Weapon / Armor</option>
+            <option value="potion">🧪 Potions</option>
+            <option value="misc">🛍️ Misc Items</option>
           </select>
         </div>
         <div style="margin-bottom:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-            <span style="color:#9ca3af;font-size:12px">📦 판매 아이템</span>
-            <button id="btnShopAdminAddItem" style="background:#1e40af;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">+
-              아이템 추가</button>
+            <span style="color:#9ca3af;font-size:12px">📦 Items for Sale</span>
+            <button id="btnShopAdminAddItem" style="background:#1e40af;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">+ Add Item</button>
           </div>
-          <p style="color:#6b7280;font-size:11px;margin:0 0 6px">목록에서 아이템 선택 → 표시이름 자동입력 · 가격(골드) · 재고(-1=무한)</p>
+          <p style="color:#6b7280;font-size:11px;margin:0 0 6px">Select item → Auto-fill display name · Price (Gold) · Stock (-1=Infinite)</p>
           <div style="display:grid;grid-template-columns:2fr 1fr 72px 68px 32px;gap:4px;margin-bottom:4px;padding:0 2px">
-            <span style="color:#6b7280;font-size:10px">아이템 선택</span>
-            <span style="color:#6b7280;font-size:10px">표시이름</span>
-            <span style="color:#6b7280;font-size:10px;text-align:center">가격(골드)</span>
-            <span style="color:#6b7280;font-size:10px;text-align:center">재고</span>
+            <span style="color:#6b7280;font-size:10px">Select Item</span>
+            <span style="color:#6b7280;font-size:10px">Display Name</span>
+            <span style="color:#6b7280;font-size:10px;text-align:center">Price (Gold)</span>
+            <span style="color:#6b7280;font-size:10px;text-align:center">Stock</span>
             <span></span>
           </div>
           <div id="shopAdminItemList"></div>
         </div>
       </div>
       <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid #1e3a5f">
-        <button id="btnShopAdminSave" style="flex:1;background:#16a34a;color:white;border:none;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;font-weight:600">💾
-          저장</button>
-        <button id="btnShopAdminDelete" style="background:#dc2626;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:14px;cursor:pointer">🗑️
-          삭제</button>
+        <button id="btnShopAdminSave" style="flex:1;background:#16a34a;color:white;border:none;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;font-weight:600">💾 Save</button>
+        <button id="btnShopAdminDelete" style="background:#dc2626;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:14px;cursor:pointer">🗑️ Delete</button>
       </div>
     </div>
   </div>
@@ -4096,9 +4086,9 @@
            align-items:center;justify-content:center"></div>
 
   <!-- 튜토리얼 모달 -->
-  <div id="tutModal" class="hidden" role="dialog" aria-modal="true" aria-label="게임 가이드">
+  <div id="tutModal" class="hidden" role="dialog" aria-modal="true" aria-label="Game Guide">
     <div class="tut-card">
-      <button class="tut-close" id="tutClose" aria-label="닫기">✕</button>
+      <button class="tut-close" id="tutClose" aria-label="Close">✕</button>
       <div class="tut-header" id="tutHeader"></div>
       <div class="tut-step-icon" id="tutIcon"></div>
       <div class="tut-step-title" id="tutStepTitle"></div>
@@ -4112,8 +4102,8 @@
   </div>
 
   <!-- 라이트박스 -->
-  <div id="lb-overlay" role="dialog" aria-modal="true" aria-label="이미지 확대">
-    <span id="lb-close" aria-label="닫기">×</span>
+  <div id="lb-overlay" role="dialog" aria-modal="true" aria-label="Enlarge Image">
+    <span id="lb-close" aria-label="Close">×</span>
     <img id="lb-img" src="" alt="">
   </div>
 
@@ -4127,43 +4117,43 @@
       </div>
       <div class="ut-npc-body">
         <div class="ut-npc-field">
-          <label>등록자</label>
+          <label>Creator</label>
           <p id="utNpcOwner">—</p>
         </div>
         <div class="ut-npc-field">
-          <label>힌트 / Hint</label>
+          <label>Hint</label>
           <p id="utNpcHint">—</p>
-          <button id="btnUnlockHint">🔓 힌트 잠금 해제 (10 Coin)</button>
+          <button id="btnUnlockHint">🔓 Unlock Hint (10 Coins)</button>
         </div>
         <div class="ut-npc-field" id="utNpcStoryWrap">
-          <label>스토리 / Story</label>
+          <label>Story</label>
           <p id="utNpcStory"></p>
         </div>
         <div class="ut-npc-field" id="utNpcCommentWrap">
-          <label>등록자 메시지</label>
+          <label>Creator Message</label>
           <p id="utNpcComment"></p>
         </div>
         <div class="ut-npc-reward">
           <span class="ut-npc-reward-icon" id="utNpcIcon">🎁</span>
           <div class="ut-npc-reward-info">
-            <div class="ut-npc-reward-type" id="utNpcRewardType">보물</div>
+            <div class="ut-npc-reward-type" id="utNpcRewardType">Treasure</div>
             <div class="ut-npc-reward-val" id="utNpcRewardVal">—</div>
-            <div class="ut-npc-radius" id="utNpcRadius">발견 반경: —</div>
+            <div class="ut-npc-radius" id="utNpcRadius">Discovery Radius: —</div>
           </div>
         </div>
         <!-- 댓글 섹션 -->
         <div class="ut-npc-comments">
-          <div class="ut-npc-comments-title">💬 댓글</div>
+          <div class="ut-npc-comments-title">💬 Comments</div>
           <div class="ut-npc-comment-list" id="utNpcCommentList">
-            <div class="ut-npc-comment-empty">로딩 중…</div>
+            <div class="ut-npc-comment-empty">Loading…</div>
           </div>
           <div class="ut-npc-comment-form">
-            <textarea id="utNpcCommentInput" class="ut-npc-comment-input" rows="2" placeholder="댓글을 입력하세요…" maxlength="200"></textarea>
-            <button class="btn-comment-submit" id="btnUtNpcCommentSubmit">전송</button>
+            <textarea id="utNpcCommentInput" class="ut-npc-comment-input" rows="2" placeholder="Write a comment…" maxlength="200"></textarea>
+            <button class="btn-comment-submit" id="btnUtNpcCommentSubmit">Send</button>
           </div>
         </div>
         <div class="ut-npc-msg" id="utNpcMsg"></div>
-        <button class="btn-discover" id="btnDiscoverTreasure">🔍 발견하기 (GPS 확인)</button>
+        <button class="btn-discover" id="btnDiscoverTreasure">🔍 Discover (Check GPS)</button>
       </div>
     </div>
   </div>
@@ -4172,67 +4162,67 @@
   <div id="utRegModal" role="dialog" aria-modal="true">
     <div class="ut-reg-panel">
       <div class="ut-reg-header">
-        <span>📍 내 보물 숨기기</span>
+        <span>📍 Hide My Treasure</span>
         <button class="ut-reg-close" id="btnCloseUtReg">✕</button>
       </div>
       <div class="ut-reg-body">
         <div>
-          <span class="ut-reg-label">보물 타입</span>
+          <span class="ut-reg-label">Treasure Type</span>
           <div class="ut-reg-type-row">
-            <button class="ut-reg-type-btn active" id="utRegTypeItem" data-type="item">🎁 아이템</button>
-            <button class="ut-reg-type-btn" id="utRegTypeCoin" data-type="coin">💰 코인</button>
+            <button class="ut-reg-type-btn active" id="utRegTypeItem" data-type="item">🎁 Item</button>
+            <button class="ut-reg-type-btn" id="utRegTypeCoin" data-type="coin">💰 Coins</button>
           </div>
         </div>
         <!-- 아이템 선택 (type=item) -->
         <div id="utRegItemWrap">
-          <label class="ut-reg-label" for="utRegItemSel">아이템 선택</label>
+          <label class="ut-reg-label" for="utRegItemSel">Select Item</label>
           <select class="ut-reg-input" id="utRegItemSel">
-            <option value="">인벤토리 로딩 중…</option>
+            <option value="">Loading inventory…</option>
           </select>
         </div>
         <!-- 수량 -->
         <div>
-          <label class="ut-reg-label" for="utRegCount" id="utRegCountLabel">수량</label>
-          <input class="ut-reg-input" id="utRegCount" type="number" min="1" value="100" placeholder="수량 입력">
+          <label class="ut-reg-label" for="utRegCount" id="utRegCountLabel">Quantity</label>
+          <input class="ut-reg-input" id="utRegCount" type="number" min="1" value="100" placeholder="Enter quantity">
         </div>
         <!-- 보물 위치 -->
         <div>
-          <span class="ut-reg-label">보물 위치</span>
+          <span class="ut-reg-label">Treasure Location</span>
           <button class="btn-use-gps" id="btnUtRegPickMap" style="width:100%;margin-bottom:6px;background:#1d4ed8;color:#fff;border:none;
                    border-radius:8px;padding:9px;font-size:0.88rem;font-weight:700;cursor:pointer;">
-            🗺️ 지도에서 위치 클릭으로 선택
+            🗺️ Click on map to select location
           </button>
           <button class="btn-use-gps" id="btnUtRegGps" style="width:100%;margin-bottom:6px;">
-            📡 현재 GPS 위치 사용
+            📡 Use current GPS location
           </button>
           <div id="utRegCoordsDisplay" style="font-size:0.8rem;color:#6b7280;padding:6px 10px;background:#f3f4f6;
                    border-radius:6px;min-height:28px;display:flex;align-items:center;gap:6px;">
-            <span id="utRegCoordsText">위치 미선택</span>
+            <span id="utRegCoordsText">No location selected</span>
           </div>
           <input id="utRegCoords" type="hidden">
         </div>
         <!-- 반경 -->
         <div>
-          <label class="ut-reg-label" for="utRegRadius">발견 반경 (5~50m)</label>
+          <label class="ut-reg-label" for="utRegRadius">Discovery Radius (5~50m)</label>
           <input class="ut-reg-input" id="utRegRadius" type="number" min="5" max="50" value="5" placeholder="5">
         </div>
         <!-- 힌트 -->
         <div>
-          <label class="ut-reg-label" for="utRegHint">힌트 (5자 이상 필수)</label>
-          <textarea class="ut-reg-input" id="utRegHint" rows="2" maxlength="200" placeholder="보물을 찾을 수 있는 힌트를 입력하세요…"></textarea>
+          <label class="ut-reg-label" for="utRegHint">Hint (Min. 5 characters required)</label>
+          <textarea class="ut-reg-input" id="utRegHint" rows="2" maxlength="200" placeholder="Enter a hint to find this treasure…"></textarea>
         </div>
         <!-- 스토리 -->
         <div>
-          <label class="ut-reg-label" for="utRegStory">스토리 (선택)</label>
-          <textarea class="ut-reg-input" id="utRegStory" rows="2" maxlength="500" placeholder="보물에 얽힌 이야기…"></textarea>
+          <label class="ut-reg-label" for="utRegStory">Story (Optional)</label>
+          <textarea class="ut-reg-input" id="utRegStory" rows="2" maxlength="500" placeholder="Story behind the treasure…"></textarea>
         </div>
         <!-- 코멘트 -->
         <div>
-          <label class="ut-reg-label" for="utRegComment">코멘트 (선택)</label>
-          <input class="ut-reg-input" id="utRegComment" type="text" maxlength="200" placeholder="한마디…">
+          <label class="ut-reg-label" for="utRegComment">Comment (Optional)</label>
+          <input class="ut-reg-input" id="utRegComment" type="text" maxlength="200" placeholder="A short note…">
         </div>
         <div class="ut-reg-msg" id="utRegMsg"></div>
-        <button class="btn-reg-submit" id="btnUtRegSubmit">🗝️ 보물 숨기기</button>
+        <button class="btn-reg-submit" id="btnUtRegSubmit">🗝️ Hide Treasure</button>
       </div>
     </div>
   </div>
@@ -4241,15 +4231,14 @@
   <div id="utMyModal" role="dialog" aria-modal="true">
     <div class="ut-my-panel">
       <div class="ut-my-header">
-        <span>📦 내가 숨긴 보물</span>
+        <span>📦 My Hidden Treasures</span>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button id="btnOpenUtReg" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;">+
-            새 보물 숨기기</button>
+          <button id="btnOpenUtReg" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;">+ Hide New Treasure</button>
           <button class="ut-my-close" id="btnCloseUtMy">✕</button>
         </div>
       </div>
       <div class="ut-my-body" id="utMyList">
-        <div style="color:#9ca3af;font-size:13px;text-align:center;padding:16px 0;">로딩 중…</div>
+        <div style="color:#9ca3af;font-size:13px;text-align:center;padding:16px 0;">Loading…</div>
       </div>
     </div>
   </div>
@@ -4264,22 +4253,22 @@
   <div id="monsterStatModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
     <div style="background:#111827;border:1px solid #374151;border-radius:16px;width:min(420px,95vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1f2937">
-        <h3 style="margin:0;font-size:16px;color:#f3f4f6">📊 몬스터 스탯 설정</h3>
+        <h3 style="margin:0;font-size:16px;color:#f3f4f6">📊 Monster Stats Settings</h3>
         <button id="btnCloseMonsterStatModal" style="background:none;border:none;color:#9ca3af;font-size:22px;cursor:pointer;line-height:1">✕</button>
       </div>
       <div style="overflow-y:auto;padding:16px;flex:1">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead>
             <tr style="color:#6b7280;font-size:11px">
-              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid #374151">타입</th>
+              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid #374151">Type</th>
               <th style="text-align:center;padding:6px 8px;border-bottom:1px solid #374151">HP</th>
-              <th style="text-align:center;padding:6px 8px;border-bottom:1px solid #374151">공격력</th>
-              <th style="text-align:center;padding:6px 8px;border-bottom:1px solid #374151">공격범위(m)</th>
+              <th style="text-align:center;padding:6px 8px;border-bottom:1px solid #374151">Attack</th>
+              <th style="text-align:center;padding:6px 8px;border-bottom:1px solid #374151">Range (m)</th>
             </tr>
           </thead>
           <tbody id="monsterStatTbody">
             <tr>
-              <td colspan="4" style="text-align:center;color:#6b7280;padding:24px">로딩 중…</td>
+              <td colspan="4" style="text-align:center;color:#6b7280;padding:24px">Loading…</td>
             </tr>
           </tbody>
         </table>
@@ -4287,9 +4276,8 @@
       <div style="padding:12px 16px;border-top:1px solid #1f2937;display:flex;justify-content:space-between;align-items:center;gap:8px">
         <span id="monsterStatMsg" style="font-size:12px;color:#6b7280"></span>
         <div style="display:flex;gap:8px">
-          <button id="btnMonsterStatCancel" style="background:#374151;border:none;color:#e5e7eb;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px">취소</button>
-          <button id="btnMonsterStatSaveAll" style="background:#7c3aed;border:none;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">💾
-            전체 저장</button>
+          <button id="btnMonsterStatCancel" style="background:#374151;border:none;color:#e5e7eb;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px">Cancel</button>
+          <button id="btnMonsterStatSaveAll" style="background:#7c3aed;border:none;color:#fff;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">💾 Save All</button>
         </div>
       </div>
     </div>
@@ -4301,7 +4289,7 @@
     font-size:0.85rem;font-weight:600;pointer-events:none;box-shadow:0 2px 12px rgba(0,0,0,.3);"></div>
   <button id="btnUserPlaceCancelMode" style="display:none;position:fixed;top:52px;left:50%;transform:translateX(-50%);
     z-index:9500;background:#ef4444;color:#fff;border:none;border-radius:16px;padding:6px 16px;
-    font-size:0.82rem;font-weight:700;cursor:pointer;">✕ 배치 취소</button>
+    font-size:0.82rem;font-weight:700;cursor:pointer;">✕ Cancel Placement</button>
 
   <!-- ── 배치 상점 패널 ────────────────────────────────────────────────────── -->
   <div id="userPlacePanel" style="display:none;position:fixed;inset:0;z-index:9400;
@@ -4310,8 +4298,8 @@
       padding:20px 16px 24px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <div>
-          <div style="font-weight:800;font-size:1rem;">🏪 배치 상점</div>
-          <div style="font-size:0.75rem;color:var(--muted);">GP로 보물 / 몬스터 / 타워 / 상점을 영구 배치</div>
+          <div style="font-weight:800;font-size:1rem;">🏪 Placement Shop</div>
+          <div style="font-size:0.75rem;color:var(--muted);">Permanently place Treasures / Monsters / Towers / Shops with GP</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button id="btnUserPlaceMarker" type="button" style="padding:5px 10px;border:1px solid var(--border);border-radius:8px;
@@ -4333,27 +4321,27 @@
   <div id="userPlaceConfirmModal" style="display:none;position:fixed;inset:0;z-index:9600;
     background:rgba(0,0,0,.7);align-items:center;justify-content:center;">
     <div style="background:var(--surface,#fff);border-radius:16px;width:min(340px,92vw);padding:24px;">
-      <div style="font-weight:700;font-size:1rem;margin-bottom:16px;">📌 배치 확인</div>
+      <div style="font-weight:700;font-size:1rem;margin-bottom:16px;">📌 Confirm Placement</div>
       <div style="display:grid;gap:6px;margin-bottom:16px;font-size:0.88rem;">
         <div style="display:flex;justify-content:space-between;">
-          <span style="color:var(--muted);">아이템</span>
+          <span style="color:var(--muted);">Item</span>
           <strong id="upConfirmLabel"></strong>
         </div>
         <div style="display:flex;justify-content:space-between;">
-          <span style="color:var(--muted);">비용</span>
+          <span style="color:var(--muted);">Cost</span>
           <strong id="upConfirmPrice" style="color:#d97706;"></strong>
         </div>
         <div style="display:flex;justify-content:space-between;">
-          <span style="color:var(--muted);">좌표</span>
+          <span style="color:var(--muted);">Coordinates</span>
           <span id="upConfirmCoord" style="font-size:0.78rem;"></span>
         </div>
       </div>
       <div id="upConfirmMsg" style="font-size:0.82rem;min-height:18px;margin-bottom:10px;"></div>
       <div style="display:flex;gap:8px;">
         <button id="btnUpCancel" type="button" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:8px;
-                 font-size:0.88rem;cursor:pointer;background:var(--surface2,#f9fafb);">취소</button>
+                 font-size:0.88rem;cursor:pointer;background:var(--surface2,#f9fafb);">Cancel</button>
         <button id="btnUpConfirm" type="button" style="flex:1;padding:9px;background:#1d4ed8;color:#fff;border:none;
-                 border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer;">✅ 배치 확인</button>
+                 border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer;">✅ Confirm Placement</button>
       </div>
     </div>
   </div>
@@ -4453,9 +4441,9 @@
 
 <div id="gameLoginOverlay" style="position:fixed;inset:0;background:rgba(10,15,20,0.85);backdrop-filter:blur(8px);z-index:9000;display:flex;align-items:center;justify-content:center;">
           <div style="font-size:52px;line-height:1;">🔐</div>
-          <div style="color:#fff;font-size:17px;font-weight:700;letter-spacing:-.3px;">로그인이 필요합니다</div>
+          <div style="color:#fff;font-size:17px;font-weight:700;letter-spacing:-.3px;">Login Required</div>
           <div style="color:#94a3b8;font-size:13px;text-align:center;line-height:1.5;">
-            로그인 후 게임을 즐기세요
+            Please log in to enjoy the game
           </div>
           <!-- 텔레그램 Mini App 환경이면 자동 표시 -->
           <button id="btnOverlayTelegram" type="button" style="
@@ -4476,16 +4464,16 @@
             padding:10px 28px;border-radius:8px;
             font-weight:700;font-size:14px;cursor:pointer;
             border:none;box-shadow:0 2px 8px rgba(255,107,0,.4);
-          ">🔑 Google 로그인</button>
-          <div style="color:#4b5563;font-size:11px;">─── 또는 ───</div>
+          ">🔑 Sign in with Google</button>
+          <div style="color:#4b5563;font-size:11px;">─── or ───</div>
           <button id="btnOverlayAnon" type="button" style="
             background:#1f2937;color:#d1d5db;
             padding:10px 28px;border-radius:8px;
             font-weight:600;font-size:13px;cursor:pointer;
             border:1px solid #374151;
-          ">👤 익명으로 게임하기</button>
+          ">👤 Play Anonymously</button>
           <div id="anonLoginMsg" style="color:#f59e0b;font-size:11px;text-align:center;line-height:1.5;display:none;max-width:240px;"></div>
           <div style="color:#6b7280;font-size:10px;text-align:center;line-height:1.6;max-width:230px;">
-            익명: 1기기 1계정 · 구글 계정으로 업그레이드 가능<br>기기 초기화 시 데이터 복구 불가
+            Anonymous: 1 device 1 account · Can upgrade to Google account later<br>Data cannot be restored if device is reset
           </div>
         </div></body></html>
