@@ -28,7 +28,8 @@ function setText(id, val) {
 
 // ── URL 파라미터 파싱 ─────────────────────────────────
 const params = new URLSearchParams(location.search);
-const merchantId = Number(params.get("merchant"));
+const rawMerchantId = params.get("merchant");
+const merchantId = rawMerchantId?.trim();
 const amount = Number(params.get("amount"));
 const bt = Number(params.get("bt"));
 const nonce = params.get("nonce");
@@ -38,8 +39,7 @@ const isVnd = currency === "VND";
 
 // 유효성 검증
 const amountMin = isVnd ? 10000 : 1000;
-if (!merchantId || !Number.isInteger(merchantId) || merchantId <= 0 ||
-  !amount || !Number.isFinite(amount) || amount < amountMin) {
+if (!merchantId || !amount || !Number.isFinite(amount) || amount < amountMin) {
   show("invalidPanel", true);
   throw new Error("invalid pay params");
 }
@@ -63,7 +63,18 @@ async function fetchRates() {
 let merchantName = "";
 
 async function loadMerchant() {
-  const mSnap = await getDoc(doc(db, "merchants", String(merchantId)));
+  let mSnap = await getDoc(doc(db, "merchants", String(merchantId)));
+  if (!mSnap.exists()) {
+    if (merchantId === "bestwinner") {
+      mSnap = await getDoc(doc(db, "merchants", "1791605366"));
+    } else if (merchantId === "1791605366") {
+      mSnap = await getDoc(doc(db, "merchants", "bestwinner"));
+    } else if (merchantId === "daehan_kimchi") {
+      mSnap = await getDoc(doc(db, "merchants", "1791002036"));
+    } else if (merchantId === "1791002036") {
+      mSnap = await getDoc(doc(db, "merchants", "daehan_kimchi"));
+    }
+  }
   if (!mSnap.exists()) {
     show("invalidPanel", true);
     throw new Error("merchant not found");

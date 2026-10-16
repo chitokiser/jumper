@@ -56,6 +56,42 @@ function setText(id, val) {
 // ── 진입 처리 ─────────────────────────────────────────
 let _authDone = false;
 let _currentUid = null;
+let _merchantBtPerVnd = 100000;
+
+function updateModeAndBt() {
+  const modeBt = $("modeBt");
+  const isBt = !!modeBt?.checked;
+  const amount = Number($("qrAmount")?.value || 0);
+  const currency = "VND";
+
+  const labelEl = $("qrAmountLabel");
+  const helpEl = $("qrAmountHelp");
+  const btCalcResult = $("qrBtCalcResult");
+  const btCountText = $("qrBtCount");
+
+  if (isBt) {
+    if (labelEl) labelEl.textContent = "무료 BT 보상 기준금액 (VND)";
+    if (helpEl) helpEl.textContent = "고객이 타 수단으로 결제한 금액을 입력하면 비례하여 BT 무료 보상 QR이 생성됩니다.";
+  } else {
+    if (labelEl) labelEl.textContent = "앱결제 받을 금액 (단위 VND)";
+    if (helpEl) helpEl.textContent = "최소 10,000 VND 이상 입력해주세요.";
+  }
+
+  if (isBt && amount > 0) {
+    if (btCalcResult) btCalcResult.style.display = "";
+    const count = getBtAmount(amount, currency);
+    const rate = Math.max(1000, Number(_merchantBtPerVnd || 100000));
+    if (btCountText) btCountText.textContent = `${count} 장 (${rate.toLocaleString()} VND당 1장)`;
+  } else {
+    if (btCalcResult) btCalcResult.style.display = "none";
+  }
+
+  // 모드에 따라 버튼 텍스트 변경
+  const btnGen = $("btnGenQr");
+  if (btnGen) {
+    btnGen.textContent = isBt ? "무료 BT 보상 QR 발급" : "결제 QR 생성";
+  }
+}
 
 onAuthReady(async ({ loggedIn, role, user }) => {
   if (_authDone) return;
@@ -112,9 +148,6 @@ async function initPage(uid) {
   });
 
   // ── 가맹점 BT 재고 및 지급 기준금액(btPerVnd) 실시간 조회 ──
-  // (adminChargeBt가 반영하는 위치와 동일해야 함) 
-  let _merchantBtPerVnd = 100000;
-
   onSnapshot(doc(db, "merchants", String(merchantId)), (mSnap2) => {
     if (mSnap2.exists()) {
       const data = mSnap2.data() || {};
@@ -123,6 +156,7 @@ async function initPage(uid) {
 
       _merchantBtPerVnd = Math.max(1000, Number(data.btPerVnd || data.btGrantThresholdVnd || 100000));
       setText("qrMerchantBtPerVnd", `${_merchantBtPerVnd.toLocaleString("ko-KR")} VND당 1장`);
+      updateModeAndBt();
     }
   });
 
@@ -181,8 +215,7 @@ async function initPage(uid) {
         }, 1500);
 
         // QR 계산 결과 즉시 재계산
-        const ev = new Event("input");
-        $("qrAmount")?.dispatchEvent(ev);
+        updateModeAndBt();
       } catch (err) {
         console.error("btPerVnd save error:", err);
         if (btSettingMsg) {
@@ -210,8 +243,8 @@ async function initPage(uid) {
 
   show("mainPanel", true);
 
-  // 바인
-  bindQrForm(merchantId, merchantName, () => _merchantBtPerVnd);
+  // 바인딩
+  bindQrForm(merchantId, merchantName);
 }
 
 // ── QR 바인딩 ─────────────────────────────────────────
@@ -257,44 +290,8 @@ function bindQrForm(merchantId, merchantName) {
   // 금액 입력 환산 표시
   $("qrAmount")?.addEventListener("input", updateConvert);
 
-
   const modePay = $("modePay");
   const modeBt = $("modeBt");
-  const btCalcResult = $("qrBtCalcResult");
-  const btCountText = $("qrBtCount");
-
-
-
-  function updateModeAndBt() {
-    const isBt = modeBt?.checked;
-    const amount = Number($("qrAmount")?.value || 0);
-    const currency = "VND";
-
-    const labelEl = $("qrAmountLabel");
-    const helpEl = $("qrAmountHelp");
-    if (isBt) {
-      if (labelEl) labelEl.textContent = "무료 BT 보상 기준금액 (VND)";
-      if (helpEl) helpEl.textContent = "고객이 타 수단으로 결제한 금액을 입력하면 비례하여 BT 무료 보상 QR이 생성됩니다.";
-    } else {
-      if (labelEl) labelEl.textContent = "앱결제 받을 금액 (단위 VND)";
-      if (helpEl) helpEl.textContent = "최소 10,000 VND 이상 입력해주세요.";
-    }
-
-    if (isBt && amount > 0) {
-      if (btCalcResult) btCalcResult.style.display = "";
-      const count = getBtAmount(amount, currency);
-      const rate = Math.max(1000, Number(_merchantBtPerVnd || 100000));
-      if (btCountText) btCountText.textContent = `${count} 장 (${rate.toLocaleString()} VND당 1장)`;
-    } else {
-      if (btCalcResult) btCalcResult.style.display = "none";
-    }
-
-    // 모드에 따라 버튼 텍스트 변경
-    const btnGen = $("btnGenQr");
-    if (btnGen) {
-      btnGen.textContent = isBt ? "무료 BT 보상 QR 발급" : "결제 QR 생성";
-    }
-  }
 
   modePay?.addEventListener("change", updateModeAndBt);
   modeBt?.addEventListener("change", updateModeAndBt);
@@ -308,7 +305,6 @@ function bindQrForm(merchantId, merchantName) {
     const amount = Number(amountRaw);
 
     if (!amount || amount < 10000) { alert("최소 10,000 VND 이상 입력해 주세요."); return; }
-
 
     const mode = form.querySelector("input[name='qrMode']:checked")?.value || "pay";
     generateQr(merchantId, merchantName, amount, currency, mode);
@@ -389,6 +385,7 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
   if (!canvas) return;
 
   const baseOrigin = location.origin;
+  let btRewardAmount = 0;
 
   let url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
   if (mode === "bt") {
@@ -400,15 +397,15 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
       const createSession = httpsCallable(functions, "createBtRewardSession");
       const res = await createSession({ amount });
       const { rewardId, btAmount } = res.data;
+      btRewardAmount = btAmount;
 
       url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btAmount}&rewardId=${rewardId}&nonce=${Date.now()}`;
-      setText("qrCardAmount", `BT 보상 (${btAmount}장)`);
     } catch (err) {
-      if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT 무료 보상 QR 생성"; }
+      if (btnGen) { btnGen.disabled = false; btnGen.textContent = "무료 BT 보상 QR 발급"; }
       alert("BT QR 생성 오류: " + (err?.message || "서버 통신 실패"));
       return;
     }
-    if (btnGen) { btnGen.disabled = false; btnGen.textContent = "BT 무료 보상 QR 생성"; }
+    if (btnGen) { btnGen.disabled = false; btnGen.textContent = "무료 BT 보상 QR 발급"; }
   }
 
   // qrcode.js (CDN) API
@@ -421,9 +418,9 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
     }
 
     // 카드 정보 업데이트
-    const amountDisp = currency === "VND"
-      ? `${amount.toLocaleString()} BM`
-      : `${amount.toLocaleString()}원 (KRW)`;
+    const amountDisp = mode === "bt"
+      ? `무료 보상: ${btRewardAmount} BT (${amount.toLocaleString()} VND 결제)`
+      : (currency === "VND" ? `${amount.toLocaleString()} BM` : `${amount.toLocaleString()}원 (KRW)`);
     setText("qrCardMerchant", merchantName);
     setText("qrCardAmount", amountDisp);
     show("qrSection", true);
@@ -431,7 +428,15 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
     const btnTest = $("btnTestPayLink");
     if (btnTest) {
       btnTest.href = url;
+      btnTest.textContent = mode === "bt" ? "🔗 무료 BT 수령 페이지 바로 열기 (테스트)" : "🔗 결제 페이지 바로 열기 (테스트)";
       btnTest.style.display = "block";
+    }
+
+    const hintEl = document.querySelector("#qrSection .qr-hint");
+    if (hintEl) {
+      hintEl.textContent = mode === "bt"
+        ? "고객이 카메라로 QR을 스캔하면 무료 BT를 즉시 수령합니다."
+        : "고객이 카메라로 QR을 스캔하면 결제 페이지가 열립니다.";
     }
 
     // 다운로드 버튼
@@ -439,21 +444,23 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
     if (btnDl) {
       btnDl.onclick = () => {
         const link = document.createElement("a");
-        link.download = `qr-${merchantId}-${amount}.png`;
+        link.download = `qr-${merchantId}-${mode}-${amount}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
       };
     }
 
-    // 입금 확인 패널 표시 (리셋 후) 
-    resetReceipts();
-    show("receiptSection", true);
+    // 입금 확인 패널 표시 (결제 모드일 때만 입금 감지 활성화)
+    if (mode === "pay") {
+      resetReceipts();
+      show("receiptSection", true);
+      listenPayments(amount, currency);
+    } else {
+      show("receiptSection", false);
+    }
 
     // 생성된 QR 영역으로 스크롤
     $("qrSection")?.scrollIntoView({ behavior: "smooth", block: "center" });
-
-    // 실시간 결제 감지 시작
-    listenPayments(amount, currency);
   });
 }
 

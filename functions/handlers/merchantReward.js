@@ -163,24 +163,34 @@ async function merchantSendBtDirect(data, context) {
         
         const mOwnerRef = db.collection('users').doc(merchantUid);
         const mOwnerDoc = await tx.get(mOwnerRef);
-        const mOwnerData = mOwnerDoc.data();
+        const mOwnerData = mOwnerDoc.data() || {};
         
-        let mBtBalance = mOwnerData.btBalance || 0;
+        let mRef = db.collection('merchants').doc(String(merchantId));
+        let mDoc = await tx.get(mRef);
+        if (!mDoc.exists) {
+          if (String(merchantId) === "bestwinner") {
+            mRef = db.collection('merchants').doc("1791605366");
+            mDoc = await tx.get(mRef);
+          } else if (String(merchantId) === "1791605366") {
+            mRef = db.collection('merchants').doc("bestwinner");
+            mDoc = await tx.get(mRef);
+          }
+        }
+        if (!mDoc.exists) throw new HttpsError('not-found', '가맹점 정보를 찾을 수 없습니다.');
+        const mData = mDoc.data() || {};
+
+        let mBtBalance = Math.max(Number(mOwnerData.btBalance || 0), Number(mData.btBalance || 0));
         if (mBtBalance < btAmountToGive) {
             throw new HttpsError('failed-precondition', `보유하신 BT 잔고가 부족합니다! (현재잔고: ${mBtBalance} BT)`);
         }
         
-        // Deduct from merchant's user account!
-        tx.update(mOwnerRef, {
+        // Deduct from merchant's user and merchant account
+        tx.set(mOwnerRef, {
             btBalance: admin.firestore.FieldValue.increment(-btAmountToGive)
-        });
-        
-        // (We still optionally update merchant's stats if needed, but we don't deduct BT there)
-        const mRef = db.collection('merchants').doc(String(merchantId));
-        // just to ensure they exist
-        const mDoc = await tx.get(mRef);
-        if (!mDoc.exists) throw new HttpsError('not-found', '가맹점 정보를 찾을 수 없습니다.');
-    
+        }, { merge: true });
+        tx.set(mRef, {
+            btBalance: admin.firestore.FieldValue.increment(-btAmountToGive)
+        }, { merge: true });
         
         // Add to customer
         const cRef = db.collection('users').doc(customerUid);
@@ -192,7 +202,7 @@ async function merchantSendBtDirect(data, context) {
         const logRef = db.collection('bt_transactions').doc();
         tx.set(logRef, {
             type: 'remote_send',
-            merchantId: Number(merchantId),
+            merchantId: Number(merchantId) || String(merchantId),
             merchantUid,
             customerUid,
             customerEmail,

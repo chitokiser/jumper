@@ -1341,13 +1341,28 @@ async function receiveBtQrFirebase(uid, data) {
 
     // 3. Fetch Entities
     const userRef = db.collection('users').doc(uid);
-    const merchRef = db.collection('merchants').doc(merchIdStr);
+    let merchRef = db.collection('merchants').doc(merchIdStr);
 
-    const [userSnap, merchSnap] = await Promise.all([
+    let [userSnap, merchSnap] = await Promise.all([
       tx.get(userRef), tx.get(merchRef)
     ]);
 
     if (!userSnap.exists) throw new Error('유저 정보가 없습니다.');
+    if (!merchSnap.exists) {
+      if (merchIdStr === "bestwinner") {
+        merchRef = db.collection('merchants').doc("1791605366");
+        merchSnap = await tx.get(merchRef);
+      } else if (merchIdStr === "1791605366") {
+        merchRef = db.collection('merchants').doc("bestwinner");
+        merchSnap = await tx.get(merchRef);
+      } else if (merchIdStr === "daehan_kimchi") {
+        merchRef = db.collection('merchants').doc("1791002036");
+        merchSnap = await tx.get(merchRef);
+      } else if (merchIdStr === "1791002036") {
+        merchRef = db.collection('merchants').doc("daehan_kimchi");
+        merchSnap = await tx.get(merchRef);
+      }
+    }
     if (!merchSnap.exists) throw new Error('가맹점 정보가 없습니다.');
 
     // 4. Deduct Merchant BT Balance
@@ -1355,10 +1370,10 @@ async function receiveBtQrFirebase(uid, data) {
     const merchBtBal = Number(merchData.btBalance) || 0;
     if (merchBtBal < numBt) throw new Error('가맹점의 BT 잔고가 부족하여 지급할 수 없습니다.');
 
-    tx.set(merchRef, { btBalance: merchBtBal - numBt }, { merge: true });
+    tx.set(merchRef, { btBalance: Math.max(0, merchBtBal - numBt) }, { merge: true });
     if (merchData.ownerUid) {
       const ownerRef = db.collection('users').doc(merchData.ownerUid);
-      tx.update(ownerRef, { btBalance: admin.firestore.FieldValue.increment(-numBt) });
+      tx.set(ownerRef, { btBalance: admin.firestore.FieldValue.increment(-numBt) }, { merge: true });
     }
 
     // 5. Update User BT
@@ -1371,7 +1386,7 @@ async function receiveBtQrFirebase(uid, data) {
 
     const merchName = merchData.name || rwData.merchantName || '';
     tx.set(checkTxRef, {
-      uid, type: 'receive_bt', merchantId: Number(rwData.merchantId), merchantName: merchName,
+      uid, type: 'receive_bt', merchantId: Number(rwData.merchantId) || String(rwData.merchantId), merchantName: merchName,
       bt: numBt, amountVnd: rwData.amountVnd || 0,
       rewardId, createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
@@ -1507,7 +1522,24 @@ async function createBtRewardSession(uid, data) {
   const merchantId = userSnap.data().merchantId;
   if (!merchantId) throw new Error('판매회원으로 등록된 가맹점이 아닙니다.');
 
-  const merchSnap = await db.collection('merchants').doc(String(merchantId)).get();
+  let merchRef = db.collection('merchants').doc(String(merchantId));
+  let merchSnap = await merchRef.get();
+  const mIdStr = String(merchantId || '').trim();
+  if (!merchSnap.exists) {
+    if (mIdStr === "bestwinner") {
+      merchRef = db.collection('merchants').doc("1791605366");
+      merchSnap = await merchRef.get();
+    } else if (mIdStr === "1791605366") {
+      merchRef = db.collection('merchants').doc("bestwinner");
+      merchSnap = await merchRef.get();
+    } else if (mIdStr === "daehan_kimchi") {
+      merchRef = db.collection('merchants').doc("1791002036");
+      merchSnap = await merchRef.get();
+    } else if (mIdStr === "1791002036") {
+      merchRef = db.collection('merchants').doc("daehan_kimchi");
+      merchSnap = await merchRef.get();
+    }
+  }
   if (!merchSnap.exists) throw new Error('가맹점 등록 정보가 존재하지 않습니다.');
   const merchData = merchSnap.data() || {};
   if (merchData.active === false) throw new Error('가맹점이 비활성화 상태입니다.');
@@ -1517,7 +1549,7 @@ async function createBtRewardSession(uid, data) {
   if (btAmount <= 0) throw new Error(`BT 발행 조건 미달입니다. (${btPerVnd.toLocaleString()} VND당 1 BT)`);
 
   // Validate merchant's BT balance
-  const merchBtBal = Number(merchData.btBalance || 0);
+  const merchBtBal = Math.max(Number(merchData.btBalance || 0), Number(userSnap.data()?.btBalance || 0));
   if (merchBtBal <= 0) {
     throw new Error('가맹점 BT 잔고가 0장입니다. (BT 충전이 필요합니다.)');
   }
@@ -1533,7 +1565,7 @@ async function createBtRewardSession(uid, data) {
 
   await db.collection('bt_rewards').doc(rewardId).set({
     rewardId,
-    merchantId,
+    merchantId: merchSnap.id,
     merchantName: merchData.name || '가맹점',
     merchantOwnerUid: uid,
     amountVnd: amount,
@@ -1543,7 +1575,7 @@ async function createBtRewardSession(uid, data) {
     expiresAt,
   });
 
-  return { rewardId, btAmount, merchantId, expiresAt: expiresAt.toMillis() };
+  return { rewardId, btAmount, merchantId: merchSnap.id, expiresAt: expiresAt.toMillis() };
 }
 
 
