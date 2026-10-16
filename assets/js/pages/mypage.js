@@ -253,6 +253,176 @@ async function consumeBtClientFallback(uid, numBt, isMerchantOwner, mRef) {
   };
 }
 
+const EXP_TITLES = [
+  "",
+  "입문자",   // Lv.1
+  "초보자",   // Lv.2
+  "수련자",   // Lv.3
+  "숙련자",   // Lv.4
+  "고수",     // Lv.5
+  "달인",     // Lv.6
+  "영웅",     // Lv.7
+  "전설",     // Lv.8
+  "신화",     // Lv.9
+  "마스터"    // Lv.10+
+];
+
+async function loadExpAndLevel(uid, cachedUserData) {
+  try {
+    let userData = cachedUserData;
+    if (!userData) {
+      const uSnap = await getDoc(doc(db, "users", uid));
+      userData = uSnap.exists() ? uSnap.data() : {};
+    }
+
+    let bpData = {};
+    try {
+      const bpSnap = await getDoc(doc(db, "battle_players", uid));
+      if (bpSnap.exists()) bpData = bpSnap.data() || {};
+    } catch (_) {}
+
+    const displayLevel = Math.max(1, Number(userData.gsLevel ?? userData.level ?? bpData.gsLevel ?? bpData.level ?? 1));
+    const displayExp = Number(userData.gsExp ?? userData.exp ?? bpData.gsExp ?? 0);
+    const required = displayLevel * displayLevel * 10000;
+    const pct = required > 0 ? Math.min(100, Math.round((displayExp / required) * 100)) : 0;
+    const remain = Math.max(0, required - displayExp);
+    const canLevelUp = displayExp >= required;
+
+    // 1. 프로필 정보 표시
+    show("levelRow", true);
+    setText("levelDisplay", "Lv." + displayLevel);
+    show("expRow", true);
+    setText("expDisplay", `${displayExp.toLocaleString()} / ${required.toLocaleString()} EXP`);
+
+    // 2. ⭐ 레벨 & EXP 전용 카드 표시
+    const card = $("expLevelCard");
+    if (card) {
+      card.style.display = "";
+
+      const badge = $("expLevelBadge");
+      if (badge) badge.textContent = String(displayLevel);
+
+      const titleEl = $("expLevelTitle");
+      if (titleEl) {
+        titleEl.textContent = EXP_TITLES[displayLevel] || (displayLevel >= 10 ? "마스터" : `Lv.${displayLevel}`);
+      }
+
+      const nextEl = $("expToNextLevel");
+      if (nextEl) {
+        nextEl.textContent = canLevelUp ? "레벨업 가능! 🎉" : `${remain.toLocaleString()} EXP`;
+      }
+
+      const barFillNew = $("expBarFillNew");
+      if (barFillNew) {
+        setTimeout(() => {
+          barFillNew.style.width = pct + "%";
+        }, 50);
+      }
+      const barFill = $("expBarFill");
+      if (barFill) {
+        setTimeout(() => {
+          barFill.style.width = pct + "%";
+        }, 50);
+      }
+
+      const progLabel = $("expProgressLabel");
+      if (progLabel) {
+        progLabel.textContent = `${displayExp.toLocaleString()} / ${required.toLocaleString()} EXP (${pct}%)`;
+      }
+
+      const convRate = $("expConversionRate");
+      if (convRate) {
+        convRate.textContent = `포인트 × ${displayLevel} ÷ 10`;
+      }
+
+      show("levelUpRow", canLevelUp);
+    }
+
+    if ($("gpUserLevelDisplay")) {
+      $("gpUserLevelDisplay").textContent = "Level: " + displayLevel;
+    }
+
+    return { displayLevel, displayExp, required, pct, canLevelUp };
+  } catch (err) {
+    console.error("loadExpAndLevel error:", err);
+  }
+}
+
+async function doLevelUp(uid) {
+  // 1. Cloud Function 시도 (배포 상태일 경우)
+  try {
+    const fn = httpsCallable(functions, "requestLevelUp");
+    const res = await fn();
+    if (res?.data?.newLevel) return res.data.newLevel;
+  } catch (fnErr) {
+    console.warn("requestLevelUp Cloud Function unavailable, fallback to direct Firestore:", fnErr?.message || fnErr);
+  }
+
+  // 2. Direct Firestore fallback
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
+  const userData = userSnap.data() || {};
+
+  let bpData = {};
+  try {
+    const bpSnap = await getDoc(doc(db, "battle_players", uid));
+    if (bpSnap.exists()) bpData = bpSnap.data() || {};
+  } catch (_) {}
+
+  const currentLevel = Math.max(1, Number(userData.gsLevel ?? userData.level ?? bpData.gsLevel ?? bpData.level ?? 1));
+  const currentExp = Number(userData.gsExp ?? userData.exp ?? bpData.gsExp ?? 0);
+  const required = currentLevel * currentLevel * 10000;
+
+  if (currentExp < required) {
+    throw new Error(`경험치(EXP)가 부족합니다.\n현재: ${currentExp.toLocaleString()} / 필요: ${required.toLocaleString()} EXP`);
+  }
+
+  const newLevel = currentLevel + 1;
+  const newExp = Math.max(0, currentExp - required);
+
+  await updateDoc(userRef, {
+    gsLevel: newLevel,
+    level: newLevel,
+    gsExp: newExp,
+    exp: newExp,
+    updatedAt: serverTimestamp()
+  });
+
+  try {
+    const bpRef = doc(db, "battle_players", uid);
+    const bpSnap = await getDoc(bpRef);
+    if (bpSnap.exists()) {
+      await updateDoc(bpRef, {
+        gsLevel: newLevel,
+        level: newLevel,
+        gsExp: newExp,
+        updatedAt: serverTimestamp()
+      });
+    }
+  } catch (e) {
+    console.warn("battle_players level update skipped:", e);
+  }
+
+  try {
+    await addDoc(collection(db, "exp_logs"), {
+      uid,
+      reason: "manual_level_up",
+      prevLevel: currentLevel,
+      newLevel,
+      prevExp: currentExp,
+      newExp,
+      createdAt: serverTimestamp()
+    });
+  } catch (_) {}
+
+  return newLevel;
+}
+
+async function loadOnChainData(uid) {
+  return await loadExpAndLevel(uid);
+}
+
 async function loadKCultureBalances(uid) {
   try {
     const userSnap = await getDoc(doc(db, "users", uid));
@@ -265,6 +435,8 @@ async function loadKCultureBalances(uid) {
       const pointBal = d.pointBalance || 0;
       const payBal = d.pointBalanceVnd || 0;
       let btBal = d.btBalance || 0;
+
+      loadExpAndLevel(uid, d);
 
       const isMerchantOwner = !!d.merchantId;
       let mRef = null;
@@ -287,6 +459,7 @@ async function loadKCultureBalances(uid) {
       onSnapshot(doc(db, "users", uid), (snap) => {
         if (!snap.exists()) return;
         const updatedD = snap.data();
+        loadExpAndLevel(uid, updatedD);
         const pBal = updatedD.pointBalance || 0;
         const kBal = updatedD.pointBalanceVnd || 0;
         let bBal = updatedD.btBalance || 0;
@@ -1144,7 +1317,33 @@ function formatWei(weiStr) {
 
 function bindCreateWallet() { }
 function bindConnectMetaMask(uid) { }
-function bindLevelUp(uid) { }
+
+function bindLevelUp(uid) {
+  const btn = $("btnLevelUp");
+  if (!btn || btn._bound) return;
+  btn._bound = true;
+
+  btn.onclick = async () => {
+    if (!confirm("레벨업을 진행하시겠습니까?\n레벨업 시 해당 레벨의 필요 경험치(EXP)가 차감되고 레벨이 1 증가합니다.")) return;
+    btn.disabled = true;
+    const btnText = $("btnLevelUpText") || btn;
+    const oldText = btnText.textContent;
+    btnText.textContent = "레벨업 진행 중...";
+
+    try {
+      const newLevel = await doLevelUp(uid);
+      alert(`🎉 축하합니다!\nLv.${newLevel} 로 레벨업 되었습니다!`);
+      await loadExpAndLevel(uid);
+      await loadKCultureBalances(uid);
+    } catch (err) {
+      alert("레벨업 실패: " + (err.message || err));
+    } finally {
+      btn.disabled = false;
+      btnText.textContent = oldText;
+    }
+  };
+}
+
 function bindRedeemPoints(uid) { }
 function bindOnChainRegister(uid) { }
 
@@ -2437,6 +2636,7 @@ onAuthReady(async (ctx) => {
     })();
 
     loadKCultureBalances(user.uid);
+    loadExpAndLevel(user.uid, data);
 
     loadDepositHistory(user.uid);
     loadMentees();
@@ -2452,7 +2652,7 @@ onAuthReady(async (ctx) => {
         try {
           await Promise.all([
             loadKCultureBalances(user.uid),
-            loadOnChainData(user.uid),
+            loadExpAndLevel(user.uid),
           ]);
           btnRefreshInfo.innerHTML = '✅ 완료';
         } catch (_) {
