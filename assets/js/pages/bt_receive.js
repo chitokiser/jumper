@@ -8,6 +8,9 @@ import { initSlot } from "/assets/js/jackpot-anim.js";
 import {
   doc,
   getDoc,
+  runTransaction,
+  serverTimestamp,
+  increment,
   onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import {
@@ -112,6 +115,7 @@ async function loadMerchant() {
 
 // ── 인증 처리 ─────────────────────────────────────────
 let _authDone = false;
+let _currentUser = null;
 
 async function init() {
   try {
@@ -120,9 +124,10 @@ async function init() {
     return; // 이미 invalidPanel 표시됨
   }
 
-  onAuthReady(({ loggedIn, role }) => {
+  onAuthReady(({ loggedIn, role, user }) => {
     if (_authDone) return;
     _authDone = true;
+    _currentUser = user;
 
     if (!loggedIn) {
       show("needLoginPanel", true);
@@ -172,14 +177,88 @@ async function init() {
   }, 4000);
 }
 
+// ── 클라이언트 직통 BT 수령 (Cloud Function 미가동/billing 비활성화 대비) ──
+async function receiveBtDirectFirestore(user, merchantId, amount, currency, bt, nonce, rewardId) {
+  if (!user?.uid) throw new Error("로그인이 필요합니다.");
+  const customerUid = user.uid;
+  const numBt = Number(bt || 0);
+  if (numBt <= 0) throw new Error("수령할 BT 수량이 올바르지 않습니다.");
+
+  const checkTxId = 'RW_CLAIM_' + (rewardId || (merchantId + '_' + nonce));
+  const checkTxRef = doc(db, 'transactions', checkTxId);
+
+  let updatedMerchName = merchantName;
+
+  await runTransaction(db, async (tx) => {
+    // 1. 이미 수령한 티켓인지 확인
+    const txSnap = await tx.get(checkTxRef);
+    if (txSnap.exists()) throw new Error("이미 수령 완료된 티켓입니다.");
+
+    // 2. 가맹점 정보 조회
+    let mRef = doc(db, 'merchants', String(merchantId));
+    let mSnap = await tx.get(mRef);
+    if (!mSnap.exists()) {
+      if (String(merchantId) === 'bestwinner') {
+        mRef = doc(db, 'merchants', '1791605366');
+        mSnap = await tx.get(mRef);
+      } else if (String(merchantId) === '1791605366') {
+        mRef = doc(db, 'merchants', 'bestwinner');
+        mSnap = await tx.get(mRef);
+      }
+    }
+    if (!mSnap.exists()) throw new Error("가맹점 정보를 찾을 수 없습니다.");
+    const mData = mSnap.data() || {};
+    updatedMerchName = mData.name || merchantName;
+
+    const merchBtBal = Number(mData.btBalance || 0);
+    if (merchBtBal < numBt) throw new Error("가맹점의 BT 잔고가 부족하여 지급할 수 없습니다.");
+
+    // 3. 가맹점 BT 잔고 차감
+    tx.update(mRef, {
+      btBalance: Math.max(0, merchBtBal - numBt),
+      updatedAt: serverTimestamp()
+    });
+
+    if (mData.ownerUid) {
+      const ownerRef = doc(db, 'users', mData.ownerUid);
+      tx.update(ownerRef, {
+        btBalance: increment(-numBt)
+      });
+    }
+
+    // 4. 고객에게 BT 적립
+    const userRef = doc(db, 'users', customerUid);
+    tx.update(userRef, {
+      btBalance: increment(numBt)
+    });
+
+    // 5. 트랜잭션 기록
+    tx.set(checkTxRef, {
+      uid: customerUid,
+      type: 'receive_bt',
+      merchantId: String(merchantId),
+      merchantName: updatedMerchName,
+      bt: numBt,
+      amountVnd: isVnd ? amount : 0,
+      amountKrw: !isVnd ? amount : 0,
+      rewardId: rewardId || null,
+      nonce: String(nonce || ''),
+      createdAt: serverTimestamp()
+    });
+  });
+
+  return {
+    merchantName: updatedMerchName,
+    amountVnd: isVnd ? amount : 0,
+    amountKrw: !isVnd ? amount : 0,
+    bt: numBt
+  };
+}
+
 // ── 결제 버튼 바인딩 ──────────────────────────────────
 function bindPayButton() {
   const btn = $("btnPay");
   if (!btn) return;
-
-  const amountConfirmStr = isVnd
-    ? `${amount.toLocaleString()} BM`
-    : `${amount.toLocaleString()}원 (KRW)`;
 
   btn.onclick = async () => {
     if (!confirm(`${merchantName} 가맹점으로부터 ${bt} BT를 수령하시겠습니까?`)) return;
@@ -190,26 +269,32 @@ function bindPayButton() {
     if (stateEl) { stateEl.textContent = "티켓을 적립하고 있습니다..."; stateEl.style.display = ""; }
 
     try {
-      const payFn = httpsCallable(functions, "receiveBtQrFirebase");
-      const payload = {
-        rewardId: params.get("rewardId"),
-        merchantId, amount, currency, bt, txHash: String(nonce), nonce
-      };
-      const res = await payFn(payload);
-      const d = res.data;
+      let d = null;
+      try {
+        const payFn = httpsCallable(functions, "receiveBtQrFirebase");
+        const payload = {
+          rewardId: params.get("rewardId"),
+          merchantId, amount, currency, bt, txHash: String(nonce), nonce
+        };
+        const res = await payFn(payload);
+        d = res?.data;
+      } catch (cfErr) {
+        console.warn("receiveBtQrFirebase function unavailable, fallback to direct Firestore transaction:", cfErr);
+        d = await receiveBtDirectFirestore(_currentUser, merchantId, amount, currency, bt, nonce, params.get("rewardId"));
+      }
 
       // 완료 패널 표시
       show("payPanel", false);
       show("donePanel", true);
 
-      const krwStr = `${(d.amountKrw || 0).toLocaleString()}원`;
-      const vndStr = d.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}동` : '';
+      const krwStr = `${(d?.amountKrw || 0).toLocaleString()}원`;
+      const vndStr = d?.amountVnd ? `${Math.round(d.amountVnd).toLocaleString()}동` : '';
       let paidAmountStr = [krwStr, vndStr].filter(Boolean).join(" / "); paidAmountStr += ` (수령 BT: ${bt} BT)`;
 
       const resultEl = $("payResult");
       if (resultEl) {
         resultEl.innerHTML = `
-          <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d.merchantName || merchantName}</span></div>
+          <div class="mp-kv"><span class="k">가맹점</span><span class="v">${d?.merchantName || merchantName}</span></div>
           <div class="mp-kv"><span class="k">결제 금액</span><span class="v">${paidAmountStr}</span></div>
           <div style="margin-top:16px; background:#fef3c7; border:2px solid #f59e0b; padding:12px; border-radius:12px; text-align:center;">
              <h3 style="color:#d97706; margin-bottom:8px;">🎟️ 보너스 티켓 수령 완료!</h3>

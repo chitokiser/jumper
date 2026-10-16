@@ -386,26 +386,34 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
 
   const baseOrigin = location.origin;
   let btRewardAmount = 0;
-
   let url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
+
   if (mode === "bt") {
-    // Generate reward session on the server
+    const btTokens = getBtAmount(amount, currency);
+    if (!btTokens || btTokens <= 0) {
+      alert("지급할 보너스 티켓(BT)이 0장입니다. 결제 금액을 확인해 주세요.");
+      return;
+    }
+    btRewardAmount = btTokens;
+    const nonce = Date.now();
+    url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btTokens}&nonce=${nonce}`;
+
     const btnGen = $("btnGenQr");
     if (btnGen) { btnGen.disabled = true; btnGen.textContent = "QR 생성 중.."; }
 
     try {
       const createSession = httpsCallable(functions, "createBtRewardSession");
       const res = await createSession({ amount });
-      const { rewardId, btAmount } = res.data;
-      btRewardAmount = btAmount;
-
-      url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btAmount}&rewardId=${rewardId}&nonce=${Date.now()}`;
-    } catch (err) {
+      if (res?.data?.rewardId) {
+        const { rewardId, btAmount } = res.data;
+        if (btAmount) btRewardAmount = btAmount;
+        url = `${baseOrigin}/bt_receive.html?merchant=${merchantId}&amount=${amount}&currency=${currency}&bt=${btRewardAmount}&rewardId=${rewardId}&nonce=${nonce}`;
+      }
+    } catch (sessionErr) {
+      console.warn("createBtRewardSession unavailable, using direct QR generation:", sessionErr);
+    } finally {
       if (btnGen) { btnGen.disabled = false; btnGen.textContent = "무료 BT 보상 QR 발급"; }
-      alert("BT QR 생성 오류: " + (err?.message || "서버 통신 실패"));
-      return;
     }
-    if (btnGen) { btnGen.disabled = false; btnGen.textContent = "무료 BT 보상 QR 발급"; }
   }
 
   // qrcode.js (CDN) API
