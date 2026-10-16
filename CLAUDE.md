@@ -89,7 +89,7 @@ Firebase Authentication + Cloud Functions
 ### [재화 흐름도]
 
 ```text
-(결제: 100,000 VND당 1 BT 이체)
+(결제: 가맹점 설정 기준금액 btPerVnd당 1 BT 이체 — 10만동 고정 폐기)
 가맹점 (BT 보유) ──────────────────────────► 고객 (BT 수령)
                                                 │
                                                 ▼ (BT 룰렛 인터랙션)
@@ -106,7 +106,7 @@ Firebase Authentication + Cloud Functions
 | **BM (VND)** | 현금성 결제/정산 재화<br>(표기 단위: VND, UI 표기: `BM`) | - 플랫폼 내 유일한 현금성 결제·정산 재화.<br>- 기존의 KM 및 `pointBalanceVnd`는 BM으로 완전 대체·정리.<br>- 가맹점 정산은 향후 USDT 기반으로 일괄 처리 예정. |
 | **Point** | 비현금성 리워드<br>(표기 단위: `Point`, 필드: `users.pointBalance`) | - 보상, 캐시백(5%), 잭팟 당첨, BT 룰렛 등으로 획득하는 비현금성 리워드.<br>- Point를 BM 또는 법정화폐와 동일한 가치로 직접 간주하지 않음.<br>- **BM 전환 공식:** `floor(보유 Point × (gsLevel / 10))` |
 | **GP (Game Point)** | 게임 전용 포인트<br>(표기 단위: `GP`) | - 플랫폼 내 게임 콘텐츠(배틀, 퀘스트 등)를 통해 획득하는 전용 포인트.<br>- 게임 내에서 사용되며 Point로 전환 가능.<br>- **Point 전환 공식:** `floor(보유 GP × (gsLevel / 10))` |
-| **BT (Bonus Ticket)** | 보너스 티켓 수량<br>(표기 단위: `BT`, 필드: `btBalance`) | - **발급 규정:** 가맹점 주가 설정한 **지급 기준금액(`btPerVnd`, 기본 100,000 VND) 결제당 1 BT** 지급 (`Math.floor(amount / btPerVnd)`).<br>- **사용처:** 인터랙티브 룰렛을 돌려 등급 기반 Point를 획득하는 전용 티켓. |
+| **BT (Bonus Ticket)** | 보너스 티켓 수량<br>(표기 단위: `BT`, 필드: `btBalance`) | - **과거 10만 동당 1 BT 고정 지급 규정 전면 폐기:** 결제금액에 따른 BT 보상 정책은 **각 가맹점이 직접 자율적으로 설정(`btPerVnd`)**한다.<br>- **발급 규정:** 가맹점 주가 설정한 **지급 기준금액(`btPerVnd`) 결제당 1 BT** 지급 (`Math.floor(amount / btPerVnd)`). 가맹점 잔여 BT 재고 범위 내에서만 원자적 1:1 차감 지급.<br>- **가맹점 카드 명시 의무:** 각 가맹점 카드(Merchant Card) 및 상세/팝업 UI에 해당 가맹점의 BT 보상 정책(예: `🎟️ 1 BT per N VND` / `🎟️ N VND당 1 BT`)이 **반드시 명시**되어야 한다.<br>- **사용처:** 인터랙티브 룰렛을 돌려 등급 기반 Point를 획득하는 전용 티켓. |
 
 ## 3.2 유저 레벨 및 경험치(EXP) 정책
 
@@ -206,14 +206,17 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
 1. **공급 (Supply):**
    - 최고관리자(Super Admin)만이 각 가맹점 계정으로 BT를 사전에 공식 일괄 충전/이체합니다 (`adminChargeBt`).
    - 충전 시 `merchants/{merchantId}.btBalance`와 가맹점주 `users/{ownerUid}.btBalance`가 동시에 1:1 증액됩니다.
-2. **지급 한도 계산 (Inventory Cap & Custom Rate):**
-   - 가맹점 주가 설정한 **지급 기준금액(`btPerVnd`, 기본 100,000 VND)당 1 BT** 기준:
+2. **지급 한도 계산 및 가맹점 자율 정책 (Inventory Cap & Custom Rate - ★ 10만 동 고정 폐기):**
+   - **레거시 10만 동당 1 BT 고정 지급 규정 완전 폐기:** 과거의 일괄 '100,000 VND당 1 BT' 고정 정책은 전면 폐기되었으며, **결제금액에 따른 BT 보상 정책은 각 가맹점주가 직접 자율적으로 설정(`merchants/{merchantId}.btPerVnd`)**합니다.
+   - **가맹점 주가 설정한 지급 기준금액(`btPerVnd`)당 1 BT 산출:**
      $$\text{maxBtRequested} = \left\lfloor \frac{\text{finalVnd}}{\text{btPerVnd}} \right\rfloor$$
+   - **가맹점 카드(Merchant Card) 명시 의무:**
+     소비자가 결제 또는 방문 전 보상 정책을 명확히 인지할 수 있도록, **모든 가맹점 카드(`.mc-card`), 리스트 및 지도 팝업 UI에 가맹점의 BT 보상 정책(예: `🎟️ 1 BT per {btPerVnd} VND` 또는 `🎟️ {btPerVnd} VND 결제당 1 BT 지급`)이 반드시 명시**되어야 합니다.
    - **가맹점 보유 잔여량 한도(Inventory Cap) 필수 적용:**
      $$\text{actualBt} = \min\left(\text{maxBtRequested},\; \max(0, \text{merchantBt})\right)$$
    - **가맹점 잔여 BT 고갈 시 처리:**
      - 가맹점 `btBalance <= 0`인 경우: 소비자에게 **0 BT 지급** (`actualBt = 0`). 잔여량이 없으면 단 1장의 BT도 발행되지 않습니다.
-     - 가맹점 잔여 BT가 부족한 경우(예: 30만 동 결제로 3장 요청했으나 가맹점 잔여가 1장인 경우): 오직 보유 잔여 수량인 1장만 차감 및 지급됩니다. 가맹점 잔고는 절대 음수(`< 0`)가 될 수 없습니다.
+     - 가맹점 잔여 BT가 부족한 경우(예: 결제금액 기준 3장 요청했으나 가맹점 잔여가 1장인 경우): 오직 보유 잔여 수량인 1장만 차감 및 지급됩니다. 가맹점 잔고는 절대 음수(`< 0`)가 될 수 없습니다.
 3. **원자적 동시 차감 및 이체 (Atomic Zero-Sum Transaction):**
    - 결제 실행 트랜잭션(`runTransaction`) 내에서 단일 원자성으로 수행되어야 합니다:
      ```javascript
@@ -362,6 +365,7 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
 # 10. 개발 보안 및 프런트엔드 UI 규칙
 
 ## 10.1 UI/UX 필수 규칙
+- **가맹점 카드(Merchant Card) BT 보상 정책 명시 (★ 필수):** 가맹점 카드 UI(`.mc-card`), 리스트 뷰 및 지도 인포윈도우/팝업에는 가맹점주가 직접 설정한 **BT 보상 기준(`btPerVnd`, 예: `🎟️ 1 BT per N VND` 또는 `🎟️ N VND당 1 BT`)과 가맹점 잔여 BT 재고(`btBalance`)가 반드시 명확하게 표기**되어야 한다. 사용자가 방문 또는 결제 전 해당 가맹점의 보상 기준을 즉시 식별할 수 있어야 한다.
 - **BT 보상 표기:** BT Reward 스캔 UI는 절대 '결제'로 표현하지 않고, 반드시 **'무료 보상 (Free Reward)'**으로 명시한다.
 - **통화 기준 및 삼중 표기:** 기본 통화는 항상 **VND**를 기준으로 하되, 금액 표시 헬퍼를 통해 **KRW / VND / Point**를 명확히 병기한다:
   ```js
@@ -641,7 +645,7 @@ npm run serve
 1. **가맹점 프로필:** `merchants/{merchantId}` (상호명, 로고, 주소, 연락처, BT 잔액, 정산 대기금)
 2. **상품 카탈로그:** `merchant_products` (`merchant_id == MY_ID && sale_status == 'published'`)
 3. **통합 회원 & BM 지갑:** `users/{uid}` (BestClub 단일 계정 로그인, `pointBalanceVnd`(BM), `btBalance`(BT), `pointBalance`(Point))
-4. **주문 및 결제:** `merchant_orders` (BM 결제, 10% 수수료 분배, 90% 가맹점 매출 적립, 100,000 VND당 1 BT 지급)
+4. **주문 및 결제:** `merchant_orders` (BM 결제, 10% 수수료 분배, 90% 가맹점 매출 적립, 가맹점 직접 설정 `btPerVnd` 기준 BT 원자적 1:1 차감 지급 — 10만 동 고정 폐기 및 가맹점 카드 명시 필수)
 5. **쿠폰 & 바우쳐:** `user_coupons` (해당 가맹점 적용 가능 쿠폰 조회 및 주문 결제 시 차감/사용)
 6. **가맹점 웹진 위젯:** `kca_webzine_widget.html` iframe 또는 `webzine-widget.js` 임베드
 

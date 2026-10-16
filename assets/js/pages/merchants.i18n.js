@@ -1,4 +1,4 @@
-﻿// assets/js/pages/merchants.i18n.js
+// assets/js/pages/merchants.i18n.js
 // ko / en / vi 다국어 지원 — window.LANG 으로 언어 선택 (기본: en)
 
 'use strict';
@@ -17,6 +17,8 @@ const MESSAGES = {
                            vi: '💬 Tiến đến trong 20m của NPC (hiện tại {0}m)' },
   no_map_label:          { en: 'No map',                  ko: '지도 미등록',       vi: 'Chưa có bản đồ' },
   no_name_label:         { en: '(No name)',               ko: '(이름없음)',         vi: '(Không tên)' },
+  merchant_bt_policy:    { en: '🎟️ 1 BT per {0} VND',    ko: '🎟️ {0} VND당 1 BT',  vi: '🎟️ 1 BT mỗi {0} VND' },
+  merchant_bt_stock:     { en: 'Stock: {0} BT',           ko: '잔여: {0} BT',       vi: 'Còn lại: {0} BT' },
   no_geolocation:        { en: 'This browser does not support location services.',
                            ko: '이 브라우저는 위치 서비스를 지원하지 않습니다.',
                            vi: 'Trình duyệt này không hỗ trợ dịch vụ vị trí.' },

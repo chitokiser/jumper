@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/merchants.js
+// /assets/js/pages/merchants.js
 // 가맹점 지도 + 보물찾기 시스템
 
 import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js';
@@ -560,12 +560,18 @@ function renderMarkers(list) {
       },
       zIndex: 10,
     });
+    const btPerVnd = Math.max(1000, Number(m.btPerVnd || m.btGrantThresholdVnd || 100000));
+    const btStock = (m.btBalance !== undefined && m.btBalance !== null) ? Number(m.btBalance) : null;
     marker.addListener('click', () => {
       infoWindow.setContent(`
         <div style="max-width:240px;font-size:13px;line-height:1.6;">
           ${m.imageUrl ? `<img src="${escHtml(m.imageUrl)}" alt="${escHtml(m.name)}" class="lb-trigger" onclick="openLightbox(this.src,this.alt)" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px;cursor:zoom-in;">` : ''}
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(m.name)}</div>
           ${m.career ? `<div style="color:#f59e0b;font-size:12px;">${escHtml(m.career)}</div>` : ''}
+          <div style="font-size:11px;font-weight:700;color:#d97706;background:rgba(217,119,6,0.08);padding:3px 8px;border-radius:6px;display:inline-block;margin:4px 0;">
+            ${_t('merchant_bt_policy', btPerVnd.toLocaleString())}
+            ${btStock !== null ? `<span style="font-size:10px;color:#92400e;opacity:0.85;margin-left:4px;">(${_t('merchant_bt_stock', btStock)})</span>` : ''}
+          </div>
           ${m.region ? `<div style="color:#6b7280;">📍 ${escHtml(m.region)}</div>` : ''}
           ${m.phone ? `<div style="color:#374151;">📞 ${escHtml(m.phone)}</div>` : ''}
           ${m.description ? `<div style="color:#6b7280;margin-top:4px;">${escHtml(m.description)}</div>` : ''}
@@ -1014,9 +1020,15 @@ function renderCards(list) {
     const el = document.createElement('div');
     el.className = 'mc-card';
     el.dataset.id = m.id;
+    const btPerVnd = Math.max(1000, Number(m.btPerVnd || m.btGrantThresholdVnd || 100000));
+    const btStock = (m.btBalance !== undefined && m.btBalance !== null) ? Number(m.btBalance) : null;
     el.innerHTML = `
       <div class="mc-card-name">${escHtml(m.name || _t('no_name_label'))}${m._latLng ? '<span class="mc-badge-map">Map</span>' : ''}</div>
       ${m.career ? `<div class="mc-card-career">${escHtml(m.career)}</div>` : ''}
+      <div class="mc-card-bt-policy" style="font-size:11px;font-weight:700;color:#d97706;background:rgba(217,119,6,0.08);padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;margin:3px 0 5px 0;">
+        ${_t('merchant_bt_policy', btPerVnd.toLocaleString())}
+        ${btStock !== null ? `<span style="font-size:10px;color:#92400e;opacity:0.85;margin-left:4px;">(${_t('merchant_bt_stock', btStock)})</span>` : ''}
+      </div>
       ${m.region ? `<div class="mc-card-region">📍 ${escHtml(m.region)}</div>` : ''}
       ${m.phone ? `<div class="mc-card-phone">📞 ${escHtml(m.phone)}</div>` : ''}
       ${m.description ? `<div class="mc-card-desc">${escHtml(m.description)}</div>` : ''}
