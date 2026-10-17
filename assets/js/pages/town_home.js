@@ -777,15 +777,29 @@ function getMarkerColor(type) {
   return TYPE_COLOR[String(type).toLowerCase()] || "#6b7280";
 }
 
+// ── Google Maps 로드 (Leaflet Shim 호환) ───────────────────────────────────
 function loadMapsScript() {
   return new Promise((resolve, reject) => {
-    if (window.google?.maps) return resolve();
+    if (window.google?.maps?.Map) return resolve();
     window.__gmapsCb = resolve;
-    const s = document.createElement("script");
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${window.__mapsKey || ""}&callback=__gmapsCb&language=ko&region=KR`;
-    s.async = true;
-    s.onerror = () => reject(new Error(_t('maps_load_error')));
-    document.head.appendChild(s);
+    let checkCount = 0;
+    const timer = setInterval(() => {
+      if (window.google?.maps?.Map) {
+        clearInterval(timer);
+        return resolve();
+      }
+      checkCount++;
+      if (checkCount > 40) {
+        clearInterval(timer);
+        if (window.__mapsKey && window.__mapsKey !== 'free-leaflet-osm') {
+          const s = document.createElement("script");
+          s.src = `https://maps.googleapis.com/maps/api/js?key=${window.__mapsKey}&callback=__gmapsCb&language=ko&region=KR`;
+          s.async = true;
+          s.onerror = () => reject(new Error(_t('maps_load_error')));
+          document.head.appendChild(s);
+        }
+      }
+    }, 50);
   });
 }
 

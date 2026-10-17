@@ -1,4 +1,4 @@
-﻿<!-- /merchants.html --><!DOCTYPE html><html lang="en"><head>
+<!-- /merchants.html --><!DOCTYPE html><html lang="en"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- 텔레그램 인증 후 깜빡임 방지: CSS 로드 전에 동기 실행 -->
@@ -110,6 +110,68 @@
     #merchantMap {
       width: 100%;
       height: 100%;
+    }
+
+    /* Leaflet Google Maps Control Shim Container */
+    .gmaps-ctrl-container {
+      position: absolute;
+      z-index: 1100;
+      pointer-events: none;
+    }
+    .gmaps-ctrl-container > * {
+      pointer-events: auto;
+    }
+    .gmaps-ctrl-left-top {
+      top: 8px;
+      left: 8px;
+      max-height: calc(100% - 16px);
+      z-index: 1101;
+    }
+    .gmaps-ctrl-right-top {
+      top: 8px;
+      right: 8px;
+      max-height: calc(100% - 16px);
+      z-index: 1101;
+    }
+    .gmaps-ctrl-top-center {
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: calc(100% - 16px);
+      z-index: 1101;
+    }
+    .gmaps-ctrl-left-bottom {
+      bottom: 8px;
+      left: 8px;
+      max-height: calc(100% - 16px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      z-index: 1101;
+    }
+    .gmaps-ctrl-left-bottom > * {
+      max-height: 100% !important;
+    }
+    .gmaps-ctrl-right-bottom {
+      bottom: 8px;
+      right: 8px;
+      max-height: calc(100% - 16px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      z-index: 1101;
+    }
+    .gmaps-ctrl-right-bottom > * {
+      max-height: 100% !important;
+    }
+    .gmaps-ctrl-bottom-center {
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: center;
+      max-width: calc(100% - 16px);
+      z-index: 1101;
     }
 
     /* 지도 위 HUD 버튼 (Google Maps Custom Control로 등록) */
@@ -3371,8 +3433,13 @@
     })();
   </script>
 
+  <!-- Leaflet & Free OpenStreetMap (Google Maps Compatibility Shim) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="/assets/js/gmaps-leaflet-compat.js"></script>
+
   <script>
-    window.__mapsKey = "AIzaSyC5zrzVsTqshKYI4vS3og6jXaS-vlx2ujM";
+    window.__mapsKey = "free-leaflet-osm";
     window.LANG = 'en';
     function setMerchantsLang(lang) {
       localStorage.setItem('town_lang', lang);

@@ -250,16 +250,30 @@ async function _renderMemberStatus(uid) {
   }
 }
 
-// ── Google Maps 로드 ─────────────────────────────────────────────────────────
+// ── Google Maps 로드 (Leaflet Shim 호환) ───────────────────────────────────
 function loadMapsScript() {
   return new Promise((resolve, reject) => {
-    if (window.google?.maps) return resolve();
+    if (window.google?.maps?.Map) return resolve();
     window.__merchantMapCb = resolve;
-    const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${window.__mapsKey || ''}&callback=__merchantMapCb&language=en`;
-    s.async = true;
-    s.onerror = () => reject(new Error('Google Maps failed to load'));
-    document.head.appendChild(s);
+    // Check if gmaps-leaflet-compat is already initialized or resolving
+    let checkCount = 0;
+    const timer = setInterval(() => {
+      if (window.google?.maps?.Map) {
+        clearInterval(timer);
+        return resolve();
+      }
+      checkCount++;
+      if (checkCount > 40) { // 2 seconds timeout before trying Google
+        clearInterval(timer);
+        if (window.__mapsKey && window.__mapsKey !== 'free-leaflet-osm') {
+          const s = document.createElement('script');
+          s.src = `https://maps.googleapis.com/maps/api/js?key=${window.__mapsKey}&callback=__merchantMapCb&language=en`;
+          s.async = true;
+          s.onerror = () => reject(new Error('Google Maps failed to load'));
+          document.head.appendChild(s);
+        }
+      }
+    }, 50);
   });
 }
 

@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/merchants.battle.js
+// /assets/js/pages/merchants.battle.js
 // 위치 기반 전투 시스템 (merchants.js에서 분리)
 // ctx 객체를 통해 core와 공유 상태를 교환한다.
 
@@ -98,6 +98,7 @@ let _lastPosWriteAt       = 0;      // 위치 Firestore 저장 쓰로틀
 let _shops        = [];   // [{id, name, type, lat, lng, items, active}]
 let _shopMarkers   = {};   // { shopId: google.maps.Marker } — main icon
 let _shopHpMarkers = {};   // { shopId: google.maps.Marker } — HP bar overlay
+let _shopShadowMarkers = {}; // { shopId: google.maps.Marker } — 건물 묵직한 바닥 접지 그림자
 let _sellerMarkers = {};   // { shopId: google.maps.Marker } — seller NPC for weapon_armor shops
 let _monsterShadows = {};  // { id: Marker } 그림자
 const SHOP_RANGE_M = 20;
@@ -1879,31 +1880,59 @@ window.__deleteDeco = async (id) => {
   } catch (e) { alert('Delete failed: ' + e.message); }
 };
 
-// ── 몬스터 마커 ───────────────────────────────────────────────────────────────
+// ── 그림자 생성 (바닥 밀착 & 중력 무게감 구현) ──────────────────────────────
 function _makeShadowIcon(size) {
-  const sw = Math.round(size * 1.05);
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="14">' +
-    '<defs><filter id="sf"><feGaussianBlur stdDeviation="2.5"/></filter></defs>' +
-    '<ellipse cx="' + (sw / 2) + '" cy="7" rx="' + (sw / 2 - 2) + '" ry="5"' +
-    ' fill="rgba(0,0,0,0.32)" filter="url(#sf)"/></svg>';
+  const sw = Math.round(size * 1.15);
+  // 지면 접촉부의 짙은 코어 그림자 + 부드러운 앰비언트 오클루전 블러
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="16">' +
+    '<defs><filter id="sf"><feGaussianBlur stdDeviation="1.8"/></filter></defs>' +
+    '<ellipse cx="' + (sw / 2) + '" cy="8" rx="' + (sw / 2 - 2) + '" ry="5.5"' +
+    ' fill="rgba(0,0,0,0.45)" filter="url(#sf)"/>' +
+    '<ellipse cx="' + (sw / 2) + '" cy="8" rx="' + (sw * 0.32) + '" ry="3"' +
+    ' fill="rgba(0,0,0,0.75)"/></svg>';
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(sw, 14),
-    anchor: new google.maps.Point(sw / 2, 7 - size / 2),
+    scaledSize: new google.maps.Size(sw, 16),
+    // 발바닥 지면 좌표에 빈 공백 없이 정확히 안착 (cy=8)
+    anchor: new google.maps.Point(sw / 2, 8),
+  };
+}
+
+// 건물 전용: 중력에 의해 지면에 쿵 박힌 듯한 묵직한 이중 접지 그림자 (Contact + Ambient Shadow)
+function _makeBuildingShadowIcon(size = 56) {
+  const sw = Math.round(size * 1.35);
+  const sh = 22;
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="' + sh + '">' +
+    '<defs>' +
+    '  <filter id="bsf1"><feGaussianBlur stdDeviation="3.8"/></filter>' +
+    '  <filter id="bsf2"><feGaussianBlur stdDeviation="1.0"/></filter>' +
+    '</defs>' +
+    '<!-- 바닥 주변으로 묵직하게 퍼지는 외곽 그림자 -->' +
+    '<ellipse cx="' + (sw / 2) + '" cy="' + (sh / 2) + '" rx="' + (sw / 2 - 4) + '" ry="' + (sh / 2 - 3) + '"' +
+    ' fill="rgba(0,0,0,0.52)" filter="url(#bsf1)"/>' +
+    '<!-- 건물 밑바닥이 지면에 단단히 닿는 핵심 접지 코어 그림자 (묵직한 무게감) -->' +
+    '<ellipse cx="' + (sw / 2) + '" cy="' + (sh / 2 + 1) + '" rx="' + (sw * 0.42) + '" ry="' + (sh * 0.30) + '"' +
+    ' fill="rgba(0,0,0,0.88)" filter="url(#bsf2)"/>' +
+    '</svg>';
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(sw, sh),
+    // 건물의 밑바닥(접지면)과 오차 없이 100% 밀착
+    anchor: new google.maps.Point(sw / 2, sh / 2),
   };
 }
 
 // Floating objects (dragon, Monster eyes) cast a smaller, lower-opacity shadow further below
 function _makeFloatingShadowIcon(size) {
-  const sw = Math.round(size * 0.62);
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="10">' +
-    '<defs><filter id="sf2"><feGaussianBlur stdDeviation="4"/></filter></defs>' +
-    '<ellipse cx="' + (sw / 2) + '" cy="5" rx="' + (sw / 2 - 1) + '" ry="3.5"' +
-    ' fill="rgba(0,0,0,0.17)" filter="url(#sf2)"/></svg>';
+  const sw = Math.round(size * 0.7);
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="12">' +
+    '<defs><filter id="sf2"><feGaussianBlur stdDeviation="3.5"/></filter></defs>' +
+    '<ellipse cx="' + (sw / 2) + '" cy="6" rx="' + (sw / 2 - 2) + '" ry="4"' +
+    ' fill="rgba(0,0,0,0.22)" filter="url(#sf2)"/></svg>';
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(sw, 10),
-    anchor: new google.maps.Point(sw / 2, 5 - size / 2 - 12),
+    scaledSize: new google.maps.Size(sw, 12),
+    anchor: new google.maps.Point(sw / 2, 6 - 8),
   };
 }
 
@@ -3620,7 +3649,7 @@ export function hideMyMarker() {
   }
 }
 
-// ── 상점 시스템 ───────────────────────────────────────────────────────────────
+// ── 상점 시스템 (중력 및 무게감 있는 지면 접지 표현) ─────────────────────────
 
 function _makeShopIcon(type, imageUrl) {
   const TYPE_IMG = {
@@ -3632,21 +3661,26 @@ function _makeShopIcon(type, imageUrl) {
     shop_misc:    '/assets/images/shops/castle.png',
   };
   const url = imageUrl || TYPE_IMG[type] || '/assets/images/shops/arms.png';
-  // Bottom-center anchor so building stands on the ground, not floats at its center
-  return { url, scaledSize: new google.maps.Size(44, 44), anchor: new google.maps.Point(22, 44) };
+  // 건물 크기를 56x56으로 묵직하게 키우고, anchor.y를 54로 하여 건물이 지면 바닥에 단단히 안착되도록 설정
+  const SIZE = 56;
+  return {
+    url,
+    scaledSize: new google.maps.Size(SIZE, SIZE),
+    anchor: new google.maps.Point(SIZE / 2, SIZE - 2),
+  };
 }
 
 function _makeShopHpBarIcon(hp, maxHp) {
   const pct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
   const barColor = pct > 60 ? '#10b981' : pct > 30 ? '#f59e0b' : '#ef4444';
-  const W = 44, H = 7;
+  const W = 50, H = 8;
   const barW = Math.round(W * pct / 100);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect x="0" y="0" width="${W}" height="${H}" rx="3" fill="#374151"/><rect x="0" y="0" width="${barW}" height="${H}" rx="3" fill="${barColor}"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect x="0" y="0" width="${W}" height="${H}" rx="3" fill="#111827" stroke="#000" stroke-width="1"/><rect x="0" y="0" width="${barW}" height="${H}" rx="3" fill="${barColor}"/></svg>`;
   return {
     url: 'data:image/svg+xml,' + encodeURIComponent(svg),
     scaledSize: new google.maps.Size(W, H),
-    // Building bottom is at position (anchor.y=44), top is 44px above → bar sits 3px above top
-    anchor:     new google.maps.Point(W / 2, H + 44 + 3),
+    // 건물 상단(56px) 위 4px 지점에 딱 맞게 배치
+    anchor:     new google.maps.Point(W / 2, H + 56 + 4),
   };
 }
 
@@ -3654,8 +3688,20 @@ function _renderShopMarker(shop) {
   const map = _ctx?.map;
   if (!map || !shop.active) return;
   if (_shopMarkers[shop.id]) { _shopMarkers[shop.id].setMap(null); }
+  if (_shopShadowMarkers[shop.id]) { _shopShadowMarkers[shop.id].setMap(null); }
   if (_sellerMarkers[shop.id]) { _sellerMarkers[shop.id].setMap(null); delete _sellerMarkers[shop.id]; }
 
+  // 1. 건물 바닥에 묵직하게 깔리는 이중 접지 그림자 (중력/무게감 연출)
+  const shadowMarker = new google.maps.Marker({
+    position: { lat: shop.lat, lng: shop.lng },
+    map,
+    icon: _makeBuildingShadowIcon(56),
+    zIndex: 48,
+    clickable: false,
+  });
+  _shopShadowMarkers[shop.id] = shadowMarker;
+
+  // 2. 본체 건물 마커 (지면에 딱 밀착)
   const marker = new google.maps.Marker({
     position: { lat: shop.lat, lng: shop.lng },
     map,
@@ -3701,9 +3747,11 @@ export async function loadShops() {
     _shops = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     Object.values(_shopMarkers).forEach(m => m.setMap(null));
     Object.values(_shopHpMarkers).forEach(m => m.setMap(null));
+    Object.values(_shopShadowMarkers).forEach(m => m.setMap(null));
     Object.values(_sellerMarkers).forEach(m => m.setMap(null));
     _shopMarkers = {};
     _shopHpMarkers = {};
+    _shopShadowMarkers = {};
     _sellerMarkers = {};
     if (_ctx?.map) {
       _shops.forEach(s => { if (s.active) _renderShopMarker(s); });
@@ -3752,6 +3800,7 @@ export async function deleteShop(shopId) {
   _shops = _shops.filter(s => s.id !== shopId);
   if (_shopMarkers[shopId]) { _shopMarkers[shopId].setMap(null); delete _shopMarkers[shopId]; }
   if (_shopHpMarkers[shopId]) { _shopHpMarkers[shopId].setMap(null); delete _shopHpMarkers[shopId]; }
+  if (_shopShadowMarkers[shopId]) { _shopShadowMarkers[shopId].setMap(null); delete _shopShadowMarkers[shopId]; }
   if (_sellerMarkers[shopId]) { _sellerMarkers[shopId].setMap(null); delete _sellerMarkers[shopId]; }
 }
 
