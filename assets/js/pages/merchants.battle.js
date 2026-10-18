@@ -2303,6 +2303,11 @@ function renderTowerMarkers() {
 // ── 디버그 패널 ───────────────────────────────────────────────────────────────
 function _updateDebugPanel() {
   if (!_ctx?.isAdmin) return;
+  if (localStorage.getItem('show_monster_debug') !== '1') {
+    const p = document.getElementById('_monsterDebugPanel');
+    if (p) p.style.display = 'none';
+    return;
+  }
   // FPS (1초 배틀틱 기준 — battleTick 호출 횟수/초)
   _dbgFpsTick++;
   const now = Date.now();

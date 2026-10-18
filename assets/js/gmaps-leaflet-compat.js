@@ -61,7 +61,7 @@
       .gmaps-ctrl-left-bottom {
         bottom: 8px;
         left: 8px;
-        max-height: calc(100% - 16px);
+        max-height: calc(100% - 155px);
         display: flex;
         flex-direction: column;
         justify-content: flex-end;

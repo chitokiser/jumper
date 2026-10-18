@@ -143,7 +143,7 @@
     .gmaps-ctrl-left-bottom {
       bottom: 8px;
       left: 8px;
-      max-height: calc(100% - 16px);
+      max-height: calc(100% - 155px);
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
@@ -1260,17 +1260,23 @@
 
     /* ── 관리자 전투 배치 패널 ─────────────────────────────────────── */
     #adminBattlePanel {
-      background: rgba(10, 10, 20, 0.88);
+      background: rgba(10, 10, 20, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 10px;
       padding: 8px;
       display: none;
       flex-direction: column;
       gap: 0;
-      margin: 0 0 8px 8px;
-      min-width: 155px;
+      min-width: 165px;
       max-width: 210px;
-      max-height: calc(100vh - 110px);
+      max-height: 250px;
       overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    .mc-map-wrap.mc-css-fs #adminBattlePanel,
+    .mc-map-wrap:fullscreen #adminBattlePanel {
+      max-height: calc(100vh - 170px);
     }
 
     #adminBattlePanel.open {
@@ -3639,52 +3645,60 @@
       </div>
 
       <!-- 관리자 전투 배치 패널 (LEFT_BOTTOM 커스텀 컨트롤) -->
-      <div id="adminBattlePanel">
-        <!-- 좌표 검색 — 항상 고정 표시 -->
-        <div style="display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.15);flex-shrink:0;">
-          <input id="abCoordInput" type="text" placeholder="Lat, Lng" autocomplete="off" style="flex:1;min-width:0;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.45);color:#fff;font-size:11px;outline:none;">
-          <button id="abCoordGo" title="Go" style="padding:4px 7px;border-radius:5px;border:none;background:#2563eb;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap;">📍 Go</button>
-          <button id="abCoordClear" title="Clear Marker" style="padding:4px 6px;border-radius:5px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:11px;cursor:pointer;">✕</button>
-        </div>
-        <!-- 스크롤 가능한 버튼 영역 -->
-        <div id="abPanelBody">
-          <div class="ab-title">⚔️ Battle Setup</div>
-          <button class="ab-btn" id="btnPlaceMonster">👾 Add Monster</button>
-          <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 Place Dragon</button>
-          <button class="ab-btn" id="btnPlaceOrc" style="color:#16a34a;font-weight:700;">🐗 Place Orc</button>
-          <button class="ab-btn" id="btnPlaceOrc2" style="color:#15803d;font-weight:700;">🗡️ Place Orc 2</button>
-          <button class="ab-btn" id="btnPlaceOrc3" style="color:#065f46;font-weight:700;">⚔️ Place Orc 3</button>
-          <button class="ab-btn" id="btnPlacePirate" style="color:#b45309;font-weight:700;">🏴‍☠️ Place Pirate</button>
-          <button class="ab-btn" id="btnPlacePirate2" style="color:#92400e;font-weight:700;">🗡 Place Pirate 2</button>
-          <button class="ab-btn" id="btnPlacePirate3" style="color:#78350f;font-weight:700;">💀 Place Pirate 3</button>
-          <button class="ab-btn" id="btnPlaceZombie1" style="color:#4ade80;font-weight:700;">🧟 Zombie1</button>
-          <button class="ab-btn" id="btnPlaceZombie3" style="color:#86efac;font-weight:700;">🧟 Zombie3</button>
-          <button class="ab-btn" id="btnPlaceArcherTower">🏹 Archer Tower</button>
-          <button class="ab-btn" id="btnPlaceCannonTower">💣 Cannon Tower</button>
-          <button class="ab-btn" id="btnPlaceDeco">🎨 Place Deco</button>
-          <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
-          <div style="color:#9ca3af;font-size:10px;text-align:center;margin-bottom:2px">🏪 Shops</div>
-          <button class="ab-btn" id="btnPlaceShopWeapon" style="color:#fbbf24;">⚔️ Weapon Shop</button>
-          <button class="ab-btn" id="btnPlaceShopPotion" style="color:#86efac;">🧪 Potion Shop</button>
-          <button class="ab-btn" id="btnPlaceShopMisc" style="color:#c4b5fd;">🛍️ Misc Shop</button>
-          <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ Cancel Placement</button>
-          <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 Tower Ranges</button>
-          <button class="ab-btn" id="btnSetGold" style="margin-top:4px;color:#fbbf24;font-weight:700;">💰 Set/Grant GP</button>
-          <button class="ab-btn" id="btnGivePotion" style="color:#fca5a5;">💊 Grant HP Potion</button>
-          <button class="ab-btn" id="btnGiveRevive" style="color:#a78bfa;">🪄 Grant Revive Ticket</button>
-          <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
-          <button class="ab-btn" id="btnAdminInitAllPlayers" style="color:#fbbf24;font-weight:700;">🎁 Reset All Starters</button>
-
-          <!-- GS Spawn list (game server realtime) -->
-          <div id="gsSpawnListWrap" style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-              <span class="ab-title" style="border:none;margin:0;padding:0">🗡 GS Spawn List</span>
-              <button id="btnRefreshGsSpawns" style="background:none;border:none;color:#6ee7b7;cursor:pointer;font-size:11px;padding:0;">↺</button>
-            </div>
-            <div id="gsSpawnList" style="color:#6b7280;font-size:10px;">Connect to server and tap ↺</div>
+      <div id="adminBattleControlWrap" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;">
+        <button id="btnAdminPanelToggle" class="map-hud-btn" title="⚔️ Battle Admin Setup (열기)" style="display:none;background:rgba(10,10,20,0.88);color:#fbbf24;border:1.5px solid rgba(251,191,36,0.6);font-size:16px;">⚔️</button>
+        <div id="adminBattlePanel">
+          <!-- 패널 상단 헤더: 타이틀 + 닫기/최소화 버튼 -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.15);flex-shrink:0;">
+            <span style="font-size:11px;font-weight:700;color:#fbbf24;">⚔️ Battle Setup</span>
+            <button id="btnAdminPanelClose" title="패널 닫기 / 최소화" style="background:rgba(255,255,255,.1);border:none;border-radius:4px;color:#d1d5db;font-size:11px;cursor:pointer;padding:2px 6px;line-height:1;">✕ 닫기</button>
           </div>
+          <!-- 좌표 검색 — 항상 고정 표시 -->
+          <div style="display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.15);flex-shrink:0;">
+            <input id="abCoordInput" type="text" placeholder="Lat, Lng" autocomplete="off" style="flex:1;min-width:0;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.45);color:#fff;font-size:11px;outline:none;">
+            <button id="abCoordGo" title="Go" style="padding:4px 7px;border-radius:5px;border:none;background:#2563eb;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap;">📍 Go</button>
+            <button id="abCoordClear" title="Clear Marker" style="padding:4px 6px;border-radius:5px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:11px;cursor:pointer;">✕ 마커</button>
+          </div>
+          <!-- 스크롤 가능한 버튼 영역 -->
+          <div id="abPanelBody">
+            <button class="ab-btn" id="btnPlaceMonster">👾 Add Monster</button>
+            <button class="ab-btn" id="btnPlaceDragon" style="color:#f97316;font-weight:700;">🐉 Place Dragon</button>
+            <button class="ab-btn" id="btnPlaceOrc" style="color:#16a34a;font-weight:700;">🐗 Place Orc</button>
+            <button class="ab-btn" id="btnPlaceOrc2" style="color:#15803d;font-weight:700;">🗡️ Place Orc 2</button>
+            <button class="ab-btn" id="btnPlaceOrc3" style="color:#065f46;font-weight:700;">⚔️ Place Orc 3</button>
+            <button class="ab-btn" id="btnPlacePirate" style="color:#b45309;font-weight:700;">🏴‍☠️ Place Pirate</button>
+            <button class="ab-btn" id="btnPlacePirate2" style="color:#92400e;font-weight:700;">🗡 Place Pirate 2</button>
+            <button class="ab-btn" id="btnPlacePirate3" style="color:#78350f;font-weight:700;">💀 Place Pirate 3</button>
+            <button class="ab-btn" id="btnPlaceZombie1" style="color:#4ade80;font-weight:700;">🧟 Zombie1</button>
+            <button class="ab-btn" id="btnPlaceZombie3" style="color:#86efac;font-weight:700;">🧟 Zombie3</button>
+            <button class="ab-btn" id="btnPlaceArcherTower">🏹 Archer Tower</button>
+            <button class="ab-btn" id="btnPlaceCannonTower">💣 Cannon Tower</button>
+            <button class="ab-btn" id="btnPlaceDeco">🎨 Place Deco</button>
+            <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
+            <div style="color:#9ca3af;font-size:10px;text-align:center;margin-bottom:2px">🏪 Shops</div>
+            <button class="ab-btn" id="btnPlaceShopWeapon" style="color:#fbbf24;">⚔️ Weapon Shop</button>
+            <button class="ab-btn" id="btnPlaceShopPotion" style="color:#86efac;">🧪 Potion Shop</button>
+            <button class="ab-btn" id="btnPlaceShopMisc" style="color:#c4b5fd;">🛍️ Misc Shop</button>
+            <button class="ab-btn" id="btnCancelPlace" style="display:none;color:#fca5a5;">✕ Cancel Placement</button>
+            <button class="ab-btn" id="btnToggleTowerRange" style="margin-top:4px;">👁 Tower Ranges</button>
+            <button class="ab-btn" id="btnSetGold" style="margin-top:4px;color:#fbbf24;font-weight:700;">💰 Set/Grant GP</button>
+            <button class="ab-btn" id="btnGivePotion" style="color:#fca5a5;">💊 Grant HP Potion</button>
+            <button class="ab-btn" id="btnGiveRevive" style="color:#a78bfa;">🪄 Grant Revive Ticket</button>
+            <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:4px 0">
+            <button class="ab-btn" id="btnAdminInitAllPlayers" style="color:#fbbf24;font-weight:700;">🎁 Reset All Starters</button>
 
-          <button class="ab-btn" id="btnMonsterStatModal" style="margin-top:4px;color:#a78bfa;font-weight:600;">📊 Monster Stats</button>
+            <!-- GS Spawn list (game server realtime) -->
+            <div id="gsSpawnListWrap" style="margin-top:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:5px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <span class="ab-title" style="border:none;margin:0;padding:0">🗡 GS Spawn List</span>
+                <button id="btnRefreshGsSpawns" style="background:none;border:none;color:#6ee7b7;cursor:pointer;font-size:11px;padding:0;">↺</button>
+              </div>
+              <div id="gsSpawnList" style="color:#6b7280;font-size:10px;">Connect to server and tap ↺</div>
+            </div>
+
+            <button class="ab-btn" id="btnMonsterStatModal" style="margin-top:4px;color:#a78bfa;font-weight:600;">📊 Monster Stats</button>
+            <button class="ab-btn" id="btnToggleMonsterDebug" style="margin-top:4px;color:#4ade80;font-weight:600;">⚙️ Debug Overlay (FPS/Grid)</button>
+          </div>
         </div>
       </div>
 

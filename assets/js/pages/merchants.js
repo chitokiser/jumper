@@ -425,7 +425,7 @@ function initMap() {
   if (skillBar) map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(skillBar);
 
   // 관리자 전투 패널 (LEFT_BOTTOM)
-  const adminBattlePanel = $('adminBattlePanel');
+  const adminBattlePanel = $('adminBattleControlWrap') || $('adminBattlePanel');
   if (adminBattlePanel) map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(adminBattlePanel);
 
   // 좌표 검색 — 관리자 패널 내 입력 필드
@@ -3193,9 +3193,37 @@ async function init() {
       _alertedDropIds.clear();
       _updateDropNearbyBadge(0);
     }
-    // 관리자 패널 표시
+    // 관리자 패널 표시 및 토글 제어
     const abp = $('adminBattlePanel');
-    if (abp) abp.classList.toggle('open', !!_isAdmin);
+    const toggleBtn = $('btnAdminPanelToggle');
+    const closeBtn = $('btnAdminPanelClose');
+    if (_isAdmin) {
+      const shouldOpen = localStorage.getItem('admin_battle_panel_open') === '1';
+      if (abp) abp.classList.toggle('open', shouldOpen);
+      if (toggleBtn) toggleBtn.style.display = shouldOpen ? 'none' : 'flex';
+
+      toggleBtn?.addEventListener('click', () => {
+        if (abp) abp.classList.add('open');
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        localStorage.setItem('admin_battle_panel_open', '1');
+      });
+
+      closeBtn?.addEventListener('click', () => {
+        if (abp) abp.classList.remove('open');
+        if (toggleBtn) toggleBtn.style.display = 'flex';
+        localStorage.setItem('admin_battle_panel_open', '0');
+      });
+
+      $('btnToggleMonsterDebug')?.addEventListener('click', () => {
+        const cur = localStorage.getItem('show_monster_debug') === '1';
+        localStorage.setItem('show_monster_debug', cur ? '0' : '1');
+        const p = document.getElementById('_monsterDebugPanel');
+        if (p) p.style.display = cur ? 'none' : '';
+      });
+    } else {
+      if (abp) abp.classList.remove('open');
+      if (toggleBtn) toggleBtn.style.display = 'none';
+    }
   });
 
   // ── 튜토리얼 박스 초기화 ────────────────────────────────────────────────────
