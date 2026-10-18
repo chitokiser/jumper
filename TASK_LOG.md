@@ -128,4 +128,51 @@
     - `btnCancelPlace` 클릭 시 정상 취소 확인.
   - Git 커밋 및 원격 저장소(`origin master`) 푸시 완료.
 
+---
+
+### [2026-10-18] 우측 HUD 기능 버튼 모바일 최적화 그룹화 (Speed-Dial Flyout)
+
+- **요청 일시**: 2026-10-18 17:40:07
+- **요청 내용**: 게임 오른쪽 버튼이 너무 많아서 모바일에서 너무 불편하다. 비슷한 기능끼리 묶어줘.
+- **원인 분석**:
+  - 지도 우측 HUD에 총 13개의 버튼 및 배지(GP 배지, 충전, 게임시작, 가방, 내ID, 가이드, 상점, 무역선, 보물탐지기, AR스캔, 보물등록, 전체화면, BGM 등)가 세로 일렬로 길게 나열되어 있었음.
+  - 모바일 디바이스(화면 높이 358px)에서 버튼 총 높이가 600px 이상을 차지하여 화면을 심하게 가리고 하단 스킬바(90px)와 겹쳐 조작이 극히 불편함.
+- **처리 내역**:
+  - **카테고리별 논리적 그룹화 (13개 -> 5개 상위 인터페이스로 대폭 축소)**:
+    1. **상단 콤팩트 GP 배지 (`hudGpBadge`)**:
+       - 💰 GP 잔액과 ⚡+ 충전 버튼을 높이 24px의 인라인 가로 알약형 배지로 일체화하여 세로 공간 절약.
+    2. **단독 퀵 버튼**:
+       - `btnGameToggle`: ▶ 게임 시작/접속 (핵심 플레이 기능)
+       - `btnInventory`: 🎒 가방/인벤토리 (아이템 드랍 알림 뱃지 `dropNearbyBadge` 상시 노출 유지)
+    3. **🧭 보물 & 탐색 그룹 (`wrapGroupTreasure`)**:
+       - 메인 트리거 버튼: `btnGroupTreasure` (`🧭`, 보물 탐지기 동작 시 펄싱 보라색 도트 동기화)
+       - 슬라이드 플라이아웃 서브메뉴: `btnDetector` (📡 탐지기), `btnArScan` (📷 AR스캐너), `btnRegisterTreasure` (📍 보물등록)
+    4. **🏪 상점 & 무역 그룹 (`wrapGroupShop`)**:
+       - 메인 트리거 버튼: `btnGroupShop` (`🏪`)
+       - 슬라이드 플라이아웃 서브메뉴: `btnUserPlaceShop` (🏪 배치 상점), `btnHarborSv` (⛵ 무역선)
+    5. **⚙️ 메뉴 & 설정 그룹 (`wrapGroupSystem`)**:
+       - 메인 트리거 버튼: `btnGroupSystem` (`⚙️`)
+       - 슬라이드 플라이아웃 서브메뉴: `btnMyId` (👤 프로필/내 ID), `btnTutHelp` (❓ 가이드), `btnFullscreen` (⛶ 전체화면), `btnBgm` (🎵 BGM), `distPanel` (거리측정)
+  - **스타일 및 반응형 모바일 최적화 (`merchants.html`)**:
+    - `.hud-group-wrap`: 상대 좌표 컨테이너 구성.
+    - `.hud-group-flyout`: 모바일 및 데스크톱에서 터치/클릭 시 좌측으로 부드럽게 펼쳐지는 플라이아웃 알약 메뉴 (`hudFlyoutIn` 키프레임 애니메이션 적용).
+    - `#wrapGroupSystem .hud-group-flyout`: 최하단 설정 메뉴는 위쪽 방향으로 자연스럽게 정렬되도록 `bottom: 0; top: auto;` 적용.
+    - `@media (max-width: 640px)`: 버튼 크기 34px, 플라이아웃 버튼 31px, 갭 4px로 모바일 전용 압축 적용.
+    - 모바일 기준 HUD 전체 높이를 **210px**로 압축하여, 지도 높이 358px 중 하단 스킬바(90px)를 제외한 268px 공간 내에 58px 이상의 여유 공간을 남기며 완벽하게 배치.
+  - **이벤트 핸들러 및 상태 제어 (`assets/js/pages/merchants.js`)**:
+    - Leaflet/Gmaps 컨트롤 위치를 기존 `RIGHT_BOTTOM`에서 `RIGHT_TOP`으로 변경하여 하단 스킬바 영역과의 간섭 원천 차단.
+    - 그룹 트리거 버튼 탭 시 상호 배타적 토글(한 그룹을 열면 다른 그룹은 자동 닫힘) 구현.
+    - 지도 바깥 또는 다른 곳을 터치하면 서브메뉴가 자동으로 닫히는 외부 탭 리스너 추가.
+    - 보물 탐지기 활성화/비활성화 시 `btnGroupTreasure`에 펄싱 보라색 인디케이터 도트(`_updateTreasureGroupDot`) 실시간 연동.
+- **수정/추가 파일**:
+  - `merchants.html`
+  - `assets/js/pages/merchants.js`
+  - `TASK_LOG.md`
+- **검증 및 배포**:
+  - Playwright 헤드리스 브라우저 테스트 (데스크톱 및 모바일 Pixel 7 환경):
+    - 모바일 뷰포트에서 기본 닫힘, 🧭 보물 그룹 열림, 🏪 상점 그룹 열림, ⚙️ 설정 그룹 열림의 모든 상태 렌더링 및 클릭 상호작용 검증 완료.
+    - 하단 스킬바 및 상단 HUD와의 겹침(overlap) 0건 확인.
+  - Git 커밋 및 원격 저장소(`origin master`) 배포 완료.
+
+
 

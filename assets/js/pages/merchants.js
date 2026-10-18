@@ -412,9 +412,9 @@ function initMap() {
   _ctx.map = map;
   _ctx.infoWindow = infoWindow;
 
-  // HUD 버튼을 Google Maps Custom Control로 등록 (전체화면·확대 시에도 유지)
+  // HUD 버튼을 Google Maps Custom Control로 등록 (우상단 배치로 하단 스킬바 충돌 완전 차단)
   const existingHud = $('mapHud');
-  if (existingHud) map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(existingHud);
+  if (existingHud) map.controls[google.maps.ControlPosition.RIGHT_TOP].push(existingHud);
 
   // 전투 HUD (LEFT_TOP)
   const combatHud = $('combatHud');
@@ -1672,6 +1672,22 @@ function _updateDetector(lat, lng) {
   }
 }
 
+function _updateTreasureGroupDot(active) {
+  const trigger = $('btnGroupTreasure');
+  if (!trigger) return;
+  let dot = $('treasureGroupDot');
+  if (active) {
+    if (!dot) {
+      dot = document.createElement('span');
+      dot.id = 'treasureGroupDot';
+      dot.className = 'hud-dot-active';
+      trigger.appendChild(dot);
+    }
+  } else if (dot) {
+    dot.remove();
+  }
+}
+
 function _stopDetector() {
   _detectorActive = false;
   _detectorNextInterval = 0;
@@ -1679,6 +1695,7 @@ function _stopDetector() {
   _detectorBeepTimer = null;
   const btn = $('btnDetector');
   if (btn) { btn.style.background = ''; btn.style.boxShadow = ''; btn.title = 'Treasure Detector ON/OFF'; }
+  _updateTreasureGroupDot(false);
 }
 
 // ── 초보자 체험 패키지: 항상 생성 (실제 보물 유무 무관) ──────────────────────
@@ -3460,10 +3477,41 @@ async function init() {
         btn.style.boxShadow = '0 0 10px #7c3aed88';
         btn.title = 'Treasure Detector ON — click to disable';
       }
+      _updateTreasureGroupDot(true);
       // 현재 위치 기준으로 즉시 업데이트
       if (_ctx.lastPos) _updateDetector(_ctx.lastPos.lat, _ctx.lastPos.lng);
     }
   });
+
+  // ── HUD 기능 그룹 (Speed-dial 플라이아웃 메뉴 토글) ─────────────────────────
+  const groupWraps = document.querySelectorAll('.hud-group-wrap');
+  groupWraps.forEach(wrap => {
+    const trigger = wrap.querySelector('.hud-group-trigger');
+    if (!trigger) return;
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = wrap.classList.contains('open');
+      groupWraps.forEach(w => w.classList.remove('open'));
+      if (!isOpen) wrap.classList.add('open');
+    });
+  });
+
+  // 바깥 클릭 시 모든 HUD 플라이아웃 닫기
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.hud-group-wrap')) {
+      groupWraps.forEach(w => w.classList.remove('open'));
+    }
+  });
+
+  // 플라이아웃 내부 액션 버튼 클릭 시 자동 닫기 (토글성 버튼 제외)
+  document.querySelectorAll('.hud-group-flyout .map-hud-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.id !== 'btnDetector' && btn.id !== 'btnBgm') {
+        groupWraps.forEach(w => w.classList.remove('open'));
+      }
+    });
+  });
+
   initTutorial();
   $('btnFullscreen')?.addEventListener('click', () => {
     if (_isInFullscreen()) { _exitFullscreen(); } else { _requestFullscreen(); }

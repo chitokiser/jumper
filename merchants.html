@@ -131,7 +131,7 @@
       top: 8px;
       right: 8px;
       max-height: calc(100% - 16px);
-      z-index: 1101;
+      z-index: 1200;
     }
     .gmaps-ctrl-top-center {
       top: 8px;
@@ -194,12 +194,115 @@
       transform: scale(1.08);
     }
 
-    /* 상단 GP 배지 */
+    /* HUD 기능 그룹 (Speed-dial 플라이아웃 메뉴) */
+    .hud-group-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hud-group-trigger {
+      position: relative;
+      background: #fff;
+      transition: all .2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .hud-group-wrap.open .hud-group-trigger {
+      border: 2px solid #38bdf8 !important;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.6) !important;
+      transform: scale(1.08);
+      background: #f0f9ff;
+    }
+    .hud-group-flyout {
+      position: absolute;
+      right: 48px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: none;
+      flex-direction: row;
+      gap: 7px;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 5px 8px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      z-index: 1250;
+      white-space: nowrap;
+    }
+    .hud-group-wrap.open .hud-group-flyout {
+      display: flex;
+      animation: hudFlyoutIn .22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes hudFlyoutIn {
+      from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(12px) scale(0.92);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0) scale(1);
+      }
+    }
+    .hud-group-flyout .map-hud-btn {
+      width: 38px;
+      height: 38px;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+    }
+    .hud-dot-active {
+      position: absolute;
+      top: 1px;
+      right: 1px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #7c3aed;
+      border: 2px solid #fff;
+      animation: gs-pulse .8s infinite alternate;
+    }
+
+    @media (max-width: 640px) {
+      .map-hud-btn {
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 1rem !important;
+      }
+      #mapHud {
+        gap: 4px !important;
+        top: 6px !important;
+        right: 6px !important;
+      }
+      #hudGpBadge {
+        padding: 2px 6px !important;
+        font-size: 10px !important;
+      }
+      #hudGpBadge .gp-icon {
+        font-size: 11px !important;
+      }
+      #hudGpBadge .gp-val {
+        font-size: 10px !important;
+      }
+      .hud-group-flyout {
+        right: 40px !important;
+        gap: 5px !important;
+        padding: 3px 6px !important;
+      }
+      .hud-group-flyout .map-hud-btn {
+        width: 31px !important;
+        height: 31px !important;
+        font-size: 0.9rem !important;
+      }
+    }
+
+    /* 상단 GP 배지 (가로 콤팩트 스타일) */
     #hudGpBadge {
-      background: rgba(0, 0, 0, 0.65);
+      background: rgba(0, 0, 0, 0.75);
       border: 1.5px solid rgba(251, 191, 36, 0.6);
-      border-radius: 10px;
-      padding: 5px 6px;
+      border-radius: 14px;
+      padding: 3px 8px;
       font-size: 11px;
       font-weight: 800;
       color: #fbbf24;
@@ -207,11 +310,10 @@
       white-space: nowrap;
       user-select: none;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: 1px;
+      gap: 3px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
-      min-width: 42px;
       cursor: default;
     }
 
@@ -264,6 +366,29 @@
       padding: 1px 5px;
       white-space: nowrap;
       min-height: 14px;
+    }
+    #gsStatusBadge:empty {
+      display: none !important;
+    }
+
+    /* 하단 시스템 메뉴 플라이아웃은 스킬바 회피를 위해 하단 기준 정렬 */
+    #wrapGroupSystem .hud-group-flyout {
+      top: auto;
+      bottom: 0;
+      transform: none;
+    }
+    #wrapGroupSystem.open .hud-group-flyout {
+      animation: hudFlyoutInBottom .2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes hudFlyoutInBottom {
+      from {
+        opacity: 0;
+        transform: translateX(10px) scale(0.92);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
     }
 
     /* 이동거리 표시판 */
@@ -3615,32 +3740,55 @@
         <!-- 비로그인 게임 차단 오버레이 (auth 확인 전 기본 표시) -->
         
       </div>
-      <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 -->
-      <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;align-items:center;max-height:calc(100vh - 80px);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;">
-        <!-- GP 배지: 상단 고정 -->
+      <!-- HUD: initMap()에서 Google Maps Custom Control로 등록됨 (모바일 최적화 기능 그룹화) -->
+      <div id="mapHud" style="display:flex;flex-direction:column;gap:8px;margin:0 8px 8px 0;align-items:center;overflow:visible;">
+        <!-- GP 배지 & 충전: 상단 고정 (가로 콤팩트 배지) -->
         <div id="hudGpBadge" title="Game Points (GP)">
           <span class="gp-icon">💰</span>
           <span class="gp-val" id="hudGpVal">–</span>
+          <a id="btnChargeGp" href="/exchange#hex-gp" title="Charge GP with Point" style="color:#fbbf24;text-decoration:none;font-size:10px;font-weight:900;background:rgba(251,191,36,0.22);padding:1px 6px;border-radius:9px;margin-left:3px;border:1px solid rgba(251,191,36,0.5);line-height:1.2;">⚡+</a>
         </div>
-        <a id="btnChargeGp" href="/exchange#hex-gp" class="map-hud-btn" title="Charge GP with Point" style="font-size:10px;font-weight:800;color:#fbbf24;background:rgba(0,0,0,0.65);border:1.5px solid rgba(251,191,36,0.6);text-decoration:none;flex-direction:column;gap:1px;line-height:1.2;">⚡<span style="font-size:8px;">Charge</span></a>
-        <button id="btnMyId" class="map-hud-btn" title="My Player ID">👤</button>
-        <button id="btnTutHelp" class="map-hud-btn" title="Game Guide">❓</button>
-        <button id="btnInventory" class="map-hud-btn" title="Túi đồ" style="position:relative">🎒<span id="dropNearbyBadge" class="drop-nearby-badge hidden"></span></button>
-        <button id="btnDetector" class="map-hud-btn" title="Treasure Detector ON/OFF">📡</button>
-        <button id="btnArScan" class="map-hud-btn" title="AR Treasure Scanner">📷</button>
-        <button id="btnRegisterTreasure" class="map-hud-btn" title="Hide Treasure / My Treasures">📍</button>
-        <button id="btnUserPlaceShop" class="map-hud-btn" title="Placement Shop — Place items with GP">🏪</button>
-        
-        
-        <button id="btnHarborSv" class="map-hud-btn" title="Trade Ships — View ships &amp; claim dividends">⛵</button>
-        <button id="btnFullscreen" class="map-hud-btn" title="Fullscreen">⛶</button>
-        <button id="btnBgm" class="map-hud-btn" title="BGM On/Off">🎵</button>
+
+        <!-- 1. 게임 서버 시작/중지 (핵심 플레이 버튼) -->
         <button id="btnGameToggle" class="map-hud-btn" title="Connect to game server">▶</button>
         <div id="gsStatusBadge"></div>
-        <div id="distPanel">
-          <span class="dist-label">Khoảng cách</span>
-          <span class="dist-value" id="distValue">0m</span>
-          <button id="btnResetDist" title="Đặt lại">↺ Đặt lại</button>
+
+        <!-- 2. 가방/인벤토리 (아이템 드랍 알림 뱃지 상시 노출) -->
+        <button id="btnInventory" class="map-hud-btn" title="Túi đồ (가방)" style="position:relative">🎒<span id="dropNearbyBadge" class="drop-nearby-badge hidden"></span></button>
+
+        <!-- 3. 그룹 1: 🧭 보물 & 탐색 (Detector, AR Scanner, Hide Treasure) -->
+        <div class="hud-group-wrap" id="wrapGroupTreasure">
+          <button class="map-hud-btn hud-group-trigger" id="btnGroupTreasure" title="🧭 보물 탐색 메뉴 (탐지기, AR스캐너, 보물등록)">🧭</button>
+          <div class="hud-group-flyout" id="flyoutTreasure">
+            <button id="btnDetector" class="map-hud-btn" title="Treasure Detector ON/OFF (보물 탐지기)">📡</button>
+            <button id="btnArScan" class="map-hud-btn" title="AR Treasure Scanner (AR 스캐너)">📷</button>
+            <button id="btnRegisterTreasure" class="map-hud-btn" title="Hide Treasure / My Treasures (보물 숨기기/내 보물)">📍</button>
+          </div>
+        </div>
+
+        <!-- 4. 그룹 2: 🏪 상점 & 무역 (User Shop, Trade Ship) -->
+        <div class="hud-group-wrap" id="wrapGroupShop">
+          <button class="map-hud-btn hud-group-trigger" id="btnGroupShop" title="🏪 상점 & 무역 메뉴 (배치 상점, 무역선)">🏪</button>
+          <div class="hud-group-flyout" id="flyoutShop">
+            <button id="btnUserPlaceShop" class="map-hud-btn" title="Placement Shop — Place items with GP (배치 상점)">🏪</button>
+            <button id="btnHarborSv" class="map-hud-btn" title="Trade Ships — View ships &amp; claim dividends (무역선 배당)">⛵</button>
+          </div>
+        </div>
+
+        <!-- 5. 그룹 3: ⚙️ 메뉴 & 설정 (My ID, Guide, Fullscreen, BGM, Distance) -->
+        <div class="hud-group-wrap" id="wrapGroupSystem">
+          <button class="map-hud-btn hud-group-trigger" id="btnGroupSystem" title="⚙️ 시스템 & 정보 메뉴">⚙️</button>
+          <div class="hud-group-flyout" id="flyoutSystem">
+            <button id="btnMyId" class="map-hud-btn" title="My Player ID (내 ID / 프로필)">👤</button>
+            <button id="btnTutHelp" class="map-hud-btn" title="Game Guide (게임 가이드)">❓</button>
+            <button id="btnFullscreen" class="map-hud-btn" title="Fullscreen (전체화면)">⛶</button>
+            <button id="btnBgm" class="map-hud-btn" title="BGM On/Off (배경음악)">🎵</button>
+            <div id="distPanel">
+              <span class="dist-label">Khoảng cách</span>
+              <span class="dist-value" id="distValue">0m</span>
+              <button id="btnResetDist" title="Đặt lại">↺ Đặt lại</button>
+            </div>
+          </div>
         </div>
       </div>
 
