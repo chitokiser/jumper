@@ -20,7 +20,7 @@ import {
   healHp, healMp, playSound, showFloat, animateArrow,
   castLightning, castIceFreeze, castFireStorm, castWhirlwind, castMeteor, castHeal,
   setGsSkillCallback, setGsMobsGetter,
-  useReviveTicket, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
+  useReviveTicket, revivePlayerAdmin, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
   syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
   spawnGsDrop, removeGsDrop,
   equipWeapon, equipArmor, equipArmorToSlot, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
@@ -2350,6 +2350,10 @@ async function useMpPotion() {
 
 async function usePotion() {
   if (!_uid) return;
+  if (isPlayerDead()) {
+    showInfoToast('💀 사망 상태에서는 체력 물약을 마실 수 없습니다. [⚡ 즉시 부활]을 먼저 진행하세요!');
+    return;
+  }
   const current = _inventory['potion_red'] || 0;
   if (current <= 0) { showInfoToast(_t('no_hp_potion')); return; }
 
@@ -3696,6 +3700,18 @@ async function init() {
   });
   $('btnCancelPlace')?.addEventListener('click', exitAdminPlaceMode);
   $('btnToggleTowerRange')?.addEventListener('click', toggleTowerRanges);
+  $('btnAdminFullRevive')?.addEventListener('click', () => {
+    revivePlayerAdmin();
+    showInfoToast('✨ 완충 부활 완료! (HP/MP 100%)');
+  });
+
+  window.__warpToMob = (lat, lng) => {
+    if (lat && lng) {
+      updateMyLocation(lat, lng, 10, null);
+      if (_ctx.map) _ctx.map.panTo({ lat, lng });
+      showInfoToast('🏃 몬스터 위치로 이동했습니다.');
+    }
+  };
 
   // 스킬 버튼
   $('skillBtn0')?.addEventListener('click', castLightning);

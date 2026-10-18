@@ -174,5 +174,47 @@
     - 하단 스킬바 및 상단 HUD와의 겹침(overlap) 0건 확인.
   - Git 커밋 및 원격 저장소(`origin master`) 배포 완료.
 
+---
+
+### [2026-10-18] 몬스터 공격 불가 원인 해결 (사망/사거리 피드백 및 즉시 부활/이동 지원)
+
+- **요청 일시**: 2026-10-18 19:04:31
+- **요청 내용**: 몬스터를 공격할 수 없다.
+- **원인 분석**:
+  1. **플레이어 사망(Dead) 상태에서의 조용한 무시 (Silent Return)**:
+     - 스크린샷 확인 결과 캐릭터가 오크의 공격을 받아 HP 0 / 1000 상태로 사망(`💀 Dead — Auto-reviving in 10s...`)해 있었음.
+     - `castLightning` 등 5종의 마법 스킬 함수와 몬스터 마커 클릭 시 `if (_isDead) return;`으로 인해 화면에 아무런 피드백 없이 조용히 무시되어 유저는 게임이 멈추거나 공격 기능이 고장 난 것으로 오인함.
+  2. **공격 사정거리(Range) 초과 및 피드백 부재**:
+     - 평타 공격은 `30m`, 마법 스킬은 `40m` 사정거리를 가짐.
+     - 스크린샷 상 유저 위치(💀)와 배치된 오크 사이의 거리가 약 100m 이상 떨어져 있었으나, 거리 초과 시 "사정거리 초과" 알림이 없어 왜 공격이 안 되는지 알 수 없었음.
+  3. **사망 시 대기 시간(15초) 중 즉시 부활 수단 부재**:
+     - 사망 후 15초 카운트다운 동안 캐릭터가 무방비/행동 불능 상태에 빠지며, 관리자가 테스트할 때 즉시 부활할 수 있는 수단이 없었음.
+  4. **모바일/Leaflet 환경에서 스프라이트 오버레이 클릭 제스처 충돌**:
+     - `merchants.monster-sprite.js`의 `div`에 Leaflet 제스처 전파 방지(`L.DomEvent.disableClickPropagation`)가 누락되어 몬스터 탭 시 지도가 이벤트를 가로채 몬스터 클릭이 씹히는 문제.
+- **처리 내역**:
+  - **사망 상태 피드백 및 원터치 즉시 부활 지원 (`assets/js/pages/merchants.battle.js`)**:
+    - 모든 스킬 및 마커 클릭 시 사망 상태이면 `💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!` 명확한 토스트 피드백 표시.
+    - 전투 HUD `cDead`에 `[⚡ 즉시 부활]` 버튼을 추가하여 대기 시간 없이 원터치로 풀피(HP/MP 100%) 즉시 부활 가능 (`revivePlayerAdmin`).
+    - 관리자 배틀 패널(`adminBattlePanel`)에 `🪄 즉시 부활 & 완충 (HP/MP 100%)` 버튼 신규 추가.
+  - **사정거리 안내 및 관리자 이동 지원 (`assets/js/pages/merchants.battle.js`, `merchants.js`)**:
+    - `_getNearestMonster(myLat, myLng)` 헬퍼 함수를 구현하여, 사거리 초과 시 가장 가까운 몬스터의 현재 거리와 사거리를 화면에 실시간 안내 (`🎯 사정거리 초과! 거리: 85m / 사거리: 40m`).
+    - 관리자(`_isAdmin`)의 경우 편의를 위해 스킬 및 평타 사정거리를 150m~200m로 대폭 확장.
+    - 몬스터 인포윈도우에 관리자용 `🏃 이 위치로 이동` 버튼 추가 (`window.__warpToMob`)하여 몬스터 코앞으로 즉시 이동하여 바로 공격할 수 있도록 지원.
+  - **스프라이트 몬스터 터치/클릭 반응성 개선 (`assets/js/pages/merchants.monster-sprite.js`)**:
+    - `L.DomEvent.disableClickPropagation(div)` 및 `disableScrollPropagation(div)` 적용.
+    - 모바일 터치 대응을 위해 디바운스된 `touchend` 이벤트 핸들러 추가.
+- **수정/추가 파일**:
+  - `assets/js/pages/merchants.battle.js`
+  - `assets/js/pages/merchants.js`
+  - `assets/js/pages/merchants.monster-sprite.js`
+  - `merchants.html`
+  - `TASK_LOG.md`
+- **검증 및 배포**:
+  - Playwright 헤드리스 브라우저 테스트 완료:
+    - `window.__adminFullRevive()` 실행 및 풀피 회복 정상 검증.
+    - 관리자 패널 `#btnAdminFullRevive` 및 `window.__warpToMob` 정상 동작 확인.
+  - Git 커밋 및 원격 저장소(`origin master`) 배포 완료.
+
+
 
 

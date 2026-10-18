@@ -829,10 +829,22 @@ function updateCombatHud() {
   const dead = document.getElementById('cDead');
   if (dead) {
     if (_isDead) {
-      dead.style.display = '';
-      dead.textContent = `💀 Dead — Auto-reviving in ${_autoReviveCountdown}s...`;
+      dead.style.display = 'flex';
+      dead.style.alignItems = 'center';
+      dead.style.gap = '6px';
+      dead.style.flexWrap = 'wrap';
+      dead.innerHTML = `<span>💀 Dead (${_autoReviveCountdown}s)</span>` +
+        `<button id="btnCombatRevive" style="background:#f59e0b;color:#111;border:none;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:bold;cursor:pointer;line-height:1.2;box-shadow:0 1px 4px rgba(0,0,0,0.4);">⚡ 즉시 부활</button>`;
+      const bRevive = dead.querySelector('#btnCombatRevive');
+      if (bRevive) {
+        bRevive.onclick = (e) => {
+          e.stopPropagation();
+          revivePlayerAdmin();
+        };
+      }
     } else {
       dead.style.display = 'none';
+      dead.innerHTML = '';
     }
   }
   updateExpBar();
@@ -1321,9 +1333,34 @@ function getGsTargetsInRange() {
   return result;
 }
 
+function _getNearestMonster(myLat, myLng) {
+  let nearest = null;
+  let minDist = Infinity;
+  for (const m of _monsters) {
+    if (!m.lat || !m.lng || m.hp <= 0) continue;
+    const d = haversine(myLat, myLng, m.lat, m.lng);
+    if (d < minDist) {
+      minDist = d;
+      nearest = m;
+    }
+  }
+  for (const gm of getGsTargetsInRange()) {
+    if (!gm.lat || !gm.lng) continue;
+    const d = haversine(myLat, myLng, gm.lat, gm.lng);
+    if (d < minDist) {
+      minDist = d;
+      nearest = gm;
+    }
+  }
+  return { mob: nearest, dist: minDist };
+}
+
 // ── 마법 스킬 ────────────────────────────────────────────────────────────────
 export function castLightning() {
-  if (_isDead) return;
+  if (_isDead) {
+    showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+    return;
+  }
   const now = Date.now();
   if (_skillCd.lightning && now < _skillCd.lightning) return;
 
@@ -1331,13 +1368,20 @@ export function castLightning() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
+  const effectiveRange = _ctx?.isAdmin ? 150 : SKILL_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
-    showSkillError(_t('skill_no_target_lightning')); return;
+    const near = _getNearestMonster(myLat, myLng);
+    if (near.mob) {
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+    } else {
+      showSkillError(_t('skill_no_target_lightning'));
+    }
+    return;
   }
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_lightning')); return; }
 
@@ -1363,7 +1407,10 @@ export function castLightning() {
 }
 
 export function castIceFreeze() {
-  if (_isDead) return;
+  if (_isDead) {
+    showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+    return;
+  }
   const now = Date.now();
   if (_skillCd.ice && now < _skillCd.ice) return;
 
@@ -1371,13 +1418,20 @@ export function castIceFreeze() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
+  const effectiveRange = _ctx?.isAdmin ? 150 : SKILL_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
-    showSkillError(_t('skill_no_target_ice')); return;
+    const near = _getNearestMonster(myLat, myLng);
+    if (near.mob) {
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+    } else {
+      showSkillError(_t('skill_no_target_ice'));
+    }
+    return;
   }
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_ice')); return; }
 
@@ -1409,7 +1463,10 @@ export function castIceFreeze() {
 }
 
 export function castFireStorm() {
-  if (_isDead) return;
+  if (_isDead) {
+    showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+    return;
+  }
   const now = Date.now();
   if (_skillCd.fire && now < _skillCd.fire) return;
 
@@ -1417,13 +1474,20 @@ export function castFireStorm() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
+  const effectiveRange = _ctx?.isAdmin ? 150 : SKILL_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= SKILL_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
-    showSkillError(_t('skill_no_target_fire')); return;
+    const near = _getNearestMonster(myLat, myLng);
+    if (near.mob) {
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+    } else {
+      showSkillError(_t('skill_no_target_fire'));
+    }
+    return;
   }
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_fire')); return; }
 
@@ -1449,7 +1513,10 @@ export function castFireStorm() {
 }
 
 export function castWhirlwind() {
-  if (_isDead) return;
+  if (_isDead) {
+    showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+    return;
+  }
   const now = Date.now();
   if (_skillCd.wind && now < _skillCd.wind) return;
 
@@ -1457,13 +1524,20 @@ export function castWhirlwind() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
+  const effectiveRange = _ctx?.isAdmin ? 150 : WIND_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= WIND_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= WIND_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
-    showSkillError(_t('skill_no_target_wind')); return;
+    const near = _getNearestMonster(myLat, myLng);
+    if (near.mob) {
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+    } else {
+      showSkillError(_t('skill_no_target_wind'));
+    }
+    return;
   }
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_wind')); return; }
 
@@ -1489,7 +1563,10 @@ export function castWhirlwind() {
 }
 
 export function castMeteor() {
-  if (_isDead) return;
+  if (_isDead) {
+    showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+    return;
+  }
   const now = Date.now();
   if (_skillCd.meteor && now < _skillCd.meteor) return;
 
@@ -1497,13 +1574,20 @@ export function castMeteor() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
+  const effectiveRange = _ctx?.isAdmin ? 200 : METEOR_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= METEOR_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= METEOR_RANGE_M);
+    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
-    showSkillError(_t('skill_no_target_meteor')); return;
+    const near = _getNearestMonster(myLat, myLng);
+    if (near.mob) {
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+    } else {
+      showSkillError(_t('skill_no_target_meteor'));
+    }
+    return;
   }
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_meteor')); return; }
 
@@ -1530,7 +1614,10 @@ export function castMeteor() {
 
 // ── 힐 스킬 (자가 회복) ───────────────────────────────────────────────────────
 export function castHeal() {
-  if (_isDead) return;
+  if (_isDead) {
+    showSkillError('💀 사망 상태에서는 힐을 사용할 수 없습니다. [⚡ 즉시 부활]을 먼저 진행하세요!');
+    return;
+  }
   const now = Date.now();
   if (_skillCd.heal && now < _skillCd.heal) return;
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_heal')); return; }
@@ -2035,10 +2122,22 @@ function _spawnMonsterMarker(mob) {
     const overlay = createMonsterSpriteOverlay(
       startVisible ? map : null, gsLike,
       () => {
-        if (!_isDead && _battleLoopId && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
+        if (_isDead) {
+          showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+          return;
+        }
+        if (!_battleLoopId) {
+          showSkillError('▶ 우측 HUD의 [▶] 버튼을 눌러 게임을 시작해야 공격할 수 있습니다!');
+          const iw = _ctx?.infoWindow;
+          if (iw) { iw.setContent('<div style="font-size:12px;padding:6px 10px;color:#374151">▶ Press <b>Play</b> to start the game and fight monsters!</div>'); iw.open(map); }
+          return;
+        }
+        let myDist = null;
+        const clickRange = _ctx?.isAdmin ? 150 : (mob.detectRadius || 30);
+        if (_ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
           const myPos = _ctx.myLocationMarker.getPosition();
           const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-          const clickRange = mob.detectRadius || 30;
+          myDist = Math.round(dist);
           if (dist <= clickRange) {
             const roll = Math.floor(Math.random() * 10) + 1;
             const isCrit = roll >= 6;
@@ -2055,24 +2154,24 @@ function _spawnMonsterMarker(mob) {
                 if (isCrit) showCriticalToast();
               }, _spr1?.getBowPixel?.());
             return;
-          } else if (!_battleLoopId) {
-            // 게임 미시작 안내
-            const iw = _ctx?.infoWindow;
-            if (iw) { iw.setContent('<div style="font-size:12px;padding:6px 10px;color:#374151">▶ Press <b>Play</b> to start the game and fight monsters!</div>'); iw.open(map, _monsterOverlays[mob.id] ?? null); }
+          } else {
+            showSkillError(`🎯 사정거리 초과! (거리: ${myDist}m / 사거리: ${clickRange}m) 가까이 이동하세요.`);
           }
-        } else if (!_battleLoopId && _ctx?.myLocationMarker) {
-          const iw = _ctx?.infoWindow;
-          if (iw) { iw.setContent('<div style="font-size:12px;padding:6px 10px;color:#374151">▶ Press <b>Play</b> to start the game and fight monsters!</div>'); iw.open(map); }
         }
         const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
         infoWindow?.setContent(`
-          <div style="font-size:13px;min-width:140px">
+          <div style="font-size:13px;min-width:150px">
             <b>🐉 ${escHtml(mob.name||_t('dragon_default'))}</b>
-            <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
+            ${myDist !== null ? `<div style="font-size:11px;color:${myDist <= clickRange ? '#10b981' : '#f59e0b'};margin:2px 0;">🎯 거리: ${myDist}m (사거리: ${clickRange}m)</div>` : ''}
+            <div style="margin:4px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
             <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
               <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
-            ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('monster','${mob.id}')"
-              style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>` : ''}
+            ${_ctx?.isAdmin ? `<div style="display:flex;gap:4px;margin-top:8px;">
+              <button onclick="window.__warpToMob(${mob.lat}, ${mob.lng})"
+                style="padding:3px 8px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold">🏃 이 위치로 이동</button>
+              <button onclick="window.__deleteBattleObj('monster','${mob.id}')"
+                style="padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>
+            </div>` : ''}
           </div>`);
         infoWindow?.setPosition({ lat: mob.lat, lng: mob.lng });
         infoWindow?.open(map);
@@ -2093,10 +2192,22 @@ function _spawnMonsterMarker(mob) {
   marker.addListener('click', () => {
     // 마커가 지도에 없으면(보이지 않으면) 공격 불가
     if (!marker.getMap()) return;
-    if (!_isDead && _battleLoopId && _ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
+    if (_isDead) {
+      showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+      return;
+    }
+    if (!_battleLoopId) {
+      showSkillError('▶ 우측 HUD의 [▶] 버튼을 눌러 게임을 시작해야 공격할 수 있습니다!');
+      infoWindow?.setContent('<div style="font-size:12px;padding:8px 12px;color:#374151;min-width:180px">▶ Press <b>Play</b> to connect the game server and fight monsters!<br><span style="font-size:11px;color:#6b7280;">Tap the ▶ button to start.</span></div>');
+      infoWindow?.open(map, marker);
+      return;
+    }
+    let myDist = null;
+    const clickRange = _ctx?.isAdmin ? 150 : (mob.detectRadius || 30);
+    if (_ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
       const myPos = _ctx.myLocationMarker.getPosition();
       const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-      const clickRange = mob.detectRadius || 30;
+      myDist = Math.round(dist);
       if (dist <= clickRange) {
         const roll   = Math.floor(Math.random() * 10) + 1;
         const isCrit = roll >= 6;
@@ -2113,22 +2224,24 @@ function _spawnMonsterMarker(mob) {
             if (isCrit) showCriticalToast();
           }, _spr2?.getBowPixel?.());
         return;
+      } else {
+        showSkillError(`🎯 사정거리 초과! (거리: ${myDist}m / 사거리: ${clickRange}m) 가까이 이동하세요.`);
       }
-    }
-    if (!_battleLoopId) {
-      infoWindow?.setContent('<div style="font-size:12px;padding:8px 12px;color:#374151;min-width:180px">▶ Press <b>Play</b> to connect the game server and fight monsters!<br><span style="font-size:11px;color:#6b7280;">Tap the ▶ button to start.</span></div>');
-      infoWindow?.open(map, marker);
-      return;
     }
     const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
     infoWindow?.setContent(`
-      <div style="font-size:13px;min-width:140px">
+      <div style="font-size:13px;min-width:150px">
         <b>${escHtml(mob.name||_t('monster_default'))}</b>
-        <div style="margin:6px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
+        ${myDist !== null ? `<div style="font-size:11px;color:${myDist <= clickRange ? '#10b981' : '#f59e0b'};margin:2px 0;">🎯 거리: ${myDist}m (사거리: ${clickRange}m)</div>` : ''}
+        <div style="margin:4px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
         <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
           <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
-        ${_ctx?.isAdmin ? `<button onclick="window.__deleteBattleObj('monster','${mob.id}')"
-          style="margin-top:8px;padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>` : ''}
+        ${_ctx?.isAdmin ? `<div style="display:flex;gap:4px;margin-top:8px;">
+          <button onclick="window.__warpToMob(${mob.lat}, ${mob.lng})"
+            style="padding:3px 8px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold">🏃 이 위치로 이동</button>
+          <button onclick="window.__deleteBattleObj('monster','${mob.id}')"
+            style="padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>
+        </div>` : ''}
       </div>`);
     infoWindow?.open(map, marker);
   });
@@ -2408,6 +2521,36 @@ function _performAutoRevive() {
   updateSkillBar();
   savePlayerState();
 }
+
+/** 관리자/유저 즉시 완전 부활 (HP/MP 100% 회복 및 사망 해제) */
+export function revivePlayerAdmin() {
+  _isDead = false;
+  _reviveWalkDist = 0;
+  _clearDeathMarker();
+  if (_autoReviveTimer) {
+    clearInterval(_autoReviveTimer);
+    _autoReviveTimer = null;
+  }
+  _autoReviveCountdown = 0;
+  const _rm = _ctx?.myLocationMarker;
+  if (_rm && typeof _rm.revive === 'function') _rm.revive();
+  else refreshMyMarkerIcon();
+  _player.hp = _player.maxHp;
+  _player.mp = _player.maxMp;
+  _healAccum   = 0;
+  _mpHealAccum = 0;
+  sendPlayerRevive();
+  playSound('revive');
+  const myMark = _ctx?.myLocationMarker;
+  if (myMark) {
+    const pos = myMark.getPosition();
+    showFloat('✨ Full Revive! HP/MP 100%', '#fbbf24', pos.lat(), pos.lng());
+  }
+  updateCombatHud();
+  updateSkillBar();
+  savePlayerState();
+}
+window.__adminFullRevive = revivePlayerAdmin;
 
 // ── 몬스터 돌진 애니메이션 ────────────────────────────────────────────────────
 function animateMonsterCharge(mob, myLat, myLng, onHit) {

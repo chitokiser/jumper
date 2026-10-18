@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/merchants.monster-sprite.js
+// /assets/js/pages/merchants.monster-sprite.js
 // 게임서버 몬스터 Sprite 오버레이 — Google Maps OverlayView 기반
 //
 // 지원 타입 : dragon (추가 타입은 SPRITE_CONFIGS에 등록)
@@ -611,7 +611,21 @@ function _getOverlayClass() {
       div.appendChild(nameEl);
       div.appendChild(frame);
       div.appendChild(hpWrap);
-      div.addEventListener('click', (e) => { e.stopPropagation(); this._onClick(); });
+
+      if (window.L && window.L.DomEvent) {
+        window.L.DomEvent.disableClickPropagation(div);
+        window.L.DomEvent.disableScrollPropagation(div);
+      }
+      let _lastTouchTs = 0;
+      const _triggerClick = (e) => {
+        if (e) e.stopPropagation();
+        const now = Date.now();
+        if (now - _lastTouchTs < 350) return;
+        _lastTouchTs = now;
+        this._onClick();
+      };
+      div.addEventListener('click', _triggerClick);
+      div.addEventListener('touchend', _triggerClick, { passive: false });
 
       this._div = div;
       this._updateHpBar();
