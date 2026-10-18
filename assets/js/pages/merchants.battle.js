@@ -2794,6 +2794,10 @@ export function stopNearbyPlayersWatch() {
 // ── 관리자 배치 모드 ──────────────────────────────────────────────────────────
 export function enterAdminPlaceMode(type) {
   const map = _ctx?.map;
+  if (_adminMapListener) {
+    google.maps.event.removeListener(_adminMapListener);
+    _adminMapListener = null;
+  }
   _adminPlaceMode = type;
   document.getElementById('btnPlaceMonster')?.classList.toggle('placing', type === 'monster');
   document.getElementById('btnPlaceDragon')?.classList.toggle('placing',  type === 'dragon');
@@ -2817,21 +2821,23 @@ export function enterAdminPlaceMode(type) {
   _adminMapListener = map.addListener('click', async (e) => {
     const lat = e.latLng.lat(), lng = e.latLng.lng();
     if (_adminPlaceMode === 'monster') {
-      // ── Firebase battle_monsters 추가 (서버 오프라인에도 유지) ──────────────
+      // ── Firebase battle_monsters 추가 (서버 오프라인에도 영구 유지) ────────────
       const lv = _ctx?.playerLevel ?? 1;
-      const monsterType = prompt('Monster type (Monster eyes / cabi):', 'Monster eyes') || 'Monster eyes';
+      const monsterType = prompt('Monster type (Monster eyes / cabi):', 'Monster eyes');
+      if (!monsterType) { exitAdminPlaceMode(); return; }
       const PRESETS_FB = {
-        'cabi':          { name:'cabi',          image:'23.png', maxHp: 500,     atk:20, detectRadius:30, respawnMinutes:2 },
+        'cabi':          { name:'cabi',          image:'23.png', maxHp: 500,        atk:20, detectRadius:30, respawnMinutes:2 },
         'Monster eyes':  { name:'Monster eyes',  image:'22.png', maxHp: lv*100*8, atk:80, detectRadius:30, respawnMinutes:2 },
       };
       const p = PRESETS_FB[monsterType] || PRESETS_FB['Monster eyes'];
 
-      const name           = prompt(`Monster name:`,       p.name)            || p.name;
-      const image          = prompt(`Image (emoji or path):`, p.image)      || p.image;
-      const maxHp          = parseInt(prompt(`Max HP:`,   p.maxHp)           || p.maxHp);
-      const atk            = parseInt(prompt(`Attack:`,    p.atk)             || p.atk);
-      const detectRadius   = parseInt(prompt(`Detect radius (m):`, p.detectRadius) || p.detectRadius);
-      const respawnMinutes = parseInt(prompt(`Respawn time (min):`, p.respawnMinutes) || p.respawnMinutes);
+      const name           = prompt(`Monster name:`, p.name);
+      if (!name) { exitAdminPlaceMode(); return; }
+      const image          = p.image;
+      const maxHp          = parseInt(prompt(`Max HP:`, p.maxHp) || p.maxHp) || p.maxHp;
+      const atk            = parseInt(prompt(`Attack:`, p.atk) || p.atk) || p.atk;
+      const detectRadius   = parseInt(prompt(`Detect radius (m):`, p.detectRadius) || p.detectRadius) || p.detectRadius;
+      const respawnMinutes = parseInt(prompt(`Respawn time (min):`, p.respawnMinutes) || p.respawnMinutes) || p.respawnMinutes;
 
       try {
         const ref = await addDoc(collection(_ctx.db, 'battle_monsters'), {
@@ -2845,41 +2851,71 @@ export function enterAdminPlaceMode(type) {
         _monsterGrid.register(newMob);
         renderMonsterMarkers();
         refreshFirestoreMonsterList();
-        alert(`✅ ${name} placed (Firebase)\nPersists even when server is offline.`);
+        alert(`✅ ${name} 배치 완료 (Firebase Firestore)\n위치: (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
       } catch (err) { alert('Firebase placement error: ' + err.message); }
 
     } else if (['dragon','orc','orc2','orc3','pirate','pirate2','pirate3','zombie1','zombie3'].includes(_adminPlaceMode)) {
-      // ── 게임서버(GS) 몬스터 스폰 — 타입별 사전 설정값으로 즉시 배치 ────────────
-      if (!isGameServerConnected()) {
-        connectToGameServer();
-        alert('⚠️ Connecting to game server.\nPlease try again after connecting (■ indicator).');
+      // ── 타입별 스프라이트 몬스터 — Firebase 영구 저장 및 게임서버 실시간 연동 ──────
+      const monsterType = _adminPlaceMode;
+      const GS_DEFAULTS = {
+        pirate:  { name: 'Pirate',   maxHp:  600, attackPower:   60, attackRangeM: 20, aggroRangeM:  40, moveSpeed: 1.5, attackCooldownMs: 1500, respawnSeconds:  90 },
+        pirate2: { name: 'Pirate 2', maxHp: 1000, attackPower:  110, attackRangeM: 20, aggroRangeM:  45, moveSpeed: 1.4, attackCooldownMs: 2000, respawnSeconds: 120 },
+        pirate3: { name: 'Pirate 3', maxHp: 1600, attackPower:  170, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.3, attackCooldownMs: 2000, respawnSeconds: 180 },
+        orc:     { name: 'Orc',      maxHp: 1200, attackPower:  120, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.2, attackCooldownMs: 2000, respawnSeconds: 150 },
+        orc2:    { name: 'Orc 2',    maxHp: 2000, attackPower:  190, attackRangeM: 20, aggroRangeM:  55, moveSpeed: 1.1, attackCooldownMs: 2200, respawnSeconds: 200 },
+        orc3:    { name: 'Orc 3',    maxHp: 3000, attackPower:  260, attackRangeM: 20, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
+        dragon:  { name: 'Dragon',   maxHp: 6000, attackPower:  320, attackRangeM: 20, aggroRangeM:  30, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
+        zombie1: { name: 'Zombie 1', maxHp:  800, attackPower:   80, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.9, attackCooldownMs: 2000, respawnSeconds: 120 },
+        zombie3: { name: 'Zombie 3', maxHp: 1400, attackPower:  140, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.8, attackCooldownMs: 2200, respawnSeconds: 150 },
+      };
+      const p = GS_DEFAULTS[monsterType] || { name: monsterType, maxHp: 1000, attackPower: 100, attackRangeM: 20, aggroRangeM: 40, respawnSeconds: 120 };
+      if (!confirm(
+        `[${monsterType.toUpperCase()}] 몬스터 배치 확인\n\n` +
+        `• 좌표: ${lat.toFixed(5)}, ${lng.toFixed(5)}\n` +
+        `• HP: ${p.maxHp}  |  공격력: ${p.attackPower}\n` +
+        `• 탐지반경: ${p.aggroRangeM}m  |  리스폰: ${p.respawnSeconds}초\n\n` +
+        `이 위치에 배치하시겠습니까?`
+      )) {
+        exitAdminPlaceMode();
         return;
       }
-      const monsterType = _adminPlaceMode;
-      // 서버 MONSTER_TYPE_DEFAULTS와 동일한 값
-      const GS_DEFAULTS = {
-        pirate:  { maxHp:  600, attackPower:   60, attackRangeM: 20, aggroRangeM:  40, moveSpeed: 1.5, attackCooldownMs: 1500, respawnSeconds:  90 },
-        pirate2: { maxHp: 1000, attackPower:  110, attackRangeM: 20, aggroRangeM:  45, moveSpeed: 1.4, attackCooldownMs: 2000, respawnSeconds: 120 },
-        pirate3: { maxHp: 1600, attackPower:  170, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.3, attackCooldownMs: 2000, respawnSeconds: 180 },
-        orc:     { maxHp: 1200, attackPower:  120, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.2, attackCooldownMs: 2000, respawnSeconds: 150 },
-        orc2:    { maxHp: 2000, attackPower:  190, attackRangeM: 20, aggroRangeM:  55, moveSpeed: 1.1, attackCooldownMs: 2200, respawnSeconds: 200 },
-        orc3:    { maxHp: 3000, attackPower:  260, attackRangeM: 20, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
-        dragon:  { maxHp: 6000, attackPower:  320, attackRangeM: 20, aggroRangeM:  30, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
-        zombie1: { maxHp:  800, attackPower:   80, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.9, attackCooldownMs: 2000, respawnSeconds: 120 },
-        zombie3: { maxHp: 1400, attackPower:  140, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.8, attackCooldownMs: 2200, respawnSeconds: 150 },
-      };
-      const p = GS_DEFAULTS[monsterType];
-      if (!confirm(
-        `[${monsterType}] Placement confirm\n` +
-        `HP: ${p.maxHp}  ATK: ${p.attackPower}  Attack range: ${p.attackRangeM}m\n` +
-        `Detect: ${p.aggroRangeM}m  Respawn: ${p.respawnSeconds}s`
-      )) return;
 
       try {
-        const result = await gsAdminAddSpawn({ monsterType, lat, lng, maxCount: 1, ...p });
-        alert(`✅ ${monsterType} placed (zone: ${result.zoneId})`);
-        await refreshGsSpawnList();
-      } catch (err) { alert('GS placement error: ' + err.message); }
+        const docData = {
+          name: p.name || monsterType,
+          monsterType: monsterType,
+          image: monsterType,
+          lat: Number(lat),
+          lng: Number(lng),
+          maxHp: p.maxHp,
+          hp: p.maxHp,
+          atk: p.attackPower,
+          detectRadius: p.aggroRangeM,
+          respawnMinutes: Math.round((p.respawnSeconds || 120) / 60) || 2,
+          active: true,
+          createdAt: serverTimestamp(),
+        };
+        const ref = await addDoc(collection(_ctx.db, 'battle_monsters'), docData);
+        const newMob = { id: ref.id, ...docData };
+        _monsters.push(newMob);
+        _monsterGrid.register(newMob);
+        renderMonsterMarkers();
+        refreshFirestoreMonsterList();
+
+        let gsMsg = '';
+        if (isGameServerConnected()) {
+          try {
+            const result = await gsAdminAddSpawn({ monsterType, lat, lng, maxCount: 1, ...p });
+            await refreshGsSpawnList();
+            gsMsg = ` (GameServer 존 ${result.zoneId} 동기화)`;
+          } catch (gsErr) {
+            console.warn('[GS Admin] GameServer 스폰 동기화 실패 (Firebase 배치는 완료됨):', gsErr);
+          }
+        }
+        alert(`✅ ${monsterType.toUpperCase()} 배치 완료!\n좌표: (${lat.toFixed(5)}, ${lng.toFixed(5)})${gsMsg}`);
+      } catch (err) {
+        alert('몬스터 배치 오류: ' + err.message);
+      }
 
     } else if (_adminPlaceMode === 'archer_tower' || _adminPlaceMode === 'cannon_tower') {
       const towerType = _adminPlaceMode === 'cannon_tower' ? 'cannon' : 'archer';

@@ -84,5 +84,48 @@
   - 실제 실행 중인 `http://localhost:8080/merchants` 환경에서 자동화 검증 스크립트 실행:
     - 기본 상태: `adminBattlePanel`이 닫히고 `⚔️` 토글 버튼만 깔끔하게 노출됨.
     - 열린 상태: `combatHud`(bottom Y: 315)와 `adminBattlePanel`(top Y: 381) 사이에 66px의 안전 간격 확보 확인, 겹침(overlap) 없음.
+  - Git 커밋: `34a31ed` (`fix(merchants): add admin battle panel toggle and prevent HUD overlap`)
+  - 원격 저장소(`origin master`) 푸시 완료.
+
+---
+
+### [2026-10-18] 수퍼어드민 몬스터 배치 불가 오류 수정 및 Firestore/스프라이트 연동
+
+- **요청 일시**: 2026-10-18 09:40:35
+- **요청 내용**: 수퍼어드민이 몬스터를 원하는 장소에 배치할 수 없다.
+- **원인 분석**:
+  1. **Leaflet Shim의 `map.setOptions` 메서드 부재**:
+     - `enterAdminPlaceMode()` 호출 시 `map.setOptions({ draggableCursor: 'crosshair' })`가 실행되나, `gmaps-leaflet-compat.js`의 `maps.Map` 클래스에 `setOptions`가 구현되어 있지 않아 `TypeError: map.setOptions is not a function` 예외가 발생함.
+     - 이로 인해 이후 줄의 `map.addListener('click', ...)` 이벤트 등록 코드가 실행되지 못하고 중단되어 지도를 클릭해도 아무 동작도 일어나지 않음.
+  2. **외부 게임서버(Railway) 오프라인 상태 시 몬스터 배치 완전 차단**:
+     - 드래곤(`dragon`), 오크(`orc`, `orc2`, `orc3`), 해적(`pirate`, `pirate2`, `pirate3`), 좀비(`zombie1`, `zombie3`) 등 9종의 몬스터 배치 시 `isGameServerConnected()` 검사를 수행하여 미연결 시 `⚠️ Connecting to game server...` 알림과 함께 배치가 강제 중단됨.
+     - 현재 Railway 게임서버가 오프라인 상태이므로 관리자가 몬스터를 전혀 배치할 수 없었음.
+  3. **수퍼어드민 권한 체크 범위 누락**:
+     - `merchants.js`에서 관리자 확인 시 `admins/{uid}` 컬렉션과 특정 이메일만 확인하고 있어, `users/{uid}`에 `role: 'SUPER_ADMIN'` 또는 `role: 'ADMIN'`으로 지정된 최고 관리자의 경우 `_isAdmin`이 활성화되지 않는 문제 존재.
+  4. **좌표 마커 클릭 시 배치 이벤트 미연동**:
+     - 좌표 검색(`abCoordGo`)으로 찍힌 핀 마커(`_coordMarker`)를 클릭할 경우 지도 클릭 이벤트가 전달되지 않던 현상.
+- **처리 내역**:
+  - `assets/js/gmaps-leaflet-compat.js`:
+    - `maps.Map` 클래스에 `setOptions(opts)` 메서드 구현. `draggableCursor`, `zoom`, `center` 등 옵션을 Leaflet 컨테이너 및 맵에 즉시 반영하도록 지원.
+  - `assets/js/pages/merchants.battle.js`:
+    - `enterAdminPlaceMode()` 진입 시 기존 맵 클릭 리스너를 안전하게 해제(`removeListener`)하여 다중 클릭 중복 등록 방지.
+    - 드래곤, 오크, 해적, 좀비 9종 몬스터 배치 시 Firebase Firestore `battle_monsters`에 영구 저장되도록 연동:
+      - 게임서버 연결 여부와 무관하게 언제든 원하는 위치에 몬스터 즉시 배치 및 지도 렌더링(스프라이트 오버레이 포함) 가능.
+      - 게임서버가 연결되어 있을 경우 실시간 게임서버 스폰(`gsAdminAddSpawn`)도 함께 동기화.
+    - 일반 몬스터(`monster`) 배치 시 다중 prompt 취소에 대한 안전 종료 처리.
+  - `assets/js/pages/merchants.js`:
+    - 좌표 검색 마커(`_coordMarker`) 클릭 시 지도 클릭 이벤트(`map.click`)를 트리거하여 원하는 좌표 핀 바로 위에 몬스터를 배치할 수 있도록 지원.
+    - 관리자 인증 시 `admins/{uid}`뿐만 아니라 `users/{uid}`의 `role in ['SUPER_ADMIN', 'CEO', 'ADMIN', 'admin']` 및 `isAdmin == true`까지 통합 검사하여 수퍼어드민 권한 완벽 보장.
+- **수정/추가 파일**:
+  - `assets/js/gmaps-leaflet-compat.js`
+  - `assets/js/pages/merchants.battle.js`
+  - `assets/js/pages/merchants.js`
+  - `TASK_LOG.md`
+- **검증 및 배포**:
+  - Playwright 헤드리스 브라우저 테스트 실행:
+    - `map.setOptions` 호출 성공 (에러 0건).
+    - `btnPlaceDragon`, `btnPlaceMonster` 클릭 시 `placing` 클래스 활성화 및 맵 클릭 리스너 정상 트리거 확인.
+    - `btnCancelPlace` 클릭 시 정상 취소 확인.
   - Git 커밋 및 원격 저장소(`origin master`) 푸시 완료.
+
 

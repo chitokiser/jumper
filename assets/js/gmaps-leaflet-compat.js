@@ -470,6 +470,20 @@
     setTilt(tilt) {}
     getTilt() { return 0; }
 
+    setOptions(opts = {}) {
+      this._opts = Object.assign(this._opts || {}, opts);
+      if (opts.draggableCursor !== undefined) {
+        const cursor = opts.draggableCursor || '';
+        if (this._el) this._el.style.cursor = cursor;
+        if (this._lmap) {
+          const container = this._lmap.getContainer();
+          if (container) container.style.cursor = cursor;
+        }
+      }
+      if (opts.zoom !== undefined) this.setZoom(opts.zoom);
+      if (opts.center !== undefined) this.setCenter(opts.center);
+    }
+
     addListener(event, cb) {
       this._listeners[event] = this._listeners[event] || [];
       this._listeners[event].push(cb);

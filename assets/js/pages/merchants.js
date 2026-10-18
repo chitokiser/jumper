@@ -454,6 +454,9 @@ function initMap() {
     });
     infoWindow.setContent(`<div style="font-size:12px;font-weight:600;">📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>`);
     infoWindow.open(map, _coordMarker);
+    _coordMarker.addListener('click', () => {
+      google.maps.event.trigger(map, 'click', { latLng: new google.maps.LatLng(lat, lng) });
+    });
     return true;
   }
   $('abCoordGo')?.addEventListener('click', () => {
@@ -3123,10 +3126,20 @@ async function init() {
 
       _isAdmin = false;
       _ctx.isAdmin = false;
-      if (!_isAnonymous) {
-        const snap = await getDoc(doc(db, 'admins', _uid));
-        _isAdmin = snap.exists() || (_userEmail === 'daguri75@gmail.com');
-        _ctx.isAdmin = _isAdmin;
+      if (!_isAnonymous && _uid) {
+        try {
+          const [adminSnap, userSnap] = await Promise.all([
+            getDoc(doc(db, 'admins', _uid)).catch(() => null),
+            getDoc(doc(db, 'users', _uid)).catch(() => null),
+          ]);
+          const uData = userSnap?.data?.() || {};
+          const isSuperAdminRole = ['SUPER_ADMIN', 'CEO', 'ADMIN', 'admin'].includes(uData.role) || uData.isAdmin === true;
+          _isAdmin = !!(adminSnap?.exists?.() || isSuperAdminRole || (_userEmail === 'daguri75@gmail.com'));
+          _ctx.isAdmin = _isAdmin;
+        } catch (e) {
+          _isAdmin = (_userEmail === 'daguri75@gmail.com');
+          _ctx.isAdmin = _isAdmin;
+        }
       }
 
       // 익명 유저 배지 표시
