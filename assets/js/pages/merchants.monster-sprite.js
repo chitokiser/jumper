@@ -612,20 +612,31 @@ function _getOverlayClass() {
       div.appendChild(frame);
       div.appendChild(hpWrap);
 
+      div.style.pointerEvents = 'auto';
+      div.style.cursor = 'pointer';
+
       if (window.L && window.L.DomEvent) {
         window.L.DomEvent.disableClickPropagation(div);
         window.L.DomEvent.disableScrollPropagation(div);
       }
       let _lastTouchTs = 0;
       const _triggerClick = (e) => {
-        if (e) e.stopPropagation();
+        if (e) {
+          e.stopPropagation();
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+        }
+        if (window.L?.DomEvent && e) {
+          window.L.DomEvent.stopPropagation(e);
+        }
         const now = Date.now();
-        if (now - _lastTouchTs < 350) return;
+        if (now - _lastTouchTs < 300) return;
         _lastTouchTs = now;
         this._onClick();
       };
       div.addEventListener('click', _triggerClick);
       div.addEventListener('touchend', _triggerClick, { passive: false });
+      div.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
+      div.addEventListener('mousedown', (e) => { e.stopPropagation(); });
 
       this._div = div;
       this._updateHpBar();

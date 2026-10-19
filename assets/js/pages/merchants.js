@@ -21,7 +21,7 @@ import {
   castLightning, castIceFreeze, castFireStorm, castWhirlwind, castMeteor, castHeal,
   setGsSkillCallback, setGsMobsGetter,
   useReviveTicket, revivePlayerAdmin, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
-  shootArrowAtMonster, attackNearestWithBow,
+  shootArrowAtMonster, attackNearestWithBow, calcBearing,
   syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
   spawnGsDrop, removeGsDrop,
   equipWeapon, equipArmor, equipArmorToSlot, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
@@ -43,6 +43,7 @@ import {
   gsAdminDeleteSpawn, gsAdminKillMonster
 }
   from './merchants.gameserver.js';
+window.__sendPlayerAttack = sendPlayerAttack;
 import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
   from './merchants.monster-sprite.js';
 import { _t } from './merchants.i18n.js';
@@ -634,7 +635,7 @@ function showBoxInfo(box, marker, dist) {
   const st = getBoxHpState(box);
   const hpPct = Math.max(0, (st.current / st.max) * 100);
   const hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#f59e0b' : '#ef4444';
-  const isAdminNow = _isAdmin || (_userEmail === 'daguri75@gmail.com');
+  const isAdminNow = _isAdmin;
   const alreadyCollected = _collectedBoxes.has(box.id);
 
   const adminBtn = isAdminNow && !alreadyCollected
@@ -1279,31 +1280,43 @@ function _renderGsMonster(monster) {
     } else {
       _gsOverlays[monsterId] = createMonsterSpriteOverlay(
         map, monster,
-        () => {   // 클릭 핸들러 (근접전투)
+        () => {   // 클릭 핸들러 (화살 사냥)
           const m = _gsMonsters[monsterId];
-          if (!m) return;
+          if (!m || (m.hp != null && m.hp <= 0)) return;
           if (isPlayerDead()) return;
-          if (!isGameServerConnected()) {
-            const fsMob = _monsters?.find?.(x => x.id === monsterId);
-            if (fsMob) {
-              shootArrowAtMonster(fsMob);
-              return;
-            }
+
+          // 동일 ID Firestore 몬스터가 있으면 shootArrowAtMonster 우선 실행
+          const fsMob = window.__getMonsters?.()?.find?.(x => x.id === monsterId);
+          if (fsMob) {
+            const shot = shootArrowAtMonster(fsMob);
+            if (shot) return;
           }
-          // 거리 체크 — GS_MONSTER_ATTACK_RANGE_M 이내에서만 공격
+
+          // GS 전용 몬스터도 120m(관리자 500m) 사정거리로 화살 사냥
           const myPos = _ctx.lastPos;
           if (!myPos) return;
           const mLat = m.currentLat ?? m.lat ?? lat;
           const mLng = m.currentLng ?? m.lng ?? lng;
           const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
-          if (dist > GS_MONSTER_ATTACK_RANGE_M) {
-            showFloat(`${Math.round(dist)}m — Approach!`, '#facc15', mLat, mLng);
+          const attackRange = _isAdmin ? 500 : 120;
+          if (dist > attackRange) {
+            showFloat(`🎯 사정거리 초과! (${Math.round(dist)}m / ${attackRange}m)`, '#facc15', mLat, mLng);
             return;
           }
-          playSound('melee_hit');
-          animateArrow(myPos.lat, myPos.lng, mLat, mLng, '#f87171', () => {
+
+          // 주인공 회전 및 활 당기기(attack) 모션
+          const spr = _ctx?.myLocationMarker;
+          if (spr && typeof spr.setFacing === 'function') spr.setFacing(calcBearing(myPos.lat, myPos.lng, mLat, mLng));
+          if (spr && typeof spr.setState === 'function') spr.setState('attack');
+
+          playSound('arrow_shot');
+          animateArrow(myPos.lat, myPos.lng, mLat, mLng, '#fbbf24', () => {
+            playSound('arrow_hit');
             sendPlayerAttack(monsterId);
-          });
+            const dmg = Math.max(50, Math.floor(getTotalAtk() * (getPlayerLevel() || 1) / 2));
+            showFloat(`-${dmg}`, '#ef4444', mLat, mLng);
+          }, spr?.getBowPixel?.());
+
           if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m.spawnId, m.type, null, { lat: mLat, lng: mLng });
         },
         () => {   // 오버레이 제거 완료 콜백
@@ -1334,21 +1347,40 @@ function _renderGsMonster(monster) {
   });
   marker.addListener('click', () => {
     const m = _gsMonsters[monsterId];
+    if (!m || (m.hp != null && m.hp <= 0)) return;
     if (isPlayerDead()) return;
+
+    // 동일 ID Firestore 몬스터가 있으면 shootArrowAtMonster 우선 실행
+    const fsMob = window.__getMonsters?.()?.find?.(x => x.id === monsterId);
+    if (fsMob) {
+      const shot = shootArrowAtMonster(fsMob);
+      if (shot) return;
+    }
+
     const myPos = _ctx.lastPos;
     if (!myPos) return;
     const mLat = m?.currentLat ?? m?.lat ?? lat;
     const mLng = m?.currentLng ?? m?.lng ?? lng;
     const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
-    if (dist > GS_MONSTER_ATTACK_RANGE_M) {
-      infoWindow?.setContent(`<div style="font-size:13px;padding:4px;">👾 ${escHtml(type)}<br><span style="color:#888;font-size:11px;">Distance ${Math.round(dist)}m — move within ${GS_MONSTER_ATTACK_RANGE_M}m to attack</span></div>`);
+    const attackRange = _isAdmin ? 500 : 120;
+    if (dist > attackRange) {
+      infoWindow?.setContent(`<div style="font-size:13px;padding:4px;">👾 <b>${escHtml(type)}</b><br><span style="color:#f59e0b;font-size:11px;">🎯 거리: ${Math.round(dist)}m (사거리: ${attackRange}m)</span></div>`);
       infoWindow?.open(map, marker);
       return;
     }
-    playSound('melee_hit');
-    animateArrow(myPos.lat, myPos.lng, mLat, mLng, '#f87171', () => {
+
+    const spr = _ctx?.myLocationMarker;
+    if (spr && typeof spr.setFacing === 'function') spr.setFacing(calcBearing(myPos.lat, myPos.lng, mLat, mLng));
+    if (spr && typeof spr.setState === 'function') spr.setState('attack');
+
+    playSound('arrow_shot');
+    animateArrow(myPos.lat, myPos.lng, mLat, mLng, '#fbbf24', () => {
+      playSound('arrow_hit');
       sendPlayerAttack(monsterId);
-    });
+      const dmg = Math.max(50, Math.floor(getTotalAtk() * (getPlayerLevel() || 1) / 2));
+      showFloat(`-${dmg}`, '#ef4444', mLat, mLng);
+    }, spr?.getBowPixel?.());
+
     infoWindow?.close();
     if (_isAdmin) _showGsMonsterAdminMenu(monsterId, m?.spawnId, type, marker);
   });
@@ -3170,11 +3202,11 @@ async function init() {
           ]);
           const uData = userSnap?.data?.() || {};
           const isSuperAdminRole = ['SUPER_ADMIN', 'CEO', 'ADMIN', 'admin'].includes(uData.role) || uData.isAdmin === true;
-          _isAdmin = !!(adminSnap?.exists?.() || isSuperAdminRole || (_userEmail === 'daguri75@gmail.com'));
+          _isAdmin = !!(adminSnap?.exists?.() || isSuperAdminRole);
           _ctx.isAdmin = _isAdmin;
         } catch (e) {
-          _isAdmin = (_userEmail === 'daguri75@gmail.com');
-          _ctx.isAdmin = _isAdmin;
+          _isAdmin = false;
+          _ctx.isAdmin = false;
         }
       }
 
@@ -3243,22 +3275,33 @@ async function init() {
       _updateDropNearbyBadge(0);
     }
     // 관리자 패널 표시 및 토글 제어
+    const abWrap = $('adminBattleControlWrap');
     const abp = $('adminBattlePanel');
     const toggleBtn = $('btnAdminPanelToggle');
     const closeBtn = $('btnAdminPanelClose');
     if (_isAdmin) {
+      if (abWrap) abWrap.style.display = 'flex';
       const shouldOpen = localStorage.getItem('admin_battle_panel_open') === '1';
-      if (abp) abp.classList.toggle('open', shouldOpen);
+      if (abp) {
+        abp.classList.toggle('open', shouldOpen);
+        abp.style.display = shouldOpen ? 'flex' : 'none';
+      }
       if (toggleBtn) toggleBtn.style.display = shouldOpen ? 'none' : 'flex';
 
       toggleBtn?.addEventListener('click', () => {
-        if (abp) abp.classList.add('open');
+        if (abp) {
+          abp.classList.add('open');
+          abp.style.display = 'flex';
+        }
         if (toggleBtn) toggleBtn.style.display = 'none';
         localStorage.setItem('admin_battle_panel_open', '1');
       });
 
       closeBtn?.addEventListener('click', () => {
-        if (abp) abp.classList.remove('open');
+        if (abp) {
+          abp.classList.remove('open');
+          abp.style.display = 'none';
+        }
         if (toggleBtn) toggleBtn.style.display = 'flex';
         localStorage.setItem('admin_battle_panel_open', '0');
       });
@@ -3270,8 +3313,14 @@ async function init() {
         if (p) p.style.display = cur ? 'none' : '';
       });
     } else {
-      if (abp) abp.classList.remove('open');
+      if (abWrap) abWrap.style.display = 'none';
+      if (abp) {
+        abp.classList.remove('open');
+        abp.style.display = 'none';
+      }
       if (toggleBtn) toggleBtn.style.display = 'none';
+      const p = document.getElementById('_monsterDebugPanel');
+      if (p) p.style.display = 'none';
     }
   });
 

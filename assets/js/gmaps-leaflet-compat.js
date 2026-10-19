@@ -590,6 +590,9 @@
       this._lmarker = L.marker([this._pos.lat, this._pos.lng], lOpts);
 
       this._lmarker.on('click', e => {
+        if (e && window.L?.DomEvent) {
+          window.L.DomEvent.stopPropagation(e);
+        }
         const latLng = new maps.LatLng(e.latlng.lat, e.latlng.lng);
         this._trigger('click', { latLng });
       });

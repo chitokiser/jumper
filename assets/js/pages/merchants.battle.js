@@ -2196,6 +2196,9 @@ export function shootArrowAtMonster(mob) {
       playSound('arrow_hit');
       hitMonster(mob.id, dmg, mob);
       if (isCrit) showCriticalToast();
+      if (typeof window.__sendPlayerAttack === 'function') {
+        window.__sendPlayerAttack(mob.id);
+      }
     },
     bowPixel
   );
@@ -2779,7 +2782,7 @@ function checkTowerAttacks() {
 }
 
 
-function calcBearing(lat1, lng1, lat2, lng2) {
+export function calcBearing(lat1, lng1, lat2, lng2) {
   const toRad = d => d * Math.PI / 180;
   const dLng = toRad(lng2 - lng1);
   const y = Math.sin(dLng) * Math.cos(toRad(lat2));

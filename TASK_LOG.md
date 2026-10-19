@@ -255,3 +255,50 @@
     - `attackNearestWithBow` 단축키 자동 타겟팅 화살 사격 및 데미지 적용 정상 확인.
   - Git 커밋: `9b46d27` (`fix(battle): allow player to hunt monsters with bow and arrow`)
   - 원격 저장소(`origin master`) 푸시 완료.
+
+---
+
+### [2026-10-18] 일반 유저 관리자 배틀셋업 오작동 차단 및 몬스터 화살 사냥 연동
+
+- **요청 일시**: 2026-10-18 20:32:19
+- **요청 내용**:
+  1. 몬스터 클릭하면 화살은 안 날리고 "No hidden treasure boxes within 100m" (100m 이내 보물박스가 숨겨져 있지 않다) 라고만 한다.
+  2. 관리자 모드도 아닌데 관리자 모드 배틀셋업이 가능함. 일반 유저 계정으로 로그인했음. 이런 부분은 실수하면 안 됨.
+- **원인 분석**:
+  1. **하드코딩된 특정 이메일 자동 관리자 부여 버그**:
+     - `merchants.js`의 권한 검증부에 `_userEmail === 'daguri75@gmail.com'`이 하드코딩되어 있어, 사용자가 일반 유저 플레이(무료 일반 회원 테스트)를 목적으로 해당 계정으로 로그인했음에도 DB 권한과 무관하게 무조건 `_isAdmin = true`가 강제 부여됨.
+     - 이로 인해 일반 유저 화면에 `Battle Setup` 패널(`adminBattleControlWrap`)이 노출되고, 지도 클릭 시 관리자 전용 기능인 숨김 보물박스 탐색(`_adminRevealNearbyHiddenBoxes`)이 활성화됨.
+  2. **몬스터 클릭 시 지도 클릭 이벤트 전파(Bubbling) 및 보물박스 탐색 팝업 중복 발생**:
+     - `gmaps-leaflet-compat.js`의 `Marker` 및 `merchants.monster-sprite.js` 오버레이 `div`에서 Leaflet 지도 클릭 이벤트로의 전파 차단(`stopPropagation`)이 불완전하여, 몬스터 클릭 시 지도의 `click` 리스너가 동시에 트리거됨.
+     - 1번 원인으로 인해 `_isAdmin === true`였기 때문에 지도의 `_adminRevealNearbyHiddenBoxes`가 실행되어 인포윈도우에 `No hidden treasure boxes within 100m`가 덮어씌워져 표시됨.
+  3. **게임 서버(GS) 연결 시 몬스터 클릭 사정거리(40m) 차단 및 화살 사격 누락**:
+     - 게임 서버가 연결된 상태(`Connected`)에서 GS 몬스터 클릭 시 40m 사정거리 초과 체크에 걸려 공격이 즉시 취소되고 화살이 발사되지 않음.
+- **처리 내역**:
+  1. **하드코딩된 이메일 관리자 권한 완전 제거 및 엄격한 DB 권한 검증 (`assets/js/pages/merchants.js`)**:
+     - `_userEmail === 'daguri75@gmail.com'` 하드코딩을 완전히 제거.
+     - 오직 Firestore `admins/{uid}` 컬렉션 등록 여부 및 `users/{uid}`의 `role`(`SUPER_ADMIN`, `ADMIN`, `CEO`, `isAdmin === true`)로만 관리자 여부를 판정하도록 수정.
+     - 일반 유저 로그인 시 `_isAdmin = false`, `_ctx.isAdmin = false`로 철저히 제한.
+  2. **관리자 배틀 셋업 패널 기본 숨김 및 일반 유저 완전 차단 (`merchants.html`, `merchants-vn.html`, `assets/js/pages/merchants.js`)**:
+     - HTML 마크업에서 `#adminBattleControlWrap`의 기본 스타일을 `display: none`으로 설정.
+     - `_isAdmin`이 false인 일반 유저 환경에서는 패널(`adminBattlePanel`), 래퍼(`adminBattleControlWrap`), 토글 버튼(`btnAdminPanelToggle`)을 일체 노출하지 않도록 완벽 차단.
+  3. **몬스터 및 마커 클릭 이벤트 전파 차단 (`assets/js/gmaps-leaflet-compat.js`, `assets/js/pages/merchants.monster-sprite.js`)**:
+     - Leaflet Shim의 `Marker` 클릭 이벤트에 `window.L.DomEvent.stopPropagation(e)`를 추가하여 지도 클릭 이벤트와의 간섭 원천 차단.
+     - 스프라이트 오버레이 `div`에 `pointerdown`, `mousedown`, `click`, `touchend` 전체에 `stopPropagation()` 및 `L.DomEvent.stopPropagation`을 적용하여 몬스터 탭 시 지도가 클릭되는 현상 해결.
+  4. **게임 서버(GS) 몬스터 화살 사냥 연동 및 사정거리 120m 통일 (`assets/js/pages/merchants.js`, `assets/js/pages/merchants.battle.js`)**:
+     - GS 몬스터 클릭 시에도 40m 제한을 없애고 120m (관리자는 500m) 화살 사정거리로 확장.
+     - 주인공 캐릭터가 몬스터를 바라보며 활을 당기는 모션 및 고속 화살(`.arrow-proj`) 투사체 비행, 타격 효과음 및 데미지 플로팅, 서버 공격 전송(`sendPlayerAttack`) 일원화 연동.
+- **수정/추가 파일**:
+  - `assets/js/pages/merchants.js`
+  - `assets/js/pages/merchants.battle.js`
+  - `assets/js/pages/merchants.monster-sprite.js`
+  - `assets/js/gmaps-leaflet-compat.js`
+  - `merchants.html`
+  - `merchants-vn.html`
+  - `TASK_LOG.md`
+- **검증 및 배포**:
+  - Playwright 자동화 테스트 수행:
+    - 비관리자 계정 접속 시 `adminBattleControlWrap` 및 `adminBattlePanel`이 `display: none`으로 완벽히 숨겨짐 검증.
+    - 지도 바탕 클릭 시 `No hidden treasure boxes within 100m` 인포윈도우 미노출 검증.
+    - 몬스터 클릭 시 숨김 보물박스 팝업 없이 화살 투사체(`.arrow-proj`) 정상 발사 및 피격 플래시(`.hit-flash`) 정상 출력 검증 완료.
+  - Git 커밋 및 원격 저장소(`origin master`) 푸시 완료.
+
