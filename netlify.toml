@@ -1,5 +1,10 @@
 [build]
   publish = "."
+  # 배포 시에만 assets/js 압축(minify) — 저장소 원본은 그대로 (scripts/minify-js.mjs)
+  command = "node scripts/minify-js.mjs"
+
+[build.environment]
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
 
 # ── 전역 보안 헤더 ────────────────────────────────────────────────────────────
 # X-Frame-Options 는 전역 적용하지 않음 — Telegram Mini App 페이지별 CSP로 제어
@@ -110,6 +115,12 @@
   for = "/**/*.css"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
+
+# ── 이미지 캐시 (2026-10-19 성능): 재방문 시 즉시 사용, 1일 후 백그라운드 갱신 (파일명 고정이라 immutable 은 쓰지 않음) ──
+[[headers]]
+  for = "/assets/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
 
 # ── 웹3 기능 화면 숨김 (2026-10-19): 토큰 거래소·지갑·DAO·코인 보물찾기 페이지는 홈으로 ──
 [[redirects]]

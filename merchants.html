@@ -3566,8 +3566,8 @@
 
   <!-- Leaflet & Free OpenStreetMap (Google Maps Compatibility Shim) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-  <script src="/assets/js/gmaps-leaflet-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" defer></script>
+  <script src="/assets/js/gmaps-leaflet-compat.js" defer></script>
 
   <script>
     window.__mapsKey = "free-leaflet-osm";
@@ -4474,7 +4474,7 @@
 
   <!-- 게임서버 관리자 인증키 (Railway 환경변수 ADMIN_SECRET 과 동일하게 유지) -->
   <script>window.GS_ADMIN_SECRET = 'jumper-admin-dev';</script>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous" defer></script>
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/pages/merchants.js?v=8"></script>
 

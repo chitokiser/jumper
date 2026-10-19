@@ -5,6 +5,7 @@
     "jimp": "^1.6.0"
   },
   "devDependencies": {
+    "esbuild": "^0.24.2",
     "playwright": "^1.60.0",
     "serve": "^14.2.6"
   },

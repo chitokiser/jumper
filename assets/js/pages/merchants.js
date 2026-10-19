@@ -1101,6 +1101,9 @@ function updateDistDisplay() {
 const NEARBY_RADIUS_M = 100;
 const LOC_WRITE_INTERVAL = 5000;   // 5초마다 위치 쓰기
 const LOC_STALE_MS = 30000;  // 30초 이상 미업데이트 시 마커 제거
+const LOC_MIN_MOVE_M = 3;           // 이 거리 미만 이동은 '정지'로 보고 쓰기 생략
+const LOC_HEARTBEAT_MS = 20000;     // 정지 중에도 접속 표시 유지용 (LOC_STALE_MS 보다 짧게)
+let _locWritePos = null;            // 마지막으로 기록한 위치
 const LOC_POLL_INTERVAL = 30000;  // 30초마다 근처 유저 폴링
 
 // ── Geohash 인라인 구현 (CDN 불필요) ─────────────────────────────────────────
@@ -1153,7 +1156,11 @@ async function broadcastMyLocation(lat, lng) {
   if (!_uid) return;
   const now = Date.now();
   if (now - _locWriteTs < LOC_WRITE_INTERVAL) return;
+  // 거의 안 움직였으면 하트비트 주기(20초)까지 쓰기 생략 → Firestore 쓰기·배터리·데이터 절약
+  const moved = _locWritePos ? haversine(_locWritePos.lat, _locWritePos.lng, lat, lng) : Infinity;
+  if (moved < LOC_MIN_MOVE_M && now - _locWriteTs < LOC_HEARTBEAT_MS) return;
   _locWriteTs = now;
+  _locWritePos = { lat, lng };
   const name = (_userEmail || '').split('@')[0] || _t('player_default_name');
   try {
     await setDoc(doc(db, 'user_locations', _uid), {
