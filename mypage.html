@@ -10,6 +10,11 @@
   <link rel="stylesheet" href="/assets/css/header.css">
   <link rel="stylesheet" href="/assets/css/pages/apply-guide.css">
   <link rel="stylesheet" href="/assets/css/pages/mypage.css">
+  <style>
+    /* 웹3 기능 화면 숨김 (2026-10-19 대표 결정: 화면에서 모두 숨기기, 서버·데이터는 유지) */
+    .mp-kv:has(#walletAddress), .mp-kv:has(#onChainStatus), #onChainSyncRow,
+    #walletHexRow, #walletJumpRow, #walletJumpStakedRow, #txSection, #voucherWalletSection { display: none !important; }
+  </style>
 
   <script src="/assets/js/partials.js" defer=""></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>

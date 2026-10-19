@@ -111,6 +111,55 @@
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
 
+# ── 웹3 기능 화면 숨김 (2026-10-19): 토큰 거래소·지갑·DAO·코인 보물찾기 페이지는 홈으로 ──
+[[redirects]]
+  from = "/exchange"
+  to = "/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/exchange.html"
+  to = "/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/wallet"
+  to = "/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/wallet.html"
+  to = "/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/dao"
+  to = "/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/dao.html"
+  to = "/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/treasure"
+  to = "/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/treasure.html"
+  to = "/"
+  status = 302
+  force = true
+
 [[redirects]]
   from = "/mall"
   to = "/mall.html"
