@@ -300,5 +300,6 @@
     - 비관리자 계정 접속 시 `adminBattleControlWrap` 및 `adminBattlePanel`이 `display: none`으로 완벽히 숨겨짐 검증.
     - 지도 바탕 클릭 시 `No hidden treasure boxes within 100m` 인포윈도우 미노출 검증.
     - 몬스터 클릭 시 숨김 보물박스 팝업 없이 화살 투사체(`.arrow-proj`) 정상 발사 및 피격 플래시(`.hit-flash`) 정상 출력 검증 완료.
-  - Git 커밋 및 원격 저장소(`origin master`) 푸시 완료.
+  - Git 커밋: `a68e9f3` (`fix(auth/battle): restrict admin battle setup to authorized roles and fix monster click arrow hunting`)
+  - 원격 저장소(`origin master`) 푸시 완료.
 
