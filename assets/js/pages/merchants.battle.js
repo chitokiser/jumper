@@ -682,7 +682,13 @@ function checkGoldPickup() {
 // ── 좌표 → 픽셀 변환 ─────────────────────────────────────────────────────────
 function latLngToPixel(lat, lng) {
   const map = _ctx?.map;
-  if (!map || !map.getProjection || !map.getProjection() || !map.getBounds()) return null;
+  if (!map) return null;
+  // Leaflet 환경: 화면 좌표와 1:1 일치하는 containerPoint 우선 사용
+  if (map._lmap && typeof map._lmap.latLngToContainerPoint === 'function') {
+    const pt = map._lmap.latLngToContainerPoint([lat, lng]);
+    return { x: pt.x, y: pt.y };
+  }
+  if (!map.getProjection || !map.getProjection() || !map.getBounds()) return null;
   const proj   = map.getProjection();
   const bounds = map.getBounds();
   const scale  = Math.pow(2, map.getZoom());
@@ -1305,14 +1311,35 @@ function animateMeteor() {
   _skillFlash('rgba(234,88,12,0.45)', '☄️');
 }
 
-// ── 플레이어 위치 조회 (마커 우선, 없으면 lastPos 폴백) ─────────────────────
+// ── 플레이어 위치 조회 (마커 우선, lastPos 폴백, 없으면 지도 중심 자동 소환) ──
 function getMyPos() {
   const myMark = _ctx?.myLocationMarker;
   if (myMark) {
-    const p = myMark.getPosition();
-    return { lat: p.lat(), lng: p.lng() };
+    const p = myMark.getPosition?.();
+    if (p) {
+      const lat = typeof p.lat === 'function' ? p.lat() : p.lat;
+      const lng = typeof p.lng === 'function' ? p.lng() : p.lng;
+      if (lat != null && lng != null) return { lat, lng };
+    }
   }
-  if (_ctx?.lastPos) return { lat: _ctx.lastPos.lat, lng: _ctx.lastPos.lng };
+  if (_ctx?.lastPos?.lat != null && _ctx?.lastPos?.lng != null) {
+    return { lat: _ctx.lastPos.lat, lng: _ctx.lastPos.lng };
+  }
+  // 마커와 lastPos 모두 없을 때: 지도 중심 좌표를 폴백으로 사용하고 주인공 마커 자동 소환
+  if (_ctx?.map?.getCenter) {
+    const c = _ctx.map.getCenter();
+    if (c) {
+      const lat = typeof c.lat === 'function' ? c.lat() : c.lat;
+      const lng = typeof c.lng === 'function' ? c.lng() : c.lng;
+      if (lat != null && lng != null) {
+        _ctx.lastPos = { lat, lng, accuracy: 10, heading: null };
+        if (!_ctx.myLocationMarker && typeof updateMyLocation === 'function') {
+          updateMyLocation(lat, lng, 10, null);
+        }
+        return { lat, lng };
+      }
+    }
+  }
   return null;
 }
 
@@ -2098,6 +2125,117 @@ function _refreshBattleVisibility(myLat, myLng) {
   }
 }
 
+/**
+ * 주인공이 활을 쏘아 몬스터를 화살로 사냥하는 핵심 공격 함수
+ * @param {object} mob 몬스터 데이터 객체
+ * @returns {boolean} 공격 성공 여부
+ */
+export function shootArrowAtMonster(mob) {
+  if (!mob || mob.hp <= 0) return false;
+
+  // 1. 사망 상태 체크
+  if (_isDead) {
+    showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+    return false;
+  }
+
+  // 2. 공격 쿨다운 (0.4초 디바운스로 신속한 화살 연사 지원)
+  if (_clickAtkCd[mob.id]) return false;
+
+  // 3. 내 위치 좌표 획득 (getMyPos 사용 - 지도 중심 폴백 및 마커 자동 생성 포함)
+  const myPos = getMyPos();
+  if (!myPos) {
+    showSkillError(_t('skill_locating', '위치 정보를 확인 중입니다.'));
+    return false;
+  }
+  const { lat: myLat, lng: myLng } = myPos;
+
+  // 4. 거리 체크: 화살 기본 사정거리 120m (관리자는 500m)
+  const dist = haversine(myLat, myLng, mob.lat, mob.lng);
+  const clickRange = _ctx?.isAdmin ? 500 : Math.max(120, (mob.detectRadius || 30) * 3);
+
+  if (dist > clickRange) {
+    showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(dist)}m / 사거리: ${clickRange}m) 가까이 이동하세요.`);
+    return false;
+  }
+
+  // 5. 배틀 루프가 꺼져있으면 자동으로 시작
+  if (!_battleLoopId) {
+    startBattleLoop();
+  }
+
+  _clickAtkCd[mob.id] = true;
+  setTimeout(() => { delete _clickAtkCd[mob.id]; }, 400);
+
+  // 6. 주인공 모션: 몬스터를 바라보고 활 쏘기(attack) 모션
+  const myMark = _ctx?.myLocationMarker;
+  if (myMark) {
+    if (typeof myMark.setFacing === 'function') {
+      myMark.setFacing(calcBearing(myLat, myLng, mob.lat, mob.lng));
+    }
+    if (typeof myMark.setState === 'function') {
+      myMark.setState('attack');
+    }
+  }
+
+  // 7. 공격력 및 크리티컬 계산 (레벨 비례 데미지)
+  const roll     = Math.floor(Math.random() * 10) + 1;
+  const isCrit   = roll >= 6;
+  const atkPower = getTotalAtk() * (_player?.level || 1);
+  const dmg      = Math.max(60, Math.floor(atkPower * roll / 5));
+
+  // 8. 발사 사운드
+  playSound(isCrit ? 'critical_hit' : 'arrow_shot');
+
+  // 9. 화살 애니메이션 실행 후 타격 (hitMonster 호출)
+  const bowPixel = (typeof myMark?.getBowPixel === 'function') ? myMark.getBowPixel() : null;
+  animateArrow(
+    myLat, myLng, mob.lat, mob.lng,
+    isCrit ? '#ff6600' : '#fbbf24',
+    () => {
+      playSound('arrow_hit');
+      hitMonster(mob.id, dmg, mob);
+      if (isCrit) showCriticalToast();
+    },
+    bowPixel
+  );
+
+  return true;
+}
+
+/** 사정거리 내 가장 가까운 몬스터를 찾아 화살로 자동 공격 */
+export function attackNearestWithBow() {
+  if (_isDead) {
+    showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+    return false;
+  }
+  const myPos = getMyPos();
+  if (!myPos) {
+    showSkillError('위치 정보를 찾는 중입니다.');
+    return false;
+  }
+  const near = _getNearestMonster(myPos.lat, myPos.lng);
+  if (!near.mob) {
+    showSkillError('주변에 사냥할 수 있는 몬스터가 없습니다.');
+    return false;
+  }
+  return shootArrowAtMonster(near.mob);
+}
+
+// 전역 헬퍼 바인딩
+window.__shootArrowAtMonster = shootArrowAtMonster;
+window.__attackNearestWithBow = attackNearestWithBow;
+window.__getMonsters = () => _monsters;
+window.__addMonster = (m) => {
+  _monsters.push(m);
+  _monsterGrid?.register?.(m);
+  if (_ctx?.map) _spawnMonsterMarker(m);
+};
+window.__shootMob = (mobId) => {
+  const mob = _monsters.find(m => m.id === mobId);
+  if (mob) shootArrowAtMonster(mob);
+};
+
 function _spawnMonsterMarker(mob) {
   const map = _ctx?.map;
   const infoWindow = _ctx?.infoWindow;
@@ -2122,56 +2260,32 @@ function _spawnMonsterMarker(mob) {
     const overlay = createMonsterSpriteOverlay(
       startVisible ? map : null, gsLike,
       () => {
-        if (_isDead) {
-          showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
-          return;
-        }
-        if (!_battleLoopId) {
-          showSkillError('▶ 우측 HUD의 [▶] 버튼을 눌러 게임을 시작해야 공격할 수 있습니다!');
-          const iw = _ctx?.infoWindow;
-          if (iw) { iw.setContent('<div style="font-size:12px;padding:6px 10px;color:#374151">▶ Press <b>Play</b> to start the game and fight monsters!</div>'); iw.open(map); }
-          return;
-        }
-        let myDist = null;
-        const clickRange = _ctx?.isAdmin ? 150 : (mob.detectRadius || 30);
-        if (_ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
-          const myPos = _ctx.myLocationMarker.getPosition();
-          const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-          myDist = Math.round(dist);
-          if (dist <= clickRange) {
-            const roll = Math.floor(Math.random() * 10) + 1;
-            const isCrit = roll >= 6;
-            const dmg  = Math.floor(getTotalAtk() * roll / 5);
-            _clickAtkCd[mob.id] = true;
-            setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
-            const _spr1 = _ctx?.myLocationMarker;
-            if (_spr1 && typeof _spr1.setFacing === 'function') _spr1.setFacing(calcBearing(myPos.lat(), myPos.lng(), mob.lat, mob.lng));
-            if (_spr1 && typeof _spr1.setState === 'function') _spr1.setState('attack');
-            playSound(isCrit ? 'critical_hit' : 'arrow_hit');
-            animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
-              isCrit ? '#ff6600' : '#fbbf24', () => {
-                hitMonster(mob.id, dmg);
-                if (isCrit) showCriticalToast();
-              }, _spr1?.getBowPixel?.());
-            return;
-          } else {
-            showSkillError(`🎯 사정거리 초과! (거리: ${myDist}m / 사거리: ${clickRange}m) 가까이 이동하세요.`);
-          }
-        }
+        // 화살 공격 즉시 발사
+        const shot = shootArrowAtMonster(mob);
+        if (shot) return;
+
+        // 사정거리 밖이거나 사망 등 공격 불가 시에만 인포윈도우 열기
+        const p = getMyPos();
+        const myDist = p ? Math.round(haversine(p.lat, p.lng, mob.lat, mob.lng)) : null;
+        const clickRange = _ctx?.isAdmin ? 500 : Math.max(120, (mob.detectRadius || 30) * 3);
         const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
         infoWindow?.setContent(`
-          <div style="font-size:13px;min-width:150px">
+          <div style="font-size:13px;min-width:160px">
             <b>🐉 ${escHtml(mob.name||_t('dragon_default'))}</b>
             ${myDist !== null ? `<div style="font-size:11px;color:${myDist <= clickRange ? '#10b981' : '#f59e0b'};margin:2px 0;">🎯 거리: ${myDist}m (사거리: ${clickRange}m)</div>` : ''}
             <div style="margin:4px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
             <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
               <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
-            ${_ctx?.isAdmin ? `<div style="display:flex;gap:4px;margin-top:8px;">
-              <button onclick="window.__warpToMob(${mob.lat}, ${mob.lng})"
-                style="padding:3px 8px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold">🏃 이 위치로 이동</button>
-              <button onclick="window.__deleteBattleObj('monster','${mob.id}')"
-                style="padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>
-            </div>` : ''}
+            <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">
+              <button onclick="window.__shootMob('${mob.id}')"
+                style="padding:3px 8px;background:#10b981;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold">🏹 화살 사격</button>
+              ${_ctx?.isAdmin ? `
+                <button onclick="window.__warpToMob(${mob.lat}, ${mob.lng})"
+                  style="padding:3px 8px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold">🏃 이동</button>
+                <button onclick="window.__deleteBattleObj('monster','${mob.id}')"
+                  style="padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>
+              ` : ''}
+            </div>
           </div>`);
         infoWindow?.setPosition({ lat: mob.lat, lng: mob.lng });
         infoWindow?.open(map);
@@ -2190,58 +2304,34 @@ function _spawnMonsterMarker(mob) {
     zIndex: 50,
   });
   marker.addListener('click', () => {
-    // 마커가 지도에 없으면(보이지 않으면) 공격 불가
     if (!marker.getMap()) return;
-    if (_isDead) {
-      showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
-      return;
-    }
-    if (!_battleLoopId) {
-      showSkillError('▶ 우측 HUD의 [▶] 버튼을 눌러 게임을 시작해야 공격할 수 있습니다!');
-      infoWindow?.setContent('<div style="font-size:12px;padding:8px 12px;color:#374151;min-width:180px">▶ Press <b>Play</b> to connect the game server and fight monsters!<br><span style="font-size:11px;color:#6b7280;">Tap the ▶ button to start.</span></div>');
-      infoWindow?.open(map, marker);
-      return;
-    }
-    let myDist = null;
-    const clickRange = _ctx?.isAdmin ? 150 : (mob.detectRadius || 30);
-    if (_ctx?.myLocationMarker && !_clickAtkCd[mob.id] && mob.hp > 0) {
-      const myPos = _ctx.myLocationMarker.getPosition();
-      const dist  = haversine(myPos.lat(), myPos.lng(), mob.lat, mob.lng);
-      myDist = Math.round(dist);
-      if (dist <= clickRange) {
-        const roll   = Math.floor(Math.random() * 10) + 1;
-        const isCrit = roll >= 6;
-        const dmg    = Math.floor(getTotalAtk() * roll / 5);
-        _clickAtkCd[mob.id] = true;
-        setTimeout(() => { delete _clickAtkCd[mob.id]; }, 800);
-        const _spr2 = _ctx?.myLocationMarker;
-        if (_spr2 && typeof _spr2.setFacing === 'function') _spr2.setFacing(calcBearing(myPos.lat(), myPos.lng(), mob.lat, mob.lng));
-        if (_spr2 && typeof _spr2.setState === 'function') _spr2.setState('attack');
-        playSound(isCrit ? 'critical_hit' : 'arrow_hit');
-        animateArrow(myPos.lat(), myPos.lng(), mob.lat, mob.lng,
-          isCrit ? '#ff6600' : '#fbbf24', () => {
-            hitMonster(mob.id, dmg);
-            if (isCrit) showCriticalToast();
-          }, _spr2?.getBowPixel?.());
-        return;
-      } else {
-        showSkillError(`🎯 사정거리 초과! (거리: ${myDist}m / 사거리: ${clickRange}m) 가까이 이동하세요.`);
-      }
-    }
+
+    // 화살 공격 즉시 발사
+    const shot = shootArrowAtMonster(mob);
+    if (shot) return;
+
+    // 사정거리 밖이거나 사망 등 공격 불가 시에만 인포윈도우 열기
+    const p = getMyPos();
+    const myDist = p ? Math.round(haversine(p.lat, p.lng, mob.lat, mob.lng)) : null;
+    const clickRange = _ctx?.isAdmin ? 500 : Math.max(120, (mob.detectRadius || 30) * 3);
     const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
     infoWindow?.setContent(`
-      <div style="font-size:13px;min-width:150px">
+      <div style="font-size:13px;min-width:160px">
         <b>${escHtml(mob.name||_t('monster_default'))}</b>
         ${myDist !== null ? `<div style="font-size:11px;color:${myDist <= clickRange ? '#10b981' : '#f59e0b'};margin:2px 0;">🎯 거리: ${myDist}m (사거리: ${clickRange}m)</div>` : ''}
         <div style="margin:4px 0 2px;font-size:11px;color:#888">HP ${mob.hp} / ${mob.maxHp}</div>
         <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
           <div style="height:100%;width:${hpPct}%;background:#ef4444;border-radius:4px"></div></div>
-        ${_ctx?.isAdmin ? `<div style="display:flex;gap:4px;margin-top:8px;">
-          <button onclick="window.__warpToMob(${mob.lat}, ${mob.lng})"
-            style="padding:3px 8px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold">🏃 이 위치로 이동</button>
-          <button onclick="window.__deleteBattleObj('monster','${mob.id}')"
-            style="padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>
-        </div>` : ''}
+        <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">
+          <button onclick="window.__shootMob('${mob.id}')"
+            style="padding:3px 8px;background:#10b981;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold">🏹 화살 사격</button>
+          ${_ctx?.isAdmin ? `
+            <button onclick="window.__warpToMob(${mob.lat}, ${mob.lng})"
+              style="padding:3px 8px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold">🏃 이동</button>
+            <button onclick="window.__deleteBattleObj('monster','${mob.id}')"
+              style="padding:3px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">${_t('admin_delete')}</button>
+          ` : ''}
+        </div>
       </div>`);
     infoWindow?.open(map, marker);
   });
@@ -2712,13 +2802,20 @@ function _scheduleMonsterRespawn(mob, deadAtMs) {
   }, remaining);
 }
 
-async function hitMonster(monsterId, damage) {
-  const mob = _monsters.find(m => m.id === monsterId);
+export async function hitMonster(monsterId, damage, mobRef = null) {
+  let mob = _monsters.find(m => m.id === monsterId) || mobRef;
   if (!mob || mob.hp <= 0) return;
+  if (!_monsters.some(m => m.id === mob.id)) {
+    _monsters.push(mob);
+  }
   mob.hp = Math.max(0, mob.hp - damage);
 
   const isDead = mob.hp <= 0;
   const myUid  = _ctx?.uid || null;
+
+  // 데미지 플로팅 텍스트 표시
+  showFloat(`-${damage}`, '#ef4444', mob.lat, mob.lng);
+
   // battle_hp 에 공유 상태 기록 (killedBy = 처치자 UID, aggroUid 초기화)
   setDoc(doc(_ctx.db, 'battle_hp', `monster_${monsterId}`), {
     hp: mob.hp, maxHp: mob.maxHp, isDead, type: 'monster',
@@ -2727,6 +2824,12 @@ async function hitMonster(monsterId, damage) {
 
   const marker = _monsterMarkers[monsterId];
   if (marker) marker.setTitle(`${mob.name||_t('monster_default')} HP:${mob.hp}`);
+
+  // 스프라이트 몬스터 오버레이 HP바 실시간 갱신 및 피격 반응
+  const overlay = _monsterOverlays[monsterId];
+  if (overlay && typeof overlay.updateMonster === 'function') {
+    overlay.updateMonster(mob);
+  }
 
   if (isDead) {
     // 어그로 초기화 (내가 처치)

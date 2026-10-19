@@ -21,6 +21,7 @@ import {
   castLightning, castIceFreeze, castFireStorm, castWhirlwind, castMeteor, castHeal,
   setGsSkillCallback, setGsMobsGetter,
   useReviveTicket, revivePlayerAdmin, updateSkillBar, useMagicStone, getPlayerGold, getPlayerToken, getPlayerLevel, isPlayerDead,
+  shootArrowAtMonster, attackNearestWithBow,
   syncHpFromServer, syncDeathFromServer, syncReviveFromServer,
   spawnGsDrop, removeGsDrop,
   equipWeapon, equipArmor, equipArmorToSlot, unequipWeapon, unequipArmor, getTotalAtk, getDefense,
@@ -411,6 +412,14 @@ function initMap() {
   // ctx에도 반영
   _ctx.map = map;
   _ctx.infoWindow = infoWindow;
+
+  // 게임 시작 전이라도 지도에 플레이어 마커 소환 (초기 중심 좌표 20.9947, 105.9487)
+  if (!_ctx.lastPos) {
+    _ctx.lastPos = { lat: 20.9947, lng: 105.9487, accuracy: 10, heading: null };
+  }
+  if (!_ctx.myLocationMarker && typeof updateMyLocation === 'function') {
+    updateMyLocation(_ctx.lastPos.lat, _ctx.lastPos.lng, 10, null);
+  }
 
   // HUD 버튼을 Google Maps Custom Control로 등록 (우상단 배치로 하단 스킬바 충돌 완전 차단)
   const existingHud = $('mapHud');
@@ -1274,7 +1283,13 @@ function _renderGsMonster(monster) {
           const m = _gsMonsters[monsterId];
           if (!m) return;
           if (isPlayerDead()) return;
-          if (!isGameServerConnected()) return;
+          if (!isGameServerConnected()) {
+            const fsMob = _monsters?.find?.(x => x.id === monsterId);
+            if (fsMob) {
+              shootArrowAtMonster(fsMob);
+              return;
+            }
+          }
           // 거리 체크 — GS_MONSTER_ATTACK_RANGE_M 이내에서만 공격
           const myPos = _ctx.lastPos;
           if (!myPos) return;
@@ -3724,7 +3739,7 @@ async function init() {
   $('skillBtnMpPotion')?.addEventListener('click', useMpPotion);
   $('skillBtnMagicStone')?.addEventListener('click', useMagicStone);
 
-  // 키보드 단축키 1-9
+  // 키보드 단축키 1-9 및 화살 사냥(A, Space)
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.key === '1') castLightning();
@@ -3736,6 +3751,10 @@ async function init() {
     else if (e.key === '7') castHeal();
     else if (e.key === '8') useMpPotion();
     else if (e.key === '9') useMagicStone();
+    else if (e.key === 'a' || e.key === 'A' || e.code === 'Space') {
+      e.preventDefault();
+      attackNearestWithBow();
+    }
   });
 
   // 전투 HUD 클릭 → 접기/펼치기 (모바일: 기본 접힘)

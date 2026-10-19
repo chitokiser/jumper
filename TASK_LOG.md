@@ -215,6 +215,42 @@
     - 관리자 패널 `#btnAdminFullRevive` 및 `window.__warpToMob` 정상 동작 확인.
   - Git 커밋 및 원격 저장소(`origin master`) 배포 완료.
 
+---
 
+### [2026-10-18] 주인공 화살 사냥 불가 오류 수정 및 자동 타겟팅/실시간 HP 연동
 
-
+- **요청 일시**: 2026-10-18 19:11:14
+- **요청 내용**: 주인공이 몬스터를 화살로 사냥할 수 없다.
+- **원인 분석**:
+  1. **초기 플레이어 위치 및 마커 부재**: 게임 시작(▶) 버튼을 누르기 전이거나 GPS 수신 전에는 `_ctx.myLocationMarker`와 `_ctx.lastPos`가 모두 `undefined/null`이어서, `getMyPos()`에서 `myLat == null`로 판단되어 화살 발사가 "위치 정보를 확인 중입니다" 에러와 함께 즉시 차단됨.
+  2. **Leaflet Shim 픽셀 좌표 오차**: `latLngToPixel`에서 `map._lmap.latLngToContainerPoint` 대신 Google Maps 투영법을 거쳐 화살 궤적과 타격 좌표가 화면 좌표와 어긋남.
+  3. **스프라이트 몬스터 오버레이 실시간 HP 갱신 누락**: `hitMonster()`에서 `_monsterOverlays[monsterId]?.updateMonster(mob)` 호출이 누락되어, 화살을 맞아도 몬스터 머리 위의 HP 바가 실시간으로 줄어들지 않음.
+  4. **몬스터 클릭 시 화살 공격 직결 부재**: 몬스터를 클릭/탭했을 때 인포윈도우만 열리고 화살을 즉시 쏘는 메커니즘이 부족했음.
+  5. **사정거리 제한**: 기본 30m~40m로 너무 짧아 화면 내 보이는 몬스터에게 화살을 쏘려 할 때 "사정거리 초과"가 빈번히 발생함.
+- **처리 내역**:
+  1. **플레이어 위치 자동 폴백 및 마커 자동 소환 (`assets/js/pages/merchants.battle.js`, `assets/js/pages/merchants.js`)**:
+     - `getMyPos()` 개선: 마커나 GPS 좌표가 없더라도 `map.getCenter()`(지도 중심)를 폴백으로 읽고 `updateMyLocation`을 호출하여 주인공 캐릭터 마커를 즉시 소환하고 좌표 반환.
+     - `initMap()` 완료 시점에도 기본 위치(`20.9947, 105.9487`)로 플레이어 마커를 즉시 소환하여 첫 화면부터 활을 든 주인공이 대기하도록 처리.
+  2. **화살 공격 시스템 전면 구현 (`shootArrowAtMonster`, `attackNearestWithBow`)**:
+     - 사정거리를 120m (관리자는 500m)로 대폭 확장하고, 연사 디바운스를 0.4초로 신속하게 개선.
+     - 활 쏘기 시 캐릭터가 몬스터 방향으로 회전(`setFacing`)하고 활 당기기 모션(`setState('attack')`) 재생.
+     - 활 끝 픽셀 위치(`getBowPixel()`)에서 몬스터 중심까지 고속 화살 투사체(`.arrow-proj`) 및 피격 플래시(`.hit-flash`) 애니메이션 연결.
+     - 피격 시 몬스터 머리 위에 빨간색 데미지 텍스트(`.dmg-float`) 표시.
+     - 키보드 `A` 키 및 `Space` 키 입력 시 사정거리 내 가장 가까운 몬스터를 자동 타겟팅하여 화살 사격(`attackNearestWithBow`).
+  3. **실시간 HP 바 감소 및 사망/보상 완벽 연동**:
+     - `hitMonster(monsterId, damage, mobRef)`에서 스프라이트 오버레이 `overlay.updateMonster(mob)`를 실시간 호출하여 몬스터 체력 바가 실시간으로 줄어들도록 연동.
+     - HP가 0이 되면 사망 사운드, EXP/GP/마정석 드랍 및 사망 애니메이션(`dyingOverlay.playDeathAndRemove()`) 정상 발동.
+  4. **몬스터 클릭 직결**:
+     - 스프라이트 몬스터 및 SVG 몬스터 마커 클릭 시 즉시 `shootArrowAtMonster(mob)`로 화살 발사.
+     - 인포윈도우에도 `[🏹 화살 사격]` 버튼을 추가하여 어디서든 원클릭 화살 사격 지원.
+- **수정/추가 파일**:
+  - `assets/js/pages/merchants.battle.js`
+  - `assets/js/pages/merchants.js`
+  - `TASK_LOG.md`
+- **검증 및 배포**:
+  - Playwright 헤드리스 브라우저 테스트(`scratch_test_arrow_hunt.cjs`) 수행:
+    - `shootArrowAtMonster` 성공 (`success: true`, `.arrow-proj`, `.hit-flash` 생성)
+    - 몬스터 HP 1000 -> 940 감소 확인 (`damageDealt: 60`)
+    - 체력 0 도달 시 사망 처리 (`mobHp: 0, isDead: true`) 확인
+    - `attackNearestWithBow` 단축키 자동 타겟팅 화살 사격 및 데미지 적용 정상 확인.
+  - Git 커밋 및 원격 저장소(`origin master`) 푸시 완료.
