@@ -253,4 +253,5 @@
     - 몬스터 HP 1000 -> 940 감소 확인 (`damageDealt: 60`)
     - 체력 0 도달 시 사망 처리 (`mobHp: 0, isDead: true`) 확인
     - `attackNearestWithBow` 단축키 자동 타겟팅 화살 사격 및 데미지 적용 정상 확인.
-  - Git 커밋 및 원격 저장소(`origin master`) 푸시 완료.
+  - Git 커밋: `9b46d27` (`fix(battle): allow player to hunt monsters with bow and arrow`)
+  - 원격 저장소(`origin master`) 푸시 완료.
