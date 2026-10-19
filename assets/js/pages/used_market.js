@@ -1,6 +1,7 @@
 // /assets/js/pages/used_market.js
 import { onAuthReady } from "/assets/js/auth.js";
 import { app, db } from "/assets/js/firebase-init.js";
+import { formatUsedPrice, priceForVndInput } from "/assets/js/used-market-currency.js";
 import {
   collection,
   getDocs,
@@ -130,7 +131,7 @@ function render() {
           </div>
           <div class="um-body">
             <div class="um-title">${esc(x.title || "제목 없음")}</div>
-            <div class="um-price">${Number(x.price || 0).toLocaleString()}원</div>
+            <div class="um-price">${esc(formatUsedPrice(x))}</div>
             <div class="um-meta">
               <span>📍 ${esc(x.region || "-")}</span>
               <span>📅 ${fmtDate(x.createdAt)}</span>
@@ -239,7 +240,7 @@ function openAdminEditModal(id) {
   $("mEditId").value = item.id;
   $("mEditStatus").value = item.status || "on_sale";
   $("mEditTitle").value = item.title || "";
-  $("mEditPrice").value = Number(item.price || 0);
+  $("mEditPrice").value = priceForVndInput(item);
   $("mEditRegion").value = item.region || "";
   $("mEditContact").value = item.contact || "";
   $("mSellerName").textContent = item.sellerName || "판매자 미지정";
@@ -305,6 +306,7 @@ async function handleModalSave(e) {
       title,
       status,
       price,
+      currency: "VND",
       region,
       contact,
       description,

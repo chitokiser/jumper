@@ -150,6 +150,7 @@ onAuthReady(({ loggedIn, user }) => {
       const refDoc = await addDoc(collection(db, "usedMarketPosts"), {
         title,
         price,
+        currency: "VND",
         region,
         contact,
         imageUrls,

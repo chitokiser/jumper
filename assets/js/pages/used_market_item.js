@@ -1,6 +1,7 @@
 // /assets/js/pages/used_market_item.js
 import { onAuthReady } from "/assets/js/auth.js";
 import { app, db } from "/assets/js/firebase-init.js";
+import { formatUsedPrice, priceForVndInput } from "/assets/js/used-market-currency.js";
 import {
   doc,
   getDoc,
@@ -94,7 +95,7 @@ function canManagePost() {
 function fillEditForm(post) {
   if ($("eStatus")) $("eStatus").value = post.status || "on_sale";
   $("eTitle").value = post.title || "";
-  $("ePrice").value = Number(post.price || 0);
+  $("ePrice").value = priceForVndInput(post);
   $("eRegion").value = post.region || "";
   $("eContact").value = post.contact || "";
   $("eDesc").value = post.description || "";
@@ -144,7 +145,7 @@ function render(post) {
   const stVal = post.status || "on_sale";
   $("dTitle").textContent = post.title || "제목 없음";
   $("dBadge").innerHTML = `<span class="um-badge ${esc(stVal)}">${statusText(stVal)}</span>`;
-  $("dPrice").textContent = `${Number(post.price || 0).toLocaleString()}원`;
+  $("dPrice").textContent = formatUsedPrice(post);
   $("dRegion").textContent = post.region || "-";
   $("dSeller").textContent = post.sellerName || post.sellerEmail || "-";
   $("dContact").textContent = post.contact || "-";
@@ -205,6 +206,7 @@ async function saveEdit(e) {
       title,
       status,
       price,
+      currency: "VND",
       region,
       contact,
       description,
