@@ -707,6 +707,7 @@
           opacity: opts.strokeOpacity ?? 0.8,
           fillColor: opts.fillColor || '#3b82f6',
           fillOpacity: opts.fillOpacity ?? 0.2,
+          interactive: false, // 시각 효과 전용 — 아래 몬스터·마커 클릭을 가로채지 않음
         });
       }
 
@@ -733,6 +734,31 @@
       }
     }
 
+    getRadius() {
+      return this._radius;
+    }
+
+    // google.maps.Circle.setOptions 호환 (없으면 힐 파동 효과가 매 프레임 오류 → 원이 지워지지 않고 화면을 덮음)
+    setOptions(opts = {}) {
+      this._opts = { ...this._opts, ...opts };
+      if (opts.center) this.setCenter(opts.center);
+      if (opts.radius != null) this.setRadius(opts.radius);
+      if (this._lcircle) {
+        const style = {};
+        if (opts.strokeColor != null) style.color = opts.strokeColor;
+        if (opts.strokeWeight != null) style.weight = opts.strokeWeight;
+        if (opts.strokeOpacity != null) style.opacity = Math.max(0, opts.strokeOpacity);
+        if (opts.fillColor != null) style.fillColor = opts.fillColor;
+        if (opts.fillOpacity != null) style.fillOpacity = Math.max(0, opts.fillOpacity);
+        if (Object.keys(style).length) this._lcircle.setStyle(style);
+      }
+      if ('map' in opts) this.setMap(opts.map);
+    }
+
+    setVisible(v) {
+      if (this._lcircle) this._lcircle.setStyle({ opacity: v ? (this._opts.strokeOpacity ?? 0.8) : 0, fillOpacity: v ? (this._opts.fillOpacity ?? 0.2) : 0 });
+    }
+
     setMap(map) {
       if (!this._lcircle) return;
       if (map && map._lmap) {
@@ -756,6 +782,7 @@
         color: opts.strokeColor || '#2563eb',
         weight: opts.strokeWeight || 3,
         opacity: opts.strokeOpacity ?? 0.8,
+        interactive: false,
       });
 
       if (opts.map) {
@@ -778,6 +805,16 @@
         return [obj.lat, obj.lng];
       });
       this._lpoly.setLatLngs(pts);
+    }
+
+    setOptions(opts = {}) {
+      const style = {};
+      if (opts.strokeColor != null) style.color = opts.strokeColor;
+      if (opts.strokeWeight != null) style.weight = opts.strokeWeight;
+      if (opts.strokeOpacity != null) style.opacity = Math.max(0, opts.strokeOpacity);
+      if (Object.keys(style).length) this._lpoly.setStyle(style);
+      if (opts.path) this.setPath(opts.path);
+      if ('map' in opts) this.setMap(opts.map);
     }
   };
 
