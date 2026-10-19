@@ -951,16 +951,38 @@ export function preloadSpriteImages() {
     }
   }
 
-  // 2단계 로드: 짧은 딜레이 후 나머지 이미지 로드 (idle[0] 로드 완료 후)
-  setTimeout(() => {
-    for (const url of later) {
-      if (!_preloadCache.has(url)) {
-        const img = new Image();
-        img.src = url;
-        _preloadCache.set(url, img);
-      }
+  // 2단계(나머지 프레임)는 전 종류를 미리 받지 않고, 해당 몬스터가 지도에 처음 나타날 때
+  // _preloadTypeFrames() 로 그 종류만 받는다 (예전: 16종 약 900장을 게임 시작 때 모두 요청)
+  void later;
+}
+
+const _typeFramesLoaded = new Set();
+/** 지도에 처음 등장한 몬스터 종류의 전체 애니메이션 프레임을 백그라운드로 미리 받기 */
+function _preloadTypeFrames(type) {
+  if (_typeFramesLoaded.has(type)) return;
+  _typeFramesLoaded.add(type);
+  const cfg = SPRITE_CONFIGS[type];
+  if (!cfg?.framesMode) return;
+  const sf = cfg.startFrame ?? 0;
+  const pd = cfg.padDigits ?? 3;
+  const urls = [];
+  for (const anim of Object.values(cfg.animations)) {
+    for (let i = 0; i < anim.frames; i++) {
+      const n = pd > 0 ? String(i + sf).padStart(pd, '0') : String(i + sf);
+      const url = cfg.basePath + anim.prefix + n + '.png';
+      if (!_preloadCache.has(url) && !urls.includes(url)) urls.push(url);
     }
-  }, 500);
+  }
+  const run = () => {
+    for (const url of urls) {
+      if (_preloadCache.has(url)) continue;
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = url;
+      _preloadCache.set(url, img);
+    }
+  };
+  (window.requestIdleCallback || ((fn) => setTimeout(fn, 300)))(run);
 }
 
 /** 해당 타입에 스프라이트 설정이 있는지 확인 */
@@ -983,6 +1005,7 @@ export function createMonsterSpriteOverlay(map, monster, onClick, onRemoved) {
     console.warn('[MonsterSprite] 설정 없는 타입:', monster.type);
     return null;
   }
+  _preloadTypeFrames(monster.type);
   const overlay = new Cls(monster, cfg, onClick, onRemoved);
   overlay.setMap(map);
   return overlay;
