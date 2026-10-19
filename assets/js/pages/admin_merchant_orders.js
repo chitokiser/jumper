@@ -1,5 +1,6 @@
-﻿import { app } from "../firebase-init.js";
-import { getFirestore, collection, getDocs, query, where, orderBy, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+﻿import { app, functions } from "../firebase-init.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
+import { getFirestore, collection, getDocs, getDoc, query, where, orderBy, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { onAuthReady } from "../auth.js";
 
 const db = getFirestore(app);
@@ -12,11 +13,19 @@ onAuthReady(async ({ loggedIn, user, role, token }) => {
         window.location.href = "/login.html";
         return;
     }
+    // 가맹점 번호: 로그인 토큰 → users/{uid}.merchantId 순으로 확인 (임의 기본값 사용 금지)
+    let merchantId = (token && token.merchant_id) ? String(token.merchant_id) : "";
+    if (!merchantId) {
+        try {
+            const uSnap = await getDoc(doc(db, "users", user.uid));
+            if (uSnap.exists() && uSnap.data().merchantId != null) merchantId = String(uSnap.data().merchantId);
+        } catch (e) { console.warn("merchantId 조회 실패", e); }
+    }
     currentViewer = {
         uid: user.uid,
         email: user.email,
         role: role,
-        merchant_id: (token && token.merchant_id) ? token.merchant_id : "daehan_kimchi"
+        merchant_id: merchantId
     };
 
     if (currentViewer.role === "admin") {
@@ -43,6 +52,16 @@ async function loadMerchantListForAdmin() {
     }
 }
 
+// 주문의 merchant_id 는 숫자/문자/옛 별칭으로 저장된 경우가 있어 모두 조회
+const MERCHANT_ALIASES = { "1791002036": ["daehan_kimchi"], "1791605366": ["bestwinner"] };
+function merchantIdVariants(id) {
+    const s = String(id);
+    const out = new Set([s, ...(MERCHANT_ALIASES[s] || [])]);
+    for (const [k, v] of Object.entries(MERCHANT_ALIASES)) if (v.includes(s)) { out.add(k); v.forEach(x => out.add(x)); }
+    for (const x of [...out]) if (/^\d+$/.test(x)) out.add(Number(x));
+    return [...out].slice(0, 30);
+}
+
 async function loadOrders() {
     const listEl = $("orderList");
     const stateEl = $("orderState");
@@ -60,7 +79,11 @@ async function loadOrders() {
                 q = query(collection(db, "merchant_orders"), where("merchant_id", "==", selected));
             }
         } else {
-            q = query(collection(db, "merchant_orders"), where("merchant_id", "==", currentViewer.merchant_id));
+            if (!currentViewer.merchant_id) {
+                stateEl.textContent = "가맹점 정보가 연결되지 않은 계정입니다. 관리자에게 문의해 주세요.";
+                return;
+            }
+            q = query(collection(db, "merchant_orders"), where("merchant_id", "in", merchantIdVariants(currentViewer.merchant_id)));
         }
 
         const snap = await getDocs(q);
@@ -129,6 +152,15 @@ async function loadOrders() {
                     break;
             }
 
+            // 입금 확인 후: 고객 이메일로 BT 보내기 (가맹점주 BT 잔고에서 차감, 지급 기준금액당 1 BT)
+            const paidLike = data.payment_status === "paid" || ["payment_confirmed", "shipped", "completed"].includes(data.status);
+            let btBox = "";
+            if (data.bt_sent) {
+                btBox = `<div style="margin:6px 0; font-size:0.85rem; color:#7c3aed; font-weight:600;">🎟️ BT 전송 완료: ${data.bt_issued ?? "-"} BT → ${data.bt_sent_to || data.buyer_email || ""}</div>`;
+            } else if (paidLike && data.status !== "cancelled" && data.buyer_email) {
+                btBox = `<button class="btn btn--sm" style="background:#7c3aed;color:white;border:none;padding:6px 12px;" data-action="send-bt" data-id="${d.id}" data-email="${data.buyer_email}" data-amount="${Number(data.total_amount) || 0}">🎟️ 고객 이메일로 BT 보내기</button>`;
+            }
+
             // 상품 아이템 요약
             const itemsSummary = (data.items || []).map(it => `${it.name || it.product_name || '상품'} x ${it.qty || 1}개`).join(', ');
 
@@ -155,6 +187,7 @@ async function loadOrders() {
                     ${payBadge}
                     <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;">
                         ${btnAction}
+                        ${btBox}
                         ${data.status !== "cancelled" && data.status !== "completed" ? `<button class="btn btn--sm" data-action="cancel" data-id="${d.id}" style="background:#f3f4f6; color:#374151; border:1px solid #d1d5db;">주문 취소</button>` : ""}
                     </div>
                 </div>
@@ -185,6 +218,28 @@ async function loadOrders() {
                     loadOrders();
                 } catch (err) {
                     alert("처리 실패: " + err.message);
+                }
+            });
+        });
+
+        listEl.querySelectorAll("button[data-action='send-bt']").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const orderId = btn.getAttribute("data-id");
+                const email = btn.getAttribute("data-email");
+                const amount = Number(btn.getAttribute("data-amount"));
+                if (!confirm(`고객 [${email}] 에게 결제금액 ${amount.toLocaleString()} VND 기준 BT를 보냅니다.
+가맹점 BT 잔고에서 차감됩니다. 진행할까요?`)) return;
+                btn.disabled = true;
+                btn.textContent = "전송 중...";
+                try {
+                    // 서버가 주문 원장(이메일·금액)으로 계산하고, 같은 주문의 중복 전송을 막으며 주문에 전송 기록을 남긴다
+                    const res = await httpsCallable(functions, "merchantSendBtDirect")({ orderId });
+                    alert(`BT 전송 완료: ${email} 님에게 ${res.data?.btIssued ?? ""} BT`);
+                    loadOrders();
+                } catch (err) {
+                    alert("BT 전송 실패: " + (err.message || err));
+                    btn.disabled = false;
+                    btn.textContent = "🎟️ 고객 이메일로 BT 보내기";
                 }
             });
         });

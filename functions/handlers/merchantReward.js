@@ -124,10 +124,32 @@ module.exports = { merchantSendBtDirect,
 };
 
 
-async function merchantSendBtDirect(data, context) {
-    if (!context.auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
-    const merchantUid = context.auth.uid;
-    const { customerEmail, amountVnd } = data;
+// 주문 merchant_id 는 숫자/문자/옛 별칭으로 저장된 경우가 있음
+const MERCHANT_ALIASES = { '1791002036': ['daehan_kimchi'], '1791605366': ['bestwinner'] };
+function sameMerchant(a, b) {
+    const x = String(a), y = String(b);
+    if (x === y) return true;
+    return (MERCHANT_ALIASES[x] || []).includes(y) || (MERCHANT_ALIASES[y] || []).includes(x);
+}
+
+// v2 onCall(request) 와 v1 (data, context) 호출 모두 지원
+async function merchantSendBtDirect(reqOrData, ctx) {
+    const data = ctx ? (reqOrData || {}) : (reqOrData?.data || {});
+    const auth = ctx ? ctx.auth : reqOrData?.auth;
+    if (!auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    const merchantUid = auth.uid;
+    const orderId = data.orderId ? String(data.orderId) : null;
+    let { customerEmail, amountVnd } = data;
+
+    // 주문 기반 전송: 고객 이메일·금액은 주문 원장 값을 사용 (클라이언트 값 무시)
+    if (orderId) {
+        const oSnap = await db.collection('merchant_orders').doc(orderId).get();
+        if (!oSnap.exists) throw new HttpsError('not-found', '주문을 찾을 수 없습니다.');
+        const o = oSnap.data() || {};
+        customerEmail = o.buyer_email;
+        amountVnd = Number(o.total_amount) || 0;
+    }
+    amountVnd = Number(amountVnd);
     
     if (!customerEmail || !amountVnd || amountVnd < 10000) {
         throw new HttpsError('invalid-argument', '고객 이메일과 결제금액(VND)을 올바르게 입력해주세요.');
@@ -160,6 +182,20 @@ async function merchantSendBtDirect(data, context) {
 
     // Wrap in transaction
     return await db.runTransaction(async (tx) => {
+        // 주문 기반이면 같은 주문으로 중복 전송 방지 + 본인 가맹점 주문인지 확인 (읽기는 쓰기보다 먼저)
+        let orderRef = null;
+        if (orderId) {
+            orderRef = db.collection('merchant_orders').doc(orderId);
+            const oDoc = await tx.get(orderRef);
+            const o = oDoc.data() || {};
+            if (!sameMerchant(o.merchant_id, merchantId)) throw new HttpsError('permission-denied', '본인 가맹점의 주문만 처리할 수 있습니다.');
+            if (o.bt_sent) throw new HttpsError('already-exists', '이미 BT를 보낸 주문입니다.');
+            if (o.status === 'cancelled') throw new HttpsError('failed-precondition', '취소된 주문입니다.');
+            if (!(o.payment_status === 'paid' || ['payment_confirmed', 'shipped', 'completed'].includes(o.status))) {
+                throw new HttpsError('failed-precondition', '입금 확인(주문 승인) 후에 BT를 보낼 수 있습니다.');
+            }
+        }
+
         
         const mOwnerRef = db.collection('users').doc(merchantUid);
         const mOwnerDoc = await tx.get(mOwnerRef);
@@ -208,8 +244,19 @@ async function merchantSendBtDirect(data, context) {
             customerEmail,
             amountVnd,
             btIssued: btAmountToGive,
+            orderId: orderId || null,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
+        if (orderRef) {
+            tx.update(orderRef, {
+                bt_sent: true,
+                bt_issued: btAmountToGive,
+                bt_sent_to: customerEmail,
+                bt_tx_id: logRef.id,
+                bt_sent_at: admin.firestore.FieldValue.serverTimestamp(),
+                updated_at: admin.firestore.FieldValue.serverTimestamp()
+            });
+        }
         
         return { success: true, btIssued: btAmountToGive, customerEmail };
     });

@@ -184,7 +184,7 @@ function _renderMarkers() {
       title:  m.label,
       zIndex: 6,
     });
-    marker.addListener('click', () => _onMonsterClick(m, marker));
+    marker.addListener('click', () => _shootMonster(m, marker));
     marker._starterId = m.id;
     _markers.push(marker);
   }
@@ -246,6 +246,55 @@ function _onMonsterClick(m, marker) {
     </div>`);
   _infoWin.open(_map, marker);
 }
+
+// ── 몬스터 활 사냥: 지도에서 몬스터를 탭하면 주인공이 화살을 쏜다 (명중 1발 = HP 1) ──
+const _monHp = {};   // { [monsterId]: 남은 HP } — 클라이언트 전용, 처치 결과만 서버 저장
+const _shotCd = {};
+const _killing = new Set();
+
+function _hpText(m) {
+  const cur = _monHp[m.id] ?? m.hp;
+  return '❤️'.repeat(Math.max(0, cur)) + '🤍'.repeat(Math.max(0, m.hp - cur));
+}
+
+function _shootMonster(m, marker) {
+  if (_claimed?.has(m.id) || _killing.has(m.id)) return false;
+  // 전투 모듈이 아직 준비되지 않았으면 기존 방식(정보창 + 처치 버튼)으로 대체
+  if (typeof window.__shootArrowFx !== 'function') { _onMonsterClick(m, marker); return false; }
+  if (_shotCd[m.id]) return false;
+  const fired = window.__shootArrowFx(m.lat, m.lng, () => {
+    if (_claimed?.has(m.id) || _killing.has(m.id)) return;
+    const hp = Math.max(0, (_monHp[m.id] ?? m.hp) - 1);
+    _monHp[m.id] = hp;
+    if (navigator.vibrate) navigator.vibrate(40);
+    if (hp <= 0) {
+      _killing.add(m.id);
+      _claimItem(m.id, 'monster', { kind: 'gold', amount: m.gold }).finally(() => _killing.delete(m.id));
+    } else {
+      marker.setTitle(`${m.label} ${_hpText(m)}`);
+      _showToast(`🏹 명중! ${m.name} ${_hpText(m)}`);
+    }
+  });
+  if (fired) {
+    _shotCd[m.id] = true;
+    setTimeout(() => { delete _shotCd[m.id]; }, 400);
+  }
+  return fired;
+}
+
+/** 활 버튼용: 사정거리(120m) 안의 가장 가까운 체험 몬스터를 사격 */
+window.__starterShootNearest = (lat, lng) => {
+  if (!_active || !_objects) return false;
+  let best = null, bestD = Infinity;
+  for (const m of _objects.monsters) {
+    if (_claimed.has(m.id)) continue;
+    const d = _haversine(lat, lng, m.lat, m.lng);
+    if (d < bestD) { best = m; bestD = d; }
+  }
+  if (!best || bestD > 120) return false;
+  const marker = _markers.find(x => x._starterId === best.id);
+  return marker ? _shootMonster(best, marker) : false;
+};
 
 // ── 전역 콜백 (InfoWindow 버튼에서 호출) ─────────────────────────────────────
 window.__starterClaimTreasure = async (id, boxId) => {

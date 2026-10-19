@@ -1649,7 +1649,7 @@ export function castHeal() {
   if (_skillCd.heal && now < _skillCd.heal) return;
   if (!useMp(SKILL_MP_COST)) { playSound('skill_no_mp'); showSkillError(_t('skill_mp_low_heal')); return; }
 
-  const healAmt = _player.level * 100;
+  const healAmt = _player.level * 200; // 2026-10-19 대표 요청: 회복량 2배 (기존 레벨×100)
   const prev    = _player.hp;
   _player.hp    = Math.min(_player.maxHp, _player.hp + healAmt);
   const actual  = _player.hp - prev;
@@ -2219,13 +2219,48 @@ export function attackNearestWithBow() {
   }
   const near = _getNearestMonster(myPos.lat, myPos.lng);
   if (!near.mob) {
+    // 일반 몬스터가 없으면 초보자 체험 몬스터(starter-pack.js)를 사격
+    if (typeof window.__starterShootNearest === 'function' && window.__starterShootNearest(myPos.lat, myPos.lng)) return true;
     showSkillError('주변에 사냥할 수 있는 몬스터가 없습니다.');
     return false;
   }
   return shootArrowAtMonster(near.mob);
 }
 
+/**
+ * 외부 모듈(초보자 체험 몬스터 등)용 화살 사격 연출 — 사망·위치·사정거리 확인, 주인공 조준 모션, 화살 애니메이션.
+ * 명중 시 onHit() 호출. 발사했으면 true.
+ */
+export function shootArrowFx(toLat, toLng, onHit, range = 120) {
+  if (_isDead) {
+    showSkillError('💀 사망 상태입니다. [⚡ 즉시 부활]을 누르거나 부활을 기다려주세요!');
+    return false;
+  }
+  const myPos = getMyPos();
+  if (!myPos) {
+    showSkillError(_t('skill_locating', '위치 정보를 확인 중입니다.'));
+    return false;
+  }
+  const maxRange = _ctx?.isAdmin ? 500 : range;
+  const dist = haversine(myPos.lat, myPos.lng, toLat, toLng);
+  if (dist > maxRange) {
+    showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(dist)}m / 사거리: ${maxRange}m) 가까이 이동하세요.`);
+    return false;
+  }
+  const myMark = _ctx?.myLocationMarker;
+  if (typeof myMark?.setFacing === 'function') myMark.setFacing(calcBearing(myPos.lat, myPos.lng, toLat, toLng));
+  if (typeof myMark?.setState === 'function') myMark.setState('attack');
+  playSound('arrow_shot');
+  const bowPixel = (typeof myMark?.getBowPixel === 'function') ? myMark.getBowPixel() : null;
+  animateArrow(myPos.lat, myPos.lng, toLat, toLng, '#fbbf24', () => {
+    playSound('arrow_hit');
+    onHit?.();
+  }, bowPixel);
+  return true;
+}
+
 // 전역 헬퍼 바인딩
+window.__shootArrowFx = shootArrowFx;
 window.__shootArrowAtMonster = shootArrowAtMonster;
 window.__attackNearestWithBow = attackNearestWithBow;
 window.__getMonsters = () => _monsters;

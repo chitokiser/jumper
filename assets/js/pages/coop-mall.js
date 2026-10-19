@@ -378,12 +378,12 @@ $("btnCheckout").addEventListener("click", async () => {
   try {
     const { addDoc, getDoc, doc, updateDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
 
-    // 가맹점 계좌 정보 조회
+    // 가맹점 계좌 정보 조회 — 가맹점이 등록한 실제 계좌만 안내 (임의 기본 계좌 표시 금지)
     let merchantInfo = {
       name: cart[0].merchant_name || "가맹점",
-      bank_name: "신한베트남은행 (Shinhan Bank VN)",
-      account_no: "700-012-345678",
-      account_holder: "BESTCLUB / " + (cart[0].merchant_name || "가맹점")
+      bank_name: "",
+      account_no: "",
+      account_holder: ""
     };
 
     try {
@@ -396,6 +396,8 @@ $("btnCheckout").addEventListener("click", async () => {
         if (md.account_holder) merchantInfo.account_holder = md.account_holder;
       }
     } catch (_) { }
+
+    const hasBankAccount = !!(merchantInfo.bank_name && merchantInfo.account_no);
 
     const docRef = await addDoc(collection(db, "merchant_orders"), {
       merchant_id: targetMerchantId,
@@ -446,6 +448,12 @@ $("btnCheckout").addEventListener("click", async () => {
           </div>
 
           <!-- 결제방식 2. 계좌 자동이체 -->
+          ${!hasBankAccount ? `
+          <div style="border:1px solid #fde68a; border-radius:10px; padding:16px; background:#fffbeb; font-size:0.85rem; line-height:1.5; color:#92400e;">
+            <h4 style="margin:0 0 6px 0; color:#1f2937; font-size:1.05rem;">결제방식 2. 계좌이체 (현금)</h4>
+            이 가맹점은 아직 입금 계좌를 등록하지 않았습니다.<br/>
+            현금 결제를 원하시면 <strong>${esc(merchantInfo.name)}</strong> 가맹점에 직접 문의해 주세요. (주문번호: <strong>${docRef.id.slice(0, 8)}</strong>)
+          </div>` : `
           <div style="border:1px solid #d1d5db; border-radius:10px; padding:16px; background:#fff;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <h4 style="margin:0; color:#1f2937; font-size:1.05rem;">결제방식 2. 계좌 자동이체</h4>
@@ -453,12 +461,12 @@ $("btnCheckout").addEventListener("click", async () => {
             </div>
             
             <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px; font-size:0.85rem; line-height:1.6;">
-              <div>🏦 <strong>은행:</strong> ${merchantInfo.bank_name}</div>
+              <div>🏦 <strong>은행:</strong> ${esc(merchantInfo.bank_name)}</div>
               <div style="display:flex; align-items:center; justify-content:space-between;">
-                <span>🔢 <strong>계좌번호:</strong> <span id="textBankAcc" style="font-family:monospace; font-weight:bold; color:#1d4ed8;">${merchantInfo.account_no}</span></span>
+                <span>🔢 <strong>계좌번호:</strong> <span id="textBankAcc" style="font-family:monospace; font-weight:bold; color:#1d4ed8;">${esc(merchantInfo.account_no)}</span></span>
                 <button type="button" id="btnCopyBankAcc" style="font-size:0.75rem; padding:2px 8px; border:1px solid #cbd5e1; border-radius:4px; background:#fff; cursor:pointer;">복사</button>
               </div>
-              <div>👤 <strong>예금주:</strong> ${merchantInfo.account_holder}</div>
+              <div>👤 <strong>예금주:</strong> ${esc(merchantInfo.account_holder || merchantInfo.name)}</div>
               <div>🏷️ <strong>입금 메모:</strong> <span style="color:#ef4444; font-weight:bold;">${docRef.id.slice(0, 8)}</span> (주문번호 앞자리)</div>
             </div>
 
@@ -475,7 +483,7 @@ $("btnCheckout").addEventListener("click", async () => {
             <div id="transferAlertSuccess" style="display:none; margin-top:8px; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:10px; border-radius:6px; font-size:0.82rem; line-height:1.4; text-align:center;">
               ✅ <strong>가맹점에 입금 확인 요청이 전송되었습니다!</strong><br/>가맹점 직원이 통장 확인 후 승인하면 배송 및 정산 처리가 진행됩니다.
             </div>
-          </div>
+          </div>`}
           
           <a href="/orders.html" class="btn" style="display:block; text-align:center; background:#10b981; color:#fff; width:100%; padding:12px; border-radius:8px; margin-top:6px; text-decoration:none; font-weight:700; box-sizing:border-box;">📦 내 주문·구매 내역 확인하기</a>
           <button type="button" class="btn" onclick="location.reload()" style="background:#f3f4f6; color:#374151; width:100%; padding:10px; border-radius:8px; margin-top:4px; border:1px solid #e5e7eb;">닫기 및 쇼핑 계속하기</button>

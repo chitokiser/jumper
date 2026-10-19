@@ -1516,7 +1516,7 @@
       inset: 0;
       pointer-events: none;
       overflow: hidden;
-      z-index: 200;
+      z-index: 950; /* Leaflet 지도 레이어(400~700) 위, HUD 컨트롤(1000~) 아래 — 낮으면 스킬·화살 연출이 지도에 가려짐 */
     }
 
     .dmg-float {
