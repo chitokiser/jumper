@@ -2,6 +2,7 @@
 // Gold Mine — map markers, modal UI, Cloud Function calls
 
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { initMiners, updateMiners, clearMiners } from './merchants.goldmine.miners.js';
 
 let _fns  = null;
@@ -15,6 +16,41 @@ let _mines   = {};  // mineId → mine data
 let _activeInstall = null; // { clickHandler, circle, previewMarker, cleanup }
 
 const ICON_URL = '/assets/images/shops/gold.png';
+
+// ── 금광 주인 이름 (users/{uid} 의 name·displayName·nickname, 없으면 ID 앞 6자리) ──
+const _ownerNames = {};   // uid → Promise<string>
+const _esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function _ownerName(uid) {
+  if (!uid) return Promise.resolve('—');
+  if (!_ownerNames[uid]) {
+    const fallback = `Player ${uid.slice(0, 6)}`;
+    _ownerNames[uid] = (_ctx?.db ? getDoc(doc(_ctx.db, 'users', uid)) : Promise.reject())
+      .then(snap => { const d = snap.data() || {}; return d.name || d.displayName || d.nickname || fallback; })
+      .catch(() => fallback);
+  }
+  return _ownerNames[uid];
+}
+function _ownerLabel(mine, name) {
+  return mine.owner_id === _uid ? `👑 ${name} (me)` : `👑 ${name}`;
+}
+// 지도 위 금광 아이콘 아래 주인 이름표
+function _attachOwnerTag(marker, mine) {
+  _ownerName(mine.owner_id).then(name => {
+    const lm = marker?._lmarker;
+    if (!lm || !window.L) { marker?.setTitle?.(`⛏ Gold Mine | ${_ownerLabel(mine, name)}`); return; }
+    lm.unbindTooltip();
+    lm.bindTooltip(_esc(_ownerLabel(mine, name)), {
+      permanent: true, direction: 'bottom', offset: [0, 2], className: 'gm-owner-tag',
+    });
+  });
+}
+(function _injectOwnerTagStyle() {
+  if (document.getElementById('gm-owner-tag-style')) return;
+  const st = document.createElement('style');
+  st.id = 'gm-owner-tag-style';
+  st.textContent = '.gm-owner-tag{background:rgba(17,24,39,.85);color:#fbbf24;border:1px solid rgba(251,191,36,.5);border-radius:8px;padding:1px 6px;font-size:11px;font-weight:700;box-shadow:none;white-space:nowrap}.gm-owner-tag::before{display:none}';
+  document.head.appendChild(st);
+})();
 
 export function initGoldMine(ctx, map, functions, uid) {
   _ctx = ctx;
@@ -49,6 +85,7 @@ function _renderMarkers(mines) {
     _mines[mine.id] = mine;
     if (_markers[mine.id]) {
       _markers[mine.id].setPosition({ lat: mine.lat, lng: mine.lng });
+      if (_markers[mine.id]._ownerId !== mine.owner_id) { _markers[mine.id]._ownerId = mine.owner_id; _attachOwnerTag(_markers[mine.id], mine); }
       continue;
     }
     const marker = new google.maps.Marker({
@@ -66,6 +103,7 @@ function _renderMarkers(mines) {
     });
     marker.addListener('click', () => openGoldMineModal(mine.id));
     _markers[mine.id] = marker;
+    _attachOwnerTag(marker, mine);
   }
   updateMiners(mines);
 }
@@ -116,11 +154,18 @@ function _fillModal(mine) {
   const msUntilClaim  = claimReadyMs - nowMs;
   const hoursLeft     = msUntilClaim > 0 ? Math.ceil(msUntilClaim / 3600000) : 0;
 
+  // 주인 이름은 비동기로 채움 (아래 innerHTML이 먼저 그려진 뒤 실행됨)
+  _ownerName(mine.owner_id).then(n => {
+    const el = document.getElementById('gmOwnerLine');
+    if (el) el.textContent = `👑 Owner: ${isOwner ? `${n} (me)` : n}`;
+  });
+
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       <img loading="lazy" src="${ICON_URL}" style="width:48px;height:48px;border-radius:8px;object-fit:contain">
       <div>
         <div style="font-size:16px;font-weight:700;color:#fbbf24">⛏ Gold Mine</div>
+        <div id="gmOwnerLine" style="font-size:12px;color:#e5e7eb;margin-top:2px">👑 Owner: …</div>
         ${distLabel ? `<div style="font-size:12px;color:#9ca3af;margin-top:2px">${distLabel} from shop · ${effPct}% efficiency</div>` : ''}
       </div>
     </div>
