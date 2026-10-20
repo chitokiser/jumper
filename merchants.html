@@ -1516,7 +1516,7 @@
       inset: 0;
       pointer-events: none;
       overflow: hidden;
-      z-index: 950; /* Leaflet 지도 레이어(400~700) 위, HUD 컨트롤(1000~) 아래 — 낮으면 스킬·화살 연출이 지도에 가려짐 */
+      z-index: 1050; /* Leaflet 지도 레이어(400~700) 위, HUD 컨트롤(1100~) 바로 아래 — 스킬·화살 연출이 지도 마커 위에 완벽 노출 */
     }
 
     .dmg-float {
@@ -3746,7 +3746,11 @@
         <div id="hudGpBadge" title="Game Points (GP)">
           <span class="gp-icon">💰</span>
           <span class="gp-val" id="hudGpVal">–</span>
+          <a id="btnChargeGp" href="/exchange#hex-gp" title="Charge GP with Point" style="color:#fbbf24;text-decoration:none;font-size:10px;font-weight:900;background:rgba(251,191,36,0.22);padding:1px 6px;border-radius:9px;margin-left:3px;border:1px solid rgba(251,191,36,0.5);line-height:1.2;">⚡+</a>
         </div>
+
+        <!-- 0. 전체화면 단독 버튼 (밖에서 상시 단독 노출) -->
+        <button id="btnFullscreen" class="map-hud-btn" title="전체화면 (Fullscreen)" style="border:1.5px solid rgba(59,130,246,0.65);background:rgba(15,23,42,0.85);color:#60a5fa;font-size:17px;font-weight:700;">⛶</button>
 
         <!-- 1. 게임 서버 시작/중지 (핵심 플레이 버튼) -->
         <button id="btnGameToggle" class="map-hud-btn" title="Connect to game server">▶</button>
@@ -3774,13 +3778,12 @@
           </div>
         </div>
 
-        <!-- 5. 그룹 3: ⚙️ 메뉴 & 설정 (My ID, Guide, Fullscreen, BGM, Distance) -->
+        <!-- 5. 그룹 3: ⚙️ 메뉴 & 설정 (My ID, Guide, BGM, Distance) -->
         <div class="hud-group-wrap" id="wrapGroupSystem">
           <button class="map-hud-btn hud-group-trigger" id="btnGroupSystem" title="⚙️ 시스템 & 정보 메뉴">⚙️</button>
           <div class="hud-group-flyout" id="flyoutSystem">
             <button id="btnMyId" class="map-hud-btn" title="My Player ID (내 ID / 프로필)">👤</button>
             <button id="btnTutHelp" class="map-hud-btn" title="Game Guide (게임 가이드)">❓</button>
-            <button id="btnFullscreen" class="map-hud-btn" title="Fullscreen (전체화면)">⛶</button>
             <button id="btnBgm" class="map-hud-btn" title="BGM On/Off (배경음악)">🎵</button>
             <div id="distPanel">
               <span class="dist-label">Khoảng cách</span>

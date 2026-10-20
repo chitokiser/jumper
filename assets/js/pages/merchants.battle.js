@@ -139,10 +139,10 @@ function _shopFlagFromCoords(lat, lng) {
 
 // ── 스킬 상수 ────────────────────────────────────────────────────────────────
 const SKILL_MP_COST      = 100;
-const SKILL_RANGE_M      = 40;
+const SKILL_RANGE_M      = 120;
 const MONSTER_VIS_RANGE_M = 200;  // show monster image/animation when user within 200m
-const WIND_RANGE_M       = 30;
-const METEOR_RANGE_M     = 60;
+const WIND_RANGE_M       = 120;
+const METEOR_RANGE_M     = 150;
 const OVERVIEW_ZOOM    = 15;   // 이 줌 이하(광역 조망) → 모든 오브제 표시
 const SKILL_CD_MS    = { lightning: 15000, ice: 25000, fire: 15000, wind: 20000, meteor: 40000, heal: 30000 };
 const SKILL_FREEZE_MS = 20000;
@@ -1263,52 +1263,125 @@ function useMp(amount) {
 
 // ── 스킬 애니메이션 ───────────────────────────────────────────────────────────
 
+function _ensureSkillStyles() {
+  if (document.getElementById('_skillAnimStyles')) return;
+  const s = document.createElement('style');
+  s.id = '_skillAnimStyles';
+  s.textContent = `
+    @keyframes sfFlash { 0%{opacity:.75} 100%{opacity:0} }
+    @keyframes sfPop {
+      0%{opacity:1;transform:translate(-50%,-50%) scale(.4)}
+      40%{opacity:1;transform:translate(-50%,-50%) scale(1.35)}
+      100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}
+    }
+    @keyframes skillScreenShake {
+      0%{transform:translate(0,0)}
+      20%{transform:translate(-5px,3px)}
+      40%{transform:translate(5px,-4px)}
+      60%{transform:translate(-4px,-2px)}
+      80%{transform:translate(3px,3px)}
+      100%{transform:translate(0,0)}
+    }
+    @keyframes lightningGlow {
+      0%{opacity:1;filter:drop-shadow(0 0 12px #fff) drop-shadow(0 0 26px #facc15)}
+      50%{opacity:.85;filter:drop-shadow(0 0 20px #60a5fa) drop-shadow(0 0 35px #facc15)}
+      100%{opacity:0}
+    }
+    @keyframes skillRingPulse {
+      0%{transform:translate(-50%,-50%) scale(.2);opacity:1}
+      60%{opacity:.95}
+      100%{transform:translate(-50%,-50%) scale(2.3);opacity:0}
+    }
+    @keyframes frostNovaExpand {
+      0%{transform:translate(-50%,-50%) scale(.2) rotate(0deg);opacity:1}
+      50%{transform:translate(-50%,-50%) scale(1.5) rotate(45deg);opacity:.95}
+      100%{transform:translate(-50%,-50%) scale(2.4) rotate(90deg);opacity:0}
+    }
+    @keyframes iceCrystalSpike {
+      0%{transform:translate(-50%,0) scaleY(0) scaleX(.5);opacity:0}
+      35%{transform:translate(-50%,-35px) scaleY(1.3) scaleX(1.1);opacity:1}
+      70%{transform:translate(-50%,-42px) scaleY(1) scaleX(1);opacity:.9}
+      100%{transform:translate(-50%,-50px) scaleY(.7) scaleX(.7);opacity:0}
+    }
+    @keyframes firePillarBlast {
+      0%{transform:translate(-50%,-20%) scale(.3);opacity:0}
+      25%{transform:translate(-50%,-50%) scale(1.25);opacity:1}
+      60%{transform:translate(-50%,-60%) scale(1.1);opacity:.95}
+      100%{transform:translate(-50%,-80%) scale(1.4);opacity:0}
+    }
+    @keyframes whirlwindVortex {
+      0%{transform:translate(-50%,-50%) rotate(0deg) scale(.4);opacity:.3}
+      50%{transform:translate(-50%,-50%) rotate(540deg) scale(1.4);opacity:1}
+      100%{transform:translate(-50%,-50%) rotate(1080deg) scale(2);opacity:0}
+    }
+    @keyframes meteorDrop {
+      0%{transform:translate(140px,-200px) scale(.4) rotate(-35deg);opacity:0}
+      20%{opacity:1}
+      100%{transform:translate(0,0) scale(1.2) rotate(-35deg);opacity:1}
+    }
+    @keyframes meteorExplode {
+      0%{transform:translate(-50%,-50%) scale(.2);opacity:1}
+      40%{transform:translate(-50%,-50%) scale(1.8);opacity:.95}
+      100%{transform:translate(-50%,-50%) scale(3.2);opacity:0}
+    }
+    @keyframes particleFly {
+      0%{transform:translate(0,0) scale(1);opacity:1}
+      100%{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0}
+    }
+  `;
+  document.head.appendChild(s);
+}
 
-function _skillFlash(color, emoji) {
-  // battleOverlay 전체에 섬광 + 이모지 — 전체화면에서도 확실히 보임
+function _playSkillScreenShake() {
   const overlay = document.getElementById('battleOverlay');
   if (!overlay) return;
-  if (!document.getElementById('_sfStyle')) {
-    const s = document.createElement('style'); s.id = '_sfStyle';
-    s.textContent = `@keyframes sfFlash{0%{opacity:.7}100%{opacity:0}}
-      @keyframes sfPop{0%{opacity:1;transform:translate(-50%,-50%) scale(.4)}
-        40%{opacity:1;transform:translate(-50%,-50%) scale(1.3)}
-        100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}`;
-    document.head.appendChild(s);
-  }
+  overlay.style.animation = 'none';
+  overlay.offsetHeight; // reflow
+  overlay.style.animation = 'skillScreenShake 0.45s ease-out';
+  setTimeout(() => { if (overlay) overlay.style.animation = ''; }, 480);
+}
+
+function _skillFlash(color, emoji) {
+  const overlay = document.getElementById('battleOverlay');
+  if (!overlay) return;
+  _ensureSkillStyles();
+
   const flash = document.createElement('div');
   flash.style.cssText = `position:absolute;inset:0;background:${color};pointer-events:none;
-    z-index:3800;animation:sfFlash .35s ease-out forwards;`;
+    z-index:3800;animation:sfFlash .4s ease-out forwards;`;
   overlay.appendChild(flash);
-  setTimeout(() => flash.remove(), 400);
+  setTimeout(() => flash.remove(), 450);
 
-  const icon = document.createElement('div');
-  icon.style.cssText = `position:absolute;top:40%;left:50%;font-size:72px;
-    pointer-events:none;z-index:3900;filter:drop-shadow(0 0 18px ${color});
-    animation:sfPop .7s ease-out forwards;`;
-  icon.textContent = emoji;
-  overlay.appendChild(icon);
-  setTimeout(() => icon.remove(), 750);
+  if (emoji) {
+    const icon = document.createElement('div');
+    icon.style.cssText = `position:absolute;top:40%;left:50%;font-size:78px;
+      pointer-events:none;z-index:3900;filter:drop-shadow(0 0 22px ${color});
+      animation:sfPop .75s ease-out forwards;`;
+    icon.textContent = emoji;
+    overlay.appendChild(icon);
+    setTimeout(() => icon.remove(), 800);
+  }
 }
 
 function animateLightning() {
-  _skillFlash('rgba(250,204,21,0.35)', '⚡');
+  _skillFlash('rgba(250,204,21,0.45)', '⚡');
 }
 
 function animateIceFreeze() {
-  _skillFlash('rgba(147,197,253,0.35)', '❄️');
+  _skillFlash('rgba(147,197,253,0.45)', '❄️');
 }
 
 function animateFireStorm() {
-  _skillFlash('rgba(249,115,22,0.35)', '🔥');
+  _skillFlash('rgba(249,115,22,0.45)', '🔥');
 }
 
 function animateWhirlwind() {
-  _skillFlash('rgba(167,243,208,0.35)', '🌪️');
+  _skillFlash('rgba(167,243,208,0.45)', '🌪️');
 }
 
 function animateMeteor() {
-  _skillFlash('rgba(234,88,12,0.45)', '☄️');
+  _skillFlash('rgba(234,88,12,0.55)', '☄️');
+  _playSkillScreenShake();
 }
 
 // ── 플레이어 위치 조회 (마커 우선, lastPos 폴백, 없으면 지도 중심 자동 소환) ──
@@ -1395,13 +1468,17 @@ export function castLightning() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 150 : SKILL_RANGE_M;
+  const effectiveRange = _ctx?.isAdmin ? 500 : SKILL_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
+    animateLightning();
+    playSound('skill_lightning');
+    showSkillMapEffect(myLat, myLng, 'lightning');
+
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
       showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
@@ -1415,8 +1492,12 @@ export function castLightning() {
   animateLightning();
   playSound('skill_lightning');
 
-  const anchor = inRangeMobs[0] ?? gsTargets[0];
-  showSkillMapEffect(anchor.lat, anchor.lng, 'lightning');
+  const allTargets = [...inRangeMobs, ...gsTargets];
+  allTargets.slice(0, 6).forEach((target, idx) => {
+    setTimeout(() => {
+      showSkillMapEffect(target.lat, target.lng, 'lightning');
+    }, idx * 60);
+  });
 
   let hitCount = 0;
   for (const mob of inRangeMobs) {
@@ -1445,13 +1526,17 @@ export function castIceFreeze() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 150 : SKILL_RANGE_M;
+  const effectiveRange = _ctx?.isAdmin ? 500 : SKILL_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
+    animateIceFreeze();
+    playSound('skill_ice');
+    showSkillMapEffect(myLat, myLng, 'ice');
+
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
       showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
@@ -1465,8 +1550,12 @@ export function castIceFreeze() {
   animateIceFreeze();
   playSound('skill_ice');
 
-  const anchor = inRangeMobs[0] ?? gsTargets[0];
-  showSkillMapEffect(anchor.lat, anchor.lng, 'ice');
+  const allTargets = [...inRangeMobs, ...gsTargets];
+  allTargets.slice(0, 6).forEach((target, idx) => {
+    setTimeout(() => {
+      showSkillMapEffect(target.lat, target.lng, 'ice');
+    }, idx * 60);
+  });
 
   const freezeNow = Date.now();
   let hitCount = 0;
@@ -1501,13 +1590,17 @@ export function castFireStorm() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 150 : SKILL_RANGE_M;
+  const effectiveRange = _ctx?.isAdmin ? 500 : SKILL_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
+    animateFireStorm();
+    playSound('skill_fire');
+    showSkillMapEffect(myLat, myLng, 'fire');
+
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
       showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
@@ -1521,8 +1614,12 @@ export function castFireStorm() {
   animateFireStorm();
   playSound('skill_fire');
 
-  const anchor = inRangeMobs[0] ?? gsTargets[0];
-  showSkillMapEffect(anchor.lat, anchor.lng, 'fire');
+  const allTargets = [...inRangeMobs, ...gsTargets];
+  allTargets.slice(0, 6).forEach((target, idx) => {
+    setTimeout(() => {
+      showSkillMapEffect(target.lat, target.lng, 'fire');
+    }, idx * 60);
+  });
 
   let hitCount = 0;
   for (const mob of inRangeMobs) {
@@ -1551,13 +1648,17 @@ export function castWhirlwind() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 150 : WIND_RANGE_M;
+  const effectiveRange = _ctx?.isAdmin ? 500 : WIND_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
+    animateWhirlwind();
+    playSound('skill_lightning');
+    showSkillMapEffect(myLat, myLng, 'wind');
+
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
       showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
@@ -1571,8 +1672,12 @@ export function castWhirlwind() {
   animateWhirlwind();
   playSound('skill_lightning');
 
-  const anchor = inRangeMobs[0] ?? gsTargets[0];
-  showSkillMapEffect(anchor.lat, anchor.lng, 'wind');
+  const allTargets = [...inRangeMobs, ...gsTargets];
+  allTargets.slice(0, 6).forEach((target, idx) => {
+    setTimeout(() => {
+      showSkillMapEffect(target.lat, target.lng, 'wind');
+    }, idx * 60);
+  });
 
   let hitCount = 0;
   for (const mob of inRangeMobs) {
@@ -1601,13 +1706,17 @@ export function castMeteor() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 200 : METEOR_RANGE_M;
+  const effectiveRange = _ctx?.isAdmin ? 500 : METEOR_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
   const gsTargets = getGsTargetsInRange().filter(m =>
     haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
+    animateMeteor();
+    playSound('skill_fire');
+    showSkillMapEffect(myLat, myLng, 'meteor');
+
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
       showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
@@ -1621,8 +1730,12 @@ export function castMeteor() {
   animateMeteor();
   playSound('skill_fire');
 
-  const anchor = inRangeMobs[0] ?? gsTargets[0];
-  showSkillMapEffect(anchor.lat, anchor.lng, 'meteor');
+  const allTargets = [...inRangeMobs, ...gsTargets];
+  allTargets.slice(0, 6).forEach((target, idx) => {
+    setTimeout(() => {
+      showSkillMapEffect(target.lat, target.lng, 'meteor');
+    }, idx * 60);
+  });
 
   let hitCount = 0;
   for (const mob of inRangeMobs) {
@@ -1746,24 +1859,221 @@ function showSkillTargetModal(skillKey, targets, onSelect) {
   }, 150);
 }
 
-// 맵 위 대상 중심 스킬 이펙트
+// 맵 위 대상 중심 스킬 이펙트 (번개 줄기, 얼음 결정 마법진, 화염 폭풍 기둥, 회오리, 메테오 폭발)
 function showSkillMapEffect(lat, lng, type) {
   const overlay = document.getElementById('battleOverlay');
   if (!overlay) return;
-  const px = latLngToPixel(lat, lng);
-  if (!px) return;
+  _ensureSkillStyles();
+
+  // 좌표 픽셀 변환 (없으면 화면 중앙 폴백)
+  let px = latLngToPixel(lat, lng);
+  if (!px || isNaN(px.x) || isNaN(px.y)) {
+    const ow = overlay.offsetWidth || window.innerWidth || 360;
+    const oh = overlay.offsetHeight || window.innerHeight || 600;
+    px = { x: ow * 0.5, y: oh * 0.45 };
+  }
+
+  // 1. 번개 (Lightning Bolt & Ground Shock)
+  if (type === 'lightning') {
+    // 하늘에서 내리꽂히는 지그재그 전격 레이저 (SVG)
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const ow = overlay.offsetWidth || window.innerWidth || 360;
+    const oh = overlay.offsetHeight || window.innerHeight || 600;
+    svg.setAttribute('width', ow);
+    svg.setAttribute('height', oh);
+    svg.style.cssText = `position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:3850;`;
+
+    const startX = px.x + (Math.random() * 60 - 30);
+    const startY = Math.max(0, px.y - 350);
+    const segs = 5;
+    const pts = [`${startX},${startY}`];
+    for (let i = 1; i < segs; i++) {
+      const t = i / segs;
+      const curX = startX + (px.x - startX) * t + (Math.random() * 46 - 23);
+      const curY = startY + (px.y - startY) * t;
+      pts.push(`${curX},${curY}`);
+    }
+    pts.push(`${px.x},${px.y}`);
+    const ptsStr = pts.join(' ');
+
+    // 글로우 외곽선
+    const outer = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    outer.setAttribute('points', ptsStr);
+    outer.setAttribute('fill', 'none');
+    outer.setAttribute('stroke', '#facc15');
+    outer.setAttribute('stroke-width', '7');
+    outer.setAttribute('stroke-linecap', 'round');
+    outer.setAttribute('stroke-linejoin', 'round');
+    outer.style.cssText = `animation:lightningGlow .55s ease-out forwards;`;
+
+    // 화이트 코어 선
+    const inner = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    inner.setAttribute('points', ptsStr);
+    inner.setAttribute('fill', 'none');
+    inner.setAttribute('stroke', '#ffffff');
+    inner.setAttribute('stroke-width', '3');
+    inner.setAttribute('stroke-linecap', 'round');
+    inner.setAttribute('stroke-linejoin', 'round');
+    inner.style.cssText = `animation:lightningGlow .55s ease-out forwards;`;
+
+    svg.appendChild(outer);
+    svg.appendChild(inner);
+    overlay.appendChild(svg);
+    setTimeout(() => svg.remove(), 600);
+
+    // 지면 방전 펄스 링
+    const ring = document.createElement('div');
+    ring.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:95px;height:95px;
+      border:3.5px solid #facc15;box-shadow:0 0 25px #facc15,inset 0 0 15px #facc15;
+      border-radius:50%;pointer-events:none;z-index:3860;animation:skillRingPulse .6s ease-out forwards;`;
+    overlay.appendChild(ring);
+    setTimeout(() => ring.remove(), 650);
+
+    // 사방으로 튀는 방전 스파크 파티클 8개
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const dist = 35 + Math.random() * 35;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist;
+      const p = document.createElement('div');
+      p.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:6px;height:6px;
+        background:#fef08a;box-shadow:0 0 8px #facc15;border-radius:50%;pointer-events:none;z-index:3865;
+        --tx:${tx}px;--ty:${ty}px;animation:particleFly .5s ease-out forwards;`;
+      overlay.appendChild(p);
+      setTimeout(() => p.remove(), 550);
+    }
+  }
+
+  // 2. 아이스 (Ice / Frost Nova & Glacier Spikes)
+  else if (type === 'ice') {
+    // 지면 서리 마법진 (Frost Nova Ring)
+    const circle = document.createElement('div');
+    circle.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:120px;height:120px;
+      border:3.5px solid #93c5fd;box-shadow:0 0 25px #60a5fa,inset 0 0 20px rgba(147,197,253,0.6);
+      background:radial-gradient(circle,rgba(191,219,254,0.45) 0%,transparent 70%);
+      border-radius:50%;pointer-events:none;z-index:3850;animation:frostNovaExpand .8s ease-out forwards;`;
+    overlay.appendChild(circle);
+    setTimeout(() => circle.remove(), 850);
+
+    // 솟구치는 3대 얼음 크리스탈 기둥 (Glacier Spikes)
+    [-28, 0, 28].forEach((offsetX, idx) => {
+      const spike = document.createElement('div');
+      spike.style.cssText = `position:absolute;left:${px.x + offsetX}px;top:${px.y}px;
+        width:22px;height:75px;
+        background:linear-gradient(to top,#2563eb,#60a5fa,#e0f2fe,#ffffff);
+        clip-path:polygon(50% 0%, 100% 100%, 0% 100%);
+        filter:drop-shadow(0 0 12px #93c5fd);
+        pointer-events:none;z-index:3860;
+        animation:iceCrystalSpike .75s ease-out ${idx * 60}ms forwards;`;
+      overlay.appendChild(spike);
+      setTimeout(() => spike.remove(), 900);
+    });
+
+    // 서리 파편 파티클 8개
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const dist = 30 + Math.random() * 30;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist;
+      const p = document.createElement('div');
+      p.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:7px;height:7px;
+        background:#e0f2fe;box-shadow:0 0 8px #93c5fd;clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        pointer-events:none;z-index:3865;
+        --tx:${tx}px;--ty:${ty}px;animation:particleFly .6s ease-out forwards;`;
+      overlay.appendChild(p);
+      setTimeout(() => p.remove(), 650);
+    }
+  }
+
+  // 3. 파이어 (Fire Storm / Pillar of Fire)
+  else if (type === 'fire') {
+    // 거대 화염 기둥 (Fire Pillar)
+    const pillar = document.createElement('div');
+    pillar.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;
+      width:115px;height:180px;
+      background:radial-gradient(ellipse at bottom,#fffbeb 0%,#facc15 25%,#f97316 60%,#dc2626 95%,transparent 100%);
+      border-radius:45% 45% 20% 20%;
+      filter:drop-shadow(0 0 32px #ea580c) drop-shadow(0 0 16px #facc15);
+      pointer-events:none;z-index:3860;animation:firePillarBlast .8s ease-out forwards;`;
+    overlay.appendChild(pillar);
+    setTimeout(() => pillar.remove(), 850);
+
+    // 지면 용암 링
+    const fireRing = document.createElement('div');
+    fireRing.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:120px;height:120px;
+      border:4px solid #f97316;box-shadow:0 0 28px #ef4444,inset 0 0 16px #f97316;
+      border-radius:50%;pointer-events:none;z-index:3855;animation:skillRingPulse .65s ease-out forwards;`;
+    overlay.appendChild(fireRing);
+    setTimeout(() => fireRing.remove(), 700);
+
+    // 솟구치는 불티 파티클 10개
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2;
+      const dist = 30 + Math.random() * 40;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist - 25;
+      const p = document.createElement('div');
+      p.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:7px;height:7px;
+        background:#fef08a;box-shadow:0 0 10px #f97316;border-radius:50%;pointer-events:none;z-index:3865;
+        --tx:${tx}px;--ty:${ty}px;animation:particleFly .6s ease-out forwards;`;
+      overlay.appendChild(p);
+      setTimeout(() => p.remove(), 650);
+    }
+  }
+
+  // 4. 회오리 (Whirlwind Vortex)
+  else if (type === 'wind') {
+    const vortex = document.createElement('div');
+    vortex.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:130px;height:130px;
+      border:4px dashed #6ee7b7;box-shadow:0 0 26px #10b981,inset 0 0 20px rgba(110,231,183,0.4);
+      border-radius:50%;pointer-events:none;z-index:3860;animation:whirlwindVortex .8s cubic-bezier(.2,.8,.3,1) forwards;`;
+    overlay.appendChild(vortex);
+    setTimeout(() => vortex.remove(), 850);
+
+    // 비산하는 바람 칼날 파티클 8개
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const dist = 35 + Math.random() * 35;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist;
+      const p = document.createElement('div');
+      p.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:12px;height:3px;
+        background:#a7f3d0;box-shadow:0 0 8px #34d399;border-radius:2px;pointer-events:none;z-index:3865;
+        --tx:${tx}px;--ty:${ty}px;animation:particleFly .55s ease-out forwards;`;
+      overlay.appendChild(p);
+      setTimeout(() => p.remove(), 600);
+    }
+  }
+
+  // 5. 메테오 (Meteor Blast)
+  else if (type === 'meteor') {
+    const meteor = document.createElement('div');
+    meteor.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:60px;height:60px;
+      background:radial-gradient(circle,#ffffff 10%,#facc15 35%,#ea580c 70%,#7c2d12 100%);
+      box-shadow:-25px -25px 45px #f97316,-50px -50px 70px #dc2626;
+      border-radius:50%;pointer-events:none;z-index:3870;animation:meteorDrop .45s ease-in forwards;`;
+    overlay.appendChild(meteor);
+    setTimeout(() => {
+      meteor.remove();
+      _playSkillScreenShake();
+      const blast = document.createElement('div');
+      blast.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;width:170px;height:170px;
+        background:radial-gradient(circle,#fffbeb 0%,#f97316 40%,#dc2626 75%,transparent 100%);
+        box-shadow:0 0 45px #f97316,0 0 75px #dc2626;
+        border-radius:50%;pointer-events:none;z-index:3875;animation:meteorExplode .75s ease-out forwards;`;
+      overlay.appendChild(blast);
+      setTimeout(() => blast.remove(), 800);
+    }, 430);
+  }
+
+  // 공통 이모지 마커 팝업
   const cfg = { lightning:['⚡','#facc15'], ice:['❄','#93c5fd'], fire:['🔥','#f97316'], wind:['🌪️','#6ee7b7'], meteor:['☄️','#ea580c'] }[type]||['✨','#fff'];
   const el = document.createElement('div');
-  el.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;font-size:56px;
-    transform:translate(-50%,-50%);pointer-events:none;z-index:3500;
-    filter:drop-shadow(0 0 14px ${cfg[1]});
-    animation:skillMapPop 0.75s ease-out forwards;`;
+  el.style.cssText = `position:absolute;left:${px.x}px;top:${px.y}px;font-size:58px;
+    transform:translate(-50%,-50%);pointer-events:none;z-index:3880;
+    filter:drop-shadow(0 0 16px ${cfg[1]});
+    animation:sfPop 0.75s ease-out forwards;`;
   el.textContent = cfg[0];
-  if (!document.getElementById('_skillMapPopStyle')) {
-    const s = document.createElement('style'); s.id = '_skillMapPopStyle';
-    s.textContent = `@keyframes skillMapPop{from{opacity:1;transform:translate(-50%,-50%) scale(1)}to{opacity:0;transform:translate(-50%,-50%) scale(2.8)}}`;
-    document.head.appendChild(s);
-  }
   overlay.appendChild(el);
   setTimeout(() => el.remove(), 800);
 }

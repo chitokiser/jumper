@@ -305,7 +305,11 @@ function _enterCssFs() {
   el.classList.add('mc-css-fs');
   document.body.classList.add('mc-css-fs-active');
   const btn = document.getElementById('btnFullscreen');
-  if (btn) btn.textContent = '✕';
+  if (btn) {
+    btn.textContent = '⤡';
+    btn.title = '전체화면 종료 (Exit Fullscreen)';
+    btn.style.color = '#f59e0b';
+  }
   // CSS FS는 body 기준 position:fixed 이므로 모달 이동 불필요
 }
 
@@ -316,7 +320,11 @@ function _exitCssFs() {
   el.classList.remove('mc-css-fs');
   document.body.classList.remove('mc-css-fs-active');
   const btn = document.getElementById('btnFullscreen');
-  if (btn) btn.textContent = '⛶';
+  if (btn) {
+    btn.textContent = '⛶';
+    btn.title = '전체화면 (Fullscreen)';
+    btn.style.color = '#60a5fa';
+  }
 }
 
 function _exitFullscreen() {
