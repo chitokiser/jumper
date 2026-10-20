@@ -1290,6 +1290,28 @@ function _gsMonsterIcon(state, hpPct) {
 // dragon 등 스프라이트 타입 → MonsterSpriteOverlay
 // goblin/orc 등 기타 → SVG Marker
 
+// 서버 몬스터는 내 주변 이 거리 안만 그린다 (게임 서버 VIEW_RADIUS_M=300 보다 조금 넓게)
+const GS_VIEW_RADIUS_M = 320;
+function _gsFar(lat, lng) {
+  const p = _ctx.lastPos;
+  return !!(p && lat && lng && haversine(p.lat, p.lng, lat, lng) > GS_VIEW_RADIUS_M);
+}
+function _removeGsVisual(id) {
+  if (_gsOverlays[id]) { _gsOverlays[id].setMap(null); delete _gsOverlays[id]; }
+  if (_gsMarkers[id]) { _gsMarkers[id].setMap(null); delete _gsMarkers[id]; }
+}
+// 이동 후 멀어진 서버 몬스터 그림 정리 (3초에 한 번)
+let _gsCullTs = 0;
+function _cullFarGsMonsters() {
+  const now = Date.now();
+  if (now - _gsCullTs < 3000) return;
+  _gsCullTs = now;
+  for (const id of new Set([...Object.keys(_gsOverlays), ...Object.keys(_gsMarkers)])) {
+    const m = _gsMonsters[id];
+    if (!m || _gsFar(m.currentLat ?? m.lat, m.currentLng ?? m.lng)) _removeGsVisual(id);
+  }
+}
+
 function _renderGsMonster(monster) {
   if (!map) return;
   const { monsterId, type, state, hp, maxHp } = monster;
@@ -1310,6 +1332,7 @@ function _renderGsMonster(monster) {
   if (prev && monster.hp < prev.hp) playSound('arrow_hit');
 
   _gsMonsters[monsterId] = monster;
+  if (_gsFar(lat, lng)) { _removeGsVisual(monsterId); return; } // 멀리 있는 몬스터는 데이터만 보관
 
   // ── 스프라이트 타입 (dragon 등) ─────────────────────────────────────────────
   if (hasSpriteConfig(type)) {
@@ -1796,6 +1819,7 @@ async function checkProximity(lat, lng) {
   broadcastMyLocation(lat, lng); // 내 위치 Firestore에 방송
   sendPlayerLocation(lat, lng, _ctx.lastPos?.accuracy ?? 10); // 게임 서버로 전송
   checkTutorialProximity(lat, lng); // 튜토리얼 보물박스 근접 효과
+  _cullFarGsMonsters();
   for (const box of treasureBoxes) {
     if (!box.lat || !box.lng) continue;
     if (!isBoxActive(box)) continue;
