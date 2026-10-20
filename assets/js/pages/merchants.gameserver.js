@@ -7,6 +7,13 @@
 // ⚠️ GAME_SERVER_URL을 Railway 배포 URL로 교체하거나
 //    페이지에서 window.GAME_SERVER_URL을 먼저 설정할 것
 
+import { auth } from '/assets/js/firebase-init.js';
+
+// Firebase 로그인 토큰 — 게임 서버가 이것으로 본인·관리자 여부를 확인한다 (공용 비밀번호 없음)
+async function _getIdToken() {
+  try { return await auth.currentUser?.getIdToken() ?? null; } catch { return null; }
+}
+
 const GAME_SERVER_URL =
   window.GAME_SERVER_URL ?? 'https://jumper-game-server-production.up.railway.app';
 
@@ -88,8 +95,9 @@ export function connectToGameServer() {
     timeout:             10000,
   });
 
-  _socket.on('connect', () => {
+  _socket.on('connect', async () => {
     _setState('connected');
+    const idToken = await _getIdToken();
 
     const pos    = _ctx?.lastPos;
     const lat    = pos?.lat    ?? 0;
@@ -102,6 +110,7 @@ export function connectToGameServer() {
       : PC_FALLBACK_ACCURACY;
 
     _socket.emit('player:join', {
+      idToken,
       userId: _ctx?.uid ?? 'anonymous',
       zoneId, lat, lng, accuracy, level,
       lang: _ctx?.lang ?? window.LANG ?? 'en',
@@ -118,6 +127,14 @@ export function connectToGameServer() {
     }, 5000);
 
     console.log(`[GS] connected → zone:${zoneId} level:${level} accuracy:${accuracy}`);
+  });
+
+  // 서버가 로그인 증명을 거부한 경우 (로그인 만료 등)
+  _socket.on('error', d => {
+    if (d?.code === 'unauthenticated') {
+      console.warn('[GS] join rejected: login required');
+      _handlers?.onError?.('login required');
+    }
   });
 
   _socket.on('disconnect', reason => {
@@ -192,14 +209,15 @@ export function sendDropCollect(dropId) {
 }
 
 // ── 관리자 REST API ─────────────────────────────────────────────────────────────
-// window.GS_ADMIN_SECRET 이 설정되어 있어야 한다 (merchants.html에서 주입)
+// 관리자로 로그인한 계정의 로그인 토큰으로 인증한다
 
 async function _adminFetch(method, path, body) {
   const url  = GAME_SERVER_URL + path;
-  const key  = window.GS_ADMIN_SECRET || '';
+  const idToken = await _getIdToken();
+  if (!idToken) throw new Error('관리자 로그인이 필요합니다');
   const opts = {
     method,
-    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
     ...(body != null ? { body: JSON.stringify(body) } : {}),
   };
   let res;
