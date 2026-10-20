@@ -201,9 +201,18 @@ service cloud.firestore {
     // users/{uid}
     match /users/{uid} {
       // ??FIX: ??㉱?洹먮봿???獄?????role/profile???影??꽑???????admin create/update ???깅뮔
+      // 권한 칸(role/isAdmin/merchantId/teamId/tenant_id)은 관리자만 변경
       allow get: if signedIn();
-      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow update: if signedIn();
+      allow create: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && !request.resource.data.keys().hasAny(['isAdmin', 'merchantId', 'merchant_id', 'teamId', 'tenant_id'])
+            && (!('role' in request.resource.data) || request.resource.data.role == 'user'));
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['role', 'isAdmin', 'merchantId', 'merchant_id', 'teamId', 'tenant_id']))
+        // 임시(2단계에서 서버로 이동): 가맹점 BT 지급 시 가맹점주 BT 잔액 차감
+        || (signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['btBalance', 'updatedAt']));
 
       allow list, delete: if isAdmin();
 
@@ -320,10 +329,17 @@ service cloud.firestore {
     // merchants (merchants/{merchantId})
     match /merchants/{merchantId} {
       allow get, list: if true;
-      allow create: if request.auth != null;
+      // 가맹점 등록은 신청(active:false, status:'pending') → 관리자 승인
+      allow create: if isAdmin()
+        || (signedIn()
+            && request.resource.data.ownerUid == request.auth.uid
+            && request.resource.data.active == false
+            && request.resource.data.status == 'pending');
       allow delete: if false; // Cloud Functions only
       allow update: if isAdmin()
         || (signedIn()
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['active', 'status', 'approvedAt', 'approvedBy', 'feeBps', 'ownerUid'])
             && (
               (resource.data.ownerUid is string && resource.data.ownerUid == request.auth.uid)
               || request.auth.uid == merchantId
@@ -838,7 +854,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       // ?먯떊 ?뺣낫 ?섏젙 ?덉슜 ?먮뒗 CEO
-      allow write: if request.auth.uid == userId || isCEO();
+      // 쓰기 권한은 위쪽 match /users/{uid} 에서만 관리 (권한 칸 보호)
     }
     
     match /projects/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }

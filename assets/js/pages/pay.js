@@ -617,13 +617,9 @@ function bindPayButton() {
         const res = await payFn(payload);
         d = res.data;
       } catch (cfErr) {
-        console.warn("[Cloud Function Call Failed -> Trying Direct Firestore Fallback]", cfErr);
-        const user = auth.currentUser;
-        if (!user) throw cfErr;
-        const mSnap = await getDoc(doc(db, "merchants", String(merchantId)));
-        const mData = mSnap.data() || { name: merchantName };
-        const finalVnd = isVnd ? Number(amountVnd) : Math.round(Number(amountKrw) * 18);
-        d = await executePaymentClientFallback(user.uid, merchantId, finalVnd, mData);
+        // 보안: 클라이언트 직통 결제 폴백(executePaymentClientFallback) 사용 중지 — 결제는 서버에서만 처리
+        console.warn("[Cloud Function Call Failed]", cfErr);
+        throw cfErr;
       }
 
       try {

@@ -411,6 +411,10 @@ async function loadMerchants() {
     const feeBadge = feeBps > 0
       ? `<span class="badge" style="background:var(--accent, #22c55e);">수수료 ${feeBps / 100}%</span>`
       : '<span class="badge" style="background:#f59e0b;">미승인 (feeBps=0)</span>';
+    const isPending = v.status === "pending";
+    const pendingBadge = isPending
+      ? '<span class="badge" style="background:#dc2626;color:#fff;">⏳ 승인 대기</span>'
+      : '';
     const dormantBadge = isDormant
       ? '<span class="badge" style="background:#6b7280;color:#fff;">😴 휴면</span>'
       : '';
@@ -427,10 +431,12 @@ async function loadMerchants() {
             <div class="sum-sub">BT 잔여량: <b style="color:#d946ef;">${btMap[v.ownerUid] ?? v.btBalance ?? 0} BT</b></div>
           </div>
           <div class="sum-right">
+            ${pendingBadge}
             ${dormantBadge}
             ${feeBadge}
             <button class="btn btn-sm" type="button" data-act="viewMerchant" data-mid="${esc(mid)}">상세(JSON)</button>
             ${isAdminUser ? `
+              ${isPending ? `<button class="btn btn-sm" type="button" data-act="approveApplication" data-mid="${esc(mid)}" data-owner="${esc(v.ownerUid || '')}" style="background:#16a34a;color:#fff;border-color:#16a34a;">✅ 가맹점 승인</button>` : ''}
               <button class="btn btn-sm" type="button" data-act="renameMerchant" data-mid="${esc(mid)}" data-name="${esc(v.name || '')}">✏️ 이름변경</button>
               <button class="btn btn-sm" type="button" data-act="editMerchantInfo" data-mid="${esc(mid)}" data-career="${esc(v.career || '')}" data-region="${esc(v.region || '')}" data-desc="${esc(v.description || '')}" data-note="${esc(v.note || '')}" data-website="${esc(v.website || '')}">📝 정보수정</button>
               ${dormantBtn}
@@ -478,6 +484,45 @@ async function loadMerchants() {
 
     merchantList.appendChild(el);
   });
+}
+
+// 가맹점 신청 승인: 가맹점 활성화 + 신청자 회원 정보에 가맹점 연결
+async function approveMerchantApplication(mid, ownerUid) {
+  if (!isAdminUser) { alert("관리자 권한이 없습니다."); return; }
+  const cleanMid = String(mid || "").trim();
+  if (!ownerUid) { alert("신청자 정보(ownerUid)가 없습니다."); return; }
+  if (!confirm(`가맹점 ID ${cleanMid} 신청을 승인하시겠습니까?
+신청자 회원이 이 가맹점의 주인으로 연결됩니다.`)) return;
+
+  setState("가맹점 승인 중…");
+  try {
+    const uRef = doc(db, "users", ownerUid);
+    const uSnap = await getDoc(uRef);
+    const curRole = uSnap.exists() ? uSnap.data().role : null;
+    const keepRole = ["SUPER_ADMIN", "CEO", "ADMIN", "admin", "STAFF"].includes(curRole);
+
+    await setDoc(doc(db, "merchants", cleanMid), {
+      active: true,
+      status: "approved",
+      approvedAt: serverTimestamp(),
+      approvedBy: auth.currentUser?.uid || null,
+    }, { merge: true });
+
+    await setDoc(uRef, {
+      merchantId: isNaN(Number(cleanMid)) ? cleanMid : Number(cleanMid),
+      ...(keepRole ? {} : { role: "merchant" }),
+    }, { merge: true });
+
+    setState("가맹점 승인 완료");
+    alert(`승인 완료!
+가맹점 ID: ${cleanMid}
+수수료는 '수수료 설정'으로 정해 주세요.`);
+    await loadMerchants();
+  } catch (err) {
+    setState("가맹점 승인 실패");
+    console.error("approveMerchantApplication:", err);
+    alert("승인 실패: " + (err.message || String(err)));
+  }
 }
 
 async function approveMerchant(mid, currentFeeBps) {
@@ -1964,7 +2009,9 @@ merchantList?.addEventListener("click", async (e) => {
   const act = btn.dataset.act;
   const mid = btn.dataset.mid;
   try {
-    if (act === "renameMerchant") {
+    if (act === "approveApplication") {
+      await approveMerchantApplication(mid, btn.dataset.owner || "");
+    } else if (act === "renameMerchant") {
       await renameMerchant(mid, btn.dataset.name || "");
     } else if (act === "editMerchantInfo") {
       await editMerchantInfo(mid, btn.dataset.career || "", btn.dataset.region || "", btn.dataset.desc || "", btn.dataset.note || "", btn.dataset.website || "");

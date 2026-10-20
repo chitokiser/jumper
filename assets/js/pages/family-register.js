@@ -7,6 +7,10 @@ import { app, auth, db, functions } from "/assets/js/firebase-init.js";
 import {
   doc,
   getDoc,
+  getDocs,
+  collection,
+  query,
+  where,
   updateDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -195,13 +199,11 @@ async function doRegisterMerchant() {
       gmap,
       btPerVnd,
       feeBps: 0,
-      active: true,
+      // 신청 → 관리자 승인 후 active:true, users.merchantId 연결 (관리자 화면에서)
+      active: false,
+      status: 'pending',
       txHash: 'offchain',
       createdAt: serverTimestamp()
-    });
-
-    await updateDoc(doc(db, 'users', user.uid), {
-      merchantId: Number(merchantId)
     });
 
     setStep("step1", "done");
@@ -228,7 +230,7 @@ function bindForm() {
     try {
       setState("가맹점 등록 중...");
       const { txHash, merchantId } = await doRegisterMerchant();
-      setState("등록 완료!");
+      setState("신청 완료! 관리자 승인 후 가맹점으로 활성화됩니다.");
       showDone(merchantId, txHash);
     } catch (err) {
       console.error(err);
@@ -383,6 +385,17 @@ async function _initForUser(ctx) {
     }
 
 
+
+    // ④ 승인 대기 중인 신청이 있음
+    try {
+      const pq = query(collection(db, "merchants"), where("ownerUid", "==", user.uid), where("status", "==", "pending"));
+      const ps = await getDocs(pq);
+      if (!ps.empty) {
+        setState("가맹점 신청이 접수되어 관리자 승인을 기다리고 있습니다.");
+        initMentorLink(user.email);
+        return;
+      }
+    } catch (_) { }
 
     // ⑤ 폼 표시
     setState("");
