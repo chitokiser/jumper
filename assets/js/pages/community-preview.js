@@ -127,85 +127,86 @@ const DEFAULT_COMMUNITY_EVENTS = [
   }
 ];
 
-// ── 로드 ──────────────────────────────────────────────────────
-function renderEventCards(grid, list) {
+// ── 이벤트 쿠폰 & 바우쳐 라운지 미리보기 (2026-10-19: 회원 혜택 → 쿠폰·바우쳐로 교체) ──
+// events.html 라운지와 같은 coupon_campaigns 컬렉션의 '진행 중(active)' 항목만, 최신순 최대 4개
+function couponThumbPh(isVoucher) {
+  const ph = document.createElement('div');
+  ph.className = 'comm-preview-thumb-ph';
+  ph.textContent = isVoucher ? '🍽️' : '🎟️';
+  return ph;
+}
+function buildCouponCard(c) {
+  const isVoucher = c.campaignType === 'VOUCHER';
+  const price = Number(c.priceBM || 0);
+  const remaining = Math.max(0, Number(c.totalQuantity || 0) - Number(c.issuedQuantity || 0));
+  const card = document.createElement('a');
+  card.className = 'comm-preview-card';
+  card.href = '/events.html';
+  if (c.imageUrl) {
+    const img = document.createElement('img');
+    img.className = 'comm-preview-thumb';
+    img.src = c.imageUrl;
+    img.alt = c.title || '';
+    img.loading = 'lazy';
+    img.onerror = () => img.replaceWith(couponThumbPh(isVoucher));
+    card.appendChild(img);
+  } else {
+    card.appendChild(couponThumbPh(isVoucher));
+  }
+  const body = document.createElement('div');
+  body.className = 'comm-preview-body';
+  const badge = document.createElement('span');
+  badge.className = 'comm-preview-badge comm-preview-badge--ongoing';
+  badge.textContent = isVoucher ? '🍽️ 바우쳐' : '🎟️ 할인 쿠폰';
+  const title = document.createElement('div');
+  title.className = 'comm-preview-title';
+  title.textContent = c.title || '';
+  const info = document.createElement('div');
+  info.className = 'comm-preview-date';
+  info.textContent = `${price === 0 ? '무료' : price.toLocaleString() + ' BM'} · 혜택 ${c.discountValue || '-'} · 남은 ${remaining.toLocaleString()}장`;
+  const issuer = document.createElement('div');
+  issuer.className = 'comm-preview-loc';
+  issuer.textContent = `🏪 ${c.issuerNameSnapshot || '공식 가맹점'}`;
+  body.append(badge, title, info, issuer);
+  card.appendChild(body);
+  return card;
+}
+function renderCouponCards(grid, list) {
   if (!grid) return;
   grid.innerHTML = '';
   if (!list || list.length === 0) {
-    grid.innerHTML = '<div class="comm-preview-empty">등록된 행사가 없습니다.</div>';
+    grid.innerHTML = '<div class="comm-preview-empty">진행 중인 쿠폰·바우쳐가 없습니다. <a href="/events.html">라운지 바로가기 →</a></div>';
     return;
   }
-  list.slice(0, 4).forEach(e => grid.appendChild(buildCard(e)));
+  list.slice(0, 4).forEach(c => grid.appendChild(buildCouponCard(c)));
 }
+const _ts = (v) => (v?.toMillis ? v.toMillis() : new Date(v || 0).getTime()) || 0;
 
 async function loadCommunityPreview() {
   const grid = document.getElementById('communityPreviewGrid');
   if (!grid) return;
 
-  // 1) 0초 즉시 캐시 / 기본값 렌더링
-  let cached = null;
+  // 1) 직전 방문 캐시로 즉시 표시
   try {
-    const raw = localStorage.getItem('bc_cache_community_events');
-    if (raw) cached = JSON.parse(raw);
+    const raw = localStorage.getItem('bc_cache_home_coupons');
+    const cached = raw ? JSON.parse(raw) : null;
+    if (cached?.length) renderCouponCards(grid, cached);
   } catch (_) {}
 
-  renderEventCards(grid, (cached && cached.length) ? cached : DEFAULT_COMMUNITY_EVENTS);
-
-  // 2) 백그라운드에서 최신 데이터 조회 후 업데이트
+  // 2) 최신 데이터로 갱신
   try {
-    const events = [];
-    const seen   = new Set();
-
-    const push = (docSnap) => {
-      if (!seen.has(docSnap.id) && events.length < 4) {
-        seen.add(docSnap.id);
-        const data = docSnap.data ? docSnap.data() : docSnap;
-        events.push({ id: docSnap.id, ...data });
-      }
-    };
-
-    // 1) 반복 행사 (매일·특정요일)
-    try {
-      const rSnap = await getDocs(
-        query(collection(db,'community_events'),
-          where('scheduleType','in',['daily','weekly']), limit(4))
-      );
-      rSnap.docs.forEach(push);
-    } catch (_) {}
-
-    // 2) 예정 행사 (eventDate 오름차순)
-    if (events.length < 4) {
-      try {
-        const snap = await getDocs(
-          query(collection(db,'community_events'),
-            where('eventDate','>',new Date()),
-            orderBy('eventDate','asc'),
-            limit(4 - events.length))
-        );
-        snap.docs.forEach(push);
-      } catch (_) {}
-    }
-
-    // 3) 그래도 4개 미만이면 최근 행사로 채우기
-    if (events.length < 4) {
-      try {
-        const snap = await getDocs(
-          query(collection(db,'community_events'),
-            orderBy('eventDate','desc'),
-            limit(8))
-        );
-        snap.docs.forEach(push);
-      } catch (_) {}
-    }
-
-    if (events.length > 0) {
-      renderEventCards(grid, events);
-      try {
-        localStorage.setItem('bc_cache_community_events', JSON.stringify(events.slice(0, 4)));
-      } catch (_) {}
-    }
+    const snap = await getDocs(query(collection(db, 'coupon_campaigns'), where('status', '==', 'active')));
+    const list = snap.docs.map(d => {
+      const x = d.data();
+      return { id: d.id, title: x.title, campaignType: x.campaignType, priceBM: x.priceBM, discountValue: x.discountValue,
+        totalQuantity: x.totalQuantity, issuedQuantity: x.issuedQuantity, issuerNameSnapshot: x.issuerNameSnapshot,
+        imageUrl: x.imageUrl, createdAt: _ts(x.createdAt) };
+    }).sort((a, b) => b.createdAt - a.createdAt).slice(0, 4);
+    renderCouponCards(grid, list);
+    try { localStorage.setItem('bc_cache_home_coupons', JSON.stringify(list)); } catch (_) {}
   } catch (err) {
-    console.warn('[community-preview] silent background fetch error (retaining cached UI):', err?.message || err);
+    console.warn('[home-coupons] 쿠폰·바우쳐 조회 실패:', err?.message || err);
+    if (!grid.querySelector('.comm-preview-card')) renderCouponCards(grid, []);
   }
 }
 
