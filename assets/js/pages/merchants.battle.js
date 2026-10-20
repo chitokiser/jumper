@@ -1159,7 +1159,7 @@ export function savePlayerState() {
 
 // ── EXP / 레벨업 시스템 ───────────────────────────────────────────────────────
 function calcNextLevelExp(level) {
-  return Math.pow(level + 1, 2) * 100_000;
+  return Math.pow(level + 1, 2) * 10_000; // 게임 서버 expService 와 같음 (2026-10-21, 기존의 1/10)
 }
 
 function updateExpBar() {
