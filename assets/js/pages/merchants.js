@@ -625,7 +625,7 @@ function renderMarkers(list) {
     marker.addListener('click', () => {
       infoWindow.setContent(`
         <div style="max-width:240px;font-size:13px;line-height:1.6;">
-          ${m.imageUrl ? `<img src="${escHtml(m.imageUrl)}" alt="${escHtml(m.name)}" class="lb-trigger" onclick="openLightbox(this.src,this.alt)" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px;cursor:zoom-in;">` : ''}
+          ${m.imageUrl ? `<img loading="lazy" src="${escHtml(m.imageUrl)}" alt="${escHtml(m.name)}" class="lb-trigger" onclick="openLightbox(this.src,this.alt)" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px;margin-bottom:6px;cursor:zoom-in;">` : ''}
           <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏪 ${escHtml(m.name)}</div>
           ${m.career ? `<div style="color:#f59e0b;font-size:12px;">${escHtml(m.career)}</div>` : ''}
           <div style="font-size:11px;font-weight:700;color:#d97706;background:rgba(217,119,6,0.08);padding:3px 8px;border-radius:6px;display:inline-block;margin:4px 0;">
@@ -2106,7 +2106,7 @@ function renderBoxInventory() {
       ? _t('box_locked_hint', keyId, _bName)
       : _t('box_open_hint', _bName);
     slot.innerHTML = `
-      <img src="/assets/images/item/box.png" alt="box" onerror="this.style.display='none'">
+      <img loading="lazy" src="/assets/images/item/box.png" alt="box" onerror="this.style.display='none'">
       <span class="box-slot-name">${escHtml(boxName || _t('box_default_name2'))}</span>
       ${needsKey ? `<span class="box-slot-key" title="Key #${escHtml(String(keyId))}">${locked ? '🔒' : '🔑'}</span>` : ''}`;
     slot.addEventListener('click', () => {
@@ -2189,7 +2189,7 @@ function _updateEquipStats() {
 
   const weaponCard = wNum
     ? `<div data-unequip="weapon" style="display:flex;align-items:center;gap:6px;background:#2c1a0e;border:2px solid #ffd700;border-radius:8px;padding:5px 10px;min-width:100px;cursor:pointer;position:relative;" title="${_t('unequip_hint')}">
-        <img src="/assets/images/weapon/${escHtml(wNum)}.png"
+        <img loading="lazy" src="/assets/images/weapon/${escHtml(wNum)}.png"
              onerror="this.onerror=null;this.style.display='none'"
              style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="${_t('weapon_slot_name', wNum)}">
         <div>
@@ -2280,7 +2280,7 @@ function renderInventory() {
         slot.title = _t('hp_potion_title');
         slot.style.cursor = 'pointer';
         slot.innerHTML = `
-          <img src="/assets/images/item/hp.png"
+          <img loading="lazy" src="/assets/images/item/hp.png"
                onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2218%22 fill=%22%23ef4444%22/><text x=%2220%22 y=%2226%22 font-size=%2220%22 text-anchor=%22middle%22>💊</text></svg>'"
                alt="${_t('hp_potion_name')}" />
           <span class="slot-name">${_t('hp_potion_name')}</span>
@@ -2290,7 +2290,7 @@ function renderInventory() {
         slot.title = _t('mp_potion_title');
         slot.style.cursor = 'pointer';
         slot.innerHTML = `
-          <img src="/assets/images/item/mp.png"
+          <img loading="lazy" src="/assets/images/item/mp.png"
                onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2218%22 fill=%22%233b82f6%22/><text x=%2220%22 y=%2226%22 font-size=%2220%22 text-anchor=%22middle%22>🔮</text></svg>'"
                alt="${_t('mp_potion_name')}" />
           <span class="slot-name">${_t('mp_potion_name')}</span>
@@ -2300,7 +2300,7 @@ function renderInventory() {
         slot.title = _t('revive_item_title');
         slot.style.cursor = 'pointer';
         slot.innerHTML = `
-          <img src="/assets/images/item/revive_ticket.png"
+          <img loading="lazy" src="/assets/images/item/revive_ticket.png"
                onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2218%22 fill=%22%238b5cf6%22/><text x=%2220%22 y=%2226%22 font-size=%2220%22 text-anchor=%22middle%22>✨</text></svg>'"
                alt="${_t('revive_item_name')}" />
           <span class="slot-name">${_t('revive_item_name')}</span>
@@ -2314,7 +2314,7 @@ function renderInventory() {
         slot.style.cursor = 'pointer';
         if (isEquipped) slot.classList.add('equipped');
         slot.innerHTML = `
-          <img src="/assets/images/weapon/${escHtml(num)}.png"
+          <img loading="lazy" src="/assets/images/weapon/${escHtml(num)}.png"
                onerror="this.onerror=null;this.src='/assets/images/item/0.png'"
                alt="${_t('weapon_slot_name', num)}" />
           <span class="slot-name">${_t('weapon_slot_name', num)}</span>
@@ -2340,7 +2340,7 @@ function renderInventory() {
         slot.style.cursor = 'pointer';
         if (isEquipped) slot.classList.add('equipped');
         slot.innerHTML = `
-          <img src="/assets/images/armo/${escHtml(String(folder))}/${escHtml(defVal)}.png"
+          <img loading="lazy" src="/assets/images/armo/${escHtml(String(folder))}/${escHtml(defVal)}.png"
                onerror="this.onerror=null;this.src='/assets/images/item/0.png'"
                alt="${_t('armor_slot_name', defVal)}" />
           <span class="slot-name">${slotIcon} ${slotLabel}</span>
@@ -2362,7 +2362,7 @@ function renderInventory() {
         slot.title = _t('key_slot_title', keyName, kid);
         slot.innerHTML = `
           <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-            <img src="/assets/images/item/frame.png"
+            <img loading="lazy" src="/assets/images/item/frame.png"
                  style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;"
                  alt="" />
             <span style="position:relative;z-index:1;font-size:10px;font-weight:700;color:#3b1a00;
@@ -2378,7 +2378,7 @@ function renderInventory() {
         const fallbackImg = `/assets/images/item/0.png`;
         const imgFile = _imgRaw.startsWith('/') || _imgRaw.startsWith('http') ? _imgRaw : `/assets/images/item/${escHtml(_imgRaw)}`;
         slot.innerHTML = `
-          <img src="${imgFile}"
+          <img loading="lazy" src="${imgFile}"
                onerror="this.onerror=null;this.src='${fallbackImg}'"
                alt="${escHtml(meta.name || itemId)}" />
           <span class="slot-name">${escHtml(meta.name || ('#' + numericId))}</span>
@@ -2892,7 +2892,7 @@ function renderMyVouchers(logs) {
     const imgSrc = r.image ? `/assets/images/vouchers/${escHtml(r.image)}` : '';
     return `
       <div class="voucher-row" style="display:flex;gap:10px;align-items:center;">
-        ${imgSrc ? `<img src="${imgSrc}" class="lb-trigger" onclick="openLightbox(this.src,this.alt)" alt="${escHtml(r.voucherName || '')}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;background:#1a0e06;" onerror="this.style.display='none'">` : '<div style="width:44px;height:44px;background:#1a0e06;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;">🎟</div>'}
+        ${imgSrc ? `<img loading="lazy" src="${imgSrc}" class="lb-trigger" onclick="openLightbox(this.src,this.alt)" alt="${escHtml(r.voucherName || '')}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;background:#1a0e06;" onerror="this.style.display='none'">` : '<div style="width:44px;height:44px;background:#1a0e06;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;">🎟</div>'}
         <div style="flex:1;">
           <div class="voucher-name">${escHtml(r.voucherName || _t('voucher_label'))}</div>
           <div class="voucher-reward">${escHtml(r.reward || '')}</div>
@@ -2937,7 +2937,7 @@ function renderExchangeSection() {
       const cls = !_uid ? 'no-data' : ratio >= 1 ? 'ok' : 'lack';
       const haveStr = _uid ? ` <small>(${have}/${need})</small>` : '';
       const imgTag = imgSrc
-        ? `<img src="${imgSrc}" alt="" onerror="this.style.display='none'">`
+        ? `<img loading="lazy" src="${imgSrc}" alt="" onerror="this.style.display='none'">`
         : '';
       return `<span class="exc-req-chip ${cls}">${imgTag}${label}×${need}${haveStr}</span>`;
     }).join('');
@@ -3001,7 +3001,7 @@ function renderExchangeSection() {
       <div class="exc-card">
         ${imgUrl
         ? `<div class="exc-card-img-wrap">
-               <img src="${escHtml(imgUrl)}" alt="${escHtml(v.name)}" class="lb-trigger"
+               <img loading="lazy" src="${escHtml(imgUrl)}" alt="${escHtml(v.name)}" class="lb-trigger"
                  onclick="openLightbox(this.src,this.alt)"
                  onerror="this.parentNode.innerHTML='<span class=exc-card-img-fallback>🎟</span>'">
              </div>`
@@ -4009,7 +4009,7 @@ function _getUserFaceMarkerOverlayClass() {
           : '';
         infoWindow.setContent(
           `<div style="max-width:200px;text-align:center;">` +
-          `<img src="${escHtml(imageUrl)}" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #7c3aed;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;" onerror="this.style.display='none'" />` +
+          `<img loading="lazy" src="${escHtml(imageUrl)}" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #7c3aed;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;" onerror="this.style.display='none'" />` +
           `<div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escHtml(displayName)}</div>` +
           `<a href="${escHtml(linkUrl)}" target="_blank" rel="noopener" style="display:inline-block;padding:4px 14px;background:#7c3aed;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">Visit →</a>` +
           editBtn +
@@ -5494,7 +5494,7 @@ async function unlockHintAction() {
 function _renderCommentText(text) {
   const escaped = escHtml(text);
   return escaped.replace(/(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp))(?:\s|$)/gi,
-    (_, url) => `<img class="comment-img" src="${url}" alt="Image" onclick="openLightbox('${url}','')"> `);
+    (_, url) => `<img loading="lazy" class="comment-img" src="${url}" alt="Image" onclick="openLightbox('${url}','')"> `);
 }
 
 async function discoverTreasure(npcId) {

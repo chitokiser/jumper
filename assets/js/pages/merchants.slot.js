@@ -101,9 +101,9 @@ class SlotMachine {
         </div>
 
         <div class="sm-reels" id="smReels">
-          <div class="sm-reel" id="smReel0"><img src="" alt=""></div>
-          <div class="sm-reel" id="smReel1"><img src="" alt=""></div>
-          <div class="sm-reel" id="smReel2"><img src="" alt=""></div>
+          <div class="sm-reel" id="smReel0"><img loading="lazy" src="" alt=""></div>
+          <div class="sm-reel" id="smReel1"><img loading="lazy" src="" alt=""></div>
+          <div class="sm-reel" id="smReel2"><img loading="lazy" src="" alt=""></div>
         </div>
 
         <div class="sm-toast hidden" id="smToast"></div>

@@ -184,7 +184,7 @@ function _fillHarborModal(harbor) {
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-      <img src="${HARBOR_ICON}" style="width:48px;height:48px;border-radius:8px;object-fit:contain">
+      <img loading="lazy" src="${HARBOR_ICON}" style="width:48px;height:48px;border-radius:8px;object-fit:contain">
       <div>
         <div style="font-size:16px;font-weight:700;color:#38bdf8">⚓ Harbor</div>
         <div style="font-size:12px;color:#9ca3af;margin-top:2px">
@@ -218,7 +218,7 @@ function _fillHarborModal(harbor) {
                   justify-content:center;gap:8px;
                   background:linear-gradient(135deg,#0369a1,#0284c7);color:#fff;
                   box-shadow:0 3px 12px rgba(3,105,161,.35)">
-           <img src="${SHIP_ICON}" style="width:22px;height:22px;object-fit:contain">
+           <img loading="lazy" src="${SHIP_ICON}" style="width:22px;height:22px;object-fit:contain">
            Build Trade Ship — ${SHIP_COST.toLocaleString()} GP
          </button>`}
 
@@ -662,7 +662,7 @@ function _renderSvBody(body, data) {
         <div style="width:36px;height:36px;border-radius:8px;position:relative;
                     background:${_gradeColor(s.grade)};display:flex;align-items:center;
                     justify-content:center;flex-shrink:0">
-          <img src="${SHIP_ICON}" style="width:26px;height:26px;object-fit:contain">
+          <img loading="lazy" src="${SHIP_ICON}" style="width:26px;height:26px;object-fit:contain">
           <span style="position:absolute;bottom:-1px;right:-1px;font-size:9px;font-weight:800;
                        background:${_gradeColor(s.grade)};color:#fff;border-radius:3px;
                        padding:0 2px;line-height:1.5">G${s.grade}</span>

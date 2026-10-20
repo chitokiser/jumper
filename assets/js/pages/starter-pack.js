@@ -236,7 +236,7 @@ function _onMonsterClick(m, marker) {
   const distTxt = dist < 9999 ? `${Math.round(dist)}m` : 'GPS 확인 중';
   _infoWin.setContent(`
     <div style="padding:8px;min-width:160px;">
-      <img src="${m.img}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px;">
+      <img loading="lazy" src="${m.img}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px;">
       <div style="font-weight:700;text-align:center;">${m.name} (체험)</div>
       <div style="font-size:0.8rem;color:#6b7280;text-align:center;margin-bottom:8px;">보상: 🪙 ${m.gold} gold · ${distTxt}</div>
       <button onclick="window.__starterKillMonster('${m.id}',${m.gold})"

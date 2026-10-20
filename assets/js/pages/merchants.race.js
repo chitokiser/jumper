@@ -1027,7 +1027,7 @@ class MonsterRace {
     const podiumHTML = this._finishOrder.slice(0, 3).map((id, i) => {
       const m = MDEFS.find(x => x.id === id);
       return `<div class="race-podium-row">
-        <img src="${m.img}" class="race-result-icon" alt="${m.label}">
+        <img loading="lazy" src="${m.img}" class="race-result-icon" alt="${m.label}">
         <span>${medals[i]} ${m.label}</span>
       </div>`;
     }).join('');
@@ -1064,7 +1064,7 @@ class MonsterRace {
       const mine = id === this._betMonster;
       const oddsLabel = mine && this._lockedOdds ? `${this._lockedOdds.toFixed(2)}x ★` : `${this._calcOdds(m.id).toFixed(2)}x`;
       return `<div class="race-order-row${mine ? ' my-bet' : ''}">
-        <img src="${m.img}" class="race-order-icon" alt="${m.label}">
+        <img loading="lazy" src="${m.img}" class="race-order-icon" alt="${m.label}">
         <span>${medals[i]} ${m.label}</span>
         <span style="color:${m.clr};margin-left:auto">${oddsLabel}</span>
       </div>`;

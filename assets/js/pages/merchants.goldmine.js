@@ -118,7 +118,7 @@ function _fillModal(mine) {
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-      <img src="${ICON_URL}" style="width:48px;height:48px;border-radius:8px;object-fit:contain">
+      <img loading="lazy" src="${ICON_URL}" style="width:48px;height:48px;border-radius:8px;object-fit:contain">
       <div>
         <div style="font-size:16px;font-weight:700;color:#fbbf24">⛏ Gold Mine</div>
         ${distLabel ? `<div style="font-size:12px;color:#9ca3af;margin-top:2px">${distLabel} from shop · ${effPct}% efficiency</div>` : ''}

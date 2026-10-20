@@ -2238,7 +2238,7 @@ function renderDecoMarkers() {
 
 function _decoInfoContent(d) {
   return `<div style="font-size:13px;line-height:1.7;min-width:180px;">
-    <img src="${escHtml(d.imageUrl)}" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 6px;">
+    <img loading="lazy" src="${escHtml(d.imageUrl)}" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 6px;">
     <div style="font-weight:700;text-align:center;margin-bottom:4px;">${escHtml(d.name||'Deco')}</div>
     ${_ctx?.isAdmin ? `
       <div style="display:flex;gap:6px;margin-top:6px;">
@@ -4828,7 +4828,7 @@ function _openTrialArchery(mon) {
       </div>
       <div class="tam-arena" id="tamArena">
         <div class="tam-hint" id="tamHint">Tap the monster!</div>
-        <img class="tam-mon" id="tamMon" src="${IMG_SRC}" draggable="false"/>
+        <img loading="lazy" class="tam-mon" id="tamMon" src="${IMG_SRC}" draggable="false"/>
         <div class="tam-miss" id="tamMiss"></div>
         <div class="tam-result hidden" id="tamResult"></div>
       </div>

@@ -378,7 +378,7 @@ function _renderMyTreeList(trees) {
   list.innerHTML = trees.map(t => `
     <div style="padding:10px;border-radius:8px;border:1px solid #1f2937;background:rgba(255,255,255,.02);margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:10px">
-        <img src="${IMG_BASE}${t.imageNum}.png" style="width:36px;height:36px;object-fit:contain">
+        <img loading="lazy" src="${IMG_BASE}${t.imageNum}.png" style="width:36px;height:36px;object-fit:contain">
         <div style="flex:1">
           <div style="font-size:12px;font-weight:700;color:#f3f4f6">${t.treeId}</div>
           <div style="font-size:12px;color:#fbbf24">💰 ${t.value.toLocaleString()} GP</div>

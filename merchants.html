@@ -3673,7 +3673,7 @@
     </div>
     <div class="skill-slot" style="position:relative;">
       <button class="skill-btn" id="skillBtnPotion" title="HP Potion (6) — HP +100">
-        <img src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="HP Potion">
+        <img loading="lazy" src="/assets/images/item/hp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="HP Potion">
       </button>
       <span class="skill-badge" id="skillPotionBadge"></span>
       <span class="skill-key">6</span>
@@ -3687,7 +3687,7 @@
     </div>
     <div class="skill-slot" style="position:relative;">
       <button class="skill-btn" id="skillBtnMpPotion" title="MP Potion (8) — Restore MP">
-        <img src="/assets/images/item/mp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="MP Potion">
+        <img loading="lazy" src="/assets/images/item/mp.png" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;" alt="MP Potion">
       </button>
       <span class="skill-badge" id="skillMpPotionBadge"></span>
       <span class="skill-key">8</span>
@@ -4070,7 +4070,7 @@
     <div style="background:#111827;border-radius:16px;padding:20px;width:90%;max-width:320px;
                 border:1px solid #1f2937">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <img id="mtTreeImg" src="/assets/images/tree/1.png" style="width:56px;height:56px;object-fit:contain">
+        <img loading="lazy" id="mtTreeImg" src="/assets/images/tree/1.png" style="width:56px;height:56px;object-fit:contain">
         <div>
           <div style="font-size:11px;color:#6b7280" id="mtTreeId"></div>
           <div style="font-size:16px;font-weight:700;color:#fbbf24" id="mtTreeValue"></div>
@@ -4103,7 +4103,7 @@
   <div id="itemReveal">
     <div class="item-reveal-panel">
       <div class="item-reveal-title">✨ Item Obtained!</div>
-      <img id="itemRevealImg" class="item-reveal-img lb-trigger" src="" alt="" onclick="if(this.src)openLightbox(this.src,this.alt)" onerror="this.style.display='none'">
+      <img loading="lazy" id="itemRevealImg" class="item-reveal-img lb-trigger" src="" alt="" onclick="if(this.src)openLightbox(this.src,this.alt)" onerror="this.style.display='none'">
       <div class="item-reveal-name" id="itemRevealName"></div>
       <button class="btn-reveal-close" id="btnRevealClose">Confirm</button>
     </div>
@@ -4336,14 +4336,14 @@
   <!-- 라이트박스 -->
   <div id="lb-overlay" role="dialog" aria-modal="true" aria-label="Enlarge Image">
     <span id="lb-close" aria-label="Close">×</span>
-    <img id="lb-img" src="" alt="">
+    <img loading="lazy" id="lb-img" src="" alt="">
   </div>
 
   <!-- ── 사용자 보물 NPC 정보 모달 ── -->
   <div id="utNpcModal" role="dialog" aria-modal="true">
     <div class="ut-npc-panel">
       <div class="ut-npc-header">
-        <img class="ut-npc-avatar" id="utNpcAvatar" src="/assets/images/npc/npc1.png" alt="NPC">
+        <img loading="lazy" class="ut-npc-avatar" id="utNpcAvatar" src="/assets/images/npc/npc1.png" alt="NPC">
         <div class="ut-npc-header-title">🗝️ Treasure NPC</div>
         <button type="button" class="ut-npc-close" id="btnCloseUtNpc" onclick="document.getElementById('utNpcModal').classList.remove('open')">✕</button>
       </div>
