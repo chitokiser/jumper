@@ -4,7 +4,7 @@
 
 import { esc } from '/assets/js/esc.js';
 import { collection, getDocs, doc, getDoc, query, where,
-         addDoc, deleteDoc, setDoc, serverTimestamp, onSnapshot }
+         addDoc, deleteDoc, setDoc, serverTimestamp, onSnapshot, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
@@ -859,17 +859,57 @@ function updateCombatHud() {
 // ── GP 실시간 리스너 ─────────────────────────────────────────────────────────
 let _gpUnsubscribe = null;
 
+// ── 금·경험치 동기화 (2026-10-20) ─────────────────────────────────────────────
+// 서버(금광 수령·상점 세금·게임 서버 경험치·던전 입장료)도 battle_players 를 더하기(increment)로 바꾼다.
+// 화면은 '마지막으로 DB에서 본 값(_goldSynced/_expSynced)'과의 차이만 더하기로 저장해 서버 값을 덮어쓰지 않는다.
+let _goldSynced = null;
+let _expSynced  = null;
+let _levelFloor = 1;   // 예전 레벨(웹3 시절 level·gsLevel) — 이보다 내려가지 않음
+
+/** 누적 게임 경험치 → 게임 레벨 (게임 서버 expService 와 같은 규칙) */
+function _levelFromExp(exp) {
+  let lv = 1;
+  while (lv < 99 && exp >= calcNextLevelExp(lv)) lv++;
+  return lv;
+}
+
+/** 게임 레벨 하나로 통일: 위쪽 LV = EX 막대 Lv, HP·MP 도 이 레벨을 따른다 */
+function _applyGameLevel({ silent = false } = {}) {
+  const lv = Math.max(_levelFloor, _player.level || 1, _levelFromExp(_player.gsExp || 0));
+  const prev = _player.level || 1;
+  _player.gsLevel = lv;
+  _player.nextLevelExp = calcNextLevelExp(lv);
+  if (lv !== prev) {
+    _player.level = lv;
+    const hpRatio = _player.maxHp > 0 ? _player.hp / _player.maxHp : 1;
+    const mpRatio = _player.maxMp > 0 ? _player.mp / _player.maxMp : 1;
+    _player.maxHp = lv * 1000;
+    _player.maxMp = lv * 1000;
+    _player.hp = Math.round(_player.maxHp * hpRatio);
+    _player.mp = Math.round(_player.maxMp * mpRatio);
+    if (!silent && lv > prev) showLevelUpEffect(lv);
+  }
+}
+
 function _startGpListener(uid) {
   if (_gpUnsubscribe) return;
   _gpUnsubscribe = onSnapshot(
     doc(_ctx.db, 'battle_players', uid),
     snap => {
       if (!snap.exists()) return;
-      const gold = snap.data().gold ?? 0;
-      if (gold !== _player.gold) {
-        _player.gold = gold;
-        updateCombatHud();
-      }
+      const d = snap.data();
+      // 아직 저장하지 않은 화면 쪽 변화량은 유지하고, 나머지는 DB 값을 따른다
+      const gold = d.gold ?? 0;
+      const pendGold = _goldSynced == null ? 0 : (_player.gold || 0) - _goldSynced;
+      _goldSynced = gold;
+      _player.gold = gold + pendGold;
+      const exp = typeof d.gsExp === 'number' ? d.gsExp : 0;
+      const pendExp = _expSynced == null ? 0 : (_player.gsExp || 0) - _expSynced;
+      _expSynced = exp;
+      _player.gsExp = exp + pendExp;
+      _applyGameLevel();
+      updateCombatHud();
+      updateExpBar();
     }
   );
 }
@@ -895,18 +935,25 @@ export async function loadPlayerState({ force = false } = {}) {
   // 플레이어 레벨은 게임 DB(battle_players) 기준 — 웹3 조회 안 함 (docs/adr/0001)
   try {
     const snap = await getDoc(doc(_ctx.db, 'battle_players', uid));
-    if (snap.exists() && snap.data().level > 0) {
-      _player.level = snap.data().level;
-      _player.xp    = snap.data().xp || 0;
+    if (snap.exists()) {
+      const d0 = snap.data();
+      _levelFloor   = Math.max(d0.level || 1, typeof d0.gsLevel === 'number' ? d0.gsLevel : 1);
+      _player.level = Math.max(_levelFloor, _levelFromExp(typeof d0.gsExp === 'number' ? d0.gsExp : 0));
+      _player.xp    = d0.xp || 0;
     }
     _player.maxHp = _player.level * 1000;
     _player.maxMp = _player.level * 1000;
     if (snap.exists()) {
       const d = snap.data();
-      _player.gold    = d.gold  || 0;
+      // 다시 불러올 때도 아직 저장 안 된 화면 쪽 변화량은 유지
+      const _pg = _goldSynced == null ? 0 : (_player.gold || 0) - _goldSynced;
+      _goldSynced     = d.gold  || 0;
+      _player.gold    = _goldSynced + _pg;
       _player.token   = d.token ?? 30;
-      _player.gsExp          = typeof d.gsExp          === 'number' ? d.gsExp          : 0;
-      _player.gsLevel        = typeof d.gsLevel        === 'number' ? d.gsLevel        : _player.level;
+      const _pe = _expSynced == null ? 0 : (_player.gsExp || 0) - _expSynced;
+      _expSynced             = typeof d.gsExp          === 'number' ? d.gsExp          : 0;
+      _player.gsExp          = _expSynced + _pe;
+      _player.gsLevel        = _player.level;
       _player.monstersKilled = typeof d.monstersKilled === 'number' ? d.monstersKilled : 0;
       _player.gsLevel = Math.max(_player.level, _player.gsLevel);
       _player.nextLevelExp = calcNextLevelExp(_player.gsLevel);
@@ -968,28 +1015,10 @@ export function spendPlayerGold(amount) {
   return true;
 }
 export function addPlayerGsExp(amount) {
+  // 누적 경험치 (게임 서버와 같은 방식 — 레벨업 때 깎지 않음)
   _player.gsExp = (_player.gsExp || 0) + amount;
-
-  // 레벨업 체크 (standalone XP — 게임서버 미연결 상태 포함)
-  let leveled = false;
-  while (_player.gsExp >= (_player.nextLevelExp || calcNextLevelExp(_player.gsLevel))) {
-    _player.gsExp   -= _player.nextLevelExp || calcNextLevelExp(_player.gsLevel);
-    _player.gsLevel  = (_player.gsLevel || 1) + 1;
-    _player.nextLevelExp = calcNextLevelExp(_player.gsLevel);
-    showLevelUpEffect(_player.gsLevel);
-    leveled = true;
-  }
-  if (leveled) {
-    _xp99Saved = false;
-    _markPendingOnChainSync(_player.gsLevel);
-  } else if (!_xp99Saved) {
-    const nextLvExp = _player.nextLevelExp || calcNextLevelExp(_player.gsLevel);
-    if (nextLvExp > 0 && _player.gsExp / nextLvExp >= 0.99) {
-      _xp99Saved = true;
-      _markPendingOnChainSync(_player.gsLevel); // 99% 체크포인트 온체인 저장 (1회)
-    }
-  }
-
+  _applyGameLevel();
+  updateCombatHud();
   updateExpBar();
   savePlayerState();
 }
@@ -1087,12 +1116,17 @@ async function _flushPlayerState() {
   clearTimeout(_saveForceTimer);
   _saveTimer = null;
   _saveForceTimer = null;
+  // 금·경험치는 마지막 DB 값과의 차이만 더한다 (서버가 넣은 값 보존). DB 값을 아직 모르면 저장하지 않음.
+  const _goldDelta = _goldSynced == null ? null : Math.round((_player.gold || 0) - _goldSynced);
+  const _expDelta  = _expSynced  == null ? null : Math.round((_player.gsExp || 0) - _expSynced);
+  if (_goldDelta) _goldSynced += _goldDelta;
+  if (_expDelta)  _expSynced  += _expDelta;
   try {
     await setDoc(doc(_ctx.db, 'battle_players', uid), {
       uid, level: _player.level, xp: _player.xp,
       hp: _player.hp, mp: _player.mp,
       maxHp: _player.maxHp, maxMp: _player.maxMp,
-      gold:  _player.gold  || 0,
+      ...(_goldDelta != null && _goldDelta !== 0 ? { gold: increment(_goldDelta) } : {}),
       token: _player.token ?? 30,
       isDead: _isDead,
       reviveWalkDist: _reviveWalkDist,
@@ -1104,12 +1138,16 @@ async function _flushPlayerState() {
       equippedLegs:    _player.equippedLegs    || null,
       equippedGloves:  _player.equippedGloves  || null,
       equippedBoots:   _player.equippedBoots   || null,
-      gsExp:          _player.gsExp          || 0,
-      gsLevel:        _player.gsLevel        || _player.level,
+      ...(_expDelta != null && _expDelta !== 0 ? { gsExp: increment(_expDelta) } : {}),
+      gsLevel:        _player.level,
       monstersKilled: _player.monstersKilled || 0,
       updatedAt: serverTimestamp(),
     }, { merge: true });
-  } catch { /* 무시 */ }
+  } catch {
+    // 저장 실패 → 다음 저장 때 다시 더하도록 기준값 되돌림
+    if (_goldDelta) _goldSynced -= _goldDelta;
+    if (_expDelta)  _expSynced  -= _expDelta;
+  }
 }
 
 export function savePlayerState() {
@@ -1149,21 +1187,10 @@ function showLevelUpEffect(newLevel) {
   setTimeout(() => overlay.classList.remove('visible'), 3000);
 }
 
-export function onPlayerExp(d) {
-  _player.gsExp        = d.exp;
-  _player.gsLevel      = d.level;
-  _player.nextLevelExp = d.nextLevelExp;
-  updateExpBar();
-}
-
-export function onPlayerLevelUp(d) {
-  _player.gsExp        = d.exp;
-  _player.gsLevel      = d.newLevel;
-  _player.nextLevelExp = d.nextLevelExp;
-  updateExpBar();
-  showLevelUpEffect(d.newLevel);
-  _markPendingOnChainSync(d.newLevel);
-}
+// 게임 서버 경험치: 서버가 battle_players.gsExp 에 더하기로 저장 → 리스너(_startGpListener)가 반영.
+// 서버가 보내는 절대값은 화면 쪽 경험치(배치 몬스터)를 모를 수 있어 쓰지 않는다.
+export function onPlayerExp(_d) { updateExpBar(); }
+export function onPlayerLevelUp(_d) { updateExpBar(); }
 
 // 레벨업 시 Firestore에 온체인 동기화 플래그 기록 (가스 절약 — 즉시 온체인 저장 안 함)
 function _markPendingOnChainSync(newLevel) {
@@ -3188,7 +3215,8 @@ export async function hitMonster(monsterId, damage, mobRef = null) {
     _player.monstersKilled = (_player.monstersKilled || 0) + 1;
 
     playSound('monster_die');
-    gainXp(mob.dropExp || 20);
+    // 게임 서버와 같은 규칙: 몬스터 최대 HP 만큼 (최대 100,000)
+    addPlayerGsExp(Math.min(mob.maxHp || 0, 100_000) || 20);
     dropGoldTokens(mob);
     // 마정석 랜덤 드랍 (30% 확률, 1~3개)
     if (Math.random() < 0.3) {
