@@ -1424,9 +1424,18 @@ function getGsTargetsInRange() {
     const lng = m.currentLng ?? m.lng;
     if (!lat || !lng) continue;
     result.push({ id, name: m.type || 'ServerMonster', lat, lng,
-                  hp: m.hp ?? 1, maxHp: m.maxHp ?? 1, image: '👾', _isGs: true });
+                  hp: m.hp ?? 1, maxHp: m.maxHp ?? 1, image: '👾', _isGs: true,
+                  attackRangeM: m.attackRangeM ?? 20 });
   }
   return result;
+}
+
+// 사거리 규칙: 내가 어떤 몬스터를 공격할 수 있는 거리 = 그 몬스터가 나를 공격하는 거리 (활·스킬·관리자 동일)
+//  - 서버 몬스터: attackRangeM (게임 서버가 같은 값으로 판정)
+//  - 배치 몬스터: detectRadius (이 거리 안에서 나를 공격)
+function _mobRange(mob) {
+  if (!mob) return 0;
+  return mob._isGs ? (mob.attackRangeM ?? 20) : (mob.detectRadius || 30);
 }
 
 function _getNearestMonster(myLat, myLng) {
@@ -1464,11 +1473,10 @@ export function castLightning() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 500 : SKILL_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
     animateLightning();
@@ -1477,7 +1485,7 @@ export function castLightning() {
 
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
-      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${_mobRange(near.mob)}m) 가까이 이동하세요.`);
     } else {
       showSkillError(_t('skill_no_target_lightning'));
     }
@@ -1522,11 +1530,10 @@ export function castIceFreeze() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 500 : SKILL_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
     animateIceFreeze();
@@ -1535,7 +1542,7 @@ export function castIceFreeze() {
 
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
-      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${_mobRange(near.mob)}m) 가까이 이동하세요.`);
     } else {
       showSkillError(_t('skill_no_target_ice'));
     }
@@ -1586,11 +1593,10 @@ export function castFireStorm() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 500 : SKILL_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
     animateFireStorm();
@@ -1599,7 +1605,7 @@ export function castFireStorm() {
 
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
-      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${_mobRange(near.mob)}m) 가까이 이동하세요.`);
     } else {
       showSkillError(_t('skill_no_target_fire'));
     }
@@ -1644,11 +1650,10 @@ export function castWhirlwind() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 500 : WIND_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
     animateWhirlwind();
@@ -1657,7 +1662,7 @@ export function castWhirlwind() {
 
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
-      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${_mobRange(near.mob)}m) 가까이 이동하세요.`);
     } else {
       showSkillError(_t('skill_no_target_wind'));
     }
@@ -1702,11 +1707,10 @@ export function castMeteor() {
   if (!myPos) { showSkillError(_t('skill_locating')); return; }
   const { lat: myLat, lng: myLng } = myPos;
 
-  const effectiveRange = _ctx?.isAdmin ? 500 : METEOR_RANGE_M;
   const inRangeMobs = _monsters.filter(m => m.lat && m.lng && m.hp > 0 &&
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
   const gsTargets = getGsTargetsInRange().filter(m =>
-    haversine(myLat, myLng, m.lat, m.lng) <= effectiveRange);
+    haversine(myLat, myLng, m.lat, m.lng) <= _mobRange(m));
 
   if (inRangeMobs.length === 0 && gsTargets.length === 0) {
     animateMeteor();
@@ -1715,7 +1719,7 @@ export function castMeteor() {
 
     const near = _getNearestMonster(myLat, myLng);
     if (near.mob) {
-      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${effectiveRange}m) 가까이 이동하세요.`);
+      showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(near.dist)}m / 사거리: ${_mobRange(near.mob)}m) 가까이 이동하세요.`);
     } else {
       showSkillError(_t('skill_no_target_meteor'));
     }
@@ -2461,7 +2465,7 @@ export function shootArrowAtMonster(mob) {
 
   // 4. 거리 체크: 화살 기본 사정거리 120m (관리자는 500m)
   const dist = haversine(myLat, myLng, mob.lat, mob.lng);
-  const clickRange = _ctx?.isAdmin ? 500 : Math.max(120, (mob.detectRadius || 30) * 3);
+  const clickRange = _mobRange(mob);
 
   if (dist > clickRange) {
     showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(dist)}m / 사거리: ${clickRange}m) 가까이 이동하세요.`);
@@ -2527,8 +2531,7 @@ export function attackNearestWithBow() {
     return false;
   }
   const near = _getNearestMonster(myPos.lat, myPos.lng);
-  const bowRange = near.mob ? (_ctx?.isAdmin ? 500 : Math.max(120, (near.mob.detectRadius || 30) * 3)) : 0;
-  if (!near.mob) {
+    if (!near.mob) {
     showSkillError('주변에 사냥할 수 있는 몬스터가 없습니다.');
     return false;
   }
@@ -2549,7 +2552,7 @@ export function shootArrowFx(toLat, toLng, onHit, range = 120) {
     showSkillError(_t('skill_locating', '위치 정보를 확인 중입니다.'));
     return false;
   }
-  const maxRange = _ctx?.isAdmin ? 500 : range;
+  const maxRange = range;
   const dist = haversine(myPos.lat, myPos.lng, toLat, toLng);
   if (dist > maxRange) {
     showSkillError(`🎯 사정거리 초과! (거리: ${Math.round(dist)}m / 사거리: ${maxRange}m) 가까이 이동하세요.`);
@@ -2613,7 +2616,7 @@ function _spawnMonsterMarker(mob) {
         // 사정거리 밖이거나 사망 등 공격 불가 시에만 인포윈도우 열기
         const p = getMyPos();
         const myDist = p ? Math.round(haversine(p.lat, p.lng, mob.lat, mob.lng)) : null;
-        const clickRange = _ctx?.isAdmin ? 500 : Math.max(120, (mob.detectRadius || 30) * 3);
+        const clickRange = _mobRange(mob);
         const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
         infoWindow?.setContent(`
           <div style="font-size:13px;min-width:160px">
@@ -2659,7 +2662,7 @@ function _spawnMonsterMarker(mob) {
     // 사정거리 밖이거나 사망 등 공격 불가 시에만 인포윈도우 열기
     const p = getMyPos();
     const myDist = p ? Math.round(haversine(p.lat, p.lng, mob.lat, mob.lng)) : null;
-    const clickRange = _ctx?.isAdmin ? 500 : Math.max(120, (mob.detectRadius || 30) * 3);
+    const clickRange = _mobRange(mob);
     const hpPct = Math.round((mob.hp / mob.maxHp) * 100);
     infoWindow?.setContent(`
       <div style="font-size:13px;min-width:160px">

@@ -1330,13 +1330,13 @@ function _renderGsMonster(monster) {
             if (shot) return;
           }
 
-          // GS 전용 몬스터도 120m(관리자 500m) 사정거리로 화살 사냥
+          // GS 전용 몬스터: 그 몬스터의 공격 사거리 안에서만 화살 사냥
           const myPos = _ctx.lastPos;
           if (!myPos) return;
           const mLat = m.currentLat ?? m.lat ?? lat;
           const mLng = m.currentLng ?? m.lng ?? lng;
           const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
-          const attackRange = _isAdmin ? 500 : 120;
+          const attackRange = m?.attackRangeM ?? 20; // 그 몬스터가 나를 공격하는 거리와 같음 (서버 판정과 동일)
           if (dist > attackRange) {
             showFloat(`🎯 사정거리 초과! (${Math.round(dist)}m / ${attackRange}m)`, '#facc15', mLat, mLng);
             return;
@@ -1400,7 +1400,7 @@ function _renderGsMonster(monster) {
     const mLat = m?.currentLat ?? m?.lat ?? lat;
     const mLng = m?.currentLng ?? m?.lng ?? lng;
     const dist = haversine(myPos.lat, myPos.lng, mLat, mLng);
-    const attackRange = _isAdmin ? 500 : 120;
+    const attackRange = m?.attackRangeM ?? 20; // 그 몬스터가 나를 공격하는 거리와 같음 (서버 판정과 동일)
     if (dist > attackRange) {
       infoWindow?.setContent(`<div style="font-size:13px;padding:4px;">👾 <b>${escHtml(type)}</b><br><span style="color:#f59e0b;font-size:11px;">🎯 거리: ${Math.round(dist)}m (사거리: ${attackRange}m)</span></div>`);
       infoWindow?.open(map, marker);
