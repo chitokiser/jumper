@@ -1013,7 +1013,7 @@ function renderCoopCard(p) {
     : `<span style="font-size:0.7rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">${_t('general_badge')}</span>`;
 
   return `
-    <a class="mp-product-card" href="/coop.html">
+    <a class="mp-product-card" href="/mall">
       ${imgHtml}
       <div class="mp-product-body">
         ${typeBadge}
