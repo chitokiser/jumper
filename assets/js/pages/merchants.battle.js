@@ -898,11 +898,10 @@ function _startGpListener(uid) {
     snap => {
       if (!snap.exists()) return;
       const d = snap.data();
-      // 아직 저장하지 않은 화면 쪽 변화량은 유지하고, 나머지는 DB 값을 따른다
-      const gold = d.gold ?? 0;
-      const pendGold = _goldSynced == null ? 0 : (_player.gold || 0) - _goldSynced;
-      _goldSynced = gold;
-      _player.gold = gold + pendGold;
+      // 금은 서버만 저장(규칙상 화면 쓰기 금지) → 항상 DB 값을 따른다.
+      // 경험치는 아직 저장하지 않은 화면 쪽 변화량을 유지한다.
+      _goldSynced = d.gold ?? 0;
+      _player.gold = _goldSynced;
       const exp = typeof d.gsExp === 'number' ? d.gsExp : 0;
       const pendExp = _expSynced == null ? 0 : (_player.gsExp || 0) - _expSynced;
       _expSynced = exp;
@@ -946,9 +945,8 @@ export async function loadPlayerState({ force = false } = {}) {
     if (snap.exists()) {
       const d = snap.data();
       // 다시 불러올 때도 아직 저장 안 된 화면 쪽 변화량은 유지
-      const _pg = _goldSynced == null ? 0 : (_player.gold || 0) - _goldSynced;
       _goldSynced     = d.gold  || 0;
-      _player.gold    = _goldSynced + _pg;
+      _player.gold    = _goldSynced;
       _player.token   = d.token ?? 30;
       const _pe = _expSynced == null ? 0 : (_player.gsExp || 0) - _expSynced;
       _expSynced             = typeof d.gsExp          === 'number' ? d.gsExp          : 0;
@@ -1116,17 +1114,15 @@ async function _flushPlayerState() {
   clearTimeout(_saveForceTimer);
   _saveTimer = null;
   _saveForceTimer = null;
-  // 금·경험치는 마지막 DB 값과의 차이만 더한다 (서버가 넣은 값 보존). DB 값을 아직 모르면 저장하지 않음.
-  const _goldDelta = _goldSynced == null ? null : Math.round((_player.gold || 0) - _goldSynced);
+  // 금은 서버(Cloud Functions)만 저장한다 — 규칙이 화면의 gold 쓰기를 거부하므로 넣으면 저장 전체가 실패함.
+  // 경험치는 마지막 DB 값과의 차이만 더한다 (서버가 넣은 값 보존). DB 값을 아직 모르면 저장하지 않음.
   const _expDelta  = _expSynced  == null ? null : Math.round((_player.gsExp || 0) - _expSynced);
-  if (_goldDelta) _goldSynced += _goldDelta;
   if (_expDelta)  _expSynced  += _expDelta;
   try {
     await setDoc(doc(_ctx.db, 'battle_players', uid), {
       uid, level: _player.level, xp: _player.xp,
       hp: _player.hp, mp: _player.mp,
       maxHp: _player.maxHp, maxMp: _player.maxMp,
-      ...(_goldDelta != null && _goldDelta !== 0 ? { gold: increment(_goldDelta) } : {}),
       token: _player.token ?? 30,
       isDead: _isDead,
       reviveWalkDist: _reviveWalkDist,
@@ -1145,7 +1141,6 @@ async function _flushPlayerState() {
     }, { merge: true });
   } catch {
     // 저장 실패 → 다음 저장 때 다시 더하도록 기준값 되돌림
-    if (_goldDelta) _goldSynced -= _goldDelta;
     if (_expDelta)  _expSynced  -= _expDelta;
   }
 }
@@ -1173,7 +1168,11 @@ function updateExpBar() {
   const gsLv   = _player.gsLevel || _player.level;
   const gsExp  = _player.gsExp   || 0;
   const nextLv = _player.nextLevelExp || calcNextLevelExp(gsLv);
-  const pct    = Math.min(100, (gsExp / nextLv) * 100);
+  // 막대는 현재 레벨 구간 안에서의 진행률 (누적값 그대로면 높은 레벨에서 거의 안 움직임)
+  const start  = gsLv > 1 ? calcNextLevelExp(gsLv - 1) : 0;
+  const pct    = gsExp >= start && nextLv > start
+    ? Math.min(100, ((gsExp - start) / (nextLv - start)) * 100)
+    : Math.min(100, (gsExp / nextLv) * 100);
   if (expBar) expBar.style.width = pct + '%';
   if (expVal) expVal.textContent = `Lv.${gsLv}  ${gsExp.toLocaleString()} / ${nextLv.toLocaleString()}`;
 }
