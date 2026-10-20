@@ -327,6 +327,7 @@ function _injectStyles() {
 
   let css = `
 /* ── monster-sprite overlay 공통 ── */
+.ms-overlay.ms-paused, .ms-overlay.ms-paused * { animation-play-state: paused !important; }
 .ms-overlay {
   position: absolute;
   pointer-events: auto;
@@ -510,6 +511,55 @@ function _injectStyles() {
   document.head.appendChild(el);
 }
 
+// ─── 공용 애니메이션 타이머 ─────────────────────────────────────────────────
+// 몬스터마다 setInterval을 두지 않고 requestAnimationFrame 하나로 모든 프레임을 넘긴다.
+// - 백그라운드 탭: 브라우저가 rAF를 멈추므로 자동 정지
+// - 화면 밖 몬스터: 반복 애니메이션은 프레임을 넘기지 않음(한 번 재생은 콜백 때문에 계속 진행)
+const _animJobs = new Set();   // { ov, interval, next, loop, step }
+let _animRaf = null;
+let _visCheckAt = 0;
+const VIS_CHECK_MS = 500;
+
+function _refreshOnScreen(now) {
+  if (now < _visCheckAt) return;
+  _visCheckAt = now + VIS_CHECK_MS;
+  const boundsByMap = new Map();
+  _animJobs.forEach(job => {
+    const lmap = (job.ov.getMap?.() || job.ov._map)?._lmap;
+    if (!lmap) { job.ov._onScreen = true; return; }
+    let b = boundsByMap.get(lmap);
+    if (!b) { b = lmap.getBounds().pad(0.2); boundsByMap.set(lmap, b); }
+    const on = b.contains([job.ov._lat, job.ov._lng]);
+    if (on !== job.ov._onScreen) {
+      job.ov._onScreen = on;
+      job.ov._div?.classList.toggle('ms-paused', !on);
+    }
+  });
+}
+
+function _animTick(now) {
+  _animRaf = null;
+  _refreshOnScreen(now);
+  _animJobs.forEach(job => {
+    if (now < job.next) return;
+    job.next = now + job.interval;
+    if (job.loop && job.ov._onScreen === false) return;
+    job.step();
+  });
+  if (_animJobs.size) _animRaf = requestAnimationFrame(_animTick);
+}
+
+function _addAnimJob(job) {
+  job.next = performance.now() + job.interval;
+  _animJobs.add(job);
+  if (!_animRaf) _animRaf = requestAnimationFrame(_animTick);
+  return job;
+}
+
+function _removeAnimJob(job) {
+  if (job) _animJobs.delete(job);
+}
+
 // ─── MonsterSpriteOverlay 클래스 팩토리 ───────────────────────────────────────
 // google.maps.OverlayView는 Maps API 로드 후에만 상속 가능하므로 lazy 생성
 
@@ -540,7 +590,7 @@ function _getOverlayClass() {
       this._name      = monster.type.charAt(0).toUpperCase() + monster.type.slice(1);
 
       // 애니메이션 상태
-      this._animState = 'idle';
+      this._animState = null;   // 첫 _applyAnim이 반드시 실행되도록 (framesMode idle 시작 시 빈 그림 방지)
       this._logicState = monster.state;
       this._oneShot   = false;   // one-shot 진행 중 여부
 
@@ -661,7 +711,7 @@ function _getOverlayClass() {
       if (this._div?.parentNode) this._div.parentNode.removeChild(this._div);
       this._div = null;
       if (this._lerpRaf) cancelAnimationFrame(this._lerpRaf);
-      if (this._frameTimer) { clearInterval(this._frameTimer); this._frameTimer = null; }
+      if (this._frameTimer) { _removeAnimJob(this._frameTimer); this._frameTimer = null; }
       this._onRemoved();
     }
 
@@ -781,7 +831,7 @@ function _getOverlayClass() {
       // loop 애니메이션은 같은 상태 재진입 시 그냥 유지 (단 oneShotCb 있으면 강제 재시작)
       if (this._animState === animName && animCfg.loop && !oneShotCb) return;
 
-      if (this._frameTimer) { clearInterval(this._frameTimer); this._frameTimer = null; }
+      if (this._frameTimer) { _removeAnimJob(this._frameTimer); this._frameTimer = null; }
       this._animState = animName;
 
       let frameIdx = 0;
@@ -802,21 +852,26 @@ function _getOverlayClass() {
       setFrame(0);
       this._updateDirection();
 
-      this._frameTimer = setInterval(() => {
+      this._frameTimer = _addAnimJob({
+        ov: this,
+        interval: 1000 / animCfg.fps,
+        loop: !!(animCfg.loop && !oneShotCb),
+        step: () => {
         frameIdx++;
         if (frameIdx >= animCfg.frames) {
           if (animCfg.loop && !oneShotCb) {
             frameIdx = 0;
           } else {
             frameIdx = animCfg.frames - 1; // 마지막 프레임 고정
-            clearInterval(this._frameTimer);
+            _removeAnimJob(this._frameTimer);
             this._frameTimer = null;
             if (oneShotCb) { this._oneShot = false; oneShotCb(); }
             return;
           }
         }
         setFrame(frameIdx);
-      }, 1000 / animCfg.fps);
+        },
+      });
     }
 
     _playOneShot(animName, onComplete) {

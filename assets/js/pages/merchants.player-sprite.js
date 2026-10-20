@@ -384,9 +384,11 @@ function _getOverlayCls() {
 
     // ── Render loop ────────────────────────────────────────────────────────
     _startLoop() {
-      const tick = () => {
+      // 초당 30장으로 제한 (시간 기준 보간이라 동작 속도는 그대로) — 발열·배터리 절약
+      let last = 0;
+      const tick = (now) => {
         if (!this._canvas) return;
-        this._render();
+        if (now - last >= 32) { last = now; this._render(); }
         this._rafId = requestAnimationFrame(tick);
       };
       this._rafId = requestAnimationFrame(tick);
