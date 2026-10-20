@@ -2528,10 +2528,6 @@ export function attackNearestWithBow() {
   }
   const near = _getNearestMonster(myPos.lat, myPos.lng);
   const bowRange = near.mob ? (_ctx?.isAdmin ? 500 : Math.max(120, (near.mob.detectRadius || 30) * 3)) : 0;
-  if (!near.mob || near.dist > bowRange) {
-    // 사정거리 안에 일반 몬스터가 없으면 초보자 체험 몬스터(starter-pack.js)를 사격
-    if (typeof window.__starterShootNearest === 'function' && window.__starterShootNearest(myPos.lat, myPos.lng)) return true;
-  }
   if (!near.mob) {
     showSkillError('주변에 사냥할 수 있는 몬스터가 없습니다.');
     return false;

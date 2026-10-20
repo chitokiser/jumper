@@ -47,8 +47,6 @@ window.__sendPlayerAttack = sendPlayerAttack;
 import { hasSpriteConfig, createMonsterSpriteOverlay, preloadSpriteImages }
   from './merchants.monster-sprite.js';
 import { _t } from './merchants.i18n.js';
-import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterActive }
-  from './starter-pack.js';
 import { initUserPlace } from './user-place.js';
 
 // ── 부가 기능(일일 구역·돈나무·금광·항구) 지연 로딩 ───────────────────────────
@@ -1611,7 +1609,6 @@ function showMyLocation() {
     broadcastMyLocation(lat, lng);
     if (btn) btn.textContent = '📍';
     setSpawnPos(lat, lng); // record spawn on first GPS fix
-    _maybeInitStarterPack(lat, lng);
     _maybeInitDailyArea(lat, lng);
   });
 
@@ -1784,14 +1781,6 @@ function _stopDetector() {
   _updateTreasureGroupDot(false);
 }
 
-// ── 초보자 체험 패키지: 항상 생성 (실제 보물 유무 무관) ──────────────────────
-let _starterInitDone = false;
-function _maybeInitStarterPack(lat, lng) {
-  if (_starterInitDone || isStarterActive()) return;
-  _starterInitDone = true;
-  initStarterPack(_uid, lat, lng, _ctx.map, infoWindow);
-}
-
 let _dailyAreaDone = false;
 function _maybeInitDailyArea(lat, lng) {
   if (_dailyAreaDone || !_uid || !_ctx.map) return;
@@ -1807,7 +1796,6 @@ async function checkProximity(lat, lng) {
   broadcastMyLocation(lat, lng); // 내 위치 Firestore에 방송
   sendPlayerLocation(lat, lng, _ctx.lastPos?.accuracy ?? 10); // 게임 서버로 전송
   checkTutorialProximity(lat, lng); // 튜토리얼 보물박스 근접 효과
-  updateStarterPlayerPos(lat, lng); // 스타터팩 마커 show/hide
   for (const box of treasureBoxes) {
     if (!box.lat || !box.lng) continue;
     if (!isBoxActive(box)) continue;
