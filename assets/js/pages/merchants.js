@@ -50,19 +50,44 @@ import { _t } from './merchants.i18n.js';
 import { initStarterPack, updateStarterPlayerPos, destroyStarterPack, isStarterActive }
   from './starter-pack.js';
 import { initUserPlace } from './user-place.js';
-import { initDailyArea, checkDailyProximity } from './merchants.daily.js';
-import {
-  initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers,
-  renderMoneyTreeShopSection, openPlantModal
-} from './merchants.moneytree.js';
-import {
-  initGoldMine, setGoldMineUid, loadGoldMineMarkers, openGoldMineModal,
-  promptInstallMine, openMyGoldMinesModal
-} from './merchants.goldmine.js?v=11';
-import {
-  initHarbor, setHarborUid, loadHarborMarkers, promptInstallHarbor,
-  openHarborModal, openSvModal as openHarborSvModal
-} from './merchants.harbor.js';
+
+// ── 부가 기능(일일 구역·돈나무·금광·항구) 지연 로딩 ───────────────────────────
+// 첫 화면(지도·내 캐릭터·몬스터·보물상자)이 뜬 뒤 브라우저가 한가할 때 불러온다.
+// 버튼으로 먼저 열면 그 자리에서 불러온다. (GLOSSARY.md "부가 기능")
+let initDailyArea, checkDailyProximity;
+let initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers, renderMoneyTreeShopSection, openPlantModal;
+let initGoldMine, setGoldMineUid, loadGoldMineMarkers, promptInstallMine, openMyGoldMinesModal;
+let initHarbor, setHarborUid, loadHarborMarkers, promptInstallHarbor, openHarborSvModal;
+let _featLoaded = false;
+let _featPromise = null;
+let _featResolve;
+const _featReady = new Promise(r => { _featResolve = r; });
+function _loadFeatures() {
+  if (_featPromise) return _featPromise;
+  _featPromise = Promise.all([
+    import('./merchants.daily.js'),
+    import('./merchants.moneytree.js'),
+    import('./merchants.goldmine.js?v=11'),
+    import('./merchants.harbor.js'),
+  ]).then(([dy, mt, gm, hr]) => {
+    ({ initDailyArea, checkDailyProximity } = dy);
+    ({ initMoneyTree, refreshMoneyTreeInventory, loadMoneyTreeMarkers, renderMoneyTreeShopSection, openPlantModal } = mt);
+    ({ initGoldMine, setGoldMineUid, loadGoldMineMarkers, promptInstallMine, openMyGoldMinesModal } = gm);
+    ({ initHarbor, setHarborUid, loadHarborMarkers, promptInstallHarbor } = hr);
+    openHarborSvModal = hr.openSvModal;
+    setGoldMineUid(_uid);
+    setHarborUid(_uid);
+    _featLoaded = true;
+    _featResolve();
+  });
+  return _featPromise;
+}
+// 기능 로딩 후 실행 (로딩을 앞당기지는 않음)
+const _whenFeat = (fn) => _featReady.then(fn).catch(e => console.warn('[부가 기능]', e));
+// HTML에 있는 '내 나무'·'내 금광' 버튼: 로딩 전에 눌러도 동작
+const _mtOpenStub = async () => { await _loadFeatures(); if (window._mtOpenMyTrees !== _mtOpenStub) window._mtOpenMyTrees(); };
+window._mtOpenMyTrees = _mtOpenStub;
+window._gmOpenMyMines = async () => { await _loadFeatures(); openMyGoldMinesModal(); };
 
 // GS 몬스터에 스킬 데미지 전달 — battle.js 스킬 발동 시 호출됨
 // _ctx.lastPos 기준으로 범위 계산 (GPS 마커 위치≠GS 존 위치인 PC 환경 대응)
@@ -1774,7 +1799,7 @@ function _maybeInitDailyArea(lat, lng) {
   _dailyAreaDone = true;
   // GP 획득 시 HUD 업데이트 콜백 등록
   window._dailyOnGpGain = (gp) => { addPlayerGold(gp); };
-  initDailyArea(_uid, lat, lng, _ctx.map, infoWindow);
+  _whenFeat(() => initDailyArea(_uid, lat, lng, _ctx.map, infoWindow));
 }
 
 // ── 보물박스 근접 감지 — 범위 내 마커 강조, HP 있으면 공격해야 수집 ──────────
@@ -1839,6 +1864,7 @@ async function checkProximity(lat, lng) {
   _updateDetector(lat, lng);
   _checkDropProximity(lat, lng);
   _checkUserNpcProximity(lat, lng);
+  if (!_featLoaded) return; // 부가 기능 로딩 전에는 아래 근접 처리 생략
   checkDailyProximity(lat, lng);
   // 돈나무 마커: 60초마다 갱신
   if (!_isAnonymous && Date.now() - _mtMarkerLoadTs > 60_000) {
@@ -3194,8 +3220,7 @@ async function init() {
     _userEmail = user?.email || null;
     _isAnonymous = user?.isAnonymous || false;
     _ctx.uid = _uid;
-    setGoldMineUid(_uid);
-    setHarborUid(_uid);
+    if (_featLoaded) { setGoldMineUid(_uid); setHarborUid(_uid); }
 
     const loginOverlay = $('gameLoginOverlay');
     const gameToggle = $('btnGameToggle');
@@ -3264,7 +3289,7 @@ async function init() {
         renderExchangeSection();
         showDeathMarkerIfDead();
         // 돈나무 인벤토리 HUD
-        if (!_isAnonymous) refreshMoneyTreeInventory().catch(() => { });
+        if (!_isAnonymous) _whenFeat(() => refreshMoneyTreeInventory());
       });
       loadInventory();
       _renderMemberStatus(_uid);
@@ -3404,12 +3429,14 @@ async function init() {
       _ctx.map?.setZoom(18);
     };
 
+    // ── 부가 기능 초기화: 첫 화면이 뜬 뒤 한가할 때 로딩 ─────────────────────
+    (window.requestIdleCallback || ((fn) => setTimeout(fn, 1500)))(() => _loadFeatures(), { timeout: 3000 });
+    _whenFeat(() => {
     // ── Gold Mine 초기화 ───────────────────────────────────────────────────
     initGoldMine(_ctx, map, functions, _uid);
     document.getElementById('btnCloseGoldMineModal')?.addEventListener('click', () => {
       document.getElementById('goldMineModal')?.classList.remove('open');
     });
-    window._gmOpenMyMines = () => openMyGoldMinesModal();
     loadGoldMineMarkers();
 
     // ── Harbor 초기화 ──────────────────────────────────────────────────────
@@ -3457,6 +3484,7 @@ async function init() {
       }
       openPlantModal(shopId, shopData);
     };
+    }); // _whenFeat
   }
   renderCards(allMerchants);
 
@@ -4524,6 +4552,7 @@ function _renderShopModalBody() {
         const placeholder = body.querySelector('#mtShopSectionPlaceholder');
         if (!mtSection) {
           const div = document.createElement('div');
+          if (!_featLoaded) return;
           div.innerHTML = renderMoneyTreeShopSection(shop, data);
           body.appendChild(div.firstElementChild);
           // 식재 버튼
@@ -4611,13 +4640,13 @@ function _renderShopModalBody() {
   // Gold Mine 설치
   $('shopInstallMineBtn')?.addEventListener('click', () => {
     closeShopModal();
-    promptInstallMine(shop.id, shop.lat, shop.lng);
+    _loadFeatures().then(() => promptInstallMine(shop.id, shop.lat, shop.lng));
   });
 
   // Harbor 설치
   $('shopInstallHarborBtn')?.addEventListener('click', () => {
     closeShopModal();
-    promptInstallHarbor(shop.id, shop.lat, shop.lng);
+    _loadFeatures().then(() => promptInstallHarbor(shop.id, shop.lat, shop.lng));
   });
 
   // Weapon & armor jackpot panel
