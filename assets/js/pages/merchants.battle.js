@@ -892,17 +892,13 @@ export async function loadPlayerState({ force = false } = {}) {
   if (!force && now - _playerStateLastFetch < PLAYER_STATE_CACHE_MS) return;
   _playerStateLastFetch = now;
 
-  try {
-    const res = await httpsCallable(_ctx.functions, 'getMyOnChain')();
-    const onChain = res.data;
-    if (onChain?.level > 0) {
-      _player.level = onChain.level;
-      _player.xp    = onChain.exp    || 0;
-    }
-  } catch { /* 온체인 조회 실패 시 battle_players fallback */ }
-
+  // 플레이어 레벨은 게임 DB(battle_players) 기준 — 웹3 조회 안 함 (docs/adr/0001)
   try {
     const snap = await getDoc(doc(_ctx.db, 'battle_players', uid));
+    if (snap.exists() && snap.data().level > 0) {
+      _player.level = snap.data().level;
+      _player.xp    = snap.data().xp || 0;
+    }
     _player.maxHp = _player.level * 1000;
     _player.maxMp = _player.level * 1000;
     if (snap.exists()) {
