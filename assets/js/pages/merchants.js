@@ -3367,12 +3367,15 @@ async function init() {
   // ── 튜토리얼 박스 초기화 ────────────────────────────────────────────────────
   // ── Phase 1: 지도 표시에 필요한 것만 병렬 로드 ──────────────────────────────
   const settle1 = p => p.catch(() => null);
-  const [, merchantSnap] = await Promise.all([
-    settle1(loadMapsScript()),
+  // DB 데이터는 기다리지 않고 지도부터 띄운다 — 마커는 데이터가 오면 아래에서 그린다
+  const _phase1Data = Promise.all([
     settle1(getDocs(collection(db, 'merchants'))),
     settle1(loadTreasureBoxes()),
     settle1(loadTreasureStats()),
   ]);
+  await settle1(loadMapsScript());
+  if (window.google?.maps && !_ctx.map) initMap();
+  const [merchantSnap] = await _phase1Data;
 
   // 가맹점 데이터 파싱
   allMerchants = [];
@@ -3404,7 +3407,7 @@ async function init() {
 
   // 지도 + 카드 즉시 표시
   if (window.google?.maps) {
-    initMap();
+    if (!_ctx.map) initMap();
     showDeathMarkerIfDead(); // 사망 상태 재접속 시 해골 마커 표시
     renderMarkers(allMerchants);
     renderBoxMarkers();

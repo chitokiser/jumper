@@ -1,5 +1,23 @@
 <!-- /merchants.html --><!DOCTYPE html><html lang="en"><head>
   <meta charset="utf-8">
+  <!-- 첫 화면 가속: 연결 미리 열기 + 모듈 미리 받기 (순서대로 발견되며 생기던 대기 제거) -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://mt0.google.com">
+  <link rel="preconnect" href="https://mt1.google.com">
+  <link rel="dns-prefetch" href="https://mt2.google.com">
+  <link rel="dns-prefetch" href="https://mt3.google.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js">
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js">
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js">
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js">
+  <link rel="modulepreload" href="/assets/js/firebase-init.js">
+  <link rel="modulepreload" href="/assets/js/firebase-config.js">
+  <link rel="modulepreload" href="/assets/js/pages/merchants.js?v=8">
+  <link rel="modulepreload" href="/assets/js/pages/merchants.battle.js">
+  <link rel="modulepreload" href="/assets/js/pages/merchants.i18n.js">
+  <link rel="modulepreload" href="/assets/js/pages/merchants.monster-sprite.js">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- 텔레그램 인증 후 깜빡임 방지: CSS 로드 전에 동기 실행 -->
   <script>
