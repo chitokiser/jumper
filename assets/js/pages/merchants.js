@@ -1558,15 +1558,14 @@ async function cleanupMyLocation() {
 // ── 내 위치 버튼: 첫 클릭 = 게임 시작, 이후 클릭 = 내 위치로 확대 이동 ────────
 let _gameStarted = false;
 
-function _panToMyLocation() {
-  const btn = $('btnMyLocation');
-  // watchPosition이 이미 실행 중이면 캐시된 위치로 즉시 이동 — 재요청 금지
-  const cached = _ctx?.gpsPos || _ctx?.lastPos;
-  if (cached) {
-    if (_ctx.map) { _ctx.map.panTo({ lat: cached.lat, lng: cached.lng }); _ctx.map.setZoom(17); }
-    return;
-  }
-  if (!navigator.geolocation) return;
+function _panToMyLocation(btn = $('btnMyLocation')) {
+  const icon = btn?.textContent;
+  // watchPosition이 이미 실행 중이면 GPS 위치로 즉시 이동 — 재요청 금지
+  // (lastPos는 PC 모드에서 지도 중심으로 바뀌므로 '내 위치'로 쓰지 않는다. GPS 실패 시에만 사용)
+  const panTo = (p) => { if (_ctx.map && p) { _ctx.map.panTo({ lat: p.lat, lng: p.lng }); _ctx.map.setZoom(17); } };
+  const fresh = _ctx?.gpsPos && Date.now() - (_ctx.gpsPos.ts || 0) < 30000;
+  if (fresh) { panTo(_ctx.gpsPos); return; }
+  if (!navigator.geolocation) { panTo(_ctx?.gpsPos || _ctx?.lastPos); return; }
   if (btn) btn.textContent = '⏳';
   navigator.geolocation.getCurrentPosition(
     (pos) => {
@@ -1575,9 +1574,9 @@ function _panToMyLocation() {
       _ctx.gpsPos = { lat, lng, accuracy, ts: Date.now() };
       updateMyLocation(lat, lng, accuracy, heading ?? null);
       if (_ctx.map) { _ctx.map.panTo({ lat, lng }); _ctx.map.setZoom(17); }
-      if (btn) btn.textContent = '📍';
+      if (btn) btn.textContent = icon;
     },
-    () => { if (btn) btn.textContent = '📍'; },
+    () => { if (btn) btn.textContent = icon; panTo(_ctx?.gpsPos || _ctx?.lastPos); showToast(_t('no_geolocation')); },
     { enableHighAccuracy: true, maximumAge: 3000, timeout: 6000 }
   );
 }
@@ -3620,7 +3619,7 @@ async function init() {
   // 플라이아웃 내부 액션 버튼 클릭 시 자동 닫기 (토글성 버튼 제외)
   document.querySelectorAll('.hud-group-flyout .map-hud-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (btn.id !== 'btnDetector' && btn.id !== 'btnBgm') {
+      if (btn.id !== 'btnDetector') {
         groupWraps.forEach(w => w.classList.remove('open'));
       }
     });
@@ -3927,6 +3926,12 @@ async function init() {
 
   // WS 이벤트를 못 받은 경우 관리자 스폰 후 강제 렌더링
   window.addEventListener('gs:forceRenderMonster', (e) => _renderGsMonster(e.detail));
+
+  // 현재 내 위치 확인 버튼 (게임 시작 여부와 관계없이 지도를 내 위치로 이동)
+  ['btnLocateMe', 'btnMyLocation'].forEach(id => {
+    const b = $(id);
+    b?.addEventListener('click', (e) => { e.stopPropagation(); _panToMyLocation(b); });
+  });
 
   $('btnGameToggle')?.addEventListener('click', () => {
     if (!_uid) return;

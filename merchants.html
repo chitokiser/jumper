@@ -3796,13 +3796,12 @@
           </div>
         </div>
 
-        <!-- 5. 그룹 3: ⚙️ 메뉴 & 설정 (My ID, Guide, BGM, Distance) -->
+        <!-- 5. 그룹 3: ⚙️ 메뉴 & 설정 (My ID, Guide, Distance) -->
         <div class="hud-group-wrap" id="wrapGroupSystem">
           <button class="map-hud-btn hud-group-trigger" id="btnGroupSystem" title="⚙️ 시스템 & 정보 메뉴">⚙️</button>
           <div class="hud-group-flyout" id="flyoutSystem">
             <button id="btnMyId" class="map-hud-btn" title="My Player ID (내 ID / 프로필)">👤</button>
             <button id="btnTutHelp" class="map-hud-btn" title="Game Guide (게임 가이드)">❓</button>
-            <button id="btnBgm" class="map-hud-btn" title="BGM On/Off (배경음악)">🎵</button>
             <div id="distPanel">
               <span class="dist-label">Khoảng cách</span>
               <span class="dist-value" id="distValue">0m</span>
@@ -4638,55 +4637,16 @@
     </div>
   </div>
 
-  <!-- Floating Shortcut: BGM + Coord BestClub -->
+  <!-- 떠 있는 버튼: 현재 내 위치 확인 -->
   <div id="floatShortcutPanel" data-fs-modal="" style="position:fixed;bottom:90px;left:16px;z-index:9200;display:flex;flex-direction:column;gap:8px;align-items:flex-start;pointer-events:none;">
-    <button id="btnBgmFloat" title="BGM On/Off" style="pointer-events:all;
+    <button id="btnLocateMe" type="button" title="My location (내 위치)" aria-label="My location" style="pointer-events:all;
     width:46px;height:46px;border-radius:50%;
     background:rgba(15,23,42,.88);backdrop-filter:blur(8px);
     border:1.5px solid rgba(99,102,241,.5);color:#fff;
     font-size:20px;cursor:pointer;line-height:1;
     box-shadow:0 4px 14px rgba(0,0,0,.5);display:flex;
-    align-items:center;justify-content:center;">🎵</button>
-    
+    align-items:center;justify-content:center;">🎯</button>
   </div>
-  
-
-  <!-- BGM REMOVED -->
-
-  <script>
-    (function () {
-      /* ── BGM Float Button ──────────────────────────────────────── */
-      const btnBgmFloat = document.getElementById('btnBgmFloat');
-      const btnBgmMain = document.getElementById('btnBgm');
-      const MUTE_KEY = 'bgm_muted';
-
-      function syncBgmFloat() {
-        if (!btnBgmFloat) return;
-        const muted = localStorage.getItem(MUTE_KEY) === '1';
-        btnBgmFloat.textContent = muted ? '🔇' : '🎵';
-        btnBgmFloat.title = muted ? 'BGM Off — tap to enable' : 'BGM On — tap to mute';
-      }
-      syncBgmFloat();
-
-      if (btnBgmFloat) {
-        btnBgmFloat.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (btnBgmMain) {
-            btnBgmMain.click();
-          } else {
-            const muted = localStorage.getItem(MUTE_KEY) === '1';
-            localStorage.setItem(MUTE_KEY, muted ? '0' : '1');
-            const audio = document.getElementById('bgmAudio');
-            if (audio) { audio.muted = !muted; if (!muted && audio.paused) audio.play().catch(() => { }); }
-          }
-          setTimeout(syncBgmFloat, 20);
-        });
-      }
-      if (btnBgmMain) {
-        btnBgmMain.addEventListener('click', () => setTimeout(syncBgmFloat, 20));
-      }
-    })();
-  </script>
 
 
 <div id="gameLoginOverlay" style="position:fixed;inset:0;background:rgba(10,15,20,0.85);backdrop-filter:blur(8px);z-index:9000;display:flex;align-items:center;justify-content:center;">
