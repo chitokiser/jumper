@@ -440,8 +440,8 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
     const safeJackpotReward = Math.max(0, Math.floor(Number(reward) || 0));
     currentJackpotPool = Math.max(0, currentJackpotPool - safeJackpotReward);
 
-    const cashbackPoint = Math.floor(finalVnd * 0.05);
-    const totalPointsEarned = safeJackpotReward + cashbackPoint;
+    // 포인트는 결제 잭팟으로만 지급 (결제금에 비례, 별도 적립 없음)
+    const totalPointsEarned = safeJackpotReward;
 
     // [BT 제로섬 보존 법칙 - 무한 발행 절대 방지]
     // 가맹점 주가 설정한 결제금액(btPerVnd)당 1 BT 기준이나, 가맹점의 실제 잔여 BT(merchBt) 범위 내에서만 지급.

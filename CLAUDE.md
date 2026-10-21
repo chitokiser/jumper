@@ -93,7 +93,7 @@ Firebase Authentication + Cloud Functions
 가맹점 (BT 보유) ──────────────────────────► 고객 (BT 수령)
                                                 │
                                                 ▼ (BT 룰렛 인터랙션)
-게임 활동 ──────────► GP (Game Point)            Point (리워드 / 캐시백)
+게임 활동 ──────────► GP (Game Point)            Point (리워드 / 결제 잭팟)
                           │                             │
                           ▼ (전환)                       ▼ (전환)
                      Point ────────────────────► BM (VND 현금성 가치)
@@ -104,27 +104,30 @@ Firebase Authentication + Cloud Functions
 | 재화 | 구분 및 단위 | 설명 및 전환 공식 |
 |---|---|---|
 | **BM (VND)** | 현금성 결제/정산 재화<br>(표기 단위: VND, UI 표기: `BM`) | - 플랫폼 내 유일한 현금성 결제·정산 재화.<br>- 기존의 KM 및 `pointBalanceVnd`는 BM으로 완전 대체·정리.<br>- 가맹점 정산은 향후 USDT 기반으로 일괄 처리 예정. |
-| **Point** | 비현금성 리워드<br>(표기 단위: `Point`, 필드: `users.pointBalance`) | - 보상, 캐시백(5%), 잭팟 당첨, BT 룰렛 등으로 획득하는 비현금성 리워드.<br>- Point를 BM 또는 법정화폐와 동일한 가치로 직접 간주하지 않음.<br>- **BM 전환 공식:** `floor(보유 Point × (gsLevel / 10))` |
-| **GP (Game Point)** | 게임 전용 포인트<br>(표기 단위: `GP`) | - 플랫폼 내 게임 콘텐츠(배틀, 퀘스트 등)를 통해 획득하는 전용 포인트.<br>- 게임 내에서 사용되며 Point로 전환 가능.<br>- **Point 전환 공식:** `floor(보유 GP × (gsLevel / 10))` |
+| **Point** | 비현금성 리워드<br>(표기 단위: `Point`, 필드: `users.pointBalance`) | - 결제 포인트 잭팟(결제금에 비례), BT 룰렛, GP 전환 등으로 획득하는 비현금성 리워드.<br>- Point를 BM 또는 법정화폐와 동일한 가치로 직접 간주하지 않음.<br>- **BM 전환 공식:** `floor(보유 Point ÷ 10)` (레벨 무관, 서버 함수 `exchangePointsToFiat`) |
+| **GP (Game Point)** | 게임 전용 포인트<br>(표기 단위: `GP`, 필드: `battle_players.gold`) | - 플랫폼 내 게임 콘텐츠(배틀, 금광, 돈나무 등)를 통해 획득하는 전용 포인트. 서버만 변경.<br>- 게임 내에서 사용되며 Point로 전환 가능.<br>- **Point 전환 공식:** `floor(보유 GP × 게임 레벨 ÷ 10)` (게임 레벨 = `battle_players.gsLevel`, 서버 함수 `convertGpToPoint`, 최소 10 GP, 전액 전환) |
 | **BT (Bonus Ticket)** | 보너스 티켓 수량<br>(표기 단위: `BT`, 필드: `btBalance`) | - **과거 10만 동당 1 BT 고정 지급 규정 전면 폐기:** 결제금액에 따른 BT 보상 정책은 **각 가맹점이 직접 자율적으로 설정(`btPerVnd`)**한다.<br>- **발급 규정:** 가맹점 주가 설정한 **지급 기준금액(`btPerVnd`) 결제당 1 BT** 지급 (`Math.floor(amount / btPerVnd)`). 가맹점 잔여 BT 재고 범위 내에서만 원자적 1:1 차감 지급.<br>- **가맹점 카드 명시 의무:** 각 가맹점 카드(Merchant Card) 및 상세/팝업 UI에 해당 가맹점의 BT 보상 정책(예: `🎟️ 1 BT per N VND` / `🎟️ N VND당 1 BT`)이 **반드시 명시**되어야 한다.<br>- **사용처:** 인터랙티브 룰렛을 돌려 등급 기반 Point를 획득하는 전용 티켓. |
 
-## 3.2 유저 레벨 및 경험치(EXP) 정책
+## 3.2 유저 레벨 및 경험치(EXP) 정책 (2026-10-21 게임 레벨로 통일 — docs/adr/0001)
 
-- **Firestore 필드:** `users.gsLevel`, `users.gsExp`
-- **레벨 범위:** **Lv.1 ~ Lv.30** (상한선: Lv.30)
-- **레벨업 요구 EXP 공식:** `현재레벨 × 10,000 EXP`
+- **Firestore 필드:** `battle_players/{uid}.gsExp` (누적 경험치), `gsLevel`·`level` (같은 값 유지)
+  - `users.gsExp`·`users.gsLevel`은 더 이상 쓰지 않는다 (2026-10-21 게임 DB로 옮기고 삭제).
+- **레벨 범위:** Lv.1 ~ Lv.99
+- **다음 레벨 필요 누적 EXP:** `(현재레벨 + 1)² × 10,000` — 게임 서버(`expService`)·게임 화면·서버 함수(`handlers/exp.js`)가 같은 공식을 쓴다
   ```text
-  Lv.1 → 2:  10,000 EXP
-  Lv.2 → 3:  20,000 EXP
-  Lv.3 → 4:  30,000 EXP
-  ...
-  Lv.29 → 30: 290,000 EXP
+  Lv.2:  40,000 EXP (누적)
+  Lv.3:  90,000 EXP
+  Lv.4: 160,000 EXP
+  Lv.5: 250,000 EXP
+  Lv.10: 1,210,000 EXP
   ```
+- **레벨은 누적 경험치로 자동 계산**되며 내려가지 않는다. 경험치를 깎는 수동 레벨업은 없다.
 - **EXP 획득 기준:**
   - BM 결제: 100,000 VND당 100 EXP
   - BT 수령: BT 1개당 100 EXP
   - 추천인 가입: 1,000 EXP (추천인에게 지급)
-- **전환 제한 및 밸런스:** 별도의 전환 횟수 제한이나 쿨다운은 없으나, 고레벨(Lv.10 이상) 도달 자체가 제어되므로 레벨 인플레이션이 방지됨.
+  - 게임 몬스터 사냥: 몬스터 최대 HP만큼 (1마리 최대 100,000 EXP)
+- **전환과의 관계:** 레벨은 GP → Point 전환 배수에만 쓰인다 (Point → BM 전환은 레벨 무관).
 
 ## 3.3 데이터 일관성 및 원장 원칙
 - 잔액을 프런트엔드에서 임의로 가산/차감하지 않는다.
@@ -167,9 +170,11 @@ Firebase Authentication + Cloud Functions
 
 ## 4.3 리워드 및 잭팟 알고리즘 (Q3, Q4 반영)
 
-### 1) 기본 Point 캐시백
-$$\text{기본 캐시백 Point} = \text{결제 인정 금액} \times 5\%$$
-- 잭팟 당첨 여부와 무관하게 모든 결제자에게 **1회 확정 지급**.
+### 1) 결제 포인트 잭팟
+- 결제 시 Point는 결제 잭팟으로만 지급된다 (결제액에 대한 고정 비율 적립은 없음).
+- 결제마다 등급(grade, 10~1000)을 무작위로 뽑아 아래만큼 Point를 지급한다 (`functions/handlers/transaction.js` `payMerchantFirebase`):
+  `잭팟 Point = floor((가맹점 수수료 + 잭팟 풀) / grade) + floor(가맹점 수수료 / grade)`
+- 가맹점 수수료가 결제금의 10%이므로 **잭팟 Point는 결제금에 비례**한다. 지급한 만큼 잭팟 풀에서 차감.
 
 ### 2) BM 결제 잭팟 당첨 확률 공식
 $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},\; 0.30\right)$$
@@ -183,7 +188,7 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
   const isJackpot = rand < winThreshold;
   ```
 - **레거시 보존 원칙:** `gsLevel`의 출처 및 잭팟 풀 차감/시드(Seed) 초기화 로직은 기존 시스템에 코딩된 레거시 잭팟 알고리즘 핸들러(`functions/handlers/transaction.js`)를 우선 분석하여 적용한다 (임의 변형 금지).
-- 당첨 시: 기본 5% 캐시백 + 누적 잭팟 Point를 합산 지급하고 풀을 리셋.
+- 당첨 시: 누적 잭팟 Point를 지급하고 풀에서 차감.
 - 미당첨 시: 수수료 중 30%를 잭팟 풀에 정상 적립.
 
 ### 3) BT 룰렛 (인터랙티브 등급형 리워드)
@@ -358,7 +363,7 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
    ```text
    주문 접수 ──► 결제 대기 ──► 결제 확인 ──► 주문 확인 ──► 상품 준비 ──► 배송 중 ──► 배송 완료
    ```
-4. **취소 및 환불:** 취소/환불 시 원장의 역분개 처리(차감된 잔액 복구, 수수료 회수, 캐시백 회수) 정책을 엄격히 적용.
+4. **취소 및 환불:** 취소/환불 시 원장의 역분개 처리(차감된 잔액 복구, 수수료 회수, 잭팟 Point 회수) 정책을 엄격히 적용.
 
 ---
 
@@ -447,7 +452,7 @@ npm run serve
 | **Phase 3** | BestERP 상품 카탈로그 | 가맹점 상품 등록부터 공개·중지까지 테스트 통과 |
 | **Phase 4** | 가맹점(대한김치) 연동 | 기존 기능 보존, BestERP 상품 연동 및 주문 흐름 테스트 통과 |
 | **Phase 5** | BestClubVN 통합 쇼핑몰 | 다수 가맹점 상품의 `/mall.html` 통합 조회 및 구매 파이프라인 검증 |
-| **Phase 6** | 결제·리워드 통합 | BM 결제 → 10% 수수료 분배 → 5% 캐시백 → 30% 캡 잭팟 → BT 이체 전체 통합 테스트 완료 |
+| **Phase 6** | 결제·리워드 통합 | BM 결제 → 10% 수수료 분배 → 결제 포인트 잭팟 → BT 이체 전체 통합 테스트 완료 |
 
 ---
 
