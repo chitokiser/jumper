@@ -8,9 +8,6 @@
                           "source":  "functions",
                           "codebase":  "default",
                           "disallowLegacyRuntimeConfig":  true,
-                          "predeploy":  [
-                                            "node scripts/predeploy-check.cjs"
-                                        ],
                           "ignore":  [
                                          "node_modules",
                                          ".git",

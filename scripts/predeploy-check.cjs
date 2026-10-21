@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 서버 함수 배포 전 안전장치 (firebase.json functions.predeploy)
+// 서버 함수 배포 전 안전장치 (scripts/deploy-functions.ps1 이 먼저 실행 — Windows 에서 firebase predeploy 실행이 실패해 분리)
 // 2026-10-17 예전 사본에서 함수 263개가 한꺼번에 배포돼 결제 BT 지급 등 최근 수정이 사라진 일을 막는다.
 // - 이 폴더가 GitHub(origin/master) 최신과 같지 않으면 배포 중단
 // - functions/ 안에 커밋 안 된 변경이 있으면 배포 중단
