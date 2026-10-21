@@ -3172,16 +3172,16 @@ exports.exchangePointsToFiat = onCall(
       const bpData = bpSnap.exists ? bpSnap.data() : {};
 
       const pointBal = Number(userData.pointBalance ?? 0);
-      const level = Math.max(1, Number(userData.gsLevel ?? bpData.gsLevel ?? 1));
+      const level = Math.max(1, Number(bpData.gsLevel ?? userData.gsLevel ?? 1)); // 기록용
       const currentKm = Number(userData.pointBalanceVnd ?? 0);
 
       // 전환할 포인트 결정 (요청 금액 or 전체 잔고 중 작은 값)
       usedPoints = requestedAmount > 0 ? Math.min(requestedAmount, pointBal) : pointBal;
       if (usedPoints <= 0) throw new HttpsError('failed-precondition', '전환할 포인트가 없습니다.');
 
-      // 전환 공식: 포인트 × 레벨 ÷ 10
-      convertedVnd = Math.floor(usedPoints * level / 10);
-      if (convertedVnd <= 0) throw new HttpsError('failed-precondition', '전환 금액이 0입니다. 레벨을 올려주세요.');
+      // 전환 공식: 포인트 ÷ 10 (레벨 무관, 2026-10-21)
+      convertedVnd = Math.floor(usedPoints / 10);
+      if (convertedVnd <= 0) throw new HttpsError('failed-precondition', '최소 10 P 이상이어야 전환할 수 있습니다.');
 
       tx.update(userRef, {
         pointBalance: pointBal - usedPoints,
@@ -3207,6 +3207,61 @@ exports.exchangePointsToFiat = onCall(
 
     logger.info('exchangePointsToFiat', { uid, usedPoints, convertedVnd });
     return { success: true, usedPoints, convertedVnd };
+  })
+);
+
+// ── 게임 GP → 포인트 전환 (마이페이지) ──
+// 공식: (게임 GP × 게임 레벨) ÷ 10 = 포인트. 게임 GP(battle_players.gold) 전부 사용, 최소 10 GP.
+exports.convertGpToPoint = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const userRef = db.collection('users').doc(uid);
+    const bpRef = db.collection('battle_players').doc(uid);
+
+    let usedGp = 0;
+    let points = 0;
+    let level = 1;
+
+    await db.runTransaction(async (tx) => {
+      const [userSnap, bpSnap] = await Promise.all([tx.get(userRef), tx.get(bpRef)]);
+      if (!userSnap.exists) throw new HttpsError('not-found', '유저 정보를 찾을 수 없습니다.');
+      if (!bpSnap.exists) throw new HttpsError('failed-precondition', '게임 기록이 없습니다.');
+
+      const bp = bpSnap.data();
+      usedGp = Math.floor(Number(bp.gold ?? 0));
+      level = Math.max(1, Math.floor(Number(bp.gsLevel ?? 1)));
+      if (usedGp < 10) throw new HttpsError('failed-precondition', '최소 10 GP 이상이어야 전환할 수 있습니다.');
+
+      points = Math.floor((usedGp * level) / 10);
+      const pointBefore = Number(userSnap.data().pointBalance ?? 0);
+
+      tx.update(bpRef, { gold: admin.firestore.FieldValue.increment(-usedGp) });
+      tx.update(userRef, {
+        pointBalance: admin.firestore.FieldValue.increment(points),
+        lastGpExchangeAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(db.collection('pointHistories').doc(), {
+        uid,
+        displayName: userSnap.data().displayName || userSnap.data().name || '익명',
+        amount: points,
+        type: 'GP Exchange',
+        desc: `${usedGp.toLocaleString()} GP 전환 (Lv.${level})`,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(db.collection('transactions').doc(), {
+        uid,
+        type: 'GP_TO_POINT',
+        gpUsed: usedGp,
+        pointGained: points,
+        level,
+        pointBefore,
+        pointAfter: pointBefore + points,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    logger.info('convertGpToPoint', { uid, usedGp, points, level });
+    return { success: true, usedGp, points, level };
   })
 );
 

@@ -281,9 +281,10 @@ async function loadExpAndLevel(uid, cachedUserData) {
       if (bpSnap.exists()) bpData = bpSnap.data() || {};
     } catch (_) {}
 
-    const displayLevel = Math.max(1, Number(userData.gsLevel ?? userData.level ?? bpData.gsLevel ?? bpData.level ?? 1));
-    const displayExp = Number(userData.gsExp ?? userData.exp ?? bpData.gsExp ?? 0);
-    const required = displayLevel * displayLevel * 10000;
+    // 게임 레벨·경험치는 게임 DB(battle_players) 기준, 다음 레벨 필요 누적 경험치 = (레벨+1)² × 10,000 (게임과 동일)
+    const displayLevel = Math.max(1, Number(bpData.gsLevel ?? userData.gsLevel ?? userData.level ?? bpData.level ?? 1));
+    const displayExp = Number(bpData.gsExp ?? userData.gsExp ?? userData.exp ?? 0);
+    const required = (displayLevel + 1) * (displayLevel + 1) * 10000;
     const pct = required > 0 ? Math.min(100, Math.round((displayExp / required) * 100)) : 0;
     const remain = Math.max(0, required - displayExp);
     const canLevelUp = displayExp >= required;
@@ -456,7 +457,7 @@ async function loadKCultureBalances(uid) {
       const elBt = $("btDisplay");
 
       // 실시간 업데이트
-      onSnapshot(doc(db, "users", uid), (snap) => {
+      onSnapshot(doc(db, "users", uid), async (snap) => {
         if (!snap.exists()) return;
         const updatedD = snap.data();
         loadExpAndLevel(uid, updatedD);
@@ -489,8 +490,16 @@ async function loadKCultureBalances(uid) {
         const elGpLv = document.getElementById("gpUserLevelDisplay");
         const elGpBtn = document.getElementById("btnConvertGpToPoint");
 
-        const gpBal = updatedD.gold || 0;
-        const userLv = updatedD.level || 1;
+        // 게임 GP·게임 레벨은 게임 DB(battle_players) 기준
+        let gpBal = 0;
+        let userLv = 1;
+        try {
+          const bpS = await getDoc(doc(db, "battle_players", uid));
+          if (bpS.exists()) {
+            gpBal = Math.floor(Number(bpS.data().gold || 0));
+            userLv = Math.max(1, Number(bpS.data().gsLevel || 1));
+          }
+        } catch (e) { console.warn("battle_players 읽기 실패:", e); }
 
         if (elGpDisp) elGpDisp.textContent = gpBal.toLocaleString("ko-KR") + " GP";
         if (elGpLv) elGpLv.textContent = "Level: " + userLv;
@@ -501,34 +510,22 @@ async function loadKCultureBalances(uid) {
               alert("최소 10 GP 이상이어야 전환 가능합니다.");
               return;
             }
-            if (!confirm("GP를 Point로 전환하시겠습니까?")) return;
+            const expectPoint = Math.floor((gpBal * userLv) / 10);
+            if (!confirm(`게임 GP ${gpBal.toLocaleString()} × Lv.${userLv} ÷ 10 = ${expectPoint.toLocaleString()} P
+GP를 Point로 전환하시겠습니까?`)) return;
 
-            const convertedPoint = Math.floor((gpBal * userLv) / 10);
             try {
               elGpBtn.disabled = true;
               elGpBtn.textContent = "전환 중...";
-
-              await updateDoc(doc(db, "users", uid), {
-                gold: 0,
-                pointBalance: increment(convertedPoint),
-                pointBalanceVnd: increment(convertedPoint * 17) // Assuming 1 P = 17 VND if needed, but Point might be enough
-              });
-
-              // Write history for point conversion
-              const pHisRef = collection(db, "pointHistories");
-              await addDoc(pHisRef, {
-                uid: uid,
-                displayName: updatedD.displayName || "익명",
-                amount: convertedPoint,
-                type: "GP Exchange",
-                desc: gpBal.toLocaleString() + " GP 전환 (Lv." + userLv + ")",
-                createdAt: serverTimestamp()
-              });
-
-              alert("성공적으로 " + convertedPoint.toLocaleString() + " Point 로 전환되었습니다!");
+              // 서버에서만 처리 (게임 GP 차감 + 포인트 적립 + 기록)
+              const res = await httpsCallable(functions, "convertGpToPoint")({});
+              const d = res.data || {};
+              alert("성공적으로 " + Number(d.points || 0).toLocaleString() + " Point 로 전환되었습니다!");
+              gpBal = 0;
+              if (elGpDisp) elGpDisp.textContent = "0 GP";
             } catch (e) {
               console.error(e);
-              alert("전환 중 오류가 발생했습니다.");
+              alert("전환 중 오류가 발생했습니다: " + (e.message || ""));
             } finally {
               elGpBtn.disabled = false;
               elGpBtn.textContent = "전환하기 (최소 10 GP 이상)";
@@ -562,36 +559,27 @@ async function loadKCultureBalances(uid) {
           if (btnExc) {
             btnExc.addEventListener("click", async () => {
               try {
-                const bpSnap = await getDoc(doc(db, "battle_players", uid));
-                const lv = bpSnap.exists() ? Math.max(1, bpSnap.data().gsLevel || 1) : 1;
                 const userSnap2 = await getDoc(doc(db, "users", uid));
-                const level = Math.max(1, Number(userSnap2.exists() ? (userSnap2.data().gsLevel || lv) : lv));
                 const currentPoints = userSnap2.exists() ? Number(userSnap2.data().pointBalance || 0) : pointBal;
-                const expectedKm = Math.floor(currentPoints * level / 10);
+                const expectedKm = Math.floor(currentPoints / 10);
 
-                if (currentPoints <= 0) {
-                  alert("전환할 포인트가 없습니다.");
+                if (currentPoints < 10) {
+                  alert("최소 10 P 이상이어야 전환할 수 있습니다.");
                   return;
                 }
-                const ok = confirm(`현재 레벨: Lv.${level}\n보유 포인트: ${currentPoints.toLocaleString()} P\n전환 후 BM 머니: +${expectedKm.toLocaleString()} BM\n\n전환 공식: 포인트 × Lv.${level} ÷ 10\n전환하시겠습니까?`);
+                const ok = confirm(`보유 포인트: ${currentPoints.toLocaleString()} P
+전환 후 BM 머니: +${expectedKm.toLocaleString()} BM
+
+전환 공식: 포인트 ÷ 10
+전환하시겠습니까?`);
                 if (!ok) return;
 
                 btnExc.disabled = true;
                 btnExc.textContent = "처리 중...";
-                let resData;
-                try {
-                  const fn = httpsCallable(functions, "exchangePointsToFiat");
-                  const res = await fn({ amount: currentPoints });
-                  resData = res.data;
-                } catch (fnErr) {
-                  console.warn("exchangePointsToFiat failed, fallback to client update:", fnErr);
-                  await updateDoc(doc(db, "users", uid), {
-                    pointBalance: increment(-currentPoints),
-                    pointBalanceVnd: increment(expectedKm),
-                    updatedAt: serverTimestamp()
-                  });
-                  resData = { usedPoints: currentPoints, convertedVnd: expectedKm };
-                }
+                // 서버에서만 처리 (화면 직접 쓰기 폴백 없음)
+                const fn = httpsCallable(functions, "exchangePointsToFiat");
+                const res = await fn({ amount: currentPoints });
+                const resData = res.data;
                 alert(`✅ 전환 완료!\n사용 포인트: ${resData.usedPoints.toLocaleString()} P\n추가된 BM 머니: +${resData.convertedVnd.toLocaleString()} BM`);
                 await loadKCultureBalances(uid);
               } catch (err) {
