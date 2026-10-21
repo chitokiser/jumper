@@ -1003,22 +1003,21 @@ function openMerchantProductModal(ownerUid, merchantName) {
     });
 }
 
-function renderCoopCard(p) {
-  const imgHtml = p.imageUrl
-    ? `<img class="mp-product-thumb" src="${escHtml(p.imageUrl)}" alt="${escHtml(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="mp-product-thumb-ph" style="display:none;">📦</div>`
-    : `<div class="mp-product-thumb-ph">📦</div>`;
+// 가맹점 상품&서비스 모음: /mall 과 같은 판매 중 상품(merchant_products)에서 대표 상품을 뽑아 보여줌
+const HOME_MALL_MAX = 8;
 
-  const typeBadge = p.type === "voucher"
-    ? `<span style="font-size:0.7rem;background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">${_t('voucher_badge')}</span>`
-    : `<span style="font-size:0.7rem;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">${_t('general_badge')}</span>`;
+function renderCoopCard(p) {
+  const imgHtml = p.image_url
+    ? `<img class="mp-product-thumb" src="${escHtml(p.image_url)}" alt="${escHtml(p.product_name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="mp-product-thumb-ph" style="display:none;">📦</div>`
+    : `<div class="mp-product-thumb-ph">📦</div>`;
 
   return `
     <a class="mp-product-card" href="/mall">
       ${imgHtml}
       <div class="mp-product-body">
-        ${typeBadge}
-        <div class="mp-product-title">${escHtml(p.name)}</div>
-        <div class="mp-product-price">${Number(p.price || 0).toLocaleString()} 원</div>
+        <span style="font-size:0.7rem;background:#eff6ff;color:#1d4ed8;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">🏪 ${escHtml(p.merchantName)}</span>
+        <div class="mp-product-title">${escHtml(p.product_name)}</div>
+        <div class="mp-product-price">${Number(p.price || 0).toLocaleString()} VND</div>
       </div>
     </a>`;
 }
@@ -1026,24 +1025,47 @@ function renderCoopCard(p) {
 async function loadCoopProducts() {
   const grid = $("coopProductsGrid");
   if (!grid) return;
+  const hide = () => { const sec = $("coopProductsSection"); if (sec) sec.style.display = "none"; };
 
   try {
-    const snap = await getDocs(query(collection(db, "coopProducts"), where("active", "==", true)));
+    const [snap, merchants] = await Promise.all([
+      getDocs(query(collection(db, "merchant_products"), where("sale_status", "==", "published"))),
+      fetchMerchantsOnce().catch(() => null),
+    ]);
+
+    const names = {};
+    merchants?.forEach((d) => {
+      const m = d.data() || {};
+      const name = m.name || m.merchantName || d.id;
+      names[String(d.id)] = name;
+      if (m.merchantId) names[String(m.merchantId)] = name;
+    });
+    const merchantName = (id) => names[String(id)] || (String(id) === "1791002036" ? "대한김치" : String(id) === "1791605366" ? "베스트위너" : "가맹점");
+
+    // 사진 있는 상품 우선, 최신순
+    const ts = (p) => p.created_at?.seconds || 0;
     const list = [];
     snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
-    list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    list.sort((a, b) => (b.image_url ? 1 : 0) - (a.image_url ? 1 : 0) || ts(b) - ts(a));
 
-    if (!list.length) {
-      const sec = $("coopProductsSection");
-      if (sec) sec.style.display = "none";
-      return;
+    // 가맹점별로 번갈아 뽑아 한 가맹점이 다 채우지 않게
+    const byMerchant = new Map();
+    list.forEach((p) => {
+      const k = String(p.merchant_id || "");
+      if (!byMerchant.has(k)) byMerchant.set(k, []);
+      byMerchant.get(k).push(p);
+    });
+    const picks = [];
+    const queues = [...byMerchant.values()];
+    while (picks.length < HOME_MALL_MAX && queues.some((q) => q.length)) {
+      queues.forEach((q) => { if (q.length && picks.length < HOME_MALL_MAX) picks.push(q.shift()); });
     }
 
-    grid.innerHTML = list.map(renderCoopCard).join("");
+    if (!picks.length) return hide();
+    grid.innerHTML = picks.map((p) => renderCoopCard({ ...p, merchantName: merchantName(p.merchant_id) })).join("");
   } catch (e) {
     console.warn("loadCoopProducts failed:", e);
-    const sec = $("coopProductsSection");
-    if (sec) sec.style.display = "none";
+    hide();
   }
 }
 
