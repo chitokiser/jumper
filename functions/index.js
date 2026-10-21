@@ -3462,9 +3462,15 @@ exports.integrationApi = onRequest(
 
 // ── Webzine AI Content Generator API ──────────────────────────────────────────
 const webzineH = require('./handlers/webzine');
-exports.buildWebzineContent = onCall({ cors: true }, async (request) => {
+exports.buildWebzineContent = onCall({ cors: true }, wrapError(async (request) => {
+  // 로그인 + (관리자 또는 해당 가맹점 주인)만 — Gemini 호출 비용 보호 (2026-10-21)
+  const uid = requireAuth(request);
+  const mid = request.data?.merchantId;
+  const u = (await db.collection('users').doc(uid).get()).data() || {};
+  const isOwner = mid != null && u.merchantId != null && String(u.merchantId) === String(mid);
+  if (!isOwner) await requireAdmin(uid);
   return webzineH.buildWebzineContent(request.data, request.auth);
-});
+}));
 
 // ── Event Coupon & Voucher System API ──────────────────────────────────────────
 const couponH = require('./handlers/coupon');
