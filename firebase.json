@@ -8,9 +8,14 @@
                           "source":  "functions",
                           "codebase":  "default",
                           "disallowLegacyRuntimeConfig":  true,
+                          "predeploy":  [
+                                            "node scripts/predeploy-check.cjs"
+                                        ],
                           "ignore":  [
                                          "node_modules",
                                          ".git",
+                                         "service_account.json",
+                                         "**/service_account*.json",
                                          "firebase-debug.log",
                                          "firebase-debug.*.log"
                                      ]

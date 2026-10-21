@@ -446,10 +446,7 @@ async function loadKCultureBalances(uid) {
         show("aiErpBannerOption", true); // Show the SaaS ERP Banner
 
         mRef = doc(db, "merchants", String(d.merchantId));
-        const mSnap = await getDoc(mRef);
-        if (mSnap.exists()) {
-          btBal = mSnap.data().btBalance || btBal;
-        }
+        // BT 는 회원 BT(가게 BT + 결제로 받은 BT 합산)를 그대로 보여 준다 (2026-10-21)
       }
 
       const elPoint = $("pointDisplay");
@@ -473,17 +470,8 @@ async function loadKCultureBalances(uid) {
           }
         };
 
-        if (isMerchantOwner && mRef) {
-          getDoc(mRef).then(mS => {
-            if (mS.exists()) bBal = mS.data().btBalance ?? bBal;
-            updateBtDom(bBal);
-          }).catch(e => {
-            console.warn("getDoc mRef in listener failed:", e);
-            updateBtDom(bBal);
-          });
-        } else {
-          updateBtDom(bBal);
-        }
+        // 가맹점주도 회원 BT(합산)를 그대로 표시
+        updateBtDom(bBal);
 
 
         const elGpDisp = document.getElementById("gpBalanceDisplay");
@@ -607,10 +595,6 @@ GP를 Point로 전환하시겠습니까?`)) return;
         btnUseBt.onclick = async () => {
           const userSnap3 = await getDoc(doc(db, "users", uid));
           let currentBt = userSnap3.exists() ? Number(userSnap3.data().btBalance || 0) : 0;
-          if (isMerchantOwner && mRef) {
-            const mS = await getDoc(mRef);
-            if (mS.exists()) currentBt = mS.data().btBalance || currentBt;
-          }
           if (currentBt <= 0) {
             alert("보유한 BT가 없습니다. 가맹점에서 결제하여 획득해보세요!");
             return;
@@ -651,8 +635,9 @@ GP를 Point로 전환하시겠습니까?`)) return;
               const res = await api({ btToUse: numToUse });
               d = res.data;
             } catch (fnErr) {
-              console.warn("consumeUserBtFirebase cloud function failed, using client fallback:", fnErr);
-              d = await consumeBtClientFallback(uid, numToUse, isMerchantOwner, mRef);
+              // 보안: 화면 직접 쓰기 폴백(consumeBtClientFallback) 사용 중지 — BT 사용은 서버에서만 처리
+              console.warn("consumeUserBtFirebase cloud function failed:", fnErr);
+              throw fnErr;
             }
 
             const isWin = d.pointsEarned > 0 || d.isJackpot;
