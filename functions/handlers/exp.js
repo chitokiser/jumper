@@ -4,11 +4,11 @@
  *
  * EXP 부여 & 자동 레벨업 유틸
  *
- * 규칙:
- *   - 데이터 저장: users/{uid}.gsExp / users/{uid}.gsLevel
- *   - 레벨업 필요 EXP = 현재레벨² × 10,000
- *       Lv.1→2: 10,000  /  Lv.2→3: 40,000  /  Lv.3→4: 90,000 …
- *   - 전환량 = 포인트 × gsLevel ÷ 10  (열람용, 변환 시 사용)
+ * 규칙 (2026-10-21 게임 경험치로 통일 — docs/adr/0001):
+ *   - 데이터 저장: battle_players/{uid}.gsExp (누적) / gsLevel / level  ← 게임 서버·게임 화면과 같은 칸
+ *   - 다음 레벨 필요 누적 EXP = (현재레벨+1)² × 10,000  (게임 서버 expService 와 같음)
+ *       Lv.2: 40,000  /  Lv.3: 90,000  /  Lv.4: 160,000 …
+ *   - 레벨은 내려가지 않음 (기존 gsLevel·level 중 큰 값 유지)
  *
  * EXP 획득 기준:
  *   - BM 결제: 100,000 VND / 1,000 = 100 EXP
@@ -19,97 +19,40 @@
 const admin = require('firebase-admin');
 const db = admin.firestore();
 
-/**
- * 레벨업 필요 EXP 계산
- * @param {number} level - 현재 레벨
- */
+const LEVEL_CAP = 99;
+
+/** 다음 레벨에 필요한 누적 EXP (게임 서버와 같음) */
+function calcNextLevelExp(level) {
+    return Math.pow(level + 1, 2) * 10000;
+}
+
+/** 누적 EXP → 레벨 */
+function levelFromExp(exp) {
+    let lv = 1;
+    while (lv < LEVEL_CAP && exp >= calcNextLevelExp(lv)) lv++;
+    return lv;
+}
+
+/** 예전 이름 유지 (다른 코드 호환): 현재 레벨에서 다음 레벨까지 필요한 누적 EXP */
 function expRequiredForLevelUp(level) {
-    return level * level * 10000;
+    return calcNextLevelExp(level);
 }
 
-/**
- * EXP 부여 + 자동 레벨업 처리 (Firestore 트랜잭션 미사용, 독립 호출)
- *
- * @param {string} uid    - Firebase Auth UID
- * @param {number} amount - 부여할 EXP
- * @param {string} reason - 로그용 사유 ('payment' | 'bt' | 'referral' | 기타)
- * @returns {{ prevLevel, newLevel, prevExp, newExp, leveledUp }}
- */
-async function grantExp(uid, amount, reason = '') {
-    if (!uid || amount <= 0) return null;
+function _apply(tx, uid, bpData, amount, reason) {
+    const bpRef = db.collection('battle_players').doc(uid);
+    const prevExp = Number(bpData.gsExp || 0);
+    const prevLevel = Math.max(1, Number(bpData.gsLevel || 1), Number(bpData.level || 1));
+    const newExp = prevExp + amount;
+    const newLevel = Math.max(prevLevel, levelFromExp(newExp));
 
-    const userRef = db.collection('users').doc(uid);
+    tx.set(bpRef, {
+        gsExp: admin.firestore.FieldValue.increment(amount),
+        gsLevel: newLevel,
+        level: newLevel,
+    }, { merge: true });
 
-    return await db.runTransaction(async (tx) => {
-        const snap = await tx.get(userRef);
-        if (!snap.exists) return null;
-
-        const data = snap.data();
-        const prevExp = Number(data.gsExp || 0);
-        const prevLevel = Math.max(1, Number(data.gsLevel || 1));
-
-        let newExp = prevExp + amount;
-        let newLevel = prevLevel;
-
-        // 자동 레벨업 (연속 레벨업 허용)
-        while (newExp >= expRequiredForLevelUp(newLevel)) {
-            newExp -= expRequiredForLevelUp(newLevel);
-            newLevel += 1;
-        }
-
-        tx.set(userRef, {
-            gsExp: newExp,
-            gsLevel: newLevel,
-        }, { merge: true });
-
-        // EXP 이력 기록
-        const logRef = db.collection('exp_logs').doc();
-        tx.set(logRef, {
-            uid,
-            reason,
-            amount,
-            prevExp,
-            newExp,
-            prevLevel,
-            newLevel,
-            leveledUp: newLevel > prevLevel,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        return { prevLevel, newLevel, prevExp, newExp, leveledUp: newLevel > prevLevel };
-    });
-}
-
-/**
- * EXP 부여 (Firestore 트랜잭션 내부에서 사용)
- * 호출자의 트랜잭션 객체(tx)를 받아 원자적으로 처리
- *
- * @param {FirebaseFirestore.Transaction} tx
- * @param {FirebaseFirestore.DocumentReference} userRef
- * @param {FirebaseFirestore.DocumentData} userData
- * @param {number} amount
- * @param {string} reason
- * @returns {{ prevLevel, newLevel, prevExp, newExp, leveledUp }}
- */
-function grantExpInTx(tx, userRef, userData, amount, reason = '') {
-    if (amount <= 0) return null;
-
-    const prevExp = Number(userData.gsExp || 0);
-    const prevLevel = Math.max(1, Number(userData.gsLevel || 1));
-
-    let newExp = prevExp + amount;
-    let newLevel = prevLevel;
-
-    while (newExp >= expRequiredForLevelUp(newLevel)) {
-        newExp -= expRequiredForLevelUp(newLevel);
-        newLevel += 1;
-    }
-
-    tx.set(userRef, { gsExp: newExp, gsLevel: newLevel }, { merge: true });
-
-    const logRef = db.collection('exp_logs').doc();
-    tx.set(logRef, {
-        uid: userRef.id,
+    tx.set(db.collection('exp_logs').doc(), {
+        uid,
         reason,
         amount,
         prevExp,
@@ -117,10 +60,38 @@ function grantExpInTx(tx, userRef, userData, amount, reason = '') {
         prevLevel,
         newLevel,
         leveledUp: newLevel > prevLevel,
+        target: 'battle_players',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     return { prevLevel, newLevel, prevExp, newExp, leveledUp: newLevel > prevLevel };
 }
 
-module.exports = { grantExp, grantExpInTx, expRequiredForLevelUp };
+/**
+ * EXP 부여 + 자동 레벨업 처리 (독립 트랜잭션)
+ * @param {string} uid    - Firebase Auth UID
+ * @param {number} amount - 부여할 EXP
+ * @param {string} reason - 로그용 사유 ('payment' | 'bt' | 'referral' | 기타)
+ */
+async function grantExp(uid, amount, reason = '') {
+    if (!uid || amount <= 0) return null;
+    const bpRef = db.collection('battle_players').doc(uid);
+    return await db.runTransaction(async (tx) => {
+        const snap = await tx.get(bpRef);
+        return _apply(tx, uid, snap.exists ? snap.data() : {}, amount, reason);
+    });
+}
+
+/**
+ * EXP 부여 (호출자의 트랜잭션 안에서 사용)
+ * 주의: 호출자가 battle_players/{uid} 를 미리 읽어 bpData 로 넘겨야 한다 (트랜잭션은 읽기 → 쓰기 순서).
+ * @param {FirebaseFirestore.Transaction} tx
+ * @param {FirebaseFirestore.DocumentReference} userRef - users/{uid} (uid 확인용)
+ * @param {FirebaseFirestore.DocumentData} bpData - battle_players/{uid} 데이터
+ */
+function grantExpInTx(tx, userRef, bpData, amount, reason = '') {
+    if (amount <= 0) return null;
+    return _apply(tx, userRef.id, bpData || {}, amount, reason);
+}
+
+module.exports = { grantExp, grantExpInTx, expRequiredForLevelUp, calcNextLevelExp, levelFromExp };

@@ -333,10 +333,11 @@ async function loadExpAndLevel(uid, cachedUserData) {
 
       const convRate = $("expConversionRate");
       if (convRate) {
-        convRate.textContent = `포인트 × ${displayLevel} ÷ 10`;
+        convRate.textContent = `GP × ${displayLevel} ÷ 10`;
       }
 
-      show("levelUpRow", canLevelUp);
+      // 레벨은 누적 경험치로 자동으로 오른다 (게임과 같음) — 수동 레벨업 버튼 사용 안 함
+      show("levelUpRow", false);
     }
 
     if ($("gpUserLevelDisplay")) {
@@ -350,6 +351,9 @@ async function loadExpAndLevel(uid, cachedUserData) {
 }
 
 async function doLevelUp(uid) {
+  // 2026-10-21: 레벨은 게임 누적 경험치로 자동 계산 — 경험치를 깎는 수동 레벨업은 쓰지 않는다 (docs/adr/0001)
+  throw new Error("레벨은 경험치가 쌓이면 자동으로 오릅니다.");
+  // eslint-disable-next-line no-unreachable
   // 1. Cloud Function 시도 (배포 상태일 경우)
   try {
     const fn = httpsCallable(functions, "requestLevelUp");
