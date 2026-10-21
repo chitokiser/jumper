@@ -1,4 +1,4 @@
-# 서버 함수 배포 (안전장치 포함)
+﻿# 서버 함수 배포 (안전장치 포함)
 #   .\scripts\deploy-functions.ps1 payMerchantFirebase,receiveBtQrFirebase
 #   .\scripts\deploy-functions.ps1 rules            ← 보안 규칙만
 # 1) 이 폴더가 GitHub(origin/master) 최신과 같고 functions/ 에 커밋 안 된 변경이 없는지 검사 (scripts/predeploy-check.cjs)
