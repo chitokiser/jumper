@@ -256,7 +256,17 @@
 
       <div class="form-group">
         <label class="form-label" for="inpKeywords">핵심 키워드 / 매장 특징</label>
-        <input id="inpKeywords" type="text" class="form-control" placeholder="예: 겉바속촉, 정통 한국 레시피, 미딩 한인타운, 5% 페이백" />
+        <input id="inpKeywords" type="text" class="form-control" placeholder="예: 정통 한국 레시피, 미딩 한인타운, 30년 손맛" />
+      </div>
+
+      <div class="form-group" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px;">
+        <div class="form-label" style="margin-bottom:6px;">📋 취재 자료 <span style="font-weight:500; color:#64748b; font-size:0.85rem;">— 기자 기사 품질은 여기서 결정됩니다. 여기 없는 숫자·인용문은 AI가 쓰지 않습니다.</span></div>
+        <label class="form-label" for="rpInterview" style="font-size:0.85rem;">사장님 인터뷰 (질문과 답을 그대로)</label>
+        <textarea id="rpInterview" class="form-control" rows="6" placeholder="Q. 하노이에서 시작한 계기는?&#10;A. 2015년에 주재원으로 왔다가 교민들이 집 김치를 그리워하는 걸 보고...&#10;Q. 가장 고집하는 것은?&#10;A. ..."></textarea>
+        <label class="form-label" for="rpFacts" style="font-size:0.85rem; margin-top:10px;">확인된 사실 (가격·메뉴·연혁·인증·수치)</label>
+        <textarea id="rpFacts" class="form-control" rows="4" placeholder="예: 포기김치 1kg 120,000동 / 2019년 동안 공장 설립 / HACCP 인증 / 하루 생산량 500kg"></textarea>
+        <label class="form-label" for="rpScene" style="font-size:0.85rem; margin-top:10px;">현장 묘사·손님 한마디</label>
+        <textarea id="rpScene" class="form-control" rows="3" placeholder="예: 오전 7시, 절임 배추를 뒤집는 직원 6명 / 단골 손님: &quot;한국에서 먹던 그 맛이라 매주 온다&quot;"></textarea>
       </div>
 
       <button id="btnAiGenerate" class="btn-ai-gen" type="button">
@@ -267,6 +277,8 @@
     <!-- 기사 검수 & 에디터 패널 -->
     <section class="cms-card" id="editorSection">
       <h2 class="cms-card-title"><span>📝</span> 2. 기사 검수 및 퍼블리싱 에디터</h2>
+
+      <div id="factCheckBox" style="display:none; margin-bottom:14px; padding:12px 14px; border-radius:10px; font-size:0.9rem; line-height:1.55;"></div>
 
       <div class="form-group">
         <label class="form-label" for="edTitle">기사 제목</label>

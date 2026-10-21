@@ -116,22 +116,25 @@ export function generateClientArticle({ category = 'K-푸드', topic = '', keywo
 /**
  * AI 기사 생성 통합 함수 (Cloud Function 호출 -> 실패 시 클라이언트 스마트 생성)
  */
-export async function generateWebzineArticle({ merchantId, category, topic, keywords, merchantData }) {
+export async function generateWebzineArticle({ merchantId, category, topic, keywords, merchantData, reporting }) {
+  let aiError = "";
   try {
-    const fn = httpsCallable(functions, "buildWebzineContent");
-    const res = await fn({ merchantId, category, topic, keywords });
+    const fn = httpsCallable(functions, "buildWebzineContent", { timeout: 180000 });
+    const res = await fn({ merchantId, category, topic, keywords, reporting });
     if (res?.data?.article) {
-      return res.data.article;
+      // source: 'gemini'(AI 작성) | 'template_engine'(AI 실패 → 틀 기사), factCheck: 편집장 검수 결과
+      return { ...res.data.article, _source: res.data.source, _aiError: res.data.aiError || "", _factCheck: res.data.factCheck || [] };
     }
   } catch (err) {
+    aiError = err.message;
     console.warn("Cloud function buildWebzineContent fallback to client engine:", err.message);
   }
 
   // Fallback to client template generator
-  return generateClientArticle({
-    category,
-    topic,
-    keywords,
-    merchant: merchantData
-  });
+  return {
+    ...generateClientArticle({ category, topic, keywords, merchant: merchantData }),
+    _source: "client_template",
+    _aiError: aiError,
+    _factCheck: []
+  };
 }

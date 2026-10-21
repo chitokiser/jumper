@@ -181,13 +181,25 @@ async function handleAiGenerate() {
   btn.innerHTML = `<span>⏳</span> 실제 가맹점(${mData.name}) 데이터 기반 AI 기사 작성 중...`;
 
   try {
+    const reporting = {
+      interview: $("rpInterview")?.value.trim() || "",
+      facts: $("rpFacts")?.value.trim() || "",
+      scene: $("rpScene")?.value.trim() || ""
+    };
+    if (!reporting.interview && !reporting.facts && !reporting.scene &&
+        !confirm("취재 자료가 비어 있습니다.\n자료 없이 쓰면 가게 이야기가 빈약한 일반 기사가 됩니다. 그래도 진행할까요?")) {
+      return;
+    }
+
     const article = await generateWebzineArticle({
       merchantId,
       category,
       topic,
       keywords,
-      merchantData: mData
+      merchantData: mData,
+      reporting
     });
+    renderFactCheck(article);
 
     _currentGeneratedArticle = {
       ...article,
@@ -213,7 +225,9 @@ async function handleAiGenerate() {
     const edSec = $("editorSection");
     if (edSec) edSec.scrollIntoView({ behavior: "smooth" });
 
-    alert(`✨ 실제 가맹점 [${mData.name}] 연동 AI 기사 생성이 완료되었습니다!\n아래 에디터에서 내용을 검수한 후 [즉시 발행하기]를 눌러주세요.`);
+    alert(article._source === "gemini"
+      ? `✨ [${mData.name}] 기사 초안이 완성되었습니다.\n위쪽 '편집장 검수' 표시를 확인·수정한 뒤 [즉시 발행하기]를 눌러주세요.`
+      : `⚠️ AI 작성에 실패해 틀에 맞춘 임시 기사가 들어갔습니다.\n사유: ${article._aiError || "알 수 없음"}`);
   } catch (err) {
     console.error("AI Generate Error:", err);
     alert("AI 기사 생성 중 오류가 발생했습니다: " + err.message);
@@ -221,6 +235,30 @@ async function handleAiGenerate() {
     btn.disabled = false;
     btn.innerHTML = `<span>✨</span> AI 기사 & SNS 숏폼 원클릭 생성하기`;
   }
+}
+
+/**
+ * 편집장 검수 결과 표시 (취재 자료에 근거 없는 문장)
+ */
+function renderFactCheck(article) {
+  const box = $("factCheckBox");
+  if (!box) return;
+  const esc = (t) => String(t || "").replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+  box.style.display = "block";
+  if (article._source !== "gemini") {
+    box.style.background = "#fef2f2"; box.style.border = "1px solid #fecaca"; box.style.color = "#991b1b";
+    box.innerHTML = `<strong>⚠️ AI 작성 실패 — 틀에 맞춘 임시 기사입니다.</strong> 그대로 발행하지 마세요.<br>사유: ${esc(article._aiError || "알 수 없음")}`;
+    return;
+  }
+  const issues = article._factCheck || [];
+  if (!issues.length) {
+    box.style.background = "#f0fdf4"; box.style.border = "1px solid #bbf7d0"; box.style.color = "#166534";
+    box.innerHTML = "<strong>✅ 편집장 검수: 취재 자료에 근거 없는 주장을 찾지 못했습니다.</strong> 그래도 숫자와 인용문은 한 번 더 확인해 주세요.";
+    return;
+  }
+  box.style.background = "#fffbeb"; box.style.border = "1px solid #fde68a"; box.style.color = "#92400e";
+  box.innerHTML = `<strong>🔎 편집장 검수: 확인이 필요한 문장 ${issues.length}개</strong> — 사실이면 두고, 아니면 본문에서 고치거나 지워 주세요.<ul style="margin:8px 0 0 18px; padding:0;">` +
+    issues.map((i) => `<li style="margin-bottom:4px;">“${esc(i.quote)}”<br><span style="color:#b45309;">→ ${esc(i.reason)}</span></li>`).join("") + "</ul>";
 }
 
 /**
@@ -279,10 +317,13 @@ async function handlePublish() {
       content,
       category,
       thumbnailUrl,
-      author: "베스트클럽 에디토리얼 팀",
-      readTime: "3분 읽기",
+      author: _currentGeneratedArticle?.author || "베스트클럽 웹진 취재팀",
+      readTime: _currentGeneratedArticle?.readTime || "3분 읽기",
       dateStr: new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }),
       merchantInfo: merch,
+      whyItMatters: _currentGeneratedArticle?.whyItMatters || "",
+      impactOnExpats: _currentGeneratedArticle?.impactOnExpats || "",
+      actionRequired: _currentGeneratedArticle?.actionRequired || "",
       sns,
       tags: ["베스트클럽", category, merch.name],
       createdAt: serverTimestamp(),

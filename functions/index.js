@@ -3462,7 +3462,7 @@ exports.integrationApi = onRequest(
 
 // ── Webzine AI Content Generator API ──────────────────────────────────────────
 const webzineH = require('./handlers/webzine');
-exports.buildWebzineContent = onCall({ cors: true }, wrapError(async (request) => {
+exports.buildWebzineContent = onCall({ cors: true, timeoutSeconds: 180 }, wrapError(async (request) => {
   // 로그인 + (관리자 또는 해당 가맹점 주인)만 — Gemini 호출 비용 보호 (2026-10-21)
   const uid = requireAuth(request);
   const mid = request.data?.merchantId;
