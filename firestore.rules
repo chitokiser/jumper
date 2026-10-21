@@ -980,7 +980,7 @@ service cloud.firestore {
       // --- 베스트 매거진 (Webzine) 컬렉션 ---
       match /webzine_articles/{articleId} {
         allow read: if true;
-        allow create, update, delete: if signedIn();
+        allow create, update, delete: if isAdmin();
       }
 
       // --- 이벤트 쿠폰 & 바우쳐 컬렉션 ---

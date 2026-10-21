@@ -322,6 +322,7 @@ async function loadPublishedArticles() {
     snap.forEach((d) => {
       const a = d.data();
       const id = d.id;
+      if (a.deleted === true) return; // 웹진에서 삭제 표시한 기본 기사
       rows.push(`
         <tr>
           <td>

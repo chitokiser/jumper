@@ -1,12 +1,14 @@
 // /assets/js/pages/kca_webzine.js
-import { db } from "/assets/js/auth.js";
+import { db, onAuthReady } from "/assets/js/auth.js";
 import {
   collection,
   getDocs,
+  getDoc,
   query,
   orderBy,
   limit,
   setDoc,
+  deleteDoc,
   doc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -18,6 +20,26 @@ let _allArticles = [];
 let _activeCategory = "all";
 let _searchQuery = "";
 let _currentArticleId = null;
+let _currentUser = null;
+let _isSuperAdmin = false;
+const _fsIds = new Set(); // 저장소(webzine_articles)에 있는 기사 id — 수정·삭제된 기본 기사 포함
+
+/**
+ * 수퍼 어드민 권한 검증 (admin_webzine.js와 같은 기준)
+ */
+async function checkSuperAdmin(user) {
+  if (!user) return false;
+  if ((user.email || "").toLowerCase().trim() === "daguri75@gmail.com") return true;
+  try {
+    if ((await getDoc(doc(db, "admins", user.uid))).exists()) return true;
+  } catch (err) {}
+  try {
+    const uSnap = await getDoc(doc(db, "users", user.uid));
+    const ud = uSnap.exists() ? uSnap.data() || {} : {};
+    if (ud.isAdmin === true || ["SUPER_ADMIN", "ADMIN", "admin"].includes(ud.role)) return true;
+  } catch (err) {}
+  return false;
+}
 
 /**
  * 기사 좋아요(Like) 영속 헬퍼
@@ -228,20 +250,23 @@ async function loadWebzineArticles() {
     }
 
     const firestoreArticles = [];
+    _fsIds.clear();
     if (snap && !snap.empty) {
       snap.forEach((d) => {
-        firestoreArticles.push({ id: d.id, ...d.data() });
+        _fsIds.add(d.id);
+        const data = d.data() || {};
+        if (data.deleted === true) return; // 삭제 표시된 기본 기사
+        firestoreArticles.push({ id: d.id, ...data });
       });
     }
 
-    if (firestoreArticles.length > 0) {
+    if (_fsIds.size > 0) {
       firestoreArticles.sort((a, b) => {
         const timeA = a.createdAt?.seconds || (typeof a.createdAt === "number" ? a.createdAt : 0);
         const timeB = b.createdAt?.seconds || (typeof b.createdAt === "number" ? b.createdAt : 0);
         return timeB - timeA;
       });
-      const fsIds = new Set(firestoreArticles.map((a) => a.id));
-      const presetsToAdd = WEBZINE_20_ARTICLES.filter((a) => !fsIds.has(a.id));
+      const presetsToAdd = WEBZINE_20_ARTICLES.filter((a) => !_fsIds.has(a.id));
       _allArticles = [...firestoreArticles, ...presetsToAdd];
       renderArticles();
     }
@@ -547,6 +572,7 @@ function openArticleDetail(articleId) {
   _currentArticleId = articleId;
   const modal = $("articleModal");
   if (!modal) return;
+  if ($("mAdminBar")) $("mAdminBar").style.display = _isSuperAdmin ? "flex" : "none";
 
   // 기본 메타 정보 바인딩
   if ($("mHeroImg")) $("mHeroImg").src = article.thumbnailUrl || "";
@@ -629,6 +655,98 @@ function openArticleDetail(articleId) {
   modal.classList.add("active");
   modal.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
+}
+
+/**
+ * 수퍼어드민: 기사 수정·보완 / 삭제
+ */
+const EDIT_FIELDS = [
+  ["edTitle", "title"], ["edSubtitle", "subtitle"], ["edCategory", "category"],
+  ["edThumb", "thumbnailUrl"], ["edSummary", "summary"], ["edContent", "content"],
+  ["edWhy", "whyItMatters"], ["edImpact", "impactOnExpats"], ["edAction", "actionRequired"],
+  ["edAuthor", "author"], ["edDate", "dateStr"]
+];
+
+function openArticleEdit() {
+  if (!_isSuperAdmin) return;
+  const article = _allArticles.find((a) => a.id === _currentArticleId);
+  const modal = $("articleEditModal");
+  if (!article || !modal) return;
+  EDIT_FIELDS.forEach(([elId, key]) => { if ($(elId)) $(elId).value = article[key] || ""; });
+  if ($("edBenefit")) $("edBenefit").value = article.merchantInfo?.benefit || "";
+  modal.dataset.articleId = article.id;
+  modal.classList.add("active");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeArticleEdit() {
+  const modal = $("articleEditModal");
+  if (!modal) return;
+  modal.classList.remove("active");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function saveArticleEdit() {
+  const id = $("articleEditModal")?.dataset.articleId;
+  const idx = _allArticles.findIndex((a) => a.id === id);
+  if (!_isSuperAdmin || idx < 0) return;
+  if (!$("edTitle").value.trim() || !$("edContent").value.trim()) {
+    alert("제목과 본문은 비울 수 없습니다.");
+    return;
+  }
+  const original = _allArticles[idx];
+  const changes = {};
+  EDIT_FIELDS.forEach(([elId, key]) => { changes[key] = $(elId).value.trim(); });
+  changes.merchantInfo = { ...(original.merchantInfo || {}), benefit: $("edBenefit").value.trim() };
+
+  const btn = $("edSaveBtn");
+  btn.disabled = true;
+  try {
+    const ref = doc(db, "webzine_articles", id);
+    const meta = { updatedAt: serverTimestamp(), updatedBy: _currentUser?.uid || "" };
+    if (_fsIds.has(id)) {
+      await setDoc(ref, { ...changes, ...meta }, { merge: true });
+    } else {
+      // 기본(내장) 기사는 같은 id로 저장소에 처음 저장
+      const { id: _omit, ...rest } = original;
+      await setDoc(ref, { ...rest, ...changes, ...meta, createdAt: serverTimestamp() });
+      _fsIds.add(id);
+    }
+    _allArticles[idx] = { ...original, ...changes };
+    closeArticleEdit();
+    renderArticles();
+    openArticleDetail(id);
+    alert("저장되었습니다.");
+  } catch (err) {
+    alert("저장 실패: " + (err?.message || err));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function deleteCurrentArticle() {
+  const id = _currentArticleId;
+  const article = _allArticles.find((a) => a.id === id);
+  if (!_isSuperAdmin || !article) return;
+  if (!confirm(`"${article.title}" 기사를 삭제할까요?\n삭제하면 웹진에서 보이지 않습니다.`)) return;
+  try {
+    const ref = doc(db, "webzine_articles", id);
+    const isPreset = WEBZINE_20_ARTICLES.some((a) => a.id === id) || DEFAULT_PRESET_ARTICLES.some((a) => a.id === id);
+    if (isPreset) {
+      // 기본(내장) 기사는 지울 문서가 없으므로 삭제 표시를 남김
+      await setDoc(ref, { deleted: true, deletedAt: serverTimestamp(), deletedBy: _currentUser?.uid || "" });
+      _fsIds.add(id);
+    } else {
+      await deleteDoc(ref);
+      _fsIds.delete(id);
+    }
+    _allArticles = _allArticles.filter((a) => a.id !== id);
+    closeArticleDetail();
+    renderArticles();
+    alert("삭제되었습니다.");
+  } catch (err) {
+    alert("삭제 실패: " + (err?.message || err));
+  }
 }
 
 /**
@@ -838,6 +956,16 @@ function checkDeepLink() {
 // ── 초기화 실행 ──
 function boot() {
   initEvents();
+  $("mBtnEditArticle")?.addEventListener("click", openArticleEdit);
+  $("mBtnDeleteArticle")?.addEventListener("click", deleteCurrentArticle);
+  $("edSaveBtn")?.addEventListener("click", saveArticleEdit);
+  $("edCancelBtn")?.addEventListener("click", closeArticleEdit);
+  $("editCloseBtn")?.addEventListener("click", closeArticleEdit);
+  onAuthReady(async ({ user }) => {
+    _currentUser = user || null;
+    _isSuperAdmin = user ? await checkSuperAdmin(user) : false;
+    if ($("mAdminBar")) $("mAdminBar").style.display = _isSuperAdmin && _currentArticleId ? "flex" : "none";
+  });
   initLiveBriefing();
   initBankCalculator();
   loadWebzineArticles().then(() => {
