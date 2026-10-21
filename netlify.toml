@@ -1,7 +1,8 @@
 [build]
   publish = "."
   # 배포 시에만 assets/js 압축(minify) — 저장소 원본은 그대로 (scripts/minify-js.mjs)
-  command = "node scripts/minify-js.mjs"
+  # 이어서 서버 코드·키 파일·관리 스크립트·문서·백업 파일을 공개 대상에서 제외 (scripts/strip-private.mjs)
+  command = "node scripts/minify-js.mjs && node scripts/strip-private.mjs"
 
 [build.environment]
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
