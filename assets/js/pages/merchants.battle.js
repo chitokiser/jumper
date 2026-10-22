@@ -70,6 +70,7 @@ let _healAccum       = 0;      // HP 회복용 누적거리(m)
 let _mpHealAccum     = 0;      // MP 회복용 누적거리(m)
 let _reviveWalkDist  = 0;      // (legacy, kept for save compat)
 let _currentSpeed    = 0;      // km/h
+let _lastMoveAt      = 0;      // 마지막으로 1m 넘게 움직인 시각 (멈춤 판정)
 let _isDead          = false;
 let _xp99Saved       = false;  // 99% on-chain checkpoint per level
 let _spawnLat        = null;   // spawn position (first GPS fix or warp start)
@@ -3996,6 +3997,7 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
   if (_ctx.lastDistPos) {
     const d = haversine(lat, lng, _ctx.lastDistPos.lat, _ctx.lastDistPos.lng);
     if (d > 1 && d < 500) {
+      _lastMoveAt = Date.now();
       _ctx.totalDist += d;
       _ctx._onUpdateDistDisplay();
 
@@ -4019,6 +4021,8 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
       }
     }
   }
+  // 1m 안쪽 흔들림만 2초 넘게 계속되면 멈춘 것으로 (예전엔 마지막 속도가 남아 계속 걷는 모습)
+  if (Date.now() - _lastMoveAt > 2000) _currentSpeed = 0;
   _ctx.lastDistPos  = { lat, lng };
   _ctx.lastSpeedPos = { lat, lng, time: Date.now() };
 

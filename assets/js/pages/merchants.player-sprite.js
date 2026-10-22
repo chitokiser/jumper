@@ -293,9 +293,14 @@ function _getOverlayCls() {
       this._prevState = 'idle';
       this._animStart = performance.now();
       this._facing    = 1;   // 1 = right, -1 = left
+      this._facingVis = 1;   // 화면에 그리는 방향 (돌아설 때 부드럽게 따라감)
       this._canvas    = null;
       this._rafId     = null;
       this._ready     = false;
+      // GPS 점 사이를 미끄러지듯 이동 — 게임 판정은 _latLng(실제 위치), 그리기는 _disp
+      this._disp      = { lat: this._latLng.lat(), lng: this._latLng.lng() };
+      this._glide     = null;  // { from, to, start, dur }
+      this._lastPosAt = 0;
       this.setMap(map);
     }
 
@@ -305,7 +310,32 @@ function _getOverlayCls() {
     setPosition(pos) {
       this._latLng = pos instanceof google.maps.LatLng
         ? pos : new google.maps.LatLng(pos.lat, pos.lng);
+      const now = performance.now();
+      const to  = { lat: this._latLng.lat(), lng: this._latLng.lng() };
+      const from = { ...this._disp };
+      const dLat = to.lat - from.lat, dLng = to.lng - from.lng;
+      const meters = Math.hypot(dLat * 111320, dLng * 111320 * Math.cos(to.lat * Math.PI / 180));
+      // 다음 GPS 점이 올 때까지 걸리는 시간만큼 이동 (보통 1초), 멀리 순간이동하면 바로 이동
+      const gap = this._lastPosAt ? now - this._lastPosAt : 0;
+      this._lastPosAt = now;
+      if (!gap || meters > 150 || meters < 0.05) {
+        this._disp  = to;
+        this._glide = null;
+      } else {
+        this._glide = { from, to, start: now, dur: Math.max(250, Math.min(1200, gap)) };
+      }
+      // 기기가 방향(heading)을 안 줄 때는 이동 방향으로 바라봄 (공격 중엔 과녁 방향 유지)
+      if (this._state !== 'attack' && Math.abs(dLng) > 1e-7 && meters >= 0.3) this._facing = dLng > 0 ? 1 : -1;
       this.draw();
+    }
+
+    _updateGlide(now) {
+      const g = this._glide;
+      if (!g) return false;
+      const t = Math.min(1, (now - g.start) / g.dur);
+      this._disp = { lat: g.from.lat + (g.to.lat - g.from.lat) * t, lng: g.from.lng + (g.to.lng - g.from.lng) * t };
+      if (t >= 1) this._glide = null;
+      return true;
     }
 
     // no-op: we draw on canvas, not icon
@@ -339,18 +369,45 @@ function _getOverlayCls() {
       if (!this._canvas) return;
       const proj = this.getProjection();
       if (!proj) return;
-      const pt = proj.fromLatLngToDivPixel(this._latLng);
+      // Leaflet 호환 지도는 화면 좌표를 정수로 반올림해 작은 이동이 뚝뚝 끊김 → 반올림 전 좌표 사용
+      const lmap = this._map?._lmap;
+      let pt;
+      if (lmap && typeof lmap.project === 'function' && typeof lmap.getPixelOrigin === 'function') {
+        const p = lmap.project([this._disp.lat, this._disp.lng], lmap.getZoom()).subtract(lmap.getPixelOrigin());
+        pt = { x: p.x, y: p.y };
+      } else {
+        pt = proj.fromLatLngToDivPixel(new google.maps.LatLng(this._disp.lat, this._disp.lng));
+      }
       if (!pt) return;
-      this._canvas.style.left = Math.round(pt.x - OX) + 'px';
-      this._canvas.style.top  = Math.round(pt.y - OY) + 'px';
+      // 소수점 위치 + transform 으로 그려 이동이 끊기지 않게
+      this._canvas.style.left = '0px';
+      this._canvas.style.top  = '0px';
+      this._canvas.style.transform = `translate3d(${(pt.x - OX).toFixed(2)}px, ${(pt.y - OY).toFixed(2)}px, 0)`;
     }
 
     // ── Public state API ───────────────────────────────────────────────────
     setState(state) {
       if (this._state === 'die') return;   // stay dead until revive
-      if (this._state === state) return;
+      const now = performance.now();
+      if (this._state === state) {
+        // 연속 공격·연속 피격은 동작을 처음부터 다시 (반응이 바로 보이게)
+        if ((state === 'attack' || state === 'hurt') && now - this._animStart > 120) this._animStart = now;
+        return;
+      }
+      // 걷기 ↔ 달리기 전환 시 발걸음 위치(진행률)를 이어서 — 동작이 툭 끊기지 않게
+      const loopPair = (a) => a === 'walk' || a === 'run';
+      if (loopPair(this._state) && loopPair(state) && _scmlData) {
+        const a = _scmlData.animations[STATE_ANIM[this._state]];
+        const b = _scmlData.animations[STATE_ANIM[state]];
+        if (a && b && a.length > 0 && b.length > 0) {
+          const phase = (((now - this._animStart) % a.length) + a.length) % a.length / a.length;
+          this._state     = state;
+          this._animStart = now - phase * b.length;
+          return;
+        }
+      }
       this._state     = state;
-      this._animStart = performance.now();
+      this._animStart = now;
     }
 
     revive() {
@@ -384,11 +441,26 @@ function _getOverlayCls() {
 
     // ── Render loop ────────────────────────────────────────────────────────
     _startLoop() {
-      // 초당 30장으로 제한 (시간 기준 보간이라 동작 속도는 그대로) — 발열·배터리 절약
+      // 움직이거나 공격·피격 중에는 초당 60장, 서 있을 때는 30장 (발열·배터리 절약)
       let last = 0;
       const tick = (now) => {
         if (!this._canvas) return;
-        if (now - last >= 32) { last = now; this._render(); }
+        const busy = !!this._glide || this._state !== 'idle' || this._facingVis !== this._facing;
+        if (now - last >= (busy ? 15 : 32)) {
+          const dt = last ? now - last : 16;
+          last = now;
+          if (this._updateGlide(now)) this.draw();
+          // 멈췄는데 GPS 가 더 안 오면 곧 서기 동작으로 (예전엔 계속 걷는 채로 남음)
+          if ((this._state === 'walk' || this._state === 'run') && !this._glide && now - this._lastPosAt > 2200) this.setState('idle');
+          // 돌아설 때 0.1초 동안 좌우가 부드럽게 뒤집힘
+          if (this._facingVis !== this._facing) {
+            const step = dt / 100 * 2;
+            this._facingVis = this._facing > this._facingVis
+              ? Math.min(this._facing, this._facingVis + step)
+              : Math.max(this._facing, this._facingVis - step);
+          }
+          this._render();
+        }
         this._rafId = requestAnimationFrame(tick);
       };
       this._rafId = requestAnimationFrame(tick);
@@ -462,7 +534,9 @@ function _getOverlayCls() {
 
       ctx.save();
       ctx.translate(OX, OY);
-      if (this._facing < 0) ctx.scale(-1, 1);   // flip for left-facing
+      // 좌우 방향 (돌아서는 중엔 가로 폭이 줄었다 늘며 뒤집힘, 0 근처는 최소 폭 유지)
+      const fv = this._facingVis;
+      if (fv !== 1) ctx.scale(Math.sign(fv || 1) * Math.max(0.15, Math.abs(fv)), 1);
 
       for (const obj of objs) {
         if (!obj.img) continue;
