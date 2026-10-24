@@ -1,147 +1,216 @@
 /* /assets/css/pages/town_home.hero.css */
 /* ============================================================
-   VIDEO HERO – liveanywhere.me 스타일
+   홈 히어로 – 간판형 헤드라인 + 액자형 슬라이드
    ============================================================ */
 
-/* ── 섹션 컨테이너 ── */
-.hero-video {
-  position: relative;
+.bc-hero {
+  --hero-ink: #0E1A3A;
+  --hero-panel: #14224A;
+  --hero-red: #E1262D;
+  --hero-gold: #F6B92B;
+  --hero-white: #FFFFFF;
+  --hero-mist: #AEB9D3;
+
+  background: var(--hero-ink);
+  color: var(--hero-white);
   overflow: hidden;
-  width: 100%;
-  min-height: 580px;
+}
+
+.bc-hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 72px 32px 80px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
+}
+
+/* ── 문구 ── */
+.bc-hero-copy {
+  text-align: left;
+}
+
+.bc-hero-brand {
+  margin: 0 0 18px;
+  color: var(--hero-mist);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.bc-hero-title {
+  margin: 0 0 22px;
+  font-family: "Black Han Sans", "Pretendard Variable", Pretendard, sans-serif;
+  font-weight: 400;
+  font-size: clamp(36px, 3.9vw, 56px);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--hero-white);
+  word-break: keep-all;
+}
+
+.bc-hero-title span {
+  display: block;
+  white-space: nowrap;
+}
+
+.bc-hero-desc {
+  margin: 0;
+  max-width: 30em;
+  color: var(--hero-mist);
+  font-size: 17px;
+  line-height: 1.7;
+  word-break: keep-all;
+}
+
+/* ── 버튼 ── */
+.bc-hero-actions {
+  margin-top: 34px;
   display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bc-hero .bc-hero-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* panel 클래스의 padding/border/shadow 재정의 */
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
+  min-height: 52px;
+  padding: 0 28px;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color .15s, border-color .15s, transform .15s;
 }
 
-/* ── 배경 레이어 ── */
-.hero-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
+.bc-hero .bc-hero-btn--primary {
+  background: var(--hero-red);
+  color: var(--hero-white);
+  border: 1px solid var(--hero-red);
+}
+.bc-hero .bc-hero-btn--primary:hover { background: #C81E25; border-color: #C81E25; }
+
+.bc-hero .bc-hero-btn--ghost {
+  background: transparent;
+  color: var(--hero-white);
+  border: 1px solid rgba(255, 255, 255, .35);
+}
+.bc-hero .bc-hero-btn--ghost:hover { border-color: var(--hero-white); }
+
+.bc-hero .bc-hero-btn:active { transform: translateY(1px); }
+
+.bc-hero-links {
+  margin-top: 22px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 
-/* ── 슬라이드쇼 컨테이너 ── */
-.hero-slides {
-  position: absolute;
-  inset: 0;
+.bc-hero .bc-hero-links a {
+  color: var(--hero-white);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, .35);
+  text-underline-offset: 5px;
+}
+.bc-hero .bc-hero-links a:hover { text-decoration-color: var(--hero-white); }
+
+.bc-hero a:focus-visible {
+  outline: 2px solid var(--hero-gold);
+  outline-offset: 3px;
 }
 
-/* ── 슬라이드 이미지 ── */
-.hero-slide {
+/* ── 액자형 슬라이드 ── */
+.bc-hero-visual {
+  margin: 0;
+  position: relative;
+}
+
+.bc-hero .hero-slides {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--hero-panel);
+}
+
+.bc-hero .hero-slide {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  transition: opacity 1s ease-in-out;
-  will-change: opacity;
+  transition: opacity .9s ease-in-out;
 }
+.bc-hero .hero-slide.is-active { opacity: 1; }
 
-.hero-slide.is-active {
-  opacity: 1;
-}
-
-/* ── 비네트(어둠 그라데이션) ── */
-.hero-bg-vignette {
-  position: absolute;
-  inset: 0;
-  /* 아래·위 어둡게, 가운데는 반투명 */
-  background:
-    linear-gradient(180deg,
-      rgba(0,0,0,.38) 0%,
-      rgba(0,0,0,.18) 35%,
-      rgba(0,0,0,.18) 65%,
-      rgba(0,0,0,.55) 100%
-    );
-  pointer-events: none;
-}
-
-/* ── 텍스트 콘텐츠 ── */
-.hero-content {
-  position: relative;
-  z-index: 1;
-
+/* 슬라이드 위치 표시 (진행 막대) */
+.bc-hero-progress {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-
-  padding: 80px 80px 72px;
-  max-width: 960px;
-  min-height: 580px;
-
-  /* 기존 유리 카드 완전 제거 */
-  background: transparent !important;
-  border: none !important;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
+  gap: 6px;
+  margin-top: 14px;
 }
 
-/* ── 메인 제목 ── */
-.town-title {
-  margin: 0 0 20px;
-  color: #ffffff;
-  font-size: clamp(28px, 5vw, 52px);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.18;
-  text-shadow:
-    0 2px 8px rgba(0,0,0,.45),
-    0 8px 32px rgba(0,0,0,.40);
+.bc-hero-progress button {
+  flex: 1;
+  height: 16px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
-/* ── 부제목 ── */
-.town-desc {
-  margin: 0;
-  color: rgba(255,255,255,.92);
-  font-size: clamp(15px, 2.2vw, 19px);
-  line-height: 1.70;
-  text-shadow:
-    0 1px 5px rgba(0,0,0,.40),
-    0 4px 18px rgba(0,0,0,.35);
+.bc-hero-progress span {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .18);
+  overflow: hidden;
 }
 
-/* ── 버튼 영역 ── */
-.hero-actions {
-  margin-top: 32px;
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  justify-content: center;
+.bc-hero-progress span::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--hero-gold);
 }
 
-/* ── 히어로 CTA 버튼 ── */
-.hero-cta-btn {
-  padding: 14px 32px;
-  font-size: clamp(15px, 2.2vw, 18px);
-  font-weight: 800;
-  border-radius: 12px;
-  letter-spacing: 0.02em;
-  box-shadow: 0 4px 24px rgba(124,58,237,.45), 0 2px 8px rgba(0,0,0,.35);
-  transition: transform .15s, box-shadow .15s;
+.bc-hero-progress .is-done span::after { width: 100%; }
+.bc-hero-progress .is-active span::after {
+  animation: bcHeroFill var(--hero-interval, 4500ms) linear forwards;
 }
-.hero-cta-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(124,58,237,.55), 0 4px 12px rgba(0,0,0,.35);
+.bc-hero.is-paused .bc-hero-progress .is-active span::after { animation-play-state: paused; }
+
+.bc-hero-progress button:focus-visible {
+  outline: 2px solid var(--hero-gold);
+  outline-offset: 2px;
 }
 
-/* ── 모바일 ── */
-@media (max-width: 768px) {
-  .hero-video    { min-height: 420px; }
-  .hero-content  { min-height: 420px; padding: 52px 28px 44px; }
-  .town-desc br  { display: none; }
+@keyframes bcHeroFill { from { width: 0; } to { width: 100%; } }
+
+/* ── 태블릿·모바일: 그림 위, 문구 아래 ── */
+@media (max-width: 900px) {
+  .bc-hero-inner {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 0 0 48px;
+  }
+  .bc-hero-visual { order: -1; }
+  .bc-hero .hero-slides { border-radius: 0; }
+  .bc-hero-progress { padding: 0 20px; margin-top: 8px; }
+  .bc-hero-copy { padding: 0 20px; }
+  .bc-hero-brand { margin-bottom: 12px; font-size: 14px; }
+  .bc-hero-title { font-size: clamp(30px, 8.6vw, 46px); margin-bottom: 16px; }
+  .bc-hero-desc { font-size: 16px; }
+  .bc-hero-actions { margin-top: 26px; display: grid; grid-template-columns: 1fr 1fr; }
 }
 
-@media (max-width: 480px) {
-  .hero-video    { min-height: 360px; }
-  .hero-content  { min-height: 360px; padding: 40px 20px 36px; }
+@media (prefers-reduced-motion: reduce) {
+  .bc-hero .hero-slide { transition: none; }
+  .bc-hero-progress .is-active span::after { animation: none; width: 100%; }
 }
