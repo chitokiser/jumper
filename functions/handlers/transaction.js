@@ -658,8 +658,9 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     else if (r_grade < 72.6) grade = Math.floor(Math.random() * (800 - 501 + 1)) + 501;
     else grade = Math.floor(Math.random() * (1000 - 801 + 1)) + 801;
 
-    let reward = Math.floor((feeVnd + currentJackpotPool) / grade) + Math.floor(feeVnd / grade);
-    if (reward <= 0 && (feeVnd > 0 || currentJackpotPool > 0)) reward = 1;
+    // 당첨 포인트 = 잭팟 풀 ÷ 당첨번호(grade) — 풀에는 이번 결제 기여금(수수료 30%)이 이미 더해져 있음
+    let reward = Math.floor(currentJackpotPool / grade);
+    if (reward <= 0 && currentJackpotPool > 0) reward = 1;
     if (reward < 0) reward = 0;
 
     totalJackpotReward = reward;
@@ -1416,7 +1417,8 @@ async function consumeUserBtFirebase(data, context) {
   const numBt = Number(data.btToUse || 1);
   if (!numBt || numBt <= 0) throw new functions.https.HttpsError('invalid-argument', '잘못된 BT 수량');
 
-  const jackpotRef = db.collection('platform_config').doc('jackpot');
+  // 결제 잭팟과 같은 풀 (예전 platform_config/jackpot 은 채워지는 곳이 없어 0 으로 바닥났음)
+  const jackpotRef = db.collection('jackpot_config').doc('current');
   const userRef = db.collection('users').doc(uid);
   const bpRef = db.collection('battle_players').doc(uid);
 
@@ -1457,9 +1459,8 @@ async function consumeUserBtFirebase(data, context) {
 
       if (i === 0) firstGrade = grade;
 
-      // BT 1장당 10만동 결제분으로 간주하여 가상의 수수료(10,000)를 적용합니다.
-      let virtualFee = 10000;
-      let reward = Math.floor((virtualFee + currentJackpotPool) / grade) + Math.floor(virtualFee / grade);
+      // 당첨 포인트 = 잭팟 풀 ÷ 당첨번호(grade), 장마다 줄어든 풀로 다시 계산
+      let reward = Math.floor(currentJackpotPool / grade);
       if (reward <= 0) reward = 1;
 
       totalJackpotReward += reward;

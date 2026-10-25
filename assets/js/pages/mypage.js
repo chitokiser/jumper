@@ -156,9 +156,8 @@ async function consumeBtClientFallback(uid, numBt, isMerchantOwner, mRef) {
 
     if (i === 0) firstGrade = grade;
 
-    // BT 1장당 10,000 가상 수수료 기준 잭팟 분배 계산
-    let virtualFee = 10000;
-    let reward = Math.floor((virtualFee + currentJackpotPool) / grade) + Math.floor(virtualFee / grade);
+    // 당첨 포인트 = 잭팟 풀 ÷ 당첨번호(grade) (서버 consumeUserBtFirebase 와 같은 식)
+    let reward = Math.floor(currentJackpotPool / grade);
     if (reward <= 0) reward = 1;
 
     totalJackpotReward += reward;

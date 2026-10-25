@@ -434,8 +434,9 @@ async function executePaymentClientFallback(uid, merchantId, finalVnd, merchant)
     else if (r_grade < 72.6) grade = Math.floor(Math.random() * (800 - 501 + 1)) + 501;
     else grade = Math.floor(Math.random() * (1000 - 801 + 1)) + 801;
 
-    let reward = Math.floor((feeVnd + currentJackpotPool) / grade) + Math.floor(feeVnd / grade);
-    if (reward <= 0 && (feeVnd > 0 || currentJackpotPool > 0)) reward = 1;
+    // 당첨 포인트 = 잭팟 풀 ÷ 당첨번호(grade) (서버 payMerchantFirebase 와 같은 식)
+    let reward = Math.floor(currentJackpotPool / grade);
+    if (reward <= 0 && currentJackpotPool > 0) reward = 1;
     if (reward < 0) reward = 0;
     const safeJackpotReward = Math.max(0, Math.floor(Number(reward) || 0));
     currentJackpotPool = Math.max(0, currentJackpotPool - safeJackpotReward);
