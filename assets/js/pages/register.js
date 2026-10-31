@@ -9,6 +9,11 @@ import {
   doc,
   getDoc,
   setDoc,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -113,7 +118,8 @@ function showAlreadyDone(userData) {
 async function doRegister(uid, user) {
   const name = String($("userName")?.value || "").trim();
   const phone = normalizePhone($("userPhone")?.value);
-  const mentorAddress = String($("mentorAddress")?.value || "").trim();
+  const rawMentorAddress = String($("mentorAddress")?.value || "").trim();
+  const mentorAddress = rawMentorAddress.includes("@") ? rawMentorAddress.toLowerCase() : rawMentorAddress;
   const agreeTerms = Boolean($("agreeTerms")?.checked);
 
   if (!name) throw new Error("이름을 입력해 주세요.");
@@ -125,15 +131,38 @@ async function doRegister(uid, user) {
   show("stepBox", true);
 
   setStep("step1", "doing");
+
+  let mentorUid = "";
+  let mentorEmail = mentorAddress.includes("@") ? mentorAddress : "";
+  if (mentorEmail) {
+    try {
+      const mSnap = await getDocs(query(collection(db, "users"), where("email", "==", mentorEmail), limit(1)));
+      if (!mSnap.empty && mSnap.docs[0].id !== uid) {
+        mentorUid = mSnap.docs[0].id;
+      }
+    } catch (_) {}
+  }
+
   await setDoc(doc(db, "users", uid), {
     name,
     phone,
-    email: user?.email || "",
+    email: (user?.email || "").toLowerCase(),
     mentorAddressInput: mentorAddress,
+    ...(mentorEmail ? { mentorEmail } : {}),
+    ...(mentorUid ? { mentorUid } : {}),
     agreeTerms: true,
     registeredAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }, { merge: true });
+
+  // 추천인(멘토)에게 +1,000 EXP 지급 호출 (Cloud Function)
+  if (mentorUid) {
+    try {
+      const fn = httpsCallable(functions, "processReferralReward");
+      await fn({ referrerUid: mentorUid, newUserUid: uid });
+    } catch (_) {}
+  }
+
   setStep("step1", "done");
 
   return { joinBonus: true, referralBonus: !!mentorAddress };

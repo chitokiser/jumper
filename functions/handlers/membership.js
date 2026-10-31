@@ -158,30 +158,50 @@ async function processReferralReward(referrerUid, newUserUid) {
   const dupSnap = await db.collection('membership_referrals')
     .where('newUserUid', '==', newUserUid)
     .limit(1).get();
-  if (!dupSnap.empty) throw new Error('이미 처리된 초대');
+  if (!dupSnap.empty) return { gpRewarded: 0, alreadyProcessed: true };
 
-  const referrerSnap = await db.collection('users').doc(referrerUid).get();
+  const referrerRef = db.collection('users').doc(referrerUid);
+  const referrerSnap = await referrerRef.get();
   if (!referrerSnap.exists) throw new Error('초대자 없음');
-  if (!isPremiumActive((referrerSnap.data() || {}).coopMemberUntil))
-    throw new Error('초대자가 정회원이 아닙니다');
+  const referrerData = referrerSnap.data() || {};
+  const creditedArr = Array.isArray(referrerData.creditedMenteeUids) ? referrerData.creditedMenteeUids : [];
+  const alreadyCreditedExp = creditedArr.includes(newUserUid);
 
-  await db.collection('battle_players').doc(referrerUid).set(
-    { gold: admin.firestore.FieldValue.increment(REFERRAL_GP) },
-    { merge: true }
-  );
+  const isPremium = isPremiumActive(referrerData.coopMemberUntil);
+  if (isPremium) {
+    await db.collection('battle_players').doc(referrerUid).set(
+      { gold: admin.firestore.FieldValue.increment(REFERRAL_GP) },
+      { merge: true }
+    );
+  }
 
   await db.collection('membership_referrals').add({
     referrerUid,
     newUserUid,
-    gpRewarded:  REFERRAL_GP,
+    gpRewarded:  isPremium ? REFERRAL_GP : 0,
+    expRewarded: alreadyCreditedExp ? 0 : 1000,
     status:      'rewarded',
     createdAt:   admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  // EXP 부여: 추천인에게 1,000 EXP
-  try { await expH.grantExp(referrerUid, 1000, 'referral'); } catch (_) {}
+  // EXP 부여: 추천인(멘토)에게 1,000 EXP (중복 방지)
+  if (!alreadyCreditedExp) {
+    try {
+      const expRes = await expH.grantExp(referrerUid, 1000, 'referral');
+      await referrerRef.set({
+        creditedMenteeUids: admin.firestore.FieldValue.arrayUnion(newUserUid),
+        ...(expRes?.newExp != null ? { gsExp: expRes.newExp, exp: expRes.newExp } : {}),
+        ...(expRes?.newLevel != null ? { gsLevel: expRes.newLevel } : {}),
+      }, { merge: true });
+      await db.collection('users').doc(newUserUid).set({
+        mentorExpGranted: true,
+        mentorExpGrantedAt: admin.firestore.FieldValue.serverTimestamp(),
+        mentorUid: referrerUid,
+      }, { merge: true });
+    } catch (_) {}
+  }
 
-  return { gpRewarded: REFERRAL_GP };
+  return { gpRewarded: isPremium ? REFERRAL_GP : 0, expRewarded: alreadyCreditedExp ? 0 : 1000 };
 }
 
 module.exports = {

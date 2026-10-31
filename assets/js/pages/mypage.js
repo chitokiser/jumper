@@ -22,7 +22,8 @@ import {
   onSnapshot,
   updateDoc,
   increment,
-  addDoc
+  addDoc,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
@@ -281,8 +282,8 @@ async function loadExpAndLevel(uid, cachedUserData) {
     } catch (_) {}
 
     // 게임 레벨·경험치는 게임 DB(battle_players) 기준, 다음 레벨 필요 누적 경험치 = (레벨+1)² × 10,000 (게임과 동일)
-    const displayLevel = Math.max(1, Number(bpData.gsLevel ?? userData.gsLevel ?? userData.level ?? bpData.level ?? 1));
-    const displayExp = Number(bpData.gsExp ?? userData.gsExp ?? userData.exp ?? 0);
+    const displayLevel = Math.max(1, Number(bpData.gsLevel || 1), Number(userData.gsLevel || 1), Number(userData.level || 1), Number(bpData.level || 1));
+    const displayExp = Math.max(Number(bpData.gsExp || 0), Number(userData.gsExp || 0), Number(userData.exp || 0));
     const required = (displayLevel + 1) * (displayLevel + 1) * 10000;
     const pct = required > 0 ? Math.min(100, Math.round((displayExp / required) * 100)) : 0;
     const remain = Math.max(0, required - displayExp);
@@ -742,15 +743,131 @@ async function loadDepositHistory(uid) {
   }
 }
 
+function calcLevelFromExp(exp) {
+  let lv = 1;
+  while (lv < 99 && exp >= Math.pow(lv + 1, 2) * 10000) lv++;
+  return lv;
+}
+
+async function reconcileMentorExp(uid, mentees) {
+  if (!uid || !Array.isArray(mentees) || mentees.length === 0) return false;
+  try {
+    const userRef = doc(db, "users", uid);
+    const bpRef = doc(db, "battle_players", uid);
+    let grantedAny = false;
+
+    await runTransaction(db, async (tx) => {
+      const [uSnap, bpSnap] = await Promise.all([tx.get(userRef), tx.get(bpRef)]);
+      const uData = uSnap.exists() ? (uSnap.data() || {}) : {};
+      const bpData = bpSnap.exists() ? (bpSnap.data() || {}) : {};
+
+      const creditedArr = Array.isArray(uData.creditedMenteeUids) ? uData.creditedMenteeUids : [];
+      const creditedSet = new Set(creditedArr);
+
+      const newlyCredited = [];
+      for (const m of mentees) {
+        const mUid = m?.uid;
+        if (!mUid || mUid === uid) continue;
+        if (creditedSet.has(mUid) || m.mentorExpGranted === true) continue;
+        creditedSet.add(mUid);
+        newlyCredited.push(mUid);
+      }
+
+      if (newlyCredited.length === 0) return;
+
+      const bonusExp = newlyCredited.length * 1000;
+      const prevExp = Math.max(Number(bpData.gsExp || 0), Number(uData.gsExp || 0), Number(uData.exp || 0));
+      const prevLevel = Math.max(1, Number(bpData.gsLevel || 1), Number(uData.gsLevel || 1), Number(uData.level || 1), Number(bpData.level || 1));
+      const newExp = prevExp + bonusExp;
+      const newLevel = Math.max(prevLevel, calcLevelFromExp(newExp));
+      const updatedCredited = Array.from(creditedSet);
+
+      tx.set(bpRef, {
+        gsExp: newExp,
+        gsLevel: newLevel,
+        level: newLevel,
+      }, { merge: true });
+
+      tx.set(userRef, {
+        gsExp: newExp,
+        gsLevel: newLevel,
+        exp: newExp,
+        creditedMenteeUids: updatedCredited,
+      }, { merge: true });
+
+      grantedAny = true;
+    });
+
+    return grantedAny;
+  } catch (err) {
+    console.warn("reconcileMentorExp error:", err.message);
+    return false;
+  }
+}
+
 async function loadMentees() {
   const section = $("menteeSection");
   const wrap = $("menteeList");
   if (!section || !wrap) return;
 
+  const currentUser = auth.currentUser;
+  const uid = currentUser?.uid || "";
+  const myEmail = (currentUser?.email || "").trim().toLowerCase();
+
   try {
-    const fn = httpsCallable(functions, "getMyMentees");
-    const res = await fn();
-    const { mentees } = res.data;
+    const menteeMap = {};
+
+    // 1. Cloud Function 조회
+    try {
+      const fn = httpsCallable(functions, "getMyMentees");
+      const res = await fn();
+      const cfMentees = res.data?.mentees || [];
+      cfMentees.forEach((m) => {
+        if (m && m.uid && m.uid !== uid) {
+          menteeMap[m.uid] = m;
+        }
+      });
+    } catch (cfErr) {
+      console.warn("getMyMentees callable fallback:", cfErr.message);
+    }
+
+    // 2. Firestore 직접 조회 보완 (mentorAddressInput / mentorEmail / mentorUid)
+    if (uid) {
+      const queries = [
+        query(collection(db, "users"), where("mentorUid", "==", uid), limit(100))
+      ];
+      if (myEmail) {
+        queries.push(query(collection(db, "users"), where("mentorAddressInput", "==", myEmail), limit(100)));
+        queries.push(query(collection(db, "users"), where("mentorEmail", "==", myEmail), limit(100)));
+      }
+      const snaps = await Promise.allSettled(queries.map((q) => getDocs(q)));
+      snaps.forEach((r) => {
+        if (r.status !== "fulfilled") return;
+        r.value.forEach((d) => {
+          if (d.id === uid) return;
+          const u = d.data() || {};
+          const existing = menteeMap[d.id] || {};
+          const regMs = u.registeredAt?.toMillis?.() || u.createdAt?.toMillis?.() || existing.registeredAt || Date.now();
+          menteeMap[d.id] = {
+            uid: d.id,
+            name: existing.name || u.displayName || u.name || (u.email ? u.email.split("@")[0] : "익명"),
+            walletAddress: existing.walletAddress || existing.address || u.wallet?.address || "",
+            address: existing.address || existing.walletAddress || u.wallet?.address || "",
+            registeredAt: regMs,
+            generatedForMentor: existing.generatedForMentor ?? 0,
+            mentorExpGranted: Boolean(existing.mentorExpGranted || u.mentorExpGranted),
+          };
+        });
+      });
+    }
+
+    const mentees = Object.values(menteeMap).sort((a, b) => (b.generatedForMentor || 0) - (a.generatedForMentor || 0));
+
+    // 3. 미지급 멘토 추천 경험치(+1,000 EXP/명) 즉시 정산 및 EXP/레벨 UI 갱신
+    if (uid && mentees.length > 0) {
+      await reconcileMentorExp(uid, mentees);
+      await loadExpAndLevel(uid);
+    }
 
     show("menteeSection", true);
 
@@ -760,7 +877,8 @@ async function loadMentees() {
     }
 
     const rows = mentees.map(m => {
-      const addr = m.walletAddress ? m.walletAddress.substring(0, 6) + "..." + m.walletAddress.slice(-4) : "";
+      const rawAddr = m.walletAddress || m.address || "";
+      const addr = rawAddr ? rawAddr.substring(0, 6) + "..." + rawAddr.slice(-4) : "지갑 미생성";
       const dateStr = m.registeredAt ? new Date(m.registeredAt).toLocaleDateString() : "";
       const earned = m.generatedForMentor || 0;
       return `
@@ -771,7 +889,7 @@ async function loadMentees() {
         </div>
         <div class="text-right">
           <span style="font-weight:600; color:var(--primary-color);">+${earned.toLocaleString()} P</span>
-          <div style="font-size:0.75rem; color:#888;">지급 누적</div>
+          <div style="font-size:0.75rem; color:#10b981; font-weight:600;">+1,000 EXP 적립</div>
         </div>
       </div>`;
     }).join("");

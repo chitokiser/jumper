@@ -16,6 +16,7 @@ const {
 } = require('../wallet/chain');
 
 const db = admin.firestore();
+const expH = require('./exp');
 
 const DEFAULT_MENTOR_ADDRESS = '0xc662c3B58bE7345DE30dd8188B2Acc977943186A';
 
@@ -334,32 +335,84 @@ async function getUserOnChainData(uid) {
  */
 async function getMyMentees(uid) {
   const db = admin.firestore();
-  const userSnap = await db.collection('users').doc(uid).get();
-  const myAddress = userSnap.data()?.wallet?.address || null;
-  const myEmail = userSnap.data()?.email || '';
+  const userRef = db.collection('users').doc(uid);
+  const userSnap = await userRef.get();
+  const userData = userSnap.exists ? (userSnap.data() || {}) : {};
+  const myAddress = userData?.wallet?.address || null;
+  const myEmail = (userData?.email || '').trim().toLowerCase();
 
-  const menteeMap = {};
-  if (!myEmail) {
+  const menteeDocsMap = {};
+  const queries = [
+    db.collection('users').where('mentorUid', '==', uid).limit(100).get()
+  ];
+  if (myEmail) {
+    queries.push(db.collection('users').where('mentorAddressInput', '==', myEmail).limit(100).get());
+    queries.push(db.collection('users').where('mentorEmail', '==', myEmail).limit(100).get());
+  }
+
+  const snaps = await Promise.allSettled(queries);
+  snaps.forEach((r) => {
+    if (r.status !== 'fulfilled') return;
+    r.value.docs.forEach((docSnap) => {
+      if (docSnap.id !== uid) {
+        menteeDocsMap[docSnap.id] = docSnap;
+      }
+    });
+  });
+
+  const menteeDocs = Object.values(menteeDocsMap);
+  if (menteeDocs.length === 0) {
     return { mentees: [], myAddress };
   }
 
-  const querySnap = await db.collection('users')
-    .where('mentorAddressInput', '==', myEmail)
-    .limit(100)
-    .get();
+  // 미지급 멘토 추천 경험치(+1,000 EXP/명) 자동 정산
+  const creditedSet = new Set(Array.isArray(userData.creditedMenteeUids) ? userData.creditedMenteeUids : []);
+  const uncreditedDocs = menteeDocs.filter((d) => !creditedSet.has(d.id) && d.data()?.mentorExpGranted !== true);
 
-  await Promise.all(querySnap.docs.map(async (docSnap) => {
-    const data = docSnap.data();
+  if (uncreditedDocs.length > 0) {
+    const uncreditedUids = uncreditedDocs.map((d) => d.id);
+    const bonusExp = uncreditedUids.length * 1000;
+    try {
+      await expH.grantExp(uid, bonusExp, 'referral');
+      const nextCredited = Array.from(new Set([...creditedSet, ...uncreditedUids]));
+      const bpSnapNow = await db.collection('battle_players').doc(uid).get();
+      const bpNow = bpSnapNow.exists ? (bpSnapNow.data() || {}) : {};
+      await userRef.set({
+        creditedMenteeUids: nextCredited,
+        ...(bpNow.gsExp != null ? { gsExp: bpNow.gsExp, exp: bpNow.gsExp } : {}),
+        ...(bpNow.gsLevel != null ? { gsLevel: bpNow.gsLevel } : {}),
+      }, { merge: true });
+      await Promise.all(uncreditedDocs.map((d) =>
+        d.ref.set({
+          mentorExpGranted: true,
+          mentorExpGrantedAt: admin.firestore.FieldValue.serverTimestamp(),
+          mentorUid: uid,
+          ...(myEmail ? { mentorEmail: myEmail } : {}),
+        }, { merge: true })
+      ));
+      uncreditedUids.forEach((id) => creditedSet.add(id));
+    } catch (expErr) {
+      console.warn('[getMyMentees] mentor EXP grant error:', expErr.message);
+    }
+  }
+
+  const menteeMap = {};
+  await Promise.all(menteeDocs.map(async (docSnap) => {
+    const data = docSnap.data() || {};
     const menteeUid = docSnap.id;
     const bpSnap = await db.collection('battle_players').doc(menteeUid).get();
     const earned = bpSnap.exists ? (bpSnap.data().generatedForMentor || 0) : 0;
+    const regMs = data.registeredAt?.toMillis?.() || data.createdAt?.toMillis?.() || Date.now();
+    const wAddr = data.wallet?.address || '';
 
     menteeMap[menteeUid] = {
       uid: menteeUid,
       name: data.displayName || data.name || data.email?.split('@')[0] || '익명',
-      address: data.wallet?.address || '',
-      registeredAt: data.createdAt ? data.createdAt.toMillis() : Date.now(),
-      generatedForMentor: earned
+      address: wAddr,
+      walletAddress: wAddr,
+      registeredAt: regMs,
+      generatedForMentor: earned,
+      mentorExpGranted: creditedSet.has(menteeUid) || Boolean(data.mentorExpGranted),
     };
   }));
 
