@@ -1,4 +1,10 @@
-// /firestore.rules
+// Unified Firestore Security Rules for jump-15472
+// Shared Single Source of Truth across:
+//   1. BestClubVN (C:\Users\Asus\Desktop\project\jumper\jumper_v10)
+//   2. BestERP (C:\Users\Asus\Desktop\project\BEST\BEST_ERP)
+//   3. 대한김치 (C:\Users\Asus\Desktop\project\대한김치-2\web)
+//   4. BEST WINNER (C:\Users\Asus\Desktop\project\BESTwinnner_web)
+// ⚠️ 주의: 이 파일은 BestClubVN과 BestERP 양쪽 저장소에 항상 100% 동일하게 유지되어야 합니다.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -7,11 +13,44 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // ??怨멸껀?????筌???遊붋?筌뤾쑬裕?筌뤾퍔???
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      let docPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(docPath) ? get(docPath).data : {"role": "EMPLOYEE"};
+    }
+
     function isOperatorEmail() {
       return signedIn()
         && (request.auth.token.email is string)
         && (request.auth.token.email == "daguri75@gmail.com");
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && (
+        request.auth.token.email == 'daguri75@gmail.com' ||
+        getUserData().role == 'SUPER_ADMIN'
+      );
+    }
+
+    function isCEO() {
+      return signedIn() && (
+        request.auth.token.email in ['daguri75@gmail.com', 'hexttokenopbnb@gmail.com'] ||
+        getUserData().role in ['SUPER_ADMIN', 'CEO', 'ceo', 'FRANCHISE', 'franchise', 'MERCHANT', 'merchant'] ||
+        getUserData().merchantId != null ||
+        getUserData().is_merchant_applicant == true
+      );
+    }
+
+    function isStaff() {
+      return signedIn() && (
+        request.auth.token.email in ['daguri75@gmail.com', 'hexttokenopbnb@gmail.com'] ||
+        getUserData().role in ['SUPER_ADMIN', 'CEO', 'ceo', 'ADMIN', 'admin', 'STAFF', 'staff', 'EMPLOYEE', 'FRANCHISE', 'franchise', 'MERCHANT', 'merchant'] ||
+        getUserData().merchantId != null ||
+        getUserData().is_merchant_applicant == true
+      );
     }
 
     function isAdmin() {
@@ -19,13 +58,25 @@ service cloud.firestore {
         && (
           exists(/databases/$(database)/documents/admins/$(request.auth.uid))
           || isOperatorEmail()
+          || isSuperAdmin()
+          || isCEO()
           || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
               && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
                   || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['SUPER_ADMIN', 'CEO', 'ADMIN', 'admin']))
         );
     }
 
-    // orders ??節딇꺑????ｇ춯???⑤베裕???뚮맍瑗???띠럾????獄??????
+    function belongsToTenant(tenantId) {
+      return signedIn() && (
+        isSuperAdmin() ||
+        isCEO() ||
+        getUserData().tenant_id == tenantId ||
+        getUserData().tenantId == tenantId ||
+        getUserData().merchantId == tenantId ||
+        request.auth.uid == tenantId
+      );
+    }
+
     function isOrderBuyer() {
       return signedIn()
         && (resource.data.buyerUid is string)
@@ -38,11 +89,17 @@ service cloud.firestore {
         && resource.data.guideUid == request.auth.uid;
     }
 
-    // ??뚮맍瑗??? ??瑜곸젧 ?띠럾??繞③뇡???? "?롪퍒??節륁??紐낅뭶 ?熬곣뫗????怨쀬Ŧ ???ル┰
     function buyerPayProofUpdateOnly() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return changed.hasOnly(["proof","paymentStatus","payProofUpdatedAt"]);
     }
+
+    // 최고관리자는 모든 컬렉션에서 읽기/쓰기 권한 보유
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // ── BestClubVN Core Collections ───────────────────────────────────────────
 
     match /admins/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
@@ -50,40 +107,30 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // ??ㅻ쾴?????notices)
     match /notices/{noticeId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // ?띠럾????獄????????ル―???(guideApplications/{uid})
     match /guideApplications/{uid} {
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow list: if isAdmin();
-
       allow create: if signedIn() && request.auth.uid == uid;
-
-      // ??FIX: ??㉱?洹먮봿????獄????꾩룇瑗??嶺뚳퐣瑗?怨?ご??熬곥굥??update ?띠럾??繞③뜮????      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
-
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow delete: if isAdmin();
     }
 
-    // ?띠럾????獄??熬곣뫁夷??(guides/{uid})
     match /guides/{uid} {
       allow get: if isAdmin()
                 || (signedIn() && request.auth.uid == uid)
                 || (resource.data.approved == true);
-      allow list: if isAdmin();
-
-      // ??FIX: ?獄???????㉱?洹먮봿?썸뤆?쎛 guides/{uid}????諛댁뎽??怨룻뒍 ??濡ル츎 ??댟??怨룸츩?띠럾? 嶺뚮씭???      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
-
+      allow list: if isAdmin() || signedIn();
+      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
-    // ??⑤갭?(items)
     match /items/{itemId} {
-
       function isOwner() {
         return signedIn() && (
           (resource.data.ownerUid is string && resource.data.ownerUid == request.auth.uid)
@@ -97,13 +144,10 @@ service cloud.firestore {
 
       allow get: if isAdmin() || isOwner() || isPublicItem();
       allow list: if true;
-
       allow create: if signedIn()
         && (request.resource.data.ownerUid is string)
         && request.resource.data.ownerUid == request.auth.uid;
-
       allow update: if isAdmin() || isOwner();
-
       allow delete: if isAdmin()
         || (signedIn() && (resource.data.ownerUid is string) && resource.data.ownerUid == request.auth.uid);
 
@@ -114,9 +158,7 @@ service cloud.firestore {
       }
     }
 
-    // ?洹먮맧??(SSOT)
     match /reviews/{orderId} {
-
       function orderExistsAndMine() {
         return signedIn()
           && exists(/databases/$(database)/documents/orders/$(orderId))
@@ -150,38 +192,28 @@ service cloud.firestore {
       }
 
       allow get, list: if true;
-
       allow create: if orderExistsAndMine()
         && (request.resource.data.authorUid is string)
         && request.resource.data.authorUid == request.auth.uid
         && (request.resource.data.orderId == orderId);
-
       allow update: if isAdmin()
         || (isReviewAuthor() && authorUpdateOnly())
         || (isReviewGuide() && guideReplyOnly());
-
       allow delete: if isAdmin();
     }
 
-    // ?낅슣?뽪룇(orders)
     match /orders/{orderId} {
-      allow get: if isAdmin() || isOrderBuyer() || isOrderGuide();
-      allow list: if signedIn();
-
-      allow create: if signedIn()
-        && (request.resource.data.buyerUid is string)
-        && request.resource.data.buyerUid == request.auth.uid;
-
+      allow get, list: if signedIn();
+      allow create: if signedIn();
       allow update: if isAdmin()
-        || (isOrderBuyer() && buyerPayProofUpdateOnly());
-
+        || isStaff()
+        || (isOrderBuyer() && buyerPayProofUpdateOnly())
+        || belongsToTenant(resource.data.tenantId);
       allow delete: if isAdmin();
     }
 
-    // slots
     match /slots/{slotId} {
       allow get, list: if true;
-
       allow create: if signedIn()
         && (request.resource.data.itemId is string)
         && (request.resource.data.date is string)
@@ -189,40 +221,32 @@ service cloud.firestore {
         && (request.resource.data.booked is number)
         && request.resource.data.booked >= 0
         && request.resource.data.capacity >= 0;
-
       allow update: if signedIn()
         && (resource.data.booked is number)
         && (request.resource.data.booked is number)
         && request.resource.data.booked >= resource.data.booked;
-
       allow delete: if isAdmin();
     }
 
-    // users/{uid}
+    // users/{uid} (BestClubVN + BestERP + 가맹점 웹 통합)
     match /users/{uid} {
-      // ??FIX: ??㉱?洹먮봿???獄?????role/profile???影??꽑???????admin create/update ???깅뮔
-      // 권한 칸(role/isAdmin/merchantId/teamId/tenant_id)은 관리자만 변경
-      allow get: if signedIn();
+      allow get, list: if signedIn();
       allow create: if isAdmin()
+        || isStaff()
         || (signedIn() && request.auth.uid == uid
-            && !request.resource.data.keys().hasAny(['isAdmin', 'merchantId', 'merchant_id', 'teamId', 'tenant_id'])
-            && (!('role' in request.resource.data) || request.resource.data.role == 'user'));
+            && !request.resource.data.keys().hasAny(['isAdmin', 'merchantId', 'merchant_id', 'teamId', 'tenant_id']));
       allow update: if isAdmin()
+        || isStaff()
         || (signedIn() && request.auth.uid == uid
             && !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['role', 'isAdmin', 'merchantId', 'merchant_id', 'teamId', 'tenant_id']))
-        // 임시(2단계에서 서버로 이동): 가맹점 BT 지급 시 가맹점주 BT 잔액 차감
-        || (signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['btBalance', 'updatedAt']));
+                 .hasAny(['isAdmin', 'merchantId', 'merchant_id', 'teamId', 'tenant_id']));
+      allow delete: if isAdmin();
 
-      allow list, delete: if isAdmin();
-
-      // 泥댄뿕 ????媛쒖씤 留??꾩씠??(蹂몄씤留??쎄린/?곌린, 理쒕? 50媛쒕뒗 ?대씪?댁뼵???쒗븳)
       match /myMap/{docId} {
         allow read, write: if signedIn() && request.auth.uid == uid;
       }
     }
 
-    // settlements
     match /settlements/{ym} {
       allow get: if isAdmin() || signedIn();
       allow list: if isAdmin();
@@ -235,7 +259,6 @@ service cloud.firestore {
       }
     }
 
-    // (???뺥깴?? settlementRuns
     match /settlementRuns/{ym} {
       allow get: if isAdmin() || signedIn();
       allow list: if isAdmin();
@@ -248,7 +271,6 @@ service cloud.firestore {
       }
     }
 
-    // guideOrders
     match /guideOrders/{guideUid} {
       allow get: if isAdmin() || (signedIn() && request.auth.uid == guideUid);
       allow list: if isAdmin();
@@ -260,44 +282,35 @@ service cloud.firestore {
       }
     }
 
-    // settings
     match /settings/{docId} {
-      allow get: if signedIn();
-      allow list: if isAdmin();
+      allow get: if true;
+      allow list: if signedIn();
       allow create, update, delete: if isAdmin();
     }
 
-    // ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-    // ??臾롫쭜??嶺뚯솘???????ル맪????롫맩???    // 嶺뚮ㅄ維獄???⑤슢???Cloud Functions(Admin SDK)??嶺뚳퐣瑗??????????怨룹꽘??write ?釉띾쐡?됀
-    // ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-
-    // ??믨퀣???寃몃쳴????븐슙??(deposits/{refCode})
-    // - ???: ???六????븐슙?뺟춯???袁ⓥ뵛 ?띠럾???    // - ??㉱?洹먮봿?? ?熬곣뫕????袁ⓥ뵛
-    // - ??⑤슢?? Cloud Functions嶺?(??????怨룹꽘??嶺뚯쉳?????⑤슢???釉띾쐡?됀)
+    // deposits (VND / KRW 충전 요청 및 내역 조회)
     match /deposits/{refCode} {
-      allow get: if isAdmin()
-        || (signedIn()
-            && resource.data.uid is string
-            && resource.data.uid == request.auth.uid);
-
-      allow list: if isAdmin()
-        || (signedIn()
-            && resource.data.uid is string
-            && resource.data.uid == request.auth.uid);
-
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if signedIn()
-            && request.resource.data.uid is string
-            && request.resource.data.uid == request.auth.uid;
+        && request.resource.data.uid is string
+        && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
-        // mentors (mentors/{email})
-    match /mentors/{email} {
-      allow get, list: if signedIn();
-      allow create, update, delete: if false; // Cloud Functions only
+    match /hexDeposits/{refCode} {
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
 
-    // mentorRequests ??硫섑넗 ?곌껐 ?붿껌
+    match /mentors/{email} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /mentorRequests/{uid} {
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow list: if isAdmin();
@@ -305,110 +318,92 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // transactions (transactions/{docId})
     match /transactions/{docId} {
-      allow get: if isAdmin()
-        || (signedIn()
-            && resource.data.uid is string
-            && resource.data.uid == request.auth.uid);
-
-      allow list: if isAdmin()
-        || (signedIn()
-            && resource.data.uid is string
-            && resource.data.uid == request.auth.uid);
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
 
-    // kca_webzine (AI 留덉????뱀쭊)
     match /kca_webzine/{docId} {
       allow read: if true;
-      allow write: if false; // Cloud Functions only
+      allow write: if isAdmin();
     }
 
-    // merchants (merchants/{merchantId})
+    // merchants (BestClubVN & BestERP 공통 가맹점 마스터)
     match /merchants/{merchantId} {
       allow get, list: if true;
-      // 가맹점 등록은 신청(active:false, status:'pending') → 관리자 승인
       allow create: if isAdmin()
+        || isStaff()
         || (signedIn()
             && request.resource.data.ownerUid == request.auth.uid
             && request.resource.data.active == false
             && request.resource.data.status == 'pending');
-      allow delete: if false; // Cloud Functions only
+      allow delete: if isAdmin();
       allow update: if isAdmin()
+        || isStaff()
         || (signedIn()
             && !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['active', 'status', 'approvedAt', 'approvedBy', 'feeBps', 'ownerUid'])
+                 .hasAny(['active', 'status', 'approvedAt', 'approvedBy', 'feeBps', 'ownerUid', 'apiKey'])
             && (
               (resource.data.ownerUid is string && resource.data.ownerUid == request.auth.uid)
               || request.auth.uid == merchantId
               || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
                   && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.merchantId == merchantId)
-              || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['btBalance', 'updatedAt']))
             ));
     }
 
-    // places (places/{placeId})
     match /places/{placeId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // coop config
     match /coopConfig/{docId} {
-      allow get, list: if signedIn();
+      allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // coop products
     match /coopProducts/{productId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // coop orders
     match /coopOrders/{orderId} {
-      allow get: if isAdmin()
+      allow get, list: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid);
-      allow list: if isAdmin()
-        || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create, update, delete: if false;
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
     }
-    // sponsor banners
+
     match /sponsorBanners/{bannerId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // jackpot rounds (공개 통계 조회용)
     match /jackpot_rounds/{roundId} {
-      allow get, list: if true;
-      allow create: if signedIn();
-      allow update, delete: if isAdmin();
+      allow read: if true;
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
     }
 
-    // jackpot wins (공개 읽기 및 당첨 기록 생성)
     match /jackpot_wins/{docId} {
-      allow get, list: if true;
-      allow create: if signedIn();
-      allow update, delete: if isAdmin();
+      allow read: if true;
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
     }
 
-    // jackpot config (누적금액 캐시 및 갱신)
     match /jackpot_config/{docId} {
       allow get, list: if true;
       allow create, update: if signedIn();
       allow delete: if isAdmin();
     }
 
-    // jackpot stats (공개 통계 조회용)
     match /jackpot_stats/{docId} {
       allow get, list: if true;
       allow create, update: if signedIn();
       allow delete: if isAdmin();
     }
-// used market posts
+
     match /usedMarketPosts/{postId} {
       allow get, list: if true;
       allow create: if signedIn()
@@ -420,30 +415,28 @@ service cloud.firestore {
             && resource.data.sellerUid == request.auth.uid);
     }
 
-    // ohlc (HEX/KRW 罹붾뱾 李⑦듃 ?곗씠?? ??怨듦컻 ?쎄린
     match /ohlc/{docId} {
       allow get, list: if true;
       allow create, update, delete: if false;
     }
 
-
-    // ?? 蹂대Ъ李얘린 ?쒖뒪??????????????????????????????????????????????
+    // ── 보물찾기 & 배틀 시스템 ────────────────────────────────────────────────
     match /treasure_items/{docId} {
-      allow get, list: if true;           // ?꾩씠???뺣낫 怨듦컻
-      allow write: if false;              // Cloud Function only
+      allow get, list: if true;
+      allow write: if isAdmin();
     }
     match /treasure_keys/{docId} {
-      allow get, list: if true;           // ?댁뇿 ?뺤쓽 怨듦컻 (?대씪?댁뼵???쒕엻瑜??쒖떆??
-      allow write: if false;              // Cloud Function only
+      allow get, list: if true;
+      allow write: if isAdmin();
     }
     match /treasure_boxes/{docId} {
-      allow get, list: if true;           // 諛뺤뒪 ?꾩튂 怨듦컻 (吏???쒖떆)
-      allow write: if false;
+      allow get, list: if true;
+      allow write: if isAdmin();
     }
     match /treasure_inventory/{docId} {
       allow get, list: if signedIn()
         && resource.data.uid == request.auth.uid;
-      allow write: if false;
+      allow write: if signedIn();
     }
     match /treasure_logs/{docId} {
       allow get: if signedIn()
@@ -478,13 +471,11 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
       allow write: if false;
     }
-    // 諛붾떏 ?쒕엻 ??濡쒓렇???좎? ?꾧뎄???쎄린, ?곌린???쒕쾭 ?꾩슜
     match /dropped_items/{docId} {
       allow get, list: if signedIn();
       allow write: if false;
     }
 
-    // ?? ?꾩튂 湲곕컲 ?꾪닾 ?쒖뒪???????????????????????????????????????
     match /battle_monsters/{docId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
@@ -498,9 +489,7 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
     match /battle_players/{uid} {
-      allow get: if signedIn() && request.auth.uid == uid;
-      allow list: if true; // ??궧 怨듦컻 (Hunter Ranking)
-      // gold ?꾨뱶??Cloud Functions(Admin SDK)留?蹂寃?媛?????대씪?댁뼵??吏곸젒 ?곌린 湲덉?
+      allow get, list: if true;
       allow create: if signedIn() && request.auth.uid == uid
         && !request.resource.data.keys().hasAny(['gold']);
       allow update: if signedIn() && request.auth.uid == uid
@@ -508,34 +497,31 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ?? Zen Spark 而ㅻ??덊떚 寃뚯떆??????????????????????????????????????
-    // ?몄쬆? ??Jump ID) ?덈꺼?먯꽌 泥섎━ ??Firestore???꾨뱶 議댁옱/援ъ“留?寃利?
+    // ── 커뮤니티 / 이벤트 / 버기카 / DAO / 게임 상점 ─────────────────────────
     match /community_posts/{postId} {
       allow read: if true;
-      allow create: if request.resource.data.authorId is string
-        && request.resource.data.authorId.size() > 0;
-      allow update: if true;
-      allow delete: if true;
+      allow create: if signedIn()
+        && request.resource.data.authorId is string
+        && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAdmin()
+        || (signedIn() && resource.data.authorId == request.auth.uid);
     }
 
-    // ?? ?뚯뀥 而ㅻ??덊떚 (community_events) ?????????????????????????????
     match /community_events/{eventId} {
-      allow get, list: if true;                        // ?꾧뎄???쎄린
-      allow create: if isAdmin();                      // 愿由ъ옄留??깅줉
+      allow get, list: if true;
+      allow create: if isAdmin();
       allow update, delete: if isAdmin()
         || (signedIn() && resource.data.authorUid == request.auth.uid);
 
-      // ?됱젏(?꾧린) ?쒕툕而щ젆????臾몄꽌 ID = uid (1??1?꾧린), 愿由ъ옄???먯쑀 ID
       match /reviews/{reviewId} {
         allow get, list: if true;
-        allow create: if isAdmin()             // 愿由ъ옄: ?먰븯???대쫫쨌ID濡??먯쑀 ?깅줉
+        allow create: if isAdmin()
           || (signedIn()
-              && reviewId == request.auth.uid  // ?쇰컲 ?좎?: 蹂몄씤 uid濡쒕쭔
+              && reviewId == request.auth.uid
               && !exists(/databases/$(database)/documents/community_events/$(eventId)/reviews/$(request.auth.uid)));
         allow update, delete: if isAdmin();
       }
 
-      // ?볤? ?쒕툕而щ젆??
       match /comments/{commentId} {
         allow get, list: if true;
         allow create: if signedIn();
@@ -544,25 +530,18 @@ service cloud.firestore {
       }
     }
 
-    // 而ㅻ??덊떚 ?됱궗 諛붿슦泥?(community_event_vouchers/{uid_eventId})
     match /community_event_vouchers/{docId} {
-      allow get: if signedIn()
+      allow get, list: if signedIn()
         && (resource.data.uid == request.auth.uid || isAdmin());
-      allow list: if isAdmin();
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
 
-    // 諛붿슦泥??뺤궛 (community_voucher_settlements/{docId})
     match /community_voucher_settlements/{docId} {
-      allow get: if isAdmin()
+      allow get, list: if isAdmin()
         || (signedIn() && resource.data.sellerUid == request.auth.uid);
-      allow list: if isAdmin()
-        || (signedIn() && resource.data.sellerUid == request.auth.uid);
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
 
-    // ?? 踰꾧린移??몄텧 ?쒕퉬??????????????????????????????????????????????
-    // ?깅줉??湲곗궗 ?щ? ?뺤씤
     function isRegisteredDriver() {
       return signedIn()
         && exists(/databases/$(database)/documents/buggy_drivers/$(request.auth.uid));
@@ -570,34 +549,27 @@ service cloud.firestore {
 
     match /buggy_config/{docId} {
       allow get, list: if true;
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
     match /buggy_rides/{rideId} {
-      // 蹂몄씤 ?몄텧, 諛곗젙??湲곗궗, ?깅줉 湲곗궗(searching ?섏떊??, 愿由ъ옄
-      allow get: if isAdmin()
+      allow get, list: if isAdmin()
         || isRegisteredDriver()
         || (signedIn() && (resource.data.userId == request.auth.uid || resource.data.driverId == request.auth.uid));
-      allow list: if isAdmin()
-        || isRegisteredDriver()
-        || (signedIn() && resource.data.userId == request.auth.uid)
-        || (signedIn() && resource.data.driverId == request.auth.uid);
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
     match /buggy_drivers/{driverUid} {
       allow get: if isAdmin() || (signedIn() && request.auth.uid == driverUid);
       allow list: if isAdmin();
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
     match /buggy_driver_locations/{driverUid} {
-      allow get, list: if signedIn();                              // ?묒듅?먮룄 ?ㅼ떆媛??꾩튂 議고쉶
-      allow write: if signedIn() && request.auth.uid == driverUid; // 湲곗궗 蹂몄씤 吏곸젒 write
+      allow get, list: if signedIn();
+      allow write: if signedIn() && request.auth.uid == driverUid;
     }
     match /buggy_transactions/{docId} {
-      allow get: if isAdmin()
+      allow get, list: if isAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
-      allow list: if isAdmin()
-        || (signedIn() && resource.data.userId == request.auth.uid);
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
     match /ride_audit_logs/{docId} {
       allow get, list: if isAdmin();
@@ -608,17 +580,13 @@ service cloud.firestore {
       allow write: if false;
     }
     match /buggy_driver_earnings/{docId} {
-      allow get: if isAdmin() || (signedIn() && resource.data.driverId == request.auth.uid);
-      allow list: if isAdmin() || (signedIn() && resource.data.driverId == request.auth.uid);
+      allow get, list: if isAdmin() || (signedIn() && resource.data.driverId == request.auth.uid);
       allow write: if false;
     }
 
-    // ?? DAO ?섍껐 ?쒖뒪??????????????????????????????????????????????
-    // ?덇굔 紐⑸줉쨌?곸꽭: ?꾧뎄???쎄린 媛??
-    // ?깅줉쨌吏吏쨌?ы몴쨌?볤?: Cloud Function ?쒕쾭 ?ъ씠??泥섎━ (吏곸젒 ?곌린 遺덇?)
     match /dao_proposals/{proposalId} {
       allow get, list: if true;
-      allow write: if false; // Cloud Function留??곌린 媛??
+      allow write: if false;
 
       match /supporters/{uid} {
         allow get: if signedIn() && request.auth.uid == uid;
@@ -636,20 +604,17 @@ service cloud.firestore {
       }
     }
 
-    // ?? 寃뚯엫 ?곸젏 (game_shops) ???????????????????????????????????????
     match /game_shops/{shopId} {
-      allow get, list: if true;                        // 吏???쒖떆??怨듦컻 ?쎄린
-      allow create, update, delete: if isAdmin();      // 愿由ъ옄留?諛곗튂/?섏젙/??젣
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
     }
 
-    // ?? ?곸젏 ?먮ℓ 濡쒓렇 (shop_sales_logs) ?????????????????????????????
     match /shop_sales_logs/{docId} {
       allow get, list: if isAdmin()
         || (signedIn() && resource.data.ownerUid == request.auth.uid);
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
 
-    // ?? ?몄뀡 愿由?(以묐났 濡쒓렇??諛⑹?) ?????????????????????????????????
     match /user_sessions/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow create, update: if signedIn() && request.auth.uid == uid;
@@ -657,19 +622,16 @@ service cloud.firestore {
       allow list: if false;
     }
 
-    // ?? ?ㅼ떆媛??좎? ?꾩튂 (100m 諛섍꼍 ?쒖떆?? ??????????????????????????
     match /user_locations/{uid} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
-    // ?? 怨듭쑀 ?꾪닾 HP ?곹깭 (?대씪?댁뼵???곌린 ?덉슜) ???????????????????????????????
     match /battle_hp/{docId} {
       allow read: if signedIn();
       allow write: if signedIn();
     }
 
-    // ?? 1:1 怨좉컼 梨꾪똿 ????????????????????????????????????????????
     match /admin_status/{docId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
@@ -691,65 +653,52 @@ service cloud.firestore {
       }
     }
 
-    // ?? 湲곌린 1怨꾩젙 留ㅽ븨 (?듬챸 濡쒓렇?몄슜) ??????????????????????????????????????
     match /device_accounts/{deviceId} {
-      // deviceId???대씪?댁뼵???앹꽦 ?쒕뜡 UUID ??異붿륫 遺덇??대?濡?怨듦컻 ?쎄린 ?덉슜
       allow get: if true;
-      // ?먯떊??uid濡쒕쭔 ?앹꽦 媛?? ?섏젙/??젣 遺덇?
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
-    // ?? NFC 蹂대Ъ ?쒓렇 ?쒖뒪????????????????????????????????????????????????
-    // ?쒓렇 怨듦컻 ?뺣낫 (?꾩튂쨌硫붿떆吏 ?? ??濡쒓렇???좎? ?꾧뎄???쎄린, ?곌린??Cloud Function ?꾩슜
     match /nfc_tags/{tagId} {
-      allow get: if true;              // QR ?ㅼ틪 ??鍮꾨줈洹몄씤???쒓렇 怨듦컻 ?뺣낫 議고쉶 媛??
+      allow get: if true;
       allow list: if isAdmin();
-      allow write: if false;           // Cloud Function only (adminSaveNfcTag ??
+      allow write: if false;
     }
 
-    // ?섎졊 湲곕줉 ??蹂몄씤 湲곕줉留??쎄린, ?곌린??Cloud Function ?꾩슜
     match /nfc_claims/{docId} {
       allow get, list: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid);
-      allow write: if false;            // Cloud Function only (claimNfcTreasure)
+      allow write: if false;
     }
 
-    // ?? ?좉퇋 ?좎? ?⑤낫???쒗넗由ъ뼹 諛뺤뒪 ???????????????????????????????????????
-    // 蹂몄씤 ?곗씠?곕쭔 ?쎄린 媛?? ?곌린??Cloud Function ?꾩슜
     match /tutorial_boxes/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list: if isAdmin();
-      allow write: if false; // Cloud Function only (initTutorialBoxes, claimTutorialBox)
+      allow write: if false;
     }
 
-    // ?? ?щ’ 癒몄떊 ??뙚 ? ????????????????????????????????????????????????????
     match /slot_config/{docId} {
       allow read: if true;
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
 
-    // ?ъ슜??蹂대Ъ (?ㅼ젣 醫뚰몴 鍮꾧났媛???Cloud Function留??묎렐)
     match /user_treasures/{docId} {
       allow read: if signedIn() && (
         resource.data.ownerId == request.auth.uid || isAdmin()
       );
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
 
-    // ?ъ슜??蹂대Ъ NPC (留??쒖떆????醫뚰몴 怨듦컻, 蹂대Ъ 醫뚰몴 ?쒖쇅)
     match /user_treasure_npcs/{docId} {
       allow read: if true;
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
 
-    // 蹂대Ъ ?⑦궎吏 (援щℓ???앹꽦 ??Cloud Function only write, 怨듦컻 ?쎄린)
     match /coopTreasurePackages/{docId} {
       allow read: if true;
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
 
-    // ?⑦궎吏 ?볤? (?꾧뎄???묒꽦, 蹂몄씤쨌愿由ъ옄留???젣)
     match /packageComments/{docId} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
@@ -757,10 +706,9 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // ?? ?ㅽ넚?듭뀡 諛붿슦泥??????????????????????????????????????????????????????
     match /stockOptionVouchers/{docId} {
-      allow get, list: if signedIn();          // 蹂몄씤 諛붿슦泥?議고쉶 (Cloud Function ?듯빐 ?꾪꽣)
-      allow write: if false;                   // Cloud Function only
+      allow get, list: if signedIn();
+      allow write: if false;
     }
     match /voucherTransfers/{docId} {
       allow get, list: if isAdmin();
@@ -771,233 +719,175 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ?? Telegram Stars ?뺥쉶???쒖뒪????????????????????????????????????????????
-
-    // 媛寃??ㅼ젙 ??濡쒓렇???좎? ?쎄린, 愿由ъ옄留??곌린
     match /membership_config/{docId} {
       allow get, list: if signedIn();
-      allow write: if false; // Cloud Function only (adminSetMembershipPrice)
+      allow write: if false;
     }
 
-    // 寃곗젣 湲곕줉 ??蹂몄씤 ?쎄린, CF留??곌린
     match /membership_payments/{docId} {
       allow get, list: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid);
-      allow write: if false; // Cloud Function only (bot.py ??firebase-admin)
+      allow write: if false;
     }
 
-    // 珥덈? 湲곕줉 ??蹂몄씤 ?쎄린, CF留??곌린
     match /membership_referrals/{docId} {
       allow get, list: if isAdmin()
         || (signedIn() && (
           resource.data.referrerUid == request.auth.uid
           || resource.data.newUserUid == request.auth.uid
         ));
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
 
-    // ?湲?以?珥덈? ??bot.py(firebase-admin)媛 ?, 蹂몄씤 ?쎄린
     match /pending_referrals/{docId} {
       allow get: if signedIn() && request.auth.uid == docId;
       allow list: if isAdmin();
-      allow write: if false; // Cloud Function only
+      allow write: if false;
     }
 
-    // NPC 罹먮┃?????꾧뎄???쎄린, 愿由ъ옄留??곌린
     match /npc_characters/{docId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // NPC ?ㅼ?以꾨윭 ?곹깭 ??愿由ъ옄 ?쎄린, Cloud Function ?곌린(admin SDK)
     match /system/{docId} {
       allow read: if isAdmin();
       allow write: if false;
     }
 
-        // ------ BEST ERP SAAS RULES ------
-
-    function isAuthenticated() { 
-      return request.auth != null; 
+    match /webzine_articles/{articleId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
 
-    function getUserData() {
-      let docPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(docPath) ? get(docPath).data : {"role": "EMPLOYEE"};
+    match /coupon_campaigns/{campaignId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    // CEO ?먮뒗 理쒓퀬愿由ъ옄 ?뺤씤 (daguri75@gmail.com? 臾댁“嫄??곸슜)
-    function isCEO() {
-      return isAuthenticated() && (
-        request.auth.token.email == 'daguri75@gmail.com' ||
-        getUserData().role == 'SUPER_ADMIN' || 
-        getUserData().role == 'CEO'
-      );
-    }
-    
-    // ?쇰컲 吏곸썝/愿由ъ옄 ?댁긽 (?곌린 沅뚰븳??
-    function isStaff() {
-      return isAuthenticated() && (
-        request.auth.token.email == 'daguri75@gmail.com' ||
-        getUserData().role in ['SUPER_ADMIN', 'CEO', 'ADMIN', 'STAFF']
-      );
+    match /user_coupons/{userCouponId} {
+      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update: if isAdmin() || (signedIn() && request.resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
     }
 
-    // 湲곕낯?곸쑝濡?CEO??紐⑤뱺 而щ젆?섏뿉???쎄린/?곌린/??젣 ?꾨꼍??沅뚰븳??媛吏?    
+    match /coupon_redemptions/{redemptionId} {
+      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update: if isAdmin() || signedIn();
+      allow delete: if isAdmin();
+    }
 
-    // ?쇰컲 吏곸썝(Staff) ?댁긽??沅뚰븳
-    match /materials/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
-    match /suppliers/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
-    match /priceHistory/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
-    match /externalPrices/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
-    
-    match /users/{userId} {
+    // ── BestERP & 가맹점 SaaS 통합 컬렉션 ────────────────────────────────────
+
+    match /stores/{storeId} {
+      allow read: if true;
+      allow write: if isCEO() || isStaff() || belongsToTenant(storeId);
+    }
+
+    match /materials/{document=**} {
       allow read: if isAuthenticated();
-      // ?먯떊 ?뺣낫 ?섏젙 ?덉슜 ?먮뒗 CEO
-      // 쓰기 권한은 위쪽 match /users/{uid} 에서만 관리 (권한 칸 보호)
+      allow write: if isStaff() || isCEO();
     }
-    
-    match /projects/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
-    match /purchaseRequests/{document=**} { allow read: if isAuthenticated(); allow write: if isAuthenticated(); }
-    
-    // ?덈줈 ?ㅺ퀎??AI 寃쎌쁺李몃え???듯빀 DB Rules
-    match /employees/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
-    match /clients/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
-    match /contacts/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
-    match /siteLogs/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
-    match /aiInsights/{document=**} { allow read: if isAuthenticated(); allow write: if isStaff(); }
 
-    // ?낅Т 諛?蹂닿퀬 ?쒖뒪??(Task Management System)
+    match /suppliers/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff() || isCEO();
+    }
+
+    match /priceHistory/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff() || isCEO();
+    }
+
+    match /externalPrices/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff() || isCEO();
+    }
+
+    match /merchant_products/{productId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /merchant_members/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff() || isCEO() || isAuthenticated();
+    }
+
+    match /menus/{menuId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /merchant_orders/{orderId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /projects/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /purchaseRequests/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /purchase_requests/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /access_requests/{document=**} {
+      allow read, write: if isAuthenticated();
+      allow create: if true;
+    }
+
+    match /financeRecords/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /employees/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /clients/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /contacts/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /siteLogs/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /aiInsights/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
     match /system_branding/{tenantId} {
       allow read: if isAuthenticated();
       allow write: if isCEO();
     }
 
     match /tasks/{taskId} {
-      allow read: if isCEO() 
-        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER' && resource.data.teamId == getUserData().teamId)
-        || (isAuthenticated() && resource.data.assignedTo == request.auth.token.email);
-      allow write: if isCEO() 
-        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER' && resource.data.teamId == getUserData().teamId)
-        || (isAuthenticated() && resource.data.assignedTo == request.auth.token.email);
+      allow read, write: if isAuthenticated();
     }
 
     match /task_reports/{reportId} {
-      allow read: if isCEO() 
-        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER')
-        || (isAuthenticated() && resource.data.submittedBy == request.auth.uid);
-      allow write: if isCEO() 
-        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER')
-        || (isAuthenticated() && request.resource.data.submittedBy == request.auth.uid);
+      allow read, write: if isAuthenticated();
     }
 
     match /task_comments/{commentId} {
-      allow read: if isCEO() 
-        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER')
-        || (isAuthenticated());
-      allow write: if isCEO() 
-        || (isAuthenticated() && getUserData().role == 'TEAM_LEADER')
-        || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      allow read, write: if isAuthenticated();
     }
 
     match /task_attachments/{attachmentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if isAuthenticated();
     }
 
     match /task_logs/{logId} {
       allow read, write: if isAuthenticated();
     }
-      // ------ END BEST ERP SAAS RULES ------
-  
-    // ====== MULTI-TENANT RESTAURANT SAAS RULES ======
-    function isSuperAdmin() {
-      return request.auth != null && request.auth.token.email == 'daguri75@gmail.com';
-    }
 
-    function belongsToTenant(tenantId) {
-      return isAuthenticated() && (
-        isSuperAdmin() ||
-        getUserData().tenant_id == tenantId ||
-        getUserData().merchantId == tenantId ||
-        request.auth.uid == tenantId
-      );
-    }
-
-    match /stores/{storeId} {
-      allow read: if true; 
-      allow write: if belongsToTenant(storeId);
-    }
-
-    match /menus/{menuId} {
-      allow read: if true; 
-      allow update, delete: if belongsToTenant(resource.data.tenantId);
-      allow create: if belongsToTenant(request.resource.data.tenantId);
-    }
-
-    match /orders/{orderId} {
-      allow read: if isSuperAdmin() || (isAuthenticated() && (resource.data.userId == request.auth.uid || belongsToTenant(resource.data.tenantId)));
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if belongsToTenant(resource.data.tenantId);
-      allow delete: if isSuperAdmin();
-    }
-      // --- 상품 연동 (BestERP/홈페이지) 컬렉션 ---
-      match /merchant_products/{productId} {
-        allow read: if true;
-        allow create: if isAdmin() || (
-          signedIn() && (
-            request.resource.data.merchant_id == getUserData().merchantId ||
-            request.resource.data.merchant_id == getUserData().merchant_id ||
-            request.resource.data.merchant_id == 'daehan_kimchi'
-          )
-        );
-        allow update, delete: if isAdmin() || (
-          signedIn() && (
-            resource.data.merchant_id == getUserData().merchantId ||
-            resource.data.merchant_id == getUserData().merchant_id ||
-            resource.data.merchant_id == 'daehan_kimchi'
-          )
-        );
-      }
-
-      match /merchant_orders/{orderId} {
-        allow read: if isAdmin() || isAuthenticated();
-        allow create: if isAuthenticated();
-        allow update, delete: if isAdmin() || isAuthenticated();
-      }
-
-      // --- 잭팟 라운드 & 당첨 컬렉션 ---
-      match /jackpot_rounds/{roundId} {
-        allow read: if true;
-        allow create, update: if signedIn();
-      }
-
-      match /jackpot_wins/{winId} {
-        allow read: if true;
-        allow create, update: if signedIn();
-      }
-
-      // --- 베스트 매거진 (Webzine) 컬렉션 ---
-      match /webzine_articles/{articleId} {
-        allow read: if true;
-        allow create, update, delete: if isAdmin();
-      }
-
-      // --- 이벤트 쿠폰 & 바우쳐 컬렉션 ---
-      match /coupon_campaigns/{campaignId} {
-        allow read: if true;
-        allow create, update, delete: if signedIn();
-      }
-
-      match /user_coupons/{userCouponId} {
-        allow read: if signedIn();
-        allow create: if signedIn();
-        allow update, delete: if signedIn();
-      }
-
-      match /coupon_redemptions/{redemptionId} {
-        allow read: if signedIn();
-        allow create, update: if signedIn();
-      }
-  } // End of match /databases/{database}/documents
-} // End of service cloud.firestore
+  }
+}
