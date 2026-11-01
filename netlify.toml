@@ -37,11 +37,6 @@
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
 
 [[headers]]
-  for = "/monsterrace.html"
-  [headers.values]
-    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
-
-[[headers]]
   for = "/memory.html"
   [headers.values]
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
@@ -182,3 +177,15 @@
   to = "/used.html"
   status = 200
 
+
+[[redirects]]
+  from = "/monsterrace"
+  to = "/merchants.html"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/monsterrace.html"
+  to = "/merchants.html"
+  status = 301
+  force = true

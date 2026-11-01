@@ -1,4 +1,4 @@
-﻿// functions/wallet/admin.js
+// functions/wallet/admin.js
 // 관리자 권한 확인 헬퍼 (deposit.js / transaction.js 공용)
 //
 // 아래 네 가지 중 하나라도 해당하면 관리자로 인정:
@@ -29,25 +29,21 @@ function _permDenied() {
 async function requireAdmin(uid, tokenEmail) {
   if (!uid) throw _permDenied();
 
-  // 1) JWT / tokenEmail 직접 체크 (빠른 경로)
-  if (tokenEmail && ADMIN_EMAILS.includes(tokenEmail.toLowerCase())) return;
-
+  // 1) users/{uid} 문서의 isAdmin 플래그 또는 role 체크
   const db = admin.firestore();
-
-  // 2) users/{uid} 문서의 isAdmin 플래그 또는 role 체크
   const userSnap = await db.collection('users').doc(uid).get();
   const uData = userSnap.data();
   if (uData?.isAdmin === true) return;
   if (['admin', 'SUPER_ADMIN', 'CEO', 'ADMIN'].includes(uData?.role)) return;
 
-  // 3) admins/{uid} 문서 존재
+  // 2) admins/{uid} 문서 존재
   const adminSnap = await db.collection('admins').doc(uid).get();
   if (adminSnap.exists) return;
 
-  // 4) Firebase Auth Admin SDK로 이메일 조회
+  // 3) Firebase Auth Admin SDK로 이메일 및 이메일 인증 여부 조회
   try {
     const record = await admin.auth().getUser(uid);
-    if (ADMIN_EMAILS.includes(record.email?.toLowerCase())) return;
+    if (ADMIN_EMAILS.includes(record.email?.toLowerCase()) && record.emailVerified) return;
   } catch (authErr) {
     // user-not-found 이외의 오류(인프라 장애 등)는 전파하여 로그에 노출
     if (authErr.code !== 'auth/user-not-found') throw authErr;

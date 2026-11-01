@@ -61,61 +61,117 @@ async function processQrPayment(customerUid, merchantId, amountKrw) {
     const customerRewardPoints = Math.floor(feeAmount * rewardRate);
 
     const orderId = `ORDER_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const serverTime = admin.firestore.FieldValue.serverTimestamp();
 
-    // Note: We use runTransaction sequentially since processLedgerTransaction wraps its own transaction.
-    // In a high-concurrency production env, these could be batched, but for this pilot, sequential awaits suffice.
+    const custBalanceRef = db.collection('k_culture_balances').doc(customerUid);
+    const merchBalanceRef = db.collection('k_culture_balances').doc(merchantOwnerUid);
+    const custPayLedgerRef = db.collection('payment_ledger').doc();
+    const merchPayLedgerRef = db.collection('payment_ledger').doc();
+    const custPointLedgerRef = db.collection('point_ledger').doc();
+    const orderRef = db.collection('orders').doc(orderId);
 
-    try {
-        // 1. Deduct Payment from Customer
-        await ledgerH.processLedgerTransaction({
-            uid: customerUid,
-            type: 'PAY',
-            paymentKrwAmount: -amountKrw,
-            source: `merchant_${merchantId}`,
-            referenceId: orderId
-        });
-    } catch (err) {
-        if (err.message.includes('Insufficient Payment Balance')) {
+    return await db.runTransaction(async (tx) => {
+        // 1. All reads first
+        const custSnap = await tx.get(custBalanceRef);
+        const merchSnap = await tx.get(merchBalanceRef);
+
+        const custData = custSnap.exists ? custSnap.data() : {};
+        const merchData = merchSnap.exists ? merchSnap.data() : {};
+
+        const custCurrentKrw = custData.payment_balance_krw || 0;
+        const custCurrentPoint = custData.point_balance || 0;
+        const custCurrentVnd = custData.payment_balance_vnd || 0;
+
+        const merchCurrentKrw = merchData.payment_balance_krw || 0;
+        const merchCurrentPoint = merchData.point_balance || 0;
+        const merchCurrentVnd = merchData.payment_balance_vnd || 0;
+
+        if (custCurrentKrw < amountKrw) {
             throw new HttpsError('failed-precondition', '잔액이 부족합니다. 결제 잔액을 충전해주세요.');
         }
-        throw err;
-    }
 
-    // 2. Add Net Payment to Merchant Owner
-    await ledgerH.processLedgerTransaction({
-        uid: merchantOwnerUid,
-        type: 'MERCHANT_INCOME',
-        paymentKrwAmount: netMerchantAmount,
-        source: `customer_${customerUid}`,
-        referenceId: orderId
-    });
+        const custNewKrw = custCurrentKrw - amountKrw;
+        const custNewPoint = custCurrentPoint + customerRewardPoints;
+        const merchNewKrw = merchCurrentKrw + netMerchantAmount;
 
-    // 3. Issue Reward Point to Customer
-    if (customerRewardPoints > 0) {
-        await ledgerH.processLedgerTransaction({
-            uid: customerUid,
-            type: 'PURCHASE_REWARD',
-            pointAmount: customerRewardPoints,
+        // 2. Atomic Writes
+        tx.set(custBalanceRef, {
+            user_id: customerUid,
+            payment_balance_krw: custNewKrw,
+            point_balance: custNewPoint,
+            payment_balance_vnd: custCurrentVnd,
+            updated_at: serverTime
+        }, { merge: true });
+
+        tx.set(merchBalanceRef, {
+            user_id: merchantOwnerUid,
+            payment_balance_krw: merchNewKrw,
+            point_balance: merchCurrentPoint,
+            payment_balance_vnd: merchCurrentVnd,
+            updated_at: serverTime
+        }, { merge: true });
+
+        // Customer Payment Ledger
+        tx.set(custPayLedgerRef, {
+            id: custPayLedgerRef.id,
+            user_id: customerUid,
+            transaction_id: custPayLedgerRef.id,
+            type: 'PAY',
+            amount_krw: -amountKrw,
+            amount_vnd: 0,
+            balance_after_krw: custNewKrw,
+            balance_after_vnd: custCurrentVnd,
             source: `merchant_${merchantId}`,
-            referenceId: orderId
+            reference_id: orderId,
+            created_at: serverTime
         });
-    }
 
-    // Record Order
-    await db.collection('orders').doc(orderId).set({
-        orderId,
-        customerUid,
-        merchantId,
-        merchantName: merchantData.name || '',
-        amountKrw,
-        feeAmount,
-        netMerchantAmount,
-        customerRewardPoints,
-        status: 'completed',
-        created_at: admin.firestore.FieldValue.serverTimestamp()
+        // Merchant Payment Ledger
+        tx.set(merchPayLedgerRef, {
+            id: merchPayLedgerRef.id,
+            user_id: merchantOwnerUid,
+            transaction_id: merchPayLedgerRef.id,
+            type: 'MERCHANT_INCOME',
+            amount_krw: netMerchantAmount,
+            amount_vnd: 0,
+            balance_after_krw: merchNewKrw,
+            balance_after_vnd: merchCurrentVnd,
+            source: `customer_${customerUid}`,
+            reference_id: orderId,
+            created_at: serverTime
+        });
+
+        // Customer Reward Point Ledger
+        if (customerRewardPoints > 0) {
+            tx.set(custPointLedgerRef, {
+                id: custPointLedgerRef.id,
+                user_id: customerUid,
+                transaction_id: custPointLedgerRef.id,
+                type: 'PURCHASE_REWARD',
+                amount: customerRewardPoints,
+                balance_after: custNewPoint,
+                source: `merchant_${merchantId}`,
+                reference_id: orderId,
+                created_at: serverTime
+            });
+        }
+
+        // Order Record
+        tx.set(orderRef, {
+            orderId,
+            customerUid,
+            merchantId,
+            merchantName: merchantData.name || '',
+            amountKrw,
+            feeAmount,
+            netMerchantAmount,
+            customerRewardPoints,
+            status: 'completed',
+            created_at: serverTime
+        });
+
+        return { success: true, orderId, amountKrw, customerRewardPoints, merchantName: merchantData.name };
     });
-
-    return { success: true, orderId, amountKrw, customerRewardPoints, merchantName: merchantData.name };
 }
 
 module.exports = { merchantSendBtDirect,
@@ -215,17 +271,21 @@ async function merchantSendBtDirect(reqOrData, ctx) {
         if (!mDoc.exists) throw new HttpsError('not-found', '가맹점 정보를 찾을 수 없습니다.');
         const mData = mDoc.data() || {};
 
-        let mBtBalance = Math.max(Number(mOwnerData.btBalance || 0), Number(mData.btBalance || 0));
-        if (mBtBalance < btAmountToGive) {
-            throw new HttpsError('failed-precondition', `보유하신 BT 잔고가 부족합니다! (현재잔고: ${mBtBalance} BT)`);
+        const ownerBt = Number(mOwnerData.btBalance || 0);
+        const merchBt = Number(mData.btBalance || 0);
+        const currentBalance = Math.max(ownerBt, merchBt);
+        if (currentBalance < btAmountToGive) {
+            throw new HttpsError('failed-precondition', `보유하신 BT 잔고가 부족합니다! (현재잔고: ${currentBalance} BT)`);
         }
         
-        // Deduct from merchant's user and merchant account
+        const newBtBalance = Math.max(0, currentBalance - btAmountToGive);
+
+        // Deduct from merchant's user and merchant account and keep synchronized
         tx.set(mOwnerRef, {
-            btBalance: admin.firestore.FieldValue.increment(-btAmountToGive)
+            btBalance: newBtBalance
         }, { merge: true });
         tx.set(mRef, {
-            btBalance: admin.firestore.FieldValue.increment(-btAmountToGive)
+            btBalance: newBtBalance
         }, { merge: true });
         
         // Add to customer

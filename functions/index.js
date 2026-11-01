@@ -2653,7 +2653,6 @@ const _GAME_LABELS = {
   archery: '🏹 Archery',
   memory: '🧠 Memory Game',
   treasure: '💎 Treasure Hunt',
-  monsterrace: '🐉 Monster Race',
   treasure_hide: '📦 Treasure Hidden',
   treasure_find: '🏆 Treasure Found',
   treasure_issue: '🎁 Treasure Issued',

@@ -1,4 +1,4 @@
-const CACHE_NAME = "kmoa-app-v9999999995";
+const CACHE_NAME = "kmoa-app-v9999999996";
 
 const CORE_ASSETS = [
   "/",

@@ -35,13 +35,11 @@ const NPC_SEED = [
 ];
 
 // ── 이벤트 정의 ───────────────────────────────────────────────────────────
-const EVENT_TYPES = ['treasure_find','treasure_hide','dungeon','monsterrace','archery','relay'];
+const EVENT_TYPES = ['treasure_find','treasure_hide','dungeon','archery','relay'];
 
 const GP_RANGE = {
   treasure_find: [80,  350],
-  dungeon:       [150, 500],
-  monsterrace:   [100, 350],
-  archery:       [80,  420],
+  dungeon:       [150, 500],  archery:       [80,  420],
   relay:         [60,  260],
 };
 
@@ -57,10 +55,7 @@ function _buildMsg(name, type, gp) {
     case 'treasure_hide':
       return `🤖 <b>${name}</b> has hidden new treasure on the map. <i>(NPC Event)</i>`;
     case 'dungeon':
-      return `⚔️ <b>${name}</b> survived the dungeon! +${gp} GP <i>(NPC Event)</i>`;
-    case 'monsterrace':
-      return `🐉 <b>${name}</b> won Monster Race! +${gp} GP <i>(NPC Event)</i>`;
-    case 'archery':
+      return `⚔️ <b>${name}</b> survived the dungeon! +${gp} GP <i>(NPC Event)</i>`;    case 'archery':
       return `🏹 <b>${name}</b> hit the mark in Archery! +${gp} GP <i>(NPC Event)</i>`;
     case 'relay':
       return `🏃 <b>${name}</b> completed Sprint Relay! +${gp} GP <i>(NPC Event)</i>`;
