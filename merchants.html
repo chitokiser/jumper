@@ -3749,6 +3749,111 @@
           </div>
         </div>
         <div id="mcMemberStatus" style="display:none;"></div>
+        <style>
+          .mc-arcade-banner {
+            margin-top: 12px;
+            background: linear-gradient(135deg, #090d16 0%, #1e1b4b 50%, #311042 100%);
+            border-radius: 16px;
+            padding: 14px 16px;
+            border: 1px solid rgba(167, 139, 250, 0.35);
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+            color: #fff;
+          }
+          .mc-arcade-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+          }
+          .mc-arcade-badges {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+          .mc-arcade-live {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(239, 68, 68, 0.18);
+            border: 1px solid rgba(248, 113, 113, 0.45);
+            color: #fca5a5;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+          }
+          .mc-arcade-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+          }
+          .mc-arcade-reward {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(251, 191, 36, 0.16);
+            border: 1px solid rgba(251, 191, 36, 0.45);
+            color: #fde68a;
+            font-size: 11px;
+            font-weight: 800;
+          }
+          .mc-arcade-modes {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
+          }
+          .mc-mode-chip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 9px 10px;
+            border-radius: 11px;
+            background: rgba(15, 23, 42, 0.68);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: #f1f5f9;
+            text-decoration: none;
+            font-size: 12.5px;
+            font-weight: 800;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+          }
+          .mc-mode-chip:hover, .mc-mode-chip.is-active {
+            background: rgba(139, 92, 246, 0.32);
+            border-color: rgba(251, 191, 36, 0.7);
+            color: #fde68a;
+            transform: translateY(-2px);
+          }
+          @media (max-width: 768px) {
+            .mc-arcade-modes {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+          }
+        </style>
+        <div class="mc-arcade-banner" id="mcArcadeBanner">
+          <div class="mc-arcade-top">
+            <div class="mc-arcade-badges">
+              <span class="mc-arcade-live"><span class="mc-arcade-dot"></span>LIVE GPS RPG &amp; ARCADE</span>
+              <span class="mc-arcade-reward">💰 획득 GP → 포인트 · BM 즉시 전환</span>
+            </div>
+            <span style="font-size:12px;color:#cbd5e1;font-weight:700;">🎮 원하는 게임을 선택해 바로 플레이하세요!</span>
+          </div>
+          <div class="mc-arcade-modes">
+            <a class="mc-mode-chip is-active" href="/merchants.html"><span>💎</span><span>GPS 보물찾기 월드맵</span></a>
+            <a class="mc-mode-chip" href="/monsterrace.html"><span>🐉</span><span>몬스터 레이싱</span></a>
+            <a class="mc-mode-chip" href="/conquest.html"><span>🏰</span><span>몬스터 공성전</span></a>
+            <a class="mc-mode-chip" href="/bow.html"><span>🏹</span><span>명궁 활쏘기</span></a>
+            <a class="mc-mode-chip" href="/memory.html"><span>🧠</span><span>메모리 스피드 매치</span></a>
+          </div>
+        </div>
       </div>
 
       <!-- 지도 -->
