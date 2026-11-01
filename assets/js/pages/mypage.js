@@ -430,6 +430,7 @@ async function loadOnChainData(uid) {
 
 async function loadKCultureBalances(uid) {
   try {
+    try { await httpsCallable(functions, "getMoneyTreeInventory")(); } catch (_) {}
     const userSnap = await getDoc(doc(db, "users", uid));
     show("paymentBalanceRow", true);
     show("pointRow", true);

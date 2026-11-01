@@ -155,6 +155,27 @@ async function doRegister(uid, user) {
     updatedAt: serverTimestamp(),
   }, { merge: true });
 
+  // 신규/재가입 시 이전 테스트 잔여 게임 자산(나무 수확권, 묘목 등) 초기화
+  try {
+    await setDoc(doc(db, "battle_players", uid), {
+      gsExp: 0,
+      gsLevel: 1,
+      level: 1,
+      btBalance: 0,
+      potions: 0,
+      mpPotions: 0,
+      reviveTickets: 0,
+      seedlings: 0,
+      harvestTickets: 0,
+      treeBoosters: 0,
+      totalPlantsCount: 0,
+      sv: 0,
+      isMentor: false,
+      treeSessionSyncedAt: Date.now(),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (_) {}
+
   // 추천인(멘토)에게 +1,000 EXP 지급 호출 (Cloud Function)
   if (mentorUid) {
     try {

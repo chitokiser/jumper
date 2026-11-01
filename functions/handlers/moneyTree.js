@@ -454,20 +454,121 @@ async function useTreeBooster(uid, { treeId }) {
   return { ok: true, boostResult };
 }
 
+
+// 가입(또는 리셋) 시각 이전의 잔여 나무·수확권·불법수확 GP 자동 정리
+async function _ensureCleanSinceRegistration(uid) {
+  const [userSnap, pSnap, treeSnap] = await Promise.all([
+    db.collection('users').doc(uid).get(),
+    db.collection('battle_players').doc(uid).get(),
+    db.collection('money_trees').where('ownerUid', '==', uid).get(),
+  ]);
+  const userData = userSnap.exists ? (userSnap.data() || {}) : {};
+  const pData = pSnap.exists ? (pSnap.data() || {}) : {};
+  const regMs = userData.registeredAt?.toMillis?.() || userData.createdAt?.toMillis?.() || 0;
+  if (!regMs) return { pData, validTreeDocs: treeSnap.docs };
+
+  const cutoffMs = regMs - 60000; // 60s clock tolerance
+  const orphanTreeDocs = [];
+  const validTreeDocs = [];
+
+  for (const d of treeSnap.docs) {
+    const t = d.data() || {};
+    const plantedMs = t.plantedAt?.toMillis?.() || 0;
+    if (!plantedMs || plantedMs < cutoffMs) {
+      orphanTreeDocs.push(d);
+    } else {
+      validTreeDocs.push(d);
+    }
+  }
+
+  const syncedMs = Number(pData.treeSessionSyncedAt || 0);
+  const needsSync = orphanTreeDocs.length > 0 || syncedMs < cutoffMs;
+
+  if (needsSync) {
+    const batch = db.batch();
+    for (const d of orphanTreeDocs) {
+      batch.delete(d.ref);
+      const lot = d.data()?.lotteryNumber;
+      if (lot != null) {
+        batch.delete(db.collection('lottery_index').doc(String(lot)));
+      }
+    }
+
+    // 가입 시각 이전에 심어진 나무를 가입 직후 수확해 얻은 부당 GP 회수
+    let invalidHarvestGp = 0;
+    if (validTreeDocs.length === 0) {
+      try {
+        const logSnap = await db.collection('money_tree_logs')
+          .where('uid', '==', uid)
+          .where('type', '==', 'harvest')
+          .get();
+        logSnap.docs.forEach((ld) => {
+          const l = ld.data() || {};
+          const lMs = l.createdAt?.toMillis?.() || 0;
+          if (lMs >= cutoffMs) {
+            invalidHarvestGp += Number(l.harvesterGp || 0);
+          }
+        });
+      } catch (_) {}
+    }
+
+    const pRef = db.collection('battle_players').doc(uid);
+    if (validTreeDocs.length === 0 && syncedMs < cutoffMs) {
+      const curGold = Math.max(0, Number(pData.gold || 0) - invalidHarvestGp);
+      const upd = {
+        gold: curGold,
+        seedlings: 0,
+        harvestTickets: 0,
+        treeBoosters: 0,
+        totalPlantsCount: 0,
+        sv: 0,
+        treeSessionSyncedAt: regMs,
+      };
+      batch.set(pRef, upd, { merge: true });
+      Object.assign(pData, upd);
+
+      // 잔여 복권 인덱스도 정리
+      try {
+        const lotSnap = await db.collection('lottery_index').where('uid', '==', uid).get();
+        lotSnap.docs.forEach((ld) => batch.delete(ld.ref));
+      } catch (_) {}
+    } else {
+      batch.set(pRef, { treeSessionSyncedAt: regMs }, { merge: true });
+      pData.treeSessionSyncedAt = regMs;
+    }
+
+    await batch.commit();
+  }
+
+  return { pData, validTreeDocs, regMs };
+}
+
 // ── 나무 수확 ────────────────────────────────────────────────────────────────
 async function harvestTree(uid, { treeId }) {
   if (!treeId) throw new HttpsError('invalid-argument', 'treeId is required.');
 
-  const [treeSnap, playerSnap, cfgSnap] = await Promise.all([
+  await _ensureCleanSinceRegistration(uid);
+
+  const [treeSnap, playerSnap, cfgSnap, userSnap] = await Promise.all([
     db.collection('money_trees').doc(treeId).get(),
     db.collection('battle_players').doc(uid).get(),
     CONFIG_REF.get(),
+    db.collection('users').doc(uid).get(),
   ]);
-  if (!treeSnap.exists) throw new HttpsError('not-found', 'Tree not found.');
+  if (!treeSnap.exists) throw new HttpsError('not-found', '내가 가입 후 직접 심은 나무가 아닙니다 (잔여 나무 자동 정리됨).');
   const tree = treeSnap.data();
   if (tree.ownerUid !== uid) throw new HttpsError('permission-denied', 'You can only harvest your own trees.');
+  const regMs = userSnap.data()?.registeredAt?.toMillis?.() || userSnap.data()?.createdAt?.toMillis?.() || 0;
+  const plantedMs = tree.plantedAt?.toMillis?.() || 0;
+  if (regMs > 0 && (!plantedMs || plantedMs < regMs - 60000)) {
+    await db.collection('money_trees').doc(treeId).delete();
+    throw new HttpsError('permission-denied', '가입 이전에 생성된 나무는 수확할 수 없습니다.');
+  }
   if (!playerSnap.exists) throw new HttpsError('not-found', 'Player data not found.');
   const player = playerSnap.data();
+  if ((player.totalPlantsCount ?? 0) < 1) {
+    throw new HttpsError('failed-precondition', '직접 심은 나무가 없어 수확할 수 없습니다.');
+  }
   const cfg  = { ...DEFAULTS, ...(cfgSnap.exists ? cfgSnap.data() : {}) };
 
   // Owner can harvest from anywhere — GPS age/distance checks skipped for own trees
@@ -537,12 +638,12 @@ async function getNearbyTrees(uid, { lat, lng, radiusKm = 5 }) {
 
 // ── 내 나무 목록 ──────────────────────────────────────────────────────────────
 async function getMyTrees(uid) {
-  const [treeSnap, cfgSnap] = await Promise.all([
-    db.collection('money_trees').where('ownerUid', '==', uid).limit(50).get(),
+  const [{ validTreeDocs }, cfgSnap] = await Promise.all([
+    _ensureCleanSinceRegistration(uid),
     CONFIG_REF.get(),
   ]);
   const cfg = { ...DEFAULTS, ...(cfgSnap.exists ? cfgSnap.data() : {}) };
-  const trees = treeSnap.docs.map(d => {
+  const trees = validTreeDocs.slice(0, 50).map(d => {
     const t = d.data();
     const value = calcTreeValue(cfg.globalPlantCounter, t.baseCounter, cfg.growthRate, cfg.maxTreeValue, t.boostTotal);
     return {
@@ -557,11 +658,10 @@ async function getMyTrees(uid) {
 
 // ── 인벤토리 조회 ────────────────────────────────────────────────────────────
 async function getMyInventory(uid) {
-  const [pSnap, lotterySnap] = await Promise.all([
-    db.collection('battle_players').doc(uid).get(),
+  const [{ pData: d }, lotterySnap] = await Promise.all([
+    _ensureCleanSinceRegistration(uid),
     db.collection('lottery_index').where('uid', '==', uid).get(),
   ]);
-  const d = pSnap.exists ? pSnap.data() : {};
   return {
     seedlings:        d.seedlings        ?? 0,
     harvestTickets:   d.harvestTickets   ?? 0,

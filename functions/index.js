@@ -3308,7 +3308,7 @@ exports.adminResetAllMembers = onCall(
       const batch = db.batch();
       for (const d of bpSnap.docs.slice(i, i + BATCH)) {
         if (d.id === uid) continue;
-        batch.update(d.ref, { gsExp: 0, gsLevel: 1, gold: 0, btBalance: 0, potions: 0, mpPotions: 0, reviveTickets: 0 });
+        batch.update(d.ref, { gsExp: 0, gsLevel: 1, level: 1, gold: 0, btBalance: 0, potions: 0, mpPotions: 0, reviveTickets: 0, seedlings: 0, harvestTickets: 0, treeBoosters: 0, totalPlantsCount: 0, sv: 0, isMentor: false });
         bpReset++;
       }
       await batch.commit();
@@ -3321,6 +3321,12 @@ exports.adminResetAllMembers = onCall(
     const refs = await delCol('membership_referrals');
     const jpWins = await delCol('jackpot_wins');
     const jpRounds = await delCol('jackpot_rounds');
+    await delCol('money_trees');
+    await delCol('lottery_index');
+    await delCol('coopVouchers');
+    await delCol('coopOrders');
+    await delCol('treasure_voucher_logs');
+    await delCol('treasure_inventory');
 
     // 잭팟 풀 초기화
     await db.collection('jackpot_config').doc('current').set({ jackpotAccVnd: 0, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
@@ -3371,6 +3377,13 @@ exports.deleteMyAccount = onCall(
       deleteWhere('membership_referrals', 'uid', uid),
       deleteWhere('bt_rewards', 'uid', uid),
       deleteWhere('mentor_requests', 'menteeUid', uid),
+      deleteWhere('money_trees', 'ownerUid', uid),
+      deleteWhere('lottery_index', 'uid', uid),
+      deleteWhere('coopVouchers', 'ownerUid', uid),
+      deleteWhere('coopOrders', 'uid', uid),
+      deleteWhere('treasure_voucher_logs', 'uid', uid),
+      deleteWhere('community_event_vouchers', 'uid', uid),
+      deleteWhere('treasure_inventory', 'uid', uid),
     ]);
 
     // 탈퇴 로그 기록 (uid 삭제 전이므로 별도 컬렉션에 보관)

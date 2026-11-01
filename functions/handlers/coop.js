@@ -1511,13 +1511,33 @@ async function coopGetMyVouchers(uid) {
     platform.fxScale(),
     db.collection('users').doc(uid).get(),
   ]);
-  const walletAddress = userSnap.data()?.wallet?.address || null;
+  const userData = userSnap.exists ? (userSnap.data() || {}) : {};
+  const walletAddress = userData?.wallet?.address || null;
+  const regMs = userData.registeredAt?.toMillis?.() || userData.createdAt?.toMillis?.() || 0;
+  const cutoffMs = regMs > 0 ? regMs - 60000 : 0;
+
+  // 가입/리셋 이전에 생성된 잔여 바우처 문서 자동 정리 및 제외
+  const isAfterReg = (ts) => {
+    if (!cutoffMs) return true;
+    const ms = ts?.toMillis?.() || 0;
+    return ms >= cutoffMs;
+  };
+  const validVDocs = [];
+  for (const d of vSnap.docs) {
+    if (isAfterReg(d.data()?.createdAt)) validVDocs.push(d);
+    else d.ref.update({ status: 'expired_by_reset' }).catch(() => {});
+  }
+  const validOrderDocs = [];
+  for (const d of orderSnap.docs) {
+    if (isAfterReg(d.data()?.createdAt)) validOrderDocs.push(d);
+    else if (d.data()?.status === 'confirmed') d.ref.update({ status: 'expired_by_reset' }).catch(() => {});
+  }
 
   // coopVouchers에 이미 있는 productId는 중복 제거
-  const voucherProductIds = new Set(vSnap.docs.map(d => d.data().productId).filter(Boolean));
+  const voucherProductIds = new Set(validVDocs.map(d => d.data().productId).filter(Boolean));
 
   // 주문 중 productId 있고 voucherProductIds에 없는 것 모두 조회 (type 유무 무관 — burnFeeBps 획득 목적)
-  const confirmedOrders = orderSnap.docs.filter(d => d.data().status === 'confirmed');
+  const confirmedOrders = validOrderDocs.filter(d => d.data().status === 'confirmed');
   const ordersNeedingLookup = confirmedOrders.filter(d => {
     const o = d.data();
     return o.productId && !voucherProductIds.has(o.productId);
@@ -1559,7 +1579,7 @@ async function coopGetMyVouchers(uid) {
   // coopVouchers 문서에 burnFeeBps=0이면 coopProducts에서 재조회 (구매 전 생성된 레거시 문서 대응)
   const [vBpsLookups, gameVoucherSnap, communityVoucherSnap] = await Promise.all([
     Promise.all(
-      vSnap.docs.map(d => {
+      validVDocs.map(d => {
         const data = d.data();
         if ((data.burnFeeBps === 0 || data.burnFeeBps == null) && data.productId) {
           return db.collection('coopProducts').doc(data.productId).get();
@@ -1581,6 +1601,10 @@ async function coopGetMyVouchers(uid) {
   const gameVouchers = gameVoucherSnap.docs
     .filter(d => {
       const s = d.data().status;
+      if (!isAfterReg(d.data()?.craftedAt || d.data()?.createdAt)) {
+        if (!s || s === 'active') d.ref.update({ status: 'expired_by_reset' }).catch(() => {});
+        return false;
+      }
       return !s || s === 'active';
     })
     .map(d => {
@@ -1606,6 +1630,10 @@ async function coopGetMyVouchers(uid) {
   const communityVouchers = communityVoucherSnap.docs
     .filter(d => {
       const s = d.data().status;
+      if (!isAfterReg(d.data()?.createdAt)) {
+        if (!s || s === 'active') d.ref.update({ status: 'expired_by_reset' }).catch(() => {});
+        return false;
+      }
       return !s || s === 'active';
     })
     .map(d => {
@@ -1629,7 +1657,7 @@ async function coopGetMyVouchers(uid) {
 
   return {
     vouchers: [
-      ...vSnap.docs.map((d, i) => {
+      ...validVDocs.map((d, i) => {
         const data = { id: d.id, ...d.data() };
         if (vBpsLookups[i]) {
           const bps = vBpsLookups[i].data()?.burnFeeBps;
