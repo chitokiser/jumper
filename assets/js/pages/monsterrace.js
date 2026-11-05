@@ -949,6 +949,15 @@ function showFinishOverlay(rank) {
   setTimeout(() => el.classList.add('hidden'), 2200);
 }
 
+// 전체화면(진짜/CSS 대체 모두) 해제
+function leaveFullscreen() {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else if (document.webkitFullscreenElement) document.webkitExitFullscreen?.();
+  } catch {}
+  if (_cssFs) _exitCssFs($('btnFs'), $('canvasWrap'), $('gameScreen'));
+}
+
 async function endRace(rank) {
   if (_ended) return; _ended = true;
   stopEngine();
@@ -964,6 +973,7 @@ async function endRace(rank) {
   setTimeout(() => {
     $('finishRank').textContent = `#${finalRank} finish!`;
     $('finishGP').textContent   = _freeMode ? '🆓 Free Play (no reward)' : `+${gp} GP earned!`;
+    leaveFullscreen();   // 전체화면이 남아 있으면 결과 화면의 버튼이 가려져 눌리지 않는다
     showPhase('finish');
   }, 1800);
 }
