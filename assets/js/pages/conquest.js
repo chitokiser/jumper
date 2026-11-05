@@ -10,7 +10,7 @@ import {
   CASTLE_WX, CASTLE_WY, POI_DEFS, getScale,
 } from './conquest.world.js';
 import { initRenderer, loadMapAssets, renderScene, isMapObstacle } from './conquest.render.js';
-import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL, fxQueue, applyImpact } from './conquest.units.js';
+import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL, fxQueue, applyImpact, buff } from './conquest.units.js';
 import { getSpawnPos, getDragonSpawnPos, snapToRoad } from './conquest.path.js';
 import { resumeAudio, playSound } from './conquest.audio.js';
 import { setImpactHandler, resetFx, updateFx, addShake, addShot, addDamage, addSpark, addPuff, addCoin, addBurst, showBanner, WALL_POINT } from './conquest.fx.js';
@@ -48,12 +48,12 @@ const WAVES = [
   [{type:'orc',    count:30, side:'rand'},{type:'orc2',   count:15, side:'rand'}],
   [{type:'orc2',   count:35, side:'all'}],
   [{type:'orc',    count:25, side:'rand'},{type:'zombie',  count:25, side:'rand'}],
-  [{type:'orc2',   count:35, side:'all'}, {type:'zombie',  count:20, side:'rand'},{type:'dragon',count:3, side:'rand'}],
+  [{type:'orc2',   count:35, side:'all'}, {type:'zombie',  count:20, side:'rand'},{type:'dragon',count:3, side:'rand'},{type:'boss_orc',count:1,side:'rand',boss:true}],
   [{type:'zombie', count:40, side:'all'}, {type:'pirate',  count:18, side:'rand'},{type:'dragon',count:5, side:'rand'}],
   [{type:'pirate', count:45, side:'all'}, {type:'dragon',  count:8,  side:'rand'}],
   [{type:'orc2',   count:40, side:'all'}, {type:'pirate',  count:28, side:'all'},{type:'dragon',count:8, side:'all'}],
   [{type:'zombie', count:50, side:'all'}, {type:'orc2',    count:35, side:'all'},{type:'dragon',count:10,side:'rand'}],
-  [{type:'pirate', count:60, side:'all'}, {type:'zombie',  count:50, side:'all'},{type:'dragon',count:12,side:'all'}],
+  [{type:'pirate', count:60, side:'all'}, {type:'zombie',  count:50, side:'all'},{type:'dragon',count:12,side:'all'},{type:'boss_dragon',count:1,side:'rand',boss:true}],
 ];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────
@@ -72,6 +72,7 @@ let _skillEffects=[]; // 캔버스 이펙트 목록
 
 let _drag=null;
 let _pinch=null;
+let _blessOpen=false;
 let _streak=0,_lastKillAt=0,_lastCoinSnd=0,_lastCastleShake=0;   // 연속 처치 / 연출 쓰로틀
 
 const $=id=>document.getElementById(id);
@@ -140,6 +141,7 @@ function startGame(){
   _selected=new Set();_placing=false;_dispatchMode=false;_heroSkillCd=0;
   _skillCds={};_skillEffects=[];_updateSkillUI();
   resetFx();fxQueue.length=0;_streak=0;_lastKillAt=0;
+  buff.tower=1;buff.ally=1;_blessOpen=false;_closeModal('blessModal');
   setImpactHandler(p=>applyImpact(p,_monsters));
   _walls={
     north:{hp:WALL_HP,maxHp:WALL_HP,breached:false},
@@ -198,7 +200,7 @@ function _update(dt){
   if(_mineTimer>=MINE_RATE){_mineTimer-=MINE_RATE;_addGP(5);}
   if(_heroSkillCd>0) _heroSkillCd=Math.max(0,_heroSkillCd-dt);
 
-  if(!_waveActive){_prepTimer-=dt;if(_prepTimer<=0)_startWave();renderHUD();return;}
+  if(!_waveActive){if(!_blessOpen){_prepTimer-=dt;if(_prepTimer<=0)_startWave();}renderHUD();return;}
 
   if(_spawnQ.length){_spawnTimer-=dt;if(_spawnTimer<=0){_spawnTimer=180;const s=_spawnQ.shift();_monsters.push(makeUnit(s.type,s.x,s.y));}}
 
@@ -251,6 +253,7 @@ function _update(dt){
     _addGP(waveReward);
     _showNotif(`🏆 Wave ${_wave} cleared! +${waveReward} GP`);
     if(_wave>=WAVES.length){endGame(true);return;}
+    _openBless();
   }
   renderHUD();
 }
@@ -273,6 +276,10 @@ function _onKill(m){
   const now=performance.now();
   const coin=Math.max(1,Math.round(def.hp/150));
   _addGP(coin); addCoin(m.x,m.y,coin);
+  if(def.boss){
+    _addGP(400); for(let i=0;i<6;i++) addCoin(m.x+(Math.random()-.5)*160,m.y+(Math.random()-.5)*80,coin);
+    showBanner(`🏆 ${def.label} 처치!  +${400+coin} GP`); playSound('streak'); addShake(10);
+  }
   if(now-_lastCoinSnd>120){playSound('coin');_lastCoinSnd=now;}
   _streak=(now-_lastKillAt<3000)?_streak+1:1; _lastKillAt=now;
   if(_streak>=10&&_streak%10===0){
@@ -303,10 +310,14 @@ function _startWave(){
   _waveActive=true;
   const def=WAVES[Math.min(_wave,WAVES.length-1)];
   const scale=1+_wave*0.35; // 웨이브마다 35% 병력 증가
+  if(def.some(g=>g.boss)){
+    showBanner('☠ BOSS WAVE ☠');playSound('streak');addShake(8);
+  }
   def.forEach(g=>{
-    for(let i=0;i<Math.ceil(g.count*scale);i++){
+    const n=g.boss?g.count:Math.ceil(g.count*scale);   // 보스는 웨이브 배율을 받지 않는다
+    for(let i=0;i<n;i++){
       // 드래곤은 대각선(2시·4시·7시·11시)에서 날아옴
-      const pos = g.type==='dragon' ? getDragonSpawnPos() : getSpawnPos(g.side);
+      const pos = UNIT_DEFS[g.type]?.flying ? getDragonSpawnPos() : getSpawnPos(g.side);
       _spawnQ.push({type:g.type,x:pos.x,y:pos.y});
     }
   });
@@ -330,6 +341,91 @@ function _damageWall(key,dmg){
       if(m.atGate&&m.attackingWall===key) m.insideCastle=true;
     }
   }
+}
+
+// ── 웨이브 클리어 축복 (3택 1) ────────────────────────────────────────────
+const BLESSINGS=[
+  {icon:'🏹',name:'타워 강화',   desc:'모든 타워 공격력 +25%',   fn:()=>{buff.tower*=1.25;}},
+  {icon:'⚔️',name:'수비대 단련', desc:'수비대·영웅 공격력 +20%', fn:()=>{buff.ally*=1.2;}},
+  {icon:'🧱',name:'성벽 복구',   desc:'모든 성벽 체력 완전 회복',fn:()=>{for(const w of Object.values(_walls)){w.hp=w.maxHp;w.breached=false;}}},
+  {icon:'🏰',name:'성 수리',     desc:'성 체력 +2000',           fn:()=>{_castleHp=Math.min(MAX_HP,_castleHp+2000);}},
+  {icon:'💰',name:'전리품',      desc:'+400 GP',                 fn:()=>{_addGP(400);}},
+  {icon:'💚',name:'치유의 빛',   desc:'모든 아군 체력 완전 회복',fn:()=>{for(const d of _defenders){if(!d.dying)d.hp=d.maxHp;}}},
+];
+function _openBless(){
+  const box=$('blessCards'); if(!box) return;
+  const picks=[...BLESSINGS].sort(()=>Math.random()-.5).slice(0,3);
+  box.innerHTML='';
+  picks.forEach(b=>{
+    const el=document.createElement('button');
+    el.className='cmd-btn bless-card';
+    el.innerHTML=`<div class="bc-icon">${b.icon}</div><div class="bc-name">${b.name}</div><div class="bc-desc">${b.desc}</div>`;
+    el.addEventListener('click',()=>{
+      b.fn(); playSound('levelup'); _showNotif(`${b.icon} ${b.name} 적용`);
+      _blessOpen=false; _closeModal('blessModal'); renderHUD();
+    });
+    box.appendChild(el);
+  });
+  _blessOpen=true; _openModal('blessModal');
+}
+
+// ── 타워 업그레이드 / 판매 / 수리 ──────────────────────────────────────────
+const TOWER_MAX_LV=3;
+function _selTower(){ return _defenders.find(d=>d.selected&&d.isTower&&!d.dying)||null; }
+function _towerUpCost(t){
+  const base=UNIT_DEFS[t.type].cost;
+  return t.lvl>=TOWER_MAX_LV?0:Math.round(base*(t.lvl===1?0.8:1.4));
+}
+function _towerRepairCost(t){
+  if(t.hp>=t.maxHp) return 0;
+  return Math.max(10,Math.ceil((1-t.hp/t.maxHp)*UNIT_DEFS[t.type].cost*0.5));
+}
+function _towerSellValue(t){ return Math.round(t.spent*0.6); }
+function _upgradeTower(){
+  const t=_selTower(); if(!t||t.lvl>=TOWER_MAX_LV) return;
+  const cost=_towerUpCost(t); if(_gp<cost) return;
+  _gp-=cost; t.spent+=cost; t.lvl++;
+  const def=UNIT_DEFS[t.type], k=t.lvl-1, oldMax=t.maxHp;
+  t.atk=Math.round(def.atk*(1+0.5*k));
+  t.maxHp=Math.round(def.hp*(1+0.4*k));
+  t.hp=Math.min(t.maxHp,t.hp+(t.maxHp-oldMax));
+  t.range=Math.round(def.range*(1+0.08*k));
+  t.atkRate=Math.round(def.atkRate*(1-0.08*k));
+  addBurst(t.x,t.y-t.size*1.5); playSound('levelup');
+  _showNotif(`⬆️ ${def.label} Lv${t.lvl}`);
+  renderHUD();
+}
+function _sellTower(){
+  const t=_selTower(); if(!t) return;
+  const v=_towerSellValue(t); _addGP(v);
+  _defenders=_defenders.filter(d=>d!==t); _selected.delete(t.id);
+  addCoin(t.x,t.y-t.size,v); playSound('coin');
+  _showNotif(`💰 ${UNIT_DEFS[t.type].label} 판매 +${v} GP`);
+  renderHUD();
+}
+function _repairTower(){
+  const t=_selTower(); if(!t) return;
+  const cost=_towerRepairCost(t); if(!cost||_gp<cost) return;
+  _gp-=cost; t.hp=t.maxHp; playSound('gold_pickup');
+  _showNotif(`🔨 ${UNIT_DEFS[t.type].label} 수리`); renderHUD();
+}
+// 다음 웨이브 미리보기 문구
+function _previewText(){
+  if(_wave>=WAVES.length) return '';
+  const scale=1+_wave*0.35, ICON={orc:'👹',orc2:'👹',zombie:'🧟',pirate:'🏴‍☠️',dragon:'🐉',boss_orc:'☠',boss_dragon:'☠'};
+  const sum={};
+  for(const g of WAVES[_wave]){
+    const k=ICON[g.type]||'👾';
+    sum[k]=(sum[k]||0)+(g.boss?g.count:Math.ceil(g.count*scale));
+  }
+  const boss=WAVES[_wave].find(g=>g.boss);
+  return `다음 ${_wave+1}웨이브 ` + Object.entries(sum).map(([k,n])=>`${k}${n}`).join(' ') + (boss?` · BOSS ${UNIT_DEFS[boss.type].label}`:'');
+}
+function _callWaveEarly(){
+  if(_waveActive||_blessOpen||_wave>=WAVES.length) return;
+  const bonus=Math.floor(_prepTimer/1000)*4;
+  _addGP(bonus); _showNotif(`⏩ 조기 호출 +${bonus} GP`);
+  _prepTimer=0; _startWave();
 }
 
 // ── 성벽 수리 ─────────────────────────────────────────────────────────────
@@ -459,6 +555,29 @@ function renderHUD(){
     btn.classList.toggle('active',_placing&&_placingType===t);
   });
   _updateSkillUI();
+  {
+    const wb=$('waveBar');
+    if(wb){
+      const boss=_waveActive?_monsters.find(m=>m.boss&&!m.dying):null;
+      $('wavePreview').textContent=_waveActive?'':_previewText();
+      $('btnCallWave').classList.toggle('hidden',_waveActive||_blessOpen||_wave>=WAVES.length);
+      $('bossBar').classList.toggle('hidden',!boss);
+      if(boss){
+        $('bossName').textContent=`☠ ${UNIT_DEFS[boss.type].label}`;
+        $('bossFill').style.width=Math.max(0,boss.hp/boss.maxHp*100)+'%';
+      }
+      wb.classList.toggle('hidden',_waveActive&&!boss);
+    }
+    const t=_selTower();
+    const up=$('btnTowerUp'),sell=$('btnTowerSell'),rp=$('btnTowerRepair');
+    if(up){
+      up.disabled=!t||t.lvl>=TOWER_MAX_LV||_gp<_towerUpCost(t);
+      up.textContent=!t?'⬆️ 타워 업그레이드':t.lvl>=TOWER_MAX_LV?'⬆️ 최대 레벨':`⬆️ 업그레이드 ${_towerUpCost(t)}GP`;
+      sell.disabled=!t; sell.textContent=t?`💰 판매 +${_towerSellValue(t)}GP`:'💰 타워 판매';
+      rp.disabled=!t||!_towerRepairCost(t)||_gp<_towerRepairCost(t);
+      rp.textContent=t&&_towerRepairCost(t)?`🔨 타워 수리 ${_towerRepairCost(t)}GP`:'🔨 타워 수리';
+    }
+  }
   const db2=$('btnDispatch');
   if(db2)db2.classList.toggle('active',_dispatchMode);
   // 선택 유닛 상태 표시 (HUD 우측 소형)
@@ -700,6 +819,10 @@ async function init(){
     _closeModal('commandModal');renderHUD();
   });
   $('btnRepair')?.addEventListener('click',()=>{_repairWalls();_closeModal('commandModal');});
+  $('btnTowerUp')?.addEventListener('click',_upgradeTower);
+  $('btnTowerSell')?.addEventListener('click',()=>{_sellTower();_closeModal('commandModal');});
+  $('btnTowerRepair')?.addEventListener('click',_repairTower);
+  $('btnCallWave')?.addEventListener('click',_callWaveEarly);
   $('btnPatrol')?.addEventListener('click',()=>{
     _defenders.forEach(d=>{
       if(d.selected&&!d.isTower){

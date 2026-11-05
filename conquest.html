@@ -89,6 +89,17 @@ html,body{height:100%;background:#0a0f05;color:#fff;
 .hc{background:rgba(255,255,255,.1);border-radius:7px;padding:3px 8px;
   font-size:11px;font-weight:700;white-space:nowrap}
 #hudPrep{font-size:10px;color:#fbbf24;flex:1;text-align:center}
+#waveBar{position:absolute;top:76px;left:6px;right:6px;z-index:60;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+#waveBar.hidden,#bossBar.hidden,#btnCallWave.hidden{display:none!important}
+#wavePreview{align-self:flex-start;background:rgba(0,0,0,.7);border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:#fde68a}
+#btnCallWave{pointer-events:auto;align-self:flex-start;background:#b45309;border:1px solid #f59e0b;color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;cursor:pointer}
+#bossBar{background:rgba(0,0,0,.75);border:1px solid #7f1d1d;border-radius:8px;padding:3px 8px}
+#bossName{font-size:11px;font-weight:800;color:#fca5a5;margin-bottom:2px}
+#bossTrack{height:8px;background:#1f2937;border-radius:4px;overflow:hidden}
+#bossFill{height:100%;width:100%;background:linear-gradient(90deg,#b91c1c,#ef4444);transition:width .15s}
+.bless-card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 6px}
+.bc-icon{font-size:28px}.bc-name{font-size:13px;color:#fff}.bc-desc{font-size:11px;color:#9ca3af;font-weight:600}
+#blessCards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
 #hudSelected{font-size:10px;color:#22c55e;min-width:58px;text-align:right}
 
 /* 선택 유닛 배너 */
@@ -256,6 +267,13 @@ html,body{height:100%;background:#0a0f05;color:#fff;
     <div id="hudSelected"></div>
   </div>
 
+  <!-- 웨이브 미리보기 / 보스 체력 -->
+  <div id="waveBar">
+    <div id="wavePreview"></div>
+    <button id="btnCallWave" class="hidden">⏩ 지금 호출 (보너스 GP)</button>
+    <div id="bossBar" class="hidden"><div id="bossName"></div><div id="bossTrack"><div id="bossFill"></div></div></div>
+  </div>
+
   <!-- 선택 유닛 배너 오버레이 -->
   <div id="unitBanner" class="hidden">
     <span id="ubIcon" style="font-size:20px;flex-shrink:0;line-height:1"></span>
@@ -321,9 +339,20 @@ html,body{height:100%;background:#0a0f05;color:#fff;
         <button class="cmd-btn" id="btnPatrol">🔄 순찰</button>
         <button class="cmd-btn skill-btn" id="btnHeroSkill" disabled>⚡ 영웅 스킬</button>
         <button class="cmd-btn repair-btn" id="btnRepair">🔨 성벽수리 150GP</button>
+        <button class="cmd-btn" id="btnTowerUp" disabled>⬆️ 타워 업그레이드</button>
+        <button class="cmd-btn" id="btnTowerSell" disabled>💰 타워 판매</button>
+        <button class="cmd-btn repair-btn" id="btnTowerRepair" disabled>🔨 타워 수리</button>
         <button class="cmd-btn" id="btnDeselect">✖ 선택 해제</button>
       </div>
       <button class="cq-close" id="btnCloseCommandModal">← Close</button>
+    </div>
+  </div>
+
+  <!-- 웨이브 클리어 축복 -->
+  <div id="blessModal" class="cq-modal hidden" data-fs-modal>
+    <div class="cq-panel">
+      <div class="cq-title">✨ 축복을 고르세요</div>
+      <div id="blessCards"></div>
     </div>
   </div>
 

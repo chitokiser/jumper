@@ -640,6 +640,17 @@ function _drawUnit(u,sprites){
     _ctx.restore();
   }
 
+  // 보스 오라 (붉게 맥동하는 지면 원)
+  if(u.boss&&!u.dying){
+    const t=performance.now()/400, pulse=1+Math.sin(t)*.08;
+    _ctx.save();
+    const g=_ctx.createRadialGradient(sx,sy,dsz*.05,sx,sy,dsz*.55*pulse);
+    g.addColorStop(0,'rgba(239,68,68,.45)'); g.addColorStop(1,'rgba(239,68,68,0)');
+    _ctx.fillStyle=g;
+    _ctx.beginPath(); _ctx.ellipse(sx,sy,dsz*.55*pulse,dsz*.2*pulse,0,0,Math.PI*2); _ctx.fill();
+    _ctx.restore();
+  }
+
   _ctx.save();
   if(u.hitFlash>0&&Math.floor(u.hitFlash/45)%2===0) _ctx.globalAlpha=.4;
   // 비행 유닛은 약간 위로 띄워서 렌더
@@ -669,6 +680,12 @@ function _drawUnit(u,sprites){
     _ctx.fillStyle='rgba(0,0,0,.6)'; _ctx.fillRect(bx-1,topY-1,bw+2,bh+2);
     _ctx.fillStyle=u.team==='ally'?'#22c55e':'#ef4444';
     _ctx.fillRect(bx,topY,bw*pct,bh);
+    if(u.isTower&&u.lvl>1){
+      _ctx.font=`bold ${Math.max(10,11*s)}px sans-serif`; _ctx.textAlign='center';
+      _ctx.fillStyle='#fbbf24'; _ctx.strokeStyle='rgba(0,0,0,.8)'; _ctx.lineWidth=3;
+      const tx='★'.repeat(u.lvl-1);
+      _ctx.strokeText(tx,sx,topY-4); _ctx.fillText(tx,sx,topY-4);
+    }
   }
 }
 

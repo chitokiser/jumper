@@ -130,6 +130,11 @@ export const UNIT_DEFS = {
     hp:400,atk:48,spd:42,range:65,atkRate:900, size:62,color:'#1a3a10'},
   zombie: {label:'좀비',    team:'monster',spriteKey:'zombie',
     hp:320,atk:22,spd:36,range:62,atkRate:1300,size:52,color:'#5a7a3a'},
+  // ── 보스 (5·10웨이브) ──
+  boss_orc:    {label:'오크 대왕',team:'monster',spriteKey:'orc3',boss:true,
+    hp:6000,atk:85,spd:38,range:80,atkRate:1000,size:100,color:'#7f1d1d'},
+  boss_dragon: {label:'고대 드래곤',team:'monster',spriteKey:'dragon',flying:true,boss:true,
+    hp:12000,atk:210,spd:70,range:150,atkRate:1200,size:130,color:'#7f1d1d'},
   pirate: {label:'해적',    team:'monster',spriteKey:'pirate',
     hp:280,atk:38,spd:70,range:65,atkRate:950, size:54,color:'#7c3a1a'},
 };
@@ -147,6 +152,8 @@ export function loadSprites(){
 
 // 화면 연출용 이벤트 큐 (투사체·데미지 숫자·처치) — 메인 루프가 매 프레임 비운다
 export const fxQueue=[];
+// 축복으로 오르는 공격력 배율 (타워 / 일반 아군)
+export const buff={tower:1,ally:1};
 
 // ── 유닛 생성 ────────────────────────────────────────────────────────────
 let _uid=0;
@@ -154,7 +161,7 @@ export function makeUnit(type,x,y){
   const def=UNIT_DEFS[type];
   const u={
     id:++_uid,type,x,y,team:def.team,spriteKey:def.spriteKey,size:def.size,
-    isTower:!!(def.tower),
+    isTower:!!(def.tower),boss:!!def.boss,lvl:1,spent:def.cost||0,
     hp:def.hp,maxHp:def.hp,atk:def.atk,spd:def.spd,range:def.range,
     atkRate:def.atkRate,atkCooldown:0,
     animState:'idle',animFrame:0,animTimer:0,
@@ -420,7 +427,7 @@ export function applyImpact(p,enemies){
 
 function _hit(att,tgt){
   // 아군 공격은 10% 확률로 치명타(2배)
-  let dmg=att.atk, crit=false;
+  let dmg=att.atk*(att.team==='ally'?(att.isTower?buff.tower:buff.ally):1), crit=false;
   if(att.team==='ally'&&Math.random()<0.1){dmg*=2;crit=true;}
   tgt.hp-=dmg;tgt.hitFlash=130;
   tgt.events.push({type:'sound',name:'hit'});
