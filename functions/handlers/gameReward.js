@@ -8,10 +8,10 @@ const { todayUtc7 } = require('./membership');
 const GAME_MAX_REWARD = {
   memory:   1200,  // 최대 가능 점수: 매칭360 + 콤보240 + 클리어300 + 시간보너스200 = 1100
   bow:      2000,
-  race:     1000,  // 500 → 1000
+  race:     5000,  // 500 → 5000
   relay:    3000,
-  dungeon:  600,   // 300 → 600
-  conquest: 600,   // 300 → 600
+  dungeon:  5000,  // 300 → 5000
+  conquest: 5000,  // 300 → 5000
   suika:    300,   // 30점당 1GP, 최대 9000점
 };
 
