@@ -1,6 +1,6 @@
 ﻿// relay.js — 이어달리기 메인 컨트롤러
 import { db, auth, functions } from '/assets/js/firebase-init.js';
-import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
@@ -118,8 +118,8 @@ async function deductFee() {
 async function awardGP(amount) {
   if (_freeMode || amount <= 0 || !_uid) return;
   try {
-    await updateDoc(doc(db, 'battle_players', _uid), { gold: increment(amount) });
-  } catch {}
+    await httpsCallable(functions, 'claimGameReward')({ gameType: 'relay', amount });
+  } catch (e) { console.warn('GP 보상 실패:', e); }
   // GP 생중계
   if (amount >= 50) httpsCallable(functions, 'broadcastGpEvent')({ game: 'relay', amount }).catch(() => {});
 }
