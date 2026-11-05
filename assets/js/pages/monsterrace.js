@@ -366,6 +366,8 @@ let _tapBoost = 0;        // 0..1, tap 마다 증가, 매 프레임 감소
 const _tapTimes = [];     // nitro 감지용 최근 탭 타임스탬프
 let _nitroCooldown = 0;   // nitro 재사용 가능 시간 (ms)
 let _nitroBurst = 0;      // nitro 종료 시간 (ms)
+let _gasHeld = false;     // 가스 버튼을 누르고 있는 중 (누르는 동안 순항 속도 유지)
+const HOLD_CRUISE = 0.6;  // 누르고 있을 때 유지되는 탭 부스트 하한 (최고속의 약 74%)
 let _gasEl = null;        // btnGas DOM 캐시
 let _gasMeterEl = null;   // gasMeter DOM 캐시
 let _slipstream = false;  // 슬립스트림 활성 여부
@@ -733,7 +735,7 @@ function updateRacer(r, isPlayer) {
     }
   }
 
-  if (r.wobble > 0) { r.lane += Math.sin(now*0.01)*0.09; r.wobble -= 16; }
+  if (r.wobble > 0) { r.lane += Math.sin(now*0.01)*0.09; r.wobble -= PHYS_STEP_MS; }
 
   r.pos += r.speed;
   if (r.pos >= SEGS * (r.lap+1)) {
@@ -872,19 +874,19 @@ async function endRace(rank) {
 }
 
 // ── 게임 루프 ─────────────────────────────────────────────────────────────────
-function loop(ts) {
-  _raf = requestAnimationFrame(loop);
-  const dt = Math.min(50, ts - _lastTs);
-  _lastTs = ts;
-  _gameTs += dt;
+// 물리는 화면 주사율과 무관하게 일정한 단위(초당 90회)로 고정해 돌린다.
+// (예전에는 프레임마다 한 번 계산해 120Hz 기기는 2배 빠르고 30Hz 기기는 절반 속도였다)
+// 레이스 길이를 바꾸려면 PHYS_HZ 만 조정한다 (60 → 약 150초, 90 → 약 100초, 120 → 약 75초).
+const PHYS_HZ = 90;
+const PHYS_STEP_MS = 1000 / PHYS_HZ;
+const PHYS_MAX_STEPS = 9;   // 탭 전환 등으로 끊겼다 돌아와도 한 번에 따라잡는 최대 단계
+let _physAcc = 0;
 
-  // 탭 부스트 감소 + 버튼 미터 업데이트
-  if (_tapBoost > 0) {
-    _tapBoost = Math.max(0, _tapBoost - 0.008);
-    if (_gasMeterEl) _gasMeterEl.style.height = (_tapBoost * 100) + '%';
-  }
+function stepPhysics() {
+  // 탭 부스트 감소 (가스 버튼을 누르고 있으면 순항 속도 아래로는 떨어지지 않음)
+  if (_tapBoost > 0) _tapBoost = Math.max(0, _tapBoost - 0.48 * PHYS_STEP_MS / 1000);  // 초당 0.48 감소
+  if (_gasHeld) _tapBoost = Math.max(_tapBoost, HOLD_CRUISE);
   _keys.gas = _tapBoost > 0.02;
-  if (_gasEl) _gasEl.classList.toggle('nitro-burst', _nitroBurst > Date.now());
 
   // 라이벌 추격 경고
   if (_gameTs > 6000 && Date.now() - _lastRivalAlert > 4000 && _player?.currentRank > 3) {
@@ -899,9 +901,32 @@ function loop(ts) {
   for (const r of _racers) { checkTraps(r); checkItems(r); }
   checkVehicleCollisions();
 
+  // 순위: 이미 결승선을 넘은 차는 도착 순서대로 앞에 두고, 달리는 차는 그 뒤로 위치순
+  _finishOrder.forEach(r => { r.currentRank = r.rank; });
   const active = [_player,..._racers].filter(r=>!r.finished);
   active.sort((a,b)=>b.pos-a.pos);
-  active.forEach((r,i)=>r.currentRank=i+1);
+  active.forEach((r,i)=>r.currentRank = _finishOrder.length + i + 1);
+}
+
+function loop(ts) {
+  _raf = requestAnimationFrame(loop);
+  const dt = Math.min(50, ts - _lastTs);
+  _lastTs = ts;
+  _gameTs += dt;
+
+  _physAcc += dt;
+  let steps = 0;
+  while (_physAcc >= PHYS_STEP_MS && steps < PHYS_MAX_STEPS) {
+    stepPhysics();
+    _physAcc -= PHYS_STEP_MS;
+    steps++;
+    if (_ended) break;
+  }
+  if (steps === PHYS_MAX_STEPS) _physAcc = 0;
+
+  // 가스 게이지·니트로 표시
+  if (_gasMeterEl) _gasMeterEl.style.height = (_tapBoost * 100) + '%';
+  if (_gasEl) _gasEl.classList.toggle('nitro-burst', _nitroBurst > Date.now());
 
   _player.isBraking = _keys.brake;
   updateEngine(_player.speed, _player.maxSpeed);
@@ -1048,6 +1073,7 @@ function startRace() {
     startEngine();
     initAISounds();
     _lastTs = performance.now();
+    _physAcc = 0;
     _raf = requestAnimationFrame(loop);
     const cv = $('raceCanvas');
     if (cv) cv.focus();
@@ -1122,8 +1148,12 @@ function initInput() {
         playBoost();
       }
     };
-    _gasEl.addEventListener('touchstart', e => { e.preventDefault(); _onGasTap(); }, {passive:false});
-    _gasEl.addEventListener('mousedown', _onGasTap);
+    // 누르고 있는 동안은 순항 속도 유지, 더 빨리 가려면 탭
+    _gasEl.addEventListener('touchstart', e => { e.preventDefault(); _gasHeld = true; _onGasTap(); }, {passive:false});
+    _gasEl.addEventListener('touchend',    e => { e.preventDefault(); _gasHeld = false; }, {passive:false});
+    _gasEl.addEventListener('touchcancel', () => { _gasHeld = false; });
+    _gasEl.addEventListener('mousedown', () => { _gasHeld = true; _onGasTap(); });
+    document.addEventListener('mouseup', () => { _gasHeld = false; });
   }
 }
 
