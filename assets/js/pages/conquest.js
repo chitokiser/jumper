@@ -28,6 +28,8 @@ const MAX_HP     = 10000;
 const WALL_HP    = 3000;
 const WALL_REPAIR_COST = 150;
 const WALL_REPAIR_AMT  = 800;
+const CASTLE_REPAIR_COST = 200;
+const CASTLE_REPAIR_AMT  = 1000;
 const WALL_NAMES = {north:'North Wall',south:'South Wall',east:'East Wall',west:'West Wall'};
 const HERO_SKILL_CD   = 30000;
 const HERO_SKILL_RANGE = 400;
@@ -471,6 +473,16 @@ function _callWaveEarly(){
   _prepTimer=0; _startWave();
 }
 
+// ── 메인 성 수리 ──────────────────────────────────────────────────────────
+function _repairCastle(){
+  if(_castleHp>=MAX_HP||_gp<CASTLE_REPAIR_COST) return;
+  _gp-=CASTLE_REPAIR_COST;
+  const add=Math.min(CASTLE_REPAIR_AMT,MAX_HP-_castleHp);
+  _castleHp+=add;
+  playSound('gold_pickup'); showBanner(`🏰 성 수리 +${Math.round(add)}`);
+  renderHUD();
+}
+
 // ── 성벽 수리 ─────────────────────────────────────────────────────────────
 function _repairWalls(){
   if(_gp<WALL_REPAIR_COST)return;
@@ -613,6 +625,8 @@ function renderHUD(){
       }
       wb.classList.toggle('hidden',_waveActive&&!boss);
     }
+    const cr=$('btnCastleRepair');
+    if(cr) cr.disabled=_castleHp>=MAX_HP||_gp<CASTLE_REPAIR_COST;
     const t=_selTower();
     const up=$('btnTowerUp'),sell=$('btnTowerSell'),rp=$('btnTowerRepair');
     if(up){
@@ -864,6 +878,7 @@ async function init(){
     _closeModal('commandModal');renderHUD();
   });
   $('btnRepair')?.addEventListener('click',()=>{_repairWalls();_closeModal('commandModal');});
+  $('btnCastleRepair')?.addEventListener('click',_repairCastle);
   $('btnTowerUp')?.addEventListener('click',_upgradeTower);
   $('btnTowerSell')?.addEventListener('click',()=>{_sellTower();_closeModal('commandModal');});
   $('btnTowerRepair')?.addEventListener('click',_repairTower);
