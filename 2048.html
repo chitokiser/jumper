@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>2048 숫자 합치기 | BestClub — GP 보상</title>
+<meta name="description" content="같은 숫자를 합쳐 2048을 만들어라! 점수를 GP로 전환하세요. BestClub 2048 number merge game."/>
+<meta name="robots" content="index, follow"/>
+<link rel="canonical" href="https://bestclubvn.netlify.app/2048.html"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#080c18;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  overflow:hidden;user-select:none;touch-action:manipulation}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:16px;
+  padding-bottom:max(16px,env(safe-area-inset-bottom));gap:12px;overflow-y:auto}
+.screen.hidden{display:none!important}
+
+/* ── 로비 ── */
+.title{font-size:clamp(26px,7vw,38px);font-weight:900;text-align:center;letter-spacing:-1px}
+.title span{color:#f59e0b}
+.stat-card{background:#111827;border:1px solid #374151;border-radius:14px;
+  padding:14px 22px;width:100%;max-width:320px}
+.stat-card h3{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.sr{display:flex;justify-content:space-between;padding:3px 0;font-size:14px}
+.sr .lbl{color:#9ca3af}.sr .val{font-weight:700;color:#fbbf24}
+.rule-box{background:#111827;border:1px solid #374151;border-radius:10px;
+  padding:12px 16px;font-size:12px;color:#9ca3af;line-height:1.8;width:100%;max-width:320px}
+.rule-box b{color:#f59e0b}
+.btn-main{padding:12px 32px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;
+  border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 20px rgba(245,158,11,.45);transition:opacity .15s;width:100%;max-width:280px;
+  touch-action:manipulation}
+.btn-main:active{opacity:.8}.btn-main:disabled{opacity:.4;cursor:not-allowed}
+.btn-free{padding:10px 28px;background:none;border:1px solid #374151;border-radius:12px;
+  color:#6b7280;font-size:13px;cursor:pointer;width:100%;max-width:280px;transition:border-color .15s}
+.btn-free:hover{border-color:#6b7280;color:#9ca3af}
+.fee-badge{background:#1e3a5f;border:1px solid #2563eb;border-radius:8px;
+  padding:4px 14px;font-size:12px;font-weight:700;color:#93c5fd}
+
+/* ── 게임 화면 ── */
+#gameScreen{background:#080c18;padding:0;justify-content:flex-start;gap:0}
+#gameHdr{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:400px;
+  padding:6px 10px;background:rgba(0,0,0,.4);border-bottom:1px solid #1f2937;flex-shrink:0}
+.ghb{background:rgba(255,255,255,.08);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px}
+#scoreBox{color:#fbbf24}#gpBox{color:#86efac}#bestBox{color:#93c5fd}
+#boardArea{flex:1;width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;position:relative}
+#board{position:relative;width:min(92vw,360px,calc(100vh - 260px));aspect-ratio:1;background:#1f2937;border-radius:14px;padding:8px;
+  display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:8px;touch-action:none;cursor:grab}
+.cell{border-radius:8px;background:#111827;display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:clamp(20px,7vw,34px);color:#374151}
+.cell.t{color:#111827}
+.cell.new{animation:pop .18s ease-out}.cell.mg{animation:bump .18s ease-out}
+@keyframes pop{from{transform:scale(.3)}to{transform:scale(1)}}
+@keyframes bump{50%{transform:scale(1.18)}}
+.v2{background:#fde68a}.v4{background:#fcd34d}.v8{background:#fb923c}.v16{background:#f97316}
+.v32{background:#f87171}.v64{background:#ef4444;color:#fff!important}.v128{background:#a3e635}
+.v256{background:#4ade80}.v512{background:#2dd4bf}.v1024{background:#38bdf8;font-size:clamp(16px,5.5vw,28px)}
+.v2048{background:#a78bfa;color:#fff!important;font-size:clamp(16px,5.5vw,28px);box-shadow:0 0 18px rgba(167,139,250,.8)}
+.vbig{background:#f472b6;color:#fff!important;font-size:clamp(13px,4.5vw,22px)}
+#hintTxt{font-size:12px;color:#6b7280;text-align:center}
+#popup{position:absolute;left:0;right:0;top:12%;text-align:center;pointer-events:none;font-size:30px;font-weight:900;
+  color:#fde047;text-shadow:0 3px 14px rgba(0,0,0,.8);opacity:0}
+#popup.show{animation:popup .9s ease-out forwards}
+@keyframes popup{0%{opacity:0;transform:scale(.5)}20%{opacity:1;transform:scale(1.15)}80%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
+.btn-end{padding:8px 18px;background:none;border:1px solid #374151;border-radius:10px;color:#9ca3af;font-size:12px;cursor:pointer}
+.credit{font-size:10px;color:#4b5563;text-align:center;margin-top:4px}
+
+/* ── 게임오버 오버레이 ── */
+#overModal{
+  display:none;position:fixed;inset:0;z-index:9000;
+  background:rgba(0,0,0,.8);align-items:center;justify-content:center;
+}
+#overModal.open{display:flex}
+.over-panel{
+  background:#0d1117;border:2px solid #f59e0b;border-radius:20px;
+  padding:28px 32px;text-align:center;min-width:260px;max-width:320px;width:90%;
+  animation:popIn .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.over-title{font-size:24px;font-weight:900;color:#ef4444;margin-bottom:8px}
+.over-score{font-size:36px;font-weight:900;color:#fbbf24;margin:10px 0}
+.over-gp{font-size:14px;color:#86efac;font-weight:700;margin-bottom:16px}
+.over-msg{font-size:12px;color:#9ca3af;margin-bottom:20px;line-height:1.6}
+.over-btns{display:flex;flex-direction:column;gap:10px}
+.btn-retry{padding:11px;background:#f59e0b;color:#000;border:none;border-radius:12px;
+  font-size:15px;font-weight:800;cursor:pointer;transition:opacity .15s}
+.btn-retry:active{opacity:.8}.btn-retry:disabled{opacity:.4;cursor:not-allowed}
+.btn-lobby{padding:9px;background:none;border:1px solid #374151;color:#9ca3af;
+  border-radius:12px;font-size:13px;cursor:pointer;transition:border-color .15s}
+.btn-lobby:hover{border-color:#6b7280}
+
+/* ── 게임 헤더 (로비 뒤로가기) ── */
+.g-hdr{display:flex;justify-content:space-between;align-items:center;
+  width:100%;max-width:320px;padding-bottom:6px}
+.g-back{color:#4b5563;font-size:12px;text-decoration:none;transition:color .15s}
+.g-back:hover{color:#9ca3af}
+
+/* ── 로딩 ── */
+#loadingScreen{gap:14px;font-size:15px;color:#9ca3af}
+.loading-spinner{width:40px;height:40px;border:3px solid #374151;
+  border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 게임 배너 칩 (다른 게임으로 이동) ── */
+.arcade-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 12px;background:rgba(0,0,0,.55);border-top:1px solid #1f2937;
+  width:100%;max-width:400px;flex-shrink:0;overflow-x:auto;scrollbar-width:none;
+}
+.arcade-bar::-webkit-scrollbar{display:none}
+.mc-mode-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;background:#1f2937;border:1px solid #374151;border-radius:20px;
+  color:#9ca3af;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;
+  transition:border-color .15s,color .15s;flex-shrink:0;
+}
+.mc-mode-chip:hover,.mc-mode-chip.is-active{border-color:#f59e0b;color:#fbbf24}
+</style>
+</head>
+<body>
+
+<div id="loadingScreen" class="screen">
+  <div class="loading-spinner"></div>
+  <div style="color:#9ca3af;font-size:13px;margin-top:8px">로딩 중...</div>
+</div>
+
+<div id="lobbyScreen" class="screen hidden">
+  <div class="g-hdr">
+    <a href="/merchants.html" class="g-back">← 게임으로</a>
+    <div id="lobbyUserChip" style="font-size:11px;color:#6b7280;background:#1f2937;border-radius:8px;padding:5px 10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+  </div>
+  <div class="title">🔢 <span>2048</span> 게임</div>
+  <div style="font-size:13px;color:#9ca3af;text-align:center">같은 숫자를 합쳐 2048 타일을 만들어라!</div>
+
+  <div class="stat-card">
+    <h3>내 현황</h3>
+    <div class="sr"><span class="lbl">보유 GP</span><span class="val" id="lobbyGP">—</span></div>
+    <div class="sr"><span class="lbl">최고점</span><span class="val" id="lobbyBest">—</span></div>
+    <div class="sr"><span class="lbl">누적 획득 GP</span><span class="val" id="lobbyEarned">—</span></div>
+  </div>
+
+  <div class="rule-box">
+    ⬆️⬇️⬅️➡️ 방향키 / 화면 <b>스와이프</b>로 모든 타일 이동<br/>
+    <b>같은 숫자가 부딪히면</b> 하나로 합쳐집니다.<br/>
+    더 움직일 수 없으면 게임 오버 (2048 이후에도 계속!)<br/>
+    점수 <b>100점 = 1 GP</b> (최대 1,000 GP/게임)
+  </div>
+
+  <span id="feeBadge" class="fee-badge">참가비: 100 GP</span>
+  <div id="feeInfo" style="font-size:11px;color:#6b7280;text-align:center"></div>
+
+  <button class="btn-main" id="btnEnter">▶ 게임 시작 (GP 차감)</button>
+  <button class="btn-free" id="btnFree">🎮 무료 연습 (GP 없음)</button>
+  <div class="credit">Based on 2048 by Gabriele Cirulli (MIT License)</div>
+</div>
+
+<div id="gameScreen" class="screen hidden">
+  <div id="gameHdr">
+    <div class="ghb" id="scoreBox">🔢 <span id="scoreVal">0</span></div>
+    <div class="ghb" id="bestBox">🏆 <span id="bestVal">0</span></div>
+    <div class="ghb" id="gpBox">💎 <span id="gpVal">0</span> GP</div>
+  </div>
+  <div id="boardArea">
+    <div id="board"></div>
+    <div id="popup"></div>
+    <div id="hintTxt">스와이프 또는 방향키로 이동</div>
+    <button class="btn-end" id="btnEnd">🏁 여기서 끝내고 보상 받기</button>
+  </div>
+  <nav class="arcade-bar">
+    <a class="mc-mode-chip" href="/merchants.html"><span>💎</span><span>GPS맵</span></a>
+    <a class="mc-mode-chip" href="/conquest.html"><span>🏰</span><span>공성전</span></a>
+    <a class="mc-mode-chip" href="/bow.html"><span>🏹</span><span>활쏘기</span></a>
+    <a class="mc-mode-chip" href="/memory.html"><span>🧠</span><span>기억력</span></a>
+    <a class="mc-mode-chip" href="/suika.html"><span>🍉</span><span>수이카</span></a>
+    <a class="mc-mode-chip is-active" href="/2048.html"><span>🔢</span><span>2048</span></a>
+  </nav>
+</div>
+
+<div id="overModal">
+  <div class="over-panel">
+    <div class="over-title">GAME OVER</div>
+    <div style="font-size:14px;color:#9ca3af">최종 점수</div>
+    <div class="over-score" id="finalScore">0</div>
+    <div class="over-gp" id="finalGP">+ 0 GP 획득!</div>
+    <div class="over-msg" id="overMsg"></div>
+    <div class="over-btns">
+      <button class="btn-retry" id="btnRetry">다시 하기</button>
+      <button class="btn-lobby" id="btnBackLobby">로비로 돌아가기</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db, auth, functions } from '/assets/js/firebase-init.js';
+import { doc, getDoc, updateDoc, increment }
+  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+
+// 2048 규칙 원작: Gabriele Cirulli (MIT License) — 본 구현은 BestClub용으로 새로 작성
+const SIZE = 4;
+const BASE_FEE = 100, FEE_STEP = 50;     // 서버(gameReward.js) 규칙과 동일
+const GAME_KEY = 'game2048Entry';
+const GAME_TYPE = 'game2048';
+const RESET_MS = 24 * 60 * 60 * 1000;
+const SCORE_PER_GP = 100;
+const MAX_GP_PER_GAME = 1000;
+
+const $ = id => document.getElementById(id);
+const screens = { loading:$('loadingScreen'), lobby:$('lobbyScreen'), game:$('gameScreen') };
+const showScreen = n => Object.entries(screens).forEach(([k, el]) => el.classList.toggle('hidden', k !== n));
+
+// ── 사운드 ───────────────────────────────────────────────────────────────────
+let _ac = null;
+function beep(freq, dur = 0.1, type = 'triangle', vol = 0.25) {
+  try {
+    _ac = _ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = _ac.createOscillator(), g = _ac.createGain();
+    o.connect(g); g.connect(_ac.destination); o.type = type;
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, _ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, _ac.currentTime + dur);
+    o.start(); o.stop(_ac.currentTime + dur);
+  } catch {}
+}
+
+// ── 상태 ─────────────────────────────────────────────────────────────────────
+let _uid = null, _playerGP = 0;
+let _entryFee = BASE_FEE, _entryCount = 0, _entryResetAt = 0;
+let _freeMode = false, _running = false, _won = false;
+let _grid = [], _score = 0, _best = 0;
+
+// ── 순수 로직 ────────────────────────────────────────────────────────────────
+const emptyGrid = () => Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+
+// 한 줄을 왼쪽으로 밀어 합침. 반환: { line, gained, merged:Set(index) }
+function slideLine(line) {
+  const vals = line.filter(v => v);
+  const out = [], merged = new Set();
+  let gained = 0;
+  for (let i = 0; i < vals.length; i++) {
+    if (vals[i] === vals[i + 1]) {
+      const v = vals[i] * 2;
+      out.push(v); merged.add(out.length - 1); gained += v; i++;
+    } else out.push(vals[i]);
+  }
+  while (out.length < SIZE) out.push(0);
+  return { line: out, gained, merged };
+}
+
+function move(grid, dir) { // dir: 0 up, 1 right, 2 down, 3 left
+  const g = emptyGrid(), mergedCells = new Set();
+  let gained = 0, moved = false;
+  for (let i = 0; i < SIZE; i++) {
+    const idx = k => (dir === 3 ? [i, k] : dir === 1 ? [i, SIZE - 1 - k] : dir === 0 ? [k, i] : [SIZE - 1 - k, i]);
+    const line = Array.from({ length: SIZE }, (_, k) => { const [r, c] = idx(k); return grid[r][c]; });
+    const res = slideLine(line);
+    gained += res.gained;
+    res.line.forEach((v, k) => {
+      const [r, c] = idx(k);
+      g[r][c] = v;
+      if (v !== grid[r][c]) moved = true;
+      if (res.merged.has(k)) mergedCells.add(r * SIZE + c);
+    });
+  }
+  return { grid: g, gained, moved, mergedCells };
+}
+
+function canMove(grid) {
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+    if (!grid[r][c]) return true;
+    if (c + 1 < SIZE && grid[r][c] === grid[r][c + 1]) return true;
+    if (r + 1 < SIZE && grid[r][c] === grid[r + 1][c]) return true;
+  }
+  return false;
+}
+
+function addRandomTile(grid) {
+  const empties = [];
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (!grid[r][c]) empties.push([r, c]);
+  if (!empties.length) return -1;
+  const [r, c] = empties[Math.floor(Math.random() * empties.length)];
+  grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+  return r * SIZE + c;
+}
+
+// ── 렌더 ─────────────────────────────────────────────────────────────────────
+const gpFor = s => Math.min(Math.floor(s / SCORE_PER_GP), MAX_GP_PER_GAME);
+
+function render(newIdx = -1, mergedCells = new Set()) {
+  const b = $('board');
+  if (b.children.length !== SIZE * SIZE) {
+    b.innerHTML = '';
+    for (let i = 0; i < SIZE * SIZE; i++) b.appendChild(document.createElement('div'));
+  }
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const v = _grid[Math.floor(i / SIZE)][i % SIZE];
+    const el = b.children[i];
+    el.className = 'cell' + (v ? ' t ' + (v > 2048 ? 'vbig' : 'v' + v) : '') + (i === newIdx ? ' new' : '') + (mergedCells.has(i) ? ' mg' : '');
+    el.textContent = v || '';
+  }
+  $('scoreVal').textContent = _score;
+  $('bestVal').textContent = _best;
+  $('gpVal').textContent = gpFor(_score);
+}
+
+function showPopup(t) {
+  const p = $('popup'); p.textContent = t;
+  p.classList.remove('show'); void p.offsetWidth; p.classList.add('show');
+}
+
+// ── 게임 진행 ────────────────────────────────────────────────────────────────
+function startGame(free) {
+  _freeMode = free; _running = true; _won = false; _score = 0;
+  _grid = emptyGrid(); addRandomTile(_grid); addRandomTile(_grid);
+  $('overModal').classList.remove('open');
+  showScreen('game');
+  render();
+}
+
+function handleMove(dir) {
+  if (!_running) return;
+  const res = move(_grid, dir);
+  if (!res.moved) return;
+  _grid = res.grid; _score += res.gained;
+  if (_score > _best) _best = _score;
+  const newIdx = addRandomTile(_grid);
+  if (res.gained) beep(300 + Math.min(Math.log2(res.gained), 11) * 60, 0.12);
+  else beep(180, 0.04, 'sine', 0.1);
+  render(newIdx, res.mergedCells);
+  const top = Math.max(..._grid.flat());
+  if (!_won && top >= 2048) { _won = true; showPopup('🎉 2048 달성!'); beep(988, 0.4); }
+  if (!canMove(_grid)) triggerGameOver();
+}
+
+async function triggerGameOver() {
+  if (!_running) return;
+  _running = false;
+  beep(200, 0.4, 'sawtooth', 0.25);
+  const gp = gpFor(_score);
+  $('finalScore').textContent = _score;
+  $('finalGP').textContent = _freeMode ? '(무료모드 — GP 미지급)' : `+ ${gp} GP 획득!`;
+  $('overMsg').textContent = _freeMode
+    ? '참가비를 내고 플레이하면 GP를 획득할 수 있습니다.'
+    : gp > 0 ? `${_score}점 → ${gp} GP가 계정에 적립됩니다.` : '100점 이상 달성시 GP를 획득할 수 있습니다!';
+  $('overModal').classList.add('open');
+  if (!_freeMode && gp > 0) await awardGP(gp);
+  if (_uid && !_freeMode) {
+    try {
+      const ref = doc(db, 'battle_players', _uid);
+      const d = (await getDoc(ref)).data() || {};
+      if (_score > (d.game2048?.bestScore || 0)) await updateDoc(ref, { 'game2048.bestScore': _score });
+    } catch {}
+  }
+}
+
+// ── 입력 ─────────────────────────────────────────────────────────────────────
+const KEYMAP = { ArrowUp:0, ArrowRight:1, ArrowDown:2, ArrowLeft:3, w:0, d:1, s:2, a:3 };
+document.addEventListener('keydown', e => {
+  const d = KEYMAP[e.key];
+  if (d === undefined || !_running) return;
+  e.preventDefault(); handleMove(d);
+});
+const swipe = (dx, dy) => {
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  handleMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0));
+};
+let _sx = 0, _sy = 0, _swiping = false;
+const boardEl = $('board');
+boardEl.addEventListener('touchstart', e => { const t = e.touches[0]; _sx = t.clientX; _sy = t.clientY; _swiping = true; }, { passive:true });
+boardEl.addEventListener('touchmove', e => e.preventDefault(), { passive:false });
+boardEl.addEventListener('touchend', e => {
+  if (!_swiping) return; _swiping = false;
+  const t = e.changedTouches[0]; swipe(t.clientX - _sx, t.clientY - _sy);
+}, { passive:true });
+boardEl.addEventListener('mousedown', e => { _sx = e.clientX; _sy = e.clientY; _swiping = true; });
+window.addEventListener('mouseup', e => {
+  if (!_swiping) return; _swiping = false; swipe(e.clientX - _sx, e.clientY - _sy);
+});
+
+// ── Firebase ─────────────────────────────────────────────────────────────────
+async function loadPlayer() {
+  const chip = $('lobbyUserChip');
+  if (!_uid) {
+    $('lobbyGP').textContent = '게스트'; $('btnEnter').disabled = true;
+    if (chip) chip.textContent = ''; updateFeeDisplay(); return;
+  }
+  try {
+    const d = (await getDoc(doc(db, 'battle_players', _uid))).data() || {};
+    _playerGP = d.gold || 0;
+    const entry = d[GAME_KEY] || {}, now = Date.now();
+    const resetAtMs = entry.resetAt?.toMillis?.() ?? (typeof entry.resetAt === 'number' ? entry.resetAt : 0);
+    if (!resetAtMs || now - resetAtMs > RESET_MS) { _entryCount = 0; _entryResetAt = 0; }
+    else { _entryCount = entry.count || 0; _entryResetAt = resetAtMs; }
+    _entryFee = BASE_FEE + _entryCount * FEE_STEP;
+    const g = d.game2048 || {};
+    _best = g.bestScore || 0;
+    $('lobbyBest').textContent = _best;
+    $('lobbyEarned').textContent = (g.totalGP || 0) + ' GP';
+  } catch {}
+  $('lobbyGP').textContent = _playerGP.toLocaleString();
+  $('btnEnter').disabled = _playerGP < _entryFee;
+  if (chip) chip.textContent = auth.currentUser?.displayName?.slice(0, 10) || '';
+  updateFeeDisplay();
+}
+function updateFeeDisplay() {
+  $('feeBadge').textContent = `참가비: ${_entryFee} GP`;
+  const info = $('feeInfo');
+  if (!_uid) { info.textContent = '로그인하면 참가비 내고 GP 획득 가능'; return; }
+  if (!_entryCount) info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
+  else {
+    const h = Math.ceil((_entryResetAt + RESET_MS - Date.now()) / 3_600_000);
+    info.textContent = `오늘 ${_entryCount}번째 참가 · ${h}시간 후 ${BASE_FEE}GP 리셋`;
+  }
+}
+async function deductFee() {
+  if (!_uid) return false;
+  try {
+    const res = await httpsCallable(functions, 'payGameEntry')({ gameKey: GAME_KEY });
+    const { fee, newCount } = res.data;
+    _playerGP -= fee; _entryCount = newCount; _entryFee = BASE_FEE + newCount * FEE_STEP;
+    return true;
+  } catch { return false; }
+}
+async function awardGP(amount) {
+  if (_freeMode || amount <= 0 || !_uid) return;
+  try {
+    await httpsCallable(functions, 'claimGameReward')({ gameType: GAME_TYPE, amount });
+    await updateDoc(doc(db, 'battle_players', _uid), { 'game2048.totalGP': increment(amount) }).catch(() => {});
+    if (amount >= 20) httpsCallable(functions, 'broadcastGpEvent')({ game: GAME_TYPE, amount }).catch(() => {});
+  } catch {}
+}
+
+// ── 버튼 ─────────────────────────────────────────────────────────────────────
+$('btnEnter').onclick = async () => {
+  beep(800, 0.06, 'sine', 0.15);
+  $('btnEnter').disabled = true;
+  const ok = await deductFee();
+  if (!ok) { alert('GP 차감 실패. GP가 부족하거나 오류가 발생했습니다.'); $('btnEnter').disabled = false; return; }
+  startGame(false);
+};
+$('btnFree').onclick = () => { beep(800, 0.06, 'sine', 0.15); startGame(true); };
+$('btnEnd').onclick = () => { if (_running && confirm('지금 끝내고 점수를 GP로 받을까요?')) triggerGameOver(); };
+$('btnRetry').onclick = async () => {
+  $('overModal').classList.remove('open');
+  if (!_freeMode) {
+    $('btnRetry').disabled = true;
+    const ok = await deductFee();
+    $('btnRetry').disabled = false;
+    if (!ok) { alert('GP 부족. 로비로 이동합니다.'); goLobby(); return; }
+    startGame(false);
+  } else startGame(true);
+};
+$('btnBackLobby').onclick = goLobby;
+function goLobby() {
+  _running = false;
+  $('overModal').classList.remove('open');
+  loadPlayer().then(() => showScreen('lobby'));
+}
+
+onAuthStateChanged(auth, async user => {
+  _uid = user?.uid || null;
+  await loadPlayer();
+  showScreen('lobby');
+});
+</script>
+</body>
+</html>

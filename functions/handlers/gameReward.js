@@ -12,6 +12,7 @@ const GAME_MAX_REWARD = {
   relay:    3000,
   dungeon:  5000,  // 300 → 5000
   conquest: 5000,  // 300 → 5000
+  game2048: 1000,  // 100점당 1GP, 최대 100000점
   suika:    3000,  // 30점당 1GP, 최대 90000점 (300 → 3000)
 };
 
@@ -22,10 +23,7 @@ const RESET_MS      = 24 * 60 * 60 * 1000;
 
 // ── 하루 최대 총 GP 획득 한도 ────────────────────────────────────────────────
 const DAILY_MAX_EARN = {
-  memory:  5000,
-  bow:     10000,
-  relay:   15000,
-  default: 10000,
+  default: 100000,   // 게임별 하루 최대 획득 GP (전 게임 공통)
 };
 
 /**
@@ -67,7 +65,7 @@ async function claimGameReward(uid, gameType, amount) {
 async function payGameEntry(uid, gameKey) {
   if (!uid || typeof gameKey !== 'string') throw new Error('파라미터 오류');
 
-  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'relayEntry', 'dungeonEntry', 'conquestEntry', 'suikaEntry'];
+  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'relayEntry', 'dungeonEntry', 'conquestEntry', 'suikaEntry', 'game2048Entry'];
   if (!allowedKeys.includes(gameKey)) throw new Error(`알 수 없는 게임 키: ${gameKey}`);
 
   const ref = db.collection('battle_players').doc(uid);
@@ -119,6 +117,7 @@ async function adminGetUserGpHistory(uid) {
   const GAME_LABELS = {
     memory: '기억력 게임', bow: '활쏘기', race: '몬스터레이스',
     relay: '이어달리기', dungeon: '던전', conquest: '몬스터수성',
+    suika: '수이카', game2048: '2048',
   };
 
   // Firestore Timestamp → ms 안전 변환
@@ -157,7 +156,7 @@ async function adminGetUserGpHistory(uid) {
   for (const [key, val] of Object.entries(bp)) {
     try {
       // gameEarn_{type}_{YYYY-MM-DD}
-      const earnMatch = key.match(/^gameEarn_([a-z]+)_(\d{4}-\d{2}-\d{2})$/);
+      const earnMatch = key.match(/^gameEarn_([a-z0-9]+)_(\d{4}-\d{2}-\d{2})$/);
       if (earnMatch) {
         const gp = Number(val);
         if (Number.isFinite(gp) && gp > 0) {
