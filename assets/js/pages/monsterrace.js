@@ -29,9 +29,12 @@ const ROAD_W     = 0.88;   // 도로 경계 (±이상은 잔디/오프로드)
 const AI_THINK   = 2800;    // AI 반응 느리게 (was 1100)
 const MAX_KMH    = 280;     // 최대속도 km/h 표시
 const RACE_KM    = 3.0;     // 총 레이스 거리 km
-const JUMP_STEPS  = 78;     // 공중에 떠 있는 물리 단계 수 (90Hz 기준 약 0.87초)
-const JUMP_CD_MS  = 1500;   // 점프 재사용 대기시간
-const JUMP_MIN_SPEED = 0.7;  // 점프 순간 보장되는 최소 속도 (기준 최고속 MAX_SPEED 대비 — 느린 차도 끊긴 도로를 넘을 수 있게)
+const JUMP_STEPS  = 90;     // 공중에 떠 있는 물리 단계 수 (90Hz 기준 약 1초)
+const JUMP_CD_MS  = 1000;   // 점프 재사용 대기시간
+const JUMP_MIN_SPEED = 0.75;  // 점프 순간 보장되는 최소 속도 (기준 최고속 MAX_SPEED 대비 — 느린 차도 끊긴 도로를 넘을 수 있게)
+const JUMP_BUFFER_SEGS = WARN_SEGS;  // 경고 줄무늬가 보이는 구간 안에서 점프를 누르면 알맞은 위치에서 자동 도약
+const JUMP_TAKEOFF_SEGS = 2.5; // 예약된 점프가 실행되는 끊긴 도로까지의 거리
+const LAND_TOLERANCE = 0.25;   // 착지 허용 폭 (도로 경계 ROAD_W 바깥으로 이만큼까지 인정)
 const AI_GAP_FAIL = 0.08;   // AI 가 끊긴 도로에서 점프를 놓칠 확률
 const GEARS        = [0.22, 0.42, 0.62, 0.80, 1.0];
 const GEAR_ACCEL_M = [2.0,  1.55, 1.25, 1.0,  0.82];
@@ -571,6 +574,28 @@ function doJump(r) {
   return true;
 }
 
+// 가장 가까운 앞쪽 끊긴 도로까지 거리 (없으면 Infinity)
+function nextGapDist(r) {
+  const pp = r.pos % SEGS;
+  let best = Infinity;
+  for (const g of GAPS) {
+    if (r.lap < g.minLap) continue;
+    const d = g.start - pp;
+    if (d > 0 && d < best) best = d;
+  }
+  return best;
+}
+
+let _jumpBuf = false;   // 끊긴 도로 앞에서 미리 눌러 둔 점프
+// 플레이어 점프 입력: 끊긴 도로가 가까우면 너무 일찍 눌러도 알맞은 위치에서 자동 도약
+function requestJump() {
+  const p = _player;
+  if (!p || p.air > 0 || p.finished) return;
+  const d = nextGapDist(p);
+  if (d > JUMP_TAKEOFF_SEGS && d <= JUMP_BUFFER_SEGS) { _jumpBuf = true; return; }
+  doJump(p);
+}
+
 function advancePos(r) {
   r.pos += r.speed;
   if (r.pos >= SEGS * (r.lap+1)) {
@@ -607,7 +632,7 @@ function stepAir(r, isPlayer) {
   if (r.air > 0) return;
   // 착지: 끊긴 구간 안이거나 도로 밖이면 추락
   const gap = gapAt(segIndex(r), r.lap);
-  if (gap || Math.abs(r.lane) > ROAD_W + 0.1) { fallIntoVoid(r, gap); return; }
+  if (gap || Math.abs(r.lane) > ROAD_W + LAND_TOLERANCE) { fallIntoVoid(r, gap); return; }
   if (isPlayer) { triggerShake(4); playLand(); addSparks(r.pos, r.lane, 0.5); }
 }
 
@@ -964,6 +989,11 @@ function stepPhysics() {
     if (threat) { _lastRivalAlert = Date.now(); addLog(`⚠️ ${threat.name.toUpperCase()} is right behind you!`); }
   }
 
+  if (_jumpBuf) {
+    const d = nextGapDist(_player);
+    if (_player.air > 0 || !isFinite(d) || d > JUMP_BUFFER_SEGS + 1) _jumpBuf = false;
+    else if (d <= JUMP_TAKEOFF_SEGS) { _jumpBuf = false; doJump(_player); }
+  }
   updateRacer(_player, true);
   for (const r of _racers) { updateRacer(r, false); aiThink(r); aiJumpCheck(r); }
   checkTraps(_player);
@@ -1193,7 +1223,7 @@ function initInput() {
       case 'ArrowRight':case 'd': case 'D': e.preventDefault(); _keys.right=true; break;
       case 'ArrowUp':   case 'w': case 'W': case ' ': e.preventDefault(); _tapBoost = Math.min(1.0, _tapBoost + 0.18); _keys.gas=true; break;
       case 'ArrowDown': case 's': case 'S': e.preventDefault(); _keys.brake=true; break;
-      case 'j': case 'J': case 'Shift': e.preventDefault(); if (_player) doJump(_player); break;
+      case 'j': case 'J': case 'Shift': e.preventDefault(); requestJump(); break;
     }
   });
   document.addEventListener('keyup',e=>{
@@ -1218,7 +1248,7 @@ function initInput() {
   // 점프 버튼
   const jb = $('btnJump');
   if (jb) {
-    const onJump = e => { if (e.cancelable) e.preventDefault(); if (_player) doJump(_player); };
+    const onJump = e => { if (e.cancelable) e.preventDefault(); requestJump(); };
     jb.addEventListener('touchstart', onJump, {passive:false});
     jb.addEventListener('mousedown', onJump);
   }
