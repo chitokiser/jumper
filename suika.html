@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>수이카 과일 합치기 | BestClub — GP 보상</title>
+<meta name="description" content="과일을 합쳐 수박을 만들어라! 점수를 GP로 전환하세요. BestClub Suika Fruit Merge game."/>
+<meta name="robots" content="index, follow"/>
+<link rel="canonical" href="https://bestclubvn.netlify.app/suika.html"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#080c18;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  overflow:hidden;user-select:none;touch-action:manipulation}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:16px;
+  padding-bottom:max(16px,env(safe-area-inset-bottom));gap:12px;overflow-y:auto}
+.screen.hidden{display:none!important}
+
+/* ── 로비 ── */
+.title{font-size:clamp(26px,7vw,38px);font-weight:900;text-align:center;letter-spacing:-1px}
+.title span{color:#f59e0b}
+.stat-card{background:#111827;border:1px solid #374151;border-radius:14px;
+  padding:14px 22px;width:100%;max-width:320px}
+.stat-card h3{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.sr{display:flex;justify-content:space-between;padding:3px 0;font-size:14px}
+.sr .lbl{color:#9ca3af}.sr .val{font-weight:700;color:#fbbf24}
+.rule-box{background:#111827;border:1px solid #374151;border-radius:10px;
+  padding:12px 16px;font-size:12px;color:#9ca3af;line-height:1.8;width:100%;max-width:320px}
+.rule-box b{color:#f59e0b}
+.btn-main{padding:12px 32px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;
+  border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 20px rgba(245,158,11,.45);transition:opacity .15s;width:100%;max-width:280px;
+  touch-action:manipulation}
+.btn-main:active{opacity:.8}.btn-main:disabled{opacity:.4;cursor:not-allowed}
+.btn-free{padding:10px 28px;background:none;border:1px solid #374151;border-radius:12px;
+  color:#6b7280;font-size:13px;cursor:pointer;width:100%;max-width:280px;transition:border-color .15s}
+.btn-free:hover{border-color:#6b7280;color:#9ca3af}
+.fee-badge{background:#1e3a5f;border:1px solid #2563eb;border-radius:8px;
+  padding:4px 14px;font-size:12px;font-weight:700;color:#93c5fd}
+
+/* ── 게임 화면 ── */
+#gameScreen{background:#080c18;padding:0;justify-content:flex-start;gap:0}
+
+#gameHdr{
+  display:flex;justify-content:space-between;align-items:center;
+  width:100%;max-width:400px;padding:6px 10px;
+  background:rgba(0,0,0,.4);border-bottom:1px solid #1f2937;flex-shrink:0;
+}
+.ghb{background:rgba(255,255,255,.08);border-radius:8px;
+  padding:5px 10px;font-size:12px;font-weight:700;
+  display:flex;align-items:center;gap:4px}
+#scoreBox{color:#fbbf24}
+#gpBox{color:#86efac}
+
+/* ── 캔버스 래퍼 ── */
+#canvasWrap{
+  position:relative;width:100%;max-width:400px;flex:1;overflow:hidden;
+  display:flex;align-items:flex-start;justify-content:center;
+}
+#suikaCanvas{display:block;touch-action:none;cursor:crosshair;}
+
+/* 다음 과일 미리보기 */
+#nextFruit{
+  position:absolute;top:6px;right:10px;
+  background:rgba(0,0,0,.6);border:1px solid #374151;border-radius:10px;
+  padding:6px 10px;text-align:center;font-size:10px;color:#9ca3af;
+}
+#nextFruitEmoji{font-size:22px;line-height:1.2;display:block}
+
+/* 게임오버 라인 표시 */
+#dangerLine{
+  position:absolute;top:60px;left:0;right:0;height:1px;
+  background:rgba(239,68,68,.5);pointer-events:none;
+}
+#dangerLine::after{
+  content:'위험선';position:absolute;right:8px;top:-10px;
+  font-size:9px;color:#ef4444;
+}
+
+/* ── 게임오버 오버레이 ── */
+#overModal{
+  display:none;position:fixed;inset:0;z-index:9000;
+  background:rgba(0,0,0,.8);align-items:center;justify-content:center;
+}
+#overModal.open{display:flex}
+.over-panel{
+  background:#0d1117;border:2px solid #f59e0b;border-radius:20px;
+  padding:28px 32px;text-align:center;min-width:260px;max-width:320px;width:90%;
+  animation:popIn .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.over-title{font-size:24px;font-weight:900;color:#ef4444;margin-bottom:8px}
+.over-score{font-size:36px;font-weight:900;color:#fbbf24;margin:10px 0}
+.over-gp{font-size:14px;color:#86efac;font-weight:700;margin-bottom:16px}
+.over-msg{font-size:12px;color:#9ca3af;margin-bottom:20px;line-height:1.6}
+.over-btns{display:flex;flex-direction:column;gap:10px}
+.btn-retry{padding:11px;background:#f59e0b;color:#000;border:none;border-radius:12px;
+  font-size:15px;font-weight:800;cursor:pointer;transition:opacity .15s}
+.btn-retry:active{opacity:.8}.btn-retry:disabled{opacity:.4;cursor:not-allowed}
+.btn-lobby{padding:9px;background:none;border:1px solid #374151;color:#9ca3af;
+  border-radius:12px;font-size:13px;cursor:pointer;transition:border-color .15s}
+.btn-lobby:hover{border-color:#6b7280}
+
+/* ── 게임 헤더 (로비 뒤로가기) ── */
+.g-hdr{display:flex;justify-content:space-between;align-items:center;
+  width:100%;max-width:320px;padding-bottom:6px}
+.g-back{color:#4b5563;font-size:12px;text-decoration:none;transition:color .15s}
+.g-back:hover{color:#9ca3af}
+
+/* ── 로딩 ── */
+#loadingScreen{gap:14px;font-size:15px;color:#9ca3af}
+.loading-spinner{width:40px;height:40px;border:3px solid #374151;
+  border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 게임 배너 칩 (다른 게임으로 이동) ── */
+.arcade-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 12px;background:rgba(0,0,0,.55);border-top:1px solid #1f2937;
+  width:100%;max-width:400px;flex-shrink:0;overflow-x:auto;scrollbar-width:none;
+}
+.arcade-bar::-webkit-scrollbar{display:none}
+.mc-mode-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;background:#1f2937;border:1px solid #374151;border-radius:20px;
+  color:#9ca3af;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;
+  transition:border-color .15s,color .15s;flex-shrink:0;
+}
+.mc-mode-chip:hover,.mc-mode-chip.is-active{border-color:#f59e0b;color:#fbbf24}
+</style>
+</head>
+<body>
+
+<!-- 로딩 화면 -->
+<div id="loadingScreen" class="screen">
+  <div class="loading-spinner"></div>
+  <div style="color:#9ca3af;font-size:13px;margin-top:8px">로딩 중...</div>
+</div>
+
+<!-- 로비 -->
+<div id="lobbyScreen" class="screen hidden">
+  <div class="g-hdr">
+    <a href="/merchants.html" class="g-back">← 게임으로</a>
+    <div id="lobbyUserChip" style="font-size:11px;color:#6b7280;background:#1f2937;border-radius:8px;padding:5px 10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+  </div>
+  <div class="title">🍉 <span>수이카</span> 게임</div>
+  <div style="font-size:13px;color:#9ca3af;text-align:center">과일을 합쳐 수박을 만들어라!</div>
+
+  <div class="stat-card">
+    <h3>내 현황</h3>
+    <div class="sr"><span class="lbl">보유 GP</span><span class="val" id="lobbyGP">—</span></div>
+    <div class="sr"><span class="lbl">오늘 최고점</span><span class="val" id="lobbyBest">—</span></div>
+    <div class="sr"><span class="lbl">획득 GP</span><span class="val" id="lobbyEarned">—</span></div>
+  </div>
+
+  <div class="rule-box">
+    🍒→🍓→🍇→🍊→🍋→🍎→🍐→🍑→🍍→🍈→🍉<br/>
+    <b>같은 과일을 합치면</b> 다음 단계 과일로 진화!<br/>
+    과일이 <b>위험선을 초과</b>하면 게임 오버.<br/>
+    점수 <b>100점 = 1 GP</b> (최대 100 GP/게임)
+  </div>
+
+  <span id="feeBadge" class="fee-badge">참가비: 100 GP</span>
+  <div id="feeInfo" style="font-size:11px;color:#6b7280;text-align:center"></div>
+
+  <button class="btn-main" id="btnEnter">▶ 게임 시작 (GP 차감)</button>
+  <button class="btn-free" id="btnFree">🎮 무료 연습 (GP 없음)</button>
+</div>
+
+<!-- 게임 화면 -->
+<div id="gameScreen" class="screen hidden">
+  <div id="gameHdr">
+    <div class="ghb" id="scoreBox">🍉 <span id="scoreVal">0</span></div>
+    <div class="ghb" id="gpBox">💎 <span id="gpVal">0</span> GP</div>
+  </div>
+  <div id="canvasWrap">
+    <canvas id="suikaCanvas"></canvas>
+    <div id="dangerLine"></div>
+    <div id="nextFruit">
+      <span id="nextFruitEmoji">🍒</span>
+      <div>다음</div>
+    </div>
+  </div>
+  <!-- 게임 내 다른 게임 이동 바 -->
+  <nav class="arcade-bar">
+    <a class="mc-mode-chip" href="/merchants.html"><span>💎</span><span>GPS맵</span></a>
+    <a class="mc-mode-chip" href="/conquest.html"><span>🏰</span><span>공성전</span></a>
+    <a class="mc-mode-chip" href="/bow.html"><span>🏹</span><span>활쏘기</span></a>
+    <a class="mc-mode-chip" href="/memory.html"><span>🧠</span><span>기억력</span></a>
+    <a class="mc-mode-chip is-active" href="/suika.html"><span>🍉</span><span>수이카</span></a>
+  </nav>
+</div>
+
+<!-- 게임오버 모달 -->
+<div id="overModal">
+  <div class="over-panel">
+    <div class="over-title">GAME OVER</div>
+    <div style="font-size:14px;color:#9ca3af">최종 점수</div>
+    <div class="over-score" id="finalScore">0</div>
+    <div class="over-gp" id="finalGP">+ 0 GP 획득!</div>
+    <div class="over-msg" id="overMsg"></div>
+    <div class="over-btns">
+      <button class="btn-retry" id="btnRetry">다시 하기</button>
+      <button class="btn-lobby" id="btnBackLobby">로비로 돌아가기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Matter.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<!-- Firebase -->
+<script type="module">
+import { db, auth, functions } from '/assets/js/firebase-init.js';
+import { doc, getDoc, updateDoc, setDoc, serverTimestamp, increment }
+  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+
+// ── 과일 데이터 ──────────────────────────────────────────────────────────────
+const FRUITS = [
+  { emoji:'🍒', r:15,  score:1,   color:'#e11d48' },
+  { emoji:'🍓', r:22,  score:3,   color:'#f43f5e' },
+  { emoji:'🍇', r:28,  score:6,   color:'#7c3aed' },
+  { emoji:'🍊', r:33,  score:10,  color:'#f97316' },
+  { emoji:'🍋', r:38,  score:15,  color:'#eab308' },
+  { emoji:'🍎', r:44,  score:21,  color:'#ef4444' },
+  { emoji:'🍐', r:50,  score:28,  color:'#84cc16' },
+  { emoji:'🍑', r:56,  score:36,  color:'#fb923c' },
+  { emoji:'🍍', r:63,  score:45,  color:'#ca8a04' },
+  { emoji:'🍈', r:70,  score:55,  color:'#22c55e' },
+  { emoji:'🍉', r:80,  score:100, color:'#16a34a' },
+];
+const MAX_LEVEL = FRUITS.length - 1;
+const BASE_FEE = 50, FEE_STEP = 25;
+const GAME_KEY = 'suikaEntry';
+const RESET_MS = 24 * 60 * 60 * 1000;
+const GP_PER_SCORE = 30; // 30점당 1 GP
+const MAX_GP_PER_GAME = 300;
+
+// ── 사운드 (Web Audio API) ────────────────────────────────────────────────────
+let _ac = null;
+function _getAC() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  return _ac;
+}
+function sndDrop() {
+  try {
+    const ac = _getAC();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(500, ac.currentTime);
+    o.frequency.exponentialRampToValueAtTime(180, ac.currentTime + 0.12);
+    g.gain.setValueAtTime(0.25, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.12);
+    o.start(); o.stop(ac.currentTime + 0.12);
+  } catch {}
+}
+function sndMerge(level) {
+  try {
+    const ac = _getAC();
+    const freqs = [440,523,587,659,784,880,988,1047,1175,1319,1568];
+    const freq = freqs[level] || 440;
+    [freq, freq * 1.25].forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.type = 'triangle';
+      const t = ac.currentTime + i * 0.06;
+      o.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(0.35, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.start(t); o.stop(t + 0.28);
+    });
+  } catch {}
+}
+function sndGameOver() {
+  try {
+    const ac = _getAC();
+    [300, 220, 160].forEach((freq, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.type = 'sawtooth';
+      const t = ac.currentTime + i * 0.22;
+      o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.28, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      o.start(t); o.stop(t + 0.18);
+    });
+  } catch {}
+}
+function sndClick() {
+  try {
+    const ac = _getAC();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type = 'sine'; o.frequency.value = 800;
+    g.gain.setValueAtTime(0.15, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.06);
+    o.start(); o.stop(ac.currentTime + 0.06);
+  } catch {}
+}
+
+// ── 상태 ─────────────────────────────────────────────────────────────────────
+let _uid = null, _playerGP = 0;
+let _entryFee = BASE_FEE, _entryCount = 0, _entryResetAt = 0;
+let _freeMode = false;
+let _score = 0, _gpEarned = 0;
+let _gameRunning = false;
+let _dropCooldown = false;
+let _nextLevel = 0;
+let _dangerTimer = null;
+let _overTriggered = false;
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const screens = { loading:$('loadingScreen'), lobby:$('lobbyScreen'), game:$('gameScreen') };
+function showScreen(name) {
+  Object.entries(screens).forEach(([k,el]) => el.classList.toggle('hidden', k !== name));
+}
+
+// ── Firebase 플레이어 로드 ────────────────────────────────────────────────────
+async function loadPlayer() {
+  const chip = $('lobbyUserChip');
+  if (!_uid) {
+    $('lobbyGP').textContent = '게스트';
+    $('btnEnter').disabled = true;
+    if (chip) chip.textContent = '';
+    updateFeeDisplay();
+    return;
+  }
+  try {
+    const d = (await getDoc(doc(db, 'battle_players', _uid))).data() || {};
+    _playerGP = d.gold || 0;
+    const entry = d[GAME_KEY] || {}, now = Date.now();
+    const resetAtMs = entry.resetAt?.toMillis?.() ?? (typeof entry.resetAt==='number' ? entry.resetAt : 0);
+    if (!resetAtMs || now - resetAtMs > RESET_MS) {
+      _entryCount = 0; _entryResetAt = 0;
+    } else {
+      _entryCount = entry.count || 0; _entryResetAt = resetAtMs;
+    }
+    _entryFee = BASE_FEE + _entryCount * FEE_STEP;
+    // 오늘 최고점 / 획득 GP
+    const suika = d.suika || {};
+    $('lobbyBest').textContent = suika.bestScore || 0;
+    $('lobbyEarned').textContent = (suika.totalGP || 0) + ' GP';
+  } catch {}
+  $('lobbyGP').textContent = _playerGP.toLocaleString();
+  $('btnEnter').disabled = _playerGP < _entryFee;
+  if (chip) chip.textContent = auth.currentUser?.displayName?.slice(0,10) || '';
+  updateFeeDisplay();
+}
+
+function updateFeeDisplay() {
+  const badge = $('feeBadge');
+  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
+  const info = $('feeInfo');
+  if (!info) return;
+  if (!_uid) { info.textContent = '로그인하면 참가비 내고 GP 획득 가능'; return; }
+  if (!_entryCount) { info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋'; }
+  else {
+    const h = Math.ceil((_entryResetAt + RESET_MS - Date.now()) / 3_600_000);
+    info.textContent = `오늘 ${_entryCount}번째 참가 · ${h}시간 후 100GP 리셋`;
+  }
+}
+
+async function deductFee() {
+  if (!_uid) return false;
+  try {
+    const res = await httpsCallable(functions, 'payGameEntry')({ gameKey: GAME_KEY });
+    const { fee, newCount } = res.data;
+    _playerGP -= fee;
+    _entryCount = newCount;
+    _entryFee = BASE_FEE + newCount * FEE_STEP;
+    return true;
+  } catch { return false; }
+}
+
+async function awardGP(amount) {
+  if (_freeMode || amount <= 0 || !_uid) return;
+  try {
+    await httpsCallable(functions, 'claimGameReward')({ gameType: 'suika', amount });
+    // 플레이어 suika 통계 업데이트
+    const ref = doc(db, 'battle_players', _uid);
+    await updateDoc(ref, {
+      'suika.totalGP': increment(amount),
+      [`suika.bestScore`]: _score, // 기존 값 비교는 Cloud Function에서
+    }).catch(() => {});
+    if (amount >= 20) httpsCallable(functions, 'broadcastGpEvent')({ game: 'suika', amount }).catch(() => {});
+  } catch {}
+}
+
+// ── Matter.js 물리 엔진 ───────────────────────────────────────────────────────
+const { Engine, Render, Runner, Bodies, Body, Events, Composite, World } = Matter;
+let engine, render, runner, world;
+
+const WALL_T = 40;
+const DANGER_Y = 60; // px from canvas top (dangerLine position)
+
+function initPhysics(canvas, W, H) {
+  engine = Engine.create({ gravity: { x:0, y:1.8 } });
+  world = engine.world;
+
+  // 렌더러 (Matter.js Render — 커스텀 이모지 렌더로 오버라이드)
+  render = Render.create({
+    canvas,
+    engine,
+    options: {
+      width: W, height: H,
+      wireframes: false,
+      background: '#080c18',
+    }
+  });
+
+  // 벽 (바닥, 좌, 우)
+  const ground = Bodies.rectangle(W/2, H + WALL_T/2, W, WALL_T, { isStatic:true, label:'wall', render:{fillStyle:'#1f2937'} });
+  const wallL  = Bodies.rectangle(-WALL_T/2, H/2, WALL_T, H*2, { isStatic:true, label:'wall', render:{fillStyle:'#1f2937'} });
+  const wallR  = Bodies.rectangle(W + WALL_T/2, H/2, WALL_T, H*2, { isStatic:true, label:'wall', render:{fillStyle:'#1f2937'} });
+  World.add(world, [ground, wallL, wallR]);
+
+  runner = Runner.create();
+  Runner.run(runner, engine);
+  Render.run(render);
+
+  // 커스텀 이모지 렌더 (Matter.js afterRender 이벤트)
+  Events.on(render, 'afterRender', () => {
+    const ctx = render.context;
+    Composite.allBodies(world).forEach(body => {
+      if (!body.label || body.label === 'wall') return;
+      const level = body.fruitLevel;
+      if (level === undefined) return;
+      const f = FRUITS[level];
+      ctx.save();
+      ctx.translate(body.position.x, body.position.y);
+      ctx.rotate(body.angle);
+      ctx.font = `${f.r * 1.4}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(f.emoji, 0, 0);
+      ctx.restore();
+    });
+  });
+
+  // 충돌 이벤트 (합성 처리)
+  Events.on(engine, 'collisionStart', handleCollision);
+}
+
+const mergePendingBodies = new Set(); // 이미 merge 처리 중인 body ID
+function handleCollision(event) {
+  if (!_gameRunning) return;
+  event.pairs.forEach(pair => {
+    const { bodyA, bodyB } = pair;
+    if (bodyA.label === 'wall' || bodyB.label === 'wall') return;
+    if (bodyA.fruitLevel === undefined || bodyB.fruitLevel === undefined) return;
+    if (bodyA.fruitLevel !== bodyB.fruitLevel) return;
+    if (bodyA.fruitLevel >= MAX_LEVEL) return;
+    // 둘 중 하나라도 이미 merge 예정이면 스킵 (같은 body가 여러 쌍에 중복 처리되는 버그 방지)
+    if (mergePendingBodies.has(bodyA.id) || mergePendingBodies.has(bodyB.id)) return;
+    mergePendingBodies.add(bodyA.id);
+    mergePendingBodies.add(bodyB.id);
+
+    const lv = bodyA.fruitLevel;
+    const mx = (bodyA.position.x + bodyB.position.x) / 2;
+    const my = (bodyA.position.y + bodyB.position.y) / 2;
+
+    setTimeout(() => {
+      if (!_gameRunning) return;
+      World.remove(world, bodyA);
+      World.remove(world, bodyB);
+      mergePendingBodies.delete(bodyA.id);
+      mergePendingBodies.delete(bodyB.id);
+      const newLv = lv + 1;
+      spawnFruitAt(mx, my, newLv);
+      sndMerge(newLv);
+      addScore(FRUITS[newLv].score);
+    }, 50);
+  });
+}
+
+function spawnFruitAt(x, y, level) {
+  const f = FRUITS[level];
+  const body = Bodies.circle(x, y, f.r, {
+    restitution: 0.3,
+    friction: 0.5,
+    label: 'fruit',
+    fruitLevel: level,
+    render: { fillStyle: f.color + '88' },
+  });
+  body.fruitLevel = level;
+  World.add(world, body);
+  return body;
+}
+
+// ── 게임 로직 ─────────────────────────────────────────────────────────────────
+function pickRandomLevel() {
+  // 초반엔 작은 과일 위주 (0~4)
+  const max = Math.min(4, Math.floor(_score / 200) + 2);
+  return Math.floor(Math.random() * (max + 1));
+}
+
+let _dropX = 0;
+
+function setupCanvas(freeMode) {
+  const wrap = $('canvasWrap');
+  const canvas = $('suikaCanvas');
+  const W = Math.min(wrap.clientWidth, 400);
+  const H = wrap.clientHeight || (window.innerHeight - 120);
+  canvas.width = W;
+  canvas.height = H;
+  // 위험선 위치
+  $('dangerLine').style.top = DANGER_Y + 'px';
+  _dropX = W / 2;
+  return { W, H };
+}
+
+function startGame(free) {
+  _freeMode = free;
+  _score = 0; _gpEarned = 0;
+  _gameRunning = true;
+  _overTriggered = false;
+  mergePendingBodies.clear();
+  $('scoreVal').textContent = 0;
+  $('gpVal').textContent = 0;
+  $('overModal').classList.remove('open');
+
+  showScreen('game');
+  requestAnimationFrame(() => {
+    const { W, H } = setupCanvas(free);
+    // 기존 엔진 정리
+    if (engine) {
+      Runner.stop(runner);
+      Render.stop(render);
+      World.clear(world);
+      Engine.clear(engine);
+    }
+    initPhysics($('suikaCanvas'), W, H);
+    _nextLevel = pickRandomLevel();
+    updateNextPreview();
+    setupDropControl(W, H);
+    startDangerCheck();
+  });
+}
+
+function addScore(pts) {
+  _score += pts;
+  $('scoreVal').textContent = _score;
+  const gp = Math.min(Math.floor(_score / GP_PER_SCORE), MAX_GP_PER_GAME);
+  _gpEarned = gp;
+  $('gpVal').textContent = gp;
+}
+
+function updateNextPreview() {
+  $('nextFruitEmoji').textContent = FRUITS[_nextLevel].emoji;
+}
+
+// ── 낙하 제어 (마우스/터치) ───────────────────────────────────────────────────
+function setupDropControl(W) {
+  const canvas = $('suikaCanvas');
+
+  function getX(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.changedTouches?.[0] || e.touches?.[0];
+    const cx = touch ? touch.clientX : e.clientX;
+    return Math.max(30, Math.min(cx - rect.left, W - 30));
+  }
+
+  function onMove(e) {
+    e.preventDefault();
+    _dropX = getX(e);
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    if (_dropCooldown || !_gameRunning) return;
+    _dropX = getX(e);
+    dropFruit();
+  }
+
+  canvas.addEventListener('mousemove', onMove, { passive:false });
+  canvas.addEventListener('click', onDrop, { passive:false });
+  canvas.addEventListener('touchmove', onMove, { passive:false });
+  canvas.addEventListener('touchend', onDrop, { passive:false });
+}
+
+function dropFruit() {
+  _dropCooldown = true;
+  sndDrop();
+  const lv = _nextLevel;
+  spawnFruitAt(_dropX, DANGER_Y + 5, lv);
+  _nextLevel = pickRandomLevel();
+  updateNextPreview();
+  setTimeout(() => { _dropCooldown = false; }, 500);
+}
+
+// ── 위험 체크 (과일이 위험선 초과) ───────────────────────────────────────────
+function startDangerCheck() {
+  if (_dangerTimer) clearInterval(_dangerTimer);
+  _dangerTimer = setInterval(() => {
+    if (!_gameRunning) { clearInterval(_dangerTimer); return; }
+    const bodies = Composite.allBodies(world);
+    const danger = bodies.some(b => b.fruitLevel !== undefined && b.position.y < DANGER_Y && b.speed < 0.5);
+    if (danger) {
+      if (!_overTriggered) {
+        _overTriggered = true;
+        setTimeout(() => {
+          // 2초 뒤에도 여전히 위험이면 게임오버
+          const still = Composite.allBodies(world).some(b => b.fruitLevel !== undefined && b.position.y < DANGER_Y && b.speed < 0.5);
+          if (still) triggerGameOver();
+          else _overTriggered = false;
+        }, 2000);
+      }
+    } else {
+      _overTriggered = false;
+    }
+  }, 500);
+}
+
+async function triggerGameOver() {
+  if (!_gameRunning) return;
+  _gameRunning = false;
+  clearInterval(_dangerTimer);
+  Runner.stop(runner);
+  sndGameOver();
+
+  const gp = Math.min(Math.floor(_score / GP_PER_SCORE), MAX_GP_PER_GAME);
+  _gpEarned = gp;
+
+  $('finalScore').textContent = _score;
+  $('finalGP').textContent = _freeMode ? '(무료모드 — GP 미지급)' : `+ ${gp} GP 획득!`;
+  $('overMsg').textContent = _freeMode
+    ? '참가비를 내고 플레이하면 GP를 획득할 수 있습니다.'
+    : gp > 0 ? `${_score}점 → ${gp} GP가 계정에 적립됩니다.` : '100점 이상 달성시 GP를 획득할 수 있습니다!';
+
+  $('overModal').classList.add('open');
+
+  if (!_freeMode && gp > 0) await awardGP(gp);
+  // 베스트 점수 업데이트
+  if (_uid && !_freeMode) {
+    try {
+      const ref = doc(db, 'battle_players', _uid);
+      const d = (await getDoc(ref)).data() || {};
+      if (_score > (d.suika?.bestScore || 0)) {
+        await updateDoc(ref, { 'suika.bestScore': _score });
+      }
+    } catch {}
+  }
+}
+
+// ── 버튼 이벤트 ──────────────────────────────────────────────────────────────
+$('btnEnter').onclick = async () => {
+  sndClick();
+  $('btnEnter').disabled = true;
+  const ok = await deductFee();
+  if (!ok) { alert('GP 차감 실패. GP가 부족하거나 오류가 발생했습니다.'); $('btnEnter').disabled = false; return; }
+  startGame(false);
+};
+
+$('btnFree').onclick = () => { sndClick(); startGame(true); };
+
+$('btnRetry').onclick = async () => {
+  $('overModal').classList.remove('open');
+  if (!_freeMode) {
+    $('btnRetry').disabled = true;
+    const ok = await deductFee();
+    $('btnRetry').disabled = false;
+    if (!ok) { alert('GP 부족. 로비로 이동합니다.'); goLobby(); return; }
+    startGame(false);
+  } else {
+    startGame(true);
+  }
+};
+
+$('btnBackLobby').onclick = goLobby;
+
+function goLobby() {
+  _gameRunning = false;
+  if (_dangerTimer) clearInterval(_dangerTimer);
+  if (runner) Runner.stop(runner);
+  if (render) Render.stop(render);
+  $('overModal').classList.remove('open');
+  loadPlayer().then(() => showScreen('lobby'));
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+onAuthStateChanged(auth, async user => {
+  _uid = user?.uid || null;
+  await loadPlayer();
+  showScreen('lobby');
+});
+</script>
+</body>
+</html>
