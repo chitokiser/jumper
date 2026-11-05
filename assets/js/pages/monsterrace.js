@@ -7,7 +7,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
   buildTrack, initRenderer, loadAllSprites, renderScene,
-  triggerShake, SEGS, TOTAL_LAPS,
+  triggerShake, SEGS, TOTAL_LAPS, GAPS, gapAt, WARN_SEGS,
 } from './monsterrace.render.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
@@ -29,6 +29,10 @@ const ROAD_W     = 0.88;   // 도로 경계 (±이상은 잔디/오프로드)
 const AI_THINK   = 2800;    // AI 반응 느리게 (was 1100)
 const MAX_KMH    = 280;     // 최대속도 km/h 표시
 const RACE_KM    = 3.0;     // 총 레이스 거리 km
+const JUMP_STEPS  = 78;     // 공중에 떠 있는 물리 단계 수 (90Hz 기준 약 0.87초)
+const JUMP_CD_MS  = 1500;   // 점프 재사용 대기시간
+const JUMP_MIN_SPEED = 0.7;  // 점프 순간 보장되는 최소 속도 (기준 최고속 MAX_SPEED 대비 — 느린 차도 끊긴 도로를 넘을 수 있게)
+const AI_GAP_FAIL = 0.08;   // AI 가 끊긴 도로에서 점프를 놓칠 확률
 const GEARS        = [0.22, 0.42, 0.62, 0.80, 1.0];
 const GEAR_ACCEL_M = [2.0,  1.55, 1.25, 1.0,  0.82];
 
@@ -149,6 +153,8 @@ function playCountdown(n) { if(n>0) tone(440,'sine',0.22,0.4); else { tone(880,'
 function playBoost()    { tone(180,'sawtooth',0.05,0.18); tone(480,'sawtooth',0.2,0.18); }
 function playPickup()   { tone(880,'sine',0.09,0.28); tone(1100,'sine',0.14,0.22); }
 function playSkillHit() { tone(400,'square',0.05,0.22); tone(200,'square',0.28,0.18); }
+function playJump()    { tone(520,'sine',0.18,0.25,260); }
+function playLand()    { tone(140,'square',0.09,0.22); }
 function playFall()     { try{const a=ac(),buf=a.createBuffer(1,a.sampleRate*.28,a.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);const s=a.createBufferSource(),g=a.createGain();s.buffer=buf;s.connect(g);g.connect(a.destination);g.gain.value=0.28;s.start();s.stop(a.currentTime+0.28);}catch{} }
 function playFinish()   { [523,659,784,1047,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.32,0.38),i*75)); }
 function playTrap()     { tone(250,'sawtooth',0.05,0.18); tone(150,'sawtooth',0.28,0.18); }
@@ -164,6 +170,7 @@ function checkVehicleCollisions() {
       const a = all[i], b = all[j];
       const key = a.id < b.id ? `${a.id}_${b.id}` : `${b.id}_${a.id}`;
       if ((_colCD[key]||0) > now) continue;
+      if (a.air > 0 || b.air > 0) continue;
 
       const pd = Math.abs(a.pos - b.pos), ld = Math.abs(a.lane - b.lane);
       if (pd > 1.3 || ld > 0.52) continue;
@@ -462,6 +469,7 @@ function makeRacer(def, isPlayer) {
     maxMp: isPlayer ? _playerMaxMP : 800,
     lap: 0, finished: false, rank: 0, currentRank: 1,
     fallUntil: 0, wobble: 0,
+    air: 0, airTotal: JUMP_STEPS, jumpCd: 0, aiGapKey: '', aiJumpOK: true,
     drift: 0, steerLossUntil: 0,
     effects: {},
     gear: 1,
@@ -553,11 +561,75 @@ function findNearest(racer, ahead) {
 }
 
 // ── 물리 ─────────────────────────────────────────────────────────────────────
+// ── 점프 / 끊긴 도로 ─────────────────────────────────────────────────────────
+function doJump(r) {
+  const now = Date.now();
+  if (r.air > 0 || r.finished || r.fallUntil > now || (r.effects.stun||0) > now || now < r.jumpCd) return false;
+  r.air = JUMP_STEPS; r.airTotal = JUMP_STEPS; r.jumpCd = now + JUMP_CD_MS;
+  r.speed = Math.max(r.speed, MAX_SPEED * JUMP_MIN_SPEED);   // 도약 시 최소 속도 보장 (느린 커브에서도 끊긴 도로를 넘을 수 있게)
+  if (r.isPlayer) playJump();
+  return true;
+}
+
+function advancePos(r) {
+  r.pos += r.speed;
+  if (r.pos >= SEGS * (r.lap+1)) {
+    r.lap++;
+    if (!r.isPlayer) tone(440+(r.lap*100),'sine',0.2,0.15);
+    if (r.lap >= TOTAL_LAPS && !r.finished) finishRacer(r);
+  }
+}
+
+function segIndex(r) { return ((Math.floor(r.pos) % SEGS) + SEGS) % SEGS; }
+
+// 끊긴 도로에 빠짐: 기존 '뒤집힘' 처리 후 끊긴 구간 바로 뒤에서 재출발
+function fallIntoVoid(r, gap) {
+  const now = Date.now();
+  r.fallUntil = now + 2500; r.speed = 0; r.air = 0; r.drift = 0;
+  if (gap) { r.pos = Math.floor(r.pos / SEGS) * SEGS + gap.start + gap.len + 0.5; r.lane = 0; }
+  else r.lane = Math.max(-ROAD_W, Math.min(ROAD_W, r.lane));
+  if (r.isPlayer) { triggerShake(9); playFall(); }
+  addLog(`🕳️ ${r.name} fell off the road!`);
+}
+
+function stepAir(r, isPlayer) {
+  r.air--;
+  const vr = Math.min(1, r.speed / r.maxSpeed);
+  const curve = _track?.[segIndex(r)]?.curve || 0;
+  if (isPlayer) {
+    r.lane += ((_keys.right ? 1 : 0) - (_keys.left ? 1 : 0)) * STEER * 0.9;   // 공중에서도 방향키 조향
+  } else {
+    r.lane += (-r.lane) * 0.08;   // AI 는 공중에서 도로 중앙을 향해 보정
+  }
+  r.lane += -(curve / 3) * vr * vr * 0.015;   // 공중에서는 커브에 밀려 바깥으로 흐른다
+  r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane));
+  advancePos(r);
+  if (r.air > 0) return;
+  // 착지: 끊긴 구간 안이거나 도로 밖이면 추락
+  const gap = gapAt(segIndex(r), r.lap);
+  if (gap || Math.abs(r.lane) > ROAD_W + 0.1) { fallIntoVoid(r, gap); return; }
+  if (isPlayer) { triggerShake(4); playLand(); addSparks(r.pos, r.lane, 0.5); }
+}
+
+function aiJumpCheck(r) {
+  if (r.finished || r.air > 0) return;
+  const pp = r.pos % SEGS;
+  for (const g of GAPS) {
+    if (r.lap < g.minLap) continue;
+    const dist = g.start - pp;
+    if (dist > 8 || dist < 0) continue;
+    const key = g.id + ':' + r.lap;
+    if (r.aiGapKey !== key) { r.aiGapKey = key; r.aiJumpOK = Math.random() > AI_GAP_FAIL; }
+    if (r.aiJumpOK && dist <= 1.4) doJump(r);
+  }
+}
+
 function updateRacer(r, isPlayer) {
   if (r.finished) return;
   const now = Date.now();
   if (r.fallUntil > now) { r.speed *= 0.88; return; }
   if ((r.effects.stun||0) > now) { r.speed *= 0.94; return; }
+  if (r.air > 0) { stepAir(r, isPlayer); return; }
 
   const boosted   = (r.effects.boost||0)>now;
   const lightning = (r.effects.lightning||0)>now;
@@ -737,12 +809,10 @@ function updateRacer(r, isPlayer) {
 
   if (r.wobble > 0) { r.lane += Math.sin(now*0.01)*0.09; r.wobble -= PHYS_STEP_MS; }
 
-  r.pos += r.speed;
-  if (r.pos >= SEGS * (r.lap+1)) {
-    r.lap++;
-    if (!r.isPlayer) tone(440+(r.lap*100),'sine',0.2,0.15);
-    if (r.lap >= TOTAL_LAPS && !r.finished) finishRacer(r);
-  }
+  advancePos(r);
+  // 점프 없이 끊긴 도로에 들어가면 추락
+  const gapNow = gapAt(segIndex(r), r.lap);
+  if (gapNow && !r.finished) fallIntoVoid(r, gapNow);
 }
 
 function checkTraps(r) {
@@ -895,7 +965,7 @@ function stepPhysics() {
   }
 
   updateRacer(_player, true);
-  for (const r of _racers) { updateRacer(r, false); aiThink(r); }
+  for (const r of _racers) { updateRacer(r, false); aiThink(r); aiJumpCheck(r); }
   checkTraps(_player);
   checkItems(_player);
   for (const r of _racers) { checkTraps(r); checkItems(r); }
@@ -975,6 +1045,16 @@ function renderHUD() {
   const distKm    = Math.max(0, RACE_KM * (1 - traveled / totalSegs));
   if ($('distTxt')) $('distTxt').textContent = distKm.toFixed(2) + ' km left';
 
+  // 점프 버튼 쿨다운 / 끊긴 도로 경고
+  const jb = $('btnJump');
+  const warn = warnAhead(_player);
+  if (jb) {
+    jb.style.opacity = ((_player.jumpCd - now3) > 0 || _player.air > 0) ? '0.4' : '1';
+    jb.classList.toggle('alert', warn);
+  }
+  const jh = $('jumpHint');
+  if (jh) jh.classList.toggle('hidden', !warn);
+
   // 스킬 쿨다운
   _selectedSkills.forEach((sk,i)=>{
     const btn = $(`skBtn${i}`); if (!btn) return;
@@ -984,6 +1064,13 @@ function renderHUD() {
     const cdEl = btn.querySelector('.cd');
     if (cdEl) cdEl.textContent = cd>0 ? Math.ceil(cd/1000)+'s' : '';
   });
+}
+
+// 앞쪽 WARN_SEGS 이내에 끊긴 도로가 있는가
+function warnAhead(r) {
+  if (r.air > 0 || r.finished) return false;
+  const pp = r.pos % SEGS;
+  return GAPS.some(g => r.lap >= g.minLap && g.start - pp > 0 && g.start - pp <= WARN_SEGS);
 }
 
 function addLog(msg) {
@@ -1106,6 +1193,7 @@ function initInput() {
       case 'ArrowRight':case 'd': case 'D': e.preventDefault(); _keys.right=true; break;
       case 'ArrowUp':   case 'w': case 'W': case ' ': e.preventDefault(); _tapBoost = Math.min(1.0, _tapBoost + 0.18); _keys.gas=true; break;
       case 'ArrowDown': case 's': case 'S': e.preventDefault(); _keys.brake=true; break;
+      case 'j': case 'J': case 'Shift': e.preventDefault(); if (_player) doJump(_player); break;
     }
   });
   document.addEventListener('keyup',e=>{
@@ -1125,6 +1213,14 @@ function initInput() {
     el.addEventListener('touchend',  e=>{e.preventDefault();_keys[key]=false;},{passive:false});
     el.addEventListener('mousedown', ()=>_keys[key]=true);
     document.addEventListener('mouseup', ()=>_keys[key]=false);
+  }
+
+  // 점프 버튼
+  const jb = $('btnJump');
+  if (jb) {
+    const onJump = e => { if (e.cancelable) e.preventDefault(); if (_player) doJump(_player); };
+    jb.addEventListener('touchstart', onJump, {passive:false});
+    jb.addEventListener('mousedown', onJump);
   }
 
   // 가스: 탭할수록 속도↑, 방치하면 감소 / 1초 내 5회 탭 → 니트로 버스트

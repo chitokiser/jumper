@@ -4,6 +4,23 @@ import { tickParticles, drawParticles } from './monsterrace.fx.js';
 export const SEGS       = 300;
 export const TOTAL_LAPS = 3;
 
+// ── 끊긴 도로 (점프로 건너야 함) ─────────────────────────────────────────────
+// start/len 은 트랙 세그먼트 번호. minLap 이상인 바퀴부터 나타난다 (첫 바퀴는 1곳, 이후 3곳).
+export const GAPS = [
+  { id:0, start:146, len:5, minLap:0 },
+  { id:1, start:26,  len:5, minLap:1 },
+  { id:2, start:196, len:5, minLap:1 },
+];
+export const WARN_SEGS = 16;   // 끊긴 도로 앞 경고 줄무늬 구간
+export function gapAt(idx, lap) {
+  for (const g of GAPS) if (lap >= g.minLap && idx >= g.start && idx < g.start + g.len) return g;
+  return null;
+}
+function warnAt(idx, lap) {
+  for (const g of GAPS) if (lap >= g.minLap && idx >= g.start - WARN_SEGS && idx < g.start) return g;
+  return null;
+}
+
 // ── 트랙 생성 ─────────────────────────────────────────────────────────────────
 export function buildTrack() {
   const t = [];
@@ -144,6 +161,22 @@ function drawSeg(y1,w1,cx1, y2,w2,cx2, road,grass,rumble,alt) {
   }
 }
 
+// 끊긴 도로: 도로 면 대신 어두운 낭떠러지 + 양쪽 끝 단면
+function drawGapSeg(y1,w1,cx1, y2,w2,cx2, grass, first, last) {
+  if(y1<=y2) return;
+  _ctx.fillStyle=grass; _ctx.fillRect(0,y2,_W,Math.min(y1,_H)-y2);
+  const g=_ctx.createLinearGradient(0,y2,0,y1);
+  g.addColorStop(0,'#000'); g.addColorStop(1,'#1a0a2e');
+  _ctx.fillStyle=g;
+  _ctx.beginPath();
+  _ctx.moveTo(cx1-w1*1.14,y1); _ctx.lineTo(cx1+w1*1.14,y1);
+  _ctx.lineTo(cx2+w2*1.14,y2); _ctx.lineTo(cx2-w2*1.14,y2); _ctx.fill();
+  _ctx.strokeStyle='#f97316'; _ctx.lineWidth=Math.max(2,w1*0.03);
+  const lip=(y,w,cx)=>{ _ctx.beginPath(); _ctx.moveTo(cx-w*1.14,y); _ctx.lineTo(cx+w*1.14,y); _ctx.stroke(); };
+  if(first) lip(y1,w1,cx1);   // 가까운 쪽 (이륙 가장자리)
+  if(last)  lip(y2,w2,cx2);   // 먼 쪽 (착지 가장자리)
+}
+
 // ── 환경 오브젝트 (고사목 / 호박 등불) ───────────────────────────────────────
 function drawEnvObj(si, side, type) {
   const sc=D_NEAR/si.depth;
@@ -226,8 +259,16 @@ function drawPlayerKart(ctx, W, H, player, ts) {
   if(!img) return;
   const imgH = H*0.20;
   const imgW = imgH*(img.naturalWidth/img.naturalHeight);
+  // 점프: 차는 떠오르고 그림자는 바닥에 남는다
+  const airP = player.air>0 ? 1 - player.air/(player.airTotal||1) : 0;
+  const lift = Math.sin(Math.PI*airP) * H*0.15;
+  if(player.air>0){
+    ctx.save(); ctx.fillStyle='rgba(0,0,0,'+(0.38-0.2*Math.sin(Math.PI*airP))+')';
+    ctx.beginPath(); ctx.ellipse(W/2, H-4, imgW*0.42*(1-0.25*Math.sin(Math.PI*airP)), imgH*0.07, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
   ctx.save();
-  ctx.translate(W/2, H-2+suspBob);
+  ctx.translate(W/2, H-2+suspBob-lift);
   if(fallen) ctx.rotate(Math.PI/2);
   else       ctx.rotate(steer);
   if(boost) ctx.filter='brightness(1.4) saturate(1.7) hue-rotate(210deg)';
@@ -267,8 +308,10 @@ export function renderScene(track, racers, player, items, ts) {
     if(y2<H/2) continue;
     const w1=dToW(d2), w2=dToW(d1), cx=W/2+curX;
     const alt=(pSeg+i)%2===0;
+    const gap=gapAt(idx,player.lap), warn=!gap&&warnAt(idx,player.lap);
     dl.push({i, y1:Math.max(H/2,y1), w1, cx, y2:Math.max(H/2,y2), w2,
-      road:   alt?'#7a4a18':'#6a3e10',
+      gap, gapFirst:!!gap&&idx===gap.start, gapLast:!!gap&&idx===gap.start+gap.len-1,
+      road:   warn?(alt?'#eab308':'#27272a'):alt?'#7a4a18':'#6a3e10',
       grass:  alt?'#0c0701':'#080401',
       rumble: alt?'#6d28d9':'#c8c8c8',
       alt, depth:d1, seg});
@@ -277,7 +320,8 @@ export function renderScene(track, racers, player, items, ts) {
 
   // 도로 + 환경
   for(const s of dl){
-    drawSeg(s.y2,s.w2,s.cx, s.y1,s.w1,s.cx, s.road,s.grass,s.rumble,s.alt);
+    if(s.gap) drawGapSeg(s.y2,s.w2,s.cx, s.y1,s.w1,s.cx, s.grass,s.gapFirst,s.gapLast);
+    else drawSeg(s.y2,s.w2,s.cx, s.y1,s.w1,s.cx, s.road,s.grass,s.rumble,s.alt);
     if(s.seg.obj)  { drawEnvObj(s,-1,s.seg.obj);  drawEnvObj(s,1,s.seg.obj);  }
     if(s.seg.obj2) { drawEnvObj(s,-1.4,s.seg.obj2); }
   }
@@ -316,12 +360,13 @@ export function renderScene(track, racers, player, items, ts) {
       const sw=img?sh*(img.naturalWidth/img.naturalHeight):sh;
       // lane±1.0 = 도로 경계 → 배율 1.0 적용 (기존 1.35는 도로 밖)
       const bx=si.cx+r.lane*si.w2*1.05;
+      const aLift=r.air>0?Math.sin(Math.PI*(1-r.air/(r.airTotal||1)))*sh*0.45:0;
       // 그림자
       _ctx.fillStyle='rgba(0,0,0,0.3)';
       _ctx.beginPath(); _ctx.ellipse(bx,si.y2-2,sw*.38,sh*.06,0,0,Math.PI*2); _ctx.fill();
       // 스프라이트
       _ctx.save();
-      _ctx.translate(bx, si.y2);
+      _ctx.translate(bx, si.y2-aLift);
       if(r.fallUntil>Date.now()) _ctx.rotate(Math.PI/2);
       else _ctx.rotate(r.lane*0.06);
       if(img) _ctx.drawImage(img,-sw/2,-sh,sw,sh);
@@ -331,8 +376,8 @@ export function renderScene(track, racers, player, items, ts) {
         _ctx.font=`bold ${Math.max(8,10*sc)}px sans-serif`;
         _ctx.fillStyle='#fff'; _ctx.textAlign='center';
         _ctx.strokeStyle='rgba(0,0,0,0.7)'; _ctx.lineWidth=2;
-        _ctx.strokeText(r.name,bx,si.y2-sh-2*sc);
-        _ctx.fillText(r.name,bx,si.y2-sh-2*sc);
+        _ctx.strokeText(r.name,bx,si.y2-sh-2*sc-aLift);
+        _ctx.fillText(r.name,bx,si.y2-sh-2*sc-aLift);
       }
     });
 
