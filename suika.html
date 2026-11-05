@@ -79,6 +79,32 @@ html,body{height:100%;background:#080c18;color:#fff;
   font-size:9px;color:#ef4444;
 }
 
+/* ── 콤보 · 아이템 · 수박 이벤트 ── */
+#itemBar{display:flex;gap:8px;justify-content:center;align-items:center;width:100%;max-width:400px;
+  padding:6px 10px;background:rgba(0,0,0,.5);border-top:1px solid #1f2937;flex-shrink:0}
+.item-btn{position:relative;flex:1;max-width:110px;padding:6px 4px;border-radius:10px;
+  background:#1f2937;border:1px solid #374151;color:#e5e7eb;font-size:11px;font-weight:700;
+  cursor:pointer;transition:transform .1s,border-color .15s;line-height:1.25}
+.item-btn:active{transform:scale(.95)}
+.item-btn .ic{font-size:20px;display:block}
+.item-btn .cnt{position:absolute;top:-6px;right:-4px;min-width:18px;height:18px;border-radius:9px;
+  background:#f59e0b;color:#111827;font-size:11px;font-weight:900;line-height:18px;text-align:center}
+.item-btn:disabled{opacity:.35;cursor:not-allowed}
+.item-btn.armed{border-color:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.6)}
+#comboBadge,#partyBadge{position:absolute;left:10px;pointer-events:none;font-weight:900;
+  border-radius:10px;padding:4px 10px;font-size:12px;opacity:0;transition:opacity .2s}
+#comboBadge{top:6px;background:rgba(124,58,237,.85);color:#fff}
+#partyBadge{top:34px;background:rgba(22,163,74,.9);color:#fff}
+#comboBadge.on,#partyBadge.on{opacity:1}
+#popup{position:absolute;left:0;right:0;top:34%;text-align:center;pointer-events:none;
+  font-size:34px;font-weight:900;color:#fde047;text-shadow:0 3px 14px rgba(0,0,0,.8);opacity:0}
+#popup.show{animation:popup .9s ease-out forwards}
+@keyframes popup{0%{opacity:0;transform:scale(.5)}20%{opacity:1;transform:scale(1.15)}80%{opacity:1;transform:scale(1)}100%{opacity:0;transform:translateY(-30px) scale(1)}}
+#hint{position:absolute;left:0;right:0;bottom:6px;text-align:center;pointer-events:none;
+  font-size:12px;font-weight:800;color:#fbbf24;text-shadow:0 2px 8px #000}
+#canvasWrap.shake{animation:shake .5s}
+@keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-3px)}60%{transform:translate(-4px,2px)}80%{transform:translate(4px,-2px)}}
+
 /* ── 게임오버 오버레이 ── */
 #overModal{
   display:none;position:fixed;inset:0;z-index:9000;
@@ -159,7 +185,10 @@ html,body{height:100%;background:#080c18;color:#fff;
     🍒→🍓→🍇→🍊→🍋→🍎→🍐→🍑→🍍→🍈→🍉<br/>
     <b>같은 과일을 합치면</b> 다음 단계 과일로 진화!<br/>
     과일이 <b>위험선을 초과</b>하면 게임 오버.<br/>
-    점수 <b>100점 = 1 GP</b> (최대 100 GP/게임)
+    <b>🔥 콤보</b>: 2초 안에 연속 합체하면 점수 배율 ↑ (최대 ×3)<br/>
+    <b>🔨🌀🎲 아이템</b>: 콤보·점수로 획득 (망치/섞기/교체)<br/>
+    <b>🍉+🍉 수박 파티!</b> 보너스·아이템·10초간 점수 ×2<br/>
+    점수 <b>30점 = 1 GP</b> (최대 3,000 GP/게임)
   </div>
 
   <span id="feeBadge" class="fee-badge">참가비: 100 GP</span>
@@ -182,6 +211,15 @@ html,body{height:100%;background:#080c18;color:#fff;
       <span id="nextFruitEmoji">🍒</span>
       <div>다음</div>
     </div>
+    <div id="comboBadge"></div>
+    <div id="partyBadge"></div>
+    <div id="popup"></div>
+    <div id="hint"></div>
+  </div>
+  <div id="itemBar">
+    <button class="item-btn" id="itHammer" data-item="hammer"><span class="ic">🔨</span>망치<span class="cnt">0</span></button>
+    <button class="item-btn" id="itShuffle" data-item="shuffle"><span class="ic">🌀</span>섞기<span class="cnt">0</span></button>
+    <button class="item-btn" id="itSwap" data-item="swap"><span class="ic">🎲</span>교체<span class="cnt">0</span></button>
   </div>
   <!-- 게임 내 다른 게임 이동 바 -->
   <nav class="arcade-bar">
@@ -237,7 +275,12 @@ const BASE_FEE = 50, FEE_STEP = 25;
 const GAME_KEY = 'suikaEntry';
 const RESET_MS = 24 * 60 * 60 * 1000;
 const GP_PER_SCORE = 30; // 30점당 1 GP
-const MAX_GP_PER_GAME = 300;
+const MAX_GP_PER_GAME = 3000;
+const COMBO_WINDOW_MS = 2000;
+const ITEM_SCORE_STEP = 1500;   // 누적 점수 구간마다 아이템 1개
+const ITEM_MAX_TOTAL = 3;
+const PARTY_MS = 10000, PARTY_BONUS = 300;
+const ITEM_KEYS = ['hammer', 'shuffle', 'swap'];
 
 // ── 사운드 (Web Audio API) ────────────────────────────────────────────────────
 let _ac = null;
@@ -312,6 +355,12 @@ let _dropCooldown = false;
 let _nextLevel = 0;
 let _dangerTimer = null;
 let _overTriggered = false;
+let _combo = 0, _lastMergeAt = 0, _comboTimer = null;
+let _items = { hammer: 0, shuffle: 0, swap: 0 };
+let _nextItemScore = ITEM_SCORE_STEP;
+let _armed = null;            // 'hammer' 사용 대기 중
+let _partyUntil = 0, _partyTimer = null;
+let _particles = [];
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -440,6 +489,17 @@ function initPhysics(canvas, W, H) {
       ctx.fillText(f.emoji, 0, 0);
       ctx.restore();
     });
+    // 수박 파티 / 콤보 파티클
+    _particles = _particles.filter(p => p.life > 0);
+    _particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.25; p.life -= 1;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 25));
+      ctx.font = `${p.size}px serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(p.ch, p.x, p.y);
+      ctx.restore();
+    });
   });
 
   // 충돌 이벤트 (합성 처리)
@@ -454,7 +514,23 @@ function handleCollision(event) {
     if (bodyA.label === 'wall' || bodyB.label === 'wall') return;
     if (bodyA.fruitLevel === undefined || bodyB.fruitLevel === undefined) return;
     if (bodyA.fruitLevel !== bodyB.fruitLevel) return;
-    if (bodyA.fruitLevel >= MAX_LEVEL) return;
+    if (bodyA.fruitLevel >= MAX_LEVEL) {
+      if (!mergePendingBodies.has(bodyA.id) && !mergePendingBodies.has(bodyB.id)) {
+        mergePendingBodies.add(bodyA.id);
+        mergePendingBodies.add(bodyB.id);
+        const wx = (bodyA.position.x + bodyB.position.x) / 2;
+        const wy = (bodyA.position.y + bodyB.position.y) / 2;
+        setTimeout(() => {
+          if (!_gameRunning) return;
+          World.remove(world, bodyA);
+          World.remove(world, bodyB);
+          mergePendingBodies.delete(bodyA.id);
+          mergePendingBodies.delete(bodyB.id);
+          watermelonParty(wx, wy);
+        }, 50);
+      }
+      return;
+    }
     // 둘 중 하나라도 이미 merge 예정이면 스킵 (같은 body가 여러 쌍에 중복 처리되는 버그 방지)
     if (mergePendingBodies.has(bodyA.id) || mergePendingBodies.has(bodyB.id)) return;
     mergePendingBodies.add(bodyA.id);
@@ -472,8 +548,11 @@ function handleCollision(event) {
       mergePendingBodies.delete(bodyB.id);
       const newLv = lv + 1;
       spawnFruitAt(mx, my, newLv);
-      sndMerge(newLv);
-      addScore(FRUITS[newLv].score);
+      const combo = bumpCombo();
+      sndMerge(Math.min(MAX_LEVEL, newLv + Math.min(combo - 1, 3)));
+      addScore(Math.round(FRUITS[newLv].score * comboMult(combo) * partyMult()));
+      if (combo >= 2) showPopup(`COMBO x${combo}!`);
+      if (combo % 5 === 0) grantItem('콤보 ' + combo);
     }, 50);
   });
 }
@@ -520,6 +599,12 @@ function startGame(free) {
   _gameRunning = true;
   _overTriggered = false;
   mergePendingBodies.clear();
+  _combo = 0; _lastMergeAt = 0; clearTimeout(_comboTimer);
+  _items = { hammer: 0, shuffle: 0, swap: 0 };
+  _nextItemScore = ITEM_SCORE_STEP; _armed = null;
+  _partyUntil = 0; clearInterval(_partyTimer); _particles = [];
+  $('comboBadge').classList.remove('on'); $('partyBadge').classList.remove('on');
+  renderItems();
   $('scoreVal').textContent = 0;
   $('gpVal').textContent = 0;
   $('overModal').classList.remove('open');
@@ -548,6 +633,122 @@ function addScore(pts) {
   const gp = Math.min(Math.floor(_score / GP_PER_SCORE), MAX_GP_PER_GAME);
   _gpEarned = gp;
   $('gpVal').textContent = gp;
+  while (_score >= _nextItemScore) {
+    _nextItemScore += ITEM_SCORE_STEP;
+    grantItem('점수 보너스');
+  }
+}
+
+// ── 콤보 ─────────────────────────────────────────────────────────────────────
+function comboMult(c) { return Math.min(3, 1 + (c - 1) * 0.5); }
+function partyMult() { return Date.now() < _partyUntil ? 2 : 1; }
+function bumpCombo() {
+  const now = Date.now();
+  _combo = (now - _lastMergeAt <= COMBO_WINDOW_MS) ? _combo + 1 : 1;
+  _lastMergeAt = now;
+  const b = $('comboBadge');
+  if (_combo >= 2) { b.textContent = `🔥 콤보 x${_combo} (점수 ×${comboMult(_combo)})`; b.classList.add('on'); }
+  clearTimeout(_comboTimer);
+  _comboTimer = setTimeout(() => { _combo = 0; b.classList.remove('on'); }, COMBO_WINDOW_MS);
+  return _combo;
+}
+
+function showPopup(text) {
+  const p = $('popup');
+  p.textContent = text;
+  p.classList.remove('show'); void p.offsetWidth; p.classList.add('show');
+}
+
+// ── 아이템 ───────────────────────────────────────────────────────────────────
+function itemTotal() { return _items.hammer + _items.shuffle + _items.swap; }
+function renderItems() {
+  const map = { hammer:'itHammer', shuffle:'itShuffle', swap:'itSwap' };
+  ITEM_KEYS.forEach(k => {
+    const el = $(map[k]);
+    el.querySelector('.cnt').textContent = _items[k];
+    el.disabled = _items[k] <= 0 || !_gameRunning;
+    el.classList.toggle('armed', _armed === k);
+  });
+  $('hint').textContent = _armed === 'hammer' ? '🔨 부술 과일을 터치하세요 (다시 누르면 취소)' : '';
+}
+function grantItem(reason) {
+  if (itemTotal() >= ITEM_MAX_TOTAL) return;
+  const k = ITEM_KEYS[Math.floor(Math.random() * ITEM_KEYS.length)];
+  _items[k]++;
+  const names = { hammer:'🔨 망치', shuffle:'🌀 섞기', swap:'🎲 교체' };
+  showPopup(`${names[k]} 획득!`);
+  renderItems();
+}
+function useItem(k) {
+  if (!_gameRunning || _items[k] <= 0) return;
+  sndClick();
+  if (k === 'hammer') { _armed = _armed === 'hammer' ? null : 'hammer'; renderItems(); return; }
+  _armed = null;
+  if (k === 'shuffle') {
+    Composite.allBodies(world).forEach(b => {
+      if (b.fruitLevel === undefined) return;
+      Body.setVelocity(b, { x: (Math.random() - 0.5) * 8, y: -(7 + Math.random() * 5) });
+    });
+    showPopup('🌀 섞기!');
+  } else if (k === 'swap') {
+    let n = _nextLevel;
+    while (n === _nextLevel) n = Math.floor(Math.random() * (Math.min(4, Math.floor(_score / 200) + 2) + 1));
+    _nextLevel = n;
+    updateNextPreview();
+    showPopup('🎲 교체!');
+  }
+  _items[k]--;
+  renderItems();
+}
+function hammerAt(x, y) {
+  const hit = Matter.Query.point(Composite.allBodies(world).filter(b => b.fruitLevel !== undefined), { x, y })[0];
+  if (!hit) return false;
+  burst(hit.position.x, hit.position.y, ['💥', '✨'], 8);
+  World.remove(world, hit);
+  mergePendingBodies.delete(hit.id);
+  _items.hammer--; _armed = null;
+  showPopup('🔨 쾅!');
+  renderItems();
+  return true;
+}
+
+// ── 수박 이벤트 ──────────────────────────────────────────────────────────────
+function burst(x, y, chars, n) {
+  for (let i = 0; i < n; i++) {
+    _particles.push({
+      x, y, ch: chars[i % chars.length], size: 14 + Math.random() * 14,
+      vx: (Math.random() - 0.5) * 9, vy: -(2 + Math.random() * 7), life: 45 + Math.random() * 25,
+    });
+  }
+}
+function watermelonParty(x, y) {
+  sndMerge(MAX_LEVEL);
+  const W = $('suikaCanvas').width;
+  burst(x, y, ['🍉', '🎉', '✨', '⭐'], 36);
+  for (let i = 0; i < 4; i++) burst(Math.random() * W, DANGER_Y + 20, ['🎉', '🍉', '✨'], 8);
+  // 작은 과일(체리~오렌지) 정리
+  Composite.allBodies(world).forEach(b => {
+    if (b.fruitLevel !== undefined && b.fruitLevel <= 3) {
+      burst(b.position.x, b.position.y, ['✨'], 2);
+      World.remove(world, b);
+      mergePendingBodies.delete(b.id);
+    }
+  });
+  const wrap = $('canvasWrap');
+  wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
+  showPopup('🍉 수박 파티!');
+  _partyUntil = Date.now() + PARTY_MS;
+  const pb = $('partyBadge');
+  pb.classList.add('on');
+  clearInterval(_partyTimer);
+  const tick = () => {
+    const left = Math.ceil((_partyUntil - Date.now()) / 1000);
+    if (left <= 0 || !_gameRunning) { pb.classList.remove('on'); clearInterval(_partyTimer); return; }
+    pb.textContent = `🍉 수박 타임 ×2 · ${left}초`;
+  };
+  tick(); _partyTimer = setInterval(tick, 250);
+  addScore(PARTY_BONUS);
+  setTimeout(() => { if (_gameRunning) grantItem('수박 파티'); }, 900);
 }
 
 function updateNextPreview() {
@@ -555,14 +756,18 @@ function updateNextPreview() {
 }
 
 // ── 낙하 제어 (마우스/터치) ───────────────────────────────────────────────────
+let _dropW = 400, _dropBound = false;
 function setupDropControl(W) {
   const canvas = $('suikaCanvas');
+  _dropW = W;
+  if (_dropBound) return;   // 재시작 때 리스너가 중복 등록되지 않게
+  _dropBound = true;
 
   function getX(e) {
     const rect = canvas.getBoundingClientRect();
     const touch = e.changedTouches?.[0] || e.touches?.[0];
     const cx = touch ? touch.clientX : e.clientX;
-    return Math.max(30, Math.min(cx - rect.left, W - 30));
+    return Math.max(30, Math.min(cx - rect.left, _dropW - 30));
   }
 
   function onMove(e) {
@@ -572,6 +777,12 @@ function setupDropControl(W) {
 
   function onDrop(e) {
     e.preventDefault();
+    if (_armed === 'hammer' && _gameRunning) {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.changedTouches?.[0];
+      hammerAt((t ? t.clientX : e.clientX) - rect.left, (t ? t.clientY : e.clientY) - rect.top);
+      return;
+    }
     if (_dropCooldown || !_gameRunning) return;
     _dropX = getX(e);
     dropFruit();
@@ -622,6 +833,7 @@ async function triggerGameOver() {
   clearInterval(_dangerTimer);
   Runner.stop(runner);
   sndGameOver();
+  _armed = null; renderItems();
 
   const gp = Math.min(Math.floor(_score / GP_PER_SCORE), MAX_GP_PER_GAME);
   _gpEarned = gp;
@@ -630,7 +842,7 @@ async function triggerGameOver() {
   $('finalGP').textContent = _freeMode ? '(무료모드 — GP 미지급)' : `+ ${gp} GP 획득!`;
   $('overMsg').textContent = _freeMode
     ? '참가비를 내고 플레이하면 GP를 획득할 수 있습니다.'
-    : gp > 0 ? `${_score}점 → ${gp} GP가 계정에 적립됩니다.` : '100점 이상 달성시 GP를 획득할 수 있습니다!';
+    : gp > 0 ? `${_score}점 → ${gp} GP가 계정에 적립됩니다.` : '30점 이상 달성시 GP를 획득할 수 있습니다!';
 
   $('overModal').classList.add('open');
 
@@ -672,9 +884,11 @@ $('btnRetry').onclick = async () => {
 };
 
 $('btnBackLobby').onclick = goLobby;
+document.querySelectorAll('.item-btn').forEach(b => { b.onclick = () => useItem(b.dataset.item); });
 
 function goLobby() {
   _gameRunning = false;
+  clearInterval(_partyTimer); clearTimeout(_comboTimer);
   if (_dangerTimer) clearInterval(_dangerTimer);
   if (runner) Runner.stop(runner);
   if (render) Render.stop(render);
