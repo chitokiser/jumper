@@ -68,10 +68,13 @@ export function getMonsterPath(spawnX, spawnY) {
 // ── 스폰 위치 생성 (side: 'rand'|'all'|'north'|'south'|'west'|'east') ─────
 const ROAD_KEYS=['north','south','west','east'];
 let _roundIdx=0;
+let _activeRoads=null;   // 이번 웨이브가 공격하는 도로 (null이면 4방향 전부)
+export function setWaveRoads(keys){ _activeRoads=(keys&&keys.length)?[...keys]:null; }
 export function getSpawnPos(side) {
   let road;
-  if(side==='rand')      road=ROAD_KEYS[Math.floor(Math.random()*4)];
-  else if(side==='all'){ road=ROAD_KEYS[_roundIdx%4]; _roundIdx++; }
+  const pool=_activeRoads||ROAD_KEYS;
+  if(side==='rand')      road=pool[Math.floor(Math.random()*pool.length)];
+  else if(side==='all'){ road=pool[_roundIdx%pool.length]; _roundIdx++; }
   else                   road=side;
   const base=SPAWNS.find(s=>s.road===road)||SPAWNS[0];
   const sc=20; // 도로 위에서 약간 분산 (도로 폭 이내)

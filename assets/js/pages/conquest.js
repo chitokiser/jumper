@@ -11,7 +11,7 @@ import {
 } from './conquest.world.js';
 import { initRenderer, loadMapAssets, renderScene, isMapObstacle } from './conquest.render.js';
 import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL, fxQueue, applyImpact, buff } from './conquest.units.js';
-import { getSpawnPos, getDragonSpawnPos, snapToRoad } from './conquest.path.js';
+import { getSpawnPos, getDragonSpawnPos, snapToRoad, setWaveRoads, GATE_NORTH, GATE_SOUTH, GATE_WEST, GATE_EAST } from './conquest.path.js';
 import { resumeAudio, playSound } from './conquest.audio.js';
 import { setImpactHandler, resetFx, updateFx, addShake, addShot, addDamage, addSpark, addPuff, addCoin, addBurst, showBanner, WALL_POINT } from './conquest.fx.js';
 
@@ -42,18 +42,29 @@ const SKILL_DEFS = {
   meteor: {emoji:'☄️',name:'Meteor',    cost:350, cd:45000, range:0,    dmg:480, color:'#ea580c'},
 };
 
-// ── 웨이브 정의 (10웨이브 + 난이도 가파르게 상승) ──────────────────────────
+// ── 웨이브 정의 (20웨이브, 5·10·15·20은 보스 웨이브, 8·12·15·18·20은 흑화 영웅) ─────────
+const W=(type,count,side='rand',boss=false)=>boss?{type,count,side,boss:true}:{type,count,side};
 const WAVES = [
-  [{type:'orc',    count:25, side:'rand'}],
-  [{type:'orc',    count:30, side:'rand'},{type:'orc2',   count:15, side:'rand'}],
-  [{type:'orc2',   count:35, side:'all'}],
-  [{type:'orc',    count:25, side:'rand'},{type:'zombie',  count:25, side:'rand'}],
-  [{type:'orc2',   count:35, side:'all'}, {type:'zombie',  count:20, side:'rand'},{type:'dragon',count:3, side:'rand'},{type:'boss_orc',count:1,side:'rand',boss:true}],
-  [{type:'zombie', count:40, side:'all'}, {type:'pirate',  count:18, side:'rand'},{type:'dragon',count:5, side:'rand'}],
-  [{type:'pirate', count:45, side:'all'}, {type:'dragon',  count:8,  side:'rand'}],
-  [{type:'orc2',   count:40, side:'all'}, {type:'pirate',  count:28, side:'all'},{type:'dragon',count:8, side:'all'}],
-  [{type:'zombie', count:50, side:'all'}, {type:'orc2',    count:35, side:'all'},{type:'dragon',count:10,side:'rand'}],
-  [{type:'pirate', count:60, side:'all'}, {type:'zombie',  count:50, side:'all'},{type:'dragon',count:12,side:'all'},{type:'boss_dragon',count:1,side:'rand',boss:true}],
+  [W('orc',25)],
+  [W('orc',30),W('orc2',15)],
+  [W('orc2',35,'all')],
+  [W('orc',25),W('zombie',25)],
+  [W('orc2',35,'all'),W('zombie',20),W('dragon',3),W('boss_orc',1,'rand',true)],
+  [W('zombie',40,'all'),W('pirate',18),W('dragon',5)],
+  [W('pirate',45,'all'),W('dragon',8)],
+  [W('orc2',40,'all'),W('pirate',28,'all'),W('dragon',8,'all'),W('dark_hero',1,'rand',true)],
+  [W('zombie',50,'all'),W('orc2',35,'all'),W('dragon',10)],
+  [W('pirate',60,'all'),W('zombie',50,'all'),W('dragon',12,'all'),W('boss_dragon',1,'rand',true)],
+  [W('orc3',24),W('pirate',30),W('zombie',24)],
+  [W('zombie',36),W('orc3',24),W('dragon',10),W('dark_hero',1,'rand',true)],
+  [W('pirate',40,'all'),W('orc3',28),W('dragon',12)],
+  [W('zombie',40,'all'),W('orc2',36),W('orc3',24),W('dragon',12)],
+  [W('orc3',32,'all'),W('pirate',36),W('dragon',14),W('boss_orc',2,'rand',true),W('dark_hero',1,'rand',true)],
+  [W('zombie',44,'all'),W('pirate',36),W('orc3',30)],
+  [W('orc3',40,'all'),W('orc2',36),W('dragon',16)],
+  [W('pirate',44,'all'),W('zombie',40),W('orc3',32),W('dragon',16),W('dark_hero',2,'rand',true)],
+  [W('orc3',44,'all'),W('zombie',44),W('pirate',36),W('dragon',18)],
+  [W('orc3',44,'all'),W('pirate',44),W('zombie',36),W('dragon',18),W('boss_dragon',2,'rand',true),W('dark_hero',2,'rand',true)],
 ];
 
 // ── 상태 ─────────────────────────────────────────────────────────────────
@@ -202,7 +213,7 @@ function _update(dt){
 
   if(!_waveActive){if(!_blessOpen){_prepTimer-=dt;if(_prepTimer<=0)_startWave();}renderHUD();return;}
 
-  if(_spawnQ.length){_spawnTimer-=dt;if(_spawnTimer<=0){_spawnTimer=180;const s=_spawnQ.shift();_monsters.push(makeUnit(s.type,s.x,s.y));}}
+  if(_spawnQ.length){_spawnTimer-=dt;if(_spawnTimer<=0){_spawnTimer=180;const s=_spawnQ.shift();const mu=makeUnit(s.type,s.x,s.y);if(s.hm){mu.hp=mu.maxHp=Math.round(mu.maxHp*s.hm);mu.atk=Math.round(mu.atk*s.am);}if(s.brk)mu.role='breaker';_monsters.push(mu);}}
 
   for(let i=_defenders.length-1;i>=0;i--){
     const dead=updateUnit(_defenders[i],_defenders,_monsters,dt,_walls);
@@ -249,7 +260,7 @@ function _update(dt){
   if(_castleHp<=0){endGame(false);return;}
   if(_waveActive&&_monsters.length===0&&_spawnQ.length===0){
     _waveActive=false;_prepTimer=PREP_TIME;
-    const waveReward=_wave*100;
+    const waveReward=_wave*100+Math.max(0,_wave-10)*50;
     _addGP(waveReward);
     _showNotif(`🏆 Wave ${_wave} cleared! +${waveReward} GP`);
     if(_wave>=WAVES.length){endGame(true);return;}
@@ -264,6 +275,7 @@ function _drainFx(){
     if(ev.t==='dmg') addDamage(ev.x,ev.y,ev.amount,ev.crit,ev.ally);
     else if(ev.t==='spark') addSpark(ev.x,ev.y,ev.crit?'#fbbf24':'#fde68a',ev.crit?7:3);
     else if(ev.t==='shot') addShot(ev);
+    else if(ev.t==='shock'){ addBurst(ev.x,ev.y); addShake(ev.cry?4:8); playSound(ev.cry?'dragon_roar':'cannon_hit'); }
     else if(ev.t==='kill'){ addPuff(ev.unit.x,ev.unit.y,4,'dust'); _onKill(ev.unit); }
   }
   fxQueue.length=0;
@@ -305,20 +317,51 @@ function _showNotif(msg){
 }
 
 // ── 웨이브 ────────────────────────────────────────────────────────────────
+// 이번 웨이브가 공격할 도로 선택: 6웨이브부터는 방어가 가장 약한 쪽을 반드시 포함
+const GATES={north:GATE_NORTH,south:GATE_SOUTH,west:GATE_WEST,east:GATE_EAST};
+function _pickWaveRoads(wn){
+  const keys=['north','south','west','east'];
+  const score=k=>{
+    const g=GATES[k]; let sc=0;
+    for(const d of _defenders){
+      if(d.dying)continue;
+      if(Math.hypot(d.x-g.x,d.y-g.y)<1000) sc+=d.isTower?2:d.type==='hero'?3:1;
+    }
+    return sc+Math.random()*0.5;
+  };
+  const n=wn<=3?(Math.random()<.5?1:2):wn<=12?2:3;
+  const order=keys.slice().sort((a,b)=>score(a)-score(b));
+  let picks;
+  if(wn>=6){
+    const rest=order.slice(1).sort(()=>Math.random()-.5);
+    picks=[order[0],...rest.slice(0,n-1)];
+  } else picks=keys.sort(()=>Math.random()-.5).slice(0,n);
+  return picks;
+}
+const ROAD_LABEL={north:'북쪽',south:'남쪽',west:'서쪽',east:'동쪽'};
+
 function _startWave(){
   playSound('levelup');playSound('horn');
   _waveActive=true;
+  const wn=_wave+1;
   const def=WAVES[Math.min(_wave,WAVES.length-1)];
-  const scale=1+_wave*0.35; // 웨이브마다 35% 병력 증가
+  // 10웨이브까지는 병력 수가 늘고, 이후는 수를 완만하게 유지하는 대신 몬스터가 더 강해진다
+  const scale=_wave<10?1+_wave*0.35:3.2+(_wave-10)*0.04;
+  const roads=_pickWaveRoads(wn); setWaveRoads(roads);
+  const darkHero=def.some(g=>g.type==='dark_hero');
   if(def.some(g=>g.boss)){
-    showBanner('☠ BOSS WAVE ☠');playSound('streak');addShake(8);
-  }
+    showBanner(darkHero?'☠ 흑화된 영웅 출현 ☠':'☠ BOSS WAVE ☠');playSound('streak');addShake(8);
+  } else showBanner(`⚠ ${roads.map(r=>ROAD_LABEL[r]).join('·')} 방향 침공!`);
+  if(def.some(g=>g.boss)) _showNotif(`⚠ ${roads.map(r=>ROAD_LABEL[r]).join('·')} 방향 침공!`);
   def.forEach(g=>{
-    const n=g.boss?g.count:Math.ceil(g.count*scale);   // 보스는 웨이브 배율을 받지 않는다
+    const n=g.boss?g.count:Math.ceil(g.count*scale);   // 보스·영웅은 병력 배율을 받지 않는다
+    // 웨이브가 갈수록 일반 몬스터·보스 모두 체력/공격력 증가
+    const hm=g.boss?1+Math.max(0,wn-5)*0.1:1+Math.max(0,wn-2)*0.06;
+    const am=g.boss?1+Math.max(0,wn-5)*0.06:1+Math.max(0,wn-2)*0.03;
     for(let i=0;i<n;i++){
       // 드래곤은 대각선(2시·4시·7시·11시)에서 날아옴
       const pos = UNIT_DEFS[g.type]?.flying ? getDragonSpawnPos() : getSpawnPos(g.side);
-      _spawnQ.push({type:g.type,x:pos.x,y:pos.y});
+      _spawnQ.push({type:g.type,x:pos.x,y:pos.y,hm,am,brk:wn>=10&&!g.boss&&/^orc/.test(g.type)&&Math.random()<.3});
     }
   });
   _spawnQ.sort(()=>Math.random()-.5);
@@ -412,14 +455,14 @@ function _repairTower(){
 // 다음 웨이브 미리보기 문구
 function _previewText(){
   if(_wave>=WAVES.length) return '';
-  const scale=1+_wave*0.35, ICON={orc:'👹',orc2:'👹',zombie:'🧟',pirate:'🏴‍☠️',dragon:'🐉',boss_orc:'☠',boss_dragon:'☠'};
+  const scale=_wave<10?1+_wave*0.35:3.2+(_wave-10)*0.04, ICON={orc:'👹',orc2:'👹',orc3:'👹',zombie:'🧟',pirate:'🏴‍☠️',dragon:'🐉',boss_orc:'☠',boss_dragon:'☠',dark_hero:'😈'};
   const sum={};
   for(const g of WAVES[_wave]){
     const k=ICON[g.type]||'👾';
     sum[k]=(sum[k]||0)+(g.boss?g.count:Math.ceil(g.count*scale));
   }
-  const boss=WAVES[_wave].find(g=>g.boss);
-  return `다음 ${_wave+1}웨이브 ` + Object.entries(sum).map(([k,n])=>`${k}${n}`).join(' ') + (boss?` · BOSS ${UNIT_DEFS[boss.type].label}`:'');
+  const boss=WAVES[_wave].filter(g=>g.boss);
+  return `다음 ${_wave+1}/${WAVES.length}웨이브 ` + Object.entries(sum).map(([k,n])=>`${k}${n}`).join(' ') + (boss.length?` · BOSS ${boss.map(g=>UNIT_DEFS[g.type].label+(g.count>1?'×'+g.count:'')).join('+')}`:'') + ' · 공격 방향 무작위';
 }
 function _callWaveEarly(){
   if(_waveActive||_blessOpen||_wave>=WAVES.length) return;
@@ -545,7 +588,7 @@ function _sfx(name){ const t=_SFX_MAP[name]||name; playSound(t); }
 // ── HUD ──────────────────────────────────────────────────────────────────
 const ALL_UNIT_BTNS=['villager','miner','scout','archer_tower','cannon_tower','hero'];
 function renderHUD(){
-  if($('hudWave'))  $('hudWave').textContent  =`Wave ${_wave}`;
+  if($('hudWave'))  $('hudWave').textContent  =`Wave ${_wave}/${WAVES.length}`;
   if($('hudGP'))    $('hudGP').textContent    =`💰 ${Math.floor(_gp)}`;
   if($('hudCastle'))$('hudCastle').textContent=`🏰 ${Math.max(0,Math.ceil(_castleHp))}`;
   if($('hudPrep'))  $('hudPrep').textContent  =_waveActive?`Wave ${_wave} in progress`:_prepTimer>0?`${Math.ceil(_prepTimer/1000)}s`:'';
@@ -558,13 +601,15 @@ function renderHUD(){
   {
     const wb=$('waveBar');
     if(wb){
-      const boss=_waveActive?_monsters.find(m=>m.boss&&!m.dying):null;
+      const bosses=_waveActive?_monsters.filter(m=>m.boss&&!m.dying):[];
+      const boss=bosses[0]||null;
       $('wavePreview').textContent=_waveActive?'':_previewText();
       $('btnCallWave').classList.toggle('hidden',_waveActive||_blessOpen||_wave>=WAVES.length);
       $('bossBar').classList.toggle('hidden',!boss);
       if(boss){
-        $('bossName').textContent=`☠ ${UNIT_DEFS[boss.type].label}`;
-        $('bossFill').style.width=Math.max(0,boss.hp/boss.maxHp*100)+'%';
+        const hp=bosses.reduce((a,b)=>a+Math.max(0,b.hp),0),mx=bosses.reduce((a,b)=>a+b.maxHp,0);
+        $('bossName').textContent=bosses.length>1?`☠ 보스 ${bosses.length}기`:`☠ ${UNIT_DEFS[boss.type].label}`;
+        $('bossFill').style.width=Math.max(0,hp/mx*100)+'%';
       }
       wb.classList.toggle('hidden',_waveActive&&!boss);
     }

@@ -645,7 +645,8 @@ function _drawUnit(u,sprites){
     const t=performance.now()/400, pulse=1+Math.sin(t)*.08;
     _ctx.save();
     const g=_ctx.createRadialGradient(sx,sy,dsz*.05,sx,sy,dsz*.55*pulse);
-    g.addColorStop(0,'rgba(239,68,68,.45)'); g.addColorStop(1,'rgba(239,68,68,0)');
+    const rgb=u.darkHero?'147,51,234':'239,68,68';
+    g.addColorStop(0,`rgba(${rgb},.5)`); g.addColorStop(1,`rgba(${rgb},0)`);
     _ctx.fillStyle=g;
     _ctx.beginPath(); _ctx.ellipse(sx,sy,dsz*.55*pulse,dsz*.2*pulse,0,0,Math.PI*2); _ctx.fill();
     _ctx.restore();
@@ -660,6 +661,7 @@ function _drawUnit(u,sprites){
     _drawTower(u,sx,sy,dsz,s);
   } else {
     const img=getFrame(u,sprites);
+    if(u.darkHero&&'filter' in _ctx) _ctx.filter='brightness(.4) saturate(2.4) hue-rotate(250deg)';
     const drawImg=img||(u.team==='monster'?getFrame({...u,spriteKey:'troll'},sprites):null);
     if(drawImg){
       const ry=sy+flyOffset; // 비행 유닛은 flyOffset만큼 위로

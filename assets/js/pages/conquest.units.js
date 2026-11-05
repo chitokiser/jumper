@@ -135,6 +135,8 @@ export const UNIT_DEFS = {
     hp:6000,atk:85,spd:38,range:80,atkRate:1000,size:100,color:'#7f1d1d'},
   boss_dragon: {label:'고대 드래곤',team:'monster',spriteKey:'dragon',flying:true,boss:true,
     hp:12000,atk:210,spd:70,range:150,atkRate:1200,size:130,color:'#7f1d1d'},
+  dark_hero:   {label:'흑화된 영웅',team:'monster',spriteKey:'knight',boss:true,darkHero:true,
+    hp:5000,atk:120,spd:70,range:140,atkRate:900,size:88,color:'#581c87'},
   pirate: {label:'해적',    team:'monster',spriteKey:'pirate',
     hp:280,atk:38,spd:70,range:65,atkRate:950, size:54,color:'#7c3a1a'},
 };
@@ -161,7 +163,9 @@ export function makeUnit(type,x,y){
   const def=UNIT_DEFS[type];
   const u={
     id:++_uid,type,x,y,team:def.team,spriteKey:def.spriteKey,size:def.size,
-    isTower:!!(def.tower),boss:!!def.boss,lvl:1,spent:def.cost||0,
+    isTower:!!(def.tower),boss:!!def.boss,darkHero:!!def.darkHero,lvl:1,spent:def.cost||0,
+    role:type==='pirate'?'raider':type==='zombie'?'breaker':type==='dark_hero'?'duelist':null,
+    rage:0,dash:0,skillT:[3500,6000,9000],
     hp:def.hp,maxHp:def.hp,atk:def.atk,spd:def.spd,range:def.range,
     atkRate:def.atkRate,atkCooldown:0,
     animState:'idle',animFrame:0,animTimer:0,
@@ -218,7 +222,9 @@ export function updateUnit(u,allies,enemies,dt,walls=null){
   if(u.dying){u.dyingTimer-=dt;_tickAnim(u,dt);return u.dyingTimer<=0;}
   u.atkCooldown=Math.max(0,u.atkCooldown-dt);
   u.hitFlash=Math.max(0,u.hitFlash-dt);
-  if(u.team==='monster')_updateMonster(u,allies,dt,walls);
+  if(u.rage>0)u.rage-=dt;
+  if(u.dash>0)u.dash-=dt;
+  if(u.team==='monster')_updateMonster(u,allies,dt,walls,enemies);
   else if(u.isTower)_updateTower(u,enemies,dt);
   else if(u.type==='miner')_updateMiner(u,dt);
   else _updateAlly(u,enemies,dt);
@@ -233,8 +239,52 @@ function _whichWall(u){
 }
 
 // ── 몬스터 AI (도로 이동→성벽 공격→함락 시 내부 진입) ────────────────
-function _updateMonster(u,allies,dt,walls){
+// 역할별 목표 선정: 해적=일꾼·약한 수비대, 좀비=타워, 흑화 영웅=아군 영웅 (사정거리 안 일반 적이 있으면 그쪽부터)
+const ROLE_RULE={
+  raider: {aggro:520,pick:a=>!a.isTower&&a.type!=='hero'},
+  breaker:{aggro:460,pick:a=>a.isTower},
+  duelist:{aggro:650,pick:a=>a.type==='hero'},
+};
+function _pickFoe(u,allies){
+  const near=_nearest(u,allies);
+  const r=ROLE_RULE[u.role]; if(!r||u.flying) return near;
+  if(near&&_d(u.x,u.y,near.x,near.y)<=u.range+u.size*.5) return near;
+  let best=null,bd=r.aggro;
+  for(const a of allies){
+    if(a.dying||!r.pick(a))continue;
+    const d=_d(u.x,u.y,a.x,a.y);
+    if(d<bd){bd=d;best=a;}
+  }
+  return best||near;
+}
+// 흑화 영웅 스킬: 돌진(7s) / 충격파(9s, 반경 260) / 전쟁의 함성(12s, 주변 몬스터 공격력 +30%)
+function _darkHeroSkills(u,allies,dt,monsters){
+  for(let i=0;i<3;i++)u.skillT[i]-=dt;
   const foe=_nearest(u,allies);
+  if(u.skillT[0]<=0&&foe){
+    const d=_d(u.x,u.y,foe.x,foe.y);
+    if(d>150&&d<700){u.skillT[0]=7000;u.dash=700;}
+  }
+  if(u.skillT[1]<=0){
+    const hits=allies.filter(a=>!a.dying&&_d(u.x,u.y,a.x,a.y)<=260);
+    if(hits.length){
+      u.skillT[1]=9000;
+      const keep=u.atk;u.atk=keep*1.5;
+      for(const a of hits)_hit(u,a);
+      u.atk=keep;
+      fxQueue.push({t:'shock',x:u.x,y:u.y});
+    }
+  }
+  if(u.skillT[2]<=0&&monsters){
+    u.skillT[2]=12000;
+    for(const m of monsters){if(!m.dying&&_d(u.x,u.y,m.x,m.y)<=500)m.rage=6000;}
+    fxQueue.push({t:'shock',x:u.x,y:u.y,cry:true});
+  }
+}
+
+function _updateMonster(u,allies,dt,walls,monsters){
+  if(u.type==='dark_hero')_darkHeroSkills(u,allies,dt,monsters);
+  const foe=_pickFoe(u,allies);
   const inRange=foe&&_d(u.x,u.y,foe.x,foe.y)<=u.range+u.size*.5;
   if(inRange){
     u.animState='attack';u.flipH=foe.x<u.x;
@@ -296,6 +346,15 @@ function _updateMonster(u,allies,dt,walls){
     _moveTo(u,CASTLE_WX,CASTLE_WY,dt);
     u.animState='walk';
     if(foe) u.flipH=foe.x<u.x; else u.flipH=u.x>CASTLE_WX;
+    return;
+  }
+
+  // 역할 몬스터·돌진 중인 흑화 영웅: 길을 벗어나 목표를 추격
+  if(foe&&u.waypoints&&((u.role&&ROLE_RULE[u.role]?.pick(foe))||u.dash>0)){
+    const ox=u.x,oy=u.y;
+    _moveTo(u,foe.x,foe.y,dt);
+    if(_inside(u.x,u.y)){u.x=ox;u.y=oy;}
+    u.animState='walk';
     return;
   }
 
@@ -427,7 +486,7 @@ export function applyImpact(p,enemies){
 
 function _hit(att,tgt){
   // 아군 공격은 10% 확률로 치명타(2배)
-  let dmg=att.atk*(att.team==='ally'?(att.isTower?buff.tower:buff.ally):1), crit=false;
+  let dmg=att.atk*(att.team==='ally'?(att.isTower?buff.tower:buff.ally):1)*(att.rage>0?1.3:1), crit=false;
   if(att.team==='ally'&&Math.random()<0.1){dmg*=2;crit=true;}
   tgt.hp-=dmg;tgt.hitFlash=130;
   tgt.events.push({type:'sound',name:'hit'});
@@ -445,7 +504,7 @@ function _nearest(u,list){
   return best;
 }
 function _moveTo(u,tx,ty,dt){
-  const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy)||1,spd=u.spd*dt/1000;
+  const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy)||1,spd=u.spd*(u.dash>0?3:1)*dt/1000;
   u.x+=dx/d*spd;u.y+=dy/d*spd;u.flipH=dx<0;
 }
 function _tickAnim(u,dt){
