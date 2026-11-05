@@ -7,6 +7,7 @@ import {
 import { getFrame, MINES, UNIT_DEFS } from './conquest.units.js';
 import { POI_DEFS } from './conquest.world.js';
 import { ROAD_SEGMENTS } from './conquest.path.js';
+import { shakeOffset, drawFx, drawAtmosphere } from './conquest.fx.js';
 
 let _cv, _ctx, _mapImg;
 let _fogCv=null, _fogCtx=null;
@@ -75,10 +76,12 @@ function _ldImg(src){
 }
 
 // ── 메인 렌더 ─────────────────────────────────────────────────────────────
-export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGrid,pois,prepCountdown,wave,phase,skillEffects},sprites){
+export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGrid,pois,prepCountdown,wave,phase,skillEffects,waveNo},sprites){
   if(!_ctx)return;
   const W=_cv.width,H=_cv.height;
   _ctx.clearRect(0,0,W,H);
+  const[shx,shy]=shakeOffset();   // 화면 흔들림
+  _ctx.save(); _ctx.translate(shx,shy);
 
   _drawMap(W,H);
   _drawRoads();
@@ -111,6 +114,10 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
   // ── 스킬 이펙트 (유닛 위) ──────────────────────────────────────────────
   if(skillEffects?.length) _drawSkillEffects(skillEffects, W, H);
 
+  // 투사체·데미지 숫자·파티클, 낮밤 분위기
+  drawFx(_ctx,W,H);
+  drawAtmosphere(_ctx,W,H,{wave:waveNo||0,castleRatio:maxCastleHp?castleHp/maxCastleHp:1});
+
   if(phase==='game'&&!wave&&prepCountdown>0){
     const[cx,cy]=worldToScreen(CASTLE_WX,CASTLE_WY-130);
     _ctx.save();
@@ -120,6 +127,7 @@ export function renderScene({defenders,monsters,castleHp,maxCastleHp,walls,fogGr
     _ctx.fillText(`웨이브 시작까지 ${Math.ceil(prepCountdown/1000)}s`,cx,cy);
     _ctx.restore();
   }
+  _ctx.restore();   // 화면 흔들림 해제
 }
 
 // ── 스킬 이펙트 렌더링 ────────────────────────────────────────────────────

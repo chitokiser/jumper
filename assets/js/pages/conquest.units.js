@@ -145,6 +145,9 @@ export function loadSprites(){
   return out;
 }
 
+// 화면 연출용 이벤트 큐 (투사체·데미지 숫자·처치) — 메인 루프가 매 프레임 비운다
+export const fxQueue=[];
+
 // ── 유닛 생성 ────────────────────────────────────────────────────────────
 let _uid=0;
 export function makeUnit(type,x,y){
@@ -277,7 +280,7 @@ function _updateMonster(u,allies,dt,walls){
       u.animState='attack';
       u.flipH=CASTLE_WX<u.x;
       if(u.atkCooldown<=0){
-        u.events.push({type:'damageWall',wall:u.attackingWall,amount:u.atk});
+        u.events.push({type:'damageWall',wall:u.attackingWall,amount:u.atk,fly:true});
         u.events.push({type:'sound',name:'dragon_roar'});
         u.atkCooldown=u.atkRate;
       }
@@ -318,14 +321,14 @@ function _updateTower(u,enemies,dt){
   u.flipH=foe.x<u.x;
   if(u.atkCooldown>0) return;
   u.atkCooldown=u.atkRate;
+  // 즉시 피해 대신 투사체를 쏘고, 도착했을 때 applyImpact 로 피해를 준다
   const aoe=UNIT_DEFS[u.type]?.aoe||0;
+  const top=u.y-u.size*1.6;
   if(aoe>0){
-    for(const e of enemies){
-      if(!e.dying&&_d(foe.x,foe.y,e.x,e.y)<=aoe) _hit(u,e);
-    }
+    fxQueue.push({t:'shot',kind:'cannon',sx:u.x,sy:top,tx:foe.x,ty:foe.y,att:u,tgt:null});
     u.events.push({type:'sound',name:'cannon'});
   } else {
-    _hit(u,foe);
+    fxQueue.push({t:'shot',kind:'arrow',sx:u.x,sy:top,tx:foe.x,ty:foe.y,att:u,tgt:foe});
     u.events.push({type:'sound',name:'arrow'});
   }
 }
@@ -403,12 +406,30 @@ function _updateMiner(u,dt){
   }
 }
 
+// 투사체 도착 시 피해 적용 (대포는 착탄 지점 범위 피해)
+export function applyImpact(p,enemies){
+  const aoe=UNIT_DEFS[p.att?.type]?.aoe||0;
+  if(aoe>0){
+    for(const e of enemies){
+      if(!e.dying&&_d(p.tx,p.ty,e.x,e.y)<=aoe) _hit(p.att,e);
+    }
+  } else if(p.tgt&&!p.tgt.dying){
+    _hit(p.att,p.tgt);
+  }
+}
+
 function _hit(att,tgt){
-  tgt.hp-=att.atk;tgt.hitFlash=130;
+  // 아군 공격은 10% 확률로 치명타(2배)
+  let dmg=att.atk, crit=false;
+  if(att.team==='ally'&&Math.random()<0.1){dmg*=2;crit=true;}
+  tgt.hp-=dmg;tgt.hitFlash=130;
   tgt.events.push({type:'sound',name:'hit'});
+  fxQueue.push({t:'dmg',x:tgt.x,y:tgt.y-tgt.size*2,amount:Math.round(dmg),crit,ally:tgt.team==='ally'});
+  fxQueue.push({t:'spark',x:tgt.x,y:tgt.y-tgt.size*1.5,crit});
   if(tgt.hp<=0&&!tgt.dying){
     tgt.dying=true;tgt.animState='die';tgt.animFrame=0;tgt.dyingTimer=900;
     tgt.events.push({type:'sound',name:'death'});
+    fxQueue.push({t:'kill',unit:tgt});
   }
 }
 function _nearest(u,list){

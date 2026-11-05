@@ -215,6 +215,27 @@ export function playSound(type) {
         break;
       }
 
+      // ── 웨이브 시작 나팔 ──────────────────────────────────────────────────
+      case 'horn':
+        tone(110,0.5,0.55,0,'sawtooth'); tone(165,0.35,0.55,0,'sawtooth');
+        tone(147,0.5,0.75,0.5,'sawtooth'); tone(220,0.35,0.75,0.5,'sawtooth');
+        noise(0.12,0.12);
+        break;
+
+      // ── 성벽 붕괴 ─────────────────────────────────────────────────────────
+      case 'wall_crumble':
+        noise(0.8,0.95); tone(55,0.9,0.6,0,'sine');
+        tone(90,0.5,0.4,0.15,'sawtooth'); noise(0.35,0.6);
+        break;
+
+      // ── 코인 / 연속 처치 ─────────────────────────────────────────────────
+      case 'coin':
+        tone(1320,0.2,0.05,0,'square'); tone(1760,0.2,0.1,0.05,'square');
+        break;
+      case 'streak':
+        [523,659,784,1047].forEach((f,i)=>tone(f,0.3,0.14,i*0.06,'triangle'));
+        break;
+
       default: break;
     }
   } catch(_) {}

@@ -7,12 +7,13 @@ import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.j
 import {
   initCamera, resizeCamera, screenToWorld, panBy, zoomBy, moveCamTo,
   makeFogGrid, revealFog, generatePOIs, addRevealAnim, updateRevealAnims,
-  CASTLE_WX, CASTLE_WY, POI_DEFS,
+  CASTLE_WX, CASTLE_WY, POI_DEFS, getScale,
 } from './conquest.world.js';
 import { initRenderer, loadMapAssets, renderScene, isMapObstacle } from './conquest.render.js';
-import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL } from './conquest.units.js';
+import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL, fxQueue, applyImpact } from './conquest.units.js';
 import { getSpawnPos, getDragonSpawnPos, snapToRoad } from './conquest.path.js';
 import { resumeAudio, playSound } from './conquest.audio.js';
+import { setImpactHandler, resetFx, updateFx, addShake, addShot, addDamage, addSpark, addPuff, addCoin, addBurst, showBanner, WALL_POINT } from './conquest.fx.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────
 const GAME_KEY   = 'conquestEntry';
@@ -71,6 +72,7 @@ let _skillEffects=[]; // 캔버스 이펙트 목록
 
 let _drag=null;
 let _pinch=null;
+let _streak=0,_lastKillAt=0,_lastCoinSnd=0,_lastCastleShake=0;   // 연속 처치 / 연출 쓰로틀
 
 const $=id=>document.getElementById(id);
 
@@ -137,6 +139,8 @@ function startGame(){
   _prepTimer=PREP_TIME;_mineTimer=0;_spawnTimer=0;_waveActive=false;
   _selected=new Set();_placing=false;_dispatchMode=false;_heroSkillCd=0;
   _skillCds={};_skillEffects=[];_updateSkillUI();
+  resetFx();fxQueue.length=0;_streak=0;_lastKillAt=0;
+  setImpactHandler(p=>applyImpact(p,_monsters));
   _walls={
     north:{hp:WALL_HP,maxHp:WALL_HP,breached:false},
     south:{hp:WALL_HP,maxHp:WALL_HP,breached:false},
@@ -177,13 +181,15 @@ function _loop(ts){
   _raf=requestAnimationFrame(_loop);
   const dt=Math.min(ts-_lastTs,50);_lastTs=ts;
   _update(dt);
+  _drainFx();
+  updateFx(dt,{walls:_walls,castleRatio:_castleHp/MAX_HP});
   renderScene({
     defenders:_defenders,monsters:_monsters,
     castleHp:_castleHp,maxCastleHp:MAX_HP,
     walls:_walls,
     fogGrid:_fogGrid,pois:_pois,
     prepCountdown:_prepTimer,wave:_waveActive,phase:_phase,
-    skillEffects:_skillEffects,
+    skillEffects:_skillEffects,waveNo:_wave,
   },_sprites);
 }
 
@@ -212,8 +218,17 @@ function _update(dt){
     if(m._frozenUntil&&now2<m._frozenUntil){m.hitFlash=Math.max(0,(m.hitFlash||0)-dt);continue;}
     const dead=updateUnit(m,_defenders,_monsters,dt,_walls);
     for(const ev of m.events||[]){
-      if(ev.type==='damageCastle') _castleHp-=ev.amount;
-      if(ev.type==='damageWall') _damageWall(ev.wall,ev.amount);
+      if(ev.type==='damageCastle'){
+        _castleHp-=ev.amount;
+        const tn=performance.now();
+        if(tn-_lastCastleShake>260){_lastCastleShake=tn;addShake(2.2);addSpark(CASTLE_WX+(Math.random()-.5)*160,CASTLE_WY-40,'#fca5a5',3);}
+      }
+      if(ev.type==='damageWall'){
+        _damageWall(ev.wall,ev.amount);
+        const wp=WALL_POINT[ev.wall];
+        if(wp&&ev.fly) addShot({kind:'fire',sx:m.x,sy:m.y-60,tx:wp[0]+(Math.random()-.5)*160,ty:wp[1]+(Math.random()-.5)*160,dur:520});
+        else if(wp&&Math.random()<0.35) addSpark(m.x,m.y-30,'#d6b27a',2);
+      }
       if(ev.type==='sound')_sfx(ev.name);
     }
     if(dead)_monsters.splice(i,1);
@@ -240,6 +255,33 @@ function _update(dt){
   renderHUD();
 }
 
+// ── 전투 연출 큐 처리 / 처치 코인·연속 처치 ─────────────────────────────────
+function _drainFx(){
+  for(const ev of fxQueue){
+    if(ev.t==='dmg') addDamage(ev.x,ev.y,ev.amount,ev.crit,ev.ally);
+    else if(ev.t==='spark') addSpark(ev.x,ev.y,ev.crit?'#fbbf24':'#fde68a',ev.crit?7:3);
+    else if(ev.t==='shot') addShot(ev);
+    else if(ev.t==='kill'){ addPuff(ev.unit.x,ev.unit.y,4,'dust'); _onKill(ev.unit); }
+  }
+  fxQueue.length=0;
+}
+// 몬스터 처치: 코인(인게임 GP) + 3초 안에 이어 잡으면 연속 처치, 10마리마다 보너스
+function _onKill(m){
+  if(!m||m.team!=='monster'||m._killCounted) return;
+  m._killCounted=true;
+  const def=UNIT_DEFS[m.type]; if(!def) return;
+  const now=performance.now();
+  const coin=Math.max(1,Math.round(def.hp/150));
+  _addGP(coin); addCoin(m.x,m.y,coin);
+  if(now-_lastCoinSnd>120){playSound('coin');_lastCoinSnd=now;}
+  _streak=(now-_lastKillAt<3000)?_streak+1:1; _lastKillAt=now;
+  if(_streak>=10&&_streak%10===0){
+    const bonus=_streak; _addGP(bonus);
+    showBanner(`🔥 KILLSTREAK ×${_streak}  +${bonus} GP`);
+    playSound('streak'); addShake(3);
+  }
+}
+
 // ── 발견 이벤트 ───────────────────────────────────────────────────────────
 function _onDiscover(poi){
   const def=POI_DEFS[poi.type]||{};
@@ -257,7 +299,7 @@ function _showNotif(msg){
 
 // ── 웨이브 ────────────────────────────────────────────────────────────────
 function _startWave(){
-  playSound('levelup');
+  playSound('levelup');playSound('horn');
   _waveActive=true;
   const def=WAVES[Math.min(_wave,WAVES.length-1)];
   const scale=1+_wave*0.35; // 웨이브마다 35% 병력 증가
@@ -280,7 +322,8 @@ function _damageWall(key,dmg){
   w.hp=Math.max(0,w.hp-dmg);
   if(w.hp<=0){
     w.hp=0;w.breached=true;
-    playSound('cannon_hit');
+    playSound('cannon_hit');playSound('wall_crumble');addShake(10);
+    {const wp=WALL_POINT[key];if(wp){addBurst(wp[0],wp[1]);addBurst(wp[0]+120,wp[1]+60);}}
     _showNotif(`💥 ${WALL_NAMES[key]} breached! Monsters are invading!`);
     // 해당 성벽에 대기 중인 몬스터 즉시 진입
     for(const m of _monsters){
@@ -313,12 +356,13 @@ function _useHeroSkill(){
   for(const m of _monsters){
     if(!m.dying&&Math.hypot(m.x-hero.x,m.y-hero.y)<=HERO_SKILL_RANGE){
       m.hp-=hero.atk*8; m.hitFlash=400;
-      if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=900;}
+      addDamage(m.x,m.y-60,hero.atk*8,true,false);
+      if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=900;_onKill(m);}
       hitCount++;
     }
   }
   _heroSkillCd=HERO_SKILL_CD;
-  playSound('skill_lightning');
+  playSound('skill_lightning');addShake(7);
   addRevealAnim(hero.x,hero.y,HERO_SKILL_RANGE);
   _showNotif(`⚡ Hero Skill! ${hitCount} monsters struck`);
   renderHUD();
@@ -348,6 +392,7 @@ function _useSkill(type){
     if(!inRange) continue;
     m.hp-=def.dmg;
     m.hitFlash=500;
+    addDamage(m.x,m.y-60,def.dmg,false,false);
     hitCount++;
     if(def.freeze) m._frozenUntil=now+def.freeze;
     if(def.knockback){
@@ -357,14 +402,14 @@ function _useSkill(type){
       // 밀쳐낸 후 경로 인덱스 되감기 (자연스러운 복귀)
       if(m.waypointIdx>0) m.waypointIdx=Math.max(0,m.waypointIdx-3);
     }
-    if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=900;}
+    if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=900;_onKill(m);}
   }
 
   _skillEffects.push({type,x:cx,y:cy,startAt:now,
     dur:type==='meteor'?900:type==='ice'?1300:1100,
     color:def.color, range:def.range||2000});
 
-  playSound(`skill_${type}`);
+  playSound(`skill_${type}`);addShake({fire:6,ice:3,wind:5,meteor:12}[type]||4);
   _showNotif(`${def.emoji} ${def.name}! ${hitCount > 0 ? hitCount+' hit' : 'GP spent'}`);
   _updateSkillUI();
   // 쿨다운 종료 시 UI 갱신
@@ -499,6 +544,24 @@ function _onTouchEnd(e){
   _drag=null;_pinch=null;
 }
 
+// 유닛은 발(위치) 위로 크게 그려지므로(DR=5배) 몸통 중심을 기준으로 정밀하게 판정한다
+function _bodyCenter(u){
+  const dsz=u.size*(u.isTower?10/3:5);
+  return [u.x, u.y-dsz*(0.5+(u.flying?0.25:0))];
+}
+const _pxToWorld=px=>px/Math.max(getScale(),0.05);
+// 반경 안에서 '가장 가까운' 한 개만 고른다 (겹쳐 있어도 탭한 쪽이 선택됨)
+function _pickNearest(list,wx,wy,radiusOf){
+  let best=null,bd=Infinity;
+  for(const u of list){
+    if(u.dying) continue;
+    const[bx,by]=_bodyCenter(u);
+    const d=Math.hypot(wx-bx,wy-by);
+    if(d<=radiusOf(u)&&d<bd){bd=d;best=u;}
+  }
+  return best;
+}
+
 function _handleTap(cx,cy){
   const cv=$('gameCanvas');
   const rect=cv.getBoundingClientRect();
@@ -523,7 +586,10 @@ function _handleTap(cx,cy){
 
   // ── 우선순위 ①: 기존 아군 탭 → 무조건 선택 (배치 모드 자동 해제) ─────────
   // 배치 모드 중에도 기존 유닛을 탭하면 선택 모드로 전환
-  const hit=_defenders.find(u=>!u.dying&&Math.hypot(wx-u.x,wy-u.y)<u.size*5);
+  // 배치 모드에서는 반경을 더 좁혀서, 다른 유닛 바로 옆에도 정밀하게 놓을 수 있다
+  const hit=_pickNearest(_defenders,wx,wy,_placing
+    ? (u=>Math.max(u.size*0.45,_pxToWorld(12)))
+    : (u=>Math.max(u.size*1.1,_pxToWorld(22))));
   if(hit){
     _placing=false;           // 배치 모드 해제
     _placingType='villager';  // 버튼 active 상태 초기화
@@ -548,7 +614,7 @@ function _handleTap(cx,cy){
   // ── 우선순위 ③: 선택된 아군이 있을 때 ────────────────────────────────
   if(_selected.size>0){
     // 적 탭 → 공격 타겟 지정
-    const enemy=_monsters.find(m=>!m.dying&&Math.hypot(wx-m.x,wy-m.y)<m.size*3);
+    const enemy=_pickNearest(_monsters,wx,wy,m=>Math.max(m.size*1.2,_pxToWorld(26)));
     if(enemy){
       _defenders.forEach(d=>{
         if(d.selected&&!d.isTower){
