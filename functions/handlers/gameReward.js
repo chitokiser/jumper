@@ -12,6 +12,7 @@ const GAME_MAX_REWARD = {
   relay:    3000,
   dungeon:  300,
   conquest: 300,
+  suika:    300,   // 30점당 1GP, 최대 9000점
 };
 
 // ── 참가비 (서버 정의 — 클라이언트 전달값 무시) ──────────────────────────────
@@ -66,7 +67,7 @@ async function claimGameReward(uid, gameType, amount) {
 async function payGameEntry(uid, gameKey) {
   if (!uid || typeof gameKey !== 'string') throw new Error('파라미터 오류');
 
-  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'relayEntry', 'dungeonEntry', 'conquestEntry'];
+  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'relayEntry', 'dungeonEntry', 'conquestEntry', 'suikaEntry'];
   if (!allowedKeys.includes(gameKey)) throw new Error(`알 수 없는 게임 키: ${gameKey}`);
 
   const ref = db.collection('battle_players').doc(uid);
