@@ -155,7 +155,7 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
 
 /* ── 스킬 버튼 ── */
 #skillBar{
-  position:absolute;right:8px;bottom:100px;
+  position:absolute;right:8px;bottom:290px;
   display:flex;flex-direction:column;gap:5px;
   pointer-events:all;
 }
@@ -226,6 +226,25 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
   white-space:nowrap;animation:jumpAlert .35s ease-in-out infinite alternate;z-index:10}
 #jumpHint small{display:block;font-size:10px;color:#fff;font-weight:700}
 #jumpHint.hidden{display:none}
+
+/* ── 무기 버튼 (기관총 / 미사일) ── */
+.wbtn{position:absolute;right:8px;width:76px;height:76px;border-radius:50%;color:#fff;font-size:28px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;overflow:hidden;
+  pointer-events:all;user-select:none;cursor:pointer;transition:opacity .15s,transform 80ms}
+.wbtn small{font-size:9px;font-weight:800;position:relative}
+.wbtn:active{transform:scale(.92)}
+#btnMG{bottom:100px;background:rgba(239,68,68,.22);border:3px solid #ef4444}
+#btnMG small{color:#fecaca}
+#btnMG.overheat{border-color:#f97316;background:rgba(249,115,22,.4);animation:jumpAlert .25s ease-in-out infinite alternate}
+#mgHeat{position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(to top,rgba(249,115,22,.7),rgba(250,204,21,.25));pointer-events:none}
+#btnMissile{bottom:188px;background:rgba(59,130,246,.22);border:3px solid #3b82f6}
+#btnMissile small{color:#bfdbfe}
+#msAmmo{position:absolute;top:4px;right:16px;font-size:12px;font-weight:900;color:#fde047}
+.wbtn .ic{position:relative}
+#finishScoreBox{margin:6px 0;font-size:13px;color:#d1d5db;line-height:1.7;text-align:center}
+#finishScoreBox b{color:#fbbf24}
+#finishScoreBox .fs-total{font-size:22px;font-weight:900;color:#f59e0b;margin-top:2px}
+#finishScoreBox .fs-sub{font-size:11px;color:#6b7280}
 
 /* ── FINISH 오버레이 ── */
 #finishOverlay{
@@ -352,6 +371,7 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
         <div id="lapGpBox">
           <div class="hb"><span id="lapTxt">1/3랩</span></div>
           <div class="hb" style="color:#fbbf24"><span id="gpTxt">💰—</span></div>
+          <div class="hb" style="color:#f87171"><span id="killTxt">🎯 0</span></div>
         </div>
       </div>
 
@@ -373,6 +393,10 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
       <!-- 끊긴 도로 경고 + 점프 버튼 -->
       <div id="jumpHint" class="hidden">⚠️ 끊긴 도로! 점프!<small>🦘 버튼을 누르면 알맞은 위치에서 자동 도약</small></div>
       <button id="btnJump" tabindex="-1">🦘<small>JUMP</small></button>
+
+      <!-- 무기: 기관총(누르고 있으면 연사) / 미사일 -->
+      <button class="wbtn" id="btnMG" tabindex="-1"><div id="mgHeat"></div><span class="ic">🔫</span><small>HOLD</small></button>
+      <button class="wbtn" id="btnMissile" tabindex="-1"><span id="msAmmo">5</span><span class="ic">🚀</span><small>MISSILE</small></button>
 
       <!-- 조향 버튼 -->
       <div id="controls">
@@ -408,6 +432,7 @@ html,body{height:100%;background:#0a0a1a;color:#fff;
   </div>
   <div class="fin-title">🏁 레이스 완료!</div>
   <div id="finishRank">?위</div>
+  <div id="finishScoreBox"></div>
   <div id="finishGP">+? GP</div>
   <div style="font-size:12px;color:#6b7280;margin-top:6px">GP 자동 지급 완료</div>
   <button class="btn-main" id="btnRestart" style="margin-top:14px">다시 도전!</button>

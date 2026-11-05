@@ -7,7 +7,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
   buildTrack, initRenderer, loadAllSprites, renderScene,
-  triggerShake, SEGS, TOTAL_LAPS, GAPS, gapAt, WARN_SEGS,
+  triggerShake, SEGS, TOTAL_LAPS, GAPS, gapAt, WARN_SEGS, setRaceSeed, gapShift,
 } from './monsterrace.render.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
@@ -36,6 +36,22 @@ const JUMP_BUFFER_SEGS = WARN_SEGS;  // 경고 줄무늬가 보이는 구간 안
 const JUMP_TAKEOFF_SEGS = 2.5; // 예약된 점프가 실행되는 끊긴 도로까지의 거리
 const LAND_TOLERANCE = 0.25;   // 착지 허용 폭 (도로 경계 ROAD_W 바깥으로 이만큼까지 인정)
 const AI_GAP_FAIL = 0.08;   // AI 가 끊긴 도로에서 점프를 놓칠 확률
+// ── 적 · 무기 · 점수 ─────────────────────────────────────────────────────────
+const WAVE_FIRST_MS = 4000, WAVE_EVERY_MS = 4000;   // 첫 웨이브 / 웨이브 간격 (게임 시간)
+const ENEMY_SPAWN_DIST = 60, ENEMY_MAX = 70;        // 플레이어 앞 소환 거리(세그) / 동시 최대 마릿수
+const ENEMY_KILL_SCORE = 30, RIVAL_HIT_SCORE = 100, KILL_GP = 2, KILL_GP_MAX = 300;
+const RANK_SCORES = [1000, 700, 500, 350, 250, 150, 100];
+const MG_FIRE_STEPS = 5, MG_RANGE = 45, MG_LANE_TOL = 0.32, MG_HEAT_SHOT = 5, MG_HEAT_MAX = 100;
+const MS_START = 5, MS_MAX = 9, MS_CD_MS = 3000, MS_SPEED = 0.40, MS_REACH = 60;
+const MS_RADIUS_POS = 3, MS_RADIUS_LANE = 1.0;
+const ENEMY_TYPES = [
+  { img:'zombie1', hp:3, sc:0.75, spd:[0.04, 0.07] },
+  { img:'orc',     hp:3, sc:0.75, spd:[0.04, 0.07] },
+  { img:'pirate',  hp:3, sc:0.75, spd:[0.04, 0.07] },
+  { img:'zombie2', hp:3, sc:0.75, spd:[0.04, 0.07] },
+  { img:'cabi',    hp:3, sc:0.75, spd:[0.04, 0.07] },
+];
+const ENEMY_TANK = { img:'troll', hp:8, sc:1.15, spd:[0.03, 0.045] };
 const GEARS        = [0.22, 0.42, 0.62, 0.80, 1.0];
 const GEAR_ACCEL_M = [2.0,  1.55, 1.25, 1.0,  0.82];
 
@@ -383,6 +399,10 @@ let _gasMeterEl = null;   // gasMeter DOM 캐시
 let _slipstream = false;  // 슬립스트림 활성 여부
 let _lastRivalAlert = 0;  // 라이벌 경고 타이머
 const _keys = {left:false, right:false, gas:false, brake:false};
+let _enemies = [], _crates = [], _missiles = [], _shots = [], _booms = [];
+let _enemyId = 0, _waveNo = 0, _combatMs = 0, _nextWaveMs = WAVE_FIRST_MS;
+let _kills = 0, _multiBonus = 0, _rivalHits = 0;
+let _msAmmo = MS_START, _msCd = 0, _heat = 0, _overheat = false, _mgHeld = false, _mgStep = 0;
 let _aiTimers = {};
 
 const $ = id => document.getElementById(id);
@@ -448,9 +468,9 @@ async function deductFee() {
   } catch { return false; }
 }
 
-async function awardPrize(rank) {
+async function awardPrize(rank, bonus = 0) {
   if (_freeMode || !_uid) return 0;
-  const gp = PRIZES[Math.min(rank, PRIZES.length - 1)] || 10;
+  const gp = (PRIZES[Math.min(rank, PRIZES.length - 1)] || 10) + bonus;
   try {
     await httpsCallable(functions, 'claimGameReward')({ gameType: 'race', amount: gp });
     if (gp >= 50) httpsCallable(functions, 'broadcastGpEvent')({ game: 'monsterrace', amount: gp }).catch(() => {});
@@ -472,7 +492,7 @@ function makeRacer(def, isPlayer) {
     maxMp: isPlayer ? _playerMaxMP : 800,
     lap: 0, finished: false, rank: 0, currentRank: 1,
     fallUntil: 0, wobble: 0,
-    air: 0, airTotal: JUMP_STEPS, jumpCd: 0, aiGapKey: '', aiJumpOK: true,
+    air: 0, airTotal: JUMP_STEPS, jumpCd: 0, airGap: null, airShifted: false, aiGapKey: '', aiJumpOK: true,
     drift: 0, steerLossUntil: 0,
     effects: {},
     gear: 1,
@@ -564,14 +584,203 @@ function findNearest(racer, ahead) {
 }
 
 // ── 물리 ─────────────────────────────────────────────────────────────────────
+// ── 정면에서 몰려오는 적 / 기관총 / 미사일 ───────────────────────────────────
+function resetCombat() {
+  _enemies = []; _crates = []; _missiles = []; _shots = []; _booms = [];
+  _enemyId = 0; _waveNo = 0; _combatMs = 0; _nextWaveMs = WAVE_FIRST_MS;
+  _kills = 0; _multiBonus = 0; _rivalHits = 0;
+  _msAmmo = MS_START; _msCd = 0; _heat = 0; _overheat = false; _mgHeld = false; _mgStep = 0;
+}
+
+function nearGapAbs(pos) {
+  const lapN = Math.floor(pos / SEGS), idx = pos - lapN * SEGS;
+  return GAPS.some(g => lapN >= g.minLap && idx >= g.start - WARN_SEGS - 6 && idx <= g.start + g.len + 4);
+}
+
+function spawnWave() {
+  const p = _player;
+  if (!p || p.finished) return;
+  const base = p.pos + ENEMY_SPAWN_DIST;
+  if (base > SEGS * TOTAL_LAPS - 8) return;
+  if (nearGapAbs(base) || nearGapAbs(base + 8)) { _nextWaveMs = _combatMs + 1200; return; }   // 끊긴 도로 근처엔 소환하지 않음
+  const n = Math.min(10 + p.lap * 4 + Math.floor(Math.random() * 7), ENEMY_MAX - _enemies.length);
+  if (n <= 0) return;
+  const form = ['line', 'v', 'zig', 'rand'][Math.floor(Math.random() * 4)];
+  for (let i = 0; i < n; i++) {
+    let lane, row;
+    if (form === 'line')      { row = Math.floor(i / 6);              lane = -0.8 + ((i % 6) / 5) * 1.6; }
+    else if (form === 'v')    { const c = (n - 1) / 2; row = Math.abs(i - c) * 0.9; lane = ((i - c) / Math.max(1, c)) * 0.8; }
+    else if (form === 'zig')  { row = i * 0.8;                        lane = (i % 2 ? 0.6 : -0.6) * (0.5 + Math.random() * 0.5); }
+    else                      { row = Math.random() * 6;              lane = (Math.random() * 2 - 1) * 0.85; }
+    const t = Math.random() < 0.08 ? ENEMY_TANK : ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)];
+    _enemies.push({
+      id: ++_enemyId, pos: base + row * 1.4 + Math.random() * 0.6, lane,
+      spd: t.spd[0] + Math.random() * (t.spd[1] - t.spd[0]),
+      hp: t.hp, maxHp: t.hp, img: t.img, sc: t.sc, flash: 0, sway: Math.random() * 6.28, dead: false, ai: {},
+    });
+  }
+  if (_waveNo % 2 === 1) _crates.push({ pos: base - 6, lane: (Math.random() * 2 - 1) * 0.7, active: true });
+  _waveNo++;
+}
+
+function killEnemy(e) {
+  if (e.dead) return;
+  e.dead = true; _kills++;
+  addSparks(e.pos, e.lane, 0.6);
+  if (_kills % 3 === 0) tone(260 + Math.random() * 120, 'triangle', 0.07, 0.12);
+}
+
+function fireMG() {
+  const p = _player;
+  let tgt = null;
+  for (const e of _enemies) {
+    if (e.dead || e.pos < p.pos + 0.6 || e.pos > p.pos + MG_RANGE) continue;
+    if (Math.abs(e.lane - p.lane) > MG_LANE_TOL) continue;
+    if (!tgt || e.pos < tgt.pos) tgt = e;
+  }
+  if (tgt) {
+    tgt.hp -= 1; tgt.flash = 4;
+    _shots.push({ tpos: tgt.pos, tlane: tgt.lane, life: 3 });
+    if (tgt.hp <= 0) killEnemy(tgt);
+  } else {
+    _shots.push({ tpos: p.pos + 20, tlane: p.lane, life: 3 });
+  }
+  tone(900 + Math.random() * 200, 'square', 0.025, 0.07);
+}
+
+function fireMissile() {
+  const p = _player, now = Date.now();
+  if (!p || _ended || p.finished || _msAmmo <= 0 || now < _msCd || p.fallUntil > now) return;
+  _msAmmo--; _msCd = now + MS_CD_MS;
+  _missiles.push({ pos: p.pos + 1.2, lane: p.lane, born: p.pos });
+  playBoost();
+}
+
+function explodeMissile(m) {
+  const now = Date.now();
+  _booms.push({ pos: m.pos, lane: m.lane, life: 20 });
+  triggerShake(5); _playCollision(0.7);
+  let n = 0;
+  for (const e of _enemies) {
+    if (e.dead || Math.abs(e.pos - m.pos) > MS_RADIUS_POS || Math.abs(e.lane - m.lane) > MS_RADIUS_LANE) continue;
+    e.hp -= 10; e.flash = 6;
+    if (e.hp <= 0) { killEnemy(e); n++; }
+  }
+  if (n >= 3) _multiBonus += n * 20;
+  for (const r of _racers) {
+    if (r.finished || Math.abs(r.pos - m.pos) > 2.2 || Math.abs(r.lane - m.lane) > 0.9) continue;
+    r.effects.spin = now + 1800; r.speed *= 0.5; _rivalHits++;
+    addLog(`🚀 ${r.name} hit!`);
+  }
+  if (n >= 3) addLog(`💥 ${n} kills!`);
+}
+
+function updateCombat() {
+  const p = _player;
+  if (!p || _ended || p.finished) return;
+  const now = Date.now();
+  _combatMs += PHYS_STEP_MS;
+
+  if (_combatMs >= _nextWaveMs) { _nextWaveMs = _combatMs + WAVE_EVERY_MS; spawnWave(); }
+
+  // 적 이동 (정면에서 플레이어 쪽으로 달려든다)
+  for (const e of _enemies) {
+    e.pos -= e.spd;
+    e.lane += (p.lane - e.lane) * 0.0035 + Math.sin(_combatMs * 0.004 + e.sway) * 0.003;
+    e.lane = Math.max(-1.0, Math.min(1.0, e.lane));
+    if (e.flash > 0) e.flash--;
+  }
+
+  // 충돌: 플레이어 (점프 중에는 피한다)
+  if (p.air <= 0 && p.fallUntil <= now) {
+    for (const e of _enemies) {
+      if (e.dead || Math.abs(e.pos - p.pos) > 0.9 || Math.abs(e.lane - p.lane) > 0.34) continue;
+      e.dead = true;
+      p.speed *= 0.55; p.effects.spin = Math.max(p.effects.spin || 0, now + 500);
+      triggerShake(7); playTrap();
+    }
+  }
+  // 충돌: AI 라이벌 (40% 는 피한다)
+  for (const r of _racers) {
+    if (r.finished || r.air > 0) continue;
+    for (const e of _enemies) {
+      if (e.dead || Math.abs(e.pos - r.pos) > 0.9 || Math.abs(e.lane - r.lane) > 0.4) continue;
+      if (e.ai[r.id] === undefined) e.ai[r.id] = Math.random() < 0.4;
+      if (e.ai[r.id]) continue;
+      e.dead = true; r.speed *= 0.7;
+    }
+  }
+
+  // 기관총: 버튼을 누르는 동안 연사, 열이 차면 과열
+  if (_mgHeld && !_overheat && p.fallUntil <= now) {
+    if (++_mgStep >= MG_FIRE_STEPS) {
+      _mgStep = 0; fireMG(); _heat += MG_HEAT_SHOT;
+      if (_heat >= MG_HEAT_MAX) { _overheat = true; addLog('🔥 Machine gun overheated!'); }
+    }
+  } else _mgStep = MG_FIRE_STEPS - 1;
+  _heat = Math.max(0, _heat - (_mgHeld && !_overheat ? 0.15 : 0.45));
+  if (_overheat && _heat <= 30) _overheat = false;
+
+  // 미사일 비행 / 폭발
+  for (const m of _missiles) {
+    let tgt = null;
+    for (const e of _enemies) {
+      if (e.dead || e.pos < m.pos - 0.5 || e.pos > m.pos + 25 || Math.abs(e.lane - m.lane) > 0.9) continue;
+      if (!tgt || e.pos < tgt.pos) tgt = e;
+    }
+    if (tgt) m.lane += Math.max(-0.05, Math.min(0.05, (tgt.lane - m.lane) * 0.12));
+    m.pos += MS_SPEED;
+    let boom = m.pos > m.born + MS_REACH;
+    if (!boom) boom = _enemies.some(e => !e.dead && Math.abs(e.pos - m.pos) < 0.9 && Math.abs(e.lane - m.lane) < 0.45)
+                   || _racers.some(r => !r.finished && Math.abs(r.pos - m.pos) < 0.9 && Math.abs(r.lane - m.lane) < 0.45);
+    if (boom) { m.done = true; explodeMissile(m); }
+  }
+
+  // 탄약 상자 획득
+  for (const c of _crates) {
+    if (!c.active || Math.abs(c.pos - p.pos) > 1.0 || Math.abs(c.lane - p.lane) > 0.55) continue;
+    c.active = false; _msAmmo = Math.min(MS_MAX, _msAmmo + 2); playPickup(); addLog('🚀 +2 missiles');
+  }
+
+  // 정리
+  for (const s of _shots) s.life--;
+  for (const b of _booms) b.life--;
+  _enemies = _enemies.filter(e => !e.dead && e.pos > p.pos - 2);
+  _missiles = _missiles.filter(m => !m.done);
+  _shots = _shots.filter(s => s.life > 0);
+  _booms = _booms.filter(b => b.life > 0);
+  _crates = _crates.filter(c => c.active && c.pos > p.pos - 3);
+}
+
+function killScore() { return _kills * ENEMY_KILL_SCORE + _multiBonus + _rivalHits * RIVAL_HIT_SCORE; }
+function rankScore(rank) { return RANK_SCORES[Math.max(0, Math.min(rank - 1, RANK_SCORES.length - 1))]; }
+
 // ── 점프 / 끊긴 도로 ─────────────────────────────────────────────────────────
 function doJump(r) {
   const now = Date.now();
   if (r.air > 0 || r.finished || r.fallUntil > now || (r.effects.stun||0) > now || now < r.jumpCd) return false;
   r.air = JUMP_STEPS; r.airTotal = JUMP_STEPS; r.jumpCd = now + JUMP_CD_MS;
+  const up = upcomingGap(r);   // 이번 점프로 건너게 될 끊긴 도로 (너무 먼 것은 제외)
+  r.airGap = (up && up.startAbs - r.pos < 12) ? up : null; r.airShifted = false;
   r.speed = Math.max(r.speed, MAX_SPEED * JUMP_MIN_SPEED);   // 도약 시 최소 속도 보장 (느린 커브에서도 끊긴 도로를 넘을 수 있게)
   if (r.isPlayer) playJump();
   return true;
+}
+
+// 앞쪽(지금 그 안에 있는 것 포함)의 가장 가까운 끊긴 도로 + 이어지는 도로의 좌/우 어긋남
+function upcomingGap(r) {
+  const lapBase = Math.floor(r.pos / SEGS) * SEGS;
+  let best = null;
+  for (const L of [lapBase, lapBase + SEGS]) {
+    const lapN = L / SEGS;
+    for (const g of GAPS) {
+      if (lapN < g.minLap) continue;
+      const endAbs = L + g.start + g.len;
+      if (endAbs <= r.pos) continue;
+      if (!best || endAbs < best.endAbs) best = { g, startAbs: L + g.start, endAbs, S: gapShift(g, lapN) };
+    }
+  }
+  return best;
 }
 
 // 가장 가까운 앞쪽 끊긴 도로까지 거리 (없으면 Infinity)
@@ -624,11 +833,17 @@ function stepAir(r, isPlayer) {
   if (isPlayer) {
     r.lane += ((_keys.right ? 1 : 0) - (_keys.left ? 1 : 0)) * STEER * 0.9;   // 공중에서도 방향키 조향
   } else {
-    r.lane += (-r.lane) * 0.08;   // AI 는 공중에서 도로 중앙을 향해 보정
+    const tgt = (r.airGap && !r.airShifted) ? r.airGap.S : 0;   // AI 는 이어지는 도로 쪽으로 보정
+    r.lane += (tgt - r.lane) * 0.08;
   }
   r.lane += -(curve / 3) * vr * vr * 0.015;   // 공중에서는 커브에 밀려 바깥으로 흐른다
   r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane));
   advancePos(r);
+  // 끊긴 도로를 건너는 순간, 이어지는 도로 기준 위치로 전환 (어긋난 만큼 빼 준다)
+  if (r.airGap && !r.airShifted && r.pos >= r.airGap.endAbs) {
+    r.lane = Math.max(-LANE_MAX, Math.min(LANE_MAX, r.lane - r.airGap.S));
+    r.airShifted = true;
+  }
   if (r.air > 0) return;
   // 착지: 끊긴 구간 안이거나 도로 밖이면 추락
   const gap = gapAt(segIndex(r), r.lap);
@@ -969,10 +1184,17 @@ async function endRace(rank) {
   const finalRank = _player.rank || (7 - _finishOrder.filter(r=>!r.isPlayer).length);
   showFinishOverlay(finalRank);
 
-  const gp = await awardPrize(finalRank - 1);
+  const killGP = Math.min(KILL_GP_MAX, _kills * KILL_GP);
+  const gp = await awardPrize(finalRank - 1, killGP);
   setTimeout(() => {
     $('finishRank').textContent = `#${finalRank} finish!`;
     $('finishGP').textContent   = _freeMode ? '🆓 Free Play (no reward)' : `+${gp} GP earned!`;
+    const sb = $('finishScoreBox');
+    if (sb) {
+      const rs = rankScore(finalRank), ks = killScore();
+      sb.innerHTML = `<div>🏁 순위 점수 <b>${rs}</b></div><div>🎯 처치 ${_kills}마리 + 라이벌 격추 ${_rivalHits}회 <b>${ks}</b></div><div class="fs-total">⭐ 총점 ${rs + ks}</div>`
+        + (_freeMode ? '' : `<div class="fs-sub">GP: 순위 보상 + 처치 보너스 ${killGP}GP</div>`);
+    }
     leaveFullscreen();   // 전체화면이 남아 있으면 결과 화면의 버튼이 가려져 눌리지 않는다
     showPhase('finish');
   }, 1800);
@@ -1006,6 +1228,7 @@ function stepPhysics() {
   }
   updateRacer(_player, true);
   for (const r of _racers) { updateRacer(r, false); aiThink(r); aiJumpCheck(r); }
+  updateCombat();
   checkTraps(_player);
   checkItems(_player);
   for (const r of _racers) { checkTraps(r); checkItems(r); }
@@ -1042,7 +1265,7 @@ function loop(ts) {
   updateEngine(_player.speed, _player.maxSpeed);
   updateAISounds();
 
-  renderScene(_track, _racers, _player, _items, _gameTs);
+  renderScene(_track, _racers, _player, _items, _gameTs, { enemies:_enemies, crates:_crates, missiles:_missiles, shots:_shots, booms:_booms });
   drawRearview();
   renderHUD();
 }
@@ -1087,13 +1310,35 @@ function renderHUD() {
 
   // 점프 버튼 쿨다운 / 끊긴 도로 경고
   const jb = $('btnJump');
-  const warn = warnAhead(_player);
+  const warn = warnAhead(_player) || (_player.air > 0 && !!_player.airGap && !_player.airShifted);
   if (jb) {
     jb.style.opacity = ((_player.jumpCd - now3) > 0 || _player.air > 0) ? '0.4' : '1';
     jb.classList.toggle('alert', warn);
   }
   const jh = $('jumpHint');
-  if (jh) jh.classList.toggle('hidden', !warn);
+  if (jh) {
+    jh.classList.toggle('hidden', !warn);
+    if (warn) {
+      const up = _player.airGap && !_player.airShifted ? _player.airGap : upcomingGap(_player);
+      const diff = up ? up.S - _player.lane : 0;
+      const dir = Math.abs(diff) < 0.3 ? '✔ 정렬됨!' : (diff > 0 ? '오른쪽으로 조향 ▶▶' : '◀◀ 왼쪽으로 조향');
+      const html = (_player.air > 0 ? '방향키로 착지 위치 맞추기!' : '⚠️ 끊긴 도로! 점프!') + '<small>' + dir + '</small>';
+      if (jh.dataset.h !== html) { jh.dataset.h = html; jh.innerHTML = html; }
+    }
+  }
+
+  // 처치 / 무기 상태
+  if ($('killTxt')) $('killTxt').textContent = `🎯 ${_kills}`;
+  const mgBtn = $('btnMG'), msBtn = $('btnMissile');
+  if (mgBtn) {
+    mgBtn.classList.toggle('overheat', _overheat);
+    const heatEl = $('mgHeat'); if (heatEl) heatEl.style.height = Math.min(100, _heat) + '%';
+  }
+  if (msBtn) {
+    const cd = _msCd - now3;
+    msBtn.style.opacity = (_msAmmo <= 0 || cd > 0) ? '0.4' : '1';
+    const am = $('msAmmo'); if (am) am.textContent = _msAmmo;
+  }
 
   // 스킬 쿨다운
   _selectedSkills.forEach((sk,i)=>{
@@ -1165,6 +1410,8 @@ function startCountdown() {
   _items   = makeItems();
   _traps   = []; _log = []; _finishOrder = []; _ended = false;
   _gameTs  = 0;
+  resetCombat(); setRaceSeed(Math.random() * 1000);
+  _jumpBuf = false;
   _tapBoost = 0; _tapTimes.length = 0; _nitroCooldown = 0; _nitroBurst = 0;
   _keys.gas = false; _slipstream = false; _lastRivalAlert = 0;
   // 힌트: 레이스 시작 시 표시, 첫 탭에 숨김
@@ -1234,6 +1481,8 @@ function initInput() {
       case 'ArrowUp':   case 'w': case 'W': case ' ': e.preventDefault(); _tapBoost = Math.min(1.0, _tapBoost + 0.18); _keys.gas=true; break;
       case 'ArrowDown': case 's': case 'S': e.preventDefault(); _keys.brake=true; break;
       case 'j': case 'J': case 'Shift': e.preventDefault(); requestJump(); break;
+      case 'k': case 'K': e.preventDefault(); _mgHeld = true; break;
+      case 'l': case 'L': e.preventDefault(); fireMissile(); break;
     }
   });
   document.addEventListener('keyup',e=>{
@@ -1243,6 +1492,7 @@ function initInput() {
       case 'ArrowUp':   case 'w': case 'W': case ' ':
         break; // gas decays via _tapBoost
       case 'ArrowDown': case 's': case 'S': _keys.brake=false; break;
+      case 'k': case 'K': _mgHeld = false; break;
     }
   });
 
@@ -1261,6 +1511,23 @@ function initInput() {
     const onJump = e => { if (e.cancelable) e.preventDefault(); requestJump(); };
     jb.addEventListener('touchstart', onJump, {passive:false});
     jb.addEventListener('mousedown', onJump);
+  }
+
+  // 기관총(누르고 있는 동안 연사) / 미사일
+  const mg = $('btnMG'), ms = $('btnMissile');
+  if (mg) {
+    const on = e => { if (e.cancelable) e.preventDefault(); _mgHeld = true; };
+    const off = () => { _mgHeld = false; };
+    mg.addEventListener('touchstart', on, {passive:false});
+    mg.addEventListener('touchend', off); mg.addEventListener('touchcancel', off);
+    mg.addEventListener('mousedown', on);
+    document.addEventListener('mouseup', off);
+    window.addEventListener('blur', off);
+  }
+  if (ms) {
+    const fire = e => { if (e.cancelable) e.preventDefault(); fireMissile(); };
+    ms.addEventListener('touchstart', fire, {passive:false});
+    ms.addEventListener('mousedown', fire);
   }
 
   // 가스: 탭할수록 속도↑, 방치하면 감소 / 1초 내 5회 탭 → 니트로 버스트

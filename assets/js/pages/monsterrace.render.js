@@ -11,6 +11,28 @@ export const GAPS = [
   { id:1, start:26,  len:5, minLap:1 },
   { id:2, start:196, len:5, minLap:1 },
 ];
+// 끊긴 도로 뒤로 이어지는 도로는 좌/우로 어긋나 있다 (만날 때마다 랜덤, 모든 차에 동일)
+let _seed = 1;
+export function setRaceSeed(n) { _seed = n; }
+export function gapShift(g, lapN) {
+  const h = Math.sin((g.id + 1) * 12.9898 + (lapN + 1) * 78.233 + _seed * 3.17) * 43758.5453;
+  const f = h - Math.floor(h);
+  const mag = 1.4 + ((f * 7.31) % 1) * 0.4;     // 1.4 ~ 1.8 차선
+  return (f < 0.5 ? -1 : 1) * mag;               // 양수 = 오른쪽으로 어긋남
+}
+// 플레이어가 아직 건너지 않은 끊긴 도로들의 어긋남을 누적한 값 (segAbs 구간 기준)
+function shiftAt(segAbs, ppos) {
+  let sum = 0;
+  const base = Math.floor(ppos / SEGS);
+  for (let L = base; L <= base + 1; L++) {
+    for (const g of GAPS) {
+      if (L < g.minLap) continue;
+      const endAbs = L * SEGS + g.start + g.len;
+      if (endAbs > ppos && segAbs >= endAbs) sum += gapShift(g, L);
+    }
+  }
+  return sum;
+}
 export const WARN_SEGS = 16;   // 끊긴 도로 앞 경고 줄무늬 구간
 export function gapAt(idx, lap) {
   for (const g of GAPS) if (lap >= g.minLap && idx >= g.start && idx < g.start + g.len) return g;
@@ -277,7 +299,7 @@ function drawPlayerKart(ctx, W, H, player, ts) {
 }
 
 // ── 메인 렌더 ────────────────────────────────────────────────────────────────
-export function renderScene(track, racers, player, items, ts) {
+export function renderScene(track, racers, player, items, ts, world) {
   if(!_ctx) return;
   const W=_W, H=_H;
   const spd=player.speed/player.maxSpeed;
@@ -306,7 +328,9 @@ export function renderScene(track, racers, player, items, ts) {
     const y1=Math.min(H,dToY(d2)-hillY);
     const y2=Math.min(H,dToY(d1)-hillY);
     if(y2<H/2) continue;
-    const w1=dToW(d2), w2=dToW(d1), cx=W/2+curX;
+    const w1=dToW(d2), w2=dToW(d1);
+    const shiftS=shiftAt(pSeg+i, player.pos);
+    const cx=W/2+curX+(shiftS?(shiftS-player.lane)*w2*0.35:0);
     const alt=(pSeg+i)%2===0;
     const gap=gapAt(idx,player.lap), warn=!gap&&warnAt(idx,player.lap);
     dl.push({i, y1:Math.max(H/2,y1), w1, cx, y2:Math.max(H/2,y2), w2,
@@ -396,6 +420,9 @@ export function renderScene(track, racers, player, items, ts) {
     }
   }
 
+  // 정면에서 몰려오는 적 · 탄약 상자 · 미사일 · 폭발 · 기관총 탄도
+  drawWorld(world, player, segMap);
+
   // 파티클 (스파크/스모크)
   drawParticles(_ctx, segMap, player.pos, D_NEAR, DRAW_N);
 
@@ -410,6 +437,76 @@ export function renderScene(track, racers, player, items, ts) {
     _ctx.fillStyle=vg; _ctx.fillRect(0,0,W,H); _ctx.restore();
   }
 
+  _ctx.restore();
+}
+
+const MAX_DRAW_ENEMIES = 60;
+function drawWorld(w, player, segMap) {
+  if(!w) return;
+  const at=(pos)=>{ const d=pos-player.pos; if(d<0.3||d>DRAW_N-1) return null; return segMap[Math.floor(d)]||segMap[Math.ceil(d)]||null; };
+  _ctx.textAlign='center';
+
+  // 탄약 상자
+  for(const c of w.crates){
+    if(!c.active) continue;
+    const si=at(c.pos); if(!si) continue;
+    const sc=D_NEAR/si.depth, sz=Math.max(8,30*sc);
+    const bx=si.cx+c.lane*si.w2*1.05, by=si.y2-sz;
+    _ctx.fillStyle='#14532d'; _rr(_ctx,bx-sz/2,by,sz,sz,3*sc); _ctx.fill();
+    _ctx.fillStyle='#fff'; _ctx.font=`${sz*.7}px sans-serif`; _ctx.fillText('🚀',bx,by+sz*.78);
+  }
+
+  // 적 (먼 것부터, 화면에는 최대 MAX_DRAW_ENEMIES 마리)
+  let list=w.enemies.filter(e=>{ const d=e.pos-player.pos; return d>0.3&&d<DRAW_N-1; }).sort((a,b)=>b.pos-a.pos);
+  if(list.length>MAX_DRAW_ENEMIES) list=list.slice(list.length-MAX_DRAW_ENEMIES);
+  for(const e of list){
+    const si=at(e.pos); if(!si) continue;
+    const sc=D_NEAR/si.depth; if(sc<0.04) continue;
+    const img=_imgs[e.img];
+    const sh=130*sc*e.sc*1.5;
+    const sw=img?sh*(img.naturalWidth/img.naturalHeight):sh;
+    const bx=si.cx+e.lane*si.w2*1.05;
+    _ctx.fillStyle='rgba(0,0,0,0.3)';
+    _ctx.beginPath(); _ctx.ellipse(bx,si.y2-2,sw*.36,sh*.05,0,0,Math.PI*2); _ctx.fill();
+    _ctx.save();
+    _ctx.translate(bx,si.y2);
+    if(e.flash>0) _ctx.filter='brightness(2.2)';
+    if(img) _ctx.drawImage(img,-sw/2,-sh,sw,sh);
+    _ctx.restore();
+    if(e.maxHp>3&&e.hp<e.maxHp&&sh>10){
+      _ctx.fillStyle='rgba(0,0,0,.6)'; _ctx.fillRect(bx-sw*.4,si.y2-sh-5,sw*.8,3);
+      _ctx.fillStyle='#ef4444'; _ctx.fillRect(bx-sw*.4,si.y2-sh-5,sw*.8*Math.max(0,e.hp/e.maxHp),3);
+    }
+  }
+
+  // 미사일
+  for(const m of w.missiles){
+    const si=at(m.pos); if(!si) continue;
+    const sc=D_NEAR/si.depth, sz=Math.max(10,34*sc);
+    const bx=si.cx+m.lane*si.w2*1.05, by=si.y2-sz*0.6;
+    const g=_ctx.createRadialGradient(bx,by+sz*.5,0,bx,by+sz*.5,sz*.8);
+    g.addColorStop(0,'rgba(255,180,40,.8)'); g.addColorStop(1,'transparent');
+    _ctx.fillStyle=g; _ctx.beginPath(); _ctx.arc(bx,by+sz*.5,sz*.8,0,Math.PI*2); _ctx.fill();
+    _ctx.font=`${sz}px sans-serif`; _ctx.fillText('🚀',bx,by+sz*.4);
+  }
+
+  // 폭발
+  for(const b of w.booms){
+    const si=at(b.pos); if(!si) continue;
+    const sc=D_NEAR/si.depth, sz=Math.max(16,(70+(20-b.life)*6)*sc);
+    _ctx.save(); _ctx.globalAlpha=Math.max(0,b.life/20);
+    _ctx.font=`${sz}px sans-serif`; _ctx.fillText('💥',si.cx+b.lane*si.w2*1.05,si.y2-sz*0.25);
+    _ctx.restore();
+  }
+
+  // 기관총 탄도
+  _ctx.save(); _ctx.lineCap='round';
+  for(const s of w.shots){
+    const si=at(s.tpos); if(!si) continue;
+    const sc=D_NEAR/si.depth, tx=si.cx+s.tlane*si.w2*1.05, ty=si.y2-60*sc;
+    _ctx.globalAlpha=Math.max(0,s.life/3); _ctx.strokeStyle='#fde047'; _ctx.lineWidth=2.2;
+    _ctx.beginPath(); _ctx.moveTo(_W/2,_H*0.80); _ctx.lineTo(tx,ty); _ctx.stroke();
+  }
   _ctx.restore();
 }
 
