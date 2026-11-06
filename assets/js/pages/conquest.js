@@ -11,10 +11,10 @@ import {
   CASTLE_WX, CASTLE_WY, POI_DEFS, getScale,
 } from './conquest.world.js';
 import { initRenderer, loadMapAssets, renderScene, isMapObstacle } from './conquest.render.js';
-import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL, fxQueue, applyImpact, buff } from './conquest.units.js';
+import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL, fxQueue, applyImpact, buff, separateUnits, DYING_MS, UNIT_DR, TOWER_DR } from './conquest.units.js';
 import { getSpawnPos, getDragonSpawnPos, snapToRoad, setWaveRoads, getLanePath, LANE_KEYS, LANE_SPAN, diagWalls, GATE_NORTH, GATE_SOUTH, GATE_WEST, GATE_EAST } from './conquest.path.js';
 import { resumeAudio, playSound } from './conquest.audio.js';
-import { setImpactHandler, resetFx, updateFx, addShake, addShot, addDamage, addSpark, addPuff, addCoin, addBurst, showBanner, WALL_POINT } from './conquest.fx.js';
+import { setImpactHandler, resetFx, updateFx, addShake, addShot, addDamage, addSpark, addPuff, addCoin, addBurst, addStep, addBlood, showBanner, WALL_POINT } from './conquest.fx.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────
 const GAME_KEY   = 'conquestEntry';
@@ -269,6 +269,7 @@ function _update(dt){
     }
     if(dead)_monsters.splice(i,1);
   }
+  separateUnits(_monsters);
   // 만료 이펙트 정리
   _skillEffects=_skillEffects.filter(e=>Date.now()-e.startAt<e.dur);
 
@@ -281,7 +282,7 @@ function _update(dt){
 
   updateRevealAnims(dt);
   if(_castleHp<=0){endGame(false);return;}
-  if(_waveActive&&_monsters.length===0&&_spawnQ.length===0){
+  if(_waveActive&&_spawnQ.length===0&&_monsters.every(m=>m.dying)){
     _waveActive=false;_prepTimer=PREP_TIME;
     const waveReward=_wave*100+Math.max(0,_wave-10)*50;
     _addGP(waveReward);
@@ -299,7 +300,8 @@ function _drainFx(){
     else if(ev.t==='spark') addSpark(ev.x,ev.y,ev.crit?'#fbbf24':'#fde68a',ev.crit?7:3);
     else if(ev.t==='shot') addShot(ev);
     else if(ev.t==='shock'){ addBurst(ev.x,ev.y); addShake(ev.cry?4:8); playSound(ev.cry?'dragon_roar':'cannon_hit'); }
-    else if(ev.t==='kill'){ addPuff(ev.unit.x,ev.unit.y,4,'dust'); _onKill(ev.unit); }
+    else if(ev.t==='step') addStep(ev.x,ev.y);
+    else if(ev.t==='kill'){ addPuff(ev.unit.x,ev.unit.y,4,'dust'); if(ev.unit.team==='monster'&&!ev.unit.flying) addBlood(ev.unit.x,ev.unit.y); _onKill(ev.unit); }
   }
   fxQueue.length=0;
 }
@@ -482,7 +484,7 @@ function _upgradeTower(){
   t.hp=Math.min(t.maxHp,t.hp+(t.maxHp-oldMax));
   t.range=Math.round(def.range*(1+0.08*k));
   t.atkRate=Math.round(def.atkRate*(1-0.08*k));
-  addBurst(t.x,t.y-t.size*1.5); playSound('levelup');
+  addBurst(t.x,t.y-t.size*TOWER_DR*.6); playSound('levelup');
   _showNotif(`⬆️ ${def.label} Lv${t.lvl}`);
   renderHUD();
 }
@@ -554,7 +556,7 @@ function _useHeroSkill(){
     if(!m.dying&&Math.hypot(m.x-hero.x,m.y-hero.y)<=HERO_SKILL_RANGE){
       m.hp-=hero.atk*8; m.hitFlash=400;
       addDamage(m.x,m.y-60,hero.atk*8,true,false);
-      if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=900;_onKill(m);}
+      if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=DYING_MS;_onKill(m);}
       hitCount++;
     }
   }
@@ -599,7 +601,7 @@ function _useSkill(type){
       // 밀쳐낸 후 경로 인덱스 되감기 (자연스러운 복귀)
       if(m.waypointIdx>0) m.waypointIdx=Math.max(0,m.waypointIdx-3);
     }
-    if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=900;_onKill(m);}
+    if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=DYING_MS;_onKill(m);}
   }
 
   _skillEffects.push({type,x:cx,y:cy,startAt:now,
@@ -770,7 +772,7 @@ function _onTouchEnd(e){
 
 // 유닛은 발(위치) 위로 크게 그려지므로(DR=5배) 몸통 중심을 기준으로 정밀하게 판정한다
 function _bodyCenter(u){
-  const dsz=u.size*(u.isTower?10/3:5);
+  const dsz=u.size*(u.isTower?TOWER_DR:UNIT_DR);
   return [u.x, u.y-dsz*(0.5+(u.flying?0.25:0))];
 }
 const _pxToWorld=px=>px/Math.max(getScale(),0.05);

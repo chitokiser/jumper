@@ -101,6 +101,11 @@ const SPRITE_DEFS = {
 };
 
 // ── 유닛 스탯 ────────────────────────────────────────────────────────────
+// ── 화면에 그려지는 크기 배율 (판정 크기 × 배율). 건물과의 비례를 위해 유닛 5→3, 타워 3.3→2 ──
+export const UNIT_DR = 3;
+export const TOWER_DR = UNIT_DR * 2 / 3;
+export const DYING_MS = 1500;   // 사망 연출(쓰러짐 → 시체 → 사라짐) 시간
+
 export const UNIT_DEFS = {
   // ── 아군 ──
   villager:     {label:'수비대',  cost:50,  team:'ally',spriteKey:'villager1',
@@ -171,6 +176,7 @@ export function makeUnit(type,x,y){
     animState:'idle',animFrame:0,animTimer:0,
     dying:false,dyingTimer:0,flipH:false,hitFlash:0,
     selected:false,cmdX:null,cmdY:null,events:[],
+    kx:0,ky:0,walkPh:0,stepD:0,   // 피격 밀림(연출 전용 오프셋)·걸음 누적·발걸음 먼지
   };
   if(def.team==='monster'){
     u.flying=!!def.flying;
@@ -219,6 +225,10 @@ function _inside(x,y){
 // ── AI 업데이트 ──────────────────────────────────────────────────────────
 export function updateUnit(u,allies,enemies,dt,walls=null){
   u.events=[];
+  if(u.kx||u.ky){   // 피격 밀림은 화면 연출용 — 실제 위치(판정)는 그대로 두고 빠르게 원위치
+    const f=Math.pow(0.0004,dt/1000); u.kx*=f; u.ky*=f;
+    if(Math.abs(u.kx)<0.5&&Math.abs(u.ky)<0.5){u.kx=0;u.ky=0;}
+  }
   if(u.dying){u.dyingTimer-=dt;_tickAnim(u,dt);return u.dyingTimer<=0;}
   u.atkCooldown=Math.max(0,u.atkCooldown-dt);
   u.hitFlash=Math.max(0,u.hitFlash-dt);
@@ -361,7 +371,7 @@ function _updateMonster(u,allies,dt,walls,monsters){
   // 지상: 도로 경로 이동
   if(u.waypoints&&u.waypointIdx<u.waypoints.length){
     const wp=u.waypoints[u.waypointIdx];
-    if(_d(u.x,u.y,wp.x,wp.y)<18){
+    if(_d(u.x,u.y,wp.x,wp.y)<(u.waypointIdx===u.waypoints.length-1?120:18)){   // 마지막 지점은 몰린 병력에 밀려도 도착 처리
       u.waypointIdx++;
       if(u.waypointIdx>=u.waypoints.length){
         u.atGate=true;
@@ -389,7 +399,7 @@ function _updateTower(u,enemies,dt){
   u.atkCooldown=u.atkRate;
   // 즉시 피해 대신 투사체를 쏘고, 도착했을 때 applyImpact 로 피해를 준다
   const aoe=UNIT_DEFS[u.type]?.aoe||0;
-  const top=u.y-u.size*1.6;
+  const top=u.y-u.size*TOWER_DR*0.48;
   if(aoe>0){
     fxQueue.push({t:'shot',kind:'cannon',sx:u.x,sy:top,tx:foe.x,ty:foe.y,att:u,tgt:null});
     u.events.push({type:'sound',name:'cannon'});
@@ -490,10 +500,17 @@ function _hit(att,tgt){
   if(att.team==='ally'&&Math.random()<0.1){dmg*=2;crit=true;}
   tgt.hp-=dmg;tgt.hitFlash=130;
   tgt.events.push({type:'sound',name:'hit'});
-  fxQueue.push({t:'dmg',x:tgt.x,y:tgt.y-tgt.size*2,amount:Math.round(dmg),crit,ally:tgt.team==='ally'});
-  fxQueue.push({t:'spark',x:tgt.x,y:tgt.y-tgt.size*1.5,crit});
+  const bodyH=tgt.size*(tgt.isTower?TOWER_DR:UNIT_DR);
+  fxQueue.push({t:'dmg',x:tgt.x,y:tgt.y-bodyH*.5,amount:Math.round(dmg),crit,ally:tgt.team==='ally'});
+  fxQueue.push({t:'spark',x:tgt.x,y:tgt.y-bodyH*.4,crit});
+  if(!tgt.isTower&&!tgt.boss&&att!==tgt){   // 맞으면 공격 반대 방향으로 밀렸다가 돌아옴 (큰 몬스터·치명타는 정도가 다름)
+    const dx=tgt.x-att.x,dy=tgt.y-att.y,d=Math.hypot(dx,dy)||1;
+    const k=(crit?48:24)*(tgt.size>=60?.6:1)*(att.isTower?.7:1);
+    tgt.kx=Math.max(-70,Math.min(70,tgt.kx+dx/d*k)); tgt.ky=Math.max(-70,Math.min(70,tgt.ky+dy/d*k));
+  }
   if(tgt.hp<=0&&!tgt.dying){
-    tgt.dying=true;tgt.animState='die';tgt.animFrame=0;tgt.dyingTimer=900;
+    tgt.dying=true;tgt.animState='die';tgt.animFrame=0;tgt.dyingTimer=DYING_MS;
+    if(!tgt.isTower&&!tgt.boss&&att!==tgt){const dx=tgt.x-att.x,dy=tgt.y-att.y,d=Math.hypot(dx,dy)||1;tgt.kx+=dx/d*40;tgt.ky+=dy/d*40;}   // 쓰러지며 한 번 더 밀림
     tgt.events.push({type:'sound',name:'death'});
     fxQueue.push({t:'kill',unit:tgt});
   }
@@ -506,20 +523,58 @@ function _nearest(u,list){
 function _moveTo(u,tx,ty,dt){
   const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy)||1,spd=u.spd*(u.dash>0?3:1)*dt/1000;
   u.x+=dx/d*spd;u.y+=dy/d*spd;u.flipH=dx<0;
+  u.walkPh+=spd;                                   // 걸음 누적 → 위아래 흔들림
+  u.stepD+=spd;
+  if(u.stepD>=110&&!u.flying){u.stepD=0;fxQueue.push({t:'step',x:u.x,y:u.y});}   // 발걸음 먼지
 }
 function _tickAnim(u,dt){
   u.animTimer+=dt;
-  const fps=u.animState==='die'?80:u.animState==='attack'?90:110;
+  // 걷는 속도에 맞춰 프레임 속도 조절 (느린 유닛은 천천히, 돌진·빠른 유닛은 빠르게)
+  const walkMs=Math.max(55,Math.min(190,110*90/Math.max(40,u.spd*(u.dash>0?3:1))));
+  const fps=u.animState==='die'?80:u.animState==='attack'?90:u.animState==='walk'?walkMs:110;
   if(u.animTimer>=fps){u.animTimer=0;u.animFrame++;}
 }
 
 export function getFrame(u,sprites){
   const s=sprites[u.spriteKey];if(!s)return null;
   const a=s[u.animState]||s.idle;if(!a?.length)return null;
-  const start=u.animFrame%a.length;
+  const start=u.animState==='die'?Math.min(u.animFrame,a.length-1):u.animFrame%a.length;   // 쓰러진 뒤엔 마지막 프레임 유지(시체)
   for(let i=0;i<a.length;i++){
     const img=a[(start+i)%a.length];
     if(img?.complete&&img.naturalWidth>0)return img;
   }
   return null;
+}
+
+// ── 몬스터 군집 분리: 겹쳐 뭉치지 않고 가로로 넓게 서도록 서로 살짝 밀어냄 ─────────
+export function separateUnits(list){
+  const CELL=70, grid=new Map(), W=CASTLE_WALL;
+  for(const u of list){
+    if(u.dying||u.flying||u.insideCastle)continue;
+    const k=Math.floor(u.x/CELL)*1000+Math.floor(u.y/CELL);
+    const a=grid.get(k); if(a)a.push(u); else grid.set(k,[u]);
+  }
+  const blocked=(x,y)=>x>W.l&&x<W.r&&y>W.t&&y<W.b;   // 성 안으로는 밀지 않음
+  const push=(a,b)=>{
+    let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+    const r=(a.size+b.size)*.35;
+    if(d>=r)return;
+    if(d<.01){const t=Math.random()*6.283;dx=Math.cos(t);dy=Math.sin(t);d=1;}
+    const m=(r-d)*.35, ux=dx/d, uy=dy/d;
+    const wa=a.boss?.1:1, wb=b.boss?.1:1, tot=wa+wb;
+    const fa=wb/tot, fb=wa/tot;   // 가벼운 쪽이 더 많이 밀림
+    if(!blocked(a.x-ux*m*fa*2,a.y-uy*m*fa*2)){a.x-=ux*m*fa*2;a.y-=uy*m*fa*2;}
+    if(!blocked(b.x+ux*m*fb*2,b.y+uy*m*fb*2)){b.x+=ux*m*fb*2;b.y+=uy*m*fb*2;}
+  };
+  const NB=[[1,0],[0,1],[1,1],[-1,1]];
+  for(const [k,arr] of grid){
+    const cx=Math.floor(k/1000), cy=k%1000;
+    for(let i=0;i<arr.length;i++){
+      for(let j=i+1;j<arr.length;j++)push(arr[i],arr[j]);
+    }
+    for(const [ox,oy] of NB){
+      const o=grid.get((cx+ox)*1000+(cy+oy)); if(!o)continue;
+      for(const a of arr)for(const b of o)push(a,b);
+    }
+  }
 }

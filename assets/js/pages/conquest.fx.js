@@ -41,6 +41,15 @@ export function addPuff(x, y, n = 6, kind = 'dust') {
   if (!inView(x, y)) return;
   for (let i = 0; i < n; i++) part({ kind, x: x + rnd(-30, 30), y: y + rnd(-20, 10), vx: rnd(-90, 90), vy: rnd(-140, -30), size: rnd(14, 30), life: rnd(450, 900), color: kind === 'smoke' ? '#3a3a3a' : '#a89a7a' });
 }
+// 발걸음 먼지 (작게) / 피 튀김
+export function addStep(x, y) {
+  if (!inView(x, y, 60)) return;
+  for (let i = 0; i < 2; i++) part({ kind:'dust', x: x + rnd(-8, 8), y: y + rnd(-4, 4), vx: rnd(-30, 30), vy: rnd(-45, -10), size: rnd(5, 10), life: rnd(280, 520), color: '#9c8f72' });
+}
+export function addBlood(x, y) {
+  if (!inView(x, y, 60)) return;
+  for (let i = 0; i < 6; i++) part({ kind:'blood', x: x + rnd(-14, 14), y: y - rnd(10, 50), vx: rnd(-130, 130), vy: rnd(-170, -30), g: 600, size: rnd(4, 8), life: rnd(300, 520), color: '#8b1a1a' });
+}
 export function addCoin(x, y, value = 1) {
   if (!inView(x, y)) return;
   part({ kind:'coin', x, y: y - 20, vx: rnd(-60, 60), vy: -320, g: 900, size: 22, life: 700 });
@@ -143,7 +152,7 @@ export function drawFx(ctx, W, H) {
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = Math.min(1, a * 1.6);
       ctx.font = `${Math.max(12, q.size * s * 1.6)}px sans-serif`; ctx.fillText('🪙', sx, sy);
     } else {   // dust / smoke
-      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = a * (q.kind === 'smoke' ? 0.45 : 0.35);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = a * (q.kind === 'smoke' ? 0.45 : q.kind === 'blood' ? 0.75 : 0.35);
       ctx.fillStyle = q.color; ctx.beginPath(); ctx.arc(sx, sy, r * (1.4 - a * 0.4), 0, Math.PI * 2); ctx.fill();
     }
   }

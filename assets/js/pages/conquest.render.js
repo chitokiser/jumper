@@ -4,7 +4,7 @@ import {
   WX, WY,
   CASTLE_WX, CASTLE_WY,
 } from './conquest.world.js';
-import { getFrame, MINES, UNIT_DEFS } from './conquest.units.js';
+import { getFrame, MINES, UNIT_DEFS, UNIT_DR, TOWER_DR, DYING_MS } from './conquest.units.js';
 import { POI_DEFS } from './conquest.world.js';
 import { ROAD_SEGMENTS } from './conquest.path.js';
 import { shakeOffset, drawFx, drawAtmosphere } from './conquest.fx.js';
@@ -20,8 +20,6 @@ let _buildingTiles = null;             // [{wx,wy,cellW,cellH,srcX,...}]
 let _obstacleMap  = null;              // Uint8Array — 배치 제한용
 
 // 캐릭터 드로우 스케일 — hitbox 대비 화면 렌더 크기 배율
-const DR = 5;
-const TOWER_DR = DR * 2/3; // 타워 크기 (이전 1/3에서 ×2배)
 
 export function initRenderer(cv){
   _cv=cv; _ctx=cv.getContext('2d');
@@ -31,7 +29,7 @@ export function initRenderer(cv){
   _fogSmCv=null; _fogSmCtx=null;
 }
 export async function loadMapAssets(){
-  _mapImg=await _ldImg('/assets/images/conquest/map.png');
+  _mapImg=(await _ldImg('/assets/images/conquest/map.webp'))||(await _ldImg('/assets/images/conquest/map.png'));
   _towerImgs.archer_tower=await _ldImg('/assets/images/shops/tower.png');
   _towerImgs.cannon_tower=await _ldImg('/assets/images/shops/tower2.png');
   if(_mapImg) _analyzeBuildings();
@@ -594,18 +592,40 @@ function _drawRevealAnims(){
   }
 }
 
-// ── 유닛 (DR=5 적용: 스프라이트·타워 모두 5배 크기로 렌더) ──────────────
+// ── 유닛 (UNIT_DR/TOWER_DR 배율로 렌더 + 걷기 흔들림·공격 돌진·피격 밀림·사망 연출) ──
 function _drawUnit(u,sprites){
   const[sx,sy]=worldToScreen(u.x,u.y);
   const s=getScale();
   const sz=u.size*s;                          // hitbox 기준 크기
-  const dsz=sz*(u.isTower?TOWER_DR:DR);       // 타워 1/3, 유닛 5배
+  const dsz=sz*(u.isTower?TOWER_DR:UNIT_DR);
+  const now=performance.now();
+
+  // 연출 오프셋 (판정 위치는 그대로, 그려지는 위치만 움직임)
+  let ox=(u.kx||0)*s, oy=(u.ky||0)*s, bob=0;
+  if(!u.isTower){
+    if(u.animState==='walk'&&!u.dying) bob=Math.abs(Math.sin((u.walkPh||0)/(u.size*.8)*Math.PI))*u.size*.16*s;   // 걸음마다 통통
+    if(u.animState==='attack'&&u.atkRate>0&&!u.dying){                                                            // 때리는 순간 앞으로 돌진
+      const t=u.atkRate-u.atkCooldown;
+      if(t>=0&&t<170) ox+=(u.flipH?-1:1)*Math.sin(Math.PI*t/170)*u.size*.3*s;
+    }
+    if(u.flying&&!u.dying) bob=(Math.sin(now/260+u.id)*.5+.5)*u.size*.2*s;                                         // 비행 유닛 상하 부유
+  }
+  const fadeA=u.dying?Math.min(1,u.dyingTimer/500):1;                      // 시체는 마지막 0.5초에 사라짐
+  const fall=u.dying&&u.flying?Math.min(1,Math.pow((1-u.dyingTimer/DYING_MS)*2.5,2)):0;   // 드래곤은 추락
+  const px=sx+ox, py=sy+oy-bob;
+
+  // 발밑 그림자
+  _ctx.save();
+  _ctx.globalAlpha=.3*fadeA;
+  _ctx.fillStyle='#000';
+  _ctx.beginPath(); _ctx.ellipse(sx+ox*.4,sy+oy*.4,dsz*(u.isTower?.3:.22)*(1-bob/(dsz+1)*.8),dsz*(u.isTower?.08:.065),0,0,Math.PI*2); _ctx.fill();
+  _ctx.restore();
 
   // 선택 링 — 스프라이트 크기에 맞춤
   if(u.selected){
     _ctx.strokeStyle=u.team==='ally'?'#22c55e':'#ff4444';
     _ctx.lineWidth=3;
-    _ctx.beginPath(); _ctx.ellipse(sx,sy,dsz*.46,dsz*.15,0,0,Math.PI*2); _ctx.stroke();
+    _ctx.beginPath(); _ctx.ellipse(sx,sy,Math.max(dsz*.46,14),Math.max(dsz*.15,5),0,0,Math.PI*2); _ctx.stroke();
     // 이동 목표 위치 표시
     if(u.cmdX!==null){
       const[tx,ty]=worldToScreen(u.cmdX,u.cmdY);
@@ -632,14 +652,6 @@ function _drawUnit(u,sprites){
     }
   }
 
-  // 비행 유닛 그림자 (지면 높이에 타원)
-  if(u.flying){
-    _ctx.save();
-    _ctx.fillStyle='rgba(0,0,0,0.25)';
-    _ctx.beginPath(); _ctx.ellipse(sx,sy,dsz*.35,dsz*.1,0,0,Math.PI*2); _ctx.fill();
-    _ctx.restore();
-  }
-
   // 보스 오라 (붉게 맥동하는 지면 원)
   if(u.boss&&!u.dying){
     const t=performance.now()/400, pulse=1+Math.sin(t)*.08;
@@ -653,31 +665,32 @@ function _drawUnit(u,sprites){
   }
 
   _ctx.save();
-  if(u.hitFlash>0&&Math.floor(u.hitFlash/45)%2===0) _ctx.globalAlpha=.4;
-  // 비행 유닛은 약간 위로 띄워서 렌더
-  const flyOffset = u.flying ? -dsz*0.25 : 0;
+  _ctx.globalAlpha=fadeA;
+  if(u.hitFlash>0&&Math.floor(u.hitFlash/45)%2===0) _ctx.globalAlpha=fadeA*.4;
+  // 비행 유닛은 약간 위로 띄워서 렌더 (죽으면 지면까지 추락)
+  const flyOffset = u.flying ? -dsz*0.25*(1-fall) : 0;
 
   if(u.isTower){
-    _drawTower(u,sx,sy,dsz,s);
+    _drawTower(u,px,py,dsz,s);
   } else {
     const img=getFrame(u,sprites);
     if(u.darkHero&&'filter' in _ctx) _ctx.filter='brightness(.4) saturate(2.4) hue-rotate(250deg)';
     const drawImg=img||(u.team==='monster'?getFrame({...u,spriteKey:'troll'},sprites):null);
     if(drawImg){
-      const ry=sy+flyOffset; // 비행 유닛은 flyOffset만큼 위로
-      if(u.flipH){ _ctx.scale(-1,1); _ctx.drawImage(drawImg,-sx-dsz/2,ry-dsz,dsz,dsz); }
-      else _ctx.drawImage(drawImg,sx-dsz/2,ry-dsz,dsz,dsz);
+      const ry=py+flyOffset; // 비행 유닛은 flyOffset만큼 위로
+      if(u.flipH){ _ctx.scale(-1,1); _ctx.drawImage(drawImg,-px-dsz/2,ry-dsz,dsz,dsz); }
+      else _ctx.drawImage(drawImg,px-dsz/2,ry-dsz,dsz,dsz);
     } else {
       _ctx.fillStyle=u.team==='ally'?'#60a5fa':'#ef4444';
-      _ctx.beginPath(); _ctx.arc(sx,sy-dsz/2,dsz/2,0,Math.PI*2); _ctx.fill();
+      _ctx.beginPath(); _ctx.arc(px,py-dsz/2,dsz/2,0,Math.PI*2); _ctx.fill();
     }
   }
   _ctx.restore();
 
   // HP 바 (5배 크기 위에 표시)
   if(!u.dying){
-    const topY = sy - dsz - 4*s;
-    const bw=dsz*.85, bh=Math.max(4,4*s), bx=sx-bw/2;
+    const topY = py - dsz - 4*s;
+    const bw=Math.max(dsz*.62,20), bh=Math.max(4,4*s), bx=px-bw/2;
     const pct=Math.max(0,u.hp/u.maxHp);
     _ctx.fillStyle='rgba(0,0,0,.6)'; _ctx.fillRect(bx-1,topY-1,bw+2,bh+2);
     _ctx.fillStyle=u.team==='ally'?'#22c55e':'#ef4444';
@@ -686,7 +699,7 @@ function _drawUnit(u,sprites){
       _ctx.font=`bold ${Math.max(10,11*s)}px sans-serif`; _ctx.textAlign='center';
       _ctx.fillStyle='#fbbf24'; _ctx.strokeStyle='rgba(0,0,0,.8)'; _ctx.lineWidth=3;
       const tx='★'.repeat(u.lvl-1);
-      _ctx.strokeText(tx,sx,topY-4); _ctx.fillText(tx,sx,topY-4);
+      _ctx.strokeText(tx,px,topY-4); _ctx.fillText(tx,px,topY-4);
     }
   }
 }
