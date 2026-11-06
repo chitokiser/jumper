@@ -69,6 +69,7 @@ const expSyncH = require('./handlers/expSync');
 const telegramH = require('./handlers/telegram');
 const tonPaymentH = require('./handlers/tonPayment');
 const gameRewardH = require('./handlers/gameReward');
+const signupBonusH = require('./handlers/signupBonus');
 const starsH = require('./handlers/starsPayment');
 const membershipH = require('./handlers/membership');
 const moneyTreeH = require('./handlers/moneyTree');
@@ -155,6 +156,16 @@ exports.payGameEntry = onCall(wrapError(async (request) => {
   const uid = requireAuth(request);
   const { gameKey } = request.data ?? {};
   return await gameRewardH.payGameEntry(uid, gameKey);
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
+// 연계 사이트 최초 구글 가입 보너스 (구글 계정당 1회, 5000GP)
+//    클라이언트: httpsCallable(functions, 'claimSignupBonus')({ site:'bestwinner' })
+// ════════════════════════════════════════════════════════════════════════════
+exports.claimSignupBonus = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { site } = request.data ?? {};
+  return await signupBonusH.claimSignupBonus(uid, typeof site === 'string' ? site : '');
 }));
 
 // ════════════════════════════════════════════════════════════════════════════
