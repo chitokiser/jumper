@@ -37,11 +37,6 @@
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
 
 [[headers]]
-  for = "/monsterrace.html"
-  [headers.values]
-    Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
-
-[[headers]]
   for = "/memory.html"
   [headers.values]
     Content-Security-Policy = "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://k.me https://a.telegram.org"
@@ -122,6 +117,19 @@
   for = "/assets/images/*"
   [headers.values]
     Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+# ── 몬스터 레이싱 폐지 (2026-11-06): 옛 링크는 게임 허브로 ──
+[[redirects]]
+  from = "/monsterrace"
+  to = "/tg-hub.html"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/monsterrace.html"
+  to = "/tg-hub.html"
+  status = 302
+  force = true
 
 # ── 웹3 기능 화면 숨김 (2026-10-19): 토큰 거래소·지갑·DAO·코인 보물찾기 페이지는 홈으로 ──
 [[redirects]]
