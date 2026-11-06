@@ -19,6 +19,7 @@ import { gsAdminGetSpawns, gsAdminAddSpawn, gsAdminDeleteSpawn, gsAdminKillMonst
          isGameServerConnected, connectToGameServer, sendPlayerRevive }
   from './merchants.gameserver.js';
 import { _t } from './merchants.i18n.js';
+import { initFun, funOnKill, funStoneChance } from './merchants.fun.js';
 
 // ── 공유 컨텍스트 참조 ─────────────────────────────────────────────────────────
 // initBattle(ctx, callbacks) 호출 후 설정됨
@@ -176,6 +177,15 @@ export function initBattle(ctx, callbacks) {
   _ctx._onCheckProximity    = callbacks.onCheckProximity    || (() => {});
   _ctx._onLoadInventory     = callbacks.onLoadInventory     || (() => {});
   _ctx._onUpdateDistDisplay = callbacks.onUpdateDistDisplay || (() => {});
+
+  // 사냥 재미 요소(콤보·사냥 열기 이벤트·아이템·이펙트) — GP 지급 금액은 건드리지 않음
+  initFun({
+    showFloat, playSound, getTotalAtk, hitMonster,
+    getMonsters: () => _monsters, getGsMonsters: () => _gsMobsGetter?.() ?? {},
+    getMyPos, haversine, attackGs: id => window.__sendPlayerAttack?.(id),
+    isDead: () => _isDead,
+    addTokens: n => { _player.token = (_player.token ?? 0) + n; updateSkillBar(); savePlayerState(); },
+  });
 
   // 줌 변경 시 가시성 갱신 (OVERVIEW_ZOOM 이하면 전체 표시)
   ctx.map?.addListener('zoom_changed', () => {
@@ -3213,13 +3223,14 @@ export async function hitMonster(monsterId, damage, mobRef = null) {
     _aggroClaimed.delete(monsterId);
 
     _player.monstersKilled = (_player.monstersKilled || 0) + 1;
+    funOnKill(mob);
 
     playSound('monster_die');
     // 게임 서버와 같은 규칙: 몬스터 최대 HP 만큼 (최대 100,000)
     addPlayerGsExp(Math.min(mob.maxHp || 0, 100_000) || 20);
     dropGoldTokens(mob);
-    // 마정석 랜덤 드랍 (30% 확률, 1~3개)
-    if (Math.random() < 0.3) {
+    // 마정석 랜덤 드랍 (기본 30%, 사냥 열기 중 60%, 1~3개)
+    if (Math.random() < funStoneChance()) {
       const stones = Math.floor(Math.random() * 3) + 1;
       _player.token = (_player.token ?? 0) + stones;
       updateSkillBar();

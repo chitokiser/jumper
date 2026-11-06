@@ -190,6 +190,7 @@ export function sendPlayerLocation(lat, lng, accuracy) {
 
 export function sendPlayerAttack(monsterId) {
   if (_state !== 'connected' || !_socket) return;
+  window.__funTouchGs?.(monsterId);
   _socket.emit('player:attack', { monsterId });
 }
 
@@ -200,6 +201,7 @@ export function sendPlayerRevive() {
 
 export function sendPlayerSkill(skillId, monsterId) {
   if (_state !== 'connected' || !_socket) return;
+  window.__funTouchGs?.(monsterId);
   _socket.emit('player:skill', { skillId, monsterId });
 }
 

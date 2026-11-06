@@ -1524,6 +1524,7 @@ async function _gsKeyDrop(monsterId) {
 }
 
 function _removeGsMonster(monsterId) {
+  window.__funGsKilled?.(monsterId, _gsMonsters[monsterId]);   // 내가 공격하던 서버 몬스터면 콤보/아이템 집계
   _gsKeyDrop(monsterId);
   playSound('monster_die');
   // 스프라이트 오버레이 (dragon 등) — death 애니메이션 후 자체 제거
