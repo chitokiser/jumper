@@ -204,6 +204,13 @@ function bindForm(uid, user) {
       const { walletAddress, joinBonus, referralBonus } = await doRegister(uid, user);
       setState("가입 완료!");
 
+      // 연계 사이트 최초 구글 가입 보너스 (서버가 계정당 1회만 지급)
+      let signupBonus = 0;
+      try {
+        const r = await httpsCallable(functions, "claimSignupBonus")({ site: "bestclub" });
+        if (r?.data?.granted) signupBonus = r.data.amount || 0;
+      } catch (_) {}
+
       show("regForm", false);
       show("alreadyDone", true);
 
@@ -212,6 +219,12 @@ function bindForm(uid, user) {
         const bonusEl = document.createElement("p");
         bonusEl.style.cssText = "margin-top:12px;padding:10px 14px;background:#d1fae5;border-radius:10px;font-size:0.88rem;color:#065f46;font-weight:600;text-align:center;";
         bonusEl.textContent = "🎁 가입 축하! 게임코인 1,000 GP가 지급되었습니다.";
+        $("alreadyDone")?.appendChild(bonusEl);
+      }
+      if (signupBonus) {
+        const bonusEl = document.createElement("p");
+        bonusEl.style.cssText = "margin-top:8px;padding:10px 14px;background:#dbeafe;border-radius:10px;font-size:0.88rem;color:#1e3a8a;font-weight:600;text-align:center;";
+        bonusEl.textContent = `🎉 신규 가입 특별 보너스! ${signupBonus.toLocaleString()} GP가 추가로 지급되었습니다.`;
         $("alreadyDone")?.appendChild(bonusEl);
       }
       if (referralBonus) {
