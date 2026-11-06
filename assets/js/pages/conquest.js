@@ -12,7 +12,7 @@ import {
 } from './conquest.world.js';
 import { initRenderer, loadMapAssets, renderScene, isMapObstacle } from './conquest.render.js';
 import { UNIT_DEFS, loadSprites, makeUnit, updateUnit, MINES, CASTLE_WALL, fxQueue, applyImpact, buff } from './conquest.units.js';
-import { getSpawnPos, getDragonSpawnPos, snapToRoad, setWaveRoads, GATE_NORTH, GATE_SOUTH, GATE_WEST, GATE_EAST } from './conquest.path.js';
+import { getSpawnPos, getDragonSpawnPos, snapToRoad, setWaveRoads, getLanePath, LANE_KEYS, LANE_SPAN, diagWalls, GATE_NORTH, GATE_SOUTH, GATE_WEST, GATE_EAST } from './conquest.path.js';
 import { resumeAudio, playSound } from './conquest.audio.js';
 import { setImpactHandler, resetFx, updateFx, addShake, addShot, addDamage, addSpark, addPuff, addCoin, addBurst, showBanner, WALL_POINT } from './conquest.fx.js';
 
@@ -236,7 +236,7 @@ function _update(dt){
 
   if(!_waveActive){if(!_blessOpen){_prepTimer-=dt;if(_prepTimer<=0)_startWave();}renderHUD();return;}
 
-  if(_spawnQ.length){_spawnTimer-=dt;if(_spawnTimer<=0){_spawnTimer=180;const s=_spawnQ.shift();const mu=makeUnit(s.type,s.x,s.y);if(s.hm){mu.hp=mu.maxHp=Math.round(mu.maxHp*s.hm);mu.atk=Math.round(mu.atk*s.am);}if(s.brk)mu.role='breaker';_monsters.push(mu);}}
+  if(_spawnQ.length){_spawnTimer+=dt;while(_spawnQ.length&&_spawnQ[0].t<=_spawnTimer){const s=_spawnQ.shift();const mu=makeUnit(s.type,s.x,s.y);if(s.hm){mu.hp=mu.maxHp=Math.round(mu.maxHp*s.hm);mu.atk=Math.round(mu.atk*s.am);}if(s.brk)mu.role='breaker';if(s.path){mu.waypoints=s.path;mu.waypointIdx=0;}_monsters.push(mu);}}
 
   for(let i=_defenders.length-1;i>=0;i--){
     const dead=updateUnit(_defenders[i],_defenders,_monsters,dt,_walls);
@@ -342,16 +342,18 @@ function _showNotif(msg){
 // ── 웨이브 ────────────────────────────────────────────────────────────────
 // 이번 웨이브가 공격할 도로 선택: 6웨이브부터는 방어가 가장 약한 쪽을 반드시 포함
 const GATES={north:GATE_NORTH,south:GATE_SOUTH,west:GATE_WEST,east:GATE_EAST};
+const LANE_ADJ={ne:['north','east'],se:['east','south'],sw:['south','west'],nw:['west','north']};
 function _pickWaveRoads(wn){
-  const keys=['north','south','west','east'];
-  const score=k=>{
+  const keys=wn<=2?['north','south','west','east']:LANE_KEYS.slice();   // 1~2웨이브는 초보용으로 4방향만
+  const gscore=k=>{
     const g=GATES[k]; let sc=0;
     for(const d of _defenders){
       if(d.dying)continue;
       if(Math.hypot(d.x-g.x,d.y-g.y)<1000) sc+=d.isTower?2:d.type==='hero'?3:1;
     }
-    return sc+Math.random()*0.5;
+    return sc;
   };
+  const score=k=>(LANE_ADJ[k]?Math.min(...LANE_ADJ[k].map(gscore)):gscore(k))+Math.random()*0.5;
   const n=wn<=3?(Math.random()<.5?1:2):wn<=12?2:3;
   const order=keys.slice().sort((a,b)=>score(a)-score(b));
   let picks;
@@ -361,7 +363,7 @@ function _pickWaveRoads(wn){
   } else picks=keys.sort(()=>Math.random()-.5).slice(0,n);
   return picks;
 }
-const ROAD_LABEL={north:'북쪽',south:'남쪽',west:'서쪽',east:'동쪽'};
+const ROAD_LABEL={north:'북쪽',south:'남쪽',west:'서쪽',east:'동쪽',ne:'북동쪽',se:'남동쪽',sw:'남서쪽',nw:'북서쪽'};
 
 function _startWave(){
   playSound('levelup');playSound('horn');
@@ -371,23 +373,46 @@ function _startWave(){
   // 10웨이브까지는 병력 수가 늘고, 이후는 수를 완만하게 유지하는 대신 몬스터가 더 강해진다
   const scale=_wave<10?1+_wave*0.35:3.2+(_wave-10)*0.04;
   const roads=_pickWaveRoads(wn); setWaveRoads(roads);
+  const wallOf={};   // 대각선 접근로가 이번 웨이브에 노릴 성벽(무작위)
+  roads.forEach(k=>{ if(LANE_ADJ[k]){ const ws=diagWalls(k); wallOf[k]=ws[Math.floor(Math.random()*ws.length)]; } });
   const darkHero=def.some(g=>g.type==='dark_hero');
+  // 방향은 미리 알려주지 않는다 — 가장 먼저 도착하는 공격로만 출현 3초 전에 경고, 나머지는 예고 없이 나타난다
   if(def.some(g=>g.boss)){
     showBanner(darkHero?'☠ 흑화된 영웅 출현 ☠':'☠ BOSS WAVE ☠');playSound('streak');addShake(8);
-  } else showBanner(`⚠ ${roads.map(r=>ROAD_LABEL[r]).join('·')} 방향 침공!`);
-  if(def.some(g=>g.boss)) _showNotif(`⚠ ${roads.map(r=>ROAD_LABEL[r]).join('·')} 방향 침공!`);
+  } else showBanner('⚠ 적의 대군이 몰려온다!');
+  _showNotif(`⚠ 3초 뒤 ${ROAD_LABEL[roads[0]]}에서 적 출현!`);
+  const lanes={}, air=[]; let rr=0;
   def.forEach(g=>{
     const n=g.boss?g.count:Math.ceil(g.count*scale);   // 보스·영웅은 병력 배율을 받지 않는다
     // 웨이브가 갈수록 일반 몬스터·보스 모두 체력/공격력 증가
     const hm=g.boss?1+Math.max(0,wn-5)*0.1:1+Math.max(0,wn-2)*0.06;
     const am=g.boss?1+Math.max(0,wn-5)*0.06:1+Math.max(0,wn-2)*0.03;
     for(let i=0;i<n;i++){
-      // 드래곤은 대각선(2시·4시·7시·11시)에서 날아옴
-      const pos = UNIT_DEFS[g.type]?.flying ? getDragonSpawnPos() : getSpawnPos(g.side);
-      _spawnQ.push({type:g.type,x:pos.x,y:pos.y,hm,am,brk:wn>=10&&!g.boss&&/^orc/.test(g.type)&&Math.random()<.3});
+      const it={type:g.type,hm,am,brk:wn>=10&&!g.boss&&/^orc/.test(g.type)&&Math.random()<.3};
+      if(UNIT_DEFS[g.type]?.flying){ air.push(it); continue; }   // 드래곤은 대각선 코너에서 날아옴
+      const key=g.side==='rand'?roads[Math.floor(Math.random()*roads.length)]
+        :g.side==='all'?roads[rr++%roads.length]
+        :LANE_KEYS.includes(g.side)?g.side:roads[0];
+      (lanes[key]=lanes[key]||[]).push(it);
     }
   });
-  _spawnQ.sort(()=>Math.random()-.5);
+  // 횡대: 공격로마다 한 줄이 아니라 가로로 넓게 벌어진 한 열(최대 8)씩 동시에 출발
+  const ROW=8, ROW_GAP=2200;
+  Object.entries(lanes).forEach(([key,list])=>{
+    list.sort(()=>Math.random()-.5);
+    const delay=3000+(key===roads[0]?0:2000+Math.random()*7000);
+    const rows=Math.min(Math.ceil(list.length/ROW),10), per=Math.ceil(list.length/rows);
+    for(let r=0;r<rows;r++){
+      const row=list.slice(r*per,(r+1)*per), m=row.length;
+      row.forEach((it,j)=>{
+        const lat=m<2?0:((j/(m-1))*2-1)*Math.min(LANE_SPAN[key],(m-1)*100)+(Math.random()-.5)*30;
+        const path=getLanePath(key,lat,wallOf[key]);
+        _spawnQ.push({...it,x:path[0].x,y:path[0].y,path,t:delay+r*ROW_GAP});
+      });
+    }
+  });
+  air.forEach((it,i)=>{ const pos=getDragonSpawnPos(); _spawnQ.push({...it,x:pos.x,y:pos.y,t:3000+i*800}); });
+  _spawnQ.sort((a,b)=>a.t-b.t);
   _spawnTimer=0;_wave++;renderHUD();
 }
 
@@ -485,7 +510,7 @@ function _previewText(){
     sum[k]=(sum[k]||0)+(g.boss?g.count:Math.ceil(g.count*scale));
   }
   const boss=WAVES[_wave].filter(g=>g.boss);
-  return `다음 ${_wave+1}/${WAVES.length}웨이브 ` + Object.entries(sum).map(([k,n])=>`${k}${n}`).join(' ') + (boss.length?` · BOSS ${boss.map(g=>UNIT_DEFS[g.type].label+(g.count>1?'×'+g.count:'')).join('+')}`:'') + ' · 공격 방향 무작위';
+  return `다음 ${_wave+1}/${WAVES.length}웨이브 ` + Object.entries(sum).map(([k,n])=>`${k}${n}`).join(' ') + (boss.length?` · BOSS ${boss.map(g=>UNIT_DEFS[g.type].label+(g.count>1?'×'+g.count:'')).join('+')}`:'') + ' · 공격 방향 ???';
 }
 function _callWaveEarly(){
   if(_waveActive||_blessOpen||_wave>=WAVES.length) return;

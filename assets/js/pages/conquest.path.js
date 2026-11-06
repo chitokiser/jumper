@@ -128,3 +128,41 @@ export function isOnRoad(wx, wy, threshold=200) {
   }
   return false;
 }
+
+// ── 횡대 공격 대형: 도로 중심선에서 가로로 벌어진 경로 ─────────────────────
+// 4방향 도로 + 4개 대각선 접근로. 대각선은 인접한 두 성벽 중 한 곳(웨이브마다 무작위)을 때린다.
+// 마지막 지점은 성벽 바로 바깥(문 통로 밖) — 가로로 벌어진 몬스터가 성벽 전체 폭에 닿는다.
+export const LANE_KEYS = ['north','south','west','east','ne','se','sw','nw'];
+export const LANE_SPAN = {north:700,south:700,west:700,east:700,ne:400,se:400,sw:400,nw:400};
+const WALL_OUT = 3790, WALL_OUT2 = 6210;   // 성벽(3800/6200) 바깥 10
+const DIAG = {
+  ne:{spawn:{x:8300,y:1400}, walls:{north:700, east:-700}},   // 값 = 성벽 위 착지 위치의 중심 이동(모서리 쪽)
+  se:{spawn:{x:8300,y:8600}, walls:{east:700, south:700}},
+  sw:{spawn:{x:1700,y:8600}, walls:{south:-700, west:700}},
+  nw:{spawn:{x:1700,y:1400}, walls:{west:-700, north:-700}},
+};
+export function diagWalls(key){ return Object.keys(DIAG[key].walls); }
+
+function _wallEnd(wall, along){
+  if(wall==='north') return {x:5000+along, y:WALL_OUT};
+  if(wall==='south') return {x:5000+along, y:WALL_OUT2};
+  if(wall==='west')  return {x:WALL_OUT,  y:5000+along};
+  return {x:WALL_OUT2, y:5000+along};
+}
+
+// lat: 중심선에서 가로로 벌어진 거리, wall: 대각선 접근로가 노릴 성벽
+export function getLanePath(key, lat, wall) {
+  if (DIAG[key]) {
+    const d=DIAG[key], w=wall||Object.keys(d.walls)[0];
+    const end=_wallEnd(w, d.walls[w]+lat*0.6);
+    const dx=end.x-d.spawn.x, dy=end.y-d.spawn.y, len=Math.hypot(dx,dy);
+    const px=-dy/len*lat, py=dx/len*lat;      // 진행 방향에 수직인 가로 간격
+    const mid={x:d.spawn.x+dx*.55, y:d.spawn.y+dy*.55};
+    return [{x:d.spawn.x+px,y:d.spawn.y+py},{x:mid.x+px,y:mid.y+py},end];
+  }
+  const pts=ROADS[key];
+  const vertical=(key==='north'||key==='south');
+  const out=pts.slice(0,-1).map(p=>vertical?{x:p.x+lat,y:p.y}:{x:p.x,y:p.y+lat});
+  out.push(_wallEnd(key, lat));
+  return out;
+}
