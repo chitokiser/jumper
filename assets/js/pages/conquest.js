@@ -5,8 +5,9 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/f
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
 import { createCashout } from '../game-cashout.js';
+import { initCqEvents, cqReset, cqSetVisible, cqBossDown, cqWaveCleared, cqFrame } from './conquest.events.js';
 import {
-  initCamera, resizeCamera, screenToWorld, panBy, zoomBy, moveCamTo,
+  initCamera, resizeCamera, screenToWorld, worldToScreen, panBy, zoomBy, moveCamTo,
   makeFogGrid, revealFog, generatePOIs, addRevealAnim, updateRevealAnims,
   CASTLE_WX, CASTLE_WY, POI_DEFS, getScale,
 } from './conquest.world.js';
@@ -99,6 +100,21 @@ const _cashout=createCashout({
   corner:'tr',
 });
 
+// 보급 상자 이벤트 · 소모 아이템(폭격/철벽/전군 강화) · 화면 이펙트
+initCqEvents({
+  canvas:$('gameCanvas'), castle:{x:CASTLE_WX,y:CASTLE_WY}, buff, worldToScreen,
+  inGame:()=>_phase==='game'&&!_blessOpen,
+  getMonsters:()=>_monsters,
+  killIfDead:m=>{ if(m.hp<=0&&!m.dying){m.dying=true;m.animState='die';m.animFrame=0;m.dyingTimer=DYING_MS;_onKill(m);} },
+  healWalls:(wf,cf)=>{
+    for(const w of Object.values(_walls)){ if(!w.breached) w.hp=Math.min(w.maxHp,w.hp+w.maxHp*wf); }
+    _castleHp=Math.min(MAX_HP,_castleHp+MAX_HP*cf); renderHUD();
+  },
+  addGP:_addGP, notify:_showNotif, banner:showBanner, sound:playSound,
+  burst:addBurst, shake:addShake,
+  coins:(x,y,n)=>{ for(let i=0;i<n;i++) addCoin(x+(Math.random()-.5)*120,y+(Math.random()-.5)*60,2); },
+});
+
 const UNIT_EMOJI={villager:'🛡️',miner:'⛏️',scout:'🔍',archer_tower:'🏹',cannon_tower:'💣',hero:'⚔️'};
 
 // ── 화면 전환 ─────────────────────────────────────────────────────────────
@@ -107,6 +123,7 @@ function showPhase(n){
   $(`${n}Screen`)?.classList.remove('hidden');
   _phase=n;
   _cashout.setVisible(n==='game');
+  cqSetVisible(n==='game');
 }
 
 // ── Firebase ──────────────────────────────────────────────────────────────
@@ -164,7 +181,7 @@ function startGame(){
   _selected=new Set();_placing=false;_dispatchMode=false;_heroSkillCd=0;
   _skillCds={};_skillEffects=[];_updateSkillUI();
   resetFx();fxQueue.length=0;_streak=0;_lastKillAt=0;
-  buff.tower=1;buff.ally=1;_blessOpen=false;_closeModal('blessModal');
+  buff.tower=1;buff.ally=1;_blessOpen=false;_closeModal('blessModal');cqReset();
   setImpactHandler(p=>applyImpact(p,_monsters));
   _walls={
     north:{hp:WALL_HP,maxHp:WALL_HP,breached:false},
@@ -218,6 +235,7 @@ function _loop(ts){
   const dt=Math.min(ts-_lastTs,50);_lastTs=ts;
   _update(dt);
   _drainFx();
+  cqFrame();
   updateFx(dt,{walls:_walls,castleRatio:_castleHp/MAX_HP});
   renderScene({
     defenders:_defenders,monsters:_monsters,
@@ -287,6 +305,7 @@ function _update(dt){
     const waveReward=_wave*100+Math.max(0,_wave-10)*50;
     _addGP(waveReward);
     _showNotif(`🏆 Wave ${_wave} cleared! +${waveReward} GP`);
+    cqWaveCleared();
     if(_wave>=WAVES.length){endGame(true);return;}
     _openBless();
   }
@@ -316,6 +335,7 @@ function _onKill(m){
   if(def.boss){
     _addGP(400); for(let i=0;i<6;i++) addCoin(m.x+(Math.random()-.5)*160,m.y+(Math.random()-.5)*80,coin);
     showBanner(`🏆 ${def.label} 처치!  +${400+coin} GP`); playSound('streak'); addShake(10);
+    cqBossDown();
   }
   if(now-_lastCoinSnd>120){playSound('coin');_lastCoinSnd=now;}
   _streak=(now-_lastKillAt<3000)?_streak+1:1; _lastKillAt=now;
