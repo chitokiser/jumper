@@ -69,6 +69,32 @@ html,body{height:100%;background:#080c18;color:#fff;
 .btn-end{padding:8px 18px;background:none;border:1px solid #374151;border-radius:10px;color:#9ca3af;font-size:12px;cursor:pointer}
 .credit{font-size:10px;color:#4b5563;text-align:center;margin-top:4px}
 
+/* ── 아이템·이벤트·이펙트 ── */
+.cell{position:relative}
+#itemBar{display:flex;gap:10px;justify-content:center}
+.item-btn{position:relative;width:70px;padding:7px 0 5px;background:#111827;border:1px solid #374151;border-radius:12px;
+  color:#e5e7eb;font-size:21px;line-height:1.1;cursor:pointer}
+.item-btn small{display:block;font-size:10px;color:#9ca3af;margin-top:2px}
+.item-btn .cnt{position:absolute;top:-6px;right:-6px;background:#f59e0b;color:#000;border-radius:999px;min-width:18px;height:18px;
+  font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.item-btn:disabled{opacity:.35;cursor:not-allowed}
+.item-btn.armed{border-color:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.7)}
+#comboBadge,#partyBadge{position:absolute;left:10px;pointer-events:none;font-weight:900;font-size:12px;padding:4px 10px;
+  border-radius:999px;opacity:0;transition:opacity .2s;z-index:5}
+#comboBadge{top:6px;background:rgba(124,58,237,.88)}
+#partyBadge{top:34px;background:rgba(236,72,153,.9)}
+#comboBadge.on,#partyBadge.on{opacity:1}
+#fxCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
+.cell.lucky{outline:3px solid #fde047;outline-offset:-3px;animation:luck 1s ease-in-out infinite}
+.cell.lucky::after{content:'✨';position:absolute;top:1px;right:3px;font-size:14px}
+@keyframes luck{50%{box-shadow:0 0 14px #fde047}}
+#board.shake{animation:shake .28s}
+#board.shake.big{animation:shake .45s;transform-origin:center}
+@keyframes shake{20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-4px,-1px)}80%{transform:translate(3px,2px)}}
+.cell.swirl{animation:swirl .5s ease}
+@keyframes swirl{from{transform:rotate(0) scale(.4)}to{transform:rotate(360deg) scale(1)}}
+#board.armed .cell.t{cursor:crosshair;outline:2px dashed rgba(245,158,11,.8);outline-offset:-2px}
+
 /* ── 게임오버 오버레이 ── */
 #overModal{
   display:none;position:fixed;inset:0;z-index:9000;
@@ -147,7 +173,9 @@ html,body{height:100%;background:#080c18;color:#fff;
     ⬆️⬇️⬅️➡️ 방향키 / 화면 <b>스와이프</b>로 모든 타일 이동<br/>
     <b>같은 숫자가 부딪히면</b> 하나로 합쳐집니다.<br/>
     더 움직일 수 없으면 게임 오버 (2048 이후에도 계속!)<br/>
-    점수 <b>10점 = 1 GP</b> (최대 10,000 GP/게임)
+    점수 <b>10점 = 1 GP</b> (최대 10,000 GP/게임)<br/>
+    🔥 <b>연속 합치기</b>는 점수 배율 UP · 🎉 512/1024/2048 <b>파티</b>는 점수 ×2 · ✨ <b>행운 칸</b>에서 합치면 보너스<br/>
+    🎁 점수가 쌓이면 <b>망치·되돌리기·섞기</b> 아이템 획득
   </div>
 
   <span id="feeBadge" class="fee-badge">참가비: 100 GP</span>
@@ -165,8 +193,14 @@ html,body{height:100%;background:#080c18;color:#fff;
     <div class="ghb" id="gpBox">💎 <span id="gpVal">0</span> GP</div>
   </div>
   <div id="boardArea">
+    <div id="comboBadge"></div><div id="partyBadge"></div>
     <div id="board"></div>
     <div id="popup"></div>
+    <div id="itemBar">
+      <button class="item-btn" id="itHammer" disabled>🔨<span class="cnt">0</span><small>망치</small></button>
+      <button class="item-btn" id="itUndo" disabled>↩️<span class="cnt">0</span><small>되돌리기</small></button>
+      <button class="item-btn" id="itShuffle" disabled>🔀<span class="cnt">0</span><small>섞기</small></button>
+    </div>
     <div id="hintTxt">스와이프 또는 방향키로 이동</div>
     <button class="btn-end" id="btnEnd">🏁 여기서 끝내고 보상 받기</button>
   </div>
@@ -179,6 +213,8 @@ html,body{height:100%;background:#080c18;color:#fff;
     <a class="mc-mode-chip is-active" href="/2048.html"><span>🔢</span><span>2048</span></a>
   </nav>
 </div>
+
+<canvas id="fxCanvas"></canvas>
 
 <div id="overModal">
   <div class="over-panel">
@@ -289,6 +325,160 @@ function addRandomTile(grid) {
 }
 
 // ── 렌더 ─────────────────────────────────────────────────────────────────────
+
+// ── 이벤트·아이템·이펙트 ───────────────────────────────────────────────
+const ITEM_SCORE_STEP = 1500;      // 누적 점수 구간마다 아이템 1개
+const ITEM_MAX_TOTAL = 3;
+const PARTY_MS = 20000;            // 2048 파티 (점수 2배) 지속
+const MILESTONES = [512, 1024, 2048];
+const LUCKY_EVERY = [16, 26];      // 행운 칸이 나타나는 이동 횟수 간격
+const LUCKY_LIFE = 10;             // 행운 칸이 유지되는 이동 횟수
+let _combo = 0, _items = { hammer: 0, undo: 0, shuffle: 0 };
+let _nextItemScore = ITEM_SCORE_STEP, _armed = null, _prev = null;
+let _partyUntil = 0, _partyTimer = null, _ms = new Set();
+let _lucky = null, _movesToLucky = 20;
+
+const comboMult = c => Math.min(3, 1 + (c - 1) * 0.5);   // 1콤보 ×1, 2콤보 ×1.5 … 최대 ×3
+const partyMult = () => Date.now() < _partyUntil ? 2 : 1;
+const itemTotal = () => _items.hammer + _items.undo + _items.shuffle;
+
+// 파티클 (화면 전체 캔버스)
+const _fx = $('fxCanvas'), _fxc = _fx.getContext('2d');
+let _parts = [], _fxRaf = 0;
+function sizeFx() { const d = window.devicePixelRatio || 1; _fx.width = innerWidth * d; _fx.height = innerHeight * d; _fxc.setTransform(d, 0, 0, d, 0, 0); }
+window.addEventListener('resize', sizeFx); sizeFx();
+function pushPart(p) { if (_parts.length < 400) _parts.push(Object.assign({ g: 0, size: 4, life: 600, color: '#fff', shape: 'c', rot: 0, vr: 0 }, p, { max: p.life || 600 })); }
+function fxLoop(ts) {
+  _fxc.clearRect(0, 0, innerWidth, innerHeight);
+  const dt = Math.min(40, ts - (_fxLast || ts)); _fxLast = ts;
+  for (const p of _parts) {
+    p.life -= dt; p.vy += p.g * dt / 1000; p.x += p.vx * dt / 1000; p.y += p.vy * dt / 1000; p.rot += p.vr * dt / 1000;
+    const a = Math.max(0, p.life / p.max);
+    _fxc.globalAlpha = a; _fxc.fillStyle = p.color;
+    if (p.shape === 'r') { _fxc.save(); _fxc.translate(p.x, p.y); _fxc.rotate(p.rot); _fxc.fillRect(-p.size, -p.size / 2, p.size * 2, p.size); _fxc.restore(); }
+    else { _fxc.beginPath(); _fxc.arc(p.x, p.y, Math.max(1, p.size * (0.5 + a * 0.5)), 0, Math.PI * 2); _fxc.fill(); }
+  }
+  _fxc.globalAlpha = 1;
+  _parts = _parts.filter(p => p.life > 0);
+  if (_parts.length) _fxRaf = requestAnimationFrame(fxLoop); else { _fxRaf = 0; _fxLast = 0; }
+}
+let _fxLast = 0;
+function kick() { if (!_fxRaf) _fxRaf = requestAnimationFrame(fxLoop); }
+const rnd = (a, b) => a + Math.random() * (b - a);
+function cellCenter(idx) {
+  const el = $('board').children[idx]; if (!el) return null;
+  const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, color: getComputedStyle(el).backgroundColor };
+}
+function burstCell(idx, value) {                        // 합쳐진 칸에서 파티클 — 큰 숫자일수록 화려하게
+  const c = cellCenter(idx); if (!c) return;
+  const n = Math.min(26, 6 + Math.round(Math.log2(value)) * 2);
+  for (let i = 0; i < n; i++) {
+    const a = rnd(0, Math.PI * 2), sp = rnd(70, 140 + Math.log2(value) * 22);
+    pushPart({ x: c.x, y: c.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, g: 380, size: rnd(2.5, 5.5), life: rnd(320, 620), color: c.color });
+  }
+}
+function sparkleCell(idx, color = '#fde047', n = 22) {
+  const c = cellCenter(idx); if (!c) return;
+  for (let i = 0; i < n; i++) { const a = rnd(0, Math.PI * 2), sp = rnd(60, 190); pushPart({ x: c.x, y: c.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: rnd(2, 4.5), life: rnd(400, 800), color }); }
+}
+function confetti(n = 90) {
+  const cols = ['#f59e0b', '#ef4444', '#38bdf8', '#4ade80', '#a78bfa', '#f472b6', '#fde047'];
+  for (let i = 0; i < n; i++) pushPart({ x: rnd(0, innerWidth), y: rnd(-30, 20), vx: rnd(-60, 60), vy: rnd(60, 240), g: 160, size: rnd(3, 6), life: rnd(1100, 1900), color: cols[i % cols.length], shape: 'r', rot: rnd(0, 6), vr: rnd(-8, 8) });
+}
+function shakeBoard(big) {
+  const b = $('board'); b.classList.remove('shake', 'big'); void b.offsetWidth; b.classList.add('shake'); if (big) b.classList.add('big');
+  setTimeout(() => b.classList.remove('shake', 'big'), big ? 480 : 300);
+}
+
+// 아이템
+function renderItems() {
+  const map = { hammer: 'itHammer', undo: 'itUndo', shuffle: 'itShuffle' };
+  for (const k of Object.keys(map)) {
+    const b = $(map[k]); b.querySelector('.cnt').textContent = _items[k];
+    b.disabled = !_running || _items[k] <= 0 || (k === 'undo' && !_prev);
+    b.classList.toggle('armed', _armed === k);
+  }
+  $('board').classList.toggle('armed', _armed === 'hammer');
+}
+function grantItem(reason) {
+  if (itemTotal() >= ITEM_MAX_TOTAL) return;
+  const ks = ['hammer', 'undo', 'shuffle'], k = ks[Math.floor(Math.random() * ks.length)];
+  _items[k]++; renderItems(); beep(880, 0.12, 'sine', 0.2); setTimeout(() => beep(1175, 0.14, 'sine', 0.2), 90);
+  showPopup(`🎁 ${{ hammer: '망치', undo: '되돌리기', shuffle: '섞기' }[k]} 획득! (${reason})`);
+}
+function useItem(k) {
+  if (!_running || _items[k] <= 0) return;
+  if (k === 'hammer') { _armed = _armed === 'hammer' ? null : 'hammer'; if (_armed) showPopup('🔨 부술 타일을 누르세요'); renderItems(); return; }
+  _armed = null;
+  if (k === 'undo') {
+    if (!_prev) return;
+    _grid = _prev.grid; _score = _prev.score; _combo = 0; _prev = null; _items.undo--;
+    beep(520, 0.1, 'sine', 0.2); render(); showPopup('↩️ 되돌렸어요');
+  } else if (k === 'shuffle') {
+    const vals = _grid.flat().filter(v => v), cells = Array.from({ length: SIZE * SIZE }, (_, i) => i);
+    for (let t = 0; t < 30; t++) {
+      cells.sort(() => Math.random() - .5);
+      const g = emptyGrid(); vals.forEach((v, i) => { g[Math.floor(cells[i] / SIZE)][cells[i] % SIZE] = v; });
+      if (canMove(g)) { _grid = g; break; }
+    }
+    _items.shuffle--; _prev = null; beep(300, 0.18, 'sawtooth', 0.15); render();
+    $('board').querySelectorAll('.cell.t').forEach(e => { e.classList.add('swirl'); setTimeout(() => e.classList.remove('swirl'), 520); });
+    showPopup('🔀 섞었어요!');
+  }
+  renderItems();
+}
+function hammerAt(idx) {
+  const r = Math.floor(idx / SIZE), c = idx % SIZE;
+  if (!_grid[r][c]) return;
+  const v = _grid[r][c]; sparkleCell(idx, getComputedStyle($('board').children[idx]).backgroundColor, 18);
+  _grid[r][c] = 0; _items.hammer--; _armed = null; _prev = null;
+  beep(160, 0.15, 'square', 0.25); shakeBoard(false); render(); renderItems();
+}
+
+// 콤보·파티·행운 칸
+function updateBadges() {
+  const cb = $('comboBadge');
+  if (_combo >= 2) { cb.textContent = `🔥 콤보 x${_combo} (점수 ×${comboMult(_combo)})`; cb.classList.add('on'); } else cb.classList.remove('on');
+}
+function startParty(tile) {
+  _partyUntil = Date.now() + PARTY_MS;
+  const pb = $('partyBadge'); pb.classList.add('on');
+  clearInterval(_partyTimer);
+  const tick = () => {
+    const left = Math.ceil((_partyUntil - Date.now()) / 1000);
+    if (left <= 0 || !_running) { pb.classList.remove('on'); clearInterval(_partyTimer); return; }
+    pb.textContent = `🎉 ${tile} 파티! 점수 ×2 (${left}s)`;
+  };
+  tick(); _partyTimer = setInterval(tick, 250);
+  confetti(tile >= 2048 ? 160 : 90); beep(660, 0.15, 'triangle', 0.25);
+  setTimeout(() => beep(880, 0.15, 'triangle', 0.25), 120); setTimeout(() => beep(1320, 0.25, 'triangle', 0.25), 260);
+  setTimeout(() => { if (_running) grantItem(`${tile} 파티`); }, 700);
+}
+function stepLucky(mergedCells, mergeVals) {
+  if (_lucky) {
+    if (mergedCells.has(_lucky.idx)) {
+      const v = mergeVals.get(_lucky.idx) || 0, bonus = Math.max(50, v) * partyMult();
+      _score += bonus; sparkleCell(_lucky.idx, '#fde047', 30); beep(1046, 0.18, 'sine', 0.25);
+      showPopup(`✨ 행운 칸! +${bonus}`); _lucky = null; _movesToLucky = rndInt(LUCKY_EVERY);
+      setTimeout(() => { if (_running) grantItem('행운 칸'); }, 450);
+      return;
+    }
+    if (--_lucky.left <= 0) { _lucky = null; _movesToLucky = rndInt(LUCKY_EVERY); }
+    return;
+  }
+  if (--_movesToLucky <= 0) {
+    const idx = Math.floor(Math.random() * SIZE * SIZE);
+    _lucky = { idx, left: LUCKY_LIFE }; showPopup('✨ 행운 칸 등장! 여기서 합치면 보너스');
+  }
+}
+const rndInt = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
+function resetEvents() {
+  _combo = 0; _items = { hammer: 0, undo: 0, shuffle: 0 }; _nextItemScore = ITEM_SCORE_STEP; _armed = null; _prev = null;
+  _partyUntil = 0; clearInterval(_partyTimer); _ms = new Set(); _lucky = null; _movesToLucky = rndInt(LUCKY_EVERY);
+  $('comboBadge').classList.remove('on'); $('partyBadge').classList.remove('on'); _parts = [];
+  renderItems();
+}
+
 const gpFor = s => Math.min(Math.floor(s / SCORE_PER_GP), MAX_GP_PER_GAME);
 
 function render(newIdx = -1, mergedCells = new Set()) {
@@ -300,7 +490,7 @@ function render(newIdx = -1, mergedCells = new Set()) {
   for (let i = 0; i < SIZE * SIZE; i++) {
     const v = _grid[Math.floor(i / SIZE)][i % SIZE];
     const el = b.children[i];
-    el.className = 'cell' + (v ? ' t ' + (v > 2048 ? 'vbig' : 'v' + v) : '') + (i === newIdx ? ' new' : '') + (mergedCells.has(i) ? ' mg' : '');
+    el.className = 'cell' + (v ? ' t ' + (v > 2048 ? 'vbig' : 'v' + v) : '') + (i === newIdx ? ' new' : '') + (mergedCells.has(i) ? ' mg' : '') + (_lucky && _lucky.idx === i ? ' lucky' : '');
     el.textContent = v || '';
   }
   $('scoreVal').textContent = _score;
@@ -318,6 +508,7 @@ function startGame(free) {
   _freeMode = free; _running = true; _won = false; _score = 0;
   _grid = emptyGrid(); addRandomTile(_grid); addRandomTile(_grid);
   $('overModal').classList.remove('open');
+  resetEvents();
   showScreen('game');
   render();
 }
@@ -326,20 +517,40 @@ function handleMove(dir) {
   if (!_running) return;
   const res = move(_grid, dir);
   if (!res.moved) return;
-  _grid = res.grid; _score += res.gained;
+  _armed = null;
+  _prev = { grid: _grid.map(r => r.slice()), score: _score };     // 되돌리기용 직전 상태
+  // 콤보: 합치기가 연속으로 이어진 이동 횟수 (합치지 못한 이동에서 끊김)
+  _combo = res.mergedCells.size ? _combo + 1 : 0;
+  const mult = comboMult(Math.max(1, _combo)) * partyMult();
+  const gained = Math.round(res.gained * mult);
+  _grid = res.grid; _score += gained;
+  // 합쳐진 칸의 새 값 (파티클·행운 칸 보너스용)
+  const mergeVals = new Map();
+  res.mergedCells.forEach(i => mergeVals.set(i, _grid[Math.floor(i / SIZE)][i % SIZE]));
+  stepLucky(res.mergedCells, mergeVals);
   if (_score > _best) _best = _score;
   const newIdx = addRandomTile(_grid);
-  if (res.gained) beep(300 + Math.min(Math.log2(res.gained), 11) * 60, 0.12);
+  if (res.gained) beep(300 + Math.min(Math.log2(res.gained), 11) * 60 + Math.min(_combo, 6) * 25, 0.12);
   else beep(180, 0.04, 'sine', 0.1);
   render(newIdx, res.mergedCells);
+  mergeVals.forEach((v, i) => burstCell(i, v));
+  kick();
+  const maxMerge = Math.max(0, ...mergeVals.values());
+  if (maxMerge >= 128) shakeBoard(maxMerge >= 1024);
+  if (_combo >= 2) showPopup(`COMBO x${_combo}!`);
+  updateBadges();
+  while (_score >= _nextItemScore) { _nextItemScore += ITEM_SCORE_STEP; grantItem('점수 보너스'); }
+  renderItems();
   const top = Math.max(..._grid.flat());
-  if (!_won && top >= 2048) { _won = true; showPopup('🎉 2048 달성!'); beep(988, 0.4); }
+  for (const m of MILESTONES) if (top >= m && !_ms.has(m)) { _ms.add(m); startParty(m); }
+  if (!_won && top >= 2048) { _won = true; showPopup('🎉 2048 달성!'); beep(988, 0.4); confetti(140); kick(); }
   if (!canMove(_grid)) triggerGameOver();
 }
 
 async function triggerGameOver() {
   if (!_running) return;
   _running = false;
+  _armed = null; clearInterval(_partyTimer); $('partyBadge').classList.remove('on'); $('comboBadge').classList.remove('on'); renderItems();
   beep(200, 0.4, 'sawtooth', 0.25);
   const gp = gpFor(_score);
   $('finalScore').textContent = _score;
@@ -365,8 +576,14 @@ document.addEventListener('keydown', e => {
   if (d === undefined || !_running) return;
   e.preventDefault(); handleMove(d);
 });
-const swipe = (dx, dy) => {
-  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+const swipe = (dx, dy, x, y) => {
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) {          // 짧은 터치 = 탭 → 망치 모드면 그 칸 부수기
+    if (_armed === 'hammer' && _running) {
+      const el = document.elementFromPoint(x, y), kids = [...$('board').children], idx = kids.indexOf(el);
+      if (idx >= 0) hammerAt(idx);
+    }
+    return;
+  }
   handleMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0));
 };
 let _sx = 0, _sy = 0, _swiping = false;
@@ -375,11 +592,11 @@ boardEl.addEventListener('touchstart', e => { const t = e.touches[0]; _sx = t.cl
 boardEl.addEventListener('touchmove', e => e.preventDefault(), { passive:false });
 boardEl.addEventListener('touchend', e => {
   if (!_swiping) return; _swiping = false;
-  const t = e.changedTouches[0]; swipe(t.clientX - _sx, t.clientY - _sy);
+  const t = e.changedTouches[0]; swipe(t.clientX - _sx, t.clientY - _sy, t.clientX, t.clientY);
 }, { passive:true });
 boardEl.addEventListener('mousedown', e => { _sx = e.clientX; _sy = e.clientY; _swiping = true; });
 window.addEventListener('mouseup', e => {
-  if (!_swiping) return; _swiping = false; swipe(e.clientX - _sx, e.clientY - _sy);
+  if (!_swiping) return; _swiping = false; swipe(e.clientX - _sx, e.clientY - _sy, e.clientX, e.clientY);
 });
 
 // ── Firebase ─────────────────────────────────────────────────────────────────
@@ -444,6 +661,9 @@ $('btnEnter').onclick = async () => {
   startGame(false);
 };
 $('btnFree').onclick = () => { beep(800, 0.06, 'sine', 0.15); startGame(true); };
+$('itHammer').onclick = () => useItem('hammer');
+$('itUndo').onclick = () => useItem('undo');
+$('itShuffle').onclick = () => useItem('shuffle');
 $('btnEnd').onclick = () => { if (_running && confirm('지금 끝내고 점수를 GP로 받을까요?')) triggerGameOver(); };
 $('btnRetry').onclick = async () => {
   $('overModal').classList.remove('open');
