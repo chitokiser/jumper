@@ -10,6 +10,7 @@ import {
   addHitParticles, addArrowParticle, triggerShake,
 } from './bow.render.js';
 import { playSound } from './merchants.battle.js';
+import { createCashout } from '../game-cashout.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const BASE_FEE      = 100;
@@ -187,6 +188,20 @@ const _cannons = [
 let _cannonballs = [];
 
 const $ = id=>document.getElementById(id);
+
+// 게임 도중 결산하고 나가기 (현재 점수 기준 GP 지급)
+const _cashout = createCashout({
+  getReward: ()=>{
+    if(_freeMode) return 0;
+    const missed=Math.max(0,_arrowsFired-_arrowsHit);
+    return Math.floor(Math.max(0,_score-missed*MISS_PENALTY)/10);
+  },
+  onConfirm: ()=>{
+    if(_phase!=='game') return;
+    clearInterval(_timerIv);
+    return endGame();
+  },
+});
 
 // ── 몬스터 ───────────────────────────────────────────────────────────────────
 function spawnMonster(ri) {
@@ -705,6 +720,7 @@ function showPhase(name){
   SCREENS.forEach(s=>$(`${s}Screen`)?.classList.add('hidden'));
   $(`${name}Screen`)?.classList.remove('hidden');
   _phase=name;
+  _cashout.setVisible(name==='game');
 }
 
 // ── 초기화 ───────────────────────────────────────────────────────────────────

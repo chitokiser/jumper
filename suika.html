@@ -257,6 +257,7 @@ import { doc, getDoc, updateDoc, setDoc, serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { createCashout } from '/assets/js/game-cashout.js';
 
 // ── 과일 데이터 ──────────────────────────────────────────────────────────────
 const FRUITS = [
@@ -369,7 +370,15 @@ const $ = id => document.getElementById(id);
 const screens = { loading:$('loadingScreen'), lobby:$('lobbyScreen'), game:$('gameScreen') };
 function showScreen(name) {
   Object.entries(screens).forEach(([k,el]) => el.classList.toggle('hidden', k !== name));
+  _cashout.setVisible(name === 'game' && _gameRunning);
 }
+
+// 게임 도중 결산하고 나가기 (현재 점수 기준 GP 지급)
+const _cashout = createCashout({
+  getReward: () => (_freeMode || !_gameRunning) ? 0 : Math.min(Math.floor(_score / GP_PER_SCORE), MAX_GP_PER_GAME),
+  onConfirm: () => { if (_gameRunning) return triggerGameOver(); },
+  corner: 'tl',
+});
 
 // ── Firebase 플레이어 로드 ────────────────────────────────────────────────────
 async function loadPlayer() {
@@ -832,6 +841,7 @@ function startDangerCheck() {
 async function triggerGameOver() {
   if (!_gameRunning) return;
   _gameRunning = false;
+  _cashout.setVisible(false);
   clearInterval(_dangerTimer);
   Runner.stop(runner);
   sndGameOver();

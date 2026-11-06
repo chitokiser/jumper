@@ -4,6 +4,7 @@ import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/fireb
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { isTelegramMiniApp, loginWithTelegram } from '/assets/js/telegram-auth.js';
+import { createCashout } from '../game-cashout.js';
 import {
   initCamera, resizeCamera, screenToWorld, panBy, zoomBy, moveCamTo,
   makeFogGrid, revealFog, generatePOIs, addRevealAnim, updateRevealAnims,
@@ -90,6 +91,14 @@ let _streak=0,_lastKillAt=0,_lastCoinSnd=0,_lastCastleShake=0;   // 연속 처�
 
 const $=id=>document.getElementById(id);
 
+// 게임 도중 결산하고 나가기 (이미 클리어한 웨이브 × 50 GP)
+const _clearedWaves=()=>_waveActive?Math.max(0,_wave-1):_wave;
+const _cashout=createCashout({
+  getReward:()=>_freePlay?0:_clearedWaves()*50,
+  onConfirm:()=>{ if(_phase!=='game') return; return endGame(false,true); },
+  corner:'tr',
+});
+
 const UNIT_EMOJI={villager:'🛡️',miner:'⛏️',scout:'🔍',archer_tower:'🏹',cannon_tower:'💣',hero:'⚔️'};
 
 // ── 화면 전환 ─────────────────────────────────────────────────────────────
@@ -97,6 +106,7 @@ function showPhase(n){
   ['loading','lobby','game','gameover'].forEach(p=>$(`${p}Screen`)?.classList.add('hidden'));
   $(`${n}Screen`)?.classList.remove('hidden');
   _phase=n;
+  _cashout.setVisible(n==='game');
 }
 
 // ── Firebase ──────────────────────────────────────────────────────────────
@@ -167,17 +177,28 @@ function startGame(){
   renderHUD(); _lastTs=performance.now();
   _raf=requestAnimationFrame(_loop);
 }
-async function endGame(won){
+async function endGame(won,cash=false){
   cancelAnimationFrame(_raf);
-  if(won) playSound('revive'); else playSound('player_die');
+  if(cash) _phase='cashout';   // 결산 처리 중 중복 호출 방지
+  if(won) playSound('revive'); else if(!cash) playSound('player_die');
 
   // 승리: 웨이브당 40 + 기본 150 GP
   // 패배: 완료한 웨이브당 50 GP 위로 보상 (웨이브 1개라도 클리어했으면 지급)
   const winReward  = won && !_freePlay ? Math.floor(150 + _wave * 40) : 0;
-  const loseReward = !won && !_freePlay && _wave > 0 ? _wave * 50 : 0;
+  const clearedWaves = cash ? _clearedWaves() : _wave;
+  const loseReward = !won && !_freePlay && clearedWaves > 0 ? clearedWaves * 50 : 0;
   const reward = winReward || loseReward;
 
   if(reward > 0) await awardGP(reward);
+
+  if(cash){
+    const elc=$('gameResult');
+    if(elc) elc.innerHTML=`<div style="font-size:26px;color:#fbbf24">Cashed Out 💰</div>
+       <div style="color:#9ca3af">${clearedWaves} waves cleared</div>
+       <div style="color:#22c55e;font-size:18px">${reward>0?`+${reward} GP`:'No reward yet'}</div>`;
+    showPhase('gameover');
+    return;
+  }
 
   const el=$('gameResult');
   if(el) el.innerHTML = won

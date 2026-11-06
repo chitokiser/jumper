@@ -4,6 +4,7 @@ import { esc } from '/assets/js/esc.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { createCashout } from '../game-cashout.js';
 
 // ── 카드 이미지 풀 ────────────────────────────────────────────────────────────
 const CARD_POOL = [
@@ -110,6 +111,12 @@ let _phase='lobby';
 let _freeMode=false;
 
 const $=id=>document.getElementById(id);
+
+// 게임 도중 결산하고 나가기 (지금까지 쌓은 점수를 GP로 지급)
+const _cashout=createCashout({
+  getReward:()=>_freeMode?0:Math.min(1200,Math.max(0,_score)),
+  onConfirm:()=>gameCashout(),
+});
 
 // ── 사운드 ───────────────────────────────────────────────────────────────────
 function ac(){
@@ -321,6 +328,7 @@ function showFloat(text,anchorEl,color='#fff'){
 
 // ── 게임 종료 ────────────────────────────────────────────────────────────────
 async function gameClear(){
+  if(_phase!=='game') return;
   stopPickTimer();
   const elapsed=Date.now()-_startTime;
   _score+=CLEAR_BONUS;
@@ -340,7 +348,22 @@ async function gameClear(){
   showPhase('result');
 }
 
+async function gameCashout(){
+  if(_phase!=='game') return;
+  _phase='cashout';   // 대기 중 타이머가 clear/over를 다시 부르지 못하게 막음
+  stopPickTimer();
+  const netGP=Math.min(1200,Math.max(0,_score));
+  await awardGP(netGP);
+  $('resTitle').textContent='💰 중도 결산';
+  $('resTitle').className='res-title clear';
+  $('resScore').textContent=_score+'점';
+  $('resGP').textContent=_freeMode?'🆓 무료 입장 (보상 없음)':(netGP>0?`+${netGP} GP 획득!`:'획득 GP 없음');
+  $('resInfo').textContent=`매칭: ${_matched}/12 | 오답: ${_misses}회 | 도중에 결산하고 나갔습니다`;
+  showPhase('result');
+}
+
 async function gameOver(){
+  if(_phase!=='game') return;
   stopPickTimer();
   playGameOver();
   $('resTitle').textContent='💀 게임 오버';
@@ -369,6 +392,7 @@ function showPhase(name){
   SCREENS.forEach(s=>$(`${s}Screen`)?.classList.add('hidden'));
   $(`${name}Screen`)?.classList.remove('hidden');
   _phase=name;
+  _cashout.setVisible(name==='game');
 }
 
 // ── 초기화 ───────────────────────────────────────────────────────────────────
