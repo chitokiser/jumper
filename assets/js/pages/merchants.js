@@ -5154,8 +5154,8 @@ function hidePendingOverlay() {
 }
 
 // ── 트레져헌터 랭킹 ────────────────────────────────────────────────────────────
-let _hunterRankTab = 'monsters'; // 'monsters' | 'treasures'
-let _hunterRankCache = { monsters: null, treasures: null };
+let _hunterRankTab = 'gp'; // 'gp' | 'monsters' | 'treasures'
+let _hunterRankCache = { gp: null, monsters: null, treasures: null };
 const _RANK_TTL = 5 * 60 * 1000; // 5분 로컬캐시
 
 function _rankLoad(tab) {
@@ -5184,14 +5184,23 @@ async function loadHunterRanking(tab) {
   // 3) Firestore 요청
   list.innerHTML = '<div class="hunter-rank-loading">Loading...</div>';
   try {
-    const field = tab === 'monsters' ? 'monstersKilled' : 'treasuresFound';
-    const snap = await Promise.race([
-      getDocs(query(collection(db, 'battle_players'), where(field, '>', 0), orderBy(field, 'desc'), limit(20))),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000)),
-    ]);
+    let snap;
+    if (tab === 'gp') {
+      snap = await Promise.race([
+        getDocs(query(collection(db, 'battle_players'), where('gold', '>', 0), orderBy('gold', 'desc'), limit(10))),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000)),
+      ]);
+    } else {
+      const field = tab === 'monsters' ? 'monstersKilled' : 'treasuresFound';
+      snap = await Promise.race([
+        getDocs(query(collection(db, 'battle_players'), where(field, '>', 0), orderBy(field, 'desc'), limit(10))),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000)),
+      ]);
+    }
     const rows = [];
     snap.forEach(d => {
       const data = d.data();
+      const field = tab === 'gp' ? 'gold' : (tab === 'monsters' ? 'monstersKilled' : 'treasuresFound');
       const val = data[field] || 0;
       rows.push({ uid: d.id, val, displayName: data.displayName || null, photoURL: data.photoURL || null, gsLevel: data.gsLevel || data.level || 1 });
     });
@@ -5211,7 +5220,7 @@ function renderHunterRanking(rows, tab) {
     return;
   }
   const myUid = _uid;
-  const label = tab === 'monsters' ? 'kills' : 'found';
+  const label = tab === 'gp' ? 'GP' : (tab === 'monsters' ? 'kills' : 'found');
   const medalClass = ['gold', 'silver', 'bronze'];
   list.innerHTML = rows.map((r, i) => {
     const rank = i + 1;
