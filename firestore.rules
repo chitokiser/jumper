@@ -786,22 +786,22 @@ service cloud.firestore {
 
     match /materials/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO();
+      allow write: if isStaff() || isCEO() || isAuthenticated();
     }
 
     match /suppliers/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO();
+      allow write: if isStaff() || isCEO() || isAuthenticated();
     }
 
     match /priceHistory/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO();
+      allow write: if isStaff() || isCEO() || isAuthenticated();
     }
 
     match /externalPrices/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO();
+      allow write: if isStaff() || isCEO() || isAuthenticated();
     }
 
     match /merchant_products/{productId} {
@@ -887,6 +887,23 @@ service cloud.firestore {
 
     match /task_logs/{logId} {
       allow read, write: if isAuthenticated();
+    }
+
+    // ── Table QR & AI Smart CRM Collections ────────────────────────────────────
+    match /store_customers/{docId} {
+      allow read, write: if true;
+    }
+
+    match /store_visits/{docId} {
+      allow read, write: if true;
+    }
+
+    match /merchant_traffic_logs/{docId} {
+      allow read, write: if true;
+    }
+
+    match /user_coupons/{docId} {
+      allow read, write: if true;
     }
 
   }
