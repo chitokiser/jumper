@@ -890,19 +890,19 @@ service cloud.firestore {
     }
 
     // ── Table QR & AI Smart CRM Collections ────────────────────────────────────
-    match /store_customers/{docId} {
+    match /store_customers/{document=**} {
       allow read, write: if true;
     }
 
-    match /store_visits/{docId} {
+    match /store_visits/{document=**} {
       allow read, write: if true;
     }
 
-    match /merchant_traffic_logs/{docId} {
+    match /merchant_traffic_logs/{document=**} {
       allow read, write: if true;
     }
 
-    match /user_coupons/{docId} {
+    match /user_coupons/{document=**} {
       allow read, write: if true;
     }
 
