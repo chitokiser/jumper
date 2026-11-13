@@ -45,6 +45,12 @@
     .gh-card strong { font-size: 15px; color: var(--fg, #111827); }
     .gh-card p { margin: 0; font-size: 12.5px; color: var(--muted, #6b7280); line-height: 1.5; }
     .gh-card .gh-play { margin-top: auto; padding-top: 6px; font-size: 12px; font-weight: 800; color: #b45309; }
+    .gh-card.featured.mmo { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #4c1d95 100%); border: 2px solid #d4af37; box-shadow: 0 6px 22px rgba(76, 29, 149, .25); }
+    .gh-card.featured.mmo:hover { border-color: #fbbf24; box-shadow: 0 10px 28px rgba(76, 29, 149, .4); }
+    .gh-card.mmo strong { font-size: 17px; color: #fde68a; overflow-wrap: anywhere; }
+    .gh-card.mmo p { color: #e0e7ff; }
+    .gh-card.mmo .gh-play { color: #fbbf24; }
+    .gh-mmo-badge { align-self: flex-start; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; color: #1e1b4b; background: linear-gradient(90deg, #fde68a, #d4af37); }
 
     .hunter-rank-section { margin-top: 32px; padding: 22px 18px 24px; border: 1px solid var(--border, #e5e7eb); border-radius: 16px; background: var(--surface, #fff); }
     .hunter-rank-title { font-size: 1.15rem; font-weight: 800; margin: 0 0 12px; color: var(--fg, #111827); }
@@ -86,6 +92,13 @@
           <p>실제 위치를 걸어 다니며 몬스터를 사냥하고 보물을 찾는 위치기반 RPG. 금광 · 돈나무 · 항구 · 상점까지.</p>
           <span class="gh-play">▶ 플레이하기</span>
         </a>
+        <a class="gh-card featured mmo" href="https://pull-crown-hula.ngrok-free.dev/" target="_blank" rel="noopener">
+          <span class="gh-card-icon">🐉</span>
+          <span class="gh-mmo-badge">대형 MMO RPG</span>
+          <strong>⚔️ 베스토리아 (Bestoria)</strong>
+          <p>광활한 베스토리아 세계에서 다른 모험가들과 함께 성장하고 전투하는 대형 MMO RPG.</p>
+          <span class="gh-play">▶ 플레이하기 (새 창)</span>
+        </a>
         <a class="gh-card" href="/relay.html">
           <span class="gh-card-icon">🏃</span>
           <strong>이어달리기</strong>
@@ -120,12 +133,6 @@
           <span class="gh-card-icon">🔢</span>
           <strong>2048 숫자 합치기</strong>
           <p>같은 숫자를 합쳐 2048에 도전하세요.</p>
-          <span class="gh-play">▶ 플레이하기</span>
-        </a>
-        <a class="gh-card" href="https://pull-crown-hula.ngrok-free.dev/" target="_blank" rel="noopener">
-          <span class="gh-card-icon">⚔️</span>
-          <strong>베스토리아 (Bestoria)</strong>
-          <p>베스토리아 세계로 떠나는 새로운 모험 게임.</p>
           <span class="gh-play">▶ 플레이하기</span>
         </a>
       </div>
