@@ -189,14 +189,3 @@
   from = "/used"
   to = "/used.html"
   status = 200
-
-# 가맹점 홈페이지: 백제갈비 (2026-11-14)
-[[redirects]]
-  from = "/baekjegalbi"
-  to = "/baekjegalbi.html"
-  status = 200
-
-[[redirects]]
-  from = "/baekje"
-  to = "/baekjegalbi.html"
-  status = 301
