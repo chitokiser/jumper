@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>백제갈비 BAEKJE GALBI | 하노이 미딩 프리미엄 한우·숯불갈비</title>
+  <meta name="description" content="백제갈비(Baekje Galbi BBQ) — 하노이 미딩의 한국 전통 프리미엄 고깃집. 토마호크, 마블링 소고기 모둠, 숙성 갈비를 테이블에서 구워 드립니다. BestClub 공식 가맹점.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://bestclubvn.netlify.app/baekjegalbi.html">
+  <meta property="og:type" content="restaurant">
+  <meta property="og:title" content="백제갈비 BAEKJE GALBI — Korean Premium BBQ, Hanoi">
+  <meta property="og:description" content="한국 전통의 깊이를 담은 프리미엄 고깃집. 하노이 미딩.">
+  <meta property="og:image" content="https://bestclubvn.netlify.app/assets/images/baekje/signature-board.webp">
+  <link rel="icon" href="/assets/images/baekje/emblem-gold.png">
+  <meta name="theme-color" content="#14110f">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@500;700;900&family=Be+Vietnam+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="/assets/images/baekje/tomahawk-grill.webp">
+  <style>
+    :root {
+      --ink: #14110f;
+      --ink-2: #1d1916;
+      --ink-3: #2a241f;
+      --paper: #f6f1e7;
+      --gold: #d4af69;
+      --gold-2: #e9cf96;
+      --ember: #c2410c;
+      --muted: #a8a096;
+      --line: rgba(212, 175, 105, .22);
+      --serif: "Noto Serif KR", serif;
+      --sans: "Noto Sans KR", "Be Vietnam Pro", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--ink); color: var(--paper); font-family: var(--sans); line-height: 1.7; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    html[lang="vi"] body { font-family: "Be Vietnam Pro", "Noto Sans KR", system-ui, sans-serif; }
+    img { display: block; max-width: 100%; }
+    a { color: inherit; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+    /* ── Nav ── */
+    .nav { position: fixed; inset: 0 0 auto 0; z-index: 50; transition: background .3s, border-color .3s; border-bottom: 1px solid transparent; }
+    .nav.solid { background: rgba(20, 17, 15, .92); backdrop-filter: blur(12px); border-color: var(--line); }
+    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .brand img { width: 34px; height: 34px; }
+    .brand b { font-family: var(--serif); font-size: 18px; letter-spacing: .04em; }
+    .brand small { display: block; font-size: 9.5px; letter-spacing: .32em; color: var(--gold); margin-top: -4px; }
+    .nav-links { display: flex; gap: 26px; font-size: 14px; }
+    .nav-links a { text-decoration: none; color: #d8d0c4; transition: color .2s; }
+    .nav-links a:hover { color: var(--gold-2); }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .lang { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+    .lang button { background: none; border: 0; color: var(--muted); font: 600 12px var(--sans); padding: 6px 10px; cursor: pointer; }
+    .lang button.on { background: var(--gold); color: var(--ink); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 24px; border-radius: 999px; font-weight: 700; font-size: 15px; text-decoration: none; transition: transform .15s, background .2s, box-shadow .2s; border: 1px solid transparent; cursor: pointer; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-gold { background: linear-gradient(135deg, var(--gold-2), var(--gold)); color: var(--ink); box-shadow: 0 8px 28px rgba(212, 175, 105, .28); }
+    .btn-ghost { border-color: rgba(246, 241, 231, .4); color: var(--paper); background: rgba(20, 17, 15, .25); backdrop-filter: blur(4px); }
+    .btn-sm { padding: 8px 16px; font-size: 13px; }
+
+    /* ── Hero ── */
+    .hero { position: relative; min-height: 100vh; min-height: 100svh; display: flex; align-items: flex-end; padding: 120px 0 72px; overflow: hidden; }
+    .hero-bg { position: absolute; inset: 0; background: url("/assets/images/baekje/tomahawk-grill.webp") center 40% / cover no-repeat; transform: scale(1.06); animation: kenburns 18s ease-out forwards; }
+    .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,17,15,.55) 0%, rgba(20,17,15,.35) 35%, rgba(20,17,15,.92) 85%, var(--ink) 100%), radial-gradient(ellipse at 20% 80%, rgba(194,65,12,.25), transparent 60%); }
+    @keyframes kenburns { to { transform: scale(1); } }
+    .hero .wrap { position: relative; z-index: 2; width: 100%; }
+    .hero-emblem { width: 76px; height: 76px; margin-bottom: 22px; opacity: .95; }
+    .eyebrow { display: inline-block; font-size: 12px; letter-spacing: .38em; color: var(--gold); text-transform: uppercase; margin-bottom: 14px; }
+    .hero h1 { font-family: var(--serif); font-weight: 900; font-size: clamp(44px, 9vw, 104px); line-height: 1.02; margin: 0; letter-spacing: -.01em; }
+    .hero h1 em { font-style: normal; color: var(--gold-2); }
+    .hero .latin { font-family: var(--serif); letter-spacing: .5em; font-size: clamp(12px, 2vw, 16px); color: #e5dccd; margin: 14px 0 18px; }
+    .hero p.lead { max-width: 560px; font-size: clamp(15px, 2vw, 18px); color: #e5dccd; margin: 0 0 30px; }
+    .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; }
+    .hero-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; }
+    .tag { font-size: 12px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; color: #d8d0c4; background: rgba(20,17,15,.4); }
+    .scroll-cue { position: absolute; right: 24px; bottom: 28px; z-index: 2; writing-mode: vertical-rl; font-size: 11px; letter-spacing: .4em; color: var(--muted); }
+
+    /* ── Sections ── */
+    section { padding: 110px 0; position: relative; }
+    .sec-head { margin-bottom: 52px; max-width: 640px; }
+    .sec-head h2 { font-family: var(--serif); font-size: clamp(30px, 5vw, 48px); line-height: 1.2; margin: 0 0 14px; font-weight: 700; }
+    .sec-head p { color: var(--muted); margin: 0; font-size: 16px; }
+    .center { text-align: center; margin-left: auto; margin-right: auto; }
+    .rule { width: 46px; height: 2px; background: var(--gold); margin: 0 0 22px; }
+    .center .rule { margin: 0 auto 22px; }
+
+    /* Story */
+    .story-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 64px; align-items: center; }
+    .story-img { position: relative; }
+    .story-img img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 4px; }
+    .story-img::before { content: ""; position: absolute; inset: 18px -18px -18px 18px; border: 1px solid var(--line); border-radius: 4px; z-index: -1; }
+    .story-img .stamp { position: absolute; left: -26px; bottom: -26px; width: 104px; height: 104px; border-radius: 50%; background: var(--ink); border: 1px solid var(--line); display: grid; place-items: center; }
+    .story-img .stamp img { width: 70px; height: 70px; aspect-ratio: auto; }
+    .story-text h2 { font-family: var(--serif); font-size: clamp(28px, 4.4vw, 44px); line-height: 1.3; margin: 0 0 22px; }
+    .story-text p { color: #cfc6b8; margin: 0 0 16px; }
+    .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 30px; }
+    .pillar { border-top: 1px solid var(--line); padding-top: 14px; }
+    .pillar b { display: block; font-family: var(--serif); color: var(--gold-2); font-size: 17px; }
+    .pillar span { font-size: 13px; color: var(--muted); }
+
+    /* Signature */
+    .sig { background: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 100%); }
+    .sig-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 210px; gap: 14px; }
+    .sig-card { position: relative; overflow: hidden; border-radius: 4px; background: var(--ink-3); }
+    .sig-card img { width: 100%; height: 100%; object-fit: cover; transition: transform .8s cubic-bezier(.2,.7,.2,1); }
+    .sig-card:hover img { transform: scale(1.05); }
+    .sig-card figcaption { position: absolute; inset: auto 0 0 0; padding: 40px 20px 18px; background: linear-gradient(0deg, rgba(20,17,15,.92), transparent); }
+    .sig-card figcaption small { display: block; color: var(--gold); font-size: 11px; letter-spacing: .3em; text-transform: uppercase; }
+    .sig-card figcaption b { font-family: var(--serif); font-size: 20px; }
+    .sig-card figcaption span { display: block; font-size: 13px; color: #cfc6b8; }
+    .s1 { grid-column: span 7; grid-row: span 2; }
+    .s2 { grid-column: span 5; grid-row: span 2; }
+    .s3 { grid-column: span 4; grid-row: span 2; }
+    .s4 { grid-column: span 4; grid-row: span 2; }
+    .s5 { grid-column: span 4; grid-row: span 2; }
+    figure { margin: 0; }
+
+    /* Experience strip */
+    .exp { padding: 0; }
+    .exp-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .exp-item { padding: 34px 24px; border-right: 1px solid var(--line); }
+    .exp-item:last-child { border-right: 0; }
+    .exp-item .num { font-family: var(--serif); color: var(--gold); font-size: 13px; letter-spacing: .2em; }
+    .exp-item b { display: block; font-family: var(--serif); font-size: 19px; margin: 8px 0 6px; }
+    .exp-item p { margin: 0; font-size: 14px; color: var(--muted); }
+
+    /* Space */
+    .space-grid { display: grid; grid-template-columns: 1.4fr 1fr; grid-template-rows: 260px 260px; gap: 14px; }
+    .space-grid img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+    .space-grid .big { grid-row: span 2; }
+
+    /* Benefits (live) */
+    .benefit { background: var(--paper); color: var(--ink); }
+    .benefit .sec-head p { color: #6b6258; }
+    .benefit .eyebrow { color: #9a7432; }
+    .ben-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .ben { background: #fff; border: 1px solid #e8dfcf; border-radius: 14px; padding: 26px 22px; }
+    .ben .ico { font-size: 26px; }
+    .ben b { display: block; font-size: 17px; margin: 10px 0 6px; }
+    .ben p { margin: 0; font-size: 14px; color: #6b6258; }
+    .live-block { margin-top: 44px; }
+    .live-block h3 { font-family: var(--serif); font-size: 22px; margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.15); }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    .card { background: #fff; border: 1px solid #e8dfcf; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+    .card img { width: 100%; aspect-ratio: 16/10; object-fit: cover; background: #efe7d8; }
+    .card .body { padding: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .card .badge { align-self: flex-start; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: #fbf3e2; color: #9a7432; border: 1px solid #ecd9ae; }
+    .card b { font-size: 15px; line-height: 1.4; }
+    .card .meta { font-size: 13px; color: #6b6258; margin-top: auto; }
+    .bt-policy { display: inline-flex; flex-wrap: wrap; gap: 8px 18px; padding: 14px 20px; border-radius: 12px; background: #1d1916; color: var(--paper); font-size: 14px; margin-top: 26px; }
+    .bt-policy b { color: var(--gold-2); }
+    .empty-note { font-size: 14px; color: #8a8076; padding: 18px; border: 1px dashed #d9cdb6; border-radius: 12px; }
+    .widget-frame { width: 100%; height: 520px; border: 0; border-radius: 14px; display: block; background: #fff; }
+
+    /* Visit */
+    .visit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+    .visit-img { min-height: 460px; background: url("/assets/images/baekje/night-front.webp") center / cover; position: relative; }
+    .visit-info { padding: 48px 44px; background: var(--ink-2); }
+    .visit-info h2 { font-family: var(--serif); font-size: clamp(28px, 4vw, 40px); margin: 0 0 26px; line-height: 1.25; }
+    .info-row { display: grid; grid-template-columns: 92px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+    .info-row:last-of-type { border-bottom: 0; }
+    .info-row dt { color: var(--gold); font-size: 12px; letter-spacing: .2em; padding-top: 3px; }
+    .info-row dd { margin: 0; color: #e5dccd; }
+    .info-row a { text-decoration: none; border-bottom: 1px solid var(--line); }
+    .visit-cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+    .map { margin-top: 14px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; height: 340px; }
+    .map iframe { width: 100%; height: 100%; border: 0; filter: grayscale(.4) contrast(1.05); }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--line); padding: 46px 0 110px; color: var(--muted); font-size: 13px; }
+    footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 22px; align-items: center; }
+    footer .logo { width: 120px; opacity: .9; }
+    footer .links { display: flex; gap: 18px; flex-wrap: wrap; }
+    footer .links a { text-decoration: none; }
+    .bc-badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); padding: 6px 12px; border-radius: 999px; color: var(--gold-2); text-decoration: none; }
+
+    /* Floating reserve */
+    .fab { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 60; display: none; gap: 10px; }
+    .fab .btn { flex: 1; padding: 14px; }
+
+    /* Reveal */
+    .rv { opacity: 0; transform: translateY(26px); transition: opacity .9s ease, transform .9s cubic-bezier(.2,.7,.2,1); }
+    .rv.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; } .hero-bg { animation: none; transform: none; } html { scroll-behavior: auto; } }
+
+    @media (max-width: 960px) {
+      .nav-links { display: none; }
+      .story-grid, .visit-grid { grid-template-columns: 1fr; gap: 48px; }
+      .visit-grid { gap: 0; }
+      .visit-img { min-height: 300px; }
+      .visit-info { padding: 34px 22px; }
+      .sig-grid { grid-template-columns: 1fr 1fr; grid-auto-rows: 180px; }
+      .s1 { grid-column: span 2; } .s2, .s3, .s4 { grid-column: span 1; } .s5 { grid-column: span 2; }
+      .exp-grid { grid-template-columns: 1fr 1fr; }
+      .exp-item:nth-child(2) { border-right: 0; }
+      .exp-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .ben-grid { grid-template-columns: 1fr; }
+      .space-grid { grid-template-columns: 1fr 1fr; grid-template-rows: 280px 200px; }
+      .space-grid .big { grid-column: span 2; grid-row: span 1; }
+      section { padding: 80px 0; }
+      .fab { display: flex; }
+      .nav-right .btn-sm { display: none; }
+    }
+    @media (max-width: 520px) {
+      .wrap { padding: 0 16px; }
+      .sig-grid { grid-template-columns: 1fr; grid-auto-rows: 240px; }
+      .s1, .s2, .s3, .s4, .s5 { grid-column: span 1; grid-row: span 1; }
+      .pillars { grid-template-columns: 1fr; }
+      .story-img .stamp { left: 10px; bottom: -30px; width: 84px; height: 84px; }
+      .story-img .stamp img { width: 56px; height: 56px; }
+      .story-img::before { inset: 12px -8px -12px 12px; }
+      .scroll-cue { display: none; }
+      .brand small { display: none; }
+      .hero { padding-bottom: 104px; }
+      .hero-emblem { width: 58px; height: 58px; margin-bottom: 16px; }
+      .eyebrow { letter-spacing: .2em; font-size: 11px; }
+      .hero-cta .btn { flex: 1 1 auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <img src="/assets/images/baekje/emblem-gold.png" alt="">
+      <span><b>백제갈비</b><small>BAEKJE GALBI</small></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#story" data-i18n="nav.story">브랜드</a>
+      <a href="#signature" data-i18n="nav.sig">시그니처</a>
+      <a href="#space" data-i18n="nav.space">공간</a>
+      <a href="#benefit" data-i18n="nav.benefit">BestClub 혜택</a>
+      <a href="#visit" data-i18n="nav.visit">오시는 길</a>
+    </nav>
+    <div class="nav-right">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="ko" class="on">KO</button>
+        <button type="button" data-lang="vi">VI</button>
+      </div>
+      <a class="btn btn-gold btn-sm" href="tel:+84344744148" data-i18n="cta.reserve">예약하기</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg" role="img" aria-label="숯불 위에서 구워지는 토마호크"></div>
+    <div class="wrap">
+      <img class="hero-emblem" src="/assets/images/baekje/emblem-gold.png" alt="백제갈비 엠블럼">
+      <span class="eyebrow">Korean Premium BBQ · Hanoi My Dinh</span>
+      <h1 data-i18n-html="hero.title">한국 전통의 깊이,<br><em>백제갈비</em></h1>
+      <div class="latin">BAEKJE GALBI</div>
+      <p class="lead" data-i18n="hero.lead">엄선한 마블링 소고기와 숙성 갈비를 숯불 위에서 정성껏 구워 드립니다. 하노이 미딩에서 만나는 한국 정통 프리미엄 고깃집.</p>
+      <div class="hero-cta">
+        <a class="btn btn-gold" href="tel:+84344744148">📞 <span data-i18n="cta.call">전화 예약 0344 744 148</span></a>
+        <a class="btn btn-ghost" href="#visit" data-i18n="cta.find">오시는 길</a>
+      </div>
+      <div class="hero-tags">
+        <span class="tag">🔥 <span data-i18n="tag.grill">테이블 숯불 그릴</span></span>
+        <span class="tag">🥩 <span data-i18n="tag.beef">프리미엄 소고기</span></span>
+        <span class="tag">🍱 <span data-i18n="tag.lunch">점심 세트 운영</span></span>
+        <span class="tag">🎟️ <span data-i18n="tag.bc">BestClub 공식 가맹점</span></span>
+      </div>
+    </div>
+    <span class="scroll-cue">SCROLL</span>
+  </section>
+
+  <!-- STORY -->
+  <section id="story">
+    <div class="wrap story-grid">
+      <div class="story-img rv">
+        <img src="/assets/images/baekje/storefront.webp" alt="백제갈비 하노이 매장 외관" loading="lazy" width="716" height="461">
+        <div class="stamp"><img src="/assets/images/baekje/emblem-gold.png" alt=""></div>
+      </div>
+      <div class="story-text rv">
+        <span class="eyebrow">Our Story</span>
+        <div class="rule"></div>
+        <h2 data-i18n-html="story.title">고기 한 점에<br>정성을 담습니다</h2>
+        <p data-i18n="story.p1">백제갈비는 '한국 전통의 깊이를 담은 프리미엄 고깃집'을 지향합니다. 좋은 고기를 고르는 눈, 알맞게 숙성하는 시간, 그리고 숯불 앞에서의 정성까지 — 한국 고깃집의 정석을 하노이에 그대로 옮겼습니다.</p>
+        <p data-i18n="story.p2">따뜻한 원목 인테리어의 홀에서 가족, 친구, 비즈니스 모임 모두 편안하게 즐기실 수 있습니다.</p>
+        <div class="pillars">
+          <div class="pillar"><b data-i18n="p.1t">엄선</b><span data-i18n="p.1d">마블링 좋은 프리미엄 부위</span></div>
+          <div class="pillar"><b data-i18n="p.2t">숙성</b><span data-i18n="p.2d">결이 살아 있는 두툼한 컷</span></div>
+          <div class="pillar"><b data-i18n="p.3t">숯불</b><span data-i18n="p.3d">테이블에서 바로 굽는 풍미</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIGNATURE -->
+  <section id="signature" class="sig">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="eyebrow">Signature</span>
+        <div class="rule"></div>
+        <h2 data-i18n="sig.title">백제갈비의 시그니처</h2>
+        <p data-i18n="sig.desc">눈으로 먼저 맛보는 한 상. 메뉴와 가격은 매장 메뉴판 또는 아래 BestClub 상품에서 확인하실 수 있습니다.</p>
+      </div>
+      <div class="sig-grid">
+        <figure class="sig-card s1 rv">
+          <img src="/assets/images/baekje/signature-board.webp" alt="프리미엄 소고기 모둠 보드" loading="lazy">
+          <figcaption><small>Premium Board</small><b data-i18n="sig.1t">프리미엄 모둠 한 상</b><span data-i18n="sig.1d">토마호크와 다양한 특수부위를 한 보드에</span></figcaption>
+        </figure>
+        <figure class="sig-card s2 rv">
+          <img src="/assets/images/baekje/tomahawk-grill.webp" alt="숯불 위 토마호크" loading="lazy">
+          <figcaption><small>Tomahawk</small><b data-i18n="sig.2t">토마호크</b><span data-i18n="sig.2d">숯불 위에서 완성되는 압도적인 두께</span></figcaption>
+        </figure>
+        <figure class="sig-card s3 rv">
+          <img src="/assets/images/baekje/galbi-cut.webp" alt="칼집 낸 갈비살" loading="lazy">
+          <figcaption><small>Galbi</small><b data-i18n="sig.3t">칼집 갈비</b><span data-i18n="sig.3d">정성스러운 칼집으로 부드럽게</span></figcaption>
+        </figure>
+        <figure class="sig-card s4 rv">
+          <img src="/assets/images/baekje/beef-platter.webp" alt="마블링 소고기" loading="lazy">
+          <figcaption><small>Marbled Beef</small><b data-i18n="sig.4t">마블링 소고기</b><span data-i18n="sig.4d">고소한 육즙이 살아 있는 부위</span></figcaption>
+        </figure>
+        <figure class="sig-card s5 rv">
+          <img src="/assets/images/baekje/premium-board.webp" alt="프리미엄 고기 구성" loading="lazy">
+          <figcaption><small>Chef's Selection</small><b data-i18n="sig.5t">셰프 셀렉션</b><span data-i18n="sig.5d">그날 가장 좋은 고기로 구성</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPERIENCE -->
+  <section class="exp">
+    <div class="wrap">
+      <div class="exp-grid">
+        <div class="exp-item rv"><span class="num">01</span><b data-i18n="e.1t">테이블 숯불</b><p data-i18n="e.1d">매 테이블 전용 그릴에서 바로 구워 드세요.</p></div>
+        <div class="exp-item rv"><span class="num">02</span><b data-i18n="e.2t">정갈한 상차림</b><p data-i18n="e.2d">놋그릇과 정성스러운 반찬으로 차린 한식 한 상.</p></div>
+        <div class="exp-item rv"><span class="num">03</span><b data-i18n="e.3t">점심 세트</b><p data-i18n="e.3d">합리적인 점심 세트로 가볍게 즐기는 한 끼.</p></div>
+        <div class="exp-item rv"><span class="num">04</span><b data-i18n="e.4t">모임·단체</b><p data-i18n="e.4d">가족 모임, 회식, 비즈니스 접대까지.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPACE -->
+  <section id="space">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="eyebrow">Space</span>
+        <div class="rule"></div>
+        <h2 data-i18n="space.title">따뜻한 원목의 공간</h2>
+        <p data-i18n="space.desc">한옥의 창살 무늬와 원목 마감으로 꾸민 넓은 홀. 테이블마다 배기 덕트를 갖춰 쾌적하게 즐기실 수 있습니다.</p>
+      </div>
+      <div class="space-grid rv">
+        <img class="big" src="/assets/images/baekje/hall.webp" alt="백제갈비 홀 내부" loading="lazy">
+        <img src="/assets/images/baekje/table-setting.webp" alt="놋그릇 테이블 세팅" loading="lazy">
+        <img src="/assets/images/baekje/entrance.webp" alt="매장 입구와 숙성고" loading="lazy">
+      </div>
+    </div>
+  </section>
+
+  <!-- BESTCLUB BENEFIT (live data) -->
+  <section id="benefit" class="benefit">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="eyebrow">BestClub Member Benefit</span>
+        <div class="rule"></div>
+        <h2 data-i18n="ben.title">BestClub 회원이라면 더 특별하게</h2>
+        <p data-i18n="ben.desc">백제갈비는 BestClub 공식 가맹점입니다. BestClub 계정 하나로 결제하고 리워드를 받으세요.</p>
+      </div>
+      <div class="ben-grid">
+        <div class="ben rv"><div class="ico">💳</div><b data-i18n="ben.1t">BM 결제</b><p data-i18n="ben.1d">BestClub 지갑의 BM으로 간편하게 결제합니다. 결제 수수료는 0%입니다.</p></div>
+        <div class="ben rv"><div class="ico">🎰</div><b data-i18n="ben.2t">결제 포인트 잭팟</b><p data-i18n="ben.2d">결제할 때마다 결제 금액에 비례한 Point 잭팟 기회가 주어집니다.</p></div>
+        <div class="ben rv"><div class="ico">🎟️</div><b data-i18n="ben.3t">보너스 티켓 (BT)</b><p data-i18n="ben.3d">가맹점이 정한 기준 금액만큼 결제하면 BT를 무료 보상으로 받아 룰렛을 돌릴 수 있습니다.</p></div>
+      </div>
+      <div id="btPolicy" class="bt-policy" hidden></div>
+
+      <div class="live-block" id="couponBlock" hidden>
+        <h3><span class="live-dot"></span><span data-i18n="live.coupon">백제갈비 쿠폰·바우쳐</span></h3>
+        <div class="cards" id="couponList"></div>
+      </div>
+
+      <div class="live-block" id="productBlock" hidden>
+        <h3><span class="live-dot"></span><span data-i18n="live.product">온라인 판매 상품</span></h3>
+        <div class="cards" id="productList"></div>
+      </div>
+
+      <div class="live-block">
+        <h3><span data-i18n="live.webzine">베스트 매거진</span></h3>
+        <iframe class="widget-frame" loading="lazy" title="BestClub Webzine Widget"
+          src="/kca_webzine_widget.html?merchant=baekje_galbi&theme=%23b8893f&layout=card&mode=light&header=0&count=4"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISIT -->
+  <section id="visit">
+    <div class="wrap">
+      <div class="visit-grid rv">
+        <div class="visit-img" role="img" aria-label="백제갈비 야간 매장 외관"></div>
+        <div class="visit-info">
+          <span class="eyebrow">Visit Us</span>
+          <h2 data-i18n-html="visit.title">하노이 미딩에서<br>기다리겠습니다</h2>
+          <dl>
+            <div class="info-row"><dt data-i18n="v.loc">LOCATION</dt><dd data-i18n="v.locv">하노이 미딩(Mỹ Đình) · Nhà hàng Hàn Quốc B.B.Q</dd></div>
+            <div class="info-row"><dt data-i18n="v.tel">RESERVE</dt><dd><a href="tel:+84344744148">0344 744 148</a></dd></div>
+            <div class="info-row"><dt>SNS</dt><dd>
+              <a href="https://www.instagram.com/baekjegalbibbq/" target="_blank" rel="noopener">Instagram @baekjegalbibbq</a><br>
+              <a href="https://www.facebook.com/baekjegalbi/" target="_blank" rel="noopener">Facebook /baekjegalbi</a><br>
+              <a href="https://blog.naver.com/renaiwoman/223312889899" target="_blank" rel="noopener" data-i18n="v.review">네이버 블로그 방문 후기</a>
+            </dd></div>
+            <div class="info-row"><dt data-i18n="v.hours">HOURS</dt><dd data-i18n="v.hoursv">영업시간·단체 예약은 전화로 문의해 주세요.</dd></div>
+          </dl>
+          <div class="visit-cta">
+            <a class="btn btn-gold" href="tel:+84344744148" data-i18n="cta.reserve">예약하기</a>
+            <a class="btn btn-ghost" href="https://www.google.com/maps/search/?api=1&query=Baekje+Galbi+BBQ+My+Dinh+Hanoi" target="_blank" rel="noopener" data-i18n="cta.map">Google 지도에서 보기</a>
+          </div>
+        </div>
+      </div>
+      <div class="map rv">
+        <iframe loading="lazy" title="백제갈비 위치" referrerpolicy="no-referrer-when-downgrade"
+          src="https://maps.google.com/maps?q=Baekje%20Galbi%20BBQ%20My%20Dinh%20Hanoi&z=15&output=embed"></iframe>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <img class="logo" src="/assets/images/baekje/logo-white.png" alt="백제갈비">
+    <div class="links">
+      <a href="https://www.instagram.com/baekjegalbibbq/" target="_blank" rel="noopener">Instagram</a>
+      <a href="https://www.facebook.com/baekjegalbi/" target="_blank" rel="noopener">Facebook</a>
+      <a href="/events.html" data-i18n="f.events">이벤트·쿠폰</a>
+      <a href="/mall.html" data-i18n="f.mall">BestClub 쇼핑몰</a>
+    </div>
+    <a class="bc-badge" href="/">🏅 <span data-i18n="f.badge">BestClub 공식 가맹점</span></a>
+  </div>
+</footer>
+
+<div class="fab">
+  <a class="btn btn-gold" href="tel:+84344744148">📞 <span data-i18n="cta.reserve">예약하기</span></a>
+  <a class="btn btn-ghost" href="https://www.google.com/maps/search/?api=1&query=Baekje+Galbi+BBQ+My+Dinh+Hanoi" target="_blank" rel="noopener" data-i18n="cta.dir">길찾기</a>
+</div>
+
+<script>
+  // ── 다국어 (KO / VI) ──
+  const I18N_VI = {
+    "nav.story": "Thương hiệu", "nav.sig": "Món đặc trưng", "nav.space": "Không gian", "nav.benefit": "Ưu đãi BestClub", "nav.visit": "Địa chỉ",
+    "cta.reserve": "Đặt bàn", "cta.call": "Đặt bàn 0344 744 148", "cta.find": "Đường đến", "cta.map": "Xem trên Google Maps", "cta.dir": "Chỉ đường",
+    "hero.title": "Chiều sâu truyền thống Hàn Quốc,<br><em>Baekje Galbi</em>",
+    "hero.lead": "Thịt bò vân mỡ tuyển chọn và sườn ủ được nướng trên than hoa ngay tại bàn. Nhà hàng thịt nướng Hàn Quốc cao cấp tại Mỹ Đình, Hà Nội.",
+    "tag.grill": "Nướng than tại bàn", "tag.beef": "Bò cao cấp", "tag.lunch": "Có set ăn trưa", "tag.bc": "Đối tác chính thức BestClub",
+    "story.title": "Trọn tâm huyết<br>trong từng miếng thịt",
+    "story.p1": "Baekje Galbi hướng tới một nhà hàng thịt nướng cao cấp mang chiều sâu truyền thống Hàn Quốc — từ con mắt chọn thịt, thời gian ủ vừa đủ đến sự tận tâm bên bếp than. Chúng tôi mang nguyên vẹn chuẩn mực của quán thịt nướng Hàn Quốc đến Hà Nội.",
+    "story.p2": "Không gian gỗ ấm cúng phù hợp cho gia đình, bạn bè và các buổi gặp gỡ công việc.",
+    "p.1t": "Tuyển chọn", "p.1d": "Phần thịt vân mỡ đẹp", "p.2t": "Ủ chín", "p.2d": "Lát cắt dày, giữ thớ thịt", "p.3t": "Than hoa", "p.3d": "Hương vị nướng ngay tại bàn",
+    "sig.title": "Món đặc trưng của Baekje Galbi", "sig.desc": "Một mâm ngon trước tiên bằng mắt. Thực đơn và giá vui lòng xem tại nhà hàng hoặc mục sản phẩm BestClub bên dưới.",
+    "sig.1t": "Mâm thịt cao cấp", "sig.1d": "Tomahawk và nhiều phần thịt đặc biệt trên một khay", "sig.2t": "Tomahawk", "sig.2d": "Độ dày ấn tượng hoàn thiện trên than hoa",
+    "sig.3t": "Sườn khía", "sig.3d": "Khía tỉ mỉ cho độ mềm", "sig.4t": "Bò vân mỡ", "sig.4d": "Phần thịt giữ trọn vị ngọt", "sig.5t": "Tuyển chọn của bếp trưởng", "sig.5d": "Phần thịt ngon nhất trong ngày",
+    "e.1t": "Bếp than tại bàn", "e.1d": "Mỗi bàn có bếp nướng riêng.", "e.2t": "Mâm cơm chỉn chu", "e.2d": "Bát đồng và các món ăn kèm chu đáo.", "e.3t": "Set ăn trưa", "e.3d": "Bữa trưa nhẹ nhàng, giá hợp lý.", "e.4t": "Tiệc & nhóm", "e.4d": "Họp mặt gia đình, liên hoan, tiếp khách.",
+    "space.title": "Không gian gỗ ấm áp", "space.desc": "Sảnh rộng với hoa văn song cửa hanok và gỗ tự nhiên. Mỗi bàn có ống hút khói riêng, không gian luôn thoáng đãng.",
+    "ben.title": "Đặc biệt hơn cho thành viên BestClub", "ben.desc": "Baekje Galbi là đối tác chính thức của BestClub. Thanh toán và nhận thưởng chỉ với một tài khoản BestClub.",
+    "ben.1t": "Thanh toán BM", "ben.1d": "Thanh toán nhanh bằng BM trong ví BestClub. Phí thanh toán 0%.",
+    "ben.2t": "Jackpot điểm thanh toán", "ben.2d": "Mỗi lần thanh toán có cơ hội trúng jackpot Point tỷ lệ với số tiền.",
+    "ben.3t": "Vé thưởng (BT)", "ben.3d": "Thanh toán đủ mức do cửa hàng quy định để nhận BT miễn phí và quay vòng quay may mắn.",
+    "live.coupon": "Phiếu giảm giá · Voucher Baekje Galbi", "live.product": "Sản phẩm bán online", "live.webzine": "Best Magazine",
+    "visit.title": "Hẹn gặp bạn<br>tại Mỹ Đình, Hà Nội",
+    "v.loc": "ĐỊA ĐIỂM", "v.locv": "Mỹ Đình, Hà Nội · Nhà hàng Hàn Quốc B.B.Q", "v.tel": "ĐẶT BÀN", "v.review": "Bài review trên Naver Blog", "v.hours": "GIỜ MỞ CỬA", "v.hoursv": "Vui lòng gọi điện để hỏi giờ mở cửa và đặt bàn theo nhóm.",
+    "f.events": "Sự kiện · Coupon", "f.mall": "BestClub Mall", "f.badge": "Đối tác chính thức BestClub"
+  };
+  const I18N_KO = {};
+  document.querySelectorAll("[data-i18n]").forEach(el => { I18N_KO[el.dataset.i18n] = el.textContent; });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => { I18N_KO[el.dataset.i18nHtml] = el.innerHTML; });
+
+  window.bkLang = "ko";
+  function applyLang(lang) {
+    const dict = lang === "vi" ? I18N_VI : I18N_KO;
+    window.bkLang = lang;
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach(el => { const v = dict[el.dataset.i18n]; if (v != null) el.textContent = v; });
+    document.querySelectorAll("[data-i18n-html]").forEach(el => { const v = dict[el.dataset.i18nHtml]; if (v != null) el.innerHTML = v; });
+    document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.lang === lang));
+    try { localStorage.setItem("bk_lang", lang); } catch (e) { /* 무시 */ }
+    document.dispatchEvent(new CustomEvent("bk-lang"));
+  }
+  document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", () => applyLang(b.dataset.lang)));
+  let saved = null;
+  try { saved = localStorage.getItem("bk_lang"); } catch (e) { /* 무시 */ }
+  if (!saved && /^vi\b/i.test(navigator.language || "")) saved = "vi";
+  if (saved === "vi") applyLang("vi");
+
+  // ── 네비 배경 + 스크롤 등장 ──
+  const nav = document.getElementById("nav");
+  const onScroll = () => nav.classList.toggle("solid", window.scrollY > 40);
+  window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: .12 });
+  document.querySelectorAll(".rv").forEach(el => io.observe(el));
+</script>
+
+<script type="module">
+  // ── BestClub 중앙 DB 실시간 연동 (CLAUDE.md §17) ──
+  // 가맹점 프로필(BT 정책)·쿠폰·판매상품은 모두 Firestore에서 읽어 표시한다. 하드코딩 금지 — 데이터가 없으면 해당 블록을 숨긴다.
+  import { db } from "/assets/js/firebase-init.js";
+  import { doc, getDoc, collection, query, where, limit, getDocs }
+    from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+  const MERCHANT_ID = new URLSearchParams(location.search).get("merchant") || "baekje_galbi";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const vnd = (n) => Number(n || 0).toLocaleString("vi-VN") + " VND";
+  const t = (ko, vi) => (window.bkLang === "vi" ? vi : ko);
+
+  let merchant = null, coupons = [], products = [];
+
+  function renderBt() {
+    const box = $("btPolicy");
+    const per = Number(merchant?.btPerVnd || 0);
+    if (!merchant || !per) { box.hidden = true; return; }
+    const bal = Number(merchant.btBalance || 0);
+    box.innerHTML = `<span>🎟️ <b>${esc(vnd(per))}</b> ${t("결제당 1 BT 무료 보상", "thanh toán = 1 BT thưởng miễn phí")}</span>`
+      + `<span>${t("가맹점 잔여 BT", "BT còn lại")}: <b>${esc(bal.toLocaleString())} BT</b></span>`;
+    box.hidden = false;
+  }
+
+  function renderCoupons() {
+    const list = $("couponList");
+    if (!coupons.length) { $("couponBlock").hidden = true; return; }
+    list.innerHTML = coupons.map(c => {
+      const price = Number(c.priceBM || 0) > 0 ? `${Number(c.priceBM).toLocaleString()} BM` : t("무료 발급", "Miễn phí");
+      const img = c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" loading="lazy">` : "";
+      return `<a class="card" href="/events.html">${img}<div class="body">
+        <span class="badge">${esc(c.campaignType === "VOUCHER" ? t("바우쳐", "Voucher") : t("쿠폰", "Coupon"))}</span>
+        <b>${esc(c.title)}</b><span class="meta">${esc(price)}</span></div></a>`;
+    }).join("");
+    $("couponBlock").hidden = false;
+  }
+
+  function renderProducts() {
+    const list = $("productList");
+    if (!products.length) { $("productBlock").hidden = true; return; }
+    list.innerHTML = products.map(p => {
+      const img = Array.isArray(p.images) && p.images[0] ? `<img src="${esc(p.images[0])}" alt="" loading="lazy">` : "";
+      const stock = p.sale_status === "sold_out" || Number(p.inventory) === 0;
+      return `<a class="card" href="/mall.html">${img}<div class="body">
+        <b>${esc(p.product_name)}</b>
+        <span class="meta">${stock ? t("품절", "Hết hàng") : esc(vnd(p.price))}</span></div></a>`;
+    }).join("");
+    $("productBlock").hidden = false;
+  }
+
+  const renderAll = () => { renderBt(); renderCoupons(); renderProducts(); };
+  document.addEventListener("bk-lang", renderAll);
+
+  async function load() {
+    const [mSnap, cSnap, pSnap] = await Promise.allSettled([
+      getDoc(doc(db, "merchants", MERCHANT_ID)),
+      getDocs(query(collection(db, "coupon_campaigns"), where("issuerId", "==", MERCHANT_ID), limit(12))),
+      getDocs(query(collection(db, "merchant_products"), where("merchant_id", "==", MERCHANT_ID), where("sale_status", "==", "published"), limit(12)))
+    ]);
+    if (mSnap.status === "fulfilled" && mSnap.value.exists()) merchant = mSnap.value.data();
+    if (cSnap.status === "fulfilled") coupons = cSnap.value.docs.map(d => d.data()).filter(c => c.status === "active");
+    if (pSnap.status === "fulfilled") products = pSnap.value.docs.map(d => d.data());
+    renderAll();
+  }
+  load().catch(() => { /* 연동 실패 시 정적 소개 콘텐츠만 표시 */ });
+</script>
+</body>
+</html>
