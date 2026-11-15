@@ -156,6 +156,92 @@ const FALLBACK_SEED_CAMPAIGNS = [
   }
 ];
 
+const MERCHANT_ALIASES = {
+  "1791605366": ["1791605366", "bestwinner", "best_winner"],
+  "bestwinner": ["1791605366", "bestwinner", "best_winner"],
+  "1791002036": ["1791002036", "daehan_kimchi"],
+  "daehan_kimchi": ["1791002036", "daehan_kimchi"],
+  "1794710386": ["1794710386", "baekje_galbi"],
+  "baekje_galbi": ["1794710386", "baekje_galbi"]
+};
+
+const DEFAULT_BADGE_MAP = {
+  "1791605366": "BEST WINNER",
+  "1791002036": "DAEHAN KIMCHI",
+  "1794710386": "BAEKJE GALBI",
+  "1793671043": "BEST MARIO",
+  "1793776651": "SUNVIETNAM"
+};
+
+function expandMerchantAliases(mId) {
+  const s = String(mId || "").trim();
+  return MERCHANT_ALIASES[s] ? [...MERCHANT_ALIASES[s]] : [s];
+}
+
+/**
+ * 0. Firestore merchants 컬렉션에서 가맹점 목록 동적 로드 및 드롭다운 갱신
+ */
+async function loadMerchantMasterList() {
+  const defaultMerchants = [
+    { id: "1791605366", name: "BEST WINNER", badge: "BEST WINNER" },
+    { id: "1791002036", name: "대한김치", badge: "DAEHAN KIMCHI" },
+    { id: "1794710386", name: "백제갈비", badge: "BAEKJE GALBI" },
+    { id: "1793671043", name: "베스트마리오", badge: "BEST MARIO" },
+    { id: "1793776651", name: "sunvietnam", badge: "SUNVIETNAM" }
+  ];
+
+  const merchantMap = new Map();
+  defaultMerchants.forEach((m) => merchantMap.set(m.id, m));
+
+  try {
+    const snap = await getDocs(collection(db, "merchants"));
+    snap.forEach((d) => {
+      const data = d.data() || {};
+      if (data.active === false) return;
+      const id = String(d.id);
+      const name = data.name || data.merchantName || id;
+      const badge = data.badge || DEFAULT_BADGE_MAP[id] || name.toUpperCase();
+      merchantMap.set(id, { id, name, badge });
+    });
+  } catch (err) {
+    console.warn("merchants collection load fallback to defaults:", err);
+  }
+
+  const merchants = Array.from(merchantMap.values());
+
+  const filterSel = $("filterMerchantSelect");
+  if (filterSel) {
+    const prevVal = filterSel.value || "all";
+    filterSel.innerHTML =
+      `<option value="all">== 전체 가맹점 ==</option>` +
+      merchants.map((m) => `<option value="${m.id}">${m.name} (${m.id})</option>`).join("");
+    if ([...filterSel.options].some((o) => o.value === prevVal)) {
+      filterSel.value = prevVal;
+    }
+  }
+
+  const issuerOptionsHtml =
+    merchants
+      .map((m) => `<option value="${m.id}" data-badge="${m.badge}">${m.name} (${m.id})</option>`)
+      .join("") +
+    `<option value="platform" data-badge="SUPER ADMIN">BestClub 공식 (수퍼 어드민)</option>`;
+
+  ["inpIssuerSelect", "editIssuerSelect"].forEach((selId) => {
+    const sel = $(selId);
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = issuerOptionsHtml;
+    if (prev && [...sel.options].some((o) => o.value === prev)) {
+      sel.value = prev;
+    }
+  });
+
+  if (!_isSuperAdmin && _myMerchantId && $("inpIssuerSelect")) {
+    $("inpIssuerSelect").value = _myMerchantId;
+    $("inpIssuerSelect").disabled = true;
+  }
+}
+
 /**
  * 1. 캠페인 목록 로드 (Firestore + Preset Seed Fallback)
  */
@@ -205,10 +291,15 @@ function renderCampaignGrid() {
     const price = Number(c.priceBM || 0);
     if (_activePriceFilter === "free" && price > 0) return false;
     if (_activePriceFilter === "paid" && price === 0) return false;
-    // 3) 가맹점 필터
+    // 3) 가맹점 필터 (별칭 호환)
     if (_activeMerchantFilter !== "all") {
       const allowed = c.applicableMerchantIds || ["all"];
-      if (!allowed.includes("all") && !allowed.includes(_activeMerchantFilter)) {
+      const filterAliases = expandMerchantAliases(_activeMerchantFilter);
+      const matched =
+        allowed.includes("all") ||
+        filterAliases.includes(String(c.issuerId || "")) ||
+        allowed.some((id) => filterAliases.includes(String(id)));
+      if (!matched) {
         return false;
       }
     }
@@ -602,7 +693,7 @@ async function handleCreateFormSubmit(e) {
       maxPerUser: Number($("inpMaxPerUser").value || 1),
       usageMode: $("inpUsageMode").value,
       terms: $("inpTerms").value.trim(),
-      applicableMerchantIds: [selIssuer.value]
+      applicableMerchantIds: selIssuer.value === "platform" ? ["all"] : expandMerchantAliases(selIssuer.value)
     };
 
     // 1차: Callable Function
@@ -693,7 +784,10 @@ function openEditModal(campaignId) {
   $("editCampaignId").value = c.id;
   $("editCampType").value = c.campaignType || "COUPON";
   $("editStatus").value = c.status || "active";
-  if ($("editIssuerSelect")) $("editIssuerSelect").value = c.issuerId || "1791605366";
+  if ($("editIssuerSelect")) {
+    const normalizedIssuer = c.issuerId === "baekje_galbi" ? "1794710386" : (c.issuerId || "1791605366");
+    $("editIssuerSelect").value = normalizedIssuer;
+  }
   if ($("editIssuerBadge")) $("editIssuerBadge").value = c.issuerBadge || "BEST WINNER";
   $("editTitle").value = c.title || "";
   $("editPriceBM").value = c.priceBM !== undefined ? c.priceBM : 0;
@@ -753,7 +847,7 @@ async function handleEditFormSubmit(e) {
       maxPerUser: Number($("editMaxPerUser").value || 1),
       usageMode: $("editUsageMode").value,
       terms: $("editTerms").value.trim(),
-      applicableMerchantIds: [selIssuer.value]
+      applicableMerchantIds: selIssuer.value === "platform" ? ["all"] : expandMerchantAliases(selIssuer.value)
     };
 
     try {
@@ -1017,6 +1111,7 @@ function initEvents() {
  */
 function boot() {
   initEvents();
+  loadMerchantMasterList();
   loadCampaigns();
 
   onAuthReady(async ({ loggedIn, role, user, profile }) => {
@@ -1053,7 +1148,7 @@ function boot() {
         if (_isSuperAdmin) {
           authText.innerHTML = `<span style="color:#7c3aed;">🛡️</span> <b>${user.email}</b> (최고 관리자: SUPER ADMIN) | <span style="color:#059669; font-weight:700;">전체 플랫폼 쿠폰·바우쳐 수정/비활성화/삭제/발행 권한 활성화</span>`;
         } else {
-          const mName = _myMerchantId === "1791605366" ? "BEST WINNER" : (_myMerchantId === "baekje_galbi" ? "백제갈비" : (_userData?.merchantName || _userData?.name || "가맹점"));
+          const mName = _myMerchantId === "1791605366" ? "BEST WINNER" : ((_myMerchantId === "baekje_galbi" || _myMerchantId === "1794710386") ? "백제갈비" : (_userData?.merchantName || _userData?.name || "가맹점"));
           authText.innerHTML = `<span style="color:#059669;">🏪</span> <b>${user.email}</b> (공식 가맹점: <b>${mName}</b>) | <span style="color:#059669; font-weight:700;">가맹점 쿠폰·바우쳐 발행 권한 활성화</span>`;
         }
       }

@@ -365,6 +365,7 @@ async function updateCouponCampaign(uid, { campaignId, updates } = {}) {
   if (!campSnap.exists) throw new Error('존재하지 않는 캠페인입니다.');
 
   const allowedFields = [
+    'campaignType', 'issuerId', 'issuerNameSnapshot',
     'title', 'description', 'imageUrl', 'priceBM', 'discountValue',
     'totalQuantity', 'maxPerUser', 'usageMode', 'terms', 'status',
     'issuerBadge', 'applicableMerchantIds'
