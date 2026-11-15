@@ -3600,6 +3600,34 @@ exports.deleteCouponReviewComment = onCall({ cors: true }, wrapError(async (requ
   return couponH.deleteCouponReviewComment(uid, request.data);
 }));
 
+// ── Zalo 친구추가 BT 보상 이벤트 ──────────────────────────────────────────────
+const zaloFriendH = require('./handlers/zaloFriend');
+
+exports.createZaloFriendEvent = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return zaloFriendH.createZaloFriendEvent(uid, request.data);
+}));
+
+exports.updateZaloFriendEvent = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return zaloFriendH.updateZaloFriendEvent(uid, request.data);
+}));
+
+exports.chargeZaloFriendPool = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return zaloFriendH.chargeZaloFriendPool(uid, request.data);
+}));
+
+exports.generateZaloFriendCodes = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return zaloFriendH.generateZaloFriendCodes(uid, request.data);
+}));
+
+exports.claimZaloFriendBt = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return zaloFriendH.claimZaloFriendBt(uid, request.data);
+}));
+
 // ── BestMario Integration ──────────────────────────────────────────────────────
 
 exports.merchantMemberJoin = onCall({ cors: true }, wrapError(async (request) => {

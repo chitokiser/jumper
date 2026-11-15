@@ -779,6 +779,23 @@ service cloud.firestore {
       allow delete: if isAdmin() || isStaff() || (signedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
     }
 
+    // Zalo 친구추가 BT 이벤트 — 풀/코드/수령 기록은 서버(Cloud Functions)만 쓴다
+    match /zalo_friend_events/{campaignId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /zalo_friend_codes/{code} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /zalo_friend_claims/{claimId} {
+      allow get: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+
     match /coupon_redemptions/{redemptionId} {
       allow get, list: if isAdmin() || isStaff() || (signedIn() && (resource.data.userId == request.auth.uid || resource.data.uid == request.auth.uid));
       allow create, update: if isAdmin() || isStaff() || signedIn();

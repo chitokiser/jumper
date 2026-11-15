@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
-  <link rel="stylesheet" href="/assets/css/pages/events.css?v=20261115_rev" />
+  <link rel="stylesheet" href="/assets/css/pages/events.css?v=20261115_zalo" />
 
   <script src="/assets/js/partials.js" defer></script>
 </head>
@@ -42,6 +42,10 @@
         <button id="btnOpenCreateModal" class="ev-btn ev-btn--primary" type="button" style="display:none;">
           <span>✨</span> 쿠폰·바우쳐 발행하기
         </button>
+        <!-- 최고 관리자 전용: Zalo 친구추가 BT 이벤트 등록 -->
+        <button id="btnOpenZaloCreate" class="ev-btn ev-btn--primary" type="button" style="display:none;">
+          <span>💬</span> Zalo 친구추가 이벤트 등록
+        </button>
         <!-- 마이페이지 바로가기 버튼 -->
         <a href="/mypage.html#couponsSection" class="ev-btn ev-btn--ghost">
           <span>📦</span> 내 보유 쿠폰·바우쳐 확인 &rarr;
@@ -65,6 +69,7 @@
       <div class="ev-tabs" id="filterTabs">
         <button class="ev-tab active" data-type="all" type="button">전체 보기</button>
         <button class="ev-tab" data-type="GOOGLE_REVIEW" type="button">⭐ 구글 리뷰 이벤트</button>
+        <button class="ev-tab" data-type="ZALO_FRIEND" type="button">💬 Zalo 친구추가</button>
         <button class="ev-tab" data-type="COUPON" type="button">🎟️ 할인 쿠폰</button>
         <button class="ev-tab" data-type="VOUCHER" type="button">🍽️ 교환 바우쳐</button>
         <button class="ev-tab" data-price="free" type="button">🎁 무료 발급 (FREE)</button>
@@ -156,6 +161,9 @@
           </div>
         </div>
 
+        <!-- 💬 Zalo 친구추가 BT 이벤트 섹션 (events.zalo.js 가 채움) -->
+        <div id="detailZaloSection" class="ev-review-section ev-zalo-section" style="display:none;"></div>
+
         <!-- ⭐ 구글 리뷰 인증 댓글 & 관리자 바우쳐 1장 이체 섹션 -->
         <div id="detailReviewSection" class="ev-review-section" style="display:none;">
           <div class="ev-review-header">
@@ -244,6 +252,40 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Zalo 친구추가 BT 이벤트 등록 모달 (최고 관리자 전용) ── -->
+  <div id="zaloCreateModal" class="ev-modal" aria-hidden="true">
+    <div class="ev-modal-card">
+      <button id="btnZaloCreateClose" class="ev-modal-close" type="button">&times;</button>
+      <div class="ev-modal-header-simple">
+        <h2 class="ev-modal-title">💬 Zalo 친구추가 BT 이벤트 등록</h2>
+        <p class="ev-modal-desc">회원이 운영자 Zalo를 친구추가하면, 운영자가 Zalo로 보낸 일회용 코드로 BT를 받습니다. BT는 이 이벤트에 충전한 풀에서만 나갑니다.</p>
+      </div>
+      <form id="zaloCreateForm" class="ev-form">
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpZaloUrl">Zalo 친구추가 링크 *</label>
+          <input id="inpZaloUrl" class="ev-input" type="url" placeholder="https://zalo.me/0912345678" required />
+        </div>
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpZaloName">Zalo 표시 이름</label>
+          <input id="inpZaloName" class="ev-input" type="text" maxlength="60" placeholder="예: BestClub 운영자" />
+        </div>
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpZaloTitle">이벤트 제목</label>
+          <input id="inpZaloTitle" class="ev-input" type="text" maxlength="80" placeholder="비우면: Zalo 친구추가하고 1 BT 받기" />
+        </div>
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpZaloReward">1인 지급 BT</label>
+          <input id="inpZaloReward" class="ev-input" type="number" min="1" max="10" step="1" value="1" required />
+        </div>
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpZaloPool">처음 충전할 BT 풀</label>
+          <input id="inpZaloPool" class="ev-input" type="number" min="0" step="1" value="100" />
+        </div>
+        <button id="btnZaloCreateSubmit" type="submit" class="ev-btn ev-btn--primary ev-btn--full">💬 이벤트 등록하기</button>
+      </form>
     </div>
   </div>
 
@@ -500,7 +542,7 @@
   <div id="siteFooter"></div>
 
   <script type="module" src="/assets/js/header-auth.js"></script>
-  <script type="module" src="/assets/js/pages/events.js?v=20261115_rev"></script>
+  <script type="module" src="/assets/js/pages/events.js?v=20261115_zalo"></script>
 </body>
 
 </html>
