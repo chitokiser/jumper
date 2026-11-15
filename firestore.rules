@@ -762,18 +762,26 @@ service cloud.firestore {
 
     match /coupon_campaigns/{campaignId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin() || isStaff();
+      allow update: if isAdmin() || isStaff() || signedIn();
     }
 
     match /user_coupons/{userCouponId} {
-      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create, update: if isAdmin() || (signedIn() && request.resource.data.uid == request.auth.uid);
-      allow delete: if isAdmin();
+      allow get, list: if isAdmin() || isStaff() || (signedIn() && (resource.data.userId == request.auth.uid || resource.data.uid == request.auth.uid));
+      allow create, update: if isAdmin() || isStaff() || (signedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.uid == request.auth.uid));
+      allow delete: if isAdmin() || isStaff();
+    }
+
+    match /coupon_review_comments/{commentId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || isStaff() || (signedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending' && request.resource.data.status == 'pending');
+      allow delete: if isAdmin() || isStaff() || (signedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
     }
 
     match /coupon_redemptions/{redemptionId} {
-      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create, update: if isAdmin() || signedIn();
+      allow get, list: if isAdmin() || isStaff() || (signedIn() && (resource.data.userId == request.auth.uid || resource.data.uid == request.auth.uid));
+      allow create, update: if isAdmin() || isStaff() || signedIn();
       allow delete: if isAdmin();
     }
 

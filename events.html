@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
-  <link rel="stylesheet" href="/assets/css/pages/events.css" />
+  <link rel="stylesheet" href="/assets/css/pages/events.css?v=20261115_rev" />
 
   <script src="/assets/js/partials.js" defer></script>
 </head>
@@ -64,6 +64,7 @@
       <!-- 대분류 탭 -->
       <div class="ev-tabs" id="filterTabs">
         <button class="ev-tab active" data-type="all" type="button">전체 보기</button>
+        <button class="ev-tab" data-type="GOOGLE_REVIEW" type="button">⭐ 구글 리뷰 이벤트</button>
         <button class="ev-tab" data-type="COUPON" type="button">🎟️ 할인 쿠폰</button>
         <button class="ev-tab" data-type="VOUCHER" type="button">🍽️ 교환 바우쳐</button>
         <button class="ev-tab" data-price="free" type="button">🎁 무료 발급 (FREE)</button>
@@ -121,7 +122,7 @@
         <!-- 가격 및 혜택 요약 박스 -->
         <div class="ev-modal-highlight">
           <div class="ev-hl-item">
-            <span class="ev-hl-label">구매/발급 가격</span>
+            <span class="ev-hl-label">구매/발급 방식</span>
             <span id="detailPrice" class="ev-hl-val highlight-gold"></span>
           </div>
           <div class="ev-hl-item">
@@ -129,7 +130,7 @@
             <span id="detailDiscount" class="ev-hl-val highlight-accent"></span>
           </div>
           <div class="ev-hl-item">
-            <span class="ev-hl-label">1인당 발급 한도</span>
+            <span class="ev-hl-label">1인당 참여/발급 한도</span>
             <span id="detailMaxPerUser" class="ev-hl-val"></span>
           </div>
         </div>
@@ -155,17 +156,77 @@
           </div>
         </div>
 
+        <!-- ⭐ 구글 리뷰 인증 댓글 & 관리자 바우쳐 1장 이체 섹션 -->
+        <div id="detailReviewSection" class="ev-review-section" style="display:none;">
+          <div class="ev-review-header">
+            <div class="ev-review-title-row">
+              <span class="ev-review-badge">⭐ 구글 리뷰 인증 이벤트 (1계정 1회 참여)</span>
+              <span id="reviewCommentCountBadge" class="ev-review-count">참여 0건</span>
+            </div>
+            <p class="ev-review-guide">
+              구글 지도에 매장 리뷰를 작성하신 후 <b>구글 리뷰 공유 URL</b>을 아래 댓글로 등록해 주세요.<br/>
+              관리자가 리뷰 URL을 확인한 즉시 <b>바우쳐 1장</b>을 회원님의 계정(내 쿠폰함)으로 이체해 드립니다!
+            </p>
+            <a id="btnGoGoogleMapReview" href="#" target="_blank" rel="noopener noreferrer" class="ev-btn-gmap" style="display:none;">
+              📍 구글 지도에서 매장 리뷰 작성하러 가기 &nearr;
+            </a>
+          </div>
+
+          <!-- 내 참여 상태 배너 (이미 참여한 경우 표시) -->
+          <div id="myReviewStatusBanner" class="ev-my-review-banner" style="display:none;"></div>
+
+          <!-- 구글 리뷰 URL 댓글 등록 폼 (1계정 1회) -->
+          <form id="reviewCommentForm" class="ev-review-form">
+            <div class="ev-form-group" style="margin-bottom:10px;">
+              <label class="ev-label" for="inpReviewUrl">🔗 내가 작성한 구글 리뷰 URL *</label>
+              <input
+                type="url"
+                id="inpReviewUrl"
+                class="ev-input"
+                placeholder="https://maps.app.goo.gl/... 또는 구글 리뷰 공유 링크 붙여넣기"
+                required
+              />
+            </div>
+            <div class="ev-form-group" style="margin-bottom:10px;">
+              <label class="ev-label" for="inpReviewText">💬 구글 리뷰 작성자명 / 한줄 후기 (선택)</label>
+              <input
+                type="text"
+                id="inpReviewText"
+                class="ev-input"
+                maxlength="150"
+                placeholder="예: 홍길동 (구글 닉네임) - 갈비가 정말 맛있어요! 리뷰 남겼습니다."
+              />
+            </div>
+            <button type="submit" id="btnSubmitReviewComment" class="ev-btn ev-btn--review-submit ev-btn--full">
+              ✍️ 구글 리뷰 URL 등록하고 바우쳐 신청하기 (1계정 1회)
+            </button>
+          </form>
+
+          <!-- 등록된 구글 리뷰 댓글 리스트 (관리자는 여기서 [바우쳐 1장 이체] 실행) -->
+          <div class="ev-review-list-wrap">
+            <div class="ev-review-list-head">
+              <span>📋 구글 리뷰 참여 댓글 목록</span>
+              <span id="reviewAdminHint" style="display:none; font-size:0.76rem; color:#7c3aed; font-weight:700;">
+                🛡️ 관리자 모드: 리뷰 URL 확인 후 [🎁 바우쳐 1장 이체]를 클릭하세요
+              </span>
+            </div>
+            <div id="reviewCommentList" class="ev-review-list">
+              <div class="ev-review-empty">아직 등록된 구글 리뷰 인증 댓글이 없습니다. 첫 번째로 참여해 보세요!</div>
+            </div>
+          </div>
+        </div>
+
         <!-- 액션 버튼 영역 -->
         <div class="ev-modal-footer">
           <button id="btnActionBuy" class="ev-btn ev-btn--primary ev-btn--full" type="button">
             <!-- 텍스트 동적 바인딩 -->
           </button>
 
-          <!-- 수퍼 어드민 전용 관리 제어판 -->
+          <!-- 수퍼 어드민 & 발행 가맹점주 전용 관리 제어판 -->
           <div id="detailAdminControls" style="display:none; margin-top:14px; padding-top:14px; border-top:1px dashed #cbd5e1; width:100%;">
             <div style="font-size:0.82rem; font-weight:800; color:#7c3aed; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
               <span style="display:flex; align-items:center; gap:6px;">
-                <span>🛡️</span> 수퍼 어드민 관리 제어판
+                <span>🛡️</span> 관리자 제어판
               </span>
               <span id="detailAdminStatusBadge" class="ev-tag-type" style="background:#e2e8f0; color:#475569; font-size:0.72rem;">활성 상태</span>
             </div>
@@ -196,12 +257,29 @@
           <span>✨</span> 신규 이벤트 쿠폰 &amp; 바우쳐 발행
         </h2>
         <p style="color:#64748b; font-size:0.88rem; margin:0;">
-          회원들에게 판매하거나 무료로 지급할 이벤트 쿠폰 또는 바우쳐를 등록합니다.
+          회원들에게 판매하거나 무료 지급, 또는 <b>구글 리뷰 URL 댓글 확인 후 바우쳐 1장을 이체</b>하는 이벤트를 등록합니다.
         </p>
       </div>
 
       <form id="createCouponForm" class="ev-form">
         <div class="ev-form-grid">
+
+          <div class="ev-form-group ev-form-full">
+            <label class="ev-label">발급 및 이벤트 참여 방식 *</label>
+            <select id="inpIssueMethod" class="ev-input" style="border-color:#7c3aed; background:#faf5ff; font-weight:700;" required>
+              <option value="DIRECT">⚡ 즉시 발급 / BM 구매 (회원이 버튼 클릭 시 즉시 발급)</option>
+              <option value="GOOGLE_REVIEW">⭐ 구글 리뷰 인증 이벤트 (회원이 댓글에 구글리뷰 URL 등록 → 관리자 확인 후 바우쳐 1장 이체 · 1계정 1회)</option>
+            </select>
+            <span id="inpIssueMethodHint" style="display:block; margin-top:4px; font-size:0.78rem; color:#6d28d9; font-weight:600;">
+              💡 '구글 리뷰 인증 이벤트' 선택 시 회원이 댓글로 구글 리뷰 URL을 남기면 관리자가 확인 후 버튼 클릭 한 번으로 바우쳐 1장을 이체합니다. (1계정 1회 참여 자동 적용)
+            </span>
+          </div>
+
+          <div class="ev-form-group ev-form-full" id="createGoogleReviewUrlGroup" style="display:none; background:#fffbeb; border:1px solid #fde68a; padding:12px; border-radius:10px;">
+            <label class="ev-label" style="color:#b45309;">📍 매장 구글 지도 리뷰 작성 안내 URL (선택)</label>
+            <input type="url" id="inpGoogleReviewTargetUrl" class="ev-input" placeholder="예: https://maps.app.goo.gl/... (비워두면 가맹점 기본 구글지도 링크가 자동 연결됩니다)" />
+            <span style="font-size:0.75rem; color:#92400e;">* 회원들이 클릭하여 바로 구글 리뷰를 작성하러 갈 수 있는 매장 구글 지도 링크입니다.</span>
+          </div>
           
           <div class="ev-form-group">
             <label class="ev-label">발행 유형 *</label>
@@ -230,18 +308,18 @@
 
           <div class="ev-form-group">
             <label class="ev-label">상품명 (쿠폰/바우쳐 이름) *</label>
-            <input type="text" id="inpTitle" class="ev-input" placeholder="예: 베스트위너 전 상품 10% 할인권" required />
+            <input type="text" id="inpTitle" class="ev-input" placeholder="예: [구글리뷰 이벤트] 백제갈비 스페셜 바우쳐 1매" required />
           </div>
 
           <div class="ev-form-group">
             <label class="ev-label">BM 판매 가격 (0이면 무료 발급) *</label>
             <input type="number" id="inpPriceBM" class="ev-input" min="0" step="1000" value="10000" required />
-            <span style="font-size:0.75rem; color:#64748b;">* 0 입력 시 '무료 발급' 상품으로 등록됩니다.</span>
+            <span style="font-size:0.75rem; color:#64748b;">* 0 입력 시 '무료 발급' 상품으로 등록됩니다. (구글 리뷰 이벤트는 0 BM 고정)</span>
           </div>
 
           <div class="ev-form-group">
             <label class="ev-label">제공 혜택 (할인율 또는 교환 품목) *</label>
-            <input type="text" id="inpDiscountValue" class="ev-input" placeholder="예: 10% 또는 점심 특선 1회 교환" required />
+            <input type="text" id="inpDiscountValue" class="ev-input" placeholder="예: 10% 또는 점심 특선 1회 교환 바우쳐" required />
           </div>
 
           <div class="ev-form-group">
@@ -252,6 +330,7 @@
           <div class="ev-form-group">
             <label class="ev-label">회원 1인당 최대 구매/발급 한도 *</label>
             <input type="number" id="inpMaxPerUser" class="ev-input" min="1" max="50" value="2" required />
+            <span style="font-size:0.75rem; color:#64748b;">* 구글 리뷰 이벤트는 1계정 1회(1매)로 자동 고정됩니다.</span>
           </div>
 
           <div class="ev-form-group">
@@ -289,17 +368,17 @@
     </div>
   </div>
 
-  <!-- ── 3. 쿠폰·바우쳐 수정 모달 (수퍼 어드민 전용) ── -->
+  <!-- ── 3. 쿠폰·바우쳐 수정 모달 (수퍼 어드민 & 발행 가맹점주) ── -->
   <div id="editCouponModal" class="ev-modal" aria-hidden="true">
     <div class="ev-modal-card ev-modal-card--lg">
       <button id="btnEditClose" class="ev-modal-close" type="button">&times;</button>
       
       <div class="ev-modal-header-simple">
         <h2 style="font-size:1.35rem; font-weight:800; color:#0f172a; margin:0 0 6px;">
-          <span>✏️</span> 이벤트 쿠폰·바우쳐 정보 수정 (수퍼 어드민)
+          <span>✏️</span> 이벤트 쿠폰·바우쳐 정보 수정
         </h2>
         <p style="color:#64748b; font-size:0.88rem; margin:0;">
-          등록된 쿠폰 또는 바우쳐의 상세 정보, BM 가격, 발행 수량 및 노출 상태를 수정합니다.
+          등록된 쿠폰 또는 바우쳐의 상세 정보, 발급 방식(구글 리뷰 인증 등), 발행 수량 및 노출 상태를 수정합니다.
         </p>
       </div>
 
@@ -307,6 +386,19 @@
         <input type="hidden" id="editCampaignId" />
 
         <div class="ev-form-grid">
+
+          <div class="ev-form-group ev-form-full">
+            <label class="ev-label">발급 및 이벤트 참여 방식 *</label>
+            <select id="editIssueMethod" class="ev-input" style="border-color:#7c3aed; background:#faf5ff; font-weight:700;" required>
+              <option value="DIRECT">⚡ 즉시 발급 / BM 구매 (기본)</option>
+              <option value="GOOGLE_REVIEW">⭐ 구글 리뷰 인증 이벤트 (댓글에 구글리뷰 URL 등록 → 관리자 확인 후 바우쳐 1장 이체 · 1계정 1회)</option>
+            </select>
+          </div>
+
+          <div class="ev-form-group ev-form-full" id="editGoogleReviewUrlGroup" style="display:none; background:#fffbeb; border:1px solid #fde68a; padding:12px; border-radius:10px;">
+            <label class="ev-label" style="color:#b45309;">📍 매장 구글 지도 리뷰 작성 안내 URL (선택)</label>
+            <input type="url" id="editGoogleReviewTargetUrl" class="ev-input" placeholder="예: https://maps.app.goo.gl/... (비워두면 가맹점 기본 구글지도 링크가 자동 연결됩니다)" />
+          </div>
           
           <div class="ev-form-group">
             <label class="ev-label">발행 유형 *</label>
@@ -408,7 +500,7 @@
   <div id="siteFooter"></div>
 
   <script type="module" src="/assets/js/header-auth.js"></script>
-  <script type="module" src="/assets/js/pages/events.js"></script>
+  <script type="module" src="/assets/js/pages/events.js?v=20261115_rev"></script>
 </body>
 
 </html>

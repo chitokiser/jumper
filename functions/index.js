@@ -3275,6 +3275,63 @@ exports.convertGpToPoint = onCall(
   })
 );
 
+// ── 포인트 → 게임 GP 전환 (마이페이지) ──
+// 공식: 포인트 × 10 ÷ 게임 레벨 = rawGP → 수수료 5% 차감 → 최종 GP. 포인트 전액 사용, 최소 10 P.
+exports.convertPointToGp = onCall(
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    const userRef = db.collection('users').doc(uid);
+    const bpRef = db.collection('battle_players').doc(uid);
+
+    let usedPoints = 0;
+    let gp = 0;
+    let level = 1;
+
+    await db.runTransaction(async (tx) => {
+      const [userSnap, bpSnap] = await Promise.all([tx.get(userRef), tx.get(bpRef)]);
+      if (!userSnap.exists) throw new HttpsError('not-found', '유저 정보를 찾을 수 없습니다.');
+
+      const userData = userSnap.data();
+      usedPoints = Math.floor(Number(userData.pointBalance ?? 0));
+      if (usedPoints < 10) throw new HttpsError('failed-precondition', '최소 10 P 이상이어야 전환할 수 있습니다.');
+
+      if (bpSnap.exists) {
+        level = Math.max(1, Math.floor(Number(bpSnap.data().gsLevel ?? 1)));
+      }
+
+      const rawGp = Math.floor((usedPoints * 10) / level);
+      gp = Math.floor(rawGp * 0.95); // 수수료 5% 차감
+
+      tx.update(userRef, {
+        pointBalance: admin.firestore.FieldValue.increment(-usedPoints),
+        lastPointToGpAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(bpRef, { gold: admin.firestore.FieldValue.increment(gp) }, { merge: true });
+      tx.set(db.collection('pointHistories').doc(), {
+        uid,
+        displayName: userData.displayName || userData.name || '익명',
+        amount: -usedPoints,
+        type: 'POINT_TO_GP',
+        desc: `${usedPoints.toLocaleString()} P → ${gp.toLocaleString()} GP 전환 (Lv.${level}, 수수료 5%)`,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(db.collection('transactions').doc(), {
+        uid,
+        type: 'POINT_TO_GP',
+        usedPoints,
+        rawGp,
+        gp,
+        fee: rawGp - gp,
+        level,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    logger.info('convertPointToGp', { uid, usedPoints, gp, level });
+    return { success: true, usedPoints, gp, level };
+  })
+);
+
 // ── 임시: 회원 데이터 초기화 (테스트용, 사용 후 제거) ──
 exports.adminResetAllMembers = onCall(
   { timeoutSeconds: 300 },
@@ -3527,6 +3584,65 @@ exports.deleteCouponCampaign = onCall({ cors: true }, async (request) => {
   const uid = requireAuth(request);
   return couponH.deleteCouponCampaign(uid, request.data);
 });
+
+exports.submitCouponReviewComment = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return couponH.submitCouponReviewComment(uid, request.data);
+}));
+
+exports.approveReviewAndTransferVoucher = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return couponH.approveReviewAndTransferVoucher(uid, request.data);
+}));
+
+exports.deleteCouponReviewComment = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return couponH.deleteCouponReviewComment(uid, request.data);
+}));
+
+// ── BestMario Integration ──────────────────────────────────────────────────────
+
+exports.merchantMemberJoin = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { merchantId } = request.data ?? {};
+  if (!merchantId || typeof merchantId !== 'string')
+    throw new Error('merchantId 필수');
+  const db = admin.firestore();
+  const [merchantSnap, userSnap] = await Promise.all([
+    db.collection('merchants').doc(merchantId).get(),
+    db.collection('users').doc(uid).get(),
+  ]);
+  if (!merchantSnap.exists) throw new Error('가맹점을 찾을 수 없습니다');
+  const merchant = merchantSnap.data();
+  if (merchant.active === false) throw new Error('비활성 가맹점');
+  const ownerUid = merchant.ownerUid || merchant.ownerId || '';
+  const ownerEmail = merchant.ownerEmail || '';
+  if (!ownerUid) throw new Error('가맹점 ownerUid 미설정');
+  const userData = userSnap.exists ? userSnap.data() : {};
+  if (userData.mentorUid) return { skipped: true, reason: 'mentor_already_set' };
+  await db.collection('users').doc(uid).set(
+    {
+      mentorUid: ownerUid,
+      ...(ownerEmail ? { mentorEmail: ownerEmail.toLowerCase() } : {}),
+      registeredMerchantId: merchantId,
+      registeredMerchantIdSetAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+  return { success: true, mentorUid: ownerUid };
+}));
+
+exports.payServiceJobEscrow = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { merchantId, serviceJobId, amountVnd } = request.data ?? {};
+  return txH.payServiceJobEscrow(uid, merchantId, serviceJobId, amountVnd);
+}));
+
+exports.releaseEscrow = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  const { serviceJobId } = request.data ?? {};
+  return txH.releaseEscrow(uid, serviceJobId);
+}));
 
 
 

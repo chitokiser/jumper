@@ -58,6 +58,10 @@ async function purchaseOrIssueCoupon(uid, { campaignId, reqId } = {}) {
       throw new Error('현재 판매/발급 중인 상품이 아닙니다.');
     }
 
+    if (c.issueMethod === 'GOOGLE_REVIEW') {
+      throw new Error('구글 리뷰 인증 이벤트는 댓글에 구글 리뷰 URL을 등록하신 후 관리자가 확인하여 바우쳐 1장을 이체해 드립니다.');
+    }
+
     const now = Date.now();
     const saleStart = c.saleStartsAt?.toMillis ? c.saleStartsAt.toMillis() : new Date(c.saleStartsAt || 0).getTime();
     const saleEnd = c.saleEndsAt?.toMillis ? c.saleEndsAt.toMillis() : new Date(c.saleEndsAt || 0).getTime();
@@ -296,7 +300,7 @@ async function createCouponCampaign(uid, data) {
   const adminSnap = await db.collection('admins').doc(uid).get();
   const userSnap = await db.collection('users').doc(uid).get();
   const uData = userSnap.data() || {};
-  const isSuperAdmin = adminSnap.exists || uData.role === 'SUPER_ADMIN' || uData.role === 'admin';
+  const isSuperAdmin = adminSnap.exists || uData.email === 'daguri75@gmail.com' || uData.role === 'SUPER_ADMIN' || uData.role === 'admin';
   const myMerchantId = uData.merchantId ? String(uData.merchantId) : null;
 
   if (!isSuperAdmin && !myMerchantId) {
@@ -306,11 +310,15 @@ async function createCouponCampaign(uid, data) {
   // 가맹점인 경우 본인 가맹점 ID로 강제 고정
   let issuerId = isSuperAdmin ? (data.issuerId || 'platform') : myMerchantId;
   let issuerType = isSuperAdmin && issuerId === 'platform' ? 'PLATFORM' : 'MERCHANT';
+  const issueMethod = data.issueMethod === 'GOOGLE_REVIEW' ? 'GOOGLE_REVIEW' : 'DIRECT';
+  const isGoogleReview = issueMethod === 'GOOGLE_REVIEW';
 
   const docRef = db.collection('coupon_campaigns').doc();
   const newCampaign = {
     campaignId: docRef.id,
     campaignType: data.campaignType === 'VOUCHER' ? 'VOUCHER' : 'COUPON',
+    issueMethod,
+    googleReviewTargetUrl: String(data.googleReviewTargetUrl || '').trim(),
     issuerType,
     issuerId,
     issuerNameSnapshot: data.issuerNameSnapshot || '공식 가맹점',
@@ -318,7 +326,7 @@ async function createCouponCampaign(uid, data) {
     title: data.title || '이벤트 혜택',
     description: data.description || '',
     imageUrl: data.imageUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
-    priceBM: Math.max(0, Number(data.priceBM || 0)),
+    priceBM: isGoogleReview ? 0 : Math.max(0, Number(data.priceBM || 0)),
     discountType: data.discountType || 'PERCENT',
     discountValue: data.discountValue || '10',
     applicableMerchantIds: Array.isArray(data.applicableMerchantIds) ? data.applicableMerchantIds : [issuerId],
@@ -326,7 +334,7 @@ async function createCouponCampaign(uid, data) {
     totalQuantity: Math.max(1, Number(data.totalQuantity || 100)),
     issuedQuantity: 0,
     redeemedQuantity: 0,
-    maxPerUser: Math.max(1, Number(data.maxPerUser || 1)),
+    maxPerUser: isGoogleReview ? 1 : Math.max(1, Number(data.maxPerUser || 1)),
     saleStartsAt: data.saleStartsAt ? new Date(data.saleStartsAt) : admin.firestore.FieldValue.serverTimestamp(),
     saleEndsAt: data.saleEndsAt ? new Date(data.saleEndsAt) : new Date(Date.now() + 365 * 86400000),
     validStartsAt: data.validStartsAt ? new Date(data.validStartsAt) : admin.firestore.FieldValue.serverTimestamp(),
@@ -344,7 +352,7 @@ async function createCouponCampaign(uid, data) {
 }
 
 /**
- * 4. 쿠폰·바우쳐 수정 (수퍼 어드민 전용)
+ * 4. 쿠폰·바우쳐 수정 (수퍼 어드민 또는 발행 가맹점주)
  */
 async function updateCouponCampaign(uid, { campaignId, updates } = {}) {
   const db = getDb();
@@ -355,17 +363,19 @@ async function updateCouponCampaign(uid, { campaignId, updates } = {}) {
   const userSnap = await db.collection('users').doc(uid).get();
   const uData = userSnap.data() || {};
   const isSuperAdmin = adminSnap.exists || uData.email === 'daguri75@gmail.com' || uData.role === 'SUPER_ADMIN' || uData.role === 'admin';
-
-  if (!isSuperAdmin) {
-    throw new Error('수퍼 어드민만 쿠폰·바우쳐를 수정할 수 있습니다.');
-  }
+  const myMerchantId = uData.merchantId ? String(uData.merchantId) : null;
 
   const campRef = db.collection('coupon_campaigns').doc(campaignId);
   const campSnap = await campRef.get();
   if (!campSnap.exists) throw new Error('존재하지 않는 캠페인입니다.');
+  const campData = campSnap.data() || {};
+
+  if (!isSuperAdmin && (!myMerchantId || String(campData.issuerId) !== myMerchantId)) {
+    throw new Error('수퍼 어드민 또는 발행 가맹점주만 쿠폰·바우쳐를 수정할 수 있습니다.');
+  }
 
   const allowedFields = [
-    'campaignType', 'issuerId', 'issuerNameSnapshot',
+    'campaignType', 'issueMethod', 'googleReviewTargetUrl', 'issuerId', 'issuerNameSnapshot',
     'title', 'description', 'imageUrl', 'priceBM', 'discountValue',
     'totalQuantity', 'maxPerUser', 'usageMode', 'terms', 'status',
     'issuerBadge', 'applicableMerchantIds'
@@ -381,6 +391,10 @@ async function updateCouponCampaign(uid, { campaignId, updates } = {}) {
       }
     }
   }
+  if (cleanUpdates.issueMethod === 'GOOGLE_REVIEW') {
+    cleanUpdates.priceBM = 0;
+    cleanUpdates.maxPerUser = 1;
+  }
   cleanUpdates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
 
   await campRef.update(cleanUpdates);
@@ -388,7 +402,7 @@ async function updateCouponCampaign(uid, { campaignId, updates } = {}) {
 }
 
 /**
- * 5. 쿠폰·바우쳐 비활성화/활성화 토글 (수퍼 어드민 전용)
+ * 5. 쿠폰·바우쳐 비활성화/활성화 토글 (수퍼 어드민 또는 발행 가맹점주)
  */
 async function toggleCouponCampaignStatus(uid, { campaignId, status } = {}) {
   const db = getDb();
@@ -399,12 +413,17 @@ async function toggleCouponCampaignStatus(uid, { campaignId, status } = {}) {
   const userSnap = await db.collection('users').doc(uid).get();
   const uData = userSnap.data() || {};
   const isSuperAdmin = adminSnap.exists || uData.email === 'daguri75@gmail.com' || uData.role === 'SUPER_ADMIN' || uData.role === 'admin';
-
-  if (!isSuperAdmin) {
-    throw new Error('수퍼 어드민만 쿠폰·바우쳐 상태를 변경할 수 있습니다.');
-  }
+  const myMerchantId = uData.merchantId ? String(uData.merchantId) : null;
 
   const campRef = db.collection('coupon_campaigns').doc(campaignId);
+  const campSnap = await campRef.get();
+  if (!campSnap.exists) throw new Error('존재하지 않는 캠페인입니다.');
+  const campData = campSnap.data() || {};
+
+  if (!isSuperAdmin && (!myMerchantId || String(campData.issuerId) !== myMerchantId)) {
+    throw new Error('수퍼 어드민 또는 발행 가맹점주만 상태를 변경할 수 있습니다.');
+  }
+
   const newStatus = status === 'paused' ? 'paused' : 'active';
   await campRef.update({
     status: newStatus,
@@ -415,7 +434,7 @@ async function toggleCouponCampaignStatus(uid, { campaignId, status } = {}) {
 }
 
 /**
- * 6. 쿠폰·바우쳐 삭제 (수퍼 어드민 전용)
+ * 6. 쿠폰·바우쳐 삭제 (수퍼 어드민 또는 발행 가맹점주)
  */
 async function deleteCouponCampaign(uid, { campaignId } = {}) {
   const db = getDb();
@@ -426,14 +445,265 @@ async function deleteCouponCampaign(uid, { campaignId } = {}) {
   const userSnap = await db.collection('users').doc(uid).get();
   const uData = userSnap.data() || {};
   const isSuperAdmin = adminSnap.exists || uData.email === 'daguri75@gmail.com' || uData.role === 'SUPER_ADMIN' || uData.role === 'admin';
-
-  if (!isSuperAdmin) {
-    throw new Error('수퍼 어드민만 쿠폰·바우쳐를 삭제할 수 있습니다.');
-  }
+  const myMerchantId = uData.merchantId ? String(uData.merchantId) : null;
 
   const campRef = db.collection('coupon_campaigns').doc(campaignId);
+  const campSnap = await campRef.get();
+  if (!campSnap.exists) throw new Error('존재하지 않는 캠페인입니다.');
+  const campData = campSnap.data() || {};
+
+  if (!isSuperAdmin && (!myMerchantId || String(campData.issuerId) !== myMerchantId)) {
+    throw new Error('수퍼 어드민 또는 발행 가맹점주만 삭제할 수 있습니다.');
+  }
+
   await campRef.delete();
   return { success: true, campaignId };
+}
+
+/**
+ * 7. 구글 리뷰 URL 댓글 등록 (1계정 1회 참여 보장)
+ */
+async function submitCouponReviewComment(uid, { campaignId, reviewUrl, reviewText } = {}) {
+  const db = getDb();
+  if (!uid) throw new Error('로그인이 필요합니다.');
+  if (!campaignId) throw new Error('캠페인 ID가 필요합니다.');
+  const cleanUrl = String(reviewUrl || '').trim();
+  if (!cleanUrl || !/^https?:\/\//i.test(cleanUrl)) {
+    throw new Error('올바른 구글 리뷰 URL(http:// 또는 https://)을 입력해 주세요.');
+  }
+
+  const commentId = `${campaignId}_${uid}`;
+  const commentRef = db.collection('coupon_review_comments').doc(commentId);
+  const campRef = db.collection('coupon_campaigns').doc(campaignId);
+  const userRef = db.collection('users').doc(uid);
+  const deterministicCouponRef = db.collection('user_coupons').doc(`UC_REV_${campaignId}_${uid}`);
+
+  return await db.runTransaction(async (tx) => {
+    const [campSnap, commentSnap, userSnap, ucSnap] = await Promise.all([
+      tx.get(campRef),
+      tx.get(commentRef),
+      tx.get(userRef),
+      tx.get(deterministicCouponRef)
+    ]);
+
+    if (!campSnap.exists) throw new Error('존재하지 않는 이벤트 캠페인입니다.');
+    const c = campSnap.data() || {};
+    if (c.status !== 'active') throw new Error('현재 진행 중인 이벤트가 아닙니다.');
+
+    const totalQty = Number(c.totalQuantity || 0);
+    const issuedQty = Number(c.issuedQuantity || 0);
+    if (totalQty > 0 && issuedQty >= totalQty) {
+      throw new Error('준비된 바우쳐 수량이 모두 소진되었습니다.');
+    }
+
+    if (ucSnap.exists) {
+      throw new Error('이미 본 이벤트 바우쳐를 지급받으셨습니다. (1계정 1회 참여 가능)');
+    }
+
+    if (commentSnap.exists) {
+      const existing = commentSnap.data() || {};
+      if (existing.status === 'approved') {
+        throw new Error('이미 리뷰 인증이 완료되어 바우쳐가 지급되었습니다. (1계정 1회 참여 가능)');
+      }
+      if (existing.status === 'pending') {
+        throw new Error('이미 구글 리뷰 URL을 등록하셨습니다. 관리자 확인 대기 중입니다. (1계정 1회 참여 가능)');
+      }
+    }
+
+    const uData = userSnap.exists ? (userSnap.data() || {}) : {};
+    const userEmail = uData.email || '';
+    const userName = uData.name || uData.displayName || (userEmail ? userEmail.split('@')[0] : '회원');
+
+    tx.set(commentRef, {
+      commentId,
+      campaignId,
+      campaignTitle: c.title || '',
+      issuerId: c.issuerId || '',
+      userId: uid,
+      userEmail,
+      userName,
+      reviewUrl: cleanUrl,
+      reviewText: String(reviewText || '').trim().slice(0, 200),
+      status: 'pending',
+      issuedCouponCode: null,
+      issuedUserCouponId: null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return { success: true, commentId };
+  });
+}
+
+/**
+ * 8. 관리자의 구글 리뷰 확인 후 바우쳐 1장 즉시 이체 (1계정 1회 지급 원자적 보장)
+ */
+async function approveReviewAndTransferVoucher(adminUid, { campaignId, commentId } = {}) {
+  const db = getDb();
+  if (!adminUid) throw new Error('관리자 로그인이 필요합니다.');
+  if (!campaignId || !commentId) throw new Error('캠페인 ID와 댓글 ID가 필요합니다.');
+
+  const [adminSnap, adminUserSnap] = await Promise.all([
+    db.collection('admins').doc(adminUid).get(),
+    db.collection('users').doc(adminUid).get()
+  ]);
+  const adminUserData = adminUserSnap.data() || {};
+  const isSuperAdmin =
+    adminSnap.exists ||
+    adminUserData.email === 'daguri75@gmail.com' ||
+    adminUserData.role === 'SUPER_ADMIN' ||
+    adminUserData.role === 'admin';
+  const myMerchantId = adminUserData.merchantId ? String(adminUserData.merchantId) : null;
+
+  const campRef = db.collection('coupon_campaigns').doc(campaignId);
+  const commentRef = db.collection('coupon_review_comments').doc(commentId);
+
+  return await db.runTransaction(async (tx) => {
+    const [campSnap, commentSnap] = await Promise.all([
+      tx.get(campRef),
+      tx.get(commentRef)
+    ]);
+
+    if (!campSnap.exists) throw new Error('존재하지 않는 캠페인입니다.');
+    if (!commentSnap.exists) throw new Error('존재하지 않는 리뷰 댓글입니다.');
+
+    const c = campSnap.data() || {};
+    const cmt = commentSnap.data() || {};
+
+    const isIssuerOwner = myMerchantId && (
+      String(c.issuerId) === myMerchantId ||
+      (Array.isArray(c.applicableMerchantIds) && c.applicableMerchantIds.map(String).includes(myMerchantId))
+    );
+    if (!isSuperAdmin && !isIssuerOwner) {
+      throw new Error('수퍼 어드민 또는 해당 이벤트 발행 가맹점주만 바우쳐를 이체할 수 있습니다.');
+    }
+
+    if (cmt.status === 'approved') {
+      throw new Error(`이미 바우쳐 1장이 이체 완료된 참여건입니다. (코드: ${cmt.issuedCouponCode || '-'})`);
+    }
+
+    const targetUid = cmt.userId;
+    if (!targetUid) throw new Error('참여 회원 UID를 확인할 수 없습니다.');
+
+    const totalQty = Number(c.totalQuantity || 0);
+    const issuedQty = Number(c.issuedQuantity || 0);
+    if (totalQty > 0 && issuedQty >= totalQty) {
+      throw new Error('캠페인의 남은 발행 가능 수량이 없습니다.');
+    }
+
+    // 1계정 1회 지급 보장용 결정적 쿠폰 문서 ID
+    const deterministicCouponId = `UC_REV_${campaignId}_${targetUid}`;
+    const userCouponRef = db.collection('user_coupons').doc(deterministicCouponId);
+    const existingUcSnap = await tx.get(userCouponRef);
+    if (existingUcSnap.exists) {
+      throw new Error('해당 회원은 이미 본 이벤트 바우쳐를 지급받았습니다. (1계정 1회 참여 제한)');
+    }
+
+    const now = Date.now();
+    const couponCode = generateCouponCode();
+    const tokenHash = crypto.createHash('sha256').update(`${couponCode}_${targetUid}_${now}`).digest('hex');
+    const validStart = c.validStartsAt || admin.firestore.FieldValue.serverTimestamp();
+    const validEnd = c.validEndsAt || new Date(now + 365 * 86400000);
+
+    tx.set(userCouponRef, {
+      userCouponId: deterministicCouponId,
+      campaignId,
+      userId: targetUid,
+      uid: targetUid,
+      userEmail: cmt.userEmail || '',
+      campaignType: c.campaignType || 'VOUCHER',
+      title: c.title,
+      description: c.description || '',
+      imageUrl: c.imageUrl || '',
+      issuerType: c.issuerType || 'MERCHANT',
+      issuerId: c.issuerId || 'platform',
+      issuerNameSnapshot: c.issuerNameSnapshot || '공식 가맹점',
+      issuerBadge: c.issuerBadge || 'VERIFIED MERCHANT',
+      applicableMerchantIds: c.applicableMerchantIds || ['all'],
+      applicableProductIds: c.applicableProductIds || [],
+      discountType: c.discountType || 'ITEM_EXCHANGE',
+      discountValue: c.discountValue || '바우쳐 1매',
+      usageMode: c.usageMode || 'BOTH',
+      terms: c.terms || '',
+      couponCode,
+      tokenHash,
+      purchasePriceBM: 0,
+      issuedVia: 'GOOGLE_REVIEW_ADMIN_TRANSFER',
+      reviewUrl: cmt.reviewUrl || '',
+      approvedBy: adminUid,
+      issuedAt: admin.firestore.FieldValue.serverTimestamp(),
+      validStartsAt: validStart,
+      expiresAt: validEnd,
+      status: 'available',
+      redeemedAt: null,
+      redeemedMerchantId: null,
+      staffUserId: null,
+      orderId: null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    tx.update(campRef, {
+      issuedQuantity: admin.firestore.FieldValue.increment(1),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    tx.update(commentRef, {
+      status: 'approved',
+      issuedCouponCode: couponCode,
+      issuedUserCouponId: deterministicCouponId,
+      approvedBy: adminUid,
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return {
+      success: true,
+      userCouponId: deterministicCouponId,
+      couponCode,
+      targetUid,
+      targetEmail: cmt.userEmail || ''
+    };
+  });
+}
+
+/**
+ * 9. 구글 리뷰 댓글 삭제/반려 (관리자 또는 대기 상태인 본인)
+ */
+async function deleteCouponReviewComment(uid, { campaignId, commentId } = {}) {
+  const db = getDb();
+  if (!uid) throw new Error('로그인이 필요합니다.');
+  if (!commentId) throw new Error('댓글 ID가 필요합니다.');
+
+  const commentRef = db.collection('coupon_review_comments').doc(commentId);
+  const commentSnap = await commentRef.get();
+  if (!commentSnap.exists) throw new Error('존재하지 않는 댓글입니다.');
+  const cmt = commentSnap.data() || {};
+
+  if (cmt.status === 'approved') {
+    throw new Error('이미 바우쳐가 이체 완료된 댓글은 삭제할 수 없습니다.');
+  }
+
+  const [adminSnap, userSnap] = await Promise.all([
+    db.collection('admins').doc(uid).get(),
+    db.collection('users').doc(uid).get()
+  ]);
+  const uData = userSnap.data() || {};
+  const isSuperAdmin =
+    adminSnap.exists ||
+    uData.email === 'daguri75@gmail.com' ||
+    uData.role === 'SUPER_ADMIN' ||
+    uData.role === 'admin';
+  const myMerchantId = uData.merchantId ? String(uData.merchantId) : null;
+  const isAuthor = String(cmt.userId) === String(uid);
+  const isIssuerOwner = myMerchantId && String(cmt.issuerId) === myMerchantId;
+
+  if (!isSuperAdmin && !isIssuerOwner && !isAuthor) {
+    throw new Error('댓글을 삭제할 권한이 없습니다.');
+  }
+
+  await commentRef.delete();
+  return { success: true, commentId };
 }
 
 /**
@@ -541,5 +811,8 @@ module.exports = {
   updateCouponCampaign,
   toggleCouponCampaignStatus,
   deleteCouponCampaign,
+  submitCouponReviewComment,
+  approveReviewAndTransferVoucher,
+  deleteCouponReviewComment,
   SEED_COUPON_CAMPAIGNS
 };
