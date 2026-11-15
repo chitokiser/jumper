@@ -259,7 +259,7 @@ import { doc, getDoc, updateDoc, setDoc, serverTimestamp, increment }
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { createCashout } from '/assets/js/game-cashout.js';
-import { mountWeeklyBoard, submitWeeklyScore } from '/assets/js/weekly-ranking.js';
+import { mountWeeklyBoard, submitWeeklyScore, syncMyProfile } from '/assets/js/weekly-ranking.js';
 import { claimFreeDailyGp, FREE_GP_THRESHOLD } from '/assets/js/free-gp.js';
 
 // ── 과일 데이터 ──────────────────────────────────────────────────────────────
@@ -927,6 +927,7 @@ const _weekly = mountWeeklyBoard($('weeklyBoard'), 'suika', { getUid: () => _uid
 
 onAuthStateChanged(auth, async user => {
   _uid = user?.uid || null;
+  syncMyProfile(user); // 랭킹에 구글 이름·사진 표시
   _weekly.refresh();
   await loadPlayer();
   // GP 100 미만 회원: 하루 1회 무료 100 GP 충전 (서버 판정)

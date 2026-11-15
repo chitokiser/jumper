@@ -4,7 +4,7 @@ import { auth, db } from '/assets/js/firebase-init.js';
 import { collection, getDocs, query, where, orderBy, limit, doc, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { weekInfo, fetchTop, fetchLastSettlement, prizeForRank } from '/assets/js/weekly-ranking.js';
+import { weekInfo, fetchTop, fetchLastSettlement, prizeForRank, syncMyProfile, withProfiles } from '/assets/js/weekly-ranking.js';
 import { claimFreeDailyGp } from '/assets/js/free-gp.js';
 
 const FIELD = { gp: 'gold' };
@@ -37,9 +37,9 @@ async function loadWeeklyRanking(tab) {
   list.innerHTML = '<div class="hunter-rank-loading">Loading...</div>';
   if (note) { note.style.display = 'block'; note.textContent = '이번 주 기록 · 매주 일요일 00:00(베트남 시간) 마감 · TOP10 GP 자동 지급 (1위 5,000만 ~ 10위 500만 GP)'; }
   try {
-    const rows = (await fetchTop(tab, weekInfo().weekId)).map(e => ({
-      uid: e.uid, val: e.bestScore || 0, displayName: e.displayName || null, photoURL: null, gsLevel: null,
-    }));
+    const rows = await withProfiles((await fetchTop(tab, weekInfo().weekId)).map(e => ({
+      uid: e.uid, val: e.bestScore || 0, displayName: e.displayName || null, photoURL: e.photoURL || null, gsLevel: null,
+    })));
     cache[tab] = rows;
     if (tab === currentTab) render(rows, tab);
   } catch {
@@ -95,7 +95,7 @@ function render(rows, tab) {
   const medal = ['gold', 'silver', 'bronze'];
   list.innerHTML = rows.map((r, i) => {
     const name = esc(r.displayName || r.uid.slice(0, 8) + '…');
-    const avatar = r.photoURL ? `<img src="${esc(r.photoURL)}" alt="" loading="lazy">` : (name[0] || '?').toUpperCase();
+    const avatar = r.photoURL ? `<img src="${esc(r.photoURL)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : (name[0] || '?').toUpperCase();
     return `<div class="hunter-rank-row${r.uid === myUid ? ' me' : ''}">
       <div class="hunter-rank-num ${medal[i] || ''}">${i + 1}</div>
       <div class="hunter-rank-avatar">${avatar}</div>
@@ -137,6 +137,7 @@ function init() {
   onAuthStateChanged(auth, (user) => {
     myUid = user?.uid || null;
     watchMyGp(myUid);
+    syncMyProfile(user); // 랭킹에 구글 이름·사진 표시
     // GP 100 미만 회원: 하루 1회 무료 100 GP 충전 (서버가 잔액·수령 여부 판정)
     if (myUid) claimFreeDailyGp();
     if (cache[currentTab]) render(cache[currentTab], currentTab);

@@ -2,7 +2,7 @@
 // 데이터: weekly_rankings/{gameType}_{weekId}/entries (서버 전용 쓰기), weekly_settlements
 // 주간 기준: 베트남 시간 일요일 00:00 마감 (서버 functions/handlers/weeklyRanking.js 와 동일 계산)
 import { db, functions } from '/assets/js/firebase-init.js';
-import { collection, doc, getDoc, getDocs, query, orderBy, limit }
+import { collection, doc, getDoc, getDocs, setDoc, query, orderBy, limit }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 
@@ -49,6 +49,7 @@ function injectCss() {
 .wr-prize{font-size:11px;color:#c7d2fe;margin-bottom:8px;line-height:1.5}
 .wr-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid rgba(255,255,255,.06)}
 .wr-rk{width:22px;text-align:center;font-weight:900}
+.wr-av{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#312e81;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c7d2fe}
 .wr-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wr-sc{font-weight:800;color:#fbbf24;min-width:56px;text-align:right}
 .wr-gp{font-size:10px;color:#86efac;min-width:52px;text-align:right}
@@ -64,6 +65,32 @@ function injectCss() {
 .wr-promo-g b{color:#fde047}
 .wr-promo-cd{margin-top:8px;font-size:12px;color:#c7d2fe}`;
   document.head.appendChild(st);
+}
+
+/** 로그인한 본인의 구글 이름·사진을 battle_players 에 맞춰 둔다 (랭킹 표시용, 이메일 저장 안 함) */
+export async function syncMyProfile(user) {
+  if (!user?.uid) return;
+  const displayName = user.displayName ? String(user.displayName).slice(0, 20) : null;
+  const photoURL = user.photoURL || null;
+  if (!displayName && !photoURL) return;
+  try {
+    const ref = doc(db, 'battle_players', user.uid);
+    const cur = (await getDoc(ref)).data() || {};
+    const patch = {};
+    if (displayName && cur.displayName !== displayName) patch.displayName = displayName;
+    if (photoURL && cur.photoURL !== photoURL) patch.photoURL = photoURL;
+    if (Object.keys(patch).length) await setDoc(ref, patch, { merge: true });
+  } catch { /* 표시용 — 실패해도 무시 */ }
+}
+
+/** 랭킹 행에 프로필(battle_players 의 구글 이름·사진)을 채운다 */
+export async function withProfiles(rows) {
+  const snaps = await Promise.all(rows.map(r =>
+    getDoc(doc(db, 'battle_players', r.uid)).catch(() => null)));
+  return rows.map((r, i) => {
+    const b = snaps[i]?.data?.() || {};
+    return { ...r, displayName: b.displayName || r.displayName, photoURL: b.photoURL || r.photoURL || null };
+  });
 }
 
 export async function fetchTop(gameType, weekId) {
@@ -109,11 +136,12 @@ export function mountWeeklyBoard(el, gameType, { getUid = () => null } = {}) {
   async function refresh() {
     const wk = weekInfo();
     try {
-      const rows = await fetchTop(gameType, wk.weekId);
+      const rows = await withProfiles(await fetchTop(gameType, wk.weekId));
       const me = getUid();
       listEl.innerHTML = rows.length ? rows.map((r, i) => `
         <div class="wr-row${r.uid === me ? ' wr-me' : ''}">
           <span class="wr-rk">${['🥇','🥈','🥉'][i] || i + 1}</span>
+          ${r.photoURL ? `<img class="wr-av" src="${esc(r.photoURL)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="wr-av">${esc((r.displayName || '?')[0])}</span>`}
           <span class="wr-nm">${esc(r.displayName || 'Player')}</span>
           <span class="wr-sc">${(r.bestScore || 0).toLocaleString()}</span>
           <span class="wr-gp">${fmtGp(prizeForRank(i + 1))}</span>

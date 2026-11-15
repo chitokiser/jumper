@@ -63,20 +63,24 @@ function maskEmail(email) {
   return `${user.slice(0, 3)}***@${domain}`;
 }
 
-/** 랭킹 표시용 이름 (이메일은 마스킹) */
-async function displayNameFor(uid) {
+/** 랭킹 표시용 프로필 — 구글(Firebase Auth) 이름·사진 우선, 이메일은 마스킹 */
+async function profileFor(uid) {
+  let authUser = null, b = {}, d = {};
+  try { authUser = await admin.auth().getUser(uid); } catch (_) {}
   try {
     const [bp, u] = await Promise.all([
       db.collection('battle_players').doc(uid).get(),
       db.collection('users').doc(uid).get(),
     ]);
-    const b = bp.data() || {}, d = u.data() || {};
-    const name = b.displayName || d.name || d.displayName || d.nickname
-      || (d.username ? `@${d.username}` : null);
-    if (name) return String(name).slice(0, 20);
-    if (d.email) return maskEmail(d.email);
+    b = bp.data() || {}; d = u.data() || {};
   } catch (_) {}
-  return `Player-${uid.slice(0, 5)}`;
+  const photoURL = authUser?.photoURL || b.photoURL || d.photoURL || null;
+  const name = authUser?.displayName || b.displayName || d.name || d.displayName || d.nickname
+    || (d.username ? `@${d.username}` : null);
+  const email = authUser?.email || d.email;
+  const displayName = name ? String(name).slice(0, 20)
+    : email ? maskEmail(email) : `Player-${uid.slice(0, 5)}`;
+  return { displayName, photoURL };
 }
 
 /**
@@ -107,7 +111,7 @@ async function submitWeeklyScore(uid, { gameType, score } = {}) {
   const sessRef  = db.collection('weekly_game_sessions').doc(`${uid}_${gameType}`);
   const boardRef = db.collection('weekly_rankings').doc(bId);
   const entryRef = boardRef.collection('entries').doc(uid);
-  const name     = await displayNameFor(uid);
+  const profile  = await profileFor(uid);
 
   return db.runTransaction(async t => {
     const [sessSnap, entrySnap] = await Promise.all([t.get(sessRef), t.get(entryRef)]);
@@ -128,11 +132,11 @@ async function submitWeeklyScore(uid, { gameType, score } = {}) {
     }, { merge: true });
 
     if (s <= prev) {
-      t.set(entryRef, { plays: FieldValue.increment(1) }, { merge: true });
+      t.set(entryRef, { ...profile, plays: FieldValue.increment(1) }, { merge: true });
       return { accepted: true, improved: false, bestScore: prev, weekId: week.weekId };
     }
     t.set(entryRef, {
-      uid, displayName: name, bestScore: s, achievedAt: now,
+      uid, ...profile, bestScore: s, achievedAt: now,
       plays: FieldValue.increment(1),
     }, { merge: true });
     return { accepted: true, improved: true, bestScore: s, weekId: week.weekId };
@@ -174,6 +178,7 @@ async function settleWeek(gameType, weekId, { triggeredBy = 'schedule' } = {}) {
       rank: i + 1,
       uid: e.uid,
       displayName: e.displayName || null,
+      photoURL: e.photoURL || null,
       bestScore: e.bestScore,
       prizeGp: prizeForRank(i + 1),
     }));
