@@ -282,7 +282,10 @@ const RESET_MS = 24 * 60 * 60 * 1000;
 const GP_PER_SCORE = 30; // 30점당 1 GP
 const MAX_GP_PER_GAME = 3000;
 const COMBO_WINDOW_MS = 2000;
-const ITEM_SCORE_STEP = 1500;   // 누적 점수 구간마다 아이템 1개
+const ITEM_SCORE_STEP = 2250;   // 누적 점수 구간마다 아이템 1개 (난이도 +50%: 1500 → 2250)
+// 난이도 +50% (2026-11-15): 과일 크기 15% 확대 → 통이 약 1.3배 빨리 참
+const FRUIT_SIZE_SCALE = 1.15;
+const DANGER_GRACE_MS = 1200;   // 위험선 초과 후 게임오버까지 유예 (2000 → 1200)
 const ITEM_MAX_TOTAL = 3;
 const PARTY_MS = 10000, PARTY_BONUS = 300;
 const ITEM_KEYS = ['hammer', 'shuffle', 'swap'];
@@ -496,7 +499,7 @@ function initPhysics(canvas, W, H) {
       ctx.save();
       ctx.translate(body.position.x, body.position.y);
       ctx.rotate(body.angle);
-      ctx.font = `${f.r * 1.4}px serif`;
+      ctx.font = `${f.r * FRUIT_SIZE_SCALE * 1.4}px serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(f.emoji, 0, 0);
@@ -572,7 +575,7 @@ function handleCollision(event) {
 
 function spawnFruitAt(x, y, level) {
   const f = FRUITS[level];
-  const body = Bodies.circle(x, y, f.r, {
+  const body = Bodies.circle(x, y, f.r * FRUIT_SIZE_SCALE, {
     restitution: 0.3,
     friction: 0.5,
     label: 'fruit',
@@ -587,7 +590,7 @@ function spawnFruitAt(x, y, level) {
 // ── 게임 로직 ─────────────────────────────────────────────────────────────────
 function pickRandomLevel() {
   // 초반엔 작은 과일 위주 (0~4)
-  const max = Math.min(4, Math.floor(_score / 200) + 2);
+  const max = Math.min(4, Math.floor(_score / 150) + 2); // 큰 과일 등장 가속 (200 → 150)
   return Math.floor(Math.random() * (max + 1));
 }
 
@@ -828,11 +831,11 @@ function startDangerCheck() {
       if (!_overTriggered) {
         _overTriggered = true;
         setTimeout(() => {
-          // 2초 뒤에도 여전히 위험이면 게임오버
+          // 유예 시간 뒤에도 여전히 위험이면 게임오버
           const still = Composite.allBodies(world).some(b => b.fruitLevel !== undefined && b.position.y < DANGER_Y && b.speed < 0.5);
           if (still) triggerGameOver();
           else _overTriggered = false;
-        }, 2000);
+        }, DANGER_GRACE_MS);
       }
     } else {
       _overTriggered = false;
