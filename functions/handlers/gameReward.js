@@ -265,4 +265,33 @@ async function adminChargeGp(adminUid, { targetUid, amount, note } = {}) {
   return { success: true, charged: gp, newBalance: after };
 }
 
-module.exports = { claimGameReward, payGameEntry, adminGetUserGpHistory, adminChargeGp };
+/**
+ * 무료 일일 GP 충전 — 보유 GP가 100 미만인 회원에게 베트남 날짜 기준 하루 1회 100 GP 지급
+ * 수령 기록은 서버 전용 컬렉션(free_gp_topups)에 남겨 클라이언트가 조작할 수 없게 한다
+ * (battle_players 는 gold 외 필드를 클라이언트가 쓸 수 있으므로 거기에 플래그를 두지 않음)
+ */
+const FREE_TOPUP_THRESHOLD = 100;
+const FREE_TOPUP_AMOUNT    = 100;
+
+async function claimFreeDailyGp(uid) {
+  if (!uid) throw new Error('로그인이 필요합니다');
+  const today  = todayUtc7();
+  const bpRef  = db.collection('battle_players').doc(uid);
+  const logRef = db.collection('free_gp_topups').doc(`${uid}_${today}`);
+
+  return db.runTransaction(async t => {
+    const [bpSnap, logSnap] = await Promise.all([t.get(bpRef), t.get(logRef)]);
+    const gold = Number((bpSnap.data() || {}).gold) || 0;
+    if (logSnap.exists) return { granted: false, reason: 'already_claimed', gold };
+    if (gold >= FREE_TOPUP_THRESHOLD) return { granted: false, reason: 'enough_gp', gold };
+
+    t.set(bpRef, { gold: admin.firestore.FieldValue.increment(FREE_TOPUP_AMOUNT) }, { merge: true });
+    t.set(logRef, {
+      uid, date: today, amount: FREE_TOPUP_AMOUNT, before: gold, after: gold + FREE_TOPUP_AMOUNT,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { granted: true, gp: FREE_TOPUP_AMOUNT, gold: gold + FREE_TOPUP_AMOUNT };
+  });
+}
+
+module.exports = { claimGameReward, payGameEntry, adminGetUserGpHistory, adminChargeGp, claimFreeDailyGp };

@@ -5,6 +5,7 @@ import { collection, getDocs, query, where, orderBy, limit }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { weekInfo, fetchTop, fetchLastSettlement, prizeForRank } from '/assets/js/weekly-ranking.js';
+import { claimFreeDailyGp } from '/assets/js/free-gp.js';
 
 const FIELD = { gp: 'gold' };
 const LABEL = { gp: 'GP', suika: '점', game2048: '점' };
@@ -121,6 +122,8 @@ function init() {
   loadRanking(currentTab);
   onAuthStateChanged(auth, (user) => {
     myUid = user?.uid || null;
+    // GP 100 미만 회원: 하루 1회 무료 100 GP 충전 (서버가 잔액·수령 여부 판정)
+    if (myUid) claimFreeDailyGp();
     if (cache[currentTab]) render(cache[currentTab], currentTab);
   });
 }

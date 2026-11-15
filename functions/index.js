@@ -159,6 +159,15 @@ exports.payGameEntry = onCall(wrapError(async (request) => {
 }));
 
 // ════════════════════════════════════════════════════════════════════════════
+// 무료 일일 GP 충전 — 보유 GP 100 미만이면 하루 1회(베트남 날짜) 100 GP
+//    클라이언트: httpsCallable(functions, 'claimFreeDailyGp')()
+// ════════════════════════════════════════════════════════════════════════════
+exports.claimFreeDailyGp = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await gameRewardH.claimFreeDailyGp(uid);
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
 // 수박게임·2048 주간 랭킹 — 점수 접수 / 자동 정산 / 관리자 수동 정산
 //    클라이언트: httpsCallable(functions, 'submitWeeklyScore')({ gameType:'suika', score:1234 })
 //    정산: 매주 일요일 00:00 (Asia/Ho_Chi_Minh) TOP10 확정 + GP 지급 (주·게임당 1회)

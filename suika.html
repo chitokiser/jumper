@@ -260,6 +260,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/f
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { createCashout } from '/assets/js/game-cashout.js';
 import { mountWeeklyBoard, submitWeeklyScore } from '/assets/js/weekly-ranking.js';
+import { claimFreeDailyGp, FREE_GP_THRESHOLD } from '/assets/js/free-gp.js';
 
 // ── 과일 데이터 ──────────────────────────────────────────────────────────────
 const FRUITS = [
@@ -927,6 +928,11 @@ onAuthStateChanged(auth, async user => {
   _uid = user?.uid || null;
   _weekly.refresh();
   await loadPlayer();
+  // GP 100 미만 회원: 하루 1회 무료 100 GP 충전 (서버 판정)
+  if (_uid && _playerGP < FREE_GP_THRESHOLD) {
+    const r = await claimFreeDailyGp();
+    if (r.granted) await loadPlayer();
+  }
   showScreen('lobby');
 });
 </script>
