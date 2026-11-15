@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<!-- /merchant_hub_widget.html
+     가맹점 홈페이지 임베드용 BestClub 허브 위젯
+     - 플랫폼 바로가기 5종 (결제하기 / 게임 / 머니충전 / 결제QR 만들기 / 내 정보·포인트)
+     - 공지사항 (notices), 포인트 리워드 (merchants + jackpot_config), 이벤트 (coupon_campaigns)
+     - 모든 데이터는 BestClub Firestore(jumper-b15aa) 실데이터만 사용 (하드코딩 금지)
+     파라미터: merchant, theme(HEX), mode(light|dark), lang(ko|vi|en), sections(links,notices,rewards,events), count, wid
+-->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BestClub Merchant Hub</title>
+  <meta name="robots" content="noindex" />
+  <style>
+    :root {
+      --accent: #7c3aed;
+      --bg: #ffffff;
+      --card: #f8fafc;
+      --line: #e5e7eb;
+      --text: #0f172a;
+      --muted: #64748b;
+    }
+    :root[data-mode="dark"] {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --line: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+      font-family: "Pretendard", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .hub { padding: 16px; display: grid; gap: 16px; }
+    .hub-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .hub-brand { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .02em; }
+    .hub-merchant { font-size: 13px; color: var(--muted); }
+
+    .links { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+    .link {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      min-height: 76px; padding: 10px 6px; border-radius: 12px; text-decoration: none;
+      background: var(--card); border: 1px solid var(--line); color: var(--text);
+      font-size: 13px; font-weight: 600; text-align: center; line-height: 1.25;
+      transition: transform .12s ease, border-color .12s ease;
+    }
+    .link:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .link .ic { font-size: 22px; line-height: 1; }
+    .link--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .sec { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-width: 0; }
+    .sec h3 { margin: 0 0 10px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .sec h3 a { font-size: 12px; font-weight: 500; color: var(--accent); text-decoration: none; white-space: nowrap; }
+    .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .list li { font-size: 13px; line-height: 1.4; border-bottom: 1px dashed var(--line); padding-bottom: 8px; }
+    .list li:last-child { border-bottom: 0; padding-bottom: 0; }
+    .list .t { font-weight: 600; overflow-wrap: anywhere; }
+    .list .s { color: var(--muted); font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
+    .pin { color: var(--accent); font-weight: 700; margin-right: 4px; }
+    .badge { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 999px;
+      background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); margin-right: 4px; font-weight: 700; }
+    .kv { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 4px 0; }
+    .kv .v { font-weight: 700; text-align: right; }
+    .note { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+    .empty { font-size: 13px; color: var(--muted); }
+    a.item { color: inherit; text-decoration: none; display: block; }
+    a.item:hover .t { color: var(--accent); }
+
+    @media (max-width: 760px) {
+      .grid3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      .hub { padding: 12px; }
+      .links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .link { min-height: 68px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hub" id="hub">
+    <div class="hub-head" id="hubHead">
+      <span class="hub-brand">BestClub</span>
+      <span class="hub-merchant" id="hubMerchant"></span>
+    </div>
+    <nav class="links" id="hubLinks" aria-label="BestClub"></nav>
+    <div class="grid3" id="hubSections">
+      <section class="sec" id="secNotices"></section>
+      <section class="sec" id="secRewards"></section>
+      <section class="sec" id="secEvents"></section>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from "/assets/js/firebase-init.js";
+    import {
+      collection, doc, getDoc, getDocs, query, where, orderBy, limit
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const BASE = "https://bestclubvn.netlify.app";
+    const p = new URLSearchParams(location.search);
+    const merchantId = (p.get("merchant") || "").trim();
+    const theme = /^#[0-9a-fA-F]{3,8}$/.test(p.get("theme") || "") ? p.get("theme") : "#7c3aed";
+    const mode = p.get("mode") === "dark" ? "dark" : "light";
+    const lang = ["ko", "vi", "en"].includes(p.get("lang")) ? p.get("lang") : "ko";
+    const count = Math.min(10, Math.max(2, parseInt(p.get("count") || "4", 10) || 4));
+    const sections = (p.get("sections") || "links,notices,rewards,events").split(",").map(s => s.trim());
+    const showHeader = p.get("header") !== "0";
+    const wid = p.get("wid") || "";
+
+    document.documentElement.style.setProperty("--accent", theme);
+    document.documentElement.dataset.mode = mode;
+    document.documentElement.lang = lang;
+
+    const T = {
+      ko: {
+        pay: "결제하기", game: "게임 바로가기", topup: "머니 충전", qr: "결제 QR 만들기", me: "내 정보·포인트",
+        notices: "공지사항", rewards: "포인트 리워드", events: "이벤트", more: "더보기",
+        noNotice: "등록된 공지가 없습니다.", noEvent: "진행 중인 이벤트가 없습니다.",
+        btRule: "BT 보상 기준", btLeft: "가맹점 잔여 BT", btPer: (n) => `🎟️ ${n} VND 결제당 1 BT`, btNone: "BT 보상 미설정",
+        pool: "현재 잭팟 풀", free: "무료", until: "~",
+        rewardNote: "BM 결제 시 결제금에 비례한 포인트 잭팟과 이 가맹점의 BT(무료 보상)를 받습니다. BT로 룰렛을 돌려 포인트를 더 받을 수 있어요.",
+        loadFail: "정보를 불러오지 못했습니다.", platform: "BestClub",
+      },
+      vi: {
+        pay: "Thanh toán", game: "Chơi game", topup: "Nạp tiền", qr: "Tạo mã QR", me: "Tài khoản & điểm",
+        notices: "Thông báo", rewards: "Thưởng điểm", events: "Sự kiện", more: "Xem thêm",
+        noNotice: "Chưa có thông báo.", noEvent: "Chưa có sự kiện nào.",
+        btRule: "Mức thưởng BT", btLeft: "BT còn lại của cửa hàng", btPer: (n) => `🎟️ 1 BT mỗi ${n} VND`, btNone: "Chưa thiết lập thưởng BT",
+        pool: "Quỹ jackpot hiện tại", free: "Miễn phí", until: "~",
+        rewardNote: "Thanh toán bằng BM để nhận jackpot điểm theo số tiền và BT (thưởng miễn phí) của cửa hàng. Dùng BT quay vòng quay để nhận thêm điểm.",
+        loadFail: "Không tải được dữ liệu.", platform: "BestClub",
+      },
+      en: {
+        pay: "Pay", game: "Games", topup: "Top up", qr: "Make pay QR", me: "My info & points",
+        notices: "Notices", rewards: "Point rewards", events: "Events", more: "More",
+        noNotice: "No notices yet.", noEvent: "No events running.",
+        btRule: "BT reward rule", btLeft: "Store BT left", btPer: (n) => `🎟️ 1 BT per ${n} VND`, btNone: "No BT reward set",
+        pool: "Current jackpot pool", free: "Free", until: "~",
+        rewardNote: "Pay with BM to get a point jackpot sized to your payment, plus this store's BT (free reward). Spin the roulette with BT for more points.",
+        loadFail: "Could not load data.", platform: "BestClub",
+      },
+    }[lang];
+
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const fmt = (n) => Number(n || 0).toLocaleString(lang === "vi" ? "vi-VN" : lang === "en" ? "en-US" : "ko-KR");
+    const toDate = (v) => (v && typeof v.toDate === "function") ? v.toDate() : (v ? new Date(v) : null);
+    const fmtDate = (v) => { const d = toDate(v); return d && !isNaN(d) ? `${d.getMonth() + 1}/${d.getDate()}` : ""; };
+    const $ = (id) => document.getElementById(id);
+    const plain = (s) => String(s || "").replace(/[*#_`>]+/g, "").replace(/\s+/g, " ").trim();
+
+    // ── 높이 자동 조절 (부모 페이지 SDK가 수신) ─────────────────
+    function postHeight() {
+      const h = Math.ceil(document.documentElement.scrollHeight);
+      try { parent.postMessage({ type: "bestclub-hub-height", wid, height: h }, "*"); } catch (_) {}
+    }
+    new ResizeObserver(postHeight).observe(document.body);
+
+    // ── 바로가기 (플랫폼 메인 히어로와 동일한 경로) ──────────────
+    function renderLinks() {
+      if (!sections.includes("links")) { $("hubLinks").remove(); return; }
+      const links = [
+        { href: "/mypage.html#merchantPaySection", ic: "💳", label: T.pay, primary: true },
+        { href: "/games.html", ic: "🎮", label: T.game },
+        { href: "/mypage.html#hex-topup", ic: "💰", label: T.topup },
+        { href: "/merchant-qr.html", ic: "🔳", label: T.qr },
+        { href: "/mypage.html", ic: "👤", label: T.me },
+      ];
+      $("hubLinks").innerHTML = links.map(l =>
+        `<a class="link${l.primary ? " link--primary" : ""}" href="${BASE}${l.href}" target="_blank" rel="noopener">` +
+        `<span class="ic" aria-hidden="true">${l.ic}</span><span>${esc(l.label)}</span></a>`
+      ).join("");
+    }
+
+    function head(el, title, moreHref) {
+      return `<h3>${esc(title)}${moreHref ? `<a href="${BASE}${moreHref}" target="_blank" rel="noopener">${esc(T.more)} ›</a>` : ""}</h3>`;
+    }
+
+    // ── 공지사항 (notices: 공개 읽기) ───────────────────────────
+    async function renderNotices() {
+      const el = $("secNotices");
+      if (!sections.includes("notices")) { el.remove(); return; }
+      el.innerHTML = head(el, T.notices) + `<div class="empty">…</div>`;
+      try {
+        const snap = await getDocs(query(collection(db, "notices"), orderBy("createdAt", "desc"), limit(20)));
+        const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .filter(n => n.visible !== false)
+          .sort((a, b) => (b.pinned === true) - (a.pinned === true))
+          .slice(0, count);
+        el.innerHTML = head(el, T.notices) + (rows.length
+          ? `<ul class="list">${rows.map(n => `<li><div class="t">${n.pinned ? `<span class="pin">📌</span>` : ""}${esc(n.title)}</div>` +
+              `<div class="s">${esc(plain(n.text).slice(0, 80))}${plain(n.text).length > 80 ? "…" : ""}` +
+              `${fmtDate(n.createdAt) ? ` · ${fmtDate(n.createdAt)}` : ""}</div></li>`).join("")}</ul>`
+          : `<div class="empty">${esc(T.noNotice)}</div>`);
+      } catch (e) {
+        el.innerHTML = head(el, T.notices) + `<div class="empty">${esc(T.loadFail)}</div>`;
+      }
+      postHeight();
+    }
+
+    // ── 포인트 리워드 (가맹점 BT 정책 + 잭팟 풀 실데이터) ──────────
+    let merchant = null;
+    async function loadMerchant() {
+      if (!merchantId) return null;
+      try {
+        const s = await getDoc(doc(db, "merchants", merchantId));
+        return s.exists() ? s.data() : null;
+      } catch (_) { return null; }
+    }
+
+    async function renderRewards() {
+      const el = $("secRewards");
+      if (!sections.includes("rewards")) { el.remove(); return; }
+      let pool = null;
+      try {
+        const s = await getDoc(doc(db, "jackpot_config", "current"));
+        if (s.exists()) pool = Number(s.data().jackpotAccVnd || 0);
+      } catch (_) {}
+      const per = Number(merchant?.btPerVnd || 0);
+      const rows = [];
+      if (merchant) {
+        rows.push(`<div class="kv"><span>${esc(T.btRule)}</span><span class="v">${esc(per > 0 ? T.btPer(fmt(per)) : T.btNone)}</span></div>`);
+        rows.push(`<div class="kv"><span>${esc(T.btLeft)}</span><span class="v">${fmt(Math.max(0, Number(merchant.btBalance || 0)))} BT</span></div>`);
+      }
+      if (pool !== null) rows.push(`<div class="kv"><span>${esc(T.pool)}</span><span class="v">${fmt(pool)} VND</span></div>`);
+      el.innerHTML = head(el, T.rewards, "/mypage.html") + (rows.join("") || `<div class="empty">${esc(T.loadFail)}</div>`) +
+        `<div class="note">${esc(T.rewardNote)}</div>`;
+      postHeight();
+    }
+
+    // ── 이벤트 (coupon_campaigns: 이 가맹점 발행 + 전체 가맹점 적용) ──
+    async function renderEvents() {
+      const el = $("secEvents");
+      if (!sections.includes("events")) { el.remove(); return; }
+      el.innerHTML = head(el, T.events, "/events.html") + `<div class="empty">…</div>`;
+      try {
+        const aliases = new Set([merchantId, String(merchant?.merchantId || "")].filter(Boolean));
+        const snap = await getDocs(query(collection(db, "coupon_campaigns"), where("status", "==", "active"), limit(60)));
+        const now = Date.now();
+        const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => {
+          const end = toDate(c.saleEndsAt);
+          if (end && !isNaN(end) && end.getTime() < now) return false;
+          if (aliases.has(String(c.issuerId || ""))) return true;
+          const app = Array.isArray(c.applicableMerchantIds) ? c.applicableMerchantIds.map(String) : [];
+          return app.includes("all") || app.some(id => aliases.has(id));
+        }).sort((a, b) => (aliases.has(String(b.issuerId)) - aliases.has(String(a.issuerId)))).slice(0, count);
+        el.innerHTML = head(el, T.events, "/events.html") + (rows.length
+          ? `<ul class="list">${rows.map(c => {
+              const price = Number(c.priceBM || 0);
+              const end = fmtDate(c.saleEndsAt);
+              return `<li><a class="item" href="${BASE}/events.html" target="_blank" rel="noopener">` +
+                `<div class="t"><span class="badge">${esc(c.campaignType === "VOUCHER" ? "VOUCHER" : "EVENT")}</span>${esc(c.title)}</div>` +
+                `<div class="s">${price > 0 ? `${fmt(price)} BM` : esc(T.free)}${end ? ` · ${esc(T.until)}${end}` : ""}` +
+                `${c.issuerNameSnapshot ? ` · ${esc(c.issuerNameSnapshot)}` : ""}</div></a></li>`;
+            }).join("")}</ul>`
+          : `<div class="empty">${esc(T.noEvent)}</div>`);
+      } catch (e) {
+        el.innerHTML = head(el, T.events, "/events.html") + `<div class="empty">${esc(T.loadFail)}</div>`;
+      }
+      postHeight();
+    }
+
+    (async function init() {
+      if (!showHeader) $("hubHead").remove();
+      renderLinks();
+      postHeight();
+      merchant = await loadMerchant();
+      if (merchant && showHeader) $("hubMerchant").textContent = merchant.name || "";
+      await Promise.all([renderNotices(), renderRewards(), renderEvents()]);
+      if (!$("hubSections").children.length) $("hubSections").remove();
+      postHeight();
+    })();
+  </script>
+</body>
+</html>
