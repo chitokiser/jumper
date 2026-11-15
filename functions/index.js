@@ -3595,6 +3595,11 @@ exports.approveReviewAndTransferVoucher = onCall({ cors: true }, wrapError(async
   return couponH.approveReviewAndTransferVoucher(uid, request.data);
 }));
 
+exports.chargeReviewBtPool = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return couponH.chargeReviewBtPool(uid, request.data);
+}));
+
 exports.deleteCouponReviewComment = onCall({ cors: true }, wrapError(async (request) => {
   const uid = requireAuth(request);
   return couponH.deleteCouponReviewComment(uid, request.data);

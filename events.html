@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
-  <link rel="stylesheet" href="/assets/css/pages/events.css?v=20261115_zalo" />
+  <link rel="stylesheet" href="/assets/css/pages/events.css?v=20261115_reviewbt" />
 
   <script src="/assets/js/partials.js" defer></script>
 </head>
@@ -173,12 +173,15 @@
             </div>
             <p class="ev-review-guide">
               구글 지도에 매장 리뷰를 작성하신 후 <b>구글 리뷰 공유 URL</b>을 아래 댓글로 등록해 주세요.<br/>
-              관리자가 리뷰 URL을 확인한 즉시 <b>바우쳐 1장</b>을 회원님의 계정(내 쿠폰함)으로 이체해 드립니다!
+              관리자가 리뷰 URL을 확인한 즉시 <b>1 BT</b>를 회원님의 계정으로 지급해 드립니다!
             </p>
             <a id="btnGoGoogleMapReview" href="#" target="_blank" rel="noopener noreferrer" class="ev-btn-gmap" style="display:none;">
               📍 구글 지도에서 매장 리뷰 작성하러 가기 &nearr;
             </a>
           </div>
+
+          <!-- 리뷰 이벤트 BT 풀 (관리자 충전) -->
+          <div id="reviewBtPoolPanel" style="display:none;"></div>
 
           <!-- 내 참여 상태 배너 (이미 참여한 경우 표시) -->
           <div id="myReviewStatusBanner" class="ev-my-review-banner" style="display:none;"></div>
@@ -206,7 +209,7 @@
               />
             </div>
             <button type="submit" id="btnSubmitReviewComment" class="ev-btn ev-btn--review-submit ev-btn--full">
-              ✍️ 구글 리뷰 URL 등록하고 바우쳐 신청하기 (1계정 1회)
+              ✍️ 구글 리뷰 URL 등록하고 1 BT 신청하기 (1계정 1회)
             </button>
           </form>
 
@@ -215,7 +218,7 @@
             <div class="ev-review-list-head">
               <span>📋 구글 리뷰 참여 댓글 목록</span>
               <span id="reviewAdminHint" style="display:none; font-size:0.76rem; color:#7c3aed; font-weight:700;">
-                🛡️ 관리자 모드: 리뷰 URL 확인 후 [🎁 바우쳐 1장 이체]를 클릭하세요
+                🛡️ 관리자 모드: 리뷰 URL 확인 후 [🎁 1 BT 지급]을 클릭하세요
               </span>
             </div>
             <div id="reviewCommentList" class="ev-review-list">
@@ -303,7 +306,7 @@
           <span>✨</span> 신규 이벤트 쿠폰 &amp; 바우쳐 발행
         </h2>
         <p style="color:#64748b; font-size:0.88rem; margin:0;">
-          회원들에게 판매하거나 무료 지급, 또는 <b>구글 리뷰 URL 댓글 확인 후 바우쳐 1장을 이체</b>하는 이벤트를 등록합니다.
+          회원들에게 판매하거나 무료 지급, 또는 <b>구글 리뷰 URL 댓글 확인 후 1 BT를 지급</b>하는 이벤트를 등록합니다.
         </p>
       </div>
 
@@ -314,10 +317,10 @@
             <label class="ev-label">발급 및 이벤트 참여 방식 *</label>
             <select id="inpIssueMethod" class="ev-input" style="border-color:#7c3aed; background:#faf5ff; font-weight:700;" required>
               <option value="DIRECT">⚡ 즉시 발급 / BM 구매 (회원이 버튼 클릭 시 즉시 발급)</option>
-              <option value="GOOGLE_REVIEW">⭐ 구글 리뷰 인증 이벤트 (회원이 댓글에 구글리뷰 URL 등록 → 관리자 확인 후 바우쳐 1장 이체 · 1계정 1회)</option>
+              <option value="GOOGLE_REVIEW">⭐ 구글 리뷰 인증 이벤트 (회원이 댓글에 구글리뷰 URL 등록 → 관리자 확인 후 1 BT 지급 · 1계정 1회)</option>
             </select>
             <span id="inpIssueMethodHint" style="display:block; margin-top:4px; font-size:0.78rem; color:#6d28d9; font-weight:600;">
-              💡 '구글 리뷰 인증 이벤트' 선택 시 회원이 댓글로 구글 리뷰 URL을 남기면 관리자가 확인 후 버튼 클릭 한 번으로 바우쳐 1장을 이체합니다. (1계정 1회 참여 자동 적용)
+              💡 '구글 리뷰 인증 이벤트' 선택 시 회원이 댓글로 구글 리뷰 URL을 남기면 관리자가 확인 후 버튼 클릭 한 번으로 1 BT를 지급합니다. BT는 이벤트 상세 화면에서 충전한 BT 풀에서 나갑니다. (1계정 1회 참여 자동 적용)
             </span>
           </div>
 
@@ -437,7 +440,7 @@
             <label class="ev-label">발급 및 이벤트 참여 방식 *</label>
             <select id="editIssueMethod" class="ev-input" style="border-color:#7c3aed; background:#faf5ff; font-weight:700;" required>
               <option value="DIRECT">⚡ 즉시 발급 / BM 구매 (기본)</option>
-              <option value="GOOGLE_REVIEW">⭐ 구글 리뷰 인증 이벤트 (댓글에 구글리뷰 URL 등록 → 관리자 확인 후 바우쳐 1장 이체 · 1계정 1회)</option>
+              <option value="GOOGLE_REVIEW">⭐ 구글 리뷰 인증 이벤트 (댓글에 구글리뷰 URL 등록 → 관리자 확인 후 1 BT 지급 · 1계정 1회)</option>
             </select>
           </div>
 
@@ -546,7 +549,7 @@
   <div id="siteFooter"></div>
 
   <script type="module" src="/assets/js/header-auth.js"></script>
-  <script type="module" src="/assets/js/pages/events.js?v=20261115_zalo"></script>
+  <script type="module" src="/assets/js/pages/events.js?v=20261115_reviewbt"></script>
 </body>
 
 </html>

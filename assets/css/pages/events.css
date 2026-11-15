@@ -1167,3 +1167,26 @@ body.events-body {
 @media (max-width: 480px) {
   .ev-zalo-row { flex-wrap: wrap; }
 }
+
+/* ── 구글 리뷰 이벤트 BT 풀 ── */
+.ev-review-pool {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  font-size: 0.84rem;
+  color: #9a3412;
+}
+.ev-review-pool-charge {
+  display: flex;
+  gap: 6px;
+}
+.ev-review-pool-charge .ev-input {
+  width: 110px;
+}

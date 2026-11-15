@@ -536,7 +536,10 @@ async function submitCouponReviewComment(uid, { campaignId, reviewUrl, reviewTex
 }
 
 /**
- * 8. 관리자의 구글 리뷰 확인 후 바우쳐 1장 즉시 이체 (1계정 1회 지급 원자적 보장)
+ * 8. 관리자의 구글 리뷰 확인 후 BT 지급 (2026-11-15: 바우쳐 → BT 로 변경)
+ *    - BT는 캠페인별 BT 풀(review_bt_pools/{campaignId}, 서버 전용)에서만 나간다. 풀이 비면 지급 불가.
+ *    - 1계정 1회: review_bt_claims/{campaignId}_{uid} 결정적 문서 + 기존 바우쳐 수령자(UC_REV_...) 제외
+ *    - 함수 이름은 화면 호환을 위해 그대로 둔다.
  */
 async function approveReviewAndTransferVoucher(adminUid, { campaignId, commentId } = {}) {
   const db = getDb();
@@ -557,11 +560,13 @@ async function approveReviewAndTransferVoucher(adminUid, { campaignId, commentId
 
   const campRef = db.collection('coupon_campaigns').doc(campaignId);
   const commentRef = db.collection('coupon_review_comments').doc(commentId);
+  const poolRef = db.collection('review_bt_pools').doc(campaignId);
 
-  return await db.runTransaction(async (tx) => {
-    const [campSnap, commentSnap] = await Promise.all([
+  const result = await db.runTransaction(async (tx) => {
+    const [campSnap, commentSnap, poolSnap] = await Promise.all([
       tx.get(campRef),
-      tx.get(commentRef)
+      tx.get(commentRef),
+      tx.get(poolRef)
     ]);
 
     if (!campSnap.exists) throw new Error('존재하지 않는 캠페인입니다.');
@@ -570,100 +575,151 @@ async function approveReviewAndTransferVoucher(adminUid, { campaignId, commentId
     const c = campSnap.data() || {};
     const cmt = commentSnap.data() || {};
 
+    if (cmt.campaignId && String(cmt.campaignId) !== String(campaignId)) {
+      throw new Error('댓글과 캠페인이 일치하지 않습니다.');
+    }
+
     const isIssuerOwner = myMerchantId && (
       String(c.issuerId) === myMerchantId ||
       (Array.isArray(c.applicableMerchantIds) && c.applicableMerchantIds.map(String).includes(myMerchantId))
     );
     if (!isSuperAdmin && !isIssuerOwner) {
-      throw new Error('수퍼 어드민 또는 해당 이벤트 발행 가맹점주만 바우쳐를 이체할 수 있습니다.');
+      throw new Error('수퍼 어드민 또는 해당 이벤트 발행 가맹점주만 BT를 지급할 수 있습니다.');
     }
 
     if (cmt.status === 'approved') {
-      throw new Error(`이미 바우쳐 1장이 이체 완료된 참여건입니다. (코드: ${cmt.issuedCouponCode || '-'})`);
+      throw new Error('이미 보상이 지급된 참여건입니다.');
     }
 
     const targetUid = cmt.userId;
     if (!targetUid) throw new Error('참여 회원 UID를 확인할 수 없습니다.');
 
-    const totalQty = Number(c.totalQuantity || 0);
-    const issuedQty = Number(c.issuedQuantity || 0);
-    if (totalQty > 0 && issuedQty >= totalQty) {
-      throw new Error('캠페인의 남은 발행 가능 수량이 없습니다.');
+    const claimRef = db.collection('review_bt_claims').doc(`${campaignId}_${targetUid}`);
+    const oldVoucherRef = db.collection('user_coupons').doc(`UC_REV_${campaignId}_${targetUid}`);
+    const userRef = db.collection('users').doc(targetUid);
+    const [claimSnap, oldVoucherSnap, userSnap] = await Promise.all([
+      tx.get(claimRef), tx.get(oldVoucherRef), tx.get(userRef)
+    ]);
+    if (claimSnap.exists || oldVoucherSnap.exists) {
+      throw new Error('해당 회원은 이미 본 이벤트 보상을 받았습니다. (1계정 1회 참여 제한)');
+    }
+    if (!userSnap.exists) throw new Error('참여 회원 정보를 찾을 수 없습니다.');
+
+    const pool = poolSnap.exists ? Math.floor(Number(poolSnap.data().btPool || 0)) : 0;
+    const rewardBt = poolSnap.exists ? Math.max(1, Math.floor(Number(poolSnap.data().rewardBt || 1))) : 1;
+    if (pool < rewardBt) {
+      throw new Error('이 이벤트의 BT 풀이 비어 있습니다. 관리자 패널에서 BT를 먼저 충전해 주세요.');
     }
 
-    // 1계정 1회 지급 보장용 결정적 쿠폰 문서 ID
-    const deterministicCouponId = `UC_REV_${campaignId}_${targetUid}`;
-    const userCouponRef = db.collection('user_coupons').doc(deterministicCouponId);
-    const existingUcSnap = await tx.get(userCouponRef);
-    if (existingUcSnap.exists) {
-      throw new Error('해당 회원은 이미 본 이벤트 바우쳐를 지급받았습니다. (1계정 1회 참여 제한)');
-    }
-
-    const now = Date.now();
-    const couponCode = generateCouponCode();
-    const tokenHash = crypto.createHash('sha256').update(`${couponCode}_${targetUid}_${now}`).digest('hex');
-    const validStart = c.validStartsAt || admin.firestore.FieldValue.serverTimestamp();
-    const validEnd = c.validEndsAt || new Date(now + 365 * 86400000);
-
-    tx.set(userCouponRef, {
-      userCouponId: deterministicCouponId,
-      campaignId,
-      userId: targetUid,
-      uid: targetUid,
-      userEmail: cmt.userEmail || '',
-      campaignType: c.campaignType || 'VOUCHER',
-      title: c.title,
-      description: c.description || '',
-      imageUrl: c.imageUrl || '',
-      issuerType: c.issuerType || 'MERCHANT',
-      issuerId: c.issuerId || 'platform',
-      issuerNameSnapshot: c.issuerNameSnapshot || '공식 가맹점',
-      issuerBadge: c.issuerBadge || 'VERIFIED MERCHANT',
-      applicableMerchantIds: c.applicableMerchantIds || ['all'],
-      applicableProductIds: c.applicableProductIds || [],
-      discountType: c.discountType || 'ITEM_EXCHANGE',
-      discountValue: c.discountValue || '바우쳐 1매',
-      usageMode: c.usageMode || 'BOTH',
-      terms: c.terms || '',
-      couponCode,
-      tokenHash,
-      purchasePriceBM: 0,
-      issuedVia: 'GOOGLE_REVIEW_ADMIN_TRANSFER',
-      reviewUrl: cmt.reviewUrl || '',
-      approvedBy: adminUid,
-      issuedAt: admin.firestore.FieldValue.serverTimestamp(),
-      validStartsAt: validStart,
-      expiresAt: validEnd,
-      status: 'available',
-      redeemedAt: null,
-      redeemedMerchantId: null,
-      staffUserId: null,
-      orderId: null,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    tx.update(poolRef, {
+      btPool: admin.firestore.FieldValue.increment(-rewardBt),
+      btPaid: admin.firestore.FieldValue.increment(rewardBt),
+      claimCount: admin.firestore.FieldValue.increment(1),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
-
+    tx.update(userRef, { btBalance: admin.firestore.FieldValue.increment(rewardBt) });
+    tx.set(claimRef, {
+      campaignId,
+      commentId,
+      userId: targetUid,
+      userEmail: cmt.userEmail || '',
+      rewardBt,
+      reviewUrl: cmt.reviewUrl || '',
+      approvedBy: adminUid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    tx.set(db.collection('transactions').doc(`TX_REVIEW_${campaignId}_${targetUid}`), {
+      uid: targetUid,
+      type: 'GOOGLE_REVIEW_BT',
+      btAmount: rewardBt,
+      campaignId,
+      commentId,
+      approvedBy: adminUid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    tx.set(db.collection('bt_transactions').doc(), {
+      type: 'review_reward',
+      campaignId,
+      uid: targetUid,
+      amount: rewardBt,
+      poolAfter: pool - rewardBt,
+      adminUid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
     tx.update(campRef, {
       issuedQuantity: admin.firestore.FieldValue.increment(1),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
-
     tx.update(commentRef, {
       status: 'approved',
-      issuedCouponCode: couponCode,
-      issuedUserCouponId: deterministicCouponId,
+      rewardType: 'BT',
+      issuedBt: rewardBt,
       approvedBy: adminUid,
       approvedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    return {
-      success: true,
-      userCouponId: deterministicCouponId,
-      couponCode,
-      targetUid,
-      targetEmail: cmt.userEmail || ''
-    };
+    return { rewardBt, targetUid, targetEmail: cmt.userEmail || '', remainingPool: pool - rewardBt };
+  });
+
+  // EXP: BT 1개당 100 EXP (실패해도 지급에는 영향 없음)
+  try {
+    await require('./exp').grantExp(result.targetUid, result.rewardBt * 100, 'bt');
+  } catch (_) { /* noop */ }
+
+  return {
+    success: true,
+    btGiven: result.rewardBt,
+    targetUid: result.targetUid,
+    targetEmail: result.targetEmail,
+    remainingPool: result.remainingPool
+  };
+}
+
+/**
+ * 8-B. 구글 리뷰 이벤트 BT 풀 충전 (최고 관리자)
+ */
+async function chargeReviewBtPool(adminUid, { campaignId, amount } = {}) {
+  const db = getDb();
+  const { requireAdmin } = require('../wallet/admin');
+  await requireAdmin(adminUid);
+  if (!campaignId) throw new Error('캠페인 ID가 필요합니다.');
+  const amt = Math.floor(Number(amount));
+  if (!Number.isFinite(amt) || amt < 1 || amt > 100000) throw new Error('충전 BT는 1 ~ 100,000 사이여야 합니다.');
+
+  const campRef = db.collection('coupon_campaigns').doc(campaignId);
+  const poolRef = db.collection('review_bt_pools').doc(campaignId);
+  return db.runTransaction(async (tx) => {
+    const [campSnap, poolSnap] = await Promise.all([tx.get(campRef), tx.get(poolRef)]);
+    if (!campSnap.exists) throw new Error('존재하지 않는 캠페인입니다.');
+    const c = campSnap.data() || {};
+    if (c.issueMethod !== 'GOOGLE_REVIEW') throw new Error('구글 리뷰 이벤트에만 BT 풀을 충전할 수 있습니다.');
+    const prev = poolSnap.exists ? poolSnap.data() : {};
+    const newPool = Math.floor(Number(prev.btPool || 0)) + amt;
+    const rewardBt = Math.max(1, Math.floor(Number(prev.rewardBt || 1)));
+    tx.set(poolRef, {
+      campaignId,
+      rewardBt,
+      btPool: newPool,
+      btCharged: Math.floor(Number(prev.btCharged || 0)) + amt,
+      btPaid: Math.floor(Number(prev.btPaid || 0)),
+      claimCount: Math.floor(Number(prev.claimCount || 0)),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    // 카드 표시용 수량: 지금까지 지급 + 남은 풀로 지급 가능한 인원
+    tx.update(campRef, {
+      totalQuantity: Math.floor(Number(c.issuedQuantity || 0)) + Math.floor(newPool / rewardBt),
+      discountValue: `${rewardBt} BT`,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    tx.set(db.collection('bt_transactions').doc(), {
+      type: 'review_pool_charge',
+      campaignId,
+      amount: amt,
+      adminUid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return { success: true, btPool: newPool };
   });
 }
 
@@ -813,6 +869,7 @@ module.exports = {
   deleteCouponCampaign,
   submitCouponReviewComment,
   approveReviewAndTransferVoucher,
+  chargeReviewBtPool,
   deleteCouponReviewComment,
   SEED_COUPON_CAMPAIGNS
 };

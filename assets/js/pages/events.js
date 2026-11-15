@@ -45,6 +45,7 @@ const fnDeleteCampaign = httpsCallable(functions, "deleteCouponCampaign");
 const fnSubmitReviewComment = httpsCallable(functions, "submitCouponReviewComment");
 const fnApproveReviewVoucher = httpsCallable(functions, "approveReviewAndTransferVoucher");
 const fnDeleteReviewComment = httpsCallable(functions, "deleteCouponReviewComment");
+const fnChargeReviewBtPool = httpsCallable(functions, "chargeReviewBtPool");
 
 /**
  * 수퍼 어드민 권한 검증
@@ -415,7 +416,7 @@ function renderCampaignGrid() {
               </span>
             ` : isGoogleReview ? `
               <span class="ev-tag-price ev-tag-price--review">
-                ⭐ 구글리뷰 바우쳐 (1인1회)
+                ⭐ 구글리뷰 1 BT (1인1회)
               </span>
             ` : `
               <span class="ev-tag-price ${isFree ? 'ev-tag-price--free' : 'ev-tag-price--paid'}">
@@ -510,7 +511,7 @@ function openDetailModal(campaignId) {
     $("detailBadgeTop").textContent = isZalo
       ? "💬 Zalo 친구추가 BT 이벤트"
       : isGoogleReview
-      ? "⭐ 구글 리뷰 인증 바우쳐 이벤트"
+      ? "⭐ 구글 리뷰 인증 BT 이벤트"
       : (isVoucher ? "🍽️ 스페셜 교환 바우쳐" : "🎟️ 공식 할인 쿠폰");
   }
   if ($("detailIssuerBadge")) {
@@ -540,7 +541,7 @@ function openDetailModal(campaignId) {
   const termsUl = $("detailTermsList");
   if (termsUl) {
     const defaultTerms = isGoogleReview
-      ? "매장 구글 지도에 리뷰를 작성한 후 댓글에 구글 리뷰 URL을 등록해 주세요.\n관리자가 구글 리뷰 작성을 확인한 후 바우쳐 1장을 회원님의 쿠폰함으로 즉시 이체합니다.\n본 이벤트는 1계정당 1회만 참여 및 바우쳐 수령이 가능합니다."
+      ? "매장 구글 지도에 리뷰를 작성한 후 댓글에 구글 리뷰 URL을 등록해 주세요.\n관리자가 구글 리뷰 작성을 확인한 후 1 BT를 회원님 계정으로 지급합니다.\n본 이벤트는 1계정당 1회만 참여 및 보상 수령이 가능합니다."
       : "지정된 매장에서 유효기간 내에 사용 가능합니다.\n타 할인 및 쿠폰과 중복 적용되지 않을 수 있습니다.\n무료 발급 및 구매 후 마이페이지에서 QR을 제시해 주세요.";
     const terms = (c.terms || defaultTerms)
       .split("\n")
@@ -587,6 +588,7 @@ function openDetailModal(campaignId) {
         adminHint.style.display = canManage ? "inline" : "none";
       }
       loadAndRenderReviewComments(c);
+      renderReviewBtPoolPanel(c);
     } else {
       reviewSection.style.display = "none";
     }
@@ -729,20 +731,25 @@ async function loadAndRenderReviewComments(campaign) {
       myBanner.style.display = "block";
       myBanner.innerHTML = `
         <div style="font-weight:800; font-size:0.9rem; margin-bottom:4px;">
-          🎉 바우쳐 1장 이체 완료! (1계정 1회 참여 완료)
+          🎉 보상 지급 완료! (1계정 1회 참여 완료)
         </div>
         <div>
-          관리자가 회원님의 구글 리뷰를 확인하여 <b>바우쳐 1장 (코드: ${escapeHtml(myComment.issuedCouponCode || "발급완료")})</b>을 이체하였습니다.
+          ${myComment.rewardType === "BT"
+            ? `관리자가 회원님의 구글 리뷰를 확인하여 <b>${Number(myComment.issuedBt || 1)} BT</b>를 지급하였습니다.
+          <a href="/mypage.html" style="display:inline-block; margin-left:6px; color:#047857; font-weight:800; text-decoration:underline;">
+            👉 마이페이지에서 BT 룰렛 돌리기 &rarr;
+          </a>`
+            : `관리자가 회원님의 구글 리뷰를 확인하여 <b>바우쳐 1장 (코드: ${escapeHtml(myComment.issuedCouponCode || "발급완료")})</b>을 이체하였습니다.
           <a href="/mypage.html#couponsSection" style="display:inline-block; margin-left:6px; color:#047857; font-weight:800; text-decoration:underline;">
             👉 내 쿠폰함에서 QR 확인하기 &rarr;
-          </a>
+          </a>`}
         </div>
       `;
       if (btnBuy && campaign.status !== "paused") {
         btnBuy.disabled = false;
-        btnBuy.textContent = "📦 내 쿠폰함에서 이체받은 바우쳐 QR 확인하기 →";
+        btnBuy.textContent = myComment.rewardType === "BT" ? "🎟️ 마이페이지에서 받은 BT 확인하기 →" : "📦 내 쿠폰함에서 이체받은 바우쳐 QR 확인하기 →";
         btnBuy.onclick = () => {
-          window.location.href = "/mypage.html#couponsSection";
+          window.location.href = myComment.rewardType === "BT" ? "/mypage.html" : "/mypage.html#couponsSection";
         };
       }
     } else if (myComment && myComment.status === "pending") {
@@ -754,12 +761,12 @@ async function loadAndRenderReviewComments(campaign) {
           ⏳ 구글 리뷰 URL 등록 완료 · 관리자 확인 대기중 (1계정 1회 참여 완료)
         </div>
         <div>
-          등록하신 구글 리뷰 URL을 관리자가 확인한 후 <b>바우쳐 1장</b>을 회원님의 계정으로 즉시 이체해 드립니다.
+          등록하신 구글 리뷰 URL을 관리자가 확인한 후 <b>1 BT</b>를 회원님의 계정으로 바로 지급해 드립니다.
         </div>
       `;
       if (btnBuy && campaign.status !== "paused") {
         btnBuy.disabled = true;
-        btnBuy.textContent = "⏳ 관리자 리뷰 확인 대기중 (확인 시 바우쳐 1장 즉시 이체)";
+        btnBuy.textContent = "⏳ 관리자 리뷰 확인 대기중 (확인 시 1 BT 지급)";
       }
     } else {
       myBanner.style.display = "none";
@@ -789,7 +796,7 @@ async function loadAndRenderReviewComments(campaign) {
             <span style="font-weight:500; font-size:0.75rem; color:#64748b; margin-left:4px;">${dateStr}</span>
           </span>
           <span class="ev-review-status-pill ${isApproved ? "ev-review-status-pill--approved" : "ev-review-status-pill--pending"}">
-            ${isApproved ? `✅ 바우쳐 1장 이체완료 (${escapeHtml(cmt.issuedCouponCode || "지급됨")})` : "⏳ 관리자 확인 대기중"}
+            ${isApproved ? (cmt.rewardType === "BT" ? `✅ ${Number(cmt.issuedBt || 1)} BT 지급완료` : `✅ 바우쳐 1장 이체완료 (${escapeHtml(cmt.issuedCouponCode || "지급됨")})`) : "⏳ 관리자 확인 대기중"}
           </span>
         </div>
 
@@ -810,14 +817,14 @@ async function loadAndRenderReviewComments(campaign) {
           <div class="ev-review-admin-actions">
             ${!isApproved ? `
               <button type="button" class="ev-btn-transfer-voucher" data-review-act="approve" data-comment-id="${escapeHtml(cmt.id)}">
-                🎁 구글리뷰 확인완료 · 바우쳐 1장 즉시 이체
+                🎁 구글리뷰 확인완료 · 1 BT 지급
               </button>
               <button type="button" class="ev-btn-reject-review" data-review-act="delete" data-comment-id="${escapeHtml(cmt.id)}">
                 ❌ 반려/삭제
               </button>
             ` : `
               <span style="font-size:0.78rem; font-weight:700; color:#047857;">
-                ✅ 이체 완료된 바우쳐 코드: <b>${escapeHtml(cmt.issuedCouponCode || "-")}</b>
+                ${cmt.rewardType === "BT" ? `✅ ${Number(cmt.issuedBt || 1)} BT 지급 완료` : `✅ 이체 완료된 바우쳐 코드: <b>${escapeHtml(cmt.issuedCouponCode || "-")}</b>`}
               </span>
             `}
           </div>
@@ -869,7 +876,7 @@ async function handleReviewCommentSubmit(e) {
       await fallbackSubmitReviewComment(campaign, reviewUrl, reviewText);
     }
 
-    alert("✅ 구글 리뷰 URL 댓글이 등록되었습니다!\n관리자가 구글 리뷰를 확인한 후 바우쳐 1장을 회원님의 쿠폰함으로 이체해 드립니다. (1계정 1회 참여)");
+    alert("✅ 구글 리뷰 URL 댓글이 등록되었습니다!\n관리자가 구글 리뷰를 확인한 후 1 BT를 지급해 드립니다. (1계정 1회 참여)");
     if (inpUrl) inpUrl.value = "";
     if (inpText) inpText.value = "";
     await loadAndRenderReviewComments(campaign);
@@ -879,7 +886,7 @@ async function handleReviewCommentSubmit(e) {
   } finally {
     if (btnSubmit) {
       btnSubmit.disabled = false;
-      btnSubmit.textContent = "✍️ 구글 리뷰 URL 등록하고 바우쳐 신청하기 (1계정 1회)";
+      btnSubmit.textContent = "✍️ 구글 리뷰 URL 등록하고 1 BT 신청하기 (1계정 1회)";
     }
   }
 }
@@ -947,13 +954,58 @@ async function fallbackSubmitReviewComment(campaign, reviewUrl, reviewText) {
 }
 
 /**
+ * 3-C2. 구글 리뷰 이벤트 BT 풀 표시 및 충전 (최고 관리자)
+ */
+async function renderReviewBtPoolPanel(campaign) {
+  const box = $("reviewBtPoolPanel");
+  if (!box) return;
+  let pool = null;
+  try {
+    const snap = await getDoc(doc(db, "review_bt_pools", campaign.id));
+    pool = snap.exists() ? snap.data() : null;
+  } catch (_) {}
+  if (_selectedCampaign?.id !== campaign.id) return;
+  const btPool = Number(pool?.btPool || 0);
+  const canCharge = _isSuperAdmin;
+  const canManage = canManageCampaign(campaign);
+  box.style.display = "block";
+  box.innerHTML = `
+    <div class="ev-review-pool">
+      <span>🎟️ 보상: 관리자 확인 시 <b>1 BT</b> · 남은 BT 풀 <b>${btPool.toLocaleString()} BT</b>${canManage ? ` · 지급 ${Number(pool?.claimCount || 0).toLocaleString()}명` : ""}</span>
+      ${canCharge ? `
+        <span class="ev-review-pool-charge">
+          <input id="inpReviewPoolCharge" class="ev-input" type="number" min="1" step="1" placeholder="충전 BT" />
+          <button id="btnReviewPoolCharge" class="ev-btn-admin ev-btn-admin--edit" type="button">➕ 풀 충전</button>
+        </span>` : ""}
+    </div>
+  `;
+  const btn = $("btnReviewPoolCharge");
+  if (btn) {
+    btn.onclick = async () => {
+      const amount = Math.floor(Number($("inpReviewPoolCharge").value));
+      if (!amount || amount < 1) return alert("충전할 BT를 입력해 주세요.");
+      if (!confirm(`이 구글 리뷰 이벤트 풀에 ${amount.toLocaleString()} BT를 충전할까요?`)) return;
+      btn.disabled = true;
+      try {
+        await fnChargeReviewBtPool({ campaignId: campaign.id, amount });
+        await loadCampaigns();
+        renderReviewBtPoolPanel(campaign);
+      } catch (err) {
+        alert("충전 실패: " + (err.message || "오류가 발생했습니다."));
+        btn.disabled = false;
+      }
+    };
+  }
+}
+
+/**
  * 3-D. 관리자의 구글 리뷰 확인 및 바우쳐 1장 즉시 이체
  */
 async function handleApproveReviewAndTransferVoucher(commentId, btnEl) {
   if (!_selectedCampaign || !_currentUser) return;
   const campaign = _selectedCampaign;
   if (!canManageCampaign(campaign)) {
-    alert("수퍼 어드민 또는 해당 이벤트 발행 가맹점주만 바우쳐를 이체할 수 있습니다.");
+    alert("수퍼 어드민 또는 해당 이벤트 발행 가맹점주만 BT를 지급할 수 있습니다.");
     return;
   }
 
@@ -961,53 +1013,45 @@ async function handleApproveReviewAndTransferVoucher(commentId, btnEl) {
   if (!cmt) return;
 
   const ok = confirm(
-    `🎁 [구글 리뷰 확인 및 바우쳐 1장 이체]\n\n` +
+    `🎁 [구글 리뷰 확인 및 1 BT 지급]\n\n` +
     `• 신청 회원: ${cmt.userName || "회원"} (${cmt.userEmail || cmt.userId})\n` +
-    `• 구글 리뷰 URL: ${cmt.reviewUrl}\n` +
-    `• 지급 바우쳐: ${campaign.title} (${campaign.discountValue})\n\n` +
-    `구글 리뷰 작성을 확인하셨나요?\n[확인]을 누르면 해당 회원에게 바우쳐 1장이 즉시 이체됩니다. (1계정 1회 한정)`
+    `• 구글 리뷰 URL: ${cmt.reviewUrl}\n\n` +
+    `구글 리뷰 작성을 확인하셨나요?\n[확인]을 누르면 이 이벤트의 BT 풀에서 1 BT가 해당 회원에게 지급됩니다. (1계정 1회 한정)`
   );
   if (!ok) return;
 
   if (btnEl) {
     btnEl.disabled = true;
-    btnEl.textContent = "⏳ 바우쳐 1장 이체 중...";
+    btnEl.textContent = "⏳ BT 지급 중...";
   }
 
   try {
-    let resData = null;
-    try {
-      const res = await fnApproveReviewVoucher({
-        campaignId: campaign.id,
-        commentId: cmt.id
-      });
-      resData = res.data;
-    } catch (cfErr) {
-      console.warn("fnApproveReviewVoucher fallback to client transaction:", cfErr);
-      resData = await fallbackApproveReviewVoucher(campaign, cmt);
-    }
+    const res = await fnApproveReviewVoucher({
+      campaignId: campaign.id,
+      commentId: cmt.id
+    });
+    const resData = res.data || {};
 
     campaign.issuedQuantity = Number(campaign.issuedQuantity || 0) + 1;
     const remainingQty = Math.max(0, Number(campaign.totalQuantity || 0) - Number(campaign.issuedQuantity || 0));
     if ($("detailStock")) {
-      $("detailStock").textContent = `${remainingQty.toLocaleString()}장 남음 (총 ${Number(campaign.totalQuantity || 0).toLocaleString()}장)`;
+      $("detailStock").textContent = `${remainingQty.toLocaleString()}명 남음 (총 ${Number(campaign.totalQuantity || 0).toLocaleString()}명)`;
     }
 
     alert(
-      `🎉 바우쳐 1장 이체가 완료되었습니다!\n\n` +
+      `🎉 ${resData.btGiven || 1} BT 지급이 완료되었습니다!\n\n` +
       `• 수령 회원: ${cmt.userName || "회원"} (${cmt.userEmail || ""})\n` +
-      `• 발급 바우쳐 코드: ${resData?.couponCode || "발급완료"}\n\n` +
-      `회원의 [마이페이지 > 내 쿠폰·바우쳐]로 즉시 지급되었습니다.`
+      `• 남은 BT 풀: ${Number(resData.remainingPool || 0).toLocaleString()} BT`
     );
 
     renderCampaignGrid();
     await loadAndRenderReviewComments(campaign);
   } catch (err) {
-    console.error("Approve review voucher error:", err);
-    alert("바우쳐 이체 실패: " + (err.message || "오류가 발생했습니다."));
+    console.error("Approve review BT error:", err);
+    alert("BT 지급 실패: " + (err.message || "오류가 발생했습니다."));
     if (btnEl) {
       btnEl.disabled = false;
-      btnEl.textContent = "🎁 구글리뷰 확인완료 · 바우쳐 1장 즉시 이체";
+      btnEl.textContent = "🎁 구글리뷰 확인완료 · 1 BT 지급";
     }
   }
 }

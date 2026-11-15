@@ -779,6 +779,18 @@ service cloud.firestore {
       allow delete: if isAdmin() || isStaff() || (signedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
     }
 
+    // 구글 리뷰 이벤트 BT 풀/수령 기록 — 서버(Cloud Functions)만 쓴다
+    match /review_bt_pools/{campaignId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /review_bt_claims/{claimId} {
+      allow get: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+
     // Zalo 친구추가 BT 이벤트 — 풀/코드/수령 기록은 서버(Cloud Functions)만 쓴다
     match /zalo_friend_events/{campaignId} {
       allow read: if true;
