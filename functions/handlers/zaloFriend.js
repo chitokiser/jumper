@@ -13,6 +13,7 @@
 //   - 풀 고갈 시 지급 없음, 풀은 음수가 되지 않음 (트랜잭션 안에서 검사)
 //   - 풀/코드/수령 기록은 클라이언트가 쓸 수 없다 (firestore.rules: write false)
 //
+// Zalo 링크는 선택: QR 이미지(qrImageUrl)만 있어도 된다 (운영자 전화번호 없음).
 // 풀 충전은 adminChargeBt 와 같은 최고 관리자 공급이며 bt_transactions 에 기록된다.
 
 'use strict';
