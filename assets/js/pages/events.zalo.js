@@ -113,12 +113,20 @@ async function renderDetail(campaign) {
         <span class="ev-review-count">남은 BT ${pool.toLocaleString()}</span>
       </div>
       <p class="ev-review-guide">
-        ① 아래 버튼으로 운영자 Zalo <b>${esc(ev.zaloName || "")}</b>를 친구추가하세요.<br/>
+        ① 운영자 Zalo <b>${esc(ev.zaloName || "")}</b>를 친구추가하세요.<br/>
         운영자가 확인 후 Zalo 메시지로 <b>일회용 코드</b>를 보내 드립니다. 코드를 입력하면 <b>${rewardBt} BT</b>가 무료로 바로 지급됩니다.
       </p>
-      <a class="ev-btn-gmap ev-btn-zalo" href="${esc(ev.zaloUrl)}" target="_blank" rel="noopener noreferrer">
-        💬 Zalo 친구추가 하러 가기 &nearr;
-      </a>
+      ${ev.qrImageUrl ? `
+        <div class="ev-zalo-qr">
+          ${ev.zaloUrl ? `<a href="${esc(ev.zaloUrl)}" target="_blank" rel="noopener noreferrer">` : ""}
+            <img src="${esc(ev.qrImageUrl)}" alt="운영자 Zalo QR 코드" loading="lazy" />
+          ${ev.zaloUrl ? `</a>` : ""}
+          <span>${ev.zaloUrl ? "QR을 누르거나" : "Zalo 앱에서"} 스캔해서 친구추가하세요</span>
+        </div>` : ""}
+      ${ev.zaloUrl ? `
+        <a class="ev-btn-gmap ev-btn-zalo" href="${esc(ev.zaloUrl)}" target="_blank" rel="noopener noreferrer">
+          💬 Zalo 친구추가 하러 가기 &nearr;
+        </a>` : ""}
     </div>
     ${claimHtml}
     <div id="zaloAdminPanel"></div>
@@ -176,8 +184,9 @@ async function renderAdminPanel(campaign, ev) {
         <button id="btnZaloGen" class="ev-btn-admin ev-btn-admin--toggle" type="button">🔑 코드 만들기</button>
       </div>
       <div class="ev-zalo-row">
-        <input id="inpZaloEditUrl" class="ev-input" type="url" value="${esc(ev.zaloUrl)}" />
-        <button id="btnZaloSaveUrl" class="ev-btn-admin ev-btn-admin--edit" type="button">💾 링크 저장</button>
+        <input id="inpZaloEditUrl" class="ev-input" type="url" value="${esc(ev.zaloUrl || "")}" placeholder="Zalo 링크 (선택)" />
+        <input id="inpZaloEditQr" class="ev-input" type="text" value="${esc(ev.qrImageUrl || "")}" placeholder="QR 이미지 주소 (선택)" />
+        <button id="btnZaloSaveUrl" class="ev-btn-admin ev-btn-admin--edit" type="button">💾 저장</button>
       </div>
       <p class="ev-zalo-hint">친구추가를 확인한 회원에게 아래 미사용 코드 하나를 Zalo 메시지로 보내세요. 코드는 한 번만 쓸 수 있습니다.</p>
       <div id="zaloCodeList" class="ev-zalo-codes">⏳ 코드 목록을 불러오는 중...</div>
@@ -212,8 +221,8 @@ async function renderAdminPanel(campaign, ev) {
 
   $("btnZaloSaveUrl").onclick = async () => {
     try {
-      await fnUpdate({ campaignId: campaign.id, zaloUrl: $("inpZaloEditUrl").value });
-      alert("✅ Zalo 링크를 저장했습니다.");
+      await fnUpdate({ campaignId: campaign.id, zaloUrl: $("inpZaloEditUrl").value, qrImageUrl: $("inpZaloEditQr").value });
+      alert("✅ Zalo 링크/QR을 저장했습니다.");
       renderDetail(campaign);
     } catch (err) {
       alert(`❌ ${errMsg(err)}`);
@@ -285,6 +294,7 @@ async function handleCreate(e) {
   try {
     await fnCreate({
       zaloUrl: $("inpZaloUrl").value,
+      qrImageUrl: $("inpZaloQr") ? $("inpZaloQr").value : "",
       zaloName: $("inpZaloName").value,
       rewardBt: Number($("inpZaloReward").value || 1),
       initialPool: Number($("inpZaloPool").value || 0),

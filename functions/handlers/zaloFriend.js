@@ -52,12 +52,23 @@ function normalizeCode(raw) {
   return `ZL-${body.slice(0, 4)}-${body.slice(4)}`;
 }
 
-function cleanZaloUrl(raw) {
+function cleanZaloUrl(raw, { optional = false } = {}) {
   const url = String(raw || '').trim();
+  if (optional && !url) return '';
   if (!/^https:\/\/(zalo\.me|chat\.zalo\.me|oa\.zalo\.me)\//i.test(url)) {
     throw _err('Zalo 링크는 https://zalo.me/... 형식이어야 합니다.', 'invalid-argument');
   }
   return url;
+}
+
+// QR 이미지: https 주소 또는 사이트 안 경로(/assets/...)
+function cleanQrImageUrl(raw) {
+  const url = String(raw || '').trim();
+  if (!url) return '';
+  if (!/^(https:\/\/|\/assets\/)/i.test(url)) {
+    throw _err('QR 이미지는 https:// 주소 또는 /assets/ 경로여야 합니다.', 'invalid-argument');
+  }
+  return url.slice(0, 500);
 }
 
 function toPositiveInt(v, max, label) {
@@ -72,14 +83,16 @@ async function createZaloFriendEvent(adminUid, data = {}) {
   await requireAdmin(adminUid);
   const db = getDb();
 
-  const zaloUrl = cleanZaloUrl(data.zaloUrl);
+  const zaloUrl = cleanZaloUrl(data.zaloUrl, { optional: true });
+  const qrImageUrl = cleanQrImageUrl(data.qrImageUrl);
+  if (!zaloUrl && !qrImageUrl) throw _err('Zalo 링크 또는 QR 이미지 중 하나는 필요합니다.', 'invalid-argument');
   const zaloName = String(data.zaloName || '').trim().slice(0, 60) || 'BestClub';
   const rewardBt = toPositiveInt(data.rewardBt ?? 1, 10, '지급 BT');
   const initialPool = data.initialPool ? toPositiveInt(data.initialPool, MAX_POOL_CHARGE, '초기 풀') : 0;
   const title = String(data.title || '').trim().slice(0, 80) || `Zalo 친구추가하고 ${rewardBt} BT 받기`;
   const description = String(data.description || '').trim().slice(0, 500) ||
     `운영자 Zalo(${zaloName})를 친구추가하면 Zalo 메시지로 받은 코드로 ${rewardBt} BT를 무료로 받을 수 있습니다.`;
-  const imageUrl = String(data.imageUrl || '').trim() ||
+  const imageUrl = String(data.imageUrl || '').trim() || qrImageUrl ||
     'https://images.unsplash.com/photo-1611746872915-64382b5c76da?auto=format&fit=crop&w=800&q=80';
 
   const campRef = db.collection('coupon_campaigns').doc();
@@ -122,6 +135,7 @@ async function createZaloFriendEvent(adminUid, data = {}) {
     tx.set(eventRef, {
       campaignId: campRef.id,
       zaloUrl,
+      qrImageUrl,
       zaloName,
       rewardBt,
       btPool: initialPool,
@@ -149,7 +163,7 @@ async function createZaloFriendEvent(adminUid, data = {}) {
 }
 
 /** 2. 이벤트 설정 수정 (최고 관리자) — Zalo 링크/이름/지급 BT/상태 */
-async function updateZaloFriendEvent(adminUid, { campaignId, zaloUrl, zaloName, rewardBt, status } = {}) {
+async function updateZaloFriendEvent(adminUid, { campaignId, zaloUrl, qrImageUrl, zaloName, rewardBt, status } = {}) {
   await requireAdmin(adminUid);
   const db = getDb();
   if (!campaignId) throw _err('campaignId가 필요합니다.', 'invalid-argument');
@@ -158,7 +172,12 @@ async function updateZaloFriendEvent(adminUid, { campaignId, zaloUrl, zaloName, 
   if (!snap.exists) throw _err('Zalo 이벤트를 찾을 수 없습니다.', 'not-found');
 
   const updates = { updatedAt: FieldValue.serverTimestamp() };
-  if (zaloUrl !== undefined) updates.zaloUrl = cleanZaloUrl(zaloUrl);
+  if (zaloUrl !== undefined) updates.zaloUrl = cleanZaloUrl(zaloUrl, { optional: true });
+  if (qrImageUrl !== undefined) updates.qrImageUrl = cleanQrImageUrl(qrImageUrl);
+  const prev = snap.data();
+  const nextUrl = updates.zaloUrl !== undefined ? updates.zaloUrl : prev.zaloUrl;
+  const nextQr = updates.qrImageUrl !== undefined ? updates.qrImageUrl : prev.qrImageUrl;
+  if (!nextUrl && !nextQr) throw _err('Zalo 링크 또는 QR 이미지 중 하나는 필요합니다.', 'invalid-argument');
   if (zaloName !== undefined) updates.zaloName = String(zaloName || '').trim().slice(0, 60) || 'BestClub';
   if (rewardBt !== undefined) updates.rewardBt = toPositiveInt(rewardBt, 10, '지급 BT');
   if (status !== undefined) updates.status = status === 'paused' ? 'paused' : 'active';

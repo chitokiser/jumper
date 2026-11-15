@@ -1142,3 +1142,28 @@ body.events-body {
   font-weight: 700;
   cursor: pointer;
 }
+.ev-zalo-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
+}
+.ev-zalo-qr img {
+  width: 200px;
+  max-width: 70vw;
+  aspect-ratio: 1;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+  border: 1px solid #bfdbfe;
+}
+.ev-zalo-qr span {
+  font-size: 0.8rem;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+@media (max-width: 480px) {
+  .ev-zalo-row { flex-wrap: wrap; }
+}

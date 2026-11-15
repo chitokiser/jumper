@@ -265,8 +265,12 @@
       </div>
       <form id="zaloCreateForm" class="ev-form">
         <div class="ev-form-group">
-          <label class="ev-label" for="inpZaloUrl">Zalo 친구추가 링크 *</label>
-          <input id="inpZaloUrl" class="ev-input" type="url" placeholder="https://zalo.me/0912345678" required />
+          <label class="ev-label" for="inpZaloUrl">Zalo 친구추가 링크 (QR 이미지가 있으면 선택)</label>
+          <input id="inpZaloUrl" class="ev-input" type="url" placeholder="https://zalo.me/..." />
+        </div>
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpZaloQr">Zalo QR 이미지 주소</label>
+          <input id="inpZaloQr" class="ev-input" type="text" placeholder="/assets/images/events/zalo_qr.png 또는 https://..." />
         </div>
         <div class="ev-form-group">
           <label class="ev-label" for="inpZaloName">Zalo 표시 이름</label>
