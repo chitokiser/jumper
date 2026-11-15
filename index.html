@@ -1549,45 +1549,59 @@
   </style>
 
   <main class="page">
-    <!-- ── 고클릭률 게임 바로가기 배너 ── -->
+    <!-- ── 주간 게임 토너먼트 배너 (수이카·2048 주간 랭킹 보상) ── -->
     <section class="section" id="gameBannerSection" style="margin-top:8px;">
       <div class="game-cta-banner">
         <div class="game-cta-main">
           <div class="game-cta-copy">
             <div class="game-cta-badges">
-              <span class="game-cta-live"><span class="game-cta-live-dot"></span>LIVE GPS RPG &amp; ARCADE</span>
-              <span class="game-cta-reward-tag">💰 획득 GP → 포인트 · BM 즉시 전환</span>
+              <span class="game-cta-live"><span class="game-cta-live-dot"></span>WEEKLY TOURNAMENT</span>
+              <span class="game-cta-reward-tag">🏆 매주 TOP10 GP 자동 지급</span>
             </div>
-            <h2 class="game-cta-title">지금 지도 위 보물을 찾고 <span class="hl">실제 리워드 GP</span>를 획득하세요!</h2>
-            <p class="game-cta-desc">내 주변 GPS 보물상자 탐색, 몬스터 배틀, 공성전·활쏘기까지! 게임에서 모은 GP는 베스트클럽 가맹점 결제 포인트와 BM으로 바로 전환됩니다.</p>
+            <h2 class="game-cta-title">수이카 &amp; 2048 주간 랭킹 <span class="hl">1위 5,000만 GP</span>!</h2>
+            <p class="game-cta-desc">🍉 수이카 과일합치기와 🔢 2048 숫자 합치기에서 이번 주 최고 점수에 도전하세요! 매주 일요일 00:00(베트남 시간) 마감 즉시 게임별 TOP10에게 GP를 자동 지급합니다. 🥇 5,000만 · 🥈 4,500만 · 🥉 4,000만 … 10위 500만 GP.</p>
           </div>
           <div class="game-cta-action-box">
-            <a class="game-cta-play-btn" href="/merchants.html">
-              <span>🎮 월드맵 게임 바로가기</span>
+            <a class="game-cta-play-btn" href="/suika.html">
+              <span>🍉 수이카 도전하기</span>
               <span class="game-cta-play-arrow">▶</span>
             </a>
-            <span class="game-cta-subnote">⚡ 설치 없이 웹에서 1초 만에 바로 플레이</span>
+            <a class="game-cta-play-btn" href="/2048.html">
+              <span>🔢 2048 도전하기</span>
+              <span class="game-cta-play-arrow">▶</span>
+            </a>
+            <span class="game-cta-subnote">⏰ <span id="gameBannerCountdown">매주 일요일 00:00 마감</span></span>
           </div>
         </div>
         <div class="game-cta-modes">
-          <a class="game-mode-chip" href="/merchants.html">
-            <span class="gm-icon">💎</span>
-            <span class="gm-text">GPS 보물찾기 월드맵</span>
+          <a class="game-mode-chip" href="/suika.html">
+            <span class="gm-icon">🍉</span>
+            <span class="gm-text">수이카 과일합치기</span>
           </a>
-          <a class="game-mode-chip" href="/conquest.html">
-            <span class="gm-icon">🏰</span>
-            <span class="gm-text">몬스터 공성전</span>
+          <a class="game-mode-chip" href="/2048.html">
+            <span class="gm-icon">🔢</span>
+            <span class="gm-text">2048 숫자 합치기</span>
           </a>
-          <a class="game-mode-chip" href="/bow.html">
-            <span class="gm-icon">🏹</span>
-            <span class="gm-text">명궁 활쏘기</span>
+          <a class="game-mode-chip" href="/games.html#hunterRankSection">
+            <span class="gm-icon">🏆</span>
+            <span class="gm-text">이번 주 랭킹 보기</span>
           </a>
-          <a class="game-mode-chip" href="/memory.html">
-            <span class="gm-icon">🧠</span>
-            <span class="gm-text">메모리 스피드 매치</span>
+          <a class="game-mode-chip" href="/games.html">
+            <span class="gm-icon">🎮</span>
+            <span class="gm-text">전체 게임모음</span>
           </a>
         </div>
       </div>
+      <script type="module">
+        import { weekInfo } from '/assets/js/weekly-ranking.js';
+        const el = document.getElementById('gameBannerCountdown');
+        const tick = () => {
+          let s = Math.max(0, Math.floor((weekInfo().endsAt - Date.now()) / 1000));
+          const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+          if (el) el.textContent = `이번 주 마감까지 ${d > 0 ? d + '일 ' : ''}${h}시간 ${m}분`;
+        };
+        tick(); setInterval(tick, 30000);
+      </script>
     </section>
 
     <section class="section">
