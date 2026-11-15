@@ -121,6 +121,7 @@
         pool: "현재 잭팟 풀", free: "무료", until: "~",
         rewardNote: "BM 결제 시 결제금에 비례한 포인트 잭팟과 이 가맹점의 BT(무료 보상)를 받습니다. BT로 룰렛을 돌려 포인트를 더 받을 수 있어요.",
         loadFail: "정보를 불러오지 못했습니다.", platform: "BestClub",
+        tour: "수박게임·2048 주간 토너먼트", tourSub: "매주 TOP10에게 GP 자동 지급 · 일요일 00:00 마감",
       },
       vi: {
         pay: "Thanh toán", game: "Chơi game", topup: "Nạp tiền", qr: "Tạo mã QR", me: "Tài khoản & điểm",
@@ -130,6 +131,7 @@
         pool: "Quỹ jackpot hiện tại", free: "Miễn phí", until: "~",
         rewardNote: "Thanh toán bằng BM để nhận jackpot điểm theo số tiền và BT (thưởng miễn phí) của cửa hàng. Dùng BT quay vòng quay để nhận thêm điểm.",
         loadFail: "Không tải được dữ liệu.", platform: "BestClub",
+        tour: "Giải đấu tuần Suika · 2048", tourSub: "TOP10 mỗi tuần nhận GP tự động · chốt 00:00 Chủ nhật",
       },
       en: {
         pay: "Pay", game: "Games", topup: "Top up", qr: "Make pay QR", me: "My info & points",
@@ -139,6 +141,7 @@
         pool: "Current jackpot pool", free: "Free", until: "~",
         rewardNote: "Pay with BM to get a point jackpot sized to your payment, plus this store's BT (free reward). Spin the roulette with BT for more points.",
         loadFail: "Could not load data.", platform: "BestClub",
+        tour: "Weekly Suika · 2048 tournament", tourSub: "Weekly TOP10 get GP automatically · closes Sun 00:00",
       },
     }[lang];
 
@@ -244,8 +247,10 @@
           const app = Array.isArray(c.applicableMerchantIds) ? c.applicableMerchantIds.map(String) : [];
           return app.includes("all") || app.some(id => aliases.has(id));
         }).sort((a, b) => (aliases.has(String(b.issuerId)) - aliases.has(String(a.issuerId)))).slice(0, count);
-        el.innerHTML = head(el, T.events, "/events.html") + (rows.length
-          ? `<ul class="list">${rows.map(c => {
+        const tourItem = `<li><a class="item" href="${BASE}/games.html" target="_blank" rel="noopener">` +
+          `<div class="t"><span class="badge">GAME</span>🏆 ${esc(T.tour)}</div><div class="s">${esc(T.tourSub)}</div></a></li>`;
+        el.innerHTML = head(el, T.events, "/events.html") + `<ul class="list">${tourItem}` + (rows.length
+          ? `${rows.map(c => {
               const price = Number(c.priceBM || 0);
               const end = fmtDate(c.saleEndsAt);
               return `<li><a class="item" href="${BASE}/events.html" target="_blank" rel="noopener">` +
@@ -253,7 +258,7 @@
                 `<div class="s">${price > 0 ? `${fmt(price)} BM` : esc(T.free)}${end ? ` · ${esc(T.until)}${end}` : ""}` +
                 `${c.issuerNameSnapshot ? ` · ${esc(c.issuerNameSnapshot)}` : ""}</div></a></li>`;
             }).join("")}</ul>`
-          : `<div class="empty">${esc(T.noEvent)}</div>`);
+          : `</ul>`);
       } catch (e) {
         el.innerHTML = head(el, T.events, "/events.html") + `<div class="empty">${esc(T.loadFail)}</div>`;
       }
