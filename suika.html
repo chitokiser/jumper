@@ -283,10 +283,10 @@ const RESET_MS = 24 * 60 * 60 * 1000;
 const GP_PER_SCORE = 30; // 30점당 1 GP
 const MAX_GP_PER_GAME = 3000;
 const COMBO_WINDOW_MS = 2000;
-const ITEM_SCORE_STEP = 2250;   // 누적 점수 구간마다 아이템 1개 (난이도 +50%: 1500 → 2250)
-// 난이도 +50% (2026-11-15): 과일 크기 15% 확대 → 통이 약 1.3배 빨리 참
-const FRUIT_SIZE_SCALE = 1.15;
-const DANGER_GRACE_MS = 1200;   // 위험선 초과 후 게임오버까지 유예 (2000 → 1200)
+const ITEM_SCORE_STEP = 3400;   // 누적 점수 구간마다 아이템 1개 (난이도 상향: 1500 → 2250 → 3400)
+// 난이도 상향 2차 (2026-11-15): 과일 크기 30% 확대 → 통이 약 1.7배 빨리 참
+const FRUIT_SIZE_SCALE = 1.3;
+const DANGER_GRACE_MS = 800;    // 위험선 초과 후 게임오버까지 유예 (2000 → 1200 → 800)
 const ITEM_MAX_TOTAL = 3;
 const PARTY_MS = 10000, PARTY_BONUS = 300;
 const ITEM_KEYS = ['hammer', 'shuffle', 'swap'];
@@ -591,7 +591,8 @@ function spawnFruitAt(x, y, level) {
 // ── 게임 로직 ─────────────────────────────────────────────────────────────────
 function pickRandomLevel() {
   // 초반엔 작은 과일 위주 (0~4)
-  const max = Math.min(4, Math.floor(_score / 150) + 2); // 큰 과일 등장 가속 (200 → 150)
+  // 큰 과일 등장 가속 (200 → 150 → 100점 단위), 1,000점 이후엔 🍎까지 떨어짐
+  const max = Math.min(_score >= 1000 ? 5 : 4, Math.floor(_score / 100) + 2);
   return Math.floor(Math.random() * (max + 1));
 }
 
@@ -709,7 +710,7 @@ function useItem(k) {
     showPopup('🌀 섞기!');
   } else if (k === 'swap') {
     let n = _nextLevel;
-    while (n === _nextLevel) n = Math.floor(Math.random() * (Math.min(4, Math.floor(_score / 200) + 2) + 1));
+    while (n === _nextLevel) n = pickRandomLevel();
     _nextLevel = n;
     updateNextPreview();
     showPopup('🎲 교체!');
