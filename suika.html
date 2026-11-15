@@ -197,6 +197,7 @@ html,body{height:100%;background:#080c18;color:#fff;
 
   <button class="btn-main" id="btnEnter">▶ 게임 시작 (GP 차감)</button>
   <button class="btn-free" id="btnFree">🎮 무료 연습 (GP 없음)</button>
+  <div id="weeklyBoard" style="width:100%"></div>
 </div>
 
 <!-- 게임 화면 -->
@@ -258,6 +259,7 @@ import { doc, getDoc, updateDoc, setDoc, serverTimestamp, increment }
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { createCashout } from '/assets/js/game-cashout.js';
+import { mountWeeklyBoard, submitWeeklyScore } from '/assets/js/weekly-ranking.js';
 
 // ── 과일 데이터 ──────────────────────────────────────────────────────────────
 const FRUITS = [
@@ -859,6 +861,13 @@ async function triggerGameOver() {
   $('overModal').classList.add('open');
 
   if (!_freeMode && gp > 0) await awardGP(gp);
+  // 주간 토너먼트 점수 접수 (참가비 낸 판만, 서버가 1판 1회 검증)
+  if (_uid && !_freeMode && _score > 0) {
+    submitWeeklyScore('suika', _score).then(r => {
+      _weekly.showMessage(r.improved ? `🏆 주간 랭킹 기록 갱신! (${r.bestScore.toLocaleString()}점)` : '');
+      _weekly.refresh();
+    });
+  }
   // 베스트 점수 업데이트
   if (_uid && !_freeMode) {
     try {
@@ -909,8 +918,11 @@ function goLobby() {
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
+const _weekly = mountWeeklyBoard($('weeklyBoard'), 'suika', { getUid: () => _uid });
+
 onAuthStateChanged(auth, async user => {
   _uid = user?.uid || null;
+  _weekly.refresh();
   await loadPlayer();
   showScreen('lobby');
 });

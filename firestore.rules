@@ -497,6 +497,25 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── 수박게임·2048 주간 랭킹 (쓰기는 Cloud Functions 전용) ────────────────
+    match /weekly_rankings/{boardId} {
+      allow get, list: if true;
+      allow write: if false;
+      match /entries/{uid} {
+        allow get, list: if true;
+        allow write: if false;
+      }
+    }
+    match /weekly_settlements/{settleId} {
+      allow get, list: if true;
+      allow write: if false;
+    }
+    match /weekly_ranking_payouts/{payoutId} {
+      allow get, list: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+    // weekly_game_sessions: 규칙 없음 → 클라이언트 접근 불가 (서버 전용)
+
     // ── 커뮤니티 / 이벤트 / 버기카 / DAO / 게임 상점 ─────────────────────────
     match /community_posts/{postId} {
       allow read: if true;

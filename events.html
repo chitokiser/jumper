@@ -63,6 +63,9 @@
       </div>
     </div>
 
+    <!-- ── 주간 게임 토너먼트 홍보 (수박게임·2048) ── -->
+    <div id="weeklyPromo"></div>
+
     <!-- ── 필터 및 툴바 ── -->
     <section class="ev-filter-section">
       <!-- 대분류 탭 -->
@@ -550,6 +553,10 @@
 
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/pages/events.js?v=20261115_reviewbt"></script>
+  <script type="module">
+    import { mountWeeklyPromo } from '/assets/js/weekly-ranking.js';
+    mountWeeklyPromo(document.getElementById('weeklyPromo'));
+  </script>
 </body>
 
 </html>

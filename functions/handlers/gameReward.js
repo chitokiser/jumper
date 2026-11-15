@@ -74,7 +74,10 @@ async function payGameEntry(uid, gameKey) {
   return db.runTransaction(async t => {
     const snap = await t.get(ref);
     if (!snap.exists) throw new Error('플레이어 데이터 없음');
-    return _chargeEntry(t, snap.data(), ref, gameKey);
+    const result = _chargeEntry(t, snap.data(), ref, gameKey);
+    // 수박게임·2048: 참가비 낸 판마다 주간 랭킹 점수 접수권 발급
+    require('./weeklyRanking').issueSessionInTx(t, uid, gameKey);
+    return result;
   });
 }
 

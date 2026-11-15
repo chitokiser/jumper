@@ -84,6 +84,9 @@
         </div>
       </section>
 
+      <!-- 주간 게임 토너먼트 홍보 (수박게임·2048) -->
+      <div id="weeklyPromo"></div>
+
       <h2 class="gh-section-title">게임 선택</h2>
       <div class="gh-grid" id="gameList">
         <a class="gh-card featured" href="/merchants.html">
@@ -154,5 +157,9 @@
 
   <div id="siteFooter"></div>
   <script type="module" src="/assets/js/pages/games.js"></script>
+  <script type="module">
+    import { mountWeeklyPromo } from '/assets/js/weekly-ranking.js';
+    mountWeeklyPromo(document.getElementById('weeklyPromo'));
+  </script>
 </body>
 </html>

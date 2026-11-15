@@ -159,6 +159,36 @@ exports.payGameEntry = onCall(wrapError(async (request) => {
 }));
 
 // ════════════════════════════════════════════════════════════════════════════
+// 수박게임·2048 주간 랭킹 — 점수 접수 / 자동 정산 / 관리자 수동 정산
+//    클라이언트: httpsCallable(functions, 'submitWeeklyScore')({ gameType:'suika', score:1234 })
+//    정산: 매주 일요일 00:00 (Asia/Ho_Chi_Minh) TOP10 확정 + GP 지급 (주·게임당 1회)
+// ════════════════════════════════════════════════════════════════════════════
+const weeklyRankingH = require('./handlers/weeklyRanking');
+
+exports.submitWeeklyScore = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await weeklyRankingH.submitWeeklyScore(uid, request.data ?? {});
+}));
+
+exports.settleWeeklyRankings = onSchedule(
+  { schedule: '0 0 * * 0', timeZone: 'Asia/Ho_Chi_Minh', retryCount: 3 },
+  async () => {
+    const out = await weeklyRankingH.settleLastWeekAll();
+    logger.info('[settleWeeklyRankings]', out);
+    const failed = Object.entries(out.results).filter(([, r]) => r.error);
+    // 실패한 게임이 있으면 throw → 재시도 (정산 완료된 게임은 멱등하게 건너뜀)
+    if (failed.length) throw new Error(`주간 정산 실패: ${failed.map(([g, r]) => `${g}: ${r.error}`).join(', ')}`);
+  }
+);
+
+exports.adminSettleWeeklyRanking = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  await requireAdmin(uid);
+  const { gameType, weekId } = request.data ?? {};
+  return await weeklyRankingH.settleWeek(gameType, weekId, { triggeredBy: `admin:${uid}` });
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
 // 연계 사이트 최초 구글 가입 보너스 (구글 계정당 1회, 5000GP)
 //    클라이언트: httpsCallable(functions, 'claimSignupBonus')({ site:'bestwinner' })
 // ════════════════════════════════════════════════════════════════════════════

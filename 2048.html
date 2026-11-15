@@ -183,6 +183,7 @@ html,body{height:100%;background:#080c18;color:#fff;
 
   <button class="btn-main" id="btnEnter">▶ 게임 시작 (GP 차감)</button>
   <button class="btn-free" id="btnFree">🎮 무료 연습 (GP 없음)</button>
+  <div id="weeklyBoard" style="width:100%"></div>
   <div class="credit">Based on 2048 by Gabriele Cirulli (MIT License)</div>
 </div>
 
@@ -236,6 +237,7 @@ import { doc, getDoc, updateDoc, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { mountWeeklyBoard, submitWeeklyScore } from '/assets/js/weekly-ranking.js';
 
 // 2048 규칙 원작: Gabriele Cirulli (MIT License) — 본 구현은 BestClub용으로 새로 작성
 const SIZE = 4;
@@ -560,6 +562,13 @@ async function triggerGameOver() {
     : gp > 0 ? `${_score}점 → ${gp} GP가 계정에 적립됩니다.` : '10점 이상 달성시 GP를 획득할 수 있습니다!';
   $('overModal').classList.add('open');
   if (!_freeMode && gp > 0) await awardGP(gp);
+  // 주간 토너먼트 점수 접수 (참가비 낸 판만, 서버가 1판 1회 검증)
+  if (_uid && !_freeMode && _score > 0) {
+    submitWeeklyScore(GAME_TYPE, _score).then(r => {
+      _weekly.showMessage(r.improved ? `🏆 주간 랭킹 기록 갱신! (${r.bestScore.toLocaleString()}점)` : '');
+      _weekly.refresh();
+    });
+  }
   if (_uid && !_freeMode) {
     try {
       const ref = doc(db, 'battle_players', _uid);
@@ -682,8 +691,11 @@ function goLobby() {
   loadPlayer().then(() => showScreen('lobby'));
 }
 
+const _weekly = mountWeeklyBoard($('weeklyBoard'), GAME_TYPE, { getUid: () => _uid });
+
 onAuthStateChanged(auth, async user => {
   _uid = user?.uid || null;
+  _weekly.refresh();
   await loadPlayer();
   showScreen('lobby');
 });
