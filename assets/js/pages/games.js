@@ -4,11 +4,14 @@ import { auth, db } from '/assets/js/firebase-init.js';
 import { collection, getDocs, query, where, orderBy, limit }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { weekInfo, fetchTop, fetchLastSettlement, prizeForRank } from '/assets/js/weekly-ranking.js';
 
-const FIELD = { gp: 'gold', monsters: 'monstersKilled', treasures: 'treasuresFound' };
-const LABEL = { gp: 'GP', monsters: 'kills', treasures: 'found' };
+const FIELD = { gp: 'gold' };
+const LABEL = { gp: 'GP', suika: '점', game2048: '점' };
+// 수이카·2048 탭 = 이번 주 토너먼트 랭킹 (weekly_rankings, 일요일 00:00 VN 마감)
+const WEEKLY_TABS = ['suika', 'game2048'];
 const RANK_TTL = 5 * 60 * 1000;
-const cache = { gp: null, monsters: null, treasures: null };
+const cache = { gp: null, suika: null, game2048: null };
 let currentTab = 'gp';
 let myUid = null;
 
@@ -27,9 +30,36 @@ function saveCache(tab, rows) {
   try { localStorage.setItem(`hunterRank_${tab}`, JSON.stringify({ data: rows, ts: Date.now() })); } catch { /* 무시 */ }
 }
 
+async function loadWeeklyRanking(tab) {
+  const list = $('hunterRankList');
+  const note = $('hunterRankNote');
+  list.innerHTML = '<div class="hunter-rank-loading">Loading...</div>';
+  if (note) { note.style.display = 'block'; note.textContent = '이번 주 기록 · 매주 일요일 00:00(베트남 시간) 마감 · TOP10 GP 자동 지급 (1위 5,000만 ~ 10위 500만 GP)'; }
+  try {
+    const rows = (await fetchTop(tab, weekInfo().weekId)).map(e => ({
+      uid: e.uid, val: e.bestScore || 0, displayName: e.displayName || null, photoURL: null, gsLevel: null,
+    }));
+    cache[tab] = rows;
+    if (tab === currentTab) render(rows, tab);
+  } catch {
+    if (tab === currentTab) list.innerHTML = '<div class="hunter-rank-empty">랭킹을 불러오지 못했습니다.</div>';
+  }
+  // 지난주 확정 결과 (마감 즉시 정산되어 표시)
+  try {
+    const last = await fetchLastSettlement(tab);
+    if (tab === currentTab && note && last?.winners?.length) {
+      const top3 = last.winners.slice(0, 3).map(w => `${w.rank}위 ${w.displayName || 'Player'} (${Number(w.bestScore).toLocaleString()}점, ${Number(w.prizeGp).toLocaleString()} GP)`).join(' · ');
+      note.textContent += ` | 지난주(${last.weekId}) 확정: ${top3}`;
+    }
+  } catch { /* 무시 */ }
+}
+
 async function loadRanking(tab) {
   const list = $('hunterRankList');
   if (!list) return;
+  if (WEEKLY_TABS.includes(tab)) return loadWeeklyRanking(tab);
+  const note = $('hunterRankNote');
+  if (note) note.style.display = 'none';
   if (cache[tab]) return render(cache[tab], tab);
   const cached = loadCache(tab);
   if (cached) { cache[tab] = cached; return render(cached, tab); }
@@ -68,10 +98,10 @@ function render(rows, tab) {
     return `<div class="hunter-rank-row${r.uid === myUid ? ' me' : ''}">
       <div class="hunter-rank-num ${medal[i] || ''}">${i + 1}</div>
       <div class="hunter-rank-avatar">${avatar}</div>
-      <div class="hunter-rank-name">Lv.${Number(r.gsLevel) || 1} ${name}</div>
+      <div class="hunter-rank-name">${r.gsLevel ? `Lv.${Number(r.gsLevel) || 1} ` : ''}${name}</div>
       <div>
         <div class="hunter-rank-score">${Number(r.val || 0).toLocaleString()}</div>
-        <div class="hunter-rank-sub">${LABEL[tab]}</div>
+        <div class="hunter-rank-sub">${WEEKLY_TABS.includes(tab) ? `${LABEL[tab]} · 🎁 ${prizeForRank(i + 1).toLocaleString()} GP` : LABEL[tab]}</div>
       </div>
     </div>`;
   }).join('');

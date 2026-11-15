@@ -66,7 +66,7 @@ function injectCss() {
   document.head.appendChild(st);
 }
 
-async function fetchTop(gameType, weekId) {
+export async function fetchTop(gameType, weekId) {
   const q = query(
     collection(db, 'weekly_rankings', `${gameType}_${weekId}`, 'entries'),
     orderBy('bestScore', 'desc'), limit(30));
@@ -77,7 +77,7 @@ async function fetchTop(gameType, weekId) {
     .slice(0, 10);
 }
 
-async function fetchLastSettlement(gameType) {
+export async function fetchLastSettlement(gameType) {
   const last = weekInfo(Date.now() - WEEK_MS).weekId;
   const s = await getDoc(doc(db, 'weekly_settlements', `${gameType}_${last}`));
   return s.exists() ? s.data() : null;
