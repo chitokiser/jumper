@@ -1,7 +1,7 @@
 // /games.html — 게임모음 + 트레져헌터 랭킹
 // 랭킹 로직은 merchants.js 의 트레져헌터 랭킹과 동일 (battle_players, 5분 로컬캐시 공유)
 import { auth, db } from '/assets/js/firebase-init.js';
-import { collection, getDocs, query, where, orderBy, limit }
+import { collection, getDocs, query, where, orderBy, limit, doc, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { weekInfo, fetchTop, fetchLastSettlement, prizeForRank } from '/assets/js/weekly-ranking.js';
@@ -108,6 +108,20 @@ function render(rows, tab) {
   }).join('');
 }
 
+// ── 내 GP 잔액 (본인 battle_players 문서 1개만 구독 → 무료 충전·참가비 차감 즉시 반영) ──
+let _gpUnsub = null;
+function watchMyGp(uid) {
+  if (_gpUnsub) { _gpUnsub(); _gpUnsub = null; }
+  const box = $('myGpBox'), val = $('myGpVal');
+  if (!box || !val) return;
+  if (!uid) { val.textContent = '로그인하면 표시'; return; }
+  val.textContent = '…';
+  _gpUnsub = onSnapshot(doc(db, 'battle_players', uid),
+    snap => { val.textContent = `${Number((snap.data() || {}).gold || 0).toLocaleString()} GP`; },
+    () => { val.textContent = '불러오기 실패'; });
+}
+window.addEventListener('pagehide', () => { if (_gpUnsub) _gpUnsub(); });
+
 function init() {
   const section = $('hunterRankSection');
   if (!section) return;
@@ -122,6 +136,7 @@ function init() {
   loadRanking(currentTab);
   onAuthStateChanged(auth, (user) => {
     myUid = user?.uid || null;
+    watchMyGp(myUid);
     // GP 100 미만 회원: 하루 1회 무료 100 GP 충전 (서버가 잔액·수령 여부 판정)
     if (myUid) claimFreeDailyGp();
     if (cache[currentTab]) render(cache[currentTab], currentTab);

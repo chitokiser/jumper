@@ -31,6 +31,8 @@
     .gh-badge.live { background: rgba(239, 68, 68, .18); border: 1px solid rgba(248, 113, 113, .45); color: #fca5a5; }
     .gh-badge.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 8px #ef4444; }
     .gh-badge.reward { background: rgba(251, 191, 36, .16); border: 1px solid rgba(251, 191, 36, .45); color: #fde68a; }
+    .gh-mygp { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 14px; border-radius: 12px; background: rgba(34, 197, 94, .14); border: 1px solid rgba(74, 222, 128, .45); color: #bbf7d0; font-size: 14px; font-weight: 800; text-decoration: none; }
+    .gh-mygp b { color: #fde047; font-size: 18px; font-weight: 900; }
 
     .gh-section-title { font-size: 1.15rem; font-weight: 800; margin: 28px 0 12px; color: var(--fg, #111827); }
     .gh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
@@ -82,6 +84,7 @@
           <span class="gh-badge live">LIVE GPS RPG &amp; ARCADE</span>
           <span class="gh-badge reward">💰 획득 GP → 포인트 · BM 즉시 전환</span>
         </div>
+        <div class="gh-mygp" id="myGpBox">💰 내 GP <b id="myGpVal">로그인하면 표시</b></div>
       </section>
 
       <!-- 주간 게임 토너먼트 홍보 (수박게임·2048) -->
