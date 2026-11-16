@@ -67,7 +67,9 @@ function injectCss() {
 .gsp-badge.coupon{background:#e11d48}
 .gsp-t{font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gsp-s{font-size:11px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gsp-arr{color:#9ca3af;font-size:14px;flex-shrink:0}`;
+.gsp-arr{color:#9ca3af;font-size:14px;flex-shrink:0}
+/* 플레이 화면: 게임 요소 아래 남는 빈 공간에만 띄움 (공간이 부족하면 숨김) */
+.gsp-play{position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:360px;z-index:50;box-sizing:border-box}`;
   document.head.appendChild(st);
 }
 
@@ -85,6 +87,21 @@ function cardHtml(r) {
   </a>`;
 }
 
+const PLAY_NEED_PX = 84; // 배너(약 66px) + 여백
+
+/** 플레이 화면(#gameScreen)에서 마지막 게임 요소 아래 ~ 하단 메뉴 위 빈 공간을 계산 */
+function freeSpace(screen, bar) {
+  const barTop = bar && bar.offsetParent !== null ? bar.getBoundingClientRect().top : window.innerHeight;
+  let bottom = 0;
+  for (const el of screen.children) {
+    if (el === bar || el.classList.contains('gsp-play')) continue;
+    const st = getComputedStyle(el);
+    if (st.display === 'none' || st.position === 'fixed' || st.position === 'absolute') continue;
+    bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+  }
+  return { top: bottom, barTop, space: barTop - bottom };
+}
+
 function mount() {
   const lobby = document.getElementById('lobbyScreen');
   if (!lobby || lobby.querySelector('.gsp-wrap')) return;
@@ -96,20 +113,48 @@ function mount() {
   lobby.appendChild(wrap);
   const slot = wrap.querySelector('.gsp-slot');
 
+  // 플레이 화면 하단 빈 공간용 배너
+  const screen = document.getElementById('gameScreen');
+  const bar = screen?.querySelector('.arcade-bar') || null;
+  let play = null;
+  if (screen) {
+    play = document.createElement('div');
+    play.className = 'gsp-play';
+    play.hidden = true;
+    screen.appendChild(play);
+  }
+  const placePlay = () => {
+    if (!play) return;
+    if (!rows.length || screen.classList.contains('hidden')) { play.hidden = true; return; }
+    const f = freeSpace(screen, bar);
+    if (f.space < PLAY_NEED_PX) { play.hidden = true; return; }
+    play.hidden = false;
+    // 빈 공간의 세로 가운데에 배치
+    const h = play.offsetHeight || 66;
+    play.style.top = Math.round(f.top + (f.space - h) / 2) + 'px';
+  };
+
   let rows = [], idx = 0, timer = null;
-  const show = () => { if (rows.length) slot.innerHTML = cardHtml(rows[idx % rows.length]); };
+  const show = () => {
+    if (!rows.length) return;
+    const html = cardHtml(rows[idx % rows.length]);
+    slot.innerHTML = html;
+    if (play) { play.innerHTML = html; placePlay(); }
+  };
   const render = list => {
     if (!list?.length) return;
     rows = list; idx = 0; wrap.hidden = false; show();
     clearInterval(timer);
-    if (rows.length > 1) timer = setInterval(() => {
-      if (lobby.classList.contains('hidden')) return; // 플레이 중엔 멈춤
-      idx++; show();
-    }, 5000);
+    if (rows.length > 1) timer = setInterval(() => { idx++; show(); }, 6000);
   };
   render(readCache());
   fetchRows().then(render);
-  window.addEventListener('pagehide', () => clearInterval(timer));
+
+  // 화면 전환·크기 변경 시 위치 재계산 (가벼운 1초 주기 체크)
+  const placeTimer = setInterval(placePlay, 1000);
+  window.addEventListener('resize', placePlay);
+  if (screen) new MutationObserver(placePlay).observe(screen, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('pagehide', () => { clearInterval(timer); clearInterval(placeTimer); });
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
