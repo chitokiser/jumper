@@ -320,9 +320,22 @@ service cloud.firestore {
 
     match /transactions/{docId} {
       allow get, list: if isAdmin()
-        || (signedIn() && resource.data.uid == request.auth.uid);
+        || isStaff()
+        || (signedIn() && (resource.data.uid == request.auth.uid || resource.data.buyerUid == request.auth.uid));
       allow create: if signedIn();
       allow update, delete: if isAdmin();
+    }
+
+    match /bt_transactions/{docId} {
+      allow get, list: if isAdmin() || isStaff() || signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /bt_rewards/{docId} {
+      allow get, list: if isAdmin() || isStaff() || signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
     }
 
     match /kca_webzine/{docId} {
@@ -351,6 +364,10 @@ service cloud.firestore {
               || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
                   && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.merchantId == merchantId)
             ));
+
+      match /{subcol}/{docId} {
+        allow read, write: if isAdmin() || isStaff() || isAuthenticated();
+      }
     }
 
     match /places/{placeId} {
@@ -488,12 +505,30 @@ service cloud.firestore {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
+    // 게임 레벨(gsLevel·level)은 회원이 마음대로 바꿀 수 없다 (Point↔GP 전환 배수 조작 방지).
+    // 허용: 그대로 / 올리되 누적 경험치로 도달한 레벨((L)²×10,000 ≤ gsExp) 또는 기존 최고 레벨 이하까지 / 재가입 초기화(Lv.1, 경험치 0)
+    function bpLevelFieldOk(field) {
+      let nv = request.resource.data.get(field, 1);
+      let ov = resource.data.get(field, 1);
+      let og = resource.data.get('gsLevel', 1);
+      let ol = resource.data.get('level', 1);
+      let oldMax = og > ol ? og : ol;
+      let exp = request.resource.data.get('gsExp', 0);
+      return nv == ov
+        || (nv is number && nv > ov && (nv <= oldMax || nv * nv * 10000 <= exp))
+        || (nv == 1 && exp == 0);
+    }
+
     match /battle_players/{uid} {
       allow get, list: if true;
       allow create: if signedIn() && request.auth.uid == uid
-        && !request.resource.data.keys().hasAny(['gold']);
+        && !request.resource.data.keys().hasAny(['gold'])
+        && request.resource.data.get('gsLevel', 1) <= 1
+        && request.resource.data.get('level', 1) <= 1;
       allow update: if signedIn() && request.auth.uid == uid
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['gold']);
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['gold'])
+        && bpLevelFieldOk('gsLevel')
+        && bpLevelFieldOk('level');
       allow delete: if isAdmin();
     }
 

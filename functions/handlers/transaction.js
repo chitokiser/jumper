@@ -685,6 +685,10 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
     const maxBtRequested = Math.floor(finalVnd / btPerVnd);
     const actualBt = Math.min(maxBtRequested, Math.max(0, merchBt));
 
+    const buyerDisplayName = userData.name || userData.displayName || userData.kakaoId || (userData.email ? userData.email.split('@')[0] : '고객');
+    const buyerEmailStr = userData.email || '';
+    const buyerPhoneStr = userData.phone || userData.phoneNumber || '';
+
     const txBase = {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       currency: 'VND',
@@ -695,9 +699,35 @@ async function payMerchantFirebase(uid, merchantId, amountVnd, { currency = 'VND
       issuedBt: actualBt,
       requestedBt: maxBtRequested,
       btPerVnd,
-      txHash
+      txHash,
+      buyerUid: uid,
+      buyerName: buyerDisplayName,
+      buyerEmail: buyerEmailStr,
+      buyerPhone: buyerPhoneStr
     };
     tx.set(checkTxRef, { ...txBase, uid, type: 'pay_merchant' });
+
+    // 가맹점 ERP 재무 장부(financeRecords)에 QR 결제 매출 자동 동기화 기록
+    const erpFinanceRef = db.collection('merchants').doc(String(merchantId)).collection('financeRecords').doc(`QR_${txHash}`);
+    tx.set(erpFinanceRef, {
+      storeId: String(merchantId),
+      type: 'INCOME',
+      category: '📱 QR 결제 매출',
+      amount: finalVnd,
+      netAmountVnd: netVnd,
+      feeAmountVnd: feeVnd,
+      date: new Date().toISOString().split('T')[0],
+      description: `[QR결제] ${merchant.name || '가맹점'} 결제${actualBt > 0 ? ` (BT ${actualBt}개 적립)` : ''}`,
+      registrantName: 'QR 자동정산 시스템',
+      spenderName: `${buyerDisplayName}${buyerEmailStr ? ` (${buyerEmailStr})` : ''}`,
+      buyerUid: uid,
+      buyerName: buyerDisplayName,
+      buyerEmail: buyerEmailStr,
+      buyerPhone: buyerPhoneStr,
+      txHash,
+      isAutoQrRevenue: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
     // 가맹점 BT 원자적 차감
     if (actualBt > 0) {
@@ -1383,13 +1413,27 @@ async function receiveBtQrFirebase(uid, data) {
     });
 
     // 6. Update Reward Session & Transactions
-    tx.update(rewardRef, { status: 'claimed', claimedBy: uid, claimedAt: admin.firestore.FieldValue.serverTimestamp() });
+    const uData = userSnap.data() || {};
+    const buyerDisplayName = uData.name || uData.displayName || uData.kakaoId || (uData.email ? uData.email.split('@')[0] : '고객');
+    const buyerEmailStr = uData.email || '';
+    const buyerPhoneStr = uData.phone || uData.phoneNumber || '';
+
+    tx.update(rewardRef, { status: 'claimed', claimedBy: uid, claimedByName: buyerDisplayName, claimedByEmail: buyerEmailStr, claimedAt: admin.firestore.FieldValue.serverTimestamp() });
 
     const merchName = merchData.name || rwData.merchantName || '';
     tx.set(checkTxRef, {
-      uid, type: 'receive_bt', merchantId: Number(rwData.merchantId) || String(rwData.merchantId), merchantName: merchName,
-      bt: numBt, amountVnd: rwData.amountVnd || 0,
-      rewardId, createdAt: admin.firestore.FieldValue.serverTimestamp()
+      uid,
+      buyerUid: uid,
+      buyerName: buyerDisplayName,
+      buyerEmail: buyerEmailStr,
+      buyerPhone: buyerPhoneStr,
+      type: 'receive_bt',
+      merchantId: Number(rwData.merchantId) || String(rwData.merchantId),
+      merchantName: merchName,
+      bt: numBt,
+      amountVnd: rwData.amountVnd || 0,
+      rewardId,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
     return {
@@ -1630,6 +1674,162 @@ async function adminChargeBt(adminUid, merchantId, amount) {
 };
 
 
+async function payServiceJobEscrow(uid, merchantId, serviceJobId, amountVnd) {
+  const db = admin.firestore();
+  const finalVnd = Math.round(Number(amountVnd));
+  if (!finalVnd || finalVnd < 10000) throw new Error('최소 결제 금액은 10000 BM (VND)입니다.');
+
+  return db.runTransaction(async (tx) => {
+    const userRef = db.collection('users').doc(uid);
+    const merchantRef = db.collection('merchants').doc(String(merchantId));
+    const jobRef = db.collection('service_jobs').doc(serviceJobId);
+    const jackpotRef = db.collection('jackpot_config').doc('current');
+
+    const [userSnap, merchantSnap, jobSnap, jackpotSnap] = await Promise.all([
+      tx.get(userRef), tx.get(merchantRef), tx.get(jobRef), tx.get(jackpotRef),
+    ]);
+
+    if (!userSnap.exists) throw new Error('유저 없음');
+    const userData = userSnap.data();
+    const userBal = Number(userData.pointBalanceVnd ?? 0);
+    if (userBal < finalVnd) throw new Error(`BM 잔액 부족 (보유: ${userBal.toLocaleString()}, 필요: ${finalVnd.toLocaleString()})`);
+
+    if (!merchantSnap.exists || merchantSnap.data().active === false)
+      throw new Error('가맹점 없음 또는 비활성');
+
+    if (!jobSnap.exists) throw new Error('서비스 잡 없음');
+    const job = jobSnap.data();
+    if (job.status !== 'accepted') throw new Error(`잡 상태가 accepted가 아닙니다 (현재: ${job.status})`);
+
+    const merchant = merchantSnap.data();
+    const ownerUid = merchant.ownerUid || merchant.ownerId || null;
+    if (!ownerUid) throw new Error('가맹점 ownerUid 미설정');
+
+    const feeBps = Number(merchant.feeBps) > 0 ? Number(merchant.feeBps) : 1000;
+    const feeVnd = Math.round(finalVnd * feeBps / 10000);
+    const netVnd = finalVnd - feeVnd;
+
+    // 멘토 체인 조회
+    const mentorUid = userData.mentorUid || null;
+    let mentorSnap = null, grandMentorSnap = null;
+    let mentorRef = null, grandMentorRef = null;
+
+    if (mentorUid && mentorUid !== uid && mentorUid !== ownerUid) {
+      mentorRef = db.collection('users').doc(mentorUid);
+      mentorSnap = await tx.get(mentorRef);
+      if (mentorSnap.exists) {
+        const gmUid = mentorSnap.data().mentorUid || null;
+        if (gmUid && gmUid !== uid && gmUid !== ownerUid && gmUid !== mentorUid) {
+          grandMentorRef = db.collection('users').doc(gmUid);
+          grandMentorSnap = await tx.get(grandMentorRef);
+        }
+      }
+    }
+
+    // 수수료 분배
+    let mentorBonusVnd = 0, grandMentorBonusVnd = 0;
+    let jackpotBonusVnd = Math.round(feeVnd * 0.30);
+    let platformBonusVnd = Math.round(feeVnd * 0.40);
+    let remaining = feeVnd - jackpotBonusVnd - platformBonusVnd;
+
+    if (mentorSnap && mentorSnap.exists) {
+      mentorBonusVnd = Math.round(feeVnd * 0.20);
+      remaining -= mentorBonusVnd;
+    } else {
+      platformBonusVnd += Math.round(feeVnd * 0.20);
+      remaining -= Math.round(feeVnd * 0.20);
+    }
+    if (grandMentorSnap && grandMentorSnap.exists) {
+      grandMentorBonusVnd = Math.round(feeVnd * 0.10);
+      remaining -= grandMentorBonusVnd;
+    } else {
+      platformBonusVnd += Math.round(feeVnd * 0.10);
+      remaining -= Math.round(feeVnd * 0.10);
+    }
+    if (remaining !== 0) platformBonusVnd += remaining;
+
+    const currentJackpot = jackpotSnap.exists ? Number(jackpotSnap.data().jackpotAccVnd || 0) : 0;
+
+    // 구매자 BM 차감
+    tx.update(userRef, { pointBalanceVnd: userBal - finalVnd });
+
+    // 에스크로 기록 (가맹점주 즉시 수취 없음)
+    tx.update(jobRef, {
+      status: 'paid',
+      buyerUid: uid,
+      merchantId: String(merchantId),
+      paidAt: admin.firestore.FieldValue.serverTimestamp(),
+      escrowVnd: netVnd,
+      escrowExpiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
+      feeVnd,
+      feeBps,
+    });
+
+    // 잭팟 풀 증가
+    if (jackpotSnap.exists) {
+      tx.update(jackpotRef, { jackpotAccVnd: currentJackpot + jackpotBonusVnd });
+    } else {
+      tx.set(jackpotRef, { jackpotAccVnd: jackpotBonusVnd });
+    }
+
+    // 멘토 보너스
+    if (mentorRef && mentorBonusVnd > 0) {
+      tx.update(mentorRef, { pointBalanceVnd: admin.firestore.FieldValue.increment(mentorBonusVnd) });
+    }
+    if (grandMentorRef && grandMentorBonusVnd > 0) {
+      tx.update(grandMentorRef, { pointBalanceVnd: admin.firestore.FieldValue.increment(grandMentorBonusVnd) });
+    }
+
+    // 플랫폼 수수료 기록
+    tx.set(db.collection('platform_revenue').doc(), {
+      type: 'service_job_escrow_fee',
+      serviceJobId,
+      merchantId: String(merchantId),
+      buyerUid: uid,
+      feeVnd,
+      platformVnd: platformBonusVnd,
+      mentorVnd: mentorBonusVnd,
+      grandMentorVnd: grandMentorBonusVnd,
+      jackpotVnd: jackpotBonusVnd,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, escrowVnd: netVnd };
+  });
+}
+
+async function releaseEscrow(uid, serviceJobId) {
+  const db = admin.firestore();
+  const jobRef = db.collection('service_jobs').doc(serviceJobId);
+
+  return db.runTransaction(async (tx) => {
+    const jobSnap = await tx.get(jobRef);
+    if (!jobSnap.exists) throw new Error('서비스 잡 없음');
+    const job = jobSnap.data();
+
+    if (job.buyerUid !== uid) throw new Error('본인 주문이 아닙니다');
+    if (job.status !== 'paid' && job.status !== 'done_claimed')
+      throw new Error(`에스크로 해제 불가 상태입니다 (현재: ${job.status})`);
+
+    const merchantSnap = await db.collection('merchants').doc(String(job.merchantId)).get();
+    const ownerUid = merchantSnap.data()?.ownerUid || merchantSnap.data()?.ownerId;
+    if (!ownerUid) throw new Error('가맹점주 ownerUid 없음');
+
+    const ownerRef = db.collection('users').doc(ownerUid);
+    tx.update(ownerRef, {
+      pointBalanceVnd: admin.firestore.FieldValue.increment(job.escrowVnd),
+    });
+    tx.update(jobRef, {
+      status: 'completed',
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      warrantyUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      escrowReleasedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, releasedVnd: job.escrowVnd };
+  });
+}
+
 module.exports = {
   adminChargeBt,
   createBtRewardSession,
@@ -1653,4 +1853,6 @@ module.exports = {
   adminSetUserLevel,
   transferHexToPersonal,
   redeemPoints,
+  payServiceJobEscrow,
+  releaseEscrow,
 };
