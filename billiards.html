@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3쿠션 당구 | BestClub — GP 보상 · 주간 토너먼트</title>
-  <meta name="description" content="3D 물리 3쿠션 당구. 기회 10번, 3쿠션 성공마다 점수와 기회 +1. 점수로 GP를 받고 주간 토너먼트에 도전하세요.">
+  <title>베스트당구장 | BestClub — 3쿠션·사구·포켓볼·스누커 GP 보상 · 주간 토너먼트</title>
+  <meta name="description" content="베스트당구장 — 3D 물리 당구 3쿠션, 사구, 리브레, 8볼, 9볼, 스누커, 15볼. 기회 5번, 점수로 GP를 받고 주간 토너먼트에 도전하세요.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://bestclubvn.netlify.app/billiards.html">
   <link rel="icon" href="/assets/images/jump/favicon.png">
@@ -54,7 +54,33 @@
     }
     .bl-note { margin: 8px 0 0; font-size: 12px; color: var(--muted, #6b7280); line-height: 1.6; min-height: 1em; }
     .bl-note.err { color: #dc2626; font-weight: 700; }
-    .bl-resume { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #fffbeb; border: 1px solid #f59e0b; font-size: 13px; color: #92400e; }
+    .bl-select { margin-top: 14px; }
+    .bl-select-t { margin: 14px 0 10px; font-size: 17px; font-weight: 900; color: var(--fg, #111827); }
+    .bl-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+    .bl-pick-h { grid-column: 1 / -1; margin: 6px 0 -4px; font-size: 13px; font-weight: 800; color: #64748b; letter-spacing: .02em; }
+    @media (max-width: 520px) { .bl-pick { grid-template-columns: 1fr; } }
+    .bl-card {
+      display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: pointer; font: inherit;
+      padding: 16px; border-radius: 14px; border: 2px solid var(--border, #e5e7eb); background: var(--surface, #fff); color: var(--fg, #111827);
+      transition: transform .15s, border-color .15s, box-shadow .15s;
+    }
+    .bl-card:hover:not(:disabled) { transform: translateY(-2px); border-color: #059669; box-shadow: 0 8px 20px rgba(15, 23, 42, .08); }
+    .bl-card:disabled { opacity: .45; cursor: not-allowed; }
+    .bl-card.locked { border-color: #f59e0b; opacity: 1; }
+    .bl-card .ic { font-size: 26px; line-height: 1; }
+    .bl-card b { font-size: 19px; font-weight: 900; }
+    .bl-card .d { font-size: 13px; color: var(--muted, #4b5563); line-height: 1.5; }
+    .bl-card .m { font-size: 12px; font-weight: 800; color: #047857; }
+    .bl-lobby-hd { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+    .bl-lobby-hd h2 { margin: 0; font-size: 20px; font-weight: 900; color: var(--fg, #111827); }
+    .bl-back2 { font: inherit; font-size: 13px; font-weight: 800; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--border, #d1d5db); background: transparent; color: var(--fg, #374151); cursor: pointer; }
+    .bl-sublink { flex: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid var(--border, #d1d5db); font-size: 13px; font-weight: 800; color: var(--fg, #374151); text-decoration: none; }
+    .bl-lock { margin: 10px 0 0; font-size: 12px; color: #92400e; background: #fffbeb; border-radius: 8px; padding: 7px 10px; }
+    .bl-guide h3 { margin: 14px 0 6px; font-size: 14px; font-weight: 900; color: var(--fg, #111827); }
+    .bl-guide h3:first-child { margin-top: 0; }
+    .bl-guide ol, .bl-guide ul { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.7; color: var(--fg, #374151); }
+    .bl-guide .out li { color: #b91c1c; }
+    .bl-resume { margin-top: 4px; padding: 10px 12px; border-radius: 10px; background: #fffbeb; border: 1px solid #f59e0b; font-size: 13px; color: #92400e; }
     .bl-rules { width: 100%; border-collapse: collapse; font-size: 13px; }
     .bl-rules td { padding: 7px 4px; border-bottom: 1px solid var(--border, #f3f4f6); color: var(--fg, #374151); }
     .bl-rules td:last-child { text-align: right; font-weight: 900; color: #b45309; white-space: nowrap; }
@@ -124,50 +150,90 @@
   <main class="page">
     <div class="bl-wrap">
       <section class="bl-hero">
-        <h1>🎱 3쿠션 당구</h1>
-        <p>기회 10번으로 시작해요. 3쿠션에 성공하면 점수와 기회 +1, 실패하면 기회 -1. 기회가 0이 되면 점수만큼 GP를 받고 주간 토너먼트에 자동 등록됩니다.</p>
+        <h1>🎱 베스트당구장</h1>
+        <p>캐롬(3쿠션·사구·리브레)과 포켓(9볼·8볼·스누커·15볼) 7가지 게임 중 하나를 골라 기회 5번으로 시작해요. 판이 끝나면 점수만큼 GP를 받고, 점수는 주간 토너먼트에 자동 등록됩니다.</p>
         <div class="bl-top">
           <span class="bl-gp">💰 내 GP <b id="myGp">로그인하면 표시</b></span>
           <a class="bl-back" href="/games.html">← 게임모음</a>
         </div>
       </section>
 
-      <!-- 로비 -->
-      <section class="bl-lobby" id="lobby">
-        <div class="bl-panel">
-          <h2>참가비 선택</h2>
-          <div class="bl-tiers" id="tiers">
-            <button type="button" class="bl-tier on" data-fee="50"><b>50 GP</b><span>보상 ×1</span></button>
-            <button type="button" class="bl-tier" data-fee="100"><b>100 GP</b><span>보상 ×2</span></button>
-            <button type="button" class="bl-tier" data-fee="200"><b>200 GP</b><span>보상 ×4</span></button>
-          </div>
-          <button type="button" class="bl-start" id="btnStart">▶ 게임 시작 (50 GP 차감)</button>
+      <!-- 1단계: 게임 고르기 -->
+      <section id="selectView" class="bl-select">
+        <div class="bl-resume" id="resumeBox" hidden>
+          🔒 진행 중인 <b id="rsMode">3쿠션</b> 게임이 있어요 · 기회 <b id="rsChances">0</b> · 점수 <b id="rsScore">0</b><br>
+          <span style="font-size:12px">이 판을 끝내거나 정산하기 전에는 다른 게임을 시작할 수 없어요.</span>
           <div class="bl-sub">
-            <button type="button" id="btnFree">🎮 무료 연습</button>
-            <a id="openLink" href="/billiards-game/index.html?ruletype=threecushion&amp;lod=4" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid var(--border,#d1d5db);font-size:13px;font-weight:800;color:var(--fg,#374151);text-decoration:none">↗ 새 창에서 열기</a>
+            <button type="button" id="btnResume">이어하기</button>
+            <button type="button" id="btnSettle">지금 종료하고 정산</button>
           </div>
-          <div class="bl-resume" id="resumeBox" hidden>
-            진행 중인 게임이 있어요 · 기회 <b id="rsChances">0</b> · 점수 <b id="rsScore">0</b>
-            <div class="bl-sub">
-              <button type="button" id="btnResume">이어하기</button>
-              <button type="button" id="btnSettle">지금 종료하고 정산</button>
-            </div>
-          </div>
-          <p class="bl-note" id="note"></p>
         </div>
+        <h2 class="bl-select-t">어떤 게임을 할까요?</h2>
+        <div class="bl-pick" id="modes">
+          <div class="bl-pick-h">캐롬 (포켓 없는 대대)</div>
+          <button type="button" class="bl-card" data-mode="threecushion">
+            <span class="ic">⚪🟡🔴</span><b>3쿠션</b>
+            <span class="d">두 공을 맞히기 전에 쿠션 3번 · 한 샷 300점부터</span>
+            <span class="m">난이도 ★★★★ · 성공하면 기회 +1</span>
+          </button>
+          <button type="button" class="bl-card" data-mode="sagu">
+            <span class="ic">⚪🟡🔴🔴</span><b>사구 (4구)</b>
+            <span class="d">빨간 공 2개를 모두 맞히기 · 상대 수구는 맞히면 파울</span>
+            <span class="m">난이도 ★★ · 한 샷 80점 · 3,000점 완주</span>
+          </button>
+          <button type="button" class="bl-card" data-mode="libre">
+            <span class="ic">⚪🟡🔴</span><b>리브레 (3구)</b>
+            <span class="d">쿠션 상관없이 두 공을 모두 맞히기 · 입문용</span>
+            <span class="m">난이도 ★ · 한 샷 50점 · 2,500점 완주</span>
+          </button>
+          <div class="bl-pick-h">포켓</div>
+          <button type="button" class="bl-card" data-mode="nineball">
+            <span class="ic">9️⃣</span><b>9볼</b>
+            <span class="d">가장 낮은 번호부터 맞혀 9번을 넣으면 클리어</span>
+            <span class="m">난이도 ★★★ · 짧고 빠른 한 판</span>
+          </button>
+          <button type="button" class="bl-card" data-mode="eightball">
+            <span class="ic">8️⃣</span><b>8볼</b>
+            <span class="d">솔리드/스트라이프 7개를 넣고 마지막에 8번</span>
+            <span class="m">난이도 ★★★ · 공이 많아 점수 기회도 많음</span>
+          </button>
+          <button type="button" class="bl-card" data-mode="snooker">
+            <span class="ic">🔴⚫</span><b>스누커</b>
+            <span class="d">큰 테이블 · 빨강 → 컬러 번갈아 넣기 (빨강 1 … 검정 7)</span>
+            <span class="m">난이도 ★★★★★ · 공 점수 ×20</span>
+          </button>
+          <button type="button" class="bl-card" data-mode="reveal">
+            <span class="ic">🎱</span><b>15볼 클리어</b>
+            <span class="d">순서·파울 없이 15개 공을 모두 넣기 (리빌)</span>
+            <span class="m">난이도 ★ · 공 하나 40점</span>
+          </button>
+        </div>
+        <p class="bl-note" id="selNote"></p>
+      </section>
 
-        <div class="bl-panel">
-          <h2>점수표</h2>
-          <table class="bl-rules">
-            <tr><td>3쿠션 성공 (공 먼저 → 쿠션 3번 → 두 번째 공)</td><td>300점</td></tr>
-            <tr><td>4쿠션 성공</td><td>400점</td></tr>
-            <tr><td>빈쿠션 성공 (쿠션 먼저 → 두 공, 쿠션 3번 이상)</td><td>600점</td></tr>
-            <tr><td>쿠션이 하나 더 늘 때마다</td><td>+100점</td></tr>
-            <tr><td>성공 / 실패</td><td>기회 +1 / -1</td></tr>
-          </table>
-          <p class="bl-rules-foot">GP 보상: <b>20점당 1 GP × 참가비 배율</b> (50 GP ×1 · 100 GP ×2 · 200 GP ×4)<br>
-            주간 토너먼트는 배율과 상관없이 한 판 점수로 순위를 매겨요.<br>
-            조작: 드래그로 조준, 아래 파워 바로 세기, 왼쪽 아래 공을 눌러 당점, Hit 버튼으로 샷.</p>
+      <!-- 2단계: 고른 게임의 안내 + 참가 -->
+      <section id="lobby" hidden>
+        <div class="bl-lobby-hd">
+          <button type="button" class="bl-back2" id="btnBack">← 다른 게임 고르기</button>
+          <h2 id="lbTitle">3쿠션</h2>
+        </div>
+        <div class="bl-lobby">
+          <div class="bl-panel">
+            <h2>참가비 선택</h2>
+            <div class="bl-tiers" id="tiers">
+              <button type="button" class="bl-tier on" data-fee="50"><b>50 GP</b><span>보상 ×1</span></button>
+              <button type="button" class="bl-tier" data-fee="100"><b>100 GP</b><span>보상 ×2</span></button>
+              <button type="button" class="bl-tier" data-fee="200"><b>200 GP</b><span>보상 ×4</span></button>
+            </div>
+            <button type="button" class="bl-start" id="btnStart">▶ 게임 시작 (50 GP 차감)</button>
+            <div class="bl-sub">
+              <button type="button" id="btnFree">🎮 무료 연습</button>
+              <a id="openLink" class="bl-sublink" href="/billiards-game/index.html?ruletype=threecushion&amp;lod=4&amp;bestclub=1" target="_blank" rel="noopener">↗ 새 창에서 열기</a>
+            </div>
+            <p class="bl-lock">🔒 게임을 시작하면 이 판이 끝날 때까지 다른 게임으로 바꿀 수 없어요.</p>
+            <p class="bl-note" id="note"></p>
+          </div>
+          <div class="bl-panel bl-guide" id="guide"></div>
         </div>
       </section>
 
@@ -175,16 +241,17 @@
       <section class="bl-game" id="game" hidden>
         <div class="bl-hud">
           <span class="bl-mode" id="modeBadge">50 GP ×1</span>
-          <div><span class="k">기회</span><span class="v chances" id="hudChances">10</span></div>
+          <div><span class="k">기회</span><span class="v chances" id="hudChances">5</span></div>
           <div><span class="k">점수</span><span class="v score" id="hudScore">0</span></div>
           <div><span class="k">성공 / 샷</span><span class="v" id="hudShots">0 / 0</span></div>
           <div><span class="k">예상 GP</span><span class="v" id="hudGp">0</span></div>
           <span class="sp"></span>
+          <button type="button" id="btnSound" title="효과음 켜기/끄기">🔊</button>
           <button type="button" id="btnFull">⛶ 전체화면</button>
           <button type="button" id="btnQuit">종료</button>
         </div>
         <div class="bl-stage" id="stage">
-          <iframe id="frame" title="3쿠션 당구" allow="fullscreen; autoplay" allowfullscreen></iframe>
+          <iframe id="frame" title="베스트당구장" allow="fullscreen; autoplay" allowfullscreen></iframe>
           <div class="bl-toast" id="toast"></div>
           <div class="bl-over" id="over" hidden>
             <div class="bl-over-card">
@@ -222,7 +289,17 @@
     const $ = (id) => document.getElementById(id);
     const call = (name, data) => httpsCallable(functions, name)(data).then(r => r.data);
     const MULT = { 50: 1, 100: 2, 200: 4 };
-    const GP_UNIT = 20;
+    const GP_UNIT = 10;
+    const MODE_LABEL = { threecushion: '3쿠션', sagu: '사구(4구)', libre: '리브레(3구)', nineball: '9볼', eightball: '8볼', snooker: '스누커', reveal: '15볼 클리어' };
+    const MODE_ICON = { threecushion: '⚪', sagu: '🔴', libre: '🟡', nineball: '9️⃣', eightball: '8️⃣', snooker: '⚫', reveal: '🎱' };
+    // 서버(functions/handlers/billiards.js)의 MODES 와 동일
+    const KIND = { threecushion: 'carom3', sagu: 'simple', libre: 'simple', nineball: 'pool', eightball: 'pool', snooker: 'snooker', reveal: 'reveal' };
+    const SIMPLE = { sagu: { points: 80, cap: 3000 }, libre: { points: 50, cap: 2500 } };
+    const SNOOKER = { unit: 20, clear: 700, maxEngine: 147 };
+    const REVEAL = { ball: 40, clear: 400, balls: 15 };
+    const isCarom = (g) => KIND[g] === 'carom3' || KIND[g] === 'simple';
+    const FOUL_OUT_GAME = (g) => KIND[g] === 'pool' || KIND[g] === 'snooker';
+    let gm = 'threecushion';  // 선택한 게임 종류
     const MIN_GAP_MS = 1700; // 서버 최소 샷 간격(1.5초)보다 살짝 길게
 
     let uid = null, gold = null, fee = 50, userName = '회전마법사';
@@ -232,26 +309,220 @@
 
     const board = mountWeeklyBoard($('weeklyBoard'), 'billiards', { getUid: () => uid });
 
-    // ── 점수 계산 (무료 연습 / 화면 미리보기용 — 유료 판은 서버 값이 기준) ──
-    const shotPoints = (s) => !s.success ? 0 : (s.bank ? 600 : 300) + Math.max(0, s.cushions - 3) * 100;
-    const shotLabel = (s) => {
-      if (!s.success) return s.ballHits === 2 ? `실패 (쿠션 ${s.cushions}번) · 기회 -1` : '실패 · 기회 -1';
-      return `${s.bank ? '빈쿠션 ' : ''}${s.cushions}쿠션 성공! +${shotPoints(s)}점 · 기회 +1`;
+    // ── 점수 계산 (무료 연습 / 화면 미리보기용 — 유료 판은 서버 값이 기준, functions/handlers/billiards.js 와 동일) ──
+    const caromPoints = (s) => !s.success ? 0 : (s.bank ? 600 : 300) + Math.max(0, s.cushions - 3) * 100;
+    const POOL = { ball: 60, nine: 600, eight: 700, chance: 100 };
+    function judgeLocal(game, st, d) {
+      if (game === 'threecushion') {
+        const success = !!d.success && d.cushions >= 3;
+        return { success, points: caromPoints({ ...d, success }), delta: success ? 1 : -1, cleared: false, endNow: false };
+      }
+      if (KIND[game] === 'simple') {
+        const success = !!d.success && !d.foul;
+        let points = success ? SIMPLE[game].points : 0, capped = false;
+        if (st.score + points >= SIMPLE[game].cap) { points = Math.max(0, SIMPLE[game].cap - st.score); capped = true; }
+        return { success, points, delta: success ? 0 : -1, cleared: capped, capped, endNow: capped, foul: d.foul };
+      }
+      if (KIND[game] === 'snooker') {
+        const gain = d.foul ? 0 : Math.max(0, Math.min(Number(d.gain) || 0, 20, SNOOKER.maxEngine - (st.engineTotal || 0)));
+        st.engineTotal = (st.engineTotal || 0) + gain;
+        const success = gain > 0, cleared = success && !!d.cleared, delta = success ? 0 : -1;
+        let points = gain * SNOOKER.unit;
+        if (cleared) points += SNOOKER.clear + Math.max(0, st.chances + delta) * POOL.chance;
+        return { success, points, delta, cleared, endNow: cleared || !!d.engineEnd, foul: d.foul };
+      }
+      if (KIND[game] === 'reveal') {
+        const have = new Set(st.potted || []);
+        const fresh = [...new Set(d.pots || [])].filter(n => !have.has(n));
+        st.potted = [...(st.potted || []), ...fresh];
+        const success = fresh.length > 0, cleared = st.potted.length >= REVEAL.balls, delta = success ? 0 : -1;
+        let points = fresh.length * REVEAL.ball;
+        if (cleared) points += REVEAL.clear + Math.max(0, st.chances + delta) * POOL.chance;
+        return { success, points, delta, cleared, endNow: cleared };
+      }
+      const already = new Set(st.potted || []);
+      const fresh = [...new Set(d.pots || [])].filter(n => !already.has(n));
+      if (!st.group && (d.group === 1 || d.group === 2)) st.group = d.group;
+      if (d.foul) {
+        st.potted = [...(st.potted || []), ...fresh.filter(n => !(n === 9 && game === 'nineball') && !(n === 8 && game === 'eightball'))];
+        return { success: false, points: 0, delta: -1, cleared: false, endNow: !!d.engineEnd, foul: d.foul };
+      }
+      let pts = 0, mine = 0;
+      const key = game === 'nineball' ? 9 : 8;
+      for (const n of fresh) {
+        if (n === key) continue;
+        const ok = game === 'nineball' ? n <= 8 : (!st.group || (st.group === 1 && n <= 7) || (st.group === 2 && n >= 9));
+        if (ok) { pts += POOL.ball; mine++; }
+      }
+      const cleared = fresh.includes(key) && !!d.cleared;
+      if (cleared) mine++;
+      st.potted = [...(st.potted || []), ...fresh.filter(n => n !== key || cleared)];
+      const delta = mine > 0 ? 0 : -1;
+      if (cleared) pts += (game === 'nineball' ? POOL.nine : POOL.eight) + Math.max(0, st.chances + delta) * POOL.chance;
+      return { success: mine > 0, points: pts, delta, cleared, endNow: cleared || !!d.engineEnd };
+    }
+    const FOUL_KO = {
+      'Cue ball potted': '수구 빠짐', 'No ball hit': '공을 못 맞힘', 'Wrong ball hit first': '다른 공을 먼저 맞힘',
+      'Wrong group hit first': '상대 그룹 공을 먼저 맞힘', 'Must hit 8-ball first': '8번 공을 먼저 맞혀야 함',
+      'No cushion after contact': '맞힌 뒤 쿠션 없음', '8-ball pocketed early': '8번 공을 일찍 넣음',
+      "Foul: Contacted the opponent's cue ball!": '상대 수구를 맞힘', 'Foul: No ball hit': '공을 못 맞힘',
     };
+    const foulKo = (f) => FOUL_KO[f] || (/^Foul/i.test(f) || /[a-z]/i.test(f) ? '규칙 위반' : f);
+    function shotLabel(game, d, j) {
+      if (game === 'threecushion') {
+        if (!j.success) return d.ballHits === 2 ? `실패 (쿠션 ${d.cushions}번) · 기회 -1` : '실패 · 기회 -1';
+        return `${d.bank ? '빈쿠션 ' : ''}${d.cushions}쿠션 성공! +${j.points}점 · 기회 +1`;
+      }
+      if (j.capped) return `🏁 ${SIMPLE[game]?.cap.toLocaleString()}점 완주!`;
+      if (KIND[game] === 'simple') {
+        if (d.foul) return `파울: ${foulKo(d.foul)} · 기회 -1`;
+        return j.success ? `성공! +${j.points}점 · 계속 치세요` : '실패 · 기회 -1';
+      }
+      if (KIND[game] === 'reveal' && !j.success) return d.scratch ? '수구만 빠짐 · 기회 -1' : '못 넣음 · 기회 -1';
+      if (j.cleared) return `🏆 클리어! +${j.points}점`;
+      if (d.foul) return `파울: ${foulKo(d.foul)} · 기회 -1${st?.fouls ? ` (연속 ${st.fouls}/3)` : ''}`;
+      if (j.success) return `포켓! +${j.points}점 · 계속 치세요`;
+      return game === 'eightball' && (d.pots || []).length ? '상대 그룹 공 · 기회 -1' : '못 넣음 · 기회 -1';
+    }
 
     // ── 로비 ──
     function setNote(t, err = false) { const n = $('note'); n.textContent = t || ''; n.classList.toggle('err', !!err); }
     function renderStartBtn() {
       const b = $('btnStart');
       b.textContent = uid ? `▶ 게임 시작 (${fee} GP 차감)` : '로그인 후 참가할 수 있어요';
-      b.disabled = !uid || (gold !== null && gold < fee);
+      b.disabled = !uid || (gold !== null && gold < fee) || (!!lockedMode && lockedMode !== gm);
+      if (lockedMode && lockedMode !== gm) b.textContent = `🔒 진행 중인 ${MODE_LABEL[lockedMode]} 게임이 있어요`;
       if (uid && gold !== null && gold < fee) setNote(`GP가 부족해요 (필요 ${fee} GP)`, true);
       else if ($('note').textContent.startsWith('GP가 부족')) setNote('');
+    }
+    // ── 게임별 안내 (방법 · 점수 · 퇴출 기준) ──
+    const GUIDE = {
+      threecushion: {
+        how: [
+          '공 3개(흰공·노란공·빨간공). 내 수구로 나머지 두 공을 모두 맞혀야 해요.',
+          '두 번째 공을 맞히기 전까지 수구가 쿠션(테이블 벽)에 3번 이상 닿아야 성공.',
+          '쿠션을 먼저 맞고 두 공을 맞히는 빈쿠션은 어렵지만 점수가 두 배예요.',
+          '실패하면 다음 샷은 다른 공(노란공↔흰공)이 수구가 돼요.',
+        ],
+        score: ['3쿠션 성공 300점', '쿠션 하나 더할 때마다 +100점 (4쿠션 400, 5쿠션 500 …)', '빈쿠션 성공 600점부터 (+100점씩)'],
+        chance: ['기회 5번으로 시작', '성공 +1 (최대 10번까지 쌓임) · 실패 -1'],
+        out: ['기회가 0이 되면 종료 → 그때까지 점수로 GP 지급'],
+        tip: '조준선을 보고 당점(왼쪽 아래 공)으로 회전을 주면 쿠션 각도가 바뀌어요.',
+      },
+      nineball: {
+        how: [
+          '1~9번 공. 항상 테이블에 남은 가장 낮은 번호 공을 먼저 맞혀야 해요.',
+          '먼저 맞히기만 하면 어떤 공이 들어가도 인정 (콤비 샷 OK).',
+          '9번 공을 넣으면 클리어! 1번 공으로 9번을 넣는 콤비도 클리어예요.',
+          '파울 뒤에는 수구를 원하는 곳에 놓고 칠 수 있어요 (Place Ball).',
+        ],
+        score: ['1~8번 공 하나당 60점', '9번 공 클리어 600점', '클리어 때 남은 기회 1번당 +100점'],
+        chance: ['기회 5번으로 시작', '공을 넣으면 기회 유지 · 못 넣으면 -1 · 파울 -1'],
+        out: ['기회가 0이 되면 종료', '연속 파울 3번이면 즉시 퇴출 (9볼 3파울 룰)', '파울: 수구가 빠짐 · 아무 공도 못 맞힘 · 낮은 번호가 아닌 공을 먼저 맞힘 · 맞힌 뒤 아무 공도 쿠션에 안 닿음'],
+        tip: '세게 치기보다 다음 공을 치기 좋은 위치에 수구를 세우는 게 고득점 비결.',
+      },
+      eightball: {
+        how: [
+          '1~7번 솔리드, 9~15번 스트라이프, 그리고 8번 공.',
+          '처음 넣은 공의 종류가 내 그룹이 돼요 (그 전엔 아무 공이나 넣어도 점수).',
+          '내 그룹 공을 먼저 맞혀야 하고, 내 그룹을 다 넣은 뒤 8번 공을 넣으면 클리어.',
+          '상대 그룹 공만 들어가면 점수 없이 기회 -1.',
+        ],
+        score: ['내 그룹 공 하나당 60점', '8번 공 클리어 700점', '클리어 때 남은 기회 1번당 +100점'],
+        chance: ['기회 5번으로 시작', '내 그룹 공을 넣으면 기회 유지 · 못 넣으면 -1 · 파울 -1'],
+        out: ['기회가 0이 되면 종료', '8번 공을 일찍 넣거나 파울로 넣으면 즉시 종료 (보너스 없음)', '연속 파울 3번이면 즉시 퇴출', '파울: 수구가 빠짐 · 아무 공도 못 맞힘 · 상대 그룹 공을 먼저 맞힘 · 맞힌 뒤 쿠션 없음'],
+        tip: '8번 공 근처의 공은 일찍 정리해 두세요. 마지막 8번 샷이 쉬워져요.',
+      },
+      sagu: {
+        how: [
+          '공 4개: 내 수구(흰공), 상대 수구(노란공), 빨간 공 2개.',
+          '내 수구로 빨간 공 2개를 모두 맞히면 성공 (쿠션 수는 상관없음).',
+          '상대 수구(노란공)를 맞히거나 아무 공도 못 맞히면 파울.',
+          '실패하면 다음 샷은 노란공↔흰공이 번갈아 수구가 돼요.',
+        ],
+        score: ['성공 한 번에 80점', '3,000점에 도달하면 완주 (그 판 최고 점수)'],
+        chance: ['기회 5번으로 시작', '성공하면 기회 유지 · 실패 -1 · 파울 -1'],
+        out: ['기회가 0이 되면 종료', '3,000점 달성 시 완주 종료 → 바로 GP 지급'],
+        tip: '빨간 공 두 개가 가까울 때 얇게 맞혀 붙여두면 연속 득점이 쉬워져요.',
+      },
+      libre: {
+        how: [
+          '공 3개(흰공·노란공·빨간공). 내 수구로 나머지 두 공을 모두 맞히면 성공.',
+          '쿠션 조건이 없는 자유 캐롬이라 당구를 처음 치는 분께 추천해요.',
+          '실패하면 다음 샷은 다른 공(노란공↔흰공)이 수구가 돼요.',
+        ],
+        score: ['성공 한 번에 50점', '2,500점에 도달하면 완주 (그 판 최고 점수)'],
+        chance: ['기회 5번으로 시작', '성공하면 기회 유지 · 실패 -1'],
+        out: ['기회가 0이 되면 종료', '2,500점 달성 시 완주 종료 → 바로 GP 지급'],
+        tip: '세 공을 한쪽에 모아 두는 \'모아치기\'가 고득점 비결이에요.',
+      },
+      snooker: {
+        how: [
+          '빨간 공 15개와 컬러 공 6개(노랑 2·초록 3·갈색 4·파랑 5·분홍 6·검정 7).',
+          '빨간 공 → 컬러 공 → 빨간 공… 번갈아 넣어요. 넣은 컬러 공은 제자리로 돌아와요.',
+          '빨간 공이 다 없어지면 노랑부터 검정까지 낮은 점수 순서대로 넣어요.',
+          '수구가 빠지면 D 구역 안에 원하는 곳에 놓고 칠 수 있어요.',
+        ],
+        score: ['엔진 점수 × 20점 (빨강 20, 노랑 40 … 검정 140)', '테이블 클리어 700점', '클리어 때 남은 기회 1번당 +100점', '최대 147 브레이크 = 2,940점 + 클리어 보너스'],
+        chance: ['기회 5번으로 시작', '공을 넣으면 기회 유지 · 못 넣으면 -1 · 파울 -1'],
+        out: ['기회가 0이 되면 종료', '연속 파울 3번이면 즉시 퇴출', '파울: 수구가 빠짐 · 아무 공도 못 맞힘 · 넣어야 할 공이 아닌 공을 먼저 맞히거나 넣음'],
+        tip: '테이블이 커서 세게 치면 어려워요. 빨간 공 다음에 넣을 컬러(특히 검정)를 미리 생각하세요.',
+      },
+      reveal: {
+        how: [
+          '공 15개. 순서도 그룹도 없이 아무 공이나 넣으면 돼요.',
+          '수구가 빠져도 파울 없이 다시 놓고 계속 쳐요.',
+          '15개를 모두 넣으면 클리어!',
+        ],
+        score: ['공 하나당 40점', '15개 모두 넣으면 클리어 400점', '클리어 때 남은 기회 1번당 +100점'],
+        chance: ['기회 5번으로 시작', '공을 넣으면 기회 유지 · 못 넣으면(수구만 빠진 경우 포함) -1'],
+        out: ['기회가 0이 되면 종료', '15개 모두 넣으면 클리어 종료'],
+        tip: '첫 브레이크는 세게, 그 다음은 포켓 가까운 공부터 차례로 정리하세요.',
+      },
+    };
+    const li = (arr) => arr.map(t => `<li>${t}</li>`).join('');
+    function renderGuide(g) {
+      const G = GUIDE[g];
+      $('guide').innerHTML = `
+        <h3>🎯 게임 방법</h3><ol>${li(G.how)}</ol>
+        <h3>💯 점수</h3><ul>${li(G.score)}</ul>
+        <h3>🎟️ 기회</h3><ul>${li(G.chance)}</ul>
+        <h3>⛔ 종료 · 퇴출 기준</h3><ul class="out">${li(G.out)}</ul>
+        <h3>💰 GP 보상</h3><ul><li>판이 끝나면 <b>10점당 1 GP × 참가비 배율</b> (50 GP ×1 · 100 GP ×2 · 200 GP ×4), 한 판 최대 3,000 GP × 배율</li>
+          <li>점수는 주간 베스트당구장 토너먼트(7가지 게임 합산, 배율 무관)에 자동 등록 → 매주 TOP10 시상</li>
+          <li>게임마다 잘 치는 사람이 한 판에 약 1,500~3,000점을 얻도록 맞췄어요</li></ul>
+        <h3>🕹️ 조작</h3><ul><li>드래그로 조준 · 아래 파워 바로 세기 · 왼쪽 아래 공으로 당점 · Hit 버튼으로 샷</li><li>${G.tip}</li></ul>`;
+    }
+    function showSelect() {
+      $('lobby').hidden = true; $('selectView').hidden = false;
+    }
+    function setGame(g) {
+      if (!MODE_LABEL[g]) return;
+      gm = g;
+      $('lbTitle').textContent = `${MODE_ICON[g]} ${MODE_LABEL[g]}`;
+      renderGuide(g);
+      $('openLink').href = `/billiards-game/index.html?ruletype=${g}&lod=4&bestclub=1`;
+      try { localStorage.setItem('billiards_mode', g); } catch {}
+      $('selectView').hidden = true; $('lobby').hidden = false;
+      renderStartBtn();
+    }
+    let lockedMode = null; // 진행 중인 판의 게임 (다른 게임 선택 잠금)
+    $('modes').addEventListener('click', (e) => {
+      const b = e.target.closest('.bl-card'); if (!b || b.disabled) return;
+      setGame(b.dataset.mode);
+    });
+    $('btnBack').addEventListener('click', showSelect);
+    function applyLock() {
+      document.querySelectorAll('#modes .bl-card').forEach(c => {
+        c.disabled = !!lockedMode && c.dataset.mode !== lockedMode;
+        c.classList.toggle('locked', !!lockedMode && c.dataset.mode === lockedMode);
+      });
+      $('selNote').textContent = lockedMode ? `🔒 진행 중인 ${MODE_LABEL[lockedMode]} 게임을 먼저 끝내 주세요.` : '';
     }
     $('tiers').addEventListener('click', (e) => {
       const btn = e.target.closest('.bl-tier'); if (!btn) return;
       fee = Number(btn.dataset.fee);
-      document.querySelectorAll('.bl-tier').forEach(x => x.classList.toggle('on', x === btn));
+      document.querySelectorAll('#tiers .bl-tier').forEach(x => x.classList.toggle('on', x === btn));
       try { localStorage.setItem('billiards_fee', String(fee)); } catch {}
       renderStartBtn();
     });
@@ -275,14 +546,19 @@
         const s = await call('billiardsState', {});
         if (s?.active) {
           $('rsChances').textContent = s.chances; $('rsScore').textContent = s.score.toLocaleString();
+          $('rsMode').textContent = MODE_LABEL[s.mode] || '3쿠션';
+          // 포켓 게임은 새로고침하면 공 배치가 처음으로 돌아가므로 이어하기 대신 정산만
+          $('btnResume').hidden = !isCarom(s.mode || 'threecushion');
           $('resumeBox').hidden = false; st = s;
+          lockedMode = s.mode || 'threecushion'; applyLock(); renderStartBtn();
         }
       } catch {}
     });
 
     // ── 게임 화면 ──
     function frameUrl() {
-      const p = new URLSearchParams({ ruletype: 'threecushion', userName, lod: '4', bestclub: '1' });
+      const p = new URLSearchParams({ ruletype: st?.mode || gm, userName, lod: '4', bestclub: '1' });
+      if ((st?.mode || gm) === 'reveal') p.set('reds', '15');
       return `/billiards-game/index.html?${p}`;
     }
     function hud() {
@@ -290,13 +566,15 @@
       $('hudScore').textContent = st.score.toLocaleString();
       $('hudShots').textContent = `${st.successes} / ${st.shots}`;
       $('hudGp').textContent = mode === 'paid' ? (Math.floor(st.score / GP_UNIT) * st.mult).toLocaleString() : '-';
-      $('modeBadge').textContent = mode === 'paid' ? `${st.fee} GP ×${st.mult}` : '무료 연습';
+      const ml = MODE_LABEL[st.mode] || '3쿠션';
+      $('modeBadge').textContent = mode === 'paid' ? `${ml} · ${st.fee} GP ×${st.mult}` : `${ml} · 무료 연습`;
       $('modeBadge').classList.toggle('free', mode !== 'paid');
     }
     function openGame() {
+      sfx.unlock(); sfx.start();
       ended = false; lastSend = 0; queue = Promise.resolve();
       $('over').hidden = true;
-      $('lobby').hidden = true; $('resumeBox').hidden = true;
+      $('lobby').hidden = true; $('selectView').hidden = true; $('resumeBox').hidden = true;
       $('game').hidden = false;
       $('frame').src = frameUrl();
       hud();
@@ -304,6 +582,8 @@
     }
     function backToLobby() {
       exitFull();
+      if (ended || !st?.active) { lockedMode = null; applyLock(); }
+      if (st?.mode) setGame(st.mode);
       $('frame').src = 'about:blank';
       $('game').hidden = true; $('lobby').hidden = false; mode = null;
       board.refresh();
@@ -323,6 +603,7 @@
       if (res.weekly?.accepted) msg += res.weekly.improved ? ' · 🏆 이번 주 최고 기록 갱신!' : ` · 이번 주 최고 ${Number(res.weekly.bestScore).toLocaleString()}점`;
       $('ovMsg').textContent = msg;
       $('over').hidden = false;
+      if (!res.cleared) sfx.gameOver((res.successes || 0) > 0);
       board.refresh();
     }
 
@@ -331,7 +612,8 @@
       if (!uid) return;
       const b = $('btnStart'); b.disabled = true; setNote('참가비 차감 중…');
       try {
-        st = await call('billiardsStart', { fee });
+        st = await call('billiardsStart', { fee, mode: gm });
+        lockedMode = st.mode || gm; applyLock();
         mode = 'paid'; setNote(''); openGame();
       } catch (e) {
         setNote(e?.message || '시작하지 못했어요', true);
@@ -339,13 +621,13 @@
     });
     $('btnResume').addEventListener('click', () => { if (st?.active) { mode = 'paid'; openGame(); } });
     $('btnSettle').addEventListener('click', async () => {
-      try { const r = await call('billiardsEnd', {}); $('resumeBox').hidden = true;
+      try { const r = await call('billiardsEnd', {}); $('resumeBox').hidden = true; lockedMode = null; applyLock(); renderStartBtn();
         setNote(`정산 완료: ${(r.score || 0).toLocaleString()}점 · +${(r.gpAwarded || 0).toLocaleString()} GP`); board.refresh();
       } catch (e) { setNote(e?.message || '정산 실패', true); }
     });
     // 무료 연습 (서버 미사용)
     $('btnFree').addEventListener('click', () => {
-      mode = 'free'; st = { chances: 10, score: 0, shots: 0, successes: 0, mult: 0, fee: 0 }; openGame();
+      mode = 'free'; st = { mode: gm, chances: 5, score: 0, shots: 0, successes: 0, mult: 0, fee: 0, potted: [], group: 0, engineTotal: 0, fouls: 0 }; openGame();
     });
     $('btnQuit').addEventListener('click', async () => {
       if (mode === 'paid' && !ended) {
@@ -386,15 +668,88 @@
     document.addEventListener('fullscreenchange', syncFullBtn);
     document.addEventListener('webkitfullscreenchange', syncFullBtn);
 
+    // ── 효과음 (Web Audio 합성 — 별도 음원 파일 없음) ──
+    const sfx = (() => {
+      let ctx = null, master = null;
+      let muted = false;
+      try { muted = localStorage.getItem('billiards_mute') === '1'; } catch {}
+      function ac() {
+        if (!ctx) {
+          const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
+          ctx = new C(); master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
+        }
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        return ctx;
+      }
+      function tone(freq, t0, dur, { type = 'sine', vol = 0.5, slide = 0 } = {}) {
+        const c = ac(); if (!c || muted) return;
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = type; o.frequency.setValueAtTime(freq, c.currentTime + t0);
+        if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), c.currentTime + t0 + dur);
+        g.gain.setValueAtTime(0.0001, c.currentTime + t0);
+        g.gain.exponentialRampToValueAtTime(vol, c.currentTime + t0 + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + t0 + dur);
+        o.connect(g); g.connect(master); o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + dur + 0.05);
+      }
+      function noise(t0, dur, vol = 0.3, freq = 900) {
+        const c = ac(); if (!c || muted) return;
+        const len = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+        const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+        src.buffer = buf; f.type = 'bandpass'; f.frequency.value = freq; g.gain.value = vol;
+        src.connect(f); f.connect(g); g.connect(master); src.start(c.currentTime + t0);
+      }
+      const NOTES = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+      return {
+        unlock: ac,
+        get muted() { return muted; },
+        toggle() { muted = !muted; try { localStorage.setItem('billiards_mute', muted ? '1' : '0'); } catch {} return muted; },
+        start() { [392, 523.25, 659.25].forEach((f, i) => tone(f, i * 0.09, 0.18, { type: 'triangle', vol: 0.35 })); },
+        success(s) {
+          // 기본 3음 → 쿠션이 많을수록, 빈쿠션이면 더 길고 화려하게
+          const n = Math.min(5, 3 + Math.max(0, s.cushions - 3) + (s.bank ? 1 : 0));
+          for (let i = 0; i < n; i++) tone(NOTES[i], i * 0.08, 0.22, { type: 'triangle', vol: 0.45 });
+          tone(NOTES[n - 1] * 2, n * 0.08, 0.5, { type: 'sine', vol: 0.25 });
+          noise(0, 0.35, 0.12, 4000); // 박수 느낌의 반짝임
+          if (s.bank || s.cushions >= 5) for (let i = 0; i < 6; i++) tone(1568 + i * 120, 0.45 + i * 0.05, 0.12, { vol: 0.18 });
+        },
+        pot(n) { const k = Math.min(4, n); for (let i = 0; i < k; i++) tone(NOTES[i + 1], i * 0.07, 0.16, { type: 'triangle', vol: 0.35 }); noise(0, 0.12, 0.08, 2500); },
+        clear() { [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, i) => tone(f, i * 0.09, 0.32, { type: 'triangle', vol: 0.42 })); noise(0.3, 0.8, 0.14, 4500); for (let i = 0; i < 8; i++) tone(1760 + i * 90, 0.6 + i * 0.05, 0.1, { vol: 0.15 }); },
+        foul() { tone(140, 0, 0.4, { type: 'sawtooth', vol: 0.2, slide: 0.5 }); tone(110, 0.05, 0.45, { type: 'square', vol: 0.1, slide: 0.6 }); },
+        fail() { tone(220, 0, 0.28, { type: 'sawtooth', vol: 0.18, slide: 0.6 }); tone(165, 0.12, 0.35, { type: 'square', vol: 0.12, slide: 0.7 }); },
+        lastChance() { [0, 0.18].forEach(t => tone(880, 0.35 + t, 0.12, { type: 'square', vol: 0.16 })); },
+        gameOver(good) {
+          if (good) [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.12, 0.3, { type: 'triangle', vol: 0.4 }));
+          else [392, 349.23, 311.13, 261.63].forEach((f, i) => tone(f, i * 0.16, 0.32, { type: 'triangle', vol: 0.32 }));
+        },
+      };
+    })();
+    function syncSoundBtn() { $('btnSound').textContent = sfx.muted ? '🔇' : '🔊'; }
+    syncSoundBtn();
+    $('btnSound').addEventListener('click', () => { sfx.toggle(); syncSoundBtn(); });
+    function shotSound(game, d, j, chancesAfter) {
+      if (game === 'threecushion') { if (j.success) sfx.success(d); else sfx.fail(); }
+      else if (j.cleared) sfx.clear();
+      else if (KIND[game] === 'simple') { if (d.foul) sfx.foul(); else if (j.success) sfx.success({ cushions: 3, bank: false }); else sfx.fail(); }
+      else if (d.foul) sfx.foul();
+      else if (j.success) sfx.pot((d.pots || []).length);
+      else sfx.fail();
+      if (chancesAfter === 1 && !j.cleared) sfx.lastChance();
+    }
+
     // ── 엔진에서 오는 샷 결과 ──
-    function handleShot(s) {
+    function handleShot(d) {
       if (ended || !mode) return;
+      const game = st.mode || gm;
+      if ((d.rule || 'threecushion') !== game) return;
       if (mode === 'free') {
-        const pts = shotPoints(s);
-        st.shots++; if (s.success) st.successes++;
-        st.score += pts; st.chances += s.success ? 1 : -1;
-        toast(shotLabel(s), s.success); hud();
-        if (st.chances <= 0) setTimeout(() => showOver({ ...st, title: '연습 종료' }), 1200);
+        const j = judgeLocal(game, st, d);
+        if (game === 'threecushion' && j.delta > 0 && st.chances >= 10) j.delta = 0;
+        if (FOUL_OUT_GAME(game)) { st.fouls = d.foul ? (st.fouls || 0) + 1 : 0; if (st.fouls >= 3) { j.endNow = true; j.foulOut = true; } }
+        st.shots++; if (j.success) st.successes++;
+        st.score += j.points; st.chances += j.delta;
+        toast(shotLabel(game, d, j), j.success); hud(); shotSound(game, d, j, st.chances);
+        if (st.chances <= 0 || j.endNow) setTimeout(() => showOver({ ...st, cleared: j.cleared, title: j.capped ? '🏁 완주!' : j.cleared ? '🏆 클리어!' : j.foulOut ? '⛔ 연속 파울 3번 퇴출' : '연습 종료' }), 1400);
         return;
       }
       // 유료: 서버가 판정·기록 (순서대로, 최소 간격 유지)
@@ -403,13 +758,18 @@
         if (wait > 0) await new Promise(r => setTimeout(r, wait));
         lastSend = Date.now();
         try {
-          const r = await call('billiardsShot', {
-            seq: st.shots + 1, success: !!s.success, cushions: s.cushions, bank: !!s.bank,
-          });
+          const k = KIND[game], seq = st.shots + 1;
+          const payload = k === 'carom3' ? { rule: game, seq, success: !!d.success, cushions: d.cushions, bank: !!d.bank }
+            : k === 'simple' ? { rule: game, seq, success: !!d.success, foul: d.foul || null }
+            : k === 'snooker' ? { rule: game, seq, foul: d.foul || null, gain: d.gain || 0, cleared: !!d.cleared, engineEnd: !!d.engineEnd }
+            : k === 'reveal' ? { rule: game, seq, pots: d.pots || [], scratch: !!d.scratch }
+            : { rule: game, seq, foul: d.foul || null, pots: d.pots || [], group: d.group || 0, cleared: !!d.cleared, engineEnd: !!d.engineEnd };
+          const r = await call('billiardsShot', payload);
+          const before = st.chances;
           st = { ...st, ...r };
-          toast(shotLabel({ ...s, success: r.shot?.success ?? s.success }), !!r.shot?.success);
-          hud();
-          if (r.ended) setTimeout(() => showOver({ ...r, title: '기회를 모두 썼어요' }), 1200);
+          const j = { success: !!r.shot?.success, points: r.points || 0, cleared: !!r.shot?.cleared, capped: !!r.shot?.capped, delta: (r.chances ?? before) - before };
+          toast(shotLabel(game, d, j), j.success); hud(); shotSound(game, d, j, r.chances);
+          if (r.ended) setTimeout(() => showOver({ ...r, title: r.endReason === 'cap' ? '🏁 완주!' : r.cleared ? '🏆 클리어!' : r.endReason === 'three-fouls' ? '⛔ 연속 파울 3번 퇴출' : r.endReason === 'engine-end' ? (game === 'eightball' ? '⛔ 8번 공 파울로 종료' : '게임 종료') : '기회를 모두 썼어요' }), 1400);
         } catch (e) {
           toast(e?.message || '기록 실패', false);
           try { const cur = await call('billiardsState', {}); if (cur) { st = { ...st, ...cur }; hud(); if (!cur.active) showOver({ ...cur }); } } catch {}

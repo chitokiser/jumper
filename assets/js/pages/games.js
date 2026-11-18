@@ -8,11 +8,11 @@ import { weekInfo, fetchTop, fetchLastSettlement, prizeForRank, syncMyProfile, w
 import { claimFreeDailyGp } from '/assets/js/free-gp.js';
 
 const FIELD = { gp: 'gold' };
-const LABEL = { gp: 'GP', suika: '점', game2048: '점' };
+const LABEL = { gp: 'GP', suika: '점', game2048: '점', billiards: '점' };
 // 수이카·2048 탭 = 이번 주 토너먼트 랭킹 (weekly_rankings, 일요일 00:00 VN 마감)
-const WEEKLY_TABS = ['suika', 'game2048'];
+const WEEKLY_TABS = ['suika', 'game2048', 'billiards'];
 const RANK_TTL = 5 * 60 * 1000;
-const cache = { gp: null, suika: null, game2048: null };
+const cache = { gp: null, suika: null, game2048: null, billiards: null };
 let currentTab = 'gp';
 let myUid = null;
 

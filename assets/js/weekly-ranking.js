@@ -14,6 +14,7 @@ const PRIZE_STEP = 5_000_000;
 export const WEEKLY_GAMES = {
   suika:    { label: '수박게임', icon: '🍉', href: '/suika.html' },
   game2048: { label: '2048',    icon: '🔢', href: '/2048.html' },
+  billiards: { label: '베스트당구장', icon: '🎱', href: '/billiards.html' },
 };
 
 export const prizeForRank = r => (r >= 1 && r <= 10) ? (11 - r) * PRIZE_STEP : 0;
@@ -184,7 +185,7 @@ export function mountWeeklyPromo(el) {
   el.innerHTML = `
     <div class="wr-promo">
       <h3>🏆 주간 게임 토너먼트 · 게임별 총상금 2억 7,500만 GP</h3>
-      <p>수박게임과 2048에서 이번 주 최고 점수를 겨루세요! 매주 일요일 00:00(베트남 시간)에 마감하고
+      <p>수박게임 · 2048 · 베스트당구장에서 이번 주 최고 점수를 겨루세요! 매주 일요일 00:00(베트남 시간)에 마감하고
         각 게임 TOP10에게 GP를 자동 지급합니다. 1위 5,000만 GP부터 10위 500만 GP까지.</p>
       <div class="wr-promo-games">
         ${Object.entries(WEEKLY_GAMES).map(([k, g]) => `

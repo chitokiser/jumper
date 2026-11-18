@@ -1,5 +1,5 @@
 'use strict';
-// weeklyRanking.js — 수박게임(suika)·2048·3쿠션 당구(billiards) 주간 랭킹 접수 및 정산
+// weeklyRanking.js — 수박게임(suika)·2048·베스트당구장(billiards) 주간 랭킹 접수 및 정산
 //
 // 주간 기준: 베트남 시간(UTC+7, 서머타임 없음) 일요일 00:00 ~ 다음 일요일 00:00
 // 정산: 매주 일요일 00:00(베트남) 스케줄 함수가 직전 주 TOP10 을 확정하고 GP 자동 지급
@@ -23,8 +23,8 @@ const WEEK_MS      = 7 * DAY_MS;
 const WEEKLY_GAMES = {
   suika:    { entryKey: 'suikaEntry',    label: '수박게임', maxScore: 90000  }, // GAME_MAX_REWARD 3000 × 30점
   game2048: { entryKey: 'game2048Entry', label: '2048',    maxScore: 200000 }, // GAME_MAX_REWARD 20000 × 10점
-  // 3쿠션 당구: 샷마다 서버가 점수 계산 → 판 종료 시 서버가 직접 접수 (클라이언트 submitWeeklyScore 불가)
-  billiards: { entryKey: null, label: '3쿠션 당구', maxScore: 300000, serverOnly: true },
+  // 베스트당구장: 샷마다 서버가 점수 계산 → 판 종료 시 서버가 직접 접수 (클라이언트 submitWeeklyScore 불가)
+  billiards: { entryKey: null, label: '베스트당구장', maxScore: 300000, serverOnly: true }, // 7가지 게임 합산 보드
 };
 
 const TOP_N          = 10;
