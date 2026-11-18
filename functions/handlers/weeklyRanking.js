@@ -1,5 +1,5 @@
 'use strict';
-// weeklyRanking.js — 수박게임(suika)·2048 주간 랭킹 접수 및 정산
+// weeklyRanking.js — 수박게임(suika)·2048·3쿠션 당구(billiards) 주간 랭킹 접수 및 정산
 //
 // 주간 기준: 베트남 시간(UTC+7, 서머타임 없음) 일요일 00:00 ~ 다음 일요일 00:00
 // 정산: 매주 일요일 00:00(베트남) 스케줄 함수가 직전 주 TOP10 을 확정하고 GP 자동 지급
@@ -23,6 +23,8 @@ const WEEK_MS      = 7 * DAY_MS;
 const WEEKLY_GAMES = {
   suika:    { entryKey: 'suikaEntry',    label: '수박게임', maxScore: 90000  }, // GAME_MAX_REWARD 3000 × 30점
   game2048: { entryKey: 'game2048Entry', label: '2048',    maxScore: 200000 }, // GAME_MAX_REWARD 20000 × 10점
+  // 3쿠션 당구: 샷마다 서버가 점수 계산 → 판 종료 시 서버가 직접 접수 (클라이언트 submitWeeklyScore 불가)
+  billiards: { entryKey: null, label: '3쿠션 당구', maxScore: 300000, serverOnly: true },
 };
 
 const TOP_N          = 10;
@@ -101,6 +103,7 @@ function issueSessionInTx(t, uid, gameKey) {
 async function submitWeeklyScore(uid, { gameType, score } = {}) {
   const game = WEEKLY_GAMES[gameType];
   if (!uid || !game) throw new Error('알 수 없는 게임입니다');
+  if (game.serverOnly) throw new Error('이 게임 점수는 서버에서 자동 등록됩니다');
   const s = Math.floor(Number(score));
   if (!Number.isFinite(s) || s <= 0) return { accepted: false, reason: 'zero' };
   if (s > game.maxScore) throw new Error(`점수 한도 초과 (최대 ${game.maxScore.toLocaleString()}점)`);
@@ -139,6 +142,37 @@ async function submitWeeklyScore(uid, { gameType, score } = {}) {
       uid, ...profile, bestScore: s, achievedAt: now,
       plays: FieldValue.increment(1),
     }, { merge: true });
+    return { accepted: true, improved: true, bestScore: s, weekId: week.weekId };
+  });
+}
+
+/**
+ * 서버 내부 전용 점수 접수 (당구 등 서버가 점수를 계산하는 게임) — 주간 최고점만 보관
+ */
+async function recordServerScore(uid, gameType, score) {
+  const game = WEEKLY_GAMES[gameType];
+  if (!uid || !game || !game.serverOnly) throw new Error('알 수 없는 게임입니다');
+  const s = Math.min(Math.floor(Number(score)), game.maxScore);
+  if (!Number.isFinite(s) || s <= 0) return { accepted: false, reason: 'zero' };
+
+  const now   = Date.now();
+  const week  = weekInfo(now);
+  const boardRef = db.collection('weekly_rankings').doc(boardId(gameType, week.weekId));
+  const entryRef = boardRef.collection('entries').doc(uid);
+  const profile  = await profileFor(uid);
+
+  return db.runTransaction(async t => {
+    const entrySnap = await t.get(entryRef);
+    const prev = entrySnap.exists ? (entrySnap.data().bestScore || 0) : 0;
+    t.set(boardRef, {
+      gameType, weekId: week.weekId, startsAt: week.startsAt, endsAt: week.endsAt,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    if (s <= prev) {
+      t.set(entryRef, { ...profile, plays: FieldValue.increment(1) }, { merge: true });
+      return { accepted: true, improved: false, bestScore: prev, weekId: week.weekId };
+    }
+    t.set(entryRef, { uid, ...profile, bestScore: s, achievedAt: now, plays: FieldValue.increment(1) }, { merge: true });
     return { accepted: true, improved: true, bestScore: s, weekId: week.weekId };
   });
 }
@@ -221,5 +255,5 @@ async function settleLastWeekAll() {
 
 module.exports = {
   WEEKLY_GAMES, prizeForRank, weekInfo, weekStartFromId,
-  issueSessionInTx, submitWeeklyScore, settleWeek, settleLastWeekAll,
+  issueSessionInTx, submitWeeklyScore, recordServerScore, settleWeek, settleLastWeekAll,
 };

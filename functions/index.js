@@ -198,6 +198,34 @@ exports.adminSettleWeeklyRanking = onCall(wrapError(async (request) => {
 }));
 
 // ════════════════════════════════════════════════════════════════════════════
+// 3쿠션 당구 (1인 GP 게임) — 참가비 50/100/200, 기회 10, 샷 점수 서버 계산, 주간 랭킹 자동 접수
+//    클라이언트: httpsCallable(functions, 'billiardsStart')({ fee:50 })
+//               httpsCallable(functions, 'billiardsShot')({ seq, success, cushions, bank })
+//               httpsCallable(functions, 'billiardsEnd')() / 'billiardsState'
+// ════════════════════════════════════════════════════════════════════════════
+const billiardsH = require('./handlers/billiards');
+
+exports.billiardsStart = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await billiardsH.startGame(uid, request.data ?? {});
+}));
+
+exports.billiardsShot = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await billiardsH.reportShot(uid, request.data ?? {});
+}));
+
+exports.billiardsEnd = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await billiardsH.endGame(uid, { reason: 'quit' });
+}));
+
+exports.billiardsState = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await billiardsH.getState(uid);
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
 // 연계 사이트 최초 구글 가입 보너스 (구글 계정당 1회, 5000GP)
 //    클라이언트: httpsCallable(functions, 'claimSignupBonus')({ site:'bestwinner' })
 // ════════════════════════════════════════════════════════════════════════════
@@ -3383,23 +3411,33 @@ exports.convertGpToPoint = onCall(
 );
 
 // ── 포인트 → 게임 GP 전환 (마이페이지) ──
-// 공식: 포인트 × 10 ÷ 게임 레벨 = rawGP → 수수료 5% 차감 → 최종 GP. 포인트 전액 사용, 최소 10 P.
+// 공식: 포인트 × 10 ÷ 게임 레벨 = rawGP → 수수료 5% 차감 → 최종 GP. 최소 10 P.
+// 한도: 하루 1회(베트남 시간), 1회 최대 10,000 P (레벨 차익 왕복 방지)
+const POINT_TO_GP_MAX_PER_DAY = 10000;
 exports.convertPointToGp = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
     const userRef = db.collection('users').doc(uid);
     const bpRef = db.collection('battle_players').doc(uid);
 
+    const vnDay = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    const dailyRef = db.collection('point_gp_daily').doc(`${uid}_${vnDay}`);
     let usedPoints = 0;
     let gp = 0;
     let level = 1;
 
     await db.runTransaction(async (tx) => {
-      const [userSnap, bpSnap] = await Promise.all([tx.get(userRef), tx.get(bpRef)]);
+      const [userSnap, bpSnap, dailySnap] = await Promise.all([tx.get(userRef), tx.get(bpRef), tx.get(dailyRef)]);
       if (!userSnap.exists) throw new HttpsError('not-found', '유저 정보를 찾을 수 없습니다.');
 
       const userData = userSnap.data();
-      usedPoints = Math.floor(Number(userData.pointBalance ?? 0));
+      // 하루 1회 (베트남 시간 기준), 1회 최대 10,000 P
+      // 일일 기록은 클라이언트가 못 쓰는 별도 컬렉션(point_gp_daily, 규칙 없음 = 서버 전용)에 둔다
+      if (dailySnap.exists) {
+        throw new HttpsError('resource-exhausted', 'Point → GP 전환은 하루 1회만 가능합니다. 내일 다시 시도해 주세요.');
+      }
+      const pointBal = Math.floor(Number(userData.pointBalance ?? 0));
+      usedPoints = Math.min(pointBal, POINT_TO_GP_MAX_PER_DAY);
       if (usedPoints < 10) throw new HttpsError('failed-precondition', '최소 10 P 이상이어야 전환할 수 있습니다.');
 
       if (bpSnap.exists) {
@@ -3413,6 +3451,7 @@ exports.convertPointToGp = onCall(
         pointBalance: admin.firestore.FieldValue.increment(-usedPoints),
         lastPointToGpAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      tx.set(dailyRef, { uid, day: vnDay, usedPoints, createdAt: admin.firestore.FieldValue.serverTimestamp() });
       tx.set(bpRef, { gold: admin.firestore.FieldValue.increment(gp) }, { merge: true });
       tx.set(db.collection('pointHistories').doc(), {
         uid,
