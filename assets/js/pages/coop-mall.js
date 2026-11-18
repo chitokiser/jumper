@@ -167,6 +167,18 @@ async function loadProducts() {
   }
 }
 
+// 상품 대표 이미지: BestERP 는 images[] (공통 규격), 예전 상품은 image_url/imageUrl/image
+// ERP 에서 상대 경로로 저장된 이미지는 ERP 사이트 기준 주소로 바꾼다
+const ERP_ORIGIN_BASE = "https://besterp.netlify.app/admin/";
+function productImageUrl(data) {
+  const raw = (Array.isArray(data.images) ? data.images.find(u => typeof u === "string" && u.trim()) : "")
+    || data.image_url || data.imageUrl || data.image || "";
+  const u = String(raw).trim();
+  if (!u) return "";
+  if (/^(https?:|data:image\/)/i.test(u)) return u;
+  try { return new URL(u, ERP_ORIGIN_BASE).href; } catch (_) { return ""; }
+}
+
 // 상품 카드 목록 렌더링
 function renderProductsList() {
   const listEl = $("coopMallProducts");
@@ -206,7 +218,7 @@ function renderProductsList() {
                   ${typeLabel ? `<span style="font-size:0.75rem; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:6px; font-weight:600;">${esc(typeLabel)}</span>` : ''}
               </div>
 
-              ${data.image_url ? `<img src="${esc(data.image_url)}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:12px;" onerror="this.style.display='none';" />` : ""}
+              ${productImageUrl(data) ? `<img src="${esc(productImageUrl(data))}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:12px;" onerror="this.style.display='none';" />` : ""}
               
               <div style="font-weight:700; font-size:1.15rem; color:#1e293b; line-height:1.35; margin-bottom:6px;">${esc(data.product_name)}</div>
               <div style="color:#64748b; font-size:0.85rem; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${esc(data.description || "")}</div>
