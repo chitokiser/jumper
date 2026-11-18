@@ -895,6 +895,16 @@ exports.receiveBtQrFirebase = onCall(
   })
 );
 
+// BestERP 고객 목록: 가맹점 QR 결제 고객 + 회원 이메일 (가맹점 소속 검증, 서버 조회)
+const merchantCustomersH = require('./handlers/merchantCustomers');
+exports.getMerchantQrCustomers = onCall(
+  { cors: true },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await merchantCustomersH.getMerchantQrCustomers(uid, request.data || {});
+  })
+);
+
 exports.createBtRewardSession = onCall(
   { cors: true },
   wrapError(async (request) => {
