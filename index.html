@@ -1429,7 +1429,7 @@
       padding-top: 14px;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 8px;
     }
 
@@ -1487,6 +1487,10 @@
 
       .game-cta-modes {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .game-cta-modes .game-mode-chip:last-child {
+        grid-column: 1 / -1;
       }
     }
   </style>
@@ -1549,7 +1553,7 @@
   </style>
 
   <main class="page">
-    <!-- ── 주간 게임 토너먼트 배너 (수이카·2048 주간 랭킹 보상) ── -->
+    <!-- ── 주간 게임 토너먼트 배너 (수이카·2048·베스트당구장 주간 랭킹 보상) ── -->
     <section class="section" id="gameBannerSection" style="margin-top:8px;">
       <div class="game-cta-banner">
         <div class="game-cta-main">
@@ -1558,8 +1562,8 @@
               <span class="game-cta-live"><span class="game-cta-live-dot"></span>WEEKLY TOURNAMENT</span>
               <span class="game-cta-reward-tag">🏆 매주 TOP10 GP 자동 지급</span>
             </div>
-            <h2 class="game-cta-title">수이카 &amp; 2048 주간 랭킹 <span class="hl">1위 5,000만 GP</span>!</h2>
-            <p class="game-cta-desc">🍉 수이카 과일합치기와 🔢 2048 숫자 합치기에서 이번 주 최고 점수에 도전하세요! 매주 일요일 00:00(베트남 시간) 마감 즉시 게임별 TOP10에게 GP를 자동 지급합니다. 🥇 5,000만 · 🥈 4,500만 · 🥉 4,000만 … 10위 500만 GP.</p>
+            <h2 class="game-cta-title">수이카 · 2048 · 베스트당구장 주간 랭킹 <span class="hl">1위 5,000만 GP</span>!</h2>
+            <p class="game-cta-desc">🍉 수이카 과일합치기, 🔢 2048 숫자 합치기, 🎱 베스트당구장(3쿠션·사구·포켓볼·스누커 등 7가지 게임)에서 이번 주 최고 점수에 도전하세요! 매주 일요일 00:00(베트남 시간) 마감 즉시 게임별 TOP10에게 GP를 자동 지급합니다. 🥇 5,000만 · 🥈 4,500만 · 🥉 4,000만 … 10위 500만 GP.</p>
           </div>
           <div class="game-cta-action-box">
             <a class="game-cta-play-btn" href="/suika.html">
@@ -1568,6 +1572,10 @@
             </a>
             <a class="game-cta-play-btn" href="/2048.html">
               <span>🔢 2048 도전하기</span>
+              <span class="game-cta-play-arrow">▶</span>
+            </a>
+            <a class="game-cta-play-btn" href="/billiards.html">
+              <span>🎱 당구 도전하기</span>
               <span class="game-cta-play-arrow">▶</span>
             </a>
             <span class="game-cta-subnote">⏰ <span id="gameBannerCountdown">매주 일요일 00:00 마감</span></span>
@@ -1581,6 +1589,10 @@
           <a class="game-mode-chip" href="/2048.html">
             <span class="gm-icon">🔢</span>
             <span class="gm-text">2048 숫자 합치기</span>
+          </a>
+          <a class="game-mode-chip" href="/billiards.html">
+            <span class="gm-icon">🎱</span>
+            <span class="gm-text">베스트당구장</span>
           </a>
           <a class="game-mode-chip" href="/games.html#hunterRankSection">
             <span class="gm-icon">🏆</span>
