@@ -405,6 +405,10 @@ async function getMerchantSalesSummary(callerUid, data = {}) {
     .map(c => ({ ...c, isBuyer: c.payCount > 0, name: c.name || (c.email ? c.email.split('@')[0] : '고객') }))
     .sort((a, b) => (b.spendVnd - a.spendVnd) || ((b.lastAtMs || 0) - (a.lastAtMs || 0)));
 
+  const stakeholders = await getMerchantStakeholders({
+    callerUid, caller, isAdmin: await isSuperAdmin(callerUid, caller), variants, merchant, ownerUid, ownerEmail,
+  });
+
   return {
     merchantId,
     merchantName: merchant.name || merchant.merchantName || '',
@@ -421,6 +425,70 @@ async function getMerchantSalesSummary(callerUid, data = {}) {
       btOnly: list.filter(c => !c.isBuyer && c.btReceived > 0).length,
       list: list.slice(0, 500),
     },
+    stakeholders,
+  };
+}
+
+/**
+ * 가맹점 관계자(점주·직원) 보유 재화: BM(users.pointBalanceVnd), BT(users.btBalance),
+ * Point(users.pointBalance), GP(battle_players.gold) + 가맹점 계정 BT 재고.
+ * 점주·최고관리자는 모든 관계자를, 직원은 본인 것만 본다.
+ */
+async function getMerchantStakeholders({ callerUid, caller, isAdmin, variants, merchant, ownerUid, ownerEmail }) {
+  const people = new Map();
+  const add = (id, data) => { if (id && data && !people.has(id)) people.set(id, data); };
+
+  const [byMerchantId, byTenantId] = await Promise.all([
+    db.collection('users').where('merchantId', 'in', variants).limit(50).get(),
+    db.collection('users').where('tenantId', 'in', variants).limit(50).get(),
+  ]);
+  byMerchantId.forEach(s => add(s.id, s.data() || {}));
+  byTenantId.forEach(s => add(s.id, s.data() || {}));
+  if (ownerUid && !people.has(ownerUid)) {
+    const s = await db.collection('users').doc(ownerUid).get();
+    if (s.exists) add(s.id, s.data() || {});
+  }
+  if (!ownerUid && ownerEmail) {
+    const s = await db.collection('users').where('email', '==', ownerEmail).limit(1).get();
+    s.forEach(d => add(d.id, d.data() || {}));
+  }
+
+  const isOwnerUser = (uid, u) => (ownerUid && uid === ownerUid)
+    || (ownerEmail && String(u.email || '').toLowerCase().trim() === ownerEmail)
+    || u.isMerchantOwner === true;
+  const callerIsOwner = isOwnerUser(callerUid, caller)
+    || ['CEO', 'MERCHANT', 'FRANCHISE', 'STORE_ADMIN'].includes(String(caller.role || '').toUpperCase().trim());
+  const canSeeAll = isAdmin || callerIsOwner;
+
+  const ids = Array.from(people.keys()).filter(uid => canSeeAll || uid === callerUid);
+  const gpSnaps = ids.length ? await db.getAll(...ids.map(uid => db.collection('battle_players').doc(uid))) : [];
+  const gpByUid = new Map(gpSnaps.filter(s => s.exists).map(s => [s.id, s.data() || {}]));
+
+  const num = (v) => Number(v || 0) || 0;
+  const list = ids.map(uid => {
+    const u = people.get(uid);
+    const g = gpByUid.get(uid) || {};
+    const owner = isOwnerUser(uid, u);
+    return {
+      uid,
+      name: u.name || u.displayName || (u.email ? String(u.email).split('@')[0] : '관계자'),
+      email: String(u.email || '').toLowerCase().trim(),
+      role: owner ? 'OWNER' : String(u.role || 'STAFF').toUpperCase().trim(),
+      isOwner: owner,
+      bm: num(u.pointBalanceVnd),
+      bt: num(u.btBalance),
+      point: num(u.pointBalance),
+      gp: num(g.gold),
+      gameLevel: num(g.gsLevel || g.level) || 1,
+    };
+  }).sort((a, b) => (Number(b.isOwner) - Number(a.isOwner)) || a.name.localeCompare(b.name));
+
+  return {
+    scope: canSeeAll ? 'all' : 'self',
+    merchantBt: num(merchant.btBalance),
+    merchantPendingSettlementVnd: num(merchant.pendingSettlementVnd),
+    totals: list.reduce((t, p) => ({ bm: t.bm + p.bm, bt: t.bt + p.bt, point: t.point + p.point, gp: t.gp + p.gp }), { bm: 0, bt: 0, point: 0, gp: 0 }),
+    list,
   };
 }
 
