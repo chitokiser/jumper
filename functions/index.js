@@ -905,6 +905,15 @@ exports.getMerchantQrCustomers = onCall(
   })
 );
 
+// 가맹점 매출·고객 요약 (단일 기준): BestERP 대시보드와 BestClub 마이페이지가 같은 값을 쓴다
+exports.getMerchantSalesSummary = onCall(
+  { cors: true, timeoutSeconds: 60 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await merchantCustomersH.getMerchantSalesSummary(uid, request.data || {});
+  })
+);
+
 exports.createBtRewardSession = onCall(
   { cors: true },
   wrapError(async (request) => {

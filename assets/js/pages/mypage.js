@@ -2566,6 +2566,16 @@ async function initMyCoupons(user, userData) {
   const isSuperAdmin = ['daguri75@gmail.com'].includes(user.email) || userData.role === 'SUPER_ADMIN' || userData.role === 'admin';
   const isMerchantOwner = !!userData.merchantId;
 
+  // 내 가맹점 매출·고객 (BestERP 대시보드와 같은 서버 함수 getMerchantSalesSummary)
+  if (isMerchantOwner) {
+    loadMerchantSalesSummary(String(userData.merchantId));
+    const btnMs = $('btnRefreshMerchantSales');
+    if (btnMs && !btnMs.dataset.bound) {
+      btnMs.dataset.bound = '1';
+      btnMs.addEventListener('click', () => loadMerchantSalesSummary(String(userData.merchantId)));
+    }
+  }
+
   const toolBox = $('merchantRedeemTool');
   if (toolBox && (isSuperAdmin || isMerchantOwner)) {
     toolBox.style.display = 'block';
@@ -3472,4 +3482,88 @@ function _renderOnChainSyncStatus(bp, uid) {
       manualBtn.textContent = '실패: ' + (e.message || '오류');
     }
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🏪 내 가맹점 매출·고객 — BestERP 대시보드(admin/dashboard)와 같은 서버 함수로 계산한다.
+// 매장 BM 결제 · 현금 결제(BT 발급) · 온라인 BM 결제 · 온라인 계좌이체를 모두 포함 (서버 기준)
+// ─────────────────────────────────────────────────────────────────────────────
+function msEsc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+function msVnd(n) {
+  return `₫ ${Number(n || 0).toLocaleString()}`;
+}
+function msDate(ms) {
+  if (!ms) return "-";
+  return new Date(ms).toLocaleString("ko-KR", { timeZone: "Asia/Ho_Chi_Minh", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+async function loadMerchantSalesSummary(merchantId) {
+  const section = $("merchantSalesSection");
+  const body = $("merchantSalesBody");
+  if (!section || !body || !merchantId) return;
+  section.style.display = "";
+  body.innerHTML = '<p class="hint">불러오는 중...</p>';
+  try {
+    const res = await httpsCallable(functions, "getMerchantSalesSummary")({ merchantId });
+    const d = res.data || {};
+    const s = d.sales || {};
+    const ch = d.channels || {};
+    const cu = d.customers || {};
+
+    const card = (label, value, sub = "") => `
+      <div style="flex:1 1 140px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px;">
+        <div style="font-size:0.75rem; color:#64748b;">${label}</div>
+        <div style="font-size:1.05rem; font-weight:800; color:#0f172a;">${value}</div>
+        ${sub ? `<div style="font-size:0.72rem; color:#94a3b8;">${sub}</div>` : ""}
+      </div>`;
+
+    const channelRows = Object.values(ch).map(c => `
+      <tr><td style="padding:4px 6px;">${msEsc(c.label)}</td>
+      <td style="padding:4px 6px; text-align:right;">${c.count}건</td>
+      <td style="padding:4px 6px; text-align:right; font-weight:700;">${msVnd(c.vnd)}</td>
+      <td style="padding:4px 6px; text-align:right; color:#64748b;">${msVnd(c.monthVnd)}</td></tr>`).join("");
+
+    const ledgerRows = (d.ledger || []).slice(0, 20).map(e => `
+      <tr><td style="padding:4px 6px; white-space:nowrap;">${msDate(e.atMs)}</td>
+      <td style="padding:4px 6px;">${msEsc(e.label)}</td>
+      <td style="padding:4px 6px;">${msEsc(e.customerEmail || e.customerName || "-")}</td>
+      <td style="padding:4px 6px; text-align:right; font-weight:700;">${msVnd(e.amountVnd)}</td></tr>`).join("");
+
+    const custRows = (cu.list || []).slice(0, 20).map(c => `
+      <tr><td style="padding:4px 6px;">${msEsc(c.name || "-")}</td>
+      <td style="padding:4px 6px;">${msEsc(c.email || "이메일 미등록")}</td>
+      <td style="padding:4px 6px; text-align:right;">${c.payCount}회</td>
+      <td style="padding:4px 6px; text-align:right; font-weight:700;">${msVnd(c.spendVnd)}</td></tr>`).join("");
+
+    const th = (t, right) => `<th style="padding:4px 6px; text-align:${right ? "right" : "left"}; font-size:0.75rem; color:#64748b; border-bottom:1px solid #e2e8f0;">${t}</th>`;
+
+    body.innerHTML = `
+      <p class="hint muted" style="margin-bottom:8px;">BestERP 대시보드와 같은 기준입니다. ${msEsc(d.basis || "")}</p>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        ${card("총 매출", msVnd(s.totalVnd), `${s.count || 0}건`)}
+        ${card("오늘", msVnd(s.todayVnd))}
+        ${card("이번 달", msVnd(s.monthVnd))}
+        ${card("BM 정산 예정 (90%)", msVnd(s.settlementVnd), `수수료 ${msVnd(s.feeVnd)}`)}
+        ${card("고객", `${cu.total || 0}명`, `결제 ${cu.buyers || 0} · 가입 ${cu.members || 0} · 멘티 ${cu.mentees || 0}`)}
+      </div>
+      ${s.pendingOrderCount ? `<p class="hint" style="margin-bottom:8px;">⏳ 결제 대기 주문 ${s.pendingOrderCount}건 (${msVnd(s.pendingOrderVnd)}) — 입금 확인 후 매출에 반영됩니다.</p>` : ""}
+      <h3 style="font-size:0.9rem; margin:8px 0 4px;">결제 경로별 매출</h3>
+      <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-bottom:12px;">
+        <thead><tr>${th("경로")}${th("건수", 1)}${th("누적", 1)}${th("이번 달", 1)}</tr></thead>
+        <tbody>${channelRows}</tbody>
+      </table>
+      <h3 style="font-size:0.9rem; margin:8px 0 4px;">최근 매출 내역</h3>
+      ${ledgerRows ? `<table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-bottom:12px;">
+        <thead><tr>${th("일시")}${th("경로")}${th("고객")}${th("금액", 1)}</tr></thead>
+        <tbody>${ledgerRows}</tbody></table>` : '<p class="hint">매출 내역이 없습니다.</p>'}
+      <h3 style="font-size:0.9rem; margin:8px 0 4px;">고객 (결제액 순)</h3>
+      ${custRows ? `<table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+        <thead><tr>${th("이름")}${th("이메일")}${th("결제", 1)}${th("결제액", 1)}</tr></thead>
+        <tbody>${custRows}</tbody></table>` : '<p class="hint">고객이 없습니다.</p>'}`;
+  } catch (err) {
+    console.warn("getMerchantSalesSummary failed", err?.message);
+    body.innerHTML = `<p class="hint muted">매출 정보를 불러오지 못했습니다. (${msEsc(err?.message || "")})</p>`;
+  }
 }
