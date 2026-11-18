@@ -1033,6 +1033,66 @@ function renderCoopCard(p) {
     </a>`;
 }
 
+// ── 웹매거진 최신 뉴스 (베스트 매거진과 같은 기사 목록: 저장된 기사 최신순 + 기본 기사) ──
+const WEBZINE_NEWS_MAX = 10;
+const webzineTime = (a) => a.createdAt?.seconds || (typeof a.createdAt === "number" ? a.createdAt : 0);
+function webzineDate(a) {
+  const t = webzineTime(a);
+  if (t) return new Date(t * 1000).toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
+  return a.dateStr || "";
+}
+function renderWebzineCard(a) {
+  const href = `/kca_webzine.html?article=${encodeURIComponent(a.id)}`;
+  const thumb = String(a.thumbnailUrl || "").trim();
+  const imgHtml = /^(https?:|\/|data:image\/)/i.test(thumb)
+    ? `<img class="wzn-thumb" src="${escHtml(thumb)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=&quot;wzn-thumb-ph&quot;>📰</div>'">`
+    : `<div class="wzn-thumb-ph">📰</div>`;
+  return `
+    <a class="wzn-card" href="${escHtml(href)}">
+      ${imgHtml}
+      <div class="wzn-body">
+        <span class="wzn-cat">${escHtml(a.category || "매거진")}</span>
+        <div class="wzn-title">${escHtml(a.title)}</div>
+        <div class="wzn-sum">${escHtml(a.subtitle || a.summary || "")}</div>
+        <div class="wzn-date">${escHtml(webzineDate(a))}</div>
+      </div>
+    </a>`;
+}
+async function loadWebzineNews() {
+  const grid = $("webzineNewsGrid");
+  if (!grid) return;
+  const hide = () => { const sec = $("webzineNewsSection"); if (sec) sec.style.display = "none"; };
+  try {
+    const savedIds = new Set();
+    const saved = [];
+    try {
+      const snap = await getDocs(query(collection(db, "webzine_articles"), orderBy("createdAt", "desc"), limit(50)));
+      snap.forEach((d) => {
+        savedIds.add(d.id);
+        const data = d.data() || {};
+        if (data.deleted === true || !data.title) return;
+        saved.push({ id: d.id, ...data });
+      });
+    } catch (e) {
+      console.warn("webzine_articles 조회 실패:", e?.message || e);
+    }
+    saved.sort((a, b) => webzineTime(b) - webzineTime(a));
+    let presets = [];
+    if (saved.length < WEBZINE_NEWS_MAX) {
+      try {
+        const mod = await import("./webzine-seed-data.js");
+        presets = (mod.WEBZINE_20_ARTICLES || []).filter((a) => a && a.id && a.title && !savedIds.has(a.id));
+      } catch (_) {}
+    }
+    const list = [...saved, ...presets].slice(0, WEBZINE_NEWS_MAX);
+    if (!list.length) return hide();
+    grid.innerHTML = list.map(renderWebzineCard).join("");
+  } catch (e) {
+    console.warn("loadWebzineNews failed:", e);
+    hide();
+  }
+}
+
 async function loadCoopProducts() {
   const grid = $("coopProductsGrid");
   if (!grid) return;
@@ -1409,6 +1469,7 @@ loadRankings();
 loadUsedMarketPreview();
 loadMerchants();
 loadCoopProducts();
+loadWebzineNews();
 initSponsorRotator().catch((e) => console.warn("sponsor init failed:", e));
 initUISlider();
 loadPlacesMap();
