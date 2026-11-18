@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3쿠션 당구 | BestClub 게임모음</title>
+  <meta name="description" content="실감나는 3D 물리 3쿠션 당구. 브라우저에서 바로 플레이하세요. BestClub 게임모음.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://bestclubvn.netlify.app/billiards.html">
+  <link rel="icon" href="/assets/images/jump/favicon.png">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link rel="stylesheet" href="/assets/css/header.css">
+  <link rel="stylesheet" href="/assets/css/footer.css">
+  <script src="/assets/js/partials.js" defer></script>
+  <script type="module" src="/assets/js/firebase-init.js"></script>
+  <script type="module" src="/assets/js/header-auth.js"></script>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    .bl-wrap { max-width: 1200px; margin: 0 auto; padding: 14px 12px 32px; }
+    .bl-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px;
+      border-radius: 14px; color: #fff;
+      background: linear-gradient(135deg, #052e16 0%, #065f46 55%, #0f766e 100%);
+      border: 1px solid rgba(52, 211, 153, .4);
+    }
+    .bl-bar h1 { margin: 0; font-size: 18px; font-weight: 900; flex: 1 1 auto; }
+    .bl-bar a.bl-back { color: #a7f3d0; font-size: 13px; font-weight: 700; text-decoration: none; }
+    .bl-ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .bl-ctrl label { font-size: 12px; color: #d1fae5; font-weight: 700; }
+    .bl-ctrl select, .bl-ctrl button {
+      font: inherit; font-size: 13px; font-weight: 800; border-radius: 10px; padding: 6px 10px;
+      border: 1px solid rgba(167, 243, 208, .5); background: rgba(255, 255, 255, .1); color: #fff; cursor: pointer;
+    }
+    .bl-ctrl select option { color: #111827; }
+    .bl-ctrl button.primary { background: #fbbf24; border-color: #f59e0b; color: #422006; }
+    .bl-stage {
+      position: relative; margin-top: 10px; width: 100%;
+      height: min(calc(100vh - 190px), 72vw); min-height: 320px;
+      border-radius: 14px; overflow: hidden; background: #0b1611; border: 1px solid #064e3b;
+    }
+    .bl-stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .bl-tip { margin: 10px 2px 0; font-size: 12.5px; color: var(--muted, #6b7280); line-height: 1.6; }
+    .bl-credit { margin: 8px 2px 0; font-size: 11.5px; color: var(--muted, #6b7280); line-height: 1.6; }
+    .bl-credit a { color: inherit; }
+    @media (max-width: 640px) {
+      .bl-stage { height: calc(100vh - 230px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="siteHeader"></div>
+
+  <main class="page">
+    <div class="bl-wrap">
+      <div class="bl-bar">
+        <h1>🎱 3쿠션 당구</h1>
+        <div class="bl-ctrl">
+          <label for="raceTo">목표 점수</label>
+          <select id="raceTo">
+            <option value="5">5점</option>
+            <option value="7" selected>7점</option>
+            <option value="10">10점</option>
+            <option value="15">15점</option>
+          </select>
+          <button type="button" id="restartBtn">새 게임</button>
+          <button type="button" class="primary" id="fullBtn">⛶ 전체화면</button>
+        </div>
+        <a class="bl-back" href="/games.html">← 게임모음</a>
+      </div>
+
+      <div class="bl-stage" id="stage">
+        <iframe id="game" title="3쿠션 당구" allow="fullscreen; autoplay" allowfullscreen loading="eager"></iframe>
+      </div>
+
+      <p class="bl-tip">
+        조작: 마우스 드래그(모바일은 손가락)로 조준, 하단 파워 바로 세기 조절, 공 아이콘을 눌러 당점(회전)을 정한 뒤 샷 버튼으로 칩니다.
+        수구가 두 공을 맞히기 전에 쿠션 3번 이상 닿으면 1점. 가로 화면이나 전체화면을 추천해요.
+      </p>
+      <p class="bl-credit">
+        게임 엔진: <a href="https://github.com/tailuge/billiards" target="_blank" rel="noopener">tailuge/billiards</a>
+        (© tailuge, <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GPL-3.0</a>).
+        원작자가 공개 배포하는 빌드를 그대로 불러와 실행하며, 소스 코드는 위 저장소에서 받을 수 있습니다.
+      </p>
+    </div>
+  </main>
+
+  <div id="siteFooter"></div>
+
+  <script type="module">
+    import { auth } from '/assets/js/firebase-init.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+
+    const GAME_BASE = 'https://tailuge.github.io/billiards/dist/';
+    const frame = document.getElementById('game');
+    const raceSel = document.getElementById('raceTo');
+    let userName = '회전마법사';
+
+    try {
+      const saved = localStorage.getItem('billiards_raceTo');
+      if (saved && raceSel.querySelector(`option[value="${saved}"]`)) raceSel.value = saved;
+    } catch {}
+
+    function gameUrl() {
+      const p = new URLSearchParams({
+        ruletype: 'threecushion',
+        userName,
+        lod: '4',
+        raceTo: raceSel.value,
+      });
+      return `${GAME_BASE}?${p.toString()}`;
+    }
+    function load() { frame.src = gameUrl(); }
+
+    raceSel.addEventListener('change', () => {
+      try { localStorage.setItem('billiards_raceTo', raceSel.value); } catch {}
+      load();
+    });
+    document.getElementById('restartBtn').addEventListener('click', load);
+    document.getElementById('fullBtn').addEventListener('click', () => {
+      const el = document.getElementById('stage');
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) req.call(el).catch?.(() => {});
+    });
+
+    let started = false;
+    const start = () => { if (!started) { started = true; load(); } };
+    // 로그인 상태면 닉네임으로 표시, 1.5초 안에 확인 안 되면 기본 이름으로 시작
+    const timer = setTimeout(start, 1500);
+    onAuthStateChanged(auth, (u) => {
+      const name = (u?.displayName || '').trim().slice(0, 20);
+      if (name) userName = name;
+      clearTimeout(timer);
+      start();
+    });
+  </script>
+</body>
+</html>
