@@ -103,6 +103,16 @@
     .bl-over-card p { margin: 6px 0; font-size: 13px; color: #4b5563; line-height: 1.6; }
     .bl-over-card button { margin-top: 10px; width: 100%; padding: 11px; border: 0; border-radius: 10px; font: inherit; font-weight: 900; cursor: pointer; background: #059669; color: #fff; }
     .bl-over-card button.alt { background: #e5e7eb; color: #111827; }
+    /* 전체화면: HUD + 게임을 같이 띄움 (iPhone 등 미지원 기기는 화면 고정 방식) */
+    .bl-game:fullscreen, .bl-game:-webkit-full-screen, .bl-game.bl-pseudo-fs {
+      margin: 0; padding: 6px; background: #000; display: flex; flex-direction: column; gap: 6px;
+      width: 100vw; height: 100vh; height: 100dvh; box-sizing: border-box;
+    }
+    .bl-game.bl-pseudo-fs { position: fixed; inset: 0; z-index: 9999; }
+    .bl-game:fullscreen .bl-stage, .bl-game:-webkit-full-screen .bl-stage, .bl-game.bl-pseudo-fs .bl-stage {
+      flex: 1; height: auto; min-height: 0; margin-top: 0;
+    }
+    .bl-game:fullscreen .bl-hud, .bl-game.bl-pseudo-fs .bl-hud { padding: 6px 10px; }
     .bl-weekly { margin-top: 14px; }
     .bl-credit { margin: 12px 2px 0; font-size: 11.5px; color: var(--muted, #6b7280); line-height: 1.6; }
     .bl-credit a { color: inherit; }
@@ -293,6 +303,7 @@
       $('game').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     function backToLobby() {
+      exitFull();
       $('frame').src = 'about:blank';
       $('game').hidden = true; $('lobby').hidden = false; mode = null;
       board.refresh();
@@ -351,10 +362,29 @@
       else { backToLobby(); $('btnStart').click(); }
     });
     $('btnLobby').addEventListener('click', backToLobby);
-    $('btnFull').addEventListener('click', () => {
-      const el = $('stage'); const req = el.requestFullscreen || el.webkitRequestFullscreen;
-      if (req) Promise.resolve(req.call(el)).catch(() => {});
+    // 전체화면: HUD(기회·점수·GP)와 게임을 함께
+    const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+    function isFull() { return !!fsEl() || $('game').classList.contains('bl-pseudo-fs'); }
+    function syncFullBtn() { $('btnFull').textContent = isFull() ? '⤡ 전체화면 해제' : '⛶ 전체화면'; }
+    async function exitFull() {
+      $('game').classList.remove('bl-pseudo-fs'); document.body.style.overflow = '';
+      if (fsEl()) { try { await (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch {} }
+      syncFullBtn();
+    }
+    $('btnFull').addEventListener('click', async () => {
+      if (isFull()) return exitFull();
+      const el = $('game'); const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      try {
+        if (!req) throw new Error('unsupported');
+        await req.call(el);
+        try { await screen.orientation?.lock?.('landscape'); } catch {}
+      } catch {
+        el.classList.add('bl-pseudo-fs'); document.body.style.overflow = 'hidden';
+      }
+      syncFullBtn();
     });
+    document.addEventListener('fullscreenchange', syncFullBtn);
+    document.addEventListener('webkitfullscreenchange', syncFullBtn);
 
     // ── 엔진에서 오는 샷 결과 ──
     function handleShot(s) {
