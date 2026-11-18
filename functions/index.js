@@ -938,6 +938,16 @@ exports.voidMerchantSettlementPayout = onCall(
   })
 );
 
+// 마이페이지 내 구매 내역: 본인이 고객으로 모든 가맹점에서 결제한 내역 (가맹점주 본인 소비 포함)
+const myPurchasesH = require('./handlers/myPurchases');
+exports.getMyPurchaseHistory = onCall(
+  { cors: true, timeoutSeconds: 60 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await myPurchasesH.getMyPurchaseHistory(uid);
+  })
+);
+
 exports.createBtRewardSession = onCall(
   { cors: true },
   wrapError(async (request) => {
@@ -3303,7 +3313,8 @@ exports.exchangePointsToFiat = onCall(
 );
 
 // ── 게임 GP → 포인트 전환 (마이페이지) ──
-// 공식: (게임 GP × 게임 레벨) ÷ 10 = 포인트. 게임 GP(battle_players.gold) 전부 사용, 최소 10 GP.
+// 공식: (게임 GP × 게임 레벨) ÷ 10 = 포인트. 게임 참여용 5,000 GP 는 남기고 나머지를 전환, 최소 10 GP.
+const GP_KEEP_MIN = 5000;
 exports.convertGpToPoint = onCall(
   wrapError(async (request) => {
     const uid = requireAuth(request);
@@ -3320,9 +3331,13 @@ exports.convertGpToPoint = onCall(
       if (!bpSnap.exists) throw new HttpsError('failed-precondition', '게임 기록이 없습니다.');
 
       const bp = bpSnap.data();
-      usedGp = Math.floor(Number(bp.gold ?? 0));
+      const goldNow = Math.floor(Number(bp.gold ?? 0));
+      usedGp = goldNow - GP_KEEP_MIN;
       level = Math.max(1, Math.floor(Number(bp.gsLevel ?? 1)));
-      if (usedGp < 10) throw new HttpsError('failed-precondition', '최소 10 GP 이상이어야 전환할 수 있습니다.');
+      if (usedGp < 10) {
+        throw new HttpsError('failed-precondition',
+          `게임 참여를 위해 ${GP_KEEP_MIN.toLocaleString()} GP는 남겨 둡니다. 보유 GP가 ${(GP_KEEP_MIN + 10).toLocaleString()} GP 이상일 때 전환할 수 있습니다. (현재 ${goldNow.toLocaleString()} GP)`);
+      }
 
       points = Math.floor((usedGp * level) / 10);
       const pointBefore = Number(userSnap.data().pointBalance ?? 0);
@@ -3353,7 +3368,7 @@ exports.convertGpToPoint = onCall(
     });
 
     logger.info('convertGpToPoint', { uid, usedGp, points, level });
-    return { success: true, usedGp, points, level };
+    return { success: true, usedGp, points, level, keptGp: GP_KEEP_MIN };
   })
 );
 

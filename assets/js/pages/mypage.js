@@ -496,15 +496,33 @@ async function loadKCultureBalances(uid) {
 
         if (elGpDisp) elGpDisp.textContent = gpBal.toLocaleString("ko-KR") + " GP";
         if (elGpLv) elGpLv.textContent = "Level: " + userLv;
+        // 전환 가능 GP (게임용 5,000 GP 제외) 안내
+        const showGpConvertable = () => {
+          let el = document.getElementById("gpConvertableDisplay");
+          if (!el && elGpDisp) {
+            el = document.createElement("div");
+            el.id = "gpConvertableDisplay";
+            el.style.cssText = "font-size:0.78rem; color:#64748b; margin-top:4px; line-height:1.4;";
+            elGpDisp.insertAdjacentElement("afterend", el);
+          }
+          if (!el) return;
+          const conv = Math.max(0, gpBal - GP_KEEP_MIN);
+          el.textContent = conv >= 10
+            ? `전환 가능 ${conv.toLocaleString("ko-KR")} GP → 약 ${Math.floor((conv * userLv) / 10).toLocaleString("ko-KR")} P (게임용 ${GP_KEEP_MIN.toLocaleString("ko-KR")} GP는 남김)`
+            : `게임용 ${GP_KEEP_MIN.toLocaleString("ko-KR")} GP는 남겨 둡니다. ${(GP_KEEP_MIN + 10).toLocaleString("ko-KR")} GP 이상일 때 전환할 수 있습니다.`;
+        };
+        showGpConvertable();
 
         if (elGpBtn) {
           elGpBtn.onclick = async () => {
-            if (gpBal < 10) {
-              alert("최소 10 GP 이상이어야 전환 가능합니다.");
+            const convGp = gpBal - GP_KEEP_MIN;
+            if (convGp < 10) {
+              alert(`게임 참여를 위해 ${GP_KEEP_MIN.toLocaleString()} GP는 남겨 둡니다.\n보유 GP가 ${(GP_KEEP_MIN + 10).toLocaleString()} GP 이상일 때 전환할 수 있습니다. (현재 ${gpBal.toLocaleString()} GP)`);
               return;
             }
-            const expectPoint = Math.floor((gpBal * userLv) / 10);
-            if (!confirm(`게임 GP ${gpBal.toLocaleString()} × Lv.${userLv} ÷ 10 = ${expectPoint.toLocaleString()} P
+            const expectPoint = Math.floor((convGp * userLv) / 10);
+            if (!confirm(`보유 ${gpBal.toLocaleString()} GP 중 ${GP_KEEP_MIN.toLocaleString()} GP는 게임용으로 남깁니다.
+전환 GP ${convGp.toLocaleString()} × Lv.${userLv} ÷ 10 = ${expectPoint.toLocaleString()} P
 GP를 Point로 전환하시겠습니까?`)) return;
 
             try {
@@ -513,9 +531,10 @@ GP를 Point로 전환하시겠습니까?`)) return;
               // 서버에서만 처리 (게임 GP 차감 + 포인트 적립 + 기록)
               const res = await httpsCallable(functions, "convertGpToPoint")({});
               const d = res.data || {};
-              alert("성공적으로 " + Number(d.points || 0).toLocaleString() + " Point 로 전환되었습니다!");
-              gpBal = 0;
-              if (elGpDisp) elGpDisp.textContent = "0 GP";
+              alert("성공적으로 " + Number(d.points || 0).toLocaleString() + " Point 로 전환되었습니다!\n게임용 GP " + GP_KEEP_MIN.toLocaleString() + " GP는 남겨 두었습니다.");
+              gpBal = Math.max(0, gpBal - Number(d.usedGp || 0));
+              if (elGpDisp) elGpDisp.textContent = gpBal.toLocaleString("ko-KR") + " GP";
+              showGpConvertable();
             } catch (e) {
               console.error(e);
               alert("전환 중 오류가 발생했습니다: " + (e.message || ""));
@@ -2566,6 +2585,14 @@ async function initMyCoupons(user, userData) {
   const isSuperAdmin = ['daguri75@gmail.com'].includes(user.email) || userData.role === 'SUPER_ADMIN' || userData.role === 'admin';
   const isMerchantOwner = !!userData.merchantId;
 
+  // 내 구매 내역: 본인이 고객으로 결제한 내역 (가맹점주도 다른 가맹점에서 소비하므로 모두 표시)
+  loadMyPurchaseHistory();
+  const btnMp = $('btnRefreshMyPurchases');
+  if (btnMp && !btnMp.dataset.bound) {
+    btnMp.dataset.bound = '1';
+    btnMp.addEventListener('click', () => loadMyPurchaseHistory());
+  }
+
   // 내 가맹점 매출·고객 (BestERP 대시보드와 같은 서버 함수 getMerchantSalesSummary)
   if (isMerchantOwner) {
     loadMerchantSalesSummary(String(userData.merchantId));
@@ -3491,12 +3518,80 @@ function _renderOnChainSyncStatus(bp, uid) {
 function msEsc(v) {
   return String(v ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
+// 게임 GP → Point 전환 시 게임 참여용으로 남겨 두는 GP (서버 convertGpToPoint 와 같은 값)
+const GP_KEEP_MIN = 5000;
+
 function msVnd(n) {
   return `₫ ${Number(n || 0).toLocaleString()}`;
 }
 function msDate(ms) {
   if (!ms) return "-";
   return new Date(ms).toLocaleString("ko-KR", { timeZone: "Asia/Ho_Chi_Minh", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+const MP_STATUS = { paid: ["결제 완료", "#166534", "#dcfce7"], pending: ["결제 대기", "#92400e", "#fef3c7"], cancelled: ["취소", "#64748b", "#f1f5f9"] };
+
+async function loadMyPurchaseHistory() {
+  const section = $("myPurchaseSection");
+  const body = $("myPurchaseBody");
+  if (!section || !body) return;
+  section.style.display = "";
+  body.innerHTML = '<p class="hint">불러오는 중...</p>';
+  try {
+    const res = await httpsCallable(functions, "getMyPurchaseHistory")({});
+    const d = res.data || {};
+    const t = d.totals || {};
+    const items = d.items || [];
+    if (!items.length) {
+      body.innerHTML = '<p class="hint">아직 가맹점에서 결제한 내역이 없습니다.</p>';
+      return;
+    }
+    const card = (label, value, sub = "") => `
+      <div style="flex:1 1 140px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px;">
+        <div style="font-size:0.75rem; color:#64748b;">${label}</div>
+        <div style="font-size:1.05rem; font-weight:800; color:#0f172a;">${value}</div>
+        ${sub ? `<div style="font-size:0.72rem; color:#94a3b8;">${sub}</div>` : ""}
+      </div>`;
+    const th = (x, right) => `<th style="padding:4px 6px; text-align:${right ? "right" : "left"}; font-size:0.75rem; color:#64748b; border-bottom:1px solid #e2e8f0; white-space:nowrap;">${x}</th>`;
+
+    const merchantRows = (d.merchants || []).slice(0, 10).map(m => `
+      <tr><td style="padding:4px 6px;">${msEsc(m.merchantName || m.merchantId || "-")}</td>
+      <td style="padding:4px 6px; text-align:right;">${m.count}회</td>
+      <td style="padding:4px 6px; text-align:right; font-weight:700;">${msVnd(m.vnd)}</td>
+      <td style="padding:4px 6px; text-align:right; color:#64748b; white-space:nowrap;">${msDate(m.lastAtMs)}</td></tr>`).join("");
+
+    const itemRows = items.slice(0, 100).map(i => {
+      const st = MP_STATUS[i.status] || MP_STATUS.paid;
+      return `<tr style="${i.status === "cancelled" ? "opacity:0.55;" : ""}">
+        <td style="padding:4px 6px; white-space:nowrap;">${msDate(i.atMs)}</td>
+        <td style="padding:4px 6px;">${msEsc(i.merchantName || i.merchantId || "-")}</td>
+        <td style="padding:4px 6px;">${msEsc(i.label || "")}</td>
+        <td style="padding:4px 6px; text-align:right; font-weight:700; white-space:nowrap;">${msVnd(i.amountVnd)}</td>
+        <td style="padding:4px 6px; text-align:right;">${i.btReceived ? `${Number(i.btReceived)} BT` : "-"}</td>
+        <td style="padding:4px 6px;"><span style="font-size:0.72rem; font-weight:700; padding:1px 7px; border-radius:999px; color:${st[1]}; background:${st[2]}; white-space:nowrap;">${st[0]}</span></td></tr>`;
+    }).join("");
+
+    body.innerHTML = `
+      <p class="hint muted" style="margin-bottom:8px;">내가 고객으로 모든 가맹점에서 결제한 내역입니다. 매장 BM 결제, 현금 결제(BT 수령), 온라인 BM 결제, 온라인 계좌이체를 모두 포함합니다.</p>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        ${card("총 구매액", msVnd(t.totalVnd), `${t.count || 0}건`)}
+        ${card("BM 결제", msVnd(t.bmVnd))}
+        ${card("이용 가맹점", `${t.merchantCount || 0}곳`)}
+        ${card("받은 BT", `${Number(t.btReceived || 0).toLocaleString()} BT`)}
+      </div>
+      ${t.pendingCount ? `<p class="hint" style="margin-bottom:8px;">⏳ 결제 대기 주문 ${t.pendingCount}건 (${msVnd(t.pendingVnd)}) — 입금 확인 후 구매액에 반영됩니다.</p>` : ""}
+      ${merchantRows ? `<h3 style="font-size:0.9rem; margin:8px 0 4px;">가맹점별</h3>
+      <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-bottom:12px;">
+        <thead><tr>${th("가맹점")}${th("횟수", 1)}${th("구매액", 1)}${th("마지막", 1)}</tr></thead>
+        <tbody>${merchantRows}</tbody></table>` : ""}
+      <h3 style="font-size:0.9rem; margin:8px 0 4px;">구매 내역 (최근 ${Math.min(items.length, 100)}건)</h3>
+      <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+        <thead><tr>${th("일시")}${th("가맹점")}${th("결제 방식")}${th("금액", 1)}${th("BT", 1)}${th("상태")}</tr></thead>
+        <tbody>${itemRows}</tbody></table>`;
+  } catch (err) {
+    console.warn("getMyPurchaseHistory failed", err?.message);
+    body.innerHTML = `<p class="hint muted">구매 내역을 불러오지 못했습니다. (${msEsc(err?.message || "")})</p>`;
+  }
 }
 
 async function loadMerchantSalesSummary(merchantId) {

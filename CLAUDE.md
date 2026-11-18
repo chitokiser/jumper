@@ -105,7 +105,7 @@ Firebase Authentication + Cloud Functions
 |---|---|---|
 | **BM (VND)** | 현금성 결제/정산 재화<br>(표기 단위: VND, UI 표기: `BM`) | - 플랫폼 내 유일한 현금성 결제·정산 재화.<br>- 기존의 KM 및 `pointBalanceVnd`는 BM으로 완전 대체·정리.<br>- 가맹점 정산은 향후 USDT 기반으로 일괄 처리 예정. |
 | **Point** | 비현금성 리워드<br>(표기 단위: `Point`, 필드: `users.pointBalance`) | - 결제 포인트 잭팟(결제금에 비례), BT 룰렛, GP 전환 등으로 획득하는 비현금성 리워드.<br>- Point를 BM 또는 법정화폐와 동일한 가치로 직접 간주하지 않음.<br>- **BM 전환 공식:** `floor(보유 Point ÷ 10)` (레벨 무관, 서버 함수 `exchangePointsToFiat`) |
-| **GP (Game Point)** | 게임 전용 포인트<br>(표기 단위: `GP`, 필드: `battle_players.gold`) | - 플랫폼 내 게임 콘텐츠(배틀, 금광, 돈나무 등)를 통해 획득하는 전용 포인트. 서버만 변경.<br>- 게임 내에서 사용되며 Point로 전환 가능.<br>- **Point 전환 공식:** `floor(보유 GP × 게임 레벨 ÷ 10)` (게임 레벨 = `battle_players.gsLevel`, 서버 함수 `convertGpToPoint`, 최소 10 GP, 전액 전환) |
+| **GP (Game Point)** | 게임 전용 포인트<br>(표기 단위: `GP`, 필드: `battle_players.gold`) | - 플랫폼 내 게임 콘텐츠(배틀, 금광, 돈나무 등)를 통해 획득하는 전용 포인트. 서버만 변경.<br>- 게임 내에서 사용되며 Point로 전환 가능.<br>- **Point 전환 공식:** `floor(전환 GP × 게임 레벨 ÷ 10)`, 전환 GP = 보유 GP − 5,000 (게임 참여용 5,000 GP는 항상 남김, 2026-11-18) (게임 레벨 = `battle_players.gsLevel`, 서버 함수 `convertGpToPoint`, 전환 GP 최소 10) |
 | **BT (Bonus Ticket)** | 보너스 티켓 수량<br>(표기 단위: `BT`, 필드: `btBalance`) | - **과거 10만 동당 1 BT 고정 지급 규정 전면 폐기:** 결제금액에 따른 BT 보상 정책은 **각 가맹점이 직접 자율적으로 설정(`btPerVnd`)**한다.<br>- **발급 규정:** 가맹점 주가 설정한 **지급 기준금액(`btPerVnd`) 결제당 1 BT** 지급 (`Math.floor(amount / btPerVnd)`). 가맹점 잔여 BT 재고 범위 내에서만 원자적 1:1 차감 지급.<br>- **가맹점 카드 명시 의무:** 각 가맹점 카드(Merchant Card) 및 상세/팝업 UI에 해당 가맹점의 BT 보상 정책(예: `🎟️ 1 BT per N VND` / `🎟️ N VND당 1 BT`)이 **반드시 명시**되어야 한다.<br>- **사용처:** 인터랙티브 룰렛을 돌려 등급 기반 Point를 획득하는 전용 티켓. |
 
 ## 3.2 유저 레벨 및 경험치(EXP) 정책 (2026-10-21 게임 레벨로 통일 — docs/adr/0001)
