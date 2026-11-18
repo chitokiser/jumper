@@ -948,6 +948,16 @@ exports.getMyPurchaseHistory = onCall(
   })
 );
 
+// 마이페이지 BM → 게임 GP 충전: GP = BM × 100 ÷ 게임 레벨, 수수료 5%, 하루 최대 10,000 BM
+const bmToGpH = require('./handlers/bmToGp');
+exports.convertBmToGp = onCall(
+  { cors: true },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await bmToGpH.convertBmToGp(uid, request.data || {});
+  })
+);
+
 exports.createBtRewardSession = onCall(
   { cors: true },
   wrapError(async (request) => {

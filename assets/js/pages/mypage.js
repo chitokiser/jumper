@@ -513,6 +513,48 @@ async function loadKCultureBalances(uid) {
         };
         showGpConvertable();
 
+        // BM → 게임 GP 충전 (서버 convertBmToGp: GP = BM × 100 ÷ 레벨, 수수료 5%, 하루 최대 10,000 BM)
+        const elBmGpRate = document.getElementById("bmToGpRateDisplay");
+        if (elBmGpRate) {
+          const per1000 = Math.floor(Math.floor((1000 * 100) / userLv) * 0.95);
+          elBmGpRate.textContent = `충전 비율: BM × 100 ÷ Lv.${userLv} = GP, 수수료 5% (1,000 BM → ${per1000.toLocaleString("ko-KR")} GP) · 하루 최대 10,000 BM`;
+        }
+        const elBmGpBtn = document.getElementById("btnBmToGp");
+        if (elBmGpBtn) {
+          elBmGpBtn.onclick = async () => {
+            let bmBal = 0;
+            try {
+              const us = await getDoc(doc(db, "users", uid));
+              bmBal = us.exists() ? Math.floor(Number(us.data().pointBalanceVnd || 0)) : 0;
+            } catch (_) {}
+            if (bmBal < 10) { alert("BM 잔액이 부족합니다. (최소 10 BM)"); return; }
+            const suggest = Math.min(bmBal, 1000);
+            const input = prompt(`게임 GP로 충전할 BM을 입력하세요.\n보유 BM: ${bmBal.toLocaleString()} BM · 하루 최대 10,000 BM\n비율: BM × 100 ÷ Lv.${userLv}, 수수료 5%`, String(suggest));
+            if (input === null) return;
+            const amountBm = Math.floor(Number(String(input).replace(/[^0-9]/g, "")));
+            if (!Number.isSafeInteger(amountBm) || amountBm < 10) { alert("10 BM 이상 정수로 입력해 주세요."); return; }
+            if (amountBm > bmBal) { alert(`BM 잔액이 부족합니다. (보유 ${bmBal.toLocaleString()} BM)`); return; }
+            const expectGp = Math.floor(Math.floor((amountBm * 100) / userLv) * 0.95);
+            if (!confirm(`${amountBm.toLocaleString()} BM → 약 ${expectGp.toLocaleString()} GP (Lv.${userLv}, 수수료 5%)\n충전하시겠습니까?`)) return;
+            const idempotencyKey = (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : `${Date.now()}${Math.random().toString(36).slice(2)}`).slice(0, 32);
+            try {
+              elBmGpBtn.disabled = true;
+              elBmGpBtn.textContent = "충전 중...";
+              const res = await httpsCallable(functions, "convertBmToGp")({ amountBm, idempotencyKey });
+              const d = res.data || {};
+              gpBal += Number(d.gp || 0);
+              if (elGpDisp) elGpDisp.textContent = gpBal.toLocaleString("ko-KR") + " GP";
+              showGpConvertable();
+              alert(`✅ 충전 완료!\n사용 BM: ${Number(d.usedBm || 0).toLocaleString()} BM\n받은 GP: +${Number(d.gp || 0).toLocaleString()} GP\n오늘 남은 충전 한도: ${Number(d.leftTodayBm || 0).toLocaleString()} BM`);
+            } catch (e) {
+              alert("충전 실패: " + (e.message || "서버 오류"));
+            } finally {
+              elBmGpBtn.disabled = false;
+              elBmGpBtn.textContent = "💳 BM으로 GP 충전";
+            }
+          };
+        }
+
         if (elGpBtn) {
           elGpBtn.onclick = async () => {
             const convGp = gpBal - GP_KEEP_MIN;
@@ -931,6 +973,7 @@ const TX_CONFIG = {
   withdraw: { labelKey: 'tx_withdraw', dir: "expense", icon: "📤" },
   pay_merchant: { labelKey: 'tx_pay_merchant', dir: "expense", icon: "🛒" },
   merchant_income: { labelKey: 'tx_merchant_income', dir: "income", icon: "🏪" },
+  BM_TO_GP: { label: "BM → 게임 GP 충전", dir: "expense", icon: "🎮" },
 };
 
 function txAmountHex(tx) {
