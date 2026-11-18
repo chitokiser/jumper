@@ -326,6 +326,7 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
 | `price`, `currency` | 기본 판매 가격 및 통화 (기본: VND) |
 | `options` | 규격, 중량, 맛 등 추가 옵션 및 옵션별 추가 금액 |
 | `sale_status` | `draft`, `published`, `paused`, `sold_out`, `archived` |
+| `sales_channel` | 구매 방법: `in_store`(매장 전용, 온라인 주문 불가), `online`(온라인 전용), `both`(둘 다, 값 없으면 기본) — 2026-11-18 |
 | `inventory` | 판매 가능 재고 수량 |
 | `images` | 대표 이미지 및 추가 이미지 URL 목록 |
 

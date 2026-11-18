@@ -43,6 +43,16 @@
           style="border-radius:99px; font-weight:600;">전체 보기</button>
       </div>
 
+      <!-- 판매 채널 필터: 매장 전용 / 온라인 전용 / 둘 다 -->
+      <div id="channelFilterBar"
+        style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; padding:10px 14px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0; align-items:center;">
+        <span style="font-size:0.85rem; font-weight:bold; color:#475569; margin-right:4px;">🛍️ 구매 방법:</span>
+        <button type="button" class="btn btn--sm btn--primary channel-btn" data-channel="all" style="border-radius:99px; font-weight:600;">전체</button>
+        <button type="button" class="btn btn--sm channel-btn" data-channel="online_ok" style="border-radius:99px; font-weight:600;">🌐 온라인 구매 가능</button>
+        <button type="button" class="btn btn--sm channel-btn" data-channel="in_store" style="border-radius:99px; font-weight:600;">🏬 매장 전용</button>
+        <button type="button" class="btn btn--sm channel-btn" data-channel="online" style="border-radius:99px; font-weight:600;">📦 온라인 전용</button>
+      </div>
+
       <div id="coopMallNotice" class="hint" style="display:none; margin-top:12px;"></div>
       <div id="coopMallProducts" class="product-list"
         style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top:20px;">

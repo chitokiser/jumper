@@ -9,6 +9,24 @@ let currentViewer = null;
 let cart = []; // 장바구니 아이템 담는 배열
 let rawProducts = [];
 let selectedMerchantFilter = "all";
+let selectedChannelFilter = "all";
+
+// 판매 채널: BestERP 상품의 sales_channel ('in_store' 매장 전용 · 'online' 온라인 전용 · 'both' 둘 다)
+// 값이 없는 예전 상품은 'both' 로 본다
+const SALES_CHANNEL = {
+  in_store: { label: "🏬 매장 전용", color: "#9a3412", bg: "#ffedd5", border: "#fdba74" },
+  online: { label: "📦 온라인 전용", color: "#1e40af", bg: "#dbeafe", border: "#93c5fd" },
+  both: { label: "🏬+🌐 매장·온라인", color: "#166534", bg: "#dcfce7", border: "#86efac" },
+};
+function salesChannelOf(data) {
+  const v = String(data?.sales_channel || "").trim();
+  return SALES_CHANNEL[v] ? v : "both";
+}
+function matchesChannel(channel, filter) {
+  if (filter === "all") return true;
+  if (filter === "online_ok") return channel !== "in_store";
+  return channel === filter;
+}
 
 // 가맹점 식별 및 별칭 매핑
 let merchantMap = {
@@ -185,7 +203,8 @@ function renderProductsList() {
   listEl.innerHTML = "";
 
   const filtered = rawProducts.filter(item => {
-    return matchesMerchant(item.data.merchant_id, selectedMerchantFilter);
+    return matchesMerchant(item.data.merchant_id, selectedMerchantFilter)
+      && matchesChannel(salesChannelOf(item.data), selectedChannelFilter);
   });
 
   if (filtered.length === 0) {
@@ -205,6 +224,8 @@ function renderProductsList() {
       booking: "예약형"
     };
     const typeLabel = pTypeMap[data.product_type] || "";
+    const channel = salesChannelOf(data);
+    const chInfo = SALES_CHANNEL[channel];
 
     html += `
       <div class="panel product-card" style="padding:16px; border:1px solid #e2e8f0; border-radius:14px; background:#fff; box-shadow: 0 4px 12px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between; transition: transform 0.2s, box-shadow 0.2s;">
@@ -217,6 +238,7 @@ function renderProductsList() {
                   </span>
                   ${typeLabel ? `<span style="font-size:0.75rem; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:6px; font-weight:600;">${esc(typeLabel)}</span>` : ''}
               </div>
+              <div style="margin:-4px 0 10px;"><span class="channel-badge" style="display:inline-block; font-size:0.75rem; font-weight:700; padding:2px 9px; border-radius:99px; color:${chInfo.color}; background:${chInfo.bg}; border:1px solid ${chInfo.border};">${chInfo.label}</span></div>
 
               ${productImageUrl(data) ? `<img src="${esc(productImageUrl(data))}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:12px;" onerror="this.style.display='none';" />` : ""}
               
@@ -229,6 +251,7 @@ function renderProductsList() {
                   ${Number(data.price || 0).toLocaleString()} <span style="font-size:0.85rem; font-weight:700; color:#64748b;">VND</span>
               </div>
               <div>
+                  ${channel === "in_store" ? `<div style="width:100%; box-sizing:border-box; border-radius:10px; font-weight:700; padding:10px; text-align:center; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; font-size:0.9rem;">🏬 매장에서만 구매할 수 있습니다</div>` : `
                   <button class="btn btn--primary" style="width:100%; border-radius:10px; font-weight:700; padding:10px;" data-action="add-cart" 
                       data-id="${esc(docSnap.id)}" 
                       data-merchant="${esc(data.merchant_id)}"
@@ -236,7 +259,7 @@ function renderProductsList() {
                       data-name="${esc(data.product_name)}" 
                       data-price="${data.price}">
                       🛒 장바구니 담기
-                  </button>
+                  </button>`}
               </div>
           </div>
       </div>
@@ -281,7 +304,16 @@ function updateCartBadge() {
   if ($("cartBadge")) $("cartBadge").textContent = totalQty;
 }
 
+function isInStoreOnly(productId) {
+  const p = rawProducts.find(r => r.id === productId);
+  return !!p && salesChannelOf(p.data) === "in_store";
+}
+
 function addToCart(item) {
+  if (isInStoreOnly(item.id)) {
+    alert("이 상품은 매장에서만 구매할 수 있습니다.");
+    return;
+  }
   if (!currentViewer) {
     if (confirm("장바구니를 이용하려면 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?")) {
       window.location.href = "/login.html";
@@ -368,6 +400,15 @@ $("btnCheckout").addEventListener("click", async () => {
     alert("주문을 진행하려면 먼저 로그인해 주세요.");
     window.location.href = "/login.html";
     return;
+  }
+  const storeOnly = cart.filter(c => isInStoreOnly(c.id));
+  if (storeOnly.length) {
+    if (!confirm(`매장에서만 구매할 수 있는 상품이 장바구니에 있습니다:\n${storeOnly.map(c => `· ${c.name}`).join("\n")}\n\n이 상품을 빼고 계속할까요?`)) return;
+    cart = cart.filter(c => !isInStoreOnly(c.id));
+    saveCartToStorage();
+    updateCartBadge();
+    renderCartModal();
+    if (cart.length === 0) return;
   }
   if (!confirm("장바구니 상품들을 주문하시겠습니까? (결제 QR이 생성됩니다)")) return;
 
@@ -561,4 +602,13 @@ $("btnCheckout").addEventListener("click", async () => {
     btn.disabled = false;
     btn.textContent = "주문하기";
   }
+});
+
+// 판매 채널 필터 버튼
+document.querySelectorAll('#channelFilterBar .channel-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedChannelFilter = btn.getAttribute('data-channel') || 'all';
+    document.querySelectorAll('#channelFilterBar .channel-btn').forEach(b => b.classList.toggle('btn--primary', b === btn));
+    renderProductsList();
+  });
 });
