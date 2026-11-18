@@ -77,6 +77,31 @@ service cloud.firestore {
       );
     }
 
+    // 가맹점 소속 엄격 판정 (매장 CCTV·고객 데이터용).
+    // belongsToTenant()는 isCEO()만으로 모든 가맹점을 통과시키므로 매장 데이터에는 쓰지 않는다.
+    function isMerchantMember(merchantId) {
+      let u = getUserData();
+      return signedIn() && (merchantId is string) && merchantId.size() > 0 && (
+        isSuperAdmin() ||
+        string(u.get('merchantId', '')) == merchantId ||
+        string(u.get('tenantId', '')) == merchantId ||
+        string(u.get('tenant_id', '')) == merchantId
+      );
+    }
+
+    // 테이블 QR(비로그인 고객) 자가 등록 시 허용 필드. 얼굴 벡터·NVR 등록·동의 필드는 금지.
+    function isTableQrCustomerCreate() {
+      let d = request.resource.data;
+      return (d.merchantId is string)
+        && exists(/databases/$(database)/documents/merchants/$(d.merchantId))
+        && d.keys().hasOnly(['customerId', 'merchantId', 'name', 'email', 'birthDate', 'gender', 'nationality',
+                             'job', 'preferences', 'photoURL', 'isFaceRegistered', 'marketingConsent',
+                             'privacyConsent', 'tableNo', 'zaloSuperAdminConnected', 'zaloOwnerConnected',
+                             'visitCount', 'totalSpent', 'tier', 'serviceNotes', 'awardedBt', 'btTicketCode',
+                             'createdAt'])
+        && d.visitCount == 1 && d.totalSpent == 0;
+    }
+
     function isOrderBuyer() {
       return signedIn()
         && (resource.data.buyerUid is string)
@@ -980,17 +1005,69 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
-    // ── Table QR & AI Smart CRM Collections ────────────────────────────────────
-    match /store_customers/{document=**} {
-      allow read, write: if true;
+    // ── Table QR & AI Smart CRM Collections (가맹점별 격리) ──────────────────────
+    // 고객 원장: 소속 가맹점만 조회·수정·삭제. 테이블 QR 자가 등록만 비로그인 생성 허용.
+    match /store_customers/{docId} {
+      allow read, delete: if isMerchantMember(resource.data.merchantId);
+      allow create: if isMerchantMember(request.resource.data.merchantId) || isTableQrCustomerCreate();
+      allow update: if isMerchantMember(resource.data.merchantId)
+        && request.resource.data.merchantId == resource.data.merchantId;
     }
 
-    match /store_visits/{document=**} {
-      allow read, write: if true;
+    match /store_visits/{docId} {
+      allow read, delete: if isMerchantMember(resource.data.merchantId);
+      allow create: if (request.resource.data.merchantId is string)
+        && exists(/databases/$(database)/documents/merchants/$(request.resource.data.merchantId))
+        && request.resource.data.keys().hasOnly(['customerId', 'merchantId', 'tableNo', 'customerName', 'visitTime', 'status']);
+      allow update: if isMerchantMember(resource.data.merchantId)
+        && request.resource.data.merchantId == resource.data.merchantId;
     }
 
-    match /merchant_traffic_logs/{document=**} {
-      allow read, write: if true;
+    match /merchant_traffic_logs/{docId} {
+      // 아직 없는 일별 NVR 문서(nvr_{merchantId}_{날짜})도 구독할 수 있도록 '없음' 조회는 허용 (내용 노출 없음)
+      allow read: if (signedIn() && resource == null) || isMerchantMember(resource.data.merchantId);
+      allow create: if isMerchantMember(request.resource.data.merchantId);
+      allow update, delete: if false;
+    }
+
+    // 매장 카메라 구성: 가맹점당 1문서 (store_cameras/{merchantId})
+    match /store_cameras/{merchantId} {
+      allow read: if isMerchantMember(merchantId);
+      allow create, update: if isMerchantMember(merchantId)
+        && request.resource.data.merchantId == merchantId;
+      allow delete: if isMerchantMember(merchantId);
+    }
+
+    // 매장 직원 원장: 소속 가맹점만 관리 (merchantId 변경 금지)
+    match /store_employees/{docId} {
+      allow read, delete: if isMerchantMember(resource.data.merchantId);
+      allow create: if isMerchantMember(request.resource.data.merchantId);
+      allow update: if isMerchantMember(resource.data.merchantId)
+        && request.resource.data.merchantId == resource.data.merchantId;
+    }
+
+    // 방범 이력: 소속 가맹점 조회·브라우저 경보 기록. 수정·삭제는 최고관리자만.
+    match /security_incident_logs/{docId} {
+      allow read: if isMerchantMember(resource.data.merchantId);
+      allow create: if isMerchantMember(request.resource.data.merchantId);
+    }
+
+    // ── AI NVR (매장 Frigate NVR 미들웨어 연동) ──────────────────────────────────
+    // nvr_* 문서는 매장 NVR 미들웨어가 Admin SDK로만 기록한다 (클라이언트 쓰기 금지).
+    // 얼굴 이미지·임베딩·스냅샷은 저장하지 않는다.
+    match /nvr_status/{merchantId} {
+      allow read: if isMerchantMember(merchantId);
+      allow write: if false;
+    }
+
+    match /nvr_attendance/{docId} {
+      allow read: if isMerchantMember(resource.data.merchantId);
+      allow write: if false;
+    }
+
+    match /nvr_vip_visits/{docId} {
+      allow read: if isMerchantMember(resource.data.merchantId);
+      allow write: if false;
     }
 
     match /user_coupons/{document=**} {
