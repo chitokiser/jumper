@@ -246,6 +246,11 @@ async function getMerchantSalesSummary(callerUid, data = {}) {
     pendingOrderCount: 0, pendingOrderVnd: 0, btIssued: 0,
   };
   const ledger = []; // 최근 매출 원장 (화면 표시용)
+  const bmByMonth = new Map(); // 'YYYY-MM' -> BM 결제액 (정산 화면용, 날짜 없는 결제는 'unknown')
+  const addBmMonth = (atMs, amt) => {
+    const k = atMs ? vnDayKey(atMs).slice(0, 7) : 'unknown';
+    bmByMonth.set(k, (bmByMonth.get(k) || 0) + amt);
+  };
 
   const customers = new Map(); // uid|email -> stats
   const touch = (uid, email, patch = {}) => {
@@ -300,6 +305,7 @@ async function getMerchantSalesSummary(callerUid, data = {}) {
     const c = touch(String(tx.buyerUid || tx.uid || ''), String(tx.buyerEmail || '').toLowerCase().trim(),
       { name: tx.buyerName, phone: tx.buyerPhone, atMs });
     sales.bmVnd += amt;
+    addBmMonth(atMs, amt);
     addSale(onlineBmTxHashes.has(hash) ? 'onlineBm' : 'storeBm', amt, atMs, c, hash);
   });
 
@@ -342,7 +348,7 @@ async function getMerchantSalesSummary(callerUid, data = {}) {
     if (amt <= 0) return;
     const channel = o.payment_method === 'bank_transfer' ? 'onlineTransfer'
       : (o.payment_method === 'bm_wallet' ? 'onlineBm' : 'onlineOther');
-    if (channel === 'onlineBm') sales.bmVnd += amt;
+    if (channel === 'onlineBm') { sales.bmVnd += amt; addBmMonth(atMs, amt); }
     addSale(channel, amt, atMs, c, o.id);
   });
 
@@ -426,6 +432,12 @@ async function getMerchantSalesSummary(callerUid, data = {}) {
       list: list.slice(0, 500),
     },
     stakeholders,
+    settlementByMonth: Array.from(bmByMonth.entries())
+      .map(([month, bmVnd]) => {
+        const feeVnd = Math.round(bmVnd * FEE_RATE);
+        return { month, bmVnd, feeVnd, settlementVnd: bmVnd - feeVnd };
+      })
+      .sort((a, b) => (a.month === 'unknown' ? -1 : b.month === 'unknown' ? 1 : a.month.localeCompare(b.month))),
   };
 }
 
@@ -492,4 +504,4 @@ async function getMerchantStakeholders({ callerUid, caller, isAdmin, variants, m
   };
 }
 
-module.exports = { getMerchantQrCustomers, getMerchantSalesSummary, merchantIdVariants };
+module.exports = { getMerchantQrCustomers, getMerchantSalesSummary, merchantIdVariants, isSuperAdmin, belongsToMerchant, FEE_RATE };

@@ -914,6 +914,30 @@ exports.getMerchantSalesSummary = onCall(
   })
 );
 
+// BestERP 정산 화면: 가맹점별 BM 정산 예정액(90%)·지급 내역·미지급 (지급 등록·취소는 최고관리자만)
+const merchantSettlementH = require('./handlers/merchantSettlement');
+exports.getMerchantSettlementOverview = onCall(
+  { cors: true, timeoutSeconds: 120 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await merchantSettlementH.getMerchantSettlementOverview(uid, request.data || {});
+  })
+);
+exports.recordMerchantSettlementPayout = onCall(
+  { cors: true, timeoutSeconds: 60 },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await merchantSettlementH.recordMerchantSettlementPayout(uid, request.data || {});
+  })
+);
+exports.voidMerchantSettlementPayout = onCall(
+  { cors: true },
+  wrapError(async (request) => {
+    const uid = requireAuth(request);
+    return await merchantSettlementH.voidMerchantSettlementPayout(uid, request.data || {});
+  })
+);
+
 exports.createBtRewardSession = onCall(
   { cors: true },
   wrapError(async (request) => {
