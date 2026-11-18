@@ -1006,9 +1006,20 @@ function openMerchantProductModal(ownerUid, merchantName) {
 // 가맹점 상품&서비스 모음: /mall 과 같은 판매 중 상품(merchant_products)에서 대표 상품을 뽑아 보여줌
 const HOME_MALL_MAX = 8;
 
+// 상품 대표 이미지: BestERP 는 images[] (공통 규격), 예전 상품은 image_url/imageUrl/image (몰 coop-mall.js 와 같은 규칙)
+function coopProductImage(p) {
+  const raw = (Array.isArray(p.images) ? p.images.find((u) => typeof u === "string" && u.trim()) : "")
+    || p.image_url || p.imageUrl || p.image || "";
+  const u = String(raw).trim();
+  if (!u) return "";
+  if (/^(https?:|data:image\/)/i.test(u)) return u;
+  try { return new URL(u, "https://besterp.netlify.app/admin/").href; } catch (_) { return ""; }
+}
+
 function renderCoopCard(p) {
-  const imgHtml = p.image_url
-    ? `<img class="mp-product-thumb" src="${escHtml(p.image_url)}" alt="${escHtml(p.product_name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="mp-product-thumb-ph" style="display:none;">📦</div>`
+  const img = coopProductImage(p);
+  const imgHtml = img
+    ? `<img class="mp-product-thumb" src="${escHtml(img)}" alt="${escHtml(p.product_name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="mp-product-thumb-ph" style="display:none;">📦</div>`
     : `<div class="mp-product-thumb-ph">📦</div>`;
 
   return `
@@ -1046,7 +1057,7 @@ async function loadCoopProducts() {
     const ts = (p) => p.created_at?.seconds || 0;
     const list = [];
     snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
-    list.sort((a, b) => (b.image_url ? 1 : 0) - (a.image_url ? 1 : 0) || ts(b) - ts(a));
+    list.sort((a, b) => (coopProductImage(b) ? 1 : 0) - (coopProductImage(a) ? 1 : 0) || ts(b) - ts(a));
 
     // 가맹점별로 번갈아 뽑아 한 가맹점이 다 채우지 않게
     const byMerchant = new Map();

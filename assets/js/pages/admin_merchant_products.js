@@ -34,6 +34,12 @@ const KNOWN_MERCHANT_ALIASES = {
     "1791605366": ["1791605366", "bestwinner", "best_winner"]
 };
 
+// 상품 대표 이미지: BestERP 공통 규격 images[] 우선, 예전 image_url/imageUrl 호환
+function firstImage(data) {
+  const arr = Array.isArray(data?.images) ? data.images.find((u) => typeof u === "string" && u.trim()) : "";
+  return String(arr || data?.image_url || data?.imageUrl || "").trim();
+}
+
 // XSS 방지 헬퍼
 function esc(s) {
     return String(s ?? "")
@@ -399,7 +405,7 @@ function renderMerchantProductCards(docs) {
                         ${statusBadge}
                     </div>
 
-                    ${data.image_url ? `<img src="${esc(data.image_url)}" style="width:100%; height:160px; object-fit:cover; border-radius:8px; margin-bottom:10px;" onerror="this.style.display='none';" />` : ""}
+                    ${firstImage(data) ? `<img src="${esc(firstImage(data))}" style="width:100%; height:160px; object-fit:cover; border-radius:8px; margin-bottom:10px;" onerror="this.style.display='none';" />` : ""}
 
                     <div style="font-weight:700; font-size:1.15rem; color:#1e293b; margin-bottom:4px;">${esc(data.product_name)}</div>
                     <div style="font-size:0.82rem; color:#64748b;">분류: <b>${esc(typeLabel)}</b></div>
@@ -476,7 +482,7 @@ function bindActionEvents() {
             }
             $("pType").value = data.product_type || "physical_product";
             $("pName").value = data.product_name || "";
-            $("pImg").value = data.image_url || "";
+            $("pImg").value = firstImage(data);
             $("pDesc").value = data.description || "";
             $("pPrice").value = data.price || 0;
             $("pStatus").value = data.sale_status || "draft";
@@ -630,6 +636,7 @@ $("productForm").addEventListener("submit", async (e) => {
         product_type: $("pType").value,
         product_name: $("pName").value.trim(),
         image_url: $("pImg").value.trim(),
+        images: $("pImg").value.trim() ? [$("pImg").value.trim()] : [],
         description: $("pDesc").value.trim(),
         price: Number($("pPrice").value) || 0,
         sale_status: $("pStatus").value,
