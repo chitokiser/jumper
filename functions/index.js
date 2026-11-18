@@ -3740,6 +3740,41 @@ exports.claimZaloFriendBt = onCall({ cors: true }, wrapError(async (request) => 
   return zaloFriendH.claimZaloFriendBt(uid, request.data);
 }));
 
+// ── 친구초대 BT 이벤트 (초대 QR로 친구 N명 가입 → BT 자동 지급) ─────────────────
+const friendInviteH = require('./handlers/friendInvite');
+
+exports.createFriendInviteEvent = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return friendInviteH.createFriendInviteEvent(uid, request.data);
+}));
+
+exports.updateFriendInviteEvent = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return friendInviteH.updateFriendInviteEvent(uid, request.data);
+}));
+
+exports.chargeFriendInvitePool = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return friendInviteH.chargeFriendInvitePool(uid, request.data);
+}));
+
+exports.getFriendInviteStatus = onCall({ cors: true }, wrapError(async (request) => {
+  const uid = request.auth?.uid || null;
+  return friendInviteH.getFriendInviteStatus(uid, request.data);
+}));
+
+// 초대 링크로 가입: users 문서에 inviteCampaignId 가 처음 들어올 때 1번 센다
+exports.onFriendInviteSignup = onDocumentWritten('users/{uid}', async (event) => {
+  const before = event.data?.before?.exists ? (event.data.before.data() || {}) : {};
+  const after = event.data?.after?.exists ? (event.data.after.data() || {}) : null;
+  if (!after || !after.inviteCampaignId || before.inviteCampaignId) return;
+  try {
+    await friendInviteH.handleNewMemberSignup(event.params.uid, after);
+  } catch (e) {
+    console.error('[onFriendInviteSignup]', e.message);
+  }
+});
+
 // ── BestMario Integration ──────────────────────────────────────────────────────
 
 exports.merchantMemberJoin = onCall({ cors: true }, wrapError(async (request) => {

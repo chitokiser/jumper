@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
-  <link rel="stylesheet" href="/assets/css/pages/events.css?v=20261115_reviewbt" />
+  <link rel="stylesheet" href="/assets/css/pages/events.css?v=20261118_invite" />
 
   <script src="/assets/js/partials.js" defer></script>
 </head>
@@ -46,6 +46,10 @@
         <button id="btnOpenZaloCreate" class="ev-btn ev-btn--primary" type="button" style="display:none;">
           <span>💬</span> Zalo 친구추가 이벤트 등록
         </button>
+        <!-- 최고 관리자 전용: 친구초대 BT 이벤트 등록 -->
+        <button id="btnOpenInviteCreate" class="ev-btn ev-btn--primary" type="button" style="display:none;">
+          <span>👥</span> 친구초대 이벤트 등록
+        </button>
         <!-- 마이페이지 바로가기 버튼 -->
         <a href="/mypage.html#couponsSection" class="ev-btn ev-btn--ghost">
           <span>📦</span> 내 보유 쿠폰·바우쳐 확인 &rarr;
@@ -73,6 +77,7 @@
         <button class="ev-tab active" data-type="all" type="button">전체 보기</button>
         <button class="ev-tab" data-type="GOOGLE_REVIEW" type="button">⭐ 구글 리뷰 이벤트</button>
         <button class="ev-tab" data-type="ZALO_FRIEND" type="button">💬 Zalo 친구추가</button>
+        <button class="ev-tab" data-type="FRIEND_INVITE" type="button">👥 친구초대</button>
         <button class="ev-tab" data-type="COUPON" type="button">🎟️ 할인 쿠폰</button>
         <button class="ev-tab" data-type="VOUCHER" type="button">🍽️ 교환 바우쳐</button>
         <button class="ev-tab" data-price="free" type="button">🎁 무료 발급 (FREE)</button>
@@ -166,6 +171,9 @@
 
         <!-- 💬 Zalo 친구추가 BT 이벤트 섹션 (events.zalo.js 가 채움) -->
         <div id="detailZaloSection" class="ev-review-section ev-zalo-section" style="display:none;"></div>
+
+        <!-- 👥 친구초대 BT 이벤트 섹션 (events.invite.js 가 채움) -->
+        <div id="detailInviteSection" class="ev-review-section ev-zalo-section" style="display:none;"></div>
 
         <!-- ⭐ 구글 리뷰 인증 댓글 & 관리자 바우쳐 1장 이체 섹션 -->
         <div id="detailReviewSection" class="ev-review-section" style="display:none;">
@@ -295,6 +303,40 @@
           <input id="inpZaloPool" class="ev-input" type="number" min="0" step="1" value="100" />
         </div>
         <button id="btnZaloCreateSubmit" type="submit" class="ev-btn ev-btn--primary ev-btn--full">💬 이벤트 등록하기</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── 친구초대 BT 이벤트 등록 모달 (최고 관리자 전용) ── -->
+  <div id="inviteCreateModal" class="ev-modal" aria-hidden="true">
+    <div class="ev-modal-card">
+      <button id="btnInviteCreateClose" class="ev-modal-close" type="button">&times;</button>
+      <div class="ev-modal-header-simple">
+        <h2 class="ev-modal-title">👥 친구초대 BT 이벤트 등록</h2>
+        <p class="ev-modal-desc">회원마다 자기 초대 QR이 생깁니다. 그 QR로 친구가 새로 가입하면 정한 인원마다 BT가 자동 지급됩니다. BT는 이 이벤트에 충전한 풀에서만 나갑니다.</p>
+      </div>
+      <form id="inviteCreateForm" class="ev-form">
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpInviteTitle">이벤트 제목</label>
+          <input id="inpInviteTitle" class="ev-input" type="text" maxlength="80" placeholder="비우면: 친구 3명 초대하면 1 BT" />
+        </div>
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpInvitePer">초대 인원 (몇 명마다 지급)</label>
+          <input id="inpInvitePer" class="ev-input" type="number" min="1" max="100" step="1" value="3" required />
+        </div>
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpInviteReward">지급 BT</label>
+          <input id="inpInviteReward" class="ev-input" type="number" min="1" max="10" step="1" value="1" required />
+        </div>
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpInviteMax">1인 최대 BT (0이면 한도 없음)</label>
+          <input id="inpInviteMax" class="ev-input" type="number" min="0" max="10000" step="1" value="10" />
+        </div>
+        <div class="ev-form-group">
+          <label class="ev-label" for="inpInvitePool">처음 충전할 BT 풀</label>
+          <input id="inpInvitePool" class="ev-input" type="number" min="0" step="1" value="100" />
+        </div>
+        <button id="btnInviteCreateSubmit" type="submit" class="ev-btn ev-btn--primary ev-btn--full">👥 이벤트 등록하기</button>
       </form>
     </div>
   </div>
@@ -552,7 +594,7 @@
   <div id="siteFooter"></div>
 
   <script type="module" src="/assets/js/header-auth.js"></script>
-  <script type="module" src="/assets/js/pages/events.js?v=20261115_reviewbt"></script>
+  <script type="module" src="/assets/js/pages/events.js?v=20261118_invite"></script>
   <script type="module">
     import { mountWeeklyPromo } from '/assets/js/weekly-ranking.js';
     mountWeeklyPromo(document.getElementById('weeklyPromo'));

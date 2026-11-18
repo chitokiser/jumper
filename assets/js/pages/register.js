@@ -143,6 +143,10 @@ async function doRegister(uid, user) {
     } catch (_) {}
   }
 
+  // 친구초대 이벤트 QR(register.html?mentor=...&invite=이벤트ID)로 들어온 가입
+  const inviteCampaignId = String(new URLSearchParams(location.search).get("invite") || "").trim();
+  const validInvite = /^[A-Za-z0-9_-]{6,64}$/.test(inviteCampaignId) && !!mentorUid;
+
   await setDoc(doc(db, "users", uid), {
     name,
     phone,
@@ -150,6 +154,7 @@ async function doRegister(uid, user) {
     mentorAddressInput: mentorAddress,
     ...(mentorEmail ? { mentorEmail } : {}),
     ...(mentorUid ? { mentorUid } : {}),
+    ...(validInvite ? { inviteCampaignId } : {}),
     agreeTerms: true,
     registeredAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

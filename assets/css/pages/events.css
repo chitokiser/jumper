@@ -1190,3 +1190,18 @@ body.events-body {
 .ev-review-pool-charge .ev-input {
   width: 110px;
 }
+
+/* ── 친구초대 BT 이벤트 (events.invite.js) ── */
+.ev-invite-mine { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.ev-invite-qr { width: 170px; min-height: 170px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px; font-size: 0.75rem; color: #64748b; text-align: center; }
+.ev-invite-qr img { width: 150px; height: 150px; image-rendering: pixelated; }
+.ev-invite-info { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 6px; }
+.ev-invite-stat { display: flex; justify-content: space-between; font-size: 0.9rem; }
+.ev-invite-stat b { color: #7c3aed; }
+.ev-invite-next { font-size: 0.85rem; color: #334155; }
+.ev-invite-bar { height: 8px; background: #ede9fe; border-radius: 99px; overflow: hidden; }
+.ev-invite-bar i { display: block; height: 100%; background: linear-gradient(90deg, #8b5cf6, #3b82f6); }
+.ev-invite-pending { font-size: 0.8rem; color: #b45309; background: #fffbeb; border-radius: 8px; padding: 6px 8px; }
+.ev-invite-paid { font-size: 0.85rem; color: #166534; background: #dcfce7; border-radius: 8px; padding: 6px 8px; font-weight: 700; }
+#inpInviteLink { font-size: 0.78rem; flex: 1 1 100%; min-width: 0; }
+#detailInviteSection .ev-zalo-row { flex-wrap: wrap; }

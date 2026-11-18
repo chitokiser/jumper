@@ -18,6 +18,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 import { ZaloEvent } from "/assets/js/pages/events.zalo.js";
+import { InviteEvent } from "/assets/js/pages/events.invite.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -335,7 +336,7 @@ function renderCampaignGrid() {
 
   const filtered = _allCampaigns.filter((c) => {
     // 1) 유형 필터
-    if (_activeTypeFilter === "GOOGLE_REVIEW" || _activeTypeFilter === "ZALO_FRIEND") {
+    if (_activeTypeFilter === "GOOGLE_REVIEW" || _activeTypeFilter === "ZALO_FRIEND" || _activeTypeFilter === "FRIEND_INVITE") {
       if (c.issueMethod !== _activeTypeFilter) return false;
     } else if (_activeTypeFilter !== "all" && c.campaignType !== _activeTypeFilter) {
       return false;
@@ -378,6 +379,7 @@ function renderCampaignGrid() {
     const isVoucher = c.campaignType === "VOUCHER";
     const isGoogleReview = c.issueMethod === "GOOGLE_REVIEW";
     const isZalo = c.issueMethod === "ZALO_FRIEND";
+    const isInvite = c.issueMethod === "FRIEND_INVITE";
     const price = Number(c.priceBM || 0);
     const isFree = price === 0;
     const isPaused = c.status === "paused";
@@ -406,11 +408,15 @@ function renderCampaignGrid() {
         <div class="ev-card-thumb-wrap">
           <img class="ev-card-img" src="${c.imageUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80'}" alt="${c.title}" loading="lazy" />
           <div class="ev-card-top-badges">
-            <span class="ev-tag-type ${isZalo ? 'ev-tag-type--zalo' : (isVoucher ? 'ev-tag-type--voucher' : 'ev-tag-type--coupon')}">
-              ${isZalo ? '💬 Zalo 친구추가' : (isVoucher ? '🍽️ 바우쳐' : '🎟️ 할인 쿠폰')}
+            <span class="ev-tag-type ${(isZalo || isInvite) ? 'ev-tag-type--zalo' : (isVoucher ? 'ev-tag-type--voucher' : 'ev-tag-type--coupon')}">
+              ${isInvite ? '👥 친구초대' : isZalo ? '💬 Zalo 친구추가' : (isVoucher ? '🍽️ 바우쳐' : '🎟️ 할인 쿠폰')}
             </span>
             ${isPaused ? '<span class="ev-tag-paused">⏸️ 비활성화됨</span>' : ''}
-            ${isZalo ? `
+            ${isInvite ? `
+              <span class="ev-tag-price ev-tag-price--free">
+                🎟️ 무료 ${escapeHtml(c.discountValue || '3명당 1 BT')}
+              </span>
+            ` : isZalo ? `
               <span class="ev-tag-price ev-tag-price--free">
                 🎟️ 무료 ${escapeHtml(c.discountValue || '1 BT')} (1인1회)
               </span>
@@ -442,11 +448,11 @@ function renderCampaignGrid() {
             </div>
             <div class="ev-card-meta-row">
               <span>남은 수량</span>
-              <span>${remainingQty.toLocaleString()} / ${Number(c.totalQuantity || 0).toLocaleString()}${isZalo ? '명' : '장'}</span>
+              <span>${remainingQty.toLocaleString()} / ${Number(c.totalQuantity || 0).toLocaleString()}${isInvite ? ' BT' : isZalo ? '명' : '장'}</span>
             </div>
             <div class="ev-card-meta-row">
               <span>참여/발급 한도</span>
-              <span>${isZalo ? '💬 1계정 1회 (Zalo 코드 인증)' : isGoogleReview ? '⭐ 1계정 1회 참여 (리뷰인증)' : `1인 최대 ${c.maxPerUser || 1}장`}</span>
+              <span>${isInvite ? (Number(c.maxPerUser || 0) > 0 ? `👥 1인 최대 ${c.maxPerUser} BT` : '👥 한도 없음') : isZalo ? '💬 1계정 1회 (Zalo 코드 인증)' : isGoogleReview ? '⭐ 1계정 1회 참여 (리뷰인증)' : `1인 최대 ${c.maxPerUser || 1}장`}</span>
             </div>
           </div>
 
@@ -455,6 +461,10 @@ function renderCampaignGrid() {
             ${isPaused ? `
               <button class="ev-btn-action" style="background:#94a3b8; cursor:not-allowed;" type="button" disabled>
                 ⏸️ 발행 중단됨
+              </button>
+            ` : isInvite ? `
+              <button class="ev-btn-action free" type="button" data-act="view" data-id="${c.id}">
+                👥 내 초대 QR 받기
               </button>
             ` : isZalo ? `
               <button class="ev-btn-action free" type="button" data-act="view" data-id="${c.id}">
@@ -501,6 +511,7 @@ function openDetailModal(campaignId) {
   const isVoucher = c.campaignType === "VOUCHER";
   const isGoogleReview = c.issueMethod === "GOOGLE_REVIEW";
   const isZalo = c.issueMethod === "ZALO_FRIEND";
+  const isInvite = c.issueMethod === "FRIEND_INVITE";
   const price = Number(c.priceBM || 0);
   const isFree = price === 0;
   const isPaused = c.status === "paused";
@@ -508,7 +519,9 @@ function openDetailModal(campaignId) {
 
   if ($("detailImg")) $("detailImg").src = c.imageUrl || "";
   if ($("detailBadgeTop")) {
-    $("detailBadgeTop").textContent = isZalo
+    $("detailBadgeTop").textContent = isInvite
+      ? "👥 친구초대 BT 이벤트"
+      : isZalo
       ? "💬 Zalo 친구추가 BT 이벤트"
       : isGoogleReview
       ? "⭐ 구글 리뷰 인증 BT 이벤트"
@@ -526,7 +539,9 @@ function openDetailModal(campaignId) {
   if ($("detailTitle")) $("detailTitle").textContent = c.title;
   if ($("detailDesc")) $("detailDesc").textContent = c.description || "";
   if ($("detailPrice")) {
-    $("detailPrice").textContent = isZalo
+    $("detailPrice").textContent = isInvite
+      ? "👥 친구초대 (무료 보상)"
+      : isZalo
       ? "💬 Zalo 친구추가 (무료 보상)"
       : isGoogleReview
       ? "⭐ 구글리뷰 인증 (무료)"
@@ -534,7 +549,9 @@ function openDetailModal(campaignId) {
   }
   if ($("detailDiscount")) $("detailDiscount").textContent = c.discountValue || "혜택 제공";
   if ($("detailMaxPerUser")) {
-    $("detailMaxPerUser").textContent = (isGoogleReview || isZalo) ? "1계정 1회 참여 (1매)" : `회원당 ${c.maxPerUser || 1}장`;
+    $("detailMaxPerUser").textContent = isInvite
+      ? (Number(c.maxPerUser || 0) > 0 ? `1인 최대 ${c.maxPerUser} BT` : "1인 한도 없음")
+      : (isGoogleReview || isZalo) ? "1계정 1회 참여 (1매)" : `회원당 ${c.maxPerUser || 1}장`;
   }
 
   // 유의사항 리스트
@@ -558,13 +575,21 @@ function openDetailModal(campaignId) {
   if ($("detailValidPeriod")) $("detailValidPeriod").textContent = `사용 만료일: ${validStr}`;
 
   const remainingQty = Math.max(0, Number(c.totalQuantity || 0) - Number(c.issuedQuantity || 0));
-  if ($("detailStock")) $("detailStock").textContent = `${remainingQty.toLocaleString()}${isZalo ? '명' : '장'} 남음 (총 ${Number(c.totalQuantity || 0).toLocaleString()}${isZalo ? '명' : '장'})`;
+  const stockUnit = isInvite ? ' BT' : isZalo ? '명' : '장';
+  if ($("detailStock")) $("detailStock").textContent = `${remainingQty.toLocaleString()}${stockUnit} 남음 (총 ${Number(c.totalQuantity || 0).toLocaleString()}${stockUnit})`;
 
   // 💬 Zalo 친구추가 BT 섹션
   if (isZalo) {
     ZaloEvent.renderDetail(c);
   } else {
     ZaloEvent.hideDetail();
+  }
+
+  // 👥 친구초대 BT 섹션
+  if (isInvite) {
+    InviteEvent.renderDetail(c);
+  } else {
+    InviteEvent.hideDetail();
   }
 
   // ⭐ 구글 리뷰 인증 섹션 표시 및 댓글 로드
@@ -603,6 +628,15 @@ function openDetailModal(campaignId) {
       btnBuy.style.background = "#94a3b8";
       btnBuy.disabled = true;
       btnBuy.onclick = null;
+    } else if (isInvite) {
+      btnBuy.disabled = false;
+      btnBuy.style.background = "";
+      btnBuy.textContent = "👥 위의 내 초대 QR을 친구에게 보여 주세요";
+      btnBuy.className = "ev-btn ev-btn--primary ev-btn--full";
+      btnBuy.onclick = () => {
+        const target = $("detailInviteSection");
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+      };
     } else if (isZalo) {
       btnBuy.disabled = false;
       btnBuy.style.background = "";
@@ -1879,6 +1913,7 @@ function initEvents() {
 function boot() {
   initEvents();
   ZaloEvent.init({ onChanged: () => loadCampaigns() });
+  InviteEvent.init({ onChanged: () => loadCampaigns() });
   loadMerchantMasterList();
   loadCampaigns();
 
@@ -1889,6 +1924,7 @@ function boot() {
 
     if (!loggedIn || !user) {
       ZaloEvent.setAuth(null, false);
+      InviteEvent.setAuth(null, false);
       if (authText) {
         authText.innerHTML = `<span>🔒</span> <span>로그인하면 보유 BM으로 쿠폰을 구매하거나 무료로 발급받을 수 있습니다.</span>`;
       }
@@ -1905,6 +1941,7 @@ function boot() {
 
     _isSuperAdmin = await checkSuperAdmin(user);
     ZaloEvent.setAuth(user, _isSuperAdmin);
+    InviteEvent.setAuth(user, _isSuperAdmin);
 
     updateUserBalanceDisplay();
 
