@@ -18,7 +18,13 @@ const SALES_CHANNEL = {
   online: { label: "📦 온라인 전용", color: "#1e40af", bg: "#dbeafe", border: "#93c5fd" },
   both: { label: "🏬+🌐 매장·온라인", color: "#166534", bg: "#dcfce7", border: "#86efac" },
 };
+// 매장에서만 파는 가맹점: 상품 설정과 관계없이 모든 상품을 매장 전용으로 본다 (백제갈비, 2026-11-19)
+const IN_STORE_ONLY_MERCHANTS = new Set(["1794710386", "baekje_galbi"]);
+function isInStoreOnlyMerchant(merchantId) {
+  return IN_STORE_ONLY_MERCHANTS.has(String(merchantId || "").trim());
+}
 function salesChannelOf(data) {
+  if (isInStoreOnlyMerchant(data?.merchant_id)) return "in_store";
   const v = String(data?.sales_channel || "").trim();
   return SALES_CHANNEL[v] ? v : "both";
 }
@@ -304,13 +310,14 @@ function updateCartBadge() {
   if ($("cartBadge")) $("cartBadge").textContent = totalQty;
 }
 
-function isInStoreOnly(productId) {
-  const p = rawProducts.find(r => r.id === productId);
+function isInStoreOnly(cartItem) {
+  if (isInStoreOnlyMerchant(cartItem?.merchant_id)) return true;
+  const p = rawProducts.find(r => r.id === cartItem?.id);
   return !!p && salesChannelOf(p.data) === "in_store";
 }
 
 function addToCart(item) {
-  if (isInStoreOnly(item.id)) {
+  if (isInStoreOnly(item)) {
     alert("이 상품은 매장에서만 구매할 수 있습니다.");
     return;
   }
@@ -401,10 +408,10 @@ $("btnCheckout").addEventListener("click", async () => {
     window.location.href = "/login.html";
     return;
   }
-  const storeOnly = cart.filter(c => isInStoreOnly(c.id));
+  const storeOnly = cart.filter(c => isInStoreOnly(c));
   if (storeOnly.length) {
     if (!confirm(`매장에서만 구매할 수 있는 상품이 장바구니에 있습니다:\n${storeOnly.map(c => `· ${c.name}`).join("\n")}\n\n이 상품을 빼고 계속할까요?`)) return;
-    cart = cart.filter(c => !isInStoreOnly(c.id));
+    cart = cart.filter(c => !isInStoreOnly(c));
     saveCartToStorage();
     updateCartBadge();
     renderCartModal();
