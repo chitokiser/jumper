@@ -140,6 +140,10 @@
     }
     .bl-game:fullscreen .bl-hud, .bl-game.bl-pseudo-fs .bl-hud { padding: 6px 10px; }
     .bl-weekly { margin-top: 14px; }
+    /* 스폰서 배너 (game-sponsor.js) — 어두운 게임 로비용 카드를 이 밝은 페이지에 맞춤 */
+    #lobbyScreen.bl-sponsor .gsp-wrap { max-width: 480px; margin-top: 14px; }
+    #lobbyScreen.bl-sponsor .gsp-card { background: var(--surface, #fff); border-color: var(--border, #e5e7eb); color: var(--fg, #111827); }
+    #lobbyScreen.bl-sponsor .gsp-s, #lobbyScreen.bl-sponsor .gsp-arr { color: var(--muted, #6b7280); }
     .bl-credit { margin: 12px 2px 0; font-size: 11.5px; color: var(--muted, #6b7280); line-height: 1.6; }
     .bl-credit a { color: inherit; }
   </style>
@@ -267,6 +271,9 @@
       </section>
 
       <div class="bl-weekly" id="weeklyBoard"></div>
+
+      <!-- 스폰서 배너: game-sponsor.js가 #lobbyScreen 맨 아래에 붙인다 (다른 게임 로비와 같은 컴포넌트) -->
+      <div id="lobbyScreen" class="bl-sponsor"></div>
 
       <p class="bl-credit">
         게임 엔진: <a href="https://github.com/tailuge/billiards" target="_blank" rel="noopener">tailuge/billiards</a>
@@ -782,5 +789,6 @@
       if (d && d.type === 'bestclub-billiards-shot') handleShot(d);
     });
   </script>
+  <script type="module" src="/assets/js/game-sponsor.js"></script>
 </body>
 </html>
