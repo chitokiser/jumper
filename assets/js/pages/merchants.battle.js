@@ -3002,6 +3002,7 @@ function _performAutoRevive() {
 
 /** 관리자/유저 즉시 완전 부활 (HP/MP 100% 회복 및 사망 해제) */
 export function revivePlayerAdmin() {
+  if (!_ctx?.isAdmin) return;
   _isDead = false;
   _reviveWalkDist = 0;
   _clearDeathMarker();
@@ -3429,6 +3430,7 @@ export function stopNearbyPlayersWatch() {
 
 // ── 관리자 배치 모드 ──────────────────────────────────────────────────────────
 export function enterAdminPlaceMode(type) {
+  if (!_ctx?.isAdmin) return;
   const map = _ctx?.map;
   if (_adminMapListener) {
     google.maps.event.removeListener(_adminMapListener);

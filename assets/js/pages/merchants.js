@@ -4,6 +4,7 @@
 import { auth, db, functions, googleProvider } from '/assets/js/firebase-init.js';
 import { isTelegramMiniApp, loginWithTelegram, loginWithTelegramWidget } from '/assets/js/telegram-auth.js';
 import { esc } from '/assets/js/esc.js';
+import { getUserRole } from '/assets/js/auth.js';
 import {
   collection, getDocs, doc, getDoc, query, where, orderBy, limit,
   setDoc, deleteDoc, serverTimestamp, onSnapshot
@@ -472,6 +473,7 @@ function initMap() {
   // 좌표 검색 — 관리자 패널 내 입력 필드
   let _coordMarker = null;
   function _goToCoords(raw) {
+    if (!_isAdmin) return false;
     const m = String(raw || '').trim().match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
     if (!m) return false;
     const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
@@ -3248,13 +3250,8 @@ async function init() {
       _ctx.isAdmin = false;
       if (!_isAnonymous && _uid) {
         try {
-          const [adminSnap, userSnap] = await Promise.all([
-            getDoc(doc(db, 'admins', _uid)).catch(() => null),
-            getDoc(doc(db, 'users', _uid)).catch(() => null),
-          ]);
-          const uData = userSnap?.data?.() || {};
-          const isSuperAdminRole = ['SUPER_ADMIN', 'CEO', 'ADMIN', 'admin'].includes(uData.role) || uData.isAdmin === true;
-          _isAdmin = !!(adminSnap?.exists?.() || isSuperAdminRole);
+          const role = await getUserRole(_uid, _userEmail || user?.email || '');
+          _isAdmin = ['admin', 'SUPER_ADMIN', 'CEO', 'ADMIN'].includes(role);
           _ctx.isAdmin = _isAdmin;
         } catch (e) {
           _isAdmin = false;
@@ -3373,6 +3370,7 @@ async function init() {
       if (toggleBtn) toggleBtn.style.display = 'none';
       const p = document.getElementById('_monsterDebugPanel');
       if (p) p.style.display = 'none';
+      try { localStorage.setItem('admin_battle_panel_open', '0'); } catch (_) {}
     }
   });
 
@@ -3759,26 +3757,27 @@ async function init() {
   });
 
   // 관리자 전투 배치 패널 버튼
-  $('btnPlaceMonster')?.addEventListener('click', () => enterAdminPlaceMode('monster'));
-  $('btnPlaceDragon')?.addEventListener('click', () => enterAdminPlaceMode('dragon'));
-  $('btnPlaceOrc')?.addEventListener('click', () => enterAdminPlaceMode('orc'));
-  $('btnPlaceOrc2')?.addEventListener('click', () => enterAdminPlaceMode('orc2'));
-  $('btnPlaceOrc3')?.addEventListener('click', () => enterAdminPlaceMode('orc3'));
-  $('btnPlacePirate')?.addEventListener('click', () => enterAdminPlaceMode('pirate'));
-  $('btnPlacePirate2')?.addEventListener('click', () => enterAdminPlaceMode('pirate2'));
-  $('btnPlacePirate3')?.addEventListener('click', () => enterAdminPlaceMode('pirate3'));
-  $('btnPlaceZombie1')?.addEventListener('click', () => enterAdminPlaceMode('zombie1'));
-  $('btnPlaceZombie3')?.addEventListener('click', () => enterAdminPlaceMode('zombie3'));
-  $('btnPlaceBarkan')?.addEventListener('click', () => enterAdminPlaceMode('barkan'));
-  $('btnPlaceTerraclash')?.addEventListener('click', () => enterAdminPlaceMode('terraclash'));
-  $('btnPlaceShadowMaster')?.addEventListener('click', () => enterAdminPlaceMode('shadow_master'));
-  $('btnPlaceArcherTower')?.addEventListener('click', () => enterAdminPlaceMode('archer_tower'));
-  $('btnPlaceCannonTower')?.addEventListener('click', () => enterAdminPlaceMode('cannon_tower'));
-  $('btnPlaceDeco')?.addEventListener('click', () => enterAdminPlaceMode('deco'));
-  $('btnPlaceShopWeapon')?.addEventListener('click', () => enterAdminPlaceMode('shop_weapon_armor'));
-  $('btnPlaceShopPotion')?.addEventListener('click', () => enterAdminPlaceMode('shop_potion'));
-  $('btnPlaceShopMisc')?.addEventListener('click', () => enterAdminPlaceMode('shop_misc'));
+  $('btnPlaceMonster')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('monster'); });
+  $('btnPlaceDragon')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('dragon'); });
+  $('btnPlaceOrc')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('orc'); });
+  $('btnPlaceOrc2')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('orc2'); });
+  $('btnPlaceOrc3')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('orc3'); });
+  $('btnPlacePirate')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('pirate'); });
+  $('btnPlacePirate2')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('pirate2'); });
+  $('btnPlacePirate3')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('pirate3'); });
+  $('btnPlaceZombie1')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('zombie1'); });
+  $('btnPlaceZombie3')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('zombie3'); });
+  $('btnPlaceBarkan')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('barkan'); });
+  $('btnPlaceTerraclash')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('terraclash'); });
+  $('btnPlaceShadowMaster')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('shadow_master'); });
+  $('btnPlaceArcherTower')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('archer_tower'); });
+  $('btnPlaceCannonTower')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('cannon_tower'); });
+  $('btnPlaceDeco')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('deco'); });
+  $('btnPlaceShopWeapon')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('shop_weapon_armor'); });
+  $('btnPlaceShopPotion')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('shop_potion'); });
+  $('btnPlaceShopMisc')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('shop_misc'); });
   $('btnGiveRevive')?.addEventListener('click', async () => {
+    if (!_isAdmin) return;
     const targetUid = prompt('UID to grant Revive Tickets (leave empty for self):', _uid || '') || _uid;
     if (!targetUid) return;
     const count = parseInt(prompt('Grant Quantity:', '10000') || '10000');
@@ -3791,6 +3790,7 @@ async function init() {
   });
 
   $('btnGivePotion')?.addEventListener('click', async () => {
+    if (!_isAdmin) return;
     const targetUid = prompt('UID to grant HP Potions (leave empty for self):', _uid || '') || _uid;
     if (!targetUid) return;
     const count = parseInt(prompt('Grant Quantity:', '5') || '5');
@@ -3802,6 +3802,7 @@ async function init() {
     } catch (err) { alert('Failed: ' + err.message); }
   });
   $('btnSetGold')?.addEventListener('click', async () => {
+    if (!_isAdmin) return;
     const targetUid = prompt('User UID to modify GP:', '') || '';
     if (!targetUid.trim()) return;
     const modeRaw = prompt('Mode: set / add', 'set');
@@ -3817,6 +3818,7 @@ async function init() {
   });
 
   $('btnAdminInitAllPlayers')?.addEventListener('click', async () => {
+    if (!_isAdmin) return;
     if (!confirm('Reset starter pack for all users?\n(Users who already have more will not be affected)')) return;
     try {
       const res = await httpsCallable(functions, 'adminInitAllPlayers')();
@@ -3826,6 +3828,7 @@ async function init() {
   $('btnCancelPlace')?.addEventListener('click', exitAdminPlaceMode);
   $('btnToggleTowerRange')?.addEventListener('click', toggleTowerRanges);
   $('btnAdminFullRevive')?.addEventListener('click', () => {
+    if (!_isAdmin) return;
     revivePlayerAdmin();
     showInfoToast('✨ 완충 부활 완료! (HP/MP 100%)');
   });
