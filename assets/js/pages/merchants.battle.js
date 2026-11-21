@@ -904,6 +904,7 @@ function _applyGameLevel({ silent = false } = {}) {
 
 function _startGpListener(uid) {
   if (_gpUnsubscribe) return;
+  let _listenerFirst = true; // 첫 스냅샷은 초기 로드 — 레벨업 오버레이 표시 않음
   _gpUnsubscribe = onSnapshot(
     doc(_ctx.db, 'battle_players', uid),
     snap => {
@@ -917,7 +918,8 @@ function _startGpListener(uid) {
       const pendExp = _expSynced == null ? 0 : (_player.gsExp || 0) - _expSynced;
       _expSynced = exp;
       _player.gsExp = exp + pendExp;
-      _applyGameLevel();
+      _applyGameLevel({ silent: _listenerFirst });
+      _listenerFirst = false;
       updateCombatHud();
       updateExpBar();
     }
@@ -3443,6 +3445,9 @@ export function enterAdminPlaceMode(type) {
   document.getElementById('btnPlacePirate3')?.classList.toggle('placing', type === 'pirate3');
   document.getElementById('btnPlaceZombie1')?.classList.toggle('placing', type === 'zombie1');
   document.getElementById('btnPlaceZombie3')?.classList.toggle('placing', type === 'zombie3');
+  document.getElementById('btnPlaceBarkan')?.classList.toggle('placing', type === 'barkan');
+  document.getElementById('btnPlaceTerraclash')?.classList.toggle('placing', type === 'terraclash');
+  document.getElementById('btnPlaceShadowMaster')?.classList.toggle('placing', type === 'shadow_master');
   document.getElementById('btnPlaceArcherTower')?.classList.toggle('placing', type === 'archer_tower');
   document.getElementById('btnPlaceCannonTower')?.classList.toggle('placing', type === 'cannon_tower');
   document.getElementById('btnPlaceDeco')?.classList.toggle('placing', type === 'deco');
@@ -3488,19 +3493,22 @@ export function enterAdminPlaceMode(type) {
         alert(`✅ ${name} 배치 완료 (Firebase Firestore)\n위치: (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
       } catch (err) { alert('Firebase placement error: ' + err.message); }
 
-    } else if (['dragon','orc','orc2','orc3','pirate','pirate2','pirate3','zombie1','zombie3'].includes(_adminPlaceMode)) {
+    } else if (['dragon','orc','orc2','orc3','pirate','pirate2','pirate3','zombie1','zombie3','barkan','terraclash','shadow_master'].includes(_adminPlaceMode)) {
       // ── 타입별 스프라이트 몬스터 — Firebase 영구 저장 및 게임서버 실시간 연동 ──────
       const monsterType = _adminPlaceMode;
       const GS_DEFAULTS = {
-        pirate:  { name: 'Pirate',   maxHp:  600, attackPower:   60, attackRangeM: 20, aggroRangeM:  40, moveSpeed: 1.5, attackCooldownMs: 1500, respawnSeconds:  90 },
-        pirate2: { name: 'Pirate 2', maxHp: 1000, attackPower:  110, attackRangeM: 20, aggroRangeM:  45, moveSpeed: 1.4, attackCooldownMs: 2000, respawnSeconds: 120 },
-        pirate3: { name: 'Pirate 3', maxHp: 1600, attackPower:  170, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.3, attackCooldownMs: 2000, respawnSeconds: 180 },
-        orc:     { name: 'Orc',      maxHp: 1200, attackPower:  120, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.2, attackCooldownMs: 2000, respawnSeconds: 150 },
-        orc2:    { name: 'Orc 2',    maxHp: 2000, attackPower:  190, attackRangeM: 20, aggroRangeM:  55, moveSpeed: 1.1, attackCooldownMs: 2200, respawnSeconds: 200 },
-        orc3:    { name: 'Orc 3',    maxHp: 3000, attackPower:  260, attackRangeM: 20, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
-        dragon:  { name: 'Dragon',   maxHp: 6000, attackPower:  320, attackRangeM: 20, aggroRangeM:  30, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
-        zombie1: { name: 'Zombie 1', maxHp:  800, attackPower:   80, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.9, attackCooldownMs: 2000, respawnSeconds: 120 },
-        zombie3: { name: 'Zombie 3', maxHp: 1400, attackPower:  140, attackRangeM: 15, aggroRangeM: 30, moveSpeed: 0.8, attackCooldownMs: 2200, respawnSeconds: 150 },
+        pirate:        { name: 'Pirate',                    maxHp:   600, attackPower:  60, attackRangeM: 20, aggroRangeM:  40, moveSpeed: 1.5, attackCooldownMs: 1500, respawnSeconds:  90 },
+        pirate2:       { name: 'Pirate 2',                  maxHp:  1000, attackPower: 110, attackRangeM: 20, aggroRangeM:  45, moveSpeed: 1.4, attackCooldownMs: 2000, respawnSeconds: 120 },
+        pirate3:       { name: 'Pirate 3',                  maxHp:  1600, attackPower: 170, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.3, attackCooldownMs: 2000, respawnSeconds: 180 },
+        orc:           { name: 'Orc',                       maxHp:  1200, attackPower: 120, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.2, attackCooldownMs: 2000, respawnSeconds: 150 },
+        orc2:          { name: 'Orc 2',                     maxHp:  2000, attackPower: 190, attackRangeM: 20, aggroRangeM:  55, moveSpeed: 1.1, attackCooldownMs: 2200, respawnSeconds: 200 },
+        orc3:          { name: 'Orc 3',                     maxHp:  3000, attackPower: 260, attackRangeM: 20, aggroRangeM:  60, moveSpeed: 1.0, attackCooldownMs: 2500, respawnSeconds: 240 },
+        dragon:        { name: 'Dragon',                    maxHp:  6000, attackPower: 320, attackRangeM: 20, aggroRangeM:  30, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 300 },
+        zombie1:       { name: 'Zombie 1',                  maxHp:   800, attackPower:  80, attackRangeM: 15, aggroRangeM:  30, moveSpeed: 0.9, attackCooldownMs: 2000, respawnSeconds: 120 },
+        zombie3:       { name: 'Zombie 3',                  maxHp:  1400, attackPower: 140, attackRangeM: 15, aggroRangeM:  30, moveSpeed: 0.8, attackCooldownMs: 2200, respawnSeconds: 150 },
+        barkan:        { name: 'Barkan (바르칸)',           maxHp:  8000, attackPower: 380, attackRangeM: 25, aggroRangeM:  60, moveSpeed: 1.2, attackCooldownMs: 2500, respawnSeconds: 360 },
+        terraclash:    { name: 'Terraclash (테라클래시)',   maxHp: 12000, attackPower: 450, attackRangeM: 22, aggroRangeM:  50, moveSpeed: 0.8, attackCooldownMs: 3000, respawnSeconds: 420 },
+        shadow_master: { name: 'Shadow Master (그림자 군주)', maxHp: 4500, attackPower: 290, attackRangeM: 18, aggroRangeM: 55, moveSpeed: 1.6, attackCooldownMs: 1800, respawnSeconds: 240 },
       };
       const p = GS_DEFAULTS[monsterType] || { name: monsterType, maxHp: 1000, attackPower: 100, attackRangeM: 20, aggroRangeM: 40, respawnSeconds: 120 };
       if (!confirm(
@@ -3643,6 +3651,9 @@ export function exitAdminPlaceMode() {
   document.getElementById('btnPlaceCannonTower')?.classList.remove('placing');
   document.getElementById('btnPlaceDeco')?.classList.remove('placing');
   document.getElementById('btnPlaceDragon')?.classList.remove('placing');
+  document.getElementById('btnPlaceBarkan')?.classList.remove('placing');
+  document.getElementById('btnPlaceTerraclash')?.classList.remove('placing');
+  document.getElementById('btnPlaceShadowMaster')?.classList.remove('placing');
   document.getElementById('btnPlaceShopWeapon')?.classList.remove('placing');
   document.getElementById('btnPlaceShopPotion')?.classList.remove('placing');
   document.getElementById('btnPlaceShopMisc')?.classList.remove('placing');

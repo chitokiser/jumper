@@ -40,6 +40,9 @@ const CATALOG = [
   { key: 'mon_knight2', emoji: '⚔️', label: 'Knight 2',           desc: 'HP 8,000 · ATK 320',       price: 80000,  tag: 'monster' },
   { key: 'mon_knight3', emoji: '👑', label: 'Knight 3',           desc: 'HP 8,500 · ATK 340',       price: 85000,  tag: 'monster' },
   { key: 'mon_dragon',  emoji: '🐉', label: 'Dragon',             desc: 'HP 20,000 · ATK 500',      price: 200000, tag: 'monster' },
+  { key: 'mon_barkan',        emoji: '⚔️', label: 'Barkan (바르칸)',           desc: 'HP 8,000 · ATK 380',       price: 120000, tag: 'monster' },
+  { key: 'mon_terraclash',    emoji: '🗿', label: 'Terraclash (테라클래시)',   desc: 'HP 12,000 · ATK 450',      price: 150000, tag: 'monster' },
+  { key: 'mon_shadow_master', emoji: '👤', label: 'Shadow Master (그림자 군주)', desc: 'HP 4,500 · ATK 290',    price: 90000,  tag: 'monster' },
   // Towers
   { key: 'archer_tower', emoji: '🏹', label: 'Archer Tower',    desc: 'ATK 50 · radius 40m · HP 500',    price: 20000,  tag: 'tower' },
   { key: 'cannon_tower', emoji: '💣', label: 'Cannon Tower',    desc: 'ATK 120 · radius 35m · HP 1000',  price: 100000, tag: 'tower' },

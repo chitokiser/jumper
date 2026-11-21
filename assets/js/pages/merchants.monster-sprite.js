@@ -290,6 +290,57 @@ export const SPRITE_CONFIGS = {
       respawn: { prefix: 'Knight_03__IDLE_',   frames: 6,  fps: 6,  loop: false },
     },
   },
+
+  // ── Bestoria Raid Boss: Barkan (바르칸) ──────────────────────────────────
+  barkan: {
+    monsterType: 'barkan',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/barkan/',
+    displaySize: 90,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'idle_',   frames: 6, fps: 6,  loop: true  },
+      walk:    { prefix: 'walk_',   frames: 6, fps: 8,  loop: true  },
+      attack:  { prefix: 'attack_', frames: 6, fps: 10, loop: false },
+      hit:     { prefix: 'hit_',    frames: 3, fps: 12, loop: false },
+      death:   { prefix: 'death_',  frames: 6, fps: 6,  loop: false },
+      respawn: { prefix: 'idle_',   frames: 6, fps: 6,  loop: false },
+    },
+  },
+
+  // ── Bestoria Colossus: Terraclash (테라클래시) ───────────────────────────
+  terraclash: {
+    monsterType: 'terraclash',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/terraclash/',
+    displaySize: 105,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'idle_',   frames: 6, fps: 6,  loop: true  },
+      walk:    { prefix: 'walk_',   frames: 6, fps: 7,  loop: true  },
+      attack:  { prefix: 'attack_', frames: 6, fps: 10, loop: false },
+      hit:     { prefix: 'hit_',    frames: 3, fps: 12, loop: false },
+      death:   { prefix: 'death_',  frames: 6, fps: 6,  loop: false },
+      respawn: { prefix: 'idle_',   frames: 6, fps: 6,  loop: false },
+    },
+  },
+
+  // ── Bestoria Shadow Assassin: Shadow Master (그림자 군주) ─────────────────
+  shadow_master: {
+    monsterType: 'shadow_master',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/shadow_master/',
+    displaySize: 80,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'idle_',   frames: 6, fps: 6,  loop: true  },
+      walk:    { prefix: 'walk_',   frames: 6, fps: 9,  loop: true  },
+      attack:  { prefix: 'attack_', frames: 6, fps: 12, loop: false },
+      hit:     { prefix: 'hit_',    frames: 3, fps: 12, loop: false },
+      death:   { prefix: 'death_',  frames: 6, fps: 6,  loop: false },
+      respawn: { prefix: 'idle_',   frames: 6, fps: 6,  loop: false },
+    },
+  },
 };
 
 // 스프라이트 이미지 하단 투명 패딩(px) — 캐릭터 발이 좌표에 정확히 닿도록 보정
@@ -302,6 +353,9 @@ const GROUND_OFFSETS = {
   zombie_villager1: 11, zombie_villager2: 11, zombie_villager3: 11,
   troll: 1,
   knight1: 23, knight2: 23, knight3: 23,
+  barkan: 4,
+  terraclash: 3,
+  shadow_master: 4,
 };
 
 // 서버 상태 → 애니메이션 이름 매핑

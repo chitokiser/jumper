@@ -10,7 +10,7 @@ import {
   loadAllDungeonSprites, MSPRITE_DEFS,
 } from './merchants.dungeon.render.js';
 
-const BASE_FEE=100, FEE_STEP=50, RESET_MS=86400000, GAME_KEY='dungeonEntry';
+const BASE_FEE=50, FEE_STEP=25, RESET_MS=86400000, GAME_KEY='dungeonEntry';
 
 // ── 몬스터 종류 (HP×2 / ATK×3 / SPD×1.5) ─────────────────────────────────
 const MON_TYPES = {

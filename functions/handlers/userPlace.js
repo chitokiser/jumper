@@ -115,6 +115,18 @@ const CATALOG = {
     price: 200000, type: 'monster', label: 'Dragon',
     monsterType: 'dragon', maxHp: 20000, atk: 500, detectRadius: 30,
   },
+  mon_barkan: {
+    price: 120000, type: 'monster', label: 'Barkan (바르칸)',
+    monsterType: 'barkan', maxHp: 8000, atk: 380, detectRadius: 40,
+  },
+  mon_terraclash: {
+    price: 150000, type: 'monster', label: 'Terraclash (테라클래시)',
+    monsterType: 'terraclash', maxHp: 12000, atk: 450, detectRadius: 35,
+  },
+  mon_shadow_master: {
+    price: 90000, type: 'monster', label: 'Shadow Master (그림자 군주)',
+    monsterType: 'shadow_master', maxHp: 4500, atk: 290, detectRadius: 45,
+  },
   archer_tower: {
     price:  20000, type: 'tower', label: '아쳐타워',
     towerType: 'archer', atk: 50,  radius: 40, hp:  500, image: '/assets/images/shops/tower.png',
