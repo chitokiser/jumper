@@ -270,6 +270,10 @@ service cloud.firestore {
       match /myMap/{docId} {
         allow read, write: if signedIn() && request.auth.uid == uid;
       }
+
+      match /dailyArea/{docId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
     }
 
     match /settlements/{ym} {

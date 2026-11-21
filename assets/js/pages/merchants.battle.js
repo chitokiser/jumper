@@ -4131,53 +4131,38 @@ async function _checkWaterZone(lat, lng) {
   _wLastCheckPos = { lat, lng };
 
   try {
-    // ── 1차: Overpass is_in (OSM 폐곡선 수역 폴리곤) ────────────────────────
+    // ── Nominatim reverse geocode (CORS 지원) ──────────────────────────
     let isWater = false;
     try {
-      const q = `[out:json][timeout:8];is_in(${lat},${lng})->.a;` +
-        `(area.a["natural"="water"];area.a["natural"="bay"];area.a["natural"="strait"];` +
-        `area.a["place"="ocean"];area.a["place"="sea"];area.a["landuse"="reservoir"];);out count;`;
-      const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
-      if (res.ok) {
-        const data = await res.json();
-        isWater = parseInt(data.elements?.[0]?.tags?.total ?? '0', 10) > 0;
-      }
-    } catch { /* Overpass 실패 → Nominatim으로 보완 */ }
-
-    // ── 2차: Nominatim reverse geocode (Overpass false 또는 폴리곤 미맵핑 보완) ──
-    // 안다만해·통킹만 등 OSM 폐곡선 없는 바다에서 Overpass false → Nominatim이 정확히 잡음
-    if (!isWater) {
-      try {
-        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=en`;
-        const nRes = await fetch(url, { headers: { 'User-Agent': 'JumperDAO/1.0', 'Accept-Language': 'en' } });
-        if (nRes.ok) {
-          const d = await nRes.json();
-          if (!d.error) {
-            const SEA_TYPES = new Set(['water','sea','bay','strait','gulf','ocean','channel','sound','inlet','fjord','lagoon','reef']);
-            if (d.class === 'natural' && SEA_TYPES.has(d.type)) isWater = true;
-            else if (d.class === 'place' && (d.type === 'sea' || d.type === 'ocean')) isWater = true;
-            else if (d.class === 'waterway') isWater = true;
-            if (!isWater) {
-              // display_name / address 에 바다 이름 포함 여부 (특정 명칭 위주로 false positive 방지)
-              const text = [d.display_name ?? '', d.name ?? '', JSON.stringify(d.address ?? {})].join(' ').toLowerCase();
-              const SEA_NAMES = [
-                'andaman sea','south china sea','east sea','yellow sea','java sea',
-                'gulf of thailand','gulf of tonkin','celebes sea','sulu sea',
-                'banda sea','timor sea','coral sea','arabian sea','bay of bengal',
-                'mediterranean sea','red sea','persian gulf','philippine sea',
-                'bismarck sea','solomon sea','sibuyan sea','flores sea',
-                'makassar strait','malacca strait','strait of malacca',
-                'vịnh hạ long','ha long bay','halong bay',
-              ];
-              if (SEA_NAMES.some(k => text.includes(k))) isWater = true;
-              // address 객체에 sea/ocean 키 존재 시
-              const addrKeys = Object.keys(d.address ?? {});
-              if (addrKeys.some(k => ['sea','ocean','bay','body_of_water','gulf','strait'].includes(k))) isWater = true;
-            }
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=en`;
+      const nRes = await fetch(url, { headers: { 'User-Agent': 'JumperDAO/1.0', 'Accept-Language': 'en' } });
+      if (nRes.ok) {
+        const d = await nRes.json();
+        if (!d.error) {
+          const SEA_TYPES = new Set(['water','sea','bay','strait','gulf','ocean','channel','sound','inlet','fjord','lagoon','reef']);
+          if (d.class === 'natural' && SEA_TYPES.has(d.type)) isWater = true;
+          else if (d.class === 'place' && (d.type === 'sea' || d.type === 'ocean')) isWater = true;
+          else if (d.class === 'waterway') isWater = true;
+          if (!isWater) {
+            // display_name / address 에 바다 이름 포함 여부 (특정 명칭 위주로 false positive 방지)
+            const text = [d.display_name ?? '', d.name ?? '', JSON.stringify(d.address ?? {})].join(' ').toLowerCase();
+            const SEA_NAMES = [
+              'andaman sea','south china sea','east sea','yellow sea','java sea',
+              'gulf of thailand','gulf of tonkin','celebes sea','sulu sea',
+              'banda sea','timor sea','coral sea','arabian sea','bay of bengal',
+              'mediterranean sea','red sea','persian gulf','philippine sea',
+              'bismarck sea','solomon sea','sibuyan sea','flores sea',
+              'makassar strait','malacca strait','strait of malacca',
+              'vịnh hạ long','ha long bay','halong bay',
+            ];
+            if (SEA_NAMES.some(k => text.includes(k))) isWater = true;
+            // address 객체에 sea/ocean 키 존재 시
+            const addrKeys = Object.keys(d.address ?? {});
+            if (addrKeys.some(k => ['sea','ocean','bay','body_of_water','gulf','strait'].includes(k))) isWater = true;
           }
         }
-      } catch { /* Nominatim 실패 — isWater=false 유지 */ }
-    }
+      }
+    } catch { /* Nominatim 실패 — isWater=false 유지 */ }
 
     _wZoneCache.set(key, { ts: now, isWater });
     _applyWaterState(isWater);

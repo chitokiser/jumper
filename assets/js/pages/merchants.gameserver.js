@@ -145,7 +145,7 @@ export function connectToGameServer() {
   _socket.on('connect_error', err => {
     _setState('error');
     _handlers?.onError?.(err.message);
-    console.error('[GS] connect_error:', err.message);
+    console.warn('[GS] connect_error:', err.message);
   });
 
   _socket.on('reconnect_failed', () => {

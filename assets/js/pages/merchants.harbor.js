@@ -750,21 +750,7 @@ async function _checkSeaZone(lat, lng) {
     }
   }
 
-  // All 3 Nominatim zooms were ambiguous.
-  // Final check: is there a sea coastline within 500m? (handles unmapped open ocean)
-  // "natural=coastline" in OSM is exclusively for ocean/sea shores — not river banks.
-  try {
-    const q = `[out:json][timeout:8];way["natural"="coastline"](around:500,${lat},${lng});out count;`;
-    const res = await fetch(
-      `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`,
-      { headers: { 'User-Agent': 'JumperDAO/1.0' } },
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (parseInt(data.elements?.[0]?.tags?.total ?? '0', 10) > 0) return true;
-    }
-  } catch (_) { /* API failure → reject */ }
-
+  // All 3 Nominatim zooms were checked.
   return false; // definitively not coastal
 }
 

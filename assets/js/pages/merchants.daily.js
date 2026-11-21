@@ -43,10 +43,15 @@ export async function initDailyArea(uid, lat, lng, map, infoWindow) {
 async function _loadItems() {
   if (!_uid) return;
   const today = new Date(Date.now() + 7*3600*1000).toISOString().slice(0,10);
-  const snap = await getDocs(collection(db, 'users', _uid, 'dailyArea'));
-  _items = snap.docs
-    .map(d => ({ docId: d.id, ...d.data() }))
-    .filter(i => i.active && i.resetDate === today);
+  try {
+    const snap = await getDocs(collection(db, 'users', _uid, 'dailyArea'));
+    _items = snap.docs
+      .map(d => ({ docId: d.id, ...d.data() }))
+      .filter(i => i.active && i.resetDate === today);
+  } catch (err) {
+    _items = [];
+    return;
+  }
   // HP 상태 초기화 (이미 있으면 유지)
   for (const item of _items) {
     if (_hpState[item.docId] === undefined) _hpState[item.docId] = item.hp;
