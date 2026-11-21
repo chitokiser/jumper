@@ -3450,6 +3450,9 @@ export function enterAdminPlaceMode(type) {
   document.getElementById('btnPlaceBarkan')?.classList.toggle('placing', type === 'barkan');
   document.getElementById('btnPlaceTerraclash')?.classList.toggle('placing', type === 'terraclash');
   document.getElementById('btnPlaceShadowMaster')?.classList.toggle('placing', type === 'shadow_master');
+  document.getElementById('btnPlaceGoblin')?.classList.toggle('placing', type === 'goblin');
+  document.getElementById('btnPlaceKobold')?.classList.toggle('placing', type === 'kobold');
+  document.getElementById('btnPlaceSkeleton')?.classList.toggle('placing', type === 'skeleton');
   document.getElementById('btnPlaceArcherTower')?.classList.toggle('placing', type === 'archer_tower');
   document.getElementById('btnPlaceCannonTower')?.classList.toggle('placing', type === 'cannon_tower');
   document.getElementById('btnPlaceDeco')?.classList.toggle('placing', type === 'deco');
@@ -3495,10 +3498,13 @@ export function enterAdminPlaceMode(type) {
         alert(`✅ ${name} 배치 완료 (Firebase Firestore)\n위치: (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
       } catch (err) { alert('Firebase placement error: ' + err.message); }
 
-    } else if (['dragon','orc','orc2','orc3','pirate','pirate2','pirate3','zombie1','zombie3','barkan','terraclash','shadow_master'].includes(_adminPlaceMode)) {
+    } else if (['dragon','orc','orc2','orc3','pirate','pirate2','pirate3','zombie1','zombie3','barkan','terraclash','shadow_master','goblin','kobold','skeleton'].includes(_adminPlaceMode)) {
       // ── 타입별 스프라이트 몬스터 — Firebase 영구 저장 및 게임서버 실시간 연동 ──────
       const monsterType = _adminPlaceMode;
       const GS_DEFAULTS = {
+        goblin:        { name: 'Goblin (고블린)',           maxHp:   300, attackPower:  25, attackRangeM: 15, aggroRangeM:  35, moveSpeed: 1.6, attackCooldownMs: 1200, respawnSeconds:  60 },
+        kobold:        { name: 'Kobold (코볼트)',           maxHp:   450, attackPower:  40, attackRangeM: 15, aggroRangeM:  40, moveSpeed: 1.4, attackCooldownMs: 1500, respawnSeconds:  80 },
+        skeleton:      { name: 'Skeleton (스켈레톤)',       maxHp:   650, attackPower:  55, attackRangeM: 18, aggroRangeM:  40, moveSpeed: 1.1, attackCooldownMs: 1800, respawnSeconds:  90 },
         pirate:        { name: 'Pirate',                    maxHp:   600, attackPower:  60, attackRangeM: 20, aggroRangeM:  40, moveSpeed: 1.5, attackCooldownMs: 1500, respawnSeconds:  90 },
         pirate2:       { name: 'Pirate 2',                  maxHp:  1000, attackPower: 110, attackRangeM: 20, aggroRangeM:  45, moveSpeed: 1.4, attackCooldownMs: 2000, respawnSeconds: 120 },
         pirate3:       { name: 'Pirate 3',                  maxHp:  1600, attackPower: 170, attackRangeM: 20, aggroRangeM:  50, moveSpeed: 1.3, attackCooldownMs: 2000, respawnSeconds: 180 },
@@ -3656,6 +3662,9 @@ export function exitAdminPlaceMode() {
   document.getElementById('btnPlaceBarkan')?.classList.remove('placing');
   document.getElementById('btnPlaceTerraclash')?.classList.remove('placing');
   document.getElementById('btnPlaceShadowMaster')?.classList.remove('placing');
+  document.getElementById('btnPlaceGoblin')?.classList.remove('placing');
+  document.getElementById('btnPlaceKobold')?.classList.remove('placing');
+  document.getElementById('btnPlaceSkeleton')?.classList.remove('placing');
   document.getElementById('btnPlaceShopWeapon')?.classList.remove('placing');
   document.getElementById('btnPlaceShopPotion')?.classList.remove('placing');
   document.getElementById('btnPlaceShopMisc')?.classList.remove('placing');

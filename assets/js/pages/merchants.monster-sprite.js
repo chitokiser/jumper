@@ -341,6 +341,57 @@ export const SPRITE_CONFIGS = {
       respawn: { prefix: 'idle_',   frames: 6, fps: 6,  loop: false },
     },
   },
+
+  // ── Bestoria Low Tier: Goblin (고블린 - 티어 1) ─────────────────────────
+  goblin: {
+    monsterType: 'goblin',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/goblin/',
+    displaySize: 48,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'idle_',   frames: 6, fps: 7,  loop: true  },
+      walk:    { prefix: 'walk_',   frames: 6, fps: 10, loop: true  },
+      attack:  { prefix: 'attack_', frames: 6, fps: 12, loop: false },
+      hit:     { prefix: 'hit_',    frames: 3, fps: 12, loop: false },
+      death:   { prefix: 'death_',  frames: 6, fps: 7,  loop: false },
+      respawn: { prefix: 'idle_',   frames: 6, fps: 6,  loop: false },
+    },
+  },
+
+  // ── Bestoria Low Tier: Kobold (코볼트 - 티어 1) ─────────────────────────
+  kobold: {
+    monsterType: 'kobold',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/kobold/',
+    displaySize: 50,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'idle_',   frames: 6, fps: 7,  loop: true  },
+      walk:    { prefix: 'walk_',   frames: 6, fps: 9,  loop: true  },
+      attack:  { prefix: 'attack_', frames: 6, fps: 12, loop: false },
+      hit:     { prefix: 'hit_',    frames: 3, fps: 12, loop: false },
+      death:   { prefix: 'death_',  frames: 6, fps: 7,  loop: false },
+      respawn: { prefix: 'idle_',   frames: 6, fps: 6,  loop: false },
+    },
+  },
+
+  // ── Bestoria Low Tier: Skeleton (스켈레톤 - 티어 1~2) ───────────────────
+  skeleton: {
+    monsterType: 'skeleton',
+    framesMode:  true,
+    basePath:    '/assets/images/monsters/skeleton/',
+    displaySize: 58,
+    facingLeft:  false,
+    animations: {
+      idle:    { prefix: 'idle_',   frames: 6, fps: 6,  loop: true  },
+      walk:    { prefix: 'walk_',   frames: 6, fps: 8,  loop: true  },
+      attack:  { prefix: 'attack_', frames: 6, fps: 11, loop: false },
+      hit:     { prefix: 'hit_',    frames: 3, fps: 12, loop: false },
+      death:   { prefix: 'death_',  frames: 6, fps: 6,  loop: false },
+      respawn: { prefix: 'idle_',   frames: 6, fps: 6,  loop: false },
+    },
+  },
 };
 
 // 스프라이트 이미지 하단 투명 패딩(px) — 캐릭터 발이 좌표에 정확히 닿도록 보정
@@ -356,6 +407,9 @@ const GROUND_OFFSETS = {
   barkan: 4,
   terraclash: 3,
   shadow_master: 4,
+  goblin: 6,
+  kobold: 6,
+  skeleton: 4,
 };
 
 // 서버 상태 → 애니메이션 이름 매핑

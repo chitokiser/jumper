@@ -3770,6 +3770,9 @@ async function init() {
   $('btnPlaceBarkan')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('barkan'); });
   $('btnPlaceTerraclash')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('terraclash'); });
   $('btnPlaceShadowMaster')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('shadow_master'); });
+  $('btnPlaceGoblin')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('goblin'); });
+  $('btnPlaceKobold')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('kobold'); });
+  $('btnPlaceSkeleton')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('skeleton'); });
   $('btnPlaceArcherTower')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('archer_tower'); });
   $('btnPlaceCannonTower')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('cannon_tower'); });
   $('btnPlaceDeco')?.addEventListener('click', () => { if (!_isAdmin) return; enterAdminPlaceMode('deco'); });
