@@ -100,7 +100,7 @@
               style="width:100%; border:1px solid #ccc; padding:8px;"></textarea>
           </label>
           <label>
-            <div class="muted">가격 (VND)</div><input id="pPrice" type="number" class="input"
+            <div class="muted">가격 (VND, 공구 사용 시 타임딜 즉시 할인가)</div><input id="pPrice" type="number" class="input"
               style="width:100%; border:1px solid #ccc; padding:8px;" required />
           </label>
           <label>
@@ -111,6 +111,63 @@
               <option value="sold_out">품절</option>
             </select>
           </label>
+
+          <!-- 🔥 하노이 교민 공동구매(Group Buy) & 타임딜 설정 -->
+          <div style="border:1px solid #fecdd3; background:#fff1f2; border-radius:10px; padding:12px; margin-top:4px;">
+            <label style="display:flex; align-items:center; gap:8px; font-weight:800; color:#be123c; cursor:pointer;">
+              <input type="checkbox" id="pGbEnabled" style="width:16px; height:16px;" />
+              <span>🔥 하노이 교민 공동구매 &amp; 타임딜 적용</span>
+            </label>
+            <div id="gbConfigFields" style="display:none; margin-top:10px; display:grid; gap:8px; font-size:0.84rem;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <label>
+                  <div class="muted" style="font-size:0.78rem;">공구 진행 방식</div>
+                  <select id="pGbMode" class="input" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;">
+                    <option value="team_recruit">👥 뭉쳐야 산다 (인원모집형)</option>
+                    <option value="weekly_cycle">🥬 주간 정기공구 (반찬·식자재)</option>
+                  </select>
+                </label>
+                <label>
+                  <div class="muted" style="font-size:0.78rem;">하노이 권역</div>
+                  <select id="pGbRegion" class="input" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;">
+                    <option value="미딩·하동·서호 전지역">하노이 전지역</option>
+                    <option value="미딩·쭝화">미딩·쭝화</option>
+                    <option value="하동·반푹">하동·반푹</option>
+                    <option value="서호·외교단지">서호·외교단지</option>
+                    <option value="타임시티·오션파크">타임시티·오션파크</option>
+                  </select>
+                </label>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <label>
+                  <div class="muted" style="font-size:0.78rem;">정상가 (할인 전, VND)</div>
+                  <input id="pGbOriginalPrice" type="number" class="input" placeholder="예: 350000" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
+                </label>
+                <label>
+                  <div class="muted" style="font-size:0.78rem;">목표 달성 추가 BM 보너스</div>
+                  <input id="pGbBonusBm" type="number" class="input" placeholder="예: 20000" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
+                </label>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <label>
+                  <div class="muted" style="font-size:0.78rem;">보너스 목표 인원(명)</div>
+                  <input id="pGbTargetCount" type="number" class="input" value="10" min="2" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
+                </label>
+                <label>
+                  <div class="muted" style="font-size:0.78rem;">현재 참여 인원(명)</div>
+                  <input id="pGbCurrentCount" type="number" class="input" value="0" min="0" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
+                </label>
+              </div>
+              <label>
+                <div class="muted" style="font-size:0.78rem;">타임딜 마감 일시 (비워두면 주간 목요일 18시 자동)</div>
+                <input id="pGbDeadline" type="datetime-local" class="input" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
+              </label>
+              <label>
+                <div class="muted" style="font-size:0.78rem;">배송/수령 및 공구 안내 문구</div>
+                <input id="pGbDeliveryNote" type="text" class="input" placeholder="예: 타임딜 주문 즉시 할인가 확정 · 목요일 마감 금요일 일괄 배송" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
+              </label>
+            </div>
+          </div>
 
           <div style="display:flex;gap:8px;margin-top:14px;justify-content:space-between;align-items:center;">
             <button type="button" class="btn" id="btnDeleteInModal"

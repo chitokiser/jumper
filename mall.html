@@ -28,11 +28,53 @@
     <section class="panel coop-mall-section">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
         <div>
-          <h1 class="title" style="margin-bottom:4px;">가맹점 상품 &amp; 서비스 모음</h1>
-          <p style="margin:0; font-size:0.9rem; color:#64748b;">공식 가맹점의 검증된 상품을 BestClub에서 편리하게 주문하세요.</p>
+          <h1 class="title" style="margin-bottom:4px;">가맹점 상품 &amp; 하노이 교민 공동구매 · 타임딜</h1>
+          <p style="margin:0; font-size:0.9rem; color:#64748b;">공식 가맹점 상품을 타임딜 할인가로 즉시 구매하고, 목표 인원 달성 시 추가 BM 보너스까지 받으세요!</p>
         </div>
-        <button id="btnShowCart" class="btn btn--primary" style="font-weight:bold;">🛒 장바구니 <span id="cartBadge"
-            style="background:#ef4444;border-radius:10px;padding:2px 8px;font-size:0.8rem;margin-left:4px;">0</span></button>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <a href="/admin_merchant_products.html" class="btn btn--sm" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; border-radius:8px; font-weight:600; text-decoration:none;">⚙️ 공구/상품 관리</a>
+          <button id="btnShowCart" class="btn btn--primary" style="font-weight:bold;">🛒 장바구니 <span id="cartBadge"
+              style="background:#ef4444;border-radius:10px;padding:2px 8px;font-size:0.8rem;margin-left:4px;">0</span></button>
+        </div>
+      </div>
+
+      <!-- 🔥 하노이 교민 공동구매 & 타임딜 히어로 스포트라이트 (groupbuy-lite + wegrocery 하이브리드) -->
+      <div id="groupBuySpotlightSection" style="margin-top:18px; border-radius:16px; background:linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #311042 100%); color:#fff; padding:20px; box-shadow:0 12px 28px rgba(15,23,42,0.18); position:relative; overflow:hidden;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+          <div>
+            <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(244,63,94,0.22); border:1px solid rgba(251,113,133,0.45); color:#fda4af; font-size:0.78rem; font-weight:800; padding:3px 10px; border-radius:99px; margin-bottom:8px;">
+              <span>🔥 HANOI COMMUNITY GROUP BUY &amp; FLASH DEAL</span>
+            </div>
+            <h2 style="margin:0; font-size:1.3rem; font-weight:800; color:#fff; letter-spacing:-0.02em;">
+              뭉치면 터지는 하노이 교민 공동구매 &amp; 주간 반찬·식자재 타임딜
+            </h2>
+            <p style="margin:4px 0 0; font-size:0.84rem; color:#cbd5e1;">
+              ✅ <b>타임딜 시간 내 주문 시 할인가 100% 즉시 확정!</b> &nbsp;|&nbsp; 🎁 <b>목표 인원 달성 시 전원 추가 BM 보너스 지급!</b>
+            </p>
+          </div>
+          <!-- 모드 전환 스위치 -->
+          <div id="dealModeTabs" style="display:flex; gap:6px; background:rgba(255,255,255,0.08); padding:5px; border-radius:12px; border:1px solid rgba(255,255,255,0.14); flex-wrap:wrap;">
+            <button type="button" class="deal-mode-btn is-active" data-deal-mode="all" style="border:none; background:#f43f5e; color:#fff; font-weight:700; font-size:0.82rem; padding:7px 13px; border-radius:8px; cursor:pointer;">전체 상품 + 공구</button>
+            <button type="button" class="deal-mode-btn" data-deal-mode="deals_only" style="border:none; background:transparent; color:#e2e8f0; font-weight:700; font-size:0.82rem; padding:7px 13px; border-radius:8px; cursor:pointer;">🔥 진행중 공구·타임딜만</button>
+            <button type="button" class="deal-mode-btn" data-deal-mode="team_recruit" style="border:none; background:transparent; color:#e2e8f0; font-weight:700; font-size:0.82rem; padding:7px 13px; border-radius:8px; cursor:pointer;">👥 뭉쳐야 산다 (인원모집형)</button>
+            <button type="button" class="deal-mode-btn" data-deal-mode="weekly_cycle" style="border:none; background:transparent; color:#e2e8f0; font-weight:700; font-size:0.82rem; padding:7px 13px; border-radius:8px; cursor:pointer;">🥬 주간 정기공구 (반찬·식자재)</button>
+          </div>
+        </div>
+
+        <!-- 하노이 권역별 필터 & 통계 요약 바 -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.12); font-size:0.82rem;">
+          <div id="regionFilterBar" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span style="color:#94a3b8; font-weight:700;">📍 하노이 배송/픽업 권역:</span>
+            <button type="button" class="region-btn is-active" data-region="all" style="border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.18); color:#fff; padding:3px 10px; border-radius:99px; font-size:0.78rem; font-weight:700; cursor:pointer;">하노이 전체</button>
+            <button type="button" class="region-btn" data-region="미딩" style="border:1px solid rgba(255,255,255,0.15); background:transparent; color:#cbd5e1; padding:3px 10px; border-radius:99px; font-size:0.78rem; cursor:pointer;">미딩·쭝화</button>
+            <button type="button" class="region-btn" data-region="하동" style="border:1px solid rgba(255,255,255,0.15); background:transparent; color:#cbd5e1; padding:3px 10px; border-radius:99px; font-size:0.78rem; cursor:pointer;">하동·반푹</button>
+            <button type="button" class="region-btn" data-region="서호" style="border:1px solid rgba(255,255,255,0.15); background:transparent; color:#cbd5e1; padding:3px 10px; border-radius:99px; font-size:0.78rem; cursor:pointer;">서호·외교단지</button>
+            <button type="button" class="region-btn" data-region="타임시티" style="border:1px solid rgba(255,255,255,0.15); background:transparent; color:#cbd5e1; padding:3px 10px; border-radius:99px; font-size:0.78rem; cursor:pointer;">타임시티·오션파크</button>
+          </div>
+          <div id="groupBuyLiveSummary" style="color:#fde047; font-weight:700;">
+            ⚡ 실시간 공동구매 현황 불러오는 중...
+          </div>
+        </div>
       </div>
 
       <!-- 가맹점별 모아보기 필터 바 -->
@@ -55,9 +97,30 @@
 
       <div id="coopMallNotice" class="hint" style="display:none; margin-top:12px;"></div>
       <div id="coopMallProducts" class="product-list"
-        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top:20px;">
+        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; margin-top:20px;">
       </div>
     </section>
+
+    <!-- 📣 교민 단톡방(카톡/잘로/텔레그램) 공동구매 바이럴 공유 모달 -->
+    <div id="groupShareModal" class="modal"
+      style="display:none; position: fixed; inset: 0; background: rgba(15,23,42,0.65); z-index: 10000; justify-content: center; align-items: center;">
+      <div class="modal-content panel"
+        style="background:#fff; width:92%; max-width:460px; padding:22px; border-radius:16px; box-shadow:0 20px 40px rgba(0,0,0,0.25);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="margin:0; font-size:1.2rem; color:#0f172a;">📣 하노이 교민 단톡방에 공구 소문내기</h3>
+          <button type="button" id="btnCloseShareModal" style="border:none; background:#f1f5f9; color:#475569; width:30px; height:30px; border-radius:99px; cursor:pointer; font-weight:800;">✕</button>
+        </div>
+        <p style="margin:0 0 12px; font-size:0.84rem; color:#475569; line-height:1.45;">
+          아래 홍보 문구를 복사해 <b>하노이 아파트 단톡방(카카오톡 · Zalo · 텔레그램)</b>에 공유해 보세요! 목표 인원이 채워지면 참여자 전원에게 <b>추가 BM 보너스</b>가 적립됩니다.
+        </p>
+        <textarea id="sharePromoText" readonly rows="7"
+          style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; font-size:0.84rem; color:#1e293b; line-height:1.5; resize:none; font-family:inherit;"></textarea>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;">
+          <button type="button" id="btnCopyShareText" class="btn btn--primary" style="padding:10px; border-radius:10px; font-weight:700; background:#2563eb;">📋 카톡/Zalo 홍보문구 복사</button>
+          <a id="btnTelegramShareLink" href="#" target="_blank" rel="noopener" class="btn" style="padding:10px; border-radius:10px; font-weight:700; background:#0284c7; color:#fff; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">✈️ 텔레그램 즉시 공유</a>
+        </div>
+      </div>
+    </div>
 
     <!-- 장바구니 모달 -->
     <div id="cartModal" class="modal"

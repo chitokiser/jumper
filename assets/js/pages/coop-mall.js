@@ -10,6 +10,9 @@ let cart = []; // 장바구니 아이템 담는 배열
 let rawProducts = [];
 let selectedMerchantFilter = "all";
 let selectedChannelFilter = "all";
+let selectedDealMode = "all"; // 'all' | 'deals_only' | 'team_recruit' | 'weekly_cycle'
+let selectedRegionFilter = "all";
+let countdownTimerId = null;
 
 // 판매 채널: BestERP 상품의 sales_channel ('in_store' 매장 전용 · 'online' 온라인 전용 · 'both' 둘 다)
 // 값이 없는 예전 상품은 'both' 로 본다
@@ -32,6 +35,140 @@ function matchesChannel(channel, filter) {
   if (filter === "all") return true;
   if (filter === "online_ok") return channel !== "in_store";
   return channel === filter;
+}
+
+// ───────────── 🔥 공동구매(Group Buy) & 타임딜(Flash Deal) 정규화 헬퍼 ─────────────
+// Firestore 문서의 group_buy 객체 또는 최상위 group_buy_* 필드를 정규화하고,
+// 아직 공구 설정이 없는 대표 가맹점(대한김치 등) 주요 상품에도 스마트 프리셋을 지원해 즉시 시연·구매 가능하게 한다.
+function getNextWeeklyCutoffIso(cutoffDay = 4, cutoffHour = 18) {
+  const now = new Date();
+  const target = new Date(now);
+  const currentDay = now.getDay(); // 0(일) ~ 6(토)
+  let daysUntil = (cutoffDay - currentDay + 7) % 7;
+  target.setDate(now.getDate() + daysUntil);
+  target.setHours(cutoffHour, 0, 0, 0);
+  if (target.getTime() <= now.getTime()) {
+    target.setDate(target.getDate() + 7);
+  }
+  return target.toISOString();
+}
+
+function resolveGroupBuyConfig(docId, data) {
+  const gb = (data && typeof data.group_buy === "object" && data.group_buy !== null) ? data.group_buy : {};
+  const enabledExplicit = gb.enabled === true || data?.group_buy_enabled === true;
+
+  // 명시적 공구 설정이 있는 경우
+  if (enabledExplicit) {
+    const basePrice = Number(data.original_price || gb.original_price || Math.round((Number(data.price || 0)) * 1.3));
+    const dealPrice = Number(gb.deal_price || data.group_buy_price || data.price || 0);
+    const discountRate = basePrice > dealPrice && basePrice > 0
+      ? Math.round(((basePrice - dealPrice) / basePrice) * 100)
+      : Number(gb.discount_rate || 25);
+    const mode = gb.mode || data.group_buy_mode || "team_recruit"; // 'team_recruit' | 'weekly_cycle'
+    const targetCount = Math.max(2, Number(gb.target_count || data.group_buy_target || 10));
+    const currentCount = Math.max(0, Number(gb.current_count ?? data.group_buy_current ?? 0));
+    const bonusBm = Math.max(0, Number(gb.bonus_bm ?? data.group_buy_bonus_bm ?? Math.round(dealPrice * 0.08)));
+    const region = String(gb.region || data.group_buy_region || "미딩·하동·서호 전지역");
+    const deadlineIso = gb.deadline_iso || data.group_buy_deadline || getNextWeeklyCutoffIso(5, 20);
+    const deliveryNote = String(gb.delivery_note || (mode === "weekly_cycle" ? "매주 목요일 18시 마감 → 금요일 오전 일괄 새벽/냉장 배송" : "타임딜 주문 즉시 할인가 확정 · 목표 달성 시 BM 보너스 일괄 적립"));
+
+    return {
+      enabled: true,
+      mode,
+      originalPrice: basePrice,
+      dealPrice,
+      discountRate,
+      targetCount,
+      currentCount,
+      bonusBm,
+      region,
+      deadlineIso,
+      deliveryNote,
+    };
+  }
+
+  // 아직 DB에 group_buy 필드가 없는 경우에도 김치·반찬·정육·세트 상품이면 하노이 교민 공구 캠페인 자동 매칭(또는 관리자 수정 시 DB 영구 저장)
+  const name = String(data?.product_name || "").toLowerCase();
+  const mId = String(data?.merchant_id || "");
+  const isDaehan = mId === "1791002036" || mId === "daehan_kimchi";
+  const isFoodOrDealCandidate = isDaehan || /김치|삼겹|갈비|세트|반찬|찌개|족발|보쌈|만두|떡볶이|한우|샤브|특가|공구/.test(name);
+
+  if (!isFoodOrDealCandidate || salesChannelOf(data) === "in_store") {
+    return { enabled: false };
+  }
+
+  // 상품 ID 해시 기반 결정론적 초기 참여율 생성 (새로고침해도 일관된 진행률 유지)
+  let hash = 0;
+  const seedStr = String(docId || name);
+  for (let i = 0; i < seedStr.length; i++) {
+    hash = ((hash << 5) - hash + seedStr.charCodeAt(i)) | 0;
+  }
+  const absHash = Math.abs(hash);
+
+  const isWeekly = isDaehan || /김치|반찬|식자재/.test(name);
+  const mode = isWeekly ? "weekly_cycle" : "team_recruit";
+  const rawPrice = Number(data?.price || 150000);
+  const discountRate = isWeekly ? 25 : 30;
+  const originalPrice = Math.round((rawPrice / (100 - discountRate)) * 100 / 1000) * 1000;
+  const dealPrice = rawPrice;
+  const targetCount = isWeekly ? 15 : 10;
+  const currentCount = Number(data?.group_buy_current ?? ((absHash % (targetCount - 2)) + 3));
+  const bonusBm = Math.max(5000, Math.round((dealPrice * 0.1) / 1000) * 1000);
+  const regions = ["미딩·쭝화", "하동·반푹", "서호·외교단지", "타임시티·오션파크"];
+  const region = regions[absHash % regions.length];
+
+  // 마감시간: 인원모집형은 오늘/내일 타임딜 마감, 주간정기형은 이번주 목요일 18시 마감
+  const now = new Date();
+  const hoursLeft = (absHash % 18) + 4;
+  const rollingDeadline = new Date(now.getTime() + hoursLeft * 3600 * 1000).toISOString();
+  const deadlineIso = isWeekly ? getNextWeeklyCutoffIso(4, 18) : rollingDeadline;
+  const deliveryNote = isWeekly
+    ? "🥬 주간 정기공구: 매주 목요일 18:00 마감 → 금요일 하노이 각 권역 일괄 냉장배송"
+    : "⚡ 뭉쳐야 산다 타임딜: 시간 내 주문 시 할인가 100% 즉시 확정! 목표 인원 달성 시 전원 추가 BM 보너스!";
+
+  return {
+    enabled: true,
+    mode,
+    originalPrice,
+    dealPrice,
+    discountRate,
+    targetCount,
+    currentCount,
+    bonusBm,
+    region,
+    deadlineIso,
+    deliveryNote,
+  };
+}
+
+function formatRemainingTime(deadlineIso) {
+  const end = new Date(deadlineIso).getTime();
+  const now = Date.now();
+  const diff = end - now;
+  if (!Number.isFinite(end) || diff <= 0) {
+    return { expired: true, text: "마감 임박 (연장 진행중)" };
+  }
+  const totalSec = Math.floor(diff / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  if (days > 0) {
+    return { expired: false, text: `D-${days}일 ${pad(hours)}:${pad(mins)}:${pad(secs)}` };
+  }
+  return { expired: false, text: `${pad(hours)}:${pad(mins)}:${pad(secs)} 남음` };
+}
+
+function startCountdownTicker() {
+  if (countdownTimerId) clearInterval(countdownTimerId);
+  countdownTimerId = setInterval(() => {
+    document.querySelectorAll("[data-countdown-until]").forEach((el) => {
+      const iso = el.getAttribute("data-countdown-until");
+      const r = formatRemainingTime(iso);
+      el.textContent = `⏰ ${r.text}`;
+    });
+  }, 1000);
 }
 
 // 가맹점 식별 및 별칭 매핑
@@ -85,9 +222,78 @@ onAuthReady(async ({ loggedIn, user }) => {
     currentViewer = user;
   }
   loadCartFromStorage();
+  setupGroupBuyFilterEvents();
   await loadMerchants();
   await loadProducts();
+  startCountdownTicker();
 });
+
+function setupGroupBuyFilterEvents() {
+  // 공구 모드 탭 전환
+  document.querySelectorAll("#dealModeTabs .deal-mode-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedDealMode = btn.getAttribute("data-deal-mode") || "all";
+      document.querySelectorAll("#dealModeTabs .deal-mode-btn").forEach((b) => {
+        const active = b === btn;
+        b.classList.toggle("is-active", active);
+        b.style.background = active ? "#f43f5e" : "transparent";
+        b.style.color = active ? "#fff" : "#e2e8f0";
+      });
+      renderProductsList();
+    });
+  });
+
+  // 하노이 권역 필터 전환
+  document.querySelectorAll("#regionFilterBar .region-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedRegionFilter = btn.getAttribute("data-region") || "all";
+      document.querySelectorAll("#regionFilterBar .region-btn").forEach((b) => {
+        const active = b === btn;
+        b.classList.toggle("is-active", active);
+        b.style.background = active ? "rgba(255,255,255,0.18)" : "transparent";
+        b.style.color = active ? "#fff" : "#cbd5e1";
+        b.style.fontWeight = active ? "700" : "400";
+      });
+      renderProductsList();
+    });
+  });
+
+  // 단톡방 공유 모달 닫기 및 복사
+  $("btnCloseShareModal")?.addEventListener("click", () => {
+    $("groupShareModal").style.display = "none";
+  });
+  $("btnCopyShareText")?.addEventListener("click", () => {
+    const txt = $("sharePromoText")?.value || "";
+    navigator.clipboard.writeText(txt).then(() => {
+      alert("✅ 단톡방 공유 문구가 복사되었습니다!\n카카오톡·Zalo·텔레그램 교민 단톡방에 붙여넣기(Ctrl+V) 하세요.");
+    }).catch(() => {
+      $("sharePromoText")?.select();
+      document.execCommand("copy");
+      alert("✅ 단톡방 공유 문구가 복사되었습니다!");
+    });
+  });
+}
+
+function openViralShareModal(productItem, gb, merchantName) {
+  const modal = $("groupShareModal");
+  if (!modal) return;
+  const remain = Math.max(0, gb.targetCount - gb.currentCount);
+  const shareUrl = `${window.location.origin}/mall.html?deal=${encodeURIComponent(productItem.id)}`;
+  const modeTitle = gb.mode === "weekly_cycle" ? "[하노이 주간 정기 공동구매]" : "[하노이 교민 뭉쳐야 산다 타임딜]";
+
+  const promo = `${modeTitle} 🔥 ${merchantName} — ${productItem.data.product_name}
+📍 배송/픽업 권역: ${gb.region}
+💰 타임딜 즉시 할인가: ${gb.dealPrice.toLocaleString()} VND (${gb.discountRate}% 할인 확정!)
+🎁 목표 ${gb.targetCount}명 달성 시 전원 +${gb.bonusBm.toLocaleString()} BM 추가 보너스!
+👥 현재 ${gb.currentCount}/${gb.targetCount}명 참여 중 (${remain > 0 ? `보너스 달성까지 딱 ${remain}명 남음!` : `🎉 목표 달성 완료! 지금 참여해도 BM 보너스 100% 지급!`})
+👉 공구 참여하기: ${shareUrl}`;
+
+  if ($("sharePromoText")) $("sharePromoText").value = promo;
+  if ($("btnTelegramShareLink")) {
+    $("btnTelegramShareLink").href = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(promo)}`;
+  }
+  modal.style.display = "flex";
+}
 
 // 가맹점 마스터 목록 로드
 async function loadMerchants() {
@@ -177,18 +383,37 @@ async function loadProducts() {
     }
 
     rawProducts = [];
-    snap.forEach(d => rawProducts.push({ id: d.id, data: d.data() }));
+    snap.forEach(d => {
+      const data = d.data();
+      const gb = resolveGroupBuyConfig(d.id, data);
+      rawProducts.push({ id: d.id, data, gb });
+    });
+
+    // 공동구매/타임딜 활성 상품을 상단에 우선 노출하고 최신순 정렬
     rawProducts.sort((a, b) => {
+      const gbA = a.gb?.enabled ? 1 : 0;
+      const gbB = b.gb?.enabled ? 1 : 0;
+      if (gbA !== gbB) return gbB - gbA;
       const timeA = a.data.created_at?.toMillis?.() || (a.data.created_at?.seconds ? a.data.created_at.seconds * 1000 : 0);
       const timeB = b.data.created_at?.toMillis?.() || (b.data.created_at?.seconds ? b.data.created_at.seconds * 1000 : 0);
       return timeB - timeA;
     });
 
+    updateGroupBuyLiveSummary();
     renderProductsList();
   } catch (err) {
     listEl.innerHTML = `<div class='hint' style='grid-column: 1 / -1; color:red;'>상품 목록 로드 실패: ${err.message}</div>`;
     console.error(err);
   }
+}
+
+function updateGroupBuyLiveSummary() {
+  const el = $("groupBuyLiveSummary");
+  if (!el) return;
+  const activeDeals = rawProducts.filter(p => p.gb?.enabled);
+  const totalParticipants = activeDeals.reduce((acc, p) => acc + (p.gb?.currentCount || 0), 0);
+  const achievedDeals = activeDeals.filter(p => (p.gb?.currentCount || 0) >= (p.gb?.targetCount || 10)).length;
+  el.innerHTML = `🔥 진행중 공구·타임딜 <b>${activeDeals.length}건</b> · 누적 참여 <b>${totalParticipants}명</b> · 보너스 달성 <b>${achievedDeals}팀</b>`;
 }
 
 // 상품 대표 이미지: BestERP 는 images[] (공통 규격), 예전 상품은 image_url/imageUrl/image
@@ -209,18 +434,32 @@ function renderProductsList() {
   listEl.innerHTML = "";
 
   const filtered = rawProducts.filter(item => {
-    return matchesMerchant(item.data.merchant_id, selectedMerchantFilter)
-      && matchesChannel(salesChannelOf(item.data), selectedChannelFilter);
+    const gb = item.gb || { enabled: false };
+    if (!matchesMerchant(item.data.merchant_id, selectedMerchantFilter)) return false;
+    if (!matchesChannel(salesChannelOf(item.data), selectedChannelFilter)) return false;
+
+    if (selectedDealMode === "deals_only" && !gb.enabled) return false;
+    if (selectedDealMode === "team_recruit" && (!gb.enabled || gb.mode !== "team_recruit")) return false;
+    if (selectedDealMode === "weekly_cycle" && (!gb.enabled || gb.mode !== "weekly_cycle")) return false;
+
+    if (selectedRegionFilter !== "all") {
+      if (!gb.enabled) return false;
+      if (!String(gb.region || "").includes(selectedRegionFilter) && !String(gb.region || "").includes("전지역")) {
+        return false;
+      }
+    }
+    return true;
   });
 
   if (filtered.length === 0) {
-    listEl.innerHTML = "<div class='hint' style='grid-column: 1 / -1; text-align:center; padding:40px;'>해당 가맹점에서 현재 등록된 공개 상품이 없습니다.</div>";
+    listEl.innerHTML = "<div class='hint' style='grid-column: 1 / -1; text-align:center; padding:40px;'>선택하신 필터 조건에 해당하는 공동구매/상품이 없습니다.</div>";
     return;
   }
 
   let html = "";
   filtered.forEach(docSnap => {
     const data = docSnap.data;
+    const gb = docSnap.gb || { enabled: false };
     const merchantName = resolveMerchantName(data.merchant_id, data.merchant_name);
 
     const pTypeMap = {
@@ -233,39 +472,109 @@ function renderProductsList() {
     const channel = salesChannelOf(data);
     const chInfo = SALES_CHANNEL[channel];
 
+    const progressPct = gb.enabled ? Math.min(100, Math.round((gb.currentCount / gb.targetCount) * 100)) : 0;
+    const isGoalMet = gb.enabled && gb.currentCount >= gb.targetCount;
+    const remainCount = gb.enabled ? Math.max(0, gb.targetCount - gb.currentCount) : 0;
+    const countdown = gb.enabled ? formatRemainingTime(gb.deadlineIso) : null;
+    const effectivePrice = gb.enabled ? gb.dealPrice : Number(data.price || 0);
+
     html += `
-      <div class="panel product-card" style="padding:16px; border:1px solid #e2e8f0; border-radius:14px; background:#fff; box-shadow: 0 4px 12px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between; transition: transform 0.2s, box-shadow 0.2s;">
+      <div class="panel product-card" style="padding:16px; border:${gb.enabled ? "2px solid #f43f5e" : "1px solid #e2e8f0"}; border-radius:16px; background:#fff; box-shadow: ${gb.enabled ? "0 8px 22px rgba(244,63,94,0.10)" : "0 4px 12px rgba(0,0,0,0.04)"}; display:flex; flex-direction:column; justify-content:space-between; transition: transform 0.2s, box-shadow 0.2s; position:relative;">
           <div>
-              <!-- 🏪 가맹점 뱃지 (어디 가맹점 상품인지 명확하게 표기) -->
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                  <span class="merchant-badge" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.83rem; font-weight:700; padding:4px 10px; border-radius:99px; box-shadow:0 1px 2px rgba(37,99,235,0.08);">
-                      <span style="font-size:0.95rem;">🏪</span>
+              <!-- 🏪 가맹점 뱃지 + 공구/타임딜 태그 -->
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:6px; flex-wrap:wrap;">
+                  <span class="merchant-badge" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.8rem; font-weight:700; padding:4px 10px; border-radius:99px;">
+                      <span>🏪</span>
                       <span>${esc(merchantName)}</span>
                   </span>
-                  ${typeLabel ? `<span style="font-size:0.75rem; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:6px; font-weight:600;">${esc(typeLabel)}</span>` : ''}
+                  ${gb.enabled ? `
+                    <span style="font-size:0.75rem; font-weight:800; padding:3px 9px; border-radius:99px; background:${gb.mode === "weekly_cycle" ? "#ecfdf5" : "#fff1f2"}; color:${gb.mode === "weekly_cycle" ? "#047857" : "#e11d48"}; border:1px solid ${gb.mode === "weekly_cycle" ? "#6ee7b7" : "#fecdd3"};">
+                      ${gb.mode === "weekly_cycle" ? "🥬 주간 정기공구" : "👥 뭉쳐야 산다 타임딜"}
+                    </span>
+                  ` : (typeLabel ? `<span style="font-size:0.75rem; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:6px; font-weight:600;">${esc(typeLabel)}</span>` : '')}
               </div>
-              <div style="margin:-4px 0 10px;"><span class="channel-badge" style="display:inline-block; font-size:0.75rem; font-weight:700; padding:2px 9px; border-radius:99px; color:${chInfo.color}; background:${chInfo.bg}; border:1px solid ${chInfo.border};">${chInfo.label}</span></div>
 
-              ${productImageUrl(data) ? `<img src="${esc(productImageUrl(data))}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:12px;" onerror="this.style.display='none';" />` : ""}
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:6px; flex-wrap:wrap;">
+                <span class="channel-badge" style="display:inline-block; font-size:0.74rem; font-weight:700; padding:2px 9px; border-radius:99px; color:${chInfo.color}; background:${chInfo.bg}; border:1px solid ${chInfo.border};">${chInfo.label}</span>
+                ${gb.enabled ? `<span style="font-size:0.74rem; font-weight:700; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; padding:2px 8px; border-radius:99px;">📍 ${esc(gb.region)}</span>` : ""}
+              </div>
+
+              ${productImageUrl(data) ? `
+                <div style="position:relative; margin-bottom:12px;">
+                  <img src="${esc(productImageUrl(data))}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; display:block;" onerror="this.style.display='none';" />
+                  ${gb.enabled ? `
+                    <div style="position:absolute; top:8px; left:8px; background:rgba(225,29,72,0.94); color:#fff; font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+                      🔥 ${gb.discountRate}% 타임딜 즉시할인
+                    </div>
+                    <div data-countdown-until="${esc(gb.deadlineIso)}" style="position:absolute; bottom:8px; right:8px; background:rgba(15,23,42,0.88); color:#fde047; font-size:0.76rem; font-weight:800; padding:4px 9px; border-radius:8px; font-family:monospace;">
+                      ⏰ ${esc(countdown.text)}
+                    </div>
+                  ` : ""}
+                </div>
+              ` : (gb.enabled ? `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; color:#fde047; padding:7px 11px; border-radius:8px; font-size:0.76rem; font-weight:800; margin-bottom:10px;">
+                  <span>🔥 ${gb.discountRate}% 타임딜 특가</span>
+                  <span data-countdown-until="${esc(gb.deadlineIso)}" style="font-family:monospace;">⏰ ${esc(countdown.text)}</span>
+                </div>
+              ` : "")}
               
-              <div style="font-weight:700; font-size:1.15rem; color:#1e293b; line-height:1.35; margin-bottom:6px;">${esc(data.product_name)}</div>
-              <div style="color:#64748b; font-size:0.85rem; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${esc(data.description || "")}</div>
+              <div style="font-weight:800; font-size:1.12rem; color:#1e293b; line-height:1.35; margin-bottom:6px;">${esc(data.product_name)}</div>
+              <div style="color:#64748b; font-size:0.84rem; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${esc(data.description || "")}</div>
+
+              ${gb.enabled ? `
+                <!-- 📊 공동구매 인원 모집 게이지 & BM 추가 적립 박스 -->
+                <div style="margin-top:12px; padding:11px 12px; border-radius:12px; background:${isGoalMet ? "#ecfdf5" : "#fff1f2"}; border:1px solid ${isGoalMet ? "#a7f3d0" : "#fecdd3"};">
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.79rem; font-weight:800; color:${isGoalMet ? "#065f46" : "#9f1239"}; margin-bottom:6px;">
+                    <span>👥 현재 <b>${gb.currentCount}명</b> / 목표 ${gb.targetCount}명 (${progressPct}%)</span>
+                    <span>${isGoalMet ? "🎉 보너스 확정!" : `${remainCount}명 더 모이면 보너스!`}</span>
+                  </div>
+                  <div style="width:100%; height:8px; background:rgba(0,0,0,0.08); border-radius:99px; overflow:hidden; margin-bottom:8px;">
+                    <div style="width:${progressPct}%; height:100%; background:${isGoalMet ? "linear-gradient(90deg,#10b981,#059669)" : "linear-gradient(90deg,#f43f5e,#fb7185)"}; border-radius:99px; transition:width 0.3s;"></div>
+                  </div>
+                  <div style="font-size:0.77rem; color:#1e293b; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:4px; flex-wrap:wrap;">
+                    <span>🎁 목표 달성 보너스: <b style="color:#d97706;">+${gb.bonusBm.toLocaleString()} BM</b> 추가 적립</span>
+                    <span style="font-size:0.72rem; color:#64748b;">(할인가 즉시 확정)</span>
+                  </div>
+                  <div style="margin-top:5px; font-size:0.73rem; color:#475569; line-height:1.35;">
+                    ${esc(gb.deliveryNote)}
+                  </div>
+                </div>
+              ` : ""}
           </div>
 
-          <div style="margin-top:16px; border-top:1px solid #f1f5f9; padding-top:12px; text-align:right;">
-              <div style="font-size:1.35rem; font-weight:800; color:#ef4444; margin-bottom:10px;">
-                  ${Number(data.price || 0).toLocaleString()} <span style="font-size:0.85rem; font-weight:700; color:#64748b;">VND</span>
+          <div style="margin-top:14px; border-top:1px solid #f1f5f9; padding-top:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px;">
+                ${gb.enabled ? `
+                  <div>
+                    <div style="font-size:0.78rem; color:#94a3b8; text-decoration:line-through;">정상가 ${gb.originalPrice.toLocaleString()} VND</div>
+                    <div style="font-size:0.75rem; font-weight:800; color:#e11d48;">⚡ 타임딜 즉시 할인가</div>
+                  </div>
+                ` : `<div></div>`}
+                <div style="font-size:1.35rem; font-weight:800; color:#ef4444; text-align:right;">
+                    ${effectivePrice.toLocaleString()} <span style="font-size:0.85rem; font-weight:700; color:#64748b;">VND</span>
+                </div>
               </div>
               <div>
                   ${channel === "in_store" ? `<div style="width:100%; box-sizing:border-box; border-radius:10px; font-weight:700; padding:10px; text-align:center; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; font-size:0.9rem;">🏬 매장에서만 구매할 수 있습니다</div>` : `
-                  <button class="btn btn--primary" style="width:100%; border-radius:10px; font-weight:700; padding:10px;" data-action="add-cart" 
-                      data-id="${esc(docSnap.id)}" 
-                      data-merchant="${esc(data.merchant_id)}"
-                      data-merchant-name="${esc(merchantName)}"
-                      data-name="${esc(data.product_name)}" 
-                      data-price="${data.price}">
-                      🛒 장바구니 담기
-                  </button>`}
+                  <div style="display:flex; gap:6px;">
+                    <button class="btn btn--primary" style="flex:1; border-radius:10px; font-weight:800; padding:10px; background:${gb.enabled ? "linear-gradient(135deg,#e11d48,#f43f5e)" : ""}; border:none;" data-action="add-cart" 
+                        data-id="${esc(docSnap.id)}" 
+                        data-merchant="${esc(data.merchant_id)}"
+                        data-merchant-name="${esc(merchantName)}"
+                        data-name="${esc(data.product_name)}" 
+                        data-price="${effectivePrice}"
+                        data-is-groupbuy="${gb.enabled ? "1" : "0"}"
+                        data-bonus-bm="${gb.enabled ? gb.bonusBm : 0}"
+                        data-gb-mode="${gb.enabled ? gb.mode : ""}">
+                        ${gb.enabled ? "🔥 타임딜 공구 참여하기" : "🛒 장바구니 담기"}
+                    </button>
+                    ${gb.enabled ? `
+                    <button type="button" class="btn" data-action="share-deal" data-id="${esc(docSnap.id)}" title="카톡/잘로/텔레그램 단톡방 공유"
+                        style="border-radius:10px; font-weight:700; padding:10px 12px; background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; cursor:pointer;">
+                        📣 공유
+                    </button>
+                    ` : ""}
+                  </div>`}
               </div>
           </div>
       </div>
@@ -273,17 +582,33 @@ function renderProductsList() {
   });
   listEl.innerHTML = html;
 
-  // 장바구니 담기 버튼 바인딩
+  // 장바구니 / 공구 참여 버튼 바인딩
   listEl.querySelectorAll("button[data-action='add-cart']").forEach(btn => {
     btn.addEventListener("click", () => {
+      const isGb = btn.getAttribute("data-is-groupbuy") === "1";
+      const bonusBm = Number(btn.getAttribute("data-bonus-bm") || 0);
       addToCart({
         id: btn.getAttribute("data-id"),
         merchant_id: btn.getAttribute("data-merchant"),
         merchant_name: btn.getAttribute("data-merchant-name"),
         name: btn.getAttribute("data-name"),
         price: Number(btn.getAttribute("data-price")),
-        qty: 1
+        qty: 1,
+        is_group_buy: isGb,
+        bonus_bm: bonusBm,
+        group_buy_mode: btn.getAttribute("data-gb-mode") || ""
       });
+    });
+  });
+
+  // 단톡방 공유 버튼 바인딩
+  listEl.querySelectorAll("button[data-action='share-deal']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const pid = btn.getAttribute("data-id");
+      const found = rawProducts.find(p => p.id === pid);
+      if (!found || !found.gb?.enabled) return;
+      const mName = resolveMerchantName(found.data.merchant_id, found.data.merchant_name);
+      openViralShareModal(found, found.gb, mName);
     });
   });
 }
@@ -367,16 +692,26 @@ function renderCartModal() {
 
   let html = "";
   let total = 0;
+  let totalBonusBm = 0;
   cart.forEach((c, index) => {
     total += (c.price * c.qty);
+    if (c.is_group_buy && c.bonus_bm) {
+      totalBonusBm += Number(c.bonus_bm) * c.qty;
+    }
     html += `
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding:10px 0;">
           <div>
-             <div style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1d4ed8; padding:1px 7px; border-radius:99px; font-weight:700; margin-bottom:3px;">
-                🏪 ${esc(c.merchant_name || '가맹점')}
+             <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:3px;">
+               <span style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1d4ed8; padding:1px 7px; border-radius:99px; font-weight:700;">
+                  🏪 ${esc(c.merchant_name || '가맹점')}
+               </span>
+               ${c.is_group_buy ? `<span style="display:inline-block; font-size:0.72rem; background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; padding:1px 7px; border-radius:99px; font-weight:800;">🔥 타임딜 할인가 확정</span>` : ""}
              </div>
              <div style="font-weight:700; font-size:1rem; color:#1e293b;">${esc(c.name)}</div>
-             <div style="font-size:0.85rem; color:#64748b; margin-top:2px;">${Number(c.price).toLocaleString()} VND x ${c.qty}개</div>
+             <div style="font-size:0.85rem; color:#64748b; margin-top:2px;">
+               ${Number(c.price).toLocaleString()} VND x ${c.qty}개
+               ${c.is_group_buy && c.bonus_bm ? `<span style="color:#d97706; font-weight:700; margin-left:6px;">(목표 달성 시 +${(Number(c.bonus_bm) * c.qty).toLocaleString()} BM)</span>` : ""}
+             </div>
           </div>
           <div>
              <button class="btn btn--sm" data-action="remove-cart" data-index="${index}" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:4px 8px; border-radius:6px;">제외</button>
@@ -384,6 +719,15 @@ function renderCartModal() {
       </div>
     `;
   });
+  if (totalBonusBm > 0) {
+    html += `
+      <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; font-size:0.82rem; color:#92400e; line-height:1.45;">
+        🎁 <b>공동구매·타임딜 혜택 안내:</b><br/>
+        • 타임딜 시간 내 주문으로 <b>즉시 할인가가 100% 확정</b>되었습니다.<br/>
+        • 목표 인원 달성 시 <b>총 +${totalBonusBm.toLocaleString()} BM</b>이 내 지갑에 추가 적립됩니다!
+      </div>
+    `;
+  }
   listEl.innerHTML = html;
   $("cartTotal").textContent = total.toLocaleString();
   $("btnCheckout").disabled = false;
@@ -425,11 +769,22 @@ $("btnCheckout").addEventListener("click", async () => {
     name: c.name,
     price: c.price,
     qty: c.qty,
-    merchant_name: c.merchant_name
+    merchant_name: c.merchant_name,
+    is_group_buy: !!c.is_group_buy,
+    bonus_bm: Number(c.bonus_bm || 0),
+    group_buy_mode: c.group_buy_mode || ""
   }));
 
   let totalAmount = 0;
-  cart.forEach(c => totalAmount += c.price * c.qty);
+  let totalExpectedBonusBm = 0;
+  const groupBuyCartItems = [];
+  cart.forEach(c => {
+    totalAmount += c.price * c.qty;
+    if (c.is_group_buy) {
+      totalExpectedBonusBm += Number(c.bonus_bm || 0) * c.qty;
+      groupBuyCartItems.push(c);
+    }
+  });
 
   const btn = $("btnCheckout");
   btn.disabled = true;
@@ -467,12 +822,33 @@ $("btnCheckout").addEventListener("click", async () => {
       buyer_name: currentViewer.displayName || currentViewer.email?.split("@")[0] || "회원",
       items: itemsPayload,
       total_amount: totalAmount,
+      order_type: groupBuyCartItems.length > 0 ? "group_buy_flash_deal" : "regular",
+      group_buy_price_locked: groupBuyCartItems.length > 0,
+      group_buy_expected_bonus_bm: totalExpectedBonusBm,
       status: "pending",
       payment_status: "awaiting_payment",
       payment_method: "undecided",
       created_at: serverTimestamp(),
       updated_at: serverTimestamp()
     });
+
+    // 공동구매 상품인 경우 참여 인원(current_count) 자동 업데이트
+    for (const gbItem of groupBuyCartItems) {
+      const found = rawProducts.find(p => p.id === gbItem.id);
+      if (found && found.gb?.enabled) {
+        const nextCount = (found.gb.currentCount || 0) + Number(gbItem.qty || 1);
+        found.gb.currentCount = nextCount;
+        try {
+          await updateDoc(doc(db, "merchant_products", gbItem.id), {
+            group_buy_current: nextCount,
+            "group_buy.current_count": nextCount,
+            updated_at: serverTimestamp()
+          });
+        } catch (_) { }
+      }
+    }
+    updateGroupBuyLiveSummary();
+    renderProductsList();
 
     // 주문 성공 후 장바구니 비우기
     cart = [];
@@ -490,6 +866,7 @@ $("btnCheckout").addEventListener("click", async () => {
         <p style="text-align:center; font-size:0.95rem; color:#4b5563; margin-bottom:16px;">
           가맹점: <strong style="color:#2563eb;">${esc(merchantInfo.name)}</strong><br/>
           총 결제금액: <strong style="color:#ef4444; font-size:1.15rem;">${totalAmount.toLocaleString()} VND</strong>
+          ${groupBuyCartItems.length > 0 ? `<br/><span style="display:inline-block; margin-top:6px; background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; font-size:0.8rem; font-weight:800; padding:3px 10px; border-radius:99px;">🔥 타임딜 할인가 즉시 확정 (+${totalExpectedBonusBm.toLocaleString()} BM 목표달성 보너스 대기)</span>` : ""}
         </p>
         
         <div style="display:flex; flex-direction:column; gap:16px;">

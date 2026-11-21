@@ -394,28 +394,36 @@ function renderMerchantProductCards(docs) {
         }
 
         const canManage = isAdmin || (currentViewer && matchesMerchant(data.merchant_id, currentViewer.merchant_id));
+        const gb = (data.group_buy && typeof data.group_buy === "object") ? data.group_buy : null;
+        const gbEnabled = !!(gb?.enabled || data.group_buy_enabled);
 
         html += `
-            <div class="panel" style="padding:16px; border:1px solid #e2e8f0; border-radius:12px; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.03); display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="panel" style="padding:16px; border:${gbEnabled ? "2px solid #f43f5e" : "1px solid #e2e8f0"}; border-radius:12px; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.03); display:flex; flex-direction:column; justify-content:space-between;">
                 <div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:4px;">
                         <span style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; font-size:0.78rem; font-weight:bold; padding:2px 8px; border-radius:99px;">
                             🏪 ${esc(merchantName)} (${esc(data.merchant_id || '-')})
                         </span>
-                        ${statusBadge}
+                        <div style="display:flex; gap:4px; align-items:center;">
+                          ${gbEnabled ? `<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.75rem;">🔥 공구·타임딜 (${Number(gb?.current_count ?? data.group_buy_current ?? 0)}/${Number(gb?.target_count ?? data.group_buy_target ?? 10)}명)</span>` : ""}
+                          ${statusBadge}
+                        </div>
                     </div>
 
                     ${firstImage(data) ? `<img src="${esc(firstImage(data))}" style="width:100%; height:160px; object-fit:cover; border-radius:8px; margin-bottom:10px;" onerror="this.style.display='none';" />` : ""}
 
                     <div style="font-weight:700; font-size:1.15rem; color:#1e293b; margin-bottom:4px;">${esc(data.product_name)}</div>
                     <div style="font-size:0.82rem; color:#64748b;">분류: <b>${esc(typeLabel)}</b></div>
-                    <div style="font-size:1.2rem; font-weight:800; color:#0f766e; margin:8px 0;">${Number(data.price || 0).toLocaleString()} VND</div>
+                    <div style="font-size:1.2rem; font-weight:800; color:#0f766e; margin:8px 0;">
+                      ${Number(data.price || 0).toLocaleString()} VND
+                      ${gbEnabled ? `<span style="font-size:0.78rem; color:#d97706; font-weight:700; margin-left:6px;">(+${Number(gb?.bonus_bm ?? data.group_buy_bonus_bm ?? 0).toLocaleString()} BM 보너스)</span>` : ""}
+                    </div>
                     ${data.description ? `<p style="font-size:0.85rem; color:#475569; margin:0 0 12px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${esc(data.description)}</p>` : ''}
                 </div>
 
                 <div style="display:flex; gap:6px; flex-wrap:wrap; border-top:1px solid #f1f5f9; padding-top:12px; margin-top:8px;">
                   ${canManage ? `
-                      <button class="btn btn--sm" data-action="edit" data-id="${esc(docSnap.id)}" data-payload='${esc(JSON.stringify(data))}'>✏️ 수정</button>
+                      <button class="btn btn--sm" data-action="edit" data-id="${esc(docSnap.id)}" data-payload='${esc(JSON.stringify(data))}'>✏️ 수정/공구설정</button>
                       ${data.sale_status === 'published'
                     ? `<button class="btn btn--sm" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;" data-action="draft" data-id="${esc(docSnap.id)}">숨기기(임시저장)</button>`
                     : `<button class="btn btn--sm" style="background:#dcfce7; color:#166534; border:1px solid #bbf7d0; font-weight:600;" data-action="publish" data-id="${esc(docSnap.id)}">📢 쇼핑몰 노출</button>`}
@@ -465,6 +473,15 @@ function renderItemsCards(docs) {
     listEl.innerHTML = html;
 }
 
+function syncGbFieldsVisibility() {
+    const chk = $("pGbEnabled");
+    const box = $("gbConfigFields");
+    if (chk && box) {
+        box.style.display = chk.checked ? "grid" : "none";
+    }
+}
+$("pGbEnabled")?.addEventListener("change", syncGbFieldsVisibility);
+
 // 버튼 클릭 이벤트 바인딩
 function bindActionEvents() {
     const listEl = $("productList");
@@ -476,7 +493,7 @@ function bindActionEvents() {
             const data = JSON.parse(btn.getAttribute("data-payload"));
             editingMerchantId = data.merchant_id;
 
-            $("modalTitle").textContent = "상품 정보 수정";
+            $("modalTitle").textContent = "상품 및 공동구매·타임딜 설정 수정";
             if ($("pMerchantId")) {
                 $("pMerchantId").value = data.merchant_id || "";
             }
@@ -486,6 +503,22 @@ function bindActionEvents() {
             $("pDesc").value = data.description || "";
             $("pPrice").value = data.price || 0;
             $("pStatus").value = data.sale_status || "draft";
+
+            const gb = (data.group_buy && typeof data.group_buy === "object") ? data.group_buy : {};
+            const gbEnabled = !!(gb.enabled || data.group_buy_enabled);
+            if ($("pGbEnabled")) $("pGbEnabled").checked = gbEnabled;
+            if ($("pGbMode")) $("pGbMode").value = gb.mode || data.group_buy_mode || "team_recruit";
+            if ($("pGbRegion")) $("pGbRegion").value = gb.region || data.group_buy_region || "미딩·하동·서호 전지역";
+            if ($("pGbOriginalPrice")) $("pGbOriginalPrice").value = gb.original_price || data.original_price || Math.round((Number(data.price || 0)) * 1.3);
+            if ($("pGbBonusBm")) $("pGbBonusBm").value = gb.bonus_bm ?? data.group_buy_bonus_bm ?? Math.round((Number(data.price || 0)) * 0.1);
+            if ($("pGbTargetCount")) $("pGbTargetCount").value = gb.target_count || data.group_buy_target || 10;
+            if ($("pGbCurrentCount")) $("pGbCurrentCount").value = gb.current_count ?? data.group_buy_current ?? 0;
+            if ($("pGbDeadline")) {
+                const iso = gb.deadline_iso || data.group_buy_deadline || "";
+                $("pGbDeadline").value = iso ? String(iso).slice(0, 16) : "";
+            }
+            if ($("pGbDeliveryNote")) $("pGbDeliveryNote").value = gb.delivery_note || "";
+            syncGbFieldsVisibility();
 
             const modalDelBtn = $("btnDeleteInModal");
             if (modalDelBtn) {
@@ -582,8 +615,10 @@ $("btnCreateProduct").addEventListener("click", () => {
 
     editingId = null;
     editingMerchantId = null;
-    $("modalTitle").textContent = "새 상품 등록";
+    $("modalTitle").textContent = "새 상품 / 공동구매 등록";
     $("productForm").reset();
+    if ($("pGbEnabled")) $("pGbEnabled").checked = false;
+    syncGbFieldsVisibility();
 
     // 현재 선택된 가맹점 필터가 있으면 모달 셀렉트에 자동 반영
     const currentFilter = $("filterMerchantSelect")?.value;
@@ -631,6 +666,18 @@ $("productForm").addEventListener("submit", async (e) => {
     $("btnSaveProduct").disabled = true;
     $("btnSaveProduct").textContent = "저장 중...";
 
+    const dealPrice = Number($("pPrice").value) || 0;
+    const gbEnabled = !!$("pGbEnabled")?.checked;
+    const gbOriginalPrice = Number($("pGbOriginalPrice")?.value) || Math.round(dealPrice * 1.3);
+    const gbBonusBm = Number($("pGbBonusBm")?.value) || Math.round(dealPrice * 0.1);
+    const gbTargetCount = Math.max(2, Number($("pGbTargetCount")?.value) || 10);
+    const gbCurrentCount = Math.max(0, Number($("pGbCurrentCount")?.value) || 0);
+    const gbMode = $("pGbMode")?.value || "team_recruit";
+    const gbRegion = $("pGbRegion")?.value || "미딩·하동·서호 전지역";
+    const gbDeadlineInput = ($("pGbDeadline")?.value || "").trim();
+    const gbDeadlineIso = gbDeadlineInput ? new Date(gbDeadlineInput).toISOString() : "";
+    const gbDeliveryNote = ($("pGbDeliveryNote")?.value || "").trim();
+
     const data = {
         merchant_id: String(targetMerchantId),
         product_type: $("pType").value,
@@ -638,15 +685,34 @@ $("productForm").addEventListener("submit", async (e) => {
         image_url: $("pImg").value.trim(),
         images: $("pImg").value.trim() ? [$("pImg").value.trim()] : [],
         description: $("pDesc").value.trim(),
-        price: Number($("pPrice").value) || 0,
+        price: dealPrice,
         sale_status: $("pStatus").value,
+        group_buy_enabled: gbEnabled,
+        group_buy_mode: gbMode,
+        group_buy_target: gbTargetCount,
+        group_buy_current: gbCurrentCount,
+        group_buy_bonus_bm: gbBonusBm,
+        group_buy_region: gbRegion,
+        original_price: gbOriginalPrice,
+        group_buy: {
+            enabled: gbEnabled,
+            mode: gbMode,
+            original_price: gbOriginalPrice,
+            deal_price: dealPrice,
+            target_count: gbTargetCount,
+            current_count: gbCurrentCount,
+            bonus_bm: gbBonusBm,
+            region: gbRegion,
+            deadline_iso: gbDeadlineIso,
+            delivery_note: gbDeliveryNote
+        },
         updated_at: serverTimestamp()
     };
 
     try {
         if (editingId) {
             await updateDoc(doc(db, "merchant_products", editingId), data);
-            alert("✅ 상품 정보가 성공적으로 수정되었습니다.");
+            alert("✅ 상품 및 공동구매·타임딜 설정이 수정되었습니다.");
         } else {
             data.created_at = serverTimestamp();
             await addDoc(collection(db, "merchant_products"), data);
