@@ -510,8 +510,8 @@ function renderProductsList() {
               </div>
               <div>
                   ${channel === "in_store" ? `<div style="width:100%; box-sizing:border-box; border-radius:10px; font-weight:700; padding:10px; text-align:center; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; font-size:0.9rem;">🏬 매장에서만 구매할 수 있습니다</div>` : `
-                  <div style="display:flex; gap:6px;">
-                    <button class="btn btn--primary" style="flex:1; border-radius:10px; font-weight:800; padding:10px; background:${gb.enabled ? "linear-gradient(135deg,#e11d48,#f43f5e)" : ""}; border:none;" data-action="add-cart" 
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button class="btn btn--primary" style="flex:1; min-width:115px; border-radius:10px; font-weight:800; padding:10px; background:linear-gradient(135deg,#2563eb,#1d4ed8); border:none;" data-action="buy-now" 
                         data-id="${esc(docSnap.id)}" 
                         data-merchant="${esc(data.merchant_id)}"
                         data-merchant-name="${esc(merchantName)}"
@@ -520,12 +520,23 @@ function renderProductsList() {
                         data-is-groupbuy="${gb.enabled ? "1" : "0"}"
                         data-bonus-bm="${gb.enabled ? gb.bonusBm : 0}"
                         data-gb-mode="${gb.enabled ? gb.mode : ""}">
-                        ${gb.enabled ? "🔥 타임딜 공구 참여하기" : "🛒 장바구니 담기"}
+                        ⚡ 즉시 구매
+                    </button>
+                    <button class="btn" style="flex:1; min-width:115px; border-radius:10px; font-weight:800; padding:10px; background:${gb.enabled ? "#fff1f2" : "#f8fafc"}; color:${gb.enabled ? "#e11d48" : "#1e293b"}; border:1px solid ${gb.enabled ? "#fecdd3" : "#cbd5e1"};" data-action="add-cart" 
+                        data-id="${esc(docSnap.id)}" 
+                        data-merchant="${esc(data.merchant_id)}"
+                        data-merchant-name="${esc(merchantName)}"
+                        data-name="${esc(data.product_name)}" 
+                        data-price="${effectivePrice}"
+                        data-is-groupbuy="${gb.enabled ? "1" : "0"}"
+                        data-bonus-bm="${gb.enabled ? gb.bonusBm : 0}"
+                        data-gb-mode="${gb.enabled ? gb.mode : ""}">
+                        🛒 장바구니
                     </button>
                     ${gb.enabled ? `
                     <button type="button" class="btn" data-action="share-deal" data-id="${esc(docSnap.id)}" title="카톡/잘로/텔레그램 단톡방 공유"
-                        style="border-radius:10px; font-weight:700; padding:10px 12px; background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; cursor:pointer;">
-                        📣 공유
+                        style="border-radius:10px; font-weight:700; padding:10px 11px; background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; cursor:pointer;">
+                        📣
                     </button>
                     ` : ""}
                   </div>`}
@@ -536,7 +547,26 @@ function renderProductsList() {
   });
   listEl.innerHTML = html;
 
-  // 장바구니 / 공구 참여 버튼 바인딩
+  // 즉시 구매 버튼 바인딩 (공구 여부와 관계없이 즉시 결제/주문 모달 오픈)
+  listEl.querySelectorAll("button[data-action='buy-now']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const isGb = btn.getAttribute("data-is-groupbuy") === "1";
+      const bonusBm = Number(btn.getAttribute("data-bonus-bm") || 0);
+      buyNow({
+        id: btn.getAttribute("data-id"),
+        merchant_id: btn.getAttribute("data-merchant"),
+        merchant_name: btn.getAttribute("data-merchant-name"),
+        name: btn.getAttribute("data-name"),
+        price: Number(btn.getAttribute("data-price")),
+        qty: 1,
+        is_group_buy: isGb,
+        bonus_bm: bonusBm,
+        group_buy_mode: btn.getAttribute("data-gb-mode") || ""
+      });
+    });
+  });
+
+  // 장바구니 담기 버튼 바인딩
   listEl.querySelectorAll("button[data-action='add-cart']").forEach(btn => {
     btn.addEventListener("click", () => {
       const isGb = btn.getAttribute("data-is-groupbuy") === "1";
@@ -567,7 +597,7 @@ function renderProductsList() {
   });
 }
 
-// 2. 장바구니 로직 구현
+// 2. 장바구니 & 즉시 구매 로직 구현
 function saveCartToStorage() {
   localStorage.setItem("jumper_cart", JSON.stringify(cart));
 }
@@ -593,6 +623,27 @@ function isInStoreOnly(cartItem) {
   if (isInStoreOnlyMerchant(cartItem?.merchant_id)) return true;
   const p = rawProducts.find(r => r.id === cartItem?.id);
   return !!p && salesChannelOf(p.data) === "in_store";
+}
+
+function buyNow(item) {
+  if (isInStoreOnly(item)) {
+    alert("이 상품은 매장에서만 구매할 수 있습니다.");
+    return;
+  }
+  if (!currentViewer) {
+    if (confirm("즉시 구매를 진행하려면 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?")) {
+      window.location.href = "/login.html";
+    }
+    return;
+  }
+  const existing = cart.find(c => c.id === item.id);
+  if (!existing) {
+    cart.push(item);
+  }
+  saveCartToStorage();
+  updateCartBadge();
+  $("cartModal").style.display = "flex";
+  renderCartModal();
 }
 
 function addToCart(item) {
