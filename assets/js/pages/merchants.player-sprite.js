@@ -1,12 +1,12 @@
 ﻿// assets/js/pages/merchants.player-sprite.js
 // Female Valkyrie player character sprite on Google Maps / Leaflet
 
-const CW = 64;     // canvas width  px
-const CH = 64;     // canvas height px
-const OX = 32;     // canvas origin X (horizontal center)
-const OY = 52;     // canvas origin Y (world y=0 / feet level)
-const DW = 54;     // display width px
-const DH = 54;     // display height px
+const CW = 80;     // canvas width  px
+const CH = 80;     // canvas height px
+const OX = 40;     // canvas origin X (horizontal center)
+const OY = 66;     // canvas origin Y (world y=0 / feet level)
+const DW = 68;     // display width px
+const DH = 68;     // display height px
 
 const VALKYRIE_BASE = '/assets/images/characters/valkyrie/';
 const VALKYRIE_ANIMS = {
@@ -297,7 +297,7 @@ function _getOverlayCls() {
         const fv = this._facingVis;
         if (fv !== 1) ctx.scale(Math.sign(fv || 1) * Math.max(0.15, Math.abs(fv)), 1);
 
-        ctx.drawImage(img, -DW * 0.5, -DH * 0.90, DW, DH);
+        ctx.drawImage(img, -DW * 0.5, -DH * 0.81, DW, DH);
         ctx.restore();
       }
     }
