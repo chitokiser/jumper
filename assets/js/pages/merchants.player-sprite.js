@@ -226,34 +226,17 @@ function _getOverlayCls() {
     _drawShadows(ctx) {
       ctx.save();
       ctx.translate(OX, OY);
-      const cx = 0, cy = 4;
 
-      // 1. Circular shadow
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(1, 0.32);
-      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 15);
-      g.addColorStop(0,   'rgba(0,0,0,0.28)');
-      g.addColorStop(0.6, 'rgba(0,0,0,0.12)');
-      g.addColorStop(1,   'rgba(0,0,0,0)');
+      // Ground contact shadow directly under boots
       ctx.beginPath();
-      ctx.arc(0, 0, 15, 0, Math.PI * 2);
-      ctx.fillStyle = g;
-      ctx.fill();
-      ctx.restore();
-
-      // 2. Ground contact shadow
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, 9, 3.2, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.32)';
+      ctx.ellipse(0, 0, 14, 4.2, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
       ctx.fill();
 
-      // 3. Floor ring / sacred Valkyrie crest ring
       ctx.beginPath();
-      ctx.ellipse(cx, cy, 11, 3.8, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(251,191,36,0.50)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.ellipse(0, 0, 8, 2.4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.48)';
+      ctx.fill();
 
       ctx.restore();
     }

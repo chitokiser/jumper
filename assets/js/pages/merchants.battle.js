@@ -2392,13 +2392,13 @@ function _makeBuildingShadowIcon(size = 56) {
 function _makeFloatingShadowIcon(size) {
   const sw = Math.round(size * 0.7);
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + sw + '" height="12">' +
-    '<defs><filter id="sf2"><feGaussianBlur stdDeviation="3.5"/></filter></defs>' +
+    '<defs><filter id="sf2"><feGaussianBlur stdDeviation="2.0"/></filter></defs>' +
     '<ellipse cx="' + (sw / 2) + '" cy="6" rx="' + (sw / 2 - 2) + '" ry="4"' +
-    ' fill="rgba(0,0,0,0.22)" filter="url(#sf2)"/></svg>';
+    ' fill="rgba(0,0,0,0.35)" filter="url(#sf2)"/></svg>';
   return {
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
     scaledSize: new google.maps.Size(sw, 12),
-    anchor: new google.maps.Point(sw / 2, 6 - 8),
+    anchor: new google.maps.Point(sw / 2, 6),
   };
 }
 
@@ -4012,17 +4012,9 @@ export function updateMyLocation(lat, lng, accuracy, heading) {
   } else {
     _ctx.myLocationMarker = createPlayerSpriteOverlay(latLng, map);
   }
-  const radius = (accuracy && accuracy > 0) ? accuracy : 10;
   if (_ctx.myLocationAccCircle) {
-    _ctx.myLocationAccCircle.setCenter(latLng);
-    _ctx.myLocationAccCircle.setRadius(radius);
-  } else {
-    _ctx.myLocationAccCircle = new google.maps.Circle({
-      map, center: latLng, radius,
-      fillColor: '#ff3300', fillOpacity: 0.07,
-      strokeColor: '#ff6b00', strokeOpacity: 0.35, strokeWeight: 1,
-      clickable: false,
-    });
+    _ctx.myLocationAccCircle.setMap(null);
+    _ctx.myLocationAccCircle = null;
   }
 
   if (heading != null && !isNaN(heading)) _ctx.lastHeading = heading;

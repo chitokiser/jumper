@@ -499,12 +499,12 @@ function _injectStyles() {
 }
 .ms-overlay .ms-shadow-float {
   position: absolute;
-  bottom: -22px; left: 50%;
+  bottom: -4px; left: 50%;
   transform: translateX(-50%);
-  width: 50%; height: 10px;
-  background: rgba(0,0,0,0.12);
+  width: 44%; height: 8px;
+  background: rgba(0,0,0,0.32);
   border-radius: 50%;
-  filter: blur(6px);
+  filter: blur(2px);
   pointer-events: none;
 }
 `;
