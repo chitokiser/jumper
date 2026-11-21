@@ -57,79 +57,33 @@ function resolveGroupBuyConfig(docId, data) {
   const gb = (data && typeof data.group_buy === "object" && data.group_buy !== null) ? data.group_buy : {};
   const enabledExplicit = gb.enabled === true || data?.group_buy_enabled === true;
 
-  // 명시적 공구 설정이 있는 경우
-  if (enabledExplicit) {
-    const basePrice = Number(data.original_price || gb.original_price || Math.round((Number(data.price || 0)) * 1.3));
-    const dealPrice = Number(gb.deal_price || data.group_buy_price || data.price || 0);
-    const discountRate = basePrice > dealPrice && basePrice > 0
-      ? Math.round(((basePrice - dealPrice) / basePrice) * 100)
-      : Number(gb.discount_rate || 25);
-    const mode = gb.mode || data.group_buy_mode || "team_recruit"; // 'team_recruit' | 'weekly_cycle'
-    const targetCount = Math.max(2, Number(gb.target_count || data.group_buy_target || 10));
-    const currentCount = Math.max(0, Number(gb.current_count ?? data.group_buy_current ?? 0));
-    const bonusBm = Math.max(0, Number(gb.bonus_bm ?? data.group_buy_bonus_bm ?? Math.round(dealPrice * 0.08)));
-    const region = String(gb.region || data.group_buy_region || "미딩·하동·서호 전지역");
-    const deadlineIso = gb.deadline_iso || data.group_buy_deadline || getNextWeeklyCutoffIso(5, 20);
-    const deliveryNote = String(gb.delivery_note || (mode === "weekly_cycle" ? "매주 목요일 18시 마감 → 금요일 오전 일괄 새벽/냉장 배송" : "타임딜 주문 즉시 할인가 확정 · 목표 달성 시 BM 보너스 일괄 적립"));
-
-    return {
-      enabled: true,
-      mode,
-      originalPrice: basePrice,
-      dealPrice,
-      discountRate,
-      targetCount,
-      currentCount,
-      bonusBm,
-      region,
-      deadlineIso,
-      deliveryNote,
-    };
-  }
-
-  // 아직 DB에 group_buy 필드가 없는 경우에도 김치·반찬·정육·세트 상품이면 하노이 교민 공구 캠페인 자동 매칭(또는 관리자 수정 시 DB 영구 저장)
-  const name = String(data?.product_name || "").toLowerCase();
-  const mId = String(data?.merchant_id || "");
-  const isDaehan = mId === "1791002036" || mId === "daehan_kimchi";
-  const isFoodOrDealCandidate = isDaehan || /김치|삼겹|갈비|세트|반찬|찌개|족발|보쌈|만두|떡볶이|한우|샤브|특가|공구/.test(name);
-
-  if (!isFoodOrDealCandidate || salesChannelOf(data) === "in_store") {
+  // 관리자/가맹점이 실제로 공동구매·타임딜을 켠 상품만 공동구매로 적용
+  if (!enabledExplicit) {
     return { enabled: false };
   }
 
-  // 상품 ID 해시 기반 결정론적 초기 참여율 생성 (새로고침해도 일관된 진행률 유지)
-  let hash = 0;
-  const seedStr = String(docId || name);
-  for (let i = 0; i < seedStr.length; i++) {
-    hash = ((hash << 5) - hash + seedStr.charCodeAt(i)) | 0;
-  }
-  const absHash = Math.abs(hash);
-
-  const isWeekly = isDaehan || /김치|반찬|식자재/.test(name);
-  const mode = isWeekly ? "weekly_cycle" : "team_recruit";
-  const rawPrice = Number(data?.price || 150000);
-  const discountRate = isWeekly ? 25 : 30;
-  const originalPrice = Math.round((rawPrice / (100 - discountRate)) * 100 / 1000) * 1000;
-  const dealPrice = rawPrice;
-  const targetCount = isWeekly ? 15 : 10;
-  const currentCount = Number(data?.group_buy_current ?? ((absHash % (targetCount - 2)) + 3));
-  const bonusBm = Math.max(5000, Math.round((dealPrice * 0.1) / 1000) * 1000);
-  const regions = ["미딩·쭝화", "하동·반푹", "서호·외교단지", "타임시티·오션파크"];
-  const region = regions[absHash % regions.length];
-
-  // 마감시간: 인원모집형은 오늘/내일 타임딜 마감, 주간정기형은 이번주 목요일 18시 마감
-  const now = new Date();
-  const hoursLeft = (absHash % 18) + 4;
-  const rollingDeadline = new Date(now.getTime() + hoursLeft * 3600 * 1000).toISOString();
-  const deadlineIso = isWeekly ? getNextWeeklyCutoffIso(4, 18) : rollingDeadline;
-  const deliveryNote = isWeekly
-    ? "🥬 주간 정기공구: 매주 목요일 18:00 마감 → 금요일 하노이 각 권역 일괄 냉장배송"
-    : "⚡ 뭉쳐야 산다 타임딜: 시간 내 주문 시 할인가 100% 즉시 확정! 목표 인원 달성 시 전원 추가 BM 보너스!";
+  const dealPrice = Number(gb.deal_price || data.group_buy_price || data.price || 0);
+  const basePrice = Number(gb.original_price || data.original_price || dealPrice);
+  const discountRate = basePrice > dealPrice && basePrice > 0
+    ? Math.round(((basePrice - dealPrice) / basePrice) * 100)
+    : 0;
+  const mode = gb.mode || data.group_buy_mode || "team_recruit"; // 'team_recruit' | 'weekly_cycle'
+  const targetCount = Math.max(2, Number(gb.target_count || data.group_buy_target || 10));
+  const currentCount = Math.max(0, Number(gb.current_count ?? data.group_buy_current ?? 0));
+  const bonusBm = Math.max(0, Number(gb.bonus_bm ?? data.group_buy_bonus_bm ?? 0));
+  const region = String(gb.region || data.group_buy_region || "미딩·하동·서호 전지역");
+  const deadlineIso = gb.deadline_iso || data.group_buy_deadline || getNextWeeklyCutoffIso(4, 18);
+  const deliveryNote = String(
+    gb.delivery_note ||
+    (mode === "weekly_cycle"
+      ? "매주 목요일 18시 마감 → 금요일 오전 일괄 배송"
+      : "타임딜 주문 즉시 할인가 확정 · 목표 달성 시 BM 보너스 추가 적립")
+  );
 
   return {
     enabled: true,
     mode,
-    originalPrice,
+    originalPrice: basePrice,
     dealPrice,
     discountRate,
     targetCount,
@@ -504,7 +458,7 @@ function renderProductsList() {
                   <img src="${esc(productImageUrl(data))}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; display:block;" onerror="this.style.display='none';" />
                   ${gb.enabled ? `
                     <div style="position:absolute; top:8px; left:8px; background:rgba(225,29,72,0.94); color:#fff; font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
-                      🔥 ${gb.discountRate}% 타임딜 즉시할인
+                      ${gb.discountRate > 0 ? `🔥 ${gb.discountRate}% 타임딜 즉시할인` : `🔥 타임딜 특가 + BM 보너스`}
                     </div>
                     <div data-countdown-until="${esc(gb.deadlineIso)}" style="position:absolute; bottom:8px; right:8px; background:rgba(15,23,42,0.88); color:#fde047; font-size:0.76rem; font-weight:800; padding:4px 9px; border-radius:8px; font-family:monospace;">
                       ⏰ ${esc(countdown.text)}
@@ -513,7 +467,7 @@ function renderProductsList() {
                 </div>
               ` : (gb.enabled ? `
                 <div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; color:#fde047; padding:7px 11px; border-radius:8px; font-size:0.76rem; font-weight:800; margin-bottom:10px;">
-                  <span>🔥 ${gb.discountRate}% 타임딜 특가</span>
+                  <span>${gb.discountRate > 0 ? `🔥 ${gb.discountRate}% 타임딜 특가` : `🔥 타임딜 특가 + BM 보너스`}</span>
                   <span data-countdown-until="${esc(gb.deadlineIso)}" style="font-family:monospace;">⏰ ${esc(countdown.text)}</span>
                 </div>
               ` : "")}
@@ -546,8 +500,8 @@ function renderProductsList() {
               <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px;">
                 ${gb.enabled ? `
                   <div>
-                    <div style="font-size:0.78rem; color:#94a3b8; text-decoration:line-through;">정상가 ${gb.originalPrice.toLocaleString()} VND</div>
-                    <div style="font-size:0.75rem; font-weight:800; color:#e11d48;">⚡ 타임딜 즉시 할인가</div>
+                    ${gb.originalPrice > effectivePrice ? `<div style="font-size:0.78rem; color:#94a3b8; text-decoration:line-through;">정상가 ${gb.originalPrice.toLocaleString()} VND</div>` : ""}
+                    <div style="font-size:0.75rem; font-weight:800; color:#e11d48;">⚡ 타임딜 즉시 확정가</div>
                   </div>
                 ` : `<div></div>`}
                 <div style="font-size:1.35rem; font-weight:800; color:#ef4444; text-align:right;">
