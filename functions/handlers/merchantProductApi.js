@@ -48,13 +48,51 @@ async function createProduct(req, res) {
     }
 }
 
+const ALLOWED_UPDATE_FIELDS = new Set([
+    'product_name',
+    'description',
+    'product_type',
+    'price',
+    'options',
+    'image_url',
+    'images',
+    'inventory_managed',
+    'inventory_stock',
+    'display_order',
+    'sale_status',
+]);
+
+const ALLOWED_SALE_STATUSES = new Set(['draft', 'published', 'paused', 'sold_out', 'archived']);
+
 // PATCH /v1/products/{id} (상품 수정)
 async function updateProduct(req, res, productId) {
     try {
         verifyAdmin(req);
         const db = getDb();
-        const updates = req.body;
-        delete updates.product_id;
+        const raw = req.body || {};
+        const updates = {};
+
+        for (const key of Object.keys(raw)) {
+            if (!ALLOWED_UPDATE_FIELDS.has(key)) continue;
+            updates[key] = raw[key];
+        }
+
+        if (updates.price !== undefined) {
+            const p = Number(updates.price);
+            if (!Number.isFinite(p) || p < 0) {
+                return res.status(400).json({ success: false, error: '유효하지 않은 가격입니다.' });
+            }
+            updates.price = p;
+        }
+
+        if (updates.sale_status !== undefined && !ALLOWED_SALE_STATUSES.has(updates.sale_status)) {
+            return res.status(400).json({ success: false, error: '유효하지 않은 판매 상태입니다.' });
+        }
+
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ success: false, error: '수정할 허용 필드가 없습니다.' });
+        }
+
         updates.updated_at = admin.firestore.FieldValue.serverTimestamp();
         
         await db.collection('merchant_products').doc(productId).update(updates);
@@ -70,7 +108,17 @@ async function publishProduct(req, res, productId) {
     try {
         verifyAdmin(req);
         const db = getDb();
-        await db.collection('merchant_products').doc(productId).update({
+        const ref = db.collection('merchant_products').doc(productId);
+        const snap = await ref.get();
+        if (!snap.exists) {
+            return res.status(404).json({ success: false, error: '상품을 찾을 수 없습니다.' });
+        }
+        const data = snap.data() || {};
+        if (!data.product_name || !Number.isFinite(Number(data.price)) || Number(data.price) < 0) {
+            return res.status(400).json({ success: false, error: '상품명과 유효한 가격이 있어야 공개할 수 있습니다.' });
+        }
+
+        await ref.update({
             sale_status: 'published',
             published_at: admin.firestore.FieldValue.serverTimestamp(),
             updated_at: admin.firestore.FieldValue.serverTimestamp()
@@ -108,8 +156,16 @@ async function getProductDetail(req, res, productId) {
         const db = getDb();
         const doc = await db.collection('merchant_products').doc(productId).get();
         if (!doc.exists) return res.status(404).json({ success: false, error: 'Not found'});
-        // 비공개 상품 접근 제한 처리 로직 (고객 vs 관리자)
-        res.json({ success: true, product: doc.data() });
+
+        const data = doc.data() || {};
+        if (data.sale_status !== 'published') {
+            try {
+                verifyAdmin(req);
+            } catch (_) {
+                return res.status(404).json({ success: false, error: 'Not found' });
+            }
+        }
+        res.json({ success: true, product: data });
     } catch(err) {
         logger.error('getProductDetail', err);
         res.status(500).json({ success: false, error: err.message });

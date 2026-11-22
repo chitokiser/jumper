@@ -344,6 +344,7 @@ window.addEventListener('lang:change', applyFooterI18n);
       applyFooterI18n();
       ensureSupportChatScript();
       if (!document.querySelector('script[data-bc-live-hub]')) { const h = document.createElement('script'); h.type = 'module'; h.src = '/assets/js/bc-live-hub.js'; h.dataset.bcLiveHub = '1'; document.head.appendChild(h); }
+      if (!document.querySelector('script[data-bc-ai-concierge]')) { const a = document.createElement('script'); a.type = 'module'; a.src = '/assets/js/bc-ai-concierge.js'; a.dataset.bcAiConcierge = '1'; document.head.appendChild(a); }
 
       window.dispatchEvent(new CustomEvent("partials:loaded"));
       window.dispatchEvent(new CustomEvent("partials:mounted"));

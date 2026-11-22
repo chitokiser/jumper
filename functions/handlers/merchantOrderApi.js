@@ -29,9 +29,15 @@ async function createOrder(req, res) {
                 const p = pSnap.data();
                 
                 if (p.sale_status !== 'published') throw new Error(`[${p.product_name || ''}] 상품은 현재 판매 중지 또는 미공개 상태입니다.`);
-                if (p.merchant_id !== merchant_id) throw new Error('타 가맹점 상품을 섞어서 주문할 수 없습니다.');
+                if (String(p.merchant_id) !== String(merchant_id)) throw new Error('타 가맹점 상품을 섞어서 주문할 수 없습니다.');
+
+                const qty = Number(item.qty);
+                if (!Number.isInteger(qty) || qty <= 0) {
+                    throw new Error(`[${p.product_name || ''}] 유효하지 않은 주문 수량입니다.`);
+                }
                 
                 let finalItemPrice = Number(p.price) || 0;
+                if (finalItemPrice < 0) throw new Error('유효하지 않은 상품 가격입니다.');
                 
                 // 옵션 처리 로직 (악의적 가격 변조 방어)
                 if (item.selected_option && p.options) {
@@ -42,18 +48,18 @@ async function createOrder(req, res) {
                 
                 // 재고 검증
                 if (p.inventory_managed) {
-                    if (Number(p.inventory_stock) < Number(item.qty)) {
+                    if (Number(p.inventory_stock) < qty) {
                         throw new Error(`[${p.product_name || ''}] 재고가 부족합니다 (남은 수량: ${p.inventory_stock})`);
                     }
                     // 임시 재고 감소 이력은 트랜잭션 종료 시 update 처리 (간단 구현)
-                    t.update(pSnap.ref, { inventory_stock: admin.firestore.FieldValue.increment(-Number(item.qty)) });
+                    t.update(pSnap.ref, { inventory_stock: admin.firestore.FieldValue.increment(-qty) });
                 }
                 
-                calculatedTotal += finalItemPrice * Number(item.qty);
+                calculatedTotal += finalItemPrice * qty;
                 validItems.push({
                     product_id: p.product_id,
                     product_name: p.product_name,
-                    qty: Number(item.qty),
+                    qty,
                     unit_price: finalItemPrice,
                     option: item.selected_option || null
                 });
@@ -62,7 +68,7 @@ async function createOrder(req, res) {
             // 2. 주문 원장 등록
             t.set(orderRef, {
                 order_id: orderRef.id,
-                merchant_id,
+                merchant_id: String(merchant_id),
                 buyer_uid: buyer_uid || 'GUEST',
                 items: validItems,
                 total_amount: calculatedTotal, // 클라이언트 송신 total_amount 무시, 서버 100% 재계산!
@@ -78,3 +84,7 @@ async function createOrder(req, res) {
         res.status(500).json({ success: false, error: err.message });
     }
 }
+
+module.exports = {
+    createOrder
+};
