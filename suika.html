@@ -773,11 +773,24 @@ function updateNextPreview() {
   $('nextFruitEmoji').textContent = FRUITS[_nextLevel].emoji;
 }
 
-// ── 낙하 제어 (마우스/터치) ───────────────────────────────────────────────────
+// ── 낙하 제어 (마우스/터치 — 누르고 있으면 연속 자동 낙하 지원) ──────────────────
 let _dropW = 400, _dropBound = false;
+let _isHoldingDrop = false;
+let _holdDropInterval = null;
+const DROP_INTERVAL_MS = 240; // 누르고 있을 때 연속 낙하 간격 (ms)
+
+function stopHoldDrop() {
+  _isHoldingDrop = false;
+  if (_holdDropInterval) {
+    clearInterval(_holdDropInterval);
+    _holdDropInterval = null;
+  }
+}
+
 function setupDropControl(W) {
   const canvas = $('suikaCanvas');
   _dropW = W;
+  stopHoldDrop();
   if (_dropBound) return;   // 재시작 때 리스너가 중복 등록되지 않게
   _dropBound = true;
 
@@ -793,23 +806,50 @@ function setupDropControl(W) {
     _dropX = getX(e);
   }
 
-  function onDrop(e) {
-    e.preventDefault();
-    if (_armed === 'hammer' && _gameRunning) {
-      const rect = canvas.getBoundingClientRect();
-      const t = e.changedTouches?.[0];
-      hammerAt((t ? t.clientX : e.clientX) - rect.left, (t ? t.clientY : e.clientY) - rect.top);
-      return;
-    }
-    if (_dropCooldown || !_gameRunning) return;
-    _dropX = getX(e);
+  function tryDropOnce() {
+    if (!_gameRunning || _armed === 'hammer' || _dropCooldown) return;
     dropFruit();
   }
 
+  function onDown(e) {
+    if (e.type === 'mousedown' && e.button !== 0) return;
+    e.preventDefault();
+    _dropX = getX(e);
+
+    if (_armed === 'hammer' && _gameRunning) {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.changedTouches?.[0] || e.touches?.[0];
+      hammerAt((t ? t.clientX : e.clientX) - rect.left, (t ? t.clientY : e.clientY) - rect.top);
+      return;
+    }
+
+    if (!_gameRunning) return;
+    _isHoldingDrop = true;
+    tryDropOnce();
+
+    if (_holdDropInterval) clearInterval(_holdDropInterval);
+    _holdDropInterval = setInterval(() => {
+      if (!_isHoldingDrop || !_gameRunning || _armed === 'hammer') {
+        stopHoldDrop();
+        return;
+      }
+      tryDropOnce();
+    }, 60);
+  }
+
+  function onUp() {
+    stopHoldDrop();
+  }
+
   canvas.addEventListener('mousemove', onMove, { passive:false });
-  canvas.addEventListener('click', onDrop, { passive:false });
+  canvas.addEventListener('mousedown', onDown, { passive:false });
+  window.addEventListener('mouseup', onUp, { passive:true });
+  canvas.addEventListener('mouseleave', onUp, { passive:true });
+
+  canvas.addEventListener('touchstart', onDown, { passive:false });
   canvas.addEventListener('touchmove', onMove, { passive:false });
-  canvas.addEventListener('touchend', onDrop, { passive:false });
+  window.addEventListener('touchend', onUp, { passive:true });
+  window.addEventListener('touchcancel', onUp, { passive:true });
 }
 
 function dropFruit() {
@@ -819,7 +859,7 @@ function dropFruit() {
   spawnFruitAt(_dropX, DANGER_Y + 5, lv);
   _nextLevel = pickRandomLevel();
   updateNextPreview();
-  setTimeout(() => { _dropCooldown = false; }, 500);
+  setTimeout(() => { _dropCooldown = false; }, DROP_INTERVAL_MS);
 }
 
 // ── 위험 체크 (과일이 위험선 초과) ───────────────────────────────────────────
@@ -848,6 +888,7 @@ function startDangerCheck() {
 async function triggerGameOver() {
   if (!_gameRunning) return;
   _gameRunning = false;
+  stopHoldDrop();
   _cashout.setVisible(false);
   clearInterval(_dangerTimer);
   Runner.stop(runner);
@@ -914,6 +955,7 @@ document.querySelectorAll('.item-btn').forEach(b => { b.onclick = () => useItem(
 
 function goLobby() {
   _gameRunning = false;
+  stopHoldDrop();
   clearInterval(_partyTimer); clearTimeout(_comboTimer);
   if (_dangerTimer) clearInterval(_dangerTimer);
   if (runner) Runner.stop(runner);
