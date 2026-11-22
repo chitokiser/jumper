@@ -21,23 +21,25 @@ const DAY_MS       = 24 * 60 * 60 * 1000;
 const WEEK_MS      = 7 * DAY_MS;
 
 const WEEKLY_GAMES = {
-  suika:     { entryKey: 'suikaEntry',     label: '수박게임',     maxScore: 90000  }, // GAME_MAX_REWARD 3000 × 30점
-  game2048:  { entryKey: 'game2048Entry',  label: '2048',         maxScore: 200000 }, // GAME_MAX_REWARD 20000 × 10점
-  tetris:    { entryKey: 'tetrisEntry',    label: '네온테트리스', maxScore: 100000 }, // GAME_MAX_REWARD 1000 × 100점
-  bankpanic: { entryKey: 'bankpanicEntry', label: '뱅크패닉',     maxScore: 100000 }, // GAME_MAX_REWARD 1000 × 100점
-  // 베스트당구장: 샷마다 서버가 점수 계산 → 판 종료 시 서버가 직접 접수 (클라이언트 submitWeeklyScore 불가)
-  billiards: { entryKey: null, label: '베스트당구장', maxScore: 300000, serverOnly: true }, // 7가지 게임 합산 보드
+  // 베스트당구장 (최고 티어 S-TIER): 1위 5,000만 GP ~ 10위 500만 GP (총 2억 7,500만 GP 유지)
+  billiards: { entryKey: null, label: '베스트당구장', maxScore: 300000, serverOnly: true, tier: 'S', prizeStep: 5_000_000 },
+  // 아케이드 미니게임: 난이도 및 플레이 호흡에 따라 차등 보상
+  tetris:    { entryKey: 'tetrisEntry',    label: '네온테트리스', maxScore: 100000, tier: 'A', prizeStep: 500_000 }, // 1위 500만 ~ 10위 50만 GP (총 2,750만 GP)
+  game2048:  { entryKey: 'game2048Entry',  label: '2048',         maxScore: 200000, tier: 'B', prizeStep: 300_000 }, // 1위 300만 ~ 10위 30만 GP (총 1,650만 GP)
+  suika:     { entryKey: 'suikaEntry',     label: '수박게임',     maxScore: 90000,  tier: 'C', prizeStep: 200_000 }, // 1위 200만 ~ 10위 20만 GP (총 1,100만 GP)
+  bankpanic: { entryKey: 'bankpanicEntry', label: '뱅크패닉',     maxScore: 100000, tier: 'D', prizeStep: 100_000 }, // 1위 100만 ~ 10위 10만 GP (총 550만 GP)
 };
 
 const TOP_N          = 10;
-const PRIZE_STEP_GP  = 5_000_000;
+const PRIZE_STEP_GP  = 500_000;            // 기본 폴백 단위
 const SESSION_MIN_MS = 10 * 1000;          // 10초 미만 판은 접수 안 함
 const SESSION_MAX_MS = 3 * 60 * 60 * 1000; // 3시간 넘은 참가권은 만료
 
-/** 순위별 상금 (1위 5천만 ~ 10위 5백만) */
-function prizeForRank(rank) {
+/** 게임별·순위별 상금 (당구 S티어: 1위 5천만~10위 5백만 / 테트리스 A티어: 500만~50만 / 2048 B티어: 300만~30만 / 수박 C티어: 200만~20만 / 뱅크패닉 D티어: 100만~10만) */
+function prizeForRank(rank, gameType) {
   if (!Number.isInteger(rank) || rank < 1 || rank > TOP_N) return 0;
-  return (TOP_N + 1 - rank) * PRIZE_STEP_GP;
+  const step = WEEKLY_GAMES[gameType]?.prizeStep || PRIZE_STEP_GP;
+  return (TOP_N + 1 - rank) * step;
 }
 
 /** ms → 해당 주(베트남 일요일 00:00 시작) 정보 */
@@ -216,7 +218,7 @@ async function settleWeek(gameType, weekId, { triggeredBy = 'schedule' } = {}) {
       displayName: e.displayName || null,
       photoURL: e.photoURL || null,
       bestScore: e.bestScore,
-      prizeGp: prizeForRank(i + 1),
+      prizeGp: prizeForRank(i + 1, gameType),
     }));
 
     for (const w of winners) {

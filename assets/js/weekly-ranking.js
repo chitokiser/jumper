@@ -9,17 +9,23 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/fireba
 const VN_OFFSET_MS = 7 * 3600 * 1000;
 const DAY_MS = 86400 * 1000;
 const WEEK_MS = 7 * DAY_MS;
-const PRIZE_STEP = 5_000_000;
+const DEFAULT_PRIZE_STEP = 500_000;
 
 export const WEEKLY_GAMES = {
-  suika:     { label: '수박게임',     icon: '🍉', href: '/suika.html' },
-  game2048:  { label: '2048',        icon: '🔢', href: '/2048.html' },
-  tetris:    { label: '네온테트리스', icon: '🧱', href: '/tetris.html' },
-  bankpanic: { label: '뱅크패닉',     icon: '🤠', href: '/bankpanic.html' },
-  billiards: { label: '베스트당구장', icon: '🎱', href: '/billiards.html' },
+  billiards: { label: '베스트당구장', icon: '🎱', href: '/billiards.html', tier: '👑 최고 티어 (S)', prizeStep: 5_000_000 }, // 1위 5,000만 ~ 10위 500만 GP (총 2억 7,500만 GP)
+  tetris:    { label: '네온테트리스', icon: '🧱', href: '/tetris.html',    tier: '🔥 상급 티어 (A)', prizeStep: 500_000   }, // 1위 500만 ~ 10위 50만 GP (총 2,750만 GP)
+  game2048:  { label: '2048',        icon: '🔢', href: '/2048.html',      tier: '⚡ 중상 티어 (B)', prizeStep: 300_000   }, // 1위 300만 ~ 10위 30만 GP (총 1,650만 GP)
+  suika:     { label: '수박게임',     icon: '🍉', href: '/suika.html',     tier: '🎯 중급 티어 (C)', prizeStep: 200_000   }, // 1위 200만 ~ 10위 20만 GP (총 1,100만 GP)
+  bankpanic: { label: '뱅크패닉',     icon: '🤠', href: '/bankpanic.html', tier: '🔫 캐주얼 티어 (D)', prizeStep: 100_000 }, // 1위 100만 ~ 10위 10만 GP (총 550만 GP)
 };
 
-export const prizeForRank = r => (r >= 1 && r <= 10) ? (11 - r) * PRIZE_STEP : 0;
+export const prizeForRank = (r, gameType) => {
+  if (r < 1 || r > 10) return 0;
+  const step = WEEKLY_GAMES[gameType]?.prizeStep || DEFAULT_PRIZE_STEP;
+  return (11 - r) * step;
+};
+
+export const totalWeeklyPrize = (gameType) => 55 * (WEEKLY_GAMES[gameType]?.prizeStep || DEFAULT_PRIZE_STEP);
 
 export function weekInfo(ms = Date.now()) {
   const vn = ms + VN_OFFSET_MS;
@@ -29,7 +35,15 @@ export function weekInfo(ms = Date.now()) {
   return { weekId: new Date(startVn).toISOString().slice(0, 10), startsAt, endsAt: startsAt + WEEK_MS };
 }
 
-const fmtGp = n => n >= 1_000_000 ? `${(n / 1_000_000).toLocaleString()}백만` : n.toLocaleString();
+export const fmtGp = n => {
+  if (n >= 100_000_000) {
+    const eok = Math.floor(n / 100_000_000);
+    const man = Math.round((n % 100_000_000) / 10_000);
+    return man > 0 ? `${eok}억 ${man.toLocaleString()}만` : `${eok}억`;
+  }
+  if (n >= 10_000) return `${Math.round(n / 10_000).toLocaleString()}만`;
+  return n.toLocaleString();
+};
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 
 function countdownText(endsAt) {
@@ -66,6 +80,7 @@ function injectCss() {
 .wr-promo-games{display:flex;gap:8px;flex-wrap:wrap}
 .wr-promo-g{flex:1;min-width:140px;background:rgba(0,0,0,.25);border-radius:10px;padding:8px 10px;font-size:12px;color:#fff;text-decoration:none}
 .wr-promo-g b{color:#fde047}
+.wr-promo-tier{display:inline-block;font-size:10px;font-weight:800;color:#86efac;background:rgba(0,0,0,.35);padding:2px 6px;border-radius:6px;margin-top:2px;margin-bottom:3px}
 .wr-promo-cd{margin-top:8px;font-size:12px;color:#c7d2fe}`;
   document.head.appendChild(st);
 }
@@ -118,11 +133,16 @@ export function mountWeeklyBoard(el, gameType, { getUid = () => null } = {}) {
   if (!el || !WEEKLY_GAMES[gameType]) return { refresh() {}, showMessage() {} };
   injectCss();
   const g = WEEKLY_GAMES[gameType];
+  const p1 = fmtGp(prizeForRank(1, gameType));
+  const p2 = fmtGp(prizeForRank(2, gameType));
+  const p3 = fmtGp(prizeForRank(3, gameType));
+  const p10 = fmtGp(prizeForRank(10, gameType));
+  const pTotal = fmtGp(totalWeeklyPrize(gameType));
   el.innerHTML = `
     <div class="wr-box">
-      <div class="wr-hd"><div class="wr-t">🏆 ${g.label} 주간 토너먼트</div><div class="wr-cd" data-cd></div></div>
-      <div class="wr-prize">매주 일요일 00:00(베트남 시간) 마감 · TOP10 GP 자동 지급<br>
-        🥇 5,000만 · 🥈 4,500만 · 🥉 4,000만 … 10위 500만 GP · 참가비 낸 판만 집계</div>
+      <div class="wr-hd"><div class="wr-t">🏆 ${g.label} 주간 토너먼트 <small style="font-size:11px;color:#86efac">${g.tier}</small></div><div class="wr-cd" data-cd></div></div>
+      <div class="wr-prize">매주 일요일 00:00(베트남 시간) 마감 · TOP10 총 <b>${pTotal} GP</b> 자동 지급<br>
+        🥇 ${p1} · 🥈 ${p2} · 🥉 ${p3} … 10위 ${p10} GP · 참가비 낸 판만 집계</div>
       <div data-list><div class="wr-empty">불러오는 중…</div></div>
       <div class="wr-msg" data-msg hidden></div>
       <div class="wr-last" data-last></div>
@@ -147,7 +167,7 @@ export function mountWeeklyBoard(el, gameType, { getUid = () => null } = {}) {
           ${r.photoURL ? `<img class="wr-av" src="${esc(r.photoURL)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="wr-av">${esc((r.displayName || '?')[0])}</span>`}
           <span class="wr-nm">${esc(r.displayName || 'Player')}</span>
           <span class="wr-sc">${(r.bestScore || 0).toLocaleString()}</span>
-          <span class="wr-gp">${fmtGp(prizeForRank(i + 1))}</span>
+          <span class="wr-gp">${fmtGp(prizeForRank(i + 1, gameType))}</span>
         </div>`).join('')
         : '<div class="wr-empty">이번 주 첫 기록의 주인공이 되어보세요!</div>';
     } catch {
@@ -186,12 +206,15 @@ export function mountWeeklyPromo(el) {
   injectCss();
   el.innerHTML = `
     <div class="wr-promo">
-      <h3>🏆 주간 게임 토너먼트 · 게임별 총상금 2억 7,500만 GP</h3>
-      <p>수박게임 · 2048 · 베스트당구장에서 이번 주 최고 점수를 겨루세요! 매주 일요일 00:00(베트남 시간)에 마감하고
-        각 게임 TOP10에게 GP를 자동 지급합니다. 1위 5,000만 GP부터 10위 500만 GP까지.</p>
+      <h3>🏆 주간 게임 토너먼트 · 난이도별 티어 차등 GP 보상</h3>
+      <p>👑 최고 티어 <b>베스트당구장(1위 5,000만 GP · 총 2억 7,500만 GP)</b>부터 네온테트리스(1위 500만 GP) · 2048(1위 300만 GP) · 수박게임(1위 200만 GP) · 뱅크패닉(1위 100만 GP)까지! 매주 일요일 00:00(베트남 시간) 마감 후 각 게임 TOP10에게 GP를 자동 지급합니다.</p>
       <div class="wr-promo-games">
         ${Object.entries(WEEKLY_GAMES).map(([k, g]) => `
-          <a class="wr-promo-g" href="${g.href}">${g.icon} <b>${g.label}</b><br><span data-top="${k}">현재 1위 불러오는 중…</span></a>`).join('')}
+          <a class="wr-promo-g" href="${g.href}">
+            ${g.icon} <b>${g.label}</b><br>
+            <span class="wr-promo-tier">${g.tier} · 1위 ${fmtGp(prizeForRank(1, k))} GP</span><br>
+            <span data-top="${k}">현재 1위 불러오는 중…</span>
+          </a>`).join('')}
       </div>
       <div class="wr-promo-cd" data-cd></div>
     </div>`;

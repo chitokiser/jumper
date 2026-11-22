@@ -4,15 +4,15 @@ import { auth, db } from '/assets/js/firebase-init.js';
 import { collection, getDocs, query, where, orderBy, limit, doc, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { weekInfo, fetchTop, fetchLastSettlement, prizeForRank, syncMyProfile, withProfiles } from '/assets/js/weekly-ranking.js';
+import { weekInfo, fetchTop, fetchLastSettlement, prizeForRank, totalWeeklyPrize, fmtGp, WEEKLY_GAMES, syncMyProfile, withProfiles } from '/assets/js/weekly-ranking.js';
 import { claimFreeDailyGp } from '/assets/js/free-gp.js';
 
 const FIELD = { gp: 'gold' };
-const LABEL = { gp: 'GP', suika: '점', game2048: '점', billiards: '점' };
-// 수이카·2048 탭 = 이번 주 토너먼트 랭킹 (weekly_rankings, 일요일 00:00 VN 마감)
-const WEEKLY_TABS = ['suika', 'game2048', 'billiards'];
+const LABEL = { gp: 'GP', billiards: '점', tetris: '점', game2048: '점', suika: '점', bankpanic: '점' };
+// 주간 토너먼트 랭킹 탭 (weekly_rankings, 일요일 00:00 VN 마감)
+const WEEKLY_TABS = ['billiards', 'tetris', 'game2048', 'suika', 'bankpanic'];
 const RANK_TTL = 5 * 60 * 1000;
-const cache = { gp: null, suika: null, game2048: null, billiards: null };
+const cache = { gp: null, billiards: null, tetris: null, game2048: null, suika: null, bankpanic: null };
 let currentTab = 'gp';
 let myUid = null;
 
@@ -35,7 +35,11 @@ async function loadWeeklyRanking(tab) {
   const list = $('hunterRankList');
   const note = $('hunterRankNote');
   list.innerHTML = '<div class="hunter-rank-loading">Loading...</div>';
-  if (note) { note.style.display = 'block'; note.textContent = '이번 주 기록 · 매주 일요일 00:00(베트남 시간) 마감 · TOP10 GP 자동 지급 (1위 5,000만 ~ 10위 500만 GP)'; }
+  const gInfo = WEEKLY_GAMES[tab];
+  if (note) {
+    note.style.display = 'block';
+    note.textContent = `${gInfo ? `[${gInfo.tier}] ` : ''}이번 주 기록 · 매주 일요일 00:00(베트남 시간) 마감 · TOP10 총 ${fmtGp(totalWeeklyPrize(tab))} GP 자동 지급 (1위 ${fmtGp(prizeForRank(1, tab))} ~ 10위 ${fmtGp(prizeForRank(10, tab))} GP)`;
+  }
   try {
     const rows = await withProfiles((await fetchTop(tab, weekInfo().weekId)).map(e => ({
       uid: e.uid, val: e.bestScore || 0, displayName: e.displayName || null, photoURL: e.photoURL || null, gsLevel: null,
@@ -102,7 +106,7 @@ function render(rows, tab) {
       <div class="hunter-rank-name">${r.gsLevel ? `Lv.${Number(r.gsLevel) || 1} ` : ''}${name}</div>
       <div>
         <div class="hunter-rank-score">${Number(r.val || 0).toLocaleString()}</div>
-        <div class="hunter-rank-sub">${WEEKLY_TABS.includes(tab) ? `${LABEL[tab]} · 🎁 ${prizeForRank(i + 1).toLocaleString()} GP` : LABEL[tab]}</div>
+        <div class="hunter-rank-sub">${WEEKLY_TABS.includes(tab) ? `${LABEL[tab]} · 🎁 ${prizeForRank(i + 1, tab).toLocaleString()} GP` : LABEL[tab]}</div>
       </div>
     </div>`;
   }).join('');
