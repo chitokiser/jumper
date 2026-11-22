@@ -1535,7 +1535,8 @@
           <a class="bc-hero-btn bc-hero-btn--ghost" href="/mypage.html#hex-topup">머니 충전</a>
         </div>
         <div class="bc-hero-links">
-          <a href="/merchant-qr.html">결제 QR 만들기</a>
+          <a href="/merchant-qr.html">결제·멘티 QR 만들기</a>
+          <a href="/merchant-report.html">가맹점 1분 리포트</a>
           <a href="/mypage.html">내 정보와 포인트 보기</a>
         </div>
       </div>
@@ -1573,9 +1574,185 @@
         transform: translateX(-50%)
       }
     }
+
+    /* ── 하노이 생활 유틸리티 바 (실시간 환율 · 주간 마감 카운트다운 · 알림 구독) ── */
+    .bc-util-bar {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+      margin-bottom: 12px;
+    }
+    .bc-util-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .bc-util-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      color: #0f172a;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .bc-util-pill:hover {
+      border-color: #7c3aed;
+      background: #f5f3ff;
+    }
+    .bc-util-pill--countdown {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #9a3412;
+    }
+    .bc-util-pill--countdown strong {
+      font-variant-numeric: tabular-nums;
+      color: #ea580c;
+    }
+    .bc-util-pill--push {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      border-color: transparent;
+      color: #ffffff;
+    }
+    .bc-util-pill--push:hover {
+      background: linear-gradient(135deg, #4338ca, #6d28d9);
+      color: #ffffff;
+    }
+    .bc-util-pill--push.is-active {
+      background: #ecfdf5;
+      border-color: #6ee7b7;
+      color: #047857;
+    }
+    .bc-util-fx-drawer {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #e2e8f0;
+    }
+    .bc-fx-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+    .bc-fx-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .bc-fx-field label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #64748b;
+    }
+    .bc-fx-field input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .bc-fx-presets {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .bc-fx-preset-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .bc-fx-preset {
+      padding: 4px 9px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #334155;
+      cursor: pointer;
+    }
+    .bc-fx-preset:hover {
+      border-color: #7c3aed;
+      color: #6d28d9;
+    }
+    @media (max-width: 640px) {
+      .bc-util-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .bc-util-pill {
+        justify-content: center;
+      }
+      .bc-fx-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 
   <main class="page">
+    <!-- ── 하노이 생활 유틸리티 바 (실시간 환율 · 주간 3억 GP 마감 카운트다운 · 알림 구독) ── -->
+    <section class="section" id="hanoiUtilityBarSection" style="margin-top:10px;margin-bottom:4px;">
+      <div class="bc-util-bar">
+        <div class="bc-util-row">
+          <button type="button" class="bc-util-pill" id="bcUtilFxToggle" aria-expanded="false">
+            <span>💱 실시간 환율</span>
+            <strong id="bcUtilFxRate">1만원 ≈ 184,000₫</strong>
+            <span style="font-size:0.72rem;color:#64748b;">계산기 ▾</span>
+          </button>
+
+          <a href="/games.html" class="bc-util-pill bc-util-pill--countdown">
+            <span>⏳ 주간 3억 GP 마감</span>
+            <strong id="bcUtilCountdown">계산 중...</strong>
+          </a>
+
+          <button type="button" class="bc-util-pill bc-util-pill--push" id="bcUtilPushBtn">
+            <span>🔔</span>
+            <span id="bcUtilPushLabel">특가·랭킹 알림 받기</span>
+          </button>
+        </div>
+
+        <div class="bc-util-fx-drawer" id="bcUtilFxDrawer" style="display:none;">
+          <div class="bc-fx-grid">
+            <div class="bc-fx-field">
+              <label for="bcFxInputKrw">🇰🇷 한국 원화 (KRW)</label>
+              <input type="number" id="bcFxInputKrw" placeholder="예: 50000" min="0" step="1000" />
+            </div>
+            <div style="text-align:center;font-weight:900;color:#7c3aed;font-size:1.1rem;">⇄</div>
+            <div class="bc-fx-field">
+              <label for="bcFxInputVnd">🇻🇳 베트남 동 (VND)</label>
+              <input type="number" id="bcFxInputVnd" placeholder="예: 500000" min="0" step="10000" />
+            </div>
+          </div>
+          <div class="bc-fx-presets">
+            <div class="bc-fx-preset-btns">
+              <button type="button" class="bc-fx-preset" data-vnd="100000">10만₫</button>
+              <button type="button" class="bc-fx-preset" data-vnd="200000">20만₫</button>
+              <button type="button" class="bc-fx-preset" data-vnd="500000">50만₫</button>
+              <button type="button" class="bc-fx-preset" data-vnd="1000000">100만₫</button>
+            </div>
+            <span id="bcFxUsdInfo" style="font-size:0.74rem;color:#64748b;font-weight:600;"></span>
+          </div>
+        </div>
+      </div>
+      <script type="module" src="/assets/js/pages/home_utility_bar.js"></script>
+    </section>
+
     <!-- ── 주간 게임 토너먼트 배너 (전 게임 3억 GP 한도 내 S~D티어 차등 보상 + 실시간 1위 현황) ── -->
     <section class="section" id="gameBannerSection" style="margin-top:8px;">
       <div class="game-cta-banner">

@@ -56,11 +56,14 @@ function setText(id, val) {
 // ── 진입 처리 ─────────────────────────────────────────
 let _authDone = false;
 let _currentUid = null;
+let _currentOwnerEmail = "";
 let _merchantBtPerVnd = 100000;
 
 function updateModeAndBt() {
   const modeBt = $("modeBt");
+  const modeMentor = $("modeMentor");
   const isBt = !!modeBt?.checked;
+  const isMentor = !!modeMentor?.checked;
   const amount = Number($("qrAmount")?.value || 0);
   const currency = "VND";
 
@@ -68,11 +71,18 @@ function updateModeAndBt() {
   const helpEl = $("qrAmountHelp");
   const btCalcResult = $("qrBtCalcResult");
   const btCountText = $("qrBtCount");
+  const amountWrap = $("qrAmountFieldWrap");
+  const amountInput = $("qrAmount");
+  const mentorInfo = $("mentorModeInfo");
+
+  if (amountWrap) amountWrap.style.display = isMentor ? "none" : "";
+  if (mentorInfo) mentorInfo.style.display = isMentor ? "block" : "none";
+  if (amountInput) amountInput.required = !isMentor;
 
   if (isBt) {
     if (labelEl) labelEl.textContent = "무료 BT 보상 기준금액 (VND)";
     if (helpEl) helpEl.textContent = "고객이 타 수단으로 결제한 금액을 입력하면 비례하여 BT 무료 보상 QR이 생성됩니다.";
-  } else {
+  } else if (!isMentor) {
     if (labelEl) labelEl.textContent = "앱결제 받을 금액 (단위 VND)";
     if (helpEl) helpEl.textContent = "최소 10,000 VND 이상 입력해주세요.";
   }
@@ -89,7 +99,9 @@ function updateModeAndBt() {
   // 모드에 따라 버튼 텍스트 변경
   const btnGen = $("btnGenQr");
   if (btnGen) {
-    btnGen.textContent = isBt ? "무료 BT 보상 QR 발급" : "결제 QR 생성";
+    if (isMentor) btnGen.textContent = "👥 매장 멘티 자동가입 QR 생성";
+    else if (isBt) btnGen.textContent = "무료 BT 보상 QR 발급";
+    else btnGen.textContent = "결제 QR 생성";
   }
 }
 
@@ -111,6 +123,7 @@ onAuthReady(async ({ loggedIn, role, user }) => {
 
   _authDone = true;
   _currentUid = user.uid;
+  _currentOwnerEmail = (user.email || "").toLowerCase();
   await initPage(user.uid);
 });
 
@@ -127,7 +140,11 @@ setTimeout(() => {
 async function initPage(uid) {
   // 유저 문서에서 merchantId 조회
   const userSnap = await getDoc(doc(db, "users", uid));
-  const merchantId = userSnap.data()?.merchantId;
+  const userData = userSnap.data() || {};
+  const merchantId = userData.merchantId;
+  if (!_currentOwnerEmail && userData.email) {
+    _currentOwnerEmail = String(userData.email).toLowerCase();
+  }
 
   if (merchantId == null) {
     show("needMerchantPanel", true);
@@ -137,6 +154,9 @@ async function initPage(uid) {
   // 가맹점 정보 조회
   const mSnap = await getDoc(doc(db, "merchants", String(merchantId)));
   const merchantName = mSnap.exists() ? (mSnap.data()?.name || "가맹점") : "가맹점";
+  if (mSnap.exists() && mSnap.data()?.ownerEmail) {
+    _currentOwnerEmail = String(mSnap.data().ownerEmail).toLowerCase();
+  }
 
   // 화면 표시
   setText("qrMerchantName", merchantName);
@@ -292,21 +312,29 @@ function bindQrForm(merchantId, merchantName) {
 
   const modePay = $("modePay");
   const modeBt = $("modeBt");
+  const modeMentor = $("modeMentor");
 
   modePay?.addEventListener("change", updateModeAndBt);
   modeBt?.addEventListener("change", updateModeAndBt);
+  modeMentor?.addEventListener("change", updateModeAndBt);
   $("qrAmount")?.addEventListener("input", updateModeAndBt);
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
+    const mode = form.querySelector("input[name='qrMode']:checked")?.value || "pay";
     const currency = "VND";
+
+    if (mode === "mentor") {
+      generateQr(merchantId, merchantName, 0, currency, "mentor");
+      return;
+    }
+
     const amountRaw = $("qrAmount")?.value || "";
     const amount = Number(amountRaw);
 
     if (!amount || amount < 10000) { alert("최소 10,000 VND 이상 입력해 주세요."); return; }
 
-    const mode = form.querySelector("input[name='qrMode']:checked")?.value || "pay";
     generateQr(merchantId, merchantName, amount, currency, mode);
   });
 }
@@ -379,6 +407,80 @@ function addReceiptItem(data, isNew = false) {
   if (isNew) setTimeout(() => item.classList.remove("new-item"), 5000);
 }
 
+// ── 카운터 인쇄용 멘티 초대 포스터 PNG 생성 ───────────────────
+function downloadMentorPoster(qrCanvas, merchantId, merchantName) {
+  const W = 800;
+  const H = 1120;
+  const pCanvas = document.createElement("canvas");
+  pCanvas.width = W;
+  pCanvas.height = H;
+  const ctx = pCanvas.getContext("2d");
+  if (!ctx) return;
+
+  // 배경 그라데이션
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#1e1b4b");
+  bg.addColorStop(0.5, "#312e81");
+  bg.addColorStop(1, "#4c1d95");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 상단 배지
+  ctx.fillStyle = "rgba(253, 224, 71, 0.18)";
+  ctx.beginPath();
+  ctx.roundRect(210, 56, 380, 48, 24);
+  ctx.fill();
+  ctx.fillStyle = "#fde047";
+  ctx.font = "bold 22px 'Pretendard', 'Malgun Gothic', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("BESTCLUB 공식 제휴 가맹점", W / 2, 88);
+
+  // 매장명
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 46px 'Pretendard', 'Malgun Gothic', sans-serif";
+  ctx.fillText(merchantName || "베스트클럽 가맹점", W / 2, 168);
+
+  // 서브 카피
+  ctx.fillStyle = "#e0e7ff";
+  ctx.font = "bold 26px 'Pretendard', 'Malgun Gothic', sans-serif";
+  ctx.fillText("QR 스캔 10초 가입하고 포인트·잭팟 받으세요!", W / 2, 218);
+
+  // QR 흰색 카드
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.roundRect(150, 260, 500, 500, 32);
+  ctx.fill();
+  ctx.drawImage(qrCanvas, 185, 295, 430, 430);
+
+  // 혜택 박스
+  ctx.fillStyle = "rgba(255, 255, 255, 0.10)";
+  ctx.beginPath();
+  ctx.roundRect(70, 800, 660, 210, 22);
+  ctx.fill();
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#fde047";
+  ctx.font = "bold 24px 'Pretendard', 'Malgun Gothic', sans-serif";
+  ctx.fillText("🎁 스캔 가입 즉시 혜택", 105, 848);
+
+  ctx.fillStyle = "#f8fafc";
+  ctx.font = "600 22px 'Pretendard', 'Malgun Gothic', sans-serif";
+  ctx.fillText("1. 신규 가입 즉시 1,000 GP 보너스 자동 지급", 105, 894);
+  ctx.fillText("2. 가맹점 결제 시 보너스 티켓(BT) & 100% 당첨 잭팟", 105, 936);
+  ctx.fillText("3. 매주 총상금 3억 GP 게임 토너먼트 · 공동구매 특가", 105, 978);
+
+  // 하단 푸터
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#c7d2fe";
+  ctx.font = "bold 22px 'Pretendard', 'Malgun Gothic', sans-serif";
+  ctx.fillText("bestclubvn.netlify.app", W / 2, 1068);
+
+  const link = document.createElement("a");
+  link.download = `bestclub-poster-${merchantId}.png`;
+  link.href = pCanvas.toDataURL("image/png");
+  link.click();
+}
+
 // ── QR 생성 ────────────────────────────────────────────
 async function generateQr(merchantId, merchantName, amount, currency = "KRW", mode = "pay") {
   const canvas = $("qrCanvas");
@@ -388,7 +490,13 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
   let btRewardAmount = 0;
   let url = `${baseOrigin}/pay.html?merchant=${merchantId}&amount=${amount}&currency=${currency}`;
 
-  if (mode === "bt") {
+  if (mode === "mentor") {
+    const params = new URLSearchParams();
+    if (_currentOwnerEmail) params.set("mentor", _currentOwnerEmail);
+    params.set("merchant", String(merchantId));
+    if (merchantName) params.set("mname", merchantName);
+    url = `${baseOrigin}/register.html?${params.toString()}`;
+  } else if (mode === "bt") {
     const btTokens = getBtAmount(amount, currency);
     if (!btTokens || btTokens <= 0) {
       alert("지급할 보너스 티켓(BT)이 0장입니다. 결제 금액을 확인해 주세요.");
@@ -426,9 +534,14 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
     }
 
     // 카드 정보 업데이트
-    const amountDisp = mode === "bt"
-      ? `무료 보상: ${btRewardAmount} BT (${amount.toLocaleString()} VND 결제)`
-      : (currency === "VND" ? `${amount.toLocaleString()} BM` : `${amount.toLocaleString()}원 (KRW)`);
+    let amountDisp = "";
+    if (mode === "mentor") {
+      amountDisp = "👥 매장 멘티 자동가입 QR";
+    } else if (mode === "bt") {
+      amountDisp = `무료 보상: ${btRewardAmount} BT (${amount.toLocaleString()} VND 결제)`;
+    } else {
+      amountDisp = currency === "VND" ? `${amount.toLocaleString()} BM` : `${amount.toLocaleString()}원 (KRW)`;
+    }
     setText("qrCardMerchant", merchantName);
     setText("qrCardAmount", amountDisp);
     show("qrSection", true);
@@ -436,15 +549,40 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
     const btnTest = $("btnTestPayLink");
     if (btnTest) {
       btnTest.href = url;
-      btnTest.textContent = mode === "bt" ? "🔗 무료 BT 수령 페이지 바로 열기 (테스트)" : "🔗 결제 페이지 바로 열기 (테스트)";
+      if (mode === "mentor") btnTest.textContent = "🔗 멘티 가입 페이지 바로 열기 (테스트)";
+      else if (mode === "bt") btnTest.textContent = "🔗 무료 BT 수령 페이지 바로 열기 (테스트)";
+      else btnTest.textContent = "🔗 결제 페이지 바로 열기 (테스트)";
       btnTest.style.display = "block";
+    }
+
+    const btnPoster = $("btnDownloadPoster");
+    const btnCopy = $("btnCopyInviteLink");
+    if (btnPoster) {
+      btnPoster.style.display = mode === "mentor" ? "block" : "none";
+      btnPoster.onclick = () => downloadMentorPoster(canvas, merchantId, merchantName);
+    }
+    if (btnCopy) {
+      btnCopy.style.display = mode === "mentor" ? "block" : "none";
+      btnCopy.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+          btnCopy.textContent = "✅ 초대 링크가 복사되었습니다!";
+          setTimeout(() => { btnCopy.textContent = "📋 가입 초대 링크 복사"; }, 2000);
+        } catch (_) {
+          prompt("아래 초대 링크를 복사해 주세요:", url);
+        }
+      };
     }
 
     const hintEl = document.querySelector("#qrSection .qr-hint");
     if (hintEl) {
-      hintEl.textContent = mode === "bt"
-        ? "고객이 카메라로 QR을 스캔하면 무료 BT를 즉시 수령합니다."
-        : "고객이 카메라로 QR을 스캔하면 결제 페이지가 열립니다.";
+      if (mode === "mentor") {
+        hintEl.textContent = "고객이 스캔해 가입하면 사장님이 자동으로 멘토로 등록됩니다.";
+      } else if (mode === "bt") {
+        hintEl.textContent = "고객이 카메라로 QR을 스캔하면 무료 BT를 즉시 수령합니다.";
+      } else {
+        hintEl.textContent = "고객이 카메라로 QR을 스캔하면 결제 페이지가 열립니다.";
+      }
     }
 
     // 다운로드 버튼
@@ -452,7 +590,7 @@ async function generateQr(merchantId, merchantName, amount, currency = "KRW", mo
     if (btnDl) {
       btnDl.onclick = () => {
         const link = document.createElement("a");
-        link.download = `qr-${merchantId}-${mode}-${amount}.png`;
+        link.download = `qr-${merchantId}-${mode}-${amount || "invite"}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
       };

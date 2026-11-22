@@ -186,6 +186,13 @@
 
         <!-- 메인 폼 -->
         <div id="mainPanel" style="display:none;">
+          <!-- 가맹점주 1분 모바일 리포트 바로가기 -->
+          <div style="margin-bottom:14px; display:flex; justify-content:flex-end;">
+            <a href="/merchant-report.html" class="btn" style="padding:7px 14px; font-size:0.84rem; font-weight:700; background:linear-gradient(135deg,#4f46e5,#7c3aed); color:#fff; text-decoration:none; border-radius:10px;">
+              📊 내 가맹점 1분 리포트 보기 →
+            </a>
+          </div>
+
           <!-- 가맹점 정보 -->
           <div class="mp-kv" style="margin-bottom:16px;">
             <span class="k">가맹점</span>
@@ -240,20 +247,30 @@
             <!-- QR 모드 선택 -->
             <div class="field" style="margin-bottom:12px; background:#f4f4f5; padding:12px; border-radius:8px;">
               <span class="label" style="margin-bottom:8px; display:block; font-weight:700;">QR 모드 선택</span>
-              <div style="display:flex;gap:16px; flex-wrap:wrap;">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.95rem;">
+              <div style="display:flex;gap:12px; flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.93rem;">
                   <input type="radio" name="qrMode" id="modePay" value="pay" checked />
                   <span>💳 간편 결제 (Payment)</span>
                 </label>
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.95rem;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.93rem;">
                   <input type="radio" name="qrMode" id="modeBt" value="bt" />
                   <span>🎟️ BT (보너스 티켓) 발급</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.93rem;">
+                  <input type="radio" name="qrMode" id="modeMentor" value="mentor" />
+                  <span>👥 멘티 자동가입 QR (매장 비치용)</span>
                 </label>
               </div>
             </div>
             <input type="hidden" name="qrCurrency" id="currVnd" value="VND" />
 
-            <label class="field">
+            <!-- 멘티 자동가입 QR 안내 박스 (mentor 모드에서만 표시) -->
+            <div id="mentorModeInfo" style="display:none; margin-bottom:12px; padding:12px; background:#f5f3ff; border:1px solid #ddd6fe; border-radius:10px; font-size:0.84rem; color:#4c1d95; line-height:1.5;">
+              <strong>🏪 매장 카운터·테이블 비치용 멘티 초대 QR</strong><br/>
+              손님이 이 QR을 스캔해 가입하면 <strong>자동으로 사장님이 멘토로 지정</strong>되며, 손님에게 즉시 1,000 GP 보너스가 지급됩니다. 아래 버튼으로 인쇄용 포스터(PNG)까지 바로 저장할 수 있습니다.
+            </div>
+
+            <label class="field" id="qrAmountFieldWrap">
               <span class="label" id="qrAmountLabel">결제 금액 (원)</span>
               <input class="input" id="qrAmount" type="number" min="1000" step="100" placeholder="예: 30000" required />
               <div class="help" id="qrAmountHelp">최소 1,000원 이상 입력해 주세요.</div>
@@ -284,6 +301,12 @@
               <a id="btnTestPayLink" href="#" target="_blank" class="btn" style="width:100%; margin-top:8px; margin-bottom:8px; background:#4f46e5; color:#fff; text-decoration:none; display:none; text-align:center; box-sizing:border-box; font-weight:700;">
                 🔗 결제 페이지 바로 열기 (테스트)
               </a>
+              <button class="btn" id="btnDownloadPoster" type="button" style="display:none; width:100%; margin-bottom:8px; background:linear-gradient(135deg,#7c3aed,#db2777); color:#fff; font-weight:700;">
+                🖼️ 카운터 인쇄용 포스터 저장 (PNG)
+              </button>
+              <button class="btn btn-download" id="btnCopyInviteLink" type="button" style="display:none; width:100%; margin-top:0; margin-bottom:8px;">
+                📋 가입 초대 링크 복사
+              </button>
               <button class="btn btn-download" id="btnDownloadQr" type="button" style="width:100%;">
                 QR 이미지 저장
               </button>

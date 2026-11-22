@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/register.js
+// /assets/js/pages/register.js
 // 회원가입: 소셜 로그인(Google/Facebook/Apple) → 정보 저장 → 수탁 지갑 생성 → 온체인 등록
 
 import { watchAuth, login, loginWithFacebook, loginWithApple } from "../auth.js";
@@ -143,9 +143,12 @@ async function doRegister(uid, user) {
     } catch (_) {}
   }
 
-  // 친구초대 이벤트 QR(register.html?mentor=...&invite=이벤트ID)로 들어온 가입
-  const inviteCampaignId = String(new URLSearchParams(location.search).get("invite") || "").trim();
+  // 친구초대 이벤트 QR(register.html?mentor=...&invite=이벤트ID) 또는 가맹점 QR(?mentor=...&merchant=가맹점ID)
+  const urlParams = new URLSearchParams(location.search);
+  const inviteCampaignId = String(urlParams.get("invite") || "").trim();
   const validInvite = /^[A-Za-z0-9_-]{6,64}$/.test(inviteCampaignId) && !!mentorUid;
+  const registeredMerchantId = String(urlParams.get("merchant") || "").trim();
+  const validMerchantId = /^[A-Za-z0-9_-]{1,64}$/.test(registeredMerchantId);
 
   await setDoc(doc(db, "users", uid), {
     name,
@@ -154,6 +157,7 @@ async function doRegister(uid, user) {
     mentorAddressInput: mentorAddress,
     ...(mentorEmail ? { mentorEmail } : {}),
     ...(mentorUid ? { mentorUid } : {}),
+    ...(validMerchantId ? { registeredMerchantId } : {}),
     ...(validInvite ? { inviteCampaignId } : {}),
     agreeTerms: true,
     registeredAt: serverTimestamp(),
@@ -273,9 +277,18 @@ async function _initForUser(user) {
 
     const DEFAULT_MENTOR = "daguri75@gmail.com";
     const mentorEl = $("mentorAddress");
+    const params = new URLSearchParams(location.search);
+    const urlMentor = params.get("mentor") || "";
+    const urlMname = params.get("mname") || "";
     if (mentorEl && !mentorEl.value) {
-      const urlMentor = new URLSearchParams(location.search).get("mentor") || "";
       mentorEl.value = urlMentor || DEFAULT_MENTOR;
+    }
+    if (mentorEl && urlMname && !$("merchantQrRefBadge")) {
+      const badge = document.createElement("div");
+      badge.id = "merchantQrRefBadge";
+      badge.style.cssText = "margin-bottom:8px;padding:8px 12px;border-radius:10px;background:#f5f3ff;border:1px solid #ddd6fe;color:#4c1d95;font-size:0.84rem;font-weight:700;";
+      badge.textContent = `🏪 [${urlMname}] 매장 QR 추천이 자동 적용되었습니다!`;
+      mentorEl.parentElement?.insertBefore(badge, mentorEl);
     }
 
     bindForm(user.uid, user);
