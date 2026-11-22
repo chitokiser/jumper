@@ -48,12 +48,16 @@ html,body{height:100%;background:#120b07;color:#fff;
   padding:6px 10px;background:rgba(28,20,13,.92);border-bottom:1px solid #452c1e;flex-shrink:0;gap:6px;flex-wrap:wrap}
 .ghb{background:rgba(255,255,255,.07);border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:4px}
 #scoreBox{color:#fbbf24}#lvBox{color:#fb923c}#goalBox{color:#fde047}#gpBox{color:#86efac}
+#lifeBox{color:#f87171}#comboBox{color:#38bdf8;transition:transform .15s ease}
+#comboBox.is-fever{background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;box-shadow:0 0 14px rgba(245,158,11,.7);animation:feverPulse .6s ease-in-out infinite alternate}
+@keyframes feverPulse{from{transform:scale(1)}to{transform:scale(1.07)}}
 
 #phaserStage{flex:1;width:100%;max-width:860px;display:flex;align-items:center;justify-content:center;
   position:relative;min-height:0;overflow:hidden;padding:4px}
 #phaserContainer{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 #phaserContainer canvas{max-width:100%;max-height:100%;border-radius:12px;
-  box-shadow:0 8px 32px rgba(0,0,0,.75);border:2px solid #5c3a21;cursor:crosshair}
+  box-shadow:0 8px 32px rgba(0,0,0,.75);border:2px solid #5c3a21;cursor:crosshair;transition:box-shadow .2s ease,border-color .2s ease}
+#phaserContainer canvas.is-fever{border-color:#fde047;box-shadow:0 0 28px rgba(250,204,21,.75),0 8px 32px rgba(0,0,0,.75)}
 
 /* ── 하단 안내 및 아케이드 바 ── */
 #quickGuide{font-size:11.5px;color:#fcd34d;background:rgba(69,44,30,.45);padding:5px 12px;
@@ -106,11 +110,11 @@ html,body{height:100%;background:#120b07;color:#fff;
   </div>
 
   <div class="rule-box">
-    🔫 <b>무법자(Bandit)</b>가 총을 쏘기 전에 문을 클릭/터치해 제압하세요! (<b>+100점</b>)<br/>
-    💰 <b>선량한 시민(Cowboy)</b>은 쏘지 말고 문이 닫힐 때까지 기다리면 금화를 입금합니다! (<b>+150점</b>)<br/>
-    🎩 <b>모자 더미(Hats)</b>는 연속 사격해 날려버리면 보너스 점수! (<b>개당 +50점</b>)<br/>
-    🏦 상단 <b>1~12번 창구</b>에 금화를 모두 채우면 레벨 클리어 보너스 (<b>+600 × 레벨 점</b>)<br/>
-    ⚠️ 시민을 오발 사격하거나 무법자에게 먼저 총을 맞으면 게임 오버!<br/>
+    🔫 <b>무법자(Bandit)</b> 경고 게이지가 차기 전에 사격! (<b>+100점</b> · 0.5초 내 <b>⚡퀵드로우 +50</b>)<br/>
+    🔥 <b>5연속 콤보</b> 달성 시 <b>FEVER TIME(8초간 점수 2배)</b> 발동!<br/>
+    💰 <b>선량한 시민</b>은 보호하면 금화 입금 (<b>+150점</b>) · 🎩 <b>모자</b>는 연타 사격 (<b>+50점</b>)<br/>
+    ❤️ 보안관 라이프 <b>3개</b> 제공 (피격·오발 시 1개 차감, 3개 소진 시 종료)<br/>
+    ⌨️ PC는 <b>키보드 1·2·3·4 (또는 A·S·D·F)</b> 단축키 사격 지원!<br/>
     💎 점수 <b>100점 = 1 GP</b> (한 판 최대 1,000 GP)
   </div>
 
@@ -126,9 +130,11 @@ html,body{height:100%;background:#120b07;color:#fff;
 <!-- 게임 화면 -->
 <div id="gameScreen" class="screen hidden">
   <div id="gameHdr">
+    <div class="ghb" id="lifeBox">❤️❤️❤️</div>
     <div class="ghb" id="scoreBox">🤠 <span id="scoreVal">0</span>점</div>
+    <div class="ghb" id="comboBox">⚡ <span id="comboVal">0</span>콤보</div>
     <div class="ghb" id="lvBox">LV.<span id="lvVal">1</span></div>
-    <div class="ghb" id="goalBox">💰 금고 <span id="goalVal">0</span>/12</div>
+    <div class="ghb" id="goalBox">💰 <span id="goalVal">0</span>/12</div>
     <div class="ghb" id="gpBox">💎 <span id="gpVal">0</span> GP</div>
     <button type="button" id="btnMute" style="background:#291a10;color:#fcd34d;border:1px solid #5c3a21;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;">🔊</button>
     <button type="button" id="btnCashoutNow" style="background:#291a10;color:#fcd34d;border:1px solid #5c3a21;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;">🏁 정산</button>
@@ -138,7 +144,7 @@ html,body{height:100%;background:#120b07;color:#fff;
     <div id="phaserContainer"></div>
   </div>
 
-  <div id="quickGuide">🔫 <b>총 든 무법자</b>는 즉시 사격! · 💰 <b>금화 든 시민</b>은 보호(사격 금지) · 🎩 <b>모자</b>는 연타 사격!</div>
+  <div id="quickGuide">🔫 <b>무법자</b> 즉시 사격(<b>1·2·3·4</b> / 터치) · ⚡ <b>퀵드로우 +50</b> · 🔥 <b>5콤보 FEVER ×2</b> · 💰 <b>시민 보호</b></div>
 
   <div class="arcade-bar">
     <a href="/games.html" class="mc-mode-chip">🎮 게임모음</a>
@@ -187,6 +193,7 @@ const MAX_GP_PER_GAME = 1000;  // 한 판 최대 1,000 GP
 let _uid = null, _playerGP = 0, _entryCount = 0, _entryResetAt = 0, _entryFee = BASE_FEE;
 let _freeMode = false;
 let _score = 0, _level = 1, _goalsComplete = 0, _banditsKilled = 0, _hatsShot = 0;
+let _lives = 3, _combo = 0, _maxCombo = 0, _quickDraws = 0, _feverUntil = 0;
 let _running = false, _settled = false, _muted = false;
 let _phaserGame = null;
 let _failReason = '';
@@ -198,9 +205,14 @@ function showScreen(name) {
     $(`${s}Screen`).classList.toggle('hidden', s !== name));
 }
 
+function isFeverActive() {
+  return Date.now() < _feverUntil;
+}
+
 function addScore(pts) {
   if (!_running) return;
-  _score += pts;
+  const mult = isFeverActive() ? 2 : 1;
+  _score += Math.round(pts * mult);
   updateHud();
 }
 
@@ -210,18 +222,53 @@ function updateHud() {
   $('goalVal').textContent = _goalsComplete;
   const gp = _freeMode ? 0 : Math.min(Math.floor(_score / SCORE_PER_GP), MAX_GP_PER_GAME);
   $('gpVal').textContent = gp.toLocaleString();
+
+  const lifeEl = $('lifeBox');
+  if (lifeEl) {
+    lifeEl.textContent = '❤️'.repeat(Math.max(0, _lives)) + '🖤'.repeat(Math.max(0, 3 - _lives));
+  }
+
+  const feverOn = isFeverActive();
+  const comboBox = $('comboBox');
+  const comboVal = $('comboVal');
+  if (comboBox && comboVal) {
+    comboBox.classList.toggle('is-fever', feverOn);
+    if (feverOn) {
+      const rem = Math.max(1, Math.ceil((_feverUntil - Date.now()) / 1000));
+      comboBox.innerHTML = `🔥 FEVER ×2 (${rem}s)`;
+    } else {
+      comboBox.innerHTML = `⚡ <span id="comboVal">${_combo}</span>콤보`;
+    }
+  }
+
+  const canvas = document.querySelector('#phaserContainer canvas');
+  if (canvas) canvas.classList.toggle('is-fever', feverOn);
 }
 
-// ── Phaser 3 Bank Panic Classes (phaserjs/examples/public/src/games/bank panic) ──
+// ── Phaser 3 Bank Panic Classes (Enhanced Western Arcade) ──
 class Door extends Phaser.GameObjects.Container {
-  constructor(name, scene, x, y) {
+  constructor(name, scene, x, y, doorIndex = 1) {
     super(scene, x, y);
     this.name = name;
+    this.doorIndex = doorIndex;
 
     this.background = scene.add.image(0, 0, 'assets', 'doorBackground');
     this.door = scene.add.sprite(0, 0, 'assets', 'door1');
     this.character = scene.add.image(0, 0, 'assets', 'bandit1');
     this.characterFrame = 'bandit1';
+
+    // 서부 문 번호 배지 ([1] ~ [4])
+    this.numBg = scene.add.rectangle(0, -186, 54, 28, 0x1c140d, 0.92).setStrokeStyle(2, 0xfbbf24);
+    this.numTxt = scene.add.text(0, -186, `[${doorIndex}]`, {
+      fontFamily: 'sans-serif',
+      fontSize: '16px',
+      fontStyle: '900',
+      color: '#fde047'
+    }).setOrigin(0.5);
+
+    // 무법자 사격 위험 경고 게이지 바
+    this.warnBg = scene.add.rectangle(0, 184, 168, 12, 0x0f172a, 0.85).setStrokeStyle(1, 0xfbbf24).setVisible(false);
+    this.warnFill = scene.add.rectangle(-82, 184, 0, 8, 0xfacc15).setOrigin(0, 0.5).setVisible(false);
 
     this.isOpen = false;
     this.isBandit = false;
@@ -230,6 +277,7 @@ class Door extends Phaser.GameObjects.Container {
     this.wasBandit = (scene.doors.length % 2) ? true : false;
 
     this.hats = 0;
+    this.openedAt = 0;
     this.timeToOpen = Number.MAX_SAFE_INTEGER;
     this.timeToClose = Number.MAX_SAFE_INTEGER;
     this.timeToKill = 0;
@@ -242,7 +290,7 @@ class Door extends Phaser.GameObjects.Container {
       'hat'
     ];
 
-    this.add([this.background, this.character, this.door]);
+    this.add([this.background, this.character, this.door, this.numBg, this.numTxt, this.warnBg, this.warnFill]);
 
     this.setSize(200, 400);
     this.setInteractive();
@@ -259,7 +307,15 @@ class Door extends Phaser.GameObjects.Container {
   }
 
   start(time) {
-    this.timeToOpen = time + Phaser.Math.RND.between(500, 3500);
+    this.timeToOpen = time + Phaser.Math.RND.between(500, 3200);
+  }
+
+  hideWarning() {
+    if (this.warnBg) this.warnBg.setVisible(false);
+    if (this.warnFill) {
+      this.warnFill.setVisible(false);
+      this.warnFill.width = 0;
+    }
   }
 
   reset(time) {
@@ -267,9 +323,10 @@ class Door extends Phaser.GameObjects.Container {
     this.isBandit = false;
     this.isHats = false;
     this.isDead = false;
+    this.hideWarning();
 
     this.door.play('doorClose');
-    this.timeToOpen = time + Phaser.Math.RND.between(500, 3500);
+    this.timeToOpen = time + Phaser.Math.RND.between(500, 3200);
   }
 
   openDoor(time) {
@@ -277,6 +334,8 @@ class Door extends Phaser.GameObjects.Container {
     this.isBandit = false;
     this.isHats = false;
     this.isDead = false;
+    this.openedAt = time;
+    this.hideWarning();
 
     this.characterFrame = Phaser.Utils.Array.GetRandom(this.characters);
 
@@ -306,6 +365,10 @@ class Door extends Phaser.GameObjects.Container {
 
     if (this.isBandit) {
       this.timeToKill = time + (duration * this.scene.killDelay);
+      this.warnBg.setVisible(true);
+      this.warnFill.setVisible(true);
+      this.warnFill.width = 2;
+      this.warnFill.setFillStyle(0xfacc15);
     }
 
     this.scene.sound.play('door');
@@ -317,18 +380,20 @@ class Door extends Phaser.GameObjects.Container {
 
     this.isOpen = false;
     this.wasBandit = this.isBandit;
+    this.hideWarning();
 
     if (!this.isBandit && !this.isHats && !this.isDead) {
       this.scene.addGold(this.x, this.y);
     }
 
-    this.timeToOpen = time + Phaser.Math.RND.between(1600, 3600);
+    this.timeToOpen = time + Phaser.Math.RND.between(1400, 3200);
   }
 
   shoot() {
     if (!this.isOpen || this.scene.isPaused) return;
 
     this.scene.sound.play('shot');
+    this.scene.spawnMuzzleFlash(this.x, this.y);
 
     if (this.isDead) return;
 
@@ -343,43 +408,66 @@ class Door extends Phaser.GameObjects.Container {
     }
   }
 
-  shootCharacter(closeDoor) {
+  shootCharacter(isBanditTarget) {
     this.isDead = true;
+    this.hideWarning();
     this.characterFrame += 'Dead';
     this.character.setFrame(this.characterFrame);
 
     this.scene.sound.play('scream' + Phaser.Math.RND.between(1, 3));
 
-    if (closeDoor) {
-      // 무법자 제압 성공! (+100점)
+    if (isBanditTarget) {
+      // 무법자 제압 성공! 콤보 + 퀵드로우 + 피버 2배 적용
       _banditsKilled++;
-      addScore(100);
-      this.scene.showFloatingScore(this.x, this.y - 60, '+100', '#fde047');
-    } else {
-      // 시민 오발 사격!
-      _failReason = '선량한 시민을 오발 사격했습니다!';
-    }
+      _combo++;
+      if (_combo > _maxCombo) _maxCombo = _combo;
 
-    this.scene.tweens.add({
-      targets: this.character,
-      scaleX: 0.5,
-      scaleY: 0.5,
-      duration: 300,
-      onComplete: () => {
-        if (closeDoor) {
-          this.closeDoor(this.scene.game.getTime());
-        } else {
-          this.scene.levelFail();
-        }
+      const reactionMs = this.scene.game.getTime() - this.openedAt;
+      const isQuickDraw = reactionMs > 0 && reactionMs <= 500;
+      const comboBonus = Math.min(100, (_combo - 1) * 10);
+      let basePts = 100 + comboBonus;
+      if (isQuickDraw) {
+        _quickDraws++;
+        basePts += 50;
       }
-    });
 
-    if (!closeDoor) {
-      this.off('pointerdown');
-      this.scene.isPaused = true;
-      setTimeout(() => {
-        if (_running && this.scene && !this.scene.isGameOver) this.scene.levelFail();
-      }, 450);
+      const feverTriggered = _combo >= 5 && !isFeverActive();
+      if (feverTriggered) {
+        this.scene.activateFever();
+      }
+
+      const mult = isFeverActive() ? 2 : 1;
+      addScore(basePts);
+
+      this.scene.spawnHitSparks(this.x, this.y - 20, isQuickDraw ? 0xfde047 : 0xfb923c);
+      this.scene.cameras.main.shake(90, 0.005);
+
+      const label = isQuickDraw
+        ? `⚡ QUICK +${basePts * mult}`
+        : (mult > 1 ? `🔥 +${basePts * mult}` : `+${basePts}`);
+      this.scene.showFloatingScore(this.x, this.y - 60, label, isQuickDraw ? '#fde047' : '#fb923c');
+
+      this.scene.tweens.add({
+        targets: this.character,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        duration: 260,
+        onComplete: () => {
+          this.closeDoor(this.scene.game.getTime());
+        }
+      });
+    } else {
+      // 시민 오발 사격 → 라이프 1 차감 (0이면 게임오버)
+      this.scene.tweens.add({
+        targets: this.character,
+        scaleX: 0.65,
+        scaleY: 0.65,
+        duration: 260,
+        onComplete: () => {
+          if (_lives > 0 && _running) this.closeDoor(this.scene.game.getTime());
+        }
+      });
+      this.scene.takeDamage(this.x, this.y, '선량한 시민을 오발 사격했습니다!', false);
     }
   }
 
@@ -389,63 +477,61 @@ class Door extends Phaser.GameObjects.Container {
       this.hats--;
       this.characterFrame = 'hat' + this.hats;
       _hatsShot++;
+      _combo++;
+      if (_combo > _maxCombo) _maxCombo = _combo;
+      if (_combo >= 5 && !isFeverActive()) {
+        this.scene.activateFever();
+      }
+      const mult = isFeverActive() ? 2 : 1;
       addScore(50);
-      this.scene.showFloatingScore(this.x, this.y - 90, '+50', '#38bdf8');
+      this.scene.spawnHitSparks(this.x, this.y - 80, 0x38bdf8);
+      this.scene.cameras.main.shake(60, 0.003);
+      this.scene.showFloatingScore(this.x, this.y - 90, mult > 1 ? `🎩🔥 +${50 * mult}` : '🎩 +50', '#38bdf8');
     }
     this.character.setFrame(this.characterFrame);
   }
 
   shootYou() {
-    this.off('pointerdown');
-    this.scene.isPaused = true;
-    _failReason = '무법자의 총격에 당했습니다!';
+    this.isDead = true;
+    this.hideWarning();
 
     let shot1 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'shot1');
     let shot2 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'shot2');
 
     this.scene.sound.play('banditShot');
-    this.scene.sound.play('banditShot', { delay: 0.25 });
-    this.scene.sound.play('banditShot', { delay: 0.5 });
+    this.scene.sound.play('banditShot', { delay: 0.2 });
 
     this.scene.tweens.add({
       targets: shot1,
       alpha: 0,
       duration: 200,
-      ease: 'Power2'
+      ease: 'Power2',
+      onComplete: () => shot1.destroy()
     });
 
     this.scene.tweens.add({
       targets: shot2,
       alpha: 0,
       duration: 200,
-      delay: 200,
+      delay: 180,
       ease: 'Power2',
       onComplete: () => {
-        this.scene.killed(this.x, this.y);
+        shot2.destroy();
+        if (_lives > 0 && _running) this.closeDoor(this.scene.game.getTime());
       }
     });
-    setTimeout(() => {
-      if (_running && this.scene && !this.scene.isGameOver) this.scene.killed(this.x, this.y);
-    }, 550);
 
     let smoke1 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'smoke1');
-    let smoke2 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'smoke2');
-
     this.scene.tweens.add({
       targets: smoke1,
       props: {
-        y: { value: 150, duration: 1000, ease: 'Sine.easeInOut' },
-        alpha: { value: 0, duration: 250, ease: 'Power2', delay: 750 }
-      }
+        y: { value: 150, duration: 850, ease: 'Sine.easeInOut' },
+        alpha: { value: 0, duration: 250, ease: 'Power2', delay: 600 }
+      },
+      onComplete: () => smoke1.destroy()
     });
 
-    this.scene.tweens.add({
-      targets: smoke2,
-      props: {
-        y: { value: 150, duration: 1000, ease: 'Sine.easeInOut', delay: 500 },
-        alpha: { value: 0, duration: 250, ease: 'Power2', delay: 1250 }
-      }
-    });
+    this.scene.takeDamage(this.x, this.y, '무법자의 총격에 당했습니다!', true);
   }
 
   update(time) {
@@ -453,8 +539,28 @@ class Door extends Phaser.GameObjects.Container {
       this.openDoor(time);
     } else if (this.isOpen && time >= this.timeToClose) {
       this.closeDoor(time);
-    } else if (this.isOpen && this.isBandit && !this.isDead && time >= this.timeToKill) {
-      this.shootYou();
+    } else if (this.isOpen && this.isBandit && !this.isDead) {
+      // 경고 게이지 실시간 업데이트
+      const total = Math.max(1, this.timeToKill - this.openedAt);
+      const ratio = Phaser.Math.Clamp((time - this.openedAt) / total, 0, 1);
+      this.warnFill.width = Math.max(2, Math.round(164 * ratio));
+      if (ratio >= 0.72) {
+        this.warnFill.setFillStyle(0xef4444);
+        this.numBg.setStrokeStyle(3, (Math.floor(time / 80) % 2 === 0) ? 0xef4444 : 0xfde047);
+      } else if (ratio >= 0.45) {
+        this.warnFill.setFillStyle(0xf97316);
+        this.numBg.setStrokeStyle(2, 0xf97316);
+      } else {
+        this.warnFill.setFillStyle(0xfacc15);
+        this.numBg.setStrokeStyle(2, 0xfbbf24);
+      }
+
+      if (time >= this.timeToKill) {
+        this.numBg.setStrokeStyle(2, 0xfbbf24);
+        this.shootYou();
+      }
+    } else {
+      this.numBg.setStrokeStyle(2, 0xfbbf24);
     }
   }
 }
@@ -571,6 +677,29 @@ class MainGame extends Phaser.Scene {
     this.killDelay = 0.8;
     this.closeDurationLow = 2000;
     this.closeDurationHigh = 4000;
+    this._lastFeverHudSec = -1;
+
+    // 서부 배경음악 (이미 로드된 music 오디오 활용, 중복 재생 방지)
+    if (!this.sound.get('music')) {
+      this.bgm = this.sound.add('music', { loop: true, volume: 0.24 });
+      this.bgm.play();
+    } else {
+      this.bgm = this.sound.get('music');
+      if (!this.bgm.isPlaying) this.bgm.play({ loop: true, volume: 0.24 });
+    }
+
+    // 키보드 1·2·3·4 및 A·S·D·F 단축키 사격 지원
+    if (this.input.keyboard) {
+      this.input.keyboard.removeAllListeners('keydown');
+      this.input.keyboard.on('keydown', (ev) => {
+        if (this.isPaused || !_running) return;
+        const map = { '1': 0, '2': 1, '3': 2, '4': 3, a: 0, s: 1, d: 2, f: 3, A: 0, S: 1, D: 2, F: 3 };
+        const idx = map[ev.key];
+        if (idx !== undefined && this.doors[idx]) {
+          this.doors[idx].shoot();
+        }
+      });
+    }
 
     _level = 1;
     _goalsComplete = 0;
@@ -579,6 +708,89 @@ class MainGame extends Phaser.Scene {
     this.doors.forEach((door) => {
       door.start(this.game.getTime());
     });
+  }
+
+  spawnMuzzleFlash(x, y) {
+    const flash = this.add.circle(x, y, 42, 0xfef08a, 0.85);
+    this.tweens.add({
+      targets: flash,
+      scale: 1.8,
+      alpha: 0,
+      duration: 120,
+      ease: 'Cubic.easeOut',
+      onComplete: () => flash.destroy()
+    });
+  }
+
+  spawnHitSparks(x, y, color = 0xfde047) {
+    for (let i = 0; i < 10; i++) {
+      const ang = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      const dist = Phaser.Math.Between(40, 110);
+      const spark = this.add.circle(x, y, Phaser.Math.Between(3, 6), color, 1);
+      this.tweens.add({
+        targets: spark,
+        x: x + Math.cos(ang) * dist,
+        y: y + Math.sin(ang) * dist,
+        alpha: 0,
+        scale: 0.2,
+        duration: Phaser.Math.Between(260, 420),
+        ease: 'Quad.easeOut',
+        onComplete: () => spark.destroy()
+      });
+    }
+  }
+
+  activateFever() {
+    _feverUntil = Date.now() + 8000;
+    updateHud();
+    this.cameras.main.flash(220, 250, 204, 21, false);
+    const banner = this.add.text(512, 220, '🔥 FEVER TIME! SCORE ×2 🔥', {
+      fontFamily: 'sans-serif',
+      fontSize: '42px',
+      fontStyle: '900',
+      color: '#fde047',
+      stroke: '#7c2d12',
+      strokeThickness: 8
+    }).setOrigin(0.5).setScale(0.4);
+
+    this.tweens.add({
+      targets: banner,
+      scale: 1.05,
+      duration: 240,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: banner,
+          y: 170,
+          alpha: 0,
+          delay: 900,
+          duration: 380,
+          onComplete: () => banner.destroy()
+        });
+      }
+    });
+  }
+
+  takeDamage(x, y, reason, withBullets = false) {
+    if (this.isGameOver || !_running) return;
+    _lives = Math.max(0, _lives - 1);
+    _combo = 0;
+    _feverUntil = 0;
+    updateHud();
+
+    this.cameras.main.shake(260, 0.015);
+    this.cameras.main.flash(240, 220, 38, 38);
+    this.showFloatingScore(x, y - 40, '💔 -1 LIFE!', '#f87171');
+
+    if (_lives <= 0) {
+      _failReason = reason;
+      this.isPaused = true;
+      if (withBullets) {
+        this.killed(x, y);
+      } else {
+        this.levelFail();
+      }
+    }
   }
 
   showFloatingScore(x, y, text, color = '#fde047') {
@@ -627,7 +839,7 @@ class MainGame extends Phaser.Scene {
     let y = 352;
 
     for (let i = 1; i <= 4; i++) {
-      this.doors.push(new Door('Door' + i, this, x, y));
+      this.doors.push(new Door('Door' + i, this, x, y, i));
       x += doorWidth + doorSpace;
     }
   }
@@ -800,6 +1012,12 @@ class MainGame extends Phaser.Scene {
         if (this.isPaused || !_running) break;
         this.doors[i].update(time);
       }
+      const feverSec = _feverUntil > 0 ? Math.max(0, Math.ceil((_feverUntil - Date.now()) / 1000)) : 0;
+      if (feverSec !== this._lastFeverHudSec) {
+        this._lastFeverHudSec = feverSec;
+        if (feverSec === 0 && _feverUntil > 0) _feverUntil = 0;
+        updateHud();
+      }
     }
   }
 }
@@ -811,6 +1029,11 @@ function startGame(free) {
   _goalsComplete = 0;
   _banditsKilled = 0;
   _hatsShot = 0;
+  _lives = 3;
+  _combo = 0;
+  _maxCombo = 0;
+  _quickDraws = 0;
+  _feverUntil = 0;
   _failReason = '';
   _running = true;
   _settled = false;
@@ -957,7 +1180,7 @@ async function triggerGameOver() {
   const gp = _freeMode ? 0 : Math.min(Math.floor(_score / SCORE_PER_GP), MAX_GP_PER_GAME);
   $('finalScore').textContent = _score.toLocaleString();
   $('finalGP').textContent = _freeMode ? '(무료 연습 — GP 미지급)' : `+ ${gp.toLocaleString()} GP 획득!`;
-  const summary = `LV.${_level} · 무법자 ${_banditsKilled}명 제압 · 모자 ${_hatsShot}개 명중`;
+  const summary = `LV.${_level} · 무법자 ${_banditsKilled}명 · ⚡퀵드로우 ${_quickDraws}회 · 🔥최대 ${_maxCombo}콤보 · 모자 ${_hatsShot}개`;
   $('overMsg').innerHTML = `${_failReason ? `<b style="color:#fca5a5">${_failReason}</b><br/>` : ''}${summary}<br/>` + (_freeMode
     ? '참가비를 내고 플레이하면 점수에 따라 GP를 획득할 수 있습니다.'
     : gp > 0 ? `${_score.toLocaleString()}점 → ${gp.toLocaleString()} GP가 계정에 적립됩니다!` : '100점 이상 달성 시 GP를 획득할 수 있습니다!');
@@ -1007,9 +1230,13 @@ $('btnBackLobby').onclick = goLobby;
 
 function goLobby() {
   _running = false;
+  _feverUntil = 0;
   if (_phaserGame) {
     const mainScene = _phaserGame.scene.getScene('MainGame');
-    if (mainScene) mainScene.isPaused = true;
+    if (mainScene) {
+      mainScene.isPaused = true;
+      if (mainScene.bgm && mainScene.bgm.isPlaying) mainScene.bgm.stop();
+    }
   }
   $('overModal').classList.remove('open');
   loadPlayer().then(() => showScreen('lobby'));
