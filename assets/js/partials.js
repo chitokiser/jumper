@@ -346,6 +346,7 @@ window.addEventListener('lang:change', applyFooterI18n);
       if (!document.querySelector('script[data-bc-live-hub]')) { const h = document.createElement('script'); h.type = 'module'; h.src = '/assets/js/bc-live-hub.js'; h.dataset.bcLiveHub = '1'; document.head.appendChild(h); }
       if (!document.querySelector('script[data-bc-ai-concierge]')) { const a = document.createElement('script'); a.type = 'module'; a.src = '/assets/js/bc-ai-concierge.js'; a.dataset.bcAiConcierge = '1'; document.head.appendChild(a); }
       if (!document.querySelector('script[data-bc-mobile-nav]')) { const m = document.createElement('script'); m.src = '/assets/js/bc-mobile-nav.js'; m.dataset.bcMobileNav = '1'; document.head.appendChild(m); }
+      if (!document.querySelector('script[data-bc-viral-share]')) { const v = document.createElement('script'); v.type = 'module'; v.src = '/assets/js/bc-viral-share.js'; v.dataset.bcViralShare = '1'; document.head.appendChild(v); }
 
       window.dispatchEvent(new CustomEvent("partials:loaded"));
       window.dispatchEvent(new CustomEvent("partials:mounted"));
