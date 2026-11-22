@@ -137,8 +137,8 @@ html,body{height:100%;background:#070a14;color:#fff;
     ⬅️➡️ 이동 · ⬆️/X 회전 · ⬇️ 소프트드롭 · <b>Space 하드드롭</b> · <b>C/Shift 홀드</b><br/>
     <b>1줄</b> 100 · <b>2줄</b> 300 · <b>3줄</b> 500 · <b>4줄(TETRIS!)</b> 800점 × 레벨 배율<br/>
     🔥 <b>연속 라인 클리어 콤보</b> &amp; <b>Back-to-Back 테트리스</b> 보너스!<br/>
-    💣 10줄 클리어마다 <b>하단 2줄 폭파 · 슬로우 · 블록변환</b> 특수 아이템 지급!<br/>
-    💎 점수 <b>20점 = 1 GP</b> (한 판 최대 3,000 GP)
+    💣 15줄 클리어마다 <b>하단 2줄 폭파 · 슬로우 · 블록변환</b> 특수 아이템 1개 획득!<br/>
+    💎 점수 <b>100점 = 1 GP</b> (한 판 최대 1,000 GP)
   </div>
 
   <span id="feeBadge" class="fee-badge">참가비: 50 GP</span>
@@ -251,8 +251,8 @@ const BASE_FEE = 50, FEE_STEP = 25;
 const GAME_KEY = 'tetrisEntry';
 const GAME_TYPE = 'tetris';
 const RESET_MS = 24 * 60 * 60 * 1000;
-const SCORE_PER_GP = 20;      // 20점 = 1 GP
-const MAX_GP_PER_GAME = 3000; // 판당 최대 3,000 GP
+const SCORE_PER_GP = 100;     // 100점 = 1 GP (일반 한 판 10,000~25,000점 → 100~250 GP, 수이카·당구장 밸런스와 동일)
+const MAX_GP_PER_GAME = 1000; // 판당 최대 1,000 GP
 
 // 7종 테트로미노 (Modern Guideline 색상 & 매트릭스)
 const PIECES = {
@@ -308,9 +308,9 @@ let _canHold = true;
 let _score = 0, _lines = 0, _level = 1, _combo = -1, _b2b = false;
 let _dropInterval = 850, _lastDropTime = 0, _rafId = null;
 let _particles = [];
-let _items = { bomb: 1, slow: 1, iPiece: 1 };
+let _items = { bomb: 1, slow: 1, iPiece: 0 };
 let _slowUntil = 0;
-let _nextItemLineGoal = 10;
+let _nextItemLineGoal = 15;
 
 const canvas = $('tetrisCanvas');
 const ctx = canvas.getContext('2d');
@@ -442,7 +442,6 @@ function softDrop() {
   if (!_running || !_cur) return;
   if (!collides(_grid, _cur.matrix, _cur.x, _cur.y + 1)) {
     _cur.y++;
-    addScore(1);
     _lastDropTime = performance.now();
   } else {
     lockPiece();
@@ -451,12 +450,9 @@ function softDrop() {
 
 function hardDrop() {
   if (!_running || !_cur) return;
-  let dropped = 0;
   while (!collides(_grid, _cur.matrix, _cur.x, _cur.y + 1)) {
     _cur.y++;
-    dropped++;
   }
-  addScore(dropped * 2);
   sndDrop();
   lockPiece();
 }
@@ -506,16 +502,17 @@ function lockPiece() {
     _combo++;
     _lines += cleared;
     _level = Math.min(20, Math.floor(_lines / 10) + 1);
-    _dropInterval = Math.max(110, 850 - (_level - 1) * 42);
+    _dropInterval = Math.max(100, 820 - (_level - 1) * 44);
+    const levelMult = Math.min(5, 1 + (_level - 1) * 0.25); // 레벨 배율 최대 ×5 제한
 
     const baseScores = [0, 100, 300, 500, 800];
-    let gain = (baseScores[cleared] || 800) * _level;
+    let gain = Math.round((baseScores[cleared] || 800) * levelMult);
 
     // Back-to-Back 4줄 테트리스 보너스
     if (cleared === 4) {
       if (_b2b) {
-        gain = Math.round(gain * 1.5);
-        showPopup('🔥 B2B TETRIS! ×1.5');
+        gain = Math.round(gain * 1.35);
+        showPopup('🔥 B2B TETRIS! ×1.35');
       } else {
         showPopup('⚡ TETRIS! +800');
       }
@@ -528,13 +525,13 @@ function lockPiece() {
       else if (cleared >= 2) showPopup(`${cleared} LINES!`);
     }
 
-    if (_combo > 0) gain += _combo * 50 * _level;
+    if (_combo > 0) gain += Math.min(400, _combo * 40);
     addScore(gain);
     sndClear(cleared);
 
-    // 10줄마다 FG TETRIS 특수 아이템 랜덤 1종 충전
+    // 15줄마다 FG TETRIS 특수 아이템 랜덤 1종 충전
     while (_lines >= _nextItemLineGoal) {
-      _nextItemLineGoal += 10;
+      _nextItemLineGoal += 15;
       const keys = ['bomb', 'slow', 'iPiece'];
       const pick = keys[Math.floor(Math.random() * keys.length)];
       _items[pick]++;
@@ -548,17 +545,16 @@ function lockPiece() {
   spawnPiece();
 }
 
-// ── FG TETRIS 응용 특수 아이템 3종 ──
+// ── FG TETRIS 응용 특수 아이템 3종 (위기 탈출용, 추가 점수 인플레이션 없음) ──
 function useItemBomb() {
   if (!_running || _items.bomb <= 0) return;
   _items.bomb--;
-  sndClear(4);
+  sndClear(2);
   for (let i = 0; i < 2; i++) {
     spawnLineParticles(ROWS - 1 - i, '#f43f5e');
     _grid.pop();
     _grid.unshift(Array(COLS).fill(null));
   }
-  addScore(250 * _level);
   showPopup('💣 하단 2줄 폭파!');
   updateHud();
 }
@@ -720,9 +716,9 @@ function startGame(free) {
   _holdType = null;
   _canHold = true;
   _score = 0; _lines = 0; _level = 1; _combo = -1; _b2b = false;
-  _dropInterval = 850;
-  _items = { bomb: 1, slow: 1, iPiece: 1 };
-  _nextItemLineGoal = 10;
+  _dropInterval = 820;
+  _items = { bomb: 1, slow: 1, iPiece: 0 };
+  _nextItemLineGoal = 15;
   _slowUntil = 0;
   _particles = [];
   $('overModal').classList.remove('open');
@@ -882,7 +878,7 @@ async function triggerGameOver() {
   $('finalGP').textContent = _freeMode ? '(무료 연습 — GP 미지급)' : `+ ${gp.toLocaleString()} GP 획득!`;
   $('overMsg').textContent = _freeMode
     ? '참가비를 내고 플레이하면 점수에 따라 GP를 획득할 수 있습니다.'
-    : gp > 0 ? `${_score.toLocaleString()}점 (${_lines}줄 클리어) → ${gp.toLocaleString()} GP가 계정에 적립됩니다!` : '20점 이상 달성 시 GP를 획득할 수 있습니다!';
+    : gp > 0 ? `${_score.toLocaleString()}점 (${_lines}줄 클리어) → ${gp.toLocaleString()} GP가 계정에 적립됩니다!` : '100점 이상(1줄 클리어) 달성 시 GP를 획득할 수 있습니다!';
 
   $('overModal').classList.add('open');
 
