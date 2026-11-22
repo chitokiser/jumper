@@ -48,20 +48,24 @@ html,body{height:100%;background:#070a14;color:#fff;
 .ghb{background:rgba(255,255,255,.07);border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:4px}
 #scoreBox{color:#fbbf24}#lvBox{color:#38bdf8}#gpBox{color:#86efac}
 
-#stageWrap{flex:1;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 8px;gap:6px;position:relative;min-height:0}
-#playRow{display:flex;align-items:flex-start;justify-content:center;gap:8px;width:100%;position:relative}
+#stageWrap{flex:1;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 6px;gap:5px;position:relative;min-height:0}
+#playRow{display:flex;align-items:flex-start;justify-content:center;gap:6px;width:100%;position:relative}
 
-.side-col{display:flex;flex-direction:column;gap:8px;width:72px;flex-shrink:0}
-.mini-box{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:6px;text-align:center}
-.mini-box .lbl{font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;margin-bottom:4px}
-.mini-box canvas{display:block;margin:0 auto;background:#090d1a;border-radius:6px}
-.stat-mini{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:6px 4px;text-align:center}
-.stat-mini .k{font-size:9.5px;color:#64748b;font-weight:700}
-.stat-mini .v{font-size:13px;font-weight:900;color:#e2e8f0;margin-top:1px}
+.side-col{display:flex;flex-direction:column;gap:6px;width:62px;flex-shrink:0}
+.mini-box{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:5px 3px;text-align:center}
+.mini-box .lbl{font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.3px;margin-bottom:3px}
+.mini-box canvas{display:block;margin:0 auto;background:#090d1a;border-radius:6px;max-width:100%;height:auto}
+.stat-mini{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:5px 3px;text-align:center}
+.stat-mini .k{font-size:9px;color:#64748b;font-weight:700}
+.stat-mini .v{font-size:12px;font-weight:900;color:#e2e8f0;margin-top:1px}
 
 #boardWrap{position:relative;border:2px solid #334155;border-radius:10px;background:#090d1a;
-  box-shadow:0 0 28px rgba(56,189,248,.14);overflow:hidden}
-#tetrisCanvas{display:block}
+  box-shadow:0 0 28px rgba(56,189,248,.14);overflow:hidden;flex-shrink:0}
+#tetrisCanvas{display:block;width:220px;height:440px}
+@media (max-width:390px){
+  .side-col{width:54px;gap:5px}
+  #playRow{gap:5px}
+}
 #comboPopup{position:absolute;left:0;right:0;top:28%;text-align:center;pointer-events:none;
   font-size:24px;font-weight:900;color:#fde047;text-shadow:0 2px 12px rgba(0,0,0,.9);opacity:0}
 #comboPopup.show{animation:popAnim .85s ease-out forwards}
@@ -321,8 +325,30 @@ const nextCanvas = $('nextCanvas');
 const nextCtx = nextCanvas.getContext('2d');
 
 const screens = { loading: $('loadingScreen'), lobby: $('lobbyScreen'), game: $('gameScreen') };
+
+function fitBoardToViewport() {
+  if (screens.game.classList.contains('hidden')) return;
+  const vw = Math.min(window.innerWidth || 360, 440);
+  const sideW = vw <= 390 ? 54 : 62;
+  const gap = vw <= 390 ? 5 : 6;
+  // 좌우 패널 2개 + 간격 2개 + 좌우 패딩 12px + 보드 테두리 4px 제외한 순수 캔버스 가용 너비
+  const availW = vw - (sideW * 2) - (gap * 2) - 18;
+  // 상단 헤더(~40px) + 아이템바(~32px) + 터치패드(~52px) + 하단 아케이드바(~38px) + 여백 제외한 가용 높이
+  const vh = window.innerHeight || 680;
+  const availH = Math.max(260, vh - 190);
+  const targetW = Math.max(140, Math.min(220, availW, Math.floor(availH / 2)));
+  const targetH = targetW * 2;
+  canvas.style.width = `${targetW}px`;
+  canvas.style.height = `${targetH}px`;
+}
+window.addEventListener('resize', fitBoardToViewport);
+
 function showScreen(name) {
   Object.entries(screens).forEach(([k, el]) => el.classList.toggle('hidden', k !== name));
+  if (name === 'game') {
+    fitBoardToViewport();
+    requestAnimationFrame(fitBoardToViewport);
+  }
 }
 
 function showPopup(txt) {
