@@ -253,8 +253,9 @@ class Door extends Phaser.GameObjects.Container {
     scene.add.existing(this);
   }
 
-  destroy() {
+  destroy(fromScene) {
     this.off('pointerdown');
+    super.destroy(fromScene);
   }
 
   start(time) {
@@ -376,6 +377,9 @@ class Door extends Phaser.GameObjects.Container {
     if (!closeDoor) {
       this.off('pointerdown');
       this.scene.isPaused = true;
+      setTimeout(() => {
+        if (_running && this.scene && !this.scene.isGameOver) this.scene.levelFail();
+      }, 450);
     }
   }
 
@@ -420,6 +424,9 @@ class Door extends Phaser.GameObjects.Container {
         this.scene.killed(this.x, this.y);
       }
     });
+    setTimeout(() => {
+      if (_running && this.scene && !this.scene.isGameOver) this.scene.killed(this.x, this.y);
+    }, 550);
 
     let smoke1 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'smoke1');
     let smoke2 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'smoke2');
@@ -559,6 +566,7 @@ class MainGame extends Phaser.Scene {
     });
 
     this.isPaused = false;
+    this.isGameOver = false;
     this.level = 1;
     this.killDelay = 0.8;
     this.closeDurationLow = 2000;
@@ -684,6 +692,8 @@ class MainGame extends Phaser.Scene {
   }
 
   levelFail() {
+    if (this.isGameOver) return;
+    this.isGameOver = true;
     this.isPaused = true;
     this.sign = this.add.image(512, -200, 'assets', 'gameOver');
     this.sound.play('gameOver');
@@ -692,10 +702,18 @@ class MainGame extends Phaser.Scene {
       targets: this.sign,
       y: 384,
       ease: 'Bounce.easeOut',
-      duration: 1300,
+      duration: 950,
       onComplete: () => {
         triggerGameOver();
       }
+    });
+
+    // 브라우저 탭 비활성화나 트윈 지연 시에도 즉시 결과 모달이 열리도록 보장
+    setTimeout(() => {
+      if (!_settled) triggerGameOver();
+    }, 1050);
+    this.input.once('pointerdown', () => {
+      if (!_settled) triggerGameOver();
     });
   }
 
@@ -778,9 +796,10 @@ class MainGame extends Phaser.Scene {
 
   update(time) {
     if (!this.isPaused && _running) {
-      this.doors.forEach((door) => {
-        door.update(time);
-      });
+      for (let i = 0; i < this.doors.length; i++) {
+        if (this.isPaused || !_running) break;
+        this.doors[i].update(time);
+      }
     }
   }
 }
@@ -964,19 +983,23 @@ async function triggerGameOver() {
 $('btnEnter').onclick = async () => {
   $('btnEnter').disabled = true;
   const ok = await deductFee();
-  if (!ok) { alert('GP가 부족하거나 참가 처리에 실패했습니다.'); $('btnEnter').disabled = false; return; }
+  $('btnEnter').disabled = false;
+  if (!ok) { alert('GP가 부족하거나 참가 처리에 실패했습니다.'); return; }
   startGame(false);
 };
 $('btnFree').onclick = () => startGame(true);
 $('btnRetry').onclick = async () => {
-  $('overModal').classList.remove('open');
   if (!_freeMode) {
     $('btnRetry').disabled = true;
+    $('btnRetry').textContent = '⏳ 참가 처리 중...';
     const ok = await deductFee();
     $('btnRetry').disabled = false;
-    if (!ok) { alert('GP가 부족하여 로비로 이동합니다.'); goLobby(); return; }
+    $('btnRetry').textContent = '🔄 다시 도전';
+    if (!ok) { $('overModal').classList.remove('open'); alert('GP가 부족하여 로비로 이동합니다.'); goLobby(); return; }
+    $('overModal').classList.remove('open');
     startGame(false);
   } else {
+    $('overModal').classList.remove('open');
     startGame(true);
   }
 };
