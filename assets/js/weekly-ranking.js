@@ -9,23 +9,43 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/fireba
 const VN_OFFSET_MS = 7 * 3600 * 1000;
 const DAY_MS = 86400 * 1000;
 const WEEK_MS = 7 * DAY_MS;
-const DEFAULT_PRIZE_STEP = 500_000;
+const DEFAULT_PRIZE_STEP = 50_000;
+const RANK_WEIGHT_SUM = 55; // 1..10 합계
+
+// ★ 전 게임 주간 토너먼트 총상금 절대 한도: 3억 GP (300,000,000 GP)
+export const WEEKLY_TOTAL_BUDGET_CAP_GP = 300_000_000;
 
 export const WEEKLY_GAMES = {
-  billiards: { label: '베스트당구장', icon: '🎱', href: '/billiards.html', tier: '👑 최고 티어 (S)', prizeStep: 5_000_000 }, // 1위 5,000만 ~ 10위 500만 GP (총 2억 7,500만 GP)
-  tetris:    { label: '네온테트리스', icon: '🧱', href: '/tetris.html',    tier: '🔥 상급 티어 (A)', prizeStep: 500_000   }, // 1위 500만 ~ 10위 50만 GP (총 2,750만 GP)
-  game2048:  { label: '2048',        icon: '🔢', href: '/2048.html',      tier: '⚡ 중상 티어 (B)', prizeStep: 300_000   }, // 1위 300만 ~ 10위 30만 GP (총 1,650만 GP)
-  suika:     { label: '수박게임',     icon: '🍉', href: '/suika.html',     tier: '🎯 중급 티어 (C)', prizeStep: 200_000   }, // 1위 200만 ~ 10위 20만 GP (총 1,100만 GP)
-  bankpanic: { label: '뱅크패닉',     icon: '🤠', href: '/bankpanic.html', tier: '🔫 캐주얼 티어 (D)', prizeStep: 100_000 }, // 1위 100만 ~ 10위 10만 GP (총 550만 GP)
+  billiards: { label: '베스트당구장', icon: '🎱', href: '/billiards.html', tier: '👑 최고 티어 (S)', fixedTier: true, prizeStep: 5_000_000 }, // 1위 5,000만 ~ 10위 500만 GP (총 2억 7,500만 GP)
+  tetris:    { label: '네온테트리스', icon: '🧱', href: '/tetris.html',    tier: '🔥 상급 티어 (A)', prizeStep: 180_000   }, // 1위 180만 ~ 10위 18만 GP (총 990만 GP)
+  game2048:  { label: '2048',        icon: '🔢', href: '/2048.html',      tier: '⚡ 중상 티어 (B)', prizeStep: 120_000   }, // 1위 120만 ~ 10위 12만 GP (총 660만 GP)
+  suika:     { label: '수박게임',     icon: '🍉', href: '/suika.html',     tier: '🎯 중급 티어 (C)', prizeStep: 80_000    }, // 1위 80만 ~ 10위 8만 GP (총 440만 GP)
+  bankpanic: { label: '뱅크패닉',     icon: '🤠', href: '/bankpanic.html', tier: '🔫 캐주얼 티어 (D)', prizeStep: 50_000  }, // 1위 50만 ~ 10위 5만 GP (총 275만 GP)
 };
+
+export function effectivePrizeStep(gameType) {
+  const g = WEEKLY_GAMES[gameType];
+  if (!g) return DEFAULT_PRIZE_STEP;
+  let fixedPool = 0, flexPool = 0;
+  for (const item of Object.values(WEEKLY_GAMES)) {
+    const pool = RANK_WEIGHT_SUM * (item.prizeStep || DEFAULT_PRIZE_STEP);
+    if (item.fixedTier) fixedPool += pool;
+    else flexPool += pool;
+  }
+  if (fixedPool + flexPool <= WEEKLY_TOTAL_BUDGET_CAP_GP) return g.prizeStep;
+  if (g.fixedTier) return g.prizeStep;
+  const remainingBudget = Math.max(0, WEEKLY_TOTAL_BUDGET_CAP_GP - fixedPool);
+  const ratio = flexPool > 0 ? (remainingBudget / flexPool) : 0;
+  return Math.max(1000, Math.floor((g.prizeStep * ratio) / 1000) * 1000);
+}
 
 export const prizeForRank = (r, gameType) => {
   if (r < 1 || r > 10) return 0;
-  const step = WEEKLY_GAMES[gameType]?.prizeStep || DEFAULT_PRIZE_STEP;
-  return (11 - r) * step;
+  return (11 - r) * effectivePrizeStep(gameType);
 };
 
-export const totalWeeklyPrize = (gameType) => 55 * (WEEKLY_GAMES[gameType]?.prizeStep || DEFAULT_PRIZE_STEP);
+export const totalWeeklyPrize = (gameType) => RANK_WEIGHT_SUM * effectivePrizeStep(gameType);
+export const allGamesWeeklyPrizeSum = () => Object.keys(WEEKLY_GAMES).reduce((s, k) => s + totalWeeklyPrize(k), 0);
 
 export function weekInfo(ms = Date.now()) {
   const vn = ms + VN_OFFSET_MS;
@@ -204,10 +224,11 @@ export async function submitWeeklyScore(gameType, score) {
 export function mountWeeklyPromo(el) {
   if (!el) return;
   injectCss();
+  const totalAll = fmtGp(allGamesWeeklyPrizeSum());
   el.innerHTML = `
     <div class="wr-promo">
-      <h3>🏆 주간 게임 토너먼트 · 난이도별 티어 차등 GP 보상</h3>
-      <p>👑 최고 티어 <b>베스트당구장(1위 5,000만 GP · 총 2억 7,500만 GP)</b>부터 네온테트리스(1위 500만 GP) · 2048(1위 300만 GP) · 수박게임(1위 200만 GP) · 뱅크패닉(1위 100만 GP)까지! 매주 일요일 00:00(베트남 시간) 마감 후 각 게임 TOP10에게 GP를 자동 지급합니다.</p>
+      <h3>🏆 주간 게임 토너먼트 · 전 게임 합산 총 ${totalAll} GP (3억 GP 한도)</h3>
+      <p>👑 최고 티어 <b>베스트당구장(1위 5,000만 GP · 총 2억 7,500만 GP)</b>부터 네온테트리스(1위 180만 GP) · 2048(1위 120만 GP) · 수박게임(1위 80만 GP) · 뱅크패닉(1위 50만 GP)까지 난이도별로 차등 지급! 매주 일요일 00:00(베트남 시간) 마감 후 각 게임 TOP10에게 GP를 자동 지급합니다.</p>
       <div class="wr-promo-games">
         ${Object.entries(WEEKLY_GAMES).map(([k, g]) => `
           <a class="wr-promo-g" href="${g.href}">

@@ -135,6 +135,20 @@ Firebase Authentication + Cloud Functions
 - 원장과 잔액 변경은 반드시 Firestore 트랜잭션(`runTransaction`)을 통해 원자적으로 처리한다.
 - 중복 요청 방지를 위한 멱등성 키(Idempotency Key)를 적용한다.
 
+## 3.4 주간 게임 랭킹 토너먼트 GP 총보상 한도 정책 (★ 전 게임 합산 3억 GP 절대 상한)
+- **전 게임 합산 주간 랭킹 총상금 상한 (`WEEKLY_TOTAL_BUDGET_CAP_GP`)**: **`300,000,000 GP` (3억 GP)**
+- 모든 주간 랭킹 대상 게임(`weekly_rankings`)의 TOP 10 상금 총합($\sum \text{게임별 주간 상금 합계}$, 각 게임당 $55 \times \text{prizeStep}$)은 어떠한 경우에도 **주간 총 3억 GP를 초과할 수 없다**.
+- **티어별 차등 배분 기준 (2026-11-22 확정, 총합 2억 9,865만 GP ≤ 3억 GP):**
+  1. **👑 S-TIER (`billiards` 베스트당구장 — 최고 티어 고정)**: `prizeStep = 5,000,000 GP` (1위 5,000만 GP ~ 10위 500만 GP, 주간 합계 **2억 7,500만 GP**)
+  2. **🔥 A-TIER (`tetris` 네온 테트리스)**: `prizeStep = 180,000 GP` (1위 180만 GP ~ 10위 18만 GP, 주간 합계 **990만 GP**)
+  3. **⚡ B-TIER (`game2048` 2048)**: `prizeStep = 120,000 GP` (1위 120만 GP ~ 10위 12만 GP, 주간 합계 **660만 GP**)
+  4. **🎯 C-TIER (`suika` 수박게임)**: `prizeStep = 80,000 GP` (1위 80만 GP ~ 10위 8만 GP, 주간 합계 **440만 GP**)
+  5. **🔫 D-TIER (`bankpanic` 뱅크 패닉)**: `prizeStep = 50,000 GP` (1위 50만 GP ~ 10위 5만 GP, 주간 합계 **275만 GP**)
+- **신규 게임 추가 및 업그레이드 시 필수 준수 사항:**
+  - 향후 새로운 아케이드/미니게임을 추가하거나 기존 게임을 업그레이드할 때, 반드시 **S-TIER(베스트당구장 2억 7,500만 GP)를 포함한 전체 게임의 주간 랭킹 상금 총합이 `300,000,000 GP` (3억 GP) 이내**가 되도록 나머지 아케이드 게임(`A~D 티어`, 잔여 예산 `2,500만 GP` 한도 내)의 `prizeStep`을 조정해야 한다.
+  - 서버(`functions/handlers/weeklyRanking.js`)와 클라이언트(`assets/js/weekly-ranking.js`)의 `effectivePrizeStep()` 함수는 총합이 3억 GP를 초과할 경우 S-TIER를 제외한 일반 티어 게임 상금을 자동으로 비례 축소하여 **3억 GP 한도를 코드 레벨에서 강제 보장**한다.
+  - 또한 단일 판 플레이 보상(`functions/handlers/gameReward.js`) 역시 과도한 GP 인플레이션이 발생하지 않도록 타 아케이드 게임(판당 최대 `1,000 GP` 수준)과 밸런스를 맞추어야 한다.
+
 ---
 
 # 4. 결제·수수료 및 리워드 알고리즘 (Q3, Q4, Q5, Q6 확정 반영)

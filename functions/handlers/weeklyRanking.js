@@ -20,25 +20,50 @@ const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
 const DAY_MS       = 24 * 60 * 60 * 1000;
 const WEEK_MS      = 7 * DAY_MS;
 
+// ★ 주간 랭킹 전 게임 합산 GP 총보상 한도 (3억 GP 절대 상한 — CLAUDE.md 및 개발가이드.md 표준 정책)
+const WEEKLY_TOTAL_BUDGET_CAP_GP = 300_000_000;
+
 const WEEKLY_GAMES = {
-  // 베스트당구장 (최고 티어 S-TIER): 1위 5,000만 GP ~ 10위 500만 GP (총 2억 7,500만 GP 유지)
-  billiards: { entryKey: null, label: '베스트당구장', maxScore: 300000, serverOnly: true, tier: 'S', prizeStep: 5_000_000 },
-  // 아케이드 미니게임: 난이도 및 플레이 호흡에 따라 차등 보상
-  tetris:    { entryKey: 'tetrisEntry',    label: '네온테트리스', maxScore: 100000, tier: 'A', prizeStep: 500_000 }, // 1위 500만 ~ 10위 50만 GP (총 2,750만 GP)
-  game2048:  { entryKey: 'game2048Entry',  label: '2048',         maxScore: 200000, tier: 'B', prizeStep: 300_000 }, // 1위 300만 ~ 10위 30만 GP (총 1,650만 GP)
-  suika:     { entryKey: 'suikaEntry',     label: '수박게임',     maxScore: 90000,  tier: 'C', prizeStep: 200_000 }, // 1위 200만 ~ 10위 20만 GP (총 1,100만 GP)
-  bankpanic: { entryKey: 'bankpanicEntry', label: '뱅크패닉',     maxScore: 100000, tier: 'D', prizeStep: 100_000 }, // 1위 100만 ~ 10위 10만 GP (총 550만 GP)
+  // 베스트당구장 (최고 티어 S-TIER 고정): 1위 5,000만 GP ~ 10위 500만 GP (합계 2억 7,500만 GP)
+  billiards: { entryKey: null, label: '베스트당구장', maxScore: 300000, serverOnly: true, tier: 'S', fixedTier: true, prizeStep: 5_000_000 },
+  // 아케이드 미니게임: 전 게임 합산 3억 GP 한도(잔여 2,500만 GP 예산) 내에서 난이도별 차등 배분 (현재 5개 게임 총합 2억 9,865만 GP)
+  tetris:    { entryKey: 'tetrisEntry',    label: '네온테트리스', maxScore: 100000, tier: 'A', prizeStep: 180_000 }, // 1위 180만 ~ 10위 18만 GP (총 990만 GP)
+  game2048:  { entryKey: 'game2048Entry',  label: '2048',         maxScore: 200000, tier: 'B', prizeStep: 120_000 }, // 1위 120만 ~ 10위 12만 GP (총 660만 GP)
+  suika:     { entryKey: 'suikaEntry',     label: '수박게임',     maxScore: 90000,  tier: 'C', prizeStep: 80_000  }, // 1위 80만 ~ 10위 8만 GP (총 440만 GP)
+  bankpanic: { entryKey: 'bankpanicEntry', label: '뱅크패닉',     maxScore: 100000, tier: 'D', prizeStep: 50_000  }, // 1위 50만 ~ 10위 5만 GP (총 275만 GP)
 };
 
 const TOP_N          = 10;
-const PRIZE_STEP_GP  = 500_000;            // 기본 폴백 단위
+const RANK_WEIGHT_SUM = (TOP_N * (TOP_N + 1)) / 2; // 55
+const PRIZE_STEP_GP  = 50_000;             // 기본 폴백 단위
 const SESSION_MIN_MS = 10 * 1000;          // 10초 미만 판은 접수 안 함
 const SESSION_MAX_MS = 3 * 60 * 60 * 1000; // 3시간 넘은 참가권은 만료
 
-/** 게임별·순위별 상금 (당구 S티어: 1위 5천만~10위 5백만 / 테트리스 A티어: 500만~50만 / 2048 B티어: 300만~30만 / 수박 C티어: 200만~20만 / 뱅크패닉 D티어: 100만~10만) */
+/**
+ * 전 게임 주간 총상금 3억 GP(WEEKLY_TOTAL_BUDGET_CAP_GP) 상한 보장 단위 계산
+ * 향후 신규 게임이 추가되어 설정값 합계가 3억 GP를 초과하더라도 S티어(당구)를 제외한 나머지 게임을 자동 비례 축소하여 3억 GP 이내로 강제 유지한다.
+ */
+function effectivePrizeStep(gameType) {
+  const g = WEEKLY_GAMES[gameType];
+  if (!g) return PRIZE_STEP_GP;
+  let fixedPool = 0;
+  let flexPool = 0;
+  for (const item of Object.values(WEEKLY_GAMES)) {
+    const pool = RANK_WEIGHT_SUM * (item.prizeStep || PRIZE_STEP_GP);
+    if (item.fixedTier) fixedPool += pool;
+    else flexPool += pool;
+  }
+  if (fixedPool + flexPool <= WEEKLY_TOTAL_BUDGET_CAP_GP) return g.prizeStep;
+  if (g.fixedTier) return g.prizeStep;
+  const remainingBudget = Math.max(0, WEEKLY_TOTAL_BUDGET_CAP_GP - fixedPool);
+  const ratio = flexPool > 0 ? (remainingBudget / flexPool) : 0;
+  return Math.max(1000, Math.floor((g.prizeStep * ratio) / 1000) * 1000);
+}
+
+/** 게임별·순위별 상금 (전 게임 주간 총합 3억 GP 이내) */
 function prizeForRank(rank, gameType) {
   if (!Number.isInteger(rank) || rank < 1 || rank > TOP_N) return 0;
-  const step = WEEKLY_GAMES[gameType]?.prizeStep || PRIZE_STEP_GP;
+  const step = effectivePrizeStep(gameType);
   return (TOP_N + 1 - rank) * step;
 }
 
