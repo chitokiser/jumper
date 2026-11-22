@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin*
+Disallow: /debug.html
+Disallow: /check.html
 
-Sitemap: https://jump22.netlify.app/sitemap.xml
+Sitemap: https://bestclubvn.netlify.app/sitemap.xml
