@@ -831,22 +831,20 @@ async function deductFee() {
     _entryFee = BASE_FEE + newCount * FEE_STEP;
     return true;
   } catch {
-    // Cloud Function에 아직 tetrisEntry가 배포되기 전일 경우 클라이언트 트랜잭션 폴백
+    // Cloud Functions 재배포 전이라도 이미 서버에 배포된 relayEntry(동일 참가비 50+25 GP)를 통해 서버사이드 원자적 차감
     try {
-      const ref = doc(db, 'battle_players', _uid);
-      const snap = await getDoc(ref);
-      const gold = snap.data()?.gold || 0;
-      if (gold < _entryFee) return false;
-      const newCount = _entryCount + 1;
-      await updateDoc(ref, {
-        gold: increment(-_entryFee),
-        [GAME_KEY]: { count: newCount, resetAt: _entryResetAt || Date.now() },
-      });
-      _playerGP -= _entryFee;
+      const res2 = await httpsCallable(functions, 'payGameEntry')({ gameKey: 'relayEntry' });
+      const { fee, newCount } = res2.data;
+      _playerGP -= fee;
       _entryCount = newCount;
       _entryFee = BASE_FEE + newCount * FEE_STEP;
+      // battle_players의 tetrisEntry 카운터도 동기화 (gold 제외 필드는 클라이언트 업데이트 허용됨)
+      updateDoc(doc(db, 'battle_players', _uid), {
+        [GAME_KEY]: { count: newCount, resetAt: _entryResetAt || Date.now() },
+      }).catch(() => {});
       return true;
-    } catch {
+    } catch (e2) {
+      console.error('payGameEntry failed:', e2);
       return false;
     }
   }
@@ -857,18 +855,18 @@ async function awardGP(amount) {
   try {
     await httpsCallable(functions, 'claimGameReward')({ gameType: GAME_TYPE, amount });
   } catch {
-    // Cloud Function 배포 전 폴백
+    // Cloud Functions 재배포 전이라도 이미 배포된 relay(최대 3,000 GP 한도 동일)로 서버사이드 GP 지급
     try {
-      const todayKey = `gameEarn_tetris_${new Date().toISOString().slice(0, 10)}`;
-      await updateDoc(doc(db, 'battle_players', _uid), {
-        gold: increment(amount),
-        [todayKey]: increment(amount),
-      });
-    } catch {}
+      await httpsCallable(functions, 'claimGameReward')({ gameType: 'relay', amount });
+    } catch (e2) {
+      console.error('claimGameReward failed:', e2);
+    }
   }
   try {
+    const todayKey = `gameEarn_tetris_${new Date().toISOString().slice(0, 10)}`;
     await updateDoc(doc(db, 'battle_players', _uid), {
       'tetris.totalGP': increment(amount),
+      [todayKey]: increment(amount),
     });
   } catch {}
 }
