@@ -1412,28 +1412,72 @@
         </div>
       </section>
 
-      <!-- 잭팟 당첨 내역 -->
-      <section class="panel mp-section collapsible is-collapsed" id="jackpotHistSection" style="display:none;">
+      <!-- 🎰 내가 잭팟으로 받은 포인트(P) & 아이템 당첨 내역 -->
+      <section class="panel mp-section collapsible" id="jackpotHistSection" style="display:none;">
         <div class="mp-section-head">
-          <h2 class="mp-section-title" data-i18n="section_jackpot">🎰 잭팟 당첨 내역</h2>
+          <h2 class="mp-section-title" data-i18n="section_jackpot">🎰 내가 잭팟으로 받은 포인트(P) 내역</h2>
           <button class="btn btn--sm" id="btnRefreshJackpotHist" type="button" data-i18n="btn_refresh">새로고침</button>
         </div>
         <!-- 잭팟 통계 카드 -->
         <div id="jackpotStatRow" class="mp-kv-grid"
-          style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-          <div class="mp-stat-card">
-            <div class="mp-stat-label" data-i18n="jackpot_stat_total">누적 잭팟 당첨</div>
-            <div class="mp-stat-value" id="jackpotTotalHex">-</div>
-            <div class="mp-stat-sub" id="jackpotTotalCount"></div>
+          style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;">
+          <div class="mp-stat-card" style="border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08);">
+            <div class="mp-stat-label">누적 잭팟 획득 포인트(P)</div>
+            <div class="mp-stat-value" id="jackpotTotalHex" style="color:#d97706;">0 P</div>
+            <div class="mp-stat-sub" id="jackpotTotalCount">총 0회 당첨</div>
           </div>
           <div class="mp-stat-card" style="border-color:rgba(124,58,237,.35);background:rgba(124,58,237,.08);">
-            <div class="mp-stat-label" data-i18n="jackpot_stat_redeemable">Point 전환 가능 포인트</div>
-            <div class="mp-stat-value" id="jackpotRedeemable" style="color:#a78bfa;">-</div>
-            <div class="mp-stat-sub" data-i18n="jackpot_stat_min">10 Point 이상 시 전환 가능</div>
+            <div class="mp-stat-label">사용한 보너스 티켓(BT)</div>
+            <div class="mp-stat-value" id="jackpotTotalBtUsed" style="color:#7c3aed;">0 BT</div>
+            <div class="mp-stat-sub" id="jackpotBestWinSub">최고 당첨: 0 P</div>
+          </div>
+          <div class="mp-stat-card" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.08);">
+            <div class="mp-stat-label">현재 보유 포인트(P)</div>
+            <div class="mp-stat-value" id="jackpotRedeemable" style="color:#059669;">0 P</div>
+            <div class="mp-stat-sub">10 P 이상 시 BM 전환 가능</div>
           </div>
         </div>
         <div id="jackpotHistList" class="mp-table-wrap">
           <p class="hint" data-i18n="jackpot_loading">불러오는 중...</p>
+        </div>
+      </section>
+
+      <!-- 🏆 게임 주간랭킹 상금 & 일일 플레이로 받은 GP 내역 -->
+      <section class="panel mp-section collapsible" id="gpRewardHistSection" style="display:none;">
+        <div class="mp-section-head">
+          <h2 class="mp-section-title">🏆 게임 주간랭킹 &amp; 플레이 GP 획득 내역</h2>
+          <button class="btn btn--sm" id="btnRefreshGpRewardHist" type="button">새로고침</button>
+        </div>
+        <!-- GP 획득 통계 요약 카드 -->
+        <div id="gpRewardStatRow" class="mp-kv-grid"
+          style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:12px;">
+          <div class="mp-stat-card" style="border-color:rgba(37,99,235,.35);background:rgba(37,99,235,.07);">
+            <div class="mp-stat-label">🏅 주간랭킹 상금 누적 GP</div>
+            <div class="mp-stat-value" id="gpWeeklyPrizeTotal" style="color:#2563eb;">0 GP</div>
+            <div class="mp-stat-sub" id="gpWeeklyPrizeCount">TOP 10 입상 0회</div>
+          </div>
+          <div class="mp-stat-card" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.07);">
+            <div class="mp-stat-label">🎮 게임 플레이·보너스 GP</div>
+            <div class="mp-stat-value" id="gpPlayEarnTotal" style="color:#059669;">0 GP</div>
+            <div class="mp-stat-sub" id="gpPlayEarnCount">일일 게임·출석·보너스 합계</div>
+          </div>
+          <div class="mp-stat-card" style="border-color:rgba(124,58,237,.35);background:rgba(124,58,237,.07);">
+            <div class="mp-stat-label">💰 현재 보유 게임 GP</div>
+            <div class="mp-stat-value" id="gpCurrentGoldDisplay" style="color:#7c3aed;">0 GP</div>
+            <div class="mp-stat-sub" id="gpCurrentWeekRankSub">이번 주 랭킹 도전 중</div>
+          </div>
+        </div>
+
+        <!-- 탭 전환: 전체 / 주간랭킹 상금 / 일일 게임 플레이 -->
+        <div id="gpHistFilterTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+          <button type="button" class="btn btn--sm btn--primary gp-tab-btn" data-gp-tab="all" style="border-radius:99px;font-weight:700;">전체 GP 내역</button>
+          <button type="button" class="btn btn--sm gp-tab-btn" data-gp-tab="weekly_rank" style="border-radius:99px;font-weight:700;background:#fff;color:#334155;border:1px solid #cbd5e1;">🏅 주간랭킹 상금 (TOP 10)</button>
+          <button type="button" class="btn btn--sm gp-tab-btn" data-gp-tab="daily_play" style="border-radius:99px;font-weight:700;background:#fff;color:#334155;border:1px solid #cbd5e1;">🎮 일일 게임·보너스 GP</button>
+          <button type="button" class="btn btn--sm gp-tab-btn" data-gp-tab="this_week" style="border-radius:99px;font-weight:700;background:#fff;color:#334155;border:1px solid #cbd5e1;">📊 이번 주 내 랭킹 점수</button>
+        </div>
+
+        <div id="gpRewardHistList" class="mp-table-wrap">
+          <p class="hint">게임 GP 획득 내역을 불러오는 중...</p>
         </div>
       </section>
 

@@ -588,7 +588,8 @@ GP를 Point로 전환하시겠습니까?`)) return;
         }
 
         if (elPoint) {
-          const btnHtml = `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>`;
+          const btnHtml = `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>` +
+            `<button id="btnConvertPointToGp" class="btn btn--sm" style="margin-top:4px; margin-left:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #059669, #0d9488); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(5,150,105,0.3); outline:none; cursor:pointer;">🎮 게임GP로 전환</button>`;
           if (!elPoint.innerHTML.includes("btnExchangePoint")) {
             elPoint.innerHTML = `<span id="ptSpan" style="font-size:1.6rem;">${pBal.toLocaleString("ko-KR")} P</span>` + btnHtml;
           } else {
@@ -607,7 +608,8 @@ GP를 Point로 전환하시겠습니까?`)) return;
       // 포인트 전환 바인딩
       if (elPoint) {
         elPoint.innerHTML = `<span id="ptSpan" style="font-size:1.6rem;">${pointBal.toLocaleString("ko-KR")} P</span>` +
-          `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>`;
+          `<button id="btnExchangePoint" class="btn btn--sm" style="margin-top:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(124,58,237,0.3); outline:none; cursor:pointer;">💸 머니(Money)로 전환</button>` +
+          `<button id="btnConvertPointToGp" class="btn btn--sm" style="margin-top:4px; margin-left:4px; padding:6px 12px; font-size:0.8rem; font-weight:700; background:linear-gradient(135deg, #059669, #0d9488); color:#fff; border:none; border-radius:8px; box-shadow:0 4px 10px rgba(5,150,105,0.3); outline:none; cursor:pointer;">🎮 게임GP로 전환</button>`;
         setTimeout(() => {
           const btnExc = document.getElementById("btnExchangePoint");
           if (btnExc) {
@@ -640,6 +642,41 @@ GP를 Point로 전환하시겠습니까?`)) return;
                 alert("전환 실패: " + (err.message || "서버 오류"));
                 btnExc.disabled = false;
                 btnExc.textContent = "💸 머니(Money)로 전환";
+              }
+            });
+          }
+
+          const btnP2Gp = document.getElementById("btnConvertPointToGp");
+          if (btnP2Gp) {
+            btnP2Gp.addEventListener("click", async () => {
+              try {
+                const userSnap2 = await getDoc(doc(db, "users", uid));
+                const currentPoints = userSnap2.exists() ? Number(userSnap2.data().pointBalance || 0) : pointBal;
+                if (currentPoints < 10) {
+                  alert("최소 10 P 이상이어야 전환할 수 있습니다.");
+                  return;
+                }
+                const bpS2 = await getDoc(doc(db, "battle_players", uid));
+                const userLv = bpS2.exists() ? Math.max(1, Number(bpS2.data().gsLevel || 1)) : 1;
+                const usePoints = Math.min(Math.floor(currentPoints), 10000);
+                const rawGp = Math.floor((usePoints * 10) / userLv);
+                const finalGp = Math.floor(rawGp * 0.95);
+                const fee = rawGp - finalGp;
+                const ok = confirm(`보유 포인트: ${currentPoints.toLocaleString()} P\n전환할 포인트: ${usePoints.toLocaleString()} P (하루 1회, 최대 10,000 P)\n게임 레벨: Lv.${userLv}\n전환 공식: 포인트 × 10 ÷ 레벨 = ${rawGp.toLocaleString()} GP\n수수료 5%: -${fee.toLocaleString()} GP\n최종 수령 GP: ${finalGp.toLocaleString()} GP\n\n게임GP로 전환하시겠습니까?`);
+                if (!ok) return;
+
+                btnP2Gp.disabled = true;
+                btnP2Gp.textContent = "전환 중...";
+                const fn = httpsCallable(functions, "convertPointToGp");
+                const res = await fn({});
+                const d = res.data || {};
+                alert(`✅ 전환 완료!\n사용 포인트: ${Number(d.usedPoints || 0).toLocaleString()} P\n획득 GP: +${Number(d.gp || 0).toLocaleString()} GP`);
+                await loadKCultureBalances(uid);
+              } catch (err) {
+                alert("전환 실패: " + (err.message || "서버 오류"));
+              } finally {
+                btnP2Gp.disabled = false;
+                btnP2Gp.textContent = "🎮 게임GP로 전환";
               }
             });
           }
@@ -1226,158 +1263,414 @@ async function loadJackpotHistory(uid) {
   const section = $("jackpotHistSection");
   if (!wrap) return;
 
-  wrap.innerHTML = `<p class="hint">${_t('jackpot_loading')}</p>`;
+  if (section) {
+    section.style.display = "";
+    section.classList.remove("is-collapsed");
+  }
+  wrap.innerHTML = `<p class="hint">잭팟 포인트(P) 당첨 내역을 불러오는 중...</p>`;
+
+  let docs = [];
+  let userPointBalance = 0;
+
+  try {
+    const uSnap = await getDoc(doc(db, "users", uid));
+    if (uSnap.exists()) {
+      userPointBalance = Number(uSnap.data()?.pointBalance || 0);
+    }
+  } catch (_) {}
 
   try {
     const q = query(
       collection(db, "jackpot_wins"),
       where("uid", "==", uid),
       orderBy("createdAt", "desc"),
-      limit(30)
+      limit(50)
     );
     const snap = await getDocs(q);
+    docs = snap.docs;
+  } catch (_) {
+    try {
+      const qFallback = query(
+        collection(db, "jackpot_wins"),
+        where("uid", "==", uid),
+        limit(50)
+      );
+      const snapFallback = await getDocs(qFallback);
+      docs = snapFallback.docs.slice().sort((a, b) => {
+        const ta = a.data().createdAt?.seconds || a.data().timestamp?.seconds || 0;
+        const tb = b.data().createdAt?.seconds || b.data().timestamp?.seconds || 0;
+        return tb - ta;
+      });
+    } catch (e2) {
+      wrap.innerHTML = `<div class="jp-hist-empty">잭팟 내역을 불러오지 못했습니다: ${esc(e2.message || String(e2))}</div>`;
+      return;
+    }
+  }
 
-    if (snap.empty) {
-      wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_empty')}</div>`;
-      if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
-      const statRow = $("jackpotStatRow");
-      if (statRow) statRow.style.display = "none";
+  let totalPointsP = 0;
+  let totalBtUsed = 0;
+  let bestWinP = 0;
+
+  docs.forEach((d) => {
+    const v = d.data() || {};
+    let pts = Number(v.pointsEarned ?? v.amountVnd ?? v.amountKrw ?? 0);
+    if (!pts && v.onchainJackpotPointsWei) {
+      try {
+        pts = Math.round(Number(BigInt(v.onchainJackpotPointsWei)) / 1e18);
+      } catch (_) {}
+    }
+    if (Number.isFinite(pts) && pts > 0) {
+      totalPointsP += pts;
+      if (pts > bestWinP) bestWinP = pts;
+    }
+    totalBtUsed += Math.max(1, Number(v.btUsed || 1));
+  });
+
+  const statRow = $("jackpotStatRow");
+  const totalHexEl = $("jackpotTotalHex");
+  const totalCountEl = $("jackpotTotalCount");
+  const totalBtEl = $("jackpotTotalBtUsed");
+  const bestWinEl = $("jackpotBestWinSub");
+  const redeemableEl = $("jackpotRedeemable");
+
+  if (statRow) statRow.style.display = "grid";
+  if (totalHexEl) totalHexEl.textContent = `${totalPointsP.toLocaleString()} P`;
+  if (totalCountEl) totalCountEl.textContent = `총 ${docs.length}회 당첨`;
+  if (totalBtEl) totalBtEl.textContent = `${totalBtUsed.toLocaleString()} BT`;
+  if (bestWinEl) bestWinEl.textContent = `최고 단일 당첨: ${bestWinP.toLocaleString()} P`;
+  if (redeemableEl) {
+    const displayBal = userPointBalance > 0 ? userPointBalance : (_pointHexAmount > 0 ? Math.round(_pointHexAmount) : 0);
+    redeemableEl.textContent = `${displayBal.toLocaleString()} P`;
+  }
+
+  if (docs.length === 0) {
+    wrap.innerHTML = `
+      <div class="jp-hist-empty" style="padding:20px;text-align:center;color:#64748b;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">
+        🎰 아직 보너스 티켓(BT) 잭팟 당첨 내역이 없습니다.<br/>
+        <small>가맹점 결제 또는 이벤트로 받은 BT를 사용해 잭팟 포인트(P)를 뽑아보세요!</small>
+      </div>`;
+    return;
+  }
+
+  const rowsHtml = docs.map((d) => {
+    const v = d.data() || {};
+    const rawTs = v.createdAt || v.timestamp;
+    const ts = rawTs?.toDate ? rawTs.toDate() : (rawTs ? new Date(rawTs) : null);
+    const dateStr = ts && !Number.isNaN(ts.getTime()) ? ts.toLocaleString("ko-KR") : "-";
+
+    let pts = Number(v.pointsEarned ?? v.amountVnd ?? v.amountKrw ?? 0);
+    if (!pts && v.onchainJackpotPointsWei) {
+      try {
+        pts = Math.round(Number(BigInt(v.onchainJackpotPointsWei)) / 1e18);
+      } catch (_) {}
+    }
+    const btUsed = Math.max(1, Number(v.btUsed || 1));
+    const grade = v.grade ? `${v.grade}등급` : "";
+    const merchantName = v.merchantName || "베스트클럽 가맹점";
+
+    const items = [];
+    if ((v.potionCount || 0) > 0) items.push(`🧪 HP물약 +${v.potionCount}`);
+    if ((v.mpPotionCount || 0) > 0) items.push(`💧 MP물약 +${v.mpPotionCount}`);
+    if ((v.reviveAdded || 0) > 0) items.push(`🪶 부활권 +${v.reviveAdded}`);
+
+    return `
+      <div class="jp-hist-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #f1f5f9;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="jp-hist-icon" style="font-size:1.4rem;">🎰</div>
+          <div>
+            <div style="font-weight:800;color:#1e293b;font-size:0.94rem;">
+              🏪 ${esc(merchantName)} 잭팟 당첨
+              ${grade ? `<span style="font-size:0.75rem;background:#fef3c7;color:#b45309;padding:2px 7px;border-radius:99px;margin-left:4px;">🎲 추첨 #${esc(v.grade)}</span>` : ""}
+            </div>
+            <div style="font-size:0.8rem;color:#64748b;margin-top:2px;">
+              🎫 티켓 ${btUsed} BT 사용 ${items.length ? ` · ${items.join(" · ")}` : ""}
+            </div>
+            <div style="font-size:0.75rem;color:#94a3b8;margin-top:2px;">${esc(dateStr)}</div>
+          </div>
+        </div>
+        <div style="text-align:right;white-space:nowrap;">
+          <div style="font-size:1.08rem;font-weight:900;color:#d97706;">+${pts.toLocaleString()} P</div>
+          <div style="font-size:0.73rem;color:#059669;font-weight:700;">포인트 적립 완료</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  wrap.innerHTML = `<div style="border:1px solid #e2e8f0;border-radius:12px;background:#fff;overflow:hidden;">${rowsHtml}</div>`;
+}
+
+// ── 🏆 게임 주간랭킹 상금 & 일일 게임 플레이 GP 획득 내역 ──────────────────────────
+let _gpFilterTab = "all";
+let _cachedGpRecords = [];
+let _cachedThisWeekEntries = [];
+
+function getVnCurrentWeekId() {
+  const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const vn = Date.now() + VN_OFFSET_MS;
+  const dayStart = Math.floor(vn / DAY_MS) * DAY_MS;
+  const dow = new Date(dayStart).getUTCDay(); // 0 = 일요일
+  const startVn = dayStart - dow * DAY_MS;
+  return new Date(startVn).toISOString().slice(0, 10);
+}
+
+async function loadGpRewardHistory(uid) {
+  const section = $("gpRewardHistSection");
+  const listEl = $("gpRewardHistList");
+  if (!section || !listEl || !uid) return;
+
+  section.style.display = "";
+  section.classList.remove("is-collapsed");
+  listEl.innerHTML = `<p class="hint">게임 주간랭킹 및 일일 플레이 GP 내역을 불러오는 중...</p>`;
+
+  const GAME_LABELS = {
+    suika: "🍉 수박게임",
+    game2048: "🔢 2048",
+    billiards: "🎱 베스트당구장",
+    memory: "🃏 기억력 게임",
+    bow: "🏹 활쏘기",
+    race: "🐎 몬스터레이스",
+    relay: "🏃 이어달리기",
+    dungeon: "⚔️ 던전 탐험",
+    conquest: "🏰 몬스터수성",
+  };
+
+  let bpData = {};
+  let weeklyPayouts = [];
+  let thisWeekEntries = [];
+
+  // 1. battle_players/{uid} 조회 (보유 GP 및 일일 게임별 획득 GP, 보너스 이력)
+  try {
+    const bpSnap = await getDoc(doc(db, "battle_players", uid));
+    if (bpSnap.exists()) bpData = bpSnap.data() || {};
+  } catch (_) {}
+
+  // 2. weekly_ranking_payouts 조회 (주간랭킹 TOP 10 상금 수령 내역)
+  try {
+    const qPayout = query(
+      collection(db, "weekly_ranking_payouts"),
+      where("uid", "==", uid),
+      limit(50)
+    );
+    const pSnap = await getDocs(qPayout);
+    pSnap.forEach((d) => weeklyPayouts.push({ id: d.id, ...d.data() }));
+  } catch (_) {}
+
+  // 3. 이번 주 내 주간랭킹 참가 최고점 조회 (수박게임, 2048, 베스트당구장)
+  const currentWeekId = getVnCurrentWeekId();
+  for (const gKey of ["suika", "game2048", "billiards"]) {
+    try {
+      const entryRef = doc(db, "weekly_rankings", `${gKey}_${currentWeekId}`, "entries", uid);
+      const eSnap = await getDoc(entryRef);
+      if (eSnap.exists()) {
+        const ed = eSnap.data() || {};
+        thisWeekEntries.push({
+          gameType: gKey,
+          gameLabel: GAME_LABELS[gKey] || gKey,
+          weekId: currentWeekId,
+          bestScore: Number(ed.bestScore || 0),
+          plays: Number(ed.plays || 0),
+          achievedAt: ed.achievedAt || null,
+        });
+      }
+    } catch (_) {}
+  }
+  _cachedThisWeekEntries = thisWeekEntries;
+
+  // 통합 내역 구성
+  const records = [];
+  let weeklyPrizeSum = 0;
+  let playEarnSum = 0;
+
+  // (A) 주간랭킹 상금 내역
+  weeklyPayouts.forEach((p) => {
+    const gp = Number(p.prizeGp || 0);
+    if (gp > 0) weeklyPrizeSum += gp;
+    const tsMs = p.createdAt?.toMillis?.() || (p.createdAt?.seconds ? p.createdAt.seconds * 1000 : Date.parse(p.weekId || "") || 0);
+    records.push({
+      category: "weekly_rank",
+      icon: "🏅",
+      title: `[주간랭킹 ${p.rank || "-"}위 상금] ${GAME_LABELS[p.gameType] || p.gameType || "게임"}`,
+      sub: `${p.weekId || ""} 주간 정산 · 최고점수 ${Number(p.bestScore || 0).toLocaleString()}점 달성`,
+      dateStr: p.weekId ? `${p.weekId} 주간 결산` : "-",
+      sortMs: tsMs,
+      gp,
+      badge: `TOP ${p.rank || "-"}위`,
+      badgeColor: "#1d4ed8",
+      badgeBg: "#dbeafe",
+    });
+  });
+
+  // (B) battle_players 내 일일 게임 플레이 획득 (gameEarn_{type}_{YYYY-MM-DD}) & 출석/가입 보너스
+  for (const [key, val] of Object.entries(bpData)) {
+    const earnMatch = key.match(/^gameEarn_([a-z0-9]+)_(\d{4}-\d{2}-\d{2})$/i);
+    if (earnMatch) {
+      const gp = Number(val || 0);
+      if (Number.isFinite(gp) && gp > 0) {
+        playEarnSum += gp;
+        const gType = earnMatch[1];
+        const dateYmd = earnMatch[2];
+        records.push({
+          category: "daily_play",
+          icon: "🎮",
+          title: `${GAME_LABELS[gType] || gType} 플레이 승리 보상`,
+          sub: `${dateYmd} 일일 게임 플레이 누적 획득`,
+          dateStr: dateYmd,
+          sortMs: Date.parse(`${dateYmd}T12:00:00Z`) || 0,
+          gp,
+          badge: "게임보상",
+          badgeColor: "#047857",
+          badgeBg: "#d1fae5",
+        });
+      }
+      continue;
+    }
+
+    const topupMatch = key.match(/^dailyTopup_(\d{4}-\d{2}-\d{2})$/);
+    if (topupMatch && val === true) {
+      const gp = 3500;
+      playEarnSum += gp;
+      const dateYmd = topupMatch[1];
+      records.push({
+        category: "daily_play",
+        icon: "⚡",
+        title: "정회원 일일 GP 자동 충전",
+        sub: `${dateYmd} 정회원 데일리 보너스`,
+        dateStr: dateYmd,
+        sortMs: Date.parse(`${dateYmd}T09:00:00Z`) || 0,
+        gp,
+        badge: "일일충전",
+        badgeColor: "#6d28d9",
+        badgeBg: "#ede9fe",
+      });
+    }
+  }
+
+  for (const field of ["joinBonusAt", "referralBonusAt"]) {
+    if (!bpData[field]) continue;
+    const raw = bpData[field];
+    const ms = raw?.toMillis?.() || (raw?.seconds ? raw.seconds * 1000 : Number(raw) || 0);
+    const dateYmd = ms ? new Date(ms).toISOString().slice(0, 10) : "-";
+    const gp = 1000;
+    playEarnSum += gp;
+    records.push({
+      category: "daily_play",
+      icon: "🎁",
+      title: field === "joinBonusAt" ? "신규 가입 축하 GP 보너스" : "친구 추천 GP 보너스",
+      sub: "베스트클럽 아케이드 웰컴 보너스",
+      dateStr: dateYmd,
+      sortMs: ms,
+      gp,
+      badge: "보너스",
+      badgeColor: "#b45309",
+      badgeBg: "#fef3c7",
+    });
+  }
+
+  records.sort((a, b) => (b.sortMs || 0) - (a.sortMs || 0));
+  _cachedGpRecords = records;
+
+  // 상단 요약 카드 업데이트
+  const currentGold = Number(bpData.gold || 0);
+  if ($("gpWeeklyPrizeTotal")) $("gpWeeklyPrizeTotal").textContent = `${weeklyPrizeSum.toLocaleString()} GP`;
+  if ($("gpWeeklyPrizeCount")) $("gpWeeklyPrizeCount").textContent = `주간 TOP 10 입상 ${weeklyPayouts.length}회`;
+  if ($("gpPlayEarnTotal")) $("gpPlayEarnTotal").textContent = `${playEarnSum.toLocaleString()} GP`;
+  if ($("gpPlayEarnCount")) $("gpPlayEarnCount").textContent = `일일 게임·출석·보너스 ${records.filter(r => r.category === "daily_play").length}건`;
+  if ($("gpCurrentGoldDisplay")) $("gpCurrentGoldDisplay").textContent = `${currentGold.toLocaleString()} GP`;
+  if ($("gpCurrentWeekRankSub")) {
+    $("gpCurrentWeekRankSub").textContent = thisWeekEntries.length > 0
+      ? `이번 주(${currentWeekId}) 랭킹 ${thisWeekEntries.length}종목 참여 중`
+      : `이번 주(${currentWeekId}) 랭킹 도전 가능`;
+  }
+
+  renderGpRewardTabView();
+}
+
+function renderGpRewardTabView() {
+  const listEl = $("gpRewardHistList");
+  if (!listEl) return;
+
+  if (_gpFilterTab === "this_week") {
+    const currentWeekId = getVnCurrentWeekId();
+    if (_cachedThisWeekEntries.length === 0) {
+      listEl.innerHTML = `
+        <div style="padding:20px;text-align:center;color:#64748b;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">
+          📊 이번 주(${esc(currentWeekId)} 주간)에 아직 등록된 주간랭킹 게임 점수가 없습니다.<br/>
+          <small>수박게임 · 2048 · 베스트당구장을 플레이하면 주간 TOP 10 상금(1위 50,000,000 GP)에 자동 도전됩니다!</small>
+        </div>`;
       return;
     }
 
-    // 통계 계산
-    let totalWei = 0n;
-    snap.docs.forEach((d) => {
-      totalWei += BigInt(d.data().onchainJackpotPointsWei || '0');
-    });
-    const totalHex = (Number(totalWei) / 1e18).toFixed(4);
-    const totalCount = snap.docs.length;
-
-    const statRow = $("jackpotStatRow");
-    const totalHexEl = $("jackpotTotalHex");
-    const totalCountEl = $("jackpotTotalCount");
-    const redeemableEl = $("jackpotRedeemable");
-
-    if (statRow) statRow.style.display = "";
-    if (totalHexEl) totalHexEl.textContent = totalHex + " Point";
-    if (totalCountEl) totalCountEl.textContent = _t('jackpot_total_count', totalCount);
-    if (redeemableEl) {
-      redeemableEl.textContent = _pointHexAmount.toFixed(4) + " Point";
-      redeemableEl.style.color = _pointHexAmount >= 10 ? "#a78bfa" : "var(--muted)";
-    }
-
-    const frag = document.createDocumentFragment();
-    snap.docs.forEach((d) => {
-      const v = d.data();
-      const ts = v.createdAt?.toDate ? v.createdAt.toDate() : (v.createdAt ? new Date(v.createdAt) : null);
-      const dateStr = ts ? ts.toLocaleString("ko-KR") : "-";
-
-      const items = [];
-      if ((v.potionCount || 0) > 0) items.push(`${_t('item_potion')} +${v.potionCount}`);
-      if ((v.mpPotionCount || 0) > 0) items.push(`${_t('item_mp_potion')} +${v.mpPotionCount}`);
-      if ((v.reviveAdded || 0) > 0) items.push(`${_t('item_revive')} +${v.reviveAdded}`);
-
-      const onchainPtsWei = BigInt(v.onchainJackpotPointsWei || '0');
-      let ptsLine = '';
-      if (onchainPtsWei > 0n) {
-        const ptsHex = (Number(onchainPtsWei) / 1e18).toFixed(6);
-        ptsLine = `<span class="jp-onchain-badge">${_t('jp_onchain_badge')}</span> ${ptsHex} Point ${_t('jp_pts_label')}`;
-      }
-
-      const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || _t('jackpot_item_reward');
-
-      const el = document.createElement('div');
-      el.className = 'jp-hist-item';
-      el.innerHTML = `
-        <div class="jp-hist-icon">🎰</div>
-        <div class="jp-hist-body">
-          <div class="jp-hist-title">${_t('jackpot_hist_title', v.merchantName || _t('jackpot_merchant_default'))}</div>
-          <div class="jp-hist-sub">${subText}</div>
-          <div class="jp-hist-date">${dateStr}</div>
+    const html = _cachedThisWeekEntries.map((e) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #f1f5f9;">
+        <div>
+          <div style="font-weight:800;color:#1e293b;font-size:0.95rem;">${esc(e.gameLabel)} <span style="font-size:0.75rem;background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:99px;margin-left:4px;">이번 주(${esc(e.weekId)})</span></div>
+          <div style="font-size:0.8rem;color:#64748b;margin-top:2px;">이번 주 도전 횟수: <b>${e.plays}판</b> · 매주 일요일 00:00(베트남) TOP 10 자동 정산</div>
         </div>
-      `;
-      frag.appendChild(el);
-    });
-    wrap.innerHTML = '';
-    wrap.appendChild(frag);
-    if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
-  } catch (err) {
-    // 인덱스 빌드 중인 경우 fallback: uid 필터만 사용하고 클라이언트 정렬
-    if (err.message && err.message.includes('index') && err.message.includes('building')) {
-      try {
-        const q2 = query(
-          collection(db, "jackpot_wins"),
-          where("uid", "==", uid),
-          limit(30)
-        );
-        const snap2 = await getDocs(q2);
-        if (snap2.empty) {
-          wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_empty')}<br><small style="color:#c4b5fd;">${_t('jackpot_building')}</small></div>`;
-        } else {
-          const docs = snap2.docs.slice().sort((a, b) => {
-            const ta = a.data().createdAt?.seconds || 0;
-            const tb = b.data().createdAt?.seconds || 0;
-            return tb - ta;
-          });
-          const fakeSnap = { docs, empty: false };
-          // re-render
-          const frag2 = document.createDocumentFragment();
-          fakeSnap.docs.forEach((d) => {
-            const v = d.data();
-            const ts = v.createdAt?.toDate ? v.createdAt.toDate() : null;
-            const dateStr = ts ? ts.toLocaleString("ko-KR") : "-";
-            const items = [];
-            if ((v.potionCount || 0) > 0) items.push(`${_t('item_potion')} +${v.potionCount}`);
-            if ((v.mpPotionCount || 0) > 0) items.push(`${_t('item_mp_potion')} +${v.mpPotionCount}`);
-            if ((v.reviveAdded || 0) > 0) items.push(`${_t('item_revive')} +${v.reviveAdded}`);
-            const onchainPtsWei = BigInt(v.onchainJackpotPointsWei || '0');
-            let ptsLine = '';
-            if (onchainPtsWei > 0n) {
-              const ptsHex = (Number(onchainPtsWei) / 1e18).toFixed(6);
-              ptsLine = `<span class="jp-onchain-badge">${_t('jp_onchain_badge')}</span> ${ptsHex} Point ${_t('jp_pts_label')}`;
-            }
-            const subText = [ptsLine, ...items].filter(Boolean).join(' · ') || _t('jackpot_item_reward');
-            const el = document.createElement('div');
-            el.className = 'jp-hist-item';
-            el.innerHTML = `
-              <div class="jp-hist-icon">🎰</div>
-              <div class="jp-hist-body">
-                <div class="jp-hist-title">${_t('jackpot_hist_title', v.merchantName || _t('jackpot_merchant_default'))}</div>
-                <div class="jp-hist-sub">${subText}</div>
-                <div class="jp-hist-date">${dateStr}</div>
-              </div>
-            `;
-            frag2.appendChild(el);
-          });
-          wrap.innerHTML = '';
-          wrap.appendChild(frag2);
+        <div style="text-align:right;">
+          <div style="font-size:1.1rem;font-weight:900;color:#2563eb;">최고 ${e.bestScore.toLocaleString()}점</div>
+          <div style="font-size:0.73rem;color:#64748b;">1위 5,000만 GP ~ 10위 500만 GP</div>
+        </div>
+      </div>
+    `).join("");
 
-          // 통계 계산 (fallback)
-          let totalWei2 = 0n;
-          docs.forEach((d) => { totalWei2 += BigInt(d.data().onchainJackpotPointsWei || '0'); });
-          const statRow2 = $("jackpotStatRow");
-          const totalHexEl2 = $("jackpotTotalHex");
-          const totalCountEl2 = $("jackpotTotalCount");
-          const redeemableEl2 = $("jackpotRedeemable");
-          if (statRow2) statRow2.style.display = "";
-          if (totalHexEl2) totalHexEl2.textContent = (Number(totalWei2) / 1e18).toFixed(4) + " Point";
-          if (totalCountEl2) totalCountEl2.textContent = _t('jackpot_total_count', docs.length);
-          if (redeemableEl2) {
-            redeemableEl2.textContent = _pointHexAmount.toFixed(4) + " Point";
-            redeemableEl2.style.color = _pointHexAmount >= 10 ? "#a78bfa" : "var(--muted)";
-          }
-        }
-        if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
-      } catch (e2) {
-        wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_retry_msg')}</div>`;
-        if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
-      }
-    } else {
-      wrap.innerHTML = `<div class="jp-hist-empty">${_t('jackpot_err', esc(err.message))}</div>`;
-      if (section) { section.style.display = ""; section.classList.remove('is-collapsed'); }
-    }
+    listEl.innerHTML = `<div style="border:1px solid #e2e8f0;border-radius:12px;background:#fff;overflow:hidden;">${html}</div>`;
+    return;
   }
+
+  const filtered = _cachedGpRecords.filter((r) => {
+    if (_gpFilterTab === "all") return true;
+    return r.category === _gpFilterTab;
+  });
+
+  if (filtered.length === 0) {
+    const emptyMsg = _gpFilterTab === "weekly_rank"
+      ? "🏅 아직 주간랭킹 TOP 10 상금 수령 내역이 없습니다. (매주 일요일 00:00 정산)"
+      : "🎮 아직 기록된 게임 GP 획득 내역이 없습니다.";
+    listEl.innerHTML = `
+      <div style="padding:20px;text-align:center;color:#64748b;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">
+        ${emptyMsg}
+      </div>`;
+    return;
+  }
+
+  const rowsHtml = filtered.map((r) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="font-size:1.35rem;">${r.icon}</div>
+        <div>
+          <div style="font-weight:800;color:#1e293b;font-size:0.93rem;">
+            ${esc(r.title)}
+            <span style="font-size:0.72rem;background:${r.badgeBg};color:${r.badgeColor};padding:2px 7px;border-radius:99px;margin-left:4px;font-weight:800;">${esc(r.badge)}</span>
+          </div>
+          <div style="font-size:0.8rem;color:#64748b;margin-top:2px;">${esc(r.sub)}</div>
+          <div style="font-size:0.74rem;color:#94a3b8;margin-top:2px;">📅 ${esc(r.dateStr)}</div>
+        </div>
+      </div>
+      <div style="text-align:right;white-space:nowrap;">
+        <div style="font-size:1.06rem;font-weight:900;color:#2563eb;">+${Number(r.gp || 0).toLocaleString()} GP</div>
+        <div style="font-size:0.73rem;color:#059669;font-weight:700;">GP 적립</div>
+      </div>
+    </div>
+  `).join("");
+
+  listEl.innerHTML = `<div style="border:1px solid #e2e8f0;border-radius:12px;background:#fff;overflow:hidden;">${rowsHtml}</div>`;
 }
+
+// GP 내역 탭 버튼 이벤트 바인딩
+document.querySelectorAll("#gpHistFilterTabs .gp-tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    _gpFilterTab = btn.getAttribute("data-gp-tab") || "all";
+    document.querySelectorAll("#gpHistFilterTabs .gp-tab-btn").forEach((b) => {
+      const active = b === btn;
+      b.classList.toggle("btn--primary", active);
+      b.style.background = active ? "" : "#fff";
+      b.style.color = active ? "" : "#334155";
+      b.style.border = active ? "" : "1px solid #cbd5e1";
+    });
+    renderGpRewardTabView();
+  });
+});
 
 async function loadTxHistory(uid, _walletAddress) {
   const wrap = $("txHistory");
@@ -2848,8 +3141,13 @@ onAuthReady(async (ctx) => {
     const btnRefreshTx = $("btnRefreshTx");
     if (btnRefreshTx) btnRefreshTx.onclick = () => loadTxHistory(user.uid, walletAddress);
 
+    loadJackpotHistory(user.uid);
     const btnRefreshJackpotHist = $("btnRefreshJackpotHist");
     if (btnRefreshJackpotHist) btnRefreshJackpotHist.onclick = () => loadJackpotHistory(user.uid);
+
+    loadGpRewardHistory(user.uid);
+    const btnRefreshGpRewardHist = $("btnRefreshGpRewardHist");
+    if (btnRefreshGpRewardHist) btnRefreshGpRewardHist.onclick = () => loadGpRewardHistory(user.uid);
 
     const btnRefreshMentees = $("btnRefreshMentees");
     if (btnRefreshMentees) btnRefreshMentees.onclick = () => loadMentees();
