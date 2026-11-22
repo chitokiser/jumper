@@ -15,6 +15,7 @@ const GAME_MAX_REWARD = {
   game2048: 20000, // 10점당 1GP, 점수 배율·파티 보너스 반영 (10000 → 20000)
   suika:    3000,  // 30점당 1GP, 최대 90000점 (300 → 3000)
   tetris:   1000,  // 100점당 1GP, 한 판 최대 1000 GP (타 아케이드 게임과 밸런스 통일)
+  bankpanic: 1000, // 100점당 1GP, 한 판 최대 1000 GP
 };
 
 // ── 참가비 (서버 정의 — 클라이언트 전달값 무시) ──────────────────────────────
@@ -67,7 +68,7 @@ async function claimGameReward(uid, gameType, amount) {
 async function payGameEntry(uid, gameKey) {
   if (!uid || typeof gameKey !== 'string') throw new Error('파라미터 오류');
 
-  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'relayEntry', 'dungeonEntry', 'conquestEntry', 'suikaEntry', 'game2048Entry', 'tetrisEntry'];
+  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'relayEntry', 'dungeonEntry', 'conquestEntry', 'suikaEntry', 'game2048Entry', 'tetrisEntry', 'bankpanicEntry'];
   if (!allowedKeys.includes(gameKey)) throw new Error(`알 수 없는 게임 키: ${gameKey}`);
 
   const ref = db.collection('battle_players').doc(uid);
@@ -122,7 +123,7 @@ async function adminGetUserGpHistory(uid) {
   const GAME_LABELS = {
     memory: '기억력 게임', bow: '활쏘기', race: '몬스터레이스',
     relay: '이어달리기', dungeon: '던전', conquest: '몬스터수성',
-    suika: '수이카', game2048: '2048', tetris: '네온테트리스',
+    suika: '수이카', game2048: '2048', tetris: '네온테트리스', bankpanic: '뱅크패닉',
   };
 
   // Firestore Timestamp → ms 안전 변환

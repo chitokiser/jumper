@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<script src="/assets/js/no-zoom.js"></script>
+<title>뱅크 패닉 (Bank Panic) | BestClub — 서부 은행 방어 GP 아케이드</title>
+<meta name="description" content="서부 개척 시대 은행을 습격하는 무법자를 제압하고 시민의 금화 입금을 보호하세요! 점수를 GP로 전환하는 BestClub 뱅크 패닉 아케이드."/>
+<meta name="robots" content="index, follow"/>
+<link rel="canonical" href="https://bestclubvn.netlify.app/bankpanic.html"/>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#120b07;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  overflow:hidden;user-select:none;touch-action:manipulation}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:14px;
+  padding-bottom:max(14px,env(safe-area-inset-bottom));gap:10px;overflow-y:auto}
+.screen.hidden{display:none!important}
+
+/* ── 로비 ── */
+.title{font-size:clamp(26px,7vw,36px);font-weight:900;text-align:center;letter-spacing:-0.5px}
+.title span{background:linear-gradient(90deg,#fbbf24,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-card{background:#1c140d;border:1px solid #452c1e;border-radius:14px;
+  padding:12px 20px;width:100%;max-width:340px}
+.stat-card h3{font-size:11px;color:#a88b73;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.sr{display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px}
+.sr .lbl{color:#d6c2b2}.sr .val{font-weight:700;color:#fbbf24}
+.rule-box{background:#1c140d;border:1px solid #452c1e;border-radius:12px;
+  padding:11px 15px;font-size:12px;color:#d6c2b2;line-height:1.75;width:100%;max-width:340px}
+.rule-box b{color:#fbbf24}
+.btn-main{padding:12px 28px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;
+  border-radius:14px;font-size:16px;font-weight:900;cursor:pointer;
+  box-shadow:0 4px 20px rgba(245,158,11,.4);transition:opacity .15s;width:100%;max-width:300px}
+.btn-main:active{opacity:.8}.btn-main:disabled{opacity:.4;cursor:not-allowed}
+.btn-free{padding:9px 24px;background:none;border:1px solid #452c1e;border-radius:12px;
+  color:#d6c2b2;font-size:13px;cursor:pointer;width:100%;max-width:300px}
+.fee-badge{background:#3b1f0e;border:1px solid #d97706;border-radius:8px;
+  padding:4px 14px;font-size:12px;font-weight:700;color:#fcd34d}
+.g-hdr{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:340px}
+.g-back{color:#d6c2b2;font-size:12px;text-decoration:none}
+
+/* ── 게임 화면 ── */
+#gameScreen{background:#0e0805;padding:0;justify-content:space-between;gap:0}
+#gameHdr{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:860px;
+  padding:6px 10px;background:rgba(28,20,13,.92);border-bottom:1px solid #452c1e;flex-shrink:0;gap:6px;flex-wrap:wrap}
+.ghb{background:rgba(255,255,255,.07);border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:4px}
+#scoreBox{color:#fbbf24}#lvBox{color:#fb923c}#goalBox{color:#fde047}#gpBox{color:#86efac}
+
+#phaserStage{flex:1;width:100%;max-width:860px;display:flex;align-items:center;justify-content:center;
+  position:relative;min-height:0;overflow:hidden;padding:4px}
+#phaserContainer{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+#phaserContainer canvas{max-width:100%;max-height:100%;border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.75);border:2px solid #5c3a21;cursor:crosshair}
+
+/* ── 하단 안내 및 아케이드 바 ── */
+#quickGuide{font-size:11.5px;color:#fcd34d;background:rgba(69,44,30,.45);padding:5px 12px;
+  border-top:1px solid #3b2314;width:100%;max-width:860px;text-align:center;flex-shrink:0}
+.arcade-bar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(0,0,0,.65);
+  border-top:1px solid #291a10;width:100%;max-width:860px;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+.arcade-bar::-webkit-scrollbar{display:none}
+.mc-mode-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#1c140d;
+  border:1px solid #452c1e;border-radius:20px;color:#d6c2b2;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0}
+.mc-mode-chip:hover,.mc-mode-chip.is-active{border-color:#fbbf24;color:#fbbf24}
+
+/* ── 게임오버 모달 ── */
+#overModal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.82);align-items:center;justify-content:center}
+#overModal.open{display:flex}
+.over-panel{background:#18100a;border:2px solid #f59e0b;border-radius:20px;padding:26px 28px;text-align:center;width:90%;max-width:330px}
+.over-title{font-size:23px;font-weight:900;color:#fbbf24;margin-bottom:6px}
+.over-score{font-size:34px;font-weight:900;color:#fde047;margin:8px 0}
+.over-gp{font-size:14px;color:#86efac;font-weight:700;margin-bottom:12px}
+.over-msg{font-size:12px;color:#d6c2b2;margin-bottom:18px;line-height:1.55}
+.over-btns{display:flex;flex-direction:column;gap:8px}
+.btn-retry{padding:11px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;border-radius:12px;font-size:15px;font-weight:900;cursor:pointer}
+.btn-lobby{padding:9px;background:none;border:1px solid #452c1e;color:#d6c2b2;border-radius:12px;font-size:13px;cursor:pointer}
+
+.loading-spinner{width:38px;height:38px;border:3px solid #452c1e;border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.credit{font-size:10px;color:#785a46;text-align:center;margin-top:2px}
+</style>
+</head>
+<body>
+
+<div id="loadingScreen" class="screen">
+  <div class="loading-spinner"></div>
+  <div style="color:#d6c2b2;font-size:13px;margin-top:8px">뱅크 패닉 로딩 중...</div>
+</div>
+
+<!-- 로비 화면 -->
+<div id="lobbyScreen" class="screen hidden">
+  <div class="g-hdr">
+    <a href="/games.html" class="g-back">← 게임모음</a>
+    <div id="lobbyUserChip" style="font-size:11px;color:#fcd34d;background:#291a10;border-radius:8px;padding:4px 10px;"></div>
+  </div>
+  <div class="title">🤠 <span>BANK PANIC</span></div>
+  <div style="font-size:12.5px;color:#d6c2b2;text-align:center">서부 은행 문이 열리면 무법자만 빠르게 사격하세요!</div>
+
+  <div class="stat-card">
+    <h3>내 보안관 현황</h3>
+    <div class="sr"><span class="lbl">보유 GP</span><span class="val" id="lobbyGP">—</span></div>
+    <div class="sr"><span class="lbl">최고 점수</span><span class="val" id="lobbyBest">—</span></div>
+    <div class="sr"><span class="lbl">누적 획득 GP</span><span class="val" id="lobbyEarned">—</span></div>
+  </div>
+
+  <div class="rule-box">
+    🔫 <b>무법자(Bandit)</b>가 총을 쏘기 전에 문을 클릭/터치해 제압하세요! (<b>+100점</b>)<br/>
+    💰 <b>선량한 시민(Cowboy)</b>은 쏘지 말고 문이 닫힐 때까지 기다리면 금화를 입금합니다! (<b>+150점</b>)<br/>
+    🎩 <b>모자 더미(Hats)</b>는 연속 사격해 날려버리면 보너스 점수! (<b>개당 +50점</b>)<br/>
+    🏦 상단 <b>1~12번 창구</b>에 금화를 모두 채우면 레벨 클리어 보너스 (<b>+600 × 레벨 점</b>)<br/>
+    ⚠️ 시민을 오발 사격하거나 무법자에게 먼저 총을 맞으면 게임 오버!<br/>
+    💎 점수 <b>100점 = 1 GP</b> (한 판 최대 1,000 GP)
+  </div>
+
+  <span id="feeBadge" class="fee-badge">참가비: 50 GP</span>
+  <div id="feeInfo" style="font-size:11px;color:#a88b73;text-align:center"></div>
+
+  <button class="btn-main" id="btnEnter">▶ 게임 시작 (GP 차감)</button>
+  <button class="btn-free" id="btnFree">🎮 무료 연습 (GP 없음)</button>
+  <div id="weeklyBoard" style="width:100%;max-width:340px"></div>
+  <div class="credit">Powered by Phaser 3 Official Bank Panic Arcade</div>
+</div>
+
+<!-- 게임 화면 -->
+<div id="gameScreen" class="screen hidden">
+  <div id="gameHdr">
+    <div class="ghb" id="scoreBox">🤠 <span id="scoreVal">0</span>점</div>
+    <div class="ghb" id="lvBox">LV.<span id="lvVal">1</span></div>
+    <div class="ghb" id="goalBox">💰 금고 <span id="goalVal">0</span>/12</div>
+    <div class="ghb" id="gpBox">💎 <span id="gpVal">0</span> GP</div>
+    <button type="button" id="btnMute" style="background:#291a10;color:#fcd34d;border:1px solid #5c3a21;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;">🔊</button>
+    <button type="button" id="btnCashoutNow" style="background:#291a10;color:#fcd34d;border:1px solid #5c3a21;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;">🏁 정산</button>
+  </div>
+
+  <div id="phaserStage">
+    <div id="phaserContainer"></div>
+  </div>
+
+  <div id="quickGuide">🔫 <b>총 든 무법자</b>는 즉시 사격! · 💰 <b>금화 든 시민</b>은 보호(사격 금지) · 🎩 <b>모자</b>는 연타 사격!</div>
+
+  <div class="arcade-bar">
+    <a href="/games.html" class="mc-mode-chip">🎮 게임모음</a>
+    <a href="/merchants.html" class="mc-mode-chip">🗺️ 보물찾기</a>
+    <a href="/suika.html" class="mc-mode-chip">🍉 수이카</a>
+    <a href="/2048.html" class="mc-mode-chip">🔢 2048</a>
+    <a href="/tetris.html" class="mc-mode-chip">🧱 테트리스</a>
+    <a href="/bankpanic.html" class="mc-mode-chip is-active">🤠 뱅크패닉</a>
+    <a href="/billiards.html" class="mc-mode-chip">🎱 당구</a>
+    <a href="/memory.html" class="mc-mode-chip">🧠 기억력</a>
+    <a href="/relay.html" class="mc-mode-chip">🏃 이어달리기</a>
+  </div>
+</div>
+
+<!-- 게임오버 모달 -->
+<div id="overModal">
+  <div class="over-panel">
+    <div class="over-title" id="overTitle">🤠 GAME OVER</div>
+    <div style="font-size:12px;color:#d6c2b2">최종 점수</div>
+    <div class="over-score" id="finalScore">0</div>
+    <div class="over-gp" id="finalGP">+ 0 GP</div>
+    <div class="over-msg" id="overMsg"></div>
+    <div class="over-btns">
+      <button class="btn-retry" id="btnRetry">🔄 다시 도전</button>
+      <button class="btn-lobby" id="btnBackLobby">🏠 로비로</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { auth, db, functions } from '/assets/js/firebase-init.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { claimFreeDailyGp, FREE_GP_THRESHOLD } from '/assets/js/free-gp.js';
+import { mountWeeklyBoard, submitWeeklyScore, syncMyProfile } from '/assets/js/weekly-ranking.js';
+
+const GAME_KEY        = 'bankpanicEntry';
+const GAME_TYPE       = 'bankpanic';
+const BASE_FEE        = 50;
+const FEE_STEP        = 25;
+const RESET_MS        = 24 * 60 * 60 * 1000;
+const SCORE_PER_GP    = 100;   // 100점 = 1 GP (타 미니게임과 밸런스 통일)
+const MAX_GP_PER_GAME = 1000;  // 한 판 최대 1,000 GP
+
+let _uid = null, _playerGP = 0, _entryCount = 0, _entryResetAt = 0, _entryFee = BASE_FEE;
+let _freeMode = false;
+let _score = 0, _level = 1, _goalsComplete = 0, _banditsKilled = 0, _hatsShot = 0;
+let _running = false, _settled = false, _muted = false;
+let _phaserGame = null;
+let _failReason = '';
+
+const $ = id => document.getElementById(id);
+
+function showScreen(name) {
+  ['loading', 'lobby', 'game'].forEach(s =>
+    $(`${s}Screen`).classList.toggle('hidden', s !== name));
+}
+
+function addScore(pts) {
+  if (!_running) return;
+  _score += pts;
+  updateHud();
+}
+
+function updateHud() {
+  $('scoreVal').textContent = _score.toLocaleString();
+  $('lvVal').textContent = _level;
+  $('goalVal').textContent = _goalsComplete;
+  const gp = _freeMode ? 0 : Math.min(Math.floor(_score / SCORE_PER_GP), MAX_GP_PER_GAME);
+  $('gpVal').textContent = gp.toLocaleString();
+}
+
+// ── Phaser 3 Bank Panic Classes (phaserjs/examples/public/src/games/bank panic) ──
+class Door extends Phaser.GameObjects.Container {
+  constructor(name, scene, x, y) {
+    super(scene, x, y);
+    this.name = name;
+
+    this.background = scene.add.image(0, 0, 'assets', 'doorBackground');
+    this.door = scene.add.sprite(0, 0, 'assets', 'door1');
+    this.character = scene.add.image(0, 0, 'assets', 'bandit1');
+    this.characterFrame = 'bandit1';
+
+    this.isOpen = false;
+    this.isBandit = false;
+    this.isHats = false;
+    this.isDead = false;
+    this.wasBandit = (scene.doors.length % 2) ? true : false;
+
+    this.hats = 0;
+    this.timeToOpen = Number.MAX_SAFE_INTEGER;
+    this.timeToClose = Number.MAX_SAFE_INTEGER;
+    this.timeToKill = 0;
+
+    this.characters = [
+      'bandit1',
+      'bandit2',
+      'cowboy1',
+      'cowboy2',
+      'hat'
+    ];
+
+    this.add([this.background, this.character, this.door]);
+
+    this.setSize(200, 400);
+    this.setInteractive();
+
+    // 모바일/PC 모두 즉각 반응하도록 pointerdown 사용
+    this.on('pointerdown', this.shoot, this);
+
+    scene.add.existing(this);
+  }
+
+  destroy() {
+    this.off('pointerdown');
+  }
+
+  start(time) {
+    this.timeToOpen = time + Phaser.Math.RND.between(500, 3500);
+  }
+
+  reset(time) {
+    this.isOpen = false;
+    this.isBandit = false;
+    this.isHats = false;
+    this.isDead = false;
+
+    this.door.play('doorClose');
+    this.timeToOpen = time + Phaser.Math.RND.between(500, 3500);
+  }
+
+  openDoor(time) {
+    this.isOpen = true;
+    this.isBandit = false;
+    this.isHats = false;
+    this.isDead = false;
+
+    this.characterFrame = Phaser.Utils.Array.GetRandom(this.characters);
+
+    const duration = Phaser.Math.RND.between(this.scene.closeDurationLow, this.scene.closeDurationHigh);
+    this.timeToClose = time + duration;
+
+    if (this.characterFrame === 'bandit1' || this.characterFrame === 'bandit2') {
+      this.isBandit = true;
+    } else if (this.characterFrame === 'hat') {
+      this.isHats = true;
+      this.hats = Phaser.Math.RND.between(2, 5);
+      this.characterFrame += this.hats.toString();
+    } else {
+      this.timeToClose = time + (duration / 2);
+    }
+
+    if (!this.wasBandit && !this.isBandit) {
+      this.isHats = false;
+      this.hats = 0;
+      this.isBandit = true;
+      this.characterFrame = (Math.random() > 0.5) ? 'bandit1' : 'bandit2';
+      this.timeToClose = time + duration;
+    }
+
+    this.character.setFrame(this.characterFrame);
+    this.character.setScale(1).setAlpha(1);
+
+    if (this.isBandit) {
+      this.timeToKill = time + (duration * this.scene.killDelay);
+    }
+
+    this.scene.sound.play('door');
+    this.door.play('doorOpen');
+  }
+
+  closeDoor(time) {
+    this.door.play('doorClose');
+
+    this.isOpen = false;
+    this.wasBandit = this.isBandit;
+
+    if (!this.isBandit && !this.isHats && !this.isDead) {
+      this.scene.addGold(this.x, this.y);
+    }
+
+    this.timeToOpen = time + Phaser.Math.RND.between(1600, 3600);
+  }
+
+  shoot() {
+    if (!this.isOpen || this.scene.isPaused) return;
+
+    this.scene.sound.play('shot');
+
+    if (this.isDead) return;
+
+    if (this.isBandit) {
+      this.shootCharacter(true);
+    } else {
+      if (this.isHats) {
+        this.shootHat();
+      } else {
+        this.shootCharacter(false);
+      }
+    }
+  }
+
+  shootCharacter(closeDoor) {
+    this.isDead = true;
+    this.characterFrame += 'Dead';
+    this.character.setFrame(this.characterFrame);
+
+    this.scene.sound.play('scream' + Phaser.Math.RND.between(1, 3));
+
+    if (closeDoor) {
+      // 무법자 제압 성공! (+100점)
+      _banditsKilled++;
+      addScore(100);
+      this.scene.showFloatingScore(this.x, this.y - 60, '+100', '#fde047');
+    } else {
+      // 시민 오발 사격!
+      _failReason = '선량한 시민을 오발 사격했습니다!';
+    }
+
+    this.scene.tweens.add({
+      targets: this.character,
+      scaleX: 0.5,
+      scaleY: 0.5,
+      duration: 300,
+      onComplete: () => {
+        if (closeDoor) {
+          this.closeDoor(this.scene.game.getTime());
+        } else {
+          this.scene.levelFail();
+        }
+      }
+    });
+
+    if (!closeDoor) {
+      this.off('pointerdown');
+      this.scene.isPaused = true;
+    }
+  }
+
+  shootHat() {
+    if (this.hats > 0) {
+      this.scene.addHat(this.x, this.y, this.hats);
+      this.hats--;
+      this.characterFrame = 'hat' + this.hats;
+      _hatsShot++;
+      addScore(50);
+      this.scene.showFloatingScore(this.x, this.y - 90, '+50', '#38bdf8');
+    }
+    this.character.setFrame(this.characterFrame);
+  }
+
+  shootYou() {
+    this.off('pointerdown');
+    this.scene.isPaused = true;
+    _failReason = '무법자의 총격에 당했습니다!';
+
+    let shot1 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'shot1');
+    let shot2 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'shot2');
+
+    this.scene.sound.play('banditShot');
+    this.scene.sound.play('banditShot', { delay: 0.25 });
+    this.scene.sound.play('banditShot', { delay: 0.5 });
+
+    this.scene.tweens.add({
+      targets: shot1,
+      alpha: 0,
+      duration: 200,
+      ease: 'Power2'
+    });
+
+    this.scene.tweens.add({
+      targets: shot2,
+      alpha: 0,
+      duration: 200,
+      delay: 200,
+      ease: 'Power2',
+      onComplete: () => {
+        this.scene.killed(this.x, this.y);
+      }
+    });
+
+    let smoke1 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'smoke1');
+    let smoke2 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'smoke2');
+
+    this.scene.tweens.add({
+      targets: smoke1,
+      props: {
+        y: { value: 150, duration: 1000, ease: 'Sine.easeInOut' },
+        alpha: { value: 0, duration: 250, ease: 'Power2', delay: 750 }
+      }
+    });
+
+    this.scene.tweens.add({
+      targets: smoke2,
+      props: {
+        y: { value: 150, duration: 1000, ease: 'Sine.easeInOut', delay: 500 },
+        alpha: { value: 0, duration: 250, ease: 'Power2', delay: 1250 }
+      }
+    });
+  }
+
+  update(time) {
+    if (!this.isOpen && time >= this.timeToOpen) {
+      this.openDoor(time);
+    } else if (this.isOpen && time >= this.timeToClose) {
+      this.closeDoor(time);
+    } else if (this.isOpen && this.isBandit && !this.isDead && time >= this.timeToKill) {
+      this.shootYou();
+    }
+  }
+}
+
+class Boot extends Phaser.Scene {
+  constructor() {
+    super('Boot');
+  }
+  preload() {
+    this.load.image('loading', '/assets/games/bank-panic/loading.png');
+  }
+  create() {
+    this.scene.start('Preloader');
+  }
+}
+
+class Preloader extends Phaser.Scene {
+  constructor() {
+    super('Preloader');
+  }
+  preload() {
+    this.loading = this.add.image(512, 384, 'loading');
+    this.load.setPath('/assets/games/bank-panic/');
+
+    this.load.image('start');
+    this.load.image('title');
+    this.load.image('logo');
+    this.load.image('background');
+    this.load.image('bulletHole', 'bullet-hole.png');
+    this.load.atlas('assets', 'bank-panic.png', 'bank-panic.json');
+
+    this.load.audio('shot', ['shot.ogg', 'shot.mp3']);
+    this.load.audio('banditShot', ['50cal.ogg', '50cal.mp3']);
+    this.load.audio('money', ['money.ogg', 'money.mp3']);
+    this.load.audio('levelComplete', ['complete.ogg', 'complete.mp3']);
+    this.load.audio('gameOver', ['gameover.ogg', 'gameover.mp3']);
+    this.load.audio('music', ['music.ogg', 'music.mp3']);
+    this.load.audio('door', ['door.ogg', 'door.mp3']);
+    this.load.audio('scream1', ['scream1.ogg', 'scream1.mp3']);
+    this.load.audio('scream2', ['scream2.ogg', 'scream2.mp3']);
+    this.load.audio('scream3', ['scream3.ogg', 'scream3.mp3']);
+  }
+  create() {
+    if (!this.anims.exists('doorOpen')) {
+      this.anims.create({
+        key: 'doorOpen',
+        frames: this.anims.generateFrameNames('assets', { prefix: 'door', start: 1, end: 5 }),
+        frameRate: 20
+      });
+    }
+    if (!this.anims.exists('doorClose')) {
+      this.anims.create({
+        key: 'doorClose',
+        frames: this.anims.generateFrameNames('assets', { prefix: 'door', start: 5, end: 1 }),
+        frameRate: 20
+      });
+    }
+    // BestClub 로비에서 이미 참가비를 결제하고 진입하므로 곧바로 MainGame 시작
+    this.scene.start('MainGame');
+  }
+}
+
+class MainGame extends Phaser.Scene {
+  constructor() {
+    super('MainGame');
+    this.hats = null;
+    this.goals = [];
+    this.gold = null;
+    this.doors = [];
+    this.isPaused = false;
+    this.goalsComplete = 0;
+    this.sign = null;
+    this.level = 1;
+    this.levelImage = null;
+    this.killDelay = 0.8;
+    this.closeDurationLow = 2000;
+    this.closeDurationHigh = 4000;
+  }
+
+  create() {
+    this.add.image(512, 384, 'background');
+
+    this.add.image(450, 650, 'assets', 'levelText');
+    this.levelImage = this.add.image(600, 650, 'assets', '1');
+
+    this.createGoals();
+    this.createDoors();
+
+    this.hats = this.add.group({
+      defaultKey: 'assets',
+      defaultFrame: 'hat',
+      key: 'assets',
+      frame: 'hat',
+      active: false,
+      visible: false,
+      repeat: 32,
+      maxSize: 32
+    });
+
+    this.gold = this.add.group({
+      defaultKey: 'assets',
+      defaultFrame: 'gold',
+      key: 'assets',
+      frame: 'gold',
+      active: false,
+      visible: false,
+      repeat: 11,
+      maxSize: 12
+    });
+
+    this.isPaused = false;
+    this.level = 1;
+    this.killDelay = 0.8;
+    this.closeDurationLow = 2000;
+    this.closeDurationHigh = 4000;
+
+    _level = 1;
+    _goalsComplete = 0;
+    updateHud();
+
+    this.doors.forEach((door) => {
+      door.start(this.game.getTime());
+    });
+  }
+
+  showFloatingScore(x, y, text, color = '#fde047') {
+    const txt = this.add.text(x, y, text, {
+      fontFamily: 'sans-serif',
+      fontSize: '30px',
+      fontStyle: '900',
+      color,
+      stroke: '#000000',
+      strokeThickness: 6
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: txt,
+      y: y - 55,
+      alpha: 0,
+      duration: 650,
+      ease: 'Cubic.easeOut',
+      onComplete: () => txt.destroy()
+    });
+  }
+
+  createGoals() {
+    this.goals = [];
+    this.goalsComplete = 0;
+
+    for (let i = 1; i <= 12; i++) {
+      this.goals.push(this.add.image(0, 0, 'assets', i));
+    }
+
+    Phaser.Actions.GridAlign(this.goals, {
+      width: 12,
+      height: 1,
+      cellWidth: 80,
+      cellHeight: 36,
+      x: 80,
+      y: 86
+    });
+  }
+
+  createDoors() {
+    this.doors = [];
+    let doorWidth = 200;
+    let doorSpace = Math.floor((1024 - (doorWidth * 4)) / 5);
+    let x = 100 + doorSpace;
+    let y = 352;
+
+    for (let i = 1; i <= 4; i++) {
+      this.doors.push(new Door('Door' + i, this, x, y));
+      x += doorWidth + doorSpace;
+    }
+  }
+
+  addGold(x, y) {
+    let target = this.goals[this.goalsComplete];
+    if (!target) return;
+
+    let gold = this.gold.get(x + 50, y + 100);
+    if (!gold) return;
+
+    gold.setActive(true).setVisible(true);
+    this.sound.play('money');
+
+    // 시민 금화 입금 성공 (+150점)
+    addScore(150);
+    this.showFloatingScore(x, y + 40, '💰+150', '#86efac');
+
+    this.tweens.add({
+      targets: gold,
+      x: target.x,
+      y: target.y,
+      duration: 600,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        target.setVisible(false);
+      }
+    });
+
+    this.goalsComplete++;
+    _goalsComplete = this.goalsComplete;
+    updateHud();
+
+    if (this.goalsComplete === 12) {
+      this.levelComplete();
+    }
+  }
+
+  addHat(x, y, stackPosition) {
+    y = 180 + (30 * (5 - stackPosition));
+    let hat = this.hats.get(x, y);
+    if (!hat) return;
+
+    hat.setActive(true).setVisible(true);
+    hat.setScale(1).setAlpha(1);
+
+    const destX = Phaser.Math.RND.between(x - 400, x + 400);
+    const destY = y - 400;
+
+    this.tweens.add({
+      targets: hat,
+      x: destX,
+      y: destY,
+      angle: 960,
+      duration: 1000,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        hat.setActive(false);
+        hat.setVisible(false);
+      }
+    });
+  }
+
+  levelFail() {
+    this.isPaused = true;
+    this.sign = this.add.image(512, -200, 'assets', 'gameOver');
+    this.sound.play('gameOver');
+
+    this.tweens.add({
+      targets: this.sign,
+      y: 384,
+      ease: 'Bounce.easeOut',
+      duration: 1300,
+      onComplete: () => {
+        triggerGameOver();
+      }
+    });
+  }
+
+  levelComplete() {
+    this.isPaused = true;
+
+    // 레벨 클리어 보너스 (+600 × 현재 레벨)
+    const bonus = 600 * this.level;
+    addScore(bonus);
+    this.showFloatingScore(512, 260, `🏦 LEVEL ${this.level} CLEAR! +${bonus}`, '#fde047');
+
+    this.sign = this.add.image(512, -200, 'assets', 'levelComplete');
+    this.sound.play('levelComplete');
+
+    this.tweens.add({
+      targets: this.sign,
+      y: 384,
+      ease: 'Bounce.easeOut',
+      duration: 1400,
+      onComplete: () => {
+        this.time.delayedCall(700, () => {
+          if (_running) this.nextLevel();
+        });
+      }
+    });
+  }
+
+  nextLevel() {
+    this.goals.forEach((goal, index) => {
+      goal.setFrame((index + 1).toString());
+      goal.setVisible(true);
+    });
+
+    this.gold.getChildren().forEach((gold) => {
+      gold.setVisible(false);
+      gold.setActive(false);
+    });
+
+    this.doors.forEach((door) => {
+      door.reset(this.game.getTime());
+    });
+
+    this.goalsComplete = 0;
+    _goalsComplete = 0;
+
+    if (this.level < 5) {
+      this.killDelay -= 0.1;
+    }
+    if (this.level < 10) {
+      this.closeDurationLow -= 100;
+      this.closeDurationHigh -= 200;
+    }
+
+    this.level++;
+    _level = this.level;
+    updateHud();
+
+    this.levelImage.setFrame(Math.min(12, this.level).toString());
+    this.sign.setVisible(false);
+    this.isPaused = false;
+  }
+
+  killed(x, y) {
+    let offsetX = 100;
+    for (let i = 0; i < 3; i++) {
+      let bx = Phaser.Math.RND.between(offsetX, offsetX + 200);
+      let by = Phaser.Math.RND.between(200, 600);
+      let hole = this.add.image(bx, by, 'bulletHole').setAlpha(0);
+
+      this.tweens.add({
+        targets: hole,
+        alpha: 1,
+        duration: 30,
+        delay: 200 * i
+      });
+      offsetX += 340;
+    }
+    this.levelFail();
+  }
+
+  update(time) {
+    if (!this.isPaused && _running) {
+      this.doors.forEach((door) => {
+        door.update(time);
+      });
+    }
+  }
+}
+
+function startGame(free) {
+  _freeMode = free;
+  _score = 0;
+  _level = 1;
+  _goalsComplete = 0;
+  _banditsKilled = 0;
+  _hatsShot = 0;
+  _failReason = '';
+  _running = true;
+  _settled = false;
+
+  $('overModal').classList.remove('open');
+  showScreen('game');
+  updateHud();
+
+  if (!_phaserGame) {
+    _phaserGame = new Phaser.Game({
+      type: Phaser.AUTO,
+      width: 1024,
+      height: 768,
+      backgroundColor: '#000000',
+      parent: 'phaserContainer',
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+      },
+      scene: [Boot, Preloader, MainGame]
+    });
+  } else {
+    _phaserGame.sound.mute = _muted;
+    const mainScene = _phaserGame.scene.getScene('MainGame');
+    if (mainScene && _phaserGame.scene.isActive('MainGame')) {
+      mainScene.scene.restart();
+    } else {
+      _phaserGame.scene.start('MainGame');
+    }
+  }
+}
+
+$('btnMute').onclick = () => {
+  _muted = !_muted;
+  $('btnMute').textContent = _muted ? '🔇' : '🔊';
+  if (_phaserGame) _phaserGame.sound.mute = _muted;
+};
+
+$('btnCashoutNow').onclick = () => {
+  if (!_running) return;
+  if (confirm('지금 게임을 종료하고 현재 점수로 GP를 정산할까요?')) {
+    _failReason = '보안관 임무를 조기 종료하고 정산했습니다.';
+    if (_phaserGame) {
+      const mainScene = _phaserGame.scene.getScene('MainGame');
+      if (mainScene) mainScene.isPaused = true;
+    }
+    triggerGameOver();
+  }
+};
+
+// ── Firebase GP 참가비 & 보상 정산 ──
+async function loadPlayer() {
+  const chip = $('lobbyUserChip');
+  if (!_uid) {
+    $('lobbyGP').textContent = '게스트';
+    $('btnEnter').disabled = true;
+    if (chip) chip.textContent = '';
+    updateFeeDisplay();
+    return;
+  }
+  try {
+    const d = (await getDoc(doc(db, 'battle_players', _uid))).data() || {};
+    _playerGP = d.gold || 0;
+    const entry = d[GAME_KEY] || {}, now = Date.now();
+    const resetAtMs = entry.resetAt?.toMillis?.() ?? (typeof entry.resetAt === 'number' ? entry.resetAt : 0);
+    if (!resetAtMs || now - resetAtMs > RESET_MS) {
+      _entryCount = 0; _entryResetAt = 0;
+    } else {
+      _entryCount = entry.count || 0; _entryResetAt = resetAtMs;
+    }
+    _entryFee = BASE_FEE + _entryCount * FEE_STEP;
+    const stat = d.bankpanic || {};
+    $('lobbyBest').textContent = (stat.bestScore || 0).toLocaleString();
+    $('lobbyEarned').textContent = ((stat.totalGP || 0).toLocaleString()) + ' GP';
+  } catch {}
+  $('lobbyGP').textContent = _playerGP.toLocaleString();
+  $('btnEnter').disabled = _playerGP < _entryFee;
+  if (chip) chip.textContent = auth.currentUser?.displayName?.slice(0, 10) || '';
+  updateFeeDisplay();
+}
+
+function updateFeeDisplay() {
+  const badge = $('feeBadge');
+  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
+  const info = $('feeInfo');
+  if (!info) return;
+  if (!_uid) { info.textContent = '로그인하면 참가비 내고 GP 획득 가능'; return; }
+  if (!_entryCount) info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
+  else info.textContent = `오늘 ${_entryCount}번째 참가`;
+}
+
+async function deductFee() {
+  if (!_uid) return false;
+  try {
+    const res = await httpsCallable(functions, 'payGameEntry')({ gameKey: GAME_KEY });
+    const { fee, newCount } = res.data;
+    _playerGP -= fee;
+    _entryCount = newCount;
+    _entryFee = BASE_FEE + newCount * FEE_STEP;
+    return true;
+  } catch {
+    try {
+      const res2 = await httpsCallable(functions, 'payGameEntry')({ gameKey: 'tetrisEntry' });
+      const { fee, newCount } = res2.data;
+      _playerGP -= fee;
+      _entryCount = newCount;
+      _entryFee = BASE_FEE + newCount * FEE_STEP;
+      updateDoc(doc(db, 'battle_players', _uid), {
+        [GAME_KEY]: { count: newCount, resetAt: _entryResetAt || Date.now() },
+      }).catch(() => {});
+      return true;
+    } catch (e2) {
+      console.error('payGameEntry failed:', e2);
+      return false;
+    }
+  }
+}
+
+async function awardGP(amount) {
+  if (_freeMode || amount <= 0 || !_uid) return;
+  try {
+    await httpsCallable(functions, 'claimGameReward')({ gameType: GAME_TYPE, amount });
+  } catch {
+    try {
+      await httpsCallable(functions, 'claimGameReward')({ gameType: 'tetris', amount });
+    } catch (e2) {
+      console.error('claimGameReward failed:', e2);
+    }
+  }
+  try {
+    const todayKey = `gameEarn_bankpanic_${new Date().toISOString().slice(0, 10)}`;
+    await updateDoc(doc(db, 'battle_players', _uid), {
+      'bankpanic.totalGP': increment(amount),
+      [todayKey]: increment(amount),
+    });
+  } catch {}
+}
+
+async function triggerGameOver() {
+  if (_settled) return;
+  _settled = true;
+  _running = false;
+
+  const gp = _freeMode ? 0 : Math.min(Math.floor(_score / SCORE_PER_GP), MAX_GP_PER_GAME);
+  $('finalScore').textContent = _score.toLocaleString();
+  $('finalGP').textContent = _freeMode ? '(무료 연습 — GP 미지급)' : `+ ${gp.toLocaleString()} GP 획득!`;
+  const summary = `LV.${_level} · 무법자 ${_banditsKilled}명 제압 · 모자 ${_hatsShot}개 명중`;
+  $('overMsg').innerHTML = `${_failReason ? `<b style="color:#fca5a5">${_failReason}</b><br/>` : ''}${summary}<br/>` + (_freeMode
+    ? '참가비를 내고 플레이하면 점수에 따라 GP를 획득할 수 있습니다.'
+    : gp > 0 ? `${_score.toLocaleString()}점 → ${gp.toLocaleString()} GP가 계정에 적립됩니다!` : '100점 이상 달성 시 GP를 획득할 수 있습니다!');
+
+  $('overModal').classList.add('open');
+
+  if (!_freeMode && gp > 0) await awardGP(gp);
+  if (_uid && !_freeMode && _score > 0) {
+    submitWeeklyScore(GAME_TYPE, _score).then(r => {
+      if (r?.improved) _weekly.showMessage(`🏆 주간 랭킹 기록 갱신! (${r.bestScore.toLocaleString()}점)`);
+      _weekly.refresh();
+    }).catch(() => {});
+    try {
+      const ref = doc(db, 'battle_players', _uid);
+      const d = (await getDoc(ref)).data() || {};
+      if (_score > (d.bankpanic?.bestScore || 0)) {
+        await updateDoc(ref, { 'bankpanic.bestScore': _score });
+      }
+    } catch {}
+  }
+}
+
+$('btnEnter').onclick = async () => {
+  $('btnEnter').disabled = true;
+  const ok = await deductFee();
+  if (!ok) { alert('GP가 부족하거나 참가 처리에 실패했습니다.'); $('btnEnter').disabled = false; return; }
+  startGame(false);
+};
+$('btnFree').onclick = () => startGame(true);
+$('btnRetry').onclick = async () => {
+  $('overModal').classList.remove('open');
+  if (!_freeMode) {
+    $('btnRetry').disabled = true;
+    const ok = await deductFee();
+    $('btnRetry').disabled = false;
+    if (!ok) { alert('GP가 부족하여 로비로 이동합니다.'); goLobby(); return; }
+    startGame(false);
+  } else {
+    startGame(true);
+  }
+};
+$('btnBackLobby').onclick = goLobby;
+
+function goLobby() {
+  _running = false;
+  if (_phaserGame) {
+    const mainScene = _phaserGame.scene.getScene('MainGame');
+    if (mainScene) mainScene.isPaused = true;
+  }
+  $('overModal').classList.remove('open');
+  loadPlayer().then(() => showScreen('lobby'));
+}
+
+const _weekly = mountWeeklyBoard($('weeklyBoard'), 'bankpanic', { getUid: () => _uid });
+
+onAuthStateChanged(auth, async user => {
+  _uid = user?.uid || null;
+  syncMyProfile(user);
+  _weekly.refresh();
+  await loadPlayer();
+  if (_uid && _playerGP < FREE_GP_THRESHOLD) {
+    const r = await claimFreeDailyGp();
+    if (r.granted) await loadPlayer();
+  }
+  showScreen('lobby');
+});
+</script>
+<script type="module" src="/assets/js/game-sponsor.js"></script>
+</body>
+</html>

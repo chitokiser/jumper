@@ -15,6 +15,7 @@ export const WEEKLY_GAMES = {
   suika:     { label: '수박게임',     icon: '🍉', href: '/suika.html' },
   game2048:  { label: '2048',        icon: '🔢', href: '/2048.html' },
   tetris:    { label: '네온테트리스', icon: '🧱', href: '/tetris.html' },
+  bankpanic: { label: '뱅크패닉',     icon: '🤠', href: '/bankpanic.html' },
   billiards: { label: '베스트당구장', icon: '🎱', href: '/billiards.html' },
 };
 

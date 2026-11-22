@@ -21,9 +21,10 @@ const DAY_MS       = 24 * 60 * 60 * 1000;
 const WEEK_MS      = 7 * DAY_MS;
 
 const WEEKLY_GAMES = {
-  suika:    { entryKey: 'suikaEntry',    label: '수박게임',     maxScore: 90000  }, // GAME_MAX_REWARD 3000 × 30점
-  game2048: { entryKey: 'game2048Entry', label: '2048',         maxScore: 200000 }, // GAME_MAX_REWARD 20000 × 10점
-  tetris:   { entryKey: 'tetrisEntry',   label: '네온테트리스', maxScore: 60000  }, // GAME_MAX_REWARD 3000 × 20점
+  suika:     { entryKey: 'suikaEntry',     label: '수박게임',     maxScore: 90000  }, // GAME_MAX_REWARD 3000 × 30점
+  game2048:  { entryKey: 'game2048Entry',  label: '2048',         maxScore: 200000 }, // GAME_MAX_REWARD 20000 × 10점
+  tetris:    { entryKey: 'tetrisEntry',    label: '네온테트리스', maxScore: 100000 }, // GAME_MAX_REWARD 1000 × 100점
+  bankpanic: { entryKey: 'bankpanicEntry', label: '뱅크패닉',     maxScore: 100000 }, // GAME_MAX_REWARD 1000 × 100점
   // 베스트당구장: 샷마다 서버가 점수 계산 → 판 종료 시 서버가 직접 접수 (클라이언트 submitWeeklyScore 불가)
   billiards: { entryKey: null, label: '베스트당구장', maxScore: 300000, serverOnly: true }, // 7가지 게임 합산 보드
 };
