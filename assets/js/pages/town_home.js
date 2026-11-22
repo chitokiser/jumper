@@ -1016,21 +1016,93 @@ function coopProductImage(p) {
   try { return new URL(u, "https://besterp.netlify.app/admin/").href; } catch (_) { return ""; }
 }
 
+function normalizeHomeGroupBuy(p) {
+  const gb = (p && typeof p.group_buy === "object" && p.group_buy !== null) ? p.group_buy : {};
+  const enabled = gb.enabled === true || p?.group_buy_enabled === true || p?.isGroupBuy === true;
+  if (!enabled) return { enabled: false };
+  const dealPrice = Number(gb.deal_price || p.group_buy_price || p.groupBuyPrice || p.price || 0);
+  const origPrice = Number(gb.original_price || p.original_price || p.originalPrice || p.price || dealPrice);
+  const discPct = (origPrice > dealPrice && origPrice > 0) ? Math.round((1 - dealPrice / origPrice) * 100) : 0;
+  const minP = Math.max(2, Number(gb.target_count || p.group_buy_target || p.groupBuyMinParticipants || 5));
+  const curP = Math.max(0, Number(gb.current_count ?? p.group_buy_current ?? p.groupBuyCurrentParticipants ?? 0));
+  const bonusBm = Math.max(0, Number(gb.bonus_bm ?? p.group_buy_bonus_bm ?? p.groupBuyBonusBm ?? 5000));
+  const deadline = gb.deadline_iso || p.group_buy_deadline || p.groupBuyEndAt || "";
+  return { enabled: true, dealPrice, origPrice, discPct, minP, curP, bonusBm, deadline };
+}
+
 function renderCoopCard(p) {
   const img = coopProductImage(p);
   const imgHtml = img
     ? `<img class="mp-product-thumb" src="${escHtml(img)}" alt="${escHtml(p.product_name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="mp-product-thumb-ph" style="display:none;">📦</div>`
     : `<div class="mp-product-thumb-ph">📦</div>`;
 
+  const gb = normalizeHomeGroupBuy(p);
+  const showPrice = gb.enabled ? gb.dealPrice : Number(p.price || 0);
+
   return `
-    <a class="mp-product-card" href="/mall">
+    <a class="mp-product-card" href="/mall.html?product=${encodeURIComponent(p.id)}" style="position:relative;">
+      ${gb.enabled ? `<span style="position:absolute;top:8px;left:8px;z-index:2;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:99px;box-shadow:0 2px 6px rgba(239,68,68,.35);">🔥 공동구매${gb.discPct > 0 ? ` -${gb.discPct}%` : ""}</span>` : ""}
       ${imgHtml}
       <div class="mp-product-body">
         <span style="font-size:0.7rem;background:#eff6ff;color:#1d4ed8;border-radius:99px;padding:1px 7px;display:inline-block;margin-bottom:3px;">🏪 ${escHtml(p.merchantName)}</span>
         <div class="mp-product-title">${escHtml(p.product_name)}</div>
-        <div class="mp-product-price">${Number(p.price || 0).toLocaleString()} VND</div>
+        ${gb.enabled && gb.origPrice > gb.dealPrice ? `<div style="font-size:0.72rem;color:#94a3b8;text-decoration:line-through;">${gb.origPrice.toLocaleString()} VND</div>` : ""}
+        <div class="mp-product-price" style="${gb.enabled ? "color:#dc2626;font-weight:800;" : ""}">${showPrice.toLocaleString()} VND</div>
       </div>
     </a>`;
+}
+
+function renderHomeGroupBuyBanner(gbList) {
+  const wrap = $("homeGroupBuyShowcase");
+  if (!wrap) return;
+  if (!gbList || !gbList.length) {
+    wrap.style.display = "none";
+    return;
+  }
+  const cards = gbList.slice(0, 4).map((p) => {
+    const img = coopProductImage(p) || "/assets/images/jump/logo2.png";
+    const gb = normalizeHomeGroupBuy(p);
+    const pct = Math.min(100, Math.round((gb.curP / gb.minP) * 100));
+    return `
+      <a href="/mall.html?product=${encodeURIComponent(p.id)}" style="display:flex;gap:12px;background:#fff;border:1.5px solid #fecaca;border-radius:14px;padding:12px;text-decoration:none;color:inherit;box-shadow:0 4px 14px rgba(239,68,68,.08);align-items:center;">
+        <div style="position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#f8fafc;">
+          <img src="${escHtml(img)}" alt="${escHtml(p.product_name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='/assets/images/jump/logo2.png'" />
+          ${gb.discPct > 0 ? `<span style="position:absolute;top:4px;left:4px;background:#dc2626;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border-radius:99px;">-${gb.discPct}%</span>` : ""}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;">
+            <span style="font-size:10.5px;font-weight:800;background:#fef2f2;color:#dc2626;padding:1px 7px;border-radius:99px;border:1px solid #fecaca;">🔥 공동구매 타임특가</span>
+            <span style="font-size:10.5px;color:#64748b;font-weight:600;">🏪 ${escHtml(p.merchantName)}</span>
+          </div>
+          <div style="font-size:13.5px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.product_name)}</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px;">
+            <span style="font-size:14.5px;font-weight:900;color:#dc2626;">${gb.dealPrice.toLocaleString()} VND</span>
+            ${gb.origPrice > gb.dealPrice ? `<span style="font-size:11px;color:#94a3b8;text-decoration:line-through;">${gb.origPrice.toLocaleString()}</span>` : ""}
+          </div>
+          <div style="margin-top:5px;">
+            <div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:#b91c1c;margin-bottom:2px;">
+              <span>👥 ${gb.curP}/${gb.minP}명 참여 (${pct}%)</span>
+              <span>🎁 달성 시 +${gb.bonusBm.toLocaleString()} BM</span>
+            </div>
+            <div style="height:6px;background:#fee2e2;border-radius:99px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ef4444,#f97316);border-radius:99px;"></div>
+            </div>
+          </div>
+        </div>
+      </a>`;
+  }).join("");
+
+  wrap.innerHTML = `
+    <div style="background:linear-gradient(135deg,#fff1f2,#fff7ed);border:1.5px solid #fda4af;border-radius:16px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="font-size:14px;font-weight:900;color:#9f1239;">⚡ 지금 진행 중인 하노이 교민 공동구매 · 타임특가</div>
+        <a href="/mall.html?filter=groupbuy" style="font-size:12px;font-weight:800;color:#e11d48;text-decoration:none;">공동구매 전체 보기 →</a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">
+        ${cards}
+      </div>
+    </div>`;
+  wrap.style.display = "block";
 }
 
 // ── 웹매거진 최신 뉴스 (베스트 매거진과 같은 기사 목록: 저장된 기사 최신순 + 기본 기사) ──
@@ -1116,8 +1188,21 @@ async function loadCoopProducts() {
     // 사진 있는 상품 우선, 최신순
     const ts = (p) => p.created_at?.seconds || 0;
     const list = [];
-    snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+    snap.forEach((d) => {
+      const data = d.data() || {};
+      list.push({ id: d.id, ...data, merchantName: merchantName(data.merchant_id) });
+    });
     list.sort((a, b) => (coopProductImage(b) ? 1 : 0) - (coopProductImage(a) ? 1 : 0) || ts(b) - ts(a));
+
+    // 활성화된 공동구매 상품 먼저 상단 쇼케이스에 렌더링
+    const now = Date.now();
+    const gbItems = list.filter((p) => {
+      const gb = normalizeHomeGroupBuy(p);
+      if (!gb.enabled) return false;
+      const endMs = gb.deadline ? Date.parse(gb.deadline) : 0;
+      return !endMs || endMs > now;
+    });
+    renderHomeGroupBuyBanner(gbItems);
 
     // 가맹점별로 번갈아 뽑아 한 가맹점이 다 채우지 않게
     const byMerchant = new Map();
@@ -1133,7 +1218,7 @@ async function loadCoopProducts() {
     }
 
     if (!picks.length) return hide();
-    grid.innerHTML = picks.map((p) => renderCoopCard({ ...p, merchantName: merchantName(p.merchant_id) })).join("");
+    grid.innerHTML = picks.map((p) => renderCoopCard(p)).join("");
   } catch (e) {
     console.warn("loadCoopProducts failed:", e);
     hide();

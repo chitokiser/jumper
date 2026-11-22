@@ -343,6 +343,7 @@ window.addEventListener('lang:change', applyFooterI18n);
       await loadInto("siteFooter", "/partials/footer.html");
       applyFooterI18n();
       ensureSupportChatScript();
+      if (!document.querySelector('script[data-bc-live-hub]')) { const h = document.createElement('script'); h.type = 'module'; h.src = '/assets/js/bc-live-hub.js'; h.dataset.bcLiveHub = '1'; document.head.appendChild(h); }
 
       window.dispatchEvent(new CustomEvent("partials:loaded"));
       window.dispatchEvent(new CustomEvent("partials:mounted"));

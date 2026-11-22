@@ -1,4 +1,4 @@
-﻿import { app, functions } from "../firebase-init.js";
+import { app, functions } from "../firebase-init.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 import { getFirestore, collection, getDocs, getDoc, query, where, orderBy, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { onAuthReady } from "../auth.js";
@@ -162,12 +162,23 @@ async function loadOrders() {
             }
 
             // 상품 아이템 요약
-            const itemsSummary = (data.items || []).map(it => `${it.name || it.product_name || '상품'} x ${it.qty || 1}개`).join(', ');
+            const itemsSummary = (data.items || []).map(it => `${it.is_group_buy ? '🔥[공구] ' : ''}${it.name || it.product_name || '상품'} x ${it.qty || 1}개`).join(', ');
+            const isGbOrder = data.order_type === "group_buy_flash_deal" || data.is_group_buy === true || (data.items || []).some(it => it.is_group_buy);
+            const shipHtml = (data.shipping_phone || data.shipping_address || data.delivery_memo)
+                ? `<div style="margin:6px 0;padding:8px 11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:0.85rem;color:#1e293b;line-height:1.5;">
+                    ${data.shipping_phone ? `<div>📞 <strong>연락처/Zalo:</strong> ${data.shipping_phone}</div>` : ""}
+                    ${data.shipping_address ? `<div>📍 <strong>배송지/픽업:</strong> ${data.shipping_address}</div>` : ""}
+                    ${data.delivery_memo ? `<div>📝 <strong>요청사항:</strong> ${data.delivery_memo}</div>` : ""}
+                   </div>`
+                : "";
 
             html += `
-                <div class="panel" style="padding:16px;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,0.04);">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:8px;">
-                        <span style="font-size:0.9rem; color:#4b5563; font-weight:600;">주문번호: ${d.id}</span>
+                <div class="panel" style="padding:16px;border:1px solid ${isGbOrder ? '#fda4af' : '#e5e7eb'};border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,0.04);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:8px; flex-wrap:wrap; gap:6px;">
+                        <span style="font-size:0.9rem; color:#4b5563; font-weight:600;">
+                            주문번호: ${d.id}
+                            ${isGbOrder ? `<span style="margin-left:6px;background:#fff1f2;color:#e11d48;border:1px solid #fecdd3;font-size:0.75rem;font-weight:800;padding:2px 8px;border-radius:99px;">🔥 공동구매·타임딜</span>` : ""}
+                        </span>
                         <span style="font-size:0.85rem; color:#888;">${data.created_at?.toDate().toLocaleString() || "방금 전"}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -181,6 +192,7 @@ async function loadOrders() {
                     <div style="font-size:0.9rem; color:#374151; margin-bottom:6px;">
                         <strong>주문 상품:</strong> ${itemsSummary || '상품 정보 없음'}
                     </div>
+                    ${shipHtml}
                     <div style="margin-bottom:6px;">
                         <strong>진행 상태:</strong> ${badge}
                     </div>

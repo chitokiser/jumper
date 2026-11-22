@@ -126,11 +126,20 @@
     <div id="cartModal" class="modal"
       style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
       <div class="modal-content panel"
-        style="background:#fff; width:90%; max-width:500px; padding: 20px; max-height:80vh; overflow-y:auto; border-radius:8px;">
-        <h3 style="margin-top:0;">🛒 내 장바구니</h3>
-        <div id="cartList" style="display:grid;gap:12px;margin:16px 0;">장바구니가 비어 있습니다.</div>
+        style="background:#fff; width:92%; max-width:500px; padding: 20px; max-height:86vh; overflow-y:auto; border-radius:12px;">
+        <h3 style="margin-top:0;">🛒 주문서 &amp; 장바구니</h3>
+        <div id="cartList" style="display:grid;gap:12px;margin:14px 0;">장바구니가 비어 있습니다.</div>
+
+        <!-- 배송지 및 연락처 입력 (1회 입력 시 브라우저 자동 기억) -->
+        <div id="cartShippingBox" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:0.84rem;font-weight:800;color:#1e293b;">📍 배송지 / 픽업 연락처 (가맹점 전달용)</div>
+          <input type="text" id="cartBuyerPhone" placeholder="📞 연락처 또는 Zalo ID (예: 090-1234-5678)" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:0.85rem;box-sizing:border-box;" />
+          <input type="text" id="cartBuyerAddress" placeholder="🏠 하노이 배송 동네·아파트 동/호수 (또는 '매장 픽업')" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:0.85rem;box-sizing:border-box;" />
+          <input type="text" id="cartBuyerMemo" placeholder="📝 요청사항 (선택: 문 앞 배송, 도착 전 연락 등)" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:0.85rem;box-sizing:border-box;" />
+        </div>
+
         <div
-          style="text-align:right; font-weight:bold; font-size:1.2rem; margin-bottom:16px; padding-top:16px; border-top:2px solid #eee;">
+          style="text-align:right; font-weight:bold; font-size:1.2rem; margin-bottom:16px; padding-top:12px; border-top:2px solid #eee;">
           총 결제금액: <span id="cartTotal" style="color:#ef4444;">0</span> VND
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">

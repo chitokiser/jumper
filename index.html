@@ -1553,59 +1553,63 @@
   </style>
 
   <main class="page">
-    <!-- ── 주간 게임 토너먼트 배너 (수이카·2048·베스트당구장 주간 랭킹 보상) ── -->
+    <!-- ── 주간 게임 토너먼트 배너 (전 게임 3억 GP 한도 내 S~D티어 차등 보상 + 실시간 1위 현황) ── -->
     <section class="section" id="gameBannerSection" style="margin-top:8px;">
       <div class="game-cta-banner">
         <div class="game-cta-main">
           <div class="game-cta-copy">
             <div class="game-cta-badges">
               <span class="game-cta-live"><span class="game-cta-live-dot"></span>WEEKLY TOURNAMENT</span>
-              <span class="game-cta-reward-tag">🏆 매주 TOP10 GP 자동 지급</span>
+              <span class="game-cta-reward-tag">🏆 전 게임 총 2억 9,865만 GP (3억 GP 한도)</span>
             </div>
-            <h2 class="game-cta-title">수이카 · 2048 · 베스트당구장 주간 랭킹 <span class="hl">1위 5,000만 GP</span>!</h2>
-            <p class="game-cta-desc">🍉 수이카 과일합치기, 🔢 2048 숫자 합치기, 🎱 베스트당구장(3쿠션·사구·포켓볼·스누커 등 7가지 게임)에서 이번 주 최고 점수에 도전하세요! 매주 일요일 00:00(베트남 시간) 마감 즉시 게임별 TOP10에게 GP를 자동 지급합니다. 🥇 5,000만 · 🥈 4,500만 · 🥉 4,000만 … 10위 500만 GP.</p>
+            <h2 class="game-cta-title">베스트당구장 · 테트리스 · 2048 · 수이카 · 뱅크패닉 <span class="hl">주간 TOP 10</span>!</h2>
+            <p class="game-cta-desc">👑 최고 티어 <b>🎱 베스트당구장(1위 5,000만 GP · 총 2억 7,500만 GP)</b>부터 <b>🧱 네온테트리스(1위 180만 GP)</b> · <b>🔢 2048(1위 120만 GP)</b> · <b>🍉 수이카(1위 80만 GP)</b> · <b>🤠 뱅크패닉(1위 50만 GP)</b>까지! 매주 일요일 00:00(베트남 시간) 마감 즉시 각 게임 TOP 10에게 GP를 자동 지급합니다.</p>
           </div>
           <div class="game-cta-action-box">
-            <a class="game-cta-play-btn" href="/suika.html">
-              <span>🍉 수이카 도전하기</span>
-              <span class="game-cta-play-arrow">▶</span>
-            </a>
-            <a class="game-cta-play-btn" href="/2048.html">
-              <span>🔢 2048 도전하기</span>
-              <span class="game-cta-play-arrow">▶</span>
-            </a>
             <a class="game-cta-play-btn" href="/billiards.html">
-              <span>🎱 당구 도전하기</span>
+              <span>🎱 당구장 (S티어 · 1위 5천만)</span>
+              <span class="game-cta-play-arrow">▶</span>
+            </a>
+            <a class="game-cta-play-btn" href="/tetris.html">
+              <span>🧱 테트리스 (A티어 · 1위 180만)</span>
+              <span class="game-cta-play-arrow">▶</span>
+            </a>
+            <a class="game-cta-play-btn" href="/bankpanic.html">
+              <span>🤠 뱅크패닉 (NEW · 1위 50만)</span>
               <span class="game-cta-play-arrow">▶</span>
             </a>
             <span class="game-cta-subnote">⏰ <span id="gameBannerCountdown">매주 일요일 00:00 마감</span></span>
           </div>
         </div>
-        <div class="game-cta-modes">
-          <a class="game-mode-chip" href="/suika.html">
-            <span class="gm-icon">🍉</span>
-            <span class="gm-text">수이카 과일합치기</span>
+        <div class="game-cta-modes" style="grid-template-columns:repeat(auto-fit,minmax(155px,1fr));">
+          <a class="game-mode-chip" href="/billiards.html" style="flex-direction:column;align-items:flex-start;gap:2px;">
+            <div style="display:flex;align-items:center;gap:6px;"><span class="gm-icon">🎱</span><span class="gm-text">베스트당구장 (S티어)</span></div>
+            <small id="homeTop_billiards" style="font-size:11px;color:#fde047;font-weight:700;">👑 1위 5,000만 GP 도전 →</small>
           </a>
-          <a class="game-mode-chip" href="/2048.html">
-            <span class="gm-icon">🔢</span>
-            <span class="gm-text">2048 숫자 합치기</span>
+          <a class="game-mode-chip" href="/tetris.html" style="flex-direction:column;align-items:flex-start;gap:2px;">
+            <div style="display:flex;align-items:center;gap:6px;"><span class="gm-icon">🧱</span><span class="gm-text">네온 테트리스 (A티어)</span></div>
+            <small id="homeTop_tetris" style="font-size:11px;color:#fde047;font-weight:700;">🔥 1위 180만 GP 도전 →</small>
           </a>
-          <a class="game-mode-chip" href="/billiards.html">
-            <span class="gm-icon">🎱</span>
-            <span class="gm-text">베스트당구장</span>
+          <a class="game-mode-chip" href="/2048.html" style="flex-direction:column;align-items:flex-start;gap:2px;">
+            <div style="display:flex;align-items:center;gap:6px;"><span class="gm-icon">🔢</span><span class="gm-text">2048 (B티어)</span></div>
+            <small id="homeTop_game2048" style="font-size:11px;color:#fde047;font-weight:700;">⚡ 1위 120만 GP 도전 →</small>
           </a>
-          <a class="game-mode-chip" href="/games.html#hunterRankSection">
-            <span class="gm-icon">🏆</span>
-            <span class="gm-text">이번 주 랭킹 보기</span>
+          <a class="game-mode-chip" href="/suika.html" style="flex-direction:column;align-items:flex-start;gap:2px;">
+            <div style="display:flex;align-items:center;gap:6px;"><span class="gm-icon">🍉</span><span class="gm-text">수이카 (C티어)</span></div>
+            <small id="homeTop_suika" style="font-size:11px;color:#fde047;font-weight:700;">🎯 1위 80만 GP 도전 →</small>
           </a>
-          <a class="game-mode-chip" href="/games.html">
-            <span class="gm-icon">🎮</span>
-            <span class="gm-text">전체 게임모음</span>
+          <a class="game-mode-chip" href="/bankpanic.html" style="flex-direction:column;align-items:flex-start;gap:2px;">
+            <div style="display:flex;align-items:center;gap:6px;"><span class="gm-icon">🤠</span><span class="gm-text">뱅크 패닉 (D티어)</span></div>
+            <small id="homeTop_bankpanic" style="font-size:11px;color:#fde047;font-weight:700;">🔫 1위 50만 GP 도전 →</small>
+          </a>
+          <a class="game-mode-chip" href="/games.html" style="flex-direction:column;align-items:flex-start;gap:2px;">
+            <div style="display:flex;align-items:center;gap:6px;"><span class="gm-icon">🎮</span><span class="gm-text">전체 게임 &amp; 랭킹</span></div>
+            <small style="font-size:11px;color:#93c5fd;font-weight:700;">🏆 실시간 순위 보드 보기 →</small>
           </a>
         </div>
       </div>
       <script type="module">
-        import { weekInfo } from '/assets/js/weekly-ranking.js';
+        import { weekInfo, fetchTop, WEEKLY_GAMES, fmtGp, prizeForRank } from '/assets/js/weekly-ranking.js';
         const el = document.getElementById('gameBannerCountdown');
         const tick = () => {
           let s = Math.max(0, Math.floor((weekInfo().endsAt - Date.now()) / 1000));
@@ -1613,6 +1617,18 @@
           if (el) el.textContent = `이번 주 마감까지 ${d > 0 ? d + '일 ' : ''}${h}시간 ${m}분`;
         };
         tick(); setInterval(tick, 30000);
+        const wk = weekInfo().weekId;
+        Object.keys(WEEKLY_GAMES).forEach(k => {
+          const node = document.getElementById(`homeTop_${k}`);
+          if (!node) return;
+          fetchTop(k, wk).then(rows => {
+            if (rows && rows[0]) {
+              node.textContent = `🥇 1위 ${rows[0].displayName || 'Player'} (${Number(rows[0].bestScore || 0).toLocaleString()}점)`;
+            } else {
+              node.textContent = `🥇 1위 ${fmtGp(prizeForRank(1, k))} GP 주인공 도전!`;
+            }
+          }).catch(() => {});
+        });
       </script>
     </section>
 
@@ -1786,9 +1802,10 @@
 
     <section class="section" id="coopProductsSection">
       <div class="section-h">
-        <h2 class="section-title"><a href="/mall" data-i18n="member_mall_section" style="color:inherit;text-decoration:none;">가맹점 상품&amp;서비스 모음</a></h2>
-        <a class="btn btn--ghost btn--sm" href="/mall" data-i18n="view_all">View All</a>
+        <h2 class="section-title"><a href="/mall.html" data-i18n="member_mall_section" style="color:inherit;text-decoration:none;">🔥 하노이 공동구매 &amp; 가맹점 상품 모음</a></h2>
+        <a class="btn btn--ghost btn--sm" href="/mall.html" data-i18n="view_all">쇼핑몰 전체 보기 →</a>
       </div>
+      <div id="homeGroupBuyShowcase" style="display:none;margin-bottom:14px;"></div>
       <div id="coopProductsGrid" class="mp-product-grid"></div>
     </section>
 

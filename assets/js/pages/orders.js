@@ -249,11 +249,21 @@ function renderMerchantOrderCard(o) {
     </a>
   `);
 
+  const isGbOrder = o.order_type === "group_buy_flash_deal" || o.is_group_buy === true || items.some(it => it.is_group_buy);
+  const shipHtml = (o.shipping_phone || o.shipping_address || o.delivery_memo)
+    ? `<div style="margin:6px 0;padding:8px 11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:0.82rem;color:#334155;line-height:1.45;">
+        ${o.shipping_phone ? `<div>📞 <b>연락처/Zalo:</b> ${esc(o.shipping_phone)}</div>` : ""}
+        ${o.shipping_address ? `<div>📍 <b>배송지/픽업:</b> ${esc(o.shipping_address)}</div>` : ""}
+        ${o.delivery_memo ? `<div>📝 <b>요청사항:</b> ${esc(o.delivery_memo)}</div>` : ""}
+       </div>`
+    : "";
+
   return `
     <article class="morder-card" data-order-id="${orderId}">
       <div class="morder-header">
         <div class="morder-merchant-info">
           <span class="morder-merchant-badge">🏪 ${esc(mName)}</span>
+          ${isGbOrder ? `<span class="chip" style="background:#fff1f2;color:#e11d48;border:1px solid #fecdd3;font-weight:800;font-size:0.75rem;">🔥 공동구매·타임딜</span>` : ""}
           <span class="morder-id">#${esc(orderId)}</span>
         </div>
         <div class="morder-date">${esc(when)}</div>
@@ -265,6 +275,7 @@ function renderMerchantOrderCard(o) {
       </div>
 
       ${bannerHtml}
+      ${shipHtml}
 
       <div class="morder-items-list">
         ${itemsHtml || '<div style="color:#94a3b8; font-size:0.85rem;">주문 상품 상세 정보가 없습니다.</div>'}
