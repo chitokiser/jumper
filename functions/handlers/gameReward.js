@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 // gameReward.js — 게임 GP 보상/참가비 서버사이드 처리 (클라이언트 신뢰 불가)
 const admin = require('firebase-admin');
 const db    = admin.firestore();
@@ -8,17 +8,18 @@ const { todayUtc7 } = require('./membership');
 const GAME_MAX_REWARD = {
   memory:   1200,  // 최대 가능 점수: 매칭360 + 콤보240 + 클리어300 + 시간보너스200 = 1100
   bow:      2000,
-  race:     5000,  // 500 → 5000
+  race:     1000,  // 500 → 1000
   relay:    3000,
-  dungeon:  5000,  // 300 → 5000
-  conquest: 5000,  // 300 → 5000
+  dungeon:  600,   // 300 → 600
+  conquest: 600,   // 300 → 600
   game2048: 20000, // 10점당 1GP, 점수 배율·파티 보너스 반영 (10000 → 20000)
   suika:    3000,  // 30점당 1GP, 최대 90000점 (300 → 3000)
+  tetris:   3000,  // 20점당 1GP, 최대 60000점
 };
 
 // ── 참가비 (서버 정의 — 클라이언트 전달값 무시) ──────────────────────────────
-const GAME_BASE_FEE = 100;
-const GAME_FEE_STEP = 50;
+const GAME_BASE_FEE = 50;   // 100 → 50
+const GAME_FEE_STEP = 25;   // 50 → 25
 const RESET_MS      = 24 * 60 * 60 * 1000;
 
 // ── 하루 최대 총 GP 획득 한도 ────────────────────────────────────────────────
@@ -66,7 +67,7 @@ async function claimGameReward(uid, gameType, amount) {
 async function payGameEntry(uid, gameKey) {
   if (!uid || typeof gameKey !== 'string') throw new Error('파라미터 오류');
 
-  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'relayEntry', 'dungeonEntry', 'conquestEntry', 'suikaEntry', 'game2048Entry'];
+  const allowedKeys = ['memoryEntry', 'bowEntry', 'raceEntry', 'relayEntry', 'dungeonEntry', 'conquestEntry', 'suikaEntry', 'game2048Entry', 'tetrisEntry'];
   if (!allowedKeys.includes(gameKey)) throw new Error(`알 수 없는 게임 키: ${gameKey}`);
 
   const ref = db.collection('battle_players').doc(uid);
@@ -121,7 +122,7 @@ async function adminGetUserGpHistory(uid) {
   const GAME_LABELS = {
     memory: '기억력 게임', bow: '활쏘기', race: '몬스터레이스',
     relay: '이어달리기', dungeon: '던전', conquest: '몬스터수성',
-    suika: '수이카', game2048: '2048',
+    suika: '수이카', game2048: '2048', tetris: '네온테트리스',
   };
 
   // Firestore Timestamp → ms 안전 변환

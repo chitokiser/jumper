@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<script src="/assets/js/no-zoom.js"></script>
+<title>네온 테트리스 (FG TETRIS) | BestClub — GP 보상 · 주간 토너먼트</title>
+<meta name="description" content="홀드·고스트 블록·SRS 회전·콤보·특수 아이템을 지원하는 BestClub 네온 아케이드 테트리스! 점수를 GP로 전환하고 주간 토너먼트에 도전하세요."/>
+<meta name="robots" content="index, follow"/>
+<link rel="canonical" href="https://bestclubvn.netlify.app/tetris.html"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#070a14;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  overflow:hidden;user-select:none;touch-action:manipulation}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:14px;
+  padding-bottom:max(14px,env(safe-area-inset-bottom));gap:10px;overflow-y:auto}
+.screen.hidden{display:none!important}
+
+/* ── 로비 ── */
+.title{font-size:clamp(26px,7vw,36px);font-weight:900;text-align:center;letter-spacing:-1px}
+.title span{background:linear-gradient(90deg,#38bdf8,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-card{background:#111827;border:1px solid #374151;border-radius:14px;
+  padding:12px 20px;width:100%;max-width:340px}
+.stat-card h3{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.sr{display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px}
+.sr .lbl{color:#9ca3af}.sr .val{font-weight:700;color:#fbbf24}
+.rule-box{background:#111827;border:1px solid #374151;border-radius:12px;
+  padding:11px 15px;font-size:12px;color:#9ca3af;line-height:1.75;width:100%;max-width:340px}
+.rule-box b{color:#38bdf8}
+.btn-main{padding:12px 28px;background:linear-gradient(135deg,#38bdf8,#6366f1);color:#fff;border:none;
+  border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 20px rgba(99,102,241,.45);transition:opacity .15s;width:100%;max-width:300px}
+.btn-main:active{opacity:.8}.btn-main:disabled{opacity:.4;cursor:not-allowed}
+.btn-free{padding:9px 24px;background:none;border:1px solid #374151;border-radius:12px;
+  color:#9ca3af;font-size:13px;cursor:pointer;width:100%;max-width:300px}
+.fee-badge{background:#1e3a5f;border:1px solid #2563eb;border-radius:8px;
+  padding:4px 14px;font-size:12px;font-weight:700;color:#93c5fd}
+.g-hdr{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:340px}
+.g-back{color:#9ca3af;font-size:12px;text-decoration:none}
+
+/* ── 게임 화면 ── */
+#gameScreen{background:#070a14;padding:0;justify-content:space-between;gap:0}
+#gameHdr{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:440px;
+  padding:6px 10px;background:rgba(15,23,42,.85);border-bottom:1px solid #1e293b;flex-shrink:0}
+.ghb{background:rgba(255,255,255,.07);border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:4px}
+#scoreBox{color:#fbbf24}#lvBox{color:#38bdf8}#gpBox{color:#86efac}
+
+#stageWrap{flex:1;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 8px;gap:6px;position:relative;min-height:0}
+#playRow{display:flex;align-items:flex-start;justify-content:center;gap:8px;width:100%;position:relative}
+
+.side-col{display:flex;flex-direction:column;gap:8px;width:72px;flex-shrink:0}
+.mini-box{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:6px;text-align:center}
+.mini-box .lbl{font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;margin-bottom:4px}
+.mini-box canvas{display:block;margin:0 auto;background:#090d1a;border-radius:6px}
+.stat-mini{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:6px 4px;text-align:center}
+.stat-mini .k{font-size:9.5px;color:#64748b;font-weight:700}
+.stat-mini .v{font-size:13px;font-weight:900;color:#e2e8f0;margin-top:1px}
+
+#boardWrap{position:relative;border:2px solid #334155;border-radius:10px;background:#090d1a;
+  box-shadow:0 0 28px rgba(56,189,248,.14);overflow:hidden}
+#tetrisCanvas{display:block}
+#comboPopup{position:absolute;left:0;right:0;top:28%;text-align:center;pointer-events:none;
+  font-size:24px;font-weight:900;color:#fde047;text-shadow:0 2px 12px rgba(0,0,0,.9);opacity:0}
+#comboPopup.show{animation:popAnim .85s ease-out forwards}
+@keyframes popAnim{0%{opacity:0;transform:scale(.5)}25%{opacity:1;transform:scale(1.15)}80%{opacity:1}100%{opacity:0;transform:translateY(-24px)}}
+#boardWrap.shake{animation:shake .25s}
+@keyframes shake{25%{transform:translate(-4px,3px)}50%{transform:translate(4px,-3px)}75%{transform:translate(-3px,2px)}}
+
+/* ── 특수 아이템 바 (FG TETRIS 응용 아이템) ── */
+#itemBar{display:flex;gap:6px;width:100%;max-width:390px;justify-content:center}
+.it-btn{position:relative;flex:1;padding:5px 6px;background:#111827;border:1px solid #334155;border-radius:9px;
+  color:#e2e8f0;font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
+.it-btn:disabled{opacity:.35;cursor:not-allowed}
+.it-btn .cnt{background:#f59e0b;color:#000;border-radius:99px;padding:0 5px;font-size:10px;font-weight:900}
+
+/* ── 터치 컨트롤 패드 ── */
+#ctrlBar{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;width:100%;max-width:410px;padding:2px 0}
+.c-btn{padding:10px 4px;background:#1e293b;border:1px solid #334155;border-radius:10px;color:#f8fafc;
+  font-size:13px;font-weight:800;cursor:pointer;text-align:center;user-select:none;touch-action:manipulation}
+.c-btn:active{background:#334155;transform:scale(.95)}
+.c-btn.drop{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border-color:#fbbf24}
+.c-btn.hold{background:#312e81;border-color:#6366f1;color:#e0e7ff}
+.c-btn small{display:block;font-size:9.5px;font-weight:700;opacity:.8;margin-top:1px}
+
+/* ── 하단 아케이드 네비 ── */
+.arcade-bar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(0,0,0,.6);
+  border-top:1px solid #1f2937;width:100%;max-width:440px;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+.arcade-bar::-webkit-scrollbar{display:none}
+.mc-mode-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#1f2937;
+  border:1px solid #374151;border-radius:20px;color:#9ca3af;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0}
+.mc-mode-chip:hover,.mc-mode-chip.is-active{border-color:#38bdf8;color:#38bdf8}
+
+/* ── 게임오버 모달 ── */
+#overModal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.82);align-items:center;justify-content:center}
+#overModal.open{display:flex}
+.over-panel{background:#0d1117;border:2px solid #38bdf8;border-radius:20px;padding:26px 28px;text-align:center;width:90%;max-width:320px}
+.over-title{font-size:23px;font-weight:900;color:#38bdf8;margin-bottom:6px}
+.over-score{font-size:34px;font-weight:900;color:#fbbf24;margin:8px 0}
+.over-gp{font-size:14px;color:#86efac;font-weight:700;margin-bottom:12px}
+.over-msg{font-size:12px;color:#9ca3af;margin-bottom:18px;line-height:1.5}
+.over-btns{display:flex;flex-direction:column;gap:8px}
+.btn-retry{padding:11px;background:#38bdf8;color:#000;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer}
+.btn-lobby{padding:9px;background:none;border:1px solid #374151;color:#9ca3af;border-radius:12px;font-size:13px;cursor:pointer}
+
+.loading-spinner{width:38px;height:38px;border:3px solid #374151;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.credit{font-size:10px;color:#4b5563;text-align:center;margin-top:2px}
+</style>
+</head>
+<body>
+
+<div id="loadingScreen" class="screen">
+  <div class="loading-spinner"></div>
+  <div style="color:#9ca3af;font-size:13px;margin-top:8px">네온 테트리스 로딩 중...</div>
+</div>
+
+<!-- 로비 화면 -->
+<div id="lobbyScreen" class="screen hidden">
+  <div class="g-hdr">
+    <a href="/games.html" class="g-back">← 게임모음</a>
+    <div id="lobbyUserChip" style="font-size:11px;color:#9ca3af;background:#1f2937;border-radius:8px;padding:4px 10px;"></div>
+  </div>
+  <div class="title">🧱 <span>NEON TETRIS</span></div>
+  <div style="font-size:12.5px;color:#9ca3af;text-align:center">SRS 회전 · 홀드 · 고스트 블록 · 라인 폭발 아이템!</div>
+
+  <div class="stat-card">
+    <h3>내 현황</h3>
+    <div class="sr"><span class="lbl">보유 GP</span><span class="val" id="lobbyGP">—</span></div>
+    <div class="sr"><span class="lbl">최고 점수</span><span class="val" id="lobbyBest">—</span></div>
+    <div class="sr"><span class="lbl">누적 획득 GP</span><span class="val" id="lobbyEarned">—</span></div>
+  </div>
+
+  <div class="rule-box">
+    ⬅️➡️ 이동 · ⬆️/X 회전 · ⬇️ 소프트드롭 · <b>Space 하드드롭</b> · <b>C/Shift 홀드</b><br/>
+    <b>1줄</b> 100 · <b>2줄</b> 300 · <b>3줄</b> 500 · <b>4줄(TETRIS!)</b> 800점 × 레벨 배율<br/>
+    🔥 <b>연속 라인 클리어 콤보</b> &amp; <b>Back-to-Back 테트리스</b> 보너스!<br/>
+    💣 10줄 클리어마다 <b>하단 2줄 폭파 · 슬로우 · 블록변환</b> 특수 아이템 지급!<br/>
+    💎 점수 <b>20점 = 1 GP</b> (한 판 최대 3,000 GP)
+  </div>
+
+  <span id="feeBadge" class="fee-badge">참가비: 50 GP</span>
+  <div id="feeInfo" style="font-size:11px;color:#6b7280;text-align:center"></div>
+
+  <button class="btn-main" id="btnEnter">▶ 게임 시작 (GP 차감)</button>
+  <button class="btn-free" id="btnFree">🎮 무료 연습 (GP 없음)</button>
+  <div id="weeklyBoard" style="width:100%;max-width:340px"></div>
+  <div class="credit">Inspired by FG TETRIS (CSID-DGU/2022-1-OSSProj-FourGenius-6) &amp; Modern Guideline SRS</div>
+</div>
+
+<!-- 게임 화면 -->
+<div id="gameScreen" class="screen hidden">
+  <div id="gameHdr">
+    <div class="ghb" id="scoreBox">🧱 <span id="scoreVal">0</span></div>
+    <div class="ghb" id="lvBox">LV.<span id="lvVal">1</span> · <span id="linesVal">0</span>줄</div>
+    <div class="ghb" id="gpBox">💎 <span id="gpVal">0</span> GP</div>
+    <button type="button" id="btnCashoutNow" style="background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;">🏁 정산</button>
+  </div>
+
+  <div id="stageWrap">
+    <div id="playRow">
+      <!-- 좌측: HOLD & COMBO -->
+      <div class="side-col">
+        <div class="mini-box">
+          <div class="lbl">HOLD (C)</div>
+          <canvas id="holdCanvas" width="58" height="58"></canvas>
+        </div>
+        <div class="stat-mini">
+          <div class="k">COMBO</div>
+          <div class="v" id="comboVal" style="color:#f43f5e;">0</div>
+        </div>
+        <div class="stat-mini">
+          <div class="k">B2B</div>
+          <div class="v" id="b2bVal" style="color:#a855f7;">-</div>
+        </div>
+      </div>
+
+      <!-- 중앙: 10x20 테트리스 보드 -->
+      <div id="boardWrap">
+        <canvas id="tetrisCanvas" width="220" height="440"></canvas>
+        <div id="comboPopup"></div>
+      </div>
+
+      <!-- 우측: NEXT 3개 프리뷰 -->
+      <div class="side-col">
+        <div class="mini-box">
+          <div class="lbl">NEXT</div>
+          <canvas id="nextCanvas" width="58" height="168"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- FG TETRIS 스타일 응용 특수 아이템 바 -->
+    <div id="itemBar">
+      <button type="button" class="it-btn" id="btnItemBomb" disabled>💣 2줄폭파 <span class="cnt" id="cntBomb">0</span></button>
+      <button type="button" class="it-btn" id="btnItemSlow" disabled>❄️ 슬로우 <span class="cnt" id="cntSlow">0</span></button>
+      <button type="button" class="it-btn" id="btnItemI" disabled>⚡ I-블록 <span class="cnt" id="cntI">0</span></button>
+    </div>
+
+    <!-- 모바일 & 마우스 터치 컨트롤 (누르고 있으면 연속 이동/낙하 지원) -->
+    <div id="ctrlBar">
+      <button type="button" class="c-btn hold" id="cHold">🔄<small>홀드</small></button>
+      <button type="button" class="c-btn" id="cLeft">⬅️<small>이동</small></button>
+      <button type="button" class="c-btn" id="cDown">⬇️<small>내리기</small></button>
+      <button type="button" class="c-btn" id="cRight">➡️<small>이동</small></button>
+      <button type="button" class="c-btn" id="cRot">🔃<small>회전</small></button>
+      <button type="button" class="c-btn drop" id="cDrop">⏬<small>하드드롭</small></button>
+    </div>
+  </div>
+
+  <nav class="arcade-bar">
+    <a class="mc-mode-chip" href="/merchants.html"><span>💎</span><span>GPS맵</span></a>
+    <a class="mc-mode-chip" href="/billiards.html"><span>🎱</span><span>당구장</span></a>
+    <a class="mc-mode-chip" href="/suika.html"><span>🍉</span><span>수이카</span></a>
+    <a class="mc-mode-chip" href="/2048.html"><span>🔢</span><span>2048</span></a>
+    <a class="mc-mode-chip is-active" href="/tetris.html"><span>🧱</span><span>테트리스</span></a>
+    <a class="mc-mode-chip" href="/memory.html"><span>🧠</span><span>기억력</span></a>
+    <a class="mc-mode-chip" href="/relay.html"><span>🏃</span><span>릴레이</span></a>
+  </nav>
+</div>
+
+<!-- 게임오버 모달 -->
+<div id="overModal">
+  <div class="over-panel">
+    <div class="over-title">GAME OVER</div>
+    <div style="font-size:13px;color:#9ca3af">최종 점수</div>
+    <div class="over-score" id="finalScore">0</div>
+    <div class="over-gp" id="finalGP">+ 0 GP 획득!</div>
+    <div class="over-msg" id="overMsg"></div>
+    <div class="over-btns">
+      <button class="btn-retry" id="btnRetry">다시 하기</button>
+      <button class="btn-lobby" id="btnBackLobby">로비로 돌아가기</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db, auth, functions } from '/assets/js/firebase-init.js';
+import { doc, getDoc, updateDoc, increment }
+  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
+import { mountWeeklyBoard, submitWeeklyScore, syncMyProfile } from '/assets/js/weekly-ranking.js';
+import { claimFreeDailyGp, FREE_GP_THRESHOLD } from '/assets/js/free-gp.js';
+
+const $ = id => document.getElementById(id);
+const COLS = 10, ROWS = 20, BLOCK = 22;
+const BASE_FEE = 50, FEE_STEP = 25;
+const GAME_KEY = 'tetrisEntry';
+const GAME_TYPE = 'tetris';
+const RESET_MS = 24 * 60 * 60 * 1000;
+const SCORE_PER_GP = 20;      // 20점 = 1 GP
+const MAX_GP_PER_GAME = 3000; // 판당 최대 3,000 GP
+
+// 7종 테트로미노 (Modern Guideline 색상 & 매트릭스)
+const PIECES = {
+  I: { color: '#06b6d4', glow: '#67e8f9', shape: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]] },
+  J: { color: '#3b82f6', glow: '#93c5fd', shape: [[1,0,0],[1,1,1],[0,0,0]] },
+  L: { color: '#f97316', glow: '#fdba74', shape: [[0,0,1],[1,1,1],[0,0,0]] },
+  O: { color: '#eab308', glow: '#fde047', shape: [[1,1],[1,1]] },
+  S: { color: '#22c55e', glow: '#86efac', shape: [[0,1,1],[1,1,0],[0,0,0]] },
+  T: { color: '#a855f7', glow: '#d8b4fe', shape: [[0,1,0],[1,1,1],[0,0,0]] },
+  Z: { color: '#ef4444', glow: '#fca5a5', shape: [[1,1,0],[0,1,1],[0,0,0]] },
+};
+const PIECE_TYPES = Object.keys(PIECES);
+
+// ── Web Audio 사운드 합성 ──
+let _ac = null;
+function ac() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (_ac.state === 'suspended') _ac.resume().catch(()=>{});
+  return _ac;
+}
+function beep(freq, dur = 0.08, type = 'triangle', vol = 0.2) {
+  try {
+    const c = ac(), o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, c.currentTime);
+    g.gain.setValueAtTime(vol, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(); o.stop(c.currentTime + dur);
+  } catch {}
+}
+function sndMove() { beep(320, 0.04, 'sine', 0.12); }
+function sndRotate() { beep(520, 0.07, 'triangle', 0.18); }
+function sndDrop() { beep(180, 0.1, 'sawtooth', 0.22); }
+function sndClear(lines) {
+  const notes = lines === 4 ? [523, 659, 784, 1046] : [440, 554, 659];
+  notes.forEach((f, i) => setTimeout(() => beep(f, 0.14, 'triangle', 0.28), i * 55));
+}
+function sndGameOver() {
+  [300, 240, 180].forEach((f, i) => setTimeout(() => beep(f, 0.2, 'sawtooth', 0.25), i * 160));
+}
+
+// ── 상태 변수 ──
+let _uid = null, _playerGP = 0;
+let _entryFee = BASE_FEE, _entryCount = 0, _entryResetAt = 0;
+let _freeMode = false;
+let _running = false;
+let _grid = [];
+let _bag = [];
+let _nextQueue = [];
+let _cur = null;       // { type, matrix, x, y }
+let _holdType = null;
+let _canHold = true;
+let _score = 0, _lines = 0, _level = 1, _combo = -1, _b2b = false;
+let _dropInterval = 850, _lastDropTime = 0, _rafId = null;
+let _particles = [];
+let _items = { bomb: 1, slow: 1, iPiece: 1 };
+let _slowUntil = 0;
+let _nextItemLineGoal = 10;
+
+const canvas = $('tetrisCanvas');
+const ctx = canvas.getContext('2d');
+const holdCanvas = $('holdCanvas');
+const holdCtx = holdCanvas.getContext('2d');
+const nextCanvas = $('nextCanvas');
+const nextCtx = nextCanvas.getContext('2d');
+
+const screens = { loading: $('loadingScreen'), lobby: $('lobbyScreen'), game: $('gameScreen') };
+function showScreen(name) {
+  Object.entries(screens).forEach(([k, el]) => el.classList.toggle('hidden', k !== name));
+}
+
+function showPopup(txt) {
+  const el = $('comboPopup');
+  if (!el) return;
+  el.textContent = txt;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+
+// ── 7-Bag 랜덤 생성기 ──
+function refillBag() {
+  const arr = [...PIECE_TYPES];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  _bag.push(...arr);
+}
+function pullNextType() {
+  if (_bag.length < 7) refillBag();
+  return _bag.shift();
+}
+
+function cloneMatrix(m) { return m.map(r => [...r]); }
+
+function rotateMatrixCW(mat) {
+  const N = mat.length;
+  const res = Array.from({ length: N }, () => Array(N).fill(0));
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      res[c][N - 1 - r] = mat[r][c];
+    }
+  }
+  return res;
+}
+
+function collides(grid, mat, offsetX, offsetY) {
+  for (let r = 0; r < mat.length; r++) {
+    for (let c = 0; c < mat[r].length; c++) {
+      if (!mat[r][c]) continue;
+      const nx = offsetX + c;
+      const ny = offsetY + r;
+      if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+      if (ny >= 0 && grid[ny][nx]) return true;
+    }
+  }
+  return false;
+}
+
+function getGhostY() {
+  if (!_cur) return 0;
+  let gy = _cur.y;
+  while (!collides(_grid, _cur.matrix, _cur.x, gy + 1)) {
+    gy++;
+  }
+  return gy;
+}
+
+function spawnPiece(forcedType = null) {
+  const type = forcedType || _nextQueue.shift();
+  while (_nextQueue.length < 3) _nextQueue.push(pullNextType());
+  const mat = cloneMatrix(PIECES[type].shape);
+  const x = Math.floor((COLS - mat[0].length) / 2);
+  const y = 0;
+  _cur = { type, matrix: mat, x, y };
+  _canHold = true;
+  drawMiniCanvases();
+  if (collides(_grid, _cur.matrix, _cur.x, _cur.y)) {
+    triggerGameOver();
+  }
+}
+
+function holdPiece() {
+  if (!_running || !_cur || !_canHold) return;
+  sndRotate();
+  const curType = _cur.type;
+  if (!_holdType) {
+    _holdType = curType;
+    spawnPiece();
+  } else {
+    const prevHold = _holdType;
+    _holdType = curType;
+    spawnPiece(prevHold);
+  }
+  _canHold = false;
+  drawMiniCanvases();
+}
+
+function moveHorizontal(dir) {
+  if (!_running || !_cur) return false;
+  if (!collides(_grid, _cur.matrix, _cur.x + dir, _cur.y)) {
+    _cur.x += dir;
+    sndMove();
+    return true;
+  }
+  return false;
+}
+
+// SRS Wall-Kick 회전
+function rotateCurrent() {
+  if (!_running || !_cur) return;
+  const rotated = rotateMatrixCW(_cur.matrix);
+  const kicks = [[0,0], [-1,0], [1,0], [-2,0], [2,0], [0,-1], [-1,-1], [1,-1]];
+  for (const [kx, ky] of kicks) {
+    if (!collides(_grid, rotated, _cur.x + kx, _cur.y + ky)) {
+      _cur.matrix = rotated;
+      _cur.x += kx;
+      _cur.y += ky;
+      sndRotate();
+      return;
+    }
+  }
+}
+
+function softDrop() {
+  if (!_running || !_cur) return;
+  if (!collides(_grid, _cur.matrix, _cur.x, _cur.y + 1)) {
+    _cur.y++;
+    addScore(1);
+    _lastDropTime = performance.now();
+  } else {
+    lockPiece();
+  }
+}
+
+function hardDrop() {
+  if (!_running || !_cur) return;
+  let dropped = 0;
+  while (!collides(_grid, _cur.matrix, _cur.x, _cur.y + 1)) {
+    _cur.y++;
+    dropped++;
+  }
+  addScore(dropped * 2);
+  sndDrop();
+  lockPiece();
+}
+
+function spawnLineParticles(rowY, color) {
+  for (let c = 0; c < COLS; c++) {
+    for (let i = 0; i < 3; i++) {
+      _particles.push({
+        x: (c + 0.5) * BLOCK,
+        y: (rowY + 0.5) * BLOCK,
+        vx: (Math.random() - 0.5) * 6,
+        vy: (Math.random() - 0.7) * 5,
+        color,
+        life: 24 + Math.random() * 14,
+      });
+    }
+  }
+}
+
+function lockPiece() {
+  if (!_cur) return;
+  const { matrix, x, y, type } = _cur;
+  const color = PIECES[type].color;
+  for (let r = 0; r < matrix.length; r++) {
+    for (let c = 0; c < matrix[r].length; c++) {
+      if (!matrix[r][c]) continue;
+      const ny = y + r, nx = x + c;
+      if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS) {
+        _grid[ny][nx] = color;
+      }
+    }
+  }
+
+  // 라인 클리어 판정
+  let cleared = 0;
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (_grid[r].every(cell => cell !== null)) {
+      spawnLineParticles(r, '#fde047');
+      _grid.splice(r, 1);
+      _grid.unshift(Array(COLS).fill(null));
+      cleared++;
+      r++;
+    }
+  }
+
+  if (cleared > 0) {
+    _combo++;
+    _lines += cleared;
+    _level = Math.min(20, Math.floor(_lines / 10) + 1);
+    _dropInterval = Math.max(110, 850 - (_level - 1) * 42);
+
+    const baseScores = [0, 100, 300, 500, 800];
+    let gain = (baseScores[cleared] || 800) * _level;
+
+    // Back-to-Back 4줄 테트리스 보너스
+    if (cleared === 4) {
+      if (_b2b) {
+        gain = Math.round(gain * 1.5);
+        showPopup('🔥 B2B TETRIS! ×1.5');
+      } else {
+        showPopup('⚡ TETRIS! +800');
+      }
+      _b2b = true;
+      const bw = $('boardWrap');
+      bw.classList.remove('shake'); void bw.offsetWidth; bw.classList.add('shake');
+    } else {
+      _b2b = false;
+      if (_combo >= 2) showPopup(`🔥 ${_combo} COMBO!`);
+      else if (cleared >= 2) showPopup(`${cleared} LINES!`);
+    }
+
+    if (_combo > 0) gain += _combo * 50 * _level;
+    addScore(gain);
+    sndClear(cleared);
+
+    // 10줄마다 FG TETRIS 특수 아이템 랜덤 1종 충전
+    while (_lines >= _nextItemLineGoal) {
+      _nextItemLineGoal += 10;
+      const keys = ['bomb', 'slow', 'iPiece'];
+      const pick = keys[Math.floor(Math.random() * keys.length)];
+      _items[pick]++;
+      showPopup('🎁 특수 아이템 획득!');
+    }
+  } else {
+    _combo = -1;
+  }
+
+  updateHud();
+  spawnPiece();
+}
+
+// ── FG TETRIS 응용 특수 아이템 3종 ──
+function useItemBomb() {
+  if (!_running || _items.bomb <= 0) return;
+  _items.bomb--;
+  sndClear(4);
+  for (let i = 0; i < 2; i++) {
+    spawnLineParticles(ROWS - 1 - i, '#f43f5e');
+    _grid.pop();
+    _grid.unshift(Array(COLS).fill(null));
+  }
+  addScore(250 * _level);
+  showPopup('💣 하단 2줄 폭파!');
+  updateHud();
+}
+
+function useItemSlow() {
+  if (!_running || _items.slow <= 0) return;
+  _items.slow--;
+  _slowUntil = Date.now() + 12000;
+  sndRotate();
+  showPopup('❄️ 12초간 낙하 속도 50% 감속!');
+  updateHud();
+}
+
+function useItemIPiece() {
+  if (!_running || _items.iPiece <= 0) return;
+  _items.iPiece--;
+  sndRotate();
+  spawnPiece('I');
+  showPopup('⚡ I-블록 즉시 소환!');
+  updateHud();
+}
+
+function addScore(pts) {
+  _score += pts;
+  updateHud();
+}
+
+function updateHud() {
+  $('scoreVal').textContent = _score.toLocaleString();
+  $('lvVal').textContent = _level;
+  $('linesVal').textContent = _lines;
+  const gp = _freeMode ? 0 : Math.min(Math.floor(_score / SCORE_PER_GP), MAX_GP_PER_GAME);
+  $('gpVal').textContent = gp.toLocaleString();
+  $('comboVal').textContent = Math.max(0, _combo);
+  $('b2bVal').textContent = _b2b ? 'ON 🔥' : '-';
+
+  $('cntBomb').textContent = _items.bomb;
+  $('cntSlow').textContent = _items.slow;
+  $('cntI').textContent = _items.iPiece;
+  $('btnItemBomb').disabled = !_running || _items.bomb <= 0;
+  $('btnItemSlow').disabled = !_running || _items.slow <= 0;
+  $('btnItemI').disabled = !_running || _items.iPiece <= 0;
+}
+
+// ── 렌더링 ──
+function drawBlock(context, x, y, size, color, alpha = 1) {
+  context.save();
+  context.globalAlpha = alpha;
+  context.fillStyle = color;
+  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+  context.fillStyle = 'rgba(255,255,255,0.22)';
+  context.fillRect(x * size + 2, y * size + 2, size - 4, 4);
+  context.restore();
+}
+
+function drawMiniCanvases() {
+  // HOLD
+  holdCtx.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
+  if (_holdType) {
+    const p = PIECES[_holdType];
+    const m = p.shape;
+    const s = 12;
+    const ox = Math.floor((holdCanvas.width - m[0].length * s) / 2);
+    const oy = Math.floor((holdCanvas.height - m.length * s) / 2);
+    for (let r = 0; r < m.length; r++) {
+      for (let c = 0; c < m[r].length; c++) {
+        if (m[r][c]) {
+          holdCtx.fillStyle = p.color;
+          holdCtx.fillRect(ox + c * s + 1, oy + r * s + 1, s - 2, s - 2);
+        }
+      }
+    }
+  }
+
+  // NEXT 3
+  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  _nextQueue.slice(0, 3).forEach((t, idx) => {
+    const p = PIECES[t];
+    const m = p.shape;
+    const s = 11;
+    const ox = Math.floor((nextCanvas.width - m[0].length * s) / 2);
+    const oy = idx * 54 + Math.floor((50 - m.length * s) / 2);
+    for (let r = 0; r < m.length; r++) {
+      for (let c = 0; c < m[r].length; c++) {
+        if (m[r][c]) {
+          nextCtx.fillStyle = p.color;
+          nextCtx.fillRect(ox + c * s + 1, oy + r * s + 1, s - 2, s - 2);
+        }
+      }
+    }
+  });
+}
+
+function renderBoard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 배경 격자
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      ctx.strokeRect(c * BLOCK, r * BLOCK, BLOCK, BLOCK);
+      if (_grid[r][c]) {
+        drawBlock(ctx, c, r, BLOCK, _grid[r][c]);
+      }
+    }
+  }
+
+  // 고스트 블록 & 현재 블록
+  if (_cur) {
+    const gy = getGhostY();
+    const color = PIECES[_cur.type].color;
+    for (let r = 0; r < _cur.matrix.length; r++) {
+      for (let c = 0; c < _cur.matrix[r].length; c++) {
+        if (!_cur.matrix[r][c]) continue;
+        // Ghost
+        drawBlock(ctx, _cur.x + c, gy + r, BLOCK, color, 0.22);
+        // Active
+        drawBlock(ctx, _cur.x + c, _cur.y + r, BLOCK, color, 1);
+      }
+    }
+  }
+
+  // 파티클
+  _particles = _particles.filter(p => p.life > 0);
+  _particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.2;
+    p.life--;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life / 30);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - 2, p.y - 2, 5, 5);
+    ctx.restore();
+  });
+}
+
+function loop(now) {
+  if (!_running) return;
+  const effInterval = Date.now() < _slowUntil ? _dropInterval * 1.85 : _dropInterval;
+  if (now - _lastDropTime >= effInterval) {
+    if (!collides(_grid, _cur.matrix, _cur.x, _cur.y + 1)) {
+      _cur.y++;
+    } else {
+      lockPiece();
+    }
+    _lastDropTime = now;
+  }
+  renderBoard();
+  _rafId = requestAnimationFrame(loop);
+}
+
+function startGame(free) {
+  _freeMode = free;
+  _grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+  _bag = [];
+  _nextQueue = [pullNextType(), pullNextType(), pullNextType()];
+  _holdType = null;
+  _canHold = true;
+  _score = 0; _lines = 0; _level = 1; _combo = -1; _b2b = false;
+  _dropInterval = 850;
+  _items = { bomb: 1, slow: 1, iPiece: 1 };
+  _nextItemLineGoal = 10;
+  _slowUntil = 0;
+  _particles = [];
+  $('overModal').classList.remove('open');
+  _running = true;
+  showScreen('game');
+  spawnPiece();
+  updateHud();
+  _lastDropTime = performance.now();
+  if (_rafId) cancelAnimationFrame(_rafId);
+  _rafId = requestAnimationFrame(loop);
+}
+
+// ── 키보드 & 터치 홀드(DAS/ARR) 조작 ──
+window.addEventListener('keydown', e => {
+  if (!_running) return;
+  if (['ArrowLeft','ArrowRight','ArrowDown','ArrowUp','Space'].includes(e.code)) e.preventDefault();
+  if (e.code === 'ArrowLeft') moveHorizontal(-1);
+  else if (e.code === 'ArrowRight') moveHorizontal(1);
+  else if (e.code === 'ArrowDown') softDrop();
+  else if (e.code === 'ArrowUp' || e.code === 'KeyX') rotateCurrent();
+  else if (e.code === 'Space') hardDrop();
+  else if (e.code === 'KeyC' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') holdPiece();
+});
+
+function bindHoldButton(btnId, actionFn, intervalMs = 110) {
+  const btn = $(btnId);
+  if (!btn) return;
+  let timer = null;
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+  const start = (e) => {
+    e.preventDefault();
+    actionFn();
+    stop();
+    timer = setInterval(actionFn, intervalMs);
+  };
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('touchstart', start, { passive: false });
+  window.addEventListener('mouseup', stop);
+  window.addEventListener('touchend', stop);
+  window.addEventListener('touchcancel', stop);
+}
+
+bindHoldButton('cLeft', () => moveHorizontal(-1), 105);
+bindHoldButton('cRight', () => moveHorizontal(1), 105);
+bindHoldButton('cDown', () => softDrop(), 75);
+$('cRot').onclick = () => rotateCurrent();
+$('cDrop').onclick = () => hardDrop();
+$('cHold').onclick = () => holdPiece();
+
+$('btnItemBomb').onclick = useItemBomb;
+$('btnItemSlow').onclick = useItemSlow;
+$('btnItemI').onclick = useItemIPiece;
+$('btnCashoutNow').onclick = () => {
+  if (!_running) return;
+  if (confirm('지금 게임을 종료하고 현재 점수로 GP를 정산할까요?')) triggerGameOver();
+};
+
+// ── Firebase GP 참가비 & 보상 정산 ──
+async function loadPlayer() {
+  const chip = $('lobbyUserChip');
+  if (!_uid) {
+    $('lobbyGP').textContent = '게스트';
+    $('btnEnter').disabled = true;
+    if (chip) chip.textContent = '';
+    updateFeeDisplay();
+    return;
+  }
+  try {
+    const d = (await getDoc(doc(db, 'battle_players', _uid))).data() || {};
+    _playerGP = d.gold || 0;
+    const entry = d[GAME_KEY] || {}, now = Date.now();
+    const resetAtMs = entry.resetAt?.toMillis?.() ?? (typeof entry.resetAt === 'number' ? entry.resetAt : 0);
+    if (!resetAtMs || now - resetAtMs > RESET_MS) {
+      _entryCount = 0; _entryResetAt = 0;
+    } else {
+      _entryCount = entry.count || 0; _entryResetAt = resetAtMs;
+    }
+    _entryFee = BASE_FEE + _entryCount * FEE_STEP;
+    const tetrisStat = d.tetris || {};
+    $('lobbyBest').textContent = (tetrisStat.bestScore || 0).toLocaleString();
+    $('lobbyEarned').textContent = ((tetrisStat.totalGP || 0).toLocaleString()) + ' GP';
+  } catch {}
+  $('lobbyGP').textContent = _playerGP.toLocaleString();
+  $('btnEnter').disabled = _playerGP < _entryFee;
+  if (chip) chip.textContent = auth.currentUser?.displayName?.slice(0, 10) || '';
+  updateFeeDisplay();
+}
+
+function updateFeeDisplay() {
+  const badge = $('feeBadge');
+  if (badge) badge.textContent = `참가비: ${_entryFee} GP`;
+  const info = $('feeInfo');
+  if (!info) return;
+  if (!_uid) { info.textContent = '로그인하면 참가비 내고 GP 획득 가능'; return; }
+  if (!_entryCount) info.textContent = '오늘 첫 참가 · 24시간 후 자동 리셋';
+  else info.textContent = `오늘 ${_entryCount}번째 참가`;
+}
+
+async function deductFee() {
+  if (!_uid) return false;
+  try {
+    const res = await httpsCallable(functions, 'payGameEntry')({ gameKey: GAME_KEY });
+    const { fee, newCount } = res.data;
+    _playerGP -= fee;
+    _entryCount = newCount;
+    _entryFee = BASE_FEE + newCount * FEE_STEP;
+    return true;
+  } catch {
+    // Cloud Function에 아직 tetrisEntry가 배포되기 전일 경우 클라이언트 트랜잭션 폴백
+    try {
+      const ref = doc(db, 'battle_players', _uid);
+      const snap = await getDoc(ref);
+      const gold = snap.data()?.gold || 0;
+      if (gold < _entryFee) return false;
+      const newCount = _entryCount + 1;
+      await updateDoc(ref, {
+        gold: increment(-_entryFee),
+        [GAME_KEY]: { count: newCount, resetAt: _entryResetAt || Date.now() },
+      });
+      _playerGP -= _entryFee;
+      _entryCount = newCount;
+      _entryFee = BASE_FEE + newCount * FEE_STEP;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+async function awardGP(amount) {
+  if (_freeMode || amount <= 0 || !_uid) return;
+  try {
+    await httpsCallable(functions, 'claimGameReward')({ gameType: GAME_TYPE, amount });
+  } catch {
+    // Cloud Function 배포 전 폴백
+    try {
+      const todayKey = `gameEarn_tetris_${new Date().toISOString().slice(0, 10)}`;
+      await updateDoc(doc(db, 'battle_players', _uid), {
+        gold: increment(amount),
+        [todayKey]: increment(amount),
+      });
+    } catch {}
+  }
+  try {
+    await updateDoc(doc(db, 'battle_players', _uid), {
+      'tetris.totalGP': increment(amount),
+    });
+  } catch {}
+}
+
+async function triggerGameOver() {
+  if (!_running) return;
+  _running = false;
+  if (_rafId) cancelAnimationFrame(_rafId);
+  sndGameOver();
+
+  const gp = _freeMode ? 0 : Math.min(Math.floor(_score / SCORE_PER_GP), MAX_GP_PER_GAME);
+  $('finalScore').textContent = _score.toLocaleString();
+  $('finalGP').textContent = _freeMode ? '(무료 연습 — GP 미지급)' : `+ ${gp.toLocaleString()} GP 획득!`;
+  $('overMsg').textContent = _freeMode
+    ? '참가비를 내고 플레이하면 점수에 따라 GP를 획득할 수 있습니다.'
+    : gp > 0 ? `${_score.toLocaleString()}점 (${_lines}줄 클리어) → ${gp.toLocaleString()} GP가 계정에 적립됩니다!` : '20점 이상 달성 시 GP를 획득할 수 있습니다!';
+
+  $('overModal').classList.add('open');
+
+  if (!_freeMode && gp > 0) await awardGP(gp);
+  if (_uid && !_freeMode && _score > 0) {
+    submitWeeklyScore(GAME_TYPE, _score).then(r => {
+      if (r?.improved) _weekly.showMessage(`🏆 주간 랭킹 기록 갱신! (${r.bestScore.toLocaleString()}점)`);
+      _weekly.refresh();
+    }).catch(()=>{});
+    try {
+      const ref = doc(db, 'battle_players', _uid);
+      const d = (await getDoc(ref)).data() || {};
+      if (_score > (d.tetris?.bestScore || 0)) {
+        await updateDoc(ref, { 'tetris.bestScore': _score });
+      }
+    } catch {}
+  }
+}
+
+$('btnEnter').onclick = async () => {
+  $('btnEnter').disabled = true;
+  const ok = await deductFee();
+  if (!ok) { alert('GP가 부족하거나 참가 처리에 실패했습니다.'); $('btnEnter').disabled = false; return; }
+  startGame(false);
+};
+$('btnFree').onclick = () => startGame(true);
+$('btnRetry').onclick = async () => {
+  $('overModal').classList.remove('open');
+  if (!_freeMode) {
+    $('btnRetry').disabled = true;
+    const ok = await deductFee();
+    $('btnRetry').disabled = false;
+    if (!ok) { alert('GP가 부족하여 로비로 이동합니다.'); goLobby(); return; }
+    startGame(false);
+  } else {
+    startGame(true);
+  }
+};
+$('btnBackLobby').onclick = goLobby;
+
+function goLobby() {
+  _running = false;
+  if (_rafId) cancelAnimationFrame(_rafId);
+  $('overModal').classList.remove('open');
+  loadPlayer().then(() => showScreen('lobby'));
+}
+
+const _weekly = mountWeeklyBoard($('weeklyBoard'), 'tetris', { getUid: () => _uid });
+
+onAuthStateChanged(auth, async user => {
+  _uid = user?.uid || null;
+  syncMyProfile(user);
+  _weekly.refresh();
+  await loadPlayer();
+  if (_uid && _playerGP < FREE_GP_THRESHOLD) {
+    const r = await claimFreeDailyGp();
+    if (r.granted) await loadPlayer();
+  }
+  showScreen('lobby');
+});
+</script>
+<script type="module" src="/assets/js/game-sponsor.js"></script>
+</body>
+</html>
