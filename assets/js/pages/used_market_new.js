@@ -1,4 +1,4 @@
-﻿// /assets/js/pages/used_market_new.js
+// /assets/js/pages/used_market_new.js — 당근마켓 스타일 중고 물품 등록
 import { onAuthReady } from "/assets/js/auth.js";
 import { app, db } from "/assets/js/firebase-init.js";
 import {
@@ -48,7 +48,7 @@ function renderPreview(files) {
       return `
         <div class="um-upload-card">
           <img src="${url}" alt="미리보기 ${idx + 1}" />
-          <div class="um-upload-name">${file.name}</div>
+          <div class="um-upload-name">${idx === 0 ? "⭐ 대표 · " : ""}${file.name}</div>
         </div>
       `;
     })
@@ -94,6 +94,28 @@ async function uploadImages(userUid, files, setMsg) {
   return urls;
 }
 
+// 판매하기 vs 무료나눔 토글
+$("btnModeSell")?.addEventListener("click", () => {
+  $("btnModeSell")?.classList.add("is-active");
+  $("btnModeFree")?.classList.remove("is-active");
+  const priceInput = $("fPrice");
+  if (priceInput) {
+    priceInput.disabled = false;
+    if (Number(priceInput.value) === 0) priceInput.value = "";
+  }
+});
+
+$("btnModeFree")?.addEventListener("click", () => {
+  $("btnModeFree")?.classList.add("is-active");
+  $("btnModeSell")?.classList.remove("is-active");
+  const priceInput = $("fPrice");
+  if (priceInput) {
+    priceInput.value = "0";
+  }
+  if ($("fCategory")) $("fCategory").value = "무료나눔";
+  if ($("fNegotiable")) $("fNegotiable").checked = false;
+});
+
 onAuthReady(({ loggedIn, user }) => {
   const form = $("umForm");
   const msg = $("fMsg");
@@ -126,8 +148,15 @@ onAuthReady(({ loggedIn, user }) => {
     };
 
     const title = ($("fTitle")?.value || "").trim();
+    const rawCat = $("fCategory")?.value || "기타";
     const price = Number(("" + ($("fPrice")?.value || "0")).replace(/,/g, ""));
+    const isFreeShare = price === 0 || rawCat === "무료나눔";
+    const category = isFreeShare ? "무료나눔" : rawCat;
+    const condition = $("fCondition")?.value || "중고(상태좋음)";
+    const negotiable = !isFreeShare && !!$("fNegotiable")?.checked;
+    const bmPayOk = !isFreeShare && !!$("fBmPayOk")?.checked;
     const region = ($("fRegion")?.value || "").trim();
+    const meetSpot = ($("fMeetSpot")?.value || "").trim();
     const contact = ($("fContact")?.value || "").trim();
     const description = ($("fDesc")?.value || "").trim();
 
@@ -149,9 +178,15 @@ onAuthReady(({ loggedIn, user }) => {
       setMsg("게시글 저장 중...");
       const refDoc = await addDoc(collection(db, "usedMarketPosts"), {
         title,
-        price,
+        category,
+        price: isFreeShare ? 0 : price,
+        isFreeShare,
+        condition,
+        negotiable,
+        bmPayOk,
         currency: "VND",
         region,
+        meetSpot,
         contact,
         imageUrls,
         imageUrl: imageUrls[0] || "",
@@ -159,7 +194,7 @@ onAuthReady(({ loggedIn, user }) => {
         status: "on_sale",
         sellerUid: user.uid,
         sellerEmail: user.email || "",
-        sellerName: user.displayName || "",
+        sellerName: user.displayName || (user.email ? user.email.split("@")[0] : "이웃"),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

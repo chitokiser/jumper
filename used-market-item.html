@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>중고거래 상세 - BestCluber</title>
+  <title>중고거래 상세 (베스트 당근장터) - BestClub</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/assets/css/pages/used_market.css" />
 
   <script src="/assets/js/partials.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script type="module" src="/assets/js/firebase-init.js"></script>
   <script type="module" src="/assets/js/header-auth.js"></script>
   <script type="module" src="/assets/js/pages/used_market_item.js" defer></script>
@@ -20,57 +21,181 @@
   <div id="siteHeader"></div>
 
   <main class="page">
-    <section class="panel" style="margin-top:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-        <a class="btn" href="/used.html">목록으로</a>
-        <div id="umOwnerTools" style="display:none;gap:8px;flex-wrap:wrap;align-items:center;">
-          <span id="umSuperAdminPill" style="display:none;font-size:12px;font-weight:700;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;padding:4px 10px;border-radius:999px;">🛡️ 수퍼어드민 권한</span>
-          <button class="btn" id="btnEditToggle" type="button">내용 수정/보완</button>
-          <button class="btn" id="btnOnSale" type="button">판매중 전환</button>
-          <button class="btn" id="btnReserved" type="button">예약중 전환</button>
-          <button class="btn" id="btnSold" type="button">판매완료 전환</button>
-          <button class="btn" id="btnHidden" type="button" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">숨김 전환</button>
-          <button class="btn" id="btnDeletePost" type="button" style="background:#ef4444;color:#fff;border-color:#ef4444;font-weight:700;">삭제</button>
+    <section class="panel" style="margin-top:14px; max-width:920px; margin-left:auto; margin-right:auto;">
+      <!-- 상단 네비 및 판매자/관리자 툴바 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+        <a class="btn" href="/used.html" style="border-radius:10px; font-weight:700;">← 당근장터 목록</a>
+        <div id="umOwnerTools" style="display:none; gap:6px; flex-wrap:wrap; align-items:center;">
+          <span id="umSuperAdminPill" style="display:none; font-size:12px; font-weight:700; color:#1d4ed8; background:#eff6ff; border:1px solid #bfdbfe; padding:4px 10px; border-radius:999px;">🛡️ 수퍼어드민 권한</span>
+          <button class="btn btn--sm" id="btnBumpPost" type="button" style="background:#fff7ed; color:#c2410c; border:1px solid #fdba74; font-weight:700;">🚀 끌올하기</button>
+          <button class="btn btn--sm" id="btnEditToggle" type="button">✏️ 수정</button>
+          <button class="btn btn--sm" id="btnOnSale" type="button">🟢 판매중</button>
+          <button class="btn btn--sm" id="btnReserved" type="button">🟡 예약중</button>
+          <button class="btn btn--sm" id="btnSold" type="button">⚪ 거래완료</button>
+          <button class="btn btn--sm" id="btnHidden" type="button" style="background:#fee2e2; color:#991b1b; border-color:#fca5a5;">숨김</button>
+          <button class="btn btn--sm" id="btnDeletePost" type="button" style="background:#ef4444; color:#fff; border-color:#ef4444; font-weight:700;">🗑️ 삭제</button>
         </div>
       </div>
 
-      <div id="umDetailState" class="state">불러오는 중...</div>
+      <div id="umDetailState" class="state">물품 정보를 불러오는 중...</div>
 
       <article id="umDetail" class="um-detail" style="display:none;">
-        <img id="dImage" class="um-main-img" alt="상품 이미지" />
+        <!-- 1. 상품 이미지 갤러리 -->
+        <div style="position:relative;">
+          <img id="dImage" class="um-main-img" alt="상품 이미지" />
+          <div id="dBadge" style="position:absolute; top:14px; left:14px;"></div>
+        </div>
         <div id="dThumbs" class="um-thumbs" style="display:none;"></div>
-        <h1 id="dTitle" class="title" style="margin:0;"></h1>
-        <div id="dBadge"></div>
-        <div id="dPrice" class="um-price"></div>
 
-        <section class="um-kv">
-          <div class="um-kv-row"><div class="k">지역</div><div id="dRegion" class="v">-</div></div>
-          <div class="um-kv-row"><div class="k">판매자</div><div id="dSeller" class="v">-</div></div>
-          <div class="um-kv-row"><div class="k">연락처</div><div id="dContact" class="v">-</div></div>
-          <div class="um-kv-row"><div class="k">등록일</div><div id="dDate" class="v">-</div></div>
+        <!-- 2. 당근마켓 스타일 판매자 프로필 & 매너온도 -->
+        <section class="um-seller-card">
+          <div class="um-seller-left">
+            <div class="um-seller-avatar" id="dSellerAvatar">🥕</div>
+            <div>
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <strong id="dSeller" style="font-size:16px; color:#0f172a;">-</strong>
+                <span style="font-size:11px; font-weight:700; background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:99px;">✔ 동네인증 이웃</span>
+              </div>
+              <div id="dRegionSub" style="font-size:13px; color:#64748b; margin-top:2px;">📍 -</div>
+            </div>
+          </div>
+          <div class="um-temp-meter">
+            <div class="um-temp-val" id="dMannerTemp">37.5°C 😊</div>
+            <div class="um-temp-bar"><div class="um-temp-fill" id="dMannerFill" style="width:45%;"></div></div>
+            <div style="font-size:11px; color:#94a3b8; margin-top:3px;">매너온도 (첫 온도 36.5°C)</div>
+          </div>
         </section>
 
+        <!-- 3. 제목 / 카테고리 / 시간 / 가격 / 태그 -->
+        <section style="padding:4px 2px;">
+          <div id="dMetaRow" style="font-size:13px; color:#64748b; margin-bottom:6px;"></div>
+          <h1 id="dTitle" class="title" style="margin:0 0 10px 0; font-size:1.45rem; color:#0f172a;"></h1>
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div id="dPrice" class="um-price" style="font-size:1.5rem; margin:0;"></div>
+              <div id="dPills" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+            </div>
+            <!-- 액션 버튼 그룹: 찜 / 당근톡 / 가격제안 / BM결제 / 공유 -->
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" id="btnDetailLike" class="btn" style="border-radius:10px; font-weight:700; background:#fff1f2; color:#e11d48; border:1px solid #fecdd3;">
+                🤍 관심 <span id="dLikeCount">0</span>
+              </button>
+              <button type="button" id="btnOpenOffer" class="btn" style="border-radius:10px; font-weight:700; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;">
+                💰 가격 제안하기
+              </button>
+              <button type="button" id="btnOpenBmPay" class="btn" style="border-radius:10px; font-weight:700; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;">
+                💳 BM 안전결제
+              </button>
+              <button type="button" id="btnShareKarrot" class="btn" style="border-radius:10px; font-weight:700; background:#f8fafc; color:#334155; border:1px solid #cbd5e1;">
+                📣 단톡방 공유
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. 본문 상세 설명 -->
         <section id="dDesc" class="um-desc"></section>
 
+        <!-- 5. 거래 희망 장소 & 연락처 카드 -->
+        <section class="um-kv">
+          <div class="um-kv-row"><div class="k">📍 거래 동네</div><div id="dRegion" class="v">-</div></div>
+          <div class="um-kv-row"><div class="k">🏢 희망 거래 장소</div><div id="dMeetSpot" class="v">-</div></div>
+          <div class="um-kv-row"><div class="k">📦 물품 상태</div><div id="dCondition" class="v">-</div></div>
+          <div class="um-kv-row">
+            <div class="k">📞 판매자 직통 연락처</div>
+            <div class="v" style="display:flex; align-items:center; gap:6px; justify-content:flex-end;">
+              <span id="dContact">-</span>
+              <button type="button" id="btnCopyContact" class="btn btn--sm" style="padding:2px 8px; font-size:11px; border-radius:6px;">복사</button>
+            </div>
+          </div>
+          <div class="um-kv-row"><div class="k">📅 등록/끌올 일시</div><div id="dDate" class="v">-</div></div>
+        </section>
+
+        <!-- 6. 💬 당근채팅 & 가격제안 (인앱 실시간 문의/답변) -->
+        <section class="um-chat-panel" id="umChatSection">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+            <div>
+              <h3 style="margin:0; font-size:1.1rem; color:#0f172a;">💬 당근톡 문의 &amp; 가격 제안 (<span id="dChatCount">0</span>)</h3>
+              <p style="margin:2px 0 0; font-size:12.5px; color:#64748b;">판매자에게 직거래 시간·장소를 문의하거나 희망 가격을 제안해 보세요.</p>
+            </div>
+          </div>
+
+          <div id="dChatList" class="um-chat-list">
+            <div class="muted" style="text-align:center; padding:18px; font-size:13px;">아직 등록된 당근톡 문의가 없습니다. 첫 메시지를 남겨보세요!</div>
+          </div>
+
+          <form id="umChatForm" style="margin-top:12px; display:grid; gap:8px; background:#f8fafc; padding:12px; border-radius:12px; border:1px solid #e2e8f0;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <span style="font-size:12px; font-weight:700; color:#475569;">빠른 메시지:</span>
+              <button type="button" class="um-quick-msg-btn" data-msg="안녕하세요! 아직 구매 가능할까요?" style="border:1px solid #cbd5e1; background:#fff; border-radius:99px; font-size:11.5px; padding:4px 10px; cursor:pointer;">안녕하세요! 구매 가능할까요?</button>
+              <button type="button" class="um-quick-msg-btn" data-msg="오늘 저녁 아파트 로비에서 직거래 가능하신가요?" style="border:1px solid #cbd5e1; background:#fff; border-radius:99px; font-size:11.5px; padding:4px 10px; cursor:pointer;">오늘 저녁 직거래 가능할까요?</button>
+              <button type="button" class="um-quick-msg-btn" data-msg="그랩 익스프레스(Grab)로 수령하고 BM으로 결제하고 싶어요!" style="border:1px solid #cbd5e1; background:#fff; border-radius:99px; font-size:11.5px; padding:4px 10px; cursor:pointer;">그랩퀵 + BM결제 원해요</button>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input id="chatOfferPrice" type="number" min="0" step="1000" class="input" placeholder="💰 제안 가격 (선택, VND)" style="width:190px; background:#fff;" />
+              <input id="chatMessageInput" type="text" class="input" maxlength="400" required placeholder="메시지를 입력하세요 (예: 카톡 아이디 남겨주시면 연락드릴게요)" style="flex:1; min-width:200px; background:#fff;" />
+              <button type="submit" id="btnSendChat" class="btn--karrot" style="padding:9px 16px !important;">전송</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- 7. 판매자/어드민 게시글 수정 패널 -->
         <section id="umEditPanel" class="panel um-edit-panel" style="display:none;">
-          <h3 style="margin:0 0 8px;">게시글 수정 및 보완</h3>
-          <form id="umEditForm" style="display:grid;gap:10px;">
-            <label>
-              <div class="muted">판매 상태</div>
-              <select id="eStatus" class="select" style="width:100%; font-weight:700;">
-                <option value="on_sale">🟢 판매중 (on_sale)</option>
-                <option value="reserved">🟡 예약중 (reserved)</option>
-                <option value="sold">⚪ 판매완료 (sold)</option>
-                <option value="hidden">🔴 숨김 / 블라인드 (hidden)</option>
-              </select>
-            </label>
+          <h3 style="margin:0 0 8px;">🥕 게시글 수정 및 보완</h3>
+          <form id="umEditForm" style="display:grid; gap:10px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <label>
+                <div class="muted">판매 상태</div>
+                <select id="eStatus" class="select" style="width:100%; font-weight:700;">
+                  <option value="on_sale">🟢 판매중 (on_sale)</option>
+                  <option value="reserved">🟡 예약중 (reserved)</option>
+                  <option value="sold">⚪ 거래완료 (sold)</option>
+                  <option value="hidden">🔴 숨김 / 블라인드 (hidden)</option>
+                </select>
+              </label>
+              <label>
+                <div class="muted">카테고리</div>
+                <select id="eCategory" class="select" style="width:100%; font-weight:700;">
+                  <option value="디지털/가전">📱 디지털/가전</option>
+                  <option value="가구/인테리어">🛋️ 가구/인테리어</option>
+                  <option value="생활/주방">🍳 생활/주방</option>
+                  <option value="유아동/출산">🍼 유아동/출산</option>
+                  <option value="의류/잡화">👗 의류/잡화</option>
+                  <option value="스포츠/골프">⛳ 골프/스포츠</option>
+                  <option value="오토바이/차량">🛵 오토바이/차량</option>
+                  <option value="무료나눔">🎁 무료나눔</option>
+                  <option value="기타">📦 기타</option>
+                </select>
+              </label>
+            </div>
             <label><div class="muted">제목</div><input id="eTitle" class="input" maxlength="80" required /></label>
-            <label><div class="muted">가격 (VND)</div><input id="ePrice" class="input" type="number" min="0" step="1000" required /></label>
-            <label><div class="muted">지역</div><input id="eRegion" class="input" maxlength="40" required /></label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <label><div class="muted">가격 (VND, 0=무료나눔)</div><input id="ePrice" class="input" type="number" min="0" step="1000" required /></label>
+              <label>
+                <div class="muted">물품 상태</div>
+                <select id="eCondition" class="select" style="width:100%;">
+                  <option value="중고(상태좋음)">✨ 중고 (상태 좋음)</option>
+                  <option value="미개봉 새상품">🎁 미개봉 새상품</option>
+                  <option value="사용감 있음">👌 사용감 있음</option>
+                </select>
+              </label>
+            </div>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700;">
+                <input type="checkbox" id="eNegotiable" checked /> 💬 가격 제안 받기
+              </label>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#047857;">
+                <input type="checkbox" id="eBmPayOk" checked /> 💳 BM 안전결제 허용
+              </label>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <label><div class="muted">거래 동네</div><input id="eRegion" class="input" maxlength="40" required /></label>
+              <label><div class="muted">희망 거래 장소</div><input id="eMeetSpot" class="input" maxlength="60" placeholder="예: 스카이레이크 로비" /></label>
+            </div>
             <label><div class="muted">연락처</div><input id="eContact" class="input" maxlength="80" required /></label>
             <div>
               <div class="muted" style="margin-bottom:6px;">이미지 URL (최대 4장)</div>
-              <div style="display:grid;gap:8px;">
+              <div style="display:grid; gap:8px;">
                 <input id="eImage1" class="input" placeholder="https://..." />
                 <input id="eImage2" class="input" placeholder="https://..." />
                 <input id="eImage3" class="input" placeholder="https://..." />
@@ -84,18 +209,52 @@
                 <span id="eUploadStatus" style="font-size:12px; color:#2563eb;"></span>
               </div>
             </div>
-            <label><div class="muted">설명</div><textarea id="eDesc" class="textarea" rows="8" maxlength="3000" required></textarea></label>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <button class="btn btn--primary" id="btnEditSave" type="submit" style="font-weight:700;">수정 저장</button>
+            <label><div class="muted">설명</div><textarea id="eDesc" class="textarea" rows="7" maxlength="3000" required></textarea></label>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="btn--karrot" id="btnEditSave" type="submit">💾 수정 저장</button>
               <button class="btn" id="btnEditCancel" type="button">취소</button>
               <span id="eMsg" class="muted"></span>
             </div>
           </form>
         </section>
+
+        <!-- 8. 이 동네 다른 당근 물품 추천 -->
+        <section style="margin-top:16px; border-top:1px solid #e2e8f0; padding-top:16px;">
+          <h3 style="margin:0 0 12px; font-size:1.08rem; color:#0f172a;">🥕 이웃들이 함께 보고 있는 하노이 당근 매물</h3>
+          <div id="dRelatedGrid" class="um-grid"></div>
+        </section>
       </article>
     </section>
   </main>
 
+  <!-- 💳 당근페이 (BestMoney BM 안전결제 & 직거래 송금 QR 모달) -->
+  <div id="bmPayModal" class="um-modal" style="display:none;">
+    <div class="um-modal-overlay" id="bmPayModalOverlay"></div>
+    <div class="um-modal-card" style="max-width:440px; text-align:center;">
+      <div class="um-modal-header">
+        <h3 style="margin:0; font-size:1.15rem; font-weight:800;">💳 당근 BM 페이 (직거래 안전송금)</h3>
+        <button type="button" class="um-modal-close" id="btnCloseBmPayModal">&times;</button>
+      </div>
+      <div style="padding:14px 4px;">
+        <p style="margin:0 0 12px; font-size:13.5px; color:#475569; line-height:1.5;">
+          판매자(<strong id="bmPaySellerName" style="color:#0f172a;">-</strong>)님과 직거래 시 현금 없이 <b>BestMoney(BM)</b>로 즉시 송금하거나 예약할 수 있습니다.
+        </p>
+        <div style="background:#fff7ed; border:1px solid #fdba74; border-radius:12px; padding:12px; margin-bottom:14px;">
+          <div style="font-size:12px; color:#9a3412; font-weight:700;">송금/결제 금액</div>
+          <div id="bmPayAmountText" style="font-size:1.4rem; font-weight:800; color:#ea580c; margin-top:2px;">0 VND</div>
+        </div>
+        <div style="display:inline-block; padding:12px; background:#fff; border:1px solid #e2e8f0; border-radius:12px; margin-bottom:12px;">
+          <canvas id="bmPayQrCanvas" style="width:170px; height:170px;"></canvas>
+        </div>
+        <p style="font-size:12px; color:#64748b; margin:0 0 14px;">스마트폰으로 QR을 스캔하거나 아래 버튼을 눌러 내 지갑에서 송금하세요.</p>
+        <a id="bmPayDirectLink" href="/wallet.html" class="btn--karrot" style="width:100%; justify-content:center; box-sizing:border-box;">
+          💳 내 지갑(BM) 열어서 바로 송금하기
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div id="umToast" class="um-toast"></div>
   <div id="siteFooter"></div>
 </body>
 </html>

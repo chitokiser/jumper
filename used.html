@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>중고거래 - BestCluber</title>
+  <title>베스트 당근장터 (하노이 동네 중고거래) - BestClub</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -22,39 +22,91 @@
   <main class="page">
     <section class="um-head">
       <div>
+        <div class="um-karrot-brand">🥕 HANOI KARROT MARKET · 하노이 동네 직거래</div>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <h1 class="title" style="margin-bottom:4px;">회원간 중고거래</h1>
+          <h1 class="title" style="margin-bottom:4px; color:#0f172a;">베스트 당근장터 (회원간 중고거래)</h1>
           <span id="umAdminBadge" style="display:none; align-items:center; gap:4px; font-size:12px; font-weight:700; color:#1d4ed8; background:#eff6ff; border:1px solid #bfdbfe; padding:3px 10px; border-radius:999px;">🛡️ 수퍼어드민 모드</span>
         </div>
-        <p class="desc" style="margin-bottom:0;">당근처럼 지역 기반으로 물건을 사고팔 수 있어요.</p>
+        <p class="desc" style="margin-bottom:0; color:#475569; font-size:13.5px;">
+          미딩·쭝화·서호·하동·오션파크 이웃들과 믿고 거래하세요! <b>매너온도 · 1:1 당근톡 · 가격 제안 · BM 안전결제</b>를 지원합니다.
+        </p>
       </div>
-      <a class="btn btn--primary" href="/used-market-new.html">판매글 등록</a>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button type="button" id="btnMyLikesToggle" class="btn" style="background:#fff; border:1px solid #fdba74; color:#c2410c; font-weight:700; border-radius:12px; padding:10px 14px;">
+          ❤️ 관심목록 <span id="myLikesCountBadge" style="background:#ff6f0f; color:#fff; border-radius:99px; padding:1px 7px; font-size:11px; margin-left:3px;">0</span>
+        </button>
+        <button type="button" id="btnMyPostsToggle" class="btn" style="background:#fff; border:1px solid #cbd5e1; color:#334155; font-weight:700; border-radius:12px; padding:10px 14px;">
+          📦 내 판매글
+        </button>
+        <a class="btn--karrot" href="/used-market-new.html">➕ 내 물건 팔기</a>
+      </div>
     </section>
 
-    <section class="panel" style="margin-top:12px;">
-      <div class="um-tools">
-        <input id="umSearch" class="input" placeholder="검색어 (제목/설명/지역/판매자)" />
-        <select id="umStatus" class="select">
-          <option value="all">전체 상태</option>
-          <option value="on_sale">판매중</option>
-          <option value="reserved">예약중</option>
-          <option value="sold">판매완료</option>
-          <option value="hidden" id="umOptHidden" style="display:none;">숨김 (hidden)</option>
-        </select>
+    <section class="panel" style="margin-top:14px;">
+      <!-- 📍 하노이 동네(권역) 필터 -->
+      <div class="um-chip-bar" id="umRegionChips">
+        <span class="um-chip-label">📍 동네 선택:</span>
+        <button type="button" class="um-chip is-active" data-region="all">전체 동네</button>
+        <button type="button" class="um-chip" data-region="미딩">🏢 미딩·쭝화</button>
+        <button type="button" class="um-chip" data-region="서호">🌊 서호·외교단지·스타레이크</button>
+        <button type="button" class="um-chip" data-region="하동">🏘️ 하동·반푹</button>
+        <button type="button" class="um-chip" data-region="타임시티">🏙️ 타임시티·오션파크</button>
+        <button type="button" class="um-chip" data-region="기타">📍 기타 하노이</button>
       </div>
 
-      <div id="umState" class="state">불러오는 중...</div>
+      <!-- 🏷️ 당근 카테고리 필터 -->
+      <div class="um-chip-bar" id="umCategoryChips" style="margin-bottom:14px;">
+        <span class="um-chip-label">🏷️ 카테고리:</span>
+        <button type="button" class="um-chip is-active" data-cat="all">전체</button>
+        <button type="button" class="um-chip" data-cat="디지털/가전">📱 디지털/가전</button>
+        <button type="button" class="um-chip" data-cat="가구/인테리어">🛋️ 가구/인테리어</button>
+        <button type="button" class="um-chip" data-cat="생활/주방">🍳 생활/주방</button>
+        <button type="button" class="um-chip" data-cat="유아동/출산">🍼 유아동</button>
+        <button type="button" class="um-chip" data-cat="의류/잡화">👗 의류/잡화</button>
+        <button type="button" class="um-chip" data-cat="스포츠/골프">⛳ 골프/스포츠</button>
+        <button type="button" class="um-chip" data-cat="오토바이/차량">🛵 오토바이/차량</button>
+        <button type="button" class="um-chip" data-cat="무료나눔">🎁 무료나눔</button>
+        <button type="button" class="um-chip" data-cat="기타">📦 기타</button>
+      </div>
+
+      <!-- 🔍 검색창 + 상태 + 정렬 + 빠른 필터 -->
+      <div class="um-tools">
+        <input id="umSearch" class="input" placeholder="🔍 동네 이름, 물품명, 아파트 단지명(스카이레이크, 골드마크 등) 검색" />
+        <select id="umStatus" class="select">
+          <option value="all">전체 상태</option>
+          <option value="on_sale">🟢 판매중만</option>
+          <option value="reserved">🟡 예약중</option>
+          <option value="sold">⚪ 거래완료</option>
+          <option value="hidden" id="umOptHidden" style="display:none;">🔴 숨김 (hidden)</option>
+        </select>
+        <select id="umSort" class="select">
+          <option value="latest">최신순 (끌올 포함)</option>
+          <option value="popular">인기순 (관심·채팅 많은순)</option>
+          <option value="price_asc">낮은 가격순</option>
+          <option value="price_desc">높은 가격순</option>
+        </select>
+        <label class="um-check-pill">
+          <input type="checkbox" id="umOnlyFree" />
+          <span>🎁 무료나눔만</span>
+        </label>
+        <label class="um-check-pill">
+          <input type="checkbox" id="umOnlyBmPay" />
+          <span>💳 BM결제 가능</span>
+        </label>
+      </div>
+
+      <div id="umState" class="state" style="margin-top:10px;">불러오는 중...</div>
       <div id="umGrid" class="um-grid"></div>
     </section>
   </main>
 
-  <!-- 수퍼어드민 상품 수정/보완 모달 -->
+  <!-- 수퍼어드민 & 판매자 상품 수정/보완 모달 -->
   <div id="umAdminModal" class="um-modal" style="display:none;">
     <div class="um-modal-overlay" id="umAdminModalOverlay"></div>
     <div class="um-modal-card">
       <div class="um-modal-header">
         <h3 style="margin:0; font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:6px;">
-          <span>🛡️</span> <span>상품 수정 및 보완 (수퍼어드민)</span>
+          <span>🥕</span> <span id="mModalHeaderTitle">중고거래 물품 수정 및 보완</span>
         </h3>
         <button type="button" class="um-modal-close" id="btnAdminModalClose" aria-label="닫기">&times;</button>
       </div>
@@ -62,14 +114,30 @@
       <form id="umAdminEditForm" class="um-modal-body">
         <input type="hidden" id="mEditId" />
 
-        <div class="um-form-row">
-          <label class="um-label" for="mEditStatus">판매 상태</label>
-          <select id="mEditStatus" class="select" style="width:100%; font-weight:700;">
-            <option value="on_sale">🟢 판매중 (on_sale)</option>
-            <option value="reserved">🟡 예약중 (reserved)</option>
-            <option value="sold">⚪ 판매완료 (sold)</option>
-            <option value="hidden">🔴 숨김 / 블라인드 (hidden)</option>
-          </select>
+        <div class="um-form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label class="um-label" for="mEditStatus">판매 상태</label>
+            <select id="mEditStatus" class="select" style="width:100%; font-weight:700;">
+              <option value="on_sale">🟢 판매중 (on_sale)</option>
+              <option value="reserved">🟡 예약중 (reserved)</option>
+              <option value="sold">⚪ 거래완료 (sold)</option>
+              <option value="hidden">🔴 숨김 / 블라인드 (hidden)</option>
+            </select>
+          </div>
+          <div>
+            <label class="um-label" for="mEditCategory">카테고리</label>
+            <select id="mEditCategory" class="select" style="width:100%; font-weight:700;">
+              <option value="디지털/가전">📱 디지털/가전</option>
+              <option value="가구/인테리어">🛋️ 가구/인테리어</option>
+              <option value="생활/주방">🍳 생활/주방</option>
+              <option value="유아동/출산">🍼 유아동/출산</option>
+              <option value="의류/잡화">👗 의류/잡화</option>
+              <option value="스포츠/골프">⛳ 골프/스포츠</option>
+              <option value="오토바이/차량">🛵 오토바이/차량</option>
+              <option value="무료나눔">🎁 무료나눔</option>
+              <option value="기타">📦 기타</option>
+            </select>
+          </div>
         </div>
 
         <div class="um-form-row">
@@ -79,18 +147,42 @@
 
         <div class="um-form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <div>
-            <label class="um-label" for="mEditPrice">가격 (VND)</label>
+            <label class="um-label" for="mEditPrice">가격 (VND, 0 입력 시 무료나눔)</label>
             <input id="mEditPrice" class="input" type="number" min="0" step="1000" style="width:100%;" required placeholder="0" />
           </div>
           <div>
-            <label class="um-label" for="mEditRegion">거래 지역</label>
+            <label class="um-label" for="mEditCondition">물품 상태</label>
+            <select id="mEditCondition" class="select" style="width:100%;">
+              <option value="중고(상태좋음)">✨ 중고 (상태 좋음)</option>
+              <option value="미개봉 새상품">🎁 미개봉 새상품</option>
+              <option value="사용감 있음">👌 사용감 있음</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="um-form-row" style="display:flex; gap:14px; flex-wrap:wrap; flex-direction:row; padding:4px 0;">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="mEditNegotiable" checked /> 💬 가격 제안 받기
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; cursor:pointer; color:#047857;">
+            <input type="checkbox" id="mEditBmPayOk" checked /> 💳 BestMoney(BM) 안전결제 허용
+          </label>
+        </div>
+
+        <div class="um-form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label class="um-label" for="mEditRegion">동네 / 권역</label>
             <input id="mEditRegion" class="input" style="width:100%;" maxlength="40" required placeholder="예: 하노이 미딩" />
+          </div>
+          <div>
+            <label class="um-label" for="mEditMeetSpot">희망 거래 장소 (아파트/로비)</label>
+            <input id="mEditMeetSpot" class="input" style="width:100%;" maxlength="60" placeholder="예: 스카이레이크 S2 로비" />
           </div>
         </div>
 
         <div class="um-form-row">
-          <label class="um-label" for="mEditContact">판매자 연락처</label>
-          <input id="mEditContact" class="input" style="width:100%;" maxlength="80" required placeholder="카카오톡 / 전화번호 등" />
+          <label class="um-label" for="mEditContact">판매자 연락처 (카톡/잘로/전화)</label>
+          <input id="mEditContact" class="input" style="width:100%;" maxlength="80" required placeholder="카카오톡 / Zalo / 전화번호 등" />
         </div>
 
         <div class="um-form-row" id="mSellerInfoRow" style="font-size:12px; color:var(--muted); background:#f8fafc; padding:8px 10px; border-radius:8px; border:1px solid var(--line2);">
@@ -118,16 +210,16 @@
 
         <div class="um-form-row">
           <label class="um-label" for="mEditDesc">상품 상세 설명 및 보완 내용</label>
-          <textarea id="mEditDesc" class="textarea" rows="6" maxlength="3000" style="width:100%; resize:vertical;" required placeholder="상품에 대한 상태, 거래 조건 등 상세 설명"></textarea>
+          <textarea id="mEditDesc" class="textarea" rows="5" maxlength="3000" style="width:100%; resize:vertical;" required placeholder="구매 시기, 사용감, 하자 유무, 직거래/그랩퀵 가능 여부 등을 적어주세요."></textarea>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; gap:10px; flex-wrap:wrap;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:12px; border-top:1px solid #f1f5f9; gap:10px; flex-wrap:wrap; position:sticky; bottom:-20px; background:#fff; z-index:2;">
           <button type="button" class="btn" id="btnAdminModalDelete" style="background:#fee2e2; color:#ef4444; border:1px solid #fca5a5; font-weight:700;">
-            🗑️ 상품 삭제
+            🗑️ 삭제
           </button>
           <div style="display:flex; gap:8px;">
             <button type="button" class="btn" id="btnAdminModalCancel">취소</button>
-            <button type="submit" class="btn btn--primary" id="btnAdminModalSave" style="font-weight:700;">
+            <button type="submit" class="btn--karrot" id="btnAdminModalSave">
               💾 수정 저장
             </button>
           </div>

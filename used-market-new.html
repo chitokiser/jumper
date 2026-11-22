@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>중고거래 등록 - BestCluber</title>
+  <title>내 물건 팔기 (베스트 당근장터) - BestClub</title>
 
   <link rel="stylesheet" href="/assets/css/app.css" />
   <link rel="stylesheet" href="/assets/css/header.css" />
@@ -20,46 +20,119 @@
   <div id="siteHeader"></div>
 
   <main class="page">
-    <section class="panel" style="margin-top:14px;max-width:760px;">
-      <h1 class="title">중고거래 판매글 등록</h1>
-      <p class="desc">사진은 장치에서 최대 4장까지 선택할 수 있습니다.</p>
+    <section class="panel" style="margin-top:14px; max-width:760px;">
+      <div class="um-karrot-brand">🥕 HANOI KARROT MARKET · 내 물건 팔기</div>
+      <h1 class="title" style="margin-bottom:4px;">하노이 동네 중고거래 판매글 등록</h1>
+      <p class="desc" style="margin-top:0;">사진(최대 4장)과 거래 희망 동네·아파트 단지를 선택해 이웃들과 빠르고 안전하게 거래하세요.</p>
 
-      <form id="umForm" class="form" style="display:grid;gap:10px;">
+      <form id="umForm" class="form" style="display:grid; gap:14px;">
+        <!-- 1. 사진 업로드 -->
+        <div style="border:1px dashed #fdba74; background:#fff7ed; border-radius:12px; padding:14px;">
+          <label style="cursor:pointer; display:block;">
+            <div style="font-weight:800; color:#c2410c; margin-bottom:6px;">📷 물품 사진 등록 (최대 4장)</div>
+            <input id="fImages" class="input" type="file" accept="image/*" multiple style="width:100%; background:#fff;" />
+            <div class="muted" style="margin-top:6px; font-size:12px;">첫 번째 사진이 대표 이미지로 설정됩니다. (jpg/png/webp 권장, 파일당 10MB 이하)</div>
+          </label>
+          <div id="fImagePreview" class="um-upload-preview" style="display:none; margin-top:10px;"></div>
+        </div>
+
+        <!-- 2. 제목 & 카테고리 -->
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:10px;">
+          <label>
+            <div class="um-label">글 제목</div>
+            <input id="fTitle" class="input" required maxlength="80" placeholder="예: 아이폰 15 프로 256GB 미개봉 / 유모차" style="width:100%;" />
+          </label>
+          <label>
+            <div class="um-label">카테고리</div>
+            <select id="fCategory" class="select" style="width:100%; min-height:40px; border:1px solid var(--line); border-radius:10px; padding:8px;">
+              <option value="디지털/가전">📱 디지털/가전</option>
+              <option value="가구/인테리어">🛋️ 가구/인테리어</option>
+              <option value="생활/주방">🍳 생활/주방</option>
+              <option value="유아동/출산">🍼 유아동/출산</option>
+              <option value="의류/잡화">👗 의류/잡화</option>
+              <option value="스포츠/골프">⛳ 골프/스포츠</option>
+              <option value="오토바이/차량">🛵 오토바이/차량</option>
+              <option value="무료나눔">🎁 무료나눔</option>
+              <option value="기타">📦 기타</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- 3. 거래 방식 (판매하기 vs 무료나눔) & 가격 -->
+        <div style="border:1px solid #e2e8f0; border-radius:12px; padding:14px; background:#f8fafc;">
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <button type="button" id="btnModeSell" class="um-chip is-active">💰 판매하기</button>
+            <button type="button" id="btnModeFree" class="um-chip">🎁 무료나눔</button>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <label>
+              <div class="um-label">판매 가격 (VND)</div>
+              <input id="fPrice" class="input" type="number" min="0" step="1000" required placeholder="예: 1500000" style="width:100%; background:#fff;" />
+            </label>
+            <label>
+              <div class="um-label">물품 상태</div>
+              <select id="fCondition" class="select" style="width:100%; min-height:40px; border:1px solid var(--line); border-radius:10px; padding:8px; background:#fff;">
+                <option value="중고(상태좋음)">✨ 중고 (상태 좋음)</option>
+                <option value="미개봉 새상품">🎁 미개봉 새상품</option>
+                <option value="사용감 있음">👌 사용감 있음</option>
+              </select>
+            </label>
+          </div>
+          <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:10px;">
+            <label style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; cursor:pointer;">
+              <input type="checkbox" id="fNegotiable" checked /> 💬 가격 제안 받기
+            </label>
+            <label style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; cursor:pointer; color:#047857;">
+              <input type="checkbox" id="fBmPayOk" checked /> 💳 BestMoney(BM) 안전결제·송금 허용
+            </label>
+          </div>
+        </div>
+
+        <!-- 4. 하노이 동네 & 거래 희망 장소 -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <label>
+            <div class="um-label">📍 거래 동네 (빠른 선택 또는 직접 입력)</div>
+            <input id="fRegion" class="input" list="hanoiRegionPresets" maxlength="40" required placeholder="예: 하노이 미딩" style="width:100%;" />
+            <datalist id="hanoiRegionPresets">
+              <option value="하노이 미딩·쭝화"></option>
+              <option value="하노이 서호·외교단지·스타레이크"></option>
+              <option value="하노이 하동·반푹"></option>
+              <option value="하노이 타임시티·오션파크"></option>
+              <option value="하노이 호안끼엠·바딘"></option>
+            </datalist>
+          </label>
+          <label>
+            <div class="um-label">🏢 희망 거래 장소 (아파트 단지 / 로비)</div>
+            <input id="fMeetSpot" class="input" list="hanoiSpotPresets" maxlength="60" placeholder="예: 스카이레이크 S2 로비 / 그랩퀵 가능" style="width:100%;" />
+            <datalist id="hanoiSpotPresets">
+              <option value="미딩 스카이레이크 로비"></option>
+              <option value="미딩 골드마크시티 광장"></option>
+              <option value="미딩 경남 랜드마크72 1층"></option>
+              <option value="쭝화 참빛타워 앞"></option>
+              <option value="스타레이크 903동 로비"></option>
+              <option value="외교단지 N01-T8 로비"></option>
+              <option value="롯데몰 웨스트레이크 정문"></option>
+              <option value="하동 파크시티 정문"></option>
+              <option value="빈홈 오션파크 / 타임시티"></option>
+              <option value="그랩 익스프레스(Grab) 착불 배송"></option>
+            </datalist>
+          </label>
+        </div>
+
+        <!-- 5. 연락처 -->
         <label>
-          <div class="muted">제목</div>
-          <input id="fTitle" class="input" required maxlength="80" placeholder="예: 아이폰 14 128GB" />
+          <div class="um-label">📞 연락처 (카카오톡 ID / Zalo / 베트남 전화번호)</div>
+          <input id="fContact" class="input" maxlength="80" required placeholder="예: 카톡 ID: best_hanoi / Zalo: 09xx-xxx-xxx" style="width:100%;" />
         </label>
 
+        <!-- 6. 상세 설명 -->
         <label>
-          <div class="muted">가격 (VND)</div>
-          <input id="fPrice" class="input" type="number" min="0" step="1000" required placeholder="예: 8000000" />
+          <div class="um-label">📝 자세한 설명</div>
+          <textarea id="fDesc" class="textarea" rows="7" maxlength="2000" required placeholder="구매 시기, 브랜드/모델명, 사용감, 하자 유무, 직거래/그랩퀵 가능 여부 등을 자세히 적어주시면 거래가 훨씬 빨라집니다." style="width:100%;"></textarea>
         </label>
 
-        <label>
-          <div class="muted">지역</div>
-          <input id="fRegion" class="input" maxlength="40" required placeholder="예: 하노이 오션파크" />
-        </label>
-
-        <label>
-          <div class="muted">연락처</div>
-          <input id="fContact" class="input" maxlength="80" required placeholder="예: 카카오ID / 전화번호" />
-        </label>
-
-        <label>
-          <div class="muted">사진 업로드 (최대 4장)</div>
-          <input id="fImages" class="input" type="file" accept="image/*" multiple />
-          <div class="muted" style="margin-top:6px;font-size:12px;">jpg/png/webp 권장, 파일당 10MB 이하</div>
-        </label>
-
-        <div id="fImagePreview" class="um-upload-preview" style="display:none;"></div>
-
-        <label>
-          <div class="muted">설명</div>
-          <textarea id="fDesc" class="textarea" rows="8" maxlength="2000" required placeholder="상태, 사용기간, 거래 방식 등을 적어주세요."></textarea>
-        </label>
-
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button class="btn btn--primary" id="fSubmit" type="submit">등록하기</button>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding-top:6px;">
+          <button class="btn--karrot" id="fSubmit" type="submit">🥕 당근장터에 등록하기</button>
           <a class="btn" href="/used.html">목록으로</a>
           <span id="fMsg" class="muted"></span>
         </div>
