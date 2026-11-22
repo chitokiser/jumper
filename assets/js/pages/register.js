@@ -279,9 +279,11 @@ async function _initForUser(user) {
     const mentorEl = $("mentorAddress");
     const params = new URLSearchParams(location.search);
     const urlMentor = params.get("mentor") || "";
+    let pendingMentor = "";
+    try { pendingMentor = localStorage.getItem("bc_pending_mentor") || ""; } catch (_) {}
     const urlMname = params.get("mname") || "";
     if (mentorEl && !mentorEl.value) {
-      mentorEl.value = urlMentor || DEFAULT_MENTOR;
+      mentorEl.value = urlMentor || pendingMentor || DEFAULT_MENTOR;
     }
     if (mentorEl && urlMname && !$("merchantQrRefBadge")) {
       const badge = document.createElement("div");

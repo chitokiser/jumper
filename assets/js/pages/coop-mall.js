@@ -232,15 +232,22 @@ function openViralShareModal(productItem, gb, merchantName) {
   const modal = $("groupShareModal");
   if (!modal) return;
   const remain = Math.max(0, gb.targetCount - gb.currentCount);
-  const shareUrl = `${window.location.origin}/mall.html?deal=${encodeURIComponent(productItem.id)}`;
+  const myEmail = (auth?.currentUser?.email || "").toLowerCase();
+  const mentorQuery = myEmail ? `&mentor=${encodeURIComponent(myEmail)}` : "";
+  const shareUrl = `${window.location.origin}/mall.html?deal=${encodeURIComponent(productItem.id)}${mentorQuery}`;
+  const signupUrl = myEmail
+    ? `${window.location.origin}/register.html?mentor=${encodeURIComponent(myEmail)}`
+    : `${window.location.origin}/register.html`;
   const modeTitle = gb.mode === "weekly_cycle" ? "[하노이 주간 정기 공동구매]" : "[하노이 교민 뭉쳐야 산다 타임딜]";
+  const pct = Math.min(100, Math.round((gb.currentCount / Math.max(1, gb.targetCount)) * 100));
 
   const promo = `${modeTitle} 🔥 ${merchantName} — ${productItem.data.product_name}
 📍 배송/픽업 권역: ${gb.region}
 💰 타임딜 즉시 할인가: ${gb.dealPrice.toLocaleString()} VND (${gb.discountRate}% 할인 확정!)
 🎁 목표 ${gb.targetCount}명 달성 시 전원 +${gb.bonusBm.toLocaleString()} BM 추가 보너스!
-👥 현재 ${gb.currentCount}/${gb.targetCount}명 참여 중 (${remain > 0 ? `보너스 달성까지 딱 ${remain}명 남음!` : `🎉 목표 달성 완료! 지금 참여해도 BM 보너스 100% 지급!`})
-👉 공구 참여하기: ${shareUrl}`;
+📊 현재 달성률 ${pct}% (${gb.currentCount}/${gb.targetCount}명 참여 · ${remain > 0 ? `보너스 달성까지 딱 ${remain}명 남음!` : `🎉 목표 달성 완료! 지금 참여해도 BM 보너스 100% 지급!`})
+👉 공구 바로 참여: ${shareUrl}
+✨ 첫 방문 10초 가입(+1,000 GP): ${signupUrl}`;
 
   if ($("sharePromoText")) $("sharePromoText").value = promo;
   if ($("btnTelegramShareLink")) {
@@ -248,6 +255,14 @@ function openViralShareModal(productItem, gb, merchantName) {
   }
   modal.style.display = "flex";
 }
+
+// 공구 공유 링크(?mentor=...)로 유입된 방문자의 추천인 정보 임시 저장
+try {
+  const incomingMentor = new URLSearchParams(window.location.search).get("mentor");
+  if (incomingMentor && incomingMentor.includes("@")) {
+    localStorage.setItem("bc_pending_mentor", incomingMentor.toLowerCase());
+  }
+} catch (_) {}
 
 // 가맹점 마스터 목록 로드
 async function loadMerchants() {

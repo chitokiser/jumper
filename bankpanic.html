@@ -58,6 +58,7 @@ html,body{height:100%;background:#120b07;color:#fff;
 #phaserContainer canvas{max-width:100%;max-height:100%;border-radius:12px;
   box-shadow:0 8px 32px rgba(0,0,0,.75);border:2px solid #5c3a21;cursor:crosshair;transition:box-shadow .2s ease,border-color .2s ease}
 #phaserContainer canvas.is-fever{border-color:#fde047;box-shadow:0 0 28px rgba(250,204,21,.75),0 8px 32px rgba(0,0,0,.75)}
+#phaserContainer canvas.is-deadeye{border-color:#38bdf8;box-shadow:0 0 28px rgba(56,189,248,.8),0 8px 32px rgba(0,0,0,.75)}
 
 /* ── 하단 안내 및 아케이드 바 ── */
 #quickGuide{font-size:11.5px;color:#fcd34d;background:rgba(69,44,30,.45);padding:5px 12px;
@@ -194,6 +195,7 @@ let _uid = null, _playerGP = 0, _entryCount = 0, _entryResetAt = 0, _entryFee = 
 let _freeMode = false;
 let _score = 0, _level = 1, _goalsComplete = 0, _banditsKilled = 0, _hatsShot = 0;
 let _lives = 3, _combo = 0, _maxCombo = 0, _quickDraws = 0, _feverUntil = 0;
+let _deadEyeUntil = 0, _bossesKilled = 0;
 let _running = false, _settled = false, _muted = false;
 let _phaserGame = null;
 let _failReason = '';
@@ -207,6 +209,10 @@ function showScreen(name) {
 
 function isFeverActive() {
   return Date.now() < _feverUntil;
+}
+
+function isDeadEyeActive() {
+  return Date.now() < _deadEyeUntil;
 }
 
 function addScore(pts) {
@@ -229,20 +235,26 @@ function updateHud() {
   }
 
   const feverOn = isFeverActive();
+  const deadEyeOn = isDeadEyeActive();
   const comboBox = $('comboBox');
-  const comboVal = $('comboVal');
-  if (comboBox && comboVal) {
+  if (comboBox) {
     comboBox.classList.toggle('is-fever', feverOn);
     if (feverOn) {
       const rem = Math.max(1, Math.ceil((_feverUntil - Date.now()) / 1000));
       comboBox.innerHTML = `🔥 FEVER ×2 (${rem}s)`;
+    } else if (deadEyeOn) {
+      const rem = Math.max(1, Math.ceil((_deadEyeUntil - Date.now()) / 1000));
+      comboBox.innerHTML = `⏱️ SLOW (${rem}s)`;
     } else {
       comboBox.innerHTML = `⚡ <span id="comboVal">${_combo}</span>콤보`;
     }
   }
 
   const canvas = document.querySelector('#phaserContainer canvas');
-  if (canvas) canvas.classList.toggle('is-fever', feverOn);
+  if (canvas) {
+    canvas.classList.toggle('is-fever', feverOn);
+    canvas.classList.toggle('is-deadeye', !feverOn && deadEyeOn);
+  }
 }
 
 // ── Phaser 3 Bank Panic Classes (Enhanced Western Arcade) ──
@@ -266,12 +278,25 @@ class Door extends Phaser.GameObjects.Container {
       color: '#fde047'
     }).setOrigin(0.5);
 
+    // 특수 타겟 배지 (보스 HP / 방탄조끼 / 데드아이)
+    this.specialBadge = scene.add.text(0, -152, '', {
+      fontFamily: 'sans-serif',
+      fontSize: '15px',
+      fontStyle: '900',
+      color: '#fde047',
+      backgroundColor: '#1c140d',
+      padding: { x: 7, y: 3 }
+    }).setOrigin(0.5).setVisible(false);
+
     // 무법자 사격 위험 경고 게이지 바
     this.warnBg = scene.add.rectangle(0, 184, 168, 12, 0x0f172a, 0.85).setStrokeStyle(1, 0xfbbf24).setVisible(false);
     this.warnFill = scene.add.rectangle(-82, 184, 0, 8, 0xfacc15).setOrigin(0, 0.5).setVisible(false);
 
     this.isOpen = false;
     this.isBandit = false;
+    this.isBoss = false;
+    this.bossHp = 0;
+    this.specialItem = '';
     this.isHats = false;
     this.isDead = false;
     this.wasBandit = (scene.doors.length % 2) ? true : false;
@@ -290,7 +315,7 @@ class Door extends Phaser.GameObjects.Container {
       'hat'
     ];
 
-    this.add([this.background, this.character, this.door, this.numBg, this.numTxt, this.warnBg, this.warnFill]);
+    this.add([this.background, this.character, this.door, this.numBg, this.numTxt, this.specialBadge, this.warnBg, this.warnFill]);
 
     this.setSize(200, 400);
     this.setInteractive();
@@ -316,13 +341,18 @@ class Door extends Phaser.GameObjects.Container {
       this.warnFill.setVisible(false);
       this.warnFill.width = 0;
     }
+    if (this.specialBadge) this.specialBadge.setVisible(false);
   }
 
   reset(time) {
     this.isOpen = false;
     this.isBandit = false;
+    this.isBoss = false;
+    this.bossHp = 0;
+    this.specialItem = '';
     this.isHats = false;
     this.isDead = false;
+    this.character.clearTint();
     this.hideWarning();
 
     this.door.play('doorClose');
@@ -332,9 +362,13 @@ class Door extends Phaser.GameObjects.Container {
   openDoor(time) {
     this.isOpen = true;
     this.isBandit = false;
+    this.isBoss = false;
+    this.bossHp = 0;
+    this.specialItem = '';
     this.isHats = false;
     this.isDead = false;
     this.openedAt = time;
+    this.character.clearTint();
     this.hideWarning();
 
     this.characterFrame = Phaser.Utils.Array.GetRandom(this.characters);
@@ -346,14 +380,23 @@ class Door extends Phaser.GameObjects.Container {
       this.isBandit = true;
     } else if (this.characterFrame === 'hat') {
       this.isHats = true;
-      this.hats = Phaser.Math.RND.between(2, 5);
+      this.hats = Phaser.Math.RND.between(2, 4);
       this.characterFrame += this.hats.toString();
+      if (_lives < 3 && Math.random() < 0.45) {
+        this.specialItem = 'vest';
+        this.specialBadge.setText('🛡️ 전부 맞추면 +1 ❤️').setColor('#86efac').setVisible(true);
+      } else if (Math.random() < 0.35) {
+        this.specialItem = 'deadeye';
+        this.specialBadge.setText('⏱️ 전부 맞추면 슬로우!').setColor('#38bdf8').setVisible(true);
+      }
     } else {
       this.timeToClose = time + (duration / 2);
     }
 
     if (!this.wasBandit && !this.isBandit) {
       this.isHats = false;
+      this.specialItem = '';
+      this.specialBadge.setVisible(false);
       this.hats = 0;
       this.isBandit = true;
       this.characterFrame = (Math.random() > 0.5) ? 'bandit1' : 'bandit2';
@@ -364,7 +407,17 @@ class Door extends Phaser.GameObjects.Container {
     this.character.setScale(1).setAlpha(1);
 
     if (this.isBandit) {
-      this.timeToKill = time + (duration * this.scene.killDelay);
+      const spawnBoss = (_banditsKilled > 0 && _banditsKilled % 7 === 0) || (this.scene.level >= 2 && Math.random() < 0.14);
+      if (spawnBoss) {
+        this.isBoss = true;
+        this.bossHp = 3;
+        this.character.setTint(0xfde047);
+        this.timeToKill = time + (duration * this.scene.killDelay * 1.65);
+        this.timeToClose = this.timeToKill + 400;
+        this.specialBadge.setText('👑 WANTED ❤️❤️❤️').setColor('#fde047').setVisible(true);
+      } else {
+        this.timeToKill = time + (duration * this.scene.killDelay);
+      }
       this.warnBg.setVisible(true);
       this.warnFill.setVisible(true);
       this.warnFill.width = 2;
@@ -380,6 +433,10 @@ class Door extends Phaser.GameObjects.Container {
 
     this.isOpen = false;
     this.wasBandit = this.isBandit;
+    this.isBoss = false;
+    this.bossHp = 0;
+    this.specialItem = '';
+    this.character.clearTint();
     this.hideWarning();
 
     if (!this.isBandit && !this.isHats && !this.isDead) {
@@ -398,6 +455,18 @@ class Door extends Phaser.GameObjects.Container {
     if (this.isDead) return;
 
     if (this.isBandit) {
+      if (this.isBoss && this.bossHp > 1) {
+        this.bossHp--;
+        this.specialBadge.setText(`👑 WANTED ${'❤️'.repeat(this.bossHp)}`);
+        this.scene.spawnHitSparks(this.x, this.y - 20, 0xfde047);
+        this.scene.cameras.main.shake(80, 0.005);
+        this.scene.showFloatingScore(this.x, this.y - 50, '💥 HIT!', '#fde047');
+        this.character.setTintFill(0xffffff);
+        this.scene.time.delayedCall(90, () => {
+          if (this.isBoss && !this.isDead) this.character.setTint(0xfde047);
+        });
+        return;
+      }
       this.shootCharacter(true);
     } else {
       if (this.isHats) {
@@ -410,6 +479,10 @@ class Door extends Phaser.GameObjects.Container {
 
   shootCharacter(isBanditTarget) {
     this.isDead = true;
+    const wasBoss = this.isBoss;
+    this.isBoss = false;
+    this.bossHp = 0;
+    this.character.clearTint();
     this.hideWarning();
     this.characterFrame += 'Dead';
     this.character.setFrame(this.characterFrame);
@@ -417,18 +490,24 @@ class Door extends Phaser.GameObjects.Container {
     this.scene.sound.play('scream' + Phaser.Math.RND.between(1, 3));
 
     if (isBanditTarget) {
-      // 무법자 제압 성공! 콤보 + 퀵드로우 + 피버 2배 적용
+      // 무법자/보스 제압 성공!
       _banditsKilled++;
       _combo++;
       if (_combo > _maxCombo) _maxCombo = _combo;
 
       const reactionMs = this.scene.game.getTime() - this.openedAt;
-      const isQuickDraw = reactionMs > 0 && reactionMs <= 500;
+      const isQuickDraw = !wasBoss && reactionMs > 0 && reactionMs <= 500;
       const comboBonus = Math.min(100, (_combo - 1) * 10);
-      let basePts = 100 + comboBonus;
+      let basePts = wasBoss ? 500 : (100 + comboBonus);
       if (isQuickDraw) {
         _quickDraws++;
         basePts += 50;
+      }
+      if (wasBoss) {
+        _bossesKilled++;
+        if (_lives < 3) {
+          _lives = Math.min(3, _lives + 1);
+        }
       }
 
       const feverTriggered = _combo >= 5 && !isFeverActive();
@@ -439,13 +518,13 @@ class Door extends Phaser.GameObjects.Container {
       const mult = isFeverActive() ? 2 : 1;
       addScore(basePts);
 
-      this.scene.spawnHitSparks(this.x, this.y - 20, isQuickDraw ? 0xfde047 : 0xfb923c);
-      this.scene.cameras.main.shake(90, 0.005);
+      this.scene.spawnHitSparks(this.x, this.y - 20, wasBoss ? 0xfde047 : (isQuickDraw ? 0xfde047 : 0xfb923c));
+      this.scene.cameras.main.shake(wasBoss ? 180 : 90, wasBoss ? 0.012 : 0.005);
 
-      const label = isQuickDraw
-        ? `⚡ QUICK +${basePts * mult}`
-        : (mult > 1 ? `🔥 +${basePts * mult}` : `+${basePts}`);
-      this.scene.showFloatingScore(this.x, this.y - 60, label, isQuickDraw ? '#fde047' : '#fb923c');
+      const label = wasBoss
+        ? `👑 BOSS +${basePts * mult}!`
+        : (isQuickDraw ? `⚡ QUICK +${basePts * mult}` : (mult > 1 ? `🔥 +${basePts * mult}` : `+${basePts}`));
+      this.scene.showFloatingScore(this.x, this.y - 60, label, wasBoss ? '#fde047' : (isQuickDraw ? '#fde047' : '#fb923c'));
 
       this.scene.tweens.add({
         targets: this.character,
@@ -487,12 +566,28 @@ class Door extends Phaser.GameObjects.Container {
       this.scene.spawnHitSparks(this.x, this.y - 80, 0x38bdf8);
       this.scene.cameras.main.shake(60, 0.003);
       this.scene.showFloatingScore(this.x, this.y - 90, mult > 1 ? `🎩🔥 +${50 * mult}` : '🎩 +50', '#38bdf8');
+
+      // 모자를 전부 날려버렸을 때 특수 아이템 보상 발동!
+      if (this.hats === 0 && this.specialItem) {
+        const reward = this.specialItem;
+        this.specialItem = '';
+        this.specialBadge.setVisible(false);
+        if (reward === 'vest') {
+          _lives = Math.min(3, _lives + 1);
+          updateHud();
+          this.scene.showFloatingScore(this.x, this.y - 130, '🛡️ 방탄조끼! +1 ❤️', '#86efac');
+        } else if (reward === 'deadeye') {
+          this.scene.activateDeadEye();
+        }
+      }
     }
     this.character.setFrame(this.characterFrame);
   }
 
   shootYou() {
     this.isDead = true;
+    this.isBoss = false;
+    this.character.clearTint();
     this.hideWarning();
 
     let shot1 = this.scene.add.image(this.x, this.y, 'assets', this.characterFrame + 'shot1');
@@ -534,12 +629,18 @@ class Door extends Phaser.GameObjects.Container {
     this.scene.takeDamage(this.x, this.y, '무법자의 총격에 당했습니다!', true);
   }
 
-  update(time) {
+  update(time, delta = 16) {
     if (!this.isOpen && time >= this.timeToOpen) {
       this.openDoor(time);
     } else if (this.isOpen && time >= this.timeToClose) {
       this.closeDoor(time);
     } else if (this.isOpen && this.isBandit && !this.isDead) {
+      // 데드아이 슬로우모션 중에는 무법자 사격 타이머 속도를 절반 이하로 지연!
+      if (isDeadEyeActive()) {
+        this.timeToKill += delta * 0.58;
+        this.timeToClose += delta * 0.58;
+      }
+
       // 경고 게이지 실시간 업데이트
       const total = Math.max(1, this.timeToKill - this.openedAt);
       const ratio = Phaser.Math.Clamp((time - this.openedAt) / total, 0, 1);
@@ -750,6 +851,37 @@ class MainGame extends Phaser.Scene {
       fontStyle: '900',
       color: '#fde047',
       stroke: '#7c2d12',
+      strokeThickness: 8
+    }).setOrigin(0.5).setScale(0.4);
+
+    this.tweens.add({
+      targets: banner,
+      scale: 1.05,
+      duration: 240,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: banner,
+          y: 170,
+          alpha: 0,
+          delay: 900,
+          duration: 380,
+          onComplete: () => banner.destroy()
+        });
+      }
+    });
+  }
+
+  activateDeadEye() {
+    _deadEyeUntil = Date.now() + 5000;
+    updateHud();
+    this.cameras.main.flash(220, 56, 189, 248, false);
+    const banner = this.add.text(512, 220, '⏱️ DEAD-EYE SLOW MOTION! (5s)', {
+      fontFamily: 'sans-serif',
+      fontSize: '36px',
+      fontStyle: '900',
+      color: '#38bdf8',
+      stroke: '#0f172a',
       strokeThickness: 8
     }).setOrigin(0.5).setScale(0.4);
 
@@ -1006,16 +1138,20 @@ class MainGame extends Phaser.Scene {
     this.levelFail();
   }
 
-  update(time) {
+  update(time, delta) {
     if (!this.isPaused && _running) {
       for (let i = 0; i < this.doors.length; i++) {
         if (this.isPaused || !_running) break;
-        this.doors[i].update(time);
+        this.doors[i].update(time, delta);
       }
-      const feverSec = _feverUntil > 0 ? Math.max(0, Math.ceil((_feverUntil - Date.now()) / 1000)) : 0;
-      if (feverSec !== this._lastFeverHudSec) {
-        this._lastFeverHudSec = feverSec;
-        if (feverSec === 0 && _feverUntil > 0) _feverUntil = 0;
+      const activeRem = Math.max(
+        _feverUntil > 0 ? Math.max(0, Math.ceil((_feverUntil - Date.now()) / 1000)) : 0,
+        _deadEyeUntil > 0 ? Math.max(0, Math.ceil((_deadEyeUntil - Date.now()) / 1000)) : 0
+      );
+      if (activeRem !== this._lastFeverHudSec) {
+        this._lastFeverHudSec = activeRem;
+        if (_feverUntil > 0 && Date.now() >= _feverUntil) _feverUntil = 0;
+        if (_deadEyeUntil > 0 && Date.now() >= _deadEyeUntil) _deadEyeUntil = 0;
         updateHud();
       }
     }
@@ -1034,6 +1170,8 @@ function startGame(free) {
   _maxCombo = 0;
   _quickDraws = 0;
   _feverUntil = 0;
+  _deadEyeUntil = 0;
+  _bossesKilled = 0;
   _failReason = '';
   _running = true;
   _settled = false;
