@@ -1040,6 +1040,17 @@ service cloud.firestore {
       allow read, write: if isStaff();
     }
 
+    // 메뉴 레시피(1인분 재료)와 판매 차감 기록 — ERP 사용자만 (온라인 주문 차감은 Cloud Function 이 기록)
+    match /menu_recipes/{productId} {
+      allow read, write: if isStaff();
+    }
+
+    match /sales_deductions/{sourceKey} {
+      allow read: if isStaff();
+      allow create: if isStaff();
+      allow update, delete: if isAdmin();
+    }
+
     match /priceHistory/{document=**} {
       allow read: if isStaff();
       allow write: if isStaff();

@@ -3723,6 +3723,21 @@ exports.tableQrCheckinReward = onCall({ cors: true }, wrapError(async (request) 
   return require('./handlers/tableQrReward').tableQrCheckinReward(request);
 }));
 
+// ── 온라인 주문 결제 확인 → 메뉴 레시피대로 ERP 자재 재고 자동 차감 (2026-11-23) ──────
+exports.onMerchantOrderRecipeDeduct = onDocumentWritten('merchant_orders/{orderId}', async (event) => {
+  const after = event.data?.after?.exists ? event.data.after.data() : null;
+  if (!after) return;
+  const recipeH = require('./handlers/recipeDeduction');
+  const before = event.data?.before?.exists ? event.data.before.data() : null;
+  if (!recipeH.isDeductible(after) || (before && recipeH.isDeductible(before))) return;
+  try {
+    const r = await recipeH.deductForOrder(event.params.orderId, after);
+    logger.info('[recipeDeduct]', event.params.orderId, r);
+  } catch (e) {
+    logger.error('[recipeDeduct] 실패', event.params.orderId, e);
+  }
+});
+
 // ── Event Coupon & Voucher System API ──────────────────────────────────────────
 const couponH = require('./handlers/coupon');
 

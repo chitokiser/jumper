@@ -112,6 +112,12 @@ await t('staff edits menu', assertSucceeds(updateDoc(doc(staffA, 'menus/m1'), { 
 await t('member cannot change product price', assertFails(updateDoc(doc(member, 'merchant_products/p1'), { price: 1 })));
 await t('member updates group-buy count', assertSucceeds(updateDoc(doc(member, 'merchant_products/p1'), { group_buy_current: 2, 'group_buy.current_count': 2 })));
 
+// recipes & deductions
+await t('staff writes recipe', assertSucceeds(setDoc(doc(staffA, 'menu_recipes/p1'), { productId: 'p1', items: [] })));
+await t('member cannot read recipe', assertFails(getDoc(doc(member, 'menu_recipes/p1'))));
+await t('staff records deduction', assertSucceeds(setDoc(doc(staffA, 'sales_deductions/pos_A_1'), { source: 'pos' })));
+await t('staff cannot rewrite deduction', assertFails(updateDoc(doc(staffA, 'sales_deductions/pos_A_1'), { source: 'x' })));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 await env.cleanup();
 process.exit(fail ? 1 : 0);
