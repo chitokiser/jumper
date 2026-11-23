@@ -23,6 +23,10 @@ await env.withSecurityRulesDisabled(async (c) => {
   await setDoc(doc(db, 'users/merchN'), { email: 'mn@x.com', role: 'merchant', merchantId: 1791002036 });
   await setDoc(doc(db, 'nvr_attendance/n1'), { merchantId: '1791002036' });
   await setDoc(doc(db, 'users/applicant'), { email: 'ap@x.com', role: 'user' });
+  await setDoc(doc(db, 'financeRecords/f2'), { amount: 5 });
+  await setDoc(doc(db, 'user_coupons/uc1'), { userId: 'member', status: 'ACTIVE' });
+  await setDoc(doc(db, 'menus/m1'), { name: 'galbi', merchantId: 'A' });
+  await setDoc(doc(db, 'merchant_products/p1'), { name: 'kimchi', price: 100, group_buy_current: 1 });
   await setDoc(doc(db, 'merchants/B'), { ownerUid: 'ceoB', feeBps: 100, active: true, status: 'approved' });
 });
 
@@ -92,6 +96,21 @@ await t('merchant creates coupon campaign (isStaff)', assertSucceeds(setDoc(doc(
 await t('merchant is not admin (notices)', assertFails(setDoc(doc(merchN, 'notices/n1'), { t: 1 })));
 await t('admin approves merchant (admin-approve.js)', assertSucceeds(setDoc(doc(op, 'users/applicant'), { merchantId: 1795000000, role: 'merchant' }, { merge: true })));
 await t('applicant cannot self-approve', assertFails(setDoc(doc(G('applicant', 'ap@x.com'), 'users/applicant'), { role: 'CEO' }, { merge: true })));
+
+// ERP collections & coupons
+await t('member cannot read financeRecords', assertFails(getDoc(doc(member, 'financeRecords/f2'))));
+await t('staff reads financeRecords', assertSucceeds(getDoc(doc(staffA, 'financeRecords/f2'))));
+await t('merchant (numeric) writes materials', assertSucceeds(setDoc(doc(merchN, 'materials/x1'), { name: 'onion' })));
+await t('member cannot write materials', assertFails(setDoc(doc(member, 'materials/x2'), { name: 'onion' })));
+await t('anonymous cannot create coupon', assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), 'user_coupons/x'), { userId: 'z' })));
+await t('member cannot read others coupon', assertFails(getDoc(doc(G('other', 'o@x.com'), 'user_coupons/uc1'))));
+await t('member reads own coupon', assertSucceeds(getDoc(doc(member, 'user_coupons/uc1'))));
+await t('member can check missing coupon doc', assertSucceeds(getDoc(doc(member, 'user_coupons/UC_REV_c_member'))));
+await t('staff (merchant) verifies coupon', assertSucceeds(updateDoc(doc(merchN, 'user_coupons/uc1'), { status: 'USED' })));
+await t('member cannot edit menu', assertFails(updateDoc(doc(member, 'menus/m1'), { name: 'x' })));
+await t('staff edits menu', assertSucceeds(updateDoc(doc(staffA, 'menus/m1'), { name: 'y' })));
+await t('member cannot change product price', assertFails(updateDoc(doc(member, 'merchant_products/p1'), { price: 1 })));
+await t('member updates group-buy count', assertSucceeds(updateDoc(doc(member, 'merchant_products/p1'), { group_buy_current: 2, 'group_buy.current_count': 2 })));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 await env.cleanup();

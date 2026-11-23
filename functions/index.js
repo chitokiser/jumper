@@ -3718,6 +3718,11 @@ exports.erpGeminiGenerate = onCall({ cors: true, timeoutSeconds: 120, memory: '5
   return erpAiH.erpGeminiGenerate(request);
 }));
 
+// ── 테이블 QR 체크인 보너스 티켓 (BestERP table-qr.html, 2026-11-23) ─────────────
+exports.tableQrCheckinReward = onCall({ cors: true }, wrapError(async (request) => {
+  return require('./handlers/tableQrReward').tableQrCheckinReward(request);
+}));
+
 // ── Event Coupon & Voucher System API ──────────────────────────────────────────
 const couponH = require('./handlers/coupon');
 

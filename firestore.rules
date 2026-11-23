@@ -963,6 +963,8 @@ service cloud.firestore {
     }
 
     match /user_coupons/{userCouponId} {
+      // 아직 없는 쿠폰 문서 조회(중복 발급 확인용 트랜잭션)는 허용. 내용 노출 없음.
+      allow get: if signedIn() && resource == null;
       allow get, list: if isAdmin() || isStaff() || (signedIn() && (resource.data.userId == request.auth.uid || resource.data.uid == request.auth.uid));
       allow create, update: if isAdmin() || isStaff() || (signedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.uid == request.auth.uid));
       allow delete: if isAdmin() || isStaff();
@@ -1011,6 +1013,8 @@ service cloud.firestore {
     }
 
     // ── BestERP & 가맹점 SaaS 통합 컬렉션 ────────────────────────────────────
+    // ERP 내부 데이터(재무·고객·업무·자재 등)는 ERP 사용자(isStaff: 직원 이상 또는 가맹점 소속)만.
+    // 일반 BestClubVN 회원은 접근 불가. (가맹점별 격리는 문서별 tenantId 정리 후 다음 단계)
 
     match /stores/{storeId} {
       allow read: if true;
@@ -1018,47 +1022,51 @@ service cloud.firestore {
     }
 
     match /materials/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
     match /suppliers/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
     // 자재 반출(소모) / 입고(지출등록 자동연동) 이력
     match /material_usage_logs/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /material_purchase_logs/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /priceHistory/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
     match /externalPrices/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
+    // 가맹점 상품: 수정은 ERP 사용자만. 일반 회원은 공동구매 참여 인원 숫자만 갱신 가능(coop-mall.js).
     match /merchant_products/{productId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow create, delete: if isStaff();
+      allow update: if isStaff()
+        || (signedIn() && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['group_buy_current', 'group_buy', 'updated_at']));
     }
 
     match /merchant_members/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
     match /menus/{menuId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isStaff();
     }
 
     match /merchant_orders/{orderId} {
@@ -1066,7 +1074,7 @@ service cloud.firestore {
     }
 
     match /projects/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /purchaseRequests/{document=**} {
@@ -1074,7 +1082,7 @@ service cloud.firestore {
     }
 
     match /purchase_requests/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /access_requests/{document=**} {
@@ -1083,7 +1091,7 @@ service cloud.firestore {
     }
 
     match /financeRecords/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     // 직원 원장: 자기 가맹점 직원만 관리. 본인(contact 이메일)은 자기 직원 문서를 읽을 수 있다(첫 로그인 연결용).
@@ -1103,19 +1111,19 @@ service cloud.firestore {
 
 
     match /clients/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /contacts/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /siteLogs/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /aiInsights/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /system_branding/{tenantId} {
@@ -1124,23 +1132,23 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /task_reports/{reportId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /task_comments/{commentId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /task_attachments/{attachmentId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /task_logs/{logId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     // ── Table QR & AI Smart CRM Collections (가맹점별 격리) ──────────────────────
@@ -1208,9 +1216,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /user_coupons/{document=**} {
-      allow read, write: if true;
-    }
 
   }
 }
