@@ -573,10 +573,14 @@ GP를 Point로 전환하시겠습니까?`)) return;
               // 서버에서만 처리 (게임 GP 차감 + 포인트 적립 + 기록)
               const res = await httpsCallable(functions, "convertGpToPoint")({});
               const d = res.data || {};
-              alert("성공적으로 " + Number(d.points || 0).toLocaleString() + " Point 로 전환되었습니다!\n게임용 GP " + GP_KEEP_MIN.toLocaleString() + " GP는 남겨 두었습니다.");
-              gpBal = Math.max(0, gpBal - Number(d.usedGp || 0));
+              const kept = Number.isFinite(Number(d.remainingGp)) ? Number(d.remainingGp) : Math.max(0, gpBal - Number(d.usedGp || 0));
+              alert("성공적으로 " + Number(d.points || 0).toLocaleString() + " Point 로 전환되었습니다!\n전환 GP: -" + Number(d.usedGp || 0).toLocaleString() + " GP · 남은 게임용 GP: " + kept.toLocaleString() + " GP");
+              gpBal = kept;
               if (elGpDisp) elGpDisp.textContent = gpBal.toLocaleString("ko-KR") + " GP";
               showGpConvertable();
+              if (typeof loadGpRewardHistory === "function") {
+                loadGpRewardHistory(uid).catch(() => {});
+              }
             } catch (e) {
               console.error(e);
               alert("전환 중 오류가 발생했습니다: " + (e.message || ""));
@@ -1567,6 +1571,70 @@ async function loadGpRewardHistory(uid) {
     });
   }
 
+  // (C) GP → Point 전환 내역 (transactions where uid == uid && type == GP_TO_POINT)
+  try {
+    const qConv = query(
+      collection(db, "transactions"),
+      where("uid", "==", uid),
+      where("type", "==", "GP_TO_POINT"),
+      limit(50)
+    );
+    const cSnap = await getDocs(qConv);
+    cSnap.forEach((d) => {
+      const tx = d.data() || {};
+      const used = Number(tx.gpUsed || 0);
+      const gained = Number(tx.pointGained || 0);
+      if (used <= 0) return;
+      const ms = tx.createdAt?.toMillis?.() || (tx.createdAt?.seconds ? tx.createdAt.seconds * 1000 : 0);
+      const dt = ms
+        ? new Date(ms).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+        : "-";
+      const afterText = Number.isFinite(Number(tx.gpAfter)) ? ` · 전환 후 잔여 ${Number(tx.gpAfter).toLocaleString()} GP` : "";
+      records.push({
+        category: "daily_play",
+        icon: "🔄",
+        title: `GP → Point 전환 (+${gained.toLocaleString()} P)`,
+        sub: `Lv.${tx.level || 1} 기준 ${used.toLocaleString()} GP 전환${afterText}`,
+        dateStr: dt,
+        sortMs: ms,
+        gp: -used,
+        gpSubLabel: `+${gained.toLocaleString()} P 적립`,
+        badge: "P 전환",
+        badgeColor: "#9333ea",
+        badgeBg: "#f3e8ff",
+      });
+    });
+  } catch (_) {}
+
+  // (D) 매일 무료 럭키 룰렛 당첨 내역 (daily_roulette_spins)
+  try {
+    const qRl = query(
+      collection(db, "daily_roulette_spins"),
+      where("uid", "==", uid),
+      limit(30)
+    );
+    const rlSnap = await getDocs(qRl);
+    rlSnap.forEach((d) => {
+      const r = d.data() || {};
+      const gp = Number(r.totalPrize || r.prize || 0);
+      if (gp <= 0) return;
+      playEarnSum += gp;
+      const ms = r.createdAt?.toMillis?.() || (r.createdAt?.seconds ? r.createdAt.seconds * 1000 : Date.parse(r.date || "") || 0);
+      records.push({
+        category: "daily_play",
+        icon: "🎰",
+        title: `매일 무료 럭키 룰렛 (${r.streak || 1}일차)`,
+        sub: r.streakBonus ? `룰렛 ${Number(r.prize || 0).toLocaleString()} GP + 7일 개근 +${Number(r.streakBonus).toLocaleString()} GP` : `${r.date || ""} 출석 룰렛 당첨`,
+        dateStr: r.date || "-",
+        sortMs: ms,
+        gp,
+        badge: "럭키룰렛",
+        badgeColor: "#c2410c",
+        badgeBg: "#ffedd5",
+      });
+    });
+  } catch (_) {}
+
   records.sort((a, b) => (b.sortMs || 0) - (a.sortMs || 0));
   _cachedGpRecords = records;
 
@@ -1575,7 +1643,7 @@ async function loadGpRewardHistory(uid) {
   if ($("gpWeeklyPrizeTotal")) $("gpWeeklyPrizeTotal").textContent = `${weeklyPrizeSum.toLocaleString()} GP`;
   if ($("gpWeeklyPrizeCount")) $("gpWeeklyPrizeCount").textContent = `주간 TOP 10 입상 ${weeklyPayouts.length}회`;
   if ($("gpPlayEarnTotal")) $("gpPlayEarnTotal").textContent = `${playEarnSum.toLocaleString()} GP`;
-  if ($("gpPlayEarnCount")) $("gpPlayEarnCount").textContent = `일일 게임·출석·보너스 ${records.filter(r => r.category === "daily_play").length}건`;
+  if ($("gpPlayEarnCount")) $("gpPlayEarnCount").textContent = `일일 게임·출석·전환 ${records.filter(r => r.category === "daily_play").length}건`;
   if ($("gpCurrentGoldDisplay")) $("gpCurrentGoldDisplay").textContent = `${currentGold.toLocaleString()} GP`;
   if ($("gpCurrentWeekRankSub")) {
     $("gpCurrentWeekRankSub").textContent = thisWeekEntries.length > 0
@@ -1634,7 +1702,14 @@ function renderGpRewardTabView() {
     return;
   }
 
-  const rowsHtml = filtered.map((r) => `
+  const rowsHtml = filtered.map((r) => {
+    const gpNum = Number(r.gp || 0);
+    const isMinus = gpNum < 0;
+    const gpText = isMinus ? `-${Math.abs(gpNum).toLocaleString()} GP` : `+${gpNum.toLocaleString()} GP`;
+    const gpColor = isMinus ? "#dc2626" : "#2563eb";
+    const subLabel = r.gpSubLabel || (isMinus ? "Point 전환" : "GP 적립");
+    const subColor = isMinus ? "#9333ea" : "#059669";
+    return `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #f1f5f9;">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="font-size:1.35rem;">${r.icon}</div>
@@ -1648,11 +1723,11 @@ function renderGpRewardTabView() {
         </div>
       </div>
       <div style="text-align:right;white-space:nowrap;">
-        <div style="font-size:1.06rem;font-weight:900;color:#2563eb;">+${Number(r.gp || 0).toLocaleString()} GP</div>
-        <div style="font-size:0.73rem;color:#059669;font-weight:700;">GP 적립</div>
+        <div style="font-size:1.06rem;font-weight:900;color:${gpColor};">${gpText}</div>
+        <div style="font-size:0.73rem;color:${subColor};font-weight:700;">${esc(subLabel)}</div>
       </div>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
 
   listEl.innerHTML = `<div style="border:1px solid #e2e8f0;border-radius:12px;background:#fff;overflow:hidden;">${rowsHtml}</div>`;
 }

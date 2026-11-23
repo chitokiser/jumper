@@ -3369,6 +3369,7 @@ exports.convertGpToPoint = onCall(
     const bpRef = db.collection('battle_players').doc(uid);
 
     let usedGp = 0;
+    let remainingGp = 0;
     let points = 0;
     let level = 1;
 
@@ -3380,6 +3381,7 @@ exports.convertGpToPoint = onCall(
       const bp = bpSnap.data();
       const goldNow = Math.floor(Number(bp.gold ?? 0));
       usedGp = goldNow - GP_KEEP_MIN;
+      remainingGp = goldNow - usedGp;
       level = Math.max(1, Math.floor(Number(bp.gsLevel ?? 1)));
       if (usedGp < 10) {
         throw new HttpsError('failed-precondition',
@@ -3389,7 +3391,7 @@ exports.convertGpToPoint = onCall(
       points = Math.floor((usedGp * level) / 10);
       const pointBefore = Number(userSnap.data().pointBalance ?? 0);
 
-      tx.update(bpRef, { gold: admin.firestore.FieldValue.increment(-usedGp) });
+      tx.update(bpRef, { gold: remainingGp });
       tx.update(userRef, {
         pointBalance: admin.firestore.FieldValue.increment(points),
         lastGpExchangeAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -3399,13 +3401,15 @@ exports.convertGpToPoint = onCall(
         displayName: userSnap.data().displayName || userSnap.data().name || '익명',
         amount: points,
         type: 'GP Exchange',
-        desc: `${usedGp.toLocaleString()} GP 전환 (Lv.${level})`,
+        desc: `${usedGp.toLocaleString()} GP 전환 (Lv.${level}, 잔여 ${remainingGp.toLocaleString()} GP)`,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       tx.set(db.collection('transactions').doc(), {
         uid,
         type: 'GP_TO_POINT',
         gpUsed: usedGp,
+        gpBefore: goldNow,
+        gpAfter: remainingGp,
         pointGained: points,
         level,
         pointBefore,
@@ -3414,8 +3418,8 @@ exports.convertGpToPoint = onCall(
       });
     });
 
-    logger.info('convertGpToPoint', { uid, usedGp, points, level });
-    return { success: true, usedGp, points, level, keptGp: GP_KEEP_MIN };
+    logger.info('convertGpToPoint', { uid, usedGp, remainingGp, points, level });
+    return { success: true, usedGp, remainingGp, points, level, keptGp: remainingGp };
   })
 );
 
