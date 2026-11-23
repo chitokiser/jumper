@@ -184,6 +184,16 @@ function mountRouletteModal() {
       border-top: 22px solid #fde047;
       filter: drop-shadow(0 3px 6px rgba(0,0,0,0.6));
       z-index: 2;
+      transform-origin: 50% 0%;
+      transition: transform 0.06s ease;
+    }
+    .bc-rl-pointer.is-tick {
+      transform: translateX(-50%) rotate(-18deg);
+    }
+    .bc-rl-head-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
     .bc-rl-btn {
       width: 100%;
@@ -209,6 +219,91 @@ function mountRouletteModal() {
   `;
   document.head.appendChild(style);
 
+  // ── Web Audio API 아케이드 사운드 엔진 (외부 파일 없이 즉시 재생) ──
+  const SOUND_MUTE_KEY = "bc_roulette_muted_v1";
+  let _audioCtx = null;
+  let _muted = false;
+  try { _muted = localStorage.getItem(SOUND_MUTE_KEY) === "1"; } catch (_) {}
+
+  function ensureAudio() {
+    if (_muted) return null;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      if (!_audioCtx) _audioCtx = new AC();
+      if (_audioCtx.state === "suspended") _audioCtx.resume();
+      return _audioCtx;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function playStartSpin() {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(280, now);
+    osc.frequency.exponentialRampToValueAtTime(760, now + 0.22);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.25);
+  }
+
+  function playWheelTick(progress) {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    // 회전이 느려질수록 묵직하고 긴장감 있는 핀 클릭음
+    const freq = 980 - Math.min(340, progress * 320);
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.45, now + 0.045);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.055);
+  }
+
+  function playWinFanfare(isJackpot) {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const notes = isJackpot
+      ? [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5, 1318.5, 1567.98]
+      : [523.25, 659.25, 783.99, 1046.5];
+    const step = isJackpot ? 0.095 : 0.11;
+
+    notes.forEach((freq, idx) => {
+      const t = now + idx * step;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = isJackpot ? "sawtooth" : "triangle";
+      osc.frequency.setValueAtTime(freq, t);
+
+      const dur = idx === notes.length - 1 ? 0.55 : 0.18;
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.exponentialRampToValueAtTime(isJackpot ? 0.14 : 0.18, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    });
+  }
+
   const el = document.createElement("div");
   el.id = "bcRouletteBackdrop";
   el.className = "bc-rl-backdrop";
@@ -216,12 +311,15 @@ function mountRouletteModal() {
     <div class="bc-rl-modal" role="dialog" aria-modal="true" aria-label="오늘의 무료 럭키 룰렛">
       <div class="bc-rl-head">
         <h3>🎰 오늘의 무료 럭키 룰렛</h3>
-        <button type="button" class="bc-rl-close" id="bcRlClose">✕</button>
+        <div class="bc-rl-head-actions">
+          <button type="button" class="bc-rl-close" id="bcRlMute" title="사운드 켜기/끄기">${_muted ? "🔇" : "🔊"}</button>
+          <button type="button" class="bc-rl-close" id="bcRlClose">✕</button>
+        </div>
       </div>
       <div style="font-size:0.78rem;color:#cbd5e1;">매일 1회 100% 당첨 · 7일 연속 출석 시 <b style="color:#fde047;">+2,000 GP</b> 추가!</div>
       <div class="bc-rl-streak" id="bcRlStreak"></div>
       <div class="bc-rl-wheel-wrap">
-        <div class="bc-rl-pointer"></div>
+        <div class="bc-rl-pointer" id="bcRlPointer"></div>
         <canvas id="bcRlCanvas" width="280" height="280"></canvas>
       </div>
       <button type="button" class="bc-rl-btn" id="bcRlSpinBtn">🎯 무료 룰렛 돌리기!</button>
@@ -231,6 +329,8 @@ function mountRouletteModal() {
   document.body.appendChild(el);
 
   const canvas = document.getElementById("bcRlCanvas");
+  const pointerEl = document.getElementById("bcRlPointer");
+  const muteBtn = document.getElementById("bcRlMute");
   const streakEl = document.getElementById("bcRlStreak");
   const spinBtn = document.getElementById("bcRlSpinBtn");
   const msgEl = document.getElementById("bcRlMsg");
@@ -241,6 +341,13 @@ function mountRouletteModal() {
   let state = { lastDate: "", streak: 0, alreadySpun: false };
 
   drawWheel(canvas, 0);
+
+  muteBtn?.addEventListener("click", () => {
+    _muted = !_muted;
+    muteBtn.textContent = _muted ? "🔇" : "🔊";
+    try { localStorage.setItem(SOUND_MUTE_KEY, _muted ? "1" : "0"); } catch (_) {}
+    if (!_muted) playWheelTick(0.2);
+  });
 
   const renderStreak = (streak) => {
     if (!streakEl) return;
@@ -311,6 +418,9 @@ function mountRouletteModal() {
     }
     if (spinning || state.alreadySpun) return;
 
+    // 사용자 클릭 제스처 시점에 오디오 컨텍스트 활성화 (모바일 iOS/Android 필수)
+    ensureAudio();
+
     spinning = true;
     spinBtn.disabled = true;
     spinBtn.textContent = "🎰 서버 추첨 중...";
@@ -347,6 +457,7 @@ function mountRouletteModal() {
     const winIdx = Number.isInteger(result.segmentIndex) ? result.segmentIndex : 0;
     spinBtn.textContent = "🎰 돌아가는 중...";
     msgEl.textContent = "행운을 빕니다! ✨";
+    playStartSpin();
 
     const n = SEGMENTS.length;
     const arc = (Math.PI * 2) / n;
@@ -355,13 +466,25 @@ function mountRouletteModal() {
     const startRot = currentRotation % (Math.PI * 2);
     const delta = extraSpins + ((targetSectorAngle - startRot) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
     const startTime = performance.now();
-    const duration = 3600;
+    const duration = 3800;
+    let lastTickSector = Math.floor(startRot / arc);
 
     const animate = (now) => {
       const t = Math.min(1, (now - startTime) / duration);
       const ease = 1 - Math.pow(1 - t, 4);
       currentRotation = startRot + delta * ease;
       drawWheel(canvas, currentRotation);
+
+      // 칸 경계를 지날 때마다 룰렛 핀 클릭음 + 포인터 튕김 효과
+      const curSector = Math.floor(currentRotation / arc);
+      if (curSector !== lastTickSector) {
+        lastTickSector = curSector;
+        playWheelTick(t);
+        if (pointerEl) {
+          pointerEl.classList.add("is-tick");
+          setTimeout(() => pointerEl.classList.remove("is-tick"), 55);
+        }
+      }
 
       if (t < 1) {
         requestAnimationFrame(animate);
@@ -378,6 +501,9 @@ function mountRouletteModal() {
     const bonus = Number(result.streakBonus) || 0;
     const totalPrize = Number(result.totalPrize) || 0;
     const segLabel = result.label || `${Number(result.prize || 0).toLocaleString()} GP`;
+    const isJackpot = totalPrize >= 1000 || bonus > 0;
+
+    playWinFanfare(isJackpot);
 
     try {
       localStorage.setItem(`${LOCAL_SPIN_KEY}_${user.uid}`, today);
