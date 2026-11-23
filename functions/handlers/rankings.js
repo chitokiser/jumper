@@ -1,4 +1,4 @@
-﻿// functions/handlers/rankings.js
+// functions/handlers/rankings.js
 'use strict';
 
 const admin = require('firebase-admin');
@@ -7,16 +7,38 @@ const { getProvider, getJumpTokenContract } = require('../wallet/chain');
 
 const db = admin.firestore();
 
+function _maskEmail(raw) {
+  const s = String(raw || '').trim();
+  const at = s.indexOf('@');
+  if (at < 0) return s;
+  const local = s.slice(0, at);
+  const domain = s.slice(at + 1);
+  const maskedLocal = local.length <= 2 ? `${local[0] || '*'}***` : `${local.slice(0, 2)}***`;
+  const domParts = domain.split('.');
+  const maskedDom = domParts[0] ? `${domParts[0][0]}***${domParts.length > 1 ? '.' + domParts.slice(1).join('.') : ''}` : '***';
+  return `${maskedLocal}@${maskedDom}`;
+}
+
+function _maskName(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (s.includes('@')) return _maskEmail(s);
+  return s;
+}
+
 async function _getDisplayId(uid, ud) {
+  const nick = _maskName(ud.nickname || ud.displayName || ud.name);
+  if (nick) return nick;
   if (ud.telegramId) {
-    return ud.username ? `@${ud.username}` : `TG:${ud.telegramId}`;
+    return ud.username ? `@${ud.username.slice(0, 3)}***` : `회원#${String(ud.telegramId).slice(-4)}`;
   }
-  if (ud.email) return ud.email;
+  if (ud.email) return _maskEmail(ud.email);
   try {
     const authUser = await admin.auth().getUser(uid);
-    if (authUser.email) return authUser.email;
+    if (authUser.displayName) return _maskName(authUser.displayName);
+    if (authUser.email) return _maskEmail(authUser.email);
   } catch { }
-  return uid;
+  return `회원#${String(uid).slice(-4)}`;
 }
 
 async function getTreasureRanking() {
@@ -38,7 +60,6 @@ async function getTreasureRanking() {
 
   return filtered.map((d, i) => ({
     rank: i + 1,
-    uid: d.id,
     displayName: displayIds[i],
     photoURL: (userSnaps[i]?.data() || {}).photoURL || null,
     treasuresFound: d.data().treasuresFound || 0,
@@ -60,8 +81,7 @@ async function getPointRanking() {
 
   return filtered.map((d, i) => ({
     rank: i + 1,
-    uid: d.id,
-    displayName: displayIds[i] || d.data().name || 'User',
+    displayName: displayIds[i] || '베스트회원',
     photoURL: d.data().photoURL || null,
     pointBalance: d.data().pointBalance || 0,
   }));

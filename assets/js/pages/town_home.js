@@ -532,6 +532,18 @@ const DEFAULT_SEED_NOTICES = [
   }
 ];
 
+function _maskPublicDisplayName(raw) {
+  const s = String(raw || '익명').trim();
+  const at = s.indexOf('@');
+  if (at < 0) return s;
+  const local = s.slice(0, at);
+  const domain = s.slice(at + 1);
+  const mLocal = local.length <= 2 ? `${local[0] || '*'}***` : `${local.slice(0, 2)}***`;
+  const domParts = domain.split('.');
+  const mDom = domParts[0] ? `${domParts[0][0]}***${domParts.length > 1 ? '.' + domParts.slice(1).join('.') : ''}` : '***';
+  return `${mLocal}@${mDom}`;
+}
+
 function renderRankingList(el, rows, valueFn) {
   if (!el) return;
   if (!rows || !rows.length) {
@@ -543,13 +555,14 @@ function renderRankingList(el, rows, valueFn) {
   el.innerHTML = rows.map((row, idx) => {
     const rankNum = row.rank || idx + 1;
     const i = rankNum - 1;
+    const safeName = _maskPublicDisplayName(row.displayName || '익명');
     const numHtml = i < 3
       ? `<div class="ranking-num ${MEDAL_CLS[i]}">${MEDALS[i]}</div>`
       : `<div class="ranking-num">${rankNum}</div>`;
     const avatarHtml = row.photoURL
       ? `<img class="ranking-avatar" src="${escHtml(row.photoURL)}" alt="" loading="lazy">`
-      : `<div class="ranking-avatar-ph">${escHtml(String(row.displayName || '?')[0].toUpperCase())}</div>`;
-    return `<div class="ranking-row">${numHtml}${avatarHtml}<div class="ranking-info"><div class="ranking-name">${escHtml(row.displayName || '익명')}</div><div class="ranking-val">${escHtml(valueFn(row))}</div></div></div>`;
+      : `<div class="ranking-avatar-ph">${escHtml(String(safeName || '?')[0].toUpperCase())}</div>`;
+    return `<div class="ranking-row">${numHtml}${avatarHtml}<div class="ranking-info"><div class="ranking-name">${escHtml(safeName)}</div><div class="ranking-val">${escHtml(valueFn(row))}</div></div></div>`;
   }).join('');
 }
 

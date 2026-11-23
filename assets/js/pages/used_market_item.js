@@ -286,7 +286,10 @@ function render(post) {
   $("dRegion").textContent = post.region || "-";
   if ($("dMeetSpot")) $("dMeetSpot").textContent = post.meetSpot || "직거래 또는 그랩퀵 협의";
   if ($("dCondition")) $("dCondition").textContent = post.condition || "중고 (상태 좋음)";
-  $("dContact").textContent = post.contact || "-";
+  const isLoggedInViewer = Boolean(viewer && viewer.uid && !viewer.isAnonymous);
+  $("dContact").textContent = post.contact
+    ? (isLoggedInViewer ? post.contact : "🔒 로그인 후 판매자 연락처 확인 가능")
+    : "-";
   $("dDate").textContent = `${fmtDate(post.createdAt)}${post.bumpedAt ? ` (최근 끌올: ${timeAgo(post)})` : ""}`;
   $("dDesc").textContent = post.description || "";
 
