@@ -49,10 +49,10 @@ function relTimeFromMs(ms) {
 const QUEST_LIST = [
   {
     key: "attendance",
-    icon: "📅",
-    title: "오늘의 출석 & 무료 GP 체크",
-    sub: "매일 출석 도장 찍고 GP 100 미만 시 +100 GP 즉시 무료 충전",
-    actionText: "출석 체크",
+    icon: "🎰",
+    title: "오늘의 출석 & 무료 럭키 룰렛",
+    sub: "매일 100% 당첨 100~3,000 GP 지급 · 7일 연속 출석 시 +2,000 GP 보너스",
+    actionText: "출석 룰렛 🎰",
     href: "#attendance",
   },
   {
@@ -213,23 +213,40 @@ async function handleAttendanceClick(e) {
   const state = loadQuestState(_currentUid);
   state.attendance = Date.now();
   saveQuestState(_currentUid, state);
+  updateBellBadge();
+  renderHubBody();
 
+  // 허브 드로어가 열려 있다면 닫고 럭키 룰렛 모달을 바로 오픈 (전 페이지 지원)
+  const panel = document.getElementById("bcHubPanel");
+  if (panel) panel.classList.remove("open");
+
+  try {
+    if (typeof window.openBestClubRoulette !== "function") {
+      await import("/assets/js/pages/daily_roulette.js");
+    }
+    if (typeof window.openBestClubRoulette === "function") {
+      window.openBestClubRoulette();
+      return;
+    }
+  } catch (err) {
+    console.warn("daily_roulette dynamic load failed:", err);
+  }
+
+  // 폴백: 룰렛 로드 실패 시 기존 무료 GP 체크 실행
   if (_currentUid) {
     try {
       const r = await claimFreeDailyGp();
       if (r?.granted) {
-        alert("🎉 오늘의 출석 체크 완료! 보유 GP가 100 미만이어서 +100 GP가 무료 충전되었습니다!");
+        alert("🎉 오늘의 출석 체크 완료! +100 GP가 무료 충전되었습니다!");
       } else {
-        alert("✅ 오늘의 출석 체크 도장이 찍혔습니다! 공동구매·중고장터·아케이드 미션도 달성해 보세요.");
+        alert("✅ 오늘의 출석 체크가 완료되었습니다!");
       }
     } catch {
       alert("✅ 오늘의 출석 체크가 완료되었습니다!");
     }
   } else {
-    alert("✅ 오늘의 출석 체크 완료! (로그인하시면 무료 GP 충전 및 주간 랭킹 보상을 받을 수 있습니다)");
+    alert("✅ 로그인하시면 매일 무료 럭키 룰렛(100~3,000 GP)을 돌릴 수 있습니다!");
   }
-  updateBellBadge();
-  renderHubBody();
 }
 
 function renderHubBody() {

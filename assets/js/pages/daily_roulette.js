@@ -521,12 +521,19 @@ function mountRouletteModal() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function _bootDailyRoulette() {
   mountRouletteModal();
   const trigger = document.getElementById("bcUtilRouletteBtn");
-  if (trigger) {
+  if (trigger && !trigger.dataset.rlBound) {
+    trigger.dataset.rlBound = "1";
     trigger.addEventListener("click", () => {
       if (window.openBestClubRoulette) window.openBestClubRoulette();
     });
   }
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", _bootDailyRoulette);
+} else {
+  _bootDailyRoulette();
+}
