@@ -3711,6 +3711,13 @@ exports.buildWebzineContent = onCall({ cors: true, timeoutSeconds: 180 }, wrapEr
   return webzineH.buildWebzineContent(request.data, request.auth);
 }));
 
+// ── BestERP AI 중계 (Gemini 키를 브라우저에서 제거, 2026-11-23) ────────────────
+const erpAiH = require('./handlers/erpAi');
+
+exports.erpGeminiGenerate = onCall({ cors: true, timeoutSeconds: 120, memory: '512MiB' }, wrapError(async (request) => {
+  return erpAiH.erpGeminiGenerate(request);
+}));
+
 // ── Event Coupon & Voucher System API ──────────────────────────────────────────
 const couponH = require('./handlers/coupon');
 
