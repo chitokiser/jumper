@@ -296,4 +296,102 @@ async function claimFreeDailyGp(uid) {
   });
 }
 
-module.exports = { claimGameReward, payGameEntry, adminGetUserGpHistory, adminChargeGp, claimFreeDailyGp };
+// ── 매일 1회 무료 럭키 룰렛 (서버 추첨 + 1일 1회 트랜잭션 락 + 7일 연속 출석 보너스) ──
+const ROULETTE_SEGMENTS = [
+  { label: '100 GP',   amount: 100,  weight: 280 },
+  { label: '200 GP',   amount: 200,  weight: 240 },
+  { label: '300 GP',   amount: 300,  weight: 180 },
+  { label: '500 GP',   amount: 500,  weight: 140 },
+  { label: '1,000 GP', amount: 1000, weight: 80  },
+  { label: '1,500 GP', amount: 1500, weight: 40  },
+  { label: '2,000 GP', amount: 2000, weight: 25  },
+  { label: '3,000 GP', amount: 3000, weight: 15  },
+];
+const ROULETTE_STREAK_BONUS_GP = 2000;
+
+function vnDateOffset(offsetDays = 0) {
+  const vnNow = new Date(Date.now() + 7 * 3600 * 1000 + offsetDays * 86400 * 1000);
+  return vnNow.toISOString().slice(0, 10);
+}
+
+function pickRouletteSegmentIndex() {
+  const crypto = require('crypto');
+  const totalWeight = ROULETTE_SEGMENTS.reduce((sum, s) => sum + s.weight, 0);
+  let r = crypto.randomInt(0, totalWeight);
+  for (let i = 0; i < ROULETTE_SEGMENTS.length; i++) {
+    r -= ROULETTE_SEGMENTS[i].weight;
+    if (r < 0) return i;
+  }
+  return 0;
+}
+
+async function spinDailyRoulette(uid) {
+  if (!uid) throw new Error('로그인이 필요합니다');
+  const today = vnDateOffset(0);
+  const yesterday = vnDateOffset(-1);
+  const bpRef = db.collection('battle_players').doc(uid);
+  const lockRef = db.collection('daily_roulette_spins').doc(`${uid}_${today}`);
+
+  return db.runTransaction(async (t) => {
+    const [bpSnap, lockSnap] = await Promise.all([t.get(bpRef), t.get(lockRef)]);
+    const bpData = bpSnap.exists ? (bpSnap.data() || {}) : {};
+    const gold = Number(bpData.gold) || 0;
+    const prev = bpData.dailyRoulette || {};
+
+    if (lockSnap.exists || prev.lastDate === today) {
+      return {
+        granted: false,
+        reason: 'already_spun',
+        streak: Number(prev.streak) || 1,
+        lastPrize: Number(prev.lastPrize) || 0,
+        gold,
+        today,
+      };
+    }
+
+    const prevStreak = prev.lastDate === yesterday ? (Number(prev.streak) || 0) : 0;
+    const newStreak = prevStreak >= 7 ? 1 : prevStreak + 1;
+    const segmentIndex = pickRouletteSegmentIndex();
+    const seg = ROULETTE_SEGMENTS[segmentIndex];
+    const streakBonus = newStreak === 7 ? ROULETTE_STREAK_BONUS_GP : 0;
+    const totalPrize = seg.amount + streakBonus;
+
+    t.set(bpRef, {
+      gold: admin.firestore.FieldValue.increment(totalPrize),
+      dailyRoulette: {
+        lastDate: today,
+        streak: newStreak,
+        lastPrize: totalPrize,
+        segmentIndex,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+    }, { merge: true });
+
+    t.set(lockRef, {
+      uid,
+      date: today,
+      segmentIndex,
+      prize: seg.amount,
+      streakBonus,
+      totalPrize,
+      streak: newStreak,
+      beforeGold: gold,
+      afterGold: gold + totalPrize,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {
+      granted: true,
+      segmentIndex,
+      label: seg.label,
+      prize: seg.amount,
+      streakBonus,
+      totalPrize,
+      streak: newStreak,
+      gold: gold + totalPrize,
+      today,
+    };
+  });
+}
+
+module.exports = { claimGameReward, payGameEntry, adminGetUserGpHistory, adminChargeGp, claimFreeDailyGp, spinDailyRoulette };

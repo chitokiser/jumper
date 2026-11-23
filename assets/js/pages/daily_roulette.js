@@ -313,13 +313,43 @@ function mountRouletteModal() {
 
     spinning = true;
     spinBtn.disabled = true;
+    spinBtn.textContent = "🎰 서버 추첨 중...";
+    msgEl.style.color = "#e0e7ff";
+    msgEl.textContent = "서버에서 공정하게 추첨하고 있습니다... ✨";
+
+    let result = null;
+    try {
+      const res = await httpsCallable(functions, "spinDailyRoulette")();
+      result = res?.data || null;
+    } catch (err) {
+      spinning = false;
+      spinBtn.disabled = false;
+      spinBtn.textContent = "🎯 무료 룰렛 돌리기!";
+      msgEl.style.color = "#fca5a5";
+      msgEl.textContent = "추첨 요청 실패: " + (err?.message || "잠시 후 다시 시도해 주세요.");
+      return;
+    }
+
+    if (!result || !result.granted) {
+      state.alreadySpun = true;
+      spinning = false;
+      if (result?.streak) renderStreak(result.streak);
+      spinBtn.disabled = true;
+      spinBtn.textContent = "✅ 오늘 출석 룰렛 완료! (내일 다시 도전)";
+      msgEl.style.color = "#86efac";
+      msgEl.textContent = result?.lastPrize
+        ? `오늘 이미 참여하셨습니다! (+${Number(result.lastPrize).toLocaleString()} GP 수령 완료)`
+        : "오늘 이미 출석 룰렛을 완료하셨습니다.";
+      try { localStorage.setItem(`${LOCAL_SPIN_KEY}_${user.uid}`, getVnDateStr(0)); } catch (_) {}
+      return;
+    }
+
+    const winIdx = Number.isInteger(result.segmentIndex) ? result.segmentIndex : 0;
     spinBtn.textContent = "🎰 돌아가는 중...";
     msgEl.textContent = "행운을 빕니다! ✨";
 
-    const winIdx = pickWeightedIndex();
     const n = SEGMENTS.length;
     const arc = (Math.PI * 2) / n;
-    // 포인터가 12시(-PI/2)에 있으므로 winIdx 중앙이 12시에 오도록 회전각 계산
     const targetSectorAngle = -(winIdx * arc + arc / 2);
     const extraSpins = Math.PI * 2 * 6;
     const startRot = currentRotation % (Math.PI * 2);
@@ -336,44 +366,21 @@ function mountRouletteModal() {
       if (t < 1) {
         requestAnimationFrame(animate);
       } else {
-        finishSpin(user, winIdx);
+        finishSpin(user, result);
       }
     };
     requestAnimationFrame(animate);
   });
 
-  async function finishSpin(user, winIdx) {
-    const seg = SEGMENTS[winIdx];
-    const today = getVnDateStr(0);
-    const newStreak = state.streak >= 7 ? 1 : state.streak + 1;
-    const bonus = newStreak === 7 ? STREAK_BONUS_GP : 0;
-    const totalPrize = seg.amount + bonus;
+  function finishSpin(user, result) {
+    const today = result.today || getVnDateStr(0);
+    const newStreak = Number(result.streak) || 1;
+    const bonus = Number(result.streakBonus) || 0;
+    const totalPrize = Number(result.totalPrize) || 0;
+    const segLabel = result.label || `${Number(result.prize || 0).toLocaleString()} GP`;
 
     try {
       localStorage.setItem(`${LOCAL_SPIN_KEY}_${user.uid}`, today);
-    } catch (_) {}
-
-    try {
-      await httpsCallable(functions, "claimGameReward")({ gameType: "bankpanic", amount: totalPrize });
-    } catch (_) {
-      try {
-        await setDoc(doc(db, "battle_players", user.uid), { gold: increment(totalPrize) }, { merge: true });
-      } catch (__) {}
-    }
-
-    try {
-      await setDoc(
-        doc(db, "battle_players", user.uid),
-        {
-          dailyRoulette: {
-            lastDate: today,
-            streak: newStreak,
-            lastPrize: totalPrize,
-            updatedAt: serverTimestamp(),
-          },
-        },
-        { merge: true }
-      );
     } catch (_) {}
 
     state.alreadySpun = true;
@@ -383,7 +390,7 @@ function mountRouletteModal() {
     spinBtn.textContent = "✅ 오늘 보상 수령 완료!";
     msgEl.style.color = "#fde047";
     msgEl.innerHTML = bonus > 0
-      ? `🎉 대박! <b>${seg.label}</b> + 7일 개근 <b>+${bonus.toLocaleString()} GP</b> = 총 <b>+${totalPrize.toLocaleString()} GP</b> 지급!`
+      ? `🎉 대박! <b>${segLabel}</b> + 7일 개근 <b>+${bonus.toLocaleString()} GP</b> = 총 <b>+${totalPrize.toLocaleString()} GP</b> 지급!`
       : `🎉 축하합니다! <b>+${totalPrize.toLocaleString()} GP</b>가 계정에 지급되었습니다! (${newStreak}일 연속 출석)`;
   }
 }

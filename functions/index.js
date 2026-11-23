@@ -168,6 +168,15 @@ exports.claimFreeDailyGp = onCall(wrapError(async (request) => {
 }));
 
 // ════════════════════════════════════════════════════════════════════════════
+// [SECURITY] 매일 1회 무료 럭키 룰렛 — 서버 추첨 · 1일 1회 트랜잭션 락 · 7일 개근 보너스
+//    클라이언트: httpsCallable(functions, 'spinDailyRoulette')()
+// ════════════════════════════════════════════════════════════════════════════
+exports.spinDailyRoulette = onCall(wrapError(async (request) => {
+  const uid = requireAuth(request);
+  return await gameRewardH.spinDailyRoulette(uid);
+}));
+
+// ════════════════════════════════════════════════════════════════════════════
 // 수박게임·2048 주간 랭킹 — 점수 접수 / 자동 정산 / 관리자 수동 정산
 //    클라이언트: httpsCallable(functions, 'submitWeeklyScore')({ gameType:'suika', score:1234 })
 //    정산: 매주 일요일 00:00 (Asia/Ho_Chi_Minh) TOP10 확정 + GP 지급 (주·게임당 1회)
