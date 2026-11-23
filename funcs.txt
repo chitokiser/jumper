@@ -1,3 +1,0 @@
-520: function _t(key) {
-526: function applyLang() {
-534: window.addEventListener('lang:change', function(e) {

@@ -1,1 +1,0 @@
-﻿const fs = require('fs'); const lines = fs.readFileSync('merchants.html', 'utf8').split('\n'); lines.forEach((l, i) => { if (/����.?���|��ü��|USDT|TON|����/i.test(l)) { console.log(i+1 + ': ' + l.trim()); } });
