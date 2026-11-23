@@ -209,10 +209,7 @@ function mountViralShare() {
     .bc-share-fab:hover { transform: translateY(-2px); }
     @media (max-width: 820px) {
       .bc-share-fab {
-        left: 130px;
-        bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
-        padding: 10px 13px;
-        font-size: 0.8rem;
+        display: none !important;
       }
     }
     .bc-share-backdrop {

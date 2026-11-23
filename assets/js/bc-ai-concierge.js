@@ -221,6 +221,14 @@ function mountConcierge() {
       transform: translateY(-2px);
       box-shadow: 0 12px 28px rgba(79, 70, 229, 0.5);
     }
+    @media (max-width: 820px) {
+      .bc-ai-fab {
+        left: 12px;
+        padding: 9px 13px;
+        font-size: 0.78rem;
+        gap: 5px;
+      }
+    }
     .bc-ai-panel {
       position: fixed;
       left: 16px;
@@ -363,6 +371,7 @@ function mountConcierge() {
         </div>
       </div>
       <div class="bc-ai-chips">
+        <button type="button" class="bc-ai-chip" id="bcAiOpenShareBtn" style="background:#fff7ed;border-color:#fed7aa;color:#c2410c;">🎁 초대·공유</button>
         <button type="button" class="bc-ai-chip" data-q="매일 무료 룰렛">🎰 무료 룰렛</button>
         <button type="button" class="bc-ai-chip" data-q="오늘 공동구매 특가">🔥 공동구매 특가</button>
         <button type="button" class="bc-ai-chip" data-q="제휴 가맹점 추천">🏪 가맹점 추천</button>
@@ -407,7 +416,16 @@ function mountConcierge() {
   });
   closeBtn?.addEventListener("click", () => panel?.classList.remove("is-open"));
 
-  root.querySelectorAll(".bc-ai-chip").forEach((chip) => {
+  document.getElementById("bcAiOpenShareBtn")?.addEventListener("click", () => {
+    panel?.classList.remove("is-open");
+    if (typeof window.openBestClubShareModal === "function") {
+      window.openBestClubShareModal();
+    } else {
+      ask("초대 공유");
+    }
+  });
+
+  root.querySelectorAll(".bc-ai-chip[data-q]").forEach((chip) => {
     chip.addEventListener("click", () => ask(chip.dataset.q || ""));
   });
 
