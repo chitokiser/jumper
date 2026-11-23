@@ -86,13 +86,26 @@ async function buildAnswer(inputRaw) {
   const qText = String(inputRaw || "").trim();
   const lower = qText.toLowerCase();
 
-  // 1. 환율 문의
+  // 1. 매일 무료 럭키 룰렛 / 출석 문의
+  if (/룰렛|럭키|출석|무료\s*gp|돌리/.test(lower)) {
+    const openAction = typeof window.openBestClubRoulette === "function"
+      ? `<a href="#" class="bc-ai-link" onclick="event.preventDefault();window.openBestClubRoulette();">🎰 지금 바로 럭키 룰렛 열기 →</a>`
+      : `<a href="/#hanoiUtilityBarSection" class="bc-ai-link">🎰 홈에서 무료 럭키 룰렛 돌리기 →</a>`;
+    return `🎰 <b>매일 1회 무료 럭키 룰렛</b><br/>• 로그인 회원은 <b>하루 1회(베트남 00:00 리셋)</b> 100% 당첨!<br/>• 당첨 구간: <b>100 ~ 3,000 GP</b> (서버 공정 추첨)<br/>• 🔥 <b>7일 연속 출석</b> 시 <b>+2,000 GP</b> 추가 보너스!<br/>${openAction}`;
+  }
+
+  // 1-2. GP → Point 전환 / 5,000 GP 유보 문의
+  if (/전환|교환|5000|5,000|gp.*p|포인트.*바꾸/.test(lower)) {
+    return `🔄 <b>게임 GP → Point 전환 안내</b><br/>• 게임 참여용 <b>5,000 GP</b>는 남겨 두고 나머지 GP를 전환합니다.<br/>• 공식: <b>(전환 GP × 게임 레벨) ÷ 10 = Point</b> (최소 10 GP)<br/>• 전환 내역은 마이페이지 <b>GP 획득내역</b>에서 바로 확인 가능합니다.<br/><a href="/mypage.html" class="bc-ai-link">마이페이지에서 전환하기 →</a>`;
+  }
+
+  // 2. 환율 문의
   if (/환율|원화|vnd|krw|달러|usd/.test(lower)) {
     const fx = await getFxText();
     return `${fx}<br/><a href="/#hanoiUtilityBarSection" class="bc-ai-link">홈 환율 계산기 열기 →</a>`;
   }
 
-  // 2. 내 포인트 / 잔액
+  // 3. 내 포인트 / 잔액
   if (/포인트|잔액|지갑|내 정보|bt|bm|gp|얼마/.test(lower) && !/게임|랭킹|3억/.test(lower)) {
     const user = auth?.currentUser;
     if (!user || user.isAnonymous) {
@@ -107,9 +120,9 @@ async function buildAnswer(inputRaw) {
     }
   }
 
-  // 3. 게임 / 주간 3억 GP
-  if (/게임|랭킹|당구|테트리스|수이카|수박|2048|3억|토너먼트/.test(lower)) {
-    return `🎮 <b>주간 3억 GP 게임 토너먼트</b><br/>매주 일요일 00:00(베트남 시간) 마감 즉시 TOP 10 자동 지급!<br/>• 🎱 베스트당구장(S티어): 1위 5,000만 GP<br/>• 🧱 네온테트리스(A티어): 1위 180만 GP<br/>• 🔢 2048 · 🍉 수이카 · 🤠 뱅크패닉 참여 가능<br/><a href="/games.html" class="bc-ai-link">게임 전체보기 →</a>`;
+  // 4. 게임 / 주간 3억 GP
+  if (/게임|랭킹|당구|테트리스|수이카|수박|2048|뱅크패닉|3억|토너먼트/.test(lower)) {
+    return `🎮 <b>주간 3억 GP 게임 토너먼트</b><br/>매주 일요일 00:00(베트남 시간) 마감 즉시 TOP 10 자동 지급!<br/>• 🎱 베스트당구장(S티어): 1위 5,000만 GP<br/>• 🧱 네온테트리스(A티어): 1위 180만 GP<br/>• 🤠 뱅크패닉(라이프 3개 · FEVER ×2 · 보스전) · 🔢 2048 · 🍉 수이카<br/><a href="/games.html" class="bc-ai-link">게임 전체보기 →</a>`;
   }
 
   // 4. 중고 / 당근
@@ -350,6 +363,7 @@ function mountConcierge() {
         </div>
       </div>
       <div class="bc-ai-chips">
+        <button type="button" class="bc-ai-chip" data-q="매일 무료 룰렛">🎰 무료 룰렛</button>
         <button type="button" class="bc-ai-chip" data-q="오늘 공동구매 특가">🔥 공동구매 특가</button>
         <button type="button" class="bc-ai-chip" data-q="제휴 가맹점 추천">🏪 가맹점 추천</button>
         <button type="button" class="bc-ai-chip" data-q="내 포인트 잔액">💰 내 리워드</button>
