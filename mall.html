@@ -25,14 +25,15 @@
 <body>
   <div id="siteHeader"></div>
   <main class="page">
-    <section class="panel coop-mall-section">
+    <section class="panel coop-mall-section" style="padding-bottom:92px;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
         <div>
           <h1 class="title" style="margin-bottom:4px;">가맹점 상품 &amp; 하노이 교민 공동구매 · 타임딜</h1>
           <p style="margin:0; font-size:0.9rem; color:#64748b;">공식 가맹점 상품을 타임딜 할인가로 즉시 구매하고, 목표 인원 달성 시 추가 BM 보너스까지 받으세요!</p>
         </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <a href="/admin_merchant_products.html" class="btn btn--sm" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; border-radius:8px; font-weight:600; text-decoration:none;">⚙️ 공구/상품 관리</a>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <a id="btnOpenBestErp" href="https://besterp.netlify.app/admin/dashboard.html" target="_blank" rel="noopener" class="btn btn--sm" style="display:none; background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:8px; font-weight:700; text-decoration:none;">🏢 내 BestERP 열기</a>
+          <a id="btnMerchantAdminLink" href="/admin_merchant_products.html" class="btn btn--sm" style="display:none; background:#f8fafc; color:#334155; border:1px solid #cbd5e1; border-radius:8px; font-weight:600; text-decoration:none;">⚙️ 공구/상품 관리</a>
           <button id="btnShowCart" class="btn btn--primary" style="font-weight:bold;">🛒 장바구니 <span id="cartBadge"
               style="background:#ef4444;border-radius:10px;padding:2px 8px;font-size:0.8rem;margin-left:4px;">0</span></button>
         </div>

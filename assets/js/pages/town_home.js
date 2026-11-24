@@ -991,24 +991,69 @@ function openMerchantProductModal(ownerUid, merchantName) {
   };
   window.addEventListener("keydown", onKey);
 
-  const q = query(
+  const qItems = query(
     collection(db, "items"),
     where("ownerUid", "==", ownerUid),
     where("status", "in", ["published", "approved"])
   );
+  const qMpByName = merchantName
+    ? query(collection(db, "merchant_products"), where("merchant_name", "==", merchantName), where("sale_status", "==", "published"))
+    : null;
+  const qMpById = query(collection(db, "merchant_products"), where("merchant_id", "==", ownerUid), where("sale_status", "==", "published"));
 
-  getDocs(q)
-    .then((snap) => {
+  Promise.all([
+    getDocs(qItems).catch(() => ({ forEach: () => {} })),
+    qMpByName ? getDocs(qMpByName).catch(() => ({ forEach: () => {} })) : Promise.resolve({ forEach: () => {} }),
+    getDocs(qMpById).catch(() => ({ forEach: () => {} }))
+  ])
+    .then(([snapItems, snapMpName, snapMpId]) => {
+      const seen = new Set();
       const list = [];
-      snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+      const addMp = (d) => {
+        if (seen.has(d.id)) return;
+        seen.add(d.id);
+        const p = d.data() || {};
+        list.push({
+          id: d.id,
+          title: p.product_name || p.name || "상품",
+          price: Number(p.price || 0),
+          currency: p.currency || "VND",
+          description: p.description || "",
+          imageUrl: coopProductImage(p),
+          category: p.category || "",
+          _fromBestErp: true
+        });
+      };
+      snapMpName.forEach(addMp);
+      snapMpId.forEach(addMp);
+      snapItems.forEach((d) => {
+        if (seen.has(d.id)) return;
+        seen.add(d.id);
+        list.push({ id: d.id, ...d.data() });
+      });
 
       if (!list.length) {
         if (stateEl) stateEl.textContent = _t('no_products');
         return;
       }
 
-      if (stateEl) stateEl.textContent = _t('products_count', list.length);
-      grid.innerHTML = list.map(renderProductCard).join("");
+      if (stateEl) {
+        stateEl.innerHTML = `${_t('products_count', list.length)} · <a href="/mall.html" style="color:#4f46e5;font-weight:800;text-decoration:underline;">통합 쇼핑몰에서 전체 보기 →</a>`;
+      }
+      grid.innerHTML = list.map((item) => {
+        if (item._fromBestErp) {
+          const img = item.imageUrl
+            ? `<img src="${item.imageUrl}" alt="" style="width:100%;height:130px;object-fit:cover;border-radius:8px;margin-bottom:8px;" />`
+            : `<div style="width:100%;height:130px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:1.5rem;margin-bottom:8px;">🛍️</div>`;
+          return `
+            <a href="/mall.html" style="display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px;">
+              ${img}
+              <div style="font-weight:800;font-size:0.88rem;color:#0f172a;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.title}</div>
+              <div style="font-weight:800;font-size:0.9rem;color:#ef4444;">${Number(item.price || 0).toLocaleString()} VND</div>
+            </a>`;
+        }
+        return renderProductCard(item);
+      }).join("");
     })
     .catch((e) => {
       console.warn("loadMerchantProducts failed:", e);

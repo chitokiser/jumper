@@ -548,8 +548,20 @@ function renderProductsList() {
                 </div>
               </div>
               <div>
-                  ${channel === "in_store" ? `<div style="width:100%; box-sizing:border-box; border-radius:10px; font-weight:700; padding:10px; text-align:center; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; font-size:0.9rem;">🏬 매장에서만 구매할 수 있습니다</div>` : `
+                  ${channel === "in_store" ? `
                   <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <a href="https://besterp.netlify.app/table-order.html?merchantId=${encodeURIComponent(data.merchant_id || "")}" target="_blank" rel="noopener" class="btn" style="flex:1; min-width:115px; border-radius:10px; font-weight:800; padding:10px; text-align:center; text-decoration:none; background:#fff7ed; color:#9a3412; border:1px solid #fdba74; font-size:0.84rem;">
+                      🍽️ 테이블 QR 주문
+                    </a>
+                    <a href="/events.html" class="btn" style="flex:1; min-width:105px; border-radius:10px; font-weight:800; padding:10px; text-align:center; text-decoration:none; background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; font-size:0.84rem;">
+                      🎫 바우처 · 혜택
+                    </a>
+                  </div>` : `
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    ${(effectivePrice >= 50000000 || String(data.description || "").includes("견적")) ? `
+                    <a href="https://besterp.netlify.app/onboarding.html?plan=enterprise" target="_blank" rel="noopener" class="btn" style="flex:1; min-width:115px; border-radius:10px; font-weight:800; padding:10px; text-align:center; text-decoration:none; background:#0f172a; color:#fde047; border:none; font-size:0.84rem;">
+                      💬 B2B 견적 문의
+                    </a>` : `
                     <button class="btn btn--primary" style="flex:1; min-width:115px; border-radius:10px; font-weight:800; padding:10px; background:linear-gradient(135deg,#2563eb,#1d4ed8); border:none;" data-action="buy-now" 
                         data-id="${esc(docSnap.id)}" 
                         data-merchant="${esc(data.merchant_id)}"
@@ -560,7 +572,7 @@ function renderProductsList() {
                         data-bonus-bm="${gb.enabled ? gb.bonusBm : 0}"
                         data-gb-mode="${gb.enabled ? gb.mode : ""}">
                         ⚡ 즉시 구매
-                    </button>
+                    </button>`}
                     <button class="btn" style="flex:1; min-width:115px; border-radius:10px; font-weight:800; padding:10px; background:${gb.enabled ? "#fff1f2" : "#f8fafc"}; color:${gb.enabled ? "#e11d48" : "#1e293b"}; border:1px solid ${gb.enabled ? "#fecdd3" : "#cbd5e1"};" data-action="add-cart" 
                         data-id="${esc(docSnap.id)}" 
                         data-merchant="${esc(data.merchant_id)}"
@@ -1063,4 +1075,29 @@ document.querySelectorAll('#channelFilterBar .channel-btn').forEach(btn => {
     document.querySelectorAll('#channelFilterBar .channel-btn').forEach(b => b.classList.toggle('btn--primary', b === btn));
     renderProductsList();
   });
+});
+
+// 가맹점/관리자 로그인 시에만 상품관리 및 BestERP SSO 버튼 표시
+onAuthReady(async (user) => {
+  const adminBtn = $("btnMerchantAdminLink");
+  const erpBtn = $("btnOpenBestErp");
+  if (!user) return;
+  try {
+    const email = String(user.email || "").toLowerCase();
+    const isSuper = email === "daguri75@gmail.com";
+    let isMerchantUser = isSuper;
+    if (!isMerchantUser) {
+      const { doc: fsDoc, getDoc: fsGetDoc } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js");
+      const uSnap = await fsGetDoc(fsDoc(db, "users", user.uid));
+      if (uSnap.exists()) {
+        const ud = uSnap.data() || {};
+        const role = String(ud.role || "").toUpperCase();
+        isMerchantUser = Boolean(ud.merchantId || ud.isMerchantOwner || ["CEO", "ADMIN", "SUPER_ADMIN", "MERCHANT", "OWNER", "STAFF"].includes(role));
+      }
+    }
+    if (isMerchantUser) {
+      if (adminBtn) adminBtn.style.display = "inline-flex";
+      if (erpBtn) erpBtn.style.display = "inline-flex";
+    }
+  } catch (_) {}
 });
