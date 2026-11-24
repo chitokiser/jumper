@@ -13,6 +13,7 @@ import {
   orderBy,
   limit,
   getDocs,
+  getCountFromServer,
   onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -142,20 +143,24 @@ async function loadJackpotStats() {
 
   applyJackpotStatsToUi(cached || DEFAULT_SEED_JACKPOT);
 
-  // 2. 백그라운드 Firestore 갱신
+  // 2. 백그라운드 Firestore 갱신 (limit(100) 제거 → 전체 실제 당첨 건수 서버 집계)
   try {
-    const [configSnap, winsSnap] = await Promise.all([
+    const [configSnap, countSnap] = await Promise.all([
       getDoc(doc(db, "jackpot_config", "current")),
-      getDocs(query(collection(db, "jackpot_wins"), orderBy("createdAt", "desc"), limit(100)))
+      getCountFromServer(collection(db, "jackpot_wins")).catch(() => null)
     ]);
 
     const cfg = configSnap.exists() ? configSnap.data() : {};
-    const count = winsSnap.size;
+    let count = countSnap ? Number(countSnap.data()?.count || 0) : 0;
+    if (!count) {
+      const allSnap = await getDocs(collection(db, "jackpot_wins")).catch(() => null);
+      if (allSnap) count = allSnap.size;
+    }
     const statsData = {
       jackpotPoints: Number(cfg.jackpotAccVnd || 58450000),
       krwPerHex: Number(cfg.krwPerHex || 1380),
       vndPerHex: Number(cfg.vndPerHex || 25000),
-      winnerCount: count > 0 ? count : (cached?.winnerCount || 128)
+      winnerCount: count > 0 ? count : (cached?.winnerCount || 0)
     };
 
     try { localStorage.setItem("bc_cache_jackpot", JSON.stringify(statsData)); } catch (_) {}
