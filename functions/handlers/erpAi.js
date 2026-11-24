@@ -1,7 +1,7 @@
 // BestERP AI 호출 중계 (Gemini)
 //
 // BestERP 화면(영수증 OCR, 명함 OCR, AI 경영 비서 등)이 브라우저에서 Gemini API 키를 직접
-// 쓰지 않도록, 키는 서버(Secret Manager 의 GEMINI_API_KEY, index.js 에서 secrets 로 선언)에만 두고 이 함수가 대신 호출한다.
+// 쓰지 않도록, 키는 서버(process.env.GEMINI_API_KEY)에만 두고 이 함수가 대신 호출한다.
 //  - 로그인 + ERP 사용 권한(직원 이상 또는 가맹점 소속)만 허용
 //  - 모델은 허용 목록만, 요청 크기 제한, 사용자별 하루 호출 수 제한
 'use strict';
