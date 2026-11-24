@@ -3714,8 +3714,9 @@ exports.buildWebzineContent = onCall({ cors: true, timeoutSeconds: 180 }, wrapEr
 // ── BestERP AI 중계 (Gemini 키를 브라우저에서 제거, 2026-11-23) ────────────────
 const erpAiH = require('./handlers/erpAi');
 
-exports.erpGeminiGenerate = onCall({ cors: true, timeoutSeconds: 120, memory: '512MiB' }, wrapError(async (request) => {
-  return erpAiH.erpGeminiGenerate(request);
+// 키는 Secret Manager 의 GEMINI_API_KEY (firebase functions:secrets:set GEMINI_API_KEY)
+exports.erpGeminiGenerate = onCall({ cors: true, timeoutSeconds: 120, memory: '512MiB', secrets: [geminiSecret] }, wrapError(async (request) => {
+  return erpAiH.erpGeminiGenerate(request, { apiKey: geminiSecret.value() });
 }));
 
 // ── 테이블 QR 체크인 보너스 티켓 (BestERP table-qr.html, 2026-11-23) ─────────────
