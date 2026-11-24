@@ -3711,6 +3711,23 @@ exports.buildWebzineContent = onCall({ cors: true, timeoutSeconds: 180 }, wrapEr
   return webzineH.buildWebzineContent(request.data, request.auth);
 }));
 
+// ── BestERP 텔레그램 알림 중계 (봇 토큰을 브라우저에서 제거, 2026-11-24) ───────────
+// 선행 작업: firebase functions:secrets:set ERP_TELEGRAM_BOT_TOKEN
+//           firebase functions:secrets:set ERP_ADMIN_TELEGRAM_ID
+const erpTelegramBotSecret = defineSecret('ERP_TELEGRAM_BOT_TOKEN');
+const erpAdminTelegramIdSecret = defineSecret('ERP_ADMIN_TELEGRAM_ID');
+
+exports.erpTelegramNotify = onCall(
+  { cors: true, secrets: [erpTelegramBotSecret, erpAdminTelegramIdSecret] },
+  wrapError(async (request) => {
+    return require('./handlers/erpTelegram').erpTelegramNotify(request, {
+      send: telegramH.sendTelegramMessage,
+      botToken: erpTelegramBotSecret.value(),
+      chatId: erpAdminTelegramIdSecret.value()
+    });
+  })
+);
+
 // ── Event Coupon & Voucher System API ──────────────────────────────────────────
 const couponH = require('./handlers/coupon');
 
