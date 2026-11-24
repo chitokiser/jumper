@@ -3711,6 +3711,33 @@ exports.buildWebzineContent = onCall({ cors: true, timeoutSeconds: 180 }, wrapEr
   return webzineH.buildWebzineContent(request.data, request.auth);
 }));
 
+// ── BestERP AI 중계 (Gemini 키를 브라우저에서 제거, 2026-11-23) ────────────────
+const erpAiH = require('./handlers/erpAi');
+
+exports.erpGeminiGenerate = onCall({ cors: true, timeoutSeconds: 120, memory: '512MiB' }, wrapError(async (request) => {
+  return erpAiH.erpGeminiGenerate(request);
+}));
+
+// ── 테이블 QR 체크인 보너스 티켓 (BestERP table-qr.html, 2026-11-23) ─────────────
+exports.tableQrCheckinReward = onCall({ cors: true }, wrapError(async (request) => {
+  return require('./handlers/tableQrReward').tableQrCheckinReward(request);
+}));
+
+// ── 온라인 주문 결제 확인 → 메뉴 레시피대로 ERP 자재 재고 자동 차감 (2026-11-23) ──────
+exports.onMerchantOrderRecipeDeduct = onDocumentWritten('merchant_orders/{orderId}', async (event) => {
+  const after = event.data?.after?.exists ? event.data.after.data() : null;
+  if (!after) return;
+  const recipeH = require('./handlers/recipeDeduction');
+  const before = event.data?.before?.exists ? event.data.before.data() : null;
+  if (!recipeH.isDeductible(after) || (before && recipeH.isDeductible(before))) return;
+  try {
+    const r = await recipeH.deductForOrder(event.params.orderId, after);
+    logger.info('[recipeDeduct]', event.params.orderId, r);
+  } catch (e) {
+    logger.error('[recipeDeduct] 실패', event.params.orderId, e);
+  }
+});
+
 // ── Event Coupon & Voucher System API ──────────────────────────────────────────
 const couponH = require('./handlers/coupon');
 

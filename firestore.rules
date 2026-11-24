@@ -17,64 +17,179 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // 문서가 없으면 아무 권한도 없는 GUEST 로 본다. (예전 기본값 EMPLOYEE 는 직원 권한을 통과시켰음)
     function getUserData() {
       let docPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(docPath) ? get(docPath).data : {"role": "EMPLOYEE"};
+      return exists(docPath) ? get(docPath).data : {"role": "GUEST"};
+    }
+
+    // 이메일로 권한을 주는 경우는 인증된(email_verified) 이메일만 인정한다.
+    function hasVerifiedEmailIn(emails) {
+      return signedIn()
+        && (request.auth.token.email is string)
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in emails;
     }
 
     function isOperatorEmail() {
-      return signedIn()
-        && (request.auth.token.email is string)
-        && (request.auth.token.email == "daguri75@gmail.com");
+      return hasVerifiedEmailIn(['daguri75@gmail.com']);
+    }
+
+    // 본인이 스스로 넣을 수 없는 role 값 (관리자/승인으로만 부여)
+    function isPrivilegedRole(r) {
+      return (r is string) && r.upper() in [
+        'SUPER_ADMIN', 'CEO', 'ADMIN', 'STAFF', 'EMPLOYEE', 'FRANCHISE', 'MERCHANT'
+      ];
+    }
+
+    // 본인이 스스로 바꿀 수 없는 users 필드
+    function protectedUserFields() {
+      return ['isAdmin', 'merchantId', 'merchant_id', 'teamId', 'tenant_id', 'tenantId', 'company_id', 'employeeDocId'];
     }
 
     function isSuperAdmin() {
       return signedIn() && (
-        request.auth.token.email == 'daguri75@gmail.com' ||
-        getUserData().role == 'SUPER_ADMIN'
+        isOperatorEmail() ||
+        getUserData().get('role', '') == 'SUPER_ADMIN'
       );
     }
 
+    // 가맹점 대표: role 로만 판정한다. (merchantId 보유나 가맹점 신청 여부만으로는 CEO 가 아님)
     function isCEO() {
       return signedIn() && (
-        request.auth.token.email in ['daguri75@gmail.com', 'hexttokenopbnb@gmail.com'] ||
-        getUserData().role in ['SUPER_ADMIN', 'CEO', 'ceo', 'FRANCHISE', 'franchise', 'MERCHANT', 'merchant'] ||
-        getUserData().merchantId != null ||
-        getUserData().is_merchant_applicant == true
+        hasVerifiedEmailIn(['daguri75@gmail.com', 'hexttokenopbnb@gmail.com']) ||
+        getUserData().get('role', '') in ['SUPER_ADMIN', 'CEO', 'ceo', 'FRANCHISE', 'franchise', 'MERCHANT', 'merchant']
       );
     }
 
+    // ERP 사용 권한(직원 이상). 가맹점에 소속(merchantId)된 사용자도 포함.
+    // merchantId 는 본인이 바꿀 수 없고 관리자/점주 승인으로만 들어간다.
     function isStaff() {
       return signedIn() && (
-        request.auth.token.email in ['daguri75@gmail.com', 'hexttokenopbnb@gmail.com'] ||
-        getUserData().role in ['SUPER_ADMIN', 'CEO', 'ceo', 'ADMIN', 'admin', 'STAFF', 'staff', 'EMPLOYEE', 'FRANCHISE', 'franchise', 'MERCHANT', 'merchant'] ||
-        getUserData().merchantId != null ||
-        getUserData().is_merchant_applicant == true
+        hasVerifiedEmailIn(['daguri75@gmail.com', 'hexttokenopbnb@gmail.com']) ||
+        getUserData().get('role', '') in ['SUPER_ADMIN', 'CEO', 'ceo', 'ADMIN', 'admin', 'STAFF', 'staff', 'EMPLOYEE', 'FRANCHISE', 'franchise', 'MERCHANT', 'merchant'] ||
+        getUserData().get('merchantId', null) != null
       );
     }
 
+    // 플랫폼(본사) 관리자. 가맹점 대표(CEO)는 여기에 포함되지 않는다.
     function isAdmin() {
       return signedIn()
         && (
           exists(/databases/$(database)/documents/admins/$(request.auth.uid))
           || isOperatorEmail()
           || isSuperAdmin()
-          || isCEO()
-          || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
-              && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
-                  || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['SUPER_ADMIN', 'CEO', 'ADMIN', 'admin']))
+          || getUserData().get('isAdmin', false) == true
+          || getUserData().get('role', '') in ['SUPER_ADMIN', 'ADMIN', 'admin']
         );
     }
 
+    // 사용자 데이터 u 의 소속 가맹점 ID 목록 (문자열).
+    // BestClubVN 승인 화면은 merchantId 를 숫자로 저장하므로 문자열로 바꿔 비교한다.
+    function myTenantIds(u) {
+      return [string(u.get('tenant_id', '')), string(u.get('tenantId', '')),
+              string(u.get('merchantId', '')), string(u.get('merchant_id', '')),
+              request.auth.uid];
+    }
+
+    function idInList(v, ids) {
+      return v != null && string(v) != '' && string(v) != 'null' && string(v) in ids;
+    }
+
+    // 사용자 데이터 u 의 소속 가맹점이 tenantId 인지
+    function tenantMatch(u, tenantId) {
+      return idInList(tenantId, myTenantIds(u));
+    }
+
+    // 로그인 사용자의 소속 가맹점이 tenantId 인지
+    function isMyTenant(tenantId) {
+      return signedIn() && tenantMatch(getUserData(), tenantId);
+    }
+
+    // 해당 가맹점 데이터 접근: 본사 관리자 또는 그 가맹점 소속만
     function belongsToTenant(tenantId) {
-      return signedIn() && (
-        isSuperAdmin() ||
-        isCEO() ||
-        getUserData().tenant_id == tenantId ||
-        getUserData().tenantId == tenantId ||
-        getUserData().merchantId == tenantId ||
-        request.auth.uid == tenantId
-      );
+      return signedIn() && (isSuperAdmin() || isAdmin() || isMyTenant(tenantId));
+    }
+
+    // 문서 d 의 가맹점 필드가 모두 비어 있거나 u(로그인 사용자)의 가맹점인지
+    function tenantFieldsMineOrEmpty(u, d) {
+      let ids = myTenantIds(u);
+      return (d.get('merchantId', null) == null || idInList(d.get('merchantId', null), ids))
+        && (d.get('merchant_id', null) == null || idInList(d.get('merchant_id', null), ids))
+        && (d.get('tenantId', null) == null || idInList(d.get('tenantId', null), ids))
+        && (d.get('tenant_id', null) == null || idInList(d.get('tenant_id', null), ids));
+    }
+
+    // 본인 users 문서 수정: 권한 role 과 소속 필드는 못 바꾼다.
+    function selfUserWriteOk(uid) {
+      return signedIn() && request.auth.uid == uid
+        && (
+          resource == null
+            ? (!request.resource.data.keys().hasAny(protectedUserFields())
+               && !isPrivilegedRole(request.resource.data.get('role', '')))
+            : (!request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedUserFields())
+               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])
+                   || !isPrivilegedRole(request.resource.data.get('role', ''))))
+        );
+    }
+
+    // 직원 연결(점주 승인 / 직원 본인 연결) 때 바뀔 수 있는 users 필드
+    function staffLinkFields() {
+      return ['email', 'name', 'role', 'status', 'position', 'department',
+              'merchantId', 'merchant_id', 'tenantId', 'tenant_id', 'storeName',
+              'employeeDocId', 'updatedAt'];
+    }
+
+    function onlyStaffLinkFieldsChanged() {
+      return resource == null
+        ? request.resource.data.keys().hasOnly(staffLinkFields())
+        : request.resource.data.diff(resource.data).affectedKeys().hasOnly(staffLinkFields());
+    }
+
+    // 점주가 등록한 직원(employees)이 처음 로그인할 때 스스로 STAFF 로 연결.
+    // employees 문서의 contact 이메일이 로그인한 인증 이메일과 같고, 소속은 그 직원 문서의 가맹점으로만.
+    function selfStaffClaimOk(uid) {
+      let d = request.resource.data;
+      let empId = d.get('employeeDocId', '');
+      let empPath = /databases/$(database)/documents/employees/$(empId);
+      let emp = get(empPath).data;
+      let t = emp.get('tenantId', null);
+      let ts = string(t);
+      return signedIn() && request.auth.uid == uid
+        && request.auth.token.email_verified == true
+        && (request.auth.token.email is string)
+        && (empId is string) && empId != ''
+        && exists(empPath)
+        && (emp.get('contact', '') is string)
+        && emp.get('contact', '').lower() == request.auth.token.email.lower()
+        && t != null
+        && d.get('role', '') == 'STAFF'
+        && d.get('isAdmin', false) == false
+        && string(d.get('merchantId', null)) == ts
+        && string(d.get('tenantId', null)) == ts
+        && string(d.get('tenant_id', t)) == ts
+        && string(d.get('merchant_id', t)) == ts
+        && onlyStaffLinkFieldsChanged()
+        && (resource == null || !isPrivilegedRole(resource.data.get('role', '')) || resource.data.get('role', '') == 'STAFF');
+    }
+
+    // 점주(CEO)가 다른 사용자를 자기 가맹점 직원으로 연결/해제.
+    // 다른 점주·관리자 계정은 건드릴 수 없고, 소속은 자기 가맹점으로만 넣을 수 있다.
+    function ceoManagesUserOk(uid) {
+      let u = getUserData();
+      let d = request.resource.data;
+      return signedIn() && request.auth.uid != uid
+        && (hasVerifiedEmailIn(['daguri75@gmail.com', 'hexttokenopbnb@gmail.com'])
+            || u.get('role', '') in ['SUPER_ADMIN', 'CEO', 'ceo', 'FRANCHISE', 'franchise', 'MERCHANT', 'merchant'])
+        && d.get('role', 'VIEWER') in ['STAFF', 'EMPLOYEE', 'VIEWER', 'GUEST']
+        && onlyStaffLinkFieldsChanged()
+        && tenantFieldsMineOrEmpty(u, d)
+        && (resource == null || (
+              (!isPrivilegedRole(resource.data.get('role', ''))
+                || resource.data.get('role', '') in ['STAFF', 'EMPLOYEE'])
+              && tenantFieldsMineOrEmpty(u, resource.data)
+              && resource.data.get('isAdmin', false) == false
+           ));
     }
 
     // 가맹점 소속 엄격 판정 (매장 CCTV·고객 데이터용).
@@ -256,15 +371,15 @@ service cloud.firestore {
     // users/{uid} (BestClubVN + BestERP + 가맹점 웹 통합)
     match /users/{uid} {
       allow get, list: if signedIn();
-      allow create: if isAdmin()
-        || isStaff()
-        || (signedIn() && request.auth.uid == uid
-            && !request.resource.data.keys().hasAny(['isAdmin', 'merchantId', 'merchant_id', 'teamId', 'tenant_id']));
-      allow update: if isAdmin()
-        || isStaff()
-        || (signedIn() && request.auth.uid == uid
-            && !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['isAdmin', 'merchantId', 'merchant_id', 'teamId', 'tenant_id']));
+      // 권한(role)·소속 필드는 본사 관리자, 자기 가맹점 직원을 관리하는 점주, 직원 본인 연결(employees 대조)로만 바뀐다.
+      allow create: if selfUserWriteOk(uid)
+        || isAdmin()
+        || ceoManagesUserOk(uid)
+        || selfStaffClaimOk(uid);
+      allow update: if selfUserWriteOk(uid)
+        || isAdmin()
+        || ceoManagesUserOk(uid)
+        || selfStaffClaimOk(uid);
       allow delete: if isAdmin();
 
       match /myMap/{docId} {
@@ -376,14 +491,12 @@ service cloud.firestore {
     match /merchants/{merchantId} {
       allow get, list: if true;
       allow create: if isAdmin()
-        || isStaff()
         || (signedIn()
             && request.resource.data.ownerUid == request.auth.uid
             && request.resource.data.active == false
             && request.resource.data.status == 'pending');
       allow delete: if isAdmin();
       allow update: if isAdmin()
-        || isStaff()
         || (signedIn()
             && !request.resource.data.diff(resource.data).affectedKeys()
                  .hasAny(['active', 'status', 'approvedAt', 'approvedBy', 'feeBps', 'ownerUid', 'apiKey'])
@@ -850,6 +963,8 @@ service cloud.firestore {
     }
 
     match /user_coupons/{userCouponId} {
+      // 아직 없는 쿠폰 문서 조회(중복 발급 확인용 트랜잭션)는 허용. 내용 노출 없음.
+      allow get: if signedIn() && resource == null;
       allow get, list: if isAdmin() || isStaff() || (signedIn() && (resource.data.userId == request.auth.uid || resource.data.uid == request.auth.uid));
       allow create, update: if isAdmin() || isStaff() || (signedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.uid == request.auth.uid));
       allow delete: if isAdmin() || isStaff();
@@ -898,6 +1013,8 @@ service cloud.firestore {
     }
 
     // ── BestERP & 가맹점 SaaS 통합 컬렉션 ────────────────────────────────────
+    // ERP 내부 데이터(재무·고객·업무·자재 등)는 ERP 사용자(isStaff: 직원 이상 또는 가맹점 소속)만.
+    // 일반 BestClubVN 회원은 접근 불가. (가맹점별 격리는 문서별 tenantId 정리 후 다음 단계)
 
     match /stores/{storeId} {
       allow read: if true;
@@ -905,38 +1022,62 @@ service cloud.firestore {
     }
 
     match /materials/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
     match /suppliers/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
+    }
+
+    // 자재 반출(소모) / 입고(지출등록 자동연동) 이력
+    match /material_usage_logs/{document=**} {
+      allow read, write: if isStaff();
+    }
+
+    match /material_purchase_logs/{document=**} {
+      allow read, write: if isStaff();
+    }
+
+    // 메뉴 레시피(1인분 재료)와 판매 차감 기록 — ERP 사용자만 (온라인 주문 차감은 Cloud Function 이 기록)
+    match /menu_recipes/{productId} {
+      allow read, write: if isStaff();
+    }
+
+    match /sales_deductions/{sourceKey} {
+      allow read: if isStaff();
+      allow create: if isStaff();
+      allow update, delete: if isAdmin();
     }
 
     match /priceHistory/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
     match /externalPrices/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
+    // 가맹점 상품: 수정은 ERP 사용자만. 일반 회원은 공동구매 참여 인원 숫자만 갱신 가능(coop-mall.js).
     match /merchant_products/{productId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow create, delete: if isStaff();
+      allow update: if isStaff()
+        || (signedIn() && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['group_buy_current', 'group_buy', 'updated_at']));
     }
 
     match /merchant_members/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isStaff() || isCEO() || isAuthenticated();
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
     match /menus/{menuId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isStaff();
     }
 
     match /merchant_orders/{orderId} {
@@ -944,7 +1085,7 @@ service cloud.firestore {
     }
 
     match /projects/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /purchaseRequests/{document=**} {
@@ -952,7 +1093,7 @@ service cloud.firestore {
     }
 
     match /purchase_requests/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /access_requests/{document=**} {
@@ -961,27 +1102,39 @@ service cloud.firestore {
     }
 
     match /financeRecords/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
-    match /employees/{document=**} {
-      allow read, write: if isAuthenticated();
+    // 직원 원장: 자기 가맹점 직원만 관리. 본인(contact 이메일)은 자기 직원 문서를 읽을 수 있다(첫 로그인 연결용).
+    match /employees/{empId} {
+      allow read: if belongsToTenant(resource.data.get('tenantId', null))
+        || (signedIn() && request.auth.token.email_verified == true
+            && (request.auth.token.email is string)
+            && resource.data.get('contact', '') == request.auth.token.email);
+      allow create: if isAdmin()
+        || (isCEO() && isMyTenant(request.resource.data.get('tenantId', null)));
+      allow update: if isAdmin()
+        || (isCEO() && isMyTenant(resource.data.get('tenantId', null))
+            && request.resource.data.get('tenantId', null) == resource.data.get('tenantId', null));
+      allow delete: if isAdmin()
+        || (isCEO() && isMyTenant(resource.data.get('tenantId', null)));
     }
+
 
     match /clients/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /contacts/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /siteLogs/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /aiInsights/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /system_branding/{tenantId} {
@@ -990,23 +1143,23 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /task_reports/{reportId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /task_comments/{commentId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /task_attachments/{attachmentId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     match /task_logs/{logId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaff();
     }
 
     // ── Table QR & AI Smart CRM Collections (가맹점별 격리) ──────────────────────
@@ -1074,9 +1227,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /user_coupons/{document=**} {
-      allow read, write: if true;
-    }
 
   }
 }
