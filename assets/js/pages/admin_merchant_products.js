@@ -405,7 +405,7 @@ function renderMerchantProductCards(docs) {
                             🏪 ${esc(merchantName)} (${esc(data.merchant_id || '-')})
                         </span>
                         <div style="display:flex; gap:4px; align-items:center;">
-                          ${gbEnabled ? `<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.75rem;">🔥 공구·타임딜 (${Number(gb?.current_count ?? data.group_buy_current ?? 0)}/${Number(gb?.target_count ?? data.group_buy_target ?? 10)}명)</span>` : ""}
+                          ${gbEnabled ? `<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.75rem;">🔥 공구·타임딜 (${Number(gb?.current_count ?? data.group_buy_current ?? 0)}/${Number(gb?.target_count ?? data.group_buy_target ?? 10)}개)</span>` : ""}
                           ${statusBadge}
                         </div>
                     </div>

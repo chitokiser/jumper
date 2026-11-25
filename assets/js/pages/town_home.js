@@ -1144,7 +1144,7 @@ function renderHomeGroupBuyBanner(gbList) {
           </div>
           <div style="margin-top:5px;">
             <div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:#b91c1c;margin-bottom:2px;">
-              <span>👥 ${gb.curP}/${gb.minP}명 참여 (${pct}%)</span>
+              <span>📦 ${gb.curP}/${gb.minP}개 판매 (${pct}%)</span>
               <span>🎁 달성 시 +${gb.bonusBm.toLocaleString()} BM</span>
             </div>
             <div style="height:6px;background:#fee2e2;border-radius:99px;overflow:hidden;">

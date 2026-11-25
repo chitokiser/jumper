@@ -244,8 +244,8 @@ function openViralShareModal(productItem, gb, merchantName) {
   const promo = `${modeTitle} 🔥 ${merchantName} — ${productItem.data.product_name}
 📍 배송/픽업 권역: ${gb.region}
 💰 타임딜 즉시 할인가: ${gb.dealPrice.toLocaleString()} VND (${gb.discountRate}% 할인 확정!)
-🎁 목표 ${gb.targetCount}명 달성 시 전원 +${gb.bonusBm.toLocaleString()} BM 추가 보너스!
-📊 현재 달성률 ${pct}% (${gb.currentCount}/${gb.targetCount}명 참여 · ${remain > 0 ? `보너스 달성까지 딱 ${remain}명 남음!` : `🎉 목표 달성 완료! 지금 참여해도 BM 보너스 100% 지급!`})
+🎁 목표 ${gb.targetCount}개 판매 달성 시 1개당 +${gb.bonusBm.toLocaleString()} BM 추가 보너스!
+📊 현재 달성률 ${pct}% (${gb.currentCount}/${gb.targetCount}개 판매 · ${remain > 0 ? `보너스 달성까지 딱 ${remain}개 남음!` : `🎉 목표 달성 완료! 지금 참여해도 BM 보너스 100% 지급!`})
 👉 공구 바로 참여: ${shareUrl}
 ✨ 첫 방문 10초 가입(+1,000 GP): ${signupUrl}`;
 
@@ -406,7 +406,7 @@ function updateGroupBuyLiveSummary() {
   const activeDeals = rawProducts.filter(p => p.gb?.enabled);
   const totalParticipants = activeDeals.reduce((acc, p) => acc + (p.gb?.currentCount || 0), 0);
   const achievedDeals = activeDeals.filter(p => (p.gb?.currentCount || 0) >= (p.gb?.targetCount || 10)).length;
-  el.innerHTML = `🔥 진행중 공구·타임딜 <b>${activeDeals.length}건</b> · 누적 참여 <b>${totalParticipants}명</b> · 보너스 달성 <b>${achievedDeals}팀</b>`;
+  el.innerHTML = `🔥 진행중 공구·타임딜 <b>${activeDeals.length}건</b> · 누적 판매 <b>${totalParticipants}개</b> · 보너스 달성 <b>${achievedDeals}건</b>`;
 }
 
 // 상품 대표 이미지: BestERP 는 images[] (공통 규격), 예전 상품은 image_url/imageUrl/image
@@ -515,17 +515,17 @@ function renderProductsList() {
               <div style="color:#64748b; font-size:0.84rem; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${esc(data.description || "")}</div>
 
               ${gb.enabled ? `
-                <!-- 📊 공동구매 인원 모집 게이지 & BM 추가 적립 박스 -->
+                <!-- 📊 공동구매 판매 수량 게이지 & BM 추가 적립 박스 (목표·현재 = 구매 수량 기준) -->
                 <div style="margin-top:12px; padding:11px 12px; border-radius:12px; background:${isGoalMet ? "#ecfdf5" : "#fff1f2"}; border:1px solid ${isGoalMet ? "#a7f3d0" : "#fecdd3"};">
                   <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.79rem; font-weight:800; color:${isGoalMet ? "#065f46" : "#9f1239"}; margin-bottom:6px;">
-                    <span>👥 현재 <b>${gb.currentCount}명</b> / 목표 ${gb.targetCount}명 (${progressPct}%)</span>
-                    <span>${isGoalMet ? "🎉 보너스 확정!" : `${remainCount}명 더 모이면 보너스!`}</span>
+                    <span>📦 현재 <b>${gb.currentCount}개</b> 판매 / 목표 ${gb.targetCount}개 (${progressPct}%)</span>
+                    <span>${isGoalMet ? "🎉 보너스 확정!" : `${remainCount}개 더 팔리면 보너스!`}</span>
                   </div>
                   <div style="width:100%; height:8px; background:rgba(0,0,0,0.08); border-radius:99px; overflow:hidden; margin-bottom:8px;">
                     <div style="width:${progressPct}%; height:100%; background:${isGoalMet ? "linear-gradient(90deg,#10b981,#059669)" : "linear-gradient(90deg,#f43f5e,#fb7185)"}; border-radius:99px; transition:width 0.3s;"></div>
                   </div>
                   <div style="font-size:0.77rem; color:#1e293b; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:4px; flex-wrap:wrap;">
-                    <span>🎁 목표 달성 보너스: <b style="color:#d97706;">+${gb.bonusBm.toLocaleString()} BM</b> 추가 적립</span>
+                    <span>🎁 목표 달성 보너스: 1개당 <b style="color:#d97706;">+${gb.bonusBm.toLocaleString()} BM</b> 추가 적립</span>
                     <span style="font-size:0.72rem; color:#64748b;">(할인가 즉시 확정)</span>
                   </div>
                   <div style="margin-top:5px; font-size:0.73rem; color:#475569; line-height:1.35;">
@@ -780,7 +780,7 @@ function renderCartModal() {
       <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; font-size:0.82rem; color:#92400e; line-height:1.45;">
         🎁 <b>공동구매·타임딜 혜택 안내:</b><br/>
         • 타임딜 시간 내 주문으로 <b>즉시 할인가가 100% 확정</b>되었습니다.<br/>
-        • 목표 인원 달성 시 <b>총 +${totalBonusBm.toLocaleString()} BM</b>이 내 지갑에 추가 적립됩니다!
+        • 목표 판매 수량 달성 시 구매 수량만큼 <b>총 +${totalBonusBm.toLocaleString()} BM</b>이 내 지갑에 추가 적립됩니다!
       </div>
     `;
   }
@@ -912,18 +912,28 @@ $("btnCheckout").addEventListener("click", async () => {
       updated_at: serverTimestamp()
     });
 
-    // 공동구매 상품인 경우 참여 인원(current_count) 자동 업데이트
+    // 공동구매 달성 카운트 = 누적 구매 수량 (사람 수가 아님). 이번 주문 수량만큼 더한다.
+    // 화면에 들고 있던 옛 숫자에 더해 덮어쓰면 동시 주문 시 수량이 빠지므로 트랜잭션으로 최신값에 더한다.
+    const { runTransaction } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
     for (const gbItem of groupBuyCartItems) {
       const found = rawProducts.find(p => p.id === gbItem.id);
       if (found && found.gb?.enabled) {
-        const nextCount = (found.gb.currentCount || 0) + Number(gbItem.qty || 1);
-        found.gb.currentCount = nextCount;
+        const addQty = Math.max(1, Math.floor(Number(gbItem.qty || 1)));
         try {
-          await updateDoc(doc(db, "merchant_products", gbItem.id), {
-            group_buy_current: nextCount,
-            "group_buy.current_count": nextCount,
-            updated_at: serverTimestamp()
+          const nextCount = await runTransaction(db, async (tx) => {
+            const ref = doc(db, "merchant_products", gbItem.id);
+            const snap = await tx.get(ref);
+            const d = snap.exists() ? snap.data() : {};
+            const base = Math.max(0, Number(d?.group_buy?.current_count ?? d?.group_buy_current ?? 0) || 0);
+            const next = base + addQty;
+            tx.update(ref, {
+              group_buy_current: next,
+              "group_buy.current_count": next,
+              updated_at: serverTimestamp()
+            });
+            return next;
           });
+          found.gb.currentCount = nextCount;
         } catch (_) { }
       }
     }
