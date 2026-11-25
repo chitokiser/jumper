@@ -118,6 +118,20 @@
   [headers.values]
     Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
 
+# ── 가맹점 주문 관리 일원화 (2026-11-25): BestClubVN 가맹점 주문 관리 → BestERP 온라인 주문 관리 ──
+#    입금 확인 → 배송 처리는 BestERP 에서만 진행 (같은 Firebase 계정·같은 merchant_orders 사용)
+[[redirects]]
+  from = "/admin_merchant_orders"
+  to = "https://besterp.netlify.app/admin/online-orders.html"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/admin_merchant_orders.html"
+  to = "https://besterp.netlify.app/admin/online-orders.html"
+  status = 302
+  force = true
+
 # ── 몬스터 레이싱 폐지 (2026-11-06): 옛 링크는 게임 허브로 ──
 [[redirects]]
   from = "/monsterrace"
