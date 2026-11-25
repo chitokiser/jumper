@@ -3873,3 +3873,13 @@ exports.releaseEscrow = onCall({ cors: true }, wrapError(async (request) => {
 
 
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// 공동구매 판매 수량 집계 + 목표 달성 BM 보너스 (2026-11-25)
+//   - merchant_orders 변경 시 결제 확인된 공동구매 수량을 merchant_products 에 반영
+//   - 목표 판매 수량 달성 시 구매 수량 × 1개당 보너스 BM 지급, 주문 취소 시 회수
+//   - 관리자: httpsCallable(functions, 'adminRecalcGroupBuy')({ dryRun: true|false })
+// ════════════════════════════════════════════════════════════════════════════
+const groupBuyBonus = require('./handlers/groupBuyBonus');
+exports.onMerchantOrderGroupBuy = onDocumentWritten('merchant_orders/{orderId}', (event) => groupBuyBonus.onMerchantOrderWritten(event));
+exports.adminRecalcGroupBuy = onCall(wrapError((request) => groupBuyBonus.adminRecalcGroupBuy(request)));

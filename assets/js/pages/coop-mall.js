@@ -526,7 +526,7 @@ function renderProductsList() {
                   </div>
                   <div style="font-size:0.77rem; color:#1e293b; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:4px; flex-wrap:wrap;">
                     <span>🎁 목표 달성 보너스: 1개당 <b style="color:#d97706;">+${gb.bonusBm.toLocaleString()} BM</b> 추가 적립</span>
-                    <span style="font-size:0.72rem; color:#64748b;">(할인가 즉시 확정)</span>
+                    <span style="font-size:0.72rem; color:#64748b;">(입금 확인된 수량 기준 · 할인가 즉시 확정)</span>
                   </div>
                   <div style="margin-top:5px; font-size:0.73rem; color:#475569; line-height:1.35;">
                     ${esc(gb.deliveryNote)}
@@ -780,7 +780,7 @@ function renderCartModal() {
       <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; font-size:0.82rem; color:#92400e; line-height:1.45;">
         🎁 <b>공동구매·타임딜 혜택 안내:</b><br/>
         • 타임딜 시간 내 주문으로 <b>즉시 할인가가 100% 확정</b>되었습니다.<br/>
-        • 목표 판매 수량 달성 시 구매 수량만큼 <b>총 +${totalBonusBm.toLocaleString()} BM</b>이 내 지갑에 추가 적립됩니다!
+        • 목표 판매 수량 달성 시 구매 수량만큼 <b>총 +${totalBonusBm.toLocaleString()} BM</b>이 내 지갑에 자동 적립됩니다! (입금 확인된 주문 기준)
       </div>
     `;
   }
@@ -912,31 +912,8 @@ $("btnCheckout").addEventListener("click", async () => {
       updated_at: serverTimestamp()
     });
 
-    // 공동구매 달성 카운트 = 누적 구매 수량 (사람 수가 아님). 이번 주문 수량만큼 더한다.
-    // 화면에 들고 있던 옛 숫자에 더해 덮어쓰면 동시 주문 시 수량이 빠지므로 트랜잭션으로 최신값에 더한다.
-    const { runTransaction } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
-    for (const gbItem of groupBuyCartItems) {
-      const found = rawProducts.find(p => p.id === gbItem.id);
-      if (found && found.gb?.enabled) {
-        const addQty = Math.max(1, Math.floor(Number(gbItem.qty || 1)));
-        try {
-          const nextCount = await runTransaction(db, async (tx) => {
-            const ref = doc(db, "merchant_products", gbItem.id);
-            const snap = await tx.get(ref);
-            const d = snap.exists() ? snap.data() : {};
-            const base = Math.max(0, Number(d?.group_buy?.current_count ?? d?.group_buy_current ?? 0) || 0);
-            const next = base + addQty;
-            tx.update(ref, {
-              group_buy_current: next,
-              "group_buy.current_count": next,
-              updated_at: serverTimestamp()
-            });
-            return next;
-          });
-          found.gb.currentCount = nextCount;
-        } catch (_) { }
-      }
-    }
+    // 공동구매 판매 수량은 서버(Cloud Function onMerchantOrderGroupBuy)가 입금 확인된 주문 기준으로 집계한다.
+    // 목표 달성 시 1개당 보너스 × 구매 수량 BM 도 서버가 지급·취소 시 회수한다. (브라우저는 수량을 쓰지 않음)
     updateGroupBuyLiveSummary();
     renderProductsList();
 

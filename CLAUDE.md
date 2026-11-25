@@ -379,6 +379,12 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
    주문 접수 ──► 결제 대기 ──► 결제 확인 ──► 주문 확인 ──► 상품 준비 ──► 배송 중 ──► 배송 완료
    ```
 4. **취소 및 환불:** 취소/환불 시 원장의 역분개 처리(차감된 잔액 복구, 수수료 회수, 잭팟 Point 회수) 정책을 엄격히 적용.
+5. **공동구매(타임딜) 판매 수량·목표 달성 보너스 (2026-11-25):**
+   - 목표와 진행률은 사람 수가 아니라 **입금 확인된 주문의 구매 수량 합계**로 센다 (`merchant_products.group_buy.current_count` / `group_buy_current`, 목표 `group_buy.target_count`).
+   - 수량은 브라우저가 쓰지 않는다. Cloud Function `onMerchantOrderGroupBuy`(`functions/handlers/groupBuyBonus.js`)가 `merchant_orders` 변경을 보고 고친다. 취소된 주문은 빠진다.
+   - 목표 달성 시 해당 상품을 산 입금 확인 주문마다 `1개당 보너스(group_buy.bonus_bm) × 구매 수량` BM을 `users.pointBalanceVnd`에 지급한다. 원장 `transactions` type `GROUP_BUY_BONUS`, 멱등 키 `group_buy_bonus_payouts/{주문ID}_{상품ID}`.
+   - 보너스를 받은 주문이 취소되면 회수한다 (`GROUP_BUY_BONUS_REVERSAL`, 잔액 부족분은 `shortfallBm` 기록, 잔액을 음수로 만들지 않음).
+   - 수량 재계산·밀린 보너스 지급: 관리자 callable `adminRecalcGroupBuy({ dryRun })`.
 
 ---
 
