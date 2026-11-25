@@ -181,7 +181,7 @@ async function checkSuperAdmin(user) {
     const uSnap = await getDoc(doc(db, "users", user.uid));
     if (uSnap.exists()) {
       const ud = uSnap.data() || {};
-      if (ud.isAdmin === true || ["SUPER_ADMIN", "CEO", "ADMIN", "admin"].includes(ud.role)) {
+      if (ud.isAdmin === true || ["SUPER_ADMIN", "ADMIN", "admin"].includes(ud.role)) {
         return true;
       }
     }

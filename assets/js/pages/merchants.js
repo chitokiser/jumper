@@ -3251,7 +3251,7 @@ async function init() {
       if (!_isAnonymous && _uid) {
         try {
           const role = await getUserRole(_uid, _userEmail || user?.email || '');
-          _isAdmin = ['admin', 'SUPER_ADMIN', 'CEO', 'ADMIN'].includes(role);
+          _isAdmin = ['admin', 'SUPER_ADMIN', 'ADMIN'].includes(role);
           _ctx.isAdmin = _isAdmin;
         } catch (e) {
           _isAdmin = false;

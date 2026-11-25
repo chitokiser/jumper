@@ -1722,7 +1722,7 @@ async function checkAdmin(user) {
     const u = await getDoc(doc(db, "users", user.uid));
     if (u.exists()) {
       const ud = u.data() || {};
-      if (ud.isAdmin === true || ["admin", "SUPER_ADMIN", "CEO", "ADMIN"].includes(ud.role)) {
+      if (ud.isAdmin === true || ["admin", "SUPER_ADMIN", "ADMIN"].includes(ud.role)) {
         return true;
       }
     }
@@ -1830,13 +1830,13 @@ btnReloadApprovedDeposits?.addEventListener("click", () => loadApprovedDeposits(
 selItemStatus?.addEventListener("change", () => loadItemsByStatus(selItemStatus.value));
 
 // 탭 전환
-btnTabGuides?.addEventListener("click", () => { showTab("guides"); loadGuideApplications(); });
-btnTabMerchants?.addEventListener("click", () => { showTab("merchants"); loadMerchants(); });
-btnTabItems?.addEventListener("click", () => { showTab("items"); loadItemsByStatus(selItemStatus?.value || "pending"); });
-btnTabDeposits?.addEventListener("click", () => { showTab("deposits"); loadDeposits(); loadApprovedDeposits(); });
-btnTabHex?.addEventListener("click", () => { showTab("hex"); loadContractStatus(); checkHexAllowance(); });
-btnTabMembers?.addEventListener("click", () => { showTab("members"); loadUsersList(); });
-btnTabDao?.addEventListener("click", () => { showTab("dao"); loadDaoProposals(); });
+btnTabGuides?.addEventListener("click", () => { if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; } showTab("guides"); loadGuideApplications(); });
+btnTabMerchants?.addEventListener("click", () => { if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; } showTab("merchants"); loadMerchants(); });
+btnTabItems?.addEventListener("click", () => { if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; } showTab("items"); loadItemsByStatus(selItemStatus?.value || "pending"); });
+btnTabDeposits?.addEventListener("click", () => { if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; } showTab("deposits"); loadDeposits(); loadApprovedDeposits(); });
+btnTabHex?.addEventListener("click", () => { if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; } showTab("hex"); loadContractStatus(); checkHexAllowance(); });
+btnTabMembers?.addEventListener("click", () => { if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; } showTab("members"); loadUsersList(); });
+btnTabDao?.addEventListener("click", () => { if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; } showTab("dao"); loadDaoProposals(); });
 
 // ── 관리자 셀프 온보딩 ──
 $("btnAdminSelfOnboard")?.addEventListener("click", async () => {
@@ -2683,6 +2683,7 @@ $("tBoxFilterActive")?.addEventListener("change", () => { _boxPage = 0; renderBo
 $("btnReloadTVouchers")?.addEventListener("click", () => loadVouchersList());
 $("btnReloadTKeys")?.addEventListener("click", () => loadTreasureKeysList());
 btnTabTreasure?.addEventListener("click", () => {
+  if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; }
   showTab("treasure");
   _initBoxMapDefault();
   loadTreasureItemsList();
@@ -2690,8 +2691,8 @@ btnTabTreasure?.addEventListener("click", () => {
   loadVouchersList();
   loadTreasureKeysList();
 });
-btnTabChat?.addEventListener("click", () => showTab("chat"));
-btnTabShops?.addEventListener("click", () => { showTab("shops"); window._adminLoadShops?.(); });
+btnTabChat?.addEventListener("click", () => { if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; } showTab("chat"); });
+btnTabShops?.addEventListener("click", () => { if (!isAdminUser) { setState("관리자만 사용할 수 있는 화면입니다."); return; } showTab("shops"); window._adminLoadShops?.(); });
 
 // ── 무기 등록 ──────────────────────────────────────────────────────────────────
 function updateWeaponPreview() {

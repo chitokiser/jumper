@@ -368,6 +368,14 @@ async function _initForUser(ctx) {
         const mSnap = await getDoc(doc(db, "merchants", String(userData.merchantId)));
         if (mSnap.exists()) {
           const mData = mSnap.data();
+          // 가맹점 주인(ownerUid/ownerEmail)만 가맹점 정보·수정 화면을 본다. 직원(merchantId 로 소속만 연결된 계정)은 제외
+          const isOwner = (mData?.ownerUid && mData.ownerUid === user.uid)
+            || (!mData?.ownerUid && String(mData?.ownerEmail || "").toLowerCase() === String(user.email || "").toLowerCase());
+          if (!isOwner) {
+            setState(`${mData?.name || "가맹점"}의 직원으로 연결된 계정입니다. 가맹점 정보는 가맹점 대표만 확인·수정할 수 있습니다.`);
+            initMentorLink(user.email);
+            return;
+          }
           feeBps = mData?.feeBps ?? null;
           merchantName = mData?.name ?? null;
           merchantData = {

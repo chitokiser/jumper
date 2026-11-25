@@ -135,7 +135,7 @@ onAuthReady(async ({ loggedIn, user, role, token }) => {
         merchantName = "전체 가맹점";
     }
 
-    const isAdmin = role === "admin" || role === "SUPER_ADMIN" || role === "CEO" ||
+    const isAdmin = role === "admin" || role === "SUPER_ADMIN" ||
         (user.email && user.email.toLowerCase() === "daguri75@gmail.com");
 
     currentViewer = {
