@@ -409,6 +409,18 @@ async function fetchUserNotifications(uid) {
         ms,
         href: "/orders.html",
       });
+      // 판매자가 보낸 배송 관련 메시지
+      if (o.last_seller_message) {
+        const unread = Number(o.buyer_unread_messages || 0);
+        items.push({
+          id: `myorder_msg_${d.id}_${toMs(o.last_seller_message_at)}`,
+          icon: "💬",
+          title: `${unread > 0 ? "[새 메시지] " : ""}${o.merchant_name || "판매자"}: ${String(o.last_seller_message).slice(0, 40)}`,
+          sub: `주문 상품: ${firstItem}`,
+          ms: toMs(o.last_seller_message_at) || ms,
+          href: "/orders.html",
+        });
+      }
     });
   } catch (_) {}
 

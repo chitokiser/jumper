@@ -386,6 +386,10 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
    - 관리자 상품 저장은 `group_buy.*` 설정 항목만 갱신하며 `current_count`·`goal_reached_at`(서버 집계값)은 쓰지 않는다.
    - 보너스를 받은 주문이 취소되면 회수한다 (`GROUP_BUY_BONUS_POINT_REVERSAL`, 잔액 부족분은 `shortfallPoint` 기록, 잔액을 음수로 만들지 않음).
    - 수량 재계산·밀린 보너스 지급: 관리자 callable `adminRecalcGroupBuy({ dryRun })`.
+6. **판매자 → 구매자 메시지 (2026-11-26):**
+   - 배송 처리한 주문(배송 중·구매 확정)에 BestERP `admin/online-orders.html`에서 판매자가 메시지를 보낸다.
+   - 저장: `merchant_orders.seller_messages[]` (`{id, from:"seller", text(≤500자), sender_email, sender_uid, store_name, at_ms}`, 주문당 최대 50개), `last_seller_message`, `last_seller_message_at`, `buyer_unread_messages`(증가).
+   - 구매자는 BestClubVN `orders.html` 주문 카드와 🔔 알림에서 확인하며, 주문내역을 열면 `buyer_unread_messages`를 0으로 만든다.
 
 ---
 

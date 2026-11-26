@@ -187,6 +187,12 @@ function renderMerchantOrderCard(o) {
         가맹점 직원이 통장 입금 내역을 확인한 후 상품 배송 처리가 진행됩니다.
       </div>
     `;
+  } else if (status === "shipped") {
+    bannerHtml = `
+      <div class="morder-info-banner info">
+        🚀 상품이 발송/제공되었습니다. 상품을 정상 수령하셨다면 아래 <strong>[수령 확인]</strong> 버튼을 눌러주세요.
+      </div>
+    `;
   } else if (payStatus === "paid" && status !== "completed" && status !== "cancelled") {
     bannerHtml = `
       <div class="morder-info-banner success">
@@ -258,6 +264,24 @@ function renderMerchantOrderCard(o) {
        </div>`
     : "";
 
+  const shippedInfoHtml = (status === "shipped" || status === "completed") && (o.shipping_carrier || o.tracking_number || o.ship_memo)
+    ? `<div style="margin:6px 0;padding:8px 11px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;font-size:0.82rem;color:#5b21b6;line-height:1.45;">
+        🚚 <b>발송 정보</b>${o.shipped_at ? ` · ${esc(fmtTs(o.shipped_at))}` : ""}${o.shipping_carrier ? ` · ${esc(o.shipping_carrier)}` : ""}${o.tracking_number ? ` · 송장 <b>${esc(o.tracking_number)}</b>` : ""}${o.ship_memo ? `<br>📝 ${esc(o.ship_memo)}` : ""}
+       </div>`
+    : "";
+  const sellerMsgs = Array.isArray(o.seller_messages) ? o.seller_messages : [];
+  const unreadMsgs = Number(o.buyer_unread_messages || 0);
+  const sellerMsgHtml = sellerMsgs.length
+    ? `<div style="margin:6px 0;padding:9px 11px;background:#ecfeff;border:1px solid ${unreadMsgs > 0 ? "#06b6d4" : "#a5f3fc"};border-radius:8px;font-size:0.84rem;color:#155e75;line-height:1.5;">
+        <div style="font-weight:800;margin-bottom:4px;">💬 판매자 메시지${unreadMsgs > 0 ? ` <span style="background:#ef4444;color:#fff;border-radius:99px;padding:0 7px;font-size:0.72rem;margin-left:4px;">새 메시지 ${unreadMsgs}</span>` : ""}</div>
+        ${sellerMsgs.slice().sort((a, b) => Number(b.at_ms || 0) - Number(a.at_ms || 0)).map((m) => `
+          <div style="padding:5px 0;border-top:1px dashed #a5f3fc;">
+            <div style="font-size:0.74rem;color:#64748b;">🏪 ${esc(m.store_name || mName)} · ${esc(fmtTs(m.at_ms))}</div>
+            <div style="white-space:pre-wrap;word-break:break-word;color:#0f172a;">${esc(m.text)}</div>
+          </div>`).join("")}
+       </div>`
+    : "";
+
   return `
     <article class="morder-card" data-order-id="${orderId}">
       <div class="morder-header">
@@ -275,6 +299,8 @@ function renderMerchantOrderCard(o) {
       </div>
 
       ${bannerHtml}
+      ${sellerMsgHtml}
+      ${shippedInfoHtml}
       ${shipHtml}
 
       <div class="morder-items-list">
@@ -600,6 +626,14 @@ async function loadMerchantOrders(uid) {
     `;
 
     bindMerchantOrderActions();
+
+    // 판매자 메시지 읽음 처리 (화면에 표시했으므로 미확인 수를 0으로)
+    orderRows
+      .filter((r) => Number(r.buyer_unread_messages || 0) > 0)
+      .forEach((r) => {
+        updateDoc(doc(db, "merchant_orders", r.id), { buyer_unread_messages: 0, buyer_messages_read_at: serverTimestamp() })
+          .catch((e) => console.warn("message read mark failed:", e?.code || e));
+      });
 
     const pills = merchantOrdersList.querySelectorAll(".btn-filter-pill");
     const container = $("mordersItemsContainer");
