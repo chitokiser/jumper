@@ -13,7 +13,8 @@
   <style>
     /* 웹3 기능 화면 숨김 (2026-10-19 대표 결정: 화면에서 모두 숨기기, 서버·데이터는 유지) */
     .mp-kv:has(#walletAddress), .mp-kv:has(#onChainStatus), #onChainSyncRow,
-    #walletHexRow, #walletJumpRow, #walletJumpStakedRow, #txSection, #voucherWalletSection { display: none !important; }
+    #walletHexRow, #walletJumpRow, #walletJumpStakedRow, #voucherWalletSection { display: none !important; }
+    /* 거래 내역(#txSection)은 Firestore 원장(Point·BM·BT)이라 2026-11-26 다시 표시 */
   </style>
 
   <script src="/assets/js/partials.js" defer=""></script>
@@ -1759,7 +1760,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script type="module" src="/assets/js/header-auth.js"></script>
-  <script type="module" src="/assets/js/pages/mypage.js?v=20261126h"></script>
+  <script type="module" src="/assets/js/pages/mypage.js?v=20261126i"></script>
 
 
 </body>

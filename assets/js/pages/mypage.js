@@ -1019,6 +1019,28 @@ const TX_CONFIG = {
   GROUP_BUY_BONUS_POINT_REVERSAL: { label: "공동구매 보너스 회수 (주문 취소)", dir: "expense", icon: "↩️" },
 };
 
+// 원장 type별 표시 (라벨·방향·금액·단위). 없으면 TX_CONFIG 기본 처리.
+function txView(tx) {
+  const n = (v) => Number(v || 0);
+  const fmt = (v) => n(v).toLocaleString("ko-KR");
+  switch (tx.type) {
+    case "POINT_TO_KM":
+      return { label: `Point → BM 전환 (+${fmt(tx.convertedKm)} BM)`, icon: "💱", dir: "expense", amount: n(tx.pointUsed), unit: "Point" };
+    case "GP_TO_POINT":
+      return { label: `게임 GP → Point 전환 (GP ${fmt(tx.gpUsed)} 사용)`, icon: "🎮", dir: "income", amount: n(tx.pointGained), unit: "Point" };
+    case "POINT_TO_GP":
+      return { label: `Point → 게임 GP 충전 (+${fmt(tx.gp)} GP)`, icon: "🎮", dir: "expense", amount: n(tx.usedPoints), unit: "Point" };
+    case "mentor_bonus_tier1":
+    case "mentor_bonus_tier2":
+      return { label: `👥 멘토 수익${tx.type === "mentor_bonus_tier2" ? " (2단계)" : ""}${tx.merchantName ? ` · ${tx.merchantName}` : ""}`, icon: "👥", dir: "income", amount: n(tx.amountVnd), unit: "BM" };
+    case "receive_bt":
+    case "GOOGLE_REVIEW_BT":
+      return { label: `🎟️ BT 받음${tx.merchantName ? ` · ${tx.merchantName}` : (tx.type === "GOOGLE_REVIEW_BT" ? " · 구글 리뷰 보상" : "")}`, icon: "🎟️", dir: "income", amount: n(tx.bt ?? tx.amountBt ?? tx.amount), unit: "BT" };
+    default:
+      return null;
+  }
+}
+
 function txAmountHex(tx) {
   if (tx.amountVnd != null && Number(tx.amountVnd) > 0) return Number(tx.amountVnd);
   if (tx.amountKrw != null && Number(tx.amountKrw) > 0) return Number(tx.amountKrw);
@@ -1787,13 +1809,14 @@ async function loadTxHistory(uid, _walletAddress) {
         }
 
         const isBm = (tx.currency === "VND" || tx.amountVnd != null || tx.type === "pay_merchant" || tx.type === "merchant_income");
-        const unit = isBm ? "BM" : "Point";
+        const view = txView(tx);
+        const unit = view ? view.unit : (isBm ? "BM" : "Point");
         unified.push({
           sortTs: tx.createdAt?.toDate ? tx.createdAt.toDate().getTime() : 0,
-          label,
-          icon: cfg.icon,
-          dir: cfg.dir,
-          amountHex: txAmountHex(tx),
+          label: view ? view.label : label,
+          icon: view ? view.icon : cfg.icon,
+          dir: view ? view.dir : cfg.dir,
+          amountHex: view ? view.amount : txAmountHex(tx),
           unit,
           dateStr: tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleString("ko-KR") : "-",
           txHash: tx.txHash || null,
@@ -1811,6 +1834,7 @@ async function loadTxHistory(uid, _walletAddress) {
 
       let totalIncome = 0, totalExpense = 0, incomeCount = 0, expenseCount = 0;
       unified.forEach((t) => {
+        if (t.unit !== "Point") return; // BM·BT는 단위가 달라 Point 합계에서 제외
         if (t.dir === "income") { totalIncome += t.amountHex; incomeCount++; }
         else if (t.dir === "expense") { totalExpense += t.amountHex; expenseCount++; }
       });
