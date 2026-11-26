@@ -559,6 +559,14 @@ function renderProductsList() {
                     </a>
                   </div>` : `
                   <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <div class="mall-qty" data-qty-for="${esc(docSnap.id)}" style="flex-basis:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px;">
+                      <span style="font-size:0.82rem; font-weight:700; color:#475569;">구매 수량</span>
+                      <div style="display:inline-flex; align-items:center; border:1px solid #cbd5e1; border-radius:10px; overflow:hidden; background:#fff;">
+                        <button type="button" data-qty-step="-1" aria-label="수량 줄이기" style="width:34px; height:34px; border:none; background:#f1f5f9; font-size:1.1rem; font-weight:800; cursor:pointer; color:#0f172a;">−</button>
+                        <input type="number" inputmode="numeric" min="1" max="${maxQtyOf(data)}" value="1" aria-label="구매 수량" style="width:48px; height:34px; border:none; text-align:center; font-weight:800; font-size:0.95rem; -moz-appearance:textfield;" />
+                        <button type="button" data-qty-step="1" aria-label="수량 늘리기" style="width:34px; height:34px; border:none; background:#f1f5f9; font-size:1.1rem; font-weight:800; cursor:pointer; color:#0f172a;">+</button>
+                      </div>
+                    </div>
                     ${(effectivePrice >= 50000000 || String(data.description || "").includes("견적")) ? `
                     <a href="https://besterp.netlify.app/onboarding.html?plan=enterprise" target="_blank" rel="noopener" class="btn" style="flex:1; min-width:115px; border-radius:10px; font-weight:800; padding:10px; text-align:center; text-decoration:none; background:#0f172a; color:#fde047; border:none; font-size:0.84rem;">
                       💬 B2B 견적 문의
@@ -599,6 +607,20 @@ function renderProductsList() {
   });
   listEl.innerHTML = html;
 
+  // 구매 수량 스테퍼 바인딩
+  listEl.querySelectorAll(".mall-qty").forEach(box => {
+    const input = box.querySelector("input");
+    const max = Number(input.getAttribute("max")) || MAX_CART_QTY;
+    const clamp = () => { input.value = String(clampQty(input.value, max)); };
+    box.querySelectorAll("button[data-qty-step]").forEach(b => {
+      b.addEventListener("click", () => {
+        input.value = String(clampQty(Number(input.value || 1) + Number(b.getAttribute("data-qty-step")), max));
+      });
+    });
+    input.addEventListener("change", clamp);
+    input.addEventListener("blur", clamp);
+  });
+
   // 즉시 구매 버튼 바인딩 (공구 여부와 관계없이 즉시 결제/주문 모달 오픈)
   listEl.querySelectorAll("button[data-action='buy-now']").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -610,7 +632,7 @@ function renderProductsList() {
         merchant_name: btn.getAttribute("data-merchant-name"),
         name: btn.getAttribute("data-name"),
         price: Number(btn.getAttribute("data-price")),
-        qty: 1,
+        qty: readCardQty(listEl, btn.getAttribute("data-id")),
         is_group_buy: isGb,
         bonus_bm: bonusBm,
         group_buy_mode: btn.getAttribute("data-gb-mode") || ""
@@ -629,7 +651,7 @@ function renderProductsList() {
         merchant_name: btn.getAttribute("data-merchant-name"),
         name: btn.getAttribute("data-name"),
         price: Number(btn.getAttribute("data-price")),
-        qty: 1,
+        qty: readCardQty(listEl, btn.getAttribute("data-id")),
         is_group_buy: isGb,
         bonus_bm: bonusBm,
         group_buy_mode: btn.getAttribute("data-gb-mode") || ""
@@ -647,6 +669,28 @@ function renderProductsList() {
       openViralShareModal(found, found.gb, mName);
     });
   });
+}
+
+// 구매 수량 도우미 (재고 필드가 있으면 재고까지, 없으면 99개까지)
+const MAX_CART_QTY = 99;
+function maxQtyOf(data) {
+  const inv = Number(data?.inventory);
+  if (Number.isFinite(inv) && inv > 0) return Math.min(MAX_CART_QTY, Math.floor(inv));
+  return MAX_CART_QTY;
+}
+function maxQtyForItem(item) {
+  const p = rawProducts.find(r => r.id === item?.id);
+  return p ? maxQtyOf(p.data) : MAX_CART_QTY;
+}
+function clampQty(v, max = MAX_CART_QTY) {
+  const n = Math.floor(Number(v));
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(n, max);
+}
+function readCardQty(root, id) {
+  const box = Array.from(root.querySelectorAll(".mall-qty")).find(el => el.getAttribute("data-qty-for") === id);
+  const input = box?.querySelector("input");
+  return clampQty(input?.value || 1, Number(input?.getAttribute("max")) || MAX_CART_QTY);
 }
 
 // 2. 장바구니 & 즉시 구매 로직 구현
@@ -688,9 +732,13 @@ function buyNow(item) {
     }
     return;
   }
+  const max = maxQtyForItem(item);
+  const qty = clampQty(item.qty, max);
   const existing = cart.find(c => c.id === item.id);
-  if (!existing) {
-    cart.push(item);
+  if (existing) {
+    existing.qty = qty; // 즉시 구매는 방금 고른 수량으로 맞춤
+  } else {
+    cart.push({ ...item, qty });
   }
   saveCartToStorage();
   updateCartBadge();
@@ -710,12 +758,14 @@ function addToCart(item) {
     return;
   }
 
-  // 동일 상품 있으면 수량만 증가
+  // 동일 상품 있으면 고른 수량만큼 증가 (최대 수량 제한)
+  const max = maxQtyForItem(item);
+  const addQty = clampQty(item.qty, max);
   const existing = cart.find(c => c.id === item.id);
   if (existing) {
-    existing.qty += 1;
+    existing.qty = clampQty(Number(existing.qty || 0) + addQty, max);
   } else {
-    cart.push(item);
+    cart.push({ ...item, qty: addQty });
   }
   saveCartToStorage();
   updateCartBadge();
@@ -726,7 +776,7 @@ function addToCart(item) {
     badge.style.transform = "scale(1.4)";
     setTimeout(() => badge.style.transform = "scale(1)", 200);
   }
-  alert(`🛒 [${item.merchant_name}] "${item.name}" 상품이 장바구니에 담겼습니다!`);
+  alert(`🛒 [${item.merchant_name}] "${item.name}" 상품 ${addQty}개가 장바구니에 담겼습니다!`);
 }
 
 // 3. 모달 팝업 렌더링
@@ -770,7 +820,12 @@ function renderCartModal() {
                ${c.is_group_buy && c.bonus_bm ? `<span style="color:#d97706; font-weight:700; margin-left:6px;">(목표 달성 시 +${(Number(c.bonus_bm) * c.qty).toLocaleString()} Point)</span>` : ""}
              </div>
           </div>
-          <div>
+          <div style="display:flex; align-items:center; gap:6px;">
+             <div style="display:inline-flex; align-items:center; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">
+               <button type="button" data-action="cart-qty" data-index="${index}" data-step="-1" aria-label="수량 줄이기" style="width:28px; height:28px; border:none; background:#f1f5f9; font-weight:800; cursor:pointer;">−</button>
+               <span style="min-width:28px; text-align:center; font-weight:800; font-size:0.9rem;">${c.qty}</span>
+               <button type="button" data-action="cart-qty" data-index="${index}" data-step="1" aria-label="수량 늘리기" style="width:28px; height:28px; border:none; background:#f1f5f9; font-weight:800; cursor:pointer;">+</button>
+             </div>
              <button class="btn btn--sm" data-action="remove-cart" data-index="${index}" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:4px 8px; border-radius:6px;">제외</button>
           </div>
       </div>
@@ -795,6 +850,18 @@ function renderCartModal() {
       } catch (_) {}
     }
     $("btnCheckout").disabled = false;
+
+  // 장바구니 수량 +/- 바인딩
+  listEl.querySelectorAll("button[data-action='cart-qty']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const item = cart[Number(btn.getAttribute("data-index"))];
+      if (!item) return;
+      item.qty = clampQty(Number(item.qty || 1) + Number(btn.getAttribute("data-step")), maxQtyForItem(item));
+      saveCartToStorage();
+      updateCartBadge();
+      renderCartModal();
+    });
+  });
 
   // 제외 버튼 바인딩
   listEl.querySelectorAll("button[data-action='remove-cart']").forEach(btn => {
