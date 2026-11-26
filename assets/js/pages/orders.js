@@ -269,6 +269,14 @@ function renderMerchantOrderCard(o) {
         🚚 <b>발송 정보</b>${o.shipped_at ? ` · ${esc(fmtTs(o.shipped_at))}` : ""}${o.shipping_carrier ? ` · ${esc(o.shipping_carrier)}` : ""}${o.tracking_number ? ` · 송장 <b>${esc(o.tracking_number)}</b>` : ""}${o.ship_memo ? `<br>📝 ${esc(o.ship_memo)}` : ""}
        </div>`
     : "";
+  const gbBonusRows = (o.group_buy_bonus && typeof o.group_buy_bonus === "object") ? Object.values(o.group_buy_bonus) : [];
+  const gbBonusHtml = gbBonusRows.length
+    ? gbBonusRows.map((b) => b.status === "paid"
+        ? `<div style="margin:6px 0;padding:8px 11px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:0.84rem;color:#92400e;">🎁 <b>공동구매 목표 달성 보너스 +${Number(b.amountPoint || 0).toLocaleString()} Point 지급 완료</b> (${Number(b.qty || 0)}개 × ${Number(b.qty ? b.amountPoint / b.qty : 0).toLocaleString()} Point)${b.paidAt ? ` · ${esc(fmtTs(b.paidAt))}` : ""}</div>`
+        : b.status === "reversed"
+          ? `<div style="margin:6px 0;padding:8px 11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:0.82rem;color:#64748b;">↩️ 주문 취소로 공동구매 보너스가 회수되었습니다.</div>`
+          : "").join("")
+    : "";
   const sellerMsgs = Array.isArray(o.seller_messages) ? o.seller_messages : [];
   const unreadMsgs = Number(o.buyer_unread_messages || 0);
   const sellerMsgHtml = sellerMsgs.length
@@ -299,6 +307,7 @@ function renderMerchantOrderCard(o) {
       </div>
 
       ${bannerHtml}
+      ${gbBonusHtml}
       ${sellerMsgHtml}
       ${shippedInfoHtml}
       ${shipHtml}

@@ -1015,12 +1015,15 @@ const TX_CONFIG = {
   pay_merchant: { labelKey: 'tx_pay_merchant', dir: "expense", icon: "🛒" },
   merchant_income: { labelKey: 'tx_merchant_income', dir: "income", icon: "🏪" },
   BM_TO_GP: { label: "BM → 게임 GP 충전", dir: "expense", icon: "🎮" },
+  GROUP_BUY_BONUS_POINT: { label: "🎁 공동구매 목표 달성 보너스", dir: "income", icon: "🎁" },
+  GROUP_BUY_BONUS_POINT_REVERSAL: { label: "공동구매 보너스 회수 (주문 취소)", dir: "expense", icon: "↩️" },
 };
 
 function txAmountHex(tx) {
   if (tx.amountVnd != null && Number(tx.amountVnd) > 0) return Number(tx.amountVnd);
   if (tx.amountKrw != null && Number(tx.amountKrw) > 0) return Number(tx.amountKrw);
   if (tx.amountHex) return Number(tx.amountHex);
+  if (tx.amountPoint != null && Number(tx.amountPoint) !== 0) return Math.abs(Number(tx.amountPoint));
   // merchant_income 은 순수익(netAmountWei) 우선 표시
   if (tx.netAmountWei) return Number(formatWei(tx.netAmountWei));
   if (tx.amountWei) return Number(formatWei(tx.amountWei));
@@ -1776,6 +1779,9 @@ async function loadTxHistory(uid, _walletAddress) {
         }
         if (tx.type === "pay_merchant" && tx.merchantName) {
           label = `🛒 ${tx.merchantName}`;
+        }
+        if ((tx.type === "GROUP_BUY_BONUS_POINT" || tx.type === "GROUP_BUY_BONUS_POINT_REVERSAL") && tx.description) {
+          label = String(tx.description);
         }
 
         const isBm = (tx.currency === "VND" || tx.amountVnd != null || tx.type === "pay_merchant" || tx.type === "merchant_income");
