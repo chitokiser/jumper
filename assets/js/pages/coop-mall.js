@@ -70,14 +70,15 @@ function resolveGroupBuyConfig(docId, data) {
   const mode = gb.mode || data.group_buy_mode || "team_recruit"; // 'team_recruit' | 'weekly_cycle'
   const targetCount = Math.max(2, Number(gb.target_count || data.group_buy_target || 10));
   const currentCount = Math.max(0, Number(gb.current_count ?? data.group_buy_current ?? 0));
-  const bonusBm = Math.max(0, Number(gb.bonus_bm ?? data.group_buy_bonus_bm ?? 0));
+  // 목표 달성 보상 = Point (2026-11-26). 예전 상품은 bonus_bm 숫자를 Point 로 사용
+  const bonusBm = Math.max(0, Number(gb.bonus_point ?? data.group_buy_bonus_point ?? gb.bonus_bm ?? data.group_buy_bonus_bm ?? 0));
   const region = String(gb.region || data.group_buy_region || "미딩·하동·서호 전지역");
   const deadlineIso = gb.deadline_iso || data.group_buy_deadline || getNextWeeklyCutoffIso(4, 18);
   const deliveryNote = String(
     gb.delivery_note ||
     (mode === "weekly_cycle"
       ? "매주 목요일 18시 마감 → 금요일 오전 일괄 배송"
-      : "타임딜 주문 즉시 할인가 확정 · 목표 달성 시 BM 보너스 추가 적립")
+      : "타임딜 주문 즉시 할인가 확정 · 목표 달성 시 Point 보너스 추가 적립")
   );
 
   return {
@@ -244,8 +245,8 @@ function openViralShareModal(productItem, gb, merchantName) {
   const promo = `${modeTitle} 🔥 ${merchantName} — ${productItem.data.product_name}
 📍 배송/픽업 권역: ${gb.region}
 💰 타임딜 즉시 할인가: ${gb.dealPrice.toLocaleString()} VND (${gb.discountRate}% 할인 확정!)
-🎁 목표 ${gb.targetCount}개 판매 달성 시 1개당 +${gb.bonusBm.toLocaleString()} BM 추가 보너스!
-📊 현재 달성률 ${pct}% (${gb.currentCount}/${gb.targetCount}개 판매 · ${remain > 0 ? `보너스 달성까지 딱 ${remain}개 남음!` : `🎉 목표 달성 완료! 지금 참여해도 BM 보너스 100% 지급!`})
+🎁 목표 ${gb.targetCount}개 판매 달성 시 1개당 +${gb.bonusBm.toLocaleString()} Point 추가 보너스!
+📊 현재 달성률 ${pct}% (${gb.currentCount}/${gb.targetCount}개 판매 · ${remain > 0 ? `보너스 달성까지 딱 ${remain}개 남음!` : `🎉 목표 달성 완료! 지금 참여해도 Point 보너스 100% 지급!`})
 👉 공구 바로 참여: ${shareUrl}
 ✨ 첫 방문 10초 가입(+1,000 GP): ${signupUrl}`;
 
@@ -497,7 +498,7 @@ function renderProductsList() {
                   <img src="${esc(productImageUrl(data))}" style="width:100%; height:180px; object-fit:cover; border-radius:10px; display:block;" onerror="this.style.display='none';" />
                   ${gb.enabled ? `
                     <div style="position:absolute; top:8px; left:8px; background:rgba(225,29,72,0.94); color:#fff; font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
-                      ${gb.discountRate > 0 ? `🔥 ${gb.discountRate}% 타임딜 즉시할인` : `🔥 타임딜 특가 + BM 보너스`}
+                      ${gb.discountRate > 0 ? `🔥 ${gb.discountRate}% 타임딜 즉시할인` : `🔥 타임딜 특가 + Point 보너스`}
                     </div>
                     <div data-countdown-until="${esc(gb.deadlineIso)}" style="position:absolute; bottom:8px; right:8px; background:rgba(15,23,42,0.88); color:#fde047; font-size:0.76rem; font-weight:800; padding:4px 9px; border-radius:8px; font-family:monospace;">
                       ⏰ ${esc(countdown.text)}
@@ -506,7 +507,7 @@ function renderProductsList() {
                 </div>
               ` : (gb.enabled ? `
                 <div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; color:#fde047; padding:7px 11px; border-radius:8px; font-size:0.76rem; font-weight:800; margin-bottom:10px;">
-                  <span>${gb.discountRate > 0 ? `🔥 ${gb.discountRate}% 타임딜 특가` : `🔥 타임딜 특가 + BM 보너스`}</span>
+                  <span>${gb.discountRate > 0 ? `🔥 ${gb.discountRate}% 타임딜 특가` : `🔥 타임딜 특가 + Point 보너스`}</span>
                   <span data-countdown-until="${esc(gb.deadlineIso)}" style="font-family:monospace;">⏰ ${esc(countdown.text)}</span>
                 </div>
               ` : "")}
@@ -515,7 +516,7 @@ function renderProductsList() {
               <div style="color:#64748b; font-size:0.84rem; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${esc(data.description || "")}</div>
 
               ${gb.enabled ? `
-                <!-- 📊 공동구매 판매 수량 게이지 & BM 추가 적립 박스 (목표·현재 = 구매 수량 기준) -->
+                <!-- 📊 공동구매 판매 수량 게이지 & Point 추가 적립 박스 (목표·현재 = 구매 수량 기준) -->
                 <div style="margin-top:12px; padding:11px 12px; border-radius:12px; background:${isGoalMet ? "#ecfdf5" : "#fff1f2"}; border:1px solid ${isGoalMet ? "#a7f3d0" : "#fecdd3"};">
                   <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.79rem; font-weight:800; color:${isGoalMet ? "#065f46" : "#9f1239"}; margin-bottom:6px;">
                     <span>📦 현재 <b>${gb.currentCount}개</b> 판매 / 목표 ${gb.targetCount}개 (${progressPct}%)</span>
@@ -525,7 +526,7 @@ function renderProductsList() {
                     <div style="width:${progressPct}%; height:100%; background:${isGoalMet ? "linear-gradient(90deg,#10b981,#059669)" : "linear-gradient(90deg,#f43f5e,#fb7185)"}; border-radius:99px; transition:width 0.3s;"></div>
                   </div>
                   <div style="font-size:0.77rem; color:#1e293b; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:4px; flex-wrap:wrap;">
-                    <span>🎁 목표 달성 보너스: 1개당 <b style="color:#d97706;">+${gb.bonusBm.toLocaleString()} BM</b> 추가 적립</span>
+                    <span>🎁 목표 달성 보너스: 1개당 <b style="color:#d97706;">+${gb.bonusBm.toLocaleString()} Point</b> 추가 적립</span>
                     <span style="font-size:0.72rem; color:#64748b;">(입금 확인된 수량 기준 · 할인가 즉시 확정)</span>
                   </div>
                   <div style="margin-top:5px; font-size:0.73rem; color:#475569; line-height:1.35;">
@@ -766,7 +767,7 @@ function renderCartModal() {
              <div style="font-weight:700; font-size:1rem; color:#1e293b;">${esc(c.name)}</div>
              <div style="font-size:0.85rem; color:#64748b; margin-top:2px;">
                ${Number(c.price).toLocaleString()} VND x ${c.qty}개
-               ${c.is_group_buy && c.bonus_bm ? `<span style="color:#d97706; font-weight:700; margin-left:6px;">(목표 달성 시 +${(Number(c.bonus_bm) * c.qty).toLocaleString()} BM)</span>` : ""}
+               ${c.is_group_buy && c.bonus_bm ? `<span style="color:#d97706; font-weight:700; margin-left:6px;">(목표 달성 시 +${(Number(c.bonus_bm) * c.qty).toLocaleString()} Point)</span>` : ""}
              </div>
           </div>
           <div>
@@ -780,7 +781,7 @@ function renderCartModal() {
       <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; font-size:0.82rem; color:#92400e; line-height:1.45;">
         🎁 <b>공동구매·타임딜 혜택 안내:</b><br/>
         • 타임딜 시간 내 주문으로 <b>즉시 할인가가 100% 확정</b>되었습니다.<br/>
-        • 목표 판매 수량 달성 시 구매 수량만큼 <b>총 +${totalBonusBm.toLocaleString()} BM</b>이 내 지갑에 자동 적립됩니다! (입금 확인된 주문 기준)
+        • 목표 판매 수량 달성 시 구매 수량만큼 <b>총 +${totalBonusBm.toLocaleString()} Point</b>가 내 계정에 자동 적립됩니다! (입금 확인된 주문 기준)
       </div>
     `;
   }
@@ -913,7 +914,7 @@ $("btnCheckout").addEventListener("click", async () => {
     });
 
     // 공동구매 판매 수량은 서버(Cloud Function onMerchantOrderGroupBuy)가 입금 확인된 주문 기준으로 집계한다.
-    // 목표 달성 시 1개당 보너스 × 구매 수량 BM 도 서버가 지급·취소 시 회수한다. (브라우저는 수량을 쓰지 않음)
+    // 목표 달성 시 1개당 보너스 × 구매 수량 Point 도 서버가 지급·취소 시 회수한다. (브라우저는 수량을 쓰지 않음)
     updateGroupBuyLiveSummary();
     renderProductsList();
 
@@ -933,7 +934,7 @@ $("btnCheckout").addEventListener("click", async () => {
         <p style="text-align:center; font-size:0.95rem; color:#4b5563; margin-bottom:16px;">
           가맹점: <strong style="color:#2563eb;">${esc(merchantInfo.name)}</strong><br/>
           총 결제금액: <strong style="color:#ef4444; font-size:1.15rem;">${totalAmount.toLocaleString()} VND</strong>
-          ${groupBuyCartItems.length > 0 ? `<br/><span style="display:inline-block; margin-top:6px; background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; font-size:0.8rem; font-weight:800; padding:3px 10px; border-radius:99px;">🔥 타임딜 할인가 즉시 확정 (+${totalExpectedBonusBm.toLocaleString()} BM 목표달성 보너스 대기)</span>` : ""}
+          ${groupBuyCartItems.length > 0 ? `<br/><span style="display:inline-block; margin-top:6px; background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; font-size:0.8rem; font-weight:800; padding:3px 10px; border-radius:99px;">🔥 타임딜 할인가 즉시 확정 (+${totalExpectedBonusBm.toLocaleString()} Point 목표달성 보너스 대기)</span>` : ""}
         </p>
         
         <div style="display:flex; flex-direction:column; gap:16px;">

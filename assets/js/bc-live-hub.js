@@ -59,7 +59,7 @@ const QUEST_LIST = [
     key: "groupbuy",
     icon: "🔥",
     title: "하노이 공동구매 · 타임특가 구경하기",
-    sub: "진행 중인 교민 공동구매 특가와 목표 달성 BM 보너스 확인",
+    sub: "진행 중인 교민 공동구매 특가와 목표 달성 Point 보너스 확인",
     actionText: "공구 구경 →",
     href: "/mall.html?filter=groupbuy",
   },

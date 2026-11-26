@@ -1075,7 +1075,7 @@ function normalizeHomeGroupBuy(p) {
   const discPct = (origPrice > dealPrice && origPrice > 0) ? Math.round((1 - dealPrice / origPrice) * 100) : 0;
   const minP = Math.max(2, Number(gb.target_count || p.group_buy_target || p.groupBuyMinParticipants || 5));
   const curP = Math.max(0, Number(gb.current_count ?? p.group_buy_current ?? p.groupBuyCurrentParticipants ?? 0));
-  const bonusBm = Math.max(0, Number(gb.bonus_bm ?? p.group_buy_bonus_bm ?? p.groupBuyBonusBm ?? 5000));
+  const bonusBm = Math.max(0, Number(gb.bonus_point ?? p.group_buy_bonus_point ?? gb.bonus_bm ?? p.group_buy_bonus_bm ?? p.groupBuyBonusBm ?? 0)); // 보상 = Point
   const deadline = gb.deadline_iso || p.group_buy_deadline || p.groupBuyEndAt || "";
   return { enabled: true, dealPrice, origPrice, discPct, minP, curP, bonusBm, deadline };
 }
@@ -1132,7 +1132,7 @@ function renderHomeGroupBuyBanner(gbList) {
           <div style="margin-top:5px;">
             <div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:#b91c1c;margin-bottom:2px;">
               <span>📦 ${gb.curP}/${gb.minP}개 판매 (${pct}%)</span>
-              <span>🎁 달성 시 +${gb.bonusBm.toLocaleString()} BM</span>
+              ${gb.bonusBm ? `<span>🎁 달성 시 1개당 +${gb.bonusBm.toLocaleString()} Point</span>` : ''}
             </div>
             <div style="height:6px;background:#fee2e2;border-radius:99px;overflow:hidden;">
               <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ef4444,#f97316);border-radius:99px;"></div>

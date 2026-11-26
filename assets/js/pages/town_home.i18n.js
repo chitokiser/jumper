@@ -114,7 +114,7 @@ const TRANSLATIONS = {
     ranking_error: 'Không thể tải bảng xếp hạng',
     ranking_empty: 'Chưa có dữ liệu xếp hạng',
     ranking_found_suffix: ' đã tìm thấy',
-    slogan_marquee: '🏆 [Thưởng Xếp Hạng Game Hàng Tuần] Tổng giải thưởng 275 triệu GP mỗi tuần cho TOP 10 (Hạng 1 nhận 50 triệu GP)! &nbsp;&nbsp;•&nbsp;&nbsp; 🎫 [Vé Thưởng BT &amp; Jackpot] Nhận vé BT khi thanh toán tại cửa hàng liên kết, quay Jackpot trúng điểm P mỗi ngày! &nbsp;&nbsp;•&nbsp;&nbsp; 👥 [Thưởng Giới Thiệu Bạn Bè] Mời bạn bè tham gia, nhận ngay GP thưởng và chia sẻ doanh thu cộng đồng! &nbsp;&nbsp;•&nbsp;&nbsp; 🥕 [Chợ Đồ Cũ Hội Viên] Giao dịch trực tiếp kiểu Karrot tại Hà Nội với nhiệt độ uy tín &amp; thanh toán BM! &nbsp;&nbsp;•&nbsp;&nbsp; 🔥 [Mua Chung &amp; Flash Deal] Chốt giá ưu đãi tức thì và nhận thêm tiền thưởng BM!',
+    slogan_marquee: '🏆 [Thưởng Xếp Hạng Game Hàng Tuần] Tổng giải thưởng 275 triệu GP mỗi tuần cho TOP 10 (Hạng 1 nhận 50 triệu GP)! &nbsp;&nbsp;•&nbsp;&nbsp; 🎫 [Vé Thưởng BT &amp; Jackpot] Nhận vé BT khi thanh toán tại cửa hàng liên kết, quay Jackpot trúng điểm P mỗi ngày! &nbsp;&nbsp;•&nbsp;&nbsp; 👥 [Thưởng Giới Thiệu Bạn Bè] Mời bạn bè tham gia, nhận ngay GP thưởng và chia sẻ doanh thu cộng đồng! &nbsp;&nbsp;•&nbsp;&nbsp; 🥕 [Chợ Đồ Cũ Hội Viên] Giao dịch trực tiếp kiểu Karrot tại Hà Nội với nhiệt độ uy tín &amp; thanh toán BM! &nbsp;&nbsp;•&nbsp;&nbsp; 🔥 [Mua Chung &amp; Flash Deal] Chốt giá ưu đãi tức thì và nhận thêm thưởng Point!',
   },
   en: {
     page_title: 'Ocean Park - Where Adventure Begins',
@@ -230,7 +230,7 @@ const TRANSLATIONS = {
     ranking_error: 'Failed to load rankings',
     ranking_empty: 'No ranking data yet',
     ranking_found_suffix: ' found',
-    slogan_marquee: '🏆 [Weekly Game Ranking Rewards] 275M GP weekly prize pool for TOP 10 (1st Place 50M GP)! &nbsp;&nbsp;•&nbsp;&nbsp; 🎫 [Merchant Bonus Tickets (BT) &amp; Jackpot] Earn BT on every partner store visit and spin the Jackpot! &nbsp;&nbsp;•&nbsp;&nbsp; 👥 [Friend Referral Rewards] Invite friends as mentees to earn bonus GP &amp; ongoing mentor rewards! &nbsp;&nbsp;•&nbsp;&nbsp; 🥕 [Member Karrot Used Market] Safe neighborhood peer-to-peer trading with Manner Temp &amp; BM Pay! &nbsp;&nbsp;•&nbsp;&nbsp; 🔥 [Hanoi Group Buy &amp; Flash Deals] Instant discount deals + extra BM bonus rewards!',
+    slogan_marquee: '🏆 [Weekly Game Ranking Rewards] 275M GP weekly prize pool for TOP 10 (1st Place 50M GP)! &nbsp;&nbsp;•&nbsp;&nbsp; 🎫 [Merchant Bonus Tickets (BT) &amp; Jackpot] Earn BT on every partner store visit and spin the Jackpot! &nbsp;&nbsp;•&nbsp;&nbsp; 👥 [Friend Referral Rewards] Invite friends as mentees to earn bonus GP &amp; ongoing mentor rewards! &nbsp;&nbsp;•&nbsp;&nbsp; 🥕 [Member Karrot Used Market] Safe neighborhood peer-to-peer trading with Manner Temp &amp; BM Pay! &nbsp;&nbsp;•&nbsp;&nbsp; 🔥 [Hanoi Group Buy &amp; Flash Deals] Instant discount deals + extra Point bonus rewards!',
   },
   ko: {
     page_title: '모험이 시작되는 오션파크',
@@ -346,7 +346,7 @@ const TRANSLATIONS = {
     ranking_error: '랭킹 로드 실패',
     ranking_empty: '랭킹 데이터가 없습니다',
     ranking_found_suffix: '개 발견',
-    slogan_marquee: '🏆 [매주 게임랭킹 보상] 수박게임·2048·베스트당구장 주간 TOP 10 총상금 2억 7,500만 GP 자동 지급 (1위 5,000만 GP)! &nbsp;&nbsp;•&nbsp;&nbsp; 🎫 [가맹점 이용 보너스 티켓] 제휴 가맹점 결제 시 5% 캐시백 + 보너스 티켓(BT) 지급, 100% 당첨 잭팟 포인트(P) 추첨! &nbsp;&nbsp;•&nbsp;&nbsp; 👥 [친구 추천 보상] 초대 링크로 가입 시 신규·추천 GP 보너스 즉시 지급 및 멘티 결제 수익 지속 공유! &nbsp;&nbsp;•&nbsp;&nbsp; 🥕 [회원간 당근 중고거래] 하노이 미딩·서호·하동·오션파크 동네 직거래, 매너온도 &amp; 당근톡·BM 안전결제 지원! &nbsp;&nbsp;•&nbsp;&nbsp; 🔥 [하노이 교민 공동구매·타임딜] 타임딜 시간 내 주문 시 즉시 할인가 확정 + 목표 판매 수량 달성 시 구매 수량만큼 추가 BM 보너스!',
+    slogan_marquee: '🏆 [매주 게임랭킹 보상] 수박게임·2048·베스트당구장 주간 TOP 10 총상금 2억 7,500만 GP 자동 지급 (1위 5,000만 GP)! &nbsp;&nbsp;•&nbsp;&nbsp; 🎫 [가맹점 이용 보너스 티켓] 제휴 가맹점 결제 시 5% 캐시백 + 보너스 티켓(BT) 지급, 100% 당첨 잭팟 포인트(P) 추첨! &nbsp;&nbsp;•&nbsp;&nbsp; 👥 [친구 추천 보상] 초대 링크로 가입 시 신규·추천 GP 보너스 즉시 지급 및 멘티 결제 수익 지속 공유! &nbsp;&nbsp;•&nbsp;&nbsp; 🥕 [회원간 당근 중고거래] 하노이 미딩·서호·하동·오션파크 동네 직거래, 매너온도 &amp; 당근톡·BM 안전결제 지원! &nbsp;&nbsp;•&nbsp;&nbsp; 🔥 [하노이 교민 공동구매·타임딜] 타임딜 시간 내 주문 시 즉시 할인가 확정 + 목표 판매 수량 달성 시 구매 수량만큼 추가 Point 보너스!',
   },
 };
 

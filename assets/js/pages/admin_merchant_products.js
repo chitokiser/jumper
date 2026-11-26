@@ -446,7 +446,7 @@ function renderMerchantProductCards(docs) {
         const gb = (data.group_buy && typeof data.group_buy === "object") ? data.group_buy : null;
         const gbEnabled = !!(gb?.enabled || data.group_buy_enabled);
         const img = firstImage(data);
-        const bonus = Number(gb?.bonus_bm ?? data.group_buy_bonus_bm ?? 0);
+        const bonus = Number(gb?.bonus_point ?? data.group_buy_bonus_point ?? gb?.bonus_bm ?? data.group_buy_bonus_bm ?? 0);
 
         html += `
             <div class="pg-card${gbEnabled ? " is-gb" : ""}${st === "published" ? "" : " is-off"}">
@@ -460,7 +460,7 @@ function renderMerchantProductCards(docs) {
                     <div class="pg-name" title="${esc(data.product_name)}">${esc(data.product_name)}</div>
                     <div class="pg-meta">${esc(typeLabel)}${data.inventory_stock != null ? ` · 재고 ${Number(data.inventory_stock).toLocaleString()}` : ""}</div>
                     <div class="pg-price">${Number(data.price || 0).toLocaleString()} VND</div>
-                    ${gbEnabled && bonus ? `<div class="pg-bonus">🎁 목표 달성 시 1개당 +${bonus.toLocaleString()} BM</div>` : ""}
+                    ${gbEnabled && bonus ? `<div class="pg-bonus">🎁 목표 달성 시 1개당 +${bonus.toLocaleString()} Point</div>` : ""}
                     ${data.description ? `<div class="pg-desc">${esc(data.description)}</div>` : ""}
                 </div>
                 <div class="pg-actions">
@@ -552,7 +552,7 @@ function bindActionEvents() {
             if ($("pGbMode")) $("pGbMode").value = gb.mode || data.group_buy_mode || "team_recruit";
             if ($("pGbRegion")) $("pGbRegion").value = gb.region || data.group_buy_region || "미딩·하동·서호 전지역";
             if ($("pGbOriginalPrice")) $("pGbOriginalPrice").value = gb.original_price || data.original_price || Math.round((Number(data.price || 0)) * 1.3);
-            if ($("pGbBonusBm")) $("pGbBonusBm").value = gb.bonus_bm ?? data.group_buy_bonus_bm ?? Math.round((Number(data.price || 0)) * 0.1);
+            if ($("pGbBonusBm")) $("pGbBonusBm").value = gb.bonus_point ?? data.group_buy_bonus_point ?? gb.bonus_bm ?? data.group_buy_bonus_bm ?? Math.round((Number(data.price || 0)) * 0.1);
             if ($("pGbTargetCount")) $("pGbTargetCount").value = gb.target_count || data.group_buy_target || 10;
             if ($("pGbCurrentCount")) $("pGbCurrentCount").value = gb.current_count ?? data.group_buy_current ?? 0;
             if ($("pGbDeadline")) {
@@ -713,7 +713,6 @@ $("productForm").addEventListener("submit", async (e) => {
     const gbOriginalPrice = Number($("pGbOriginalPrice")?.value) || Math.round(dealPrice * 1.3);
     const gbBonusBm = Number($("pGbBonusBm")?.value) || Math.round(dealPrice * 0.1);
     const gbTargetCount = Math.max(2, Number($("pGbTargetCount")?.value) || 10);
-    const gbCurrentCount = Math.max(0, Number($("pGbCurrentCount")?.value) || 0);
     const gbMode = $("pGbMode")?.value || "team_recruit";
     const gbRegion = $("pGbRegion")?.value || "미딩·하동·서호 전지역";
     const gbDeadlineInput = ($("pGbDeadline")?.value || "").trim();
@@ -732,24 +731,30 @@ $("productForm").addEventListener("submit", async (e) => {
         group_buy_enabled: gbEnabled,
         group_buy_mode: gbMode,
         group_buy_target: gbTargetCount,
-        group_buy_current: gbCurrentCount,
-        group_buy_bonus_bm: gbBonusBm,
+        group_buy_bonus_point: gbBonusBm, // 목표 달성 보상 = Point (2026-11-26)
         group_buy_region: gbRegion,
         original_price: gbOriginalPrice,
-        group_buy: {
-            enabled: gbEnabled,
-            mode: gbMode,
-            original_price: gbOriginalPrice,
-            deal_price: dealPrice,
-            target_count: gbTargetCount,
-            current_count: gbCurrentCount,
-            bonus_bm: gbBonusBm,
-            region: gbRegion,
-            deadline_iso: gbDeadlineIso,
-            delivery_note: gbDeliveryNote
-        },
         updated_at: serverTimestamp()
     };
+    // 공동구매 설정. 판매 수량(current_count)·목표 달성 시각은 서버(onMerchantOrderGroupBuy)가 관리하므로 쓰지 않는다.
+    const gbSettings = {
+        enabled: gbEnabled,
+        mode: gbMode,
+        original_price: gbOriginalPrice,
+        deal_price: dealPrice,
+        target_count: gbTargetCount,
+        bonus_point: gbBonusBm,
+        region: gbRegion,
+        deadline_iso: gbDeadlineIso,
+        delivery_note: gbDeliveryNote
+    };
+    if (editingId) {
+        // 수정: group_buy 맵을 통째로 바꾸지 않고 설정 항목만 갱신 (서버 집계값 보존)
+        Object.entries(gbSettings).forEach(([k, v]) => { data[`group_buy.${k}`] = v; });
+    } else {
+        data.group_buy = { ...gbSettings, current_count: 0 };
+        data.group_buy_current = 0;
+    }
 
     try {
         if (editingId) {

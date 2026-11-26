@@ -1,6 +1,6 @@
 'use strict';
 /**
- * 공동구매(타임딜) 판매 수량 집계 + 목표 달성 BM 보너스 지급 (서버 전용)
+ * 공동구매(타임딜) 판매 수량 집계 + 목표 달성 Point 보너스 지급 (서버 전용)
  *
  * 집계 기준 (2026-11-25)
  *  - 목표·현재 수량 = 결제(입금) 확인된 주문의 공동구매 상품 "구매 수량" 합계. 사람 수가 아님.
@@ -11,15 +11,17 @@
  *
  * 보너스 지급
  *  - 상품의 누적 판매 수량이 목표(group_buy.target_count / group_buy_target)에 닿으면,
- *    그 상품을 산 결제 확인 주문마다 "1개당 보너스(group_buy.bonus_bm / group_buy_bonus_bm) × 산 수량" BM 을
- *    구매자 users.pointBalanceVnd 에 넣는다. 금액은 서버의 상품 설정 기준 (주문서에 적힌 값은 쓰지 않음).
+ *    그 상품을 산 결제 확인 주문마다 "1개당 보너스 × 산 수량" Point 를 구매자 users.pointBalance 에 넣는다.
+ *    (2026-11-26 대표 지시: 보상 재화 BM → Point)
+ *    1개당 보너스 = group_buy.bonus_point / group_buy_bonus_point (없으면 예전 필드 bonus_bm / group_buy_bonus_bm 숫자를 Point 로 사용)
+ *    금액은 서버의 상품 설정 기준 (주문서에 적힌 값은 쓰지 않음).
  *  - 목표 달성 뒤에 결제 확인된 주문도 그때 바로 지급.
  *  - 멱등: group_buy_bonus_payouts/{주문ID}_{상품ID} 문서가 있으면 다시 지급하지 않는다.
- *  - 원장: transactions/TX_GB_BONUS_{주문ID}_{상품ID} (type GROUP_BUY_BONUS)
+ *  - 원장: transactions/TX_GB_BONUS_{주문ID}_{상품ID} (type GROUP_BUY_BONUS_POINT, amountPoint)
  *
  * 취소 시 회수
- *  - 보너스를 받은 주문이 취소되면 지급한 BM 을 회수한다 (TX_GB_BONUS_REV_…, type GROUP_BUY_BONUS_REVERSAL).
- *    잔액이 모자라면 남은 잔액까지만 회수하고 모자란 금액(shortfallBm)을 기록한다 (잔액을 음수로 만들지 않음).
+ *  - 보너스를 받은 주문이 취소되면 지급한 Point 를 회수한다 (TX_GB_BONUS_REV_…, type GROUP_BUY_BONUS_POINT_REVERSAL).
+ *    잔액이 모자라면 남은 잔액까지만 회수하고 모자란 수량(shortfallPoint)을 기록한다 (잔액을 음수로 만들지 않음).
  *  - 다른 사람의 취소로 수량이 목표 아래로 내려가도, 이미 지급된 다른 구매자의 보너스는 회수하지 않는다.
  */
 const admin = require('firebase-admin');
@@ -66,7 +68,7 @@ function gbConfig(p) {
   return {
     current: Math.max(0, Number(gb.current_count ?? p?.group_buy_current ?? 0) || 0),
     target: Math.max(2, Number(gb.target_count ?? p?.group_buy_target ?? 10) || 10),
-    bonusBm: Math.max(0, Math.floor(Number(gb.bonus_bm ?? p?.group_buy_bonus_bm ?? 0) || 0)),
+    bonusPoint: Math.max(0, Math.floor(Number(gb.bonus_point ?? p?.group_buy_bonus_point ?? gb.bonus_bm ?? p?.group_buy_bonus_bm ?? 0) || 0)),
     reachedAt: gb.goal_reached_at || p?.group_buy_goal_reached_at || null,
     name: p?.product_name || p?.name || '',
     merchantId: p?.merchant_id ?? p?.merchantId ?? null,
@@ -103,9 +105,9 @@ async function payBonus(orderId, pid, cfg) {
     const o = oSnap.data() || {};
     const qty = countedQty(o).get(pid) || 0;
     if (!qty) return 0; // 결제 확인 전이거나 취소된 주문
-    const amount = cfg.bonusBm * qty;
+    const amount = cfg.bonusPoint * qty;
     const buyer = String(o.buyer_uid || '');
-    const base = { orderId, productId: pid, productName: cfg.name, merchantId: String(o.merchant_id ?? cfg.merchantId ?? ''), buyerUid: buyer, qty, bonusPerUnit: cfg.bonusBm, amountBm: amount, createdAt: FV.serverTimestamp() };
+    const base = { orderId, productId: pid, productName: cfg.name, merchantId: String(o.merchant_id ?? cfg.merchantId ?? ''), buyerUid: buyer, qty, bonusPerUnit: cfg.bonusPoint, currency: 'POINT', amountPoint: amount, createdAt: FV.serverTimestamp() };
     if (amount <= 0) { tx.set(payoutRef, { ...base, status: 'no_bonus' }); return 0; }
     if (!buyer || buyer === 'GUEST' || buyer === 'TABLE_GUEST') { tx.set(payoutRef, { ...base, status: 'no_buyer' }); return 0; }
     const userRef = db.collection('users').doc(buyer);
@@ -113,15 +115,15 @@ async function payBonus(orderId, pid, cfg) {
     if (!uSnap.exists) { tx.set(payoutRef, { ...base, status: 'no_buyer' }); return 0; }
 
     const txId = `TX_GB_BONUS_${orderId}_${pid}`;
-    tx.update(userRef, { pointBalanceVnd: FV.increment(amount), updatedAt: FV.serverTimestamp() });
+    tx.update(userRef, { pointBalance: FV.increment(amount), updatedAt: FV.serverTimestamp() });
     tx.set(db.collection('transactions').doc(txId), {
-      userId: buyer, uid: buyer, type: 'GROUP_BUY_BONUS', amountVnd: amount, currency: 'VND', status: 'completed',
-      orderId, productId: pid, qty, bonusPerUnit: cfg.bonusBm,
-      description: `[공동구매 목표 달성 보너스] ${cfg.name || pid} ${qty}개 × ${cfg.bonusBm.toLocaleString()} BM`,
+      userId: buyer, uid: buyer, type: 'GROUP_BUY_BONUS_POINT', amountPoint: amount, currency: 'POINT', status: 'completed',
+      orderId, productId: pid, qty, bonusPerUnit: cfg.bonusPoint,
+      description: `[공동구매 목표 달성 보너스] ${cfg.name || pid} ${qty}개 × ${cfg.bonusPoint.toLocaleString()} Point`,
       createdAt: FV.serverTimestamp(),
     });
     tx.set(payoutRef, { ...base, status: 'paid', txId });
-    tx.update(orderRef, { [`group_buy_bonus.${pid}`]: { amountBm: amount, qty, status: 'paid', paidAt: FV.serverTimestamp() } });
+    tx.update(orderRef, { [`group_buy_bonus.${pid}`]: { amountPoint: amount, currency: 'POINT', qty, status: 'paid', paidAt: FV.serverTimestamp() } });
     return amount;
   });
 }
@@ -134,22 +136,22 @@ async function reverseBonus(orderId, pid) {
     if (!pSnap.exists) return 0;
     const p = pSnap.data() || {};
     if (p.status !== 'paid') return 0;
-    const amount = Math.max(0, Number(p.amountBm || 0));
+    const amount = Math.max(0, Number(p.amountPoint ?? p.amountBm ?? 0));
     const userRef = db.collection('users').doc(String(p.buyerUid || ''));
     const uSnap = await tx.get(userRef);
-    const bal = uSnap.exists ? Math.max(0, Number(uSnap.data()?.pointBalanceVnd || 0)) : 0;
+    const bal = uSnap.exists ? Math.max(0, Number(uSnap.data()?.pointBalance || 0)) : 0;
     const take = Math.min(amount, bal);
     const shortfall = amount - take;
-    if (take > 0) tx.update(userRef, { pointBalanceVnd: FV.increment(-take), updatedAt: FV.serverTimestamp() });
+    if (take > 0) tx.update(userRef, { pointBalance: FV.increment(-take), updatedAt: FV.serverTimestamp() });
     const txId = `TX_GB_BONUS_REV_${orderId}_${pid}`;
     tx.set(db.collection('transactions').doc(txId), {
-      userId: p.buyerUid, uid: p.buyerUid, type: 'GROUP_BUY_BONUS_REVERSAL', amountVnd: -take, currency: 'VND', status: 'completed',
-      orderId, productId: pid, shortfallBm: shortfall,
-      description: `[공동구매 보너스 회수] 주문 취소 — ${p.productName || pid}${shortfall ? ` (잔액 부족 ${shortfall.toLocaleString()} BM 미회수)` : ''}`,
+      userId: p.buyerUid, uid: p.buyerUid, type: 'GROUP_BUY_BONUS_POINT_REVERSAL', amountPoint: -take, currency: 'POINT', status: 'completed',
+      orderId, productId: pid, shortfallPoint: shortfall,
+      description: `[공동구매 보너스 회수] 주문 취소 — ${p.productName || pid}${shortfall ? ` (잔액 부족 ${shortfall.toLocaleString()} Point 미회수)` : ''}`,
       createdAt: FV.serverTimestamp(),
     });
-    tx.update(payoutRef, { status: 'reversed', reversedBm: take, shortfallBm: shortfall, reversedAt: FV.serverTimestamp(), reversalTxId: txId });
-    tx.update(db.collection('merchant_orders').doc(orderId), { [`group_buy_bonus.${pid}.status`]: 'reversed', [`group_buy_bonus.${pid}.reversedBm`]: take });
+    tx.update(payoutRef, { status: 'reversed', reversedPoint: take, shortfallPoint: shortfall, reversedAt: FV.serverTimestamp(), reversalTxId: txId });
+    tx.update(db.collection('merchant_orders').doc(orderId), { [`group_buy_bonus.${pid}.status`]: 'reversed', [`group_buy_bonus.${pid}.reversedPoint`]: take });
     return take;
   });
 }
@@ -205,7 +207,7 @@ async function onMerchantOrderWritten(event) {
 }
 
 /**
- * 관리자 전용: 결제 확인 주문 기준으로 공동구매 수량을 다시 계산하고, 목표 달성 상품의 보너스를 지급.
+ * 관리자 전용: 결제 확인 주문 기준으로 공동구매 수량을 다시 계산하고, 목표 달성 상품의 Point 보너스를 지급.
  * (이전에 브라우저가 주문 접수 시점에 올려 둔 수량을 바로잡는 용도. 여러 번 실행해도 안전)
  *   클라이언트: httpsCallable(functions, 'adminRecalcGroupBuy')({ dryRun: true })
  */
@@ -239,12 +241,12 @@ async function adminRecalcGroupBuy(request) {
         if (!isPaid(od) && !isCancelled(od)) pending += groupBuyQty(od).get(d.id) || 0;
       }
     }
-    const row = { productId: d.id, name: cfg.name, before: cfg.current, after: sold, unpaidQty: pending, target: cfg.target, bonusPerUnit: cfg.bonusBm, reached: sold >= cfg.target, bonusPaidBm: 0 };
+    const row = { productId: d.id, name: cfg.name, before: cfg.current, after: sold, unpaidQty: pending, target: cfg.target, bonusPerUnit: cfg.bonusPoint, reached: sold >= cfg.target, bonusPaidPoint: 0 };
     if (!dryRun) {
       const upd = { group_buy_current: sold, 'group_buy.current_count': sold, updated_at: FV.serverTimestamp() };
       if (sold >= cfg.target && !cfg.reachedAt) { upd['group_buy.goal_reached_at'] = FV.serverTimestamp(); upd.group_buy_goal_reached_at = FV.serverTimestamp(); }
       await d.ref.update(upd);
-      if (sold >= cfg.target || cfg.reachedAt) row.bonusPaidBm = await payAllForProduct(d.id, { ...cfg, current: sold });
+      if (sold >= cfg.target || cfg.reachedAt) row.bonusPaidPoint = await payAllForProduct(d.id, { ...cfg, current: sold });
     }
     report.push(row);
   }

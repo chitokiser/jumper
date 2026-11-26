@@ -382,8 +382,9 @@ $$\text{jackpotProbability} = \min\left(\frac{\text{gsLevel} \times 100}{10000},
 5. **공동구매(타임딜) 판매 수량·목표 달성 보너스 (2026-11-25):**
    - 목표와 진행률은 사람 수가 아니라 **입금 확인된 주문의 구매 수량 합계**로 센다 (`merchant_products.group_buy.current_count` / `group_buy_current`, 목표 `group_buy.target_count`).
    - 수량은 브라우저가 쓰지 않는다. Cloud Function `onMerchantOrderGroupBuy`(`functions/handlers/groupBuyBonus.js`)가 `merchant_orders` 변경을 보고 고친다. 취소된 주문은 빠진다.
-   - 목표 달성 시 해당 상품을 산 입금 확인 주문마다 `1개당 보너스(group_buy.bonus_bm) × 구매 수량` BM을 `users.pointBalanceVnd`에 지급한다. 원장 `transactions` type `GROUP_BUY_BONUS`, 멱등 키 `group_buy_bonus_payouts/{주문ID}_{상품ID}`.
-   - 보너스를 받은 주문이 취소되면 회수한다 (`GROUP_BUY_BONUS_REVERSAL`, 잔액 부족분은 `shortfallBm` 기록, 잔액을 음수로 만들지 않음).
+   - 목표 달성 보상은 **Point** (2026-11-26 변경, BM 아님). 해당 상품을 산 입금 확인 주문마다 `1개당 보너스(group_buy.bonus_point, 없으면 예전 bonus_bm 숫자) × 구매 수량` Point를 `users.pointBalance`에 지급한다. 원장 `transactions` type `GROUP_BUY_BONUS_POINT`(`amountPoint`), 멱등 키 `group_buy_bonus_payouts/{주문ID}_{상품ID}`.
+   - 관리자 상품 저장은 `group_buy.*` 설정 항목만 갱신하며 `current_count`·`goal_reached_at`(서버 집계값)은 쓰지 않는다.
+   - 보너스를 받은 주문이 취소되면 회수한다 (`GROUP_BUY_BONUS_POINT_REVERSAL`, 잔액 부족분은 `shortfallPoint` 기록, 잔액을 음수로 만들지 않음).
    - 수량 재계산·밀린 보너스 지급: 관리자 callable `adminRecalcGroupBuy({ dryRun })`.
 
 ---

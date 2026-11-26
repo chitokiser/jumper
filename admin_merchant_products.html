@@ -186,8 +186,8 @@
                   <input id="pGbOriginalPrice" type="number" class="input" placeholder="예: 350000" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
                 </label>
                 <label>
-                  <div class="muted" style="font-size:0.78rem;">목표 달성 추가 BM 보너스</div>
-                  <input id="pGbBonusBm" type="number" class="input" placeholder="예: 20000" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
+                  <div class="muted" style="font-size:0.78rem;">목표 달성 시 1개당 Point 보너스</div>
+                  <input id="pGbBonusBm" type="number" class="input" placeholder="예: 20000 (Point)" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
                 </label>
               </div>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
@@ -196,8 +196,8 @@
                   <input id="pGbTargetCount" type="number" class="input" value="10" min="2" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
                 </label>
                 <label>
-                  <div class="muted" style="font-size:0.78rem;">현재 누적 판매 수량(개)</div>
-                  <input id="pGbCurrentCount" type="number" class="input" value="0" min="0" style="width:100%; border:1px solid #fda4af; padding:6px; background:#fff;" />
+                  <div class="muted" style="font-size:0.78rem;">현재 누적 판매 수량(개, 자동 집계)</div>
+                  <input id="pGbCurrentCount" type="number" class="input" value="0" min="0" readonly title="입금 확인된 주문 수량을 서버가 자동 집계합니다" style="width:100%; border:1px solid #e2e8f0; padding:6px; background:#f1f5f9; color:#64748b;" />
                 </label>
               </div>
               <label>
