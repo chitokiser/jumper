@@ -1750,6 +1750,7 @@ document.querySelectorAll("#gpHistFilterTabs .gp-tab-btn").forEach((btn) => {
   });
 });
 
+let _txHistoryUnsub = null;
 async function loadTxHistory(uid, _walletAddress) {
   const wrap = $("txHistory");
   const section = $("txSection");
@@ -1766,7 +1767,8 @@ async function loadTxHistory(uid, _walletAddress) {
       limit(30)
     );
 
-    onSnapshot(q, (snap) => {
+    if (_txHistoryUnsub) { try { _txHistoryUnsub(); } catch (_) {} }
+    _txHistoryUnsub = onSnapshot(q, (snap) => {
       const unified = [];
       snap.forEach((d) => {
         const tx = d.data();
@@ -1828,6 +1830,7 @@ async function loadTxHistory(uid, _walletAddress) {
       wrap.innerHTML = unified.map(renderTxItem).join("");
     }, (err) => {
       console.warn("loadTxHistory onSnapshot error:", err.message);
+      show("txSection", true);
       wrap.innerHTML = `<p class="hint muted">${_t('status_loading')} failed.</p>`;
     });
   } catch (err) {
@@ -3219,6 +3222,7 @@ onAuthReady(async (ctx) => {
     const btnRefresh = $("btnRefreshDeposits");
     if (btnRefresh) btnRefresh.onclick = () => loadDepositHistory(user.uid);
 
+    loadTxHistory(user.uid, walletAddress);
     const btnRefreshTx = $("btnRefreshTx");
     if (btnRefreshTx) btnRefreshTx.onclick = () => loadTxHistory(user.uid, walletAddress);
 
