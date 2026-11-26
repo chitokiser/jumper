@@ -87,19 +87,42 @@ async function getPointRanking() {
   }));
 }
 
+// BM 보유 랭킹 (users.pointBalanceVnd = BM, 표기 단위 VND)
+async function getBmRanking() {
+  const usersSnap = await db.collection('users')
+    .orderBy('pointBalanceVnd', 'desc')
+    .limit(10)
+    .get();
+
+  const filtered = usersSnap.docs.filter(d => (Number(d.data().pointBalanceVnd) || 0) > 0);
+  if (!filtered.length) return [];
+
+  const displayIds = await Promise.all(
+    filtered.map(d => _getDisplayId(d.id, d.data()))
+  );
+
+  return filtered.map((d, i) => ({
+    rank: i + 1,
+    displayName: displayIds[i] || '베스트회원',
+    photoURL: d.data().photoURL || null,
+    bmBalance: Math.floor(Number(d.data().pointBalanceVnd) || 0),
+  }));
+}
+
+// 홈 랭킹 섹션: Point 보유 랭킹 + BM 보유 랭킹 (2026-11-26, 보물상자 랭킹 제외)
 async function getHomeRankings() {
-  const [treasureRanking, pointRanking] = await Promise.all([
-    getTreasureRanking().catch(err => {
-      console.error('getTreasureRanking error:', err.message);
-      return [];
-    }),
+  const [pointRanking, bmRanking] = await Promise.all([
     getPointRanking().catch(err => {
       console.error('getPointRanking error:', err.message);
       return [];
     }),
+    getBmRanking().catch(err => {
+      console.error('getBmRanking error:', err.message);
+      return [];
+    }),
   ]);
 
-  return { treasureRanking, pointRanking };
+  return { pointRanking, bmRanking };
 }
 
 module.exports = { getHomeRankings };

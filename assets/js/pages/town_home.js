@@ -496,22 +496,7 @@ function openShareModal(winner) {
   };
 }
 
-const DEFAULT_SEED_RANKINGS = {
-  treasureRanking: [
-    { rank: 1, displayName: "하노이골드헌터", treasuresFound: 42 },
-    { rank: 2, displayName: "미딩보물왕", treasuresFound: 38 },
-    { rank: 3, displayName: "서호탐험가", treasuresFound: 31 },
-    { rank: 4, displayName: "박*호", treasuresFound: 27 },
-    { rank: 5, displayName: "김*우", treasuresFound: 24 }
-  ],
-  pointRanking: [
-    { rank: 1, displayName: "BestMaster", pointBalance: 1250000 },
-    { rank: 2, displayName: "하노이빅보스", pointBalance: 980000 },
-    { rank: 3, displayName: "송다치킨매니아", pointBalance: 750000 },
-    { rank: 4, displayName: "이*민", pointBalance: 620000 },
-    { rank: 5, displayName: "VnExplorer", pointBalance: 510000 }
-  ]
-};
+// (2026-11-26) 가짜 예시 랭킹 데이터 삭제 — 실제 서버 데이터만 표시
 
 const DEFAULT_SEED_NOTICES = [
   {
@@ -572,34 +557,36 @@ function renderRankingList(el, rows, valueFn) {
 }
 
 async function loadRankings() {
-  const treasureEl = $('treasureRankingList');
-  const jumpEl = $('jumpRankingList');
-  if (!treasureEl && !jumpEl) return;
+  const pointEl = $('jumpRankingList');
+  const bmEl = $('bmRankingList');
+  if (!pointEl && !bmEl) return;
+  const pointVal = (r) => `${Number(r.pointBalance || 0).toLocaleString()} Point`;
+  const bmVal = (r) => `${Number(r.bmBalance || 0).toLocaleString()} BM`;
+  const CACHE_KEY = 'bc_cache_rankings_v2'; // Point + BM (예전 보물상자 캐시와 분리)
 
-  // 1. 캐시 또는 기본 시드 데이터로 즉시(0초) 렌더링
-  let cached = null;
+  // 1. 마지막으로 받은 실제 랭킹이 있으면 먼저 보여줌 (없으면 Loading 유지)
   try {
-    const saved = localStorage.getItem("bc_cache_rankings");
-    if (saved) cached = JSON.parse(saved);
+    const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    if (cached) {
+      if (pointEl && Array.isArray(cached.pointRanking)) renderRankingList(pointEl, cached.pointRanking, pointVal);
+      if (bmEl && Array.isArray(cached.bmRanking)) renderRankingList(bmEl, cached.bmRanking, bmVal);
+    }
   } catch (_) {}
 
-  const current = cached || DEFAULT_SEED_RANKINGS;
-  if (treasureEl) renderRankingList(treasureEl, current.treasureRanking, (r) => `${Number(r.treasuresFound).toLocaleString()}${_t('ranking_found_suffix')}`);
-  if (jumpEl) renderRankingList(jumpEl, current.pointRanking, (r) => `${Number(r.pointBalance).toLocaleString()} Points`);
-
-  // 2. 백그라운드 Cloud Function 갱신
+  // 2. 서버(Cloud Function getHomeRankings)에서 최신 랭킹
   try {
-    const fn = httpsCallable(functions, 'getHomeRankings');
-    const res = await fn();
-    const { treasureRanking = [], pointRanking = [] } = res.data || {};
-    if (treasureRanking.length || pointRanking.length) {
-      try { localStorage.setItem("bc_cache_rankings", JSON.stringify({ treasureRanking, pointRanking })); } catch (_) {}
-      if (treasureEl) renderRankingList(treasureEl, treasureRanking, (r) => `${Number(r.treasuresFound).toLocaleString()}${_t('ranking_found_suffix')}`);
-      if (jumpEl) renderRankingList(jumpEl, pointRanking, (r) => `${Number(r.pointBalance).toLocaleString()} Points`);
+    const res = await httpsCallable(functions, 'getHomeRankings')();
+    const { pointRanking = [], bmRanking } = res.data || {};
+    if (pointEl) renderRankingList(pointEl, pointRanking, pointVal);
+    if (bmEl) {
+      if (Array.isArray(bmRanking)) renderRankingList(bmEl, bmRanking, bmVal);
+      else bmEl.innerHTML = `<div class="ranking-empty">${_t('ranking_empty')}</div>`; // 서버 함수 배포 전
     }
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ pointRanking, bmRanking: Array.isArray(bmRanking) ? bmRanking : [] })); } catch (_) {}
   } catch (e) {
     console.warn('loadRankings background note:', e?.message || e);
-    // 실패 시에도 이미 캐시/시드가 렌더링되어 있으므로 오류 메시지 미노출
+    if (pointEl && pointEl.querySelector('.ranking-loading')) pointEl.innerHTML = `<div class="ranking-empty">${_t('ranking_empty')}</div>`;
+    if (bmEl && bmEl.querySelector('.ranking-loading')) bmEl.innerHTML = `<div class="ranking-empty">${_t('ranking_empty')}</div>`;
   }
 }
 
