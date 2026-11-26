@@ -10,6 +10,7 @@ import {
   query,
   where,
   limit,
+  onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { claimFreeDailyGp } from "/assets/js/free-gp.js";
 
@@ -355,6 +356,66 @@ function renderHomeQuestWidget() {
   if (homeAtt) homeAtt.onclick = handleAttendanceClick;
 }
 
+// ── 공동구매 보너스 Point 실시간 알림 (2026-11-26) ─────────────────────
+const POINT_REWARD_TYPES = ["GROUP_BUY_BONUS_POINT", "GROUP_BUY_BONUS_POINT_REVERSAL"];
+let _rewardUnsub = null;
+
+function rewardTxToItem(id, tx) {
+  const amt = Math.abs(Number(tx.amountPoint || 0));
+  if (!amt) return null;
+  const isRev = tx.type === "GROUP_BUY_BONUS_POINT_REVERSAL";
+  return {
+    id: `reward_${id}`,
+    icon: isRev ? "↩️" : "🎁",
+    title: isRev ? `공동구매 보너스 회수 −${amt.toLocaleString()} Point` : `🎉 공동구매 목표 달성! +${amt.toLocaleString()} Point 적립`,
+    sub: String(tx.description || "").replace(/^\[[^\]]*\]\s*/, ""),
+    ms: toMs(tx.createdAt) || Date.now(),
+    href: "/mypage.html#txSection",
+  };
+}
+
+function showRewardToast(item) {
+  injectStyles();
+  let box = document.getElementById("bcRewardToastBox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "bcRewardToastBox";
+    box.style.cssText = "position:fixed;top:72px;right:14px;z-index:100000;display:flex;flex-direction:column;gap:8px;max-width:min(360px,calc(100vw - 28px));";
+    document.body.appendChild(box);
+  }
+  const el = document.createElement("a");
+  el.href = item.href;
+  el.style.cssText = "display:flex;gap:10px;align-items:flex-start;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;color:#78350f;border-radius:14px;padding:12px 14px;box-shadow:0 12px 28px rgba(0,0,0,.18);text-decoration:none;font-size:13px;line-height:1.4;transform:translateX(120%);transition:transform .35s ease;";
+  el.innerHTML = `<span style="font-size:22px;">${item.icon}</span><span style="min-width:0;"><b style="display:block;font-size:14px;color:#92400e;">${esc(item.title)}</b><span style="display:block;color:#a16207;">${esc(item.sub)}</span><span style="display:block;font-size:11px;color:#b45309;margin-top:2px;">마이페이지 거래 내역에서 확인 →</span></span>`;
+  box.appendChild(el);
+  requestAnimationFrame(() => { el.style.transform = "translateX(0)"; });
+  setTimeout(() => { el.style.transform = "translateX(120%)"; setTimeout(() => el.remove(), 400); }, 9000);
+}
+
+function watchRewardPoints(uid) {
+  if (_rewardUnsub) { try { _rewardUnsub(); } catch (_) {} _rewardUnsub = null; }
+  if (!uid) return;
+  let first = true;
+  try {
+    _rewardUnsub = onSnapshot(
+      query(collection(db, "transactions"), where("uid", "==", uid), where("type", "in", POINT_REWARD_TYPES), limit(20)),
+      (snap) => {
+        if (first) { first = false; return; } // 이미 있던 기록은 벨 목록에만 표시
+        let changed = false;
+        snap.docChanges().forEach((ch) => {
+          if (ch.type !== "added") return;
+          const it = rewardTxToItem(ch.doc.id, ch.doc.data() || {});
+          if (!it) return;
+          changed = true;
+          showRewardToast(it);
+        });
+        if (changed) fetchUserNotifications(uid);
+      },
+      (err) => console.warn("reward watch error:", err?.code || err)
+    );
+  } catch (_) {}
+}
+
 async function fetchUserNotifications(uid) {
   if (!uid) {
     _notifications = [];
@@ -452,6 +513,12 @@ async function fetchUserNotifications(uid) {
     }
   } catch (_) {}
 
+  // 4) 내 계정에 들어온 공동구매 목표 달성 보너스 Point (원장 transactions)
+  try {
+    const bSnap = await getDocs(query(collection(db, "transactions"), where("uid", "==", uid), where("type", "in", POINT_REWARD_TYPES), limit(20)));
+    bSnap.forEach((d) => { const it = rewardTxToItem(d.id, d.data() || {}); if (it) items.push(it); });
+  } catch (_) {}
+
   items.sort((a, b) => b.ms - a.ms);
   _notifications = items.slice(0, 25);
 
@@ -536,4 +603,5 @@ onAuthStateChanged(auth, (user) => {
   autoDetectPageQuest(_currentUid);
   mountHeaderBell();
   fetchUserNotifications(_currentUid);
+  watchRewardPoints(_currentUid);
 });
