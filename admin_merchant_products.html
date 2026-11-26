@@ -53,12 +53,50 @@
               <option value="sold_out">품절</option>
             </select>
           </label>
+
+          <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:600; color:#334155;">
+            <span>정렬:</span>
+            <select id="sortSelect" class="input" style="padding:6px 10px; font-size:0.85rem; background:#fff; border:1px solid #cbd5e1; border-radius:6px;">
+              <option value="new">최신 등록순</option>
+              <option value="name">이름순</option>
+              <option value="price_asc">낮은 가격순</option>
+              <option value="price_desc">높은 가격순</option>
+              <option value="gb">공구·타임딜 먼저</option>
+            </select>
+          </label>
         </div>
+        <input id="productSearch" type="search" class="input" placeholder="🔍 상품명·설명 검색" autocomplete="off"
+          style="flex:1 1 220px; min-width:200px; padding:7px 12px; font-size:0.88rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff;" />
       </div>
 
       <div id="productStatsSummary" style="margin-top:12px; font-size:0.85rem; color:#64748b; font-weight:500;"></div>
       <div id="productState" class="state" style="padding: 20px; font-weight: bold;">조회 중...</div>
-      <div id="productList" class="grid" style="display:grid;gap:12px;margin-top:16px;"></div>
+      <style>
+        /* 상품 카드 그리드 (2026-11-26 UI 정리): 화면 너비에 맞춰 여러 열, 이미지 전체가 보이게 */
+        #productList.pg-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px; margin-top:16px; }
+        .pg-card { position:relative; display:flex; flex-direction:column; background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(15,23,42,0.05); transition:box-shadow .15s, transform .15s; }
+        .pg-card:hover { box-shadow:0 8px 20px rgba(15,23,42,0.09); transform:translateY(-1px); }
+        .pg-card.is-gb { border:2px solid #fb7185; }
+        .pg-card.is-off .pg-thumb img { filter:grayscale(.6); opacity:.75; }
+        .pg-thumb { position:relative; aspect-ratio:4/3; background:#f8fafc; display:flex; align-items:center; justify-content:center; border-bottom:1px solid #f1f5f9; }
+        .pg-thumb img { width:100%; height:100%; object-fit:contain; padding:8px; box-sizing:border-box; }
+        .pg-thumb .pg-noimg { font-size:2.2rem; color:#cbd5e1; }
+        .pg-status { position:absolute; top:8px; left:8px; font-size:0.7rem; font-weight:800; padding:3px 8px; border-radius:99px; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+        .pg-gb { position:absolute; top:8px; right:8px; font-size:0.68rem; font-weight:800; padding:3px 7px; border-radius:99px; background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; }
+        .pg-body { padding:10px 12px 8px; display:flex; flex-direction:column; gap:4px; flex:1; }
+        .pg-merchant { font-size:0.7rem; font-weight:700; color:#1e40af; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .pg-name { font-size:0.92rem; font-weight:800; color:#0f172a; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:2.6em; }
+        .pg-meta { font-size:0.72rem; color:#64748b; }
+        .pg-price { font-size:1.02rem; font-weight:900; color:#0f766e; margin-top:2px; }
+        .pg-bonus { font-size:0.7rem; font-weight:700; color:#d97706; }
+        .pg-desc { font-size:0.74rem; color:#64748b; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .pg-actions { display:flex; gap:6px; padding:8px 10px 10px; border-top:1px solid #f1f5f9; }
+        .pg-actions .btn { padding:6px 8px !important; font-size:0.76rem !important; border-radius:8px !important; white-space:nowrap; }
+        .pg-actions .pg-grow { flex:1; }
+        .pg-more { grid-column:1/-1; display:flex; justify-content:center; padding:6px 0 4px; }
+        @media (max-width:520px) { #productList.pg-grid { grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; } .pg-desc { display:none; } .pg-actions { flex-wrap:wrap; } }
+      </style>
+      <div id="productList" class="pg-grid"></div>
     </section>
 
     <!-- 상품 등록/수정 모달 -->

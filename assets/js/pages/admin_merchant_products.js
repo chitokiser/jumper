@@ -23,6 +23,8 @@ let editingMerchantId = null;
 let adminMerchantList = [];
 let merchantMap = {}; // { id: { id, name, ownerUid, aliases: [] } }
 let currentTab = "merchant_products"; // "merchant_products" | "items"
+const PAGE_SIZE = 48; // 한 번에 그리는 카드 수 (나머지는 '더 보기')
+let visibleCount = PAGE_SIZE;
 let rawMerchantProducts = [];
 let rawItems = [];
 
@@ -230,7 +232,7 @@ function setupEventListeners() {
             $("tabItemsProducts").className = "btn btn--sm";
             $("tabItemsProducts").style.background = "#fff";
             $("tabItemsProducts").style.color = "#475569";
-            renderCurrentView();
+            resetAndRender();
         });
     }
 
@@ -243,17 +245,65 @@ function setupEventListeners() {
             $("tabMerchantProducts").className = "btn btn--sm";
             $("tabMerchantProducts").style.background = "#fff";
             $("tabMerchantProducts").style.color = "#475569";
-            renderCurrentView();
+            resetAndRender();
         });
     }
 
     // 필터 변경 시 렌더링
     if ($("filterMerchantSelect")) {
-        $("filterMerchantSelect").addEventListener("change", renderCurrentView);
+        $("filterMerchantSelect").addEventListener("change", resetAndRender);
     }
     if ($("filterStatusSelect")) {
-        $("filterStatusSelect").addEventListener("change", renderCurrentView);
+        $("filterStatusSelect").addEventListener("change", resetAndRender);
     }
+    if ($("sortSelect")) $("sortSelect").addEventListener("change", resetAndRender);
+    if ($("productSearch")) {
+        let t = null;
+        $("productSearch").addEventListener("input", () => { clearTimeout(t); t = setTimeout(resetAndRender, 200); });
+    }
+}
+
+// 필터·검색·정렬이 바뀌면 처음 페이지부터 다시 그림
+function resetAndRender() {
+    visibleCount = PAGE_SIZE;
+    renderCurrentView();
+}
+
+function tsMillis(v) {
+    if (!v) return 0;
+    if (typeof v.toMillis === "function") return v.toMillis();
+    if (typeof v.seconds === "number") return v.seconds * 1000;
+    return 0;
+}
+
+// 검색어 필터 + 정렬 (merchant_products / items 공통)
+function applySearchSort(list, kind) {
+    const q = String($("productSearch")?.value || "").trim().toLowerCase();
+    const sort = $("sortSelect")?.value || "new";
+    const nameOf = (d) => String(kind === "items" ? (d.title || d.name || "") : (d.product_name || ""));
+    const priceOf = (d) => Number(kind === "items" ? (d.priceVnd || d.price || 0) : (d.price || 0));
+    const timeOf = (d) => tsMillis(d.created_at) || tsMillis(d.createdAt);
+    const isGb = (d) => !!((d.group_buy && d.group_buy.enabled) || d.group_buy_enabled);
+    let out = list;
+    if (q) out = out.filter((i) => `${nameOf(i.data)} ${i.data.description || i.data.desc || ""}`.toLowerCase().includes(q));
+    const cmp = {
+        new: (a, b) => timeOf(b.data) - timeOf(a.data),
+        name: (a, b) => nameOf(a.data).localeCompare(nameOf(b.data), "ko"),
+        price_asc: (a, b) => priceOf(a.data) - priceOf(b.data),
+        price_desc: (a, b) => priceOf(b.data) - priceOf(a.data),
+        gb: (a, b) => (Number(isGb(b.data)) - Number(isGb(a.data))) || (timeOf(b.data) - timeOf(a.data)),
+    }[sort];
+    return cmp ? [...out].sort(cmp) : out;
+}
+
+function moreButtonHtml(total) {
+    if (total <= visibleCount) return "";
+    return `<div class="pg-more"><button type="button" class="btn" id="btnShowMore" style="padding:9px 22px; font-weight:700;">더 보기 (${(total - visibleCount).toLocaleString()}개 남음)</button></div>`;
+}
+
+function bindShowMore() {
+    const b = $("btnShowMore");
+    if (b) b.addEventListener("click", () => { visibleCount += PAGE_SIZE; renderCurrentView(); });
 }
 
 // 전체 데이터 1회 로드
@@ -309,12 +359,12 @@ function renderCurrentView() {
 
     if (currentTab === "merchant_products") {
         // BestERP merchant_products 필터링
-        const filtered = rawMerchantProducts.filter(item => {
+        const filtered = applySearchSort(rawMerchantProducts.filter(item => {
             const mId = item.data.merchant_id;
             const matchesM = matchesMerchant(mId, selectedMerchant);
             const matchesS = (selectedStatus === "all") || (item.data.sale_status === selectedStatus);
             return matchesM && matchesS;
-        });
+        }), "merchant_products");
 
         const totalPublished = filtered.filter(i => i.data.sale_status === "published").length;
         const totalDraft = filtered.filter(i => i.data.sale_status === "draft").length;
@@ -343,7 +393,7 @@ function renderCurrentView() {
             if (m?.ownerUid) targetOwnerUids.push(m.ownerUid);
         }
 
-        const filtered = rawItems.filter(item => {
+        const filtered = applySearchSort(rawItems.filter(item => {
             const owner = item.data.ownerUid;
             const matchesOwner = (targetOwnerUids.length === 0) || targetOwnerUids.includes(owner);
             const status = item.data.status;
@@ -351,7 +401,7 @@ function renderCurrentView() {
                 (selectedStatus === "published" && status === "published") ||
                 (selectedStatus === "draft" && status === "pending");
             return matchesOwner && matchesS;
-        });
+        }), "items");
 
         if (summaryEl) {
             summaryEl.innerHTML = `🧳 <b>기존 등록 상품/투어(items):</b> 총 <b>${filtered.length}</b>개`;
@@ -373,7 +423,8 @@ function renderMerchantProductCards(docs) {
     const isAdmin = currentViewer?.role === "admin";
     let html = "";
 
-    docs.forEach(docSnap => {
+    const total = docs.length;
+    docs.slice(0, visibleCount).forEach(docSnap => {
         const data = docSnap.data;
         const pTypeMap = {
             physical_product: "일반 상품",
@@ -384,60 +435,52 @@ function renderMerchantProductCards(docs) {
         const typeLabel = pTypeMap[data.product_type] || (data.product_type || "기타");
         const merchantName = getMerchantName(data.merchant_id);
 
-        let statusBadge = "";
-        if (data.sale_status === "published") {
-            statusBadge = '<span style="background:#dcfce7; color:#15803d; font-weight:700; padding:3px 9px; border-radius:6px; font-size:0.8rem;">판매 공개중</span>';
-        } else if (data.sale_status === "sold_out") {
-            statusBadge = '<span style="background:#f1f5f9; color:#64748b; font-weight:700; padding:3px 9px; border-radius:6px; font-size:0.8rem;">품절</span>';
-        } else {
-            statusBadge = '<span style="background:#fef3c7; color:#b45309; font-weight:700; padding:3px 9px; border-radius:6px; font-size:0.8rem;">임시저장(비공개)</span>';
-        }
+        const st = data.sale_status;
+        const statusBadge = st === "published"
+            ? '<span class="pg-status" style="background:#dcfce7; color:#15803d;">● 판매중</span>'
+            : st === "sold_out"
+                ? '<span class="pg-status" style="background:#f1f5f9; color:#64748b;">품절</span>'
+                : '<span class="pg-status" style="background:#fef3c7; color:#b45309;">숨김(임시저장)</span>';
 
         const canManage = isAdmin || (currentViewer && matchesMerchant(data.merchant_id, currentViewer.merchant_id));
         const gb = (data.group_buy && typeof data.group_buy === "object") ? data.group_buy : null;
         const gbEnabled = !!(gb?.enabled || data.group_buy_enabled);
+        const img = firstImage(data);
+        const bonus = Number(gb?.bonus_bm ?? data.group_buy_bonus_bm ?? 0);
 
         html += `
-            <div class="panel" style="padding:16px; border:${gbEnabled ? "2px solid #f43f5e" : "1px solid #e2e8f0"}; border-radius:12px; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.03); display:flex; flex-direction:column; justify-content:space-between;">
-                <div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:4px;">
-                        <span style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; font-size:0.78rem; font-weight:bold; padding:2px 8px; border-radius:99px;">
-                            🏪 ${esc(merchantName)} (${esc(data.merchant_id || '-')})
-                        </span>
-                        <div style="display:flex; gap:4px; align-items:center;">
-                          ${gbEnabled ? `<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.75rem;">🔥 공구·타임딜 (${Number(gb?.current_count ?? data.group_buy_current ?? 0)}/${Number(gb?.target_count ?? data.group_buy_target ?? 10)}개)</span>` : ""}
-                          ${statusBadge}
-                        </div>
-                    </div>
-
-                    ${firstImage(data) ? `<img src="${esc(firstImage(data))}" style="width:100%; height:160px; object-fit:cover; border-radius:8px; margin-bottom:10px;" onerror="this.style.display='none';" />` : ""}
-
-                    <div style="font-weight:700; font-size:1.15rem; color:#1e293b; margin-bottom:4px;">${esc(data.product_name)}</div>
-                    <div style="font-size:0.82rem; color:#64748b;">분류: <b>${esc(typeLabel)}</b></div>
-                    <div style="font-size:1.2rem; font-weight:800; color:#0f766e; margin:8px 0;">
-                      ${Number(data.price || 0).toLocaleString()} VND
-                      ${gbEnabled ? `<span style="font-size:0.78rem; color:#d97706; font-weight:700; margin-left:6px;">(+${Number(gb?.bonus_bm ?? data.group_buy_bonus_bm ?? 0).toLocaleString()} BM 보너스)</span>` : ""}
-                    </div>
-                    ${data.description ? `<p style="font-size:0.85rem; color:#475569; margin:0 0 12px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${esc(data.description)}</p>` : ''}
+            <div class="pg-card${gbEnabled ? " is-gb" : ""}${st === "published" ? "" : " is-off"}">
+                <div class="pg-thumb">
+                    ${img ? `<img src="${esc(img)}" alt="${esc(data.product_name)}" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pg-noimg',textContent:'📦'}));" />` : '<span class="pg-noimg">📦</span>'}
+                    ${statusBadge}
+                    ${gbEnabled ? `<span class="pg-gb" title="공동구매·타임딜 판매 수량">🔥 ${Number(gb?.current_count ?? data.group_buy_current ?? 0)}/${Number(gb?.target_count ?? data.group_buy_target ?? 10)}개</span>` : ""}
                 </div>
-
-                <div style="display:flex; gap:6px; flex-wrap:wrap; border-top:1px solid #f1f5f9; padding-top:12px; margin-top:8px;">
+                <div class="pg-body">
+                    <div class="pg-merchant" title="${esc(merchantName)} (${esc(data.merchant_id || '-')})">🏪 ${esc(merchantName)}</div>
+                    <div class="pg-name" title="${esc(data.product_name)}">${esc(data.product_name)}</div>
+                    <div class="pg-meta">${esc(typeLabel)}${data.inventory_stock != null ? ` · 재고 ${Number(data.inventory_stock).toLocaleString()}` : ""}</div>
+                    <div class="pg-price">${Number(data.price || 0).toLocaleString()} VND</div>
+                    ${gbEnabled && bonus ? `<div class="pg-bonus">🎁 목표 달성 시 1개당 +${bonus.toLocaleString()} BM</div>` : ""}
+                    ${data.description ? `<div class="pg-desc">${esc(data.description)}</div>` : ""}
+                </div>
+                <div class="pg-actions">
                   ${canManage ? `
-                      <button class="btn btn--sm" data-action="edit" data-id="${esc(docSnap.id)}" data-payload='${esc(JSON.stringify(data))}'>✏️ 수정/공구설정</button>
-                      ${data.sale_status === 'published'
-                    ? `<button class="btn btn--sm" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;" data-action="draft" data-id="${esc(docSnap.id)}">숨기기(임시저장)</button>`
-                    : `<button class="btn btn--sm" style="background:#dcfce7; color:#166534; border:1px solid #bbf7d0; font-weight:600;" data-action="publish" data-id="${esc(docSnap.id)}">📢 쇼핑몰 노출</button>`}
-                      <button class="btn btn--sm" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; margin-left:auto;" data-action="delete" data-id="${esc(docSnap.id)}" data-name="${esc(data.product_name)}" data-merchant="${esc(data.merchant_id)}">🗑️ 삭제</button>
+                      <button class="btn btn--sm pg-grow" data-action="edit" data-id="${esc(docSnap.id)}" data-payload='${esc(JSON.stringify(data))}'>✏️ 수정</button>
+                      ${st === 'published'
+                    ? `<button class="btn btn--sm pg-grow" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;" data-action="draft" data-id="${esc(docSnap.id)}" title="쇼핑몰에서 숨기기 (임시저장)">🙈 숨기기</button>`
+                    : `<button class="btn btn--sm pg-grow" style="background:#dcfce7; color:#166534; border:1px solid #bbf7d0; font-weight:700;" data-action="publish" data-id="${esc(docSnap.id)}" title="쇼핑몰에 노출">📢 노출</button>`}
+                      <button class="btn btn--sm" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;" data-action="delete" data-id="${esc(docSnap.id)}" data-name="${esc(data.product_name)}" data-merchant="${esc(data.merchant_id)}" title="삭제" aria-label="삭제">🗑️</button>
                   ` : `
-                      <span style="font-size:0.8rem; color:#94a3b8;">타 가맹점 상품 (조회 전용)</span>
+                      <span style="font-size:0.74rem; color:#94a3b8; padding:4px 2px;">타 가맹점 상품 (조회 전용)</span>
                   `}
                 </div>
             </div>
         `;
     });
-    listEl.innerHTML = html;
+    listEl.innerHTML = html + moreButtonHtml(total);
 
     bindActionEvents();
+    bindShowMore();
 }
 
 // items 컬렉션 카드 렌더링
@@ -445,32 +488,31 @@ function renderItemsCards(docs) {
     const listEl = $("productList");
     let html = "";
 
-    docs.forEach(docSnap => {
+    const total = docs.length;
+    docs.slice(0, visibleCount).forEach(docSnap => {
         const data = docSnap.data;
         const ownerName = Object.values(merchantMap).find(m => m.ownerUid === data.ownerUid)?.name || "가맹점/가이드";
-        let statusBadge = data.status === "published"
-            ? '<span style="background:#dcfce7; color:#15803d; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.8rem;">공개중</span>'
-            : '<span style="background:#fef3c7; color:#b45309; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.8rem;">검수대기</span>';
-
+        const statusBadge = data.status === "published"
+            ? '<span class="pg-status" style="background:#dcfce7; color:#15803d;">● 공개중</span>'
+            : '<span class="pg-status" style="background:#fef3c7; color:#b45309;">검수대기</span>';
         html += `
-            <div class="panel" style="padding:16px; border:1px solid #cbd5e1; border-radius:12px; background:#fff;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="background:#f1f5f9; color:#475569; font-size:0.78rem; font-weight:bold; padding:2px 8px; border-radius:99px;">
-                        🧳 ${esc(ownerName)} (${esc(data.category || '투어')})
-                    </span>
+            <div class="pg-card${data.status === "published" ? "" : " is-off"}">
+                <div class="pg-thumb">
+                    ${data.imageUrl ? `<img src="${esc(data.imageUrl)}" alt="${esc(data.title || data.name)}" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pg-noimg',textContent:'🧳'}));" />` : '<span class="pg-noimg">🧳</span>'}
                     ${statusBadge}
                 </div>
-                ${data.imageUrl ? `<img src="${esc(data.imageUrl)}" style="width:100%; height:150px; object-fit:cover; border-radius:8px; margin-bottom:10px;" />` : ""}
-                <div style="font-weight:700; font-size:1.1rem; color:#1e293b;">${esc(data.title || data.name)}</div>
-                <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">위치: ${esc(data.region || data.country || '-')}</div>
-                <div style="font-size:1.1rem; font-weight:800; color:#2563eb; margin:8px 0;">
-                    ${Number(data.priceVnd || data.price || 0).toLocaleString()} VND
+                <div class="pg-body">
+                    <div class="pg-merchant">🧳 ${esc(ownerName)} · ${esc(data.category || '투어')}</div>
+                    <div class="pg-name" title="${esc(data.title || data.name)}">${esc(data.title || data.name)}</div>
+                    <div class="pg-meta">📍 ${esc(data.region || data.country || '-')}</div>
+                    <div class="pg-price" style="color:#2563eb;">${Number(data.priceVnd || data.price || 0).toLocaleString()} VND</div>
+                    ${data.desc ? `<div class="pg-desc">${esc(data.desc)}</div>` : ""}
                 </div>
-                ${data.desc ? `<p style="font-size:0.83rem; color:#475569; line-height:1.4;">${esc(data.desc)}</p>` : ""}
             </div>
         `;
     });
-    listEl.innerHTML = html;
+    listEl.innerHTML = html + moreButtonHtml(total);
+    bindShowMore();
 }
 
 function syncGbFieldsVisibility() {
