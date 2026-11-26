@@ -30,7 +30,8 @@
     "@type": "FAQPage",
     "mainEntity": [
       {"@type":"Question","name":"BestClub Alliance는 어떤 플랫폼인가요?","acceptedAnswer":{"@type":"Answer","text":"BestClub Alliance는 베트남 하노이 제휴 가맹점 결제(BM), 즉석 잭팟 포인트 보상, 공동구매 통합 쇼핑몰, 아케이드 게임 토너먼트(GP)와 가맹점용 BestERP 클라우드를 하나로 연결한 O2O 플랫폼입니다."}},
-      {"@type":"Question","name":"BM과 Point, BT의 차이는 무엇인가요?","acceptedAnswer":{"@type":"Answer","text":"BM은 가맹점·쇼핑몰 결제에 바로 쓰는 현금성 결제 머니이며, Point는 잭팟·멘토 보상으로 적립되어 레벨 비율에 따라 BM으로 전환할 수 있습니다. BT(보너스 티켓)는 10만 VND 결제당 1장 지급되어 룰렛 보상에 사용됩니다."}},
+      {"@type":"Question","name":"공동구매 목표 달성 보너스는 어떻게 받나요?","acceptedAnswer":{"@type":"Answer","text":"공동구매·타임딜 상품의 목표 판매 수량(참여 인원이 아닌 팔린 개수)이 입금 확인된 주문 기준으로 채워지면, 구매자 모두에게 1개당 Point 보너스 × 구매 수량만큼 Point가 자동 적립됩니다. 주문을 취소하면 받은 보너스는 회수됩니다."}},
+       {"@type":"Question","name":"BM과 Point, BT의 차이는 무엇인가요?","acceptedAnswer":{"@type":"Answer","text":"BM은 가맹점·쇼핑몰 결제에 바로 쓰는 현금성 결제 머니이며, Point는 잭팟·멘토 보상으로 적립되어 레벨 비율에 따라 BM으로 전환할 수 있습니다. BT(보너스 티켓)는 10만 VND 결제당 1장 지급되어 룰렛 보상에 사용됩니다."}},
       {"@type":"Question","name":"가맹점 입점 및 BestERP 개설은 어떻게 하나요?","acceptedAnswer":{"@type":"Answer","text":"https://besterp.netlify.app/onboarding.html 에서 1분 만에 무료로 가맹점 전용 ERP·CRM·KDS 워크스페이스를 개설하고 BestClub 통합몰과 즉시 연동할 수 있습니다."}}
     ]
   }
@@ -356,9 +357,24 @@
         <div class="faq-a">
           <p><a href="/mall.html" style="color:#4f46e5;font-weight:700;">BestClub 통합 쇼핑몰</a>에서 하노이 제휴 가맹점의 김치·반찬·식자재·생활상품을 공동구매 할인가로 주문할 수 있습니다.</p>
           <ul>
-            <li><strong>할인가 즉시 확정</strong> — 타임딜 시간 내 주문하면 인원 마감 여부와 관계없이 할인가가 즉시 확정됩니다.</li>
-            <li><strong>목표 달성 보너스</strong> — 공동구매 목표 판매 수량이 채워지면 구매자 모두에게 산 수량만큼 추가 <strong>Point 보너스</strong>가 적립됩니다.</li>
+            <li><strong>할인가 즉시 확정</strong> — 타임딜 시간 내 주문하면 목표 판매 수량 달성 여부와 관계없이 할인가가 즉시 확정됩니다.</li>
+            <li><strong>목표는 판매 수량 기준</strong> — 참여한 사람 수가 아니라 팔린 상품 개수로 셉니다. 한 분이 5개를 사면 5개가 채워집니다.</li>
+            <li><strong>목표 달성 보너스</strong> — 공동구매 목표 판매 수량이 채워지면 구매자 모두에게 산 수량만큼 추가 <strong>Point 보너스</strong>가 적립됩니다. (1개당 보너스 × 구매 수량)</li>
             <li><strong>하노이 권역 배송/픽업</strong> — 미딩·쭝화, 하동·반푹, 서호·외교단지, 타임시티·오션파크 등 권역별 배송 및 매장 픽업을 지원합니다.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>공동구매 목표 달성 보너스(Point)는 언제, 어떻게 받나요?</summary>
+        <div class="faq-a">
+          <p>공동구매·타임딜 상품의 목표 판매 수량이 채워지면 <strong>Point</strong>가 내 계정에 자동으로 적립됩니다. (BM이 아닌 Point로 지급되며, Point는 마이페이지에서 BM으로 전환할 수 있습니다.)</p>
+          <ul>
+            <li><strong>지급 금액</strong> — 상품마다 정해진 <code>1개당 Point 보너스 × 내가 산 수량</code></li>
+            <li><strong>판매 수량에 들어가는 주문</strong> — 입금(결제)이 확인된 주문만 셉니다. 주문만 하고 송금하지 않은 주문은 들어가지 않습니다.</li>
+            <li><strong>지급 시점</strong> — 목표 수량에 닿는 순간, 그때까지 입금 확인된 구매자 모두에게 지급됩니다. 목표 달성 후에 입금 확인된 주문도 확인 즉시 지급됩니다.</li>
+            <li><strong>주문 취소 시</strong> — 취소된 주문은 판매 수량에서 빠지고, 받은 Point 보너스는 회수됩니다.</li>
+            <li><strong>중복 지급 없음</strong> — 같은 주문·상품에는 한 번만 지급되며, 지급 내역은 거래 기록에 남습니다.</li>
           </ul>
         </div>
       </details>
