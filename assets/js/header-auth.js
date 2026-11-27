@@ -29,7 +29,8 @@ function renderMyStore(store) {
     if (nav) nav.style.display = "none";
     return;
   }
-  const url = `${BESTERP_DASHBOARD}?store=${encodeURIComponent(store.id)}`;
+  // as=<uid>: BestERP 에 다른 계정이 로그인돼 있으면 계정을 바꿀지 묻게 한다 (BestERP auth.js)
+  const url = `${BESTERP_DASHBOARD}?store=${encodeURIComponent(store.id)}${store.uid ? `&as=${encodeURIComponent(store.uid)}` : ""}`;
   if (chip) {
     chip.href = url;
     chip.textContent = `🏪 ${store.name}`;
@@ -68,12 +69,12 @@ async function loadMyStore(profile) {
             isMember = mm.exists() && (mm.data().status || "active") === "active";
           } catch (_) {}
         }
-        if ((isOwner || isMember) && nameOf(m)) found = { id: mid, name: nameOf(m) };
+        if ((isOwner || isMember) && nameOf(m)) found = { id: mid, name: nameOf(m), uid };
       }
     }
     if (!found) {
       const q = await getDocs(query(collection(db, "merchants"), where("ownerUid", "==", uid), limit(1)));
-      q.forEach((d) => { if (!found && nameOf(d.data())) found = { id: d.id, name: nameOf(d.data()) }; });
+      q.forEach((d) => { if (!found && nameOf(d.data())) found = { id: d.id, name: nameOf(d.data()), uid }; });
     }
     if (seq === _myStoreSeq) renderMyStore(found);
   } catch (e) {
