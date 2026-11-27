@@ -592,3 +592,7 @@
     color: rgba(26, 39, 68, .7);
   }
 }
+/* 내 가맹점 칩 (2026-11-27) — 좁은 화면에서는 짧게 */
+@media (max-width: 640px) {
+  #myStoreChip { max-width: 110px !important; font-size: 0.72rem !important; padding: 3px 8px !important; margin-right: 4px !important; }
+}

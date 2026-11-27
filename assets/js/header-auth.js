@@ -9,7 +9,77 @@ import {
 import {
   doc,
   getDoc,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+// ── 내 가맹점 이름 + AI 경영지원(BestERP) 바로가기 (2026-11-27) ─────────
+// 가맹점 주인(ownerUid/ownerEmail) 또는 merchant_members 에 등록된 직원에게만 표시한다.
+const BESTERP_DASHBOARD = "https://besterp.netlify.app/admin/dashboard.html";
+let _myStoreSeq = 0;
+
+function renderMyStore(store) {
+  const chip = document.getElementById("myStoreChip");
+  const nav = document.getElementById("navAiErp");
+  if (!store) {
+    if (chip) { chip.style.display = "none"; chip.textContent = ""; }
+    if (nav) nav.style.display = "none";
+    return;
+  }
+  const url = `${BESTERP_DASHBOARD}?store=${encodeURIComponent(store.id)}`;
+  if (chip) {
+    chip.href = url;
+    chip.textContent = `🏪 ${store.name}`;
+    chip.title = `${store.name} · AI 경영지원 (BestERP) 열기`;
+    chip.style.cssText = "display:inline-flex;align-items:center;gap:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:8px;padding:4px 10px;border-radius:999px;background:linear-gradient(135deg,#eef2ff,#e0e7ff);border:1px solid #c7d2fe;color:#3730a3;font-size:0.8rem;font-weight:800;text-decoration:none;";
+  }
+  if (nav) {
+    nav.href = url;
+    nav.textContent = `🧠 AI 경영지원 (BestERP) · ${store.name}`;
+    nav.style.display = "";
+  }
+}
+
+async function loadMyStore(profile) {
+  const seq = ++_myStoreSeq;
+  renderMyStore(null);
+  const uid = profile?.uid;
+  if (!uid) return;
+  const email = String(profile.email || "").toLowerCase();
+  const nameOf = (m) => String(m?.name || m?.merchantName || m?.storeName || "").trim();
+  try {
+    let found = null;
+    const uSnap = await getDoc(doc(db, "users", uid));
+    const u = uSnap.exists() ? uSnap.data() : {};
+    const mid = String(u.merchantId || u.tenantId || "").trim();
+    if (mid) {
+      const mSnap = await getDoc(doc(db, "merchants", mid));
+      if (mSnap.exists()) {
+        const m = mSnap.data();
+        const isOwner = (m.ownerUid && m.ownerUid === uid)
+          || (!m.ownerUid && email && String(m.ownerEmail || "").toLowerCase() === email);
+        let isMember = false;
+        if (!isOwner && email) {
+          try {
+            const mm = await getDoc(doc(db, "merchant_members", `${email}_${mid}`));
+            isMember = mm.exists() && (mm.data().status || "active") === "active";
+          } catch (_) {}
+        }
+        if ((isOwner || isMember) && nameOf(m)) found = { id: mid, name: nameOf(m) };
+      }
+    }
+    if (!found) {
+      const q = await getDocs(query(collection(db, "merchants"), where("ownerUid", "==", uid), limit(1)));
+      q.forEach((d) => { if (!found && nameOf(d.data())) found = { id: d.id, name: nameOf(d.data()) }; });
+    }
+    if (seq === _myStoreSeq) renderMyStore(found);
+  } catch (e) {
+    if (seq === _myStoreSeq) renderMyStore(null);
+  }
+}
 
 function isInAppBrowser() {
   const ua = (navigator.userAgent || "").toLowerCase();
@@ -300,6 +370,7 @@ async function bindHeader() {
       show(btnLogout, isFullyRegistered);
       applyRoleToMenu(role || (isFullyRegistered ? "user" : "guest"));
       applyUserBadge(isFullyRegistered ? profile : null);
+      if (isFullyRegistered && profile?.uid) loadMyStore(profile); else { _myStoreSeq++; renderMyStore(null); }
 
       if (!loggedIn) { applyMemberBadge(false); applyMemberJoinLink(false); }
       if (loggedIn && profile?.uid) {
