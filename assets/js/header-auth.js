@@ -33,13 +33,14 @@ function renderMyStore(store) {
   const url = `${BESTERP_DASHBOARD}?store=${encodeURIComponent(store.id)}${store.uid ? `&as=${encodeURIComponent(store.uid)}` : ""}`;
   if (chip) {
     chip.href = url;
-    chip.textContent = `🏪 ${store.name}`;
-    chip.title = `${store.name} · AI 경영지원 (BestERP) 열기`;
+    const roleTxt = store.isOwner ? "" : " · 스태프";
+    chip.textContent = `🏪 ${store.name}${roleTxt}`;
+    chip.title = `${store.name} (${store.isOwner ? "대표(오너)" : "스태프"}) · AI 경영지원 (BestERP) 열기`;
     chip.style.cssText = "display:inline-flex;align-items:center;gap:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:8px;padding:4px 10px;border-radius:999px;background:linear-gradient(135deg,#eef2ff,#e0e7ff);border:1px solid #c7d2fe;color:#3730a3;font-size:0.8rem;font-weight:800;text-decoration:none;";
   }
   if (nav) {
     nav.href = url;
-    nav.textContent = `🧠 AI 경영지원 (BestERP) · ${store.name}`;
+    nav.textContent = `🧠 AI 경영지원 (BestERP) · ${store.name}${store.isOwner ? "" : " (스태프)"}`;
     nav.style.display = "";
   }
 }
@@ -69,12 +70,12 @@ async function loadMyStore(profile) {
             isMember = mm.exists() && (mm.data().status || "active") === "active";
           } catch (_) {}
         }
-        if ((isOwner || isMember) && nameOf(m)) found = { id: mid, name: nameOf(m), uid };
+        if ((isOwner || isMember) && nameOf(m)) found = { id: mid, name: nameOf(m), uid, isOwner };
       }
     }
     if (!found) {
       const q = await getDocs(query(collection(db, "merchants"), where("ownerUid", "==", uid), limit(1)));
-      q.forEach((d) => { if (!found && nameOf(d.data())) found = { id: d.id, name: nameOf(d.data()), uid }; });
+      q.forEach((d) => { if (!found && nameOf(d.data())) found = { id: d.id, name: nameOf(d.data()), uid, isOwner: true }; });
     }
     if (seq === _myStoreSeq) renderMyStore(found);
   } catch (e) {
